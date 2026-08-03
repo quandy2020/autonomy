@@ -21,8 +21,18 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 #include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
 #include "gtest/gtest.h"
@@ -35,23 +45,24 @@ namespace {
 // Helper function to create a simple test costmap.
 std::shared_ptr<map::costmap_2d::Costmap2D> CreateTestCostmap(
     unsigned int width, unsigned int height, double resolution) {
-    commsgs::map_msgs::OccupancyGrid grid;
-    grid.info.width = width;
-    grid.info.height = height;
-    grid.info.resolution = resolution;
-    grid.info.origin.position.x = 0.0;
-    grid.info.origin.position.y = 0.0;
-    grid.info.origin.position.z = 0.0;
-    grid.info.origin.orientation.w = 1.0;
+    automsgs::msgs::map_msgs::OccupancyGrid grid;
+    grid.mutable_info()->set_width(width);
+    grid.mutable_info()->set_height(height);
+    grid.mutable_info()->set_resolution(resolution);
+    grid.mutable_info()->mutable_origin()->mutable_position()->set_x(0.0);
+    grid.mutable_info()->mutable_origin()->mutable_position()->set_y(0.0);
+    grid.mutable_info()->mutable_origin()->mutable_position()->set_z(0.0);
+    grid.mutable_info()->mutable_origin()->mutable_orientation()->set_w(1.0);
 
     const size_t size = width * height;
-    grid.data.resize(size, map::costmap_2d::utils::OCC_GRID_FREE);
+    grid.mutable_data()->Resize(static_cast<int>(size),
+                                map::costmap_2d::utils::OCC_GRID_FREE);
 
     // Add some obstacles in the center
     for (unsigned int y = height / 3; y < 2 * height / 3; ++y) {
         for (unsigned int x = width / 3; x < 2 * width / 3; ++x) {
-            grid.data[y * width + x] =
-                map::costmap_2d::utils::OCC_GRID_OCCUPIED;
+            grid.set_data(static_cast<int>(y * width + x),
+                          map::costmap_2d::utils::OCC_GRID_OCCUPIED);
         }
     }
 
@@ -59,19 +70,19 @@ std::shared_ptr<map::costmap_2d::Costmap2D> CreateTestCostmap(
 }
 
 // Helper function to create a simple test path.
-commsgs::planning_msgs::Path CreateTestPath(double start_x, double start_y,
+automsgs::msgs::planning_msgs::Path CreateTestPath(double start_x, double start_y,
                                             double goal_x, double goal_y,
                                             int num_points) {
-    commsgs::planning_msgs::Path path;
+    automsgs::msgs::planning_msgs::Path path;
     for (int i = 0; i < num_points; ++i) {
-        commsgs::geometry_msgs::PoseStamped pose;
-        pose.header.frame_id = "map";
+        automsgs::msgs::geometry_msgs::PoseStamped pose;
+        pose.mutable_header()->set_frame_id("map");
         double t = static_cast<double>(i) / (num_points - 1);
-        pose.pose.position.x = start_x + (goal_x - start_x) * t;
-        pose.pose.position.y = start_y + (goal_y - start_y) * t;
-        pose.pose.position.z = 0.0;
-        pose.pose.orientation.w = 1.0;
-        path.poses.push_back(pose);
+        pose.mutable_pose()->mutable_position()->set_x(start_x + (goal_x - start_x) * t);
+        pose.mutable_pose()->mutable_position()->set_y(start_y + (goal_y - start_y) * t);
+        pose.mutable_pose()->mutable_position()->set_z(0.0);
+        pose.mutable_pose()->mutable_orientation()->set_w(1.0);
+        *path.mutable_poses()->Add() = pose;
     }
     return path;
 }
@@ -112,7 +123,7 @@ TEST(PgmConverterTest, SavePathToImageSuccess) {
 
 TEST(PgmConverterTest, SavePathToImageEmptyPath) {
     auto costmap = CreateTestCostmap(50, 50, 0.1);
-    commsgs::planning_msgs::Path empty_path;
+    automsgs::msgs::planning_msgs::Path empty_path;
 
     const std::string output_path = "/tmp/test_empty_path.png";
     bool success =
@@ -242,14 +253,14 @@ TEST(PgmConverterTest, SavePathToImageLargeCostmap) {
 TEST(PgmConverterTest, SavePathToImagePathOutsideBounds) {
     auto costmap = CreateTestCostmap(50, 50, 0.1);
     // Create path with points outside the costmap bounds
-    commsgs::planning_msgs::Path path;
-    commsgs::geometry_msgs::PoseStamped pose;
-    pose.header.frame_id = "map";
-    pose.pose.position.x = 100.0;  // Way outside bounds
-    pose.pose.position.y = 100.0;
-    pose.pose.position.z = 0.0;
-    pose.pose.orientation.w = 1.0;
-    path.poses.push_back(pose);
+    automsgs::msgs::planning_msgs::Path path;
+    automsgs::msgs::geometry_msgs::PoseStamped pose;
+    pose.mutable_header()->set_frame_id("map");
+    pose.mutable_pose()->mutable_position()->set_x(100.0);  // Way outside bounds
+    pose.mutable_pose()->mutable_position()->set_y(100.0);
+    pose.mutable_pose()->mutable_position()->set_z(0.0);
+    pose.mutable_pose()->mutable_orientation()->set_w(1.0);
+    *path.mutable_poses()->Add() = pose;
 
     const std::string output_path = "/tmp/test_path_outside.png";
     bool success = PgmConverter::savePathToImage(*costmap, path, output_path);

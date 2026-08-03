@@ -1,3 +1,7 @@
+#include <automsgs/msgs/std_msgs/header.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
 /*
  * Copyright 2016 The Cartographer Authors
  *
@@ -18,8 +22,6 @@
 
 #include <glog/logging.h>
 
-#include "autonomy/commsgs/proto/geometry_msgs.pb.h"
-#include "autonomy/commsgs/proto/std_msgs.pb.h"
 #include "autonomy/localization/cartographer/io/proto_stream.hpp"
 #include "autonomy/localization/cartographer/node/msg_conversion.hpp"
 #include "autonomy/localization/cartographer/transform/transform.hpp"
@@ -33,8 +35,8 @@ namespace {
 
 using ::cartographer::transform::Rigid3d;
 
-commsgs::proto::geometry_msgs::Pose ToProtoPose(const Rigid3d& rigid3d) {
-    commsgs::proto::geometry_msgs::Pose pose;
+automsgs::msgs::geometry_msgs::Pose ToProtoPose(const Rigid3d& rigid3d) {
+    automsgs::msgs::geometry_msgs::Pose pose;
     pose.mutable_position()->set_x(rigid3d.translation().x());
     pose.mutable_position()->set_y(rigid3d.translation().y());
     pose.mutable_position()->set_z(rigid3d.translation().z());
@@ -161,11 +163,11 @@ MapBuilderBridge::GetTrajectoryStates() {
 }
 
 proto::SubmapList MapBuilderBridge::GetSubmapList(
-    const commsgs::builtin_interfaces::Time& node_time) {
+    const automsgs::msgs::builtin_interfaces::Time& node_time) {
     proto::SubmapList submap_list;
-    submap_list.mutable_header()->mutable_stamp()->set_sec(node_time.sec);
+    submap_list.mutable_header()->mutable_stamp()->set_sec(node_time.sec());
     submap_list.mutable_header()->mutable_stamp()->set_nanosec(
-        node_time.nanosec);
+        node_time.nanosec());
     submap_list.mutable_header()->set_frame_id(node_options_.map_frame);
     for (const auto& submap_id_pose :
          map_builder_->pose_graph()->GetAllSubmapPoses()) {

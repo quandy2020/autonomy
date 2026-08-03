@@ -30,38 +30,46 @@
 #include "autodriver/types/range_sample.hpp"
 #include "autodriver/types/sensor_sample.hpp"
 #include "autodriver/types/wheel_odometry_sample.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
-#include "autonomy/commsgs/std_msgs.hpp"
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
+#include <automsgs/msgs/sensor_msgs/range.pb.h>
+#include <automsgs/msgs/sensor_msgs/nav_sat_fix.pb.h>
+#include <automsgs/msgs/sensor_msgs/image.pb.h>
+#include <automsgs/msgs/std_msgs/header.pb.h>
 
 namespace autodriver {
 namespace bridge {
 
 /** @brief Builds autonomy Header from HAL host time and sensor frame id. */
-autonomy::commsgs::std_msgs::Header MakeHeader(
+automsgs::msgs::std_msgs::Header MakeHeader(
   const SensorSample & sample);
 
 /** @brief Wheel odometry velocity sample -> planning Odometry twist. */
-autonomy::commsgs::planning_msgs::Odometry ToAutonomyOdometry(
+automsgs::msgs::planning_msgs::Odometry ToAutonomyOdometry(
   const WheelOdometrySample & sample);
 
 /** @brief 2-D LiDAR scan -> sensor_msgs LaserScan. */
-autonomy::commsgs::sensor_msgs::LaserScan ToAutonomyLaserScan(
+automsgs::msgs::sensor_msgs::LaserScan ToAutonomyLaserScan(
   const LidarScan & sample);
 
 /** @brief Single-beam range -> sensor_msgs Range. */
-autonomy::commsgs::sensor_msgs::Range ToAutonomyRange(
+automsgs::msgs::sensor_msgs::Range ToAutonomyRange(
   const RangeSample & sample);
 
 /** @brief IMU sample -> sensor_msgs Imu. */
-autonomy::commsgs::sensor_msgs::Imu ToAutonomyImu(const ImuSample & sample);
+automsgs::msgs::sensor_msgs::Imu ToAutonomyImu(const ImuSample & sample);
 
 /** @brief GNSS sample -> sensor_msgs NavSatFix. */
-autonomy::commsgs::sensor_msgs::NavSatFix ToAutonomyNavSatFix(
+automsgs::msgs::sensor_msgs::NavSatFix ToAutonomyNavSatFix(
   const GpsSample & sample);
 
 /** @brief Camera buffer -> sensor_msgs Image. */
-autonomy::commsgs::sensor_msgs::Image ToAutonomyImage(
+automsgs::msgs::sensor_msgs::Image ToAutonomyImage(
   const CameraFrame & sample);
 
 }  // namespace bridge

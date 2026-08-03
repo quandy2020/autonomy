@@ -37,7 +37,7 @@ bool drawPbrMeshesOgreOrGl(common::DisplayContext* context,
     std::vector<rendering::OgrePbrMeshInstance> ogre_meshes;
     ogre_meshes.reserve(meshes.size());
     for (const PbrMeshInstance& mesh : meshes) {
-      ogre_meshes.push_back({mesh.mesh, mesh.transform, mesh.color, mesh.metallic,
+      ogre_meshes.push_back({mesh.mesh, mesh.transform(), mesh.color, mesh.metallic,
                              mesh.roughness});
     }
     syncOgreDisplayVisibility(context, display_name);
@@ -47,7 +47,7 @@ bool drawPbrMeshesOgreOrGl(common::DisplayContext* context,
 #endif
 
   for (const PbrMeshInstance& instance : meshes) {
-    scene.addTriangleMeshSolidPbr(instance.mesh, instance.transform, instance.color,
+    scene.addTriangleMeshSolidPbr(instance.mesh, instance.transform(), instance.color,
                                   instance.metallic, instance.roughness);
   }
   return false;
@@ -62,7 +62,7 @@ bool drawPbrTexturedMeshesOgreOrGl(
     std::vector<rendering::OgrePbrTexturedMeshInstance> ogre_meshes;
     ogre_meshes.reserve(meshes.size());
     for (const PbrTexturedMeshInstance& mesh : meshes) {
-      ogre_meshes.push_back({mesh.mesh, mesh.transform, mesh.texture, mesh.tint,
+      ogre_meshes.push_back({mesh.mesh, mesh.transform(), mesh.texture, mesh.tint,
                              mesh.metallic, mesh.roughness});
     }
     syncOgreDisplayVisibility(context, display_name);
@@ -73,7 +73,7 @@ bool drawPbrTexturedMeshesOgreOrGl(
 #endif
 
   for (const PbrTexturedMeshInstance& instance : meshes) {
-    scene.addTriangleMeshTexturedPbr(instance.mesh, instance.transform,
+    scene.addTriangleMeshTexturedPbr(instance.mesh, instance.transform(),
                                      instance.texture, instance.tint,
                                      instance.metallic, instance.roughness);
   }

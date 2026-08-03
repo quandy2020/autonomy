@@ -9,7 +9,15 @@
 #include <string>
 
 #include "autolink/node/node.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/task/apps/navigation/navigation_client.hpp"
 #include "autonomy/task/proto/tracker.pb.h"
 
@@ -39,7 +47,7 @@ public:
     void ApplyGoal(const ::autonomy::task::proto::TrackerGoal& goal);
 
     bool IsTargetLocked() const;
-    bool ComputeFollowGoal(commsgs::geometry_msgs::PoseStamped& goal) const;
+    bool ComputeFollowGoal(automsgs::msgs::geometry_msgs::PoseStamped& goal) const;
     float DistanceToTarget() const;
 
     const std::string& target_id() const { return target_id_; }
@@ -60,7 +68,7 @@ private:
     ::autonomy::task::proto::TrackerMode mode_{
         ::autonomy::task::proto::TRACKER_MODE_UNSPECIFIED};
     std::string target_id_;
-    std::optional<commsgs::geometry_msgs::PoseStamped> target_pose_;
+    std::optional<automsgs::msgs::geometry_msgs::PoseStamped> target_pose_;
     double follow_distance_{kDefaultFollowDistance};
     bool reacquire_on_lost_{true};
 };

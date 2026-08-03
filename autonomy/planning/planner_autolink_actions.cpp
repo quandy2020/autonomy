@@ -10,8 +10,10 @@
 #include <memory>
 
 #include "autonomy/common/logging.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/proto/error_code.pb.h"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+#include <automsgs/msgs/status_msgs/status_msgs.pb.h>
 #include "autonomy/planning/common/planner_exceptions.hpp"
 #include "autonomy/planning/common/smoother_exceptions.hpp"
 #include "autonomy/planning/constants.hpp"
@@ -20,10 +22,10 @@ namespace autonomy {
 namespace planning {
 namespace {
 
-using Time = commsgs::builtin_interfaces::Time;
-namespace err_proto = commsgs::proto::error_code;
+using Time = automsgs::msgs::builtin_interfaces::Time;
+namespace err_proto = automsgs::msgs::status_msgs;
 
-err_proto::ErrorCode MapComputePathToPoseError(const std::exception& ex)
+err_proto::StatusCode MapComputePathToPoseError(const std::exception& ex)
 {
     if (dynamic_cast<const common::InvalidPlanner*>(&ex)) {
         return err_proto::COMPUTE_PATH_TO_POSE_INVALID_PLANNER;
@@ -52,7 +54,7 @@ err_proto::ErrorCode MapComputePathToPoseError(const std::exception& ex)
     return err_proto::COMPUTE_PATH_TO_POSE_UNKNOWN;
 }
 
-err_proto::ErrorCode MapComputePathThroughPosesError(const std::exception& ex)
+err_proto::StatusCode MapComputePathThroughPosesError(const std::exception& ex)
 {
     if (dynamic_cast<const common::NoViapointsGiven*>(&ex)) {
         return err_proto::COMPUTE_PATH_THROUGH_POSES_NO_WAYPOINTS;
@@ -72,7 +74,7 @@ err_proto::ErrorCode MapComputePathThroughPosesError(const std::exception& ex)
     return err_proto::COMPUTE_PATH_THROUGH_POSES_UNKNOWN;
 }
 
-err_proto::ErrorCode MapSmoothPathError(const std::exception& ex)
+err_proto::StatusCode MapSmoothPathError(const std::exception& ex)
 {
     if (dynamic_cast<const common::InvalidSmoother*>(&ex)) {
         return err_proto::SMOOTH_PATH_INVALID_SMOOTHER;
@@ -98,9 +100,9 @@ std::chrono::milliseconds MaxSmoothingDuration(
     if (!goal.has_max_smoothing_duration()) {
         return std::chrono::milliseconds(1000);
     }
-    const double max_sec = commsgs::builtin_interfaces::FromProto(
-                               goal.max_smoothing_duration())
-                               .Seconds();
+    const double max_sec =
+        automsgs::msgs::builtin_interfaces::DurationToSeconds(
+            goal.max_smoothing_duration());
     if (max_sec <= 0.0) {
         return std::chrono::milliseconds(1000);
     }
@@ -135,7 +137,7 @@ void PlannerServer::RegisterAutolinkEndpoints()
             [self](const std::shared_ptr<PathValidRequest>& request,
                    std::shared_ptr<PathValidResponse>& response) {
                 const auto path =
-                    commsgs::planning_msgs::FromProto(request->path());
+                    request->path();
                 const uint8_t max_cost = request->max_cost() > 0
                                              ? static_cast<uint8_t>(request->max_cost())
                                              : 253;
@@ -175,7 +177,7 @@ void PlannerServer::ComputePlan()
     }
 
     auto result = std::make_shared<nav_proto::ComputePathToPoseAction::Result>();
-    const auto start_time = Time::Now();
+    const auto start_time = automsgs::msgs::builtin_interfaces::TimeNow();
     metrics_.plans_requested.fetch_add(1, std::memory_order_relaxed);
 
     try {
@@ -185,17 +187,17 @@ void PlannerServer::ComputePlan()
 
         WaitForCostmap();
 
-        commsgs::geometry_msgs::PoseStamped start;
-        commsgs::geometry_msgs::PoseStamped goal_pose;
+        automsgs::msgs::geometry_msgs::PoseStamped start;
+        automsgs::msgs::geometry_msgs::PoseStamped goal_pose;
 
         if (goal->use_start() && goal->has_start()) {
-            start = commsgs::geometry_msgs::FromProto(goal->start());
+            start = goal->start();
         } else if (!costmap_wrapper_ ||
                    !costmap_wrapper_->getRobotPose(start)) {
             throw common::PlannerTFError("Unable to get start pose");
         }
 
-        goal_pose = commsgs::geometry_msgs::FromProto(goal->goal());
+        goal_pose = goal->goal();
         if (!TransformPosesToGlobalFrame(start, goal_pose)) {
             throw common::PlannerTFError(
                 "Unable to transform poses to global frame");
@@ -205,16 +207,15 @@ void PlannerServer::ComputePlan()
         const auto path =
             GetPlan(start, goal_pose, goal->planner_id(), cancel_checker);
         if (!ValidatePath(goal_pose, path, goal->planner_id())) {
-            throw common::NoValidPathCouldBeFound(goal->planner_id() +
-                                                  " generated an empty path");
+            throw common::NoValidPathCouldBeFound(goal->planner_id() + " generated an empty path");
         }
 
         PublishPlan(path);
         metrics_.plans_succeeded.fetch_add(1, std::memory_order_relaxed);
 
-        *result->mutable_path() = commsgs::planning_msgs::ToProto(path);
+        *result->mutable_path() = path;
         *result->mutable_planning_time() =
-            commsgs::builtin_interfaces::ToProto(Time::Now() - start_time);
+            (automsgs::msgs::builtin_interfaces::TimeNow() - start_time);
         result->set_error_code(err_proto::COMPUTE_PATH_TO_POSE_NONE);
         server->SucceededCurrent(result);
     } catch (const common::PlannerCancelled&) {
@@ -251,7 +252,7 @@ void PlannerServer::ComputePlanThroughPoses()
 
     auto result =
         std::make_shared<nav_proto::ComputePathThroughPosesAction::Result>();
-    const auto start_time = Time::Now();
+    const auto start_time = automsgs::msgs::builtin_interfaces::TimeNow();
     metrics_.plans_requested.fetch_add(1, std::memory_order_relaxed);
 
     try {
@@ -261,27 +262,27 @@ void PlannerServer::ComputePlanThroughPoses()
 
         WaitForCostmap();
 
-        std::vector<commsgs::geometry_msgs::PoseStamped> goals;
+        std::vector<automsgs::msgs::geometry_msgs::PoseStamped> goals;
         if (goal->has_goals()) {
             goals.reserve(static_cast<size_t>(goal->goals().goals_size()));
             for (const auto& pose_proto : goal->goals().goals()) {
-                goals.push_back(commsgs::geometry_msgs::FromProto(pose_proto));
+                goals.push_back(pose_proto);
             }
         }
         if (goals.empty()) {
             throw common::NoViapointsGiven("No viapoints given");
         }
 
-        commsgs::geometry_msgs::PoseStamped curr_start;
+        automsgs::msgs::geometry_msgs::PoseStamped curr_start;
         if (goal->use_start() && goal->has_start()) {
-            curr_start = commsgs::geometry_msgs::FromProto(goal->start());
+            curr_start = goal->start();
         } else if (!costmap_wrapper_ ||
                    !costmap_wrapper_->getRobotPose(curr_start)) {
             throw common::PlannerTFError("Unable to get start pose");
         }
 
         auto cancel_checker = [&]() { return server->IsCancelRequested(); };
-        commsgs::planning_msgs::Path merged_path;
+        automsgs::msgs::planning_msgs::Path merged_path;
 
         for (size_t i = 0; i < goals.size(); ++i) {
             if (server->IsCancelRequested()) {
@@ -289,10 +290,10 @@ void PlannerServer::ComputePlanThroughPoses()
                     "ComputePathThroughPoses cancelled");
             }
 
-            commsgs::geometry_msgs::PoseStamped segment_start =
-                (i == 0) ? curr_start : merged_path.poses.back();
+            automsgs::msgs::geometry_msgs::PoseStamped segment_start =
+                (i == 0) ? curr_start : merged_path.poses(merged_path.poses_size() - 1);
             if (i > 0) {
-                segment_start.header = merged_path.header;
+                *segment_start.mutable_header() = merged_path.header();
             }
 
             auto curr_goal = goals[i];
@@ -304,21 +305,21 @@ void PlannerServer::ComputePlanThroughPoses()
             auto segment = GetPlan(segment_start, curr_goal, goal->planner_id(),
                                    cancel_checker);
             if (!ValidatePath(curr_goal, segment, goal->planner_id())) {
-                throw common::NoValidPathCouldBeFound(goal->planner_id() +
-                                                      " generated an empty path");
+                throw common::NoValidPathCouldBeFound(goal->planner_id() + " generated an empty path");
             }
 
-            merged_path.poses.insert(merged_path.poses.end(),
-                                     segment.poses.begin(), segment.poses.end());
-            merged_path.header = segment.header;
+            for (const auto& pose : segment.poses()) {
+                *merged_path.mutable_poses()->Add() = pose;
+            }
+            *merged_path.mutable_header() = segment.header();
         }
 
         PublishPlan(merged_path);
         metrics_.plans_succeeded.fetch_add(1, std::memory_order_relaxed);
 
-        *result->mutable_path() = commsgs::planning_msgs::ToProto(merged_path);
+        *result->mutable_path() = merged_path;
         *result->mutable_planning_time() =
-            commsgs::builtin_interfaces::ToProto(Time::Now() - start_time);
+            (automsgs::msgs::builtin_interfaces::TimeNow() - start_time);
         result->set_error_code(err_proto::COMPUTE_PATH_THROUGH_POSES_NONE);
         server->SucceededCurrent(result);
     } catch (const common::PlannerCancelled&) {
@@ -361,9 +362,9 @@ void PlannerServer::SmoothPathAction()
             throw common::InvalidSmoother("No smoother configured");
         }
 
-        commsgs::planning_msgs::Path path =
-            commsgs::planning_msgs::FromProto(goal->path());
-        if (path.poses.size() < 2) {
+        automsgs::msgs::planning_msgs::Path path =
+            goal->path();
+        if (path.poses_size() < 2) {
             throw common::InvalidPath("Path must contain at least 2 poses");
         }
 
@@ -384,10 +385,10 @@ void PlannerServer::SmoothPathAction()
         const double duration_sec =
             std::chrono::duration<double>(elapsed).count();
 
-        *result->mutable_path() = commsgs::planning_msgs::ToProto(path);
+        *result->mutable_path() = path;
         *result->mutable_smoothing_duration() =
-            commsgs::builtin_interfaces::ToProto(
-                commsgs::builtin_interfaces::Duration::FromSeconds(duration_sec));
+            (
+                automsgs::msgs::builtin_interfaces::DurationFromSeconds(duration_sec));
         result->set_was_completed(was_completed);
         result->set_error_code(err_proto::SMOOTH_PATH_NONE);
         server->SucceededCurrent(result);

@@ -1,3 +1,4 @@
+#include <automsgs/msgs/sensor_msgs/range.pb.h>
 /*********************************************************************
  *
  * Software License Agreement (BSD License)
@@ -45,18 +46,18 @@
 
 namespace {
 bool occupancyGridContentEqual(
-    const autonomy::commsgs::map_msgs::OccupancyGrid& a,
-    const autonomy::commsgs::map_msgs::OccupancyGrid& b) {
-    if (a.info.width != b.info.width || a.info.height != b.info.height ||
-        a.info.resolution != b.info.resolution) {
+    const automsgs::msgs::map_msgs::OccupancyGrid& a,
+    const automsgs::msgs::map_msgs::OccupancyGrid& b) {
+    if (a.info().width() != b.info().width() || a.info().height() != b.info().height() ||
+        a.info().resolution() != b.info().resolution()) {
         return false;
     }
-    const auto& oa = a.info.origin.position;
-    const auto& ob = b.info.origin.position;
-    if (oa.x != ob.x || oa.y != ob.y || oa.z != ob.z) {
+    const auto& oa = a.info().origin().position();
+    const auto& ob = b.info().origin().position();
+    if (oa.x() != ob.x() || oa.y() != ob.y() || oa.z() != ob.z()) {
         return false;
     }
-    return a.data == b.data;
+    return std::equal(a.data().begin(), a.data().end(), b.data().begin());
 }
 }  // namespace
 #include "autonomy/map/costmap_2d/cost_values.hpp"
@@ -317,7 +318,7 @@ void Costmap2DWrapper::init() {
     if (use_radius_) {
         setRobotFootprint(makeFootprintFromRadius(robot_radius_));
     } else {
-        std::vector<commsgs::geometry_msgs::Point> new_footprint;
+        std::vector<automsgs::msgs::geometry_msgs::Point> new_footprint;
         if (!footprint_.empty() &&
             makeFootprintFromString(footprint_, new_footprint)) {
             if (new_footprint.size() >= 3) {
@@ -364,8 +365,8 @@ void Costmap2DWrapper::loadPlugins() {
 }
 
 void Costmap2DWrapper::applyLoadedOccupancyGrid(
-    const commsgs::map_msgs::OccupancyGrid& grid) {
-    if (!layered_costmap_ || grid.info.width == 0 || grid.info.height == 0) {
+    const automsgs::msgs::map_msgs::OccupancyGrid& grid) {
+    if (!layered_costmap_ || grid.info().width() == 0 || grid.info().height() == 0) {
         return;
     }
 
@@ -443,11 +444,11 @@ void Costmap2DWrapper::updateMap() {
     double robot_x = 0.0;
     double robot_y = 0.0;
     double robot_yaw = 0.0;
-    commsgs::geometry_msgs::PoseStamped robot_pose;
+    automsgs::msgs::geometry_msgs::PoseStamped robot_pose;
     if (getRobotPose(robot_pose)) {
-        robot_x = robot_pose.pose.position.x;
-        robot_y = robot_pose.pose.position.y;
-        robot_yaw = autonomy::transform::tf2::getYaw(robot_pose.pose.orientation);
+        robot_x = robot_pose.pose().position().x();
+        robot_y = robot_pose.pose().position().y();
+        robot_yaw = autonomy::transform::tf2::getYaw(robot_pose.pose().orientation());
     }
 
     layered_costmap_->updateMap(robot_x, robot_y, robot_yaw);
@@ -592,7 +593,7 @@ void Costmap2DWrapper::resetLayers() {
 }
 
 void Costmap2DWrapper::setRobotFootprint(
-    const std::vector<commsgs::geometry_msgs::Point>& points) {
+    const std::vector<automsgs::msgs::geometry_msgs::Point>& points) {
     unpadded_footprint_ = points;
     padded_footprint_ = points;
     padFootprint(padded_footprint_, footprint_padding_);
@@ -600,21 +601,21 @@ void Costmap2DWrapper::setRobotFootprint(
 }
 
 void Costmap2DWrapper::setRobotFootprintPolygon(
-    const commsgs::geometry_msgs::Polygon::SharedPtr footprint) {
+    const std::shared_ptr<automsgs::msgs::geometry_msgs::Polygon> footprint) {
     setRobotFootprint(toPointVector(footprint));
 }
 
 void Costmap2DWrapper::getOrientedFootprint(
-    std::vector<commsgs::geometry_msgs::Point>& oriented_footprint) {
-    commsgs::geometry_msgs::PoseStamped global_pose;
+    std::vector<automsgs::msgs::geometry_msgs::Point>& oriented_footprint) {
+    automsgs::msgs::geometry_msgs::PoseStamped global_pose;
     if (!getRobotPose(global_pose)) {
         oriented_footprint = padded_footprint_;
         return;
     }
 
     const double yaw =
-        autonomy::transform::tf2::getYaw(global_pose.pose.orientation);
-    transformFootprint(global_pose.pose.position.x, global_pose.pose.position.y,
+        autonomy::transform::tf2::getYaw(global_pose.pose().orientation());
+    transformFootprint(global_pose.pose().position().x(), global_pose.pose().position().y(),
                        yaw, padded_footprint_, oriented_footprint);
 }
 
@@ -639,7 +640,7 @@ void Costmap2DWrapper::setRobotBaseFrameID(
 }
 
 bool Costmap2DWrapper::getRobotPose(
-    commsgs::geometry_msgs::PoseStamped& global_pose) {
+    automsgs::msgs::geometry_msgs::PoseStamped& global_pose) {
     auto* tf_buffer = autonomy::transform::Buffer::Instance();
     if (!tf_buffer) {
         return false;
@@ -651,7 +652,7 @@ bool Costmap2DWrapper::getRobotPose(
     try {
         std::string err;
         if (!tf_buffer->canTransform(global_frame_, robot_base_frame_,
-                                     commsgs::builtin_interfaces::Time{},
+                                     automsgs::msgs::builtin_interfaces::ZeroTime(),
                                      timeout, &err)) {
             AERROR << "getRobotPose: canTransform(" << global_frame_ << ", "
                    << robot_base_frame_ << ") failed: " << err;
@@ -660,15 +661,15 @@ bool Costmap2DWrapper::getRobotPose(
         const geometry_msgs::TransformStamped gt =
             static_cast<autonomy::transform::tf2::BufferCore&>(*tf_buffer)
                 .lookupTransform(global_frame_, robot_base_frame_, 0ULL);
-        global_pose.header.frame_id = global_frame_;
-        global_pose.header.stamp = commsgs::builtin_interfaces::Time::Now();
-        global_pose.pose.position.x = gt.transform.translation.x;
-        global_pose.pose.position.y = gt.transform.translation.y;
-        global_pose.pose.position.z = gt.transform.translation.z;
-        global_pose.pose.orientation.x = gt.transform.rotation.x;
-        global_pose.pose.orientation.y = gt.transform.rotation.y;
-        global_pose.pose.orientation.z = gt.transform.rotation.z;
-        global_pose.pose.orientation.w = gt.transform.rotation.w;
+        global_pose.mutable_header()->set_frame_id(global_frame_);
+        *global_pose.mutable_header()->mutable_stamp() = automsgs::msgs::builtin_interfaces::TimeNow();
+        global_pose.mutable_pose()->mutable_position()->set_x(gt.transform.translation.x);
+        global_pose.mutable_pose()->mutable_position()->set_y(gt.transform.translation.y);
+        global_pose.mutable_pose()->mutable_position()->set_z(gt.transform.translation.z);
+        global_pose.mutable_pose()->mutable_orientation()->set_x(gt.transform.rotation.x);
+        global_pose.mutable_pose()->mutable_orientation()->set_y(gt.transform.rotation.y);
+        global_pose.mutable_pose()->mutable_orientation()->set_z(gt.transform.rotation.z);
+        global_pose.mutable_pose()->mutable_orientation()->set_w(gt.transform.rotation.w);
         return true;
     } catch (const autonomy::transform::tf2::TransformException& ex) {
         AERROR << "getRobotPose: " << ex.what();
@@ -679,12 +680,12 @@ bool Costmap2DWrapper::getRobotPose(
 }
 
 bool Costmap2DWrapper::transformPoseToGlobalFrame(
-    const commsgs::geometry_msgs::PoseStamped& input_pose,
-    commsgs::geometry_msgs::PoseStamped& transformed_pose) {
-    if (input_pose.header.frame_id.empty() ||
-        input_pose.header.frame_id == global_frame_) {
+    const automsgs::msgs::geometry_msgs::PoseStamped& input_pose,
+    automsgs::msgs::geometry_msgs::PoseStamped& transformed_pose) {
+    if (input_pose.header().frame_id().empty() ||
+        input_pose.header().frame_id() == global_frame_) {
         transformed_pose = input_pose;
-        transformed_pose.header.frame_id = global_frame_;
+        transformed_pose.mutable_header()->set_frame_id(global_frame_);
         return true;
     }
 
@@ -700,10 +701,10 @@ bool Costmap2DWrapper::transformPoseToGlobalFrame(
             static_cast<float>(transform_tolerance_));
         return true;
     } catch (const autonomy::transform::tf2::TransformException& ex) {
-        AERROR << "Failed to transform pose from " << input_pose.header.frame_id
+        AERROR << "Failed to transform pose from " << input_pose.header().frame_id()
                << " to " << global_frame_ << ": " << ex.what();
     } catch (const std::exception& ex) {
-        AERROR << "Failed to transform pose from " << input_pose.header.frame_id
+        AERROR << "Failed to transform pose from " << input_pose.header().frame_id()
                << " to " << global_frame_ << ": " << ex.what();
     }
     return false;
@@ -717,13 +718,13 @@ bool Costmap2DWrapper::loadMap(const std::string& filename) {
     }
 
     // 根据加载的地图尺寸更新 layered_costmap_
-    if (layered_costmap_ && occupancy_grid_.info.width > 0 &&
-        occupancy_grid_.info.height > 0) {
-        unsigned int size_x = occupancy_grid_.info.width;
-        unsigned int size_y = occupancy_grid_.info.height;
-        double resolution = occupancy_grid_.info.resolution;
-        double origin_x = occupancy_grid_.info.origin.position.x;
-        double origin_y = occupancy_grid_.info.origin.position.y;
+    if (layered_costmap_ && occupancy_grid_.info().width() > 0 &&
+        occupancy_grid_.info().height() > 0) {
+        unsigned int size_x = occupancy_grid_.info().width();
+        unsigned int size_y = occupancy_grid_.info().height();
+        double resolution = occupancy_grid_.info().resolution();
+        double origin_x = occupancy_grid_.info().origin().position().x();
+        double origin_y = occupancy_grid_.info().origin().position().y();
 
         // 更新成员变量
         resolution_ = resolution;
@@ -747,7 +748,7 @@ bool Costmap2DWrapper::loadMap(const std::string& filename) {
 }
 
 bool Costmap2DWrapper::applyOccupancyGrid(
-    const commsgs::map_msgs::OccupancyGrid& grid) {
+    const automsgs::msgs::map_msgs::OccupancyGrid& grid) {
     if (!utils::validateMsg(grid)) {
         AERROR << "Costmap2DWrapper: rejected malformed OccupancyGrid";
         return false;
@@ -758,16 +759,16 @@ bool Costmap2DWrapper::applyOccupancyGrid(
         return true;
     }
 
-    const commsgs::map_msgs::OccupancyGrid grid_copy = grid;
+    const automsgs::msgs::map_msgs::OccupancyGrid grid_copy = grid;
     occupancy_grid_ = grid_copy;
 
-    if (layered_costmap_ && grid_copy.info.width > 0 &&
-        grid_copy.info.height > 0) {
-        const unsigned int size_x = grid_copy.info.width;
-        const unsigned int size_y = grid_copy.info.height;
-        const double resolution = grid_copy.info.resolution;
-        const double origin_x = grid_copy.info.origin.position.x;
-        const double origin_y = grid_copy.info.origin.position.y;
+    if (layered_costmap_ && grid_copy.info().width() > 0 &&
+        grid_copy.info().height() > 0) {
+        const unsigned int size_x = grid_copy.info().width();
+        const unsigned int size_y = grid_copy.info().height();
+        const double resolution = grid_copy.info().resolution();
+        const double origin_x = grid_copy.info().origin().position().x();
+        const double origin_y = grid_copy.info().origin().position().y();
 
         resolution_ = resolution;
         map_width_meters_ = size_x * resolution;
@@ -790,14 +791,14 @@ void Costmap2DWrapper::publishMap() {
     // Build a costmap snapshot only. Do not mutate occupancy_grid_, which stores
     // the static map from MapServer (race with applyOccupancyGrid caused malformed
     // maps and heap corruption).
-    commsgs::map_msgs::OccupancyGrid snapshot;
+    automsgs::msgs::map_msgs::OccupancyGrid snapshot;
     if (!snapshotOccupancyGrid(snapshot)) {
         return;
     }
 }
 
 void Costmap2DWrapper::feedLaserScan(
-    const commsgs::sensor_msgs::LaserScan& scan) {
+    const automsgs::msgs::sensor_msgs::LaserScan& scan) {
     if (!layered_costmap_) {
         return;
     }
@@ -814,7 +815,7 @@ void Costmap2DWrapper::feedLaserScan(
 }
 
 void Costmap2DWrapper::feedPointCloud2(
-    const commsgs::sensor_msgs::PointCloud2& cloud) {
+    const automsgs::msgs::sensor_msgs::PointCloud2& cloud) {
     if (!layered_costmap_) {
         return;
     }
@@ -830,7 +831,7 @@ void Costmap2DWrapper::feedPointCloud2(
     }
 }
 
-void Costmap2DWrapper::feedRange(const commsgs::sensor_msgs::Range& range) {
+void Costmap2DWrapper::feedRange(const automsgs::msgs::sensor_msgs::Range& range) {
     if (!layered_costmap_) {
         return;
     }
@@ -847,7 +848,7 @@ void Costmap2DWrapper::feedRange(const commsgs::sensor_msgs::Range& range) {
 }
 
 bool Costmap2DWrapper::snapshotOccupancyGrid(
-    commsgs::map_msgs::OccupancyGrid& grid) {
+    automsgs::msgs::map_msgs::OccupancyGrid& grid) {
     if (!layered_costmap_ || !layered_costmap_->getCostmap()) {
         return false;
     }
@@ -860,20 +861,20 @@ bool Costmap2DWrapper::snapshotOccupancyGrid(
     }
 
     const double resolution = costmap->getResolution();
-    grid.header.frame_id = global_frame_;
-    grid.header.stamp = commsgs::builtin_interfaces::Time::Now();
-    grid.info.width = size_x;
-    grid.info.height = size_y;
-    grid.info.resolution = resolution;
-    grid.info.origin.position.x = costmap->getOriginX();
-    grid.info.origin.position.y = costmap->getOriginY();
-    grid.info.origin.position.z = 0.0;
-    grid.info.origin.orientation.w = 1.0;
+    grid.mutable_header()->set_frame_id( global_frame_);
+    *grid.mutable_header()->mutable_stamp() = automsgs::msgs::builtin_interfaces::TimeNow();
+    grid.mutable_info()->set_width(size_x);
+    grid.mutable_info()->set_height(size_y);
+    grid.mutable_info()->set_resolution(resolution);
+    grid.mutable_info()->mutable_origin()->mutable_position()->set_x(costmap->getOriginX());
+    grid.mutable_info()->mutable_origin()->mutable_position()->set_y(costmap->getOriginY());
+    grid.mutable_info()->mutable_origin()->mutable_position()->set_z(0.0);
+    grid.mutable_info()->mutable_origin()->mutable_orientation()->set_w(1.0);
 
     const unsigned char* costmap_data = costmap->getCharMap();
     const unsigned int total_size = size_x * size_y;
-    grid.data.clear();
-    grid.data.reserve(total_size);
+    grid.mutable_data()->Clear();
+    grid.mutable_data()->Reserve(total_size);
 
     for (unsigned int i = 0; i < total_size; ++i) {
         const unsigned char cost = costmap_data[i];
@@ -891,7 +892,7 @@ bool Costmap2DWrapper::snapshotOccupancyGrid(
             occ_value = static_cast<int8_t>(
                 std::lround(static_cast<double>(cost) * 98.0 / 252.0));
         }
-        grid.data.push_back(occ_value);
+        grid.mutable_data()->Add(occ_value);
     }
     return true;
 }

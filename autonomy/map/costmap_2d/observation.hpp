@@ -16,8 +16,19 @@
 
 #pragma once
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
 
 namespace autonomy {
 namespace map {
@@ -36,7 +47,7 @@ public:
      * @brief  Creates an empty observation
      */
     Observation()
-        : cloud_(new commsgs::sensor_msgs::PointCloud2()),
+        : cloud_(new automsgs::msgs::sensor_msgs::PointCloud2()),
           obstacle_max_range_(0.0),
           obstacle_min_range_(0.0),
           raytrace_max_range_(0.0),
@@ -55,7 +66,7 @@ public:
      */
     Observation& operator=(const Observation& obs) {
         origin_ = obs.origin_;
-        cloud_ = new commsgs::sensor_msgs::PointCloud2(*(obs.cloud_));
+        cloud_ = new automsgs::msgs::sensor_msgs::PointCloud2(*(obs.cloud_));
         obstacle_max_range_ = obs.obstacle_max_range_;
         obstacle_min_range_ = obs.obstacle_min_range_;
         raytrace_max_range_ = obs.raytrace_max_range_;
@@ -77,12 +88,12 @@ public:
      * @param raytrace_min_range The range from which an observation should be
      * able to clear via raytracing
      */
-    Observation(commsgs::geometry_msgs::Point& origin,
-                const commsgs::sensor_msgs::PointCloud2& cloud,
+    Observation(automsgs::msgs::geometry_msgs::Point& origin,
+                const automsgs::msgs::sensor_msgs::PointCloud2& cloud,
                 double obstacle_max_range, double obstacle_min_range,
                 double raytrace_max_range, double raytrace_min_range)
         : origin_(origin),
-          cloud_(new commsgs::sensor_msgs::PointCloud2(cloud)),
+          cloud_(new automsgs::msgs::sensor_msgs::PointCloud2(cloud)),
           obstacle_max_range_(obstacle_max_range),
           obstacle_min_range_(obstacle_min_range),
           raytrace_max_range_(raytrace_max_range),
@@ -94,7 +105,7 @@ public:
      */
     Observation(const Observation& obs)
         : origin_(obs.origin_),
-          cloud_(new commsgs::sensor_msgs::PointCloud2(*(obs.cloud_))),
+          cloud_(new automsgs::msgs::sensor_msgs::PointCloud2(*(obs.cloud_))),
           obstacle_max_range_(obs.obstacle_max_range_),
           obstacle_min_range_(obs.obstacle_min_range_),
           raytrace_max_range_(obs.raytrace_max_range_),
@@ -108,16 +119,16 @@ public:
      * @param obstacle_min_range The range from which an observation should be
      * able to insert obstacles
      */
-    Observation(const commsgs::sensor_msgs::PointCloud2& cloud,
+    Observation(const automsgs::msgs::sensor_msgs::PointCloud2& cloud,
                 double obstacle_max_range, double obstacle_min_range)
-        : cloud_(new commsgs::sensor_msgs::PointCloud2(cloud)),
+        : cloud_(new automsgs::msgs::sensor_msgs::PointCloud2(cloud)),
           obstacle_max_range_(obstacle_max_range),
           obstacle_min_range_(obstacle_min_range),
           raytrace_max_range_(0.0),
           raytrace_min_range_(0.0) {}
 
-    commsgs::geometry_msgs::Point origin_;
-    commsgs::sensor_msgs::PointCloud2* cloud_;
+    automsgs::msgs::geometry_msgs::Point origin_;
+    automsgs::msgs::sensor_msgs::PointCloud2* cloud_;
     double obstacle_max_range_, obstacle_min_range_, raytrace_max_range_,
         raytrace_min_range_;
 };

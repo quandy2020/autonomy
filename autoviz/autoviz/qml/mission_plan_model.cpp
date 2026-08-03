@@ -13,8 +13,8 @@ QVector3D MissionPlanModel::waypointPosition(int index) const {
     return {};
   }
   const MissionWaypointPose& wp = waypoints_[static_cast<std::size_t>(index)];
-  return QVector3D(static_cast<float>(wp.x), static_cast<float>(wp.y),
-                   static_cast<float>(wp.z));
+  return QVector3D(static_cast<float>(wp.x()), static_cast<float>(wp.y()),
+                   static_cast<float>(wp.z()));
 }
 
 float MissionPlanModel::waypointYaw(int index) const {

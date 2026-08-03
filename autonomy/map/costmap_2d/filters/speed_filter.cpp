@@ -18,6 +18,7 @@
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/map/costmap_2d/filters/filter_values.hpp"
+#include <automsgs/msgs/geometry_msgs/pose2d.pb.h>
 
 namespace autonomy {
 namespace map {
@@ -53,20 +54,20 @@ void SpeedFilter::initializeFilter(const std::string& filter_info_topic) {
           << " global_frame=" << global_frame_;
 }
 
-commsgs::map_msgs::CostmapFilterInfo::SharedPtr
+std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>
 SpeedFilter::makeDefaultFilterInfo(const std::string& mask_topic, bool percentage,
                                    float base, float multiplier) {
-    auto info = std::make_shared<commsgs::map_msgs::CostmapFilterInfo>();
-    info->type = percentage ? SPEED_FILTER_PERCENT : SPEED_FILTER_ABSOLUTE;
-    info->filter_mask_topic = mask_topic;
-    info->base = base;
-    info->multiplier = multiplier;
+    auto info = std::make_shared<automsgs::msgs::map_msgs::CostmapFilterInfo>();
+    info->set_type(percentage ? SPEED_FILTER_PERCENT : SPEED_FILTER_ABSOLUTE);
+    info->set_filter_mask_topic(mask_topic);
+    info->set_base(base);
+    info->set_multiplier(multiplier);
     return info;
 }
 
 void SpeedFilter::applyConfiguration(
-    const commsgs::map_msgs::CostmapFilterInfo::SharedPtr& info,
-    const commsgs::map_msgs::OccupancyGrid::SharedPtr& mask) {
+    const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>& info,
+    const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>& mask) {
     if (info) {
         handleFilterInfo(info);
     }
@@ -76,12 +77,12 @@ void SpeedFilter::applyConfiguration(
 }
 
 void SpeedFilter::handleFilterInfo(
-    const commsgs::map_msgs::CostmapFilterInfo::SharedPtr& msg) {
+    const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>& msg) {
     filterInfoCallback(msg);
 }
 
 void SpeedFilter::setFilterMask(
-    const commsgs::map_msgs::OccupancyGrid::SharedPtr& msg) {
+    const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>& msg) {
     maskCallback(msg);
 }
 
@@ -111,19 +112,19 @@ bool SpeedFilter::hasFilterMask() {
 }
 
 bool SpeedFilter::validateFilterMask(
-    const commsgs::map_msgs::OccupancyGrid& msg) {
-    if (msg.info.width == 0 || msg.info.height == 0) {
+    const automsgs::msgs::map_msgs::OccupancyGrid& msg) {
+    if (msg.info().width() == 0 || msg.info().height() == 0) {
         AERROR << "SpeedFilter: mask has zero width/height";
         return false;
     }
-    if (msg.info.resolution <= 0.0) {
+    if (msg.info().resolution() <= 0.0) {
         AERROR << "SpeedFilter: mask resolution must be positive";
         return false;
     }
     const size_t expected =
-        static_cast<size_t>(msg.info.width) * static_cast<size_t>(msg.info.height);
-    if (msg.data.size() < expected) {
-        AERROR << "SpeedFilter: mask data size " << msg.data.size()
+        static_cast<size_t>(msg.info().width()) * static_cast<size_t>(msg.info().height());
+    if (msg.data().size() < expected) {
+        AERROR << "SpeedFilter: mask data size " << msg.data().size()
                << " < expected " << expected;
         return false;
     }
@@ -131,7 +132,7 @@ bool SpeedFilter::validateFilterMask(
 }
 
 void SpeedFilter::filterInfoCallback(
-    const commsgs::map_msgs::CostmapFilterInfo::SharedPtr msg) {
+    const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo> msg) {
     std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
     if (!msg) {
@@ -139,9 +140,9 @@ void SpeedFilter::filterInfoCallback(
         return;
     }
 
-    if (msg->type != SPEED_FILTER_PERCENT &&
-        msg->type != SPEED_FILTER_ABSOLUTE) {
-        AERROR << "SpeedFilter: unsupported filter type " << msg->type
+    if (msg->type() != SPEED_FILTER_PERCENT &&
+        msg->type() != SPEED_FILTER_ABSOLUTE) {
+        AERROR << "SpeedFilter: unsupported filter type " << msg->type()
                << " (expected SPEED_FILTER_PERCENT="
                << static_cast<int>(SPEED_FILTER_PERCENT)
                << " or SPEED_FILTER_ABSOLUTE="
@@ -155,9 +156,9 @@ void SpeedFilter::filterInfoCallback(
         AWARN << "SpeedFilter: updating filter info from " << filter_info_topic_;
     }
 
-    base_ = static_cast<double>(msg->base);
-    multiplier_ = static_cast<double>(msg->multiplier);
-    percentage_ = (msg->type == SPEED_FILTER_PERCENT);
+    base_ = static_cast<double>(msg->base());
+    multiplier_ = static_cast<double>(msg->multiplier());
+    percentage_ = (msg->type() == SPEED_FILTER_PERCENT);
 
     if (percentage_) {
         AINFO << "SpeedFilter: percent mode speed_limit = " << base_ << " + mask * "
@@ -167,19 +168,19 @@ void SpeedFilter::filterInfoCallback(
               << multiplier_ << " (m/s)";
     }
 
-    if (!mask_topic_.empty() && mask_topic_ != msg->filter_mask_topic) {
+    if (!mask_topic_.empty() && mask_topic_ != msg->filter_mask_topic()) {
         AWARN << "SpeedFilter: mask topic changed from " << mask_topic_ << " to "
-              << msg->filter_mask_topic << ", clearing old mask";
+              << msg->filter_mask_topic() << ", clearing old mask";
         filter_mask_.reset();
     }
 
-    mask_topic_ = msg->filter_mask_topic;
+    mask_topic_ = msg->filter_mask_topic();
     setMaskTopic(mask_topic_);
     filter_info_received_ = true;
 }
 
 void SpeedFilter::maskCallback(
-    const commsgs::map_msgs::OccupancyGrid::SharedPtr msg) {
+    const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid> msg) {
     std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
     if (!msg) {
@@ -192,11 +193,10 @@ void SpeedFilter::maskCallback(
     }
 
     if (!filter_mask_) {
-        AINFO << "SpeedFilter: received filter mask (" << msg->info.width << "x"
-              << msg->info.height << ", frame=" << msg->header.frame_id << ")";
+        AINFO << "SpeedFilter: received filter mask (" << msg->info().width()<< "x"
+              << msg->info().height()<< ", frame=" << msg->header().frame_id()<< ")";
     } else {
-        AWARN << "SpeedFilter: updating filter mask (frame=" << msg->header.frame_id
-              << ")";
+        AWARN << "SpeedFilter: updating filter mask (frame=" << msg->header().frame_id()<< ")";
     }
 
     filter_mask_ = msg;
@@ -212,7 +212,7 @@ std::string SpeedFilter::resolveMaskFrame() const {
     if (!filter_mask_) {
         return global_frame_;
     }
-    const std::string& frame = filter_mask_->header.frame_id;
+    const std::string& frame = filter_mask_->header().frame_id();
     if (frame.empty()) {
         return global_frame_;
     }
@@ -242,14 +242,14 @@ double SpeedFilter::computeSpeedLimitFromMaskCell(int8_t speed_mask_data) const 
     return limit;
 }
 
-commsgs::nav_msgs::SpeedLimit::SharedPtr SpeedFilter::buildSpeedLimitMessage()
+std::shared_ptr<automsgs::actions::SpeedLimit> SpeedFilter::buildSpeedLimitMessage()
     const {
-    auto msg = std::make_shared<commsgs::nav_msgs::SpeedLimit>();
-    msg->header.frame_id = global_frame_;
-    msg->header.stamp.sec = 0;
-    msg->header.stamp.nanosec = 0;
-    msg->percentage = percentage_;
-    msg->speed_limit = static_cast<float>(speed_limit_);
+    auto msg = std::make_shared<automsgs::actions::SpeedLimit>();
+    msg->mutable_header()->set_frame_id(global_frame_);
+    msg->mutable_header()->mutable_stamp()->set_sec(0);
+    msg->mutable_header()->mutable_stamp()->set_nanosec(0);
+    msg->set_percentage(percentage_);
+    msg->set_speed_limit(static_cast<float>(speed_limit_));
     return msg;
 }
 
@@ -277,7 +277,7 @@ void SpeedFilter::notifySpeedLimitIfChanged() {
 
 void SpeedFilter::process(Costmap2D& /*master_grid*/, int /*min_i*/,
                           int /*min_j*/, int /*max_i*/, int /*max_j*/,
-                          const commsgs::geometry_msgs::Pose2D& pose) {
+                          const automsgs::msgs::geometry_msgs::Pose2D& pose) {
     if (!filter_mask_) {
         if (!mask_missing_warned_) {
             AWARN << "SpeedFilter: filter mask was not received";
@@ -298,7 +298,7 @@ void SpeedFilter::process(Costmap2D& /*master_grid*/, int /*min_i*/,
         global_frame_ = layered_costmap_->getGlobalFrameID();
     }
 
-    commsgs::geometry_msgs::Pose2D mask_pose;
+    automsgs::msgs::geometry_msgs::Pose2D mask_pose;
     const std::string mask_frame = resolveMaskFrame();
     if (!transformPose(global_frame_, pose, mask_frame, mask_pose)) {
         return;
@@ -306,7 +306,7 @@ void SpeedFilter::process(Costmap2D& /*master_grid*/, int /*min_i*/,
 
     unsigned int mask_robot_i = 0;
     unsigned int mask_robot_j = 0;
-    if (!worldToMask(filter_mask_, mask_pose.x, mask_pose.y, mask_robot_i,
+    if (!worldToMask(filter_mask_, mask_pose.x(), mask_pose.y(), mask_robot_i,
                      mask_robot_j)) {
         return;
     }

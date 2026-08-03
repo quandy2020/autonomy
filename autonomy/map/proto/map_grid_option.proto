@@ -16,9 +16,13 @@ syntax = "proto3";
 
 package autonomy.map.proto;
 
-import "autonomy/commsgs/proto/std_msgs.proto";
-import "autonomy/commsgs/proto/builtin_interfaces.proto";
-import "autonomy/commsgs/proto/geometry_msgs.proto";
+import "automsgs/msgs/std_msgs/header.proto";
+import "automsgs/msgs/builtin_interfaces/time.proto";
+import "automsgs/msgs/builtin_interfaces/duration.proto";
+import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
+import "automsgs/msgs/geometry_msgs/pose.proto";
+import "automsgs/msgs/geometry_msgs/point.proto";
+import "automsgs/msgs/geometry_msgs/twist_stamped.proto";
 
 message GridMapOptions
 {

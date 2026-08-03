@@ -18,7 +18,7 @@
 
 #include <algorithm>
 #include "autolink/common/log.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
+
 #include "autonomy/control/common/controller_exceptions.hpp"
 #include "autonomy/control/controller/mppi_controller/tools/utils.hpp"
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
@@ -31,14 +31,14 @@ namespace tools {
 
 namespace {
 
-bool isClosedLoopPath(const commsgs::planning_msgs::Path& plan) {
-  if (plan.poses.size() < 4) {
+bool isClosedLoopPath(const automsgs::msgs::planning_msgs::Path& plan) {
+  if (plan.poses_size() < 4) {
     return false;
   }
-  const auto& a = plan.poses.front().pose.position;
-  const auto& b = plan.poses.back().pose.position;
-  const double dx = a.x - b.x;
-  const double dy = a.y - b.y;
+  const auto& a = plan.poses(0).pose().position();
+  const auto& b = plan.poses(plan.poses_size() - 1).pose().position();
+  const double dx = a.x() - b.x();
+  const double dy = a.y() - b.y();
   constexpr double kClosureTolerance = 0.25;
   return (dx * dx + dy * dy) < kClosureTolerance * kClosureTolerance;
 }
@@ -142,12 +142,12 @@ void PathHandler::initialize(std::shared_ptr<autolink::Node> parent, const std::
         << " transform_tolerance=" << transform_tolerance_;
 }
 
-std::pair<commsgs::planning_msgs::Path, PathIterator> PathHandler::getGlobalPlanConsideringBoundsInCostmapFrame(
-    const commsgs::geometry_msgs::PoseStamped& global_pose) {
+std::pair<automsgs::msgs::planning_msgs::Path, PathIterator> PathHandler::getGlobalPlanConsideringBoundsInCostmapFrame(
+    const automsgs::msgs::geometry_msgs::PoseStamped& global_pose) {
   using map::costmap_2d::utils::euclidean_distance;
 
-  auto begin = global_plan_up_to_inversion_.poses.begin();
-  auto end = global_plan_up_to_inversion_.poses.end();
+  auto begin = global_plan_up_to_inversion_.mutable_poses()->begin();
+  auto end = global_plan_up_to_inversion_.mutable_poses()->end();
 
   auto closest_point = begin;
   if (closed_loop_path_) {
@@ -187,7 +187,7 @@ std::pair<commsgs::planning_msgs::Path, PathIterator> PathHandler::getGlobalPlan
 
     // Find closest point to the robot
     closest_point = map::costmap_2d::utils::min_by(
-        begin, closest_pose_upper_bound, [&global_pose](const commsgs::geometry_msgs::PoseStamped& ps) {
+        begin, closest_pose_upper_bound, [&global_pose](const automsgs::msgs::geometry_msgs::PoseStamped& ps) {
           return euclidean_distance(global_pose, ps);
         });
 
@@ -196,27 +196,27 @@ std::pair<commsgs::planning_msgs::Path, PathIterator> PathHandler::getGlobalPlan
     // tiny tail segment for pruning / transformation, preventing the next lap
     // from continuing smoothly. Prefer the first pose if both ends are similarly
     // close and the chosen closest point is biased toward the tail.
-    if (global_plan_up_to_inversion_.poses.size() > 3) {
+    if (global_plan_up_to_inversion_.poses_size() > 3) {
       const double closure_eps = 0.2;
       const double d_start =
-          euclidean_distance(global_pose, global_plan_up_to_inversion_.poses.front());
+          euclidean_distance(global_pose, global_plan_up_to_inversion_.poses(0));
       const double d_end =
-          euclidean_distance(global_pose, global_plan_up_to_inversion_.poses.back());
+          euclidean_distance(global_pose, global_plan_up_to_inversion_.poses(global_plan_up_to_inversion_.poses_size() - 1));
       if (d_start < closure_eps && d_end < closure_eps) {
         const auto dist_from_begin = static_cast<size_t>(
-            std::distance(global_plan_up_to_inversion_.poses.begin(), closest_point));
+            std::distance(global_plan_up_to_inversion_.mutable_poses()->begin(), closest_point));
         const auto dist_from_end = static_cast<size_t>(
-            std::distance(closest_point, global_plan_up_to_inversion_.poses.end()));
+            std::distance(closest_point, global_plan_up_to_inversion_.mutable_poses()->end()));
         if (dist_from_end <= dist_from_begin) {
-          closest_point = global_plan_up_to_inversion_.poses.begin();
+          closest_point = global_plan_up_to_inversion_.mutable_poses()->begin();
         }
       }
     }
   }
 
-  commsgs::planning_msgs::Path transformed_plan;
-  transformed_plan.header.frame_id = costmap_->getGlobalFrameID();
-  transformed_plan.header.stamp = global_pose.header.stamp;
+  automsgs::msgs::planning_msgs::Path transformed_plan;
+  transformed_plan.mutable_header()->set_frame_id( costmap_->getGlobalFrameID());
+  *transformed_plan.mutable_header()->mutable_stamp() = global_pose.header().stamp();
 
   unsigned int mx, my;
   // Find the furthest relevant pose on the path to consider within costmap
@@ -226,19 +226,19 @@ std::pair<commsgs::planning_msgs::Path, PathIterator> PathHandler::getGlobalPlan
   auto global_plan_pose = closest_point;
   while (global_plan_pose != end) {
     // Transform from global plan frame to costmap frame
-    commsgs::geometry_msgs::PoseStamped costmap_plan_pose;
-    global_plan_pose->header.stamp = global_pose.header.stamp;
-    global_plan_pose->header.frame_id = global_plan_.header.frame_id;
+    automsgs::msgs::geometry_msgs::PoseStamped costmap_plan_pose;
+    *global_plan_pose->mutable_header()->mutable_stamp() = global_pose.header().stamp();
+    global_plan_pose->mutable_header()->set_frame_id(global_plan_.header().frame_id());
     transformPose(costmap_->getGlobalFrameID(), *global_plan_pose, costmap_plan_pose);
 
     // Check if pose is inside the costmap
-    if (!costmap_->getCostmap()->worldToMap(costmap_plan_pose.pose.position.x, costmap_plan_pose.pose.position.y, mx,
+    if (!costmap_->getCostmap()->worldToMap(costmap_plan_pose.pose().position().x(), costmap_plan_pose.pose().position().y(), mx,
                                             my)) {
       return std::make_pair(transformed_plan, closest_point);
     }
 
     // Filling the transformed plan to return with the transformed pose
-    transformed_plan.poses.push_back(costmap_plan_pose);
+    *transformed_plan.mutable_poses()->Add() = costmap_plan_pose;
 
     auto next = nextPathIterator(global_plan_pose, begin, end, closed_loop_path_);
     if (next == end || next == closest_point) {
@@ -257,23 +257,23 @@ std::pair<commsgs::planning_msgs::Path, PathIterator> PathHandler::getGlobalPlan
   return {transformed_plan, closest_point};
 }
 
-commsgs::geometry_msgs::PoseStamped PathHandler::transformToGlobalPlanFrame(
-    const commsgs::geometry_msgs::PoseStamped& pose) {
-  if (global_plan_up_to_inversion_.poses.empty()) {
+automsgs::msgs::geometry_msgs::PoseStamped PathHandler::transformToGlobalPlanFrame(
+    const automsgs::msgs::geometry_msgs::PoseStamped& pose) {
+  if (global_plan_up_to_inversion_.poses().empty()) {
     throw common::InvalidPath("Received plan with zero length");
   }
 
-  commsgs::geometry_msgs::PoseStamped robot_pose;
-  if (!transformPose(global_plan_up_to_inversion_.header.frame_id, pose, robot_pose)) {
+  automsgs::msgs::geometry_msgs::PoseStamped robot_pose;
+  if (!transformPose(global_plan_up_to_inversion_.header().frame_id(), pose, robot_pose)) {
     throw common::ControllerTFError("Unable to transform robot pose into global plan's frame");
   }
 
   return robot_pose;
 }
 
-commsgs::planning_msgs::Path PathHandler::transformPath(const commsgs::geometry_msgs::PoseStamped& robot_pose) {
+automsgs::msgs::planning_msgs::Path PathHandler::transformPath(const automsgs::msgs::geometry_msgs::PoseStamped& robot_pose) {
   // Find relevant bounds of path to use
-  commsgs::geometry_msgs::PoseStamped global_pose = transformToGlobalPlanFrame(robot_pose);
+  automsgs::msgs::geometry_msgs::PoseStamped global_pose = transformToGlobalPlanFrame(robot_pose);
   auto [transformed_plan, lower_bound] = getGlobalPlanConsideringBoundsInCostmapFrame(global_pose);
   last_closest_point_ = lower_bound;
 
@@ -283,29 +283,29 @@ commsgs::planning_msgs::Path PathHandler::transformPath(const commsgs::geometry_
 
   if (enforce_path_inversion_ && inversion_locale_ != 0u) {
     if (isWithinInversionTolerances(global_pose)) {
-      prunePlan(global_plan_, global_plan_.poses.begin() + inversion_locale_);
+      prunePlan(global_plan_, global_plan_.mutable_poses()->begin() + inversion_locale_);
       global_plan_up_to_inversion_ = global_plan_;
       inversion_locale_ = tools::removePosesAfterFirstInversion(global_plan_up_to_inversion_);
     }
   }
 
-  if (transformed_plan.poses.empty()) {
+  if (transformed_plan.poses().empty()) {
     throw common::InvalidPath("Resulting plan has 0 poses in it.");
   }
 
   return transformed_plan;
 }
 
-bool PathHandler::transformPose(const std::string& frame, const commsgs::geometry_msgs::PoseStamped& in_pose,
-                                commsgs::geometry_msgs::PoseStamped& out_pose) const {
-  if (in_pose.header.frame_id == frame) {
+bool PathHandler::transformPose(const std::string& frame, const automsgs::msgs::geometry_msgs::PoseStamped& in_pose,
+                                automsgs::msgs::geometry_msgs::PoseStamped& out_pose) const {
+  if (in_pose.header().frame_id() == frame ) {
     out_pose = in_pose;
     return true;
   }
 
   try {
     tf_buffer_->transform(in_pose, out_pose, frame, static_cast<float>(transform_tolerance_));
-    out_pose.header.frame_id = frame;
+    out_pose.mutable_header()->set_frame_id( frame);
     return true;
   } catch (autonomy::transform::tf2::TransformException& ex) {
     AERROR << "Exception in transformPose: " << ex.what();
@@ -319,14 +319,14 @@ double PathHandler::getMaxCostmapDist() {
          costmap->getResolution() * 0.50;
 }
 
-void PathHandler::setPath(const commsgs::planning_msgs::Path& plan) {
+void PathHandler::setPath(const automsgs::msgs::planning_msgs::Path& plan) {
   global_plan_ = plan;
   global_plan_up_to_inversion_ = global_plan_;
   closed_loop_path_ = isClosedLoopPath(global_plan_);
-  last_closest_point_ = global_plan_up_to_inversion_.poses.begin();
+  last_closest_point_ = global_plan_up_to_inversion_.mutable_poses()->begin();
   if (closed_loop_path_) {
-    const double perimeter = integratedPathLength(global_plan_up_to_inversion_.poses.begin(),
-                                                  global_plan_up_to_inversion_.poses.end());
+    const double perimeter = integratedPathLength(global_plan_up_to_inversion_.mutable_poses()->begin(),
+                                                  global_plan_up_to_inversion_.mutable_poses()->end());
     // Keep virtual goal far enough along the path so near-goal critics do not
     // treat the spatially coincident start/end as a terminal stop condition.
     closed_loop_goal_lookahead_ =
@@ -336,51 +336,55 @@ void PathHandler::setPath(const commsgs::planning_msgs::Path& plan) {
     inversion_locale_ = tools::removePosesAfterFirstInversion(global_plan_up_to_inversion_);
   }
   if (closed_loop_path_) {
-    AINFO << "PathHandler: closed-loop path detected (" << global_plan_.poses.size()
+    AINFO << "PathHandler: closed-loop path detected (" << global_plan_.poses_size()
           << " poses), pruning disabled, goal lookahead="
           << closed_loop_goal_lookahead_ << " m";
   }
 }
 
-commsgs::planning_msgs::Path& PathHandler::getPath() { return global_plan_; }
+automsgs::msgs::planning_msgs::Path& PathHandler::getPath() { return global_plan_; }
 
-void PathHandler::prunePlan(commsgs::planning_msgs::Path& plan, const PathIterator end) {
-  plan.poses.erase(plan.poses.begin(), end);
+void PathHandler::prunePlan(automsgs::msgs::planning_msgs::Path& plan, const PathIterator end) {
+  auto* poses = plan.mutable_poses();
+  const int count = static_cast<int>(std::distance(poses->begin(), end));
+  if (count > 0) {
+    poses->DeleteSubrange(0, count);
+  }
 }
 
-commsgs::geometry_msgs::PoseStamped PathHandler::getTransformedGoal(const commsgs::builtin_interfaces::Time& stamp) {
-  commsgs::geometry_msgs::PoseStamped goal;
-  if (closed_loop_path_ && !global_plan_up_to_inversion_.poses.empty()) {
-    const auto begin = global_plan_up_to_inversion_.poses.begin();
-    const auto end = global_plan_up_to_inversion_.poses.end();
+automsgs::msgs::geometry_msgs::PoseStamped PathHandler::getTransformedGoal(const automsgs::msgs::builtin_interfaces::Time& stamp) {
+  automsgs::msgs::geometry_msgs::PoseStamped goal;
+  if (closed_loop_path_ && !global_plan_up_to_inversion_.poses().empty()) {
+    const auto begin = global_plan_up_to_inversion_.mutable_poses()->begin();
+    const auto end = global_plan_up_to_inversion_.mutable_poses()->end();
     const auto anchor =
         (last_closest_point_ >= begin && last_closest_point_ < end) ? last_closest_point_ : begin;
     const auto goal_it =
         advanceAlongPath(anchor, begin, end, closed_loop_goal_lookahead_, true);
     goal = *goal_it;
   } else {
-    goal = global_plan_.poses.back();
+    goal = global_plan_.poses(global_plan_.poses_size() - 1);
   }
-  goal.header.frame_id = global_plan_.header.frame_id;
-  goal.header.stamp = stamp;
-  if (goal.header.frame_id.empty()) {
+  goal.mutable_header()->set_frame_id( global_plan_.header().frame_id());
+  *goal.mutable_header()->mutable_stamp() = stamp;
+  if (goal.header().frame_id().empty()) {
     throw common::ControllerTFError("Goal pose has an empty frame_id");
   }
-  commsgs::geometry_msgs::PoseStamped transformed_goal;
+  automsgs::msgs::geometry_msgs::PoseStamped transformed_goal;
   if (!transformPose(costmap_->getGlobalFrameID(), goal, transformed_goal)) {
     throw common::ControllerTFError("Unable to transform goal pose into costmap frame");
   }
   return transformed_goal;
 }
 
-bool PathHandler::isWithinInversionTolerances(const commsgs::geometry_msgs::PoseStamped& robot_pose) {
+bool PathHandler::isWithinInversionTolerances(const automsgs::msgs::geometry_msgs::PoseStamped& robot_pose) {
   // Keep full path if we are within tolerance of the inversion pose
-  const auto last_pose = global_plan_up_to_inversion_.poses.back();
-  float distance = hypotf(robot_pose.pose.position.x - last_pose.pose.position.x,
-                          robot_pose.pose.position.y - last_pose.pose.position.y);
+  const auto last_pose = global_plan_up_to_inversion_.poses(global_plan_up_to_inversion_.poses_size() - 1);
+  float distance = hypotf(robot_pose.pose().position().x() - last_pose.pose().position().x(),
+                          robot_pose.pose().position().y() - last_pose.pose().position().y());
 
-  float angle_distance = tools::shortest_angular_distance(autonomy::transform::tf2::getYaw(robot_pose.pose.orientation),
-                                                          autonomy::transform::tf2::getYaw(last_pose.pose.orientation));
+  float angle_distance = tools::shortest_angular_distance(autonomy::transform::tf2::getYaw(robot_pose.pose().orientation()),
+                                                          autonomy::transform::tf2::getYaw(last_pose.pose().orientation()));
 
   return distance <= inversion_xy_tolerance_ && fabs(angle_distance) <= inversion_yaw_tolerance;
 }

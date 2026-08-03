@@ -559,7 +559,7 @@ void OgreSceneHost::setDisplayPoints(const std::string& display_name,
   ogre_points.reserve(positions.size());
   for (std::size_t i = 0; i < positions.size(); ++i) {
     OgrePointCloud::Point p;
-    p.position = Ogre::Vector3(positions[i].x(), positions[i].y(), positions[i].z());
+    *p.mutable_position() = Ogre::Vector3(positions[i].x(), positions[i].y(), positions[i].z());
     const QColor& c = i < colors.size() ? colors[i] : QColor(200, 200, 200);
     p.setColor(c.redF(), c.greenF(), c.blueF(), c.alphaF());
     ogre_points.push_back(p);
@@ -668,7 +668,7 @@ void OgreSceneHost::setDisplayArrow(const std::string& display_name,
   ogre_meshes.reserve(meshes.size());
   for (const auto& mesh : meshes) {
     ogre_meshes.push_back(
-        {mesh.mesh, mesh.transform, mesh.color, mesh.wireframe});
+        {mesh.mesh, mesh.transform(), mesh.color, mesh.wireframe});
   }
   setDisplayMeshes(display_name, ogre_meshes);
 }
@@ -720,7 +720,7 @@ void OgreSceneHost::setDisplayEntities(
         display_name + "/Entity/" + std::to_string(index++);
     DisplayEntry::EntitySlot slot;
     slot.node = entry.node->createChildSceneNode(entity_name + "Node");
-    ApplyMatrixToNode(slot.node, instance.transform);
+    ApplyMatrixToNode(slot.node, instance.transform());
     slot.entity = scene_manager_->createEntity(
         entity_name, instance.mesh_name, "rviz_rendering");
     slot.material_name = entity_name + "Mat";
@@ -1000,7 +1000,7 @@ void OgreSceneHost::setToolPoseArrow(const std::string& tool_id,
   ogre_meshes.reserve(meshes.size());
   for (const auto& mesh : meshes) {
     ogre_meshes.push_back(
-        {mesh.mesh, mesh.transform, mesh.color, mesh.wireframe});
+        {mesh.mesh, mesh.transform(), mesh.color, mesh.wireframe});
   }
   setDisplayMeshes(name, ogre_meshes);
   setDisplayVisibilityBits(name, 0xFFFFFFFFu);

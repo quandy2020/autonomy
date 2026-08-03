@@ -21,8 +21,13 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
 #include "autonomy/map/costmap_2d/observation.hpp"
 #include "autonomy/transform/buffer.hpp"
 
@@ -86,7 +91,7 @@ public:
      * available... ie they should use a MessageNotifier</b>
      * @param  cloud The cloud to be buffered
      */
-    void bufferCloud(const commsgs::sensor_msgs::PointCloud2& cloud);
+    void bufferCloud(const automsgs::msgs::sensor_msgs::PointCloud2& cloud);
 
     /**
      * @brief  Pushes copies of all current observations onto the end of the

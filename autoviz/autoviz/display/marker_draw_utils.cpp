@@ -371,8 +371,8 @@ void drawStoredMarkers(
       } else if (use_ogre) {
         TextLabelInstance text_label;
         text_label.text = label.toStdString();
-        text_label.position = center;
-        text_label.color = color;
+        *text_label.mutable_position() = center;
+        *text_label.mutable_color() = color;
         text_label.char_height = text_height;
         if (marker.scale().x() > 0.f) {
           text_label.space_width = static_cast<float>(marker.scale().x());

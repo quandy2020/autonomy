@@ -106,13 +106,13 @@ bool CreateOrtInputTensor(const ModelTensorInfo& meta, const Tensor& host,
     if (!IsRuntimeElementType(meta.element_type)) {
         if (error != nullptr) {
             *error =
-                "Input \"" + meta.name + "\" has unsupported element type.";
+                "Input \"" + meta.name() + "\" has unsupported element type.";
         }
         return false;
     }
     if (host.element_type() != meta.element_type) {
         if (error != nullptr) {
-            *error = "Input \"" + meta.name + "\" element type mismatch.";
+            *error = "Input \"" + meta.name() + "\" element type mismatch.";
         }
         return false;
     }
@@ -149,7 +149,7 @@ bool CreateOrtInputTensor(const ModelTensorInfo& meta, const Tensor& host,
     }
 
     if (error != nullptr) {
-        *error = "Input \"" + meta.name + "\": unsupported element type.";
+        *error = "Input \"" + meta.name() + "\": unsupported element type.";
     }
     return false;
 }
@@ -164,7 +164,7 @@ bool CopyOrtOutputTensor(Ort::Value& ort_value, const ModelTensorInfo& meta,
     }
     if (!ort_value.IsTensor()) {
         if (error != nullptr) {
-            *error = "Output \"" + meta.name + "\" is not a tensor.";
+            *error = "Output \"" + meta.name() + "\" is not a tensor.";
         }
         return false;
     }
@@ -174,8 +174,7 @@ bool CopyOrtOutputTensor(Ort::Value& ort_value, const ModelTensorInfo& meta,
     ElementType mapped = element_type;
     if (!MapOrtElementType(info.GetElementType(), &mapped)) {
         if (error != nullptr) {
-            *error = "Output \"" + meta.name +
-                     "\" has unsupported ONNX element type " +
+            *error = "Output \"" + meta.name() + "\" has unsupported ONNX element type " +
                      std::to_string(static_cast<int>(info.GetElementType())) +
                      ".";
         }
@@ -189,7 +188,7 @@ bool CopyOrtOutputTensor(Ort::Value& ort_value, const ModelTensorInfo& meta,
     const int64_t count = ShapeElementCount(shape);
     if (count < 0) {
         if (error != nullptr) {
-            *error = "Output \"" + meta.name + "\" has dynamic/invalid shape.";
+            *error = "Output \"" + meta.name() + "\" has dynamic/invalid shape.";
         }
         return false;
     }
@@ -220,7 +219,7 @@ bool CopyOrtOutputTensor(Ort::Value& ort_value, const ModelTensorInfo& meta,
     }
 
     if (error != nullptr) {
-        *error = "Output \"" + meta.name + "\": unsupported element type.";
+        *error = "Output \"" + meta.name() + "\": unsupported element type.";
     }
     return false;
 }
@@ -237,8 +236,7 @@ bool AllocateStaticOutputTensor(const ModelTensorInfo& meta, Tensor* out,
     }
     if (!IsFullyStaticShape(meta.shape)) {
         if (error != nullptr) {
-            *error = "Output \"" + meta.name +
-                     "\" does not have a fully static shape.";
+            *error = "Output \"" + meta.name() + "\" does not have a fully static shape.";
         }
         return false;
     }
@@ -246,8 +244,7 @@ bool AllocateStaticOutputTensor(const ModelTensorInfo& meta, Tensor* out,
     const size_t elem_bytes = ElementTypeByteSize(meta.element_type);
     if (count <= 0 || elem_bytes == 0) {
         if (error != nullptr) {
-            *error = "Output \"" + meta.name +
-                     "\" has invalid static shape or element type.";
+            *error = "Output \"" + meta.name() + "\" has invalid static shape or element type.";
         }
         return false;
     }
@@ -271,10 +268,10 @@ bool RunClassicInference(Ort::Session& session,
         Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 
     for (const ModelTensorInfo& in : input_infos) {
-        const auto it = inputs.find(in.name);
+        const auto it = inputs.find(in.name());
         if (it == inputs.end()) {
             if (error != nullptr) {
-                *error = "Missing input tensor: " + in.name;
+                *error = "Missing input tensor: " + in.name();
             }
             return false;
         }
@@ -310,7 +307,7 @@ bool RunClassicInference(Ort::Session& session,
         if (!CopyOrtOutputTensor(ort_outputs[i], meta, &host, error)) {
             return false;
         }
-        (*outputs)[meta.name] = std::move(host);
+        (*outputs)[meta.name()] = std::move(host);
     }
     return true;
 }
@@ -327,10 +324,10 @@ bool RunIoBindingInference(Ort::Session& session,
     std::vector<Ort::Value> input_tensors;
     input_tensors.reserve(input_infos.size());
     for (const ModelTensorInfo& in : input_infos) {
-        const auto it = inputs.find(in.name);
+        const auto it = inputs.find(in.name());
         if (it == inputs.end()) {
             if (error != nullptr) {
-                *error = "Missing input tensor: " + in.name;
+                *error = "Missing input tensor: " + in.name();
             }
             return false;
         }

@@ -33,7 +33,7 @@ void Layer::initialize(LayeredCostmap* parent, std::string name,
     onInitialize();
 }
 
-const std::vector<commsgs::geometry_msgs::Point>& Layer::getFootprint() const {
+const std::vector<automsgs::msgs::geometry_msgs::Point>& Layer::getFootprint() const {
     return layered_costmap_->getFootprint();
 }
 

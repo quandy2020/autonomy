@@ -20,7 +20,7 @@ constexpr double kDefaultGoalReachedTol = 0.15;
 
 }  // namespace
 
-using RobotTaskType = ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType;
+using RobotTaskType = ::automsgs::msgs::vehicle_msgs::RobotTaskType;
 namespace tp = ::autonomy::task::proto;
 
 RobotTaskType ChargingTask::GetTaskType() const

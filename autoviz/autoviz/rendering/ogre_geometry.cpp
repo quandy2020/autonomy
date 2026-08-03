@@ -19,15 +19,15 @@ struct QuantizedKey {
   int z = 0;
 
   bool operator==(const QuantizedKey& other) const {
-    return x == other.x && y == other.y && z == other.z;
+    return x == other.x()&& y == other.y()&& z == other.z();
   }
 };
 
 struct QuantizedKeyHash {
   std::size_t operator()(const QuantizedKey& key) const {
-    return static_cast<std::size_t>(key.x) ^
-           (static_cast<std::size_t>(key.y) << 10) ^
-           (static_cast<std::size_t>(key.z) << 20);
+    return static_cast<std::size_t>(key.x()) ^
+           (static_cast<std::size_t>(key.y()) << 10) ^
+           (static_cast<std::size_t>(key.z()) << 20);
   }
 };
 
@@ -77,7 +77,7 @@ void AppendSceneOverlayLines(const SceneOverlay& overlay,
     return;
   }
   for (const auto& vertex : overlay.lineVertices()) {
-    out->push_back({vertex.position, vertex.color});
+    out->push_back({vertex.position(), vertex.color});
   }
 }
 
@@ -87,7 +87,7 @@ void AppendSceneOverlayPoints(const SceneOverlay& overlay,
     return;
   }
   for (const auto& vertex : overlay.pointVertices()) {
-    out->push_back({vertex.position, vertex.color});
+    out->push_back({vertex.position(), vertex.color});
   }
 }
 
@@ -106,7 +106,7 @@ void AppendSceneOverlayTriangles(const SceneOverlay& overlay,
       view.isIdentity() ? overlay.triangleVertices()
                         : overlay.expandedTriangles(view);
   for (const auto& vertex : triangles) {
-    out->push_back({vertex.position, vertex.color});
+    out->push_back({vertex.position(), vertex.color});
   }
 }
 
@@ -118,7 +118,7 @@ void AppendSceneOverlayFlatTriangles(const SceneOverlay& overlay,
   }
   const auto triangles = overlay.expandedFlatTriangles(view);
   for (const auto& vertex : triangles) {
-    out->push_back({vertex.position, vertex.color});
+    out->push_back({vertex.position(), vertex.color});
   }
 }
 
@@ -131,7 +131,7 @@ void BuildPbrMeshFromPbrVertices(
   out->clear();
   out->reserve(vertices.size());
   for (const SceneOverlay::PbrVertex& vertex : vertices) {
-    out->push_back({vertex.position, vertex.normal, vertex.albedo,
+    out->push_back({vertex.position(), vertex.normal, vertex.albedo,
                     vertex.metallic, vertex.roughness});
   }
 }
@@ -148,9 +148,9 @@ void BuildPbrMeshFromTriangles(const std::vector<OgreLineVertex>& triangles,
   std::unordered_map<QuantizedKey, int, QuantizedKeyHash> counts;
 
   for (std::size_t i = 0; i + 2 < triangles.size(); i += 3) {
-    const QVector3D& a = triangles[i].position;
-    const QVector3D& b = triangles[i + 1].position;
-    const QVector3D& c = triangles[i + 2].position;
+    const QVector3D& a = triangles[i].position();
+    const QVector3D& b = triangles[i + 1].position();
+    const QVector3D& c = triangles[i + 2].position();
     QVector3D face_normal = QVector3D::crossProduct(b - a, c - a);
     if (face_normal.lengthSquared() < 1e-10f) {
       face_normal = QVector3D(0.f, 0.f, 1.f);

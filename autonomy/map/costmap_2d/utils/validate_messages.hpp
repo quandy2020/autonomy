@@ -19,10 +19,27 @@
 #include <cmath>
 #include <iostream>
 
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <google/protobuf/repeated_field.h>
+
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_with_covariance.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_with_covariance_stamped.pb.h>
 
 namespace autonomy {
 namespace map {
@@ -87,16 +104,16 @@ inline bool validateMsg(const std::vector<double>& msg) {
 }
 
 inline constexpr int NSEC_PER_SEC = 1000000000;  // 1 second in nanoseconds
-inline bool validateMsg(const commsgs::builtin_interfaces::Time& msg) {
-    if (msg.nanosec >= NSEC_PER_SEC) {
+inline bool validateMsg(const automsgs::msgs::builtin_interfaces::Time& msg) {
+    if (msg.nanosec()>= NSEC_PER_SEC) {
         return false;  // invalid nanosec-stamp
     }
     return true;
 }
 
-inline bool validateMsg(const commsgs::std_msgs::Header& msg) {
+inline bool validateMsg(const automsgs::msgs::std_msgs::Header& msg) {
     //  check sub-type
-    if (!validateMsg(msg.stamp)) {
+    if (!validateMsg(msg.stamp())) {
         return false;
     }
 
@@ -105,67 +122,86 @@ inline bool validateMsg(const commsgs::std_msgs::Header& msg) {
      *  it should at least have a non-empty frame_id
      *  otherwise, we regard it as an invalid message
      */
-    if (msg.frame_id.empty()) {
+    if (msg.frame_id().empty()) {
         return false;
     }
     return true;
 }
 
-inline bool validateMsg(const commsgs::geometry_msgs::Point& msg) {
+inline bool validateMsg(const automsgs::msgs::geometry_msgs::Point& msg) {
     //  check sub-type
-    if (!validateMsg(msg.x)) {
+    if (!validateMsg(msg.x())) {
         return false;
     }
-    if (!validateMsg(msg.y)) {
+    if (!validateMsg(msg.y())) {
         return false;
     }
-    if (!validateMsg(msg.z)) {
+    if (!validateMsg(msg.z())) {
         return false;
     }
     return true;
 }
 
 inline constexpr double kQuaternionEpsilon = 1e-4;
-inline bool validateMsg(const commsgs::geometry_msgs::Quaternion& msg) {
+inline bool validateMsg(const automsgs::msgs::geometry_msgs::Quaternion& msg) {
     //  check sub-type
-    if (!validateMsg(msg.x)) {
+    if (!validateMsg(msg.x())) {
         return false;
     }
-    if (!validateMsg(msg.y)) {
+    if (!validateMsg(msg.y())) {
         return false;
     }
-    if (!validateMsg(msg.z)) {
+    if (!validateMsg(msg.z())) {
         return false;
     }
-    if (!validateMsg(msg.w)) {
+    if (!validateMsg(msg.w())) {
         return false;
     }
 
-    if (std::abs(msg.x * msg.x + msg.y * msg.y + msg.z * msg.z + msg.w * msg.w -
-                 1.0) >= kQuaternionEpsilon) {
+    if (std::abs(msg.x()* msg.x() + msg.y()* msg.y() + msg.z()* msg.z() + msg.w()* msg.w() - 1.0) >= kQuaternionEpsilon) {
         return false;
     }
 
     return true;
 }
 
-inline bool validateMsg(const commsgs::geometry_msgs::Pose& msg) {
+inline bool validateMsg(const automsgs::msgs::geometry_msgs::Pose& msg) {
     // check sub-type
-    if (!validateMsg(msg.position)) {
+    if (!validateMsg(msg.position())) {
         return false;
     }
-    if (!validateMsg(msg.orientation)) {
+    if (!validateMsg(msg.orientation())) {
         return false;
     }
     return true;
 }
 
-inline bool validateMsg(const commsgs::geometry_msgs::PoseWithCovariance& msg) {
-    // check sub-type
-    if (!validateMsg(msg.pose)) {
+inline bool validateMsg(const automsgs::msgs::geometry_msgs::PoseStamped& msg) {
+    if (!validateMsg(msg.header())) {
         return false;
     }
-    if (!validateMsg(msg.covariance)) {
+    if (!validateMsg(msg.pose())) {
+        return false;
+    }
+    return true;
+}
+
+inline bool validateMsg(
+    const google::protobuf::RepeatedField<double>& msg) {
+    for (int i = 0; i < msg.size(); ++i) {
+        if (!validateMsg(msg.Get(i))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+inline bool validateMsg(const automsgs::msgs::geometry_msgs::PoseWithCovariance& msg) {
+    // check sub-type
+    if (!validateMsg(msg.pose())) {
+        return false;
+    }
+    if (!validateMsg(msg.covariance())) {
         return false;
     }
 
@@ -173,48 +209,48 @@ inline bool validateMsg(const commsgs::geometry_msgs::PoseWithCovariance& msg) {
 }
 
 inline bool validateMsg(
-    const commsgs::geometry_msgs::PoseWithCovarianceStamped& msg) {
+    const automsgs::msgs::geometry_msgs::PoseWithCovarianceStamped& msg) {
     // check sub-type
-    if (!validateMsg(msg.header)) {
+    if (!validateMsg(msg.header())) {
         return false;
     }
-    if (!validateMsg(msg.pose)) {
+    if (!validateMsg(msg.pose())) {
         return false;
     }
     return true;
 }
 
 // Function to verify map meta information
-inline bool validateMsg(const commsgs::map_msgs::MapMetaData& msg) {
+inline bool validateMsg(const automsgs::msgs::map_msgs::MapMetaData& msg) {
     // check sub-type
-    if (!validateMsg(msg.origin)) {
+    if (!validateMsg(msg.origin())) {
         return false;
     }
-    if (!validateMsg(msg.resolution)) {
+    if (!validateMsg(msg.resolution())) {
         return false;
     }
 
     // logic check
     // 1> we don't need an empty map
-    if (msg.height == 0 || msg.width == 0) {
+    if (msg.height() == 0 || msg.width() == 0) {
         return false;
     }
     return true;
 }
 
 // for msg-type like map, costmap and others as `OccupancyGrid`
-inline bool validateMsg(const commsgs::map_msgs::OccupancyGrid& msg) {
+inline bool validateMsg(const automsgs::msgs::map_msgs::OccupancyGrid& msg) {
     // check sub-type
-    if (!validateMsg(msg.header)) {
+    if (!validateMsg(msg.header())) {
         return false;
     }
-    // msg.data :  @todo any check for it ?
-    if (!validateMsg(msg.info)) {
+    // msg.data() :  @todo any check for it ?
+    if (!validateMsg(msg.info())) {
         return false;
     }
 
     // check logic
-    if (msg.data.size() != msg.info.width * msg.info.height) {
+    if (msg.data().size() != msg.info().width() * msg.info().height()) {
         return false;  // check map-size
     }
     return true;

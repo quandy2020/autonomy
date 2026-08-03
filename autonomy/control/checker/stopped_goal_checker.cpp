@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <cmath>
 #include "autonomy/control/checker/stopped_goal_checker.hpp"
 
 namespace autonomy {
@@ -42,36 +43,36 @@ void StoppedGoalChecker::Initialize(
 }
 
 bool StoppedGoalChecker::IsGoalReached(
-    const commsgs::geometry_msgs::Pose& query_pose,
-    const commsgs::geometry_msgs::Pose& goal_pose,
-    const commsgs::geometry_msgs::Twist& velocity) {
+    const automsgs::msgs::geometry_msgs::Pose& query_pose,
+    const automsgs::msgs::geometry_msgs::Pose& goal_pose,
+    const automsgs::msgs::geometry_msgs::Twist& velocity) {
     bool ret =
         SimpleGoalChecker::IsGoalReached(query_pose, goal_pose, velocity);
     if (!ret) {
         return ret;
     }
 
-    return std::fabs(velocity.angular.z) <= rot_stopped_velocity_ &&
-           std::hypot(velocity.linear.x, velocity.linear.y) <=
+    return std::fabs(velocity.angular().z()) <= rot_stopped_velocity_ &&
+           std::hypot(velocity.linear().x(), velocity.linear().y()) <=
                trans_stopped_velocity_;
 }
 
 bool StoppedGoalChecker::GetTolerances(
-    commsgs::geometry_msgs::Pose& pose_tolerance,
-    commsgs::geometry_msgs::Twist& vel_tolerance) {
+    automsgs::msgs::geometry_msgs::Pose& pose_tolerance,
+    automsgs::msgs::geometry_msgs::Twist& vel_tolerance) {
     double invalid_field = std::numeric_limits<double>::lowest();
 
     // populate the poses
     bool rtn = SimpleGoalChecker::GetTolerances(pose_tolerance, vel_tolerance);
 
     // override the velocities
-    vel_tolerance.linear.x = trans_stopped_velocity_;
-    vel_tolerance.linear.y = trans_stopped_velocity_;
-    vel_tolerance.linear.z = invalid_field;
+    vel_tolerance.mutable_linear()->set_x(trans_stopped_velocity_);
+    vel_tolerance.mutable_linear()->set_y(trans_stopped_velocity_);
+    vel_tolerance.mutable_linear()->set_z(invalid_field);
 
-    vel_tolerance.angular.x = invalid_field;
-    vel_tolerance.angular.y = invalid_field;
-    vel_tolerance.angular.z = rot_stopped_velocity_;
+    vel_tolerance.mutable_angular()->set_x(invalid_field);
+    vel_tolerance.mutable_angular()->set_y(invalid_field);
+    vel_tolerance.mutable_angular()->set_z(rot_stopped_velocity_);
 
     return true && rtn;
 }

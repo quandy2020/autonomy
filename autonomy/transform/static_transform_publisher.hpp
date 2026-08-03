@@ -21,7 +21,10 @@
 
 #include "autolink/autolink.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
 #include "autonomy/transform/buffer.hpp"
 
 namespace autonomy {
@@ -51,16 +54,16 @@ public:
      */
     bool Publish(std::shared_ptr<autolink::Node> node);
 
-    const commsgs::geometry_msgs::TransformStampeds& GetTransformStampeds() const {
+    const automsgs::msgs::geometry_msgs::TransformStampeds& GetTransformStampeds() const {
         return transforms_;
     }
 
-    bool IsLoaded() const { return !transforms_.transforms.empty(); }
+    bool IsLoaded() const { return !transforms_.transforms().empty(); }
 
 private:
-    std::shared_ptr<autolink::Writer<commsgs::geometry_msgs::TransformStampeds>>
+    std::shared_ptr<autolink::Writer<automsgs::msgs::geometry_msgs::TransformStampeds>>
         writer_;
-    commsgs::geometry_msgs::TransformStampeds transforms_;
+    automsgs::msgs::geometry_msgs::TransformStampeds transforms_;
 };
 
 }  // namespace transform

@@ -23,7 +23,6 @@
 
 #include "autonomy/common/string_util.hpp"
 #include "autonomy/common/math/math_utils.hpp"
-#include "autonomy/common/string_util.hpp"
 #include "glog/logging.h"
 
 namespace autonomy {
@@ -483,8 +482,7 @@ std::vector<LineSegment2d> Polygon2d::GetAllOverlaps(
             continue;
         }
         const Vec2d reference_point =
-            line_segment.start() +
-            (start_proj + end_proj) / 2.0 * line_segment.unit_direction();
+            line_segment.start() + (start_proj + end_proj) / 2.0 * line_segment.unit_direction();
         if (!IsPointIn(reference_point)) {
             continue;
         }
@@ -498,10 +496,8 @@ std::vector<LineSegment2d> Polygon2d::GetAllOverlaps(
     std::vector<LineSegment2d> overlap_line_segments;
     for (const auto& overlap : overlaps) {
         overlap_line_segments.emplace_back(
-            line_segment.start() +
-                overlap.first * line_segment.unit_direction(),
-            line_segment.start() +
-                overlap.second * line_segment.unit_direction());
+            line_segment.start() + overlap.first * line_segment.unit_direction(),
+            line_segment.start() + overlap.second * line_segment.unit_direction());
     }
     return overlap_line_segments;
 }

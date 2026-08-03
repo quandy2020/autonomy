@@ -91,12 +91,12 @@ void ExplorationClient::SetMapName(const std::string& map_name)
 }
 
 void ExplorationClient::SetExplorationArea(
-    const commsgs::geometry_msgs::Polygon& area)
+    const automsgs::msgs::geometry_msgs::Polygon& area)
 {
     EnsureExplorer();
     explorer_->SetExplorationArea(area);
     AINFO << "ExplorationClient: RGBD exploration area set ("
-          << area.points.size() << " vertices)";
+          << area.points_size() << " vertices)";
 }
 
 void ExplorationClient::UseDefaultExplorationArea()
@@ -106,20 +106,20 @@ void ExplorationClient::UseDefaultExplorationArea()
 }
 
 void ExplorationClient::UpdateOdometry(
-    const commsgs::planning_msgs::Odometry& odom)
+    const automsgs::msgs::planning_msgs::Odometry& odom)
 {
     EnsureExplorer();
-    if (!odom.header.frame_id.empty()) {
-        map_frame_ = odom.header.frame_id;
+    if (!odom.header().frame_id().empty()) {
+        map_frame_ = odom.header().frame_id();
     }
     explorer_->UpdateOdometry(odom);
     explorer_->ExecutePlanningCycle();
 }
 
 void ExplorationClient::UpdateDepth(
-    const commsgs::sensor_msgs::Image& depth,
-    const commsgs::sensor_msgs::CameraInfo& info,
-    const commsgs::geometry_msgs::Transform& map_t_camera)
+    const automsgs::msgs::sensor_msgs::Image& depth,
+    const automsgs::msgs::sensor_msgs::CameraInfo& info,
+    const automsgs::msgs::geometry_msgs::Transform& map_t_camera)
 {
     EnsureExplorer();
     explorer_->UpdateDepth(depth, info, map_t_camera);
@@ -138,14 +138,14 @@ bool ExplorationClient::HasFrontier() const
 }
 
 bool ExplorationClient::SelectNextFrontier(
-    commsgs::geometry_msgs::PoseStamped& goal)
+    automsgs::msgs::geometry_msgs::PoseStamped& goal)
 {
     EnsureExplorer();
     if (!explorer_->GetNextWaypoint(goal)) {
         return false;
     }
-    if (goal.header.frame_id.empty()) {
-        goal.header.frame_id = map_frame_;
+    if (goal.header().frame_id().empty()) {
+        goal.mutable_header()->set_frame_id(map_frame_);
     }
     return true;
 }
@@ -173,7 +173,7 @@ bool ExplorationClient::IsExplorationFinished() const
     return explorer_ && explorer_->IsFinished();
 }
 
-commsgs::map_msgs::OccupancyGrid ExplorationClient::GetOccupancyGrid(
+automsgs::msgs::map_msgs::OccupancyGrid ExplorationClient::GetOccupancyGrid(
     const std::string& frame_id) const
 {
     if (!explorer_) {
@@ -186,7 +186,7 @@ commsgs::map_msgs::OccupancyGrid ExplorationClient::GetOccupancyGrid(
 bool ExplorationClient::SaveExplorationMap(const std::string& map_name) const
 {
     const auto grid = GetOccupancyGrid(map_frame_);
-    if (grid.data.empty()) {
+    if (grid.data().empty()) {
         AWARN << "SaveExplorationMap: empty occupancy grid";
         return false;
     }
@@ -196,14 +196,14 @@ bool ExplorationClient::SaveExplorationMap(const std::string& map_name) const
         AERROR << "SaveExplorationMap: cannot write " << path;
         return false;
     }
-    out << "P5\n" << grid.info.width << " " << grid.info.height << "\n255\n";
-    for (const auto cell : grid.data) {
+    out << "P5\n" << grid.info().width() << " " << grid.info().height() << "\n255\n";
+    for (const auto cell : grid.data()) {
         const unsigned char v =
             cell < 0 ? 205 : (cell > 50 ? 0 : 254);
         out.write(reinterpret_cast<const char*>(&v), 1);
     }
     AINFO << "SaveExplorationMap: wrote " << path << " ("
-          << grid.info.width << "x" << grid.info.height << ")";
+          << grid.info().width() << "x" << grid.info().height() << ")";
     return true;
 }
 

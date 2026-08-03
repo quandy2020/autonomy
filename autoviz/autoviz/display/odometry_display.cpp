@@ -30,7 +30,7 @@ float yawFromQuaternion(
 OdometryDisplay::OdometryDisplay(std::string channel)
     : ChannelDisplay<automsgs::msgs::nav_msgs::Odometry>(
           "Odometry", std::move(channel),
-          "autonomy.commsgs.proto.planning_msgs.Odometry") {
+          "automsgs.msgs.planning_msgs.Odometry") {
   setProperties({});
 }
 
@@ -58,13 +58,12 @@ void OdometryDisplay::processMessage(
   try {
     const auto tf = context_->tf_buffer->lookupTransform(
         context_->fixed_frame, target_frame, zero_time);
-    odom_.position =
-        QVector3D(static_cast<float>(tf.transform().translation().x()),
+    *odom_.mutable_position() = QVector3D(static_cast<float>(tf.transform().translation().x()),
                   static_cast<float>(tf.transform().translation().y()),
                   static_cast<float>(tf.transform().translation().z()));
   } catch (...) {
     const auto& p = message.pose().pose().pose().position();
-    odom_.position = QVector3D(static_cast<float>(p.x()),
+    *odom_.mutable_position() = QVector3D(static_cast<float>(p.x()),
                                static_cast<float>(p.y()),
                                static_cast<float>(p.z()));
   }
@@ -102,23 +101,23 @@ void OdometryDisplay::onDraw(rendering::SceneOverlay& scene) {
                                                        len * qSin(odom_.yaw), 0.f);
     const QVector3D y_end =
         odom_.position + QVector3D(-len * qSin(odom_.yaw), len * qCos(odom_.yaw), 0.f);
-    scene.addLine(odom_.position, x_end, QColor(220, 60, 60));
-    scene.addLine(odom_.position, y_end, QColor(60, 220, 60));
-    scene.addLine(odom_.position, odom_.position + QVector3D(0.f, 0.f, len),
+    scene.addLine(odom_.position(), x_end, QColor(220, 60, 60));
+    scene.addLine(odom_.position(), y_end, QColor(60, 220, 60));
+    scene.addLine(odom_.position(), odom_.position + QVector3D(0.f, 0.f, len),
                   QColor(60, 120, 220));
   } else {
     const float shaft_length = 0.3f;
     const float head_length = 0.2f;
     const QVector3D heading(shaft_length * qCos(odom_.yaw),
                             shaft_length * qSin(odom_.yaw), 0.f);
-    drawArrowOgreOrGl(context_, scene, name() + "/arrow", odom_.position,
+    drawArrowOgreOrGl(context_, scene, name() + "/arrow", odom_.position(),
                       odom_.position + heading, color,
                       head_length / (shaft_length + head_length), 0.05f, 0.12f);
   }
 
   if (show_velocity) {
     const QVector3D vel_end = odom_.position + odom_.velocity;
-    scene.addLine(odom_.position, vel_end, QColor(255, 120, 40));
+    scene.addLine(odom_.position(), vel_end, QColor(255, 120, 40));
   }
 }
 

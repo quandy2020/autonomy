@@ -125,7 +125,7 @@ void DrawDashedLoop(rendering::SceneOverlay& scene, const std::vector<QVector3D>
 StrataSemanticZoneDisplay::StrataSemanticZoneDisplay(std::string channel)
     : ChannelDisplay<automsgs::msgs::strata_msgs::SemanticZoneArray>(
           "StrataSemanticZone", std::move(channel),
-          "autonomy.commsgs.proto.strata_msgs.SemanticZoneArray") {
+          "automsgs.msgs.strata_msgs.SemanticZoneArray") {
   setProperties({});
 }
 
@@ -272,8 +272,8 @@ void StrataSemanticZoneDisplay::onDraw(rendering::SceneOverlay& scene) {
       const QVector3D centroid = PolygonCentroid(zone.polygon);
       TextLabelInstance label;
       label.text = zone.label.toStdString();
-      label.position = centroid + QVector3D(0.f, 0.f, 0.03f);
-      label.color = use_custom_colors ? custom_label : zone.outline_color;
+      *label.mutable_position() = centroid + QVector3D(0.f, 0.f, 0.03f);
+      *label.mutable_color() = use_custom_colors ? custom_label : zone.outline_color;
       label.char_height = 0.1f;
       drawLabelsOgreOrGl(context_, scene, name() + "/label/" + std::to_string(i), {label});
     }

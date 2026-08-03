@@ -5,8 +5,18 @@
 #include "autonomy/system/monitor/mrm_handler/mrm_handler.hpp"
 
 #include "autolink/autolink.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/system/monitor/hazard_monitor/hazard_monitor.hpp"
 
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS
@@ -43,18 +53,18 @@ bool MrmHandler::AttachNode(const std::shared_ptr<autolink::Node>& node) {
 void MrmHandler::PublishStop() {
     if (!node_ || options_.cmd_vel_channel.empty())
         return;
-    static std::shared_ptr<autolink::Writer<commsgs::geometry_msgs::TwistStamped>>
+    static std::shared_ptr<autolink::Writer<automsgs::msgs::geometry_msgs::TwistStamped>>
         writer;
     if (!writer) {
         writer =
-            node_->CreateWriter<commsgs::geometry_msgs::TwistStamped>(
+            node_->CreateWriter<automsgs::msgs::geometry_msgs::TwistStamped>(
                 options_.cmd_vel_channel);
     }
     if (!writer)
         return;
-    commsgs::geometry_msgs::TwistStamped msg;
-    msg.header.stamp = commsgs::builtin_interfaces::Time::Now();
-    msg.header.frame_id = "base_link";
+    automsgs::msgs::geometry_msgs::TwistStamped msg;
+    *msg.mutable_header()->mutable_stamp() = automsgs::msgs::builtin_interfaces::TimeNow();
+    msg.mutable_header()->set_frame_id("base_link");
     writer->Write(msg);
 }
 

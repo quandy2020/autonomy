@@ -20,9 +20,15 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
 #include "autonomy/map/costmap_2d/costmap_layer.hpp"
 #include "autonomy/map/costmap_2d/footprint.hpp"
 #include "autonomy/map/costmap_2d/layered_costmap.hpp"
@@ -115,10 +121,10 @@ public:
      * @brief Inject a laser scan from an external bridge (e.g. ROS /scan).
      * @param scan Laser scan in commsgs form; forwarded to marking buffers.
      */
-    void feedLaserScan(const commsgs::sensor_msgs::LaserScan& scan);
+    void feedLaserScan(const automsgs::msgs::sensor_msgs::LaserScan& scan);
 
     /** @brief Inject PointCloud2 from an external bridge (e.g. ROS). */
-    void feedPointCloud2(const commsgs::sensor_msgs::PointCloud2& cloud);
+    void feedPointCloud2(const automsgs::msgs::sensor_msgs::PointCloud2& cloud);
 
     /**
      * @brief  A callback to handle buffering LaserScan messages
@@ -126,7 +132,7 @@ public:
      * @param buffer A pointer to the observation buffer to update
      */
     void laserScanCallback(
-        commsgs::sensor_msgs::LaserScan::ConstSharedPtr message,
+        std::shared_ptr<const automsgs::msgs::sensor_msgs::LaserScan> message,
         const std::shared_ptr<ObservationBuffer>& buffer);
 
     /**
@@ -136,7 +142,7 @@ public:
      * @param buffer A pointer to the observation buffer to update
      */
     void laserScanValidInfCallback(
-        commsgs::sensor_msgs::LaserScan::ConstSharedPtr message,
+        std::shared_ptr<const automsgs::msgs::sensor_msgs::LaserScan> message,
         const std::shared_ptr<ObservationBuffer>& buffer);
 
     /**
@@ -145,7 +151,7 @@ public:
      * @param buffer A pointer to the observation buffer to update
      */
     void pointCloud2Callback(
-        commsgs::sensor_msgs::PointCloud2::ConstSharedPtr message,
+        std::shared_ptr<const automsgs::msgs::sensor_msgs::PointCloud2> message,
         const std::shared_ptr<ObservationBuffer>& buffer);
 
     // for testing purposes
@@ -190,7 +196,7 @@ protected:
                               double max_range, double min_range, double* min_x,
                               double* min_y, double* max_x, double* max_y);
 
-    std::vector<commsgs::geometry_msgs::Point> transformed_footprint_;
+    std::vector<automsgs::msgs::geometry_msgs::Point> transformed_footprint_;
     bool footprint_clearing_enabled_;
 
     /**

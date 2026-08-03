@@ -21,6 +21,7 @@
 #include "autonomy/map/costmap_2d/exceptions.hpp"
 #include "autonomy/map/costmap_2d/footprint.hpp"
 #include "autonomy/map/costmap_2d/utils/line_iterator.hpp"
+#include <automsgs/msgs/geometry_msgs/pose2d.pb.h>
 
 using namespace std::chrono_literals;
 
@@ -39,7 +40,7 @@ namespace costmap_2d {
 // {}
 
 bool CostmapTopicCollisionChecker::isCollisionFree(
-    const commsgs::geometry_msgs::Pose2D& pose,
+    const automsgs::msgs::geometry_msgs::Pose2D& pose,
     bool fetch_costmap_and_footprint) {
     try {
         if (scorePose(pose, fetch_costmap_and_footprint) >= LETHAL_OBSTACLE) {
@@ -59,7 +60,7 @@ bool CostmapTopicCollisionChecker::isCollisionFree(
 }
 
 double CostmapTopicCollisionChecker::scorePose(
-    const commsgs::geometry_msgs::Pose2D& pose,
+    const automsgs::msgs::geometry_msgs::Pose2D& pose,
     bool fetch_costmap_and_footprint) {
     if (fetch_costmap_and_footprint) {
         try {
@@ -70,7 +71,7 @@ double CostmapTopicCollisionChecker::scorePose(
     }
 
     unsigned int cell_x, cell_y;
-    if (!collision_checker_.worldToMap(pose.x, pose.y, cell_x, cell_y)) {
+    if (!collision_checker_.worldToMap(pose.x(), pose.y(), cell_x, cell_y)) {
         // RCLCPP_DEBUG(rclcpp::get_logger(name_), "Map Cell: [%d, %d]", cell_x,
         // cell_y);
         throw IllegalPoseException(name_, "Pose Goes Off Grid.");
@@ -81,16 +82,16 @@ double CostmapTopicCollisionChecker::scorePose(
 }
 
 Footprint CostmapTopicCollisionChecker::getFootprint(
-    const commsgs::geometry_msgs::Pose2D& pose, bool fetch_latest_footprint) {
+    const automsgs::msgs::geometry_msgs::Pose2D& pose, bool fetch_latest_footprint) {
     if (fetch_latest_footprint) {
-        commsgs::std_msgs::Header header;
+        automsgs::msgs::std_msgs::Header header;
         // if (!footprint_sub_.getFootprintInRobotFrame(footprint_, header)) {
         //     throw CollisionCheckerException("Current footprint not
         //     available.");
         // }
     }
     Footprint footprint;
-    transformFootprint(pose.x, pose.y, pose.theta, footprint_, footprint);
+    transformFootprint(pose.x(), pose.y(), pose.theta(), footprint_, footprint);
     return footprint;
 }
 

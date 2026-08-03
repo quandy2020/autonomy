@@ -64,17 +64,17 @@ int GridWorld::CellIndex(double x, double y) const
     return cy * cols_ + cx;
 }
 
-commsgs::geometry_msgs::Point GridWorld::CellCenter(int cell_index) const
+automsgs::msgs::geometry_msgs::Point GridWorld::CellCenter(int cell_index) const
 {
-    commsgs::geometry_msgs::Point p;
+    automsgs::msgs::geometry_msgs::Point p;
     if (cell_index < 0 || static_cast<size_t>(cell_index) >= status_.size()) {
         return p;
     }
     const int cx = cell_index % cols_;
     const int cy = cell_index / cols_;
-    p.x = origin_x_ + (static_cast<double>(cx) + 0.5) * cell_size_;
-    p.y = origin_y_ + (static_cast<double>(cy) + 0.5) * cell_size_;
-    p.z = 0.0;
+    p.set_x(origin_x_ + (static_cast<double>(cx) + 0.5) * cell_size_);
+    p.set_y(origin_y_ + (static_cast<double>(cy) + 0.5) * cell_size_);
+    p.set_z(0.0);
     return p;
 }
 
@@ -111,7 +111,7 @@ void GridWorld::UpdateCellStatus(const ViewpointManager& viewpoints,
         const double gain = cell_gain_[i];
         auto& st = status_[i];
         const auto center = CellCenter(static_cast<int>(i));
-        if (!env.IsInExplorationArea(center.x, center.y)) {
+        if (!env.IsInExplorationArea(center.x(), center.y())) {
             continue;
         }
         if (gain >= options_.viewpoint().min_gain()) {

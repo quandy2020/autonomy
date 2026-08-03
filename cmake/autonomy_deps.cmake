@@ -5,6 +5,7 @@ function(autonomy_link_dependencies target)
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/autolink>
     $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/automsgs/proto/gen>
     $<INSTALL_INTERFACE:include>
   )
 
@@ -20,6 +21,7 @@ function(autonomy_link_dependencies target)
   )
   target_link_libraries(${target} PUBLIC
     protobuf::libprotobuf
+    automsgs
     ${EIGEN3_LIBRARIES}
     ${CERES_LIBRARIES}
     ${LUA_LIBRARIES}

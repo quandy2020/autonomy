@@ -12,7 +12,17 @@ set(ALL_GRPC_SERVICE_HDRS)
 
 set(PROTOBUF_PROTOC_EXECUTABLE "${Protobuf_PROTOC_EXECUTABLE}")
 
+set(_AUTONOMY_PROTO_INCLUDES -I ${PROJECT_SOURCE_DIR})
+if(DEFINED AUTOMSGS_PROTO_INCLUDE_DIR)
+  list(APPEND _AUTONOMY_PROTO_INCLUDES -I ${AUTOMSGS_PROTO_INCLUDE_DIR})
+endif()
+set(_AUTONOMY_PROTO_DEPS "")
+if(TARGET automsgs_proto_copy)
+  list(APPEND _AUTONOMY_PROTO_DEPS automsgs_proto_copy)
+endif()
+
 file(GLOB_RECURSE ALL_PROTOS "${PROJECT_SOURCE_DIR}/autonomy/*.proto")
+list(FILTER ALL_PROTOS EXCLUDE REGEX ".*/commsgs/proto/.*")
 file(GLOB_RECURSE ALL_GRPC_SERVICES
   "${PROJECT_SOURCE_DIR}/autonomy/*_service.proto")
 
@@ -48,9 +58,9 @@ if(BUILD_GRPC)
         --grpc_out=${PROJECT_BINARY_DIR}
         --plugin=protoc-gen-grpc=${GRPC_CPP_PLUGIN}
         --cpp_out=${PROJECT_BINARY_DIR}
-        -I ${PROJECT_SOURCE_DIR}
+        ${_AUTONOMY_PROTO_INCLUDES}
         ${ABS_FIL}
-      DEPENDS ${ABS_FIL}
+      DEPENDS ${ABS_FIL} ${_AUTONOMY_PROTO_DEPS}
       COMMENT "Running gRPC/protoc on ${REL_FIL}"
       VERBATIM
     )
@@ -77,8 +87,8 @@ foreach(ABS_FIL ${ALL_PROTOS})
   add_custom_command(
     OUTPUT ${_pb_cc} ${_pb_h}
     COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
-    ARGS --cpp_out=${PROJECT_BINARY_DIR} -I ${PROJECT_SOURCE_DIR} ${ABS_FIL}
-    DEPENDS ${ABS_FIL}
+    ARGS --cpp_out=${PROJECT_BINARY_DIR} ${_AUTONOMY_PROTO_INCLUDES} ${ABS_FIL}
+    DEPENDS ${ABS_FIL} ${_AUTONOMY_PROTO_DEPS}
     COMMENT "Running protoc on ${REL_FIL}"
     VERBATIM
   )

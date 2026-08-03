@@ -97,7 +97,7 @@ void OgreEffortVisual::setEffort(const std::string& joint_name, double effort,
         static_cast<float>((0.05f + effort_value * scale_ * 0.5f) * cos(i * 2.0f * M_PI / 32.0f)),
         0.f);
     if (effort < 0) {
-      point.x = -point.x;
+      point.set_x(-point.x());
     }
     effort_circle_[joint_name]->addPoint(orientation_[joint_name] * point + position_[joint_name]);
   }

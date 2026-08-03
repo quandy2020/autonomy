@@ -21,7 +21,9 @@
 #include <string>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 
 namespace autonomy {
 namespace map {
@@ -61,7 +63,7 @@ public:
      * @return If smoothing was completed (true) or interrupted by time limit
      * (false)
      */
-    virtual bool Smooth(commsgs::planning_msgs::Path& path,
+    virtual bool Smooth(automsgs::msgs::planning_msgs::Path& path,
                         const std::chrono::milliseconds& max_time) = 0;
 
 protected:

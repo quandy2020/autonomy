@@ -26,7 +26,7 @@
 
 #include "autolink/node/writer.hpp"
 #include "autonomy/common/logging.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
+
 #include "autonomy/control/checker/simple_goal_checker.hpp"
 #include "autonomy/control/checker/simple_progress_checker.hpp"
 #include "autonomy/control/common/controller_exceptions.hpp"
@@ -43,7 +43,7 @@ namespace autonomy {
 namespace control {
 namespace {
 
-using Time = commsgs::builtin_interfaces::Time;
+using Time = automsgs::msgs::builtin_interfaces::Time;
 
 struct PluginSpec {
     std::string id;
@@ -97,14 +97,14 @@ Time NowTime() {
     const auto nsec =
         std::chrono::duration_cast<std::chrono::nanoseconds>(now - sec);
     Time stamp;
-    stamp.sec = static_cast<int32_t>(sec.count());
-    stamp.nanosec = static_cast<uint32_t>(nsec.count());
+    stamp.set_sec(static_cast<int32_t>(sec.count()));
+    stamp.set_nanosec(static_cast<uint32_t>(nsec.count()));
     return stamp;
 }
 
 double TimeDiffSeconds(const Time& a, const Time& b) {
-    return static_cast<double>(a.sec - b.sec) +
-           static_cast<double>(a.nanosec - b.nanosec) * 1e-9;
+    return static_cast<double>(a.sec() - b.sec()) +
+           static_cast<double>(a.nanosec() - b.nanosec()) * 1e-9;
 }
 
 }  // namespace
@@ -134,7 +134,7 @@ ControllerServer::ControllerServer(const proto::ControllerOptions& options)
     }
 
     costmap_update_timeout_ =
-        commsgs::builtin_interfaces::Duration::FromSeconds(300.0);
+        automsgs::msgs::builtin_interfaces::DurationFromSeconds(300.0);
 
     tf_buffer_ = std::shared_ptr<transform::Buffer>(
         transform::Buffer::Instance(), [](transform::Buffer*) {});
@@ -293,14 +293,14 @@ void ControllerServer::SetSharedCostmap(
 }
 
 void ControllerServer::UpdateOdometry(
-    const commsgs::planning_msgs::Odometry& odom) {
+    const automsgs::msgs::planning_msgs::Odometry& odom) {
     if (odom_smoother_) {
         odom_smoother_->UpdateOdometry(odom);
     }
 }
 
 bool ControllerServer::GetLatestOdometry(
-    commsgs::planning_msgs::Odometry& odom) const {
+    automsgs::msgs::planning_msgs::Odometry& odom) const {
     return odom_smoother_ && odom_smoother_->GetLatestOdometry(odom);
 }
 
@@ -400,7 +400,7 @@ common::ProgressChecker* ControllerServer::GetActiveProgressChecker() {
 }
 
 void ControllerServer::PublishVelocity(
-    const commsgs::geometry_msgs::TwistStamped& cmd_vel) {
+    const automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel) {
     last_cmd_vel_ = cmd_vel;
     if (cmd_vel_writer_) {
         cmd_vel_writer_->Write(cmd_vel);
@@ -408,9 +408,9 @@ void ControllerServer::PublishVelocity(
 }
 
 void ControllerServer::PublishZeroVelocity() {
-    commsgs::geometry_msgs::TwistStamped zero;
-    zero.header.stamp = NowTime();
-    zero.header.frame_id = robot_base_frame_;
+    automsgs::msgs::geometry_msgs::TwistStamped zero;
+    *zero.mutable_header()->mutable_stamp() = NowTime();
+    zero.mutable_header()->set_frame_id( robot_base_frame_);
     PublishVelocity(zero);
 }
 
@@ -419,7 +419,7 @@ void ControllerServer::ComputeControl() {
         LoadPlugins();
     }
 
-    if (current_path_.poses.empty()) {
+    if (current_path_.poses().empty()) {
         throw common::InvalidPath("FollowPath received an empty path");
     }
 
@@ -447,8 +447,8 @@ void ControllerServer::ComputeControl() {
     controller->Reset();
     controller->SetPlan(current_path_);
 
-    if (!current_path_.poses.empty()) {
-        end_pose_ = current_path_.poses.back();
+    if (!current_path_.poses().empty()) {
+        end_pose_ = current_path_.poses(current_path_.poses_size() - 1);
     }
 
     last_valid_cmd_time_ = NowTime();
@@ -456,7 +456,7 @@ void ControllerServer::ComputeControl() {
     controllers_active_ = true;
 
     AINFO << "FollowPath started: controller=" << current_controller_
-          << " path_poses=" << current_path_.poses.size();
+          << " path_poses=" << current_path_.poses_size();
 }
 
 void ControllerServer::ComputeAndPublishVelocity() {
@@ -471,19 +471,19 @@ void ControllerServer::ComputeAndPublishVelocity() {
         throw common::InvalidController("Active controller/checker missing");
     }
 
-    commsgs::geometry_msgs::PoseStamped pose;
+    automsgs::msgs::geometry_msgs::PoseStamped pose;
     if (!GetRobotPose(pose)) {
         throw common::ControllerTFError("Failed to obtain robot pose");
     }
 
-    commsgs::planning_msgs::Odometry odom;
-    commsgs::geometry_msgs::TwistStamped velocity;
-    velocity.header.frame_id = robot_base_frame_;
+    automsgs::msgs::planning_msgs::Odometry odom;
+    automsgs::msgs::geometry_msgs::TwistStamped velocity;
+    velocity.mutable_header()->set_frame_id( robot_base_frame_);
     if (GetLatestOdometry(odom)) {
-        velocity.header.stamp = odom.header.stamp;
-        velocity.twist = odom.twist.twist;
+        *velocity.mutable_header()->mutable_stamp() = odom.header().stamp();
+        *velocity.mutable_twist() = odom.twist().twist();
     } else {
-        velocity.header.stamp = pose.header.stamp;
+        *velocity.mutable_header()->mutable_stamp() = pose.header().stamp();
     }
 
     if (!progress_checker->Check(pose)) {
@@ -491,7 +491,7 @@ void ControllerServer::ComputeAndPublishVelocity() {
             "Failed to make progress towards goal");
     }
 
-    commsgs::geometry_msgs::TwistStamped cmd_vel;
+    automsgs::msgs::geometry_msgs::TwistStamped cmd_vel;
     std::string message;
 
     std::unique_lock<map::costmap_2d::Costmap2D::mutex_t> costmap_lock;
@@ -525,17 +525,17 @@ void ControllerServer::ComputeAndPublishVelocity() {
     }
 
     last_valid_cmd_time_ = NowTime();
-    if (cmd_vel.header.frame_id.empty()) {
-        cmd_vel.header.frame_id = robot_base_frame_;
+    if (cmd_vel.header().frame_id().empty()) {
+        cmd_vel.mutable_header()->set_frame_id( robot_base_frame_);
     }
-    if (cmd_vel.header.stamp.sec == 0 && cmd_vel.header.stamp.nanosec == 0) {
-        cmd_vel.header.stamp = NowTime();
+    if (cmd_vel.header().stamp().sec() == 0 && cmd_vel.header().stamp().nanosec() == 0) {
+        *cmd_vel.mutable_header()->mutable_stamp() = NowTime();
     }
     PublishVelocity(cmd_vel);
 }
 
 void ControllerServer::UpdateGlobalPath() {
-    if (!follow_path_active_ || current_path_.poses.empty()) {
+    if (!follow_path_active_ || current_path_.poses().empty()) {
         return;
     }
     auto* controller = GetActiveController();
@@ -565,7 +565,7 @@ void ControllerServer::OnGoalExit() {
 }
 
 bool ControllerServer::IsGoalReached() {
-    if (!follow_path_active_ || current_path_.poses.empty()) {
+    if (!follow_path_active_ || current_path_.poses().empty()) {
         return false;
     }
 
@@ -574,36 +574,36 @@ bool ControllerServer::IsGoalReached() {
         return false;
     }
 
-    commsgs::geometry_msgs::PoseStamped pose;
+    automsgs::msgs::geometry_msgs::PoseStamped pose;
     if (!GetRobotPose(pose)) {
         return false;
     }
 
-    commsgs::planning_msgs::Odometry odom;
-    commsgs::geometry_msgs::Twist velocity;
+    automsgs::msgs::planning_msgs::Odometry odom;
+    automsgs::msgs::geometry_msgs::Twist velocity;
     if (GetLatestOdometry(odom)) {
-        velocity = odom.twist.twist;
+        velocity = odom.twist().twist();
     }
 
-    const auto& goal_pose = current_path_.poses.back().pose;
-    return goal_checker->IsGoalReached(pose.pose, goal_pose, velocity);
+    const auto& goal_pose = current_path_.poses(current_path_.poses_size() - 1).pose();
+    return goal_checker->IsGoalReached(pose.pose(), goal_pose, velocity);
 }
 
 bool ControllerServer::GetRobotPose(
-    commsgs::geometry_msgs::PoseStamped& pose) {
+    automsgs::msgs::geometry_msgs::PoseStamped& pose) {
     if (costmap_wrapper_ && costmap_wrapper_->getRobotPose(pose)) {
         return true;
     }
 
     if (odom_smoother_) {
-        commsgs::planning_msgs::Odometry odom;
+        automsgs::msgs::planning_msgs::Odometry odom;
         if (odom_smoother_->GetLatestOdometry(odom) &&
-            !odom.header.frame_id.empty()) {
-            pose.header.frame_id =
-                odom.header.frame_id.empty() ? global_frame_
-                                             : odom.header.frame_id;
-            pose.header.stamp = odom.header.stamp;
-            pose.pose = odom.pose.pose;
+            !odom.header().frame_id().empty()) {
+            pose.mutable_header()->set_frame_id(
+                odom.header().frame_id().empty() ? global_frame_
+                                             : odom.header().frame_id());
+            *pose.mutable_header()->mutable_stamp() = odom.header().stamp();
+            *pose.mutable_pose() = odom.pose().pose().pose();
             return true;
         }
     }

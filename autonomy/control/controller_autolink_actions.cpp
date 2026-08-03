@@ -13,11 +13,15 @@
 
 #include "autolink/action/simple_action_server.hpp"
 #include "autolink/node/writer.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/proto/error_code.pb.h"
-#include "autonomy/commsgs/proto/nav_msgs.pb.h"
+
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+
+#include <automsgs/msgs/status_msgs/status_msgs.pb.h>
+#include <automsgs/actions/nav_actions.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
 #include "autonomy/common/logging.hpp"
 #include "autonomy/control/common/controller_exceptions.hpp"
 #include "autonomy/control/constants.hpp"
@@ -27,8 +31,8 @@ namespace autonomy {
 namespace control {
 namespace {
 
-namespace nav_proto = commsgs::proto::nav_msgs;
-namespace err_proto = commsgs::proto::error_code;
+namespace nav_proto = automsgs::actions;
+namespace err_proto = automsgs::msgs::status_msgs;
 
 using FollowPathServer =
     autolink::action::SimpleActionServer<nav_proto::FollowPathAction>;
@@ -37,21 +41,21 @@ using BackUpServer =
     autolink::action::SimpleActionServer<nav_proto::BackUpAction>;
 using WaitServer = autolink::action::SimpleActionServer<nav_proto::WaitAction>;
 
-commsgs::planning_msgs::Path PathFromGoal(
+automsgs::msgs::planning_msgs::Path PathFromGoal(
     const nav_proto::FollowPathAction::Goal& goal) {
     if (goal.has_path()) {
-        return commsgs::planning_msgs::FromProto(goal.path());
+        return goal.path();
     }
     return {};
 }
 
-double DistanceToPathGoal(const commsgs::planning_msgs::Path& path,
-                          const commsgs::geometry_msgs::PoseStamped& pose) {
-    if (path.poses.empty()) {
+double DistanceToPathGoal(const automsgs::msgs::planning_msgs::Path& path,
+                          const automsgs::msgs::geometry_msgs::PoseStamped& pose) {
+    if (path.poses().empty()) {
         return 0.0;
     }
-    const auto& goal = path.poses.back().pose.position;
-    const auto& current = pose.pose.position;
+    const auto& goal = path.poses(path.poses_size() - 1).pose().position();
+    const auto& current = pose.pose().position();
     return map::costmap_2d::utils::euclidean_distance(goal, current);
 }
 
@@ -78,7 +82,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
 
     if (!cmd_vel_writer_) {
         cmd_vel_writer_ =
-            node_->CreateWriter<commsgs::geometry_msgs::TwistStamped>(
+            node_->CreateWriter<automsgs::msgs::geometry_msgs::TwistStamped>(
                 kCmdVelChannel);
     }
 
@@ -98,7 +102,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
             }
 
             const auto path = PathFromGoal(*goal);
-            if (path.poses.empty()) {
+            if (path.poses().empty()) {
                 auto result =
                     std::make_shared<nav_proto::FollowPathAction::Result>();
                 result->set_error_code(err_proto::FOLLOW_PATH_INVALID_PATH);
@@ -128,18 +132,18 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
             auto cancel = [&]() { return server->IsCancelRequested(); };
 
             while (autolink::OK() && !cancel() && self->follow_path_active_) {
-                commsgs::geometry_msgs::PoseStamped pose;
+                automsgs::msgs::geometry_msgs::PoseStamped pose;
                 if (self->GetRobotPose(pose)) {
                     const double distance =
                         DistanceToPathGoal(self->current_path_, pose);
                     auto feedback =
                         std::make_shared<nav_proto::FollowPathAction::Feedback>();
                     feedback->set_distance_to_goal(static_cast<float>(distance));
-                    commsgs::planning_msgs::Odometry odom;
+                    automsgs::msgs::planning_msgs::Odometry odom;
                     if (self->GetLatestOdometry(odom)) {
                         feedback->set_speed(static_cast<float>(std::hypot(
-                            odom.twist.twist.linear.x,
-                            odom.twist.twist.linear.y)));
+                            odom.twist().twist().linear().x(),
+                            odom.twist().twist().linear().y())));
                     }
                     server->PublishFeedback(feedback);
                 }
@@ -206,8 +210,8 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
 
             const double allowance_sec =
                 goal->has_time_allowance()
-                    ? commsgs::builtin_interfaces::FromProto(goal->time_allowance())
-                          .Seconds()
+                    ? automsgs::msgs::builtin_interfaces::DurationToSeconds(
+                          goal->time_allowance())
                     : 10.0;
             const auto deadline = std::chrono::steady_clock::now() +
                                   std::chrono::duration<double>(allowance_sec);
@@ -245,8 +249,8 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                     : 0.3;
             const double allowance_sec =
                 goal->has_time_allowance()
-                    ? commsgs::builtin_interfaces::FromProto(goal->time_allowance())
-                          .Seconds()
+                    ? automsgs::msgs::builtin_interfaces::DurationToSeconds(
+                          goal->time_allowance())
                     : std::max(10.0, dist / speed);
             const auto deadline = std::chrono::steady_clock::now() +
                                   std::chrono::duration<double>(allowance_sec);
@@ -283,7 +287,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
             }
 
             const double wait_sec =
-                commsgs::builtin_interfaces::FromProto(goal->time()).Seconds();
+                automsgs::msgs::builtin_interfaces::DurationToSeconds(goal->time());
             const auto deadline = std::chrono::steady_clock::now() +
                                   std::chrono::duration<double>(wait_sec);
 

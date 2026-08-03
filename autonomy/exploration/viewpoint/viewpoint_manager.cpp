@@ -30,29 +30,29 @@ namespace autonomy {
 namespace exploration {
 namespace {
 
-commsgs::geometry_msgs::Quaternion OrientationFromYaw(double yaw)
+automsgs::msgs::geometry_msgs::Quaternion OrientationFromYaw(double yaw)
 {
     const Eigen::Quaterniond q =
         ::autonomy::common::transform::RollPitchYaw(0.0, 0.0, yaw);
-    commsgs::geometry_msgs::Quaternion out;
-    out.w = q.w();
-    out.x = q.x();
-    out.y = q.y();
-    out.z = q.z();
+    automsgs::msgs::geometry_msgs::Quaternion out;
+    out.set_w(q.w());
+    out.set_x(q.x());
+    out.set_y(q.y());
+    out.set_z(q.z());
     return out;
 }
 
 }  // namespace
 
-commsgs::geometry_msgs::PoseStamped Viewpoint::ToPoseStamped(
+automsgs::msgs::geometry_msgs::PoseStamped Viewpoint::ToPoseStamped(
     const std::string& frame_id) const
 {
-    commsgs::geometry_msgs::PoseStamped pose;
-    pose.header.frame_id = frame_id;
-    pose.pose.position.x = x;
-    pose.pose.position.y = y;
-    pose.pose.position.z = z;
-    pose.pose.orientation = OrientationFromYaw(yaw);
+    automsgs::msgs::geometry_msgs::PoseStamped pose;
+    pose.mutable_header()->set_frame_id(frame_id);
+    pose.mutable_pose()->mutable_position()->set_x(x);
+    pose.mutable_pose()->mutable_position()->set_y(y);
+    pose.mutable_pose()->mutable_position()->set_z(z);
+    *pose.mutable_pose()->mutable_orientation() = OrientationFromYaw(yaw);
     return pose;
 }
 
@@ -91,11 +91,11 @@ void ViewpointManager::RebuildGrid()
     for (int iy = 0; iy < ny; ++iy) {
         for (int ix = 0; ix < nx; ++ix) {
             Viewpoint vp;
-            vp.x = grid_origin_x_ +
-                   (static_cast<double>(ix) - nx * 0.5 + 0.5) * res;
-            vp.y = grid_origin_y_ +
-                   (static_cast<double>(iy) - ny * 0.5 + 0.5) * res;
-            vp.z = robot_z_;
+            vp.x = (grid_origin_x_ +
+                   (static_cast<double>(ix - nx * 0.5 + 0.5 * res)));
+            vp.y = (grid_origin_y_ +
+                   (static_cast<double>(iy - ny * 0.5 + 0.5 * res)));
+            vp.z = (robot_z_);
             for (int k = 0; k < options_.viewpoint().yaw_samples(); ++k) {
                 Viewpoint yaw_vp = vp;
                 yaw_vp.yaw = -M_PI + k * yaw_step;
@@ -220,15 +220,14 @@ void ViewpointManager::ScoreViewpoints(const PlanningEnv& env)
         }
         const Eigen::Quaterniond q =
             ::autonomy::common::transform::RollPitchYaw(0.0, 0.0, vp.yaw);
-        commsgs::geometry_msgs::Transform map_t_camera;
-        map_t_camera.translation.x = vp.x;
-        map_t_camera.translation.y = vp.y;
-        map_t_camera.translation.z =
-            vp.z + options_.viewpoint().robot_height();
-        map_t_camera.rotation.w = q.w();
-        map_t_camera.rotation.x = q.x();
-        map_t_camera.rotation.y = q.y();
-        map_t_camera.rotation.z = q.z();
+        automsgs::msgs::geometry_msgs::Transform map_t_camera;
+        map_t_camera.mutable_translation()->set_x(vp.x);
+        map_t_camera.mutable_translation()->set_y(vp.y);
+        map_t_camera.mutable_translation()->set_z(vp.z + options_.viewpoint().robot_height());
+        map_t_camera.mutable_rotation()->set_w(q.w());
+        map_t_camera.mutable_rotation()->set_x(q.x());
+        map_t_camera.mutable_rotation()->set_y(q.y());
+        map_t_camera.mutable_rotation()->set_z(q.z());
         vp.gain = camera_.ComputeGain(map_t_camera, targets, uncovered, &env);
     }
 }
@@ -252,9 +251,9 @@ std::vector<Viewpoint> ViewpointManager::GetCandidates(double min_gain) const
 Viewpoint ViewpointManager::GetRobotViewpoint() const
 {
     Viewpoint vp;
-    vp.x = robot_x_;
-    vp.y = robot_y_;
-    vp.z = robot_z_;
+    vp.x = (robot_x_);
+    vp.y = (robot_y_);
+    vp.z = (robot_z_);
     vp.yaw = robot_yaw_;
     vp.id = -1;
     return vp;

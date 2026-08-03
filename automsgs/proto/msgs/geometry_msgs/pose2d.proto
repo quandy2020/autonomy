@@ -16,9 +16,16 @@ syntax = "proto3";
 
 package automsgs.msgs.geometry_msgs;
 
+import "automsgs/msgs/std_msgs/header.proto";
+
 // Deprecated 2D pose (x, y, theta).
 message Pose2D {
   double x = 1;
   double y = 2;
   double theta = 3;
+}
+
+message Pose2DStamped {
+  automsgs.msgs.std_msgs.Header header = 1;
+  Pose2D pose = 2;
 }

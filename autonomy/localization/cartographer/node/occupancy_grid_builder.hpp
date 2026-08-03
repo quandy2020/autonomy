@@ -21,9 +21,20 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
 #include "autonomy/localization/cartographer/io/submap_painter.hpp"
 #include "autonomy/localization/cartographer/mapping/id.hpp"
 #include "autonomy/localization/cartographer/mapping/proto/trajectory.pb.h"
@@ -38,19 +49,19 @@ namespace node {
 bool UpdateSubmapSliceFromTextures(
     ::cartographer::io::SubmapSlice* slice,
     const ::cartographer::io::SubmapTextures& textures,
-    const commsgs::geometry_msgs::Pose& submap_pose);
+    const automsgs::msgs::geometry_msgs::Pose& submap_pose);
 
 bool UpdateSubmapSliceFromQueryResponse(
     ::cartographer::io::SubmapSlice* slice,
     const proto::SubmapQueryResponse& response,
-    const commsgs::geometry_msgs::Pose& submap_pose,
+    const automsgs::msgs::geometry_msgs::Pose& submap_pose,
     int submap_list_version);
 
-std::unique_ptr<commsgs::map_msgs::OccupancyGrid> BuildOccupancyGrid(
+std::unique_ptr<automsgs::msgs::map_msgs::OccupancyGrid> BuildOccupancyGrid(
     const std::map<::cartographer::mapping::SubmapId,
                    ::cartographer::io::SubmapSlice>& slices,
     double resolution, const std::string& frame_id,
-    const commsgs::builtin_interfaces::Time& stamp);
+    const automsgs::msgs::builtin_interfaces::Time& stamp);
 
 std::vector<::cartographer::mapping::proto::Trajectory> BuildTrajectoryProtos(
     const ::cartographer::mapping::MapById<::cartographer::mapping::NodeId,

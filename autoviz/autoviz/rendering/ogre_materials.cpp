@@ -84,8 +84,8 @@ void main() {
   vec3 H = normalize(V + L);
   vec3 albedo = vAlbedo.rgb;
   float alpha = vAlbedo.a;
-  float metallic = vMaterial.x;
-  float roughness = vMaterial.y;
+  float metallic = vMaterial.x();
+  float roughness = vMaterial.y();
   vec3 F0 = mix(vec3(0.04), albedo, metallic);
 
   float NDF = DistributionGGX(N, H, roughness);
@@ -247,8 +247,8 @@ void main() {
   vec4 sampled = texture(uAlbedoMap, vUv);
   vec3 albedo = sampled.rgb * vTint.rgb;
   float alpha = sampled.a * vTint.a;
-  float metallic = vMaterial.x;
-  float roughness = vMaterial.y;
+  float metallic = vMaterial.x();
+  float roughness = vMaterial.y();
   vec3 F0 = mix(vec3(0.04), albedo, metallic);
   float NDF = DistributionGGX(N, H, roughness);
   float G = GeometrySmith(N, V, L, roughness);

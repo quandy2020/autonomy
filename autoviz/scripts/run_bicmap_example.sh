@@ -30,7 +30,7 @@ case "${MODE}" in
     PUB_PID=$!
     sleep 1
     trap 'kill ${PUB_PID} 2>/dev/null || true' EXIT
-    "${BUILD}/bin/autoviz" -c "${AUTOVIZ_PKG}/config/strata.autoviz"
+    "${AUTOVIZ_PKG}/scripts/run_autoviz.sh" -c "${AUTOVIZ_PKG}/config/strata.autoviz"
     ;;
   publish|*)
     "${BIN}" --example "${EXAMPLE}" "${@:3}"

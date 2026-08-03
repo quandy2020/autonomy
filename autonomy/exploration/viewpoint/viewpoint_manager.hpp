@@ -18,7 +18,15 @@
 
 #include <vector>
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/exploration/planning_env.hpp"
 #include "autonomy/exploration/proto/exploration_options.pb.h"
 #include "autonomy/exploration/viewpoint/camera_model.hpp"
@@ -62,7 +70,7 @@ struct Viewpoint {
      * @param frame_id Header frame id
      * @return Pose stamped message
      */
-    commsgs::geometry_msgs::PoseStamped ToPoseStamped(
+    automsgs::msgs::geometry_msgs::PoseStamped ToPoseStamped(
         const std::string& frame_id) const;
 };
 

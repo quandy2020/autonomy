@@ -7,7 +7,15 @@
 #include <vector>
 
 #include "autolink/autolink.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/task/apps/navigation/navigation.hpp"
 
 namespace autonomy {
@@ -21,15 +29,15 @@ constexpr char kDefaultControllerId[] = "FollowPath";
 constexpr char kDefaultSmootherId[] = "simple_smoother";
 constexpr double kDefaultGoalReachedTol = 0.25;
 
-commsgs::geometry_msgs::PoseStamped ToPoseStamped(
-    const ::autonomy::commsgs::proto::geometry_msgs::PoseStamped& proto)
+automsgs::msgs::geometry_msgs::PoseStamped ToPoseStamped(
+    const ::automsgs::msgs::geometry_msgs::PoseStamped& proto)
 {
-    return commsgs::geometry_msgs::FromProto(proto);
+    return proto;
 }
 
 }  // namespace
 
-using RobotTaskType = ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType;
+using RobotTaskType = ::automsgs::msgs::vehicle_msgs::RobotTaskType;
 namespace nav_proto = ::autonomy::task::proto;
 
 RobotTaskType NavigationTask::GetTaskType() const
@@ -81,7 +89,7 @@ void NavigationTask::PopulateBlackboard(const BT::Blackboard::Ptr& blackboard)
         }
     }
 
-    std::vector<commsgs::geometry_msgs::PoseStamped> goals;
+    std::vector<automsgs::msgs::geometry_msgs::PoseStamped> goals;
     goals.reserve(static_cast<size_t>(goal.goals_size()));
     for (const auto& pose_proto : goal.goals()) {
         goals.push_back(ToPoseStamped(pose_proto));

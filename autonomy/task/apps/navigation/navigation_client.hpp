@@ -13,9 +13,19 @@
 
 #include "autolink/node/node.hpp"
 #include "autolink/service/client.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/proto/nav_msgs.pb.h"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/actions/nav_actions.pb.h>
 #include "autonomy/task/apps/navigation/action_session.hpp"
 #include "autonomy/task/common/task_action_client.hpp"
 
@@ -28,7 +38,7 @@ namespace autonomy {
 namespace task {
 namespace navigation {
 
-namespace nav_proto = commsgs::proto::nav_msgs;
+namespace nav_proto = automsgs::actions;
 
 constexpr char kComputePathToPoseAction[] = "compute_path_to_pose";
 constexpr char kComputePathThroughPosesAction[] = "compute_path_through_poses";
@@ -56,24 +66,24 @@ public:
     bool IsPlanningReady() const;
     bool IsControlReady() const;
 
-    bool ComputePathToPose(const commsgs::geometry_msgs::PoseStamped& goal,
+    bool ComputePathToPose(const automsgs::msgs::geometry_msgs::PoseStamped& goal,
                            const std::string& planner_id,
-                           commsgs::planning_msgs::Path& path,
+                           automsgs::msgs::planning_msgs::Path& path,
                            int* error_code = nullptr,
                            std::string* error_msg = nullptr);
 
     bool ComputePathThroughPoses(
-        const std::vector<commsgs::geometry_msgs::PoseStamped>& goals,
-        const std::string& planner_id, commsgs::planning_msgs::Path& path,
+        const std::vector<automsgs::msgs::geometry_msgs::PoseStamped>& goals,
+        const std::string& planner_id, automsgs::msgs::planning_msgs::Path& path,
         int* error_code = nullptr, std::string* error_msg = nullptr);
 
-    bool SmoothPath(const commsgs::planning_msgs::Path& unsmoothed,
+    bool SmoothPath(const automsgs::msgs::planning_msgs::Path& unsmoothed,
                     const std::string& smoother_id,
-                    commsgs::planning_msgs::Path& smoothed,
+                    automsgs::msgs::planning_msgs::Path& smoothed,
                     int* error_code = nullptr,
                     std::string* error_msg = nullptr);
 
-    bool IsPathValid(const commsgs::planning_msgs::Path& path, uint8_t max_cost,
+    bool IsPathValid(const automsgs::msgs::planning_msgs::Path& path, uint8_t max_cost,
                      bool consider_unknown_as_obstacle) const;
 
     bool ClearCostmap() const;

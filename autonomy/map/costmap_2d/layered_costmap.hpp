@@ -163,10 +163,10 @@ public:
      * and inscribed radii, and calls onFootprintChanged() in all
      * layers. */
     void setFootprint(
-        const std::vector<commsgs::geometry_msgs::Point>& footprint_spec);
+        const std::vector<automsgs::msgs::geometry_msgs::Point>& footprint_spec);
 
     /** @brief Returns the latest footprint stored with setFootprint(). */
-    const std::vector<commsgs::geometry_msgs::Point>& getFootprint() {
+    const std::vector<automsgs::msgs::geometry_msgs::Point>& getFootprint() {
         return *std::atomic_load(&footprint_);
     }
 
@@ -215,7 +215,7 @@ private:
     bool initialized_;
     bool size_locked_;
     std::atomic<double> circumscribed_radius_, inscribed_radius_;
-    std::shared_ptr<std::vector<commsgs::geometry_msgs::Point>> footprint_;
+    std::shared_ptr<std::vector<automsgs::msgs::geometry_msgs::Point>> footprint_;
 };
 
 }  // namespace costmap_2d

@@ -678,9 +678,9 @@ TEST(TestFunctionTraits, sfinae_match) {
 
     EXPECT_EQ(3, func_accept_callback(FunctionObjectOneIntOneChar()));
 
-    auto lambda_no_args_double = []() -> double { return 123.45; };
+    auto lambda_no_args_double = []()-> double { return 123.45; };
 
-    auto lambda_no_args_string = []() -> std::string {
+    auto lambda_no_args_string = []()-> std::string {
         return std::string("foo");
     };
 

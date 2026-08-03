@@ -23,23 +23,23 @@ namespace autonomy {
 namespace map {
 namespace costmap_2d {
 
-Costmap2D::Costmap2D(const commsgs::map_msgs::OccupancyGrid& map)
+Costmap2D::Costmap2D(const automsgs::msgs::map_msgs::OccupancyGrid& map)
     : default_value_(FREE_SPACE) {
     access_ = new mutex_t();
 
     // fill local variables
-    size_x_ = map.info.width;
-    size_y_ = map.info.height;
-    resolution_ = map.info.resolution;
-    origin_x_ = map.info.origin.position.x;
-    origin_y_ = map.info.origin.position.y;
+    size_x_ = map.info().width();
+    size_y_ = map.info().height();
+    resolution_ = map.info().resolution();
+    origin_x_ = map.info().origin().position().x();
+    origin_y_ = map.info().origin().position().y();
 
     // create the costmap
     costmap_ = new unsigned char[size_x_ * size_y_];
 
     // fill the costmap with a data
     for (unsigned int it = 0; it < size_x_ * size_y_; it++) {
-        const int16_t data = map.data[it];
+        const int16_t data = map.data(it);
         if (data == utils::OCC_GRID_UNKNOWN) {
             costmap_[it] = NO_INFORMATION;
         } else {
@@ -340,14 +340,14 @@ void Costmap2D::updateOrigin(double new_origin_x, double new_origin_y) {
 }
 
 bool Costmap2D::setConvexPolygonCost(
-    const std::vector<commsgs::geometry_msgs::Point>& polygon,
+    const std::vector<automsgs::msgs::geometry_msgs::Point>& polygon,
     unsigned char cost_value) {
     // we assume the polygon is given in the global_frame...
     // we need to transform it to map coordinates
     std::vector<MapLocation> map_polygon;
     for (unsigned int i = 0; i < polygon.size(); ++i) {
         MapLocation loc;
-        if (!worldToMap(polygon[i].x, polygon[i].y, loc.x, loc.y)) {
+        if (!worldToMap(polygon[i].x(), polygon[i].y(), loc.x, loc.y)) {
             // ("Polygon lies outside map bounds, so we can't fill it");
             return false;
         }

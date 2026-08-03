@@ -20,11 +20,11 @@ namespace autonomy {
 namespace sensor {
 
 LaserScanProto ToProto(const LaserScanData& data) {
-    return commsgs::sensor_msgs::ToProto(data);
+    return data;
 }
 
 LaserScanData FromProto(const LaserScanProto& proto) {
-    return commsgs::sensor_msgs::FromProto(proto);
+    return proto;
 }
 
 }  // namespace sensor

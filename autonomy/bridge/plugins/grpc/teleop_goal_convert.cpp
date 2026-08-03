@@ -16,7 +16,7 @@
 
 #include "autonomy/bridge/plugins/grpc/teleop_goal_convert.hpp"
 
-#include "autonomy/commsgs/proto/vehicle_msgs.pb.h"
+#include <automsgs/msgs/vehicle_msgs/vehicle_msgs.pb.h>
 
 namespace autonomy {
 namespace bridge {
@@ -37,7 +37,7 @@ tp::TeleopGoal ToTaskTeleopGoal(const proto::TeleopCommandRequest& request) {
         header->set_task_id(request.header().cmd_id());
         header->set_client_id(request.header().client_id());
         header->set_task_type(
-            ::autonomy::commsgs::proto::vehicle_msgs::ROBOT_TASK_TELEOP);
+            ::automsgs::msgs::vehicle_msgs::ROBOT_TASK_TELEOP);
     }
 
     if (request.has_velocity()) {

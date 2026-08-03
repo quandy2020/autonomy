@@ -23,7 +23,7 @@ class MappingTask : public BtTaskApp<::autonomy::task::proto::MappingGoal,
 public:
     AUTONOMY_SMART_PTR_DEFINITIONS(MappingTask);
 
-    ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType GetTaskType()
+    ::automsgs::msgs::vehicle_msgs::RobotTaskType GetTaskType()
         const override;
 
     void SetMappingClient(mapping::MappingClient::Ptr client);

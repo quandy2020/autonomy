@@ -43,8 +43,8 @@ TEST(IntentPathSelectorTest, PrefersForwardWhenOpen) {
     auto map = MakeEmptyMap();
     auto path = selector.Select(*map, 0.0, 0.5);
     ASSERT_TRUE(path.has_value());
-    ASSERT_GE(path->poses.size(), 2u);
-    EXPECT_GT(path->poses[1].pose.position.x, path->poses[0].pose.position.x);
+    ASSERT_GE(path->poses_size(), 2);
+    EXPECT_GT(path->poses(1).pose().position().x(), path->poses(0).pose().position().x());
 }
 
 TEST(IntentPathSelectorTest, AvoidsLethalAhead) {
@@ -58,9 +58,9 @@ TEST(IntentPathSelectorTest, AvoidsLethalAhead) {
     }
     auto path = selector.Select(*map, 0.0, 0.5);
     ASSERT_TRUE(path.has_value());
-    for (const auto& ps : path->poses) {
+    for (const auto& ps : path->poses()) {
         unsigned int mx, my;
-        if (map->worldToMap(ps.pose.position.x, ps.pose.position.y, mx, my)) {
+        if (map->worldToMap(ps.pose().position().x(), ps.pose().position().y(), mx, my)) {
             EXPECT_LT(map->getCost(mx, my), LETHAL_OBSTACLE);
         }
     }

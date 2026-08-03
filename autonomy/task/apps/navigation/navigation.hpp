@@ -26,7 +26,7 @@ class NavigationTask : public BtTaskApp<
 public:
     AUTONOMY_SMART_PTR_DEFINITIONS(NavigationTask);
 
-    ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType GetTaskType()
+    ::automsgs::msgs::vehicle_msgs::RobotTaskType GetTaskType()
         const override;
 
 protected:

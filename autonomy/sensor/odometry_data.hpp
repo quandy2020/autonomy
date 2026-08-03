@@ -17,16 +17,19 @@
 #pragma once
 
 #include "autonomy/common/time.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/proto/planning_msgs.pb.h"
-#include "autonomy/commsgs/proto/sensor_msgs.pb.h"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
 
 namespace autonomy {
 namespace sensor {
 
-using OdometryData = commsgs::planning_msgs::Odometry;
-using OdometryProto = commsgs::proto::planning_msgs::Odometry;
+using OdometryData = automsgs::msgs::planning_msgs::Odometry;
+using OdometryProto = automsgs::msgs::planning_msgs::Odometry;
 
 // Converts 'data' to a proto::planning_msgs::Odometry.
 OdometryProto ToProto(const OdometryData& data);

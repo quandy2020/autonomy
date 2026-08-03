@@ -24,7 +24,7 @@ void SelectionPanel::setSelections(
     return;
   }
   for (const auto& entry : entries) {
-    const QVector3D p = entry.position;
+    const QVector3D p = entry.position();
     QString label;
     if (entry.display_name.empty()) {
       label = QStringLiteral("Point: (%1, %2, %3)")

@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "autonomy/commsgs/proto/vehicle_msgs.pb.h"
+#include <automsgs/msgs/vehicle_msgs/vehicle_msgs.pb.h>
 #include "autonomy/task/apps/behavior_tree/bt_profile.hpp"
 #include "autonomy/task/proto/task_options.pb.h"
 
@@ -17,7 +17,7 @@ class BtDefaults
 public:
     static BtProfile ProfileFor(
         const ::autonomy::task::proto::TaskServerOptions& options,
-        ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType type);
+        ::automsgs::msgs::vehicle_msgs::RobotTaskType type);
 
     static void Apply(::autonomy::task::proto::TaskServerOptions* options);
 };

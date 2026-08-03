@@ -22,7 +22,10 @@
 
 #include "autolink/node/node.hpp"
 #include "autolink/node/reader.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 
 namespace autonomy::task::teleop {
@@ -49,12 +52,12 @@ public:
 
 private:
     void OnPointCloud(
-        const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& msg);
+        const std::shared_ptr<automsgs::msgs::sensor_msgs::PointCloud2>& msg);
 
     Options options_;
     std::shared_ptr<autolink::Node> node_;
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_;
-    std::shared_ptr<autolink::Reader<commsgs::sensor_msgs::PointCloud2>>
+    std::shared_ptr<autolink::Reader<automsgs::msgs::sensor_msgs::PointCloud2>>
         reader_;
     std::chrono::steady_clock::time_point last_cloud_time_{};
     bool started_{false};

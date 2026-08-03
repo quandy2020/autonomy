@@ -20,21 +20,21 @@ namespace autonomy {
 namespace control {
 namespace utils {
 
-commsgs::geometry_msgs::Twist twist2Dto3D(
-    const commsgs::geometry_msgs::Twist2D& cmd_vel_2d) {
-    commsgs::geometry_msgs::Twist cmd_vel;
-    cmd_vel.linear.x = cmd_vel_2d.x;
-    cmd_vel.linear.y = cmd_vel_2d.y;
-    cmd_vel.angular.z = cmd_vel_2d.theta;
+automsgs::msgs::geometry_msgs::Twist twist2Dto3D(
+    const automsgs::msgs::geometry_msgs::Twist2D& cmd_vel_2d) {
+    automsgs::msgs::geometry_msgs::Twist cmd_vel;
+    cmd_vel.mutable_linear()->set_x(cmd_vel_2d.x());
+    cmd_vel.mutable_linear()->set_y(cmd_vel_2d.y());
+    cmd_vel.mutable_angular()->set_z(cmd_vel_2d.theta());
     return cmd_vel;
 }
 
-commsgs::geometry_msgs::Twist2D twist3Dto2D(
-    const commsgs::geometry_msgs::Twist& cmd_vel) {
-    commsgs::geometry_msgs::Twist2D cmd_vel_2d;
-    cmd_vel_2d.x = cmd_vel.linear.x;
-    cmd_vel_2d.y = cmd_vel.linear.y;
-    cmd_vel_2d.theta = cmd_vel.angular.z;
+automsgs::msgs::geometry_msgs::Twist2D twist3Dto2D(
+    const automsgs::msgs::geometry_msgs::Twist& cmd_vel) {
+    automsgs::msgs::geometry_msgs::Twist2D cmd_vel_2d;
+    cmd_vel_2d.set_x(cmd_vel.linear().x());
+    cmd_vel_2d.set_y(cmd_vel.linear().y());
+    cmd_vel_2d.set_theta(cmd_vel.angular().z());
     return cmd_vel_2d;
 }
 

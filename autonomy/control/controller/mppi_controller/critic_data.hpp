@@ -22,7 +22,15 @@
  #include <vector>
  
  #include "autonomy/common/macros.hpp"
- #include "autonomy/commsgs/geometry_msgs.hpp"
+ #include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
  #include "autonomy/control/common/goal_checker_interface.hpp"
  #include "autonomy/control/controller/mppi_controller/models/path.hpp"
  #include "autonomy/control/controller/mppi_controller/models/state.hpp"
@@ -43,7 +51,7 @@
      const models::State& state;
      const models::Trajectories& trajectories;
      const models::Path& path;
-     const commsgs::geometry_msgs::Pose& goal;
+     const automsgs::msgs::geometry_msgs::Pose& goal;
  
      Eigen::ArrayXf& costs;
      float& model_dt;

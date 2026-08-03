@@ -27,3 +27,8 @@ message TransformStamped {
   string child_frame_id = 2;
   Transform transform = 3;
 }
+
+message TransformStampeds {
+  automsgs.msgs.std_msgs.Header header = 1;
+  repeated TransformStamped transforms = 2;
+}

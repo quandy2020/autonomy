@@ -15,7 +15,7 @@ InteractiveMarkerDisplay::InteractiveMarkerDisplay(std::string channel)
     : ChannelDisplay<
           automsgs::msgs::visualization_msgs::InteractiveMarkerUpdate>(
           "InteractiveMarkers", std::move(channel),
-          "autonomy.commsgs.proto.visualization_msgs.InteractiveMarkerUpdate") {}
+          "automsgs.msgs.visualization_msgs.InteractiveMarkerUpdate") {}
 
 std::vector<common::DisplayPropertySpec> InteractiveMarkerDisplay::propertySpecs()
     const {

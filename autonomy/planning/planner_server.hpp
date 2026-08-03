@@ -29,9 +29,19 @@
 #include "autolink/autolink.hpp"
 #include "autolink/service/service.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/proto/nav_msgs.pb.h"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/actions/nav_actions.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/planning/common/planner_interface.hpp"
 #include "autonomy/planning/common/smoother_interface.hpp"
@@ -49,8 +59,8 @@ class Costmap2DWrapper;
 namespace autonomy {
 namespace planning {
 
-namespace nav_proto = commsgs::proto::nav_msgs;
-namespace err_proto = commsgs::proto::error_code;
+namespace nav_proto = automsgs::actions;
+namespace err_proto = automsgs::msgs::status_msgs;
 
 /**
  * Global planner server aligned with nav2_planner.
@@ -88,7 +98,7 @@ public:
     };
 
     using PathUpdateCallback =
-        std::function<void(const commsgs::planning_msgs::Path&)>;
+        std::function<void(const automsgs::msgs::planning_msgs::Path&)>;
 
     AUTONOMY_SMART_PTR_DEFINITIONS(PlannerServer)
 
@@ -126,9 +136,9 @@ public:
      * @throws common::PlannerException on plugin failure or invalid id.
      * @pre Planner plugins are loaded and activated (true after construction).
      */
-    commsgs::planning_msgs::Path GetPlan(
-        const commsgs::geometry_msgs::PoseStamped& start,
-        const commsgs::geometry_msgs::PoseStamped& goal,
+    automsgs::msgs::planning_msgs::Path GetPlan(
+        const automsgs::msgs::geometry_msgs::PoseStamped& start,
+        const automsgs::msgs::geometry_msgs::PoseStamped& goal,
         const std::string& planner_id, std::function<bool()> cancel_checker);
 
     /**
@@ -140,7 +150,7 @@ public:
      * @return false if the path is empty, costmap is unavailable, or a collision
      *         is found from the closest path index to the robot onward.
      */
-    bool IsPathValid(const commsgs::planning_msgs::Path& path,
+    bool IsPathValid(const automsgs::msgs::planning_msgs::Path& path,
                      uint8_t max_cost = 253,
                      bool consider_unknown_as_obstacle = false) const;
 
@@ -157,14 +167,14 @@ private:
     void WaitForCostmap();
 
     bool TransformPosesToGlobalFrame(
-        commsgs::geometry_msgs::PoseStamped& curr_start,
-        commsgs::geometry_msgs::PoseStamped& curr_goal);
+        automsgs::msgs::geometry_msgs::PoseStamped& curr_start,
+        automsgs::msgs::geometry_msgs::PoseStamped& curr_goal);
 
-    bool ValidatePath(const commsgs::geometry_msgs::PoseStamped& curr_goal,
-                      const commsgs::planning_msgs::Path& path,
+    bool ValidatePath(const automsgs::msgs::geometry_msgs::PoseStamped& curr_goal,
+                      const automsgs::msgs::planning_msgs::Path& path,
                       const std::string& planner_id);
 
-    void PublishPlan(const commsgs::planning_msgs::Path& path);
+    void PublishPlan(const automsgs::msgs::planning_msgs::Path& path);
 
     proto::PlannerOptions options_;
     PlannerMap planners_;

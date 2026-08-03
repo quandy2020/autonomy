@@ -19,7 +19,11 @@
 #include <glog/logging.h>
 
 #include "autonomy/common/param_handler.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+#include <automsgs/msgs/tf2_msgs/tf_message.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
 #include "autonomy/transform/geometry_msgs/transform_stamped.h"
 
 namespace autonomy {
@@ -28,27 +32,26 @@ namespace transform {
 namespace {
 
 geometry_msgs::TransformStamped ToTf2Message(
-    const commsgs::geometry_msgs::TransformStamped& trans) {
+    const automsgs::msgs::geometry_msgs::TransformStamped& trans) {
     geometry_msgs::TransformStamped geo_msg;
-    geo_msg.header.stamp =
-        static_cast<uint64_t>(trans.header.stamp.sec) * 1000000000ULL +
-        static_cast<uint64_t>(trans.header.stamp.nanosec);
-    geo_msg.header.frame_id = trans.header.frame_id;
-    geo_msg.child_frame_id = trans.child_frame_id;
-    geo_msg.transform.translation.x = trans.transform.translation.x;
-    geo_msg.transform.translation.y = trans.transform.translation.y;
-    geo_msg.transform.translation.z = trans.transform.translation.z;
-    geo_msg.transform.rotation.x = trans.transform.rotation.x;
-    geo_msg.transform.rotation.y = trans.transform.rotation.y;
-    geo_msg.transform.rotation.z = trans.transform.rotation.z;
-    geo_msg.transform.rotation.w = trans.transform.rotation.w;
+    geo_msg.header.stamp = static_cast<uint64_t>(trans.header().stamp().sec()) * 1000000000ULL +
+        static_cast<uint64_t>(trans.header().stamp().nanosec());
+    geo_msg.header.frame_id = trans.header().frame_id();
+    geo_msg.child_frame_id = trans.child_frame_id();
+    geo_msg.transform.translation.x = trans.transform().translation().x();
+    geo_msg.transform.translation.y = trans.transform().translation().y();
+    geo_msg.transform.translation.z = trans.transform().translation().z();
+    geo_msg.transform.rotation.x = trans.transform().rotation().x();
+    geo_msg.transform.rotation.y = trans.transform().rotation().y();
+    geo_msg.transform.rotation.z = trans.transform().rotation().z();
+    geo_msg.transform.rotation.w = trans.transform().rotation().w();
     return geo_msg;
 }
 
 }  // namespace
 
 void ApplyTransformStampedToBuffer(
-    Buffer* buffer, const commsgs::geometry_msgs::TransformStamped& trans,
+    Buffer* buffer, const automsgs::msgs::geometry_msgs::TransformStamped& trans,
     const std::string& authority, const bool is_static) {
     if (buffer == nullptr) {
         LOG(ERROR) << "ApplyTransformStampedToBuffer: buffer is null.";
@@ -57,42 +60,42 @@ void ApplyTransformStampedToBuffer(
     try {
         buffer->setTransform(ToTf2Message(trans), authority, is_static);
     } catch (const std::exception& ex) {
-        LOG(WARNING) << "Failed to apply transform [" << trans.header.frame_id
-                     << " -> " << trans.child_frame_id << "]: " << ex.what();
+        LOG(WARNING) << "Failed to apply transform [" << trans.header().frame_id()
+                     << " -> " << trans.child_frame_id() << "]: " << ex.what();
     }
 }
 
 void ApplyStaticTransformsToBuffer(
     Buffer* buffer,
-    const commsgs::geometry_msgs::TransformStampeds& transforms,
+    const automsgs::msgs::geometry_msgs::TransformStampeds& transforms,
     const std::string& authority) {
     if (buffer == nullptr) {
         LOG(ERROR) << "ApplyStaticTransformsToBuffer: buffer is null.";
         return;
     }
 
-    for (const auto& trans : transforms.transforms) {
+    for (const auto& trans : transforms.transforms()) {
         ApplyTransformStampedToBuffer(buffer, trans, authority, true);
     }
 }
 
 void ApplyTfMessageToBuffer(
     Buffer* buffer,
-    const ::autonomy::commsgs::proto::tf2_msgs::TFMessage& message,
+    const automsgs::msgs::tf2_msgs::TFMessage& message,
     const std::string& authority, const bool is_static) {
     if (buffer == nullptr) {
         return;
     }
     for (const auto& proto_tf : message.transforms()) {
         ApplyTransformStampedToBuffer(
-            buffer, commsgs::geometry_msgs::FromProto(proto_tf), authority,
+            buffer, proto_tf, authority,
             is_static);
     }
 }
 
 bool ParseStaticTransformsFromYaml(
     const std::string& yaml_path,
-    std::vector<commsgs::geometry_msgs::TransformStamped>& transforms) {
+    std::vector<automsgs::msgs::geometry_msgs::TransformStamped>& transforms) {
     transforms.clear();
 
     common::ParamHandler param_handler(yaml_path);
@@ -120,42 +123,41 @@ bool ParseStaticTransformsFromYaml(
                 continue;
             }
 
-            commsgs::geometry_msgs::TransformStamped transform;
+            automsgs::msgs::geometry_msgs::TransformStamped transform;
             if (tf_node["frame_id"]) {
-                transform.header.frame_id = tf_node["frame_id"].as<std::string>();
+                transform.mutable_header()->set_frame_id(tf_node["frame_id"].as<std::string>());
             }
             if (tf_node["child_frame_id"]) {
-                transform.child_frame_id =
-                    tf_node["child_frame_id"].as<std::string>();
+                transform.set_child_frame_id(tf_node["child_frame_id"].as<std::string>());
             }
             if (tf_node["translation"]) {
                 const auto& trans = tf_node["translation"];
                 if (trans["x"]) {
-                    transform.transform.translation.x = trans["x"].as<double>();
+                    transform.mutable_transform()->mutable_translation()->set_x(trans["x"].as<double>());
                 }
                 if (trans["y"]) {
-                    transform.transform.translation.y = trans["y"].as<double>();
+                    transform.mutable_transform()->mutable_translation()->set_y(trans["y"].as<double>());
                 }
                 if (trans["z"]) {
-                    transform.transform.translation.z = trans["z"].as<double>();
+                    transform.mutable_transform()->mutable_translation()->set_z(trans["z"].as<double>());
                 }
             }
             if (tf_node["rotation"]) {
                 const auto& rot = tf_node["rotation"];
                 if (rot["x"]) {
-                    transform.transform.rotation.x = rot["x"].as<double>();
+                    transform.mutable_transform()->mutable_rotation()->set_x(rot["x"].as<double>());
                 }
                 if (rot["y"]) {
-                    transform.transform.rotation.y = rot["y"].as<double>();
+                    transform.mutable_transform()->mutable_rotation()->set_y(rot["y"].as<double>());
                 }
                 if (rot["z"]) {
-                    transform.transform.rotation.z = rot["z"].as<double>();
+                    transform.mutable_transform()->mutable_rotation()->set_z(rot["z"].as<double>());
                 }
                 if (rot["w"]) {
-                    transform.transform.rotation.w = rot["w"].as<double>();
+                    transform.mutable_transform()->mutable_rotation()->set_w(rot["w"].as<double>());
                 }
             } else {
-                transform.transform.rotation.w = 1.0;
+                transform.mutable_transform()->mutable_rotation()->set_w(1.0);
             }
 
             transforms.push_back(transform);
@@ -186,31 +188,36 @@ int LoadStaticTransformsFromFile(Buffer* buffer, const std::string& yaml_path,
         return 0;
     }
 
-    commsgs::geometry_msgs::TransformStampeds transforms;
-    if (!ParseStaticTransformsFromYaml(yaml_path, transforms.transforms)) {
+    automsgs::msgs::geometry_msgs::TransformStampeds transforms;
+    std::vector<automsgs::msgs::geometry_msgs::TransformStamped> parsed;
+    if (!ParseStaticTransformsFromYaml(yaml_path, parsed)) {
         LOG(WARNING) << "No static transforms loaded from: " << yaml_path;
         return 0;
     }
-    transforms.header.stamp = commsgs::builtin_interfaces::Time::Now();
+    for (const auto& tf : parsed) {
+        *transforms.mutable_transforms()->Add() = tf;
+    }
+    *transforms.mutable_header()->mutable_stamp() =
+        automsgs::msgs::builtin_interfaces::TimeNow();
 
     ApplyStaticTransformsToBuffer(buffer, transforms, authority);
-    LOG(INFO) << "Loaded " << transforms.transforms.size()
+    LOG(INFO) << "Loaded " << transforms.transforms_size()
               << " static transforms from: " << yaml_path;
-    return static_cast<int>(transforms.transforms.size());
+    return transforms.transforms_size();
 }
 
 void SeedBenchmarkTfTree(Buffer* buffer, const std::string& authority) {
     if (buffer == nullptr) {
         return;
     }
-    const auto stamp = commsgs::builtin_interfaces::Time::Now();
+    const auto stamp = automsgs::msgs::builtin_interfaces::TimeNow();
     auto make = [&stamp](const std::string& parent,
                          const std::string& child) {
-        commsgs::geometry_msgs::TransformStamped t;
-        t.header.stamp = stamp;
-        t.header.frame_id = parent;
-        t.child_frame_id = child;
-        t.transform.rotation.w = 1.0;
+        automsgs::msgs::geometry_msgs::TransformStamped t;
+        *t.mutable_header()->mutable_stamp() = stamp;
+        t.mutable_header()->set_frame_id(parent);
+        t.set_child_frame_id(child);
+        t.mutable_transform()->mutable_rotation()->set_w(1.0);
         return t;
     };
     ApplyTransformStampedToBuffer(buffer, make("map", "odom"), authority, true);

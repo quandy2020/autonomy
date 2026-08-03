@@ -41,7 +41,7 @@ double FootprintCollisionChecker<CostmapT>::footprintCost(
     double footprint_cost = 0.0;
 
     // get the cell coord of the first point
-    if (!worldToMap(footprint[0].x, footprint[0].y, x0, y0)) {
+    if (!worldToMap(footprint[0].x(), footprint[0].y(), x0, y0)) {
         return static_cast<double>(LETHAL_OBSTACLE);
     }
 
@@ -52,7 +52,7 @@ double FootprintCollisionChecker<CostmapT>::footprintCost(
     // we need to rasterize each line in the footprint
     for (unsigned int i = 0; i < footprint.size() - 1; ++i) {
         // get the cell coord of the second point
-        if (!worldToMap(footprint[i + 1].x, footprint[i + 1].y, x1, y1)) {
+        if (!worldToMap(footprint[i + 1].x(), footprint[i + 1].y(), x1, y1)) {
             return static_cast<double>(LETHAL_OBSTACLE);
         }
 
@@ -121,10 +121,10 @@ double FootprintCollisionChecker<CostmapT>::footprintCostAtPose(
     double sin_th = sin(theta);
     Footprint oriented_footprint;
     oriented_footprint.reserve(footprint.size());
-    commsgs::geometry_msgs::Point new_pt;
+    automsgs::msgs::geometry_msgs::Point new_pt;
     for (unsigned int i = 0; i < footprint.size(); ++i) {
-        new_pt.x = x + (footprint[i].x * cos_th - footprint[i].y * sin_th);
-        new_pt.y = y + (footprint[i].x * sin_th + footprint[i].y * cos_th);
+        new_pt.set_x(x + (footprint[i].x() * cos_th - footprint[i].y() * sin_th));
+        new_pt.set_y(y + (footprint[i].x() * sin_th + footprint[i].y() * cos_th));
         oriented_footprint.push_back(new_pt);
     }
 

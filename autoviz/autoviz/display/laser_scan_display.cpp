@@ -23,7 +23,7 @@ namespace display {
 LaserScanDisplay::LaserScanDisplay(std::string channel)
     : ChannelDisplay<automsgs::msgs::sensor_msgs::LaserScan>(
           "LaserScan", std::move(channel),
-          "autonomy.commsgs.proto.sensor_msgs.LaserScan") {
+          "automsgs.msgs.sensor_msgs.LaserScan") {
   setProperties({});
 }
 
@@ -107,7 +107,7 @@ void LaserScanDisplay::onDraw(rendering::SceneOverlay& scene) {
   std::vector<ColoredPoint3D> colored;
   colored.reserve(points_.size());
   for (const auto& point : points_) {
-    colored.push_back({point.position, point.color});
+    colored.push_back({point.position(), point.color});
   }
   drawColoredPointsOgreOrGl(context_, scene, name(), typeId(), point_size, style,
                           colored, true);

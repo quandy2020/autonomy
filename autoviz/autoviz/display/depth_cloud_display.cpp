@@ -144,12 +144,12 @@ void DepthCloudDisplay::rebuildPoints() {
     const QMatrix4x4 transform = opticalToWorld(camera_info_, transformToMatrix(tf));
     points_.reserve(optical_points.size());
     for (const auto& point : optical_points) {
-      points_.push_back({transform.map(point.position), point.color});
+      points_.push_back({transform.map(point.position()), point.color});
     }
   } catch (...) {
     points_.reserve(optical_points.size());
     for (const auto& point : optical_points) {
-      points_.push_back({point.position, point.color});
+      points_.push_back({point.position(), point.color});
     }
   }
 
@@ -169,7 +169,7 @@ void DepthCloudDisplay::onDraw(rendering::SceneOverlay& scene) {
   std::vector<ColoredPoint3D> colored;
   colored.reserve(points_.size());
   for (const auto& point : points_) {
-    colored.push_back({point.position, point.color});
+    colored.push_back({point.position(), point.color});
   }
   drawColoredPointsOgreOrGl(context_, scene, name(), typeId(), point_size, style,
                           colored, true);

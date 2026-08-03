@@ -26,7 +26,7 @@ namespace autonomy {
 namespace task {
 namespace {
 
-using RobotTaskType = ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType;
+using RobotTaskType = ::automsgs::msgs::vehicle_msgs::RobotTaskType;
 
 std::chrono::milliseconds FeedbackPeriod(
     const ::autonomy::task::proto::SchedulerOptions& options)

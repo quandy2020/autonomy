@@ -23,7 +23,7 @@ QMatrix4x4 JointOriginMatrix(const UrdfJoint& joint) {
   QMatrix4x4 matrix;
   matrix.setToIdentity();
   matrix.translate(joint.origin);
-  matrix.rotate(joint.rotation);
+  matrix.rotate(joint.rotation());
   return matrix;
 }
 
@@ -226,7 +226,7 @@ void EffortDisplay::onDraw(rendering::SceneOverlay& scene) {
   }
 
   for (const auto& joint : model_.joints()) {
-    const auto effort_it = joint_efforts_.find(joint.name);
+    const auto effort_it = joint_efforts_.find(joint.name());
     if (effort_it == joint_efforts_.end() ||
         std::abs(effort_it->second) < effort_threshold) {
       continue;
@@ -237,7 +237,7 @@ void EffortDisplay::onDraw(rendering::SceneOverlay& scene) {
     }
 
     double position = 0.0;
-    const auto position_it = joint_positions_.find(joint.name);
+    const auto position_it = joint_positions_.find(joint.name());
     if (position_it != joint_positions_.end()) {
       position = position_it->second;
     }

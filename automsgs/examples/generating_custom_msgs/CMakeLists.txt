@@ -16,7 +16,9 @@ cmake_minimum_required(VERSION 3.22.1 FATAL_ERROR)
 
 project(generating_custom_msgs VERSION 1.0.0)
 
-find_package(Protobuf REQUIRED)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/modules")
+include(EnsureProtobuf319)
+autonomy_require_protobuf()
 
 # Proto include from main automsgs build (set by proto/CMakeLists.txt)
 if(NOT DEFINED AUTOMSGS_PROTO_INCLUDE_DIR)

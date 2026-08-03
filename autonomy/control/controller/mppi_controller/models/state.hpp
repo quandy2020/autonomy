@@ -18,7 +18,15 @@
 
  #include <Eigen/Dense>
  
- #include "autonomy/commsgs/geometry_msgs.hpp"
+ #include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
  
  namespace autonomy {
  namespace control {
@@ -39,8 +47,8 @@
      Eigen::ArrayXXf cvy;
      Eigen::ArrayXXf cwz;
  
-     commsgs::geometry_msgs::PoseStamped pose;
-     commsgs::geometry_msgs::Twist speed;
+     automsgs::msgs::geometry_msgs::PoseStamped pose;
+     automsgs::msgs::geometry_msgs::Twist speed;
  
      /**
       * @brief Reset state data

@@ -33,7 +33,7 @@ QColor OccupancyColor(int32_t value) {
 MapDisplay::MapDisplay(std::string channel)
     : ChannelDisplay<automsgs::msgs::nav_msgs::OccupancyGrid>(
           "Map", std::move(channel),
-          "autonomy.commsgs.proto.map_msgs.OccupancyGrid") {
+          "automsgs.msgs.map_msgs.OccupancyGrid") {
   setProperties({});
 }
 
@@ -107,7 +107,7 @@ void MapDisplay::onDraw(rendering::SceneOverlay& scene) {
   for (const auto& cell : cells_) {
     QColor color = cell.color;
     color.setAlphaF(alpha);
-    scene.addPoint(cell.position, color);
+    scene.addPoint(cell.position(), color);
   }
 }
 

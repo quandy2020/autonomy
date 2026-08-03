@@ -73,7 +73,7 @@ void MappingClient::ApplyGoal(const ::autonomy::task::proto::MappingGoal& goal)
         break;
     case ::autonomy::task::proto::MappingGoal::kInitialPose:
         initial_pose_ =
-            commsgs::geometry_msgs::FromProto(goal.initial_pose());
+            goal.initial_pose();
         break;
     default:
         break;

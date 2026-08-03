@@ -15,7 +15,7 @@ namespace display {
 StrataPoiDisplay::StrataPoiDisplay(std::string channel)
     : ChannelDisplay<automsgs::msgs::strata_msgs::PoiMarkerArray>(
           "StrataPoi", std::move(channel),
-          "autonomy.commsgs.proto.strata_msgs.PoiMarkerArray") {
+          "automsgs.msgs.strata_msgs.PoiMarkerArray") {
   setProperties({});
 }
 
@@ -57,7 +57,7 @@ void StrataPoiDisplay::processMessage(
       }
     }
     StoredPoi poi;
-    poi.position = local;
+    *poi.mutable_position() = local;
     poi.selected = marker.selected();
     poi.label = QString::fromStdString(marker.name());
     pois_.push_back(std::move(poi));
@@ -74,7 +74,7 @@ void StrataPoiDisplay::onDraw(rendering::SceneOverlay& scene) {
   const QColor selected_color = common::ParseColorProperty(
       propertyValue("selected_color", "255;153;0"), QColor(255, 153, 0));
   for (const auto& poi : pois_) {
-    scene.addPoint(poi.position, poi.selected ? selected_color : normal_color);
+    scene.addPoint(poi.position(), poi.selected ? selected_color : normal_color);
   }
 }
 

@@ -16,7 +16,7 @@ namespace display {
 StrataRoadGraphDisplay::StrataRoadGraphDisplay(std::string channel)
     : ChannelDisplay<automsgs::msgs::strata_msgs::RoadGraph>(
           "StrataRoadGraph", std::move(channel),
-          "autonomy.commsgs.proto.strata_msgs.RoadGraph") {
+          "automsgs.msgs.strata_msgs.RoadGraph") {
   setProperties({});
 }
 

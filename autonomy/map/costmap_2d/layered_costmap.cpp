@@ -50,7 +50,7 @@ LayeredCostmap::LayeredCostmap(std::string global_frame, bool rolling_window,
       circumscribed_radius_(1.0),
       inscribed_radius_(0.1),
       footprint_(
-          std::make_shared<std::vector<commsgs::geometry_msgs::Point>>()) {
+          std::make_shared<std::vector<automsgs::msgs::geometry_msgs::Point>>()) {
     if (track_unknown) {
         primary_costmap_.setDefaultValue(NO_INFORMATION);
         combined_costmap_.setDefaultValue(NO_INFORMATION);
@@ -239,14 +239,14 @@ bool LayeredCostmap::isCurrent() {
 }
 
 void LayeredCostmap::setFootprint(
-    const std::vector<commsgs::geometry_msgs::Point>& footprint_spec) {
+    const std::vector<automsgs::msgs::geometry_msgs::Point>& footprint_spec) {
     std::pair<double, double> inside_outside =
         calculateMinAndMaxDistances(footprint_spec);
     // use atomic store here since footprint is used by various
     // planners/controllers and not otherwise locked
     std::atomic_store(
         &footprint_,
-        std::make_shared<std::vector<commsgs::geometry_msgs::Point>>(
+        std::make_shared<std::vector<automsgs::msgs::geometry_msgs::Point>>(
             footprint_spec));
     inscribed_radius_.store(std::get<0>(inside_outside));
     circumscribed_radius_.store(std::get<1>(inside_outside));

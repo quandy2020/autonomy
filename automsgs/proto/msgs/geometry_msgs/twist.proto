@@ -23,3 +23,9 @@ message Twist {
   Vector3 linear = 1;
   Vector3 angular = 2;
 }
+
+message Twist2D {
+  float x = 1;
+  float y = 2;
+  float theta = 3;
+}

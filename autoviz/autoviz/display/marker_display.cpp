@@ -10,7 +10,7 @@ namespace display {
 MarkerDisplay::MarkerDisplay(std::string channel)
     : ChannelDisplay<automsgs::msgs::visualization_msgs::Marker>(
           "Marker", std::move(channel),
-          "autonomy.commsgs.proto.visualization_msgs.Marker") {
+          "automsgs.msgs.visualization_msgs.Marker") {
   setProperties({});
 }
 

@@ -25,7 +25,7 @@
 #include "autolink/action/create_client.hpp"
 #include "autolink/state.hpp"
 #include "autonomy/common/logging.hpp"
-#include "autonomy/commsgs/proto/nav_msgs.pb.h"
+#include <automsgs/actions/nav_actions.pb.h>
 
 namespace autonomy {
 namespace bridge {
@@ -124,8 +124,8 @@ NodeClient<ActionT>::SendGoalAndWait(
 }
 
 // Navigator action servers (see bridge/constants.hpp for action names).
-template class NodeClient<commsgs::proto::nav_msgs::NavigateToPoseAction>;
-template class NodeClient<commsgs::proto::nav_msgs::NavigateThroughPosesAction>;
+template class NodeClient<automsgs::actions::NavigateToPoseAction>;
+template class NodeClient<automsgs::actions::NavigateThroughPosesAction>;
 
 }  // namespace bridge
 }  // namespace autonomy

@@ -39,7 +39,7 @@ RUN apt-get update && apt-get --no-install-recommends install -y \
     apt-utils software-properties-common \
     # Python bootstrap packages \
     python3-pip python3-venv python3-dev \
-    libegl1 libgl1 libgomp1 \
+    libegl1 libgl1 libgl1-mesa-dri libglx-mesa0 libgomp1 \
     # Tools used in tests \
     parallel \
     pkg-config \

@@ -86,57 +86,57 @@ public:
     void Deactivate();
 
     uint32 ComputeVelocityCommands(
-        const commsgs::geometry_msgs::PoseStamped& pose,
-        const commsgs::geometry_msgs::TwistStamped& velocity,
-        commsgs::geometry_msgs::TwistStamped& cmd_vel,
+        const automsgs::msgs::geometry_msgs::PoseStamped& pose,
+        const automsgs::msgs::geometry_msgs::TwistStamped& velocity,
+        automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel,
         common::GoalChecker* goal_checker, std::string& message) override;
 
     bool IsGoalReached(double dist_tolerance, double angle_tolerance) override;
-    void SetPlan(const commsgs::planning_msgs::Path& path) override;
+    void SetPlan(const automsgs::msgs::planning_msgs::Path& path) override;
     void Reset() override;
     void SetSpeedLimit(const double& speed_limit,
                        const bool& percentage) override;
 
 protected:
     bool ValidateTargetPose(
-        commsgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
-        commsgs::planning_msgs::Path& trajectory,
-        commsgs::geometry_msgs::TransformStamped& costmap_transform,
-        commsgs::geometry_msgs::TwistStamped& cmd_vel);
+        automsgs::msgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
+        automsgs::msgs::planning_msgs::Path& trajectory,
+        automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform,
+        automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel);
 
     bool ValidateTargetPoseOnApproach(
-        commsgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
-        double dist_to_goal, commsgs::planning_msgs::Path& trajectory,
-        commsgs::geometry_msgs::TransformStamped& costmap_transform,
-        commsgs::geometry_msgs::TwistStamped& cmd_vel);
+        automsgs::msgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
+        double dist_to_goal, automsgs::msgs::planning_msgs::Path& trajectory,
+        automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform,
+        automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel);
 
     bool FindBestApproachTrajectory(
-        commsgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
-        commsgs::geometry_msgs::TransformStamped& costmap_transform,
-        double safety_cost, commsgs::planning_msgs::Path& best_trajectory,
-        commsgs::geometry_msgs::TwistStamped& best_cmd_vel);
+        automsgs::msgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
+        automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform,
+        double safety_cost, automsgs::msgs::planning_msgs::Path& best_trajectory,
+        automsgs::msgs::geometry_msgs::TwistStamped& best_cmd_vel);
 
     bool SimulateTrajectory(
-        const commsgs::geometry_msgs::PoseStamped& motion_target,
-        const commsgs::geometry_msgs::TransformStamped& costmap_transform,
-        commsgs::planning_msgs::Path& trajectory,
-        commsgs::geometry_msgs::TwistStamped& cmd_vel, bool backward);
+        const automsgs::msgs::geometry_msgs::PoseStamped& motion_target,
+        const automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform,
+        automsgs::msgs::planning_msgs::Path& trajectory,
+        automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel, bool backward);
 
-    commsgs::geometry_msgs::Twist RotateToTarget(double angle_to_target);
+    automsgs::msgs::geometry_msgs::Twist RotateToTarget(double angle_to_target);
 
     bool InCollision(const double& x, const double& y, const double& theta,
                      double inflation_scale = 1.0);
 
-    double GetMaxCost(const commsgs::planning_msgs::Path& path,
-                      commsgs::geometry_msgs::TransformStamped&
+    double GetMaxCost(const automsgs::msgs::planning_msgs::Path& path,
+                      automsgs::msgs::geometry_msgs::TransformStamped&
                           costmap_transform);
 
     void ComputeDistanceAlongPath(
-        const std::vector<commsgs::geometry_msgs::PoseStamped>& poses,
+        const std::vector<automsgs::msgs::geometry_msgs::PoseStamped>& poses,
         std::vector<double>& distances);
 
     void ValidateOrientations(
-        std::vector<commsgs::geometry_msgs::PoseStamped>& path);
+        std::vector<automsgs::msgs::geometry_msgs::PoseStamped>& path);
 
     std::shared_ptr<transform::Buffer> tf_buffer_;
     std::string plugin_name_;
@@ -154,13 +154,13 @@ protected:
     double initial_v_angular_max_{1.0};
     GracefulRuntimeParams params_;
 
-    std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>>
+    std::shared_ptr<autolink::Writer<automsgs::msgs::planning_msgs::Path>>
         transformed_plan_pub_;
-    std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>>
+    std::shared_ptr<autolink::Writer<automsgs::msgs::planning_msgs::Path>>
         local_plan_pub_;
-    std::shared_ptr<autolink::Writer<commsgs::geometry_msgs::PoseStamped>>
+    std::shared_ptr<autolink::Writer<automsgs::msgs::geometry_msgs::PoseStamped>>
         motion_target_pub_;
-    std::shared_ptr<autolink::Writer<commsgs::visualization_msgs::Marker>>
+    std::shared_ptr<autolink::Writer<automsgs::msgs::visualization_msgs::Marker>>
         slowdown_pub_;
     std::unique_ptr<PathHandler> path_handler_;
     std::unique_ptr<SmoothControlLaw> control_law_;

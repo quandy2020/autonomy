@@ -27,10 +27,19 @@
  #include "autonomy/common/macros.hpp"
  #include "autonomy/common/math/angle.hpp"
  #include "autonomy/common/math/math.hpp"
- #include "autonomy/commsgs/builtin_interfaces.hpp"
- #include "autonomy/commsgs/geometry_msgs.hpp"
- #include "autonomy/commsgs/planning_msgs.hpp"
- #include "autonomy/commsgs/visualization_msgs.hpp"
+ 
+ #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/std_msgs/color_rgba.pb.h>
+#include <automsgs/msgs/std_msgs/header.pb.h>
+#include <automsgs/msgs/visualization_msgs/marker.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+ 
+ 
  #include "autonomy/control/controller/mppi_controller/critic_data.hpp"
  #include "autonomy/control/controller/mppi_controller/models/control_sequence.hpp"
  #include "autonomy/control/controller/mppi_controller/models/optimizer_settings.hpp"
@@ -55,15 +64,15 @@
   * @param z Z position
   * @return Pose object
   */
- inline commsgs::geometry_msgs::Pose createPose(double x, double y, double z) {
-     commsgs::geometry_msgs::Pose pose;
-     pose.position.x = x;
-     pose.position.y = y;
-     pose.position.z = z;
-     pose.orientation.w = 1;
-     pose.orientation.x = 0;
-     pose.orientation.y = 0;
-     pose.orientation.z = 0;
+ inline automsgs::msgs::geometry_msgs::Pose createPose(double x, double y, double z) {
+     automsgs::msgs::geometry_msgs::Pose pose;
+     pose.mutable_position()->set_x(x);
+     pose.mutable_position()->set_y(y);
+     pose.mutable_position()->set_z(z);
+     pose.mutable_orientation()->set_w(1);
+     pose.mutable_orientation()->set_x(0);
+     pose.mutable_orientation()->set_y(0);
+     pose.mutable_orientation()->set_z(0);
      return pose;
  }
  
@@ -74,12 +83,12 @@
   * @param z Z scale
   * @return Scale object
   */
- inline commsgs::geometry_msgs::Vector3 createScale(double x, double y,
+ inline automsgs::msgs::geometry_msgs::Vector3 createScale(double x, double y,
                                                     double z) {
-     commsgs::geometry_msgs::Vector3 scale;
-     scale.x = x;
-     scale.y = y;
-     scale.z = z;
+     automsgs::msgs::geometry_msgs::Vector3 scale;
+     scale.set_x(x);
+     scale.set_y(y);
+     scale.set_z(z);
      return scale;
  }
  
@@ -91,13 +100,13 @@
   * @param a Alpha component (transparency)
   * @return Color object
   */
- inline commsgs::std_msgs::ColorRGBA createColor(float r, float g, float b,
+ inline automsgs::msgs::std_msgs::ColorRGBA createColor(float r, float g, float b,
                                                  float a) {
-     commsgs::std_msgs::ColorRGBA color;
-     color.r = r;
-     color.g = g;
-     color.b = b;
-     color.a = a;
+     automsgs::msgs::std_msgs::ColorRGBA color;
+     color.set_r(r);
+     color.set_g(g);
+     color.set_b(b);
+     color.set_a(a);
      return color;
  }
  
@@ -110,23 +119,23 @@
   * @param frame Reference frame to use
   * @return Visualization Marker
   */
- inline commsgs::visualization_msgs::Marker createMarker(
-     int id, const commsgs::geometry_msgs::Pose& pose,
-     const commsgs::geometry_msgs::Vector3& scale,
-     const commsgs::std_msgs::ColorRGBA& color, const std::string& frame_id,
+ inline automsgs::msgs::visualization_msgs::Marker createMarker(
+     int id, const automsgs::msgs::geometry_msgs::Pose& pose,
+     const automsgs::msgs::geometry_msgs::Vector3& scale,
+     const automsgs::msgs::std_msgs::ColorRGBA& color, const std::string& frame_id,
      const std::string& ns) {
-     using commsgs::visualization_msgs::Marker;
-     commsgs::visualization_msgs::Marker marker;
-     marker.header.frame_id = frame_id;
-     marker.header.stamp = commsgs::builtin_interfaces::Time{0, 0};
-     marker.ns = ns;
-     marker.id = id;
-     marker.type = 2;    // SPHERE
-     marker.action = 0;  // ADD
- 
-     marker.pose = pose;
-     marker.scale = scale;
-     marker.color = color;
+     using automsgs::msgs::visualization_msgs::Marker;
+     automsgs::msgs::visualization_msgs::Marker marker;
+     marker.mutable_header()->set_frame_id(frame_id);
+     marker.mutable_header()->mutable_stamp()->Clear();
+     marker.set_ns(ns);
+     marker.set_id(id);
+     marker.set_type(automsgs::msgs::visualization_msgs::Marker::SPHERE);    // SPHERE
+     marker.set_action(automsgs::msgs::visualization_msgs::Marker::ADD);  // ADD
+
+     *marker.mutable_pose() = pose;
+     *marker.mutable_scale() = scale;
+     *marker.mutable_color() = color;
      return marker;
  }
  
@@ -137,14 +146,14 @@
   * @param stamp Timestamp
   * @param frame Reference frame to use
   */
- inline commsgs::geometry_msgs::TwistStamped toTwistStamped(
-     float vx, float wz, const commsgs::builtin_interfaces::Time& stamp,
+ inline automsgs::msgs::geometry_msgs::TwistStamped toTwistStamped(
+     float vx, float wz, const automsgs::msgs::builtin_interfaces::Time& stamp,
      const std::string& frame) {
-     commsgs::geometry_msgs::TwistStamped twist;
-     twist.header.frame_id = frame;
-     twist.header.stamp = stamp;
-     twist.twist.linear.x = vx;
-     twist.twist.angular.z = wz;
+     automsgs::msgs::geometry_msgs::TwistStamped twist;
+     twist.mutable_header()->set_frame_id( frame);
+     *twist.mutable_header()->mutable_stamp() = stamp;
+     twist.mutable_twist()->mutable_linear()->set_x(vx);
+     twist.mutable_twist()->mutable_angular()->set_z(wz);
  
      return twist;
  }
@@ -157,39 +166,39 @@
   * @param stamp Timestamp
   * @param frame Reference frame to use
   */
- inline commsgs::geometry_msgs::TwistStamped toTwistStamped(
+ inline automsgs::msgs::geometry_msgs::TwistStamped toTwistStamped(
      float vx, float vy, float wz,
-     const commsgs::builtin_interfaces::Time& stamp, const std::string& frame) {
+     const automsgs::msgs::builtin_interfaces::Time& stamp, const std::string& frame) {
      auto twist = toTwistStamped(vx, wz, stamp, frame);
-     twist.twist.linear.y = vy;
+     twist.mutable_twist()->mutable_linear()->set_y(vy);
  
      return twist;
  }
  
  // TODO: Trajectory type not available in planning_msgs, need to define or use
- // alternative inline std::unique_ptr<commsgs::planning_msgs::Trajectory>
+ // alternative inline std::unique_ptr<automsgs::msgs::planning_msgs::Trajectory>
  // toTrajectoryMsg(
  //     const Eigen::ArrayXXf& trajectory,
  //     const models::ControlSequence& control_sequence, const double& model_dt,
- //     const commsgs::std_msgs::Header& header) {
+ //     const automsgs::msgs::std_msgs::Header& header) {
  //     auto trajectory_msg =
- //     std::make_unique<commsgs::planning_msgs::Trajectory>();
+ //     std::make_unique<automsgs::msgs::planning_msgs::Trajectory>();
  //     trajectory_msg->header = header;
  //     trajectory_msg->points.resize(trajectory.rows());
  //
  //     for (int i = 0; i < trajectory.rows(); ++i) {
  //         auto& curr_pt = trajectory_msg->points[i];
  //         curr_pt.time_from_start =
- //         commsgs::builtin_interfaces::Duration::FromSeconds(i * model_dt);
- //         curr_pt.pose.position.x = trajectory(i, 0);
- //         curr_pt.pose.position.y = trajectory(i, 1);
+ //         automsgs::msgs::builtin_interfaces::DurationFromSeconds(i * model_dt);
+ //         curr_pt.mutable_pose()->mutable_position()->set_x(trajectory(i, 0));
+ //         curr_pt.mutable_pose()->mutable_position()->set_y(trajectory(i, 1));
  //         tf2::Quaternion quat;
  //         quat.setRPY(0.0, 0.0, trajectory(i, 2));
- //         curr_pt.pose.orientation = tf2::toMsg(quat);
- //         curr_pt.velocity.linear.x = control_sequence.vx(i);
- //         curr_pt.velocity.angular.z = control_sequence.wz(i);
+ //         curr_pt.pose().orientation = tf2::toMsg(quat);
+ //         curr_pt.velocity.mutable_linear()->set_x(control_sequence.vx(i));
+ //         curr_pt.velocity.mutable_angular()->set_z(control_sequence.wz(i));
  //         if (control_sequence.vy.size() > 0) {
- //             curr_pt.velocity.linear.y = control_sequence.vy(i);
+ //             curr_pt.velocity.mutable_linear()->set_y(control_sequence.vy(i));
  //         }
  //     }
  //
@@ -201,15 +210,15 @@
   * @param path Path to convert
   * @return Path tensor
   */
- inline models::Path toTensor(const commsgs::planning_msgs::Path& path) {
+ inline models::Path toTensor(const automsgs::msgs::planning_msgs::Path& path) {
      auto result = models::Path{};
-     result.reset(path.poses.size());
+     result.reset(path.poses_size());
  
-     for (size_t i = 0; i < path.poses.size(); ++i) {
-         result.x(i) = path.poses[i].pose.position.x;
-         result.y(i) = path.poses[i].pose.position.y;
+     for (size_t i = 0; i < path.poses_size(); ++i) {
+         result.x(i) = path.poses(i).pose().position().x();
+         result.y(i) = path.poses(i).pose().position().y();
          result.yaws(i) =
-             autonomy::transform::tf2::getYaw(path.poses[i].pose.orientation);
+             autonomy::transform::tf2::getYaw(path.poses(i).pose().orientation());
      }
  
      return result;
@@ -218,9 +227,9 @@
  /**
   * @brief Get the last pose from a path
   * @param path Reference to the path
-  * @return commsgs::geometry_msgs::Pose Last pose in the path
+  * @return automsgs::msgs::geometry_msgs::Pose Last pose in the path
   */
- inline commsgs::geometry_msgs::Pose getLastPathPose(const models::Path& path) {
+ inline automsgs::msgs::geometry_msgs::Pose getLastPathPose(const models::Path& path) {
      const unsigned int path_last_idx = path.x.size() - 1;
  
      auto last_orientation = path.yaws(path_last_idx);
@@ -228,13 +237,13 @@
      autonomy::transform::tf2::Quaternion pose_orientation;
      pose_orientation.setRPY(0.0, 0.0, last_orientation);
  
-     commsgs::geometry_msgs::Pose pathPose;
-     pathPose.position.x = path.x(path_last_idx);
-     pathPose.position.y = path.y(path_last_idx);
-     pathPose.orientation.x = pose_orientation.x();
-     pathPose.orientation.y = pose_orientation.y();
-     pathPose.orientation.z = pose_orientation.z();
-     pathPose.orientation.w = pose_orientation.w();
+     automsgs::msgs::geometry_msgs::Pose pathPose;
+     pathPose.mutable_position()->set_x(path.x(path_last_idx));
+     pathPose.mutable_position()->set_y(path.y(path_last_idx));
+     pathPose.mutable_orientation()->set_x(pose_orientation.x());
+     pathPose.mutable_orientation()->set_y(pose_orientation.y());
+     pathPose.mutable_orientation()->set_z(pose_orientation.z());
+     pathPose.mutable_orientation()->set_w(pose_orientation.w());
  
      return pathPose;
  }
@@ -244,9 +253,9 @@
   * @param data Data to use
   * @param enforce_path_inversion True to return the cusp point (last pose of the
   * path) instead of the original goal
-  * @return commsgs::geometry_msgs::Pose Target pose for the critic
+  * @return automsgs::msgs::geometry_msgs::Pose Target pose for the critic
   */
- inline commsgs::geometry_msgs::Pose getCriticGoal(const CriticData& data,
+ inline automsgs::msgs::geometry_msgs::Pose getCriticGoal(const CriticData& data,
                                                    bool enforce_path_inversion) {
      if (enforce_path_inversion) {
          return getLastPathPose(data.path);
@@ -265,18 +274,18 @@
   */
  inline bool withinPositionGoalToleranceWithChecker(
      common::GoalChecker* goal_checker,
-     const commsgs::geometry_msgs::Pose& robot,
-     const commsgs::geometry_msgs::Pose& goal) {
+     const automsgs::msgs::geometry_msgs::Pose& robot,
+     const automsgs::msgs::geometry_msgs::Pose& goal) {
      if (goal_checker) {
-         commsgs::geometry_msgs::Pose pose_tolerance;
-         commsgs::geometry_msgs::Twist velocity_tolerance;
+         automsgs::msgs::geometry_msgs::Pose pose_tolerance;
+         automsgs::msgs::geometry_msgs::Twist velocity_tolerance;
          goal_checker->GetTolerances(pose_tolerance, velocity_tolerance);
  
          const auto pose_tolerance_sq =
-             pose_tolerance.position.x * pose_tolerance.position.x;
+             pose_tolerance.position().x() * pose_tolerance.position().x();
  
-         auto dx = robot.position.x - goal.position.x;
-         auto dy = robot.position.y - goal.position.y;
+         auto dx = robot.position().x() - goal.position().x();
+         auto dy = robot.position().y() - goal.position().y();
  
          auto dist_sq = dx * dx + dy * dy;
  
@@ -296,10 +305,10 @@
   * @return bool If robot is within tolerance to the goal
   */
  inline bool withinPositionGoalTolerance(
-     float pose_tolerance, const commsgs::geometry_msgs::Pose& robot,
-     const commsgs::geometry_msgs::Pose& goal) {
-     const double& dist_sq = std::pow(goal.position.x - robot.position.x, 2) +
-                             std::pow(goal.position.y - robot.position.y, 2);
+     float pose_tolerance, const automsgs::msgs::geometry_msgs::Pose& robot,
+     const automsgs::msgs::geometry_msgs::Pose& goal) {
+     const double& dist_sq = std::pow(goal.position().x() - robot.position().x(), 2) +
+                             std::pow(goal.position().y() - robot.position().y(), 2);
  
      const float pose_tolerance_sq = pose_tolerance * pose_tolerance;
  
@@ -469,12 +478,12 @@
   * @param forward_preference If reversing direction is valid
   * @return Angle between two points
   */
- inline float posePointAngle(const commsgs::geometry_msgs::Pose& pose,
+ inline float posePointAngle(const automsgs::msgs::geometry_msgs::Pose& pose,
                              double point_x, double point_y,
                              bool forward_preference) {
-     float pose_x = pose.position.x;
-     float pose_y = pose.position.y;
-     float pose_yaw = autonomy::transform::tf2::getYaw(pose.orientation);
+     float pose_x = pose.position().x();
+     float pose_y = pose.position().y();
+     float pose_yaw = autonomy::transform::tf2::getYaw(pose.orientation());
  
      float yaw = atan2f(point_y - pose_y, point_x - pose_x);
  
@@ -497,12 +506,12 @@
   * @param point_yaw Yaw of the point to consider along Z axis
   * @return Angle between two points
   */
- inline float posePointAngle(const commsgs::geometry_msgs::Pose& pose,
+ inline float posePointAngle(const automsgs::msgs::geometry_msgs::Pose& pose,
                              double point_x, double point_y, double point_yaw) {
-     float pose_x = static_cast<float>(pose.position.x);
-     float pose_y = static_cast<float>(pose.position.y);
+     float pose_x = static_cast<float>(pose.position().x());
+     float pose_y = static_cast<float>(pose.position().y());
      float pose_yaw =
-         static_cast<float>(autonomy::transform::tf2::getYaw(pose.orientation));
+         static_cast<float>(autonomy::transform::tf2::getYaw(pose.orientation()));
  
      float yaw = atan2f(static_cast<float>(point_y) - pose_y,
                         static_cast<float>(point_x) - pose_x);
@@ -608,25 +617,25 @@
   * @param path to check for inversion
   * @return the first point after the inversion found in the path
   */
- inline unsigned int findFirstPathInversion(commsgs::planning_msgs::Path& path) {
+ inline unsigned int findFirstPathInversion(automsgs::msgs::planning_msgs::Path& path) {
      // At least 3 poses for a possible inversion
-     if (path.poses.size() < 3) {
-         return path.poses.size();
+     if (path.poses_size() < 3) {
+         return path.poses_size();
      }
  
      // Iterating through the path to determine the position of the path
      // inversion
-     for (unsigned int idx = 1; idx < path.poses.size() - 1; ++idx) {
+     for (unsigned int idx = 1; idx < path.poses_size() - 1; ++idx) {
          // We have two vectors for the dot product OA and AB. Determining the
          // vectors.
-         float oa_x = path.poses[idx].pose.position.x -
-                      path.poses[idx - 1].pose.position.x;
-         float oa_y = path.poses[idx].pose.position.y -
-                      path.poses[idx - 1].pose.position.y;
-         float ab_x = path.poses[idx + 1].pose.position.x -
-                      path.poses[idx].pose.position.x;
-         float ab_y = path.poses[idx + 1].pose.position.y -
-                      path.poses[idx].pose.position.y;
+         float oa_x = path.poses(idx).pose().position().x() -
+                      path.poses(idx - 1).pose().position().x();
+         float oa_y = path.poses(idx).pose().position().y() -
+                      path.poses(idx - 1).pose().position().y();
+         float ab_x = path.poses(idx + 1).pose().position().x() -
+                      path.poses(idx).pose().position().x();
+         float ab_y = path.poses(idx + 1).pose().position().y() -
+                      path.poses(idx).pose().position().y();
  
          // Checking for the existence of cusp, in the path, using the dot
          // product.
@@ -636,7 +645,7 @@
          }
      }
  
-     return path.poses.size();
+     return path.poses_size();
  }
  
  /**
@@ -645,16 +654,17 @@
   * @return The location of the inversion, return 0 if none exist
   */
  inline unsigned int removePosesAfterFirstInversion(
-     commsgs::planning_msgs::Path& path) {
-     commsgs::planning_msgs::Path cropped_path = path;
+     automsgs::msgs::planning_msgs::Path& path) {
+     automsgs::msgs::planning_msgs::Path cropped_path = path;
      const unsigned int first_after_inversion =
          findFirstPathInversion(cropped_path);
-     if (first_after_inversion == path.poses.size()) {
+     if (first_after_inversion == path.poses_size()) {
          return 0u;
      }
  
-     cropped_path.poses.erase(cropped_path.poses.begin() + first_after_inversion,
-                              cropped_path.poses.end());
+     cropped_path.mutable_poses()->DeleteSubrange(
+         first_after_inversion,
+         cropped_path.poses_size() - first_after_inversion);
      path = cropped_path;
      return first_after_inversion;
  }

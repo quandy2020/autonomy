@@ -23,7 +23,9 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/planning/common/planner_interface.hpp"
 #include "autonomy/planning/proto/planning_options.pb.h"
@@ -45,16 +47,16 @@ public:
 
     ~ThetaStarPlanner() override;
 
-    uint32 CreatePlan(const commsgs::geometry_msgs::PoseStamped& start,
-                      const commsgs::geometry_msgs::PoseStamped& goal,
-                      commsgs::planning_msgs::Path& plan,
+    uint32 CreatePlan(const automsgs::msgs::geometry_msgs::PoseStamped& start,
+                      const automsgs::msgs::geometry_msgs::PoseStamped& goal,
+                      automsgs::msgs::planning_msgs::Path& plan,
                       std::function<bool()> cancel_checker) override;
 
 private:
-    bool makePlan(const commsgs::geometry_msgs::Pose& start,
-                  const commsgs::geometry_msgs::Pose& goal,
+    bool makePlan(const automsgs::msgs::geometry_msgs::Pose& start,
+                  const automsgs::msgs::geometry_msgs::Pose& goal,
                   std::function<bool()> cancel_checker,
-                  commsgs::planning_msgs::Path& plan);
+                  automsgs::msgs::planning_msgs::Path& plan);
 
     bool worldToMap(double wx, double wy, unsigned int& mx,
                     unsigned int& my) const;

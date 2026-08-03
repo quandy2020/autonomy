@@ -16,7 +16,9 @@
 
 #pragma once
 
-#include "autonomy/commsgs/builtin_interfaces.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
 #include "autonomy/localization/cartographer/common/time.hpp"
 
 namespace autonomy {
@@ -24,10 +26,10 @@ namespace localization {
 namespace cartographer {
 namespace node {
 
-commsgs::builtin_interfaces::Time ToCommsgs(::cartographer::common::Time time);
+automsgs::msgs::builtin_interfaces::Time ToCommsgs(::cartographer::common::Time time);
 
 ::cartographer::common::Time FromCommsgs(
-    const commsgs::builtin_interfaces::Time& time);
+    const automsgs::msgs::builtin_interfaces::Time& time);
 
 }  // namespace node
 }  // namespace cartographer

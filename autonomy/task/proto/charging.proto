@@ -16,7 +16,10 @@ syntax = "proto3";
 
 package autonomy.task.proto;
 
-import "autonomy/commsgs/proto/geometry_msgs.proto";
+import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
+import "automsgs/msgs/geometry_msgs/pose.proto";
+import "automsgs/msgs/geometry_msgs/point.proto";
+import "automsgs/msgs/geometry_msgs/twist_stamped.proto";
 import "autonomy/task/proto/task_common.proto";
 
 // apps/charging — aligned with bridge DockCommand.
@@ -51,7 +54,7 @@ message ChargingGoal {
   int32 max_retry_count = 4;
   oneof dock_target {
     string dock_station_id = 5;
-    commsgs.proto.geometry_msgs.PoseStamped dock_pose = 6;
+    automsgs.msgs.geometry_msgs.PoseStamped dock_pose = 6;
   }
 }
 

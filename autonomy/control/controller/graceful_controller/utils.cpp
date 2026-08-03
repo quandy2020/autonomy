@@ -14,33 +14,33 @@
  * limitations under the License.
  */
 
- #include "autonomy/control/controller/graceful_controller/utils.hpp"
+#include "autonomy/control/controller/graceful_controller/utils.hpp"
 
- namespace autonomy {
- namespace control {
- namespace controller {
- 
- commsgs::visualization_msgs::Marker CreateSlowdownMarker(
-     const commsgs::geometry_msgs::PoseStamped& motion_target,
-     const double& slowdown_radius) {
-     commsgs::visualization_msgs::Marker slowdown_marker;
-     slowdown_marker.header = motion_target.header;
-     slowdown_marker.ns = "slowdown";
-     slowdown_marker.id = 0;
-     slowdown_marker.type = 2;    // SPHERE
-     slowdown_marker.action = 0;  // ADD
-     slowdown_marker.pose = motion_target.pose;
-     slowdown_marker.pose.position.z = 0.01;
-     slowdown_marker.scale.x = slowdown_radius * 2.0;
-     slowdown_marker.scale.y = slowdown_radius * 2.0;
-     slowdown_marker.scale.z = 0.02;
-     slowdown_marker.color.a = 0.2;
-     slowdown_marker.color.r = 0.0;
-     slowdown_marker.color.g = 1.0;
-     slowdown_marker.color.b = 0.0;
-     return slowdown_marker;
- }
- 
- }  // namespace controller
- }  // namespace control
- }  // namespace autonomy
+namespace autonomy {
+namespace control {
+namespace controller {
+
+automsgs::msgs::visualization_msgs::Marker CreateSlowdownMarker(
+    const automsgs::msgs::geometry_msgs::PoseStamped& motion_target,
+    const double& slowdown_radius) {
+    automsgs::msgs::visualization_msgs::Marker slowdown_marker;
+    *slowdown_marker.mutable_header() = motion_target.header();
+    slowdown_marker.set_ns("slowdown");
+    slowdown_marker.set_id(0);
+    slowdown_marker.set_type(automsgs::msgs::visualization_msgs::Marker::SPHERE);    // SPHERE
+    slowdown_marker.set_action(automsgs::msgs::visualization_msgs::Marker::ADD);  // ADD
+    *slowdown_marker.mutable_pose() = motion_target.pose();
+    slowdown_marker.mutable_pose()->mutable_position()->set_z(0.01);
+    slowdown_marker.mutable_scale()->set_x(slowdown_radius * 2.0);
+    slowdown_marker.mutable_scale()->set_y(slowdown_radius * 2.0);
+    slowdown_marker.mutable_scale()->set_z(0.02);
+    slowdown_marker.mutable_color()->set_a(0.2);
+    slowdown_marker.mutable_color()->set_r(0.0);
+    slowdown_marker.mutable_color()->set_g(1.0);
+    slowdown_marker.mutable_color()->set_b(0.0);
+    return slowdown_marker;
+}
+
+}  // namespace controller
+}  // namespace control
+}  // namespace autonomy

@@ -22,8 +22,18 @@
 
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/port.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/planning/proto/planning_options.pb.h"
 
 namespace autonomy {
@@ -56,9 +66,9 @@ public:
         return costmap_.get();
     }
 
-    virtual uint32 CreatePlan(const commsgs::geometry_msgs::PoseStamped& start,
-                              const commsgs::geometry_msgs::PoseStamped& goal,
-                              commsgs::planning_msgs::Path& plan,
+    virtual uint32 CreatePlan(const automsgs::msgs::geometry_msgs::PoseStamped& start,
+                              const automsgs::msgs::geometry_msgs::PoseStamped& goal,
+                              automsgs::msgs::planning_msgs::Path& plan,
                               std::function<bool()> cancel_checker) = 0;
 
 protected:

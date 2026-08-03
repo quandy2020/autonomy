@@ -16,11 +16,11 @@ namespace {
 
 std::weak_ptr<TrackingClient> g_shared_client;
 
-double YawFromPose(const commsgs::geometry_msgs::Pose& pose)
+double YawFromPose(const automsgs::msgs::geometry_msgs::Pose& pose)
 {
-    const auto& q = pose.orientation;
-    return std::atan2(2.0 * (q.w * q.z + q.x * q.y),
-                      1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+    const auto& q = pose.orientation();
+    return std::atan2(2.0 * (q.w()* q.z() + q.x()* q.y()),
+                      1.0 - 2.0 * (q.y()* q.y() + q.z()* q.z()));
 }
 
 }  // namespace
@@ -85,7 +85,7 @@ void TrackingClient::ApplyGoal(const ::autonomy::task::proto::TrackerGoal& goal)
         break;
     case ::autonomy::task::proto::TrackerGoal::kTargetPose:
         target_pose_ =
-            commsgs::geometry_msgs::FromProto(goal.target_pose());
+            goal.target_pose();
         break;
     default:
         break;
@@ -104,23 +104,25 @@ bool TrackingClient::IsTargetLocked() const
 }
 
 bool TrackingClient::ComputeFollowGoal(
-    commsgs::geometry_msgs::PoseStamped& goal) const
+    automsgs::msgs::geometry_msgs::PoseStamped& goal) const
 {
     if (!target_pose_.has_value()) {
         if (target_id_.empty()) {
             return false;
         }
-        goal.header.frame_id = "map";
-        goal.pose.position.x = 0.0;
-        goal.pose.position.y = 0.0;
-        goal.pose.orientation.w = 1.0;
+        goal.mutable_header()->set_frame_id("map");
+        goal.mutable_pose()->mutable_position()->set_x(0.0);
+        goal.mutable_pose()->mutable_position()->set_y(0.0);
+        goal.mutable_pose()->mutable_orientation()->set_w(1.0);
         return true;
     }
 
     goal = *target_pose_;
-    const double yaw = YawFromPose(goal.pose);
-    goal.pose.position.x -= follow_distance_ * std::cos(yaw);
-    goal.pose.position.y -= follow_distance_ * std::sin(yaw);
+    const double yaw = YawFromPose(goal.pose());
+    goal.mutable_pose()->mutable_position()->set_x(
+        goal.pose().position().x() - follow_distance_ * std::cos(yaw));
+    goal.mutable_pose()->mutable_position()->set_y(
+        goal.pose().position().y() - follow_distance_ * std::sin(yaw));
     return true;
 }
 

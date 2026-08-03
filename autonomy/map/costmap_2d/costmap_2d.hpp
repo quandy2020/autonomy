@@ -28,8 +28,17 @@
 #include <vector>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
 #include "autonomy/map/proto/map_2d_option.pb.h"
 #include "autonomy/map/proto/map_options.pb.h"
 
@@ -80,7 +89,7 @@ public:
      * @brief  Constructor for a costmap from an OccupancyGrid map
      * @param  map The OccupancyGrid map to create costmap from
      */
-    explicit Costmap2D(const commsgs::map_msgs::OccupancyGrid& map);
+    explicit Costmap2D(const automsgs::msgs::map_msgs::OccupancyGrid& map);
 
     /**
      * @brief  Overloaded assignment operator
@@ -302,7 +311,7 @@ public:
      * @return True if the polygon was filled... false if it could not be filled
      */
     bool setConvexPolygonCost(
-        const std::vector<commsgs::geometry_msgs::Point>& polygon,
+        const std::vector<automsgs::msgs::geometry_msgs::Point>& polygon,
         unsigned char cost_value);
 
     /**

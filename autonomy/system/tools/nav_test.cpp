@@ -21,8 +21,18 @@
 
 #include "autonomy/common/gflags.hpp"
 #include "autonomy/common/math/math_utils.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/control/controller_server.hpp"
 #include "autonomy/system/autonomy.hpp"
 #include "autonomy/system/options.hpp"
@@ -46,22 +56,22 @@ namespace system {
 namespace tools {
 namespace {
 
-commsgs::geometry_msgs::PoseStamped MakePose(const std::string& frame, double x,
+automsgs::msgs::geometry_msgs::PoseStamped MakePose(const std::string& frame, double x,
                                              double y, double yaw) {
-    commsgs::geometry_msgs::PoseStamped pose;
-    pose.header.frame_id = frame;
-    pose.pose.position.x = x;
-    pose.pose.position.y = y;
+    automsgs::msgs::geometry_msgs::PoseStamped pose;
+    pose.mutable_header()->set_frame_id(frame);
+    pose.mutable_pose()->mutable_position()->set_x(x);
+    pose.mutable_pose()->mutable_position()->set_y(y);
     const double half = yaw * 0.5;
-    pose.pose.orientation.z = std::sin(half);
-    pose.pose.orientation.w = std::cos(half);
+    pose.mutable_pose()->mutable_orientation()->set_z(std::sin(half));
+    pose.mutable_pose()->mutable_orientation()->set_w(std::cos(half));
     return pose;
 }
 
-void IntegrateDiffDrive(const commsgs::geometry_msgs::Twist& cmd, double dt,
+void IntegrateDiffDrive(const automsgs::msgs::geometry_msgs::Twist& cmd, double dt,
                         double& x, double& y, double& yaw) {
-    const double v = cmd.linear.x;
-    const double w = cmd.angular.z;
+    const double v = cmd.linear().x();
+    const double w = cmd.angular().z();
     x += v * std::cos(yaw) * dt;
     y += v * std::sin(yaw) * dt;
     yaw = autonomy::common::math::NormalizeAngle(yaw + w * dt);
@@ -70,16 +80,18 @@ void IntegrateDiffDrive(const commsgs::geometry_msgs::Twist& cmd, double dt,
 void PublishSimState(autonomy::control::ControllerServer* controller,
                      const std::string& global_frame,
                      const std::string& base_frame, double x, double y,
-                     double yaw, const commsgs::geometry_msgs::Twist& twist) {
-    commsgs::planning_msgs::Odometry odom;
-    odom.header.frame_id = global_frame;
-    odom.child_frame_id = base_frame;
-    odom.pose.pose.position.x = x;
-    odom.pose.pose.position.y = y;
+                     double yaw, const automsgs::msgs::geometry_msgs::Twist& twist) {
+    automsgs::msgs::planning_msgs::Odometry odom;
+    odom.mutable_header()->set_frame_id(global_frame);
+    odom.set_child_frame_id(base_frame);
+    odom.mutable_pose()->mutable_pose()->mutable_pose()->mutable_position()->set_x(x);
+    odom.mutable_pose()->mutable_pose()->mutable_pose()->mutable_position()->set_y(y);
     const double half = yaw * 0.5;
-    odom.pose.pose.orientation.z = std::sin(half);
-    odom.pose.pose.orientation.w = std::cos(half);
-    odom.twist.twist = twist;
+    odom.mutable_pose()->mutable_pose()->mutable_pose()->mutable_orientation()->set_z(
+        std::sin(half));
+    odom.mutable_pose()->mutable_pose()->mutable_pose()->mutable_orientation()->set_w(
+        std::cos(half));
+    *odom.mutable_twist()->mutable_twist() = twist;
     controller->UpdateOdometry(odom);
 
     geometry_msgs::TransformStamped tf;
@@ -136,7 +148,7 @@ int RunNavTest(int argc, char** argv) {
     double x = FLAGS_start_x;
     double y = FLAGS_start_y;
     double yaw = FLAGS_start_yaw;
-    commsgs::geometry_msgs::Twist zero;
+    automsgs::msgs::geometry_msgs::Twist zero;
     PublishSimState(controller, FLAGS_global_frame, FLAGS_base_frame, x, y, yaw,
                     zero);
 
@@ -151,7 +163,7 @@ int RunNavTest(int argc, char** argv) {
     std::thread sim([&]() {
         const auto period = std::chrono::duration<double>(FLAGS_sim_dt);
         while (!stop_sim.load()) {
-            const auto cmd = autonomy->GetLastControlCommand().twist;
+            const auto cmd = autonomy->GetLastControlCommand().twist();
             IntegrateDiffDrive(cmd, FLAGS_sim_dt, x, y, yaw);
             PublishSimState(controller, FLAGS_global_frame, FLAGS_base_frame, x,
                             y, yaw, cmd);
@@ -169,7 +181,7 @@ int RunNavTest(int argc, char** argv) {
     autonomy->Shutdown();
 
     if (const auto path = autonomy->GetLastPath()) {
-        LOG(INFO) << "Last path poses: " << path->poses.size();
+        LOG(INFO) << "Last path poses: " << path->poses_size();
     }
 
     if (ok) {

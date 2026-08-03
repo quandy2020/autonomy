@@ -18,7 +18,15 @@
 #include "autonomy/planning/planner/navfn/navfn_planner.hpp"
 #include "autonomy/planning/planner/theta_star/theta_star_planner.hpp"
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/planning/proto/planning_options.pb.h"
@@ -50,12 +58,12 @@ proto::PlannerOptions CreatePlannerOptions() {
     return options;
 }
 
-commsgs::geometry_msgs::PoseStamped MakePose(double x, double y) {
-    commsgs::geometry_msgs::PoseStamped pose;
-    pose.header.frame_id = "map";
-    pose.pose.position.x = x;
-    pose.pose.position.y = y;
-    pose.pose.orientation.w = 1.0;
+automsgs::msgs::geometry_msgs::PoseStamped MakePose(double x, double y) {
+    automsgs::msgs::geometry_msgs::PoseStamped pose;
+    pose.mutable_header()->set_frame_id("map");
+    pose.mutable_pose()->mutable_position()->set_x(x);
+    pose.mutable_pose()->mutable_position()->set_y(y);
+    pose.mutable_pose()->mutable_orientation()->set_w(1.0);
     return pose;
 }
 
@@ -76,7 +84,7 @@ TEST(NavfnPlannerTest, DoesNotMutateGlobalCostmapWhenClearingStartCell) {
     planner::navfn::NavfnPlanner planner(CreatePlannerOptions(), "navfn_planner",
                                        costmap_wrapper);
 
-    commsgs::planning_msgs::Path path;
+    automsgs::msgs::planning_msgs::Path path;
     const auto start = MakePose(start_mx * 0.05, start_my * 0.05);
     const auto goal = MakePose(0.40, 0.40);
     const uint32_t code =
@@ -85,7 +93,7 @@ TEST(NavfnPlannerTest, DoesNotMutateGlobalCostmapWhenClearingStartCell) {
     EXPECT_EQ(cost_before, costmap->getCost(start_mx, start_my));
     EXPECT_EQ(static_cast<uint32_t>(proto::PlannerResultCode::PLANNER_SUCCESS),
               code);
-    EXPECT_FALSE(path.poses.empty());
+    EXPECT_FALSE(path.poses().empty());
 }
 
 TEST(NavfnPlannerTest, ReturnsCanceledWhenCancelled) {
@@ -99,7 +107,7 @@ TEST(NavfnPlannerTest, ReturnsCanceledWhenCancelled) {
     planner::navfn::NavfnPlanner planner(CreatePlannerOptions(), "navfn_planner",
                                        costmap_wrapper);
 
-    commsgs::planning_msgs::Path path;
+    automsgs::msgs::planning_msgs::Path path;
     const auto start = MakePose(0.25, 0.25);
     const auto goal = MakePose(0.40, 0.40);
     const uint32_t code =
@@ -125,7 +133,7 @@ TEST(DijkstraPlannerTest, ForcesDijkstraSearch) {
     planner::dijkstra::DijkstraPlanner planner(options, "dijkstra_planner",
                                              costmap_wrapper);
 
-    commsgs::planning_msgs::Path path;
+    automsgs::msgs::planning_msgs::Path path;
     const auto start = MakePose(0.25, 0.25);
     const auto goal = MakePose(0.40, 0.40);
     const uint32_t code =
@@ -133,7 +141,7 @@ TEST(DijkstraPlannerTest, ForcesDijkstraSearch) {
 
     EXPECT_EQ(static_cast<uint32_t>(proto::PlannerResultCode::PLANNER_SUCCESS),
               code);
-    EXPECT_FALSE(path.poses.empty());
+    EXPECT_FALSE(path.poses().empty());
 }
 
 TEST(ThetaStarPlannerTest, FindsPathOnFreeMap) {
@@ -154,7 +162,7 @@ TEST(ThetaStarPlannerTest, FindsPathOnFreeMap) {
     planner::theta_star::ThetaStarPlanner planner(options, "theta_star_planner",
                                                 costmap_wrapper);
 
-    commsgs::planning_msgs::Path path;
+    automsgs::msgs::planning_msgs::Path path;
     const auto start = MakePose(0.25, 0.25);
     const auto goal = MakePose(0.40, 0.40);
     const uint32_t code =
@@ -162,7 +170,7 @@ TEST(ThetaStarPlannerTest, FindsPathOnFreeMap) {
 
     EXPECT_EQ(static_cast<uint32_t>(proto::PlannerResultCode::PLANNER_SUCCESS),
               code);
-    EXPECT_FALSE(path.poses.empty());
+    EXPECT_FALSE(path.poses().empty());
 }
 
 }  // namespace

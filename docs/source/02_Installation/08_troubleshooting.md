@@ -32,7 +32,7 @@ cd build && rm -rf * && cmake -G Ninja .. && ninja
 |------|----------|------|
 | C++17 相关错误 | 编译器过旧 | 升级 GCC 至 11+ |
 | OOM / 编译器被 kill | 内存不足 | `ninja -j2` 限制并行 |
-| 链接错误 undefined reference | 依赖顺序 / 缺库 | 检查 `/usr/local/lib` 是否在 `LD_LIBRARY_PATH` |
+| protoc / protobuf 版本冲突 | Docker 中 PyTorch 污染 `CMAKE_PREFIX_PATH` | 清理 build 重配；确认 `Protobuf_INCLUDE_DIR=/usr/local/include` |
 | submodule 缺失 | 未初始化 submodule | `git submodule update --init --recursive` |
 
 ### 8.4 Docker
@@ -52,6 +52,7 @@ cd build && rm -rf * && cmake -G Ninja .. && ninja
 | `libautonomy.so: cannot open` | 未设置 rpath | 从 `build/bin` 运行或 `export LD_LIBRARY_PATH=build/lib` |
 | `Autonomy not ready` | BT 插件路径错误 | 设置 `AUTONOMY_BT_PLUGIN_PATH` |
 | 配置加载失败 | `config_directory` 错误 | 确认 `config/autonomy.lua` 存在 |
+| autoviz `Could not initialize GLX` | Docker 无 GPU / 缺 Mesa / 未重编译 | 容器内：`bash src/autonomy/docker/install/install_mesa_gl.sh`；重编：`cmake --build build --target autoviz`；用 `scripts/run_autoviz.sh` 启动；宿主机执行 `xhost +local:docker` |
 | TF / 帧名错误 | `common.lua` 不一致 | 统一 `global_frame` / `robot_base_frame` |
 
 ### 8.6 Habitat-Sim（可选）

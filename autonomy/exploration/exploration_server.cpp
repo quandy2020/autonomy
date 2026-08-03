@@ -152,7 +152,7 @@ common::ExplorerInterface::SharedPtr ExplorationServer::ActiveExplorer() const
 }
 
 void ExplorationServer::UpdateOdometry(
-    const commsgs::planning_msgs::Odometry& odom)
+    const automsgs::msgs::planning_msgs::Odometry& odom)
 {
     auto explorer = ActiveExplorer();
     if (!explorer) {
@@ -163,9 +163,9 @@ void ExplorationServer::UpdateOdometry(
 }
 
 void ExplorationServer::UpdateDepth(
-    const commsgs::sensor_msgs::Image& depth,
-    const commsgs::sensor_msgs::CameraInfo& info,
-    const commsgs::geometry_msgs::Transform& map_t_camera)
+    const automsgs::msgs::sensor_msgs::Image& depth,
+    const automsgs::msgs::sensor_msgs::CameraInfo& info,
+    const automsgs::msgs::geometry_msgs::Transform& map_t_camera)
 {
     auto explorer = ActiveExplorer();
     if (!explorer) {
@@ -176,7 +176,7 @@ void ExplorationServer::UpdateDepth(
 }
 
 void ExplorationServer::SetExplorationArea(
-    const commsgs::geometry_msgs::Polygon& area)
+    const automsgs::msgs::geometry_msgs::Polygon& area)
 {
     auto explorer = ActiveExplorer();
     if (explorer) {
@@ -206,7 +206,7 @@ void ExplorationServer::ComputeExploration()
 }
 
 bool ExplorationServer::GetNextWaypoint(
-    commsgs::geometry_msgs::PoseStamped& out)
+    automsgs::msgs::geometry_msgs::PoseStamped& out)
 {
     auto explorer = ActiveExplorer();
     return explorer && explorer->GetNextWaypoint(out);

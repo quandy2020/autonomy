@@ -25,15 +25,15 @@ namespace utils {
 namespace {
 
 double PerpendicularDistance(
-    const commsgs::geometry_msgs::PoseStamped& point,
-    const commsgs::geometry_msgs::PoseStamped& line_start,
-    const commsgs::geometry_msgs::PoseStamped& line_end) {
-    const double x = point.pose.position.x;
-    const double y = point.pose.position.y;
-    const double x1 = line_start.pose.position.x;
-    const double y1 = line_start.pose.position.y;
-    const double x2 = line_end.pose.position.x;
-    const double y2 = line_end.pose.position.y;
+    const automsgs::msgs::geometry_msgs::PoseStamped& point,
+    const automsgs::msgs::geometry_msgs::PoseStamped& line_start,
+    const automsgs::msgs::geometry_msgs::PoseStamped& line_end) {
+    const double x = point.pose().position().x();
+    const double y = point.pose().position().y();
+    const double x1 = line_start.pose().position().x();
+    const double y1 = line_start.pose().position().y();
+    const double x2 = line_end.pose().position().x();
+    const double y2 = line_end.pose().position().y();
 
     const double dx = x2 - x1;
     const double dy = y2 - y1;
@@ -44,8 +44,9 @@ double PerpendicularDistance(
     return std::abs(dy * x - dx * y + x2 * y1 - y2 * x1) / norm;
 }
 
+template <typename PoseRange>
 void DouglasPeuckerRec(
-    const std::vector<commsgs::geometry_msgs::PoseStamped>& points,
+    const PoseRange& points,
     size_t start_idx, size_t end_idx, double epsilon,
     std::vector<bool>& marked) {
     if (end_idx <= start_idx + 1) {
@@ -72,22 +73,22 @@ void DouglasPeuckerRec(
 
 }  // namespace
 
-commsgs::planning_msgs::Path SimplifyPath(
-    const commsgs::planning_msgs::Path& path, double epsilon) {
-    if (epsilon <= 0.0 || path.poses.size() < 3) {
+automsgs::msgs::planning_msgs::Path SimplifyPath(
+    const automsgs::msgs::planning_msgs::Path& path, double epsilon) {
+    if (epsilon <= 0.0 || path.poses_size() < 3) {
         return path;
     }
 
-    std::vector<bool> marked(path.poses.size(), false);
+    std::vector<bool> marked(path.poses_size(), false);
     marked.front() = true;
     marked.back() = true;
-    DouglasPeuckerRec(path.poses, 0, path.poses.size() - 1, epsilon, marked);
+    DouglasPeuckerRec(path.poses(), 0, path.poses_size() - 1, epsilon, marked);
 
-    commsgs::planning_msgs::Path simplified;
-    simplified.header = path.header;
-    for (size_t i = 0; i < path.poses.size(); ++i) {
+    automsgs::msgs::planning_msgs::Path simplified;
+    *simplified.mutable_header() = path.header();
+    for (size_t i = 0; i < path.poses_size(); ++i) {
         if (marked[i]) {
-            simplified.poses.push_back(path.poses[i]);
+            *simplified.mutable_poses()->Add() = path.poses(i);
         }
     }
     return simplified;

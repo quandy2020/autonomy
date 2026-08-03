@@ -95,11 +95,11 @@ registry 当前登记 **38** 种 autolink 消息类型。直接运行 `./bin/aut
 
 说明：
 
-- 完整源类型名为 `autonomy.commsgs.proto.<上表后缀>`，例如 `autonomy.commsgs.proto.sensor_msgs.LaserScan`。
+- 完整源类型名为 `automsgs.msgs.<上表后缀>`，例如 `automsgs.msgs.sensor_msgs.LaserScan`。
 - **schema 直通**：规范化 descriptor 后直接转发 payload。
 - **payload 转换**：adapter 改写 payload 和/或目标 descriptor（如 `uint32[] data` → `bytes data`）。
 - **Raw/Plot**：schema 可解析，但 Foxglove 3D/Image/Map 面板通常不能直接渲染，适合 Raw Messages / Plot 面板。
-- 转发某一 proto 包下全部已登记类型：`--message_type_allowlist=autonomy.commsgs.proto.sensor_msgs`（前缀匹配）。
+- 转发某一 proto 包下全部已登记类型：`--message_type_allowlist=automsgs.msgs.sensor_msgs`（前缀匹配）。
 
 ## Schema 兼容策略
 
@@ -114,16 +114,16 @@ bridge 使用 `encoding=protobuf`，因此 `schema.name` 必须和 descriptor �
 
 当前显式映射：
 
-- `autonomy.commsgs.proto.visualization_msgs.Marker` -> `visualization_msgs.Marker`
-- `autonomy.commsgs.proto.visualization_msgs.MarkerArray` -> `visualization_msgs.MarkerArray`
-- `autonomy.commsgs.proto.geometry_msgs.PoseStamped` -> `geometry_msgs.PoseStamped`
-- `autonomy.commsgs.proto.planning_msgs.Path` -> `nav_msgs.Path`
-- `autonomy.commsgs.proto.planning_msgs.Odometry` -> `nav_msgs.Odometry`
-- `autonomy.commsgs.proto.sensor_msgs.MultiEchoLaserScan` -> `sensor_msgs.LaserScan`
-- `autonomy.commsgs.proto.geometry_msgs.TransformStampeds` -> `foxglove.FrameTransforms`
-- `autonomy.commsgs.proto.tf2_msgs.TFMessage` -> `foxglove.FrameTransforms`
-- `autonomy.commsgs.proto.sensor_msgs.PointCloud2` -> `sensor_msgs.PointCloud2`
-- `autonomy.commsgs.proto.sensor_msgs.PointCloud` -> `sensor_msgs.PointCloud2`
+- `automsgs.msgs.visualization_msgs.Marker` -> `visualization_msgs.Marker`
+- `automsgs.msgs.visualization_msgs.MarkerArray` -> `visualization_msgs.MarkerArray`
+- `automsgs.msgs.geometry_msgs.PoseStamped` -> `geometry_msgs.PoseStamped`
+- `automsgs.msgs.planning_msgs.Path` -> `nav_msgs.Path`
+- `automsgs.msgs.planning_msgs.Odometry` -> `nav_msgs.Odometry`
+- `automsgs.msgs.sensor_msgs.MultiEchoLaserScan` -> `sensor_msgs.LaserScan`
+- `automsgs.msgs.geometry_msgs.TransformStampeds` -> `foxglove.FrameTransforms`
+- `automsgs.msgs.tf2_msgs.TFMessage` -> `foxglove.FrameTransforms`
+- `automsgs.msgs.sensor_msgs.PointCloud2` -> `sensor_msgs.PointCloud2`
+- `automsgs.msgs.sensor_msgs.PointCloud` -> `sensor_msgs.PointCloud2`
 
 ## LaserScan 转换策略
 

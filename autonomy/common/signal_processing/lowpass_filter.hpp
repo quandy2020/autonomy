@@ -18,7 +18,15 @@
 #define AUTONOMY_COMMON_SIGNAL_PROCESSING_LOWPASS_FILTER_HPP_
 
 #include "autonomy/common/signal_processing/lowpass_filter_1d.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 
 namespace autonomy {
 namespace common {
@@ -53,14 +61,14 @@ public:
 };
 
 class LowpassFilterTwist
-    : public LowpassFilterInterface<commsgs::geometry_msgs::Twist>
+    : public LowpassFilterInterface<automsgs::msgs::geometry_msgs::Twist>
 {
 public:
     explicit LowpassFilterTwist(const double gain)
-        : LowpassFilterInterface<commsgs::geometry_msgs::Twist>(gain) {}
+        : LowpassFilterInterface<automsgs::msgs::geometry_msgs::Twist>(gain) {}
 
-    commsgs::geometry_msgs::Twist filter(
-        const commsgs::geometry_msgs::Twist& u) override;
+    automsgs::msgs::geometry_msgs::Twist filter(
+        const automsgs::msgs::geometry_msgs::Twist& u) override;
 };
 
 }  // namespace signal_processing

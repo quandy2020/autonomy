@@ -19,18 +19,28 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
 
 namespace autonomy {
 namespace control {
 namespace utils {
 
 // Twist Transformations
-commsgs::geometry_msgs::Twist twist2Dto3D(
-    const commsgs::geometry_msgs::Twist2D& cmd_vel_2d);
-commsgs::geometry_msgs::Twist2D twist3Dto2D(
-    const commsgs::geometry_msgs::Twist& cmd_vel);
+automsgs::msgs::geometry_msgs::Twist twist2Dto3D(
+    const automsgs::msgs::geometry_msgs::Twist2D& cmd_vel_2d);
+automsgs::msgs::geometry_msgs::Twist2D twist3Dto2D(
+    const automsgs::msgs::geometry_msgs::Twist& cmd_vel);
 
 }  // namespace utils
 }  // namespace control

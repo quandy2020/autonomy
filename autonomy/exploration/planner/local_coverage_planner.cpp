@@ -51,7 +51,7 @@ void LocalCoveragePlanner::SetOptions(const proto::ExplorationOptions& options)
 void LocalCoveragePlanner::AppendGeometricSegment(
     const KeyposeGraph& keypose_graph, double from_x, double from_y,
     double from_z, const Viewpoint& to, const std::string& frame_id,
-    commsgs::planning_msgs::Path* path) const
+    automsgs::msgs::planning_msgs::Path* path) const
 {
     if (!path) {
         return;
@@ -60,38 +60,38 @@ void LocalCoveragePlanner::AppendGeometricSegment(
         from_x, from_y, from_z, to.x, to.y, to.z);
     for (size_t i = 0; i < points.size(); ++i) {
         Viewpoint mid;
-        mid.x = points[i].x;
-        mid.y = points[i].y;
-        mid.z = points[i].z;
+        mid.x = (points[i].x());
+        mid.y = (points[i].y());
+        mid.z = (points[i].z());
         if (i + 1 < points.size()) {
-            mid.yaw = std::atan2(points[i + 1].y - points[i].y,
-                                 points[i + 1].x - points[i].x);
+            mid.yaw = std::atan2(points[i + 1].y() - points[i].y(),
+                                 points[i + 1].x() - points[i].x());
         } else {
             mid.yaw = to.yaw;
         }
         // Skip duplicating the segment start if it matches the last pose.
-        if (!path->poses.empty()) {
-            const auto& last = path->poses.back().pose.position;
-            if (Euclidean3(last.x, last.y, last.z, mid.x, mid.y, mid.z) <
+        if (!path->poses().empty()) {
+            const auto& last = path->poses(path->poses_size() - 1).pose().position();
+            if (Euclidean3(last.x(), last.y(), last.z(), mid.x, mid.y, mid.z) <
                 1e-3) {
                 continue;
             }
         }
-        path->poses.push_back(mid.ToPoseStamped(frame_id));
+        *path->mutable_poses()->Add() = mid.ToPoseStamped(frame_id);
     }
 }
 
-commsgs::planning_msgs::Path LocalCoveragePlanner::Solve(
+automsgs::msgs::planning_msgs::Path LocalCoveragePlanner::Solve(
     const PlanningEnv& env, ViewpointManager& viewpoints,
     const KeyposeGraph& keypose_graph,
     const std::vector<int>& global_cell_order, const GridWorld& grid_world)
 {
     local_complete_ = false;
-    commsgs::planning_msgs::Path path;
-    path.header.frame_id = "map";
+    automsgs::msgs::planning_msgs::Path path;
+    path.mutable_header()->set_frame_id("map");
 
-    path.poses.push_back(
-        viewpoints.GetRobotViewpoint().ToPoseStamped(path.header.frame_id));
+    *path.mutable_poses()->Add() = 
+        viewpoints.GetRobotViewpoint().ToPoseStamped(path.header().frame_id());
 
     auto candidates = viewpoints.GetCandidates(options_.viewpoint().min_gain());
     const int max_nodes = std::max(1, options_.local_tsp_max_nodes());
@@ -107,7 +107,7 @@ commsgs::planning_msgs::Path LocalCoveragePlanner::Solve(
         constexpr double kMinGoalDist = 1.0;
         constexpr double kMaxGoalDist = 8.0;
         auto pick_goal =
-            [&](const std::vector<commsgs::geometry_msgs::Point>& pts) {
+            [&](const std::vector<automsgs::msgs::geometry_msgs::Point>& pts) {
                 int best = -1;
                 double best_score = -1.0;
                 int farthest = -1;
@@ -115,8 +115,8 @@ commsgs::planning_msgs::Path LocalCoveragePlanner::Solve(
                 for (size_t i = 0; i < pts.size(); ++i) {
                     const auto& p = pts[i];
                     const double d = Euclidean3(
-                        env.robot_x(), env.robot_y(), env.robot_z(), p.x, p.y,
-                        p.z);
+                        env.robot_x(), env.robot_y(), env.robot_z(), p.x(), p.y(),
+                        p.z());
                     if (d > farthest_d) {
                         farthest_d = d;
                         farthest = static_cast<int>(i);
@@ -135,11 +135,11 @@ commsgs::planning_msgs::Path LocalCoveragePlanner::Solve(
                     return;
                 }
                 const auto& p = pts[static_cast<size_t>(pick)];
-                goal.x = p.x;
-                goal.y = p.y;
-                goal.z = env.robot_z();
+                goal.x = (p.x());
+                goal.y = (p.y());
+                goal.z = (env.robot_z());
                 goal.yaw =
-                    std::atan2(p.y - env.robot_y(), p.x - env.robot_x());
+                    std::atan2(p.y() - env.robot_y(), p.x() - env.robot_x());
                 have_goal = true;
             };
         if (!env.targets().empty()) {
@@ -149,20 +149,20 @@ commsgs::planning_msgs::Path LocalCoveragePlanner::Solve(
         } else if (!global_cell_order.empty()) {
             const int cell = global_cell_order.front();
             const auto center = grid_world.CellCenter(cell);
-            goal.x = center.x;
-            goal.y = center.y;
-            goal.z = env.robot_z();
+            goal.x = (center.x());
+            goal.y = (center.y());
+            goal.z = (env.robot_z());
             goal.yaw =
-                std::atan2(center.y - env.robot_y(), center.x - env.robot_x());
+                std::atan2(center.y() - env.robot_y(), center.x() - env.robot_x());
             have_goal = true;
         }
         if (have_goal) {
             AppendGeometricSegment(keypose_graph, env.robot_x(), env.robot_y(),
-                                   env.robot_z(), goal, path.header.frame_id,
+                                   env.robot_z(), goal, path.header().frame_id(),
                                    &path);
             // Ensure at least a 2-pose path for RViz Path display.
-            if (path.poses.size() < 2) {
-                path.poses.push_back(goal.ToPoseStamped(path.header.frame_id));
+            if (path.poses_size() < 2) {
+                *path.mutable_poses()->Add() = goal.ToPoseStamped(path.header().frame_id());
             }
         }
         return path;
@@ -188,8 +188,8 @@ commsgs::planning_msgs::Path LocalCoveragePlanner::Solve(
         }
         if (use_dummy && idx == dummy) {
             const auto center = grid_world.CellCenter(global_cell_order.front());
-            *x = center.x;
-            *y = center.y;
+            *x = center.x();
+            *y = center.y();
             *z = env.robot_z();
             return;
         }
@@ -260,14 +260,14 @@ commsgs::planning_msgs::Path LocalCoveragePlanner::Solve(
         auto& vp = candidates[static_cast<size_t>(node - 1)];
         vp.selected = true;
         AppendGeometricSegment(keypose_graph, cur_x, cur_y, cur_z, vp,
-                               path.header.frame_id, &path);
+                               path.header().frame_id(), &path);
         viewpoints.MarkVisited(vp.id);
         cur_x = vp.x;
         cur_y = vp.y;
         cur_z = vp.z;
     }
 
-    if (path.poses.size() <= 1) {
+    if (path.poses_size() <= 1) {
         local_complete_ = true;
     }
 
@@ -275,13 +275,13 @@ commsgs::planning_msgs::Path LocalCoveragePlanner::Solve(
         const int cell = global_cell_order.front();
         const auto center = grid_world.CellCenter(cell);
         Viewpoint global_vp;
-        global_vp.x = center.x;
-        global_vp.y = center.y;
-        global_vp.z = env.robot_z();
+        global_vp.x = (center.x());
+        global_vp.y = (center.y());
+        global_vp.z = (env.robot_z());
         global_vp.yaw =
-            std::atan2(center.y - cur_y, center.x - cur_x);
+            std::atan2(center.y() - cur_y, center.x() - cur_x);
         AppendGeometricSegment(keypose_graph, cur_x, cur_y, cur_z, global_vp,
-                               path.header.frame_id, &path);
+                               path.header().frame_id(), &path);
     }
 
     return path;

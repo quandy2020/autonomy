@@ -156,7 +156,7 @@ void OgreBillboardLine::setColor(float r, float g, float b, float a) {
 void OgreBillboardLine::addPoint(const Ogre::Vector3& point) {
   incrementChainContainerIfNecessary();
   Ogre::BillboardChain::Element element;
-  element.position = point;
+  *element.mutable_position() = point;
   element.width = width_;
   element.colour = color_;
   chain_containers_[current_chain_container_]->addChainElement(
@@ -195,7 +195,7 @@ void OgreBillboardLine::setPolyline(const std::vector<Ogre::Vector3>& points,
   for (const Ogre::Vector3& point : points) {
     incrementChainContainerIfNecessary();
     Ogre::BillboardChain::Element element;
-    element.position = point;
+    *element.mutable_position() = point;
     element.width = width_;
     element.colour = color_;
     chain_containers_[current_chain_container_]->addChainElement(

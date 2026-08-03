@@ -20,7 +20,9 @@
 #include <cmath>
 
 #include "autonomy/common/logging.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
 #include "autonomy/task/apps/teleop/constants.hpp"
 #include "autonomy/transform/buffer_utils.hpp"
 
@@ -85,12 +87,12 @@ control::proto::MPPIControllerOptions DefaultMppiOptions() {
     return options;
 }
 
-commsgs::geometry_msgs::PoseStamped IdentityRobotPose(
+automsgs::msgs::geometry_msgs::PoseStamped IdentityRobotPose(
     const std::string& frame_id) {
-    commsgs::geometry_msgs::PoseStamped pose;
-    pose.header.frame_id = frame_id;
-    pose.header.stamp = commsgs::builtin_interfaces::Time::Now();
-    pose.pose.orientation.w = 1.0;
+    automsgs::msgs::geometry_msgs::PoseStamped pose;
+    pose.mutable_header()->set_frame_id(frame_id);
+    *pose.mutable_header()->mutable_stamp() = automsgs::msgs::builtin_interfaces::TimeNow();
+    pose.mutable_pose()->mutable_orientation()->set_w(1.0);
     return pose;
 }
 
@@ -194,7 +196,7 @@ bool TeleopMppiAssist::IsPerceptionOk() const {
 }
 
 bool TeleopMppiAssist::TryGetRobotPose(
-    commsgs::geometry_msgs::PoseStamped* pose) const {
+    automsgs::msgs::geometry_msgs::PoseStamped* pose) const {
     if (!pose || !costmap_) {
         return false;
     }
@@ -203,11 +205,11 @@ bool TeleopMppiAssist::TryGetRobotPose(
 
 void TeleopMppiAssist::FillPassthroughCmd(
     double linear_x, double angular_z,
-    commsgs::geometry_msgs::TwistStamped* cmd_out) const {
-    cmd_out->header.frame_id = kDefaultBaseFrame;
-    cmd_out->header.stamp = commsgs::builtin_interfaces::Time::Now();
-    cmd_out->twist.linear.x = linear_x;
-    cmd_out->twist.angular.z = angular_z;
+    automsgs::msgs::geometry_msgs::TwistStamped* cmd_out) const {
+    cmd_out->mutable_header()->set_frame_id(kDefaultBaseFrame);
+    *cmd_out->mutable_header()->mutable_stamp() = automsgs::msgs::builtin_interfaces::TimeNow();
+    cmd_out->mutable_twist()->mutable_linear()->set_x(linear_x);
+    cmd_out->mutable_twist()->mutable_angular()->set_z(angular_z);
 }
 
 double TeleopMppiAssist::AngularToJoyDirDeg(double angular_z,
@@ -222,9 +224,9 @@ double TeleopMppiAssist::AngularToJoyDirDeg(double angular_z,
 }
 
 bool TeleopMppiAssist::Tick(double joy_linear_x, double joy_angular_z,
-                            const commsgs::geometry_msgs::PoseStamped& robot_pose,
-                            const commsgs::geometry_msgs::Twist& robot_speed,
-                            commsgs::geometry_msgs::TwistStamped* cmd_out) {
+                            const automsgs::msgs::geometry_msgs::PoseStamped& robot_pose,
+                            const automsgs::msgs::geometry_msgs::Twist& robot_speed,
+                            automsgs::msgs::geometry_msgs::TwistStamped* cmd_out) {
     if (!cmd_out) {
         return false;
     }
@@ -258,9 +260,9 @@ bool TeleopMppiAssist::Tick(double joy_linear_x, double joy_angular_z,
     const auto& costmap = *costmap_->getCostmap();
     auto path = selector_.Select(costmap, joy_dir_deg, joy_linear_x);
     if (path.has_value()) {
-        path->header.frame_id = options_.global_frame;
-        for (auto& pose_stamped : path->poses) {
-            pose_stamped.header.frame_id = options_.global_frame;
+        path->mutable_header()->set_frame_id(options_.global_frame);
+        for (auto& pose_stamped : *path->mutable_poses()) {
+            pose_stamped.mutable_header()->set_frame_id(options_.global_frame);
         }
     }
 
@@ -273,16 +275,16 @@ bool TeleopMppiAssist::Tick(double joy_linear_x, double joy_angular_z,
 
     mppi_->SetPlan(*path);
 
-    commsgs::geometry_msgs::PoseStamped pose = robot_pose;
-    if (pose.header.frame_id.empty()) {
+    automsgs::msgs::geometry_msgs::PoseStamped pose = robot_pose;
+    if (pose.header().frame_id().empty()) {
         pose = IdentityRobotPose(options_.global_frame);
     }
 
-    commsgs::geometry_msgs::TwistStamped velocity;
-    velocity.twist = robot_speed;
+    automsgs::msgs::geometry_msgs::TwistStamped velocity;
+    *velocity.mutable_twist() = robot_speed;
 
     std::string message;
-    commsgs::geometry_msgs::TwistStamped cmd;
+    automsgs::msgs::geometry_msgs::TwistStamped cmd;
     const uint32_t result = mppi_->ComputeVelocityCommands(
         pose, velocity, cmd, &goal_checker_, message);
     if (result != 0) {
@@ -292,8 +294,8 @@ bool TeleopMppiAssist::Tick(double joy_linear_x, double joy_angular_z,
     }
 
     *cmd_out = cmd;
-    if (cmd_out->header.frame_id.empty()) {
-        cmd_out->header.frame_id = kDefaultBaseFrame;
+    if (cmd_out->header().frame_id().empty()) {
+        cmd_out->mutable_header()->set_frame_id(kDefaultBaseFrame);
     }
     return true;
 }

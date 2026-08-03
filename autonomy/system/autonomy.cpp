@@ -22,14 +22,14 @@ namespace autonomy {
 namespace system {
 namespace {
 
-commsgs::geometry_msgs::TwistStamped ZeroTwist() {
-    commsgs::geometry_msgs::TwistStamped cmd;
-    cmd.twist.linear.x = 0.0;
-    cmd.twist.linear.y = 0.0;
-    cmd.twist.linear.z = 0.0;
-    cmd.twist.angular.x = 0.0;
-    cmd.twist.angular.y = 0.0;
-    cmd.twist.angular.z = 0.0;
+automsgs::msgs::geometry_msgs::TwistStamped ZeroTwist() {
+    automsgs::msgs::geometry_msgs::TwistStamped cmd;
+    cmd.mutable_twist()->mutable_linear()->set_x(0.0);
+    cmd.mutable_twist()->mutable_linear()->set_y(0.0);
+    cmd.mutable_twist()->mutable_linear()->set_z(0.0);
+    cmd.mutable_twist()->mutable_angular()->set_x(0.0);
+    cmd.mutable_twist()->mutable_angular()->set_y(0.0);
+    cmd.mutable_twist()->mutable_angular()->set_z(0.0);
     return cmd;
 }
 
@@ -135,25 +135,21 @@ void Autonomy::Start() {
             options_.transform_options());
         const auto& static_transforms =
             transform_server_->GetTransformStampedsData();
-        for (const auto& trans : static_transforms.transforms) {
+        for (const auto& trans : static_transforms.transforms()) {
             try {
                 geometry_msgs::TransformStamped geo_msg;
-                geo_msg.header.stamp =
-                    static_cast<uint64_t>(trans.header.stamp.sec) *
+                geo_msg.header.stamp = static_cast<uint64_t>(trans.header().stamp().sec()) *
                         1000000000ULL +
-                    static_cast<uint64_t>(trans.header.stamp.nanosec);
-                geo_msg.header.frame_id = trans.header.frame_id;
-                geo_msg.child_frame_id = trans.child_frame_id;
-                geo_msg.transform.translation.x =
-                    trans.transform.translation.x;
-                geo_msg.transform.translation.y =
-                    trans.transform.translation.y;
-                geo_msg.transform.translation.z =
-                    trans.transform.translation.z;
-                geo_msg.transform.rotation.x = trans.transform.rotation.x;
-                geo_msg.transform.rotation.y = trans.transform.rotation.y;
-                geo_msg.transform.rotation.z = trans.transform.rotation.z;
-                geo_msg.transform.rotation.w = trans.transform.rotation.w;
+                    static_cast<uint64_t>(trans.header().stamp().nanosec());
+                geo_msg.header.frame_id = trans.header().frame_id();
+                geo_msg.child_frame_id = trans.child_frame_id();
+                geo_msg.transform.translation.x = trans.transform().translation().x();
+                geo_msg.transform.translation.y = trans.transform().translation().y();
+                geo_msg.transform.translation.z = trans.transform().translation().z();
+                geo_msg.transform.rotation.x = trans.transform().rotation().x();
+                geo_msg.transform.rotation.y = trans.transform().rotation().y();
+                geo_msg.transform.rotation.z = trans.transform().rotation().z();
+                geo_msg.transform.rotation.w = trans.transform().rotation().w();
                 tf_buffer_->setTransform(geo_msg, "autonomy_system", true);
             } catch (const std::exception& ex) {
                 AWARN << "Failed to load static transform: " << ex.what();
@@ -163,7 +159,7 @@ void Autonomy::Start() {
 
     if (map_server_ && planner_) {
         map_server_->SetMapPublishCallback(
-            [this](const commsgs::map_msgs::OccupancyGrid::SharedPtr& map) {
+            [this](const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>& map) {
                 ApplyMapToCostmap(map);
                 std::vector<MapPublishListener> listeners;
                 {
@@ -277,7 +273,7 @@ void Autonomy::AddPathListener(PathListener listener) {
 }
 
 void Autonomy::ApplyMapToCostmap(
-    const commsgs::map_msgs::OccupancyGrid::SharedPtr& map) {
+    const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>& map) {
     if (!map || !planner_) {
         return;
     }
@@ -286,7 +282,7 @@ void Autonomy::ApplyMapToCostmap(
     }
 }
 
-void Autonomy::NotifyPath(const commsgs::planning_msgs::Path& path) {
+void Autonomy::NotifyPath(const automsgs::msgs::planning_msgs::Path& path) {
     std::vector<PathListener> listeners;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -301,29 +297,29 @@ void Autonomy::NotifyPath(const commsgs::planning_msgs::Path& path) {
 }
 
 bool Autonomy::GetRobotPose(
-    commsgs::geometry_msgs::PoseStamped& pose) const {
+    automsgs::msgs::geometry_msgs::PoseStamped& pose) const {
     if (!controller_) {
         return false;
     }
-    commsgs::planning_msgs::Odometry odom;
+    automsgs::msgs::planning_msgs::Odometry odom;
     if (!controller_->GetLatestOdometry(odom)) {
         return false;
     }
-    pose.header = odom.header;
-    pose.pose = odom.pose.pose;
+    *pose.mutable_header() = odom.header();
+    *pose.mutable_pose() = odom.pose().pose().pose();
     return true;
 }
 
 bool Autonomy::TransformPoseToGlobalFrame(
-    commsgs::geometry_msgs::PoseStamped& pose) {
+    automsgs::msgs::geometry_msgs::PoseStamped& pose) {
     if (!tf_buffer_) {
         return false;
     }
     const std::string& target = navigator_options_.global_frame().empty()
                                     ? "map"
                                     : navigator_options_.global_frame();
-    if (pose.header.frame_id.empty() || pose.header.frame_id == target) {
-        pose.header.frame_id = target;
+    if (pose.header().frame_id().empty() || pose.header().frame_id() == target ) {
+        pose.mutable_header()->set_frame_id(target);
         return true;
     }
     try {
@@ -336,7 +332,7 @@ bool Autonomy::TransformPoseToGlobalFrame(
 }
 
 bool Autonomy::NavigateDirectToPose(
-    const commsgs::geometry_msgs::PoseStamped& goal,
+    const automsgs::msgs::geometry_msgs::PoseStamped& goal,
     std::function<bool()> cancel_checker, std::function<bool()> keep_alive,
     const double timeout_sec) {
     (void)timeout_sec;
@@ -345,12 +341,12 @@ bool Autonomy::NavigateDirectToPose(
         return false;
     }
 
-    commsgs::geometry_msgs::PoseStamped start;
+    automsgs::msgs::geometry_msgs::PoseStamped start;
     if (!GetRobotPose(start)) {
         AERROR << "NavigateDirectToPose: no robot pose.";
         return false;
     }
-    commsgs::geometry_msgs::PoseStamped goal_tf = goal;
+    automsgs::msgs::geometry_msgs::PoseStamped goal_tf = goal;
     if (!TransformPoseToGlobalFrame(goal_tf)) {
         return false;
     }
@@ -359,7 +355,7 @@ bool Autonomy::NavigateDirectToPose(
     }
 
     const auto ids = ResolvePluginIds();
-    commsgs::planning_msgs::Path path;
+    automsgs::msgs::planning_msgs::Path path;
     try {
         path = planner_->GetPlan(start, goal_tf, ids.planner_id,
                                  cancel_checker);
@@ -367,7 +363,7 @@ bool Autonomy::NavigateDirectToPose(
         AERROR << "GetPlan failed: " << ex.what();
         return false;
     }
-    if (path.poses.size() < navigator::kMinPathPoses) {
+    if (path.poses_size() < navigator::kMinPathPoses) {
         AERROR << "NavigateDirectToPose: planned path too short.";
         return false;
     }
@@ -376,7 +372,7 @@ bool Autonomy::NavigateDirectToPose(
 }
 
 bool Autonomy::NavigateToPose(
-    const commsgs::geometry_msgs::PoseStamped& goal,
+    const automsgs::msgs::geometry_msgs::PoseStamped& goal,
     std::function<bool()> cancel_checker, std::function<bool()> keep_alive,
     const double timeout_sec) {
     if (!configured_.load()) {
@@ -384,7 +380,7 @@ bool Autonomy::NavigateToPose(
         return false;
     }
 
-    commsgs::geometry_msgs::PoseStamped goal_tf = goal;
+    automsgs::msgs::geometry_msgs::PoseStamped goal_tf = goal;
     if (!TransformPoseToGlobalFrame(goal_tf)) {
         return false;
     }
@@ -393,7 +389,7 @@ bool Autonomy::NavigateToPose(
 }
 
 bool Autonomy::NavigateThroughPoses(
-    const std::vector<commsgs::geometry_msgs::PoseStamped>& goals,
+    const std::vector<automsgs::msgs::geometry_msgs::PoseStamped>& goals,
     std::function<bool()> cancel_checker, std::function<bool()> keep_alive,
     const double timeout_sec) {
     if (!configured_.load()) {
@@ -418,15 +414,15 @@ bool Autonomy::NavigateThroughPoses(
 }
 
 void Autonomy::ReplanToGoal(
-    const commsgs::geometry_msgs::PoseStamped& goal) {
+    const automsgs::msgs::geometry_msgs::PoseStamped& goal) {
     if (!configured_.load() || !planner_) {
         return;
     }
-    commsgs::geometry_msgs::PoseStamped start;
+    automsgs::msgs::geometry_msgs::PoseStamped start;
     if (!GetRobotPose(start) || !TransformPoseToGlobalFrame(start)) {
         return;
     }
-    commsgs::geometry_msgs::PoseStamped goal_tf = goal;
+    automsgs::msgs::geometry_msgs::PoseStamped goal_tf = goal;
     if (!TransformPoseToGlobalFrame(goal_tf)) {
         return;
     }
@@ -440,7 +436,7 @@ void Autonomy::ReplanToGoal(
     }
 }
 
-std::optional<commsgs::planning_msgs::Path> Autonomy::GetLastPath() {
+std::optional<automsgs::msgs::planning_msgs::Path> Autonomy::GetLastPath() {
     std::lock_guard<std::mutex> lock(mutex_);
     return last_path_;
 }
@@ -451,14 +447,14 @@ void Autonomy::SetControllerEnabled(const bool enabled) {
     controller_enabled_ = enabled;
 }
 
-commsgs::geometry_msgs::TwistStamped Autonomy::TickControl() {
+automsgs::msgs::geometry_msgs::TwistStamped Autonomy::TickControl() {
     if (!controller_enabled_.load() || !controller_) {
         return ZeroTwist();
     }
     return last_control_cmd_;
 }
 
-commsgs::geometry_msgs::TwistStamped Autonomy::GetLastControlCommand() const {
+automsgs::msgs::geometry_msgs::TwistStamped Autonomy::GetLastControlCommand() const {
     return last_control_cmd_;
 }
 

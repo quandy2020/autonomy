@@ -18,7 +18,7 @@
 
 #include <mutex>
 
-#include "autonomy/commsgs/proto/vehicle_msgs.pb.h"
+#include <automsgs/msgs/vehicle_msgs/vehicle_msgs.pb.h>
 
 namespace autonomy {
 namespace task {
@@ -36,10 +36,10 @@ public:
     {
         std::lock_guard<std::mutex> lock(mutex_);
         return active_navigation_task_ !=
-               ::autonomy::commsgs::proto::vehicle_msgs::ROBOT_TASK_NONE;
+               ::automsgs::msgs::vehicle_msgs::ROBOT_TASK_NONE;
     }
 
-    ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType ActiveNavigationTask()
+    ::automsgs::msgs::vehicle_msgs::RobotTaskType ActiveNavigationTask()
         const
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -51,7 +51,7 @@ public:
      * @return false 表示已有互斥任务在运行
      */
     bool TryAcquire(
-        ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType task_type)
+        ::automsgs::msgs::vehicle_msgs::RobotTaskType task_type)
     {
         if (!exclusive_navigation_tasks_) {
             return true;
@@ -61,7 +61,7 @@ public:
         }
         std::lock_guard<std::mutex> lock(mutex_);
         if (active_navigation_task_ !=
-            ::autonomy::commsgs::proto::vehicle_msgs::ROBOT_TASK_NONE) {
+            ::automsgs::msgs::vehicle_msgs::ROBOT_TASK_NONE) {
             return false;
         }
         active_navigation_task_ = task_type;
@@ -69,7 +69,7 @@ public:
     }
 
     void Release(
-        ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType task_type)
+        ::automsgs::msgs::vehicle_msgs::RobotTaskType task_type)
     {
         if (!exclusive_navigation_tasks_) {
             return;
@@ -80,7 +80,7 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         if (active_navigation_task_ == task_type) {
             active_navigation_task_ =
-                ::autonomy::commsgs::proto::vehicle_msgs::ROBOT_TASK_NONE;
+                ::automsgs::msgs::vehicle_msgs::ROBOT_TASK_NONE;
         }
     }
 
@@ -89,13 +89,13 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
         exclusive_navigation_tasks_ = exclusive_navigation_tasks;
         active_navigation_task_ =
-            ::autonomy::commsgs::proto::vehicle_msgs::ROBOT_TASK_NONE;
+            ::automsgs::msgs::vehicle_msgs::ROBOT_TASK_NONE;
     }
 
     static bool IsNavigationClass(
-        ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType task_type)
+        ::automsgs::msgs::vehicle_msgs::RobotTaskType task_type)
     {
-        using ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType;
+        using ::automsgs::msgs::vehicle_msgs::RobotTaskType;
         switch (task_type) {
         case RobotTaskType::ROBOT_TASK_NAVIGATION:
         case RobotTaskType::ROBOT_TASK_FOLLOW:
@@ -111,9 +111,9 @@ public:
 private:
     bool exclusive_navigation_tasks_;
     mutable std::mutex mutex_;
-    ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType
+    ::automsgs::msgs::vehicle_msgs::RobotTaskType
         active_navigation_task_{
-            ::autonomy::commsgs::proto::vehicle_msgs::ROBOT_TASK_NONE};
+            ::automsgs::msgs::vehicle_msgs::ROBOT_TASK_NONE};
 };
 
 }  // namespace task

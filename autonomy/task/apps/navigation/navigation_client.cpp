@@ -5,8 +5,18 @@
 #include "autonomy/task/apps/navigation/navigation_client.hpp"
 
 #include "autonomy/common/logging.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "behaviortree_cpp/blackboard.h"
 #include "behaviortree_cpp/tree_node.h"
 
@@ -107,8 +117,8 @@ bool NavigationClient::IsControlReady() const
 }
 
 bool NavigationClient::ComputePathToPose(
-    const commsgs::geometry_msgs::PoseStamped& goal,
-    const std::string& planner_id, commsgs::planning_msgs::Path& path,
+    const automsgs::msgs::geometry_msgs::PoseStamped& goal,
+    const std::string& planner_id, automsgs::msgs::planning_msgs::Path& path,
     int* error_code, std::string* error_msg)
 {
     if (!compute_path_client_ || !compute_path_client_->ActionServerIsReady()) {
@@ -118,7 +128,7 @@ bool NavigationClient::ComputePathToPose(
     }
 
     nav_proto::ComputePathToPoseAction::Goal rpc_goal;
-    *rpc_goal.mutable_goal() = commsgs::geometry_msgs::ToProto(goal);
+    *rpc_goal.mutable_goal() = goal;
     if (!planner_id.empty()) {
         rpc_goal.set_planner_id(planner_id);
     }
@@ -137,8 +147,8 @@ bool NavigationClient::ComputePathToPose(
         return false;
     }
 
-    path = commsgs::planning_msgs::FromProto(wrapped->result->path());
-    if (path.poses.empty()) {
+    path = wrapped->result->path();
+    if (path.poses().empty()) {
         SetError(error_code, error_msg, kErrEmptyPath, "planner returned empty path");
         return false;
     }
@@ -146,8 +156,8 @@ bool NavigationClient::ComputePathToPose(
 }
 
 bool NavigationClient::ComputePathThroughPoses(
-    const std::vector<commsgs::geometry_msgs::PoseStamped>& goals,
-    const std::string& planner_id, commsgs::planning_msgs::Path& path,
+    const std::vector<automsgs::msgs::geometry_msgs::PoseStamped>& goals,
+    const std::string& planner_id, automsgs::msgs::planning_msgs::Path& path,
     int* error_code, std::string* error_msg)
 {
     if (!compute_through_poses_client_ ||
@@ -164,7 +174,7 @@ bool NavigationClient::ComputePathThroughPoses(
     nav_proto::ComputePathThroughPosesAction::Goal rpc_goal;
     auto* proto_goals = rpc_goal.mutable_goals();
     for (const auto& pose : goals) {
-        *proto_goals->add_goals() = commsgs::geometry_msgs::ToProto(pose);
+        *proto_goals->add_goals() = pose;
     }
     if (!planner_id.empty()) {
         rpc_goal.set_planner_id(planner_id);
@@ -178,17 +188,17 @@ bool NavigationClient::ComputePathThroughPoses(
         return false;
     }
 
-    path = commsgs::planning_msgs::FromProto(wrapped->result->path());
-    if (path.poses.empty()) {
+    path = wrapped->result->path();
+    if (path.poses().empty()) {
         SetError(error_code, error_msg, kErrEmptyPath, "planner returned empty path");
         return false;
     }
     return true;
 }
 
-bool NavigationClient::SmoothPath(const commsgs::planning_msgs::Path& unsmoothed,
+bool NavigationClient::SmoothPath(const automsgs::msgs::planning_msgs::Path& unsmoothed,
                                   const std::string& smoother_id,
-                                  commsgs::planning_msgs::Path& smoothed,
+                                  automsgs::msgs::planning_msgs::Path& smoothed,
                                   int* error_code, std::string* error_msg)
 {
     if (!smooth_path_client_ || !smooth_path_client_->ActionServerIsReady()) {
@@ -196,13 +206,13 @@ bool NavigationClient::SmoothPath(const commsgs::planning_msgs::Path& unsmoothed
                  "planning action server not ready: smooth_path");
         return false;
     }
-    if (unsmoothed.poses.empty()) {
+    if (unsmoothed.poses().empty()) {
         SetError(error_code, error_msg, kErrEmptyPath, "cannot smooth empty path");
         return false;
     }
 
     nav_proto::SmoothPathAction::Goal rpc_goal;
-    *rpc_goal.mutable_path() = commsgs::planning_msgs::ToProto(unsmoothed);
+    *rpc_goal.mutable_path() = unsmoothed;
     if (!smoother_id.empty()) {
         rpc_goal.set_smoother_id(smoother_id);
     }
@@ -214,27 +224,27 @@ bool NavigationClient::SmoothPath(const commsgs::planning_msgs::Path& unsmoothed
         return false;
     }
 
-    smoothed = commsgs::planning_msgs::FromProto(wrapped->result->path());
-    return !smoothed.poses.empty();
+    smoothed = wrapped->result->path();
+    return !smoothed.poses().empty();
 }
 
-bool NavigationClient::IsPathValid(const commsgs::planning_msgs::Path& path,
+bool NavigationClient::IsPathValid(const automsgs::msgs::planning_msgs::Path& path,
                                    uint8_t max_cost,
                                    bool consider_unknown_as_obstacle) const
 {
     if (!path_valid_client_) {
-        return !path.poses.empty();
+        return !path.poses().empty();
     }
 
     auto request = std::make_shared<nav_proto::IsPathValid_Request>();
-    *request->mutable_path() = commsgs::planning_msgs::ToProto(path);
+    *request->mutable_path() = path;
     request->set_max_cost(max_cost);
     request->set_consider_unknown_as_obstacle(consider_unknown_as_obstacle);
 
     const auto response = path_valid_client_->SendRequest(request);
     if (!response) {
         AWARN << "NavigationClient: is_path_valid service call failed";
-        return !path.poses.empty();
+        return !path.poses().empty();
     }
     return response->is_valid();
 }

@@ -26,9 +26,21 @@
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 
 namespace autonomy {
 namespace control {
@@ -51,23 +63,23 @@ public:
                           const std::string& odom_topic = "odom");
 
     bool HasOdometry() const;
-    bool GetLatestOdometry(commsgs::planning_msgs::Odometry& odom) const;
+    bool GetLatestOdometry(automsgs::msgs::planning_msgs::Odometry& odom) const;
 
     /** Inject odometry (e.g. from a subscriber or demo harness). */
-    void UpdateOdometry(const commsgs::planning_msgs::Odometry& msg);
+    void UpdateOdometry(const automsgs::msgs::planning_msgs::Odometry& msg);
 
     /** Seed zero velocity for single-process demos without an odom publisher. */
     void SeedZeroOdometry(const std::string& child_frame_id,
                           const std::string& parent_frame_id = "odom");
 
-    commsgs::geometry_msgs::Twist getTwist();
-    commsgs::geometry_msgs::TwistStamped getTwistStamped();
-    commsgs::geometry_msgs::Twist getRawTwist();
-    commsgs::geometry_msgs::TwistStamped getRawTwistStamped();
+    automsgs::msgs::geometry_msgs::Twist getTwist();
+    automsgs::msgs::geometry_msgs::TwistStamped getTwistStamped();
+    automsgs::msgs::geometry_msgs::Twist getRawTwist();
+    automsgs::msgs::geometry_msgs::TwistStamped getRawTwistStamped();
 
 protected:
     void odomCallback(
-        const std::shared_ptr<commsgs::planning_msgs::Odometry>& msg);
+        const std::shared_ptr<automsgs::msgs::planning_msgs::Odometry>& msg);
 
     void LogMissingOdometryOnce();
 
@@ -78,12 +90,12 @@ protected:
 
     bool received_odom_{false};
     std::atomic<bool> logged_missing_odom_{false};
-    commsgs::planning_msgs::Odometry odom_cumulate_;
-    commsgs::geometry_msgs::TwistStamped vel_smooth_;
+    automsgs::msgs::planning_msgs::Odometry odom_cumulate_;
+    automsgs::msgs::geometry_msgs::TwistStamped vel_smooth_;
     mutable std::mutex odom_mutex_;
 
-    commsgs::builtin_interfaces::Duration odom_history_duration_;
-    std::deque<commsgs::planning_msgs::Odometry> odom_history_;
+    automsgs::msgs::builtin_interfaces::Duration odom_history_duration_;
+    std::deque<automsgs::msgs::planning_msgs::Odometry> odom_history_;
 };
 
 }  // namespace utils

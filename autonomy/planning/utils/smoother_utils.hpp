@@ -22,7 +22,9 @@
 #include <utility>
 #include <vector>
 
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
 #include "autonomy/transform/tf2/utils.h"
 
@@ -53,7 +55,7 @@ struct PathSegment {
  * @return Set of index pairs for each segment of the path in a given direction
  */
 inline std::vector<PathSegment> findDirectionalPathSegments(
-    const commsgs::planning_msgs::Path& path, bool is_holonomic = false) {
+    const automsgs::msgs::planning_msgs::Path& path, bool is_holonomic = false) {
     std::vector<PathSegment> segments;
     PathSegment curr_segment;
     curr_segment.start = 0;
@@ -61,23 +63,19 @@ inline std::vector<PathSegment> findDirectionalPathSegments(
     // If holonomic, no directional changes and
     // may have abrupt angular changes from naive grid search
     if (is_holonomic) {
-        curr_segment.end = path.poses.size() - 1;
+        curr_segment.end = path.poses_size() - 1;
         segments.push_back(curr_segment);
         return segments;
     }
 
     // Iterating through the path to determine the position of the cusp
-    for (unsigned int idx = 1; idx < path.poses.size() - 1; ++idx) {
+    for (unsigned int idx = 1; idx < path.poses_size() - 1; ++idx) {
         // We have two vectors for the dot product OA and AB. Determining the
         // vectors.
-        double oa_x = path.poses[idx].pose.position.x -
-                      path.poses[idx - 1].pose.position.x;
-        double oa_y = path.poses[idx].pose.position.y -
-                      path.poses[idx - 1].pose.position.y;
-        double ab_x = path.poses[idx + 1].pose.position.x -
-                      path.poses[idx].pose.position.x;
-        double ab_y = path.poses[idx + 1].pose.position.y -
-                      path.poses[idx].pose.position.y;
+        double oa_x = path.poses(idx).pose().position().x() - path.poses(idx - 1).pose().position().x();
+        double oa_y = path.poses(idx).pose().position().y() - path.poses(idx - 1).pose().position().y();
+        double ab_x = path.poses(idx + 1).pose().position().x() - path.poses(idx).pose().position().x();
+        double ab_y = path.poses(idx + 1).pose().position().y() - path.poses(idx).pose().position().y();
 
         // Checking for the existence of cusp, in the path, using the dot
         // product.
@@ -90,9 +88,9 @@ inline std::vector<PathSegment> findDirectionalPathSegments(
 
         // Checking for the existence of a differential rotation in place.
         double cur_theta =
-            transform::tf2::getYaw(path.poses[idx].pose.orientation);
+            transform::tf2::getYaw(path.poses(idx).pose().orientation());
         double next_theta =
-            transform::tf2::getYaw(path.poses[idx + 1].pose.orientation);
+            transform::tf2::getYaw(path.poses(idx + 1).pose().orientation());
         double dtheta =
             shortestAngularDistance(cur_theta, next_theta);
         if (fabs(ab_x) < 1e-4 && fabs(ab_y) < 1e-4 && fabs(dtheta) > 1e-4) {
@@ -102,7 +100,7 @@ inline std::vector<PathSegment> findDirectionalPathSegments(
         }
     }
 
-    curr_segment.end = path.poses.size() - 1;
+    curr_segment.end = path.poses_size() - 1;
     segments.push_back(curr_segment);
     return segments;
 }
@@ -117,25 +115,25 @@ inline std::vector<PathSegment> findDirectionalPathSegments(
  * holonomic planner like NavFn.
  */
 inline void updateApproximatePathOrientations(
-    commsgs::planning_msgs::Path& path, bool& reversing_segment,
+    automsgs::msgs::planning_msgs::Path& path, bool& reversing_segment,
     bool is_holonomic = false) {
     double dx, dy, theta, pt_yaw;
     reversing_segment = false;
 
     // Find if this path segment is in reverse
-    dx = path.poses[2].pose.position.x - path.poses[1].pose.position.x;
-    dy = path.poses[2].pose.position.y - path.poses[1].pose.position.y;
+    dx = path.poses(2).pose().position().x() - path.poses(1).pose().position().x();
+    dy = path.poses(2).pose().position().y() - path.poses(1).pose().position().y();
     theta = atan2(dy, dx);
-    pt_yaw = transform::tf2::getYaw(path.poses[1].pose.orientation);
+    pt_yaw = transform::tf2::getYaw(path.poses(1).pose().orientation());
     if (!is_holonomic &&
         fabs(shortestAngularDistance(pt_yaw, theta)) > M_PI_2) {
         reversing_segment = true;
     }
 
     // Find the angle relative the path position vectors
-    for (unsigned int i = 0; i != path.poses.size() - 1; i++) {
-        dx = path.poses[i + 1].pose.position.x - path.poses[i].pose.position.x;
-        dy = path.poses[i + 1].pose.position.y - path.poses[i].pose.position.y;
+    for (unsigned int i = 0; i != path.poses_size() - 1; i++) {
+        dx = path.poses(i + 1).pose().position().x() - path.poses(i).pose().position().x();
+        dy = path.poses(i + 1).pose().position().y() - path.poses(i).pose().position().y();
         theta = atan2(dy, dx);
 
         // If points are overlapping, pass
@@ -148,8 +146,7 @@ inline void updateApproximatePathOrientations(
             theta += M_PI;  // orientationAroundZAxis will normalize
         }
 
-        path.poses[i].pose.orientation =
-            map::costmap_2d::utils::OrientationAroundZAxis(theta);
+        *path.mutable_poses()->Mutable(i)->mutable_pose()->mutable_orientation() = map::costmap_2d::utils::OrientationAroundZAxis(theta);
     }
 }
 

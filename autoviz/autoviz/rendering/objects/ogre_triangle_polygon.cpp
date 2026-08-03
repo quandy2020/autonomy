@@ -29,17 +29,17 @@ OgreTrianglePolygon::OgreTrianglePolygon(Ogre::SceneManager* manager,
   manual_ = manager->createManualObject();
   manual_->clear();
   manual_->begin(name, Ogre::RenderOperation::OT_TRIANGLE_STRIP);
-  manual_->position(O.x, O.y, O.z);
+  manual_->position(O.x(), O.y(), O.z());
   manual_->textureCoord(upper_triangle ? 0.f : 1.f, 0.f);
   if (use_color) {
     manual_->colour(color);
   }
-  manual_->position(A.x, A.y, A.z);
+  manual_->position(A.x(), A.y(), A.z());
   manual_->textureCoord(1.f, upper_triangle ? 0.f : 1.f);
   if (use_color) {
     manual_->colour(color);
   }
-  manual_->position(B.x, B.y, B.z);
+  manual_->position(B.x(), B.y(), B.z());
   manual_->textureCoord(0.f, 1.f);
   if (use_color) {
     manual_->colour(color);

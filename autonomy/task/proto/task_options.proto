@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package autonomy.task.proto;
 
-import "autonomy/commsgs/proto/vehicle_msgs.proto";
+import "automsgs/msgs/vehicle_msgs/vehicle_msgs.proto";
 
 // Lua: config/task_options.lua (future) / task_server configuration.
 
@@ -38,8 +38,8 @@ message SchedulerOptions {
 }
 
 message ActiveTaskSnapshot {
-  commsgs.proto.vehicle_msgs.RobotTaskType task_type = 1;
-  commsgs.proto.vehicle_msgs.RobotTaskStatus task_status = 2;
+  automsgs.msgs.vehicle_msgs.RobotTaskType task_type = 1;
+  automsgs.msgs.vehicle_msgs.RobotTaskStatus task_status = 2;
   string task_id = 3;
   string client_id = 4;
   float progress = 5;

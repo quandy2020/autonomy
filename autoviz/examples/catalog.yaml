@@ -1,0 +1,158 @@
+# BICMap router examples — kept in sync with:
+#   tools/bicmap_example_publisher.cpp  (BuildExamples)
+#   scripts/publish_bicmap_example.py     (_all_examples)
+#   tests/bicmap_examples_test.cpp        (AllBicMapExamples)
+#
+# Verify: python3 examples/verify_catalog.py
+
+version: 1
+config: config/strata.autoviz
+topic_prefix: /strata
+count: 36
+
+examples:
+  - name: Slam
+    route: /indoor/slam
+    title: SLAM地图显示示例
+    category: indoor
+  - name: BuildMap
+    route: /indoor/buildMap
+    title: 机器人建图
+    category: indoor
+  - name: RobotFollow
+    route: /indoor/robotFollow
+    title: 机器人视角跟随
+    category: indoor
+  - name: MapTools
+    route: /base/mapTools
+    title: 地图工具
+    category: base
+  - name: POIMarkers
+    route: /base/POIMarkers
+    title: 点位Marker
+    category: base
+  - name: POIadvancedLabel
+    route: /expand/POIadvancedLabel
+    title: POI高级标注
+    category: expand
+  - name: Relocate
+    route: /indoor/relocate
+    title: 机器人重定位
+    category: indoor
+  - name: Location
+    route: /indoor/location
+    title: 实时位置更新
+    category: indoor
+    animate: true
+  - name: SingleNavigation
+    route: /indoor/singleNavigation
+    title: 单点导航
+    category: indoor
+  - name: load3D
+    route: /indoor/load3D
+    title: 加载3D模型
+    category: indoor
+  - name: load3dControl
+    route: /indoor/load3dControl
+    title: 3D模型控制
+    category: indoor
+  - name: PointCloud
+    route: /indoor/pointCloud
+    title: 二三维点云示例
+    category: indoor
+  - name: SemanticMap
+    route: /indoor/semanticMap
+    title: 语义地图分割
+    category: indoor
+  - name: Space
+    route: /indoor/load3dMarker
+    title: 三维空间数据渲染
+    category: indoor
+  - name: RobotGuideTour
+    route: /scene/robotGuideTour
+    title: 博物馆导览
+    category: scene
+  - name: HotelDelivery
+    route: /scene/hotelDelivery
+    title: 酒店配送
+    category: scene
+  - name: MallRobotMonitor
+    route: /scene/mallRobotMonitor
+    title: 商场监控
+    category: scene
+  - name: IndoorCleaning
+    route: /scene/indoorCleaning
+    title: 扫地清扫
+    category: scene
+  - name: CommunityInspect
+    route: /scene/communityInspect
+    title: 社区巡检
+    category: scene
+  - name: PolylineDrawing
+    route: /base/PolylineDrawing
+    title: 折线绘制
+    category: base
+  - name: RectangleDraw
+    route: /base/RectangleDraw
+    title: 矩形绘制
+    category: base
+  - name: PolygonDraw
+    route: /base/PolygonDraw
+    title: 多边形绘制
+    category: base
+  - name: CircleDraw
+    route: /base/CircleDraw
+    title: 圆形绘制
+    category: base
+  - name: PathReplay
+    route: /base/PathReplay
+    title: 路径回放
+    category: base
+  - name: PathPlanning
+    route: /base/PathPlanning
+    title: 路径规划
+    category: base
+  - name: MapEditor
+    route: /expand/MapEditor
+    title: 地图编辑
+    category: expand
+  - name: GraphicDrawing
+    route: /expand/GraphicDrawing
+    title: 图形绘制
+    category: expand
+  - name: PassableArea
+    route: /base/passableArea
+    title: 可通行区域
+    category: base
+  - name: EditPassableArea
+    route: /base/editPassableArea
+    title: 可通行区域编辑
+    category: base
+  - name: OutdoorBuildings
+    route: /outdoor/buildings
+    title: 室外建筑物
+    category: outdoor
+  - name: OutdoorPointCloud
+    route: /outdoor/pointCloud
+    title: 室外点云
+    category: outdoor
+  - name: TransportHub
+    route: /scene/transportHub
+    title: 三站一场引导
+    category: scene
+  - name: PublicClean
+    route: /scene/publicClean
+    title: 公共区域清洁
+    category: scene
+  - name: OutdoorMapTiles
+    route: /outdoor/mapTiles
+    title: 地图瓦片加载
+    category: outdoor
+  - name: OutdoorHdMap
+    route: /outdoor/hdMap
+    title: 高精地图加载
+    category: outdoor
+  - name: SecurityPatrol
+    route: /scene/securityPatrol
+    title: 园区安防巡逻
+    category: scene

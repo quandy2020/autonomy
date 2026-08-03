@@ -95,11 +95,11 @@
          return;
      }
  
-     commsgs::geometry_msgs::Pose goal =
+     automsgs::msgs::geometry_msgs::Pose goal =
          tools::getCriticGoal(data, enforce_path_inversion_);
  
      if (tools::withinPositionGoalTolerance(threshold_to_consider_,
-                                            data.state.pose.pose, goal)) {
+                                            data.state.pose.pose(), goal)) {
          return;
      }
  
@@ -111,7 +111,7 @@
      const float goal_x = data.path.x(offsetted_idx);
      const float goal_y = data.path.y(offsetted_idx);
      const float goal_yaw = data.path.yaws(offsetted_idx);
-     const commsgs::geometry_msgs::Pose& pose = data.state.pose.pose;
+     const automsgs::msgs::geometry_msgs::Pose& pose = data.state.pose.pose();
  
      switch (mode_) {
          case PathAngleMode::FORWARD_PREFERENCE:

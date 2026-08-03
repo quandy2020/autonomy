@@ -2,14 +2,16 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/proto/nav_msgs.pb.h"
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/actions/nav_actions.pb.h>
 #include "autonomy/task/apps/navigation/plugins/plugin_utils.hpp"
 #include "autonomy/task/apps/navigation/plugins/rpc_action_node.hpp"
 
 namespace autonomy::task::plugins::navigation {
 
-namespace nav_proto = commsgs::proto::nav_msgs;
+namespace nav_proto = automsgs::actions;
 
 class FollowPathAction : public RpcAsyncActionNode<nav_proto::FollowPathAction>
 {
@@ -20,7 +22,7 @@ public:
     static BT::PortsList providedPorts()
     {
         return {
-            BT::InputPort<commsgs::planning_msgs::Path>("path"),
+            BT::InputPort<automsgs::msgs::planning_msgs::Path>("path"),
             BT::InputPort<std::string>("controller_id"),
             BT::OutputPort<int>("error_code_id"),
             BT::OutputPort<std::string>("error_msg"),
@@ -41,15 +43,15 @@ protected:
 
     bool BuildGoal(Goal& goal) override
     {
-        commsgs::planning_msgs::Path path;
+        automsgs::msgs::planning_msgs::Path path;
         std::string controller_id;
-        if (!getInput("path", path) || path.poses.empty()) {
+        if (!getInput("path", path) || path.poses().empty()) {
             SetErrorPorts(*this, 1, "FollowPath: missing path");
             return false;
         }
         getInput("controller_id", controller_id);
 
-        *goal.mutable_path() = commsgs::planning_msgs::ToProto(path);
+        *goal.mutable_path() = path;
         if (!controller_id.empty()) {
             goal.set_controller_id(controller_id);
         }

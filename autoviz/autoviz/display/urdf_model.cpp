@@ -34,7 +34,7 @@ QMatrix4x4 JointOriginMatrix(const UrdfJoint& joint) {
   QMatrix4x4 matrix;
   matrix.setToIdentity();
   matrix.translate(joint.origin);
-  matrix.rotate(joint.rotation);
+  matrix.rotate(joint.rotation());
   return matrix;
 }
 
@@ -173,15 +173,15 @@ UrdfGeometry ParseLinkGeometry(
   }
   const QDomElement origin = element.firstChildElement(QStringLiteral("origin"));
   if (!origin.isNull()) {
-    geometry.origin = ParseXyz(origin.attribute(QStringLiteral("xyz")));
-    geometry.rotation = ParseRpy(origin.attribute(QStringLiteral("rpy")));
+    *geometry.mutable_origin() = ParseXyz(origin.attribute(QStringLiteral("xyz")));
+    *geometry.mutable_rotation() = ParseRpy(origin.attribute(QStringLiteral("rpy")));
   }
   const QDomElement geometry_node =
       element.firstChildElement(QStringLiteral("geometry"));
   if (!geometry_node.isNull()) {
     geometry = ParseGeometry(geometry_node);
-    geometry.origin = geometry.origin;
-    geometry.rotation = geometry.rotation;
+    *geometry.mutable_origin() = geometry.origin;
+    *geometry.mutable_rotation() = geometry.rotation();
   }
   geometry.material = ParseMaterial(element, material_library);
   return geometry;
@@ -311,8 +311,8 @@ bool UrdfModel::parseXml(const std::string& xml) {
     const QDomElement origin =
         joint_node.firstChildElement(QStringLiteral("origin"));
     if (!origin.isNull()) {
-      joint.origin = ParseXyz(origin.attribute(QStringLiteral("xyz")));
-      joint.rotation = ParseRpy(origin.attribute(QStringLiteral("rpy")));
+      *joint.mutable_origin() = ParseXyz(origin.attribute(QStringLiteral("xyz")));
+      *joint.mutable_rotation() = ParseRpy(origin.attribute(QStringLiteral("rpy")));
     }
     const QDomElement axis =
         joint_node.firstChildElement(QStringLiteral("axis"));
@@ -328,8 +328,8 @@ bool UrdfModel::parseXml(const std::string& xml) {
   }
 
   for (const auto& link : links_) {
-    if (!child_links.count(link.name)) {
-      root_link_ = link.name;
+    if (!child_links.count(link.name())) {
+      root_link_ = link.name();
       break;
     }
   }
@@ -357,7 +357,7 @@ std::unordered_map<std::string, QMatrix4x4> UrdfModel::computeLinkTransforms(
         continue;
       }
       double position = 0.0;
-      const auto it = joint_positions.find(joint.name);
+      const auto it = joint_positions.find(joint.name());
       if (it != joint_positions.end()) {
         position = it->second;
       }

@@ -20,7 +20,15 @@
  
  #include "autonomy/common/macros.hpp"
  #include "autonomy/common/math/angle.hpp"
- #include "autonomy/commsgs/geometry_msgs.hpp"
+ #include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
  #include "autonomy/transform/tf2/utils.h"
  
  namespace autonomy {
@@ -57,21 +65,21 @@
       * false.
       */
      explicit EgocentricPolarCoordinates(
-         const commsgs::geometry_msgs::Pose& target,
-         const commsgs::geometry_msgs::Pose& current =
-             commsgs::geometry_msgs::Pose(),
+         const automsgs::msgs::geometry_msgs::Pose& target,
+         const automsgs::msgs::geometry_msgs::Pose& current =
+             automsgs::msgs::geometry_msgs::Pose(),
          bool backward = false) {
          // Compute the difference between the target and the current pose
-         float dX = target.position.x - current.position.x;
-         float dY = target.position.y - current.position.y;
+         float dX = target.position().x() - current.position().x();
+         float dY = target.position().y() - current.position().y();
          // Compute the line of sight from the robot to the target
          // Flip it if the robot is moving backwards
          float line_of_sight =
              backward ? (std::atan2(-dY, dX) + M_PI) : std::atan2(-dY, dX);
          // Compute the ego polar coordinates
          r = sqrt(dX * dX + dY * dY);
-         double target_yaw = transform::tf2::getYaw(target.orientation);
-         double current_yaw = transform::tf2::getYaw(current.orientation);
+         double target_yaw = transform::tf2::getYaw(target.orientation());
+         double current_yaw = transform::tf2::getYaw(current.orientation());
          phi =
              common::math::NormalizeAngleDifference(target_yaw + line_of_sight);
          delta =

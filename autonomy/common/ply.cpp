@@ -361,7 +361,7 @@ void WriteTextPlyPoints(const std::string& path,
     file << "end_header" << std::endl;
 
     for (const auto& point : points) {
-        file << point.x << " " << point.y << " " << point.z;
+        file << point.x<< " " << point.y<< " " << point.z;
 
         if (write_normal) {
             file << " " << point.nx << " " << point.ny << " " << point.nz;
@@ -448,7 +448,7 @@ void WriteTextPlyMesh(const std::string& path, const PlyMesh& mesh) {
     file << "end_header" << std::endl;
 
     for (const auto& vertex : mesh.vertices) {
-        file << vertex.x << " " << vertex.y << " " << vertex.z << std::endl;
+        file << vertex.x<< " " << vertex.y<< " " << vertex.z<< std::endl;
     }
 
     for (const auto& face : mesh.faces) {

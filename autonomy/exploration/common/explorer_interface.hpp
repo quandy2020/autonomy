@@ -20,10 +20,28 @@
 #include <string>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/geometry_msgs/polygon.pb.h>
+#include <automsgs/msgs/geometry_msgs/point32.pb.h>
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
+#include <automsgs/msgs/sensor_msgs/image.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
 #include "autonomy/exploration/proto/exploration_options.pb.h"
 
 namespace autonomy {
@@ -70,7 +88,7 @@ public:
      * @param area Exploration boundary polygon
      */
     virtual void SetExplorationArea(
-        const commsgs::geometry_msgs::Polygon& area) = 0;
+        const automsgs::msgs::geometry_msgs::Polygon& area) = 0;
 
     /**
      * @brief Reset the exploration area to the default square extent.
@@ -82,7 +100,7 @@ public:
      * @param odom Robot odometry in the map frame
      */
     virtual void UpdateOdometry(
-        const commsgs::planning_msgs::Odometry& odom) = 0;
+        const automsgs::msgs::planning_msgs::Odometry& odom) = 0;
 
     /**
      * @brief Fuse a depth frame into the planning map.
@@ -91,9 +109,9 @@ public:
      * @param map_t_camera Extrinsic transform from camera to map
      */
     virtual void UpdateDepth(
-        const commsgs::sensor_msgs::Image& depth,
-        const commsgs::sensor_msgs::CameraInfo& info,
-        const commsgs::geometry_msgs::Transform& map_t_camera) = 0;
+        const automsgs::msgs::sensor_msgs::Image& depth,
+        const automsgs::msgs::sensor_msgs::CameraInfo& info,
+        const automsgs::msgs::geometry_msgs::Transform& map_t_camera) = 0;
 
     /**
      * @brief Run one hierarchical exploration planning cycle.
@@ -112,7 +130,7 @@ public:
      * @param out Output pose stamped in the map frame
      * @return true if a waypoint was written to out
      */
-    virtual bool GetNextWaypoint(commsgs::geometry_msgs::PoseStamped& out) = 0;
+    virtual bool GetNextWaypoint(automsgs::msgs::geometry_msgs::PoseStamped& out) = 0;
 
     /**
      * @brief Mark the current waypoint as reached and advance the path.
@@ -141,14 +159,14 @@ public:
      * @brief Get the latest planned exploration path.
      * @return Path of PoseStamped waypoints
      */
-    virtual commsgs::planning_msgs::Path GetExplorationPath() const = 0;
+    virtual automsgs::msgs::planning_msgs::Path GetExplorationPath() const = 0;
 
     /**
      * @brief Export the local occupancy slice as OccupancyGrid.
      * @param frame_id Header frame id
      * @return Occupancy grid message
      */
-    virtual commsgs::map_msgs::OccupancyGrid GetOccupancyGrid(
+    virtual automsgs::msgs::map_msgs::OccupancyGrid GetOccupancyGrid(
         const std::string& frame_id = "map") const = 0;
 
 protected:

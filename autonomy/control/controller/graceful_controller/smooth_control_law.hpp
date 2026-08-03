@@ -20,7 +20,15 @@
  #include <string>
  
  #include "autonomy/common/macros.hpp"
- #include "autonomy/commsgs/geometry_msgs.hpp"
+ #include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
  
  namespace autonomy {
  namespace control {
@@ -107,9 +115,9 @@
       * false.
       * @return Velocity command.
       */
-     commsgs::geometry_msgs::Twist CalculateRegularVelocity(
-         const commsgs::geometry_msgs::Pose& target,
-         const commsgs::geometry_msgs::Pose& current,
+     automsgs::msgs::geometry_msgs::Twist CalculateRegularVelocity(
+         const automsgs::msgs::geometry_msgs::Pose& target,
+         const automsgs::msgs::geometry_msgs::Pose& current,
          const bool& backward = false);
  
      /**
@@ -120,8 +128,8 @@
       * false.
       * @return Velocity command.
       */
-     commsgs::geometry_msgs::Twist CalculateRegularVelocity(
-         const commsgs::geometry_msgs::Pose& target,
+     automsgs::msgs::geometry_msgs::Twist CalculateRegularVelocity(
+         const automsgs::msgs::geometry_msgs::Pose& target,
          const bool& backward = false);
  
      /**
@@ -133,11 +141,11 @@
       * @param current Current pose of the robot in the robot frame.
       * @param backward If true, the robot is moving backwards. Defaults to
       * false.
-      * @return commsgs::geometry_msgs::Pose
+      * @return automsgs::msgs::geometry_msgs::Pose
       */
-     commsgs::geometry_msgs::Pose CalculateNextPose(
-         const double dt, const commsgs::geometry_msgs::Pose& target,
-         const commsgs::geometry_msgs::Pose& current,
+     automsgs::msgs::geometry_msgs::Pose CalculateNextPose(
+         const double dt, const automsgs::msgs::geometry_msgs::Pose& target,
+         const automsgs::msgs::geometry_msgs::Pose& current,
          const bool& backward = false);
  
  protected:

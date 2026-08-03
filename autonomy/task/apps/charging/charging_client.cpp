@@ -20,8 +20,8 @@ std::weak_ptr<ChargingClient> g_shared_client;
 ChargingClient::ChargingClient(navigation::NavigationClient::Ptr navigation)
     : navigation_(std::move(navigation))
 {
-    dock_pose_.header.frame_id = "map";
-    dock_pose_.pose.orientation.w = 1.0;
+    dock_pose_.mutable_header()->set_frame_id("map");
+    dock_pose_.mutable_pose()->mutable_orientation()->set_w(1.0);
 }
 
 ChargingClient::Ptr ChargingClient::Create(
@@ -77,7 +77,7 @@ void ChargingClient::ApplyGoal(const ::autonomy::task::proto::ChargingGoal& goal
         dock_station_id_ = goal.dock_station_id();
         break;
     case ::autonomy::task::proto::ChargingGoal::kDockPose:
-        dock_pose_ = commsgs::geometry_msgs::FromProto(goal.dock_pose());
+        dock_pose_ = goal.dock_pose();
         break;
     default:
         break;
@@ -95,8 +95,8 @@ bool ChargingClient::RunDockSearch()
 bool ChargingClient::IsChargerVisible() const
 {
     return search_complete_ && (charger_visible_ || !dock_station_id_.empty() ||
-                                dock_pose_.pose.position.x != 0.0 ||
-                                dock_pose_.pose.position.y != 0.0);
+                                dock_pose_.pose().position().x() != 0.0 ||
+                                dock_pose_.pose().position().y() != 0.0);
 }
 
 bool ChargingClient::MarkConnected()

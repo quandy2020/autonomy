@@ -23,7 +23,7 @@ class TrackerTask : public BtTaskApp<::autonomy::task::proto::TrackerGoal,
 public:
     AUTONOMY_SMART_PTR_DEFINITIONS(TrackerTask);
 
-    ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType GetTaskType()
+    ::automsgs::msgs::vehicle_msgs::RobotTaskType GetTaskType()
         const override;
 
     void SetTrackingClient(tracking::TrackingClient::Ptr client);

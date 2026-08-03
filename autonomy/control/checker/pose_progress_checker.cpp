@@ -18,6 +18,7 @@
 
 #include "autonomy/common/math/angle.hpp"
 #include "autonomy/transform/tf2/utils.h"
+#include <automsgs/msgs/geometry_msgs/pose2d.pb.h>
 
 namespace autonomy {
 namespace control {
@@ -31,13 +32,12 @@ void PoseProgressChecker::Initialize(const std::string& plugin_name) {
 }
 
 bool PoseProgressChecker::Check(
-    commsgs::geometry_msgs::PoseStamped& current_pose) {
+    automsgs::msgs::geometry_msgs::PoseStamped& current_pose) {
     // Convert Pose to Pose2D
-    commsgs::geometry_msgs::Pose2D current_pose2d;
-    current_pose2d.x = current_pose.pose.position.x;
-    current_pose2d.y = current_pose.pose.position.y;
-    current_pose2d.theta =
-        transform::tf2::getYaw(current_pose.pose.orientation);
+    automsgs::msgs::geometry_msgs::Pose2D current_pose2d;
+    current_pose2d.set_x(current_pose.pose().position().x());
+    current_pose2d.set_y(current_pose.pose().position().y());
+    current_pose2d.set_theta(transform::tf2::getYaw(current_pose.pose().orientation()));
 
     if (!baseline_pose_set_ ||
         PoseProgressChecker::IsRobotMovedEnough(current_pose2d)) {
@@ -48,16 +48,16 @@ bool PoseProgressChecker::Check(
 }
 
 bool PoseProgressChecker::IsRobotMovedEnough(
-    const commsgs::geometry_msgs::Pose2D& pose) {
+    const automsgs::msgs::geometry_msgs::Pose2D& pose) {
     return PoseDistance(pose, baseline_pose_) > radius_ ||
            PoseAngleDistance(pose, baseline_pose_) > required_movement_angle_;
 }
 
 double PoseProgressChecker::PoseAngleDistance(
-    const commsgs::geometry_msgs::Pose2D& pose1,
-    const commsgs::geometry_msgs::Pose2D& pose2) {
+    const automsgs::msgs::geometry_msgs::Pose2D& pose1,
+    const automsgs::msgs::geometry_msgs::Pose2D& pose2) {
     // Calculate shortest angular distance between two angles
-    double diff = pose1.theta - pose2.theta;
+    double diff = pose1.theta() - pose2.theta();
     return std::abs(autonomy::common::math::NormalizeAngleDifference(diff));
 }
 

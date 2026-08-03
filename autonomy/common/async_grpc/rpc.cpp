@@ -74,11 +74,9 @@ Rpc::Rpc(int method_index,
     InitializeReadersAndWriters(rpc_handler_info_.rpc_type);
 
     // Initialize the prototypical request and response messages.
-    request_.reset(::google::protobuf::MessageFactory::generated_factory()
-                       ->GetPrototype(rpc_handler_info_.request_descriptor)
+    request_.reset(::google::protobuf::MessageFactory::generated_factory()->GetPrototype(rpc_handler_info_.request_descriptor)
                        ->New());
-    response_.reset(::google::protobuf::MessageFactory::generated_factory()
-                        ->GetPrototype(rpc_handler_info_.response_descriptor)
+    response_.reset(::google::protobuf::MessageFactory::generated_factory()->GetPrototype(rpc_handler_info_.response_descriptor)
                         ->New());
 }
 

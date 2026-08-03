@@ -20,7 +20,9 @@
 #include <cmath>
 
 #include "autonomy/common/logging.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
 #include "autonomy/map/constants.hpp"
 #include "autonomy/map/costmap_2d/map_io.hpp"
 #include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
@@ -80,13 +82,13 @@ MapServer::~MapServer() {
 }
 
 void MapServer::applyMapHeader(
-    commsgs::map_msgs::OccupancyGrid& map) const {
+    automsgs::msgs::map_msgs::OccupancyGrid& map) const {
     if (!options_.frame_id().empty()) {
-        map.header.frame_id = options_.frame_id();
-    } else if (map.header.frame_id.empty()) {
-        map.header.frame_id = DefaultFrameId();
+        map.mutable_header()->set_frame_id(options_.frame_id());
+    } else if (map.header().frame_id().empty()) {
+        map.mutable_header()->set_frame_id(DefaultFrameId());
     }
-    map.header.stamp = commsgs::builtin_interfaces::Time::Now();
+    *map.mutable_header()->mutable_stamp() = automsgs::msgs::builtin_interfaces::TimeNow();
 }
 
 std::string MapServer::resolveMapFilePath() const {
@@ -105,7 +107,7 @@ bool MapServer::loadMapFromFile(const std::string& map_file_path) {
         return false;
     }
 
-    auto map_msg = std::make_shared<commsgs::map_msgs::OccupancyGrid>();
+    auto map_msg = std::make_shared<automsgs::msgs::map_msgs::OccupancyGrid>();
     const auto status =
         costmap_2d::loadMapFromYaml(map_file_path, *map_msg);
     if (status != costmap_2d::LOAD_MAP_STATUS::LOAD_MAP_SUCCESS) {
@@ -127,7 +129,7 @@ bool MapServer::loadMapFromFile(const std::string& map_file_path) {
 
     size_t occupied = 0;
     size_t unknown = 0;
-    for (int16_t cell : static_map_msg_->data) {
+    for (int16_t cell : static_map_msg_->data()) {
         if (cell == costmap_2d::utils::OCC_GRID_OCCUPIED) {
             ++occupied;
         } else if (cell < 0) {
@@ -135,10 +137,10 @@ bool MapServer::loadMapFromFile(const std::string& map_file_path) {
         }
     }
     AINFO << "MapServer[" << node_name_ << "]: loaded map "
-          << static_map_msg_->info.width << "x"
-          << static_map_msg_->info.height << " @ "
-          << static_map_msg_->info.resolution << " m/cell, frame="
-          << static_map_msg_->header.frame_id << " occ=" << occupied
+          << static_map_msg_->info().width()<< "x"
+          << static_map_msg_->info().height()<< " @ "
+          << static_map_msg_->info().resolution()<< " m/cell, frame="
+          << static_map_msg_->header().frame_id()<< " occ=" << occupied
           << " unknown=" << unknown;
     return true;
 }
@@ -157,14 +159,14 @@ bool MapServer::HasStaticMap() const {
     return static_map_msg_ != nullptr;
 }
 
-commsgs::map_msgs::OccupancyGrid::SharedPtr MapServer::GetStaticMapShared()
+std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid> MapServer::GetStaticMapShared()
     const {
     std::lock_guard<std::mutex> lock(map_mutex_);
     return static_map_msg_;
 }
 
 bool MapServer::GetRawStaticMap(
-    commsgs::map_msgs::OccupancyGrid& static_map) const {
+    automsgs::msgs::map_msgs::OccupancyGrid& static_map) const {
     std::lock_guard<std::mutex> lock(map_mutex_);
     if (static_map_msg_) {
         static_map = *static_map_msg_;
@@ -188,13 +190,13 @@ bool MapServer::GetRawStaticMap(
     return true;
 }
 
-bool MapServer::SetStaticMap(const commsgs::map_msgs::OccupancyGrid& map) {
+bool MapServer::SetStaticMap(const automsgs::msgs::map_msgs::OccupancyGrid& map) {
     if (!costmap_2d::utils::validateMsg(map)) {
         AERROR << "MapServer[" << node_name_ << "]: rejected invalid map";
         return false;
     }
 
-    auto map_msg = std::make_shared<commsgs::map_msgs::OccupancyGrid>(map);
+    auto map_msg = std::make_shared<automsgs::msgs::map_msgs::OccupancyGrid>(map);
     applyMapHeader(*map_msg);
 
     {
@@ -203,8 +205,8 @@ bool MapServer::SetStaticMap(const commsgs::map_msgs::OccupancyGrid& map) {
     }
 
     AINFO << "MapServer[" << node_name_ << "]: static map set externally ("
-          << static_map_msg_->info.width << "x"
-          << static_map_msg_->info.height << ")";
+          << static_map_msg_->info().width()<< "x"
+          << static_map_msg_->info().height()<< ")";
     return true;
 }
 
@@ -218,7 +220,7 @@ bool MapServer::ReloadMap() {
 }
 
 bool MapServer::PublishMap() {
-    commsgs::map_msgs::OccupancyGrid::SharedPtr map_copy;
+    std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid> map_copy;
     MapPublishCallback callback;
     {
         std::lock_guard<std::mutex> lock(map_mutex_);
@@ -228,7 +230,7 @@ bool MapServer::PublishMap() {
             return false;
         }
         map_copy = static_map_msg_;
-        map_copy->header.stamp = commsgs::builtin_interfaces::Time::Now();
+        *map_copy->mutable_header()->mutable_stamp() = automsgs::msgs::builtin_interfaces::TimeNow();
         callback = map_publish_callback_;
     }
 

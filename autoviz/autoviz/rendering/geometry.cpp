@@ -26,8 +26,8 @@ Ogre::Vector2 project3DPointToViewportXY(const Ogre::Viewport* view,
                                          const Ogre::Vector3& pos) {
   Ogre::Camera* cam = view->getCamera();
   Ogre::Vector3 pos2d = cam->getProjectionMatrix() * (cam->getViewMatrix() * pos);
-  const Ogre::Real x = static_cast<Ogre::Real>((pos2d.x * 0.5) + 0.5);
-  const Ogre::Real y = static_cast<Ogre::Real>(1 - ((pos2d.y * 0.5) + 0.5));
+  const Ogre::Real x = static_cast<Ogre::Real>((pos2d.x()* 0.5) + 0.5);
+  const Ogre::Real y = static_cast<Ogre::Real>(1 - ((pos2d.y()* 0.5) + 0.5));
   return Ogre::Vector2(x * view->getActualWidth(), y * view->getActualHeight());
 }
 

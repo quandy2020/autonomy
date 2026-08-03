@@ -16,12 +16,29 @@
 
 #pragma once
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <cmath>
+
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose2d.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/transform/tf2/LinearMath/Quaternion.h"
 #include "autonomy/transform/tf2/LinearMath/Transform.h"
 #include "autonomy/transform/tf2/LinearMath/Vector3.h"
 #include "autonomy/transform/tf2/convert.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 namespace autonomy {
 namespace map {
@@ -33,10 +50,15 @@ namespace utils {
  * @param angle Yaw angle to generate a quaternion from
  * @return geometry_msgs Quaternion
  */
-inline commsgs::geometry_msgs::Quaternion OrientationAroundZAxis(double angle) {
+inline automsgs::msgs::geometry_msgs::Quaternion OrientationAroundZAxis(double angle) {
     transform::tf2::Quaternion q;
     q.setRPY(0, 0, angle);  // void returning function
-    return {q.x(), q.y(), q.z(), q.w()};
+    automsgs::msgs::geometry_msgs::Quaternion out;
+    out.set_x(q.x());
+    out.set_y(q.y());
+    out.set_z(q.z());
+    out.set_w(q.w());
+    return out;
 }
 
 /**
@@ -46,14 +68,14 @@ inline commsgs::geometry_msgs::Quaternion OrientationAroundZAxis(double angle) {
  * @param is_3d True if a true L2 distance is desired (default false)
  * @return double L2 distance
  */
-inline double euclidean_distance(const commsgs::geometry_msgs::Point& pos1,
-                                 const commsgs::geometry_msgs::Point& pos2,
+inline double euclidean_distance(const automsgs::msgs::geometry_msgs::Point& pos1,
+                                 const automsgs::msgs::geometry_msgs::Point& pos2,
                                  const bool is_3d = false) {
-    double dx = pos1.x - pos2.x;
-    double dy = pos1.y - pos2.y;
+    double dx = pos1.x() - pos2.x();
+    double dy = pos1.y() - pos2.y();
 
     if (is_3d) {
-        double dz = pos1.z - pos2.z;
+        double dz = pos1.z() - pos2.z();
         return std::hypot(dx, dy, dz);
     }
 
@@ -67,14 +89,14 @@ inline double euclidean_distance(const commsgs::geometry_msgs::Point& pos1,
  * @param is_3d True if a true L2 distance is desired (default false)
  * @return double euclidean distance
  */
-inline double euclidean_distance(const commsgs::geometry_msgs::Pose& pos1,
-                                 const commsgs::geometry_msgs::Pose& pos2,
+inline double euclidean_distance(const automsgs::msgs::geometry_msgs::Pose& pos1,
+                                 const automsgs::msgs::geometry_msgs::Pose& pos2,
                                  const bool is_3d = false) {
-    double dx = pos1.position.x - pos2.position.x;
-    double dy = pos1.position.y - pos2.position.y;
+    double dx = pos1.position().x() - pos2.position().x();
+    double dy = pos1.position().y() - pos2.position().y();
 
     if (is_3d) {
-        double dz = pos1.position.z - pos2.position.z;
+        double dz = pos1.position().z() - pos2.position().z();
         return std::hypot(dx, dy, dz);
     }
 
@@ -89,9 +111,9 @@ inline double euclidean_distance(const commsgs::geometry_msgs::Pose& pos1,
  * @return double L2 distance
  */
 inline double euclidean_distance(
-    const commsgs::geometry_msgs::PoseStamped& pos1,
-    const commsgs::geometry_msgs::PoseStamped& pos2, const bool is_3d = false) {
-    return euclidean_distance(pos1.pose, pos2.pose, is_3d);
+    const automsgs::msgs::geometry_msgs::PoseStamped& pos1,
+    const automsgs::msgs::geometry_msgs::PoseStamped& pos2, const bool is_3d = false) {
+    return euclidean_distance(pos1.pose(), pos2.pose(), is_3d);
 }
 
 /**
@@ -100,10 +122,10 @@ inline double euclidean_distance(
  * @param pos1 Second pose
  * @return double L2 distance
  */
-inline double euclidean_distance(const commsgs::geometry_msgs::Pose2D& pos1,
-                                 const commsgs::geometry_msgs::Pose2D& pos2) {
-    double dx = pos1.x - pos2.x;
-    double dy = pos1.y - pos2.y;
+inline double euclidean_distance(const automsgs::msgs::geometry_msgs::Pose2D& pos1,
+                                 const automsgs::msgs::geometry_msgs::Pose2D& pos2) {
+    double dx = pos1.x() - pos2.x();
+    double dy = pos1.y() - pos2.y();
     return std::hypot(dx, dy);
 }
 
@@ -156,15 +178,16 @@ inline Iter first_after_integrated_distance(Iter begin, Iter end,
  * of a subset of the path.
  * @return double Path length
  */
-inline double calculate_path_length(const commsgs::planning_msgs::Path& path,
+inline double calculate_path_length(const automsgs::msgs::planning_msgs::Path& path,
                                     size_t start_index = 0) {
-    if (start_index + 1 >= path.poses.size()) {
+    if (start_index + 1 >= static_cast<size_t>(path.poses_size())) {
         return 0.0;
     }
     double path_length = 0.0;
-    for (size_t idx = start_index; idx < path.poses.size() - 1; ++idx) {
+    for (size_t idx = start_index; idx + 1 < static_cast<size_t>(path.poses_size()); ++idx) {
         path_length +=
-            euclidean_distance(path.poses[idx].pose, path.poses[idx + 1].pose);
+            euclidean_distance(path.poses(static_cast<int>(idx)).pose(),
+                               path.poses(static_cast<int>(idx + 1)).pose());
     }
     return path_length;
 }
@@ -175,40 +198,42 @@ inline double calculate_path_length(const commsgs::planning_msgs::Path& path,
  * @param reversing_segment Whether the path segment is reversing
  */
 inline void updateApproximatePathOrientations(
-    commsgs::planning_msgs::Path& path, bool reversing_segment = false) {
-    if (path.poses.size() < 2) {
+    automsgs::msgs::planning_msgs::Path& path, bool reversing_segment = false) {
+    if (path.poses_size() < 2) {
         return;
     }
 
-    for (size_t i = 0; i < path.poses.size() - 1; ++i) {
+    for (int i = 0; i < path.poses_size() - 1; ++i) {
         double dx =
-            path.poses[i + 1].pose.position.x - path.poses[i].pose.position.x;
+            path.poses(i + 1).pose().position().x() - path.poses(i).pose().position().x();
         double dy =
-            path.poses[i + 1].pose.position.y - path.poses[i].pose.position.y;
+            path.poses(i + 1).pose().position().y() - path.poses(i).pose().position().y();
         double yaw = std::atan2(dy, dx);
 
         // If reversing, add 180 degrees
         if (reversing_segment) {
-            yaw += 3.14159265358979323846;  // M_PI
+            yaw += M_PI;
         }
 
-        path.poses[i].pose.orientation = OrientationAroundZAxis(yaw);
+        *path.mutable_poses(i)->mutable_pose()->mutable_orientation() =
+            OrientationAroundZAxis(yaw);
     }
 
     // Set last pose orientation to match the direction to the previous point
-    if (path.poses.size() >= 2) {
-        size_t last_idx = path.poses.size() - 1;
-        double dx = path.poses[last_idx].pose.position.x -
-                    path.poses[last_idx - 1].pose.position.x;
-        double dy = path.poses[last_idx].pose.position.y -
-                    path.poses[last_idx - 1].pose.position.y;
+    if (path.poses_size() >= 2) {
+        int last_idx = path.poses_size() - 1;
+        double dx = path.poses(last_idx).pose().position().x() -
+                    path.poses(last_idx - 1).pose().position().x();
+        double dy = path.poses(last_idx).pose().position().y() -
+                    path.poses(last_idx - 1).pose().position().y();
         double yaw = std::atan2(dy, dx);
 
         if (reversing_segment) {
             yaw += M_PI;
         }
 
-        path.poses[last_idx].pose.orientation = OrientationAroundZAxis(yaw);
+        *path.mutable_poses(last_idx)->mutable_pose()->mutable_orientation() =
+            OrientationAroundZAxis(yaw);
     }
 }
 

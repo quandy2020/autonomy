@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_package(Protobuf REQUIRED)
+autonomy_require_protobuf()
 
 # Protoc plugin: generates .pb_index and wrapper .am.h (UniquePtr/SharedPtr typedefs)
 set(AUTOMSGS_PROTOC_PLUGIN automsgs_protoc_plugin)

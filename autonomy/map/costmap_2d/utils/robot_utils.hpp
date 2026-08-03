@@ -19,10 +19,23 @@
 #include <cmath>
 #include <iostream>
 
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 
 namespace autonomy {
 namespace map {
@@ -39,7 +52,7 @@ namespace utils {
 // * @return bool Whether it could be transformed successfully
 // */
 // bool getCurrentPose(
-//   commsgs::geometry_msgs::PoseStamped & global_pose,
+//   automsgs::msgs::geometry_msgs::PoseStamped & global_pose,
 //   tf2_ros::Buffer & tf_buffer, const std::string global_frame = "map",
 //   const std::string robot_frame = "base_link", const double transform_timeout
 //   = 0.1, const rclcpp::Time stamp = rclcpp::Time());
@@ -54,8 +67,8 @@ namespace utils {
 // * @return bool Whether it could be transformed successfully
 // */
 // bool transformPoseInTargetFrame(
-//   const commsgs::geometry_msgs::PoseStamped & input_pose,
-//   commsgs::geometry_msgs::PoseStamped & transformed_pose,
+//   const automsgs::msgs::geometry_msgs::PoseStamped & input_pose,
+//   automsgs::msgs::geometry_msgs::PoseStamped & transformed_pose,
 //   tf2_ros::Buffer& tf_buffer, const std::string target_frame,
 //   const double transform_timeout = 0.1);
 
@@ -113,7 +126,7 @@ namespace utils {
 //   const std::string & target_frame_id,
 //   const tf2::Duration & transform_tolerance,
 //   const std::shared_ptr<tf2_ros::Buffer> tf_buffer,
-//   commsgs::geometry_msgs::TransformStamped & transform_msg);
+//   automsgs::msgs::geometry_msgs::TransformStamped & transform_msg);
 
 // /**
 //  * @brief Obtains a transform from source_frame_id at source_time ->
@@ -137,15 +150,15 @@ namespace utils {
 //   const std::string & fixed_frame_id,
 //   const tf2::Duration & transform_tolerance,
 //   const std::shared_ptr<tf2_ros::Buffer> tf_buffer,
-//   commsgs::geometry_msgs::TransformStamped & transform_msg);
+//   automsgs::msgs::geometry_msgs::TransformStamped & transform_msg);
 
 // /**
 //  * @brief Validates a twist message contains no nans or infs
 //  * @param msg Twist message to validate
 //  * @return True if valid, false if contains unactionable values
 //  */
-// [[nodiscard]] bool validateTwist(const commsgs::geometry_msgs::Twist & msg);
-// [[nodiscard]] bool validateTwist(const commsgs::geometry_msgs::TwistStamped &
+// [[nodiscard]] bool validateTwist(const automsgs::msgs::geometry_msgs::Twist & msg);
+// [[nodiscard]] bool validateTwist(const automsgs::msgs::geometry_msgs::TwistStamped &
 // msg);
 
 }  // namespace utils

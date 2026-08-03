@@ -24,7 +24,9 @@
 #include "autonomy/planning/proto/navfn_planner.pb.h"
 
 #include "autonomy/common/lua_parameter_dictionary.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/planning/common/planner_interface.hpp"
@@ -59,9 +61,9 @@ public:
      * @param cancel_checker Function to check if the task has been canceled
      * @return Result code from PlannerResultCode enum
      */
-    uint32 CreatePlan(const commsgs::geometry_msgs::PoseStamped& start,
-                      const commsgs::geometry_msgs::PoseStamped& goal,
-                      commsgs::planning_msgs::Path& plan,
+    uint32 CreatePlan(const automsgs::msgs::geometry_msgs::PoseStamped& start,
+                      const automsgs::msgs::geometry_msgs::PoseStamped& goal,
+                      automsgs::msgs::planning_msgs::Path& plan,
                       std::function<bool()> cancel_checker) override;
 
 protected:
@@ -75,10 +77,10 @@ protected:
      * @param plan Path to be computed
      * @return true if can find the path
      */
-    bool makePlan(const commsgs::geometry_msgs::Pose& start,
-                  const commsgs::geometry_msgs::Pose& goal, double tolerance,
+    bool makePlan(const automsgs::msgs::geometry_msgs::Pose& start,
+                  const automsgs::msgs::geometry_msgs::Pose& goal, double tolerance,
                   std::function<bool()> cancel_checker,
-                  commsgs::planning_msgs::Path& plan);
+                  automsgs::msgs::planning_msgs::Path& plan);
 
     /**
      * @brief Compute the navigation function given a seed point in the world to
@@ -86,7 +88,7 @@ protected:
      * @param world_point Point in world coordinate frame
      * @return true if can compute
      */
-    bool computePotential(const commsgs::geometry_msgs::Point& world_point);
+    bool computePotential(const automsgs::msgs::geometry_msgs::Point& world_point);
 
     /**
      * @brief Compute a plan to a goal from a potential - must call
@@ -95,8 +97,8 @@ protected:
      * @param plan Path to be computed
      * @return true if can compute a plan path
      */
-    bool getPlanFromPotential(const commsgs::geometry_msgs::Pose& goal,
-                              commsgs::planning_msgs::Path& plan);
+    bool getPlanFromPotential(const automsgs::msgs::geometry_msgs::Pose& goal,
+                              automsgs::msgs::planning_msgs::Path& plan);
 
     /**
      * @brief Remove artifacts at the end of the path - originated from planning
@@ -104,8 +106,8 @@ protected:
      * @param goal Goal pose
      * @param plan Computed path
      */
-    void smoothApproachToGoal(const commsgs::geometry_msgs::Pose& goal,
-                              commsgs::planning_msgs::Path& plan);
+    void smoothApproachToGoal(const automsgs::msgs::geometry_msgs::Pose& goal,
+                              automsgs::msgs::planning_msgs::Path& plan);
 
     /**
      * @brief Compute the potential, or navigation cost, at a given point in the
@@ -113,7 +115,7 @@ protected:
      * @param world_point Point in world coordinate frame
      * @return double point potential (navigation cost)
      */
-    double getPointPotential(const commsgs::geometry_msgs::Point& world_point);
+    double getPointPotential(const automsgs::msgs::geometry_msgs::Point& world_point);
 
     // Check for a valid potential value at a given point in the world
     // - must call computePotential first
@@ -128,10 +130,10 @@ protected:
      * @param p2 Point 2
      * @return double squared distance between two points
      */
-    inline double squared_distance(const commsgs::geometry_msgs::Pose& p1,
-                                   const commsgs::geometry_msgs::Pose& p2) {
-        double dx = p1.position.x - p2.position.x;
-        double dy = p1.position.y - p2.position.y;
+    inline double squared_distance(const automsgs::msgs::geometry_msgs::Pose& p1,
+                                   const automsgs::msgs::geometry_msgs::Pose& p2) {
+        double dx = p1.position().x() - p2.position().x();
+        double dy = p1.position().y() - p2.position().y();
         return dx * dx + dy * dy;
     }
 

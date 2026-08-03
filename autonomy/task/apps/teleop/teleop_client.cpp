@@ -7,7 +7,9 @@
 #include <algorithm>
 #include <cmath>
 
-#include "autonomy/commsgs/builtin_interfaces.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
 #include "autonomy/common/logging.hpp"
 #include "autonomy/task/apps/teleop/constants.hpp"
 #include "autonomy/task/apps/teleop/teleop_mppi_assist.hpp"
@@ -36,10 +38,10 @@ TeleopClient::TeleopClient(std::shared_ptr<autolink::Node> node)
 {
     if (node_) {
         cmd_vel_writer_ =
-            node_->CreateWriter<commsgs::geometry_msgs::TwistStamped>(
+            node_->CreateWriter<automsgs::msgs::geometry_msgs::TwistStamped>(
                 kCmdVelTopic);
     }
-    applied_velocity_.header.frame_id = kDefaultBaseFrame;
+    applied_velocity_.mutable_header()->set_frame_id(kDefaultBaseFrame);
 }
 
 TeleopClient::Ptr TeleopClient::Create(std::shared_ptr<autolink::Node> node)
@@ -101,9 +103,9 @@ void TeleopClient::SetVelocity(double linear_x, double angular_z)
 }
 
 void TeleopClient::SetVelocity(
-    const commsgs::geometry_msgs::TwistStamped& velocity)
+    const automsgs::msgs::geometry_msgs::TwistStamped& velocity)
 {
-    SetVelocity(velocity.twist.linear.x, velocity.twist.angular.z);
+    SetVelocity(velocity.twist().linear().x(), velocity.twist().angular().z());
 }
 
 void TeleopClient::TouchWatchdog()
@@ -127,25 +129,25 @@ bool TeleopClient::PublishVelocity()
     }
 
     if (assist_ && assist_->enabled() && !assist_bypass_) {
-        commsgs::geometry_msgs::PoseStamped pose;
+        automsgs::msgs::geometry_msgs::PoseStamped pose;
         if (!assist_->TryGetRobotPose(&pose)) {
-            pose.pose.orientation.w = 1.0;
+            pose.mutable_pose()->mutable_orientation()->set_w(1.0);
         }
 
-        commsgs::geometry_msgs::Twist speed;
-        speed.linear.x = linear_x_;
-        speed.angular.z = angular_z_;
+        automsgs::msgs::geometry_msgs::Twist speed;
+        speed.mutable_linear()->set_x(linear_x_);
+        speed.mutable_angular()->set_z(angular_z_);
 
-        commsgs::geometry_msgs::TwistStamped cmd;
+        automsgs::msgs::geometry_msgs::TwistStamped cmd;
         assist_->Tick(linear_x_, angular_z_, pose, speed, &cmd);
         applied_velocity_ = cmd;
-        if (applied_velocity_.header.frame_id.empty()) {
-            applied_velocity_.header.frame_id = kDefaultBaseFrame;
+        if (applied_velocity_.header().frame_id().empty()) {
+            applied_velocity_.mutable_header()->set_frame_id(kDefaultBaseFrame);
         }
-        if (applied_velocity_.header.stamp.sec == 0 &&
-            applied_velocity_.header.stamp.nanosec == 0) {
-            applied_velocity_.header.stamp =
-                commsgs::builtin_interfaces::Time::Now();
+        if (applied_velocity_.header().stamp().sec() == 0 &&
+            applied_velocity_.header().stamp().nanosec() == 0) {
+            *applied_velocity_.mutable_header()->mutable_stamp() =
+                automsgs::msgs::builtin_interfaces::TimeNow();
         }
     } else {
         applied_velocity_ = MakeTwistMessage();
@@ -171,13 +173,13 @@ void TeleopClient::ClampVelocity()
     angular_z_ = ClampMagnitude(angular_z_, max_angular_speed_);
 }
 
-commsgs::geometry_msgs::TwistStamped TeleopClient::MakeTwistMessage() const
+automsgs::msgs::geometry_msgs::TwistStamped TeleopClient::MakeTwistMessage() const
 {
-    commsgs::geometry_msgs::TwistStamped cmd;
-    cmd.header.frame_id = kDefaultBaseFrame;
-    cmd.header.stamp = commsgs::builtin_interfaces::Time::Now();
-    cmd.twist.linear.x = linear_x_;
-    cmd.twist.angular.z = angular_z_;
+    automsgs::msgs::geometry_msgs::TwistStamped cmd;
+    cmd.mutable_header()->set_frame_id(kDefaultBaseFrame);
+    *cmd.mutable_header()->mutable_stamp() = automsgs::msgs::builtin_interfaces::TimeNow();
+    cmd.mutable_twist()->mutable_linear()->set_x(linear_x_);
+    cmd.mutable_twist()->mutable_angular()->set_z(angular_z_);
     return cmd;
 }
 

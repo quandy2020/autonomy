@@ -47,7 +47,7 @@ bool SetVector(const std::vector<float>& features, const ModelTensorInfo& info,
         SetErrorMessage(error, convert_err);
         return false;
     }
-    (*out)[info.name] = std::move(typed);
+    (*out)[info.name()] = std::move(typed);
     return true;
 }
 
@@ -58,20 +58,19 @@ bool SetNamed(const TensorMap& named, const std::vector<ModelTensorInfo>& infos,
         return false;
     }
     for (const ModelTensorInfo& info : infos) {
-        const auto found = named.find(info.name);
+        const auto found = named.find(info.name());
         if (found == named.end()) {
-            SetErrorMessage(error, "missing named tensor: " + info.name);
+            SetErrorMessage(error, "missing named tensor: " + info.name());
             return false;
         }
         if (found->second.element_type() != info.element_type) {
-            SetErrorMessage(error, "Named input \"" + info.name +
-                                       "\" element type does not match model.");
+            SetErrorMessage(error, "Named input \"" + info.name() + "\" element type does not match model.");
             return false;
         }
         if (!CheckSize(info, found->second.element_count(), error)) {
             return false;
         }
-        (*out)[info.name] = found->second;
+        (*out)[info.name()] = found->second;
     }
     return true;
 }

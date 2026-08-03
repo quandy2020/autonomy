@@ -22,7 +22,7 @@
 #include "autonomy/common/macros.hpp"
 #include "autonomy/task/apps/navigation/navigation_client.hpp"
 #include "autonomy/task/apps/charging/charging.hpp"
-#include "autonomy/task/apps/exploration/exploration.hpp"
+// #include "autonomy/task/apps/exploration/exploration.hpp"  // temporarily disabled
 #include "autonomy/task/apps/localization/localization.hpp"
 #include "autonomy/task/apps/mapping/mapping.hpp"
 #include "autonomy/task/apps/navigation/navigation.hpp"
@@ -62,7 +62,7 @@ public:
     NavigationTask::SharedPtr navigation() const { return navigation_; }
     TrackerTask::SharedPtr tracking() const { return tracking_; }
     TeleopTask::SharedPtr teleop() const { return teleop_; }
-    ExplorationTask::SharedPtr exploration() const { return exploration_; }
+    // ExplorationTask temporarily disabled during automsgs migration.
     ChargingTask::SharedPtr charging() const { return charging_; }
     MappingTask::SharedPtr mapping() const { return mapping_; }
     LocalizationTask::SharedPtr localization() const { return localization_; }
@@ -118,7 +118,6 @@ private:
     NavigationTask::SharedPtr navigation_;
     TrackerTask::SharedPtr tracking_;
     TeleopTask::SharedPtr teleop_;
-    ExplorationTask::SharedPtr exploration_;
     ChargingTask::SharedPtr charging_;
     MappingTask::SharedPtr mapping_;
     LocalizationTask::SharedPtr localization_;

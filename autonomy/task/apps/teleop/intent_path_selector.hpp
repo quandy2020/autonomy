@@ -19,14 +19,16 @@
 #include <optional>
 #include <vector>
 
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 
 namespace autonomy::task::teleop {
 
 struct PathCandidate {
     double end_dir_deg{0.0};
-    commsgs::planning_msgs::Path path;
+    automsgs::msgs::planning_msgs::Path path;
 };
 
 class IntentPathSelector
@@ -35,7 +37,7 @@ public:
     void GenerateDefaultLibrary(int num_dirs, int num_lengths, double max_range,
                                 double ds);
 
-    std::optional<commsgs::planning_msgs::Path> Select(
+    std::optional<automsgs::msgs::planning_msgs::Path> Select(
         const map::costmap_2d::Costmap2D& costmap, double joy_dir_deg,
         double joy_speed) const;
 
@@ -45,7 +47,7 @@ public:
 
 private:
     static int CountLethalHits(const map::costmap_2d::Costmap2D& map,
-                               const commsgs::planning_msgs::Path& path);
+                               const automsgs::msgs::planning_msgs::Path& path);
     static double WrapDeg(double deg);
 
     std::vector<PathCandidate> candidates_;

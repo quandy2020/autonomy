@@ -6,12 +6,12 @@
 
 #include <QEnterEvent>
 #include <QCursor>
-#include <QEnterEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QWheelEvent>
 
 #include "autoviz/common/tool_manager.hpp"
+#include "autoviz/platform/opengl_setup.hpp"
 #include "autoviz/rendering/gpu_capabilities.hpp"
 #include "autoviz/rendering/gpu_depth_pick.hpp"
 #include "autoviz/rendering/viewport_mouse.hpp"
@@ -23,10 +23,7 @@ RenderWindow::RenderWindow(QWidget* parent) : QOpenGLWidget(parent) {
   setMinimumSize(640, 480);
   setFocusPolicy(Qt::StrongFocus);
   setMouseTracking(true);
-  QSurfaceFormat format;
-  format.setVersion(3, 3);
-  format.setProfile(QSurfaceFormat::CoreProfile);
-  setFormat(format);
+  setFormat(platform::defaultSurfaceFormat());
 }
 
 RenderWindow::~RenderWindow() {
@@ -67,7 +64,7 @@ bool RenderWindow::readDepthPick(int pixel_x, int pixel_y,
   if (!pick.hit) {
     return false;
   }
-  *world = pick.position;
+  *world = pick.position();
   return true;
 }
 

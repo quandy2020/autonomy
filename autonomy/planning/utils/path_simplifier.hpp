@@ -16,15 +16,17 @@
 
 #pragma once
 
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 
 namespace autonomy {
 namespace planning {
 namespace utils {
 
 /** Douglas-Peucker path simplification. epsilon <= 0 returns path unchanged. */
-commsgs::planning_msgs::Path SimplifyPath(
-    const commsgs::planning_msgs::Path& path, double epsilon);
+automsgs::msgs::planning_msgs::Path SimplifyPath(
+    const automsgs::msgs::planning_msgs::Path& path, double epsilon);
 
 }  // namespace utils
 }  // namespace planning

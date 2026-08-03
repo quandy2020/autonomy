@@ -23,8 +23,19 @@
 #include <utility>
 #include <vector>
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
 #include "autonomy/control/proto/smoother_options.pb.h"
 #include "autonomy/control/utils/odometry_utils.hpp"
 
@@ -52,15 +63,15 @@ public:
 
 protected:
     void inputCommandCallback(
-        const std::shared_ptr<commsgs::geometry_msgs::Twist>& msg);
+        const std::shared_ptr<automsgs::msgs::geometry_msgs::Twist>& msg);
     void inputCommandStampedCallback(
-        const std::shared_ptr<commsgs::geometry_msgs::TwistStamped>& msg);
+        const std::shared_ptr<automsgs::msgs::geometry_msgs::TwistStamped>& msg);
 
     void smootherTimer();
 
     std::unique_ptr<OdomSmoother> odom_smoother_;
-    std::shared_ptr<commsgs::geometry_msgs::TwistStamped> last_cmd_;
-    std::shared_ptr<commsgs::geometry_msgs::TwistStamped> command_;
+    std::shared_ptr<automsgs::msgs::geometry_msgs::TwistStamped> last_cmd_;
+    std::shared_ptr<automsgs::msgs::geometry_msgs::TwistStamped> command_;
 
     double smoothing_frequency_;
     double odom_duration_;
@@ -73,8 +84,8 @@ protected:
     std::vector<double> max_accels_;
     std::vector<double> max_decels_;
     std::vector<double> deadband_velocities_;
-    commsgs::builtin_interfaces::Duration velocity_timeout_;
-    commsgs::builtin_interfaces::Time last_command_time_;
+    automsgs::msgs::builtin_interfaces::Duration velocity_timeout_;
+    automsgs::msgs::builtin_interfaces::Time last_command_time_;
 };
 
 }  // namespace utils

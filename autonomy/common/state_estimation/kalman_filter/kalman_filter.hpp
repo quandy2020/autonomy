@@ -91,8 +91,7 @@ public:
         m_state = m_motion_model.predict(m_state, dt);
         const auto& motion_jacobian = m_motion_model.jacobian(m_state, dt);
         m_covariance =
-            motion_jacobian * m_covariance * motion_jacobian.transpose() +
-            m_noise_model.covariance(dt);
+            motion_jacobian * m_covariance * motion_jacobian.transpose() + m_noise_model.covariance(dt);
         return m_state;
     }
 
@@ -116,8 +115,7 @@ public:
             wrap_all_angles(measurement.state() - expected_measurement);
         const auto mapping_matrix = measurement.mapping_matrix_from(m_state);
         const auto innovation_covariance =
-            mapping_matrix * m_covariance * mapping_matrix.transpose() +
-            measurement.covariance();
+            mapping_matrix * m_covariance * mapping_matrix.transpose() + measurement.covariance();
         const auto kalman_gain = m_covariance * mapping_matrix.transpose() *
                                  innovation_covariance.inverse();
         m_state += kalman_gain * innovation.vector();

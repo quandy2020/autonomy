@@ -20,8 +20,17 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
 #include "autonomy/map/costmap_2d/costmap_layer.hpp"
 #include "autonomy/map/costmap_2d/footprint.hpp"
 #include "autonomy/map/costmap_2d/layered_costmap.hpp"
@@ -108,7 +117,7 @@ public:
     /**
      * @brief Load map data from an occupancy grid (e.g. YAML/PGM via Costmap2DWrapper).
      */
-    void loadOccupancyGrid(const commsgs::map_msgs::OccupancyGrid& new_map);
+    void loadOccupancyGrid(const automsgs::msgs::map_msgs::OccupancyGrid& new_map);
 
 protected:
     /**
@@ -119,7 +128,7 @@ protected:
     /**
      * @brief Process a new map coming from a topic
      */
-    void processMap(const commsgs::map_msgs::OccupancyGrid& new_map);
+    void processMap(const automsgs::msgs::map_msgs::OccupancyGrid& new_map);
 
     /**
      * @brief  Callback to update the costmap's map from the map_server
@@ -127,14 +136,14 @@ protected:
      * map along with its size will determine what parts of the costmap's
      * static map are overwritten.
      */
-    void incomingMap(const commsgs::map_msgs::OccupancyGrid::SharedPtr new_map);
+    void incomingMap(const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid> new_map);
 
     /**
      * @brief Callback to update the costmap's map from the map_server (or SLAM)
      * with an update in a particular area of the map
      */
     void incomingUpdate(
-        commsgs::map_msgs::OccupancyGridUpdate::ConstSharedPtr update);
+        std::shared_ptr<const automsgs::msgs::map_msgs::OccupancyGridUpdate> update);
 
     /**
      * @brief Interpret the value in the static map given on the topic to
@@ -142,7 +151,7 @@ protected:
      */
     unsigned char interpretValue(unsigned char value);
 
-    std::vector<commsgs::geometry_msgs::Point> transformed_footprint_;
+    std::vector<automsgs::msgs::geometry_msgs::Point> transformed_footprint_;
     bool footprint_clearing_enabled_;
     /**
      * @brief Clear costmap layer info below the robot's footprint
@@ -175,7 +184,7 @@ protected:
     bool map_received_in_update_bounds_{false};
 
     transform::tf2::Duration transform_tolerance_;
-    commsgs::map_msgs::OccupancyGrid::SharedPtr map_buffer_;
+    std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid> map_buffer_;
 };
 
 }  // namespace costmap_2d

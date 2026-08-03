@@ -79,17 +79,17 @@ cv::Mat createImageFromCostmap(
 
 std::vector<cv::Point> convertPathToImageCoords(
     const autonomy::map::costmap_2d::Costmap2D& costmap,
-    const autonomy::commsgs::planning_msgs::Path& path, unsigned int height,
+    const automsgs::msgs::planning_msgs::Path& path, unsigned int height,
     unsigned int width) {
     std::vector<cv::Point> coords;
-    coords.reserve(path.poses.size());
+    coords.reserve(path.poses_size());
     const double ox = costmap.getOriginX();
     const double oy = costmap.getOriginY();
     const double max_x = ox + costmap.getSizeInMetersX();
     const double max_y = oy + costmap.getSizeInMetersY();
-    for (const auto& pose : path.poses) {
-        double wx = pose.pose.position.x;
-        double wy = pose.pose.position.y;
+    for (const auto& pose : path.poses()) {
+        double wx = pose.pose().position().x();
+        double wy = pose.pose().position().y();
         wx = std::clamp(wx, ox, max_x);
         wy = std::clamp(wy, oy, max_y);
         unsigned int mx = 0;
@@ -176,7 +176,7 @@ map::costmap_2d::Costmap2D::SharedPtr PgmConverter::loadFromPgm(
         load_params.mode = map::costmap_2d::MapMode::Trinary;
         load_params.negate = params.negate;
 
-        commsgs::map_msgs::OccupancyGrid occupancy_grid;
+        automsgs::msgs::map_msgs::OccupancyGrid occupancy_grid;
         map::costmap_2d::loadMapFromFile(load_params, occupancy_grid);
         auto costmap =
             std::make_shared<map::costmap_2d::Costmap2D>(occupancy_grid);
@@ -193,7 +193,7 @@ map::costmap_2d::Costmap2D::SharedPtr PgmConverter::loadFromYaml(
     try {
         map::costmap_2d::LoadParameters load_params =
             map::costmap_2d::loadMapYaml(yaml_file_path);
-        commsgs::map_msgs::OccupancyGrid occupancy_grid;
+        automsgs::msgs::map_msgs::OccupancyGrid occupancy_grid;
         map::costmap_2d::loadMapFromFile(load_params, occupancy_grid);
         auto costmap =
             std::make_shared<map::costmap_2d::Costmap2D>(occupancy_grid);
@@ -212,13 +212,13 @@ map::costmap_2d::Costmap2D::SharedPtr PgmConverter::loadFromYaml(
 
 cv::Mat PgmConverter::renderPathToImage(
     const map::costmap_2d::Costmap2D& costmap,
-    const commsgs::planning_msgs::Path& path, const RenderParameters& params) {
+    const automsgs::msgs::planning_msgs::Path& path, const RenderParameters& params) {
     try {
         cv::Mat image = createImageFromCostmap(costmap);
         const unsigned int width = costmap.getSizeInCellsX();
         const unsigned int height = costmap.getSizeInCellsY();
 
-        if (!path.poses.empty()) {
+        if (!path.poses().empty()) {
             const std::vector<cv::Point> coords =
                 convertPathToImageCoords(costmap, path, height, width);
             if (coords.size() >= 2) {
@@ -233,13 +233,13 @@ cv::Mat PgmConverter::renderPathToImage(
 }
 
 bool PgmConverter::savePathToImage(const map::costmap_2d::Costmap2D& costmap,
-                                   const commsgs::planning_msgs::Path& path,
+                                   const automsgs::msgs::planning_msgs::Path& path,
                                    const std::string& output_file_path) {
     return savePathToImage(costmap, path, output_file_path, RenderParameters());
 }
 
 bool PgmConverter::savePathToImage(const map::costmap_2d::Costmap2D& costmap,
-                                   const commsgs::planning_msgs::Path& path,
+                                   const automsgs::msgs::planning_msgs::Path& path,
                                    const std::string& output_file_path,
                                    const RenderParameters& params) {
     try {
@@ -259,7 +259,7 @@ bool PgmConverter::savePathToImage(const map::costmap_2d::Costmap2D& costmap,
         if (params.log_on_save) {
             AINFO << "Saved map with path to: " << final_path
                   << " (format: " << format << ", points: "
-                  << path.poses.size() << ")";
+                  << path.poses_size() << ")";
         }
         return true;
     } catch (const std::exception& e) {
@@ -270,9 +270,9 @@ bool PgmConverter::savePathToImage(const map::costmap_2d::Costmap2D& costmap,
 
 void drawPathOnCostmapImage(
     cv::Mat& image, const map::costmap_2d::Costmap2D& costmap,
-    const commsgs::planning_msgs::Path& path,
+    const automsgs::msgs::planning_msgs::Path& path,
     const PgmConverter::RenderParameters& params) {
-    if (path.poses.empty()) {
+    if (path.poses().empty()) {
         return;
     }
     const unsigned int width = costmap.getSizeInCellsX();
@@ -286,8 +286,8 @@ void drawPathOnCostmapImage(
 
 cv::Mat PgmConverter::renderDualPathsToImage(
     const map::costmap_2d::Costmap2D& costmap,
-    const commsgs::planning_msgs::Path& global_plan_path,
-    const commsgs::planning_msgs::Path& executed_path) {
+    const automsgs::msgs::planning_msgs::Path& global_plan_path,
+    const automsgs::msgs::planning_msgs::Path& executed_path) {
     try {
         cv::Mat image = createImageFromCostmap(costmap);
 
@@ -309,7 +309,7 @@ cv::Mat PgmConverter::renderDualPathsToImage(
         executed_params.draw_goal_marker = false;
         drawPathOnCostmapImage(image, costmap, executed_path, executed_params);
 
-        if (!executed_path.poses.empty()) {
+        if (!executed_path.poses().empty()) {
             const unsigned int width = costmap.getSizeInCellsX();
             const unsigned int height = costmap.getSizeInCellsY();
             const std::vector<cv::Point> coords = convertPathToImageCoords(
@@ -328,8 +328,8 @@ cv::Mat PgmConverter::renderDualPathsToImage(
 
 bool PgmConverter::saveDualPathsToImage(
     const map::costmap_2d::Costmap2D& costmap,
-    const commsgs::planning_msgs::Path& global_plan_path,
-    const commsgs::planning_msgs::Path& executed_path,
+    const automsgs::msgs::planning_msgs::Path& global_plan_path,
+    const automsgs::msgs::planning_msgs::Path& executed_path,
     const std::string& output_file_path) {
     try {
         const cv::Mat image =
@@ -343,8 +343,8 @@ bool PgmConverter::saveDualPathsToImage(
                                    final_path);
         }
         AINFO << "Saved map with global plan + executed paths to: " << final_path
-              << " (global plan poses: " << global_plan_path.poses.size()
-              << ", executed poses: " << executed_path.poses.size() << ")";
+              << " (global plan poses: " << global_plan_path.poses_size()
+              << ", executed poses: " << executed_path.poses_size() << ")";
         return true;
     } catch (const std::exception& e) {
         AERROR << "Failed to save dual paths image: " << e.what();

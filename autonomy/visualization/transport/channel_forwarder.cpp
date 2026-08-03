@@ -25,8 +25,8 @@ namespace visualization {
 namespace {
 
 constexpr char kTransformStampedsType[] =
-    "autonomy.commsgs.proto.geometry_msgs.TransformStampeds";
-constexpr char kTfMessageType[] = "autonomy.commsgs.proto.tf2_msgs.TFMessage";
+    "automsgs.msgs.geometry_msgs.TransformStampeds";
+constexpr char kTfMessageType[] = "automsgs.msgs.tf2_msgs.TFMessage";
 constexpr char kFoxgloveTfTopic[] = "/tf";
 
 }  // namespace

@@ -23,7 +23,7 @@ namespace exploration {
 namespace planner {
 namespace {
 
-commsgs::geometry_msgs::Polygon MakeDefaultArea(double half_extent)
+automsgs::msgs::geometry_msgs::Polygon MakeDefaultArea(double half_extent)
 {
     const ::autonomy::common::math::Polygon2d poly(
         std::vector<::autonomy::common::math::Vec2d>{
@@ -32,13 +32,13 @@ commsgs::geometry_msgs::Polygon MakeDefaultArea(double half_extent)
             {half_extent, half_extent},
             {-half_extent, half_extent},
         });
-    commsgs::geometry_msgs::Polygon area;
+    automsgs::msgs::geometry_msgs::Polygon area;
     for (const auto& v : poly.points()) {
-        commsgs::geometry_msgs::Point32 p;
-        p.x = static_cast<float>(v.x());
-        p.y = static_cast<float>(v.y());
-        p.z = 0.f;
-        area.points.push_back(p);
+        automsgs::msgs::geometry_msgs::Point32 p;
+        p.set_x(static_cast<float>(v.x()));
+        p.set_y(static_cast<float>(v.y()));
+        p.set_z(0.f);
+        *area.add_points() = p;
     }
     return area;
 }
@@ -69,7 +69,7 @@ void ExplorationPlanner::Configure(const proto::ExplorationOptions& options,
 }
 
 void ExplorationPlanner::SetExplorationArea(
-    const commsgs::geometry_msgs::Polygon& area)
+    const automsgs::msgs::geometry_msgs::Polygon& area)
 {
     planner_.SetExplorationArea(area);
 }
@@ -81,15 +81,15 @@ void ExplorationPlanner::UseDefaultExplorationArea()
 }
 
 void ExplorationPlanner::UpdateOdometry(
-    const commsgs::planning_msgs::Odometry& odom)
+    const automsgs::msgs::planning_msgs::Odometry& odom)
 {
     planner_.UpdateOdometry(odom);
 }
 
 void ExplorationPlanner::UpdateDepth(
-    const commsgs::sensor_msgs::Image& depth,
-    const commsgs::sensor_msgs::CameraInfo& info,
-    const commsgs::geometry_msgs::Transform& map_t_camera)
+    const automsgs::msgs::sensor_msgs::Image& depth,
+    const automsgs::msgs::sensor_msgs::CameraInfo& info,
+    const automsgs::msgs::geometry_msgs::Transform& map_t_camera)
 {
     planner_.UpdateDepth(depth, info, map_t_camera);
 }
@@ -106,7 +106,7 @@ bool ExplorationPlanner::HasExplorationTarget() const
 }
 
 bool ExplorationPlanner::GetNextWaypoint(
-    commsgs::geometry_msgs::PoseStamped& out)
+    automsgs::msgs::geometry_msgs::PoseStamped& out)
 {
     if (!planner_.HasTarget()) {
         if (!planner_.ExecutePlanningCycle()) {
@@ -138,12 +138,12 @@ float ExplorationPlanner::ExploredAreaM2() const
     return planner_.ExploredAreaM2();
 }
 
-commsgs::planning_msgs::Path ExplorationPlanner::GetExplorationPath() const
+automsgs::msgs::planning_msgs::Path ExplorationPlanner::GetExplorationPath() const
 {
     return planner_.GetExplorationPath();
 }
 
-commsgs::map_msgs::OccupancyGrid ExplorationPlanner::GetOccupancyGrid(
+automsgs::msgs::map_msgs::OccupancyGrid ExplorationPlanner::GetOccupancyGrid(
     const std::string& frame_id) const
 {
     return planner_.GetOccupancyGrid(frame_id);

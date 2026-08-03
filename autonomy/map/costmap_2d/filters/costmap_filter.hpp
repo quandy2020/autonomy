@@ -20,9 +20,21 @@
 #include <mutex>
 #include <string>
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose2d.pb.h>
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
 #include "autonomy/map/costmap_2d/costmap_math.hpp"
 #include "autonomy/map/costmap_2d/layer.hpp"
 #include "autonomy/transform/buffer.hpp"
@@ -164,7 +176,7 @@ public:
      */
     virtual void process(Costmap2D& master_grid, int min_i, int min_j,
                          int max_i, int max_j,
-                         const commsgs::geometry_msgs::Pose2D& pose) = 0;
+                         const automsgs::msgs::geometry_msgs::Pose2D& pose) = 0;
 
     /**
      * @brief: Resets costmap filter. Stops all subscriptions
@@ -192,9 +204,9 @@ protected:
      * @return: True if the transformation was successful, false otherwise
      */
     bool transformPose(const std::string global_frame,
-                       const commsgs::geometry_msgs::Pose2D& global_pose,
+                       const automsgs::msgs::geometry_msgs::Pose2D& global_pose,
                        const std::string mask_frame,
-                       commsgs::geometry_msgs::Pose2D& mask_pose) const;
+                       automsgs::msgs::geometry_msgs::Pose2D& mask_pose) const;
 
     /**
      * @brief: Convert from world coordinates to mask coordinates.
@@ -209,7 +221,7 @@ protected:
     otherwise
     */
     bool worldToMask(
-        commsgs::map_msgs::OccupancyGrid::ConstSharedPtr filter_mask, double wx,
+        std::shared_ptr<const automsgs::msgs::map_msgs::OccupancyGrid> filter_mask, double wx,
         double wy, unsigned int& mx, unsigned int& my) const;
 
     /**
@@ -220,9 +232,9 @@ protected:
      * @return The data of the selected cell
      */
     inline int8_t getMaskData(
-        commsgs::map_msgs::OccupancyGrid::ConstSharedPtr filter_mask,
+        std::shared_ptr<const automsgs::msgs::map_msgs::OccupancyGrid> filter_mask,
         const unsigned int mx, const unsigned int my) const {
-        return filter_mask->data[my * filter_mask->info.width + mx];
+        return filter_mask->data(my * filter_mask->info().width() + mx);
     }
 
     /**
@@ -233,7 +245,7 @@ protected:
      * @return The cost to set the cell to
      */
     unsigned char getMaskCost(
-        commsgs::map_msgs::OccupancyGrid::ConstSharedPtr filter_mask,
+        std::shared_ptr<const automsgs::msgs::map_msgs::OccupancyGrid> filter_mask,
         const unsigned int mx, const unsigned int& my) const;
 
     /**
@@ -260,7 +272,7 @@ private:
     /**
      * @brief: Latest robot position
      */
-    commsgs::geometry_msgs::Pose2D latest_pose_;
+    automsgs::msgs::geometry_msgs::Pose2D latest_pose_;
 
     /**
      * @brief: Mutex for locking filter's resources

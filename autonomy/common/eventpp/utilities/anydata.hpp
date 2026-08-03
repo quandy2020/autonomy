@@ -115,7 +115,7 @@ public:
     }
 
     LargeData(LargeData&& other) : data(), deleter() {
-        std::swap(data, other.data);
+        std::swap(data, other.data());
         std::swap(deleter, other.deleter);
     }
 

@@ -22,8 +22,18 @@
  
  #include "autolink/autolink.hpp"
  #include "autonomy/common/macros.hpp"
- #include "autonomy/commsgs/geometry_msgs.hpp"
- #include "autonomy/commsgs/planning_msgs.hpp"
+ #include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+ #include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
  #include "autonomy/control/common/controller_exceptions.hpp"
  #include "autonomy/control/common/goal_checker_interface.hpp"
  #include "autonomy/control/controller/mppi_controller/critic_manager.hpp"
@@ -87,11 +97,11 @@
       * @param goal_checker Object to check if goal is completed
       * @return TwistStamped of the MPPI control
       */
-     commsgs::geometry_msgs::TwistStamped evalControl(
-         const commsgs::geometry_msgs::PoseStamped& robot_pose,
-         const commsgs::geometry_msgs::Twist& robot_speed,
-         const commsgs::planning_msgs::Path& plan,
-         const commsgs::geometry_msgs::Pose& goal,
+     automsgs::msgs::geometry_msgs::TwistStamped evalControl(
+         const automsgs::msgs::geometry_msgs::PoseStamped& robot_pose,
+         const automsgs::msgs::geometry_msgs::Twist& robot_speed,
+         const automsgs::msgs::planning_msgs::Path& plan,
+         const automsgs::msgs::geometry_msgs::Pose& goal,
          common::GoalChecker* goal_checker);
  
      /**
@@ -146,10 +156,10 @@
       * @param plan Path plan to track
       * @param goal_checker Object to check if goal is completed
       */
-     void prepare(const commsgs::geometry_msgs::PoseStamped& robot_pose,
-                  const commsgs::geometry_msgs::Twist& robot_speed,
-                  const commsgs::planning_msgs::Path& plan,
-                  const commsgs::geometry_msgs::Pose& goal,
+     void prepare(const automsgs::msgs::geometry_msgs::PoseStamped& robot_pose,
+                  const automsgs::msgs::geometry_msgs::Twist& robot_speed,
+                  const automsgs::msgs::planning_msgs::Path& plan,
+                  const automsgs::msgs::geometry_msgs::Pose& goal,
                   common::GoalChecker* goal_checker);
  
      /**
@@ -232,8 +242,8 @@
       * @param stamp Timestamp to use
       * @return TwistStamped of command to send to robot base
       */
-     commsgs::geometry_msgs::TwistStamped getControlFromSequenceAsTwist(
-         const commsgs::builtin_interfaces::Time& stamp);
+     automsgs::msgs::geometry_msgs::TwistStamped getControlFromSequenceAsTwist(
+         const automsgs::msgs::builtin_interfaces::Time& stamp);
  
      /**
       * @brief Whether the motion model is holonomic
@@ -276,9 +286,9 @@
      std::array<models::Control, 4> control_history_;
      models::Trajectories generated_trajectories_;
      models::Path path_;
-     commsgs::geometry_msgs::Pose goal_;
+     automsgs::msgs::geometry_msgs::Pose goal_;
      Eigen::ArrayXf costs_;
-     commsgs::geometry_msgs::Twist last_command_vel_;
+     automsgs::msgs::geometry_msgs::Twist last_command_vel_;
 
      CriticData critics_data_ = {state_,      generated_trajectories_,
                                  path_,       goal_,

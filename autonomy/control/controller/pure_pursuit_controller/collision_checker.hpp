@@ -23,8 +23,18 @@
  #include <vector>
  
  #include "autolink/autolink.hpp"
- #include "autonomy/commsgs/geometry_msgs.hpp"
- #include "autonomy/commsgs/planning_msgs.hpp"
+ #include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+ #include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
  #include "autonomy/control/common/controller_exceptions.hpp"
  #include "autonomy/control/proto/pure_pursuit_controller.pb.h"
  #include "autonomy/control/utils/odometry_utils.hpp"
@@ -69,7 +79,7 @@
       * @param carrot_dist Distance to the carrot for PP
       * @return Whether collision is imminent
       */
-     bool isCollisionImminent(const commsgs::geometry_msgs::PoseStamped&,
+     bool isCollisionImminent(const automsgs::msgs::geometry_msgs::PoseStamped&,
                               const double&, const double&, const double&);
  
      /**
@@ -96,7 +106,7 @@
          map::costmap_2d::FootprintCollisionChecker<map::costmap_2d::Costmap2D*>>
          footprint_collision_checker_;
      const proto::PurePursuitControllerOptions* options_ = nullptr;
-     std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>>
+     std::shared_ptr<autolink::Writer<automsgs::msgs::planning_msgs::Path>>
          carrot_arc_pub_;
  };
  

@@ -1,3 +1,6 @@
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 /*
  * Copyright 2016 The Cartographer Authors
  *

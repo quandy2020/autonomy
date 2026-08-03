@@ -35,7 +35,9 @@
 #include <autonomy/transform/geometry_msgs/transform_stamped.h>
 #include <autonomy/transform/tf2/exceptions.h>
 #include <autonomy/transform/tf2/transform_datatypes.h>
-// #include "autonomy/commsgs/geometry_msgs.hpp"
+// #include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <autonomy/transform/tf2/impl/convert.h>
 #include <autonomy/transform/tf2/time.h>
 

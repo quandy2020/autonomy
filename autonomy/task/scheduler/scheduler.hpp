@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/proto/vehicle_msgs.pb.h"
+#include <automsgs/msgs/vehicle_msgs/vehicle_msgs.pb.h>
 #include "autonomy/task/common/task_interface.hpp"
 #include "autonomy/task/proto/task_options.pb.h"
 #include "autonomy/task/scheduler/task_mux.hpp"
@@ -63,7 +63,7 @@ public:
 
     void RegisterTask(TaskInterface::SharedPtr task);
     TaskInterface::SharedPtr GetTask(
-        ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType type) const;
+        ::automsgs::msgs::vehicle_msgs::RobotTaskType type) const;
 
     /**
      * @brief 申请激活任务（通过互斥检查后加入活跃列表）
@@ -73,11 +73,11 @@ public:
     void ReleaseActivation(TaskInterface::SharedPtr task);
 
     bool CancelActive(
-        ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType type);
+        ::automsgs::msgs::vehicle_msgs::RobotTaskType type);
     bool PauseActive(
-        ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType type);
+        ::automsgs::msgs::vehicle_msgs::RobotTaskType type);
     bool ResumeActive(
-        ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType type);
+        ::automsgs::msgs::vehicle_msgs::RobotTaskType type);
 
     /** 启动反馈轮询循环（幂等）。 */
     bool Start();

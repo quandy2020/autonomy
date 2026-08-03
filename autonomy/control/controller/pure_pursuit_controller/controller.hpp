@@ -24,9 +24,20 @@
  #include <vector>
  
  #include "autolink/autolink.hpp"
- #include "autonomy/commsgs/geometry_msgs.hpp"
- #include "autonomy/commsgs/planning_msgs.hpp"
- #include "autonomy/commsgs/std_msgs.hpp"
+ #include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/point_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+ #include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+ #include <automsgs/msgs/std_msgs/header.pb.h>
  #include "autonomy/control/common/controller_interface.hpp"
  #include "autonomy/control/common/goal_checker_interface.hpp"
  #include "autonomy/control/controller/pure_pursuit_controller/collision_checker.hpp"
@@ -97,9 +108,9 @@
       * @return          Result code (0 = success)
       */
      uint32 ComputeVelocityCommands(
-         const commsgs::geometry_msgs::PoseStamped& pose,
-         const commsgs::geometry_msgs::TwistStamped& velocity,
-         commsgs::geometry_msgs::TwistStamped& cmd_vel,
+         const automsgs::msgs::geometry_msgs::PoseStamped& pose,
+         const automsgs::msgs::geometry_msgs::TwistStamped& velocity,
+         automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel,
          common::GoalChecker* goal_checker, std::string& message) override;
  
      /**
@@ -114,7 +125,7 @@
       * @brief Set the global plan
       * @param path The global plan
       */
-     void SetPlan(const commsgs::planning_msgs::Path& path) override;
+     void SetPlan(const automsgs::msgs::planning_msgs::Path& path) override;
  
      /**
       * @brief Limits the maximum linear speed of the robot.
@@ -140,15 +151,15 @@
       * @param cmd the current speed to use to compute lookahead point
       * @return lookahead distance
       */
-     double getLookAheadDistance(const commsgs::geometry_msgs::TwistStamped&);
+     double getLookAheadDistance(const automsgs::msgs::geometry_msgs::TwistStamped&);
  
      /**
       * @brief Creates a PointStamped message for visualization
       * @param carrot_pose Input carrot point as a PoseStamped
       * @return CarrotMsg a carrot point marker, PointStamped
       */
-     std::unique_ptr<commsgs::geometry_msgs::PointStamped> createCarrotMsg(
-         const commsgs::geometry_msgs::PoseStamped& carrot_pose);
+     std::unique_ptr<automsgs::msgs::geometry_msgs::PointStamped> createCarrotMsg(
+         const automsgs::msgs::geometry_msgs::PoseStamped& carrot_pose);
  
      /**
       * @brief Whether robot should rotate to rough path heading
@@ -158,7 +169,7 @@
       * @return Whether should rotate to path heading
       */
      bool shouldRotateToPath(
-         const commsgs::geometry_msgs::PoseStamped& carrot_pose,
+         const automsgs::msgs::geometry_msgs::PoseStamped& carrot_pose,
          double& angle_to_path, double& x_vel_sign);
  
      /**
@@ -167,7 +178,7 @@
       * @return Whether should rotate to goal heading
       */
      bool shouldRotateToGoalHeading(
-         const commsgs::geometry_msgs::PoseStamped& carrot_pose);
+         const automsgs::msgs::geometry_msgs::PoseStamped& carrot_pose);
  
      /**
       * @brief Create a smooth and kinematically smoothed rotation command
@@ -178,7 +189,7 @@
       */
      void rotateToHeading(
          double& linear_vel, double& angular_vel, const double& angle_to_path,
-         const commsgs::geometry_msgs::TwistStamped& curr_speed);
+         const automsgs::msgs::geometry_msgs::TwistStamped& curr_speed);
  
      /**
       * @brief apply regulation constraints to the system
@@ -189,9 +200,9 @@
       * @param pose_cost cost at this pose
       */
      void applyConstraints(const double& curvature,
-                           const commsgs::geometry_msgs::TwistStamped& speed,
+                           const automsgs::msgs::geometry_msgs::TwistStamped& speed,
                            const double& pose_cost,
-                           const commsgs::planning_msgs::Path& path,
+                           const automsgs::msgs::planning_msgs::Path& path,
                            double& linear_vel, double& sign);
  
      /**
@@ -203,9 +214,9 @@
       * @param r radius of circle
       * @return point of intersection
       */
-     static commsgs::geometry_msgs::Point circleSegmentIntersection(
-         const commsgs::geometry_msgs::Point& p1,
-         const commsgs::geometry_msgs::Point& p2, double r);
+     static automsgs::msgs::geometry_msgs::Point circleSegmentIntersection(
+         const automsgs::msgs::geometry_msgs::Point& p1,
+         const automsgs::msgs::geometry_msgs::Point& p2, double r);
  
      /**
       * @brief Get lookahead point
@@ -216,8 +227,8 @@
       * two pose of the path
       * @return Lookahead point
       */
-     commsgs::geometry_msgs::PoseStamped getLookAheadPoint(
-         const double&, const commsgs::planning_msgs::Path&,
+     automsgs::msgs::geometry_msgs::PoseStamped getLookAheadPoint(
+         const double&, const automsgs::msgs::planning_msgs::Path&,
          bool interpolate_after_goal = false);
  
      /**
@@ -226,7 +237,7 @@
       * @return robot distance from the cusp
       */
      double findVelocitySignChange(
-         const commsgs::planning_msgs::Path& transformed_plan);
+         const automsgs::msgs::planning_msgs::Path& transformed_plan);
  
      std::shared_ptr<autolink::Node> node_;
      std::shared_ptr<transform::Buffer> tf_buffer_;
@@ -244,16 +255,16 @@
      double last_dist_to_goal_ = std::numeric_limits<double>::infinity();
      double last_angle_to_goal_ = std::numeric_limits<double>::infinity();
  
-     std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>>
+     std::shared_ptr<autolink::Writer<automsgs::msgs::planning_msgs::Path>>
          global_path_pub_;
-     std::shared_ptr<autolink::Writer<commsgs::geometry_msgs::PointStamped>>
+     std::shared_ptr<autolink::Writer<automsgs::msgs::geometry_msgs::PointStamped>>
          carrot_pub_;
-     std::shared_ptr<autolink::Writer<commsgs::geometry_msgs::PointStamped>>
+     std::shared_ptr<autolink::Writer<automsgs::msgs::geometry_msgs::PointStamped>>
          curvature_carrot_pub_;
      // TODO: Add Bool message type to commsgs or use a different approach
-     // std::shared_ptr<autolink::Writer<commsgs::std_msgs::Bool>>
+     // std::shared_ptr<autolink::Writer<automsgs::msgs::std_msgs::Bool>>
      // is_rotating_to_heading_pub_;
-     std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>>
+     std::shared_ptr<autolink::Writer<automsgs::msgs::planning_msgs::Path>>
          carrot_arc_pub_;
      std::unique_ptr<PathHandler> path_handler_;
      std::unique_ptr<ParameterHandler> param_handler_;

@@ -180,7 +180,7 @@ bool Engine::Warmup(std::string* error) {
         }
         const size_t byte_size =
             static_cast<size_t>(count) * ElementTypeByteSize(info.element_type);
-        inputs.emplace(info.name, Tensor(info.element_type,
+        inputs.emplace(info.name(), Tensor(info.element_type,
                                          std::vector<uint8_t>(byte_size)));
     }
     if (inputs.empty()) {

@@ -1,3 +1,4 @@
+#include <automsgs/msgs/sensor_msgs/range.pb.h>
 /*********************************************************************
  *
  * Software License Agreement (BSD License)
@@ -45,10 +46,24 @@
 
 #include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
 #include "autonomy/map/common/map_interface.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 #include "autonomy/map/costmap_2d/footprint.hpp"
@@ -124,13 +139,13 @@ public:
     void resetLayers();
 
     void setRobotFootprint(
-        const std::vector<commsgs::geometry_msgs::Point>& points);
+        const std::vector<automsgs::msgs::geometry_msgs::Point>& points);
 
     void setRobotFootprintPolygon(
-        const commsgs::geometry_msgs::Polygon::SharedPtr footprint);
+        const std::shared_ptr<automsgs::msgs::geometry_msgs::Polygon> footprint);
 
     void getOrientedFootprint(
-        std::vector<commsgs::geometry_msgs::Point>& oriented_footprint);
+        std::vector<automsgs::msgs::geometry_msgs::Point>& oriented_footprint);
 
     /**
      * @brief Same as getLayeredCostmap()->isCurrent().
@@ -145,7 +160,7 @@ public:
      * frame of the costmap
      * @return True if the pose was set successfully, false otherwise
      */
-    bool getRobotPose(commsgs::geometry_msgs::PoseStamped& global_pose);
+    bool getRobotPose(automsgs::msgs::geometry_msgs::PoseStamped& global_pose);
 
     /**
      * @brief Transform the input_pose in the global frame of the costmap
@@ -154,8 +169,8 @@ public:
      * @return True if the pose was transformed successfully, false otherwise
      */
     bool transformPoseToGlobalFrame(
-        const commsgs::geometry_msgs::PoseStamped& input_pose,
-        commsgs::geometry_msgs::PoseStamped& transformed_pose);
+        const automsgs::msgs::geometry_msgs::PoseStamped& input_pose,
+        automsgs::msgs::geometry_msgs::PoseStamped& transformed_pose);
 
     /**
      * @brief Returns costmap name
@@ -224,7 +239,7 @@ public:
      * @brief Returns the current padded footprint as a
      * geometry_msgs::msg::Polygon.
      */
-    commsgs::geometry_msgs::Polygon getRobotFootprintPolygon() {
+    automsgs::msgs::geometry_msgs::Polygon getRobotFootprintPolygon() {
         return toPolygon(padded_footprint_);
     }
 
@@ -237,7 +252,7 @@ public:
      * The footprint initially comes from the rosparam "footprint" but
      * can be overwritten by dynamic reconfigure or by messages received
      * on the "footprint" topic. */
-    std::vector<commsgs::geometry_msgs::Point> getRobotFootprint() {
+    std::vector<automsgs::msgs::geometry_msgs::Point> getRobotFootprint() {
         return padded_footprint_;
     }
 
@@ -249,7 +264,7 @@ public:
      * The footprint initially comes from the rosparam "footprint" but
      * can be overwritten by dynamic reconfigure or by messages received
      * on the "footprint" topic. */
-    std::vector<commsgs::geometry_msgs::Point> getUnpaddedRobotFootprint() {
+    std::vector<automsgs::msgs::geometry_msgs::Point> getUnpaddedRobotFootprint() {
         return unpadded_footprint_;
     }
 
@@ -263,7 +278,7 @@ public:
     /**
      * @brief Apply an OccupancyGrid from MapServer or SLAM into StaticLayer.
      */
-    bool applyOccupancyGrid(const commsgs::map_msgs::OccupancyGrid& grid);
+    bool applyOccupancyGrid(const automsgs::msgs::map_msgs::OccupancyGrid& grid);
 
     /**
      * @brief Publish the map to the topic
@@ -273,17 +288,17 @@ public:
     /**
      * @brief Inject laser scan into ObstacleLayer plugins (ROS bridge entry).
      */
-    void feedLaserScan(const commsgs::sensor_msgs::LaserScan& scan);
+    void feedLaserScan(const automsgs::msgs::sensor_msgs::LaserScan& scan);
 
-    void feedPointCloud2(const commsgs::sensor_msgs::PointCloud2& cloud);
+    void feedPointCloud2(const automsgs::msgs::sensor_msgs::PointCloud2& cloud);
 
-    void feedRange(const commsgs::sensor_msgs::Range& range);
+    void feedRange(const automsgs::msgs::sensor_msgs::Range& range);
 
     /**
      * @brief Fill @p grid with the latest costmap as an OccupancyGrid snapshot.
      * @return false if the costmap is not initialized.
      */
-    bool snapshotOccupancyGrid(commsgs::map_msgs::OccupancyGrid& grid);
+    bool snapshotOccupancyGrid(automsgs::msgs::map_msgs::OccupancyGrid& grid);
 
     /**
      * @brief  Get the costmap's use_radius_ parameter, corresponding to
@@ -310,7 +325,7 @@ protected:
     void loadPlugins();
 
     /** @brief Push occupancy_grid_ into StaticLayer or the master costmap. */
-    void applyLoadedOccupancyGrid(const commsgs::map_msgs::OccupancyGrid& grid);
+    void applyLoadedOccupancyGrid(const automsgs::msgs::map_msgs::OccupancyGrid& grid);
 
     /** @brief Activate or deactivate all loaded layer plugins. */
     void setPluginsActive(bool active);
@@ -330,7 +345,7 @@ protected:
     std::mutex _dynamic_parameter_mutex;
     std::unique_ptr<std::thread>
         map_update_thread_;  ///< @brief A thread for updating the map
-    commsgs::builtin_interfaces::Time last_publish_{0, 0};
+    automsgs::msgs::builtin_interfaces::Time last_publish_ = automsgs::msgs::builtin_interfaces::ZeroTime();
     // builtin_interfaces::builtin_interfaces::Duration publish_cycle_{1, 0};
 
     bool always_send_full_costmap_{false};
@@ -366,13 +381,13 @@ protected:
     bool ready_{false};  ///< whether the costmap has been updated at least once
 
     // Map data
-    commsgs::map_msgs::OccupancyGrid occupancy_grid_;
+    automsgs::msgs::map_msgs::OccupancyGrid occupancy_grid_;
 
     // Derived parameters
     bool use_radius_{false};
     bool map_loaded_{false};  // 标记地图是否已加载，避免重复加载
-    std::vector<commsgs::geometry_msgs::Point> unpadded_footprint_;
-    std::vector<commsgs::geometry_msgs::Point> padded_footprint_;
+    std::vector<automsgs::msgs::geometry_msgs::Point> unpadded_footprint_;
+    std::vector<automsgs::msgs::geometry_msgs::Point> padded_footprint_;
 
     // options for costmap 2D
     proto::Costmap2DOptions options_;

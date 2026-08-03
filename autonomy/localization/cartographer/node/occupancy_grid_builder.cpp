@@ -38,7 +38,7 @@ namespace node {
 bool UpdateSubmapSliceFromTextures(
     ::cartographer::io::SubmapSlice* slice,
     const ::cartographer::io::SubmapTextures& textures,
-    const commsgs::geometry_msgs::Pose& submap_pose) {
+    const automsgs::msgs::geometry_msgs::Pose& submap_pose) {
     if (!slice || textures.textures.empty()) {
         return false;
     }
@@ -47,9 +47,9 @@ bool UpdateSubmapSliceFromTextures(
     slice->pose = ToRigid3d(submap_pose);
     slice->metadata_version = textures.version;
     slice->version = textures.version;
-    slice->width = fetched_texture.width;
-    slice->height = fetched_texture.height;
-    slice->resolution = fetched_texture.resolution;
+    slice->set_width(fetched_texture.width);
+    slice->set_height(fetched_texture.height);
+    slice->set_resolution(fetched_texture.resolution);
     slice->slice_pose = fetched_texture.slice_pose;
     slice->cairo_data.clear();
     slice->surface = ::cartographer::io::DrawTexture(
@@ -61,7 +61,7 @@ bool UpdateSubmapSliceFromTextures(
 bool UpdateSubmapSliceFromQueryResponse(
     ::cartographer::io::SubmapSlice* slice,
     const proto::SubmapQueryResponse& response,
-    const commsgs::geometry_msgs::Pose& submap_pose,
+    const automsgs::msgs::geometry_msgs::Pose& submap_pose,
     const int submap_list_version) {
     const auto textures = ParseSubmapTexturesFromResponse(response);
     if (!textures) {
@@ -71,11 +71,11 @@ bool UpdateSubmapSliceFromQueryResponse(
     return UpdateSubmapSliceFromTextures(slice, *textures, submap_pose);
 }
 
-std::unique_ptr<commsgs::map_msgs::OccupancyGrid> BuildOccupancyGrid(
+std::unique_ptr<automsgs::msgs::map_msgs::OccupancyGrid> BuildOccupancyGrid(
     const std::map<::cartographer::mapping::SubmapId,
                    ::cartographer::io::SubmapSlice>& slices,
     const double resolution, const std::string& frame_id,
-    const commsgs::builtin_interfaces::Time& stamp) {
+    const automsgs::msgs::builtin_interfaces::Time& stamp) {
     if (slices.empty()) {
         return nullptr;
     }
@@ -123,7 +123,7 @@ bool SaveMapImageFiles(
     auto painted_slices = ::cartographer::io::PaintSubmapSlices(slices, resolution);
 
     if (!trajectories.empty()) {
-        const Eigen::Array2f& origin = painted_slices.origin;
+        const Eigen::Array2f& origin = painted_slices.origin();
         for (size_t i = 0; i < trajectories.size(); ++i) {
             ::cartographer::io::DrawTrajectory(
                 trajectories[i], ::cartographer::io::GetColor(static_cast<int>(i)),
@@ -159,8 +159,8 @@ bool SaveMapImageFiles(
     WritePgm(image, resolution, &pgm_writer);
 
     const Eigen::Vector2d origin(
-        -painted_slices.origin.x() * resolution,
-        (painted_slices.origin.y() - image.height()) * resolution);
+        -painted_slices.origin().x() * resolution,
+        (painted_slices.origin().y() - image.height()) * resolution);
 
     ::cartographer::io::StreamFileWriter yaml_writer(yaml_path);
     WriteYaml(resolution, origin, fs::path(pgm_path).filename().string(),

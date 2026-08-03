@@ -21,7 +21,16 @@
 #include <vector>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose2d.pb.h>
 #include "autonomy/control/checker/simple_progress_checker.hpp"
 
 namespace autonomy {
@@ -37,7 +46,7 @@ class PoseProgressChecker : public SimpleProgressChecker
 {
 public:
     void Initialize(const std::string& plugin_name) override;
-    bool Check(commsgs::geometry_msgs::PoseStamped& current_pose) override;
+    bool Check(automsgs::msgs::geometry_msgs::PoseStamped& current_pose) override;
 
 protected:
     /**
@@ -45,10 +54,10 @@ protected:
      * @param pose Current pose of the robot
      * @return true, if movement is greater than radius_, or false
      */
-    bool IsRobotMovedEnough(const commsgs::geometry_msgs::Pose2D& pose);
+    bool IsRobotMovedEnough(const automsgs::msgs::geometry_msgs::Pose2D& pose);
 
-    static double PoseAngleDistance(const commsgs::geometry_msgs::Pose2D&,
-                                    const commsgs::geometry_msgs::Pose2D&);
+    static double PoseAngleDistance(const automsgs::msgs::geometry_msgs::Pose2D&,
+                                    const automsgs::msgs::geometry_msgs::Pose2D&);
 
     double required_movement_angle_;
     std::string plugin_name_;

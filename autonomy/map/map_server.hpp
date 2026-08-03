@@ -24,7 +24,8 @@
 #include <thread>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
 #include "autonomy/map/proto/map_options.pb.h"
 
 namespace autonomy {
@@ -42,7 +43,7 @@ class MapServer
 public:
     /** Callback invoked when a map is published (once or periodically). */
     using MapPublishCallback = std::function<void(
-        const commsgs::map_msgs::OccupancyGrid::SharedPtr& map)>;
+        const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>& map)>;
 
     AUTONOMY_SMART_PTR_DEFINITIONS(MapServer)
 
@@ -76,13 +77,13 @@ public:
     /**
      * @brief Returns the cached static map (shared ownership with MapServer).
      */
-    commsgs::map_msgs::OccupancyGrid::SharedPtr GetStaticMapShared() const;
+    std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid> GetStaticMapShared() const;
 
     /**
      * @brief Copies the static map into @p static_map (uses cache when available).
      * @return True on success.
      */
-    bool GetRawStaticMap(commsgs::map_msgs::OccupancyGrid& static_map) const;
+    bool GetRawStaticMap(automsgs::msgs::map_msgs::OccupancyGrid& static_map) const;
 
     /**
      * @brief Reloads the map from the configured YAML file path.
@@ -94,7 +95,7 @@ public:
      * @brief Injects an external map (e.g. from SLAM), replacing the file-based cache.
      * @return True if the message is valid and accepted.
      */
-    bool SetStaticMap(const commsgs::map_msgs::OccupancyGrid& map);
+    bool SetStaticMap(const automsgs::msgs::map_msgs::OccupancyGrid& map);
 
     /**
      * @brief Publishes the current map once via MapPublishCallback (refreshes header stamp).
@@ -137,7 +138,7 @@ private:
     std::string resolveMapFilePath() const;
 
     /** @brief Sets frame_id and stamp on the map header from options. */
-    void applyMapHeader(commsgs::map_msgs::OccupancyGrid& map) const;
+    void applyMapHeader(automsgs::msgs::map_msgs::OccupancyGrid& map) const;
 
     /** @brief Loads map from file under map_mutex_. */
     bool loadMapFromFileLocked();
@@ -152,7 +153,7 @@ private:
     std::string node_name_;
     proto::MapOptions options_;
 
-    commsgs::map_msgs::OccupancyGrid::SharedPtr static_map_msg_{nullptr};
+    std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid> static_map_msg_{nullptr};
     MapPublishCallback map_publish_callback_;
 
     std::atomic<bool> running_{false};

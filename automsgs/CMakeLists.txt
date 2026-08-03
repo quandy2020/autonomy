@@ -27,6 +27,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/modules")
+include(EnsureProtobuf319)
+autonomy_require_protobuf()
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 if(NOT DEFINED AUTOMSGS_PYTHON_INSTALL_PATH)
@@ -41,6 +44,13 @@ enable_testing()
 
 # Install and manage .proto message definitions
 add_subdirectory(proto)
+# Re-export proto include/gen dirs so parent (autonomy) protoc can -I them.
+if(DEFINED AUTOMSGS_PROTO_INCLUDE_DIR)
+  set(AUTOMSGS_PROTO_INCLUDE_DIR "${AUTOMSGS_PROTO_INCLUDE_DIR}" PARENT_SCOPE)
+endif()
+if(DEFINED AUTOMSGS_PROTO_GEN_DIR)
+  set(AUTOMSGS_PROTO_GEN_DIR "${AUTOMSGS_PROTO_GEN_DIR}" PARENT_SCOPE)
+endif()
 add_subdirectory(tools)
 add_subdirectory(conf)
 add_subdirectory(python)
@@ -68,15 +78,15 @@ endif()
 
 configure_package_config_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/automsgs_config.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/automsgs_config.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/automsgsConfig.cmake"
   INSTALL_DESTINATION "${AUTOMSGS_INSTALL_CMAKEDIR}")
 
 write_basic_package_version_file(
-  "${CMAKE_CURRENT_BINARY_DIR}/automsgs_config_version.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/automsgsConfigVersion.cmake"
   VERSION "${PROJECT_VERSION}"
   COMPATIBILITY SameMajorVersion)
 
 install(FILES
-  "${CMAKE_CURRENT_BINARY_DIR}/automsgs_config.cmake"
-  "${CMAKE_CURRENT_BINARY_DIR}/automsgs_config_version.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/automsgsConfig.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/automsgsConfigVersion.cmake"
   DESTINATION "${AUTOMSGS_INSTALL_CMAKEDIR}")

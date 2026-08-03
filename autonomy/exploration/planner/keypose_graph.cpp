@@ -47,12 +47,12 @@ void KeyposeGraph::SetOptions(const proto::ExplorationOptions& options)
     options_ = options;
 }
 
-commsgs::geometry_msgs::Point KeyposeGraph::ToPoint(const KeyposeNode& node)
+automsgs::msgs::geometry_msgs::Point KeyposeGraph::ToPoint(const KeyposeNode& node)
 {
-    commsgs::geometry_msgs::Point p;
-    p.x = node.x;
-    p.y = node.y;
-    p.z = node.z;
+    automsgs::msgs::geometry_msgs::Point p;
+    p.set_x(node.x);
+    p.set_y(node.y);
+    p.set_z(node.z);
     return p;
 }
 
@@ -66,9 +66,9 @@ int KeyposeGraph::AddOrGetNode(double x, double y, double z)
     }
     KeyposeNode node;
     node.id = static_cast<int>(nodes_.size());
-    node.x = x;
-    node.y = y;
-    node.z = z;
+    node.x = (x);
+    node.y = (y);
+    node.z = (z);
     nodes_.push_back(node);
     adj_.emplace_back();
     return node.id;
@@ -100,7 +100,7 @@ void KeyposeGraph::ConnectToNeighbors(int node_id, const PlanningEnv& env)
             continue;
         }
         // No LOS: try inflated-grid A* detour within ratio limit.
-        std::vector<commsgs::geometry_msgs::Point> path;
+        std::vector<automsgs::msgs::geometry_msgs::Point> path;
         const double path_len =
             env.PlanPathAStar(node.x, node.y, nodes_[i].x, nodes_[i].y, &path);
         if (!std::isfinite(path_len) || path_len > detour_ratio * dist) {
@@ -250,22 +250,22 @@ double KeyposeGraph::ShortestPathCostToPoint(double x, double y,
     return ShortestPathCost(last_robot_node_, nearest);
 }
 
-std::vector<commsgs::geometry_msgs::Point> KeyposeGraph::ShortestPathPoints(
+std::vector<automsgs::msgs::geometry_msgs::Point> KeyposeGraph::ShortestPathPoints(
     double from_x, double from_y, double from_z, double to_x, double to_y,
     double to_z) const
 {
-    std::vector<commsgs::geometry_msgs::Point> path;
-    commsgs::geometry_msgs::Point start;
-    start.x = from_x;
-    start.y = from_y;
-    start.z = from_z;
-    commsgs::geometry_msgs::Point goal;
-    goal.x = to_x;
-    goal.y = to_y;
-    goal.z = to_z;
+    std::vector<automsgs::msgs::geometry_msgs::Point> path;
+    automsgs::msgs::geometry_msgs::Point start;
+    start.set_x(from_x);
+    start.set_y(from_y);
+    start.set_z(from_z);
+    automsgs::msgs::geometry_msgs::Point goal;
+    goal.set_x(to_x);
+    goal.set_y(to_y);
+    goal.set_z(to_z);
 
     auto direct = [&]() {
-        std::vector<commsgs::geometry_msgs::Point> out;
+        std::vector<automsgs::msgs::geometry_msgs::Point> out;
         out.push_back(start);
         if (Distance3(from_x, from_y, from_z, to_x, to_y, to_z) > 1e-3) {
             out.push_back(goal);
@@ -304,13 +304,13 @@ std::vector<commsgs::geometry_msgs::Point> KeyposeGraph::ShortestPathPoints(
     for (int id : node_ids) {
         const auto p = ToPoint(nodes_[static_cast<size_t>(id)]);
         if (path.empty() ||
-            Distance3(path.back().x, path.back().y, path.back().z, p.x, p.y,
-                      p.z) > 1e-3) {
+            Distance3(path.back().x(), path.back().y(), path.back().z(), p.x(), p.y(),
+                      p.z()) > 1e-3) {
             path.push_back(p);
         }
     }
-    if (Distance3(path.back().x, path.back().y, path.back().z, goal.x, goal.y,
-                  goal.z) > 1e-3) {
+    if (Distance3(path.back().x(), path.back().y(), path.back().z(), goal.x(), goal.y(),
+                  goal.z()) > 1e-3) {
         path.push_back(goal);
     }
 

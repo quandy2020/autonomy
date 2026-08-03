@@ -119,8 +119,8 @@ class PointCloudTestFixture : public ::testing::Test {
 TEST_F(PointCloudTestFixture, addPoints_creates_renderable) {
   auto cloud = std::make_shared<autoviz::rendering::OgrePointCloud>();
   std::vector<autoviz::rendering::OgrePointCloud::Point> points(1);
-  points[0].position = Ogre::Vector3(1.f, 2.f, 3.f);
-  points[0].color = Ogre::ColourValue::White;
+  points[*0].mutable_position() = Ogre::Vector3(1.f, 2.f, 3.f);
+  points[*0].mutable_color() = Ogre::ColourValue::White;
   cloud->addPoints(points.begin(), points.end());
   EXPECT_FALSE(cloud->getRenderables().empty());
 }

@@ -90,16 +90,16 @@ bool FindFloatOutput(const TensorMap& outputs,
     int64_t best_spatial = -1;
 
     for (const ModelTensorInfo& info : infos) {
-        const auto found = outputs.find(info.name);
+        const auto found = outputs.find(info.name());
         if (found == outputs.end()) {
             continue;
         }
-        if (ContainsNameKeyword(info.name, keyword)) {
+        if (ContainsNameKeyword(info.name(), keyword)) {
             size_t count = 0;
             if (!found->second.TryViewFloat32(data, &count, error)) {
                 return false;
             }
-            *name = info.name;
+            *name = info.name();
             return true;
         }
         const float* view = nullptr;
@@ -111,7 +111,7 @@ bool FindFloatOutput(const TensorMap& outputs,
         if (spatial > best_spatial) {
             best_spatial = spatial;
             best_data = view;
-            best_name = info.name;
+            best_name = info.name();
         }
     }
 

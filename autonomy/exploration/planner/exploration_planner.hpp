@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
+#include <automsgs/msgs/sensor_msgs/image.pb.h>
+
 #include <string>
 #include <vector>
 
@@ -69,7 +72,7 @@ public:
      * @param area Boundary polygon
      */
     void SetExplorationArea(
-        const commsgs::geometry_msgs::Polygon& area) override;
+        const automsgs::msgs::geometry_msgs::Polygon& area) override;
 
     /**
      * @brief Reset to the default square exploration area.
@@ -81,7 +84,7 @@ public:
      * @param odom Robot odometry
      */
     void UpdateOdometry(
-        const commsgs::planning_msgs::Odometry& odom) override;
+        const automsgs::msgs::planning_msgs::Odometry& odom) override;
 
     /**
      * @brief Forward a depth frame to the hierarchical planner.
@@ -90,9 +93,9 @@ public:
      * @param map_t_camera Extrinsic transform from camera to map
      */
     void UpdateDepth(
-        const commsgs::sensor_msgs::Image& depth,
-        const commsgs::sensor_msgs::CameraInfo& info,
-        const commsgs::geometry_msgs::Transform& map_t_camera) override;
+        const automsgs::msgs::sensor_msgs::Image& depth,
+        const automsgs::msgs::sensor_msgs::CameraInfo& info,
+        const automsgs::msgs::geometry_msgs::Transform& map_t_camera) override;
 
     /**
      * @brief Run one hierarchical planning cycle.
@@ -111,7 +114,7 @@ public:
      * @param out Output pose
      * @return true if a waypoint was written
      */
-    bool GetNextWaypoint(commsgs::geometry_msgs::PoseStamped& out) override;
+    bool GetNextWaypoint(automsgs::msgs::geometry_msgs::PoseStamped& out) override;
 
     /**
      * @brief Mark current waypoint reached and refresh coverage.
@@ -140,14 +143,14 @@ public:
      * @brief Get the latest exploration path.
      * @return Path message
      */
-    commsgs::planning_msgs::Path GetExplorationPath() const override;
+    automsgs::msgs::planning_msgs::Path GetExplorationPath() const override;
 
     /**
      * @brief Export occupancy grid from the planning environment.
      * @param frame_id Header frame id
      * @return Occupancy grid
      */
-    commsgs::map_msgs::OccupancyGrid GetOccupancyGrid(
+    automsgs::msgs::map_msgs::OccupancyGrid GetOccupancyGrid(
         const std::string& frame_id = "map") const override;
 
     /**

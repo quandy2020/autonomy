@@ -50,7 +50,7 @@ bool drawEntityMeshesOgreOrGl(common::DisplayContext* context,
         continue;
       }
       entities.push_back(
-          {mesh_name, mesh.transform, mesh.color, mesh.pick_handle});
+          {mesh_name, mesh.transform(), mesh.color, mesh.pick_handle});
     }
     syncOgreDisplayVisibility(context, display_name);
     context->ogre_scene_host->setDisplayEntities(display_name, entities);

@@ -37,7 +37,7 @@ bool PublishPointTool::pickPoint(int x, int y, QVector3D* hit) const {
   const rendering::PickResult pick =
       rendering::pickAtToolContext(*context(), x, y);
   if (pick.hit) {
-    *hit = pick.position;
+    *hit = pick.position();
     return true;
   }
   return context()->view_controller->pickGroundPoint(

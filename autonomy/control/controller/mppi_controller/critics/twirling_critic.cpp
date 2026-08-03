@@ -54,11 +54,11 @@
          return;
      }
  
-     commsgs::geometry_msgs::Pose goal =
+     automsgs::msgs::geometry_msgs::Pose goal =
          tools::getCriticGoal(data, enforce_path_inversion_);
  
      if (tools::withinPositionGoalToleranceWithChecker(
-             data.goal_checker, data.state.pose.pose, goal)) {
+             data.goal_checker, data.state.pose.pose(), goal)) {
          return;
      }
  

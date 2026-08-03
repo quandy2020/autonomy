@@ -39,7 +39,7 @@ namespace bridge {
  * convenience helper for unary-style bridge RPC handlers.
  *
  * @tparam ActionT Protobuf action type with nested Goal, Feedback, Result
- *                 (e.g. commsgs::proto::nav_msgs::NavigateToPoseAction).
+ *                 (e.g. automsgs::actions::NavigateToPoseAction).
  */
 template <typename ActionT>
 class NodeClient

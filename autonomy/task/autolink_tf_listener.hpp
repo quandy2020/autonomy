@@ -21,8 +21,17 @@
 
 #include "autolink/node/node.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/proto/tf2_msgs.pb.h"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/tf2_msgs/tf_message.pb.h>
 
 namespace autonomy {
 namespace task {
@@ -48,9 +57,9 @@ public:
 
 private:
     std::shared_ptr<autolink::Node> node_;
-    std::shared_ptr<autolink::Reader<::autonomy::commsgs::proto::tf2_msgs::TFMessage>>
+    std::shared_ptr<autolink::Reader<::automsgs::msgs::tf2_msgs::TFMessage>>
         tf_message_reader_;
-    std::shared_ptr<autolink::Reader<commsgs::geometry_msgs::TransformStampeds>>
+    std::shared_ptr<autolink::Reader<automsgs::msgs::geometry_msgs::TransformStampeds>>
         stampeds_reader_;
 };
 

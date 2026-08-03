@@ -82,7 +82,7 @@ bool SelectTool::mousePressEvent(QMouseEvent* event) {
   }
 
   common::SelectionEntry entry;
-  entry.position = pick.position;
+  *entry.mutable_position() = pick.position();
   entry.display_name = pick.display_name;
   entry.display_type = pick.display_type;
   entry.pick_handle = pick.pick_handle;
@@ -119,10 +119,10 @@ void SelectTool::notifySelectionsChanged() {
 
 void SelectTool::onDraw(rendering::SceneOverlay& scene) {
   for (const auto& entry : selections()) {
-    drawSelectionMarker(scene, entry.position);
+    drawSelectionMarker(scene, entry.position());
     const float s = 0.08f;
     scene.addBoxWireframe(
-        entry.position, QVector3D(s, s, s), QMatrix4x4(),
+        entry.position(), QVector3D(s, s, s), QMatrix4x4(),
         QColor(255, 180, 60, 180));
   }
 }
@@ -134,7 +134,7 @@ QString SelectTool::statusText() const {
   }
   if (selected.size() == 1) {
     const auto& entry = selected.front();
-    const QVector3D p = entry.position;
+    const QVector3D p = entry.position();
     if (entry.display_name.empty()) {
       return QStringLiteral("Selected: (%1, %2, %3)")
           .arg(p.x(), 0, 'f', 3)

@@ -20,7 +20,15 @@
 #include <string>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 
 namespace autonomy {
 namespace control {
@@ -57,7 +65,7 @@ public:
      * @return True if progress is made
      */
 
-    virtual bool Check(commsgs::geometry_msgs::PoseStamped& current_pose) = 0;
+    virtual bool Check(automsgs::msgs::geometry_msgs::PoseStamped& current_pose) = 0;
 
     /**
      * @brief Reset class state upon calling

@@ -687,13 +687,15 @@ void VisualizationFrame::setupUi() {
   addDockWidget(Qt::RightDockWidgetArea, help_dock_);
 
 #ifdef AUTOVIZ_USE_QML_DRONE
-  drone_dock_ = new PanelDockWidget(tr("Vehicle 3D"), this);
-  drone_dock_->setObjectName(QStringLiteral("Drone3DDock"));
-  drone_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Views")));
-  drone_dock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-  vehicle_panel_ = new Vehicle3DPanel(drone_dock_);
-  drone_dock_->setContentWidget(vehicle_panel_);
-  addDockWidget(Qt::RightDockWidgetArea, drone_dock_);
+  if (qEnvironmentVariableIntValue("AUTOVIZ_DISABLE_QML") == 0) {
+    drone_dock_ = new PanelDockWidget(tr("Vehicle 3D"), this);
+    drone_dock_->setObjectName(QStringLiteral("Drone3DDock"));
+    drone_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Views")));
+    drone_dock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    vehicle_panel_ = new Vehicle3DPanel(drone_dock_);
+    drone_dock_->setContentWidget(vehicle_panel_);
+    addDockWidget(Qt::RightDockWidgetArea, drone_dock_);
+  }
 #endif
 
   time_dock_ = new PanelDockWidget(tr("Time"), this);
@@ -1430,7 +1432,7 @@ void VisualizationFrame::updateChannelList() {
         QStringLiteral("%1  [%2]")
             .arg(QString::fromStdString(channel.channel_name),
                  QString::fromStdString(
-                     commsgs::NormalizeMessageType(channel.message_type))));
+                     automsgs::msgs::NormalizeMessageType(channel.message_type))));
   }
 }
 

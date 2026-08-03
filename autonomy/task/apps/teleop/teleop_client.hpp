@@ -11,7 +11,15 @@
 
 #include "autolink/node/node.hpp"
 #include "autolink/node/writer.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/task/apps/teleop/constants.hpp"
 
 namespace autonomy::task::teleop {
@@ -45,7 +53,7 @@ public:
     void SetAssistBypass(bool bypass) { assist_bypass_ = bypass; }
 
     void SetVelocity(double linear_x, double angular_z);
-    void SetVelocity(const commsgs::geometry_msgs::TwistStamped& velocity);
+    void SetVelocity(const automsgs::msgs::geometry_msgs::TwistStamped& velocity);
     void TouchWatchdog();
 
     bool IsWatchdogOk() const;
@@ -56,7 +64,7 @@ public:
     double angular_z() const { return angular_z_; }
     double watchdog_timeout_sec() const { return watchdog_timeout_sec_; }
 
-    const commsgs::geometry_msgs::TwistStamped& applied_velocity() const
+    const automsgs::msgs::geometry_msgs::TwistStamped& applied_velocity() const
     {
         return applied_velocity_;
     }
@@ -65,10 +73,10 @@ public:
 
 private:
     void ClampVelocity();
-    commsgs::geometry_msgs::TwistStamped MakeTwistMessage() const;
+    automsgs::msgs::geometry_msgs::TwistStamped MakeTwistMessage() const;
 
     std::shared_ptr<autolink::Node> node_;
-    std::shared_ptr<autolink::Writer<commsgs::geometry_msgs::TwistStamped>>
+    std::shared_ptr<autolink::Writer<automsgs::msgs::geometry_msgs::TwistStamped>>
         cmd_vel_writer_;
 
     double linear_x_{0.0};
@@ -79,7 +87,7 @@ private:
 
     std::chrono::steady_clock::time_point last_command_time_{
         std::chrono::steady_clock::now()};
-    commsgs::geometry_msgs::TwistStamped applied_velocity_;
+    automsgs::msgs::geometry_msgs::TwistStamped applied_velocity_;
 
     std::shared_ptr<TeleopMppiAssist> assist_;
     bool assist_bypass_{false};

@@ -69,15 +69,15 @@ bool HasLineOfSight(const PlanningEnv& env, double x0, double y0, double x1,
 }
 
 double PathLengthXy(
-    const std::vector<commsgs::geometry_msgs::Point>& points)
+    const std::vector<automsgs::msgs::geometry_msgs::Point>& points)
 {
     if (points.size() < 2) {
         return 0.0;
     }
     double len = 0.0;
     for (size_t i = 1; i < points.size(); ++i) {
-        const double dx = points[i].x - points[i - 1].x;
-        const double dy = points[i].y - points[i - 1].y;
+        const double dx = points[i].x() - points[i - 1].x();
+        const double dy = points[i].y() - points[i - 1].y();
         len += std::sqrt(dx * dx + dy * dy);
     }
     return len;

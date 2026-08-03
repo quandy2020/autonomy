@@ -24,7 +24,8 @@
 
 #include "autolink/autolink.hpp"
 #include "autolink/timer/timer.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
 #include "autonomy/localization/cartographer/common/port.hpp"
 #include "autonomy/localization/cartographer/io/submap_painter.hpp"
 #include "autonomy/localization/cartographer/mapping/id.hpp"
@@ -59,14 +60,14 @@ private:
     std::shared_ptr<autolink::Client<proto::SubmapQueryRequest,
                                      proto::SubmapQueryResponse>>
         submap_query_client_;
-    std::shared_ptr<autolink::Writer<commsgs::map_msgs::OccupancyGrid>>
+    std::shared_ptr<autolink::Writer<automsgs::msgs::map_msgs::OccupancyGrid>>
         occupancy_grid_writer_;
 
     std::mutex mutex_;
     std::map<::cartographer::mapping::SubmapId, ::cartographer::io::SubmapSlice>
         submap_slices_ GUARDED_BY(mutex_);
     std::string last_frame_id_ GUARDED_BY(mutex_);
-    commsgs::builtin_interfaces::Time last_timestamp_ GUARDED_BY(mutex_);
+    automsgs::msgs::builtin_interfaces::Time last_timestamp_ GUARDED_BY(mutex_);
     std::unique_ptr<autolink::Timer> publish_timer_;
 };
 

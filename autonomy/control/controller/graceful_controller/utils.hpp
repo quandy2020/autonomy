@@ -16,8 +16,17 @@
 
  #pragma once
 
- #include "autonomy/commsgs/geometry_msgs.hpp"
- #include "autonomy/commsgs/visualization_msgs.hpp"
+ #include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+ #include <automsgs/msgs/visualization_msgs/marker.pb.h>
+#include <automsgs/msgs/visualization_msgs/marker_array.pb.h>
  
  namespace autonomy {
  namespace control {
@@ -31,8 +40,8 @@
   * @param slowdown_radius Radius of the slowdown circle
   * @return visualization_msgs::msg::Marker Slowdown marker
   */
- commsgs::visualization_msgs::Marker CreateSlowdownMarker(
-     const commsgs::geometry_msgs::PoseStamped& motion_target,
+ automsgs::msgs::visualization_msgs::Marker CreateSlowdownMarker(
+     const automsgs::msgs::geometry_msgs::PoseStamped& motion_target,
      const double& slowdown_radius);
  
  }  // namespace controller

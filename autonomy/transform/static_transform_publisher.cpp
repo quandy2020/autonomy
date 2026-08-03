@@ -18,7 +18,9 @@
 
 #include <glog/logging.h>
 
-#include "autonomy/commsgs/builtin_interfaces.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
 #include "autonomy/transform/buffer_utils.hpp"
 #include "autonomy/transform/transform_topics.hpp"
 
@@ -26,11 +28,16 @@ namespace autonomy {
 namespace transform {
 
 bool StaticTransformPublisher::LoadFromFile(const std::string& yaml_path) {
-    transforms_.transforms.clear();
-    if (!ParseStaticTransformsFromYaml(yaml_path, transforms_.transforms)) {
+    transforms_.clear_transforms();
+    std::vector<automsgs::msgs::geometry_msgs::TransformStamped> parsed;
+    if (!ParseStaticTransformsFromYaml(yaml_path, parsed)) {
         return false;
     }
-    transforms_.header.stamp = commsgs::builtin_interfaces::Time::Now();
+    for (const auto& tf : parsed) {
+        *transforms_.add_transforms() = tf;
+    }
+    *transforms_.mutable_header()->mutable_stamp() =
+        automsgs::msgs::builtin_interfaces::TimeNow();
     return true;
 }
 
@@ -40,7 +47,7 @@ int StaticTransformPublisher::ApplyToBuffer(
         return 0;
     }
     ApplyStaticTransformsToBuffer(buffer, transforms_, authority);
-    return static_cast<int>(transforms_.transforms.size());
+    return transforms_.transforms_size();
 }
 
 bool StaticTransformPublisher::Publish(std::shared_ptr<autolink::Node> node) {
@@ -55,7 +62,7 @@ bool StaticTransformPublisher::Publish(std::shared_ptr<autolink::Node> node) {
 
     if (!writer_) {
         writer_ =
-            node->CreateWriter<commsgs::geometry_msgs::TransformStampeds>(
+            node->CreateWriter<automsgs::msgs::geometry_msgs::TransformStampeds>(
                 kTfStaticTopic);
         if (!writer_) {
             LOG(ERROR) << "Failed to create tf_static writer.";
@@ -68,7 +75,7 @@ bool StaticTransformPublisher::Publish(std::shared_ptr<autolink::Node> node) {
         return false;
     }
 
-    LOG(INFO) << "Published " << transforms_.transforms.size()
+    LOG(INFO) << "Published " << transforms_.transforms_size()
               << " static transforms on " << kTfStaticTopic;
     return true;
 }

@@ -167,7 +167,7 @@
      costmap_ = costmap_ros_->getCostmap();
      collision_checker_.setCostmap(costmap_);
  
-     commsgs::geometry_msgs::Pose goal =
+     automsgs::msgs::geometry_msgs::Pose goal =
          tools::getCriticGoal(data, enforce_path_inversion_);
  
      // Setup cost information for various parts of the critic
@@ -190,7 +190,7 @@
      // near obstacles
      bool near_goal = false;
      if (tools::withinPositionGoalTolerance(near_goal_distance_,
-                                            data.state.pose.pose, goal)) {
+                                            data.state.pose.pose(), goal)) {
          near_goal = true;
      }
  

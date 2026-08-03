@@ -16,9 +16,36 @@ syntax = "proto3";
 
 package automsgs.msgs.geometry_msgs;
 
+import "automsgs/msgs/builtin_interfaces/time.proto";
+
 // This contains the position of a point in free space.
 message Point {
   double x = 1;
   double y = 2;
   double z = 3;
+}
+
+message PointENU {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+}
+
+message PointLLH {
+  double lon = 1;
+  double lat = 2;
+  double height = 3;
+}
+
+message Point2D {
+  float x = 1;
+  float y = 2;
+}
+
+message PointXYZIT {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+  uint32 intensity = 4;
+  automsgs.msgs.builtin_interfaces.Time timestamp = 5;
 }

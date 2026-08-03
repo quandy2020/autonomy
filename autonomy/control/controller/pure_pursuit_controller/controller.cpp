@@ -1,3 +1,4 @@
+#include <automsgs/msgs/geometry_msgs/point_stamped.pb.h>
 /*
  * Copyright 2025 The Openbot Authors (duyongquan)
  *
@@ -66,9 +67,9 @@ void RegulatedPurePursuitController::Configure(const proto::ControllerOptions& o
   control_duration_ = 1.0 / control_frequency;
 
   // Publishers - TODO: Need node parameter to create publishers
-  // global_path_pub_ = node->CreateWriter<commsgs::planning_msgs::Path>("received_global_plan");
-  // carrot_pub_ = node->CreateWriter<commsgs::geometry_msgs::PointStamped>("lookahead_point");
-  // curvature_carrot_pub_ = node->CreateWriter<commsgs::geometry_msgs::PointStamped>("curvature_lookahead_point");
+  // global_path_pub_ = node->CreateWriter<automsgs::msgs::planning_msgs::Path>("received_global_plan");
+  // carrot_pub_ = node->CreateWriter<automsgs::msgs::geometry_msgs::PointStamped>("lookahead_point");
+  // curvature_carrot_pub_ = node->CreateWriter<automsgs::msgs::geometry_msgs::PointStamped>("curvature_lookahead_point");
 
   AINFO << "Configured Regulated Pure Pursuit Controller: " << plugin_name_;
 }
@@ -87,55 +88,55 @@ void RegulatedPurePursuitController::Activate() {
 
 void RegulatedPurePursuitController::Deactivate() { AINFO << "Deactivating controller: " << plugin_name_; }
 
-std::unique_ptr<commsgs::geometry_msgs::PointStamped> RegulatedPurePursuitController::createCarrotMsg(
-    const commsgs::geometry_msgs::PoseStamped& carrot_pose) {
-  auto carrot_msg = std::make_unique<commsgs::geometry_msgs::PointStamped>();
-  carrot_msg->header = carrot_pose.header;
-  carrot_msg->point.x = carrot_pose.pose.position.x;
-  carrot_msg->point.y = carrot_pose.pose.position.y;
-  carrot_msg->point.z = 0.01;  // publish right over map to stand out
+std::unique_ptr<automsgs::msgs::geometry_msgs::PointStamped> RegulatedPurePursuitController::createCarrotMsg(
+    const automsgs::msgs::geometry_msgs::PoseStamped& carrot_pose) {
+  auto carrot_msg = std::make_unique<automsgs::msgs::geometry_msgs::PointStamped>();
+  *carrot_msg->mutable_header() = carrot_pose.header();
+  carrot_msg->mutable_point()->set_x(carrot_pose.pose().position().x());
+  carrot_msg->mutable_point()->set_y(carrot_pose.pose().position().y());
+  carrot_msg->mutable_point()->set_z(0.01);  // publish right over map to stand out
   return carrot_msg;
 }
 
-double RegulatedPurePursuitController::getLookAheadDistance(const commsgs::geometry_msgs::TwistStamped& speed) {
+double RegulatedPurePursuitController::getLookAheadDistance(const automsgs::msgs::geometry_msgs::TwistStamped& speed) {
   if (!pp_options_) {
     return 1.0;
   }
   // If using velocity-scaled look ahead distances, find and clamp the dist
   // Else, use the static look ahead distance
   if (pp_options_->use_velocity_scaled_lookahead_dist()) {
-    const double lookahead_dist = fabs(speed.twist.linear.x) * pp_options_->lookahead_time();
+    const double lookahead_dist = fabs(speed.twist().linear().x()) * pp_options_->lookahead_time();
     return std::clamp(lookahead_dist, pp_options_->min_lookahead_dist(), pp_options_->max_lookahead_dist());
   }
   return pp_options_->lookahead_dist();
 }
 
-double calculateCurvature(commsgs::geometry_msgs::Point lookahead_point) {
+double calculateCurvature(automsgs::msgs::geometry_msgs::Point lookahead_point) {
   // Find distance^2 to look ahead point (carrot) in robot base frame
   // This is the chord length of the circle
-  const double carrot_dist2 = (lookahead_point.x * lookahead_point.x) + (lookahead_point.y * lookahead_point.y);
+  const double carrot_dist2 = (lookahead_point.x() * lookahead_point.x()) + (lookahead_point.y() * lookahead_point.y());
 
   // Find curvature of circle (k = 1 / R)
   if (carrot_dist2 > 0.001) {
-    return 2.0 * lookahead_point.y / carrot_dist2;
+    return 2.0 * lookahead_point.y() / carrot_dist2;
   } else {
     return 0.0;
   }
 }
 
-uint32 RegulatedPurePursuitController::ComputeVelocityCommands(const commsgs::geometry_msgs::PoseStamped& pose,
-                                                               const commsgs::geometry_msgs::TwistStamped& speed,
-                                                               commsgs::geometry_msgs::TwistStamped& cmd_vel,
+uint32 RegulatedPurePursuitController::ComputeVelocityCommands(const automsgs::msgs::geometry_msgs::PoseStamped& pose,
+                                                               const automsgs::msgs::geometry_msgs::TwistStamped& speed,
+                                                               automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel,
                                                                common::GoalChecker* goal_checker,
                                                                std::string& message) {
   // Default output
-  cmd_vel.header = pose.header;
-  cmd_vel.twist.linear.x = 0.0;
-  cmd_vel.twist.linear.y = 0.0;
-  cmd_vel.twist.linear.z = 0.0;
-  cmd_vel.twist.angular.x = 0.0;
-  cmd_vel.twist.angular.y = 0.0;
-  cmd_vel.twist.angular.z = 0.0;
+  *cmd_vel.mutable_header() = pose.header();
+  cmd_vel.mutable_twist()->mutable_linear()->set_x(0.0);
+  cmd_vel.mutable_twist()->mutable_linear()->set_y(0.0);
+  cmd_vel.mutable_twist()->mutable_linear()->set_z(0.0);
+  cmd_vel.mutable_twist()->mutable_angular()->set_x(0.0);
+  cmd_vel.mutable_twist()->mutable_angular()->set_y(0.0);
+  cmd_vel.mutable_twist()->mutable_angular()->set_z(0.0);
 
   if (!path_handler_) {
     message = "RegulatedPurePursuitController not initialized (missing TF buffer / path handler)";
@@ -154,10 +155,10 @@ uint32 RegulatedPurePursuitController::ComputeVelocityCommands(const commsgs::ge
   std::unique_lock<map::costmap_2d::Costmap2D::mutex_t> lock(*(costmap->getMutex()));
 
   // Update for the current goal checker's state
-  commsgs::geometry_msgs::Pose pose_tolerance;
-  commsgs::geometry_msgs::Twist velocity_tolerance;
+  automsgs::msgs::geometry_msgs::Pose pose_tolerance;
+  automsgs::msgs::geometry_msgs::Twist velocity_tolerance;
   if (goal_checker && goal_checker->GetTolerances(pose_tolerance, velocity_tolerance)) {
-    goal_dist_tol_ = pose_tolerance.position.x;
+    goal_dist_tol_ = pose_tolerance.position().x();
   } else {
     goal_dist_tol_ = 0.25;  // Default
   }
@@ -173,8 +174,8 @@ uint32 RegulatedPurePursuitController::ComputeVelocityCommands(const commsgs::ge
 
   // Cache goal info for IsGoalReached()
   last_dist_to_goal_ =
-      std::hypot(transformed_plan.poses.back().pose.position.x, transformed_plan.poses.back().pose.position.y);
-  last_angle_to_goal_ = transform::tf2::getYaw(transformed_plan.poses.back().pose.orientation);
+      std::hypot(transformed_plan.poses(transformed_plan.poses_size() - 1).pose().position().x(), transformed_plan.poses(transformed_plan.poses_size() - 1).pose().position().y());
+  last_angle_to_goal_ = transform::tf2::getYaw(transformed_plan.poses(transformed_plan.poses_size() - 1).pose().orientation());
 
   // Find look ahead distance and point on path and publish
   double lookahead_dist = getLookAheadDistance(speed);
@@ -204,7 +205,7 @@ uint32 RegulatedPurePursuitController::ComputeVelocityCommands(const commsgs::ge
 
   double linear_vel, angular_vel;
 
-  double lookahead_curvature = calculateCurvature(carrot_pose.pose.position);
+  double lookahead_curvature = calculateCurvature(carrot_pose.pose().position());
 
   double regulation_curvature = lookahead_curvature;
   const bool use_fixed_curvature_lookahead = pp_options_->use_fixed_curvature_lookahead();
@@ -212,7 +213,7 @@ uint32 RegulatedPurePursuitController::ComputeVelocityCommands(const commsgs::ge
     auto curvature_lookahead_pose =
         getLookAheadPoint(curv_lookahead_dist, transformed_plan, interpolate_curvature_after_goal);
     rotate_to_path_carrot_pose = curvature_lookahead_pose;
-    regulation_curvature = calculateCurvature(curvature_lookahead_pose.pose.position);
+    regulation_curvature = calculateCurvature(curvature_lookahead_pose.pose().position());
     if (curvature_carrot_pub_) {
       curvature_carrot_pub_->Write(*createCarrotMsg(curvature_lookahead_pose));
     }
@@ -221,7 +222,7 @@ uint32 RegulatedPurePursuitController::ComputeVelocityCommands(const commsgs::ge
   // Setting the velocity direction
   double x_vel_sign = 1.0;
   if (allow_reversing) {
-    x_vel_sign = carrot_pose.pose.position.x >= 0.0 ? 1.0 : -1.0;
+    x_vel_sign = carrot_pose.pose().position().x() >= 0.0 ? 1.0 : -1.0;
   }
 
   linear_vel = pp_options_->desired_linear_vel();
@@ -234,7 +235,7 @@ uint32 RegulatedPurePursuitController::ComputeVelocityCommands(const commsgs::ge
   double angle_to_heading;
   if (shouldRotateToGoalHeading(carrot_pose)) {
     is_rotating_to_heading_ = true;
-    double angle_to_goal = transform::tf2::getYaw(transformed_plan.poses.back().pose.orientation);
+    double angle_to_goal = transform::tf2::getYaw(transformed_plan.poses(transformed_plan.poses_size() - 1).pose().orientation());
     rotateToHeading(linear_vel, angular_vel, angle_to_goal, speed);
   } else if (shouldRotateToPath(rotate_to_path_carrot_pose, angle_to_heading, x_vel_sign)) {
     is_rotating_to_heading_ = true;
@@ -243,14 +244,14 @@ uint32 RegulatedPurePursuitController::ComputeVelocityCommands(const commsgs::ge
     is_rotating_to_heading_ = false;
     double pose_cost = 0.0;
     if (collision_checker_) {
-      pose_cost = collision_checker_->costAtPose(pose.pose.position.x, pose.pose.position.y);
+      pose_cost = collision_checker_->costAtPose(pose.pose().position().x(), pose.pose().position().y());
     }
     applyConstraints(regulation_curvature, speed, pose_cost, transformed_plan, linear_vel, x_vel_sign);
 
     if (cancelling_ && pp_options_) {
       const double& dt = control_duration_;
       const double cancel_deceleration = pp_options_->cancel_deceleration();
-      linear_vel = speed.twist.linear.x - x_vel_sign * dt * cancel_deceleration;
+      linear_vel = speed.twist().linear().x() - x_vel_sign * dt * cancel_deceleration;
 
       if (x_vel_sign > 0) {
         if (linear_vel <= 0) {
@@ -270,7 +271,7 @@ uint32 RegulatedPurePursuitController::ComputeVelocityCommands(const commsgs::ge
   }
 
   // Collision checking on this velocity heading
-  const double& carrot_dist = std::hypot(carrot_pose.pose.position.x, carrot_pose.pose.position.y);
+  const double& carrot_dist = std::hypot(carrot_pose.pose().position().x(), carrot_pose.pose().position().y());
   const bool use_collision_detection = pp_options_->use_collision_detection();
   if (use_collision_detection && collision_checker_) {
     if (collision_checker_->isCollisionImminent(pose, linear_vel, angular_vel, carrot_dist)) {
@@ -281,23 +282,23 @@ uint32 RegulatedPurePursuitController::ComputeVelocityCommands(const commsgs::ge
   // Publish whether we are rotating to goal heading
   // TODO: Add Bool message type to commsgs or use a different approach
   // if (is_rotating_to_heading_pub_) {
-  //     commsgs::std_msgs::Bool is_rotating_to_heading_msg;
-  //     is_rotating_to_heading_msg.data = is_rotating_to_heading_;
+  //     automsgs::msgs::std_msgs::Bool is_rotating_to_heading_msg;
+  //     is_rotating_to_heading_msg.data() = is_rotating_to_heading_;
   //     is_rotating_to_heading_pub_->Write(is_rotating_to_heading_msg);
   // }
 
   // populate and return message
-  cmd_vel.header = pose.header;
-  cmd_vel.twist.linear.x = linear_vel;
-  cmd_vel.twist.angular.z = angular_vel;
+  *cmd_vel.mutable_header() = pose.header();
+  cmd_vel.mutable_twist()->mutable_linear()->set_x(linear_vel);
+  cmd_vel.mutable_twist()->mutable_angular()->set_z(angular_vel);
   message = "";  // Success
   return proto::CONTROLLER_RESULT_SUCCESS;
 }
 
-bool RegulatedPurePursuitController::shouldRotateToPath(const commsgs::geometry_msgs::PoseStamped& carrot_pose,
+bool RegulatedPurePursuitController::shouldRotateToPath(const automsgs::msgs::geometry_msgs::PoseStamped& carrot_pose,
                                                         double& angle_to_path, double& x_vel_sign) {
   // Whether we should rotate robot to rough path heading
-  angle_to_path = atan2(carrot_pose.pose.position.y, carrot_pose.pose.position.x);
+  angle_to_path = atan2(carrot_pose.pose().position().y(), carrot_pose.pose().position().x());
   // In case we are reversing
   if (x_vel_sign < 0.0) {
     // Normalize angle to [-pi, pi]
@@ -308,14 +309,14 @@ bool RegulatedPurePursuitController::shouldRotateToPath(const commsgs::geometry_
   return use_rotate_to_heading && fabs(angle_to_path) > rotate_to_heading_min_angle;
 }
 
-bool RegulatedPurePursuitController::shouldRotateToGoalHeading(const commsgs::geometry_msgs::PoseStamped& carrot_pose) {
+bool RegulatedPurePursuitController::shouldRotateToGoalHeading(const automsgs::msgs::geometry_msgs::PoseStamped& carrot_pose) {
   // Whether we should rotate robot to goal heading
   const bool use_rotate_to_heading = pp_options_ ? pp_options_->use_rotate_to_heading() : false;
   if (!use_rotate_to_heading) {
     return false;
   }
 
-  double dist_to_goal = std::hypot(carrot_pose.pose.position.x, carrot_pose.pose.position.y);
+  double dist_to_goal = std::hypot(carrot_pose.pose().position().x(), carrot_pose.pose().position().y());
 
   const bool stateful = pp_options_ ? pp_options_->stateful() : false;
   if (stateful) {
@@ -330,7 +331,7 @@ bool RegulatedPurePursuitController::shouldRotateToGoalHeading(const commsgs::ge
 
 void RegulatedPurePursuitController::rotateToHeading(double& linear_vel, double& angular_vel,
                                                      const double& angle_to_path,
-                                                     const commsgs::geometry_msgs::TwistStamped& curr_speed) {
+                                                     const automsgs::msgs::geometry_msgs::TwistStamped& curr_speed) {
   // Rotate in place using max angular velocity / acceleration possible
   linear_vel = 0.0;
   const double sign = angle_to_path > 0.0 ? 1.0 : -1.0;
@@ -339,13 +340,13 @@ void RegulatedPurePursuitController::rotateToHeading(double& linear_vel, double&
 
   const double& dt = control_duration_;
   const double max_angular_accel = pp_options_ ? pp_options_->max_angular_accel() : 1.0;
-  const double min_feasible_angular_speed = curr_speed.twist.angular.z - max_angular_accel * dt;
-  const double max_feasible_angular_speed = curr_speed.twist.angular.z + max_angular_accel * dt;
+  const double min_feasible_angular_speed = curr_speed.twist().angular().z() - max_angular_accel * dt;
+  const double max_feasible_angular_speed = curr_speed.twist().angular().z() + max_angular_accel * dt;
   angular_vel = std::clamp(angular_vel, min_feasible_angular_speed, max_feasible_angular_speed);
 }
 
-commsgs::geometry_msgs::Point RegulatedPurePursuitController::circleSegmentIntersection(
-    const commsgs::geometry_msgs::Point& p1, const commsgs::geometry_msgs::Point& p2, double r) {
+automsgs::msgs::geometry_msgs::Point RegulatedPurePursuitController::circleSegmentIntersection(
+    const automsgs::msgs::geometry_msgs::Point& p1, const automsgs::msgs::geometry_msgs::Point& p2, double r) {
   // Formula for intersection of a line with a circle centered at the origin,
   // modified to always return the point that is on the segment between the two points.
   // https://mathworld.wolfram.com/Circle-LineIntersection.html
@@ -354,10 +355,10 @@ commsgs::geometry_msgs::Point RegulatedPurePursuitController::circleSegmentInter
   // which results in something that is just a reformulation of the quadratic formula.
   // Interactive illustration in doc/circle-segment-intersection.ipynb as well as at
   // https://www.desmos.com/calculator/td5cwbuocd
-  double x1 = p1.x;
-  double x2 = p2.x;
-  double y1 = p1.y;
-  double y2 = p2.y;
+  double x1 = p1.x();
+  double x2 = p2.x();
+  double y1 = p1.y();
+  double y2 = p2.y();
 
   double dx = x2 - x1;
   double dy = y2 - y1;
@@ -369,59 +370,59 @@ commsgs::geometry_msgs::Point RegulatedPurePursuitController::circleSegmentInter
   double d2 = x2 * x2 + y2 * y2;
   double dd = d2 - d1;
 
-  commsgs::geometry_msgs::Point p;
+  automsgs::msgs::geometry_msgs::Point p;
   double sqrt_term = std::sqrt(r * r * dr2 - D * D);
-  p.x = (D * dy + std::copysign(1.0, dd) * dx * sqrt_term) / dr2;
-  p.y = (-D * dx + std::copysign(1.0, dd) * dy * sqrt_term) / dr2;
+  p.set_x((D * dy + std::copysign(1.0, dd) * dx * sqrt_term) / dr2);
+  p.set_y((-D * dx + std::copysign(1.0, dd) * dy * sqrt_term) / dr2);
   return p;
 }
 
-commsgs::geometry_msgs::PoseStamped RegulatedPurePursuitController::getLookAheadPoint(
-    const double& lookahead_dist, const commsgs::planning_msgs::Path& transformed_plan, bool interpolate_after_goal) {
+automsgs::msgs::geometry_msgs::PoseStamped RegulatedPurePursuitController::getLookAheadPoint(
+    const double& lookahead_dist, const automsgs::msgs::planning_msgs::Path& transformed_plan, bool interpolate_after_goal) {
   // Find the first pose which is at a distance greater than the lookahead distance
-  auto goal_pose_it = std::find_if(transformed_plan.poses.begin(), transformed_plan.poses.end(), [&](const auto& ps) {
-    return hypot(ps.pose.position.x, ps.pose.position.y) >= lookahead_dist;
+  auto goal_pose_it = std::find_if(transformed_plan.poses().begin(), transformed_plan.poses().end(), [&](const auto& ps) {
+    return hypot(ps.pose().position().x(), ps.pose().position().y()) >= lookahead_dist;
   });
 
   // If the no pose is not far enough, take the last pose
-  if (goal_pose_it == transformed_plan.poses.end()) {
+  if (goal_pose_it == transformed_plan.poses().end()) {
     if (interpolate_after_goal) {
-      auto last_pose_it = std::prev(transformed_plan.poses.end());
+      auto last_pose_it = std::prev(transformed_plan.poses().end());
       auto prev_last_pose_it = std::prev(last_pose_it);
 
-      double end_path_orientation = atan2(last_pose_it->pose.position.y - prev_last_pose_it->pose.position.y,
-                                          last_pose_it->pose.position.x - prev_last_pose_it->pose.position.x);
+      double end_path_orientation = atan2(last_pose_it->pose().position().y() - prev_last_pose_it->pose().position().y(),
+                                          last_pose_it->pose().position().x() - prev_last_pose_it->pose().position().x());
 
       // Project the last segment out to guarantee it is beyond the look ahead
       // distance
-      auto projected_position = last_pose_it->pose.position;
-      projected_position.x += cos(end_path_orientation) * lookahead_dist;
-      projected_position.y += sin(end_path_orientation) * lookahead_dist;
+      automsgs::msgs::geometry_msgs::Point projected_position = last_pose_it->pose().position();
+      projected_position.set_x(projected_position.x() + cos(end_path_orientation) * lookahead_dist);
+      projected_position.set_y(projected_position.y() + sin(end_path_orientation) * lookahead_dist);
 
       // Use the circle intersection to find the position at the correct look
       // ahead distance
       const auto interpolated_position =
-          circleSegmentIntersection(last_pose_it->pose.position, projected_position, lookahead_dist);
+          circleSegmentIntersection(last_pose_it->pose().position(), projected_position, lookahead_dist);
 
-      commsgs::geometry_msgs::PoseStamped interpolated_pose;
-      interpolated_pose.header = last_pose_it->header;
-      interpolated_pose.pose.position = interpolated_position;
+      automsgs::msgs::geometry_msgs::PoseStamped interpolated_pose;
+      *interpolated_pose.mutable_header() = last_pose_it->header();
+      *interpolated_pose.mutable_pose()->mutable_position() = interpolated_position;
       return interpolated_pose;
     } else {
-      goal_pose_it = std::prev(transformed_plan.poses.end());
+      goal_pose_it = std::prev(transformed_plan.poses().end());
     }
-  } else if (goal_pose_it != transformed_plan.poses.begin()) {
+  } else if (goal_pose_it != transformed_plan.poses().begin()) {
     // Find the point on the line segment between the two poses
     // that is exactly the lookahead distance away from the robot pose (the origin)
     // This can be found with a closed form for the intersection of a segment and a circle
     // Because of the way we did the std::find_if, prev_pose is guaranteed to be inside the circle,
     // and goal_pose is guaranteed to be outside the circle.
     auto prev_pose_it = std::prev(goal_pose_it);
-    auto point = circleSegmentIntersection(prev_pose_it->pose.position, goal_pose_it->pose.position, lookahead_dist);
-    commsgs::geometry_msgs::PoseStamped pose;
-    pose.header.frame_id = prev_pose_it->header.frame_id;
-    pose.header.stamp = goal_pose_it->header.stamp;
-    pose.pose.position = point;
+    auto point = circleSegmentIntersection(prev_pose_it->pose().position(), goal_pose_it->pose().position(), lookahead_dist);
+    automsgs::msgs::geometry_msgs::PoseStamped pose;
+    pose.mutable_header()->set_frame_id( prev_pose_it->header().frame_id());
+    *pose.mutable_header()->mutable_stamp() = goal_pose_it->header().stamp();
+    *pose.mutable_pose()->mutable_position() = point;
     return pose;
   }
 
@@ -429,8 +430,8 @@ commsgs::geometry_msgs::PoseStamped RegulatedPurePursuitController::getLookAhead
 }
 
 void RegulatedPurePursuitController::applyConstraints(const double& curvature,
-                                                      const commsgs::geometry_msgs::TwistStamped& /*curr_speed*/,
-                                                      const double& pose_cost, const commsgs::planning_msgs::Path& path,
+                                                      const automsgs::msgs::geometry_msgs::TwistStamped& /*curr_speed*/,
+                                                      const double& pose_cost, const automsgs::msgs::planning_msgs::Path& path,
                                                       double& linear_vel, double& sign) {
   if (!pp_options_) {
     return;
@@ -469,7 +470,7 @@ bool RegulatedPurePursuitController::IsGoalReached(double dist_tolerance, double
   return (last_dist_to_goal_ <= dist_tolerance) && (std::fabs(last_angle_to_goal_) <= angle_tolerance);
 }
 
-void RegulatedPurePursuitController::SetPlan(const commsgs::planning_msgs::Path& path) {
+void RegulatedPurePursuitController::SetPlan(const automsgs::msgs::planning_msgs::Path& path) {
   has_reached_xy_tolerance_ = false;
   path_handler_->setPlan(path);
 }
@@ -510,14 +511,14 @@ bool RegulatedPurePursuitController::cancel() {
   return finished_cancelling_;
 }
 
-double RegulatedPurePursuitController::findVelocitySignChange(const commsgs::planning_msgs::Path& transformed_plan) {
+double RegulatedPurePursuitController::findVelocitySignChange(const automsgs::msgs::planning_msgs::Path& transformed_plan) {
   // Iterating through the transformed global path to determine the position of the cusp
-  for (unsigned int pose_id = 1; pose_id < transformed_plan.poses.size() - 1; ++pose_id) {
+  for (unsigned int pose_id = 1; pose_id < transformed_plan.poses_size() - 1; ++pose_id) {
     // We have two vectors for the dot product OA and AB. Determining the vectors.
-    double oa_x = transformed_plan.poses[pose_id].pose.position.x - transformed_plan.poses[pose_id - 1].pose.position.x;
-    double oa_y = transformed_plan.poses[pose_id].pose.position.y - transformed_plan.poses[pose_id - 1].pose.position.y;
-    double ab_x = transformed_plan.poses[pose_id + 1].pose.position.x - transformed_plan.poses[pose_id].pose.position.x;
-    double ab_y = transformed_plan.poses[pose_id + 1].pose.position.y - transformed_plan.poses[pose_id].pose.position.y;
+    double oa_x = transformed_plan.poses(pose_id).pose().position().x() - transformed_plan.poses(pose_id - 1).pose().position().x();
+    double oa_y = transformed_plan.poses(pose_id).pose().position().y() - transformed_plan.poses(pose_id - 1).pose().position().y();
+    double ab_x = transformed_plan.poses(pose_id + 1).pose().position().x() - transformed_plan.poses(pose_id).pose().position().x();
+    double ab_y = transformed_plan.poses(pose_id + 1).pose().position().y() - transformed_plan.poses(pose_id).pose().position().y();
 
     /* Checking for the existence of cusp, in the path, using the dot product
     and determine it's distance from the robot. If there is no cusp in the path,
@@ -526,20 +527,20 @@ double RegulatedPurePursuitController::findVelocitySignChange(const commsgs::pla
     if (dot_prod < 0.0) {
       // returning the distance if there is a cusp
       // The transformed path is in the robots frame, so robot is at the origin
-      return std::hypot(transformed_plan.poses[pose_id].pose.position.x,
-                        transformed_plan.poses[pose_id].pose.position.y);
+      return std::hypot(transformed_plan.poses(pose_id).pose().position().x(),
+                        transformed_plan.poses(pose_id).pose().position().y());
     }
 
     // Check if orientations differ using yaw angles
-    double yaw1 = transform::tf2::getYaw(transformed_plan.poses[pose_id - 1].pose.orientation);
-    double yaw2 = transform::tf2::getYaw(transformed_plan.poses[pose_id].pose.orientation);
-    double yaw3 = transform::tf2::getYaw(transformed_plan.poses[pose_id + 1].pose.orientation);
+    double yaw1 = transform::tf2::getYaw(transformed_plan.poses(pose_id - 1).pose().orientation());
+    double yaw2 = transform::tf2::getYaw(transformed_plan.poses(pose_id).pose().orientation());
+    double yaw3 = transform::tf2::getYaw(transformed_plan.poses(pose_id + 1).pose().orientation());
     if ((std::hypot(oa_x, oa_y) == 0.0 && std::abs(yaw1 - yaw2) > 1e-6) ||
         (std::hypot(ab_x, ab_y) == 0.0 && std::abs(yaw2 - yaw3) > 1e-6)) {
       // returning the distance since the points overlap
       // but are not simply duplicate points (e.g. in place rotation)
-      return std::hypot(transformed_plan.poses[pose_id].pose.position.x,
-                        transformed_plan.poses[pose_id].pose.position.y);
+      return std::hypot(transformed_plan.poses(pose_id).pose().position().x(),
+                        transformed_plan.poses(pose_id).pose().position().y());
     }
   }
 

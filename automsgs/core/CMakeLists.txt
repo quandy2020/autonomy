@@ -39,7 +39,7 @@ configure_file(
 #-----------------------------------------------------------------------------
 # Core library (config, getInstallPrefix, Factory, MessageFactory, DynamicFactory)
 #-----------------------------------------------------------------------------
-find_package(Protobuf REQUIRED)
+autonomy_require_protobuf()
 add_library(automsgs_core_obj OBJECT
   ${AUTOMSGS_INSTALL_PREFIX_CC}
   src/Factory.cc
@@ -65,10 +65,18 @@ install(FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/include/automsgs/msgs/MessageFactory.hh
   ${CMAKE_CURRENT_SOURCE_DIR}/include/automsgs/msgs/DynamicFactory.hh
   ${CMAKE_CURRENT_SOURCE_DIR}/include/automsgs/msgs/Utility.hh
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/automsgs/msgs/time_utils.hpp
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/automsgs/msgs)
 install(FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/include/automsgs/msgs/detail/dynamic_message_cast.hh
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/automsgs/msgs/detail)
+install(FILES
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/automsgs/msgs/sensor_msgs/point_cloud2_iterator.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/automsgs/msgs/sensor_msgs/point_field_conversion.hpp
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/automsgs/msgs/sensor_msgs)
+install(FILES
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/automsgs/msgs/sensor_msgs/impl/point_cloud2_iterator.hpp
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/automsgs/msgs/sensor_msgs/impl)
 install(FILES ${AUTOMSGS_MSGS_CONFIG_HH}
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/automsgs/msgs)
 

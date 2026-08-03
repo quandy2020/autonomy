@@ -389,13 +389,13 @@ bool TensorRtBackend::Run(const TensorMap& inputs, TensorMap* outputs) {
     }
 
     for (const ModelTensorInfo& in : impl_->input_infos) {
-        const auto it = inputs.find(in.name);
+        const auto it = inputs.find(in.name());
         if (it == inputs.end()) {
-            SetLastError("Missing input tensor: " + in.name);
+            SetLastError("Missing input tensor: " + in.name());
             return false;
         }
         if (it->second.element_type() != in.element_type) {
-            SetLastError("Input \"" + in.name + "\" element type mismatch.");
+            SetLastError("Input \"" + in.name() + "\" element type mismatch.");
             return false;
         }
         std::vector<int64_t> shape;
@@ -411,7 +411,7 @@ bool TensorRtBackend::Run(const TensorMap& inputs, TensorMap* outputs) {
             dims.d[i] = static_cast<int>(shape[i]);
         }
         if (!impl_->context->setInputShape(in.name.c_str(), dims)) {
-            SetLastError("setInputShape failed for " + in.name);
+            SetLastError("setInputShape failed for " + in.name());
             return false;
         }
 
@@ -419,28 +419,28 @@ bool TensorRtBackend::Run(const TensorMap& inputs, TensorMap* outputs) {
             shape.begin(), shape.end(), int64_t{1}, std::multiplies<int64_t>());
         const size_t elem_bytes = ElementTypeByteSize(in.element_type);
         const size_t need_bytes = static_cast<size_t>(vol) * elem_bytes;
-        auto buf_it = impl_->device_buffers.find(in.name);
+        auto buf_it = impl_->device_buffers.find(in.name());
         if (buf_it == impl_->device_buffers.end()) {
-            SetLastError("No device buffer for input " + in.name);
+            SetLastError("No device buffer for input " + in.name());
             return false;
         }
-        if (need_bytes > impl_->device_capacity_bytes[in.name]) {
+        if (need_bytes > impl_->device_capacity_bytes[in.name()]) {
             SetLastError("Input size exceeds allocated device buffer for " +
-                         in.name);
+                         in.name());
             return false;
         }
         if (it->second.byte_size() < need_bytes) {
-            SetLastError("Input \"" + in.name + "\" buffer too small.");
+            SetLastError("Input \"" + in.name() + "\" buffer too small.");
             return false;
         }
         if (cudaMemcpy(buf_it->second, it->second.bytes(), need_bytes,
                        cudaMemcpyHostToDevice) != cudaSuccess) {
-            SetLastError("cudaMemcpy H2D failed for " + in.name);
+            SetLastError("cudaMemcpy H2D failed for " + in.name());
             return false;
         }
         if (!impl_->context->setTensorAddress(in.name.c_str(),
                                               buf_it->second)) {
-            SetLastError("setTensorAddress failed for " + in.name);
+            SetLastError("setTensorAddress failed for " + in.name());
             return false;
         }
     }
@@ -448,21 +448,21 @@ bool TensorRtBackend::Run(const TensorMap& inputs, TensorMap* outputs) {
     for (const ModelTensorInfo& out : impl_->output_infos) {
         nvinfer1::Dims dims = impl_->context->getTensorShape(out.name.c_str());
         const int64_t vol = Volume(dims);
-        auto buf_it = impl_->device_buffers.find(out.name);
+        auto buf_it = impl_->device_buffers.find(out.name());
         if (buf_it == impl_->device_buffers.end()) {
-            SetLastError("No device buffer for output " + out.name);
+            SetLastError("No device buffer for output " + out.name());
             return false;
         }
         const size_t elem_bytes = ElementTypeByteSize(out.element_type);
         const size_t need_bytes = static_cast<size_t>(vol) * elem_bytes;
-        if (need_bytes > impl_->device_capacity_bytes[out.name]) {
+        if (need_bytes > impl_->device_capacity_bytes[out.name()]) {
             SetLastError("Output size exceeds allocated device buffer for " +
-                         out.name);
+                         out.name());
             return false;
         }
         if (!impl_->context->setTensorAddress(out.name.c_str(),
                                               buf_it->second)) {
-            SetLastError("setTensorAddress failed for " + out.name);
+            SetLastError("setTensorAddress failed for " + out.name());
             return false;
         }
     }
@@ -480,19 +480,19 @@ bool TensorRtBackend::Run(const TensorMap& inputs, TensorMap* outputs) {
         nvinfer1::Dims dims = impl_->context->getTensorShape(out.name.c_str());
         const int64_t vol = Volume(dims);
         if (vol <= 0) {
-            SetLastError("Invalid output volume for " + out.name);
+            SetLastError("Invalid output volume for " + out.name());
             return false;
         }
         const size_t elem_bytes = ElementTypeByteSize(out.element_type);
         const size_t need_bytes = static_cast<size_t>(vol) * elem_bytes;
         std::vector<uint8_t> host(need_bytes);
-        void* device_ptr = impl_->device_buffers[out.name];
+        void* device_ptr = impl_->device_buffers[out.name()];
         if (cudaMemcpy(host.data(), device_ptr, need_bytes,
                        cudaMemcpyDeviceToHost) != cudaSuccess) {
-            SetLastError("cudaMemcpy D2H failed for " + out.name);
+            SetLastError("cudaMemcpy D2H failed for " + out.name());
             return false;
         }
-        (*outputs)[out.name] = Tensor(out.element_type, std::move(host));
+        (*outputs)[out.name()] = Tensor(out.element_type, std::move(host));
     }
     return true;
 #endif

@@ -17,16 +17,16 @@
 #pragma once
 
 #include "autonomy/common/time.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/proto/map_msgs.pb.h"
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
 
 namespace grid_map {
 
-using GridMapInfoData = autonomy::commsgs::map_msgs::GridMapInfo;
-using GridMapInfoProto = autonomy::commsgs::proto::map_msgs::GridMapInfo;
+using GridMapInfoData = automsgs::msgs::map_msgs::GridMapInfo;
+using GridMapInfoProto = automsgs::msgs::map_msgs::GridMapInfo;
 
-using GridMapData = autonomy::commsgs::map_msgs::GridMap;
-using GridMapProto = autonomy::commsgs::proto::map_msgs::GridMap;
+using GridMapData = automsgs::msgs::map_msgs::GridMap;
+using GridMapProto = automsgs::msgs::map_msgs::GridMap;
 
 // Converts 'data' to a proto::map_msgs::GridMapInfo.
 GridMapInfoProto ToProto(const GridMapInfoData& data);

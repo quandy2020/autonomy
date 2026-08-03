@@ -28,7 +28,7 @@ public:
 
   SensorDataType GetType() const override { return kType; }
 
-  Time GetTime() const override { return TimeFromHeader(payload_.header); }
+  Time GetTime() const override { return TimeFromHeader(payload_.header()); }
 
   void Dispatch(SensorConsumer & consumer) const override
   {
@@ -87,7 +87,7 @@ inline std::unique_ptr<Data> MakeOdometryData(
   OdometryData odom, std::string sensor_id = {})
 {
   return MakeDispatchable<SensorDataType::kOdometry, OdometryData>(
-    DefaultSensorId(sensor_id.empty() ? odom.header.frame_id : sensor_id, "odom"),
+    DefaultSensorId(sensor_id.empty() ? odom.header().frame_id() : sensor_id, "odom"),
     std::move(odom));
 }
 
@@ -95,7 +95,7 @@ inline std::unique_ptr<Data> MakeLaserScanData(
   LaserScanData scan, std::string sensor_id = {})
 {
   return MakeDispatchable<SensorDataType::kLaserScan, LaserScanData>(
-    DefaultSensorId(sensor_id.empty() ? scan.header.frame_id : sensor_id, "laser"),
+    DefaultSensorId(sensor_id.empty() ? scan.header().frame_id() : sensor_id, "laser"),
     std::move(scan));
 }
 
@@ -103,14 +103,14 @@ inline std::unique_ptr<Data> MakePointCloud2Data(
   PointCloud2Data cloud, std::string sensor_id = {})
 {
   return MakeDispatchable<SensorDataType::kPointCloud2, PointCloud2Data>(
-    DefaultSensorId(sensor_id.empty() ? cloud.header.frame_id : sensor_id, "point_cloud"),
+    DefaultSensorId(sensor_id.empty() ? cloud.header().frame_id() : sensor_id, "point_cloud"),
     std::move(cloud));
 }
 
 inline std::unique_ptr<Data> MakeRangeData(RangeData range, std::string sensor_id = {})
 {
   return MakeDispatchable<SensorDataType::kRange, RangeData>(
-    DefaultSensorId(sensor_id.empty() ? range.header.frame_id : sensor_id, "range"),
+    DefaultSensorId(sensor_id.empty() ? range.header().frame_id() : sensor_id, "range"),
     std::move(range));
 }
 

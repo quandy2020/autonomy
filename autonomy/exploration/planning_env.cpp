@@ -42,50 +42,50 @@ using map::costmap_2d::LETHAL_OBSTACLE;
 using map::costmap_2d::NO_INFORMATION;
 using map::costmap_2d::utils::LineIterator;
 
-double DepthAt(const commsgs::sensor_msgs::Image& depth, int u, int v)
+double DepthAt(const automsgs::msgs::sensor_msgs::Image& depth, int u, int v)
 {
-    if (u < 0 || v < 0 || static_cast<uint32_t>(u) >= depth.width ||
-        static_cast<uint32_t>(v) >= depth.height) {
+    if (u < 0 || v < 0 || static_cast<uint32_t>(u) >= depth.width() ||
+        static_cast<uint32_t>(v) >= depth.height()) {
         return 0.0;
     }
     const size_t offset =
-        static_cast<size_t>(v) * depth.step +
-        static_cast<size_t>(u) * (depth.encoding == "32FC1" ? 4 : 2);
-    if (offset >= depth.data.size()) {
+        static_cast<size_t>(v) * depth.step() +
+        static_cast<size_t>(u) * (depth.encoding() == "32FC1" ? 4 : 2);
+    if (offset >= depth.data().size()) {
         return 0.0;
     }
-    if (depth.encoding == "32FC1") {
+    if (depth.encoding() == "32FC1") {
         float val = 0.f;
-        std::memcpy(&val, &depth.data[offset], sizeof(float));
+        std::memcpy(&val, &depth.data()[offset], sizeof(float));
         return static_cast<double>(val);
     }
-    if (depth.encoding == "16UC1") {
+    if (depth.encoding() == "16UC1") {
         uint16_t raw = 0;
-        std::memcpy(&raw, &depth.data[offset], sizeof(uint16_t));
+        std::memcpy(&raw, &depth.data()[offset], sizeof(uint16_t));
         return static_cast<double>(raw) * 0.001;
     }
     return 0.0;
 }
 
-commsgs::geometry_msgs::Point TransformPoint(
-    const commsgs::geometry_msgs::Transform& t, double x, double y, double z)
+automsgs::msgs::geometry_msgs::Point TransformPoint(
+    const automsgs::msgs::geometry_msgs::Transform& t, double x, double y, double z)
 {
-    const auto& q = t.rotation;
-    const double qw = q.w;
-    const double qx = q.x;
-    const double qy = q.y;
-    const double qz = q.z;
-    const double tx = t.translation.x;
-    const double ty = t.translation.y;
-    const double tz = t.translation.z;
+    const auto& q = t.rotation();
+    const double qw = q.w();
+    const double qx = q.x();
+    const double qy = q.y();
+    const double qz = q.z();
+    const double tx = t.translation().x();
+    const double ty = t.translation().y();
+    const double tz = t.translation().z();
     const double ix = qw * x + qy * z - qz * y;
     const double iy = qw * y + qz * x - qx * z;
     const double iz = qw * z + qx * y - qy * x;
     const double iw = -qx * x - qy * y - qz * z;
-    commsgs::geometry_msgs::Point out;
-    out.x = iw * -qx + ix * qw + iy * -qz - iz * -qy + tx;
-    out.y = iw * -qy + iy * qw + iz * -qx - ix * -qz + ty;
-    out.z = iw * -qz + iz * qw + ix * -qy - iy * -qx + tz;
+    automsgs::msgs::geometry_msgs::Point out;
+    out.set_x(iw * -qx + ix * qw + iy * -qz - iz * -qy + tx);
+    out.set_y(iw * -qy + iy * qw + iz * -qx - ix * -qz + ty);
+    out.set_z(iw * -qz + iz * qw + ix * -qy - iy * -qx + tz);
     return out;
 }
 
@@ -101,13 +101,13 @@ commsgs::geometry_msgs::Point TransformPoint(
 }
 
 ::autonomy::common::math::Polygon2d ToPolygon2d(
-    const commsgs::geometry_msgs::Polygon& area)
+    const automsgs::msgs::geometry_msgs::Polygon& area)
 {
     std::vector<::autonomy::common::math::Vec2d> points;
-    points.reserve(area.points.size());
-    for (const auto& p : area.points) {
-        points.emplace_back(static_cast<double>(p.x),
-                            static_cast<double>(p.y));
+    points.reserve(area.points_size());
+    for (const auto& p : area.points()) {
+        points.emplace_back(static_cast<double>(p.x()),
+                            static_cast<double>(p.y()));
     }
     if (points.size() < 3) {
         return ::autonomy::common::math::Polygon2d();
@@ -153,13 +153,13 @@ void PlanningEnv::SetDefaultExplorationArea()
 {
     exploration_polygon_ =
         MakeSquarePolygon(options_.grid_world().exploration_area_half_extent());
-    exploration_area_.points.clear();
+    exploration_area_.clear_points();
     for (const auto& v : exploration_polygon_.points()) {
-        commsgs::geometry_msgs::Point32 p;
-        p.x = static_cast<float>(v.x());
-        p.y = static_cast<float>(v.y());
-        p.z = 0.f;
-        exploration_area_.points.push_back(p);
+        automsgs::msgs::geometry_msgs::Point32 p;
+        p.set_x(static_cast<float>(v.x()));
+        p.set_y(static_cast<float>(v.y()));
+        p.set_z(0.f);
+        *exploration_area_.add_points() = p;
     }
 }
 
@@ -171,7 +171,7 @@ void PlanningEnv::SetOptions(const proto::ExplorationOptions& options)
 }
 
 void PlanningEnv::SetExplorationArea(
-    const commsgs::geometry_msgs::Polygon& area)
+    const automsgs::msgs::geometry_msgs::Polygon& area)
 {
     exploration_area_ = area;
     exploration_polygon_ = ToPolygon2d(area);
@@ -268,14 +268,15 @@ void PlanningEnv::RollCostmapIfNeeded(double x, double y)
     RebuildInflation();
 }
 
-void PlanningEnv::UpdateOdometry(const commsgs::planning_msgs::Odometry& odom)
+void PlanningEnv::UpdateOdometry(const automsgs::msgs::planning_msgs::Odometry& odom)
 {
-    robot_x_ = odom.pose.pose.position.x;
-    robot_y_ = odom.pose.pose.position.y;
-    robot_z_ = odom.pose.pose.position.z;
-    const auto& q = odom.pose.pose.orientation;
+    const auto& pose = odom.pose().pose().pose();
+    robot_x_ = pose.position().x();
+    robot_y_ = pose.position().y();
+    robot_z_ = pose.position().z();
+    const auto& q = pose.orientation();
     robot_yaw_ = ::autonomy::common::transform::GetYaw(
-        Eigen::Quaterniond(q.w, q.x, q.y, q.z));
+        Eigen::Quaterniond(q.w(), q.x(), q.y(), q.z()));
     has_odom_ = true;
     RollCostmapIfNeeded(robot_x_, robot_y_);
     // Prefer cached extrinsic (from depth). Never per-cell TF lookup on odom.
@@ -285,9 +286,9 @@ void PlanningEnv::UpdateOdometry(const commsgs::planning_msgs::Odometry& odom)
 }
 
 void PlanningEnv::UpdateDepth(
-    const commsgs::sensor_msgs::Image& depth,
-    const commsgs::sensor_msgs::CameraInfo& info,
-    const commsgs::geometry_msgs::Transform& map_t_camera)
+    const automsgs::msgs::sensor_msgs::Image& depth,
+    const automsgs::msgs::sensor_msgs::CameraInfo& info,
+    const automsgs::msgs::geometry_msgs::Transform& map_t_camera)
 {
     camera_.SetFromCameraInfo(info);
     last_map_t_camera_ = map_t_camera;
@@ -465,14 +466,14 @@ bool PlanningEnv::IsCovered(double x, double y) const
 }
 
 void PlanningEnv::FuseDepthFrame(
-    const commsgs::sensor_msgs::Image& depth,
-    const commsgs::sensor_msgs::CameraInfo& info,
-    const commsgs::geometry_msgs::Transform& map_t_camera)
+    const automsgs::msgs::sensor_msgs::Image& depth,
+    const automsgs::msgs::sensor_msgs::CameraInfo& info,
+    const automsgs::msgs::geometry_msgs::Transform& map_t_camera)
 {
-    const double fx = info.k.size() >= 1 ? info.k[0] : camera_.hfov_rad();
-    const double fy = info.k.size() >= 5 ? info.k[4] : fx;
-    const double cx = info.k.size() >= 3 ? info.k[2] : depth.width * 0.5;
-    const double cy = info.k.size() >= 6 ? info.k[5] : depth.height * 0.5;
+    const double fx = info.k_size() >= 1 ? info.k(0) : camera_.hfov_rad();
+    const double fy = info.k_size() >= 5 ? info.k(4) : fx;
+    const double cx = info.k_size() >= 3 ? info.k(2) : depth.width() * 0.5;
+    const double cy = info.k_size() >= 6 ? info.k(5) : depth.height() * 0.5;
     const int step = std::max(1, options_.depth_subsample());
     const double z_min = options_.occupancy().fuse_z_min() != 0.0
                              ? options_.occupancy().fuse_z_min()
@@ -480,11 +481,11 @@ void PlanningEnv::FuseDepthFrame(
     const double z_max = options_.occupancy().fuse_z_max() > 0.0
                              ? options_.occupancy().fuse_z_max()
                              : 1.2;
-    const double ox = map_t_camera.translation.x;
-    const double oy = map_t_camera.translation.y;
+    const double ox = map_t_camera.translation().x();
+    const double oy = map_t_camera.translation().y();
 
-    for (int v = 0; v < static_cast<int>(depth.height); v += step) {
-        for (int u = 0; u < static_cast<int>(depth.width); u += step) {
+    for (int v = 0; v < static_cast<int>(depth.height()); v += step) {
+        for (int u = 0; u < static_cast<int>(depth.width()); u += step) {
             const double d = DepthAt(depth, u, v);
             if (d < options_.camera().z_near() || d > options_.camera().z_far()) {
                 continue;
@@ -492,12 +493,12 @@ void PlanningEnv::FuseDepthFrame(
             const double px = (static_cast<double>(u) - cx) * d / fx;
             const double py = (static_cast<double>(v) - cy) * d / fy;
             const auto world = TransformPoint(map_t_camera, px, py, d);
-            const double z_rel = world.z - robot_z_;
+            const double z_rel = world.z() - robot_z_;
             if (z_rel < z_min || z_rel > z_max) {
                 continue;
             }
-            UpdateMissRay(ox, oy, world.x, world.y);
-            UpdateHit(world.x, world.y);
+            UpdateMissRay(ox, oy, world.x(), world.y());
+            UpdateHit(world.x(), world.y());
         }
     }
     SyncCostmapFromLogOdds();
@@ -505,7 +506,7 @@ void PlanningEnv::FuseDepthFrame(
 }
 
 void PlanningEnv::MarkCoveredFromExtrinsic(
-    const commsgs::geometry_msgs::Transform& map_t_camera)
+    const automsgs::msgs::geometry_msgs::Transform& map_t_camera)
 {
     const unsigned int size_x = costmap_.getSizeInCellsX();
     const unsigned int size_y = costmap_.getSizeInCellsY();
@@ -552,7 +553,7 @@ void PlanningEnv::MarkCoveredFromTf()
 }
 
 void PlanningEnv::ExtractFrontiers(
-    std::vector<commsgs::geometry_msgs::Point>* frontiers) const
+    std::vector<automsgs::msgs::geometry_msgs::Point>* frontiers) const
 {
     frontiers->clear();
     const unsigned int size_x = costmap_.getSizeInCellsX();
@@ -579,17 +580,21 @@ void PlanningEnv::ExtractFrontiers(
             if (!adj_free) {
                 continue;
             }
-            commsgs::geometry_msgs::Point p;
-            costmap_.mapToWorld(mx, my, p.x, p.y);
-            p.z = robot_z_;
+            automsgs::msgs::geometry_msgs::Point p;
+            double wx = 0.0;
+            double wy = 0.0;
+            costmap_.mapToWorld(mx, my, wx, wy);
+            p.set_x(wx);
+            p.set_y(wy);
+            p.set_z(robot_z_);
             frontiers->push_back(p);
         }
     }
 }
 
 void PlanningEnv::ClusterFrontiers(
-    const std::vector<commsgs::geometry_msgs::Point>& frontiers,
-    std::vector<commsgs::geometry_msgs::Point>* targets,
+    const std::vector<automsgs::msgs::geometry_msgs::Point>& frontiers,
+    std::vector<automsgs::msgs::geometry_msgs::Point>* targets,
     std::vector<bool>* uncovered) const
 {
     targets->clear();
@@ -612,16 +617,16 @@ void PlanningEnv::ClusterFrontiers(
         while (!stack.empty()) {
             const size_t cur = stack.back();
             stack.pop_back();
-            sx += frontiers[cur].x;
-            sy += frontiers[cur].y;
-            sz += frontiers[cur].z;
+            sx += frontiers[cur].x();
+            sy += frontiers[cur].y();
+            sz += frontiers[cur].z();
             ++count;
             for (size_t j = 0; j < frontiers.size(); ++j) {
                 if (used[j]) {
                     continue;
                 }
-                const double dx = frontiers[j].x - frontiers[cur].x;
-                const double dy = frontiers[j].y - frontiers[cur].y;
+                const double dx = frontiers[j].x() - frontiers[cur].x();
+                const double dy = frontiers[j].y() - frontiers[cur].y();
                 if (dx * dx + dy * dy <= cluster_dist2) {
                     used[j] = true;
                     stack.push_back(j);
@@ -631,10 +636,10 @@ void PlanningEnv::ClusterFrontiers(
         if (count <= 0) {
             continue;
         }
-        commsgs::geometry_msgs::Point c;
-        c.x = sx / count;
-        c.y = sy / count;
-        c.z = sz / count;
+        automsgs::msgs::geometry_msgs::Point c;
+        c.set_x(sx / count);
+        c.set_y(sy / count);
+        c.set_z(sz / count);
         targets->push_back(c);
         // Frontier centroids are always exploration goals (uncovered).
         uncovered->push_back(true);
@@ -642,7 +647,7 @@ void PlanningEnv::ClusterFrontiers(
 }
 
 void PlanningEnv::ExtractUnknownTargets(
-    std::vector<commsgs::geometry_msgs::Point>* targets,
+    std::vector<automsgs::msgs::geometry_msgs::Point>* targets,
     std::vector<bool>* uncovered) const
 {
     targets->clear();
@@ -660,9 +665,13 @@ void PlanningEnv::ExtractUnknownTargets(
             if (idx < covered_.size() && covered_[idx] != 0) {
                 continue;
             }
-            commsgs::geometry_msgs::Point p;
-            costmap_.mapToWorld(mx, my, p.x, p.y);
-            p.z = robot_z_;
+            automsgs::msgs::geometry_msgs::Point p;
+            double wx = 0.0;
+            double wy = 0.0;
+            costmap_.mapToWorld(mx, my, wx, wy);
+            p.set_x(wx);
+            p.set_y(wy);
+            p.set_z(robot_z_);
             targets->push_back(p);
             uncovered->push_back(true);
         }
@@ -700,7 +709,7 @@ bool PlanningEnv::IsInExplorationArea(double x, double y) const
 
 double PlanningEnv::PlanPathAStar(
     double from_x, double from_y, double to_x, double to_y,
-    std::vector<commsgs::geometry_msgs::Point>* path) const
+    std::vector<automsgs::msgs::geometry_msgs::Point>* path) const
 {
     if (path) {
         path->clear();
@@ -792,37 +801,43 @@ double PlanningEnv::PlanPathAStar(
         for (int idx : rev) {
             const unsigned int mx = static_cast<unsigned int>(idx % size_x);
             const unsigned int my = static_cast<unsigned int>(idx / size_x);
-            commsgs::geometry_msgs::Point p;
-            inflated_.mapToWorld(mx, my, p.x, p.y);
-            p.z = robot_z_;
+            automsgs::msgs::geometry_msgs::Point p;
+            double wx = 0.0;
+            double wy = 0.0;
+            inflated_.mapToWorld(mx, my, wx, wy);
+            p.set_x(wx);
+            p.set_y(wy);
+            p.set_z(robot_z_);
             path->push_back(p);
         }
     }
     return g[static_cast<size_t>(goal)];
 }
 
-commsgs::map_msgs::OccupancyGrid PlanningEnv::GetOccupancyGrid(
+automsgs::msgs::map_msgs::OccupancyGrid PlanningEnv::GetOccupancyGrid(
     const std::string& frame_id) const
 {
-    commsgs::map_msgs::OccupancyGrid grid;
-    grid.header.frame_id = frame_id;
-    grid.info.resolution = static_cast<float>(costmap_.getResolution());
-    grid.info.width = costmap_.getSizeInCellsX();
-    grid.info.height = costmap_.getSizeInCellsY();
-    grid.info.origin.position.x = costmap_.getOriginX();
-    grid.info.origin.position.y = costmap_.getOriginY();
-    grid.info.origin.position.z = 0.0;
-    grid.info.origin.orientation.x = 0.0;
-    grid.info.origin.orientation.y = 0.0;
-    grid.info.origin.orientation.z = 0.0;
-    grid.info.origin.orientation.w = 1.0;
+    automsgs::msgs::map_msgs::OccupancyGrid grid;
+    grid.mutable_header()->set_frame_id(frame_id);
+    grid.mutable_info()->set_resolution(static_cast<float>(costmap_.getResolution()));
+    grid.mutable_info()->set_width(costmap_.getSizeInCellsX());
+    grid.mutable_info()->set_height(costmap_.getSizeInCellsY());
+    grid.mutable_info()->mutable_origin()->mutable_position()->set_x(costmap_.getOriginX());
+    grid.mutable_info()->mutable_origin()->mutable_position()->set_y(costmap_.getOriginY());
+    grid.mutable_info()->mutable_origin()->mutable_position()->set_z(0.0);
+    grid.mutable_info()->mutable_origin()->mutable_orientation()->set_x(0.0);
+    grid.mutable_info()->mutable_origin()->mutable_orientation()->set_y(0.0);
+    grid.mutable_info()->mutable_origin()->mutable_orientation()->set_z(0.0);
+    grid.mutable_info()->mutable_origin()->mutable_orientation()->set_w(1.0);
 
     const size_t cell_count =
-        static_cast<size_t>(grid.info.width) * grid.info.height;
-    grid.data.resize(cell_count);
+        static_cast<size_t>(grid.info().width()) * grid.info().height();
+    grid.mutable_data()->Resize(static_cast<int>(cell_count), 0);
     for (size_t i = 0; i < cell_count; ++i) {
-        grid.data[i] = CostCellToOccupancyEquivalent(
-            costmap_.getCost(static_cast<unsigned int>(i)));
+        grid.mutable_data()->Set(
+            static_cast<int>(i),
+            CostCellToOccupancyEquivalent(
+                costmap_.getCost(static_cast<unsigned int>(i))));
     }
     return grid;
 }
