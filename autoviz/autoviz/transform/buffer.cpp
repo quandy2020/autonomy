@@ -11,6 +11,7 @@
 
 #include "autoviz/commsgs/time_utils.hpp"
 #include "autoviz/transform/tf2/exceptions.h"
+#include <automsgs/msgs/time_utils.hpp>
 
 namespace autoviz {
 namespace transform {
@@ -38,16 +39,17 @@ void Buffer::clear() {
 geometry_msgs::TransformStamped Buffer::ToTf2Message(
     const automsgs::msgs::geometry_msgs::TransformStamped& trans) {
   geometry_msgs::TransformStamped geo_msg;
-  *geo_msg.mutable_header()->mutable_stamp() = automsgs::msgs::TimeToNanoseconds(trans.header().stamp());
-  geo_msg.mutable_header()->set_frame_id(trans.header().frame_id());
-  geo_msg.set_child_frame_id(trans.child_frame_id());
-  geo_msg.mutable_transform()->mutable_translation()->set_x(trans.transform().translation().x());
-  geo_msg.mutable_transform()->mutable_translation()->set_y(trans.transform().translation().y());
-  geo_msg.mutable_transform()->mutable_translation()->set_z(trans.transform().translation().z());
-  geo_msg.mutable_transform()->mutable_rotation()->set_x(trans.transform().rotation().x());
-  geo_msg.mutable_transform()->mutable_rotation()->set_y(trans.transform().rotation().y());
-  geo_msg.mutable_transform()->mutable_rotation()->set_z(trans.transform().rotation().z());
-  geo_msg.mutable_transform()->mutable_rotation()->set_w(trans.transform().rotation().w());
+  geo_msg.header.stamp = automsgs::msgs::builtin_interfaces::TimeToNanoseconds(
+      trans.header().stamp());
+  geo_msg.header.frame_id = trans.header().frame_id();
+  geo_msg.child_frame_id = trans.child_frame_id();
+  geo_msg.transform.translation.x = trans.transform().translation().x();
+  geo_msg.transform.translation.y = trans.transform().translation().y();
+  geo_msg.transform.translation.z = trans.transform().translation().z();
+  geo_msg.transform.rotation.x = trans.transform().rotation().x();
+  geo_msg.transform.rotation.y = trans.transform().rotation().y();
+  geo_msg.transform.rotation.z = trans.transform().rotation().z();
+  geo_msg.transform.rotation.w = trans.transform().rotation().w();
   return geo_msg;
 }
 
@@ -55,25 +57,25 @@ automsgs::msgs::geometry_msgs::TransformStamped Buffer::FromTf2Message(
     const geometry_msgs::TransformStamped& tf2_trans_stamped) {
   automsgs::msgs::geometry_msgs::TransformStamped trans_stamped;
   trans_stamped.mutable_header()->mutable_stamp()->set_sec(
-      static_cast<int32_t>(tf2_trans_stamped.header().stamp() / 1'000'000'000ULL));
+      static_cast<int32_t>(tf2_trans_stamped.header.stamp / 1'000'000'000ULL));
   trans_stamped.mutable_header()->mutable_stamp()->set_nanosec(
-      static_cast<uint32_t>(tf2_trans_stamped.header().stamp() % 1'000'000'000ULL));
-  trans_stamped.mutable_header()->set_frame_id(tf2_trans_stamped.header().frame_id());
-  trans_stamped.set_child_frame_id(tf2_trans_stamped.child_frame_id());
+      static_cast<uint32_t>(tf2_trans_stamped.header.stamp % 1'000'000'000ULL));
+  trans_stamped.mutable_header()->set_frame_id(tf2_trans_stamped.header.frame_id);
+  trans_stamped.set_child_frame_id(tf2_trans_stamped.child_frame_id);
   trans_stamped.mutable_transform()->mutable_translation()->set_x(
-      tf2_trans_stamped.transform().translation().x());
+      tf2_trans_stamped.transform.translation.x);
   trans_stamped.mutable_transform()->mutable_translation()->set_y(
-      tf2_trans_stamped.transform().translation().y());
+      tf2_trans_stamped.transform.translation.y);
   trans_stamped.mutable_transform()->mutable_translation()->set_z(
-      tf2_trans_stamped.transform().translation().z());
+      tf2_trans_stamped.transform.translation.z);
   trans_stamped.mutable_transform()->mutable_rotation()->set_x(
-      tf2_trans_stamped.transform().rotation().x());
+      tf2_trans_stamped.transform.rotation.x);
   trans_stamped.mutable_transform()->mutable_rotation()->set_y(
-      tf2_trans_stamped.transform().rotation().y());
+      tf2_trans_stamped.transform.rotation.y);
   trans_stamped.mutable_transform()->mutable_rotation()->set_z(
-      tf2_trans_stamped.transform().rotation().z());
+      tf2_trans_stamped.transform.rotation.z);
   trans_stamped.mutable_transform()->mutable_rotation()->set_w(
-      tf2_trans_stamped.transform().rotation().w());
+      tf2_trans_stamped.transform.rotation.w);
   return trans_stamped;
 }
 
@@ -107,7 +109,8 @@ automsgs::msgs::geometry_msgs::TransformStamped Buffer::lookupTransform(
     throw tf2::TimeoutException("TF lookupTransform timeout: " + err);
   }
 
-  uint64_t tf2_time_ns = automsgs::msgs::automsgs::msgs::builtin_interfaces::automsgs::msgs::builtin_interfaces::TimeToNanoseconds(time);
+  uint64_t tf2_time_ns =
+      automsgs::msgs::builtin_interfaces::TimeToNanoseconds(time);
   if (tf2_time_ns != 0 && IsFutureExtrapolation(err)) {
     tf2_time_ns = 0ULL;
   }
@@ -121,7 +124,8 @@ bool Buffer::canTransform(const std::string& target_frame,
                             const automsgs::msgs::builtin_interfaces::Time& time,
                             const float timeout_second,
                             std::string* errstr) const {
-  const uint64_t requested_ns = automsgs::msgs::automsgs::msgs::builtin_interfaces::automsgs::msgs::builtin_interfaces::TimeToNanoseconds(time);
+  const uint64_t requested_ns =
+      automsgs::msgs::builtin_interfaces::TimeToNanoseconds(time);
   const uint64_t timeout_ns =
       static_cast<uint64_t>(timeout_second * kSecondToNanoFactor);
   const auto start = std::chrono::steady_clock::now();

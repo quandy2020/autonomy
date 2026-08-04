@@ -87,7 +87,7 @@ void StrataRobotDisplay::processMessage(
       }
     }
     StoredRobot stored;
-    *stored.mutable_position() = local;
+    stored.position = local;
     stored.yaw = static_cast<float>(robot.rotation_deg() * M_PI / 180.0);
     stored.status = robot.status();
     stored.battery = robot.battery();
@@ -124,11 +124,11 @@ void StrataRobotDisplay::onDraw(rendering::SceneOverlay& scene) {
         use_status_color ? StatusColor(robot.status) : custom_color;
     const QVector3D heading(len * qCos(robot.yaw), len * qSin(robot.yaw), 0.f);
     const std::string suffix = "/robot/" + std::to_string(i);
-    drawArrowOgreOrGl(context_, scene, name() + suffix + "/heading", robot.position(),
+    drawArrowOgreOrGl(context_, scene, name() + suffix + "/heading", robot.position,
                       robot.position + heading, robot_color);
     drawColoredPointsOgreOrGl(context_, scene, name() + suffix + "/point", typeId(),
                               4.f, rendering::PointCloudStyle::kSquares,
-                              {{robot.position(), robot_color}}, false);
+                              {{robot.position, robot_color}}, false);
 
     if (!show_labels) {
       continue;
@@ -136,8 +136,8 @@ void StrataRobotDisplay::onDraw(rendering::SceneOverlay& scene) {
     const QVector3D label_pos = robot.position + QVector3D(0.f, 0.f, 0.08f);
     TextLabelInstance name_label;
     name_label.text = robot.label.toStdString();
-    *name_label.mutable_position() = label_pos;
-    *name_label.mutable_color() = robot_color;
+    name_label.position = label_pos;
+    name_label.color = robot_color;
     name_label.char_height = label_height;
     labels.push_back(std::move(name_label));
 
@@ -151,8 +151,8 @@ void StrataRobotDisplay::onDraw(rendering::SceneOverlay& scene) {
               .arg(status_text)
               .trimmed()
               .toStdString();
-      *battery_label.mutable_position() = label_pos + QVector3D(0.f, 0.f, -label_height * 1.2f);
-      *battery_label.mutable_color() = robot.battery < 20.f ? QColor(255, 59, 48) : QColor(100, 116, 139);
+      battery_label.position = label_pos + QVector3D(0.f, 0.f, -label_height * 1.2f);
+      battery_label.color = robot.battery < 20.f ? QColor(255, 59, 48) : QColor(100, 116, 139);
       battery_label.char_height = label_height * 0.85f;
       labels.push_back(std::move(battery_label));
     }

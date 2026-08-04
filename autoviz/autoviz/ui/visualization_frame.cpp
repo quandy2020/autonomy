@@ -1432,7 +1432,7 @@ void VisualizationFrame::updateChannelList() {
         QStringLiteral("%1  [%2]")
             .arg(QString::fromStdString(channel.channel_name),
                  QString::fromStdString(
-                     automsgs::msgs::NormalizeMessageType(channel.message_type))));
+                     autoviz::commsgs::NormalizeMessageType(channel.message_type))));
   }
 }
 

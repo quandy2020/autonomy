@@ -64,7 +64,7 @@ bool RenderWindow::readDepthPick(int pixel_x, int pixel_y,
   if (!pick.hit) {
     return false;
   }
-  *world = pick.position();
+  *world = pick.position;
   return true;
 }
 

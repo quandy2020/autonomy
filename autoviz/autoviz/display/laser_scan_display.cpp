@@ -107,7 +107,7 @@ void LaserScanDisplay::onDraw(rendering::SceneOverlay& scene) {
   std::vector<ColoredPoint3D> colored;
   colored.reserve(points_.size());
   for (const auto& point : points_) {
-    colored.push_back({point.position(), point.color});
+    colored.push_back({point.position, point.color});
   }
   drawColoredPointsOgreOrGl(context_, scene, name(), typeId(), point_size, style,
                           colored, true);

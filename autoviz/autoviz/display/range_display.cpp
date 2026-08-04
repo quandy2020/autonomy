@@ -40,9 +40,9 @@ void RangeDisplay::processMessage(
   try {
     const auto tf = context_->tf_buffer->lookupTransform(context_->fixed_frame,
                                                           frame, zero_time);
-    *sample.mutable_origin() = transformPoint(tf, QVector3D(0.f, 0.f, 0.f));
+    sample.origin = transformPoint(tf, QVector3D(0.f, 0.f, 0.f));
   } catch (...) {
-    *sample.mutable_origin() = QVector3D(0.f, 0.f, 0.f);
+    sample.origin = QVector3D(0.f, 0.f, 0.f);
   }
 
   const int buffer_length = static_cast<int>(std::max(

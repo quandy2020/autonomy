@@ -91,7 +91,7 @@ void StrataIotBubbleDisplay::processMessage(
       }
     }
     StoredBubble stored;
-    *stored.mutable_position() = local;
+    stored.position = local;
     stored.event_type = bubble.event_type();
     stored.message = QString::fromStdString(bubble.message());
     bubbles_.push_back(std::move(stored));
@@ -117,14 +117,14 @@ void StrataIotBubbleDisplay::onDraw(rendering::SceneOverlay& scene) {
         use_event_color ? EventColor(bubble.event_type) : custom_color;
     drawColoredPointsOgreOrGl(context_, scene, name() + "/iot/" + std::to_string(i), typeId(),
                               6.f, rendering::PointCloudStyle::kSquares,
-                              {{bubble.position(), bubble_color}}, false);
+                              {{bubble.position, bubble_color}}, false);
     if (bubble.message.isEmpty()) {
       continue;
     }
     TextLabelInstance label;
     label.text = bubble.message.toStdString();
-    *label.mutable_position() = bubble.position + QVector3D(0.f, 0.f, 0.1f);
-    *label.mutable_color() = bubble_color;
+    label.position = bubble.position + QVector3D(0.f, 0.f, 0.1f);
+    label.color = bubble_color;
     label.char_height = label_height;
     labels.push_back(std::move(label));
   }

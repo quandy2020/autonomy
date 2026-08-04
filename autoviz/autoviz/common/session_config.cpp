@@ -402,7 +402,7 @@ void ReadDisplayNode(const YAML::Node& node, DisplayConfig* entry) {
 void WriteDisplayNode(YAML::Emitter* out, const DisplayConfig& display) {
   *out << YAML::BeginMap;
   *out << YAML::Key << "Type" << YAML::Value << display.type;
-  *out << YAML::Key << "Name" << YAML::Value << display.name();
+  *out << YAML::Key << "Name" << YAML::Value << display.name;
   *out << YAML::Key << "Channel" << YAML::Value << display.channel;
   *out << YAML::Key << "Enabled" << YAML::Value << display.enabled;
   if (!display.properties.empty()) {
@@ -594,7 +594,7 @@ void ReadViewFields(const YAML::Node& node, SavedViewConfig* view) {
 }
 
 void WriteViewFields(YAML::Emitter* out, const SavedViewConfig& view) {
-  *out << YAML::Key << "Name" << YAML::Value << view.name();
+  *out << YAML::Key << "Name" << YAML::Value << view.name;
   *out << YAML::Key << "Type" << YAML::Value << view.type;
   *out << YAML::Key << "NearClipDistance" << YAML::Value << view.near_clip_distance;
   *out << YAML::Key << "InvertZAxis" << YAML::Value << view.invert_z_axis;

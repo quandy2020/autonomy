@@ -49,7 +49,7 @@ bool AppendUrdfGeometryMesh(std::vector<ColoredMeshInstance>* meshes,
   }
   QMatrix4x4 geom_transform = link_transform;
   geom_transform.translate(geometry.origin);
-  geom_transform.rotate(geometry.rotation());
+  geom_transform.rotate(geometry.rotation);
 
   if (geometry.type == UrdfGeometry::Type::kBox) {
     const QVector3D half = VisualHalfExtents(geometry);
@@ -82,7 +82,7 @@ bool AppendUrdfGeometryPbr(std::vector<PbrMeshInstance>* pbr_meshes,
   }
   QMatrix4x4 geom_transform = link_transform;
   geom_transform.translate(geometry.origin);
-  geom_transform.rotate(geometry.rotation());
+  geom_transform.rotate(geometry.rotation);
 
   if (geometry.type == UrdfGeometry::Type::kBox) {
     const QVector3D half = VisualHalfExtents(geometry);
@@ -221,10 +221,10 @@ void RobotModelDisplay::rebuildMeshCache() {
   collision_meshes_.clear();
   for (const auto& link : model_.links()) {
     if (link.has_visual) {
-      cacheGeometryMesh(link.visual, link.name(), &visual_meshes_);
+      cacheGeometryMesh(link.visual, link.name, &visual_meshes_);
     }
     if (link.has_collision) {
-      cacheGeometryMesh(link.collision, link.name(), &collision_meshes_);
+      cacheGeometryMesh(link.collision, link.name, &collision_meshes_);
     }
   }
 }
@@ -337,7 +337,7 @@ void RobotModelDisplay::drawLinkGeometry(
     bool solid_visual, bool use_pbr) const {
   QMatrix4x4 geom_transform = link_transform;
   geom_transform.translate(geometry.origin);
-  geom_transform.rotate(geometry.rotation());
+  geom_transform.rotate(geometry.rotation);
 
   const float metallic = geometry.material.metallic;
   const float roughness = geometry.material.roughness;
@@ -452,7 +452,7 @@ void RobotModelDisplay::onDraw(rendering::SceneOverlay& scene) {
   }
 
   for (const auto& link : model_.links()) {
-    const auto tf_it = link_transforms.find(link.name());
+    const auto tf_it = link_transforms.find(link.name);
     if (tf_it == link_transforms.end()) {
       continue;
     }
@@ -461,7 +461,7 @@ void RobotModelDisplay::onDraw(rendering::SceneOverlay& scene) {
 
     if (link.has_visual) {
       const ObjMesh* mesh = nullptr;
-      const auto mesh_it = visual_meshes_.find(link.name());
+      const auto mesh_it = visual_meshes_.find(link.name);
       if (mesh_it != visual_meshes_.end()) {
         mesh = &mesh_it->second;
       }
@@ -493,7 +493,7 @@ void RobotModelDisplay::onDraw(rendering::SceneOverlay& scene) {
 
     if (show_collision && link.has_collision) {
       const ObjMesh* mesh = nullptr;
-      const auto mesh_it = collision_meshes_.find(link.name());
+      const auto mesh_it = collision_meshes_.find(link.name);
       if (mesh_it != collision_meshes_.end()) {
         mesh = &mesh_it->second;
       }
@@ -510,7 +510,7 @@ void RobotModelDisplay::onDraw(rendering::SceneOverlay& scene) {
     if (show_axes && link.has_visual) {
       QMatrix4x4 visual = link_transform;
       visual.translate(link.visual.origin);
-      visual.rotate(link.visual.rotation());
+      visual.rotate(link.visual.rotation);
       const QVector3D half = VisualHalfExtents(link.visual);
       const QVector3D origin = visual.map(QVector3D(0.f, 0.f, 0.f));
       const float axis_len = std::max(half.length(), 0.08f);

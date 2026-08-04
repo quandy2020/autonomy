@@ -708,7 +708,7 @@ void DisplaysPanel::onAddDisplay() {
   if (!dialog.selectedChannel().isEmpty()) {
     config.channel = dialog.selectedChannel().toStdString();
   }
-  config.name = uniqueDisplayName(config.name());
+  config.name = uniqueDisplayName(config.name);
   if (!manager_->addDisplay(config)) {
     return;
   }
