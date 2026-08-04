@@ -67,7 +67,7 @@ void RegulatedPurePursuitController::Configure(const proto::ControllerOptions& o
   control_duration_ = 1.0 / control_frequency;
 
   // Publishers - TODO: Need node parameter to create publishers
-  // global_path_pub_ = node->CreateWriter<automsgs::msgs::planning_msgs::Path>("received_global_plan");
+  // global_path_pub_ = node->CreateWriter<automsgs::msgs::nav_msgs::Path>("received_global_plan");
   // carrot_pub_ = node->CreateWriter<automsgs::msgs::geometry_msgs::PointStamped>("lookahead_point");
   // curvature_carrot_pub_ = node->CreateWriter<automsgs::msgs::geometry_msgs::PointStamped>("curvature_lookahead_point");
 
@@ -378,7 +378,7 @@ automsgs::msgs::geometry_msgs::Point RegulatedPurePursuitController::circleSegme
 }
 
 automsgs::msgs::geometry_msgs::PoseStamped RegulatedPurePursuitController::getLookAheadPoint(
-    const double& lookahead_dist, const automsgs::msgs::planning_msgs::Path& transformed_plan, bool interpolate_after_goal) {
+    const double& lookahead_dist, const automsgs::msgs::nav_msgs::Path& transformed_plan, bool interpolate_after_goal) {
   // Find the first pose which is at a distance greater than the lookahead distance
   auto goal_pose_it = std::find_if(transformed_plan.poses().begin(), transformed_plan.poses().end(), [&](const auto& ps) {
     return hypot(ps.pose().position().x(), ps.pose().position().y()) >= lookahead_dist;
@@ -431,7 +431,7 @@ automsgs::msgs::geometry_msgs::PoseStamped RegulatedPurePursuitController::getLo
 
 void RegulatedPurePursuitController::applyConstraints(const double& curvature,
                                                       const automsgs::msgs::geometry_msgs::TwistStamped& /*curr_speed*/,
-                                                      const double& pose_cost, const automsgs::msgs::planning_msgs::Path& path,
+                                                      const double& pose_cost, const automsgs::msgs::nav_msgs::Path& path,
                                                       double& linear_vel, double& sign) {
   if (!pp_options_) {
     return;
@@ -470,7 +470,7 @@ bool RegulatedPurePursuitController::IsGoalReached(double dist_tolerance, double
   return (last_dist_to_goal_ <= dist_tolerance) && (std::fabs(last_angle_to_goal_) <= angle_tolerance);
 }
 
-void RegulatedPurePursuitController::SetPlan(const automsgs::msgs::planning_msgs::Path& path) {
+void RegulatedPurePursuitController::SetPlan(const automsgs::msgs::nav_msgs::Path& path) {
   has_reached_xy_tolerance_ = false;
   path_handler_->setPlan(path);
 }
@@ -511,7 +511,7 @@ bool RegulatedPurePursuitController::cancel() {
   return finished_cancelling_;
 }
 
-double RegulatedPurePursuitController::findVelocitySignChange(const automsgs::msgs::planning_msgs::Path& transformed_plan) {
+double RegulatedPurePursuitController::findVelocitySignChange(const automsgs::msgs::nav_msgs::Path& transformed_plan) {
   // Iterating through the transformed global path to determine the position of the cusp
   for (unsigned int pose_id = 1; pose_id < transformed_plan.poses_size() - 1; ++pose_id) {
     // We have two vectors for the dot product OA and AB. Determining the vectors.

@@ -25,7 +25,6 @@
 #include <memory>
 #include <mutex>
 #include <atomic>
-#include <memory>
 
 #include <opencv2/core/mat.hpp>
 

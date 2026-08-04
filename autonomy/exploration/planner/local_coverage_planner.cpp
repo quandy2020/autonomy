@@ -51,7 +51,7 @@ void LocalCoveragePlanner::SetOptions(const proto::ExplorationOptions& options)
 void LocalCoveragePlanner::AppendGeometricSegment(
     const KeyposeGraph& keypose_graph, double from_x, double from_y,
     double from_z, const Viewpoint& to, const std::string& frame_id,
-    automsgs::msgs::planning_msgs::Path* path) const
+    automsgs::msgs::nav_msgs::Path* path) const
 {
     if (!path) {
         return;
@@ -81,13 +81,13 @@ void LocalCoveragePlanner::AppendGeometricSegment(
     }
 }
 
-automsgs::msgs::planning_msgs::Path LocalCoveragePlanner::Solve(
+automsgs::msgs::nav_msgs::Path LocalCoveragePlanner::Solve(
     const PlanningEnv& env, ViewpointManager& viewpoints,
     const KeyposeGraph& keypose_graph,
     const std::vector<int>& global_cell_order, const GridWorld& grid_world)
 {
     local_complete_ = false;
-    automsgs::msgs::planning_msgs::Path path;
+    automsgs::msgs::nav_msgs::Path path;
     path.mutable_header()->set_frame_id("map");
 
     *path.mutable_poses()->Add() = 

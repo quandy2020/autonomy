@@ -19,8 +19,7 @@
 #include <string>
 #include <vector>
 
-#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
-#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include "autonomy/map/costmap_2d/map_mode.hpp"
 
 /* Map input part */

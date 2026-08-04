@@ -33,9 +33,12 @@
 #include <automsgs/msgs/geometry_msgs/pose_array.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
-#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
-#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/map_msgs/grid_cells.pb.h>
+#include <automsgs/msgs/map_msgs/grid_map.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid_update.pb.h>
+#include <automsgs/msgs/nav_msgs/costmap.pb.h>
+#include <automsgs/msgs/nav_msgs/voxel_grid.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
@@ -76,15 +79,15 @@ using automsgs::msgs::geometry_msgs::PoseArray;
 using automsgs::msgs::geometry_msgs::PoseStamped;
 using automsgs::msgs::geometry_msgs::TransformStamped;
 using automsgs::msgs::geometry_msgs::TransformStampeds;
-using automsgs::msgs::map_msgs::Costmap;
-using automsgs::msgs::map_msgs::CostmapUpdate;
+using automsgs::msgs::nav_msgs::Costmap;
+using automsgs::msgs::nav_msgs::CostmapUpdate;
 using automsgs::msgs::map_msgs::GridCells;
 using automsgs::msgs::map_msgs::GridMap;
 using automsgs::msgs::map_msgs::OccupancyGrid;
 using automsgs::msgs::map_msgs::OccupancyGridUpdate;
-using automsgs::msgs::map_msgs::VoxelGrid;
-using automsgs::msgs::planning_msgs::Odometry;
-using automsgs::msgs::planning_msgs::Path;
+using automsgs::msgs::nav_msgs::VoxelGrid;
+using automsgs::msgs::nav_msgs::Odometry;
+using automsgs::msgs::nav_msgs::Path;
 using automsgs::msgs::sensor_msgs::CameraInfo;
 using automsgs::msgs::sensor_msgs::CompressedImage;
 using automsgs::msgs::sensor_msgs::Image;
@@ -169,9 +172,9 @@ constexpr char kPointStampedType[] =
     "automsgs.msgs.geometry_msgs.PointStamped";
 constexpr char kPolygonStampedType[] =
     "automsgs.msgs.geometry_msgs.PolygonStamped";
-constexpr char kPathType[] = "automsgs.msgs.planning_msgs.Path";
+constexpr char kPathType[] = "automsgs.msgs.nav_msgs.Path";
 constexpr char kOdometryType[] =
-    "automsgs.msgs.planning_msgs.Odometry";
+    "automsgs.msgs.nav_msgs.Odometry";
 constexpr char kCompressedImageType[] =
     "automsgs.msgs.sensor_msgs.CompressedImage";
 constexpr char kCameraInfoType[] =
@@ -180,10 +183,10 @@ constexpr char kNavSatFixType[] =
     "automsgs.msgs.sensor_msgs.NavSatFix";
 constexpr char kOccupancyGridType[] =
     "automsgs.msgs.map_msgs.OccupancyGrid";
-constexpr char kVoxelGridType[] = "automsgs.msgs.map_msgs.VoxelGrid";
-constexpr char kCostmapType[] = "automsgs.msgs.map_msgs.Costmap";
+constexpr char kVoxelGridType[] = "automsgs.msgs.nav_msgs.VoxelGrid";
+constexpr char kCostmapType[] = "automsgs.msgs.nav_msgs.Costmap";
 constexpr char kCostmapUpdateType[] =
-    "automsgs.msgs.map_msgs.CostmapUpdate";
+    "automsgs.msgs.nav_msgs.CostmapUpdate";
 constexpr char kGridMapType[] = "automsgs.msgs.map_msgs.GridMap";
 constexpr char kGridCellsType[] = "automsgs.msgs.map_msgs.GridCells";
 constexpr char kOccupancyGridUpdateType[] =

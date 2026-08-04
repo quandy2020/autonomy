@@ -30,11 +30,19 @@
 #include <automsgs/msgs/diagnostic_msgs/diagnostic_array.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/point_stamped.pb.h>
-#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/map_msgs/grid_cells.pb.h>
+#include <automsgs/msgs/map_msgs/grid_map.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid_update.pb.h>
+#include <automsgs/msgs/nav_msgs/costmap.pb.h>
+#include <automsgs/msgs/nav_msgs/voxel_grid.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 #include <automsgs/msgs/tf2_msgs/tf_message.pb.h>
-#include <automsgs/msgs/vehicle_msgs/vehicle_msgs.pb.h>
+#include <automsgs/msgs/vehicle_msgs/robot_state.pb.h>
+#include <automsgs/msgs/vehicle_msgs/robot_task_status.pb.h>
+#include <automsgs/msgs/vehicle_msgs/robot_task_type.pb.h>
 #include <automsgs/msgs/vision_msgs/detection2d_array.pb.h>
 #include <automsgs/msgs/visualization_msgs/marker.pb.h>
 #include <automsgs/msgs/sensor_msgs/multi_echo_laser_scan.pb.h>
@@ -64,7 +72,8 @@ namespace builtin_interfaces = automsgs::msgs::builtin_interfaces;
 namespace diagnostic_msgs = automsgs::msgs::diagnostic_msgs;
 namespace geometry_msgs = automsgs::msgs::geometry_msgs;
 namespace map_msgs = automsgs::msgs::map_msgs;
-namespace planning_msgs = automsgs::msgs::planning_msgs;
+namespace nav_msgs = automsgs::msgs::nav_msgs;
+namespace planning_msgs = automsgs::msgs::nav_msgs;
 namespace sensor_msgs = automsgs::msgs::sensor_msgs;
 namespace std_msgs = automsgs::msgs::std_msgs;
 namespace tf2_msgs = automsgs::msgs::tf2_msgs;
@@ -623,8 +632,8 @@ map_msgs::OccupancyGridUpdate MakeOccupancyGridUpdate(uint64_t stamp_ns) {
   return update;
 }
 
-map_msgs::Costmap MakeCostmap(uint64_t stamp_ns) {
-  map_msgs::Costmap costmap;
+nav_msgs::Costmap MakeCostmap(uint64_t stamp_ns) {
+  nav_msgs::Costmap costmap;
   FillHeader(costmap.mutable_header(), "map", stamp_ns);
   constexpr float kResolution = 0.05f;
   constexpr uint32_t kSize = 80;
@@ -672,8 +681,8 @@ map_msgs::Costmap MakeCostmap(uint64_t stamp_ns) {
   return costmap;
 }
 
-map_msgs::CostmapUpdate MakeCostmapUpdate(uint64_t stamp_ns) {
-  map_msgs::CostmapUpdate update;
+nav_msgs::CostmapUpdate MakeCostmapUpdate(uint64_t stamp_ns) {
+  nav_msgs::CostmapUpdate update;
   FillHeader(update.mutable_header(), "map", stamp_ns);
   update.set_x(0);
   update.set_y(0);
@@ -726,8 +735,8 @@ map_msgs::GridCells MakeGridCells(uint64_t stamp_ns, const MotionState& /*motion
   return cells;
 }
 
-map_msgs::VoxelGrid MakeVoxelGrid(uint64_t stamp_ns) {
-  map_msgs::VoxelGrid grid;
+nav_msgs::VoxelGrid MakeVoxelGrid(uint64_t stamp_ns) {
+  nav_msgs::VoxelGrid grid;
   FillHeader(grid.mutable_header(), "map", stamp_ns);
   grid.set_size_x(8);
   grid.set_size_y(8);
@@ -879,11 +888,11 @@ struct FakePublishers {
   WriterPtr<sensor_msgs::BatteryState> battery_state;
   WriterPtr<map_msgs::OccupancyGrid> occupancy_grid;
   WriterPtr<map_msgs::OccupancyGridUpdate> occupancy_grid_update;
-  WriterPtr<map_msgs::Costmap> costmap;
-  WriterPtr<map_msgs::CostmapUpdate> costmap_update;
+  WriterPtr<nav_msgs::Costmap> costmap;
+  WriterPtr<nav_msgs::CostmapUpdate> costmap_update;
   WriterPtr<map_msgs::GridMap> grid_map;
   WriterPtr<map_msgs::GridCells> grid_cells;
-  WriterPtr<map_msgs::VoxelGrid> voxel_grid;
+  WriterPtr<nav_msgs::VoxelGrid> voxel_grid;
   WriterPtr<vision_msgs::BoundingBox2D> bbox2d;
   WriterPtr<vision_msgs::BoundingBox2DArray> bbox2d_array;
   WriterPtr<vision_msgs::Detection2D> detection2d;
@@ -931,11 +940,11 @@ FakePublishers CreatePublishers(const std::shared_ptr<autolink::Node>& node,
   CREATE_WRITER(occupancy_grid, "occupancy_grid", map_msgs::OccupancyGrid);
   CREATE_WRITER(occupancy_grid_update, "occupancy_grid_update",
                 map_msgs::OccupancyGridUpdate);
-  CREATE_WRITER(costmap, "costmap", map_msgs::Costmap);
-  CREATE_WRITER(costmap_update, "costmap_update", map_msgs::CostmapUpdate);
+  CREATE_WRITER(costmap, "costmap", nav_msgs::Costmap);
+  CREATE_WRITER(costmap_update, "costmap_update", nav_msgs::CostmapUpdate);
   CREATE_WRITER(grid_map, "grid_map", map_msgs::GridMap);
   CREATE_WRITER(grid_cells, "grid_cells", map_msgs::GridCells);
-  CREATE_WRITER(voxel_grid, "voxel_grid", map_msgs::VoxelGrid);
+  CREATE_WRITER(voxel_grid, "voxel_grid", nav_msgs::VoxelGrid);
   CREATE_WRITER(bbox2d, "bbox2d", vision_msgs::BoundingBox2D);
   CREATE_WRITER(bbox2d_array, "bbox2d_array", vision_msgs::BoundingBox2DArray);
   CREATE_WRITER(detection2d, "detection2d", vision_msgs::Detection2D);

@@ -28,9 +28,7 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
-#include <automsgs/msgs/geometry_msgs/twist.pb.h>
-#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
-#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 
 namespace autonomy {
 namespace control {

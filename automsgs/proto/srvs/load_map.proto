@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package automsgs.srvs;
 
-import "automsgs/msgs/nav_msgs/occupancy_grid.proto";
+import "automsgs/msgs/map_msgs/occupancy_grid.proto";
 
 // Service to load a map from a URL.
 message LoadMap {
@@ -28,7 +28,7 @@ message LoadMap {
   message Response {
     // Result code (semantics same as original ROS service).
     uint32 result = 1;
-    automsgs.msgs.nav_msgs.OccupancyGrid map = 2;
+    automsgs.msgs.map_msgs.OccupancyGrid map = 2;
   }
 
   Request request = 1;

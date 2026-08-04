@@ -19,7 +19,8 @@ package autonomy.task.proto;
 import "automsgs/msgs/builtin_interfaces/time.proto";
 import "automsgs/msgs/builtin_interfaces/duration.proto";
 import "automsgs/msgs/status_msgs/status_msgs.proto";
-import "automsgs/msgs/vehicle_msgs/vehicle_msgs.proto";
+import "automsgs/msgs/vehicle_msgs/robot_task_status.proto";
+import "automsgs/msgs/vehicle_msgs/robot_task_type.proto";
 
 // Internal task envelope (lighter than bridge RequestHeader).
 message TaskHeader {

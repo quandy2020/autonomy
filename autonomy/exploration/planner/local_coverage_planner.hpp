@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/exploration/planner/grid_world.hpp"
@@ -59,9 +58,9 @@ public:
      * @param keypose_graph Roadmap for geometric path costs / insertion
      * @param global_cell_order Ordered global cells from hierarchical planning
      * @param grid_world Global cell map
-     * @return planning_msgs::Path of PoseStamped
+     * @return nav_msgs::Path of PoseStamped
      */
-    automsgs::msgs::planning_msgs::Path Solve(
+    automsgs::msgs::nav_msgs::Path Solve(
         const PlanningEnv& env, ViewpointManager& viewpoints,
         const KeyposeGraph& keypose_graph,
         const std::vector<int>& global_cell_order, const GridWorld& grid_world);
@@ -86,7 +85,7 @@ private:
     void AppendGeometricSegment(
         const KeyposeGraph& keypose_graph, double from_x, double from_y,
         double from_z, const Viewpoint& to, const std::string& frame_id,
-        automsgs::msgs::planning_msgs::Path* path) const;
+        automsgs::msgs::nav_msgs::Path* path) const;
 
     proto::ExplorationOptions options_;  //!< @brief exploration options
     bool local_complete_{false};         //!< @brief last Solve had no local work

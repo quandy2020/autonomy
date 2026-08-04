@@ -24,8 +24,7 @@
 #include <thread>
 
 #include "autonomy/common/macros.hpp"
-#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
-#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include "autonomy/map/proto/map_options.pb.h"
 
 namespace autonomy {

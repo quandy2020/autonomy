@@ -87,7 +87,7 @@ void ThetaStarPlanner::InitFromOptions() {
 uint32 ThetaStarPlanner::CreatePlan(
     const automsgs::msgs::geometry_msgs::PoseStamped& start,
     const automsgs::msgs::geometry_msgs::PoseStamped& goal,
-    automsgs::msgs::planning_msgs::Path& plan,
+    automsgs::msgs::nav_msgs::Path& plan,
     std::function<bool()> cancel_checker) {
     if (!costmap_) {
         AERROR << "Costmap is not set for planner " << name_;
@@ -208,7 +208,7 @@ double ThetaStarPlanner::heuristic(unsigned int x, unsigned int y,
 bool ThetaStarPlanner::makePlan(
     const automsgs::msgs::geometry_msgs::Pose& start,
     const automsgs::msgs::geometry_msgs::Pose& goal,
-    std::function<bool()> cancel_checker, automsgs::msgs::planning_msgs::Path& plan) {
+    std::function<bool()> cancel_checker, automsgs::msgs::nav_msgs::Path& plan) {
     plan.clear_poses();
     plan.mutable_header()->set_frame_id(global_frame_.empty() ? "map" : global_frame_);
 

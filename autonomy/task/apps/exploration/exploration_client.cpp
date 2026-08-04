@@ -106,7 +106,7 @@ void ExplorationClient::UseDefaultExplorationArea()
 }
 
 void ExplorationClient::UpdateOdometry(
-    const automsgs::msgs::planning_msgs::Odometry& odom)
+    const automsgs::msgs::nav_msgs::Odometry& odom)
 {
     EnsureExplorer();
     if (!odom.header().frame_id().empty()) {

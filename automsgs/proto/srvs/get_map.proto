@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package automsgs.srvs;
 
-import "automsgs/msgs/nav_msgs/occupancy_grid.proto";
+import "automsgs/msgs/map_msgs/occupancy_grid.proto";
 
 // Service to get the current occupancy grid map.
 message GetMap {
@@ -25,7 +25,7 @@ message GetMap {
 
   // Response containing the current map.
   message Response {
-    automsgs.msgs.nav_msgs.OccupancyGrid map = 1;
+    automsgs.msgs.map_msgs.OccupancyGrid map = 1;
   }
 
   Request request = 1;

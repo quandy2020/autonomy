@@ -17,7 +17,7 @@ public:
     {
         return {
             BT::InputPort<automsgs::msgs::geometry_msgs::PoseStamped>("goal"),
-            BT::OutputPort<automsgs::msgs::planning_msgs::Path>("path"),
+            BT::OutputPort<automsgs::msgs::nav_msgs::Path>("path"),
             BT::InputPort<std::string>("planner_id"),
             BT::OutputPort<int>("error_code_id"),
             BT::OutputPort<std::string>("error_msg"),
@@ -36,7 +36,7 @@ protected:
         }
         getInput("planner_id", planner_id);
 
-        automsgs::msgs::planning_msgs::Path path;
+        automsgs::msgs::nav_msgs::Path path;
         int error_code = 0;
         std::string error_msg;
         if (!client->ComputePathToPose(goal, planner_id, path, &error_code,
@@ -63,7 +63,7 @@ public:
         return {
             BT::InputPort<std::vector<automsgs::msgs::geometry_msgs::PoseStamped>>(
                 "goals"),
-            BT::OutputPort<automsgs::msgs::planning_msgs::Path>("path"),
+            BT::OutputPort<automsgs::msgs::nav_msgs::Path>("path"),
             BT::InputPort<std::string>("planner_id"),
             BT::OutputPort<int>("error_code_id"),
             BT::OutputPort<std::string>("error_msg"),
@@ -82,7 +82,7 @@ protected:
         }
         getInput("planner_id", planner_id);
 
-        automsgs::msgs::planning_msgs::Path path;
+        automsgs::msgs::nav_msgs::Path path;
         int error_code = 0;
         std::string error_msg;
         if (!client->ComputePathThroughPoses(goals, planner_id, path, &error_code,

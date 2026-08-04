@@ -92,7 +92,7 @@ public:
         common::GoalChecker* goal_checker, std::string& message) override;
 
     bool IsGoalReached(double dist_tolerance, double angle_tolerance) override;
-    void SetPlan(const automsgs::msgs::planning_msgs::Path& path) override;
+    void SetPlan(const automsgs::msgs::nav_msgs::Path& path) override;
     void Reset() override;
     void SetSpeedLimit(const double& speed_limit,
                        const bool& percentage) override;
@@ -100,26 +100,26 @@ public:
 protected:
     bool ValidateTargetPose(
         automsgs::msgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
-        automsgs::msgs::planning_msgs::Path& trajectory,
+        automsgs::msgs::nav_msgs::Path& trajectory,
         automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform,
         automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel);
 
     bool ValidateTargetPoseOnApproach(
         automsgs::msgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
-        double dist_to_goal, automsgs::msgs::planning_msgs::Path& trajectory,
+        double dist_to_goal, automsgs::msgs::nav_msgs::Path& trajectory,
         automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform,
         automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel);
 
     bool FindBestApproachTrajectory(
         automsgs::msgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
         automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform,
-        double safety_cost, automsgs::msgs::planning_msgs::Path& best_trajectory,
+        double safety_cost, automsgs::msgs::nav_msgs::Path& best_trajectory,
         automsgs::msgs::geometry_msgs::TwistStamped& best_cmd_vel);
 
     bool SimulateTrajectory(
         const automsgs::msgs::geometry_msgs::PoseStamped& motion_target,
         const automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform,
-        automsgs::msgs::planning_msgs::Path& trajectory,
+        automsgs::msgs::nav_msgs::Path& trajectory,
         automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel, bool backward);
 
     automsgs::msgs::geometry_msgs::Twist RotateToTarget(double angle_to_target);
@@ -127,7 +127,7 @@ protected:
     bool InCollision(const double& x, const double& y, const double& theta,
                      double inflation_scale = 1.0);
 
-    double GetMaxCost(const automsgs::msgs::planning_msgs::Path& path,
+    double GetMaxCost(const automsgs::msgs::nav_msgs::Path& path,
                       automsgs::msgs::geometry_msgs::TransformStamped&
                           costmap_transform);
 
@@ -154,9 +154,9 @@ protected:
     double initial_v_angular_max_{1.0};
     GracefulRuntimeParams params_;
 
-    std::shared_ptr<autolink::Writer<automsgs::msgs::planning_msgs::Path>>
+    std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>>
         transformed_plan_pub_;
-    std::shared_ptr<autolink::Writer<automsgs::msgs::planning_msgs::Path>>
+    std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>>
         local_plan_pub_;
     std::shared_ptr<autolink::Writer<automsgs::msgs::geometry_msgs::PoseStamped>>
         motion_target_pub_;

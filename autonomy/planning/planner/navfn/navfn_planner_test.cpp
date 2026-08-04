@@ -84,7 +84,7 @@ TEST(NavfnPlannerTest, DoesNotMutateGlobalCostmapWhenClearingStartCell) {
     planner::navfn::NavfnPlanner planner(CreatePlannerOptions(), "navfn_planner",
                                        costmap_wrapper);
 
-    automsgs::msgs::planning_msgs::Path path;
+    automsgs::msgs::nav_msgs::Path path;
     const auto start = MakePose(start_mx * 0.05, start_my * 0.05);
     const auto goal = MakePose(0.40, 0.40);
     const uint32_t code =
@@ -107,7 +107,7 @@ TEST(NavfnPlannerTest, ReturnsCanceledWhenCancelled) {
     planner::navfn::NavfnPlanner planner(CreatePlannerOptions(), "navfn_planner",
                                        costmap_wrapper);
 
-    automsgs::msgs::planning_msgs::Path path;
+    automsgs::msgs::nav_msgs::Path path;
     const auto start = MakePose(0.25, 0.25);
     const auto goal = MakePose(0.40, 0.40);
     const uint32_t code =
@@ -133,7 +133,7 @@ TEST(DijkstraPlannerTest, ForcesDijkstraSearch) {
     planner::dijkstra::DijkstraPlanner planner(options, "dijkstra_planner",
                                              costmap_wrapper);
 
-    automsgs::msgs::planning_msgs::Path path;
+    automsgs::msgs::nav_msgs::Path path;
     const auto start = MakePose(0.25, 0.25);
     const auto goal = MakePose(0.40, 0.40);
     const uint32_t code =
@@ -162,7 +162,7 @@ TEST(ThetaStarPlannerTest, FindsPathOnFreeMap) {
     planner::theta_star::ThetaStarPlanner planner(options, "theta_star_planner",
                                                 costmap_wrapper);
 
-    automsgs::msgs::planning_msgs::Path path;
+    automsgs::msgs::nav_msgs::Path path;
     const auto start = MakePose(0.25, 0.25);
     const auto goal = MakePose(0.40, 0.40);
     const uint32_t code =

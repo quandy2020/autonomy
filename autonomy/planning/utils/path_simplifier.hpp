@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 
@@ -25,8 +24,8 @@ namespace planning {
 namespace utils {
 
 /** Douglas-Peucker path simplification. epsilon <= 0 returns path unchanged. */
-automsgs::msgs::planning_msgs::Path SimplifyPath(
-    const automsgs::msgs::planning_msgs::Path& path, double epsilon);
+automsgs::msgs::nav_msgs::Path SimplifyPath(
+    const automsgs::msgs::nav_msgs::Path& path, double epsilon);
 
 }  // namespace utils
 }  // namespace planning

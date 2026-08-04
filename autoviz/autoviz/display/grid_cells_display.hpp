@@ -8,7 +8,7 @@
 
 #include <QVector3D>
 
-#include <automsgs/msgs/nav_msgs/grid_cells.pb.h>
+#include <automsgs/msgs/map_msgs/grid_cells.pb.h>
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/display/channel_display.hpp"
 
@@ -16,7 +16,7 @@ namespace autoviz {
 namespace display {
 
 class GridCellsDisplay
-    : public ChannelDisplay<automsgs::msgs::nav_msgs::GridCells> {
+    : public ChannelDisplay<automsgs::msgs::map_msgs::GridCells> {
  public:
   explicit GridCellsDisplay(std::string channel);
 
@@ -25,7 +25,7 @@ class GridCellsDisplay
   std::vector<common::DisplayPropertySpec> propertySpecs() const override;
 
  protected:
-  void processMessage(const automsgs::msgs::nav_msgs::GridCells& message)
+  void processMessage(const automsgs::msgs::map_msgs::GridCells& message)
       override;
   void onDraw(rendering::SceneOverlay& scene) override;
 

@@ -29,8 +29,8 @@
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose2d.pb.h>
-#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
-#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/nav_msgs/costmap.pb.h>
 #include "autonomy/map/costmap_2d/filters/costmap_filter.hpp"
 
 namespace autonomy {
@@ -61,7 +61,7 @@ public:
      * @brief Inject filter info (replaces subscription callback).
      */
     void handleFilterInfo(
-        const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>& msg);
+        const std::shared_ptr<automsgs::msgs::nav_msgs::CostmapFilterInfo>& msg);
 
     /**
      * @brief Inject filter mask OccupancyGrid directly.
@@ -72,13 +72,13 @@ public:
      * @brief One-shot setup for offline / test pipelines (info then mask).
      */
     void applyConfiguration(
-        const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>& info,
+        const std::shared_ptr<automsgs::msgs::nav_msgs::CostmapFilterInfo>& info,
         const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>& mask);
 
     /**
      * @brief Build default keepout filter info for a given mask topic.
      */
-    static std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>
+    static std::shared_ptr<automsgs::msgs::nav_msgs::CostmapFilterInfo>
     makeDefaultFilterInfo(const std::string& mask_topic);
 
     bool hasFilterMask();
@@ -100,7 +100,7 @@ public:
 
 private:
     void filterInfoCallback(
-        const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo> msg);
+        const std::shared_ptr<automsgs::msgs::nav_msgs::CostmapFilterInfo> msg);
 
     void maskCallback(const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid> msg);
 

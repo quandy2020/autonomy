@@ -23,7 +23,6 @@
 #include <string>
 #include <vector>
 
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
@@ -49,14 +48,14 @@ public:
 
     uint32 CreatePlan(const automsgs::msgs::geometry_msgs::PoseStamped& start,
                       const automsgs::msgs::geometry_msgs::PoseStamped& goal,
-                      automsgs::msgs::planning_msgs::Path& plan,
+                      automsgs::msgs::nav_msgs::Path& plan,
                       std::function<bool()> cancel_checker) override;
 
 private:
     bool makePlan(const automsgs::msgs::geometry_msgs::Pose& start,
                   const automsgs::msgs::geometry_msgs::Pose& goal,
                   std::function<bool()> cancel_checker,
-                  automsgs::msgs::planning_msgs::Path& plan);
+                  automsgs::msgs::nav_msgs::Path& plan);
 
     bool worldToMap(double wx, double wy, unsigned int& mx,
                     unsigned int& my) const;

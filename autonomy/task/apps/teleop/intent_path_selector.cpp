@@ -85,7 +85,7 @@ void IntentPathSelector::GenerateDefaultLibrary(int num_dirs, int num_lengths,
     }
 }
 
-std::optional<automsgs::msgs::planning_msgs::Path> IntentPathSelector::Select(
+std::optional<automsgs::msgs::nav_msgs::Path> IntentPathSelector::Select(
     const map::costmap_2d::Costmap2D& costmap, double joy_dir_deg,
     double joy_speed) const {
     if (std::abs(joy_speed) <= kStoppedSpeedEpsilon || candidates_.empty()) {
@@ -126,7 +126,7 @@ std::optional<automsgs::msgs::planning_msgs::Path> IntentPathSelector::Select(
 
 int IntentPathSelector::CountLethalHits(
     const map::costmap_2d::Costmap2D& map,
-    const automsgs::msgs::planning_msgs::Path& path) {
+    const automsgs::msgs::nav_msgs::Path& path) {
     int hits = 0;
     for (const auto& pose : path.poses()) {
         unsigned int map_x = 0;

@@ -41,7 +41,6 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/map/costmap_2d/cost_values.hpp"
@@ -351,17 +350,17 @@ void PlannerServer::SetPathUpdateCallback(PathUpdateCallback callback) {
     path_update_callback_ = std::move(callback);
 }
 
-void PlannerServer::PublishPlan(const automsgs::msgs::planning_msgs::Path& path) {
+void PlannerServer::PublishPlan(const automsgs::msgs::nav_msgs::Path& path) {
     if (path_update_callback_) {
         path_update_callback_(path);
     }
 }
 
-automsgs::msgs::planning_msgs::Path PlannerServer::GetPlan(
+automsgs::msgs::nav_msgs::Path PlannerServer::GetPlan(
     const automsgs::msgs::geometry_msgs::PoseStamped& start,
     const automsgs::msgs::geometry_msgs::PoseStamped& goal,
     const std::string& planner_id, std::function<bool()> cancel_checker) {
-    automsgs::msgs::planning_msgs::Path path;
+    automsgs::msgs::nav_msgs::Path path;
     AINFO << "Planning algorithm " << planner_id
           << " is trying to find a path from (" << start.pose().position().x() << ", "
           << start.pose().position().y() << ")"
@@ -432,7 +431,7 @@ bool PlannerServer::TransformPosesToGlobalFrame(
 
 bool PlannerServer::ValidatePath(
     const automsgs::msgs::geometry_msgs::PoseStamped& curr_goal,
-    const automsgs::msgs::planning_msgs::Path& path, const std::string& planner_id) {
+    const automsgs::msgs::nav_msgs::Path& path, const std::string& planner_id) {
     if (path.poses().empty()) {
         AWARN << "Planning algorithm " << planner_id
               << " failed to generate a valid path to ("
@@ -447,7 +446,7 @@ bool PlannerServer::ValidatePath(
     return true;
 }
 
-bool PlannerServer::IsPathValid(const automsgs::msgs::planning_msgs::Path& path,
+bool PlannerServer::IsPathValid(const automsgs::msgs::nav_msgs::Path& path,
                                 uint8_t max_cost,
                                 bool consider_unknown_as_obstacle) const {
     if (path.poses().empty()) {

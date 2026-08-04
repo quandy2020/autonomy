@@ -14,9 +14,9 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/nav_msgs/goals.pb.h>
 #include "behaviortree_cpp/blackboard.h"
 #include "behaviortree_cpp/tree_node.h"
 
@@ -68,11 +68,11 @@ NavigationClient::NavigationClient(std::shared_ptr<autolink::Node> node)
         node_, kWaitAction);
 
     path_valid_client_ =
-        node_->CreateClient<nav_proto::IsPathValid_Request,
-                            nav_proto::IsPathValid_Response>(kIsPathValidService);
+        node_->CreateClient<nav_srvs::IsPathValid_Request,
+                            nav_srvs::IsPathValid_Response>(kIsPathValidService);
     clear_costmap_client_ =
-        node_->CreateClient<nav_proto::ClearEntireCostmap_Request,
-                            nav_proto::ClearEntireCostmap_Response>(
+        node_->CreateClient<nav_srvs::ClearEntireCostmap_Request,
+                            nav_srvs::ClearEntireCostmap_Response>(
             kClearGlobalCostmapService);
 }
 
@@ -118,7 +118,7 @@ bool NavigationClient::IsControlReady() const
 
 bool NavigationClient::ComputePathToPose(
     const automsgs::msgs::geometry_msgs::PoseStamped& goal,
-    const std::string& planner_id, automsgs::msgs::planning_msgs::Path& path,
+    const std::string& planner_id, automsgs::msgs::nav_msgs::Path& path,
     int* error_code, std::string* error_msg)
 {
     if (!compute_path_client_ || !compute_path_client_->ActionServerIsReady()) {
@@ -157,7 +157,7 @@ bool NavigationClient::ComputePathToPose(
 
 bool NavigationClient::ComputePathThroughPoses(
     const std::vector<automsgs::msgs::geometry_msgs::PoseStamped>& goals,
-    const std::string& planner_id, automsgs::msgs::planning_msgs::Path& path,
+    const std::string& planner_id, automsgs::msgs::nav_msgs::Path& path,
     int* error_code, std::string* error_msg)
 {
     if (!compute_through_poses_client_ ||
@@ -196,9 +196,9 @@ bool NavigationClient::ComputePathThroughPoses(
     return true;
 }
 
-bool NavigationClient::SmoothPath(const automsgs::msgs::planning_msgs::Path& unsmoothed,
+bool NavigationClient::SmoothPath(const automsgs::msgs::nav_msgs::Path& unsmoothed,
                                   const std::string& smoother_id,
-                                  automsgs::msgs::planning_msgs::Path& smoothed,
+                                  automsgs::msgs::nav_msgs::Path& smoothed,
                                   int* error_code, std::string* error_msg)
 {
     if (!smooth_path_client_ || !smooth_path_client_->ActionServerIsReady()) {
@@ -228,7 +228,7 @@ bool NavigationClient::SmoothPath(const automsgs::msgs::planning_msgs::Path& uns
     return !smoothed.poses().empty();
 }
 
-bool NavigationClient::IsPathValid(const automsgs::msgs::planning_msgs::Path& path,
+bool NavigationClient::IsPathValid(const automsgs::msgs::nav_msgs::Path& path,
                                    uint8_t max_cost,
                                    bool consider_unknown_as_obstacle) const
 {
@@ -236,7 +236,7 @@ bool NavigationClient::IsPathValid(const automsgs::msgs::planning_msgs::Path& pa
         return !path.poses().empty();
     }
 
-    auto request = std::make_shared<nav_proto::IsPathValid_Request>();
+    auto request = std::make_shared<nav_srvs::IsPathValid_Request>();
     *request->mutable_path() = path;
     request->set_max_cost(max_cost);
     request->set_consider_unknown_as_obstacle(consider_unknown_as_obstacle);
@@ -254,7 +254,7 @@ bool NavigationClient::ClearCostmap() const
     if (!clear_costmap_client_) {
         return false;
     }
-    auto request = std::make_shared<nav_proto::ClearEntireCostmap_Request>();
+    auto request = std::make_shared<nav_srvs::ClearEntireCostmap_Request>();
     const auto response = clear_costmap_client_->SendRequest(request);
     return response != nullptr;
 }

@@ -22,7 +22,6 @@
 #include <utility>
 #include <vector>
 
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
@@ -55,7 +54,7 @@ struct PathSegment {
  * @return Set of index pairs for each segment of the path in a given direction
  */
 inline std::vector<PathSegment> findDirectionalPathSegments(
-    const automsgs::msgs::planning_msgs::Path& path, bool is_holonomic = false) {
+    const automsgs::msgs::nav_msgs::Path& path, bool is_holonomic = false) {
     std::vector<PathSegment> segments;
     PathSegment curr_segment;
     curr_segment.start = 0;
@@ -115,7 +114,7 @@ inline std::vector<PathSegment> findDirectionalPathSegments(
  * holonomic planner like NavFn.
  */
 inline void updateApproximatePathOrientations(
-    automsgs::msgs::planning_msgs::Path& path, bool& reversing_segment,
+    automsgs::msgs::nav_msgs::Path& path, bool& reversing_segment,
     bool is_holonomic = false) {
     double dx, dy, theta, pt_yaw;
     reversing_segment = false;

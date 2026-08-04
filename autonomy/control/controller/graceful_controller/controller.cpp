@@ -279,7 +279,7 @@ uint32 GracefulController::ComputeVelocityCommands(
         }
     }
 
-    automsgs::msgs::planning_msgs::Path local_plan;
+    automsgs::msgs::nav_msgs::Path local_plan;
     automsgs::msgs::geometry_msgs::PoseStamped target_pose;
 
     double dist_to_target;
@@ -335,7 +335,7 @@ bool GracefulController::IsGoalReached(double dist_tolerance,
     return false;
 }
 
-void GracefulController::SetPlan(const automsgs::msgs::planning_msgs::Path& path) {
+void GracefulController::SetPlan(const automsgs::msgs::nav_msgs::Path& path) {
     path_handler_->SetPlan(path);
     do_initial_rotation_ = true;
     safe_approach_angle_.reset();
@@ -372,7 +372,7 @@ void GracefulController::SetSpeedLimit(const double& speed_limit,
 
 bool GracefulController::ValidateTargetPose(
     automsgs::msgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
-    automsgs::msgs::planning_msgs::Path& trajectory,
+    automsgs::msgs::nav_msgs::Path& trajectory,
     automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform,
     automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel) {
     if (dist_to_target > params_.max_lookahead) {
@@ -402,7 +402,7 @@ bool GracefulController::ValidateTargetPose(
 
 bool GracefulController::ValidateTargetPoseOnApproach(
     automsgs::msgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
-    double dist_to_goal, automsgs::msgs::planning_msgs::Path& trajectory,
+    double dist_to_goal, automsgs::msgs::nav_msgs::Path& trajectory,
     automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform,
     automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel) {
     if (dist_to_goal >= params_.max_lookahead || !params_.prefer_final_rotation) {
@@ -435,7 +435,7 @@ bool GracefulController::ValidateTargetPoseOnApproach(
 bool GracefulController::SimulateTrajectory(
     const automsgs::msgs::geometry_msgs::PoseStamped& motion_target,
     const automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform,
-    automsgs::msgs::planning_msgs::Path& trajectory,
+    automsgs::msgs::nav_msgs::Path& trajectory,
     automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel, bool backward) {
     trajectory.clear_poses();
 
@@ -531,7 +531,7 @@ automsgs::msgs::geometry_msgs::Twist GracefulController::RotateToTarget(
 }
 
 double GracefulController::GetMaxCost(
-    const automsgs::msgs::planning_msgs::Path& path,
+    const automsgs::msgs::nav_msgs::Path& path,
     automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform) {
     double max_cost = 0.0;
     const auto tf2_transform = ToTf2Transform(costmap_transform);
@@ -602,7 +602,7 @@ bool GracefulController::InCollision(const double& x, const double& y,
 bool GracefulController::FindBestApproachTrajectory(
     automsgs::msgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
     automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform,
-    double safety_cost, automsgs::msgs::planning_msgs::Path& best_trajectory,
+    double safety_cost, automsgs::msgs::nav_msgs::Path& best_trajectory,
     automsgs::msgs::geometry_msgs::TwistStamped& best_cmd_vel) {
     bool found_valid = false;
     double best_eta = std::numeric_limits<double>::max();
@@ -619,7 +619,7 @@ bool GracefulController::FindBestApproachTrajectory(
         auto candidate_pose = target_pose;
         *candidate_pose.mutable_pose()->mutable_orientation() = map::costmap_2d::utils::OrientationAroundZAxis(angle);
 
-        automsgs::msgs::planning_msgs::Path candidate_path = best_trajectory;
+        automsgs::msgs::nav_msgs::Path candidate_path = best_trajectory;
         automsgs::msgs::geometry_msgs::TwistStamped candidate_cmd_vel = best_cmd_vel;
 
         if (!ValidateTargetPose(candidate_pose, dist_to_target, candidate_path,

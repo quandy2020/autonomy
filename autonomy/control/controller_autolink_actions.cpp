@@ -20,7 +20,8 @@
 
 #include <automsgs/msgs/status_msgs/status_msgs.pb.h>
 #include <automsgs/actions/nav_actions.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/msgs/time_utils.hpp>
 #include "autonomy/common/logging.hpp"
 #include "autonomy/control/common/controller_exceptions.hpp"
@@ -41,7 +42,7 @@ using BackUpServer =
     autolink::action::SimpleActionServer<nav_proto::BackUpAction>;
 using WaitServer = autolink::action::SimpleActionServer<nav_proto::WaitAction>;
 
-automsgs::msgs::planning_msgs::Path PathFromGoal(
+automsgs::msgs::nav_msgs::Path PathFromGoal(
     const nav_proto::FollowPathAction::Goal& goal) {
     if (goal.has_path()) {
         return goal.path();
@@ -49,7 +50,7 @@ automsgs::msgs::planning_msgs::Path PathFromGoal(
     return {};
 }
 
-double DistanceToPathGoal(const automsgs::msgs::planning_msgs::Path& path,
+double DistanceToPathGoal(const automsgs::msgs::nav_msgs::Path& path,
                           const automsgs::msgs::geometry_msgs::PoseStamped& pose) {
     if (path.poses().empty()) {
         return 0.0;
@@ -139,7 +140,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                     auto feedback =
                         std::make_shared<nav_proto::FollowPathAction::Feedback>();
                     feedback->set_distance_to_goal(static_cast<float>(distance));
-                    automsgs::msgs::planning_msgs::Odometry odom;
+                    automsgs::msgs::nav_msgs::Odometry odom;
                     if (self->GetLatestOdometry(odom)) {
                         feedback->set_speed(static_cast<float>(std::hypot(
                             odom.twist().twist().linear().x(),

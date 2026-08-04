@@ -20,8 +20,8 @@ struct MissionWaypointPose {
 
   friend bool operator==(const MissionWaypointPose& lhs,
                          const MissionWaypointPose& rhs) {
-    return lhs.set_x(= rhs.x()&& lhs.set_y(= rhs.y()&& lhs.set_z(= rhs.z()&&
-           lhs.yaw_rad == rhs.yaw_rad)));
+    return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z &&
+           lhs.yaw_rad == rhs.yaw_rad;
   }
 };
 

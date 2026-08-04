@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
- #include "autonomy/control/controller/mppi_controller/tools/trajectory_visualizer.hpp"
+#include "autonomy/control/controller/mppi_controller/tools/trajectory_visualizer.hpp"
 
- #include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
 #include <automsgs/msgs/builtin_interfaces/duration.pb.h>
 #include <automsgs/msgs/time_utils.hpp>
- #include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
 #include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
@@ -28,12 +28,11 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
- #include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
- #include <automsgs/msgs/visualization_msgs/marker.pb.h>
+#include <automsgs/msgs/visualization_msgs/marker.pb.h>
 #include <automsgs/msgs/visualization_msgs/marker_array.pb.h>
- #include "autonomy/transform/tf2/LinearMath/Quaternion.h"
+#include "autonomy/transform/tf2/LinearMath/Quaternion.h"
  
  namespace autonomy {
  namespace control {
@@ -48,9 +47,9 @@
      trajectories_publisher_ =
          parent->CreateWriter<automsgs::msgs::visualization_msgs::MarkerArray>(
              name + "/candidate_trajectories");
-     transformed_path_pub_ = parent->CreateWriter<automsgs::msgs::planning_msgs::Path>(
+     transformed_path_pub_ = parent->CreateWriter<automsgs::msgs::nav_msgs::Path>(
          name + "/transformed_global_plan");
-     optimal_path_pub_ = parent->CreateWriter<automsgs::msgs::planning_msgs::Path>(
+     optimal_path_pub_ = parent->CreateWriter<automsgs::msgs::nav_msgs::Path>(
          name + "/optimal_path");
      options_ = options;
  
@@ -137,10 +136,10 @@
  void TrajectoryVisualizer::reset() {
      marker_id_ = 0;
      points_ = std::make_unique<automsgs::msgs::visualization_msgs::MarkerArray>();
-     optimal_path_ = std::make_unique<automsgs::msgs::planning_msgs::Path>();
+     optimal_path_ = std::make_unique<automsgs::msgs::nav_msgs::Path>();
  }
  
- void TrajectoryVisualizer::visualize(const automsgs::msgs::planning_msgs::Path& plan) {
+ void TrajectoryVisualizer::visualize(const automsgs::msgs::nav_msgs::Path& plan) {
      if (trajectories_publisher_ && trajectories_publisher_->HasReader()) {
          auto msg = std::make_shared<automsgs::msgs::visualization_msgs::MarkerArray>(
              *points_);
@@ -149,14 +148,14 @@
  
      if (optimal_path_pub_ && optimal_path_pub_->HasReader()) {
          auto msg =
-             std::make_shared<automsgs::msgs::planning_msgs::Path>(*optimal_path_);
+             std::make_shared<automsgs::msgs::nav_msgs::Path>(*optimal_path_);
          optimal_path_pub_->Write(msg);
      }
  
      reset();
  
      if (transformed_path_pub_ && transformed_path_pub_->HasReader()) {
-         auto plan_ptr = std::make_shared<automsgs::msgs::planning_msgs::Path>(plan);
+         auto plan_ptr = std::make_shared<automsgs::msgs::nav_msgs::Path>(plan);
          transformed_path_pub_->Write(plan_ptr);
      }
  }

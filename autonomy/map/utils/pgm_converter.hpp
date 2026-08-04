@@ -21,7 +21,6 @@
 
 #include <opencv2/core.hpp>
 
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
@@ -74,31 +73,31 @@ public:
     // Renders costmap with path overlay in memory. Empty Mat on failure.
     static cv::Mat renderPathToImage(
         const map::costmap_2d::Costmap2D& costmap,
-        const automsgs::msgs::planning_msgs::Path& path,
+        const automsgs::msgs::nav_msgs::Path& path,
         const RenderParameters& params);
 
     // Planner global path (cyan) + executed trajectory (red) on one image.
     static cv::Mat renderDualPathsToImage(
         const map::costmap_2d::Costmap2D& costmap,
-        const automsgs::msgs::planning_msgs::Path& global_plan_path,
-        const automsgs::msgs::planning_msgs::Path& executed_path);
+        const automsgs::msgs::nav_msgs::Path& global_plan_path,
+        const automsgs::msgs::nav_msgs::Path& executed_path);
 
     static bool saveDualPathsToImage(
         const map::costmap_2d::Costmap2D& costmap,
-        const automsgs::msgs::planning_msgs::Path& global_plan_path,
-        const automsgs::msgs::planning_msgs::Path& executed_path,
+        const automsgs::msgs::nav_msgs::Path& global_plan_path,
+        const automsgs::msgs::nav_msgs::Path& executed_path,
         const std::string& output_file_path);
 
     // Renders costmap with path overlay and saves as image. Returns false on
     // failure.
     static bool savePathToImage(const map::costmap_2d::Costmap2D& costmap,
-                                const automsgs::msgs::planning_msgs::Path& path,
+                                const automsgs::msgs::nav_msgs::Path& path,
                                 const std::string& output_file_path,
                                 const RenderParameters& params);
 
     // Overload with default parameters.
     static bool savePathToImage(const map::costmap_2d::Costmap2D& costmap,
-                                const automsgs::msgs::planning_msgs::Path& path,
+                                const automsgs::msgs::nav_msgs::Path& path,
                                 const std::string& output_file_path);
 };
 

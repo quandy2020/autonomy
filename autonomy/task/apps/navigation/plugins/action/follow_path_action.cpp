@@ -2,7 +2,6 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/actions/nav_actions.pb.h>
@@ -22,7 +21,7 @@ public:
     static BT::PortsList providedPorts()
     {
         return {
-            BT::InputPort<automsgs::msgs::planning_msgs::Path>("path"),
+            BT::InputPort<automsgs::msgs::nav_msgs::Path>("path"),
             BT::InputPort<std::string>("controller_id"),
             BT::OutputPort<int>("error_code_id"),
             BT::OutputPort<std::string>("error_msg"),
@@ -43,7 +42,7 @@ protected:
 
     bool BuildGoal(Goal& goal) override
     {
-        automsgs::msgs::planning_msgs::Path path;
+        automsgs::msgs::nav_msgs::Path path;
         std::string controller_id;
         if (!getInput("path", path) || path.poses().empty()) {
             SetErrorPorts(*this, 1, "FollowPath: missing path");

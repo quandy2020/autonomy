@@ -282,7 +282,7 @@ void PlannerServer::ComputePlanThroughPoses()
         }
 
         auto cancel_checker = [&]() { return server->IsCancelRequested(); };
-        automsgs::msgs::planning_msgs::Path merged_path;
+        automsgs::msgs::nav_msgs::Path merged_path;
 
         for (size_t i = 0; i < goals.size(); ++i) {
             if (server->IsCancelRequested()) {
@@ -362,7 +362,7 @@ void PlannerServer::SmoothPathAction()
             throw common::InvalidSmoother("No smoother configured");
         }
 
-        automsgs::msgs::planning_msgs::Path path =
+        automsgs::msgs::nav_msgs::Path path =
             goal->path();
         if (path.poses_size() < 2) {
             throw common::InvalidPath("Path must contain at least 2 poses");

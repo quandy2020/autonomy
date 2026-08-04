@@ -21,7 +21,6 @@
 #include <string>
 
 #include "autonomy/common/string_util.hpp"
-#include "autonomy/common/string_util.hpp"
 #include "autonomy/localization/cartographer/common/port.hpp"
 #include "glog/logging.h"
 

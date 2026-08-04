@@ -31,7 +31,7 @@ namespace tools {
 
 namespace {
 
-bool isClosedLoopPath(const automsgs::msgs::planning_msgs::Path& plan) {
+bool isClosedLoopPath(const automsgs::msgs::nav_msgs::Path& plan) {
   if (plan.poses_size() < 4) {
     return false;
   }
@@ -142,7 +142,7 @@ void PathHandler::initialize(std::shared_ptr<autolink::Node> parent, const std::
         << " transform_tolerance=" << transform_tolerance_;
 }
 
-std::pair<automsgs::msgs::planning_msgs::Path, PathIterator> PathHandler::getGlobalPlanConsideringBoundsInCostmapFrame(
+std::pair<automsgs::msgs::nav_msgs::Path, PathIterator> PathHandler::getGlobalPlanConsideringBoundsInCostmapFrame(
     const automsgs::msgs::geometry_msgs::PoseStamped& global_pose) {
   using map::costmap_2d::utils::euclidean_distance;
 
@@ -214,7 +214,7 @@ std::pair<automsgs::msgs::planning_msgs::Path, PathIterator> PathHandler::getGlo
     }
   }
 
-  automsgs::msgs::planning_msgs::Path transformed_plan;
+  automsgs::msgs::nav_msgs::Path transformed_plan;
   transformed_plan.mutable_header()->set_frame_id( costmap_->getGlobalFrameID());
   *transformed_plan.mutable_header()->mutable_stamp() = global_pose.header().stamp();
 
@@ -271,7 +271,7 @@ automsgs::msgs::geometry_msgs::PoseStamped PathHandler::transformToGlobalPlanFra
   return robot_pose;
 }
 
-automsgs::msgs::planning_msgs::Path PathHandler::transformPath(const automsgs::msgs::geometry_msgs::PoseStamped& robot_pose) {
+automsgs::msgs::nav_msgs::Path PathHandler::transformPath(const automsgs::msgs::geometry_msgs::PoseStamped& robot_pose) {
   // Find relevant bounds of path to use
   automsgs::msgs::geometry_msgs::PoseStamped global_pose = transformToGlobalPlanFrame(robot_pose);
   auto [transformed_plan, lower_bound] = getGlobalPlanConsideringBoundsInCostmapFrame(global_pose);
@@ -319,7 +319,7 @@ double PathHandler::getMaxCostmapDist() {
          costmap->getResolution() * 0.50;
 }
 
-void PathHandler::setPath(const automsgs::msgs::planning_msgs::Path& plan) {
+void PathHandler::setPath(const automsgs::msgs::nav_msgs::Path& plan) {
   global_plan_ = plan;
   global_plan_up_to_inversion_ = global_plan_;
   closed_loop_path_ = isClosedLoopPath(global_plan_);
@@ -342,9 +342,9 @@ void PathHandler::setPath(const automsgs::msgs::planning_msgs::Path& plan) {
   }
 }
 
-automsgs::msgs::planning_msgs::Path& PathHandler::getPath() { return global_plan_; }
+automsgs::msgs::nav_msgs::Path& PathHandler::getPath() { return global_plan_; }
 
-void PathHandler::prunePlan(automsgs::msgs::planning_msgs::Path& plan, const PathIterator end) {
+void PathHandler::prunePlan(automsgs::msgs::nav_msgs::Path& plan, const PathIterator end) {
   auto* poses = plan.mutable_poses();
   const int count = static_cast<int>(std::distance(poses->begin(), end));
   if (count > 0) {

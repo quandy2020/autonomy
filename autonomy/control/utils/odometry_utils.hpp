@@ -38,7 +38,6 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 
@@ -63,10 +62,10 @@ public:
                           const std::string& odom_topic = "odom");
 
     bool HasOdometry() const;
-    bool GetLatestOdometry(automsgs::msgs::planning_msgs::Odometry& odom) const;
+    bool GetLatestOdometry(automsgs::msgs::nav_msgs::Odometry& odom) const;
 
     /** Inject odometry (e.g. from a subscriber or demo harness). */
-    void UpdateOdometry(const automsgs::msgs::planning_msgs::Odometry& msg);
+    void UpdateOdometry(const automsgs::msgs::nav_msgs::Odometry& msg);
 
     /** Seed zero velocity for single-process demos without an odom publisher. */
     void SeedZeroOdometry(const std::string& child_frame_id,
@@ -79,7 +78,7 @@ public:
 
 protected:
     void odomCallback(
-        const std::shared_ptr<automsgs::msgs::planning_msgs::Odometry>& msg);
+        const std::shared_ptr<automsgs::msgs::nav_msgs::Odometry>& msg);
 
     void LogMissingOdometryOnce();
 
@@ -90,12 +89,12 @@ protected:
 
     bool received_odom_{false};
     std::atomic<bool> logged_missing_odom_{false};
-    automsgs::msgs::planning_msgs::Odometry odom_cumulate_;
+    automsgs::msgs::nav_msgs::Odometry odom_cumulate_;
     automsgs::msgs::geometry_msgs::TwistStamped vel_smooth_;
     mutable std::mutex odom_mutex_;
 
     automsgs::msgs::builtin_interfaces::Duration odom_history_duration_;
-    std::deque<automsgs::msgs::planning_msgs::Odometry> odom_history_;
+    std::deque<automsgs::msgs::nav_msgs::Odometry> odom_history_;
 };
 
 }  // namespace utils

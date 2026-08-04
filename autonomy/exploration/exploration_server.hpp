@@ -35,7 +35,6 @@
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include <automsgs/msgs/geometry_msgs/polygon.pb.h>
 #include <automsgs/msgs/geometry_msgs/point32.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
@@ -107,7 +106,7 @@ public:
      * @brief Forward odometry to the active explorer.
      * @param odom Robot odometry
      */
-    void UpdateOdometry(const automsgs::msgs::planning_msgs::Odometry& odom);
+    void UpdateOdometry(const automsgs::msgs::nav_msgs::Odometry& odom);
 
     /**
      * @brief Forward depth to the active explorer and replan.

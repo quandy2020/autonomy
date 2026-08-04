@@ -20,9 +20,7 @@
 #include <string>
 #include <vector>
 
-#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
-#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>

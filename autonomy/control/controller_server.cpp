@@ -293,14 +293,14 @@ void ControllerServer::SetSharedCostmap(
 }
 
 void ControllerServer::UpdateOdometry(
-    const automsgs::msgs::planning_msgs::Odometry& odom) {
+    const automsgs::msgs::nav_msgs::Odometry& odom) {
     if (odom_smoother_) {
         odom_smoother_->UpdateOdometry(odom);
     }
 }
 
 bool ControllerServer::GetLatestOdometry(
-    automsgs::msgs::planning_msgs::Odometry& odom) const {
+    automsgs::msgs::nav_msgs::Odometry& odom) const {
     return odom_smoother_ && odom_smoother_->GetLatestOdometry(odom);
 }
 
@@ -476,7 +476,7 @@ void ControllerServer::ComputeAndPublishVelocity() {
         throw common::ControllerTFError("Failed to obtain robot pose");
     }
 
-    automsgs::msgs::planning_msgs::Odometry odom;
+    automsgs::msgs::nav_msgs::Odometry odom;
     automsgs::msgs::geometry_msgs::TwistStamped velocity;
     velocity.mutable_header()->set_frame_id( robot_base_frame_);
     if (GetLatestOdometry(odom)) {
@@ -579,7 +579,7 @@ bool ControllerServer::IsGoalReached() {
         return false;
     }
 
-    automsgs::msgs::planning_msgs::Odometry odom;
+    automsgs::msgs::nav_msgs::Odometry odom;
     automsgs::msgs::geometry_msgs::Twist velocity;
     if (GetLatestOdometry(odom)) {
         velocity = odom.twist().twist();
@@ -596,7 +596,7 @@ bool ControllerServer::GetRobotPose(
     }
 
     if (odom_smoother_) {
-        automsgs::msgs::planning_msgs::Odometry odom;
+        automsgs::msgs::nav_msgs::Odometry odom;
         if (odom_smoother_->GetLatestOdometry(odom) &&
             !odom.header().frame_id().empty()) {
             pose.mutable_header()->set_frame_id(

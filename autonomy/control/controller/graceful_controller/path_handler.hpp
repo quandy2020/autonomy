@@ -16,9 +16,9 @@
 
  #pragma once
 
- #include <memory>
+#include <memory>
  
- #include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
 #include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
@@ -27,11 +27,10 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
- #include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
- #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
- #include "autonomy/transform/buffer.hpp"
+#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
+#include "autonomy/transform/buffer.hpp"
  
  namespace autonomy {
  namespace control {
@@ -66,7 +65,7 @@
       * path point
       * @return Path in new frame
       */
-     automsgs::msgs::planning_msgs::Path TransformGlobalPlan(
+     automsgs::msgs::nav_msgs::Path TransformGlobalPlan(
          const automsgs::msgs::geometry_msgs::PoseStamped& pose,
          double max_robot_pose_search_dist);
  
@@ -75,14 +74,14 @@
       *
       * @param path The global plan
       */
-     void SetPlan(const automsgs::msgs::planning_msgs::Path& path);
+     void SetPlan(const automsgs::msgs::nav_msgs::Path& path);
  
      /**
       * @brief Gets the global plan
       *
       * @return The global plan
       */
-     automsgs::msgs::planning_msgs::Path GetPlan() {
+     automsgs::msgs::nav_msgs::Path GetPlan() {
          return global_plan_;
      }
  
@@ -90,7 +89,7 @@
      double transform_tolerance_{0};
      std::shared_ptr<transform::Buffer> tf_buffer_;
      std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
-     automsgs::msgs::planning_msgs::Path global_plan_;
+     automsgs::msgs::nav_msgs::Path global_plan_;
  };
  
  }  // namespace controller

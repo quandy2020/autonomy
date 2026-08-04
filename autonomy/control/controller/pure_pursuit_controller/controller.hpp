@@ -16,15 +16,15 @@
 
  #pragma once
 
- #include <algorithm>
- #include <limits>
- #include <memory>
- #include <mutex>
- #include <string>
- #include <vector>
+#include <algorithm>
+#include <limits>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <vector>
  
- #include "autolink/autolink.hpp"
- #include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include "autolink/autolink.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
 #include <automsgs/msgs/geometry_msgs/point_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose.pb.h>
@@ -34,18 +34,17 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
- #include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
- #include <automsgs/msgs/std_msgs/header.pb.h>
- #include "autonomy/control/common/controller_interface.hpp"
- #include "autonomy/control/common/goal_checker_interface.hpp"
- #include "autonomy/control/controller/pure_pursuit_controller/collision_checker.hpp"
- #include "autonomy/control/controller/pure_pursuit_controller/parameter_handler.hpp"
- #include "autonomy/control/controller/pure_pursuit_controller/path_handler.hpp"
- #include "autonomy/control/controller/pure_pursuit_controller/regulation_functions.hpp"
- #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
- #include "autonomy/transform/buffer.hpp"
+#include <automsgs/msgs/std_msgs/header.pb.h>
+#include "autonomy/control/common/controller_interface.hpp"
+#include "autonomy/control/common/goal_checker_interface.hpp"
+#include "autonomy/control/controller/pure_pursuit_controller/collision_checker.hpp"
+#include "autonomy/control/controller/pure_pursuit_controller/parameter_handler.hpp"
+#include "autonomy/control/controller/pure_pursuit_controller/path_handler.hpp"
+#include "autonomy/control/controller/pure_pursuit_controller/regulation_functions.hpp"
+#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
+#include "autonomy/transform/buffer.hpp"
  
  namespace autonomy {
  namespace control {
@@ -125,7 +124,7 @@
       * @brief Set the global plan
       * @param path The global plan
       */
-     void SetPlan(const automsgs::msgs::planning_msgs::Path& path) override;
+     void SetPlan(const automsgs::msgs::nav_msgs::Path& path) override;
  
      /**
       * @brief Limits the maximum linear speed of the robot.
@@ -202,7 +201,7 @@
      void applyConstraints(const double& curvature,
                            const automsgs::msgs::geometry_msgs::TwistStamped& speed,
                            const double& pose_cost,
-                           const automsgs::msgs::planning_msgs::Path& path,
+                           const automsgs::msgs::nav_msgs::Path& path,
                            double& linear_vel, double& sign);
  
      /**
@@ -228,7 +227,7 @@
       * @return Lookahead point
       */
      automsgs::msgs::geometry_msgs::PoseStamped getLookAheadPoint(
-         const double&, const automsgs::msgs::planning_msgs::Path&,
+         const double&, const automsgs::msgs::nav_msgs::Path&,
          bool interpolate_after_goal = false);
  
      /**
@@ -237,7 +236,7 @@
       * @return robot distance from the cusp
       */
      double findVelocitySignChange(
-         const automsgs::msgs::planning_msgs::Path& transformed_plan);
+         const automsgs::msgs::nav_msgs::Path& transformed_plan);
  
      std::shared_ptr<autolink::Node> node_;
      std::shared_ptr<transform::Buffer> tf_buffer_;
@@ -255,7 +254,7 @@
      double last_dist_to_goal_ = std::numeric_limits<double>::infinity();
      double last_angle_to_goal_ = std::numeric_limits<double>::infinity();
  
-     std::shared_ptr<autolink::Writer<automsgs::msgs::planning_msgs::Path>>
+     std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>>
          global_path_pub_;
      std::shared_ptr<autolink::Writer<automsgs::msgs::geometry_msgs::PointStamped>>
          carrot_pub_;
@@ -264,7 +263,7 @@
      // TODO: Add Bool message type to commsgs or use a different approach
      // std::shared_ptr<autolink::Writer<automsgs::msgs::std_msgs::Bool>>
      // is_rotating_to_heading_pub_;
-     std::shared_ptr<autolink::Writer<automsgs::msgs::planning_msgs::Path>>
+     std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>>
          carrot_arc_pub_;
      std::unique_ptr<PathHandler> path_handler_;
      std::unique_ptr<ParameterHandler> param_handler_;

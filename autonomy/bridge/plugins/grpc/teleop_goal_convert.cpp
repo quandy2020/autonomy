@@ -16,7 +16,7 @@
 
 #include "autonomy/bridge/plugins/grpc/teleop_goal_convert.hpp"
 
-#include <automsgs/msgs/vehicle_msgs/vehicle_msgs.pb.h>
+#include <automsgs/msgs/vehicle_msgs/robot_task_type.pb.h>
 
 namespace autonomy {
 namespace bridge {

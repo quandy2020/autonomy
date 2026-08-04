@@ -16,14 +16,14 @@
 
  #pragma once
 
- #include <algorithm>
- #include <memory>
- #include <mutex>
- #include <string>
- #include <vector>
+#include <algorithm>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <vector>
  
- #include "autolink/autolink.hpp"
- #include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include "autolink/autolink.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
 #include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
@@ -32,16 +32,15 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
- #include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
- #include "autonomy/control/common/controller_exceptions.hpp"
- #include "autonomy/control/proto/pure_pursuit_controller.pb.h"
- #include "autonomy/control/utils/odometry_utils.hpp"
- #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
- #include "autonomy/map/costmap_2d/filters/filter_values.hpp"
- #include "autonomy/map/costmap_2d/footprint_collision_checker.hpp"
- #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
+#include "autonomy/control/common/controller_exceptions.hpp"
+#include "autonomy/control/proto/pure_pursuit_controller.pb.h"
+#include "autonomy/control/utils/odometry_utils.hpp"
+#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
+#include "autonomy/map/costmap_2d/filters/filter_values.hpp"
+#include "autonomy/map/costmap_2d/footprint_collision_checker.hpp"
+#include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
  
  namespace autonomy {
  namespace control {
@@ -106,7 +105,7 @@
          map::costmap_2d::FootprintCollisionChecker<map::costmap_2d::Costmap2D*>>
          footprint_collision_checker_;
      const proto::PurePursuitControllerOptions* options_ = nullptr;
-     std::shared_ptr<autolink::Writer<automsgs::msgs::planning_msgs::Path>>
+     std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>>
          carrot_arc_pub_;
  };
  

@@ -85,7 +85,7 @@ void NavfnPlanner::InitFromOptions() {
 uint32 NavfnPlanner::CreatePlan(
     const automsgs::msgs::geometry_msgs::PoseStamped& start,
     const automsgs::msgs::geometry_msgs::PoseStamped& goal,
-    automsgs::msgs::planning_msgs::Path& plan, std::function<bool()> cancel_checker) {
+    automsgs::msgs::nav_msgs::Path& plan, std::function<bool()> cancel_checker) {
     if (!costmap_) {
         AERROR << "Costmap is not set for planner " << name_;
         return static_cast<uint32>(
@@ -145,7 +145,7 @@ bool NavfnPlanner::makePlan(const automsgs::msgs::geometry_msgs::Pose& start,
                             const automsgs::msgs::geometry_msgs::Pose& goal,
                             double tolerance,
                             std::function<bool()> cancel_checker,
-                            automsgs::msgs::planning_msgs::Path& plan) {
+                            automsgs::msgs::nav_msgs::Path& plan) {
     // clear the plan, just in case
     plan.clear_poses();
 
@@ -296,7 +296,7 @@ bool NavfnPlanner::makePlan(const automsgs::msgs::geometry_msgs::Pose& start,
 
 void NavfnPlanner::smoothApproachToGoal(
     const automsgs::msgs::geometry_msgs::Pose& goal,
-    automsgs::msgs::planning_msgs::Path& plan) {
+    automsgs::msgs::nav_msgs::Path& plan) {
     // Replace the last pose of the computed path if it's actually further away
     // to the second to last pose than the goal pose.
     if (plan.poses_size() >= 2) {
@@ -316,7 +316,7 @@ void NavfnPlanner::smoothApproachToGoal(
 
 bool NavfnPlanner::getPlanFromPotential(
     const automsgs::msgs::geometry_msgs::Pose& goal,
-    automsgs::msgs::planning_msgs::Path& plan) {
+    automsgs::msgs::nav_msgs::Path& plan) {
     // clear the plan, just in case
     plan.clear_poses();
 

@@ -17,7 +17,6 @@
 #pragma once
 
 #include "autonomy/common/time.hpp"
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
@@ -28,10 +27,10 @@
 namespace autonomy {
 namespace sensor {
 
-using OdometryData = automsgs::msgs::planning_msgs::Odometry;
-using OdometryProto = automsgs::msgs::planning_msgs::Odometry;
+using OdometryData = automsgs::msgs::nav_msgs::Odometry;
+using OdometryProto = automsgs::msgs::nav_msgs::Odometry;
 
-// Converts 'data' to a proto::planning_msgs::Odometry.
+// Converts 'data' to a automsgs::msgs::nav_msgs::Odometry.
 OdometryProto ToProto(const OdometryData& data);
 
 // Converts 'proto' to OdometryData.

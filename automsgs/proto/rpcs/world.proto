@@ -18,8 +18,8 @@ package automsgs.rpcs.world;
 
 import "automsgs/msgs/std_msgs/header.proto";
 import "automsgs/msgs/geometry_msgs/pose.proto";
-import "automsgs/msgs/nav_msgs/occupancy_grid.proto";
-import "automsgs/msgs/nav_msgs/map_meta_data.proto";
+import "automsgs/msgs/map_msgs/map_meta_data.proto";
+import "automsgs/msgs/map_msgs/occupancy_grid.proto";
 import "automsgs/rpcs/status.proto";
 
 // =============================================================================
@@ -95,7 +95,7 @@ message GetMapRequest {
 // Response: full occupancy grid map.
 message GetMapResponse {
   automsgs.rpcs.common.Status status = 1;
-  automsgs.msgs.nav_msgs.OccupancyGrid map = 2;  // Grid (header, info, data).
+  automsgs.msgs.map_msgs.OccupancyGrid map = 2;  // Grid (header, info, data).
 }
 
 // Request: get map metadata (no grid data).
@@ -107,7 +107,7 @@ message GetMapMetadataRequest {
 // Response: map metadata and map_id.
 message GetMapMetadataResponse {
   automsgs.rpcs.common.Status status = 1;
-  automsgs.msgs.nav_msgs.MapMetaData metadata = 2;  // Resolution, size, origin, etc.
+  automsgs.msgs.map_msgs.MapMetaData metadata = 2;  // Resolution, size, origin, etc.
   string map_id = 3;
 }
 
@@ -116,7 +116,7 @@ message SaveMapRequest {
   automsgs.msgs.std_msgs.Header header = 1;
   string map_id = 2;    // If set, update this map; else create new.
   string map_name = 3;
-  automsgs.msgs.nav_msgs.OccupancyGrid map = 4;  // Full grid to save.
+  automsgs.msgs.map_msgs.OccupancyGrid map = 4;  // Full grid to save.
 }
 
 // Response: save result and (assigned or updated) map_id.

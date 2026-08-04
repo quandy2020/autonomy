@@ -340,7 +340,7 @@ const ExampleScene* FindExample(const std::vector<ExampleScene>& examples,
   }
   const ExampleScene* match = nullptr;
   for (const auto& scene : examples) {
-    std::string key = scene.name();
+    std::string key = scene.name;
     for (char& c : key) {
       c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     }
@@ -369,7 +369,7 @@ void PublishScene(const ExampleScene& scene, const std::string& prefix,
 
 void ListExamples() {
   for (const auto& scene : BuildExamples()) {
-    std::cout << scene.name()<< '\t' << scene.route << '\t' << scene.title << '\n';
+    std::cout << scene.name << '\t' << scene.route << '\t' << scene.title << '\n';
   }
 }
 

@@ -65,9 +65,9 @@ endif()
 
 # Playback panel compiles autolink recorder sources directly (no internal lib link).
 set(AUTOVIZ_RECORDER_SOURCES
-  ${AUTOVIZ_DEPS_ROOT}/autolink/autolink/tools/autolink_recorder/player/player.cpp
-  ${AUTOVIZ_DEPS_ROOT}/autolink/autolink/tools/autolink_recorder/player/play_task.cpp
-  ${AUTOVIZ_DEPS_ROOT}/autolink/autolink/tools/autolink_recorder/player/play_task_buffer.cpp
-  ${AUTOVIZ_DEPS_ROOT}/autolink/autolink/tools/autolink_recorder/player/play_task_consumer.cpp
-  ${AUTOVIZ_DEPS_ROOT}/autolink/autolink/tools/autolink_recorder/player/play_task_producer.cpp
+  ${AUTOVIZ_DEPS_ROOT}/autolink/autolink/tools/recorder/player/player.cpp
+  ${AUTOVIZ_DEPS_ROOT}/autolink/autolink/tools/recorder/player/play_task.cpp
+  ${AUTOVIZ_DEPS_ROOT}/autolink/autolink/tools/recorder/player/play_task_buffer.cpp
+  ${AUTOVIZ_DEPS_ROOT}/autolink/autolink/tools/recorder/player/play_task_consumer.cpp
+  ${AUTOVIZ_DEPS_ROOT}/autolink/autolink/tools/recorder/player/play_task_producer.cpp
 )

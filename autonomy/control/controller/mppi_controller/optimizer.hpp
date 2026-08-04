@@ -16,13 +16,13 @@
 
  #pragma once
 
- #include <Eigen/Dense>
- #include <memory>
- #include <string>
+#include <Eigen/Dense>
+#include <memory>
+#include <string>
  
- #include "autolink/autolink.hpp"
- #include "autonomy/common/macros.hpp"
- #include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include "autolink/autolink.hpp"
+#include "autonomy/common/macros.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
 #include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
@@ -31,20 +31,19 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
- #include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
- #include "autonomy/control/common/controller_exceptions.hpp"
- #include "autonomy/control/common/goal_checker_interface.hpp"
- #include "autonomy/control/controller/mppi_controller/critic_manager.hpp"
- #include "autonomy/control/controller/mppi_controller/models/optimizer_settings.hpp"
- #include "autonomy/control/controller/mppi_controller/models/state.hpp"
- #include "autonomy/control/controller/mppi_controller/motion_models.hpp"
- #include "autonomy/control/controller/mppi_controller/tools/noise_generator.hpp"
- #include "autonomy/control/controller/mppi_controller/tools/utils.hpp"
- #include "autonomy/control/proto/mppi_controller.pb.h"
- #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
- #include "autonomy/transform/tf2/utils.h"
+#include "autonomy/control/common/controller_exceptions.hpp"
+#include "autonomy/control/common/goal_checker_interface.hpp"
+#include "autonomy/control/controller/mppi_controller/critic_manager.hpp"
+#include "autonomy/control/controller/mppi_controller/models/optimizer_settings.hpp"
+#include "autonomy/control/controller/mppi_controller/models/state.hpp"
+#include "autonomy/control/controller/mppi_controller/motion_models.hpp"
+#include "autonomy/control/controller/mppi_controller/tools/noise_generator.hpp"
+#include "autonomy/control/controller/mppi_controller/tools/utils.hpp"
+#include "autonomy/control/proto/mppi_controller.pb.h"
+#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
+#include "autonomy/transform/tf2/utils.h"
  
  namespace autonomy {
  namespace control {
@@ -100,7 +99,7 @@
      automsgs::msgs::geometry_msgs::TwistStamped evalControl(
          const automsgs::msgs::geometry_msgs::PoseStamped& robot_pose,
          const automsgs::msgs::geometry_msgs::Twist& robot_speed,
-         const automsgs::msgs::planning_msgs::Path& plan,
+         const automsgs::msgs::nav_msgs::Path& plan,
          const automsgs::msgs::geometry_msgs::Pose& goal,
          common::GoalChecker* goal_checker);
  
@@ -158,7 +157,7 @@
       */
      void prepare(const automsgs::msgs::geometry_msgs::PoseStamped& robot_pose,
                   const automsgs::msgs::geometry_msgs::Twist& robot_speed,
-                  const automsgs::msgs::planning_msgs::Path& plan,
+                  const automsgs::msgs::nav_msgs::Path& plan,
                   const automsgs::msgs::geometry_msgs::Pose& goal,
                   common::GoalChecker* goal_checker);
  

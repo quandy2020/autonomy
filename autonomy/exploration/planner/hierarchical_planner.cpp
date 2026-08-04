@@ -57,7 +57,7 @@ void HierarchicalPlanner::SetExplorationArea(
 }
 
 void HierarchicalPlanner::UpdateOdometry(
-    const automsgs::msgs::planning_msgs::Odometry& odom)
+    const automsgs::msgs::nav_msgs::Odometry& odom)
 {
     env_.UpdateOdometry(odom);
     has_odom_ = true;
@@ -167,7 +167,7 @@ std::vector<int> HierarchicalPlanner::SolveGlobalCellOrder() const
 }
 
 automsgs::msgs::geometry_msgs::PoseStamped HierarchicalPlanner::ComputeLookahead(
-    const automsgs::msgs::planning_msgs::Path& path) const
+    const automsgs::msgs::nav_msgs::Path& path) const
 {
     if (path.poses_size() < 2) {
         return MakePose(env_.robot_x(), env_.robot_y(), env_.robot_z(),

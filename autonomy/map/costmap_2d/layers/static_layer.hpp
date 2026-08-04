@@ -29,8 +29,8 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
-#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
-#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid_update.pb.h>
 #include "autonomy/map/costmap_2d/costmap_layer.hpp"
 #include "autonomy/map/costmap_2d/footprint.hpp"
 #include "autonomy/map/costmap_2d/layered_costmap.hpp"

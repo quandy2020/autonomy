@@ -30,7 +30,6 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/control/controller_server.hpp"
@@ -81,7 +80,7 @@ void PublishSimState(autonomy::control::ControllerServer* controller,
                      const std::string& global_frame,
                      const std::string& base_frame, double x, double y,
                      double yaw, const automsgs::msgs::geometry_msgs::Twist& twist) {
-    automsgs::msgs::planning_msgs::Odometry odom;
+    automsgs::msgs::nav_msgs::Odometry odom;
     odom.mutable_header()->set_frame_id(global_frame);
     odom.set_child_frame_id(base_frame);
     odom.mutable_pose()->mutable_pose()->mutable_pose()->mutable_position()->set_x(x);

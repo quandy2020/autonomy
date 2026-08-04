@@ -31,7 +31,6 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/planning/proto/planning_options.pb.h"
@@ -68,7 +67,7 @@ public:
 
     virtual uint32 CreatePlan(const automsgs::msgs::geometry_msgs::PoseStamped& start,
                               const automsgs::msgs::geometry_msgs::PoseStamped& goal,
-                              automsgs::msgs::planning_msgs::Path& plan,
+                              automsgs::msgs::nav_msgs::Path& plan,
                               std::function<bool()> cancel_checker) = 0;
 
 protected:

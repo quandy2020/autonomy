@@ -45,7 +45,7 @@
  
      // TODO: Create autolink writer for visualization
      // carrot_arc_pub_ =
-     // node->CreateWriter<automsgs::msgs::planning_msgs::Path>("lookahead_collision_arc");
+     // node->CreateWriter<automsgs::msgs::nav_msgs::Path>("lookahead_collision_arc");
  }
  
  bool CollisionChecker::isCollisionImminent(
@@ -63,7 +63,7 @@
      }
  
      // visualization messages
-     automsgs::msgs::planning_msgs::Path arc_pts_msg;
+     automsgs::msgs::nav_msgs::Path arc_pts_msg;
      arc_pts_msg.mutable_header()->set_frame_id(costmap_wrapper_->getGlobalFrameID());
      *arc_pts_msg.mutable_header()->mutable_stamp() = robot_pose.header().stamp();
      automsgs::msgs::geometry_msgs::PoseStamped pose_msg;

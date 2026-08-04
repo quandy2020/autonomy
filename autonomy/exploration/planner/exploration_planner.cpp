@@ -81,7 +81,7 @@ void ExplorationPlanner::UseDefaultExplorationArea()
 }
 
 void ExplorationPlanner::UpdateOdometry(
-    const automsgs::msgs::planning_msgs::Odometry& odom)
+    const automsgs::msgs::nav_msgs::Odometry& odom)
 {
     planner_.UpdateOdometry(odom);
 }
@@ -138,7 +138,7 @@ float ExplorationPlanner::ExploredAreaM2() const
     return planner_.ExploredAreaM2();
 }
 
-automsgs::msgs::planning_msgs::Path ExplorationPlanner::GetExplorationPath() const
+automsgs::msgs::nav_msgs::Path ExplorationPlanner::GetExplorationPath() const
 {
     return planner_.GetExplorationPath();
 }

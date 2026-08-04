@@ -108,7 +108,7 @@
       * @brief Set new reference path to track
       * @param path Path to track
       */
-     void SetPlan(const automsgs::msgs::planning_msgs::Path& path) override;
+     void SetPlan(const automsgs::msgs::nav_msgs::Path& path) override;
  
      /**
       * @brief Set new speed limit from callback
@@ -151,7 +151,7 @@
       * @param cmd_stamp Command stamp
       * @param optimal_trajectory Optimal trajectory, if already computed
       */
-     void Visualize(automsgs::msgs::planning_msgs::Path transformed_plan,
+     void Visualize(automsgs::msgs::nav_msgs::Path transformed_plan,
                     const automsgs::msgs::builtin_interfaces::Time& cmd_stamp,
                     const Eigen::ArrayXXf& optimal_trajectory);
  
@@ -159,7 +159,7 @@
      std::shared_ptr<autolink::Node> parent_;
      std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
      std::shared_ptr<autonomy::transform::Buffer> tf_buffer_;
-     std::shared_ptr<autolink::Writer<automsgs::msgs::planning_msgs::Path>>
+     std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>>
          opt_traj_pub_;
  
      proto::MPPIControllerOptions options_;

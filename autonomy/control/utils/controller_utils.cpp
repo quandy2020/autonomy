@@ -64,7 +64,7 @@ automsgs::msgs::geometry_msgs::Point LinearInterpolation(
 
 automsgs::msgs::geometry_msgs::PoseStamped GetLookAheadPoint(
     double& lookahead_dist,
-    const automsgs::msgs::planning_msgs::Path& transformed_plan,
+    const automsgs::msgs::nav_msgs::Path& transformed_plan,
     const bool interpolate_after_goal) {
     const auto& poses = transformed_plan.poses();
     auto goal_pose_it = poses.begin();

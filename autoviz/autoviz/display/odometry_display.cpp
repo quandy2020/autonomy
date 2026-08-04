@@ -30,7 +30,7 @@ float yawFromQuaternion(
 OdometryDisplay::OdometryDisplay(std::string channel)
     : ChannelDisplay<automsgs::msgs::nav_msgs::Odometry>(
           "Odometry", std::move(channel),
-          "automsgs.msgs.planning_msgs.Odometry") {
+          "automsgs.msgs.nav_msgs.Odometry") {
   setProperties({});
 }
 

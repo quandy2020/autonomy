@@ -40,7 +40,7 @@ bool OdomSmoother::HasOdometry() const {
 }
 
 bool OdomSmoother::GetLatestOdometry(
-    automsgs::msgs::planning_msgs::Odometry& odom) const {
+    automsgs::msgs::nav_msgs::Odometry& odom) const {
   std::lock_guard<std::mutex> lock(odom_mutex_);
   if (!received_odom_ || odom_history_.empty()) {
     return false;
@@ -50,13 +50,13 @@ bool OdomSmoother::GetLatestOdometry(
 }
 
 void OdomSmoother::UpdateOdometry(
-    const automsgs::msgs::planning_msgs::Odometry& msg) {
-  odomCallback(std::make_shared<automsgs::msgs::planning_msgs::Odometry>(msg));
+    const automsgs::msgs::nav_msgs::Odometry& msg) {
+  odomCallback(std::make_shared<automsgs::msgs::nav_msgs::Odometry>(msg));
 }
 
 void OdomSmoother::SeedZeroOdometry(const std::string& child_frame_id,
                                     const std::string& parent_frame_id) {
-  automsgs::msgs::planning_msgs::Odometry odom;
+  automsgs::msgs::nav_msgs::Odometry odom;
   *odom.mutable_header()->mutable_stamp() = automsgs::msgs::builtin_interfaces::TimeNow();
   odom.mutable_header()->set_frame_id(parent_frame_id);
   odom.set_child_frame_id(child_frame_id);
@@ -109,7 +109,7 @@ automsgs::msgs::geometry_msgs::TwistStamped OdomSmoother::getRawTwistStamped() {
 }
 
 void OdomSmoother::odomCallback(
-    const std::shared_ptr<automsgs::msgs::planning_msgs::Odometry>& msg) {
+    const std::shared_ptr<automsgs::msgs::nav_msgs::Odometry>& msg) {
   std::lock_guard<std::mutex> lock(odom_mutex_);
   received_odom_ = true;
 

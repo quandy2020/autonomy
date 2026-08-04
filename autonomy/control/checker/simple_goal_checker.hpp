@@ -68,7 +68,7 @@ public:
         const automsgs::msgs::geometry_msgs::Pose& query_pose,
         const automsgs::msgs::geometry_msgs::Pose& goal_pose,
         const automsgs::msgs::geometry_msgs::Twist& velocity,
-        const automsgs::msgs::planning_msgs::Path& transformed_global_plan) override;
+        const automsgs::msgs::nav_msgs::Path& transformed_global_plan) override;
 
     bool GetTolerances(automsgs::msgs::geometry_msgs::Pose& pose_tolerance,
                        automsgs::msgs::geometry_msgs::Twist& vel_tolerance) override;

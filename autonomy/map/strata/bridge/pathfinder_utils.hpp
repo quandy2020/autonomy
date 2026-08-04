@@ -19,7 +19,7 @@
 #include <utility>
 #include <vector>
 
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/nav_msgs/path.pb.h>
 #include "autonomy/commsgs/std_msgs.hpp"
 #include "autonomy/map/strata/constants.hpp"
 #include "autonomy/map/strata/render/scene_state.hpp"
@@ -64,9 +64,9 @@ inline std::vector<ObstaclePolygon> BuildPathfinderObstacles(
     return obstacles;
 }
 
-inline commsgs::planning_msgs::Path BuildPathMessage(
+inline automsgs::msgs::nav_msgs::Path BuildPathMessage(
     const std::vector<LngLat>& waypoints, const commsgs::std_msgs::Header& header) {
-    commsgs::planning_msgs::Path path;
+    automsgs::msgs::nav_msgs::Path path;
     path.header = header;
     path.poses.reserve(waypoints.size());
     for (const auto& point : waypoints) {

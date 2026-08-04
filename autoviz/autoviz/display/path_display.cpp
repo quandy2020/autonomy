@@ -57,7 +57,7 @@ QVector3D rotateByQuaternion(const QQuaternion& q, const QVector3D& v) {
 PathDisplay::PathDisplay(std::string channel)
     : ChannelDisplay<automsgs::msgs::nav_msgs::Path>(
           "Path", std::move(channel),
-          "automsgs.msgs.planning_msgs.Path") {
+          "automsgs.msgs.nav_msgs.Path") {
   setProperties({});
   resizeBuffers(1);
 }
