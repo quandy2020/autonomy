@@ -141,7 +141,7 @@ void PointCloud2Display::onDraw(rendering::SceneOverlay& scene) {
   std::vector<ColoredPoint3D> colored;
   colored.reserve(points_.size());
   for (const auto& pt : points_) {
-    colored.push_back({pt.position(), pt.color});
+    colored.push_back({pt.position, pt.color});
   }
   drawColoredPointsOgreOrGl(context_, scene, name(), typeId(), point_size, style,
                           colored, true);

@@ -35,7 +35,7 @@ bool drawColoredPointsOgreOrGl(common::DisplayContext* context,
     positions.reserve(points.size());
     colors.reserve(points.size());
     for (const auto& pt : points) {
-      positions.push_back(pt.position());
+      positions.push_back(pt.position);
       colors.push_back(pt.color);
     }
     context->ogre_scene_host->setDisplayPoints(display_name, point_size, style,
@@ -54,7 +54,7 @@ bool drawColoredPointsOgreOrGl(common::DisplayContext* context,
             common::CreateSelectionHandler<common::PointCloudSelectionHandler>();
         handler->setDisplayInfo(display_name, display_type);
         handler->setPointIndex(static_cast<int>(i));
-        scene.registerPickEntry(points[i].position(), static_cast<int>(i), handler);
+        scene.registerPickEntry(points[i].position, static_cast<int>(i), handler);
       }
     }
     return true;
@@ -72,7 +72,7 @@ bool drawColoredPointsOgreOrGl(common::DisplayContext* context,
       handler->setDisplayInfo(display_name, display_type);
       handler->setPointIndex(static_cast<int>(i));
     }
-    scene.addPickPoint(points[i].position(), points[i].color, static_cast<int>(i),
+    scene.addPickPoint(points[i].position, points[i].color, static_cast<int>(i),
                        handler);
   }
   return false;

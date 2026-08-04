@@ -72,8 +72,8 @@ void GridCellsDisplay::onDraw(rendering::SceneOverlay& scene) {
   color.setAlphaF(alpha);
 
   for (const Cell& cell : cells_) {
-    const float hw = cell.width()* 0.5f;
-    const float hh = cell.height()* 0.5f;
+    const float hw = cell.width* 0.5f;
+    const float hh = cell.height* 0.5f;
     const QVector3D c = cell.center;
     const QVector3D p0(c.x() - hw, c.y() - hh, c.z());
     const QVector3D p1(c.x() + hw, c.y() - hh, c.z());

@@ -136,11 +136,11 @@ void PathDisplay::processMessage(
   ++messages_received_;
 
   PathSnapshot& snapshot = path_buffers_[buffer_index];
-  snapshot.clear_poses();
-  snapshot.poses().reserve(static_cast<std::size_t>(message.poses_size()));
+  snapshot.poses.clear();
+  snapshot.poses.reserve(static_cast<std::size_t>(message.poses_size()));
   for (const auto& pose_stamped : message.poses()) {
     const LocalPathPose local = makePathPose(pose_stamped, have_tf, tf, offset);
-    *snapshot.mutable_poses()->Add() = {local.position(), local.orientation};
+    snapshot.poses.push_back({local.position, local.orientation});
   }
 
   if (context_->request_redraw) {
@@ -158,7 +158,7 @@ void PathDisplay::drawPathPolyline(
   std::vector<QVector3D> points;
   points.reserve(poses.size());
   for (const auto& pose : poses) {
-    points.push_back(pose.position());
+    points.push_back(pose.position);
   }
   const std::string draw_name = name() + suffix;
   if (useBillboardLineStyle()) {
@@ -191,14 +191,14 @@ void PathDisplay::drawPoseMarkers(
     segments.reserve(poses.size() * 3);
     for (const auto& pose : poses) {
       const QVector3D x_end =
-          pose.position + rotateByQuaternion(pose.orientation(), QVector3D(length, 0.f, 0.f));
+          pose.position + rotateByQuaternion(pose.orientation, QVector3D(length, 0.f, 0.f));
       const QVector3D y_end =
-          pose.position + rotateByQuaternion(pose.orientation(), QVector3D(0.f, length, 0.f));
+          pose.position + rotateByQuaternion(pose.orientation, QVector3D(0.f, length, 0.f));
       const QVector3D z_end =
-          pose.position + rotateByQuaternion(pose.orientation(), QVector3D(0.f, 0.f, length));
-      segments.push_back({pose.position(), x_end, QColor(220, 60, 60)});
-      segments.push_back({pose.position(), y_end, QColor(60, 220, 60)});
-      segments.push_back({pose.position(), z_end, QColor(60, 120, 220)});
+          pose.position + rotateByQuaternion(pose.orientation, QVector3D(0.f, 0.f, length));
+      segments.push_back({pose.position, x_end, QColor(220, 60, 60)});
+      segments.push_back({pose.position, y_end, QColor(60, 220, 60)});
+      segments.push_back({pose.position, z_end, QColor(60, 120, 220)});
     }
     drawLineSegmentsOgreOrGl(context_, scene, name() + suffix + "/axes",
                              segments);
@@ -222,10 +222,10 @@ void PathDisplay::drawPoseMarkers(
     for (std::size_t i = 0; i < poses.size(); ++i) {
       const auto& pose = poses[i];
       const QVector3D direction =
-          rotateByQuaternion(pose.orientation(), QVector3D(total_length, 0.f, 0.f));
+          rotateByQuaternion(pose.orientation, QVector3D(total_length, 0.f, 0.f));
       drawArrowOgreOrGl(context_, scene,
                         name() + suffix + "/arrow/" + std::to_string(i),
-                        pose.position(), pose.position + direction, arrow_color,
+                        pose.position, pose.position + direction, arrow_color,
                         head_fraction, shaft_diameter, head_diameter);
     }
   }

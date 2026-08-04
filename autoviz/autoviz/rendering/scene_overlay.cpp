@@ -364,7 +364,7 @@ void SceneOverlay::setPickSource(const std::string* display_name,
 
 void SceneOverlay::recordPick(const QVector3D& position) {
   PickSample sample;
-  *sample.mutable_position() = position;
+  sample.position = position;
   if (has_pick_display_name_) {
     sample.display_name = pick_display_name_;
   }
@@ -429,7 +429,7 @@ void SceneOverlay::addPickPoint(
     if (has_pick_display_type_) {
       record.display_type = pick_display_type_;
     }
-    *record.mutable_position() = p;
+    record.position = p;
     record.point_index = point_index;
     const uint32_t handle = pick_registry_->registerPick(record);
     std::shared_ptr<common::SelectionHandler> bound = handler;
@@ -470,7 +470,7 @@ common::PickHandle SceneOverlay::registerPickEntry(
   if (has_pick_display_type_) {
     record.display_type = pick_display_type_;
   }
-  *record.mutable_position() = position;
+  record.position = position;
   record.point_index = point_index;
   const common::PickHandle handle = pick_registry_->registerPick(record);
   std::shared_ptr<common::SelectionHandler> bound = handler;
@@ -864,7 +864,7 @@ void SceneOverlay::appendPointSpriteBatch(
   batch.image = pointDiscImage();
   batch.vertices.reserve(point_vertices_.size() * 6);
   for (const auto& point : point_vertices_) {
-    const QVector3D c = point.position();
+    const QVector3D c = point.position;
     const QVector3D tl = c - camera_right * half + camera_up * half;
     const QVector3D tr = c + camera_right * half + camera_up * half;
     const QVector3D br = c + camera_right * half - camera_up * half;
@@ -1011,7 +1011,7 @@ void SceneOverlay::renderPbrMesh(const QMatrix4x4& mvp, const QMatrix4x4& view) 
   std::vector<GpuPbrVertex> gpu_vertices;
   gpu_vertices.reserve(pbr_vertices_.size());
   for (const PbrVertex& vertex : pbr_vertices_) {
-    gpu_vertices.push_back({vertex.position(), vertex.normal, vertex.albedo,
+    gpu_vertices.push_back({vertex.position, vertex.normal, vertex.albedo,
                             QVector2D(vertex.metallic, vertex.roughness)});
   }
 
@@ -1092,7 +1092,7 @@ void SceneOverlay::renderPbrTexturedMeshes(const QMatrix4x4& mvp,
     std::vector<GpuVertex> gpu_vertices;
     gpu_vertices.reserve(batch.vertices.size());
     for (const PbrTexturedVertex& vertex : batch.vertices) {
-      gpu_vertices.push_back({vertex.position(), vertex.normal, vertex.uv, vertex.tint,
+      gpu_vertices.push_back({vertex.position, vertex.normal, vertex.uv, vertex.tint,
                             QVector2D(vertex.metallic, vertex.roughness)});
     }
     gl_extra->glBindVertexArray(pbr_textured_vao_);
@@ -1219,7 +1219,7 @@ void SceneOverlay::appendPickPointSpriteBatch(
   const float half = std::max(0.004f, point_size_ * 0.012f);
   triangles->reserve(triangles->size() + pick_point_vertices_.size() * 6);
   for (const PickVertex& point : pick_point_vertices_) {
-    const QVector3D c = point.position();
+    const QVector3D c = point.position;
     const QVector3D tl = c - camera_right * half + camera_up * half;
     const QVector3D tr = c + camera_right * half + camera_up * half;
     const QVector3D br = c + camera_right * half - camera_up * half;
@@ -1248,7 +1248,7 @@ void SceneOverlay::renderPickPass(const QMatrix4x4& view,
   std::vector<GpuPickVertex> gpu_vertices;
   gpu_vertices.reserve(billboard_tris.size());
   for (const PickVertex& vertex : billboard_tris) {
-    gpu_vertices.push_back({vertex.position(), HandleToVec3(vertex.handle)});
+    gpu_vertices.push_back({vertex.position, HandleToVec3(vertex.handle)});
   }
   if (gpu_vertices.empty()) {
     return;

@@ -272,8 +272,8 @@ void StrataSemanticZoneDisplay::onDraw(rendering::SceneOverlay& scene) {
       const QVector3D centroid = PolygonCentroid(zone.polygon);
       TextLabelInstance label;
       label.text = zone.label.toStdString();
-      *label.mutable_position() = centroid + QVector3D(0.f, 0.f, 0.03f);
-      *label.mutable_color() = use_custom_colors ? custom_label : zone.outline_color;
+      label.position = centroid + QVector3D(0.f, 0.f, 0.03f);
+      label.color = use_custom_colors ? custom_label : zone.outline_color;
       label.char_height = 0.1f;
       drawLabelsOgreOrGl(context_, scene, name() + "/label/" + std::to_string(i), {label});
     }

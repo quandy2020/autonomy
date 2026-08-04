@@ -400,8 +400,8 @@ bool ViewController::handleMouseEvent(const ViewportMouseEvent& event) {
       }
       drag_mode_ = mode;
       dragging_ = true;
-      last_mouse_x_ = event.x();
-      last_mouse_y_ = event.y();
+      last_mouse_x_ = event.x;
+      last_mouse_y_ = event.y;
       if (type_ != ViewControllerType::kFps &&
           type_ != ViewControllerType::kFpsMotion) {
         setFocalShapeVisible(true);
@@ -418,10 +418,10 @@ bool ViewController::handleMouseEvent(const ViewportMouseEvent& event) {
         return false;
       }
       {
-        const int diff_x = event.x() - last_mouse_x_;
-        const int diff_y = event.y() - last_mouse_y_;
-        last_mouse_x_ = event.x();
-        last_mouse_y_ = event.y();
+        const int diff_x = event.x - last_mouse_x_;
+        const int diff_y = event.y - last_mouse_y_;
+        last_mouse_x_ = event.x;
+        last_mouse_y_ = event.y;
         const float aspect =
             static_cast<float>(event.viewport_width) /
             static_cast<float>(std::max(1, event.viewport_height));

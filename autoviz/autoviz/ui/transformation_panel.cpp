@@ -56,7 +56,7 @@ void TransformationPanel::populateList() {
   const std::string active_id = manager_->currentTransformerId();
   pending_transformer_id_ = active_id;
   for (const common::PluginInfo& info : manager_->availableTransformers()) {
-    auto* item = new QListWidgetItem(QString::fromStdString(info.name()), list_);
+    auto* item = new QListWidgetItem(QString::fromStdString(info.name), list_);
     item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsUserCheckable |
                    Qt::ItemIsSelectable);
     item->setCheckState(info.class_id == active_id ? Qt::Checked

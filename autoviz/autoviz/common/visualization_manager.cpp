@@ -5,6 +5,7 @@
 #include "autoviz/common/visualization_manager.hpp"
 
 #include "autolink/time/time.hpp"
+#include <automsgs/msgs/time_utils.hpp>
 #include "autoviz/common/display_factory.hpp"
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/common/display_context.hpp"
@@ -390,7 +391,7 @@ void VisualizationManager::syncReferenceGridFromDisplays() {
           display->propertyValue("cell_count", "20"), 20.f));
       settings.cell_length = common::ParseFloatProperty(
           display->propertyValue("cell_size", "1.0"), 1.f);
-      *settings.mutable_color() = common::ParseColorProperty(
+      settings.color = common::ParseColorProperty(
           display->propertyValue("color", "80;80;80"), QColor(80, 80, 80));
       settings.alpha = common::ParseFloatProperty(
           display->propertyValue("alpha", "1.0"), 1.f);
@@ -751,7 +752,7 @@ double VisualizationManager::simTimeSec() const {
       (playback_.isPlaying() || playback_.isPaused())) {
     return playback_.currentTimeSec();
   }
-  return autolink::automsgs::msgs::builtin_interfaces::TimeNow().ToSecond();
+  return static_cast<double>(automsgs::msgs::builtin_interfaces::TimeToNanoseconds(automsgs::msgs::builtin_interfaces::TimeNow())) * 1e-9;
 }
 
 double VisualizationManager::simTimeElapsedSec() const {
@@ -764,7 +765,7 @@ void VisualizationManager::setTimePaused(bool paused) {
         (playback_.isPlaying() || playback_.isPaused())) {
       paused_sim_sec_ = playback_.currentTimeSec();
     } else {
-      paused_sim_sec_ = autolink::automsgs::msgs::builtin_interfaces::TimeNow().ToSecond();
+      paused_sim_sec_ = static_cast<double>(automsgs::msgs::builtin_interfaces::TimeToNanoseconds(automsgs::msgs::builtin_interfaces::TimeNow())) * 1e-9;
     }
   }
   time_paused_ = paused;
@@ -780,7 +781,7 @@ void VisualizationManager::setTimeSyncSource(const std::string& source) {
 
 void VisualizationManager::resetTime() {
   wall_start_ = std::chrono::steady_clock::now();
-  sim_origin_sec_ = autolink::automsgs::msgs::builtin_interfaces::TimeNow().ToSecond();
+  sim_origin_sec_ = static_cast<double>(automsgs::msgs::builtin_interfaces::TimeToNanoseconds(automsgs::msgs::builtin_interfaces::TimeNow())) * 1e-9;
   time_paused_ = false;
   paused_sim_sec_ = 0.0;
 }

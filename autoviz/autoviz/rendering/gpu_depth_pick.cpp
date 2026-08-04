@@ -60,7 +60,7 @@ GpuDepthPickResult pickWorldPointFromDepthBuffer(int pixel_x, int pixel_y,
       (2.f * static_cast<float>(read_y) / static_cast<float>(viewport_height)) -
       1.f;
   const QMatrix4x4 inverse = (projection * view).inverted();
-  *result.mutable_position() = unprojectDepthSample(inverse, ndc_x, ndc_y, depth);
+  result.position = unprojectDepthSample(inverse, ndc_x, ndc_y, depth);
   result.hit = true;
   return result;
 }

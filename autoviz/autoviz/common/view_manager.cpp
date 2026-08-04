@@ -56,7 +56,7 @@ bool ViewManager::addSavedView(const SavedViewConfig& view) {
     return false;
   }
   for (const auto& existing : saved_views_) {
-    if (existing.name == view.name()) {
+    if (existing.name == view.name) {
       return false;
     }
   }

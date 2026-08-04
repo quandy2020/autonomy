@@ -73,7 +73,7 @@ void PoseArrayDisplay::processMessage(
     if (have_tf) {
       p = transformPoint(tf, p);
     }
-    *stored.mutable_position() = p;
+    stored.position = p;
     stored.yaw = yawFromQuaternion(pose.orientation());
     poses_.push_back(stored);
   }
@@ -89,8 +89,8 @@ void PoseArrayDisplay::onDraw(rendering::SceneOverlay& scene) {
       common::ParseFloatProperty(propertyValue("axis_length", "0.3"), 0.3f);
   for (const auto& pose : poses_) {
     const QVector3D heading(len * qCos(pose.yaw), len * qSin(pose.yaw), 0.f);
-    scene.addLine(pose.position(), pose.position + heading, color);
-    scene.addPoint(pose.position(), color);
+    scene.addLine(pose.position, pose.position + heading, color);
+    scene.addPoint(pose.position, color);
   }
 }
 

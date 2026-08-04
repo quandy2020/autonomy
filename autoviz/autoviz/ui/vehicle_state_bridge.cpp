@@ -108,7 +108,7 @@ void VehicleStateBridge::updateFromTf(const std::string& fixed_frame,
   const double scale = sceneScaleForModel(state->modelTypeEnum());
   state->setSceneScale(scale);
 
-  const auto zero_time = automsgs::msgs::ZeroTime();
+  const auto zero_time = autoviz::commsgs::ZeroTime();
   try {
     const auto tf = tf_buffer->lookupTransform(fixed_frame, source_frame_,
                                                zero_time);

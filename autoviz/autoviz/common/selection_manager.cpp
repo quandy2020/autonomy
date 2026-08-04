@@ -17,7 +17,7 @@ constexpr float kSelectionEpsilon = 1e-3f;
 
 bool SelectionManager::SameEntry(const SelectionEntry& a,
                                  const SelectionEntry& b) {
-  return (a.position - b.position()).lengthSquared() <=
+  return (a.position - b.position).lengthSquared() <=
          kSelectionEpsilon * kSelectionEpsilon;
 }
 
@@ -82,12 +82,12 @@ void SelectionManager::focusOnSelection() {
     return;
   }
   if (selection_.size() == 1) {
-    focus_callback_(selection_.front().position());
+    focus_callback_(selection_.front().position);
     return;
   }
   QVector3D center(0.f, 0.f, 0.f);
   for (const auto& entry : selection_) {
-    center += entry.position();
+    center += entry.position;
   }
   center /= static_cast<float>(selection_.size());
   focus_callback_(center);

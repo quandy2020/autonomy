@@ -20,7 +20,7 @@ SelectionHandler::properties() const {
 SelectionEntry SelectionHandler::toSelectionEntry(
     const QVector3D& position, int point_index) const {
   SelectionEntry entry;
-  *entry.mutable_position() = position;
+  entry.position = position;
   entry.display_name = display_name_;
   entry.display_type = display_type_;
   entry.pick_handle = handle_;

@@ -107,7 +107,7 @@ void MapDisplay::onDraw(rendering::SceneOverlay& scene) {
   for (const auto& cell : cells_) {
     QColor color = cell.color;
     color.setAlphaF(alpha);
-    scene.addPoint(cell.position(), color);
+    scene.addPoint(cell.position, color);
   }
 }
 

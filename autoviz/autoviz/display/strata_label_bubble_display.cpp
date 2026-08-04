@@ -101,8 +101,8 @@ void StrataLabelBubbleDisplay::onDraw(rendering::SceneOverlay& scene) {
         applyScreenOffset(context_, bubble.anchor, bubble.offset_x, bubble.offset_y);
     TextLabelInstance label;
     label.text = bubble.text.toStdString();
-    *label.mutable_position() = position + QVector3D(0.f, 0.f, 0.08f);
-    *label.mutable_color() = text_color;
+    label.position = position + QVector3D(0.f, 0.f, 0.08f);
+    label.color = text_color;
     label.char_height = label_height;
     labels.push_back(std::move(label));
   }

@@ -119,7 +119,7 @@ void Display::draw(rendering::SceneOverlay& scene) {
 }
 
 void Display::loadFromConfig(const common::DisplayConfig& config) {
-  display_name_ = config.name.empty() ? typeId() : config.name();
+  display_name_ = config.name.empty() ? typeId() : config.name;
   setChannel(config.channel);
   setProperties(config.properties);
   setEnabled(config.enabled);

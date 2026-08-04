@@ -67,12 +67,12 @@ void ConsiderGeometryVertex(const SceneOverlay::ColoredVertex& vertex,
                             PickResult* best) {
   float sx = 0.f;
   float sy = 0.f;
-  if (!ProjectToScreen(mvp, viewport_width, viewport_height, vertex.position(),
+  if (!ProjectToScreen(mvp, viewport_width, viewport_height, vertex.position,
                        &sx, &sy)) {
     return;
   }
-  ConsiderCandidate(vertex.position(), {}, {}, sx, sy,
-                    EyeDepth(view, vertex.position()), pixel_x, pixel_y,
+  ConsiderCandidate(vertex.position, {}, {}, sx, sy,
+                    EyeDepth(view, vertex.position), pixel_x, pixel_y,
                     max_pixel_distance, best);
 }
 
@@ -130,7 +130,7 @@ void ConsiderLineSegments(const SceneOverlay& overlay, const QMatrix4x4& view,
   for (std::size_t i = 0; i + 1 < lines.size(); i += 2) {
     QVector3D hit_on_segment;
     const float distance = ClosestRaySegmentDistance(
-        ray_origin, ray_direction, lines[i].position(), lines[i + 1].position(),
+        ray_origin, ray_direction, lines[i].position, lines[i + 1].position,
         &hit_on_segment);
     if (distance > 0.25f) {
       continue;
@@ -151,7 +151,7 @@ PickResult MatchPickMetadataNear(const SceneOverlay& overlay,
                                  const QVector3D& world) {
   PickResult result;
   result.hit = true;
-  *result.mutable_position() = world;
+  result.position = world;
   float best_dist_sq = std::numeric_limits<float>::max();
   for (const auto& sample : overlay.pickSamples()) {
     const float dist_sq = (sample.position - world).lengthSquared();
@@ -180,12 +180,12 @@ PickResult pickNearestScenePoint(const SceneOverlay& overlay,
   for (const auto& sample : overlay.pickSamples()) {
     float sx = 0.f;
     float sy = 0.f;
-    if (!ProjectToScreen(mvp, viewport_width, viewport_height, sample.position(),
+    if (!ProjectToScreen(mvp, viewport_width, viewport_height, sample.position,
                          &sx, &sy)) {
       continue;
     }
-    ConsiderCandidate(sample.position(), sample.display_name, sample.display_type,
-                      sx, sy, EyeDepth(view, sample.position()), pixel_x, pixel_y,
+    ConsiderCandidate(sample.position, sample.display_name, sample.display_type,
+                      sx, sy, EyeDepth(view, sample.position), pixel_x, pixel_y,
                       max_pixel_distance, &best);
   }
 
@@ -243,7 +243,7 @@ PickResult pickAtToolContext(const common::ToolContext& context, int pixel_x,
               context.pick_registry->lookup(handle)) {
         PickResult result;
         result.hit = true;
-        *result.mutable_position() = record->position;
+        result.position = record->position;
         result.display_name = record->display_name;
         result.display_type = record->display_type;
         result.pick_handle = handle;

@@ -26,7 +26,7 @@ bool FocusCameraTool::mousePressEvent(QMouseEvent* event) {
   const rendering::PickResult pick = rendering::pickAtToolContext(
       *context(), event->pos().x(), event->pos().y());
   if (pick.hit) {
-    hit = pick.position();
+    hit = pick.position;
   } else if (!context()->view_controller->pickGroundPoint(
                  event->pos().x(), event->pos().y(), context()->viewport_width,
                  context()->viewport_height, &hit)) {

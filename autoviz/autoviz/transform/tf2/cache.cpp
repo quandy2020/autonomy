@@ -47,13 +47,13 @@ TransformStorage::TransformStorage() {}
 TransformStorage::TransformStorage(const geometry_msgs::TransformStamped& data,
                                    CompactFrameID frame_id,
                                    CompactFrameID child_frame_id)
-    : stamp_(data.header().stamp()),
+    : stamp_(data.header.stamp),
       frame_id_(frame_id),
       child_frame_id_(child_frame_id) {
-    const geometry_msgs::Quaternion& o = data.transform().rotation();
-    rotation_ = tf2::Quaternion(o.x(), o.y(), o.z(), o.w());
-    const geometry_msgs::Vector3& v = data.transform().translation();
-    translation_ = tf2::Vector3(v.x(), v.y(), v.z());
+    const geometry_msgs::Quaternion& o = data.transform.rotation;
+    rotation_ = tf2::Quaternion(o.x, o.y, o.z, o.w);
+    const geometry_msgs::Vector3& v = data.transform.translation;
+    translation_ = tf2::Vector3(v.x, v.y, v.z);
 }
 
 TimeCache::TimeCache(Duration max_storage_time)
