@@ -16,13 +16,13 @@ syntax = "proto3";
 
 package automsgs.srvs;
 
-import "automsgs/msgs/nav_msgs/occupancy_grid.proto";
+import "automsgs/msgs/map_msgs/occupancy_grid.proto";
 import "automsgs/msgs/geometry_msgs/pose_with_covariance_stamped.proto";
 
 // Service to set a new 2D map and its initial pose.
 message SetMap {
   message Request {
-    automsgs.msgs.nav_msgs.OccupancyGrid map = 1;
+    automsgs.msgs.map_msgs.OccupancyGrid map = 1;
     automsgs.msgs.geometry_msgs.PoseWithCovarianceStamped initial_pose = 2;
   }
 

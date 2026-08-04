@@ -110,7 +110,7 @@ bool StrataBridgeNode::Init(const std::shared_ptr<autolink::Node>& node) {
     robot_3d_writer_ =
         node_->CreateWriter<commsgs::strata_msgs::Robot3DLayerArray>(Channel("robot_3d_layers"));
     marker_writer_ = node_->CreateWriter<MarkerArrayProto>(Channel("markers"));
-    path_writer_ = node_->CreateWriter<commsgs::planning_msgs::Path>(Channel("path"));
+    path_writer_ = node_->CreateWriter<automsgs::msgs::nav_msgs::Path>(Channel("path"));
 
     floor_switch_reader_ = node_->CreateReader<autolink::message::RawMessage>(
         Channel("floor_switch"),

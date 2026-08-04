@@ -84,7 +84,7 @@ public:
      * @param odom Robot odometry
      */
     void UpdateOdometry(
-        const automsgs::msgs::planning_msgs::Odometry& odom) override;
+        const automsgs::msgs::nav_msgs::Odometry& odom) override;
 
     /**
      * @brief Forward a depth frame to the hierarchical planner.
@@ -143,7 +143,7 @@ public:
      * @brief Get the latest exploration path.
      * @return Path message
      */
-    automsgs::msgs::planning_msgs::Path GetExplorationPath() const override;
+    automsgs::msgs::nav_msgs::Path GetExplorationPath() const override;
 
     /**
      * @brief Export occupancy grid from the planning environment.

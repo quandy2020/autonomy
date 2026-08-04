@@ -152,7 +152,7 @@ common::ExplorerInterface::SharedPtr ExplorationServer::ActiveExplorer() const
 }
 
 void ExplorationServer::UpdateOdometry(
-    const automsgs::msgs::planning_msgs::Odometry& odom)
+    const automsgs::msgs::nav_msgs::Odometry& odom)
 {
     auto explorer = ActiveExplorer();
     if (!explorer) {

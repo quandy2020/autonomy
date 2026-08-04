@@ -14,26 +14,16 @@
 
 syntax = "proto3";
 
-package automsgs.msgs.nav_msgs;
+package automsgs.msgs.map_msgs;
 
-import "automsgs/msgs/builtin_interfaces/time.proto";
 import "automsgs/msgs/geometry_msgs/pose.proto";
+import "automsgs/msgs/std_msgs/header.proto";
 
-// This holds basic information about the characteristics of the OccupancyGrid.
-message MapMetaData {
-  // The time at which the map was loaded.
-  automsgs.msgs.builtin_interfaces.Time map_load_time = 1;
-
-  // The map resolution [m/cell].
+// grid_map_msgs-compatible helpers
+message GridMapInfo {
+  automsgs.msgs.std_msgs.Header header = 1;
   float resolution = 2;
-
-  // Map width [cells].
-  uint32 width = 3;
-
-  // Map height [cells].
-  uint32 height = 4;
-
-  // The origin of the map [m, m, rad]. This is the real-world pose of the
-  // bottom left corner of cell (0,0) in the map.
-  automsgs.msgs.geometry_msgs.Pose origin = 5;
+  float length_x = 3;
+  float length_y = 4;
+  automsgs.msgs.geometry_msgs.Pose pose = 5;
 }

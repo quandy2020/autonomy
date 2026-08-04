@@ -22,7 +22,7 @@
 
 #include "autolink/autolink.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/nav_msgs/path.pb.h>
 #include "autonomy/commsgs/proto/visualization_msgs.pb.h"
 #include "autonomy/commsgs/strata_msgs.hpp"
 #include "autonomy/commsgs/std_msgs.hpp"
@@ -104,7 +104,7 @@ private:
     std::shared_ptr<autolink::Writer<commsgs::strata_msgs::IotBubbleArray>> iot_bubbles_writer_;
     std::shared_ptr<autolink::Writer<commsgs::strata_msgs::Robot3DLayerArray>> robot_3d_writer_;
     std::shared_ptr<autolink::Writer<MarkerArrayProto>> marker_writer_;
-    std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>> path_writer_;
+    std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>> path_writer_;
     std::shared_ptr<autolink::Reader<autolink::message::RawMessage>> floor_switch_reader_;
     std::shared_ptr<autolink::Reader<autolink::message::RawMessage>> robot_goal_reader_;
 };

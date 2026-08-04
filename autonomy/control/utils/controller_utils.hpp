@@ -26,7 +26,6 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 
@@ -69,7 +68,7 @@ automsgs::msgs::geometry_msgs::Point LinearInterpolation(
  * @return Lookahead point
  */
 automsgs::msgs::geometry_msgs::PoseStamped GetLookAheadPoint(
-    double&, const automsgs::msgs::planning_msgs::Path&,
+    double&, const automsgs::msgs::nav_msgs::Path&,
     const bool interpolate_after_goal = false);
 
 }  // namespace utils

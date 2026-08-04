@@ -16,8 +16,8 @@ public:
     static BT::PortsList providedPorts()
     {
         return {
-            BT::InputPort<automsgs::msgs::planning_msgs::Path>("unsmoothed_path"),
-            BT::OutputPort<automsgs::msgs::planning_msgs::Path>("smoothed_path"),
+            BT::InputPort<automsgs::msgs::nav_msgs::Path>("unsmoothed_path"),
+            BT::OutputPort<automsgs::msgs::nav_msgs::Path>("smoothed_path"),
             BT::InputPort<std::string>("smoother_id", "simple_smoother",
                                        "plugin id"),
             BT::OutputPort<double>("smoothing_duration"),
@@ -31,7 +31,7 @@ protected:
     BT::NodeStatus OnExecute() override
     {
         auto client = ResolveClient(*this);
-        automsgs::msgs::planning_msgs::Path unsmoothed;
+        automsgs::msgs::nav_msgs::Path unsmoothed;
         std::string smoother_id;
         if (!getInput("unsmoothed_path", unsmoothed)) {
             SetErrorPorts(*this, 1, "SmoothPath: missing unsmoothed_path");
@@ -39,7 +39,7 @@ protected:
         }
         getInput("smoother_id", smoother_id);
 
-        automsgs::msgs::planning_msgs::Path smoothed;
+        automsgs::msgs::nav_msgs::Path smoothed;
         int error_code = 0;
         std::string error_msg;
         if (!client->SmoothPath(unsmoothed, smoother_id, smoothed, &error_code,

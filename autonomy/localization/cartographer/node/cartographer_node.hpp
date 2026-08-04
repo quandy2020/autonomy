@@ -36,9 +36,7 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
-#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
-#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
@@ -124,7 +122,7 @@ private:
     CollectSubmapSlices();
 
     void HandleOdometryMessage(int trajectory_id, const std::string& sensor_id,
-                               const automsgs::msgs::planning_msgs::Odometry& msg);
+                               const automsgs::msgs::nav_msgs::Odometry& msg);
     void HandleImuMessage(int trajectory_id, const std::string& sensor_id,
                           const automsgs::msgs::sensor_msgs::Imu& msg);
     void HandleLaserScanMessage(int trajectory_id, const std::string& sensor_id,

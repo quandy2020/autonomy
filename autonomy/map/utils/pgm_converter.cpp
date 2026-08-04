@@ -79,7 +79,7 @@ cv::Mat createImageFromCostmap(
 
 std::vector<cv::Point> convertPathToImageCoords(
     const autonomy::map::costmap_2d::Costmap2D& costmap,
-    const automsgs::msgs::planning_msgs::Path& path, unsigned int height,
+    const automsgs::msgs::nav_msgs::Path& path, unsigned int height,
     unsigned int width) {
     std::vector<cv::Point> coords;
     coords.reserve(path.poses_size());
@@ -212,7 +212,7 @@ map::costmap_2d::Costmap2D::SharedPtr PgmConverter::loadFromYaml(
 
 cv::Mat PgmConverter::renderPathToImage(
     const map::costmap_2d::Costmap2D& costmap,
-    const automsgs::msgs::planning_msgs::Path& path, const RenderParameters& params) {
+    const automsgs::msgs::nav_msgs::Path& path, const RenderParameters& params) {
     try {
         cv::Mat image = createImageFromCostmap(costmap);
         const unsigned int width = costmap.getSizeInCellsX();
@@ -233,13 +233,13 @@ cv::Mat PgmConverter::renderPathToImage(
 }
 
 bool PgmConverter::savePathToImage(const map::costmap_2d::Costmap2D& costmap,
-                                   const automsgs::msgs::planning_msgs::Path& path,
+                                   const automsgs::msgs::nav_msgs::Path& path,
                                    const std::string& output_file_path) {
     return savePathToImage(costmap, path, output_file_path, RenderParameters());
 }
 
 bool PgmConverter::savePathToImage(const map::costmap_2d::Costmap2D& costmap,
-                                   const automsgs::msgs::planning_msgs::Path& path,
+                                   const automsgs::msgs::nav_msgs::Path& path,
                                    const std::string& output_file_path,
                                    const RenderParameters& params) {
     try {
@@ -270,7 +270,7 @@ bool PgmConverter::savePathToImage(const map::costmap_2d::Costmap2D& costmap,
 
 void drawPathOnCostmapImage(
     cv::Mat& image, const map::costmap_2d::Costmap2D& costmap,
-    const automsgs::msgs::planning_msgs::Path& path,
+    const automsgs::msgs::nav_msgs::Path& path,
     const PgmConverter::RenderParameters& params) {
     if (path.poses().empty()) {
         return;
@@ -286,8 +286,8 @@ void drawPathOnCostmapImage(
 
 cv::Mat PgmConverter::renderDualPathsToImage(
     const map::costmap_2d::Costmap2D& costmap,
-    const automsgs::msgs::planning_msgs::Path& global_plan_path,
-    const automsgs::msgs::planning_msgs::Path& executed_path) {
+    const automsgs::msgs::nav_msgs::Path& global_plan_path,
+    const automsgs::msgs::nav_msgs::Path& executed_path) {
     try {
         cv::Mat image = createImageFromCostmap(costmap);
 
@@ -328,8 +328,8 @@ cv::Mat PgmConverter::renderDualPathsToImage(
 
 bool PgmConverter::saveDualPathsToImage(
     const map::costmap_2d::Costmap2D& costmap,
-    const automsgs::msgs::planning_msgs::Path& global_plan_path,
-    const automsgs::msgs::planning_msgs::Path& executed_path,
+    const automsgs::msgs::nav_msgs::Path& global_plan_path,
+    const automsgs::msgs::nav_msgs::Path& executed_path,
     const std::string& output_file_path) {
     try {
         const cv::Mat image =

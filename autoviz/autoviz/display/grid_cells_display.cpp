@@ -12,9 +12,9 @@ namespace autoviz {
 namespace display {
 
 GridCellsDisplay::GridCellsDisplay(std::string channel)
-    : ChannelDisplay<automsgs::msgs::nav_msgs::GridCells>(
+    : ChannelDisplay<automsgs::msgs::map_msgs::GridCells>(
           "GridCells", std::move(channel),
-          "automsgs.msgs.nav_msgs.GridCells") {
+          "automsgs.msgs.map_msgs.GridCells") {
   setProperties({});
 }
 
@@ -23,7 +23,7 @@ std::vector<common::DisplayPropertySpec> GridCellsDisplay::propertySpecs() const
 }
 
 void GridCellsDisplay::processMessage(
-    const automsgs::msgs::nav_msgs::GridCells& message) {
+    const automsgs::msgs::map_msgs::GridCells& message) {
   cells_.clear();
   if (context_ == nullptr) {
     return;

@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <automsgs/msgs/vehicle_msgs/vehicle_msgs.pb.h>
+#include <automsgs/msgs/vehicle_msgs/robot_task_type.pb.h>
 #include "autonomy/task/apps/behavior_tree/bt_profile.hpp"
 #include "autonomy/task/proto/task_options.pb.h"
 

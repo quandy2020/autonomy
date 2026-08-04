@@ -27,9 +27,7 @@
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include <automsgs/msgs/geometry_msgs/polygon.pb.h>
 #include <automsgs/msgs/geometry_msgs/point32.pb.h>
-#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
-#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
@@ -82,7 +80,7 @@ public:
      * @brief Update robot pose and keypose graph from odometry.
      * @param odom Robot odometry
      */
-    void UpdateOdometry(const automsgs::msgs::planning_msgs::Odometry& odom);
+    void UpdateOdometry(const automsgs::msgs::nav_msgs::Odometry& odom);
 
     /**
      * @brief Fuse depth into PlanningEnv.
@@ -128,7 +126,7 @@ public:
      * @brief Get the latest exploration path.
      * @return Path reference
      */
-    const automsgs::msgs::planning_msgs::Path& GetExplorationPath() const
+    const automsgs::msgs::nav_msgs::Path& GetExplorationPath() const
     {
         return path_;
     }
@@ -181,7 +179,7 @@ private:
      * @return Lookahead pose
      */
     automsgs::msgs::geometry_msgs::PoseStamped ComputeLookahead(
-        const automsgs::msgs::planning_msgs::Path& path) const;
+        const automsgs::msgs::nav_msgs::Path& path) const;
 
     /**
      * @brief Build a PoseStamped from position and yaw.
@@ -201,7 +199,7 @@ private:
     KeyposeGraph keypose_graph_;              //!< @brief keypose connectivity
     LocalCoveragePlanner local_planner_;      //!< @brief local coverage solver
 
-    automsgs::msgs::planning_msgs::Path path_;       //!< @brief current path
+    automsgs::msgs::nav_msgs::Path path_;       //!< @brief current path
     automsgs::msgs::geometry_msgs::PoseStamped
         lookahead_;                           //!< @brief current lookahead
     std::vector<int> global_cell_order_;      //!< @brief global cell order

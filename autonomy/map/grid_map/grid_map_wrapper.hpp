@@ -33,8 +33,7 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
-#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
-#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/map_msgs/grid_map.pb.h>
 #include "autonomy/map/common/map_interface.hpp"
 #include "autonomy/map/grid_map/grid_map_core/grid_map.hpp"
 #include "autonomy/map/proto/map_grid_option.pb.h"

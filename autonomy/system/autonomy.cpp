@@ -282,7 +282,7 @@ void Autonomy::ApplyMapToCostmap(
     }
 }
 
-void Autonomy::NotifyPath(const automsgs::msgs::planning_msgs::Path& path) {
+void Autonomy::NotifyPath(const automsgs::msgs::nav_msgs::Path& path) {
     std::vector<PathListener> listeners;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -301,7 +301,7 @@ bool Autonomy::GetRobotPose(
     if (!controller_) {
         return false;
     }
-    automsgs::msgs::planning_msgs::Odometry odom;
+    automsgs::msgs::nav_msgs::Odometry odom;
     if (!controller_->GetLatestOdometry(odom)) {
         return false;
     }
@@ -355,7 +355,7 @@ bool Autonomy::NavigateDirectToPose(
     }
 
     const auto ids = ResolvePluginIds();
-    automsgs::msgs::planning_msgs::Path path;
+    automsgs::msgs::nav_msgs::Path path;
     try {
         path = planner_->GetPlan(start, goal_tf, ids.planner_id,
                                  cancel_checker);
@@ -436,7 +436,7 @@ void Autonomy::ReplanToGoal(
     }
 }
 
-std::optional<automsgs::msgs::planning_msgs::Path> Autonomy::GetLastPath() {
+std::optional<automsgs::msgs::nav_msgs::Path> Autonomy::GetLastPath() {
     std::lock_guard<std::mutex> lock(mutex_);
     return last_path_;
 }

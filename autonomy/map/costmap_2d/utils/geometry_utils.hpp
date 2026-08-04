@@ -28,7 +28,6 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/transform/tf2/LinearMath/Quaternion.h"
@@ -178,7 +177,7 @@ inline Iter first_after_integrated_distance(Iter begin, Iter end,
  * of a subset of the path.
  * @return double Path length
  */
-inline double calculate_path_length(const automsgs::msgs::planning_msgs::Path& path,
+inline double calculate_path_length(const automsgs::msgs::nav_msgs::Path& path,
                                     size_t start_index = 0) {
     if (start_index + 1 >= static_cast<size_t>(path.poses_size())) {
         return 0.0;
@@ -198,7 +197,7 @@ inline double calculate_path_length(const automsgs::msgs::planning_msgs::Path& p
  * @param reversing_segment Whether the path segment is reversing
  */
 inline void updateApproximatePathOrientations(
-    automsgs::msgs::planning_msgs::Path& path, bool reversing_segment = false) {
+    automsgs::msgs::nav_msgs::Path& path, bool reversing_segment = false) {
     if (path.poses_size() < 2) {
         return;
     }

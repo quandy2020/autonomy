@@ -40,7 +40,7 @@ option(BUILD_DOCS "Build autonomy docs support" ON)
 option(BUILD_TEST "Build autonomy unit test" ON)
 option(BUILD_TOOLS "Build autonomy tools sources" ON)
 option(BUILD_AUTODRIVER "Build autodriver sensor HAL subproject" OFF)
-option(BUILD_AUTOVIZ "Build native 3D visualization tool (autoviz)" OFF)
+option(BUILD_AUTOVIZ "Build native 3D visualization tool (autoviz)" ON)
 set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -141,6 +141,20 @@ include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
 # 5. libautonomy + link
 # -----------------------------------------------------------------------------
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
+
+# Drop truncated .so files before linking (interrupted builds leave 0-byte libs).
+add_custom_target(${PROJECT_NAME}_scrub_shared_libs ALL
+  COMMAND ${CMAKE_COMMAND}
+    -Dlib_dir=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+    -P ${PROJECT_SOURCE_DIR}/cmake/scrub_autonomy_shared_libraries.cmake
+  COMMENT "Checking shared libraries for corruption")
+add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_scrub_shared_libs)
+if(TARGET autolink)
+  add_dependencies(autolink ${PROJECT_NAME}_scrub_shared_libs)
+endif()
+if(TARGET automsgs)
+  add_dependencies(automsgs ${PROJECT_NAME}_scrub_shared_libs)
+endif()
 if(TARGET automsgs_proto_copy)
   add_dependencies(${PROJECT_NAME} automsgs_proto_copy)
 endif()

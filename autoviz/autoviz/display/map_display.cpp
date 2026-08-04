@@ -31,7 +31,7 @@ QColor OccupancyColor(int32_t value) {
 }  // namespace
 
 MapDisplay::MapDisplay(std::string channel)
-    : ChannelDisplay<automsgs::msgs::nav_msgs::OccupancyGrid>(
+    : ChannelDisplay<automsgs::msgs::map_msgs::OccupancyGrid>(
           "Map", std::move(channel),
           "automsgs.msgs.map_msgs.OccupancyGrid") {
   setProperties({});
@@ -45,7 +45,7 @@ std::vector<common::DisplayPropertySpec> MapDisplay::propertySpecs() const {
 }
 
 void MapDisplay::processMessage(
-    const automsgs::msgs::nav_msgs::OccupancyGrid& message) {
+    const automsgs::msgs::map_msgs::OccupancyGrid& message) {
   cells_.clear();
   if (context_ == nullptr) {
     return;

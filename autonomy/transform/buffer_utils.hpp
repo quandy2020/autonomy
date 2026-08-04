@@ -22,7 +22,6 @@
 #include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
-#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
 #include <automsgs/msgs/tf2_msgs/tf_message.pb.h>
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/proto/transform_options.pb.h"

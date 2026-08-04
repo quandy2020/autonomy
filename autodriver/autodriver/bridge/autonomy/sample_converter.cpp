@@ -50,10 +50,10 @@ automsgs::msgs::std_msgs::Header MakeHeader(const SensorSample & sample)
   return header;
 }
 
-automsgs::msgs::planning_msgs::Odometry ToAutonomyOdometry(
+automsgs::msgs::nav_msgs::Odometry ToAutonomyOdometry(
   const WheelOdometrySample & sample)
 {
-  automsgs::msgs::planning_msgs::Odometry odom;
+  automsgs::msgs::nav_msgs::Odometry odom;
   *odom.mutable_header() = MakeHeader(sample);
   odom.set_child_frame_id(sample.sensor_id());
   odom.mutable_twist()->mutable_twist()->mutable_linear()->set_x(sample.linear_x);

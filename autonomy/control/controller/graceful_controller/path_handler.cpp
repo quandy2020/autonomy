@@ -38,7 +38,7 @@
        tf_buffer_(tf),
        costmap_wrapper_(costmap_wrapper) {}
  
- automsgs::msgs::planning_msgs::Path PathHandler::TransformGlobalPlan(
+ automsgs::msgs::nav_msgs::Path PathHandler::TransformGlobalPlan(
      const automsgs::msgs::geometry_msgs::PoseStamped& pose,
      double max_robot_pose_search_dist) {
      // Check first if the plan is empty
@@ -146,7 +146,7 @@
  
      // Transform the near part of the global plan into the robot's frame of
      // reference.
-     automsgs::msgs::planning_msgs::Path transformed_plan;
+     automsgs::msgs::nav_msgs::Path transformed_plan;
      transformed_plan.mutable_header()->set_frame_id( costmap_wrapper_->getBaseFrameID());
      *transformed_plan.mutable_header()->mutable_stamp() = robot_pose.header().stamp();
      for (auto it = transformation_begin; it != transformation_end; ++it) {
@@ -176,7 +176,7 @@
      return transformed_plan;
  }
  
- void PathHandler::SetPlan(const automsgs::msgs::planning_msgs::Path& path) {
+ void PathHandler::SetPlan(const automsgs::msgs::nav_msgs::Path& path) {
      global_plan_ = path;
  }
  

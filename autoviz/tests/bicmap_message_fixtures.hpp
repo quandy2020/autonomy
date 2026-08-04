@@ -12,7 +12,7 @@
 #include <automsgs/msgs/geometry_msgs/point.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
-#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_field.pb.h>
@@ -39,10 +39,10 @@ inline void SetHeader(automsgs::msgs::std_msgs::Header* header,
   header->set_frame_id(frame_id);
 }
 
-inline automsgs::msgs::nav_msgs::OccupancyGrid MakeOccupancyGrid(
+inline automsgs::msgs::map_msgs::OccupancyGrid MakeOccupancyGrid(
     uint32_t width, uint32_t height, float resolution = 0.05f,
     int32_t fill_value = 100) {
-  automsgs::msgs::nav_msgs::OccupancyGrid grid;
+  automsgs::msgs::map_msgs::OccupancyGrid grid;
   SetHeader(grid.mutable_header());
   auto* info = grid.mutable_info();
   info->set_resolution(resolution);

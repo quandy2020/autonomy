@@ -20,7 +20,8 @@
 #include <string>
 
 #include "autonomy/common/macros.hpp"
-#include <automsgs/msgs/vehicle_msgs/vehicle_msgs.pb.h>
+#include <automsgs/msgs/vehicle_msgs/robot_task_status.pb.h>
+#include <automsgs/msgs/vehicle_msgs/robot_task_type.pb.h>
 #include "autonomy/task/proto/charging.pb.h"
 #include "autonomy/task/proto/exploration.pb.h"
 #include "autonomy/task/proto/localization.pb.h"

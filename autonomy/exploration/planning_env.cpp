@@ -268,7 +268,7 @@ void PlanningEnv::RollCostmapIfNeeded(double x, double y)
     RebuildInflation();
 }
 
-void PlanningEnv::UpdateOdometry(const automsgs::msgs::planning_msgs::Odometry& odom)
+void PlanningEnv::UpdateOdometry(const automsgs::msgs::nav_msgs::Odometry& odom)
 {
     const auto& pose = odom.pose().pose().pose();
     robot_x_ = pose.position().x();

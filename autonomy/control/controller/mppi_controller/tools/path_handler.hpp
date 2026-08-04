@@ -18,17 +18,17 @@
 
 #include <google/protobuf/repeated_ptr_field.h>
 
- #include <memory>
- #include <string>
- #include <utility>
- #include <vector>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
  
- #include "autolink/autolink.hpp"
- #include "autonomy/common/macros.hpp"
- #include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include "autolink/autolink.hpp"
+#include "autonomy/common/macros.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
 #include <automsgs/msgs/builtin_interfaces/duration.pb.h>
 #include <automsgs/msgs/time_utils.hpp>
- #include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
 #include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
@@ -37,13 +37,12 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
- #include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
- #include "autonomy/control/common/controller_exceptions.hpp"
- #include "autonomy/control/proto/mppi_controller.pb.h"
- #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
- #include "autonomy/transform/buffer.hpp"
+#include "autonomy/control/common/controller_exceptions.hpp"
+#include "autonomy/control/proto/mppi_controller.pb.h"
+#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
+#include "autonomy/transform/buffer.hpp"
  
  namespace autonomy {
  namespace control {
@@ -91,13 +90,13 @@
       * @brief Set new reference path
       * @param Plan Path to use
       */
-     void setPath(const automsgs::msgs::planning_msgs::Path& plan);
+     void setPath(const automsgs::msgs::nav_msgs::Path& plan);
  
      /**
       * @brief Get reference path
       * @return Path
       */
-     automsgs::msgs::planning_msgs::Path& getPath();
+     automsgs::msgs::nav_msgs::Path& getPath();
  
      /**
       * @brief transform global plan to local applying constraints,
@@ -105,7 +104,7 @@
       * @param robot_pose Pose of robot
       * @return global plan in local frame
       */
-     automsgs::msgs::planning_msgs::Path transformPath(
+     automsgs::msgs::nav_msgs::Path transformPath(
          const automsgs::msgs::geometry_msgs::PoseStamped& robot_pose);
  
      /**
@@ -148,7 +147,7 @@
       * @return plan transformed in the costmap frame and iterator to the first
       * pose of the global plan (for pruning)
       */
-     std::pair<automsgs::msgs::planning_msgs::Path, PathIterator>
+     std::pair<automsgs::msgs::nav_msgs::Path, PathIterator>
      getGlobalPlanConsideringBoundsInCostmapFrame(
          const automsgs::msgs::geometry_msgs::PoseStamped& global_pose);
  
@@ -157,7 +156,7 @@
       * @param plan Plan to prune
       * @param end Final path iterator
       */
-     void prunePlan(automsgs::msgs::planning_msgs::Path& plan, const PathIterator end);
+     void prunePlan(automsgs::msgs::nav_msgs::Path& plan, const PathIterator end);
  
      /**
       * @brief Check if the robot pose is within the set inversion tolerances
@@ -172,8 +171,8 @@
      std::shared_ptr<autonomy::transform::Buffer> tf_buffer_;
      const proto::MPPIControllerOptions* options_;
  
-     automsgs::msgs::planning_msgs::Path global_plan_;
-     automsgs::msgs::planning_msgs::Path global_plan_up_to_inversion_;
+     automsgs::msgs::nav_msgs::Path global_plan_;
+     automsgs::msgs::nav_msgs::Path global_plan_up_to_inversion_;
  
      double max_robot_pose_search_dist_{0};
      double prune_distance_{0};

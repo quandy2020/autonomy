@@ -19,7 +19,7 @@
 #include <cstdint>
 #include <string>
 
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/nav_msgs/path.pb.h>
 #include "autonomy/commsgs/proto/visualization_msgs.pb.h"
 #include "autonomy/commsgs/strata_msgs.hpp"
 #include "autonomy/map/strata/render/scene_exporter.hpp"
@@ -42,7 +42,7 @@ struct ConvertedSceneMessages {
     commsgs::strata_msgs::IotBubbleArray iot_bubbles;
     commsgs::strata_msgs::Robot3DLayerArray robot_3d_layers;
     MarkerArrayProto markers;
-    commsgs::planning_msgs::Path path;
+    automsgs::msgs::nav_msgs::Path path;
 };
 
 ConvertedSceneMessages ConvertExportedScene(const render::ExportedScene& scene,

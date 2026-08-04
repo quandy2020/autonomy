@@ -21,7 +21,7 @@ import "automsgs/msgs/sensor_msgs/image.proto";
 import "automsgs/msgs/sensor_msgs/compressed_image.proto";
 import "automsgs/msgs/sensor_msgs/laser_scan.proto";
 import "automsgs/msgs/sensor_msgs/point_cloud2.proto";
-import "automsgs/msgs/nav_msgs/occupancy_grid.proto";
+import "automsgs/msgs/map_msgs/occupancy_grid.proto";
 import "automsgs/rpcs/status.proto";
 
 // Sensor RPCs: list sensors, get latest image/lidar/pointcloud/grid.
@@ -95,5 +95,5 @@ message GetGridRequest {
 
 message GetGridResponse {
   automsgs.rpcs.common.Status status = 1;
-  automsgs.msgs.nav_msgs.OccupancyGrid grid = 2;
+  automsgs.msgs.map_msgs.OccupancyGrid grid = 2;
 }

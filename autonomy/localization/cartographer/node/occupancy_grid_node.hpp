@@ -24,8 +24,7 @@
 
 #include "autolink/autolink.hpp"
 #include "autolink/timer/timer.hpp"
-#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
-#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include "autonomy/localization/cartographer/common/port.hpp"
 #include "autonomy/localization/cartographer/io/submap_painter.hpp"
 #include "autonomy/localization/cartographer/mapping/id.hpp"

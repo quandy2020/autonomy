@@ -22,10 +22,11 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/actions/nav_actions.pb.h>
+#include <automsgs/srvs/is_path_valid.pb.h>
+#include <automsgs/srvs/clear_entire_costmap.pb.h>
 #include "autonomy/task/apps/navigation/action_session.hpp"
 #include "autonomy/task/common/task_action_client.hpp"
 
@@ -39,6 +40,7 @@ namespace task {
 namespace navigation {
 
 namespace nav_proto = automsgs::actions;
+namespace nav_srvs = automsgs::srvs;
 
 constexpr char kComputePathToPoseAction[] = "compute_path_to_pose";
 constexpr char kComputePathThroughPosesAction[] = "compute_path_through_poses";
@@ -68,22 +70,22 @@ public:
 
     bool ComputePathToPose(const automsgs::msgs::geometry_msgs::PoseStamped& goal,
                            const std::string& planner_id,
-                           automsgs::msgs::planning_msgs::Path& path,
+                           automsgs::msgs::nav_msgs::Path& path,
                            int* error_code = nullptr,
                            std::string* error_msg = nullptr);
 
     bool ComputePathThroughPoses(
         const std::vector<automsgs::msgs::geometry_msgs::PoseStamped>& goals,
-        const std::string& planner_id, automsgs::msgs::planning_msgs::Path& path,
+        const std::string& planner_id, automsgs::msgs::nav_msgs::Path& path,
         int* error_code = nullptr, std::string* error_msg = nullptr);
 
-    bool SmoothPath(const automsgs::msgs::planning_msgs::Path& unsmoothed,
+    bool SmoothPath(const automsgs::msgs::nav_msgs::Path& unsmoothed,
                     const std::string& smoother_id,
-                    automsgs::msgs::planning_msgs::Path& smoothed,
+                    automsgs::msgs::nav_msgs::Path& smoothed,
                     int* error_code = nullptr,
                     std::string* error_msg = nullptr);
 
-    bool IsPathValid(const automsgs::msgs::planning_msgs::Path& path, uint8_t max_cost,
+    bool IsPathValid(const automsgs::msgs::nav_msgs::Path& path, uint8_t max_cost,
                      bool consider_unknown_as_obstacle) const;
 
     bool ClearCostmap() const;
@@ -136,12 +138,12 @@ private:
         wait_client_;
 
     std::shared_ptr<
-        autolink::Client<nav_proto::IsPathValid_Request,
-                         nav_proto::IsPathValid_Response>>
+        autolink::Client<nav_srvs::IsPathValid_Request,
+                         nav_srvs::IsPathValid_Response>>
         path_valid_client_;
     std::shared_ptr<
-        autolink::Client<nav_proto::ClearEntireCostmap_Request,
-                         nav_proto::ClearEntireCostmap_Response>>
+        autolink::Client<nav_srvs::ClearEntireCostmap_Request,
+                         nav_srvs::ClearEntireCostmap_Response>>
         clear_costmap_client_;
 
     ActionSession<nav_proto::FollowPathAction> follow_session_;

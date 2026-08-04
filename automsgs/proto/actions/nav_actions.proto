@@ -17,46 +17,11 @@ syntax = "proto3";
 package automsgs.actions;
 
 import "automsgs/msgs/builtin_interfaces/duration.proto";
-import "automsgs/msgs/builtin_interfaces/time.proto";
 import "automsgs/msgs/status_msgs/status_msgs.proto";
 import "automsgs/msgs/geometry_msgs/point.proto";
 import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
-import "automsgs/msgs/planning_msgs/planning_msgs.proto";
-import "automsgs/msgs/std_msgs/header.proto";
-
-
-message IsPathValid {
-  message Request {
-    automsgs.msgs.planning_msgs.Path path = 1;
-    uint32 max_cost = 2;
-    bool consider_unknown_as_obstacle = 3;
-  }
-
-  message Response {
-    bool is_valid = 1;
-    repeated int32 invalid_pose_indices = 2;
-  }
-
-  Request request = 1;
-  Response response = 2;
-}
-
-// Published by SpeedFilter when a costmap speed mask updates the limit.
-message SpeedLimit {
-  automsgs.msgs.std_msgs.Header header = 1;
-  bool percentage = 2;
-  float speed_limit = 3;
-}
-
-message ClearEntireCostmap {
-  message Request {}
-
-  message Response {}
-
-  Request request = 1;
-  Response response = 2;
-}
-
+import "automsgs/msgs/nav_msgs/path.proto";
+import "automsgs/msgs/nav_msgs/goals.proto";
 
 message NavigateToPoseAction {
   message Goal {
@@ -101,7 +66,7 @@ message NavigateThroughPosesAction {
 
 message FollowPathAction {
   message Goal {
-    automsgs.msgs.planning_msgs.Path path = 1;
+    automsgs.msgs.nav_msgs.Path path = 1;
     string controller_id = 2;
     string goal_checker_id = 3;
     string progress_checker_id = 4;
@@ -129,7 +94,7 @@ message ComputePathToPoseAction {
   message Feedback {}
 
   message Result {
-    automsgs.msgs.planning_msgs.Path path = 1;
+    automsgs.msgs.nav_msgs.Path path = 1;
     automsgs.msgs.builtin_interfaces.Duration planning_time = 2;
     automsgs.msgs.status_msgs.StatusCode error_code = 3;
     string error_msg = 4;
@@ -138,7 +103,7 @@ message ComputePathToPoseAction {
 
 message ComputePathThroughPosesAction {
   message Goal {
-    automsgs.msgs.planning_msgs.Goals goals = 1;
+    automsgs.msgs.nav_msgs.Goals goals = 1;
     automsgs.msgs.geometry_msgs.PoseStamped start = 2;
     string planner_id = 3;
     bool use_start = 4;
@@ -147,7 +112,7 @@ message ComputePathThroughPosesAction {
   message Feedback {}
 
   message Result {
-    automsgs.msgs.planning_msgs.Path path = 1;
+    automsgs.msgs.nav_msgs.Path path = 1;
     automsgs.msgs.builtin_interfaces.Duration planning_time = 2;
     automsgs.msgs.status_msgs.StatusCode error_code = 3;
     string error_msg = 4;
@@ -156,7 +121,7 @@ message ComputePathThroughPosesAction {
 
 message SmoothPathAction {
   message Goal {
-    automsgs.msgs.planning_msgs.Path path = 1;
+    automsgs.msgs.nav_msgs.Path path = 1;
     string smoother_id = 2;
     automsgs.msgs.builtin_interfaces.Duration max_smoothing_duration = 3;
     bool check_for_collisions = 4;
@@ -165,7 +130,7 @@ message SmoothPathAction {
   message Feedback {}
 
   message Result {
-    automsgs.msgs.planning_msgs.Path path = 1;
+    automsgs.msgs.nav_msgs.Path path = 1;
     automsgs.msgs.builtin_interfaces.Duration smoothing_duration = 2;
     bool was_completed = 3;
     automsgs.msgs.status_msgs.StatusCode error_code = 4;

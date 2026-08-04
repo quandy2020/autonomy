@@ -23,7 +23,6 @@
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/transform.pb.h>
 #include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
-#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>

@@ -78,9 +78,9 @@ const std::vector<DisplayTypeInfo>& BuiltinCatalog() {
                {"automsgs.msgs.sensor_msgs.Image", "sensor_msgs.Image"}),
       MakeInfo("Camera", "autoviz", "Shows a camera image and frustum.",
                {"automsgs.msgs.sensor_msgs.Image", "sensor_msgs.Image"}),
-      MakeInfo("Map", "autoviz", "Shows a map from nav_msgs/OccupancyGrid.",
-               {"automsgs.msgs.nav_msgs.OccupancyGrid",
-                "nav_msgs.OccupancyGrid"}),
+      MakeInfo("Map", "autoviz", "Shows a map from map_msgs/OccupancyGrid.",
+               {"automsgs.msgs.map_msgs.OccupancyGrid",
+                "map_msgs.OccupancyGrid"}),
       MakeInfo("Path", "autoviz", "Shows a nav_msgs/Path message.",
                {"automsgs.msgs.nav_msgs.Path", "nav_msgs.Path"}),
       MakeInfo("Odometry", "autoviz", "Shows nav_msgs/Odometry as axes and path.",
@@ -110,8 +110,8 @@ const std::vector<DisplayTypeInfo>& BuiltinCatalog() {
       MakeInfo("Wrench", "autoviz", "Shows geometry_msgs/WrenchStamped.",
                {"automsgs.msgs.geometry_msgs.WrenchStamped",
                 "geometry_msgs.WrenchStamped"}),
-      MakeInfo("GridCells", "autoviz", "Shows nav_msgs/GridCells.",
-               {"automsgs.msgs.nav_msgs.GridCells", "nav_msgs.GridCells"}),
+      MakeInfo("GridCells", "autoviz", "Shows map_msgs/GridCells.",
+               {"automsgs.msgs.map_msgs.GridCells", "map_msgs.GridCells"}),
       MakeInfo("PointStamped", "autoviz", "Shows geometry_msgs/PointStamped.",
                {"automsgs.msgs.geometry_msgs.PointStamped",
                 "geometry_msgs.PointStamped"}),
@@ -159,7 +159,7 @@ const std::vector<DisplayTypeInfo>& BuiltinCatalog() {
 bool MessageTypeMatches(const std::string& channel_type,
                         const std::vector<std::string>& display_types) {
   for (const auto& candidate : display_types) {
-    if (automsgs::msgs::MessageTypesCompatible(channel_type, candidate)) {
+    if (commsgs::MessageTypesCompatible(channel_type, candidate)) {
       return true;
     }
   }
@@ -219,7 +219,7 @@ std::vector<std::string> DisplayCatalog::typesForMessageType(
       continue;
     }
     for (const auto& candidate : info.message_types) {
-      if (automsgs::msgs::MessageTypesCompatible(message_type, candidate)) {
+      if (commsgs::MessageTypesCompatible(message_type, candidate)) {
         matches.push_back(info.type);
         break;
       }

@@ -8,7 +8,7 @@
 #include <QVector3D>
 #include <vector>
 
-#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/display/channel_display.hpp"
 
@@ -16,7 +16,7 @@ namespace autoviz {
 namespace display {
 
 class MapDisplay
-    : public ChannelDisplay<automsgs::msgs::nav_msgs::OccupancyGrid> {
+    : public ChannelDisplay<automsgs::msgs::map_msgs::OccupancyGrid> {
  public:
   explicit MapDisplay(std::string channel);
 
@@ -26,7 +26,7 @@ class MapDisplay
 
  protected:
   void processMessage(
-      const automsgs::msgs::nav_msgs::OccupancyGrid& message)
+      const automsgs::msgs::map_msgs::OccupancyGrid& message)
       override;
   void onDraw(rendering::SceneOverlay& scene) override;
 

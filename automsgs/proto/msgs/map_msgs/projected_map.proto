@@ -14,22 +14,13 @@
 
 syntax = "proto3";
 
-package automsgs.msgs.nav_msgs;
+package automsgs.msgs.map_msgs;
 
-import "automsgs/msgs/std_msgs/header.proto";
-import "automsgs/msgs/nav_msgs/map_meta_data.proto";
+import "automsgs/msgs/map_msgs/occupancy_grid.proto";
 
-// This represents a 2-D grid map.
-message OccupancyGrid {
-  // Standard metadata for higher-level stamped data types.
-  automsgs.msgs.std_msgs.Header header = 1;
-
-  // MetaData for the map.
-  automsgs.msgs.nav_msgs.MapMetaData info = 2;
-
-  // The map data, in row-major order, starting with (0,0).
-  // The values inside are application dependent, but frequently,
-  // 0 represents unoccupied, 1 represents definitely occupied, and
-  // -1 represents unknown.
-  repeated int32 data = 3;
+// Official map_msgs/ProjectedMap
+message ProjectedMap {
+  OccupancyGrid map = 1;
+  double min_z = 2;
+  double max_z = 3;
 }

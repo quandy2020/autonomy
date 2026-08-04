@@ -31,9 +31,7 @@
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include <automsgs/msgs/geometry_msgs/polygon.pb.h>
 #include <automsgs/msgs/geometry_msgs/point32.pb.h>
-#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
-#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
@@ -100,7 +98,7 @@ public:
      * @param odom Robot odometry in the map frame
      */
     virtual void UpdateOdometry(
-        const automsgs::msgs::planning_msgs::Odometry& odom) = 0;
+        const automsgs::msgs::nav_msgs::Odometry& odom) = 0;
 
     /**
      * @brief Fuse a depth frame into the planning map.
@@ -159,7 +157,7 @@ public:
      * @brief Get the latest planned exploration path.
      * @return Path of PoseStamped waypoints
      */
-    virtual automsgs::msgs::planning_msgs::Path GetExplorationPath() const = 0;
+    virtual automsgs::msgs::nav_msgs::Path GetExplorationPath() const = 0;
 
     /**
      * @brief Export the local occupancy slice as OccupancyGrid.

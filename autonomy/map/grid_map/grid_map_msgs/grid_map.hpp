@@ -17,8 +17,8 @@
 #pragma once
 
 #include "autonomy/common/time.hpp"
-#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
-#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/map_msgs/grid_map.pb.h>
+#include <automsgs/msgs/map_msgs/grid_map_info.pb.h>
 
 namespace grid_map {
 

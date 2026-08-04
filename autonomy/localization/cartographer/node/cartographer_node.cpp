@@ -345,10 +345,10 @@ void CartographerNode::LaunchSubscribers(const TrajectoryOptions& options,
     }
 
     if (options.use_odometry) {
-        node_->CreateReader<automsgs::msgs::planning_msgs::Odometry>(
+        node_->CreateReader<automsgs::msgs::nav_msgs::Odometry>(
             kOdometryTopic,
             [self, trajectory_id](
-                const std::shared_ptr<automsgs::msgs::planning_msgs::Odometry>& msg) {
+                const std::shared_ptr<automsgs::msgs::nav_msgs::Odometry>& msg) {
                 if (msg) {
                     self->HandleOdometryMessage(trajectory_id, kOdometryTopic,
                                                 *msg);
@@ -583,9 +583,9 @@ void CartographerNode::DispatchSensorMessage(
 
 void CartographerNode::HandleOdometryMessage(
     const int trajectory_id, const std::string& sensor_id,
-    const automsgs::msgs::planning_msgs::Odometry& msg) {
+    const automsgs::msgs::nav_msgs::Odometry& msg) {
     const auto sensor_time = FromCommsgs(msg.header().stamp());
-    auto msg_ptr = std::make_shared<automsgs::msgs::planning_msgs::Odometry>(msg);
+    auto msg_ptr = std::make_shared<automsgs::msgs::nav_msgs::Odometry>(msg);
     std::lock_guard<std::mutex> lock(mutex_);
     DispatchSensorMessage(
         trajectory_id, sensor_time,

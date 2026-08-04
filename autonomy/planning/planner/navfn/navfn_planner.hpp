@@ -24,7 +24,6 @@
 #include "autonomy/planning/proto/navfn_planner.pb.h"
 
 #include "autonomy/common/lua_parameter_dictionary.hpp"
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
@@ -63,7 +62,7 @@ public:
      */
     uint32 CreatePlan(const automsgs::msgs::geometry_msgs::PoseStamped& start,
                       const automsgs::msgs::geometry_msgs::PoseStamped& goal,
-                      automsgs::msgs::planning_msgs::Path& plan,
+                      automsgs::msgs::nav_msgs::Path& plan,
                       std::function<bool()> cancel_checker) override;
 
 protected:
@@ -80,7 +79,7 @@ protected:
     bool makePlan(const automsgs::msgs::geometry_msgs::Pose& start,
                   const automsgs::msgs::geometry_msgs::Pose& goal, double tolerance,
                   std::function<bool()> cancel_checker,
-                  automsgs::msgs::planning_msgs::Path& plan);
+                  automsgs::msgs::nav_msgs::Path& plan);
 
     /**
      * @brief Compute the navigation function given a seed point in the world to
@@ -98,7 +97,7 @@ protected:
      * @return true if can compute a plan path
      */
     bool getPlanFromPotential(const automsgs::msgs::geometry_msgs::Pose& goal,
-                              automsgs::msgs::planning_msgs::Path& plan);
+                              automsgs::msgs::nav_msgs::Path& plan);
 
     /**
      * @brief Remove artifacts at the end of the path - originated from planning
@@ -107,7 +106,7 @@ protected:
      * @param plan Computed path
      */
     void smoothApproachToGoal(const automsgs::msgs::geometry_msgs::Pose& goal,
-                              automsgs::msgs::planning_msgs::Path& plan);
+                              automsgs::msgs::nav_msgs::Path& plan);
 
     /**
      * @brief Compute the potential, or navigation cost, at a given point in the

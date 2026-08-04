@@ -30,7 +30,6 @@
 #include "autodriver/types/range_sample.hpp"
 #include "autodriver/types/sensor_sample.hpp"
 #include "autodriver/types/wheel_odometry_sample.hpp"
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
@@ -50,7 +49,7 @@ automsgs::msgs::std_msgs::Header MakeHeader(
   const SensorSample & sample);
 
 /** @brief Wheel odometry velocity sample -> planning Odometry twist. */
-automsgs::msgs::planning_msgs::Odometry ToAutonomyOdometry(
+automsgs::msgs::nav_msgs::Odometry ToAutonomyOdometry(
   const WheelOdometrySample & sample);
 
 /** @brief 2-D LiDAR scan -> sensor_msgs LaserScan. */

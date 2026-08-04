@@ -209,7 +209,7 @@ bool Optimizer::isHolonomic() const { return motion_model_->isHolonomic(); }
 
 automsgs::msgs::geometry_msgs::TwistStamped Optimizer::evalControl(const automsgs::msgs::geometry_msgs::PoseStamped& robot_pose,
                                                             const automsgs::msgs::geometry_msgs::Twist& robot_speed,
-                                                            const automsgs::msgs::planning_msgs::Path& plan,
+                                                            const automsgs::msgs::nav_msgs::Path& plan,
                                                             const automsgs::msgs::geometry_msgs::Pose& goal,
                                                             common::GoalChecker* goal_checker) {
   prepare(robot_pose, robot_speed, plan, goal, goal_checker);
@@ -255,7 +255,7 @@ bool Optimizer::fallback(bool fail) {
 }
 
 void Optimizer::prepare(const automsgs::msgs::geometry_msgs::PoseStamped& robot_pose,
-                        const automsgs::msgs::geometry_msgs::Twist& robot_speed, const automsgs::msgs::planning_msgs::Path& plan,
+                        const automsgs::msgs::geometry_msgs::Twist& robot_speed, const automsgs::msgs::nav_msgs::Path& plan,
                         const automsgs::msgs::geometry_msgs::Pose& goal, common::GoalChecker* goal_checker) {
   if (settings_.open_loop) {
     state_.speed = last_command_vel_;

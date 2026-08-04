@@ -16,7 +16,8 @@ syntax = "proto3";
 
 package autonomy.task.proto;
 
-import "automsgs/msgs/vehicle_msgs/vehicle_msgs.proto";
+import "automsgs/msgs/vehicle_msgs/robot_task_status.proto";
+import "automsgs/msgs/vehicle_msgs/robot_task_type.proto";
 
 // Lua: config/task_options.lua (future) / task_server configuration.
 

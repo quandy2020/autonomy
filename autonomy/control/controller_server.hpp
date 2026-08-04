@@ -41,7 +41,6 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
@@ -95,8 +94,8 @@ public:
     void SetSharedCostmap(
         std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap);
 
-    void UpdateOdometry(const automsgs::msgs::planning_msgs::Odometry& odom);
-    bool GetLatestOdometry(automsgs::msgs::planning_msgs::Odometry& odom) const;
+    void UpdateOdometry(const automsgs::msgs::nav_msgs::Odometry& odom);
+    bool GetLatestOdometry(automsgs::msgs::nav_msgs::Odometry& odom) const;
 
     /** Load controller / checker plugins from options (idempotent). */
     void LoadPlugins();
@@ -234,7 +233,7 @@ protected:
     automsgs::msgs::builtin_interfaces::Time last_valid_cmd_time_;
 
     // Current path container
-    automsgs::msgs::planning_msgs::Path current_path_;
+    automsgs::msgs::nav_msgs::Path current_path_;
     automsgs::msgs::geometry_msgs::TwistStamped last_cmd_vel_{};
 
     std::string follow_controller_id_;

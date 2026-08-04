@@ -73,8 +73,8 @@ void DouglasPeuckerRec(
 
 }  // namespace
 
-automsgs::msgs::planning_msgs::Path SimplifyPath(
-    const automsgs::msgs::planning_msgs::Path& path, double epsilon) {
+automsgs::msgs::nav_msgs::Path SimplifyPath(
+    const automsgs::msgs::nav_msgs::Path& path, double epsilon) {
     if (epsilon <= 0.0 || path.poses_size() < 3) {
         return path;
     }
@@ -84,7 +84,7 @@ automsgs::msgs::planning_msgs::Path SimplifyPath(
     marked.back() = true;
     DouglasPeuckerRec(path.poses(), 0, path.poses_size() - 1, epsilon, marked);
 
-    automsgs::msgs::planning_msgs::Path simplified;
+    automsgs::msgs::nav_msgs::Path simplified;
     *simplified.mutable_header() = path.header();
     for (size_t i = 0; i < path.poses_size(); ++i) {
         if (marked[i]) {

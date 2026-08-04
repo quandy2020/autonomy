@@ -30,7 +30,6 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
@@ -70,10 +69,10 @@ std::shared_ptr<map::costmap_2d::Costmap2D> CreateTestCostmap(
 }
 
 // Helper function to create a simple test path.
-automsgs::msgs::planning_msgs::Path CreateTestPath(double start_x, double start_y,
+automsgs::msgs::nav_msgs::Path CreateTestPath(double start_x, double start_y,
                                             double goal_x, double goal_y,
                                             int num_points) {
-    automsgs::msgs::planning_msgs::Path path;
+    automsgs::msgs::nav_msgs::Path path;
     for (int i = 0; i < num_points; ++i) {
         automsgs::msgs::geometry_msgs::PoseStamped pose;
         pose.mutable_header()->set_frame_id("map");
@@ -123,7 +122,7 @@ TEST(PgmConverterTest, SavePathToImageSuccess) {
 
 TEST(PgmConverterTest, SavePathToImageEmptyPath) {
     auto costmap = CreateTestCostmap(50, 50, 0.1);
-    automsgs::msgs::planning_msgs::Path empty_path;
+    automsgs::msgs::nav_msgs::Path empty_path;
 
     const std::string output_path = "/tmp/test_empty_path.png";
     bool success =
@@ -253,7 +252,7 @@ TEST(PgmConverterTest, SavePathToImageLargeCostmap) {
 TEST(PgmConverterTest, SavePathToImagePathOutsideBounds) {
     auto costmap = CreateTestCostmap(50, 50, 0.1);
     // Create path with points outside the costmap bounds
-    automsgs::msgs::planning_msgs::Path path;
+    automsgs::msgs::nav_msgs::Path path;
     automsgs::msgs::geometry_msgs::PoseStamped pose;
     pose.mutable_header()->set_frame_id("map");
     pose.mutable_pose()->mutable_position()->set_x(100.0);  // Way outside bounds

@@ -16,19 +16,19 @@
 
  #pragma once
 
- #include <Eigen/Dense>
- #include <algorithm>
- #include <chrono>
- #include <limits>
- #include <memory>
- #include <string>
- #include <vector>
+#include <Eigen/Dense>
+#include <algorithm>
+#include <chrono>
+#include <limits>
+#include <memory>
+#include <string>
+#include <vector>
  
- #include "autonomy/common/macros.hpp"
- #include "autonomy/common/math/angle.hpp"
- #include "autonomy/common/math/math.hpp"
+#include "autonomy/common/macros.hpp"
+#include "autonomy/common/math/angle.hpp"
+#include "autonomy/common/math/math.hpp"
  
- #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
@@ -36,17 +36,18 @@
 #include <automsgs/msgs/std_msgs/color_rgba.pb.h>
 #include <automsgs/msgs/std_msgs/header.pb.h>
 #include <automsgs/msgs/visualization_msgs/marker.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/msgs/time_utils.hpp>
  
  
- #include "autonomy/control/controller/mppi_controller/critic_data.hpp"
- #include "autonomy/control/controller/mppi_controller/models/control_sequence.hpp"
- #include "autonomy/control/controller/mppi_controller/models/optimizer_settings.hpp"
- #include "autonomy/control/controller/mppi_controller/models/path.hpp"
- #include "autonomy/map/costmap_2d/cost_values.hpp"
- #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
- #include "autonomy/transform/tf2/utils.h"
+#include "autonomy/control/controller/mppi_controller/critic_data.hpp"
+#include "autonomy/control/controller/mppi_controller/models/control_sequence.hpp"
+#include "autonomy/control/controller/mppi_controller/models/optimizer_settings.hpp"
+#include "autonomy/control/controller/mppi_controller/models/path.hpp"
+#include "autonomy/map/costmap_2d/cost_values.hpp"
+#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
+#include "autonomy/transform/tf2/utils.h"
  
  #define M_PIF 3.141592653589793238462643383279502884e+00F
  #define M_PIF_2 1.5707963267948966e+00F
@@ -175,14 +176,14 @@
      return twist;
  }
  
- // TODO: Trajectory type not available in planning_msgs, need to define or use
- // alternative inline std::unique_ptr<automsgs::msgs::planning_msgs::Trajectory>
+ // TODO: Trajectory type not available in nav_msgs, need to define or use
+ // alternative inline std::unique_ptr<automsgs::msgs::nav_msgs::Trajectory>
  // toTrajectoryMsg(
  //     const Eigen::ArrayXXf& trajectory,
  //     const models::ControlSequence& control_sequence, const double& model_dt,
  //     const automsgs::msgs::std_msgs::Header& header) {
  //     auto trajectory_msg =
- //     std::make_unique<automsgs::msgs::planning_msgs::Trajectory>();
+ //     std::make_unique<automsgs::msgs::nav_msgs::Trajectory>();
  //     trajectory_msg->header = header;
  //     trajectory_msg->points.resize(trajectory.rows());
  //
@@ -210,7 +211,7 @@
   * @param path Path to convert
   * @return Path tensor
   */
- inline models::Path toTensor(const automsgs::msgs::planning_msgs::Path& path) {
+ inline models::Path toTensor(const automsgs::msgs::nav_msgs::Path& path) {
      auto result = models::Path{};
      result.reset(path.poses_size());
  
@@ -617,7 +618,7 @@
   * @param path to check for inversion
   * @return the first point after the inversion found in the path
   */
- inline unsigned int findFirstPathInversion(automsgs::msgs::planning_msgs::Path& path) {
+ inline unsigned int findFirstPathInversion(automsgs::msgs::nav_msgs::Path& path) {
      // At least 3 poses for a possible inversion
      if (path.poses_size() < 3) {
          return path.poses_size();
@@ -654,8 +655,8 @@
   * @return The location of the inversion, return 0 if none exist
   */
  inline unsigned int removePosesAfterFirstInversion(
-     automsgs::msgs::planning_msgs::Path& path) {
-     automsgs::msgs::planning_msgs::Path cropped_path = path;
+     automsgs::msgs::nav_msgs::Path& path) {
+     automsgs::msgs::nav_msgs::Path cropped_path = path;
      const unsigned int first_after_inversion =
          findFirstPathInversion(cropped_path);
      if (first_after_inversion == path.poses_size()) {

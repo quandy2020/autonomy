@@ -73,7 +73,7 @@ void SimpleSmoother::ApplyOptions(const proto::SimpleSmootherOptions& options) {
     enforce_path_inversion_ = options.enforce_path_inversion();
 }
 
-bool SimpleSmoother::Smooth(automsgs::msgs::planning_msgs::Path& path,
+bool SimpleSmoother::Smooth(automsgs::msgs::nav_msgs::Path& path,
                             const std::chrono::milliseconds& max_time) {
     map::costmap_2d::Costmap2D* costmap = nullptr;
     if (costmap_wrapper_) {
@@ -85,7 +85,7 @@ bool SimpleSmoother::Smooth(automsgs::msgs::planning_msgs::Path& path,
     double time_remaining = max_time_seconds;
 
     bool reversing_segment;
-    automsgs::msgs::planning_msgs::Path curr_path_segment;
+    automsgs::msgs::nav_msgs::Path curr_path_segment;
     *curr_path_segment.mutable_header() = path.header();
 
     const auto directional_segments =
@@ -137,7 +137,7 @@ bool SimpleSmoother::Smooth(automsgs::msgs::planning_msgs::Path& path,
     return true;
 }
 
-void SimpleSmoother::SmoothImpl(automsgs::msgs::planning_msgs::Path& path,
+void SimpleSmoother::SmoothImpl(automsgs::msgs::nav_msgs::Path& path,
                                 bool& reversing_segment,
                                 const map::costmap_2d::Costmap2D* costmap,
                                 const double& max_time_seconds) {
@@ -149,8 +149,8 @@ void SimpleSmoother::SmoothImpl(automsgs::msgs::planning_msgs::Path& path,
     double x_i, y_i, y_m1, y_ip1, y_i_org;
     unsigned int mx, my;
 
-    automsgs::msgs::planning_msgs::Path new_path = path;
-    automsgs::msgs::planning_msgs::Path last_path = path;
+    automsgs::msgs::nav_msgs::Path new_path = path;
+    automsgs::msgs::nav_msgs::Path last_path = path;
 
     while (change >= tolerance_) {
         its += 1;

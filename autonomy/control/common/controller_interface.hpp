@@ -30,7 +30,6 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/control/common/goal_checker_interface.hpp"
@@ -143,7 +142,7 @@ public:
      * @brief Set the plan that the local planner is following
      * @param plan The plan to pass to the local planner
      */
-    virtual void SetPlan(const automsgs::msgs::planning_msgs::Path& plan) = 0;
+    virtual void SetPlan(const automsgs::msgs::nav_msgs::Path& plan) = 0;
 
     /**
      * @brief Limits the maximum linear speed of the robot.

@@ -58,7 +58,7 @@ void WriteDisplayToConfig(const DisplayConfig& display, Config* node) {
     return;
   }
   node->mapSetValue("Type", QString::fromStdString(display.type));
-  node->mapSetValue("Name", QString::fromStdString(display.name()));
+  node->mapSetValue("Name", QString::fromStdString(display.name));
   node->mapSetValue("Channel", QString::fromStdString(display.channel));
   node->mapSetValue("Enabled", display.enabled);
   if (!display.properties.empty()) {
@@ -114,7 +114,7 @@ void WriteViewToConfig(const SavedViewConfig& view, Config* node) {
   if (node == nullptr) {
     return;
   }
-  node->mapSetValue("Name", QString::fromStdString(view.name()));
+  node->mapSetValue("Name", QString::fromStdString(view.name));
   node->mapSetValue("Type", QString::fromStdString(view.type));
   node->mapSetValue("NearClipDistance", view.near_clip_distance);
   node->mapSetValue("InvertZAxis", view.invert_z_axis);

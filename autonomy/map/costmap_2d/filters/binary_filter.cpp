@@ -58,10 +58,10 @@ void BinaryFilter::initializeFilter(const std::string& filter_info_topic) {
     changeState(default_state_);
 }
 
-std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>
+std::shared_ptr<automsgs::msgs::nav_msgs::CostmapFilterInfo>
 BinaryFilter::makeDefaultFilterInfo(const std::string& mask_topic, float base,
                                     float multiplier) {
-    auto info = std::make_shared<automsgs::msgs::map_msgs::CostmapFilterInfo>();
+    auto info = std::make_shared<automsgs::msgs::nav_msgs::CostmapFilterInfo>();
     info->set_type(BINARY_FILTER);
     info->set_filter_mask_topic(mask_topic);
     info->set_base(base);
@@ -70,7 +70,7 @@ BinaryFilter::makeDefaultFilterInfo(const std::string& mask_topic, float base,
 }
 
 void BinaryFilter::applyConfiguration(
-    const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>& info,
+    const std::shared_ptr<automsgs::msgs::nav_msgs::CostmapFilterInfo>& info,
     const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>& mask) {
     if (info) {
         handleFilterInfo(info);
@@ -81,7 +81,7 @@ void BinaryFilter::applyConfiguration(
 }
 
 void BinaryFilter::handleFilterInfo(
-    const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>& msg) {
+    const std::shared_ptr<automsgs::msgs::nav_msgs::CostmapFilterInfo>& msg) {
     filterInfoCallback(msg);
 }
 
@@ -151,7 +151,7 @@ bool BinaryFilter::validateFilterMask(
 }
 
 void BinaryFilter::filterInfoCallback(
-    const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo> msg) {
+    const std::shared_ptr<automsgs::msgs::nav_msgs::CostmapFilterInfo> msg) {
     std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
     if (!msg) {

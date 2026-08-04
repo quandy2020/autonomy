@@ -54,10 +54,10 @@ void SpeedFilter::initializeFilter(const std::string& filter_info_topic) {
           << " global_frame=" << global_frame_;
 }
 
-std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>
+std::shared_ptr<automsgs::msgs::nav_msgs::CostmapFilterInfo>
 SpeedFilter::makeDefaultFilterInfo(const std::string& mask_topic, bool percentage,
                                    float base, float multiplier) {
-    auto info = std::make_shared<automsgs::msgs::map_msgs::CostmapFilterInfo>();
+    auto info = std::make_shared<automsgs::msgs::nav_msgs::CostmapFilterInfo>();
     info->set_type(percentage ? SPEED_FILTER_PERCENT : SPEED_FILTER_ABSOLUTE);
     info->set_filter_mask_topic(mask_topic);
     info->set_base(base);
@@ -66,7 +66,7 @@ SpeedFilter::makeDefaultFilterInfo(const std::string& mask_topic, bool percentag
 }
 
 void SpeedFilter::applyConfiguration(
-    const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>& info,
+    const std::shared_ptr<automsgs::msgs::nav_msgs::CostmapFilterInfo>& info,
     const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>& mask) {
     if (info) {
         handleFilterInfo(info);
@@ -77,7 +77,7 @@ void SpeedFilter::applyConfiguration(
 }
 
 void SpeedFilter::handleFilterInfo(
-    const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>& msg) {
+    const std::shared_ptr<automsgs::msgs::nav_msgs::CostmapFilterInfo>& msg) {
     filterInfoCallback(msg);
 }
 
@@ -132,7 +132,7 @@ bool SpeedFilter::validateFilterMask(
 }
 
 void SpeedFilter::filterInfoCallback(
-    const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo> msg) {
+    const std::shared_ptr<automsgs::msgs::nav_msgs::CostmapFilterInfo> msg) {
     std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
     if (!msg) {
@@ -242,14 +242,14 @@ double SpeedFilter::computeSpeedLimitFromMaskCell(int8_t speed_mask_data) const 
     return limit;
 }
 
-std::shared_ptr<automsgs::actions::SpeedLimit> SpeedFilter::buildSpeedLimitMessage()
+std::shared_ptr<automsgs::msgs::nav_msgs::SpeedLimit> SpeedFilter::buildSpeedLimitMessage()
     const {
-    auto msg = std::make_shared<automsgs::actions::SpeedLimit>();
+    auto msg = std::make_shared<automsgs::msgs::nav_msgs::SpeedLimit>();
     msg->mutable_header()->set_frame_id(global_frame_);
     msg->mutable_header()->mutable_stamp()->set_sec(0);
     msg->mutable_header()->mutable_stamp()->set_nanosec(0);
     msg->set_percentage(percentage_);
-    msg->set_speed_limit(static_cast<float>(speed_limit_));
+    msg->set_speed_limit(speed_limit_);
     return msg;
 }
 

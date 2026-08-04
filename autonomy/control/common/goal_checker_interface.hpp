@@ -29,7 +29,6 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 
@@ -100,7 +99,7 @@ public:
         const automsgs::msgs::geometry_msgs::Pose& query_pose,
         const automsgs::msgs::geometry_msgs::Pose& goal_pose,
         const automsgs::msgs::geometry_msgs::Twist& velocity,
-        const automsgs::msgs::planning_msgs::Path& transformed_global_plan);
+        const automsgs::msgs::nav_msgs::Path& transformed_global_plan);
 
     /**
      * @brief Get the maximum possible tolerances used for goal checking in the
@@ -123,7 +122,7 @@ inline bool GoalChecker::IsGoalXYReached(
     const automsgs::msgs::geometry_msgs::Pose& query_pose,
     const automsgs::msgs::geometry_msgs::Pose& goal_pose,
     const automsgs::msgs::geometry_msgs::Twist& velocity,
-    const automsgs::msgs::planning_msgs::Path& transformed_global_plan) {
+    const automsgs::msgs::nav_msgs::Path& transformed_global_plan) {
     (void)velocity;
     (void)transformed_global_plan;
     automsgs::msgs::geometry_msgs::Pose pose_tolerance;

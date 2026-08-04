@@ -21,7 +21,6 @@
 #include <string>
 #include <vector>
 
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
@@ -52,11 +51,11 @@ public:
 
     void ApplyOptions(const proto::SimpleSmootherOptions& options);
 
-    bool Smooth(automsgs::msgs::planning_msgs::Path& path,
+    bool Smooth(automsgs::msgs::nav_msgs::Path& path,
                 const std::chrono::milliseconds& max_time) override;
 
 protected:
-    void SmoothImpl(automsgs::msgs::planning_msgs::Path& path, bool& reversing_segment,
+    void SmoothImpl(automsgs::msgs::nav_msgs::Path& path, bool& reversing_segment,
                     const map::costmap_2d::Costmap2D* costmap,
                     const double& max_time);
 

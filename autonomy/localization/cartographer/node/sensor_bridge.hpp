@@ -21,7 +21,6 @@
 #include <optional>
 #include <string>
 
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
@@ -57,9 +56,9 @@ public:
     SensorBridge& operator=(const SensorBridge&) = delete;
 
     std::unique_ptr<::cartographer::sensor::OdometryData> ToOdometryData(
-        const automsgs::msgs::planning_msgs::Odometry& msg);
+        const automsgs::msgs::nav_msgs::Odometry& msg);
     void HandleOdometryMessage(const std::string& sensor_id,
-                               const automsgs::msgs::planning_msgs::Odometry& msg);
+                               const automsgs::msgs::nav_msgs::Odometry& msg);
 
     std::unique_ptr<::cartographer::sensor::ImuData> ToImuData(
         const automsgs::msgs::sensor_msgs::Imu& msg);

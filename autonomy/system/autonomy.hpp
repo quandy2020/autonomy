@@ -35,9 +35,7 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
-#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
-#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
-#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
@@ -88,7 +86,7 @@ public:
     using MapPublishListener = std::function<void(
         const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>& map)>;
     using PathListener =
-        std::function<void(const automsgs::msgs::planning_msgs::Path& path)>;
+        std::function<void(const automsgs::msgs::nav_msgs::Path& path)>;
 
     explicit Autonomy(proto::AutonomyOptions options);
     ~Autonomy();
@@ -124,7 +122,7 @@ public:
         double timeout_sec = navigator::kDirectNavDefaultTimeoutSec);
 
     void ReplanToGoal(const automsgs::msgs::geometry_msgs::PoseStamped& goal);
-    std::optional<automsgs::msgs::planning_msgs::Path> GetLastPath();
+    std::optional<automsgs::msgs::nav_msgs::Path> GetLastPath();
 
     void RequestCancelNavigation();
     void SetControllerEnabled(bool enabled);
@@ -153,7 +151,7 @@ private:
     bool GetRobotPose(automsgs::msgs::geometry_msgs::PoseStamped& pose) const;
     void ApplyMapToCostmap(
         const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>& map);
-    void NotifyPath(const automsgs::msgs::planning_msgs::Path& path);
+    void NotifyPath(const automsgs::msgs::nav_msgs::Path& path);
     void ApplyRuntimeToNavigatorOptions(const RuntimeOptions& runtime);
     void SyncNavigationFrames(const std::string& global_frame,
                               const std::string& robot_base_frame);
@@ -171,7 +169,7 @@ private:
 
     std::vector<MapPublishListener> map_listeners_;
     std::vector<PathListener> path_listeners_;
-    std::optional<automsgs::msgs::planning_msgs::Path> last_path_;
+    std::optional<automsgs::msgs::nav_msgs::Path> last_path_;
 
     mutable std::mutex mutex_;
     std::atomic<bool> started_{false};

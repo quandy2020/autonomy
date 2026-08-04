@@ -96,7 +96,7 @@
   * distance
   */
  inline double approachVelocityScalingFactor(
-     const automsgs::msgs::planning_msgs::Path& transformed_path,
+     const automsgs::msgs::nav_msgs::Path& transformed_path,
      const double approach_velocity_scaling_dist) {
      // Waiting to apply the threshold based on integrated distance ensures we
      // don't erroneously apply approach scaling on curvy paths that are
@@ -129,7 +129,7 @@
   */
  inline double approachVelocityConstraint(
      const double constrained_linear_vel,
-     const automsgs::msgs::planning_msgs::Path& path,
+     const automsgs::msgs::nav_msgs::Path& path,
      const double min_approach_velocity,
      const double approach_velocity_scaling_dist) {
      double velocity_scaling =

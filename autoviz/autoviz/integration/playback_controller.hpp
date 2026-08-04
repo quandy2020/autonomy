@@ -13,8 +13,8 @@
 
 #include "autolink/node/node.hpp"
 #include "autolink/node/reader.hpp"
-#include "autolink/tools/autolink_recorder/player/play_param.hpp"
-#include "autolink/tools/autolink_recorder/player/player.hpp"
+#include "autolink/tools/recorder/player/play_param.hpp"
+#include "autolink/tools/recorder/player/player.hpp"
 
 namespace autoviz {
 namespace integration {

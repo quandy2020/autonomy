@@ -16,7 +16,7 @@ public:
     static BT::PortsList providedPorts()
     {
         return {
-            BT::InputPort<automsgs::msgs::planning_msgs::Path>("path"),
+            BT::InputPort<automsgs::msgs::nav_msgs::Path>("path"),
             BT::InputPort<int>("max_cost", 253, "costmap threshold"),
             BT::InputPort<bool>("consider_unknown_as_obstacle", false, ""),
         };
@@ -25,7 +25,7 @@ public:
 protected:
     BT::NodeStatus OnEvaluate() override
     {
-        automsgs::msgs::planning_msgs::Path path;
+        automsgs::msgs::nav_msgs::Path path;
         int max_cost = 253;
         bool consider_unknown = false;
         if (!getInput("path", path)) {

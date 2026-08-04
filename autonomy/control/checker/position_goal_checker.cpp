@@ -55,7 +55,7 @@ bool PositionGoalChecker::IsGoalXYReached(
     const automsgs::msgs::geometry_msgs::Pose& query_pose,
     const automsgs::msgs::geometry_msgs::Pose& goal_pose,
     const automsgs::msgs::geometry_msgs::Twist& velocity,
-    const automsgs::msgs::planning_msgs::Path& transformed_global_plan) {
+    const automsgs::msgs::nav_msgs::Path& transformed_global_plan) {
     (void)velocity;
     if (map::costmap_2d::utils::calculate_path_length(transformed_global_plan) >
         path_length_tolerance_) {
@@ -78,7 +78,7 @@ bool PositionGoalChecker::IsGoalReached(
     const automsgs::msgs::geometry_msgs::Pose& goal_pose,
     const automsgs::msgs::geometry_msgs::Twist& velocity) {
     return IsGoalXYReached(query_pose, goal_pose, velocity,
-                           automsgs::msgs::planning_msgs::Path{});
+                           automsgs::msgs::nav_msgs::Path{});
 }
 
 bool PositionGoalChecker::GetTolerances(

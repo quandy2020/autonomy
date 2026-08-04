@@ -573,7 +573,7 @@ std::unique_ptr<display::Display> DisplayRegistry::create(
     const DisplayConfig& config) const {
   if (config.type == "Group") {
     auto group = std::make_unique<display::DisplayGroup>();
-    group->setDisplayName(config.name());
+    group->setDisplayName(config.name);
     for (const auto& child_config : config.children) {
       auto child = create(child_config);
       if (child != nullptr) {

@@ -42,7 +42,7 @@ automsgs::msgs::geometry_msgs::PoseStamped MakePose(double x, double y) {
 }
 
 TEST(PathSimplifierTest, ReturnsUnchangedWhenEpsilonNonPositive) {
-    automsgs::msgs::planning_msgs::Path path;
+    automsgs::msgs::nav_msgs::Path path;
     *path.add_poses() = MakePose(0.0, 0.0);
     *path.add_poses() = MakePose(1.0, 0.0);
     *path.add_poses() = MakePose(2.0, 0.0);
@@ -51,7 +51,7 @@ TEST(PathSimplifierTest, ReturnsUnchangedWhenEpsilonNonPositive) {
 }
 
 TEST(PathSimplifierTest, ReducesCollinearPoints) {
-    automsgs::msgs::planning_msgs::Path path;
+    automsgs::msgs::nav_msgs::Path path;
     *path.add_poses() = MakePose(0.0, 0.0);
     *path.add_poses() = MakePose(1.0, 0.0);
     *path.add_poses() = MakePose(2.0, 0.0);
@@ -64,7 +64,7 @@ TEST(PathSimplifierTest, ReducesCollinearPoints) {
 }
 
 TEST(PathSimplifierTest, KeepsCornerPoint) {
-    automsgs::msgs::planning_msgs::Path path;
+    automsgs::msgs::nav_msgs::Path path;
     *path.add_poses() = MakePose(0.0, 0.0);
     *path.add_poses() = MakePose(1.0, 0.0);
     *path.add_poses() = MakePose(1.0, 1.0);

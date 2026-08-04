@@ -31,7 +31,7 @@ std::string RemapLegacyPackage(std::string short_name) {
   } kPackageMap[] = {
       {"planning_msgs.Odometry", "nav_msgs.Odometry"},
       {"planning_msgs.Path", "nav_msgs.Path"},
-      {"map_msgs.OccupancyGrid", "nav_msgs.OccupancyGrid"},
+      {"map_msgs.OccupancyGrid", "map_msgs.OccupancyGrid"},
   };
   for (const auto& entry : kPackageMap) {
     if (short_name == entry.legacy) {

@@ -30,11 +30,11 @@
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose2d.pb.h>
-#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
-#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/nav_msgs/costmap.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
-#include <automsgs/actions/nav_actions.pb.h>
+#include <automsgs/msgs/nav_msgs/speed_limit.pb.h>
 #include "autonomy/map/costmap_2d/filters/costmap_filter.hpp"
 
 namespace autonomy {
@@ -50,7 +50,7 @@ class SpeedFilter : public CostmapFilter
 {
 public:
     using SpeedLimitCallback = std::function<void(
-        const std::shared_ptr<automsgs::actions::SpeedLimit>&)>;
+        const std::shared_ptr<automsgs::msgs::nav_msgs::SpeedLimit>&)>;
 
     SpeedFilter();
 
@@ -65,15 +65,15 @@ public:
     bool isActive();
 
     void handleFilterInfo(
-        const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>& msg);
+        const std::shared_ptr<automsgs::msgs::nav_msgs::CostmapFilterInfo>& msg);
 
     void setFilterMask(const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>& msg);
 
     void applyConfiguration(
-        const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>& info,
+        const std::shared_ptr<automsgs::msgs::nav_msgs::CostmapFilterInfo>& info,
         const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>& mask);
 
-    static std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>
+    static std::shared_ptr<automsgs::msgs::nav_msgs::CostmapFilterInfo>
     makeDefaultFilterInfo(const std::string& mask_topic, bool percentage,
                           float base = 0.0f, float multiplier = 1.0f);
 
@@ -95,7 +95,7 @@ public:
 
 private:
     void filterInfoCallback(
-        const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo> msg);
+        const std::shared_ptr<automsgs::msgs::nav_msgs::CostmapFilterInfo> msg);
 
     void maskCallback(const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid> msg);
 
@@ -108,7 +108,7 @@ private:
 
     void notifySpeedLimitIfChanged();
 
-    std::shared_ptr<automsgs::actions::SpeedLimit> buildSpeedLimitMessage() const;
+    std::shared_ptr<automsgs::msgs::nav_msgs::SpeedLimit> buildSpeedLimitMessage() const;
 
     std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid> filter_mask_;
 

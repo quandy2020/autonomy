@@ -72,7 +72,7 @@ bool SensorBridge::IgnoreMessage(const std::string& sensor_id,
 }
 
 std::unique_ptr<carto::sensor::OdometryData> SensorBridge::ToOdometryData(
-    const automsgs::msgs::planning_msgs::Odometry& msg) {
+    const automsgs::msgs::nav_msgs::Odometry& msg) {
     const carto::common::Time time = FromCommsgs(msg.header().stamp());
     const auto sensor_to_tracking = tf_bridge_.LookupToTracking(
         time, CheckNoLeadingSlash(msg.child_frame_id()));
@@ -86,7 +86,7 @@ std::unique_ptr<carto::sensor::OdometryData> SensorBridge::ToOdometryData(
 
 void SensorBridge::HandleOdometryMessage(
     const std::string& sensor_id,
-    const automsgs::msgs::planning_msgs::Odometry& msg) {
+    const automsgs::msgs::nav_msgs::Odometry& msg) {
     std::unique_ptr<carto::sensor::OdometryData> odometry_data =
         ToOdometryData(msg);
     if (odometry_data == nullptr) {

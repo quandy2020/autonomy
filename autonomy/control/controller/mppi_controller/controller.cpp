@@ -79,7 +79,7 @@
  #endif
  
     // Transform path first so closed-loop rolling goal uses the latest closest pose.
-    automsgs::msgs::planning_msgs::Path transformed_plan =
+    automsgs::msgs::nav_msgs::Path transformed_plan =
         path_handler_.transformPath(pose);
 
     automsgs::msgs::geometry_msgs::Pose goal =
@@ -132,7 +132,7 @@
  }
  
  void MPPIController::Visualize(
-     automsgs::msgs::planning_msgs::Path transformed_plan,
+     automsgs::msgs::nav_msgs::Path transformed_plan,
      const automsgs::msgs::builtin_interfaces::Time& cmd_stamp,
      const Eigen::ArrayXXf& optimal_trajectory) {
      if (trajectory_visualizer_) {
@@ -149,7 +149,7 @@
      }
  }
  
-void MPPIController::SetPlan(const automsgs::msgs::planning_msgs::Path& path) {
+void MPPIController::SetPlan(const automsgs::msgs::nav_msgs::Path& path) {
     path_handler_.setPath(path);
     has_control_state_ = false;
 }
