@@ -93,7 +93,6 @@ from config_loader import (
     PlatformRunConfig,
     format_config_catalog,
     platform_id_for_image,
-    resolve_platform_id,
 )
 
 
@@ -925,12 +924,15 @@ def resolve_runner_platform(runner: AutonomyRunner, platform_arg: str | None) ->
             return 'nvidia'
         if runner.use_nvidia == 'no':
             return 'x86_64'
+        # --nvidia auto: pick from local images, then map to platform id
         runner.detect_platform()
         return platform_id_for_image(runner.base_name)
 
+    # No --platform: detect arch + prefer existing local image (nvidia over x86_64).
+    # Must use platform_id_for_image(base_name), not resolve_platform_id(..., 'auto'),
+    # otherwise platforms.yaml x86_64 overwrites the selected nvidia image and triggers rebuild.
     runner.detect_platform()
-    runner.apply_config_gpu_preference()
-    return resolve_platform_id(runner.platform_arch, runner.use_nvidia)
+    return platform_id_for_image(runner.base_name)
 
 
 def main():
@@ -954,6 +956,7 @@ def main():
     try:
         platform_id = resolve_runner_platform(runner, platform_arg)
         runner.load_platform_config(platform_id, runner.profile)
+        runner.apply_config_gpu_preference()
     except (FileNotFoundError, KeyError, ValueError) as exc:
         print_error(str(exc))
         sys.exit(1)
