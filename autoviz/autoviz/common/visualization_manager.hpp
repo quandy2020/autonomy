@@ -31,6 +31,7 @@
 #include "autoviz/integration/playback_controller.hpp"
 #include "autoviz/rendering/scene_overlay.hpp"
 #include "autoviz/rendering/render_settings.hpp"
+#include "autoviz/variables/variable_store.hpp"
 
 namespace autoviz {
 namespace common {
@@ -166,6 +167,8 @@ class VisualizationManager {
   void setVisiblePanels(const std::vector<std::string>& panels);
   void setPlotPanels(const std::vector<PlotPanelPersistConfig>& panels);
   void setImagePanels(const std::vector<ImagePanelPersistConfig>& panels);
+  void setStateTransitionPanels(
+      const std::vector<StateTransitionPanelPersistConfig>& panels);
   void setPlotSettingsVisible(bool visible);
   void setWindowFrame(int x, int y, int width, int height);
   bool hideLeftDock() const { return hide_left_dock_; }
@@ -181,6 +184,10 @@ class VisualizationManager {
   }
   const std::vector<ImagePanelPersistConfig>& imagePanels() const {
     return image_panels_;
+  }
+  const std::vector<StateTransitionPanelPersistConfig>& stateTransitionPanels()
+      const {
+    return state_transition_panels_;
   }
   bool plotSettingsVisible() const { return plot_settings_visible_; }
   int windowX() const { return window_x_; }
@@ -202,6 +209,10 @@ class VisualizationManager {
   integration::PlaybackController& playback() { return playback_; }
   ToolManager& tools() { return tool_manager_; }
   const ToolManager& tools() const { return tool_manager_; }
+  variables::VariableStore& variableStore() { return variable_store_; }
+  const variables::VariableStore& variableStore() const {
+    return variable_store_;
+  }
 
   const std::vector<std::string>& toolbarTools() const {
     return tool_manager_.toolbarToolIds();
@@ -253,6 +264,7 @@ class VisualizationManager {
   std::function<void(const std::string&)> render_backend_callback_;
   integration::PlaybackController playback_;
   ToolManager tool_manager_;
+  variables::VariableStore variable_store_;
   FrameManager frame_manager_;
   TransformationManager transformation_manager_;
   ViewManager view_manager_;
@@ -276,6 +288,7 @@ class VisualizationManager {
   std::vector<std::string> visible_panels_;
   std::vector<PlotPanelPersistConfig> plot_panels_;
   std::vector<ImagePanelPersistConfig> image_panels_;
+  std::vector<StateTransitionPanelPersistConfig> state_transition_panels_;
   bool plot_settings_visible_ = true;
   int window_x_ = -1;
   int window_y_ = -1;

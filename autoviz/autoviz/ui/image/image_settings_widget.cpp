@@ -22,43 +22,35 @@
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/display/image_utils.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 namespace image {
 namespace {
-
-QWidget* MakeCollapsibleSection(QWidget* parent, const QString& title,
-                                QWidget* body, bool expanded) {
-  auto* section = new QGroupBox(title, parent);
-  section->setCheckable(true);
-  section->setChecked(expanded);
-  auto* layout = new QVBoxLayout(section);
-  layout->setContentsMargins(8, 8, 8, 8);
-  layout->addWidget(body);
-  body->setVisible(expanded);
-  QObject::connect(section, &QGroupBox::toggled, body, &QWidget::setVisible);
-  return section;
-}
 
 }  // namespace
 
 ImageSettingsWidget::ImageSettingsWidget(common::VisualizationManager* manager,
                                          QWidget* parent)
     : manager_(manager), QWidget(parent) {
+  ApplyCompactSettingsShell(this);
   auto* outer = new QVBoxLayout(this);
-  outer->setContentsMargins(8, 8, 8, 8);
-  outer->setSpacing(8);
+  outer->setContentsMargins(PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
+                            PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
+  outer->setSpacing(PanelSettingsLayout::kOuterSpacing);
+  outer->setAlignment(Qt::AlignTop);
 
-  auto* title_row = new QHBoxLayout();
-  title_row->addWidget(new QLabel(tr("Title"), this));
+  auto* title_form = new QFormLayout();
+  ApplyCompactForm(title_form);
   title_edit_ = new QLineEdit(config_.title, this);
-  title_row->addWidget(title_edit_, 1);
-  outer->addLayout(title_row);
+  title_form->addRow(tr("Title"), title_edit_);
+  outer->addLayout(title_form);
   connect(title_edit_, &QLineEdit::textChanged, this,
           &ImageSettingsWidget::emitConfigChanged);
 
   auto* general_body = new QWidget(this);
   auto* general_form = new QFormLayout(general_body);
+  ApplyCompactForm(general_form);
   topic_combo_ = new QComboBox(general_body);
   topic_combo_->setEditable(true);
   general_form->addRow(tr("Topic"), topic_combo_);
@@ -120,6 +112,7 @@ ImageSettingsWidget::ImageSettingsWidget(common::VisualizationManager* manager,
 
   auto* scene_body = new QWidget(this);
   auto* scene_form = new QFormLayout(scene_body);
+  ApplyCompactForm(scene_form);
   label_scale_spin_ = new QDoubleSpinBox(scene_body);
   label_scale_spin_->setRange(0.1, 8.0);
   label_scale_spin_->setSingleStep(0.1);
@@ -131,6 +124,7 @@ ImageSettingsWidget::ImageSettingsWidget(common::VisualizationManager* manager,
 
   auto* publish_body = new QWidget(this);
   auto* publish_form = new QFormLayout(publish_body);
+  ApplyCompactForm(publish_form);
   click_topic_edit_ = new QLineEdit(publish_body);
   click_topic_edit_->setPlaceholderText(QStringLiteral("/foxglove/cursor/click"));
   hover_topic_edit_ = new QLineEdit(publish_body);

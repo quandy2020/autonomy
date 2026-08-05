@@ -22,6 +22,7 @@
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/ui/map/map_message_ingest.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 namespace map {
@@ -38,12 +39,17 @@ QComboBox* MakeEnumCombo(QWidget* parent) {
 MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
                                      QWidget* parent)
     : manager_(manager), config_(DefaultMapPanelConfig()), QWidget(parent) {
+  ApplyCompactSettingsShell(this);
   auto* root = new QVBoxLayout(this);
-  root->setContentsMargins(8, 8, 8, 8);
-  root->setSpacing(8);
+  root->setContentsMargins(PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
+                           PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
+  root->setSpacing(PanelSettingsLayout::kOuterSpacing);
+  root->setAlignment(Qt::AlignTop);
 
   auto* general = new QGroupBox(tr("General"), this);
+  StyleSettingsGroupBox(general);
   auto* general_form = new QFormLayout(general);
+  ApplyCompactForm(general_form);
   title_edit_ = new QLineEdit(general);
   general_form->addRow(tr("Title"), title_edit_);
 
@@ -80,11 +86,13 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
   general_form->addRow(tr("Zoom"), zoom_spin_);
   root->addWidget(general);
 
-  auto* topics_group = new QGroupBox(tr("Topics"), this);
+  auto* topics_group = new QGroupBox(tr("Channels"), this);
+  StyleSettingsGroupBox(topics_group);
   auto* topics_layout = new QVBoxLayout(topics_group);
+  ApplyCompactVBox(topics_layout);
   auto* topic_buttons = new QHBoxLayout();
-  auto* add_topic = new QPushButton(tr("Add"), topics_group);
-  auto* remove_topic = new QPushButton(tr("Remove"), topics_group);
+  auto* add_topic = MakeFlatActionButton(tr("Add"), topics_group);
+  auto* remove_topic = MakeDestructiveFlatActionButton(tr("Remove"), topics_group);
   topic_buttons->addWidget(add_topic);
   topic_buttons->addWidget(remove_topic);
   topic_buttons->addStretch(1);
@@ -94,6 +102,7 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
 
   topic_editor_ = new QWidget(topics_group);
   auto* topic_form = new QFormLayout(topic_editor_);
+  ApplyCompactForm(topic_form);
   topic_channel_combo_ = new QComboBox(topic_editor_);
   topic_channel_combo_->setEditable(true);
   topic_form->addRow(tr("Channel"), topic_channel_combo_);
@@ -131,7 +140,7 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
   topic_opacity_spin_->setRange(0.0, 1.0);
   topic_opacity_spin_->setSingleStep(0.05);
   topic_form->addRow(tr("Layer opacity"), topic_opacity_spin_);
-  topic_color_button_ = new QPushButton(tr("Pick color"), topic_editor_);
+  topic_color_button_ = MakeFlatActionButton(tr("Pick color"), topic_editor_);
   topic_form->addRow(tr("Color"), topic_color_button_);
   topic_enabled_check_ = new QCheckBox(tr("Enabled"), topic_editor_);
   topic_form->addRow(QString(), topic_enabled_check_);
@@ -139,10 +148,12 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
   root->addWidget(topics_group);
 
   auto* overlay_group = new QGroupBox(tr("Overlay layers"), this);
+  StyleSettingsGroupBox(overlay_group);
   auto* overlay_layout = new QVBoxLayout(overlay_group);
+  ApplyCompactVBox(overlay_layout);
   auto* overlay_buttons = new QHBoxLayout();
-  auto* add_overlay = new QPushButton(tr("Add"), overlay_group);
-  auto* remove_overlay = new QPushButton(tr("Remove"), overlay_group);
+  auto* add_overlay = MakeFlatActionButton(tr("Add"), overlay_group);
+  auto* remove_overlay = MakeDestructiveFlatActionButton(tr("Remove"), overlay_group);
   overlay_buttons->addWidget(add_overlay);
   overlay_buttons->addWidget(remove_overlay);
   overlay_buttons->addStretch(1);
@@ -151,6 +162,7 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
   overlay_layout->addWidget(overlay_list_);
   overlay_editor_ = new QWidget(overlay_group);
   auto* overlay_form = new QFormLayout(overlay_editor_);
+  ApplyCompactForm(overlay_form);
   overlay_name_edit_ = new QLineEdit(overlay_editor_);
   overlay_url_edit_ = new QLineEdit(overlay_editor_);
   overlay_opacity_spin_ = new QDoubleSpinBox(overlay_editor_);
@@ -218,8 +230,7 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
       return;
     }
     config_.topic_layers[selected_topic_index_].color = picked;
-    topic_color_button_->setStyleSheet(
-        QStringLiteral("background:%1;").arg(picked.name()));
+    UpdateColorButton(topic_color_button_, picked);
     emitConfigChanged();
   });
 
@@ -340,10 +351,7 @@ void MapSettingsWidget::loadTopicEditor(const MapTopicLayerConfig& layer) {
   topic_time_seconds_spin_->setValue(layer.time_range_seconds);
   topic_opacity_spin_->setValue(layer.layer_opacity);
   topic_enabled_check_->setChecked(layer.enabled);
-  topic_color_button_->setStyleSheet(
-      layer.color.isValid()
-          ? QStringLiteral("background:%1;").arg(layer.color.name())
-          : QString());
+  UpdateColorButton(topic_color_button_, layer.color);
 }
 
 void MapSettingsWidget::loadOverlayEditor(const MapOverlayLayerConfig& layer) {

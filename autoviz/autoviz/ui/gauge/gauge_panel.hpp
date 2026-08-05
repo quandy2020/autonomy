@@ -50,6 +50,7 @@ class GaugePanel : public QWidget {
   QWidget* settingsWidgetForInspector();
   void recallSettingsWidget();
   void refreshSettingsChannels();
+  void refreshFromVariables();
 
   void handleFieldDrop(const QString& channel, const QString& field_path);
 
@@ -95,6 +96,7 @@ class GaugePanel : public QWidget {
   QPointer<QToolButton> expand_button_;
   integration::ChannelReaderRegistry::SubscriptionId subscription_id_ = 0;
   std::string subscribed_message_type_;
+  std::string last_payload_;
 };
 
 }  // namespace gauge

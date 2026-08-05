@@ -26,6 +26,7 @@
 #include "autoviz/ui/map/map_viewport_widget.hpp"
 #include "autoviz/ui/panel_context_menu.hpp"
 #include "autoviz/ui/panel_dock_widget.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 #include "autoviz/ui/panel_title_tools.hpp"
 #include "autoviz/ui/plot/plot_drag_mime.hpp"
 
@@ -64,16 +65,11 @@ MapPanel::MapPanel(common::VisualizationManager* manager, QWidget* parent)
   settings_layout->addWidget(settings_scroll_);
 
   auto* toolbar = new QFrame(this);
-  toolbar->setStyleSheet(
-      QStringLiteral(
-          "QFrame {"
-          "  background: palette(base);"
-          "  border-bottom: 1px solid palette(midlight);"
-          "}"));
+  toolbar->setStyleSheet(PanelStatusBarStyle());
   auto* toolbar_layout = new QHBoxLayout(toolbar);
   toolbar_layout->setContentsMargins(6, 4, 6, 4);
   status_label_ = new QLabel(toolbar);
-  status_label_->setStyleSheet(QStringLiteral("color: palette(mid); font-size: 10px;"));
+  status_label_->setStyleSheet(PanelStatusLabelStyle());
   status_label_->setTextInteractionFlags(Qt::TextSelectableByMouse);
   toolbar_layout->addWidget(status_label_, 1);
   root->addWidget(toolbar);
@@ -207,22 +203,11 @@ void MapPanel::setExpandButtonChecked(bool checked) {
 }
 
 QWidget* MapPanel::settingsWidgetForInspector() {
-  if (settings_scroll_ == nullptr) {
-    return settings_widget_;
-  }
-  if (settings_scroll_->parentWidget() != this) {
-    settings_scroll_->setParent(this);
-  }
-  settings_scroll_->show();
-  return settings_scroll_;
+  return SettingsScrollForInspector(settings_scroll_);
 }
 
 void MapPanel::recallSettingsWidget() {
-  if (settings_scroll_ == nullptr || settings_container_ == nullptr) {
-    return;
-  }
-  settings_scroll_->setParent(settings_container_);
-  settings_container_->layout()->addWidget(settings_scroll_);
+  RecallSettingsScrollToContainer(settings_scroll_, settings_container_);
 }
 
 void MapPanel::refreshSettingsChannels() {
@@ -422,7 +407,7 @@ void MapPanel::updateStatusBar() {
     }
   }
   if (enabled_layers == 0) {
-    status_label_->setText(tr("Drop a geo channel from Topics"));
+    status_label_->setText(tr("Drop a geo channel from Channels"));
     return;
   }
   status_label_->setText(tr("%1 topic layer(s)").arg(enabled_layers));

@@ -58,14 +58,17 @@
 #include "autoviz/ui/property_inspector_panel.hpp"
 #include "autoviz/ui/playback_panel.hpp"
 #include "autoviz/ui/plot/plot_config_io.hpp"
+#include "autoviz/ui/state_transitions/state_transition_config_io.hpp"
 #include "autoviz/ui/image/image_config_io.hpp"
 #include "autoviz/ui/plot/plot_panel.hpp"
 #include "autoviz/ui/teleop/teleop_panel.hpp"
 #include "autoviz/ui/log/log_panel.hpp"
 #include "autoviz/ui/raw_messages_panel.hpp"
-#include "autoviz/ui/topics_panel.hpp"
+#include "autoviz/ui/channels/channels_panel.hpp"
 #include "autoviz/ui/problems_panel.hpp"
 #include "autoviz/ui/variables_panel.hpp"
+#include "autoviz/ui/variable_slider_panel.hpp"
+#include "autoviz/variables/variable_store.hpp"
 #include "autoviz/ui/selection_panel.hpp"
 #include "autoviz/ui/tool_properties_panel.hpp"
 #include "autoviz/ui/tf_tree_panel.hpp"
@@ -74,6 +77,11 @@
 #include "autoviz/ui/gauge/gauge_panel.hpp"
 #include "autoviz/ui/map/map_panel.hpp"
 #include "autoviz/ui/indicator/indicator_panel.hpp"
+#include "autoviz/ui/parameters/parameters_panel.hpp"
+#include "autoviz/ui/channel_graph/channel_graph_panel.hpp"
+#include "autoviz/ui/state_transitions/state_transition_panel.hpp"
+#include "autoviz/ui/audio/audio_panel.hpp"
+#include "autoviz/ui/service/service_panel.hpp"
 #include "autoviz/ui/transformation_panel.hpp"
 #include "autoviz/ui/strata_floor_panel.hpp"
 #include "autoviz/ui/time_panel.hpp"
@@ -643,7 +651,7 @@ Qt::DockWidgetArea VisualizationFrame::defaultSidebarArea(
   if (dock == nullptr) {
     return Qt::RightDockWidgetArea;
   }
-  if (dock == topics_dock_ || dock == displays_dock_ || dock == channel_dock_ ||
+  if (dock == channels_dock_ || dock == displays_dock_ || dock == channel_dock_ ||
       dock == problems_dock_ || dock == strata_floor_dock_) {
     return Qt::LeftDockWidgetArea;
   }
@@ -752,6 +760,7 @@ void VisualizationFrame::bindPlotToPropertyInspector(plot::PlotPanel* panel) {
   if (panel == nullptr || property_inspector_panel_ == nullptr) {
     return;
   }
+  clearStateTransitionInspectorBinding();
   if (inspector_plot_panel_ != nullptr && inspector_plot_panel_ != panel) {
     inspector_plot_panel_->recallSettingsWidget();
   }
@@ -790,6 +799,7 @@ void VisualizationFrame::bindImageToPropertyInspector(image::ImagePanel* panel) 
   if (panel == nullptr || property_inspector_panel_ == nullptr) {
     return;
   }
+  clearStateTransitionInspectorBinding();
   if (inspector_image_panel_ != nullptr && inspector_image_panel_ != panel) {
     inspector_image_panel_->recallSettingsWidget();
   }
@@ -828,6 +838,7 @@ void VisualizationFrame::bindTeleopToPropertyInspector(teleop::TeleopPanel* pane
   if (panel == nullptr || property_inspector_panel_ == nullptr) {
     return;
   }
+  clearStateTransitionInspectorBinding();
   if (inspector_teleop_panel_ != nullptr && inspector_teleop_panel_ != panel) {
     inspector_teleop_panel_->recallSettingsWidget();
   }
@@ -863,6 +874,7 @@ void VisualizationFrame::bindLogToPropertyInspector(log_panel::LogPanel* panel) 
   if (panel == nullptr || property_inspector_panel_ == nullptr) {
     return;
   }
+  clearStateTransitionInspectorBinding();
   if (inspector_log_panel_ != nullptr && inspector_log_panel_ != panel) {
     inspector_log_panel_->recallSettingsWidget();
   }
@@ -901,6 +913,7 @@ void VisualizationFrame::bindTableToPropertyInspector(table::TablePanel* panel) 
   if (panel == nullptr || property_inspector_panel_ == nullptr) {
     return;
   }
+  clearStateTransitionInspectorBinding();
   if (inspector_table_panel_ != nullptr && inspector_table_panel_ != panel) {
     inspector_table_panel_->recallSettingsWidget();
   }
@@ -944,6 +957,7 @@ void VisualizationFrame::bindPublishToPropertyInspector(
   if (panel == nullptr || property_inspector_panel_ == nullptr) {
     return;
   }
+  clearStateTransitionInspectorBinding();
   if (inspector_publish_panel_ != nullptr && inspector_publish_panel_ != panel) {
     inspector_publish_panel_->recallSettingsWidget();
   }
@@ -964,6 +978,12 @@ void VisualizationFrame::bindPublishToPropertyInspector(
   }
   if (inspector_gauge_panel_ != nullptr) {
     clearPropertyInspectorForGauge(inspector_gauge_panel_);
+  }
+  if (inspector_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(inspector_audio_panel_);
+  }
+  if (inspector_service_panel_ != nullptr) {
+    clearPropertyInspectorForService(inspector_service_panel_);
   }
   inspector_publish_panel_ = panel;
   const QString title = panel->config().title.trimmed();
@@ -989,10 +1009,74 @@ void VisualizationFrame::clearPropertyInspectorForPublish(
   }
 }
 
+void VisualizationFrame::bindServiceToPropertyInspector(
+    service_panel::ServicePanel* panel) {
+  if (panel == nullptr || property_inspector_panel_ == nullptr) {
+    return;
+  }
+  clearStateTransitionInspectorBinding();
+  if (inspector_service_panel_ != nullptr && inspector_service_panel_ != panel) {
+    inspector_service_panel_->recallSettingsWidget();
+  }
+  if (inspector_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(inspector_plot_panel_);
+  }
+  if (inspector_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(inspector_image_panel_);
+  }
+  if (inspector_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(inspector_teleop_panel_);
+  }
+  if (inspector_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(inspector_log_panel_);
+  }
+  if (inspector_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(inspector_table_panel_);
+  }
+  if (inspector_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(inspector_publish_panel_);
+  }
+  if (inspector_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(inspector_gauge_panel_);
+  }
+  if (inspector_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(inspector_audio_panel_);
+  }
+  if (inspector_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(inspector_map_panel_);
+  }
+  if (inspector_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(inspector_indicator_panel_);
+  }
+  inspector_service_panel_ = panel;
+  const QString title = panel->config().title.trimmed();
+  property_inspector_panel_->setContentWidget(panel->settingsWidgetForInspector(),
+                                              title.isEmpty() ? tr("Service Call")
+                                                                : title);
+  if (property_inspector_dock_ != nullptr) {
+    panel->setSettingsButtonChecked(property_inspector_dock_->isVisible());
+  }
+}
+
+void VisualizationFrame::clearPropertyInspectorForService(
+    service_panel::ServicePanel* panel) {
+  if (panel == nullptr) {
+    return;
+  }
+  panel->recallSettingsWidget();
+  if (inspector_service_panel_ == panel) {
+    inspector_service_panel_ = nullptr;
+    if (property_inspector_panel_ != nullptr) {
+      property_inspector_panel_->clearContent();
+    }
+  }
+}
+
 void VisualizationFrame::bindGaugeToPropertyInspector(gauge::GaugePanel* panel) {
   if (panel == nullptr || property_inspector_panel_ == nullptr) {
     return;
   }
+  clearStateTransitionInspectorBinding();
   if (inspector_gauge_panel_ != nullptr && inspector_gauge_panel_ != panel) {
     inspector_gauge_panel_->recallSettingsWidget();
   }
@@ -1020,6 +1104,9 @@ void VisualizationFrame::bindGaugeToPropertyInspector(gauge::GaugePanel* panel) 
   if (inspector_indicator_panel_ != nullptr) {
     clearPropertyInspectorForIndicator(inspector_indicator_panel_);
   }
+  if (inspector_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(inspector_audio_panel_);
+  }
   inspector_gauge_panel_ = panel;
   const QString title = panel->config().title.trimmed();
   property_inspector_panel_->setContentWidget(
@@ -1043,10 +1130,73 @@ void VisualizationFrame::clearPropertyInspectorForGauge(gauge::GaugePanel* panel
   }
 }
 
+void VisualizationFrame::bindAudioToPropertyInspector(audio_panel::AudioPanel* panel) {
+  if (panel == nullptr || property_inspector_panel_ == nullptr) {
+    return;
+  }
+  clearStateTransitionInspectorBinding();
+  if (inspector_audio_panel_ != nullptr && inspector_audio_panel_ != panel) {
+    inspector_audio_panel_->recallSettingsWidget();
+  }
+  if (inspector_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(inspector_plot_panel_);
+  }
+  if (inspector_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(inspector_image_panel_);
+  }
+  if (inspector_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(inspector_teleop_panel_);
+  }
+  if (inspector_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(inspector_log_panel_);
+  }
+  if (inspector_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(inspector_table_panel_);
+  }
+  if (inspector_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(inspector_publish_panel_);
+  }
+  if (inspector_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(inspector_gauge_panel_);
+  }
+  if (inspector_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(inspector_map_panel_);
+  }
+  if (inspector_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(inspector_indicator_panel_);
+  }
+  if (inspector_service_panel_ != nullptr) {
+    clearPropertyInspectorForService(inspector_service_panel_);
+  }
+  inspector_audio_panel_ = panel;
+  const QString title = panel->config().title.trimmed();
+  property_inspector_panel_->setContentWidget(
+      panel->settingsWidgetForInspector(),
+      title.isEmpty() ? tr("Audio") : title);
+  if (property_inspector_dock_ != nullptr) {
+    panel->setSettingsButtonChecked(property_inspector_dock_->isVisible());
+  }
+}
+
+void VisualizationFrame::clearPropertyInspectorForAudio(
+    audio_panel::AudioPanel* panel) {
+  if (panel == nullptr) {
+    return;
+  }
+  panel->recallSettingsWidget();
+  if (inspector_audio_panel_ == panel) {
+    inspector_audio_panel_ = nullptr;
+    if (property_inspector_panel_ != nullptr) {
+      property_inspector_panel_->clearContent();
+    }
+  }
+}
+
 void VisualizationFrame::bindMapToPropertyInspector(map::MapPanel* panel) {
   if (panel == nullptr || property_inspector_panel_ == nullptr) {
     return;
   }
+  clearStateTransitionInspectorBinding();
   if (inspector_map_panel_ != nullptr && inspector_map_panel_ != panel) {
     inspector_map_panel_->recallSettingsWidget();
   }
@@ -1070,6 +1220,9 @@ void VisualizationFrame::bindMapToPropertyInspector(map::MapPanel* panel) {
   }
   if (inspector_gauge_panel_ != nullptr) {
     clearPropertyInspectorForGauge(inspector_gauge_panel_);
+  }
+  if (inspector_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(inspector_audio_panel_);
   }
   if (inspector_indicator_panel_ != nullptr) {
     clearPropertyInspectorForIndicator(inspector_indicator_panel_);
@@ -1102,6 +1255,7 @@ void VisualizationFrame::bindIndicatorToPropertyInspector(
   if (panel == nullptr || property_inspector_panel_ == nullptr) {
     return;
   }
+  clearStateTransitionInspectorBinding();
   if (inspector_indicator_panel_ != nullptr && inspector_indicator_panel_ != panel) {
     inspector_indicator_panel_->recallSettingsWidget();
   }
@@ -1125,6 +1279,9 @@ void VisualizationFrame::bindIndicatorToPropertyInspector(
   }
   if (inspector_gauge_panel_ != nullptr) {
     clearPropertyInspectorForGauge(inspector_gauge_panel_);
+  }
+  if (inspector_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(inspector_audio_panel_);
   }
   if (inspector_map_panel_ != nullptr) {
     clearPropertyInspectorForMap(inspector_map_panel_);
@@ -1151,6 +1308,108 @@ void VisualizationFrame::clearPropertyInspectorForIndicator(
       property_inspector_panel_->clearContent();
     }
   }
+}
+
+void VisualizationFrame::clearStateTransitionInspectorBinding() {
+  if (inspector_state_transition_panel_ != nullptr) {
+    clearPropertyInspectorForStateTransition(inspector_state_transition_panel_);
+  }
+}
+
+void VisualizationFrame::deactivateStateTransitionIfNot(
+    state_transitions::StateTransitionPanel* keep) {
+  if (active_state_transition_panel_ != nullptr &&
+      active_state_transition_panel_ != keep) {
+    clearPropertyInspectorForStateTransition(active_state_transition_panel_);
+    active_state_transition_panel_ = nullptr;
+  }
+}
+
+void VisualizationFrame::bindStateTransitionToPropertyInspector(
+    state_transitions::StateTransitionPanel* panel) {
+  if (panel == nullptr || property_inspector_panel_ == nullptr) {
+    return;
+  }
+  if (inspector_state_transition_panel_ != nullptr &&
+      inspector_state_transition_panel_ != panel) {
+    inspector_state_transition_panel_->recallSettingsWidget();
+  }
+  if (inspector_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(inspector_plot_panel_);
+  }
+  if (inspector_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(inspector_image_panel_);
+  }
+  if (inspector_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(inspector_teleop_panel_);
+  }
+  if (inspector_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(inspector_log_panel_);
+  }
+  if (inspector_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(inspector_table_panel_);
+  }
+  if (inspector_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(inspector_publish_panel_);
+  }
+  if (inspector_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(inspector_gauge_panel_);
+  }
+  if (inspector_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(inspector_audio_panel_);
+  }
+  if (inspector_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(inspector_map_panel_);
+  }
+  if (inspector_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(inspector_indicator_panel_);
+  }
+  inspector_state_transition_panel_ = panel;
+  const QString title = panel->config().title.trimmed();
+  property_inspector_panel_->setContentWidget(
+      panel->settingsWidgetForInspector(),
+      title.isEmpty() ? tr("State Transitions") : title);
+  if (property_inspector_dock_ != nullptr) {
+    panel->setSettingsButtonChecked(property_inspector_dock_->isVisible());
+  }
+}
+
+void VisualizationFrame::clearPropertyInspectorForStateTransition(
+    state_transitions::StateTransitionPanel* panel) {
+  if (panel == nullptr) {
+    return;
+  }
+  panel->recallSettingsWidget();
+  if (inspector_state_transition_panel_ == panel) {
+    inspector_state_transition_panel_ = nullptr;
+    if (property_inspector_panel_ != nullptr) {
+      property_inspector_panel_->clearContent();
+    }
+  }
+}
+
+void VisualizationFrame::ensureDefaultStateTransitionDockTab() {
+  PanelDockWidget* state_dock = nullptr;
+  for (PanelDockWidget* dock : findChildren<PanelDockWidget*>()) {
+    if (panelTypeId(dock) == QLatin1String("StateTransitionDock")) {
+      state_dock = dock;
+      break;
+    }
+  }
+  if (state_dock == nullptr) {
+    state_dock = createStateTransitionPanelDock(QStringLiteral("StateTransitionDock"));
+  }
+  if (main_panel_host_ == nullptr || plot_dock_ == nullptr || state_dock == nullptr) {
+    return;
+  }
+  if (dockHostForPanel(state_dock) != main_panel_host_) {
+    if (QMainWindow* host = dockHostForPanel(state_dock)) {
+      host->removeDockWidget(state_dock);
+    }
+    addMainPanelDock(state_dock, Qt::LeftDockWidgetArea);
+  }
+  main_panel_host_->tabifyDockWidget(plot_dock_, state_dock);
+  plot_dock_->raise();
 }
 
 void VisualizationFrame::applyMainPanelDefaultLayout() {
@@ -1207,14 +1466,14 @@ void VisualizationFrame::setupUi() {
   channel_dock_->setContentWidget(raw_messages_panel_);
   addSidebarDock(channel_dock_, Qt::LeftDockWidgetArea);
 
-  topics_dock_ = new PanelDockWidget(tr("Topics"), this);
-  topics_dock_->setObjectName(QStringLiteral("TopicsDock"));
-  topics_dock_->setPanelIcon(
+  channels_dock_ = new PanelDockWidget(tr("Channels"), this);
+  channels_dock_->setObjectName(QStringLiteral("ChannelBrowserDock"));
+  channels_dock_->setPanelIcon(
       IconLoader::panelIcon(QStringLiteral("PanelChannelGraph")));
-  topics_panel_ = new TopicsPanel(manager_.get(), topics_dock_);
-  topics_dock_->setContentWidget(topics_panel_);
-  addSidebarDock(topics_dock_, Qt::LeftDockWidgetArea);
-  tabifyDockWidget(channel_dock_, topics_dock_);
+  channels_panel_ = new ChannelsPanel(manager_.get(), channels_dock_);
+  channels_dock_->setContentWidget(channels_panel_);
+  addSidebarDock(channels_dock_, Qt::LeftDockWidgetArea);
+  tabifyDockWidget(channel_dock_, channels_dock_);
 
   problems_dock_ = new PanelDockWidget(tr("Problems"), this);
   problems_dock_->setObjectName(QStringLiteral("ProblemsDock"));
@@ -1268,17 +1527,29 @@ void VisualizationFrame::setupUi() {
   selection_dock_ = new PanelDockWidget(tr("Selection"), this);
   selection_dock_->setObjectName(QStringLiteral("SelectionDock"));
   selection_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Selection")));
-  selection_panel_ = new SelectionPanel(selection_dock_);
+  selection_panel_ = new SelectionPanel(manager_.get(), selection_dock_);
   selection_dock_->setContentWidget(selection_panel_);
   addSidebarDock(selection_dock_, Qt::RightDockWidgetArea);
 
   variables_dock_ = new PanelDockWidget(tr("Variables"), this);
   variables_dock_->setObjectName(QStringLiteral("VariablesDock"));
   variables_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelParameters")));
-  variables_panel_ = new VariablesPanel(variables_dock_);
+  variables_panel_ = new VariablesPanel(manager_.get(), variables_dock_);
   variables_dock_->setContentWidget(variables_panel_);
   addSidebarDock(variables_dock_, Qt::RightDockWidgetArea);
   variables_dock_->hide();
+
+  variable_slider_dock_ = new PanelDockWidget(tr("Variable Slider"), this);
+  variable_slider_dock_->setObjectName(QStringLiteral("VariableSliderDock"));
+  variable_slider_dock_->setProperty("panelTypeId",
+                                    QStringLiteral("VariableSliderDock"));
+  variable_slider_dock_->setPanelIcon(
+      IconLoader::panelIcon(QStringLiteral("PanelParameters")));
+  variable_slider_panel_ =
+      new VariableSliderPanel(manager_.get(), variable_slider_dock_);
+  variable_slider_dock_->setContentWidget(variable_slider_panel_);
+  addMainPanelDock(variable_slider_dock_, Qt::LeftDockWidgetArea);
+  variable_slider_dock_->hide();
 
   property_inspector_dock_ = new PanelDockWidget(tr("Panel"), this);
   property_inspector_dock_->setObjectName(QStringLiteral("PropertyInspectorDock"));
@@ -1361,6 +1632,7 @@ void VisualizationFrame::setupUi() {
   setCorner(Qt::BottomRightCorner, Qt::BottomDockWidgetArea);
 
   setupStatusBar();
+  wireVariableRefresh();
 
   for (PanelDockWidget* dock : orderedDockWidgets()) {
     if (dock == nullptr || dock == time_dock_ || dock == viewport_dock_) {
@@ -1375,7 +1647,13 @@ void VisualizationFrame::setupUi() {
         panelTypeId(dock) == QLatin1String("PublishDock") ||
         panelTypeId(dock) == QLatin1String("GaugeDock") ||
         panelTypeId(dock) == QLatin1String("MapDock") ||
-        panelTypeId(dock) == QLatin1String("IndicatorDock")) {
+        panelTypeId(dock) == QLatin1String("IndicatorDock") ||
+        panelTypeId(dock) == QLatin1String("ParametersDock") ||
+        panelTypeId(dock) == QLatin1String("ChannelGraphDock") ||
+        panelTypeId(dock) == QLatin1String("StateTransitionDock") ||
+        panelTypeId(dock) == QLatin1String("AudioDock") ||
+        panelTypeId(dock) == QLatin1String("ServiceDock") ||
+        panelTypeId(dock) == QLatin1String("VariableSliderDock")) {
       continue;
     }
     installStandardPanelTitleTools(dock);
@@ -1935,6 +2213,7 @@ bool VisualizationFrame::loadConfig(const QString& path) {
   restoreWindowLayout();
   restorePlotPanelConfigs();
   restoreImagePanelConfigs();
+  restoreStateTransitionPanelConfigs();
   applyPlotSettingsVisibilityFromSession();
   applyActiveTool(manager_->tools().activeToolId());
   ensureTimeDockAtBottom();
@@ -2040,6 +2319,7 @@ void VisualizationFrame::captureWindowLayout() {
   manager_->setVisiblePanels(visible_panels);
   capturePlotPanelConfigs();
   captureImagePanelConfigs();
+  captureStateTransitionPanelConfigs();
   const QRect frame_geometry = geometry();
   manager_->setWindowFrame(frame_geometry.x(), frame_geometry.y(),
                            frame_geometry.width(), frame_geometry.height());
@@ -2222,8 +2502,8 @@ void VisualizationFrame::updateChannelList() {
   if (raw_messages_panel_ != nullptr) {
     raw_messages_panel_->refreshChannels();
   }
-  if (topics_panel_ != nullptr) {
-    topics_panel_->refreshChannels();
+  if (channels_panel_ != nullptr) {
+    channels_panel_->refreshChannels();
   }
   refreshAllPlotSettingsChannels();
 }
@@ -2277,7 +2557,7 @@ QList<PanelDockWidget*> VisualizationFrame::orderedDockWidgets() const {
   QList<PanelDockWidget*> docks = {viewport_dock_,   displays_dock_,   strata_floor_dock_,
                                    selection_dock_,  tool_props_dock_, views_dock_,
                                    time_dock_,       playback_dock_,   channel_dock_,
-                                   topics_dock_,     problems_dock_,   variables_dock_,
+                                   channels_dock_,   problems_dock_,   variables_dock_,
                                    property_inspector_dock_,
                                    transformation_dock_, tf_dock_, image_dock_,
                                    plot_dock_};
@@ -2621,11 +2901,12 @@ void VisualizationFrame::applyFoxgloveDefaultLayout() {
   addSidebarDock(displays_dock_, Qt::LeftDockWidgetArea);
 
   applyMainPanelDefaultLayout();
+  ensureDefaultStateTransitionDockTab();
 }
 
 void VisualizationFrame::applyDefaultDockLayout() {
   channel_dock_->hide();
-  topics_dock_->show();
+  channels_dock_->show();
   if (problems_dock_ != nullptr) {
     problems_dock_->show();
   }
@@ -2633,7 +2914,7 @@ void VisualizationFrame::applyDefaultDockLayout() {
     strata_floor_dock_->hide();
   }
   setupLeftSidebarTabs();
-  topics_dock_->raise();
+  channels_dock_->raise();
   tf_dock_->hide();
   transformation_dock_->hide();
   image_dock_->hide();
@@ -2861,6 +3142,9 @@ void VisualizationFrame::showPanelByObjectName(const QString& object_name) {
   }
 
   auto* dock = findChild<PanelDockWidget*>(object_name);
+  if (dock == nullptr && object_name == QLatin1String("TopicsDock")) {
+    dock = channels_dock_;
+  }
   if (dock == nullptr && object_name == QLatin1String("PlotDock")) {
     dock = createPlotPanelDock(object_name);
     addMainPanelDock(dock, Qt::LeftDockWidgetArea);
@@ -2900,6 +3184,29 @@ void VisualizationFrame::showPanelByObjectName(const QString& object_name) {
   if (dock == nullptr && object_name == QLatin1String("IndicatorDock")) {
     dock = createIndicatorPanelDock(object_name);
     addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr && object_name == QLatin1String("ServiceDock")) {
+    dock = createServicePanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr && object_name == QLatin1String("ParametersDock")) {
+    dock = createParametersPanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr && object_name == QLatin1String("ChannelGraphDock")) {
+    dock = createChannelGraphPanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr && object_name == QLatin1String("StateTransitionDock")) {
+    dock = createStateTransitionPanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr && object_name == QLatin1String("AudioDock")) {
+    dock = createAudioPanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr && object_name == QLatin1String("VariableSliderDock")) {
+    dock = variable_slider_dock_;
   }
   if (dock == nullptr) {
     return;
@@ -2964,7 +3271,12 @@ void VisualizationFrame::onSplitActiveDock(PanelDockWidget* source,
   const bool is_publish = panelTypeId(source) == QLatin1String("PublishDock");
   const bool is_gauge = panelTypeId(source) == QLatin1String("GaugeDock");
   const bool is_map = panelTypeId(source) == QLatin1String("MapDock");
+  const bool is_channel_graph =
+      panelTypeId(source) == QLatin1String("ChannelGraphDock");
+  const bool is_audio = panelTypeId(source) == QLatin1String("AudioDock");
   const bool is_indicator = panelTypeId(source) == QLatin1String("IndicatorDock");
+  const bool is_state_transition =
+      panelTypeId(source) == QLatin1String("StateTransitionDock");
 
   PanelDockWidget* duplicate = duplicatePanelDock(source);
   if (duplicate == nullptr) {
@@ -3015,6 +3327,15 @@ void VisualizationFrame::onSplitActiveDock(PanelDockWidget* source,
     if (auto* panel = qobject_cast<TfTreePanel*>(duplicate->widget())) {
       panel->refresh();
     }
+  } else if (is_channel_graph) {
+    if (auto* panel =
+            qobject_cast<channel_graph::ChannelGraphPanel*>(duplicate->widget())) {
+      panel->refreshGraph();
+    }
+  } else if (is_audio) {
+    if (auto* panel = qobject_cast<audio_panel::AudioPanel*>(duplicate->widget())) {
+      setActiveAudioPanel(panel);
+    }
   } else if (is_table) {
     if (auto* panel = qobject_cast<table::TablePanel*>(duplicate->widget())) {
       setActiveTablePanel(panel);
@@ -3035,6 +3356,11 @@ void VisualizationFrame::onSplitActiveDock(PanelDockWidget* source,
     if (auto* panel = qobject_cast<indicator::IndicatorPanel*>(duplicate->widget())) {
       setActiveIndicatorPanel(panel);
     }
+  } else if (is_state_transition) {
+    if (auto* panel = qobject_cast<state_transitions::StateTransitionPanel*>(
+            duplicate->widget())) {
+      setActiveStateTransitionPanel(panel);
+    }
   }
 
   syncDeletePanelMenu();
@@ -3052,7 +3378,12 @@ bool VisualizationFrame::panelTypeSupportsMultiInstance(
          panel_type_id == QLatin1String("PublishDock") ||
          panel_type_id == QLatin1String("GaugeDock") ||
          panel_type_id == QLatin1String("MapDock") ||
-         panel_type_id == QLatin1String("IndicatorDock");
+         panel_type_id == QLatin1String("IndicatorDock") ||
+         panel_type_id == QLatin1String("ParametersDock") ||
+         panel_type_id == QLatin1String("ChannelGraphDock") ||
+         panel_type_id == QLatin1String("StateTransitionDock") ||
+         panel_type_id == QLatin1String("AudioDock") ||
+         panel_type_id == QLatin1String("ServiceDock");
 }
 
 QString VisualizationFrame::panelTypeId(const PanelDockWidget* dock) const {
@@ -3110,6 +3441,10 @@ void VisualizationFrame::registerPanelDock(PanelDockWidget* dock) {
       if (auto* panel = qobject_cast<publish_panel::PublishPanel*>(dock->widget())) {
         setActivePublishPanel(panel);
       }
+    } else if (panelTypeId(dock) == QLatin1String("ServiceDock")) {
+      if (auto* panel = qobject_cast<service_panel::ServicePanel*>(dock->widget())) {
+        setActiveServicePanel(panel);
+      }
     } else if (panelTypeId(dock) == QLatin1String("GaugeDock")) {
       if (auto* panel = qobject_cast<gauge::GaugePanel*>(dock->widget())) {
         setActiveGaugePanel(panel);
@@ -3121,6 +3456,10 @@ void VisualizationFrame::registerPanelDock(PanelDockWidget* dock) {
     } else if (panelTypeId(dock) == QLatin1String("IndicatorDock")) {
       if (auto* panel = qobject_cast<indicator::IndicatorPanel*>(dock->widget())) {
         setActiveIndicatorPanel(panel);
+      }
+    } else if (panelTypeId(dock) == QLatin1String("AudioDock")) {
+      if (auto* panel = qobject_cast<audio_panel::AudioPanel*>(dock->widget())) {
+        setActiveAudioPanel(panel);
       }
     }
   });
@@ -3252,17 +3591,79 @@ void VisualizationFrame::restoreImagePanelConfigs() {
   }
 }
 
+void VisualizationFrame::captureStateTransitionPanelConfigs() {
+  std::vector<common::StateTransitionPanelPersistConfig> panels;
+  panels.reserve(4);
+  for (PanelDockWidget* dock : orderedDockWidgets()) {
+    if (dock == nullptr ||
+        panelTypeId(dock) != QLatin1String("StateTransitionDock")) {
+      continue;
+    }
+    auto* panel =
+        qobject_cast<state_transitions::StateTransitionPanel*>(dock->widget());
+    if (panel == nullptr) {
+      continue;
+    }
+    panels.push_back(state_transitions::ToPersistConfig(dock->objectName(),
+                                                        panel->config()));
+  }
+  manager_->setStateTransitionPanels(panels);
+}
+
+void VisualizationFrame::ensureStateTransitionDockExists(
+    const QString& object_name) {
+  if (object_name.isEmpty() ||
+      findChild<PanelDockWidget*>(object_name) != nullptr) {
+    return;
+  }
+  PanelDockWidget* dock = createStateTransitionPanelDock(object_name);
+  addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+}
+
+void VisualizationFrame::restoreStateTransitionPanelConfigs() {
+  const std::vector<common::StateTransitionPanelPersistConfig>& saved =
+      manager_->stateTransitionPanels();
+  if (saved.empty()) {
+    return;
+  }
+
+  for (const common::StateTransitionPanelPersistConfig& entry : saved) {
+    ensureStateTransitionDockExists(QString::fromStdString(entry.object_name));
+  }
+
+  for (const common::StateTransitionPanelPersistConfig& entry : saved) {
+    auto* dock = findChild<PanelDockWidget*>(
+        QString::fromStdString(entry.object_name));
+    auto* panel = dock != nullptr
+                      ? qobject_cast<state_transitions::StateTransitionPanel*>(
+                            dock->widget())
+                      : nullptr;
+    if (panel == nullptr) {
+      continue;
+    }
+    panel->setConfig(state_transitions::FromPersistConfig(entry));
+    updateStateTransitionDockTitle(dock, panel);
+    if (entry.settings_visible && property_inspector_panel_ != nullptr) {
+      showPropertyInspector(true);
+      property_inspector_panel_->setContentWidget(
+          panel->settingsWidgetForInspector(),
+          panel->config().title.isEmpty() ? tr("State Transitions")
+                                          : panel->config().title);
+    }
+  }
+}
+
 void VisualizationFrame::setupLeftSidebarTabs() {
-  if (topics_dock_ == nullptr) {
+  if (channels_dock_ == nullptr) {
     return;
   }
   if (problems_dock_ != nullptr) {
-    tabifyDockWidget(topics_dock_, problems_dock_);
+    tabifyDockWidget(channels_dock_, problems_dock_);
   }
   if (displays_dock_ != nullptr && problems_dock_ != nullptr) {
     tabifyDockWidget(problems_dock_, displays_dock_);
   }
-  topics_dock_->raise();
+  channels_dock_->raise();
 }
 
 void VisualizationFrame::refreshAllPlotSettingsChannels() {
@@ -3284,6 +3685,10 @@ void VisualizationFrame::refreshAllPlotSettingsChannels() {
       if (auto* panel = qobject_cast<publish_panel::PublishPanel*>(dock->widget())) {
         panel->refreshSettingsChannels();
       }
+    } else if (type == QLatin1String("ServiceDock")) {
+      if (auto* panel = qobject_cast<service_panel::ServicePanel*>(dock->widget())) {
+        panel->refreshServices();
+      }
     } else if (type == QLatin1String("GaugeDock")) {
       if (auto* panel = qobject_cast<gauge::GaugePanel*>(dock->widget())) {
         panel->refreshSettingsChannels();
@@ -3294,6 +3699,15 @@ void VisualizationFrame::refreshAllPlotSettingsChannels() {
       }
     } else if (type == QLatin1String("IndicatorDock")) {
       if (auto* panel = qobject_cast<indicator::IndicatorPanel*>(dock->widget())) {
+        panel->refreshSettingsChannels();
+      }
+    } else if (type == QLatin1String("StateTransitionDock")) {
+      if (auto* panel = qobject_cast<state_transitions::StateTransitionPanel*>(
+              dock->widget())) {
+        panel->refreshSettingsChannels();
+      }
+    } else if (type == QLatin1String("AudioDock")) {
+      if (auto* panel = qobject_cast<audio_panel::AudioPanel*>(dock->widget())) {
         panel->refreshSettingsChannels();
       }
     }
@@ -3334,6 +3748,9 @@ void VisualizationFrame::setActivePlotPanel(plot::PlotPanel* panel) {
     }
     return;
   }
+  if (panel != nullptr) {
+    deactivateStateTransitionIfNot(nullptr);
+  }
   if (active_plot_panel_ != nullptr) {
     clearPropertyInspectorForPlot(active_plot_panel_);
   }
@@ -3361,6 +3778,10 @@ void VisualizationFrame::setActivePlotPanel(plot::PlotPanel* panel) {
     clearPropertyInspectorForGauge(active_gauge_panel_);
     active_gauge_panel_ = nullptr;
   }
+  if (panel != nullptr && active_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(active_audio_panel_);
+    active_audio_panel_ = nullptr;
+  }
   if (panel != nullptr && active_map_panel_ != nullptr) {
     clearPropertyInspectorForMap(active_map_panel_);
     active_map_panel_ = nullptr;
@@ -3381,6 +3802,9 @@ void VisualizationFrame::setActiveImagePanel(image::ImagePanel* panel) {
       bindImageToPropertyInspector(panel);
     }
     return;
+  }
+  if (panel != nullptr) {
+    deactivateStateTransitionIfNot(nullptr);
   }
   if (active_image_panel_ != nullptr) {
     clearPropertyInspectorForImage(active_image_panel_);
@@ -3409,6 +3833,10 @@ void VisualizationFrame::setActiveImagePanel(image::ImagePanel* panel) {
     clearPropertyInspectorForGauge(active_gauge_panel_);
     active_gauge_panel_ = nullptr;
   }
+  if (panel != nullptr && active_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(active_audio_panel_);
+    active_audio_panel_ = nullptr;
+  }
   if (panel != nullptr && active_map_panel_ != nullptr) {
     clearPropertyInspectorForMap(active_map_panel_);
     active_map_panel_ = nullptr;
@@ -3429,6 +3857,9 @@ void VisualizationFrame::setActiveTeleopPanel(teleop::TeleopPanel* panel) {
       bindTeleopToPropertyInspector(panel);
     }
     return;
+  }
+  if (panel != nullptr) {
+    deactivateStateTransitionIfNot(nullptr);
   }
   if (active_teleop_panel_ != nullptr) {
     clearPropertyInspectorForTeleop(active_teleop_panel_);
@@ -3457,6 +3888,10 @@ void VisualizationFrame::setActiveTeleopPanel(teleop::TeleopPanel* panel) {
     clearPropertyInspectorForGauge(active_gauge_panel_);
     active_gauge_panel_ = nullptr;
   }
+  if (panel != nullptr && active_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(active_audio_panel_);
+    active_audio_panel_ = nullptr;
+  }
   if (panel != nullptr && active_map_panel_ != nullptr) {
     clearPropertyInspectorForMap(active_map_panel_);
     active_map_panel_ = nullptr;
@@ -3483,6 +3918,26 @@ void VisualizationFrame::activatePanelDock(PanelDockWidget* dock) {
     setActiveTeleopPanel(teleop);
   } else if (auto* log_panel = qobject_cast<log_panel::LogPanel*>(dock->widget())) {
     setActiveLogPanel(log_panel);
+  } else if (auto* table = qobject_cast<table::TablePanel*>(dock->widget())) {
+    setActiveTablePanel(table);
+  } else if (auto* publish = qobject_cast<publish_panel::PublishPanel*>(dock->widget())) {
+    setActivePublishPanel(publish);
+  } else if (auto* service = qobject_cast<service_panel::ServicePanel*>(dock->widget())) {
+    setActiveServicePanel(service);
+  } else if (auto* gauge = qobject_cast<gauge::GaugePanel*>(dock->widget())) {
+    setActiveGaugePanel(gauge);
+  } else if (auto* map_panel = qobject_cast<map::MapPanel*>(dock->widget())) {
+    setActiveMapPanel(map_panel);
+  } else if (auto* indicator = qobject_cast<indicator::IndicatorPanel*>(dock->widget())) {
+    setActiveIndicatorPanel(indicator);
+  } else if (auto* audio = qobject_cast<audio_panel::AudioPanel*>(dock->widget())) {
+    setActiveAudioPanel(audio);
+  }
+  if (property_inspector_dock_ != nullptr &&
+      property_inspector_panel_ != nullptr &&
+      property_inspector_panel_->contentWidget() != nullptr) {
+    property_inspector_dock_->show();
+    property_inspector_dock_->raise();
   }
 }
 
@@ -3492,6 +3947,9 @@ void VisualizationFrame::setActiveLogPanel(log_panel::LogPanel* panel) {
       bindLogToPropertyInspector(panel);
     }
     return;
+  }
+  if (panel != nullptr) {
+    deactivateStateTransitionIfNot(nullptr);
   }
   if (active_log_panel_ != nullptr) {
     clearPropertyInspectorForLog(active_log_panel_);
@@ -3520,6 +3978,10 @@ void VisualizationFrame::setActiveLogPanel(log_panel::LogPanel* panel) {
     clearPropertyInspectorForGauge(active_gauge_panel_);
     active_gauge_panel_ = nullptr;
   }
+  if (panel != nullptr && active_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(active_audio_panel_);
+    active_audio_panel_ = nullptr;
+  }
   if (panel != nullptr && active_map_panel_ != nullptr) {
     clearPropertyInspectorForMap(active_map_panel_);
     active_map_panel_ = nullptr;
@@ -3540,6 +4002,9 @@ void VisualizationFrame::setActiveTablePanel(table::TablePanel* panel) {
       bindTableToPropertyInspector(panel);
     }
     return;
+  }
+  if (panel != nullptr) {
+    deactivateStateTransitionIfNot(nullptr);
   }
   if (active_table_panel_ != nullptr) {
     clearPropertyInspectorForTable(active_table_panel_);
@@ -3568,6 +4033,10 @@ void VisualizationFrame::setActiveTablePanel(table::TablePanel* panel) {
     clearPropertyInspectorForGauge(active_gauge_panel_);
     active_gauge_panel_ = nullptr;
   }
+  if (panel != nullptr && active_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(active_audio_panel_);
+    active_audio_panel_ = nullptr;
+  }
   if (panel != nullptr && active_map_panel_ != nullptr) {
     clearPropertyInspectorForMap(active_map_panel_);
     active_map_panel_ = nullptr;
@@ -3588,6 +4057,9 @@ void VisualizationFrame::setActivePublishPanel(publish_panel::PublishPanel* pane
       bindPublishToPropertyInspector(panel);
     }
     return;
+  }
+  if (panel != nullptr) {
+    deactivateStateTransitionIfNot(nullptr);
   }
   if (active_publish_panel_ != nullptr) {
     clearPropertyInspectorForPublish(active_publish_panel_);
@@ -3612,9 +4084,72 @@ void VisualizationFrame::setActivePublishPanel(publish_panel::PublishPanel* pane
     clearPropertyInspectorForTable(active_table_panel_);
     active_table_panel_ = nullptr;
   }
+  if (panel != nullptr && active_service_panel_ != nullptr) {
+    clearPropertyInspectorForService(active_service_panel_);
+    active_service_panel_ = nullptr;
+  }
   active_publish_panel_ = panel;
   if (panel != nullptr) {
     bindPublishToPropertyInspector(panel);
+  }
+}
+
+void VisualizationFrame::setActiveServicePanel(service_panel::ServicePanel* panel) {
+  if (active_service_panel_ == panel) {
+    if (panel != nullptr) {
+      bindServiceToPropertyInspector(panel);
+    }
+    return;
+  }
+  if (panel != nullptr) {
+    deactivateStateTransitionIfNot(nullptr);
+  }
+  if (active_service_panel_ != nullptr) {
+    clearPropertyInspectorForService(active_service_panel_);
+  }
+  if (panel != nullptr && active_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(active_plot_panel_);
+    active_plot_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(active_image_panel_);
+    active_image_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(active_teleop_panel_);
+    active_teleop_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(active_log_panel_);
+    active_log_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(active_table_panel_);
+    active_table_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(active_publish_panel_);
+    active_publish_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(active_gauge_panel_);
+    active_gauge_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(active_audio_panel_);
+    active_audio_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(active_map_panel_);
+    active_map_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(active_indicator_panel_);
+    active_indicator_panel_ = nullptr;
+  }
+  active_service_panel_ = panel;
+  if (panel != nullptr) {
+    bindServiceToPropertyInspector(panel);
   }
 }
 
@@ -3624,6 +4159,9 @@ void VisualizationFrame::setActiveGaugePanel(gauge::GaugePanel* panel) {
       bindGaugeToPropertyInspector(panel);
     }
     return;
+  }
+  if (panel != nullptr) {
+    deactivateStateTransitionIfNot(nullptr);
   }
   if (active_gauge_panel_ != nullptr) {
     clearPropertyInspectorForGauge(active_gauge_panel_);
@@ -3660,69 +4198,28 @@ void VisualizationFrame::setActiveGaugePanel(gauge::GaugePanel* panel) {
     clearPropertyInspectorForIndicator(active_indicator_panel_);
     active_indicator_panel_ = nullptr;
   }
+  if (panel != nullptr && active_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(active_audio_panel_);
+    active_audio_panel_ = nullptr;
+  }
   active_gauge_panel_ = panel;
   if (panel != nullptr) {
     bindGaugeToPropertyInspector(panel);
   }
 }
 
-void VisualizationFrame::setActiveMapPanel(map::MapPanel* panel) {
-  if (active_map_panel_ == panel) {
+void VisualizationFrame::setActiveAudioPanel(audio_panel::AudioPanel* panel) {
+  if (active_audio_panel_ == panel) {
     if (panel != nullptr) {
-      bindMapToPropertyInspector(panel);
+      bindAudioToPropertyInspector(panel);
     }
     return;
   }
-  if (active_map_panel_ != nullptr) {
-    clearPropertyInspectorForMap(active_map_panel_);
-  }
-  if (panel != nullptr && active_plot_panel_ != nullptr) {
-    clearPropertyInspectorForPlot(active_plot_panel_);
-    active_plot_panel_ = nullptr;
-  }
-  if (panel != nullptr && active_image_panel_ != nullptr) {
-    clearPropertyInspectorForImage(active_image_panel_);
-    active_image_panel_ = nullptr;
-  }
-  if (panel != nullptr && active_teleop_panel_ != nullptr) {
-    clearPropertyInspectorForTeleop(active_teleop_panel_);
-    active_teleop_panel_ = nullptr;
-  }
-  if (panel != nullptr && active_log_panel_ != nullptr) {
-    clearPropertyInspectorForLog(active_log_panel_);
-    active_log_panel_ = nullptr;
-  }
-  if (panel != nullptr && active_table_panel_ != nullptr) {
-    clearPropertyInspectorForTable(active_table_panel_);
-    active_table_panel_ = nullptr;
-  }
-  if (panel != nullptr && active_publish_panel_ != nullptr) {
-    clearPropertyInspectorForPublish(active_publish_panel_);
-    active_publish_panel_ = nullptr;
-  }
-  if (panel != nullptr && active_gauge_panel_ != nullptr) {
-    clearPropertyInspectorForGauge(active_gauge_panel_);
-    active_gauge_panel_ = nullptr;
-  }
-  if (panel != nullptr && active_indicator_panel_ != nullptr) {
-    clearPropertyInspectorForIndicator(active_indicator_panel_);
-    active_indicator_panel_ = nullptr;
-  }
-  active_map_panel_ = panel;
   if (panel != nullptr) {
-    bindMapToPropertyInspector(panel);
+    deactivateStateTransitionIfNot(nullptr);
   }
-}
-
-void VisualizationFrame::setActiveIndicatorPanel(indicator::IndicatorPanel* panel) {
-  if (active_indicator_panel_ == panel) {
-    if (panel != nullptr) {
-      bindIndicatorToPropertyInspector(panel);
-    }
-    return;
-  }
-  if (active_indicator_panel_ != nullptr) {
-    clearPropertyInspectorForIndicator(active_indicator_panel_);
+  if (active_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(active_audio_panel_);
   }
   if (panel != nullptr && active_plot_panel_ != nullptr) {
     clearPropertyInspectorForPlot(active_plot_panel_);
@@ -3756,10 +4253,215 @@ void VisualizationFrame::setActiveIndicatorPanel(indicator::IndicatorPanel* pane
     clearPropertyInspectorForMap(active_map_panel_);
     active_map_panel_ = nullptr;
   }
+  if (panel != nullptr && active_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(active_indicator_panel_);
+    active_indicator_panel_ = nullptr;
+  }
+  active_audio_panel_ = panel;
+  if (panel != nullptr) {
+    bindAudioToPropertyInspector(panel);
+  }
+}
+
+void VisualizationFrame::setActiveMapPanel(map::MapPanel* panel) {
+  if (active_map_panel_ == panel) {
+    if (panel != nullptr) {
+      bindMapToPropertyInspector(panel);
+    }
+    return;
+  }
+  if (panel != nullptr) {
+    deactivateStateTransitionIfNot(nullptr);
+  }
+  if (active_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(active_map_panel_);
+  }
+  if (panel != nullptr && active_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(active_plot_panel_);
+    active_plot_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(active_image_panel_);
+    active_image_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(active_teleop_panel_);
+    active_teleop_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(active_log_panel_);
+    active_log_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(active_table_panel_);
+    active_table_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(active_publish_panel_);
+    active_publish_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(active_gauge_panel_);
+    active_gauge_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(active_audio_panel_);
+    active_audio_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(active_indicator_panel_);
+    active_indicator_panel_ = nullptr;
+  }
+  active_map_panel_ = panel;
+  if (panel != nullptr) {
+    bindMapToPropertyInspector(panel);
+  }
+}
+
+void VisualizationFrame::setActiveIndicatorPanel(indicator::IndicatorPanel* panel) {
+  if (active_indicator_panel_ == panel) {
+    if (panel != nullptr) {
+      bindIndicatorToPropertyInspector(panel);
+    }
+    return;
+  }
+  if (panel != nullptr) {
+    deactivateStateTransitionIfNot(nullptr);
+  }
+  if (active_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(active_indicator_panel_);
+  }
+  if (panel != nullptr && active_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(active_plot_panel_);
+    active_plot_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(active_image_panel_);
+    active_image_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(active_teleop_panel_);
+    active_teleop_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(active_log_panel_);
+    active_log_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(active_table_panel_);
+    active_table_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(active_publish_panel_);
+    active_publish_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(active_gauge_panel_);
+    active_gauge_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(active_audio_panel_);
+    active_audio_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(active_map_panel_);
+    active_map_panel_ = nullptr;
+  }
   active_indicator_panel_ = panel;
   if (panel != nullptr) {
     bindIndicatorToPropertyInspector(panel);
   }
+}
+
+void VisualizationFrame::setActiveStateTransitionPanel(
+    state_transitions::StateTransitionPanel* panel) {
+  if (active_state_transition_panel_ == panel) {
+    if (panel != nullptr) {
+      bindStateTransitionToPropertyInspector(panel);
+    }
+    return;
+  }
+  if (active_state_transition_panel_ != nullptr) {
+    clearPropertyInspectorForStateTransition(active_state_transition_panel_);
+  }
+  if (panel != nullptr && active_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(active_plot_panel_);
+    active_plot_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(active_image_panel_);
+    active_image_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(active_teleop_panel_);
+    active_teleop_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(active_log_panel_);
+    active_log_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(active_table_panel_);
+    active_table_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(active_publish_panel_);
+    active_publish_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(active_gauge_panel_);
+    active_gauge_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(active_audio_panel_);
+    active_audio_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(active_map_panel_);
+    active_map_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(active_indicator_panel_);
+    active_indicator_panel_ = nullptr;
+  }
+  active_state_transition_panel_ = panel;
+  if (panel != nullptr) {
+    bindStateTransitionToPropertyInspector(panel);
+  }
+}
+
+void VisualizationFrame::wireVariableRefresh() {
+  if (manager_ == nullptr) {
+    return;
+  }
+  connect(&manager_->variableStore(), &variables::VariableStore::variablesChanged,
+          this, &VisualizationFrame::refreshGlobalVariableConsumers);
+}
+
+void VisualizationFrame::refreshGlobalVariableConsumers() {
+  for (PanelDockWidget* dock : findChildren<PanelDockWidget*>()) {
+    if (dock == nullptr) {
+      continue;
+    }
+    if (auto* plot = qobject_cast<plot::PlotPanel*>(dock->widget())) {
+      plot->invalidateSeriesData();
+    } else if (auto* table = qobject_cast<table::TablePanel*>(dock->widget())) {
+      table->refreshFromVariables();
+    } else if (auto* gauge = qobject_cast<gauge::GaugePanel*>(dock->widget())) {
+      gauge->refreshFromVariables();
+    } else if (auto* indicator =
+                   qobject_cast<indicator::IndicatorPanel*>(dock->widget())) {
+      indicator->refreshFromVariables();
+    } else if (auto* state_panel =
+                   qobject_cast<state_transitions::StateTransitionPanel*>(
+                       dock->widget())) {
+      state_panel->refreshFromVariables();
+    }
+  }
+  if (raw_messages_panel_ != nullptr) {
+    raw_messages_panel_->refreshFromVariables();
+  }
+  requestViewportUpdate();
 }
 
 void VisualizationFrame::wirePlotPanel(PanelDockWidget* dock,
@@ -4294,6 +4996,93 @@ PanelDockWidget* VisualizationFrame::createPublishPanelDock(
   return dock;
 }
 
+void VisualizationFrame::updateServiceDockTitle(PanelDockWidget* dock,
+                                              service_panel::ServicePanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  const QString title = panel->config().title.trimmed();
+  dock->setPanelTitle(title.isEmpty() ? tr("Service Call") : title);
+}
+
+void VisualizationFrame::wireServicePanel(PanelDockWidget* dock,
+                                          service_panel::ServicePanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  connect(panel, &service_panel::ServicePanel::activated, this,
+          [this, panel]() { setActiveServicePanel(panel); });
+  connect(panel, &service_panel::ServicePanel::settingsToggled, this,
+          [this, panel](bool visible) {
+            setActiveServicePanel(panel);
+            showPropertyInspector(visible);
+            markConfigModified();
+          });
+  connect(panel, &service_panel::ServicePanel::panelRemoveRequested, dock,
+          &QDockWidget::close);
+  connect(panel, &service_panel::ServicePanel::panelExpandRequested, this,
+          [this, dock]() { expandPanelDock(dock); });
+  connect(panel, &service_panel::ServicePanel::panelSplitRequested, this,
+          [this, dock](Qt::Orientation orientation) {
+            onSplitActiveDock(dock, orientation);
+          });
+  connect(panel, &service_panel::ServicePanel::panelChangeRequested, this,
+          [this, dock](const QString& object_name) {
+            changePanelInDock(dock, object_name);
+          });
+  connect(panel, &service_panel::ServicePanel::configChanged, this,
+          [this, dock, panel]() {
+            updateServiceDockTitle(dock, panel);
+            if (panel == active_service_panel_ &&
+                property_inspector_panel_ != nullptr) {
+              const QString title = panel->config().title.trimmed();
+              property_inspector_panel_->setContentWidget(
+                  panel->settingsWidgetForInspector(),
+                  title.isEmpty() ? tr("Service Call") : title);
+            }
+            markConfigModified();
+          });
+  connect(dock, &QDockWidget::visibilityChanged, this,
+          [this, dock, panel](bool visible) {
+            if (visible || panel != active_service_panel_) {
+              return;
+            }
+            service_panel::ServicePanel* fallback = nullptr;
+            for (PanelDockWidget* candidate : orderedDockWidgets()) {
+              if (candidate == nullptr || candidate == dock ||
+                  panelTypeId(candidate) != QLatin1String("ServiceDock") ||
+                  !candidate->isVisible()) {
+                continue;
+              }
+              fallback =
+                  qobject_cast<service_panel::ServicePanel*>(candidate->widget());
+              if (fallback != nullptr) {
+                break;
+              }
+            }
+            setActiveServicePanel(fallback);
+          });
+}
+
+PanelDockWidget* VisualizationFrame::createServicePanelDock(
+    const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty() ? uniquePanelObjectName(QStringLiteral("ServiceDock"))
+                            : object_name;
+  auto* dock = new PanelDockWidget(tr("Service Call"), this);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("ServiceDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelService")));
+  auto* panel = new service_panel::ServicePanel(manager_.get(), dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wireServicePanel(dock, panel);
+  updateServiceDockTitle(dock, panel);
+  configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
 void VisualizationFrame::updateGaugeDockTitle(PanelDockWidget* dock,
                                               gauge::GaugePanel* panel) {
   if (dock == nullptr || panel == nullptr) {
@@ -4548,6 +5337,238 @@ PanelDockWidget* VisualizationFrame::createIndicatorPanelDock(
   return dock;
 }
 
+void VisualizationFrame::wireParametersPanel(
+    PanelDockWidget* dock, parameters_panel::ParametersPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  connect(panel, &parameters_panel::ParametersPanel::panelRemoveRequested, dock,
+          &QDockWidget::close);
+  connect(panel, &parameters_panel::ParametersPanel::panelExpandRequested, this,
+          [this, dock]() { expandPanelDock(dock); });
+  connect(panel, &parameters_panel::ParametersPanel::panelSplitRequested, this,
+          [this, dock](Qt::Orientation orientation) {
+            onSplitActiveDock(dock, orientation);
+          });
+  connect(panel, &parameters_panel::ParametersPanel::panelChangeRequested, this,
+          [this, dock](const QString& object_name) {
+            changePanelInDock(dock, object_name);
+          });
+  connect(panel, &parameters_panel::ParametersPanel::configChanged, this,
+          [this]() { markConfigModified(); });
+}
+
+void VisualizationFrame::wireChannelGraphPanel(
+    PanelDockWidget* dock, channel_graph::ChannelGraphPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  connect(panel, &channel_graph::ChannelGraphPanel::panelRemoveRequested, dock,
+          &QDockWidget::close);
+  connect(panel, &channel_graph::ChannelGraphPanel::panelExpandRequested, this,
+          [this, dock]() { expandPanelDock(dock); });
+  connect(panel, &channel_graph::ChannelGraphPanel::panelSplitRequested, this,
+          [this, dock](Qt::Orientation orientation) {
+            onSplitActiveDock(dock, orientation);
+          });
+  connect(panel, &channel_graph::ChannelGraphPanel::panelChangeRequested, this,
+          [this, dock](const QString& object_name) {
+            changePanelInDock(dock, object_name);
+          });
+  connect(panel, &channel_graph::ChannelGraphPanel::configChanged, this,
+          [this]() { markConfigModified(); });
+}
+
+void VisualizationFrame::wireStateTransitionPanel(
+    PanelDockWidget* dock, state_transitions::StateTransitionPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  connect(panel, &state_transitions::StateTransitionPanel::activated, this,
+          [this, panel]() { setActiveStateTransitionPanel(panel); });
+  connect(panel, &state_transitions::StateTransitionPanel::settingsToggled, this,
+          [this, panel](bool visible) {
+            setActiveStateTransitionPanel(panel);
+            showPropertyInspector(visible);
+            markConfigModified();
+          });
+  connect(panel, &state_transitions::StateTransitionPanel::panelRemoveRequested,
+          dock, &QDockWidget::close);
+  connect(panel, &state_transitions::StateTransitionPanel::panelExpandRequested,
+          this, [this, dock]() { expandPanelDock(dock); });
+  connect(panel, &state_transitions::StateTransitionPanel::panelSplitRequested,
+          this, [this, dock](Qt::Orientation orientation) {
+            onSplitActiveDock(dock, orientation);
+          });
+  connect(panel, &state_transitions::StateTransitionPanel::panelChangeRequested,
+          this, [this, dock](const QString& object_name) {
+            changePanelInDock(dock, object_name);
+          });
+  connect(panel, &state_transitions::StateTransitionPanel::configChanged, this,
+          [this, dock, panel]() {
+            updateStateTransitionDockTitle(dock, panel);
+            if (panel == active_state_transition_panel_ &&
+                property_inspector_panel_ != nullptr) {
+              const QString title = panel->config().title.trimmed();
+              property_inspector_panel_->setContentWidget(
+                  panel->settingsWidgetForInspector(),
+                  title.isEmpty() ? tr("State Transitions") : title);
+            }
+            markConfigModified();
+          });
+}
+
+void VisualizationFrame::updateStateTransitionDockTitle(
+    PanelDockWidget* dock, state_transitions::StateTransitionPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  const QString title = panel->config().title.trimmed();
+  dock->setPanelTitle(title.isEmpty() ? tr("State Transitions") : title);
+}
+
+PanelDockWidget* VisualizationFrame::createStateTransitionPanelDock(
+    const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty()
+          ? uniquePanelObjectName(QStringLiteral("StateTransitionDock"))
+          : object_name;
+  auto* dock = new PanelDockWidget(tr("State Transitions"), this);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("StateTransitionDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelState")));
+  auto* panel = new state_transitions::StateTransitionPanel(manager_.get(), dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wireStateTransitionPanel(dock, panel);
+  updateStateTransitionDockTitle(dock, panel);
+  configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
+PanelDockWidget* VisualizationFrame::createChannelGraphPanelDock(
+    const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty() ? uniquePanelObjectName(QStringLiteral("ChannelGraphDock"))
+                            : object_name;
+  auto* dock = new PanelDockWidget(tr("Channel Graph"), this);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("ChannelGraphDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelChannelGraph")));
+  auto* panel = new channel_graph::ChannelGraphPanel(manager_.get(), dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wireChannelGraphPanel(dock, panel);
+  configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
+void VisualizationFrame::updateAudioDockTitle(PanelDockWidget* dock,
+                                              audio_panel::AudioPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  const QString title = panel->config().title.trimmed();
+  dock->setPanelTitle(title.isEmpty() ? tr("Audio") : title);
+}
+
+void VisualizationFrame::wireAudioPanel(PanelDockWidget* dock,
+                                          audio_panel::AudioPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  connect(panel, &audio_panel::AudioPanel::activated, this,
+          [this, panel]() { setActiveAudioPanel(panel); });
+  connect(panel, &audio_panel::AudioPanel::settingsToggled, this,
+          [this, panel](bool visible) {
+            setActiveAudioPanel(panel);
+            showPropertyInspector(visible);
+            markConfigModified();
+          });
+  connect(panel, &audio_panel::AudioPanel::panelRemoveRequested, dock,
+          &QDockWidget::close);
+  connect(panel, &audio_panel::AudioPanel::panelExpandRequested, this,
+          [this, dock]() { expandPanelDock(dock); });
+  connect(panel, &audio_panel::AudioPanel::panelSplitRequested, this,
+          [this, dock](Qt::Orientation orientation) {
+            onSplitActiveDock(dock, orientation);
+          });
+  connect(panel, &audio_panel::AudioPanel::panelChangeRequested, this,
+          [this, dock](const QString& object_name) {
+            changePanelInDock(dock, object_name);
+          });
+  connect(panel, &audio_panel::AudioPanel::configChanged, this,
+          [this, dock, panel]() {
+            updateAudioDockTitle(dock, panel);
+            if (panel == active_audio_panel_ &&
+                property_inspector_panel_ != nullptr) {
+              const QString title = panel->config().title.trimmed();
+              property_inspector_panel_->setContentWidget(
+                  panel->settingsWidgetForInspector(),
+                  title.isEmpty() ? tr("Audio") : title);
+            }
+            markConfigModified();
+          });
+  connect(dock, &QDockWidget::visibilityChanged, this,
+          [this, dock, panel](bool visible) {
+            if (visible || panel != active_audio_panel_) {
+              return;
+            }
+            audio_panel::AudioPanel* fallback = nullptr;
+            for (PanelDockWidget* candidate : orderedDockWidgets()) {
+              if (candidate == nullptr || candidate == dock ||
+                  panelTypeId(candidate) != QLatin1String("AudioDock") ||
+                  !candidate->isVisible()) {
+                continue;
+              }
+              fallback = qobject_cast<audio_panel::AudioPanel*>(candidate->widget());
+              if (fallback != nullptr) {
+                break;
+              }
+            }
+            setActiveAudioPanel(fallback);
+          });
+}
+
+PanelDockWidget* VisualizationFrame::createAudioPanelDock(
+    const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty() ? uniquePanelObjectName(QStringLiteral("AudioDock"))
+                            : object_name;
+  auto* dock = new PanelDockWidget(tr("Audio"), this);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("AudioDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelAudio")));
+  auto* panel = new audio_panel::AudioPanel(manager_.get(), dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wireAudioPanel(dock, panel);
+  updateAudioDockTitle(dock, panel);
+  configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
+PanelDockWidget* VisualizationFrame::createParametersPanelDock(
+    const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty() ? uniquePanelObjectName(QStringLiteral("ParametersDock"))
+                            : object_name;
+  auto* dock = new PanelDockWidget(tr("Parameters"), this);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("ParametersDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelParameters")));
+  auto* panel = new parameters_panel::ParametersPanel(manager_.get(), dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wireParametersPanel(dock, panel);
+  configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
 PanelDockWidget* VisualizationFrame::duplicatePanelDock(
     PanelDockWidget* source) {
   if (source == nullptr) {
@@ -4654,6 +5675,63 @@ PanelDockWidget* VisualizationFrame::duplicatePanelDock(
       dst_panel->cloneConfigFrom(src_panel->config());
       updateIndicatorDockTitle(dock, dst_panel);
       setActiveIndicatorPanel(dst_panel);
+    }
+    return dock;
+  }
+  if (type == QLatin1String("ServiceDock")) {
+    PanelDockWidget* dock = createServicePanelDock();
+    auto* src_panel = qobject_cast<service_panel::ServicePanel*>(source->widget());
+    auto* dst_panel = qobject_cast<service_panel::ServicePanel*>(dock->widget());
+    if (src_panel != nullptr && dst_panel != nullptr) {
+      dst_panel->cloneConfigFrom(src_panel->config());
+      updateServiceDockTitle(dock, dst_panel);
+      setActiveServicePanel(dst_panel);
+    }
+    return dock;
+  }
+  if (type == QLatin1String("ParametersDock")) {
+    PanelDockWidget* dock = createParametersPanelDock();
+    auto* src_panel =
+        qobject_cast<parameters_panel::ParametersPanel*>(source->widget());
+    auto* dst_panel =
+        qobject_cast<parameters_panel::ParametersPanel*>(dock->widget());
+    if (src_panel != nullptr && dst_panel != nullptr) {
+      dst_panel->cloneConfigFrom(src_panel->config());
+    }
+    return dock;
+  }
+  if (type == QLatin1String("ChannelGraphDock")) {
+    PanelDockWidget* dock = createChannelGraphPanelDock();
+    auto* src_panel =
+        qobject_cast<channel_graph::ChannelGraphPanel*>(source->widget());
+    auto* dst_panel =
+        qobject_cast<channel_graph::ChannelGraphPanel*>(dock->widget());
+    if (src_panel != nullptr && dst_panel != nullptr) {
+      dst_panel->cloneConfigFrom(src_panel->config());
+    }
+    return dock;
+  }
+  if (type == QLatin1String("StateTransitionDock")) {
+    PanelDockWidget* dock = createStateTransitionPanelDock();
+    auto* src_panel = qobject_cast<state_transitions::StateTransitionPanel*>(
+        source->widget());
+    auto* dst_panel = qobject_cast<state_transitions::StateTransitionPanel*>(
+        dock->widget());
+    if (src_panel != nullptr && dst_panel != nullptr) {
+      dst_panel->cloneConfigFrom(src_panel->config());
+      updateStateTransitionDockTitle(dock, dst_panel);
+      setActiveStateTransitionPanel(dst_panel);
+    }
+    return dock;
+  }
+  if (type == QLatin1String("AudioDock")) {
+    PanelDockWidget* dock = createAudioPanelDock();
+    auto* src_panel = qobject_cast<audio_panel::AudioPanel*>(source->widget());
+    auto* dst_panel = qobject_cast<audio_panel::AudioPanel*>(dock->widget());
+    if (src_panel != nullptr && dst_panel != nullptr) {
+      dst_panel->cloneConfigFrom(src_panel->config());
+      updateAudioDockTitle(dock, dst_panel);
+      setActiveAudioPanel(dst_panel);
     }
     return dock;
   }

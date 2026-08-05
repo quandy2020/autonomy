@@ -5,6 +5,7 @@
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/ui/log/log_parser.hpp"
 #include "autoviz/ui/log/log_settings_widget.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -19,19 +20,6 @@
 namespace autoviz {
 namespace log_panel {
 namespace {
-
-QWidget* MakeCollapsibleSection(QWidget* parent, const QString& title,
-                                QWidget* body, bool expanded) {
-  auto* section = new QGroupBox(title, parent);
-  section->setCheckable(true);
-  section->setChecked(expanded);
-  auto* layout = new QVBoxLayout(section);
-  layout->setContentsMargins(8, 8, 8, 8);
-  layout->addWidget(body);
-  body->setVisible(expanded);
-  QObject::connect(section, &QGroupBox::toggled, body, &QWidget::setVisible);
-  return section;
-}
 
 QStringList LogChannels(common::VisualizationManager* manager) {
   QStringList channels;
@@ -52,18 +40,22 @@ QStringList LogChannels(common::VisualizationManager* manager) {
 LogSettingsWidget::LogSettingsWidget(common::VisualizationManager* manager,
                                      QWidget* parent)
     : manager_(manager), config_(DefaultLogPanelConfig()), QWidget(parent) {
+  ApplyCompactSettingsShell(this);
   auto* outer = new QVBoxLayout(this);
-  outer->setContentsMargins(8, 8, 8, 8);
-  outer->setSpacing(8);
+  outer->setContentsMargins(PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
+                            PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
+  outer->setSpacing(PanelSettingsLayout::kOuterSpacing);
+  outer->setAlignment(Qt::AlignTop);
 
-  auto* title_row = new QHBoxLayout();
-  title_row->addWidget(new QLabel(tr("Title"), this));
+  auto* title_form = new QFormLayout();
+  ApplyCompactForm(title_form);
   title_edit_ = new QLineEdit(config_.title, this);
-  title_row->addWidget(title_edit_, 1);
-  outer->addLayout(title_row);
+  title_form->addRow(tr("Title"), title_edit_);
+  outer->addLayout(title_form);
 
   auto* general_body = new QWidget(this);
   auto* general_form = new QFormLayout(general_body);
+  ApplyCompactForm(general_form);
   topic_edit_ = new QLineEdit(config_.topic, general_body);
   topic_edit_->setPlaceholderText(tr("Optional foxglove.Log topic"));
   general_form->addRow(tr("Topic"), topic_edit_);
@@ -123,7 +115,7 @@ void LogSettingsWidget::rebuildNamespaceSection() {
   }
   if (known_namespaces_.isEmpty()) {
     auto* hint = new QLabel(tr("Namespaces appear as logs arrive."), this);
-    hint->setStyleSheet(QStringLiteral("color: palette(mid); font-style: italic;"));
+    hint->setStyleSheet(PropertyInspectorHintStyle());
     namespace_layout_->addWidget(hint);
     return;
   }

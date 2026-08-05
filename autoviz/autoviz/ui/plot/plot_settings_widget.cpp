@@ -20,6 +20,7 @@
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/integration/channel_manager.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 namespace plot {
@@ -32,10 +33,7 @@ QWidget* MakeSegmentedToggle(QWidget* parent, const QStringList& labels,
   auto* layout = new QHBoxLayout(container);
   layout->setContentsMargins(0, 0, 0, 0);
   layout->setSpacing(0);
-  container->setStyleSheet(
-      QStringLiteral("QWidget { background:#ececec; border-radius:4px; }"
-                     "QPushButton { border:none; padding:4px 10px; }"
-                     "QPushButton:checked { background:white; border-radius:4px; }"));
+  container->setStyleSheet(SegmentedToggleStyle());
   for (int i = 0; i < labels.size(); ++i) {
     auto* button = new QPushButton(labels.at(i), container);
     button->setCheckable(true);
@@ -54,25 +52,24 @@ QWidget* MakeSegmentedToggle(QWidget* parent, const QStringList& labels,
 PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
                                        QWidget* parent)
     : manager_(manager), QWidget(parent) {
+  ApplyCompactSettingsShell(this);
   auto* outer = new QVBoxLayout(this);
-  outer->setContentsMargins(8, 8, 8, 8);
-  outer->setSpacing(8);
+  outer->setContentsMargins(PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
+                            PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
+  outer->setSpacing(PanelSettingsLayout::kOuterSpacing);
+  outer->setAlignment(Qt::AlignTop);
 
-  auto* header = new QHBoxLayout();
-  header->addWidget(new QLabel(tr("Plot panel"), this));
-  header->addStretch();
-  outer->addLayout(header);
-
-  auto* title_row = new QHBoxLayout();
-  title_row->addWidget(new QLabel(tr("Title"), this));
+  auto* title_form = new QFormLayout();
+  ApplyCompactForm(title_form);
   title_edit_ = new QLineEdit(config_.title, this);
-  title_row->addWidget(title_edit_, 1);
-  outer->addLayout(title_row);
+  title_form->addRow(tr("Title"), title_edit_);
+  outer->addLayout(title_form);
   connect(title_edit_, &QLineEdit::textChanged, this,
           &PlotSettingsWidget::emitConfigChanged);
 
   auto* general_body = new QWidget(this);
   auto* general_form = new QFormLayout(general_body);
+  ApplyCompactForm(general_form);
   x_axis_mode_combo_ = new QComboBox(general_body);
   x_axis_mode_combo_->addItem(tr("Timestamp"),
                               static_cast<int>(PlotXAxisMode::kTimestamp));
@@ -176,8 +173,7 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
   auto* series_header = new QHBoxLayout();
   series_header->addWidget(new QLabel(tr("Series"), this));
   series_header->addStretch();
-  add_series_button_ = new QPushButton(QStringLiteral("+"), this);
-  add_series_button_->setFixedWidth(28);
+  add_series_button_ = MakeFlatActionButton(QStringLiteral("+ Add series"), this);
   connect(add_series_button_, &QPushButton::clicked, this,
           &PlotSettingsWidget::onAddSeriesClicked);
   series_header->addWidget(add_series_button_);
@@ -193,15 +189,8 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
 }
 
 QWidget* PlotSettingsWidget::makeCollapsibleSection(const QString& title,
-                                                  QWidget* body, bool expanded) {
-  auto* section = new QGroupBox(title, this);
-  section->setCheckable(true);
-  section->setChecked(expanded);
-  auto* layout = new QVBoxLayout(section);
-  layout->addWidget(body);
-  body->setVisible(expanded);
-  connect(section, &QGroupBox::toggled, body, &QWidget::setVisible);
-  return section;
+                                                    QWidget* body, bool expanded) {
+  return MakeCollapsibleSection(this, title, body, expanded);
 }
 
 void PlotSettingsWidget::updateAxisModeVisibility() {
@@ -257,7 +246,9 @@ void PlotSettingsWidget::refreshChannelLists() { rebuildSeriesSection(); }
 QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
                                                const PlotSeriesConfig& series) {
   auto* box = new QGroupBox(defaultSeriesLabel(index), series_container_);
+  StyleSettingsGroupBox(box);
   auto* form = new QFormLayout(box);
+  ApplyCompactForm(form);
 
   auto* channel_combo = new QComboBox(box);
   channel_combo->setEditable(true);
@@ -281,9 +272,7 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
   form->addRow(tr("Label"), label_edit);
 
   auto* color_button = new QPushButton(box);
-  color_button->setText(series.color.name(QColor::HexRgb));
-  color_button->setStyleSheet(
-      QStringLiteral("background:%1; color:white;").arg(series.color.name()));
+  UpdateColorButton(color_button, series.color);
   form->addRow(tr("Color"), color_button);
 
   auto* line_size_edit = new QLineEdit(series.line_size, box);
@@ -316,7 +305,7 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
   custom_ts_edit->setEnabled(series.timestamp_mode ==
                              PlotTimestampMode::kCustomField);
 
-  auto* remove_button = new QPushButton(tr("Remove series"), box);
+  auto* remove_button = MakeDestructiveFlatActionButton(tr("Remove series"), box);
   form->addRow(remove_button);
 
   connect(channel_combo, &QComboBox::currentTextChanged, box,
@@ -353,9 +342,7 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
       return;
     }
     config_.series[index].color = chosen;
-    color_button->setText(chosen.name(QColor::HexRgb));
-    color_button->setStyleSheet(
-        QStringLiteral("background:%1; color:white;").arg(chosen.name()));
+    UpdateColorButton(color_button, chosen);
     emit configChanged();
   });
   connect(line_size_edit, &QLineEdit::textChanged, box, [this, index](const QString& text) {

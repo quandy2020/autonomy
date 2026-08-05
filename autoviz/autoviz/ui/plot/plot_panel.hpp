@@ -59,6 +59,8 @@ class PlotPanel : public QWidget {
   void setExpandButtonChecked(bool checked);
   void refreshSettingsChannels();
   void exportPlotDataAsCsv();
+  /** Clears sampled points after global variables change. */
+  void invalidateSeriesData();
   /** Scroll area hosting settings; reparented into the shared sidebar inspector. */
   QWidget* settingsWidgetForInspector();
   void recallSettingsWidget();

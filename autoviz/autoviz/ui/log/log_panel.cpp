@@ -24,6 +24,7 @@
 #include "autoviz/ui/log/log_view_widget.hpp"
 #include "autoviz/ui/panel_context_menu.hpp"
 #include "autoviz/ui/panel_dock_widget.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 #include "autoviz/ui/panel_title_tools.hpp"
 
 namespace autoviz {
@@ -64,12 +65,7 @@ LogPanel::LogPanel(common::VisualizationManager* manager, QWidget* parent)
   settings_layout->addWidget(settings_scroll_);
 
   auto* toolbar = new QFrame(this);
-  toolbar->setStyleSheet(
-      QStringLiteral(
-          "QFrame {"
-          "  background: palette(base);"
-          "  border-bottom: 1px solid palette(midlight);"
-          "}"));
+  toolbar->setStyleSheet(PanelStatusBarStyle());
   auto* toolbar_layout = new QHBoxLayout(toolbar);
   toolbar_layout->setContentsMargins(6, 4, 6, 4);
   toolbar_layout->setSpacing(4);
@@ -109,7 +105,7 @@ LogPanel::LogPanel(common::VisualizationManager* manager, QWidget* parent)
   toolbar_layout->addWidget(search_clear_button_);
 
   status_label_ = new QLabel(toolbar);
-  status_label_->setStyleSheet(QStringLiteral("color: palette(mid); font-size: 10px;"));
+  status_label_->setStyleSheet(PanelStatusLabelStyle());
   status_label_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
   toolbar_layout->addWidget(status_label_);
   root->addWidget(toolbar);
@@ -404,20 +400,12 @@ void LogPanel::setSettingsButtonChecked(bool checked) {
   settings_button_->blockSignals(false);
 }
 
-QWidget* LogPanel::settingsWidgetForInspector() { return settings_scroll_; }
+QWidget* LogPanel::settingsWidgetForInspector() {
+  return SettingsScrollForInspector(settings_scroll_);
+}
 
 void LogPanel::recallSettingsWidget() {
-  if (settings_scroll_ == nullptr || settings_container_ == nullptr) {
-    return;
-  }
-  if (settings_scroll_->parentWidget() == settings_container_) {
-    return;
-  }
-  settings_scroll_->setParent(settings_container_);
-  if (QLayout* layout = settings_container_->layout()) {
-    layout->addWidget(settings_scroll_);
-  }
-  settings_scroll_->hide();
+  RecallSettingsScrollToContainer(settings_scroll_, settings_container_);
 }
 
 void LogPanel::syncSettingsWidgetFromConfig() {

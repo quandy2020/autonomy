@@ -14,24 +14,12 @@
 #include <QLineEdit>
 #include <QVBoxLayout>
 
+#include "autoviz/ui/panel_settings_styles.hpp"
 #include "autoviz/ui/teleop/teleop_twist_utils.hpp"
 
 namespace autoviz {
 namespace teleop {
 namespace {
-
-QWidget* MakeCollapsibleSection(QWidget* parent, const QString& title,
-                                QWidget* body, bool expanded) {
-  auto* section = new QGroupBox(title, parent);
-  section->setCheckable(true);
-  section->setChecked(expanded);
-  auto* layout = new QVBoxLayout(section);
-  layout->setContentsMargins(8, 8, 8, 8);
-  layout->addWidget(body);
-  body->setVisible(expanded);
-  QObject::connect(section, &QGroupBox::toggled, body, &QWidget::setVisible);
-  return section;
-}
 
 QComboBox* MakeFieldCombo(QWidget* parent) {
   auto* combo = new QComboBox(parent);
@@ -55,18 +43,22 @@ QComboBox* MakeFieldCombo(QWidget* parent) {
 TeleopSettingsWidget::TeleopSettingsWidget(common::VisualizationManager* manager,
                                            QWidget* parent)
     : manager_(manager), config_(DefaultTeleopPanelConfig()), QWidget(parent) {
+  ApplyCompactSettingsShell(this);
   auto* outer = new QVBoxLayout(this);
-  outer->setContentsMargins(8, 8, 8, 8);
-  outer->setSpacing(8);
+  outer->setContentsMargins(PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
+                            PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
+  outer->setSpacing(PanelSettingsLayout::kOuterSpacing);
+  outer->setAlignment(Qt::AlignTop);
 
-  auto* title_row = new QHBoxLayout();
-  title_row->addWidget(new QLabel(tr("Title"), this));
+  auto* title_form = new QFormLayout();
+  ApplyCompactForm(title_form);
   title_edit_ = new QLineEdit(config_.title, this);
-  title_row->addWidget(title_edit_, 1);
-  outer->addLayout(title_row);
+  title_form->addRow(tr("Title"), title_edit_);
+  outer->addLayout(title_form);
 
   auto* general_body = new QWidget(this);
   auto* general_form = new QFormLayout(general_body);
+  ApplyCompactForm(general_form);
   topic_edit_ = new QLineEdit(config_.topic, general_body);
   topic_edit_->setPlaceholderText(QStringLiteral("/cmd_vel"));
   general_form->addRow(tr("Topic"), topic_edit_);
@@ -107,6 +99,7 @@ QWidget* TeleopSettingsWidget::makeButtonSection(const QString& title,
                                                  TeleopButtonConfig* target) {
   auto* row = new QWidget(this);
   auto* form = new QFormLayout(row);
+  ApplyCompactForm(form);
   auto* field = MakeFieldCombo(row);
   field->setCurrentIndex(field->findData(static_cast<int>(target->field)));
   auto* value = new QDoubleSpinBox(row);

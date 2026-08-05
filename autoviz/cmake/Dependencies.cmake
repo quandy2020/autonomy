@@ -40,6 +40,13 @@ endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets OpenGLWidgets OpenGL Xml Svg Network)
 
+# Qt Multimedia is optional; missing package disables Audio panel playback only.
+set(_AUTOVIZ_HAS_QT_MULTIMEDIA OFF)
+find_package(Qt6 QUIET COMPONENTS Multimedia)
+if(TARGET Qt6::Multimedia)
+  set(_AUTOVIZ_HAS_QT_MULTIMEDIA ON)
+endif()
+
 # QML vehicle panel is optional; missing Quick3D disables the feature without failing the build.
 set(_AUTOVIZ_HAS_QML OFF)
 if(AUTOVIZ_USE_QML_VEHICLE)

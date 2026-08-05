@@ -23,6 +23,7 @@
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/ui/icon_loader.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 #include "autoviz/ui/panel_context_menu.hpp"
 #include "autoviz/ui/panel_dock_widget.hpp"
 #include "autoviz/ui/panel_title_tools.hpp"
@@ -153,12 +154,7 @@ void TfTreePanel::setupUi() {
   root->setSpacing(0);
 
   auto* toolbar = new QFrame(this);
-  toolbar->setStyleSheet(
-      QStringLiteral(
-          "QFrame {"
-          "  background: palette(base);"
-          "  border-bottom: 1px solid palette(midlight);"
-          "}"));
+  toolbar->setStyleSheet(PanelStatusBarStyle());
   auto* toolbar_layout = new QVBoxLayout(toolbar);
   toolbar_layout->setContentsMargins(10, 8, 10, 6);
   toolbar_layout->setSpacing(4);

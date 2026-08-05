@@ -41,6 +41,7 @@
 #include "autoviz/ui/image/image_view_widget.hpp"
 #include "autoviz/ui/panel_context_menu.hpp"
 #include "autoviz/ui/panel_dock_widget.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 #include "autoviz/ui/panel_title_tools.hpp"
 #include "autoviz/ui/plot/plot_drag_mime.hpp"
 
@@ -293,20 +294,12 @@ void ImagePanel::refreshSettingsChannels() {
   }
 }
 
-QWidget* ImagePanel::settingsWidgetForInspector() { return settings_scroll_; }
+QWidget* ImagePanel::settingsWidgetForInspector() {
+  return SettingsScrollForInspector(settings_scroll_);
+}
 
 void ImagePanel::recallSettingsWidget() {
-  if (settings_scroll_ == nullptr || settings_container_ == nullptr) {
-    return;
-  }
-  if (settings_scroll_->parentWidget() == settings_container_) {
-    return;
-  }
-  settings_scroll_->setParent(settings_container_);
-  if (QLayout* layout = settings_container_->layout()) {
-    layout->addWidget(settings_scroll_);
-  }
-  settings_scroll_->hide();
+  RecallSettingsScrollToContainer(settings_scroll_, settings_container_);
 }
 
 void ImagePanel::syncSettingsWidgetFromConfig() {
@@ -333,9 +326,14 @@ void ImagePanel::focusInEvent(QFocusEvent* event) {
 }
 
 void ImagePanel::dragEnterEvent(QDragEnterEvent* event) {
-  if (plot::ReadPlotSeriesDragPayload(event->mimeData(), nullptr)) {
-    event->acceptProposedAction();
-    return;
+  plot::PlotSeriesDragPayload payload;
+  if (plot::ReadPlotSeriesDragPayload(event->mimeData(), &payload) &&
+      !payload.channel.isEmpty() && payload.field_path.isEmpty()) {
+    const std::string message_type = messageTypeForChannel(payload.channel.toStdString());
+    if (display::isImageMessageType(message_type)) {
+      event->acceptProposedAction();
+      return;
+    }
   }
   QWidget::dragEnterEvent(event);
 }
@@ -343,13 +341,16 @@ void ImagePanel::dragEnterEvent(QDragEnterEvent* event) {
 void ImagePanel::dropEvent(QDropEvent* event) {
   plot::PlotSeriesDragPayload payload;
   if (plot::ReadPlotSeriesDragPayload(event->mimeData(), &payload) &&
-      !payload.channel.isEmpty()) {
-    ImagePanelConfig updated = config_;
-    updated.image_channel = payload.channel;
-    setConfig(updated);
-    emit configChanged();
-    event->acceptProposedAction();
-    return;
+      !payload.channel.isEmpty() && payload.field_path.isEmpty()) {
+    const std::string message_type = messageTypeForChannel(payload.channel.toStdString());
+    if (display::isImageMessageType(message_type)) {
+      ImagePanelConfig updated = config_;
+      updated.image_channel = payload.channel;
+      setConfig(updated);
+      emit configChanged();
+      event->acceptProposedAction();
+      return;
+    }
   }
   QWidget::dropEvent(event);
 }

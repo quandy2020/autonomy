@@ -20,11 +20,13 @@
 #include "autoviz/ui/icon_loader.hpp"
 #include "autoviz/ui/panel_context_menu.hpp"
 #include "autoviz/ui/panel_dock_widget.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 #include "autoviz/ui/panel_title_tools.hpp"
 #include "autoviz/ui/plot/plot_drag_mime.hpp"
 #include "autoviz/ui/table/table_field_extractor.hpp"
 #include "autoviz/ui/table/table_settings_widget.hpp"
 #include "autoviz/ui/table/table_view_widget.hpp"
+#include "autoviz/variables/variable_path_utils.hpp"
 
 namespace autoviz {
 namespace table {
@@ -61,16 +63,11 @@ TablePanel::TablePanel(common::VisualizationManager* manager, QWidget* parent)
   settings_layout->addWidget(settings_scroll_);
 
   auto* toolbar = new QFrame(this);
-  toolbar->setStyleSheet(
-      QStringLiteral(
-          "QFrame {"
-          "  background: palette(base);"
-          "  border-bottom: 1px solid palette(midlight);"
-          "}"));
+  toolbar->setStyleSheet(PanelStatusBarStyle());
   auto* toolbar_layout = new QHBoxLayout(toolbar);
   toolbar_layout->setContentsMargins(6, 4, 6, 4);
   status_label_ = new QLabel(toolbar);
-  status_label_->setStyleSheet(QStringLiteral("color: palette(mid); font-size: 10px;"));
+  status_label_->setStyleSheet(PanelStatusLabelStyle());
   status_label_->setTextInteractionFlags(Qt::TextSelectableByMouse);
   toolbar_layout->addWidget(status_label_, 1);
   root->addWidget(toolbar);
@@ -203,19 +200,11 @@ void TablePanel::setExpandButtonChecked(bool checked) {
 }
 
 QWidget* TablePanel::settingsWidgetForInspector() {
-  if (settings_widget_ == nullptr) {
-    return nullptr;
-  }
-  settings_widget_->setParent(nullptr);
-  return settings_widget_;
+  return SettingsScrollForInspector(settings_scroll_);
 }
 
 void TablePanel::recallSettingsWidget() {
-  if (settings_widget_ == nullptr || settings_scroll_ == nullptr) {
-    return;
-  }
-  settings_widget_->setParent(settings_scroll_);
-  settings_scroll_->setWidget(settings_widget_);
+  RecallSettingsScrollToContainer(settings_scroll_, settings_container_);
 }
 
 void TablePanel::refreshSettingsChannels() {
@@ -336,17 +325,28 @@ void TablePanel::onChannelPayload(const std::string& payload) {
   ingestPayload(payload);
 }
 
+void TablePanel::refreshFromVariables() {
+  if (!last_payload_.empty()) {
+    ingestPayload(last_payload_);
+  }
+}
+
 void TablePanel::ingestPayload(const std::string& payload) {
+  last_payload_ = payload;
   if (subscribed_message_type_.empty() || payload.empty()) {
     return;
   }
+  const QString resolved_path =
+      manager_ != nullptr
+          ? plot::ResolveMessagePath(config_.array_path, &manager_->variableStore())
+          : config_.array_path;
   const std::optional<TableData> data = TableFieldExtractor::instance().extract(
-      subscribed_message_type_, payload, config_.array_path.toStdString());
+      subscribed_message_type_, payload, resolved_path.toStdString());
   if (!data.has_value()) {
     last_row_count_ = 0;
     view_->setStatusText(tr("No array data at path \"%1\"")
-                             .arg(config_.array_path.isEmpty() ? tr("(auto)")
-                                                               : config_.array_path));
+                             .arg(resolved_path.isEmpty() ? tr("(auto)")
+                                                          : resolved_path));
     view_->clearData();
     updateStatusBar();
     return;
@@ -375,12 +375,17 @@ void TablePanel::updateStatusBar() {
     return;
   }
   if (config_.channel.isEmpty()) {
-    status_label_->setText(tr("Drop a topic or repeated field from Topics"));
+    status_label_->setText(tr("Drop a channel or repeated field from Channels"));
     return;
   }
   QString text = config_.channel;
   if (!config_.array_path.isEmpty()) {
-    text += QStringLiteral(" · ") + config_.array_path;
+    const QString resolved =
+        manager_ != nullptr
+            ? plot::ResolveMessagePath(config_.array_path,
+                                     &manager_->variableStore())
+            : config_.array_path;
+    text += QStringLiteral(" · ") + resolved;
   }
   if (last_row_count_ > 0) {
     text += tr(" · %1 rows").arg(last_row_count_);

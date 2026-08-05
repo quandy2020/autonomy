@@ -23,6 +23,7 @@
 #include "autoviz/ui/icon_loader.hpp"
 #include "autoviz/ui/panel_context_menu.hpp"
 #include "autoviz/ui/panel_dock_widget.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 #include "autoviz/ui/panel_title_tools.hpp"
 #include "autoviz/ui/teleop/teleop_control_widget.hpp"
 #include "autoviz/ui/teleop/teleop_settings_widget.hpp"
@@ -171,20 +172,12 @@ void TeleopPanel::setSettingsButtonChecked(bool checked) {
   settings_button_->blockSignals(false);
 }
 
-QWidget* TeleopPanel::settingsWidgetForInspector() { return settings_scroll_; }
+QWidget* TeleopPanel::settingsWidgetForInspector() {
+  return SettingsScrollForInspector(settings_scroll_);
+}
 
 void TeleopPanel::recallSettingsWidget() {
-  if (settings_scroll_ == nullptr || settings_container_ == nullptr) {
-    return;
-  }
-  if (settings_scroll_->parentWidget() == settings_container_) {
-    return;
-  }
-  settings_scroll_->setParent(settings_container_);
-  if (QLayout* layout = settings_container_->layout()) {
-    layout->addWidget(settings_scroll_);
-  }
-  settings_scroll_->hide();
+  RecallSettingsScrollToContainer(settings_scroll_, settings_container_);
 }
 
 void TeleopPanel::syncSettingsWidgetFromConfig() {

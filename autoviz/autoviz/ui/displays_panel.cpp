@@ -291,6 +291,9 @@ void DisplaysPanel::updateGlobalStatus() {
 void DisplaysPanel::populateGlobalStatus() {
   auto* status = new QTreeWidgetItem(tree_);
   status->setText(kDisplayTreeColName, tr("Global Status"));
+  status->setIcon(
+      kDisplayTreeColName,
+      IconLoader::load(QStringLiteral(":/autoviz/icons/global_status.svg")));
   status->setFlags(NameColumnFlags(false));
   SetTreeItemMeta(status, DisplayTreeItemKind::kGlobalStatus, -1, {},
                   tr("Shows aggregated errors and warnings from displays."));

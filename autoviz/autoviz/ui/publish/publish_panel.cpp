@@ -14,6 +14,7 @@
 #include "autoviz/ui/icon_loader.hpp"
 #include "autoviz/ui/panel_context_menu.hpp"
 #include "autoviz/ui/panel_dock_widget.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 #include "autoviz/ui/panel_title_tools.hpp"
 #include "autoviz/ui/publish/publish_editor_widget.hpp"
 #include "autoviz/ui/publish/publish_settings_widget.hpp"
@@ -187,19 +188,11 @@ void PublishPanel::setExpandButtonChecked(bool checked) {
 }
 
 QWidget* PublishPanel::settingsWidgetForInspector() {
-  if (settings_widget_ == nullptr) {
-    return nullptr;
-  }
-  settings_widget_->setParent(nullptr);
-  return settings_widget_;
+  return SettingsScrollForInspector(settings_scroll_);
 }
 
 void PublishPanel::recallSettingsWidget() {
-  if (settings_widget_ == nullptr || settings_scroll_ == nullptr) {
-    return;
-  }
-  settings_widget_->setParent(settings_scroll_);
-  settings_scroll_->setWidget(settings_widget_);
+  RecallSettingsScrollToContainer(settings_scroll_, settings_container_);
 }
 
 void PublishPanel::refreshSettingsChannels() {

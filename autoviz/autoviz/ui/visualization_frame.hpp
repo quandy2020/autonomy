@@ -63,6 +63,21 @@ class MapPanel;
 namespace indicator {
 class IndicatorPanel;
 }
+namespace service_panel {
+class ServicePanel;
+}
+namespace parameters_panel {
+class ParametersPanel;
+}
+namespace channel_graph {
+class ChannelGraphPanel;
+}
+namespace state_transitions {
+class StateTransitionPanel;
+}
+namespace audio_panel {
+class AudioPanel;
+}
 
 class DisplaysPanel;
 class MainPanelHost;
@@ -71,9 +86,10 @@ class Vehicle3DPanel;
 class HelpPanel;
 class PlaybackPanel;
 class RawMessagesPanel;
-class TopicsPanel;
+class ChannelsPanel;
 class ProblemsPanel;
 class VariablesPanel;
+class VariableSliderPanel;
 class SelectionPanel;
 class TfTreePanel;
 class TransformationPanel;
@@ -173,8 +189,12 @@ class VisualizationFrame : public QMainWindow {
   void clearPropertyInspectorForTable(table::TablePanel* panel);
   void bindPublishToPropertyInspector(publish_panel::PublishPanel* panel);
   void clearPropertyInspectorForPublish(publish_panel::PublishPanel* panel);
+  void bindServiceToPropertyInspector(service_panel::ServicePanel* panel);
+  void clearPropertyInspectorForService(service_panel::ServicePanel* panel);
   void bindGaugeToPropertyInspector(gauge::GaugePanel* panel);
   void clearPropertyInspectorForGauge(gauge::GaugePanel* panel);
+  void bindAudioToPropertyInspector(audio_panel::AudioPanel* panel);
+  void clearPropertyInspectorForAudio(audio_panel::AudioPanel* panel);
   void applyMainPanelDefaultLayout();
   void setupMenu();
   void setupToolbar();
@@ -199,9 +219,15 @@ class VisualizationFrame : public QMainWindow {
   PanelDockWidget* createTfTreePanelDock(const QString& object_name = QString());
   PanelDockWidget* createTablePanelDock(const QString& object_name = QString());
   PanelDockWidget* createPublishPanelDock(const QString& object_name = QString());
+  PanelDockWidget* createServicePanelDock(const QString& object_name = QString());
   PanelDockWidget* createGaugePanelDock(const QString& object_name = QString());
   PanelDockWidget* createMapPanelDock(const QString& object_name = QString());
   PanelDockWidget* createIndicatorPanelDock(const QString& object_name = QString());
+  PanelDockWidget* createParametersPanelDock(const QString& object_name = QString());
+  PanelDockWidget* createChannelGraphPanelDock(const QString& object_name = QString());
+  PanelDockWidget* createStateTransitionPanelDock(
+      const QString& object_name = QString());
+  PanelDockWidget* createAudioPanelDock(const QString& object_name = QString());
   void wirePlotPanel(PanelDockWidget* dock, plot::PlotPanel* panel);
   void wireImagePanel(PanelDockWidget* dock, image::ImagePanel* panel);
   void wireTeleopPanel(PanelDockWidget* dock, teleop::TeleopPanel* panel);
@@ -209,18 +235,32 @@ class VisualizationFrame : public QMainWindow {
   void wireTfTreePanel(PanelDockWidget* dock, TfTreePanel* panel);
   void wireTablePanel(PanelDockWidget* dock, table::TablePanel* panel);
   void wirePublishPanel(PanelDockWidget* dock, publish_panel::PublishPanel* panel);
+  void wireServicePanel(PanelDockWidget* dock, service_panel::ServicePanel* panel);
   void wireGaugePanel(PanelDockWidget* dock, gauge::GaugePanel* panel);
   void wireMapPanel(PanelDockWidget* dock, map::MapPanel* panel);
   void wireIndicatorPanel(PanelDockWidget* dock, indicator::IndicatorPanel* panel);
+  void wireParametersPanel(PanelDockWidget* dock,
+                           parameters_panel::ParametersPanel* panel);
+  void wireChannelGraphPanel(PanelDockWidget* dock,
+                             channel_graph::ChannelGraphPanel* panel);
+  void wireStateTransitionPanel(
+      PanelDockWidget* dock, state_transitions::StateTransitionPanel* panel);
+  void wireAudioPanel(PanelDockWidget* dock, audio_panel::AudioPanel* panel);
+  void wireVariableRefresh();
+  void refreshGlobalVariableConsumers();
   void setActivePlotPanel(plot::PlotPanel* panel);
   void setActiveImagePanel(image::ImagePanel* panel);
   void setActiveTeleopPanel(teleop::TeleopPanel* panel);
   void setActiveLogPanel(log_panel::LogPanel* panel);
   void setActiveTablePanel(table::TablePanel* panel);
   void setActivePublishPanel(publish_panel::PublishPanel* panel);
+  void setActiveServicePanel(service_panel::ServicePanel* panel);
   void setActiveGaugePanel(gauge::GaugePanel* panel);
+  void setActiveAudioPanel(audio_panel::AudioPanel* panel);
   void setActiveMapPanel(map::MapPanel* panel);
   void setActiveIndicatorPanel(indicator::IndicatorPanel* panel);
+  void setActiveStateTransitionPanel(
+      state_transitions::StateTransitionPanel* panel);
   void activatePanelDock(PanelDockWidget* dock);
   void updateImageDockTitle(PanelDockWidget* dock, image::ImagePanel* panel);
   void updateTeleopDockTitle(PanelDockWidget* dock, teleop::TeleopPanel* panel);
@@ -228,14 +268,27 @@ class VisualizationFrame : public QMainWindow {
   void updateTableDockTitle(PanelDockWidget* dock, table::TablePanel* panel);
   void updatePublishDockTitle(PanelDockWidget* dock,
                               publish_panel::PublishPanel* panel);
+  void updateServiceDockTitle(PanelDockWidget* dock,
+                              service_panel::ServicePanel* panel);
   void updateGaugeDockTitle(PanelDockWidget* dock, gauge::GaugePanel* panel);
+  void updateAudioDockTitle(PanelDockWidget* dock, audio_panel::AudioPanel* panel);
   void updateMapDockTitle(PanelDockWidget* dock, map::MapPanel* panel);
   void updateIndicatorDockTitle(PanelDockWidget* dock,
                                 indicator::IndicatorPanel* panel);
+  void updateStateTransitionDockTitle(
+      PanelDockWidget* dock, state_transitions::StateTransitionPanel* panel);
   void bindMapToPropertyInspector(map::MapPanel* panel);
   void clearPropertyInspectorForMap(map::MapPanel* panel);
   void bindIndicatorToPropertyInspector(indicator::IndicatorPanel* panel);
   void clearPropertyInspectorForIndicator(indicator::IndicatorPanel* panel);
+  void bindStateTransitionToPropertyInspector(
+      state_transitions::StateTransitionPanel* panel);
+  void clearPropertyInspectorForStateTransition(
+      state_transitions::StateTransitionPanel* panel);
+  void clearStateTransitionInspectorBinding();
+  void deactivateStateTransitionIfNot(
+      state_transitions::StateTransitionPanel* keep);
+  void ensureDefaultStateTransitionDockTab();
   void setupLeftSidebarTabs();
   void refreshAllPlotSettingsChannels();
   void applyPlotSettingsVisibilityFromSession();
@@ -246,6 +299,9 @@ class VisualizationFrame : public QMainWindow {
   void captureImagePanelConfigs();
   void restoreImagePanelConfigs();
   void ensureImageDockExists(const QString& object_name);
+  void captureStateTransitionPanelConfigs();
+  void restoreStateTransitionPanelConfigs();
+  void ensureStateTransitionDockExists(const QString& object_name);
   void updatePlotDockTitle(PanelDockWidget* dock, plot::PlotPanel* panel);
   void registerPanelDock(PanelDockWidget* dock);
   PanelDockWidget* duplicatePanelDock(PanelDockWidget* source);
@@ -314,7 +370,7 @@ class VisualizationFrame : public QMainWindow {
   rendering::RenderWindow* gl_viewport_ = nullptr;
   rendering::OgreRenderWindow* ogre_viewport_ = nullptr;
   PanelDockWidget* channel_dock_ = nullptr;
-  PanelDockWidget* topics_dock_ = nullptr;
+  PanelDockWidget* channels_dock_ = nullptr;
   PanelDockWidget* problems_dock_ = nullptr;
   PanelDockWidget* displays_dock_ = nullptr;
   PanelDockWidget* playback_dock_ = nullptr;
@@ -344,9 +400,11 @@ class VisualizationFrame : public QMainWindow {
   ToolPropertiesPanel* tool_properties_panel_ = nullptr;
   SelectionPanel* selection_panel_ = nullptr;
   RawMessagesPanel* raw_messages_panel_ = nullptr;
-  TopicsPanel* topics_panel_ = nullptr;
+  ChannelsPanel* channels_panel_ = nullptr;
   ProblemsPanel* problems_panel_ = nullptr;
   VariablesPanel* variables_panel_ = nullptr;
+  VariableSliderPanel* variable_slider_panel_ = nullptr;
+  PanelDockWidget* variable_slider_dock_ = nullptr;
   image::ImagePanel* image_panel_ = nullptr;
   plot::PlotPanel* plot_panel_ = nullptr;
   log_panel::LogPanel* log_panel_ = nullptr;
@@ -356,18 +414,25 @@ class VisualizationFrame : public QMainWindow {
   log_panel::LogPanel* active_log_panel_ = nullptr;
   table::TablePanel* active_table_panel_ = nullptr;
   publish_panel::PublishPanel* active_publish_panel_ = nullptr;
+  service_panel::ServicePanel* active_service_panel_ = nullptr;
   gauge::GaugePanel* active_gauge_panel_ = nullptr;
+  audio_panel::AudioPanel* active_audio_panel_ = nullptr;
   map::MapPanel* active_map_panel_ = nullptr;
   indicator::IndicatorPanel* active_indicator_panel_ = nullptr;
+  state_transitions::StateTransitionPanel* active_state_transition_panel_ = nullptr;
   plot::PlotPanel* inspector_plot_panel_ = nullptr;
   image::ImagePanel* inspector_image_panel_ = nullptr;
   teleop::TeleopPanel* inspector_teleop_panel_ = nullptr;
   log_panel::LogPanel* inspector_log_panel_ = nullptr;
   table::TablePanel* inspector_table_panel_ = nullptr;
   publish_panel::PublishPanel* inspector_publish_panel_ = nullptr;
+  service_panel::ServicePanel* inspector_service_panel_ = nullptr;
   gauge::GaugePanel* inspector_gauge_panel_ = nullptr;
+  audio_panel::AudioPanel* inspector_audio_panel_ = nullptr;
   map::MapPanel* inspector_map_panel_ = nullptr;
   indicator::IndicatorPanel* inspector_indicator_panel_ = nullptr;
+  state_transitions::StateTransitionPanel* inspector_state_transition_panel_ =
+      nullptr;
   PropertyInspectorPanel* property_inspector_panel_ = nullptr;
   HelpPanel* help_panel_ = nullptr;
   TfTreePanel* tf_tree_panel_ = nullptr;

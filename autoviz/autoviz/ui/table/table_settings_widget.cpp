@@ -7,12 +7,11 @@
 #include <QComboBox>
 #include <QFormLayout>
 #include <QGroupBox>
-#include <QHBoxLayout>
-#include <QLabel>
 #include <QLineEdit>
 #include <QVBoxLayout>
 
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 namespace table {
@@ -35,23 +34,29 @@ QStringList AllChannels(common::VisualizationManager* manager) {
 TableSettingsWidget::TableSettingsWidget(common::VisualizationManager* manager,
                                          QWidget* parent)
     : manager_(manager), config_(DefaultTablePanelConfig()), QWidget(parent) {
+  ApplyCompactSettingsShell(this);
   auto* outer = new QVBoxLayout(this);
-  outer->setContentsMargins(8, 8, 8, 8);
-  outer->setSpacing(8);
+  outer->setContentsMargins(PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
+                            PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
+  outer->setSpacing(PanelSettingsLayout::kOuterSpacing);
+  outer->setAlignment(Qt::AlignTop);
 
-  auto* title_row = new QHBoxLayout();
-  title_row->addWidget(new QLabel(tr("Title"), this));
+  auto* title_form = new QFormLayout();
+  ApplyCompactForm(title_form);
   title_edit_ = new QLineEdit(config_.title, this);
-  title_row->addWidget(title_edit_, 1);
-  outer->addLayout(title_row);
+  title_form->addRow(tr("Title"), title_edit_);
+  outer->addLayout(title_form);
 
   auto* general = new QGroupBox(tr("Data source"), this);
+  StyleSettingsGroupBox(general);
   auto* form = new QFormLayout(general);
+  ApplyCompactForm(form);
   channel_combo_ = new QComboBox(general);
   channel_combo_->setEditable(true);
   array_path_edit_ = new QLineEdit(config_.array_path, general);
-  array_path_edit_->setPlaceholderText(tr("Array path, e.g. markers or tracked_objects"));
-  form->addRow(tr("Topic"), channel_combo_);
+  array_path_edit_->setPlaceholderText(
+      tr("Array path, e.g. objects[:]{id==$vehicle_id}"));
+  form->addRow(tr("Channel"), channel_combo_);
   form->addRow(tr("Array path"), array_path_edit_);
   outer->addWidget(general);
   outer->addStretch();

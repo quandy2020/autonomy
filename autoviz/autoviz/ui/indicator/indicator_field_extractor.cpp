@@ -13,6 +13,7 @@
 #include <sstream>
 
 #include "autoviz/commsgs/message_type_utils.hpp"
+#include "autoviz/ui/plot/message_path_navigation.hpp"
 
 namespace autoviz {
 namespace indicator {
@@ -151,7 +152,9 @@ std::optional<IndicatorFieldValue> IndicatorFieldExtractor::extract(
   }
   const google::protobuf::Message* container = nullptr;
   const google::protobuf::FieldDescriptor* leaf_field = nullptr;
-  if (!ResolveLeafField(*message, field_path, &container, &leaf_field)) {
+  if (!plot::ResolveLeafFieldByMessagePath(*message, field_path, &container,
+                                           &leaf_field) &&
+      !ResolveLeafField(*message, field_path, &container, &leaf_field)) {
     return std::nullopt;
   }
   return ReadScalarField(*container, leaf_field);

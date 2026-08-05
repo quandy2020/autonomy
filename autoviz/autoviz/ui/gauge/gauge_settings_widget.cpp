@@ -17,23 +17,11 @@
 #include <QVBoxLayout>
 
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 namespace gauge {
 namespace {
-
-QWidget* MakeCollapsibleSection(QWidget* parent, const QString& title,
-                                QWidget* body, bool expanded) {
-  auto* section = new QGroupBox(title, parent);
-  section->setCheckable(true);
-  section->setChecked(expanded);
-  auto* layout = new QVBoxLayout(section);
-  layout->setContentsMargins(8, 8, 8, 8);
-  layout->addWidget(body);
-  body->setVisible(expanded);
-  QObject::connect(section, &QGroupBox::toggled, body, &QWidget::setVisible);
-  return section;
-}
 
 QStringList KnownChannels(common::VisualizationManager* manager) {
   QStringList channels;
@@ -52,22 +40,26 @@ QStringList KnownChannels(common::VisualizationManager* manager) {
 GaugeSettingsWidget::GaugeSettingsWidget(common::VisualizationManager* manager,
                                          QWidget* parent)
     : manager_(manager), config_(DefaultGaugePanelConfig()), QWidget(parent) {
+  ApplyCompactSettingsShell(this);
   auto* outer = new QVBoxLayout(this);
-  outer->setContentsMargins(8, 8, 8, 8);
-  outer->setSpacing(8);
+  outer->setContentsMargins(PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
+                            PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
+  outer->setSpacing(PanelSettingsLayout::kOuterSpacing);
+  outer->setAlignment(Qt::AlignTop);
 
-  auto* title_row = new QHBoxLayout();
-  title_row->addWidget(new QLabel(tr("Title"), this));
+  auto* title_form = new QFormLayout();
+  ApplyCompactForm(title_form);
   title_edit_ = new QLineEdit(config_.title, this);
-  title_row->addWidget(title_edit_, 1);
-  outer->addLayout(title_row);
+  title_form->addRow(tr("Title"), title_edit_);
+  outer->addLayout(title_form);
 
   auto* general_body = new QWidget(this);
   auto* general_form = new QFormLayout(general_body);
+  ApplyCompactForm(general_form);
   channel_combo_ = new QComboBox(general_body);
   channel_combo_->setEditable(true);
   field_path_edit_ = new QLineEdit(config_.field_path, general_body);
-  field_path_edit_->setPlaceholderText(tr("e.g. twist.linear.x"));
+  field_path_edit_->setPlaceholderText(tr("e.g. twist.linear.x or objects[:]{id==$id}.speed"));
   min_spin_ = new QDoubleSpinBox(general_body);
   min_spin_->setRange(-1e12, 1e12);
   min_spin_->setDecimals(4);
@@ -84,6 +76,7 @@ GaugeSettingsWidget::GaugeSettingsWidget(common::VisualizationManager* manager,
 
   auto* appearance_body = new QWidget(this);
   auto* appearance_form = new QFormLayout(appearance_body);
+  ApplyCompactForm(appearance_form);
   color_mode_combo_ = new QComboBox(appearance_body);
   color_mode_combo_->addItem(tr("Solid"), static_cast<int>(GaugeColorMode::kSolid));
   color_mode_combo_->addItem(tr("Gradient"), static_cast<int>(GaugeColorMode::kGradient));
@@ -175,10 +168,8 @@ void GaugeSettingsWidget::setConfig(const GaugePanelConfig& config) {
       color_map_combo_->findData(static_cast<int>(config_.color_map)));
   reverse_color_check_->setChecked(config_.reverse_color);
   reverse_direction_check_->setChecked(config_.reverse_direction);
-  gradient_start_button_->setStyleSheet(
-      QStringLiteral("background: %1;").arg(config_.gradient_start.name()));
-  gradient_end_button_->setStyleSheet(
-      QStringLiteral("background: %1;").arg(config_.gradient_end.name()));
+  UpdateColorButton(gradient_start_button_, config_.gradient_start);
+  UpdateColorButton(gradient_end_button_, config_.gradient_end);
 
   const int channel_index = channel_combo_->findText(config_.channel);
   if (channel_index >= 0) {
@@ -221,12 +212,10 @@ void GaugeSettingsWidget::pickGradientColor(bool start) {
   }
   if (start) {
     config_.gradient_start = chosen;
-    gradient_start_button_->setStyleSheet(
-        QStringLiteral("background: %1;").arg(chosen.name()));
+    UpdateColorButton(gradient_start_button_, chosen);
   } else {
     config_.gradient_end = chosen;
-    gradient_end_button_->setStyleSheet(
-        QStringLiteral("background: %1;").arg(chosen.name()));
+    UpdateColorButton(gradient_end_button_, chosen);
   }
   emitConfigChanged();
 }

@@ -11,6 +11,8 @@
 
 #include "autolink/message/raw_message.hpp"
 
+#include "autoviz/integration/channel_stats_registry.hpp"
+
 namespace autoviz {
 namespace integration {
 
@@ -96,6 +98,7 @@ void ChannelReaderRegistry::fanOut(const std::string& channel,
   for (const auto& callback : callbacks) {
     callback(payload);
   }
+  ChannelStatsRegistry::instance().recordMessage(channel);
 }
 
 bool ChannelReaderRegistry::ensureReaderLocked(const std::string& channel) {
