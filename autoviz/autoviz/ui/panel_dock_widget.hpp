@@ -23,6 +23,10 @@ class PanelDockWidget : public QDockWidget {
   void setCollapsed(bool collapsed);
   bool isCollapsed() const { return collapsed_; }
   void setPanelIcon(const QIcon& icon);
+  void setPanelTitle(const QString& title);
+
+  /** Foxglove-style tools shown in the title bar before the close button. */
+  void setTitleBarTools(QWidget* tools);
 
   /** Lock dock height to title bar + fixed content (e.g. bottom Time bar). */
   void setFixedContentHeight(int height);
@@ -42,6 +46,8 @@ class PanelDockWidget : public QDockWidget {
 
  signals:
   void closed();
+  /** Emitted when the user clicks the panel title bar. */
+  void activated();
 
  private:
   void applyFixedContentHeight();
@@ -58,6 +64,7 @@ class PanelDockWidget : public QDockWidget {
   QWidget* title_bar_ = nullptr;
   QLabel* icon_label_ = nullptr;
   QLabel* title_label_ = nullptr;
+  QWidget* title_tools_host_ = nullptr;
 };
 
 }  // namespace autoviz

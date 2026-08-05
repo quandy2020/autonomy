@@ -18,9 +18,12 @@
 
 class QMenu;
 class QShortcut;
+class QStackedWidget;
+class QToolButton;
 
 #include "autoviz/common/selection.hpp"
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/ui/panel_context_menu.hpp"
 #include "autoviz/ui/panel_dock_widget.hpp"
 
 class QLabel;
@@ -29,13 +32,48 @@ class QToolBar;
 class QToolButton;
 class QVBoxLayout;
 
+class QStackedWidget;
+
 namespace autoviz {
 
+namespace plot {
+class PlotPanel;
+}
+namespace image {
+class ImagePanel;
+}
+namespace teleop {
+class TeleopPanel;
+}
+namespace log_panel {
+class LogPanel;
+}
+namespace table {
+class TablePanel;
+}
+namespace publish_panel {
+class PublishPanel;
+}
+namespace gauge {
+class GaugePanel;
+}
+namespace map {
+class MapPanel;
+}
+namespace indicator {
+class IndicatorPanel;
+}
+
 class DisplaysPanel;
+class MainPanelHost;
+class PropertyInspectorPanel;
 class Vehicle3DPanel;
 class HelpPanel;
-class ImagePanel;
 class PlaybackPanel;
+class RawMessagesPanel;
+class TopicsPanel;
+class ProblemsPanel;
+class VariablesPanel;
 class SelectionPanel;
 class TfTreePanel;
 class TransformationPanel;
@@ -69,6 +107,7 @@ class VisualizationFrame : public QMainWindow {
 
  protected:
   void keyPressEvent(QKeyEvent* event) override;
+  void resizeEvent(QResizeEvent* event) override;
 
  private slots:
   void onRenderTick();
@@ -91,10 +130,15 @@ class VisualizationFrame : public QMainWindow {
   void setFullScreen(bool full_screen);
   void onToolTriggered(QAction* action);
   void onAddPanel();
+  void onAddPanelMenuTriggered(QAction* action);
+  void onSplitActiveDock(PanelDockWidget* source, Qt::Orientation orientation);
+  void populateAddPanelMenu();
+  void showPanelByObjectName(const QString& object_name);
   void onDeletePanel();
   void onRecentConfigSelected();
   void showHelpPanel();
   void onHelpAbout();
+  void onResetDefaultLayout();
   void onHideLeftDockToggled(bool hide);
   void onHideRightDockToggled(bool hide);
   void onDockPanelVisibilityChange(bool visible);
@@ -103,8 +147,111 @@ class VisualizationFrame : public QMainWindow {
  private:
   void setupUi();
   void setupCentralContainer();
+  void setupMainPanelHost();
+  QMainWindow* dockHostForPanel(const PanelDockWidget* dock) const;
+  bool isMainPanel(const PanelDockWidget* dock) const;
+  void addMainPanelDock(PanelDockWidget* dock,
+                        Qt::DockWidgetArea area = Qt::LeftDockWidgetArea);
+  void ensureMainPanelDockAttached(PanelDockWidget* dock,
+                                   Qt::DockWidgetArea area = Qt::LeftDockWidgetArea);
+  void ensureSidebarDockAttached(PanelDockWidget* dock);
+  Qt::DockWidgetArea defaultSidebarArea(const PanelDockWidget* dock) const;
+  void syncCenterLayout();
+  void addSidebarDock(PanelDockWidget* dock, Qt::DockWidgetArea area);
+  void configureMainPanelDock(PanelDockWidget* dock);
+  void configureSidebarDock(PanelDockWidget* dock, Qt::DockWidgetArea area);
+  void showPropertyInspector(bool visible);
+  void bindPlotToPropertyInspector(plot::PlotPanel* panel);
+  void clearPropertyInspectorForPlot(plot::PlotPanel* panel);
+  void bindImageToPropertyInspector(image::ImagePanel* panel);
+  void clearPropertyInspectorForImage(image::ImagePanel* panel);
+  void bindTeleopToPropertyInspector(teleop::TeleopPanel* panel);
+  void clearPropertyInspectorForTeleop(teleop::TeleopPanel* panel);
+  void bindLogToPropertyInspector(log_panel::LogPanel* panel);
+  void clearPropertyInspectorForLog(log_panel::LogPanel* panel);
+  void bindTableToPropertyInspector(table::TablePanel* panel);
+  void clearPropertyInspectorForTable(table::TablePanel* panel);
+  void bindPublishToPropertyInspector(publish_panel::PublishPanel* panel);
+  void clearPropertyInspectorForPublish(publish_panel::PublishPanel* panel);
+  void bindGaugeToPropertyInspector(gauge::GaugePanel* panel);
+  void clearPropertyInspectorForGauge(gauge::GaugePanel* panel);
+  void applyMainPanelDefaultLayout();
   void setupMenu();
   void setupToolbar();
+  void setupToolbarLayoutControls();
+  void syncToolbarLayoutControls();
+  void configureFlexibleDock(PanelDockWidget* dock);
+  void installViewportTitleBarTools();
+  void installStandardPanelTitleTools(PanelDockWidget* dock);
+  PanelContextMenuCallbacks makePanelContextMenuCallbacks(PanelDockWidget* dock);
+  void syncViewportTitleBarTools();
+  void expandPanelDock(PanelDockWidget* dock);
+  void restoreExpandedMainPanel();
+  void syncMainPanelExpandUi(PanelDockWidget* expanded_dock);
+  void wireMainPanelExpandTracking(PanelDockWidget* dock);
+  void changePanelInDock(PanelDockWidget* source, const QString& target_object_name);
+  QString panelTypeId(const PanelDockWidget* dock) const;
+  QString uniquePanelObjectName(const QString& base) const;
+  PanelDockWidget* createPlotPanelDock(const QString& object_name = QString());
+  PanelDockWidget* createImagePanelDock(const QString& object_name = QString());
+  PanelDockWidget* createTeleopPanelDock(const QString& object_name = QString());
+  PanelDockWidget* createLogPanelDock(const QString& object_name = QString());
+  PanelDockWidget* createTfTreePanelDock(const QString& object_name = QString());
+  PanelDockWidget* createTablePanelDock(const QString& object_name = QString());
+  PanelDockWidget* createPublishPanelDock(const QString& object_name = QString());
+  PanelDockWidget* createGaugePanelDock(const QString& object_name = QString());
+  PanelDockWidget* createMapPanelDock(const QString& object_name = QString());
+  PanelDockWidget* createIndicatorPanelDock(const QString& object_name = QString());
+  void wirePlotPanel(PanelDockWidget* dock, plot::PlotPanel* panel);
+  void wireImagePanel(PanelDockWidget* dock, image::ImagePanel* panel);
+  void wireTeleopPanel(PanelDockWidget* dock, teleop::TeleopPanel* panel);
+  void wireLogPanel(PanelDockWidget* dock, log_panel::LogPanel* panel);
+  void wireTfTreePanel(PanelDockWidget* dock, TfTreePanel* panel);
+  void wireTablePanel(PanelDockWidget* dock, table::TablePanel* panel);
+  void wirePublishPanel(PanelDockWidget* dock, publish_panel::PublishPanel* panel);
+  void wireGaugePanel(PanelDockWidget* dock, gauge::GaugePanel* panel);
+  void wireMapPanel(PanelDockWidget* dock, map::MapPanel* panel);
+  void wireIndicatorPanel(PanelDockWidget* dock, indicator::IndicatorPanel* panel);
+  void setActivePlotPanel(plot::PlotPanel* panel);
+  void setActiveImagePanel(image::ImagePanel* panel);
+  void setActiveTeleopPanel(teleop::TeleopPanel* panel);
+  void setActiveLogPanel(log_panel::LogPanel* panel);
+  void setActiveTablePanel(table::TablePanel* panel);
+  void setActivePublishPanel(publish_panel::PublishPanel* panel);
+  void setActiveGaugePanel(gauge::GaugePanel* panel);
+  void setActiveMapPanel(map::MapPanel* panel);
+  void setActiveIndicatorPanel(indicator::IndicatorPanel* panel);
+  void activatePanelDock(PanelDockWidget* dock);
+  void updateImageDockTitle(PanelDockWidget* dock, image::ImagePanel* panel);
+  void updateTeleopDockTitle(PanelDockWidget* dock, teleop::TeleopPanel* panel);
+  void updateLogDockTitle(PanelDockWidget* dock, log_panel::LogPanel* panel);
+  void updateTableDockTitle(PanelDockWidget* dock, table::TablePanel* panel);
+  void updatePublishDockTitle(PanelDockWidget* dock,
+                              publish_panel::PublishPanel* panel);
+  void updateGaugeDockTitle(PanelDockWidget* dock, gauge::GaugePanel* panel);
+  void updateMapDockTitle(PanelDockWidget* dock, map::MapPanel* panel);
+  void updateIndicatorDockTitle(PanelDockWidget* dock,
+                                indicator::IndicatorPanel* panel);
+  void bindMapToPropertyInspector(map::MapPanel* panel);
+  void clearPropertyInspectorForMap(map::MapPanel* panel);
+  void bindIndicatorToPropertyInspector(indicator::IndicatorPanel* panel);
+  void clearPropertyInspectorForIndicator(indicator::IndicatorPanel* panel);
+  void setupLeftSidebarTabs();
+  void refreshAllPlotSettingsChannels();
+  void applyPlotSettingsVisibilityFromSession();
+  void installPlotFocusTracking();
+  void capturePlotPanelConfigs();
+  void restorePlotPanelConfigs();
+  void ensurePlotDockExists(const QString& object_name);
+  void captureImagePanelConfigs();
+  void restoreImagePanelConfigs();
+  void ensureImageDockExists(const QString& object_name);
+  void updatePlotDockTitle(PanelDockWidget* dock, plot::PlotPanel* panel);
+  void registerPanelDock(PanelDockWidget* dock);
+  PanelDockWidget* duplicatePanelDock(PanelDockWidget* source);
+  bool panelTypeSupportsMultiInstance(const QString& panel_type_id) const;
+  void applyFoxgloveDefaultLayout();
+  PanelDockWidget* activeDockForSplit() const;
   void setupToolShortcuts();
   void rebuildToolbar();
   void applyActiveTool(const std::string& tool_id);
@@ -160,15 +307,15 @@ class VisualizationFrame : public QMainWindow {
   void connectConfigModifiedSignals();
 
   std::shared_ptr<common::VisualizationManager> manager_;
-  QWidget* central_container_ = nullptr;
+  MainPanelHost* main_panel_host_ = nullptr;
   QWidget* viewport_host_ = nullptr;
   QVBoxLayout* viewport_layout_ = nullptr;
   QWidget* viewport_widget_ = nullptr;
-  QToolButton* hide_left_dock_button_ = nullptr;
-  QToolButton* hide_right_dock_button_ = nullptr;
   rendering::RenderWindow* gl_viewport_ = nullptr;
   rendering::OgreRenderWindow* ogre_viewport_ = nullptr;
   PanelDockWidget* channel_dock_ = nullptr;
+  PanelDockWidget* topics_dock_ = nullptr;
+  PanelDockWidget* problems_dock_ = nullptr;
   PanelDockWidget* displays_dock_ = nullptr;
   PanelDockWidget* playback_dock_ = nullptr;
   PanelDockWidget* time_dock_ = nullptr;
@@ -179,6 +326,11 @@ class VisualizationFrame : public QMainWindow {
   PanelDockWidget* tf_dock_ = nullptr;
   PanelDockWidget* transformation_dock_ = nullptr;
   PanelDockWidget* image_dock_ = nullptr;
+  PanelDockWidget* plot_dock_ = nullptr;
+  PanelDockWidget* log_dock_ = nullptr;
+  PanelDockWidget* property_inspector_dock_ = nullptr;
+  PanelDockWidget* variables_dock_ = nullptr;
+  PanelDockWidget* viewport_dock_ = nullptr;
   PanelDockWidget* help_dock_ = nullptr;
 #ifdef AUTOVIZ_USE_QML_DRONE
   PanelDockWidget* drone_dock_ = nullptr;
@@ -191,12 +343,47 @@ class VisualizationFrame : public QMainWindow {
   ViewsPanel* views_panel_ = nullptr;
   ToolPropertiesPanel* tool_properties_panel_ = nullptr;
   SelectionPanel* selection_panel_ = nullptr;
-  ImagePanel* image_panel_ = nullptr;
+  RawMessagesPanel* raw_messages_panel_ = nullptr;
+  TopicsPanel* topics_panel_ = nullptr;
+  ProblemsPanel* problems_panel_ = nullptr;
+  VariablesPanel* variables_panel_ = nullptr;
+  image::ImagePanel* image_panel_ = nullptr;
+  plot::PlotPanel* plot_panel_ = nullptr;
+  log_panel::LogPanel* log_panel_ = nullptr;
+  plot::PlotPanel* active_plot_panel_ = nullptr;
+  image::ImagePanel* active_image_panel_ = nullptr;
+  teleop::TeleopPanel* active_teleop_panel_ = nullptr;
+  log_panel::LogPanel* active_log_panel_ = nullptr;
+  table::TablePanel* active_table_panel_ = nullptr;
+  publish_panel::PublishPanel* active_publish_panel_ = nullptr;
+  gauge::GaugePanel* active_gauge_panel_ = nullptr;
+  map::MapPanel* active_map_panel_ = nullptr;
+  indicator::IndicatorPanel* active_indicator_panel_ = nullptr;
+  plot::PlotPanel* inspector_plot_panel_ = nullptr;
+  image::ImagePanel* inspector_image_panel_ = nullptr;
+  teleop::TeleopPanel* inspector_teleop_panel_ = nullptr;
+  log_panel::LogPanel* inspector_log_panel_ = nullptr;
+  table::TablePanel* inspector_table_panel_ = nullptr;
+  publish_panel::PublishPanel* inspector_publish_panel_ = nullptr;
+  gauge::GaugePanel* inspector_gauge_panel_ = nullptr;
+  map::MapPanel* inspector_map_panel_ = nullptr;
+  indicator::IndicatorPanel* inspector_indicator_panel_ = nullptr;
+  PropertyInspectorPanel* property_inspector_panel_ = nullptr;
   HelpPanel* help_panel_ = nullptr;
   TfTreePanel* tf_tree_panel_ = nullptr;
   TransformationPanel* transformation_panel_ = nullptr;
-  QListWidget* channel_list_ = nullptr;
   QToolBar* tool_bar_ = nullptr;
+  QWidget* toolbar_spacer_ = nullptr;
+  QToolButton* toolbar_add_panel_button_ = nullptr;
+  QMenu* add_panel_menu_ = nullptr;
+  QAction* toolbar_toggle_left_dock_action_ = nullptr;
+  QAction* toolbar_toggle_right_dock_action_ = nullptr;
+  PanelDockWidget* last_active_dock_ = nullptr;
+  QToolButton* viewport_select_tool_ = nullptr;
+  QToolButton* viewport_pan_tool_ = nullptr;
+  QToolButton* viewport_expand_button_ = nullptr;
+  PanelDockWidget* expanded_main_panel_dock_ = nullptr;
+  QByteArray pre_expand_main_panel_state_;
   QActionGroup* tool_action_group_ = nullptr;
   QAction* add_tool_action_ = nullptr;
   QMenu* remove_tool_menu_ = nullptr;

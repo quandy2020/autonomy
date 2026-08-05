@@ -17,6 +17,19 @@ target_link_libraries(autoviz PRIVATE
   Qt6::Xml Qt6::Svg Qt6::Network
   glog protobuf::libprotobuf)
 
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+  pkg_check_modules(AUTOVIZ_FFMPEG QUIET IMPORTED_TARGET
+    libavcodec libavutil libswscale)
+endif()
+if(AUTOVIZ_FFMPEG_FOUND)
+  target_compile_definitions(autoviz PRIVATE AUTOVIZ_USE_FFMPEG)
+  target_link_libraries(autoviz PRIVATE PkgConfig::AUTOVIZ_FFMPEG)
+  message(STATUS "Autoviz: FFmpeg video decoding enabled")
+else()
+  message(STATUS "Autoviz: FFmpeg not found; H264/H265/VP9 decoding disabled")
+endif()
+
 if(UNIX OR APPLE)
   target_link_libraries(autoviz PRIVATE ${CMAKE_DL_LIBS})
 endif()

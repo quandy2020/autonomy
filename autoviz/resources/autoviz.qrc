@@ -162,14 +162,38 @@
     <file>icons/ok.png</file>
     <file>icons/options.png</file>
     <file>icons/package.png</file>
+    <file>icons/add_panel.svg</file>
     <file>icons/plus.png</file>
     <file>icons/plus.svg</file>
+    <file>icons/panels/panel_3d.svg</file>
+    <file>icons/panels/panel_audio.svg</file>
+    <file>icons/panels/panel_channel_graph.svg</file>
+    <file>icons/panels/panel_data_source.svg</file>
+    <file>icons/panels/panel_gauge.svg</file>
+    <file>icons/panels/panel_image.svg</file>
+    <file>icons/panels/panel_indicator.svg</file>
+    <file>icons/panels/panel_log.svg</file>
+    <file>icons/panels/panel_map.svg</file>
+    <file>icons/panels/panel_markdown.svg</file>
+    <file>icons/panels/panel_parameters.svg</file>
+    <file>icons/panels/panel_plot.svg</file>
+    <file>icons/panels/panel_publish.svg</file>
+    <file>icons/panels/panel_raw_messages.svg</file>
+    <file>icons/panels/panel_service.svg</file>
+    <file>icons/panels/panel_stack.svg</file>
+    <file>icons/panels/panel_state.svg</file>
+    <file>icons/panels/panel_tab.svg</file>
+    <file>icons/panels/panel_table.svg</file>
+    <file>icons/panels/panel_teleop.svg</file>
+    <file>icons/panels/panel_transform_tree.svg</file>
     <file>icons/right_dock.png</file>
     <file>icons/right_dock.svg</file>
     <file>icons/rotate.png</file>
     <file>icons/rotate.svg</file>
     <file>icons/rotate_cam.png</file>
     <file>icons/rotate_cam.svg</file>
+    <file>icons/sidebar_left.svg</file>
+    <file>icons/sidebar_right.svg</file>
     <file>icons/status_disabled.png</file>
     <file>icons/status_disabled.svg</file>
     <file>icons/status_error.png</file>
@@ -184,6 +208,16 @@
     <file>icons/warning.png</file>
     <file>icons/zoom.png</file>
     <file>icons/zoom.svg</file>
+    <file>icons/plot/plot_legend.svg</file>
+    <file>icons/plot/plot_select.svg</file>
+    <file>icons/plot/plot_point_inspect.svg</file>
+    <file>icons/plot/plot_zoom.svg</file>
+    <file>icons/plot/plot_reset_view.svg</file>
+    <file>icons/plot/plot_split_right.svg</file>
+    <file>icons/plot/plot_split_down.svg</file>
+    <file>icons/plot/plot_fullscreen.svg</file>
+    <file>icons/plot/plot_settings.svg</file>
+    <file>icons/plot/plot_more.svg</file>
     <file>images/splash.png</file>
     <file>images/splash_overlay.png</file>
   </qresource>

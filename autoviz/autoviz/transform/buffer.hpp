@@ -4,7 +4,11 @@
 
 #pragma once
 
+#include <cstdint>
+#include <mutex>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>
 #include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
@@ -15,12 +19,23 @@
 namespace autoviz {
 namespace transform {
 
+struct TfFrameStats {
+  std::string frame_id;
+  std::string parent_id;
+  std::string authority;
+  int64_t last_stamp_ns = 0;
+  uint64_t transforms_received = 0;
+  bool is_static = false;
+};
+
 /** Process-local TF buffer for Autoviz (automsgs message types). */
 class Buffer : public tf2::BufferCore {
  public:
   static Buffer* Instance();
 
   void clear();
+
+  std::vector<TfFrameStats> frameStats() const;
 
   automsgs::msgs::geometry_msgs::TransformStamped lookupTransform(
       const std::string& target_frame, const std::string& source_frame,
@@ -39,10 +54,17 @@ class Buffer : public tf2::BufferCore {
 
  private:
   Buffer();
+  void recordFrameStats(
+      const automsgs::msgs::geometry_msgs::TransformStamped& transform,
+      const std::string& authority, bool is_static);
+
   static geometry_msgs::TransformStamped ToTf2Message(
       const automsgs::msgs::geometry_msgs::TransformStamped& transform);
   static automsgs::msgs::geometry_msgs::TransformStamped FromTf2Message(
       const geometry_msgs::TransformStamped& transform);
+
+  mutable std::mutex stats_mutex_;
+  std::unordered_map<std::string, TfFrameStats> frame_stats_;
 };
 
 }  // namespace transform

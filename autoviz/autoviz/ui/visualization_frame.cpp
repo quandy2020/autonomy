@@ -7,11 +7,14 @@
 #include "autoviz/common/selection.hpp"
 
 #include <algorithm>
-#include <QActionGroup>
 #include <QApplication>
+#include <QFrame>
+#include <QScrollArea>
+#include <QStackedWidget>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QKeySequence>
+#include <QLabel>
 #include <QDateTime>
 #include <QDir>
 #include <QDockWidget>
@@ -21,11 +24,15 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QResizeEvent>
 #include <QSettings>
 #include <QShortcut>
 #include <QStatusBar>
+#include <QSizePolicy>
+#include <QTimer>
 #include <QCursor>
 #include <QVariant>
+#include <QTabWidget>
 #include <QToolBar>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -38,15 +45,35 @@
 #include "autoviz/rendering/view_controller.hpp"
 #include "autoviz/common/view_state_io.hpp"
 #include "autoviz/ui/add_panel_dialog.hpp"
+#include "autoviz/ui/panel_catalog.hpp"
+#include "autoviz/ui/panel_context_menu.hpp"
 #include "autoviz/ui/panel_dock_widget.hpp"
+#include "autoviz/ui/panel_title_tools.hpp"
 #include "autoviz/ui/displays_panel.hpp"
 #include "autoviz/ui/help_panel.hpp"
 #include "autoviz/ui/icon_loader.hpp"
-#include "autoviz/ui/image_panel.hpp"
+#include "autoviz/ui/image/image_panel.hpp"
+#include "autoviz/ui/main_panel_host.hpp"
+#include "autoviz/ui/panel_role.hpp"
+#include "autoviz/ui/property_inspector_panel.hpp"
 #include "autoviz/ui/playback_panel.hpp"
+#include "autoviz/ui/plot/plot_config_io.hpp"
+#include "autoviz/ui/image/image_config_io.hpp"
+#include "autoviz/ui/plot/plot_panel.hpp"
+#include "autoviz/ui/teleop/teleop_panel.hpp"
+#include "autoviz/ui/log/log_panel.hpp"
+#include "autoviz/ui/raw_messages_panel.hpp"
+#include "autoviz/ui/topics_panel.hpp"
+#include "autoviz/ui/problems_panel.hpp"
+#include "autoviz/ui/variables_panel.hpp"
 #include "autoviz/ui/selection_panel.hpp"
 #include "autoviz/ui/tool_properties_panel.hpp"
 #include "autoviz/ui/tf_tree_panel.hpp"
+#include "autoviz/ui/table/table_panel.hpp"
+#include "autoviz/ui/publish/publish_panel.hpp"
+#include "autoviz/ui/gauge/gauge_panel.hpp"
+#include "autoviz/ui/map/map_panel.hpp"
+#include "autoviz/ui/indicator/indicator_panel.hpp"
 #include "autoviz/ui/transformation_panel.hpp"
 #include "autoviz/ui/strata_floor_panel.hpp"
 #include "autoviz/ui/time_panel.hpp"
@@ -67,6 +94,10 @@ VisualizationFrame::VisualizationFrame(
     setWindowIcon(app_icon);
   }
   setupUi();
+  setDockNestingEnabled(true);
+  setTabPosition(Qt::AllDockWidgetAreas, QTabWidget::North);
+  setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowNestedDocks |
+                 QMainWindow::AllowTabbedDocks);
   setupMenu();
   setupToolbar();
 
@@ -127,6 +158,8 @@ VisualizationFrame::VisualizationFrame(
 
   if (manager_->windowStateBase64().empty()) {
     applyDefaultDockLayout();
+  } else {
+    applyMainPanelDefaultLayout();
   }
   restorePanelLayouts();
   restoreDockHideState();
@@ -141,13 +174,6 @@ VisualizationFrame::VisualizationFrame(
   });
   connect(time_panel_, &TimePanel::resetRequested, this,
           &VisualizationFrame::onReset);
-
-  manager_->setImageUpdateCallback(
-      [this](const QString& source, const QImage& image) {
-        if (image_panel_ != nullptr) {
-          image_panel_->setImage(source, image);
-        }
-      });
 
   if (views_panel_ != nullptr) {
     connect(views_panel_, &ViewsPanel::viewsChanged, this,
@@ -544,40 +570,614 @@ void VisualizationFrame::syncToolContext() {
 }
 
 void VisualizationFrame::setupCentralContainer() {
-  central_container_ = new QWidget(this);
-  auto* central_layout = new QHBoxLayout(central_container_);
-  central_layout->setContentsMargins(0, 0, 0, 0);
-  central_layout->setSpacing(0);
+  main_panel_host_ = new MainPanelHost(this);
+  main_panel_host_->setMinimumSize(0, 0);
+  main_panel_host_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+  setCentralWidget(main_panel_host_);
+  viewport_host_ = nullptr;
+  viewport_layout_ = nullptr;
+}
 
-  hide_left_dock_button_ = new QToolButton(central_container_);
-  hide_left_dock_button_->setArrowType(Qt::LeftArrow);
-  hide_left_dock_button_->setFixedWidth(16);
-  hide_left_dock_button_->setAutoRaise(true);
-  hide_left_dock_button_->setCheckable(true);
-  hide_left_dock_button_->setSizePolicy(QSizePolicy::Minimum,
-                                        QSizePolicy::Expanding);
-  connect(hide_left_dock_button_, &QToolButton::toggled, this,
-          &VisualizationFrame::onHideLeftDockToggled);
+void VisualizationFrame::setupMainPanelHost() {}
 
-  viewport_host_ = new QWidget(central_container_);
-  viewport_layout_ = new QVBoxLayout(viewport_host_);
-  viewport_layout_->setContentsMargins(0, 0, 0, 0);
-  viewport_layout_->setSpacing(0);
+QMainWindow* VisualizationFrame::dockHostForPanel(
+    const PanelDockWidget* dock) const {
+  if (dock != nullptr && isMainPanel(dock)) {
+    return main_panel_host_;
+  }
+  return const_cast<VisualizationFrame*>(this);
+}
 
-  hide_right_dock_button_ = new QToolButton(central_container_);
-  hide_right_dock_button_->setArrowType(Qt::RightArrow);
-  hide_right_dock_button_->setFixedWidth(16);
-  hide_right_dock_button_->setAutoRaise(true);
-  hide_right_dock_button_->setCheckable(true);
-  hide_right_dock_button_->setSizePolicy(QSizePolicy::Minimum,
-                                         QSizePolicy::Expanding);
-  connect(hide_right_dock_button_, &QToolButton::toggled, this,
-          &VisualizationFrame::onHideRightDockToggled);
+bool VisualizationFrame::isMainPanel(const PanelDockWidget* dock) const {
+  if (dock == nullptr) {
+    return false;
+  }
+  return dock->property("panelRole").toString() == PanelRoleMain();
+}
 
-  central_layout->addWidget(hide_left_dock_button_);
-  central_layout->addWidget(viewport_host_, 1);
-  central_layout->addWidget(hide_right_dock_button_);
-  setCentralWidget(central_container_);
+void VisualizationFrame::configureMainPanelDock(PanelDockWidget* dock) {
+  if (dock == nullptr || dock == time_dock_) {
+    return;
+  }
+  dock->setProperty("panelRole", PanelRoleMain());
+  dock->setAllowedAreas(Qt::AllDockWidgetAreas);
+  dock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable |
+                    QDockWidget::DockWidgetFloatable);
+}
+
+void VisualizationFrame::configureSidebarDock(PanelDockWidget* dock,
+                                              Qt::DockWidgetArea area) {
+  if (dock == nullptr || dock == time_dock_) {
+    return;
+  }
+  dock->setProperty("panelRole", PanelRoleSidebar());
+  dock->setAllowedAreas(area);
+  dock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable |
+                    QDockWidget::DockWidgetFloatable);
+}
+
+void VisualizationFrame::addMainPanelDock(PanelDockWidget* dock,
+                                          Qt::DockWidgetArea area) {
+  if (dock == nullptr || main_panel_host_ == nullptr) {
+    return;
+  }
+  configureMainPanelDock(dock);
+  main_panel_host_->addDockWidget(area, dock);
+  wireMainPanelExpandTracking(dock);
+}
+
+void VisualizationFrame::ensureMainPanelDockAttached(
+    PanelDockWidget* dock, Qt::DockWidgetArea area) {
+  if (dock == nullptr || main_panel_host_ == nullptr || !isMainPanel(dock)) {
+    return;
+  }
+  configureMainPanelDock(dock);
+  if (main_panel_host_->dockWidgetArea(dock) == Qt::NoDockWidgetArea) {
+    main_panel_host_->addDockWidget(area, dock);
+  }
+  dock->setCollapsed(false);
+}
+
+Qt::DockWidgetArea VisualizationFrame::defaultSidebarArea(
+    const PanelDockWidget* dock) const {
+  if (dock == nullptr) {
+    return Qt::RightDockWidgetArea;
+  }
+  if (dock == topics_dock_ || dock == displays_dock_ || dock == channel_dock_ ||
+      dock == problems_dock_ || dock == strata_floor_dock_) {
+    return Qt::LeftDockWidgetArea;
+  }
+  return Qt::RightDockWidgetArea;
+}
+
+void VisualizationFrame::ensureSidebarDockAttached(PanelDockWidget* dock) {
+  if (dock == nullptr || isMainPanel(dock)) {
+    return;
+  }
+  Qt::DockWidgetArea area = dockWidgetArea(dock);
+  if (area == Qt::NoDockWidgetArea) {
+    area = defaultSidebarArea(dock);
+  }
+  configureSidebarDock(dock, area);
+  if (dock->objectName() == QLatin1String("PropertyInspectorDock")) {
+    dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+  } else {
+    dock->setAllowedAreas(area);
+  }
+  if (dockWidgetArea(dock) == Qt::NoDockWidgetArea) {
+    addDockWidget(area, dock);
+  }
+  dock->setCollapsed(false);
+
+  if (area == Qt::LeftDockWidgetArea &&
+      toolbar_toggle_left_dock_action_ != nullptr &&
+      !toolbar_toggle_left_dock_action_->isChecked()) {
+    toolbar_toggle_left_dock_action_->setChecked(true);
+  }
+  if (area == Qt::RightDockWidgetArea &&
+      toolbar_toggle_right_dock_action_ != nullptr &&
+      !toolbar_toggle_right_dock_action_->isChecked()) {
+    toolbar_toggle_right_dock_action_->setChecked(true);
+  }
+}
+
+void VisualizationFrame::syncCenterLayout() {
+  if (main_panel_host_ == nullptr) {
+    return;
+  }
+  if (QWidget* central = centralWidget()) {
+    central->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    central->setMinimumSize(0, 0);
+    central->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+  }
+  main_panel_host_->setMinimumSize(0, 0);
+  main_panel_host_->updateGeometry();
+
+  QTimer::singleShot(0, main_panel_host_, [host = main_panel_host_]() {
+    if (host != nullptr) {
+      host->syncHorizontalDockLayout();
+    }
+  });
+
+  updateGeometry();
+}
+
+void VisualizationFrame::addSidebarDock(PanelDockWidget* dock,
+                                        Qt::DockWidgetArea area) {
+  if (dock == nullptr) {
+    return;
+  }
+  configureSidebarDock(dock, area);
+  if (dock->objectName() == QLatin1String("PropertyInspectorDock")) {
+    dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+  }
+  addDockWidget(area, dock);
+}
+
+void VisualizationFrame::showPropertyInspector(bool visible) {
+  if (property_inspector_dock_ == nullptr) {
+    return;
+  }
+  if (visible) {
+    if (active_log_panel_ != nullptr) {
+      bindLogToPropertyInspector(active_log_panel_);
+    } else if (active_teleop_panel_ != nullptr) {
+      bindTeleopToPropertyInspector(active_teleop_panel_);
+    } else if (active_image_panel_ != nullptr) {
+      bindImageToPropertyInspector(active_image_panel_);
+    } else if (active_plot_panel_ != nullptr) {
+      bindPlotToPropertyInspector(active_plot_panel_);
+    }
+    property_inspector_dock_->show();
+    property_inspector_dock_->raise();
+  } else {
+    property_inspector_dock_->hide();
+  }
+  if (active_plot_panel_ != nullptr) {
+    active_plot_panel_->setSettingsButtonChecked(visible);
+  }
+  if (active_image_panel_ != nullptr) {
+    active_image_panel_->setSettingsButtonChecked(visible);
+  }
+  if (active_teleop_panel_ != nullptr) {
+    active_teleop_panel_->setSettingsButtonChecked(visible);
+  }
+  if (active_log_panel_ != nullptr) {
+    active_log_panel_->setSettingsButtonChecked(visible);
+  }
+  manager_->setPlotSettingsVisible(visible);
+}
+
+void VisualizationFrame::bindPlotToPropertyInspector(plot::PlotPanel* panel) {
+  if (panel == nullptr || property_inspector_panel_ == nullptr) {
+    return;
+  }
+  if (inspector_plot_panel_ != nullptr && inspector_plot_panel_ != panel) {
+    inspector_plot_panel_->recallSettingsWidget();
+  }
+  if (inspector_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(inspector_image_panel_);
+  }
+  if (inspector_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(inspector_teleop_panel_);
+  }
+  if (inspector_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(inspector_log_panel_);
+  }
+  inspector_plot_panel_ = panel;
+  const QString title = panel->config().title.trimmed();
+  property_inspector_panel_->setContentWidget(panel->settingsWidgetForInspector(),
+                                                title.isEmpty() ? tr("Plot") : title);
+  if (property_inspector_dock_ != nullptr) {
+    panel->setSettingsButtonChecked(property_inspector_dock_->isVisible());
+  }
+}
+
+void VisualizationFrame::clearPropertyInspectorForPlot(plot::PlotPanel* panel) {
+  if (panel == nullptr) {
+    return;
+  }
+  panel->recallSettingsWidget();
+  if (inspector_plot_panel_ == panel) {
+    inspector_plot_panel_ = nullptr;
+    if (property_inspector_panel_ != nullptr) {
+      property_inspector_panel_->clearContent();
+    }
+  }
+}
+
+void VisualizationFrame::bindImageToPropertyInspector(image::ImagePanel* panel) {
+  if (panel == nullptr || property_inspector_panel_ == nullptr) {
+    return;
+  }
+  if (inspector_image_panel_ != nullptr && inspector_image_panel_ != panel) {
+    inspector_image_panel_->recallSettingsWidget();
+  }
+  if (inspector_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(inspector_plot_panel_);
+  }
+  if (inspector_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(inspector_teleop_panel_);
+  }
+  if (inspector_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(inspector_log_panel_);
+  }
+  inspector_image_panel_ = panel;
+  const QString title = panel->config().title.trimmed();
+  property_inspector_panel_->setContentWidget(panel->settingsWidgetForInspector(),
+                                              title.isEmpty() ? tr("Image") : title);
+  if (property_inspector_dock_ != nullptr) {
+    panel->setSettingsButtonChecked(property_inspector_dock_->isVisible());
+  }
+}
+
+void VisualizationFrame::clearPropertyInspectorForImage(image::ImagePanel* panel) {
+  if (panel == nullptr) {
+    return;
+  }
+  panel->recallSettingsWidget();
+  if (inspector_image_panel_ == panel) {
+    inspector_image_panel_ = nullptr;
+    if (property_inspector_panel_ != nullptr) {
+      property_inspector_panel_->clearContent();
+    }
+  }
+}
+
+void VisualizationFrame::bindTeleopToPropertyInspector(teleop::TeleopPanel* panel) {
+  if (panel == nullptr || property_inspector_panel_ == nullptr) {
+    return;
+  }
+  if (inspector_teleop_panel_ != nullptr && inspector_teleop_panel_ != panel) {
+    inspector_teleop_panel_->recallSettingsWidget();
+  }
+  if (inspector_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(inspector_plot_panel_);
+  }
+  if (inspector_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(inspector_image_panel_);
+  }
+  inspector_teleop_panel_ = panel;
+  const QString title = panel->config().title.trimmed();
+  property_inspector_panel_->setContentWidget(panel->settingsWidgetForInspector(),
+                                              title.isEmpty() ? tr("Teleop") : title);
+  if (property_inspector_dock_ != nullptr) {
+    panel->setSettingsButtonChecked(property_inspector_dock_->isVisible());
+  }
+}
+
+void VisualizationFrame::clearPropertyInspectorForTeleop(teleop::TeleopPanel* panel) {
+  if (panel == nullptr) {
+    return;
+  }
+  panel->recallSettingsWidget();
+  if (inspector_teleop_panel_ == panel) {
+    inspector_teleop_panel_ = nullptr;
+    if (property_inspector_panel_ != nullptr) {
+      property_inspector_panel_->clearContent();
+    }
+  }
+}
+
+void VisualizationFrame::bindLogToPropertyInspector(log_panel::LogPanel* panel) {
+  if (panel == nullptr || property_inspector_panel_ == nullptr) {
+    return;
+  }
+  if (inspector_log_panel_ != nullptr && inspector_log_panel_ != panel) {
+    inspector_log_panel_->recallSettingsWidget();
+  }
+  if (inspector_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(inspector_plot_panel_);
+  }
+  if (inspector_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(inspector_image_panel_);
+  }
+  if (inspector_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(inspector_teleop_panel_);
+  }
+  inspector_log_panel_ = panel;
+  const QString title = panel->config().title.trimmed();
+  property_inspector_panel_->setContentWidget(panel->settingsWidgetForInspector(),
+                                              title.isEmpty() ? tr("Log") : title);
+  if (property_inspector_dock_ != nullptr) {
+    panel->setSettingsButtonChecked(property_inspector_dock_->isVisible());
+  }
+}
+
+void VisualizationFrame::clearPropertyInspectorForLog(log_panel::LogPanel* panel) {
+  if (panel == nullptr) {
+    return;
+  }
+  panel->recallSettingsWidget();
+  if (inspector_log_panel_ == panel) {
+    inspector_log_panel_ = nullptr;
+    if (property_inspector_panel_ != nullptr) {
+      property_inspector_panel_->clearContent();
+    }
+  }
+}
+
+void VisualizationFrame::bindTableToPropertyInspector(table::TablePanel* panel) {
+  if (panel == nullptr || property_inspector_panel_ == nullptr) {
+    return;
+  }
+  if (inspector_table_panel_ != nullptr && inspector_table_panel_ != panel) {
+    inspector_table_panel_->recallSettingsWidget();
+  }
+  if (inspector_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(inspector_plot_panel_);
+  }
+  if (inspector_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(inspector_image_panel_);
+  }
+  if (inspector_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(inspector_teleop_panel_);
+  }
+  if (inspector_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(inspector_log_panel_);
+  }
+  inspector_table_panel_ = panel;
+  const QString title = panel->config().title.trimmed();
+  property_inspector_panel_->setContentWidget(
+      panel->settingsWidgetForInspector(),
+      title.isEmpty() ? tr("Table") : title);
+  if (property_inspector_dock_ != nullptr) {
+    panel->setSettingsButtonChecked(property_inspector_dock_->isVisible());
+  }
+}
+
+void VisualizationFrame::clearPropertyInspectorForTable(table::TablePanel* panel) {
+  if (panel == nullptr) {
+    return;
+  }
+  panel->recallSettingsWidget();
+  if (inspector_table_panel_ == panel) {
+    inspector_table_panel_ = nullptr;
+    if (property_inspector_panel_ != nullptr) {
+      property_inspector_panel_->clearContent();
+    }
+  }
+}
+
+void VisualizationFrame::bindPublishToPropertyInspector(
+    publish_panel::PublishPanel* panel) {
+  if (panel == nullptr || property_inspector_panel_ == nullptr) {
+    return;
+  }
+  if (inspector_publish_panel_ != nullptr && inspector_publish_panel_ != panel) {
+    inspector_publish_panel_->recallSettingsWidget();
+  }
+  if (inspector_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(inspector_plot_panel_);
+  }
+  if (inspector_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(inspector_image_panel_);
+  }
+  if (inspector_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(inspector_teleop_panel_);
+  }
+  if (inspector_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(inspector_log_panel_);
+  }
+  if (inspector_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(inspector_table_panel_);
+  }
+  if (inspector_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(inspector_gauge_panel_);
+  }
+  inspector_publish_panel_ = panel;
+  const QString title = panel->config().title.trimmed();
+  property_inspector_panel_->setContentWidget(
+      panel->settingsWidgetForInspector(),
+      title.isEmpty() ? tr("Publish") : title);
+  if (property_inspector_dock_ != nullptr) {
+    panel->setSettingsButtonChecked(property_inspector_dock_->isVisible());
+  }
+}
+
+void VisualizationFrame::clearPropertyInspectorForPublish(
+    publish_panel::PublishPanel* panel) {
+  if (panel == nullptr) {
+    return;
+  }
+  panel->recallSettingsWidget();
+  if (inspector_publish_panel_ == panel) {
+    inspector_publish_panel_ = nullptr;
+    if (property_inspector_panel_ != nullptr) {
+      property_inspector_panel_->clearContent();
+    }
+  }
+}
+
+void VisualizationFrame::bindGaugeToPropertyInspector(gauge::GaugePanel* panel) {
+  if (panel == nullptr || property_inspector_panel_ == nullptr) {
+    return;
+  }
+  if (inspector_gauge_panel_ != nullptr && inspector_gauge_panel_ != panel) {
+    inspector_gauge_panel_->recallSettingsWidget();
+  }
+  if (inspector_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(inspector_plot_panel_);
+  }
+  if (inspector_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(inspector_image_panel_);
+  }
+  if (inspector_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(inspector_teleop_panel_);
+  }
+  if (inspector_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(inspector_log_panel_);
+  }
+  if (inspector_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(inspector_table_panel_);
+  }
+  if (inspector_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(inspector_publish_panel_);
+  }
+  if (inspector_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(inspector_map_panel_);
+  }
+  if (inspector_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(inspector_indicator_panel_);
+  }
+  inspector_gauge_panel_ = panel;
+  const QString title = panel->config().title.trimmed();
+  property_inspector_panel_->setContentWidget(
+      panel->settingsWidgetForInspector(),
+      title.isEmpty() ? tr("Gauge") : title);
+  if (property_inspector_dock_ != nullptr) {
+    panel->setSettingsButtonChecked(property_inspector_dock_->isVisible());
+  }
+}
+
+void VisualizationFrame::clearPropertyInspectorForGauge(gauge::GaugePanel* panel) {
+  if (panel == nullptr) {
+    return;
+  }
+  panel->recallSettingsWidget();
+  if (inspector_gauge_panel_ == panel) {
+    inspector_gauge_panel_ = nullptr;
+    if (property_inspector_panel_ != nullptr) {
+      property_inspector_panel_->clearContent();
+    }
+  }
+}
+
+void VisualizationFrame::bindMapToPropertyInspector(map::MapPanel* panel) {
+  if (panel == nullptr || property_inspector_panel_ == nullptr) {
+    return;
+  }
+  if (inspector_map_panel_ != nullptr && inspector_map_panel_ != panel) {
+    inspector_map_panel_->recallSettingsWidget();
+  }
+  if (inspector_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(inspector_plot_panel_);
+  }
+  if (inspector_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(inspector_image_panel_);
+  }
+  if (inspector_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(inspector_teleop_panel_);
+  }
+  if (inspector_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(inspector_log_panel_);
+  }
+  if (inspector_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(inspector_table_panel_);
+  }
+  if (inspector_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(inspector_publish_panel_);
+  }
+  if (inspector_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(inspector_gauge_panel_);
+  }
+  if (inspector_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(inspector_indicator_panel_);
+  }
+  inspector_map_panel_ = panel;
+  const QString title = panel->config().title.trimmed();
+  property_inspector_panel_->setContentWidget(
+      panel->settingsWidgetForInspector(),
+      title.isEmpty() ? tr("Map") : title);
+  if (property_inspector_dock_ != nullptr) {
+    panel->setSettingsButtonChecked(property_inspector_dock_->isVisible());
+  }
+}
+
+void VisualizationFrame::clearPropertyInspectorForMap(map::MapPanel* panel) {
+  if (panel == nullptr) {
+    return;
+  }
+  panel->recallSettingsWidget();
+  if (inspector_map_panel_ == panel) {
+    inspector_map_panel_ = nullptr;
+    if (property_inspector_panel_ != nullptr) {
+      property_inspector_panel_->clearContent();
+    }
+  }
+}
+
+void VisualizationFrame::bindIndicatorToPropertyInspector(
+    indicator::IndicatorPanel* panel) {
+  if (panel == nullptr || property_inspector_panel_ == nullptr) {
+    return;
+  }
+  if (inspector_indicator_panel_ != nullptr && inspector_indicator_panel_ != panel) {
+    inspector_indicator_panel_->recallSettingsWidget();
+  }
+  if (inspector_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(inspector_plot_panel_);
+  }
+  if (inspector_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(inspector_image_panel_);
+  }
+  if (inspector_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(inspector_teleop_panel_);
+  }
+  if (inspector_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(inspector_log_panel_);
+  }
+  if (inspector_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(inspector_table_panel_);
+  }
+  if (inspector_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(inspector_publish_panel_);
+  }
+  if (inspector_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(inspector_gauge_panel_);
+  }
+  if (inspector_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(inspector_map_panel_);
+  }
+  inspector_indicator_panel_ = panel;
+  const QString title = panel->config().title.trimmed();
+  property_inspector_panel_->setContentWidget(
+      panel->settingsWidgetForInspector(),
+      title.isEmpty() ? tr("Indicator") : title);
+  if (property_inspector_dock_ != nullptr) {
+    panel->setSettingsButtonChecked(property_inspector_dock_->isVisible());
+  }
+}
+
+void VisualizationFrame::clearPropertyInspectorForIndicator(
+    indicator::IndicatorPanel* panel) {
+  if (panel == nullptr) {
+    return;
+  }
+  panel->recallSettingsWidget();
+  if (inspector_indicator_panel_ == panel) {
+    inspector_indicator_panel_ = nullptr;
+    if (property_inspector_panel_ != nullptr) {
+      property_inspector_panel_->clearContent();
+    }
+  }
+}
+
+void VisualizationFrame::applyMainPanelDefaultLayout() {
+  restoreExpandedMainPanel();
+  if (main_panel_host_ == nullptr || plot_dock_ == nullptr ||
+      viewport_dock_ == nullptr) {
+    return;
+  }
+  main_panel_host_->removeDockWidget(plot_dock_);
+  main_panel_host_->removeDockWidget(viewport_dock_);
+  plot_dock_->show();
+  viewport_dock_->show();
+  addMainPanelDock(plot_dock_, Qt::LeftDockWidgetArea);
+  addMainPanelDock(viewport_dock_, Qt::RightDockWidgetArea);
+  main_panel_host_->splitDockWidget(plot_dock_, viewport_dock_, Qt::Horizontal);
+  main_panel_host_->resizeDocks({plot_dock_, viewport_dock_}, {420, 620},
+                                Qt::Horizontal);
+  last_active_dock_ = viewport_dock_;
+}
+
+void VisualizationFrame::configureFlexibleDock(PanelDockWidget* dock) {
+  if (dock == nullptr || dock == time_dock_) {
+    return;
+  }
+  dock->setAllowedAreas(Qt::AllDockWidgetAreas);
+  dock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable |
+                    QDockWidget::DockWidgetFloatable);
 }
 
 void VisualizationFrame::setupUi() {
@@ -585,116 +1185,155 @@ void VisualizationFrame::setupUi() {
   resize(1280, 800);
   setupCentralContainer();
 
-  channel_dock_ = new PanelDockWidget(tr("Autolink Channels"), this);
+  viewport_dock_ = new PanelDockWidget(tr("3D"), this);
+  viewport_dock_->setObjectName(QStringLiteral("ViewportDock"));
+  viewport_dock_->setProperty("panelTypeId", QStringLiteral("ViewportDock"));
+  viewport_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Panel3D")));
+  viewport_host_ = new QWidget(viewport_dock_);
+  viewport_host_->setMinimumSize(240, 180);
+  viewport_layout_ = new QVBoxLayout(viewport_host_);
+  viewport_layout_->setContentsMargins(0, 0, 0, 0);
+  viewport_layout_->setSpacing(0);
+  viewport_dock_->setContentWidget(viewport_host_);
+  configureMainPanelDock(viewport_dock_);
+  addMainPanelDock(viewport_dock_, Qt::RightDockWidgetArea);
+  installViewportTitleBarTools();
+
+  channel_dock_ = new PanelDockWidget(tr("Raw Messages"), this);
   channel_dock_->setObjectName(QStringLiteral("ChannelsDock"));
-  channel_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Channels")));
-  channel_dock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-  auto* channel_container = new QWidget(channel_dock_);
-  auto* channel_layout = new QVBoxLayout(channel_container);
-  channel_list_ = new QListWidget(channel_container);
-  channel_layout->addWidget(channel_list_);
-  channel_container->setLayout(channel_layout);
-  channel_dock_->setContentWidget(channel_container);
-  addDockWidget(Qt::LeftDockWidgetArea, channel_dock_);
+  channel_dock_->setPanelIcon(
+      IconLoader::panelIcon(QStringLiteral("PanelRawMessages")));
+  raw_messages_panel_ = new RawMessagesPanel(manager_.get(), channel_dock_);
+  channel_dock_->setContentWidget(raw_messages_panel_);
+  addSidebarDock(channel_dock_, Qt::LeftDockWidgetArea);
+
+  topics_dock_ = new PanelDockWidget(tr("Topics"), this);
+  topics_dock_->setObjectName(QStringLiteral("TopicsDock"));
+  topics_dock_->setPanelIcon(
+      IconLoader::panelIcon(QStringLiteral("PanelChannelGraph")));
+  topics_panel_ = new TopicsPanel(manager_.get(), topics_dock_);
+  topics_dock_->setContentWidget(topics_panel_);
+  addSidebarDock(topics_dock_, Qt::LeftDockWidgetArea);
+  tabifyDockWidget(channel_dock_, topics_dock_);
+
+  problems_dock_ = new PanelDockWidget(tr("Problems"), this);
+  problems_dock_->setObjectName(QStringLiteral("ProblemsDock"));
+  problems_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelLog")));
+  problems_panel_ = new ProblemsPanel(problems_dock_);
+  problems_dock_->setContentWidget(problems_panel_);
+  addSidebarDock(problems_dock_, Qt::LeftDockWidgetArea);
+
+  log_dock_ = createLogPanelDock(QStringLiteral("LogDock"));
+  log_panel_ = qobject_cast<log_panel::LogPanel*>(log_dock_->widget());
+  addMainPanelDock(log_dock_, Qt::LeftDockWidgetArea);
 
   displays_dock_ = new PanelDockWidget(tr("Displays"), this);
   displays_dock_->setObjectName(QStringLiteral("DisplaysDock"));
   displays_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Displays")));
-  displays_dock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
   displays_panel_ = new DisplaysPanel(manager_, displays_dock_);
   displays_dock_->setContentWidget(displays_panel_);
-  addDockWidget(Qt::LeftDockWidgetArea, displays_dock_);
+  addSidebarDock(displays_dock_, Qt::LeftDockWidgetArea);
 
   strata_floor_dock_ = new PanelDockWidget(tr("Strata Floors"), this);
   strata_floor_dock_->setObjectName(QStringLiteral("StrataFloorDock"));
   strata_floor_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Displays")));
-  strata_floor_dock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
   strata_floor_panel_ = new StrataFloorPanel(manager_.get(), strata_floor_dock_);
   strata_floor_dock_->setContentWidget(strata_floor_panel_);
-  addDockWidget(Qt::LeftDockWidgetArea, strata_floor_dock_);
+  addSidebarDock(strata_floor_dock_, Qt::LeftDockWidgetArea);
 
   playback_dock_ = new PanelDockWidget(tr("Playback"), this);
   playback_dock_->setObjectName(QStringLiteral("PlaybackDock"));
   playback_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Playback")));
-  playback_dock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
   playback_panel_ = new PlaybackPanel(&manager_->playback(), playback_dock_);
   playback_dock_->setContentWidget(playback_panel_);
-  addDockWidget(Qt::RightDockWidgetArea, playback_dock_);
+  addMainPanelDock(playback_dock_, Qt::LeftDockWidgetArea);
+  playback_dock_->hide();
 
   views_dock_ = new PanelDockWidget(tr("Views"), this);
   views_dock_->setObjectName(QStringLiteral("ViewsDock"));
   views_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Views")));
-  views_dock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
   views_panel_ = new ViewsPanel(nullptr, manager_.get(), views_dock_);
   views_dock_->setContentWidget(views_panel_);
-  addDockWidget(Qt::RightDockWidgetArea, views_dock_);
+  addSidebarDock(views_dock_, Qt::RightDockWidgetArea);
 
   tool_props_dock_ = new PanelDockWidget(tr("Tool Properties"), this);
   tool_props_dock_->setObjectName(QStringLiteral("ToolPropertiesDock"));
   tool_props_dock_->setPanelIcon(
       IconLoader::panelIcon(QStringLiteral("ToolProperties")));
-  tool_props_dock_->setAllowedAreas(Qt::LeftDockWidgetArea |
-                                   Qt::RightDockWidgetArea);
   tool_properties_panel_ =
       new ToolPropertiesPanel(manager_, tool_props_dock_);
   tool_props_dock_->setContentWidget(tool_properties_panel_);
-  addDockWidget(Qt::RightDockWidgetArea, tool_props_dock_);
+  addSidebarDock(tool_props_dock_, Qt::RightDockWidgetArea);
 
   selection_dock_ = new PanelDockWidget(tr("Selection"), this);
   selection_dock_->setObjectName(QStringLiteral("SelectionDock"));
   selection_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Selection")));
-  selection_dock_->setAllowedAreas(Qt::LeftDockWidgetArea |
-                                  Qt::RightDockWidgetArea);
   selection_panel_ = new SelectionPanel(selection_dock_);
   selection_dock_->setContentWidget(selection_panel_);
-  addDockWidget(Qt::RightDockWidgetArea, selection_dock_);
+  addSidebarDock(selection_dock_, Qt::RightDockWidgetArea);
 
-  tf_dock_ = new PanelDockWidget(tr("TF Tree"), this);
-  tf_dock_->setObjectName(QStringLiteral("TfTreeDock"));
-  tf_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("TfTree")));
-  tf_dock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-  tf_tree_panel_ = new TfTreePanel(manager_->tfBuffer(), tf_dock_);
-  tf_dock_->setContentWidget(tf_tree_panel_);
-  addDockWidget(Qt::RightDockWidgetArea, tf_dock_);
+  variables_dock_ = new PanelDockWidget(tr("Variables"), this);
+  variables_dock_->setObjectName(QStringLiteral("VariablesDock"));
+  variables_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelParameters")));
+  variables_panel_ = new VariablesPanel(variables_dock_);
+  variables_dock_->setContentWidget(variables_panel_);
+  addSidebarDock(variables_dock_, Qt::RightDockWidgetArea);
+  variables_dock_->hide();
+
+  property_inspector_dock_ = new PanelDockWidget(tr("Panel"), this);
+  property_inspector_dock_->setObjectName(QStringLiteral("PropertyInspectorDock"));
+  property_inspector_dock_->setProperty("panelTypeId",
+                                        QStringLiteral("PropertyInspectorDock"));
+  property_inspector_dock_->setPanelIcon(
+      IconLoader::panelIcon(QStringLiteral("PanelPlot")));
+  property_inspector_panel_ = new PropertyInspectorPanel(property_inspector_dock_);
+  property_inspector_dock_->setContentWidget(property_inspector_panel_);
+  addSidebarDock(property_inspector_dock_, Qt::RightDockWidgetArea);
+
+  tf_dock_ = createTfTreePanelDock(QStringLiteral("TfTreeDock"));
+  tf_tree_panel_ = qobject_cast<TfTreePanel*>(tf_dock_->widget());
+  addMainPanelDock(tf_dock_, Qt::LeftDockWidgetArea);
+  tf_dock_->hide();
 
   transformation_dock_ = new PanelDockWidget(tr("Transformation"), this);
   transformation_dock_->setObjectName(QStringLiteral("TransformationDock"));
   transformation_dock_->setPanelIcon(
       IconLoader::panelIcon(QStringLiteral("Transformation")));
-  transformation_dock_->setAllowedAreas(Qt::LeftDockWidgetArea |
-                                        Qt::RightDockWidgetArea);
   transformation_panel_ = new TransformationPanel(
       &manager_->transformationManager(), transformation_dock_);
   transformation_dock_->setContentWidget(transformation_panel_);
-  addDockWidget(Qt::RightDockWidgetArea, transformation_dock_);
+  addSidebarDock(transformation_dock_, Qt::RightDockWidgetArea);
   connect(transformation_panel_, &TransformationPanel::transformerChanged,
           this, [this]() { requestViewportUpdate(); });
 
-  image_dock_ = new PanelDockWidget(tr("Image"), this);
-  image_dock_->setObjectName(QStringLiteral("ImageDock"));
-  image_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Image")));
-  image_dock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-  image_panel_ = new ImagePanel(image_dock_);
-  image_dock_->setContentWidget(image_panel_);
-  addDockWidget(Qt::RightDockWidgetArea, image_dock_);
+  image_dock_ = createImagePanelDock(QStringLiteral("ImageDock"));
+  image_panel_ = qobject_cast<image::ImagePanel*>(image_dock_->widget());
+  addMainPanelDock(image_dock_, Qt::LeftDockWidgetArea);
+  image_dock_->hide();
+
+  plot_dock_ = createPlotPanelDock(QStringLiteral("PlotDock"));
+  plot_panel_ = qobject_cast<plot::PlotPanel*>(plot_dock_->widget());
+  installPlotFocusTracking();
+  addMainPanelDock(plot_dock_, Qt::LeftDockWidgetArea);
+  setActivePlotPanel(plot_panel_);
 
   help_dock_ = new PanelDockWidget(tr("Help"), this);
   help_dock_->setObjectName(QStringLiteral("HelpDock"));
   help_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Help")));
-  help_dock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
   help_panel_ = new HelpPanel(help_dock_);
   help_dock_->setContentWidget(help_panel_);
-  addDockWidget(Qt::RightDockWidgetArea, help_dock_);
+  addSidebarDock(help_dock_, Qt::RightDockWidgetArea);
+  help_dock_->hide();
 
 #ifdef AUTOVIZ_USE_QML_DRONE
   if (qEnvironmentVariableIntValue("AUTOVIZ_DISABLE_QML") == 0) {
     drone_dock_ = new PanelDockWidget(tr("Vehicle 3D"), this);
     drone_dock_->setObjectName(QStringLiteral("Drone3DDock"));
     drone_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Views")));
-    drone_dock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     vehicle_panel_ = new Vehicle3DPanel(drone_dock_);
     drone_dock_->setContentWidget(vehicle_panel_);
-    addDockWidget(Qt::RightDockWidgetArea, drone_dock_);
+    addMainPanelDock(drone_dock_, Qt::LeftDockWidgetArea);
+    drone_dock_->hide();
   }
 #endif
 
@@ -715,11 +1354,32 @@ void VisualizationFrame::setupUi() {
             &PanelDockWidget::overrideVisibility);
   }
 
-  // Bottom Time bar spans full window width (RViz default.rviz layout).
+  // Bottom Time bar spans full window width; sidebars stack above it.
+  setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
+  setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
   setCorner(Qt::BottomLeftCorner, Qt::BottomDockWidgetArea);
   setCorner(Qt::BottomRightCorner, Qt::BottomDockWidgetArea);
 
   setupStatusBar();
+
+  for (PanelDockWidget* dock : orderedDockWidgets()) {
+    if (dock == nullptr || dock == time_dock_ || dock == viewport_dock_) {
+      continue;
+    }
+    if (panelTypeId(dock) == QLatin1String("PlotDock") ||
+        panelTypeId(dock) == QLatin1String("ImageDock") ||
+        panelTypeId(dock) == QLatin1String("TeleopDock") ||
+        panelTypeId(dock) == QLatin1String("LogDock") ||
+        panelTypeId(dock) == QLatin1String("TfTreeDock") ||
+        panelTypeId(dock) == QLatin1String("TableDock") ||
+        panelTypeId(dock) == QLatin1String("PublishDock") ||
+        panelTypeId(dock) == QLatin1String("GaugeDock") ||
+        panelTypeId(dock) == QLatin1String("MapDock") ||
+        panelTypeId(dock) == QLatin1String("IndicatorDock")) {
+      continue;
+    }
+    installStandardPanelTitleTools(dock);
+  }
 }
 
 void VisualizationFrame::setupMenu() {
@@ -743,6 +1403,17 @@ void VisualizationFrame::setupMenu() {
       file_menu->addAction(tr("&Quit"), qApp, &QApplication::quit);
   quit_action->setShortcut(QKeySequence::Quit);
   addAction(quit_action);
+
+  auto* layout_menu = menuBar()->addMenu(tr("&Layout"));
+  layout_menu->addAction(tr("&Open layout..."), this,
+                         &VisualizationFrame::onOpenConfig);
+  layout_menu->addAction(tr("&Save layout"), this,
+                         &VisualizationFrame::onSaveConfig);
+  layout_menu->addAction(tr("Save layout &as..."), this,
+                         &VisualizationFrame::onSaveConfigAs);
+  layout_menu->addSeparator();
+  layout_menu->addAction(tr("&Reset to default layout"), this,
+                         &VisualizationFrame::onResetDefaultLayout);
 
   panels_menu_ = menuBar()->addMenu(tr("&Panels"));
   panels_menu_->addAction(tr("Add &New Panel"), this,
@@ -872,6 +1543,93 @@ void VisualizationFrame::setupToolbar() {
     panels_menu_->addAction(tool_bar_->toggleViewAction());
   }
   registerPanelToggleActions();
+  setupToolbarLayoutControls();
+
+  auto* app_menu = new QMenu(tr("&App"), this);
+  if (toolbar_toggle_left_dock_action_ != nullptr) {
+    app_menu->addAction(toolbar_toggle_left_dock_action_);
+  }
+  if (toolbar_toggle_right_dock_action_ != nullptr) {
+    app_menu->addAction(toolbar_toggle_right_dock_action_);
+  }
+  if (!menuBar()->actions().isEmpty()) {
+    menuBar()->insertMenu(menuBar()->actions().constFirst(), app_menu);
+  } else {
+    menuBar()->addMenu(app_menu);
+  }
+}
+
+void VisualizationFrame::setupToolbarLayoutControls() {
+  if (tool_bar_ == nullptr) {
+    return;
+  }
+
+  toolbar_spacer_ = new QWidget(tool_bar_);
+  toolbar_spacer_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+  tool_bar_->addWidget(toolbar_spacer_);
+
+  toolbar_add_panel_button_ = new QToolButton(tool_bar_);
+  toolbar_add_panel_button_->setIcon(
+      IconLoader::load(QStringLiteral(":/autoviz/icons/add_panel.svg")));
+  toolbar_add_panel_button_->setAutoRaise(true);
+  toolbar_add_panel_button_->setPopupMode(QToolButton::InstantPopup);
+  toolbar_add_panel_button_->setToolTip(tr("Add"));
+  add_panel_menu_ = new QMenu(toolbar_add_panel_button_);
+  toolbar_add_panel_button_->setMenu(add_panel_menu_);
+  connect(add_panel_menu_, &QMenu::aboutToShow, this,
+          &VisualizationFrame::populateAddPanelMenu);
+  connect(add_panel_menu_, &QMenu::triggered, this,
+          &VisualizationFrame::onAddPanelMenuTriggered);
+  tool_bar_->addWidget(toolbar_add_panel_button_);
+
+  toolbar_toggle_left_dock_action_ = tool_bar_->addAction(
+      IconLoader::load(QStringLiteral(":/autoviz/icons/sidebar_left.svg")),
+      QString());
+  toolbar_toggle_left_dock_action_->setCheckable(true);
+  toolbar_toggle_left_dock_action_->setChecked(true);
+  toolbar_toggle_left_dock_action_->setToolTip(tr("Hide Left"));
+  connect(toolbar_toggle_left_dock_action_, &QAction::toggled, this,
+          [this](bool show_left) {
+            hideLeftDock(!show_left);
+            toolbar_toggle_left_dock_action_->setToolTip(
+                show_left ? tr("Hide Left") : tr("Show Left"));
+            markConfigModified();
+          });
+
+  toolbar_toggle_right_dock_action_ = tool_bar_->addAction(
+      IconLoader::load(QStringLiteral(":/autoviz/icons/sidebar_right.svg")),
+      QString());
+  toolbar_toggle_right_dock_action_->setCheckable(true);
+  toolbar_toggle_right_dock_action_->setChecked(true);
+  toolbar_toggle_right_dock_action_->setToolTip(tr("Hide Right"));
+  connect(toolbar_toggle_right_dock_action_, &QAction::toggled, this,
+          [this](bool show_right) {
+            hideRightDock(!show_right);
+            toolbar_toggle_right_dock_action_->setToolTip(
+                show_right ? tr("Hide Right") : tr("Show Right"));
+            markConfigModified();
+          });
+
+  syncToolbarLayoutControls();
+}
+
+void VisualizationFrame::syncToolbarLayoutControls() {
+  if (toolbar_toggle_left_dock_action_ != nullptr) {
+    toolbar_toggle_left_dock_action_->blockSignals(true);
+    const bool show_left = !manager_->hideLeftDock();
+    toolbar_toggle_left_dock_action_->setChecked(show_left);
+    toolbar_toggle_left_dock_action_->setToolTip(
+        show_left ? tr("Hide Left") : tr("Show Left"));
+    toolbar_toggle_left_dock_action_->blockSignals(false);
+  }
+  if (toolbar_toggle_right_dock_action_ != nullptr) {
+    toolbar_toggle_right_dock_action_->blockSignals(true);
+    const bool show_right = !manager_->hideRightDock();
+    toolbar_toggle_right_dock_action_->setChecked(show_right);
+    toolbar_toggle_right_dock_action_->setToolTip(
+        show_right ? tr("Hide Right") : tr("Show Right"));
+    toolbar_toggle_right_dock_action_->blockSignals(false);
+  }
 }
 
 void VisualizationFrame::rebuildToolbar() {
@@ -947,6 +1705,7 @@ void VisualizationFrame::applyActiveTool(const std::string& tool_id) {
 
 void VisualizationFrame::syncActiveToolUi() {
   syncToolbarToActiveTool();
+  syncViewportTitleBarTools();
   syncToolContext();
   if (tool_properties_panel_ != nullptr) {
     tool_properties_panel_->refresh();
@@ -1091,12 +1850,6 @@ void VisualizationFrame::setFullScreen(bool full_screen) {
     tool_bar_->setVisible(!full_screen && toolbar_visible_);
   }
   statusBar()->setVisible(!full_screen);
-  if (hide_left_dock_button_ != nullptr) {
-    hide_left_dock_button_->setVisible(!full_screen);
-  }
-  if (hide_right_dock_button_ != nullptr) {
-    hide_right_dock_button_->setVisible(!full_screen);
-  }
   if (full_screen) {
     setWindowState(state | Qt::WindowFullScreen);
   } else {
@@ -1180,13 +1933,12 @@ bool VisualizationFrame::loadConfig(const QString& path) {
   applyCurrentView();
   rebuildToolbar();
   restoreWindowLayout();
+  restorePlotPanelConfigs();
+  restoreImagePanelConfigs();
+  applyPlotSettingsVisibilityFromSession();
   applyActiveTool(manager_->tools().activeToolId());
   ensureTimeDockAtBottom();
   syncDeletePanelMenu();
-  if (image_panel_ != nullptr) {
-    image_panel_->setImage(manager_->latestImageSource(),
-                           manager_->latestImage());
-  }
   updateStatusBar();
   markRecentConfig(path);
   suppress_config_modified_ = false;
@@ -1243,8 +1995,19 @@ void VisualizationFrame::captureWindowLayout() {
   manager_->setWindowLayout(
       saveState().toBase64().constData(),
       saveGeometry().toBase64().constData());
-  manager_->setDockHideState(hide_left_dock_button_->isChecked(),
-                             hide_right_dock_button_->isChecked());
+  if (main_panel_host_ != nullptr) {
+    manager_->setMainPanelLayout(
+        main_panel_host_->saveState().toBase64().constData());
+  }
+  const bool hide_left =
+      toolbar_toggle_left_dock_action_ != nullptr
+          ? !toolbar_toggle_left_dock_action_->isChecked()
+          : manager_->hideLeftDock();
+  const bool hide_right =
+      toolbar_toggle_right_dock_action_ != nullptr
+          ? !toolbar_toggle_right_dock_action_->isChecked()
+          : manager_->hideRightDock();
+  manager_->setDockHideState(hide_left, hide_right);
   std::vector<common::PanelLayoutConfig> layouts;
   layouts.reserve(orderedDockWidgets().size());
   for (PanelDockWidget* dock : orderedDockWidgets()) {
@@ -1260,11 +2023,23 @@ void VisualizationFrame::captureWindowLayout() {
   std::vector<std::string> visible_panels;
   visible_panels.reserve(orderedDockWidgets().size());
   for (PanelDockWidget* dock : orderedDockWidgets()) {
-    if (dock != nullptr && dock->isVisible()) {
+    if (dock == nullptr) {
+      continue;
+    }
+    if (dock->isVisible()) {
       visible_panels.push_back(dock->objectName().toStdString());
     }
   }
+  bool plot_settings_visible = false;
+  if (active_plot_panel_ != nullptr) {
+    plot_settings_visible = active_plot_panel_->settingsVisible();
+  } else if (plot_panel_ != nullptr) {
+    plot_settings_visible = plot_panel_->settingsVisible();
+  }
+  manager_->setPlotSettingsVisible(plot_settings_visible);
   manager_->setVisiblePanels(visible_panels);
+  capturePlotPanelConfigs();
+  captureImagePanelConfigs();
   const QRect frame_geometry = geometry();
   manager_->setWindowFrame(frame_geometry.x(), frame_geometry.y(),
                            frame_geometry.width(), frame_geometry.height());
@@ -1288,16 +2063,25 @@ void VisualizationFrame::applyPanelVisibility() {
       continue;
     }
     if (is_visible(dock->objectName().toStdString())) {
+      if (isMainPanel(dock)) {
+        ensureMainPanelDockAttached(dock);
+      } else {
+        ensureSidebarDockAttached(dock);
+      }
       dock->show();
     } else {
       dock->hide();
     }
   }
   ensureTimeDockAtBottom();
+  syncCenterLayout();
   syncDeletePanelMenu();
 }
 
 void VisualizationFrame::restoreWindowLayout() {
+  expanded_main_panel_dock_ = nullptr;
+  pre_expand_main_panel_state_.clear();
+  syncMainPanelExpandUi(nullptr);
   const std::string geometry_b64 = manager_->windowGeometryBase64();
   if (!geometry_b64.empty()) {
     restoreGeometry(QByteArray::fromBase64(
@@ -1313,10 +2097,19 @@ void VisualizationFrame::restoreWindowLayout() {
   if (!state_b64.empty()) {
     restoreState(QByteArray::fromBase64(QByteArray::fromStdString(state_b64)));
   }
+  const std::string main_state_b64 = manager_->mainPanelStateBase64();
+  if (!main_state_b64.empty() && main_panel_host_ != nullptr) {
+    main_panel_host_->restoreState(
+        QByteArray::fromBase64(QByteArray::fromStdString(main_state_b64)));
+  } else {
+    applyMainPanelDefaultLayout();
+  }
   syncToolbarToActiveTool();
+  syncViewportTitleBarTools();
   restorePanelLayouts();
   applyPanelVisibility();
   restoreDockHideState();
+  syncCenterLayout();
 }
 
 void VisualizationFrame::restorePanelLayouts() {
@@ -1426,14 +2219,13 @@ void VisualizationFrame::onAboutToQuit() {
 }
 
 void VisualizationFrame::updateChannelList() {
-  channel_list_->clear();
-  for (const auto& channel : manager_->channels()) {
-    channel_list_->addItem(
-        QStringLiteral("%1  [%2]")
-            .arg(QString::fromStdString(channel.channel_name),
-                 QString::fromStdString(
-                     autoviz::commsgs::NormalizeMessageType(channel.message_type))));
+  if (raw_messages_panel_ != nullptr) {
+    raw_messages_panel_->refreshChannels();
   }
+  if (topics_panel_ != nullptr) {
+    topics_panel_->refreshChannels();
+  }
+  refreshAllPlotSettingsChannels();
 }
 
 void VisualizationFrame::setupStatusBar() {
@@ -1482,21 +2274,32 @@ void VisualizationFrame::updateStatusBar() {
 }
 
 QList<PanelDockWidget*> VisualizationFrame::orderedDockWidgets() const {
-  QList<PanelDockWidget*> docks = {displays_dock_,   strata_floor_dock_, selection_dock_,
-                                   tool_props_dock_, views_dock_,        time_dock_,
-                                   playback_dock_,   channel_dock_,      transformation_dock_,
-                                   tf_dock_,         image_dock_};
+  QList<PanelDockWidget*> docks = {viewport_dock_,   displays_dock_,   strata_floor_dock_,
+                                   selection_dock_,  tool_props_dock_, views_dock_,
+                                   time_dock_,       playback_dock_,   channel_dock_,
+                                   topics_dock_,     problems_dock_,   variables_dock_,
+                                   property_inspector_dock_,
+                                   transformation_dock_, tf_dock_, image_dock_,
+                                   plot_dock_};
 #ifdef AUTOVIZ_USE_QML_DRONE
   docks.push_back(drone_dock_);
 #endif
   docks.push_back(help_dock_);
+  for (PanelDockWidget* dock : findChildren<PanelDockWidget*>()) {
+    if (dock != nullptr && !docks.contains(dock)) {
+      docks.push_back(dock);
+    }
+  }
   return docks;
 }
 
 QStringList VisualizationFrame::hiddenPanels() const {
   QStringList hidden;
   for (PanelDockWidget* dock : orderedDockWidgets()) {
-    if (dock != nullptr && !dock->isVisible()) {
+    if (dock == nullptr) {
+      continue;
+    }
+    if (!dock->isVisible()) {
       hidden.push_back(dock->objectName());
     }
   }
@@ -1514,8 +2317,323 @@ void VisualizationFrame::syncDeletePanelMenu() {
   }
 }
 
+void VisualizationFrame::restoreExpandedMainPanel() {
+  if (expanded_main_panel_dock_ == nullptr || main_panel_host_ == nullptr) {
+    return;
+  }
+  if (!pre_expand_main_panel_state_.isEmpty()) {
+    main_panel_host_->restoreState(pre_expand_main_panel_state_);
+    pre_expand_main_panel_state_.clear();
+  }
+  expanded_main_panel_dock_ = nullptr;
+  syncMainPanelExpandUi(nullptr);
+  syncCenterLayout();
+}
+
+void VisualizationFrame::syncMainPanelExpandUi(PanelDockWidget* expanded_dock) {
+  for (PanelDockWidget* dock : orderedDockWidgets()) {
+    if (dock == nullptr || !isMainPanel(dock)) {
+      continue;
+    }
+    if (auto* plot = qobject_cast<plot::PlotPanel*>(dock->widget())) {
+      plot->setExpandButtonChecked(dock == expanded_dock);
+    }
+    if (auto* image = qobject_cast<image::ImagePanel*>(dock->widget())) {
+      image->setExpandButtonChecked(dock == expanded_dock);
+    }
+    if (auto* log = qobject_cast<log_panel::LogPanel*>(dock->widget())) {
+      log->setExpandButtonChecked(dock == expanded_dock);
+    }
+    if (auto* tf = qobject_cast<TfTreePanel*>(dock->widget())) {
+      tf->setExpandButtonChecked(dock == expanded_dock);
+    }
+    if (auto* table = qobject_cast<table::TablePanel*>(dock->widget())) {
+      table->setExpandButtonChecked(dock == expanded_dock);
+    }
+    if (auto* publish = qobject_cast<publish_panel::PublishPanel*>(dock->widget())) {
+      publish->setExpandButtonChecked(dock == expanded_dock);
+    }
+    if (auto* gauge = qobject_cast<gauge::GaugePanel*>(dock->widget())) {
+      gauge->setExpandButtonChecked(dock == expanded_dock);
+    }
+    if (auto* map_panel = qobject_cast<map::MapPanel*>(dock->widget())) {
+      map_panel->setExpandButtonChecked(dock == expanded_dock);
+    }
+    if (auto* indicator = qobject_cast<indicator::IndicatorPanel*>(dock->widget())) {
+      indicator->setExpandButtonChecked(dock == expanded_dock);
+    }
+  }
+  if (viewport_expand_button_ != nullptr) {
+    viewport_expand_button_->blockSignals(true);
+    viewport_expand_button_->setChecked(expanded_dock == viewport_dock_);
+    viewport_expand_button_->blockSignals(false);
+  }
+}
+
+void VisualizationFrame::wireMainPanelExpandTracking(PanelDockWidget* dock) {
+  if (dock == nullptr || !isMainPanel(dock) ||
+      dock->property("mainPanelExpandTracked").toBool()) {
+    return;
+  }
+  dock->setProperty("mainPanelExpandTracked", true);
+  connect(dock, &PanelDockWidget::closed, this, [this, dock]() {
+    if (expanded_main_panel_dock_ == dock) {
+      restoreExpandedMainPanel();
+    }
+  });
+}
+
+void VisualizationFrame::expandPanelDock(PanelDockWidget* dock) {
+  if (dock == nullptr) {
+    return;
+  }
+  last_active_dock_ = dock;
+
+  if (!isMainPanel(dock) || main_panel_host_ == nullptr) {
+    if (!dock->isFloating()) {
+      dock->setFloating(true);
+      const QRect area = geometry();
+      dock->resize(area.width() * 3 / 4, area.height() * 3 / 4);
+      dock->move(area.center() - dock->rect().center());
+    } else {
+      dock->showMaximized();
+    }
+    dock->raise();
+    return;
+  }
+
+  if (expanded_main_panel_dock_ == dock) {
+    restoreExpandedMainPanel();
+    dock->raise();
+    return;
+  }
+
+  if (expanded_main_panel_dock_ != nullptr) {
+    restoreExpandedMainPanel();
+  }
+
+  pre_expand_main_panel_state_ = main_panel_host_->saveState();
+  expanded_main_panel_dock_ = dock;
+
+  ensureMainPanelDockAttached(dock);
+  for (PanelDockWidget* candidate : orderedDockWidgets()) {
+    if (candidate == nullptr || candidate == dock || !isMainPanel(candidate)) {
+      continue;
+    }
+    if (main_panel_host_->dockWidgetArea(candidate) != Qt::NoDockWidgetArea &&
+        candidate->isVisible()) {
+      candidate->hide();
+    }
+  }
+
+  dock->show();
+  dock->raise();
+  main_panel_host_->syncHorizontalDockLayout();
+  syncMainPanelExpandUi(dock);
+  syncCenterLayout();
+}
+
+void VisualizationFrame::changePanelInDock(PanelDockWidget* source,
+                                           const QString& target_object_name) {
+  if (source == nullptr || target_object_name.isEmpty()) {
+    return;
+  }
+  auto* target = findChild<PanelDockWidget*>(target_object_name);
+  if (target == nullptr || target == source) {
+    return;
+  }
+
+  const Qt::DockWidgetArea area = dockWidgetArea(source);
+  const bool was_floating = source->isFloating();
+  const QRect float_geometry = source->geometry();
+
+  PanelDockWidget* tab_anchor = nullptr;
+  for (PanelDockWidget* dock : orderedDockWidgets()) {
+    if (dock == nullptr || dock == source) {
+      continue;
+    }
+    const QList<QDockWidget*> tabified = tabifiedDockWidgets(dock);
+    if (tabified.contains(source)) {
+      tab_anchor = dock;
+      break;
+    }
+  }
+  if (tab_anchor == nullptr) {
+    const QList<QDockWidget*> tabified = tabifiedDockWidgets(source);
+    if (!tabified.isEmpty()) {
+      tab_anchor = qobject_cast<PanelDockWidget*>(tabified.first());
+    }
+  }
+
+  source->hide();
+
+  if (was_floating) {
+    target->setFloating(true);
+    target->setGeometry(float_geometry);
+  } else if (area != Qt::NoDockWidgetArea) {
+    removeDockWidget(target);
+    addDockWidget(area, target);
+    if (tab_anchor != nullptr) {
+      tabifyDockWidget(tab_anchor, target);
+    }
+  }
+
+  target->show();
+  target->raise();
+  last_active_dock_ = target;
+  markConfigModified();
+}
+
+PanelContextMenuCallbacks VisualizationFrame::makePanelContextMenuCallbacks(
+    PanelDockWidget* dock) {
+  PanelContextMenuCallbacks callbacks;
+  if (dock == nullptr) {
+    return callbacks;
+  }
+  callbacks.current_object_name = panelTypeId(dock);
+  callbacks.change_panel = [this, dock](const QString& object_name) {
+    changePanelInDock(dock, object_name);
+  };
+  callbacks.split = [this, dock](Qt::Orientation orientation) {
+    onSplitActiveDock(dock, orientation);
+  };
+  callbacks.expand = [this, dock]() { expandPanelDock(dock); };
+  callbacks.remove = [dock]() { dock->close(); };
+  return callbacks;
+}
+
+void VisualizationFrame::installStandardPanelTitleTools(PanelDockWidget* dock) {
+  if (dock == nullptr) {
+    return;
+  }
+  dock->setTitleBarTools(
+      CreateStandardPanelTitleTools(dock, makePanelContextMenuCallbacks(dock)));
+}
+
+void VisualizationFrame::syncViewportTitleBarTools() {
+  if (viewport_select_tool_ == nullptr || viewport_pan_tool_ == nullptr) {
+    return;
+  }
+  const QString active =
+      QString::fromStdString(manager_->tools().activeToolId());
+  viewport_select_tool_->blockSignals(true);
+  viewport_pan_tool_->blockSignals(true);
+  viewport_select_tool_->setChecked(active == QLatin1String("Interact"));
+  viewport_pan_tool_->setChecked(active == QLatin1String("MoveCamera"));
+  viewport_select_tool_->blockSignals(false);
+  viewport_pan_tool_->blockSignals(false);
+}
+
+void VisualizationFrame::installViewportTitleBarTools() {
+  if (viewport_dock_ == nullptr) {
+    return;
+  }
+
+  auto* tools = new QWidget(viewport_dock_);
+  tools->setStyleSheet(PanelTitleToolsStyleSheet());
+  auto* layout = new QHBoxLayout(tools);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(0);
+
+  viewport_select_tool_ = CreateTitleToolButton(
+      tools, IconLoader::load(QStringLiteral(":/autoviz/icons/cursor.svg")),
+      tr("Select objects"), true);
+  viewport_select_tool_->setChecked(true);
+  layout->addWidget(viewport_select_tool_);
+  connect(viewport_select_tool_, &QToolButton::clicked, this, [this]() {
+    applyActiveTool("Interact");
+  });
+
+  auto* zoom_button = CreateTitleToolButton(
+      tools, IconLoader::load(QStringLiteral(":/autoviz/icons/zoom.svg")),
+      tr("Reset view"));
+  layout->addWidget(zoom_button);
+  connect(zoom_button, &QToolButton::clicked, this, [this]() {
+    if (rendering::ViewController* controller = activeViewController()) {
+      controller->reset();
+      if (views_panel_ != nullptr) {
+        views_panel_->refreshFromController();
+      }
+      requestViewportUpdate();
+      markConfigModified();
+    }
+  });
+
+  viewport_pan_tool_ = CreateTitleToolButton(
+      tools, IconLoader::load(QStringLiteral(":/autoviz/icons/move2d.svg")),
+      tr("Move camera"), true);
+  layout->addWidget(viewport_pan_tool_);
+  connect(viewport_pan_tool_, &QToolButton::clicked, this, [this]() {
+    applyActiveTool("MoveCamera");
+  });
+
+  layout->addWidget(CreateTitleSeparator(tools));
+
+  auto* settings_button = CreateTitleToolButton(
+      tools,
+      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_settings.svg")),
+      tr("View settings"));
+  layout->addWidget(settings_button);
+  connect(settings_button, &QToolButton::clicked, this, [this]() {
+    if (views_dock_ == nullptr) {
+      return;
+    }
+    views_dock_->show();
+    if (viewport_dock_ != nullptr && !viewport_dock_->isFloating()) {
+      tabifyDockWidget(viewport_dock_, views_dock_);
+    }
+    views_dock_->raise();
+    last_active_dock_ = views_dock_;
+  });
+
+  auto* expand_button = CreateTitleToolButton(
+      tools,
+      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_fullscreen.svg")),
+      tr("Expand panel"), true);
+  viewport_expand_button_ = expand_button;
+  layout->addWidget(expand_button);
+  connect(expand_button, &QToolButton::clicked, this,
+          [this]() { expandPanelDock(viewport_dock_); });
+
+  auto* more_button = CreateTitleToolButton(
+      tools,
+      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_more.svg")),
+      tr("Panel actions"));
+  more_button->setPopupMode(QToolButton::InstantPopup);
+  more_button->setMenu(
+      CreatePanelContextMenu(more_button, makePanelContextMenuCallbacks(viewport_dock_)));
+  layout->addWidget(more_button);
+
+  viewport_dock_->setTitleBarTools(tools);
+  syncViewportTitleBarTools();
+}
+
+void VisualizationFrame::applyFoxgloveDefaultLayout() {
+  if (displays_dock_ == nullptr || plot_dock_ == nullptr ||
+      viewport_dock_ == nullptr) {
+    return;
+  }
+
+  if (QMainWindow* outer_host = dockHostForPanel(displays_dock_)) {
+    outer_host->removeDockWidget(displays_dock_);
+  }
+  displays_dock_->show();
+  addSidebarDock(displays_dock_, Qt::LeftDockWidgetArea);
+
+  applyMainPanelDefaultLayout();
+}
+
 void VisualizationFrame::applyDefaultDockLayout() {
   channel_dock_->hide();
+  topics_dock_->show();
+  if (problems_dock_ != nullptr) {
+    problems_dock_->show();
+  }
+  if (strata_floor_dock_ != nullptr) {
+    strata_floor_dock_->hide();
+  }
+  setupLeftSidebarTabs();
+  topics_dock_->raise();
   tf_dock_->hide();
   transformation_dock_->hide();
   image_dock_->hide();
@@ -1527,11 +2645,25 @@ void VisualizationFrame::applyDefaultDockLayout() {
   help_dock_->hide();
   playback_dock_->hide();
 
-  tabifyDockWidget(selection_dock_, tool_props_dock_);
-  tabifyDockWidget(selection_dock_, views_dock_);
-  selection_dock_->raise();
+  applyFoxgloveDefaultLayout();
+
+  tabifyDockWidget(property_inspector_dock_, selection_dock_);
+  tabifyDockWidget(property_inspector_dock_, tool_props_dock_);
+  tabifyDockWidget(property_inspector_dock_, views_dock_);
+  if (variables_dock_ != nullptr) {
+    tabifyDockWidget(property_inspector_dock_, variables_dock_);
+  }
+  property_inspector_dock_->show();
+  property_inspector_dock_->raise();
+  QTimer::singleShot(0, this, [this]() {
+    if (plot_panel_ != nullptr) {
+      bindPlotToPropertyInspector(plot_panel_);
+      showPropertyInspector(true);
+    }
+  });
 
   ensureTimeDockAtBottom();
+  syncCenterLayout();
 }
 
 void VisualizationFrame::ensureTimeDockAtBottom() {
@@ -1563,25 +2695,23 @@ void VisualizationFrame::hideDockImpl(Qt::DockWidgetArea area, bool hide) {
 
 void VisualizationFrame::hideLeftDock(bool hide) {
   hideDockImpl(Qt::LeftDockWidgetArea, hide);
-  if (hide_left_dock_button_ != nullptr) {
-    hide_left_dock_button_->setArrowType(hide ? Qt::RightArrow : Qt::LeftArrow);
-  }
+  syncCenterLayout();
 }
 
 void VisualizationFrame::hideRightDock(bool hide) {
   hideDockImpl(Qt::RightDockWidgetArea, hide);
-  if (hide_right_dock_button_ != nullptr) {
-    hide_right_dock_button_->setArrowType(hide ? Qt::LeftArrow : Qt::RightArrow);
-  }
+  syncCenterLayout();
 }
 
 void VisualizationFrame::onHideLeftDockToggled(bool hide) {
   hideLeftDock(hide);
+  syncToolbarLayoutControls();
   markConfigModified();
 }
 
 void VisualizationFrame::onHideRightDockToggled(bool hide) {
   hideRightDock(hide);
+  syncToolbarLayoutControls();
   markConfigModified();
 }
 
@@ -1590,6 +2720,7 @@ void VisualizationFrame::onDockPanelVisibilityChange(bool visible) {
   if (dock_widget != nullptr) {
     if (visible) {
       registerDeletePanelAction(dock_widget);
+      last_active_dock_ = dock_widget;
     } else {
       unregisterDeletePanelAction(dock_widget);
     }
@@ -1601,32 +2732,27 @@ void VisualizationFrame::onDockPanelVisibilityChange(bool visible) {
     return;
   }
   const Qt::DockWidgetArea area = dockWidgetArea(dock_widget);
-  if (area == Qt::LeftDockWidgetArea && hide_left_dock_button_ != nullptr &&
-      hide_left_dock_button_->isChecked()) {
-    hide_left_dock_button_->setChecked(false);
+  if (area == Qt::LeftDockWidgetArea && toolbar_toggle_left_dock_action_ != nullptr &&
+      !toolbar_toggle_left_dock_action_->isChecked()) {
+    toolbar_toggle_left_dock_action_->setChecked(true);
   }
-  if (area == Qt::RightDockWidgetArea && hide_right_dock_button_ != nullptr &&
-      hide_right_dock_button_->isChecked()) {
-    hide_right_dock_button_->setChecked(false);
+  if (area == Qt::RightDockWidgetArea && toolbar_toggle_right_dock_action_ != nullptr &&
+      !toolbar_toggle_right_dock_action_->isChecked()) {
+    toolbar_toggle_right_dock_action_->setChecked(true);
   }
+  syncToolbarLayoutControls();
+  syncCenterLayout();
+}
+
+void VisualizationFrame::resizeEvent(QResizeEvent* event) {
+  QMainWindow::resizeEvent(event);
+  syncCenterLayout();
 }
 
 void VisualizationFrame::restoreDockHideState() {
-  if (hide_left_dock_button_ == nullptr || hide_right_dock_button_ == nullptr) {
-    return;
-  }
-  hide_left_dock_button_->blockSignals(true);
-  hide_right_dock_button_->blockSignals(true);
-  hide_left_dock_button_->setChecked(manager_->hideLeftDock());
-  hide_left_dock_button_->setArrowType(
-      manager_->hideLeftDock() ? Qt::RightArrow : Qt::LeftArrow);
-  hide_right_dock_button_->setChecked(manager_->hideRightDock());
-  hide_right_dock_button_->setArrowType(
-      manager_->hideRightDock() ? Qt::LeftArrow : Qt::RightArrow);
-  hide_left_dock_button_->blockSignals(false);
-  hide_right_dock_button_->blockSignals(false);
   hideLeftDock(manager_->hideLeftDock());
   hideRightDock(manager_->hideRightDock());
+  syncToolbarLayoutControls();
 }
 
 void VisualizationFrame::applyBackgroundColor(const QColor& color) {
@@ -1637,6 +2763,1902 @@ void VisualizationFrame::applyBackgroundColor(const QColor& color) {
     ogre_viewport_->setBackgroundColor(color);
   }
   requestViewportUpdate();
+}
+
+void VisualizationFrame::populateAddPanelMenu() {
+  if (add_panel_menu_ == nullptr) {
+    return;
+  }
+  add_panel_menu_->clear();
+  const QStringList hidden = hiddenPanels();
+  for (const PanelCatalogEntry& entry : PanelCatalog()) {
+    const QString label = tr(entry.label);
+    const QString description = tr(entry.description);
+    const QIcon icon =
+        IconLoader::panelIcon(QString::fromLatin1(entry.icon_id));
+    auto* action = add_panel_menu_->addAction(icon, label);
+    action->setToolTip(description);
+    if (!entry.isImplemented()) {
+      action->setEnabled(false);
+      continue;
+    }
+    const QString object_name = QLatin1String(entry.object_name);
+    const bool multi_instance = panelTypeSupportsMultiInstance(object_name);
+    if (!multi_instance && !hidden.contains(object_name)) {
+      action->setEnabled(false);
+      action->setToolTip(
+          tr("%1\n\nThis panel is already visible.").arg(description));
+      continue;
+    }
+    action->setData(object_name);
+  }
+}
+
+void VisualizationFrame::onAddPanelMenuTriggered(QAction* action) {
+  if (action == nullptr) {
+    return;
+  }
+  showPanelByObjectName(action->data().toString());
+}
+
+void VisualizationFrame::showPanelByObjectName(const QString& object_name) {
+  if (object_name.isEmpty()) {
+    return;
+  }
+
+  if (panelTypeSupportsMultiInstance(object_name)) {
+    PanelDockWidget* existing_dock = nullptr;
+    for (PanelDockWidget* dock : findChildren<PanelDockWidget*>()) {
+      if (dock != nullptr && panelTypeId(dock) == object_name) {
+        existing_dock = dock;
+        break;
+      }
+    }
+    if (existing_dock != nullptr && !existing_dock->isVisible()) {
+      ensureMainPanelDockAttached(existing_dock);
+      existing_dock->show();
+      existing_dock->raise();
+      last_active_dock_ = existing_dock;
+      activatePanelDock(existing_dock);
+      syncDeletePanelMenu();
+      markConfigModified();
+      if (add_panel_menu_ != nullptr) {
+        add_panel_menu_->close();
+      }
+      return;
+    }
+    PanelDockWidget* visible_dock = nullptr;
+    for (PanelDockWidget* dock : findChildren<PanelDockWidget*>()) {
+      if (dock != nullptr && panelTypeId(dock) == object_name && dock->isVisible()) {
+        visible_dock = dock;
+        break;
+      }
+    }
+    if (visible_dock != nullptr) {
+      PanelDockWidget* duplicate = duplicatePanelDock(visible_dock);
+      if (duplicate != nullptr) {
+        QMainWindow* host = dockHostForPanel(visible_dock);
+        if (host != nullptr) {
+          Qt::DockWidgetArea area = host->dockWidgetArea(visible_dock);
+          if (area == Qt::NoDockWidgetArea) {
+            area = isMainPanel(visible_dock) ? Qt::LeftDockWidgetArea
+                                             : Qt::RightDockWidgetArea;
+          }
+          host->addDockWidget(area, duplicate);
+        }
+        duplicate->show();
+        duplicate->raise();
+        last_active_dock_ = duplicate;
+        activatePanelDock(duplicate);
+        syncDeletePanelMenu();
+        markConfigModified();
+        if (add_panel_menu_ != nullptr) {
+          add_panel_menu_->close();
+        }
+        return;
+      }
+    }
+  }
+
+  auto* dock = findChild<PanelDockWidget*>(object_name);
+  if (dock == nullptr && object_name == QLatin1String("PlotDock")) {
+    dock = createPlotPanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr && object_name == QLatin1String("ImageDock")) {
+    dock = createImagePanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr && object_name == QLatin1String("TeleopDock")) {
+    dock = createTeleopPanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr && object_name == QLatin1String("LogDock")) {
+    dock = createLogPanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr && object_name == QLatin1String("TfTreeDock")) {
+    dock = createTfTreePanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr && object_name == QLatin1String("TableDock")) {
+    dock = createTablePanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr && object_name == QLatin1String("PublishDock")) {
+    dock = createPublishPanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr && object_name == QLatin1String("GaugeDock")) {
+    dock = createGaugePanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr && object_name == QLatin1String("MapDock")) {
+    dock = createMapPanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr && object_name == QLatin1String("IndicatorDock")) {
+    dock = createIndicatorPanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr) {
+    return;
+  }
+  if (isMainPanel(dock)) {
+    ensureMainPanelDockAttached(dock);
+  } else {
+    ensureSidebarDockAttached(dock);
+  }
+  dock->show();
+  dock->raise();
+  last_active_dock_ = dock;
+  activatePanelDock(dock);
+  syncCenterLayout();
+  syncDeletePanelMenu();
+  markConfigModified();
+  if (add_panel_menu_ != nullptr) {
+    add_panel_menu_->close();
+  }
+}
+
+PanelDockWidget* VisualizationFrame::activeDockForSplit() const {
+  if (last_active_dock_ != nullptr && last_active_dock_->isVisible() &&
+      last_active_dock_ != time_dock_) {
+    return last_active_dock_;
+  }
+  if (QWidget* focused = QApplication::focusWidget()) {
+    for (PanelDockWidget* dock : orderedDockWidgets()) {
+      if (dock != nullptr && dock->isVisible() && dock != time_dock_ &&
+          dock->isAncestorOf(focused)) {
+        return dock;
+      }
+    }
+  }
+  if (viewport_dock_ != nullptr && viewport_dock_->isVisible()) {
+    return viewport_dock_;
+  }
+  for (PanelDockWidget* dock : orderedDockWidgets()) {
+    if (dock != nullptr && dock->isVisible() && dock != time_dock_) {
+      return dock;
+    }
+  }
+  return nullptr;
+}
+
+void VisualizationFrame::onSplitActiveDock(PanelDockWidget* source,
+                                         Qt::Orientation orientation) {
+  if (source == nullptr || source == time_dock_) {
+    return;
+  }
+  if (expanded_main_panel_dock_ != nullptr) {
+    restoreExpandedMainPanel();
+  }
+  last_active_dock_ = source;
+
+  const bool is_plot = panelTypeId(source) == QLatin1String("PlotDock");
+  const bool is_image = panelTypeId(source) == QLatin1String("ImageDock");
+  const bool is_teleop = panelTypeId(source) == QLatin1String("TeleopDock");
+  const bool is_log = panelTypeId(source) == QLatin1String("LogDock");
+  const bool is_tf = panelTypeId(source) == QLatin1String("TfTreeDock");
+  const bool is_table = panelTypeId(source) == QLatin1String("TableDock");
+  const bool is_publish = panelTypeId(source) == QLatin1String("PublishDock");
+  const bool is_gauge = panelTypeId(source) == QLatin1String("GaugeDock");
+  const bool is_map = panelTypeId(source) == QLatin1String("MapDock");
+  const bool is_indicator = panelTypeId(source) == QLatin1String("IndicatorDock");
+
+  PanelDockWidget* duplicate = duplicatePanelDock(source);
+  if (duplicate == nullptr) {
+    QMessageBox::information(
+        this, tr("Split Panel"),
+        tr("This panel type cannot be duplicated yet."));
+    return;
+  }
+
+  if (source->isFloating()) {
+    source->setFloating(false);
+  }
+  source->raise();
+
+  duplicate->show();
+  QMainWindow* host = dockHostForPanel(source);
+  if (host == nullptr) {
+    return;
+  }
+  host->splitDockWidget(source, duplicate, orientation);
+
+  const int primary_size =
+      orientation == Qt::Horizontal ? std::max(source->width(), 120)
+                                    : std::max(source->height(), 120);
+  const int half = std::max(primary_size / 2, 60);
+  host->resizeDocks({source, duplicate}, {half, half}, orientation);
+
+  duplicate->raise();
+  last_active_dock_ = duplicate;
+
+  if (is_plot) {
+    if (auto* panel = qobject_cast<plot::PlotPanel*>(duplicate->widget())) {
+      setActivePlotPanel(panel);
+    }
+  } else if (is_image) {
+    if (auto* panel = qobject_cast<image::ImagePanel*>(duplicate->widget())) {
+      setActiveImagePanel(panel);
+    }
+  } else if (is_teleop) {
+    if (auto* panel = qobject_cast<teleop::TeleopPanel*>(duplicate->widget())) {
+      setActiveTeleopPanel(panel);
+    }
+  } else if (is_log) {
+    if (auto* panel = qobject_cast<log_panel::LogPanel*>(duplicate->widget())) {
+      setActiveLogPanel(panel);
+    }
+  } else if (is_tf) {
+    if (auto* panel = qobject_cast<TfTreePanel*>(duplicate->widget())) {
+      panel->refresh();
+    }
+  } else if (is_table) {
+    if (auto* panel = qobject_cast<table::TablePanel*>(duplicate->widget())) {
+      setActiveTablePanel(panel);
+    }
+  } else if (is_publish) {
+    if (auto* panel = qobject_cast<publish_panel::PublishPanel*>(duplicate->widget())) {
+      setActivePublishPanel(panel);
+    }
+  } else if (is_gauge) {
+    if (auto* panel = qobject_cast<gauge::GaugePanel*>(duplicate->widget())) {
+      setActiveGaugePanel(panel);
+    }
+  } else if (is_map) {
+    if (auto* panel = qobject_cast<map::MapPanel*>(duplicate->widget())) {
+      setActiveMapPanel(panel);
+    }
+  } else if (is_indicator) {
+    if (auto* panel = qobject_cast<indicator::IndicatorPanel*>(duplicate->widget())) {
+      setActiveIndicatorPanel(panel);
+    }
+  }
+
+  syncDeletePanelMenu();
+  markConfigModified();
+}
+
+bool VisualizationFrame::panelTypeSupportsMultiInstance(
+    const QString& panel_type_id) const {
+  return panel_type_id == QLatin1String("PlotDock") ||
+         panel_type_id == QLatin1String("ImageDock") ||
+         panel_type_id == QLatin1String("TeleopDock") ||
+         panel_type_id == QLatin1String("LogDock") ||
+         panel_type_id == QLatin1String("TfTreeDock") ||
+         panel_type_id == QLatin1String("TableDock") ||
+         panel_type_id == QLatin1String("PublishDock") ||
+         panel_type_id == QLatin1String("GaugeDock") ||
+         panel_type_id == QLatin1String("MapDock") ||
+         panel_type_id == QLatin1String("IndicatorDock");
+}
+
+QString VisualizationFrame::panelTypeId(const PanelDockWidget* dock) const {
+  if (dock == nullptr) {
+    return {};
+  }
+  const QVariant type_id = dock->property("panelTypeId");
+  if (type_id.isValid()) {
+    return type_id.toString();
+  }
+  return dock->objectName();
+}
+
+QString VisualizationFrame::uniquePanelObjectName(const QString& base) const {
+  if (findChild<PanelDockWidget*>(base) == nullptr) {
+    return base;
+  }
+  for (int i = 2; i < 1000; ++i) {
+    const QString candidate = QStringLiteral("%1_%2").arg(base).arg(i);
+    if (findChild<PanelDockWidget*>(candidate) == nullptr) {
+      return candidate;
+    }
+  }
+  return QStringLiteral("%1_%2").arg(base).arg(QDateTime::currentMSecsSinceEpoch());
+}
+
+void VisualizationFrame::registerPanelDock(PanelDockWidget* dock) {
+  if (dock == nullptr || dock->property("panelDockRegistered").toBool()) {
+    return;
+  }
+  dock->setProperty("panelDockRegistered", true);
+  connect(dock, &PanelDockWidget::activated, this, [this, dock]() {
+    last_active_dock_ = dock;
+    if (panelTypeId(dock) == QLatin1String("PlotDock")) {
+      if (auto* panel = qobject_cast<plot::PlotPanel*>(dock->widget())) {
+        setActivePlotPanel(panel);
+      }
+    } else if (panelTypeId(dock) == QLatin1String("ImageDock")) {
+      if (auto* panel = qobject_cast<image::ImagePanel*>(dock->widget())) {
+        setActiveImagePanel(panel);
+      }
+    } else if (panelTypeId(dock) == QLatin1String("TeleopDock")) {
+      if (auto* panel = qobject_cast<teleop::TeleopPanel*>(dock->widget())) {
+        setActiveTeleopPanel(panel);
+      }
+    } else if (panelTypeId(dock) == QLatin1String("LogDock")) {
+      if (auto* panel = qobject_cast<log_panel::LogPanel*>(dock->widget())) {
+        setActiveLogPanel(panel);
+      }
+    } else if (panelTypeId(dock) == QLatin1String("TableDock")) {
+      if (auto* panel = qobject_cast<table::TablePanel*>(dock->widget())) {
+        setActiveTablePanel(panel);
+      }
+    } else if (panelTypeId(dock) == QLatin1String("PublishDock")) {
+      if (auto* panel = qobject_cast<publish_panel::PublishPanel*>(dock->widget())) {
+        setActivePublishPanel(panel);
+      }
+    } else if (panelTypeId(dock) == QLatin1String("GaugeDock")) {
+      if (auto* panel = qobject_cast<gauge::GaugePanel*>(dock->widget())) {
+        setActiveGaugePanel(panel);
+      }
+    } else if (panelTypeId(dock) == QLatin1String("MapDock")) {
+      if (auto* panel = qobject_cast<map::MapPanel*>(dock->widget())) {
+        setActiveMapPanel(panel);
+      }
+    } else if (panelTypeId(dock) == QLatin1String("IndicatorDock")) {
+      if (auto* panel = qobject_cast<indicator::IndicatorPanel*>(dock->widget())) {
+        setActiveIndicatorPanel(panel);
+      }
+    }
+  });
+  connect(dock, &QDockWidget::visibilityChanged, this,
+          &VisualizationFrame::onDockPanelVisibilityChange);
+  connect(this, &VisualizationFrame::fullScreenChange, dock,
+          &PanelDockWidget::overrideVisibility);
+  connect(dock, &QDockWidget::dockLocationChanged, this,
+          &VisualizationFrame::markConfigModified);
+  connect(dock, &QDockWidget::topLevelChanged, this,
+          &VisualizationFrame::markConfigModified);
+  connect(dock, &PanelDockWidget::closed, this,
+          &VisualizationFrame::markConfigModified);
+  wireMainPanelExpandTracking(dock);
+}
+
+void VisualizationFrame::updatePlotDockTitle(PanelDockWidget* dock,
+                                             plot::PlotPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  const QString title = panel->config().title.trimmed();
+  dock->setPanelTitle(title.isEmpty() ? tr("Plot") : title);
+}
+
+void VisualizationFrame::capturePlotPanelConfigs() {
+  std::vector<common::PlotPanelPersistConfig> panels;
+  panels.reserve(4);
+  for (PanelDockWidget* dock : orderedDockWidgets()) {
+    if (dock == nullptr || panelTypeId(dock) != QLatin1String("PlotDock")) {
+      continue;
+    }
+    auto* panel = qobject_cast<plot::PlotPanel*>(dock->widget());
+    if (panel == nullptr) {
+      continue;
+    }
+    panels.push_back(plot::ToPersistConfig(dock->objectName(), panel->config()));
+  }
+  manager_->setPlotPanels(panels);
+}
+
+void VisualizationFrame::ensurePlotDockExists(const QString& object_name) {
+  if (object_name.isEmpty() ||
+      findChild<PanelDockWidget*>(object_name) != nullptr) {
+    return;
+  }
+  PanelDockWidget* dock = createPlotPanelDock(object_name);
+  addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+}
+
+void VisualizationFrame::restorePlotPanelConfigs() {
+  const std::vector<common::PlotPanelPersistConfig>& saved =
+      manager_->plotPanels();
+  if (saved.empty()) {
+    if (plot_panel_ != nullptr) {
+      updatePlotDockTitle(plot_dock_, plot_panel_);
+    }
+    return;
+  }
+
+  for (const common::PlotPanelPersistConfig& entry : saved) {
+    ensurePlotDockExists(QString::fromStdString(entry.object_name));
+  }
+
+  for (const common::PlotPanelPersistConfig& entry : saved) {
+    auto* dock = findChild<PanelDockWidget*>(
+        QString::fromStdString(entry.object_name));
+    auto* panel = dock != nullptr
+                      ? qobject_cast<plot::PlotPanel*>(dock->widget())
+                      : nullptr;
+    if (panel == nullptr) {
+      continue;
+    }
+    panel->setConfig(plot::FromPersistConfig(entry));
+    updatePlotDockTitle(dock, panel);
+  }
+}
+
+void VisualizationFrame::captureImagePanelConfigs() {
+  std::vector<common::ImagePanelPersistConfig> panels;
+  panels.reserve(4);
+  for (PanelDockWidget* dock : orderedDockWidgets()) {
+    if (dock == nullptr || panelTypeId(dock) != QLatin1String("ImageDock")) {
+      continue;
+    }
+    auto* panel = qobject_cast<image::ImagePanel*>(dock->widget());
+    if (panel == nullptr) {
+      continue;
+    }
+    panels.push_back(image::ToPersistConfig(dock->objectName(), panel->config()));
+  }
+  manager_->setImagePanels(panels);
+}
+
+void VisualizationFrame::ensureImageDockExists(const QString& object_name) {
+  if (object_name.isEmpty() ||
+      findChild<PanelDockWidget*>(object_name) != nullptr) {
+    return;
+  }
+  PanelDockWidget* dock = createImagePanelDock(object_name);
+  addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+}
+
+void VisualizationFrame::restoreImagePanelConfigs() {
+  const std::vector<common::ImagePanelPersistConfig>& saved =
+      manager_->imagePanels();
+  if (saved.empty()) {
+    if (image_panel_ != nullptr) {
+      updateImageDockTitle(image_dock_, image_panel_);
+    }
+    return;
+  }
+
+  for (const common::ImagePanelPersistConfig& entry : saved) {
+    ensureImageDockExists(QString::fromStdString(entry.object_name));
+  }
+
+  for (const common::ImagePanelPersistConfig& entry : saved) {
+    auto* dock = findChild<PanelDockWidget*>(
+        QString::fromStdString(entry.object_name));
+    auto* panel = dock != nullptr
+                      ? qobject_cast<image::ImagePanel*>(dock->widget())
+                      : nullptr;
+    if (panel == nullptr) {
+      continue;
+    }
+    panel->setConfig(image::FromPersistConfig(entry));
+    updateImageDockTitle(dock, panel);
+  }
+}
+
+void VisualizationFrame::setupLeftSidebarTabs() {
+  if (topics_dock_ == nullptr) {
+    return;
+  }
+  if (problems_dock_ != nullptr) {
+    tabifyDockWidget(topics_dock_, problems_dock_);
+  }
+  if (displays_dock_ != nullptr && problems_dock_ != nullptr) {
+    tabifyDockWidget(problems_dock_, displays_dock_);
+  }
+  topics_dock_->raise();
+}
+
+void VisualizationFrame::refreshAllPlotSettingsChannels() {
+  for (PanelDockWidget* dock : findChildren<PanelDockWidget*>()) {
+    const QString type = panelTypeId(dock);
+    if (type == QLatin1String("PlotDock")) {
+      if (auto* panel = qobject_cast<plot::PlotPanel*>(dock->widget())) {
+        panel->refreshSettingsChannels();
+      }
+    } else if (type == QLatin1String("ImageDock")) {
+      if (auto* panel = qobject_cast<image::ImagePanel*>(dock->widget())) {
+        panel->refreshSettingsChannels();
+      }
+    } else if (type == QLatin1String("TableDock")) {
+      if (auto* panel = qobject_cast<table::TablePanel*>(dock->widget())) {
+        panel->refreshSettingsChannels();
+      }
+    } else if (type == QLatin1String("PublishDock")) {
+      if (auto* panel = qobject_cast<publish_panel::PublishPanel*>(dock->widget())) {
+        panel->refreshSettingsChannels();
+      }
+    } else if (type == QLatin1String("GaugeDock")) {
+      if (auto* panel = qobject_cast<gauge::GaugePanel*>(dock->widget())) {
+        panel->refreshSettingsChannels();
+      }
+    } else if (type == QLatin1String("MapDock")) {
+      if (auto* panel = qobject_cast<map::MapPanel*>(dock->widget())) {
+        panel->refreshSettingsChannels();
+      }
+    } else if (type == QLatin1String("IndicatorDock")) {
+      if (auto* panel = qobject_cast<indicator::IndicatorPanel*>(dock->widget())) {
+        panel->refreshSettingsChannels();
+      }
+    }
+  }
+}
+
+void VisualizationFrame::applyPlotSettingsVisibilityFromSession() {
+  if (!manager_->plotPanels().empty()) {
+    return;
+  }
+  showPropertyInspector(manager_->plotSettingsVisible());
+}
+
+void VisualizationFrame::installPlotFocusTracking() {
+  connect(qApp, &QApplication::focusChanged, this,
+          [this](QWidget* /*old_focus*/, QWidget* new_focus) {
+            if (new_focus == nullptr) {
+              return;
+            }
+            for (PanelDockWidget* dock : orderedDockWidgets()) {
+              if (panelTypeId(dock) != QLatin1String("PlotDock") || !dock->isVisible()) {
+                continue;
+              }
+              if (dock->isAncestorOf(new_focus)) {
+                if (auto* panel = qobject_cast<plot::PlotPanel*>(dock->widget())) {
+                  setActivePlotPanel(panel);
+                }
+                break;
+              }
+            }
+          });
+}
+
+void VisualizationFrame::setActivePlotPanel(plot::PlotPanel* panel) {
+  if (active_plot_panel_ == panel) {
+    if (panel != nullptr) {
+      bindPlotToPropertyInspector(panel);
+    }
+    return;
+  }
+  if (active_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(active_plot_panel_);
+  }
+  if (panel != nullptr && active_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(active_image_panel_);
+    active_image_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(active_teleop_panel_);
+    active_teleop_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(active_log_panel_);
+    active_log_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(active_table_panel_);
+    active_table_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(active_publish_panel_);
+    active_publish_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(active_gauge_panel_);
+    active_gauge_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(active_map_panel_);
+    active_map_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(active_indicator_panel_);
+    active_indicator_panel_ = nullptr;
+  }
+  active_plot_panel_ = panel;
+  if (panel != nullptr) {
+    bindPlotToPropertyInspector(panel);
+  }
+}
+
+void VisualizationFrame::setActiveImagePanel(image::ImagePanel* panel) {
+  if (active_image_panel_ == panel) {
+    if (panel != nullptr) {
+      bindImageToPropertyInspector(panel);
+    }
+    return;
+  }
+  if (active_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(active_image_panel_);
+  }
+  if (panel != nullptr && active_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(active_plot_panel_);
+    active_plot_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(active_teleop_panel_);
+    active_teleop_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(active_log_panel_);
+    active_log_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(active_table_panel_);
+    active_table_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(active_publish_panel_);
+    active_publish_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(active_gauge_panel_);
+    active_gauge_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(active_map_panel_);
+    active_map_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(active_indicator_panel_);
+    active_indicator_panel_ = nullptr;
+  }
+  active_image_panel_ = panel;
+  if (panel != nullptr) {
+    bindImageToPropertyInspector(panel);
+  }
+}
+
+void VisualizationFrame::setActiveTeleopPanel(teleop::TeleopPanel* panel) {
+  if (active_teleop_panel_ == panel) {
+    if (panel != nullptr) {
+      bindTeleopToPropertyInspector(panel);
+    }
+    return;
+  }
+  if (active_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(active_teleop_panel_);
+  }
+  if (panel != nullptr && active_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(active_plot_panel_);
+    active_plot_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(active_image_panel_);
+    active_image_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(active_log_panel_);
+    active_log_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(active_table_panel_);
+    active_table_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(active_publish_panel_);
+    active_publish_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(active_gauge_panel_);
+    active_gauge_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(active_map_panel_);
+    active_map_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(active_indicator_panel_);
+    active_indicator_panel_ = nullptr;
+  }
+  active_teleop_panel_ = panel;
+  if (panel != nullptr) {
+    bindTeleopToPropertyInspector(panel);
+  }
+}
+
+void VisualizationFrame::activatePanelDock(PanelDockWidget* dock) {
+  if (dock == nullptr) {
+    return;
+  }
+  if (auto* plot = qobject_cast<plot::PlotPanel*>(dock->widget())) {
+    setActivePlotPanel(plot);
+  } else if (auto* image = qobject_cast<image::ImagePanel*>(dock->widget())) {
+    setActiveImagePanel(image);
+  } else if (auto* teleop = qobject_cast<teleop::TeleopPanel*>(dock->widget())) {
+    setActiveTeleopPanel(teleop);
+  } else if (auto* log_panel = qobject_cast<log_panel::LogPanel*>(dock->widget())) {
+    setActiveLogPanel(log_panel);
+  }
+}
+
+void VisualizationFrame::setActiveLogPanel(log_panel::LogPanel* panel) {
+  if (active_log_panel_ == panel) {
+    if (panel != nullptr) {
+      bindLogToPropertyInspector(panel);
+    }
+    return;
+  }
+  if (active_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(active_log_panel_);
+  }
+  if (panel != nullptr && active_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(active_plot_panel_);
+    active_plot_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(active_image_panel_);
+    active_image_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(active_teleop_panel_);
+    active_teleop_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(active_table_panel_);
+    active_table_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(active_publish_panel_);
+    active_publish_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(active_gauge_panel_);
+    active_gauge_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(active_map_panel_);
+    active_map_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(active_indicator_panel_);
+    active_indicator_panel_ = nullptr;
+  }
+  active_log_panel_ = panel;
+  if (panel != nullptr) {
+    bindLogToPropertyInspector(panel);
+  }
+}
+
+void VisualizationFrame::setActiveTablePanel(table::TablePanel* panel) {
+  if (active_table_panel_ == panel) {
+    if (panel != nullptr) {
+      bindTableToPropertyInspector(panel);
+    }
+    return;
+  }
+  if (active_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(active_table_panel_);
+  }
+  if (panel != nullptr && active_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(active_plot_panel_);
+    active_plot_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(active_image_panel_);
+    active_image_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(active_teleop_panel_);
+    active_teleop_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(active_log_panel_);
+    active_log_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(active_publish_panel_);
+    active_publish_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(active_gauge_panel_);
+    active_gauge_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(active_map_panel_);
+    active_map_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(active_indicator_panel_);
+    active_indicator_panel_ = nullptr;
+  }
+  active_table_panel_ = panel;
+  if (panel != nullptr) {
+    bindTableToPropertyInspector(panel);
+  }
+}
+
+void VisualizationFrame::setActivePublishPanel(publish_panel::PublishPanel* panel) {
+  if (active_publish_panel_ == panel) {
+    if (panel != nullptr) {
+      bindPublishToPropertyInspector(panel);
+    }
+    return;
+  }
+  if (active_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(active_publish_panel_);
+  }
+  if (panel != nullptr && active_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(active_plot_panel_);
+    active_plot_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(active_image_panel_);
+    active_image_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(active_teleop_panel_);
+    active_teleop_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(active_log_panel_);
+    active_log_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(active_table_panel_);
+    active_table_panel_ = nullptr;
+  }
+  active_publish_panel_ = panel;
+  if (panel != nullptr) {
+    bindPublishToPropertyInspector(panel);
+  }
+}
+
+void VisualizationFrame::setActiveGaugePanel(gauge::GaugePanel* panel) {
+  if (active_gauge_panel_ == panel) {
+    if (panel != nullptr) {
+      bindGaugeToPropertyInspector(panel);
+    }
+    return;
+  }
+  if (active_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(active_gauge_panel_);
+  }
+  if (panel != nullptr && active_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(active_plot_panel_);
+    active_plot_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(active_image_panel_);
+    active_image_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(active_teleop_panel_);
+    active_teleop_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(active_log_panel_);
+    active_log_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(active_table_panel_);
+    active_table_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(active_publish_panel_);
+    active_publish_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(active_map_panel_);
+    active_map_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(active_indicator_panel_);
+    active_indicator_panel_ = nullptr;
+  }
+  active_gauge_panel_ = panel;
+  if (panel != nullptr) {
+    bindGaugeToPropertyInspector(panel);
+  }
+}
+
+void VisualizationFrame::setActiveMapPanel(map::MapPanel* panel) {
+  if (active_map_panel_ == panel) {
+    if (panel != nullptr) {
+      bindMapToPropertyInspector(panel);
+    }
+    return;
+  }
+  if (active_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(active_map_panel_);
+  }
+  if (panel != nullptr && active_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(active_plot_panel_);
+    active_plot_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(active_image_panel_);
+    active_image_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(active_teleop_panel_);
+    active_teleop_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(active_log_panel_);
+    active_log_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(active_table_panel_);
+    active_table_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(active_publish_panel_);
+    active_publish_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(active_gauge_panel_);
+    active_gauge_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(active_indicator_panel_);
+    active_indicator_panel_ = nullptr;
+  }
+  active_map_panel_ = panel;
+  if (panel != nullptr) {
+    bindMapToPropertyInspector(panel);
+  }
+}
+
+void VisualizationFrame::setActiveIndicatorPanel(indicator::IndicatorPanel* panel) {
+  if (active_indicator_panel_ == panel) {
+    if (panel != nullptr) {
+      bindIndicatorToPropertyInspector(panel);
+    }
+    return;
+  }
+  if (active_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(active_indicator_panel_);
+  }
+  if (panel != nullptr && active_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(active_plot_panel_);
+    active_plot_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(active_image_panel_);
+    active_image_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(active_teleop_panel_);
+    active_teleop_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(active_log_panel_);
+    active_log_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(active_table_panel_);
+    active_table_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(active_publish_panel_);
+    active_publish_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(active_gauge_panel_);
+    active_gauge_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(active_map_panel_);
+    active_map_panel_ = nullptr;
+  }
+  active_indicator_panel_ = panel;
+  if (panel != nullptr) {
+    bindIndicatorToPropertyInspector(panel);
+  }
+}
+
+void VisualizationFrame::wirePlotPanel(PanelDockWidget* dock,
+                                       plot::PlotPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  connect(panel, &plot::PlotPanel::activated, this,
+          [this, panel]() { setActivePlotPanel(panel); });
+  connect(panel, &plot::PlotPanel::settingsToggled, this,
+          [this, panel](bool visible) {
+            setActivePlotPanel(panel);
+            showPropertyInspector(visible);
+            markConfigModified();
+          });
+  connect(panel, &plot::PlotPanel::panelSplitRequested, this,
+          [this, dock](Qt::Orientation orientation) {
+            onSplitActiveDock(dock, orientation);
+          });
+  connect(panel, &plot::PlotPanel::panelRemoveRequested, dock,
+          &QDockWidget::close);
+  connect(panel, &plot::PlotPanel::panelExpandRequested, this,
+          [this, dock]() { expandPanelDock(dock); });
+  connect(panel, &plot::PlotPanel::panelChangeRequested, this,
+          [this, dock](const QString& object_name) {
+            changePanelInDock(dock, object_name);
+          });
+  connect(panel, &plot::PlotPanel::configChanged, this, [this, dock, panel]() {
+    updatePlotDockTitle(dock, panel);
+    if (panel == active_plot_panel_ && property_inspector_panel_ != nullptr) {
+      const QString title = panel->config().title.trimmed();
+      property_inspector_panel_->setContentWidget(
+          panel->settingsWidgetForInspector(),
+          title.isEmpty() ? tr("Plot") : title);
+    }
+    manager_->setPlotSettingsVisible(
+        property_inspector_dock_ != nullptr && property_inspector_dock_->isVisible());
+    markConfigModified();
+  });
+  connect(dock, &QDockWidget::visibilityChanged, this,
+          [this, dock, panel](bool visible) {
+            if (visible || panel != active_plot_panel_) {
+              return;
+            }
+            plot::PlotPanel* fallback = nullptr;
+            for (PanelDockWidget* candidate : orderedDockWidgets()) {
+              if (candidate == nullptr || candidate == dock ||
+                  panelTypeId(candidate) != QLatin1String("PlotDock") ||
+                  !candidate->isVisible()) {
+                continue;
+              }
+              fallback = qobject_cast<plot::PlotPanel*>(candidate->widget());
+              if (fallback != nullptr) {
+                break;
+              }
+            }
+            setActivePlotPanel(fallback);
+          });
+}
+
+PanelDockWidget* VisualizationFrame::createPlotPanelDock(
+    const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty() ? uniquePanelObjectName(QStringLiteral("PlotDock"))
+                            : object_name;
+  auto* dock = new PanelDockWidget(tr("Plot"), this);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("PlotDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelPlot")));
+  auto* panel = new plot::PlotPanel(manager_.get(), dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wirePlotPanel(dock, panel);
+  updatePlotDockTitle(dock, panel);
+  configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
+void VisualizationFrame::updateImageDockTitle(PanelDockWidget* dock,
+                                              image::ImagePanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  const QString title = panel->config().title.trimmed();
+  dock->setPanelTitle(title.isEmpty() ? tr("Image") : title);
+}
+
+void VisualizationFrame::wireImagePanel(PanelDockWidget* dock,
+                                      image::ImagePanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  connect(panel, &image::ImagePanel::activated, this,
+          [this, panel]() { setActiveImagePanel(panel); });
+  connect(panel, &image::ImagePanel::settingsToggled, this,
+          [this, panel](bool visible) {
+            setActiveImagePanel(panel);
+            showPropertyInspector(visible);
+            markConfigModified();
+          });
+  connect(panel, &image::ImagePanel::panelSplitRequested, this,
+          [this, dock](Qt::Orientation orientation) {
+            onSplitActiveDock(dock, orientation);
+          });
+  connect(panel, &image::ImagePanel::panelRemoveRequested, dock,
+          &QDockWidget::close);
+  connect(panel, &image::ImagePanel::panelExpandRequested, this,
+          [this, dock]() { expandPanelDock(dock); });
+  connect(panel, &image::ImagePanel::panelChangeRequested, this,
+          [this, dock](const QString& object_name) {
+            changePanelInDock(dock, object_name);
+          });
+  connect(panel, &image::ImagePanel::configChanged, this, [this, dock, panel]() {
+    updateImageDockTitle(dock, panel);
+    if (panel == active_image_panel_ && property_inspector_panel_ != nullptr) {
+      const QString title = panel->config().title.trimmed();
+      property_inspector_panel_->setContentWidget(
+          panel->settingsWidgetForInspector(),
+          title.isEmpty() ? tr("Image") : title);
+    }
+    markConfigModified();
+  });
+  connect(dock, &QDockWidget::visibilityChanged, this,
+          [this, dock, panel](bool visible) {
+            if (visible || panel != active_image_panel_) {
+              return;
+            }
+            image::ImagePanel* fallback = nullptr;
+            for (PanelDockWidget* candidate : orderedDockWidgets()) {
+              if (candidate == nullptr || candidate == dock ||
+                  panelTypeId(candidate) != QLatin1String("ImageDock") ||
+                  !candidate->isVisible()) {
+                continue;
+              }
+              fallback = qobject_cast<image::ImagePanel*>(candidate->widget());
+              if (fallback != nullptr) {
+                break;
+              }
+            }
+            setActiveImagePanel(fallback);
+          });
+}
+
+PanelDockWidget* VisualizationFrame::createImagePanelDock(
+    const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty() ? uniquePanelObjectName(QStringLiteral("ImageDock"))
+                            : object_name;
+  auto* dock = new PanelDockWidget(tr("Image"), this);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("ImageDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelImage")));
+  auto* panel = new image::ImagePanel(manager_.get(), dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wireImagePanel(dock, panel);
+  updateImageDockTitle(dock, panel);
+  configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
+void VisualizationFrame::updateTeleopDockTitle(PanelDockWidget* dock,
+                                             teleop::TeleopPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  const QString title = panel->config().title.trimmed();
+  dock->setPanelTitle(title.isEmpty() ? tr("Teleop") : title);
+}
+
+void VisualizationFrame::wireTeleopPanel(PanelDockWidget* dock,
+                                       teleop::TeleopPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  connect(panel, &teleop::TeleopPanel::activated, this,
+          [this, panel]() { setActiveTeleopPanel(panel); });
+  connect(panel, &teleop::TeleopPanel::settingsToggled, this,
+          [this, panel](bool visible) {
+            setActiveTeleopPanel(panel);
+            showPropertyInspector(visible);
+            markConfigModified();
+          });
+  connect(panel, &teleop::TeleopPanel::panelSplitRequested, this,
+          [this, dock](Qt::Orientation orientation) {
+            onSplitActiveDock(dock, orientation);
+          });
+  connect(panel, &teleop::TeleopPanel::panelRemoveRequested, dock,
+          &QDockWidget::close);
+  connect(panel, &teleop::TeleopPanel::panelChangeRequested, this,
+          [this, dock](const QString& object_name) {
+            changePanelInDock(dock, object_name);
+          });
+  connect(panel, &teleop::TeleopPanel::configChanged, this,
+          [this, dock, panel]() {
+            updateTeleopDockTitle(dock, panel);
+            if (panel == active_teleop_panel_ &&
+                property_inspector_panel_ != nullptr) {
+              const QString title = panel->config().title.trimmed();
+              property_inspector_panel_->setContentWidget(
+                  panel->settingsWidgetForInspector(),
+                  title.isEmpty() ? tr("Teleop") : title);
+            }
+            markConfigModified();
+          });
+  connect(dock, &QDockWidget::visibilityChanged, this,
+          [this, dock, panel](bool visible) {
+            if (visible || panel != active_teleop_panel_) {
+              return;
+            }
+            teleop::TeleopPanel* fallback = nullptr;
+            for (PanelDockWidget* candidate : orderedDockWidgets()) {
+              if (candidate == nullptr || candidate == dock ||
+                  panelTypeId(candidate) != QLatin1String("TeleopDock") ||
+                  !candidate->isVisible()) {
+                continue;
+              }
+              fallback = qobject_cast<teleop::TeleopPanel*>(candidate->widget());
+              if (fallback != nullptr) {
+                break;
+              }
+            }
+            setActiveTeleopPanel(fallback);
+          });
+}
+
+PanelDockWidget* VisualizationFrame::createTeleopPanelDock(
+    const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty() ? uniquePanelObjectName(QStringLiteral("TeleopDock"))
+                            : object_name;
+  auto* dock = new PanelDockWidget(tr("Teleop"), this);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("TeleopDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelTeleop")));
+  auto* panel = new teleop::TeleopPanel(manager_.get(), dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wireTeleopPanel(dock, panel);
+  updateTeleopDockTitle(dock, panel);
+  configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
+void VisualizationFrame::updateLogDockTitle(PanelDockWidget* dock,
+                                            log_panel::LogPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  const QString title = panel->config().title.trimmed();
+  dock->setPanelTitle(title.isEmpty() ? tr("Log") : title);
+}
+
+void VisualizationFrame::wireLogPanel(PanelDockWidget* dock, log_panel::LogPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  connect(panel, &log_panel::LogPanel::activated, this,
+          [this, panel]() { setActiveLogPanel(panel); });
+  connect(panel, &log_panel::LogPanel::settingsToggled, this,
+          [this, panel](bool visible) {
+            setActiveLogPanel(panel);
+            showPropertyInspector(visible);
+            markConfigModified();
+          });
+  connect(panel, &log_panel::LogPanel::panelRemoveRequested, dock, &QDockWidget::close);
+  connect(panel, &log_panel::LogPanel::panelExpandRequested, this,
+          [this, dock]() { expandPanelDock(dock); });
+  connect(panel, &log_panel::LogPanel::panelSplitRequested, this,
+          [this, dock](Qt::Orientation orientation) {
+            onSplitActiveDock(dock, orientation);
+          });
+  connect(panel, &log_panel::LogPanel::panelChangeRequested, this,
+          [this, dock](const QString& object_name) {
+            changePanelInDock(dock, object_name);
+          });
+  connect(panel, &log_panel::LogPanel::configChanged, this,
+          [this, dock, panel]() {
+            updateLogDockTitle(dock, panel);
+            if (panel == active_log_panel_ && property_inspector_panel_ != nullptr) {
+              const QString title = panel->config().title.trimmed();
+              property_inspector_panel_->setContentWidget(
+                  panel->settingsWidgetForInspector(),
+                  title.isEmpty() ? tr("Log") : title);
+            }
+            markConfigModified();
+          });
+  connect(dock, &QDockWidget::visibilityChanged, this,
+          [this, dock, panel](bool visible) {
+            if (visible || panel != active_log_panel_) {
+              return;
+            }
+            log_panel::LogPanel* fallback = nullptr;
+            for (PanelDockWidget* candidate : orderedDockWidgets()) {
+              if (candidate == nullptr || candidate == dock ||
+                  panelTypeId(candidate) != QLatin1String("LogDock") ||
+                  !candidate->isVisible()) {
+                continue;
+              }
+              fallback = qobject_cast<log_panel::LogPanel*>(candidate->widget());
+              if (fallback != nullptr) {
+                break;
+              }
+            }
+            setActiveLogPanel(fallback);
+          });
+}
+
+PanelDockWidget* VisualizationFrame::createLogPanelDock(const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty() ? uniquePanelObjectName(QStringLiteral("LogDock"))
+                            : object_name;
+  auto* dock = new PanelDockWidget(tr("Log"), this);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("LogDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelLog")));
+  auto* panel = new log_panel::LogPanel(manager_.get(), dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wireLogPanel(dock, panel);
+  updateLogDockTitle(dock, panel);
+  configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
+void VisualizationFrame::wireTfTreePanel(PanelDockWidget* dock, TfTreePanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  connect(panel, &TfTreePanel::panelRemoveRequested, dock, &QDockWidget::close);
+  connect(panel, &TfTreePanel::panelExpandRequested, this,
+          [this, dock]() { expandPanelDock(dock); });
+  connect(panel, &TfTreePanel::panelSplitRequested, this,
+          [this, dock](Qt::Orientation orientation) {
+            onSplitActiveDock(dock, orientation);
+          });
+  connect(panel, &TfTreePanel::panelChangeRequested, this,
+          [this, dock](const QString& object_name) {
+            changePanelInDock(dock, object_name);
+          });
+}
+
+PanelDockWidget* VisualizationFrame::createTfTreePanelDock(const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty() ? uniquePanelObjectName(QStringLiteral("TfTreeDock"))
+                            : object_name;
+  auto* dock = new PanelDockWidget(tr("Transform Tree"), this);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("TfTreeDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelTransformTree")));
+  auto* panel = new TfTreePanel(manager_->tfBuffer(), manager_.get(), dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wireTfTreePanel(dock, panel);
+  configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
+void VisualizationFrame::updateTableDockTitle(PanelDockWidget* dock,
+                                              table::TablePanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  const QString title = panel->config().title.trimmed();
+  dock->setPanelTitle(title.isEmpty() ? tr("Table") : title);
+}
+
+void VisualizationFrame::wireTablePanel(PanelDockWidget* dock,
+                                        table::TablePanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  connect(panel, &table::TablePanel::activated, this,
+          [this, panel]() { setActiveTablePanel(panel); });
+  connect(panel, &table::TablePanel::settingsToggled, this,
+          [this, panel](bool visible) {
+            setActiveTablePanel(panel);
+            showPropertyInspector(visible);
+            markConfigModified();
+          });
+  connect(panel, &table::TablePanel::panelRemoveRequested, dock, &QDockWidget::close);
+  connect(panel, &table::TablePanel::panelExpandRequested, this,
+          [this, dock]() { expandPanelDock(dock); });
+  connect(panel, &table::TablePanel::panelSplitRequested, this,
+          [this, dock](Qt::Orientation orientation) {
+            onSplitActiveDock(dock, orientation);
+          });
+  connect(panel, &table::TablePanel::panelChangeRequested, this,
+          [this, dock](const QString& object_name) {
+            changePanelInDock(dock, object_name);
+          });
+  connect(panel, &table::TablePanel::configChanged, this,
+          [this, dock, panel]() {
+            updateTableDockTitle(dock, panel);
+            if (panel == active_table_panel_ &&
+                property_inspector_panel_ != nullptr) {
+              const QString title = panel->config().title.trimmed();
+              property_inspector_panel_->setContentWidget(
+                  panel->settingsWidgetForInspector(),
+                  title.isEmpty() ? tr("Table") : title);
+            }
+            markConfigModified();
+          });
+  connect(dock, &QDockWidget::visibilityChanged, this,
+          [this, dock, panel](bool visible) {
+            if (visible || panel != active_table_panel_) {
+              return;
+            }
+            table::TablePanel* fallback = nullptr;
+            for (PanelDockWidget* candidate : orderedDockWidgets()) {
+              if (candidate == nullptr || candidate == dock ||
+                  panelTypeId(candidate) != QLatin1String("TableDock") ||
+                  !candidate->isVisible()) {
+                continue;
+              }
+              fallback = qobject_cast<table::TablePanel*>(candidate->widget());
+              if (fallback != nullptr) {
+                break;
+              }
+            }
+            setActiveTablePanel(fallback);
+          });
+}
+
+PanelDockWidget* VisualizationFrame::createTablePanelDock(const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty() ? uniquePanelObjectName(QStringLiteral("TableDock"))
+                            : object_name;
+  auto* dock = new PanelDockWidget(tr("Table"), this);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("TableDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelTable")));
+  auto* panel = new table::TablePanel(manager_.get(), dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wireTablePanel(dock, panel);
+  updateTableDockTitle(dock, panel);
+  configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
+void VisualizationFrame::updatePublishDockTitle(
+    PanelDockWidget* dock, publish_panel::PublishPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  const QString title = panel->config().title.trimmed();
+  dock->setPanelTitle(title.isEmpty() ? tr("Publish") : title);
+}
+
+void VisualizationFrame::wirePublishPanel(PanelDockWidget* dock,
+                                          publish_panel::PublishPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  connect(panel, &publish_panel::PublishPanel::activated, this,
+          [this, panel]() { setActivePublishPanel(panel); });
+  connect(panel, &publish_panel::PublishPanel::settingsToggled, this,
+          [this, panel](bool visible) {
+            setActivePublishPanel(panel);
+            showPropertyInspector(visible);
+            markConfigModified();
+          });
+  connect(panel, &publish_panel::PublishPanel::panelRemoveRequested, dock,
+          &QDockWidget::close);
+  connect(panel, &publish_panel::PublishPanel::panelExpandRequested, this,
+          [this, dock]() { expandPanelDock(dock); });
+  connect(panel, &publish_panel::PublishPanel::panelSplitRequested, this,
+          [this, dock](Qt::Orientation orientation) {
+            onSplitActiveDock(dock, orientation);
+          });
+  connect(panel, &publish_panel::PublishPanel::panelChangeRequested, this,
+          [this, dock](const QString& object_name) {
+            changePanelInDock(dock, object_name);
+          });
+  connect(panel, &publish_panel::PublishPanel::configChanged, this,
+          [this, dock, panel]() {
+            updatePublishDockTitle(dock, panel);
+            if (panel == active_publish_panel_ &&
+                property_inspector_panel_ != nullptr) {
+              const QString title = panel->config().title.trimmed();
+              property_inspector_panel_->setContentWidget(
+                  panel->settingsWidgetForInspector(),
+                  title.isEmpty() ? tr("Publish") : title);
+            }
+            markConfigModified();
+          });
+  connect(dock, &QDockWidget::visibilityChanged, this,
+          [this, dock, panel](bool visible) {
+            if (visible || panel != active_publish_panel_) {
+              return;
+            }
+            publish_panel::PublishPanel* fallback = nullptr;
+            for (PanelDockWidget* candidate : orderedDockWidgets()) {
+              if (candidate == nullptr || candidate == dock ||
+                  panelTypeId(candidate) != QLatin1String("PublishDock") ||
+                  !candidate->isVisible()) {
+                continue;
+              }
+              fallback =
+                  qobject_cast<publish_panel::PublishPanel*>(candidate->widget());
+              if (fallback != nullptr) {
+                break;
+              }
+            }
+            setActivePublishPanel(fallback);
+          });
+}
+
+PanelDockWidget* VisualizationFrame::createPublishPanelDock(
+    const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty() ? uniquePanelObjectName(QStringLiteral("PublishDock"))
+                            : object_name;
+  auto* dock = new PanelDockWidget(tr("Publish"), this);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("PublishDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelPublish")));
+  auto* panel = new publish_panel::PublishPanel(manager_.get(), dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wirePublishPanel(dock, panel);
+  updatePublishDockTitle(dock, panel);
+  configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
+void VisualizationFrame::updateGaugeDockTitle(PanelDockWidget* dock,
+                                              gauge::GaugePanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  const QString title = panel->config().title.trimmed();
+  dock->setPanelTitle(title.isEmpty() ? tr("Gauge") : title);
+}
+
+void VisualizationFrame::wireGaugePanel(PanelDockWidget* dock,
+                                        gauge::GaugePanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  connect(panel, &gauge::GaugePanel::activated, this,
+          [this, panel]() { setActiveGaugePanel(panel); });
+  connect(panel, &gauge::GaugePanel::settingsToggled, this,
+          [this, panel](bool visible) {
+            setActiveGaugePanel(panel);
+            showPropertyInspector(visible);
+            markConfigModified();
+          });
+  connect(panel, &gauge::GaugePanel::panelRemoveRequested, dock, &QDockWidget::close);
+  connect(panel, &gauge::GaugePanel::panelExpandRequested, this,
+          [this, dock]() { expandPanelDock(dock); });
+  connect(panel, &gauge::GaugePanel::panelSplitRequested, this,
+          [this, dock](Qt::Orientation orientation) {
+            onSplitActiveDock(dock, orientation);
+          });
+  connect(panel, &gauge::GaugePanel::panelChangeRequested, this,
+          [this, dock](const QString& object_name) {
+            changePanelInDock(dock, object_name);
+          });
+  connect(panel, &gauge::GaugePanel::configChanged, this,
+          [this, dock, panel]() {
+            updateGaugeDockTitle(dock, panel);
+            if (panel == active_gauge_panel_ &&
+                property_inspector_panel_ != nullptr) {
+              const QString title = panel->config().title.trimmed();
+              property_inspector_panel_->setContentWidget(
+                  panel->settingsWidgetForInspector(),
+                  title.isEmpty() ? tr("Gauge") : title);
+            }
+            markConfigModified();
+          });
+  connect(dock, &QDockWidget::visibilityChanged, this,
+          [this, dock, panel](bool visible) {
+            if (visible || panel != active_gauge_panel_) {
+              return;
+            }
+            gauge::GaugePanel* fallback = nullptr;
+            for (PanelDockWidget* candidate : orderedDockWidgets()) {
+              if (candidate == nullptr || candidate == dock ||
+                  panelTypeId(candidate) != QLatin1String("GaugeDock") ||
+                  !candidate->isVisible()) {
+                continue;
+              }
+              fallback = qobject_cast<gauge::GaugePanel*>(candidate->widget());
+              if (fallback != nullptr) {
+                break;
+              }
+            }
+            setActiveGaugePanel(fallback);
+          });
+}
+
+PanelDockWidget* VisualizationFrame::createGaugePanelDock(
+    const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty() ? uniquePanelObjectName(QStringLiteral("GaugeDock"))
+                            : object_name;
+  auto* dock = new PanelDockWidget(tr("Gauge"), this);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("GaugeDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelGauge")));
+  auto* panel = new gauge::GaugePanel(manager_.get(), dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wireGaugePanel(dock, panel);
+  updateGaugeDockTitle(dock, panel);
+  configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
+void VisualizationFrame::updateMapDockTitle(PanelDockWidget* dock,
+                                            map::MapPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  const QString title = panel->config().title.trimmed();
+  dock->setPanelTitle(title.isEmpty() ? tr("Map") : title);
+}
+
+void VisualizationFrame::wireMapPanel(PanelDockWidget* dock, map::MapPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  connect(panel, &map::MapPanel::activated, this,
+          [this, panel]() { setActiveMapPanel(panel); });
+  connect(panel, &map::MapPanel::settingsToggled, this,
+          [this, panel](bool visible) {
+            setActiveMapPanel(panel);
+            showPropertyInspector(visible);
+            markConfigModified();
+          });
+  connect(panel, &map::MapPanel::panelRemoveRequested, dock, &QDockWidget::close);
+  connect(panel, &map::MapPanel::panelExpandRequested, this,
+          [this, dock]() { expandPanelDock(dock); });
+  connect(panel, &map::MapPanel::panelSplitRequested, this,
+          [this, dock](Qt::Orientation orientation) {
+            onSplitActiveDock(dock, orientation);
+          });
+  connect(panel, &map::MapPanel::panelChangeRequested, this,
+          [this, dock](const QString& object_name) {
+            changePanelInDock(dock, object_name);
+          });
+  connect(panel, &map::MapPanel::configChanged, this,
+          [this, dock, panel]() {
+            updateMapDockTitle(dock, panel);
+            if (panel == active_map_panel_ && property_inspector_panel_ != nullptr) {
+              const QString title = panel->config().title.trimmed();
+              property_inspector_panel_->setContentWidget(
+                  panel->settingsWidgetForInspector(),
+                  title.isEmpty() ? tr("Map") : title);
+            }
+            markConfigModified();
+          });
+  connect(dock, &QDockWidget::visibilityChanged, this,
+          [this, dock, panel](bool visible) {
+            if (visible || panel != active_map_panel_) {
+              return;
+            }
+            map::MapPanel* fallback = nullptr;
+            for (PanelDockWidget* candidate : orderedDockWidgets()) {
+              if (candidate == nullptr || candidate == dock ||
+                  panelTypeId(candidate) != QLatin1String("MapDock") ||
+                  !candidate->isVisible()) {
+                continue;
+              }
+              fallback = qobject_cast<map::MapPanel*>(candidate->widget());
+              if (fallback != nullptr) {
+                break;
+              }
+            }
+            setActiveMapPanel(fallback);
+          });
+}
+
+PanelDockWidget* VisualizationFrame::createMapPanelDock(
+    const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty() ? uniquePanelObjectName(QStringLiteral("MapDock"))
+                            : object_name;
+  auto* dock = new PanelDockWidget(tr("Map"), this);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("MapDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelMap")));
+  auto* panel = new map::MapPanel(manager_.get(), dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wireMapPanel(dock, panel);
+  updateMapDockTitle(dock, panel);
+  configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
+void VisualizationFrame::updateIndicatorDockTitle(PanelDockWidget* dock,
+                                                  indicator::IndicatorPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  const QString title = panel->config().title.trimmed();
+  dock->setPanelTitle(title.isEmpty() ? tr("Indicator") : title);
+}
+
+void VisualizationFrame::wireIndicatorPanel(PanelDockWidget* dock,
+                                            indicator::IndicatorPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  connect(panel, &indicator::IndicatorPanel::activated, this,
+          [this, panel]() { setActiveIndicatorPanel(panel); });
+  connect(panel, &indicator::IndicatorPanel::settingsToggled, this,
+          [this, panel](bool visible) {
+            setActiveIndicatorPanel(panel);
+            showPropertyInspector(visible);
+            markConfigModified();
+          });
+  connect(panel, &indicator::IndicatorPanel::panelRemoveRequested, dock,
+          &QDockWidget::close);
+  connect(panel, &indicator::IndicatorPanel::panelExpandRequested, this,
+          [this, dock]() { expandPanelDock(dock); });
+  connect(panel, &indicator::IndicatorPanel::panelSplitRequested, this,
+          [this, dock](Qt::Orientation orientation) {
+            onSplitActiveDock(dock, orientation);
+          });
+  connect(panel, &indicator::IndicatorPanel::panelChangeRequested, this,
+          [this, dock](const QString& object_name) {
+            changePanelInDock(dock, object_name);
+          });
+  connect(panel, &indicator::IndicatorPanel::configChanged, this,
+          [this, dock, panel]() {
+            updateIndicatorDockTitle(dock, panel);
+            if (panel == active_indicator_panel_ &&
+                property_inspector_panel_ != nullptr) {
+              const QString title = panel->config().title.trimmed();
+              property_inspector_panel_->setContentWidget(
+                  panel->settingsWidgetForInspector(),
+                  title.isEmpty() ? tr("Indicator") : title);
+            }
+            markConfigModified();
+          });
+  connect(dock, &QDockWidget::visibilityChanged, this,
+          [this, dock, panel](bool visible) {
+            if (visible || panel != active_indicator_panel_) {
+              return;
+            }
+            indicator::IndicatorPanel* fallback = nullptr;
+            for (PanelDockWidget* candidate : orderedDockWidgets()) {
+              if (candidate == nullptr || candidate == dock ||
+                  panelTypeId(candidate) != QLatin1String("IndicatorDock") ||
+                  !candidate->isVisible()) {
+                continue;
+              }
+              fallback = qobject_cast<indicator::IndicatorPanel*>(candidate->widget());
+              if (fallback != nullptr) {
+                break;
+              }
+            }
+            setActiveIndicatorPanel(fallback);
+          });
+}
+
+PanelDockWidget* VisualizationFrame::createIndicatorPanelDock(
+    const QString& object_name) {
+  const QString dock_name = object_name.isEmpty()
+                                ? uniquePanelObjectName(QStringLiteral("IndicatorDock"))
+                                : object_name;
+  auto* dock = new PanelDockWidget(tr("Indicator"), this);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("IndicatorDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelIndicator")));
+  auto* panel = new indicator::IndicatorPanel(manager_.get(), dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wireIndicatorPanel(dock, panel);
+  updateIndicatorDockTitle(dock, panel);
+  configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
+PanelDockWidget* VisualizationFrame::duplicatePanelDock(
+    PanelDockWidget* source) {
+  if (source == nullptr) {
+    return nullptr;
+  }
+
+  const QString type = panelTypeId(source);
+  if (type == QLatin1String("PlotDock")) {
+    PanelDockWidget* dock = createPlotPanelDock();
+    auto* src_panel = qobject_cast<plot::PlotPanel*>(source->widget());
+    auto* dst_panel = qobject_cast<plot::PlotPanel*>(dock->widget());
+    if (src_panel != nullptr && dst_panel != nullptr) {
+      dst_panel->cloneConfigFrom(src_panel->config());
+      updatePlotDockTitle(dock, dst_panel);
+      setActivePlotPanel(dst_panel);
+    }
+    return dock;
+  }
+  if (type == QLatin1String("ImageDock")) {
+    PanelDockWidget* dock = createImagePanelDock();
+    auto* src_panel = qobject_cast<image::ImagePanel*>(source->widget());
+    auto* dst_panel = qobject_cast<image::ImagePanel*>(dock->widget());
+    if (src_panel != nullptr && dst_panel != nullptr) {
+      dst_panel->cloneConfigFrom(src_panel->config());
+      updateImageDockTitle(dock, dst_panel);
+      setActiveImagePanel(dst_panel);
+    }
+    return dock;
+  }
+  if (type == QLatin1String("TeleopDock")) {
+    PanelDockWidget* dock = createTeleopPanelDock();
+    auto* src_panel = qobject_cast<teleop::TeleopPanel*>(source->widget());
+    auto* dst_panel = qobject_cast<teleop::TeleopPanel*>(dock->widget());
+    if (src_panel != nullptr && dst_panel != nullptr) {
+      dst_panel->cloneConfigFrom(src_panel->config());
+      updateTeleopDockTitle(dock, dst_panel);
+      setActiveTeleopPanel(dst_panel);
+    }
+    return dock;
+  }
+  if (type == QLatin1String("LogDock")) {
+    PanelDockWidget* dock = createLogPanelDock();
+    auto* src_panel = qobject_cast<log_panel::LogPanel*>(source->widget());
+    auto* dst_panel = qobject_cast<log_panel::LogPanel*>(dock->widget());
+    if (src_panel != nullptr && dst_panel != nullptr) {
+      dst_panel->cloneConfigFrom(src_panel->config());
+      updateLogDockTitle(dock, dst_panel);
+      setActiveLogPanel(dst_panel);
+    }
+    return dock;
+  }
+  if (type == QLatin1String("TfTreeDock")) {
+    return createTfTreePanelDock();
+  }
+  if (type == QLatin1String("TableDock")) {
+    PanelDockWidget* dock = createTablePanelDock();
+    auto* src_panel = qobject_cast<table::TablePanel*>(source->widget());
+    auto* dst_panel = qobject_cast<table::TablePanel*>(dock->widget());
+    if (src_panel != nullptr && dst_panel != nullptr) {
+      dst_panel->cloneConfigFrom(src_panel->config());
+      updateTableDockTitle(dock, dst_panel);
+      setActiveTablePanel(dst_panel);
+    }
+    return dock;
+  }
+  if (type == QLatin1String("PublishDock")) {
+    PanelDockWidget* dock = createPublishPanelDock();
+    auto* src_panel = qobject_cast<publish_panel::PublishPanel*>(source->widget());
+    auto* dst_panel = qobject_cast<publish_panel::PublishPanel*>(dock->widget());
+    if (src_panel != nullptr && dst_panel != nullptr) {
+      dst_panel->cloneConfigFrom(src_panel->config());
+      updatePublishDockTitle(dock, dst_panel);
+      setActivePublishPanel(dst_panel);
+    }
+    return dock;
+  }
+  if (type == QLatin1String("GaugeDock")) {
+    PanelDockWidget* dock = createGaugePanelDock();
+    auto* src_panel = qobject_cast<gauge::GaugePanel*>(source->widget());
+    auto* dst_panel = qobject_cast<gauge::GaugePanel*>(dock->widget());
+    if (src_panel != nullptr && dst_panel != nullptr) {
+      dst_panel->cloneConfigFrom(src_panel->config());
+      updateGaugeDockTitle(dock, dst_panel);
+      setActiveGaugePanel(dst_panel);
+    }
+    return dock;
+  }
+  if (type == QLatin1String("MapDock")) {
+    PanelDockWidget* dock = createMapPanelDock();
+    auto* src_panel = qobject_cast<map::MapPanel*>(source->widget());
+    auto* dst_panel = qobject_cast<map::MapPanel*>(dock->widget());
+    if (src_panel != nullptr && dst_panel != nullptr) {
+      dst_panel->cloneConfigFrom(src_panel->config());
+      updateMapDockTitle(dock, dst_panel);
+      setActiveMapPanel(dst_panel);
+    }
+    return dock;
+  }
+  if (type == QLatin1String("IndicatorDock")) {
+    PanelDockWidget* dock = createIndicatorPanelDock();
+    auto* src_panel = qobject_cast<indicator::IndicatorPanel*>(source->widget());
+    auto* dst_panel = qobject_cast<indicator::IndicatorPanel*>(dock->widget());
+    if (src_panel != nullptr && dst_panel != nullptr) {
+      dst_panel->cloneConfigFrom(src_panel->config());
+      updateIndicatorDockTitle(dock, dst_panel);
+      setActiveIndicatorPanel(dst_panel);
+    }
+    return dock;
+  }
+
+  return nullptr;
 }
 
 void VisualizationFrame::onAddPanel() {
@@ -1650,16 +4672,7 @@ void VisualizationFrame::onAddPanel() {
   if (dialog.exec() != QDialog::Accepted) {
     return;
   }
-  const QString object_name = dialog.selectedPanelObjectName();
-  if (object_name.isEmpty()) {
-    return;
-  }
-  PanelDockWidget* dock = findChild<PanelDockWidget*>(object_name);
-  if (dock == nullptr) {
-    return;
-  }
-  dock->show();
-  dock->raise();
+  showPanelByObjectName(dialog.selectedPanelObjectName());
 }
 
 void VisualizationFrame::registerDeletePanelAction(PanelDockWidget* dock) {
@@ -1753,6 +4766,11 @@ void VisualizationFrame::showHelpPanel() {
   }
   help_dock_->show();
   help_dock_->raise();
+}
+
+void VisualizationFrame::onResetDefaultLayout() {
+  applyDefaultDockLayout();
+  markConfigModified();
 }
 
 void VisualizationFrame::onHelpAbout() {

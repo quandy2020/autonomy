@@ -160,9 +160,13 @@ class VisualizationManager {
 
   void setWindowLayout(const std::string& state_b64,
                        const std::string& geometry_b64);
+  void setMainPanelLayout(const std::string& state_b64);
   void setDockHideState(bool hide_left, bool hide_right);
   void setPanelLayouts(const std::vector<PanelLayoutConfig>& layouts);
   void setVisiblePanels(const std::vector<std::string>& panels);
+  void setPlotPanels(const std::vector<PlotPanelPersistConfig>& panels);
+  void setImagePanels(const std::vector<ImagePanelPersistConfig>& panels);
+  void setPlotSettingsVisible(bool visible);
   void setWindowFrame(int x, int y, int width, int height);
   bool hideLeftDock() const { return hide_left_dock_; }
   bool hideRightDock() const { return hide_right_dock_; }
@@ -172,11 +176,19 @@ class VisualizationManager {
   const std::vector<std::string>& visiblePanels() const {
     return visible_panels_;
   }
+  const std::vector<PlotPanelPersistConfig>& plotPanels() const {
+    return plot_panels_;
+  }
+  const std::vector<ImagePanelPersistConfig>& imagePanels() const {
+    return image_panels_;
+  }
+  bool plotSettingsVisible() const { return plot_settings_visible_; }
   int windowX() const { return window_x_; }
   int windowY() const { return window_y_; }
   int windowWidth() const { return window_width_; }
   int windowHeight() const { return window_height_; }
   std::string windowStateBase64() const { return window_state_b64_; }
+  std::string mainPanelStateBase64() const { return main_panel_state_b64_; }
   std::string windowGeometryBase64() const { return window_geometry_b64_; }
 
   const std::string& viewControllerName() const { return view_controller_name_; }
@@ -256,11 +268,15 @@ class VisualizationManager {
   std::string view_controller_name_ = "Orbit";
   std::string render_backend_name_ = "OpenGL";
   std::string window_state_b64_;
+  std::string main_panel_state_b64_;
   std::string window_geometry_b64_;
   bool hide_left_dock_ = false;
   bool hide_right_dock_ = false;
   std::vector<PanelLayoutConfig> panel_layouts_;
   std::vector<std::string> visible_panels_;
+  std::vector<PlotPanelPersistConfig> plot_panels_;
+  std::vector<ImagePanelPersistConfig> image_panels_;
+  bool plot_settings_visible_ = true;
   int window_x_ = -1;
   int window_y_ = -1;
   int window_width_ = -1;
