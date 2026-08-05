@@ -5,6 +5,7 @@
 #include "autoviz/transform/buffer.hpp"
 
 #include <chrono>
+#include <mutex>
 #include <thread>
 
 #include <glog/logging.h>
@@ -33,6 +34,10 @@ Buffer* Buffer::Instance() {
 }
 
 void Buffer::clear() {
+  {
+    std::lock_guard<std::mutex> lock(stats_mutex_);
+    frame_stats_.clear();
+  }
   tf2::BufferCore::clear();
 }
 
@@ -79,10 +84,56 @@ automsgs::msgs::geometry_msgs::TransformStamped Buffer::FromTf2Message(
   return trans_stamped;
 }
 
+void Buffer::recordFrameStats(
+    const automsgs::msgs::geometry_msgs::TransformStamped& transform,
+    const std::string& authority, bool is_static) {
+  const std::string child = transform.child_frame_id();
+  if (child.empty()) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(stats_mutex_);
+  TfFrameStats& stats = frame_stats_[child];
+  stats.frame_id = child;
+  stats.parent_id = transform.header().frame_id();
+  stats.authority = authority;
+  stats.last_stamp_ns = static_cast<int64_t>(
+      automsgs::msgs::builtin_interfaces::TimeToNanoseconds(transform.header().stamp()));
+  stats.transforms_received += 1;
+  stats.is_static = is_static || stats.is_static;
+}
+
+std::vector<TfFrameStats> Buffer::frameStats() const {
+  std::vector<std::string> frame_ids;
+  _getFrameStrings(frame_ids);
+
+  std::lock_guard<std::mutex> lock(stats_mutex_);
+  std::vector<TfFrameStats> out;
+  out.reserve(frame_ids.size());
+  for (const std::string& frame_id : frame_ids) {
+    if (frame_id == "NO_PARENT") {
+      continue;
+    }
+    TfFrameStats stats;
+    const auto it = frame_stats_.find(frame_id);
+    if (it != frame_stats_.end()) {
+      stats = it->second;
+    } else {
+      stats.frame_id = frame_id;
+    }
+    std::string parent;
+    if (_getParent(frame_id, 0, parent)) {
+      stats.parent_id = parent;
+    }
+    out.push_back(std::move(stats));
+  }
+  return out;
+}
+
 void Buffer::setTransform(
     const automsgs::msgs::geometry_msgs::TransformStamped& transform,
     const std::string& authority, bool is_static) {
   try {
+    recordFrameStats(transform, authority, is_static);
     tf2::BufferCore::setTransform(ToTf2Message(transform), authority, is_static);
   } catch (const tf2::TransformException& ex) {
     LOG(WARNING) << "Failed to apply transform [" << transform.header().frame_id()

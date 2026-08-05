@@ -4,23 +4,23 @@
 
 #pragma once
 
-#include <QImage>
-#include <QLabel>
 #include <QWidget>
+
+class QPlainTextEdit;
 
 namespace autoviz {
 
-class ImagePanel : public QWidget {
+/** Foxglove-style Problems sidebar (playback / connection diagnostics). */
+class ProblemsPanel : public QWidget {
   Q_OBJECT
 
  public:
-  explicit ImagePanel(QWidget* parent = nullptr);
+  explicit ProblemsPanel(QWidget* parent = nullptr);
 
-  void setImage(const QString& source, const QImage& image);
+  void refresh();
 
  private:
-  QLabel* source_label_ = nullptr;
-  QLabel* image_label_ = nullptr;
+  QPlainTextEdit* content_ = nullptr;
 };
 
 }  // namespace autoviz

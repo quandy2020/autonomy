@@ -140,7 +140,7 @@ int main(int argc, char** argv) {
     splash.reset();
   }
 
-  frame.show();
+  frame.showMaximized();
   const int code = app.exec();
   manager->shutdown();
   return code;

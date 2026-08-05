@@ -37,6 +37,9 @@ AddPanelDialog::AddPanelDialog(const QStringList& available_panels,
 void AddPanelDialog::populate(const QStringList& available_panels) {
   list_->clear();
   for (const auto& entry : PanelCatalog()) {
+    if (!entry.isImplemented()) {
+      continue;
+    }
     if (!available_panels.contains(QLatin1String(entry.object_name))) {
       continue;
     }

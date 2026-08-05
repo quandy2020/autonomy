@@ -58,6 +58,64 @@ struct PanelLayoutConfig {
   bool collapsed = false;
 };
 
+struct PlotSeriesPersistConfig {
+  std::string channel;
+  std::string field_path;
+  std::string x_field_path;
+  std::string custom_timestamp_path;
+  std::string label;
+  std::string color = "#4e98e2";
+  std::string line_size = "auto";
+  bool show_line = true;
+  int timestamp_mode = 0;
+  bool enabled = true;
+};
+
+struct PlotPanelPersistConfig {
+  std::string object_name;
+  std::string title = "Plot";
+  int x_axis_mode = 0;
+  int message_path_mode = 1;
+  bool sync_with_other_plots = false;
+  bool show_legend_values = true;
+  bool settings_visible = false;
+  int settings_width = 300;
+  bool lock_axis_scales = false;
+  double x_window_sec = 30.0;
+  std::vector<PlotSeriesPersistConfig> series;
+};
+
+struct ImageOverlayPersistConfig {
+  std::string channel;
+  double opacity = 0.5;
+  int blend_mode = 0;
+  int pixel_alpha = 0;
+  bool enabled = true;
+};
+
+struct ImagePanelPersistConfig {
+  std::string object_name;
+  std::string title = "Image";
+  std::string image_channel;
+  std::string calibration_channel;
+  bool strict_time_sync = false;
+  bool flip_horizontal = false;
+  bool flip_vertical = false;
+  int rotation = 0;
+  int color_mode = 0;
+  double color_min = 0.0;
+  double color_max = 255.0;
+  std::vector<ImageOverlayPersistConfig> overlays;
+  std::vector<std::string> annotation_channels;
+  std::vector<std::string> marker_channels;
+  std::string background_color = "#000000";
+  double label_scale = 1.0;
+  std::string click_publish_channel;
+  std::string hover_publish_channel;
+  bool enable_undistort = false;
+  bool settings_visible = false;
+};
+
 struct SessionConfig {
   std::string fixed_frame = "map";
   bool show_grid = true;
@@ -71,11 +129,15 @@ struct SessionConfig {
   std::vector<SavedViewConfig> views;
   std::vector<ToolConfig> tools;
   std::string window_state_b64;
+  std::string main_panel_state_b64;
   std::string window_geometry_b64;
   bool hide_left_dock = false;
   bool hide_right_dock = false;
   std::vector<PanelLayoutConfig> panel_layouts;
   std::vector<std::string> visible_panels;
+  std::vector<PlotPanelPersistConfig> plot_panels;
+  std::vector<ImagePanelPersistConfig> image_panels;
+  bool plot_settings_visible = true;
   std::string transformer_id = "autoviz/AutolinkTf";
   int window_x = -1;
   int window_y = -1;

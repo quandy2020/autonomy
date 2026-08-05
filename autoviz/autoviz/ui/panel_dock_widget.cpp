@@ -6,6 +6,7 @@
 
 #include <QApplication>
 #include <QCloseEvent>
+#include <QEvent>
 #include <QHBoxLayout>
 #include <QMainWindow>
 #include <QResizeEvent>
@@ -42,9 +43,38 @@ PanelDockWidget::PanelDockWidget(const QString& name, QWidget* parent)
   auto* title_layout = new QHBoxLayout(title_bar_);
   title_layout->setContentsMargins(2, 2, 2, 2);
   title_layout->addWidget(icon_label_);
-  title_layout->addWidget(title_label_, 1);
+  title_layout->addWidget(title_label_);
+  title_layout->addStretch(1);
+  title_tools_host_ = new QWidget(title_bar_);
+  title_tools_host_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
+  title_layout->addWidget(title_tools_host_);
   title_layout->addWidget(close_button);
   setTitleBarWidget(title_bar_);
+  title_bar_->installEventFilter(this);
+}
+
+void PanelDockWidget::setTitleBarTools(QWidget* tools) {
+  if (title_tools_host_ == nullptr) {
+    return;
+  }
+  if (QLayout* existing = title_tools_host_->layout()) {
+    QLayoutItem* item = nullptr;
+    while ((item = existing->takeAt(0)) != nullptr) {
+      if (item->widget() != nullptr) {
+        item->widget()->deleteLater();
+      }
+      delete item;
+    }
+    delete existing;
+  }
+  if (tools == nullptr) {
+    return;
+  }
+  tools->setParent(title_tools_host_);
+  auto* layout = new QHBoxLayout(title_tools_host_);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(0);
+  layout->addWidget(tools);
 }
 
 void PanelDockWidget::setContentWidget(QWidget* child) {
@@ -62,7 +92,13 @@ void PanelDockWidget::setContentWidget(QWidget* child) {
 }
 
 QMainWindow* PanelDockWidget::mainWindow() const {
-  return qobject_cast<QMainWindow*>(parentWidget());
+  for (QWidget* widget = parentWidget(); widget != nullptr;
+       widget = widget->parentWidget()) {
+    if (auto* main_window = qobject_cast<QMainWindow*>(widget)) {
+      return main_window;
+    }
+  }
+  return nullptr;
 }
 
 int PanelDockWidget::fixedDockHeight() const {
@@ -160,6 +196,13 @@ void PanelDockWidget::setPanelIcon(const QIcon& icon) {
   icon_label_->setPixmap(icon.pixmap(16, 16));
 }
 
+void PanelDockWidget::setPanelTitle(const QString& title) {
+  if (title_label_ != nullptr) {
+    title_label_->setText(title);
+  }
+  setWindowTitle(title);
+}
+
 void PanelDockWidget::setCollapsed(bool collapse) {
   if (collapsed_ == collapse || isFloating()) {
     return;
@@ -207,6 +250,9 @@ void PanelDockWidget::resizeEvent(QResizeEvent* event) {
 }
 
 bool PanelDockWidget::eventFilter(QObject* watched, QEvent* event) {
+  if (watched == title_bar_ && event->type() == QEvent::MouseButtonPress) {
+    emit activated();
+  }
   if (fixed_content_height_ > 0 && watched == mainWindow()) {
     switch (event->type()) {
       case QEvent::Resize:

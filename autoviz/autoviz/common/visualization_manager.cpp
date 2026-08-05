@@ -11,6 +11,8 @@
 #include "autoviz/common/display_context.hpp"
 #include "autolink/service_discovery/topology_manager.hpp"
 #include "autoviz/integration/channel_reader_registry.hpp"
+#include "autoviz/integration/channel_writer_registry.hpp"
+#include "autoviz/ui/log/log_hub.hpp"
 #include "autoviz/display/display.hpp"
 #include "autoviz/display/display_group.hpp"
 #include "autoviz/display/interactive_marker_display.hpp"
@@ -39,6 +41,7 @@ bool VisualizationManager::initialize(const char* binary_name) {
   transformation_manager_.setFrameManager(&frame_manager_);
   display_context_.autolink = &autolink_;
   integration::ChannelReaderRegistry::instance().setNode(autolink_.node());
+  integration::ChannelWriterRegistry::instance().setNode(autolink_.node());
   display_context_.tf_buffer = tf_buffer_;
   display_context_.frame_manager = &frame_manager_;
   display_context_.pick_registry = &pick_registry_;
@@ -56,6 +59,7 @@ bool VisualizationManager::initialize(const char* binary_name) {
   refreshChannelList();
   wall_start_ = std::chrono::steady_clock::now();
   sim_origin_sec_ = simTimeSec();
+  autoviz::log_panel::LogHub::instance().installGlogCapture();
   initialized_ = true;
   return true;
 }
@@ -71,7 +75,9 @@ void VisualizationManager::shutdown() {
   display_views_.clear();
   interactive_marker_registry_ = display::InteractiveMarkerRegistry{};
   channel_manager_.reset();
+  autoviz::log_panel::LogHub::instance().uninstallGlogCapture();
   integration::ChannelReaderRegistry::instance().setNode(nullptr);
+  integration::ChannelWriterRegistry::instance().setNode(nullptr);
   autolink_.shutdown();
   cached_channels_.clear();
   initialized_ = false;
@@ -116,11 +122,15 @@ void VisualizationManager::applySession(const SessionConfig& config) {
   view_controller_name_ = config.view_controller;
   render_backend_name_ = config.render_backend;
   window_state_b64_ = config.window_state_b64;
+  main_panel_state_b64_ = config.main_panel_state_b64;
   window_geometry_b64_ = config.window_geometry_b64;
   hide_left_dock_ = config.hide_left_dock;
   hide_right_dock_ = config.hide_right_dock;
   panel_layouts_ = config.panel_layouts;
   visible_panels_ = config.visible_panels;
+  plot_panels_ = config.plot_panels;
+  image_panels_ = config.image_panels;
+  plot_settings_visible_ = config.plot_settings_visible;
   window_x_ = config.window_x;
   window_y_ = config.window_y;
   window_width_ = config.window_width;
@@ -272,11 +282,15 @@ SessionConfig VisualizationManager::currentSession() const {
   config.view_controller = view_controller_name_;
   config.render_backend = render_backend_name_;
   config.window_state_b64 = window_state_b64_;
+  config.main_panel_state_b64 = main_panel_state_b64_;
   config.window_geometry_b64 = window_geometry_b64_;
   config.hide_left_dock = hide_left_dock_;
   config.hide_right_dock = hide_right_dock_;
   config.panel_layouts = panel_layouts_;
   config.visible_panels = visible_panels_;
+  config.plot_panels = plot_panels_;
+  config.image_panels = image_panels_;
+  config.plot_settings_visible = plot_settings_visible_;
   config.window_x = window_x_;
   config.window_y = window_y_;
   config.window_width = window_width_;
@@ -673,6 +687,10 @@ void VisualizationManager::setWindowLayout(const std::string& state_b64,
   window_geometry_b64_ = geometry_b64;
 }
 
+void VisualizationManager::setMainPanelLayout(const std::string& state_b64) {
+  main_panel_state_b64_ = state_b64;
+}
+
 void VisualizationManager::setDockHideState(bool hide_left, bool hide_right) {
   hide_left_dock_ = hide_left;
   hide_right_dock_ = hide_right;
@@ -686,6 +704,20 @@ void VisualizationManager::setPanelLayouts(
 void VisualizationManager::setVisiblePanels(
     const std::vector<std::string>& panels) {
   visible_panels_ = panels;
+}
+
+void VisualizationManager::setPlotPanels(
+    const std::vector<PlotPanelPersistConfig>& panels) {
+  plot_panels_ = panels;
+}
+
+void VisualizationManager::setImagePanels(
+    const std::vector<ImagePanelPersistConfig>& panels) {
+  image_panels_ = panels;
+}
+
+void VisualizationManager::setPlotSettingsVisible(bool visible) {
+  plot_settings_visible_ = visible;
 }
 
 void VisualizationManager::setWindowFrame(int x, int y, int width, int height) {

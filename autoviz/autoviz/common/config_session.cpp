@@ -150,6 +150,254 @@ std::string MapRvizTransformerClass(const std::string& rviz_class) {
   return "autoviz/AutolinkTf";
 }
 
+void ReadPlotSeriesFromConfig(const Config& node,
+                              PlotSeriesPersistConfig* series) {
+  if (series == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  if (node.mapGetString("Channel", &value)) {
+    series->channel = value.toStdString();
+  }
+  if (node.mapGetString("FieldPath", &value)) {
+    series->field_path = value.toStdString();
+  }
+  if (node.mapGetString("XFieldPath", &value)) {
+    series->x_field_path = value.toStdString();
+  }
+  if (node.mapGetString("CustomTimestampPath", &value)) {
+    series->custom_timestamp_path = value.toStdString();
+  }
+  if (node.mapGetString("Label", &value)) {
+    series->label = value.toStdString();
+  }
+  if (node.mapGetString("Color", &value)) {
+    series->color = value.toStdString();
+  }
+  if (node.mapGetString("LineSize", &value)) {
+    series->line_size = value.toStdString();
+  }
+  node.mapGetBool("ShowLine", &series->show_line);
+  node.mapGetInt("TimestampMode", &series->timestamp_mode);
+  node.mapGetBool("Enabled", &series->enabled);
+}
+
+void WritePlotSeriesToConfig(const PlotSeriesPersistConfig& series,
+                             Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("Channel", QString::fromStdString(series.channel));
+  node->mapSetValue("FieldPath", QString::fromStdString(series.field_path));
+  node->mapSetValue("XFieldPath", QString::fromStdString(series.x_field_path));
+  node->mapSetValue("CustomTimestampPath",
+                    QString::fromStdString(series.custom_timestamp_path));
+  node->mapSetValue("Label", QString::fromStdString(series.label));
+  node->mapSetValue("Color", QString::fromStdString(series.color));
+  node->mapSetValue("LineSize", QString::fromStdString(series.line_size));
+  node->mapSetValue("ShowLine", series.show_line);
+  node->mapSetValue("TimestampMode", series.timestamp_mode);
+  node->mapSetValue("Enabled", series.enabled);
+}
+
+void ReadPlotPanelFromConfig(const Config& node,
+                             PlotPanelPersistConfig* panel) {
+  if (panel == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  if (node.mapGetString("ObjectName", &value)) {
+    panel->object_name = value.toStdString();
+  }
+  if (node.mapGetString("Title", &value)) {
+    panel->title = value.toStdString();
+  }
+  node.mapGetInt("XAxisMode", &panel->x_axis_mode);
+  node.mapGetInt("MessagePathMode", &panel->message_path_mode);
+  node.mapGetBool("SyncWithOtherPlots", &panel->sync_with_other_plots);
+  node.mapGetBool("ShowLegendValues", &panel->show_legend_values);
+  node.mapGetBool("SettingsVisible", &panel->settings_visible);
+  node.mapGetInt("SettingsWidth", &panel->settings_width);
+  node.mapGetBool("LockAxisScales", &panel->lock_axis_scales);
+  float x_window_sec = static_cast<float>(panel->x_window_sec);
+  if (node.mapGetFloat("XWindowSec", &x_window_sec)) {
+    panel->x_window_sec = x_window_sec;
+  }
+  panel->series.clear();
+  Config series_list = node.mapGetChild("Series");
+  for (int i = 0; i < series_list.listLength(); ++i) {
+    PlotSeriesPersistConfig series;
+    ReadPlotSeriesFromConfig(series_list.listChildAt(i), &series);
+    panel->series.push_back(std::move(series));
+  }
+}
+
+void WritePlotPanelToConfig(const PlotPanelPersistConfig& panel, Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("ObjectName", QString::fromStdString(panel.object_name));
+  node->mapSetValue("Title", QString::fromStdString(panel.title));
+  node->mapSetValue("XAxisMode", panel.x_axis_mode);
+  node->mapSetValue("MessagePathMode", panel.message_path_mode);
+  node->mapSetValue("SyncWithOtherPlots", panel.sync_with_other_plots);
+  node->mapSetValue("ShowLegendValues", panel.show_legend_values);
+  node->mapSetValue("SettingsVisible", panel.settings_visible);
+  node->mapSetValue("SettingsWidth", panel.settings_width);
+  node->mapSetValue("LockAxisScales", panel.lock_axis_scales);
+  node->mapSetValue("XWindowSec", panel.x_window_sec);
+  if (!panel.series.empty()) {
+    Config series_list = node->mapMakeChild("Series");
+    for (const auto& series : panel.series) {
+      Config series_node = series_list.listAppendNew();
+      WritePlotSeriesToConfig(series, &series_node);
+    }
+  }
+}
+
+void ReadImageOverlayFromConfig(const Config& node,
+                                ImageOverlayPersistConfig* overlay) {
+  if (overlay == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  if (node.mapGetString("Channel", &value)) {
+    overlay->channel = value.toStdString();
+  }
+  float opacity = static_cast<float>(overlay->opacity);
+  if (node.mapGetFloat("Opacity", &opacity)) {
+    overlay->opacity = opacity;
+  }
+  node.mapGetInt("BlendMode", &overlay->blend_mode);
+  node.mapGetInt("PixelAlpha", &overlay->pixel_alpha);
+  node.mapGetBool("Enabled", &overlay->enabled);
+}
+
+void WriteImageOverlayToConfig(const ImageOverlayPersistConfig& overlay,
+                               Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("Channel", QString::fromStdString(overlay.channel));
+  node->mapSetValue("Opacity", overlay.opacity);
+  node->mapSetValue("BlendMode", overlay.blend_mode);
+  node->mapSetValue("PixelAlpha", overlay.pixel_alpha);
+  node->mapSetValue("Enabled", overlay.enabled);
+}
+
+void ReadImagePanelFromConfig(const Config& node,
+                              ImagePanelPersistConfig* panel) {
+  if (panel == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  if (node.mapGetString("ObjectName", &value)) {
+    panel->object_name = value.toStdString();
+  }
+  if (node.mapGetString("Title", &value)) {
+    panel->title = value.toStdString();
+  }
+  if (node.mapGetString("ImageChannel", &value)) {
+    panel->image_channel = value.toStdString();
+  }
+  if (node.mapGetString("CalibrationChannel", &value)) {
+    panel->calibration_channel = value.toStdString();
+  }
+  node.mapGetBool("StrictTimeSync", &panel->strict_time_sync);
+  node.mapGetBool("FlipHorizontal", &panel->flip_horizontal);
+  node.mapGetBool("FlipVertical", &panel->flip_vertical);
+  node.mapGetInt("Rotation", &panel->rotation);
+  node.mapGetInt("ColorMode", &panel->color_mode);
+  float color_min = static_cast<float>(panel->color_min);
+  float color_max = static_cast<float>(panel->color_max);
+  if (node.mapGetFloat("ColorMin", &color_min)) {
+    panel->color_min = color_min;
+  }
+  if (node.mapGetFloat("ColorMax", &color_max)) {
+    panel->color_max = color_max;
+  }
+  if (node.mapGetString("BackgroundColor", &value)) {
+    panel->background_color = value.toStdString();
+  }
+  float label_scale = static_cast<float>(panel->label_scale);
+  if (node.mapGetFloat("LabelScale", &label_scale)) {
+    panel->label_scale = label_scale;
+  }
+  if (node.mapGetString("ClickPublishChannel", &value)) {
+    panel->click_publish_channel = value.toStdString();
+  }
+  if (node.mapGetString("HoverPublishChannel", &value)) {
+    panel->hover_publish_channel = value.toStdString();
+  }
+  node.mapGetBool("EnableUndistort", &panel->enable_undistort);
+  node.mapGetBool("SettingsVisible", &panel->settings_visible);
+  panel->overlays.clear();
+  Config overlays = node.mapGetChild("Overlays");
+  for (int i = 0; i < overlays.listLength(); ++i) {
+    ImageOverlayPersistConfig overlay;
+    ReadImageOverlayFromConfig(overlays.listChildAt(i), &overlay);
+    panel->overlays.push_back(std::move(overlay));
+  }
+  panel->annotation_channels.clear();
+  Config annotations = node.mapGetChild("AnnotationChannels");
+  for (int i = 0; i < annotations.listLength(); ++i) {
+    panel->annotation_channels.push_back(
+        annotations.listChildAt(i).getValue().toString().toStdString());
+  }
+  panel->marker_channels.clear();
+  Config markers = node.mapGetChild("MarkerChannels");
+  for (int i = 0; i < markers.listLength(); ++i) {
+    panel->marker_channels.push_back(
+        markers.listChildAt(i).getValue().toString().toStdString());
+  }
+}
+
+void WriteImagePanelToConfig(const ImagePanelPersistConfig& panel, Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("ObjectName", QString::fromStdString(panel.object_name));
+  node->mapSetValue("Title", QString::fromStdString(panel.title));
+  node->mapSetValue("ImageChannel", QString::fromStdString(panel.image_channel));
+  node->mapSetValue("CalibrationChannel",
+                    QString::fromStdString(panel.calibration_channel));
+  node->mapSetValue("StrictTimeSync", panel.strict_time_sync);
+  node->mapSetValue("FlipHorizontal", panel.flip_horizontal);
+  node->mapSetValue("FlipVertical", panel.flip_vertical);
+  node->mapSetValue("Rotation", panel.rotation);
+  node->mapSetValue("ColorMode", panel.color_mode);
+  node->mapSetValue("ColorMin", panel.color_min);
+  node->mapSetValue("ColorMax", panel.color_max);
+  node->mapSetValue("BackgroundColor",
+                    QString::fromStdString(panel.background_color));
+  node->mapSetValue("LabelScale", panel.label_scale);
+  node->mapSetValue("ClickPublishChannel",
+                    QString::fromStdString(panel.click_publish_channel));
+  node->mapSetValue("HoverPublishChannel",
+                    QString::fromStdString(panel.hover_publish_channel));
+  node->mapSetValue("EnableUndistort", panel.enable_undistort);
+  node->mapSetValue("SettingsVisible", panel.settings_visible);
+  if (!panel.overlays.empty()) {
+    Config overlays = node->mapMakeChild("Overlays");
+    for (const auto& overlay : panel.overlays) {
+      Config overlay_node = overlays.listAppendNew();
+      WriteImageOverlayToConfig(overlay, &overlay_node);
+    }
+  }
+  if (!panel.annotation_channels.empty()) {
+    Config annotations = node->mapMakeChild("AnnotationChannels");
+    for (const std::string& channel : panel.annotation_channels) {
+      annotations.listAppendNew().setValue(QString::fromStdString(channel));
+    }
+  }
+  if (!panel.marker_channels.empty()) {
+    Config markers = node->mapMakeChild("MarkerChannels");
+    for (const std::string& channel : panel.marker_channels) {
+      markers.listAppendNew().setValue(QString::fromStdString(channel));
+    }
+  }
+}
+
 bool SessionConfigFromNativeConfig(const Config& root, SessionConfig* config) {
   if (config == nullptr) {
     return false;
@@ -185,6 +433,9 @@ bool SessionConfigFromNativeConfig(const Config& root, SessionConfig* config) {
     if (window.mapGetString("State", &value)) {
       config->window_state_b64 = value.toStdString();
     }
+    if (window.mapGetString("MainPanelState", &value)) {
+      config->main_panel_state_b64 = value.toStdString();
+    }
     if (window.mapGetString("Geometry", &value)) {
       config->window_geometry_b64 = value.toStdString();
     }
@@ -194,6 +445,7 @@ bool SessionConfigFromNativeConfig(const Config& root, SessionConfig* config) {
     window.mapGetInt("Y", &config->window_y);
     window.mapGetInt("Width", &config->window_width);
     window.mapGetInt("Height", &config->window_height);
+    window.mapGetBool("PlotSettingsVisible", &config->plot_settings_visible);
     config->visible_panels.clear();
     Config visible = window.mapGetChild("VisiblePanels");
     for (int i = 0; i < visible.listLength(); ++i) {
@@ -261,6 +513,21 @@ bool SessionConfigFromNativeConfig(const Config& root, SessionConfig* config) {
           it.currentChild().getValue().toString().toStdString();
     }
     config->tools.push_back(std::move(tool));
+  }
+
+  config->plot_panels.clear();
+  Config plot_panels = root.mapGetChild("PlotPanels");
+  for (int i = 0; i < plot_panels.listLength(); ++i) {
+    PlotPanelPersistConfig panel;
+    ReadPlotPanelFromConfig(plot_panels.listChildAt(i), &panel);
+    config->plot_panels.push_back(std::move(panel));
+  }
+  config->image_panels.clear();
+  Config image_panels = root.mapGetChild("ImagePanels");
+  for (int i = 0; i < image_panels.listLength(); ++i) {
+    ImagePanelPersistConfig panel;
+    ReadImagePanelFromConfig(image_panels.listChildAt(i), &panel);
+    config->image_panels.push_back(std::move(panel));
   }
   return true;
 }
@@ -341,12 +608,17 @@ void SessionConfigToConfig(const SessionConfig& session, Config* root) {
   if (!session.window_state_b64.empty()) {
     window.mapSetValue("State", QString::fromStdString(session.window_state_b64));
   }
+  if (!session.main_panel_state_b64.empty()) {
+    window.mapSetValue("MainPanelState",
+                       QString::fromStdString(session.main_panel_state_b64));
+  }
   if (!session.window_geometry_b64.empty()) {
     window.mapSetValue("Geometry",
                        QString::fromStdString(session.window_geometry_b64));
   }
   window.mapSetValue("HideLeftDock", session.hide_left_dock);
   window.mapSetValue("HideRightDock", session.hide_right_dock);
+  window.mapSetValue("PlotSettingsVisible", session.plot_settings_visible);
   if (session.window_x >= 0) {
     window.mapSetValue("X", session.window_x);
   }
@@ -408,6 +680,21 @@ void SessionConfigToConfig(const SessionConfig& session, Config* root) {
         props.mapSetValue(QString::fromStdString(prop.first),
                           QString::fromStdString(prop.second));
       }
+    }
+  }
+
+  if (!session.plot_panels.empty()) {
+    Config plot_panels = root->mapMakeChild("PlotPanels");
+    for (const auto& panel : session.plot_panels) {
+      Config node = plot_panels.listAppendNew();
+      WritePlotPanelToConfig(panel, &node);
+    }
+  }
+  if (!session.image_panels.empty()) {
+    Config image_panels = root->mapMakeChild("ImagePanels");
+    for (const auto& panel : session.image_panels) {
+      Config node = image_panels.listAppendNew();
+      WriteImagePanelToConfig(panel, &node);
     }
   }
 }
