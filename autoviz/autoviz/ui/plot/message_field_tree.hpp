@@ -19,6 +19,15 @@ constexpr int kTopicDraggableRole = Qt::UserRole + 12;
 
 constexpr int kTopicTableDraggableRole = Qt::UserRole + 13;
 
+/** Channel node can be dropped on Raw Messages and similar panels. */
+constexpr int kTopicChannelDraggableRole = Qt::UserRole + 14;
+
+/** Channel node carries an image-compatible message type. */
+constexpr int kTopicImageDraggableRole = Qt::UserRole + 15;
+
+/** Channel node carries geo/map-compatible message type. */
+constexpr int kTopicMapDraggableRole = Qt::UserRole + 16;
+
 /** Populate numeric protobuf field leaves under parent for drag-to-plot. */
 void PopulateMessageFieldTree(QTreeWidgetItem* parent,
                               const std::string& message_type,

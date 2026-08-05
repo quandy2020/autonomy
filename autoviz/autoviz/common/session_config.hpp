@@ -93,6 +93,12 @@ struct ImageOverlayPersistConfig {
   bool enabled = true;
 };
 
+struct VariablePersistConfig {
+  std::string name;
+  std::string type = "string";
+  std::string value;
+};
+
 struct ImagePanelPersistConfig {
   std::string object_name;
   std::string title = "Image";
@@ -116,6 +122,36 @@ struct ImagePanelPersistConfig {
   bool settings_visible = false;
 };
 
+struct StateTransitionMappingPersistConfig {
+  int kind = 0;
+  std::string match_value;
+  double range_min = 0.0;
+  double range_max = 0.0;
+  std::string label;
+  std::string color = "#787882";
+};
+
+struct StateTransitionSeriesPersistConfig {
+  std::string channel;
+  std::string field_path;
+  std::string custom_timestamp_path;
+  std::string label;
+  int timestamp_mode = 0;
+  bool enabled = true;
+  std::vector<StateTransitionMappingPersistConfig> mappings;
+};
+
+struct StateTransitionPanelPersistConfig {
+  std::string object_name;
+  std::string title = "State Transitions";
+  int x_axis_mode = 0;
+  double x_window_sec = 30.0;
+  double fixed_min_time = 0.0;
+  double fixed_max_time = 60.0;
+  bool settings_visible = false;
+  std::vector<StateTransitionSeriesPersistConfig> series;
+};
+
 struct SessionConfig {
   std::string fixed_frame = "map";
   bool show_grid = true;
@@ -137,6 +173,8 @@ struct SessionConfig {
   std::vector<std::string> visible_panels;
   std::vector<PlotPanelPersistConfig> plot_panels;
   std::vector<ImagePanelPersistConfig> image_panels;
+  std::vector<StateTransitionPanelPersistConfig> state_transition_panels;
+  std::vector<VariablePersistConfig> variables;
   bool plot_settings_visible = true;
   std::string transformer_id = "autoviz/AutolinkTf";
   int window_x = -1;

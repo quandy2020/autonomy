@@ -6,6 +6,8 @@
 
 #include <automsgs/msgs/DynamicFactory.hh>
 
+#include "autoviz/ui/plot/message_path_navigation.hpp"
+
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/message.h>
 
@@ -206,7 +208,8 @@ std::optional<double> PlotFieldExtractor::extractNumeric(
     return std::nullopt;
   }
   double value = 0.0;
-  if (!ExtractNumericByPath(*message, field_path, &value)) {
+  if (!ExtractNumericByMessagePath(*message, field_path, &value) &&
+      !ExtractNumericByPath(*message, field_path, &value)) {
     return std::nullopt;
   }
   return value;
@@ -243,7 +246,8 @@ std::optional<PlotSample> PlotFieldExtractor::extract(
   }
 
   double value = 0.0;
-  if (!ExtractNumericByPath(*message, field_path, &value)) {
+  if (!ExtractNumericByMessagePath(*message, field_path, &value) &&
+      !ExtractNumericByPath(*message, field_path, &value)) {
     return std::nullopt;
   }
 

@@ -232,6 +232,176 @@ void ReadPlotPanelFromConfig(const Config& node,
   }
 }
 
+void ReadVariableFromConfig(const Config& node, VariablePersistConfig* variable) {
+  if (variable == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  if (node.mapGetString("Name", &value)) {
+    variable->name = value.toStdString();
+  }
+  if (node.mapGetString("Type", &value)) {
+    variable->type = value.toStdString();
+  }
+  if (node.mapGetString("Value", &value)) {
+    variable->value = value.toStdString();
+  }
+}
+
+void WriteVariableToConfig(const VariablePersistConfig& variable, Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("Name", QString::fromStdString(variable.name));
+  node->mapSetValue("Type", QString::fromStdString(variable.type));
+  node->mapSetValue("Value", QString::fromStdString(variable.value));
+}
+
+void ReadStateTransitionMappingFromConfig(
+    const Config& node, StateTransitionMappingPersistConfig* mapping) {
+  if (mapping == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  node.mapGetInt("Kind", &mapping->kind);
+  if (node.mapGetString("MatchValue", &value)) {
+    mapping->match_value = value.toStdString();
+  }
+  float range_min = static_cast<float>(mapping->range_min);
+  float range_max = static_cast<float>(mapping->range_max);
+  if (node.mapGetFloat("RangeMin", &range_min)) {
+    mapping->range_min = range_min;
+  }
+  if (node.mapGetFloat("RangeMax", &range_max)) {
+    mapping->range_max = range_max;
+  }
+  if (node.mapGetString("Label", &value)) {
+    mapping->label = value.toStdString();
+  }
+  if (node.mapGetString("Color", &value)) {
+    mapping->color = value.toStdString();
+  }
+}
+
+void WriteStateTransitionMappingToConfig(
+    const StateTransitionMappingPersistConfig& mapping, Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("Kind", mapping.kind);
+  node->mapSetValue("MatchValue", QString::fromStdString(mapping.match_value));
+  node->mapSetValue("RangeMin", mapping.range_min);
+  node->mapSetValue("RangeMax", mapping.range_max);
+  node->mapSetValue("Label", QString::fromStdString(mapping.label));
+  node->mapSetValue("Color", QString::fromStdString(mapping.color));
+}
+
+void ReadStateTransitionSeriesFromConfig(
+    const Config& node, StateTransitionSeriesPersistConfig* series) {
+  if (series == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  if (node.mapGetString("Channel", &value)) {
+    series->channel = value.toStdString();
+  }
+  if (node.mapGetString("FieldPath", &value)) {
+    series->field_path = value.toStdString();
+  }
+  if (node.mapGetString("CustomTimestampPath", &value)) {
+    series->custom_timestamp_path = value.toStdString();
+  }
+  if (node.mapGetString("Label", &value)) {
+    series->label = value.toStdString();
+  }
+  node.mapGetInt("TimestampMode", &series->timestamp_mode);
+  node.mapGetBool("Enabled", &series->enabled);
+  series->mappings.clear();
+  Config mappings = node.mapGetChild("Mappings");
+  for (int i = 0; i < mappings.listLength(); ++i) {
+    StateTransitionMappingPersistConfig mapping;
+    ReadStateTransitionMappingFromConfig(mappings.listChildAt(i), &mapping);
+    series->mappings.push_back(std::move(mapping));
+  }
+}
+
+void WriteStateTransitionSeriesToConfig(
+    const StateTransitionSeriesPersistConfig& series, Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("Channel", QString::fromStdString(series.channel));
+  node->mapSetValue("FieldPath", QString::fromStdString(series.field_path));
+  node->mapSetValue("CustomTimestampPath",
+                    QString::fromStdString(series.custom_timestamp_path));
+  node->mapSetValue("Label", QString::fromStdString(series.label));
+  node->mapSetValue("TimestampMode", series.timestamp_mode);
+  node->mapSetValue("Enabled", series.enabled);
+  if (!series.mappings.empty()) {
+    Config mappings = node->mapMakeChild("Mappings");
+    for (const auto& mapping : series.mappings) {
+      Config mapping_node = mappings.listAppendNew();
+      WriteStateTransitionMappingToConfig(mapping, &mapping_node);
+    }
+  }
+}
+
+void ReadStateTransitionPanelFromConfig(
+    const Config& node, StateTransitionPanelPersistConfig* panel) {
+  if (panel == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  if (node.mapGetString("ObjectName", &value)) {
+    panel->object_name = value.toStdString();
+  }
+  if (node.mapGetString("Title", &value)) {
+    panel->title = value.toStdString();
+  }
+  node.mapGetInt("XAxisMode", &panel->x_axis_mode);
+  float x_window_sec = static_cast<float>(panel->x_window_sec);
+  if (node.mapGetFloat("XWindowSec", &x_window_sec)) {
+    panel->x_window_sec = x_window_sec;
+  }
+  float fixed_min = static_cast<float>(panel->fixed_min_time);
+  float fixed_max = static_cast<float>(panel->fixed_max_time);
+  if (node.mapGetFloat("FixedMinTime", &fixed_min)) {
+    panel->fixed_min_time = fixed_min;
+  }
+  if (node.mapGetFloat("FixedMaxTime", &fixed_max)) {
+    panel->fixed_max_time = fixed_max;
+  }
+  node.mapGetBool("SettingsVisible", &panel->settings_visible);
+  panel->series.clear();
+  Config series_list = node.mapGetChild("Series");
+  for (int i = 0; i < series_list.listLength(); ++i) {
+    StateTransitionSeriesPersistConfig series;
+    ReadStateTransitionSeriesFromConfig(series_list.listChildAt(i), &series);
+    panel->series.push_back(std::move(series));
+  }
+}
+
+void WriteStateTransitionPanelToConfig(
+    const StateTransitionPanelPersistConfig& panel, Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("ObjectName", QString::fromStdString(panel.object_name));
+  node->mapSetValue("Title", QString::fromStdString(panel.title));
+  node->mapSetValue("XAxisMode", panel.x_axis_mode);
+  node->mapSetValue("XWindowSec", panel.x_window_sec);
+  node->mapSetValue("FixedMinTime", panel.fixed_min_time);
+  node->mapSetValue("FixedMaxTime", panel.fixed_max_time);
+  node->mapSetValue("SettingsVisible", panel.settings_visible);
+  if (!panel.series.empty()) {
+    Config series_list = node->mapMakeChild("Series");
+    for (const auto& series : panel.series) {
+      Config series_node = series_list.listAppendNew();
+      WriteStateTransitionSeriesToConfig(series, &series_node);
+    }
+  }
+}
+
 void WritePlotPanelToConfig(const PlotPanelPersistConfig& panel, Config* node) {
   if (node == nullptr) {
     return;
@@ -522,12 +692,28 @@ bool SessionConfigFromNativeConfig(const Config& root, SessionConfig* config) {
     ReadPlotPanelFromConfig(plot_panels.listChildAt(i), &panel);
     config->plot_panels.push_back(std::move(panel));
   }
+
+  config->variables.clear();
+  Config variables = root.mapGetChild("Variables");
+  for (int i = 0; i < variables.listLength(); ++i) {
+    VariablePersistConfig variable;
+    ReadVariableFromConfig(variables.listChildAt(i), &variable);
+    config->variables.push_back(std::move(variable));
+  }
   config->image_panels.clear();
   Config image_panels = root.mapGetChild("ImagePanels");
   for (int i = 0; i < image_panels.listLength(); ++i) {
     ImagePanelPersistConfig panel;
     ReadImagePanelFromConfig(image_panels.listChildAt(i), &panel);
     config->image_panels.push_back(std::move(panel));
+  }
+
+  config->state_transition_panels.clear();
+  Config state_panels = root.mapGetChild("StateTransitionPanels");
+  for (int i = 0; i < state_panels.listLength(); ++i) {
+    StateTransitionPanelPersistConfig panel;
+    ReadStateTransitionPanelFromConfig(state_panels.listChildAt(i), &panel);
+    config->state_transition_panels.push_back(std::move(panel));
   }
   return true;
 }
@@ -695,6 +881,20 @@ void SessionConfigToConfig(const SessionConfig& session, Config* root) {
     for (const auto& panel : session.image_panels) {
       Config node = image_panels.listAppendNew();
       WriteImagePanelToConfig(panel, &node);
+    }
+  }
+  if (!session.variables.empty()) {
+    Config variables = root->mapMakeChild("Variables");
+    for (const auto& variable : session.variables) {
+      Config node = variables.listAppendNew();
+      WriteVariableToConfig(variable, &node);
+    }
+  }
+  if (!session.state_transition_panels.empty()) {
+    Config state_panels = root->mapMakeChild("StateTransitionPanels");
+    for (const auto& panel : session.state_transition_panels) {
+      Config node = state_panels.listAppendNew();
+      WriteStateTransitionPanelToConfig(panel, &node);
     }
   }
 }

@@ -20,6 +20,7 @@
 #include <algorithm>
 
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 namespace indicator {
@@ -44,18 +45,23 @@ QString RuleSummary(const IndicatorRule& rule, int index) {
 IndicatorSettingsWidget::IndicatorSettingsWidget(common::VisualizationManager* manager,
                                                  QWidget* parent)
     : manager_(manager), config_(DefaultIndicatorPanelConfig()), QWidget(parent) {
+  ApplyCompactSettingsShell(this);
   auto* root = new QVBoxLayout(this);
-  root->setContentsMargins(8, 8, 8, 8);
-  root->setSpacing(8);
+  root->setContentsMargins(PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
+                           PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
+  root->setSpacing(PanelSettingsLayout::kOuterSpacing);
+  root->setAlignment(Qt::AlignTop);
 
   auto* general = new QGroupBox(tr("General"), this);
+  StyleSettingsGroupBox(general);
   auto* general_form = new QFormLayout(general);
+  ApplyCompactForm(general_form);
   title_edit_ = new QLineEdit(general);
   general_form->addRow(tr("Title"), title_edit_);
   channel_combo_ = MakeCombo(general);
   channel_combo_->setEditable(true);
   field_path_edit_ = new QLineEdit(general);
-  field_path_edit_->setPlaceholderText(tr("e.g. battery.percentage"));
+  field_path_edit_->setPlaceholderText(tr("e.g. battery.percentage or $field"));
   style_combo_ = MakeCombo(general);
   style_combo_->addItem(IndicatorStyleLabel(IndicatorStyle::kBulb),
                         static_cast<int>(IndicatorStyle::kBulb));
@@ -67,10 +73,15 @@ IndicatorSettingsWidget::IndicatorSettingsWidget(common::VisualizationManager* m
   root->addWidget(general);
 
   auto* rules_group = new QGroupBox(tr("Rules (first match wins)"), this);
+  StyleSettingsGroupBox(rules_group);
   auto* rules_layout = new QVBoxLayout(rules_group);
+  rules_layout->setContentsMargins(PanelSettingsLayout::kOuterMargin, 4,
+                                   PanelSettingsLayout::kOuterMargin,
+                                   PanelSettingsLayout::kOuterMargin);
+  rules_layout->setSpacing(PanelSettingsLayout::kSectionSpacing);
   auto* rule_buttons = new QHBoxLayout();
-  auto* add_rule = new QPushButton(tr("Add rule"), rules_group);
-  auto* remove_rule = new QPushButton(tr("Remove"), rules_group);
+  auto* add_rule = MakeFlatActionButton(tr("+ Add rule"), rules_group);
+  auto* remove_rule = MakeDestructiveFlatActionButton(tr("Remove"), rules_group);
   rule_buttons->addWidget(add_rule);
   rule_buttons->addWidget(remove_rule);
   rule_buttons->addStretch(1);
@@ -85,6 +96,7 @@ IndicatorSettingsWidget::IndicatorSettingsWidget(common::VisualizationManager* m
 
   rule_editor_ = new QWidget(rules_group);
   auto* rule_form = new QFormLayout(rule_editor_);
+  ApplyCompactForm(rule_form);
   comparison_combo_ = MakeCombo(rule_editor_);
   comparison_combo_->addItem(IndicatorComparisonLabel(IndicatorComparison::kEqual),
                              static_cast<int>(IndicatorComparison::kEqual));
@@ -198,9 +210,9 @@ void IndicatorSettingsWidget::loadRuleEditor(const IndicatorRule& rule) {
       comparison_combo_->findData(static_cast<int>(rule.comparison)));
   compare_with_edit_->setText(rule.compare_with);
   label_edit_->setText(rule.label);
-  color_button_->setStyleSheet(
-      rule.color.isValid() ? QStringLiteral("background:%1;").arg(rule.color.name())
-                           : QString());
+  if (rule.color.isValid()) {
+    UpdateColorButton(color_button_, rule.color);
+  }
   syncComparisonUi();
 }
 
@@ -294,7 +306,7 @@ void IndicatorSettingsWidget::pickRuleColor() {
     return;
   }
   config_.rules[selected_rule_index_].color = picked;
-  color_button_->setStyleSheet(QStringLiteral("background:%1;").arg(picked.name()));
+  UpdateColorButton(color_button_, picked);
   emitConfigChanged();
 }
 

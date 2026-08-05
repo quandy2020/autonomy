@@ -22,10 +22,12 @@
 #include "autoviz/ui/icon_loader.hpp"
 #include "autoviz/ui/panel_context_menu.hpp"
 #include "autoviz/ui/panel_dock_widget.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 #include "autoviz/ui/panel_title_tools.hpp"
 #include "autoviz/ui/plot/plot_drag_mime.hpp"
 #include "autoviz/ui/plot/plot_field_extractor.hpp"
 #include "autoviz/ui/plot/plot_field_path.hpp"
+#include "autoviz/variables/variable_path_utils.hpp"
 
 namespace autoviz {
 namespace gauge {
@@ -62,16 +64,11 @@ GaugePanel::GaugePanel(common::VisualizationManager* manager, QWidget* parent)
   settings_layout->addWidget(settings_scroll_);
 
   auto* toolbar = new QFrame(this);
-  toolbar->setStyleSheet(
-      QStringLiteral(
-          "QFrame {"
-          "  background: palette(base);"
-          "  border-bottom: 1px solid palette(midlight);"
-          "}"));
+  toolbar->setStyleSheet(PanelStatusBarStyle());
   auto* toolbar_layout = new QHBoxLayout(toolbar);
-  toolbar_layout->setContentsMargins(6, 4, 6, 4);
+  toolbar_layout->setContentsMargins(6, 2, 6, 2);
   status_label_ = new QLabel(toolbar);
-  status_label_->setStyleSheet(QStringLiteral("color: palette(mid); font-size: 10px;"));
+  status_label_->setStyleSheet(PanelStatusLabelStyle());
   status_label_->setTextInteractionFlags(Qt::TextSelectableByMouse);
   toolbar_layout->addWidget(status_label_, 1);
   root->addWidget(toolbar);
@@ -204,19 +201,11 @@ void GaugePanel::setExpandButtonChecked(bool checked) {
 }
 
 QWidget* GaugePanel::settingsWidgetForInspector() {
-  if (settings_widget_ == nullptr) {
-    return nullptr;
-  }
-  settings_widget_->setParent(nullptr);
-  return settings_widget_;
+  return SettingsScrollForInspector(settings_scroll_);
 }
 
 void GaugePanel::recallSettingsWidget() {
-  if (settings_widget_ == nullptr || settings_scroll_ == nullptr) {
-    return;
-  }
-  settings_widget_->setParent(settings_scroll_);
-  settings_scroll_->setWidget(settings_widget_);
+  RecallSettingsScrollToContainer(settings_scroll_, settings_container_);
 }
 
 void GaugePanel::refreshSettingsChannels() {
@@ -314,7 +303,7 @@ QString GaugePanel::messageTypeForChannel(const QString& channel) const {
 void GaugePanel::resubscribeChannel() {
   unsubscribeChannel();
   if (config_.channel.isEmpty()) {
-    view_->setErrorText(tr("Drop a numeric field from Topics"));
+    view_->setErrorText(tr("Drop a numeric field from Channels"));
     updateStatusBar();
     return;
   }
@@ -336,14 +325,22 @@ void GaugePanel::onChannelPayload(const std::string& payload) {
   ingestPayload(payload);
 }
 
+void GaugePanel::refreshFromVariables() {
+  if (!last_payload_.empty()) {
+    ingestPayload(last_payload_);
+  }
+}
+
 void GaugePanel::ingestPayload(const std::string& payload) {
+  last_payload_ = payload;
   if (config_.field_path.isEmpty()) {
     view_->setErrorText(tr("Configure a numeric field path"));
     updateStatusBar();
     return;
   }
 
-  const plot::ParsedFieldPath parsed = plot::ParseFieldPath(config_.field_path);
+  const plot::ParsedFieldPath parsed = plot::ParseFieldPath(
+      plot::ResolvePlotFieldPath(config_.field_path, &manager_->variableStore()));
   if (!parsed.modifiers.isEmpty()) {
     view_->setErrorText(
         tr("Plot modifiers (e.g. .@derivative) are not supported on Gauge panels"));
@@ -392,7 +389,7 @@ void GaugePanel::updateStatusBar() {
     return;
   }
   if (config_.channel.isEmpty() || config_.field_path.isEmpty()) {
-    status_label_->setText(tr("Drop a numeric field from Topics"));
+    status_label_->setText(tr("Drop a numeric field from Channels"));
     return;
   }
   status_label_->setText(

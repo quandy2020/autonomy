@@ -12,6 +12,7 @@
 #include <sstream>
 
 #include "autoviz/commsgs/message_type_utils.hpp"
+#include "autoviz/ui/plot/message_path_navigation.hpp"
 
 namespace autoviz {
 namespace table {
@@ -249,7 +250,8 @@ std::optional<std::string> FindFirstRepeatedPathRecursive(
 
 TableData ExtractRepeatedMessageArray(
     const google::protobuf::Message& container,
-    const google::protobuf::FieldDescriptor* array_field) {
+    const google::protobuf::FieldDescriptor* array_field,
+    const plot::ResolvedRepeatedField& context) {
   TableData data;
   if (array_field == nullptr || !array_field->is_repeated() ||
       array_field->type() != google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
@@ -271,8 +273,15 @@ TableData ExtractRepeatedMessageArray(
   const int count = reflection->FieldSize(container, array_field);
   data.rows.reserve(static_cast<size_t>(count));
   for (int row_index = 0; row_index < count; ++row_index) {
+    if (context.use_single_index && row_index != context.single_index) {
+      continue;
+    }
     const google::protobuf::Message& element =
         reflection->GetRepeatedMessage(container, array_field, row_index);
+    if (context.element_filter.has_value() &&
+        !plot::ElementMatchesPathFilter(element, *context.element_filter)) {
+      continue;
+    }
     std::vector<QString> row;
     row.reserve(column_fields.size());
     for (const google::protobuf::FieldDescriptor* field : column_fields) {
@@ -285,7 +294,8 @@ TableData ExtractRepeatedMessageArray(
 
 TableData ExtractRepeatedPrimitiveArray(
     const google::protobuf::Message& container,
-    const google::protobuf::FieldDescriptor* array_field) {
+    const google::protobuf::FieldDescriptor* array_field,
+    const plot::ResolvedRepeatedField& context) {
   TableData data;
   if (array_field == nullptr || !array_field->is_repeated() ||
       array_field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
@@ -298,6 +308,12 @@ TableData ExtractRepeatedPrimitiveArray(
   const int count = reflection->FieldSize(container, array_field);
   data.rows.reserve(static_cast<size_t>(count));
   for (int row_index = 0; row_index < count; ++row_index) {
+    if (context.use_single_index && row_index != context.single_index) {
+      continue;
+    }
+    if (context.element_filter.has_value()) {
+      continue;
+    }
     data.rows.push_back(
         {RepeatedPrimitiveToString(container, array_field, row_index)});
   }
@@ -339,15 +355,23 @@ std::optional<TableData> TableFieldExtractor::extract(
 
   const google::protobuf::Message* container = nullptr;
   const google::protobuf::FieldDescriptor* array_field = nullptr;
-  if (!ResolveRepeatedField(*message, resolved_path, &container, &array_field)) {
+  plot::ResolvedRepeatedField resolved;
+  if (plot::ResolveRepeatedFieldPath(*message, resolved_path, &resolved)) {
+    container = resolved.container;
+    array_field = resolved.repeated_field;
+  } else if (!ResolveRepeatedField(*message, resolved_path, &container,
+                                   &array_field)) {
     return std::nullopt;
+  } else {
+    resolved.container = container;
+    resolved.repeated_field = array_field;
   }
 
   TableData data;
   if (array_field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
-    data = ExtractRepeatedMessageArray(*container, array_field);
+    data = ExtractRepeatedMessageArray(*container, array_field, resolved);
   } else {
-    data = ExtractRepeatedPrimitiveArray(*container, array_field);
+    data = ExtractRepeatedPrimitiveArray(*container, array_field, resolved);
   }
   if (data.columns.empty()) {
     return std::nullopt;

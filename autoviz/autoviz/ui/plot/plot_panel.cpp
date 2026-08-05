@@ -28,6 +28,7 @@
 #include "autoviz/ui/icon_loader.hpp"
 #include "autoviz/ui/panel_context_menu.hpp"
 #include "autoviz/ui/panel_dock_widget.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 #include "autoviz/ui/panel_title_tools.hpp"
 #include "autoviz/ui/plot/plot_chart_widget.hpp"
 #include "autoviz/ui/plot/plot_drag_mime.hpp"
@@ -36,6 +37,7 @@
 #include "autoviz/ui/plot/plot_legend_widget.hpp"
 #include "autoviz/ui/plot/plot_settings_widget.hpp"
 #include "autoviz/ui/plot/plot_view_sync.hpp"
+#include "autoviz/variables/variable_path_utils.hpp"
 
 namespace autoviz {
 namespace plot {
@@ -486,20 +488,12 @@ void PlotPanel::setSettingsVisible(bool visible) {
 
 bool PlotPanel::settingsVisible() const { return config_.settings_visible; }
 
-QWidget* PlotPanel::settingsWidgetForInspector() { return settings_scroll_; }
+QWidget* PlotPanel::settingsWidgetForInspector() {
+  return SettingsScrollForInspector(settings_scroll_);
+}
 
 void PlotPanel::recallSettingsWidget() {
-  if (settings_scroll_ == nullptr || settings_container_ == nullptr) {
-    return;
-  }
-  if (settings_scroll_->parentWidget() == settings_container_) {
-    return;
-  }
-  settings_scroll_->setParent(settings_container_);
-  if (QLayout* layout = settings_container_->layout()) {
-    layout->addWidget(settings_scroll_);
-  }
-  settings_scroll_->hide();
+  RecallSettingsScrollToContainer(settings_scroll_, settings_container_);
 }
 
 void PlotPanel::refreshSettingsChannels() {
@@ -712,10 +706,14 @@ double PlotPanel::resolveTimestampSec(
       runtime.config.timestamp_mode == PlotTimestampMode::kLogTime ? sim_time
                                                                    : receive_time;
   if (runtime.config.timestamp_mode == PlotTimestampMode::kCustomField) {
+    const QString resolved_path =
+        manager_ != nullptr
+            ? ResolvePlotFieldPath(runtime.config.custom_timestamp_path,
+                                   &manager_->variableStore())
+            : runtime.config.custom_timestamp_path;
     const std::optional<double> custom =
         PlotFieldExtractor::instance().extractTimestamp(
-            message_type, payload,
-            runtime.config.custom_timestamp_path.toStdString(), fallback);
+            message_type, payload, resolved_path.toStdString(), fallback);
     return custom.value_or(fallback);
   }
   const std::optional<double> header_time =
@@ -764,8 +762,7 @@ void PlotPanel::dragEnterEvent(QDragEnterEvent* event) {
   if (event == nullptr) {
     return;
   }
-  PlotSeriesDragPayload payload;
-  if (ReadPlotSeriesDragPayload(event->mimeData(), &payload)) {
+  if (!ReadPlotSeriesDragPayloads(event->mimeData()).isEmpty()) {
     event->acceptProposedAction();
     emit activated();
   }
@@ -775,8 +772,7 @@ void PlotPanel::dragMoveEvent(QDragMoveEvent* event) {
   if (event == nullptr) {
     return;
   }
-  PlotSeriesDragPayload payload;
-  if (ReadPlotSeriesDragPayload(event->mimeData(), &payload)) {
+  if (!ReadPlotSeriesDragPayloads(event->mimeData()).isEmpty()) {
     event->acceptProposedAction();
   }
 }
@@ -785,11 +781,14 @@ void PlotPanel::dropEvent(QDropEvent* event) {
   if (event == nullptr) {
     return;
   }
-  PlotSeriesDragPayload payload;
-  if (!ReadPlotSeriesDragPayload(event->mimeData(), &payload)) {
+  const QVector<PlotSeriesDragPayload> payloads =
+      ReadPlotSeriesDragPayloads(event->mimeData());
+  if (payloads.isEmpty()) {
     return;
   }
-  handleSeriesDrop(payload.channel, payload.field_path);
+  for (const PlotSeriesDragPayload& payload : payloads) {
+    handleSeriesDrop(payload.channel, payload.field_path);
+  }
   event->acceptProposedAction();
 }
 
@@ -815,8 +814,12 @@ void PlotPanel::onTick() {
     }
     const std::string channel = runtime.config.channel.toStdString();
     const std::string message_type = messageTypeForChannel(channel);
-    const ParsedFieldPath y_path = ParseFieldPath(runtime.config.field_path);
-    const ParsedFieldPath x_path = ParseFieldPath(runtime.config.x_field_path);
+    const QString resolved_y_path =
+        ResolvePlotFieldPath(runtime.config.field_path, &manager_->variableStore());
+    const QString resolved_x_path = ResolvePlotFieldPath(
+        runtime.config.x_field_path, &manager_->variableStore());
+    const ParsedFieldPath y_path = ParseFieldPath(resolved_y_path);
+    const ParsedFieldPath x_path = ParseFieldPath(resolved_x_path);
     while (auto payload = runtime.queue.pop()) {
       const double timestamp_sec = resolveTimestampSec(
           runtime, message_type, *payload, receive_time, sim_time);
@@ -896,6 +899,18 @@ void PlotPanel::exportPlotDataAsCsv() {
     }
   }
   file.close();
+}
+
+void PlotPanel::invalidateSeriesData() {
+  for (auto& runtime_ptr : runtime_series_) {
+    if (runtime_ptr == nullptr) {
+      continue;
+    }
+    runtime_ptr->points.clear();
+    runtime_ptr->index_counter = 0;
+    runtime_ptr->has_last_sample = false;
+  }
+  applyConfigToUi();
 }
 
 }  // namespace plot

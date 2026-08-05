@@ -7,15 +7,23 @@
 #include <automsgs/msgs/DynamicFactory.hh>
 
 #include <QComboBox>
+#include <QDragEnterEvent>
+#include <QDropEvent>
 #include <QFont>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLineEdit>
+#include <QMimeData>
 #include <QPlainTextEdit>
 #include <QVBoxLayout>
 
 #include "autoviz/commsgs/message_type_utils.hpp"
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/integration/channel_reader_registry.hpp"
+#include "autoviz/ui/plot/message_path_navigation.hpp"
+#include "autoviz/ui/plot/plot_drag_mime.hpp"
+#include "autoviz/variables/variable_path_utils.hpp"
+#include "autoviz/variables/variable_store.hpp"
 
 namespace autoviz {
 namespace {
@@ -30,8 +38,29 @@ std::string StripPackagePrefix(const std::string& type_name) {
   return type_name;
 }
 
+google::protobuf::Message* ParseMessage(const std::string& message_type,
+                                        const std::string& payload,
+                                        DynamicFactory::MessagePtr* out) {
+  if (out == nullptr || message_type.empty() || payload.empty()) {
+    return nullptr;
+  }
+  static DynamicFactory factory;
+  const std::string normalized = commsgs::NormalizeMessageType(message_type);
+  *out = factory.New(normalized);
+  if (*out == nullptr) {
+    *out = factory.New(StripPackagePrefix(normalized));
+  }
+  if (*out == nullptr || !(*out)->ParseFromString(payload)) {
+    out->reset();
+    return nullptr;
+  }
+  return out->get();
+}
+
 QString FormatPayload(const std::string& message_type,
-                      const std::string& payload) {
+                      const std::string& payload,
+                      const QString& message_path,
+                      common::VisualizationManager* manager) {
   if (payload.empty()) {
     return QStringLiteral("(empty message)");
   }
@@ -42,16 +71,27 @@ QString FormatPayload(const std::string& message_type,
         .arg(static_cast<qulonglong>(payload.size()));
   }
 
-  static DynamicFactory factory;
-  DynamicFactory::MessagePtr message = factory.New(normalized);
-  if (message == nullptr) {
-    message = factory.New(StripPackagePrefix(normalized));
-  }
-  if (message == nullptr || !message->ParseFromString(payload)) {
+  DynamicFactory::MessagePtr message;
+  if (ParseMessage(message_type, payload, &message) == nullptr) {
     return QStringLiteral("Failed to parse %1 (%2 bytes)")
         .arg(QString::fromStdString(normalized))
         .arg(static_cast<qulonglong>(payload.size()));
   }
+
+  if (!message_path.trimmed().isEmpty()) {
+    const QString resolved =
+        manager != nullptr
+            ? plot::ResolveMessagePath(message_path.trimmed(),
+                                       &manager->variableStore())
+            : message_path.trimmed();
+    const std::optional<std::string> filtered =
+        plot::FormatMessagePathValue(*message, resolved.toStdString());
+    if (!filtered.has_value()) {
+      return QStringLiteral("No value at path \"%1\"").arg(resolved);
+    }
+    return QString::fromStdString(*filtered);
+  }
+
   return QString::fromStdString(message->DebugString());
 }
 
@@ -60,6 +100,8 @@ QString FormatPayload(const std::string& message_type,
 RawMessagesPanel::RawMessagesPanel(common::VisualizationManager* manager,
                                    QWidget* parent)
     : manager_(manager), QWidget(parent) {
+  setAcceptDrops(true);
+
   auto* layout = new QVBoxLayout(this);
   layout->setContentsMargins(8, 8, 8, 8);
   layout->setSpacing(6);
@@ -71,6 +113,14 @@ RawMessagesPanel::RawMessagesPanel(common::VisualizationManager* manager,
   header->addWidget(channel_combo_, 1);
   layout->addLayout(header);
 
+  auto* path_row = new QHBoxLayout();
+  path_row->addWidget(new QLabel(tr("Path"), this));
+  message_path_edit_ = new QLineEdit(this);
+  message_path_edit_->setPlaceholderText(
+      tr("Optional message path, e.g. objects[:]{id==$vehicle_id}"));
+  path_row->addWidget(message_path_edit_, 1);
+  layout->addLayout(path_row);
+
   content_ = new QPlainTextEdit(this);
   content_->setReadOnly(true);
   content_->setPlaceholderText(tr("Select a channel to inspect messages."));
@@ -81,15 +131,76 @@ RawMessagesPanel::RawMessagesPanel(common::VisualizationManager* manager,
 
   connect(channel_combo_, qOverload<int>(&QComboBox::currentIndexChanged), this,
           &RawMessagesPanel::onChannelChanged);
+  connect(message_path_edit_, &QLineEdit::editingFinished, this,
+          &RawMessagesPanel::onMessagePathEdited);
+
+  if (manager_ != nullptr) {
+    connect(&manager_->variableStore(),
+            &variables::VariableStore::variablesChanged, this,
+            &RawMessagesPanel::refreshFromVariables);
+  }
 
   refreshChannels();
+}
+
+void RawMessagesPanel::selectChannel(const QString& channel) {
+  if (channel.isEmpty()) {
+    return;
+  }
+  const int index = channel_combo_->findData(channel);
+  if (index >= 0) {
+    channel_combo_->setCurrentIndex(index);
+  }
+}
+
+QString RawMessagesPanel::resolvedMessagePath() const {
+  return message_path_edit_ != nullptr ? message_path_edit_->text().trimmed()
+                                       : QString();
+}
+
+bool RawMessagesPanel::acceptChannelDrop(const QMimeData* mime) const {
+  plot::PlotSeriesDragPayload payload;
+  if (!plot::ReadPlotSeriesDragPayload(mime, &payload) || payload.channel.isEmpty()) {
+    return false;
+  }
+  return true;
+}
+
+void RawMessagesPanel::dragEnterEvent(QDragEnterEvent* event) {
+  if (acceptChannelDrop(event->mimeData())) {
+    event->acceptProposedAction();
+    return;
+  }
+  QWidget::dragEnterEvent(event);
+}
+
+void RawMessagesPanel::dragMoveEvent(QDragMoveEvent* event) {
+  if (acceptChannelDrop(event->mimeData())) {
+    event->acceptProposedAction();
+    return;
+  }
+  QWidget::dragMoveEvent(event);
+}
+
+void RawMessagesPanel::dropEvent(QDropEvent* event) {
+  plot::PlotSeriesDragPayload payload;
+  if (!plot::ReadPlotSeriesDragPayload(event->mimeData(), &payload) ||
+      payload.channel.isEmpty()) {
+    QWidget::dropEvent(event);
+    return;
+  }
+  selectChannel(payload.channel);
+  if (!payload.field_path.isEmpty() && message_path_edit_ != nullptr) {
+    message_path_edit_->setText(payload.field_path);
+    onMessagePathEdited();
+  }
+  event->acceptProposedAction();
 }
 
 RawMessagesPanel::~RawMessagesPanel() { unsubscribe(); }
 
 void RawMessagesPanel::refreshChannels() {
-  const QString previous =
-      channel_combo_->currentData().toString();
+  const QString previous = channel_combo_->currentData().toString();
   channel_combo_->blockSignals(true);
   channel_combo_->clear();
   channel_combo_->addItem(tr("(select channel)"), QString());
@@ -123,10 +234,23 @@ void RawMessagesPanel::onChannelChanged(int index) {
   if (index <= 0) {
     unsubscribe();
     content_->clear();
+    last_payload_.clear();
     return;
   }
   active_channel_ = channel_combo_->currentData().toString().toStdString();
   resubscribe();
+}
+
+void RawMessagesPanel::onMessagePathEdited() {
+  if (!last_payload_.empty()) {
+    showPayload(last_payload_);
+  }
+}
+
+void RawMessagesPanel::refreshFromVariables() {
+  if (!last_payload_.empty()) {
+    showPayload(last_payload_);
+  }
 }
 
 void RawMessagesPanel::unsubscribe() {
@@ -152,8 +276,10 @@ void RawMessagesPanel::resubscribe() {
 }
 
 void RawMessagesPanel::showPayload(const std::string& payload) {
+  last_payload_ = payload;
   const std::string message_type = messageTypeForChannel(active_channel_);
-  content_->setPlainText(FormatPayload(message_type, payload));
+  content_->setPlainText(
+      FormatPayload(message_type, payload, resolvedMessagePath(), manager_));
 }
 
 std::string RawMessagesPanel::messageTypeForChannel(

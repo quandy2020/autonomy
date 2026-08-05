@@ -160,6 +160,7 @@
     <file>icons/moverotate.png</file>
     <file>icons/moverotate.svg</file>
     <file>icons/ok.png</file>
+    <file>icons/global_status.svg</file>
     <file>icons/options.png</file>
     <file>icons/package.png</file>
     <file>icons/add_panel.svg</file>

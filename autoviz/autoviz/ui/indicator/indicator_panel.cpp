@@ -24,9 +24,11 @@
 #include "autoviz/ui/indicator/indicator_view_widget.hpp"
 #include "autoviz/ui/panel_context_menu.hpp"
 #include "autoviz/ui/panel_dock_widget.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 #include "autoviz/ui/panel_title_tools.hpp"
 #include "autoviz/ui/plot/plot_drag_mime.hpp"
 #include "autoviz/ui/plot/plot_field_path.hpp"
+#include "autoviz/variables/variable_path_utils.hpp"
 
 namespace autoviz {
 namespace indicator {
@@ -63,16 +65,11 @@ IndicatorPanel::IndicatorPanel(common::VisualizationManager* manager, QWidget* p
   settings_layout->addWidget(settings_scroll_);
 
   auto* toolbar = new QFrame(this);
-  toolbar->setStyleSheet(
-      QStringLiteral(
-          "QFrame {"
-          "  background: palette(base);"
-          "  border-bottom: 1px solid palette(midlight);"
-          "}"));
+  toolbar->setStyleSheet(PanelStatusBarStyle());
   auto* toolbar_layout = new QHBoxLayout(toolbar);
-  toolbar_layout->setContentsMargins(6, 4, 6, 4);
+  toolbar_layout->setContentsMargins(6, 2, 6, 2);
   status_label_ = new QLabel(toolbar);
-  status_label_->setStyleSheet(QStringLiteral("color: palette(mid); font-size: 10px;"));
+  status_label_->setStyleSheet(PanelStatusLabelStyle());
   status_label_->setTextInteractionFlags(Qt::TextSelectableByMouse);
   toolbar_layout->addWidget(status_label_, 1);
   root->addWidget(toolbar);
@@ -207,19 +204,11 @@ void IndicatorPanel::setExpandButtonChecked(bool checked) {
 }
 
 QWidget* IndicatorPanel::settingsWidgetForInspector() {
-  if (settings_widget_ == nullptr) {
-    return nullptr;
-  }
-  settings_widget_->setParent(nullptr);
-  return settings_widget_;
+  return SettingsScrollForInspector(settings_scroll_);
 }
 
 void IndicatorPanel::recallSettingsWidget() {
-  if (settings_widget_ == nullptr || settings_scroll_ == nullptr) {
-    return;
-  }
-  settings_widget_->setParent(settings_scroll_);
-  settings_scroll_->setWidget(settings_widget_);
+  RecallSettingsScrollToContainer(settings_scroll_, settings_container_);
 }
 
 void IndicatorPanel::refreshSettingsChannels() {
@@ -318,7 +307,7 @@ void IndicatorPanel::resubscribeChannel() {
   unsubscribeChannel();
   last_field_value_.reset();
   if (config_.channel.isEmpty()) {
-    view_->setErrorText(tr("Drop a scalar field from Topics"));
+    view_->setErrorText(tr("Drop a scalar field from Channels"));
     updateStatusBar();
     return;
   }
@@ -340,6 +329,12 @@ void IndicatorPanel::onChannelPayload(const std::string& payload) {
   ingestPayload(payload);
 }
 
+void IndicatorPanel::refreshFromVariables() {
+  if (!last_payload_.empty()) {
+    ingestPayload(last_payload_);
+  }
+}
+
 void IndicatorPanel::applyMatchToView(const IndicatorFieldValue& value) {
   const IndicatorMatchResult match = IndicatorRuleEngine::Evaluate(value, config_.rules);
   view_->setConfig(config_);
@@ -347,13 +342,15 @@ void IndicatorPanel::applyMatchToView(const IndicatorFieldValue& value) {
 }
 
 void IndicatorPanel::ingestPayload(const std::string& payload) {
+  last_payload_ = payload;
   if (config_.field_path.isEmpty()) {
     view_->setErrorText(tr("Configure a field path"));
     updateStatusBar();
     return;
   }
 
-  const plot::ParsedFieldPath parsed = plot::ParseFieldPath(config_.field_path);
+  const plot::ParsedFieldPath parsed = plot::ParseFieldPath(
+      plot::ResolvePlotFieldPath(config_.field_path, &manager_->variableStore()));
   if (!parsed.modifiers.isEmpty()) {
     view_->setErrorText(
         tr("Plot modifiers (e.g. .@derivative) are not supported on Indicator panels"));
@@ -403,7 +400,7 @@ void IndicatorPanel::updateStatusBar() {
     return;
   }
   if (config_.channel.isEmpty() || config_.field_path.isEmpty()) {
-    status_label_->setText(tr("Drop a scalar field from Topics"));
+    status_label_->setText(tr("Drop a scalar field from Channels"));
     return;
   }
   status_label_->setText(

@@ -24,6 +24,7 @@ std::string NormalizePanelObjectName(const std::string& object_name) {
   } kAliases[] = {
       {"Drone3DDock", "Vehicle3DDock"},
       {"Drone 3D", "Vehicle3DDock"},
+      {"TopicsDock", "ChannelBrowserDock"},
   };
   for (const auto& entry : kAliases) {
     if (object_name == entry.legacy) {

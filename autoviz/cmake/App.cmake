@@ -17,6 +17,14 @@ target_link_libraries(autoviz PRIVATE
   Qt6::Xml Qt6::Svg Qt6::Network
   glog protobuf::libprotobuf)
 
+if(_AUTOVIZ_HAS_QT_MULTIMEDIA)
+  target_link_libraries(autoviz PRIVATE Qt6::Multimedia)
+  target_compile_definitions(autoviz PRIVATE AUTOVIZ_USE_QT_MULTIMEDIA)
+  message(STATUS "Autoviz: Qt Multimedia audio playback enabled")
+else()
+  message(STATUS "Autoviz: Qt6 Multimedia not found; audio playback disabled (waveform still available)")
+endif()
+
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
   pkg_check_modules(AUTOVIZ_FFMPEG QUIET IMPORTED_TARGET

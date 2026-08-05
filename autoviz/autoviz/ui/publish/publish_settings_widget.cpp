@@ -7,33 +7,37 @@
 #include <QColorDialog>
 #include <QFormLayout>
 #include <QGroupBox>
-#include <QHBoxLayout>
-#include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QVBoxLayout>
+
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 namespace publish_panel {
 
 PublishSettingsWidget::PublishSettingsWidget(QWidget* parent)
     : config_(DefaultPublishPanelConfig()), QWidget(parent) {
+  ApplyCompactSettingsShell(this);
   auto* outer = new QVBoxLayout(this);
-  outer->setContentsMargins(8, 8, 8, 8);
-  outer->setSpacing(8);
+  outer->setContentsMargins(PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
+                            PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
+  outer->setSpacing(PanelSettingsLayout::kOuterSpacing);
+  outer->setAlignment(Qt::AlignTop);
 
-  auto* title_row = new QHBoxLayout();
-  title_row->addWidget(new QLabel(tr("Title"), this));
+  auto* title_form = new QFormLayout();
+  ApplyCompactForm(title_form);
   title_edit_ = new QLineEdit(config_.title, this);
-  title_row->addWidget(title_edit_, 1);
-  outer->addLayout(title_row);
+  title_form->addRow(tr("Title"), title_edit_);
+  outer->addLayout(title_form);
 
   auto* button_group = new QGroupBox(tr("Publish button"), this);
+  StyleSettingsGroupBox(button_group);
   auto* form = new QFormLayout(button_group);
+  ApplyCompactForm(form);
   button_label_edit_ = new QLineEdit(config_.button_label, button_group);
   button_tooltip_edit_ = new QLineEdit(config_.button_tooltip, button_group);
-  button_color_button_ = new QPushButton(button_group);
-  button_color_button_->setText(tr("Choose color"));
+  button_color_button_ = MakeFlatActionButton(tr("Choose color"), button_group);
   form->addRow(tr("Label"), button_label_edit_);
   form->addRow(tr("Tooltip"), button_tooltip_edit_);
   form->addRow(tr("Color"), button_color_button_);
@@ -66,10 +70,9 @@ void PublishSettingsWidget::setConfig(const PublishPanelConfig& config) {
   button_label_edit_->setText(config_.button_label);
   button_tooltip_edit_->setText(config_.button_tooltip);
   if (config_.button_color.isValid()) {
-    button_color_button_->setStyleSheet(
-        QStringLiteral("background: %1;").arg(config_.button_color.name()));
+    UpdateColorButton(button_color_button_, config_.button_color);
   } else {
-    button_color_button_->setStyleSheet(QString());
+    UpdateColorButton(button_color_button_, QColor());
   }
 }
 
@@ -81,8 +84,7 @@ void PublishSettingsWidget::pickButtonColor() {
     return;
   }
   config_.button_color = chosen;
-  button_color_button_->setStyleSheet(
-      QStringLiteral("background: %1;").arg(chosen.name()));
+  UpdateColorButton(button_color_button_, chosen);
   emitConfigChanged();
 }
 

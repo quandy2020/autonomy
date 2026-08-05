@@ -7,6 +7,8 @@
 #include <QLabel>
 #include <QVBoxLayout>
 
+#include "autoviz/ui/panel_settings_styles.hpp"
+
 namespace autoviz {
 
 PropertyInspectorPanel::PropertyInspectorPanel(QWidget* parent) : QWidget(parent) {
@@ -15,8 +17,7 @@ PropertyInspectorPanel::PropertyInspectorPanel(QWidget* parent) : QWidget(parent
   root->setSpacing(0);
 
   title_label_ = new QLabel(tr("Panel"), this);
-  title_label_->setStyleSheet(
-      QStringLiteral("font-weight: 600; padding: 6px 8px; color: #37474f;"));
+  title_label_->setStyleSheet(PropertyInspectorTitleStyle());
   root->addWidget(title_label_);
 
   content_host_ = new QWidget(this);
@@ -31,7 +32,7 @@ PropertyInspectorPanel::PropertyInspectorPanel(QWidget* parent) : QWidget(parent
       tr("Select a panel in the center area to edit its properties here."),
       placeholder_);
   hint->setWordWrap(true);
-  hint->setStyleSheet(QStringLiteral("color: #78909c; padding: 12px;"));
+  hint->setStyleSheet(PropertyInspectorHintStyle());
   placeholder_layout->addWidget(hint);
   placeholder_layout->addStretch(1);
   content_layout_->addWidget(placeholder_);
