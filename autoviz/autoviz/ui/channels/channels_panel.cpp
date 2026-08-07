@@ -8,6 +8,7 @@
 #include <map>
 
 #include <QDrag>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
@@ -24,6 +25,7 @@
 #include "autoviz/ui/map/map_message_ingest.hpp"
 #include "autoviz/ui/plot/message_field_tree.hpp"
 #include "autoviz/ui/plot/plot_drag_mime.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 namespace {
@@ -135,17 +137,23 @@ class ChannelsTreeWidget : public QTreeWidget {
 
 ChannelsPanel::ChannelsPanel(common::VisualizationManager* manager, QWidget* parent)
     : manager_(manager), QWidget(parent) {
-  auto* layout = new QVBoxLayout(this);
-  layout->setContentsMargins(8, 8, 8, 8);
-  layout->setSpacing(6);
+  ApplyPanelShell(this);
 
-  auto* header = new QHBoxLayout();
-  header->addWidget(new QLabel(tr("Filter"), this));
-  filter_edit_ = new QLineEdit(this);
+  auto* layout = new QVBoxLayout(this);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(0);
+
+  auto* toolbar = new QFrame(this);
+  ApplyPanelToolbarChrome(toolbar);
+  auto* header = new QHBoxLayout(toolbar);
+  ApplyPanelToolbarLayout(header);
+  header->addWidget(new QLabel(tr("Filter"), toolbar));
+  filter_edit_ = new QLineEdit(toolbar);
   filter_edit_->setPlaceholderText(tr("Search channels…"));
   filter_edit_->setClearButtonEnabled(true);
+  StyleFilterLineEdit(filter_edit_);
   header->addWidget(filter_edit_, 1);
-  layout->addLayout(header);
+  layout->addWidget(toolbar);
 
   tree_ = new ChannelsTreeWidget(this);
   tree_->setColumnCount(4);
@@ -162,6 +170,7 @@ ChannelsPanel::ChannelsPanel(common::VisualizationManager* manager, QWidget* par
   tree_->setSelectionMode(QAbstractItemView::ExtendedSelection);
   tree_->setExpandsOnDoubleClick(true);
   tree_->setAlternatingRowColors(true);
+  StylePanelTree(tree_);
   layout->addWidget(tree_, 1);
 
   connect(filter_edit_, &QLineEdit::textChanged, this,

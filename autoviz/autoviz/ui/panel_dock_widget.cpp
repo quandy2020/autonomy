@@ -9,6 +9,7 @@
 #include <QEvent>
 #include <QHBoxLayout>
 #include <QMainWindow>
+#include <QPalette>
 #include <QResizeEvent>
 #include <QShowEvent>
 #include <QTimer>
@@ -17,16 +18,19 @@
 #include <algorithm>
 
 #include "autoviz/ui/icon_loader.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 
 PanelDockWidget::PanelDockWidget(const QString& name, QWidget* parent)
     : QDockWidget(name, parent) {
   title_bar_ = new QWidget(this);
-  QPalette pal = palette();
-  pal.setColor(QPalette::Window, QApplication::palette().color(QPalette::Mid));
+  title_bar_->setObjectName(QString::fromLatin1(AppThemeIds::kDockTitleBar));
   title_bar_->setAutoFillBackground(true);
-  title_bar_->setPalette(pal);
+  QPalette title_palette = title_bar_->palette();
+  title_palette.setColor(QPalette::Window,
+                         QApplication::palette().color(QPalette::Mid));
+  title_bar_->setPalette(title_palette);
 
   icon_label_ = new QLabel(title_bar_);
   icon_label_->setContentsMargins(2, 2, 0, 0);
@@ -35,7 +39,8 @@ PanelDockWidget::PanelDockWidget(const QString& name, QWidget* parent)
   title_label_ = new QLabel(name, title_bar_);
 
   auto* close_button = new QToolButton(title_bar_);
-  close_button->setIcon(IconLoader::load(QStringLiteral(":/autoviz/icons/close.svg")));
+  close_button->setIcon(
+      IconLoader::panelTitleIcon(QStringLiteral("panel.close")));
   close_button->setIconSize(QSize(16, 16));
   close_button->setAutoRaise(true);
   connect(close_button, &QToolButton::clicked, this, &QDockWidget::close);
@@ -86,6 +91,7 @@ void PanelDockWidget::setContentWidget(QWidget* child) {
   if (child != nullptr) {
     connect(child, &QObject::destroyed, this,
             &PanelDockWidget::onChildDestroyed);
+    ApplyPanelShell(child);
     applyFixedContentHeight();
     enforceFixedHeight();
   }

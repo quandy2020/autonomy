@@ -6,7 +6,6 @@
 
 #include <chrono>
 
-#include <QActionGroup>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QFile>
@@ -67,11 +66,6 @@ bool SameSeriesDataSource(const PlotSeriesConfig& a,
          a.x_field_path == b.x_field_path &&
          a.custom_timestamp_path == b.custom_timestamp_path &&
          a.timestamp_mode == b.timestamp_mode;
-}
-
-QToolButton* AddTitleToolButton(QWidget* parent, const QIcon& icon,
-                                const QString& tip, bool checkable = false) {
-  return CreatePlotTitleToolButton(parent, icon, tip, checkable);
 }
 
 }  // namespace
@@ -135,30 +129,13 @@ PlotPanel::PlotPanel(common::VisualizationManager* manager, QWidget* parent)
     }
   });
   connect(chart_, &PlotChartWidget::zoomToolToggleRequested, this, [this]() {
-    if (interaction_group_ == nullptr) {
+    if (chart_ == nullptr) {
       return;
     }
-    for (QAction* action : interaction_group_->actions()) {
-      if (action == nullptr) {
-        continue;
-      }
-      const auto mode =
-          static_cast<PlotInteractionMode>(action->data().toInt());
-      if (mode == PlotInteractionMode::kZoom) {
-        if (interaction_group_->checkedAction() == action) {
-          for (QAction* other : interaction_group_->actions()) {
-            if (other != nullptr &&
-                static_cast<PlotInteractionMode>(other->data().toInt()) ==
-                    PlotInteractionMode::kSelect) {
-              other->trigger();
-              break;
-            }
-          }
-        } else {
-          action->trigger();
-        }
-        break;
-      }
+    if (chart_->interactionMode() == PlotInteractionMode::kZoom) {
+      chart_->setInteractionMode(PlotInteractionMode::kSelect);
+    } else {
+      chart_->setInteractionMode(PlotInteractionMode::kZoom);
     }
   });
   connect(chart_, &PlotChartWidget::viewRangeChanged, this,
@@ -171,16 +148,8 @@ PlotPanel::PlotPanel(common::VisualizationManager* manager, QWidget* parent)
   connect(chart_, &PlotChartWidget::hoverStateChanged, this,
           &PlotPanel::updateLegendValues);
   connect(chart_, &PlotChartWidget::inspectEscapeRequested, this, [this]() {
-    if (interaction_group_ == nullptr) {
-      return;
-    }
-    for (QAction* action : interaction_group_->actions()) {
-      if (action != nullptr &&
-          static_cast<PlotInteractionMode>(action->data().toInt()) ==
-              PlotInteractionMode::kSelect) {
-        action->trigger();
-        break;
-      }
+    if (chart_ != nullptr) {
+      chart_->setInteractionMode(PlotInteractionMode::kSelect);
     }
   });
 
@@ -225,103 +194,6 @@ void PlotPanel::installTitleBarTools(PanelDockWidget* dock) {
           ? dock->objectName()
           : dock->property("panelTypeId").toString();
 
-  auto* tools = new QWidget(dock);
-  tools->setStyleSheet(PlotTitleToolsStyleSheet());
-  auto* layout = new QHBoxLayout(tools);
-  layout->setContentsMargins(0, 0, 0, 0);
-  layout->setSpacing(0);
-
-  legend_button_ = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_legend.svg")),
-      tr("Hide plot legend"), true);
-  legend_button_->setChecked(false);
-  layout->addWidget(legend_button_);
-  connect(legend_button_, &QToolButton::toggled, this, [this](bool visible) {
-    legend_button_->setToolTip(visible ? tr("Hide plot legend")
-                                       : tr("Show plot legend"));
-    onToggleLegend(visible);
-  });
-
-  interaction_group_ = new QActionGroup(this);
-  interaction_group_->setExclusive(true);
-
-  auto addModeButton = [&](const QString& icon_path, const QString& tip,
-                           PlotInteractionMode mode, bool checked) {
-    auto* button = AddTitleToolButton(tools, IconLoader::load(icon_path), tip, true);
-    auto* action = new QAction(tools);
-    action->setCheckable(true);
-    action->setChecked(checked);
-    action->setData(static_cast<int>(mode));
-    button->setDefaultAction(action);
-    interaction_group_->addAction(action);
-    layout->addWidget(button);
-    return action;
-  };
-
-  addModeButton(QStringLiteral(":/autoviz/icons/plot/plot_select.svg"),
-                tr("Select"), PlotInteractionMode::kSelect, true);
-  addModeButton(QStringLiteral(":/autoviz/icons/plot/plot_point_inspect.svg"),
-                tr("Enable point inspect"), PlotInteractionMode::kInspect, false);
-  addModeButton(QStringLiteral(":/autoviz/icons/plot/plot_zoom.svg"),
-                tr("Enable zoom tool"), PlotInteractionMode::kZoom, false);
-  connect(interaction_group_, &QActionGroup::triggered, this,
-          &PlotPanel::onInteractionModeChanged);
-
-  auto* reset_view_button = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_reset_view.svg")),
-      tr("Reset view"));
-  layout->addWidget(reset_view_button);
-  connect(reset_view_button, &QToolButton::clicked, this, [this]() {
-    if (chart_ != nullptr) {
-      chart_->resetView();
-    }
-  });
-
-  layout->addWidget(CreateTitleSeparator(tools));
-
-  auto* split_right = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_split_right.svg")),
-      tr("Split right"));
-  layout->addWidget(split_right);
-  connect(split_right, &QToolButton::clicked, this, [this]() {
-    emit panelSplitRequested(Qt::Horizontal);
-  });
-
-  auto* split_down = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_split_down.svg")),
-      tr("Split down"));
-  layout->addWidget(split_down);
-  connect(split_down, &QToolButton::clicked, this, [this]() {
-    emit panelSplitRequested(Qt::Vertical);
-  });
-
-  auto* fullscreen_button = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_fullscreen.svg")),
-      tr("Expand"), true);
-  expand_button_ = fullscreen_button;
-  layout->addWidget(fullscreen_button);
-  connect(fullscreen_button, &QToolButton::clicked, this,
-          [this]() { emit panelExpandRequested(); });
-
-  settings_button_ = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_settings.svg")),
-      tr("Settings"), true);
-  settings_button_->setChecked(config_.settings_visible);
-  layout->addWidget(settings_button_);
-  connect(settings_button_, &QToolButton::toggled, this,
-          &PlotPanel::onToggleSettings);
-
-  auto* more_button = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_more.svg")),
-      tr("More"));
-  more_button->setPopupMode(QToolButton::InstantPopup);
   PanelContextMenuCallbacks callbacks;
   callbacks.current_object_name = current_object_name;
   callbacks.change_panel = [this](const QString& object_name) {
@@ -333,10 +205,24 @@ void PlotPanel::installTitleBarTools(PanelDockWidget* dock) {
   callbacks.expand = [this]() { emit panelExpandRequested(); };
   callbacks.remove = [this]() { emit panelRemoveRequested(); };
   callbacks.download_plot_csv = [this]() { exportPlotDataAsCsv(); };
-  more_button->setMenu(CreatePanelContextMenu(more_button, callbacks));
-  layout->addWidget(more_button);
 
-  dock->setTitleBarTools(tools);
+  PanelTitleBarOptions options;
+  options.show_reset = true;
+  options.on_reset = [this]() {
+    if (chart_ != nullptr) {
+      chart_->resetView();
+    }
+  };
+  options.show_settings = true;
+  options.settings_checked = config_.settings_visible;
+  options.on_settings_toggled = [this](bool visible) { onToggleSettings(visible); };
+  options.on_expand = [this]() { emit panelExpandRequested(); };
+
+  const PanelTitleBarTools tools =
+      CreateRvizPanelTitleBarTools(dock, callbacks, options);
+  settings_button_ = tools.settings_button;
+  expand_button_ = tools.expand_button;
+  dock->setTitleBarTools(tools.widget);
   chart_->setInteractionMode(PlotInteractionMode::kSelect);
   setLegendVisible(false);
 }
@@ -469,16 +355,7 @@ void PlotPanel::updateLegendGeometry() {
   legend_widget_->raise();
 }
 
-void PlotPanel::syncLegendToolState() {
-  const bool visible = legend_widget_ != nullptr && legend_widget_->isVisible();
-  if (legend_button_ != nullptr) {
-    legend_button_->blockSignals(true);
-    legend_button_->setChecked(visible);
-    legend_button_->setToolTip(visible ? tr("Hide plot legend")
-                                       : tr("Show plot legend"));
-    legend_button_->blockSignals(false);
-  }
-}
+void PlotPanel::syncLegendToolState() {}
 
 void PlotPanel::setSettingsVisible(bool visible) {
   config_.settings_visible = visible;
@@ -514,18 +391,6 @@ void PlotPanel::syncSettingsWidgetFromConfig() {
 void PlotPanel::onToggleSettings(bool visible) {
   setSettingsVisible(visible);
   emit settingsToggled(visible);
-}
-
-void PlotPanel::onToggleLegend(bool visible) {
-  setLegendVisible(visible);
-}
-
-void PlotPanel::onInteractionModeChanged(QAction* action) {
-  if (action == nullptr || chart_ == nullptr) {
-    return;
-  }
-  chart_->setInteractionMode(
-      static_cast<PlotInteractionMode>(action->data().toInt()));
 }
 
 void PlotPanel::onAddSeriesRequested() {

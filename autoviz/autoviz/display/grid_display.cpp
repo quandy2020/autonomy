@@ -31,7 +31,7 @@ GridDisplay::GridDisplay() {
 
 std::vector<common::DisplayPropertySpec> GridDisplay::propertySpecs() const {
   return {{"reference_frame", "Reference Frame", "<Fixed Frame>"},
-          {"cell_count", "Plane Cell Count", "20"},
+          {"cell_count", "Plane Cell Count", "10"},
           {"normal_cell_count", "Normal Cell Count", "0"},
           {"cell_size", "Cell Size", "1.0"},
           {"line_style", "Line Style", "Lines", {"Lines", "Billboards"}},
@@ -43,8 +43,8 @@ std::vector<common::DisplayPropertySpec> GridDisplay::propertySpecs() const {
 }
 
 void GridDisplay::onDraw(rendering::SceneOverlay& scene) {
-  const int half_cells = std::max(
-      1, common::ParseIntProperty(propertyValue("cell_count", "20"), 20));
+  const int cell_count = std::max(
+      1, common::ParseIntProperty(propertyValue("cell_count", "10"), 10));
   const float cell_size =
       common::ParseFloatProperty(propertyValue("cell_size", "1.0"), 1.f);
   const QColor base =
@@ -62,7 +62,7 @@ void GridDisplay::onDraw(rendering::SceneOverlay& scene) {
   QColor color = base;
   color.setAlphaF(alpha);
 
-  const float extent = static_cast<float>(half_cells) * cell_size;
+  const float extent = static_cast<float>(cell_count) * cell_size * 0.5f;
   const bool use_billboards = line_style == "Billboards";
 
   auto draw_grid_line = [&](const QVector3D& a, const QVector3D& b,
@@ -77,8 +77,8 @@ void GridDisplay::onDraw(rendering::SceneOverlay& scene) {
     scene.addLine(mapped_a, mapped_b, color);
   };
 
-  for (int i = -half_cells; i <= half_cells; ++i) {
-    const float p = static_cast<float>(i) * cell_size;
+  for (int i = 0; i <= cell_count; ++i) {
+    const float p = extent - static_cast<float>(i) * cell_size;
     draw_grid_line(QVector3D(-extent, p, 0.f), QVector3D(extent, p, 0.f),
                    "/line/y/" + std::to_string(i));
     draw_grid_line(QVector3D(p, -extent, 0.f), QVector3D(p, extent, 0.f),

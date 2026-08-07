@@ -408,8 +408,8 @@ void VisualizationManager::syncReferenceGridFromDisplays() {
     }
     if (display->enabled() && display->typeId() == "Grid") {
       rendering::ReferenceGridSettings settings;
-      settings.half_cell_count = static_cast<int>(common::ParseFloatProperty(
-          display->propertyValue("cell_count", "20"), 20.f));
+      settings.plane_cell_count = static_cast<int>(common::ParseFloatProperty(
+          display->propertyValue("cell_count", "10"), 10.f));
       settings.cell_length = common::ParseFloatProperty(
           display->propertyValue("cell_size", "1.0"), 1.f);
       settings.color = common::ParseColorProperty(
@@ -417,6 +417,7 @@ void VisualizationManager::syncReferenceGridFromDisplays() {
       settings.alpha = common::ParseFloatProperty(
           display->propertyValue("alpha", "1.0"), 1.f);
       settings.show_axes = true;
+      settings.axis_length = settings.cell_length;
       reference_grid_settings_ = settings;
       return true;
     }

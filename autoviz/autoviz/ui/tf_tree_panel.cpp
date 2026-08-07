@@ -77,44 +77,6 @@ void TfTreePanel::installTitleBarTools(PanelDockWidget* dock) {
   if (dock == nullptr) {
     return;
   }
-  auto* tools = new QWidget(dock);
-  tools->setStyleSheet(PlotTitleToolsStyleSheet());
-  auto* layout = new QHBoxLayout(tools);
-  layout->setContentsMargins(0, 0, 4, 0);
-  layout->setSpacing(0);
-  layout->addWidget(CreateTitleSeparator(tools));
-
-  auto* split_right = CreatePlotTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_split_right.svg")),
-      tr("Split right"));
-  layout->addWidget(split_right);
-  connect(split_right, &QToolButton::clicked, this, [this]() {
-    emit panelSplitRequested(Qt::Horizontal);
-  });
-
-  auto* split_down = CreatePlotTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_split_down.svg")),
-      tr("Split down"));
-  layout->addWidget(split_down);
-  connect(split_down, &QToolButton::clicked, this, [this]() {
-    emit panelSplitRequested(Qt::Vertical);
-  });
-
-  auto* expand = CreatePlotTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_fullscreen.svg")),
-      tr("Expand"), true);
-  expand_button_ = expand;
-  layout->addWidget(expand);
-  connect(expand, &QToolButton::clicked, this, [this]() { emit panelExpandRequested(); });
-
-  auto* more_button = CreatePlotTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_more.svg")),
-      tr("More"));
-  more_button->setPopupMode(QToolButton::InstantPopup);
   PanelContextMenuCallbacks callbacks;
   callbacks.current_object_name = QStringLiteral("TfTreeDock");
   callbacks.change_panel = [this](const QString& object_name) {
@@ -125,10 +87,14 @@ void TfTreePanel::installTitleBarTools(PanelDockWidget* dock) {
   };
   callbacks.expand = [this]() { emit panelExpandRequested(); };
   callbacks.remove = [this]() { emit panelRemoveRequested(); };
-  more_button->setMenu(CreatePanelContextMenu(more_button, callbacks));
-  layout->addWidget(more_button);
 
-  dock->setTitleBarTools(tools);
+  PanelTitleBarOptions options;
+  options.on_expand = [this]() { emit panelExpandRequested(); };
+
+  const PanelTitleBarTools tools =
+      CreateRvizPanelTitleBarTools(dock, callbacks, options);
+  expand_button_ = tools.expand_button;
+  dock->setTitleBarTools(tools.widget);
 }
 
 void TfTreePanel::setExpandButtonChecked(bool checked) {
@@ -146,15 +112,14 @@ void TfTreePanel::focusInEvent(QFocusEvent* event) {
 }
 
 void TfTreePanel::setupUi() {
-  setAttribute(Qt::WA_StyledBackground, true);
-  setStyleSheet(QStringLiteral("TfTreePanel { background: palette(window); }"));
+  ApplyPanelShell(this);
 
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);
   root->setSpacing(0);
 
   auto* toolbar = new QFrame(this);
-  toolbar->setStyleSheet(PanelStatusBarStyle());
+  ApplyPanelToolbarChrome(toolbar);
   auto* toolbar_layout = new QVBoxLayout(toolbar);
   toolbar_layout->setContentsMargins(10, 8, 10, 6);
   toolbar_layout->setSpacing(4);
@@ -168,29 +133,19 @@ void TfTreePanel::setupUi() {
   filter_edit_ = new QLineEdit(toolbar);
   filter_edit_->setPlaceholderText(tr("Filter frames"));
   filter_edit_->setClearButtonEnabled(true);
-  filter_edit_->setStyleSheet(
-      QStringLiteral(
-          "QLineEdit {"
-          "  background: palette(base);"
-          "  border: 1px solid palette(mid);"
-          "  border-radius: 4px;"
-          "  padding: 5px 8px;"
-          "  color: palette(text);"
-          "}"
-          "QLineEdit:focus { border-color: palette(highlight); }"));
+  StyleFilterLineEdit(filter_edit_);
   filter_row->addWidget(filter_edit_, 1);
   toolbar_layout->addLayout(filter_row);
 
   summary_label_ = new QLabel(toolbar);
-  summary_label_->setStyleSheet(QStringLiteral("color: palette(mid); font-size: 11px;"));
+  StyleHintLabel(summary_label_);
   toolbar_layout->addWidget(summary_label_);
   root->addWidget(toolbar);
 
   auto* splitter = new QSplitter(Qt::Horizontal, this);
   splitter->setChildrenCollapsible(false);
   splitter->setHandleWidth(1);
-  splitter->setStyleSheet(
-      QStringLiteral("QSplitter::handle { background: palette(midlight); }"));
+  splitter->setStyleSheet(PanelSplitterStyle());
 
   tree_ = new QTreeWidget(splitter);
   tree_->setHeaderHidden(true);
@@ -198,25 +153,7 @@ void TfTreePanel::setupUi() {
   tree_->setUniformRowHeights(true);
   tree_->setAnimated(true);
   tree_->setIndentation(18);
-  tree_->setStyleSheet(
-      QStringLiteral(
-          "QTreeWidget {"
-          "  background: palette(base);"
-          "  border: none;"
-          "  color: palette(text);"
-          "  outline: none;"
-          "}"
-          "QTreeWidget::item {"
-          "  padding: 4px 2px;"
-          "  border-radius: 4px;"
-          "}"
-          "QTreeWidget::item:hover {"
-          "  background: palette(alternate-base);"
-          "}"
-          "QTreeWidget::item:selected {"
-          "  background: palette(highlight);"
-          "  color: palette(highlighted-text);"
-          "}"));
+  StylePanelTree(tree_);
 
   auto* detail_panel = new QFrame(splitter);
   detail_panel->setMinimumWidth(220);
@@ -235,7 +172,7 @@ void TfTreePanel::setupUi() {
   detail_hint_ = new QLabel(tr("Select a frame to inspect transform metadata."),
                             detail_panel);
   detail_hint_->setWordWrap(true);
-  detail_hint_->setStyleSheet(QStringLiteral("color: palette(mid); font-size: 12px;"));
+  StyleHintLabel(detail_hint_);
   detail_layout->addWidget(detail_hint_);
 
   detail_body_ = new QWidget(detail_panel);

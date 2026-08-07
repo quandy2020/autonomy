@@ -10,7 +10,10 @@
 #include <QGuiApplication>
 #include <QLibraryInfo>
 #include <QLocale>
-#include <QTranslator>
+
+#include "autoviz/ui/app_preferences.hpp"
+#include "autoviz/ui/app_theme.hpp"
+#include "autoviz/ui/app_translation.hpp"
 #include <glog/logging.h>
 
 #ifdef AUTOVIZ_USE_QML_DRONE
@@ -30,33 +33,6 @@ QString defaultConfigPath() {
   return QStringLiteral("config/default.autoviz");
 }
 
-void installTranslations(QApplication& app) {
-  static QTranslator qt_base_translator;
-  static QTranslator qt_translator;
-  static QTranslator autoviz_translator;
-
-  const QString locale = QLocale::system().name();
-  const QString lang = locale.section(QLatin1Char('_'), 0, 0);
-
-  const QString translations_path =
-      QLibraryInfo::path(QLibraryInfo::TranslationsPath);
-  if (qt_base_translator.load(QStringLiteral("qtbase_") + locale,
-                              translations_path)) {
-    app.installTranslator(&qt_base_translator);
-  }
-  if (qt_translator.load(QStringLiteral("qt_") + locale, translations_path)) {
-    app.installTranslator(&qt_translator);
-  }
-
-  const auto try_load_aviz = [&](const QString& suffix) {
-    return autoviz_translator.load(QStringLiteral("autoviz_") + suffix,
-                                QStringLiteral(":/i18n"));
-  };
-  if (try_load_aviz(locale) || try_load_aviz(lang)) {
-    app.installTranslator(&autoviz_translator);
-  }
-}
-
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -71,7 +47,10 @@ int main(int argc, char** argv) {
   if (!app_icon.isNull()) {
     app.setWindowIcon(app_icon);
   }
-  installTranslations(app);
+
+  const autoviz::AppUiPreferences ui_preferences = autoviz::LoadAppUiPreferences();
+  autoviz::InstallAppTranslations(app, ui_preferences.language_code);
+  autoviz::ApplyAppTheme(app);
 
   QCommandLineParser parser;
   parser.setApplicationDescription(
@@ -140,7 +119,8 @@ int main(int argc, char** argv) {
     splash.reset();
   }
 
-  frame.showMaximized();
+  frame.applyStartupWindowState();
+
   const int code = app.exec();
   manager->shutdown();
   return code;

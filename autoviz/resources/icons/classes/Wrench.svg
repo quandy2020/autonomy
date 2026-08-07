@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"
-     shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
-
-  <path d="M18 46 C18 36, 28 30, 36 30 C40 22, 48 18, 52 22 C56 26, 52 34, 44 36 C44 44, 36 50, 28 50 C22 50, 18 46, 18 46 Z"
-        fill="#2ecc71" stroke="#1e8449" stroke-width="1.5"/>
-  <path d="M40 18 C44 14, 50 16, 50 22 C50 26, 46 28, 44 26" fill="none" stroke="#1e8449" stroke-width="1.5"/>
-
-</svg>

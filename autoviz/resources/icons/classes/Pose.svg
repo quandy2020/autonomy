@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"
-     shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
-
-  <line x1="18" y1="46" x2="46" y2="18" stroke="#e74c3c" stroke-width="3"/>
-  <polygon points="46,18 40,22 44,14" fill="#e74c3c"/>
-
-</svg>

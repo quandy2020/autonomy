@@ -22,6 +22,7 @@
 #include "autoviz/integration/channel_reader_registry.hpp"
 #include "autoviz/ui/plot/message_path_navigation.hpp"
 #include "autoviz/ui/plot/plot_drag_mime.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 #include "autoviz/variables/variable_path_utils.hpp"
 #include "autoviz/variables/variable_store.hpp"
 
@@ -101,10 +102,12 @@ RawMessagesPanel::RawMessagesPanel(common::VisualizationManager* manager,
                                    QWidget* parent)
     : manager_(manager), QWidget(parent) {
   setAcceptDrops(true);
+  ApplyPanelShell(this);
 
   auto* layout = new QVBoxLayout(this);
-  layout->setContentsMargins(8, 8, 8, 8);
-  layout->setSpacing(6);
+  layout->setContentsMargins(PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
+                             PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
+  layout->setSpacing(PanelSettingsLayout::kOuterSpacing);
 
   auto* header = new QHBoxLayout();
   header->addWidget(new QLabel(tr("Channel"), this));
@@ -118,6 +121,7 @@ RawMessagesPanel::RawMessagesPanel(common::VisualizationManager* manager,
   message_path_edit_ = new QLineEdit(this);
   message_path_edit_->setPlaceholderText(
       tr("Optional message path, e.g. objects[:]{id==$vehicle_id}"));
+  StyleFilterLineEdit(message_path_edit_);
   path_row->addWidget(message_path_edit_, 1);
   layout->addLayout(path_row);
 

@@ -33,10 +33,6 @@ namespace autoviz {
 namespace gauge {
 namespace {
 
-QToolButton* AddTitleToolButton(QWidget* parent, const QIcon& icon,
-                                const QString& tip, bool checkable = false) {
-  return CreatePlotTitleToolButton(parent, icon, tip, checkable);
-}
 
 }  // namespace
 
@@ -44,8 +40,7 @@ GaugePanel::GaugePanel(common::VisualizationManager* manager, QWidget* parent)
     : manager_(manager), config_(DefaultGaugePanelConfig()), QWidget(parent) {
   setFocusPolicy(Qt::StrongFocus);
   setAcceptDrops(true);
-  setAttribute(Qt::WA_StyledBackground, true);
-  setStyleSheet(QStringLiteral("GaugePanel { background: palette(window); }"));
+  ApplyPanelShell(this);
 
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);
@@ -64,7 +59,7 @@ GaugePanel::GaugePanel(common::VisualizationManager* manager, QWidget* parent)
   settings_layout->addWidget(settings_scroll_);
 
   auto* toolbar = new QFrame(this);
-  toolbar->setStyleSheet(PanelStatusBarStyle());
+  ApplyPanelToolbarChrome(toolbar);
   auto* toolbar_layout = new QHBoxLayout(toolbar);
   toolbar_layout->setContentsMargins(6, 2, 6, 2);
   status_label_ = new QLabel(toolbar);
@@ -98,52 +93,6 @@ void GaugePanel::installTitleBarTools(PanelDockWidget* dock) {
   if (dock == nullptr) {
     return;
   }
-  auto* tools = new QWidget(dock);
-  tools->setStyleSheet(PlotTitleToolsStyleSheet());
-  auto* layout = new QHBoxLayout(tools);
-  layout->setContentsMargins(0, 0, 4, 0);
-  layout->setSpacing(0);
-
-  layout->addWidget(CreateTitleSeparator(tools));
-
-  auto* split_right = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_split_right.svg")),
-      tr("Split right"));
-  layout->addWidget(split_right);
-  connect(split_right, &QToolButton::clicked, this, [this]() {
-    emit panelSplitRequested(Qt::Horizontal);
-  });
-
-  auto* split_down = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_split_down.svg")),
-      tr("Split down"));
-  layout->addWidget(split_down);
-  connect(split_down, &QToolButton::clicked, this, [this]() {
-    emit panelSplitRequested(Qt::Vertical);
-  });
-
-  auto* expand = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_fullscreen.svg")),
-      tr("Expand"), true);
-  expand_button_ = expand;
-  layout->addWidget(expand);
-  connect(expand, &QToolButton::clicked, this, [this]() { emit panelExpandRequested(); });
-
-  settings_button_ = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_settings.svg")),
-      tr("Settings"), true);
-  layout->addWidget(settings_button_);
-  connect(settings_button_, &QToolButton::toggled, this, &GaugePanel::onToggleSettings);
-
-  auto* more_button = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_more.svg")),
-      tr("More"));
-  more_button->setPopupMode(QToolButton::InstantPopup);
   PanelContextMenuCallbacks callbacks;
   callbacks.current_object_name = QStringLiteral("GaugeDock");
   callbacks.change_panel = [this](const QString& object_name) {
@@ -154,10 +103,18 @@ void GaugePanel::installTitleBarTools(PanelDockWidget* dock) {
   };
   callbacks.expand = [this]() { emit panelExpandRequested(); };
   callbacks.remove = [this]() { emit panelRemoveRequested(); };
-  more_button->setMenu(CreatePanelContextMenu(more_button, callbacks));
-  layout->addWidget(more_button);
 
-  dock->setTitleBarTools(tools);
+  PanelTitleBarOptions options;
+  options.show_settings = true;
+  options.settings_checked = settingsVisible();
+  options.on_settings_toggled = [this](bool visible) { onToggleSettings(visible); };
+  options.on_expand = [this]() { emit panelExpandRequested(); };
+
+  const PanelTitleBarTools tools =
+      CreateRvizPanelTitleBarTools(dock, callbacks, options);
+  settings_button_ = tools.settings_button;
+  expand_button_ = tools.expand_button;
+  dock->setTitleBarTools(tools.widget);
 }
 
 GaugePanelConfig GaugePanel::config() const { return config_; }

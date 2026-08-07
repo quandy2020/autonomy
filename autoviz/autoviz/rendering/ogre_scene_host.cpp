@@ -150,12 +150,12 @@ void OgreSceneHost::applyEntryVisibility(DisplayEntry& entry) {
 
 void OgreSceneHost::setDisplayVisibilityBits(const std::string& display_name,
                                                uint32_t bits) {
-  const auto it = displays_.find(display_name);
-  if (it == displays_.end()) {
-    return;
+  DisplayEntry& entry = displays_[display_name];
+  if (entry.node == nullptr) {
+    displayNode(display_name);
   }
-  it->second.visibility_bits = bits;
-  applyEntryVisibility(it->second);
+  entry.visibility_bits = bits;
+  applyEntryVisibility(entry);
 }
 
 void OgreSceneHost::destroyLines(DisplayEntry& entry) {

@@ -1,174 +1,115 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
   <qresource prefix="/autoviz">
+    <file>icons/add_panel.png</file>
+    <file>icons/aviz.png</file>
     <file>icons/classes/AccelStamped.png</file>
-    <file>icons/classes/AccelStamped.svg</file>
     <file>icons/classes/Axes.png</file>
-    <file>icons/classes/Axes.svg</file>
-    <file>icons/classes/AxesColor.png</file>
-    <file>icons/classes/AxesColor.svg</file>
-    <file>icons/classes/AxisColor.png</file>
-    <file>icons/classes/AxisColor.svg</file>
     <file>icons/classes/Camera.png</file>
-    <file>icons/classes/Camera.svg</file>
     <file>icons/classes/CameraInfo.png</file>
-    <file>icons/classes/CameraInfo.svg</file>
     <file>icons/classes/DepthCloud.png</file>
-    <file>icons/classes/DepthCloud.svg</file>
-    <file>icons/classes/Displays.png</file>
     <file>icons/classes/Displays.svg</file>
     <file>icons/classes/Effort.png</file>
-    <file>icons/classes/Effort.svg</file>
-    <file>icons/classes/FlatColor.png</file>
-    <file>icons/classes/FlatColor.svg</file>
     <file>icons/classes/FluidPressure.png</file>
-    <file>icons/classes/FluidPressure.svg</file>
-    <file>icons/classes/FocusCamera.png</file>
     <file>icons/classes/FocusCamera.svg</file>
     <file>icons/classes/Grid.png</file>
-    <file>icons/classes/Grid.svg</file>
     <file>icons/classes/GridCells.png</file>
-    <file>icons/classes/GridCells.svg</file>
     <file>icons/classes/Group.png</file>
-    <file>icons/classes/Group.svg</file>
-    <file>icons/classes/Help.png</file>
     <file>icons/classes/Help.svg</file>
     <file>icons/classes/Illuminance.png</file>
-    <file>icons/classes/Illuminance.svg</file>
     <file>icons/classes/Image.png</file>
-    <file>icons/classes/Image.svg</file>
     <file>icons/classes/Imu.png</file>
-    <file>icons/classes/Imu.svg</file>
-    <file>icons/classes/Intensity.png</file>
-    <file>icons/classes/Intensity.svg</file>
     <file>icons/classes/Interact.png</file>
-    <file>icons/classes/Interact.svg</file>
     <file>icons/classes/InteractiveMarkers.png</file>
-    <file>icons/classes/InteractiveMarkers.svg</file>
     <file>icons/classes/LaserScan.png</file>
-    <file>icons/classes/LaserScan.svg</file>
     <file>icons/classes/Map.png</file>
-    <file>icons/classes/Map.svg</file>
     <file>icons/classes/Marker.png</file>
-    <file>icons/classes/Marker.svg</file>
     <file>icons/classes/MarkerArray.png</file>
-    <file>icons/classes/MarkerArray.svg</file>
-    <file>icons/classes/Measure.png</file>
     <file>icons/classes/Measure.svg</file>
     <file>icons/classes/MoveCamera.png</file>
-    <file>icons/classes/MoveCamera.svg</file>
     <file>icons/classes/Odometry.png</file>
-    <file>icons/classes/Odometry.svg</file>
     <file>icons/classes/Path.png</file>
-    <file>icons/classes/Path.svg</file>
     <file>icons/classes/PointCloud.png</file>
-    <file>icons/classes/PointCloud.svg</file>
     <file>icons/classes/PointCloud2.png</file>
-    <file>icons/classes/PointCloud2.svg</file>
     <file>icons/classes/PointStamped.png</file>
-    <file>icons/classes/PointStamped.svg</file>
     <file>icons/classes/Polygon.png</file>
-    <file>icons/classes/Polygon.svg</file>
     <file>icons/classes/Pose.png</file>
-    <file>icons/classes/Pose.svg</file>
     <file>icons/classes/PoseArray.png</file>
-    <file>icons/classes/PoseArray.svg</file>
     <file>icons/classes/PoseWithCovariance.png</file>
-    <file>icons/classes/PoseWithCovariance.svg</file>
-    <file>icons/classes/PublishPoint.png</file>
     <file>icons/classes/PublishPoint.svg</file>
-    <file>icons/classes/RGB8.png</file>
-    <file>icons/classes/RGB8.svg</file>
-    <file>icons/classes/RGBF32.png</file>
-    <file>icons/classes/RGBF32.svg</file>
     <file>icons/classes/Range.png</file>
-    <file>icons/classes/Range.svg</file>
     <file>icons/classes/RelativeHumidity.png</file>
-    <file>icons/classes/RelativeHumidity.svg</file>
-    <file>icons/classes/RobotJoint.png</file>
-    <file>icons/classes/RobotLink.png</file>
-    <file>icons/classes/RobotLinkNoGeom.png</file>
     <file>icons/classes/RobotModel.png</file>
-    <file>icons/classes/RobotModel.svg</file>
     <file>icons/classes/Select.png</file>
-    <file>icons/classes/Select.svg</file>
     <file>icons/classes/Selection.png</file>
     <file>icons/classes/SetGoal.png</file>
-    <file>icons/classes/SetGoal.svg</file>
     <file>icons/classes/SetInitialPose.png</file>
-    <file>icons/classes/SetInitialPose.svg</file>
     <file>icons/classes/StrataBuilding.png</file>
-    <file>icons/classes/StrataBuilding.svg</file>
     <file>icons/classes/StrataCanvasLabel.png</file>
-    <file>icons/classes/StrataCanvasLabel.svg</file>
-    <file>icons/classes/StrataFov.png</file>
     <file>icons/classes/StrataFov.svg</file>
     <file>icons/classes/StrataIotBubble.png</file>
-    <file>icons/classes/StrataIotBubble.svg</file>
     <file>icons/classes/StrataLabelBubble.png</file>
-    <file>icons/classes/StrataLabelBubble.svg</file>
     <file>icons/classes/StrataPoi.png</file>
-    <file>icons/classes/StrataPoi.svg</file>
     <file>icons/classes/StrataRoadGraph.png</file>
-    <file>icons/classes/StrataRoadGraph.svg</file>
     <file>icons/classes/StrataRobot.png</file>
-    <file>icons/classes/StrataRobot.svg</file>
     <file>icons/classes/StrataRobot3D.png</file>
-    <file>icons/classes/StrataRobot3D.svg</file>
     <file>icons/classes/StrataSemanticZone.png</file>
-    <file>icons/classes/StrataSemanticZone.svg</file>
     <file>icons/classes/TF.png</file>
-    <file>icons/classes/TF.svg</file>
     <file>icons/classes/Temperature.png</file>
-    <file>icons/classes/Temperature.svg</file>
     <file>icons/classes/Time.png</file>
     <file>icons/classes/Tool Properties.png</file>
     <file>icons/classes/Transformation.png</file>
     <file>icons/classes/TwistStamped.png</file>
-    <file>icons/classes/TwistStamped.svg</file>
-    <file>icons/classes/Views.png</file>
     <file>icons/classes/Views.svg</file>
     <file>icons/classes/Wrench.png</file>
-    <file>icons/classes/Wrench.svg</file>
-    <file>icons/classes/XYZ.png</file>
-    <file>icons/classes/XYZ.svg</file>
-    <file>icons/close.png</file>
-    <file>icons/close.svg</file>
-    <file>icons/crosshair.png</file>
     <file>icons/crosshair.svg</file>
-    <file>icons/cursor.png</file>
     <file>icons/cursor.svg</file>
     <file>icons/default_class_icon.png</file>
-    <file>icons/default_class_icon.svg</file>
     <file>icons/default_package_icon.png</file>
-    <file>icons/default_package_icon.svg</file>
-    <file>icons/error.png</file>
-    <file>icons/forbidden.png</file>
-    <file>icons/forbidden.svg</file>
-    <file>icons/left_dock.png</file>
+    <file>icons/global_status.png</file>
     <file>icons/left_dock.svg</file>
-    <file>icons/menu.png</file>
+    <file>icons/menu/about.svg</file>
+    <file>icons/menu/add_panel.png</file>
+    <file>icons/menu/app.png</file>
+    <file>icons/menu/backend.png</file>
+    <file>icons/menu/camera.png</file>
+    <file>icons/menu/config_file.png</file>
+    <file>icons/menu/file.png</file>
+    <file>icons/menu/fps.svg</file>
+    <file>icons/menu/help.svg</file>
+    <file>icons/menu/layout.svg</file>
+    <file>icons/menu/ogre.png</file>
+    <file>icons/menu/open_config.png</file>
+    <file>icons/menu/opengl.png</file>
+    <file>icons/menu/orbit.svg</file>
+    <file>icons/menu/quit.png</file>
+    <file>icons/menu/recent.svg</file>
+    <file>icons/menu/reset_layout.svg</file>
+    <file>icons/menu/save_as.png</file>
+    <file>icons/menu/save_config.png</file>
+    <file>icons/menu/screenshot.png</file>
+    <file>icons/menu/settings.png</file>
+    <file>icons/menu/third_person.png</file>
+    <file>icons/menu/top_down.png</file>
+    <file>icons/menu/top_down_ortho.png</file>
+    <file>icons/menu/view.svg</file>
+    <file>icons/menu/xy_orbit.svg</file>
     <file>icons/menu.svg</file>
+    <file>icons/panel/panel_expand.svg</file>
+    <file>icons/panel/panel_close.svg</file>
+    <file>icons/panel/panel_collapse.svg</file>
+    <file>icons/panel/panel_inspect.svg</file>
+    <file>icons/panel/panel_more.svg</file>
+    <file>icons/panel/panel_recenter.svg</file>
+    <file>icons/panel/panel_settings.svg</file>
+    <file>icons/menu_check_white.svg</file>
     <file>icons/minus.png</file>
-    <file>icons/minus.svg</file>
-    <file>icons/move1d.png</file>
-    <file>icons/move1d.svg</file>
-    <file>icons/move2d.png</file>
     <file>icons/move2d.svg</file>
-    <file>icons/move_z.png</file>
-    <file>icons/move_z.svg</file>
-    <file>icons/moverotate.png</file>
-    <file>icons/moverotate.svg</file>
-    <file>icons/ok.png</file>
-    <file>icons/global_status.svg</file>
     <file>icons/options.png</file>
-    <file>icons/package.png</file>
-    <file>icons/add_panel.svg</file>
-    <file>icons/plus.png</file>
-    <file>icons/plus.svg</file>
     <file>icons/panels/panel_3d.svg</file>
     <file>icons/panels/panel_audio.svg</file>
     <file>icons/panels/panel_channel_graph.svg</file>
+    <file>icons/panels/panel_channels.svg</file>
     <file>icons/panels/panel_data_source.svg</file>
     <file>icons/panels/panel_gauge.svg</file>
     <file>icons/panels/panel_image.svg</file>
@@ -178,6 +119,7 @@
     <file>icons/panels/panel_markdown.svg</file>
     <file>icons/panels/panel_parameters.svg</file>
     <file>icons/panels/panel_plot.svg</file>
+    <file>icons/panels/panel_problems.svg</file>
     <file>icons/panels/panel_publish.svg</file>
     <file>icons/panels/panel_raw_messages.svg</file>
     <file>icons/panels/panel_service.svg</file>
@@ -187,39 +129,22 @@
     <file>icons/panels/panel_table.svg</file>
     <file>icons/panels/panel_teleop.svg</file>
     <file>icons/panels/panel_transform_tree.svg</file>
-    <file>icons/right_dock.png</file>
+    <file>icons/panels/panel_variable_slider.svg</file>
+    <file>icons/panels/panel_variables.svg</file>
+    <file>icons/plot/plot_legend.svg</file>
+    <file>icons/plot/plot_reset_view.svg</file>
+    <file>icons/plus.png</file>
     <file>icons/right_dock.svg</file>
-    <file>icons/rotate.png</file>
     <file>icons/rotate.svg</file>
-    <file>icons/rotate_cam.png</file>
-    <file>icons/rotate_cam.svg</file>
     <file>icons/sidebar_left.svg</file>
     <file>icons/sidebar_right.svg</file>
-    <file>icons/status_disabled.png</file>
     <file>icons/status_disabled.svg</file>
-    <file>icons/status_error.png</file>
     <file>icons/status_error.svg</file>
-    <file>icons/status_ok.png</file>
     <file>icons/status_ok.svg</file>
-    <file>icons/status_warn.png</file>
     <file>icons/status_warn.svg</file>
-    <file>icons/visibility.png</file>
-    <file>icons/visibility.svg</file>
-    <file>icons/aviz.svg</file>
-    <file>icons/warning.png</file>
-    <file>icons/zoom.png</file>
     <file>icons/zoom.svg</file>
-    <file>icons/plot/plot_legend.svg</file>
-    <file>icons/plot/plot_select.svg</file>
-    <file>icons/plot/plot_point_inspect.svg</file>
-    <file>icons/plot/plot_zoom.svg</file>
-    <file>icons/plot/plot_reset_view.svg</file>
-    <file>icons/plot/plot_split_right.svg</file>
-    <file>icons/plot/plot_split_down.svg</file>
-    <file>icons/plot/plot_fullscreen.svg</file>
-    <file>icons/plot/plot_settings.svg</file>
-    <file>icons/plot/plot_more.svg</file>
     <file>images/splash.png</file>
     <file>images/splash_overlay.png</file>
+    <file>images/splash_rviz_ref.png</file>
   </qresource>
 </RCC>

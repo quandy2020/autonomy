@@ -10,7 +10,7 @@ Displays:
     Channel: ""
     Enabled: true
     Properties:
-      cell_count: "20"
+      cell_count: "10"
       cell_size: "1.0"
       color: "80;80;80"
       alpha: "1.0"
@@ -46,6 +46,8 @@ Displays:
     Channel: /fake/path
     Enabled: true
     Properties:
+      line_style: "Billboards"
+      line_width: "0.08"
       color: "80;220;120"
       alpha: "1.0"
   - Type: Map

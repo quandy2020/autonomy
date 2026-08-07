@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"
-     shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
-
-  <path d="M12 46 C20 38, 28 34, 40 24" fill="none" stroke="#aaa" stroke-width="2" stroke-dasharray="4 3"/>
-  <line x1="40" y1="24" x2="52" y2="14" stroke="#e74c3c" stroke-width="3"/>
-  <polygon points="52,14 46,16 49,12" fill="#e74c3c"/>
-
-</svg>

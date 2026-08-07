@@ -40,8 +40,8 @@ void ToolPropertiesPanel::populateProperties() {
   property_edits_.clear();
 
   const std::string tool_id = manager_->tools().activeToolId();
-  tool_label_->setText(
-      tr("Active Tool: %1").arg(QString::fromStdString(tool_id)));
+  tool_label_->setText(tr("Active Tool: %1")
+                           .arg(manager_->tools().toolLabel(tool_id)));
 
   const auto specs = manager_->tools().activeToolPropertySpecs();
   if (specs.empty()) {

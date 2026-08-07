@@ -6,7 +6,12 @@
 
 #include <QColor>
 #include <QFormLayout>
+#include <QFrame>
 #include <QGroupBox>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QLineEdit>
+#include <QMetaObject>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QVBoxLayout>
@@ -17,63 +22,125 @@ QString SettingsWidgetBackgroundStyle() {
   return QStringLiteral("background: palette(window);");
 }
 
+QString PanelShellStyle(const QString& object_name) {
+  return QStringLiteral("#%1 { background: palette(window); }").arg(object_name);
+}
+
+bool ShouldSkipPanelShellBackground(const QWidget* widget) {
+  if (widget == nullptr) {
+    return true;
+  }
+  return widget->objectName() ==
+         QString::fromLatin1(AppThemeIds::kViewportHost);
+}
+
 QString CompactGroupStyle() {
-  return QStringLiteral(
-      "QGroupBox {"
-      "  font-weight: 600;"
-      "  margin-top: 6px;"
-      "  padding-top: 12px;"
-      "  border: 1px solid palette(midlight);"
-      "  border-radius: 4px;"
-      "}"
-      "QGroupBox::title {"
-      "  subcontrol-origin: margin;"
-      "  left: 6px;"
-      "  padding: 0 4px;"
-      "}");
+  return QString();
 }
 
 QString SegmentedToggleStyle() {
-  return QStringLiteral(
-      "QWidget { background: palette(midlight); border-radius: 4px; }"
-      "QPushButton { border: none; padding: 4px 10px; }"
-      "QPushButton:checked { background: palette(base); border-radius: 4px; }");
+  return QString();
 }
 
 QString PanelStatusBarStyle() {
-  return QStringLiteral(
-      "QFrame {"
-      "  background: palette(base);"
-      "  border-bottom: 1px solid palette(midlight);"
-      "}");
+  return QString();
 }
 
 QString PanelFooterStyle() {
-  return QStringLiteral(
-      "QFrame {"
-      "  background: palette(base);"
-      "  border-top: 1px solid palette(midlight);"
-      "}");
+  return QString();
 }
 
 QString PanelStatusLabelStyle() {
   return QStringLiteral("color: palette(mid); font-size: 10px; padding: 0; margin: 0;");
 }
 
-QString PropertyInspectorTitleStyle() {
+QString PanelStatusLabelErrorStyle() {
+  return QStringLiteral("color: #c62828; font-size: 10px; padding: 0; margin: 0;");
+}
+
+QString PanelHintLabelStyle() {
+  return QString();
+}
+
+QString PanelFilterLineEditStyle() {
+  return QString();
+}
+
+QString PanelIconClearButtonStyle() {
   return QStringLiteral(
-      "font-weight: 600; padding: 6px 8px; color: palette(text);"
-      "border-bottom: 1px solid palette(midlight); background: palette(base);");
+      "QToolButton {"
+      "  color: palette(mid);"
+      "  background: transparent;"
+      "  border: none;"
+      "  font-size: 14px;"
+      "  padding: 0px;"
+      "  border-radius: 6px;"
+      "}"
+      "QToolButton:hover { color: palette(text); background: palette(alternate-base); }");
+}
+
+QString PanelCompactButtonStyle() {
+  return QString();
+}
+
+QString PanelHelpBrowserStyle() {
+  return QStringLiteral(
+      "QTextBrowser {"
+      "  background: palette(base);"
+      "  color: palette(text);"
+      "  border: none;"
+      "  border-top: 1px solid palette(mid);"
+      "  padding: 8px;"
+      "  font-size: 11px;"
+      "}");
+}
+
+QString PanelTreeWidgetStyle() {
+  return QString();
+}
+
+QString PanelSplitterStyle() {
+  return QString();
+}
+
+QString DockTitleBarStyle() {
+  return QString();
+}
+
+QString DockTitleLabelStyle() {
+  return QString();
+}
+
+QString MainWindowStatusBarStyle() {
+  return QString();
+}
+
+QString PropertyInspectorTitleStyle() {
+  return QString();
 }
 
 QString PropertyInspectorHintStyle() {
-  return QStringLiteral("color: palette(mid); padding: 12px;");
+  return QString();
+}
+
+void ApplyPanelShell(QWidget* widget) {
+  if (widget == nullptr || ShouldSkipPanelShellBackground(widget)) {
+    return;
+  }
+  if (widget->objectName().isEmpty()) {
+    widget->setObjectName(QString::fromLatin1(AppThemeIds::kPanelContent));
+  }
+  widget->setAutoFillBackground(true);
+  widget->setAttribute(Qt::WA_StyledBackground, true);
+  widget->setStyleSheet(PanelShellStyle(widget->objectName()));
 }
 
 void ApplyCompactSettingsShell(QWidget* widget) {
   if (widget == nullptr) {
     return;
   }
+  widget->setAutoFillBackground(true);
+  widget->setAttribute(Qt::WA_StyledBackground, true);
   widget->setStyleSheet(SettingsWidgetBackgroundStyle());
 }
 
@@ -95,11 +162,45 @@ void ApplyCompactVBox(QVBoxLayout* layout) {
     return;
   }
   layout->setContentsMargins(PanelSettingsLayout::kOuterMargin,
-                               PanelSettingsLayout::kOuterMargin,
-                               PanelSettingsLayout::kOuterMargin,
-                               PanelSettingsLayout::kOuterMargin);
+                             PanelSettingsLayout::kOuterMargin,
+                             PanelSettingsLayout::kOuterMargin,
+                             PanelSettingsLayout::kOuterMargin);
   layout->setSpacing(PanelSettingsLayout::kOuterSpacing);
   layout->setAlignment(Qt::AlignTop);
+}
+
+void ApplyPanelToolbarLayout(QHBoxLayout* layout) {
+  if (layout == nullptr) {
+    return;
+  }
+  layout->setContentsMargins(PanelChromeLayout::kToolbarMarginH,
+                             PanelChromeLayout::kToolbarMarginV,
+                             PanelChromeLayout::kToolbarMarginH,
+                             PanelChromeLayout::kToolbarMarginV);
+  layout->setSpacing(PanelChromeLayout::kToolbarSpacing);
+}
+
+void StylePanelStatusLabel(QLabel* label, bool is_error) {
+  if (label == nullptr) {
+    return;
+  }
+  label->setStyleSheet(is_error ? PanelStatusLabelErrorStyle() : PanelStatusLabelStyle());
+}
+
+void StyleHintLabel(QLabel* label) {
+  if (label == nullptr) {
+    return;
+  }
+  label->setObjectName(QString::fromLatin1(AppThemeIds::kHintLabel));
+  label->setStyleSheet(QString());
+}
+
+void StyleSectionTitle(QLabel* label) {
+  if (label == nullptr) {
+    return;
+  }
+  label->setObjectName(QString::fromLatin1(AppThemeIds::kSectionTitle));
+  label->setStyleSheet(QString());
 }
 
 void StyleSettingsGroupBox(QGroupBox* group) {
@@ -109,21 +210,92 @@ void StyleSettingsGroupBox(QGroupBox* group) {
   group->setStyleSheet(CompactGroupStyle());
 }
 
+void StyleFilterLineEdit(QLineEdit* edit) {
+  if (edit == nullptr) {
+    return;
+  }
+  edit->setStyleSheet(PanelFilterLineEditStyle());
+}
+
+void StylePanelTree(QWidget* tree) {
+  if (tree == nullptr) {
+    return;
+  }
+  tree->setObjectName(QString::fromLatin1(AppThemeIds::kPanelTree));
+  tree->setStyleSheet(QString());
+}
+
+void ApplyPanelToolbarChrome(QFrame* toolbar) {
+  if (toolbar == nullptr) {
+    return;
+  }
+  toolbar->setObjectName(QString::fromLatin1(AppThemeIds::kPanelToolbar));
+  toolbar->setStyleSheet(QString());
+}
+
+void ApplyPanelFooterChrome(QFrame* footer) {
+  if (footer == nullptr) {
+    return;
+  }
+  footer->setObjectName(QString::fromLatin1(AppThemeIds::kPanelFooter));
+  footer->setStyleSheet(QString());
+}
+
+void ApplyPanelTitleToolsChrome(QWidget* tools) {
+  if (tools == nullptr) {
+    return;
+  }
+  tools->setObjectName(QString::fromLatin1(AppThemeIds::kPanelTitleTools));
+  tools->setStyleSheet(QString());
+}
+
+QFrame* MakePanelToolbar(QWidget* parent, QHBoxLayout** layout_out) {
+  auto* toolbar = new QFrame(parent);
+  toolbar->setObjectName(QString::fromLatin1(AppThemeIds::kPanelToolbar));
+  toolbar->setStyleSheet(QString());
+  auto* layout = new QHBoxLayout(toolbar);
+  ApplyPanelToolbarLayout(layout);
+  if (layout_out != nullptr) {
+    *layout_out = layout;
+  }
+  return toolbar;
+}
+
+QFrame* MakePanelFooter(QWidget* parent, QLabel** status_label_out) {
+  auto* footer = new QFrame(parent);
+  footer->setObjectName(QString::fromLatin1(AppThemeIds::kPanelFooter));
+  footer->setFixedHeight(PanelChromeLayout::kFooterHeight);
+  footer->setStyleSheet(QString());
+  auto* layout = new QHBoxLayout(footer);
+  layout->setContentsMargins(PanelChromeLayout::kFooterMarginH, 0,
+                             PanelChromeLayout::kFooterMarginH, 0);
+  layout->setSpacing(0);
+  if (status_label_out != nullptr) {
+    auto* label = new QLabel(footer);
+    label->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    StylePanelStatusLabel(label);
+    label->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    layout->addWidget(label, 1);
+    *status_label_out = label;
+  }
+  return footer;
+}
+
 QPushButton* MakeFlatActionButton(const QString& text, QWidget* parent) {
   auto* button = new QPushButton(text, parent);
   button->setFlat(true);
   button->setCursor(Qt::PointingHandCursor);
-  button->setStyleSheet(
-      QStringLiteral("QPushButton { text-align: left; padding: 2px 4px; color: #1976D2; }"
-                     "QPushButton:hover { background: rgba(25,118,210,0.08); }"));
   return button;
 }
 
 QPushButton* MakeDestructiveFlatActionButton(const QString& text, QWidget* parent) {
-  auto* button = MakeFlatActionButton(text, parent);
+  auto* button = new QPushButton(text, parent);
+  button->setFlat(true);
+  button->setCursor(Qt::PointingHandCursor);
   button->setStyleSheet(
-      QStringLiteral("QPushButton { text-align: left; padding: 2px 4px; color: #c62828; }"
-                     "QPushButton:hover { background: rgba(198,40,40,0.08); }"));
+      QStringLiteral(
+          "QPushButton { text-align: left; padding: 2px 4px; color: #c62828; }"
+          "QPushButton:hover { background: rgba(198,40,40,0.08); border-radius: 6px; }"));
   return button;
 }
 
@@ -138,7 +310,7 @@ void UpdateColorButton(QPushButton* button, const QColor& color) {
   button->setText(color.name(QColor::HexRgb));
   button->setStyleSheet(
       QStringLiteral("background:%1; color:white; border: 1px solid palette(mid);"
-                     " border-radius: 3px; padding: 2px 6px;")
+                       " border-radius: 6px; padding: 2px 6px;")
           .arg(color.name(QColor::HexRgb)));
 }
 
@@ -150,8 +322,8 @@ QWidget* MakeCollapsibleSection(QWidget* parent, const QString& title, QWidget* 
   StyleSettingsGroupBox(section);
   auto* layout = new QVBoxLayout(section);
   layout->setContentsMargins(PanelSettingsLayout::kOuterMargin, 4,
-                            PanelSettingsLayout::kOuterMargin,
-                            PanelSettingsLayout::kOuterMargin);
+                             PanelSettingsLayout::kOuterMargin,
+                             PanelSettingsLayout::kOuterMargin);
   layout->setSpacing(PanelSettingsLayout::kSectionSpacing);
   layout->addWidget(body);
   body->setVisible(expanded);
@@ -160,6 +332,10 @@ QWidget* MakeCollapsibleSection(QWidget* parent, const QString& title, QWidget* 
 }
 
 QWidget* SettingsScrollForInspector(QScrollArea* scroll) {
+  if (scroll != nullptr) {
+    scroll->setObjectName(QString::fromLatin1(AppThemeIds::kSettingsScroll));
+    scroll->setStyleSheet(QString());
+  }
   return scroll;
 }
 

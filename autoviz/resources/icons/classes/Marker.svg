@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"
-     shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
-
-  <path d="M22 18 L42 18 L42 38 L22 38 Z" fill="#2ecc71" stroke="#1e8449" stroke-width="1.5"/>
-  <path d="M22 18 L32 10 L42 18" fill="#58d68d" stroke="#1e8449" stroke-width="1.5"/>
-
-</svg>

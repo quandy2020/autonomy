@@ -27,6 +27,7 @@
 #include "autoviz/integration/service_client_registry.hpp"
 #include "autoviz/integration/service_discovery.hpp"
 #include "autoviz/ui/service/service_message_codec.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 namespace service_panel {
@@ -57,12 +58,12 @@ QPlainTextEdit* MakeJsonEditor(QWidget* parent, const QString& placeholder) {
 ServiceEditorWidget::ServiceEditorWidget(common::VisualizationManager* manager,
                                          QWidget* parent)
     : manager_(manager), config_(DefaultServiceCallPanelConfig()), QWidget(parent) {
-  setAttribute(Qt::WA_StyledBackground, true);
-  setStyleSheet(QStringLiteral("ServiceEditorWidget { background: palette(window); }"));
+  ApplyPanelShell(this);
 
   auto* root = new QVBoxLayout(this);
-  root->setContentsMargins(8, 8, 8, 8);
-  root->setSpacing(8);
+  root->setContentsMargins(PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
+                           PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
+  root->setSpacing(PanelSettingsLayout::kOuterSpacing);
 
   auto* header = new QHBoxLayout();
   editing_mode_check_ = new QCheckBox(tr("Editing mode"), this);
@@ -70,7 +71,7 @@ ServiceEditorWidget::ServiceEditorWidget(common::VisualizationManager* manager,
   header->addWidget(editing_mode_check_);
   header->addStretch();
   status_label_ = new QLabel(this);
-  status_label_->setStyleSheet(QStringLiteral("color: palette(mid); font-size: 10px;"));
+  StylePanelStatusLabel(status_label_);
   status_label_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
   header->addWidget(status_label_, 1);
   root->addLayout(header);
@@ -273,9 +274,7 @@ void ServiceEditorWidget::updateCallButtonState() {
 
 void ServiceEditorWidget::updateStatus(const QString& text, bool is_error) {
   status_label_->setText(text);
-  status_label_->setStyleSheet(is_error
-                                   ? QStringLiteral("color: #c07070; font-size: 10px;")
-                                   : QStringLiteral("color: palette(mid); font-size: 10px;"));
+  StylePanelStatusLabel(status_label_, is_error);
 }
 
 void ServiceEditorWidget::resolveTypesForService(const QString& service_name) {

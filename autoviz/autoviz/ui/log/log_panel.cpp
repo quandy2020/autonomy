@@ -31,10 +31,6 @@ namespace autoviz {
 namespace log_panel {
 namespace {
 
-QToolButton* AddTitleToolButton(QWidget* parent, const QIcon& icon,
-                                const QString& tip, bool checkable = false) {
-  return CreatePlotTitleToolButton(parent, icon, tip, checkable);
-}
 
 double TimestampSec(const LogEntry& entry) {
   return static_cast<double>(entry.timestamp_ns) / 1e9;
@@ -45,8 +41,7 @@ double TimestampSec(const LogEntry& entry) {
 LogPanel::LogPanel(common::VisualizationManager* manager, QWidget* parent)
     : manager_(manager), config_(DefaultLogPanelConfig()), QWidget(parent) {
   setFocusPolicy(Qt::StrongFocus);
-  setAttribute(Qt::WA_StyledBackground, true);
-  setStyleSheet(QStringLiteral("LogPanel { background: palette(window); }"));
+  ApplyPanelShell(this);
 
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);
@@ -65,25 +60,14 @@ LogPanel::LogPanel(common::VisualizationManager* manager, QWidget* parent)
   settings_layout->addWidget(settings_scroll_);
 
   auto* toolbar = new QFrame(this);
-  toolbar->setStyleSheet(PanelStatusBarStyle());
+  ApplyPanelToolbarChrome(toolbar);
   auto* toolbar_layout = new QHBoxLayout(toolbar);
-  toolbar_layout->setContentsMargins(6, 4, 6, 4);
-  toolbar_layout->setSpacing(4);
+  ApplyPanelToolbarLayout(toolbar_layout);
 
   search_edit_ = new QLineEdit(toolbar);
   search_edit_->setPlaceholderText(tr("Filter logs"));
   search_edit_->setClearButtonEnabled(false);
-  search_edit_->setStyleSheet(
-      QStringLiteral(
-          "QLineEdit {"
-          "  background: palette(base);"
-          "  border: 1px solid palette(mid);"
-          "  border-radius: 3px;"
-          "  padding: 2px 6px;"
-          "  color: palette(text);"
-          "  min-height: 18px;"
-          "}"
-          "QLineEdit:focus { border-color: palette(highlight); }"));
+  StyleFilterLineEdit(search_edit_);
   toolbar_layout->addWidget(search_edit_, 1);
 
   search_clear_button_ = new QToolButton(toolbar);
@@ -92,20 +76,11 @@ LogPanel::LogPanel(common::VisualizationManager* manager, QWidget* parent)
   search_clear_button_->setCursor(Qt::PointingHandCursor);
   search_clear_button_->setVisible(false);
   search_clear_button_->setFixedSize(18, 18);
-  search_clear_button_->setStyleSheet(
-      QStringLiteral(
-          "QToolButton {"
-          "  color: palette(mid);"
-          "  background: transparent;"
-          "  border: none;"
-          "  font-size: 14px;"
-          "  padding: 0px;"
-          "}"
-          "QToolButton:hover { color: palette(text); }"));
+  search_clear_button_->setStyleSheet(PanelIconClearButtonStyle());
   toolbar_layout->addWidget(search_clear_button_);
 
   status_label_ = new QLabel(toolbar);
-  status_label_->setStyleSheet(PanelStatusLabelStyle());
+  StylePanelStatusLabel(status_label_);
   status_label_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
   toolbar_layout->addWidget(status_label_);
   root->addWidget(toolbar);
@@ -149,53 +124,6 @@ void LogPanel::installTitleBarTools(PanelDockWidget* dock) {
   if (dock == nullptr) {
     return;
   }
-  auto* tools = new QWidget(dock);
-  tools->setStyleSheet(PlotTitleToolsStyleSheet());
-  auto* layout = new QHBoxLayout(tools);
-  layout->setContentsMargins(0, 0, 4, 0);
-  layout->setSpacing(0);
-
-  layout->addWidget(CreateTitleSeparator(tools));
-
-  auto* split_right = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_split_right.svg")),
-      tr("Split right"));
-  layout->addWidget(split_right);
-  connect(split_right, &QToolButton::clicked, this, [this]() {
-    emit panelSplitRequested(Qt::Horizontal);
-  });
-
-  auto* split_down = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_split_down.svg")),
-      tr("Split down"));
-  layout->addWidget(split_down);
-  connect(split_down, &QToolButton::clicked, this, [this]() {
-    emit panelSplitRequested(Qt::Vertical);
-  });
-
-  auto* expand = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_fullscreen.svg")),
-      tr("Expand"), true);
-  expand_button_ = expand;
-  layout->addWidget(expand);
-  connect(expand, &QToolButton::clicked, this, [this]() { emit panelExpandRequested(); });
-
-  settings_button_ = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_settings.svg")),
-      tr("Settings"), true);
-  settings_button_->setChecked(config_.settings_visible);
-  layout->addWidget(settings_button_);
-  connect(settings_button_, &QToolButton::toggled, this, &LogPanel::onToggleSettings);
-
-  auto* more_button = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_more.svg")),
-      tr("More"));
-  more_button->setPopupMode(QToolButton::InstantPopup);
   PanelContextMenuCallbacks callbacks;
   callbacks.current_object_name = QStringLiteral("LogDock");
   callbacks.change_panel = [this](const QString& object_name) {
@@ -206,10 +134,18 @@ void LogPanel::installTitleBarTools(PanelDockWidget* dock) {
   };
   callbacks.expand = [this]() { emit panelExpandRequested(); };
   callbacks.remove = [this]() { emit panelRemoveRequested(); };
-  more_button->setMenu(CreatePanelContextMenu(more_button, callbacks));
-  layout->addWidget(more_button);
 
-  dock->setTitleBarTools(tools);
+  PanelTitleBarOptions options;
+  options.show_settings = true;
+  options.settings_checked = config_.settings_visible;
+  options.on_settings_toggled = [this](bool visible) { onToggleSettings(visible); };
+  options.on_expand = [this]() { emit panelExpandRequested(); };
+
+  const PanelTitleBarTools tools =
+      CreateRvizPanelTitleBarTools(dock, callbacks, options);
+  settings_button_ = tools.settings_button;
+  expand_button_ = tools.expand_button;
+  dock->setTitleBarTools(tools.widget);
 }
 
 LogPanelConfig LogPanel::config() const { return config_; }

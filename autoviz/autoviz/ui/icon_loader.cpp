@@ -5,6 +5,7 @@
 #include "autoviz/ui/icon_loader.hpp"
 
 #include <QCursor>
+#include <QFile>
 #include <QImage>
 #include <QPainter>
 #include <QPixmap>
@@ -12,6 +13,7 @@
 #include <QSvgRenderer>
 
 #include "autoviz/common/display_status.hpp"
+#include "autoviz/ui/panel_dock_widget.hpp"
 
 namespace autoviz {
 namespace {
@@ -31,64 +33,208 @@ QString MapToolIconBase(const QString& tool_id) {
       {"FocusCamera", "classes/FocusCamera"},
       {"Measure", "classes/Measure"},
       {"PoseEstimate", "classes/SetInitialPose"},
+      {"SetInitialPose", "classes/SetInitialPose"},
       {"NavGoal", "classes/SetGoal"},
+      {"SetGoal", "classes/SetGoal"},
       {"PublishPoint", "classes/PublishPoint"},
   };
   for (const auto& entry : kMap) {
     if (tool_id == QLatin1String(entry.id)) {
-      return QStringLiteral(":/autoviz/icons/") +
-             QLatin1String(entry.icon);
+      return QStringLiteral(":/autoviz/icons/") + QLatin1String(entry.icon);
     }
   }
   return QStringLiteral(":/autoviz/icons/cursor");
 }
 
-QString MapPanelIcon(const QString& panel_id) {
+/** RViz2 panel / display icon resource base (no extension). */
+QString MapPanelResourceBase(const QString& panel_id) {
   static const struct {
     const char* id;
     const char* icon;
   } kMap[] = {
-      {"Displays", "classes/Displays.svg"},
-      {"Views", "classes/Views.svg"},
-      {"Help", "classes/Help.svg"},
-      {"Selection", "crosshair.svg"},
-      {"ToolProperties", "menu.svg"},
-      {"Time", "rotate.svg"},
-      {"Playback", "rotate_cam.svg"},
-      {"TfTree", "classes/TF.svg"},
-      {"Transformation", "classes/TF.svg"},
-      {"Image", "classes/Image.svg"},
-      {"Channels", "classes/Displays.svg"},
-      {"Map", "classes/Map.svg"},
-      {"PublishPoint", "classes/PublishPoint.svg"},
-      {"Panel3D", "panels/panel_3d.svg"},
-      {"PanelAudio", "panels/panel_audio.svg"},
-      {"PanelDataSource", "panels/panel_data_source.svg"},
-      {"PanelGauge", "panels/panel_gauge.svg"},
-      {"PanelImage", "panels/panel_image.svg"},
-      {"PanelIndicator", "panels/panel_indicator.svg"},
-      {"PanelLog", "panels/panel_log.svg"},
-      {"PanelMap", "panels/panel_map.svg"},
-      {"PanelMarkdown", "panels/panel_markdown.svg"},
-      {"PanelParameters", "panels/panel_parameters.svg"},
-      {"PanelPlot", "panels/panel_plot.svg"},
-      {"PanelPublish", "panels/panel_publish.svg"},
-      {"PanelRawMessages", "panels/panel_raw_messages.svg"},
-      {"PanelService", "panels/panel_service.svg"},
-      {"PanelStack", "panels/panel_stack.svg"},
-      {"PanelState", "panels/panel_state.svg"},
-      {"PanelTab", "panels/panel_tab.svg"},
-      {"PanelTable", "panels/panel_table.svg"},
-      {"PanelTeleop", "panels/panel_teleop.svg"},
-      {"PanelChannelGraph", "panels/panel_channel_graph.svg"},
-      {"PanelTransformTree", "panels/panel_transform_tree.svg"},
+      // rviz_common built-in panels (icons/classes/{Name}.png|.svg)
+      {"Displays", "classes/Displays"},
+      {"Views", "classes/Views"},
+      {"Help", "classes/Help"},
+      {"Selection", "classes/Selection"},
+      {"Time", "classes/Time"},
+      {"Playback", "classes/Time"},
+      {"ToolProperties", "classes/Tool Properties"},
+      {"Transformation", "classes/Transformation"},
+      // Autoviz panels — RViz display icons matched by role
+      {"Panel3D", "panels/panel_3d"},
+      {"PanelImage", "panels/panel_image"},
+      {"PanelMap", "panels/panel_map"},
+      {"PanelPlot", "panels/panel_plot"},
+      {"PanelRawMessages", "panels/panel_raw_messages"},
+      {"PanelTransformTree", "panels/panel_transform_tree"},
+      {"PanelDataSource", "panels/panel_data_source"},
+      {"PanelParameters", "panels/panel_parameters"},
+      {"PanelPublish", "panels/panel_publish"},
+      {"PanelTable", "panels/panel_table"},
+      {"PanelTeleop", "panels/panel_teleop"},
+      {"PanelGauge", "panels/panel_gauge"},
+      {"PanelIndicator", "panels/panel_indicator"},
+      {"PanelState", "panels/panel_state"},
+      {"PanelService", "panels/panel_service"},
+      {"PanelLog", "panels/panel_log"},
+      {"PanelChannelGraph", "panels/panel_channel_graph"},
+      {"PanelChannels", "panels/panel_channels"},
+      {"PanelProblems", "panels/panel_problems"},
+      {"PanelMarkdown", "panels/panel_markdown"},
+      {"PanelStack", "panels/panel_stack"},
+      {"PanelTab", "panels/panel_tab"},
+      {"PanelAudio", "panels/panel_audio"},
+      {"PanelVariables", "panels/panel_variables"},
+      {"PanelVariableSlider", "panels/panel_variable_slider"},
+      {"PanelStrataFloor", "classes/Grid"},
   };
   for (const auto& entry : kMap) {
     if (panel_id == QLatin1String(entry.id)) {
+      return QStringLiteral(":/autoviz/icons/") + QLatin1String(entry.icon);
+    }
+  }
+  return QStringLiteral(":/autoviz/icons/default_class_icon");
+}
+
+QString MapPanelIcon(const QString& panel_id) {
+  return MapPanelResourceBase(panel_id);
+}
+
+QString MapDockTypeIcon(const QString& dock_type_id) {
+  static const struct {
+    const char* dock_id;
+    const char* panel_id;
+  } kMap[] = {
+      {"ViewportDock", "Panel3D"},
+      {"AudioDock", "PanelAudio"},
+      {"PlaybackDock", "PanelDataSource"},
+      {"GaugeDock", "PanelGauge"},
+      {"ImageDock", "PanelImage"},
+      {"IndicatorDock", "PanelIndicator"},
+      {"LogDock", "PanelLog"},
+      {"MapDock", "PanelMap"},
+      {"HelpDock", "PanelMarkdown"},
+      {"ParametersDock", "PanelParameters"},
+      {"PlotDock", "PanelPlot"},
+      {"PublishDock", "PanelPublish"},
+      {"ChannelsDock", "PanelRawMessages"},
+      {"ChannelBrowserDock", "PanelChannels"},
+      {"ProblemsDock", "PanelProblems"},
+      {"ServiceDock", "PanelService"},
+      {"StateTransitionDock", "PanelState"},
+      {"TableDock", "PanelTable"},
+      {"TeleopDock", "PanelTeleop"},
+      {"ChannelGraphDock", "PanelChannelGraph"},
+      {"VariablesDock", "PanelVariables"},
+      {"VariableSliderDock", "PanelVariableSlider"},
+      {"TfTreeDock", "PanelTransformTree"},
+      {"StrataFloorDock", "PanelStrataFloor"},
+      {"DisplaysDock", "Displays"},
+      {"ViewsDock", "Views"},
+      {"SelectionDock", "Selection"},
+      {"ToolPropertiesDock", "ToolProperties"},
+      {"TimeDock", "Time"},
+      {"TransformationDock", "Transformation"},
+      {"PropertyInspectorDock", "ToolProperties"},
+      {"DroneDock", "Panel3D"},
+      {"Vehicle3DDock", "Panel3D"},
+  };
+  for (const auto& entry : kMap) {
+    if (dock_type_id == QLatin1String(entry.dock_id)) {
+      return MapPanelResourceBase(QLatin1String(entry.panel_id));
+    }
+  }
+  return MapPanelResourceBase(dock_type_id);
+}
+
+QString MapPanelTitleIcon(const QString& role) {
+  static const struct {
+    const char* role;
+    const char* icon;
+  } kMap[] = {
+      {"viewport.interact", "classes/Interact"},
+      {"viewport.move_camera", "classes/MoveCamera"},
+      {"viewport.reset_view", "rotate"},
+      {"viewport.view_settings", "classes/Views"},
+      {"viewport.inspect", "panel/panel_inspect"},
+      {"viewport.camera_2d", "move2d"},
+      {"viewport.measure", "classes/Measure"},
+      {"viewport.recenter_frame", "panel/panel_recenter"},
+      {"panel.close", "panel/panel_close"},
+      {"panel.expand", "panel/panel_expand"},
+      {"panel.more", "panel/panel_more"},
+      {"panel.settings", "panel/panel_settings"},
+      {"panel.split_right", "right_dock"},
+      {"panel.split_down", "left_dock"},
+      {"plot.reset_view", "plot/plot_reset_view"},
+      {"plot.select", "classes/Select"},
+      {"plot.inspect", "crosshair"},
+      {"plot.zoom", "zoom"},
+      {"plot.legend", "plot/plot_legend"},
+  };
+  for (const auto& entry : kMap) {
+    if (role == QLatin1String(entry.role)) {
+      return QStringLiteral(":/autoviz/icons/") + QLatin1String(entry.icon);
+    }
+  }
+  return {};
+}
+
+QString MapMenuIcon(const QString& menu_id) {
+  static const struct {
+    const char* id;
+    const char* icon;
+  } kMap[] = {
+      {"menu.app", "menu/app"},
+      {"menu.file", "menu/file"},
+      {"menu.layout", "menu/layout"},
+      {"menu.panels", "classes/Displays"},
+      {"menu.view", "menu/view"},
+      {"menu.help", "menu/help"},
+      {"menu.camera", "menu/camera"},
+      {"menu.backend", "menu/backend"},
+      {"file.open", "menu/open_config"},
+      {"file.save", "menu/save_config"},
+      {"file.save_as", "menu/save_as"},
+      {"file.recent", "menu/recent"},
+      {"file.image", "menu/screenshot"},
+      {"file.quit", "menu/quit"},
+      {"file.config", "menu/config_file"},
+      {"layout.open", "menu/open_config"},
+      {"layout.save", "menu/save_config"},
+      {"layout.save_as", "menu/save_as"},
+      {"layout.reset", "menu/reset_layout"},
+      {"panels.add", "plus"},
+      {"panels.delete", "minus"},
+      {"panels.fullscreen", "classes/Views"},
+      {"panels.tools", "classes/Interact"},
+      {"view.orbit", "menu/orbit"},
+      {"view.xy_orbit", "menu/xy_orbit"},
+      {"view.top_down", "menu/top_down"},
+      {"view.top_down_ortho", "menu/top_down_ortho"},
+      {"view.third_person", "menu/third_person"},
+      {"view.fps", "menu/fps"},
+      {"view.opengl", "menu/opengl"},
+      {"view.ogre", "menu/ogre"},
+      {"help.panel", "menu/help"},
+      {"help.about", "menu/about"},
+      {"app.settings", "menu/settings"},
+  };
+  for (const auto& entry : kMap) {
+    if (menu_id == QLatin1String(entry.id)) {
       return QStringLiteral(":/autoviz/icons/") + entry.icon;
     }
   }
-  return QStringLiteral(":/autoviz/icons/menu.svg");
+  return QStringLiteral(":/autoviz/icons/menu");
+}
+
+QString StripExtension(const QString& path) {
+  const int dot = path.lastIndexOf(QLatin1Char('.'));
+  if (dot > 0) {
+    return path.left(dot);
+  }
+  return path;
 }
 
 bool IsVisiblePixmap(const QPixmap& pixmap) {
@@ -106,67 +252,40 @@ bool IsVisiblePixmap(const QPixmap& pixmap) {
   return false;
 }
 
-constexpr int kIconMasterSize = 256;
-constexpr int kIconSizes[] = {16, 20, 24, 28, 32, 48, 64, 96, 128, 192, kIconMasterSize};
-
-QIcon BuildIconFromMaster(const QPixmap& master) {
-  QIcon icon;
-  if (!IsVisiblePixmap(master)) {
-    return icon;
-  }
-  for (const int size : kIconSizes) {
-    if (master.width() == size && master.height() == size) {
-      icon.addPixmap(master);
-      continue;
-    }
-    icon.addPixmap(master.scaled(size, size, Qt::KeepAspectRatio,
-                                 Qt::SmoothTransformation));
-  }
-  return icon;
-}
-
-QPixmap UpscalePixmap(const QPixmap& source) {
-  if (source.isNull()) {
-    return {};
-  }
-  if (source.width() >= kIconMasterSize && source.height() >= kIconMasterSize) {
-    return source;
-  }
-  return source.scaled(kIconMasterSize, kIconMasterSize, Qt::KeepAspectRatio,
-                       Qt::SmoothTransformation);
+void ConfigureIconPainter(QPainter& painter) {
+  painter.setRenderHint(QPainter::Antialiasing, true);
+  painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
 }
 
 QPixmap RenderSvgPixmap(const QString& resource_path, int size) {
+  if (!QFile::exists(resource_path)) {
+    return {};
+  }
   QSvgRenderer renderer(resource_path);
-  if (!renderer.isValid()) {
+  if (!renderer.isValid() || size <= 0) {
     return {};
   }
   QPixmap pixmap(size, size);
   pixmap.fill(Qt::transparent);
   QPainter painter(&pixmap);
-  painter.setRenderHint(QPainter::Antialiasing, true);
-  painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
-  painter.setRenderHint(QPainter::TextAntialiasing, true);
+  ConfigureIconPainter(painter);
   renderer.render(&painter, QRectF(0, 0, size, size));
   painter.end();
   return pixmap;
 }
 
-QIcon IconFromSvgResource(const QString& resource_path) {
+QIcon IconFromSvgResource(const QString& resource_path, const int* sizes, int count) {
+  if (!QFile::exists(resource_path)) {
+    return {};
+  }
   QSvgRenderer renderer(resource_path);
   if (!renderer.isValid()) {
     return {};
   }
+
   QIcon icon;
-  for (const int size : kIconSizes) {
-    QPixmap pixmap(size, size);
-    pixmap.fill(Qt::transparent);
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing, true);
-    painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
-    painter.setRenderHint(QPainter::TextAntialiasing, true);
-    renderer.render(&painter, QRectF(0, 0, size, size));
-    painter.end();
+  for (int i = 0; i < count; ++i) {
+    const QPixmap pixmap = RenderSvgPixmap(resource_path, sizes[i]);
     if (IsVisiblePixmap(pixmap)) {
       icon.addPixmap(pixmap);
     }
@@ -174,123 +293,88 @@ QIcon IconFromSvgResource(const QString& resource_path) {
   return icon;
 }
 
-constexpr int kStatusIconSizes[] = {12, 14, 16, 20, 24, 28, 32};
-
-QIcon StatusIconFromSvgResource(const QString& resource_path) {
-  QSvgRenderer renderer(resource_path);
-  if (!renderer.isValid()) {
-    return {};
-  }
-  QIcon icon;
-  for (const int logical_size : kStatusIconSizes) {
-    for (const qreal dpr : {1.0, 2.0, 3.0}) {
-      const int physical_size = qRound(logical_size * dpr);
-      QPixmap pixmap(physical_size, physical_size);
-      pixmap.fill(Qt::transparent);
-      pixmap.setDevicePixelRatio(dpr);
-      QPainter painter(&pixmap);
-      painter.setRenderHint(QPainter::Antialiasing, true);
-      painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
-      painter.setRenderHint(QPainter::TextAntialiasing, true);
-      renderer.render(&painter,
-                      QRectF(0, 0, logical_size, logical_size));
-      painter.end();
-      if (IsVisiblePixmap(pixmap)) {
-        icon.addPixmap(pixmap);
-      }
-    }
-  }
-  return icon;
-}
-
 QIcon IconFromPngResource(const QString& resource_path) {
-  const QPixmap source(resource_path);
-  if (source.isNull() || !IsVisiblePixmap(source)) {
+  if (!QFile::exists(resource_path)) {
     return {};
   }
-  return BuildIconFromMaster(UpscalePixmap(source));
+  const QPixmap source(resource_path);
+  if (!IsVisiblePixmap(source)) {
+    return {};
+  }
+  return QIcon(source);
 }
 
-QIcon IconFromResource(const QString& resource_path) {
+QIcon IconFromResourcePath(const QString& resource_path, const int* sizes,
+                           int count) {
   if (resource_path.endsWith(QLatin1String(".svg"), Qt::CaseInsensitive)) {
-    QIcon icon = IconFromSvgResource(resource_path);
-    if (!icon.isNull()) {
-      return icon;
-    }
+    return IconFromSvgResource(resource_path, sizes, count);
   }
-
   if (resource_path.endsWith(QLatin1String(".png"), Qt::CaseInsensitive)) {
-    QIcon icon = IconFromPngResource(resource_path);
+    return IconFromPngResource(resource_path);
+  }
+  return {};
+}
+
+constexpr int kIconSizes[] = {16, 24, 32, 48};
+constexpr int kMenuIconSizes[] = {16, 20, 24};
+constexpr int kStatusIconSizes[] = {12, 16, 20, 24};
+
+QIcon LoadIconByBase(const QString& resource_base) {
+  static const char* kExtensions[] = {".svg", ".png"};
+  for (const char* extension : kExtensions) {
+    const QIcon icon = IconFromResourcePath(
+        resource_base + QLatin1String(extension), kIconSizes,
+        static_cast<int>(sizeof(kIconSizes) / sizeof(kIconSizes[0])));
     if (!icon.isNull()) {
       return icon;
     }
   }
-
-  return IconFromPngResource(resource_path);
+  return {};
 }
 
 QIcon LoadDisplayIcon(const QString& display_type) {
   const QString base = MapDisplayIcon(display_type);
-  // Display icons: vector SVG only (never upscaled legacy PNG).
-  QIcon icon = IconFromSvgResource(base + QStringLiteral(".svg"));
+  QIcon icon = LoadIconByBase(base);
   if (!icon.isNull()) {
     return icon;
   }
-  return IconFromSvgResource(
-      QStringLiteral(":/autoviz/icons/default_class_icon.svg"));
+  return LoadIconByBase(QStringLiteral(":/autoviz/icons/default_class_icon"));
 }
 
 QIcon LoadToolIcon(const QString& tool_id) {
   const QString base = MapToolIconBase(tool_id);
-  QSvgRenderer renderer(base + QStringLiteral(".svg"));
-  if (!renderer.isValid()) {
-    return IconFromSvgResource(
-        QStringLiteral(":/autoviz/icons/default_class_icon.svg"));
-  }
-  QIcon icon;
-  constexpr int kToolIconSizes[] = {16, 20, 24, 28, 32, 40, 48, 64, 96, 128};
-  for (const int logical_size : kToolIconSizes) {
-    for (const qreal dpr : {1.0, 2.0, 3.0}) {
-      const int physical_size = qRound(logical_size * dpr);
-      QPixmap pixmap(physical_size, physical_size);
-      pixmap.fill(Qt::transparent);
-      pixmap.setDevicePixelRatio(dpr);
-      QPainter painter(&pixmap);
-      painter.setRenderHint(QPainter::Antialiasing, true);
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-      painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
-#else
-      painter.setRenderHint(QPainter::HighQualityAntialiasing, true);
-      painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
-#endif
-      painter.setRenderHint(QPainter::TextAntialiasing, true);
-      renderer.render(&painter,
-                      QRectF(0, 0, logical_size, logical_size));
-      painter.end();
-      if (IsVisiblePixmap(pixmap)) {
-        icon.addPixmap(pixmap);
-      }
-    }
-  }
+  QIcon icon = LoadIconByBase(base);
   if (!icon.isNull()) {
     return icon;
   }
-  return IconFromSvgResource(
-      QStringLiteral(":/autoviz/icons/default_class_icon.svg"));
+  return LoadIconByBase(QStringLiteral(":/autoviz/icons/default_class_icon"));
+}
+
+QIcon LoadMenuIcon(const QString& resource_base) {
+  static const char* kExtensions[] = {".svg", ".png"};
+  for (const char* extension : kExtensions) {
+    const QIcon icon = IconFromResourcePath(
+        resource_base + QLatin1String(extension), kMenuIconSizes,
+        static_cast<int>(sizeof(kMenuIconSizes) / sizeof(kMenuIconSizes[0])));
+    if (!icon.isNull()) {
+      return icon;
+    }
+  }
+  return {};
 }
 
 }  // namespace
 
 QIcon IconLoader::applicationIcon() {
-  return load(QStringLiteral(":/autoviz/icons/aviz.svg"));
+  return LoadIconByBase(QStringLiteral(":/autoviz/icons/aviz"));
 }
 
 QIcon IconLoader::load(const QString& resource_path) {
-  QIcon icon = IconFromResource(resource_path);
+  QIcon icon = LoadIconByBase(StripExtension(resource_path));
   if (!icon.isNull()) {
     return icon;
   }
-  return IconFromSvgResource(QStringLiteral(":/autoviz/icons/default_class_icon.svg"));
+  return LoadIconByBase(QStringLiteral(":/autoviz/icons/default_class_icon"));
 }
 
 QIcon IconLoader::displayIcon(const QString& display_type) {
@@ -305,8 +389,7 @@ QCursor IconLoader::defaultCursor() {
   return QCursor(Qt::ArrowCursor);
 }
 
-QCursor IconLoader::makeIconCursor(const QPixmap& icon,
-                                   const QString& cache_key) {
+QCursor IconLoader::makeIconCursor(const QPixmap& icon, const QString& cache_key) {
   QPixmap cursor_img;
   if (QPixmapCache::find(cache_key, &cursor_img)) {
     return QCursor(cursor_img, 1, 1);
@@ -316,8 +399,7 @@ QCursor IconLoader::makeIconCursor(const QPixmap& icon,
   QPixmap base_cursor =
       RenderSvgPixmap(QStringLiteral(":/autoviz/icons/cursor.svg"), kCursorSize);
   if (base_cursor.isNull()) {
-    base_cursor = load(QStringLiteral(":/autoviz/icons/cursor.svg"))
-                      .pixmap(kCursorSize, kCursorSize);
+    base_cursor = load(QStringLiteral(":/autoviz/icons/cursor")).pixmap(kCursorSize, kCursorSize);
   }
   if (base_cursor.isNull() || icon.isNull()) {
     return defaultCursor();
@@ -364,25 +446,74 @@ QCursor IconLoader::toolCursor(const QString& tool_id) {
 }
 
 QIcon IconLoader::panelIcon(const QString& panel_id) {
-  return load(MapPanelIcon(panel_id));
+  return LoadIconByBase(MapPanelIcon(panel_id));
+}
+
+QIcon IconLoader::dockPanelIcon(const QString& dock_type_id) {
+  return LoadIconByBase(MapDockTypeIcon(dock_type_id));
+}
+
+void IconLoader::applyDockPanelChrome(PanelDockWidget* dock,
+                                      const QString& dock_type_id) {
+  if (dock == nullptr) {
+    return;
+  }
+  dock->setPanelIcon(dockPanelIcon(dock_type_id));
+}
+
+QIcon IconLoader::menuIcon(const QString& menu_id) {
+  QIcon icon = LoadMenuIcon(MapMenuIcon(menu_id));
+  if (!icon.isNull()) {
+    return icon;
+  }
+  return load(QStringLiteral(":/autoviz/icons/menu"));
+}
+
+QIcon IconLoader::panelTitleIcon(const QString& role) {
+  const QString base = MapPanelTitleIcon(role);
+  if (!base.isEmpty()) {
+    QIcon icon = LoadIconByBase(base);
+    if (!icon.isNull()) {
+      return icon;
+    }
+  }
+  return load(QStringLiteral(":/autoviz/icons/default_class_icon"));
+}
+
+QIcon IconLoader::panelExpandIcon() {
+  QIcon icon;
+  icon.addFile(QStringLiteral(":/autoviz/icons/panel/panel_expand.svg"), QSize(),
+               QIcon::Normal, QIcon::Off);
+  icon.addFile(QStringLiteral(":/autoviz/icons/panel/panel_collapse.svg"), QSize(),
+               QIcon::Normal, QIcon::On);
+  return icon;
+}
+
+QIcon StatusIconFromResource(const QString& resource_base) {
+  static const char* kExtensions[] = {".svg", ".png"};
+  for (const char* extension : kExtensions) {
+    const QIcon icon = IconFromResourcePath(
+        resource_base + QLatin1String(extension), kStatusIconSizes,
+        static_cast<int>(sizeof(kStatusIconSizes) / sizeof(kStatusIconSizes[0])));
+    if (!icon.isNull()) {
+      return icon;
+    }
+  }
+  return {};
 }
 
 QIcon IconLoader::statusIcon(display::DisplayStatusLevel level, bool enabled) {
   if (!enabled) {
-    return StatusIconFromSvgResource(
-        QStringLiteral(":/autoviz/icons/status_disabled.svg"));
+    return StatusIconFromResource(QStringLiteral(":/autoviz/icons/status_disabled"));
   }
   switch (level) {
     case display::DisplayStatusLevel::kError:
-      return StatusIconFromSvgResource(
-          QStringLiteral(":/autoviz/icons/status_error.svg"));
+      return StatusIconFromResource(QStringLiteral(":/autoviz/icons/status_error"));
     case display::DisplayStatusLevel::kWarn:
-      return StatusIconFromSvgResource(
-          QStringLiteral(":/autoviz/icons/status_warn.svg"));
+      return StatusIconFromResource(QStringLiteral(":/autoviz/icons/status_warn"));
     case display::DisplayStatusLevel::kOk:
     default:
-      return StatusIconFromSvgResource(
-          QStringLiteral(":/autoviz/icons/status_ok.svg"));
+      return StatusIconFromResource(QStringLiteral(":/autoviz/icons/status_ok"));
   }
 }
 

@@ -110,7 +110,6 @@ class StateTransitionPanel : public QWidget {
   QTimer* tick_timer_ = nullptr;
   QToolButton* settings_button_ = nullptr;
   QToolButton* expand_button_ = nullptr;
-  QToolButton* box_zoom_button_ = nullptr;
 };
 
 }  // namespace state_transitions

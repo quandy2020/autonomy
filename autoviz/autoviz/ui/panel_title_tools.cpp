@@ -6,22 +6,18 @@
 
 #include <QFrame>
 #include <QHBoxLayout>
+#include <QMenu>
 #include <QToolButton>
 
 #include "autoviz/ui/icon_loader.hpp"
 #include "autoviz/ui/panel_context_menu.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 
-QString PanelTitleToolsStyleSheet() {
-  return QStringLiteral(
-      "QToolButton { border: none; margin: 0 1px; padding: 2px; color: #444444; }"
-      "QToolButton:hover { background: rgba(0,0,0,0.06); border-radius: 3px; }"
-      "QToolButton:checked { background: #555555; border-radius: 3px; color: #ffffff; }"
-      "QToolButton:checked:hover { background: #666666; }");
-}
+namespace {
 
-QString PlotTitleToolsStyleSheet() {
+QString UnifiedTitleToolsStyleSheet() {
   return QStringLiteral(
       "QToolButton {"
       "  border: 1px solid transparent;"
@@ -29,21 +25,46 @@ QString PlotTitleToolsStyleSheet() {
       "  padding: 1px;"
       "  background: transparent;"
       "  border-radius: 4px;"
+      "  color: palette(text);"
       "}"
       "QToolButton:hover {"
-      "  background: rgba(25, 118, 210, 0.12);"
-      "  border-color: rgba(25, 118, 210, 0.35);"
+      "  background: palette(midlight);"
+      "  border-color: palette(mid);"
       "}"
       "QToolButton:pressed {"
-      "  background: rgba(25, 118, 210, 0.2);"
+      "  background: palette(mid);"
       "}"
       "QToolButton:checked {"
-      "  background: rgba(25, 118, 210, 0.22);"
-      "  border-color: #1976D2;"
+      "  background: palette(highlight);"
+      "  color: palette(highlighted-text);"
+      "  border-color: palette(highlight);"
       "}"
       "QToolButton:checked:hover {"
-      "  background: rgba(25, 118, 210, 0.3);"
+      "  background: palette(highlight);"
+      "}"
+      "QToolButton::menu-indicator {"
+      "  image: none;"
+      "  width: 0px;"
+      "  height: 0px;"
       "}");
+}
+
+void WireExpandButton(QToolButton* button, const std::function<void()>& on_expand) {
+  if (button == nullptr || !on_expand) {
+    return;
+  }
+  QObject::connect(button, &QToolButton::clicked, button,
+                   [on_expand]() { on_expand(); });
+}
+
+}  // namespace
+
+QString PanelTitleToolsStyleSheet() {
+  return UnifiedTitleToolsStyleSheet();
+}
+
+QString PlotTitleToolsStyleSheet() {
+  return UnifiedTitleToolsStyleSheet();
 }
 
 QToolButton* CreateTitleToolButton(QWidget* parent, const QIcon& icon,
@@ -70,42 +91,84 @@ QToolButton* CreatePlotTitleToolButton(QWidget* parent, const QIcon& icon,
   return button;
 }
 
+void ConfigurePanelMoreToolButton(QToolButton* button, QMenu* menu) {
+  if (button == nullptr) {
+    return;
+  }
+  button->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  button->setPopupMode(QToolButton::InstantPopup);
+  if (menu != nullptr) {
+    button->setMenu(menu);
+  }
+}
+
 QFrame* CreateTitleSeparator(QWidget* parent) {
   auto* separator = new QFrame(parent);
   separator->setFrameShape(QFrame::VLine);
   separator->setFrameShadow(QFrame::Plain);
   separator->setFixedSize(QSize(1, 18));
-  separator->setStyleSheet(QStringLiteral("color: #b0bec5;"));
+  separator->setStyleSheet(QStringLiteral("color: palette(mid);"));
   return separator;
 }
 
-QWidget* CreateStandardPanelTitleTools(
-    QWidget* parent, const PanelContextMenuCallbacks& callbacks) {
+PanelTitleBarTools CreateRvizPanelTitleBarTools(
+    QWidget* parent, const PanelContextMenuCallbacks& callbacks,
+    const PanelTitleBarOptions& options) {
   auto* tools = new QWidget(parent);
-  tools->setStyleSheet(PanelTitleToolsStyleSheet());
+  ApplyPanelTitleToolsChrome(tools);
   auto* layout = new QHBoxLayout(tools);
   layout->setContentsMargins(0, 0, 0, 0);
   layout->setSpacing(0);
 
-  auto* expand_button = CreateTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_fullscreen.svg")),
-      QObject::tr("Expand"));
-  layout->addWidget(expand_button);
-  if (callbacks.expand) {
-    QObject::connect(expand_button, &QToolButton::clicked, tools,
-                     [callbacks]() { callbacks.expand(); });
+  PanelTitleBarTools result;
+  result.widget = tools;
+
+  if (options.show_reset && options.on_reset) {
+    auto* reset_button = CreateTitleToolButton(
+        tools, IconLoader::panelTitleIcon(QStringLiteral("plot.reset_view")),
+        QObject::tr("Reset view"));
+    layout->addWidget(reset_button);
+    QObject::connect(reset_button, &QToolButton::clicked, tools,
+                     [on_reset = options.on_reset]() { on_reset(); });
   }
 
-  auto* more_button = CreateTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_more.svg")),
-      QObject::tr("More"));
-  more_button->setPopupMode(QToolButton::InstantPopup);
-  more_button->setMenu(CreatePanelContextMenu(more_button, callbacks));
-  layout->addWidget(more_button);
+  if (options.show_settings && options.on_settings_toggled) {
+    result.settings_button = CreateTitleToolButton(
+        tools, IconLoader::panelTitleIcon(QStringLiteral("panel.settings")),
+        QObject::tr("Settings"), true);
+    result.settings_button->setChecked(options.settings_checked);
+    layout->addWidget(result.settings_button);
+    QObject::connect(result.settings_button, &QToolButton::toggled, tools,
+                     options.on_settings_toggled);
+  }
 
-  return tools;
+  if (options.show_expand) {
+    result.expand_button = CreateTitleToolButton(
+        tools, IconLoader::panelExpandIcon(),
+        QObject::tr("Expand"), options.expand_checkable);
+    layout->addWidget(result.expand_button);
+    WireExpandButton(result.expand_button, options.on_expand);
+  }
+
+  if (options.show_more) {
+    auto* more_button = CreateTitleToolButton(
+        tools, IconLoader::panelTitleIcon(QStringLiteral("panel.more")),
+        QObject::tr("More"));
+    ConfigurePanelMoreToolButton(
+        more_button, CreatePanelContextMenu(more_button, callbacks));
+    layout->addWidget(more_button);
+  }
+
+  return result;
+}
+
+QWidget* CreateStandardPanelTitleTools(
+    QWidget* parent, const PanelContextMenuCallbacks& callbacks) {
+  PanelTitleBarOptions options;
+  options.show_expand = true;
+  options.expand_checkable = false;
+  options.on_expand = callbacks.expand;
+  return CreateRvizPanelTitleBarTools(parent, callbacks, options).widget;
 }
 
 }  // namespace autoviz

@@ -14,6 +14,7 @@
 #include <QVBoxLayout>
 
 #include "autoviz/ui/table/table_data_model.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 namespace table {
@@ -52,8 +53,7 @@ class TableSortHeaderView : public QHeaderView {
 }  // namespace
 
 TableViewWidget::TableViewWidget(QWidget* parent) : QWidget(parent) {
-  setAttribute(Qt::WA_StyledBackground, true);
-  setStyleSheet(QStringLiteral("TableViewWidget { background: palette(window); }"));
+  ApplyPanelShell(this);
 
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);
@@ -99,7 +99,7 @@ TableViewWidget::TableViewWidget(QWidget* parent) : QWidget(parent) {
 
   empty_label_ = new QLabel(tr("Drop a topic or array field here"), this);
   empty_label_->setAlignment(Qt::AlignCenter);
-  empty_label_->setStyleSheet(QStringLiteral("color: palette(mid); font-size: 12px;"));
+  StyleHintLabel(empty_label_);
   empty_label_->setWordWrap(true);
 
   root->addWidget(table_, 1);

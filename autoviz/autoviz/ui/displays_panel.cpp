@@ -25,6 +25,7 @@
 #include "autoviz/ui/add_display_dialog.hpp"
 #include "autoviz/ui/display_tree_delegate.hpp"
 #include "autoviz/ui/icon_loader.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 namespace {
@@ -84,17 +85,19 @@ Qt::ItemFlags DisplayRowFlags() {
 DisplaysPanel::DisplaysPanel(
     std::shared_ptr<common::VisualizationManager> manager, QWidget* parent)
     : QWidget(parent), manager_(std::move(manager)) {
+  ApplyPanelShell(this);
   setupUi();
   refresh();
 }
 
 void DisplaysPanel::setupUi() {
   auto* layout = new QVBoxLayout(this);
-  layout->setContentsMargins(0, 0, 0, 2);
+  layout->setContentsMargins(0, 0, 0, 0);
   layout->setSpacing(0);
 
   splitter_ = new QSplitter(Qt::Vertical, this);
   splitter_->setObjectName(QStringLiteral("DisplayPanel/TreeWithHelp"));
+  splitter_->setStyleSheet(PanelSplitterStyle());
 
   tree_ = new DisplayTreeWidget(manager_, splitter_);
   tree_->setObjectName(QStringLiteral("DisplayPanel/PropertyTree"));
@@ -110,10 +113,12 @@ void DisplaysPanel::setupUi() {
                                         QHeaderView::ResizeToContents);
   tree_->setItemDelegateForColumn(kDisplayTreeColName,
                                   new DisplayNameTreeDelegate(tree_));
+  StylePanelTree(tree_);
 
   help_ = new QTextBrowser(splitter_);
   help_->setObjectName(QStringLiteral("DisplayPanel/Help"));
   help_->setOpenExternalLinks(true);
+  help_->setStyleSheet(PanelHelpBrowserStyle());
 
   splitter_->addWidget(tree_);
   splitter_->addWidget(help_);
@@ -124,16 +129,22 @@ void DisplaysPanel::setupUi() {
   layout->addWidget(splitter_, 1);
 
   auto* button_row = new QHBoxLayout();
-  button_row->setContentsMargins(2, 0, 2, 2);
+  button_row->setContentsMargins(PanelChromeLayout::kToolbarMarginH, 4,
+                                 PanelChromeLayout::kToolbarMarginH, 4);
+  button_row->setSpacing(PanelChromeLayout::kToolbarSpacing);
   auto* add_button = new QPushButton(tr("Add"), this);
+  add_button->setStyleSheet(PanelCompactButtonStyle());
   add_button->setShortcut(QKeySequence(QStringLiteral("Ctrl+N")));
   duplicate_button_ = new QPushButton(tr("Duplicate"), this);
+  duplicate_button_->setStyleSheet(PanelCompactButtonStyle());
   duplicate_button_->setShortcut(QKeySequence(QStringLiteral("Ctrl+D")));
   duplicate_button_->setEnabled(false);
   remove_button_ = new QPushButton(tr("Remove"), this);
+  remove_button_->setStyleSheet(PanelCompactButtonStyle());
   remove_button_->setShortcut(QKeySequence(QStringLiteral("Ctrl+X")));
   remove_button_->setEnabled(false);
   rename_button_ = new QPushButton(tr("Rename"), this);
+  rename_button_->setStyleSheet(PanelCompactButtonStyle());
   rename_button_->setShortcut(QKeySequence(QStringLiteral("Ctrl+R")));
   rename_button_->setEnabled(false);
   button_row->addWidget(add_button);

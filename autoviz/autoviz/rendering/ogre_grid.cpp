@@ -81,9 +81,9 @@ void OgreGrid::rebuild() {
   dirty_ = false;
   manual_object_->clear();
 
-  const int half = std::max(1, settings_.half_cell_count);
+  const int cell_count = std::max(1, settings_.plane_cell_count);
   const float step = std::max(0.001f, settings_.cell_length);
-  const float extent = static_cast<float>(half) * step;
+  const float extent = static_cast<float>(cell_count) * step * 0.5f;
   const Ogre::ColourValue color =
       ToOgreColor(settings_.color, settings_.alpha);
 
@@ -91,12 +91,12 @@ void OgreGrid::rebuild() {
       OgreMaterialManager::createMaterialWithNoLighting("Autoviz/LineNoLighting");
   OgreMaterialManager::enableAlphaBlending(material, color.a);
 
-  const int line_pairs = (2 * half + 1) * 2;
+  const int line_pairs = (cell_count + 1) * 2;
   manual_object_->estimateVertexCount(static_cast<size_t>(line_pairs * 2));
   manual_object_->begin(material->getName(), Ogre::RenderOperation::OT_LINE_LIST);
 
-  for (int i = -half; i <= half; ++i) {
-    const float p = static_cast<float>(i) * step;
+  for (int i = 0; i <= cell_count; ++i) {
+    const float p = extent - static_cast<float>(i) * step;
     manual_object_->position(-extent, p, 0.f);
     manual_object_->colour(color);
     manual_object_->position(extent, p, 0.f);

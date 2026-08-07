@@ -5,6 +5,7 @@
 #pragma once
 
 #include <chrono>
+#include <functional>
 #include <memory>
 
 #include <QActionGroup>
@@ -23,6 +24,7 @@ class QToolButton;
 
 #include "autoviz/common/selection.hpp"
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/ui/app_preferences.hpp"
 #include "autoviz/ui/panel_context_menu.hpp"
 #include "autoviz/ui/panel_dock_widget.hpp"
 
@@ -31,10 +33,13 @@ class QListWidget;
 class QToolBar;
 class QToolButton;
 class QVBoxLayout;
+class QGridLayout;
 
 class QStackedWidget;
 
 namespace autoviz {
+
+struct AppSettingsResult;
 
 namespace plot {
 class PlotPanel;
@@ -97,6 +102,7 @@ class TimePanel;
 class ToolPropertiesPanel;
 class ViewsPanel;
 class StrataFloorPanel;
+class ViewportFloatingToolbar;
 namespace rendering {
 class OgreRenderWindow;
 class RenderWindow;
@@ -114,6 +120,7 @@ class VisualizationFrame : public QMainWindow {
 
   bool loadConfig(const QString& path);
   bool saveConfig(const QString& path);
+  void applyStartupWindowState();
 
   /** Stops viewport render/refresh timers while the widget is off-screen. */
   void setRenderingPaused(bool paused);
@@ -154,6 +161,7 @@ class VisualizationFrame : public QMainWindow {
   void onRecentConfigSelected();
   void showHelpPanel();
   void onHelpAbout();
+  void onAppSettings();
   void onResetDefaultLayout();
   void onHideLeftDockToggled(bool hide);
   void onHideRightDockToggled(bool hide);
@@ -197,13 +205,48 @@ class VisualizationFrame : public QMainWindow {
   void clearPropertyInspectorForAudio(audio_panel::AudioPanel* panel);
   void applyMainPanelDefaultLayout();
   void setupMenu();
+  void configureMenuBar();
   void setupToolbar();
   void setupToolbarLayoutControls();
   void syncToolbarLayoutControls();
   void configureFlexibleDock(PanelDockWidget* dock);
-  void installViewportTitleBarTools();
+  struct ViewportPanelEntry {
+    PanelDockWidget* dock = nullptr;
+    QWidget* host = nullptr;
+    QGridLayout* layout = nullptr;
+    QWidget* widget = nullptr;
+    rendering::RenderWindow* gl_viewport = nullptr;
+    rendering::OgreRenderWindow* ogre_viewport = nullptr;
+    ViewportFloatingToolbar* floating_toolbar = nullptr;
+    QToolButton* expand_button = nullptr;
+    QToolButton* settings_button = nullptr;
+
+    rendering::ViewController* viewController() const;
+  };
+  void registerPrimaryViewportPanel();
+  PanelDockWidget* createViewportPanelDock(const QString& object_name = QString());
+  void installViewportTitleBarToolsForEntry(ViewportPanelEntry& entry);
+  void installViewportFloatingToolbar(ViewportPanelEntry& entry);
+  void syncViewportFloatingToolbarForEntry(const ViewportPanelEntry& entry);
+  void onViewportInspectTool();
+  void onViewportToggle2dCamera();
+  void onViewportMeasureTool();
+  void onViewportRecenterOnFrame();
   void installStandardPanelTitleTools(PanelDockWidget* dock);
   PanelContextMenuCallbacks makePanelContextMenuCallbacks(PanelDockWidget* dock);
+  ViewportPanelEntry* viewportEntryForDock(PanelDockWidget* dock);
+  const ViewportPanelEntry* viewportEntryForDock(PanelDockWidget* dock) const;
+  ViewportPanelEntry* activeViewportEntry();
+  void setActiveViewportDock(PanelDockWidget* dock);
+  void forEachViewportPanel(const std::function<void(ViewportPanelEntry&)>& fn);
+  void destroyRenderWindowInEntry(ViewportPanelEntry& entry);
+  void createRenderWindowInEntry(ViewportPanelEntry& entry, const QString& backend);
+  void applyViewportEntryRenderSettings(ViewportPanelEntry& entry);
+  void connectViewportInteractionsForEntry(ViewportPanelEntry& entry);
+  void syncViewportTitleBarToolsForEntry(const ViewportPanelEntry& entry);
+  void wireViewportPanel(ViewportPanelEntry& entry);
+  void ensureViewportPanelReady(PanelDockWidget* dock);
+  void removeViewportPanel(PanelDockWidget* dock);
   void syncViewportTitleBarTools();
   void expandPanelDock(PanelDockWidget* dock);
   void restoreExpandedMainPanel();
@@ -316,6 +359,7 @@ class VisualizationFrame : public QMainWindow {
   void updateViewportCursor();
   void onAddToolTriggered();
   void onRemoveToolTriggered(QAction* action);
+  void registerPanelMenuToggle(PanelDockWidget* dock);
   void registerPanelToggleActions();
   void syncDeletePanelMenu();
   void syncViewControllerMenu(const QString& name);
@@ -338,6 +382,10 @@ class VisualizationFrame : public QMainWindow {
   void updateFps();
   void onReset();
   void setupStatusBar();
+  void applyShortcutPreferences(const QHash<QString, QKeySequence>& shortcuts);
+  void applyUiPreferences(const AppSettingsResult& settings,
+                          const AppUiPreferences& previous_ui);
+
   void applyViewController(const QString& name);
   void applyRenderBackend(const QString& name);
   void createViewport(const QString& backend);
@@ -364,11 +412,8 @@ class VisualizationFrame : public QMainWindow {
 
   std::shared_ptr<common::VisualizationManager> manager_;
   MainPanelHost* main_panel_host_ = nullptr;
-  QWidget* viewport_host_ = nullptr;
-  QVBoxLayout* viewport_layout_ = nullptr;
-  QWidget* viewport_widget_ = nullptr;
-  rendering::RenderWindow* gl_viewport_ = nullptr;
-  rendering::OgreRenderWindow* ogre_viewport_ = nullptr;
+  QHash<PanelDockWidget*, ViewportPanelEntry> viewport_panels_;
+  PanelDockWidget* active_viewport_dock_ = nullptr;
   PanelDockWidget* channel_dock_ = nullptr;
   PanelDockWidget* channels_dock_ = nullptr;
   PanelDockWidget* problems_dock_ = nullptr;
@@ -444,9 +489,6 @@ class VisualizationFrame : public QMainWindow {
   QAction* toolbar_toggle_left_dock_action_ = nullptr;
   QAction* toolbar_toggle_right_dock_action_ = nullptr;
   PanelDockWidget* last_active_dock_ = nullptr;
-  QToolButton* viewport_select_tool_ = nullptr;
-  QToolButton* viewport_pan_tool_ = nullptr;
-  QToolButton* viewport_expand_button_ = nullptr;
   PanelDockWidget* expanded_main_panel_dock_ = nullptr;
   QByteArray pre_expand_main_panel_state_;
   QActionGroup* tool_action_group_ = nullptr;
@@ -458,6 +500,10 @@ class VisualizationFrame : public QMainWindow {
   QMenu* recent_configs_menu_ = nullptr;
   QMenu* delete_panel_menu_ = nullptr;
   QAction* fullscreen_action_ = nullptr;
+  QAction* open_config_action_ = nullptr;
+  QAction* save_config_action_ = nullptr;
+  QAction* save_config_as_action_ = nullptr;
+  QAction* quit_action_ = nullptr;
   QAction* view_orbit_action_ = nullptr;
   QAction* view_xy_orbit_action_ = nullptr;
   QAction* view_topdown_action_ = nullptr;
