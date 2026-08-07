@@ -7,6 +7,7 @@
 #include <string>
 
 #include "autoviz/display/display.hpp"
+#include "autoviz/integration/channel_payload.hpp"
 #include "autoviz/integration/channel_reader_registry.hpp"
 #include "autoviz/integration/message_queue.hpp"
 
@@ -51,6 +52,7 @@ class ChannelDisplay : public Display {
  protected:
   void onEnable() override {
     has_received_message_ = false;
+    parse_failed_ = false;
     if (context_ == nullptr || context_->autolink == nullptr ||
         context_->autolink->node() == nullptr) {
       setStatusError("Autolink not ready");
@@ -81,13 +83,20 @@ class ChannelDisplay : public Display {
     }
     while (auto payload = queue_.pop()) {
       ProtoT proto;
-      if (proto.ParseFromString(*payload)) {
+      const std::string decoded =
+          integration::DecodeChannelPayload(*payload);
+      if (proto.ParseFromString(decoded) || proto.ParseFromString(*payload)) {
         has_received_message_ = true;
+        parse_failed_ = false;
         processMessage(proto);
+      } else {
+        parse_failed_ = true;
       }
     }
     if (channel_.empty()) {
       setStatusError("No topic set");
+    } else if (parse_failed_) {
+      setStatusWarn("Failed to parse message payload");
     } else if (!has_received_message_) {
       setStatusWarn("No messages received");
     }
@@ -113,6 +122,7 @@ class ChannelDisplay : public Display {
   integration::MessageQueue queue_;
   integration::ChannelReaderRegistry::SubscriptionId subscription_id_ = 0;
   bool has_received_message_ = false;
+  bool parse_failed_ = false;
 };
 
 }  // namespace display

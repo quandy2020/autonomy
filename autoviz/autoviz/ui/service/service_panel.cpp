@@ -23,10 +23,6 @@ namespace autoviz {
 namespace service_panel {
 namespace {
 
-QToolButton* AddTitleToolButton(QWidget* parent, const QIcon& icon,
-                                const QString& tip, bool checkable = false) {
-  return CreatePlotTitleToolButton(parent, icon, tip, checkable);
-}
 
 ServiceCallPanelConfig MergeConfig(const ServiceCallPanelConfig& base,
                                    const ServiceCallPanelConfig& editor,
@@ -48,8 +44,7 @@ ServiceCallPanelConfig MergeConfig(const ServiceCallPanelConfig& base,
 ServicePanel::ServicePanel(common::VisualizationManager* manager, QWidget* parent)
     : manager_(manager), config_(DefaultServiceCallPanelConfig()), QWidget(parent) {
   setFocusPolicy(Qt::StrongFocus);
-  setAttribute(Qt::WA_StyledBackground, true);
-  setStyleSheet(QStringLiteral("ServicePanel { background: palette(window); }"));
+  ApplyPanelShell(this);
 
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);
@@ -84,52 +79,6 @@ void ServicePanel::installTitleBarTools(PanelDockWidget* dock) {
   if (dock == nullptr) {
     return;
   }
-  auto* tools = new QWidget(dock);
-  tools->setStyleSheet(PlotTitleToolsStyleSheet());
-  auto* layout = new QHBoxLayout(tools);
-  layout->setContentsMargins(0, 0, 4, 0);
-  layout->setSpacing(0);
-
-  layout->addWidget(CreateTitleSeparator(tools));
-
-  auto* split_right = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_split_right.svg")),
-      tr("Split right"));
-  layout->addWidget(split_right);
-  connect(split_right, &QToolButton::clicked, this, [this]() {
-    emit panelSplitRequested(Qt::Horizontal);
-  });
-
-  auto* split_down = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_split_down.svg")),
-      tr("Split down"));
-  layout->addWidget(split_down);
-  connect(split_down, &QToolButton::clicked, this, [this]() {
-    emit panelSplitRequested(Qt::Vertical);
-  });
-
-  auto* expand = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_fullscreen.svg")),
-      tr("Expand"), true);
-  expand_button_ = expand;
-  layout->addWidget(expand);
-  connect(expand, &QToolButton::clicked, this, [this]() { emit panelExpandRequested(); });
-
-  settings_button_ = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_settings.svg")),
-      tr("Settings"), true);
-  layout->addWidget(settings_button_);
-  connect(settings_button_, &QToolButton::toggled, this, &ServicePanel::onToggleSettings);
-
-  auto* more_button = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_more.svg")),
-      tr("More"));
-  more_button->setPopupMode(QToolButton::InstantPopup);
   PanelContextMenuCallbacks callbacks;
   callbacks.current_object_name = QStringLiteral("ServiceDock");
   callbacks.change_panel = [this](const QString& object_name) {
@@ -140,10 +89,18 @@ void ServicePanel::installTitleBarTools(PanelDockWidget* dock) {
   };
   callbacks.expand = [this]() { emit panelExpandRequested(); };
   callbacks.remove = [this]() { emit panelRemoveRequested(); };
-  more_button->setMenu(CreatePanelContextMenu(more_button, callbacks));
-  layout->addWidget(more_button);
 
-  dock->setTitleBarTools(tools);
+  PanelTitleBarOptions options;
+  options.show_settings = true;
+  options.settings_checked = settingsVisible();
+  options.on_settings_toggled = [this](bool visible) { onToggleSettings(visible); };
+  options.on_expand = [this]() { emit panelExpandRequested(); };
+
+  const PanelTitleBarTools tools =
+      CreateRvizPanelTitleBarTools(dock, callbacks, options);
+  settings_button_ = tools.settings_button;
+  expand_button_ = tools.expand_button;
+  dock->setTitleBarTools(tools.widget);
 }
 
 ServiceCallPanelConfig ServicePanel::config() const {

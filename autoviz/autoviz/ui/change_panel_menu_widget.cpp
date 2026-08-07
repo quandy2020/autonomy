@@ -29,6 +29,7 @@ ChangePanelMenuWidget::ChangePanelMenuWidget(QWidget* parent) : QWidget(parent) 
   layout->addWidget(search_);
 
   list_ = new QListWidget(this);
+  list_->setIconSize(QSize(24, 24));
   list_->setFrameShape(QFrame::NoFrame);
   list_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   list_->setMinimumHeight(220);

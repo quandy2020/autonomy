@@ -33,10 +33,6 @@ namespace autoviz {
 namespace teleop {
 namespace {
 
-QToolButton* AddTitleToolButton(QWidget* parent, const QIcon& icon,
-                                const QString& tip, bool checkable = false) {
-  return CreatePlotTitleToolButton(parent, icon, tip, checkable);
-}
 
 double ScaleSignedAxis(double normalized, double positive_value,
                        double negative_value) {
@@ -101,25 +97,6 @@ void TeleopPanel::installTitleBarTools(PanelDockWidget* dock) {
   if (dock == nullptr) {
     return;
   }
-  auto* tools = new QWidget(dock);
-  tools->setStyleSheet(PlotTitleToolsStyleSheet());
-  auto* layout = new QHBoxLayout(tools);
-  layout->setContentsMargins(0, 0, 4, 0);
-  layout->setSpacing(0);
-
-  settings_button_ = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_settings.svg")),
-      tr("Settings"), true);
-  settings_button_->setChecked(config_.settings_visible);
-  layout->addWidget(settings_button_);
-  connect(settings_button_, &QToolButton::toggled, this, &TeleopPanel::onToggleSettings);
-
-  auto* more_button = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_more.svg")),
-      tr("More"));
-  more_button->setPopupMode(QToolButton::InstantPopup);
   PanelContextMenuCallbacks callbacks;
   callbacks.current_object_name = QStringLiteral("TeleopDock");
   callbacks.change_panel = [this](const QString& object_name) {
@@ -129,10 +106,17 @@ void TeleopPanel::installTitleBarTools(PanelDockWidget* dock) {
     emit panelSplitRequested(orientation);
   };
   callbacks.remove = [this]() { emit panelRemoveRequested(); };
-  more_button->setMenu(CreatePanelContextMenu(more_button, callbacks));
-  layout->addWidget(more_button);
 
-  dock->setTitleBarTools(tools);
+  PanelTitleBarOptions options;
+  options.show_settings = true;
+  options.settings_checked = config_.settings_visible;
+  options.on_settings_toggled = [this](bool visible) { onToggleSettings(visible); };
+  options.show_expand = false;
+
+  const PanelTitleBarTools tools =
+      CreateRvizPanelTitleBarTools(dock, callbacks, options);
+  settings_button_ = tools.settings_button;
+  dock->setTitleBarTools(tools.widget);
 }
 
 TeleopPanelConfig TeleopPanel::config() const { return config_; }

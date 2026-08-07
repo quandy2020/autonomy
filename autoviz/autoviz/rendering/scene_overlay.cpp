@@ -329,6 +329,7 @@ void SceneOverlay::clear() {
   pick_point_vertices_.clear();
   textured_batches_.clear();
   billboard_requests_.clear();
+  polyline_strip_requests_.clear();
   view_facing_textured_requests_.clear();
   pbr_vertices_.clear();
   pbr_textured_batches_.clear();
@@ -760,6 +761,20 @@ void SceneOverlay::addViewFacingQuad(const QVector3D& center, float half_extent,
   billboard_requests_.push_back({center, half_extent, ToVec4(color)});
 }
 
+void SceneOverlay::addViewFacingPolylineStrip(
+    const std::vector<QVector3D>& points, float line_width,
+    const QColor& color) {
+  if (points.size() < 2 || line_width <= 0.f) {
+    return;
+  }
+  PolylineStripRequest request;
+  request.points = points;
+  request.half_width = line_width * 0.5f;
+  request.color = ToVec4(color);
+  polyline_strip_requests_.push_back(std::move(request));
+  triangle_dirty_ = true;
+}
+
 void SceneOverlay::addViewFacingTexturedQuad(const QVector3D& center,
                                              float half_width, float half_height,
                                              const QImage& image) {
@@ -814,6 +829,7 @@ std::vector<SceneOverlay::TexturedBatch> SceneOverlay::expandedTexturedBatches(
 std::vector<SceneOverlay::ColoredVertex> SceneOverlay::expandedFlatTriangles(
     const QMatrix4x4& view) const {
   std::vector<ColoredVertex> triangles = triangle_vertices_;
+  appendViewFacingPolylineStrips(view, &triangles);
   appendViewFacingBillboards(view, &triangles);
   return triangles;
 }
@@ -878,6 +894,48 @@ void SceneOverlay::appendPointSpriteBatch(
   }
   if (!batch.vertices.empty()) {
     batches->push_back(std::move(batch));
+  }
+}
+
+void SceneOverlay::appendViewFacingPolylineStrips(
+    const QMatrix4x4& view, std::vector<ColoredVertex>* triangles) const {
+  if (triangles == nullptr || polyline_strip_requests_.empty()) {
+    return;
+  }
+  const QMatrix4x4 inv_view = view.inverted();
+  const QVector3D camera_right = inv_view.column(0).toVector3D().normalized();
+  const QVector3D camera_up = inv_view.column(1).toVector3D().normalized();
+
+  for (const PolylineStripRequest& strip : polyline_strip_requests_) {
+    if (strip.points.size() < 2 || strip.half_width <= 0.f) {
+      continue;
+    }
+    triangles->reserve(triangles->size() + (strip.points.size() - 1) * 6);
+    for (std::size_t i = 1; i < strip.points.size(); ++i) {
+      const QVector3D& a = strip.points[i - 1];
+      const QVector3D& b = strip.points[i];
+      const QVector3D delta = b - a;
+      if (delta.lengthSquared() < 1e-8f) {
+        continue;
+      }
+      const QVector3D tangent = delta.normalized();
+      QVector3D side = QVector3D::crossProduct(tangent, camera_up);
+      if (side.lengthSquared() < 1e-6f) {
+        side = QVector3D::crossProduct(tangent, camera_right);
+      }
+      side.normalize();
+      const QVector3D offset = side * strip.half_width;
+      const QVector3D p0 = a - offset;
+      const QVector3D p1 = a + offset;
+      const QVector3D p2 = b + offset;
+      const QVector3D p3 = b - offset;
+      triangles->push_back({p0, strip.color});
+      triangles->push_back({p1, strip.color});
+      triangles->push_back({p2, strip.color});
+      triangles->push_back({p0, strip.color});
+      triangles->push_back({p2, strip.color});
+      triangles->push_back({p3, strip.color});
+    }
   }
 }
 

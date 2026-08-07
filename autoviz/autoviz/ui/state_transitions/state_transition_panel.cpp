@@ -40,10 +40,6 @@ namespace {
 
 constexpr int kMaxSegmentsPerSeries = 2000;
 
-QToolButton* AddTitleToolButton(QWidget* parent, const QIcon& icon,
-                                const QString& tip, bool checkable = false) {
-  return CreatePlotTitleToolButton(parent, icon, tip, checkable);
-}
 
 StateTransitionSeriesRuntime* RuntimeAt(
     const std::vector<std::unique_ptr<StateTransitionSeriesRuntime>>& runtime_series,
@@ -64,9 +60,7 @@ StateTransitionPanel::StateTransitionPanel(common::VisualizationManager* manager
       QWidget(parent) {
   setFocusPolicy(Qt::StrongFocus);
   setAcceptDrops(true);
-  setAttribute(Qt::WA_StyledBackground, true);
-  setStyleSheet(
-      QStringLiteral("StateTransitionPanel { background: palette(window); }"));
+  ApplyPanelShell(this);
 
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);
@@ -88,7 +82,7 @@ StateTransitionPanel::StateTransitionPanel(common::VisualizationManager* manager
 
   footer_ = new QFrame(this);
   footer_->setFixedHeight(18);
-  footer_->setStyleSheet(PanelFooterStyle());
+  ApplyPanelFooterChrome(footer_);
   auto* footer_layout = new QHBoxLayout(footer_);
   footer_layout->setContentsMargins(6, 0, 6, 0);
   footer_layout->setSpacing(0);
@@ -129,13 +123,7 @@ StateTransitionPanel::StateTransitionPanel(common::VisualizationManager* manager
             }
           });
   connect(view_, &StateTransitionViewWidget::boxZoomModeChanged, this,
-          [this](bool enabled) {
-            if (box_zoom_button_ != nullptr) {
-              box_zoom_button_->blockSignals(true);
-              box_zoom_button_->setChecked(enabled);
-              box_zoom_button_->blockSignals(false);
-            }
-          });
+          [](bool /*enabled*/) {});
 
   applyConfigToUi();
   syncSettingsWidgetFromConfig();
@@ -155,73 +143,6 @@ void StateTransitionPanel::installTitleBarTools(PanelDockWidget* dock) {
   if (dock == nullptr) {
     return;
   }
-  auto* tools = new QWidget(dock);
-  tools->setStyleSheet(PlotTitleToolsStyleSheet());
-  auto* layout = new QHBoxLayout(tools);
-  layout->setContentsMargins(0, 0, 0, 0);
-  layout->setSpacing(0);
-
-  auto* reset_view_button = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_reset_view.svg")),
-      tr("Reset view"));
-  layout->addWidget(reset_view_button);
-  connect(reset_view_button, &QToolButton::clicked, this, [this]() {
-    if (view_ != nullptr) {
-      view_->resetView();
-    }
-  });
-
-  box_zoom_button_ = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_zoom.svg")),
-      tr("Box zoom (Z)"), true);
-  layout->addWidget(box_zoom_button_);
-  connect(box_zoom_button_, &QToolButton::toggled, this, [this](bool checked) {
-    if (view_ != nullptr) {
-      view_->setBoxZoomMode(checked);
-    }
-  });
-
-  layout->addWidget(CreateTitleSeparator(tools));
-
-  auto* split_right = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_split_right.svg")),
-      tr("Split right"));
-  layout->addWidget(split_right);
-  connect(split_right, &QToolButton::clicked, this,
-          [this]() { emit panelSplitRequested(Qt::Horizontal); });
-
-  auto* split_down = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_split_down.svg")),
-      tr("Split down"));
-  layout->addWidget(split_down);
-  connect(split_down, &QToolButton::clicked, this,
-          [this]() { emit panelSplitRequested(Qt::Vertical); });
-
-  layout->addWidget(CreateTitleSeparator(tools));
-
-  settings_button_ = AddTitleToolButton(
-      tools, IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_settings.svg")),
-      tr("Settings"), true);
-  layout->addWidget(settings_button_);
-  connect(settings_button_, &QToolButton::toggled, this,
-          &StateTransitionPanel::onToggleSettings);
-
-  expand_button_ = AddTitleToolButton(
-      tools, IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_fullscreen.svg")),
-      tr("Expand"), true);
-  layout->addWidget(expand_button_);
-  connect(expand_button_, &QToolButton::clicked, this,
-          [this]() { emit panelExpandRequested(); });
-
-  auto* more_button = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_more.svg")),
-      tr("More"));
-  more_button->setPopupMode(QToolButton::InstantPopup);
   PanelContextMenuCallbacks callbacks;
   callbacks.current_object_name = QStringLiteral("StateTransitionDock");
   callbacks.change_panel = [this](const QString& object_name) {
@@ -232,10 +153,20 @@ void StateTransitionPanel::installTitleBarTools(PanelDockWidget* dock) {
   };
   callbacks.expand = [this]() { emit panelExpandRequested(); };
   callbacks.remove = [this]() { emit panelRemoveRequested(); };
-  more_button->setMenu(CreatePanelContextMenu(more_button, callbacks));
-  layout->addWidget(more_button);
 
-  dock->setTitleBarTools(tools);
+  PanelTitleBarOptions options;
+  options.show_reset = true;
+  options.on_reset = [this]() { if (view_ != nullptr) { view_->resetView(); } };
+  options.show_settings = true;
+  options.settings_checked = config_.settings_visible;
+  options.on_settings_toggled = [this](bool visible) { onToggleSettings(visible); };
+  options.on_expand = [this]() { emit panelExpandRequested(); };
+
+  const PanelTitleBarTools tools =
+      CreateRvizPanelTitleBarTools(dock, callbacks, options);
+  settings_button_ = tools.settings_button;
+  expand_button_ = tools.expand_button;
+  dock->setTitleBarTools(tools.widget);
 }
 
 StateTransitionPanelConfig StateTransitionPanel::config() const { return config_; }

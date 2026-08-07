@@ -24,8 +24,7 @@
 namespace autoviz {
 namespace {
 
-constexpr int kColorSwatchWidth = 28;
-constexpr int kColorSwatchHeight = 16;
+constexpr int kColorSwatchSize = 14;
 
 QColor ColorFromPropertyText(const QString& text) {
   return common::ParseColorProperty(text.toStdString(), QColor(128, 128, 128));
@@ -43,10 +42,9 @@ QString FormatColorDisplayText(const QColor& color) {
 }
 
 QRect ColorSwatchRect(const QRect& cell_rect) {
-  const int height = std::min(kColorSwatchHeight, cell_rect.height() - 6);
+  const int size = std::min(kColorSwatchSize, cell_rect.height() - 6);
   return QRect(cell_rect.left() + 4,
-               cell_rect.top() + (cell_rect.height() - height) / 2,
-               kColorSwatchWidth, height);
+               cell_rect.top() + (cell_rect.height() - size) / 2, size, size);
 }
 
 }  // namespace

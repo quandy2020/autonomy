@@ -32,7 +32,7 @@ class OgreAxes {
   Ogre::SceneManager* scene_manager_ = nullptr;
   Ogre::SceneNode* scene_node_ = nullptr;
   Ogre::ManualObject* manual_object_ = nullptr;
-  float length_ = 2.f;
+  float length_ = 1.f;
   bool visible_ = true;
   bool dirty_ = true;
 };

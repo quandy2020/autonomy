@@ -12,7 +12,6 @@
 #include "autoviz/ui/plot/plot_types.hpp"
 
 class QAction;
-class QActionGroup;
 class QDragEnterEvent;
 class QDropEvent;
 class QFocusEvent;
@@ -85,8 +84,6 @@ class PlotPanel : public QWidget {
 
  private slots:
   void onToggleSettings(bool visible);
-  void onToggleLegend(bool visible);
-  void onInteractionModeChanged(QAction* action);
   void onTick();
 
  private:
@@ -121,10 +118,8 @@ class PlotPanel : public QWidget {
   QScrollArea* settings_scroll_ = nullptr;
   QWidget* settings_container_ = nullptr;
   QTimer* tick_timer_ = nullptr;
-  QToolButton* legend_button_ = nullptr;
   QToolButton* expand_button_ = nullptr;
   QToolButton* settings_button_ = nullptr;
-  QActionGroup* interaction_group_ = nullptr;
   int color_cursor_ = 0;
 };
 

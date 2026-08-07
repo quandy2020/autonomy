@@ -237,6 +237,9 @@ bool GoalPoseTool::mouseReleaseEvent(QMouseEvent* event) {
   if (context() != nullptr && context()->set_status) {
     context()->set_status(statusText());
   }
+  if (context() != nullptr && context()->revert_to_default_tool) {
+    context()->revert_to_default_tool();
+  }
   return true;
 }
 
@@ -245,12 +248,8 @@ void GoalPoseTool::onDraw(rendering::SceneOverlay& scene) {
 }
 
 QString GoalPoseTool::statusText() const {
-  if (state_ == State::kOrientation) {
-    return QStringLiteral(
-        "拖动鼠标设定朝向，松开左键发送目标（geometry_msgs/PoseStamped）。");
-  }
-  return QStringLiteral(
-      "在地图上单击设位置，按住左键拖动设朝向，松开发送。快捷键 G。");
+  // rviz_default_plugins::PoseTool::activate()
+  return QStringLiteral("Click and drag mouse to set position/orientation.");
 }
 
 }  // namespace tools

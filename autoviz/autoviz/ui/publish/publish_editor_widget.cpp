@@ -20,6 +20,7 @@
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/integration/channel_writer_registry.hpp"
 #include "autoviz/ui/publish/publish_message_codec.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 namespace publish_panel {
@@ -51,12 +52,12 @@ QString ShortTypeLabel(const std::string& type) {
 PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
                                          QWidget* parent)
     : manager_(manager), config_(DefaultPublishPanelConfig()), QWidget(parent) {
-  setAttribute(Qt::WA_StyledBackground, true);
-  setStyleSheet(QStringLiteral("PublishEditorWidget { background: palette(window); }"));
+  ApplyPanelShell(this);
 
   auto* root = new QVBoxLayout(this);
-  root->setContentsMargins(8, 8, 8, 8);
-  root->setSpacing(8);
+  root->setContentsMargins(PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
+                           PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
+  root->setSpacing(PanelSettingsLayout::kOuterSpacing);
 
   auto* header = new QHBoxLayout();
   editing_mode_check_ = new QCheckBox(tr("Editing mode"), this);
@@ -64,7 +65,7 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   header->addWidget(editing_mode_check_);
   header->addStretch();
   status_label_ = new QLabel(this);
-  status_label_->setStyleSheet(QStringLiteral("color: palette(mid); font-size: 10px;"));
+  StylePanelStatusLabel(status_label_);
   status_label_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
   header->addWidget(status_label_, 1);
   root->addLayout(header);
@@ -253,9 +254,7 @@ void PublishEditorWidget::updatePublishButtonState() {
 
 void PublishEditorWidget::updateStatus(const QString& text, bool is_error) {
   status_label_->setText(text);
-  status_label_->setStyleSheet(is_error
-                                   ? QStringLiteral("color: #c07070; font-size: 10px;")
-                                   : QStringLiteral("color: palette(mid); font-size: 10px;"));
+  StylePanelStatusLabel(status_label_, is_error);
 }
 
 QString PublishEditorWidget::messageTypeForChannel(const QString& channel) const {

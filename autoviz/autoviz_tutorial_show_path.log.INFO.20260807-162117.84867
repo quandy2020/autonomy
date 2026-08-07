@@ -1,0 +1,60 @@
+Log file created at: 2026/08/07 16:21:17
+Running on machine: quandy
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+I20260807 16:21:17.904832 84867 global_data.cpp:214] host ip: 10.253.164.127
+I20260807 16:21:17.904857 84867 global_data.cpp:228] config_path: /workspace/autonomy/src/autonomy/autolink/autolink/conf/autolink.pb.conf
+I20260807 16:21:17.905296 84869 processor.cpp:67] processor_tid: 84869
+I20260807 16:21:17.905366 84870 processor.cpp:67] processor_tid: 84870
+I20260807 16:21:17.905373 84871 processor.cpp:67] processor_tid: 84871
+I20260807 16:21:17.905422 84872 processor.cpp:67] processor_tid: 84872
+I20260807 16:21:17.905465 84873 processor.cpp:67] processor_tid: 84873
+I20260807 16:21:17.905480 84874 processor.cpp:67] processor_tid: 84874
+I20260807 16:21:17.905514 84875 processor.cpp:67] processor_tid: 84875
+I20260807 16:21:17.905537 84876 processor.cpp:67] processor_tid: 84876
+I20260807 16:21:17.905587 84877 processor.cpp:67] processor_tid: 84877
+I20260807 16:21:17.905602 84879 processor.cpp:67] processor_tid: 84879
+I20260807 16:21:17.905608 84878 processor.cpp:67] processor_tid: 84878
+I20260807 16:21:17.905630 84880 processor.cpp:67] processor_tid: 84880
+I20260807 16:21:17.905666 84881 processor.cpp:67] processor_tid: 84881
+I20260807 16:21:17.905694 84882 processor.cpp:67] processor_tid: 84882
+I20260807 16:21:17.905716 84883 processor.cpp:67] processor_tid: 84883
+I20260807 16:21:17.905723 84867 init.cpp:121] Register exit handle succ.
+I20260807 16:21:17.905740 84884 processor.cpp:67] processor_tid: 84884
+I20260807 16:21:17.905821 84867 dds_stub_provider.cpp:34] DDS stub transport initialized: amw_fastdds (fastdds).
+I20260807 16:21:17.905823 84867 amw.cpp:85] AMW initialized: implementation=amw_fastdds network_provider=fastdds network_ready=0 transport_stub=1 discovery_stub=1 domain_id=0 host_ip=10.253.164.127 CYCLONEDDS_URI=unset
+E20260807 16:21:17.905824 84867 amw.cpp:105] AMW network middleware is STUB — cross-host RTPS will NOT work. Rebuild with -DAUTOLINK_ENABLE_FASTDDS=ON and/or -DAUTOLINK_ENABLE_CYCLONEDDS=ON, then set AUTOLINK_AMW_IMPLEMENTATION / RMW_IMPLEMENTATION.
+E20260807 16:21:17.905845 84867 topology_manager.cpp:92] TopologyManager: network middleware not ready (implementation=amw_fastdds provider=fastdds host_ip=10.253.164.127). Cross-host discovery/RTPS disabled; using LocalTopologyBackend. Rebuild with AUTOLINK_ENABLE_FASTDDS/CYCLONEDDS and set AUTOLINK_AMW_IMPLEMENTATION.
+W20260807 16:21:17.905848 84867 topology_manager.cpp:124] TopologyManager using LocalTopologyBackend (network AMW is STUB / not linked). Same-host only; DIFF_HOST RTPS peers will not discover via /autolink/topology.
+I20260807 16:21:17.905869 84867 topology_manager.cpp:184] TopologyManager using LocalTopologyBackend host_ip=10.253.164.127
+I20260807 16:21:17.905946 84885 topology_manager.cpp:218] TopologyManager: remote node join name=autoviz host_ip=10.253.164.127; republishing local channel/service roles.
+W20260807 16:21:17.906088 84867 dds_stub_provider.cpp:45] amw_fastdds stub: CreatePublisher not implemented (channel=/fake/path).
+W20260807 16:21:17.906090 84867 amw.hpp:131] AMW provider fastdds failed to create publisher for channel /fake/path
+E20260807 16:21:17.906092 84867 hybrid_transmitter.hpp:262] HybridTransmitter: RTPS unavailable for DIFF_HOST; not falling back to SHM.
+I20260807 16:21:17.907509 84885 topology_manager.cpp:218] TopologyManager: remote node join name=autoviz host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.908164 84885 topology_manager.cpp:218] TopologyManager: remote node join name=autoviz host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.908416 84885 topology_manager.cpp:218] TopologyManager: remote node join name=autoviz host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.908578 84885 topology_manager.cpp:218] TopologyManager: remote node join name=autoviz host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.908815 84885 topology_manager.cpp:218] TopologyManager: remote node join name=autoviz host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.909026 84885 topology_manager.cpp:218] TopologyManager: remote node join name=autoviz host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.909147 84885 topology_manager.cpp:218] TopologyManager: remote node join name=autoviz host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.909320 84885 topology_manager.cpp:218] TopologyManager: remote node join name=autoviz host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.909452 84885 topology_manager.cpp:218] TopologyManager: remote node join name=autoviz host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.909734 84885 topology_manager.cpp:218] TopologyManager: remote node join name=autoviz host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.909994 84885 topology_manager.cpp:218] TopologyManager: remote node join name=autoviz host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.910511 84885 topology_manager.cpp:218] TopologyManager: remote node join name=autoviz host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.910696 84885 topology_manager.cpp:218] TopologyManager: remote node join name=autoviz host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.910883 84885 topology_manager.cpp:218] TopologyManager: remote node join name=autoviz host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.911180 84885 topology_manager.cpp:218] TopologyManager: remote node join name=path_publisher host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.911731 84885 topology_manager.cpp:218] TopologyManager: remote node join name=path_publisher host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.912498 84885 topology_manager.cpp:218] TopologyManager: remote node join name=pub host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.912737 84885 topology_manager.cpp:218] TopologyManager: remote node join name=path_publisher host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.913192 84885 topology_manager.cpp:218] TopologyManager: remote node join name=path_publisher host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.913885 84885 topology_manager.cpp:218] TopologyManager: remote node join name=path_publisher host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.914975 84885 topology_manager.cpp:218] TopologyManager: remote node join name=path_publisher host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.915835 84885 topology_manager.cpp:218] TopologyManager: remote node join name=path_publisher host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.916704 84885 topology_manager.cpp:218] TopologyManager: remote node join name=path_publisher host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.918031 84885 topology_manager.cpp:218] TopologyManager: remote node join name=autoviz host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.918228 84885 topology_manager.cpp:218] TopologyManager: remote node join name=path_publisher host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.919816 84885 topology_manager.cpp:218] TopologyManager: remote node join name=path_publisher host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.921453 84885 topology_manager.cpp:218] TopologyManager: remote node join name=path_publisher host_ip=10.253.164.127; republishing local channel/service roles.
+I20260807 16:21:17.924098 84885 topology_manager.cpp:218] TopologyManager: remote node join name=autoviz host_ip=10.253.164.127; republishing local channel/service roles.

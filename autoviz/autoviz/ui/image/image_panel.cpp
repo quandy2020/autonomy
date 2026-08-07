@@ -49,10 +49,6 @@ namespace autoviz {
 namespace image {
 namespace {
 
-QToolButton* AddTitleToolButton(QWidget* parent, const QIcon& icon,
-                                const QString& tip, bool checkable = false) {
-  return CreatePlotTitleToolButton(parent, icon, tip, checkable);
-}
 
 qint64 HeaderTimestampNs(const automsgs::msgs::std_msgs::Header& header) {
   return static_cast<qint64>(header.stamp().sec()) * 1000000000LL +
@@ -176,40 +172,6 @@ void ImagePanel::installTitleBarTools(PanelDockWidget* dock) {
   if (dock == nullptr) {
     return;
   }
-  auto* tools = new QWidget(dock);
-  tools->setStyleSheet(PlotTitleToolsStyleSheet());
-  auto* layout = new QHBoxLayout(tools);
-  layout->setContentsMargins(0, 0, 4, 0);
-  layout->setSpacing(0);
-
-  auto* reset_button = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_reset_view.svg")),
-      tr("Reset view"));
-  layout->addWidget(reset_button);
-  connect(reset_button, &QToolButton::clicked, view_, &ImageViewWidget::resetView);
-
-  auto* expand = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_fullscreen.svg")),
-      tr("Expand"), true);
-  expand_button_ = expand;
-  layout->addWidget(expand);
-  connect(expand, &QToolButton::clicked, this, [this]() { emit panelExpandRequested(); });
-
-  settings_button_ = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_settings.svg")),
-      tr("Settings"), true);
-  settings_button_->setChecked(config_.settings_visible);
-  layout->addWidget(settings_button_);
-  connect(settings_button_, &QToolButton::toggled, this, &ImagePanel::onToggleSettings);
-
-  auto* more_button = AddTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_more.svg")),
-      tr("More"));
-  more_button->setPopupMode(QToolButton::InstantPopup);
   PanelContextMenuCallbacks callbacks;
   callbacks.current_object_name = QStringLiteral("ImageDock");
   callbacks.change_panel = [this](const QString& object_name) {
@@ -220,10 +182,20 @@ void ImagePanel::installTitleBarTools(PanelDockWidget* dock) {
   };
   callbacks.expand = [this]() { emit panelExpandRequested(); };
   callbacks.remove = [this]() { emit panelRemoveRequested(); };
-  more_button->setMenu(CreatePanelContextMenu(more_button, callbacks));
-  layout->addWidget(more_button);
 
-  dock->setTitleBarTools(tools);
+  PanelTitleBarOptions options;
+  options.show_reset = true;
+  options.on_reset = [this]() { if (view_ != nullptr) { view_->resetView(); } };
+  options.show_settings = true;
+  options.settings_checked = config_.settings_visible;
+  options.on_settings_toggled = [this](bool visible) { onToggleSettings(visible); };
+  options.on_expand = [this]() { emit panelExpandRequested(); };
+
+  const PanelTitleBarTools tools =
+      CreateRvizPanelTitleBarTools(dock, callbacks, options);
+  settings_button_ = tools.settings_button;
+  expand_button_ = tools.expand_button;
+  dock->setTitleBarTools(tools.widget);
 }
 
 ImagePanelConfig ImagePanel::config() const { return config_; }

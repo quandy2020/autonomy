@@ -62,7 +62,7 @@ TimePanel::TimePanel(common::VisualizationManager* manager, QWidget* parent)
   old_widget_ = new QWidget(this);
   auto* old_layout = new QHBoxLayout(old_widget_);
   old_layout->setContentsMargins(0, 0, 20, 0);
-  old_layout->addWidget(new QLabel(tr("ROS Elapsed:"), this));
+  old_layout->addWidget(new QLabel(tr("Elapsed:"), this));
   old_layout->addWidget(sim_elapsed_label_);
   old_layout->addWidget(new QLabel(tr("Wall Time:"), this));
   old_layout->addWidget(wall_time_label_);
@@ -85,7 +85,7 @@ TimePanel::TimePanel(common::VisualizationManager* manager, QWidget* parent)
   auto* top_layout = new QHBoxLayout(top_row);
   top_layout->setContentsMargins(0, 0, 0, 0);
   top_layout->addWidget(experimental_widget_);
-  top_layout->addWidget(new QLabel(tr("ROS Time:"), this));
+  top_layout->addWidget(new QLabel(tr("Time:"), this));
   top_layout->addWidget(sim_time_label_);
   top_layout->addWidget(old_widget_);
   top_layout->addStretch(100);

@@ -108,10 +108,13 @@ bool drawBillboardStripOgreOrGl(common::DisplayContext* context,
 #else
   (void)context;
   (void)display_name;
-  (void)line_width;
 #endif
 
   if (points.size() < 2) {
+    return false;
+  }
+  if (line_width > 0.f) {
+    scene.addViewFacingPolylineStrip(points, line_width, color);
     return false;
   }
   for (std::size_t i = 1; i < points.size(); ++i) {

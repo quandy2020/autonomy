@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"
-     shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
-
-  <rect x="12" y="14" width="40" height="36" rx="3" fill="#fff" stroke="#95a5a6" stroke-width="1.5"/>
-  <line x1="16" y1="24" x2="48" y2="24" stroke="#ddd"/>
-  <text x="18" y="42" font-family="serif" font-size="16" font-weight="700" fill="#2c3e50">Aa</text>
-
-</svg>

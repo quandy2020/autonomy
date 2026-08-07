@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"
-     shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
-
-  <rect x="28" y="10" width="8" height="30" rx="4" fill="#fff" stroke="#c0392b" stroke-width="1.5"/>
-  <circle cx="32" cy="46" r="8" fill="#e74c3c" stroke="#922b21"/>
-  <rect x="30" y="18" width="4" height="20" fill="#e74c3c"/>
-
-</svg>

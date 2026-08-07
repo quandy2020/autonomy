@@ -15,8 +15,14 @@ class PoseEstimateTool : public GoalPoseTool {
   QString label() const override { return toolLabel(); }
 
   std::vector<common::DisplayPropertySpec> propertySpecs() const override {
-    return {{"topic", "Topic", "/initialpose",
-             {}, common::DisplayPropertyKind::kChannel}};
+    return {{"topic", "Topic", "/initialpose", {},
+             common::DisplayPropertyKind::kChannel},
+            {"covariance_x", "Covariance x", "0.25",
+             {}, common::DisplayPropertyKind::kAuto},
+            {"covariance_y", "Covariance y", "0.25",
+             {}, common::DisplayPropertyKind::kAuto},
+            {"covariance_yaw", "Covariance yaw", "0.0685385",
+             {}, common::DisplayPropertyKind::kAuto}};
   }
   char shortcutKey() const override { return 'p'; }
 

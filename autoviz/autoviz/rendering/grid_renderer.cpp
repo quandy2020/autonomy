@@ -108,11 +108,11 @@ void GridRenderer::buildGridGeometry() {
       QOpenGLContext::currentContext()->extraFunctions();
 
   std::vector<float> grid_vertices;
-  const int half = std::max(1, grid_settings_.half_cell_count);
+  const int cell_count = std::max(1, grid_settings_.plane_cell_count);
   const float step = std::max(0.001f, grid_settings_.cell_length);
-  const float extent = static_cast<float>(half) * step;
-  for (int i = -half; i <= half; ++i) {
-    const float p = static_cast<float>(i) * step;
+  const float extent = static_cast<float>(cell_count) * step * 0.5f;
+  for (int i = 0; i <= cell_count; ++i) {
+    const float p = extent - static_cast<float>(i) * step;
     grid_vertices.insert(grid_vertices.end(),
                          {-extent, p, 0.f, extent, p, 0.f});
     grid_vertices.insert(grid_vertices.end(),

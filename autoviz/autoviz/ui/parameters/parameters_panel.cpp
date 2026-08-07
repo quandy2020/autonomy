@@ -102,15 +102,16 @@ ParametersPanel::ParametersPanel(common::VisualizationManager* manager,
 }
 
 void ParametersPanel::setupUi() {
+  ApplyPanelShell(this);
+
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);
   root->setSpacing(0);
 
   auto* toolbar = new QFrame(this);
-  toolbar->setStyleSheet(PanelStatusBarStyle());
+  ApplyPanelToolbarChrome(toolbar);
   auto* toolbar_layout = new QHBoxLayout(toolbar);
-  toolbar_layout->setContentsMargins(8, 6, 8, 6);
-  toolbar_layout->setSpacing(6);
+  ApplyPanelToolbarLayout(toolbar_layout);
 
   toolbar_layout->addWidget(new QLabel(tr("Node"), toolbar));
   node_combo_ = new QComboBox(toolbar);
@@ -122,12 +123,12 @@ void ParametersPanel::setupUi() {
   filter_edit_->setPlaceholderText(tr("Filter parameters…"));
   filter_edit_->setClearButtonEnabled(true);
   filter_edit_->setMinimumWidth(140);
+  StyleFilterLineEdit(filter_edit_);
   toolbar_layout->addWidget(filter_edit_, 1);
 
   refresh_button_ = new QToolButton(toolbar);
   refresh_button_->setToolTip(tr("Refresh parameters"));
-  refresh_button_->setIcon(
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_reset_view.svg")));
+  refresh_button_->setIcon(IconLoader::menuIcon(QStringLiteral("file.recent")));
   toolbar_layout->addWidget(refresh_button_);
 
   auto_refresh_check_ = new QCheckBox(tr("Auto"), toolbar);
@@ -155,11 +156,11 @@ void ParametersPanel::setupUi() {
   root->addWidget(table_, 1);
 
   auto* status_bar = new QFrame(this);
-  status_bar->setStyleSheet(PanelFooterStyle());
+  ApplyPanelFooterChrome(status_bar);
   auto* status_layout = new QHBoxLayout(status_bar);
   status_layout->setContentsMargins(8, 4, 8, 4);
   status_label_ = new QLabel(status_bar);
-  status_label_->setStyleSheet(PanelStatusLabelStyle());
+  StylePanelStatusLabel(status_label_);
   status_label_->setTextInteractionFlags(Qt::TextSelectableByMouse);
   status_layout->addWidget(status_label_, 1);
   root->addWidget(status_bar);
@@ -196,44 +197,6 @@ void ParametersPanel::installTitleBarTools(PanelDockWidget* dock) {
   if (dock == nullptr) {
     return;
   }
-  auto* tools = new QWidget(dock);
-  tools->setStyleSheet(PlotTitleToolsStyleSheet());
-  auto* layout = new QHBoxLayout(tools);
-  layout->setContentsMargins(0, 0, 4, 0);
-  layout->setSpacing(0);
-  layout->addWidget(CreateTitleSeparator(tools));
-
-  auto* split_right = CreatePlotTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_split_right.svg")),
-      tr("Split right"));
-  layout->addWidget(split_right);
-  connect(split_right, &QToolButton::clicked, this, [this]() {
-    emit panelSplitRequested(Qt::Horizontal);
-  });
-
-  auto* split_down = CreatePlotTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_split_down.svg")),
-      tr("Split down"));
-  layout->addWidget(split_down);
-  connect(split_down, &QToolButton::clicked, this, [this]() {
-    emit panelSplitRequested(Qt::Vertical);
-  });
-
-  auto* expand = CreatePlotTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_fullscreen.svg")),
-      tr("Expand"), true);
-  expand_button_ = expand;
-  layout->addWidget(expand);
-  connect(expand, &QToolButton::clicked, this, [this]() { emit panelExpandRequested(); });
-
-  auto* more_button = CreatePlotTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_more.svg")),
-      tr("More"));
-  more_button->setPopupMode(QToolButton::InstantPopup);
   PanelContextMenuCallbacks callbacks;
   callbacks.current_object_name = QStringLiteral("ParametersDock");
   callbacks.change_panel = [this](const QString& object_name) {
@@ -244,10 +207,14 @@ void ParametersPanel::installTitleBarTools(PanelDockWidget* dock) {
   };
   callbacks.expand = [this]() { emit panelExpandRequested(); };
   callbacks.remove = [this]() { emit panelRemoveRequested(); };
-  more_button->setMenu(CreatePanelContextMenu(more_button, callbacks));
-  layout->addWidget(more_button);
 
-  dock->setTitleBarTools(tools);
+  PanelTitleBarOptions options;
+  options.on_expand = [this]() { emit panelExpandRequested(); };
+
+  const PanelTitleBarTools tools =
+      CreateRvizPanelTitleBarTools(dock, callbacks, options);
+  expand_button_ = tools.expand_button;
+  dock->setTitleBarTools(tools.widget);
 }
 
 void ParametersPanel::setExpandButtonChecked(bool checked) {
@@ -519,9 +486,7 @@ void ParametersPanel::updateStatusText(const QString& text, bool is_error) {
     return;
   }
   status_label_->setText(text);
-  status_label_->setStyleSheet(
-      is_error ? QStringLiteral("color: palette(negative); font-size: 10px;")
-               : PanelStatusLabelStyle());
+  StylePanelStatusLabel(status_label_, is_error);
 }
 
 bool ParametersPanel::commitParameterEdit(int row, const QString& new_text) {

@@ -21,6 +21,7 @@ AddPanelDialog::AddPanelDialog(const QStringList& available_panels,
 
   auto* layout = new QVBoxLayout(this);
   list_ = new QListWidget(this);
+  list_->setIconSize(QSize(24, 24));
   layout->addWidget(list_);
 
   auto* buttons =

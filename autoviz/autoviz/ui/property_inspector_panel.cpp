@@ -12,6 +12,7 @@
 namespace autoviz {
 
 PropertyInspectorPanel::PropertyInspectorPanel(QWidget* parent) : QWidget(parent) {
+  ApplyPanelShell(this);
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);
   root->setSpacing(0);

@@ -56,26 +56,26 @@ ChannelGraphPanel::ChannelGraphPanel(common::VisualizationManager* manager,
 }
 
 void ChannelGraphPanel::setupUi() {
+  ApplyPanelShell(this);
+
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);
   root->setSpacing(0);
 
   auto* toolbar = new QFrame(this);
-  toolbar->setStyleSheet(PanelStatusBarStyle());
+  ApplyPanelToolbarChrome(toolbar);
   auto* toolbar_layout = new QHBoxLayout(toolbar);
-  toolbar_layout->setContentsMargins(8, 6, 8, 6);
-  toolbar_layout->setSpacing(6);
+  ApplyPanelToolbarLayout(toolbar_layout);
 
   auto* zoom_fit_button = new QToolButton(toolbar);
   zoom_fit_button->setToolTip(tr("Zoom to fit"));
   zoom_fit_button->setIcon(
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_reset_view.svg")));
+      IconLoader::panelTitleIcon(QStringLiteral("plot.reset_view")));
   toolbar_layout->addWidget(zoom_fit_button);
 
   auto* refresh_button = new QToolButton(toolbar);
   refresh_button->setToolTip(tr("Refresh graph"));
-  refresh_button->setIcon(
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_reset_view.svg")));
+  refresh_button->setIcon(IconLoader::menuIcon(QStringLiteral("file.recent")));
   toolbar_layout->addWidget(refresh_button);
 
   show_channels_check_ = new QCheckBox(tr("Channels"), toolbar);
@@ -98,6 +98,7 @@ void ChannelGraphPanel::setupUi() {
   filter_edit_->setPlaceholderText(tr("Filter nodes, channels, services…"));
   filter_edit_->setClearButtonEnabled(true);
   filter_edit_->setMinimumWidth(160);
+  StyleFilterLineEdit(filter_edit_);
   toolbar_layout->addWidget(filter_edit_, 1);
 
   auto_refresh_check_ = new QCheckBox(tr("Auto"), toolbar);
@@ -112,18 +113,27 @@ void ChannelGraphPanel::setupUi() {
          "Data flow: Writers → Channel → Readers. Edge labels: pub / sub / relay."),
       this);
   legend->setWordWrap(true);
-  legend->setContentsMargins(10, 4, 10, 4);
-  legend->setStyleSheet(QStringLiteral("color: palette(mid); font-size: 11px;"));
+  legend->setContentsMargins(PanelChromeLayout::kToolbarMarginH, 4,
+                             PanelChromeLayout::kToolbarMarginH, 4);
+  StyleHintLabel(legend);
   root->addWidget(legend);
 
   graph_view_ = new ChannelGraphView(this);
   graph_view_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
   root->addWidget(graph_view_, 1);
 
-  status_label_ = new QLabel(this);
-  status_label_->setContentsMargins(10, 4, 10, 6);
-  status_label_->setStyleSheet(PanelStatusLabelStyle());
-  root->addWidget(status_label_);
+  auto* status_bar = new QFrame(this);
+  ApplyPanelFooterChrome(status_bar);
+  auto* status_layout = new QHBoxLayout(status_bar);
+  status_layout->setContentsMargins(PanelChromeLayout::kFooterMarginH,
+                                    PanelChromeLayout::kFooterMarginV,
+                                    PanelChromeLayout::kFooterMarginH,
+                                    PanelChromeLayout::kFooterMarginV);
+  status_label_ = new QLabel(status_bar);
+  StylePanelStatusLabel(status_label_);
+  status_label_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  status_layout->addWidget(status_label_, 1);
+  root->addWidget(status_bar);
 
   refresh_timer_ = new QTimer(this);
   refresh_timer_->setInterval(kAutoRefreshMs);
@@ -155,44 +165,6 @@ void ChannelGraphPanel::installTitleBarTools(PanelDockWidget* dock) {
   if (dock == nullptr) {
     return;
   }
-  auto* tools = new QWidget(dock);
-  tools->setStyleSheet(PlotTitleToolsStyleSheet());
-  auto* layout = new QHBoxLayout(tools);
-  layout->setContentsMargins(0, 0, 4, 0);
-  layout->setSpacing(0);
-  layout->addWidget(CreateTitleSeparator(tools));
-
-  auto* split_right = CreatePlotTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_split_right.svg")),
-      tr("Split right"));
-  layout->addWidget(split_right);
-  connect(split_right, &QToolButton::clicked, this, [this]() {
-    emit panelSplitRequested(Qt::Horizontal);
-  });
-
-  auto* split_down = CreatePlotTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_split_down.svg")),
-      tr("Split down"));
-  layout->addWidget(split_down);
-  connect(split_down, &QToolButton::clicked, this, [this]() {
-    emit panelSplitRequested(Qt::Vertical);
-  });
-
-  auto* expand = CreatePlotTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_fullscreen.svg")),
-      tr("Expand"), true);
-  expand_button_ = expand;
-  layout->addWidget(expand);
-  connect(expand, &QToolButton::clicked, this, [this]() { emit panelExpandRequested(); });
-
-  auto* more_button = CreatePlotTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_more.svg")),
-      tr("More"));
-  more_button->setPopupMode(QToolButton::InstantPopup);
   PanelContextMenuCallbacks callbacks;
   callbacks.current_object_name = QStringLiteral("ChannelGraphDock");
   callbacks.change_panel = [this](const QString& object_name) {
@@ -203,10 +175,14 @@ void ChannelGraphPanel::installTitleBarTools(PanelDockWidget* dock) {
   };
   callbacks.expand = [this]() { emit panelExpandRequested(); };
   callbacks.remove = [this]() { emit panelRemoveRequested(); };
-  more_button->setMenu(CreatePanelContextMenu(more_button, callbacks));
-  layout->addWidget(more_button);
 
-  dock->setTitleBarTools(tools);
+  PanelTitleBarOptions options;
+  options.on_expand = [this]() { emit panelExpandRequested(); };
+
+  const PanelTitleBarTools tools =
+      CreateRvizPanelTitleBarTools(dock, callbacks, options);
+  expand_button_ = tools.expand_button;
+  dock->setTitleBarTools(tools.widget);
 }
 
 void ChannelGraphPanel::setExpandButtonChecked(bool checked) {

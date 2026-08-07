@@ -21,7 +21,7 @@ function(_autoviz_embed_sibling_deps)
   set(AUTOLINK_BUILD_TEST OFF CACHE BOOL "" FORCE)
   set(AUTOLINK_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
   set(AUTOLINK_BUILD_TOOLS ON CACHE BOOL "" FORCE)
-  set(AUTOLINK_BUILD_PYTHON OFF CACHE BOOL "" FORCE)
+  set(AUTOLINK_BUILD_PYTHON ON CACHE BOOL "Build autolink Python bindings" FORCE)
   set(AUTOLINK_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 
   add_subdirectory("${AUTOVIZ_DEPS_ROOT}/autolink" "${CMAKE_BINARY_DIR}/_deps/autolink")

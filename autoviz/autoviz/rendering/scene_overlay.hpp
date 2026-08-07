@@ -137,6 +137,9 @@ class SceneOverlay {
   /** Screen-aligned quad (TEXT markers, billboards). Expanded at render time. */
   void addViewFacingQuad(const QVector3D& center, float half_extent,
                          const QColor& color);
+  /** Camera-facing polyline strip (Path Billboards on OpenGL backend). */
+  void addViewFacingPolylineStrip(const std::vector<QVector3D>& points,
+                                  float line_width, const QColor& color);
   /** Screen-aligned textured quad (TEXT markers). Expanded at render time. */
   void addViewFacingTexturedQuad(const QVector3D& center, float half_width,
                                  float half_height, const QImage& image);
@@ -181,6 +184,7 @@ class SceneOverlay {
     return line_vertices_.empty() && point_vertices_.empty() &&
            triangle_vertices_.empty() && textured_batches_.empty() &&
            billboard_requests_.empty() &&
+           polyline_strip_requests_.empty() &&
            view_facing_textured_requests_.empty() &&
            pbr_vertices_.empty() && pbr_textured_batches_.empty();
   }
@@ -201,10 +205,18 @@ class SceneOverlay {
     QImage image;
   };
 
+  struct PolylineStripRequest {
+    std::vector<QVector3D> points;
+    float half_width = 0.04f;
+    QVector4D color;
+  };
+
   void recordPick(const QVector3D& position);
   void uploadIfNeeded();
   void appendViewFacingBillboards(const QMatrix4x4& view,
                                   std::vector<ColoredVertex>* triangles) const;
+  void appendViewFacingPolylineStrips(const QMatrix4x4& view,
+                                      std::vector<ColoredVertex>* triangles) const;
   void appendPointSpriteBatch(const QMatrix4x4& view,
                               std::vector<TexturedBatch>* batches) const;
   void appendPickPointSpriteBatch(const QMatrix4x4& view,
@@ -230,6 +242,7 @@ class SceneOverlay {
   std::vector<PickSample> pick_samples_;
   std::vector<TexturedBatch> textured_batches_;
   std::vector<BillboardRequest> billboard_requests_;
+  std::vector<PolylineStripRequest> polyline_strip_requests_;
   std::vector<ViewFacingTexturedRequest> view_facing_textured_requests_;
   std::vector<PbrVertex> pbr_vertices_;
   std::vector<PbrTexturedBatch> pbr_textured_batches_;

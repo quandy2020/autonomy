@@ -63,8 +63,8 @@ PathDisplay::PathDisplay(std::string channel)
 }
 
 std::vector<common::DisplayPropertySpec> PathDisplay::propertySpecs() const {
-  return {{"line_style", "Line Style", "Lines", {"Lines", "Billboards"}},
-          {"line_width", "Line Width", "0.03"},
+  return {{"line_style", "Line Style", "Billboards", {"Lines", "Billboards"}},
+          {"line_width", "Line Width", "0.08"},
           {"color", "Color", "25;255;0", {}, common::DisplayPropertyKind::kColor},
           {"alpha", "Alpha", "1.0"},
           {"buffer_length", "Buffer Length", "1"},
@@ -127,6 +127,7 @@ void PathDisplay::processMessage(
                                                 zero_time);
       have_tf = true;
     } catch (...) {
+      setStatusWarn("TF missing: " + frame + " -> " + context_->fixed_frame);
       return;
     }
   }
@@ -146,6 +147,7 @@ void PathDisplay::processMessage(
   if (context_->request_redraw) {
     context_->request_redraw();
   }
+  setStatusOk();
 }
 
 void PathDisplay::drawPathPolyline(

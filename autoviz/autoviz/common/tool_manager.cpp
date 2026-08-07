@@ -37,11 +37,49 @@ int ShortcutToQtKey(char shortcut) {
   return Qt::Key_A + static_cast<int>(upper - 'A');
 }
 
+// Matches rviz_common/default.rviz Tools section order.
+constexpr const char* kDefaultToolbarToolOrder[] = {
+    "Interact",
+    "MoveCamera",
+    "Select",
+    "FocusCamera",
+    "Measure",
+    "PoseEstimate",
+    "NavGoal",
+    "PublishPoint",
+};
+
+std::vector<std::string> OrderToolIds(const std::vector<std::string>& ids) {
+  std::vector<std::string> ordered;
+  ordered.reserve(ids.size());
+  auto append_if_present = [&](const std::string& id) {
+    if (std::find(ids.begin(), ids.end(), id) == ids.end()) {
+      return;
+    }
+    if (std::find(ordered.begin(), ordered.end(), id) != ordered.end()) {
+      return;
+    }
+    ordered.push_back(id);
+  };
+  for (const char* id : kDefaultToolbarToolOrder) {
+    append_if_present(id);
+  }
+  std::vector<std::string> rest;
+  for (const std::string& id : ids) {
+    if (std::find(ordered.begin(), ordered.end(), id) == ordered.end()) {
+      rest.push_back(id);
+    }
+  }
+  std::sort(rest.begin(), rest.end());
+  ordered.insert(ordered.end(), rest.begin(), rest.end());
+  return ordered;
+}
+
 }  // namespace
 
 ToolManager::ToolManager() {
   ToolRegistry& registry = ToolRegistry::instance();
-  for (const std::string& id : registry.toolIds()) {
+  for (const std::string& id : OrderToolIds(registry.toolIds())) {
     auto tool = registry.create(id);
     if (tool == nullptr) {
       continue;
@@ -141,7 +179,12 @@ std::vector<ToolConfig> ToolManager::currentToolConfigs() const {
 }
 
 void ToolManager::resetToolbarToDefault() {
-  toolbar_tool_ids_ = tool_ids_;
+  toolbar_tool_ids_.clear();
+  for (const char* id : kDefaultToolbarToolOrder) {
+    if (toolById(id) != nullptr) {
+      toolbar_tool_ids_.push_back(id);
+    }
+  }
 }
 
 void ToolManager::setToolbarToolIds(const std::vector<std::string>& ids) {

@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <QApplication>
 #include <QFrame>
+#include <QGuiApplication>
 #include <QScrollArea>
 #include <QStackedWidget>
 #include <QHBoxLayout>
@@ -16,6 +17,7 @@
 #include <QKeySequence>
 #include <QLabel>
 #include <QDateTime>
+#include <QDialog>
 #include <QDir>
 #include <QDockWidget>
 #include <QFileDialog>
@@ -25,6 +27,7 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QResizeEvent>
+#include <QScreen>
 #include <QSettings>
 #include <QShortcut>
 #include <QStatusBar>
@@ -35,6 +38,8 @@
 #include <QTabWidget>
 #include <QToolBar>
 #include <QToolButton>
+#include <QGridLayout>
+#include <QQuaternion>
 #include <QVBoxLayout>
 
 #include "autoviz/common/display_property.hpp"
@@ -45,10 +50,15 @@
 #include "autoviz/rendering/view_controller.hpp"
 #include "autoviz/common/view_state_io.hpp"
 #include "autoviz/ui/add_panel_dialog.hpp"
+#include "autoviz/ui/app_settings_dialog.hpp"
+#include "autoviz/ui/app_preferences.hpp"
+#include "autoviz/ui/app_theme.hpp"
+#include "autoviz/ui/app_translation.hpp"
 #include "autoviz/ui/panel_catalog.hpp"
 #include "autoviz/ui/panel_context_menu.hpp"
 #include "autoviz/ui/panel_dock_widget.hpp"
 #include "autoviz/ui/panel_title_tools.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 #include "autoviz/ui/displays_panel.hpp"
 #include "autoviz/ui/help_panel.hpp"
 #include "autoviz/ui/icon_loader.hpp"
@@ -86,6 +96,7 @@
 #include "autoviz/ui/strata_floor_panel.hpp"
 #include "autoviz/ui/time_panel.hpp"
 #include "autoviz/ui/panel_rviz_map.hpp"
+#include "autoviz/ui/viewport_floating_toolbar.hpp"
 #include "autoviz/ui/views_panel.hpp"
 #include "autoviz/commsgs/message_type_utils.hpp"
 #ifdef AUTOVIZ_USE_QML_DRONE
@@ -93,6 +104,279 @@
 #endif
 
 namespace autoviz {
+
+rendering::ViewController* VisualizationFrame::ViewportPanelEntry::viewController()
+    const {
+  if (gl_viewport != nullptr) {
+    return &gl_viewport->viewController();
+  }
+  if (ogre_viewport != nullptr) {
+    return &ogre_viewport->viewController();
+  }
+  return nullptr;
+}
+
+VisualizationFrame::ViewportPanelEntry*
+VisualizationFrame::viewportEntryForDock(PanelDockWidget* dock) {
+  auto it = viewport_panels_.find(dock);
+  return it == viewport_panels_.end() ? nullptr : &(*it);
+}
+
+const VisualizationFrame::ViewportPanelEntry*
+VisualizationFrame::viewportEntryForDock(PanelDockWidget* dock) const {
+  auto it = viewport_panels_.constFind(dock);
+  return it == viewport_panels_.cend() ? nullptr : &(*it);
+}
+
+VisualizationFrame::ViewportPanelEntry*
+VisualizationFrame::activeViewportEntry() {
+  if (active_viewport_dock_ != nullptr) {
+    return viewportEntryForDock(active_viewport_dock_);
+  }
+  if (viewport_dock_ != nullptr) {
+    return viewportEntryForDock(viewport_dock_);
+  }
+  return viewport_panels_.isEmpty() ? nullptr : &(*viewport_panels_.begin());
+}
+
+void VisualizationFrame::setActiveViewportDock(PanelDockWidget* dock) {
+  if (dock == nullptr || !viewport_panels_.contains(dock)) {
+    return;
+  }
+  active_viewport_dock_ = dock;
+  last_active_dock_ = dock;
+  if (views_panel_ != nullptr) {
+    views_panel_->setViewController(activeViewController());
+  }
+  syncViewportTitleBarTools();
+  syncToolContext();
+}
+
+void VisualizationFrame::forEachViewportPanel(
+    const std::function<void(ViewportPanelEntry&)>& fn) {
+  for (auto it = viewport_panels_.begin(); it != viewport_panels_.end(); ++it) {
+    fn(*it);
+  }
+}
+
+void VisualizationFrame::destroyRenderWindowInEntry(ViewportPanelEntry& entry) {
+  if (entry.widget != nullptr) {
+    if (entry.layout != nullptr) {
+      entry.layout->removeWidget(entry.widget);
+    }
+    entry.widget->hide();
+    entry.widget->deleteLater();
+    entry.widget = nullptr;
+    entry.gl_viewport = nullptr;
+    entry.ogre_viewport = nullptr;
+  }
+}
+
+void VisualizationFrame::createRenderWindowInEntry(ViewportPanelEntry& entry,
+                                                   const QString& backend) {
+  rendering::GpuCapabilities::instance().ensureProbed();
+  destroyRenderWindowInEntry(entry);
+
+  if (backend == QLatin1String("Ogre")) {
+#ifdef AUTOVIZ_USE_OGRE
+    if (rendering::GpuCapabilities::instance().hasHardwareGpu()) {
+      entry.ogre_viewport = new rendering::OgreRenderWindow(this);
+      entry.ogre_viewport->setSceneOverlay(&manager_->sceneOverlay());
+      entry.ogre_viewport->setToolManager(&manager_->tools());
+      entry.widget = entry.ogre_viewport;
+    } else {
+      entry.gl_viewport = new rendering::RenderWindow(this);
+      entry.gl_viewport->setSceneOverlay(&manager_->sceneOverlay());
+      entry.gl_viewport->setToolManager(&manager_->tools());
+      entry.widget = entry.gl_viewport;
+    }
+#else
+    entry.gl_viewport = new rendering::RenderWindow(this);
+    entry.gl_viewport->setSceneOverlay(&manager_->sceneOverlay());
+    entry.gl_viewport->setToolManager(&manager_->tools());
+    entry.widget = entry.gl_viewport;
+#endif
+  } else {
+    entry.gl_viewport = new rendering::RenderWindow(this);
+    entry.gl_viewport->setSceneOverlay(&manager_->sceneOverlay());
+    entry.gl_viewport->setToolManager(&manager_->tools());
+    entry.widget = entry.gl_viewport;
+  }
+
+  if (entry.widget != nullptr && entry.layout != nullptr) {
+    entry.layout->addWidget(entry.widget, 0, 0);
+    if (entry.floating_toolbar != nullptr) {
+      entry.layout->addWidget(entry.floating_toolbar, 0, 0,
+                              Qt::AlignRight | Qt::AlignTop);
+    }
+  }
+  applyViewportEntryRenderSettings(entry);
+  connectViewportInteractionsForEntry(entry);
+}
+
+void VisualizationFrame::applyViewportEntryRenderSettings(
+    ViewportPanelEntry& entry) {
+  if (entry.gl_viewport != nullptr) {
+    entry.gl_viewport->setGridVisible(manager_->showGrid());
+    entry.gl_viewport->setBackgroundColor(
+        common::ParseColorProperty(manager_->backgroundColor(),
+                                   QColor(48, 48, 48)));
+    entry.gl_viewport->viewController().setFrameManager(&manager_->frameManager());
+    entry.gl_viewport->setToolManager(&manager_->tools());
+  }
+  if (entry.ogre_viewport != nullptr) {
+    entry.ogre_viewport->setGridVisible(manager_->showGrid());
+    entry.ogre_viewport->setBackgroundColor(
+        common::ParseColorProperty(manager_->backgroundColor(),
+                                   QColor(48, 48, 48)));
+    entry.ogre_viewport->viewController().setFrameManager(&manager_->frameManager());
+    entry.ogre_viewport->setToolManager(&manager_->tools());
+  }
+}
+
+void VisualizationFrame::connectViewportInteractionsForEntry(
+    ViewportPanelEntry& entry) {
+  const auto sync_views = [this]() {
+    if (views_panel_ != nullptr) {
+      views_panel_->refreshFromController();
+    }
+  };
+  if (entry.gl_viewport != nullptr) {
+    connect(entry.gl_viewport, &rendering::RenderWindow::viewDragUpdated, this,
+            sync_views, Qt::UniqueConnection);
+    connect(entry.gl_viewport, &rendering::RenderWindow::viewDragEnded, this,
+            sync_views, Qt::UniqueConnection);
+  }
+#ifdef AUTOVIZ_USE_OGRE
+  if (entry.ogre_viewport != nullptr) {
+    connect(entry.ogre_viewport, &rendering::OgreRenderWindow::viewDragUpdated,
+            this, sync_views, Qt::UniqueConnection);
+    connect(entry.ogre_viewport, &rendering::OgreRenderWindow::viewDragEnded, this,
+            sync_views, Qt::UniqueConnection);
+    connect(entry.ogre_viewport,
+            &rendering::OgreRenderWindow::toolShortcutTriggered, this,
+            [this]() { syncActiveToolUi(); }, Qt::UniqueConnection);
+  }
+#endif
+}
+
+void VisualizationFrame::registerPrimaryViewportPanel() {
+  if (viewport_dock_ == nullptr || viewport_panels_.contains(viewport_dock_)) {
+    return;
+  }
+  ViewportPanelEntry entry;
+  entry.dock = viewport_dock_;
+  entry.host = viewport_dock_->widget();
+  if (entry.host != nullptr) {
+    entry.layout = qobject_cast<QGridLayout*>(entry.host->layout());
+  }
+  viewport_panels_.insert(viewport_dock_, entry);
+  active_viewport_dock_ = viewport_dock_;
+}
+
+void VisualizationFrame::removeViewportPanel(PanelDockWidget* dock) {
+  if (dock == nullptr || !viewport_panels_.contains(dock)) {
+    return;
+  }
+  ViewportPanelEntry entry = viewport_panels_.take(dock);
+  destroyRenderWindowInEntry(entry);
+
+  if (active_viewport_dock_ == dock) {
+    active_viewport_dock_ = viewport_dock_;
+    if (!viewport_panels_.contains(active_viewport_dock_) &&
+        !viewport_panels_.isEmpty()) {
+      active_viewport_dock_ = viewport_panels_.begin().key();
+    }
+    if (views_panel_ != nullptr) {
+      views_panel_->setViewController(activeViewController());
+    }
+  }
+  if (dock == viewport_dock_) {
+    viewport_dock_ = viewport_panels_.isEmpty() ? nullptr
+                                                : viewport_panels_.begin().key();
+  }
+}
+
+void VisualizationFrame::wireViewportPanel(ViewportPanelEntry& entry) {
+  if (entry.dock == nullptr) {
+    return;
+  }
+  connect(entry.dock, &PanelDockWidget::activated, this,
+          [this, dock = entry.dock]() { setActiveViewportDock(dock); });
+}
+
+void VisualizationFrame::ensureViewportPanelReady(PanelDockWidget* dock) {
+  if (dock == nullptr || panelTypeId(dock) != QLatin1String("ViewportDock")) {
+    return;
+  }
+
+  if (!viewport_panels_.contains(dock)) {
+    ViewportPanelEntry entry;
+    entry.dock = dock;
+    entry.host = dock->widget();
+    if (entry.host != nullptr) {
+      entry.layout = qobject_cast<QGridLayout*>(entry.host->layout());
+      const QList<ViewportFloatingToolbar*> toolbars =
+          entry.host->findChildren<ViewportFloatingToolbar*>();
+      if (!toolbars.isEmpty()) {
+        entry.floating_toolbar = toolbars.first();
+      }
+    }
+    viewport_panels_.insert(dock, entry);
+    installViewportTitleBarToolsForEntry(viewport_panels_[dock]);
+    if (active_viewport_dock_ == nullptr) {
+      active_viewport_dock_ = dock;
+    }
+  }
+
+  ViewportPanelEntry& entry = viewport_panels_[dock];
+  if (entry.widget == nullptr) {
+    const QString backend = QString::fromStdString(manager_->renderBackendName());
+    createRenderWindowInEntry(entry, backend);
+    if (entry.floating_toolbar == nullptr) {
+      installViewportFloatingToolbar(entry);
+    }
+  } else {
+    applyViewportEntryRenderSettings(entry);
+  }
+
+  if (views_panel_ != nullptr && active_viewport_dock_ == dock) {
+    views_panel_->setViewController(entry.viewController());
+  }
+}
+
+PanelDockWidget* VisualizationFrame::createViewportPanelDock(
+    const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty() ? uniquePanelObjectName(QStringLiteral("ViewportDock"))
+                            : object_name;
+  auto* dock = new PanelDockWidget(tr("3D"), this);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("ViewportDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Panel3D")));
+
+  ViewportPanelEntry entry;
+  entry.dock = dock;
+  entry.host = new QWidget(dock);
+  entry.host->setObjectName(QString::fromLatin1(AppThemeIds::kViewportHost));
+  entry.host->setMinimumSize(240, 180);
+  entry.layout = new QGridLayout(entry.host);
+  entry.layout->setContentsMargins(0, 0, 0, 0);
+  entry.layout->setSpacing(0);
+  dock->setContentWidget(entry.host);
+
+  const QString backend = QString::fromStdString(manager_->renderBackendName());
+  createRenderWindowInEntry(entry, backend);
+  installViewportFloatingToolbar(entry);
+
+  configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  wireViewportPanel(entry);
+  installViewportTitleBarToolsForEntry(entry);
+
+  viewport_panels_.insert(dock, entry);
+  return dock;
+}
 
 VisualizationFrame::VisualizationFrame(
     std::shared_ptr<common::VisualizationManager> manager, QWidget* parent)
@@ -107,16 +391,19 @@ VisualizationFrame::VisualizationFrame(
   setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowNestedDocks |
                  QMainWindow::AllowTabbedDocks);
   setupMenu();
+  applyShortcutPreferences(LoadAppUiPreferences().shortcuts);
   setupToolbar();
 
   manager_->setRedrawCallback([this]() { requestViewportUpdate(); });
   manager_->setGridVisibilityCallback([this](bool visible) {
-    if (gl_viewport_ != nullptr) {
-      gl_viewport_->setGridVisible(visible);
-    }
-    if (ogre_viewport_ != nullptr) {
-      ogre_viewport_->setGridVisible(visible);
-    }
+    forEachViewportPanel([visible](ViewportPanelEntry& entry) {
+      if (entry.gl_viewport != nullptr) {
+        entry.gl_viewport->setGridVisible(visible);
+      }
+      if (entry.ogre_viewport != nullptr) {
+        entry.ogre_viewport->setGridVisible(visible);
+      }
+    });
     requestViewportUpdate();
   });
   manager_->setBackgroundColorCallback([this](const std::string& color) {
@@ -134,12 +421,14 @@ VisualizationFrame::VisualizationFrame(
   });
 
   createViewport(QString::fromStdString(manager_->renderBackendName()));
-  if (gl_viewport_ != nullptr) {
-    gl_viewport_->setGridVisible(manager_->showGrid());
-  }
-  if (ogre_viewport_ != nullptr) {
-    ogre_viewport_->setGridVisible(manager_->showGrid());
-  }
+  forEachViewportPanel([this](ViewportPanelEntry& entry) {
+    if (entry.gl_viewport != nullptr) {
+      entry.gl_viewport->setGridVisible(manager_->showGrid());
+    }
+    if (entry.ogre_viewport != nullptr) {
+      entry.ogre_viewport->setGridVisible(manager_->showGrid());
+    }
+  });
   applyBackgroundColor(
       common::ParseColorProperty(manager_->backgroundColor(), QColor(48, 48, 48)));
 
@@ -190,6 +479,7 @@ VisualizationFrame::VisualizationFrame(
       if (rendering::ViewController* controller = activeViewController()) {
         manager_->setViewControllerName(controller->typeName().toStdString());
       }
+      syncViewportTitleBarTools();
       requestViewportUpdate();
     });
   }
@@ -282,67 +572,11 @@ void VisualizationFrame::updateSelectionPanel(
 VisualizationFrame::~VisualizationFrame() = default;
 
 void VisualizationFrame::createViewport(const QString& backend) {
-  rendering::GpuCapabilities::instance().ensureProbed();
-
-  if (viewport_widget_ != nullptr) {
-    if (viewport_layout_ != nullptr) {
-      viewport_layout_->removeWidget(viewport_widget_);
-    }
-    viewport_widget_->hide();
-    viewport_widget_->deleteLater();
-    viewport_widget_ = nullptr;
-    gl_viewport_ = nullptr;
-    ogre_viewport_ = nullptr;
-  }
-
-  if (backend == QLatin1String("Ogre")) {
-#ifdef AUTOVIZ_USE_OGRE
-    if (rendering::GpuCapabilities::instance().hasHardwareGpu()) {
-      ogre_viewport_ = new rendering::OgreRenderWindow(this);
-      ogre_viewport_->setSceneOverlay(&manager_->sceneOverlay());
-      ogre_viewport_->setToolManager(&manager_->tools());
-      viewport_widget_ = ogre_viewport_;
-    } else {
-      gl_viewport_ = new rendering::RenderWindow(this);
-      gl_viewport_->setSceneOverlay(&manager_->sceneOverlay());
-      gl_viewport_->setToolManager(&manager_->tools());
-      viewport_widget_ = gl_viewport_;
-    }
-#else
-    gl_viewport_ = new rendering::RenderWindow(this);
-    gl_viewport_->setSceneOverlay(&manager_->sceneOverlay());
-    gl_viewport_->setToolManager(&manager_->tools());
-    viewport_widget_ = gl_viewport_;
-#endif
-  } else {
-    gl_viewport_ = new rendering::RenderWindow(this);
-    gl_viewport_->setSceneOverlay(&manager_->sceneOverlay());
-    gl_viewport_->setToolManager(&manager_->tools());
-    viewport_widget_ = gl_viewport_;
-  }
-  if (viewport_widget_ != nullptr && viewport_layout_ != nullptr) {
-    viewport_layout_->addWidget(viewport_widget_);
-  }
-  if (gl_viewport_ != nullptr) {
-    gl_viewport_->setGridVisible(manager_->showGrid());
-    gl_viewport_->setBackgroundColor(
-        common::ParseColorProperty(manager_->backgroundColor(),
-                                   QColor(48, 48, 48)));
-  }
-  if (ogre_viewport_ != nullptr) {
-    ogre_viewport_->setGridVisible(manager_->showGrid());
-    ogre_viewport_->setBackgroundColor(
-        common::ParseColorProperty(manager_->backgroundColor(),
-                                   QColor(48, 48, 48)));
-  }
+  forEachViewportPanel([this, backend](ViewportPanelEntry& entry) {
+    createRenderWindowInEntry(entry, backend);
+  });
   if (views_panel_ != nullptr) {
     views_panel_->setViewController(activeViewController());
-  }
-  if (gl_viewport_ != nullptr) {
-    gl_viewport_->viewController().setFrameManager(&manager_->frameManager());
-  }
-  if (ogre_viewport_ != nullptr) {
-    ogre_viewport_->viewController().setFrameManager(&manager_->frameManager());
   }
   connectViewportInteractions();
   setupToolShortcuts();
@@ -386,7 +620,8 @@ void VisualizationFrame::setupToolShortcuts() {
     tool_shortcuts_.push_back(shortcut);
   }
 
-  auto* escape_shortcut = new QShortcut(QKeySequence(Qt::Key_Escape), this);
+  auto* escape_shortcut = new QShortcut(
+      ShortcutForId(LoadAppUiPreferences(), QStringLiteral("tools.reset")), this);
   escape_shortcut->setContext(Qt::WindowShortcut);
   escape_shortcut->setAutoRepeat(false);
   connect(escape_shortcut, &QShortcut::activated, this, [this, shouldIgnoreShortcut]() {
@@ -401,29 +636,7 @@ void VisualizationFrame::setupToolShortcuts() {
 }
 
 void VisualizationFrame::connectViewportInteractions() {
-  const auto sync_views = [this]() {
-    if (views_panel_ != nullptr) {
-      views_panel_->refreshFromController();
-    }
-  };
-  if (gl_viewport_ != nullptr) {
-    connect(gl_viewport_, &rendering::RenderWindow::viewDragUpdated, this,
-            sync_views, Qt::UniqueConnection);
-    connect(gl_viewport_, &rendering::RenderWindow::viewDragEnded, this,
-            sync_views, Qt::UniqueConnection);
-  }
-#ifdef AUTOVIZ_USE_OGRE
-  if (ogre_viewport_ != nullptr) {
-    connect(ogre_viewport_, &rendering::OgreRenderWindow::viewDragUpdated, this,
-            sync_views, Qt::UniqueConnection);
-    connect(ogre_viewport_, &rendering::OgreRenderWindow::viewDragEnded, this,
-            sync_views, Qt::UniqueConnection);
-    connect(ogre_viewport_, &rendering::OgreRenderWindow::toolShortcutTriggered,
-            this,
-            [this]() { syncActiveToolUi(); },
-            Qt::UniqueConnection);
-  }
-#endif
+  // Per-viewport signal wiring is handled in connectViewportInteractionsForEntry().
 }
 
 void VisualizationFrame::applyTargetFrameRate(int fps) {
@@ -436,11 +649,8 @@ void VisualizationFrame::applyTargetFrameRate(int fps) {
 }
 
 rendering::ViewController* VisualizationFrame::activeViewController() {
-  if (gl_viewport_ != nullptr) {
-    return &gl_viewport_->viewController();
-  }
-  if (ogre_viewport_ != nullptr) {
-    return &ogre_viewport_->viewController();
+  if (ViewportPanelEntry* entry = activeViewportEntry()) {
+    return entry->viewController();
   }
   return nullptr;
 }
@@ -450,34 +660,41 @@ void VisualizationFrame::requestViewportUpdate() {
   if (manager_ != nullptr && !manager_->isUpdating()) {
     manager_->update();
   }
-  if (viewport_widget_ != nullptr) {
-    viewport_widget_->update();
-  }
+  forEachViewportPanel([](ViewportPanelEntry& entry) {
+    if (entry.widget != nullptr) {
+      entry.widget->update();
+    }
+  });
 }
 
 void VisualizationFrame::viewportTick(float delta_seconds) {
   syncToolContext();
-  if (gl_viewport_ != nullptr) {
-    gl_viewport_->tick(delta_seconds);
-  }
-  if (ogre_viewport_ != nullptr) {
-    ogre_viewport_->tick(delta_seconds);
-  }
+  forEachViewportPanel([delta_seconds](ViewportPanelEntry& entry) {
+    if (entry.gl_viewport != nullptr) {
+      entry.gl_viewport->tick(delta_seconds);
+    }
+    if (entry.ogre_viewport != nullptr) {
+      entry.ogre_viewport->tick(delta_seconds);
+    }
+  });
 }
 
 void VisualizationFrame::syncToolContext() {
+  ViewportPanelEntry* active_entry = activeViewportEntry();
 #ifdef AUTOVIZ_USE_OGRE
   if (manager_ != nullptr) {
     manager_->displayContext().ogre_scene_host =
-        ogre_viewport_ != nullptr ? ogre_viewport_->ogreSceneHost() : nullptr;
+        active_entry != nullptr && active_entry->ogre_viewport != nullptr
+            ? active_entry->ogre_viewport->ogreSceneHost()
+            : nullptr;
   }
 #endif
   common::ToolContext context;
   context.view_controller = activeViewController();
   context.scene_overlay = &manager_->sceneOverlay();
-  if (viewport_widget_ != nullptr) {
-    context.viewport_width = viewport_widget_->width();
-    context.viewport_height = viewport_widget_->height();
+  if (active_entry != nullptr && active_entry->widget != nullptr) {
+    context.viewport_width = active_entry->widget->width();
+    context.viewport_height = active_entry->widget->height();
   }
   if (manager_ != nullptr) {
     auto& display_context = manager_->displayContext();
@@ -499,9 +716,9 @@ void VisualizationFrame::syncToolContext() {
   }
   context.gpu_picking_enabled =
       rendering::GpuCapabilities::instance().hasHardwareGpu();
-  if (context.gpu_picking_enabled) {
-    if (gl_viewport_ != nullptr) {
-      rendering::RenderWindow* viewport = gl_viewport_;
+  if (context.gpu_picking_enabled && active_entry != nullptr) {
+    if (active_entry->gl_viewport != nullptr) {
+      rendering::RenderWindow* viewport = active_entry->gl_viewport;
       context.gpu_depth_pick = [viewport](int x, int y, QVector3D* world) {
         if (viewport == nullptr || world == nullptr) {
           return false;
@@ -519,8 +736,8 @@ void VisualizationFrame::syncToolContext() {
         }
         return viewport->readPickHandleAt(x, y);
       };
-    } else if (ogre_viewport_ != nullptr) {
-      rendering::OgreRenderWindow* viewport = ogre_viewport_;
+    } else if (active_entry->ogre_viewport != nullptr) {
+      rendering::OgreRenderWindow* viewport = active_entry->ogre_viewport;
       context.gpu_depth_pick = [viewport](int x, int y, QVector3D* world) {
         if (viewport == nullptr || world == nullptr) {
           return false;
@@ -543,9 +760,11 @@ void VisualizationFrame::syncToolContext() {
   context.request_redraw = [this]() { requestViewportUpdate(); };
 #ifdef AUTOVIZ_USE_OGRE
   context.sync_ogre_host = [this]() {
-    if (manager_ != nullptr && ogre_viewport_ != nullptr) {
-      manager_->displayContext().ogre_scene_host =
-          ogre_viewport_->ogreSceneHost();
+    if (ViewportPanelEntry* entry = activeViewportEntry()) {
+      if (manager_ != nullptr && entry->ogre_viewport != nullptr) {
+        manager_->displayContext().ogre_scene_host =
+            entry->ogre_viewport->ogreSceneHost();
+      }
     }
   };
 #endif
@@ -569,12 +788,14 @@ void VisualizationFrame::syncToolContext() {
     applyActiveTool(manager_->tools().defaultToolId());
   };
   manager_->tools().setContext(std::move(context));
-  if (gl_viewport_ != nullptr) {
-    gl_viewport_->setToolManager(&manager_->tools());
-  }
-  if (ogre_viewport_ != nullptr) {
-    ogre_viewport_->setToolManager(&manager_->tools());
-  }
+  forEachViewportPanel([this](ViewportPanelEntry& entry) {
+    if (entry.gl_viewport != nullptr) {
+      entry.gl_viewport->setToolManager(&manager_->tools());
+    }
+    if (entry.ogre_viewport != nullptr) {
+      entry.ogre_viewport->setToolManager(&manager_->tools());
+    }
+  });
 }
 
 void VisualizationFrame::setupCentralContainer() {
@@ -582,8 +803,6 @@ void VisualizationFrame::setupCentralContainer() {
   main_panel_host_->setMinimumSize(0, 0);
   main_panel_host_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
   setCentralWidget(main_panel_host_);
-  viewport_host_ = nullptr;
-  viewport_layout_ = nullptr;
 }
 
 void VisualizationFrame::setupMainPanelHost() {}
@@ -1414,19 +1633,26 @@ void VisualizationFrame::ensureDefaultStateTransitionDockTab() {
 
 void VisualizationFrame::applyMainPanelDefaultLayout() {
   restoreExpandedMainPanel();
-  if (main_panel_host_ == nullptr || plot_dock_ == nullptr ||
-      viewport_dock_ == nullptr) {
+  if (main_panel_host_ == nullptr || viewport_dock_ == nullptr) {
     return;
   }
-  main_panel_host_->removeDockWidget(plot_dock_);
-  main_panel_host_->removeDockWidget(viewport_dock_);
-  plot_dock_->show();
+
+  const QList<QDockWidget*> main_docks =
+      main_panel_host_->findChildren<QDockWidget*>();
+  for (QDockWidget* raw : main_docks) {
+    auto* dock = qobject_cast<PanelDockWidget*>(raw);
+    if (dock == nullptr || dock == viewport_dock_) {
+      continue;
+    }
+    main_panel_host_->removeDockWidget(dock);
+    dock->hide();
+  }
+
   viewport_dock_->show();
-  addMainPanelDock(plot_dock_, Qt::LeftDockWidgetArea);
-  addMainPanelDock(viewport_dock_, Qt::RightDockWidgetArea);
-  main_panel_host_->splitDockWidget(plot_dock_, viewport_dock_, Qt::Horizontal);
-  main_panel_host_->resizeDocks({plot_dock_, viewport_dock_}, {420, 620},
-                                Qt::Horizontal);
+  if (main_panel_host_->dockWidgetArea(viewport_dock_) ==
+      Qt::NoDockWidgetArea) {
+    addMainPanelDock(viewport_dock_, Qt::RightDockWidgetArea);
+  }
   last_active_dock_ = viewport_dock_;
 }
 
@@ -1448,15 +1674,22 @@ void VisualizationFrame::setupUi() {
   viewport_dock_->setObjectName(QStringLiteral("ViewportDock"));
   viewport_dock_->setProperty("panelTypeId", QStringLiteral("ViewportDock"));
   viewport_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Panel3D")));
-  viewport_host_ = new QWidget(viewport_dock_);
-  viewport_host_->setMinimumSize(240, 180);
-  viewport_layout_ = new QVBoxLayout(viewport_host_);
-  viewport_layout_->setContentsMargins(0, 0, 0, 0);
-  viewport_layout_->setSpacing(0);
-  viewport_dock_->setContentWidget(viewport_host_);
+  auto* viewport_host = new QWidget(viewport_dock_);
+  viewport_host->setObjectName(QString::fromLatin1(AppThemeIds::kViewportHost));
+  viewport_host->setMinimumSize(240, 180);
+  auto* viewport_layout = new QGridLayout(viewport_host);
+  viewport_layout->setContentsMargins(0, 0, 0, 0);
+  viewport_layout->setSpacing(0);
+  viewport_dock_->setContentWidget(viewport_host);
   configureMainPanelDock(viewport_dock_);
   addMainPanelDock(viewport_dock_, Qt::RightDockWidgetArea);
-  installViewportTitleBarTools();
+  registerPrimaryViewportPanel();
+  if (ViewportPanelEntry* primary = viewportEntryForDock(viewport_dock_)) {
+    installViewportFloatingToolbar(*primary);
+  }
+  registerPanelDock(viewport_dock_);
+  wireViewportPanel(*viewportEntryForDock(viewport_dock_));
+  installViewportTitleBarToolsForEntry(*viewportEntryForDock(viewport_dock_));
 
   channel_dock_ = new PanelDockWidget(tr("Raw Messages"), this);
   channel_dock_->setObjectName(QStringLiteral("ChannelsDock"));
@@ -1469,7 +1702,7 @@ void VisualizationFrame::setupUi() {
   channels_dock_ = new PanelDockWidget(tr("Channels"), this);
   channels_dock_->setObjectName(QStringLiteral("ChannelBrowserDock"));
   channels_dock_->setPanelIcon(
-      IconLoader::panelIcon(QStringLiteral("PanelChannelGraph")));
+      IconLoader::dockPanelIcon(QStringLiteral("ChannelBrowserDock")));
   channels_panel_ = new ChannelsPanel(manager_.get(), channels_dock_);
   channels_dock_->setContentWidget(channels_panel_);
   addSidebarDock(channels_dock_, Qt::LeftDockWidgetArea);
@@ -1477,7 +1710,7 @@ void VisualizationFrame::setupUi() {
 
   problems_dock_ = new PanelDockWidget(tr("Problems"), this);
   problems_dock_->setObjectName(QStringLiteral("ProblemsDock"));
-  problems_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelLog")));
+  problems_dock_->setPanelIcon(IconLoader::dockPanelIcon(QStringLiteral("ProblemsDock")));
   problems_panel_ = new ProblemsPanel(problems_dock_);
   problems_dock_->setContentWidget(problems_panel_);
   addSidebarDock(problems_dock_, Qt::LeftDockWidgetArea);
@@ -1495,14 +1728,15 @@ void VisualizationFrame::setupUi() {
 
   strata_floor_dock_ = new PanelDockWidget(tr("Strata Floors"), this);
   strata_floor_dock_->setObjectName(QStringLiteral("StrataFloorDock"));
-  strata_floor_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Displays")));
+  strata_floor_dock_->setPanelIcon(IconLoader::dockPanelIcon(QStringLiteral("StrataFloorDock")));
   strata_floor_panel_ = new StrataFloorPanel(manager_.get(), strata_floor_dock_);
   strata_floor_dock_->setContentWidget(strata_floor_panel_);
   addSidebarDock(strata_floor_dock_, Qt::LeftDockWidgetArea);
 
   playback_dock_ = new PanelDockWidget(tr("Playback"), this);
   playback_dock_->setObjectName(QStringLiteral("PlaybackDock"));
-  playback_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Playback")));
+  playback_dock_->setPanelIcon(
+      IconLoader::dockPanelIcon(QStringLiteral("PlaybackDock")));
   playback_panel_ = new PlaybackPanel(&manager_->playback(), playback_dock_);
   playback_dock_->setContentWidget(playback_panel_);
   addMainPanelDock(playback_dock_, Qt::LeftDockWidgetArea);
@@ -1514,6 +1748,8 @@ void VisualizationFrame::setupUi() {
   views_panel_ = new ViewsPanel(nullptr, manager_.get(), views_dock_);
   views_dock_->setContentWidget(views_panel_);
   addSidebarDock(views_dock_, Qt::RightDockWidgetArea);
+  connect(views_dock_, &QDockWidget::visibilityChanged, this,
+          [this](bool /*visible*/) { syncViewportTitleBarTools(); });
 
   tool_props_dock_ = new PanelDockWidget(tr("Tool Properties"), this);
   tool_props_dock_->setObjectName(QStringLiteral("ToolPropertiesDock"));
@@ -1533,7 +1769,8 @@ void VisualizationFrame::setupUi() {
 
   variables_dock_ = new PanelDockWidget(tr("Variables"), this);
   variables_dock_->setObjectName(QStringLiteral("VariablesDock"));
-  variables_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelParameters")));
+  variables_dock_->setPanelIcon(
+      IconLoader::dockPanelIcon(QStringLiteral("VariablesDock")));
   variables_panel_ = new VariablesPanel(manager_.get(), variables_dock_);
   variables_dock_->setContentWidget(variables_panel_);
   addSidebarDock(variables_dock_, Qt::RightDockWidgetArea);
@@ -1544,7 +1781,7 @@ void VisualizationFrame::setupUi() {
   variable_slider_dock_->setProperty("panelTypeId",
                                     QStringLiteral("VariableSliderDock"));
   variable_slider_dock_->setPanelIcon(
-      IconLoader::panelIcon(QStringLiteral("PanelParameters")));
+      IconLoader::dockPanelIcon(QStringLiteral("VariableSliderDock")));
   variable_slider_panel_ =
       new VariableSliderPanel(manager_.get(), variable_slider_dock_);
   variable_slider_dock_->setContentWidget(variable_slider_panel_);
@@ -1556,7 +1793,7 @@ void VisualizationFrame::setupUi() {
   property_inspector_dock_->setProperty("panelTypeId",
                                         QStringLiteral("PropertyInspectorDock"));
   property_inspector_dock_->setPanelIcon(
-      IconLoader::panelIcon(QStringLiteral("PanelPlot")));
+      IconLoader::dockPanelIcon(QStringLiteral("PropertyInspectorDock")));
   property_inspector_panel_ = new PropertyInspectorPanel(property_inspector_dock_);
   property_inspector_dock_->setContentWidget(property_inspector_panel_);
   addSidebarDock(property_inspector_dock_, Qt::RightDockWidgetArea);
@@ -1600,7 +1837,7 @@ void VisualizationFrame::setupUi() {
   if (qEnvironmentVariableIntValue("AUTOVIZ_DISABLE_QML") == 0) {
     drone_dock_ = new PanelDockWidget(tr("Vehicle 3D"), this);
     drone_dock_->setObjectName(QStringLiteral("Drone3DDock"));
-    drone_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Views")));
+    drone_dock_->setPanelIcon(IconLoader::dockPanelIcon(QStringLiteral("DroneDock")));
     vehicle_panel_ = new Vehicle3DPanel(drone_dock_);
     drone_dock_->setContentWidget(vehicle_panel_);
     addMainPanelDock(drone_dock_, Qt::LeftDockWidgetArea);
@@ -1662,45 +1899,37 @@ void VisualizationFrame::setupUi() {
 
 void VisualizationFrame::setupMenu() {
   auto* file_menu = menuBar()->addMenu(tr("&File"));
-  auto* open_config_action =
-      file_menu->addAction(tr("&Open Config..."), this,
-                           &VisualizationFrame::onOpenConfig);
-  open_config_action->setShortcut(QKeySequence::Open);
-  auto* save_config_action =
-      file_menu->addAction(tr("&Save Config"), this,
-                           &VisualizationFrame::onSaveConfig);
-  save_config_action->setShortcut(QKeySequence::Save);
-  auto* save_config_as_action =
-      file_menu->addAction(tr("Save Config &As..."), this,
-                           &VisualizationFrame::onSaveConfigAs);
-  save_config_as_action->setShortcut(QKeySequence::SaveAs);
+  open_config_action_ = file_menu->addAction(tr("&Open Config..."), this,
+                                             &VisualizationFrame::onOpenConfig);
+  open_config_action_->setShortcut(QKeySequence::Open);
+  save_config_action_ = file_menu->addAction(tr("&Save Config"), this,
+                                             &VisualizationFrame::onSaveConfig);
+  save_config_action_->setShortcut(QKeySequence::Save);
+  save_config_as_action_ = file_menu->addAction(tr("Save Config &As..."), this,
+                                                &VisualizationFrame::onSaveConfigAs);
+  save_config_as_action_->setShortcut(QKeySequence::SaveAs);
   recent_configs_menu_ = file_menu->addMenu(tr("&Recent Configs"));
   file_menu->addAction(tr("Save &Image..."), this, &VisualizationFrame::onScreenshot);
   file_menu->addSeparator();
-  auto* quit_action =
-      file_menu->addAction(tr("&Quit"), qApp, &QApplication::quit);
-  quit_action->setShortcut(QKeySequence::Quit);
-  addAction(quit_action);
-
-  auto* layout_menu = menuBar()->addMenu(tr("&Layout"));
-  layout_menu->addAction(tr("&Open layout..."), this,
-                         &VisualizationFrame::onOpenConfig);
-  layout_menu->addAction(tr("&Save layout"), this,
-                         &VisualizationFrame::onSaveConfig);
-  layout_menu->addAction(tr("Save layout &as..."), this,
-                         &VisualizationFrame::onSaveConfigAs);
-  layout_menu->addSeparator();
-  layout_menu->addAction(tr("&Reset to default layout"), this,
-                         &VisualizationFrame::onResetDefaultLayout);
+  file_menu->addAction(tr("&Settings..."), this, &VisualizationFrame::onAppSettings);
+  file_menu->addAction(tr("&Reset to default layout"), this,
+                       &VisualizationFrame::onResetDefaultLayout);
+  file_menu->addSeparator();
+  quit_action_ = file_menu->addAction(tr("&Quit"), qApp, &QApplication::quit);
+  quit_action_->setShortcut(QKeySequence::Quit);
+  addAction(quit_action_);
 
   panels_menu_ = menuBar()->addMenu(tr("&Panels"));
+  panels_menu_->setObjectName(QString::fromLatin1(AppThemeIds::kPanelsMenu));
+  panels_menu_->setStyleSheet(BuildPanelsMenuStylesheet());
   panels_menu_->addAction(tr("Add &New Panel"), this,
                           &VisualizationFrame::onAddPanel);
   delete_panel_menu_ = panels_menu_->addMenu(tr("&Delete Panel"));
+  delete_panel_menu_->setObjectName(QString::fromLatin1(AppThemeIds::kPanelsMenu));
+  delete_panel_menu_->setStyleSheet(BuildPanelsMenuStylesheet());
   delete_panel_menu_->setEnabled(false);
-  fullscreen_action_ =
-      panels_menu_->addAction(tr("&Fullscreen"), this,
-                             &VisualizationFrame::onToggleFullscreen);
+  fullscreen_action_ = panels_menu_->addAction(tr("&Fullscreen"), this,
+                                               &VisualizationFrame::onToggleFullscreen);
   fullscreen_action_->setShortcut(QKeySequence(Qt::Key_F11));
   fullscreen_action_->setCheckable(true);
   addAction(fullscreen_action_);
@@ -1708,58 +1937,56 @@ void VisualizationFrame::setupMenu() {
           &QAction::setChecked);
   panels_menu_->addSeparator();
 
-  auto* view_menu = menuBar()->addMenu(tr("&View"));
   auto* view_group = new QActionGroup(this);
   view_group->setExclusive(true);
 
-  view_orbit_action_ = view_menu->addAction(tr("&Orbit"));
+  view_orbit_action_ = new QAction(tr("&Orbit"), this);
   view_orbit_action_->setCheckable(true);
   view_orbit_action_->setChecked(true);
   view_group->addAction(view_orbit_action_);
   connect(view_orbit_action_, &QAction::triggered, this,
           &VisualizationFrame::onViewOrbit);
 
-  view_xy_orbit_action_ = view_menu->addAction(tr("XY &Orbit"));
+  view_xy_orbit_action_ = new QAction(tr("XY &Orbit"), this);
   view_xy_orbit_action_->setCheckable(true);
   view_group->addAction(view_xy_orbit_action_);
   connect(view_xy_orbit_action_, &QAction::triggered, this,
           &VisualizationFrame::onViewXyOrbit);
 
-  view_topdown_action_ = view_menu->addAction(tr("&Top Down"));
+  view_topdown_action_ = new QAction(tr("&Top Down"), this);
   view_topdown_action_->setCheckable(true);
   view_group->addAction(view_topdown_action_);
   connect(view_topdown_action_, &QAction::triggered, this,
           &VisualizationFrame::onViewTopDown);
 
-  view_topdown_ortho_action_ = view_menu->addAction(tr("Top Down &Ortho"));
+  view_topdown_ortho_action_ = new QAction(tr("Top Down &Ortho"), this);
   view_topdown_ortho_action_->setCheckable(true);
   view_group->addAction(view_topdown_ortho_action_);
   connect(view_topdown_ortho_action_, &QAction::triggered, this,
           &VisualizationFrame::onViewTopDownOrtho);
 
-  view_third_person_action_ = view_menu->addAction(tr("&Third Person Follow"));
+  view_third_person_action_ = new QAction(tr("&Third Person Follow"), this);
   view_third_person_action_->setCheckable(true);
   view_group->addAction(view_third_person_action_);
   connect(view_third_person_action_, &QAction::triggered, this,
           &VisualizationFrame::onViewThirdPersonFollow);
 
-  view_fps_action_ = view_menu->addAction(tr("&FPS (WASD/QE)"));
+  view_fps_action_ = new QAction(tr("&FPS (WASD/QE)"), this);
   view_fps_action_->setCheckable(true);
   view_group->addAction(view_fps_action_);
   connect(view_fps_action_, &QAction::triggered, this,
           &VisualizationFrame::onViewFps);
 
-  view_menu->addSeparator();
   auto* backend_group = new QActionGroup(this);
   backend_group->setExclusive(true);
-  backend_opengl_action_ = view_menu->addAction(tr("Backend: &OpenGL"));
+  backend_opengl_action_ = new QAction(tr("&OpenGL"), this);
   backend_opengl_action_->setCheckable(true);
   backend_opengl_action_->setChecked(true);
   backend_group->addAction(backend_opengl_action_);
   connect(backend_opengl_action_, &QAction::triggered, this,
           &VisualizationFrame::onBackendOpenGl);
 
-  backend_ogre_action_ = view_menu->addAction(tr("Backend: &Ogre"));
+  backend_ogre_action_ = new QAction(tr("&Ogre"), this);
   backend_ogre_action_->setCheckable(true);
   backend_group->addAction(backend_ogre_action_);
 #ifndef AUTOVIZ_USE_OGRE
@@ -1784,6 +2011,13 @@ void VisualizationFrame::setupMenu() {
   recent_configs_ =
       settings.value(QStringLiteral("recent_configs")).toStringList();
   updateRecentConfigMenu();
+  configureMenuBar();
+}
+
+void VisualizationFrame::configureMenuBar() {
+  menuBar()->setObjectName(QString::fromLatin1(AppThemeIds::kMenuBar));
+  menuBar()->setNativeMenuBar(false);
+  menuBar()->setDefaultUp(false);
 }
 
 void VisualizationFrame::setupToolbar() {
@@ -1791,7 +2025,7 @@ void VisualizationFrame::setupToolbar() {
   tool_bar_->setObjectName(QStringLiteral("Tools"));
   tool_bar_->setMovable(false);
   tool_bar_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-  tool_bar_->setIconSize(QSize(28, 28));
+  tool_bar_->setIconSize(QSize(22, 22));
   tool_action_group_ = new QActionGroup(this);
   tool_action_group_->setExclusive(true);
 
@@ -1818,23 +2052,12 @@ void VisualizationFrame::setupToolbar() {
   tool_bar_->addWidget(remove_tool_button);
 
   if (panels_menu_ != nullptr) {
-    panels_menu_->addAction(tool_bar_->toggleViewAction());
+    QAction* tools_toggle = tool_bar_->toggleViewAction();
+    tools_toggle->setCheckable(true);
+    panels_menu_->addAction(tools_toggle);
   }
   registerPanelToggleActions();
   setupToolbarLayoutControls();
-
-  auto* app_menu = new QMenu(tr("&App"), this);
-  if (toolbar_toggle_left_dock_action_ != nullptr) {
-    app_menu->addAction(toolbar_toggle_left_dock_action_);
-  }
-  if (toolbar_toggle_right_dock_action_ != nullptr) {
-    app_menu->addAction(toolbar_toggle_right_dock_action_);
-  }
-  if (!menuBar()->actions().isEmpty()) {
-    menuBar()->insertMenu(menuBar()->actions().constFirst(), app_menu);
-  } else {
-    menuBar()->addMenu(app_menu);
-  }
 }
 
 void VisualizationFrame::setupToolbarLayoutControls() {
@@ -1990,8 +2213,10 @@ void VisualizationFrame::syncActiveToolUi() {
   }
   updateStatusBar();
   updateViewportCursor();
-  if (viewport_widget_ != nullptr) {
-    viewport_widget_->setFocus(Qt::MouseFocusReason);
+  if (ViewportPanelEntry* entry = activeViewportEntry()) {
+    if (entry->widget != nullptr) {
+      entry->widget->setFocus(Qt::MouseFocusReason);
+    }
   }
   requestViewportUpdate();
 }
@@ -2016,15 +2241,17 @@ void VisualizationFrame::updateViewportCursor() {
       manager_->tools().activeTool() != nullptr
           ? manager_->tools().activeTool()->cursor()
           : IconLoader::defaultCursor();
-  if (viewport_host_ != nullptr) {
-    viewport_host_->setCursor(cursor);
-  }
-  if (gl_viewport_ != nullptr) {
-    gl_viewport_->setToolCursor(cursor);
-  }
-  if (ogre_viewport_ != nullptr) {
-    ogre_viewport_->setToolCursor(cursor);
-  }
+  forEachViewportPanel([&cursor](ViewportPanelEntry& entry) {
+    if (entry.host != nullptr) {
+      entry.host->setCursor(cursor);
+    }
+    if (entry.gl_viewport != nullptr) {
+      entry.gl_viewport->setToolCursor(cursor);
+    }
+    if (entry.ogre_viewport != nullptr) {
+      entry.ogre_viewport->setToolCursor(cursor);
+    }
+  });
 }
 
 void VisualizationFrame::onAddToolTriggered() {
@@ -2064,15 +2291,24 @@ void VisualizationFrame::onRemoveToolTriggered(QAction* action) {
   }
 }
 
-void VisualizationFrame::registerPanelToggleActions() {
-  if (panels_menu_ == nullptr) {
+void VisualizationFrame::registerPanelMenuToggle(PanelDockWidget* dock) {
+  if (dock == nullptr || panels_menu_ == nullptr) {
     return;
   }
+  if (dock->property("panelToggleInMenu").toBool()) {
+    return;
+  }
+  dock->setProperty("panelToggleInMenu", true);
+  IconLoader::applyDockPanelChrome(dock, panelTypeId(dock));
+  QAction* toggle = dock->toggleViewAction();
+  toggle->setCheckable(true);
+  panels_menu_->addAction(toggle);
+  connect(toggle, &QAction::triggered, this, &VisualizationFrame::markConfigModified);
+}
+
+void VisualizationFrame::registerPanelToggleActions() {
   for (PanelDockWidget* dock : orderedDockWidgets()) {
-    if (dock == nullptr) {
-      continue;
-    }
-    panels_menu_->addAction(dock->toggleViewAction());
+    registerPanelMenuToggle(dock);
   }
 }
 
@@ -2090,17 +2326,22 @@ void VisualizationFrame::applyViewController(const QString& name) {
     return;
   }
   controller->setTypeByName(name);
-  if (name == QLatin1String("FPS") && viewport_widget_ != nullptr) {
-    viewport_widget_->setFocus();
+  if (name == QLatin1String("FPS")) {
+    if (ViewportPanelEntry* entry = activeViewportEntry()) {
+      if (entry->widget != nullptr) {
+        entry->widget->setFocus();
+      }
+    }
   }
   requestViewportUpdate();
 }
 
 void VisualizationFrame::onScreenshot() {
-  if (viewport_widget_ == nullptr) {
+  ViewportPanelEntry* entry = activeViewportEntry();
+  if (entry == nullptr || entry->widget == nullptr) {
     return;
   }
-  const QPixmap pixmap = viewport_widget_->grab();
+  const QPixmap pixmap = entry->widget->grab();
   const QString path = QFileDialog::getSaveFileName(
       this, tr("Save Image"),
       QStringLiteral("autoviz_%1.png")
@@ -2154,14 +2395,16 @@ void VisualizationFrame::applyRenderBackend(const QString& name) {
 #endif
   }
   createViewport(effective);
-  if (gl_viewport_ != nullptr) {
-    gl_viewport_->setGridVisible(manager_->showGrid());
-    gl_viewport_->setToolManager(&manager_->tools());
-  }
-  if (ogre_viewport_ != nullptr) {
-    ogre_viewport_->setGridVisible(manager_->showGrid());
-    ogre_viewport_->setToolManager(&manager_->tools());
-  }
+  forEachViewportPanel([this](ViewportPanelEntry& entry) {
+    if (entry.gl_viewport != nullptr) {
+      entry.gl_viewport->setGridVisible(manager_->showGrid());
+      entry.gl_viewport->setToolManager(&manager_->tools());
+    }
+    if (entry.ogre_viewport != nullptr) {
+      entry.ogre_viewport->setGridVisible(manager_->showGrid());
+      entry.ogre_viewport->setToolManager(&manager_->tools());
+    }
+  });
   applyViewController(QString::fromStdString(manager_->viewControllerName()));
   syncToolContext();
   updateViewportCursor();
@@ -2358,20 +2601,59 @@ void VisualizationFrame::applyPanelVisibility() {
   syncDeletePanelMenu();
 }
 
+void VisualizationFrame::applyStartupWindowState() {
+  const AppUiPreferences prefs = LoadAppUiPreferences();
+  if (!prefs.start_maximized) {
+    if (!isVisible()) {
+      show();
+    }
+    return;
+  }
+
+  setWindowState(Qt::WindowMaximized);
+  show();
+
+  const auto ensure_maximized = [this]() {
+    if (!LoadAppUiPreferences().start_maximized) {
+      return;
+    }
+    if (isMaximized()) {
+      raise();
+      activateWindow();
+      return;
+    }
+    showMaximized();
+    raise();
+    activateWindow();
+    if (isMaximized()) {
+      return;
+    }
+    if (QScreen* screen = QGuiApplication::primaryScreen()) {
+      setGeometry(screen->availableGeometry());
+    }
+  };
+
+  QTimer::singleShot(0, this, ensure_maximized);
+  QTimer::singleShot(150, this, ensure_maximized);
+}
+
 void VisualizationFrame::restoreWindowLayout() {
   expanded_main_panel_dock_ = nullptr;
   pre_expand_main_panel_state_.clear();
   syncMainPanelExpandUi(nullptr);
+  const bool skip_window_geometry = LoadAppUiPreferences().start_maximized;
   const std::string geometry_b64 = manager_->windowGeometryBase64();
-  if (!geometry_b64.empty()) {
-    restoreGeometry(QByteArray::fromBase64(
-        QByteArray::fromStdString(geometry_b64)));
-  } else if (manager_->windowWidth() > 0 && manager_->windowHeight() > 0) {
-    const int x =
-        manager_->windowX() >= 0 ? manager_->windowX() : geometry().x();
-    const int y =
-        manager_->windowY() >= 0 ? manager_->windowY() : geometry().y();
-    setGeometry(x, y, manager_->windowWidth(), manager_->windowHeight());
+  if (!skip_window_geometry) {
+    if (!geometry_b64.empty()) {
+      restoreGeometry(QByteArray::fromBase64(
+          QByteArray::fromStdString(geometry_b64)));
+    } else if (manager_->windowWidth() > 0 && manager_->windowHeight() > 0) {
+      const int x =
+          manager_->windowX() >= 0 ? manager_->windowX() : geometry().x();
+      const int y =
+          manager_->windowY() >= 0 ? manager_->windowY() : geometry().y();
+      setGeometry(x, y, manager_->windowWidth(), manager_->windowHeight());
+    }
   }
   const std::string state_b64 = manager_->windowStateBase64();
   if (!state_b64.empty()) {
@@ -2452,16 +2734,19 @@ void VisualizationFrame::onFixedFrameChanged(const QString& /*frame*/) {
 void VisualizationFrame::onRenderTick() {
   const qint64 elapsed_ms = render_elapsed_.restart();
   const float delta_seconds = static_cast<float>(elapsed_ms) / 1000.f;
+  syncToolContext();
   manager_->update();
   viewportTick(delta_seconds);
   const rendering::ReferenceGridSettings& grid_settings =
       manager_->referenceGridSettings();
-  if (gl_viewport_ != nullptr) {
-    gl_viewport_->setReferenceGridSettings(grid_settings);
-  }
-  if (ogre_viewport_ != nullptr) {
-    ogre_viewport_->setReferenceGridSettings(grid_settings);
-  }
+  forEachViewportPanel([&grid_settings](ViewportPanelEntry& entry) {
+    if (entry.gl_viewport != nullptr) {
+      entry.gl_viewport->setReferenceGridSettings(grid_settings);
+    }
+    if (entry.ogre_viewport != nullptr) {
+      entry.ogre_viewport->setReferenceGridSettings(grid_settings);
+    }
+  });
   if (rendering::ViewController* controller = activeViewController()) {
     controller->appendFocalShape(&manager_->sceneOverlay());
   }
@@ -2510,6 +2795,7 @@ void VisualizationFrame::updateChannelList() {
 
 void VisualizationFrame::setupStatusBar() {
   status_label_ = new QLabel(this);
+  StylePanelStatusLabel(status_label_);
   statusBar()->addPermanentWidget(status_label_, 1);
 
   last_fps_calc_ = std::chrono::steady_clock::now();
@@ -2643,11 +2929,14 @@ void VisualizationFrame::syncMainPanelExpandUi(PanelDockWidget* expanded_dock) {
       indicator->setExpandButtonChecked(dock == expanded_dock);
     }
   }
-  if (viewport_expand_button_ != nullptr) {
-    viewport_expand_button_->blockSignals(true);
-    viewport_expand_button_->setChecked(expanded_dock == viewport_dock_);
-    viewport_expand_button_->blockSignals(false);
-  }
+  forEachViewportPanel([expanded_dock](ViewportPanelEntry& entry) {
+    if (entry.expand_button == nullptr) {
+      return;
+    }
+    entry.expand_button->blockSignals(true);
+    entry.expand_button->setChecked(entry.dock == expanded_dock);
+    entry.expand_button->blockSignals(false);
+  });
 }
 
 void VisualizationFrame::wireMainPanelExpandTracking(PanelDockWidget* dock) {
@@ -2786,106 +3075,189 @@ void VisualizationFrame::installStandardPanelTitleTools(PanelDockWidget* dock) {
   if (dock == nullptr) {
     return;
   }
+  const PanelContextMenuCallbacks callbacks = makePanelContextMenuCallbacks(dock);
+  PanelTitleBarOptions options;
+  options.show_expand = true;
+  options.expand_checkable = false;
+  options.on_expand = callbacks.expand;
+  if (dock == views_dock_) {
+    options.show_more = false;
+  }
   dock->setTitleBarTools(
-      CreateStandardPanelTitleTools(dock, makePanelContextMenuCallbacks(dock)));
+      CreateRvizPanelTitleBarTools(dock, callbacks, options).widget);
 }
 
-void VisualizationFrame::syncViewportTitleBarTools() {
-  if (viewport_select_tool_ == nullptr || viewport_pan_tool_ == nullptr) {
+void VisualizationFrame::syncViewportTitleBarToolsForEntry(
+    const ViewportPanelEntry& entry) {
+  if (entry.expand_button != nullptr) {
+    entry.expand_button->blockSignals(true);
+    entry.expand_button->setChecked(expanded_main_panel_dock_ == entry.dock);
+    entry.expand_button->blockSignals(false);
+  }
+  if (entry.settings_button != nullptr && views_dock_ != nullptr) {
+    entry.settings_button->blockSignals(true);
+    const Qt::DockWidgetArea views_area = dockWidgetArea(views_dock_);
+    const bool views_in_sidebar =
+        views_area == Qt::LeftDockWidgetArea ||
+        views_area == Qt::RightDockWidgetArea;
+    entry.settings_button->setChecked(views_in_sidebar && views_dock_->isVisible());
+    entry.settings_button->blockSignals(false);
+  }
+  syncViewportFloatingToolbarForEntry(entry);
+}
+
+void VisualizationFrame::syncViewportFloatingToolbarForEntry(
+    const ViewportPanelEntry& entry) {
+  if (entry.floating_toolbar == nullptr) {
     return;
   }
   const QString active =
       QString::fromStdString(manager_->tools().activeToolId());
-  viewport_select_tool_->blockSignals(true);
-  viewport_pan_tool_->blockSignals(true);
-  viewport_select_tool_->setChecked(active == QLatin1String("Interact"));
-  viewport_pan_tool_->setChecked(active == QLatin1String("MoveCamera"));
-  viewport_select_tool_->blockSignals(false);
-  viewport_pan_tool_->blockSignals(false);
+  entry.floating_toolbar->setInspectChecked(active == QLatin1String("Select"));
+  entry.floating_toolbar->setMeasureChecked(active == QLatin1String("Measure"));
+  if (rendering::ViewController* controller = entry.viewController()) {
+    const auto type = controller->type();
+    entry.floating_toolbar->set2dCameraChecked(
+        type == rendering::ViewControllerType::kTopDown ||
+        type == rendering::ViewControllerType::kTopDownOrtho);
+    const QString frame_label = controller->targetFrameDisplay();
+    entry.floating_toolbar->setRecenterToolTip(
+        tr("Re-center On %1").arg(frame_label));
+  }
 }
 
-void VisualizationFrame::installViewportTitleBarTools() {
-  if (viewport_dock_ == nullptr) {
+void VisualizationFrame::onViewportInspectTool() {
+  applyActiveTool("Select");
+}
+
+void VisualizationFrame::onViewportToggle2dCamera() {
+  rendering::ViewController* controller = activeViewController();
+  if (controller == nullptr) {
+    return;
+  }
+  const auto type = controller->type();
+  if (type == rendering::ViewControllerType::kTopDown ||
+      type == rendering::ViewControllerType::kTopDownOrtho) {
+    controller->setTypeByName(QStringLiteral("Orbit"));
+  } else {
+    controller->setTypeByName(QStringLiteral("TopDownOrtho"));
+  }
+  if (views_panel_ != nullptr) {
+    views_panel_->refreshFromController();
+  }
+  syncViewportTitleBarTools();
+  requestViewportUpdate();
+  markConfigModified();
+}
+
+void VisualizationFrame::onViewportMeasureTool() {
+  applyActiveTool("Measure");
+}
+
+void VisualizationFrame::onViewportRecenterOnFrame() {
+  rendering::ViewController* controller = activeViewController();
+  if (controller == nullptr) {
+    return;
+  }
+  const QString frame_label = controller->targetFrameDisplay();
+  if (frame_label == rendering::ViewTargetFrameFixedSentinel()) {
+    controller->setTarget(QVector3D(0.f, 0.f, 0.f));
+  } else {
+    QVector3D position;
+    QQuaternion orientation;
+    if (manager_->frameManager().getTransform(frame_label.toStdString(), &position,
+                                             &orientation)) {
+      controller->setTarget(position);
+    }
+  }
+  if (views_panel_ != nullptr) {
+    views_panel_->refreshFromController();
+  }
+  requestViewportUpdate();
+  markConfigModified();
+}
+
+void VisualizationFrame::installViewportFloatingToolbar(ViewportPanelEntry& entry) {
+  if (entry.host == nullptr || entry.floating_toolbar != nullptr) {
+    return;
+  }
+  entry.floating_toolbar = new ViewportFloatingToolbar(entry.host);
+  ViewportFloatingToolbarCallbacks callbacks;
+  callbacks.on_inspect = [this]() { onViewportInspectTool(); };
+  callbacks.on_toggle_2d_camera = [this]() { onViewportToggle2dCamera(); };
+  callbacks.on_measure = [this]() { onViewportMeasureTool(); };
+  callbacks.on_recenter_frame = [this]() { onViewportRecenterOnFrame(); };
+  entry.floating_toolbar->setCallbacks(std::move(callbacks));
+  if (entry.layout != nullptr) {
+    entry.layout->addWidget(entry.floating_toolbar, 0, 0,
+                            Qt::AlignRight | Qt::AlignTop);
+    entry.layout->setContentsMargins(0, 8, 8, 8);
+  }
+  syncViewportFloatingToolbarForEntry(entry);
+}
+
+void VisualizationFrame::syncViewportTitleBarTools() {
+  if (ViewportPanelEntry* entry = activeViewportEntry()) {
+    syncViewportTitleBarToolsForEntry(*entry);
+  }
+}
+
+void VisualizationFrame::installViewportTitleBarToolsForEntry(
+    ViewportPanelEntry& entry) {
+  PanelDockWidget* dock = entry.dock;
+  if (dock == nullptr) {
     return;
   }
 
-  auto* tools = new QWidget(viewport_dock_);
-  tools->setStyleSheet(PanelTitleToolsStyleSheet());
+  auto* tools = new QWidget(dock);
+  ApplyPanelTitleToolsChrome(tools);
   auto* layout = new QHBoxLayout(tools);
   layout->setContentsMargins(0, 0, 0, 0);
   layout->setSpacing(0);
 
-  viewport_select_tool_ = CreateTitleToolButton(
-      tools, IconLoader::load(QStringLiteral(":/autoviz/icons/cursor.svg")),
-      tr("Select objects"), true);
-  viewport_select_tool_->setChecked(true);
-  layout->addWidget(viewport_select_tool_);
-  connect(viewport_select_tool_, &QToolButton::clicked, this, [this]() {
-    applyActiveTool("Interact");
-  });
-
-  auto* zoom_button = CreateTitleToolButton(
-      tools, IconLoader::load(QStringLiteral(":/autoviz/icons/zoom.svg")),
-      tr("Reset view"));
-  layout->addWidget(zoom_button);
-  connect(zoom_button, &QToolButton::clicked, this, [this]() {
-    if (rendering::ViewController* controller = activeViewController()) {
-      controller->reset();
-      if (views_panel_ != nullptr) {
-        views_panel_->refreshFromController();
-      }
-      requestViewportUpdate();
-      markConfigModified();
-    }
-  });
-
-  viewport_pan_tool_ = CreateTitleToolButton(
-      tools, IconLoader::load(QStringLiteral(":/autoviz/icons/move2d.svg")),
-      tr("Move camera"), true);
-  layout->addWidget(viewport_pan_tool_);
-  connect(viewport_pan_tool_, &QToolButton::clicked, this, [this]() {
-    applyActiveTool("MoveCamera");
-  });
-
-  layout->addWidget(CreateTitleSeparator(tools));
-
-  auto* settings_button = CreateTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_settings.svg")),
-      tr("View settings"));
-  layout->addWidget(settings_button);
-  connect(settings_button, &QToolButton::clicked, this, [this]() {
-    if (views_dock_ == nullptr) {
-      return;
-    }
-    views_dock_->show();
-    if (viewport_dock_ != nullptr && !viewport_dock_->isFloating()) {
-      tabifyDockWidget(viewport_dock_, views_dock_);
-    }
-    views_dock_->raise();
-    last_active_dock_ = views_dock_;
-  });
-
-  auto* expand_button = CreateTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_fullscreen.svg")),
+  entry.expand_button = CreateTitleToolButton(
+      tools, IconLoader::panelExpandIcon(),
       tr("Expand panel"), true);
-  viewport_expand_button_ = expand_button;
-  layout->addWidget(expand_button);
-  connect(expand_button, &QToolButton::clicked, this,
-          [this]() { expandPanelDock(viewport_dock_); });
+  layout->addWidget(entry.expand_button);
+  connect(entry.expand_button, &QToolButton::clicked, this,
+          [this, dock]() { expandPanelDock(dock); });
+
+  entry.settings_button = CreateTitleToolButton(
+      tools, IconLoader::panelTitleIcon(QStringLiteral("panel.settings")),
+      tr("Settings"), true);
+  layout->addWidget(entry.settings_button);
+  connect(entry.settings_button, &QToolButton::clicked, this,
+          [this, dock = entry.dock](bool checked) {
+            if (views_dock_ == nullptr || views_panel_ == nullptr) {
+              return;
+            }
+            setActiveViewportDock(dock);
+            if (checked) {
+              ensureSidebarDockAttached(views_dock_);
+              if (rendering::ViewController* controller = activeViewController()) {
+                views_panel_->setViewController(controller);
+                views_panel_->refreshFromController();
+              }
+              views_dock_->show();
+              views_dock_->raise();
+              last_active_dock_ = views_dock_;
+            } else {
+              views_dock_->hide();
+              last_active_dock_ = dock;
+            }
+            syncViewportTitleBarTools();
+          });
 
   auto* more_button = CreateTitleToolButton(
-      tools,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/plot/plot_more.svg")),
+      tools, IconLoader::panelTitleIcon(QStringLiteral("panel.more")),
       tr("Panel actions"));
-  more_button->setPopupMode(QToolButton::InstantPopup);
-  more_button->setMenu(
-      CreatePanelContextMenu(more_button, makePanelContextMenuCallbacks(viewport_dock_)));
+  ConfigurePanelMoreToolButton(
+      more_button,
+      CreatePanelContextMenu(more_button, makePanelContextMenuCallbacks(dock)));
   layout->addWidget(more_button);
 
-  viewport_dock_->setTitleBarTools(tools);
-  syncViewportTitleBarTools();
+  dock->setTitleBarTools(tools);
+  syncViewportTitleBarToolsForEntry(entry);
 }
 
 void VisualizationFrame::applyFoxgloveDefaultLayout() {
@@ -2905,45 +3277,49 @@ void VisualizationFrame::applyFoxgloveDefaultLayout() {
 }
 
 void VisualizationFrame::applyDefaultDockLayout() {
-  channel_dock_->hide();
-  channels_dock_->show();
-  if (problems_dock_ != nullptr) {
-    problems_dock_->show();
-  }
-  if (strata_floor_dock_ != nullptr) {
-    strata_floor_dock_->hide();
-  }
-  setupLeftSidebarTabs();
-  channels_dock_->raise();
-  tf_dock_->hide();
-  transformation_dock_->hide();
-  image_dock_->hide();
-#ifdef AUTOVIZ_USE_QML_DRONE
-  if (drone_dock_ != nullptr) {
-    drone_dock_->hide();
-  }
-#endif
-  help_dock_->hide();
-  playback_dock_->hide();
+  restoreExpandedMainPanel();
 
-  applyFoxgloveDefaultLayout();
-
-  tabifyDockWidget(property_inspector_dock_, selection_dock_);
-  tabifyDockWidget(property_inspector_dock_, tool_props_dock_);
-  tabifyDockWidget(property_inspector_dock_, views_dock_);
-  if (variables_dock_ != nullptr) {
-    tabifyDockWidget(property_inspector_dock_, variables_dock_);
-  }
-  property_inspector_dock_->show();
-  property_inspector_dock_->raise();
-  QTimer::singleShot(0, this, [this]() {
-    if (plot_panel_ != nullptr) {
-      bindPlotToPropertyInspector(plot_panel_);
-      showPropertyInspector(true);
+  for (PanelDockWidget* dock : findChildren<PanelDockWidget*>()) {
+    if (dock == nullptr || dock == viewport_dock_ || dock == time_dock_ ||
+        isMainPanel(dock)) {
+      continue;
     }
-  });
+    if (dock == displays_dock_ || dock == views_dock_) {
+      continue;
+    }
+    if (dockWidgetArea(dock) != Qt::NoDockWidgetArea) {
+      removeDockWidget(dock);
+    }
+    dock->hide();
+  }
 
+  if (displays_dock_ != nullptr) {
+    if (dockWidgetArea(displays_dock_) != Qt::LeftDockWidgetArea) {
+      removeDockWidget(displays_dock_);
+      addSidebarDock(displays_dock_, Qt::LeftDockWidgetArea);
+    }
+    displays_dock_->show();
+    displays_dock_->raise();
+  }
+
+  if (views_dock_ != nullptr) {
+    if (dockWidgetArea(views_dock_) != Qt::RightDockWidgetArea) {
+      removeDockWidget(views_dock_);
+      addSidebarDock(views_dock_, Qt::RightDockWidgetArea);
+    }
+    views_dock_->show();
+    views_dock_->raise();
+  }
+
+  applyMainPanelDefaultLayout();
+  showPropertyInspector(false);
   ensureTimeDockAtBottom();
+
+  manager_->setDockHideState(false, false);
+  hideLeftDock(false);
+  hideRightDock(false);
+  syncToolbarLayoutControls();
+  syncDeletePanelMenu();
   syncCenterLayout();
 }
 
@@ -3012,6 +3388,9 @@ void VisualizationFrame::onDockPanelVisibilityChange(bool visible) {
   if (dock_widget == nullptr) {
     return;
   }
+  if (panelTypeId(dock_widget) == QLatin1String("ViewportDock")) {
+    ensureViewportPanelReady(dock_widget);
+  }
   const Qt::DockWidgetArea area = dockWidgetArea(dock_widget);
   if (area == Qt::LeftDockWidgetArea && toolbar_toggle_left_dock_action_ != nullptr &&
       !toolbar_toggle_left_dock_action_->isChecked()) {
@@ -3037,12 +3416,14 @@ void VisualizationFrame::restoreDockHideState() {
 }
 
 void VisualizationFrame::applyBackgroundColor(const QColor& color) {
-  if (gl_viewport_ != nullptr) {
-    gl_viewport_->setBackgroundColor(color);
-  }
-  if (ogre_viewport_ != nullptr) {
-    ogre_viewport_->setBackgroundColor(color);
-  }
+  forEachViewportPanel([color](ViewportPanelEntry& entry) {
+    if (entry.gl_viewport != nullptr) {
+      entry.gl_viewport->setBackgroundColor(color);
+    }
+    if (entry.ogre_viewport != nullptr) {
+      entry.ogre_viewport->setBackgroundColor(color);
+    }
+  });
   requestViewportUpdate();
 }
 
@@ -3097,6 +3478,9 @@ void VisualizationFrame::showPanelByObjectName(const QString& object_name) {
     }
     if (existing_dock != nullptr && !existing_dock->isVisible()) {
       ensureMainPanelDockAttached(existing_dock);
+      if (panelTypeId(existing_dock) == QLatin1String("ViewportDock")) {
+        ensureViewportPanelReady(existing_dock);
+      }
       existing_dock->show();
       existing_dock->raise();
       last_active_dock_ = existing_dock;
@@ -3262,6 +3646,7 @@ void VisualizationFrame::onSplitActiveDock(PanelDockWidget* source,
   }
   last_active_dock_ = source;
 
+  const bool is_viewport = panelTypeId(source) == QLatin1String("ViewportDock");
   const bool is_plot = panelTypeId(source) == QLatin1String("PlotDock");
   const bool is_image = panelTypeId(source) == QLatin1String("ImageDock");
   const bool is_teleop = panelTypeId(source) == QLatin1String("TeleopDock");
@@ -3307,7 +3692,9 @@ void VisualizationFrame::onSplitActiveDock(PanelDockWidget* source,
   duplicate->raise();
   last_active_dock_ = duplicate;
 
-  if (is_plot) {
+  if (is_viewport) {
+    setActiveViewportDock(duplicate);
+  } else if (is_plot) {
     if (auto* panel = qobject_cast<plot::PlotPanel*>(duplicate->widget())) {
       setActivePlotPanel(panel);
     }
@@ -3383,7 +3770,8 @@ bool VisualizationFrame::panelTypeSupportsMultiInstance(
          panel_type_id == QLatin1String("ChannelGraphDock") ||
          panel_type_id == QLatin1String("StateTransitionDock") ||
          panel_type_id == QLatin1String("AudioDock") ||
-         panel_type_id == QLatin1String("ServiceDock");
+         panel_type_id == QLatin1String("ServiceDock") ||
+         panel_type_id == QLatin1String("ViewportDock");
 }
 
 QString VisualizationFrame::panelTypeId(const PanelDockWidget* dock) const {
@@ -3415,8 +3803,13 @@ void VisualizationFrame::registerPanelDock(PanelDockWidget* dock) {
     return;
   }
   dock->setProperty("panelDockRegistered", true);
+  IconLoader::applyDockPanelChrome(dock, panelTypeId(dock));
   connect(dock, &PanelDockWidget::activated, this, [this, dock]() {
     last_active_dock_ = dock;
+    if (panelTypeId(dock) == QLatin1String("ViewportDock")) {
+      setActiveViewportDock(dock);
+      return;
+    }
     if (panelTypeId(dock) == QLatin1String("PlotDock")) {
       if (auto* panel = qobject_cast<plot::PlotPanel*>(dock->widget())) {
         setActivePlotPanel(panel);
@@ -3474,6 +3867,7 @@ void VisualizationFrame::registerPanelDock(PanelDockWidget* dock) {
   connect(dock, &PanelDockWidget::closed, this,
           &VisualizationFrame::markConfigModified);
   wireMainPanelExpandTracking(dock);
+  registerPanelMenuToggle(dock);
 }
 
 void VisualizationFrame::updatePlotDockTitle(PanelDockWidget* dock,
@@ -5576,6 +5970,20 @@ PanelDockWidget* VisualizationFrame::duplicatePanelDock(
   }
 
   const QString type = panelTypeId(source);
+  if (type == QLatin1String("ViewportDock")) {
+    PanelDockWidget* dock = createViewportPanelDock();
+    if (ViewportPanelEntry* src_entry = viewportEntryForDock(source)) {
+      if (ViewportPanelEntry* dst_entry = viewportEntryForDock(dock)) {
+        if (rendering::ViewController* src_vc = src_entry->viewController()) {
+          if (rendering::ViewController* dst_vc = dst_entry->viewController()) {
+            dst_vc->setState(src_vc->state());
+          }
+        }
+      }
+    }
+    setActiveViewportDock(dock);
+    return dock;
+  }
   if (type == QLatin1String("PlotDock")) {
     PanelDockWidget* dock = createPlotPanelDock();
     auto* src_panel = qobject_cast<plot::PlotPanel*>(source->widget());
@@ -5804,9 +6212,8 @@ void VisualizationFrame::updateRecentConfigMenu() {
       display_name =
           QStringLiteral("~/") + display_name.mid(home.size() + 1);
     }
-    auto* action =
-        recent_configs_menu_->addAction(display_name, this,
-                                        &VisualizationFrame::onRecentConfigSelected);
+    auto* action = recent_configs_menu_->addAction(display_name, this,
+                                                   &VisualizationFrame::onRecentConfigSelected);
     action->setData(path);
   }
 }
@@ -5848,6 +6255,110 @@ void VisualizationFrame::showHelpPanel() {
 
 void VisualizationFrame::onResetDefaultLayout() {
   applyDefaultDockLayout();
+  manager_->setToolbarTools({});
+  manager_->tools().setActiveTool("Interact");
+  rebuildToolbar();
+  syncActiveToolUi();
+  markConfigModified();
+}
+
+void VisualizationFrame::applyShortcutPreferences(
+    const QHash<QString, QKeySequence>& shortcuts) {
+  const auto apply = [&](QAction* action, const QString& id,
+                         const QKeySequence& fallback) {
+    if (action == nullptr) {
+      return;
+    }
+    const QKeySequence sequence =
+        shortcuts.contains(id) ? shortcuts.value(id) : fallback;
+    action->setShortcut(sequence);
+  };
+
+  apply(open_config_action_, QStringLiteral("file.open"), QKeySequence::Open);
+  apply(save_config_action_, QStringLiteral("file.save"), QKeySequence::Save);
+  apply(save_config_as_action_, QStringLiteral("file.save_as"),
+        QKeySequence::SaveAs);
+  apply(quit_action_, QStringLiteral("file.quit"), QKeySequence::Quit);
+  apply(fullscreen_action_, QStringLiteral("panels.fullscreen"),
+        QKeySequence(Qt::Key_F11));
+  setupToolShortcuts();
+}
+
+void VisualizationFrame::applyUiPreferences(const AppSettingsResult& settings,
+                                            const AppUiPreferences& previous_ui) {
+  AppUiPreferences ui_preferences;
+  ui_preferences.language_code = settings.language_code;
+  ui_preferences.start_maximized = settings.start_maximized;
+  ui_preferences.shortcuts = settings.shortcuts;
+  SaveAppUiPreferences(ui_preferences);
+
+  if (ui_preferences.start_maximized) {
+    showMaximized();
+  }
+
+  if (QApplication* app = qobject_cast<QApplication*>(QApplication::instance())) {
+    ApplyAppTheme(*app);
+    if (ui_preferences.language_code != previous_ui.language_code) {
+      InstallAppTranslations(*app, ui_preferences.language_code);
+    }
+  }
+  applyShortcutPreferences(ui_preferences.shortcuts);
+}
+
+void VisualizationFrame::onAppSettings() {
+  AppSettingsDialog dialog(manager_.get(), this);
+  if (dialog.exec() != QDialog::Accepted) {
+    return;
+  }
+
+  const AppUiPreferences previous_ui = LoadAppUiPreferences();
+  const AppSettingsResult settings = dialog.resultValues();
+  applyUiPreferences(settings, previous_ui);
+
+  if (!settings.fixed_frame.empty()) {
+    manager_->setFixedFrame(settings.fixed_frame);
+    onFixedFrameChanged(QString::fromStdString(settings.fixed_frame));
+  }
+
+  if (!settings.transformer_id.empty()) {
+    manager_->transformationManager().setTransformer(settings.transformer_id);
+  }
+
+  if (!settings.view_controller.empty()) {
+    manager_->setViewControllerName(settings.view_controller);
+    applyViewController(QString::fromStdString(settings.view_controller));
+    syncViewControllerMenu(QString::fromStdString(settings.view_controller));
+  }
+
+  if (!settings.render_backend.empty() &&
+      settings.render_backend != manager_->renderBackendName()) {
+    manager_->setRenderBackendName(settings.render_backend);
+    applyRenderBackend(QString::fromStdString(settings.render_backend));
+    syncRenderBackendMenu(QString::fromStdString(settings.render_backend));
+  }
+
+  manager_->setTargetFrameRate(settings.frame_rate);
+  applyTargetFrameRate(settings.frame_rate);
+
+  manager_->setBackgroundColor(settings.background_color);
+  applyBackgroundColor(common::ParseColorProperty(settings.background_color,
+                                                  QColor(48, 48, 48)));
+
+  manager_->setShowGrid(settings.show_grid);
+  manager_->setTimeSyncMode(settings.time_sync_mode);
+  manager_->setTimePaused(settings.time_paused);
+  manager_->setPlotSettingsVisible(settings.plot_settings_visible);
+  showPropertyInspector(settings.plot_settings_visible);
+
+  manager_->setDockHideState(settings.hide_left_dock, settings.hide_right_dock);
+  hideLeftDock(settings.hide_left_dock);
+  hideRightDock(settings.hide_right_dock);
+  syncToolbarLayoutControls();
+
+  if (displays_panel_ != nullptr) {
+    displays_panel_->refresh();
+  }
+  requestViewportUpdate();
   markConfigModified();
 }
 
