@@ -1,5 +1,20 @@
 # Autoviz Examples
 
+## Tutorial publishers (Python / C++)
+
+Live Autolink publishers for Autoviz Display/Panel smoke tests:
+
+| Lang | Path | Run |
+|------|------|-----|
+| Python | [`python/`](python/) | `/usr/bin/python3 examples/python/01_tutorial_poses.py` |
+| C++ | [`cpp/`](cpp/) | `./build/bin/examples/autoviz_cpp_01_poses` |
+
+Same channel names across both. See each subdirectory README for the full 01–24 index.
+
+---
+
+## BICMap catalog (Strata)
+
 BICMap router scenarios for live preview and headless regression tests. Layout follows
 [ROS 2 RViz](https://github.com/ros2/rviz) display tests (`rviz_default_plugins/test/…`)
 and publishers (`rviz_default_plugins/publishers/…`).

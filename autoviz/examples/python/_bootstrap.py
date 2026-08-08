@@ -213,7 +213,7 @@ def autolink_python_build_hint(repo_root: Path | None) -> str:
         "Or use standalone build (uses /usr/bin/python3, not Isaac Sim Python):\n"
         f"  {root / 'src/autonomy/autoviz/examples/python/setup_autolink_python.sh'}\n\n"
         "Run the tutorial with system Python:\n"
-        "  /usr/bin/python3 examples/python/01_tutorial_show_path.py\n\n"
+        "  /usr/bin/python3 examples/python/01_tutorial_poses.py\n\n"
         "Manual cmake:\n"
         f"  cmake -S {root / 'src/autonomy/autolink'} "
         f"-B {root / 'build/autolink-python'} -DAUTOLINK_BUILD_PYTHON=ON\n"

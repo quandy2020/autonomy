@@ -1,5 +1,7 @@
 # BICMap example catalog + headless test runner (rviz-style display tests).
 
+add_subdirectory(cpp)
+
 find_package(Python3 COMPONENTS Interpreter QUIET)
 
 if(Python3_FOUND)
@@ -26,5 +28,8 @@ endif()
 
 install(FILES catalog.yaml README.md
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/autonomy/autoviz/examples)
+install(DIRECTORY cpp python
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/autonomy/autoviz/examples
+  PATTERN "CMakeLists.txt" EXCLUDE)
 install(PROGRAMS verify_catalog.py run_all_tests.sh
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/autonomy/autoviz/examples)

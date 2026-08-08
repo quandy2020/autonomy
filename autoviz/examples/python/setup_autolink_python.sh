@@ -27,4 +27,4 @@ cmake --build "${BUILD}" -j"$(nproc)"
 echo
 echo "Done. Run the tutorial with system Python:"
 echo "  cd ${ROOT}/src/autonomy/autoviz"
-echo "  /usr/bin/python3 examples/python/01_tutorial_show_path.py"
+echo "  /usr/bin/python3 examples/python/01_tutorial_poses.py"
