@@ -1,0 +1,178 @@
+<?xml version="1.0"?>
+<!-- Simplified PR2 (primitives only, no external meshes) for Autoviz RobotModel demo. -->
+<robot name="pr2">
+  <material name="white"><color rgba="0.9 0.9 0.9 1"/></material>
+  <material name="grey"><color rgba="0.5 0.5 0.5 1"/></material>
+  <material name="dark"><color rgba="0.2 0.2 0.2 1"/></material>
+  <material name="blue"><color rgba="0.2 0.4 0.8 1"/></material>
+
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0.15"/>
+      <geometry><box size="0.65 0.65 0.30"/></geometry>
+      <material name="dark"/>
+    </visual>
+  </link>
+
+  <link name="torso_lift_link">
+    <visual>
+      <origin xyz="0 0 0.25"/>
+      <geometry><box size="0.35 0.40 0.50"/></geometry>
+      <material name="white"/>
+    </visual>
+  </link>
+  <joint name="torso_lift_joint" type="prismatic">
+    <parent link="base_link"/>
+    <child link="torso_lift_link"/>
+    <origin xyz="0 0 0.30"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="0" upper="0.30" effort="100" velocity="0.1"/>
+  </joint>
+
+  <link name="head_pan_link">
+    <visual>
+      <geometry><cylinder radius="0.08" length="0.08"/></geometry>
+      <material name="grey"/>
+    </visual>
+  </link>
+  <joint name="head_pan_joint" type="revolute">
+    <parent link="torso_lift_link"/>
+    <child link="head_pan_link"/>
+    <origin xyz="0.05 0 0.55"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.8" upper="2.8" effort="10" velocity="1"/>
+  </joint>
+
+  <link name="head_tilt_link">
+    <visual>
+      <origin xyz="0.08 0 0.05"/>
+      <geometry><box size="0.16 0.20 0.12"/></geometry>
+      <material name="blue"/>
+    </visual>
+  </link>
+  <joint name="head_tilt_joint" type="revolute">
+    <parent link="head_pan_link"/>
+    <child link="head_tilt_link"/>
+    <origin xyz="0 0 0.05"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.5" upper="1.0" effort="10" velocity="1"/>
+  </joint>
+
+  <!-- Left arm -->
+  <link name="l_shoulder_pan_link">
+    <visual>
+      <geometry><cylinder radius="0.06" length="0.10"/></geometry>
+      <material name="grey"/>
+    </visual>
+  </link>
+  <joint name="l_shoulder_pan_joint" type="revolute">
+    <parent link="torso_lift_link"/>
+    <child link="l_shoulder_pan_link"/>
+    <origin xyz="0 0.25 0.35" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.0" upper="2.0" effort="30" velocity="1"/>
+  </joint>
+
+  <link name="l_upper_arm_link">
+    <visual>
+      <origin xyz="0.15 0 0"/>
+      <geometry><box size="0.30 0.08 0.08"/></geometry>
+      <material name="white"/>
+    </visual>
+  </link>
+  <joint name="l_shoulder_lift_joint" type="revolute">
+    <parent link="l_shoulder_pan_link"/>
+    <child link="l_upper_arm_link"/>
+    <origin xyz="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.5" upper="1.4" effort="30" velocity="1"/>
+  </joint>
+
+  <link name="l_forearm_link">
+    <visual>
+      <origin xyz="0.14 0 0"/>
+      <geometry><box size="0.28 0.06 0.06"/></geometry>
+      <material name="grey"/>
+    </visual>
+  </link>
+  <joint name="l_elbow_flex_joint" type="revolute">
+    <parent link="l_upper_arm_link"/>
+    <child link="l_forearm_link"/>
+    <origin xyz="0.30 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2.0" upper="0.0" effort="20" velocity="1"/>
+  </joint>
+
+  <link name="l_gripper_link">
+    <visual>
+      <geometry><box size="0.08 0.10 0.04"/></geometry>
+      <material name="dark"/>
+    </visual>
+  </link>
+  <joint name="l_wrist_flex_joint" type="revolute">
+    <parent link="l_forearm_link"/>
+    <child link="l_gripper_link"/>
+    <origin xyz="0.28 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.5" upper="1.5" effort="10" velocity="1"/>
+  </joint>
+
+  <!-- Right arm (mirrored) -->
+  <link name="r_shoulder_pan_link">
+    <visual>
+      <geometry><cylinder radius="0.06" length="0.10"/></geometry>
+      <material name="grey"/>
+    </visual>
+  </link>
+  <joint name="r_shoulder_pan_joint" type="revolute">
+    <parent link="torso_lift_link"/>
+    <child link="r_shoulder_pan_link"/>
+    <origin xyz="0 -0.25 0.35"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.0" upper="2.0" effort="30" velocity="1"/>
+  </joint>
+
+  <link name="r_upper_arm_link">
+    <visual>
+      <origin xyz="0.15 0 0"/>
+      <geometry><box size="0.30 0.08 0.08"/></geometry>
+      <material name="white"/>
+    </visual>
+  </link>
+  <joint name="r_shoulder_lift_joint" type="revolute">
+    <parent link="r_shoulder_pan_link"/>
+    <child link="r_upper_arm_link"/>
+    <origin xyz="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.5" upper="1.4" effort="30" velocity="1"/>
+  </joint>
+
+  <link name="r_forearm_link">
+    <visual>
+      <origin xyz="0.14 0 0"/>
+      <geometry><box size="0.28 0.06 0.06"/></geometry>
+      <material name="grey"/>
+    </visual>
+  </link>
+  <joint name="r_elbow_flex_joint" type="revolute">
+    <parent link="r_upper_arm_link"/>
+    <child link="r_forearm_link"/>
+    <origin xyz="0.30 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-2.0" upper="0.0" effort="20" velocity="1"/>
+  </joint>
+
+  <link name="r_gripper_link">
+    <visual>
+      <geometry><box size="0.08 0.10 0.04"/></geometry>
+      <material name="dark"/>
+    </visual>
+  </link>
+  <joint name="r_wrist_flex_joint" type="revolute">
+    <parent link="r_forearm_link"/>
+    <child link="r_gripper_link"/>
+    <origin xyz="0.28 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.5" upper="1.5" effort="10" velocity="1"/>
+  </joint>
+</robot>
