@@ -30,7 +30,18 @@ def system_python() -> str | None:
     override = os.environ.get("AUTOVIZ_PYTHON")
     if override and os.path.isfile(override):
         return override
-    for candidate in ("/usr/bin/python3.10", "/usr/bin/python3"):
+    candidates = [
+        "/usr/bin/python3.12",
+        "/usr/bin/python3.11",
+        "/usr/bin/python3.10",
+        "/usr/bin/python3",
+    ]
+    if sys.platform == "darwin":
+        for prefix in ("/opt/homebrew", "/usr/local"):
+            for ver in ("3.12", "3.11", "3.10"):
+                candidates.append(f"{prefix}/opt/python@{ver}/bin/python3")
+            candidates.append(f"{prefix}/bin/python3")
+    for candidate in candidates:
         if os.path.isfile(candidate):
             return candidate
     return None

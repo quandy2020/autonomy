@@ -9,6 +9,7 @@
 #include <google/protobuf/util/json_util.h>
 
 #include "autolink/message/protobuf_factory.hpp"
+#include "autoviz/common/protobuf_json_compat.hpp"
 #include "autoviz/commsgs/message_type_utils.hpp"
 
 namespace autoviz {
@@ -57,7 +58,7 @@ std::optional<QString> ServiceMessageCodec::defaultJsonTemplate(
 
   google::protobuf::util::JsonPrintOptions options;
   options.add_whitespace = true;
-  options.always_print_primitive_fields = true;
+  SetAlwaysPrintPrimitiveFields(&options);
   options.preserve_proto_field_names = true;
 
   if (DynamicFactory::MessagePtr message = CreateAutomsgMessage(message_type)) {
@@ -106,7 +107,7 @@ CodecResult ServiceMessageCodec::encodeJson(const std::string& message_type,
       return result;
     }
     if (!status.ok()) {
-      result.error = QString::fromStdString(status.message().as_string());
+      result.error = StatusMessageToQString(status);
       return result;
     }
   }
@@ -116,7 +117,7 @@ CodecResult ServiceMessageCodec::encodeJson(const std::string& message_type,
     const auto status = google::protobuf::util::JsonStringToMessage(
         trimmed.toStdString(), message.get(), options);
     if (!status.ok()) {
-      result.error = QString::fromStdString(status.message().as_string());
+      result.error = StatusMessageToQString(status);
       return result;
     }
     if (message->SerializeToString(&result.payload)) {
@@ -139,7 +140,7 @@ CodecResult ServiceMessageCodec::decodeToJson(
 
   google::protobuf::util::JsonPrintOptions options;
   options.add_whitespace = true;
-  options.always_print_primitive_fields = true;
+  SetAlwaysPrintPrimitiveFields(&options);
   options.preserve_proto_field_names = true;
 
   if (DynamicFactory::MessagePtr message = CreateAutomsgMessage(message_type)) {

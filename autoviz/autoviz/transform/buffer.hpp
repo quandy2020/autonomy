@@ -37,15 +37,17 @@ class Buffer : public tf2::BufferCore {
 
   std::vector<TfFrameStats> frameStats() const;
 
+  /** Default timeout is 0: display/UI paths must not block the Qt thread.
+   *  Pass a positive timeout only from dedicated worker code. */
   automsgs::msgs::geometry_msgs::TransformStamped lookupTransform(
       const std::string& target_frame, const std::string& source_frame,
       const automsgs::msgs::builtin_interfaces::Time& time,
-      float timeout_second = 0.01f) const;
+      float timeout_second = 0.f) const;
 
   bool canTransform(const std::string& target_frame,
                     const std::string& source_frame,
                     const automsgs::msgs::builtin_interfaces::Time& time,
-                    float timeout_second = 0.01f,
+                    float timeout_second = 0.f,
                     std::string* errstr = nullptr) const;
 
   void setTransform(

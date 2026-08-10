@@ -10,6 +10,7 @@
 
 #include <QTreeWidgetItem>
 
+#include "autoviz/common/protobuf_qt_string.hpp"
 #include "autoviz/commsgs/message_type_utils.hpp"
 
 namespace autoviz {
@@ -69,7 +70,7 @@ void AppendDescriptorFields(QTreeWidgetItem* parent,
     if (field == nullptr || field->is_repeated()) {
       continue;
     }
-    const QString segment = QString::fromStdString(field->name());
+    const QString segment = ProtobufToQString(field->name());
     const QString path =
         path_prefix.isEmpty() ? segment : path_prefix + QLatin1Char('.') + segment;
     if (field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
@@ -103,7 +104,7 @@ void AppendTableArrayFields(QTreeWidgetItem* parent,
     if (field == nullptr) {
       continue;
     }
-    const QString segment = QString::fromStdString(field->name());
+    const QString segment = ProtobufToQString(field->name());
     const QString path =
         path_prefix.isEmpty() ? segment : path_prefix + QLatin1Char('.') + segment;
     if (field->is_repeated()) {

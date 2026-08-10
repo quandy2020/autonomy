@@ -17,6 +17,7 @@
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_field.pb.h>
 #include <automsgs/msgs/sensor_msgs/range.pb.h>
+#include <automsgs/msgs/tf2_msgs/tf_message.pb.h>
 
 #include "common/tutorial_utils.hpp"
 
@@ -175,6 +176,28 @@ std::shared_ptr<automsgs::msgs::sensor_msgs::Range> MakeRange(double t) {
   return msg;
 }
 
+void AddStaticTf(automsgs::msgs::tf2_msgs::TFMessage* msg, const char* parent,
+                 const char* child, double x, double y, double z) {
+  auto* ts = msg->add_transforms();
+  StampHeader(ts->mutable_header(), parent);
+  ts->set_child_frame_id(child);
+  ts->mutable_transform()->mutable_translation()->set_x(x);
+  ts->mutable_transform()->mutable_translation()->set_y(y);
+  ts->mutable_transform()->mutable_translation()->set_z(z);
+  ts->mutable_transform()->mutable_rotation()->set_w(1.0);
+}
+
+/** Static map→sensor frames so LaserScan/Image work with Fixed Frame=map
+ *  without requiring 05_tutorial_transform_tree. */
+std::shared_ptr<automsgs::msgs::tf2_msgs::TFMessage> MakeSensorTf() {
+  auto msg = std::make_shared<automsgs::msgs::tf2_msgs::TFMessage>();
+  AddStaticTf(msg.get(), "map", "base_link", 0.0, 0.0, 0.0);
+  AddStaticTf(msg.get(), "base_link", "laser", 0.2, 0.0, 0.15);
+  AddStaticTf(msg.get(), "base_link", "camera", 0.1, 0.0, 0.3);
+  AddStaticTf(msg.get(), "base_link", "sonar", 0.15, 0.0, 0.1);
+  return msg;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -197,11 +220,12 @@ int main(int argc, char** argv) {
       node, "/fake/point_cloud2");
   auto w_rng =
       MakeWriter<automsgs::msgs::sensor_msgs::Range>(node, "/fake/range");
+  auto w_tf = MakeWriter<automsgs::msgs::tf2_msgs::TFMessage>(node, "/tf");
 
   autolink::Rate rate(rate_hz);
   std::cout << "sensor @ " << rate_hz
             << " Hz → /fake/{imu,image,camera_info,depth,scan,point_cloud,"
-               "point_cloud2,range}\n";
+               "point_cloud2,range} + /tf\n";
 
   const double t0 = NowSec();
   int phase = 0;
@@ -215,6 +239,7 @@ int main(int argc, char** argv) {
     w_pc->Write(MakePc(t));
     w_pc2->Write(MakePc2(t));
     w_rng->Write(MakeRange(t));
+    w_tf->Write(MakeSensorTf());
     phase = (phase + 3) % 256;
     rate.Sleep();
   }

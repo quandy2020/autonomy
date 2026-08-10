@@ -6,6 +6,7 @@
 
 #include <QHash>
 #include <QPointer>
+#include <QString>
 #include <QWidget>
 
 #include "autoviz/transform/buffer.hpp"
@@ -13,6 +14,7 @@
 
 class QLineEdit;
 class QLabel;
+class QTimer;
 class QToolButton;
 class QTreeWidget;
 class QTreeWidgetItem;
@@ -36,7 +38,10 @@ class TfTreePanel : public QWidget {
   void setExpandButtonChecked(bool checked);
 
  public slots:
+  /** Request a refresh; coalesced + rate-limited (never rebuilds every TF tick). */
   void refresh();
+  /** Stop coalesced rebuilds while the app is in the background. */
+  void setPaused(bool paused);
 
  signals:
   void activated();
@@ -47,10 +52,12 @@ class TfTreePanel : public QWidget {
 
  protected:
   void focusInEvent(QFocusEvent* event) override;
+  void showEvent(QShowEvent* event) override;
 
  private slots:
   void onFrameSelectionChanged();
   void onFilterChanged(const QString& text);
+  void onCoalescedRefresh();
 
  private:
   struct FrameNode {
@@ -59,9 +66,14 @@ class TfTreePanel : public QWidget {
   };
 
   void setupUi();
+  void scheduleRefresh();
   void rebuildTree();
+  void updateStatsInPlace(
+      const std::vector<transform::TfFrameStats>& frames);
   void updateDetailsForItem(QTreeWidgetItem* item);
   void updateSummaryLabel(int frame_count, int tree_count);
+  QString structureFingerprint(
+      const std::vector<transform::TfFrameStats>& frames) const;
   QString formatTimestampSec(double sec) const;
   QString formatAgeSec(double age_sec) const;
   double currentTimeSec() const;
@@ -81,9 +93,14 @@ class TfTreePanel : public QWidget {
   QLabel* detail_age_value_ = nullptr;
   QLabel* detail_count_value_ = nullptr;
   QPointer<QToolButton> expand_button_;
+  QTimer* refresh_timer_ = nullptr;
   transform::tf2::VoidSignal::Connection transforms_changed_connection_;
   QHash<QString, FrameNode> frame_nodes_;
   QString selected_frame_id_;
+  QString structure_fingerprint_;
+  bool refresh_pending_ = false;
+  bool force_rebuild_ = false;
+  bool paused_ = false;
 };
 
 }  // namespace autoviz

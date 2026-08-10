@@ -313,10 +313,13 @@ bool OgreRenderBackend::initialize() {
   }
 
   Ogre::Root* root = render_system->ogreRoot();
+  // Ogre expects logical widget size + contentScalingFactor (DPR), not device
+  // pixels twice. See RenderSystem::makeRenderWindow.
+  const double dpr = static_cast<double>(host_->devicePixelRatioF());
   impl_->render_window = render_system->makeRenderWindow(
       static_cast<RenderSystem::WindowHandle>(host_->winId()),
       static_cast<unsigned>(std::max(1, host_->width())),
-      static_cast<unsigned>(std::max(1, host_->height())));
+      static_cast<unsigned>(std::max(1, host_->height())), dpr);
   if (impl_->render_window == nullptr) {
     return false;
   }
@@ -371,7 +374,8 @@ void OgreRenderBackend::resize(int width, int height) {
   if (!impl_->initialized || impl_->render_window == nullptr) {
     return;
   }
-  impl_->render_window->resize(width, height);
+  impl_->render_window->resize(static_cast<unsigned>(std::max(1, width)),
+                               static_cast<unsigned>(std::max(1, height)));
   impl_->render_window->windowMovedOrResized();
 }
 

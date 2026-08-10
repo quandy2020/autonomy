@@ -1,8 +1,8 @@
 # Autoviz
 
-Autonomy 原生 3D 机器人可视化工具，**零 ROS 依赖**，直接接入 **Autolink** 通信层，支持 Linux / Windows / macOS 独立部署。
+Autonomy 原生 3D 机器人可视化工具，**零 ROS 依赖**，直接接入 **Autolink** 通信层，**跨平台**：Linux / **macOS** / Windows 独立部署。
 
-> 架构：[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · 部署：[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+> 架构：[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · 部署：[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) · macOS：[deploy/macos/README.md](deploy/macos/README.md)
 
 ## 定位
 
@@ -11,6 +11,7 @@ Autonomy 原生 3D 机器人可视化工具，**零 ROS 依赖**，直接接入 
 | 形态 | 原生桌面（Qt + OpenGL） | WebSocket 转发 | ROS 2 桌面 |
 | 通信 | Autolink 直连 | Autolink → WebSocket | rclcpp |
 | 部署 | 单可执行文件 + lib | 服务进程 | 完整 ROS 2 栈 |
+| 平台 | Linux · macOS · Windows | 浏览器/服务 | 主要为 Linux |
 
 ## 目录结构
 
@@ -35,11 +36,25 @@ autoviz/
 
 ## 构建
 
-依赖：`qt6-base-dev`、`libqt6svg6-dev`、OpenGL 3.3+、**automsgs**、**autolink**。**不链接** ROS / rviz / `libautonomy`。
+依赖：Qt 6、OpenGL 3.3+、**automsgs**、**autolink**、yaml-cpp。**不链接** ROS / rviz / `libautonomy`。
+
+| 平台 | 依赖安装 | 构建要点 |
+|------|----------|----------|
+| **Linux** | `qt6-base-dev` `libqt6svg6-dev` … | `cmake -B build && cmake --build build --target autoviz` |
+| **macOS** | `brew install qt@6 cmake ninja …` | `-DCMAKE_PREFIX_PATH="$(brew --prefix qt@6)"`，详见 [deploy/macos](deploy/macos/README.md) |
+| **Windows** | MSVC + Qt6 安装器 | `-DCMAKE_PREFIX_PATH=C:\Qt\6.x\msvc2019_64`，见 [deploy/windows](deploy/windows/README.md) |
 
 ```bash
-cd src/autonomy/autoviz
+cd src/autonomy/autoviz   # 或本仓库 autoviz/
 cmake -B build
+cmake --build build --target autoviz
+./build/bin/autoviz
+```
+
+macOS 示例：
+
+```bash
+cmake -B build -DCMAKE_PREFIX_PATH="$(brew --prefix qt@6)"
 cmake --build build --target autoviz
 ./build/bin/autoviz
 ```

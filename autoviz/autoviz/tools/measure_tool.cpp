@@ -24,24 +24,58 @@ namespace {
 constexpr QColor kLineColor(184, 134, 11);
 /** Lift above reference grid (z=0) to avoid depth fighting with grid lines. */
 constexpr float kLineLift = 0.02f;
+constexpr const char* kDefaultViewportKey = "_default";
 
 QVector3D liftAboveGrid(const QVector3D& point) {
   return point + QVector3D(0.f, 0.f, kLineLift);
 }
 
+std::string OgreOverlayId(const std::string& viewport_key) {
+  return std::string("Measure:") +
+         (viewport_key.empty() ? kDefaultViewportKey : viewport_key);
+}
+
 }  // namespace
 
-void MeasureTool::clearOgreOverlay() const {
+std::string MeasureTool::currentViewportKey() const {
+  if (context() != nullptr && !context()->viewport_key.empty()) {
+    return context()->viewport_key;
+  }
+  return kDefaultViewportKey;
+}
+
+MeasureTool::Session& MeasureTool::sessionFor(const std::string& key) {
+  return sessions_[key.empty() ? kDefaultViewportKey : key];
+}
+
+const MeasureTool::Session* MeasureTool::findSession(
+    const std::string& key) const {
+  const auto it = sessions_.find(key.empty() ? kDefaultViewportKey : key);
+  return it == sessions_.end() ? nullptr : &it->second;
+}
+
+void MeasureTool::clearViewportSession(const std::string& viewport_key) {
+  const std::string key =
+      viewport_key.empty() ? kDefaultViewportKey : viewport_key;
+  clearOgreOverlay(key);
+  sessions_.erase(key);
+}
+
+void MeasureTool::clearOgreOverlay(const std::string& key) const {
 #ifdef AUTOVIZ_USE_OGRE
   if (context() == nullptr || context()->display_context == nullptr ||
       context()->display_context->ogre_scene_host == nullptr) {
     return;
   }
-  context()->display_context->ogre_scene_host->clearToolOverlay(kToolOgreId);
+  context()->display_context->ogre_scene_host->clearToolOverlay(
+      OgreOverlayId(key));
+#else
+  (void)key;
 #endif
 }
 
-void MeasureTool::updateOgreLineVisual(const QVector3D& start,
+void MeasureTool::updateOgreLineVisual(const std::string& key,
+                                       const QVector3D& start,
                                        const QVector3D& end) const {
 #ifdef AUTOVIZ_USE_OGRE
   if (context() != nullptr && context()->sync_ogre_host) {
@@ -56,20 +90,22 @@ void MeasureTool::updateOgreLineVisual(const QVector3D& start,
   const QVector3D draw_start = liftAboveGrid(start);
   const QVector3D draw_end = liftAboveGrid(end);
   display_context->ogre_scene_host->setToolLineSegment(
-      kToolOgreId, draw_start, draw_end, kLineColor);
+      OgreOverlayId(key), draw_start, draw_end, kLineColor);
+#else
+  (void)key;
+  (void)start;
+  (void)end;
 #endif
 }
 
-void MeasureTool::resetMeasurement() {
-  line_started_ = false;
-  start_point_.reset();
-  end_point_.reset();
-  hover_point_.reset();
-  clearOgreOverlay();
+void MeasureTool::resetMeasurement(const std::string& key) {
+  clearOgreOverlay(key);
+  sessions_.erase(key.empty() ? kDefaultViewportKey : key);
 }
 
 void MeasureTool::deactivate() {
-  resetMeasurement();
+  // Keep per-viewport sessions when the global active tool changes (split
+  // panels). Sessions are cleared by clearViewportSession / right-click.
   common::Tool::deactivate();
 }
 
@@ -88,25 +124,25 @@ bool MeasureTool::pickPoint(int x, int y, QVector3D* hit) const {
       x, y, context()->viewport_width, context()->viewport_height, hit);
 }
 
-std::optional<QVector3D> MeasureTool::endPreview() const {
-  if (line_started_ && hover_point_.has_value()) {
-    return hover_point_;
+std::optional<QVector3D> MeasureTool::endPreview(const Session& session) const {
+  if (session.line_started && session.hover_point.has_value()) {
+    return session.hover_point;
   }
-  if (end_point_.has_value()) {
-    return end_point_;
+  if (session.end_point.has_value()) {
+    return session.end_point;
   }
   return std::nullopt;
 }
 
-float MeasureTool::currentLength() const {
-  if (!start_point_.has_value()) {
+float MeasureTool::currentLength(const Session& session) const {
+  if (!session.start_point.has_value()) {
     return -1.f;
   }
-  const std::optional<QVector3D> end = endPreview();
+  const std::optional<QVector3D> end = endPreview(session);
   if (!end.has_value()) {
     return -1.f;
   }
-  return (*start_point_ - *end).length();
+  return (*session.start_point - *end).length();
 }
 
 void MeasureTool::updateStatus() const {
@@ -116,18 +152,19 @@ void MeasureTool::updateStatus() const {
   context()->set_status(statusText());
 }
 
-void MeasureTool::refreshLineVisual() const {
-  if (!start_point_.has_value()) {
-    clearOgreOverlay();
+void MeasureTool::refreshLineVisual(const std::string& key) const {
+  const Session* session = findSession(key);
+  if (session == nullptr || !session->start_point.has_value()) {
+    clearOgreOverlay(key);
     return;
   }
-  const std::optional<QVector3D> end = endPreview();
+  const std::optional<QVector3D> end = endPreview(*session);
   if (!end.has_value()) {
-    clearOgreOverlay();
+    clearOgreOverlay(key);
     return;
   }
 
-  updateOgreLineVisual(*start_point_, *end);
+  updateOgreLineVisual(key, *session->start_point, *end);
 
   if (context() != nullptr && context()->request_redraw) {
     context()->request_redraw();
@@ -138,7 +175,9 @@ bool MeasureTool::mouseMoveEvent(QMouseEvent* event) {
   if (context() == nullptr || context()->view_controller == nullptr) {
     return true;
   }
-  if (!line_started_ || !start_point_.has_value()) {
+  const std::string key = currentViewportKey();
+  Session& session = sessionFor(key);
+  if (!session.line_started || !session.start_point.has_value()) {
     return true;
   }
 
@@ -147,8 +186,8 @@ bool MeasureTool::mouseMoveEvent(QMouseEvent* event) {
     return true;
   }
 
-  hover_point_ = hit;
-  refreshLineVisual();
+  session.hover_point = hit;
+  refreshLineVisual(key);
   updateStatus();
   if (context()->request_redraw) {
     context()->request_redraw();
@@ -157,8 +196,9 @@ bool MeasureTool::mouseMoveEvent(QMouseEvent* event) {
 }
 
 bool MeasureTool::mouseReleaseEvent(QMouseEvent* event) {
+  const std::string key = currentViewportKey();
   if (event->button() == Qt::RightButton) {
-    resetMeasurement();
+    resetMeasurement(key);
     updateStatus();
     if (context() != nullptr && context()->request_redraw) {
       context()->request_redraw();
@@ -178,23 +218,24 @@ bool MeasureTool::mouseReleaseEvent(QMouseEvent* event) {
     if (context()->set_status) {
       context()->set_status(
           QStringLiteral("Measure: click on rendered geometry "
-                           "(right-click to reset)"));
+                         "(right-click to reset)"));
     }
     return true;
   }
 
-  if (line_started_) {
-    end_point_ = hit;
-    hover_point_.reset();
-    line_started_ = false;
+  Session& session = sessionFor(key);
+  if (session.line_started) {
+    session.end_point = hit;
+    session.hover_point.reset();
+    session.line_started = false;
   } else {
-    start_point_ = hit;
-    end_point_.reset();
-    hover_point_ = hit;
-    line_started_ = true;
+    session.start_point = hit;
+    session.end_point.reset();
+    session.hover_point = hit;
+    session.line_started = true;
   }
 
-  refreshLineVisual();
+  refreshLineVisual(key);
   updateStatus();
   if (context()->request_redraw) {
     context()->request_redraw();
@@ -202,31 +243,48 @@ bool MeasureTool::mouseReleaseEvent(QMouseEvent* event) {
   return true;
 }
 
-void MeasureTool::onDraw(rendering::SceneOverlay& scene) {
-  if (!start_point_.has_value()) {
+void MeasureTool::drawSession(rendering::SceneOverlay& scene,
+                              const std::string& key,
+                              const Session& session) const {
+  (void)key;
+  if (!session.start_point.has_value()) {
     return;
   }
-  const std::optional<QVector3D> end = endPreview();
+  const std::optional<QVector3D> end = endPreview(session);
   if (!end.has_value()) {
     return;
   }
+  // GL path only: Ogre lines are owned by each window's OgreSceneHost via
+  // refreshLineVisual (mouse). Do not re-upload here — sync_ogre_host points
+  // at the active dock and would leak Measure into the wrong Split panel.
+  scene.addLine(liftAboveGrid(*session.start_point), liftAboveGrid(*end),
+                kLineColor);
+}
 
-  updateOgreLineVisual(*start_point_, *end);
-  scene.addLine(liftAboveGrid(*start_point_), liftAboveGrid(*end), kLineColor);
+void MeasureTool::onDraw(rendering::SceneOverlay& scene) {
+  // Prefer the context viewport (per-panel paint). Fall back to active session.
+  const std::string key = currentViewportKey();
+  if (const Session* session = findSession(key)) {
+    drawSession(scene, key, *session);
+  }
 }
 
 QString MeasureTool::statusText() const {
+  const std::string key = currentViewportKey();
+  const Session* session = findSession(key);
   QString status;
-  const float length = currentLength();
-  if (length >= 0.f) {
-    status = QStringLiteral("Length: %1 m").arg(length, 0, 'f', 3);
+  if (session != nullptr) {
+    const float length = currentLength(*session);
+    if (length >= 0.f) {
+      status = QStringLiteral("Length: %1 m").arg(length, 0, 'f', 3);
+    }
   }
 
   QString hint;
-  if (!start_point_.has_value()) {
+  if (session == nullptr || !session->start_point.has_value()) {
     hint = QStringLiteral(
         "Click on two points to measure their distance. Right-click to reset.");
-  } else if (line_started_) {
+  } else if (session->line_started) {
     hint = QStringLiteral("Click second point. Right-click to reset.");
   } else {
     hint = QStringLiteral(

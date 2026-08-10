@@ -35,7 +35,7 @@ function(_autoviz_ogre_gtest _name)
   target_include_directories(${_name} SYSTEM PRIVATE ${_AUTOVIZ_OGRE_INCLUDE_DIRS})
   target_link_libraries(${_name} PRIVATE
     automsgs GTest::gtest Qt6::Gui Qt6::Widgets Qt6::OpenGL Qt6::OpenGLWidgets
-    Qt6::Network Eigen3::Eigen glog protobuf::libprotobuf
+    Qt6::Network Eigen3::Eigen glog::glog protobuf::libprotobuf
     ${_AUTOVIZ_OGRE_TARGET} ${_AUTOVIZ_OGRE_OVERLAY_TARGET} ${CMAKE_DL_LIBS})
   if(_AUTOVIZ_HAS_ASSIMP)
     if(assimp_FOUND)
@@ -65,7 +65,7 @@ function(_autoviz_display_gtest _name)
   target_link_libraries(${_name} PRIVATE
     automsgs autolink yaml-cpp GTest::gtest
     Qt6::Gui Qt6::Widgets Qt6::OpenGL Qt6::Network
-    glog protobuf::libprotobuf ${CMAKE_DL_LIBS})
+    glog::glog protobuf::libprotobuf ${CMAKE_DL_LIBS})
   target_compile_features(${_name} PRIVATE cxx_std_17)
   add_test(NAME ${_name} COMMAND ${_name})
   _autoviz_test_display(${_name})
@@ -165,4 +165,9 @@ if(GTest_FOUND)
     ${AUTOVIZ_ROOT}/tests/bicmap_gtest_main.cpp
     ${AUTOVIZ_ROOT}/tests/bicmap_examples_test.cpp
     ${_bicmap_display_sources})
+
+  _autoviz_display_gtest(tf_display_utils_test
+    ${AUTOVIZ_ROOT}/tests/gtest_main.cpp
+    ${AUTOVIZ_ROOT}/tests/tf_display_utils_test.cpp
+    ${AUTOVIZ_SRC_ROOT}/display/tf_display_utils.cpp)
 endif()

@@ -7,6 +7,9 @@
 #include <QFont>
 #include <QFrame>
 #include <QHBoxLayout>
+#include <QRegion>
+#include <QResizeEvent>
+#include <QShowEvent>
 #include <QSizePolicy>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -50,6 +53,9 @@ ViewportFloatingToolbar::ViewportFloatingToolbar(QWidget* parent)
     : QWidget(parent) {
   setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
   setAttribute(Qt::WA_TransparentForMouseEvents, false);
+  // Sibling of QOpenGLWidget / native Ogre view: without this the GL surface
+  // paints over the toolbar (common on macOS Retina).
+  setAttribute(Qt::WA_AlwaysStackOnTop, true);
   auto* outer = new QVBoxLayout(this);
   outer->setContentsMargins(0, 0, 0, 0);
   outer->setSpacing(8);
@@ -111,6 +117,36 @@ ViewportFloatingToolbar::ViewportFloatingToolbar(QWidget* parent)
       }
     });
     outer->addWidget(group);
+  }
+
+  adjustSize();
+  updateClickThroughMask();
+}
+
+void ViewportFloatingToolbar::showEvent(QShowEvent* event) {
+  QWidget::showEvent(event);
+  adjustSize();
+  updateClickThroughMask();
+}
+
+void ViewportFloatingToolbar::resizeEvent(QResizeEvent* event) {
+  QWidget::resizeEvent(event);
+  updateClickThroughMask();
+}
+
+void ViewportFloatingToolbar::updateClickThroughMask() {
+  QRegion region;
+  const QList<QFrame*> groups = findChildren<QFrame*>(
+      QStringLiteral("AutovizViewportToolGroup"));
+  for (QFrame* group : groups) {
+    if (group != nullptr && group->isVisible()) {
+      region += group->geometry();
+    }
+  }
+  if (region.isEmpty()) {
+    clearMask();
+  } else {
+    setMask(region);
   }
 }
 

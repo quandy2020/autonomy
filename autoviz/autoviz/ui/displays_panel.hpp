@@ -15,6 +15,7 @@
 
 class QPushButton;
 class QTextBrowser;
+class QTimer;
 class QTreeWidgetItem;
 
 namespace autoviz {
@@ -23,6 +24,7 @@ class VisualizationManager;
 }
 namespace display {
 class Display;
+class TfDisplay;
 }
 
 class DisplaysPanel : public QWidget {
@@ -36,6 +38,8 @@ class DisplaysPanel : public QWidget {
   void refresh();
   /** Update channel delegate + display status icons without rebuilding the tree. */
   void refreshStatus();
+  /** Pause high-rate UI sync (TF pose fields) while the app is in the background. */
+  void setLiveUpdatesPaused(bool paused);
 
  signals:
   void fixedFrameChanged(const QString& frame);
@@ -49,6 +53,7 @@ class DisplaysPanel : public QWidget {
   void onRenameDisplay();
   void onRemoveDisplay();
   void onDisplaySelectionChanged();
+  void onTfPoseTick();
 
  private:
   void setupUi();
@@ -59,6 +64,11 @@ class DisplaysPanel : public QWidget {
   void populateDisplayProperties(QTreeWidgetItem* display_item,
                                  display::Display* display,
                                  std::size_t index, int child_index = -1);
+  void syncTfDisplayProperties(QTreeWidgetItem* display_item,
+                               display::TfDisplay* tf);
+  /** Lightweight: refresh pose texts for expanded Frames only (~20Hz). */
+  void syncTfExpandedPoseFields();
+  void updateTfPoseTimerState();
   void updateGlobalStatus();
   void updateChannelDelegate();
   void updateHelp(QTreeWidgetItem* item);
@@ -77,9 +87,15 @@ class DisplaysPanel : public QWidget {
   QPushButton* duplicate_button_ = nullptr;
   QPushButton* remove_button_ = nullptr;
   QPushButton* rename_button_ = nullptr;
+  QTimer* tf_pose_timer_ = nullptr;
+  bool live_updates_paused_ = false;
   bool updating_ = false;
   /** Previous error+warn count; used to auto-expand only when issues increase. */
   int global_status_issue_count_ = 0;
+  /** Fingerprint of channel names; skip channel-option rebuilds when unchanged. */
+  QString channel_list_fingerprint_;
+  /** Fingerprint of Global Status issue rows; skip child rebuild when unchanged. */
+  QString global_status_fingerprint_;
 };
 
 }  // namespace autoviz

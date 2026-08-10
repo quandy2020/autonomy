@@ -11,6 +11,7 @@
 
 #include <sstream>
 
+#include "autoviz/common/protobuf_qt_string.hpp"
 #include "autoviz/commsgs/message_type_utils.hpp"
 #include "autoviz/ui/plot/message_path_navigation.hpp"
 
@@ -119,7 +120,7 @@ QString ScalarFieldToString(const google::protobuf::Message& message,
     case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
       if (const google::protobuf::EnumValueDescriptor* value =
               reflection->GetEnum(message, field)) {
-        return QString::fromStdString(value->name());
+        return ProtobufToQString(value->name());
       }
       return QString();
     default:
@@ -156,7 +157,7 @@ QString RepeatedPrimitiveToString(
     case google::protobuf::FieldDescriptor::CPPTYPE_ENUM:
       if (const google::protobuf::EnumValueDescriptor* value =
               reflection->GetRepeatedEnum(message, field, index)) {
-        return QString::fromStdString(value->name());
+        return ProtobufToQString(value->name());
       }
       return QString();
     default:
@@ -233,8 +234,9 @@ std::optional<std::string> FindFirstRepeatedPathRecursive(
     if (field == nullptr) {
       continue;
     }
+    const std::string field_name(field->name().data(), field->name().size());
     const std::string path =
-        prefix.empty() ? field->name() : prefix + '.' + field->name();
+        prefix.empty() ? field_name : prefix + '.' + field_name;
     if (field->is_repeated()) {
       return path;
     }
@@ -266,7 +268,7 @@ TableData ExtractRepeatedMessageArray(
       continue;
     }
     column_fields.push_back(field);
-    data.columns.push_back(TableColumn{QString::fromStdString(field->name())});
+    data.columns.push_back(TableColumn{ProtobufToQString(field->name())});
   }
 
   const google::protobuf::Reflection* reflection = container.GetReflection();
@@ -302,8 +304,7 @@ TableData ExtractRepeatedPrimitiveArray(
     return data;
   }
 
-  data.columns.push_back(
-      TableColumn{QString::fromStdString(array_field->name())});
+  data.columns.push_back(TableColumn{ProtobufToQString(array_field->name())});
   const google::protobuf::Reflection* reflection = container.GetReflection();
   const int count = reflection->FieldSize(container, array_field);
   data.rows.reserve(static_cast<size_t>(count));

@@ -28,6 +28,8 @@ option(AUTOVIZ_USE_ASSIMP "Use Assimp in Ogre mesh_loader" ON)
 set(AUTOVIZ_OGRE_ROOT "" CACHE PATH "Prebuilt Ogre install prefix (optional)")
 
 option(BUILD_AUTOVIZ_TESTS "Build gtest verification targets (dev only, off by default)" OFF)
+# C++ tutorial publishers under examples/cpp (also built with target `autoviz`).
+option(AUTOVIZ_BUILD_CPP_EXAMPLES "Build C++ tutorial publishers (01–24)" ON)
 
 # Standalone-only: compiler settings and output directories
 if(AUTOVIZ_STANDALONE)

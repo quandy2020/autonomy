@@ -71,6 +71,7 @@ class Display {
 
   void resetStatus();
   void setStatusOk();
+  void setStatusOk(const std::string& message);
   void setStatusWarn(const std::string& message);
   void setStatusError(const std::string& message);
 

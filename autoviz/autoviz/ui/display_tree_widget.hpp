@@ -25,6 +25,9 @@ class DisplayTreeWidget : public QTreeWidget {
       std::shared_ptr<common::VisualizationManager> manager,
       QWidget* parent = nullptr);
 
+  /** True while an in-place cell editor is open. */
+  bool isEditing() const { return state() == EditingState; }
+
  signals:
   void displaysReorganized();
 

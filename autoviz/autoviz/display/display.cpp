@@ -85,6 +85,11 @@ void Display::resetStatus() {
 
 void Display::setStatusOk() { resetStatus(); }
 
+void Display::setStatusOk(const std::string& message) {
+  status_level_ = DisplayStatusLevel::kOk;
+  status_message_ = message;
+}
+
 void Display::setStatusWarn(const std::string& message) {
   status_level_ = DisplayStatusLevel::kWarn;
   status_message_ = message;

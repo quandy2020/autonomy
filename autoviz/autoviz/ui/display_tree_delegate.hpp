@@ -21,6 +21,11 @@ enum class DisplayTreeItemKind {
   kDisplayStatus,
   kDisplayChannel,
   kDisplayProperty,
+  kDisplayPropertyCategory,
+  kDisplayFrameEnabled,
+  kDisplayFrameField,
+  kDisplayTreeNode,
+  kDisplayAllFramesEnabled,
 };
 
 constexpr int kDisplayTreeColName = 0;
@@ -33,6 +38,8 @@ constexpr int kDisplayTreeRoleDescription = Qt::UserRole + 3;
 constexpr int kDisplayTreeRoleChildIndex = Qt::UserRole + 4;
 constexpr int kDisplayTreeRoleDragBgSaved = Qt::UserRole + 5;
 constexpr int kDisplayTreeRolePropertyKind = Qt::UserRole + 12;
+/** Newline-joined channel names allowed for a Display Channel editor. */
+constexpr int kDisplayTreeRoleChannelOptions = Qt::UserRole + 13;
 
 bool IsColorTreeItem(DisplayTreeItemKind kind, const QString& property_key,
                      int property_kind = 0);

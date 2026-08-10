@@ -205,11 +205,40 @@ QWidget* DisplayTreeDelegate::createEditor(QWidget* parent,
   const int property_kind = PropertyKindFromIndex(index);
   const QString current = index.data(Qt::EditRole).toString();
 
-  if (kind == DisplayTreeItemKind::kGlobalFixedFrame ||
-      kind == DisplayTreeItemKind::kDisplayChannel) {
+  if (kind == DisplayTreeItemKind::kDisplayPropertyCategory ||
+      kind == DisplayTreeItemKind::kDisplayFrameField ||
+      kind == DisplayTreeItemKind::kDisplayTreeNode ||
+      kind == DisplayTreeItemKind::kDisplayFrameEnabled ||
+      kind == DisplayTreeItemKind::kDisplayAllFramesEnabled ||
+      property_kind == static_cast<int>(common::DisplayPropertyKind::kCategory) ||
+      property_kind == static_cast<int>(common::DisplayPropertyKind::kReadOnly)) {
+    return nullptr;
+  }
+
+  if (kind == DisplayTreeItemKind::kGlobalFixedFrame) {
     auto* combo = new QComboBox(parent);
     combo->setEditable(true);
     combo->addItems(channels_);
+    combo->setCurrentText(current);
+    return combo;
+  }
+
+  if (kind == DisplayTreeItemKind::kDisplayChannel) {
+    auto* combo = new QComboBox(parent);
+    combo->setEditable(true);
+    QStringList options =
+        index.data(kDisplayTreeRoleChannelOptions)
+            .toString()
+            .split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+    if (options.isEmpty()) {
+      options = channels_;
+    }
+    if (!current.isEmpty() &&
+        options.indexOf(current) < 0) {
+      options.push_front(current);
+    }
+    options.removeDuplicates();
+    combo->addItems(options);
     combo->setCurrentText(current);
     return combo;
   }
@@ -228,11 +257,10 @@ QWidget* DisplayTreeDelegate::createEditor(QWidget* parent,
 
   if (kind == DisplayTreeItemKind::kDisplayProperty) {
     const QString default_lower = index.data(Qt::UserRole + 10).toString();
+    // Bool props use the tree's native value-column checkbox (not an editor).
     if (default_lower == QLatin1String("true") ||
         default_lower == QLatin1String("false")) {
-      auto* check = new QCheckBox(parent);
-      check->setChecked(current == QLatin1String("true"));
-      return check;
+      return nullptr;
     }
 
     const QString options = index.data(Qt::UserRole + 11).toString();
@@ -343,6 +371,11 @@ void DisplayTreeDelegate::setModelData(QWidget* editor, QAbstractItemModel* mode
     value = line->text();
   } else {
     QStyledItemDelegate::setModelData(editor, model, index);
+    return;
+  }
+  // Skip no-op writes: float spinboxes often reformat "1.0" → "1", which used
+  // to fire itemChanged → displaysChanged → synchronous full scene update.
+  if (index.data(Qt::EditRole).toString() == value) {
     return;
   }
   model->setData(index, value, Qt::EditRole);

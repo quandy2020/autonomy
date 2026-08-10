@@ -46,7 +46,7 @@ struct ImageOverlayConfig {
 
 struct ImagePanelConfig {
   QString title = QStringLiteral("Image");
-  QString image_channel;
+  QString image_channel = QStringLiteral("/fake/image");
   QString calibration_channel;
   bool strict_time_sync = false;
   bool flip_horizontal = false;

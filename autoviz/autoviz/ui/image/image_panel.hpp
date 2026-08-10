@@ -15,6 +15,7 @@
 #include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
 
 #include "autoviz/integration/channel_reader_registry.hpp"
+#include "autoviz/integration/message_queue.hpp"
 #include "autoviz/ui/image/image_annotation_parser.hpp"
 #include "autoviz/ui/image/image_calibration_utils.hpp"
 #include "autoviz/ui/image/image_marker_projection.hpp"
@@ -63,6 +64,9 @@ class ImagePanel : public QWidget {
   QWidget* settingsWidgetForInspector();
   void recallSettingsWidget();
 
+  /** Push a decoded frame from Image Display (UI thread). */
+  void setFrameFromDisplay(const QImage& image);
+
  signals:
   void configChanged();
   void activated();
@@ -85,6 +89,7 @@ class ImagePanel : public QWidget {
   struct OverlayRuntime {
     ImageOverlayConfig config;
     integration::ChannelReaderRegistry::SubscriptionId subscription_id = 0;
+    integration::MessageQueue queue;
     QImage image;
     qint64 timestamp_ns = 0;
   };
@@ -92,6 +97,7 @@ class ImagePanel : public QWidget {
   struct AnnotationRuntime {
     QString channel;
     integration::ChannelReaderRegistry::SubscriptionId subscription_id = 0;
+    integration::MessageQueue queue;
     ImageAnnotationLayer layer;
     qint64 timestamp_ns = 0;
   };
@@ -99,6 +105,7 @@ class ImagePanel : public QWidget {
   struct MarkerRuntime {
     QString channel;
     integration::ChannelReaderRegistry::SubscriptionId subscription_id = 0;
+    integration::MessageQueue queue;
     ImageAnnotationLayer layer;
     qint64 timestamp_ns = 0;
   };
@@ -114,6 +121,7 @@ class ImagePanel : public QWidget {
   void subscribeCalibration();
   void unsubscribeMarkers();
   void subscribeMarkers();
+  void drainIncomingQueues();
   void handleMainPayload(const std::string& payload);
   void handleOverlayPayload(int index, const std::string& payload);
   void handleAnnotationPayload(int index, const std::string& payload);
@@ -141,6 +149,8 @@ class ImagePanel : public QWidget {
   QPointer<QToolButton> expand_button_;
   integration::ChannelReaderRegistry::SubscriptionId main_subscription_id_ = 0;
   integration::ChannelReaderRegistry::SubscriptionId calibration_subscription_id_ = 0;
+  integration::MessageQueue main_queue_;
+  integration::MessageQueue calibration_queue_;
   QImage base_image_;
   qint64 base_timestamp_ns_ = 0;
   CameraIntrinsics camera_intrinsics_;

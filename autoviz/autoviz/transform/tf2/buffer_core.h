@@ -343,6 +343,12 @@ public:
                         const std::string& fixed_frame,
                         std::vector<std::string>& output) const;
 
+    /** Batch setTransform (one TFMessage): suppress per-transform listener storms. */
+    void _setTransformsChangedSuppressed(bool suppressed) {
+        transforms_changed_suppressed_ = suppressed;
+    }
+    void _emitTransformsChanged() { _transforms_changed_(); }
+
 private:
     /** \brief A way to see what frames have been cached
      * Useful for debugging. Use this call internally.
@@ -402,6 +408,7 @@ private:
     /// Signal which is fired whenever new transform data has arrived, from the
     /// thread the data arrived in
     TransformsChangedSignal _transforms_changed_;
+    bool transforms_changed_suppressed_ = false;
 
     /************************* Internal Functions ****************************/
 

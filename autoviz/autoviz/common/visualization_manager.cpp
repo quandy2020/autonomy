@@ -57,7 +57,19 @@ bool VisualizationManager::initialize(const char* binary_name) {
   channel_manager_ = std::make_unique<integration::ChannelManager>(
       topology->channel_manager());
 
-  applySession(SessionConfigIO::defaultConfig());
+  // Apply defaults with displays disabled. Creating live readers here would race
+  // loadConfig() (which tears them down) and can stall for a long time in
+  // RemoveCRoutine when a publisher is already flooding those channels.
+  SessionConfig startup_config = SessionConfigIO::defaultConfig();
+  std::function<void(std::vector<DisplayConfig>&)> disable_displays =
+      [&](std::vector<DisplayConfig>& displays) {
+        for (auto& display : displays) {
+          display.enabled = false;
+          disable_displays(display.children);
+        }
+      };
+  disable_displays(startup_config.displays);
+  applySession(startup_config);
   refreshChannelList();
   wall_start_ = std::chrono::steady_clock::now();
   sim_origin_sec_ = simTimeSec();
@@ -70,6 +82,10 @@ void VisualizationManager::shutdown() {
   if (!initialized_) {
     return;
   }
+  // Suppress sync redraw while destroying displays (see applySession).
+  auto saved_redraw = std::move(redraw_callback_);
+  redraw_callback_ = nullptr;
+  display_context_.request_redraw = nullptr;
   for (auto& display : displays_) {
     display->setEnabled(false);
   }
@@ -84,6 +100,7 @@ void VisualizationManager::shutdown() {
   autolink_.shutdown();
   cached_channels_.clear();
   initialized_ = false;
+  redraw_callback_ = std::move(saved_redraw);
 }
 
 bool VisualizationManager::ok() const { return autolink_.ok(); }
@@ -111,6 +128,12 @@ void VisualizationManager::syncDisplayContext() {
 }
 
 void VisualizationManager::applySession(const SessionConfig& config) {
+  // Tear-down must not invoke request_redraw: the frame callback calls
+  // manager_->update() synchronously and would touch Displays mid-destroy.
+  auto saved_redraw = std::move(redraw_callback_);
+  redraw_callback_ = nullptr;
+  display_context_.request_redraw = nullptr;
+
   for (auto& display : displays_) {
     display->setEnabled(false);
   }
@@ -172,6 +195,12 @@ void VisualizationManager::applySession(const SessionConfig& config) {
       continue;
     }
     attachDisplay(std::move(display), entry.enabled);
+  }
+
+  redraw_callback_ = std::move(saved_redraw);
+  syncDisplayContext();
+  if (redraw_callback_) {
+    redraw_callback_();
   }
 }
 
@@ -338,6 +367,9 @@ void VisualizationManager::setDisplayEnabled(std::size_t index, bool enabled,
     return;
   }
   display->setEnabled(enabled);
+  if (display_context_.request_redraw) {
+    display_context_.request_redraw();
+  }
 }
 
 void VisualizationManager::setDisplayChannel(std::size_t index,

@@ -39,6 +39,10 @@ colcon build --cmake-args -DAUTOLINK_BUILD_PYTHON=ON
 /usr/bin/python3 examples/python/01_tutorial_poses.py
 ```
 
+**macOS:** `_bootstrap` sets `DYLD_LIBRARY_PATH`. Prefer system/Homebrew Python
+(`/usr/bin/python3` or `brew --prefix python@3.12`). See
+[`../../deploy/macos/README.md`](../../deploy/macos/README.md).
+
 Bare `python3 ...` is also handled via auto re-exec when possible.
 
 Optional overrides:

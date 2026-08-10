@@ -21,15 +21,23 @@ def _append(path: Path) -> None:
             sys.path.insert(0, text)
 
 
+def _library_path_env_keys() -> list[str]:
+    """Linux uses LD_LIBRARY_PATH; macOS loaders honor DYLD_LIBRARY_PATH."""
+    if sys.platform == "darwin":
+        return ["DYLD_LIBRARY_PATH", "LD_LIBRARY_PATH"]
+    return ["LD_LIBRARY_PATH"]
+
+
 def _append_lib(path: Path) -> None:
     if not path.is_dir():
         return
-    current = os.environ.get("LD_LIBRARY_PATH", "")
-    parts = [part for part in current.split(os.pathsep) if part]
     text = str(path)
-    if text not in parts:
-        parts.insert(0, text)
-        os.environ["LD_LIBRARY_PATH"] = os.pathsep.join(parts)
+    for key in _library_path_env_keys():
+        current = os.environ.get(key, "")
+        parts = [part for part in current.split(os.pathsep) if part]
+        if text not in parts:
+            parts.insert(0, text)
+            os.environ[key] = os.pathsep.join(parts)
 
 
 def _find_repo_root(start: Path) -> Path | None:
@@ -75,10 +83,19 @@ def system_python_candidates() -> list[Path]:
     override = os.environ.get("AUTOVIZ_PYTHON")
     if override:
         return [Path(override)]
-    return [
+    candidates = [
+        Path("/usr/bin/python3.12"),
+        Path("/usr/bin/python3.11"),
         Path("/usr/bin/python3.10"),
         Path("/usr/bin/python3"),
     ]
+    if sys.platform == "darwin":
+        # Homebrew (Apple Silicon then Intel)
+        for prefix in ("/opt/homebrew", "/usr/local"):
+            for ver in ("3.12", "3.11", "3.10"):
+                candidates.append(Path(prefix) / "opt" / f"python@{ver}" / "bin" / "python3")
+            candidates.append(Path(prefix) / "bin" / "python3")
+    return candidates
 
 
 def _python_is_usable() -> bool:

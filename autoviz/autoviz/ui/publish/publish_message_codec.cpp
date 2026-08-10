@@ -10,6 +10,7 @@
 
 #include <algorithm>
 
+#include "autoviz/common/protobuf_json_compat.hpp"
 #include "autoviz/commsgs/message_type_utils.hpp"
 
 namespace autoviz {
@@ -60,7 +61,7 @@ std::optional<QString> PublishMessageCodec::defaultJsonTemplate(
 
   google::protobuf::util::JsonPrintOptions options;
   options.add_whitespace = true;
-  options.always_print_primitive_fields = true;
+  SetAlwaysPrintPrimitiveFields(&options);
   options.preserve_proto_field_names = true;
 
   std::string json;
@@ -96,7 +97,7 @@ CodecResult PublishMessageCodec::encodeJson(const std::string& message_type,
   const auto status = google::protobuf::util::JsonStringToMessage(
       trimmed.toStdString(), message.get(), options);
   if (!status.ok()) {
-    result.error = QString::fromStdString(status.message().as_string());
+    result.error = StatusMessageToQString(status);
     return result;
   }
 

@@ -51,6 +51,9 @@ target_include_directories(automsgs_core_obj
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>"
     "$<INSTALL_INTERFACE:include>")
+# OBJECT libs do not inherit system include dirs; Homebrew protobuf lives under
+# /opt/homebrew/include and must come from the imported target (needed on macOS).
+target_link_libraries(automsgs_core_obj PUBLIC protobuf::libprotobuf)
 target_compile_definitions(automsgs_core_obj PRIVATE automsgs_core_EXPORTS)
 set_target_properties(automsgs_core_obj PROPERTIES POSITION_INDEPENDENT_CODE ON)
 

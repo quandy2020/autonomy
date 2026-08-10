@@ -74,6 +74,10 @@ class ChannelDisplay : public Display {
       integration::ChannelReaderRegistry::instance().unsubscribe(subscription_id_);
       subscription_id_ = 0;
     }
+    queue_.clear();
+    // Do not request_redraw here: ~ChannelDisplay calls onDisable while
+    // VisualizationManager is clearing displays_; a sync redraw would
+    // manager_->update() into destroyed Display objects (SIGSEGV).
   }
 
   void onUpdate() override {
@@ -81,10 +85,11 @@ class ChannelDisplay : public Display {
         context_->autolink != nullptr && context_->autolink->node() != nullptr) {
       subscribeChannel();
     }
-    while (auto payload = queue_.pop()) {
+    // Visualization only needs the newest sample; draining/parsing a full
+    // backlog on the UI thread freezes checkbox toggles and the 3D view.
+    if (auto payload = queue_.takeLatest()) {
       ProtoT proto;
-      const std::string decoded =
-          integration::DecodeChannelPayload(*payload);
+      const std::string decoded = integration::DecodeChannelPayload(*payload);
       if (proto.ParseFromString(decoded) || proto.ParseFromString(*payload)) {
         has_received_message_ = true;
         parse_failed_ = false;

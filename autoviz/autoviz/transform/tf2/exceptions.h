@@ -33,6 +33,7 @@
 #define TF2_EXCEPTIONS_H
 
 #include <stdexcept>
+#include <string>
 
 namespace autoviz {
 namespace transform {

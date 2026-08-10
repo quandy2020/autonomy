@@ -7,6 +7,8 @@
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <optional>
+#include <string>
 
 #include <QActionGroup>
 #include <QColor>
@@ -24,6 +26,7 @@ class QToolButton;
 
 #include "autoviz/common/selection.hpp"
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/rendering/view_controller.hpp"
 #include "autoviz/ui/app_preferences.hpp"
 #include "autoviz/ui/panel_context_menu.hpp"
 #include "autoviz/ui/panel_dock_widget.hpp"
@@ -106,7 +109,6 @@ class ViewportFloatingToolbar;
 namespace rendering {
 class OgreRenderWindow;
 class RenderWindow;
-class ViewController;
 }
 
 class VisualizationFrame : public QMainWindow {
@@ -220,6 +222,10 @@ class VisualizationFrame : public QMainWindow {
     ViewportFloatingToolbar* floating_toolbar = nullptr;
     QToolButton* expand_button = nullptr;
     QToolButton* settings_button = nullptr;
+    /** Per-split tool (Select/Measure/Interact); not shared across 3D panels. */
+    std::string local_tool_id = "Interact";
+    /** Snapshot taken when entering 2D via floating toolbar; restored on 3D. */
+    std::optional<rendering::ViewState> saved_3d_view_state;
 
     rendering::ViewController* viewController() const;
   };
@@ -228,10 +234,11 @@ class VisualizationFrame : public QMainWindow {
   void installViewportTitleBarToolsForEntry(ViewportPanelEntry& entry);
   void installViewportFloatingToolbar(ViewportPanelEntry& entry);
   void syncViewportFloatingToolbarForEntry(const ViewportPanelEntry& entry);
-  void onViewportInspectTool();
-  void onViewportToggle2dCamera();
-  void onViewportMeasureTool();
-  void onViewportRecenterOnFrame();
+  void pushViewportLocalTool(ViewportPanelEntry& entry);
+  void setViewportLocalTool(PanelDockWidget* dock, const std::string& tool_id);
+  void toggleViewportLocalTool(PanelDockWidget* dock, const std::string& tool_id);
+  void onViewportToggle2dCamera(PanelDockWidget* dock);
+  void onViewportRecenterOnFrame(PanelDockWidget* dock);
   void installStandardPanelTitleTools(PanelDockWidget* dock);
   PanelContextMenuCallbacks makePanelContextMenuCallbacks(PanelDockWidget* dock);
   ViewportPanelEntry* viewportEntryForDock(PanelDockWidget* dock);
@@ -524,6 +531,8 @@ class VisualizationFrame : public QMainWindow {
   QString config_path_;
   bool config_modified_ = false;
   bool suppress_config_modified_ = false;
+  /** True while Qt::ApplicationActive is not set (background / occluded). */
+  bool app_inactive_ = false;
   static constexpr int kRecentConfigCount = 10;
 };
 

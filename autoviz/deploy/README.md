@@ -8,6 +8,7 @@
 |------|------|
 | [`docker/`](docker/) | 开发/CI 构建镜像与 `run-docker.sh` |
 | [`linux/`](linux/) | `.desktop`、AppStream metainfo、AppRun、图标 |
+| [`macos/`](macos/) | macOS（Intel / Apple Silicon）Homebrew 构建与运行 |
 | [`windows/`](windows/) | Windows 安装说明（见 [`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md)） |
 
 完整运行时依赖、环境变量与安装布局见 [`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md)。

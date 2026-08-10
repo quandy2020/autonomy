@@ -10,6 +10,8 @@
 #include <QString>
 #include <QWidget>
 
+class QResizeEvent;
+class QShowEvent;
 class QToolButton;
 
 namespace autoviz {
@@ -36,11 +38,17 @@ class ViewportFloatingToolbar : public QWidget {
 
   void setRecenterToolTip(const QString& tip);
 
+ protected:
+  void showEvent(QShowEvent* event) override;
+  void resizeEvent(QResizeEvent* event) override;
+
  private:
   QToolButton* MakeToolButton(const QIcon& icon, const QString& tip,
                               bool checkable = false);
   QToolButton* MakeTextToolButton(const QString& text, const QString& tip,
                                   bool checkable = false);
+  /** Mask to button groups so empty overlay area does not steal GL drags. */
+  void updateClickThroughMask();
 
   ViewportFloatingToolbarCallbacks callbacks_;
   QToolButton* inspect_button_ = nullptr;

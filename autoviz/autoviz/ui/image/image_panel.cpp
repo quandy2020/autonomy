@@ -28,9 +28,12 @@
 #include <automsgs/msgs/visualization_msgs/marker_array.pb.h>
 
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/commsgs/message_type_utils.hpp"
 #include "autoviz/commsgs/time_utils.hpp"
 #include "autoviz/display/image_utils.hpp"
+#include "autoviz/integration/channel_payload.hpp"
 #include "autoviz/integration/channel_reader_registry.hpp"
+#include "autoviz/integration/message_queue.hpp"
 #include "autoviz/ui/icon_loader.hpp"
 #include "autoviz/ui/image/image_annotation_parser.hpp"
 #include "autoviz/ui/image/image_calibration_utils.hpp"
@@ -158,6 +161,9 @@ ImagePanel::ImagePanel(common::VisualizationManager* manager, QWidget* parent)
 
   syncSettingsWidgetFromConfig();
   applyConfigToUi();
+  // Default image_channel is non-empty; subscribe immediately so tutorials
+  // show frames without requiring a Settings round-trip.
+  resubscribeAll();
 }
 
 ImagePanel::~ImagePanel() {
@@ -200,8 +206,18 @@ void ImagePanel::installTitleBarTools(PanelDockWidget* dock) {
 
 ImagePanelConfig ImagePanel::config() const { return config_; }
 
+void ImagePanel::setFrameFromDisplay(const QImage& image) {
+  if (image.isNull()) {
+    return;
+  }
+  base_image_ = image;
+  updateRenderedFrame();
+}
+
 void ImagePanel::setConfig(const ImagePanelConfig& config) {
   config_ = config;
+  main_queue_.clear();
+  calibration_queue_.clear();
   resubscribeAll();
   applyConfigToUi();
 }
@@ -341,26 +357,17 @@ std::string ImagePanel::messageTypeForChannel(const std::string& channel) const 
 
 QImage ImagePanel::decodePayload(const std::string& message_type,
                                  const std::string& payload) {
-  if (isVideoMessageType(message_type)) {
-    if (!payload.empty() && payload.front() == '{') {
-      return DecodeCompressedVideoJson(payload, &video_decoder_);
-    }
-    return video_decoder_.decodePacket(
-        QStringLiteral("h264"),
-        reinterpret_cast<const std::byte*>(payload.data()), payload.size());
-  }
-  if (message_type == "automsgs.msgs.sensor_msgs.Image" ||
-      message_type == "sensor_msgs/Image") {
+  const std::string decoded = integration::DecodeChannelPayload(payload);
+  const auto try_parse_image = [&](const std::string& bytes) -> QImage {
     automsgs::msgs::sensor_msgs::Image message;
-    if (!message.ParseFromString(payload)) {
-      return {};
+    if (message.ParseFromString(bytes) || message.ParseFromString(payload)) {
+      return display::imageFromProto(message);
     }
-    return display::imageFromProto(message);
-  }
-  if (message_type == "automsgs.msgs.sensor_msgs.CompressedImage" ||
-      message_type == "sensor_msgs/CompressedImage") {
+    return {};
+  };
+  const auto try_parse_compressed = [&](const std::string& bytes) -> QImage {
     automsgs::msgs::sensor_msgs::CompressedImage message;
-    if (!message.ParseFromString(payload)) {
+    if (!message.ParseFromString(bytes) && !message.ParseFromString(payload)) {
       return {};
     }
     const QString format =
@@ -371,6 +378,32 @@ QImage ImagePanel::decodePayload(const std::string& message_type,
           message.data().size());
     }
     return display::compressedImageFromProto(message);
+  };
+
+  if (isVideoMessageType(message_type)) {
+    if (!decoded.empty() && decoded.front() == '{') {
+      return DecodeCompressedVideoJson(decoded, &video_decoder_);
+    }
+    return video_decoder_.decodePacket(
+        QStringLiteral("h264"),
+        reinterpret_cast<const std::byte*>(decoded.data()), decoded.size());
+  }
+  if (message_type.empty() ||
+      commsgs::MessageTypesCompatible(
+          message_type, "automsgs.msgs.sensor_msgs.Image") ||
+      message_type == "sensor_msgs/Image") {
+    if (QImage image = try_parse_image(decoded); !image.isNull()) {
+      return image;
+    }
+    if (!message_type.empty()) {
+      return {};
+    }
+  }
+  if (message_type.empty() ||
+      commsgs::MessageTypesCompatible(
+          message_type, "automsgs.msgs.sensor_msgs.CompressedImage") ||
+      message_type == "sensor_msgs/CompressedImage") {
+    return try_parse_compressed(decoded);
   }
   return {};
 }
@@ -378,20 +411,24 @@ QImage ImagePanel::decodePayload(const std::string& message_type,
 void ImagePanel::handleMainPayload(const std::string& payload) {
   const std::string channel = config_.image_channel.toStdString();
   const std::string message_type = messageTypeForChannel(channel);
-  QImage decoded = decodePayload(message_type, payload);
-  if (decoded.isNull()) {
+  const std::string decoded = integration::DecodeChannelPayload(payload);
+  QImage image_q = decodePayload(message_type, payload);
+  if (image_q.isNull()) {
     return;
   }
-  if (message_type == "automsgs.msgs.sensor_msgs.Image" ||
+  if (message_type.empty() ||
+      commsgs::MessageTypesCompatible(
+          message_type, "automsgs.msgs.sensor_msgs.Image") ||
       message_type == "sensor_msgs/Image") {
     automsgs::msgs::sensor_msgs::Image message;
-    if (message.ParseFromString(payload)) {
+    if (message.ParseFromString(decoded) || message.ParseFromString(payload)) {
       base_timestamp_ns_ = HeaderTimestampNs(message.header());
     }
-  } else if (message_type == "automsgs.msgs.sensor_msgs.CompressedImage" ||
+  } else if (commsgs::MessageTypesCompatible(
+                 message_type, "automsgs.msgs.sensor_msgs.CompressedImage") ||
              message_type == "sensor_msgs/CompressedImage") {
     automsgs::msgs::sensor_msgs::CompressedImage message;
-    if (message.ParseFromString(payload)) {
+    if (message.ParseFromString(decoded) || message.ParseFromString(payload)) {
       base_timestamp_ns_ = HeaderTimestampNs(message.header());
     }
   } else if (isVideoMessageType(message_type) && !payload.empty() &&
@@ -415,7 +452,7 @@ void ImagePanel::handleMainPayload(const std::string& payload) {
               .toLongLong();
     }
   }
-  base_image_ = decoded;
+  base_image_ = image_q;
   updateRenderedFrame();
 }
 
@@ -641,6 +678,7 @@ void ImagePanel::unsubscribeMain() {
     integration::ChannelReaderRegistry::instance().unsubscribe(main_subscription_id_);
     main_subscription_id_ = 0;
   }
+  main_queue_.clear();
 }
 
 void ImagePanel::subscribeMain() {
@@ -649,8 +687,9 @@ void ImagePanel::subscribeMain() {
   if (channel.empty()) {
     return;
   }
+  // Callbacks run on the autolink scheduler thread — only enqueue here.
   main_subscription_id_ = integration::ChannelReaderRegistry::instance().subscribe(
-      channel, [this](const std::string& payload) { handleMainPayload(payload); });
+      channel, [this](const std::string& payload) { main_queue_.push(payload); });
 }
 
 void ImagePanel::unsubscribeOverlays() {
@@ -666,19 +705,22 @@ void ImagePanel::unsubscribeOverlays() {
 
 void ImagePanel::subscribeOverlays() {
   unsubscribeOverlays();
-  overlay_runtime_.reserve(config_.overlays.size());
+  overlay_runtime_.reserve(static_cast<std::size_t>(config_.overlays.size()));
   for (int i = 0; i < config_.overlays.size(); ++i) {
     OverlayRuntime runtime;
     runtime.config = config_.overlays.at(i);
-    overlay_runtime_.push_back(runtime);
-    const std::string channel = runtime.config.channel.toStdString();
-    if (channel.empty() || !runtime.config.enabled) {
+    overlay_runtime_.push_back(std::move(runtime));
+    const std::string channel =
+        overlay_runtime_.back().config.channel.toStdString();
+    if (channel.empty() || !overlay_runtime_.back().config.enabled) {
       continue;
     }
     overlay_runtime_.back().subscription_id =
         integration::ChannelReaderRegistry::instance().subscribe(
             channel, [this, i](const std::string& payload) {
-              handleOverlayPayload(i, payload);
+              if (i >= 0 && static_cast<std::size_t>(i) < overlay_runtime_.size()) {
+                overlay_runtime_[static_cast<std::size_t>(i)].queue.push(payload);
+              }
             });
   }
 }
@@ -696,19 +738,25 @@ void ImagePanel::unsubscribeAnnotations() {
 
 void ImagePanel::subscribeAnnotations() {
   unsubscribeAnnotations();
-  annotation_runtime_.reserve(config_.annotation_channels.size());
+  annotation_runtime_.reserve(
+      static_cast<std::size_t>(config_.annotation_channels.size()));
   for (int i = 0; i < config_.annotation_channels.size(); ++i) {
     AnnotationRuntime runtime;
     runtime.channel = config_.annotation_channels.at(i);
-    annotation_runtime_.push_back(runtime);
-    const std::string channel = runtime.channel.toStdString();
+    annotation_runtime_.push_back(std::move(runtime));
+    const std::string channel =
+        annotation_runtime_.back().channel.toStdString();
     if (channel.empty()) {
       continue;
     }
     annotation_runtime_.back().subscription_id =
         integration::ChannelReaderRegistry::instance().subscribe(
             channel, [this, i](const std::string& payload) {
-              handleAnnotationPayload(i, payload);
+              if (i >= 0 &&
+                  static_cast<std::size_t>(i) < annotation_runtime_.size()) {
+                annotation_runtime_[static_cast<std::size_t>(i)].queue.push(
+                    payload);
+              }
             });
   }
 }
@@ -728,6 +776,7 @@ void ImagePanel::unsubscribeCalibration() {
         calibration_subscription_id_);
     calibration_subscription_id_ = 0;
   }
+  calibration_queue_.clear();
 }
 
 void ImagePanel::subscribeCalibration() {
@@ -741,7 +790,7 @@ void ImagePanel::subscribeCalibration() {
   calibration_subscription_id_ =
       integration::ChannelReaderRegistry::instance().subscribe(
           channel, [this](const std::string& payload) {
-            handleCalibrationPayload(payload);
+            calibration_queue_.push(payload);
           });
 }
 
@@ -758,24 +807,56 @@ void ImagePanel::unsubscribeMarkers() {
 
 void ImagePanel::subscribeMarkers() {
   unsubscribeMarkers();
-  marker_runtime_.reserve(config_.marker_channels.size());
+  marker_runtime_.reserve(
+      static_cast<std::size_t>(config_.marker_channels.size()));
   for (int i = 0; i < config_.marker_channels.size(); ++i) {
     MarkerRuntime runtime;
     runtime.channel = config_.marker_channels.at(i);
-    marker_runtime_.push_back(runtime);
-    const std::string channel = runtime.channel.toStdString();
+    marker_runtime_.push_back(std::move(runtime));
+    const std::string channel = marker_runtime_.back().channel.toStdString();
     if (channel.empty()) {
       continue;
     }
     marker_runtime_.back().subscription_id =
         integration::ChannelReaderRegistry::instance().subscribe(
             channel, [this, i](const std::string& payload) {
-              handleMarkerPayload(i, payload);
+              if (i >= 0 &&
+                  static_cast<std::size_t>(i) < marker_runtime_.size()) {
+                marker_runtime_[static_cast<std::size_t>(i)].queue.push(payload);
+              }
             });
   }
 }
 
+void ImagePanel::drainIncomingQueues() {
+  if (auto payload = main_queue_.takeLatest()) {
+    handleMainPayload(*payload);
+  }
+  if (auto payload = calibration_queue_.takeLatest()) {
+    handleCalibrationPayload(*payload);
+  }
+  for (std::size_t i = 0; i < overlay_runtime_.size(); ++i) {
+    if (auto payload = overlay_runtime_[i].queue.takeLatest()) {
+      handleOverlayPayload(static_cast<int>(i), *payload);
+    }
+  }
+  for (std::size_t i = 0; i < annotation_runtime_.size(); ++i) {
+    if (auto payload = annotation_runtime_[i].queue.takeLatest()) {
+      handleAnnotationPayload(static_cast<int>(i), *payload);
+    }
+  }
+  for (std::size_t i = 0; i < marker_runtime_.size(); ++i) {
+    if (auto payload = marker_runtime_[i].queue.takeLatest()) {
+      handleMarkerPayload(static_cast<int>(i), *payload);
+    }
+  }
+}
+
 void ImagePanel::onFrameTick() {
+  if (main_subscription_id_ == 0 && !config_.image_channel.isEmpty()) {
+    subscribeMain();
+  }
+  drainIncomingQueues();
   updateRenderedFrame();
 }
 

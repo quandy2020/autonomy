@@ -47,12 +47,20 @@ void LaserScanDisplay::processMessage(
   }
 
   const auto zero_time = autoviz::commsgs::ZeroTime();
+  const std::string frame = message.header().frame_id().empty()
+                                ? context_->fixed_frame
+                                : message.header().frame_id();
   automsgs::msgs::geometry_msgs::TransformStamped tf;
-  try {
-    tf = context_->tf_buffer->lookupTransform(
-        context_->fixed_frame, message.header().frame_id(), zero_time);
-  } catch (...) {
-    return;
+  bool have_tf = false;
+  if (frame != context_->fixed_frame) {
+    try {
+      tf = context_->tf_buffer->lookupTransform(context_->fixed_frame, frame,
+                                                zero_time);
+      have_tf = true;
+    } catch (...) {
+      setStatusWarn("TF missing: " + frame + " -> " + context_->fixed_frame);
+      return;
+    }
   }
 
   const QColor flat_color =
@@ -86,14 +94,18 @@ void LaserScanDisplay::processMessage(
     }
     const float angle =
         message.angle_min() + static_cast<float>(i) * message.angle_increment();
-    const QVector3D local(range * std::cos(angle), range * std::sin(angle), 0.f);
+    QVector3D local(range * std::cos(angle), range * std::sin(angle), 0.f);
+    if (have_tf) {
+      local = transformPoint(tf, local);
+    }
     QColor color = flat_color;
     if (use_intensity && i < message.intensities_size()) {
       color = colorFromIntensity(message.intensities(i), min_i, max_i);
     }
-    points_.push_back({transformPoint(tf, local), color});
+    points_.push_back({local, color});
   }
 
+  setStatusOk();
   if (context_->request_redraw) {
     context_->request_redraw();
   }

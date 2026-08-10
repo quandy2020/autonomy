@@ -15,8 +15,16 @@ void ApplyTfMessageToBuffer(
   if (buffer == nullptr) {
     return;
   }
+  // One TFMessage can contain dozens of transforms; each setTransform used to
+  // fire transforms-changed. That floods UI listeners and freezes Autoviz when
+  // returning from the background.
+  buffer->_setTransformsChangedSuppressed(true);
   for (const auto& transform : message.transforms()) {
     buffer->setTransform(transform, authority, is_static);
+  }
+  buffer->_setTransformsChangedSuppressed(false);
+  if (!message.transforms().empty()) {
+    buffer->_emitTransformsChanged();
   }
 }
 
