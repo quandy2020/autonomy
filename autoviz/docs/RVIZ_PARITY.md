@@ -9,7 +9,7 @@
 |---------------|------|------|
 | Grid | Grid | ✅ |
 | Axes | Axes | ✅ |
-| TF | TF | ✅ |
+| TF | TF | ✅ Frames/Tree/Filter/Timeout 对齐 RViz2；轴长 = 0.2×Marker Scale |
 | RobotModel | RobotModel | ✅ URDF 材质/纹理 PBR + 碰撞体线框 |
 | LaserScan | LaserScan | ✅ Flat / Intensity 着色 |
 | PointCloud2 | PointCloud2 | ✅ Flat / Intensity / RGB8 + Point Size |

@@ -5,6 +5,7 @@
 #pragma once
 
 #include <functional>
+#include <string>
 
 #include <QColor>
 #include <QCursor>
@@ -47,6 +48,10 @@ class OgreRenderWindow : public QWidget {
   void setToolManager(common::ToolManager* tool_manager) {
     tool_manager_ = tool_manager;
   }
+  void setViewportToolId(std::string tool_id) {
+    viewport_tool_id_ = std::move(tool_id);
+  }
+  const std::string& viewportToolId() const { return viewport_tool_id_; }
   void setToolCursor(const QCursor& cursor) {
     tool_cursor_ = cursor;
     setCursor(cursor);
@@ -58,6 +63,9 @@ class OgreRenderWindow : public QWidget {
 
   void setViewInteractionCallbacks(std::function<void()> on_drag_started,
                                    std::function<void()> on_drag_ended);
+  void setViewportActivationCallback(std::function<void()> on_activate) {
+    on_viewport_activate_ = std::move(on_activate);
+  }
 
   bool readDepthPick(int pixel_x, int pixel_y, const QMatrix4x4& view,
                      const QMatrix4x4& projection, QVector3D* world) const;
@@ -91,11 +99,13 @@ class OgreRenderWindow : public QWidget {
   SceneOverlay* scene_overlay_ = nullptr;
   ViewController view_controller_;
   common::ToolManager* tool_manager_ = nullptr;
+  std::string viewport_tool_id_ = "Interact";
   QCursor tool_cursor_ = Qt::ArrowCursor;
   OgreRenderBackend ogre_backend_;
   ReferenceGridSettings reference_grid_settings_;
   std::function<void()> on_view_drag_started_;
   std::function<void()> on_view_drag_ended_;
+  std::function<void()> on_viewport_activate_;
 };
 
 }  // namespace rendering

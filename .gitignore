@@ -5,6 +5,26 @@ __pycache__/
 *.py[cod]
 *.pyc
 *.logs
+*.log
+*.log.*
+
+# glog / INFO dumps (often huge; never commit)
+*.INFO
+*.INFO.*
+*.WARNING
+*.WARNING.*
+*.ERROR
+*.ERROR.*
+*.FATAL
+*.FATAL.*
+autoviz/*.INFO
+autoviz/*.WARNING
+autoviz/*.ERROR
+autoviz/autoviz*.log*
+
+# clangd / IDE index caches
+.cache/
+**/.cache/
 
 # https://github.com/github/gitignore/blob/main/ROS.gitignore
 devel/

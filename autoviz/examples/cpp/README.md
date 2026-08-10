@@ -5,16 +5,19 @@ Same channel names and message semantics for live Autoviz verification.
 
 ## Build
 
-From the autonomy / autoviz CMake build (requires `autolink` + `automsgs` targets):
+Requires `autolink` + `automsgs`. **Building `autoviz` also builds all C++ tutorials**
+(via target `autoviz_cpp_examples`). Disable with `-DAUTOVIZ_BUILD_CPP_EXAMPLES=OFF`.
 
 ```bash
+# Recommended: builds autoviz + all 01–24 publishers
+cmake --build build --target autoviz
+
+# Or tutorials only:
+cmake --build build --target autoviz_cpp_examples
 cmake --build build --target autoviz_cpp_01_poses
-# or build all:
-cmake --build build --target autoviz_cpp_24_teleop_echo
 ```
 
-Binaries land in `build/bin/examples/autoviz_cpp_*` (exact prefix depends on
-`CMAKE_BINARY_DIR` layout).
+Binaries: `build/bin/examples/autoviz_cpp_*`.
 
 URDF-backed demos (06 / 08 / 18) read
 `examples/python/urdf/pr2_simple.urdf`. Run from the **autoviz** package root, or:
@@ -27,11 +30,22 @@ export AUTOVIZ_EXAMPLES_DIR=/path/to/autoviz/examples
 
 ```bash
 cd src/autonomy/autoviz   # or your checkout of autoviz/
+
+# Point at this repo's Autolink conf (macOS needs shm_type=posix; default here).
+export AUTOLINK_PATH=/path/to/autonomy/autolink/autolink
+
+# Terminal 1 — publisher
 ./build/bin/examples/autoviz_cpp_01_poses --rate 10
-./build/autonomy/bin/autoviz   # path may vary
+
+# Terminal 2 — viewer (add Displays: Odometry/Path/Pose… on /fake/*)
+./build/bin/autoviz
 ```
 
 Common flags: `--rate <Hz>` (most publishers); `--static` (01 poses).
+
+If the publisher floods `create shm failed` / `acquire block failed`, Autolink is
+using SysV SHM (`xsi`) which macOS caps at ~4 MiB. Set `shm_type: "posix"` in
+`$AUTOLINK_PATH/conf/autolink.pb.conf` (already the default in this tree).
 
 ## Index (↔ Python)
 

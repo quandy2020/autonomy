@@ -310,53 +310,108 @@ QString ToolManager::activeStatusText() const {
 }
 
 bool ToolManager::mousePressEvent(QMouseEvent* event) {
-  if (Tool* tool = activeTool()) {
-    if (tool->mousePressEvent(event)) {
-      return true;
-    }
-    return !allowsViewportNavigation();
-  }
-  return false;
+  return mousePressEvent(event, active_tool_id_);
 }
 
 bool ToolManager::mouseMoveEvent(QMouseEvent* event) {
-  if (Tool* tool = activeTool()) {
-    if (tool->mouseMoveEvent(event)) {
-      return true;
-    }
-    return !allowsViewportNavigation();
-  }
-  return false;
+  return mouseMoveEvent(event, active_tool_id_);
 }
 
 bool ToolManager::mouseReleaseEvent(QMouseEvent* event) {
-  if (Tool* tool = activeTool()) {
-    if (tool->mouseReleaseEvent(event)) {
+  return mouseReleaseEvent(event, active_tool_id_);
+}
+
+bool ToolManager::wheelEvent(QWheelEvent* event) {
+  return wheelEvent(event, active_tool_id_);
+}
+
+bool ToolManager::mousePressEvent(QMouseEvent* event,
+                                  const std::string& tool_id) {
+  if (Tool* tool = toolById(tool_id)) {
+    tool->updateContext(&context_);
+    if (tool->mousePressEvent(event)) {
       return true;
     }
-    return !allowsViewportNavigation();
+    return !allowsViewportNavigation(tool_id);
   }
   return false;
 }
 
-bool ToolManager::wheelEvent(QWheelEvent* event) {
-  if (Tool* tool = activeTool()) {
+bool ToolManager::mouseMoveEvent(QMouseEvent* event,
+                                 const std::string& tool_id) {
+  if (Tool* tool = toolById(tool_id)) {
+    tool->updateContext(&context_);
+    if (tool->mouseMoveEvent(event)) {
+      return true;
+    }
+    return !allowsViewportNavigation(tool_id);
+  }
+  return false;
+}
+
+bool ToolManager::mouseReleaseEvent(QMouseEvent* event,
+                                    const std::string& tool_id) {
+  if (Tool* tool = toolById(tool_id)) {
+    tool->updateContext(&context_);
+    if (tool->mouseReleaseEvent(event)) {
+      return true;
+    }
+    return !allowsViewportNavigation(tool_id);
+  }
+  return false;
+}
+
+bool ToolManager::wheelEvent(QWheelEvent* event, const std::string& tool_id) {
+  if (Tool* tool = toolById(tool_id)) {
+    tool->updateContext(&context_);
     if (tool->wheelEvent(event)) {
       return true;
     }
-    return !allowsViewportNavigation();
+    return !allowsViewportNavigation(tool_id);
   }
   return false;
 }
 
 void ToolManager::onDraw(rendering::SceneOverlay& scene) {
   if (Tool* tool = activeTool()) {
+    // Measure is drawn per RenderWindow so Split panels stay independent.
+    if (tool->id() == "Measure") {
+      return;
+    }
     tool->onDraw(scene);
   }
 }
 
+void ToolManager::drawTool(const std::string& tool_id,
+                           const std::string& viewport_key,
+                           rendering::SceneOverlay& scene) {
+  Tool* tool = toolById(tool_id);
+  if (tool == nullptr) {
+    return;
+  }
+  const std::string previous_key = context_.viewport_key;
+  context_.viewport_key = viewport_key;
+  tool->updateContext(&context_);
+  tool->onDraw(scene);
+  context_.viewport_key = previous_key;
+}
+
+void ToolManager::clearToolViewportSession(const std::string& tool_id,
+                                           const std::string& viewport_key) {
+  if (Tool* tool = toolById(tool_id)) {
+    tool->clearViewportSession(viewport_key);
+  }
+}
+
 bool ToolManager::allowsViewportNavigation() const {
-  return active_tool_id_ == "MoveCamera" || active_tool_id_ == "Interact";
+  return allowsViewportNavigation(active_tool_id_);
+}
+
+bool ToolManager::allowsViewportNavigation(const std::string& tool_id) const {
+  // Select consumes only left-clicks on geometry; empty-space / middle / shift
+  // falls through to the view controller (see SelectTool::mousePressEvent).
+  return tool_id == "MoveCamera" || tool_id == "Interact" ||
+         tool_id == "Select";
 }
 
 char ToolManager::shortcutKeyForTool(const std::string& id) const {

@@ -636,6 +636,7 @@ SessionConfig SessionConfigIO::defaultConfig() {
       {"Axes", "Axes", "", true},
       {"TF", "TF", "/tf", true},
       {"LaserScan", "Scan", "/fake/scan", true},
+      {"Image", "Camera", "/fake/image", true},
       {"Marker", "Marker", "/fake/marker", true},
       {"Path", "Path", "/fake/path", true},
       {"Map", "Map", "/fake/occupancy_grid", true},
@@ -643,6 +644,11 @@ SessionConfig SessionConfigIO::defaultConfig() {
       {"PointCloud2", "PointCloud2", "/fake/point_cloud2", true},
       {"RobotModel", "Robot", "/joint_states", true},
   };
+  ImagePanelPersistConfig image_panel;
+  image_panel.object_name = "ImageDock";
+  image_panel.title = "Image";
+  image_panel.image_channel = "/fake/image";
+  config.image_panels.push_back(std::move(image_panel));
   return config;
 }
 

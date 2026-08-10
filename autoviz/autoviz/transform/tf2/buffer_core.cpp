@@ -1442,8 +1442,10 @@ void BufferCore::testTransformableRequests() {
                        std::get<4>(tt), std::get<5>(tt));
     }
 
-    // Backwards compatability callback for tf
-    _transforms_changed_();
+    // Backwards compatability callback for tf (may be suppressed for TFMessage batches).
+    if (!transforms_changed_suppressed_) {
+        _transforms_changed_();
+    }
 }
 
 std::string BufferCore::_allFramesAsDot(double current_time) const {

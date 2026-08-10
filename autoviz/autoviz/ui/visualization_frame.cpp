@@ -44,6 +44,7 @@
 
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/common/tool_manager.hpp"
+#include "autoviz/integration/message_queue.hpp"
 #include "autoviz/rendering/ogre_render_window.hpp"
 #include "autoviz/rendering/render_window.hpp"
 #include "autoviz/rendering/gpu_capabilities.hpp"
@@ -145,6 +146,14 @@ void VisualizationFrame::setActiveViewportDock(PanelDockWidget* dock) {
   }
   active_viewport_dock_ = dock;
   last_active_dock_ = dock;
+  if (ViewportPanelEntry* entry = viewportEntryForDock(dock)) {
+    // Keep main toolbar / global tool aligned with this split's local tool.
+    if (manager_ != nullptr &&
+        manager_->tools().activeToolId() != entry->local_tool_id) {
+      manager_->tools().setActiveTool(entry->local_tool_id);
+      syncToolbarToActiveTool();
+    }
+  }
   if (views_panel_ != nullptr) {
     views_panel_->setViewController(activeViewController());
   }
@@ -176,6 +185,7 @@ void VisualizationFrame::createRenderWindowInEntry(ViewportPanelEntry& entry,
                                                    const QString& backend) {
   rendering::GpuCapabilities::instance().ensureProbed();
   destroyRenderWindowInEntry(entry);
+  entry.saved_3d_view_state.reset();
 
   if (backend == QLatin1String("Ogre")) {
 #ifdef AUTOVIZ_USE_OGRE
@@ -208,6 +218,8 @@ void VisualizationFrame::createRenderWindowInEntry(ViewportPanelEntry& entry,
     if (entry.floating_toolbar != nullptr) {
       entry.layout->addWidget(entry.floating_toolbar, 0, 0,
                               Qt::AlignRight | Qt::AlignTop);
+      entry.floating_toolbar->raise();
+      entry.floating_toolbar->show();
     }
   }
   applyViewportEntryRenderSettings(entry);
@@ -216,6 +228,12 @@ void VisualizationFrame::createRenderWindowInEntry(ViewportPanelEntry& entry,
 
 void VisualizationFrame::applyViewportEntryRenderSettings(
     ViewportPanelEntry& entry) {
+  PanelDockWidget* dock = entry.dock;
+  const std::string viewport_key =
+      dock != nullptr ? dock->objectName().toStdString() : std::string();
+  const auto activate = [this, dock]() {
+    setActiveViewportDock(dock);
+  };
   if (entry.gl_viewport != nullptr) {
     entry.gl_viewport->setGridVisible(manager_->showGrid());
     entry.gl_viewport->setBackgroundColor(
@@ -223,6 +241,9 @@ void VisualizationFrame::applyViewportEntryRenderSettings(
                                    QColor(48, 48, 48)));
     entry.gl_viewport->viewController().setFrameManager(&manager_->frameManager());
     entry.gl_viewport->setToolManager(&manager_->tools());
+    entry.gl_viewport->setViewportToolId(entry.local_tool_id);
+    entry.gl_viewport->setViewportKey(viewport_key);
+    entry.gl_viewport->setViewportActivationCallback(activate);
   }
   if (entry.ogre_viewport != nullptr) {
     entry.ogre_viewport->setGridVisible(manager_->showGrid());
@@ -231,6 +252,8 @@ void VisualizationFrame::applyViewportEntryRenderSettings(
                                    QColor(48, 48, 48)));
     entry.ogre_viewport->viewController().setFrameManager(&manager_->frameManager());
     entry.ogre_viewport->setToolManager(&manager_->tools());
+    entry.ogre_viewport->setViewportToolId(entry.local_tool_id);
+    entry.ogre_viewport->setViewportActivationCallback(activate);
   }
 }
 
@@ -441,6 +464,54 @@ VisualizationFrame::VisualizationFrame(
           &VisualizationFrame::onRefreshTick);
   refresh_timer_.start(1000);
 
+  connect(qApp, &QGuiApplication::applicationStateChanged, this,
+          [this](Qt::ApplicationState state) {
+            const bool inactive = state != Qt::ApplicationActive;
+            if (inactive == app_inactive_) {
+              return;
+            }
+            app_inactive_ = inactive;
+            if (inactive) {
+              // Stop accepting channel payloads and drop anything already queued
+              // so background traffic never becomes a render backlog.
+              integration::MessageQueue::setAcceptIncoming(false);
+              integration::MessageQueue::clearAllPending();
+              setRenderingPaused(true);
+              if (displays_panel_ != nullptr) {
+                displays_panel_->setLiveUpdatesPaused(true);
+              }
+              if (tf_tree_panel_ != nullptr) {
+                tf_tree_panel_->setPaused(true);
+              }
+              return;
+            }
+            // Resume: discard race payloads from the inactive window, then only
+            // accept live frames. Do not process/render background-stale samples.
+            integration::MessageQueue::clearAllPending();
+            integration::MessageQueue::setAcceptIncoming(true);
+            render_elapsed_.restart();
+            if (displays_panel_ != nullptr) {
+              displays_panel_->setLiveUpdatesPaused(false);
+            }
+            if (tf_tree_panel_ != nullptr) {
+              tf_tree_panel_->setPaused(false);
+            }
+            setRenderingPaused(false);
+            // Paint current scene once; channel displays wait for the next
+            // live message (queues were cleared above).
+            QTimer::singleShot(0, this, [this]() {
+              if (app_inactive_ || manager_ == nullptr) {
+                return;
+              }
+              syncToolContext();
+              forEachViewportPanel([](ViewportPanelEntry& entry) {
+                if (entry.widget != nullptr) {
+                  entry.widget->update();
+                }
+              });
+            });
+          });
+
   connect(qApp, &QApplication::aboutToQuit, this,
           &VisualizationFrame::onAboutToQuit);
 
@@ -448,8 +519,15 @@ VisualizationFrame::VisualizationFrame(
           &VisualizationFrame::onFixedFrameChanged);
   connect(displays_panel_, &DisplaysPanel::backgroundColorChanged, this,
           &VisualizationFrame::applyBackgroundColor);
-  connect(displays_panel_, &DisplaysPanel::displaysChanged, this,
-          [this]() { requestViewportUpdate(); });
+  // Property edits only need a redraw on the next render tick; avoid a
+  // synchronous manager_->update() on the UI thread (feels like UI jank).
+  connect(displays_panel_, &DisplaysPanel::displaysChanged, this, [this]() {
+    forEachViewportPanel([](ViewportPanelEntry& entry) {
+      if (entry.widget != nullptr) {
+        entry.widget->update();
+      }
+    });
+  });
 
   connectConfigModifiedSignals();
 
@@ -656,8 +734,23 @@ rendering::ViewController* VisualizationFrame::activeViewController() {
 }
 
 void VisualizationFrame::requestViewportUpdate() {
+  // While manager_->update() is running, displays often call request_redraw from
+  // processMessage. Nested syncToolContext + update() storms the UI thread —
+  // especially after returning from the background with a message backlog.
+  // The render timer owns update cadence; here we only schedule a paint.
+  if (manager_ != nullptr && manager_->isUpdating()) {
+    forEachViewportPanel([](ViewportPanelEntry& entry) {
+      if (entry.widget != nullptr) {
+        entry.widget->update();
+      }
+    });
+    return;
+  }
+  if (app_inactive_) {
+    return;
+  }
   syncToolContext();
-  if (manager_ != nullptr && !manager_->isUpdating()) {
+  if (manager_ != nullptr) {
     manager_->update();
   }
   forEachViewportPanel([](ViewportPanelEntry& entry) {
@@ -692,6 +785,9 @@ void VisualizationFrame::syncToolContext() {
   common::ToolContext context;
   context.view_controller = activeViewController();
   context.scene_overlay = &manager_->sceneOverlay();
+  if (active_entry != nullptr && active_entry->dock != nullptr) {
+    context.viewport_key = active_entry->dock->objectName().toStdString();
+  }
   if (active_entry != nullptr && active_entry->widget != nullptr) {
     context.viewport_width = active_entry->widget->width();
     context.viewport_height = active_entry->widget->height();
@@ -1817,7 +1913,19 @@ void VisualizationFrame::setupUi() {
   image_dock_ = createImagePanelDock(QStringLiteral("ImageDock"));
   image_panel_ = qobject_cast<image::ImagePanel*>(image_dock_->widget());
   addMainPanelDock(image_dock_, Qt::LeftDockWidgetArea);
-  image_dock_->hide();
+  // Visible by default so /fake/image from sensor tutorials shows without
+  // hunting for a hidden dock + empty topic setting.
+  image_dock_->show();
+  // Image Display decodes on the UI thread; forward frames so the panel still
+  // updates even if its own channel handoff races.
+  manager_->setImageUpdateCallback(
+      [this](const QString& /*source*/, const QImage& image) {
+        image::ImagePanel* panel =
+            active_image_panel_ != nullptr ? active_image_panel_ : image_panel_;
+        if (panel != nullptr) {
+          panel->setFrameFromDisplay(image);
+        }
+      });
 
   plot_dock_ = createPlotPanelDock(QStringLiteral("PlotDock"));
   plot_panel_ = qobject_cast<plot::PlotPanel*>(plot_dock_->widget());
@@ -2198,6 +2306,12 @@ void VisualizationFrame::rebuildToolbar() {
 }
 
 void VisualizationFrame::applyActiveTool(const std::string& tool_id) {
+  if (ViewportPanelEntry* entry = activeViewportEntry()) {
+    // Prefer dock-scoped path so Measure session clears for this Split only.
+    setViewportLocalTool(entry->dock, tool_id);
+    syncActiveToolUi();
+    return;
+  }
   if (!manager_->tools().setActiveTool(tool_id)) {
     return;
   }
@@ -2233,15 +2347,14 @@ void VisualizationFrame::syncToolbarToActiveTool() {
 }
 
 void VisualizationFrame::updateViewportCursor() {
-  if (common::Tool* tool = manager_->tools().activeTool()) {
-    tool->setCursor(IconLoader::toolCursor(
-        QString::fromStdString(manager_->tools().activeToolId())));
-  }
-  const QCursor cursor =
-      manager_->tools().activeTool() != nullptr
-          ? manager_->tools().activeTool()->cursor()
-          : IconLoader::defaultCursor();
-  forEachViewportPanel([&cursor](ViewportPanelEntry& entry) {
+  forEachViewportPanel([this](ViewportPanelEntry& entry) {
+    common::Tool* tool = manager_->tools().toolById(entry.local_tool_id);
+    if (tool != nullptr) {
+      tool->setCursor(IconLoader::toolCursor(
+          QString::fromStdString(entry.local_tool_id)));
+    }
+    const QCursor cursor =
+        tool != nullptr ? tool->cursor() : IconLoader::defaultCursor();
     if (entry.host != nullptr) {
       entry.host->setCursor(cursor);
     }
@@ -2333,7 +2446,17 @@ void VisualizationFrame::applyViewController(const QString& name) {
       }
     }
   }
-  requestViewportUpdate();
+  // Avoid manager_->update() here: during startup callbacks this runs on the
+  // UI thread before the splash finishes and can stall on TF / message queues.
+  if (views_panel_ != nullptr) {
+    views_panel_->refreshFromController();
+  }
+  syncViewportTitleBarTools();
+  forEachViewportPanel([](ViewportPanelEntry& entry) {
+    if (entry.widget != nullptr) {
+      entry.widget->update();
+    }
+  });
 }
 
 void VisualizationFrame::onScreenshot() {
@@ -2408,7 +2531,12 @@ void VisualizationFrame::applyRenderBackend(const QString& name) {
   applyViewController(QString::fromStdString(manager_->viewControllerName()));
   syncToolContext();
   updateViewportCursor();
-  requestViewportUpdate();
+  // Widget repaint only — do not drain display message queues here (startup).
+  forEachViewportPanel([](ViewportPanelEntry& entry) {
+    if (entry.widget != nullptr) {
+      entry.widget->update();
+    }
+  });
 }
 
 void VisualizationFrame::keyPressEvent(QKeyEvent* event) {
@@ -2459,6 +2587,12 @@ bool VisualizationFrame::loadConfig(const QString& path) {
   restoreStateTransitionPanelConfigs();
   applyPlotSettingsVisibilityFromSession();
   applyActiveTool(manager_->tools().activeToolId());
+  // Config window-state may have hidden ImageDock; keep it available when a
+  // default image topic is configured (tutorial path).
+  if (image_dock_ != nullptr && image_panel_ != nullptr &&
+      !image_panel_->config().image_channel.isEmpty()) {
+    image_dock_->show();
+  }
   ensureTimeDockAtBottom();
   syncDeletePanelMenu();
   updateStatusBar();
@@ -2732,8 +2866,14 @@ void VisualizationFrame::onFixedFrameChanged(const QString& /*frame*/) {
 }
 
 void VisualizationFrame::onRenderTick() {
+  if (app_inactive_) {
+    return;
+  }
   const qint64 elapsed_ms = render_elapsed_.restart();
-  const float delta_seconds = static_cast<float>(elapsed_ms) / 1000.f;
+  // After backgrounding, elapsed can be huge; clamp so FPS/view ticks don't
+  // jump and we don't try to "catch up" expensive work in one frame.
+  const float delta_seconds =
+      static_cast<float>(std::min<qint64>(elapsed_ms, 100)) / 1000.f;
   syncToolContext();
   manager_->update();
   viewportTick(delta_seconds);
@@ -2761,6 +2901,9 @@ void VisualizationFrame::onRenderTick() {
 }
 
 void VisualizationFrame::onRefreshTick() {
+  if (app_inactive_) {
+    return;
+  }
   manager_->refreshChannelList();
   displays_panel_->refreshStatus();
   if (views_panel_ != nullptr) {
@@ -2985,14 +3128,17 @@ void VisualizationFrame::expandPanelDock(PanelDockWidget* dock) {
   expanded_main_panel_dock_ = dock;
 
   ensureMainPanelDockAttached(dock);
+  // Detach every other main-panel dock — do not rely on isVisible().
+  // Tabified Plot/Log often report isVisible()==false while their tabs remain
+  // in the center column; hide-only leaves that chrome behind after Expand.
   for (PanelDockWidget* candidate : orderedDockWidgets()) {
     if (candidate == nullptr || candidate == dock || !isMainPanel(candidate)) {
       continue;
     }
-    if (main_panel_host_->dockWidgetArea(candidate) != Qt::NoDockWidgetArea &&
-        candidate->isVisible()) {
-      candidate->hide();
+    if (main_panel_host_->dockWidgetArea(candidate) != Qt::NoDockWidgetArea) {
+      main_panel_host_->removeDockWidget(candidate);
     }
+    candidate->hide();
   }
 
   dock->show();
@@ -3111,10 +3257,8 @@ void VisualizationFrame::syncViewportFloatingToolbarForEntry(
   if (entry.floating_toolbar == nullptr) {
     return;
   }
-  const QString active =
-      QString::fromStdString(manager_->tools().activeToolId());
-  entry.floating_toolbar->setInspectChecked(active == QLatin1String("Select"));
-  entry.floating_toolbar->setMeasureChecked(active == QLatin1String("Measure"));
+  entry.floating_toolbar->setInspectChecked(entry.local_tool_id == "Select");
+  entry.floating_toolbar->setMeasureChecked(entry.local_tool_id == "Measure");
   if (rendering::ViewController* controller = entry.viewController()) {
     const auto type = controller->type();
     entry.floating_toolbar->set2dCameraChecked(
@@ -3126,53 +3270,127 @@ void VisualizationFrame::syncViewportFloatingToolbarForEntry(
   }
 }
 
-void VisualizationFrame::onViewportInspectTool() {
-  applyActiveTool("Select");
+void VisualizationFrame::pushViewportLocalTool(ViewportPanelEntry& entry) {
+  const std::string viewport_key =
+      entry.dock != nullptr ? entry.dock->objectName().toStdString()
+                            : std::string();
+  if (entry.gl_viewport != nullptr) {
+    entry.gl_viewport->setViewportToolId(entry.local_tool_id);
+    entry.gl_viewport->setViewportKey(viewport_key);
+  }
+  if (entry.ogre_viewport != nullptr) {
+    entry.ogre_viewport->setViewportToolId(entry.local_tool_id);
+  }
+  syncViewportFloatingToolbarForEntry(entry);
+  if (common::Tool* tool = manager_->tools().toolById(entry.local_tool_id)) {
+    tool->setCursor(IconLoader::toolCursor(
+        QString::fromStdString(entry.local_tool_id)));
+    const QCursor cursor = tool->cursor();
+    if (entry.gl_viewport != nullptr) {
+      entry.gl_viewport->setToolCursor(cursor);
+    }
+    if (entry.ogre_viewport != nullptr) {
+      entry.ogre_viewport->setToolCursor(cursor);
+    }
+  }
 }
 
-void VisualizationFrame::onViewportToggle2dCamera() {
-  rendering::ViewController* controller = activeViewController();
+void VisualizationFrame::setViewportLocalTool(PanelDockWidget* dock,
+                                              const std::string& tool_id) {
+  ViewportPanelEntry* entry = viewportEntryForDock(dock);
+  if (entry == nullptr || manager_->tools().toolById(tool_id) == nullptr) {
+    return;
+  }
+  const std::string previous_tool = entry->local_tool_id;
+  const std::string viewport_key =
+      dock != nullptr ? dock->objectName().toStdString() : std::string();
+  entry->local_tool_id = tool_id;
+  pushViewportLocalTool(*entry);
+  if (previous_tool == "Measure" && tool_id != "Measure") {
+#ifdef AUTOVIZ_USE_OGRE
+    // clearViewportSession must hit this dock's host, not the active one.
+    if (entry->ogre_viewport != nullptr) {
+      manager_->displayContext().ogre_scene_host =
+          entry->ogre_viewport->ogreSceneHost();
+    }
+#endif
+    manager_->tools().clearToolViewportSession("Measure", viewport_key);
+  }
+  if (dock == active_viewport_dock_) {
+    manager_->tools().setActiveTool(tool_id);
+    syncToolbarToActiveTool();
+    syncToolContext();
+    if (tool_properties_panel_ != nullptr) {
+      tool_properties_panel_->refresh();
+    }
+    updateStatusBar();
+  }
+  requestViewportUpdate();
+}
+
+void VisualizationFrame::toggleViewportLocalTool(PanelDockWidget* dock,
+                                                 const std::string& tool_id) {
+  ViewportPanelEntry* entry = viewportEntryForDock(dock);
+  if (entry == nullptr) {
+    return;
+  }
+  const std::string next =
+      entry->local_tool_id == tool_id
+          ? manager_->tools().defaultToolId()
+          : tool_id;
+  setViewportLocalTool(dock, next.empty() ? "Interact" : next);
+}
+
+void VisualizationFrame::onViewportToggle2dCamera(PanelDockWidget* dock) {
+  ViewportPanelEntry* entry = viewportEntryForDock(dock);
+  if (entry == nullptr) {
+    return;
+  }
+  setActiveViewportDock(dock);
+  rendering::ViewController* controller = entry->viewController();
   if (controller == nullptr) {
     return;
   }
   const auto type = controller->type();
-  if (type == rendering::ViewControllerType::kTopDown ||
-      type == rendering::ViewControllerType::kTopDownOrtho) {
-    controller->setTypeByName(QStringLiteral("Orbit"));
+  const bool in_2d = type == rendering::ViewControllerType::kTopDown ||
+                     type == rendering::ViewControllerType::kTopDownOrtho;
+  if (in_2d) {
+    if (entry->saved_3d_view_state.has_value()) {
+      controller->setState(*entry->saved_3d_view_state);
+      entry->saved_3d_view_state.reset();
+    } else {
+      controller->setTypeByName(QStringLiteral("Orbit"));
+    }
   } else {
+    // TopDownOrtho::setType overwrites yaw/pitch — save full 3D state first.
+    entry->saved_3d_view_state = controller->state();
     controller->setTypeByName(QStringLiteral("TopDownOrtho"));
   }
-  if (views_panel_ != nullptr) {
+  if (views_panel_ != nullptr && dock == active_viewport_dock_) {
     views_panel_->refreshFromController();
   }
-  syncViewportTitleBarTools();
+  syncViewportFloatingToolbarForEntry(*entry);
   requestViewportUpdate();
   markConfigModified();
 }
 
-void VisualizationFrame::onViewportMeasureTool() {
-  applyActiveTool("Measure");
-}
-
-void VisualizationFrame::onViewportRecenterOnFrame() {
-  rendering::ViewController* controller = activeViewController();
+void VisualizationFrame::onViewportRecenterOnFrame(PanelDockWidget* dock) {
+  ViewportPanelEntry* entry = viewportEntryForDock(dock);
+  if (entry == nullptr) {
+    return;
+  }
+  setActiveViewportDock(dock);
+  rendering::ViewController* controller = entry->viewController();
   if (controller == nullptr) {
     return;
   }
-  const QString frame_label = controller->targetFrameDisplay();
-  if (frame_label == rendering::ViewTargetFrameFixedSentinel()) {
-    controller->setTarget(QVector3D(0.f, 0.f, 0.f));
-  } else {
-    QVector3D position;
-    QQuaternion orientation;
-    if (manager_->frameManager().getTransform(frame_label.toStdString(), &position,
-                                             &orientation)) {
-      controller->setTarget(position);
-    }
-  }
-  if (views_panel_ != nullptr) {
+  // Same as Views panel "Zero": reset yaw/pitch/distance/focal point to defaults
+  // in the Target Frame. Only setTarget(0,0,0) is a no-op after orbit-only moves.
+  controller->reset();
+  if (views_panel_ != nullptr && dock == active_viewport_dock_) {
     views_panel_->refreshFromController();
   }
+  syncViewportFloatingToolbarForEntry(*entry);
   requestViewportUpdate();
   markConfigModified();
 }
@@ -3182,24 +3400,37 @@ void VisualizationFrame::installViewportFloatingToolbar(ViewportPanelEntry& entr
     return;
   }
   entry.floating_toolbar = new ViewportFloatingToolbar(entry.host);
+  PanelDockWidget* dock = entry.dock;
   ViewportFloatingToolbarCallbacks callbacks;
-  callbacks.on_inspect = [this]() { onViewportInspectTool(); };
-  callbacks.on_toggle_2d_camera = [this]() { onViewportToggle2dCamera(); };
-  callbacks.on_measure = [this]() { onViewportMeasureTool(); };
-  callbacks.on_recenter_frame = [this]() { onViewportRecenterOnFrame(); };
+  callbacks.on_inspect = [this, dock]() {
+    setActiveViewportDock(dock);
+    toggleViewportLocalTool(dock, "Select");
+  };
+  callbacks.on_toggle_2d_camera = [this, dock]() {
+    onViewportToggle2dCamera(dock);
+  };
+  callbacks.on_measure = [this, dock]() {
+    setActiveViewportDock(dock);
+    toggleViewportLocalTool(dock, "Measure");
+  };
+  callbacks.on_recenter_frame = [this, dock]() {
+    onViewportRecenterOnFrame(dock);
+  };
   entry.floating_toolbar->setCallbacks(std::move(callbacks));
   if (entry.layout != nullptr) {
     entry.layout->addWidget(entry.floating_toolbar, 0, 0,
                             Qt::AlignRight | Qt::AlignTop);
     entry.layout->setContentsMargins(0, 8, 8, 8);
   }
+  entry.floating_toolbar->raise();
+  entry.floating_toolbar->show();
   syncViewportFloatingToolbarForEntry(entry);
 }
 
 void VisualizationFrame::syncViewportTitleBarTools() {
-  if (ViewportPanelEntry* entry = activeViewportEntry()) {
-    syncViewportTitleBarToolsForEntry(*entry);
-  }
+  forEachViewportPanel([this](ViewportPanelEntry& entry) {
+    syncViewportTitleBarToolsForEntry(entry);
+  });
 }
 
 void VisualizationFrame::installViewportTitleBarToolsForEntry(
@@ -3962,7 +4193,15 @@ void VisualizationFrame::restoreImagePanelConfigs() {
       manager_->imagePanels();
   if (saved.empty()) {
     if (image_panel_ != nullptr) {
+      image::ImagePanelConfig cfg = image_panel_->config();
+      if (cfg.image_channel.isEmpty()) {
+        cfg.image_channel = QStringLiteral("/fake/image");
+        image_panel_->setConfig(cfg);
+      }
       updateImageDockTitle(image_dock_, image_panel_);
+      if (image_dock_ != nullptr) {
+        image_dock_->show();
+      }
     }
     return;
   }

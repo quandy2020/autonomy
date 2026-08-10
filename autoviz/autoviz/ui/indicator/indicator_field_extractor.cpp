@@ -12,6 +12,7 @@
 #include <cmath>
 #include <sstream>
 
+#include "autoviz/common/protobuf_qt_string.hpp"
 #include "autoviz/commsgs/message_type_utils.hpp"
 #include "autoviz/ui/plot/message_path_navigation.hpp"
 
@@ -122,7 +123,7 @@ std::optional<IndicatorFieldValue> ReadScalarField(
       value.number = enum_value;
       if (const google::protobuf::EnumValueDescriptor* enum_desc =
               field->enum_type()->FindValueByNumber(enum_value)) {
-        value.text = QString::fromStdString(enum_desc->name());
+        value.text = ProtobufToQString(enum_desc->name());
       }
       break;
     }

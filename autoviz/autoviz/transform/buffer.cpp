@@ -120,9 +120,12 @@ std::vector<TfFrameStats> Buffer::frameStats() const {
     } else {
       stats.frame_id = frame_id;
     }
-    std::string parent;
-    if (_getParent(frame_id, 0, parent)) {
-      stats.parent_id = parent;
+    // recordFrameStats already fills parent_id; only resolve when missing.
+    if (stats.parent_id.empty() || stats.parent_id == "NO_PARENT") {
+      std::string parent;
+      if (_getParent(frame_id, 0, parent)) {
+        stats.parent_id = parent;
+      }
     }
     out.push_back(std::move(stats));
   }
@@ -177,6 +180,27 @@ bool Buffer::canTransform(const std::string& target_frame,
                             std::string* errstr) const {
   const uint64_t requested_ns =
       automsgs::msgs::builtin_interfaces::TimeToNanoseconds(time);
+  const auto tryOnce = [&](std::string* err) -> bool {
+    const bool ok = tf2::BufferCore::canTransform(target_frame, source_frame,
+                                                  requested_ns, err);
+    if (ok) {
+      return true;
+    }
+    if (requested_ns != 0 && err != nullptr && IsFutureExtrapolation(*err)) {
+      std::string latest_err;
+      return tf2::BufferCore::canTransform(target_frame, source_frame, 0ULL,
+                                           &latest_err);
+    }
+    return false;
+  };
+
+  // Non-blocking (display / UI thread): one attempt, never sleep.
+  if (timeout_second <= 0.f) {
+    std::string local_err;
+    std::string* err = errstr != nullptr ? errstr : &local_err;
+    return tryOnce(err);
+  }
+
   const uint64_t timeout_ns =
       static_cast<uint64_t>(timeout_second * kSecondToNanoFactor);
   const auto start = std::chrono::steady_clock::now();
@@ -187,17 +211,8 @@ bool Buffer::canTransform(const std::string& target_frame,
     }
     std::string local_err;
     std::string* err = errstr != nullptr ? errstr : &local_err;
-    const bool retval = tf2::BufferCore::canTransform(
-        target_frame, source_frame, requested_ns, err);
-    if (retval) {
+    if (tryOnce(err)) {
       return true;
-    }
-    if (requested_ns != 0 && IsFutureExtrapolation(*err)) {
-      std::string latest_err;
-      if (tf2::BufferCore::canTransform(target_frame, source_frame, 0ULL,
-                                        &latest_err)) {
-        return true;
-      }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(3));
   }

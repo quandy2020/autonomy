@@ -8,7 +8,9 @@
 #include <QCursor>
 #include <QKeyEvent>
 #include <QMouseEvent>
+#include <QSize>
 #include <QWheelEvent>
+#include <cmath>
 
 #include "autoviz/common/tool_manager.hpp"
 #include "autoviz/platform/opengl_setup.hpp"
@@ -30,9 +32,9 @@ RenderWindow::~RenderWindow() {
   makeCurrent();
   pick_framebuffer_.destroy();
   grid_renderer_.shutdown();
-  if (scene_overlay_ != nullptr) {
-    scene_overlay_->shutdown();
-  }
+  tool_overlay_.shutdown();
+  // scene_overlay_ is owned by VisualizationManager and shared across
+  // viewports — never shut it down from a viewport destructor.
   doneCurrent();
 }
 
@@ -42,12 +44,31 @@ void RenderWindow::initializeGL() {
   if (scene_overlay_ != nullptr) {
     scene_overlay_->initialize();
   }
+  tool_overlay_.initialize();
+  syncRendererFramebufferSize();
+}
+
+QSize RenderWindow::framebufferSize() const {
+  // QWidget::width/height are logical points; the GL FBO is in device pixels.
+  // On Retina (dpr=2), using logical size for glViewport draws into the
+  // bottom-left quarter of the panel.
+  const qreal dpr = devicePixelRatioF();
+  return QSize(
+      std::max(1, static_cast<int>(std::lround(width() * dpr))),
+      std::max(1, static_cast<int>(std::lround(height() * dpr))));
+}
+
+void RenderWindow::syncRendererFramebufferSize() {
+  const QSize fb = framebufferSize();
+  grid_renderer_.resize(fb.width(), fb.height());
+  pick_framebuffer_.ensure(fb.width(), fb.height());
 }
 
 void RenderWindow::renderPickFramebuffer(const QMatrix4x4& view,
                                          const QMatrix4x4& projection) {
-  pick_framebuffer_.renderPickPass(scene_overlay_, view, projection, width(),
-                                   height());
+  const QSize fb = framebufferSize();
+  pick_framebuffer_.renderPickPass(scene_overlay_, view, projection, fb.width(),
+                                   fb.height());
 }
 
 bool RenderWindow::readDepthPick(int pixel_x, int pixel_y,
@@ -57,9 +78,13 @@ bool RenderWindow::readDepthPick(int pixel_x, int pixel_y,
   if (world == nullptr) {
     return false;
   }
+  const QSize fb = framebufferSize();
+  const qreal dpr = devicePixelRatioF();
+  const int device_x = static_cast<int>(std::lround(pixel_x * dpr));
+  const int device_y = static_cast<int>(std::lround(pixel_y * dpr));
   const_cast<RenderWindow*>(this)->makeCurrent();
   const GpuDepthPickResult pick = pickWorldPointFromDepthBuffer(
-      pixel_x, pixel_y, width(), height(), view, projection);
+      device_x, device_y, fb.width(), fb.height(), view, projection);
   const_cast<RenderWindow*>(this)->doneCurrent();
   if (!pick.hit) {
     return false;
@@ -73,19 +98,26 @@ common::PickHandle RenderWindow::readPickHandleAt(int pixel_x,
   if (!pick_framebuffer_.valid()) {
     return common::kInvalidPickHandle;
   }
+  const QSize fb = framebufferSize();
+  const qreal dpr = devicePixelRatioF();
+  const int device_x = static_cast<int>(std::lround(pixel_x * dpr));
+  const int device_y = static_cast<int>(std::lround(pixel_y * dpr));
   const_cast<RenderWindow*>(this)->makeCurrent();
-  const common::PickHandle handle =
-      pick_framebuffer_.readHandleAt(pixel_x, pixel_y, width(), height());
+  const common::PickHandle handle = pick_framebuffer_.readHandleAt(
+      device_x, device_y, fb.width(), fb.height());
   const_cast<RenderWindow*>(this)->doneCurrent();
   return handle;
 }
 
-void RenderWindow::resizeGL(int width, int height) {
-  grid_renderer_.resize(width, height);
-  pick_framebuffer_.ensure(width, height);
+void RenderWindow::resizeGL(int /*width*/, int /*height*/) {
+  // Ignore Qt's w/h: some versions pass logical size, others device pixels.
+  // Always derive from widget size × devicePixelRatioF().
+  syncRendererFramebufferSize();
 }
 
 void RenderWindow::paintGL() {
+  // Keep viewport in sync when moving between screens with different DPR.
+  syncRendererFramebufferSize();
   const float aspect =
       static_cast<float>(width()) / static_cast<float>(std::max(1, height()));
   const QMatrix4x4 view = view_controller_.viewMatrix();
@@ -94,6 +126,12 @@ void RenderWindow::paintGL() {
   if (scene_overlay_ != nullptr) {
     scene_overlay_->render(view, projection);
     renderPickFramebuffer(view, projection);
+  }
+  // Measure (and similar) stay off the shared scene so Split panels are independent.
+  if (tool_manager_ != nullptr && viewport_tool_id_ == "Measure") {
+    tool_overlay_.clear();
+    tool_manager_->drawTool("Measure", viewport_key_, tool_overlay_);
+    tool_overlay_.render(view, projection);
   }
 }
 
@@ -113,26 +151,35 @@ void RenderWindow::syncToolCursorFromManager() {
   if (tool_manager_ == nullptr) {
     return;
   }
-  if (common::Tool* tool = tool_manager_->activeTool()) {
+  if (common::Tool* tool = tool_manager_->toolById(viewport_tool_id_)) {
     setToolCursor(tool->cursor());
   }
 }
 
 void RenderWindow::mousePressEvent(QMouseEvent* event) {
+  if (on_viewport_activate_) {
+    on_viewport_activate_();
+  }
   if (tool_manager_ != nullptr) {
-    if (tool_manager_->mousePressEvent(event)) {
+    if (tool_manager_->mousePressEvent(event, viewport_tool_id_)) {
       syncToolCursorFromManager();
+      event->accept();
       return;
     }
-    if (!tool_manager_->allowsViewportNavigation()) {
+    if (!tool_manager_->allowsViewportNavigation(viewport_tool_id_)) {
       syncToolCursorFromManager();
+      event->accept();
       return;
     }
   }
   if (!view_controller_.handleMouseEvent(
           MakeViewportPressEvent(*event, width(), height()))) {
+    event->ignore();
     return;
   }
+  // Accept so Qt grabs the mouse; otherwise drag moves may not be delivered.
+  event->accept();
+  setFocus(Qt::MouseFocusReason);
   if (on_view_drag_started_) {
     on_view_drag_started_();
   }
@@ -142,18 +189,20 @@ void RenderWindow::mousePressEvent(QMouseEvent* event) {
 
 void RenderWindow::mouseReleaseEvent(QMouseEvent* event) {
   if (tool_manager_ != nullptr) {
-    if (tool_manager_->mouseReleaseEvent(event)) {
+    if (tool_manager_->mouseReleaseEvent(event, viewport_tool_id_)) {
       view_controller_.handleMouseEvent(
           MakeViewportReleaseEvent(*event, width(), height()));
       if (on_view_drag_ended_) {
         on_view_drag_ended_();
       }
       emit viewDragEnded();
+      event->accept();
       return;
     }
-    if (!tool_manager_->allowsViewportNavigation()) {
+    if (!tool_manager_->allowsViewportNavigation(viewport_tool_id_)) {
       view_controller_.handleMouseEvent(
           MakeViewportReleaseEvent(*event, width(), height()));
+      event->accept();
       return;
     }
   }
@@ -163,44 +212,54 @@ void RenderWindow::mouseReleaseEvent(QMouseEvent* event) {
     on_view_drag_ended_();
   }
   emit viewDragEnded();
+  event->accept();
   update();
 }
 
 void RenderWindow::mouseMoveEvent(QMouseEvent* event) {
   if (tool_manager_ != nullptr) {
-    if (tool_manager_->mouseMoveEvent(event)) {
+    if (tool_manager_->mouseMoveEvent(event, viewport_tool_id_)) {
       syncToolCursorFromManager();
+      event->accept();
       return;
     }
-    if (!tool_manager_->allowsViewportNavigation()) {
+    if (!tool_manager_->allowsViewportNavigation(viewport_tool_id_)) {
       syncToolCursorFromManager();
+      event->accept();
       return;
     }
   }
   if (!view_controller_.isViewDragging()) {
+    event->ignore();
     return;
   }
   if (!view_controller_.handleMouseEvent(
           MakeViewportMoveEvent(*event, width(), height()))) {
+    event->ignore();
     return;
   }
+  event->accept();
   update();
   emit viewDragUpdated();
 }
 
 void RenderWindow::wheelEvent(QWheelEvent* event) {
   if (tool_manager_ != nullptr) {
-    if (tool_manager_->wheelEvent(event)) {
+    if (tool_manager_->wheelEvent(event, viewport_tool_id_)) {
+      event->accept();
       return;
     }
-    if (!tool_manager_->allowsViewportNavigation()) {
+    if (!tool_manager_->allowsViewportNavigation(viewport_tool_id_)) {
+      event->accept();
       return;
     }
   }
   if (!view_controller_.handleMouseEvent(
           MakeViewportWheelEvent(*event, width(), height()))) {
+    event->ignore();
     return;
   }
+  event->accept();
   update();
   emit viewDragUpdated();
   emit viewDragEnded();

@@ -25,7 +25,15 @@ Displays:
     Channel: /tf
     Enabled: true
     Properties:
-      axis_length: "0.4"
+      show_names: "false"
+      show_axes: "true"
+      show_arrows: "true"
+      marker_scale: "1.0"
+      update_interval: "0"
+      frame_timeout: "15.0"
+      filter_whitelist: ""
+      filter_blacklist: ""
+      all_enabled: "true"
   - Type: LaserScan
     Name: Scan
     Channel: /fake/scan
@@ -34,6 +42,10 @@ Displays:
       color: "0;220;255"
       point_size: "4"
       mesh_style: "solid"
+  - Type: Image
+    Name: Camera
+    Channel: /fake/image
+    Enabled: true
   - Type: Marker
     Name: Marker
     Channel: /fake/marker
@@ -84,3 +96,7 @@ Displays:
       alpha: "0.8"
       visual_style: "solid"
       show_axes: "true"
+ImagePanels:
+  - ObjectName: ImageDock
+    Title: Image
+    ImageChannel: /fake/image

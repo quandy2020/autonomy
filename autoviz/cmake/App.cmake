@@ -15,7 +15,7 @@ target_link_libraries(autoviz PRIVATE
   automsgs autolink yaml-cpp
   Qt6::Core Qt6::Gui Qt6::Widgets Qt6::OpenGL Qt6::OpenGLWidgets
   Qt6::Xml Qt6::Svg Qt6::Network
-  glog protobuf::libprotobuf)
+  glog::glog protobuf::libprotobuf)
 
 if(_AUTOVIZ_HAS_QT_MULTIMEDIA)
   target_link_libraries(autoviz PRIVATE Qt6::Multimedia)
@@ -74,5 +74,5 @@ add_executable(autoviz_bicmap_publisher
 add_dependencies(autoviz_bicmap_publisher automsgs)
 target_include_directories(autoviz_bicmap_publisher PRIVATE ${AUTOVIZ_ROOT} ${AUTOVIZ_DEPS_ROOT})
 target_link_libraries(autoviz_bicmap_publisher PRIVATE
-  automsgs autolink gflags glog protobuf::libprotobuf)
+  automsgs autolink gflags glog::glog protobuf::libprotobuf)
 target_compile_features(autoviz_bicmap_publisher PRIVATE cxx_std_17)

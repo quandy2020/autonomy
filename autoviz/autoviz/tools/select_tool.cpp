@@ -47,15 +47,17 @@ const std::vector<common::SelectionEntry>& SelectTool::selections() const {
 }
 
 bool SelectTool::mousePressEvent(QMouseEvent* event) {
-  if (event->button() != Qt::LeftButton) {
-    return true;
+  // Middle / right / shift+left are for camera navigation — do not consume.
+  if (event->button() != Qt::LeftButton ||
+      event->modifiers().testFlag(Qt::ShiftModifier)) {
+    return false;
   }
   if (context() == nullptr || context()->view_controller == nullptr ||
       context()->scene_overlay == nullptr) {
     if (context() != nullptr && context()->set_status) {
       context()->set_status(QStringLiteral("Select: viewport not ready"));
     }
-    return true;
+    return false;
   }
   const rendering::PickResult pick = rendering::pickAtToolContext(
       *context(), event->pos().x(), event->pos().y());
@@ -78,7 +80,8 @@ bool SelectTool::mousePressEvent(QMouseEvent* event) {
     if (context()->request_redraw) {
       context()->request_redraw();
     }
-    return true;
+    // Empty space: clear selection, then let Orbit/Pan handle the drag.
+    return false;
   }
 
   common::SelectionEntry entry;
@@ -130,7 +133,9 @@ void SelectTool::onDraw(rendering::SceneOverlay& scene) {
 QString SelectTool::statusText() const {
   const auto& selected = selections();
   if (selected.empty()) {
-    return QStringLiteral("Select: click scene geometry (Ctrl+click to add)");
+    return QStringLiteral(
+        "Select: click geometry (Ctrl+add) · empty drag orbits · "
+        "Middle/Shift+Left pan");
   }
   if (selected.size() == 1) {
     const auto& entry = selected.front();

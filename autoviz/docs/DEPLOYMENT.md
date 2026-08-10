@@ -27,11 +27,25 @@ cmake -B build -DBUILD_AUTOVIZ=ON -DCMAKE_PREFIX_PATH=C:\Qt\6.x\msvc2019_64
 cmake --build build --target autoviz --config Release
 ```
 
-macOS：
+macOS（Intel / Apple Silicon，详见 [`deploy/macos/README.md`](../deploy/macos/README.md)）：
 
 ```bash
-cmake -B build -DBUILD_AUTOVIZ=ON -DCMAKE_PREFIX_PATH=$(brew --prefix qt@6)
+brew install cmake ninja qt@6 yaml-cpp protobuf
+
+# 独立工程（在 autoviz/ 下）
+cmake -S . -B build -DCMAKE_PREFIX_PATH="$(brew --prefix qt@6)"
 cmake --build build --target autoviz
+
+# 或超工程
+cmake -B build -DBUILD_AUTOVIZ=ON -DCMAKE_PREFIX_PATH="$(brew --prefix qt@6)"
+cmake --build build --target autoviz
+```
+
+可执行文件使用 `@loader_path` RPATH。若仍缺 `.dylib`：
+
+```bash
+export DYLD_LIBRARY_PATH="$PWD/build/lib:${DYLD_LIBRARY_PATH:-}"
+./build/bin/autoviz
 ```
 
 ## 环境变量

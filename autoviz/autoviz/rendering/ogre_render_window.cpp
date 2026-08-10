@@ -77,28 +77,36 @@ void OgreRenderWindow::syncToolCursorFromManager() {
   if (tool_manager_ == nullptr) {
     return;
   }
-  if (common::Tool* tool = tool_manager_->activeTool()) {
+  if (common::Tool* tool = tool_manager_->toolById(viewport_tool_id_)) {
     setToolCursor(tool->cursor());
   }
 }
 
 void OgreRenderWindow::mousePressEvent(QMouseEvent* event) {
+  if (on_viewport_activate_) {
+    on_viewport_activate_();
+  }
   if (tool_manager_ != nullptr) {
-    if (tool_manager_->mousePressEvent(event)) {
+    if (tool_manager_->mousePressEvent(event, viewport_tool_id_)) {
       syncToolCursorFromManager();
+      event->accept();
       update();
       return;
     }
-    if (!tool_manager_->allowsViewportNavigation()) {
+    if (!tool_manager_->allowsViewportNavigation(viewport_tool_id_)) {
       syncToolCursorFromManager();
+      event->accept();
       update();
       return;
     }
   }
   if (!view_controller_.handleMouseEvent(
           MakeViewportPressEvent(*event, width(), height()))) {
+    event->ignore();
     return;
   }
+  event->accept();
+  setFocus(Qt::MouseFocusReason);
   if (on_view_drag_started_) {
     on_view_drag_started_();
   }
@@ -108,19 +116,21 @@ void OgreRenderWindow::mousePressEvent(QMouseEvent* event) {
 
 void OgreRenderWindow::mouseReleaseEvent(QMouseEvent* event) {
   if (tool_manager_ != nullptr) {
-    if (tool_manager_->mouseReleaseEvent(event)) {
+    if (tool_manager_->mouseReleaseEvent(event, viewport_tool_id_)) {
       view_controller_.handleMouseEvent(
           MakeViewportReleaseEvent(*event, width(), height()));
       if (on_view_drag_ended_) {
         on_view_drag_ended_();
       }
       emit viewDragEnded();
+      event->accept();
       update();
       return;
     }
-    if (!tool_manager_->allowsViewportNavigation()) {
+    if (!tool_manager_->allowsViewportNavigation(viewport_tool_id_)) {
       view_controller_.handleMouseEvent(
           MakeViewportReleaseEvent(*event, width(), height()));
+      event->accept();
       update();
       return;
     }
@@ -131,46 +141,56 @@ void OgreRenderWindow::mouseReleaseEvent(QMouseEvent* event) {
     on_view_drag_ended_();
   }
   emit viewDragEnded();
+  event->accept();
   update();
 }
 
 void OgreRenderWindow::mouseMoveEvent(QMouseEvent* event) {
   if (tool_manager_ != nullptr) {
-    if (tool_manager_->mouseMoveEvent(event)) {
+    if (tool_manager_->mouseMoveEvent(event, viewport_tool_id_)) {
       syncToolCursorFromManager();
+      event->accept();
       update();
       return;
     }
-    if (!tool_manager_->allowsViewportNavigation()) {
+    if (!tool_manager_->allowsViewportNavigation(viewport_tool_id_)) {
       syncToolCursorFromManager();
+      event->accept();
       update();
       return;
     }
   }
   if (!view_controller_.isViewDragging()) {
+    event->ignore();
     return;
   }
   if (!view_controller_.handleMouseEvent(
           MakeViewportMoveEvent(*event, width(), height()))) {
+    event->ignore();
     return;
   }
+  event->accept();
   update();
   emit viewDragUpdated();
 }
 
 void OgreRenderWindow::wheelEvent(QWheelEvent* event) {
   if (tool_manager_ != nullptr) {
-    if (tool_manager_->wheelEvent(event)) {
+    if (tool_manager_->wheelEvent(event, viewport_tool_id_)) {
+      event->accept();
       return;
     }
-    if (!tool_manager_->allowsViewportNavigation()) {
+    if (!tool_manager_->allowsViewportNavigation(viewport_tool_id_)) {
+      event->accept();
       return;
     }
   }
   if (!view_controller_.handleMouseEvent(
           MakeViewportWheelEvent(*event, width(), height()))) {
+    event->ignore();
     return;
   }
+  event->accept();
   update();
   emit viewDragUpdated();
   emit viewDragEnded();

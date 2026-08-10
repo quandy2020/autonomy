@@ -38,6 +38,27 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _macos_qt_prefix() -> str | None:
+    """Return Homebrew qt@6 prefix on macOS when not already in CMAKE_PREFIX_PATH."""
+    if sys.platform != "darwin":
+        return None
+    if any("CMAKE_PREFIX_PATH" in a for a in sys.argv):
+        return None
+    if os.environ.get("CMAKE_PREFIX_PATH"):
+        return None
+    try:
+        out = subprocess.run(
+            ["brew", "--prefix", "qt@6"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        prefix = out.stdout.strip()
+        return prefix or None
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
 def main() -> int:
     args = parse_args()
     autoviz_root = find_autoviz_root()
@@ -53,6 +74,10 @@ def main() -> int:
         args.generator,
         f"-DCMAKE_BUILD_TYPE={'Release' if args.release else 'Debug'}",
     ]
+    qt_prefix = _macos_qt_prefix()
+    if qt_prefix:
+        cmake_args.append(f"-DCMAKE_PREFIX_PATH={qt_prefix}")
+        log_step(f"macOS: CMAKE_PREFIX_PATH={qt_prefix}")
     if args.ogre:
         cmake_args.append("-DAUTOVIZ_USE_OGRE=ON")
     if args.qml:

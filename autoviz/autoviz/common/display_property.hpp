@@ -21,6 +21,9 @@ enum class DisplayPropertyKind {
   kColor,
   kChannel,
   kPath,
+  kCategory,
+  kReadOnly,
+  kRegex,
 };
 
 struct DisplayPropertySpec {

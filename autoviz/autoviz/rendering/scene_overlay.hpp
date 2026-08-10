@@ -95,7 +95,9 @@ class SceneOverlay {
   void setPickSource(const std::string* display_name,
                      const std::string* display_type);
 
-  void addLine(const QVector3D& a, const QVector3D& b, const QColor& color);
+  /** @param for_pick When false, skip CPU pick samples (TF/axes overlays). */
+  void addLine(const QVector3D& a, const QVector3D& b, const QColor& color,
+               bool for_pick = true);
   void addPickPoint(const QVector3D& p, const QColor& color, int point_index,
                     const std::shared_ptr<common::SelectionHandler>& handler =
                         nullptr);

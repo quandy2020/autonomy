@@ -376,12 +376,14 @@ void SceneOverlay::recordPick(const QVector3D& position) {
 }
 
 void SceneOverlay::addLine(const QVector3D& a, const QVector3D& b,
-                           const QColor& color) {
+                           const QColor& color, bool for_pick) {
   const QVector4D c = ToVec4(color);
   line_vertices_.push_back({a, c});
   line_vertices_.push_back({b, c});
-  recordPick(a);
-  recordPick(b);
+  if (for_pick) {
+    recordPick(a);
+    recordPick(b);
+  }
   line_dirty_ = true;
 }
 
@@ -1197,6 +1199,13 @@ void SceneOverlay::renderPbrTexturedMeshes(const QMatrix4x4& mvp,
 }
 
 void SceneOverlay::render(const QMatrix4x4& view, const QMatrix4x4& projection) {
+  if (QOpenGLContext::currentContext() == nullptr) {
+    return;
+  }
+  // Viewport recreate / deleteLater can leave the shared overlay shut down.
+  if (!initialized_) {
+    initialize();
+  }
   if (!initialized_ || empty()) {
     return;
   }
@@ -1241,12 +1250,17 @@ void SceneOverlay::render(const QMatrix4x4& view, const QMatrix4x4& projection) 
   renderPbrTexturedMeshes(mvp, view);
 
   if (!line_vertices_.empty()) {
+    // TF / path overlays must not lose to the ground grid (z-fight).
+    gl->glDisable(0x0B71);  // GL_DEPTH_TEST
+    gl->glDepthMask(0x0000);
     gl->glUseProgram(line_program_);
     gl_extra->glUniformMatrix4fv(gl->glGetUniformLocation(line_program_, "uMvp"), 1,
                                  0, mvp.constData());
     gl_extra->glBindVertexArray(line_vao_);
     gl->glDrawArrays(0x0001, 0, static_cast<int>(line_vertices_.size()));
     gl_extra->glBindVertexArray(0);
+    gl->glDepthMask(0x0001);
+    gl->glEnable(0x0B71);
   }
 
   if (!point_vertices_.empty() && point_size_ <= 1.f) {

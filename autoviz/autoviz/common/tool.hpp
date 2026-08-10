@@ -40,6 +40,8 @@ namespace common {
 struct ToolContext {
   rendering::ViewController* view_controller = nullptr;
   rendering::SceneOverlay* scene_overlay = nullptr;
+  /** Identifies the 3D panel (dock objectName) for per-split tool state. */
+  std::string viewport_key;
   int viewport_width = 1;
   int viewport_height = 1;
   /** True when hardware GPU was detected; enables depth-buffer picking. */
@@ -86,6 +88,8 @@ class Tool {
   virtual bool wheelEvent(QWheelEvent* event);
 
   virtual void onDraw(rendering::SceneOverlay& /*scene*/) {}
+  /** Optional: drop interaction state for one Split 3D panel. */
+  virtual void clearViewportSession(const std::string& /*viewport_key*/) {}
   virtual QString statusText() const { return {}; }
   /** RViz Tool::getShortcutKey — '\0' if none. */
   virtual char shortcutKey() const { return '\0'; }

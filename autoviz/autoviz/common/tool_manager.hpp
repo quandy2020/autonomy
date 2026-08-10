@@ -57,13 +57,25 @@ class ToolManager {
   bool mouseMoveEvent(QMouseEvent* event);
   bool mouseReleaseEvent(QMouseEvent* event);
   bool wheelEvent(QWheelEvent* event);
+  /** Dispatch mouse to a specific tool (per-viewport local tool). */
+  bool mousePressEvent(QMouseEvent* event, const std::string& tool_id);
+  bool mouseMoveEvent(QMouseEvent* event, const std::string& tool_id);
+  bool mouseReleaseEvent(QMouseEvent* event, const std::string& tool_id);
+  bool wheelEvent(QWheelEvent* event, const std::string& tool_id);
   void onDraw(rendering::SceneOverlay& scene);
+  /** Draw one tool for a specific viewport (Measure is not on the shared scene). */
+  void drawTool(const std::string& tool_id, const std::string& viewport_key,
+                rendering::SceneOverlay& scene);
+  /** Drop per-viewport session state (e.g. Measure toggled off on a split). */
+  void clearToolViewportSession(const std::string& tool_id,
+                                const std::string& viewport_key);
   /** RViz ToolManager::handleChar — activate tool by letter or toggle off. */
   bool handleShortcutKey(int qt_key);
   std::string defaultToolId() const { return default_tool_id_; }
   char shortcutKeyForTool(const std::string& id) const;
   /** Only Move Camera forwards unconsumed events to viewport orbit/pan/zoom. */
   bool allowsViewportNavigation() const;
+  bool allowsViewportNavigation(const std::string& tool_id) const;
 
  private:
   void applyDefaultProperties(Tool* tool);

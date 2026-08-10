@@ -33,6 +33,7 @@ from automsgs.msgs.sensor_msgs import (
     point_field_pb2,
     range_pb2,
 )
+from automsgs.msgs.tf2_msgs import tf_message_pb2
 
 RW, RH = 160, 120
 DW, DH = 80, 60
@@ -149,6 +150,26 @@ def make_range(t):
     return msg
 
 
+def _add_static_tf(msg, parent, child, x, y, z):
+    ts = msg.transforms.add()
+    stamp(ts.header, parent)
+    ts.child_frame_id = child
+    ts.transform.translation.x = x
+    ts.transform.translation.y = y
+    ts.transform.translation.z = z
+    ts.transform.rotation.w = 1.0
+
+
+def make_sensor_tf():
+    """Static map→sensor frames so LaserScan works with Fixed Frame=map."""
+    msg = tf_message_pb2.TFMessage()
+    _add_static_tf(msg, 'map', 'base_link', 0.0, 0.0, 0.0)
+    _add_static_tf(msg, 'base_link', 'laser', 0.2, 0.0, 0.15)
+    _add_static_tf(msg, 'base_link', 'camera', 0.1, 0.0, 0.3)
+    _add_static_tf(msg, 'base_link', 'sonar', 0.15, 0.0, 0.1)
+    return msg
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--rate', type=float, default=10.0)
@@ -168,9 +189,13 @@ def main():
         'pc2': n.create_writer(
             '/fake/point_cloud2', point_cloud2_pb2.PointCloud2, qos_depth=2),
         'rng': n.create_writer('/fake/range', range_pb2.Range, qos_depth=2),
+        'tf': n.create_writer('/tf', tf_message_pb2.TFMessage, qos_depth=2),
     }
     rate = autolink.Rate(args.rate)
-    print(f'sensor @ {args.rate} Hz → /fake/{{imu,image,camera_info,depth,scan,point_cloud,point_cloud2,range}}')
+    print(
+        f'sensor @ {args.rate} Hz → /fake/{{imu,image,camera_info,depth,scan,'
+        f'point_cloud,point_cloud2,range}} + /tf'
+    )
 
     t0, phase = time.time(), 0
     try:
@@ -184,6 +209,7 @@ def main():
             w['pc'].write(make_pc(t))
             w['pc2'].write(make_pc2(t))
             w['rng'].write(make_range(t))
+            w['tf'].write(make_sensor_tf())
             phase = (phase + 3) % 256
             rate.sleep()
     except KeyboardInterrupt:

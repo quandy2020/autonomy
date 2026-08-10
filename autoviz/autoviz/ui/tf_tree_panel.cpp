@@ -9,17 +9,20 @@
 
 #include <QDateTime>
 #include <QFocusEvent>
+#include <QShowEvent>
 #include <QFormLayout>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
-#include <QMetaObject>
+#include <QSignalBlocker>
 #include <QSplitter>
+#include <QTimer>
 #include <QToolButton>
 #include <QTreeWidget>
 #include <QVBoxLayout>
 #include <functional>
+#include <vector>
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/ui/icon_loader.hpp"
@@ -62,13 +65,20 @@ TfTreePanel::TfTreePanel(transform::Buffer* tf_buffer,
     : QWidget(parent), tf_buffer_(tf_buffer), manager_(manager) {
   setFocusPolicy(Qt::StrongFocus);
   setupUi();
+
+  // Cap tree rebuilds: transforms-changed fires per setTransform (often >> 30Hz).
+  refresh_timer_ = new QTimer(this);
+  refresh_timer_->setSingleShot(true);
+  refresh_timer_->setInterval(250);
+  connect(refresh_timer_, &QTimer::timeout, this,
+          &TfTreePanel::onCoalescedRefresh);
+
   if (tf_buffer_ != nullptr) {
     transforms_changed_connection_ =
-        tf_buffer_->_addTransformsChangedListener([this]() {
-          QMetaObject::invokeMethod(this, "refresh", Qt::QueuedConnection);
-        });
+        tf_buffer_->_addTransformsChangedListener([this]() { scheduleRefresh(); });
   }
-  refresh();
+  force_rebuild_ = true;
+  onCoalescedRefresh();
 }
 
 TfTreePanel::~TfTreePanel() { transforms_changed_connection_.disconnect(); }
@@ -111,6 +121,13 @@ void TfTreePanel::focusInEvent(QFocusEvent* event) {
   emit activated();
 }
 
+void TfTreePanel::showEvent(QShowEvent* event) {
+  QWidget::showEvent(event);
+  // App activation can emit show for docks; do not force a full tree rebuild
+  // (combined with GL restore + TF catch-up that freezes the UI).
+  scheduleRefresh();
+}
+
 void TfTreePanel::setupUi() {
   ApplyPanelShell(this);
 
@@ -151,7 +168,8 @@ void TfTreePanel::setupUi() {
   tree_->setHeaderHidden(true);
   tree_->setRootIsDecorated(true);
   tree_->setUniformRowHeights(true);
-  tree_->setAnimated(true);
+  // Animated expand/collapse is expensive when the tree is rebuilt often.
+  tree_->setAnimated(false);
   tree_->setIndentation(18);
   StylePanelTree(tree_);
 
@@ -238,7 +256,104 @@ QString TfTreePanel::formatAgeSec(double age_sec) const {
   return tr("%1 h ago").arg(QString::number(age_sec / 3600.0, 'f', 1));
 }
 
+void TfTreePanel::setPaused(bool paused) {
+  paused_ = paused;
+  if (paused) {
+    if (refresh_timer_ != nullptr) {
+      refresh_timer_->stop();
+    }
+    refresh_pending_ = false;
+    return;
+  }
+  scheduleRefresh();
+}
+
+void TfTreePanel::scheduleRefresh() {
+  if (paused_) {
+    return;
+  }
+  refresh_pending_ = true;
+  if (refresh_timer_ != nullptr && !refresh_timer_->isActive()) {
+    refresh_timer_->start();
+  }
+}
+
 void TfTreePanel::refresh() {
+  // Periodic tick / external callers: rate-limited like transforms-changed.
+  scheduleRefresh();
+}
+
+QString TfTreePanel::structureFingerprint(
+    const std::vector<transform::TfFrameStats>& frames) const {
+  const QString filter =
+      filter_edit_ != nullptr ? filter_edit_->text().trimmed() : QString();
+  QStringList parts;
+  parts.reserve(static_cast<int>(frames.size()) + 1);
+  parts.push_back(filter);
+  for (const transform::TfFrameStats& stats : frames) {
+    parts.push_back(QString::fromStdString(stats.frame_id) + QLatin1Char('>') +
+                    NormalizeParent(QString::fromStdString(stats.parent_id)) +
+                    (stats.is_static ? QLatin1Char('S') : QLatin1Char('D')));
+  }
+  parts.sort(Qt::CaseSensitive);
+  return parts.join(QLatin1Char('|'));
+}
+
+void TfTreePanel::updateStatsInPlace(
+    const std::vector<transform::TfFrameStats>& frames) {
+  int root_count = 0;
+  for (const transform::TfFrameStats& stats : frames) {
+    const QString frame_id = QString::fromStdString(stats.frame_id);
+    auto it = frame_nodes_.find(frame_id);
+    if (it == frame_nodes_.end()) {
+      continue;
+    }
+    it->stats = stats;
+    if (NormalizeParent(QString::fromStdString(stats.parent_id)).isEmpty()) {
+      ++root_count;
+    }
+  }
+  // root_count from stats may under-count filtered trees; reuse summary size.
+  updateSummaryLabel(static_cast<int>(frames.size()),
+                     std::max(1, tree_ != nullptr ? tree_->topLevelItemCount()
+                                                  : root_count));
+  if (tree_ != nullptr) {
+    updateDetailsForItem(tree_->currentItem());
+  }
+}
+
+void TfTreePanel::onCoalescedRefresh() {
+  if (!refresh_pending_ && !force_rebuild_) {
+    return;
+  }
+  refresh_pending_ = false;
+
+  // Skip work while the dock is hidden; showEvent will force a rebuild.
+  if (!isVisible() && !force_rebuild_) {
+    return;
+  }
+
+  if (tf_buffer_ == nullptr) {
+    force_rebuild_ = false;
+    structure_fingerprint_.clear();
+    tree_->clear();
+    frame_nodes_.clear();
+    updateSummaryLabel(0, 0);
+    detail_body_->hide();
+    detail_hint_->show();
+    detail_hint_->setText(tr("TF buffer unavailable."));
+    return;
+  }
+
+  const std::vector<transform::TfFrameStats> frames = tf_buffer_->frameStats();
+  const QString fingerprint = structureFingerprint(frames);
+  if (!force_rebuild_ && fingerprint == structure_fingerprint_ &&
+      !frame_nodes_.isEmpty()) {
+    updateStatsInPlace(frames);
+    return;
+  }
+  force_rebuild_ = false;
+  structure_fingerprint_ = fingerprint;
   rebuildTree();
 }
 
@@ -248,6 +363,7 @@ void TfTreePanel::rebuildTree() {
     selected_frame_id_ = tree_->currentItem()->data(0, kRoleFrameId).toString();
   }
 
+  const QSignalBlocker blocker(tree_);
   tree_->clear();
   frame_nodes_.clear();
 
@@ -260,6 +376,7 @@ void TfTreePanel::rebuildTree() {
   }
 
   const std::vector<transform::TfFrameStats> frames = tf_buffer_->frameStats();
+  structure_fingerprint_ = structureFingerprint(frames);
   if (frames.empty()) {
     updateSummaryLabel(0, 0);
     detail_body_->hide();
@@ -319,7 +436,6 @@ void TfTreePanel::rebuildTree() {
 
   for (int i = 0; i < tree_->topLevelItemCount(); ++i) {
     QTreeWidgetItem* root = tree_->topLevelItem(i);
-    root->setExpanded(true);
     std::function<void(QTreeWidgetItem*)> expand_all = [&](QTreeWidgetItem* node) {
       node->setExpanded(true);
       for (int c = 0; c < node->childCount(); ++c) {
@@ -350,64 +466,80 @@ void TfTreePanel::rebuildTree() {
 }
 
 void TfTreePanel::updateSummaryLabel(int frame_count, int tree_count) {
+  QString text;
   if (frame_count == 0) {
-    summary_label_->setText(tr("No frames"));
-    return;
+    text = tr("No frames");
+  } else if (tree_count <= 1) {
+    text = tr("%1 frames").arg(frame_count);
+  } else {
+    text = tr("%1 frames · %2 disconnected trees")
+               .arg(frame_count)
+               .arg(tree_count);
   }
-  if (tree_count <= 1) {
-    summary_label_->setText(tr("%1 frames").arg(frame_count));
-    return;
+  if (summary_label_->text() != text) {
+    summary_label_->setText(text);
   }
-  summary_label_->setText(tr("%1 frames · %2 disconnected trees")
-                              .arg(frame_count)
-                              .arg(tree_count));
 }
 
-void TfTreePanel::onFilterChanged(const QString& /*text*/) { rebuildTree(); }
+void TfTreePanel::onFilterChanged(const QString& /*text*/) {
+  force_rebuild_ = true;
+  refresh_pending_ = true;
+  onCoalescedRefresh();
+}
 
 void TfTreePanel::onFrameSelectionChanged() {
   updateDetailsForItem(tree_->currentItem());
 }
 
 void TfTreePanel::updateDetailsForItem(QTreeWidgetItem* item) {
+  auto set_if_changed = [](QLabel* label, const QString& text) {
+    if (label != nullptr && label->text() != text) {
+      label->setText(text);
+    }
+  };
+
   if (item == nullptr) {
     detail_body_->hide();
     detail_hint_->show();
-    detail_hint_->setText(tr("Select a frame to inspect transform metadata."));
-    detail_title_->setText(tr("Frame details"));
+    set_if_changed(detail_hint_,
+                   tr("Select a frame to inspect transform metadata."));
+    set_if_changed(detail_title_, tr("Frame details"));
     return;
   }
 
   const QString frame_id = item->data(0, kRoleFrameId).toString();
   const FrameNode node = frame_nodes_.value(frame_id);
-  detail_title_->setText(frame_id);
+  set_if_changed(detail_title_, frame_id);
   detail_hint_->hide();
   detail_body_->show();
 
   const QString parent = NormalizeParent(QString::fromStdString(node.stats.parent_id));
-  detail_parent_value_->setText(parent.isEmpty() ? tr("(root)") : parent);
-  detail_type_value_->setText(node.stats.is_static ? tr("Static") : tr("Dynamic"));
-  detail_authority_value_->setText(
+  set_if_changed(detail_parent_value_,
+                 parent.isEmpty() ? tr("(root)") : parent);
+  set_if_changed(detail_type_value_,
+                 node.stats.is_static ? tr("Static") : tr("Dynamic"));
+  set_if_changed(
+      detail_authority_value_,
       node.stats.authority.empty() ? tr("Unknown")
                                    : QString::fromStdString(node.stats.authority));
 
   const double stamp_sec =
       static_cast<double>(node.stats.last_stamp_ns) / 1e9;
-  detail_last_time_value_->setText(formatTimestampSec(stamp_sec));
+  set_if_changed(detail_last_time_value_, formatTimestampSec(stamp_sec));
 
   if (node.stats.is_static) {
-    detail_age_value_->setText(tr("Static transform"));
+    set_if_changed(detail_age_value_, tr("Static transform"));
   } else if (node.stats.last_stamp_ns <= 0) {
-    detail_age_value_->setText(tr("Unknown"));
+    set_if_changed(detail_age_value_, tr("Unknown"));
   } else {
     const double age = currentTimeSec() - stamp_sec;
-    detail_age_value_->setText(formatAgeSec(age));
+    set_if_changed(detail_age_value_, formatAgeSec(age));
   }
 
-  detail_count_value_->setText(
-      node.stats.transforms_received > 0
-          ? QString::number(node.stats.transforms_received)
-          : tr("0"));
+  set_if_changed(detail_count_value_,
+                 node.stats.transforms_received > 0
+                     ? QString::number(node.stats.transforms_received)
+                     : tr("0"));
 }
 
 }  // namespace autoviz

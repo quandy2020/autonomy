@@ -46,7 +46,6 @@ class ChannelReaderRegistry {
   };
 
   void fanOut(const std::string& channel, const std::string& payload);
-  bool ensureReaderLocked(const std::string& channel);
 
   std::mutex mutex_;
   std::weak_ptr<::autolink::Node> node_;
