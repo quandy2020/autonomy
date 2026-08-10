@@ -13,7 +13,6 @@ class QComboBox;
 class QDoubleSpinBox;
 class QLineEdit;
 class QPushButton;
-class QScrollArea;
 class QVBoxLayout;
 
 namespace autoviz {
@@ -51,6 +50,9 @@ class PlotSettingsWidget : public QWidget {
   QWidget* buildSeriesEditor(int index, const PlotSeriesConfig& series);
   void rebuildSeriesSection();
   void updateAxisModeVisibility();
+  void applySeriesFilter();
+  void refreshSeriesValueEdit(QComboBox* value_combo);
+  QStringList knownChannels() const;
 
   common::VisualizationManager* manager_ = nullptr;
   PlotPanelConfig config_;
@@ -66,6 +68,7 @@ class PlotSettingsWidget : public QWidget {
   QCheckBox* show_legend_values_check_ = nullptr;
   QVBoxLayout* series_list_layout_ = nullptr;
   QWidget* series_container_ = nullptr;
+  QComboBox* series_filter_combo_ = nullptr;
   QPushButton* add_series_button_ = nullptr;
 };
 

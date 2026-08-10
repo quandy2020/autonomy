@@ -38,6 +38,22 @@ autoviz/
 
 依赖：Qt 6、OpenGL 3.3+、**automsgs**、**autolink**、yaml-cpp。**不链接** ROS / rviz / `libautonomy`。
 
+### colcon（推荐）
+
+在 workspace 根目录（含 `src/autonomy/autoviz/package.xml`）：
+
+```bash
+colcon build --packages-select autoviz --cmake-args -DAUTOLINK_BUILD_PYTHON=ON
+source install/setup.bash
+autoviz   # 或 ./install/autoviz/bin/autoviz
+```
+
+仅编译 `autonomy` 主包时默认**不再**内嵌 autoviz；若仍需超项目内嵌：
+
+```bash
+colcon build --packages-select autonomy --cmake-args -DBUILD_AUTOVIZ=ON
+```
+
 | 平台 | 依赖安装 | 构建要点 |
 |------|----------|----------|
 | **Linux** | `qt6-base-dev` `libqt6svg6-dev` … | `cmake -B build && cmake --build build --target autoviz` |

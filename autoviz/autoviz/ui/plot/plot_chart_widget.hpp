@@ -5,6 +5,7 @@
 #pragma once
 
 #include <QColor>
+#include <QEnterEvent>
 #include <QPoint>
 #include <QRect>
 #include <QVector>
@@ -17,13 +18,6 @@
 
 namespace autoviz {
 namespace plot {
-
-enum class PlotInteractionMode {
-  kPan,
-  kZoom,
-  kSelect,
-  kInspect,
-};
 
 struct PlotInspectPoint {
   bool valid = false;
@@ -49,6 +43,9 @@ class PlotChartWidget : public QWidget {
   void resetView();
   void applySyncedXRange(double min_x, double max_x);
   void clearInspection();
+  /** Handles wheel zoom even when forwarded from a parent widget. */
+  void handleWheelZoomAt(const QPointF& local_position, int angle_delta,
+                         Qt::KeyboardModifiers modifiers);
   QRect legendAnchorRect() const;
   QVector<PlotValueRow> valueRowsAtX(double x) const;
   bool hoverActive() const { return hover_active_; }
@@ -68,6 +65,7 @@ class PlotChartWidget : public QWidget {
   void mousePressEvent(QMouseEvent* event) override;
   void mouseMoveEvent(QMouseEvent* event) override;
   void mouseReleaseEvent(QMouseEvent* event) override;
+  void enterEvent(QEnterEvent* event) override;
   void leaveEvent(QEvent* event) override;
   void wheelEvent(QWheelEvent* event) override;
   void mouseDoubleClickEvent(QMouseEvent* event) override;
@@ -129,6 +127,10 @@ class PlotChartWidget : public QWidget {
                       Qt::KeyboardModifiers modifiers);
   void applyZoomRect(const QRect& selection, const AxisRange& range,
                      const QRect& chart);
+  void beginPanGesture(const QPoint& pos, bool active_immediately);
+  void updatePanGesture(const QPoint& pos);
+  void finishPanGesture(bool emit_sync);
+  bool exceedsDragThreshold(const QPoint& pos) const;
 
   std::vector<const PlotSeriesRuntime*> series_;
   double x_window_sec_ = 30.0;
@@ -143,6 +145,7 @@ class PlotChartWidget : public QWidget {
   double view_min_y_ = 0.0;
   double view_max_y_ = 1.0;
   bool dragging_ = false;
+  bool pan_pending_ = false;
   QPoint drag_start_;
   AxisRange drag_start_range_;
   QRect zoom_rect_;

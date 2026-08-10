@@ -34,14 +34,50 @@ std::string StripPackagePrefix(const std::string& type_name) {
   return type_name;
 }
 
+google::protobuf::Message* ParseMessageWithGeneratedPool(
+    const std::string& normalized, const std::string& payload,
+    DynamicFactory::MessagePtr* out) {
+  if (out == nullptr || normalized.empty() || payload.empty()) {
+    return nullptr;
+  }
+  const google::protobuf::DescriptorPool* pool =
+      google::protobuf::DescriptorPool::generated_pool();
+  if (pool == nullptr) {
+    return nullptr;
+  }
+  const google::protobuf::Descriptor* desc = pool->FindMessageTypeByName(normalized);
+  if (desc == nullptr) {
+    desc = pool->FindMessageTypeByName(StripPackagePrefix(normalized));
+  }
+  if (desc == nullptr) {
+    return nullptr;
+  }
+  const google::protobuf::Message* prototype =
+      google::protobuf::MessageFactory::generated_factory()->GetPrototype(desc);
+  if (prototype == nullptr) {
+    return nullptr;
+  }
+  *out = DynamicFactory::MessagePtr(prototype->New());
+  if (*out == nullptr || !(*out)->ParseFromString(payload)) {
+    out->reset();
+    return nullptr;
+  }
+  return out->get();
+}
+
 google::protobuf::Message* ParseMessage(const std::string& message_type,
                                         const std::string& payload,
                                         DynamicFactory::MessagePtr* out) {
   if (out == nullptr || message_type.empty() || payload.empty()) {
     return nullptr;
   }
-  static DynamicFactory factory;
   const std::string normalized = NormalizeTypeName(message_type);
+  if (google::protobuf::Message* parsed =
+          ParseMessageWithGeneratedPool(normalized, payload, out)) {
+    return parsed;
+  }
+
+  static DynamicFactory factory;
   *out = factory.New(normalized);
   if (*out == nullptr) {
     *out = factory.New(StripPackagePrefix(normalized));
@@ -132,8 +168,16 @@ bool ExtractNumericByPath(const google::protobuf::Message& message,
     const google::protobuf::Descriptor* desc = current->GetDescriptor();
     const google::protobuf::FieldDescriptor* field =
         desc->FindFieldByName(segment);
-    if (field == nullptr || field->is_repeated()) {
+    if (field == nullptr) {
       return false;
+    }
+    if (field->is_repeated()) {
+      if (field->type() != google::protobuf::FieldDescriptor::TYPE_MESSAGE ||
+          current->GetReflection()->FieldSize(*current, field) <= 0) {
+        return false;
+      }
+      current = &current->GetReflection()->GetRepeatedMessage(*current, field, 0);
+      continue;
     }
     if (field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
       current = &current->GetReflection()->GetMessage(*current, field);

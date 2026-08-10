@@ -10,6 +10,7 @@
 #include <QLineF>
 #include <QMouseEvent>
 #include <QWheelEvent>
+#include <QEnterEvent>
 #include <QtMath>
 
 namespace autoviz {
@@ -22,6 +23,7 @@ constexpr int kAxisRight = 16;
 constexpr int kAxisBottom = 48;
 constexpr double kExactSampleEpsilon = 1e-6;
 constexpr double kInspectPickRadiusPx = 10.0;
+constexpr int kPanDragThresholdPx = 4;
 
 }  // namespace
 
@@ -66,6 +68,7 @@ void PlotChartWidget::setReferenceTimeSec(double time_sec) {
 void PlotChartWidget::setInteractionMode(PlotInteractionMode mode) {
   interaction_mode_ = mode;
   dragging_ = false;
+  pan_pending_ = false;
   zoom_rect_ = QRect();
   switch (mode) {
     case PlotInteractionMode::kPan:
@@ -113,8 +116,64 @@ void PlotChartWidget::emitViewRangeIfNeeded() {
 void PlotChartWidget::resetView() {
   view_override_active_ = false;
   dragging_ = false;
+  pan_pending_ = false;
   zoom_rect_ = QRect();
   update();
+}
+
+bool PlotChartWidget::exceedsDragThreshold(const QPoint& pos) const {
+  return (pos - drag_start_).manhattanLength() >= kPanDragThresholdPx;
+}
+
+void PlotChartWidget::beginPanGesture(const QPoint& pos, bool active_immediately) {
+  drag_start_ = pos;
+  drag_start_range_ = effectiveAxisRange();
+  pan_pending_ = !active_immediately;
+  dragging_ = active_immediately;
+  if (dragging_) {
+    setCursor(Qt::ClosedHandCursor);
+  }
+}
+
+void PlotChartWidget::updatePanGesture(const QPoint& pos) {
+  if (pan_pending_ && exceedsDragThreshold(pos)) {
+    pan_pending_ = false;
+    dragging_ = true;
+    setCursor(Qt::ClosedHandCursor);
+  }
+  if (!dragging_) {
+    return;
+  }
+
+  const QRect chart = chartRect();
+  const double dx = drag_start_range_.max_x - drag_start_range_.min_x;
+  const double dy = drag_start_range_.max_y - drag_start_range_.min_y;
+  const double px = chart.width() <= 0 ? 0.0 : dx / chart.width();
+  const double py = chart.height() <= 0 ? 0.0 : dy / chart.height();
+  const int delta_x = pos.x() - drag_start_.x();
+  const int delta_y = pos.y() - drag_start_.y();
+  view_min_x_ = drag_start_range_.min_x - delta_x * px;
+  view_max_x_ = drag_start_range_.max_x - delta_x * px;
+  view_min_y_ = drag_start_range_.min_y + delta_y * py;
+  view_max_y_ = drag_start_range_.max_y + delta_y * py;
+  view_override_active_ = true;
+  update();
+}
+
+void PlotChartWidget::finishPanGesture(bool emit_sync) {
+  const bool was_dragging = dragging_;
+  dragging_ = false;
+  pan_pending_ = false;
+  if (interaction_mode_ == PlotInteractionMode::kPan) {
+    setCursor(Qt::OpenHandCursor);
+  } else if (interaction_mode_ == PlotInteractionMode::kSelect && hover_active_) {
+    setCursor(Qt::CrossCursor);
+  } else {
+    unsetCursor();
+  }
+  if (was_dragging && emit_sync) {
+    emitViewRangeIfNeeded();
+  }
 }
 
 QRect PlotChartWidget::chartRect() const {
@@ -490,6 +549,14 @@ void PlotChartWidget::drawSeries(QPainter& painter, const AxisRange& range,
   painter.save();
   painter.setClipRect(chart);
 
+  struct HoverMarker {
+    QPointF position;
+    QColor color;
+  };
+  QVector<HoverMarker> hover_markers;
+
+  const double x_margin = (range.max_x - range.min_x) * 0.01;
+
   for (const PlotSeriesRuntime* runtime_ptr : series_) {
     if (runtime_ptr == nullptr) {
       continue;
@@ -503,8 +570,8 @@ void PlotChartWidget::drawSeries(QPainter& painter, const AxisRange& range,
     QPainterPath path;
     bool started = false;
     for (const PlotPoint& point : runtime.points) {
-      if (point.x < range.min_x - (range.max_x - range.min_x) * 0.01 ||
-          point.x > range.max_x + (range.max_x - range.min_x) * 0.01) {
+      if (point.x < range.min_x - x_margin || point.x > range.max_x + x_margin) {
+        started = false;
         continue;
       }
       const QPointF mapped = mapToChart(point.x, point.y, range);
@@ -515,24 +582,30 @@ void PlotChartWidget::drawSeries(QPainter& painter, const AxisRange& range,
         path.lineTo(mapped);
       }
     }
-    if (!started) {
+    if (path.isEmpty()) {
       continue;
     }
 
     QPen pen(runtime.config.color, 2.0);
     pen.setCosmetic(true);
     painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
     painter.drawPath(path);
 
     if (hover_active_ && interaction_mode_ == PlotInteractionMode::kSelect) {
       const std::optional<HoverSample> sample = sampleAtX(runtime, hover_x_);
       if (sample.has_value()) {
-        const QPointF hit = mapToChart(sample->sample_x, sample->y, range);
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(runtime.config.color);
-        painter.drawEllipse(hit, 4.0, 4.0);
+        hover_markers.push_back(
+            HoverMarker{mapToChart(sample->sample_x, sample->y, range),
+                        runtime.config.color});
       }
     }
+  }
+
+  for (const HoverMarker& marker : hover_markers) {
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(marker.color);
+    painter.drawEllipse(marker.position, 4.0, 4.0);
   }
 
   painter.restore();
@@ -754,7 +827,15 @@ void PlotChartWidget::mousePressEvent(QMouseEvent* event) {
 
   const AxisRange range = effectiveAxisRange();
   const QRect chart = chartRect();
-  if (event->button() == Qt::LeftButton && chart.contains(event->pos())) {
+  const bool in_chart = chart.contains(event->pos());
+
+  if (event->button() == Qt::MiddleButton && in_chart) {
+    beginPanGesture(event->pos(), true);
+    event->accept();
+    return;
+  }
+
+  if (event->button() == Qt::LeftButton && in_chart) {
     if (interaction_mode_ == PlotInteractionMode::kInspect) {
       const std::optional<PlotInspectPoint> picked =
           pickInspectPoint(event->pos(), range);
@@ -773,23 +854,23 @@ void PlotChartWidget::mousePressEvent(QMouseEvent* event) {
       event->accept();
       return;
     }
-    if (interaction_mode_ == PlotInteractionMode::kSelect &&
-        x_axis_mode_ == PlotXAxisMode::kTimestamp && hover_active_) {
-      emit seekRequested(hover_x_);
+    if (interaction_mode_ == PlotInteractionMode::kSelect) {
+      updateHoverFromMouse(event->pos());
+      beginPanGesture(event->pos(), false);
       event->accept();
       return;
     }
     if (interaction_mode_ == PlotInteractionMode::kPan) {
-      dragging_ = true;
-      drag_start_ = event->pos();
-      drag_start_range_ = range;
-      setCursor(Qt::ClosedHandCursor);
+      beginPanGesture(event->pos(), true);
+      event->accept();
       return;
     }
     if (interaction_mode_ == PlotInteractionMode::kZoom) {
       dragging_ = true;
+      pan_pending_ = false;
       drag_start_ = event->pos();
       zoom_rect_ = QRect(drag_start_, drag_start_);
+      event->accept();
       return;
     }
   }
@@ -799,29 +880,24 @@ void PlotChartWidget::mousePressEvent(QMouseEvent* event) {
 void PlotChartWidget::mouseMoveEvent(QMouseEvent* event) {
   const QRect chart = chartRect();
   if (chart.contains(event->pos()) &&
-      interaction_mode_ != PlotInteractionMode::kZoom) {
+      interaction_mode_ != PlotInteractionMode::kZoom && !dragging_ &&
+      !pan_pending_) {
     updateHoverFromMouse(event->pos());
-  } else if (!dragging_) {
+  } else if (!dragging_ && !pan_pending_) {
     clearHover();
   }
 
-  if (!dragging_) {
-    return;
+  if (interaction_mode_ == PlotInteractionMode::kPan ||
+      interaction_mode_ == PlotInteractionMode::kSelect ||
+      (dragging_ && event->buttons().testFlag(Qt::MiddleButton))) {
+    updatePanGesture(event->pos());
+    if (dragging_ || pan_pending_) {
+      event->accept();
+      return;
+    }
   }
 
-  if (interaction_mode_ == PlotInteractionMode::kPan) {
-    const double dx = drag_start_range_.max_x - drag_start_range_.min_x;
-    const double dy = drag_start_range_.max_y - drag_start_range_.min_y;
-    const double px = chart.width() <= 0 ? 0.0 : dx / chart.width();
-    const double py = chart.height() <= 0 ? 0.0 : dy / chart.height();
-    const int delta_x = event->pos().x() - drag_start_.x();
-    const int delta_y = event->pos().y() - drag_start_.y();
-    view_min_x_ = drag_start_range_.min_x - delta_x * px;
-    view_max_x_ = drag_start_range_.max_x - delta_x * px;
-    view_min_y_ = drag_start_range_.min_y + delta_y * py;
-    view_max_y_ = drag_start_range_.max_y + delta_y * py;
-    view_override_active_ = true;
-    update();
+  if (!dragging_) {
     return;
   }
 
@@ -832,18 +908,37 @@ void PlotChartWidget::mouseMoveEvent(QMouseEvent* event) {
 }
 
 void PlotChartWidget::mouseReleaseEvent(QMouseEvent* event) {
+  if (event->button() == Qt::MiddleButton && (dragging_ || pan_pending_)) {
+    finishPanGesture(true);
+    event->accept();
+    return;
+  }
+
+  if (event->button() == Qt::LeftButton &&
+      interaction_mode_ == PlotInteractionMode::kSelect && pan_pending_ &&
+      !exceedsDragThreshold(event->pos()) &&
+      x_axis_mode_ == PlotXAxisMode::kTimestamp && hover_active_) {
+    pan_pending_ = false;
+    emit seekRequested(hover_x_);
+    event->accept();
+    return;
+  }
+
+  if (event->button() == Qt::LeftButton && (dragging_ || pan_pending_)) {
+    if (interaction_mode_ == PlotInteractionMode::kPan ||
+        interaction_mode_ == PlotInteractionMode::kSelect) {
+      finishPanGesture(true);
+      event->accept();
+      return;
+    }
+  }
+
   if (event->button() != Qt::LeftButton || !dragging_) {
     QWidget::mouseReleaseEvent(event);
     return;
   }
 
   dragging_ = false;
-  if (interaction_mode_ == PlotInteractionMode::kPan) {
-    setCursor(Qt::OpenHandCursor);
-    emitViewRangeIfNeeded();
-    return;
-  }
-
   if (interaction_mode_ == PlotInteractionMode::kZoom) {
     const QRect chart = chartRect();
     const QRect selection = zoom_rect_.normalized().intersected(chart);
@@ -854,6 +949,11 @@ void PlotChartWidget::mouseReleaseEvent(QMouseEvent* event) {
     }
     update();
   }
+}
+
+void PlotChartWidget::enterEvent(QEnterEvent* event) {
+  setFocus(Qt::MouseFocusReason);
+  QWidget::enterEvent(event);
 }
 
 void PlotChartWidget::leaveEvent(QEvent* /*event*/) {
@@ -960,8 +1060,14 @@ void PlotChartWidget::applyWheelZoom(const QPointF& position, int angle_delta,
   update();
 }
 
+void PlotChartWidget::handleWheelZoomAt(const QPointF& local_position,
+                                        int angle_delta,
+                                        Qt::KeyboardModifiers modifiers) {
+  applyWheelZoom(local_position, angle_delta, modifiers);
+}
+
 void PlotChartWidget::wheelEvent(QWheelEvent* event) {
-  applyWheelZoom(event->position(), event->angleDelta().y(), event->modifiers());
+  handleWheelZoomAt(event->position(), event->angleDelta().y(), event->modifiers());
   event->accept();
 }
 

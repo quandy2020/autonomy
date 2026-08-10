@@ -14,6 +14,7 @@ namespace plot {
 PlotLegendWidget::PlotLegendWidget(QWidget* parent) : QFrame(parent) {
   setFrameShape(QFrame::NoFrame);
   setAutoFillBackground(true);
+  setAttribute(Qt::WA_TransparentForMouseEvents, true);
   QPalette pal = palette();
   pal.setColor(QPalette::Window, QColor(255, 255, 255, 230));
   setPalette(pal);

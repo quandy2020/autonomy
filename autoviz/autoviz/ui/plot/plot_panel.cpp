@@ -6,7 +6,10 @@
 
 #include <chrono>
 
+#include <QAbstractButton>
+#include <QButtonGroup>
 #include <QDragEnterEvent>
+#include <QHBoxLayout>
 #include <QDropEvent>
 #include <QFile>
 #include <QFileDialog>
@@ -19,7 +22,7 @@
 #include <QTextStream>
 #include <QTimer>
 #include <QToolButton>
-#include <QVBoxLayout>
+#include <QWheelEvent>
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/integration/channel_reader_registry.hpp"
@@ -34,6 +37,7 @@
 #include "autoviz/ui/plot/plot_field_extractor.hpp"
 #include "autoviz/ui/plot/plot_field_path.hpp"
 #include "autoviz/ui/plot/plot_legend_widget.hpp"
+#include "autoviz/ui/plot/plot_path_utils.hpp"
 #include "autoviz/ui/plot/plot_settings_widget.hpp"
 #include "autoviz/ui/plot/plot_view_sync.hpp"
 #include "autoviz/variables/variable_path_utils.hpp"
@@ -87,7 +91,9 @@ PlotPanel::PlotPanel(common::VisualizationManager* manager, QWidget* parent)
   settings_scroll_->setWidgetResizable(true);
   settings_scroll_->setFrameShape(QFrame::NoFrame);
   settings_scroll_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  settings_scroll_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
   settings_widget_ = new PlotSettingsWidget(manager_, settings_scroll_);
+  settings_widget_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
   settings_scroll_->setWidget(settings_widget_);
   settings_layout->addWidget(settings_scroll_);
 
@@ -133,9 +139,9 @@ PlotPanel::PlotPanel(common::VisualizationManager* manager, QWidget* parent)
       return;
     }
     if (chart_->interactionMode() == PlotInteractionMode::kZoom) {
-      chart_->setInteractionMode(PlotInteractionMode::kSelect);
+      setChartInteractionMode(PlotInteractionMode::kSelect);
     } else {
-      chart_->setInteractionMode(PlotInteractionMode::kZoom);
+      setChartInteractionMode(PlotInteractionMode::kZoom);
     }
   });
   connect(chart_, &PlotChartWidget::viewRangeChanged, this,
@@ -148,9 +154,7 @@ PlotPanel::PlotPanel(common::VisualizationManager* manager, QWidget* parent)
   connect(chart_, &PlotChartWidget::hoverStateChanged, this,
           &PlotPanel::updateLegendValues);
   connect(chart_, &PlotChartWidget::inspectEscapeRequested, this, [this]() {
-    if (chart_ != nullptr) {
-      chart_->setInteractionMode(PlotInteractionMode::kSelect);
-    }
+    setChartInteractionMode(PlotInteractionMode::kSelect);
   });
 
   tick_timer_ = new QTimer(this);
@@ -181,7 +185,71 @@ bool PlotPanel::eventFilter(QObject* watched, QEvent* event) {
     Q_UNUSED(watched);
     emit activated();
   }
+  if (event->type() == QEvent::Wheel && chart_ != nullptr) {
+    auto* wheel_event = static_cast<QWheelEvent*>(event);
+    QWidget* source = qobject_cast<QWidget*>(watched);
+    if (source != nullptr) {
+      const QPointF chart_pos =
+          chart_->mapFrom(source, wheel_event->position());
+      if (chart_->rect().contains(chart_pos.toPoint())) {
+        chart_->handleWheelZoomAt(chart_pos, wheel_event->angleDelta().y(),
+                                  wheel_event->modifiers());
+        return true;
+      }
+    }
+  }
   return QWidget::eventFilter(watched, event);
+}
+
+void PlotPanel::wheelEvent(QWheelEvent* event) {
+  if (chart_ != nullptr) {
+    const QPointF chart_pos = chart_->mapFrom(this, event->position());
+    if (chart_->rect().contains(chart_pos.toPoint())) {
+      chart_->handleWheelZoomAt(chart_pos, event->angleDelta().y(),
+                                event->modifiers());
+      event->accept();
+      return;
+    }
+  }
+  QWidget::wheelEvent(event);
+}
+
+void PlotPanel::setChartInteractionMode(PlotInteractionMode mode) {
+  if (chart_ != nullptr) {
+    chart_->setInteractionMode(mode);
+  }
+  syncInteractionToolState();
+}
+
+void PlotPanel::syncInteractionToolState() {
+  if (interaction_tool_group_ == nullptr || chart_ == nullptr) {
+    return;
+  }
+  QToolButton* target = select_tool_button_;
+  switch (chart_->interactionMode()) {
+    case PlotInteractionMode::kPan:
+      target = pan_tool_button_;
+      break;
+    case PlotInteractionMode::kZoom:
+      target = zoom_tool_button_;
+      break;
+    case PlotInteractionMode::kInspect:
+      target = nullptr;
+      break;
+    case PlotInteractionMode::kSelect:
+    default:
+      target = select_tool_button_;
+      break;
+  }
+  interaction_tool_group_->blockSignals(true);
+  if (target != nullptr) {
+    target->setChecked(true);
+  } else {
+    for (QAbstractButton* button : interaction_tool_group_->buttons()) {
+      button->setChecked(false);
+    }
+  }
+  interaction_tool_group_->blockSignals(false);
 }
 
 void PlotPanel::installTitleBarTools(PanelDockWidget* dock) {
@@ -223,7 +291,42 @@ void PlotPanel::installTitleBarTools(PanelDockWidget* dock) {
   settings_button_ = tools.settings_button;
   expand_button_ = tools.expand_button;
   dock->setTitleBarTools(tools.widget);
-  chart_->setInteractionMode(PlotInteractionMode::kSelect);
+
+  if (auto* layout = qobject_cast<QHBoxLayout*>(tools.widget->layout())) {
+    interaction_tool_group_ = new QButtonGroup(tools.widget);
+    interaction_tool_group_->setExclusive(true);
+
+    select_tool_button_ = CreatePlotTitleToolButton(
+        tools.widget, IconLoader::panelTitleIcon(QStringLiteral("plot.select")),
+        tr("Select (drag to pan, click to seek)"), true);
+    pan_tool_button_ = CreatePlotTitleToolButton(
+        tools.widget, IconLoader::panelTitleIcon(QStringLiteral("plot.pan")),
+        tr("Pan"), true);
+    zoom_tool_button_ = CreatePlotTitleToolButton(
+        tools.widget, IconLoader::panelTitleIcon(QStringLiteral("plot.zoom")),
+        tr("Zoom (drag rectangle)"), true);
+
+    interaction_tool_group_->addButton(select_tool_button_);
+    interaction_tool_group_->addButton(pan_tool_button_);
+    interaction_tool_group_->addButton(zoom_tool_button_);
+
+    layout->insertWidget(0, select_tool_button_);
+    layout->insertWidget(1, pan_tool_button_);
+    layout->insertWidget(2, zoom_tool_button_);
+    layout->insertWidget(3, CreateTitleSeparator(tools.widget));
+
+    connect(select_tool_button_, &QToolButton::clicked, this, [this]() {
+      setChartInteractionMode(PlotInteractionMode::kSelect);
+    });
+    connect(pan_tool_button_, &QToolButton::clicked, this, [this]() {
+      setChartInteractionMode(PlotInteractionMode::kPan);
+    });
+    connect(zoom_tool_button_, &QToolButton::clicked, this, [this]() {
+      setChartInteractionMode(PlotInteractionMode::kZoom);
+    });
+  }
+
+  setChartInteractionMode(PlotInteractionMode::kSelect);
   setLegendVisible(false);
 }
 
@@ -233,6 +336,7 @@ void PlotPanel::setConfig(const PlotPanelConfig& config) {
   config_ = config;
   resubscribeAll();
   applyConfigToUi();
+  syncSettingsWidgetFromConfig();
 }
 
 void PlotPanel::cloneConfigFrom(const PlotPanelConfig& config) {
@@ -260,6 +364,7 @@ void PlotPanel::cloneConfigFrom(const PlotPanelConfig& config) {
     chart_->clearInspection();
   }
   applyConfigToUi();
+  syncSettingsWidgetFromConfig();
 }
 
 void PlotPanel::applySettings(const PlotPanelConfig& config) {
@@ -406,6 +511,7 @@ void PlotPanel::onAddSeriesRequested() {
   subscribeSeries(static_cast<int>(runtime_series_.size()) - 1);
 
   applyConfigToUi();
+  syncSettingsWidgetFromConfig();
   emit configChanged();
 }
 
@@ -420,6 +526,7 @@ void PlotPanel::onRemoveSeriesRequested(int index) {
     config_.series.removeAt(index);
   }
   applyConfigToUi();
+  syncSettingsWidgetFromConfig();
   emit configChanged();
 }
 
@@ -448,7 +555,6 @@ void PlotPanel::applyConfigToUi() {
       updateLegendGeometry();
     }
   }
-  syncSettingsWidgetFromConfig();
   syncSettingsToolState();
   chart_->update();
 }
@@ -537,15 +643,7 @@ void PlotPanel::subscribeSeries(int index) {
 }
 
 std::string PlotPanel::messageTypeForChannel(const std::string& channel) const {
-  if (manager_ == nullptr) {
-    return {};
-  }
-  for (const integration::ChannelInfo& info : manager_->channels()) {
-    if (info.channel_name == channel) {
-      return info.message_type;
-    }
-  }
-  return {};
+  return MessageTypeForChannel(manager_, QString::fromStdString(channel));
 }
 
 void PlotPanel::trimSeriesPoints(PlotSeriesRuntime& runtime, double latest_x) {
@@ -619,6 +717,7 @@ void PlotPanel::handleSeriesDrop(const QString& channel,
     setLegendVisible(true);
   }
   applyConfigToUi();
+  syncSettingsWidgetFromConfig();
   emit configChanged();
   emit activated();
 }
@@ -726,7 +825,8 @@ void PlotPanel::onTick() {
       trimSeriesPoints(runtime, point.x);
     }
   }
-  applyConfigToUi();
+  chart_->update();
+  updateLegendValues();
 }
 
 void PlotPanel::exportPlotDataAsCsv() {
@@ -775,7 +875,8 @@ void PlotPanel::invalidateSeriesData() {
     runtime_ptr->index_counter = 0;
     runtime_ptr->has_last_sample = false;
   }
-  applyConfigToUi();
+  chart_->update();
+  updateLegendValues();
 }
 
 }  // namespace plot
