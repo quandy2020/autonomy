@@ -170,6 +170,7 @@ QString MapPanelTitleIcon(const QString& role) {
       {"plot.reset_view", "plot/plot_reset_view"},
       {"plot.select", "classes/Select"},
       {"plot.inspect", "crosshair"},
+      {"plot.pan", "classes/MoveCamera"},
       {"plot.zoom", "zoom"},
       {"plot.legend", "plot/plot_legend"},
   };

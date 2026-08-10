@@ -47,7 +47,8 @@ std::string NormalizeMessageType(const std::string& message_type) {
   if (message_type.empty()) {
     return message_type;
   }
-  const std::string short_name = RemapLegacyPackage(StripPrefix(message_type));
+  std::string short_name = RemapLegacyPackage(StripPrefix(message_type));
+  std::replace(short_name.begin(), short_name.end(), '/', '.');
   if (message_type.rfind("automsgs.msgs.", 0) == 0) {
     return message_type;
   }

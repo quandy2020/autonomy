@@ -967,14 +967,43 @@ Qt::DockWidgetArea VisualizationFrame::defaultSidebarArea(
     return Qt::RightDockWidgetArea;
   }
   if (dock == channels_dock_ || dock == displays_dock_ || dock == channel_dock_ ||
-      dock == problems_dock_ || dock == strata_floor_dock_) {
+      dock == problems_dock_ || dock == strata_floor_dock_ ||
+      dock == property_inspector_dock_) {
     return Qt::LeftDockWidgetArea;
   }
   return Qt::RightDockWidgetArea;
 }
 
+void VisualizationFrame::ensurePropertyInspectorDocked() {
+  if (property_inspector_dock_ == nullptr) {
+    return;
+  }
+  constexpr Qt::DockWidgetArea k_area = Qt::LeftDockWidgetArea;
+  if (property_inspector_dock_->isFloating()) {
+    property_inspector_dock_->setFloating(false);
+  }
+  if (dockWidgetArea(property_inspector_dock_) == Qt::NoDockWidgetArea) {
+    addSidebarDock(property_inspector_dock_, k_area);
+  } else if (dockWidgetArea(property_inspector_dock_) != k_area) {
+    removeDockWidget(property_inspector_dock_);
+    addSidebarDock(property_inspector_dock_, k_area);
+  }
+  configureSidebarDock(property_inspector_dock_, k_area);
+  property_inspector_dock_->setAllowedAreas(Qt::LeftDockWidgetArea |
+                                            Qt::RightDockWidgetArea);
+  property_inspector_dock_->setCollapsed(false);
+  if (toolbar_toggle_left_dock_action_ != nullptr &&
+      !toolbar_toggle_left_dock_action_->isChecked()) {
+    toolbar_toggle_left_dock_action_->setChecked(true);
+  }
+}
+
 void VisualizationFrame::ensureSidebarDockAttached(PanelDockWidget* dock) {
   if (dock == nullptr || isMainPanel(dock)) {
+    return;
+  }
+  if (dock->objectName() == QLatin1String("PropertyInspectorDock")) {
+    ensurePropertyInspectorDocked();
     return;
   }
   Qt::DockWidgetArea area = dockWidgetArea(dock);
@@ -1042,7 +1071,15 @@ void VisualizationFrame::showPropertyInspector(bool visible) {
     return;
   }
   if (visible) {
-    if (active_log_panel_ != nullptr) {
+    if (inspector_plot_panel_ != nullptr) {
+      bindPlotToPropertyInspector(inspector_plot_panel_);
+    } else if (inspector_image_panel_ != nullptr) {
+      bindImageToPropertyInspector(inspector_image_panel_);
+    } else if (inspector_teleop_panel_ != nullptr) {
+      bindTeleopToPropertyInspector(inspector_teleop_panel_);
+    } else if (inspector_log_panel_ != nullptr) {
+      bindLogToPropertyInspector(inspector_log_panel_);
+    } else if (active_log_panel_ != nullptr) {
       bindLogToPropertyInspector(active_log_panel_);
     } else if (active_teleop_panel_ != nullptr) {
       bindTeleopToPropertyInspector(active_teleop_panel_);
@@ -1051,6 +1088,7 @@ void VisualizationFrame::showPropertyInspector(bool visible) {
     } else if (active_plot_panel_ != nullptr) {
       bindPlotToPropertyInspector(active_plot_panel_);
     }
+    ensurePropertyInspectorDocked();
     property_inspector_dock_->show();
     property_inspector_dock_->raise();
   } else {
@@ -1091,7 +1129,8 @@ void VisualizationFrame::bindPlotToPropertyInspector(plot::PlotPanel* panel) {
   inspector_plot_panel_ = panel;
   const QString title = panel->config().title.trimmed();
   property_inspector_panel_->setContentWidget(panel->settingsWidgetForInspector(),
-                                                title.isEmpty() ? tr("Plot") : title);
+                                              title.isEmpty() ? tr("Plot") : title);
+  panel->refreshSettingsChannels();
   if (property_inspector_dock_ != nullptr) {
     panel->setSettingsButtonChecked(property_inspector_dock_->isVisible());
   }
@@ -1793,6 +1832,14 @@ void VisualizationFrame::setupUi() {
       IconLoader::panelIcon(QStringLiteral("PanelRawMessages")));
   raw_messages_panel_ = new RawMessagesPanel(manager_.get(), channel_dock_);
   channel_dock_->setContentWidget(raw_messages_panel_);
+  connect(raw_messages_panel_, &RawMessagesPanel::addToPlotRequested, this,
+          [this](const QString& channel, const QString& field_path) {
+            plot::PlotPanel* plot =
+                active_plot_panel_ != nullptr ? active_plot_panel_ : plot_panel_;
+            if (plot != nullptr) {
+              plot->addSeriesFromTopic(channel, field_path);
+            }
+          });
   addSidebarDock(channel_dock_, Qt::LeftDockWidgetArea);
 
   channels_dock_ = new PanelDockWidget(tr("Channels"), this);
@@ -1892,7 +1939,8 @@ void VisualizationFrame::setupUi() {
       IconLoader::dockPanelIcon(QStringLiteral("PropertyInspectorDock")));
   property_inspector_panel_ = new PropertyInspectorPanel(property_inspector_dock_);
   property_inspector_dock_->setContentWidget(property_inspector_panel_);
-  addSidebarDock(property_inspector_dock_, Qt::RightDockWidgetArea);
+  addSidebarDock(property_inspector_dock_, Qt::LeftDockWidgetArea);
+  property_inspector_dock_->hide();
 
   tf_dock_ = createTfTreePanelDock(QStringLiteral("TfTreeDock"));
   tf_tree_panel_ = qobject_cast<TfTreePanel*>(tf_dock_->widget());
@@ -1916,6 +1964,8 @@ void VisualizationFrame::setupUi() {
   // Visible by default so /fake/image from sensor tutorials shows without
   // hunting for a hidden dock + empty topic setting.
   image_dock_->show();
+  installImageFocusTracking();
+  setActiveImagePanel(image_panel_);
   // Image Display decodes on the UI thread; forward frames so the panel still
   // updates even if its own channel handoff races.
   manager_->setImageUpdateCallback(
@@ -4160,6 +4210,10 @@ void VisualizationFrame::restorePlotPanelConfigs() {
     }
     panel->setConfig(plot::FromPersistConfig(entry));
     updatePlotDockTitle(dock, panel);
+    if (entry.settings_visible && property_inspector_panel_ != nullptr) {
+      setActivePlotPanel(panel);
+      showPropertyInspector(true);
+    }
   }
 }
 
@@ -4221,6 +4275,10 @@ void VisualizationFrame::restoreImagePanelConfigs() {
     }
     panel->setConfig(image::FromPersistConfig(entry));
     updateImageDockTitle(dock, panel);
+    if (entry.settings_visible && property_inspector_panel_ != nullptr) {
+      setActiveImagePanel(panel);
+      showPropertyInspector(true);
+    }
   }
 }
 
@@ -4367,6 +4425,26 @@ void VisualizationFrame::installPlotFocusTracking() {
               if (dock->isAncestorOf(new_focus)) {
                 if (auto* panel = qobject_cast<plot::PlotPanel*>(dock->widget())) {
                   setActivePlotPanel(panel);
+                }
+                break;
+              }
+            }
+          });
+}
+
+void VisualizationFrame::installImageFocusTracking() {
+  connect(qApp, &QApplication::focusChanged, this,
+          [this](QWidget* /*old_focus*/, QWidget* new_focus) {
+            if (new_focus == nullptr) {
+              return;
+            }
+            for (PanelDockWidget* dock : orderedDockWidgets()) {
+              if (panelTypeId(dock) != QLatin1String("ImageDock") || !dock->isVisible()) {
+                continue;
+              }
+              if (dock->isAncestorOf(new_focus)) {
+                if (auto* panel = qobject_cast<image::ImagePanel*>(dock->widget())) {
+                  setActiveImagePanel(panel);
                 }
                 break;
               }
@@ -4569,6 +4647,7 @@ void VisualizationFrame::activatePanelDock(PanelDockWidget* dock) {
   if (property_inspector_dock_ != nullptr &&
       property_inspector_panel_ != nullptr &&
       property_inspector_panel_->contentWidget() != nullptr) {
+    ensurePropertyInspectorDocked();
     property_inspector_dock_->show();
     property_inspector_dock_->raise();
   }

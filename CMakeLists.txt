@@ -40,7 +40,12 @@ option(BUILD_DOCS "Build autonomy docs support" ON)
 option(BUILD_TEST "Build autonomy unit test" ON)
 option(BUILD_TOOLS "Build autonomy tools sources" ON)
 option(BUILD_AUTODRIVER "Build autodriver sensor HAL subproject" OFF)
-option(BUILD_AUTOVIZ "Build native 3D visualization tool (autoviz)" ON)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/autoviz/package.xml")
+  option(BUILD_AUTOVIZ
+    "Build autoviz inside autonomy (off when using colcon package autoviz)" OFF)
+else()
+  option(BUILD_AUTOVIZ "Build native 3D visualization tool (autoviz)" ON)
+endif()
 set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)

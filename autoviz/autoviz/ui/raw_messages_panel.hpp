@@ -9,15 +9,28 @@
 #include <cstdint>
 #include <string>
 
+#include "autoviz/integration/message_queue.hpp"
+
 class QComboBox;
 class QDragEnterEvent;
 class QDragMoveEvent;
 class QDropEvent;
 class QLineEdit;
+class QLabel;
 class QMimeData;
-class QPlainTextEdit;
+class QTimer;
+
+namespace google {
+namespace protobuf {
+class Message;
+}  // namespace protobuf
+}  // namespace google
 
 namespace autoviz {
+namespace raw_messages {
+class RawMessageTreeWidget;
+}  // namespace raw_messages
+
 namespace common {
 class VisualizationManager;
 }
@@ -36,6 +49,10 @@ class RawMessagesPanel : public QWidget {
   /** Re-render the last payload after global variables change. */
   void refreshFromVariables();
 
+ signals:
+  /** Request adding a numeric field as a Plot series (drag target / context menu). */
+  void addToPlotRequested(const QString& channel, const QString& field_path);
+
  protected:
   void dragEnterEvent(QDragEnterEvent* event) override;
   void dragMoveEvent(QDragMoveEvent* event) override;
@@ -44,11 +61,19 @@ class RawMessagesPanel : public QWidget {
  private slots:
   void onChannelChanged(int index);
   void onMessagePathEdited();
+  void onTick();
 
  private:
   void resubscribe();
   void unsubscribe();
+  void clearSelection();
+  void tryResubscribeIfNeeded();
+  bool channelsStructureChanged();
+  void rebuildChannelCombo();
+  void updateSchemaHeader();
+  void showSchemaPlaceholder();
   void showPayload(const std::string& payload);
+  void renderMessage(const google::protobuf::Message& message);
   std::string messageTypeForChannel(const std::string& channel) const;
   bool acceptChannelDrop(const QMimeData* mime) const;
   QString resolvedMessagePath() const;
@@ -56,10 +81,18 @@ class RawMessagesPanel : public QWidget {
   common::VisualizationManager* manager_ = nullptr;
   QComboBox* channel_combo_ = nullptr;
   QLineEdit* message_path_edit_ = nullptr;
-  QPlainTextEdit* content_ = nullptr;
+  QLabel* schema_label_ = nullptr;
+  raw_messages::RawMessageTreeWidget* message_tree_ = nullptr;
+  QTimer* tick_timer_ = nullptr;
+  integration::MessageQueue payload_queue_;
+  QStringList cached_channel_keys_;
   std::uint64_t subscription_id_ = 0;
   std::string active_channel_;
   std::string last_payload_;
+  std::string last_rendered_payload_;
+  bool message_tree_seeded_ = false;
+  QString last_tree_root_label_;
+  QString last_tree_path_filter_;
 };
 
 }  // namespace autoviz

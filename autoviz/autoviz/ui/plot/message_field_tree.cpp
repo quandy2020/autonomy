@@ -27,13 +27,31 @@ std::string StripPackagePrefix(const std::string& type_name) {
   return type_name;
 }
 
+const google::protobuf::Descriptor* FindGeneratedDescriptor(
+    const std::string& type_name) {
+  const google::protobuf::DescriptorPool* pool =
+      google::protobuf::DescriptorPool::generated_pool();
+  if (pool == nullptr || type_name.empty()) {
+    return nullptr;
+  }
+  if (const google::protobuf::Descriptor* desc =
+          pool->FindMessageTypeByName(type_name)) {
+    return desc;
+  }
+  return pool->FindMessageTypeByName(StripPackagePrefix(type_name));
+}
+
 const google::protobuf::Descriptor* ResolveDescriptor(
     const std::string& message_type) {
   if (message_type.empty()) {
     return nullptr;
   }
-  static DynamicFactory factory;
   const std::string normalized = commsgs::NormalizeMessageType(message_type);
+  if (const google::protobuf::Descriptor* desc = FindGeneratedDescriptor(normalized)) {
+    return desc;
+  }
+
+  static DynamicFactory factory;
   DynamicFactory::MessagePtr message = factory.New(normalized);
   if (message == nullptr) {
     message = factory.New(StripPackagePrefix(normalized));
@@ -129,7 +147,144 @@ void AppendTableArrayFields(QTreeWidgetItem* parent,
   }
 }
 
+void CollectNumericFieldPaths(const google::protobuf::Descriptor* desc,
+                              const QString& path_prefix, QStringList* out) {
+  if (desc == nullptr || out == nullptr) {
+    return;
+  }
+  for (int i = 0; i < desc->field_count(); ++i) {
+    const google::protobuf::FieldDescriptor* field = desc->field(i);
+    if (field == nullptr || field->is_repeated()) {
+      continue;
+    }
+    const QString segment = ProtobufToQString(field->name());
+    const QString path =
+        path_prefix.isEmpty() ? segment : path_prefix + QLatin1Char('.') + segment;
+    if (field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
+      CollectNumericFieldPaths(field->message_type(), path, out);
+    } else if (IsNumericField(field)) {
+      out->push_back(path);
+    }
+  }
+}
+
+QString StripArrayIndexSuffix(QString segment) {
+  const int bracket = segment.indexOf(QLatin1Char('['));
+  if (bracket > 0) {
+    segment.truncate(bracket);
+  }
+  return segment;
+}
+
+const google::protobuf::Descriptor* DescriptorAtRelativePath(
+    const google::protobuf::Descriptor* root, const QString& relative_path) {
+  if (root == nullptr) {
+    return nullptr;
+  }
+  const QString trimmed = relative_path.trimmed();
+  if (trimmed.isEmpty()) {
+    return root;
+  }
+  const QStringList segments = trimmed.split(QLatin1Char('.'), Qt::SkipEmptyParts);
+  const google::protobuf::Descriptor* desc = root;
+  for (const QString& raw_segment : segments) {
+    const QString segment = StripArrayIndexSuffix(raw_segment);
+    const google::protobuf::FieldDescriptor* field =
+        desc->FindFieldByName(segment.toStdString());
+    if (field == nullptr ||
+        field->type() != google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
+      return nullptr;
+    }
+    // Repeated message fields drill into the element type (Foxglove-style poses.*).
+    desc = field->message_type();
+  }
+  return desc;
+}
+
+void CollectAllPlotFieldPaths(const google::protobuf::Descriptor* desc,
+                              const QString& path_prefix, QStringList* out) {
+  if (desc == nullptr || out == nullptr) {
+    return;
+  }
+  for (int i = 0; i < desc->field_count(); ++i) {
+    const google::protobuf::FieldDescriptor* field = desc->field(i);
+    if (field == nullptr) {
+      continue;
+    }
+    const QString segment = ProtobufToQString(field->name());
+    const QString path =
+        path_prefix.isEmpty() ? segment : path_prefix + QLatin1Char('.') + segment;
+    out->push_back(path);
+    if (field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
+      CollectAllPlotFieldPaths(field->message_type(), path, out);
+    }
+  }
+}
+
+void CollectPlotBrowsePaths(const google::protobuf::Descriptor* desc,
+                            const QString& path_prefix, QStringList* out) {
+  if (desc == nullptr || out == nullptr) {
+    return;
+  }
+  for (int i = 0; i < desc->field_count(); ++i) {
+    const google::protobuf::FieldDescriptor* field = desc->field(i);
+    if (field == nullptr || field->is_repeated()) {
+      continue;
+    }
+    const QString segment = ProtobufToQString(field->name());
+    const QString path =
+        path_prefix.isEmpty() ? segment : path_prefix + QLatin1Char('.') + segment;
+    if (field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
+      out->push_back(path);
+      CollectPlotBrowsePaths(field->message_type(), path, out);
+    } else if (IsNumericField(field)) {
+      out->push_back(path);
+    }
+  }
+}
+
 }  // namespace
+
+QStringList PlotBrowsePathsForMessageType(const std::string& message_type) {
+  QStringList paths;
+  CollectPlotBrowsePaths(ResolveDescriptor(message_type), QString(), &paths);
+  paths.sort(Qt::CaseInsensitive);
+  return paths;
+}
+
+QStringList PlotAllFieldPathsForMessageType(const std::string& message_type) {
+  QStringList paths;
+  CollectAllPlotFieldPaths(ResolveDescriptor(message_type), QString(), &paths);
+  paths.sort(Qt::CaseInsensitive);
+  paths.removeDuplicates();
+  return paths;
+}
+
+QStringList PlotNextLevelFieldPaths(const std::string& message_type,
+                                    const QString& parent_field_path) {
+  QStringList out;
+  const google::protobuf::Descriptor* desc = DescriptorAtRelativePath(
+      ResolveDescriptor(message_type), parent_field_path.trimmed());
+  if (desc == nullptr) {
+    return out;
+  }
+  for (int i = 0; i < desc->field_count(); ++i) {
+    const google::protobuf::FieldDescriptor* field = desc->field(i);
+    if (field == nullptr) {
+      continue;
+    }
+    out.push_back(ProtobufToQString(field->name()));
+  }
+  out.sort(Qt::CaseInsensitive);
+  return out;
+}
+
+QStringList NumericFieldPathsForMessageType(const std::string& message_type) {
+  QStringList paths;
+  CollectNumericFieldPaths(ResolveDescriptor(message_type), QString(), &paths);
+  paths.sort(Qt::CaseInsensitive);
+  return paths;
+}
 
 void PopulateMessageFieldTree(QTreeWidgetItem* parent,
                               const std::string& message_type,

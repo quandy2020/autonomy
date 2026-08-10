@@ -12,9 +12,11 @@
 #include "autoviz/ui/plot/plot_types.hpp"
 
 class QAction;
+class QButtonGroup;
 class QDragEnterEvent;
 class QDropEvent;
 class QFocusEvent;
+class QWheelEvent;
 class QTimer;
 class QToolButton;
 class QScrollArea;
@@ -77,6 +79,7 @@ class PlotPanel : public QWidget {
 
  protected:
   void focusInEvent(QFocusEvent* event) override;
+  void wheelEvent(QWheelEvent* event) override;
   bool eventFilter(QObject* watched, QEvent* event) override;
   void dragEnterEvent(QDragEnterEvent* event) override;
   void dragMoveEvent(QDragMoveEvent* event) override;
@@ -104,6 +107,8 @@ class PlotPanel : public QWidget {
   void trimSeriesPoints(PlotSeriesRuntime& runtime, double latest_x);
   void updateLegendValues();
   void handleSeriesDrop(const QString& channel, const QString& field_path);
+  void setChartInteractionMode(PlotInteractionMode mode);
+  void syncInteractionToolState();
   double resolveTimestampSec(const PlotSeriesRuntime& runtime,
                              const std::string& message_type,
                              const std::string& payload, double receive_time,
@@ -120,6 +125,10 @@ class PlotPanel : public QWidget {
   QTimer* tick_timer_ = nullptr;
   QToolButton* expand_button_ = nullptr;
   QToolButton* settings_button_ = nullptr;
+  QToolButton* select_tool_button_ = nullptr;
+  QToolButton* pan_tool_button_ = nullptr;
+  QToolButton* zoom_tool_button_ = nullptr;
+  QButtonGroup* interaction_tool_group_ = nullptr;
   int color_cursor_ = 0;
 };
 

@@ -38,6 +38,13 @@ enum class PlotXAxisMode {
   kMessagePath = 2,
 };
 
+enum class PlotInteractionMode {
+  kPan,
+  kZoom,
+  kSelect,
+  kInspect,
+};
+
 enum class PlotMessagePathMode {
   kCurrent = 0,
   kAccumulated = 1,

@@ -5,6 +5,7 @@
 #pragma once
 
 #include <Qt>
+#include <QStringList>
 
 #include <string>
 
@@ -37,6 +38,19 @@ void PopulateMessageFieldTree(QTreeWidgetItem* parent,
 void PopulateTableArrayFieldTree(QTreeWidgetItem* parent,
                                  const std::string& message_type,
                                  const QString& path_prefix);
+
+/** Numeric protobuf leaf paths for plot Y/X field pickers. */
+QStringList NumericFieldPathsForMessageType(const std::string& message_type);
+
+/** All protobuf field paths for plot browsing (includes message prefixes). */
+QStringList PlotBrowsePathsForMessageType(const std::string& message_type);
+
+/** Every nested field path relative to the message root (includes repeated branches). */
+QStringList PlotAllFieldPathsForMessageType(const std::string& message_type);
+
+/** Immediate protobuf field name segments under parent_field_path (e.g. "linear" → x,y,z). */
+QStringList PlotNextLevelFieldPaths(const std::string& message_type,
+                                    const QString& parent_field_path);
 
 }  // namespace plot
 }  // namespace autoviz

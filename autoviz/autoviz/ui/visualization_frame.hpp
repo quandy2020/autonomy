@@ -187,6 +187,7 @@ class VisualizationFrame : public QMainWindow {
   void configureMainPanelDock(PanelDockWidget* dock);
   void configureSidebarDock(PanelDockWidget* dock, Qt::DockWidgetArea area);
   void showPropertyInspector(bool visible);
+  void ensurePropertyInspectorDocked();
   void bindPlotToPropertyInspector(plot::PlotPanel* panel);
   void clearPropertyInspectorForPlot(plot::PlotPanel* panel);
   void bindImageToPropertyInspector(image::ImagePanel* panel);
@@ -343,6 +344,7 @@ class VisualizationFrame : public QMainWindow {
   void refreshAllPlotSettingsChannels();
   void applyPlotSettingsVisibilityFromSession();
   void installPlotFocusTracking();
+  void installImageFocusTracking();
   void capturePlotPanelConfigs();
   void restorePlotPanelConfigs();
   void ensurePlotDockExists(const QString& object_name);
