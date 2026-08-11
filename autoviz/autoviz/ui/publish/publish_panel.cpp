@@ -65,7 +65,6 @@ PublishPanel::PublishPanel(common::VisualizationManager* manager, QWidget* paren
 
   connect(settings_widget_, &PublishSettingsWidget::configChanged, this, [this]() {
     config_ = MergeConfig(config_, editor_->config(), settings_widget_->config());
-    applyConfigToUi();
     emit configChanged();
   });
   connect(editor_, &PublishEditorWidget::configChanged, this,
@@ -170,6 +169,7 @@ void PublishPanel::onToggleSettings(bool visible) {
 
 void PublishPanel::onEditorConfigChanged() {
   config_ = MergeConfig(config_, editor_->config(), settings_widget_->config());
+  syncSettingsWidgetFromConfig();
   emit configChanged();
 }
 

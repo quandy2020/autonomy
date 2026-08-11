@@ -157,6 +157,7 @@ void VisualizationManager::applySession(const SessionConfig& config) {
   plot_panels_ = config.plot_panels;
   image_panels_ = config.image_panels;
   state_transition_panels_ = config.state_transition_panels;
+  publish_panels_ = config.publish_panels;
   variable_store_.loadFromSession(config.variables);
   plot_settings_visible_ = config.plot_settings_visible;
   window_x_ = config.window_x;
@@ -325,6 +326,7 @@ SessionConfig VisualizationManager::currentSession() const {
   config.plot_panels = plot_panels_;
   config.image_panels = image_panels_;
   config.state_transition_panels = state_transition_panels_;
+  config.publish_panels = publish_panels_;
   config.variables = variable_store_.saveToSession();
   config.plot_settings_visible = plot_settings_visible_;
   config.window_x = window_x_;
@@ -759,6 +761,11 @@ void VisualizationManager::setImagePanels(
 void VisualizationManager::setStateTransitionPanels(
     const std::vector<StateTransitionPanelPersistConfig>& panels) {
   state_transition_panels_ = panels;
+}
+
+void VisualizationManager::setPublishPanels(
+    const std::vector<PublishPanelPersistConfig>& panels) {
+  publish_panels_ = panels;
 }
 
 void VisualizationManager::setPlotSettingsVisible(bool visible) {

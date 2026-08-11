@@ -152,6 +152,47 @@ struct StateTransitionPanelPersistConfig {
   std::vector<StateTransitionSeriesPersistConfig> series;
 };
 
+struct PublishPresetPersistConfig {
+  std::string name;
+  std::string channel;
+  std::string message_type;
+  std::string message_json;
+  bool loop_publish = false;
+  double publish_rate_hz = 1.0;
+  std::string button_label;
+  std::string button_tooltip;
+  std::string button_color;
+};
+
+struct PublishEntryPersistConfig {
+  std::string id;
+  std::string channel;
+  std::string message_type;
+  double publish_rate_hz = 1.0;
+  std::string message_json;
+  bool publishing = true;
+};
+
+struct PublishPanelPersistConfig {
+  std::string object_name;
+  std::string title = "Publish";
+  std::string channel;
+  std::string message_type;
+  std::string message_json;
+  bool editing_mode = false;
+  bool loop_publish = false;
+  double publish_rate_hz = 1.0;
+  std::string button_label = "Send";
+  std::string button_tooltip;
+  std::string button_color;
+  bool settings_visible = false;
+  std::string active_preset_name;
+  std::vector<PublishPresetPersistConfig> saved_presets;
+  std::vector<std::string> custom_channels;
+  std::vector<PublishEntryPersistConfig> publishers;
+  int selected_publisher_index = -1;
+};
+
 struct SessionConfig {
   std::string fixed_frame = "map";
   bool show_grid = true;
@@ -174,6 +215,7 @@ struct SessionConfig {
   std::vector<PlotPanelPersistConfig> plot_panels;
   std::vector<ImagePanelPersistConfig> image_panels;
   std::vector<StateTransitionPanelPersistConfig> state_transition_panels;
+  std::vector<PublishPanelPersistConfig> publish_panels;
   std::vector<VariablePersistConfig> variables;
   bool plot_settings_visible = true;
   std::string transformer_id = "autoviz/AutolinkTf";

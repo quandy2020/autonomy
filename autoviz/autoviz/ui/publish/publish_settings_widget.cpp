@@ -9,6 +9,7 @@
 #include <QGroupBox>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QSignalBlocker>
 #include <QVBoxLayout>
 
 #include "autoviz/ui/panel_settings_styles.hpp"
@@ -31,7 +32,7 @@ PublishSettingsWidget::PublishSettingsWidget(QWidget* parent)
   title_form->addRow(tr("Title"), title_edit_);
   outer->addLayout(title_form);
 
-  auto* button_group = new QGroupBox(tr("Publish button"), this);
+  auto* button_group = new QGroupBox(tr("Send button"), this);
   StyleSettingsGroupBox(button_group);
   auto* form = new QFormLayout(button_group);
   ApplyCompactForm(form);
@@ -65,6 +66,9 @@ PublishPanelConfig PublishSettingsWidget::config() const {
 }
 
 void PublishSettingsWidget::setConfig(const PublishPanelConfig& config) {
+  const QSignalBlocker block_title(title_edit_);
+  const QSignalBlocker block_label(button_label_edit_);
+  const QSignalBlocker block_tooltip(button_tooltip_edit_);
   config_ = config;
   title_edit_->setText(config_.title);
   button_label_edit_->setText(config_.button_label);
@@ -79,7 +83,7 @@ void PublishSettingsWidget::setConfig(const PublishPanelConfig& config) {
 void PublishSettingsWidget::pickButtonColor() {
   const QColor chosen = QColorDialog::getColor(
       config_.button_color.isValid() ? config_.button_color : QColor(70, 120, 200),
-      this, tr("Publish button color"));
+      this, tr("Send button color"));
   if (!chosen.isValid()) {
     return;
   }
