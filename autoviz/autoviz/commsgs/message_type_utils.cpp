@@ -41,17 +41,27 @@ std::string RemapLegacyPackage(std::string short_name) {
   return short_name;
 }
 
+std::string NormalizeRosStyle(std::string value) {
+  static const std::string kMsgMarker = "/msg/";
+  const std::size_t pos = value.find(kMsgMarker);
+  if (pos != std::string::npos) {
+    return value.substr(0, pos) + "." + value.substr(pos + kMsgMarker.size());
+  }
+  std::replace(value.begin(), value.end(), '/', '.');
+  return value;
+}
+
 }  // namespace
 
 std::string NormalizeMessageType(const std::string& message_type) {
   if (message_type.empty()) {
     return message_type;
   }
-  std::string short_name = RemapLegacyPackage(StripPrefix(message_type));
-  std::replace(short_name.begin(), short_name.end(), '/', '.');
   if (message_type.rfind("automsgs.msgs.", 0) == 0) {
     return message_type;
   }
+  std::string short_name =
+      RemapLegacyPackage(NormalizeRosStyle(StripPrefix(message_type)));
   return "automsgs.msgs." + short_name;
 }
 

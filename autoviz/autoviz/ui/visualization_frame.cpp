@@ -70,6 +70,7 @@
 #include "autoviz/ui/playback_panel.hpp"
 #include "autoviz/ui/plot/plot_config_io.hpp"
 #include "autoviz/ui/state_transitions/state_transition_config_io.hpp"
+#include "autoviz/ui/publish/publish_config_io.hpp"
 #include "autoviz/ui/image/image_config_io.hpp"
 #include "autoviz/ui/plot/plot_panel.hpp"
 #include "autoviz/ui/teleop/teleop_panel.hpp"
@@ -2635,6 +2636,7 @@ bool VisualizationFrame::loadConfig(const QString& path) {
   restorePlotPanelConfigs();
   restoreImagePanelConfigs();
   restoreStateTransitionPanelConfigs();
+  restorePublishPanelConfigs();
   applyPlotSettingsVisibilityFromSession();
   applyActiveTool(manager_->tools().activeToolId());
   // Config window-state may have hidden ImageDock; keep it available when a
@@ -2747,6 +2749,7 @@ void VisualizationFrame::captureWindowLayout() {
   capturePlotPanelConfigs();
   captureImagePanelConfigs();
   captureStateTransitionPanelConfigs();
+  capturePublishPanelConfigs();
   const QRect frame_geometry = geometry();
   manager_->setWindowFrame(frame_geometry.x(), frame_geometry.y(),
                            frame_geometry.width(), frame_geometry.height());
@@ -4340,6 +4343,61 @@ void VisualizationFrame::restoreStateTransitionPanelConfigs() {
           panel->settingsWidgetForInspector(),
           panel->config().title.isEmpty() ? tr("State Transitions")
                                           : panel->config().title);
+    }
+  }
+}
+
+void VisualizationFrame::capturePublishPanelConfigs() {
+  std::vector<common::PublishPanelPersistConfig> panels;
+  panels.reserve(4);
+  for (PanelDockWidget* dock : orderedDockWidgets()) {
+    if (dock == nullptr || panelTypeId(dock) != QLatin1String("PublishDock")) {
+      continue;
+    }
+    auto* panel = qobject_cast<publish_panel::PublishPanel*>(dock->widget());
+    if (panel == nullptr) {
+      continue;
+    }
+    panels.push_back(
+        publish_panel::ToPersistConfig(dock->objectName(), panel->config()));
+  }
+  manager_->setPublishPanels(panels);
+}
+
+void VisualizationFrame::ensurePublishDockExists(const QString& object_name) {
+  if (object_name.isEmpty() ||
+      findChild<PanelDockWidget*>(object_name) != nullptr) {
+    return;
+  }
+  PanelDockWidget* dock = createPublishPanelDock(object_name);
+  addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+}
+
+void VisualizationFrame::restorePublishPanelConfigs() {
+  const std::vector<common::PublishPanelPersistConfig>& saved =
+      manager_->publishPanels();
+  if (saved.empty()) {
+    return;
+  }
+
+  for (const common::PublishPanelPersistConfig& entry : saved) {
+    ensurePublishDockExists(QString::fromStdString(entry.object_name));
+  }
+
+  for (const common::PublishPanelPersistConfig& entry : saved) {
+    auto* dock = findChild<PanelDockWidget*>(
+        QString::fromStdString(entry.object_name));
+    auto* panel = dock != nullptr
+                      ? qobject_cast<publish_panel::PublishPanel*>(dock->widget())
+                      : nullptr;
+    if (panel == nullptr) {
+      continue;
+    }
+    panel->setConfig(publish_panel::FromPersistConfig(entry));
+    updatePublishDockTitle(dock, panel);
+    if (entry.settings_visible && property_inspector_panel_ != nullptr) {
+      setActivePublishPanel(panel);
+      showPropertyInspector(true);
     }
   }
 }

@@ -55,6 +55,7 @@ autoviz_cpp_tutorial(21_audio 21_tutorial_audio.cpp)
 autoviz_cpp_tutorial(22_service 22_tutorial_service.cpp)
 autoviz_cpp_tutorial(23_map_gps 23_tutorial_map_gps.cpp)
 autoviz_cpp_tutorial(24_teleop_echo 24_tutorial_teleop_echo.cpp)
+autoviz_cpp_tutorial(26_raw_pub 26_test_rawmessage_pub.cpp)
 
 list(REMOVE_ITEM _AUTOVIZ_CPP_EXAMPLE_TARGETS "")
 add_custom_target(autoviz_cpp_examples DEPENDS ${_AUTOVIZ_CPP_EXAMPLE_TARGETS})

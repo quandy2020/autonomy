@@ -169,6 +169,7 @@ class VisualizationManager {
   void setImagePanels(const std::vector<ImagePanelPersistConfig>& panels);
   void setStateTransitionPanels(
       const std::vector<StateTransitionPanelPersistConfig>& panels);
+  void setPublishPanels(const std::vector<PublishPanelPersistConfig>& panels);
   void setPlotSettingsVisible(bool visible);
   void setWindowFrame(int x, int y, int width, int height);
   bool hideLeftDock() const { return hide_left_dock_; }
@@ -188,6 +189,9 @@ class VisualizationManager {
   const std::vector<StateTransitionPanelPersistConfig>& stateTransitionPanels()
       const {
     return state_transition_panels_;
+  }
+  const std::vector<PublishPanelPersistConfig>& publishPanels() const {
+    return publish_panels_;
   }
   bool plotSettingsVisible() const { return plot_settings_visible_; }
   int windowX() const { return window_x_; }
@@ -289,6 +293,7 @@ class VisualizationManager {
   std::vector<PlotPanelPersistConfig> plot_panels_;
   std::vector<ImagePanelPersistConfig> image_panels_;
   std::vector<StateTransitionPanelPersistConfig> state_transition_panels_;
+  std::vector<PublishPanelPersistConfig> publish_panels_;
   bool plot_settings_visible_ = true;
   int window_x_ = -1;
   int window_y_ = -1;

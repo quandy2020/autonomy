@@ -353,6 +353,9 @@ class VisualizationFrame : public QMainWindow {
   void ensureImageDockExists(const QString& object_name);
   void captureStateTransitionPanelConfigs();
   void restoreStateTransitionPanelConfigs();
+  void capturePublishPanelConfigs();
+  void restorePublishPanelConfigs();
+  void ensurePublishDockExists(const QString& object_name);
   void ensureStateTransitionDockExists(const QString& object_name);
   void updatePlotDockTitle(PanelDockWidget* dock, plot::PlotPanel* panel);
   void registerPanelDock(PanelDockWidget* dock);

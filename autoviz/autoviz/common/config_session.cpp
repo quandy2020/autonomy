@@ -402,6 +402,204 @@ void WriteStateTransitionPanelToConfig(
   }
 }
 
+void ReadPublishPresetFromConfig(const Config& node,
+                                 PublishPresetPersistConfig* preset) {
+  if (preset == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  if (node.mapGetString("Name", &value)) {
+    preset->name = value.toStdString();
+  }
+  if (node.mapGetString("Channel", &value)) {
+    preset->channel = value.toStdString();
+  }
+  if (node.mapGetString("MessageType", &value)) {
+    preset->message_type = value.toStdString();
+  }
+  if (node.mapGetString("MessageJson", &value)) {
+    preset->message_json = value.toStdString();
+  }
+  node.mapGetBool("LoopPublish", &preset->loop_publish);
+  float publish_rate = static_cast<float>(preset->publish_rate_hz);
+  if (node.mapGetFloat("PublishRateHz", &publish_rate)) {
+    preset->publish_rate_hz = publish_rate;
+  }
+  if (node.mapGetString("ButtonLabel", &value)) {
+    preset->button_label = value.toStdString();
+  }
+  if (node.mapGetString("ButtonTooltip", &value)) {
+    preset->button_tooltip = value.toStdString();
+  }
+  if (node.mapGetString("ButtonColor", &value)) {
+    preset->button_color = value.toStdString();
+  }
+}
+
+void WritePublishPresetToConfig(const PublishPresetPersistConfig& preset,
+                                Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("Name", QString::fromStdString(preset.name));
+  node->mapSetValue("Channel", QString::fromStdString(preset.channel));
+  node->mapSetValue("MessageType", QString::fromStdString(preset.message_type));
+  node->mapSetValue("MessageJson", QString::fromStdString(preset.message_json));
+  node->mapSetValue("LoopPublish", preset.loop_publish);
+  node->mapSetValue("PublishRateHz", preset.publish_rate_hz);
+  node->mapSetValue("ButtonLabel", QString::fromStdString(preset.button_label));
+  node->mapSetValue("ButtonTooltip",
+                    QString::fromStdString(preset.button_tooltip));
+  node->mapSetValue("ButtonColor", QString::fromStdString(preset.button_color));
+}
+
+void ReadPublishEntryFromConfig(const Config& node,
+                                PublishEntryPersistConfig* entry) {
+  if (entry == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  if (node.mapGetString("Id", &value)) {
+    entry->id = value.toStdString();
+  }
+  if (node.mapGetString("Channel", &value)) {
+    entry->channel = value.toStdString();
+  }
+  if (node.mapGetString("MessageType", &value)) {
+    entry->message_type = value.toStdString();
+  }
+  float publish_rate = static_cast<float>(entry->publish_rate_hz);
+  if (node.mapGetFloat("PublishRateHz", &publish_rate)) {
+    entry->publish_rate_hz = publish_rate;
+  }
+  if (node.mapGetString("MessageJson", &value)) {
+    entry->message_json = value.toStdString();
+  }
+  node.mapGetBool("Publishing", &entry->publishing);
+}
+
+void WritePublishEntryToConfig(const PublishEntryPersistConfig& entry,
+                               Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("Id", QString::fromStdString(entry.id));
+  node->mapSetValue("Channel", QString::fromStdString(entry.channel));
+  node->mapSetValue("MessageType", QString::fromStdString(entry.message_type));
+  node->mapSetValue("PublishRateHz", entry.publish_rate_hz);
+  node->mapSetValue("MessageJson", QString::fromStdString(entry.message_json));
+  node->mapSetValue("Publishing", entry.publishing);
+}
+
+void ReadPublishPanelFromConfig(const Config& node,
+                                PublishPanelPersistConfig* panel) {
+  if (panel == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  if (node.mapGetString("ObjectName", &value)) {
+    panel->object_name = value.toStdString();
+  }
+  if (node.mapGetString("Title", &value)) {
+    panel->title = value.toStdString();
+  }
+  if (node.mapGetString("Channel", &value)) {
+    panel->channel = value.toStdString();
+  }
+  if (node.mapGetString("MessageType", &value)) {
+    panel->message_type = value.toStdString();
+  }
+  if (node.mapGetString("MessageJson", &value)) {
+    panel->message_json = value.toStdString();
+  }
+  node.mapGetBool("EditingMode", &panel->editing_mode);
+  node.mapGetBool("LoopPublish", &panel->loop_publish);
+  float publish_rate = static_cast<float>(panel->publish_rate_hz);
+  if (node.mapGetFloat("PublishRateHz", &publish_rate)) {
+    panel->publish_rate_hz = publish_rate;
+  }
+  if (node.mapGetString("ButtonLabel", &value)) {
+    panel->button_label = value.toStdString();
+  }
+  if (node.mapGetString("ButtonTooltip", &value)) {
+    panel->button_tooltip = value.toStdString();
+  }
+  if (node.mapGetString("ButtonColor", &value)) {
+    panel->button_color = value.toStdString();
+  }
+  node.mapGetBool("SettingsVisible", &panel->settings_visible);
+  if (node.mapGetString("ActivePresetName", &value)) {
+    panel->active_preset_name = value.toStdString();
+  }
+  panel->saved_presets.clear();
+  Config presets = node.mapGetChild("SavedPresets");
+  for (int i = 0; i < presets.listLength(); ++i) {
+    PublishPresetPersistConfig preset;
+    ReadPublishPresetFromConfig(presets.listChildAt(i), &preset);
+    panel->saved_presets.push_back(std::move(preset));
+  }
+  panel->custom_channels.clear();
+  Config custom_channels = node.mapGetChild("CustomChannels");
+  for (int i = 0; i < custom_channels.listLength(); ++i) {
+    panel->custom_channels.push_back(
+        custom_channels.listChildAt(i).getValue().toString().toStdString());
+  }
+  panel->publishers.clear();
+  Config publishers = node.mapGetChild("Publishers");
+  for (int i = 0; i < publishers.listLength(); ++i) {
+    PublishEntryPersistConfig entry;
+    ReadPublishEntryFromConfig(publishers.listChildAt(i), &entry);
+    panel->publishers.push_back(std::move(entry));
+  }
+  int selected_index = panel->selected_publisher_index;
+  if (node.mapGetInt("SelectedPublisherIndex", &selected_index)) {
+    panel->selected_publisher_index = selected_index;
+  }
+}
+
+void WritePublishPanelToConfig(const PublishPanelPersistConfig& panel,
+                               Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("ObjectName", QString::fromStdString(panel.object_name));
+  node->mapSetValue("Title", QString::fromStdString(panel.title));
+  node->mapSetValue("Channel", QString::fromStdString(panel.channel));
+  node->mapSetValue("MessageType", QString::fromStdString(panel.message_type));
+  node->mapSetValue("MessageJson", QString::fromStdString(panel.message_json));
+  node->mapSetValue("EditingMode", panel.editing_mode);
+  node->mapSetValue("LoopPublish", panel.loop_publish);
+  node->mapSetValue("PublishRateHz", panel.publish_rate_hz);
+  node->mapSetValue("ButtonLabel", QString::fromStdString(panel.button_label));
+  node->mapSetValue("ButtonTooltip",
+                    QString::fromStdString(panel.button_tooltip));
+  node->mapSetValue("ButtonColor", QString::fromStdString(panel.button_color));
+  node->mapSetValue("SettingsVisible", panel.settings_visible);
+  node->mapSetValue("ActivePresetName",
+                    QString::fromStdString(panel.active_preset_name));
+  if (!panel.saved_presets.empty()) {
+    Config presets = node->mapMakeChild("SavedPresets");
+    for (const auto& preset : panel.saved_presets) {
+      Config preset_node = presets.listAppendNew();
+      WritePublishPresetToConfig(preset, &preset_node);
+    }
+  }
+  if (!panel.custom_channels.empty()) {
+    Config custom_channels = node->mapMakeChild("CustomChannels");
+    for (const auto& channel : panel.custom_channels) {
+      custom_channels.listAppendNew().setValue(QString::fromStdString(channel));
+    }
+  }
+  if (!panel.publishers.empty()) {
+    Config publishers = node->mapMakeChild("Publishers");
+    for (const auto& entry : panel.publishers) {
+      Config entry_node = publishers.listAppendNew();
+      WritePublishEntryToConfig(entry, &entry_node);
+    }
+  }
+  node->mapSetValue("SelectedPublisherIndex", panel.selected_publisher_index);
+}
+
 void WritePlotPanelToConfig(const PlotPanelPersistConfig& panel, Config* node) {
   if (node == nullptr) {
     return;
@@ -715,6 +913,14 @@ bool SessionConfigFromNativeConfig(const Config& root, SessionConfig* config) {
     ReadStateTransitionPanelFromConfig(state_panels.listChildAt(i), &panel);
     config->state_transition_panels.push_back(std::move(panel));
   }
+
+  config->publish_panels.clear();
+  Config publish_panels = root.mapGetChild("PublishPanels");
+  for (int i = 0; i < publish_panels.listLength(); ++i) {
+    PublishPanelPersistConfig panel;
+    ReadPublishPanelFromConfig(publish_panels.listChildAt(i), &panel);
+    config->publish_panels.push_back(std::move(panel));
+  }
   return true;
 }
 
@@ -895,6 +1101,13 @@ void SessionConfigToConfig(const SessionConfig& session, Config* root) {
     for (const auto& panel : session.state_transition_panels) {
       Config node = state_panels.listAppendNew();
       WriteStateTransitionPanelToConfig(panel, &node);
+    }
+  }
+  if (!session.publish_panels.empty()) {
+    Config publish_panels = root->mapMakeChild("PublishPanels");
+    for (const auto& panel : session.publish_panels) {
+      Config node = publish_panels.listAppendNew();
+      WritePublishPanelToConfig(panel, &node);
     }
   }
 }
