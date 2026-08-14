@@ -1,7 +1,7 @@
 # automsgs RPCs 总览设计 — 第三方机器人业务 API
 
 日期：2026-08-14  
-状态：待审阅  
+状态：已批准  
 范围：`automsgs/proto/rpcs/*`（重组与完备）  
 关联：`docs/superpowers/specs/2026-08-14-charging-rpc-nav-align-design.md`（对接细节并入 `docking`）
 
