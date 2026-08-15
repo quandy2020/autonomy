@@ -28,70 +28,70 @@ namespace err_proto = automsgs::msgs::status_msgs;
 err_proto::StatusCode MapComputePathToPoseError(const std::exception& ex)
 {
     if (dynamic_cast<const common::InvalidPlanner*>(&ex)) {
-        return err_proto::COMPUTE_PATH_TO_POSE_INVALID_PLANNER;
+        return err_proto::PLANNING_INVALID_PLUGIN;
     }
     if (dynamic_cast<const common::StartOccupied*>(&ex)) {
-        return err_proto::COMPUTE_PATH_TO_POSE_START_OCCUPIED;
+        return err_proto::PLANNING_START_OCCUPIED;
     }
     if (dynamic_cast<const common::GoalOccupied*>(&ex)) {
-        return err_proto::COMPUTE_PATH_TO_POSE_GOAL_OCCUPIED;
+        return err_proto::PLANNING_GOAL_OCCUPIED;
     }
     if (dynamic_cast<const common::NoValidPathCouldBeFound*>(&ex)) {
-        return err_proto::COMPUTE_PATH_TO_POSE_NO_VALID_PATH;
+        return err_proto::PLANNING_NO_PATH_FOUND;
     }
     if (dynamic_cast<const common::PlannerTimedOut*>(&ex)) {
-        return err_proto::COMPUTE_PATH_TO_POSE_TIMEOUT;
+        return err_proto::PLANNING_TIMEOUT;
     }
     if (dynamic_cast<const common::StartOutsideMapBounds*>(&ex)) {
-        return err_proto::COMPUTE_PATH_TO_POSE_START_OUTSIDE_MAP;
+        return err_proto::PLANNING_START_OUTSIDE_MAP;
     }
     if (dynamic_cast<const common::GoalOutsideMapBounds*>(&ex)) {
-        return err_proto::COMPUTE_PATH_TO_POSE_GOAL_OUTSIDE_MAP;
+        return err_proto::PLANNING_GOAL_OUTSIDE_MAP;
     }
     if (dynamic_cast<const common::PlannerTFError*>(&ex)) {
-        return err_proto::COMPUTE_PATH_TO_POSE_TF_ERROR;
+        return err_proto::PLANNING_TF_ERROR;
     }
-    return err_proto::COMPUTE_PATH_TO_POSE_UNKNOWN;
+    return err_proto::PLANNING_UNKNOWN;
 }
 
 err_proto::StatusCode MapComputePathThroughPosesError(const std::exception& ex)
 {
     if (dynamic_cast<const common::NoViapointsGiven*>(&ex)) {
-        return err_proto::COMPUTE_PATH_THROUGH_POSES_NO_WAYPOINTS;
+        return err_proto::PLANNING_NO_WAYPOINTS;
     }
     if (dynamic_cast<const common::InvalidPlanner*>(&ex)) {
-        return err_proto::COMPUTE_PATH_THROUGH_POSES_INVALID_PLANNER;
+        return err_proto::PLANNING_INVALID_PLUGIN;
     }
     if (dynamic_cast<const common::NoValidPathCouldBeFound*>(&ex)) {
-        return err_proto::COMPUTE_PATH_THROUGH_POSES_NO_VALID_PATH;
+        return err_proto::PLANNING_NO_PATH_FOUND;
     }
     if (dynamic_cast<const common::PlannerTFError*>(&ex)) {
-        return err_proto::COMPUTE_PATH_THROUGH_POSES_TF_ERROR;
+        return err_proto::PLANNING_TF_ERROR;
     }
     if (dynamic_cast<const common::PlannerTimedOut*>(&ex)) {
-        return err_proto::COMPUTE_PATH_THROUGH_POSES_TIMEOUT;
+        return err_proto::PLANNING_TIMEOUT;
     }
-    return err_proto::COMPUTE_PATH_THROUGH_POSES_UNKNOWN;
+    return err_proto::PLANNING_UNKNOWN;
 }
 
 err_proto::StatusCode MapSmoothPathError(const std::exception& ex)
 {
     if (dynamic_cast<const common::InvalidSmoother*>(&ex)) {
-        return err_proto::SMOOTH_PATH_INVALID_SMOOTHER;
+        return err_proto::SMOOTHER_INVALID_PLUGIN;
     }
     if (dynamic_cast<const common::SmootherTimedOut*>(&ex)) {
-        return err_proto::SMOOTH_PATH_TIMEOUT;
+        return err_proto::SMOOTHER_TIMEOUT;
     }
     if (dynamic_cast<const common::SmoothedPathInCollision*>(&ex)) {
-        return err_proto::SMOOTH_PATH_SMOOTHED_PATH_IN_COLLISION;
+        return err_proto::SMOOTHER_PATH_IN_COLLISION;
     }
     if (dynamic_cast<const common::FailedToSmoothPath*>(&ex)) {
-        return err_proto::SMOOTH_PATH_FAILED_TO_SMOOTH;
+        return err_proto::SMOOTHER_FAILED;
     }
     if (dynamic_cast<const common::InvalidPath*>(&ex)) {
-        return err_proto::SMOOTH_PATH_INVALID_PATH;
+        return err_proto::SMOOTHER_INVALID_PATH;
     }
-    return err_proto::SMOOTH_PATH_UNKNOWN;
+    return err_proto::SMOOTHER_UNKNOWN;
 }
 
 std::chrono::milliseconds MaxSmoothingDuration(
@@ -216,7 +216,7 @@ void PlannerServer::ComputePlan()
         *result->mutable_path() = path;
         *result->mutable_planning_time() =
             (automsgs::msgs::builtin_interfaces::TimeNow() - start_time);
-        result->set_error_code(err_proto::COMPUTE_PATH_TO_POSE_NONE);
+        result->set_error_code(err_proto::OK);
         server->SucceededCurrent(result);
     } catch (const common::PlannerCancelled&) {
         metrics_.plans_failed.fetch_add(1, std::memory_order_relaxed);
@@ -320,7 +320,7 @@ void PlannerServer::ComputePlanThroughPoses()
         *result->mutable_path() = merged_path;
         *result->mutable_planning_time() =
             (automsgs::msgs::builtin_interfaces::TimeNow() - start_time);
-        result->set_error_code(err_proto::COMPUTE_PATH_THROUGH_POSES_NONE);
+        result->set_error_code(err_proto::OK);
         server->SucceededCurrent(result);
     } catch (const common::PlannerCancelled&) {
         metrics_.plans_failed.fetch_add(1, std::memory_order_relaxed);
@@ -390,7 +390,7 @@ void PlannerServer::SmoothPathAction()
             (
                 automsgs::msgs::builtin_interfaces::DurationFromSeconds(duration_sec));
         result->set_was_completed(was_completed);
-        result->set_error_code(err_proto::SMOOTH_PATH_NONE);
+        result->set_error_code(err_proto::OK);
         server->SucceededCurrent(result);
     } catch (const std::exception& ex) {
         result->set_error_msg(ex.what());

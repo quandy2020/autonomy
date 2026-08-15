@@ -106,7 +106,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
             if (path.poses().empty()) {
                 auto result =
                     std::make_shared<nav_proto::FollowPathAction::Result>();
-                result->set_error_code(err_proto::FOLLOW_PATH_INVALID_PATH);
+                result->set_error_code(err_proto::CONTROL_INVALID_PATH);
                 server->TerminateCurrent(result);
                 return;
             }
@@ -122,7 +122,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                 AWARN << "FollowPath setup failed: " << ex.what();
                 auto result =
                     std::make_shared<nav_proto::FollowPathAction::Result>();
-                result->set_error_code(err_proto::FOLLOW_PATH_INVALID_PATH);
+                result->set_error_code(err_proto::CONTROL_INVALID_PATH);
                 result->set_error_msg(ex.what());
                 self->OnGoalExit();
                 server->TerminateCurrent(result);
@@ -152,7 +152,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                 if (self->IsGoalReached()) {
                     auto result =
                         std::make_shared<nav_proto::FollowPathAction::Result>();
-                    result->set_error_code(err_proto::FOLLOW_PATH_NONE);
+                    result->set_error_code(err_proto::OK);
                     self->OnGoalExit();
                     server->SucceededCurrent(result);
                     return;
@@ -164,7 +164,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                     AWARN << "FollowPath progress failure: " << ex.what();
                     auto result =
                         std::make_shared<nav_proto::FollowPathAction::Result>();
-                    result->set_error_code(err_proto::FOLLOW_PATH_FAILED_TO_MAKE_PROGRESS);
+                    result->set_error_code(err_proto::CONTROL_FAILED_TO_MAKE_PROGRESS);
                     result->set_error_msg(ex.what());
                     self->OnGoalExit();
                     server->TerminateCurrent(result);
@@ -173,7 +173,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                     AWARN << "FollowPath patience exceeded: " << ex.what();
                     auto result =
                         std::make_shared<nav_proto::FollowPathAction::Result>();
-                    result->set_error_code(err_proto::FOLLOW_PATH_PATIENCE_EXCEEDED);
+                    result->set_error_code(err_proto::CONTROL_PATIENCE_EXCEEDED);
                     result->set_error_msg(ex.what());
                     self->OnGoalExit();
                     server->TerminateCurrent(result);
@@ -182,7 +182,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                     AWARN << "FollowPath controller error: " << ex.what();
                     auto result =
                         std::make_shared<nav_proto::FollowPathAction::Result>();
-                    result->set_error_code(err_proto::FOLLOW_PATH_UNKNOWN);
+                    result->set_error_code(err_proto::CONTROL_UNKNOWN);
                     result->set_error_msg(ex.what());
                     self->OnGoalExit();
                     server->TerminateCurrent(result);
@@ -195,7 +195,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
             if (server->IsCancelRequested()) {
                 auto result =
                     std::make_shared<nav_proto::FollowPathAction::Result>();
-                result->set_error_code(err_proto::FOLLOW_PATH_UNKNOWN);
+                result->set_error_code(err_proto::CONTROL_UNKNOWN);
                 self->OnGoalExit();
                 server->TerminateCurrent(result);
             }
@@ -220,13 +220,13 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
             while (autolink::OK()) {
                 if (server->IsCancelRequested()) {
                     auto result = std::make_shared<nav_proto::SpinAction::Result>();
-                    result->set_error_code(err_proto::SPIN_UNKNOWN);
+                    result->set_error_code(err_proto::SPIN_ERROR);
                     server->TerminateCurrent(result);
                     return;
                 }
                 if (std::chrono::steady_clock::now() >= deadline) {
                     auto result = std::make_shared<nav_proto::SpinAction::Result>();
-                    result->set_error_code(err_proto::SPIN_NONE);
+                    result->set_error_code(err_proto::OK);
                     server->SucceededCurrent(result);
                     return;
                 }
@@ -260,14 +260,14 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                 if (server->IsCancelRequested()) {
                     auto result =
                         std::make_shared<nav_proto::BackUpAction::Result>();
-                    result->set_error_code(err_proto::BACK_UP_UNKNOWN);
+                    result->set_error_code(err_proto::BACK_UP_ERROR);
                     server->TerminateCurrent(result);
                     return;
                 }
                 if (std::chrono::steady_clock::now() >= deadline) {
                     auto result =
                         std::make_shared<nav_proto::BackUpAction::Result>();
-                    result->set_error_code(err_proto::BACK_UP_NONE);
+                    result->set_error_code(err_proto::OK);
                     server->SucceededCurrent(result);
                     return;
                 }
@@ -282,7 +282,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
             auto goal = server->GetCurrentGoal();
             if (!goal || !goal->has_time()) {
                 auto result = std::make_shared<nav_proto::WaitAction::Result>();
-                result->set_error_code(err_proto::WAIT_UNKNOWN);
+                result->set_error_code(err_proto::WAIT_ERROR);
                 server->TerminateCurrent(result);
                 return;
             }
@@ -295,13 +295,13 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
             while (autolink::OK()) {
                 if (server->IsCancelRequested()) {
                     auto result = std::make_shared<nav_proto::WaitAction::Result>();
-                    result->set_error_code(err_proto::WAIT_UNKNOWN);
+                    result->set_error_code(err_proto::WAIT_ERROR);
                     server->TerminateCurrent(result);
                     return;
                 }
                 if (std::chrono::steady_clock::now() >= deadline) {
                     auto result = std::make_shared<nav_proto::WaitAction::Result>();
-                    result->set_error_code(err_proto::WAIT_NONE);
+                    result->set_error_code(err_proto::OK);
                     server->SucceededCurrent(result);
                     return;
                 }

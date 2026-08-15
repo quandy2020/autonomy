@@ -84,8 +84,8 @@
 
 | 阶段 | 内容 | 破坏性 |
 |------|------|--------|
-| **A0** | 三段重排、分层注释、上述改名、README/本 spec 同步；别名保留 | 规范名替换处有 C++ 符号更名（旧名仍可用） |
-| **A1** | `autonomy/` 别名调用 → 规范细码 | 调用方 diff |
+| **A0** | 三段重排、分层注释、上述改名、README/本 spec 同步；别名保留 | 规范名替换处有 C++ 符号更名（旧名仍可用） | ✅ |
+| **A1** | `autonomy/` 别名调用 → 规范细码（`controller_autolink_actions` / `planner_autolink_actions`） | 调用方 diff | ✅ |
 | **A2** | 删除 DEPRECATED 段；无别名则关 `allow_alias` | 依赖旧符号的外部代码需已迁完 |
 | **A3** | 可选：文档/实现 fine→thin 出站映射表 | 适配层 |
 
