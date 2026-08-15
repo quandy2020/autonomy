@@ -15,11 +15,11 @@
 | 通用 RPC | Google 风格语义名 | `INVALID_ARGUMENT`、`NOT_FOUND` |
 | 域错误 | `<DOMAIN>_` | `NAVIGATION_BUSY`、`TELEOP_COLLISION`、`CONTROL_ERROR` |
 | 与模块码同名冲突 | 换语义名 + 分段数值 | `LOCALIZATION_UNAVAILABLE=801` vs `LOCALIZATION_NOT_READY=3002` |
-| 遗留别名 | 保持旧名（`allow_alias`） | `MOVE_BASE_*`、`SPIN_NONE` |
+| 遗留别名 | ~~保持旧名（`allow_alias`）~~ **已删除（A2）** | 曾用 `MOVE_BASE_*`、`SPIN_NONE` |
 
-结构整理（薄/细/DEPRECATED、分阶段去别名）见
+结构整理（薄/细、分阶段去别名）见
 `2026-08-15-status-code-structure-design.md`。取消拼写：`CANCELLED`；
-`TASK_CANCELED`（9003）规范名为 `TASK_BT_CANCELLED`。
+BT 任务取消细码为 `TASK_BT_CANCELLED`（9003）。
 
 ## Breaking
 
