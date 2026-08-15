@@ -71,6 +71,9 @@ install(FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/include/automsgs/msgs/time_utils.hpp
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/automsgs/msgs)
 install(FILES
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/automsgs/msgs/status_msgs/status_code_map.hpp
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/automsgs/msgs/status_msgs)
+install(FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/include/automsgs/msgs/detail/dynamic_message_cast.hh
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/automsgs/msgs/detail)
 install(FILES

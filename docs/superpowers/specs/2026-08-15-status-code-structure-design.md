@@ -82,7 +82,32 @@
 | **A0** | 分区重排、分层注释、CANCELLED/`TASK_BT_CANCELLED`、文档同步 | ✅ |
 | **A1** | `autonomy/` 别名 → 规范细码（controller/planner autolink actions） | ✅ |
 | **A2** | 删除 DEPRECATED 段；关闭 `allow_alias` | ✅ |
-| **A3** | 可选：文档/实现 fine→thin 出站映射表 | 未做 |
+| **A3** | fine→thin 出站映射（`status_code_map.hpp` + 本文档） | ✅ |
+
+## A3：fine → thin 出站映射
+
+适配层在把内部 `StatusPb.error_code` 填入 `rpcs.common.Status.code` 时调用：
+
+```cpp
+#include <automsgs/msgs/status_msgs/status_code_map.hpp>
+status.set_code(automsgs::msgs::status_msgs::ToThinStatusCode(fine));
+```
+
+规则摘要：
+
+| 细码域 | 薄码落点（典型） |
+|--------|------------------|
+| 已是薄码 | 原样返回 |
+| `CONTROL_*` | `NAVIGATION_*` / `SYSTEM_ESTOP` / `UNAVAILABLE` / `INTERNAL` |
+| `LOCALIZATION_*`（3000+） | `LOCALIZATION_UNAVAILABLE` / `LOCALIZATION_LOST` |
+| `RECOVERY_*` | `NAVIGATION_*` / `INTERNAL` |
+| 行为原语 4500+ | `TELEOP_*` / `INVALID_ARGUMENT` |
+| `PLANNING_*` / `SMOOTHER_*` / `ROUTING_*` / `WAYPOINTS_*` | `NAVIGATION_*` / `UNAVAILABLE` / `INTERNAL` |
+| `MAP_*`（7000+） | `MAP_INVALID` / `MAP_LOAD_FAILED` / `UNAVAILABLE` |
+| `TASK_*`（9000+） | `TASK_CANCELLED` / `TASK_FAILED` / `NAVIGATION_*` / `DEADLINE_EXCEEDED` |
+| 未列出的细码 | `INTERNAL` |
+
+实现：`automsgs/core/include/automsgs/msgs/status_msgs/status_code_map.hpp`。
 
 ## 相关文档
 
