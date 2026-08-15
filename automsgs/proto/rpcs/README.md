@@ -159,7 +159,8 @@
 **分层：** `Status.code` 只使用**薄码**（0–999 中的 RPC 域、1100–1399、2000–2099 及通用码）。  
 `CONTROL_*` / `PLANNING_*` / `TASK_*`（9000+）等为**细码**，供内部 `StatusPb`；第三方勿依赖。  
 取消拼写统一为 `CANCELLED`；BT 任务取消细码为 `TASK_BT_CANCELLED`（9003）。  
-结构与去别名阶段见 `docs/superpowers/specs/2026-08-15-status-code-structure-design.md`。
+结构与去别名阶段见 `docs/superpowers/specs/2026-08-15-status-code-structure-design.md`。  
+出站若持有细码，用 `automsgs/msgs/status_msgs/status_code_map.hpp` 的 `ToThinStatusCode` 再写入 `Status.code`。
 
 | 区间 | 层 | 模块 |
 |------|----|------|

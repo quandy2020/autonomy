@@ -15,13 +15,14 @@
 set(integration_tests
   headers_TEST.cc
   message_TEST.cc
+  status_code_map_TEST.cc
 )
 
 foreach(_test ${integration_tests})
   get_filename_component(_test_name ${_test} NAME_WE)
   add_executable(INTEGRATION_${_test_name} ${_test})
   target_link_libraries(INTEGRATION_${_test_name} PRIVATE
-    automsgs_proto
+    automsgs
     GTest::gtest_main
   )
   add_test(NAME INTEGRATION_${_test_name} COMMAND INTEGRATION_${_test_name})
