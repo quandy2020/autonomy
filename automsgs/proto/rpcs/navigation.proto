@@ -17,49 +17,79 @@ syntax = "proto3";
 package automsgs.rpcs.navigation;
 
 import "automsgs/msgs/std_msgs/header.proto";
-import "automsgs/msgs/geometry_msgs/pose.proto";
-import "automsgs/rpcs/status.proto";
+import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
+import "automsgs/rpcs/common.proto";
 
-// Navigation RPCs: go to pose, cancel, query status.
-service NavService {
-  rpc GoTo(GoToRequest) returns (GoToResponse);
-  rpc Cancel(CancelRequest) returns (CancelResponse);
-  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
-}
-
-message GoToRequest {
-  automsgs.msgs.std_msgs.Header header = 1;
-  automsgs.msgs.geometry_msgs.Pose target_pose = 2;
-  string goal_id = 3;  // Optional client-defined id for tracking.
-}
-
-message GoToResponse {
-  automsgs.rpcs.common.Status status = 1;
-  string goal_id = 2;
-}
-
-message CancelRequest {
-  string goal_id = 1;  // Empty = cancel current.
-}
-
-message CancelResponse {
-  automsgs.rpcs.common.Status status = 1;
+// =============================================================================
+// NavigationService
+//
+//   Navigate  — server streaming
+//               waypoints size 1 = single pose, N = multi-waypoint
+//               intermediate waypoints only advance waypoint_index
+//               ARRIVED on last pose; stream stays open until Cancel / FAILED /
+//               client disconnect
+//   Pause / Resume / Replan / Cancel — unary; empty goal_id = current goal
+//                                      returns Status only; progress via stream
+//                                      or GetStatus
+//   GetStatus — unary snapshot (NavigateResponse)
+//
+// Stream closes after FAILED / CANCELLED / reject frames, or on Cancel /
+// disconnect. ARRIVED does not close the stream.
+// Goal owned when state in {PLANNING, RUNNING, PAUSED, ARRIVED}.
+// Busy → NAVIGATION_BUSY (105). At most one active goal. No bidi stream.
+// =============================================================================
+service NavigationService {
+  rpc Navigate(NavigateRequest) returns (stream NavigateResponse);
+  rpc Pause(GoalRequest) returns (automsgs.rpcs.common.Status);
+  rpc Resume(GoalRequest) returns (automsgs.rpcs.common.Status);
+  rpc Replan(GoalRequest) returns (automsgs.rpcs.common.Status);
+  rpc Cancel(GoalRequest) returns (automsgs.rpcs.common.Status);
+  rpc GetStatus(GetStatusRequest) returns (NavigateResponse);
 }
 
 enum NavigationState {
-  NAVIGATION_STATE_UNSPECIFIED = 0;
+  NAVIGATION_STATE_UNKNOWN = 0;
   NAVIGATION_STATE_IDLE = 1;
-  NAVIGATION_STATE_NAVIGATING = 2;
-  NAVIGATION_STATE_ARRIVED = 3;
-  NAVIGATION_STATE_FAILED = 4;
-  NAVIGATION_STATE_CANCELLED = 5;
+  NAVIGATION_STATE_PLANNING = 2;
+  NAVIGATION_STATE_RUNNING = 3;
+  NAVIGATION_STATE_PAUSED = 4;
+  NAVIGATION_STATE_ARRIVED = 5;
+  NAVIGATION_STATE_FAILED = 6;
+  NAVIGATION_STATE_CANCELLED = 7;
+}
+
+// Optional per-goal attributes. Unset fields use implementation defaults.
+message NavigateOptions {
+  optional float maximum_linear_speed = 1;                 // m/s
+  optional float goal_position_tolerance_meters = 2;
+  optional float goal_heading_tolerance_radians = 3;
+  optional float maximum_angular_speed = 4;                // rad/s
+  optional float timeout_seconds = 5;                      // 0/unset = default
+}
+
+message NavigateRequest {
+  automsgs.msgs.std_msgs.Header header = 1;
+  string goal_id = 2;
+  // Ordered waypoints (size 1 = single goal). Must be non-empty.
+  repeated automsgs.msgs.geometry_msgs.PoseStamped waypoints = 3;
+  NavigateOptions options = 4;
+}
+
+// Stream element and GetStatus snapshot.
+message NavigateResponse {
+  automsgs.rpcs.common.Status status = 1;
+  NavigationState state = 2;
+  string goal_id = 3;
+  automsgs.msgs.geometry_msgs.PoseStamped current_pose = 4;
+  optional float remaining_distance_meters = 5;
+  optional float estimated_time_remaining_seconds = 6;
+  int32 waypoint_index = 7;
+  int32 number_of_waypoints = 8;
+}
+
+// Shared by Pause / Resume / Replan / Cancel. Empty goal_id = current goal.
+message GoalRequest {
+  string goal_id = 1;
 }
 
 message GetStatusRequest {}
-
-message GetStatusResponse {
-  automsgs.rpcs.common.Status status = 1;
-  NavigationState state = 2;
-  string goal_id = 3;           // Current goal id, if any.
-  float remaining_distance = 4; // Meters; optional.
-}

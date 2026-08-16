@@ -1,0 +1,74 @@
+// Copyright 2025 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.rpcs.localization;
+
+import "automsgs/msgs/geometry_msgs/pose_with_covariance.proto";
+import "automsgs/rpcs/common.proto";
+
+// =============================================================================
+// LocalizationService
+//
+//   GetPose         — unary pose in map frame (PoseWithCovariance)
+//   GetStatus       — unary LocalizationStatus snapshot
+//   SetInitialPose  — unary re-localization seed (pose + covariance)
+//
+// PoseWithCovariance embeds PoseStamped (header + pose) + 6x6 covariance.
+// Active map via MapService.SetCurrentMap; map_id here is optional.
+// While INITIALIZING, new SetInitialPose → LOCALIZATION_BUSY (803).
+// =============================================================================
+service LocalizationService {
+  rpc GetPose(GetPoseRequest) returns (GetPoseResponse);
+  rpc GetStatus(GetStatusRequest) returns (LocalizationStatus);
+  rpc SetInitialPose(SetInitialPoseRequest) returns (automsgs.rpcs.common.Status);
+}
+
+enum LocalizationState {
+  LOCALIZATION_STATE_UNKNOWN = 0;
+  LOCALIZATION_STATE_LOCALIZED = 1;
+  LOCALIZATION_STATE_LOST = 2;
+  LOCALIZATION_STATE_INITIALIZING = 3;
+}
+
+message LocalizationStatus {
+  automsgs.rpcs.common.Status status = 1;
+  LocalizationState state = 2;
+  string map_id = 3;
+  string detail = 4;
+  // Unset = unknown. Typical range [0, 1].
+  optional float confidence = 5;
+}
+
+message GetPoseRequest {
+  // Empty = default map frame.
+  string map_frame_id = 1;
+}
+
+message GetPoseResponse {
+  automsgs.rpcs.common.Status status = 1;
+  // header + pose + covariance (length 0 or 36).
+  automsgs.msgs.geometry_msgs.PoseWithCovariance pose = 2;
+  optional float confidence = 3;
+}
+
+message GetStatusRequest {}
+
+message SetInitialPoseRequest {
+  // Seed pose; set pose.pose.header.frame_id (e.g. map) and covariance.
+  automsgs.msgs.geometry_msgs.PoseWithCovariance pose = 1;
+  // Empty = current map from MapService.
+  string map_id = 2;
+}

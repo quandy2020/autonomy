@@ -1,0 +1,215 @@
+// Copyright 2025 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.rpcs.system;
+
+import "automsgs/msgs/sensor_msgs/battery_state.proto";
+import "automsgs/rpcs/common.proto";
+
+// =============================================================================
+// SystemService
+//
+// Aligned with autonomy/system (monitors + process control):
+//   Heartbeat / GetInfo / GetStatus / GetHealth
+//   EmergencyStop / ClearEmergencyStop
+//   CancelAllGoals / GetActiveGoal / GetCapabilities
+//
+// Health fields map to autonomy::system::monitor
+// (HazardLevel, MrmHandler, CPU/Mem/Disk, Channel/Latency watches).
+// =============================================================================
+service SystemService {
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+  rpc GetInfo(GetInfoRequest) returns (GetInfoResponse);
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+  rpc GetHealth(GetHealthRequest) returns (GetHealthResponse);
+
+  rpc EmergencyStop(EmergencyStopRequest) returns (automsgs.rpcs.common.Status);
+  rpc ClearEmergencyStop(ClearEmergencyStopRequest)
+      returns (automsgs.rpcs.common.Status);
+
+  rpc CancelAllGoals(CancelAllGoalsRequest) returns (automsgs.rpcs.common.Status);
+  rpc GetActiveGoal(GetActiveGoalRequest) returns (ActiveGoal);
+  rpc GetCapabilities(GetCapabilitiesRequest) returns (Capabilities);
+}
+
+// ---------------------------------------------------------------------------
+// Identity / keepalive
+// ---------------------------------------------------------------------------
+
+message HeartbeatRequest {
+  uint64 sequence = 1;
+}
+
+message HeartbeatResponse {
+  automsgs.rpcs.common.Status status = 1;
+  uint64 sequence = 2;
+  int64 robot_time_ns = 3;
+}
+
+message GetInfoRequest {}
+
+message GetInfoResponse {
+  automsgs.rpcs.common.Status status = 1;
+  string model = 2;
+  string serial_number = 3;
+  string firmware_version = 4;
+  string software_version = 5;
+  string hostname = 6;
+  // autonomy process / stack version (from autonomy/system runtime).
+  string autonomy_version = 7;
+}
+
+// ---------------------------------------------------------------------------
+// Coarse state + health (monitor-aligned)
+// ---------------------------------------------------------------------------
+
+enum SystemState {
+  SYSTEM_STATE_UNKNOWN = 0;
+  SYSTEM_STATE_IDLE = 1;
+  SYSTEM_STATE_BUSY = 2;
+  SYSTEM_STATE_ERROR = 3;
+  SYSTEM_STATE_ESTOP = 4;
+}
+
+// Matches autonomy::system::monitor::HazardLevel (OK/WARN/ERROR).
+enum HazardLevel {
+  HAZARD_LEVEL_UNKNOWN = 0;
+  HAZARD_LEVEL_OK = 1;
+  HAZARD_LEVEL_WARN = 2;
+  HAZARD_LEVEL_ERROR = 3;
+}
+
+message HostResourceSnapshot {
+  // From CPU / Mem / HDD / NTP monitors (percent or seconds).
+  optional float cpu_usage_percent = 1;
+  optional float memory_usage_percent = 2;
+  optional float disk_usage_percent = 3;
+  optional float load_average_1m = 4;
+  optional float ntp_offset_seconds = 5;
+}
+
+// Matches autonomy::system::monitor::ChannelHealth.
+message ChannelHealth {
+  string channel = 1;
+  bool ever_received = 2;
+  bool healthy = 3;
+  float age_seconds = 4;
+  float rate_hz = 5;
+}
+
+// Matches autonomy::system::monitor::LatencyHealth.
+message LatencyHealth {
+  string channel = 1;
+  bool ever_received = 2;
+  bool healthy = 3;
+  float message_age_seconds = 4;
+}
+
+// Aggregate health from autonomy/system/monitor registry.
+message SystemHealth {
+  HazardLevel hazard_level = 1;
+  // MrmHandler publishing zero cmd_vel.
+  bool mrm_active = 2;
+  // Software / hardware estop latch (EmergencyStop RPC or external).
+  bool emergency_stop_latched = 3;
+  HostResourceSnapshot host = 4;
+  repeated ChannelHealth channels = 5;
+  repeated LatencyHealth latencies = 6;
+  string detail = 7;
+}
+
+message GetStatusRequest {}
+
+message GetStatusResponse {
+  automsgs.rpcs.common.Status status = 1;
+  SystemState state = 2;
+  string detail = 3;
+  automsgs.msgs.sensor_msgs.BatteryState battery = 4;
+  // Compact health; use GetHealth for full channel/latency lists if heavy.
+  SystemHealth health = 5;
+}
+
+message GetHealthRequest {}
+
+message GetHealthResponse {
+  automsgs.rpcs.common.Status status = 1;
+  SystemHealth health = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Estop
+// ---------------------------------------------------------------------------
+
+message EmergencyStopRequest {
+  string reason = 1;
+}
+
+message ClearEmergencyStopRequest {
+  string reason = 1;
+  string confirmation_token = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Goal arbitration
+// ---------------------------------------------------------------------------
+
+enum GoalKind {
+  GOAL_KIND_UNKNOWN = 0;
+  GOAL_KIND_NONE = 1;
+  GOAL_KIND_NAVIGATION = 2;
+  GOAL_KIND_FOLLOW = 3;
+  GOAL_KIND_CHARGE = 4;
+  GOAL_KIND_MAPPING = 5;
+  GOAL_KIND_TELEOP = 6;
+  GOAL_KIND_EXPLORATION = 7;
+}
+
+message CancelAllGoalsRequest {
+  // Empty = cancel every active domain goal.
+  repeated GoalKind goal_kinds = 1;
+  string reason = 2;
+}
+
+message GetActiveGoalRequest {}
+
+message ActiveGoal {
+  automsgs.rpcs.common.Status status = 1;
+  GoalKind kind = 2;
+  string goal_id = 3;
+  string detail = 4;
+}
+
+// ---------------------------------------------------------------------------
+// Capabilities
+// ---------------------------------------------------------------------------
+
+message GetCapabilitiesRequest {}
+
+message Capabilities {
+  automsgs.rpcs.common.Status status = 1;
+  bool supports_navigation = 2;
+  bool supports_follow = 3;
+  bool supports_charge = 4;
+  bool supports_mapping = 5;
+  bool supports_localization = 6;
+  bool supports_teleop = 7;
+  bool supports_sensor_record = 8;
+  bool supports_system_monitor = 9;
+  bool supports_mrm = 10;
+  string bridge_version = 11;
+  string autonomy_version = 12;
+  bool supports_exploration = 13;
+}

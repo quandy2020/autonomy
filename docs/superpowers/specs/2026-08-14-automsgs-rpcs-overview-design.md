@@ -26,10 +26,10 @@
 | 交付方式 | 先总览设计，再按模块改 proto |
 | 文件粒度 | 方案 A（约 8 文件），命名偏专业 |
 | 公共文件 | `status.proto` → **`common.proto`** |
-| Task | 并入 **`SystemService`** |
+| Task | **删除**通用 Task；急停进 `SystemService` |
 | 落地强度 | **方案 1**：领域文件 + 统一异步约定；不保留 deprecated 空壳 |
 | 传感器文件名 | 保留 **`sensor.proto`** |
-| 回充 | `charging` → **`docking`**，语义见充电 A 设计 |
+| 回充 | **`charge`**（`ChargeService`：`Return`/`Leave`），见 `2026-08-15-charge-rpc-rename-design.md` |
 
 ## 3. 文件地图
 
@@ -37,22 +37,24 @@
 |---|---|---|---|
 | `common.proto` | `automsgs.rpcs.common` | — | `Status`, `Code` |
 | `navigation.proto` | `automsgs.rpcs.navigation` | `NavigationService` | 点到点导航 |
-| `mapping.proto` | `automsgs.rpcs.mapping` | `MappingService` | 建图 + 地图 CRUD + 当前图 |
+| `mapping.proto` | `automsgs.rpcs.mapping` | `MapService` | StartMapping/FinishMapping + 地图存储 |
 | `localization.proto` | `automsgs.rpcs.localization` | `LocalizationService` | 定位状态、地图系位姿、重定位 |
-| `docking.proto` | `automsgs.rpcs.docking` | `DockingService` | 回充对接 |
+| `charge.proto` | `automsgs.rpcs.charge` | `ChargeService` | 自动回充 |
 | `follow.proto` | `automsgs.rpcs.follow` | `FollowService` | 人体/目标跟随 |
 | `sensor.proto` | `automsgs.rpcs.sensor` | `SensorService` | 传感器列举与快照 |
-| `system.proto` | `automsgs.rpcs.system` | `SystemService` | 心跳、系统/硬件、通用 Task |
+| `system.proto` | `automsgs.rpcs.system` | `SystemService` | 心跳、急停/解除、CancelAll、ActiveGoal、Capabilities |
+| `teleop.proto` | `automsgs.rpcs.teleop` | `TeleopService` | 遥控 Drive（bidi） |
+| `exploration.proto` | `automsgs.rpcs.exploration` | `ExplorationService` | 自主探索建图 |
 
 **删除并迁出：** `status.proto`、`charging.proto`、`world.proto`、`vehicle.proto`、`task.proto`。
 
 ## 4. 统一约定
 
-1. **命名：** 文件/包 `lower_snake`；Service/RPC/消息 PascalCase；字段 snake_case；枚举值 `TYPE_PREFIX_*`，零值 `_UNSPECIFIED`。  
+1. **命名：** 文件/包 `lower_snake`；Service/RPC/消息 PascalCase；字段 snake_case；枚举值 `TYPE_PREFIX_*`，零值 `_UNKNOWN`。  
 2. **msgs：** 位姿用 `geometry_msgs.Pose` / `PoseWithCovariance`；地图用 `map_msgs.OccupancyGrid` / `MapMetaData`；传感用 `sensor_msgs.*`；时间戳用 `std_msgs.Header`；电量优先 `sensor_msgs.BatteryState`。  
-3. **长任务：** `Start*` / 域惯用名（`GoTo`/`Dock`）立即返回 `goal_id`；`Cancel(goal_id)`（空=当前）；`GetStatus`；单一活动目标，忙则拒绝（不抢占）。  
+3. **长任务：** `Start*` / 域惯用名（`Navigate`/`Return`）立即返回或开流；`Cancel(goal_id)`（空=当前）；`GetStatus`；单一活动目标，忙则拒绝（不抢占）。  
 4. **响应：** 皆含 `common.Status`。  
-5. **Code 区间：** 保留现有；新增 follow `900–999`、system `1000–1099`、mapping 建图过程 `1100–1199`（地图存储仍 `600–699`）。
+5. **Code：** 统一 `status_msgs.StatusCode`（RPC `Status.code`）；成功 `OK=0`。
 
 ## 5. 命令面摘要
 
@@ -62,44 +64,60 @@
 - `Cancel(goal_id?)`  
 - `GetStatus` → `NavigationState`, `goal_id`, `remaining_distance`
 
-### 5.2 MappingService
+### 5.2 MapService
 
-- 建图：`StartMapping` / `StopMapping` / `GetMappingStatus`（异步 goal）  
-- CRUD：`ListMaps`, `GetMap`, `GetMapMetadata`, `SaveMap`, `DeleteMap`, `SetCurrentMap`  
-- 载荷：`OccupancyGrid`, `MapMetaData`；`MapSummary` 留在 mapping 包内
+- 会话：`StartMapping` / `FinishMapping` / `CancelMapping` / `GetMappingStatus`（`MappingStatus`）  
+- 存储：`ListMaps` / `GetMap` / `GetMapMetadata` / `SaveMap` / `DeleteMap` / `SetCurrentMap`  
+- 优先 `map_identifier`；`map_name` 为查找别名；忙 → `CODE_MAPPING_BUSY`（1100）
 
 ### 5.3 LocalizationService
 
-- `GetPose(map_frame_id?)` → `Header` + `Pose`（可选 covariance）  
-- `GetStatus` → `LocState`（LOCALIZED/LOST/INITIALIZING）, `map_id`  
-- `SetInitialPose(pose, map_id?)` — 重定位
+- `GetPose(map_frame_id?)` → `PoseWithCovariance` + optional `confidence`  
+- `GetStatus` → `LocalizationStatus`（`LocalizationState`、`map_id`、`confidence`）  
+- `SetInitialPose(PoseWithCovariance, map_id?)` — 重定位；INITIALIZING 时忙 → `CODE_LOCALIZATION_BUSY`（803）
 
-### 5.4 DockingService
+### 5.4 ChargeService
 
-见充电 A 设计：`Dock` / `Undock` / `Cancel` / `GetStatus`；状态含 DOCKING/UNDOCKING/CHARGING/FULL/FAILED/CANCELLED 等；Code 500–507。
+- `Return` / `Leave`（server stream `ChargeResponse`）/ `Pause` / `Resume` / `Cancel` / `GetStatus`  
+- `ChargeState`：含 `PAUSED`；GetStatus 复用 `ChargeResponse`；Cancel 直接回 `Status`  
+- Code 500–507（`CODE_CHARGING_*`）
 
 ### 5.5 FollowService
 
-- `StartFollow(target_id?, goal_id?)` — 空 target=跟最近人体  
-- `Cancel` / `GetStatus` — `FollowState`: IDLE/FOLLOWING/LOST_TARGET/FAILED/CANCELLED
+- `Follow`（server stream `FollowResponse`）/ `Pause` / `Resume` / `Cancel` / `GetStatus`  
+- 无 `FollowPhase`；`FollowOptions.desired_distance_m`；`LOST_TARGET`/`PAUSED` 不关流  
+- Code 900–903
 
 ### 5.6 SensorService
 
-- `ListSensors` / `GetImage` / `GetLaserScan` / `GetPointCloud` / `GetOccupancyGrid`  
-- 在现有 API 上统一 RPC 动词前缀；`GetGrid` 更名为 `GetOccupancyGrid`
+- `ListSensors` / `GetSample` — 统一快照（`oneof` 载荷）  
+- `GetParameters` / `SetParameters` / `SaveParameters` / `LoadParameters` — 键值配置与机器人侧持久化  
+- `Record`（stream）/ `CancelRecord` / `GetRecordStatus` — 录制/导出/上传  
+- 细节见 `2026-08-14-sensor-rpc-design.md`；栅格走 mapping，不设按类型 Get*
 
 ### 5.7 SystemService
 
-- `Ping` — 轻量存活  
-- `Heartbeat` — 可选携带机器人侧时间戳/序列号  
-- `GetInfo` — 型号、序列号、软/硬件版本、主机名等  
-- `GetStatus` — 总运行态（IDLE/BUSY/ERROR/ESTOP…）+ 电量摘要  
-- `RunTask` / `CancelTask` / `GetTaskStatus` — 原 TaskService（`task_id`/`run_id`/`task_args`）
+- `Heartbeat` / `GetInfo` / `GetStatus` / `GetHealth`  
+- `EmergencyStop` / `ClearEmergencyStop`  
+- `CancelAllGoals` / `GetActiveGoal` / `GetCapabilities`  
+- `SystemHealth` 对齐 `autonomy/system/monitor`（Hazard / MRM / 主机与通道）
+
+### 5.8 TeleopService
+
+- `Velocity`（bidi）+ `VelocityOptions`；相对：`DriveOnHeading` / `BackUp` / `Spin` + `RelativeOptions`  
+- `Pause` / `Resume`（相对，`PAUSED` 不关流）/ `Cancel` / `GetStatus`  
+- Code 1200–1205
+
+### 5.9 ExplorationService
+
+- `Explore`（server stream）/ `Pause` / `Resume` / `Cancel` / `GetStatus`  
+- `SetArea` / `SaveMap`（会话内存图；CRUD 仍 `MapService`）  
+- Code 1300–1305；细节见 `2026-08-15-exploration-rpc-design.md`
 
 ## 6. 迁移与实现顺序
 
 1. `common.proto`（自 status 改名）+ Code 新区间  
-2. `docking.proto`（落实充电 A）  
+2. `charge.proto`（自动回充 `ChargeService`）  
 3. `mapping.proto` + `localization.proto`（自 world 拆分 + 建图 RPC）  
 4. `navigation.proto` / `sensor.proto` 微调  
 5. 新建 `follow.proto`；充实 `system.proto`  
@@ -110,7 +128,7 @@
 ## 7. 验收清单
 
 - [ ] 仅保留 §3 所列 8 个 proto（无 world/vehicle/task/charging/status）  
-- [ ] 覆盖导航、建图、地图 CRUD、定位/重定位、回充、跟随、传感器、心跳/系统/硬件/Task  
+- [ ] 覆盖导航、建图、地图 CRUD、定位/重定位、回充、跟随、传感器、心跳/系统/硬件/急停  
 - [ ] 长任务统一异步模型  
 - [ ] 载荷优先 `automsgs/msgs`  
 - [ ] 命名符合 Google Style 与机器人领域用语  
@@ -119,4 +137,4 @@
 ## 8. 后续模块实现
 
 总览批准后，按 §6 顺序开实施计划；每模块可有独立小 plan，但以本 spec 为权威命令面。  
-Docking 细节以 `2026-08-14-charging-rpc-nav-align-design.md` 为准（文件/服务名改为 docking）。
+Charge 细节以 `2026-08-15-charge-rpc-rename-design.md` 为准。

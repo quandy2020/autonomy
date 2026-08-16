@@ -21,3 +21,8 @@ install(PROGRAMS automsgs_msgs_generate.py
 install(PROGRAMS automsgs_generate_factory.py
   RENAME automsgs_generate_factory.py
   DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+# RPC CLI (Python wrapper around grpcurl for proto/rpcs)
+install(PROGRAMS cli/rpc-cli.py
+  RENAME rpc-cli
+  DESTINATION ${CMAKE_INSTALL_BINDIR})

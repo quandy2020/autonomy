@@ -21,36 +21,89 @@ import "automsgs/msgs/sensor_msgs/image.proto";
 import "automsgs/msgs/sensor_msgs/compressed_image.proto";
 import "automsgs/msgs/sensor_msgs/laser_scan.proto";
 import "automsgs/msgs/sensor_msgs/point_cloud2.proto";
-import "automsgs/msgs/map_msgs/occupancy_grid.proto";
-import "automsgs/rpcs/status.proto";
+import "automsgs/msgs/sensor_msgs/imu.proto";
+import "automsgs/rpcs/common.proto";
 
-// Sensor RPCs: list sensors, get latest image/lidar/pointcloud/grid.
+// =============================================================================
+// SensorService
+//
+//   ListSensors                          — unary catalogue
+//   GetSample                            — unary latest frame (oneof payload)
+//   GetParameters / SetParameters        — unary key-value config
+//   SaveParameters / LoadParameters      — unary persist/load on robot
+//   Record                               — server streaming session
+//                                          (capture / export / upload)
+//   CancelRecord                         — unary; empty record_id = current
+//   GetRecordStatus                      — unary snapshot via .record
+//
+// Stream frame rules (Record):
+//   final=true  — last frame; server closes (SUCCEEDED / FAILED / CANCELLED /
+//                 busy reject)
+//   active=true — RECORDING / UPLOADING
+//
+// Occupancy grids belong to mapping.proto, not here.
+// No per-type GetImage/GetLaserScan RPCs — use GetSample.
+// At most one active Record session.
+// =============================================================================
 service SensorService {
-  rpc List(ListSensorsRequest) returns (ListSensorsResponse);
-  rpc GetImage(GetImageRequest) returns (GetImageResponse);
-  rpc GetLaserScan(GetLaserScanRequest) returns (GetLaserScanResponse);
-  rpc GetPointCloud(GetPointCloudRequest) returns (GetPointCloudResponse);
-  rpc GetGrid(GetGridRequest) returns (GetGridResponse);
+  rpc ListSensors(ListSensorsRequest) returns (ListSensorsResponse);
+  rpc GetSample(GetSampleRequest) returns (GetSampleResponse);
+
+  rpc GetParameters(GetParametersRequest) returns (GetParametersResponse);
+  rpc SetParameters(SetParametersRequest) returns (SetParametersResponse);
+  rpc SaveParameters(SaveParametersRequest) returns (SaveParametersResponse);
+  rpc LoadParameters(LoadParametersRequest) returns (LoadParametersResponse);
+
+  rpc Record(RecordRequest) returns (stream RecordResponse);
+  rpc CancelRecord(CancelRecordRequest) returns (CancelRecordResponse);
+  rpc GetRecordStatus(GetRecordStatusRequest) returns (GetRecordStatusResponse);
 }
 
+// =============================================================================
+// Shared types
+// =============================================================================
+
 enum SensorType {
-  SENSOR_TYPE_UNSPECIFIED = 0;
+  SENSOR_TYPE_UNKNOWN = 0;
   SENSOR_TYPE_CAMERA = 1;
   SENSOR_TYPE_DEPTH_CAMERA = 2;
   SENSOR_TYPE_LASER_SCAN = 3;
   SENSOR_TYPE_POINT_CLOUD = 4;
-  SENSOR_TYPE_ODOMETRY = 5;
+  SENSOR_TYPE_IMU = 5;
 }
 
-message ListSensorsRequest {
-  automsgs.msgs.std_msgs.Header header = 1;
+// Key-value parameter. Value encoding is implementation-defined
+// (e.g. "true", "30", "0.5"); common keys: enabled, frame_rate_hz, …
+message Parameter {
+  string name = 1;
+  string value = 2;
 }
 
 message SensorInfo {
   string sensor_id = 1;
   string frame_id = 2;
   SensorType type = 3;
-  string topic = 4;  // Optional, e.g. ROS topic name.
+  string topic = 4;
+  // Optional discovery hint; empty = client should GetParameters.
+  repeated string parameter_names = 5;
+}
+
+enum RecordState {
+  RECORD_STATE_UNKNOWN = 0;
+  RECORD_STATE_IDLE = 1;
+  RECORD_STATE_RECORDING = 2;
+  RECORD_STATE_UPLOADING = 3;
+  RECORD_STATE_SUCCEEDED = 4;
+  RECORD_STATE_FAILED = 5;
+  RECORD_STATE_CANCELLED = 6;
+}
+
+// =============================================================================
+// ListSensors
+// =============================================================================
+
+message ListSensorsRequest {
+  automsgs.msgs.std_msgs.Header header = 1;
 }
 
 message ListSensorsResponse {
@@ -58,42 +111,118 @@ message ListSensorsResponse {
   repeated SensorInfo sensors = 2;
 }
 
-message GetImageRequest {
-  string sensor_id = 1;  // From ListSensors.
-  bool compressed = 2;   // If true, return CompressedImage to reduce size.
+// =============================================================================
+// GetSample — latest frame
+// =============================================================================
+
+message GetSampleRequest {
+  string sensor_id = 1;
+  // When true and sensor is a camera, prefer CompressedImage if available.
+  bool prefer_compressed = 2;
 }
 
-message GetImageResponse {
+message GetSampleResponse {
   automsgs.rpcs.common.Status status = 1;
-  oneof image {
-    automsgs.msgs.sensor_msgs.Image raw = 2;
-    automsgs.msgs.sensor_msgs.CompressedImage compressed = 3;
+  string sensor_id = 2;
+  SensorType type = 3;
+  oneof data {
+    automsgs.msgs.sensor_msgs.Image image = 4;
+    automsgs.msgs.sensor_msgs.CompressedImage compressed_image = 5;
+    automsgs.msgs.sensor_msgs.LaserScan laser_scan = 6;
+    automsgs.msgs.sensor_msgs.PointCloud2 point_cloud = 7;
+    automsgs.msgs.sensor_msgs.Imu imu = 8;
   }
 }
 
-message GetLaserScanRequest {
+// =============================================================================
+// Parameters — key-value get / set / persist
+// =============================================================================
+
+message GetParametersRequest {
+  string sensor_id = 1;
+  // Empty = return all parameters for the sensor.
+  repeated string names = 2;
+}
+
+message GetParametersResponse {
+  automsgs.rpcs.common.Status status = 1;
+  string sensor_id = 2;
+  repeated Parameter parameters = 3;
+}
+
+message SetParametersRequest {
+  string sensor_id = 1;
+  repeated Parameter parameters = 2;
+}
+
+message SetParametersResponse {
+  automsgs.rpcs.common.Status status = 1;
+  // Echo of applied (or rejected) values after the attempt.
+  repeated Parameter parameters = 2;
+}
+
+message SaveParametersRequest {
+  // Empty = save configuration for all sensors.
   string sensor_id = 1;
 }
 
-message GetLaserScanResponse {
+message SaveParametersResponse {
   automsgs.rpcs.common.Status status = 1;
-  automsgs.msgs.sensor_msgs.LaserScan scan = 2;
 }
 
-message GetPointCloudRequest {
+message LoadParametersRequest {
+  // Empty = load configuration for all sensors.
   string sensor_id = 1;
 }
 
-message GetPointCloudResponse {
+message LoadParametersResponse {
   automsgs.rpcs.common.Status status = 1;
-  automsgs.msgs.sensor_msgs.PointCloud2 point_cloud = 2;
 }
 
-message GetGridRequest {
-  string frame_id = 1;  // Optional; empty = default.
+// =============================================================================
+// Record — capture / export / upload session
+// =============================================================================
+
+message RecordRequest {
+  automsgs.msgs.std_msgs.Header header = 1;
+  // Optional client-defined identifier.
+  string record_id = 2;
+  // Empty = implementation default set (e.g. all enabled sensors).
+  repeated string sensor_ids = 3;
+  // Local path or remote URI where data should be stored / uploaded.
+  string uri = 4;
+  // Optional limits; unset or 0 = implementation default.
+  optional float duration_seconds = 5;
+  optional uint64 maximum_bytes = 6;
 }
 
-message GetGridResponse {
+// Stream element for Record; also embedded in GetRecordStatus.
+message RecordResponse {
   automsgs.rpcs.common.Status status = 1;
-  automsgs.msgs.map_msgs.OccupancyGrid grid = 2;
+  RecordState state = 2;
+  string record_id = 3;
+  // Effective destination after accept (may equal request.uri).
+  string uri = 4;
+  // Unset = unknown. Bytes written or uploaded so far.
+  optional uint64 bytes_transferred = 5;
+  // Unset = unknown. Rough progress in [0, 1].
+  optional float progress = 6;
+  bool active = 7;
+  bool final = 8;
+}
+
+message CancelRecordRequest {
+  // Empty = cancel the current active record session.
+  string record_id = 1;
+}
+
+message CancelRecordResponse {
+  automsgs.rpcs.common.Status status = 1;
+}
+
+message GetRecordStatusRequest {}
+
+message GetRecordStatusResponse {
+  // IDLE: state=IDLE, active=false, final=false.
+  RecordResponse record = 1;
 }

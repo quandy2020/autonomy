@@ -70,7 +70,7 @@ service ChargeService {
 
 | 枚举值 | 编号 | 含义 |
 |---|---|---|
-| `CHARGING_STATE_UNSPECIFIED` | 0 | 未设置 |
+| `CHARGING_STATE_UNKNOWN` | 0 | 未设置 |
 | `CHARGING_STATE_IDLE` | 1 | 空闲、未在桩（替换原 `NOT_DOCKED`） |
 | `CHARGING_STATE_DOCKING` | 2 | 回桩进行中（含接近/对接） |
 | `CHARGING_STATE_UNDOCKING` | 3 | 离桩进行中 |

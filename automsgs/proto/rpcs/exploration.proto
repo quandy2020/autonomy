@@ -1,0 +1,124 @@
+// Copyright 2025 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.rpcs.exploration;
+
+import "automsgs/msgs/std_msgs/header.proto";
+import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
+import "automsgs/msgs/geometry_msgs/polygon.proto";
+import "automsgs/rpcs/common.proto";
+
+// =============================================================================
+// ExplorationService
+//
+// Autonomous exploration / coverage mapping (自动探索建图).
+// Map CRUD and manual SLAM sessions stay on MapService.
+//
+//   Explore  — server streaming
+//              area polygon optional (empty = implementation default / unbounded)
+//              progress via ExploreResponse; COMPLETED when coverage goal met
+//   Pause / Resume / Cancel — unary; empty goal_id = current; Status only
+//   GetStatus — unary snapshot (ExploreResponse)
+//   SetArea  — unary; update exploration polygon while running (may replan)
+//   SaveMap  — unary; persist map for the active exploration session
+//
+// Stream closes after COMPLETED / FAILED / CANCELLED / reject, or on Cancel /
+// disconnect. PAUSED does not close the stream.
+// Goal owned when state in {PLANNING, EXPLORING, PAUSED}.
+// Busy → EXPLORATION_BUSY (1300). At most one active goal. No bidi stream.
+// Bridge: Explore→START, SetArea→SET_AREA, SaveMap→SAVE_MAP.
+// =============================================================================
+service ExplorationService {
+  rpc Explore(ExploreRequest) returns (stream ExploreResponse);
+  rpc Pause(GoalRequest) returns (automsgs.rpcs.common.Status);
+  rpc Resume(GoalRequest) returns (automsgs.rpcs.common.Status);
+  rpc Cancel(GoalRequest) returns (automsgs.rpcs.common.Status);
+  rpc GetStatus(GetStatusRequest) returns (ExploreResponse);
+  rpc SetArea(SetAreaRequest) returns (automsgs.rpcs.common.Status);
+  rpc SaveMap(SaveMapRequest) returns (SaveMapResponse);
+}
+
+enum ExplorationState {
+  EXPLORATION_STATE_UNKNOWN = 0;
+  EXPLORATION_STATE_IDLE = 1;
+  EXPLORATION_STATE_PLANNING = 2;
+  EXPLORATION_STATE_EXPLORING = 3;
+  EXPLORATION_STATE_PAUSED = 4;
+  EXPLORATION_STATE_COMPLETED = 5;
+  EXPLORATION_STATE_FAILED = 6;
+  EXPLORATION_STATE_CANCELLED = 7;
+}
+
+// Optional per-goal attributes. Unset fields use implementation defaults.
+message ExploreOptions {
+  optional float maximum_linear_speed = 1;    // m/s
+  optional float maximum_angular_speed = 2;   // rad/s
+  optional float timeout_seconds = 3;         // 0/unset = default
+  // Target coverage ratio in [0, 1]. Unset = implementation default.
+  optional float coverage_target = 4;
+  // If true, start / attach SLAM for this session (default true when unset).
+  optional bool enable_mapping = 5;
+}
+
+message ExploreRequest {
+  automsgs.msgs.std_msgs.Header header = 1;
+  string goal_id = 2;
+  // Exploration boundary in map frame. Empty = default / full reachable space.
+  automsgs.msgs.geometry_msgs.Polygon area = 3;
+  // Preferred name when SaveMap / finish persists the map.
+  string map_name = 4;
+  ExploreOptions options = 5;
+}
+
+// Stream element and GetStatus snapshot.
+message ExploreResponse {
+  automsgs.rpcs.common.Status status = 1;
+  ExplorationState state = 2;
+  string goal_id = 3;
+  automsgs.msgs.geometry_msgs.PoseStamped current_pose = 4;
+  // Covered area estimate (m^2). Unset = unknown.
+  optional float explored_area_m2 = 5;
+  // Coverage progress in [0, 1]. Unset = unknown.
+  optional float progress = 6;
+  // Remaining frontier / viewpoint count. Unset = unknown.
+  optional int32 frontier_count = 7;
+  string map_name = 8;
+  string detail = 9;
+}
+
+// Shared by Pause / Resume / Cancel. Empty goal_id = current goal.
+message GoalRequest {
+  string goal_id = 1;
+}
+
+message GetStatusRequest {}
+
+message SetAreaRequest {
+  string goal_id = 1;  // Empty = current exploration goal.
+  automsgs.msgs.geometry_msgs.Polygon area = 2;
+}
+
+message SaveMapRequest {
+  string goal_id = 1;  // Empty = current exploration goal.
+  // Empty = use ExploreRequest.map_name or implementation default.
+  string map_name = 2;
+}
+
+message SaveMapResponse {
+  automsgs.rpcs.common.Status status = 1;
+  string map_identifier = 2;
+  string map_name = 3;
+}

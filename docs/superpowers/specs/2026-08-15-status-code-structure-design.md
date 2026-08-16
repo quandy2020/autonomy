@@ -7,6 +7,7 @@
 - 单枚举继续服务 `StatusPb.error_code` 与 `rpcs.common.Status.code`
 - 结构上分清 **薄码（对外）** / **细码（对内）**
 - Nav2/MBF 遗留别名已删除（A0→A1→A2）
+- 出站 fine→thin：`ToThinStatusCode`（A3）
 
 ## 决策摘要
 

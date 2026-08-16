@@ -1,0 +1,88 @@
+// Copyright 2025 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.rpcs.charge;
+
+import "automsgs/msgs/std_msgs/header.proto";
+import "automsgs/rpcs/common.proto";
+
+// =============================================================================
+// ChargeService
+//
+// Auto return-to-charge (自动回充). Aligns with Navigation control surface.
+//
+//   Return / Leave — server streaming (ChargeResponse)
+//   Pause / Resume / Cancel — unary; empty goal_id = current; Status only
+//   GetStatus — unary snapshot (ChargeResponse)
+//
+// Stream closes on terminal Return/Leave states, Cancel, FAILED, or disconnect.
+// PAUSED does not close the stream. Charge-to-full is observed via GetStatus,
+// not as a stream-close condition.
+// Busy → CHARGING_BUSY (504). At most one active goal. No bidi stream.
+// Bridge: Return→DOCK_CMD_START, Leave→DOCK_CMD_UNDOCK, Pause/Resume/Cancel.
+// =============================================================================
+service ChargeService {
+  rpc Return(ReturnRequest) returns (stream ChargeResponse);
+  rpc Leave(LeaveRequest) returns (stream ChargeResponse);
+  rpc Pause(GoalRequest) returns (automsgs.rpcs.common.Status);
+  rpc Resume(GoalRequest) returns (automsgs.rpcs.common.Status);
+  rpc Cancel(GoalRequest) returns (automsgs.rpcs.common.Status);
+  rpc GetStatus(GetStatusRequest) returns (ChargeResponse);
+}
+
+enum ChargeState {
+  CHARGE_STATE_UNKNOWN = 0;
+  CHARGE_STATE_IDLE = 1;
+  CHARGE_STATE_RETURNING = 2;
+  CHARGE_STATE_LEAVING = 3;
+  CHARGE_STATE_DOCKED_NOT_CHARGING = 4;
+  CHARGE_STATE_CHARGING = 5;
+  CHARGE_STATE_FULL = 6;
+  CHARGE_STATE_FAILED = 7;
+  CHARGE_STATE_CANCELLED = 8;
+  CHARGE_STATE_PAUSED = 9;
+}
+
+message ReturnRequest {
+  automsgs.msgs.std_msgs.Header header = 1;
+  string station_id = 2;  // Empty = default station.
+  string goal_id = 3;
+}
+
+message LeaveRequest {
+  automsgs.msgs.std_msgs.Header header = 1;
+  string goal_id = 2;
+}
+
+// Shared by Pause / Resume / Cancel. Empty goal_id = current goal.
+message GoalRequest {
+  string goal_id = 1;
+}
+
+message GetStatusRequest {}
+
+// Stream element and GetStatus snapshot.
+message ChargeResponse {
+  reserved 3;  // was phase
+  automsgs.rpcs.common.Status status = 1;
+  ChargeState state = 2;
+  float progress = 4;  // 0..1; unknown may be 0.
+  string goal_id = 5;
+  string station_id = 6;
+  float battery_pct = 7;  // 0..100
+  bool active = 8;
+  string message = 9;
+}

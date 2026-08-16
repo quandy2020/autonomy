@@ -1,0 +1,148 @@
+// Copyright 2025 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.rpcs.teleop;
+
+import "automsgs/msgs/std_msgs/header.proto";
+import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
+import "automsgs/msgs/geometry_msgs/twist_stamped.proto";
+import "automsgs/rpcs/common.proto";
+
+// =============================================================================
+// TeleopService — manual base teleoperation
+//
+// Continuous:
+//   Velocity — bidi cmd_vel: START / TWIST / STOP (no Pause; use STOP)
+//
+// Relative (Nav2-style; server streaming):
+//   DriveOnHeading — translate along current heading (prefer distance >= 0)
+//   BackUp         — reverse along current heading by distance_meters (> 0)
+//   Spin           — relative yaw
+//   Pause / Resume — unary; empty goal_id = current relative goal
+//                    PAUSED does not close the stream
+//
+//   Cancel / GetStatus — unary; empty goal_id = current (Velocity or relative)
+//
+// At most one active teleop goal. Busy → TELEOP_BUSY.
+// Estop → SYSTEM_ESTOP / TELEOP_NOT_READY.
+// Collision → TELEOP_COLLISION + TELEOP_STATE_FAILED.
+// =============================================================================
+service TeleopService {
+  rpc Velocity(stream VelocityRequest) returns (stream TeleopResponse);
+  rpc DriveOnHeading(DriveOnHeadingRequest) returns (stream TeleopResponse);
+  rpc BackUp(BackUpRequest) returns (stream TeleopResponse);
+  rpc Spin(SpinRequest) returns (stream TeleopResponse);
+  rpc Pause(GoalRequest) returns (automsgs.rpcs.common.Status);
+  rpc Resume(GoalRequest) returns (automsgs.rpcs.common.Status);
+  rpc Cancel(GoalRequest) returns (automsgs.rpcs.common.Status);
+  rpc GetStatus(GetStatusRequest) returns (TeleopResponse);
+}
+
+enum TeleopState {
+  TELEOP_STATE_UNKNOWN = 0;
+  TELEOP_STATE_IDLE = 1;
+  TELEOP_STATE_ACTIVE = 2;
+  TELEOP_STATE_TIMEOUT = 3;
+  TELEOP_STATE_REJECTED = 4;
+  TELEOP_STATE_SUCCEEDED = 5;
+  TELEOP_STATE_CANCELLED = 6;
+  // Motion aborted after accept (collision, hardware, internal error).
+  TELEOP_STATE_FAILED = 7;
+  // Relative goals only; stream stays open until Resume / Cancel / terminal.
+  TELEOP_STATE_PAUSED = 8;
+}
+
+enum VelocityCommand {
+  VELOCITY_COMMAND_UNKNOWN = 0;
+  VELOCITY_COMMAND_START = 1;
+  VELOCITY_COMMAND_STOP = 2;
+  VELOCITY_COMMAND_TWIST = 3;
+}
+
+// Options for continuous Velocity sessions.
+message VelocityOptions {
+  optional float maximum_linear_speed = 1;     // m/s
+  optional float maximum_angular_speed = 2;    // rad/s
+  // No TWIST within this many seconds → auto STOP. 0/unset = default.
+  optional float watchdog_timeout_seconds = 3;
+  bool disable_collision_checks = 4;
+}
+
+// Options for DriveOnHeading / BackUp / Spin.
+message RelativeOptions {
+  optional float maximum_linear_speed = 1;     // m/s
+  optional float maximum_angular_speed = 2;    // rad/s
+  bool disable_collision_checks = 3;
+  // Overall timeout. 0/unset = default.
+  optional float timeout_seconds = 4;
+  // DriveOnHeading / BackUp success band. Unset = implementation default.
+  optional float position_tolerance_meters = 5;
+  // Spin success band. Unset = implementation default.
+  optional float yaw_tolerance_radians = 6;
+}
+
+message VelocityRequest {
+  automsgs.msgs.std_msgs.Header header = 1;
+  VelocityCommand command = 2;
+  string goal_id = 3;
+  // Required when command == TWIST.
+  automsgs.msgs.geometry_msgs.TwistStamped twist = 4;
+  VelocityOptions options = 5;
+}
+
+// Stream element (all teleop RPCs) and GetStatus snapshot.
+message TeleopResponse {
+  automsgs.rpcs.common.Status status = 1;
+  TeleopState state = 2;
+  string goal_id = 3;
+  string detail = 4;
+  optional float remaining_distance_meters = 5;
+  optional float remaining_yaw_radians = 6;
+  automsgs.msgs.geometry_msgs.PoseStamped current_pose = 7;
+  automsgs.msgs.geometry_msgs.TwistStamped commanded_twist = 8;
+  automsgs.msgs.geometry_msgs.TwistStamped actual_twist = 9;
+}
+
+message DriveOnHeadingRequest {
+  automsgs.msgs.std_msgs.Header header = 1;
+  string goal_id = 2;
+  // Prefer >= 0 (forward). For reverse, prefer BackUp.
+  float distance_meters = 3;
+  RelativeOptions options = 4;
+}
+
+// Nav2-style reverse along current heading. distance_meters must be > 0.
+message BackUpRequest {
+  automsgs.msgs.std_msgs.Header header = 1;
+  string goal_id = 2;
+  float distance_meters = 3;
+  RelativeOptions options = 4;
+}
+
+message SpinRequest {
+  automsgs.msgs.std_msgs.Header header = 1;
+  string goal_id = 2;
+  // Positive = CCW (ROS REP-103).
+  float target_yaw_radians = 3;
+  RelativeOptions options = 4;
+}
+
+// Shared by Pause / Resume / Cancel. Empty goal_id = current goal.
+message GoalRequest {
+  string goal_id = 1;
+}
+
+message GetStatusRequest {}
