@@ -29,6 +29,10 @@ enum class HazardLevel : int {
     kError = 2,
 };
 
+// Wire mapping to automsgs.rpcs.system.HazardLevel:
+//   kOk -> HAZARD_LEVEL_OK, kWarn -> WARN, kError -> ERROR
+// (RPC enum reserves 0 = UNKNOWN; C++ uses 0 = OK.)
+
 struct ChannelWatchOptions {
     std::string channel;
     double timeout_sec{1.0};

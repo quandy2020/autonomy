@@ -1,7 +1,7 @@
 # DockingService 流式 RPC 设计 — server streaming + unary
 
 日期：2026-08-14  
-状态：待审阅  
+状态：已批准  
 范围：`automsgs/proto/rpcs/docking.proto`、`automsgs/proto/rpcs/README.md`  
 前置：`2026-08-14-charging-rpc-nav-align-design.md`（异步 goal / Cancel / GetStatus）  
 相关：`2026-08-14-automsgs-rpcs-overview-design.md`（`DockingService` 归属）
@@ -70,7 +70,7 @@ service DockingService {
 
 | 枚举值 | 编号 | 含义 |
 |---|---|---|
-| `DOCKING_STATE_UNSPECIFIED` | 0 | 未设置 |
+| `DOCKING_STATE_UNKNOWN` | 0 | 未设置 |
 | `DOCKING_STATE_IDLE` | 1 | 空闲、未在桩 |
 | `DOCKING_STATE_DOCKING` | 2 | 回桩进行中 |
 | `DOCKING_STATE_UNDOCKING` | 3 | 离桩进行中 |
@@ -86,7 +86,7 @@ service DockingService {
 
 | 枚举值 | 含义 |
 |---|---|
-| `DOCKING_PHASE_UNSPECIFIED` | 未设置 |
+| `DOCKING_PHASE_UNKNOWN` | 未设置 |
 | `DOCKING_PHASE_IDLE` | 无过程 |
 | `DOCKING_PHASE_APPROACHING` | 接近桩位 |
 | `DOCKING_PHASE_ALIGNING` | 精对齐 |

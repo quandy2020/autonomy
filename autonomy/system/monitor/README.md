@@ -77,6 +77,20 @@ opts.heap_profile_filename = "/tmp/my_heap.prof";
 | `autonomy_system_channel_ok{channel}` | 通道是否在超时内收到数据 |
 | `autonomy_system_pipeline_latency_seconds{channel}` | 消息 header 年龄 |
 
+## 与 `SystemService` RPC 对齐
+
+第三方查询走 `automsgs/proto/rpcs/system.proto`：
+
+| Monitor / 运行时 | RPC |
+|------------------|-----|
+| `HazardMonitor::level()` | `SystemHealth.hazard_level` |
+| `MrmHandler::active()` | `SystemHealth.mrm_active` |
+| Channel / Latency watches | `SystemHealth.channels` / `latencies` |
+| CPU / Mem / Disk / NTP | `HostResourceSnapshot` |
+| 汇总 | `SystemService.GetStatus.health` 或 `GetHealth` |
+
+C++ 侧快照类型见 `system_health_snapshot.hpp`（供 bridge 填充 proto）。
+
 其他 monitor（voltage）仍预留接口；无 NVML / SMART 专用守护进程时不重复实现 Autoware 侧车方案。
 
 ## 构建
