@@ -1,4 +1,4 @@
-"""``python -m autosim`` entry point."""
+"""Module entry: ``python -m autosim``."""
 
 from autosim.runner import Runner
 

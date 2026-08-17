@@ -1,4 +1,4 @@
-"""automsgs protobuf encode/decode helpers."""
+"""Encode and decode automsgs protobufs for the sensor–actuator bridge."""
 
 from __future__ import annotations
 
@@ -10,13 +10,16 @@ import numpy as np
 from automsgs.msgs.geometry_msgs.pose_stamped_pb2 import PoseStamped
 from automsgs.msgs.geometry_msgs.twist_pb2 import Twist
 from automsgs.msgs.geometry_msgs.twist_stamped_pb2 import TwistStamped
+from automsgs.msgs.map_msgs.occupancy_grid_pb2 import OccupancyGrid
 from automsgs.msgs.nav_msgs.odometry_pb2 import Odometry
+from automsgs.msgs.rosgraph_msgs.clock_pb2 import Clock as ClockMsg
 from automsgs.msgs.sensor_msgs.camera_info_pb2 import CameraInfo
 from automsgs.msgs.sensor_msgs.image_pb2 import Image
 from automsgs.msgs.sensor_msgs.imu_pb2 import Imu
 from automsgs.msgs.sensor_msgs.laser_scan_pb2 import LaserScan
 from automsgs.msgs.sensor_msgs.point_cloud2_pb2 import PointCloud2
 from automsgs.msgs.sensor_msgs.point_field_pb2 import PointField
+from automsgs.msgs.tf2_msgs.tf_message_pb2 import TFMessage
 
 
 class Messages:
@@ -47,6 +50,52 @@ class Messages:
         """
         half = 0.5 * yaw
         return (0.0, 0.0, math.sin(half), math.cos(half))
+
+    @staticmethod
+    def diagonal_covariance(values: Sequence[float], size: int = 36) -> list:
+        """Build a row-major covariance with diagonal ``values`` (rest zero)."""
+        dim = int(round(math.sqrt(int(size))))
+        cov = [0.0] * int(size)
+        for index, value in enumerate(values):
+            if index >= dim:
+                break
+            cov[index * dim + index] = float(value)
+        return cov
+
+    @staticmethod
+    def camera_intrinsics(width: int, height: int, hfov_deg: float) -> list:
+        """Pinhole ``K`` from horizontal FOV (degrees)."""
+        hfov = math.radians(float(hfov_deg))
+        fx = 0.5 * float(width) / max(math.tan(0.5 * hfov), 1e-6)
+        fy = fx
+        cx = 0.5 * float(width)
+        cy = 0.5 * float(height)
+        return [fx, 0.0, cx, 0.0, fy, cy, 0.0, 0.0, 1.0]
+
+    @classmethod
+    def encode_twist_stamped(
+        cls,
+        linear_x: float,
+        angular_z: float,
+        stamp: Tuple[int, int],
+        frame_id: str = "base_link",
+    ) -> TwistStamped:
+        """Build a planar ``geometry_msgs.TwistStamped`` for ``cmd_vel``.
+
+        Args:
+            linear_x: Forward speed (m/s).
+            angular_z: Yaw rate (rad/s).
+            stamp: Timestamp ``(sec, nanosec)``.
+            frame_id: Twist frame (usually ``base_link``).
+
+        Returns:
+            Populated :class:`TwistStamped`.
+        """
+        message = TwistStamped()
+        cls.set_header(message.header, stamp, frame_id)
+        message.twist.linear.x = float(linear_x)
+        message.twist.angular.z = float(angular_z)
+        return message
 
     @classmethod
     def encode_laser_scan(
@@ -213,6 +262,8 @@ class Messages:
         orientation: Tuple[float, float, float, float],
         angular_velocity: Tuple[float, float, float],
         linear_acceleration: Tuple[float, float, float],
+        gyro_variance: float = 0.0,
+        accel_variance: float = 0.0,
     ) -> Imu:
         """Build a ``sensor_msgs.Imu``.
 
@@ -222,6 +273,8 @@ class Messages:
             orientation: Quaternion ``(x, y, z, w)``.
             angular_velocity: Angular velocity ``(wx, wy, wz)`` (rad/s).
             linear_acceleration: Linear acceleration ``(ax, ay, az)`` (m/s²).
+            gyro_variance: Diagonal angular-velocity variance (rad²/s²).
+            accel_variance: Diagonal linear-acceleration variance ((m/s²)²).
 
         Returns:
             Populated :class:`Imu`.
@@ -239,8 +292,10 @@ class Messages:
         message.linear_acceleration.y = linear_acceleration[1]
         message.linear_acceleration.z = linear_acceleration[2]
         message.orientation_covariance.extend([-1.0] + [0.0] * 8)
-        message.angular_velocity_covariance.extend([0.0] * 9)
-        message.linear_acceleration_covariance.extend([0.0] * 9)
+        gv = float(gyro_variance)
+        av = float(accel_variance)
+        message.angular_velocity_covariance.extend(cls.diagonal_covariance([gv, gv, gv], 9))
+        message.linear_acceleration_covariance.extend(cls.diagonal_covariance([av, av, av], 9))
         return message
 
     @classmethod
@@ -254,6 +309,8 @@ class Messages:
         stamp: Tuple[int, int],
         frame_id: str,
         child_frame_id: str,
+        pose_variance: float = 0.0,
+        twist_variance: float = 0.0,
     ) -> Odometry:
         """Build a planar ``nav_msgs.Odometry``.
 
@@ -266,6 +323,8 @@ class Messages:
             stamp: Timestamp.
             frame_id: Parent frame (usually ``odom``).
             child_frame_id: Child frame (usually ``base_link``).
+            pose_variance: Diagonal pose variance for x/y/yaw.
+            twist_variance: Diagonal twist variance for vx/wz.
 
         Returns:
             Populated :class:`Odometry`.
@@ -283,10 +342,68 @@ class Messages:
         pose.pose.orientation.y = qy
         pose.pose.orientation.z = qz
         pose.pose.orientation.w = qw
-        message.pose.covariance.extend([0.0] * 36)
+        pv = float(pose_variance)
+        tv = float(twist_variance)
+        message.pose.covariance.extend(
+            cls.diagonal_covariance([pv, pv, 0.0, 0.0, 0.0, pv], 36)
+        )
         message.twist.twist.linear.x = float(linear)
         message.twist.twist.angular.z = float(angular)
-        message.twist.covariance.extend([0.0] * 36)
+        message.twist.covariance.extend(
+            cls.diagonal_covariance([tv, 0.0, 0.0, 0.0, 0.0, tv], 36)
+        )
+        return message
+
+    @classmethod
+    def encode_transform(
+        cls,
+        stamp: Tuple[int, int],
+        parent: str,
+        child: str,
+        xyz: Tuple[float, float, float],
+        yaw: float = 0.0,
+    ):
+        """Build one ``TransformStamped`` (used inside ``TFMessage``)."""
+        from automsgs.msgs.geometry_msgs.transform_stamped_pb2 import TransformStamped
+
+        message = TransformStamped()
+        cls.set_header(message.header, stamp, parent)
+        message.child_frame_id = child
+        message.transform.translation.x = float(xyz[0])
+        message.transform.translation.y = float(xyz[1])
+        message.transform.translation.z = float(xyz[2])
+        qx, qy, qz, qw = cls.yaw_to_quaternion(yaw)
+        message.transform.rotation.x = qx
+        message.transform.rotation.y = qy
+        message.transform.rotation.z = qz
+        message.transform.rotation.w = qw
+        return message
+
+    @classmethod
+    def encode_tf_message(cls, transforms: Sequence[object]) -> TFMessage:
+        """Pack transforms into a ``TFMessage``."""
+        message = TFMessage()
+        for item in transforms:
+            slot = message.transforms.add()
+            slot.header.stamp.sec = item.header.stamp.sec
+            slot.header.stamp.nanosec = item.header.stamp.nanosec
+            slot.header.frame_id = item.header.frame_id
+            slot.child_frame_id = item.child_frame_id
+            slot.transform.translation.x = item.transform.translation.x
+            slot.transform.translation.y = item.transform.translation.y
+            slot.transform.translation.z = item.transform.translation.z
+            slot.transform.rotation.x = item.transform.rotation.x
+            slot.transform.rotation.y = item.transform.rotation.y
+            slot.transform.rotation.z = item.transform.rotation.z
+            slot.transform.rotation.w = item.transform.rotation.w
+        return message
+
+    @classmethod
+    def encode_clock(cls, stamp: Tuple[int, int]) -> ClockMsg:
+        """Build ``rosgraph_msgs/Clock`` from sim time."""
+        message = ClockMsg()
+        message.clock.sec = int(stamp[0])
+        message.clock.nanosec = int(stamp[1])
         return message
 
     @classmethod
@@ -320,6 +437,46 @@ class Messages:
         message.pose.orientation.y = qy
         message.pose.orientation.z = qz
         message.pose.orientation.w = qw
+        return message
+
+    @classmethod
+    def encode_occupancy_grid(
+        cls,
+        grid: np.ndarray,
+        resolution: float,
+        origin_x: float,
+        origin_y: float,
+        stamp: Tuple[int, int],
+        frame_id: str,
+    ) -> OccupancyGrid:
+        """Build a ``map_msgs.OccupancyGrid`` (row-major, unknown=-1, occ=100).
+
+        Args:
+            grid: ``HxW`` int array.
+            resolution: Meters per cell.
+            origin_x: World x of cell (0,0) lower-left.
+            origin_y: World y of cell (0,0) lower-left.
+            stamp: Timestamp.
+            frame_id: Usually ``map``.
+
+        Returns:
+            Populated :class:`OccupancyGrid`.
+        """
+        array = np.asarray(grid)
+        height, width = array.shape
+        message = OccupancyGrid()
+        cls.set_header(message.header, stamp, frame_id)
+        message.info.map_load_time.sec = int(stamp[0])
+        message.info.map_load_time.nanosec = int(stamp[1])
+        message.info.resolution = float(resolution)
+        message.info.width = int(width)
+        message.info.height = int(height)
+        message.info.origin.position.x = float(origin_x)
+        message.info.origin.position.y = float(origin_y)
+        message.info.origin.position.z = 0.0
+        message.info.origin.orientation.w = 1.0
+        flat = array.reshape(-1).astype(np.int32)
+        message.data.extend(int(value) for value in flat.tolist())
         return message
 
     @staticmethod

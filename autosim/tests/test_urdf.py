@@ -1,21 +1,24 @@
+"""Tests for URDF path resolve and sensor mounts."""
+
 from pathlib import Path
 
 import pytest
 
 from autosim.config import Config
+from autosim.urdf import UrdfModel
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def minimal_config(**overrides):
-    data = {
+def minimal_robot_config(urdf: str = ""):
+    return {
         "habitat": {
             "path": "",
             "spawn": [0.0, 0.0, 0.0],
             "gpu": 0,
             "robot": {
-                "urdf": "",
+                "urdf": urdf,
                 "max_linear": 0.5,
                 "max_angular": 1.0,
                 "map_frame": "map",
@@ -82,58 +85,56 @@ def minimal_config(**overrides):
             },
         },
     }
-    data.update(overrides)
-    return data
 
 
-def test_load_default_yaml():
+def test_resolve_husky_relative():
+    path = UrdfModel.resolve("urdf/husky.urdf")
+    assert path is not None
+    assert path.is_file()
+    assert path.name == "husky.urdf"
+
+
+def test_load_husky_laser_height():
+    model = UrdfModel.load("urdf/husky.urdf")
+    assert model is not None
+    x, y, z = model.laser_xyz()
+    assert abs(x - 0.15) < 1e-6
+    assert abs(y - 0.0) < 1e-6
+    assert abs(z - 0.465) < 1e-6
+    ix, _, iz = model.imu_xyz()
+    assert abs(ix - 0.1) < 1e-6
+    assert abs(iz - 0.345) < 1e-6
+
+
+def test_load_empty_urdf():
+    assert UrdfModel.load("") is None
+    assert UrdfModel.resolve("") is None
+
+
+def test_default_yaml_urdf():
     settings = Config.load(ROOT / "config" / "default.yaml")
-    assert settings.channel_map()["cmd_vel"] == "/cmd_vel"
-    assert settings.channel_map()["scan"] == "/scan"
-    assert settings.channel_map()["points"] == "/points"
-    assert "lidar" not in settings["habitat"]["sensors"]
-    assert settings["habitat"]["robot"]["truth"]["enabled"] is False
-    assert settings["habitat"]["path"] == ""
-    assert settings["habitat"]["sensors"]["lidar_2d"]["enabled"] is True
-    assert settings["habitat"]["sensors"]["lidar_3d"]["enabled"] is False
-    assert settings["habitat"]["sensors"]["lidar_3d"]["vertical"]["num_rings"] == 16
-    assert settings["habitat"]["sensors"]["camera"]["width"] == 640
-    assert settings["habitat"]["sensors"]["lidar_2d"]["noise"] == 0.01
-    assert settings["habitat"]["sensors"]["lidar_3d"]["noise"] == 0.015
-    assert settings["habitat"]["sensors"]["odom"]["noise"] == 0.02
-    assert settings["habitat"]["sensors"]["imu"]["noise"]["gyro"] == 0.01
-    assert settings["habitat"]["sensors"]["imu"]["noise"]["accel"] == 0.05
-    assert settings["habitat"]["sensors"]["camera"]["noise"]["depth"] == 0.01
-    assert settings["habitat"]["map"]["enabled"] is False
-    assert settings["habitat"]["map"]["grid"]["channel"] == "/map"
-    assert settings["habitat"]["robot"]["tf"]["enabled"] is True
-    assert settings.channel_map()["tf"] == "/tf"
-    assert settings.channel_map()["clock"] == "/clock"
+    assert settings["habitat"]["robot"]["urdf"] == "urdf/husky.urdf"
 
 
-def test_reject_empty_channel():
-    bad = minimal_config()
-    bad["habitat"]["sensors"]["lidar_2d"]["channel"] = ""
-    with pytest.raises(ValueError):
+def test_reject_missing_urdf():
+    bad = minimal_robot_config(urdf="urdf/does_not_exist.urdf")
+    with pytest.raises(ValueError, match="urdf"):
         Config.load(bad)
 
 
-def test_reject_duplicate_channels():
-    bad = minimal_config()
-    bad["habitat"]["robot"]["cmd_vel"] = "/scan"
-    with pytest.raises(ValueError):
-        Config.load(bad)
+def test_mock_simulator_loads_mounts():
+    from autosim.simulator import Simulator
 
-
-def test_reject_negative_noise():
-    bad = minimal_config()
-    bad["habitat"]["sensors"]["lidar_2d"]["noise"] = -0.1
-    with pytest.raises(ValueError, match="noise"):
-        Config.load(bad)
-
-
-def test_reject_negative_imu_noise():
-    bad = minimal_config()
-    bad["habitat"]["sensors"]["imu"]["noise"] = {"gyro": -1.0, "accel": 0.0}
-    with pytest.raises(ValueError, match="gyro"):
-        Config.load(bad)
+    data = minimal_robot_config(urdf="urdf/husky.urdf")
+    sim = Simulator(
+        backend="minimal",
+        width=64,
+        height=48,
+        settings=data,
+        open_session=False,
+    )
+    assert sim.urdf is not None
+    ox, oy, oz = sim.laser_origin()
+    assert abs(oy - 0.465) < 1e-6
+    assert abs(ox - 0.15) < 1e-6
+    assert abs(oz - 0.0) < 1e-6

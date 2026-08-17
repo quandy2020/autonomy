@@ -2,7 +2,7 @@ from pathlib import Path
 
 from autosim.config import Config
 from autosim.runner import Runner
-from autosim.simulator import Simulator
+from tests.fake_simulator import FakeSimulator
 
 
 class FakeWriter:
@@ -80,20 +80,53 @@ def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
     sensors["lidar_3d"]["vertical"]["num_rings"] = 2
     sensors["camera"]["enabled"] = False
     sensors["imu"]["enabled"] = False
+    sensors["odom"]["enabled"] = True
+    settings.data["habitat"]["map"]["enabled"] = True
+    settings.data["habitat"]["map"]["rate_hz"] = 0.0
+    settings.data["habitat"]["map"]["ply"]["file"] = ""
+    settings.data["habitat"]["map"]["ply"]["channel"] = "/map/points"
+    settings.data["habitat"]["map"]["ply"]["horizontal"]["num_beams"] = 8
+    settings.data["habitat"]["map"]["ply"]["vertical"]["num_rings"] = 2
+    settings.data["habitat"]["robot"]["tf"]["enabled"] = True
+    settings.data["habitat"]["robot"]["clock"]["enabled"] = True
 
     link = FakeLink()
-    simulator = Simulator(
-        backend="minimal",
-        width=64,
-        height=48,
-        settings=settings.data,
-        use_mock=True,
-    )
-    runner = Runner(settings, max_steps=5, link=link, simulator=simulator)
+    runner = Runner(settings, max_steps=5, link=link, simulator=FakeSimulator())
     runner.run()
     assert "/scan" in runner.node.writers
     assert len(runner.node.writers["/scan"].msgs) >= 1
     assert "/points" in runner.node.writers
     assert len(runner.node.writers["/points"].msgs) >= 1
     assert len(runner.node.writers["/odom"].msgs) >= 1
+    assert "/map/points" in runner.node.writers
+    assert "/map" in runner.node.writers
+    assert len(runner.node.writers["/map/points"].msgs) >= 1
+    assert len(runner.node.writers["/map"].msgs) >= 1
+    assert "/tf" in runner.node.writers
+    assert "/clock" in runner.node.writers
+    assert len(runner.node.writers["/tf"].msgs) >= 1
     assert "/camera/rgb/image_raw" not in runner.node.writers
+
+
+def test_runner_skips_odom_when_disabled(monkeypatch):
+    import autosim.runner as runner_module
+
+    monkeypatch.setattr(runner_module.time, "sleep", lambda seconds: None)
+
+    root = Path(__file__).resolve().parents[1]
+    settings = Config.load(root / "config" / "default.yaml")
+    sensors = settings.data["habitat"]["sensors"]
+    sensors["lidar_2d"]["enabled"] = False
+    sensors["lidar_3d"]["enabled"] = False
+    sensors["camera"]["enabled"] = False
+    sensors["imu"]["enabled"] = False
+    sensors["odom"]["enabled"] = False
+    settings.data["habitat"]["map"]["enabled"] = False
+    settings.data["habitat"]["robot"]["tf"]["enabled"] = False
+    settings.data["habitat"]["robot"]["clock"]["enabled"] = False
+
+    link = FakeLink()
+    runner = Runner(settings, max_steps=3, link=link, simulator=FakeSimulator())
+    runner.run()
+    assert "/odom" not in runner.node.writers
+    assert "/map" not in runner.node.writers

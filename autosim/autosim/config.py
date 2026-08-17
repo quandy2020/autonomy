@@ -1,4 +1,4 @@
-"""Simulation config loading and validation."""
+"""YAML configuration load and startup validation for autosim."""
 
 from __future__ import annotations
 
@@ -7,55 +7,58 @@ from typing import Any, Dict, Mapping, MutableMapping, Union
 
 import yaml
 
+from autosim.urdf import UrdfModel
+
 
 class Config:
-    """YAML config container with startup validation of robot and sensor channels."""
+    """Validated habitat/robot/sensor configuration."""
 
     REQUIRED_SENSOR_KEYS = ("lidar_2d", "lidar_3d", "camera", "imu", "odom")
 
     def __init__(self, data: MutableMapping[str, Any]) -> None:
-        """Build a config from an already-validated mapping.
+        """Wrap an already-validated mapping.
 
         Args:
-            data: Config dict, typically produced by :meth:`load`.
+            data: Config dict from :meth:`load`.
         """
         self.data = data
 
     def __getitem__(self, key: str) -> Any:
-        """Read a top-level config entry.
+        """Top-level lookup.
 
         Args:
-            key: Top-level key such as ``habitat``.
+            key: e.g. ``habitat``.
 
         Returns:
-            The mapped value.
+            Mapped value.
 
         Raises:
-            KeyError: If the key is missing.
+            KeyError: Missing key.
         """
         return self.data[key]
 
     def get(self, key: str, default: Any = None) -> Any:
-        """Safely read a top-level config entry.
+        """Top-level lookup with default.
 
         Args:
             key: Top-level key.
-            default: Value when the key is absent.
+            default: Fallback when absent.
 
         Returns:
-            The config value or ``default``.
+            Value or ``default``.
         """
         return self.data.get(key, default)
 
     def channel_map(self) -> Dict[str, str]:
-        """Expand nested config into the logical channel map used by Bridge.
-
-        Returns:
-            Keys such as ``cmd_vel`` / ``scan`` / ``points`` / ``rgb`` mapped to channel names.
-        """
+        """Logical bridge keys → channel names."""
         robot = self.data["habitat"]["robot"]
         sensors = self.data["habitat"]["sensors"]
-        return {
+        mapping = self.data["habitat"].get("map") or {}
+        ply = mapping.get("ply") or {}
+        grid = mapping.get("grid") or {}
+        tf_cfg = robot.get("tf") or {}
+        clock_cfg = robot.get("clock") or {}
+        channels = {
             "cmd_vel": robot["cmd_vel"],
             "scan": sensors["lidar_2d"]["channel"],
             "points": sensors["lidar_3d"]["channel"],
@@ -65,21 +68,29 @@ class Config:
             "imu": sensors["imu"]["channel"],
             "odom": sensors["odom"]["channel"],
             "gt_pose": robot["truth"]["channel"],
+            "map_grid": grid.get("channel", "/map"),
+            "tf": tf_cfg.get("channel", "/tf"),
+            "tf_static": tf_cfg.get("static_channel", "/tf_static"),
+            "clock": clock_cfg.get("channel", "/clock"),
         }
+        ply_channel = str(ply.get("channel") or "").strip()
+        if ply_channel:
+            channels["map_cloud"] = ply_channel
+        return channels
 
     @classmethod
     def load(cls, source: Union[str, Path, Mapping[str, Any]]) -> "Config":
-        """Load and validate config from a file path or in-memory mapping.
+        """Load YAML path or in-memory mapping, then validate.
 
         Args:
-            source: YAML path or an already-parsed ``dict`` / ``Mapping``.
+            source: File path or mapping.
 
         Returns:
-            A validated :class:`Config` instance.
+            Validated :class:`Config`.
 
         Raises:
-            ValueError: Unsupported source type, non-mapping root, or validation failure.
-            OSError: Config file cannot be opened.
+            ValueError: Bad source or validation failure.
+            OSError: File unreadable.
         """
         if isinstance(source, (str, Path)):
             path = Path(source)
@@ -96,13 +107,50 @@ class Config:
         return cls(data)
 
     @classmethod
-    def _require_bool(cls, block: Mapping[str, Any], path: str) -> None:
+    def validate_urdf(cls, urdf: Any) -> None:
+        """Require ``habitat.robot.urdf`` empty or an existing file.
+
+        Args:
+            urdf: Path string or empty.
+
+        Raises:
+            ValueError: Non-string or missing file.
+        """
+        if urdf is None:
+            return
+        if not isinstance(urdf, str):
+            raise ValueError("habitat.robot.urdf must be a string")
+        path = UrdfModel.resolve(urdf)
+        if path is None:
+            return
+        if not path.is_file():
+            raise ValueError(f"habitat.robot.urdf not found: {path}")
+
+    @classmethod
+    def require_bool(cls, block: Mapping[str, Any], path: str) -> None:
+        """Require ``enabled`` to be a bool.
+
+        Args:
+            block: Mapping that must contain ``enabled``.
+            path: Dotted path for error messages.
+
+        Raises:
+            ValueError: Missing or non-bool ``enabled``.
+        """
         if "enabled" not in block or not isinstance(block["enabled"], bool):
             raise ValueError(f"{path}.enabled must be a bool")
 
     @classmethod
-    def _validate_lidar_2d(cls, block: Mapping[str, Any]) -> None:
-        cls._require_bool(block, "habitat.sensors.lidar_2d")
+    def validate_lidar_2d(cls, block: Mapping[str, Any]) -> None:
+        """Validate planar lidar geometry and enable flag.
+
+        Args:
+            block: ``habitat.sensors.lidar_2d``.
+
+        Raises:
+            ValueError: Invalid fields.
+        """
+        cls.require_bool(block, "habitat.sensors.lidar_2d")
         if int(block.get("num_beams", 0)) < 1:
             raise ValueError("habitat.sensors.lidar_2d.num_beams must be >= 1")
         if float(block["angle_max"]) < float(block["angle_min"]):
@@ -111,8 +159,16 @@ class Config:
             raise ValueError("habitat.sensors.lidar_2d range_max must be > range_min")
 
     @classmethod
-    def _validate_lidar_3d(cls, block: Mapping[str, Any]) -> None:
-        cls._require_bool(block, "habitat.sensors.lidar_3d")
+    def validate_lidar_3d(cls, block: Mapping[str, Any]) -> None:
+        """Validate multi-ring lidar geometry and enable flag.
+
+        Args:
+            block: ``habitat.sensors.lidar_3d``.
+
+        Raises:
+            ValueError: Invalid fields.
+        """
+        cls.require_bool(block, "habitat.sensors.lidar_3d")
         horizontal = block.get("horizontal")
         vertical = block.get("vertical")
         if not isinstance(horizontal, Mapping) or not isinstance(vertical, Mapping):
@@ -129,14 +185,65 @@ class Config:
             raise ValueError("habitat.sensors.lidar_3d range_max must be > range_min")
 
     @classmethod
-    def validate(cls, data: Mapping[str, Any]) -> None:
-        """Validate ``habitat`` robot and sensor channel settings.
+    def require_nonneg(cls, value: Any, path: str) -> float:
+        """Require a finite noise stddev ≥ 0.
 
         Args:
-            data: Config mapping to validate.
+            value: Candidate σ.
+            path: Dotted path for errors.
+
+        Returns:
+            Parsed float σ.
 
         Raises:
-            ValueError: Missing structure, empty channel names, or duplicates.
+            ValueError: Missing, non-numeric, or negative.
+        """
+        try:
+            sigma = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{path} must be a number >= 0") from exc
+        if sigma < 0.0:
+            raise ValueError(f"{path} must be >= 0")
+        return sigma
+
+    @classmethod
+    def validate_noise_fields(cls, sensors: Mapping[str, Any]) -> None:
+        """Validate Gaussian σ fields on lidar / odom / imu / camera.
+
+        Args:
+            sensors: ``habitat.sensors`` mapping.
+
+        Raises:
+            ValueError: Negative or malformed noise.
+        """
+        cls.require_nonneg(sensors["lidar_2d"].get("noise", 0.0), "habitat.sensors.lidar_2d.noise")
+        cls.require_nonneg(sensors["lidar_3d"].get("noise", 0.0), "habitat.sensors.lidar_3d.noise")
+        cls.require_nonneg(sensors["odom"].get("noise", 0.0), "habitat.sensors.odom.noise")
+
+        imu_noise = sensors["imu"].get("noise", {})
+        if imu_noise is None:
+            imu_noise = {}
+        if not isinstance(imu_noise, Mapping):
+            raise ValueError("habitat.sensors.imu.noise must be a mapping")
+        cls.require_nonneg(imu_noise.get("gyro", 0.0), "habitat.sensors.imu.noise.gyro")
+        cls.require_nonneg(imu_noise.get("accel", 0.0), "habitat.sensors.imu.noise.accel")
+
+        cam_noise = sensors["camera"].get("noise", {})
+        if cam_noise is None:
+            cam_noise = {}
+        if not isinstance(cam_noise, Mapping):
+            raise ValueError("habitat.sensors.camera.noise must be a mapping")
+        cls.require_nonneg(cam_noise.get("depth", 0.0), "habitat.sensors.camera.noise.depth")
+
+    @classmethod
+    def validate(cls, data: Mapping[str, Any]) -> None:
+        """Validate habitat robot and sensor channel settings.
+
+        Args:
+            data: Root config mapping.
+
+        Raises:
+            ValueError: Structure, channel, or geometry errors.
         """
         habitat = data.get("habitat")
         if not isinstance(habitat, Mapping):
@@ -152,6 +259,7 @@ class Config:
             raise ValueError("empty channel name: habitat.robot.cmd_vel")
         if not isinstance(truth.get("channel"), str) or not truth["channel"].strip():
             raise ValueError("empty channel name: habitat.robot.truth.channel")
+        cls.validate_urdf(robot.get("urdf", ""))
 
         sensors = habitat.get("sensors")
         if not isinstance(sensors, Mapping):
@@ -160,8 +268,10 @@ class Config:
             if key not in sensors or not isinstance(sensors[key], Mapping):
                 raise ValueError(f"missing habitat.sensors.{key}")
 
-        cls._validate_lidar_2d(sensors["lidar_2d"])
-        cls._validate_lidar_3d(sensors["lidar_3d"])
+        cls.validate_lidar_2d(sensors["lidar_2d"])
+        cls.validate_lidar_3d(sensors["lidar_3d"])
+        cls.validate_noise_fields(sensors)
+        cls.validate_map(habitat.get("map"))
 
         names = [
             robot["cmd_vel"],
@@ -174,8 +284,65 @@ class Config:
             sensors["odom"]["channel"],
             truth["channel"],
         ]
+        mapping = habitat.get("map")
+        if isinstance(mapping, Mapping) and mapping.get("enabled", False):
+            ply = mapping.get("ply") or {}
+            grid = mapping.get("grid") or {}
+            ply_channel = str(ply.get("channel") or "").strip()
+            if ply_channel:
+                names.append(ply_channel)
+            names.append(grid["channel"])
+        tf_cfg = robot.get("tf") or {}
+        if isinstance(tf_cfg, Mapping) and tf_cfg.get("enabled", False):
+            names.extend([tf_cfg.get("channel", "/tf"), tf_cfg.get("static_channel", "/tf_static")])
+        clock_cfg = robot.get("clock") or {}
+        if isinstance(clock_cfg, Mapping) and clock_cfg.get("enabled", False):
+            names.append(clock_cfg.get("channel", "/clock"))
         for name in names:
             if not isinstance(name, str) or not name.strip():
                 raise ValueError("empty channel name in habitat.sensors or habitat.robot")
         if len(names) != len(set(names)):
             raise ValueError("duplicate channel names")
+
+    @classmethod
+    def validate_map(cls, block: Any) -> None:
+        """Validate optional ``habitat.map`` panoramic GT block."""
+        if block is None:
+            return
+        if not isinstance(block, Mapping):
+            raise ValueError("habitat.map must be a mapping")
+        if "enabled" in block and not isinstance(block["enabled"], bool):
+            raise ValueError("habitat.map.enabled must be a bool")
+        if not block.get("enabled", False):
+            return
+        if not isinstance(block.get("frame"), str) or not str(block["frame"]).strip():
+            raise ValueError("habitat.map.frame must be a non-empty string")
+        ply = block.get("ply")
+        grid = block.get("grid")
+        if not isinstance(ply, Mapping):
+            raise ValueError("habitat.map.ply must be a mapping")
+        if not isinstance(grid, Mapping):
+            raise ValueError("habitat.map.grid must be a mapping")
+        file_path = str(ply.get("file") or "").strip()
+        channel = str(ply.get("channel") or "").strip()
+        if not file_path and not channel:
+            raise ValueError("habitat.map.ply requires file and/or channel")
+        if not isinstance(grid.get("channel"), str) or not str(grid["channel"]).strip():
+            raise ValueError("habitat.map.grid.channel must be a non-empty string")
+        horizontal = ply.get("horizontal")
+        vertical = ply.get("vertical")
+        if not isinstance(horizontal, Mapping) or not isinstance(vertical, Mapping):
+            raise ValueError("habitat.map.ply requires horizontal and vertical mappings")
+        if int(horizontal.get("num_beams", 0)) < 1:
+            raise ValueError("habitat.map.ply.horizontal.num_beams must be >= 1")
+        if int(vertical.get("num_rings", 0)) < 1:
+            raise ValueError("habitat.map.ply.vertical.num_rings must be >= 1")
+        if float(ply.get("range_max", 0.0)) <= 0.0:
+            raise ValueError("habitat.map.ply.range_max must be > 0")
+        if float(grid.get("resolution", 0.0)) <= 0.0:
+            raise ValueError("habitat.map.grid.resolution must be > 0")
+        if float(grid["z_max"]) < float(grid["z_min"]):
+            raise ValueError("habitat.map.grid z_max must be >= z_min")
+        rate = float(block.get("rate_hz", 0.0))
+        if rate < 0.0:
+            raise ValueError("habitat.map.rate_hz must be >= 0")

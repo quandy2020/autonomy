@@ -1,5 +1,7 @@
 .deps/
+stubs/
 *.egg-info/
 __pycache__/
 .pytest_cache/
 *.pyc
+assets/map.ply

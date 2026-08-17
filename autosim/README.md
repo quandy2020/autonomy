@@ -1,7 +1,7 @@
 # autosim
 
-Habitat-Sim **传感器–执行器桥**：经 autolink 发布传感、订阅 `/cmd_vel`，对接现有 SLAM / 导航栈。  
-**不实现** Map / Navigation / Localization RPC。
+Habitat-Sim **传感器–执行器桥**：经 autolink 发布传感、订阅 `/cmd_vel`，并对接 TF / 仿真时钟 / 可选真值地图。  
+**不实现** MapService / NavigationService / LocalizationService RPC（建图算法由 Cartographer 等承担；`habitat.map` 仅提供场景真值栅格/PLY）。
 
 ## 模块（每文件一个类）
 
@@ -9,12 +9,15 @@ Habitat-Sim **传感器–执行器桥**：经 autolink 发布传感、订阅 `/
 |------|-----|------|
 | `config.py` | `Config` | YAML 加载与校验 |
 | `clock.py` | `Clock` | 仿真时钟 |
-| `robot.py` | `Robot` | 差速、里程计、惯性、真值 |
+| `robot.py` | `Robot` | 差速、积分里程计、带偏置 IMU、真值 |
 | `sensors.py` | `Sensors` | 2D/3D lidar and camera sampling |
-| `simulator.py` | `Simulator` | Habitat / Mock scene + cast_ray |
+| `simulator.py` | `Simulator` | Habitat scene + cast_ray（无 Mock） |
+| `map.py` | `Map` | PLY 环视点云 + 2D OccupancyGrid（自由空间雕刻） |
+| `urdf.py` | `UrdfModel` | URDF path + sensor mounts |
 | `messages.py` | `Messages` | automsgs encode/decode |
 | `bridge.py` | `Bridge` | autolink channels |
 | `runner.py` | `Runner` | main loop |
+| `telop.py` | `Telop` | keyboard → `/cmd_vel` |
 
 ## 依赖
 
@@ -28,32 +31,36 @@ Habitat-Sim **传感器–执行器桥**：经 autolink 发布传感、订阅 `/
 cd autosim
 pip install -e ".[dev]"
 python -m autosim --config config/default.yaml
-# 或
-python examples/run_bridge.py
+./scripts/run.sh sim
+./scripts/run.sh telop
 ```
 
-`habitat.path` 为空且无 `habitat-sim` 时回退 Mock。本地 codec 测试可用 `.deps/python`（见 `tests/conftest.py`），无需完整编译。
+`habitat.path` 为空时使用 Habitat 空舞台（仍需 `habitat-sim`）。真值地图默认关闭；加载真实场景后再设 `habitat.map.enabled: true`。  
+测试需要已安装的 `automsgs` Python 绑定（仓库内不再附带 `stubs/`）。
 
 ## 配置要点
 
-传感器与底盘均在 `habitat` 下：`habitat.robot.*`、`habitat.sensors.*`。  
-2D/3D 雷达可并行，各自 `enabled`；采样为 `cast_ray`（Mock 下为确定性假数据）。
+- 噪声字段为高斯 σ；里程计为**积分噪声**（非每拍贴 GT）。
+- `robot.tf` → `/tf` + `/tf_static`（`map→odom→base_link` + URDF 传感器外参）。
+- `robot.clock` → `/clock`（`rosgraph_msgs/Clock`）。
+- `map.ply`：`file` 与/或 `channel` 至少其一；`map.grid` → `/map` OccupancyGrid。
 
-| 方向 | 通道（默认） | Proto | 配置位置 |
-|------|------|-------|------|
-| 入 | `/cmd_vel` | `TwistStamped` | `habitat.robot.cmd_vel` |
-| 出 | `/scan` | `LaserScan` | `habitat.sensors.lidar_2d` |
-| 出 | `/points` | `PointCloud2` | `habitat.sensors.lidar_3d` |
-| 出 | `/camera/rgb|depth|info` | `Image` / `CameraInfo` | `habitat.sensors.camera` |
-| 出 | `/imu` | `Imu` | `habitat.sensors.imu` |
-| 出 | `/odom` | `Odometry` | `habitat.sensors.odom` |
-| 出 | `/gt/pose` | `PoseStamped` | `habitat.robot.truth`（默认关） |
+| 方向 | 通道（默认） | Proto |
+|------|------|-------|
+| 入 | `/cmd_vel` | `TwistStamped` |
+| 出 | `/scan` `/points` `/camera/*` `/imu` `/odom` | 传感 |
+| 出 | `/tf` `/tf_static` | `TFMessage` |
+| 出 | `/clock` | `Clock` |
+| 出 | `/map`（可选 `/map/points`） | `OccupancyGrid` / `PointCloud2` |
+| 出 | `/gt/pose` | `PoseStamped`（默认关） |
 
 ## Habitat 场景
 
 ```yaml
 habitat:
   path: /data/hm3d/scene.basis.glb
+  map:
+    enabled: true
 ```
 
 ## 测试
@@ -61,7 +68,3 @@ habitat:
 ```bash
 cd autosim && pytest tests -v
 ```
-
-## 联调
-
-先起 autosim，再起 Cartographer / Atlas / navigator。
