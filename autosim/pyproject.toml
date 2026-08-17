@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autosim"
+version = "0.1.0"
+description = "Habitat-Sim sensor-actuator bridge for autonomy via autolink/automsgs"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+  "PyYAML>=6.0",
+  "protobuf>=4.21",
+]
+
+[project.optional-dependencies]
+habitat = ["habitat-sim>=0.3.0"]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+autosim = "autosim.runner:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["autosim*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
