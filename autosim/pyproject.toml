@@ -19,7 +19,7 @@ habitat = ["habitat-sim>=0.3.0"]
 dev = ["pytest>=7.0"]
 
 [project.scripts]
-autosim = "autosim.runner:main"
+autosim = "autosim.__main__:run"
 
 [tool.setuptools.packages.find]
 where = ["."]
