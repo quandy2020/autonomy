@@ -1,4 +1,4 @@
-"""Simulation clock that supplies a shared timestamp for message headers."""
+"""Monotonic simulation clock for message ``Header.stamp``."""
 
 from __future__ import annotations
 

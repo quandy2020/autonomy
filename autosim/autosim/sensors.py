@@ -1,4 +1,4 @@
-"""Exteroceptive sensors: planar laser, 3D lidar, and RGB-D camera."""
+"""Exteroceptive sampling: 2D laser, 3D lidar cloud, and RGB-D."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ class Sensors:
         range_min: float,
         range_max: float,
         noise: float = 0.0,
+        depth_noise: float = 0.0,
         lidar_3d: Optional[Mapping[str, Any]] = None,
         seed: int = 0,
     ) -> None:
@@ -30,6 +31,7 @@ class Sensors:
             range_min: Minimum valid range (m) for 2D clipping.
             range_max: Maximum valid range (m) for 2D.
             noise: Gaussian stddev on ranges / distances; ``0`` disables.
+            depth_noise: Gaussian stddev on camera depth (m); ``0`` disables.
             lidar_3d: Optional ``habitat.sensors.lidar_3d`` mapping.
             seed: RNG seed for noise.
         """
@@ -39,6 +41,7 @@ class Sensors:
         self.range_min = float(range_min)
         self.range_max = float(range_max)
         self.noise = float(noise)
+        self.depth_noise = float(depth_noise)
         self.lidar_3d = dict(lidar_3d or {})
         self.rng = np.random.default_rng(seed)
 
@@ -116,4 +119,11 @@ class Sensors:
         Returns:
             ``(color, depth)`` where color is ``uint8`` HxWx3 and depth is ``float32`` HxW.
         """
-        return simulator.color_depth()
+        color, depth = simulator.color_depth()
+        depth = np.asarray(depth, dtype=np.float32)
+        if self.depth_noise > 0.0:
+            depth = depth + self.rng.normal(0.0, self.depth_noise, size=depth.shape).astype(
+                np.float32
+            )
+            depth = np.maximum(depth, 0.0)
+        return color, depth

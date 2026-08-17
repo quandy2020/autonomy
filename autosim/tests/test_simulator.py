@@ -2,16 +2,11 @@ import numpy as np
 
 from autosim.sensors import Sensors
 from autosim.simulator import Simulator
+from tests.fake_simulator import FakeSimulator
 
 
-def test_mock_laser_ranges_and_points():
-    simulator = Simulator(
-        backend="minimal",
-        width=64,
-        height=48,
-        settings={"habitat": {"path": "", "spawn": [0.0, 0.0, 0.0]}},
-        use_mock=True,
-    )
+def test_fake_laser_ranges_and_points():
+    simulator = FakeSimulator(width=64, height=48)
     simulator.reset(x=0.0, y=0.0, yaw=0.0)
     ranges = simulator.laser_ranges(
         angle_min=-np.pi, angle_max=np.pi, num_beams=36, range_max=10.0
@@ -52,4 +47,15 @@ def test_mock_laser_ranges_and_points():
     color, depth = sensors.sample_camera(simulator)
     assert color.shape[2] == 3
     assert depth.shape == color.shape[:2]
-    simulator.close()
+
+
+def test_simulator_has_no_mock_backend():
+    simulator = Simulator(
+        backend="minimal",
+        width=64,
+        height=48,
+        settings={"habitat": {"path": "", "spawn": [0.0, 0.0, 0.0], "robot": {"urdf": ""}}},
+        open_session=False,
+    )
+    assert not hasattr(simulator, "use_mock")
+    assert simulator.session is None

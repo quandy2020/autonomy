@@ -1,4 +1,4 @@
-"""Thin autolink channel wrapper for publishers and command subscription."""
+"""autolink Node adapter: writers for sensors and a reader for ``cmd_vel``."""
 
 from __future__ import annotations
 
@@ -21,8 +21,22 @@ class Bridge:
         self.channels = channels
         self.writers = {
             key: node.create_writer(channels[key], types[key], qos_depth=10)
-            for key in ("scan", "points", "rgb", "depth", "camera_info", "imu", "odom", "gt_pose")
-            if key in types
+            for key in (
+                "scan",
+                "points",
+                "rgb",
+                "depth",
+                "camera_info",
+                "imu",
+                "odom",
+                "gt_pose",
+                "map_cloud",
+                "map_grid",
+                "tf",
+                "tf_static",
+                "clock",
+            )
+            if key in types and key in channels
         }
         self.command_reader = node.create_reader(
             channels["cmd_vel"], types["cmd_vel"], qos_depth=10

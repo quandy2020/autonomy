@@ -20,10 +20,15 @@ dev = ["pytest>=7.0"]
 
 [project.scripts]
 autosim = "autosim.__main__:run"
+autosim-telop = "autosim.telop:Telop.main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["autosim*"]
+
+[tool.setuptools.data-files]
+"share/autosim/config" = ["config/*.yaml"]
+"share/autosim/urdf" = ["urdf/*.urdf", "urdf/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

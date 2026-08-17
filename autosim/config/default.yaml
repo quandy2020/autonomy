@@ -1,15 +1,13 @@
 habitat:
-  path: ""           # empty = minimal empty stage; set official dataset scene path otherwise
+  path: ""           # empty = STAGE_EMPTY_SCENE; set HM3D/Replica .glb for real geometry
   spawn: [0.0, 0.0, 0.0]  # x, y, yaw
   gpu: 0
-  headless: true
 
   robot:
-    urdf: ""           # robot URDF path; empty uses default diff-drive model
+    urdf: urdf/husky.urdf   # empty = no URDF; path relative to autosim/
     max_linear: 0.5
     max_angular: 1.0
-    wheel_separation: 0.30
-    base_frame: base_link
+    wheel_separation: 0.55  # m; used for odom yaw-noise scale
     map_frame: map
     watchdog_sec: 0.5
     control_hz: 50.0
@@ -17,10 +15,17 @@ habitat:
     truth:
       enabled: false
       channel: /gt/pose
+    tf:
+      enabled: true
+      channel: /tf
+      static_channel: /tf_static
+    clock:
+      enabled: true
+      channel: /clock
 
   sensors:
     lidar_2d:
-      enabled: false
+      enabled: true
       channel: /scan
       frame: laser_link
       rate_hz: 10.0
@@ -29,7 +34,7 @@ habitat:
       range_min: 0.1
       range_max: 30.0
       num_beams: 360
-      noise: 0.0
+      noise: 0.01          # Gaussian σ on range (m)
 
     lidar_3d:
       enabled: false
@@ -46,28 +51,57 @@ habitat:
         num_rings: 16
       range_min: 0.1
       range_max: 30.0
-      noise: 0.0
+      noise: 0.015         # Gaussian σ on radial range (m)
 
     camera:
-      enabled: false
+      enabled: true
       width: 640
       height: 480
+      hfov_deg: 90.0       # horizontal FOV → CameraInfo K
       rgb_channel: /camera/rgb/image_raw
       depth_channel: /camera/depth/image_raw
       info_channel: /camera/camera_info
       frame: camera_link
-      rate_hz: 15.0
+      rate_hz: 30.0
+      noise:
+        depth: 0.01        # Gaussian σ on depth (m)
 
     imu:
-      enabled: false
+      enabled: true
       channel: /imu
       frame: imu_link
-      rate_hz: 100.0
-      noise: 0.0
+      rate_hz: 200.0
+      noise:
+        gyro: 0.01         # Gaussian σ on ω_z (rad/s)
+        accel: 0.05        # Gaussian σ on a_x / a_y (m/s²)
+        gyro_bias: 0.001   # constant bias draw at start (rad/s)
+        accel_bias: 0.01   # constant bias draw at start (m/s²)
 
     odom:
-      enabled: false
+      enabled: true
       channel: /odom
       frame: odom
       child_frame: base_link
-      noise: 0.0
+      noise: 0.02          # integrated σ scale (m / sqrt(m) on Δs)
+
+  map:
+    enabled: false         # enable with a real habitat.path scene
+    frame: map
+    rate_hz: 0.0           # 0 = publish once after start
+    ply:                   # file XOR channel (at least one)
+      file: assets/map.ply # empty = no file; path relative to autosim/
+      channel: ""          # empty = no PointCloud2; e.g. /map/points
+      range_max: 30.0
+      horizontal:
+        angle_min: -3.14159
+        angle_max: 3.14159
+        num_beams: 360
+      vertical:
+        angle_min: -0.5
+        angle_max: 0.5
+        num_rings: 16
+    grid:                  # height-slice + free-space carve → OccupancyGrid
+      channel: /map
+      resolution: 0.05
+      z_min: 0.1
+      z_max: 1.8
