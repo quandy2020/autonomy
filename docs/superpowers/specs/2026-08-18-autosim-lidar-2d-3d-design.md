@@ -1,7 +1,7 @@
 # autosim：并行 2D / 3D LiDAR（cast_ray）设计
 
 **日期：** 2026-08-18  
-**状态：** 待用户审阅  
+**状态：** 已评审（对话确认）  
 **范围：** 将 `habitat.sensors.lidar` 拆为可并行的 `lidar_2d` / `lidar_3d`；以 Habitat `cast_ray` 采样；经 automsgs 发布 `LaserScan` 与 `PointCloud2`。
 
 ## 1. 目标与边界
