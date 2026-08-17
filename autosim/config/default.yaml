@@ -1,55 +1,73 @@
-scene:
-  backend: minimal   # minimal | habitat
-  path: ""           # habitat 时填官方数据集场景路径
-  spawn: [0.0, 0.0, 0.0]  # x, y, yaw
-
-robot:
-  max_linear: 0.5
-  max_angular: 1.0
-  wheel_separation: 0.30
-  frames:
-    base: base_link
-    laser: laser_link
-    camera: camera_link
-    imu: imu_link
-    odom: odom
-    map: map
-
-rates:
-  control_hz: 50.0
-  scan_hz: 10.0
-  rgb_hz: 15.0
-  imu_hz: 100.0
-
-channels:
-  cmd_vel: /cmd_vel
-  scan: /scan
-  rgb: /camera/rgb/image_raw
-  depth: /camera/depth/image_raw
-  camera_info: /camera/camera_info
-  imu: /imu
-  odom: /odom
-  gt_pose: /gt/pose
-
-noise:
-  odom: 0.0
-  imu: 0.0
-  lidar: 0.0
-
-truth:
-  enabled: false
-
 habitat:
+  path: ""           # empty = minimal empty stage; set official dataset scene path otherwise
+  spawn: [0.0, 0.0, 0.0]  # x, y, yaw
   gpu: 0
-  width: 640
-  height: 480
   headless: true
 
-watchdog_sec: 0.5
+  robot:
+    urdf: ""           # robot URDF path; empty uses default diff-drive model
+    max_linear: 0.5
+    max_angular: 1.0
+    wheel_separation: 0.30
+    base_frame: base_link
+    map_frame: map
+    watchdog_sec: 0.5
+    control_hz: 50.0
+    cmd_vel: /cmd_vel
+    truth:
+      enabled: false
+      channel: /gt/pose
 
-lidar:
-  angle_min: -3.14159
-  angle_max: 3.14159
-  range_min: 0.1
-  range_max: 30.0
-  num_beams: 360
+  sensors:
+    lidar_2d:
+      enabled: false
+      channel: /scan
+      frame: laser_link
+      rate_hz: 10.0
+      angle_min: -3.14159
+      angle_max: 3.14159
+      range_min: 0.1
+      range_max: 30.0
+      num_beams: 360
+      noise: 0.0
+
+    lidar_3d:
+      enabled: false
+      channel: /points
+      frame: lidar_link
+      rate_hz: 10.0
+      horizontal:
+        angle_min: -3.14159
+        angle_max: 3.14159
+        num_beams: 360
+      vertical:
+        angle_min: -0.26
+        angle_max: 0.26
+        num_rings: 16
+      range_min: 0.1
+      range_max: 30.0
+      noise: 0.0
+
+    camera:
+      enabled: false
+      width: 640
+      height: 480
+      rgb_channel: /camera/rgb/image_raw
+      depth_channel: /camera/depth/image_raw
+      info_channel: /camera/camera_info
+      frame: camera_link
+      rate_hz: 15.0
+
+    imu:
+      enabled: false
+      channel: /imu
+      frame: imu_link
+      rate_hz: 100.0
+      noise: 0.0
+
+    odom:
+      enabled: false
+      channel: /odom
+      frame: odom
+      child_frame: base_link
+      noise: 0.0

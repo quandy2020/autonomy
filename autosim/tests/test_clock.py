@@ -1,8 +1,8 @@
-from autosim.clock import SimClock
+from autosim.clock import Clock
 
 
 def test_tick_advances_and_stamp():
-    clock = SimClock(start_sec=0.0)
+    clock = Clock(start_sec=0.0)
     clock.tick(0.02)
     sec, nanosec = clock.stamp()
     assert sec == 0
@@ -11,7 +11,7 @@ def test_tick_advances_and_stamp():
 
 
 def test_stamp_rolls_seconds():
-    clock = SimClock(start_sec=0.0)
+    clock = Clock(start_sec=0.0)
     clock.tick(1.5)
     sec, nanosec = clock.stamp()
     assert sec == 1
