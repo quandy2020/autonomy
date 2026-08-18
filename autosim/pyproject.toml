@@ -20,7 +20,7 @@ dev = ["pytest>=7.0"]
 
 [project.scripts]
 autosim = "autosim.__main__:run"
-autosim-telop = "autosim.telop:Telop.main"
+autosim-teleop = "autosim.teleop:Teleop.main"
 
 [tool.setuptools.packages.find]
 where = ["."]
