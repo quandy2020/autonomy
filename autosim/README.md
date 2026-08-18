@@ -17,7 +17,7 @@ Habitat-Sim **传感器–执行器桥**：经 autolink 发布传感、订阅 `/
 | `messages.py` | `Messages` | automsgs encode/decode |
 | `bridge.py` | `Bridge` | autolink channels |
 | `runner.py` | `Runner` | main loop |
-| `telop.py` | `Telop` | keyboard → `/cmd_vel` |
+| `teleop.py` | `Teleop` | keyboard → `/cmd_vel` |
 
 ## 依赖
 
@@ -32,7 +32,7 @@ cd autosim
 pip install -e ".[dev]"
 python -m autosim --config config/default.yaml
 ./scripts/run.sh sim
-./scripts/run.sh telop
+./scripts/run.sh teleop
 ```
 
 `habitat.path` 为空时使用 Habitat 空舞台（仍需 `habitat-sim`）。真值地图默认关闭；加载真实场景后再设 `habitat.map.enabled: true`。  

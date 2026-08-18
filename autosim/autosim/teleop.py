@@ -1,3 +1,17 @@
+# Copyright 2026 The Openbot Authors (duyongquan)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Keyboard teleoperation node that publishes ``cmd_vel`` via autolink.
 
 Reads raw terminal keys and emits ``geometry_msgs.TwistStamped`` on the
@@ -35,7 +49,7 @@ Ctrl-C           quit
 """
 
 
-class Telop:
+class Teleop:
     """Terminal keyboard teleop publisher for planar ``cmd_vel``."""
 
     def __init__(
@@ -101,8 +115,8 @@ class Telop:
 
     def bind_writer(self) -> None:
         """Initialize autolink and create the ``cmd_vel`` writer."""
-        self.link.init("autosim_telop")
-        self.node = self.link.Node("autosim_telop")
+        self.link.init("autosim_teleop")
+        self.node = self.link.Node("autosim_teleop")
         self.writer = self.node.create_writer(self.channel, TwistStamped, qos_depth=10)
 
     def command_speeds(self) -> Tuple[float, float]:
@@ -215,7 +229,7 @@ class Telop:
         Args:
             argv: Argument vector; defaults to ``sys.argv``.
         """
-        parser = argparse.ArgumentParser(prog="autosim-telop")
+        parser = argparse.ArgumentParser(prog="autosim-teleop")
         parser.add_argument(
             "--config",
             type=Path,
@@ -224,7 +238,7 @@ class Telop:
         args = parser.parse_args(argv)
         settings = Config.load(args.config)
         robot = settings["habitat"]["robot"]
-        Telop(
+        Teleop(
             channel=robot["cmd_vel"],
             max_linear=float(robot["max_linear"]),
             max_angular=float(robot["max_angular"]),

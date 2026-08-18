@@ -1,5 +1,19 @@
+# Copyright 2026 The Openbot Authors (duyongquan)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from autosim.messages import Messages
-from autosim.telop import Telop
+from autosim.teleop import Teleop
 
 
 class FakeWriter:
@@ -47,28 +61,28 @@ def test_encode_twist_stamped():
     assert abs(message.twist.angular.z - (-0.1)) < 1e-9
 
 
-def test_telop_apply_key_and_publish():
+def test_teleop_apply_key_and_publish():
     link = FakeLink()
-    telop = Telop(
+    teleop = Teleop(
         channel="/cmd_vel", max_linear=0.5, max_angular=1.0, key_timeout=0.3, link=link
     )
-    assert telop.apply_key("w") is True
-    assert telop.linear == 1.0
-    telop.publish_twist()
+    assert teleop.apply_key("w") is True
+    assert teleop.linear == 1.0
+    teleop.publish_twist()
     assert len(link.node.writers["/cmd_vel"].msgs) == 1
     msg = link.node.writers["/cmd_vel"].msgs[0]
     assert abs(msg.twist.linear.x - 0.5) < 1e-9
-    assert telop.apply_key(" ") is True
-    assert telop.linear == 0.0
-    assert telop.apply_key("\x03") is False
+    assert teleop.apply_key(" ") is True
+    assert teleop.linear == 0.0
+    assert teleop.apply_key("\x03") is False
 
 
-def test_telop_decay_motion_on_timeout():
+def test_teleop_decay_motion_on_timeout():
     link = FakeLink()
-    telop = Telop(channel="/cmd_vel", key_timeout=0.2, link=link)
-    telop.apply_key("w")
-    assert telop.linear == 1.0
-    telop.clock.tick(0.25)
-    telop.decay_motion()
-    assert telop.linear == 0.0
-    assert telop.angular == 0.0
+    teleop = Teleop(channel="/cmd_vel", key_timeout=0.2, link=link)
+    teleop.apply_key("w")
+    assert teleop.linear == 1.0
+    teleop.clock.tick(0.25)
+    teleop.decay_motion()
+    assert teleop.linear == 0.0
+    assert teleop.angular == 0.0
