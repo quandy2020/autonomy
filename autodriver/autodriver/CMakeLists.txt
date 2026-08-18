@@ -14,6 +14,7 @@
 
 set(AUTODRIVER_SOURCES
   config/hub_config.cpp
+  config/autodriver_config.cpp
   app/sensor_manager.cpp
   hal/sensor_factory.cpp
   io/serial_port.cpp

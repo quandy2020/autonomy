@@ -71,6 +71,7 @@ if(AUTODRIVER_BUILD_TEST)
   autodriver_add_test(test_nmea0183 test/test_nmea0183.cpp)
   autodriver_add_test(test_wit_motion test/test_wit_motion.cpp)
   autodriver_add_test(test_realsense_types test/test_realsense_types.cpp)
+  autodriver_add_test(test_autodriver_config test/test_autodriver_config.cpp)
 endif()
 
 include(GNUInstallDirs)
