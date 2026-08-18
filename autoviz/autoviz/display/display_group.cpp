@@ -72,6 +72,13 @@ void DisplayGroup::onDraw(rendering::SceneOverlay& scene) {
   }
 }
 
+void DisplayGroup::reset() {
+  Display::reset();
+  for (auto& child : children_) {
+    child->reset();
+  }
+}
+
 void DisplayGroup::load(const common::Config& config) {
   Display::load(config);
 }

@@ -83,7 +83,7 @@ export AUTOVIZ_PYTHON=/opt/venv/bin/python3
 | Teleop | 24 | Teleop panel + this echo script |
 
 **UI-only / no publisher script:** Publish, Variables, Variable Slider, Channels browser,
-Problems, Help, Playback (needs `.record`), Strata\* Displays, Tools (2D Nav Goal /
+Problems, Help, Playback (File → Open Record / drop `.record` to play), Strata\* Displays, Tools (2D Nav Goal /
 Pose Estimate / Publish Point — exercise manually against 01/18).
 
 ## 01 — Poses (Odometry / Path / Pose / PoseArray / PoseWithCovariance)

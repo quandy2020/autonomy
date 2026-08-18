@@ -328,7 +328,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         auto config = MakeDefault("RobotModel", "Robot", "/joint_states");
         config.properties["description_channel"] = "/robot_description";
         config.properties["root_link"] = "base_link";
-        config.properties["urdf_path"] = "config/turtlebot3_burger.urdf";
+        config.properties["urdf_path"] = "";
         return config;
       });
 
@@ -377,7 +377,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         auto config = MakeDefault("Effort", "Effort", "/joint_states");
         config.properties["description_channel"] = "/robot_description";
         config.properties["root_link"] = "base_link";
-        config.properties["urdf_path"] = "config/turtlebot3_burger.urdf";
+        config.properties["urdf_path"] = "";
         return config;
       });
 

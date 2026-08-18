@@ -156,6 +156,7 @@ ImagePanel::ImagePanel(common::VisualizationManager* manager, QWidget* parent)
           [this](int x, int y) { publishPixel(config_.hover_publish_channel, x, y); });
 
   frame_timer_ = new QTimer(this);
+  frame_timer_->setTimerType(Qt::PreciseTimer);
   connect(frame_timer_, &QTimer::timeout, this, &ImagePanel::onFrameTick);
   frame_timer_->start(33);
 
@@ -359,11 +360,15 @@ QImage ImagePanel::decodePayload(const std::string& message_type,
                                  const std::string& payload) {
   const std::string decoded = integration::DecodeChannelPayload(payload);
   const auto try_parse_image = [&](const std::string& bytes) -> QImage {
-    automsgs::msgs::sensor_msgs::Image message;
-    if (message.ParseFromString(bytes) || message.ParseFromString(payload)) {
-      return display::imageFromProto(message);
+    if (bytes.empty()) {
+      return {};
     }
-    return {};
+    automsgs::msgs::sensor_msgs::Image message;
+    if (!message.ParseFromString(bytes) || message.width() == 0 ||
+        message.height() == 0 || message.data().empty()) {
+      return {};
+    }
+    return display::imageFromProto(message);
   };
   const auto try_parse_compressed = [&](const std::string& bytes) -> QImage {
     automsgs::msgs::sensor_msgs::CompressedImage message;
@@ -392,8 +397,10 @@ QImage ImagePanel::decodePayload(const std::string& message_type,
       commsgs::MessageTypesCompatible(
           message_type, "automsgs.msgs.sensor_msgs.Image") ||
       message_type == "sensor_msgs/Image") {
-    if (QImage image = try_parse_image(decoded); !image.isNull()) {
-      return image;
+    for (const std::string& bytes : {decoded, payload}) {
+      if (QImage image = try_parse_image(bytes); !image.isNull()) {
+        return image;
+      }
     }
     if (!message_type.empty()) {
       return {};
@@ -852,12 +859,14 @@ void ImagePanel::drainIncomingQueues() {
   }
 }
 
+void ImagePanel::tick() { onFrameTick(); }
+
 void ImagePanel::onFrameTick() {
   if (main_subscription_id_ == 0 && !config_.image_channel.isEmpty()) {
     subscribeMain();
   }
+  // Handlers already call updateRenderedFrame() when a payload arrives.
   drainIncomingQueues();
-  updateRenderedFrame();
 }
 
 }  // namespace image

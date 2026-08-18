@@ -20,6 +20,9 @@ QString TranslateShortcutLabel(const QString& shortcut_id) {
   if (shortcut_id == QLatin1String("file.open")) {
     return ShortcutsEditorWidget::tr("Open config");
   }
+  if (shortcut_id == QLatin1String("file.open_record")) {
+    return ShortcutsEditorWidget::tr("Open record");
+  }
   if (shortcut_id == QLatin1String("file.save")) {
     return ShortcutsEditorWidget::tr("Save config");
   }

@@ -2,6 +2,7 @@ Global:
   FixedFrame: map
   ShowGrid: true
   BackgroundColor: 48;48;48
+  FrameRate: 30
   ViewController: Orbit
   RenderBackend: OpenGL
 Displays:
@@ -10,93 +11,13 @@ Displays:
     Channel: ""
     Enabled: true
     Properties:
+      reference_frame: "<Fixed Frame>"
       cell_count: "10"
+      normal_cell_count: "0"
       cell_size: "1.0"
-      color: "80;80;80"
-      alpha: "1.0"
-  - Type: Axes
-    Name: Axes
-    Channel: ""
-    Enabled: true
-    Properties:
-      length: "1.0"
-  - Type: TF
-    Name: TF
-    Channel: /tf
-    Enabled: true
-    Properties:
-      show_names: "false"
-      show_axes: "true"
-      show_arrows: "true"
-      marker_scale: "1.0"
-      update_interval: "0"
-      frame_timeout: "15.0"
-      filter_whitelist: ""
-      filter_blacklist: ""
-      all_enabled: "true"
-  - Type: LaserScan
-    Name: Scan
-    Channel: /fake/scan
-    Enabled: true
-    Properties:
-      color: "0;220;255"
-      point_size: "4"
-      mesh_style: "solid"
-  - Type: Image
-    Name: Camera
-    Channel: /fake/image
-    Enabled: true
-  - Type: Marker
-    Name: Marker
-    Channel: /fake/marker
-    Enabled: true
-    Properties:
-      point_size: "4"
-      mesh_style: "solid"
-  - Type: Path
-    Name: Path
-    Channel: /fake/path
-    Enabled: true
-    Properties:
-      line_style: "Billboards"
-      line_width: "0.08"
-      color: "80;220;120"
-      alpha: "1.0"
-  - Type: Map
-    Name: Map
-    Channel: /fake/occupancy_grid
-    Enabled: true
-    Properties:
-      alpha: "1.0"
-      decimate: "1"
-  - Type: Odometry
-    Name: Odometry
-    Channel: /fake/odom
-    Enabled: true
-    Properties:
-      color: "255;200;80"
-      axis_length: "0.6"
-      show_velocity: "true"
-  - Type: PointCloud2
-    Name: PointCloud2
-    Channel: /fake/point_cloud2
-    Enabled: true
-    Properties:
-      color: "200;200;200"
-      decimate: "1"
-  - Type: RobotModel
-    Name: Robot
-    Channel: /joint_states
-    Enabled: false
-    Properties:
-      urdf_path: "config/turtlebot3_burger.urdf"
-      description_channel: "/robot_description"
-      root_link: "base_link"
-      color: "180;180;180"
-      alpha: "0.8"
-      visual_style: "solid"
-      show_axes: "true"
-ImagePanels:
-  - ObjectName: ImageDock
-    Title: Image
-    ImageChannel: /fake/image
+      line_style: "Lines"
+      line_width: "0.03"
+      color: "160;160;160"
+      alpha: "0.5"
+      plane: "XY"
+      offset: "0;0;0"

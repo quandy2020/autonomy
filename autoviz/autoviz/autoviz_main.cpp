@@ -7,9 +7,11 @@
 #include <QApplication>
 #include <QCommandLineParser>
 #include <QFile>
+#include <QFileInfo>
 #include <QGuiApplication>
 #include <QLibraryInfo>
 #include <QLocale>
+#include <QTimer>
 
 #include "autoviz/ui/app_preferences.hpp"
 #include "autoviz/ui/app_theme.hpp"
@@ -66,6 +68,12 @@ int main(int argc, char** argv) {
       QStringLiteral("Splash screen image (empty path disables)"),
       QStringLiteral("splash_path"));
   parser.addOption(splash_option);
+  parser.addPositionalArgument(
+      QStringLiteral("files"),
+      QStringLiteral(
+          "Optional session config (.autoviz) and/or Autolink record "
+          "(.record/.bag/.mcap) to open and play"),
+      QStringLiteral("[files...]"));
   parser.process(app);
 
   QString splash_path;
@@ -99,6 +107,19 @@ int main(int argc, char** argv) {
   }
 
   QString config_path = parser.value(config_option);
+  QStringList record_paths;
+  const QStringList positional = parser.positionalArguments();
+  for (const QString& argument : positional) {
+    const QString suffix = QFileInfo(argument).suffix().toLower();
+    if (suffix == QLatin1String("autoviz") || suffix == QLatin1String("yaml") ||
+        suffix == QLatin1String("rviz")) {
+      if (config_path.isEmpty()) {
+        config_path = argument;
+      }
+      continue;
+    }
+    record_paths.push_back(argument);
+  }
   if (config_path.isEmpty()) {
     config_path = defaultConfigPath();
   }
@@ -120,6 +141,13 @@ int main(int argc, char** argv) {
   }
 
   frame.applyStartupWindowState();
+
+  if (!record_paths.isEmpty()) {
+    const QString record_path = record_paths.front();
+    QTimer::singleShot(0, &frame, [record_path, &frame]() {
+      frame.openRecordFile(record_path);
+    });
+  }
 
   const int code = app.exec();
   manager->shutdown();

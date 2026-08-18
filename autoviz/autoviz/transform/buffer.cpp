@@ -7,6 +7,7 @@
 #include <chrono>
 #include <mutex>
 #include <thread>
+#include <unordered_map>
 
 #include <glog/logging.h>
 
@@ -106,6 +107,15 @@ std::vector<TfFrameStats> Buffer::frameStats() const {
   std::vector<std::string> frame_ids;
   _getFrameStrings(frame_ids);
 
+  const std::vector<tf2::BufferCore::FrameCacheStats> cache_stats =
+      allFrameCacheStats();
+  std::unordered_map<std::string, const tf2::BufferCore::FrameCacheStats*>
+      cache_by_frame;
+  cache_by_frame.reserve(cache_stats.size());
+  for (const tf2::BufferCore::FrameCacheStats& cache : cache_stats) {
+    cache_by_frame.emplace(cache.frame_id, &cache);
+  }
+
   std::lock_guard<std::mutex> lock(stats_mutex_);
   std::vector<TfFrameStats> out;
   out.reserve(frame_ids.size());
@@ -125,6 +135,22 @@ std::vector<TfFrameStats> Buffer::frameStats() const {
       std::string parent;
       if (_getParent(frame_id, 0, parent)) {
         stats.parent_id = parent;
+      }
+    }
+    const auto cache_it = cache_by_frame.find(frame_id);
+    if (cache_it != cache_by_frame.end()) {
+      const tf2::BufferCore::FrameCacheStats& cache = *cache_it->second;
+      stats.oldest_stamp_ns = cache.oldest_stamp_ns;
+      stats.average_rate_hertz = cache.average_rate_hertz;
+      stats.buffer_length_seconds = cache.buffer_length_seconds;
+      if (stats.authority.empty()) {
+        stats.authority = cache.authority;
+      }
+      if (stats.last_stamp_ns == 0) {
+        stats.last_stamp_ns = cache.latest_stamp_ns;
+      }
+      if (stats.parent_id.empty() || stats.parent_id == "NO_PARENT") {
+        stats.parent_id = cache.parent_id;
       }
     }
     out.push_back(std::move(stats));

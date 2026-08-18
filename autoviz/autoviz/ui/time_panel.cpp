@@ -32,10 +32,12 @@ TimePanel::TimePanel(common::VisualizationManager* manager, QWidget* parent)
   pause_button_->setCheckable(true);
 
   reset_button_ = new QPushButton(tr("Reset"), this);
+  reset_button_->setAutoDefault(false);
+  reset_button_->setDefault(false);
+  reset_button_->setFocusPolicy(Qt::NoFocus);
   reset_button_->setToolTip(
-      tr("Reset sim time, displays, and TF cache (shortcut: R)."));
-  connect(reset_button_, &QPushButton::clicked, this,
-          &TimePanel::resetRequested);
+      tr("Reset elapsed time, displays, and TF cache (shortcut: R)."));
+  connect(reset_button_, &QPushButton::clicked, this, &TimePanel::onResetClicked);
 
   sync_mode_selector_ = new QComboBox(this);
   sync_mode_selector_->addItem(tr("Off"));
@@ -106,7 +108,7 @@ TimePanel::TimePanel(common::VisualizationManager* manager, QWidget* parent)
           &TimePanel::syncSourceSelected);
 
   auto* timer = new QTimer(this);
-  connect(timer, &QTimer::timeout, this, &TimePanel::update);
+  connect(timer, &QTimer::timeout, this, &TimePanel::refreshTimes);
   timer->start(100);
 
   experimentalToggled(false);
@@ -193,7 +195,7 @@ void TimePanel::refreshSyncSources() {
   sync_source_selector_->blockSignals(false);
 }
 
-void TimePanel::update() {
+void TimePanel::refreshTimes() {
   if (manager_ == nullptr) {
     return;
   }
@@ -204,6 +206,26 @@ void TimePanel::update() {
   fillTimeLabel(sim_elapsed_label_, manager_->simTimeElapsedSec());
   fillTimeLabel(wall_time_label_, manager_->wallClockSec());
   fillTimeLabel(wall_elapsed_label_, manager_->wallClockElapsedSec());
+}
+
+void TimePanel::syncAfterReset() {
+  if (pause_button_ != nullptr && pause_button_->isChecked()) {
+    pause_button_->blockSignals(true);
+    pause_button_->setChecked(false);
+    pause_button_->blockSignals(false);
+  }
+  refreshTimes();
+}
+
+void TimePanel::onResetClicked() {
+  if (pause_button_ != nullptr && pause_button_->isChecked()) {
+    pause_button_->setChecked(false);
+  }
+  if (manager_ != nullptr) {
+    manager_->resetTime();
+  }
+  refreshTimes();
+  emit resetRequested();
 }
 
 void TimePanel::pauseToggled(bool checked) {

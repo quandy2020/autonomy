@@ -26,7 +26,7 @@ from automsgs.msgs.geometry_msgs.twist_pb2 import Twist
 from automsgs.msgs.geometry_msgs.twist_stamped_pb2 import TwistStamped
 from automsgs.msgs.map_msgs.occupancy_grid_pb2 import OccupancyGrid
 from automsgs.msgs.nav_msgs.odometry_pb2 import Odometry
-from automsgs.msgs.rosgraph_msgs.clock_pb2 import Clock as ClockMsg
+from automsgs.msgs.builtin_interfaces.time_pb2 import Time
 from automsgs.msgs.sensor_msgs.camera_info_pb2 import CameraInfo
 from automsgs.msgs.sensor_msgs.image_pb2 import Image
 from automsgs.msgs.sensor_msgs.imu_pb2 import Imu
@@ -156,39 +156,94 @@ class Messages:
             message.intensities.extend(float(value) for value in intensities.reshape(-1))
         return message
 
+    @staticmethod
+    def pack_rgb_uint32(colors: np.ndarray) -> np.ndarray:
+        """Pack ``Nx3`` uint8 RGB rows into packed ``uint32`` (rviz / PCL convention).
+
+        Args:
+            colors: ``Nx3`` RGB in ``[0, 255]``.
+
+        Returns:
+            ``(N,)`` uint32 array.
+        """
+        array = np.asarray(colors, dtype=np.uint8).reshape(-1, 3)
+        r = array[:, 0].astype(np.uint32)
+        g = array[:, 1].astype(np.uint32)
+        b = array[:, 2].astype(np.uint32)
+        return (r << 16) | (g << 8) | b
+
     @classmethod
     def encode_point_cloud2(
         cls,
         points: np.ndarray,
         stamp: Tuple[int, int],
         frame_id: str,
+        *,
+        intensity: np.ndarray | None = None,
+        rgb: np.ndarray | None = None,
     ) -> PointCloud2:
-        """Build a ``sensor_msgs.PointCloud2`` with ``x,y,z`` float32 fields.
+        """Build a ``sensor_msgs.PointCloud2`` with optional intensity / rgb fields.
 
         Args:
             points: ``Nx3`` float array in the sensor frame; ``N`` may be 0.
             stamp: Timestamp ``(sec, nanosec)``.
             frame_id: Point-cloud frame.
+            intensity: Optional per-point float32 intensity (length ``N``).
+            rgb: Optional ``Nx3`` uint8 RGB or ``(N,)`` packed uint32.
 
         Returns:
             Populated :class:`PointCloud2` with ``is_dense=False``.
         """
         array = np.asarray(points, dtype=np.float32).reshape(-1, 3)
+        count = int(array.shape[0])
+        has_intensity = intensity is not None and count > 0
+        has_rgb = rgb is not None and count > 0
+
+        dtype_fields: list[tuple[str, str]] = [
+            ("x", "f4"),
+            ("y", "f4"),
+            ("z", "f4"),
+        ]
+        if has_intensity:
+            dtype_fields.append(("intensity", "f4"))
+        if has_rgb:
+            dtype_fields.append(("rgb", "u4"))
+
+        structured = np.zeros(count, dtype=np.dtype(dtype_fields))
+        if count > 0:
+            structured["x"] = array[:, 0]
+            structured["y"] = array[:, 1]
+            structured["z"] = array[:, 2]
+            if has_intensity:
+                structured["intensity"] = np.asarray(intensity, dtype=np.float32).reshape(-1)
+            if has_rgb:
+                rgb_array = np.asarray(rgb)
+                if rgb_array.ndim == 2 and rgb_array.shape[1] == 3:
+                    structured["rgb"] = cls.pack_rgb_uint32(rgb_array)
+                else:
+                    structured["rgb"] = rgb_array.reshape(-1).astype(np.uint32)
+
         message = PointCloud2()
         cls.set_header(message.header, stamp, frame_id)
         message.height = 1
-        message.width = int(array.shape[0])
+        message.width = count
         message.is_bigendian = False
-        message.point_step = 12
+        message.point_step = int(structured.dtype.itemsize) if count > 0 else 12
         message.row_step = int(message.point_step * message.width)
         message.is_dense = False
-        for name, offset in (("x", 0), ("y", 4), ("z", 8)):
+
+        offset = 0
+        for name, _ in dtype_fields:
             field = message.fields.add()
             field.name = name
             field.offset = offset
-            field.datatype = PointField.FLOAT32
+            field.datatype = (
+                PointField.UINT32 if name == "rgb" else PointField.FLOAT32
+            )
             field.count = 1
-        message.data = array.tobytes()
+            offset += 4
+
+        message.data = structured.tobytes() if count > 0 else b""
         return message
 
     @classmethod
@@ -413,11 +468,11 @@ class Messages:
         return message
 
     @classmethod
-    def encode_clock(cls, stamp: Tuple[int, int]) -> ClockMsg:
-        """Build ``rosgraph_msgs/Clock`` from sim time."""
-        message = ClockMsg()
-        message.clock.sec = int(stamp[0])
-        message.clock.nanosec = int(stamp[1])
+    def encode_clock(cls, stamp: Tuple[int, int]) -> Time:
+        """Build simulation time for ``/clock``."""
+        message = Time()
+        message.sec = int(stamp[0])
+        message.nanosec = int(stamp[1])
         return message
 
     @classmethod

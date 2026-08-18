@@ -14,7 +14,7 @@ const PanelCatalogEntry kPanelCatalog[] = {
     {"AudioDock", "PanelAudio", "Audio",
      "Play and visualize foxglove.RawAudio PCM streams"},
     {"PlaybackDock", "PanelDataSource", "Data Source Info",
-     "Replay Autolink .record files and seek playback"},
+     "Open or drop Autolink .record files and play them back"},
     {"GaugeDock", "PanelGauge", "Gauge",
      "Display scalar channel fields on an analog gauge"},
     {"ImageDock", "PanelImage", "Image", "Visualize camera images and overlays"},

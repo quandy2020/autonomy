@@ -78,6 +78,8 @@ void Display::setEnabled(bool enabled) {
   }
 }
 
+void Display::reset() { resetStatus(); }
+
 void Display::resetStatus() {
   status_level_ = DisplayStatusLevel::kOk;
   status_message_.clear();

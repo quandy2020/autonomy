@@ -19,6 +19,27 @@ from __future__ import annotations
 from typing import Any, Dict
 
 
+class _CommandReader:
+    """Poll the latest cmd_vel message from an autolink callback reader."""
+
+    def __init__(self, node: Any, channel: str, dtype: Any) -> None:
+        self._pending: Any = None
+        self._has = False
+
+        def on_message(message: Any) -> None:
+            self._pending = message
+            self._has = True
+
+        node.create_reader(channel, on_message, dtype)
+
+    def has_msg(self) -> bool:
+        return self._has
+
+    def get_msg(self) -> Any:
+        self._has = False
+        return self._pending
+
+
 class Bridge:
     """Thin Writer/Reader wrapper around an autolink Node."""
 
@@ -44,6 +65,7 @@ class Bridge:
                 "imu",
                 "odom",
                 "gt_pose",
+                "footprint",
                 "map_cloud",
                 "map_grid",
                 "tf",
@@ -52,8 +74,8 @@ class Bridge:
             )
             if key in types and key in channels
         }
-        self.command_reader = node.create_reader(
-            channels["cmd_vel"], types["cmd_vel"], qos_depth=10
+        self.command_reader = _CommandReader(
+            node, channels["cmd_vel"], types["cmd_vel"]
         )
 
     def publish(self, key: str, message: Any) -> None:

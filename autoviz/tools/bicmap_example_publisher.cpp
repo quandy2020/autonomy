@@ -403,7 +403,7 @@ int main(int argc, char** argv) {
   if (FLAGS_cycle) {
     std::cout << "Cycling " << examples.size() << " BICMap examples every "
               << FLAGS_cycle_interval_sec << "s\n";
-    std::cout << "autoviz: autoviz -c config/strata.autoviz (Fixed Frame=map)\n";
+    std::cout << "autoviz: autoviz -c config/default.autoviz (Fixed Frame=map)\n";
     size_t index = 0;
     int tick = 0;
     auto last_switch = std::chrono::steady_clock::now();

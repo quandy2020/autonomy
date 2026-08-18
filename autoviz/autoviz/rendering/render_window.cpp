@@ -8,6 +8,8 @@
 #include <QCursor>
 #include <QKeyEvent>
 #include <QMouseEvent>
+#include <QOpenGLContext>
+#include <QOpenGLFunctions>
 #include <QSize>
 #include <QWheelEvent>
 #include <cmath>
@@ -26,6 +28,11 @@ RenderWindow::RenderWindow(QWidget* parent) : QOpenGLWidget(parent) {
   setFocusPolicy(Qt::StrongFocus);
   setMouseTracking(true);
   setFormat(platform::defaultSurfaceFormat());
+  // The viewport always clears and redraws the full framebuffer. Mark it opaque
+  // so semi-transparent overlays blend against the 3D background only, instead
+  // of leaking sibling Qt widgets (for example log panels) through composition.
+  setAttribute(Qt::WA_OpaquePaintEvent);
+  setAutoFillBackground(false);
 }
 
 RenderWindow::~RenderWindow() {
@@ -39,6 +46,11 @@ RenderWindow::~RenderWindow() {
 }
 
 void RenderWindow::initializeGL() {
+  if (QOpenGLContext* ctx = QOpenGLContext::currentContext()) {
+    if (QOpenGLFunctions* gl = ctx->functions()) {
+      gl->glEnable(0x809D);  // GL_MULTISAMPLE
+    }
+  }
   GpuCapabilities::instance().probeFromOpenGL();
   grid_renderer_.initialize();
   if (scene_overlay_ != nullptr) {

@@ -7,7 +7,9 @@
 #include <algorithm>
 #include <cmath>
 
+#include <QColor>
 #include <QPainter>
+#include <QRgb>
 
 namespace autoviz {
 namespace image {
@@ -64,6 +66,9 @@ QImage applyDisplayTransform(const QImage& source, bool flip_horizontal,
   if (source.isNull()) {
     return {};
   }
+  if (!flip_horizontal && !flip_vertical && rotation == ImageRotation::k0) {
+    return source;
+  }
   QTransform transform;
   if (flip_horizontal) {
     transform.scale(-1.0, 1.0);
@@ -89,7 +94,15 @@ QImage applyDisplayTransform(const QImage& source, bool flip_horizontal,
     default:
       break;
   }
-  return source.transformed(transform, Qt::SmoothTransformation);
+  // QImage::transformed() on packed 24-bit RGB leaves black tiles on some
+  // Qt/raster backends. Convert to a 32-bit format first.
+  const QImage rgb32 =
+      (source.format() == QImage::Format_RGB32 ||
+       source.format() == QImage::Format_ARGB32 ||
+       source.format() == QImage::Format_ARGB32_Premultiplied)
+          ? source
+          : source.convertToFormat(QImage::Format_RGB32);
+  return rgb32.transformed(transform, Qt::SmoothTransformation);
 }
 
 QImage applyColorMode(const QImage& source, ImageColorMode mode,
@@ -101,10 +114,10 @@ QImage applyColorMode(const QImage& source, ImageColorMode mode,
   if (gray.format() != QImage::Format_Grayscale8) {
     gray = gray.convertToFormat(QImage::Format_Grayscale8);
   }
-  QImage colored(gray.size(), QImage::Format_RGB888);
+  QImage colored(gray.size(), QImage::Format_RGB32);
   for (int y = 0; y < gray.height(); ++y) {
     const auto* src = reinterpret_cast<const uchar*>(gray.constScanLine(y));
-    auto* dst = reinterpret_cast<uchar*>(colored.scanLine(y));
+    auto* dst = reinterpret_cast<QRgb*>(colored.scanLine(y));
     for (int x = 0; x < gray.width(); ++x) {
       const double t = NormalizeValue(src[x], min_value, max_value);
       QColor color;
@@ -120,9 +133,7 @@ QImage applyColorMode(const QImage& source, ImageColorMode mode,
           color = QColor(src[x], src[x], src[x]);
           break;
       }
-      dst[x * 3 + 0] = static_cast<uchar>(color.red());
-      dst[x * 3 + 1] = static_cast<uchar>(color.green());
-      dst[x * 3 + 2] = static_cast<uchar>(color.blue());
+      dst[x] = color.rgb();
     }
   }
   return colored;

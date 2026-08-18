@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include <QRgb>
+
 #include "autoviz/display/camera_utils.hpp"
 
 namespace autoviz {
@@ -107,11 +109,11 @@ QImage undistortImage(const QImage& source, const CameraIntrinsics& intrinsics) 
   if (source.isNull() || !intrinsics.valid || intrinsics.distortion.empty()) {
     return source;
   }
-  QImage rgb = source.format() == QImage::Format_RGB888
+  QImage rgb = source.format() == QImage::Format_RGB32
                    ? source
-                   : source.convertToFormat(QImage::Format_RGB888);
-  QImage output(rgb.size(), QImage::Format_RGB888);
-  output.fill(Qt::black);
+                   : source.convertToFormat(QImage::Format_RGB32);
+  QImage output(rgb.size(), QImage::Format_RGB32);
+  output.fill(qRgb(0, 0, 0));
   for (int v = 0; v < rgb.height(); ++v) {
     for (int u = 0; u < rgb.width(); ++u) {
       const double x = (u + 0.5 - intrinsics.cx) / intrinsics.fx;

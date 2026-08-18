@@ -5,7 +5,6 @@
 #include "autoviz/ui/import_record_dialog.hpp"
 
 #include <QComboBox>
-#include <QCoreApplication>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFormLayout>
@@ -13,47 +12,22 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
-#include <QProcess>
 #include <QPushButton>
 #include <QStackedWidget>
-#include <QStandardPaths>
 #include <QVBoxLayout>
 
 #include "autoviz/integration/playback_controller.hpp"
+#include "autoviz/ui/record_open_utils.hpp"
 
 namespace autoviz {
 namespace {
 
-QString FindBagConverterExecutable() {
-  const QString primary =
-      QStandardPaths::findExecutable(QStringLiteral("bag_to_record"));
-  if (!primary.isEmpty()) {
-    return primary;
-  }
-  return QStandardPaths::findExecutable(QStringLiteral("rosbag_to_record"));
-}
-
-QString McapConverterScriptPath() {
-  const QString installed =
-      QCoreApplication::applicationDirPath() + QStringLiteral("/../share/autonomy/autoviz/scripts/mcap_to_record.py");
-  if (QFileInfo::exists(installed)) {
-    return QFileInfo(installed).absoluteFilePath();
-  }
-  const QString dev =
-      QCoreApplication::applicationDirPath() + QStringLiteral("/../../autoviz/scripts/mcap_to_record.py");
-  if (QFileInfo::exists(dev)) {
-    return QFileInfo(dev).absoluteFilePath();
-  }
-  return QString();
-}
-
 QString DefaultOutputPath(const QString& source_path,
                           ImportRecordDialog::Mode mode) {
-  const QFileInfo info(source_path);
   if (mode == ImportRecordDialog::Mode::kOpenRecord) {
     return source_path;
   }
-  return info.absolutePath() + QLatin1Char('/') + info.completeBaseName() + QStringLiteral(".record");
+  return DefaultConvertedRecordPath(source_path);
 }
 
 }  // namespace
@@ -140,6 +114,27 @@ void ImportRecordDialog::setupUi() {
   onModeChanged(mode_combo_->currentIndex());
 }
 
+void ImportRecordDialog::setSourcePath(const QString& path) {
+  if (path.isEmpty()) {
+    return;
+  }
+  const RecordSourceKind kind = ClassifyRecordSource(path);
+  Mode mode = Mode::kOpenRecord;
+  if (kind == RecordSourceKind::kBag) {
+    mode = Mode::kImportBag;
+  } else if (kind == RecordSourceKind::kMcap) {
+    mode = Mode::kImportMcap;
+  }
+  const int index = mode_combo_->findData(static_cast<int>(mode));
+  if (index >= 0) {
+    mode_combo_->setCurrentIndex(index);
+  }
+  source_edit_->setText(path);
+  if (mode != Mode::kOpenRecord) {
+    output_edit_->setText(DefaultOutputPath(path, mode));
+  }
+}
+
 ImportRecordDialog::Mode ImportRecordDialog::currentMode() const {
   return static_cast<Mode>(mode_combo_->currentData().toInt());
 }
@@ -190,105 +185,26 @@ void ImportRecordDialog::onBrowseOutput() {
 }
 
 bool ImportRecordDialog::runConversion(QString* error_message) {
-  const Mode mode = currentMode();
   const QString source = source_edit_->text().trimmed();
   if (source.isEmpty()) {
     *error_message = tr("Select a source file.");
     return false;
   }
 
-  if (mode == Mode::kOpenRecord) {
-    const QString suffix = QFileInfo(source).suffix().toLower();
-    if (suffix == QLatin1String("bag") || suffix == QLatin1String("mcap")) {
-      *error_message =
-          tr("Use Import mode for .bag or .mcap files.");
-      return false;
-    }
-    if (!controller_->openFile(source.toStdString())) {
-      *error_message =
-          tr("Could not open record file:\n%1").arg(source);
-      return false;
-    }
-    record_opened_ = true;
-    return true;
-  }
-
-  const QString output = output_edit_->text().trimmed();
-  if (output.isEmpty()) {
-    *error_message = tr("Select an output .record path.");
-    return false;
-  }
-
-  if (mode == Mode::kImportBag) {
-    const QString converter = FindBagConverterExecutable();
-    if (converter.isEmpty()) {
-      *error_message =
-          tr("Could not find `bag_to_record` in PATH.\n\n"
-             "Install Autolink developer tools, then run:\n"
-             "  bag_to_record %1 %2")
-              .arg(source, output);
-      return false;
-    }
-    QProcess process;
-    process.start(converter, {source, output});
-    if (!process.waitForStarted(3000)) {
-      *error_message = tr("Failed to start bag_to_record.");
-      return false;
-    }
-    if (!process.waitForFinished(600000)) {
-      process.kill();
-      *error_message = tr("bag_to_record timed out.");
-      return false;
-    }
-    if (process.exitStatus() != QProcess::NormalExit ||
-        process.exitCode() != 0) {
-      const QString details =
-          QString::fromUtf8(process.readAllStandardError()).trimmed();
-      *error_message =
-          tr("bag_to_record failed (code %1).\n%2")
-              .arg(process.exitCode())
-              .arg(details.isEmpty() ? tr("No stderr output.") : details);
-      return false;
-    }
-  } else {
-    const QString script_path = McapConverterScriptPath();
-    const QString python =
-        QStandardPaths::findExecutable(QStringLiteral("python3"));
-    if (script_path.isEmpty() || python.isEmpty()) {
-      *error_message =
-          tr("MCAP converter script or python3 not found.\n\n"
-             "Convert offline with Autolink tools, then open the .record file:\n"
-             "  mcap_to_record.py %1 %2")
-              .arg(source, output);
-      return false;
-    }
-    QProcess process;
-    process.start(python, {script_path, source, output});
-    if (!process.waitForStarted(3000)) {
-      *error_message = tr("Failed to start MCAP converter.");
-      return false;
-    }
-    if (!process.waitForFinished(600000)) {
-      process.kill();
-      *error_message = tr("MCAP converter timed out.");
-      return false;
-    }
-    if (process.exitStatus() != QProcess::NormalExit ||
-        process.exitCode() != 0) {
-      const QString details =
-          QString::fromUtf8(process.readAllStandardError()).trimmed();
-      *error_message =
-          tr("MCAP conversion failed.\n%1")
-              .arg(details.isEmpty()
-                       ? tr("See share/autonomy/autoviz/scripts/mcap_to_record.py.")
-                       : details);
+  QString output;
+  const Mode mode = currentMode();
+  if (mode != Mode::kOpenRecord) {
+    output = output_edit_->text().trimmed();
+    if (output.isEmpty()) {
+      *error_message = tr("Select an output .record path.");
       return false;
     }
   }
 
-  if (!controller_->openFile(output.toStdString())) {
-    *error_message =
-        tr("Converted record could not be opened:\n%1").arg(output);
+  const OpenRecordResult result =
+      OpenRecordSource(controller_, source, output);
+  if (!result.ok) {
+    *error_message = result.error;
     return false;
   }
   record_opened_ = true;

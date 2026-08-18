@@ -52,6 +52,7 @@ class TfDisplay : public ChannelDisplay<automsgs::msgs::tf2_msgs::TFMessage> {
   void setFrameEnabled(const std::string& frame, bool enabled);
   bool allFramesEnabled() const { return all_enabled_; }
 
+  void reset() override;
   void load(const common::Config& config) override;
   void save(common::Config config) const override;
   void saveToConfig(common::DisplayConfig* config) const override;

@@ -629,26 +629,28 @@ SessionConfig SessionConfigIO::defaultConfig() {
   SessionConfig config;
   config.fixed_frame = "map";
   config.show_grid = true;
+  config.background_color = "48;48;48";
+  config.frame_rate = 30;
   config.view_controller = "Orbit";
   config.render_backend = "OpenGL";
   config.displays = {
       {"Grid", "Grid", "", true},
-      {"Axes", "Axes", "", true},
-      {"TF", "TF", "/tf", true},
-      {"LaserScan", "Scan", "/fake/scan", true},
-      {"Image", "Camera", "/fake/image", true},
-      {"Marker", "Marker", "/fake/marker", true},
-      {"Path", "Path", "/fake/path", true},
-      {"Map", "Map", "/fake/occupancy_grid", true},
-      {"Odometry", "Odometry", "/fake/odom", true},
-      {"PointCloud2", "PointCloud2", "/fake/point_cloud2", true},
-      {"RobotModel", "Robot", "/joint_states", true},
   };
-  ImagePanelPersistConfig image_panel;
-  image_panel.object_name = "ImageDock";
-  image_panel.title = "Image";
-  image_panel.image_channel = "/fake/image";
-  config.image_panels.push_back(std::move(image_panel));
+  if (!config.displays.empty()) {
+    auto& grid = config.displays.front();
+    grid.properties = {
+        {"reference_frame", "<Fixed Frame>"},
+        {"cell_count", "10"},
+        {"normal_cell_count", "0"},
+        {"cell_size", "1.0"},
+        {"line_style", "Lines"},
+        {"line_width", "0.03"},
+        {"color", "160;160;160"},
+        {"alpha", "0.5"},
+        {"plane", "XY"},
+        {"offset", "0;0;0"},
+    };
+  }
   return config;
 }
 

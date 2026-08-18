@@ -9,4 +9,4 @@ Terminal=false
 Categories=Development;Science;Viewer;
 Keywords=robot;visualization;autolink;rviz;3d;slam;
 StartupWMClass=autoviz
-MimeType=application/x-autoviz;
+MimeType=application/x-autoviz;application/x-autolink-record;

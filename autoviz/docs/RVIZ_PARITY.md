@@ -45,7 +45,7 @@
 | Tool Properties | Tool Properties | ✅ Topic 配置 + `.autoviz` 持久化 |
 | Views | Views | ✅ 双列属性树、Zero（Z）、Focal Shape 拖拽可视化、交互实时同步 |
 | Time | Time | ✅ 窗口底部全宽吸附 + Time/Wall 条 |
-| Playback | —（Autoviz 扩展） | ✅ 可选面板：`.record` 回放 + Import |
+| Playback | —（Autoviz 扩展） | ✅ File → Open Record / 拖入 `.record` 即播（Foxglove MCAP 式） |
 | TF Tree | TF Tree | ✅ 默认隐藏，Panels → Add Panel |
 | Help | Help | ✅ 默认隐藏 |
 | Image | Image | ✅ 默认隐藏 |

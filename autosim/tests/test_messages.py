@@ -90,3 +90,27 @@ def test_encode_point_cloud2_xyz():
     assert [field.name for field in message.fields] == ["x", "y", "z"]
     data = np.frombuffer(message.data, dtype=np.float32).reshape(2, 3)
     np.testing.assert_allclose(data, points)
+
+
+def test_encode_point_cloud2_intensity_and_rgb():
+    points = np.array([[1.0, 0.0, 0.0], [0.0, 2.0, 0.0]], dtype=np.float32)
+    intensity = np.array([3.0, 4.0], dtype=np.float32)
+    rgb = np.array([[255, 0, 0], [0, 255, 0]], dtype=np.uint8)
+    message = Messages.encode_point_cloud2(
+        points, (0, 0), "map", intensity=intensity, rgb=rgb
+    )
+    assert message.point_step == 20
+    names = [field.name for field in message.fields]
+    assert names == ["x", "y", "z", "intensity", "rgb"]
+    structured = np.frombuffer(
+        message.data,
+        dtype=[("x", "f4"), ("y", "f4"), ("z", "f4"), ("intensity", "f4"), ("rgb", "u4")],
+    )
+    np.testing.assert_allclose(structured["intensity"], intensity)
+    assert structured["rgb"][0] == (255 << 16)
+    assert structured["rgb"][1] == (255 << 8)
+
+
+def test_pack_rgb_uint32():
+    packed = Messages.pack_rgb_uint32(np.array([[1, 2, 3]], dtype=np.uint8))
+    assert packed[0] == (1 << 16) | (2 << 8) | 3

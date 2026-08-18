@@ -64,6 +64,9 @@ class ImagePanel : public QWidget {
   QWidget* settingsWidgetForInspector();
   void recallSettingsWidget();
 
+  /** Drain pending image messages and repaint. Safe to call when unfocused. */
+  void tick();
+
   /** Push a decoded frame from Image Display (UI thread). */
   void setFrameFromDisplay(const QImage& image);
 

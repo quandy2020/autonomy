@@ -57,6 +57,36 @@ struct BicMapExampleCase {
   std::function<void(DisplayTestFixture*)> run;
 };
 
+automsgs::msgs::map_msgs::OccupancyGrid MakePaletteProbeGrid() {
+  automsgs::msgs::map_msgs::OccupancyGrid grid;
+  auto* info = grid.mutable_info();
+  info->set_resolution(1.f);
+  info->set_width(5);
+  info->set_height(1);
+  info->mutable_origin()->mutable_orientation()->set_w(1.0);
+  grid.add_data(-1);
+  grid.add_data(0);
+  grid.add_data(50);
+  grid.add_data(99);
+  grid.add_data(100);
+  return grid;
+}
+
+automsgs::msgs::geometry_msgs::TransformStamped MakeTransform(
+    const std::string& parent, const std::string& child, double stamp_seconds,
+    double x) {
+  automsgs::msgs::geometry_msgs::TransformStamped message;
+  message.mutable_header()->set_frame_id(parent);
+  message.set_child_frame_id(child);
+  message.mutable_header()->mutable_stamp()->set_sec(
+      static_cast<int32_t>(stamp_seconds));
+  message.mutable_header()->mutable_stamp()->set_nanosec(static_cast<uint32_t>(
+      (stamp_seconds - static_cast<int32_t>(stamp_seconds)) * 1e9));
+  message.mutable_transform()->mutable_translation()->set_x(x);
+  message.mutable_transform()->mutable_rotation()->set_w(1.0);
+  return message;
+}
+
 void RunIndoorSlam(DisplayTestFixture* fixture) {
   TestableMapDisplay display("/strata/map");
   fixture->feedAndDraw(display, bicmap::MakeOccupancyGrid(32, 24));
@@ -358,6 +388,126 @@ TEST(BicMapExampleCatalog, CoversAllRouterExamples) {
 }
 
 class StrataOverlayDisplaysTest : public DisplayTestFixture {};
+
+TEST_F(StrataOverlayDisplaysTest, MapDisplayRendersOccupancyGridAsTexturedQuad) {
+  TestableMapDisplay display("/strata/map");
+  auto grid = bicmap::MakeOccupancyGrid(32, 24);
+  EXPECT_NO_THROW(feedAndDraw(display, grid));
+  EXPECT_EQ(1u, scene().texturedBatches().size());
+  EXPECT_TRUE(scene().pointVertices().empty());
+}
+
+TEST_F(StrataOverlayDisplaysTest, MapDisplayUsesRvizMapPalette) {
+  TestableMapDisplay display("/strata/map");
+  display.setPropertyValue("color_scheme", "map");
+  feedAndDraw(display, MakePaletteProbeGrid());
+  ASSERT_EQ(1u, scene().texturedBatches().size());
+  const QImage& image = scene().texturedBatches().front().image;
+  const auto expect_rgb = [&](int x, const QColor& expected) {
+    const QColor actual = image.pixelColor(x, 0);
+    EXPECT_EQ(expected.red(), actual.red());
+    EXPECT_EQ(expected.green(), actual.green());
+    EXPECT_EQ(expected.blue(), actual.blue());
+  };
+  expect_rgb(0, QColor(0x70, 0x89, 0x86));
+  expect_rgb(1, QColor(255, 255, 255));
+  expect_rgb(2, QColor(127, 127, 127));
+  expect_rgb(3, QColor(3, 3, 3));
+  expect_rgb(4, QColor(0, 0, 0));
+}
+
+TEST_F(StrataOverlayDisplaysTest, MapDisplayUsesRvizCostmapPalette) {
+  TestableMapDisplay display("/strata/map");
+  display.setPropertyValue("color_scheme", "costmap");
+  feedAndDraw(display, MakePaletteProbeGrid());
+  ASSERT_EQ(1u, scene().texturedBatches().size());
+  const QImage& image = scene().texturedBatches().front().image;
+  const auto expect_rgb = [&](int x, const QColor& expected) {
+    const QColor actual = image.pixelColor(x, 0);
+    EXPECT_EQ(expected.red(), actual.red());
+    EXPECT_EQ(expected.green(), actual.green());
+    EXPECT_EQ(expected.blue(), actual.blue());
+  };
+  expect_rgb(0, QColor(0x70, 0x89, 0x86));
+  expect_rgb(1, QColor(0, 0, 0));
+  expect_rgb(2, QColor(127, 0, 128));
+  expect_rgb(3, QColor(0, 255, 255));
+  expect_rgb(4, QColor(255, 0, 255));
+}
+
+TEST_F(StrataOverlayDisplaysTest, MapDisplayUsesRvizRawPalette) {
+  TestableMapDisplay display("/strata/map");
+  display.setPropertyValue("color_scheme", "raw");
+  feedAndDraw(display, MakePaletteProbeGrid());
+  ASSERT_EQ(1u, scene().texturedBatches().size());
+  const QImage& image = scene().texturedBatches().front().image;
+  const auto expect_rgb = [&](int x, int expected) {
+    const QColor actual = image.pixelColor(x, 0);
+    EXPECT_EQ(expected, actual.red());
+    EXPECT_EQ(expected, actual.green());
+    EXPECT_EQ(expected, actual.blue());
+  };
+  expect_rgb(0, 255);
+  expect_rgb(1, 0);
+  expect_rgb(2, 50);
+  expect_rgb(3, 99);
+  expect_rgb(4, 100);
+}
+
+TEST_F(StrataOverlayDisplaysTest, MapDisplayRebuildsImmediatelyOnPropertyChange) {
+  TestableMapDisplay display("/strata/map");
+  display.setContext(&context());
+  display.setDisplayName(display.typeId());
+  display.feedMessage(MakePaletteProbeGrid());
+
+  scene().clear();
+  display.drawOverlay(scene());
+  ASSERT_EQ(1u, scene().texturedBatches().size());
+  {
+    const QColor actual = scene().texturedBatches().front().image.pixelColor(1, 0);
+    EXPECT_EQ(255, actual.red());
+    EXPECT_EQ(255, actual.green());
+    EXPECT_EQ(255, actual.blue());
+    EXPECT_EQ(179, actual.alpha());
+  }
+
+  display.setPropertyValue("color_scheme", "costmap");
+  scene().clear();
+  display.drawOverlay(scene());
+  ASSERT_EQ(1u, scene().texturedBatches().size());
+  {
+    const QColor actual = scene().texturedBatches().front().image.pixelColor(1, 0);
+    EXPECT_EQ(0, actual.red());
+    EXPECT_EQ(0, actual.green());
+    EXPECT_EQ(0, actual.blue());
+    EXPECT_EQ(179, actual.alpha());
+  }
+}
+
+TEST_F(StrataOverlayDisplaysTest, MapDisplayUsesMessageTimestampForTransformWhenEnabled) {
+  transform::Buffer::Instance()->clear();
+  transform::Buffer::Instance()->setTransform(
+      MakeTransform("map", "odom", 10.0, 10.0), "test");
+  transform::Buffer::Instance()->setTransform(
+      MakeTransform("map", "odom", 5.0, 2.0), "test");
+
+  auto grid = bicmap::MakeOccupancyGrid(2, 2);
+  grid.mutable_header()->set_frame_id("odom");
+  grid.mutable_header()->mutable_stamp()->set_sec(5);
+
+  TestableMapDisplay latest_display("/strata/map");
+  feedAndDraw(latest_display, grid);
+  ASSERT_EQ(1u, scene().texturedBatches().size());
+  const float latest_x = scene().texturedBatches().front().vertices.front().position.x();
+  EXPECT_NEAR(9.f, latest_x, 1e-4f);
+
+  TestableMapDisplay stamped_display("/strata/map");
+  stamped_display.setPropertyValue("use_timestamp", "true");
+  feedAndDraw(stamped_display, grid);
+  ASSERT_EQ(1u, scene().texturedBatches().size());
+  const float stamped_x = scene().texturedBatches().front().vertices.front().position.x();
+  EXPECT_NEAR(1.f, stamped_x, 1e-4f);
+}
 
 TEST_F(StrataOverlayDisplaysTest, CanvasLabelLabelBubbleIotRobot3D) {
   TestableStrataCanvasLabelDisplay canvas("/strata/canvas_labels");

@@ -7,7 +7,7 @@ Usage:
   publish_bicmap_example.py --cycle --interval 8
 
 Requires automsgs + autolink on PYTHONPATH (same as publish_test_sensors.py).
-Load config/strata.autoviz in autoviz with Fixed Frame=map.
+Load config/default.autoviz in autoviz with Fixed Frame=map.
 """
 
 from __future__ import annotations
@@ -350,7 +350,7 @@ def main() -> None:
     if args.cycle:
         names = list(EXAMPLES.keys())
         print(f"Cycling {len(names)} examples every {args.interval}s at {args.rate} Hz")
-        print("autoviz: autoviz -c config/strata.autoviz  (Fixed Frame=map)")
+        print("autoviz: autoviz -c config/default.autoviz  (Fixed Frame=map)")
         index = 0
         tick = 0
         last_switch = time.monotonic()
@@ -370,7 +370,7 @@ def main() -> None:
         print(f"Publishing BICMap example: {scene.name} — {scene.title}")
         print(f"Route: {scene.route}")
         print(f"Topics under {args.prefix}/* at {args.rate} Hz")
-        print("autoviz: autoviz -c config/strata.autoviz  (Fixed Frame=map)")
+        print("autoviz: autoviz -c config/default.autoviz  (Fixed Frame=map)")
         tick = 0
         while True:
             publisher.publish(scene, tick=tick)

@@ -72,7 +72,7 @@ export AUTOVIZ_PLUGIN_PATH=/opt/autonomy/lib/autoviz_plugins
 
 ## 回放与导入
 
-- **原生格式**：Autolink `.record`（直接打开）
+- **原生格式**：Autolink `.record`（File → Open Record、拖入窗口或 `autoviz file.record` 后直接播放）
 - **Legacy `.bag`**：可选外部工具 `bag_to_record`（Autolink 开发者工具；兼容旧名 `rosbag_to_record`）
 - **`.mcap`**：待 autolink 原生 `mcap_to_record` 落地；当前脚本为占位
 
@@ -100,7 +100,6 @@ prefix/
 ├── lib/libautolink.so ...
 ├── share/autonomy/autoviz/
 │   ├── default.autoviz
-│   ├── turtlebot3_burger.urdf
 │   └── scripts/mcap_to_record.py
 └── lib/autoviz_plugins/          # 可选用户插件
 ```

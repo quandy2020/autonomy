@@ -94,8 +94,7 @@ function(autonomy_filter_library_sources)
   # Re-enable once protobuf accessors are fully converted.
   file(GLOB_RECURSE _AUTOMSGS_WIP_SRCS
     "${PROJECT_SOURCE_DIR}/autonomy/localization/cartographer/node/*.cpp"
-    "${PROJECT_SOURCE_DIR}/autonomy/map/strata/*.cpp"
-    "${PROJECT_SOURCE_DIR}/autonomy/task/apps/exploration/*.cpp")
+    "${PROJECT_SOURCE_DIR}/autonomy/map/strata/*.cpp")
   # Keep shared path helpers used by localization_main / atlas.
   list(REMOVE_ITEM _AUTOMSGS_WIP_SRCS
     "${PROJECT_SOURCE_DIR}/autonomy/localization/cartographer/node/node_utils.cpp")

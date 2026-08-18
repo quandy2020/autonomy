@@ -6,7 +6,7 @@
 # Verify: python3 examples/verify_catalog.py
 
 version: 1
-config: config/strata.autoviz
+config: config/default.autoviz
 topic_prefix: /strata
 count: 36
 

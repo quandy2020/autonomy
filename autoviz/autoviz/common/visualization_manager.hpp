@@ -31,6 +31,7 @@
 #include "autoviz/integration/playback_controller.hpp"
 #include "autoviz/rendering/scene_overlay.hpp"
 #include "autoviz/rendering/render_settings.hpp"
+#include "autoviz/transform/listener.hpp"
 #include "autoviz/variables/variable_store.hpp"
 
 namespace autoviz {
@@ -255,6 +256,7 @@ class VisualizationManager {
   integration::AutolinkContext autolink_;
   std::unique_ptr<integration::ChannelManager> channel_manager_;
   autoviz::transform::Buffer* tf_buffer_ = nullptr;
+  autoviz::transform::Listener tf_listener_;
   rendering::SceneOverlay scene_overlay_;
   common::DisplayContext display_context_;
   std::vector<std::unique_ptr<display::Display>> displays_;

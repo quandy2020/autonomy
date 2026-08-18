@@ -27,6 +27,7 @@ class ImportRecordDialog : public QDialog {
                               QWidget* parent = nullptr);
 
   bool recordOpened() const { return record_opened_; }
+  void setSourcePath(const QString& path);
 
  private slots:
   void onModeChanged(int index);

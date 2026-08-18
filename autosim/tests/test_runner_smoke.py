@@ -17,6 +17,7 @@ from pathlib import Path
 from autosim.config import Config
 from autosim.runner import Runner
 from tests.fake_simulator import FakeSimulator
+from autosim.urdf import UrdfModel
 
 
 class FakeWriter:
@@ -105,7 +106,9 @@ def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
     settings.data["habitat"]["robot"]["clock"]["enabled"] = True
 
     link = FakeLink()
-    runner = Runner(settings, max_steps=5, link=link, simulator=FakeSimulator())
+    simulator = FakeSimulator()
+    simulator.urdf = UrdfModel.load("urdf/husky.urdf")
+    runner = Runner(settings, max_steps=5, link=link, simulator=simulator)
     runner.run()
     assert "/scan" in runner.node.writers
     assert len(runner.node.writers["/scan"].msgs) >= 1
@@ -117,8 +120,61 @@ def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
     assert len(runner.node.writers["/map/points"].msgs) >= 1
     assert len(runner.node.writers["/map"].msgs) >= 1
     assert "/tf" in runner.node.writers
+    assert "/tf_static" in runner.node.writers
     assert "/clock" in runner.node.writers
+    assert "/footprint" in runner.node.writers
     assert len(runner.node.writers["/tf"].msgs) >= 1
+    odom_msg = runner.node.writers["/odom"].msgs[0]
+    assert odom_msg.child_frame_id == "base_footprint"
+    footprint = runner.node.writers["/footprint"].msgs[0]
+    assert footprint.header.frame_id == "base_footprint"
+    assert len(footprint.polygon.points) == 4
+    assert abs(footprint.polygon.points[0].x - 0.4935) < 1e-6
+    assert abs(footprint.polygon.points[0].y - 0.285) < 1e-6
+    tf_edges = {
+        (item.header.frame_id, item.child_frame_id): (
+            item.transform.translation.x,
+            item.transform.translation.y,
+            item.transform.translation.z,
+        )
+        for message in runner.node.writers["/tf"].msgs
+        for item in message.transforms
+    }
+    assert ("map", "odom") in tf_edges
+    assert ("odom", "base_footprint") in tf_edges
+    assert ("base_footprint", "base_link") in tf_edges
+    latest_tf = runner.node.writers["/tf"].msgs[-1]
+    stamps = {
+        (item.header.stamp.sec, item.header.stamp.nanosec)
+        for item in latest_tf.transforms
+    }
+    assert len(stamps) == 1
+    latest_edges = {
+        (item.header.frame_id, item.child_frame_id)
+        for item in latest_tf.transforms
+    }
+    assert ("odom", "base_footprint") in latest_edges
+    assert ("base_footprint", "base_link") in latest_edges
+    static_tf = runner.node.writers["/tf_static"].msgs[0]
+    edges = {
+        (item.header.frame_id, item.child_frame_id): (
+            item.transform.translation.x,
+            item.transform.translation.y,
+            item.transform.translation.z,
+        )
+        for item in static_tf.transforms
+    }
+    assert ("base_footprint", "base_link") in edges
+    assert ("base_link", "base_scan") in edges
+    assert ("base_scan", "laser_link") in edges
+    assert ("base_link", "imu_link") in edges
+    assert ("base_link", "front_left_wheel_link") in edges
+    assert ("base_link", "front_right_wheel_link") in edges
+    assert abs(edges[("base_footprint", "base_link")][2] - 0.165) < 1e-6
+    assert abs(edges[("base_link", "base_scan")][0] - 0.15) < 1e-6
+    assert abs(edges[("base_link", "base_scan")][2] - 0.3) < 1e-6
+    assert abs(edges[("base_link", "imu_link")][0] - 0.1) < 1e-6
+    assert abs(edges[("base_link", "imu_link")][2] - 0.18) < 1e-6
     assert "/camera/rgb/image_raw" not in runner.node.writers
 
 
@@ -144,3 +200,13 @@ def test_runner_skips_odom_when_disabled(monkeypatch):
     runner.run()
     assert "/odom" not in runner.node.writers
     assert "/map" not in runner.node.writers
+
+
+def test_subsample_points():
+    import numpy as np
+
+    cloud = np.arange(12, dtype=np.float32).reshape(4, 3)
+    subsampled = Runner.subsample_points(cloud, 2)
+    assert subsampled.shape == (2, 3)
+    np.testing.assert_allclose(subsampled[0], cloud[0])
+    np.testing.assert_allclose(subsampled[1], cloud[2])

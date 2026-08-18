@@ -1,7 +1,13 @@
 .deps/
 stubs/
 *.egg-info/
+build/
 __pycache__/
 .pytest_cache/
 *.pyc
-assets/map.ply
+*.log
+*.log.*
+*.INFO
+*.INFO.*
+*.WARNING
+*.ERROR

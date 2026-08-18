@@ -28,7 +28,7 @@ and publishers (`rviz_default_plugins/publishers/…`).
 | Live publisher (C++) | `tools/bicmap_example_publisher` |
 | Live publisher (Python) | `scripts/publish_bicmap_example.py` |
 | Headless gtest | `tests/bicmap_examples_test.cpp` |
-| Session config | `config/strata.autoviz` (Fixed Frame=`map`) |
+| Session config | `config/default.autoviz` (Fixed Frame=`map`) |
 
 Keep all four in sync. Verify with:
 
@@ -49,7 +49,7 @@ python3 scripts/publish_bicmap_example.py --example Slam
 Terminal 2 — open autoviz:
 
 ```bash
-./build/bin/autoviz -c config/strata.autoviz
+./build/bin/autoviz -c config/default.autoviz
 ```
 
 One-shot (publisher + GUI):

@@ -34,6 +34,8 @@ class TimePanel : public QWidget {
   void setSyncMode(int mode);
   void setSyncSource(const QString& source);
   void setFpsText(const QString& text);
+  /** Uncheck Pause and refresh labels after a time reset. */
+  void syncAfterReset();
 
  signals:
   void resetRequested();
@@ -44,7 +46,8 @@ class TimePanel : public QWidget {
   void syncModeSelected(int index);
   void syncSourceSelected(int index);
   void experimentalToggled(bool checked);
-  void update();
+  void onResetClicked();
+  void refreshTimes();
 
  private:
   QLineEdit* makeTimeLabel();

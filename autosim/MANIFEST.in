@@ -1,4 +1,0 @@
-recursive-include config *.yaml
-recursive-include urdf *.urdf *.md
-graft assets
-global-exclude *.pyc __pycache__ .pytest_cache
