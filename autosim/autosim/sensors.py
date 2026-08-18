@@ -58,6 +58,7 @@ class Sensors:
         self.depth_noise = float(depth_noise)
         self.lidar_3d = dict(lidar_3d or {})
         self.rng = np.random.default_rng(seed)
+        self.depth_min_valid = 1e-3
 
     @property
     def angle_increment(self) -> float:
@@ -82,11 +83,17 @@ class Sensors:
         ranges = simulator.laser_ranges(
             self.angle_min, self.angle_max, self.num_beams, self.range_max
         ).astype(np.float32)
-        if self.noise > 0.0:
-            ranges = ranges + self.rng.normal(0.0, self.noise, size=ranges.shape).astype(
-                np.float32
-            )
-        return np.clip(ranges, self.range_min, self.range_max)
+        valid = np.isfinite(ranges) & (ranges >= self.range_min) & (ranges <= self.range_max)
+        if self.noise > 0.0 and np.any(valid):
+            noisy = ranges.copy()
+            noisy[valid] = noisy[valid] + self.rng.normal(
+                0.0, self.noise, size=int(valid.sum())
+            ).astype(np.float32)
+            noisy[valid] = np.clip(noisy[valid], self.range_min, self.range_max)
+            ranges = noisy
+        out = np.full(ranges.shape, np.inf, dtype=np.float32)
+        out[valid] = ranges[valid]
+        return out
 
     def sample_points(self, simulator: object) -> np.ndarray:
         """Sample one 3D lidar point cloud in the sensor frame.
@@ -134,10 +141,18 @@ class Sensors:
             ``(color, depth)`` where color is ``uint8`` HxWx3 and depth is ``float32`` HxW.
         """
         color, depth = simulator.color_depth()
-        depth = np.asarray(depth, dtype=np.float32)
+        depth = np.squeeze(depth).astype(np.float32, copy=False)
+        if depth.ndim != 2:
+            depth = depth.reshape(color.shape[0], color.shape[1])
         if self.depth_noise > 0.0:
-            depth = depth + self.rng.normal(0.0, self.depth_noise, size=depth.shape).astype(
-                np.float32
-            )
-            depth = np.maximum(depth, 0.0)
+            valid = depth > self.depth_min_valid
+            if np.any(valid):
+                noisy = depth.copy()
+                noisy[valid] = noisy[valid] + self.rng.normal(
+                    0.0,
+                    self.depth_noise,
+                    size=int(valid.sum()),
+                ).astype(np.float32)
+                noisy[valid] = np.maximum(noisy[valid], self.depth_min_valid)
+                depth = noisy
         return color, depth

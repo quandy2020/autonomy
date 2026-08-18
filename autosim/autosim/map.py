@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Any, Mapping, Optional, Tuple
 
@@ -54,12 +55,67 @@ class Map:
             self.write_ply(self.resolve_ply_path(file_path), cloud)
 
         grid_cfg = self.settings["grid"]
-        eye = float(simulator.eye_height())
-        origin = (float(origin_xy[0]), float(origin_xy[1]), eye)
-        grid, resolution, ox, oy, width, height = self.project_grid(cloud, grid_cfg, origin)
+        navmesh_grid = self.project_grid_from_navmesh(simulator, grid_cfg)
+        if navmesh_grid is not None:
+            grid, resolution, ox, oy, width, height = navmesh_grid
+        else:
+            eye = float(simulator.eye_height())
+            origin = (float(origin_xy[0]), float(origin_xy[1]), eye)
+            grid, resolution, ox, oy, width, height = self.project_grid(
+                cloud, grid_cfg, origin)
         self.cached_cloud = cloud
         self.cached_grid = (grid, resolution, ox, oy, width, height)
         return cloud, grid, resolution, ox, oy, width, height
+
+    def project_grid_from_navmesh(
+        self,
+        simulator: Any,
+        grid_cfg: Mapping[str, Any],
+    ) -> Optional[Tuple[np.ndarray, float, float, float, int, int]]:
+        """Prefer Habitat navmesh topdown occupancy when available.
+
+        Returns ``None`` when no loaded pathfinder is available, so callers may
+        fall back to the point-cloud projection path.
+        """
+        session = getattr(simulator, "session", None)
+        pathfinder = getattr(session, "pathfinder", None)
+        if pathfinder is None or not bool(getattr(pathfinder, "is_loaded", False)):
+            return None
+
+        resolution = float(grid_cfg["resolution"])
+        island_radius = float(grid_cfg.get("island_radius", 0.5))
+        floor_height = float(getattr(simulator, "floor_y", 0.0) or 0.0)
+        if abs(floor_height) < 1e-6:
+            random_nav = getattr(pathfinder, "get_random_navigable_point", None)
+            if callable(random_nav):
+                try:
+                    point = random_nav()
+                    if point is not None and len(point) >= 2:
+                        floor_height = float(point[1])
+                except Exception:
+                    pass
+
+        get_topdown_view = getattr(pathfinder, "get_topdown_view", None)
+        get_bounds = getattr(pathfinder, "get_bounds", None)
+        if not callable(get_topdown_view) or not callable(get_bounds):
+            return None
+
+        navigable = np.asarray(
+            get_topdown_view(resolution, floor_height, island_radius),
+            dtype=bool,
+        )
+        if navigable.size == 0:
+            return None
+
+        lo, hi = get_bounds()
+        origin_x = float(min(float(lo[0]), float(hi[0])))
+        origin_y = float(min(float(lo[2]), float(hi[2])))
+        height, width = navigable.shape
+        # Habitat topdown row 0 is min Z (= ROS / map Y). Do not negate origin
+        # and do not flip rows: that mirrored Y and looked like a pose offset
+        # while heading along +X still lined up with east-west corridors.
+        grid = np.where(navigable, 0, 100).astype(np.int8)
+        return grid, resolution, origin_x, origin_y, width, height
 
     def sample_ply_cloud(self, simulator: Any, origin_xy: Tuple[float, float]) -> np.ndarray:
         """Panoramic Habitat cloud in map frame (z-up) from ``map.ply`` FOV."""
@@ -135,8 +191,8 @@ class Map:
         min_y = float(np.floor(min(sliced[:, 1].min(), origin[1]) / resolution) * resolution)
         max_x = float(np.ceil(max(sliced[:, 0].max(), origin[0]) / resolution) * resolution)
         max_y = float(np.ceil(max(sliced[:, 1].max(), origin[1]) / resolution) * resolution)
-        width = max(1, int(round((max_x - min_x) / resolution)))
-        height = max(1, int(round((max_y - min_y) / resolution)))
+        width = max(1, int(math.ceil((max_x - min_x) / resolution)))
+        height = max(1, int(math.ceil((max_y - min_y) / resolution)))
         grid = np.full((height, width), -1, dtype=np.int8)
 
         origin_c = int(np.floor((origin[0] - min_x) / resolution))

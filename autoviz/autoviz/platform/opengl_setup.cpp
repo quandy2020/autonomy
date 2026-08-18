@@ -93,7 +93,9 @@ QSurfaceFormat buildSurfaceFormat(bool software) {
   format.setAlphaBufferSize(8);
   format.setDepthBufferSize(24);
   format.setStencilBufferSize(8);
-  format.setSamples(0);
+  // Hardware GL benefits a lot from MSAA for thin geometry such as TF axes,
+  // labels, and wireframe overlays. Keep software rendering conservative.
+  format.setSamples(software ? 0 : 4);
   format.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
   format.setVersion(3, 3);
   // llvmpipe + Qt Quick3D are more reliable with compatibility profile.
@@ -122,7 +124,13 @@ void configureOpenGLDefaults() {
     setSoftwareGlEnv();
     QCoreApplication::setAttribute(Qt::AA_UseSoftwareOpenGL);
   }
+  // X11 MIT-SHM pixmaps + QOpenGLWidget native windows corrupt sibling
+  // QWidget backing stores (Image panel color blocks / missing tiles).
+  setenv("QT_X11_NO_MITSHM", "1", 0);
   QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+  // QOpenGLWidget creates a native child window. Without this, sibling docks
+  // (Image / Plot) can stop receiving paint events once the 3D view has focus.
+  QCoreApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
 #ifdef AUTOVIZ_USE_QML_DRONE
   QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 #endif

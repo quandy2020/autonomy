@@ -28,6 +28,9 @@ class TestableDisplay : public DisplayT {
     this->processMessage(message);
   }
 
+  void updateDisplay() { this->onUpdate(); }
+  void enableDisplay() { this->onEnable(); }
+  void disableDisplay() { this->onDisable(); }
   void drawOverlay(rendering::SceneOverlay& scene) { this->onDraw(scene); }
 };
 

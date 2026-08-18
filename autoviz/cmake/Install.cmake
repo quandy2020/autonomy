@@ -6,8 +6,7 @@ include(GNUInstallDirs)
 
 install(TARGETS autoviz autoviz_bicmap_publisher RUNTIME DESTINATION bin)
 
-install(FILES config/default.autoviz config/turtlebot3_burger.urdf
-        DESTINATION share/autonomy/autoviz)
+install(FILES config/default.autoviz DESTINATION share/autonomy/autoviz)
 install(DIRECTORY resources/ogre_media DESTINATION share/autonomy/autoviz)
 install(PROGRAMS
   scripts/mcap_to_record.py

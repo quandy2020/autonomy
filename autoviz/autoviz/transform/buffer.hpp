@@ -24,6 +24,9 @@ struct TfFrameStats {
   std::string parent_id;
   std::string authority;
   int64_t last_stamp_ns = 0;
+  int64_t oldest_stamp_ns = 0;
+  double average_rate_hertz = 0.0;
+  double buffer_length_seconds = 0.0;
   uint64_t transforms_received = 0;
   bool is_static = false;
 };

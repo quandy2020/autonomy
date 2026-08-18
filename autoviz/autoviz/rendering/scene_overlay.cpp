@@ -330,6 +330,7 @@ void SceneOverlay::clear() {
   textured_batches_.clear();
   billboard_requests_.clear();
   polyline_strip_requests_.clear();
+  wide_line_loop_requests_.clear();
   view_facing_textured_requests_.clear();
   pbr_vertices_.clear();
   pbr_textured_batches_.clear();
@@ -737,12 +738,14 @@ void SceneOverlay::addTexturedQuad(const QVector3D& top_left,
                                    const QVector3D& top_right,
                                    const QVector3D& bottom_right,
                                    const QVector3D& bottom_left,
-                                   const QImage& image) {
+                                   const QImage& image,
+                                   TextureFilterMode filter_mode) {
   if (image.isNull()) {
     return;
   }
   TexturedBatch batch;
   batch.image = image.convertToFormat(QImage::Format_RGBA8888);
+  batch.filter_mode = filter_mode;
   batch.vertices = {
       {top_left, QVector2D(0.f, 0.f)},
       {top_right, QVector2D(1.f, 0.f)},
@@ -775,6 +778,18 @@ void SceneOverlay::addViewFacingPolylineStrip(
   request.color = ToVec4(color);
   polyline_strip_requests_.push_back(std::move(request));
   triangle_dirty_ = true;
+}
+
+void SceneOverlay::addLineLoop(const std::vector<QVector3D>& points,
+                               const QColor& color, float line_width) {
+  if (points.size() < 2 || line_width <= 0.f) {
+    return;
+  }
+  WideLineLoopRequest request;
+  request.points = points;
+  request.line_width = line_width;
+  request.color = ToVec4(color);
+  wide_line_loop_requests_.push_back(std::move(request));
 }
 
 void SceneOverlay::addViewFacingTexturedQuad(const QVector3D& center,
@@ -966,6 +981,69 @@ void SceneOverlay::appendViewFacingBillboards(
   }
 }
 
+void SceneOverlay::appendWideLineLoops(const QMatrix4x4& view,
+                                       const QMatrix4x4& projection,
+                                       const int viewport_height,
+                                       std::vector<ColoredVertex>* triangles) const {
+  if (triangles == nullptr || wide_line_loop_requests_.empty() || viewport_height <= 0) {
+    return;
+  }
+  const QMatrix4x4 inv_view = view.inverted();
+  const QVector3D camera_pos = inv_view.column(3).toVector3D();
+  const float tan_half_fovy =
+      projection(1, 1) != 0.f ? 1.f / projection(1, 1) : std::tan(45.f * 0.5f);
+
+  for (const WideLineLoopRequest& request : wide_line_loop_requests_) {
+    if (request.points.size() < 2 || request.line_width <= 0.f) {
+      continue;
+    }
+    triangles->reserve(triangles->size() + request.points.size() * 6);
+    for (std::size_t i = 0; i < request.points.size(); ++i) {
+      const QVector3D& a = request.points[i];
+      const QVector3D& b = request.points[(i + 1) % request.points.size()];
+      const QVector3D delta = b - a;
+      if (delta.lengthSquared() < 1e-8f) {
+        continue;
+      }
+      const QVector3D tangent = delta.normalized();
+      QVector3D to_camera = camera_pos - ((a + b) * 0.5f);
+      if (to_camera.lengthSquared() < 1e-8f) {
+        to_camera = inv_view.column(2).toVector3D();
+      }
+      QVector3D side = QVector3D::crossProduct(tangent, to_camera);
+      if (side.lengthSquared() < 1e-8f) {
+        side = QVector3D::crossProduct(tangent, inv_view.column(1).toVector3D());
+      }
+      if (side.lengthSquared() < 1e-8f) {
+        continue;
+      }
+      side.normalize();
+
+      const QVector4D view_a4 = view * QVector4D(a, 1.f);
+      const QVector4D view_b4 = view * QVector4D(b, 1.f);
+      const float depth_a = std::max(0.05f, std::abs(view_a4.z()));
+      const float depth_b = std::max(0.05f, std::abs(view_b4.z()));
+      const float half_world_a =
+          0.5f * request.line_width * (2.f * depth_a * tan_half_fovy /
+                                       static_cast<float>(viewport_height));
+      const float half_world_b =
+          0.5f * request.line_width * (2.f * depth_b * tan_half_fovy /
+                                       static_cast<float>(viewport_height));
+
+      const QVector3D p0 = a - side * half_world_a;
+      const QVector3D p1 = a + side * half_world_a;
+      const QVector3D p2 = b + side * half_world_b;
+      const QVector3D p3 = b - side * half_world_b;
+      triangles->push_back({p0, request.color});
+      triangles->push_back({p1, request.color});
+      triangles->push_back({p2, request.color});
+      triangles->push_back({p0, request.color});
+      triangles->push_back({p2, request.color});
+      triangles->push_back({p3, request.color});
+    }
+  }
+}
+
 void SceneOverlay::initialize() {
   if (initialized_) {
     return;
@@ -1015,6 +1093,8 @@ void SceneOverlay::renderTexturedBatches(const QMatrix4x4& view,
       QOpenGLContext::currentContext()->extraFunctions();
   gl->glEnable(0x0B71);  // GL_DEPTH_TEST
   gl->glDepthMask(0x0001);
+  gl->glEnable(0x0BE2);  // GL_BLEND
+  gl_extra->glBlendFuncSeparate(0x0302, 0x0303, 0, 1);
   gl->glUseProgram(textured_program_);
   gl_extra->glUniformMatrix4fv(
       gl->glGetUniformLocation(textured_program_, "uMvp"), 1, 0, mvp.constData());
@@ -1043,8 +1123,10 @@ void SceneOverlay::renderTexturedBatches(const QMatrix4x4& view,
     unsigned texture = 0;
     gl_extra->glGenTextures(1, &texture);
     gl_extra->glBindTexture(0x0DE1, texture);
-    gl_extra->glTexParameteri(0x0DE1, 0x2801, 0x2601);
-    gl_extra->glTexParameteri(0x0DE1, 0x2800, 0x2601);
+    const int filter =
+        batch.filter_mode == TextureFilterMode::kNearest ? 0x2600 : 0x2601;
+    gl_extra->glTexParameteri(0x0DE1, 0x2801, filter);
+    gl_extra->glTexParameteri(0x0DE1, 0x2800, filter);
     gl_extra->glTexParameteri(0x0DE1, 0x2802, 0x812F);
     gl_extra->glTexParameteri(0x0DE1, 0x2803, 0x812F);
     gl_extra->glTexImage2D(0x0DE1, 0, 0x1908, batch.image.width(),
@@ -1056,6 +1138,7 @@ void SceneOverlay::renderTexturedBatches(const QMatrix4x4& view,
     gl_extra->glDeleteTextures(1, &texture);
   }
   gl_extra->glBindVertexArray(0);
+  gl->glDisable(0x0BE2);  // GL_BLEND
 }
 
 void SceneOverlay::renderPbrMesh(const QMatrix4x4& mvp, const QMatrix4x4& view) {
@@ -1133,6 +1216,8 @@ void SceneOverlay::renderPbrTexturedMeshes(const QMatrix4x4& mvp,
       QOpenGLContext::currentContext()->extraFunctions();
   gl->glEnable(0x0B71);
   gl->glDepthMask(0x0001);
+  gl->glEnable(0x0BE2);  // GL_BLEND
+  gl_extra->glBlendFuncSeparate(0x0302, 0x0303, 0, 1);
   gl->glUseProgram(pbr_textured_program_);
   gl_extra->glUniformMatrix4fv(
       gl->glGetUniformLocation(pbr_textured_program_, "uMvp"), 1, 0, mvp.constData());
@@ -1196,6 +1281,7 @@ void SceneOverlay::renderPbrTexturedMeshes(const QMatrix4x4& mvp,
     gl_extra->glDeleteTextures(1, &texture);
   }
   gl_extra->glBindVertexArray(0);
+  gl->glDisable(0x0BE2);  // GL_BLEND
 }
 
 void SceneOverlay::render(const QMatrix4x4& view, const QMatrix4x4& projection) {
@@ -1210,15 +1296,21 @@ void SceneOverlay::render(const QMatrix4x4& view, const QMatrix4x4& projection) 
     return;
   }
 
-  std::vector<ColoredVertex> render_triangles = expandedFlatTriangles(view);
-
   QOpenGLFunctions* gl = QOpenGLContext::currentContext()->functions();
   QOpenGLExtraFunctions* gl_extra =
       QOpenGLContext::currentContext()->extraFunctions();
+  int viewport[4] = {0, 0, 1, 1};
+  gl->glGetIntegerv(0x0BA2, viewport);  // GL_VIEWPORT
+  std::vector<ColoredVertex> render_triangles = expandedFlatTriangles(view);
   const QMatrix4x4 mvp = projection * view;
 
+  // The viewport is composited by Qt as an opaque widget. Preserve alpha=1 in
+  // the default framebuffer so semi-transparent overlays blend only against the
+  // 3D scene, never sibling UI widgets (for example log panels).
+  gl->glColorMask(0x0001, 0x0001, 0x0001, 0x0000);
+
   gl->glEnable(0x0BE2);  // GL_BLEND
-  gl->glBlendFunc(0x0302, 0x0303);
+  gl_extra->glBlendFuncSeparate(0x0302, 0x0303, 0, 1);
 
   if (!render_triangles.empty()) {
     gl->glEnable(0x0B71);  // GL_DEPTH_TEST
@@ -1249,6 +1341,37 @@ void SceneOverlay::render(const QMatrix4x4& view, const QMatrix4x4& projection) 
   renderPbrMesh(mvp, view);
   renderPbrTexturedMeshes(mvp, view);
 
+  if (!wide_line_loop_requests_.empty()) {
+    std::vector<ColoredVertex> wide_line_triangles;
+    appendWideLineLoops(view, projection, std::max(1, viewport[3]),
+                        &wide_line_triangles);
+    if (!wide_line_triangles.empty()) {
+      gl->glDisable(0x0B71);  // GL_DEPTH_TEST
+      gl->glDepthMask(0x0000);
+      gl->glUseProgram(triangle_program_);
+      gl_extra->glUniformMatrix4fv(
+          gl->glGetUniformLocation(triangle_program_, "uMvp"), 1, 0,
+          mvp.constData());
+      gl_extra->glBindVertexArray(triangle_vao_);
+      gl_extra->glBindBuffer(0x8892, triangle_vbo_);
+      gl_extra->glBufferData(
+          0x8892,
+          static_cast<int>(wide_line_triangles.size() * sizeof(ColoredVertex)),
+          wide_line_triangles.data(), 0x88E0);
+      gl_extra->glEnableVertexAttribArray(0);
+      gl_extra->glVertexAttribPointer(0, 3, 0x1406, 0, sizeof(ColoredVertex),
+                                      reinterpret_cast<void*>(0));
+      gl_extra->glEnableVertexAttribArray(1);
+      gl_extra->glVertexAttribPointer(
+          1, 4, 0x1406, 0, sizeof(ColoredVertex),
+          reinterpret_cast<void*>(sizeof(QVector3D)));
+      gl->glDrawArrays(0x0004, 0, static_cast<int>(wide_line_triangles.size()));
+      gl_extra->glBindVertexArray(0);
+      gl->glDepthMask(0x0001);
+      gl->glEnable(0x0B71);
+    }
+  }
+
   if (!line_vertices_.empty()) {
     // TF / path overlays must not lose to the ground grid (z-fight).
     gl->glDisable(0x0B71);  // GL_DEPTH_TEST
@@ -1274,6 +1397,9 @@ void SceneOverlay::render(const QMatrix4x4& view, const QMatrix4x4& projection) 
     gl->glDrawArrays(0x0000, 0, static_cast<int>(point_vertices_.size()));
     gl_extra->glBindVertexArray(0);
   }
+
+  gl->glDisable(0x0BE2);  // GL_BLEND
+  gl->glColorMask(0x0001, 0x0001, 0x0001, 0x0001);
 }
 
 void SceneOverlay::render(const CameraState& camera, float aspect_ratio) {

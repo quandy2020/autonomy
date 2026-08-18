@@ -90,7 +90,7 @@ def minimal_config(**overrides):
                     "enabled": False,
                     "channel": "/odom",
                     "frame": "odom",
-                    "child_frame": "base_link",
+                    "child_frame": "base_footprint",
                     "noise": 0.0,
                 },
             },
@@ -107,7 +107,7 @@ def test_load_default_yaml():
     assert settings.channel_map()["points"] == "/points"
     assert "lidar" not in settings["habitat"]["sensors"]
     assert settings["habitat"]["robot"]["truth"]["enabled"] is False
-    assert settings["habitat"]["path"] == ""
+    assert settings["habitat"]["path"].endswith("17DRP5sb8fy.glb")
     assert settings["habitat"]["sensors"]["lidar_2d"]["enabled"] is True
     assert settings["habitat"]["sensors"]["lidar_3d"]["enabled"] is False
     assert settings["habitat"]["sensors"]["lidar_3d"]["vertical"]["num_rings"] == 16
@@ -117,12 +117,69 @@ def test_load_default_yaml():
     assert settings["habitat"]["sensors"]["odom"]["noise"] == 0.02
     assert settings["habitat"]["sensors"]["imu"]["noise"]["gyro"] == 0.01
     assert settings["habitat"]["sensors"]["imu"]["noise"]["accel"] == 0.05
-    assert settings["habitat"]["sensors"]["camera"]["noise"]["depth"] == 0.01
-    assert settings["habitat"]["map"]["enabled"] is False
+    assert settings["habitat"]["sensors"]["camera"]["noise"]["depth"] == 0.0
+    assert settings["habitat"]["map"]["enabled"] is True
+    assert settings["habitat"]["map"]["ply"]["channel"] == "/map_points"
     assert settings["habitat"]["map"]["grid"]["channel"] == "/map"
     assert settings["habitat"]["robot"]["tf"]["enabled"] is True
     assert settings.channel_map()["tf"] == "/tf"
     assert settings.channel_map()["clock"] == "/clock"
+    assert settings.channel_map()["footprint"] == "/footprint"
+    assert settings["habitat"]["sensors"]["odom"]["child_frame"] == "base_footprint"
+    assert settings["habitat"]["robot"]["footprint"]["frame"] == "base_footprint"
+
+
+def test_map_ply_channel_and_stride():
+    data = minimal_config()
+    data["habitat"]["map"] = {
+        "enabled": True,
+        "frame": "map",
+        "rate_hz": 0.0,
+        "ply": {
+            "file": "",
+            "channel": "/map_points",
+            "stride": 2,
+            "range_max": 10.0,
+            "horizontal": {"angle_min": -1, "angle_max": 1, "num_beams": 4},
+            "vertical": {"angle_min": -0.1, "angle_max": 0.1, "num_rings": 2},
+        },
+        "grid": {
+            "channel": "/map",
+            "resolution": 0.05,
+            "z_min": 0.0,
+            "z_max": 2.0,
+        },
+    }
+    settings = Config.load(data)
+    assert settings["habitat"]["map"]["enabled"] is True
+    assert settings["habitat"]["map"]["ply"]["channel"] == "/map_points"
+    assert settings["habitat"]["map"]["ply"]["stride"] == 2
+    assert settings.channel_map()["map_cloud"] == "/map_points"
+
+
+def test_reject_invalid_map_stride():
+    bad = minimal_config()
+    bad["habitat"]["map"] = {
+        "enabled": True,
+        "frame": "map",
+        "rate_hz": 0.0,
+        "ply": {
+            "file": "",
+            "channel": "/map/points",
+            "stride": 0,
+            "range_max": 10.0,
+            "horizontal": {"angle_min": -1, "angle_max": 1, "num_beams": 4},
+            "vertical": {"angle_min": -0.1, "angle_max": 0.1, "num_rings": 2},
+        },
+        "grid": {
+            "channel": "/map",
+            "resolution": 0.05,
+            "z_min": 0.0,
+            "z_max": 2.0,
+        },
+    }
+    with pytest.raises(ValueError, match="stride"):
+        Config.load(bad)
 
 
 def test_reject_empty_channel():

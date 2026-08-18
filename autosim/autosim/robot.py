@@ -130,6 +130,34 @@ class Robot:
         """Return ground-truth planar pose."""
         return self.x, self.y, self.yaw
 
+    def teleport(self, x: float, y: float, yaw: float) -> None:
+        """Set ground-truth and odometry to the same planar pose."""
+        self.x = self.odometry_x = float(x)
+        self.y = self.odometry_y = float(y)
+        heading = self.wrap_yaw(float(yaw))
+        self.yaw = self.odometry_yaw = heading
+
+    @staticmethod
+    def map_to_odom(
+        ground_truth: Tuple[float, float, float],
+        odometry: Tuple[float, float, float],
+    ) -> Tuple[float, float, float]:
+        """``map→odom`` so ``map→base`` equals ground truth.
+
+        ``odom→base`` stays the integrated wheel pose; this parent transform
+        absorbs odometry drift so Autoviz heading matches the Habitat camera.
+        """
+        gx, gy, gyaw = ground_truth
+        ox, oy, oyaw = odometry
+        dyaw = Robot.wrap_yaw(float(gyaw) - float(oyaw))
+        cosine = math.cos(dyaw)
+        sine = math.sin(dyaw)
+        return (
+            float(gx) - (cosine * float(ox) - sine * float(oy)),
+            float(gy) - (sine * float(ox) + cosine * float(oy)),
+            dyaw,
+        )
+
     def odometry_pose(self) -> Tuple[float, float, float]:
         """Return integrated wheel-odometry pose."""
         return self.odometry_x, self.odometry_y, self.odometry_yaw

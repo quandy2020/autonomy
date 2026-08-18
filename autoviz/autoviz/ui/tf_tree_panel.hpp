@@ -16,12 +16,14 @@ class QLineEdit;
 class QLabel;
 class QTimer;
 class QToolButton;
+class QTabWidget;
 class QTreeWidget;
 class QTreeWidgetItem;
 
 namespace autoviz {
 
 class PanelDockWidget;
+class TfTreeGraphView;
 namespace common {
 class VisualizationManager;
 }
@@ -82,7 +84,9 @@ class TfTreePanel : public QWidget {
   common::VisualizationManager* manager_ = nullptr;
   QLineEdit* filter_edit_ = nullptr;
   QLabel* summary_label_ = nullptr;
+  QTabWidget* view_tabs_ = nullptr;
   QTreeWidget* tree_ = nullptr;
+  TfTreeGraphView* graph_view_ = nullptr;
   QLabel* detail_title_ = nullptr;
   QLabel* detail_hint_ = nullptr;
   QWidget* detail_body_ = nullptr;

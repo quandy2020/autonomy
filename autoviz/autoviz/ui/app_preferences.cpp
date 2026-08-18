@@ -11,6 +11,8 @@ namespace autoviz {
 QVector<AppShortcutDefinition> DefaultShortcutDefinitions() {
   return {
       {QStringLiteral("file.open"), QStringLiteral("Open config"), QKeySequence::Open},
+      {QStringLiteral("file.open_record"), QStringLiteral("Open record"),
+       QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_O)},
       {QStringLiteral("file.save"), QStringLiteral("Save config"), QKeySequence::Save},
       {QStringLiteral("file.save_as"), QStringLiteral("Save config as"),
        QKeySequence::SaveAs},

@@ -13,12 +13,14 @@
 # limitations under the License.
 
 habitat:
-  path: ""           # empty = STAGE_EMPTY_SCENE; set HM3D/Replica .glb for real geometry
+  # MP3D root: /media/quandy/0d708864-2623-44e1-8e26-435b41edea21/datasets/habitat/mp3d/mp3d
+  # Habitat-sim loads a scene .glb (sibling folders are other MP3D houses).
+  path: /media/quandy/0d708864-2623-44e1-8e26-435b41edea21/datasets/habitat/mp3d/mp3d/QUCTc6BB5sX/QUCTc6BB5sX.glb
   spawn: [0.0, 0.0, 0.0]  # x, y, yaw
   gpu: 0
 
   robot:
-    urdf: urdf/husky.urdf   # empty = no URDF; path relative to autosim/
+    urdf: urdf/turtlebot3_burger.urdf   # empty = no URDF; path relative to autosim/
     max_linear: 0.5
     max_angular: 1.0
     wheel_separation: 0.55  # m; used for odom yaw-noise scale
@@ -36,6 +38,10 @@ habitat:
     clock:
       enabled: true
       channel: /clock
+    footprint:
+      enabled: true
+      channel: /footprint
+      frame: base_footprint
 
   sensors:
     lidar_2d:
@@ -78,7 +84,7 @@ habitat:
       frame: camera_link
       rate_hz: 30.0
       noise:
-        depth: 0.01        # Gaussian σ on depth (m)
+        depth: 0.0         # Gaussian σ on valid depth (m); 0 = clean sim image
 
     imu:
       enabled: true
@@ -95,16 +101,17 @@ habitat:
       enabled: true
       channel: /odom
       frame: odom
-      child_frame: base_link
+      child_frame: base_footprint
       noise: 0.02          # integrated σ scale (m / sqrt(m) on Δs)
 
   map:
-    enabled: false         # enable with a real habitat.path scene
+    enabled: true          # MP3D scene loaded via habitat.path
     frame: map
-    rate_hz: 0.0           # 0 = publish once after start
+    rate_hz: 1.0           # periodic republish so late Autoviz subscribers still receive /map
     ply:                   # file XOR channel (at least one)
-      file: assets/map.ply # empty = no file; path relative to autosim/
-      channel: ""          # empty = no PointCloud2; e.g. /map/points
+      file: ""             # empty = no PLY dump; path relative to autosim/
+      channel: /map_points # empty = no PointCloud2; e.g. /map/points
+      stride: 1            # publish every Nth point (>= 1)
       range_max: 30.0
       horizontal:
         angle_min: -3.14159

@@ -69,9 +69,9 @@ public:
 
     tf2::Quaternion rotation_;
     tf2::Vector3 translation_;
-    Time stamp_;
-    CompactFrameID frame_id_;
-    CompactFrameID child_frame_id_;
+    Time stamp_{0};
+    CompactFrameID frame_id_{0};
+    CompactFrameID child_frame_id_{0};
 };
 
 }  // namespace tf2

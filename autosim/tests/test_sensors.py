@@ -20,6 +20,9 @@ from autosim.sensors import Sensors
 
 
 class FakeSim:
+    def __init__(self):
+        self.depth = np.full((4, 4), 2.0, dtype=np.float32)
+
     def laser_ranges(self, angle_min, angle_max, num_beams, range_max):
         return np.full((num_beams,), 5.0, dtype=np.float32)
 
@@ -28,8 +31,7 @@ class FakeSim:
 
     def color_depth(self):
         color = np.zeros((4, 4, 3), dtype=np.uint8)
-        depth = np.full((4, 4), 2.0, dtype=np.float32)
-        return color, depth
+        return color, self.depth.copy()
 
 
 def test_depth_noise_zero_keeps_depth():
@@ -56,10 +58,37 @@ def test_depth_noise_perturbs_and_clips():
         depth_noise=0.5,
         seed=0,
     )
-    _, depth = sensors.sample_camera(FakeSim())
+    sim = FakeSim()
+    sim.depth[0, 0] = 0.0
+    _, depth = sensors.sample_camera(sim)
     assert depth.shape == (4, 4)
-    assert np.all(depth >= 0.0)
-    assert not np.allclose(depth, 2.0)
+    assert depth[0, 0] == 0.0
+    assert np.all(depth[depth > 0.0] >= sensors.depth_min_valid)
+    assert not np.allclose(depth[1:, 1:], 2.0)
+
+
+def test_depth_noise_skips_invalid_pixels():
+    sensors = Sensors(
+        angle_min=-1.0,
+        angle_max=1.0,
+        num_beams=3,
+        range_min=0.1,
+        range_max=30.0,
+        depth_noise=0.5,
+        seed=0,
+    )
+    depth = np.zeros((4, 4), dtype=np.float32)
+    depth[1, 1] = 2.0
+
+    class SparseDepthSim:
+        def color_depth(self):
+            color = np.zeros((4, 4, 3), dtype=np.uint8)
+            return color, depth.copy()
+
+    _, out = sensors.sample_camera(SparseDepthSim())
+    assert out[0, 0] == 0.0
+    assert out[1, 1] > 0.0
+    assert not np.allclose(out[1, 1], 2.0)
 
 
 def test_laser_noise_perturbs_ranges():
@@ -75,3 +104,22 @@ def test_laser_noise_perturbs_ranges():
     ranges = sensors.sample_laser(FakeSim())
     assert ranges.shape == (8,)
     assert not np.allclose(ranges, 5.0)
+
+
+def test_laser_misses_stay_nonfinite():
+    class MixedSim:
+        def laser_ranges(self, angle_min, angle_max, num_beams, range_max):
+            return np.array([1.0, np.inf, 2.0], dtype=np.float32)
+
+    sensors = Sensors(
+        angle_min=-1.0,
+        angle_max=1.0,
+        num_beams=3,
+        range_min=0.1,
+        range_max=30.0,
+        noise=0.0,
+    )
+    ranges = sensors.sample_laser(MixedSim())
+    assert ranges[0] == 1.0
+    assert not np.isfinite(ranges[1])
+    assert ranges[2] == 2.0

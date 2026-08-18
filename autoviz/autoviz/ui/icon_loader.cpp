@@ -196,6 +196,7 @@ QString MapMenuIcon(const QString& menu_id) {
       {"menu.camera", "menu/camera"},
       {"menu.backend", "menu/backend"},
       {"file.open", "menu/open_config"},
+      {"file.open_record", "menu/open_config"},
       {"file.save", "menu/save_config"},
       {"file.save_as", "menu/save_as"},
       {"file.recent", "menu/recent"},

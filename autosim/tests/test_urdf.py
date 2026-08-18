@@ -93,7 +93,7 @@ def minimal_robot_config(urdf: str = ""):
                     "enabled": False,
                     "channel": "/odom",
                     "frame": "odom",
-                    "child_frame": "base_link",
+                    "child_frame": "base_footprint",
                     "noise": 0.0,
                 },
             },
@@ -118,6 +118,44 @@ def test_load_husky_laser_height():
     ix, _, iz = model.imu_xyz()
     assert abs(ix - 0.1) < 1e-6
     assert abs(iz - 0.345) < 1e-6
+    cx, cy, cz = model.camera_xyz()
+    assert abs(cx - 0.2) < 1e-6
+    assert abs(cy - 0.0) < 1e-6
+    assert abs(cz - 0.485) < 1e-6
+
+
+def test_husky_prefers_base_footprint_tree():
+    model = UrdfModel.load("urdf/husky.urdf")
+    assert model is not None
+    assert model.root == "base_footprint"
+    assert model.odom_child_frame() == "base_footprint"
+    assert model.body_frame() == "base_link"
+    bx, by, bz = model.link_xyz_from("base_footprint", "base_link")
+    assert abs(bx - 0.0) < 1e-6
+    assert abs(by - 0.0) < 1e-6
+    assert abs(bz - 0.165) < 1e-6
+    lx, ly, lz = model.link_xyz_from("base_link", "laser_link")
+    assert abs(lx - 0.15) < 1e-6
+    assert abs(ly - 0.0) < 1e-6
+    assert abs(lz - 0.3) < 1e-6
+    footprint = model.footprint_polygon()
+    assert len(footprint) == 4
+    assert abs(footprint[0][0] - 0.4935) < 1e-6
+    assert abs(footprint[0][1] - 0.285) < 1e-6
+    assert abs(footprint[2][0] + 0.4935) < 1e-6
+    assert abs(footprint[2][1] + 0.285) < 1e-6
+
+
+def test_turtlebot3_derives_offset_footprint_from_urdf():
+    model = UrdfModel.load("urdf/turtlebot3_burger.urdf")
+    assert model is not None
+    assert model.root == "base_footprint"
+    footprint = model.footprint_polygon()
+    assert len(footprint) == 4
+    assert abs(footprint[0][0] - 0.038) < 1e-6
+    assert abs(footprint[0][1] - 0.07) < 1e-6
+    assert abs(footprint[2][0] + 0.102) < 1e-6
+    assert abs(footprint[2][1] + 0.07) < 1e-6
 
 
 def test_load_empty_urdf():

@@ -14,6 +14,8 @@
 #include <QString>
 
 #include "autoviz/common/display_property.hpp"
+#include "autoviz/display/arrow_mesh_utils.hpp"
+#include "autoviz/display/primitive_mesh.hpp"
 #include "autoviz/commsgs/time_utils.hpp"
 #include "autoviz/display/tf_display_utils.hpp"
 #include "autoviz/rendering/text_raster_utils.hpp"
@@ -34,6 +36,39 @@ int64_t WallNs() {
   return std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
 }
 
+const ObjMesh& UnitTfHubMesh() {
+  static const ObjMesh mesh = buildSphereMesh(0.5f);
+  return mesh;
+}
+
+void DrawTfSegment(rendering::SceneOverlay& scene, const QVector3D& a,
+                   const QVector3D& b, const QColor& color, float width,
+                   bool for_pick = false) {
+  scene.addLine(a, b, color, for_pick);
+  if (width > 1e-4f) {
+    scene.addViewFacingPolylineStrip({a, b}, width, color);
+  }
+}
+
+void DrawSolidTfAxis(rendering::SceneOverlay& scene, const QVector3D& origin,
+                     const QVector3D& end, const QColor& color,
+                     float shaft_diameter, float head_diameter) {
+  const QVector3D delta = end - origin;
+  const float axis_len = delta.length();
+  if (axis_len < 1e-5f) {
+    return;
+  }
+  const QVector3D direction = delta / axis_len;
+  const float hub_radius = std::max(shaft_diameter * 1.2f, axis_len * 0.06f);
+  const QVector3D shaft_start = origin + direction * (hub_radius * 0.75f);
+  std::vector<ColoredMeshInstance> meshes;
+  appendSolidArrowMeshes(&meshes, shaft_start, end, color, 0.18f, shaft_diameter,
+                         head_diameter);
+  for (const auto& mesh : meshes) {
+    scene.addTriangleMeshSolid(mesh.mesh, mesh.transform, mesh.color);
+  }
+}
+
 }  // namespace
 
 TfDisplay::TfDisplay(std::string channel)
@@ -46,6 +81,14 @@ TfDisplay::TfDisplay(std::string channel)
 TfDisplay::~TfDisplay() {
   transforms_changed_connection_.disconnect();
   transforms_listener_attached_ = false;
+}
+
+void TfDisplay::reset() {
+  ChannelDisplay::reset();
+  frames_.clear();
+  frames_dirty_ = true;
+  tf_messages_received_ = 0;
+  last_msg_wall_ns_ = 0;
 }
 
 std::vector<common::DisplayPropertySpec> TfDisplay::propertySpecs() const {
@@ -258,16 +301,23 @@ void TfDisplay::processMessage(
     return;
   }
   ensureTransformsListener();
-  autoviz::transform::ApplyTfMessageToBuffer(context_->tf_buffer, message,
-                                              "autoviz");
+  // `/tf` and `/tf_static` are already ingested by transform::Listener.
+  // Re-inserting them here as dynamic duplicates cache entries and can
+  // promote static URDF joints onto a TimeCache, which desynchronizes
+  // rigid links during yaw.
+  const std::string& ch = channel();
+  const bool already_in_buffer = (ch == "/tf" || ch == "tf" ||
+                                  ch == "/tf_static" || ch == "tf_static");
+  if (!already_in_buffer) {
+    autoviz::transform::ApplyTfMessageToBuffer(context_->tf_buffer, message,
+                                                "autoviz");
+  }
   last_msg_wall_ns_ = WallNs();
   ++tf_messages_received_;
   // Channel activity keeps frames "fresh" for Frame Timeout (RViz-like).
   for (auto& entry : frames_) {
     entry.second.last_update_ns = last_msg_wall_ns_;
   }
-  // transforms-changed listener also sets frames_dirty_; keep explicit mark
-  // in case listener is not yet attached.
   frames_dirty_ = true;
 }
 
@@ -445,19 +495,11 @@ void TfDisplay::onDraw(rendering::SceneOverlay& scene) {
   const float scale = props_.marker_scale;
   const double timeout = props_.frame_timeout;
   const float axis_len = kTfDefaultAxisLength * scale;
+  const float axis_shaft_diameter = std::clamp(0.022f * scale, 0.008f, 0.05f);
+  const float axis_head_diameter = std::clamp(axis_shaft_diameter * 1.8f,
+                                              0.016f, 0.09f);
+  const float arrow_width = std::clamp(0.022f * scale, 0.008f, 0.06f);
   const int64_t now_ns = WallNs();
-
-  // Channel-level timeout: hide everything only when /tf has gone quiet.
-  if (timeout > 0.0 && last_msg_wall_ns_ > 0) {
-    const double msg_age =
-        std::max(0.0, (static_cast<double>(now_ns) -
-                       static_cast<double>(last_msg_wall_ns_)) *
-                          1e-9);
-    if (msg_age > timeout) {
-      last_drew_frames_ = 0;
-      return;
-    }
-  }
 
   int drew = 0;
   for (auto& entry : frames_) {
@@ -472,7 +514,8 @@ void TfDisplay::onDraw(rendering::SceneOverlay& scene) {
                              static_cast<double>(info.last_update_ns)) *
                                 1e-9)
             : 0.0;
-    const double age_clamped = std::min(age, timeout * 0.99);
+    const double age_clamped =
+        timeout > 0.0 ? std::min(age, timeout * 0.99) : age;
     const TfAgeVisual age_r =
         TfAgeVisualForTimeout(age_clamped, timeout, QColor(220, 60, 60));
     const TfAgeVisual age_g =
@@ -486,31 +529,49 @@ void TfDisplay::onDraw(rendering::SceneOverlay& scene) {
 
     const QVector3D& origin = info.position;
     const QQuaternion& ori = info.orientation;
-    ++drew;
-
     // TF overlay is not click-selectable (design); skip pick sample spam.
     constexpr bool kPick = false;
 
     if (props_.show_axes) {
-      scene.addLine(origin,
-                    origin + ori.rotatedVector(QVector3D(axis_len, 0.f, 0.f)),
-                    age_r.color, kPick);
-      scene.addLine(origin,
-                    origin + ori.rotatedVector(QVector3D(0.f, axis_len, 0.f)),
-                    age_g.color, kPick);
-      scene.addLine(origin,
-                    origin + ori.rotatedVector(QVector3D(0.f, 0.f, axis_len)),
-                    age_b.color, kPick);
+      if (age_r.visible || age_g.visible || age_b.visible) {
+        QMatrix4x4 hub;
+        hub.setToIdentity();
+        hub.translate(origin);
+        const float hub_radius =
+            std::max(axis_shaft_diameter * 1.2f, axis_len * 0.06f);
+        hub.scale(hub_radius * 2.f, hub_radius * 2.f, hub_radius * 2.f);
+        scene.addTriangleMeshSolid(UnitTfHubMesh(), hub, QColor(185, 185, 185));
+      }
+      if (age_r.visible) {
+        DrawSolidTfAxis(
+            scene, origin,
+            origin + ori.rotatedVector(QVector3D(axis_len, 0.f, 0.f)),
+            age_r.color, axis_shaft_diameter, axis_head_diameter);
+      }
+      if (age_g.visible) {
+        DrawSolidTfAxis(
+            scene, origin,
+            origin + ori.rotatedVector(QVector3D(0.f, axis_len, 0.f)),
+            age_g.color, axis_shaft_diameter, axis_head_diameter);
+      }
+      if (age_b.visible) {
+        DrawSolidTfAxis(
+            scene, origin,
+            origin + ori.rotatedVector(QVector3D(0.f, 0.f, axis_len)),
+            age_b.color, axis_shaft_diameter, axis_head_diameter);
+      }
     }
 
     if (props_.show_arrows && !info.parent.empty()) {
       const auto parent_it = frames_.find(info.parent);
-      if (parent_it != frames_.end() && parent_it->second.have_fixed_pose) {
+      if (age_arrow.visible && parent_it != frames_.end() &&
+          parent_it->second.have_fixed_pose) {
         const QVector3D& parent_origin = parent_it->second.position;
         const QVector3D delta = parent_origin - origin;
         const float len = delta.length();
         if (len > 1e-4f) {
-          scene.addLine(origin, parent_origin, age_arrow.color, kPick);
+          DrawTfSegment(scene, origin, parent_origin, age_arrow.color,
+                        arrow_width, kPick);
           const QVector3D dir = delta / len;
           QVector3D side = QVector3D::crossProduct(dir, QVector3D(0.f, 0.f, 1.f));
           if (side.lengthSquared() < 1e-6f) {
@@ -519,10 +580,10 @@ void TfDisplay::onDraw(rendering::SceneOverlay& scene) {
           side.normalize();
           const float head = std::min(0.15f * len, 0.12f);
           const QVector3D base = parent_origin - dir * head;
-          scene.addLine(parent_origin, base + side * (head * 0.35f),
-                        age_arrow.color, kPick);
-          scene.addLine(parent_origin, base - side * (head * 0.35f),
-                        age_arrow.color, kPick);
+          DrawTfSegment(scene, parent_origin, base + side * (head * 0.35f),
+                        age_arrow.color, arrow_width, kPick);
+          DrawTfSegment(scene, parent_origin, base - side * (head * 0.35f),
+                        age_arrow.color, arrow_width, kPick);
         }
       }
     }
@@ -548,6 +609,12 @@ void TfDisplay::onDraw(rendering::SceneOverlay& scene) {
             origin + QVector3D(0.f, 0.f, axis_len * 0.35f),
             half_height * aspect, half_height, info.name_label);
       }
+    }
+
+    if ((props_.show_axes && (age_r.visible || age_g.visible || age_b.visible)) ||
+        (props_.show_arrows && age_arrow.visible) ||
+        (props_.show_names && age_name.visible)) {
+      ++drew;
     }
   }
   last_drew_frames_ = drew;

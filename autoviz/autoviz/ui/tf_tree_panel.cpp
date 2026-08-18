@@ -17,6 +17,7 @@
 #include <QLineEdit>
 #include <QSignalBlocker>
 #include <QSplitter>
+#include <QTabWidget>
 #include <QTimer>
 #include <QToolButton>
 #include <QTreeWidget>
@@ -30,6 +31,7 @@
 #include "autoviz/ui/panel_context_menu.hpp"
 #include "autoviz/ui/panel_dock_widget.hpp"
 #include "autoviz/ui/panel_title_tools.hpp"
+#include "autoviz/ui/tf_tree_graph_view.hpp"
 
 namespace autoviz {
 namespace {
@@ -68,6 +70,7 @@ TfTreePanel::TfTreePanel(transform::Buffer* tf_buffer,
 
   // Cap tree rebuilds: transforms-changed fires per setTransform (often >> 30Hz).
   refresh_timer_ = new QTimer(this);
+  refresh_timer_->setTimerType(Qt::PreciseTimer);
   refresh_timer_->setSingleShot(true);
   refresh_timer_->setInterval(250);
   connect(refresh_timer_, &QTimer::timeout, this,
@@ -152,6 +155,10 @@ void TfTreePanel::setupUi() {
   filter_edit_->setClearButtonEnabled(true);
   StyleFilterLineEdit(filter_edit_);
   filter_row->addWidget(filter_edit_, 1);
+  auto* fit_button = new QToolButton(toolbar);
+  fit_button->setText(tr("Fit"));
+  fit_button->setToolTip(tr("Zoom the TF graph to fit"));
+  filter_row->addWidget(fit_button);
   toolbar_layout->addLayout(filter_row);
 
   summary_label_ = new QLabel(toolbar);
@@ -159,7 +166,17 @@ void TfTreePanel::setupUi() {
   toolbar_layout->addWidget(summary_label_);
   root->addWidget(toolbar);
 
-  auto* splitter = new QSplitter(Qt::Horizontal, this);
+  view_tabs_ = new QTabWidget(this);
+  view_tabs_->setDocumentMode(true);
+  view_tabs_->setTabPosition(QTabWidget::North);
+  root->addWidget(view_tabs_, 1);
+
+  auto* tree_page = new QWidget(view_tabs_);
+  auto* tree_page_layout = new QVBoxLayout(tree_page);
+  tree_page_layout->setContentsMargins(0, 0, 0, 0);
+  tree_page_layout->setSpacing(0);
+
+  auto* splitter = new QSplitter(Qt::Horizontal, tree_page);
   splitter->setChildrenCollapsible(false);
   splitter->setHandleWidth(1);
   splitter->setStyleSheet(PanelSplitterStyle());
@@ -220,11 +237,38 @@ void TfTreePanel::setupUi() {
   splitter->addWidget(detail_panel);
   splitter->setStretchFactor(0, 3);
   splitter->setStretchFactor(1, 2);
-  root->addWidget(splitter, 1);
+  tree_page_layout->addWidget(splitter, 1);
+  view_tabs_->addTab(tree_page, tr("Tree"));
+
+  graph_view_ = new TfTreeGraphView(view_tabs_);
+  view_tabs_->addTab(graph_view_, tr("Graph"));
 
   connect(filter_edit_, &QLineEdit::textChanged, this, &TfTreePanel::onFilterChanged);
   connect(tree_, &QTreeWidget::itemSelectionChanged, this,
           &TfTreePanel::onFrameSelectionChanged);
+  connect(graph_view_, &TfTreeGraphView::frameActivated, this, [this](const QString& frame_id) {
+    if (tree_ == nullptr || frame_id.isEmpty()) {
+      return;
+    }
+    const auto node_it = frame_nodes_.find(frame_id);
+    if (node_it != frame_nodes_.end() && node_it->item != nullptr) {
+      tree_->setCurrentItem(node_it->item);
+      updateDetailsForItem(node_it->item);
+    }
+  });
+  connect(fit_button, &QToolButton::clicked, this, [this]() {
+    if (graph_view_ != nullptr) {
+      graph_view_->zoomToFit();
+      if (view_tabs_ != nullptr) {
+        view_tabs_->setCurrentWidget(graph_view_);
+      }
+    }
+  });
+  connect(view_tabs_, &QTabWidget::currentChanged, this, [this](int /*index*/) {
+    force_rebuild_ = true;
+    refresh_pending_ = true;
+    onCoalescedRefresh();
+  });
 }
 
 double TfTreePanel::currentTimeSec() const {
@@ -317,6 +361,12 @@ void TfTreePanel::updateStatsInPlace(
   updateSummaryLabel(static_cast<int>(frames.size()),
                      std::max(1, tree_ != nullptr ? tree_->topLevelItemCount()
                                                   : root_count));
+  if (graph_view_ != nullptr && view_tabs_ != nullptr &&
+      view_tabs_->currentWidget() == graph_view_) {
+    graph_view_->setFrames(frames, currentTimeSec(),
+                           filter_edit_ != nullptr ? filter_edit_->text().trimmed()
+                                                   : QString());
+  }
   if (tree_ != nullptr) {
     updateDetailsForItem(tree_->currentItem());
   }
@@ -338,6 +388,9 @@ void TfTreePanel::onCoalescedRefresh() {
     structure_fingerprint_.clear();
     tree_->clear();
     frame_nodes_.clear();
+    if (graph_view_ != nullptr) {
+      graph_view_->showMessage(tr("TF buffer unavailable."));
+    }
     updateSummaryLabel(0, 0);
     detail_body_->hide();
     detail_hint_->show();
@@ -368,6 +421,9 @@ void TfTreePanel::rebuildTree() {
   frame_nodes_.clear();
 
   if (tf_buffer_ == nullptr) {
+    if (graph_view_ != nullptr) {
+      graph_view_->showMessage(tr("TF buffer unavailable."));
+    }
     updateSummaryLabel(0, 0);
     detail_body_->hide();
     detail_hint_->show();
@@ -378,6 +434,9 @@ void TfTreePanel::rebuildTree() {
   const std::vector<transform::TfFrameStats> frames = tf_buffer_->frameStats();
   structure_fingerprint_ = structureFingerprint(frames);
   if (frames.empty()) {
+    if (graph_view_ != nullptr) {
+      graph_view_->showMessage(tr("No transforms received yet."));
+    }
     updateSummaryLabel(0, 0);
     detail_body_->hide();
     detail_hint_->show();
@@ -447,6 +506,10 @@ void TfTreePanel::rebuildTree() {
 
   tree_->sortItems(0, Qt::AscendingOrder);
   updateSummaryLabel(static_cast<int>(frames.size()), root_count);
+  if (graph_view_ != nullptr) {
+    graph_view_->requestFit();
+    graph_view_->setFrames(frames, currentTimeSec(), filter);
+  }
 
   if (!selected_frame_id_.isEmpty()) {
     const auto nodes = frame_nodes_.values();
@@ -488,6 +551,12 @@ void TfTreePanel::onFilterChanged(const QString& /*text*/) {
 }
 
 void TfTreePanel::onFrameSelectionChanged() {
+  if (graph_view_ != nullptr) {
+    const QTreeWidgetItem* item = tree_ != nullptr ? tree_->currentItem() : nullptr;
+    graph_view_->setCurrentFrame(item != nullptr
+                                     ? item->data(0, kRoleFrameId).toString()
+                                     : QString());
+  }
   updateDetailsForItem(tree_->currentItem());
 }
 

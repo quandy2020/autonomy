@@ -35,6 +35,8 @@ namespace rendering {
 /** Dynamic geometry collected by Display plugins each frame. */
 class SceneOverlay {
  public:
+  enum class TextureFilterMode { kLinear, kNearest };
+
   struct PickVertex {
     QVector3D position;
     uint32_t handle = 0;
@@ -60,6 +62,7 @@ class SceneOverlay {
   struct TexturedBatch {
     QImage image;
     std::vector<TexturedVertex> vertices;
+    TextureFilterMode filter_mode = TextureFilterMode::kLinear;
   };
 
   struct PbrVertex {
@@ -135,13 +138,17 @@ class SceneOverlay {
                       float metallic, float roughness);
   void addTexturedQuad(const QVector3D& top_left, const QVector3D& top_right,
                        const QVector3D& bottom_right,
-                       const QVector3D& bottom_left, const QImage& image);
+                       const QVector3D& bottom_left, const QImage& image,
+                       TextureFilterMode filter_mode = TextureFilterMode::kLinear);
   /** Screen-aligned quad (TEXT markers, billboards). Expanded at render time. */
   void addViewFacingQuad(const QVector3D& center, float half_extent,
                          const QColor& color);
   /** Camera-facing polyline strip (Path Billboards on OpenGL backend). */
   void addViewFacingPolylineStrip(const std::vector<QVector3D>& points,
                                   float line_width, const QColor& color);
+  /** Screen-space wide closed loop using GL line width. */
+  void addLineLoop(const std::vector<QVector3D>& points, const QColor& color,
+                   float line_width);
   /** Screen-aligned textured quad (TEXT markers). Expanded at render time. */
   void addViewFacingTexturedQuad(const QVector3D& center, float half_width,
                                  float half_height, const QImage& image);
@@ -187,6 +194,7 @@ class SceneOverlay {
            triangle_vertices_.empty() && textured_batches_.empty() &&
            billboard_requests_.empty() &&
            polyline_strip_requests_.empty() &&
+           wide_line_loop_requests_.empty() &&
            view_facing_textured_requests_.empty() &&
            pbr_vertices_.empty() && pbr_textured_batches_.empty();
   }
@@ -213,12 +221,21 @@ class SceneOverlay {
     QVector4D color;
   };
 
+  struct WideLineLoopRequest {
+    std::vector<QVector3D> points;
+    float line_width = 1.f;
+    QVector4D color;
+  };
+
   void recordPick(const QVector3D& position);
   void uploadIfNeeded();
   void appendViewFacingBillboards(const QMatrix4x4& view,
                                   std::vector<ColoredVertex>* triangles) const;
   void appendViewFacingPolylineStrips(const QMatrix4x4& view,
                                       std::vector<ColoredVertex>* triangles) const;
+  void appendWideLineLoops(const QMatrix4x4& view,
+                           const QMatrix4x4& projection, int viewport_height,
+                           std::vector<ColoredVertex>* triangles) const;
   void appendPointSpriteBatch(const QMatrix4x4& view,
                               std::vector<TexturedBatch>* batches) const;
   void appendPickPointSpriteBatch(const QMatrix4x4& view,
@@ -245,6 +262,7 @@ class SceneOverlay {
   std::vector<TexturedBatch> textured_batches_;
   std::vector<BillboardRequest> billboard_requests_;
   std::vector<PolylineStripRequest> polyline_strip_requests_;
+  std::vector<WideLineLoopRequest> wide_line_loop_requests_;
   std::vector<ViewFacingTexturedRequest> view_facing_textured_requests_;
   std::vector<PbrVertex> pbr_vertices_;
   std::vector<PbrTexturedBatch> pbr_textured_batches_;

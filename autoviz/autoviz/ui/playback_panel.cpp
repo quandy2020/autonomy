@@ -14,6 +14,7 @@
 
 #include "autoviz/integration/playback_controller.hpp"
 #include "autoviz/ui/import_record_dialog.hpp"
+#include "autoviz/ui/record_open_utils.hpp"
 
 namespace autoviz {
 
@@ -201,38 +202,48 @@ void PlaybackPanel::onSyncRate() {
   controller_->play(rate_spin_->value(), loop_check_->isChecked());
 }
 
+void PlaybackPanel::syncFromController() {
+  updateUi();
+}
+
+bool PlaybackPanel::openAndPlay(const QString& path) {
+  if (controller_ == nullptr) {
+    return false;
+  }
+  const RecordSourceKind kind = ClassifyRecordSource(path);
+  OpenRecordResult result = OpenRecordSource(controller_, path);
+  if (!result.ok &&
+      (kind == RecordSourceKind::kBag || kind == RecordSourceKind::kMcap)) {
+    ImportRecordDialog dialog(controller_, this);
+    dialog.setSourcePath(path);
+    if (dialog.exec() != QDialog::Accepted || !dialog.recordOpened()) {
+      updateUi();
+      return false;
+    }
+  } else if (!result.ok) {
+    QMessageBox::warning(this, tr("Open Record"), result.error);
+    updateUi();
+    return false;
+  }
+  controller_->play(rate_spin_->value(), loop_check_->isChecked());
+  updateUi();
+  return true;
+}
+
 void PlaybackPanel::onOpenRecord() {
   const QString path = QFileDialog::getOpenFileName(
-      this, tr("Open Autolink Record"), QString(),
-      tr("Autolink Record (*.record);;All Files (*)"));
+      this, tr("Open Record"), QString(),
+      tr("Autolink Record (*.record);;Legacy Bag (*.bag);;MCAP (*.mcap);;All Files (*)"));
   if (path.isEmpty()) {
     return;
   }
-  const QString suffix = QFileInfo(path).suffix().toLower();
-  if (suffix == QLatin1String("bag") || suffix == QLatin1String("mcap")) {
-    QMessageBox::information(
-        this, tr("Convert Required"),
-        tr("Autoviz replays Autolink .record files.\n\n"
-           "Convert legacy bag offline:\n"
-           "  bag_to_record input.bag output.record\n\n"
-           "Then open output.record in Playback."));
-    return;
-  }
-  if (!controller_->openFile(path.toStdString())) {
-    QMessageBox::warning(
-        this, tr("Open Failed"),
-        tr("Could not open record file:\n%1\n\n"
-           "Ensure the file is a valid Autolink .record.")
-            .arg(path));
-    updateUi();
-    return;
-  }
-  updateUi();
+  openAndPlay(path);
 }
 
 void PlaybackPanel::onImport() {
   ImportRecordDialog dialog(controller_, this);
   if (dialog.exec() == QDialog::Accepted && dialog.recordOpened()) {
+    controller_->play(rate_spin_->value(), loop_check_->isChecked());
     updateUi();
   }
 }

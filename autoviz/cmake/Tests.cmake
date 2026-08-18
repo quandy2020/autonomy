@@ -155,6 +155,9 @@ if(GTest_FOUND)
     ${AUTOVIZ_SRC_ROOT}/common/pick_registry.cpp
     ${AUTOVIZ_SRC_ROOT}/common/pick_handle.cpp
     ${AUTOVIZ_SRC_ROOT}/common/selection_handler.cpp
+    ${AUTOVIZ_SRC_ROOT}/integration/message_queue.cpp
+    ${AUTOVIZ_SRC_ROOT}/integration/channel_stats_registry.cpp
+    ${AUTOVIZ_SRC_ROOT}/integration/channel_reader_registry.cpp
     ${AUTOVIZ_SRC_ROOT}/transform/buffer.cpp
     ${AUTOVIZ_SRC_ROOT}/transform/buffer_utils.cpp
     ${AUTOVIZ_SRC_ROOT}/transform/tf2/buffer_core.cpp
@@ -170,4 +173,9 @@ if(GTest_FOUND)
     ${AUTOVIZ_ROOT}/tests/gtest_main.cpp
     ${AUTOVIZ_ROOT}/tests/tf_display_utils_test.cpp
     ${AUTOVIZ_SRC_ROOT}/display/tf_display_utils.cpp)
+
+  _autoviz_display_gtest(image_utils_test
+    ${AUTOVIZ_ROOT}/tests/gtest_main.cpp
+    ${AUTOVIZ_ROOT}/tests/image_utils_test.cpp
+    ${AUTOVIZ_SRC_ROOT}/display/image_utils.cpp)
 endif()

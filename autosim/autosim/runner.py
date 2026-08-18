@@ -40,16 +40,19 @@ from autosim.sensors import Sensors
 from autosim.simulator import Simulator
 
 from automsgs.msgs.geometry_msgs.pose_stamped_pb2 import PoseStamped
+from automsgs.msgs.geometry_msgs.polygon_stamped_pb2 import PolygonStamped
 from automsgs.msgs.geometry_msgs.twist_stamped_pb2 import TwistStamped
 from automsgs.msgs.map_msgs.occupancy_grid_pb2 import OccupancyGrid
 from automsgs.msgs.nav_msgs.odometry_pb2 import Odometry
-from automsgs.msgs.rosgraph_msgs.clock_pb2 import Clock as ClockMsg
+from automsgs.msgs.builtin_interfaces.time_pb2 import Time as TimeMsg
 from automsgs.msgs.sensor_msgs.camera_info_pb2 import CameraInfo
 from automsgs.msgs.sensor_msgs.image_pb2 import Image
 from automsgs.msgs.sensor_msgs.imu_pb2 import Imu
 from automsgs.msgs.sensor_msgs.laser_scan_pb2 import LaserScan
 from automsgs.msgs.sensor_msgs.point_cloud2_pb2 import PointCloud2
 from automsgs.msgs.tf2_msgs.tf_message_pb2 import TFMessage
+
+TF_STATIC_REPUBLISH_SEC = 1.0
 
 
 class Runner:
@@ -128,7 +131,8 @@ class Runner:
         self.map_cfg = settings["habitat"].get("map") or {"enabled": False}
         self.tf_cfg = self.robot_cfg.get("tf") or {"enabled": False}
         self.clock_cfg = self.robot_cfg.get("clock") or {"enabled": False}
-        self.tf_static_sent = False
+        self.footprint = self.robot_cfg.get("footprint") or {"enabled": False}
+        self.tf_static_elapsed = TF_STATIC_REPUBLISH_SEC
 
     def assemble_plant(self, simulator: Optional[Simulator]) -> None:
         """Construct robot, simulator, and sensor sampler.
@@ -155,6 +159,10 @@ class Runner:
             self.settings.data
         )
         self.simulator.reset(*self.robot.pose())
+        snap = getattr(self.simulator, "snap_to_navmesh", None)
+        if callable(snap):
+            snap()
+            self.robot.teleport(*self.simulator.pose())
         cam_noise = self.camera.get("noise") or {}
         self.sensors = Sensors(
             angle_min=self.lidar_2d["angle_min"],
@@ -189,6 +197,8 @@ class Runner:
             types["imu"] = Imu
         if self.robot_cfg["truth"]["enabled"]:
             types["gt_pose"] = PoseStamped
+        if self.footprint.get("enabled", False):
+            types["footprint"] = PolygonStamped
         if self.map_cfg.get("enabled", False):
             if str((self.map_cfg.get("ply") or {}).get("channel") or "").strip():
                 types["map_cloud"] = PointCloud2
@@ -197,7 +207,7 @@ class Runner:
             types["tf"] = TFMessage
             types["tf_static"] = TFMessage
         if self.clock_cfg.get("enabled", False):
-            types["clock"] = ClockMsg
+            types["clock"] = TimeMsg
         return types
 
     def bind_bridge(self) -> None:
@@ -210,16 +220,32 @@ class Runner:
         """Spin at ``control_hz`` until shutdown or ``max_steps``.
 
         Always closes the simulator and calls ``link.shutdown()`` on exit.
+        Integration uses the real elapsed dt so TF/odom match ``cmd_vel`` even
+        when a slow Habitat/camera tick overruns the nominal period.
         """
-        dt = 1.0 / float(self.robot_cfg["control_hz"])
+        period = 1.0 / float(self.robot_cfg["control_hz"])
+        last = time.perf_counter() - period
         steps = 0
         try:
             while not self.link.is_shutdown():
+                now = time.perf_counter()
+                elapsed = now - last
+                last = now
+                # On schedule (and in tests that stub sleep) keep the nominal
+                # period so sensor timers and cmd_vel stay aligned. After a
+                # Habitat/camera overrun, integrate the real elapsed time so
+                # TF/odom still match the commanded twist.
+                if elapsed > period:
+                    dt = min(elapsed, 0.25)
+                else:
+                    dt = period
                 self.cycle(dt)
                 steps += 1
                 if self.max_steps is not None and steps >= self.max_steps:
                     break
-                time.sleep(dt)
+                remaining = period - (time.perf_counter() - now)
+                if remaining > 0.0:
+                    time.sleep(remaining)
         finally:
             self.simulator.close()
             self.link.shutdown()
@@ -244,6 +270,7 @@ class Runner:
         self.emit("camera", self.publish_camera, stamp)
         self.emit("imu", self.publish_imu, yaw, linear, stamp)
         self.emit("truth", self.publish_truth, stamp)
+        self.emit("footprint", self.publish_footprint, stamp)
         self.emit("map", self.publish_map, stamp)
         self.emit("tf", self.publish_tf, stamp)
         self.emit("clock", self.publish_clock, stamp)
@@ -279,6 +306,38 @@ class Runner:
         self.camera_elapsed += dt
         self.inertial_elapsed += dt
         self.map_elapsed += dt
+        self.tf_static_elapsed += dt
+
+    def odom_child_frame(self) -> str:
+        """Dynamic child frame used by both ``/odom`` and ``/tf``."""
+        urdf = getattr(self.simulator, "urdf", None)
+        configured = str(self.odom.get("child_frame", "base_link"))
+        if urdf is None:
+            return configured
+        return urdf.odom_child_frame(configured)
+
+    def body_frame(self) -> str:
+        """Robot body frame that owns sensor mounts."""
+        urdf = getattr(self.simulator, "urdf", None)
+        if urdf is None:
+            return str(self.odom.get("child_frame", "base_link"))
+        return urdf.body_frame()
+
+    def footprint_points(self) -> Tuple[Tuple[float, float, float], ...]:
+        """Footprint vertices, preferring URDF-derived geometry over YAML points."""
+        urdf = getattr(self.simulator, "urdf", None)
+        if urdf is not None:
+            polygon = tuple(urdf.footprint_polygon())
+            if polygon:
+                return polygon
+        points = self.footprint.get("points") or []
+        polygon = []
+        for point in points:
+            if len(point) == 2:
+                polygon.append((float(point[0]), float(point[1]), 0.0))
+            else:
+                polygon.append((float(point[0]), float(point[1]), float(point[2])))
+        return tuple(polygon)
 
     def publish_odometry(
         self,
@@ -310,11 +369,31 @@ class Runner:
                 angular,
                 stamp,
                 self.odom["frame"],
-                self.odom["child_frame"],
+                self.odom_child_frame(),
                 pose_variance=variance,
                 twist_variance=variance,
             ),
         )
+
+    def publish_footprint(self, stamp: Tuple[int, int]) -> None:
+        """Publish robot footprint as ``geometry_msgs/PolygonStamped``."""
+        if not self.footprint.get("enabled", False):
+            return
+        polygon = self.footprint_points()
+        if len(polygon) < 3:
+            return
+        msg = PolygonStamped()
+        msg.header.frame_id = str(
+            self.footprint.get("frame") or self.odom.get("child_frame", "base_footprint")
+        )
+        msg.header.stamp.sec = int(stamp[0])
+        msg.header.stamp.nanosec = int(stamp[1])
+        for x, y, z in polygon:
+            point = msg.polygon.points.add()
+            point.x = float(x)
+            point.y = float(y)
+            point.z = float(z)
+        self.bridge.publish("footprint", msg)
 
     def publish_scan(self, stamp: Tuple[int, int]) -> None:
         """Publish a 2D ``LaserScan`` when enabled and due.
@@ -351,10 +430,66 @@ class Runner:
             return
         self.points_elapsed = 0.0
         points = self.sensors.sample_points(self.simulator)
+        intensity = None
+        if points.size > 0:
+            intensity = np.linalg.norm(points, axis=1).astype(np.float32)
         self.bridge.publish(
             "points",
-            Messages.encode_point_cloud2(points, stamp, self.lidar_3d["frame"]),
+            Messages.encode_point_cloud2(
+                points,
+                stamp,
+                self.lidar_3d["frame"],
+                intensity=intensity,
+            ),
         )
+
+    @staticmethod
+    def subsample_points(
+        cloud: np.ndarray,
+        stride: int,
+    ) -> np.ndarray:
+        """Keep every ``stride``-th point for map / lidar downsampling."""
+        step = max(1, int(stride))
+        array = np.asarray(cloud, dtype=np.float32).reshape(-1, 3)
+        if array.size == 0 or step <= 1:
+            return array
+        return array[::step]
+
+    def publish_map(self, stamp: Tuple[int, int]) -> None:
+        """Publish panoramic ``/map/points`` and ``/map`` when due.
+
+        Args:
+            stamp: Message timestamp.
+        """
+        if self.map_builder is None or not self.map_cfg.get("enabled", False):
+            return
+        rate = float(self.map_cfg.get("rate_hz", 0.0))
+        if rate <= 0.0:
+            if self.map_published:
+                return
+        elif self.map_elapsed < 1.0 / rate and self.map_published:
+            return
+        self.map_elapsed = 0.0
+        origin = (float(self.spawn[0]), float(self.spawn[1]))
+        cloud, grid, resolution, ox, oy, _, _ = self.map_builder.sample(self.simulator, origin)
+        ply_cfg = self.map_cfg.get("ply") or {}
+        stride = int(ply_cfg.get("stride", 1))
+        cloud = self.subsample_points(cloud, stride)
+        frame = self.map_cfg["frame"]
+        ply_channel = str(ply_cfg.get("channel") or "").strip()
+        if ply_channel:
+            intensity = None
+            if cloud.size > 0:
+                intensity = np.linalg.norm(cloud, axis=1).astype(np.float32)
+            self.bridge.publish(
+                "map_cloud",
+                Messages.encode_point_cloud2(cloud, stamp, frame, intensity=intensity),
+            )
+        self.bridge.publish(
+            "map_grid",
+            Messages.encode_occupancy_grid(grid, resolution, ox, oy, stamp, frame),
+        )
+        self.map_published = True
 
     def publish_camera(self, stamp: Tuple[int, int]) -> None:
         """Publish RGB, depth, and ``CameraInfo`` when enabled and due.
@@ -415,63 +550,58 @@ class Runner:
             ),
         )
 
-    def publish_map(self, stamp: Tuple[int, int]) -> None:
-        """Publish panoramic ``/map/points`` and ``/map`` when due.
-
-        Args:
-            stamp: Message timestamp.
-        """
-        if self.map_builder is None or not self.map_cfg.get("enabled", False):
-            return
-        rate = float(self.map_cfg.get("rate_hz", 0.0))
-        if rate <= 0.0:
-            if self.map_published:
-                return
-        elif self.map_elapsed < 1.0 / rate and self.map_published:
-            return
-        self.map_elapsed = 0.0
-        origin = (float(self.spawn[0]), float(self.spawn[1]))
-        cloud, grid, resolution, ox, oy, _, _ = self.map_builder.sample(self.simulator, origin)
-        frame = self.map_cfg["frame"]
-        ply_channel = str((self.map_cfg.get("ply") or {}).get("channel") or "").strip()
-        if ply_channel:
-            self.bridge.publish("map_cloud", Messages.encode_point_cloud2(cloud, stamp, frame))
-        self.bridge.publish(
-            "map_grid",
-            Messages.encode_occupancy_grid(grid, resolution, ox, oy, stamp, frame),
-        )
-        self.map_published = True
-
     def publish_tf(self, stamp: Tuple[int, int]) -> None:
-        """Publish ``map→odom→base_link`` and static sensor mounts."""
+        """Publish one rigid TF snapshot, plus a low-rate ``/tf_static`` replay.
+
+        Every control tick puts the odometry chain and URDF mounts into a
+        single ``/tf`` message with a shared stamp so lookups do not mix a
+        fresh yaw with 1 Hz-old joint poses. ``/tf_static`` is not latched on
+        autolink, so mounts are also replayed at a low rate for late joiners.
+        """
         if not self.tf_cfg.get("enabled", False):
             return
         map_frame = self.robot_cfg.get("map_frame", "map")
         odom_frame = self.odom["frame"]
-        base_frame = self.odom["child_frame"]
+        odom_child = self.odom_child_frame()
+        body_frame = self.body_frame()
         ox, oy, oyaw = self.robot.odometry_pose()
+        mx, my, myaw = self.robot.map_to_odom(self.robot.pose(), (ox, oy, oyaw))
         dynamic = [
-            Messages.encode_transform(stamp, map_frame, odom_frame, (0.0, 0.0, 0.0), 0.0),
-            Messages.encode_transform(stamp, odom_frame, base_frame, (ox, oy, 0.0), oyaw),
+            Messages.encode_transform(stamp, map_frame, odom_frame, (mx, my, 0.0), myaw),
+            Messages.encode_transform(stamp, odom_frame, odom_child, (ox, oy, 0.0), oyaw),
         ]
-        self.bridge.publish("tf", Messages.encode_tf_message(dynamic))
-        if self.tf_static_sent:
-            return
         mounts = []
         urdf = getattr(self.simulator, "urdf", None)
         if urdf is not None:
-            for link, xyz in (
-                (self.lidar_2d.get("frame", "laser_link"), urdf.laser_xyz()),
-                (self.imu.get("frame", "imu_link"), urdf.imu_xyz()),
-                (self.camera.get("frame", "camera_link"), urdf.camera_xyz()),
-            ):
-                mounts.append(Messages.encode_transform(stamp, base_frame, link, xyz, 0.0))
+            for child, (parent, xyz) in urdf.parents.items():
+                if child == odom_child:
+                    continue
+                mounts.append(
+                    Messages.encode_transform(
+                        stamp,
+                        parent,
+                        child,
+                        xyz,
+                        0.0,
+                    )
+                )
         else:
             mounts.append(
-                Messages.encode_transform(stamp, base_frame, self.lidar_2d.get("frame", "laser_link"), (0.0, 0.0, 0.2))
+                Messages.encode_transform(
+                    stamp,
+                    body_frame,
+                    self.lidar_2d.get("frame", "laser_link"),
+                    (0.0, 0.0, 0.2),
+                )
             )
-        self.bridge.publish("tf_static", Messages.encode_tf_message(mounts))
-        self.tf_static_sent = True
+        # One TFMessage, one stamp: every link is a single rigid snapshot.
+        # Publishing URDF joints only at 1 Hz on /tf made child lookups
+        # interpolate to an older common time, so the tree fanned apart
+        # during yaw (ghost axes) and lagged cmd_vel.
+        self.bridge.publish("tf", Messages.encode_tf_message(dynamic + mounts))
+        if mounts and self.tf_static_elapsed >= TF_STATIC_REPUBLISH_SEC:
+            self.bridge.publish("tf_static", Messages.encode_tf_message(mounts))
+            self.tf_static_elapsed = 0.0
 
     def publish_clock(self, stamp: Tuple[int, int]) -> None:
         """Publish simulation ``/clock`` when enabled."""

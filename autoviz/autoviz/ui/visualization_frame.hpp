@@ -13,6 +13,7 @@
 #include <QActionGroup>
 #include <QColor>
 #include <QElapsedTimer>
+#include <QEvent>
 #include <QHash>
 #include <QKeyEvent>
 #include <QMainWindow>
@@ -33,10 +34,15 @@ class QToolButton;
 
 class QLabel;
 class QListWidget;
+class QMimeData;
 class QToolBar;
 class QToolButton;
 class QVBoxLayout;
 class QGridLayout;
+class QDragEnterEvent;
+class QDragMoveEvent;
+class QDragLeaveEvent;
+class QDropEvent;
 
 class QStackedWidget;
 
@@ -124,6 +130,9 @@ class VisualizationFrame : public QMainWindow {
   bool saveConfig(const QString& path);
   void applyStartupWindowState();
 
+  /** Open an Autolink .record (or convert .bag/.mcap) and start playback. */
+  bool openRecordFile(const QString& path);
+
   /** Stops viewport render/refresh timers while the widget is off-screen. */
   void setRenderingPaused(bool paused);
 
@@ -131,14 +140,21 @@ class VisualizationFrame : public QMainWindow {
   void fullScreenChange(bool hidden);
 
  protected:
+  void changeEvent(QEvent* event) override;
   void keyPressEvent(QKeyEvent* event) override;
   void resizeEvent(QResizeEvent* event) override;
+  void dragEnterEvent(QDragEnterEvent* event) override;
+  void dragMoveEvent(QDragMoveEvent* event) override;
+  void dragLeaveEvent(QDragLeaveEvent* event) override;
+  void dropEvent(QDropEvent* event) override;
+  bool eventFilter(QObject* watched, QEvent* event) override;
 
  private slots:
   void onRenderTick();
   void onRefreshTick();
   void onAboutToQuit();
   void onOpenConfig();
+  void onOpenRecord();
   void onSaveConfig();
   void onSaveConfigAs();
   void onFixedFrameChanged(const QString& frame);
@@ -209,6 +225,11 @@ class VisualizationFrame : public QMainWindow {
   void applyMainPanelDefaultLayout();
   void setupMenu();
   void configureMenuBar();
+  void setupRecordDropOverlay();
+  void layoutRecordDropOverlay();
+  void showRecordDropOverlay(bool visible);
+  bool handleRecordMime(const QMimeData* mime, bool drop);
+  void revealPlaybackDock();
   void setupToolbar();
   void setupToolbarLayoutControls();
   void syncToolbarLayoutControls();
@@ -403,6 +424,7 @@ class VisualizationFrame : public QMainWindow {
   void createViewport(const QString& backend);
   void connectViewportInteractions();
   void applyTargetFrameRate(int fps);
+  void syncOffscreenPause();
   void requestViewportUpdate();
   void viewportTick(float delta_seconds);
   void syncToolContext();
@@ -423,6 +445,7 @@ class VisualizationFrame : public QMainWindow {
   void connectConfigModifiedSignals();
 
   std::shared_ptr<common::VisualizationManager> manager_;
+  QWidget* record_drop_overlay_ = nullptr;
   MainPanelHost* main_panel_host_ = nullptr;
   QHash<PanelDockWidget*, ViewportPanelEntry> viewport_panels_;
   PanelDockWidget* active_viewport_dock_ = nullptr;
@@ -513,6 +536,7 @@ class VisualizationFrame : public QMainWindow {
   QMenu* delete_panel_menu_ = nullptr;
   QAction* fullscreen_action_ = nullptr;
   QAction* open_config_action_ = nullptr;
+  QAction* open_record_action_ = nullptr;
   QAction* save_config_action_ = nullptr;
   QAction* save_config_as_action_ = nullptr;
   QAction* quit_action_ = nullptr;

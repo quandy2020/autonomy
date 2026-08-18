@@ -26,6 +26,7 @@ class DisplayGroup : public Display {
   Display* child(std::size_t index);
   const Display* child(std::size_t index) const;
 
+  void reset() override;
   void load(const common::Config& config) override;
   void save(common::Config config) const override;
   void saveToConfig(common::DisplayConfig* config) const override;

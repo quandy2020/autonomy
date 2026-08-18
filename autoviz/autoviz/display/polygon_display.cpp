@@ -6,6 +6,7 @@
 
 #include "autoviz/commsgs/time_utils.hpp"
 #include "autoviz/common/display_property.hpp"
+#include "autoviz/display/ogre_overlay_draw.hpp"
 #include "autoviz/display/transform_utils.hpp"
 
 namespace autoviz {
@@ -19,7 +20,9 @@ PolygonDisplay::PolygonDisplay(std::string channel)
 }
 
 std::vector<common::DisplayPropertySpec> PolygonDisplay::propertySpecs() const {
-  return {{"color", "Color", "80;200;255"}, {"alpha", "Alpha", "0.6"}};
+  return {{"color", "Color", "80;200;255"},
+          {"alpha", "Alpha", "0.6"},
+          {"line_width", "Line Width", "3.0"}};
 }
 
 void PolygonDisplay::processMessage(
@@ -65,8 +68,14 @@ void PolygonDisplay::onDraw(rendering::SceneOverlay& scene) {
       common::ParseColorProperty(propertyValue("color", "80;200;255"));
   const float alpha =
       common::ParseFloatProperty(propertyValue("alpha", "0.6"), 0.6f);
+  const float line_width =
+      common::ParseFloatProperty(propertyValue("line_width", "3.0"), 3.0f);
   color.setAlphaF(alpha);
 
+  if (line_width > 0.f) {
+    scene.addLineLoop(points_, color, line_width);
+    return;
+  }
   for (size_t i = 0; i + 1 < points_.size(); ++i) {
     scene.addLine(points_[i], points_[i + 1], color);
   }

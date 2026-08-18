@@ -32,6 +32,13 @@ class ChannelDisplay : public Display {
 
   ~ChannelDisplay() override { onDisable(); }
 
+  void reset() override {
+    Display::reset();
+    queue_.clear();
+    has_received_message_ = false;
+    parse_failed_ = false;
+  }
+
   std::string typeId() const override { return type_id_; }
   std::string channel() const override { return channel_; }
 

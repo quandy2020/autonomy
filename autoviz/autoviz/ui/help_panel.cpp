@@ -49,6 +49,7 @@ QString HelpHtml() {
 <h4>菜单与全局快捷键</h4>
 <table cellpadding="4">
 <tr><td><b>Ctrl+O</b></td><td>打开配置</td></tr>
+<tr><td><b>Ctrl+Shift+O</b></td><td>打开 Autolink record 并立即播放</td></tr>
 <tr><td><b>Ctrl+S</b></td><td>保存配置</td></tr>
 <tr><td><b>Ctrl+Shift+S</b></td><td>另存配置</td></tr>
 <tr><td><b>Ctrl+Q</b></td><td>退出</td></tr>
@@ -63,13 +64,14 @@ QString HelpHtml() {
 <li><b>Selection</b> — 显示拾取点坐标与所属 Display</li>
 <li><b>Views</b> — 保存/应用相机视角，写入 <code>.autoviz</code></li>
 <li><b>Time</b> — Time / Wall 时间与 Experimental 同步</li>
-<li><b>Playback</b> — 回放 Autolink <code>.record</code>；Panels → Add New Panel 打开</li>
+<li><b>Playback</b> — 回放 Autolink <code>.record</code>；拖入文件或 File → Open Record 自动打开</li>
 <li><b>TF Tree</b> — 变换树</li>
 <li><b>Image</b> — 订阅 Image Display 的最新帧</li>
 </ul>
 
 <h4>回放与 Bag/MCAP</h4>
-<p>在 <b>Playback</b> 面板（Panels → Add New Panel）通过 <b>Import...</b> 打开 <code>.record</code> 或导入 Bag/MCAP。</p>
+<p>与 Foxglove 打开 MCAP 类似：将 Autolink <code>.record</code>（或 <code>.bag</code> / <code>.mcap</code>）拖到窗口上，或使用 <b>File → Open Record...</b>，即可打开并立即播放。也可从命令行传入文件：<code>autoviz path/to/data.record</code>。</p>
+<p><code>.bag</code> / <code>.mcap</code> 会先转换成 <code>.record</code>（需要 <code>bag_to_record</code> 或 <code>mcap_to_record.py</code>）。Playback 面板支持播放、暂停、倍速与拖动进度。</p>
 
 <h4>渲染后端</h4>
 <p>会话配置 <code>.autoviz</code> 可指定 OpenGL 或 Ogre（需 <code>-DAUTOVIZ_USE_OGRE=ON</code> 编译）。Ogre 使用圆盘点精灵、GGX PBR 着色与 Camera 纹理 quad。</p>

@@ -61,6 +61,7 @@ class Simulator:
         self.x = 0.0
         self.y = 0.0
         self.yaw = 0.0
+        self.floor_y = 0.0
         self.session = None
         self.articulated = None
         self.urdf = self.load_urdf_model()
@@ -127,6 +128,10 @@ class Simulator:
         self.session = habitat_sim.Simulator(
             habitat_sim.Configuration(configuration, [agent_configuration])
         )
+        try:
+            self.session.set_stage_is_collidable(True)
+        except Exception:
+            pass
         self.attach_urdf(habitat_sim)
         spawn = self.settings["habitat"].get("spawn", [0.0, 0.0, 0.0])
         self.reset(float(spawn[0]), float(spawn[1]), float(spawn[2]))
@@ -135,7 +140,9 @@ class Simulator:
         """Build ``SimulatorConfiguration`` from settings."""
         configuration = habitat_sim.SimulatorConfiguration()
         configuration.gpu_device_id = int(self.settings["habitat"]["gpu"])
-        configuration.enable_physics = self.urdf is not None
+        # Lidar / map use Simulator.cast_ray, which needs Bullet. URDF mesh
+        # instancing is independent (see should_instance_urdf).
+        configuration.enable_physics = True
         scene_path = str(self.settings["habitat"].get("path") or "").strip()
         if not scene_path:
             if hasattr(habitat_sim, "STAGE_EMPTY_SCENE"):
@@ -152,33 +159,109 @@ class Simulator:
 
     def agent_configuration(self, habitat_sim: Any) -> Any:
         """RGB-D agent specs; camera height from URDF when present."""
+        camera_cfg = self.settings.get("habitat", {}).get("sensors", {}).get("camera", {})
+        hfov_deg = float(camera_cfg.get("hfov_deg", 90.0))
         agent_configuration = habitat_sim.agent.AgentConfiguration()
         color_sensor = habitat_sim.CameraSensorSpec()
         color_sensor.uuid = "rgb"
         color_sensor.sensor_type = habitat_sim.SensorType.COLOR
         color_sensor.resolution = [self.height, self.width]
+        color_sensor.hfov = hfov_deg
         depth_sensor = habitat_sim.CameraSensorSpec()
         depth_sensor.uuid = "depth"
         depth_sensor.sensor_type = habitat_sim.SensorType.DEPTH
         depth_sensor.resolution = [self.height, self.width]
-        height = self.camera_height()
-        if height is not None:
-            color_sensor.position = [0.0, float(height), 0.0]
-            depth_sensor.position = [0.0, float(height), 0.0]
+        depth_sensor.hfov = hfov_deg
+        if hasattr(habitat_sim, "SensorSubType"):
+            pinhole = habitat_sim.SensorSubType.PINHOLE
+            color_sensor.sensor_subtype = pinhole
+            depth_sensor.sensor_subtype = pinhole
+        offset = self.camera_local_offset()
+        look_yaw = self.camera_look_yaw()
+        color_sensor.position = [offset[0], offset[1], offset[2]]
+        depth_sensor.position = [offset[0], offset[1], offset[2]]
+        # Habitat pinhole cameras look along local -Z. ROS camera_link / base_link
+        # (REP 103) look along +X, so yaw must map -Z onto +X (not -X).
+        color_sensor.orientation = [0.0, look_yaw, 0.0]
+        depth_sensor.orientation = [0.0, look_yaw, 0.0]
+        for spec in (color_sensor, depth_sensor):
+            if hasattr(spec, "near"):
+                spec.near = 0.05
+            if hasattr(spec, "far"):
+                spec.far = 100.0
         agent_configuration.sensor_specifications = [color_sensor, depth_sensor]
         return agent_configuration
 
-    def camera_height(self) -> float | None:
-        """Habitat Y height for cameras from URDF, else ``None`` (default)."""
+    def camera_local_offset(self) -> Tuple[float, float, float]:
+        """Habitat agent-local camera pose (y-up: ``x`` forward, ``y`` up, ``z`` left).
+
+        URDF / ROS is z-up (``x`` forward, ``y`` left, ``z`` up), so
+        ``(x, y, z)`` maps to Habitat ``(x, z, y)``. Combined with
+        :meth:`camera_look_yaw`, RGB-D looks along ``base_link`` +X, matching
+        ``cmd_vel.linear.x`` and lidar yaw=0.
+        """
         if self.urdf is None:
-            return None
+            return (0.0, 0.5, 0.0)
         if "camera_link" in self.urdf.mounts:
-            return float(self.urdf.camera_xyz()[2])
-        return float(self.urdf.laser_xyz()[2])
+            x, y, z = self.urdf.camera_xyz()
+        else:
+            x, y, z = self.urdf.laser_xyz()
+        return (float(x), float(z), float(y))
+
+    @staticmethod
+    def camera_look_yaw() -> float:
+        """Habitat sensor yaw that aligns the pinhole look with ROS ``+X``.
+
+        Habitat cameras look along local ``-Z``. A right-handed rotation about
+        Habitat ``+Y`` of ``+π/2`` sends that look to ``-X`` (rear of the
+        robot). ``-π/2`` sends it to ``+X``, which is ``base_link`` /
+        ``camera_link`` forward (REP 103, URDF ``rpy="0 0 0"``).
+        """
+        return -math.pi / 2.0
+
+    @staticmethod
+    def habitat_look_direction(yaw: float) -> Tuple[float, float, float]:
+        """Agent-local Habitat look vector after a camera yaw about ``+Y``.
+
+        Default pinhole look is ``(0, 0, -1)``. ``Ry(yaw)`` yields
+        ``(-sin(yaw), 0, -cos(yaw))``.
+        """
+        return (-math.sin(yaw), 0.0, -math.cos(yaw))
+
+    @staticmethod
+    def habitat_agent_quaternion(yaw: float) -> Tuple[float, float, float, float]:
+        """Habitat y-up ``[x, y, z, w]`` for a ROS yaw about z-up (REP 103).
+
+        Map ``y`` is Habitat ``z``. ROS ``+yaw`` is CCW from ``+X`` toward ``+Y``.
+        Habitat right-handed ``Ry(+yaw)`` sends ``+X`` toward ``-Z`` (ROS ``-Y``),
+        so the agent uses ``Ry(-yaw)``.
+        """
+        half = -0.5 * float(yaw)
+        return (0.0, math.sin(half), 0.0, math.cos(half))
+
+    @staticmethod
+    def habitat_agent_forward(yaw: float) -> Tuple[float, float, float]:
+        """Habitat world direction of agent/ROS ``+X`` after planar yaw."""
+        return (math.cos(float(yaw)), 0.0, math.sin(float(yaw)))
+
+    def should_instance_urdf(self) -> bool:
+        """Whether to add the URDF mesh into the Habitat scene.
+
+        Default is off: ego RGB-D is attached to the agent, so a visible chassis
+        or camera housing fills the frustum with solid colour blocks.
+        """
+        if self.urdf is None:
+            return False
+        robot = self.settings.get("habitat", {}).get("robot", {})
+        return bool(robot.get("instance", False)) if isinstance(robot, Mapping) else False
+
+    def camera_height(self) -> float | None:
+        """Habitat Y height for cameras from URDF, else default eye height."""
+        return float(self.camera_local_offset()[1])
 
     def attach_urdf(self, habitat_sim: Any) -> None:
         """Instance kinematic articulated object from configured URDF."""
-        if self.urdf is None or self.session is None:
+        if self.session is None or not self.should_instance_urdf():
             return
         try:
             manager = self.session.get_articulated_object_manager()
@@ -194,6 +277,9 @@ class Simulator:
                     robot.collision_group = habitat_sim.physics.CollisionGroups.Noncollidable
                 except Exception:
                     pass
+            # Ego RGB-D is attached to the agent. If the Husky mesh stays visible,
+            # the chassis / lidar fill the frustum as solid colour blocks.
+            self.hide_articulated(robot)
             self.articulated = robot
             self.urdf_z_up = True
         except Exception as exc:
@@ -203,14 +289,66 @@ class Simulator:
             )
             self.articulated = None
 
+    @staticmethod
+    def hide_articulated(robot: Any) -> None:
+        """Hide URDF visuals so first-person sensors see only the scene."""
+        for name in ("visible", "is_visible"):
+            if hasattr(robot, name):
+                try:
+                    setattr(robot, name, False)
+                except Exception:
+                    pass
+        n_links = int(getattr(robot, "num_links", 0) or 0)
+        for link_id in range(-1, n_links):
+            getter = getattr(robot, "get_link_visual_nodes", None)
+            if callable(getter):
+                try:
+                    for node in getter(link_id) or []:
+                        Simulator.hide_scene_node(node)
+                except Exception:
+                    pass
+            scene_getter = getattr(robot, "get_link_scene_node", None)
+            if callable(scene_getter):
+                try:
+                    Simulator.hide_scene_node(scene_getter(link_id))
+                except Exception:
+                    pass
+        Simulator.hide_scene_node(getattr(robot, "root_scene_node", None))
+
+    @staticmethod
+    def hide_scene_node(node: Any) -> None:
+        """Hide a Magnum/Habitat scene node and its children."""
+        if node is None:
+            return
+        for name in ("is_visible", "visible"):
+            if hasattr(node, name):
+                try:
+                    setattr(node, name, False)
+                except Exception:
+                    pass
+        setter = getattr(node, "set_visibility", None)
+        if callable(setter):
+            try:
+                setter(False)
+            except Exception:
+                pass
+        children = getattr(node, "children", None)
+        if not children:
+            return
+        try:
+            for child in list(children):
+                Simulator.hide_scene_node(child)
+        except Exception:
+            return
+
     def sync_articulated(self, mn: Any) -> None:
-        """Keep Habitat URDF root aligned; apply ROS Z-up → Habitat Y-up."""
+        """Keep Habitat URDF root aligned; apply URDF z-up → Habitat y-up."""
         if self.articulated is None:
             return
-        yaw = mn.Quaternion.rotation(mn.Rad(self.yaw), mn.Vector3(0, 1, 0))
-        # ROS URDF is Z-up; Habitat is Y-up → rotate −90° about X.
+        yaw = mn.Quaternion.rotation(mn.Rad(-self.yaw), mn.Vector3(0, 1, 0))
+        # URDF uses z-up; Habitat is y-up → rotate −90° about X.
         z_up_to_y_up = mn.Quaternion.rotation(mn.Rad(-math.pi / 2.0), mn.Vector3(1, 0, 0))
-        self.articulated.translation = mn.Vector3(self.x, 0.0, self.y)
+        self.articulated.translation = mn.Vector3(self.x, self.floor_y, self.y)
         self.articulated.rotation = yaw * z_up_to_y_up
 
     def reset(self, x: float, y: float, yaw: float) -> None:
@@ -240,8 +378,9 @@ class Simulator:
 
         agent = self.session.get_agent(0)
         state = agent.get_state()
-        state.position = mn.Vector3(self.x, 0.0, self.y)
-        state.rotation = mn.Quaternion.rotation(mn.Rad(self.yaw), mn.Vector3(0, 1, 0))
+        state.position = mn.Vector3(self.x, self.floor_y, self.y)
+        qx, qy, qz, qw = self.habitat_agent_quaternion(self.yaw)
+        state.rotation = [qx, qy, qz, qw]
         agent.set_state(state, infer_sensor_states=True)
         self.sync_articulated(mn)
 
@@ -258,7 +397,7 @@ class Simulator:
         sin_y = math.sin(self.yaw)
         return (
             self.x + cos_y * mx - sin_y * my,
-            mz,
+            self.floor_y + mz,
             self.y + sin_y * mx + cos_y * my,
         )
 
@@ -292,8 +431,79 @@ class Simulator:
     def eye_height(self) -> float:
         """Vertical Habitat Y for panoramic / lidar casts (meters)."""
         if self.urdf is not None:
-            return float(self.urdf.laser_xyz()[2])
-        return 0.5
+            return self.floor_y + float(self.urdf.laser_xyz()[2])
+        return self.floor_y + 0.5
+
+    def snap_to_navmesh(self) -> Tuple[float, float, float]:
+        """Project the planar pose onto the loaded navmesh.
+
+        Updates ``floor_y`` so RGB-D sits on the floor. Never jumps to a
+        random island: that desyncs heading from the corridor the camera sees.
+        """
+        if self.session is None:
+            return self.pose()
+        pathfinder = getattr(self.session, "pathfinder", None)
+        if pathfinder is None or not bool(getattr(pathfinder, "is_loaded", False)):
+            return self.pose()
+
+        heights = []
+        for height in (self.floor_y, 0.0, 0.3, 0.6, 1.0, 1.5):
+            if height not in heights:
+                heights.append(float(height))
+        random_nav = getattr(pathfinder, "get_random_navigable_point", None)
+        if callable(random_nav):
+            try:
+                sample = self.finite_xyz(random_nav())
+                if sample is not None and sample[1] not in heights:
+                    heights.append(sample[1])
+            except Exception:
+                pass
+
+        best: Tuple[float, float, float] | None = None
+        best_dist = float("inf")
+        for height in heights:
+            snapped = self.try_snap_point(pathfinder, self.x, height, self.y)
+            if snapped is None:
+                continue
+            dist = (snapped[0] - self.x) ** 2 + (snapped[2] - self.y) ** 2
+            if dist < best_dist:
+                best = snapped
+                best_dist = dist
+        if best is None:
+            return self.pose()
+        self.x, self.floor_y, self.y = best
+        self.set_pose(self.x, self.y, self.yaw)
+        return self.pose()
+
+    def try_snap_point(
+        self, pathfinder: Any, x: float, height: float, z: float
+    ) -> Tuple[float, float, float] | None:
+        """Snap ``(x, height, z)`` with Habitat ``snap_point`` when available."""
+        snap = getattr(pathfinder, "snap_point", None)
+        if not callable(snap):
+            return None
+        try:
+            import magnum as mn
+
+            return self.finite_xyz(snap(mn.Vector3(float(x), float(height), float(z))))
+        except Exception:
+            try:
+                return self.finite_xyz(snap([float(x), float(height), float(z)]))
+            except Exception:
+                return None
+
+    @staticmethod
+    def finite_xyz(point: Any) -> Tuple[float, float, float] | None:
+        """Return ``(x, y, z)`` when all components are finite."""
+        if point is None:
+            return None
+        try:
+            values = (float(point[0]), float(point[1]), float(point[2]))
+        except (TypeError, IndexError, ValueError):
+            return None
+        if not all(math.isfinite(value) for value in values):
+            return None
+        return values
 
     def cast_from_origin(
         self,
@@ -330,25 +540,59 @@ class Simulator:
         )
         ray = habitat_sim.geo.Ray(origin, direction)
         try:
-            hit = self.session.cast_ray(ray, max_distance=float(range_max))
+            results = self.session.cast_ray(ray, max_distance=float(range_max))
         except TypeError:
-            hit = self.session.cast_ray(ray)
-        if hit is None or not getattr(hit, "has_hit", False):
+            results = self.session.cast_ray(ray)
+        distance = self.raycast_hit_distance(results, origin)
+        if distance is None or not math.isfinite(distance) or distance > float(range_max):
             return None
-        if hasattr(hit, "ray_distance"):
-            distance = float(hit.ray_distance)
-        else:
-            point = getattr(hit, "point", None)
-            if point is None:
-                return None
-            delta = point - origin
-            distance = float(math.sqrt(delta.dot(delta)))
-        if not math.isfinite(distance) or distance > float(range_max):
+        if distance <= 1e-4:
             return None
         hx = float(origin_x) + distance * math.cos(yaw) * math.cos(pitch)
         hy = float(origin_y) + distance * math.sin(pitch)
         hz = float(origin_z) + distance * math.sin(yaw) * math.cos(pitch)
         return (hx, hz, hy)
+
+    @staticmethod
+    def raycast_hit_distance(results: Any, origin: Any = None) -> float | None:
+        """First hit range from Habitat ``RaycastResults`` (``has_hits()`` / ``hits``)."""
+        if results is None:
+            return None
+        checker = getattr(results, "has_hits", None)
+        if checker is None:
+            checker = getattr(results, "has_hit", None)
+        if callable(checker):
+            try:
+                if not checker():
+                    return None
+            except Exception:
+                return None
+        elif checker is False:
+            return None
+        target: Any = results
+        hits = getattr(results, "hits", None)
+        if hits:
+            try:
+                target = hits[0]
+            except (TypeError, IndexError):
+                target = results
+        if hasattr(target, "ray_distance"):
+            try:
+                distance = float(target.ray_distance)
+            except (TypeError, ValueError):
+                distance = None
+            else:
+                if math.isfinite(distance):
+                    return distance
+        point = getattr(target, "point", None)
+        if point is None or origin is None:
+            return None
+        try:
+            delta = point - origin
+            distance = float(math.sqrt(delta.dot(delta)))
+        except Exception:
+            return None
+        return distance if math.isfinite(distance) else None
 
     def world_cloud(
         self,
@@ -429,7 +673,9 @@ class Simulator:
         ranges = np.empty((angles.shape[0],), dtype=np.float32)
         for index, yaw_offset in enumerate(angles):
             distance = self.cast_range(float(yaw_offset), 0.0, float(range_max))
-            ranges[index] = float(range_max) if distance is None else distance
+            ranges[index] = (
+                float(distance) if distance is not None else float("inf")
+            )
         return ranges
 
     @staticmethod
@@ -499,7 +745,7 @@ class Simulator:
         """RGB and depth observations from Habitat.
 
         Returns:
-            ``(color, depth)``.
+            ``(color, depth)`` with depth squeezed to ``HxW float32``.
 
         Raises:
             RuntimeError: Session not open.
@@ -507,9 +753,37 @@ class Simulator:
         if self.session is None:
             raise RuntimeError("Habitat session is not open")
         observations = self.session.get_sensor_observations()
-        color = np.asarray(observations["rgb"])[..., :3].astype(np.uint8)
-        depth = np.asarray(observations["depth"], dtype=np.float32)
+        color = self.align_camera_image(self.rgb_to_uint8(observations["rgb"]))
+        depth = np.squeeze(np.asarray(observations["depth"], dtype=np.float32))
+        depth = self.align_camera_image(depth)
+        if depth.ndim != 2:
+            raise RuntimeError(f"unexpected depth shape: {depth.shape!r}")
+        np.nan_to_num(depth, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
         return color, depth
+
+    @staticmethod
+    def align_camera_image(image: np.ndarray) -> np.ndarray:
+        """Horizontal-flip Habitat OpenGL RGB-D onto ROS ``camera_link``.
+
+        A y-up Habitat pinhole looking along ``+X`` has camera-right = Habitat
+        ``+Z`` = ROS ``+Y`` (robot left). Without this flip the image's left
+        door appears on the map's right.
+        """
+        return np.ascontiguousarray(np.fliplr(np.asarray(image)))
+
+    @staticmethod
+    def rgb_to_uint8(image: Any) -> np.ndarray:
+        """Convert Habitat RGB(A) to contiguous ``HxWx3 uint8``."""
+        color = np.asarray(image)
+        if color.ndim == 3 and color.shape[-1] >= 3:
+            color = color[..., :3]
+        if np.issubdtype(color.dtype, np.floating):
+            peak = float(np.nanmax(color)) if color.size else 1.0
+            scale = 255.0 if peak <= 1.5 else 1.0
+            color = np.clip(color * scale, 0.0, 255.0).astype(np.uint8)
+        else:
+            color = color.astype(np.uint8, copy=False)
+        return np.ascontiguousarray(color)
 
     def close(self) -> None:
         """Release the Habitat session."""

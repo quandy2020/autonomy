@@ -55,6 +55,8 @@ class Display {
   void setContext(common::DisplayContext* context) { context_ = context; }
 
   void setEnabled(bool enabled);
+  /** Drop cached messages / TF snapshots (RViz Display::reset). */
+  virtual void reset();
   void update();
   void draw(rendering::SceneOverlay& scene);
 

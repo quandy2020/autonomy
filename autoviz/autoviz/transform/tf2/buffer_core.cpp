@@ -1209,6 +1209,43 @@ std::string BufferCore::allFramesAsYAML() const {
     return this->allFramesAsYAML(0.0);
 }
 
+std::vector<BufferCore::FrameCacheStats> BufferCore::allFrameCacheStats() const {
+    std::vector<FrameCacheStats> out;
+    std::lock_guard<std::mutex> lock(frame_mutex_);
+
+    TransformStorage temp;
+    for (unsigned int counter = 1; counter < frames_.size(); ++counter) {
+        const CompactFrameID cfid = counter;
+        const TimeCacheInterfacePtr cache = getFrame(cfid);
+        if (!cache || !cache->getData(0, temp)) {
+            continue;
+        }
+        if (cfid >= frameIDs_reverse.size() ||
+            temp.frame_id_ >= frameIDs_reverse.size()) {
+            continue;
+        }
+
+        FrameCacheStats stats;
+        stats.frame_id = frameIDs_reverse[cfid];
+        stats.parent_id = frameIDs_reverse[temp.frame_id_];
+        const auto authority_it = frame_authority_.find(cfid);
+        stats.authority = authority_it != frame_authority_.end()
+                                ? authority_it->second
+                                : "no recorded authority";
+        stats.oldest_stamp_ns = static_cast<int64_t>(cache->getOldestTimestamp());
+        stats.latest_stamp_ns = static_cast<int64_t>(cache->getLatestTimestamp());
+        stats.buffer_length_seconds =
+            time_to_sec(cache->getLatestTimestamp() - cache->getOldestTimestamp());
+        stats.average_rate_hertz =
+            cache->getListLength() /
+            std::max(time_to_sec(cache->getLatestTimestamp() -
+                                 cache->getOldestTimestamp()),
+                     0.0001);
+        out.push_back(std::move(stats));
+    }
+    return out;
+}
+
 TransformableCallbackHandle BufferCore::addTransformableCallback(
     const TransformableCallback& cb) {
     std::lock_guard<std::mutex> lock(transformable_callbacks_mutex_);

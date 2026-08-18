@@ -243,6 +243,18 @@ public:
      */
     std::string allFramesAsYAML() const;
 
+    /** Per-frame cache statistics (rate, buffer span, timestamps). */
+    struct FrameCacheStats {
+        std::string frame_id;
+        std::string parent_id;
+        std::string authority;
+        int64_t oldest_stamp_ns = 0;
+        int64_t latest_stamp_ns = 0;
+        double average_rate_hertz = 0.0;
+        double buffer_length_seconds = 0.0;
+    };
+    std::vector<FrameCacheStats> allFrameCacheStats() const;
+
     /** \brief A way to see what frames have been cached
      * Useful for debugging
      */

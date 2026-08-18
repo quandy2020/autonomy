@@ -6,6 +6,7 @@
 
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPaintEvent>
 #include <QWheelEvent>
 
 namespace autoviz {
@@ -15,6 +16,9 @@ ImageViewWidget::ImageViewWidget(QWidget* parent) : QWidget(parent) {
   setFocusPolicy(Qt::StrongFocus);
   setMinimumSize(160, 120);
   setMouseTracking(true);
+  setAttribute(Qt::WA_OpaquePaintEvent, true);
+  setAttribute(Qt::WA_NoSystemBackground, true);
+  setAutoFillBackground(false);
 }
 
 void ImageViewWidget::setBackgroundColor(const QColor& color) {
@@ -23,9 +27,20 @@ void ImageViewWidget::setBackgroundColor(const QColor& color) {
 }
 
 void ImageViewWidget::setFrame(const QImage& image) {
-  frame_ = image;
+  // Keep a client-side 32-bit QImage. QPixmap is X11/MIT-SHM backed and can
+  // be punched through by a sibling QOpenGLWidget, which looks like color
+  // blocks. Packed 24-bit RGB888 has the same tile-drop artifacts.
+  if (image.isNull()) {
+    frame_ = QImage();
+  } else if (image.format() == QImage::Format_ARGB32_Premultiplied) {
+    frame_ = image;
+  } else {
+    frame_ = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+  }
   updateFitScale();
-  update();
+  if (isVisible()) {
+    update();
+  }
 }
 
 void ImageViewWidget::setAnnotationLayers(
@@ -95,9 +110,9 @@ QPoint ImageViewWidget::imagePixelAt(const QPointF& widget_pos, bool* ok) const 
   return QPoint(x, y);
 }
 
-void ImageViewWidget::paintEvent(QPaintEvent* /*event*/) {
+void ImageViewWidget::paintEvent(QPaintEvent* event) {
   QPainter painter(this);
-  painter.fillRect(rect(), background_color_);
+  painter.fillRect(event->rect(), background_color_);
 
   if (frame_.isNull()) {
     painter.setPen(Qt::gray);
@@ -106,7 +121,7 @@ void ImageViewWidget::paintEvent(QPaintEvent* /*event*/) {
     return;
   }
 
-  const QRectF draw_rect = imageDrawRect();
+  const QRect draw_rect = imageDrawRect().toAlignedRect();
   painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
   painter.drawImage(draw_rect, frame_);
 

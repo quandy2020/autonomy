@@ -72,6 +72,7 @@ class Config:
         grid = mapping.get("grid") or {}
         tf_cfg = robot.get("tf") or {}
         clock_cfg = robot.get("clock") or {}
+        footprint_cfg = robot.get("footprint") or {}
         channels = {
             "cmd_vel": robot["cmd_vel"],
             "scan": sensors["lidar_2d"]["channel"],
@@ -87,6 +88,8 @@ class Config:
             "tf_static": tf_cfg.get("static_channel", "/tf_static"),
             "clock": clock_cfg.get("channel", "/clock"),
         }
+        if isinstance(footprint_cfg, Mapping) and footprint_cfg.get("enabled", False):
+            channels["footprint"] = footprint_cfg.get("channel", "/footprint")
         ply_channel = str(ply.get("channel") or "").strip()
         if ply_channel:
             channels["map_cloud"] = ply_channel
@@ -285,6 +288,7 @@ class Config:
         cls.validate_lidar_2d(sensors["lidar_2d"])
         cls.validate_lidar_3d(sensors["lidar_3d"])
         cls.validate_noise_fields(sensors)
+        cls.validate_footprint(robot.get("footprint"), robot.get("urdf", ""))
         cls.validate_map(habitat.get("map"))
 
         names = [
@@ -312,11 +316,52 @@ class Config:
         clock_cfg = robot.get("clock") or {}
         if isinstance(clock_cfg, Mapping) and clock_cfg.get("enabled", False):
             names.append(clock_cfg.get("channel", "/clock"))
+        footprint = robot.get("footprint")
+        if isinstance(footprint, Mapping) and footprint.get("enabled", False):
+            names.append(footprint.get("channel", "/footprint"))
         for name in names:
             if not isinstance(name, str) or not name.strip():
                 raise ValueError("empty channel name in habitat.sensors or habitat.robot")
         if len(names) != len(set(names)):
             raise ValueError("duplicate channel names")
+
+    @classmethod
+    def validate_footprint(cls, block: Any, urdf: Any = "") -> None:
+        """Validate optional ``habitat.robot.footprint`` polygon output."""
+        if block is None:
+            return
+        if not isinstance(block, Mapping):
+            raise ValueError("habitat.robot.footprint must be a mapping")
+        cls.require_bool(block, "habitat.robot.footprint")
+        if not block.get("enabled", False):
+            return
+        if not isinstance(block.get("channel"), str) or not str(block["channel"]).strip():
+            raise ValueError("habitat.robot.footprint.channel must be a non-empty string")
+        if not isinstance(block.get("frame"), str) or not str(block["frame"]).strip():
+            raise ValueError("habitat.robot.footprint.frame must be a non-empty string")
+        points = block.get("points")
+        if points is None:
+            if str(urdf or "").strip():
+                return
+            raise ValueError(
+                "habitat.robot.footprint.points required when URDF auto-derivation is unavailable"
+            )
+        if not isinstance(points, list) or len(points) < 3:
+            raise ValueError("habitat.robot.footprint.points must contain at least 3 points")
+        for index, point in enumerate(points):
+            if not isinstance(point, (list, tuple)) or len(point) not in (2, 3):
+                raise ValueError(
+                    f"habitat.robot.footprint.points[{index}] must be [x, y] or [x, y, z]"
+                )
+            try:
+                float(point[0])
+                float(point[1])
+                if len(point) == 3:
+                    float(point[2])
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"habitat.robot.footprint.points[{index}] must be numeric"
+                ) from exc
 
     @classmethod
     def validate_map(cls, block: Any) -> None:
@@ -360,3 +405,6 @@ class Config:
         rate = float(block.get("rate_hz", 0.0))
         if rate < 0.0:
             raise ValueError("habitat.map.rate_hz must be >= 0")
+        stride = int(ply.get("stride", 1))
+        if stride < 1:
+            raise ValueError("habitat.map.ply.stride must be >= 1")

@@ -15,6 +15,7 @@
 """Tests for Map PLY cloud and grid projection (no Habitat)."""
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 
@@ -75,3 +76,67 @@ def test_sample_writes_ply(tmp_path):
     text = Path(ply_path).read_text(encoding="utf-8")
     assert text.startswith("ply")
     assert "element vertex 16" in text
+
+
+class _FakePathFinder:
+    is_loaded = True
+
+    def get_random_navigable_point(self):
+        return (0.0, 1.25, 0.0)
+
+    def get_bounds(self):
+        return ((0.0, 0.0, 0.0), (2.0, 0.0, 2.0))
+
+    def get_topdown_view(self, resolution, floor_height, island_radius):
+        assert resolution == 0.5
+        assert floor_height == 1.25
+        assert island_radius == 0.5
+        return np.array(
+            [
+                [True, False, True, False],
+                [True, True, False, False],
+            ],
+            dtype=bool,
+        )
+
+
+def test_sample_prefers_navmesh_grid_when_available():
+    from tests.fake_simulator import FakeSimulator
+
+    simulator = FakeSimulator()
+    simulator.session = SimpleNamespace(pathfinder=_FakePathFinder())
+    builder = Map(
+        {
+            "ply": {
+                "channel": "/map/points",
+                "file": "",
+                "range_max": 10.0,
+                "horizontal": {"angle_min": -np.pi, "angle_max": np.pi, "num_beams": 8},
+                "vertical": {"angle_min": -0.2, "angle_max": 0.2, "num_rings": 2},
+            },
+            "grid": {
+                "channel": "/map",
+                "resolution": 0.5,
+                "z_min": 0.1,
+                "z_max": 1.8,
+            },
+        }
+    )
+
+    _, grid, resolution, ox, oy, width, height = builder.sample(simulator, (0.0, 0.0))
+    assert resolution == 0.5
+    assert (width, height) == (4, 2)
+    assert (ox, oy) == (0.0, 0.0)
+    np.testing.assert_array_equal(
+        grid,
+        np.array(
+            [
+                [0, 100, 0, 100],
+                [0, 0, 100, 100],
+            ],
+            dtype=np.int8,
+        ),
+    )
+    # Habitat (x=0.25, z=0.25) → ROS cell (col=0, row=0), which is free.
+    assert grid[0, 0] == 0
+    # Habitat (x=0.75, z=0.25) → occupied; robot +X stays along columns.

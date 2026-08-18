@@ -22,19 +22,29 @@ from typing import Dict, Mapping, Optional, Tuple
 
 
 class UrdfModel:
-    """Resolved URDF path plus link mounts in ROS base frame (z-up)."""
+    """Resolved URDF path plus link mounts in base frame (z-up)."""
 
     SENSOR_LINKS = ("laser_link", "base_scan", "imu_link", "camera_link")
 
-    def __init__(self, path: Path, mounts: Mapping[str, Tuple[float, float, float]]) -> None:
+    def __init__(
+        self,
+        path: Path,
+        mounts: Mapping[str, Tuple[float, float, float]],
+        parents: Mapping[str, Tuple[str, Tuple[float, float, float]]],
+        root: str,
+        footprint: Optional[Tuple[Tuple[float, float, float], ...]] = None,
+    ) -> None:
         """Store path and mounts.
 
         Args:
             path: Absolute URDF file path.
-            mounts: Link name → ``(x, y, z)`` meters in root frame (ROS z-up).
+            mounts: Link name → ``(x, y, z)`` meters in root frame (z-up).
         """
         self.path = path
         self.mounts = dict(mounts)
+        self.parents = dict(parents)
+        self.root = root
+        self.footprint = tuple(footprint or ())
 
     @staticmethod
     def package_root() -> Path:
@@ -89,7 +99,9 @@ class UrdfModel:
         for link in cls.SENSOR_LINKS:
             if link in parents or link == root:
                 mounts[link] = cls.link_xyz(link, parents, root)
-        return cls(path=path, mounts=mounts)
+        body = "base_link" if ("base_link" in parents or root == "base_link") else root
+        footprint = cls.link_footprint(tree.getroot(), body, parents, root)
+        return cls(path=path, mounts=mounts, parents=parents, root=root, footprint=footprint)
 
     @staticmethod
     def joint_parents(root: ET.Element) -> Dict[str, Tuple[str, Tuple[float, float, float]]]:
@@ -125,6 +137,61 @@ class UrdfModel:
         return (float(parts[0]), float(parts[1]), float(parts[2]))
 
     @staticmethod
+    def link_footprint(
+        robot_root: ET.Element,
+        body_link: str,
+        parents: Mapping[str, Tuple[str, Tuple[float, float, float]]],
+        root: str,
+    ) -> Tuple[Tuple[float, float, float], ...]:
+        """Project a box body link onto the ground plane as a rectangle polygon."""
+        body_node = None
+        for link in robot_root.findall("link"):
+            if link.get("name") == body_link:
+                body_node = link
+                break
+        if body_node is None:
+            return ()
+
+        geometry_parent = body_node.find("collision")
+        if geometry_parent is None:
+            geometry_parent = body_node.find("visual")
+        if geometry_parent is None:
+            return ()
+
+        geometry = geometry_parent.find("geometry")
+        if geometry is None:
+            return ()
+        box = geometry.find("box")
+        if box is None:
+            return ()
+        size_attr = str(box.get("size", "")).split()
+        if len(size_attr) != 3:
+            return ()
+        try:
+            size_x = float(size_attr[0])
+            size_y = float(size_attr[1])
+        except ValueError:
+            return ()
+
+        origin_x, origin_y, _ = UrdfModel.origin_xyz(geometry_parent.find("origin"))
+        base_x = base_y = 0.0
+        if body_link != root:
+            try:
+                base_x, base_y, _ = UrdfModel.link_xyz(body_link, parents, root)
+            except ValueError:
+                return ()
+        cx = base_x + origin_x
+        cy = base_y + origin_y
+        hx = size_x * 0.5
+        hy = size_y * 0.5
+        return (
+            (cx + hx, cy + hy, 0.0),
+            (cx + hx, cy - hy, 0.0),
+            (cx - hx, cy - hy, 0.0),
+            (cx - hx, cy + hy, 0.0),
+        )
+
+    @staticmethod
     def root_link(parents: Mapping[str, Tuple[str, Tuple[float, float, float]]]) -> str:
         """Pick ``base_footprint``, else ``base_link``, else first parent without parent."""
         children = set(parents)
@@ -158,6 +225,38 @@ class UrdfModel:
             current = parent
         raise ValueError(f"cycle while resolving link {link!r}")
 
+    def link_xyz_from(self, parent: str, child: str) -> Tuple[float, float, float]:
+        """Accumulate translation from ``parent`` to descendant ``child``."""
+        if parent == child:
+            return (0.0, 0.0, 0.0)
+        x = y = z = 0.0
+        current = child
+        for _ in range(len(self.parents) + 1):
+            if current == parent:
+                return (x, y, z)
+            if current not in self.parents:
+                raise ValueError(f"link {child!r} not connected to parent {parent!r}")
+            next_parent, (dx, dy, dz) = self.parents[current]
+            x += dx
+            y += dy
+            z += dz
+            current = next_parent
+        raise ValueError(f"cycle while resolving link {child!r}")
+
+    def odom_child_frame(self, fallback: str = "base_link") -> str:
+        """Preferred dynamic child frame for ``odom``."""
+        if self.root == "base_footprint":
+            return "base_footprint"
+        if "base_link" in self.parents or self.root == "base_link":
+            return "base_link"
+        return fallback
+
+    def body_frame(self) -> str:
+        """Preferred robot body frame for sensor mounts."""
+        if "base_link" in self.parents or self.root == "base_link":
+            return "base_link"
+        return self.root
+
     def laser_xyz(self) -> Tuple[float, float, float]:
         """Preferred lidar mount: ``laser_link`` then ``base_scan``."""
         if "laser_link" in self.mounts:
@@ -173,3 +272,7 @@ class UrdfModel:
     def camera_xyz(self) -> Tuple[float, float, float]:
         """Camera mount or origin."""
         return self.mounts.get("camera_link", (0.0, 0.0, 0.0))
+
+    def footprint_polygon(self) -> Tuple[Tuple[float, float, float], ...]:
+        """Ground-plane footprint polygon derived from the URDF when available."""
+        return self.footprint

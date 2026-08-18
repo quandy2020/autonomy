@@ -20,12 +20,20 @@
 #include <QDialog>
 #include <QDir>
 #include <QDockWidget>
+#include <QDragEnterEvent>
+#include <QDragLeaveEvent>
+#include <QDragMoveEvent>
+#include <QDropEvent>
+#include <QEvent>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QListWidget>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QMimeData>
+#include <QPainter>
+#include <QPen>
 #include <QResizeEvent>
 #include <QScreen>
 #include <QSettings>
@@ -68,6 +76,8 @@
 #include "autoviz/ui/panel_role.hpp"
 #include "autoviz/ui/property_inspector_panel.hpp"
 #include "autoviz/ui/playback_panel.hpp"
+#include "autoviz/ui/import_record_dialog.hpp"
+#include "autoviz/ui/record_open_utils.hpp"
 #include "autoviz/ui/plot/plot_config_io.hpp"
 #include "autoviz/ui/state_transitions/state_transition_config_io.hpp"
 #include "autoviz/ui/publish/publish_config_io.hpp"
@@ -106,6 +116,43 @@
 #endif
 
 namespace autoviz {
+
+namespace {
+
+class RecordDropOverlay : public QWidget {
+ public:
+  explicit RecordDropOverlay(QWidget* parent) : QWidget(parent) {
+    setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    setAttribute(Qt::WA_NoSystemBackground, true);
+    hide();
+  }
+
+ protected:
+  void paintEvent(QPaintEvent*) override {
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.fillRect(rect(), QColor(8, 12, 20, 150));
+    QPen pen(QColor(90, 170, 255), 3, Qt::DashLine);
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+    painter.drawRoundedRect(rect().adjusted(18, 18, -18, -18), 16, 16);
+    QFont title = font();
+    title.setPointSize(20);
+    title.setBold(true);
+    painter.setFont(title);
+    painter.setPen(Qt::white);
+    painter.drawText(rect().adjusted(0, -24, 0, 0), Qt::AlignCenter,
+                     tr("Drop record to play"));
+    QFont hint = font();
+    hint.setPointSize(12);
+    painter.setFont(hint);
+    painter.setPen(QColor(200, 210, 220));
+    painter.drawText(rect().adjusted(0, 28, 0, 0), Qt::AlignCenter,
+                     tr("Autolink .record  ·  .bag  ·  .mcap"));
+  }
+};
+
+}  // namespace
 
 rendering::ViewController* VisualizationFrame::ViewportPanelEntry::viewController()
     const {
@@ -410,6 +457,9 @@ VisualizationFrame::VisualizationFrame(
     setWindowIcon(app_icon);
   }
   setupUi();
+  setAcceptDrops(true);
+  setupRecordDropOverlay();
+  qApp->installEventFilter(this);
   setDockNestingEnabled(true);
   setTabPosition(Qt::AllDockWidgetAreas, QTabWidget::North);
   setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowNestedDocks |
@@ -463,55 +513,15 @@ VisualizationFrame::VisualizationFrame(
 
   connect(&refresh_timer_, &QTimer::timeout, this,
           &VisualizationFrame::onRefreshTick);
+  refresh_timer_.setTimerType(Qt::PreciseTimer);
   refresh_timer_.start(1000);
 
+  // QOpenGLWidget is a native child window. Moving the mouse off the 3D/Image
+  // pane fires ApplicationInactive even while Autoviz is still on screen —
+  // that used to stop the render timer and drop channel messages. Only pause
+  // when this window is actually minimized or hidden.
   connect(qApp, &QGuiApplication::applicationStateChanged, this,
-          [this](Qt::ApplicationState state) {
-            const bool inactive = state != Qt::ApplicationActive;
-            if (inactive == app_inactive_) {
-              return;
-            }
-            app_inactive_ = inactive;
-            if (inactive) {
-              // Stop accepting channel payloads and drop anything already queued
-              // so background traffic never becomes a render backlog.
-              integration::MessageQueue::setAcceptIncoming(false);
-              integration::MessageQueue::clearAllPending();
-              setRenderingPaused(true);
-              if (displays_panel_ != nullptr) {
-                displays_panel_->setLiveUpdatesPaused(true);
-              }
-              if (tf_tree_panel_ != nullptr) {
-                tf_tree_panel_->setPaused(true);
-              }
-              return;
-            }
-            // Resume: discard race payloads from the inactive window, then only
-            // accept live frames. Do not process/render background-stale samples.
-            integration::MessageQueue::clearAllPending();
-            integration::MessageQueue::setAcceptIncoming(true);
-            render_elapsed_.restart();
-            if (displays_panel_ != nullptr) {
-              displays_panel_->setLiveUpdatesPaused(false);
-            }
-            if (tf_tree_panel_ != nullptr) {
-              tf_tree_panel_->setPaused(false);
-            }
-            setRenderingPaused(false);
-            // Paint current scene once; channel displays wait for the next
-            // live message (queues were cleared above).
-            QTimer::singleShot(0, this, [this]() {
-              if (app_inactive_ || manager_ == nullptr) {
-                return;
-              }
-              syncToolContext();
-              forEachViewportPanel([](ViewportPanelEntry& entry) {
-                if (entry.widget != nullptr) {
-                  entry.widget->update();
-                }
-              });
-            });
-          });
+          [this](Qt::ApplicationState) { syncOffscreenPause(); });
 
   connect(qApp, &QApplication::aboutToQuit, this,
           &VisualizationFrame::onAboutToQuit);
@@ -648,7 +658,9 @@ void VisualizationFrame::updateSelectionPanel(
   }
 }
 
-VisualizationFrame::~VisualizationFrame() = default;
+VisualizationFrame::~VisualizationFrame() {
+  qApp->removeEventFilter(this);
+}
 
 void VisualizationFrame::createViewport(const QString& backend) {
   forEachViewportPanel([this, backend](ViewportPanelEntry& entry) {
@@ -721,8 +733,9 @@ void VisualizationFrame::connectViewportInteractions() {
 void VisualizationFrame::applyTargetFrameRate(int fps) {
   const int clamped = std::clamp(fps, 1, 120);
   const int interval_ms = std::max(1, 1000 / clamped);
+  render_timer_.setTimerType(Qt::PreciseTimer);
   render_timer_.setInterval(interval_ms);
-  if (!render_timer_.isActive()) {
+  if (!app_inactive_ && !render_timer_.isActive()) {
     render_timer_.start(interval_ms);
   }
 }
@@ -1971,10 +1984,19 @@ void VisualizationFrame::setupUi() {
   // updates even if its own channel handoff races.
   manager_->setImageUpdateCallback(
       [this](const QString& /*source*/, const QImage& image) {
-        image::ImagePanel* panel =
-            active_image_panel_ != nullptr ? active_image_panel_ : image_panel_;
-        if (panel != nullptr) {
-          panel->setFrameFromDisplay(image);
+        bool forwarded = false;
+        for (PanelDockWidget* dock : orderedDockWidgets()) {
+          if (dock == nullptr || !dock->isVisible() ||
+              panelTypeId(dock) != QLatin1String("ImageDock")) {
+            continue;
+          }
+          if (auto* panel = qobject_cast<image::ImagePanel*>(dock->widget())) {
+            panel->setFrameFromDisplay(image);
+            forwarded = true;
+          }
+        }
+        if (!forwarded && image_panel_ != nullptr) {
+          image_panel_->setFrameFromDisplay(image);
         }
       });
 
@@ -2061,6 +2083,10 @@ void VisualizationFrame::setupMenu() {
   open_config_action_ = file_menu->addAction(tr("&Open Config..."), this,
                                              &VisualizationFrame::onOpenConfig);
   open_config_action_->setShortcut(QKeySequence::Open);
+  open_record_action_ = file_menu->addAction(tr("Open &Record..."), this,
+                                             &VisualizationFrame::onOpenRecord);
+  open_record_action_->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_O));
+  addAction(open_record_action_);
   save_config_action_ = file_menu->addAction(tr("&Save Config"), this,
                                              &VisualizationFrame::onSaveConfig);
   save_config_action_->setShortcut(QKeySequence::Save);
@@ -2871,6 +2897,167 @@ void VisualizationFrame::restorePanelLayouts() {
   }
 }
 
+void VisualizationFrame::setupRecordDropOverlay() {
+  record_drop_overlay_ = new RecordDropOverlay(this);
+  layoutRecordDropOverlay();
+}
+
+void VisualizationFrame::layoutRecordDropOverlay() {
+  if (record_drop_overlay_ == nullptr) {
+    return;
+  }
+  record_drop_overlay_->setGeometry(rect());
+  record_drop_overlay_->raise();
+}
+
+void VisualizationFrame::showRecordDropOverlay(bool visible) {
+  if (record_drop_overlay_ == nullptr) {
+    return;
+  }
+  if (visible) {
+    layoutRecordDropOverlay();
+    record_drop_overlay_->show();
+    record_drop_overlay_->raise();
+  } else {
+    record_drop_overlay_->hide();
+  }
+}
+
+bool VisualizationFrame::handleRecordMime(const QMimeData* mime, bool drop) {
+  const QStringList paths = LocalRecordSourcePaths(mime);
+  if (paths.isEmpty()) {
+    return false;
+  }
+  if (drop) {
+    showRecordDropOverlay(false);
+    openRecordFile(paths.front());
+  } else {
+    showRecordDropOverlay(true);
+  }
+  return true;
+}
+
+void VisualizationFrame::revealPlaybackDock() {
+  if (playback_dock_ == nullptr) {
+    return;
+  }
+  showPanelByObjectName(QStringLiteral("PlaybackDock"));
+  playback_dock_->show();
+  playback_dock_->raise();
+}
+
+void VisualizationFrame::onOpenRecord() {
+  const QString path = QFileDialog::getOpenFileName(
+      this, tr("Open Record"), QString(),
+      tr("Autolink Record (*.record);;Legacy Bag (*.bag);;MCAP (*.mcap);;All Files (*)"));
+  if (!path.isEmpty()) {
+    openRecordFile(path);
+  }
+}
+
+bool VisualizationFrame::openRecordFile(const QString& path) {
+  if (path.isEmpty() || manager_ == nullptr) {
+    return false;
+  }
+  const RecordSourceKind kind = ClassifyRecordSource(path);
+  OpenRecordResult result = OpenRecordSource(&manager_->playback(), path);
+  if (!result.ok &&
+      (kind == RecordSourceKind::kBag || kind == RecordSourceKind::kMcap)) {
+    ImportRecordDialog dialog(&manager_->playback(), this);
+    dialog.setSourcePath(path);
+    if (dialog.exec() != QDialog::Accepted || !dialog.recordOpened()) {
+      return false;
+    }
+    result.ok = true;
+  }
+  if (!result.ok) {
+    QMessageBox::warning(this, tr("Open Record"), result.error);
+    return false;
+  }
+
+  revealPlaybackDock();
+  double rate = 1.0;
+  bool loop = false;
+  if (playback_panel_ != nullptr) {
+    playback_panel_->syncFromController();
+  }
+  manager_->playback().play(rate, loop);
+  if (playback_panel_ != nullptr) {
+    playback_panel_->syncFromController();
+  }
+  if (statusBar() != nullptr) {
+    statusBar()->showMessage(
+        tr("Playing %1").arg(QFileInfo(path).fileName()), 4000);
+  }
+  return true;
+}
+
+void VisualizationFrame::dragEnterEvent(QDragEnterEvent* event) {
+  if (handleRecordMime(event->mimeData(), false)) {
+    event->acceptProposedAction();
+    return;
+  }
+  QMainWindow::dragEnterEvent(event);
+}
+
+void VisualizationFrame::dragMoveEvent(QDragMoveEvent* event) {
+  if (handleRecordMime(event->mimeData(), false)) {
+    event->acceptProposedAction();
+    return;
+  }
+  QMainWindow::dragMoveEvent(event);
+}
+
+void VisualizationFrame::dragLeaveEvent(QDragLeaveEvent* event) {
+  showRecordDropOverlay(false);
+  QMainWindow::dragLeaveEvent(event);
+}
+
+void VisualizationFrame::dropEvent(QDropEvent* event) {
+  if (handleRecordMime(event->mimeData(), true)) {
+    event->acceptProposedAction();
+    return;
+  }
+  QMainWindow::dropEvent(event);
+}
+
+bool VisualizationFrame::eventFilter(QObject* watched, QEvent* event) {
+  auto* widget = qobject_cast<QWidget*>(watched);
+  if (widget == nullptr ||
+      (widget != this && widget != record_drop_overlay_ &&
+       !isAncestorOf(widget))) {
+    return QMainWindow::eventFilter(watched, event);
+  }
+
+  switch (event->type()) {
+    case QEvent::DragEnter:
+    case QEvent::DragMove: {
+      auto* drag = static_cast<QDragMoveEvent*>(event);
+      if (handleRecordMime(drag->mimeData(), false)) {
+        drag->acceptProposedAction();
+        return true;
+      }
+      break;
+    }
+    case QEvent::Drop: {
+      auto* drop = static_cast<QDropEvent*>(event);
+      if (handleRecordMime(drop->mimeData(), true)) {
+        drop->acceptProposedAction();
+        return true;
+      }
+      break;
+    }
+    case QEvent::DragLeave:
+      if (!rect().contains(mapFromGlobal(QCursor::pos()))) {
+        showRecordDropOverlay(false);
+      }
+      break;
+    default:
+      break;
+  }
+  return QMainWindow::eventFilter(watched, event);
+}
+
 void VisualizationFrame::onOpenConfig() {
   const QString path = QFileDialog::getOpenFileName(
       this, tr("Open Config"), QString(),
@@ -2950,6 +3137,15 @@ void VisualizationFrame::onRenderTick() {
     vehicle_panel_->updateFromTf();
   }
 #endif
+  for (PanelDockWidget* dock : orderedDockWidgets()) {
+    if (dock == nullptr || !dock->isVisible() ||
+        panelTypeId(dock) != QLatin1String("ImageDock")) {
+      continue;
+    }
+    if (auto* panel = qobject_cast<image::ImagePanel*>(dock->widget())) {
+      panel->tick();
+    }
+  }
   updateFps();
 }
 
@@ -3001,6 +3197,9 @@ void VisualizationFrame::setupStatusBar() {
 void VisualizationFrame::onReset() {
   if (manager_ != nullptr) {
     manager_->resetTime();
+  }
+  if (time_panel_ != nullptr) {
+    time_panel_->syncAfterReset();
   }
   requestViewportUpdate();
 }
@@ -3691,6 +3890,7 @@ void VisualizationFrame::onDockPanelVisibilityChange(bool visible) {
 void VisualizationFrame::resizeEvent(QResizeEvent* event) {
   QMainWindow::resizeEvent(event);
   syncCenterLayout();
+  layoutRecordDropOverlay();
 }
 
 void VisualizationFrame::restoreDockHideState() {
@@ -6651,6 +6851,8 @@ void VisualizationFrame::applyShortcutPreferences(
   };
 
   apply(open_config_action_, QStringLiteral("file.open"), QKeySequence::Open);
+  apply(open_record_action_, QStringLiteral("file.open_record"),
+        QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_O));
   apply(save_config_action_, QStringLiteral("file.save"), QKeySequence::Save);
   apply(save_config_as_action_, QStringLiteral("file.save_as"),
         QKeySequence::SaveAs);
@@ -6819,6 +7021,38 @@ void VisualizationFrame::syncRenderBackendMenu(const QString& name) {
   }
 }
 
+void VisualizationFrame::syncOffscreenPause() {
+  const bool offscreen = isMinimized();
+  if (offscreen == app_inactive_) {
+    return;
+  }
+  app_inactive_ = offscreen;
+  // Keep accepting live messages while Autoviz is open. Mouse leaving the
+  // Image/3D native windows must not freeze Image, 3D, or TF.
+  integration::MessageQueue::setAcceptIncoming(true);
+  if (offscreen) {
+    setRenderingPaused(true);
+    return;
+  }
+  render_elapsed_.restart();
+  if (displays_panel_ != nullptr) {
+    displays_panel_->setLiveUpdatesPaused(false);
+  }
+  if (tf_tree_panel_ != nullptr) {
+    tf_tree_panel_->setPaused(false);
+  }
+  setRenderingPaused(false);
+}
+
+void VisualizationFrame::changeEvent(QEvent* event) {
+  QMainWindow::changeEvent(event);
+  if (event != nullptr && (event->type() == QEvent::WindowStateChange ||
+                           event->type() == QEvent::Hide ||
+                           event->type() == QEvent::Show)) {
+    syncOffscreenPause();
+  }
+}
+
 void VisualizationFrame::setRenderingPaused(bool paused) {
   if (paused) {
     render_timer_.stop();
@@ -6826,6 +7060,7 @@ void VisualizationFrame::setRenderingPaused(bool paused) {
   } else {
     applyTargetFrameRate(manager_->targetFrameRate());
     if (!refresh_timer_.isActive()) {
+      refresh_timer_.setTimerType(Qt::PreciseTimer);
       refresh_timer_.start(1000);
     }
   }

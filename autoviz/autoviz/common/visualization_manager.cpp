@@ -45,6 +45,7 @@ bool VisualizationManager::initialize(const char* binary_name) {
   integration::ChannelWriterRegistry::instance().setNode(autolink_.node());
   integration::ServiceClientRegistry::instance().setNode(autolink_.node());
   display_context_.tf_buffer = tf_buffer_;
+  tf_listener_.start(tf_buffer_);
   display_context_.frame_manager = &frame_manager_;
   display_context_.pick_registry = &pick_registry_;
   display_context_.handler_manager = &handler_manager_;
@@ -94,6 +95,7 @@ void VisualizationManager::shutdown() {
   interactive_marker_registry_ = display::InteractiveMarkerRegistry{};
   channel_manager_.reset();
   autoviz::log_panel::LogHub::instance().uninstallGlogCapture();
+  tf_listener_.stop();
   integration::ChannelReaderRegistry::instance().setNode(nullptr);
   integration::ChannelWriterRegistry::instance().setNode(nullptr);
   integration::ServiceClientRegistry::instance().setNode(nullptr);
@@ -410,6 +412,7 @@ void VisualizationManager::update() {
     return;
   }
   updating_ = true;
+  tf_listener_.poll();
   frame_manager_.setPause(time_paused_);
   frame_manager_.setSyncMode(
       static_cast<FrameManager::SyncMode>(static_cast<int>(time_sync_mode_)));
@@ -865,9 +868,18 @@ void VisualizationManager::setTimeSyncSource(const std::string& source) {
 
 void VisualizationManager::resetTime() {
   wall_start_ = std::chrono::steady_clock::now();
-  sim_origin_sec_ = static_cast<double>(automsgs::msgs::builtin_interfaces::TimeToNanoseconds(automsgs::msgs::builtin_interfaces::TimeNow())) * 1e-9;
   time_paused_ = false;
   paused_sim_sec_ = 0.0;
+  sim_origin_sec_ = simTimeSec();
+  tf_listener_.clearPending();
+  if (tf_buffer_ != nullptr) {
+    tf_buffer_->clear();
+  }
+  for (auto& display : displays_) {
+    if (display != nullptr) {
+      display->reset();
+    }
+  }
 }
 
 }  // namespace common

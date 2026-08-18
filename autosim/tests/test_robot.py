@@ -93,3 +93,28 @@ def test_inertial_gaussian_noise_changes_reading():
     gyro_z, accel_x, accel_y = robot.update_inertial(yaw=0.1, speed=1.0, t=0.1)
     assert abs(gyro_z - 1.0) > 1e-3
     assert abs(accel_x) > 1e-3 or abs(accel_y) > 1e-3
+
+
+def test_teleport_resets_odometry():
+    robot = Robot(max_linear=0.5, max_angular=1.0, watchdog_sec=1.0, x=1.0, y=2.0, yaw=0.3)
+    robot.odometry_x = 9.0
+    robot.teleport(3.0, 4.0, math.pi)
+    assert robot.pose() == (3.0, 4.0, math.pi)
+    assert robot.odometry_pose() == (3.0, 4.0, math.pi)
+
+
+def test_map_to_odom_keeps_ground_truth_on_map():
+    ground_truth = (1.5, -0.5, 0.4)
+    odometry = (0.2, 0.1, -0.15)
+    parent = Robot.map_to_odom(ground_truth, odometry)
+    px, py, pyaw = parent
+    ox, oy, oyaw = odometry
+    cosine = math.cos(pyaw)
+    sine = math.sin(pyaw)
+    map_x = px + cosine * ox - sine * oy
+    map_y = py + sine * ox + cosine * oy
+    map_yaw = Robot.wrap_yaw(pyaw + oyaw)
+    assert abs(map_x - ground_truth[0]) < 1e-9
+    assert abs(map_y - ground_truth[1]) < 1e-9
+    assert abs(map_yaw - ground_truth[2]) < 1e-9
+    assert Robot.map_to_odom(ground_truth, ground_truth) == (0.0, 0.0, 0.0)

@@ -27,13 +27,38 @@ Habitat-Sim **传感器–执行器桥**：经 autolink 发布传感、订阅 `/
 
 ## 安装与运行
 
+**colcon / CMake**（`BUILD_AUTOSIM=ON`，默认开启）：构建 `autonomy` 时会执行 `pip install -e autosim`。
+
 ```bash
-cd autosim
-pip install -e ".[dev]"
-python -m autosim --config config/default.yaml
+colcon build --packages-select autonomy
+# 关闭：colcon build --packages-select autonomy --cmake-args -DBUILD_AUTOSIM=OFF
+```
+
+**手动安装**（或 Habitat 可选依赖）：
+
+```bash
+cd src/autonomy/autosim
+pip install -e ".[dev]"          # 测试
+pip install -e ".[habitat,dev]"  # 含 habitat-sim
+```
+
+**运行**（工作区根目录）：
+
+```bash
+cd /workspace/autonomy
+src/autonomy/autosim/scripts/run.sh sim
+./src/autonomy/autosim/scripts/run.sh teleop
+```
+
+或进入 autosim 目录：
+
+```bash
+cd src/autonomy/autosim
 ./scripts/run.sh sim
 ./scripts/run.sh teleop
 ```
+
+键盘遥控与 `autonomy_teleop` 相同：`w`/`x` 增减线速度，`a`/`d` 增减角速度，`space`/`s` 停车；速度会保持直到下一次按键。需在交互式 TTY 中运行（`docker exec -it SpaceHero /bin/bash`），并点击该终端窗口取得焦点。
 
 `habitat.path` 为空时使用 Habitat 空舞台（仍需 `habitat-sim`）。真值地图默认关闭；加载真实场景后再设 `habitat.map.enabled: true`。  
 测试需要已安装的 `automsgs` Python 绑定（仓库内不再附带 `stubs/`）。
@@ -41,8 +66,8 @@ python -m autosim --config config/default.yaml
 ## 配置要点
 
 - 噪声字段为高斯 σ；里程计为**积分噪声**（非每拍贴 GT）。
-- `robot.tf` → `/tf` + `/tf_static`（`map→odom→base_link` + URDF 传感器外参）。
-- `robot.clock` → `/clock`（`rosgraph_msgs/Clock`）。
+- `robot.tf` → `/tf` + `/tf_static`（默认 `map→odom→base_footprint→base_link`，再挂 URDF 传感器外参）。
+- `robot.clock` → `/clock`（`builtin_interfaces/Time`）。
 - `map.ply`：`file` 与/或 `channel` 至少其一；`map.grid` → `/map` OccupancyGrid。
 
 | 方向 | 通道（默认） | Proto |
@@ -50,8 +75,8 @@ python -m autosim --config config/default.yaml
 | 入 | `/cmd_vel` | `TwistStamped` |
 | 出 | `/scan` `/points` `/camera/*` `/imu` `/odom` | 传感 |
 | 出 | `/tf` `/tf_static` | `TFMessage` |
-| 出 | `/clock` | `Clock` |
-| 出 | `/map`（可选 `/map/points`） | `OccupancyGrid` / `PointCloud2` |
+| 出 | `/clock` | `Time` |
+| 出 | `/map`（可选 `/map/points` 或 `/map_points`） | `OccupancyGrid` / `PointCloud2` |
 | 出 | `/gt/pose` | `PoseStamped`（默认关） |
 
 ## Habitat 场景
@@ -68,3 +93,20 @@ habitat:
 ```bash
 cd autosim && pytest tests -v
 ```
+
+## Autoviz 点云联调
+
+1. 在 `config/default.yaml`（或副本）中启用地图点云，例如 `habitat.map.enabled: true`、`map.ply.channel: /map_points`。
+2. 启动仿真（需已安装 `habitat-sim`）：
+
+```bash
+cd /workspace/autonomy
+src/autonomy/autosim/scripts/run.sh sim
+```
+
+3. 启动 Autoviz，Fixed Frame 设为 `map`。
+4. Add Display → **PointCloud2**，Topic 与 `map.ply.channel` 一致（如 **`/map_points`**）。
+5. 推荐属性：**Color Transformer** → `Intensity`（channel 填 `intensity`）或 `AxisColor`；大点云可再设 **Decimate**。
+6. 地图点云带 `intensity` 字段（到原点距离）；可用 **Size (Pixels)** 调整点大小。
+
+`map.ply.stride` 在发布端降采样（默认 1）；Autoviz 侧 **Decimate** 可叠加使用。

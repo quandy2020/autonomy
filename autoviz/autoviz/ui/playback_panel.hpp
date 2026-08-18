@@ -24,6 +24,9 @@ class PlaybackPanel : public QWidget {
   explicit PlaybackPanel(integration::PlaybackController* controller,
                          QWidget* parent = nullptr);
 
+  void syncFromController();
+  bool openAndPlay(const QString& path);
+
  private slots:
   void onOpenRecord();
   void onImport();

@@ -347,6 +347,7 @@ DisplaysPanel::DisplaysPanel(
   ApplyPanelShell(this);
   setupUi();
   tf_pose_timer_ = new QTimer(this);
+  tf_pose_timer_->setTimerType(Qt::PreciseTimer);
   tf_pose_timer_->setInterval(50);  // 20Hz for expanded Frames pose fields
   connect(tf_pose_timer_, &QTimer::timeout, this, &DisplaysPanel::onTfPoseTick);
   refresh();

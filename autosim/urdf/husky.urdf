@@ -164,6 +164,28 @@
 
   <link name="laser_link"/>
 
+  <link name="camera_link">
+    <visual>
+      <origin xyz="0 0 0.02" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.05 0.05 0.04"/>
+      </geometry>
+      <material name="black">
+        <color rgba="0.15 0.15 0.15 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.02" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.05 0.05 0.04"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.2"/>
+      <inertia ixx="2.0e-04" ixy="0.0" ixz="0.0" iyy="2.0e-04" iyz="0.0" izz="2.0e-04"/>
+    </inertial>
+  </link>
+
   <!-- ===================== Joints ===================== -->
 
   <joint name="base_joint" type="fixed">
@@ -217,6 +239,12 @@
     <parent link="base_scan"/>
     <child link="laser_link"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="camera_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="camera_link"/>
+    <origin xyz="0.20 0 0.32" rpy="0 0 0"/>
   </joint>
 
 </robot>
