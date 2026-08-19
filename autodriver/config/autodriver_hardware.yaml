@@ -1,0 +1,99 @@
+# Autodriver hardware config.
+# export AUTODRIVER_PATH=<directory containing config/>
+#
+# enable: true — 加载并在进程启动时 attach；false — 忽略该设备
+# port 仅为示例；实际上线请用 /dev/serial/by-id/ 固定设备节点
+
+sensors:
+  lidar_2d:
+    - name: front
+      enable: false
+      channel: /lidar/front/scan
+      port: /dev/ttyUSB4
+      baudrate: 115200  # RPLidar / Hokuyo 等常见值
+      fps: 10
+
+  lidar_3d:
+    - name: vlp16
+      enable: false
+      channel: /lidar/vlp16/points
+      fps: 10
+      params:
+        ip: 192.168.1.201
+        data_port: 2368
+        model: VLP-16
+
+  imu:
+    - name: torso_imu
+      enable: false
+      channel:
+        - /imu/torso
+        - /imu/torso/raw
+      port: /dev/ttyUSB0
+      baudrate: 460800
+      fps: 200
+
+    - name: wrist_imu
+      enable: false
+      channel: /imu/wrist
+      port: /dev/ttyUSB1
+      baudrate: 921600
+      fps: 400
+
+    - name: realsense_d455_imu
+      enable: false
+      channel: /camera/imu
+      backend: realsense
+
+  gps:
+    - name: gps_main
+      enable: false
+      channel: /gps/fix
+      port: /dev/ttyUSB2
+      baudrate: 9600  # NMEA 模块出厂常见值
+
+  camera:
+    # D455：每路 stream 一条；channel 对齐 ROS realsense2_camera
+    - name: realsense_d455_color
+      enable: false
+      channel: /camera/color/image_raw
+      backend: realsense
+      stream: color
+      width: 848
+      height: 480
+      fps: 30
+
+    - name: realsense_d455_depth
+      enable: false
+      channel: /camera/depth/image_raw
+      backend: realsense
+      stream: depth
+      width: 848
+      height: 480
+      fps: 30
+
+    - name: realsense_d455_ir1
+      enable: false
+      channel: /camera/infra1/image_raw
+      backend: realsense
+      stream: ir1
+      width: 848
+      height: 480
+      fps: 30
+
+    - name: realsense_d455_ir2
+      enable: false
+      channel: /camera/infra2/image_raw
+      backend: realsense
+      stream: ir2
+      width: 848
+      height: 480
+      fps: 30
+
+  range:
+    - name: range_main
+      enable: false
+      channel: /range/front
+      port: /dev/ttyUSB5
+      baudrate: 9600
+      fps: 10

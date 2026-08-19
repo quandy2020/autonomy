@@ -6,6 +6,7 @@
 
 #include <QComboBox>
 #include <QLabel>
+#include <QShowEvent>
 #include <QTimer>
 #include <QVBoxLayout>
 
@@ -37,9 +38,10 @@ void StrataFloorPanel::setupUi() {
   connect(floor_selector_, qOverload<int>(&QComboBox::activated), this,
           &StrataFloorPanel::onFloorSelected);
 
-  auto* timer = new QTimer(this);
-  connect(timer, &QTimer::timeout, this, &StrataFloorPanel::pollMessages);
-  timer->start(100);
+  poll_timer_ = new QTimer(this);
+  connect(poll_timer_, &QTimer::timeout, this, &StrataFloorPanel::pollMessages);
+  // Timer is started lazily in showEvent() to avoid subscribing /strata/floors
+  // until the panel is actually visible.
 }
 
 void StrataFloorPanel::setFloorsChannel(const std::string& channel) {
@@ -169,6 +171,20 @@ void StrataFloorPanel::publishFloorSwitch(const std::string& floor_id) {
   auto raw = std::make_shared<autolink::message::RawMessage>();
   message.SerializeToString(&raw->message);
   switch_writer_->Write(raw);
+}
+
+void StrataFloorPanel::showEvent(QShowEvent* event) {
+  QWidget::showEvent(event);
+  if (poll_timer_ != nullptr && !poll_timer_->isActive()) {
+    poll_timer_->start(100);
+  }
+}
+
+void StrataFloorPanel::hideEvent(QHideEvent* event) {
+  QWidget::hideEvent(event);
+  if (poll_timer_ != nullptr) {
+    poll_timer_->stop();
+  }
 }
 
 }  // namespace autoviz

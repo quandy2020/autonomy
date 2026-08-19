@@ -17,7 +17,16 @@ if(BUILD_AUTODRIVER AND TARGET autodriver)
     FILES_MATCHING PATTERN "*.hpp"
   )
   install(
-    TARGETS autodriver autodriver_autonomy_bridge
+    FILES ${CMAKE_BINARY_DIR}/autodriver/autodriver/conf/conf.hpp
+    DESTINATION include/autodriver/conf
+  )
+  install(
+    DIRECTORY autodriver/config/
+    DESTINATION share/autodriver/config
+    FILES_MATCHING PATTERN "*.yaml"
+  )
+  install(
+    TARGETS autodriver
     EXPORT AutonomyExport
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib

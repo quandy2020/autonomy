@@ -42,14 +42,13 @@ struct DeviceMatch {
 
 bool MatchDevice(const DeviceMatch& observed, const DeviceMatch& rule);
 
-// Process snapshot: one Node, N sensors. A sensor is Config::Sensor, not a
-// sibling *Config type.
+// Process snapshot: N sensors. Autolink Node/Writers live in bridge.
 struct Config {
     struct Sensor {
         std::string module;
         std::string library;
         SensorId id;
-        std::string channel;
+        std::vector<std::string> channels;
         std::string backend;
         bool autostart = false;
         DeviceMatch match;

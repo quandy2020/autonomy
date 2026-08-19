@@ -1,0 +1,26 @@
+# MkDocs 配置：文档源目录为 source/
+site_name: Autodriver
+docs_dir: source
+site_dir: site
+theme:
+  name: material
+  language: zh
+  palette:
+    - scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: 深色
+    - scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: 浅色
+plugins:
+  - search
+nav:
+  - 首页: index.md
+  - 入门:
+      - 快速开始: guide/quickstart.md
+      - 配置: guide/configuration.md
+  - 常见问题: faq.md

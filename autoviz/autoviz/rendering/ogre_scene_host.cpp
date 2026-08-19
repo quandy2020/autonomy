@@ -983,15 +983,18 @@ void OgreSceneHost::setToolPoseArrow(const std::string& tool_id,
     removeDisplay(name);
     return;
   }
-  // Same ManualObject mesh path as PoseDisplay / drawArrowOgreOrGl (not OgreArrow Entity).
-  constexpr float kShaftLength = 2.0f;
-  constexpr float kHeadLength = 0.5f;
+  // RViz2 PoseTool defaults: shaft 1.0m, head 0.3m, shaft_diam 0.1m, head_diam 0.2m.
+  constexpr float kShaftLength   = 1.0f;
+  constexpr float kHeadLength    = 0.3f;
+  constexpr float kShaftDiameter = 0.1f;
+  constexpr float kHeadDiameter  = 0.2f;
   const float reach = kShaftLength + kHeadLength;
   const QVector3D dir(std::cos(yaw), std::sin(yaw), 0.f);
   const QVector3D tip = position + dir * reach;
   std::vector<display::ColoredMeshInstance> meshes;
   display::appendSolidArrowMeshes(&meshes, position, tip, color,
-                                  kHeadLength / reach, 0.2f, 0.35f);
+                                  kHeadLength / reach, kShaftDiameter,
+                                  kHeadDiameter);
   if (meshes.empty()) {
     removeDisplay(name);
     return;

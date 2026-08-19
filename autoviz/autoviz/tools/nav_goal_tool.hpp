@@ -26,7 +26,7 @@ class NavGoalTool : public GoalPoseTool {
   std::string publishChannel() const override {
     return propertyValue("topic", "/move_base_simple/goal");
   }
-  QColor arrowColor() const override { return QColor(0, 255, 0); }
+  QColor arrowColor() const override { return QColor(0, 178, 0); }
   void onPoseSet(const QVector3D& position, float yaw) override;
 };
 

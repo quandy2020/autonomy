@@ -11,7 +11,10 @@
 #include <QWidget>
 
 class QComboBox;
+class QHideEvent;
 class QLabel;
+class QShowEvent;
+class QTimer;
 
 namespace autolink {
 template <typename MessageT>
@@ -38,6 +41,10 @@ class StrataFloorPanel : public QWidget {
   void setFloorsChannel(const std::string& channel);
   void setSwitchChannel(const std::string& channel);
 
+ protected:
+  void showEvent(QShowEvent* event) override;
+  void hideEvent(QHideEvent* event) override;
+
  private slots:
   void onFloorSelected(int index);
   void pollMessages();
@@ -63,6 +70,7 @@ class StrataFloorPanel : public QWidget {
   bool updating_selection_{false};
   bool readers_ready_{false};
 
+  QTimer* poll_timer_ = nullptr;
   QLabel* active_label_ = nullptr;
   QComboBox* floor_selector_ = nullptr;
   std::shared_ptr<autolink::Reader<autolink::message::RawMessage>> floors_reader_;

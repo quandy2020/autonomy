@@ -4450,15 +4450,7 @@ void VisualizationFrame::restoreImagePanelConfigs() {
       manager_->imagePanels();
   if (saved.empty()) {
     if (image_panel_ != nullptr) {
-      image::ImagePanelConfig cfg = image_panel_->config();
-      if (cfg.image_channel.isEmpty()) {
-        cfg.image_channel = QStringLiteral("/fake/image");
-        image_panel_->setConfig(cfg);
-      }
       updateImageDockTitle(image_dock_, image_panel_);
-      if (image_dock_ != nullptr) {
-        image_dock_->show();
-      }
     }
     return;
   }

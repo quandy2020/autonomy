@@ -19,8 +19,9 @@
 #include <iostream>
 #include <string>
 
+#include "autodriver/bridge/publisher.hpp"
+#include "autodriver/config_loader.hpp"
 #include "autodriver/sensor_manager.hpp"
-#include "autodriver/bridge/autonomy/loader.hpp"
 #include "autolink/init.hpp"
 #include "autolink/time/duration.hpp"
 
@@ -32,7 +33,7 @@ void HandleSignal(int) { g_running = false; }
 int main(int argc, char** argv) {
     autolink::Init(argv[0]);
     std::string configuration_directory;
-    std::string configuration_file = "driver/autodriver.lua";
+    std::string configuration_file = autodriver::kDefaultConfigBasename;
     if (argc > 1) {
         configuration_directory = argv[1];
     }
@@ -43,10 +44,16 @@ int main(int argc, char** argv) {
     std::signal(SIGTERM, HandleSignal);
 
     try {
-        autodriver::Config config =
-            autodriver::bridge::LoadAutodriverConfigFromDirectory(
-                configuration_directory, configuration_file);
+        autodriver::Config config = autodriver::LoadConfig(
+            configuration_directory, configuration_file);
+        autodriver::bridge::Publisher publisher(config.node_name);
+        if (!publisher.Initialize()) {
+            std::cerr << "autolink publisher failed\n";
+            autolink::Clear();
+            return 1;
+        }
         autodriver::SensorManager manager(std::move(config));
+        manager.SetSink(&publisher);
         if (!manager.Initialize() || !manager.Start()) {
             std::cerr << "SensorManager failed\n";
             autolink::Clear();

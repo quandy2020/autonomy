@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,11 +25,11 @@
 #include <unordered_map>
 
 #include "autodriver/config.hpp"
+#include "autodriver/sample_sink.hpp"
 #include "autodriver/sensor_module.hpp"
 #include "autodriver/sensor_hub.hpp"
 #include "autolink/base/atomic_rw_lock.hpp"
 #include "autolink/base/rw_lock_guard.hpp"
-#include "autolink/node/node.hpp"
 
 namespace autolink {
 namespace class_loader {
@@ -39,8 +39,9 @@ class ClassLoader;
 
 namespace autodriver {
 
-// One Node; one plugin instance per id (N of each modality).
+// One plugin instance per id (N of each modality).
 // udev add/remove maps onto Attach/Detach. Alignment is optional.
+// Autolink publishing is a SampleSink in bridge/, not this class.
 class SensorManager {
 public:
     SensorManager();
@@ -49,6 +50,9 @@ public:
 
     SensorManager(const SensorManager&) = delete;
     SensorManager& operator=(const SensorManager&) = delete;
+
+    // Not owned. Call before Start so Attach can open writers.
+    void SetSink(SampleSink* sink);
 
     bool Initialize();
     bool Start();
@@ -65,7 +69,6 @@ public:
     std::size_t AttachedCount() const;
     SensorHub& hub() { return hub_; }
     const SensorHub& hub() const { return hub_; }
-    autolink::Node* node() { return node_.get(); }
 
     void SetAlignedCallback(SensorHub::AlignedCallback callback);
     void SetRawSampleCallback(SensorHub::RawSampleCallback callback);
@@ -79,10 +82,11 @@ private:
     void StartUdev();
     void StopUdev();
     void UdevLoop();
+    void DispatchSample(std::shared_ptr<SensorSample> sample);
 
     Config config_;
     SensorHub hub_;
-    std::shared_ptr<autolink::Node> node_;
+    SampleSink* sink_ = nullptr;
     std::unordered_map<SensorId, std::shared_ptr<SensorModule>> modules_;
     std::unordered_map<std::string,
                        std::unique_ptr<autolink::class_loader::ClassLoader>>

@@ -1,0 +1,54 @@
+<!--
+  Autodriver hardware driver hub launch file.
+
+  Starts autodriver_hub which loads sensors from autodriver_hardware.yaml,
+  creates Autolink writers and manages sensor lifecycle (hotplug).
+
+  Prerequisites:
+    - AUTODRIVER_PATH must point to the autodriver package root
+      (the directory that contains config/autodriver_hardware.yaml)
+    - Sensor plugin .so files must be on LD_LIBRARY_PATH or in
+      AUTODRIVER_PLUGIN_DIR
+
+  Usage (from the autonomy workspace):
+    export AUTODRIVER_PATH=$PWD/src/autonomy/autodriver
+    export AUTOLINK_LAUNCH_PATH=$PWD/src/autonomy/autodriver/launch
+    export LD_LIBRARY_PATH=$PWD/build/lib:$LD_LIBRARY_PATH
+    export PATH=$PWD/build/bin:$PATH
+    autolink launch start autodriver.launch
+
+  To stop:
+    autolink launch stop autodriver.launch
+-->
+<autolink>
+    <environment>
+        <!--
+          Set AUTODRIVER_PATH to the autodriver package root so that
+          autodriver_hub can find config/autodriver_hardware.yaml.
+          Adjust this path to match your deployment layout.
+        -->
+        <!-- <AUTODRIVER_PATH>/opt/autodriver</AUTODRIVER_PATH> -->
+    </environment>
+
+    <module>
+        <name>autodriver_hub</name>
+        <type>binary</type>
+        <!--
+          Arguments: autodriver_hub <config_dir> <config_file>
+
+          When AUTODRIVER_PATH is set in the environment (either exported
+          before calling autolink launch, or via <environment> below),
+          autodriver_hub reads it automatically — no extra arguments needed.
+
+          To hard-code the config location instead, uncomment and edit:
+            <process_name>autodriver_hub /opt/autodriver autodriver_hardware.yaml</process_name>
+        -->
+        <process_name>autodriver_hub</process_name>
+        <!--
+          Respawn up to 3 times on unexpected exit so transient hardware
+          errors (e.g. USB disconnect) don't take the whole stack down.
+        -->
+        <exception_handler>respawn</exception_handler>
+        <respawn_limit>3</respawn_limit>
+    </module>
+</autolink>
