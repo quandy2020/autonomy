@@ -48,6 +48,19 @@ QColor RainbowColor(float t) {
   return QColor(r, g, b);
 }
 
+// Google Turbo colormap (perceptually uniform; good for depth / distance).
+// Source: https://gist.github.com/mikhailov-work/0d177465a8151eb6ede1768d51d476c7
+QColor TurboColor(float t) {
+  const float clamped = std::max(0.f, std::min(1.f, t));
+  const float r = 0.1357f + clamped * (4.5974f + clamped * (-42.3277f + clamped * (130.5887f + clamped * (-150.5666f + clamped * 58.1375f))));
+  const float g = 0.0914f + clamped * (2.1856f + clamped * (4.8052f  + clamped * (-14.0741f + clamped * (14.3171f  + clamped * -5.3670f))));
+  const float b = 0.1070f + clamped * (2.7183f + clamped * (14.4577f + clamped * (-57.8730f + clamped * (91.7920f  + clamped * -54.8728f))));
+  return QColor(
+      static_cast<int>(std::max(0.f, std::min(255.f, r * 255.f))),
+      static_cast<int>(std::max(0.f, std::min(255.f, g * 255.f))),
+      static_cast<int>(std::max(0.f, std::min(255.f, b * 255.f))));
+}
+
 const std::array<QColor, 256>& intensityRainbowTable() {
   static const std::array<QColor, 256> kTable = [] {
     std::array<QColor, 256> table{};
@@ -82,6 +95,49 @@ QColor colorFromRgbPacked(uint32_t rgb_packed) {
   const uint8_t g = static_cast<uint8_t>((rgb_packed >> 8) & 0xFF);
   const uint8_t b = static_cast<uint8_t>(rgb_packed & 0xFF);
   return QColor(r, g, b);
+}
+
+PointCloudColorMode parsePointCloudColorMode(const std::string& value) {
+  if (value == "Intensity") return PointCloudColorMode::kIntensity;
+  if (value == "RGB8")      return PointCloudColorMode::kRgb8;
+  if (value == "AxisColor X" || value == "Axis X") return PointCloudColorMode::kAxisX;
+  if (value == "AxisColor Y" || value == "Axis Y") return PointCloudColorMode::kAxisY;
+  if (value == "AxisColor Z" || value == "Axis Z") return PointCloudColorMode::kAxisZ;
+  // Legacy "Axis" → Z-axis height coloring (most intuitive default)
+  if (value == "Axis") return PointCloudColorMode::kAxisZ;
+  return PointCloudColorMode::kFlat;
+}
+
+PointCloudColorRamp parsePointCloudColorRamp(const std::string& value) {
+  if (value == "Turbo")     return PointCloudColorRamp::kTurbo;
+  if (value == "Grayscale") return PointCloudColorRamp::kGrayscale;
+  return PointCloudColorRamp::kRainbow;
+}
+
+QColor colorFromRamp(float t, PointCloudColorRamp ramp) {
+  const float clamped = std::max(0.f, std::min(1.f, t));
+  switch (ramp) {
+    case PointCloudColorRamp::kTurbo:
+      return TurboColor(clamped);
+    case PointCloudColorRamp::kGrayscale: {
+      const int v = static_cast<int>(clamped * 255.f);
+      return QColor(v, v, v);
+    }
+    case PointCloudColorRamp::kRainbow:
+    default:
+      return RainbowColor(clamped);
+  }
+}
+
+QColor colorFromIntensity(float intensity, float min_i, float max_i,
+                          PointCloudColorRamp ramp) {
+  if (ramp == PointCloudColorRamp::kRainbow) {
+    // Fast path: use pre-built palette (256 entries)
+    return colorFromIntensityIndex(intensityToPaletteIndex(intensity, min_i, max_i));
+  }
+  const float span = std::max(max_i - min_i, 1e-6f);
+  const float t = std::max(0.f, std::min(1.f, (intensity - min_i) / span));
+  return colorFromRamp(t, ramp);
 }
 
 ParsedPointCloud parsePointCloud2(

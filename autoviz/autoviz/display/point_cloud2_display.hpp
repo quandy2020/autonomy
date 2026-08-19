@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <chrono>
+#include <limits>
 #include <QColor>
 #include <QVector3D>
 #include <vector>
@@ -34,8 +36,22 @@ class PointCloud2Display
   struct CloudPoint {
     QVector3D position;
     QColor color;
+    /// Wall-clock time when this point was received (for decay eviction).
+    std::chrono::steady_clock::time_point received_at;
   };
-  std::vector<CloudPoint> points_;
+
+  /// Buckets of points indexed by message sequence (newest appended at back).
+  /// When decay_time == 0 only the most-recent batch is kept.
+  struct PointBatch {
+    std::vector<CloudPoint> points;
+    std::chrono::steady_clock::time_point received_at;
+  };
+
+  std::vector<PointBatch> batches_;
+
+  /// Per-message intensity range remembered across frames for stable coloring.
+  float intensity_auto_min_ = std::numeric_limits<float>::max();
+  float intensity_auto_max_ = std::numeric_limits<float>::lowest();
 };
 
 }  // namespace display

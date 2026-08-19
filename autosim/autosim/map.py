@@ -36,10 +36,112 @@ class Map:
         self.cached_cloud: Optional[np.ndarray] = None
         self.cached_grid: Optional[Tuple[np.ndarray, float, float, float, int, int]] = None
 
+    def load_ply_file(
+        self, path: str
+    ) -> Optional[Tuple[np.ndarray, Optional[np.ndarray]]]:
+        """Load XYZ (and RGB when present) from a PLY file.
+
+        Returns ``(xyz, rgb)`` where ``xyz`` is ``(N, 3) float32`` and
+        ``rgb`` is ``(N, 3) uint8`` or ``None`` when the file has no colour.
+        Returns ``None`` on failure.
+        """
+        resolved = self.resolve_ply_path(path)
+        if not resolved.exists():
+            return None
+        try:
+            result = self.read_ply(resolved)
+            if result is not None:
+                xyz, rgb = result
+                if xyz is not None and xyz.size > 0:
+                    return xyz.astype(np.float32), rgb
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
+    def read_ply(
+        path: Path,
+    ) -> Optional[Tuple[np.ndarray, Optional[np.ndarray]]]:
+        """Parse a PLY file; return ``(xyz_Nx3_float32, rgb_Nx3_uint8_or_None)``."""
+        with path.open("rb") as fh:
+            header_lines: list[bytes] = []
+            while True:
+                line = fh.readline()
+                header_lines.append(line)
+                if line.strip() == b"end_header":
+                    break
+            header = b"".join(header_lines).decode("utf-8", errors="replace")
+            n_vertices = 0
+            for hl in header.splitlines():
+                if hl.startswith("element vertex"):
+                    n_vertices = int(hl.split()[-1])
+            if n_vertices == 0:
+                return None
+            is_binary_little = "binary_little_endian" in header
+            is_binary_big = "binary_big_endian" in header
+            prop_lines = [l for l in header.splitlines() if l.startswith("property")]
+            props = [l.split() for l in prop_lines]
+            if is_binary_little or is_binary_big:
+                dtype_parts = []
+                for p in props:
+                    if len(p) < 3:
+                        continue
+                    t = p[1]
+                    if t in ("float", "float32"):
+                        dtype_parts.append((p[2], np.float32))
+                    elif t in ("double", "float64"):
+                        dtype_parts.append((p[2], np.float64))
+                    elif t in ("uchar", "uint8"):
+                        dtype_parts.append((p[2], np.uint8))
+                    elif t in ("int", "int32"):
+                        dtype_parts.append((p[2], np.int32))
+                    elif t in ("uint", "uint32"):
+                        dtype_parts.append((p[2], np.uint32))
+                    elif t in ("short", "int16"):
+                        dtype_parts.append((p[2], np.int16))
+                    elif t in ("ushort", "uint16"):
+                        dtype_parts.append((p[2], np.uint16))
+                if not dtype_parts:
+                    return None
+                dt = np.dtype(dtype_parts)
+                order = "<" if is_binary_little else ">"
+                dt = dt.newbyteorder(order)
+                data = np.frombuffer(fh.read(n_vertices * dt.itemsize), dtype=dt)
+                xyz = np.column_stack([data["x"], data["y"], data["z"]]).astype(np.float32)
+                rgb: Optional[np.ndarray] = None
+                names = {p[2] for p in props if len(p) >= 3}
+                if {"red", "green", "blue"}.issubset(names):
+                    rgb = np.column_stack(
+                        [data["red"], data["green"], data["blue"]]
+                    ).astype(np.uint8)
+                return xyz, rgb
+            else:
+                rows_xyz = []
+                rows_rgb: list[list[int]] = []
+                has_rgb = False
+                for _ in range(n_vertices):
+                    vals = fh.readline().split()
+                    if len(vals) >= 3:
+                        rows_xyz.append([float(vals[0]), float(vals[1]), float(vals[2])])
+                        if len(vals) >= 6:
+                            rows_rgb.append([int(vals[3]), int(vals[4]), int(vals[5])])
+                            has_rgb = True
+                if not rows_xyz:
+                    return None
+                xyz_arr = np.array(rows_xyz, dtype=np.float32)
+                rgb_arr: Optional[np.ndarray] = (
+                    np.array(rows_rgb, dtype=np.uint8) if has_rgb else None
+                )
+                return xyz_arr, rgb_arr
+
     def sample(
         self, simulator: Any, origin_xy: Tuple[float, float]
     ) -> Tuple[np.ndarray, np.ndarray, float, float, float, int, int]:
-        """Cast panoramic rays, optionally write PLY, and build occupancy.
+        """Load external PLY or cast panoramic rays, then build occupancy.
+
+        When ``ply.source`` is set to an existing file path the cloud is loaded
+        directly from that file instead of being cast by Habitat (useful for
+        pre-baked semantic PLY exports from the MP3D dataset).
 
         Args:
             simulator: Backend with ``world_cloud`` / ``linspace_angles`` / ``eye_height``.
@@ -48,11 +150,66 @@ class Map:
         Returns:
             ``(cloud_xyz, grid, resolution, origin_x, origin_y, width, height)``.
         """
-        cloud = self.sample_ply_cloud(simulator, origin_xy)
         ply_cfg = self.settings.get("ply") or {}
-        file_path = str(ply_cfg.get("file") or "").strip()
-        if file_path:
-            self.write_ply(self.resolve_ply_path(file_path), cloud)
+        source_path = str(ply_cfg.get("source") or "").strip()
+        self.cloud_rgb: Optional[np.ndarray] = None
+        if source_path:
+            loaded = self.load_ply_file(source_path)
+            if loaded is not None:
+                xyz_raw, rgb_raw = loaded
+                # MP3D semantic PLY convention: (x, y, z) = (Habitat_x, -Habitat_z, Habitat_y).
+                # This already matches the ROS map frame used in this project:
+                #   map_x = ply_x,  map_y = ply_y,  map_z = ply_z.
+                # No axis permutation or negation needed (confirmed by autonomy_ros coords.py).
+                # Use float64 to avoid silent float32 overflow in corrupt PLY
+                # vertices that have finite-but-garbage values (e.g. 3e38).
+                converted = xyz_raw.astype(np.float64)
+                # 1. Drop NaN / Inf.
+                finite_mask = np.all(np.isfinite(converted), axis=1)
+                # 2. Coarse sanity guard: discard vertices beyond ±200 m on any
+                #    axis (MP3D buildings are ≤ ~100 m; this removes float32 junk
+                #    that passes isfinite but has magnitude ~1e38).
+                coarse_mask = (np.abs(converted[:, 0]) < 200.0) & \
+                              (np.abs(converted[:, 1]) < 200.0) & \
+                              (np.abs(converted[:, 2]) < 50.0)
+                pre_mask = finite_mask & coarse_mask
+                # 3. Percentile-based outlier removal on all three axes (1–99th
+                #    percentile + 20 % margin).  This removes stray mesh fragments
+                #    that survive the coarse guard but would appear as a distant
+                #    spike in the visualiser.
+                outlier_mask = pre_mask
+                if pre_mask.sum() > 100:
+                    c_pre = converted[pre_mask]
+                    margin = 0.20
+                    bounds = []
+                    for ax in range(3):
+                        p1 = float(np.percentile(c_pre[:, ax], 1))
+                        p99 = float(np.percentile(c_pre[:, ax], 99))
+                        span = p99 - p1
+                        bounds.append((p1 - margin * span, p99 + margin * span))
+                    outlier_mask = (
+                        (converted[:, 0] >= bounds[0][0]) & (converted[:, 0] <= bounds[0][1]) &
+                        (converted[:, 1] >= bounds[1][0]) & (converted[:, 1] <= bounds[1][1]) &
+                        (converted[:, 2] >= bounds[2][0]) & (converted[:, 2] <= bounds[2][1])
+                    )
+                # 4. Optional z-height filter.  Priority: ply.z_min/ply.z_max >
+                #    grid.z_min/grid.z_max > no filter (publish all floors).
+                ply_cfg_inner = self.settings.get("ply") or {}
+                _grid_cfg = self.settings.get("grid") or {}
+                _z_min = ply_cfg_inner.get("z_min", _grid_cfg.get("z_min"))
+                _z_max = ply_cfg_inner.get("z_max", _grid_cfg.get("z_max"))
+                if _z_min is not None and _z_max is not None:
+                    z_mask = (converted[:, 2] >= float(_z_min)) & (converted[:, 2] <= float(_z_max))
+                else:
+                    z_mask = np.ones(len(converted), dtype=bool)
+                mask = finite_mask & coarse_mask & outlier_mask & z_mask
+                cloud = converted[mask].astype(np.float32)
+                if rgb_raw is not None:
+                    self.cloud_rgb = rgb_raw[mask]
+            else:
+                cloud = self.sample_ply_cloud(simulator, origin_xy)
+        else:
+            cloud = self.sample_ply_cloud(simulator, origin_xy)
 
         grid_cfg = self.settings["grid"]
         navmesh_grid = self.project_grid_from_navmesh(simulator, grid_cfg)
@@ -120,8 +277,10 @@ class Map:
     def sample_ply_cloud(self, simulator: Any, origin_xy: Tuple[float, float]) -> np.ndarray:
         """Panoramic Habitat cloud in map frame (z-up) from ``map.ply`` FOV."""
         ply_cfg = self.settings["ply"]
-        horizontal = ply_cfg["horizontal"]
-        vertical = ply_cfg["vertical"]
+        horizontal = ply_cfg.get("horizontal")
+        vertical = ply_cfg.get("vertical")
+        if horizontal is None or vertical is None:
+            return np.zeros((0, 3), dtype=np.float32)
         range_max = float(ply_cfg.get("range_max", self.settings.get("range_max", 30.0)))
         h_angles = simulator.linspace_angles(
             float(horizontal["angle_min"]),
@@ -132,7 +291,7 @@ class Map:
             float(vertical["angle_min"]),
             float(vertical["angle_max"]),
             int(vertical["num_rings"]),
-        )
+        )  # type: ignore[union-attr]
         eye = float(simulator.eye_height())
         return simulator.world_cloud(
             float(origin_xy[0]),

@@ -388,16 +388,21 @@ class Config:
             raise ValueError("habitat.map.ply requires file and/or channel")
         if not isinstance(grid.get("channel"), str) or not str(grid["channel"]).strip():
             raise ValueError("habitat.map.grid.channel must be a non-empty string")
-        horizontal = ply.get("horizontal")
-        vertical = ply.get("vertical")
-        if not isinstance(horizontal, Mapping) or not isinstance(vertical, Mapping):
-            raise ValueError("habitat.map.ply requires horizontal and vertical mappings")
-        if int(horizontal.get("num_beams", 0)) < 1:
-            raise ValueError("habitat.map.ply.horizontal.num_beams must be >= 1")
-        if int(vertical.get("num_rings", 0)) < 1:
-            raise ValueError("habitat.map.ply.vertical.num_rings must be >= 1")
-        if float(ply.get("range_max", 0.0)) <= 0.0:
-            raise ValueError("habitat.map.ply.range_max must be > 0")
+        # horizontal/vertical/range_max are only required for Habitat ray-cast mode.
+        # When ply.source is set the cloud is loaded from an external file and these
+        # fields are not needed.
+        source_path = str(ply.get("source") or "").strip()
+        if not source_path:
+            horizontal = ply.get("horizontal")
+            vertical = ply.get("vertical")
+            if not isinstance(horizontal, Mapping) or not isinstance(vertical, Mapping):
+                raise ValueError("habitat.map.ply requires horizontal and vertical mappings")
+            if int(horizontal.get("num_beams", 0)) < 1:
+                raise ValueError("habitat.map.ply.horizontal.num_beams must be >= 1")
+            if int(vertical.get("num_rings", 0)) < 1:
+                raise ValueError("habitat.map.ply.vertical.num_rings must be >= 1")
+            if float(ply.get("range_max", 0.0)) <= 0.0:
+                raise ValueError("habitat.map.ply.range_max must be > 0")
         if float(grid.get("resolution", 0.0)) <= 0.0:
             raise ValueError("habitat.map.grid.resolution must be > 0")
         if float(grid["z_max"]) < float(grid["z_min"]):

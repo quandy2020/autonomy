@@ -15,7 +15,7 @@
 habitat:
   # MP3D root: /media/quandy/0d708864-2623-44e1-8e26-435b41edea21/datasets/habitat/mp3d/mp3d
   # Habitat-sim loads a scene .glb (sibling folders are other MP3D houses).
-  path: /media/quandy/0d708864-2623-44e1-8e26-435b41edea21/datasets/habitat/mp3d/mp3d/JeFG25nYj2p/JeFG25nYj2p.glb
+  path: /media/quandy/0d708864-2623-44e1-8e26-435b41edea21/datasets/habitat/mp3d/mp3d/17DRP5sb8fy/17DRP5sb8fy.glb
   spawn: [0.0, 0.0, 0.0]  # x, y, yaw
   gpu: 0
 
@@ -109,19 +109,11 @@ habitat:
     frame: map
     rate_hz: 1.0           # periodic republish so late Autoviz subscribers still receive /map
     ply:
-      channel: /overall/map  # global semantic point cloud
-      stride: 1            # publish every Nth point (>= 1)
-      range_max: 30.0
-      horizontal:
-        angle_min: -3.14159
-        angle_max: 3.14159
-        num_beams: 360
-      vertical:
-        angle_min: -0.5
-        angle_max: 0.5
-        num_rings: 16
+      source: /media/quandy/0d708864-2623-44e1-8e26-435b41edea21/datasets/habitat/mp3d/mp3d/17DRP5sb8fy/17DRP5sb8fy_semantic.ply
+      channel: /overall/map
+      stride: 1            # no downsampling; use autoviz Decimate to thin on the viewer side
     grid:                  # height-slice + free-space carve → OccupancyGrid
       channel: /map
       resolution: 0.05
       z_min: 0.1
-      z_max: 1.8
+      z_max: 2.5
