@@ -137,13 +137,38 @@ class Simulator:
         self.reset(float(spawn[0]), float(spawn[1]), float(spawn[2]))
 
     def habitat_configuration(self, habitat_sim: Any) -> Any:
-        """Build ``SimulatorConfiguration`` from settings."""
+        """Build ``SimulatorConfiguration`` from settings.
+
+        Supports two loading modes (mirrors autonomy_ros habitat/sim.py _open()):
+        1. MP3D dataset config mode: set ``habitat.dataset_config`` (path to
+           ``mp3d.scene_dataset_config.json``) and ``habitat.scene_id`` (e.g.
+           ``17DRP5sb8fy/17DRP5sb8fy.glb``).  Enables semantic mesh loading.
+        2. Direct GLB mode (legacy): set ``habitat.path`` to the ``.glb`` file.
+        """
         configuration = habitat_sim.SimulatorConfiguration()
         configuration.gpu_device_id = int(self.settings["habitat"]["gpu"])
-        # Lidar / map use Simulator.cast_ray, which needs Bullet. URDF mesh
-        # instancing is independent (see should_instance_urdf).
+        # cast_ray (Lidar/map) requires Bullet physics.
         configuration.enable_physics = True
-        scene_path = str(self.settings["habitat"].get("path") or "").strip()
+        configuration.allow_sliding = True
+        configuration.requires_textures = True
+
+        hab_cfg = self.settings.get("habitat", {})
+        dataset_config = str(hab_cfg.get("dataset_config") or "").strip()
+        scene_id = str(hab_cfg.get("scene_id") or "").strip()
+
+        if dataset_config and scene_id:
+            # MP3D dataset config mode (preferred, matches autonomy_ros).
+            if not Path(dataset_config).exists():
+                raise FileNotFoundError(
+                    f"MP3D scene dataset config not found: {dataset_config}"
+                )
+            configuration.scene_dataset_config_file = dataset_config
+            configuration.scene_id = scene_id
+            configuration.load_semantic_mesh = True
+            return configuration
+
+        # Legacy: direct GLB path.
+        scene_path = str(hab_cfg.get("path") or "").strip()
         if not scene_path:
             if hasattr(habitat_sim, "STAGE_EMPTY_SCENE"):
                 configuration.scene_id = habitat_sim.STAGE_EMPTY_SCENE

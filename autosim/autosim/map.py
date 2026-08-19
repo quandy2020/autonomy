@@ -157,13 +157,16 @@ class Map:
             loaded = self.load_ply_file(source_path)
             if loaded is not None:
                 xyz_raw, rgb_raw = loaded
-                # MP3D semantic PLY convention: (x, y, z) = (Habitat_x, -Habitat_z, Habitat_y).
-                # This already matches the ROS map frame used in this project:
-                #   map_x = ply_x,  map_y = ply_y,  map_z = ply_z.
-                # No axis permutation or negation needed (confirmed by autonomy_ros coords.py).
+                # autosim map frame: map_y = +Habitat_Z  (cast_from_origin returns (hx, hz, hy)).
+                # MP3D semantic PLY: PLY.y = -Habitat_Z.
+                # Therefore: map_y = -PLY.y.
+                # (autonomy_ros uses map_y = -Habitat_Z = PLY.y, so it needs no negation;
+                #  autosim uses map_y = +Habitat_Z = -PLY.y, so negation is required here.)
+                #
                 # Use float64 to avoid silent float32 overflow in corrupt PLY
                 # vertices that have finite-but-garbage values (e.g. 3e38).
-                converted = xyz_raw.astype(np.float64)
+                tmp = xyz_raw.astype(np.float64)
+                converted = np.column_stack([tmp[:, 0], -tmp[:, 1], tmp[:, 2]])
                 # 1. Drop NaN / Inf.
                 finite_mask = np.all(np.isfinite(converted), axis=1)
                 # 2. Coarse sanity guard: discard vertices beyond ±200 m on any
@@ -173,20 +176,20 @@ class Map:
                               (np.abs(converted[:, 1]) < 200.0) & \
                               (np.abs(converted[:, 2]) < 50.0)
                 pre_mask = finite_mask & coarse_mask
-                # 3. Percentile-based outlier removal on all three axes (1–99th
-                #    percentile + 20 % margin).  This removes stray mesh fragments
-                #    that survive the coarse guard but would appear as a distant
-                #    spike in the visualiser.
+                # 3. Percentile-based outlier removal on all three axes.
+                #    Uses 0.1th – 99.9th percentile with a 5 % margin to
+                #    aggressively remove stray spikes (e.g. the vertical line
+                #    artefact that survives the coarse guard).
                 outlier_mask = pre_mask
                 if pre_mask.sum() > 100:
                     c_pre = converted[pre_mask]
-                    margin = 0.20
+                    margin = 0.05
                     bounds = []
                     for ax in range(3):
-                        p1 = float(np.percentile(c_pre[:, ax], 1))
-                        p99 = float(np.percentile(c_pre[:, ax], 99))
-                        span = p99 - p1
-                        bounds.append((p1 - margin * span, p99 + margin * span))
+                        p_lo = float(np.percentile(c_pre[:, ax], 0.1))
+                        p_hi = float(np.percentile(c_pre[:, ax], 99.9))
+                        span = p_hi - p_lo
+                        bounds.append((p_lo - margin * span, p_hi + margin * span))
                     outlier_mask = (
                         (converted[:, 0] >= bounds[0][0]) & (converted[:, 0] <= bounds[0][1]) &
                         (converted[:, 1] >= bounds[1][0]) & (converted[:, 1] <= bounds[1][1]) &
@@ -266,12 +269,13 @@ class Map:
 
         lo, hi = get_bounds()
         origin_x = float(min(float(lo[0]), float(hi[0])))
-        origin_y = float(min(float(lo[2]), float(hi[2])))
+        origin_z = float(min(float(lo[2]), float(hi[2])))
         height, width = navigable.shape
-        # Habitat topdown row 0 is min Z (= ROS / map Y). Do not negate origin
-        # and do not flip rows: that mirrored Y and looked like a pose offset
-        # while heading along +X still lined up with east-west corridors.
+        # autosim map_y = +Habitat_Z.
+        # get_topdown_view row-0 = min Habitat-Z = min map-y (south edge).
+        # No row flip needed; origin_y = lo[2] = min Habitat-Z = min map-y.
         grid = np.where(navigable, 0, 100).astype(np.int8)
+        origin_y = origin_z
         return grid, resolution, origin_x, origin_y, width, height
 
     def sample_ply_cloud(self, simulator: Any, origin_xy: Tuple[float, float]) -> np.ndarray:
@@ -330,10 +334,14 @@ class Map:
         grid_cfg: Mapping[str, Any],
         origin: Tuple[float, float, float],
     ) -> Tuple[np.ndarray, float, float, float, int, int]:
-        """Height-slice occupancy with free-space ray carving from ``origin``.
+        """Height-slice occupancy using wall/floor layered marking strategy.
 
-        Cells: ``-1`` unknown, ``0`` free (carved), ``100`` occupied.
+        Matches autonomy_ros ``_occupancy_from_ply_xyz``:
+        - Points above ``_WALL_Z_MIN`` (0.1 m) are walls → 100
+        - Points at/below floor level (z ≤ 0) are free → 0
+        - Remaining unknown cells → 100 (conservative)
         """
+        _WALL_Z_MIN = 0.1
         resolution = float(grid_cfg["resolution"])
         z_min = float(grid_cfg["z_min"])
         z_max = float(grid_cfg["z_max"])
@@ -342,49 +350,30 @@ class Map:
 
         points = np.asarray(cloud, dtype=np.float64).reshape(-1, 3)
         mask = (points[:, 2] >= z_min) & (points[:, 2] <= z_max)
-        sliced = points[mask]
-        if sliced.size == 0:
+        pts = points[mask]
+        if pts.shape[0] == 0:
             return np.full((1, 1), -1, dtype=np.int8), resolution, 0.0, 0.0, 1, 1
 
-        min_x = float(np.floor(min(sliced[:, 0].min(), origin[0]) / resolution) * resolution)
-        min_y = float(np.floor(min(sliced[:, 1].min(), origin[1]) / resolution) * resolution)
-        max_x = float(np.ceil(max(sliced[:, 0].max(), origin[0]) / resolution) * resolution)
-        max_y = float(np.ceil(max(sliced[:, 1].max(), origin[1]) / resolution) * resolution)
-        width = max(1, int(math.ceil((max_x - min_x) / resolution)))
-        height = max(1, int(math.ceil((max_y - min_y) / resolution)))
+        # Compute grid bounds anchored to floor points (like autonomy_ros).
+        floor_pts = pts[pts[:, 2] <= 1e-6]
+        ref = floor_pts if floor_pts.size else pts
+        ox = float(ref[:, 0].min() - 0.5 * resolution)
+        oy = float(ref[:, 1].min() - 0.5 * resolution)
+        width = max(1, int(math.ceil((pts[:, 0].max() - ox) / resolution)))
+        height = max(1, int(math.ceil((pts[:, 1].max() - oy) / resolution)))
+
+        gx = np.clip(((pts[:, 0] - ox) / resolution).astype(np.int32), 0, width - 1)
+        gy = np.clip(((pts[:, 1] - oy) / resolution).astype(np.int32), 0, height - 1)
         grid = np.full((height, width), -1, dtype=np.int8)
 
-        origin_c = int(np.floor((origin[0] - min_x) / resolution))
-        origin_r = int(np.floor((origin[1] - min_y) / resolution))
-        cols = np.floor((sliced[:, 0] - min_x) / resolution).astype(np.int32)
-        rows = np.floor((sliced[:, 1] - min_y) / resolution).astype(np.int32)
-        valid = (cols >= 0) & (cols < width) & (rows >= 0) & (rows < height)
-        cols = cols[valid]
-        rows = rows[valid]
-
-        for row, col in zip(rows.tolist(), cols.tolist()):
-            self.carve_bresenham(grid, origin_r, origin_c, row, col)
-            if 0 <= row < height and 0 <= col < width:
-                grid[row, col] = 100
-        return grid, resolution, min_x, min_y, width, height
-
-    @staticmethod
-    def carve_bresenham(grid: np.ndarray, r0: int, c0: int, r1: int, c1: int) -> None:
-        """Mark free cells along a grid ray; leave the endpoint for the caller."""
-        height, width = grid.shape
-        dr = abs(r1 - r0)
-        dc = abs(c1 - c0)
-        sr = 1 if r0 < r1 else -1
-        sc = 1 if c0 < c1 else -1
-        err = dr - dc
-        row, col = r0, c0
-        while row != r1 or col != c1:
-            if 0 <= row < height and 0 <= col < width and grid[row, col] != 100:
-                grid[row, col] = 0
-            e2 = 2 * err
-            if e2 > -dc:
-                err -= dc
-                row += sr
-            if e2 < dr:
-                err += dr
-                col += sc
+        # Pass 1: walls.
+        for x, y, z in zip(gx.tolist(), gy.tolist(), pts[:, 2].tolist()):
+            if z >= _WALL_Z_MIN - 1e-6:
+                grid[y, x] = 100
+        # Pass 2: free (floor points overwrite walls at their cell).
+        for x, y, z in zip(gx.tolist(), gy.tolist(), pts[:, 2].tolist()):
+            if z <= 1e-6:
+                grid[y, x] = 0
+        # Unknown cells → conservative occupied.
+        grid[grid < 0] = 100
+        return grid, resolution, ox, oy, width, height
