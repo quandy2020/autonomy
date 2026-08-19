@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package autodriver.proto;
+
+message DeviceMatch {
+  string subsystem = 1;
+  string device = 2;
+  string vendor = 3;
+  string product = 4;
+  string serial = 5;
+}
+
+message SensorConfig {
+  string module = 1;
+  string library = 2;
+  string sensor_id = 3;
+  string channel = 4;  // YAML: string or repeated via `channels`
+  repeated string channels = 22;
+  string backend = 5;
+  bool attach_on_start = 6;
+  DeviceMatch match = 7;
+  map<string, string> params = 8;
+
+  // Shorthand: config_loader merges these into params/match when unset.
+  string device = 9;
+  int32 baud = 10;
+  string interface = 11;
+  string model = 12;
+  string stream = 13;
+  int32 width = 14;
+  int32 height = 15;
+  int32 fps = 16;
+  string accel_can_id = 17;
+  string gyro_can_id = 18;
+  string can_id = 19;
+  string accel_scale = 20;
+  string gyro_scale = 21;
+}
+
+message HotplugConf {
+  bool enable_udev = 1;
+}
+
+message AlignmentConf {
+  bool enable = 1;
+  int32 alignment_window_ms = 2;
+  int32 publish_period_ms = 3;
+  int32 buffer_capacity = 4;
+}
+
+message AutodriverConfig {
+  string node_name = 1;
+  string plugin_dir = 2;
+  HotplugConf hotplug = 3;
+  AlignmentConf alignment = 4;
+  repeated SensorConfig sensors = 5;
+}

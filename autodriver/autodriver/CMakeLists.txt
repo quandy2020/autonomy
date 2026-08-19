@@ -14,6 +14,7 @@
 
 set(AUTODRIVER_SOURCES
   config.cpp
+  config_loader.cpp
   sensor_manager.cpp
   driver_params.cpp
   hardware/serial_port.cpp
@@ -24,29 +25,41 @@ set(AUTODRIVER_SOURCES
   time_synchronization.cpp
   sample_buffer.cpp
   sensor_hub.cpp
+  # all sensor modules compiled directly into the shared library
+  modules.cpp
+  hardware/serial_imu_driver.cpp
+  hardware/can_imu_driver.cpp
+  hardware/serial_gps_driver.cpp
+  hardware/can_gps_driver.cpp
+  bridge/publisher.cpp
 )
 
 find_package(Threads REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
-add_library(autodriver ${AUTODRIVER_SOURCES})
+add_library(autodriver SHARED ${AUTODRIVER_SOURCES})
 
 if(NOT TARGET autolink OR NOT TARGET automsgs)
   message(FATAL_ERROR
-    "autodriver requires autolink and automsgs; configure the autonomy root "
-    "with -DBUILD_AUTODRIVER=ON")
+    "autodriver requires autolink and automsgs targets to already be defined. "
+    "When building standalone, ensure autolink and automsgs are installed and "
+    "findable. When building inside the autonomy super-project, use "
+    "-DBUILD_AUTODRIVER=ON and make sure autodriver is added after automsgs.")
 endif()
 
 target_include_directories(autodriver
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+    $<BUILD_INTERFACE:${AUTODRIVER_GENERATED_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/..>
     $<INSTALL_INTERFACE:include>
 )
 
 target_compile_options(autodriver PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(autodriver PUBLIC Threads::Threads autolink automsgs)
+target_link_libraries(autodriver PUBLIC Threads::Threads autolink automsgs
+  yaml-cpp)
 target_compile_definitions(autodriver PUBLIC
-  AUTODRIVER_PLUGIN_DIR="${CMAKE_LIBRARY_OUTPUT_DIRECTORY}"
   AUTODRIVER_SHARED_SUFFIX="${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
 if(UNIX AND NOT APPLE)
@@ -71,23 +84,3 @@ if(AUTODRIVER_WITH_REALSENSE)
   endif()
 endif()
 
-function(autodriver_add_plugin name)
-  add_library(${name} SHARED ${ARGN})
-  target_link_libraries(${name} PRIVATE autodriver)
-  target_include_directories(${name} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR})
-  set_target_properties(${name} PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
-endfunction()
-
-autodriver_add_plugin(autodriver_lidar plugins/lidar/lidar_module.cpp)
-autodriver_add_plugin(autodriver_range plugins/range/range_module.cpp)
-autodriver_add_plugin(autodriver_gps
-  plugins/gps/gps_module.cpp
-  hardware/serial_gps_driver.cpp
-  hardware/can_gps_driver.cpp)
-autodriver_add_plugin(autodriver_imu
-  plugins/imu/imu_module.cpp
-  hardware/serial_imu_driver.cpp
-  hardware/can_imu_driver.cpp)
-autodriver_add_plugin(autodriver_camera plugins/camera/camera_module.cpp)

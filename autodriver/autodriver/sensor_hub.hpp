@@ -61,7 +61,6 @@ public:
     void RegisterDriver(std::shared_ptr<SensorDriver> driver);
     void SetAlignedCallback(AlignedCallback callback);
     void SetRawSampleCallback(RawSampleCallback callback);
-    void PushSample(std::unique_ptr<SensorSample> sample);
     void PushSample(std::shared_ptr<SensorSample> sample);
     void DropBuffer(const SensorId& id);
     bool Start();

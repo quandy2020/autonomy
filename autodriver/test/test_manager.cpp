@@ -30,7 +30,7 @@ public:
 
     bool Init(const autodriver::SensorModule::Context& context) override {
         id_ = context.sensor.id;
-        return context.node != nullptr;
+        return true;
     }
     bool Start() override {
         running_ = true;

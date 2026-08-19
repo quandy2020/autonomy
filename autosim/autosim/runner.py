@@ -23,6 +23,8 @@ from __future__ import annotations
 
 import argparse
 import math
+import queue
+import threading
 import time
 import warnings
 from pathlib import Path
@@ -53,6 +55,65 @@ from automsgs.msgs.sensor_msgs.point_cloud2_pb2 import PointCloud2
 from automsgs.msgs.tf2_msgs.tf_message_pb2 import TFMessage
 
 TF_STATIC_REPUBLISH_SEC = 1.0
+
+
+class SensorWorker:
+    """Background thread for protobuf encoding and bridge publishing.
+
+    Habitat render / ray-cast calls (which require the GL context) still run
+    on the main thread.  Once raw numpy arrays are ready, the main thread
+    submits ``(callable, args)`` to this worker for protobuf encoding and
+    autolink publishing, so the main control loop is not stalled by I/O.
+
+    A bounded queue (``maxsize=1``) drops stale frames when the worker falls
+    behind, keeping end-to-end latency bounded.
+    """
+
+    def __init__(self) -> None:
+        self._queue: queue.Queue = queue.Queue(maxsize=1)
+        self._thread = threading.Thread(target=self._run, daemon=True, name="autosim-sensor")
+        self._stop = threading.Event()
+
+    def start(self) -> None:
+        """Start the worker thread."""
+        self._thread.start()
+
+    def stop(self) -> None:
+        """Signal the worker to stop and wait for it to exit."""
+        self._stop.set()
+        try:
+            self._queue.put_nowait(None)
+        except queue.Full:
+            pass
+        self._thread.join(timeout=2.0)
+
+    def submit(self, fn: Any, *args: Any) -> None:
+        """Enqueue a sensor task, dropping the previous one if the queue is full."""
+        try:
+            self._queue.put_nowait((fn, args))
+        except queue.Full:
+            try:
+                self._queue.get_nowait()
+            except queue.Empty:
+                pass
+            try:
+                self._queue.put_nowait((fn, args))
+            except queue.Full:
+                pass
+
+    def _run(self) -> None:
+        while not self._stop.is_set():
+            try:
+                item = self._queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
+            if item is None:
+                break
+            fn, args = item
+            try:
+                fn(*args)
+            except Exception as exc:
+                warnings.warn(f"autosim sensor worker error: {exc!r}", stacklevel=2)
 
 
 class Runner:
@@ -92,6 +153,9 @@ class Runner:
         self.map_builder: Optional[Map] = None
         if self.map_cfg.get("enabled", False):
             self.map_builder = Map(self.map_cfg)
+        # Worker for protobuf encoding + bridge publish only.
+        # All Habitat GL/ray-cast calls remain on the main thread.
+        self._sensor_worker = SensorWorker()
 
     @staticmethod
     def resolve_link(link: Any) -> Any:
@@ -226,6 +290,7 @@ class Runner:
         period = 1.0 / float(self.robot_cfg["control_hz"])
         last = time.perf_counter() - period
         steps = 0
+        self._sensor_worker.start()
         try:
             while not self.link.is_shutdown():
                 now = time.perf_counter()
@@ -247,11 +312,17 @@ class Runner:
                 if remaining > 0.0:
                     time.sleep(remaining)
         finally:
+            self._sensor_worker.stop()
             self.simulator.close()
             self.link.shutdown()
 
     def cycle(self, dt: float) -> None:
         """Execute one control period.
+
+        Physics step and lightweight publishers run synchronously on the main
+        thread.  Heavy Habitat render/ray-cast calls (camera, lidar, map) are
+        submitted to the sensor worker thread so the main loop never stalls
+        waiting for them.  The hab_lock serialises all Habitat session access.
 
         Args:
             dt: Period length in seconds (``1 / control_hz``).
@@ -264,16 +335,132 @@ class Runner:
         stamp = self.clock.stamp()
         linear, angular = self.robot.velocity()
         self.advance_timers(dt)
+        # Lightweight: always run on the main thread.
         self.emit("odom", self.publish_odometry, x, y, yaw, linear, angular, stamp)
-        self.emit("scan", self.publish_scan, stamp)
-        self.emit("cloud", self.publish_cloud, stamp)
-        self.emit("camera", self.publish_camera, stamp)
         self.emit("imu", self.publish_imu, yaw, linear, stamp)
         self.emit("truth", self.publish_truth, stamp)
         self.emit("footprint", self.publish_footprint, stamp)
-        self.emit("map", self.publish_map, stamp)
         self.emit("tf", self.publish_tf, stamp)
         self.emit("clock", self.publish_clock, stamp)
+        # Heavy (Habitat render / ray-cast): offload to sensor worker.
+        self.submit_scan(stamp)
+        self.submit_cloud(stamp)
+        self.submit_camera(stamp)
+        self.submit_map(stamp)
+
+    def submit_scan(self, stamp: Tuple[int, int]) -> None:
+        """Ray-cast lidar on the main (GL-context) thread, then encode/publish async."""
+        if not self.lidar_2d["enabled"]:
+            return
+        if self.scan_elapsed < 1.0 / self.lidar_2d["rate_hz"]:
+            return
+        self.scan_elapsed = 0.0
+        ranges = self.sensors.sample_laser(self.simulator)
+        self._sensor_worker.submit(self.encode_publish_scan, ranges, stamp)
+
+    def encode_publish_scan(self, ranges: Any, stamp: Tuple[int, int]) -> None:
+        self.bridge.publish(
+            "scan",
+            Messages.encode_laser_scan(
+                ranges=ranges,
+                stamp=stamp,
+                frame_id=self.lidar_2d["frame"],
+                angle_min=self.sensors.angle_min,
+                angle_max=self.sensors.angle_max,
+                angle_increment=self.sensors.angle_increment,
+                range_min=self.sensors.range_min,
+                range_max=self.sensors.range_max,
+                scan_time=1.0 / self.lidar_2d["rate_hz"],
+            ),
+        )
+
+    def submit_cloud(self, stamp: Tuple[int, int]) -> None:
+        """Ray-cast 3D lidar on the main thread, then encode/publish async."""
+        if not self.lidar_3d["enabled"]:
+            return
+        if self.points_elapsed < 1.0 / self.lidar_3d["rate_hz"]:
+            return
+        self.points_elapsed = 0.0
+        points = self.sensors.sample_points(self.simulator)
+        self._sensor_worker.submit(self.encode_publish_cloud, points, stamp)
+
+    def encode_publish_cloud(self, points: Any, stamp: Tuple[int, int]) -> None:
+        intensity = None
+        if points.size > 0:
+            intensity = np.linalg.norm(points, axis=1).astype(np.float32)
+        self.bridge.publish(
+            "points",
+            Messages.encode_point_cloud2(points, stamp, self.lidar_3d["frame"], intensity=intensity),
+        )
+
+    def submit_camera(self, stamp: Tuple[int, int]) -> None:
+        """Render RGB-D on the main (GL-context) thread, then encode/publish async."""
+        if not self.camera.get("enabled", False):
+            return
+        if self.camera_elapsed < 1.0 / self.camera["rate_hz"]:
+            return
+        self.camera_elapsed = 0.0
+        color, depth = self.sensors.sample_camera(self.simulator)
+        self._sensor_worker.submit(self.encode_publish_camera, color, depth, stamp)
+
+    def encode_publish_camera(self, color: Any, depth: Any, stamp: Tuple[int, int]) -> None:
+        frame = self.camera["frame"]
+        self.bridge.publish("rgb", Messages.encode_image(color, stamp, frame, "rgb8"))
+        self.bridge.publish(
+            "depth",
+            Messages.encode_image(depth.astype(np.float32), stamp, frame, "32FC1"),
+        )
+        height, width = color.shape[:2]
+        camera_matrix = Messages.camera_intrinsics(
+            width, height, float(self.camera.get("hfov_deg", 90.0))
+        )
+        self.bridge.publish(
+            "camera_info",
+            Messages.encode_camera_info(stamp, frame, width, height, camera_matrix),
+        )
+
+    def submit_map(self, stamp: Tuple[int, int]) -> None:
+        """Build map on the main thread, then encode/publish async."""
+        if self.map_builder is None or not self.map_cfg.get("enabled", False):
+            return
+        rate = float(self.map_cfg.get("rate_hz", 0.0))
+        if rate > 0.0 and self.map_elapsed < 1.0 / rate and self.map_published:
+            return
+        if rate <= 0.0 and self.map_published:
+            return
+        self.map_elapsed = 0.0
+        self.map_published = True
+        origin = (float(self.spawn[0]), float(self.spawn[1]))
+        cloud, grid, resolution, ox, oy, _, _ = self.map_builder.sample(self.simulator, origin)
+        ply_cfg = self.map_cfg.get("ply") or {}
+        stride = int(ply_cfg.get("stride", 1))
+        cloud = Runner.subsample_points(cloud, stride)
+        self._sensor_worker.submit(self.encode_publish_map, cloud, grid, resolution, ox, oy, stamp)
+
+    def encode_publish_map(
+        self,
+        cloud: Any,
+        grid: Any,
+        resolution: float,
+        ox: float,
+        oy: float,
+        stamp: Tuple[int, int],
+    ) -> None:
+        ply_cfg = self.map_cfg.get("ply") or {}
+        frame = self.map_cfg["frame"]
+        ply_channel = str(ply_cfg.get("channel") or "").strip()
+        if ply_channel:
+            intensity = None
+            if cloud.size > 0:
+                intensity = np.linalg.norm(cloud, axis=1).astype(np.float32)
+            self.bridge.publish(
+                "map_cloud",
+                Messages.encode_point_cloud2(cloud, stamp, frame, intensity=intensity),
+            )
+        self.bridge.publish(
+            "map_grid",
+            Messages.encode_occupancy_grid(grid, resolution, ox, oy, stamp, frame),
+        )
 
     def emit(self, name: str, action: Any, *args: Any) -> None:
         """Run a publisher; log and continue on failure.

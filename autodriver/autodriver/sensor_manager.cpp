@@ -20,7 +20,6 @@
 #include <utility>
 #include <vector>
 
-#include "autolink/autolink.hpp"
 #include "autolink/class_loader/class_loader.hpp"
 #include "autolink/class_loader/class_loader_manager.hpp"
 #include "autolink/common/log.hpp"
@@ -73,13 +72,13 @@ bool SensorManager::Initialize() {
         AERROR << "duplicate id in Config";
         return false;
     }
-    node_ = autolink::CreateNode(config_.node_name);
-    if (!node_) {
-        AERROR << "CreateNode failed: " << config_.node_name;
-        return false;
-    }
     initialized_ = true;
     return true;
+}
+
+void SensorManager::SetSink(SampleSink* sink) {
+    WriteLock lock(lock_);
+    sink_ = sink;
 }
 
 bool SensorManager::Start() {
@@ -157,6 +156,18 @@ void SensorManager::SetRawSampleCallback(SensorHub::RawSampleCallback callback) 
     hub_.SetRawSampleCallback(std::move(callback));
 }
 
+void SensorManager::DispatchSample(std::shared_ptr<SensorSample> sample) {
+    if (!sample) {
+        return;
+    }
+    if (config_.alignment.enable) {
+        hub_.PushSample(sample);
+    }
+    if (sink_ != nullptr) {
+        sink_->OnSample(std::move(sample));
+    }
+}
+
 const Config::Sensor* SensorManager::FindSensor(const SensorId& id) const {
     for (const Config::Sensor& sensor : config_.sensors) {
         if (sensor.id == id) {
@@ -220,15 +231,28 @@ bool SensorManager::AttachLocked(const SensorId& id) {
     }
 
     SensorModule::Context context;
-    context.node = node_;
     context.sensor = *sensor;
-    if (config_.alignment.enable) {
-        context.hook = [this](std::shared_ptr<SensorSample> sample) {
-            hub_.PushSample(std::move(sample));
-        };
+    context.hook = [this](std::shared_ptr<SensorSample> sample) {
+        DispatchSample(std::move(sample));
+    };
+    if (!instance->Init(context)) {
+        AERROR << "module Init failed: " << id;
+        instance.reset();
+        UnloadIfUnused(path);
+        return false;
     }
-    if (!instance->Init(context) || !instance->Start()) {
-        AERROR << "module Init/Start failed: " << id;
+    if (sink_ != nullptr && !sink_->OnAttach(*sensor, instance->GetType())) {
+        AERROR << "sink OnAttach failed: " << id;
+        instance->Stop();
+        instance.reset();
+        UnloadIfUnused(path);
+        return false;
+    }
+    if (!instance->Start()) {
+        AERROR << "module Start failed: " << id;
+        if (sink_ != nullptr) {
+            sink_->OnDetach(id);
+        }
         instance->Stop();
         instance.reset();
         UnloadIfUnused(path);
@@ -248,6 +272,9 @@ void SensorManager::DetachLocked(const SensorId& id) {
     it->second->Stop();
     it->second.reset();
     modules_.erase(it);
+    if (sink_ != nullptr) {
+        sink_->OnDetach(id);
+    }
     hub_.DropBuffer(id);
     if (sensor != nullptr && !sensor->library.empty()) {
         UnloadIfUnused(LibraryPath(*sensor));

@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-#ifndef AUTODRIVER_SENSOR_MODULE_HPP_
-#define AUTODRIVER_SENSOR_MODULE_HPP_
+#ifndef AUTODRIVER_SAMPLE_SINK_HPP_
+#define AUTODRIVER_SAMPLE_SINK_HPP_
 
-#include <functional>
 #include <memory>
 
 #include "autodriver/config.hpp"
@@ -27,31 +26,19 @@
 
 namespace autodriver {
 
-// class_loader plugin: default-constructible, then Init/Start/Stop.
-class SensorModule {
+// Receives attach/detach and samples. Autolink publishing lives in bridge.
+class SampleSink {
 public:
-    using SampleHook = std::function<void(std::shared_ptr<SensorSample>)>;
+    virtual ~SampleSink() = default;
 
-    struct Context {
-        Config::Sensor sensor;
-        SampleHook hook;
-    };
-
-    SensorModule(const SensorModule&) = delete;
-    SensorModule& operator=(const SensorModule&) = delete;
-    virtual ~SensorModule() = default;
-
-    virtual SensorType GetType() const = 0;
-    virtual const SensorId& GetSensorId() const = 0;
-    virtual bool Init(const Context& context) = 0;
-    virtual bool Start() = 0;
-    virtual void Stop() = 0;
-    virtual bool IsRunning() const = 0;
+    virtual bool OnAttach(const Config::Sensor& sensor, SensorType type) = 0;
+    virtual void OnDetach(const SensorId& id) = 0;
+    virtual void OnSample(std::shared_ptr<SensorSample> sample) = 0;
 
 protected:
-    SensorModule() = default;
+    SampleSink() = default;
 };
 
 }  // namespace autodriver
 
-#endif  // AUTODRIVER_SENSOR_MODULE_HPP_
+#endif  // AUTODRIVER_SAMPLE_SINK_HPP_

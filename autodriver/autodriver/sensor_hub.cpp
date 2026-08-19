@@ -99,10 +99,6 @@ void SensorHub::Stop() {
 
 bool SensorHub::IsRunning() const { return running_.load(); }
 
-void SensorHub::PushSample(std::unique_ptr<SensorSample> sample) {
-    OnSample(std::shared_ptr<SensorSample>(std::move(sample)));
-}
-
 void SensorHub::PushSample(std::shared_ptr<SensorSample> sample) {
     OnSample(std::move(sample));
 }

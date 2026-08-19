@@ -2,11 +2,6 @@
 
 install(
   TARGETS autodriver
-          autodriver_imu
-          autodriver_gps
-          autodriver_camera
-          autodriver_lidar
-          autodriver_range
   EXPORT autodriverTargets
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -19,9 +14,28 @@ install(
   FILES_MATCHING PATTERN "*.hpp"
 )
 
+install(
+  FILES ${AUTODRIVER_GENERATED_DIR}/conf/conf.hpp
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/autodriver/conf
+)
+
+install(
+  DIRECTORY ${AUTODRIVER_ROOT_DIR}/config/
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/autodriver/config
+  FILES_MATCHING PATTERN "*.yaml"
+)
+
+install(TARGETS autodriver_hub RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
 if(AUTODRIVER_BUILD_EXAMPLES)
   install(TARGETS autodriver_demo RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
+
+install(
+  DIRECTORY ${AUTODRIVER_ROOT_DIR}/launch/
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/autodriver/launch
+  FILES_MATCHING PATTERN "*.launch"
+)
 
 install(
   EXPORT autodriverTargets

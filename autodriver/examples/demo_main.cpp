@@ -16,6 +16,7 @@
 
 #include <iostream>
 
+#include "autodriver/bridge/publisher.hpp"
 #include "autodriver/sensor_manager.hpp"
 #include "autolink/init.hpp"
 #include "autolink/time/duration.hpp"
@@ -25,16 +26,21 @@ int main(int argc, char** argv) {
     autodriver::Config config;
     autodriver::Config::Sensor lidar2d;
     lidar2d.module = "Lidar2dModule";
-    lidar2d.library = "libautodriver_lidar.so";
     lidar2d.id = "lidar/front";
     lidar2d.autostart = true;
     autodriver::Config::Sensor lidar3d;
     lidar3d.module = "Lidar3dModule";
-    lidar3d.library = "libautodriver_lidar.so";
     lidar3d.id = "lidar/velo";
     lidar3d.autostart = true;
     config.sensors = {lidar2d, lidar3d};
+    autodriver::bridge::Publisher publisher(config.node_name);
+    if (!publisher.Initialize()) {
+        std::cerr << "autolink publisher failed\n";
+        autolink::Clear();
+        return 1;
+    }
     autodriver::SensorManager manager(std::move(config));
+    manager.SetSink(&publisher);
     if (!manager.Initialize() || !manager.Start()) {
         std::cerr << "SensorManager failed\n";
         autolink::Clear();

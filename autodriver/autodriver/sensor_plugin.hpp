@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,49 +18,30 @@
 #define AUTODRIVER_SENSOR_PLUGIN_HPP_
 
 #include <memory>
-#include <string>
 #include <utility>
 
-#include "autodriver/driver_params.hpp"
 #include "autodriver/sensor_driver.hpp"
 #include "autodriver/sensor_module.hpp"
 #include "autodriver/sensor_traits.hpp"
-#include "autolink/common/log.hpp"
-#include "autolink/node/writer.hpp"
 
 namespace autodriver {
 
-// kCapture=false: Writer only. kCapture=true: driver + Write.
+// kCapture=false: attach-only (no hardware). kCapture=true: driver + samples.
 template <SensorType kType, bool kCapture = true>
 class SensorPlugin : public SensorModule {
 public:
     using Traits = SensorTraits<kType>;
     using Sample = typename Traits::Sample;
-    using Message = typename Traits::Message;
 
     SensorType GetType() const final { return kType; }
     const SensorId& GetSensorId() const final { return id_; }
 
     bool Init(const Context& context) final {
-        if (!context.node) {
-            AERROR << "SensorPlugin Init: null node";
-            return false;
-        }
         id_ = context.sensor.id;
         hook_ = context.hook;
-        const std::string stream =
-            hardware::GetString(context.sensor.params, "stream");
-        const std::string channel =
-            ResolveChannel(context.sensor.channel, id_, kType, stream);
-        writer_ = context.node->CreateWriter<Message>(WriterAttr(channel));
-        if (!writer_) {
-            AERROR << "SensorPlugin failed to create writer on " << channel;
-            return false;
-        }
         if constexpr (kCapture) {
             driver_ = MakeDriver(context.sensor);
             if (!driver_) {
-                writer_.reset();
                 return false;
             }
             driver_->SetSampleCallback(
@@ -87,7 +68,6 @@ public:
         } else {
             running_ = false;
         }
-        writer_.reset();
     }
 
     bool IsRunning() const final {
@@ -104,13 +84,11 @@ protected:
 
 private:
     void OnSample(std::unique_ptr<SensorSample> sample) {
-        if (sample == nullptr || sample->type() != kType || !writer_) {
+        if (sample == nullptr || sample->type() != kType) {
             return;
         }
         std::shared_ptr<SensorSample> owned(std::move(sample));
-        auto& data = static_cast<Sample&>(*owned);
-        data.StampInPlace();
-        writer_->Write(std::shared_ptr<Message>(owned, &data.msg));
+        static_cast<Sample&>(*owned).StampInPlace();
         if (hook_) {
             hook_(std::move(owned));
         }
@@ -119,7 +97,6 @@ private:
     SensorId id_;
     SampleHook hook_;
     std::shared_ptr<SensorDriver> driver_;
-    std::shared_ptr<autolink::Writer<Message>> writer_;
     bool running_ = false;
 };
 

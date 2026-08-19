@@ -74,21 +74,14 @@ bool drawArrowOgreOrGl(common::DisplayContext* context,
   }
 #endif
 
-  const QVector3D delta = end - start;
-  const float length = delta.length();
-  if (length < 1e-4f) {
-    return false;
+  // GL fallback: render the same solid cylinder-shaft + cone-head meshes
+  // used by the Ogre path so the arrow looks identical to RViz2 in all backends.
+  std::vector<ColoredMeshInstance> meshes;
+  appendSolidArrowMeshes(&meshes, start, end, color, head_fraction,
+                         shaft_diameter, head_diameter);
+  for (const auto& m : meshes) {
+    scene.addTriangleMeshSolid(m.mesh, m.transform, m.color);
   }
-  const QVector3D direction = delta / length;
-  QVector3D side = QVector3D::crossProduct(direction, QVector3D(0.f, 0.f, 1.f));
-  if (side.lengthSquared() < 1e-6f) {
-    side = QVector3D::crossProduct(direction, QVector3D(0.f, 1.f, 0.f));
-  }
-  side.normalize();
-  const float head = length * head_fraction;
-  scene.addLine(start, end, color);
-  scene.addLine(end, end - direction * head + side * head * 0.35f, color);
-  scene.addLine(end, end - direction * head - side * head * 0.35f, color);
   return false;
 }
 

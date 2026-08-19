@@ -21,9 +21,14 @@ namespace autoviz {
 namespace tools {
 namespace {
 
-// rviz_rendering::Arrow: shaft 2.0 + head 0.5
-constexpr float kArrowReach = 2.5f;
-constexpr float kGroundLift = 0.02f;
+// RViz2 PoseTool / rviz_rendering::Arrow defaults:
+//   shaft_length 1.0, head_length 0.3, shaft_diameter 0.1, head_diameter 0.2
+constexpr float kShaftLength    = 1.0f;
+constexpr float kHeadLength     = 0.3f;
+constexpr float kArrowReach     = kShaftLength + kHeadLength;  // 1.3 m
+constexpr float kShaftDiameter  = 0.1f;
+constexpr float kHeadDiameter   = 0.2f;
+constexpr float kGroundLift     = 0.02f;
 
 QVector3D liftAboveGround(const QVector3D& point) {
   return point + QVector3D(0.f, 0.f, kGroundLift);
@@ -111,8 +116,9 @@ void GoalPoseTool::drawArrowVisual(rendering::SceneOverlay* scene) const {
                                                      : nullptr);
   if (draw_scene != nullptr && context() != nullptr) {
     display::drawArrowOgreOrGl(context()->display_context, *draw_scene,
-                               overlay_name, lifted, tip, color, 0.2f, 0.2f,
-                               0.35f);
+                               overlay_name, lifted, tip, color,
+                               kHeadLength / kArrowReach,
+                               kShaftDiameter, kHeadDiameter);
     return;
   }
 
