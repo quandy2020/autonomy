@@ -6,6 +6,7 @@
 
 #include <array>
 #include <cstdint>
+#include <cstring>
 #include <vector>
 
 #include <QColor>
@@ -22,6 +23,44 @@ struct ParsedPointCloud {
   std::vector<float> intensities;
   std::vector<uint32_t> rgb;
 };
+
+// PointField datatype constants (sensor_msgs/PointField.msg).
+// Matches RViz2 sensor_msgs::msg::PointField values exactly.
+namespace PointFieldType {
+constexpr uint8_t kINT8    = 1;
+constexpr uint8_t kUINT8   = 2;
+constexpr uint8_t kINT16   = 3;
+constexpr uint8_t kUINT16  = 4;
+constexpr uint8_t kINT32   = 5;
+constexpr uint8_t kUINT32  = 6;
+constexpr uint8_t kFLOAT32 = 7;
+constexpr uint8_t kFLOAT64 = 8;
+}  // namespace PointFieldType
+
+/** Per-field metadata extracted from PointCloud2 header. */
+struct PointFieldInfo {
+  uint32_t offset  = 0;
+  uint8_t  datatype = PointFieldType::kFLOAT32;
+  bool     valid   = false;
+};
+
+/** Read a scalar value from a raw point byte pointer, matching all 8 RViz2
+ *  PointField datatypes.  Mirrors rviz_default_plugins valueFromCloud<T>(). */
+template <typename T>
+inline T valueFromPointData(const uint8_t* point_ptr, const PointFieldInfo& field) {
+  const uint8_t* data = point_ptr + field.offset;
+  switch (field.datatype) {
+    case PointFieldType::kINT8:    { int8_t   v; std::memcpy(&v, data, 1); return static_cast<T>(v); }
+    case PointFieldType::kUINT8:   { uint8_t  v; std::memcpy(&v, data, 1); return static_cast<T>(v); }
+    case PointFieldType::kINT16:   { int16_t  v; std::memcpy(&v, data, 2); return static_cast<T>(v); }
+    case PointFieldType::kUINT16:  { uint16_t v; std::memcpy(&v, data, 2); return static_cast<T>(v); }
+    case PointFieldType::kINT32:   { int32_t  v; std::memcpy(&v, data, 4); return static_cast<T>(v); }
+    case PointFieldType::kUINT32:  { uint32_t v; std::memcpy(&v, data, 4); return static_cast<T>(v); }
+    case PointFieldType::kFLOAT32: { float    v; std::memcpy(&v, data, 4); return static_cast<T>(v); }
+    case PointFieldType::kFLOAT64: { double   v; std::memcpy(&v, data, 8); return static_cast<T>(v); }
+    default: return T{};
+  }
+}
 
 enum class PointCloudColorMode {
   kFlat,       ///< Uniform color (RViz2 "Flat Color", Foxglove "Flat")

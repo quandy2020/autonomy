@@ -207,6 +207,8 @@ class Messages:
         if has_intensity:
             dtype_fields.append(("intensity", "f4"))
         if has_rgb:
+            # Match autonomy_ros ply.py convention: packed 0x00RRGGBB stored
+            # as uint32 in the PointCloud2 data buffer.
             dtype_fields.append(("rgb", "u4"))
 
         structured = np.zeros(count, dtype=np.dtype(dtype_fields))
@@ -219,9 +221,10 @@ class Messages:
             if has_rgb:
                 rgb_array = np.asarray(rgb)
                 if rgb_array.ndim == 2 and rgb_array.shape[1] == 3:
-                    structured["rgb"] = cls.pack_rgb_uint32(rgb_array)
+                    packed = cls.pack_rgb_uint32(rgb_array)
                 else:
-                    structured["rgb"] = rgb_array.reshape(-1).astype(np.uint32)
+                    packed = rgb_array.reshape(-1).astype(np.uint32)
+                structured["rgb"] = packed
 
         message = PointCloud2()
         cls.set_header(message.header, stamp, frame_id)
@@ -233,13 +236,12 @@ class Messages:
         message.is_dense = False
 
         offset = 0
-        for name, _ in dtype_fields:
+        for name, dtype in dtype_fields:
             field = message.fields.add()
             field.name = name
             field.offset = offset
-            field.datatype = (
-                PointField.UINT32 if name == "rgb" else PointField.FLOAT32
-            )
+            # rgb uses UINT32 to match autonomy_ros / PCL PointXYZRGB convention.
+            field.datatype = PointField.UINT32 if name == "rgb" else PointField.FLOAT32
             field.count = 1
             offset += 4
 

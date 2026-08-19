@@ -12,27 +12,17 @@ namespace autoviz {
 namespace display {
 namespace {
 
-uint32_t fieldOffset(
+/** Find a PointField by name; returns PointFieldInfo with valid=false on miss.
+ *  Mirrors rviz_default_plugins::findChannelIndex(). */
+PointFieldInfo findField(
     const automsgs::msgs::sensor_msgs::PointCloud2& cloud,
     const char* name) {
   for (const auto& field : cloud.fields()) {
     if (field.name() == name) {
-      return field.offset();
+      return {field.offset(), static_cast<uint8_t>(field.datatype()), true};
     }
   }
-  return UINT32_MAX;
-}
-
-float readFloat32(const uint8_t* base, uint32_t offset) {
-  float value = 0.f;
-  std::memcpy(&value, base + offset, sizeof(float));
-  return value;
-}
-
-uint32_t readUint32(const uint8_t* base, uint32_t offset) {
-  uint32_t value = 0;
-  std::memcpy(&value, base + offset, sizeof(uint32_t));
-  return value;
+  return {};
 }
 
 }  // namespace
@@ -144,50 +134,88 @@ ParsedPointCloud parsePointCloud2(
     const automsgs::msgs::sensor_msgs::PointCloud2& cloud,
     uint32_t decimation) {
   ParsedPointCloud parsed;
-  if (cloud.width() == 0 || cloud.point_step() == 0 || cloud.data().empty()) {
+  const uint32_t width  = cloud.width();
+  const uint32_t height = std::max(1u, cloud.height());
+  const uint32_t point_step = cloud.point_step();
+  // row_step: bytes per row.  For unorganised clouds (height==1) this equals
+  // width*point_step.  For organised clouds it may include row padding.
+  // RViz2 xyz_pc_transformer uses pointer arithmetic (+= point_step) which is
+  // equivalent to flat addressing when row_step == width*point_step; we handle
+  // the general case by computing row/col offsets explicitly — same result for
+  // the common flat case, correct for padded organised clouds.
+  const uint32_t row_step = cloud.row_step() > 0
+      ? cloud.row_step()
+      : width * point_step;
+
+  if (width == 0 || point_step == 0 || cloud.data().empty()) {
     return parsed;
   }
 
-  const uint32_t x_off = fieldOffset(cloud, "x");
-  const uint32_t y_off = fieldOffset(cloud, "y");
-  const uint32_t z_off = fieldOffset(cloud, "z");
-  const uint32_t i_off = fieldOffset(cloud, "intensity");
-  const uint32_t rgb_off = fieldOffset(cloud, "rgb");
-  const uint32_t rgba_off = rgb_off == UINT32_MAX ? fieldOffset(cloud, "rgba") : rgb_off;
-  if (x_off == UINT32_MAX || y_off == UINT32_MAX || z_off == UINT32_MAX) {
+  const PointFieldInfo xf = findField(cloud, "x");
+  const PointFieldInfo yf = findField(cloud, "y");
+  const PointFieldInfo zf = findField(cloud, "z");
+  if (!xf.valid || !yf.valid || !zf.valid) {
     return parsed;
+  }
+
+  // Optional fields — try "intensity" then "intensities" (mirrors RViz2).
+  PointFieldInfo intf = findField(cloud, "intensity");
+  if (!intf.valid) {
+    intf = findField(cloud, "intensities");
+  }
+  PointFieldInfo rgbf = findField(cloud, "rgb");
+  if (!rgbf.valid) {
+    rgbf = findField(cloud, "rgba");
   }
 
   const std::string& blob_str = cloud.data();
   const auto* blob = reinterpret_cast<const uint8_t*>(blob_str.data());
   const size_t blob_size = blob_str.size();
 
-  const uint32_t count = cloud.width() * std::max(1u, cloud.height());
-  const uint32_t step = std::max(1u, decimation);
-  parsed.xs.reserve(count / step);
-  parsed.ys.reserve(count / step);
-  parsed.zs.reserve(count / step);
+  const uint32_t count = width * height;
+  const uint32_t step  = std::max(1u, decimation);
+
+  parsed.xs.reserve(count / step + 1);
+  parsed.ys.reserve(count / step + 1);
+  parsed.zs.reserve(count / step + 1);
+
+  const bool has_intensity = intf.valid;
+  const bool has_rgb       = rgbf.valid;
 
   for (uint32_t i = 0; i < count; i += step) {
-    const size_t base = static_cast<size_t>(i) * cloud.point_step();
-    if (base + cloud.point_step() > blob_size) {
+    // Compute byte offset using row_step — handles organised clouds with
+    // row padding correctly (RViz2 equivalent: base = point_step * i when
+    // row_step == width * point_step, which is the common case).
+    const uint32_t row = i / width;
+    const uint32_t col = i % width;
+    const size_t   base = static_cast<size_t>(row) * row_step +
+                          static_cast<size_t>(col) * point_step;
+    if (base + point_step > blob_size) {
       break;
     }
     const uint8_t* ptr = blob + base;
-    const float x = readFloat32(ptr, x_off);
-    const float y = readFloat32(ptr, y_off);
-    const float z = readFloat32(ptr, z_off);
+
+    const float x = valueFromPointData<float>(ptr, xf);
+    const float y = valueFromPointData<float>(ptr, yf);
+    const float z = valueFromPointData<float>(ptr, zf);
+
+    // Drop NaN/Inf — both RViz2 and sensor_msgs convention treat these as
+    // invalid points (lidar returns at max range, occluded pixels, etc.).
     if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z)) {
       continue;
     }
+
     parsed.xs.push_back(x);
     parsed.ys.push_back(y);
     parsed.zs.push_back(z);
-    if (i_off != UINT32_MAX) {
-      parsed.intensities.push_back(readFloat32(ptr, i_off));
+
+    if (has_intensity) {
+      parsed.intensities.push_back(valueFromPointData<float>(ptr, intf));
     }
-    if (rgba_off != UINT32_MAX) {
-      parsed.rgb.push_back(readUint32(ptr, rgba_off));
+    if (has_rgb) {
+      uint32_t packed = 0;
+      std::memcpy(&packed, ptr + rgbf.offset, 4);
+      parsed.rgb.push_back(packed);
     }
   }
   return parsed;

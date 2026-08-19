@@ -13,8 +13,17 @@
 # limitations under the License.
 
 habitat:
-  # MP3D root: /media/quandy/0d708864-2623-44e1-8e26-435b41edea21/datasets/habitat/mp3d/mp3d
-  # Habitat-sim loads a scene .glb (sibling folders are other MP3D houses).
+  # --- Scene loading (two modes, mirrors autonomy_ros habitat/sim.py) ---
+  #
+  # Mode 1 (preferred): MP3D dataset config + scene_id.
+  #   dataset_config: path to mp3d.scene_dataset_config.json
+  #   scene_id:       scene asset relative to dataset config, e.g. 17DRP5sb8fy/17DRP5sb8fy.glb
+  #   Enables semantic mesh loading (required for semantic sensor / colored PLY).
+  #
+  # dataset_config: /media/quandy/0d708864-2623-44e1-8e26-435b41edea21/datasets/habitat/mp3d/mp3d/mp3d.scene_dataset_config.json
+  # scene_id: 17DRP5sb8fy/17DRP5sb8fy.glb
+  #
+  # Mode 2 (legacy): direct .glb path.
   path: /media/quandy/0d708864-2623-44e1-8e26-435b41edea21/datasets/habitat/mp3d/mp3d/17DRP5sb8fy/17DRP5sb8fy.glb
   spawn: [0.0, 0.0, 0.0]  # x, y, yaw
   gpu: 0
