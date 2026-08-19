@@ -16,35 +16,28 @@
 
 #include <gtest/gtest.h>
 
-#include "autodriver/common/time.hpp"
-#include "autodriver/sync/time_sync.hpp"
+#include "autodriver/time_synchronization.hpp"
+#include "autolink/time/time.hpp"
 
-using autodriver::FromNanoseconds;
-using autodriver::Now;
 using autodriver::TimeSync;
-using autodriver::ToNanoseconds;
 
 TEST(TimeSync, LearnsConstantOffset)
 {
   TimeSync sync;
-  const auto device = FromNanoseconds(1'000'000'000);
-  const auto host = FromNanoseconds(1'500'000'000);
+  const autolink::Time device(uint64_t{1'000'000'000});
+  const autolink::Time host(uint64_t{1'500'000'000});
 
   for (int i = 0; i < 20; ++i) {
     sync.Update("imu/test", device, host);
   }
 
-  EXPECT_NEAR(sync.GetOffsetNanoseconds("imu/test"), 500'000'000, 1'000'000);
-  EXPECT_EQ(
-    ToNanoseconds(sync.ToHostTime("imu/test", device)),
-    ToNanoseconds(host));
+  EXPECT_NEAR(sync.OffsetNs("imu/test"), 500'000'000, 1'000'000);
+  EXPECT_EQ(sync.ToHostTime("imu/test", device), host);
 }
 
 TEST(TimeSync, UnknownSensorPassesThroughDeviceTime)
 {
   TimeSync sync;
-  const auto device = Now();
-  EXPECT_EQ(
-    ToNanoseconds(sync.ToHostTime("unknown", device)),
-    ToNanoseconds(device));
+  const autolink::Time device = autolink::Time::Now();
+  EXPECT_EQ(sync.ToHostTime("unknown", device), device);
 }

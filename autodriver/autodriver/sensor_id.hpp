@@ -14,23 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef AUTODRIVER_TYPES_SENSOR_TYPE_HPP_
-#define AUTODRIVER_TYPES_SENSOR_TYPE_HPP_
+#ifndef AUTODRIVER_SENSOR_ID_HPP_
+#define AUTODRIVER_SENSOR_ID_HPP_
 
-#include <cstdint>
+#include <string>
 
 namespace autodriver {
 
-enum class SensorType : std::uint8_t {
-    kImu = 0,
-    kGps,
-    kCamera,
-    kLidar2d,
-    kLidar3d,
-    kRangeFinder,
-    kWheelOdometry,
-};
+// Stable instance id, e.g. "imu/serial" or "lidar/front".
+using SensorId = std::string;
 
 }  // namespace autodriver
 
-#endif  // AUTODRIVER_TYPES_SENSOR_TYPE_HPP_
+#endif  // AUTODRIVER_SENSOR_ID_HPP_

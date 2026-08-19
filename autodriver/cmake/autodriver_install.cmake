@@ -2,6 +2,11 @@
 
 install(
   TARGETS autodriver
+          autodriver_imu
+          autodriver_gps
+          autodriver_camera
+          autodriver_lidar
+          autodriver_range
   EXPORT autodriverTargets
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}

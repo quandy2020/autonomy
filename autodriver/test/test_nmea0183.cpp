@@ -16,11 +16,12 @@
 
 #include <gtest/gtest.h>
 
-#include "autodriver/protocol/nmea0183.hpp"
+#include "autodriver/hardware/nmea_0183.hpp"
+#include <automsgs/msgs/sensor_msgs/nav_sat_status.pb.h>
 
-using autodriver::GpsFixStatus;
 using autodriver::protocol::ParseGgaSentence;
 using autodriver::protocol::ParseRmcSentence;
+using automsgs::msgs::sensor_msgs::NavSatStatus;
 
 TEST(Nmea0183, ParseGgaFix)
 {
@@ -31,7 +32,7 @@ TEST(Nmea0183, ParseGgaFix)
   EXPECT_NEAR(fix->latitude_deg, 48.1173, 0.001);
   EXPECT_NEAR(fix->longitude_deg, 11.5167, 0.001);
   EXPECT_NEAR(fix->altitude_m, 545.4, 0.1);
-  EXPECT_EQ(fix->fix_status, GpsFixStatus::kFix3D);
+  EXPECT_EQ(fix->status, NavSatStatus::STATUS_FIX);
 }
 
 TEST(Nmea0183, ParseRmcFix)
@@ -42,7 +43,7 @@ TEST(Nmea0183, ParseRmcFix)
   ASSERT_TRUE(fix.has_value());
   EXPECT_NEAR(fix->latitude_deg, 48.1173, 0.001);
   EXPECT_NEAR(fix->longitude_deg, 11.5167, 0.001);
-  EXPECT_EQ(fix->fix_status, GpsFixStatus::kFix2D);
+  EXPECT_EQ(fix->status, NavSatStatus::STATUS_FIX);
 }
 
 TEST(Nmea0183, RejectsBadChecksum)
