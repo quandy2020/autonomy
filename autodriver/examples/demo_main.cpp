@@ -14,58 +14,34 @@
  * limitations under the License.
  */
 
-/**
- * @file
- * @brief Demo using SensorManager and the default simulation hub config.
- */
-
-#include <atomic>
-#include <chrono>
 #include <iostream>
-#include <thread>
 
-#include "autodriver/app/sensor_manager.hpp"
-#include "autodriver/types/imu_sample.hpp"
-#include "autodriver/types/lidar_scan.hpp"
-#include "autodriver/types/sensor_type.hpp"
-#include "autodriver/types/wheel_odometry_sample.hpp"
+#include "autodriver/sensor_manager.hpp"
+#include "autolink/init.hpp"
+#include "autolink/time/duration.hpp"
 
-int main()
-{
-  autodriver::SensorManager manager;
-
-  std::atomic<int> frames{0};
-  manager.SetAlignedCallback([&](const autodriver::AlignedSnapshot & snapshot) {
-    const int n = ++frames;
-    const auto * imu = snapshot.Get<autodriver::ImuSample>(autodriver::SensorType::kImu);
-    const auto * odom = snapshot.Get<autodriver::WheelOdometrySample>(
-      autodriver::SensorType::kWheelOdometry);
-    const auto * lidar = snapshot.Get<autodriver::LidarScan>(
-      autodriver::SensorType::kLidar);
-
-    std::cout << "[frame " << n << "] sensors="
-              << snapshot.samples.size()
-              << " imu=" << (imu ? "yes" : "no")
-              << " odom=" << (odom ? "yes" : "no")
-              << " lidar=" << (lidar ? "yes" : "no")
-              << std::endl;
-  });
-
-  if (!manager.Initialize()) {
-    std::cerr << "SensorManager init failed\n";
-    for (const auto & err : manager.init_errors()) {
-      std::cerr << "  driver: " << err << "\n";
+int main(int argc, char** argv) {
+    autolink::Init(argv[0]);
+    autodriver::Config config;
+    autodriver::Config::Sensor lidar2d;
+    lidar2d.module = "Lidar2dModule";
+    lidar2d.library = "libautodriver_lidar.so";
+    lidar2d.id = "lidar/front";
+    lidar2d.autostart = true;
+    autodriver::Config::Sensor lidar3d;
+    lidar3d.module = "Lidar3dModule";
+    lidar3d.library = "libautodriver_lidar.so";
+    lidar3d.id = "lidar/velo";
+    lidar3d.autostart = true;
+    config.sensors = {lidar2d, lidar3d};
+    autodriver::SensorManager manager(std::move(config));
+    if (!manager.Initialize() || !manager.Start()) {
+        std::cerr << "SensorManager failed\n";
+        autolink::Clear();
+        return 1;
     }
-    return 1;
-  }
-
-  if (!manager.Start()) {
-    std::cerr << "SensorManager failed to start\n";
-    return 1;
-  }
-
-  std::this_thread::sleep_for(std::chrono::seconds(2));
-  manager.Stop();
-  std::cout << "Published " << frames.load() << " aligned frames\n";
-  return 0;
+    autolink::Duration(300'000'000).Sleep();
+    manager.Stop();
+    autolink::Clear();
+    return 0;
 }

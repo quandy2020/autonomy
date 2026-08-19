@@ -14,23 +14,11 @@
  * limitations under the License.
  */
 
-#ifndef AUTODRIVER_TYPES_SENSOR_TYPE_HPP_
-#define AUTODRIVER_TYPES_SENSOR_TYPE_HPP_
+#include "autodriver/sensor_plugin.hpp"
+#include "autolink/class_loader/class_loader_register_macro.hpp"
 
-#include <cstdint>
+class RangeModule
+    : public autodriver::SensorPlugin<autodriver::SensorType::kRangeFinder,
+                                      false> {};
 
-namespace autodriver {
-
-enum class SensorType : std::uint8_t {
-    kImu = 0,
-    kGps,
-    kCamera,
-    kLidar2d,
-    kLidar3d,
-    kRangeFinder,
-    kWheelOdometry,
-};
-
-}  // namespace autodriver
-
-#endif  // AUTODRIVER_TYPES_SENSOR_TYPE_HPP_
+CLASS_LOADER_REGISTER_CLASS(RangeModule, autodriver::SensorModule)
