@@ -432,14 +432,21 @@ class Runner:
         self.map_published = True
         origin = (float(self.spawn[0]), float(self.spawn[1]))
         cloud, grid, resolution, ox, oy, _, _ = self.map_builder.sample(self.simulator, origin)
+        cloud_rgb = getattr(self.map_builder, "cloud_rgb", None)
         ply_cfg = self.map_cfg.get("ply") or {}
         stride = int(ply_cfg.get("stride", 1))
-        cloud = Runner.subsample_points(cloud, stride)
-        self._sensor_worker.submit(self.encode_publish_map, cloud, grid, resolution, ox, oy, stamp)
+        if stride > 1:
+            cloud = Runner.subsample_points(cloud, stride)
+            if cloud_rgb is not None:
+                cloud_rgb = cloud_rgb[::stride]
+        self._sensor_worker.submit(
+            self.encode_publish_map, cloud, cloud_rgb, grid, resolution, ox, oy, stamp
+        )
 
     def encode_publish_map(
         self,
         cloud: Any,
+        cloud_rgb: Any,
         grid: Any,
         resolution: float,
         ox: float,
@@ -450,13 +457,23 @@ class Runner:
         frame = self.map_cfg["frame"]
         ply_channel = str(ply_cfg.get("channel") or "").strip()
         if ply_channel:
-            intensity = None
-            if cloud.size > 0:
-                intensity = np.linalg.norm(cloud, axis=1).astype(np.float32)
-            self.bridge.publish(
-                "map_cloud",
-                Messages.encode_point_cloud2(cloud, stamp, frame, intensity=intensity),
-            )
+            if cloud_rgb is not None and cloud_rgb.shape[0] == cloud.shape[0]:
+                self.bridge.publish(
+                    "map_cloud",
+                    Messages.encode_point_cloud2(cloud, stamp, frame, rgb=cloud_rgb),
+                )
+            else:
+                if cloud_rgb is not None and cloud_rgb.shape[0] != cloud.shape[0]:
+                    import warnings
+                    warnings.warn(
+                        f"map cloud_rgb shape mismatch: xyz={cloud.shape[0]} "
+                        f"rgb={cloud_rgb.shape[0]}; falling back to flat white",
+                        stacklevel=2,
+                    )
+                self.bridge.publish(
+                    "map_cloud",
+                    Messages.encode_point_cloud2(cloud, stamp, frame),
+                )
         self.bridge.publish(
             "map_grid",
             Messages.encode_occupancy_grid(grid, resolution, ox, oy, stamp, frame),

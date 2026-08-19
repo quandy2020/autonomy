@@ -198,6 +198,45 @@ bool TfDisplayHasExpandedPoseRows(QTreeWidgetItem* display_item) {
 /** UserRole scratch: last synced TF Tree edge fingerprint (avoid rebuild flicker). */
 constexpr int kDisplayTreeRoleTfTreeFingerprint = Qt::UserRole + 20;
 
+/** UserRole data for conditional property visibility (DisplayPropertySpec::visible_when_*). */
+constexpr int kDisplayTreeRoleVisibleWhenKey    = Qt::UserRole + 14;
+constexpr int kDisplayTreeRoleVisibleWhenValues = Qt::UserRole + 15;
+
+/** Re-evaluate visibility of all child property rows under display_item based
+ *  on current property values.  Call after any property value changes. */
+void RefreshPropertyVisibility(QTreeWidgetItem* display_item) {
+  if (display_item == nullptr) {
+    return;
+  }
+  // Collect current property values from sibling rows first.
+  QMap<QString, QString> current_values;
+  for (int i = 0; i < display_item->childCount(); ++i) {
+    QTreeWidgetItem* child = display_item->child(i);
+    if (child == nullptr) continue;
+    const QString key =
+        child->data(kDisplayTreeColName, kDisplayTreeRolePropertyKey).toString();
+    if (!key.isEmpty()) {
+      current_values[key] = child->text(kDisplayTreeColValue);
+    }
+  }
+  // Apply visibility rules.
+  for (int i = 0; i < display_item->childCount(); ++i) {
+    QTreeWidgetItem* child = display_item->child(i);
+    if (child == nullptr) continue;
+    const QString when_key =
+        child->data(kDisplayTreeColName, kDisplayTreeRoleVisibleWhenKey).toString();
+    if (when_key.isEmpty()) {
+      continue;  // no condition → always visible
+    }
+    const QString when_values =
+        child->data(kDisplayTreeColName, kDisplayTreeRoleVisibleWhenValues).toString();
+    const QString actual = current_values.value(when_key);
+    const QStringList allowed = when_values.split(QLatin1Char('|'));
+    const bool visible = allowed.contains(actual);
+    child->setHidden(!visible);
+  }
+}
+
 QString TfTreeEdgesFingerprint(
     const std::vector<std::pair<std::string, std::string>>& edges) {
   QStringList parts;
@@ -715,10 +754,22 @@ void DisplaysPanel::populateDisplayProperties(QTreeWidgetItem* display_item,
       prop->setData(kDisplayTreeColName, Qt::UserRole + 11, joined);
       prop->setData(kDisplayTreeColValue, Qt::UserRole + 11, joined);
     }
+    // Conditional visibility: store visible_when_key / visible_when_values.
+    if (!spec.visible_when_key.empty()) {
+      const QString wk = QString::fromStdString(spec.visible_when_key);
+      const QString wv = QString::fromStdString(spec.visible_when_values);
+      prop->setData(kDisplayTreeColName, kDisplayTreeRoleVisibleWhenKey, wk);
+      prop->setData(kDisplayTreeColValue, kDisplayTreeRoleVisibleWhenKey, wk);
+      prop->setData(kDisplayTreeColName, kDisplayTreeRoleVisibleWhenValues, wv);
+      prop->setData(kDisplayTreeColValue, kDisplayTreeRoleVisibleWhenValues, wv);
+    }
     SetTreeItemMeta(prop, DisplayTreeItemKind::kDisplayProperty,
                     static_cast<int>(index),
                     QString::fromStdString(spec.key), {}, child_index);
   }
+
+  // Apply initial conditional visibility based on current property values.
+  RefreshPropertyVisibility(display_item);
 
   if (display->typeId() == "TF") {
     auto* frames = new QTreeWidgetItem(display_item);
@@ -1303,6 +1354,10 @@ void DisplaysPanel::applyPropertyValue(QTreeWidgetItem* item,
     }
     manager_->setDisplayProperty(static_cast<std::size_t>(display_index), key,
                                  new_value, child_index);
+    // Refresh conditional property visibility after any property change.
+    if (item->parent() != nullptr) {
+      RefreshPropertyVisibility(item->parent());
+    }
     emit displaysChanged();
   }
 }

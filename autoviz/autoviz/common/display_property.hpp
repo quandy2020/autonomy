@@ -33,6 +33,12 @@ struct DisplayPropertySpec {
   /** Non-empty → QComboBox in Displays panel. */
   std::vector<std::string> options;
   DisplayPropertyKind kind = DisplayPropertyKind::kAuto;
+  /** Conditional visibility: hide this row unless the sibling property
+   *  named `visible_when_key` equals one of the pipe-separated values in
+   *  `visible_when_values` (e.g. key="color_transform", values="Intensity|AxisColor X").
+   *  Empty strings mean always visible. */
+  std::string visible_when_key;
+  std::string visible_when_values;
 };
 
 QColor ParseColorProperty(const std::string& value,
