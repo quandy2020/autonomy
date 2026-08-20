@@ -78,7 +78,7 @@ def test_simulator_has_no_mock_backend():
     assert Simulator.finite_xyz((float("nan"), 0.0, 0.0)) is None
 
 
-def test_husky_camera_offset_is_above_and_forward():
+def test_husky_camera_offset_is_above_agent():
     simulator = Simulator(
         backend="minimal",
         width=64,
@@ -88,22 +88,16 @@ def test_husky_camera_offset_is_above_and_forward():
                 "path": "",
                 "spawn": [0.0, 0.0, 0.0],
                 "robot": {"urdf": "urdf/husky.urdf"},
+                "sensors": {"camera": {"sensor_height": 0.6}},
             }
         },
         open_session=False,
     )
     x, y, z = simulator.camera_local_offset()
-    assert x > 0.1
-    assert y > 0.3
-    assert abs(z) < 1e-6
+    assert abs(x) < 1e-9
+    assert abs(y - 0.6) < 1e-9
+    assert abs(z) < 1e-9
     assert not simulator.should_instance_urdf()
-    assert abs(simulator.camera_look_yaw() + np.pi / 2.0) < 1e-9
-    look_x, look_y, look_z = Simulator.habitat_look_direction(
-        simulator.camera_look_yaw()
-    )
-    assert look_x > 0.99
-    assert abs(look_y) < 1e-9
-    assert abs(look_z) < 1e-9
 
 
 def test_habitat_plus_half_pi_looks_rearward():
@@ -113,14 +107,13 @@ def test_habitat_plus_half_pi_looks_rearward():
 
 
 def test_habitat_agent_yaw_matches_ros_right_hand():
-    """ROS +90° (CCW) faces map +Y, which is Habitat +Z."""
+    """ROS +90° (CCW) faces map +Y = Habitat -Z (map_y = -Habitat_Z)."""
     x0, y0, z0 = Simulator.habitat_agent_forward(0.0)
     assert x0 > 0.99 and abs(y0) < 1e-9 and abs(z0) < 1e-9
     x, y, z = Simulator.habitat_agent_forward(np.pi / 2.0)
-    assert abs(x) < 1e-9 and abs(y) < 1e-9 and z > 0.99
+    assert abs(x) < 1e-9 and abs(y) < 1e-9 and z < -0.99
     _, qy, _, qw = Simulator.habitat_agent_quaternion(np.pi / 2.0)
-    assert qy < 0.0
-    assert abs(qw) > 0.5
+    assert abs(qy) < 1e-9 and qw > 0.99
 
 
 def test_physics_enabled_without_urdf_instance():
@@ -154,7 +147,26 @@ def test_physics_enabled_without_urdf_instance():
     assert configuration.gpu_device_id == 0
 
 
-def test_turtlebot_camera_offset_matches_urdf():
+def test_image_height_is_not_used_as_sensor_height():
+    simulator = Simulator(
+        backend="minimal",
+        width=640,
+        height=480,
+        settings={
+            "habitat": {
+                "path": "",
+                "spawn": [0.0, 0.0, 0.0],
+                "robot": {"urdf": ""},
+                "sensors": {"camera": {"height": 480, "sensor_height": 0.6}},
+            }
+        },
+        open_session=False,
+    )
+    _, y, _ = simulator.camera_local_offset()
+    assert abs(y - 0.6) < 1e-9
+
+
+def test_turtlebot_camera_offset_uses_urdf_height():
     simulator = Simulator(
         backend="minimal",
         width=64,
@@ -169,11 +181,9 @@ def test_turtlebot_camera_offset_matches_urdf():
         open_session=False,
     )
     x, y, z = simulator.camera_local_offset()
-    assert abs(x - 0.03) < 1e-6
+    assert abs(x) < 1e-6
     assert abs(y - 0.21) < 1e-6
     assert abs(z) < 1e-6
-    look_x, _, _ = Simulator.habitat_look_direction(simulator.camera_look_yaw())
-    assert look_x > 0.99
 
 
 def test_rgb_to_uint8_handles_float_and_rgba():
@@ -185,15 +195,15 @@ def test_rgb_to_uint8_handles_float_and_rgba():
     assert rgb[0, 0, 0] == 255
 
 
-def test_align_camera_image_flips_left_right():
+def test_align_camera_image_passthrough():
     color = np.zeros((2, 3, 3), dtype=np.uint8)
     color[0, 0] = [1, 2, 3]
     color[0, 2] = [7, 8, 9]
-    flipped = Simulator.align_camera_image(color)
-    np.testing.assert_array_equal(flipped[0, 0], [7, 8, 9])
-    np.testing.assert_array_equal(flipped[0, 2], [1, 2, 3])
+    aligned = Simulator.align_camera_image(color)
+    np.testing.assert_array_equal(aligned[0, 0], [1, 2, 3])
+    np.testing.assert_array_equal(aligned[0, 2], [7, 8, 9])
     depth = np.array([[1.0, 2.0, 3.0]], dtype=np.float32)
-    assert Simulator.align_camera_image(depth)[0, 0] == 3.0
+    assert Simulator.align_camera_image(depth)[0, 0] == 1.0
 
 
 def test_hide_articulated_sets_visible_false():

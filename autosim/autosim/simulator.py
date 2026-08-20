@@ -202,13 +202,12 @@ class Simulator:
             color_sensor.sensor_subtype = pinhole
             depth_sensor.sensor_subtype = pinhole
         offset = self.camera_local_offset()
-        look_yaw = self.camera_look_yaw()
         color_sensor.position = [offset[0], offset[1], offset[2]]
         depth_sensor.position = [offset[0], offset[1], offset[2]]
-        # Habitat pinhole cameras look along local -Z. ROS camera_link / base_link
-        # (REP 103) look along +X, so yaw must map -Z onto +X (not -X).
-        color_sensor.orientation = [0.0, look_yaw, 0.0]
-        depth_sensor.orientation = [0.0, look_yaw, 0.0]
+        # Match autonomy_ros sim._sensors(): orientation [0,0,0]. Agent quaternion
+        # Ry(yaw - π/2) maps pinhole look (-Z) onto ROS/map +X forward.
+        color_sensor.orientation = [0.0, 0.0, 0.0]
+        depth_sensor.orientation = [0.0, 0.0, 0.0]
         for spec in (color_sensor, depth_sensor):
             if hasattr(spec, "near"):
                 spec.near = 0.05
@@ -218,31 +217,23 @@ class Simulator:
         return agent_configuration
 
     def camera_local_offset(self) -> Tuple[float, float, float]:
-        """Habitat agent-local camera pose (y-up: ``x`` forward, ``y`` up, ``z`` left).
+        """Habitat agent-local RGB-D mount (``autonomy_ros`` ``sim._sensors``).
 
-        URDF / ROS is z-up (``x`` forward, ``y`` left, ``z`` up), so
-        ``(x, y, z)`` maps to Habitat ``(x, z, y)``. Combined with
-        :meth:`camera_look_yaw`, RGB-D looks along ``base_link`` +X, matching
-        ``cmd_vel.linear.x`` and lidar yaw=0.
+        Pinhole rig sits at ``[0, height, 0]`` in agent frame (Y-up). Only
+        vertical offset is used; planar offsets belong in URDF static TF, not
+        the Habitat agent sensor (agent forward is local ``-Z``).
         """
-        if self.urdf is None:
-            return (0.0, 0.5, 0.0)
-        if "camera_link" in self.urdf.mounts:
-            x, y, z = self.urdf.camera_xyz()
+        camera_cfg = self.settings.get("habitat", {}).get("sensors", {}).get("camera", {})
+        # ``height`` is image pixels; never use it as Habitat Y.
+        if camera_cfg.get("sensor_height") is not None:
+            height = float(camera_cfg["sensor_height"])
+        elif self.urdf is not None and "camera_link" in self.urdf.mounts:
+            _, _, height = self.urdf.camera_xyz()
+        elif self.urdf is not None:
+            _, _, height = self.urdf.laser_xyz()
         else:
-            x, y, z = self.urdf.laser_xyz()
-        return (float(x), float(z), float(y))
-
-    @staticmethod
-    def camera_look_yaw() -> float:
-        """Habitat sensor yaw that aligns the pinhole look with ROS ``+X``.
-
-        Habitat cameras look along local ``-Z``. A right-handed rotation about
-        Habitat ``+Y`` of ``+π/2`` sends that look to ``-X`` (rear of the
-        robot). ``-π/2`` sends it to ``+X``, which is ``base_link`` /
-        ``camera_link`` forward (REP 103, URDF ``rpy="0 0 0"``).
-        """
-        return -math.pi / 2.0
+            height = 0.5
+        return (0.0, float(height), 0.0)
 
     @staticmethod
     def habitat_look_direction(yaw: float) -> Tuple[float, float, float]:
@@ -257,17 +248,25 @@ class Simulator:
     def habitat_agent_quaternion(yaw: float) -> Tuple[float, float, float, float]:
         """Habitat y-up ``[x, y, z, w]`` for a ROS yaw about z-up (REP 103).
 
-        Map ``y`` is Habitat ``z``. ROS ``+yaw`` is CCW from ``+X`` toward ``+Y``.
-        Habitat right-handed ``Ry(+yaw)`` sends ``+X`` toward ``-Z`` (ROS ``-Y``),
-        so the agent uses ``Ry(-yaw)``.
+        Habitat agent local forward is ``-Z``. ROS ``base_link`` forward is ``+X``.
+        With ``map_x = Habitat_X`` and ``map_y = -Habitat_Z``, ros yaw=0 should
+        face ``+map_x = Habitat +X``.  A rotation ``Ry(θ)`` sends local ``-Z`` to
+        world ``(-sin(θ), 0, -cos(θ))``. To face ``+X`` at yaw=0 we need
+        ``-sin(θ) = 1 → θ = -π/2``. For general ros yaw: ``θ = yaw - π/2``.
+        This matches ``autonomy_ros`` ``coords.habitat_yaw``.
         """
-        half = -0.5 * float(yaw)
+        half = 0.5 * (float(yaw) - math.pi / 2.0)
         return (0.0, math.sin(half), 0.0, math.cos(half))
 
     @staticmethod
     def habitat_agent_forward(yaw: float) -> Tuple[float, float, float]:
-        """Habitat world direction of agent/ROS ``+X`` after planar yaw."""
-        return (math.cos(float(yaw)), 0.0, math.sin(float(yaw)))
+        """Habitat world direction of agent/ROS ``+X`` after planar yaw.
+
+        map_x = Habitat_X, map_y = -Habitat_Z  →  Habitat_Z = -map_y.
+        Forward in map frame: (cos_yaw, 0, sin_yaw) as (map_x, map_y) →
+        Habitat: (cos_yaw, 0, -sin_yaw).
+        """
+        return (math.cos(float(yaw)), 0.0, -math.sin(float(yaw)))
 
     def should_instance_urdf(self) -> bool:
         """Whether to add the URDF mesh into the Habitat scene.
@@ -370,10 +369,11 @@ class Simulator:
         """Keep Habitat URDF root aligned; apply URDF z-up → Habitat y-up."""
         if self.articulated is None:
             return
-        yaw = mn.Quaternion.rotation(mn.Rad(-self.yaw), mn.Vector3(0, 1, 0))
+        yaw = mn.Quaternion.rotation(mn.Rad(self.yaw - math.pi / 2.0), mn.Vector3(0, 1, 0))
         # URDF uses z-up; Habitat is y-up → rotate −90° about X.
         z_up_to_y_up = mn.Quaternion.rotation(mn.Rad(-math.pi / 2.0), mn.Vector3(1, 0, 0))
-        self.articulated.translation = mn.Vector3(self.x, self.floor_y, self.y)
+        # map_y = -Habitat_Z  →  Habitat_Z = -map_y
+        self.articulated.translation = mn.Vector3(self.x, self.floor_y, -self.y)
         self.articulated.rotation = yaw * z_up_to_y_up
 
     def reset(self, x: float, y: float, yaw: float) -> None:
@@ -381,7 +381,7 @@ class Simulator:
 
         Args:
             x: Planar x (m) → Habitat world x.
-            y: Planar y (m) → Habitat world z.
+            y: Planar y (m) → Habitat world -z  (map_y = -Habitat_Z convention).
             yaw: Heading about vertical (rad).
         """
         self.set_pose(x, y, yaw)
@@ -403,7 +403,8 @@ class Simulator:
 
         agent = self.session.get_agent(0)
         state = agent.get_state()
-        state.position = mn.Vector3(self.x, self.floor_y, self.y)
+        # map_y = -Habitat_Z  →  Habitat_Z = -map_y
+        state.position = mn.Vector3(self.x, self.floor_y, -self.y)
         qx, qy, qz, qw = self.habitat_agent_quaternion(self.yaw)
         state.rotation = [qx, qy, qz, qw]
         agent.set_state(state, infer_sensor_states=True)
@@ -420,10 +421,11 @@ class Simulator:
             mx, my, mz = self.urdf.laser_xyz()
         cos_y = math.cos(self.yaw)
         sin_y = math.sin(self.yaw)
+        # map_y = -Habitat_Z  →  Habitat_Z = -map_y
         return (
             self.x + cos_y * mx - sin_y * my,
             self.floor_y + mz,
-            self.y + sin_y * mx + cos_y * my,
+            -(self.y + sin_y * mx + cos_y * my),
         )
 
     def step(self) -> None:
@@ -487,16 +489,21 @@ class Simulator:
         best: Tuple[float, float, float] | None = None
         best_dist = float("inf")
         for height in heights:
-            snapped = self.try_snap_point(pathfinder, self.x, height, self.y)
+            # Habitat_Z = -map_y under the map_y = -Habitat_Z convention.
+            snapped = self.try_snap_point(pathfinder, self.x, height, -self.y)
             if snapped is None:
                 continue
-            dist = (snapped[0] - self.x) ** 2 + (snapped[2] - self.y) ** 2
+            # snapped = (Habitat_X, Habitat_Y, Habitat_Z); convert to map frame.
+            dist = (snapped[0] - self.x) ** 2 + (-snapped[2] - self.y) ** 2
             if dist < best_dist:
                 best = snapped
                 best_dist = dist
         if best is None:
             return self.pose()
-        self.x, self.floor_y, self.y = best
+        # best = (Habitat_X, Habitat_Y, Habitat_Z); store as map coords.
+        self.x = best[0]
+        self.floor_y = best[1]
+        self.y = -best[2]   # map_y = -Habitat_Z
         self.set_pose(self.x, self.y, self.yaw)
         return self.pose()
 
@@ -558,10 +565,12 @@ class Simulator:
         import magnum as mn
 
         origin = mn.Vector3(float(origin_x), float(origin_y), float(origin_z))
+        # map_y = -Habitat_Z: yaw rotates +X toward +map_y = -Habitat_Z,
+        # so Habitat direction_Z = -sin(yaw).
         direction = mn.Vector3(
             math.cos(yaw) * math.cos(pitch),
             math.sin(pitch),
-            math.sin(yaw) * math.cos(pitch),
+            -math.sin(yaw) * math.cos(pitch),
         )
         ray = habitat_sim.geo.Ray(origin, direction)
         try:
@@ -575,8 +584,9 @@ class Simulator:
             return None
         hx = float(origin_x) + distance * math.cos(yaw) * math.cos(pitch)
         hy = float(origin_y) + distance * math.sin(pitch)
-        hz = float(origin_z) + distance * math.sin(yaw) * math.cos(pitch)
-        return (hx, hz, hy)
+        hz = float(origin_z) + distance * (-math.sin(yaw)) * math.cos(pitch)
+        # map frame: map_x = hx, map_y = -hz, map_z = hy  (map_y = -Habitat_Z)
+        return (hx, -hz, hy)
 
     @staticmethod
     def raycast_hit_distance(results: Any, origin: Any = None) -> float | None:
@@ -631,8 +641,8 @@ class Simulator:
         """Panoramic cloud in map frame (z-up) from a fixed planar origin.
 
         Args:
-            planar_x: Map / Habitat x.
-            planar_y: Map y (= Habitat z).
+            planar_x: Map x (= Habitat x).
+            planar_y: Map y (= -Habitat Z, map_y = -Habitat_Z convention).
             eye_y: Habitat up height for the cast origin.
             h_angles: Absolute yaw samples (rad).
             v_angles: Pitch samples (rad).
@@ -645,7 +655,7 @@ class Simulator:
         for pitch in v_angles:
             for yaw in h_angles:
                 hit = self.cast_from_origin(
-                    planar_x, eye_y, planar_y, float(yaw), float(pitch), float(range_max)
+                    planar_x, eye_y, -planar_y, float(yaw), float(pitch), float(range_max)
                 )
                 if hit is None:
                     continue
@@ -665,15 +675,17 @@ class Simulator:
         Returns:
             Distance in meters, or ``None`` on miss / beyond ``range_max``.
         """
-        ox, oy, oz = self.laser_origin()
+        ox, oy, oz = self.laser_origin()  # Habitat: (x, floor_y, -map_y)
         hit = self.cast_from_origin(
             ox, oy, oz, self.yaw + yaw_offset, pitch, range_max
         )
         if hit is None:
             return None
+        # hit is in map frame: (map_x, map_y, map_z); laser_origin is Habitat frame.
+        # Convert laser_origin to map frame for distance calc: map_x=ox, map_y=-oz, map_z=oy
         dx = hit[0] - ox
-        dy = hit[2] - oy
-        dz = hit[1] - oz
+        dy = hit[1] - (-oz)
+        dz = hit[2] - oy
         return float(math.sqrt(dx * dx + dy * dy + dz * dz))
 
     def laser_ranges(
@@ -778,8 +790,10 @@ class Simulator:
         if self.session is None:
             raise RuntimeError("Habitat session is not open")
         observations = self.session.get_sensor_observations()
-        color = self.align_camera_image(self.rgb_to_uint8(observations["rgb"]))
-        depth = np.squeeze(np.asarray(observations["depth"], dtype=np.float32))
+        rgb_key = self.observation_key(observations, ("rgb", "color_sensor", "color"))
+        depth_key = self.observation_key(observations, ("depth", "depth_sensor"))
+        color = self.align_camera_image(self.rgb_to_uint8(observations[rgb_key]))
+        depth = np.squeeze(np.asarray(observations[depth_key], dtype=np.float32))
         depth = self.align_camera_image(depth)
         if depth.ndim != 2:
             raise RuntimeError(f"unexpected depth shape: {depth.shape!r}")
@@ -788,13 +802,22 @@ class Simulator:
 
     @staticmethod
     def align_camera_image(image: np.ndarray) -> np.ndarray:
-        """Horizontal-flip Habitat OpenGL RGB-D onto ROS ``camera_link``.
+        """Return camera image for ROS ``camera_link`` (``autonomy_ros`` style).
 
-        A y-up Habitat pinhole looking along ``+X`` has camera-right = Habitat
-        ``+Z`` = ROS ``+Y`` (robot left). Without this flip the image's left
-        door appears on the map's right.
+        With agent ``Ry(yaw - π/2)`` and sensor orientation ``[0,0,0]``, Habitat
+        pinhole output already matches REP-103 ``camera_link`` (+X forward).
         """
-        return np.ascontiguousarray(np.fliplr(np.asarray(image)))
+        return np.ascontiguousarray(np.asarray(image))
+
+    @staticmethod
+    def observation_key(observations: Mapping[str, Any], names: Tuple[str, ...]) -> str:
+        """Pick the first Habitat observation key that exists."""
+        for name in names:
+            if name in observations:
+                return name
+        raise RuntimeError(
+            f"Habitat observations missing {names!r}; got {list(observations)!r}"
+        )
 
     @staticmethod
     def rgb_to_uint8(image: Any) -> np.ndarray:

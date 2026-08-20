@@ -79,7 +79,22 @@ class Map:
                 return None
             is_binary_little = "binary_little_endian" in header
             is_binary_big = "binary_big_endian" in header
-            prop_lines = [l for l in header.splitlines() if l.startswith("property")]
+            # Collect ONLY the vertex-element properties.
+            # A PLY file may have multiple elements (e.g. vertex + face); each
+            # "element X" section owns the "property" lines that follow it until
+            # the next "element" line.  We must stop at the first non-vertex
+            # element to avoid picking up face properties (e.g. "property int
+            # object_id") that would corrupt the vertex dtype.
+            prop_lines: list[str] = []
+            in_vertex = False
+            for _hl in header.splitlines():
+                if _hl.startswith("element vertex"):
+                    in_vertex = True
+                    continue
+                if _hl.startswith("element ") and in_vertex:
+                    break  # left vertex section
+                if in_vertex and _hl.startswith("property"):
+                    prop_lines.append(_hl)
             props = [l.split() for l in prop_lines]
             if is_binary_little or is_binary_big:
                 dtype_parts = []
@@ -150,6 +165,10 @@ class Map:
         Returns:
             ``(cloud_xyz, grid, resolution, origin_x, origin_y, width, height)``.
         """
+        if self.cached_cloud is not None and self.cached_grid is not None:
+            grid, resolution, ox, oy, width, height = self.cached_grid
+            return self.cached_cloud, grid, resolution, ox, oy, width, height
+
         ply_cfg = self.settings.get("ply") or {}
         source_path = str(ply_cfg.get("source") or "").strip()
         self.cloud_rgb: Optional[np.ndarray] = None
@@ -157,16 +176,12 @@ class Map:
             loaded = self.load_ply_file(source_path)
             if loaded is not None:
                 xyz_raw, rgb_raw = loaded
-                # autosim map frame: map_y = +Habitat_Z  (cast_from_origin returns (hx, hz, hy)).
-                # MP3D semantic PLY: PLY.y = -Habitat_Z.
-                # Therefore: map_y = -PLY.y.
-                # (autonomy_ros uses map_y = -Habitat_Z = PLY.y, so it needs no negation;
-                #  autosim uses map_y = +Habitat_Z = -PLY.y, so negation is required here.)
-                #
+                # map_y = -Habitat_Z = PLY.y  (matches autonomy_ros convention).
+                # MP3D semantic PLY: PLY (x, y, z) = (Habitat_X, -Habitat_Z, height).
+                # Direct passthrough — no axis negation needed.
                 # Use float64 to avoid silent float32 overflow in corrupt PLY
                 # vertices that have finite-but-garbage values (e.g. 3e38).
-                tmp = xyz_raw.astype(np.float64)
-                converted = np.column_stack([tmp[:, 0], -tmp[:, 1], tmp[:, 2]])
+                converted = xyz_raw.astype(np.float64)
                 # 1. Drop NaN / Inf.
                 finite_mask = np.all(np.isfinite(converted), axis=1)
                 # 2. Coarse sanity guard: discard vertices beyond ±200 m on any
@@ -271,11 +286,11 @@ class Map:
         origin_x = float(min(float(lo[0]), float(hi[0])))
         origin_z = float(min(float(lo[2]), float(hi[2])))
         height, width = navigable.shape
-        # autosim map_y = +Habitat_Z.
-        # get_topdown_view row-0 = min Habitat-Z = min map-y (south edge).
-        # No row flip needed; origin_y = lo[2] = min Habitat-Z = min map-y.
-        grid = np.where(navigable, 0, 100).astype(np.int8)
-        origin_y = origin_z
+        # map_y = -Habitat_Z (autonomy_ros convention).
+        # get_topdown_view row-0 = min Habitat-Z = max map-y (north edge).
+        # Flip rows so row-0 = min map-y; adjust origin_y accordingly.
+        grid = np.where(navigable, 0, 100).astype(np.int8)[::-1, :]
+        origin_y = -(origin_z + height * resolution)
         return grid, resolution, origin_x, origin_y, width, height
 
     def sample_ply_cloud(self, simulator: Any, origin_xy: Tuple[float, float]) -> np.ndarray:
