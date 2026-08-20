@@ -140,7 +140,7 @@ class Runner:
         self.link = self.resolve_link(link)
         self.settings = settings
         self.max_steps = max_steps
-        self.clock = Clock()
+        self.clock = Clock(start_sec=time.time())
         self.apply_settings(settings)
         self.assemble_plant(simulator)
         self.bind_bridge()
@@ -319,10 +319,10 @@ class Runner:
     def cycle(self, dt: float) -> None:
         """Execute one control period.
 
-        Physics step and lightweight publishers run synchronously on the main
-        thread.  Heavy Habitat render/ray-cast calls (camera, lidar, map) are
-        submitted to the sensor worker thread so the main loop never stalls
-        waiting for them.  The hab_lock serialises all Habitat session access.
+        Physics, TF, and odometry always run on this thread so ``cmd_vel``
+        stays smooth. Habitat GL/ray-cast cannot leave the session thread, so
+        camera and lidar sampling still happen here — but at most one expensive
+        sensor per period, and the static map is built only once.
 
         Args:
             dt: Period length in seconds (``1 / control_hz``).
@@ -334,25 +334,39 @@ class Runner:
         self.clock.tick(dt)
         stamp = self.clock.stamp()
         linear, angular = self.robot.velocity()
-        self.advance_timers(dt)
-        # Lightweight: always run on the main thread.
+        # Do not fast-forward sensor due-ness after a hitch, or lidar+camera
+        # all fire on the next tick and hitch again.
+        self.advance_timers(min(dt, 0.05))
         self.emit("odom", self.publish_odometry, x, y, yaw, linear, angular, stamp)
         self.emit("imu", self.publish_imu, yaw, linear, stamp)
         self.emit("truth", self.publish_truth, stamp)
         self.emit("footprint", self.publish_footprint, stamp)
         self.emit("tf", self.publish_tf, stamp)
         self.emit("clock", self.publish_clock, stamp)
-        # Heavy (Habitat render / ray-cast): offload to sensor worker.
-        self.submit_scan(stamp)
-        self.submit_cloud(stamp)
-        self.submit_camera(stamp)
-        self.submit_map(stamp)
+        # Occupancy / PLY map is static; never block teleop after first sample.
+        self.emit("map", self.submit_map, stamp)
+        # One Habitat-heavy sample per tick so TF/image don't hitch together.
+        if self.scan_is_due() or self.cloud_is_due():
+            self.emit("scan", self.submit_scan, stamp)
+            self.emit("points", self.submit_cloud, stamp)
+        else:
+            self.emit("camera", self.submit_camera, stamp)
+
+    def scan_is_due(self) -> bool:
+        """True when 2D lidar should sample this period."""
+        if not self.lidar_2d["enabled"]:
+            return False
+        return self.scan_elapsed >= 1.0 / self.lidar_2d["rate_hz"]
+
+    def cloud_is_due(self) -> bool:
+        """True when 3D lidar should sample this period."""
+        if not self.lidar_3d["enabled"]:
+            return False
+        return self.points_elapsed >= 1.0 / self.lidar_3d["rate_hz"]
 
     def submit_scan(self, stamp: Tuple[int, int]) -> None:
         """Ray-cast lidar on the main (GL-context) thread, then encode/publish async."""
-        if not self.lidar_2d["enabled"]:
-            return
-        if self.scan_elapsed < 1.0 / self.lidar_2d["rate_hz"]:
+        if not self.scan_is_due():
             return
         self.scan_elapsed = 0.0
         ranges = self.sensors.sample_laser(self.simulator)
@@ -376,9 +390,7 @@ class Runner:
 
     def submit_cloud(self, stamp: Tuple[int, int]) -> None:
         """Ray-cast 3D lidar on the main thread, then encode/publish async."""
-        if not self.lidar_3d["enabled"]:
-            return
-        if self.points_elapsed < 1.0 / self.lidar_3d["rate_hz"]:
+        if not self.cloud_is_due():
             return
         self.points_elapsed = 0.0
         points = self.sensors.sample_points(self.simulator)
@@ -420,18 +432,31 @@ class Runner:
         )
 
     def submit_map(self, stamp: Tuple[int, int]) -> None:
-        """Build map on the main thread, then encode/publish async."""
+        """Publish the static map without blocking the control loop after first sample.
+
+        The semantic PLY is millions of points. Reloading and re-encoding it
+        every ``rate_hz`` stalls Habitat (TF/cmd_vel hitch) and Autoviz (image
+        decode waits behind a PointCloud2 rebuild). Sample once, then only
+        republish the small OccupancyGrid for late subscribers.
+        """
         if self.map_builder is None or not self.map_cfg.get("enabled", False):
             return
         rate = float(self.map_cfg.get("rate_hz", 0.0))
-        if rate > 0.0 and self.map_elapsed < 1.0 / rate and self.map_published:
-            return
-        if rate <= 0.0 and self.map_published:
-            return
+        first = not self.map_published
+        if not first:
+            if rate <= 0.0:
+                return
+            if self.map_elapsed < 1.0 / rate:
+                return
         self.map_elapsed = 0.0
         self.map_published = True
         origin = (float(self.spawn[0]), float(self.spawn[1]))
         cloud, grid, resolution, ox, oy, _, _ = self.map_builder.sample(self.simulator, origin)
+        if not first:
+            self._sensor_worker.submit(
+                self.encode_publish_map_grid, grid, resolution, ox, oy, stamp
+            )
+            return
         cloud_rgb = getattr(self.map_builder, "cloud_rgb", None)
         ply_cfg = self.map_cfg.get("ply") or {}
         stride = int(ply_cfg.get("stride", 1))
@@ -474,6 +499,21 @@ class Runner:
                     "map_cloud",
                     Messages.encode_point_cloud2(cloud, stamp, frame),
                 )
+        self.bridge.publish(
+            "map_grid",
+            Messages.encode_occupancy_grid(grid, resolution, ox, oy, stamp, frame),
+        )
+
+    def encode_publish_map_grid(
+        self,
+        grid: Any,
+        resolution: float,
+        ox: float,
+        oy: float,
+        stamp: Tuple[int, int],
+    ) -> None:
+        """Republish OccupancyGrid only (late subscribers); skip the PLY cloud."""
+        frame = self.map_cfg["frame"]
         self.bridge.publish(
             "map_grid",
             Messages.encode_occupancy_grid(grid, resolution, ox, oy, stamp, frame),
@@ -755,12 +795,12 @@ class Runner:
         )
 
     def publish_tf(self, stamp: Tuple[int, int]) -> None:
-        """Publish one rigid TF snapshot, plus a low-rate ``/tf_static`` replay.
+        """Publish TF aligned with ``autonomy_ros`` ``habitat/odom.py``.
 
-        Every control tick puts the odometry chain and URDF mounts into a
-        single ``/tf`` message with a shared stamp so lookups do not mix a
-        fresh yaw with 1 Hz-old joint poses. ``/tf_static`` is not latched on
-        autolink, so mounts are also replayed at a low rate for late joiners.
+        ``map→odom`` is a static identity (shared origin). ``odom→base_*`` uses
+        ground-truth planar pose so Autoviz heading matches the Habitat camera.
+        URDF sensor mounts ride on ``/tf`` every tick and ``/tf_static`` at low
+        rate for late joiners (autolink is not latched).
         """
         if not self.tf_cfg.get("enabled", False):
             return
@@ -768,11 +808,13 @@ class Runner:
         odom_frame = self.odom["frame"]
         odom_child = self.odom_child_frame()
         body_frame = self.body_frame()
-        ox, oy, oyaw = self.robot.odometry_pose()
-        mx, my, myaw = self.robot.map_to_odom(self.robot.pose(), (ox, oy, oyaw))
+        gx, gy, gyaw = self.robot.pose()
+        base_z = float(self.robot_cfg.get("base_link_height", 0.0))
         dynamic = [
-            Messages.encode_transform(stamp, map_frame, odom_frame, (mx, my, 0.0), myaw),
-            Messages.encode_transform(stamp, odom_frame, odom_child, (ox, oy, 0.0), oyaw),
+            Messages.encode_transform(stamp, odom_frame, odom_child, (gx, gy, base_z), gyaw),
+        ]
+        static_map_odom = [
+            Messages.encode_transform(stamp, map_frame, odom_frame, (0.0, 0.0, 0.0), 0.0),
         ]
         mounts = []
         urdf = getattr(self.simulator, "urdf", None)
@@ -803,8 +845,10 @@ class Runner:
         # interpolate to an older common time, so the tree fanned apart
         # during yaw (ghost axes) and lagged cmd_vel.
         self.bridge.publish("tf", Messages.encode_tf_message(dynamic + mounts))
-        if mounts and self.tf_static_elapsed >= TF_STATIC_REPUBLISH_SEC:
-            self.bridge.publish("tf_static", Messages.encode_tf_message(mounts))
+        if self.tf_static_elapsed >= TF_STATIC_REPUBLISH_SEC:
+            self.bridge.publish(
+                "tf_static", Messages.encode_tf_message(static_map_odom + mounts)
+            )
             self.tf_static_elapsed = 0.0
 
     def publish_clock(self, stamp: Tuple[int, int]) -> None:
