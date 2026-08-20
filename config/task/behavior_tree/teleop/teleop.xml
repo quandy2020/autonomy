@@ -1,12 +1,17 @@
 <!--
-  Teleop: watchdog-gated velocity publish loop on /cmd_vel.
+  Teleop: track while command and perception hold. Either gate fails → exit.
 -->
-<root BTCPP_format="4" main_tree_to_execute="TeleopWatchdog">
-  <BehaviorTree ID="TeleopWatchdog">
-    <ReactiveSequence name="TeleopLoop">
-      <TeleopWatchdogOk/>
-      <ApplyTeleopVelocity error_code_id="{teleop_error_code}"
-                           error_msg="{teleop_error_msg}"/>
-    </ReactiveSequence>
+<root BTCPP_format="4" main_tree_to_execute="Teleop">
+  <BehaviorTree ID="Teleop">
+    <KeepRunningUntilFailure>
+      <ReactiveSequence name="Tick">
+        <CommandValid/>
+        <ReactiveSequence name="Track">
+          <PerceptionValid/>
+          <TrackCommand error_code_id="{teleop_error_code}"
+                        error_msg="{teleop_error_msg}"/>
+        </ReactiveSequence>
+      </ReactiveSequence>
+    </KeepRunningUntilFailure>
   </BehaviorTree>
 </root>
