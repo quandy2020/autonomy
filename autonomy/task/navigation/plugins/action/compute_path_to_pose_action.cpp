@@ -55,5 +55,5 @@ protected:
 BT_REGISTER_NODES(factory)
 {
     factory.registerNodeType<
-        autonomy::task::plugins::navigation::ComputePathAction>("NavComputePath");
+        autonomy::task::plugins::navigation::ComputePathAction>("PlanPath");
 }

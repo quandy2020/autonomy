@@ -47,5 +47,5 @@ protected:
 BT_REGISTER_NODES(factory)
 {
     factory.registerNodeType<autonomy::task::plugins::navigation::WaitAction>(
-        "NavWait");
+        "Wait");
 }

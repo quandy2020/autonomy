@@ -98,11 +98,15 @@ public:
     }
 
     bool SubmitGoal(const GoalType& goal) override {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (goal.has_header()) {
-            task_id_ = goal.header().task_id();
-            client_id_ = goal.header().client_id();
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (goal.has_header()) {
+                task_id_ = goal.header().task_id();
+                client_id_ = goal.header().client_id();
+            }
         }
+        // Run OnGoal outside the lifecycle mutex so preemption can StopTree
+        // (join BT worker) without deadlocking feedback / tick callbacks.
         return OnGoal(goal);
     }
 
@@ -137,16 +141,23 @@ protected:
     virtual void FillFeedback(FeedbackType* feedback) const = 0;
     virtual void FillResult(ResultType* result) const = 0;
 
-    void SetLifecycle(TaskLifecycle lifecycle) { lifecycle_ = lifecycle; }
+    void SetLifecycle(TaskLifecycle lifecycle) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        lifecycle_ = lifecycle;
+    }
 
     void SetProgress(float progress, const std::string& detail = {}) {
+        std::lock_guard<std::mutex> lock(mutex_);
         progress_.set_progress(progress);
         if (!detail.empty()) {
             progress_.set_detail(detail);
         }
     }
 
-    [[nodiscard]] TaskLifecycle Lifecycle() const { return lifecycle_; }
+    [[nodiscard]] TaskLifecycle Lifecycle() const {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return lifecycle_;
+    }
 
     [[nodiscard]] ::autonomy::task::proto::TaskResult MakeTaskResult() const {
         ::autonomy::task::proto::TaskResult envelope;

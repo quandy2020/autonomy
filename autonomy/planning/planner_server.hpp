@@ -40,6 +40,7 @@
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include <automsgs/actions/nav_actions.pb.h>
 #include <automsgs/srvs/is_path_valid.pb.h>
 #include <automsgs/srvs/clear_entire_costmap.pb.h>
@@ -201,6 +202,12 @@ private:
         path_valid_service_;
     std::shared_ptr<autolink::Service<ClearCostmapRequest, ClearCostmapResponse>>
         clear_costmap_service_;
+    std::shared_ptr<autolink::Reader<automsgs::msgs::map_msgs::OccupancyGrid>>
+        map_reader_;
+    std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>>
+        plan_writer_;
+    std::shared_ptr<autolink::Writer<automsgs::msgs::map_msgs::OccupancyGrid>>
+        costmap_writer_;
 
     std::shared_ptr<common::Smoother> default_smoother_;
     std::string default_smoother_id_;

@@ -11,6 +11,7 @@
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/task/behavior_tree/bt_node_registry.hpp"
+#include "behaviortree_cpp/decorators/retry_node.h"
 
 namespace autonomy {
 namespace task {
@@ -24,6 +25,13 @@ bool BtRunner::Configure(const BtProfile& profile)
 
     // BT nodes are compiled into libautonomy.so and registered statically.
     RegisterBuiltinBtNodes(*factory_);
+
+    // Alias used by some task XMLs / docs (BT.CPP registers RetryUntilSuccessful).
+    try {
+        factory_->registerNodeType<BT::RetryNode>("Retry");
+    } catch (const BT::BehaviorTreeException&) {
+        // already present
+    }
 
     BT::ReactiveSequence::EnableException(false);
     BT::ReactiveFallback::EnableException(false);

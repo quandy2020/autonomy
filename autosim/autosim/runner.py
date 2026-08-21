@@ -810,12 +810,16 @@ class Runner:
         body_frame = self.body_frame()
         gx, gy, gyaw = self.robot.pose()
         base_z = float(self.robot_cfg.get("base_link_height", 0.0))
+        # Include map→odom on every /tf tick: Autolink is not latched, so late
+        # joiners (planning/control) otherwise only see map on 1 Hz /tf_static.
+        map_odom = Messages.encode_transform(
+            stamp, map_frame, odom_frame, (0.0, 0.0, 0.0), 0.0
+        )
         dynamic = [
+            map_odom,
             Messages.encode_transform(stamp, odom_frame, odom_child, (gx, gy, base_z), gyaw),
         ]
-        static_map_odom = [
-            Messages.encode_transform(stamp, map_frame, odom_frame, (0.0, 0.0, 0.0), 0.0),
-        ]
+        static_map_odom = [map_odom]
         mounts = []
         urdf = getattr(self.simulator, "urdf", None)
         if urdf is not None:

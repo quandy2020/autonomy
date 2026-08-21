@@ -4,7 +4,7 @@
 -->
 <root BTCPP_format="4" main_tree_to_execute="Dock">
   <BehaviorTree ID="Dock">
-    <Retry num_attempts="4" name="DockRetry">
+    <RetryUntilSuccessful num_attempts="4" name="DockRetry">
       <Sequence name="DockAttempt">
         <CancelControl/>
         <ReactiveFallback name="AcquireStation">
@@ -39,6 +39,6 @@
         <ChargerVisible name="StationVisible" dock_station_id="{dock_station_id}"/>
         <DockConnect name="EngageDock" battery_target_percent="{battery_target_percent}"/>
       </Sequence>
-    </Retry>
+    </RetryUntilSuccessful>
   </BehaviorTree>
 </root>

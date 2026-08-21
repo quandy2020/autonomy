@@ -6,7 +6,9 @@
 
 #include <QMatrix4x4>
 #include <QQuaternion>
-#include <QtMath>
+
+#include <algorithm>
+#include <cstdint>
 
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>
 #include "autoviz/commsgs/time_utils.hpp"
@@ -18,79 +20,92 @@ namespace autoviz {
 namespace display {
 namespace {
 
-QColor WithAlpha(QColor color, float alpha) {
-  color.setAlphaF(std::clamp(alpha, 0.f, 1.f));
-  return color;
+// RViz Map display palettes (rviz_default_plugins/displays/map/palette_builder.cpp).
+// Occupancy values follow nav_msgs int8 convention; proto stores them as int32.
+
+int32_t NormalizeOccupancy(int32_t value) {
+  // Some bridges publish unknown as unsigned 255 instead of signed -1.
+  if (value == 255) {
+    return -1;
+  }
+  return value;
 }
 
-QColor RvizIllegalNegativeColor(int32_t value, float alpha) {
-  const int clamped = std::clamp(-value - 2, 0, 126);
-  const float t = static_cast<float>(clamped) / 126.f;
-  QColor color(
-      255,
-      static_cast<int>(255.f * t),
-      0);
-  return WithAlpha(color, alpha);
+QColor ApplyDisplayAlpha(QColor palette_color, float display_alpha) {
+  palette_color.setAlphaF(
+      std::clamp(palette_color.alphaF() * display_alpha, 0.f, 1.f));
+  return palette_color;
 }
 
-QColor RvizUnknownColor(float alpha) {
-  return WithAlpha(QColor(0x70, 0x89, 0x86), alpha);
+QColor RvizIllegalNegativeColor(int32_t value) {
+  // RViz indexes the 256-entry palette with the uint8 bit-pattern of int8.
+  const uint8_t index = static_cast<uint8_t>(static_cast<int8_t>(
+      std::clamp(value, -128, -2)));
+  const int green = (255 * (static_cast<int>(index) - 128)) / (254 - 128);
+  return QColor(255, green, 0, 255);
 }
 
-QColor RvizIllegalPositiveColor(float alpha) {
-  return WithAlpha(QColor(0, 255, 0), alpha);
-}
+QColor RvizUnknownColor() { return QColor(0x70, 0x89, 0x86, 255); }
 
-QColor MapColor(int32_t value, float alpha) {
+QColor RvizIllegalPositiveColor() { return QColor(0, 255, 0, 255); }
+
+QColor MapPaletteColor(int32_t value) {
+  value = NormalizeOccupancy(value);
   if (value == -1) {
-    return RvizUnknownColor(alpha);
+    return RvizUnknownColor();
   }
   if (value < -1) {
-    return RvizIllegalNegativeColor(value, alpha);
+    return RvizIllegalNegativeColor(value);
   }
   if (value > 100) {
-    return RvizIllegalPositiveColor(alpha);
+    return RvizIllegalPositiveColor();
   }
-  const int shade = 255 - qRound(255.0f * (static_cast<float>(value) / 100.f));
-  return WithAlpha(QColor(shade, shade, shade), alpha);
+  // Standard gray map: free=white, occupied=black (integer math as in RViz).
+  const int shade = 255 - (255 * value) / 100;
+  return QColor(shade, shade, shade, 255);
 }
 
-QColor CostmapColor(int32_t value, float alpha) {
+QColor CostmapPaletteColor(int32_t value) {
+  value = NormalizeOccupancy(value);
   if (value == -1) {
-    return RvizUnknownColor(alpha);
+    return RvizUnknownColor();
   }
   if (value < -1) {
-    return RvizIllegalNegativeColor(value, alpha);
+    return RvizIllegalNegativeColor(value);
   }
   if (value > 100) {
-    return RvizIllegalPositiveColor(alpha);
+    return RvizIllegalPositiveColor();
   }
+  // Free cells are fully transparent so the underlying map/grid shows through.
   if (value == 0) {
-    return WithAlpha(QColor(0, 0, 0), alpha);
+    return QColor(0, 0, 0, 0);
   }
   if (value == 99) {
-    return WithAlpha(QColor(0, 255, 255), alpha);
+    return QColor(0, 255, 255, 255);  // inscribed / near-obstacle: cyan
   }
   if (value == 100) {
-    return WithAlpha(QColor(255, 0, 255), alpha);
+    return QColor(255, 0, 255, 255);  // lethal: magenta
   }
-  const int v = (255 * std::clamp(value, 1, 98)) / 100;
-  return WithAlpha(QColor(v, 0, 255 - v), alpha);
+  // Inflation costs 1..98: blue → red ramp.
+  const int v = (255 * value) / 100;
+  return QColor(v, 0, 255 - v, 255);
 }
 
-QColor RawColor(int32_t value, float alpha) {
+QColor RawPaletteColor(int32_t value) {
   const uint8_t raw = static_cast<uint8_t>(value & 0xFF);
-  return WithAlpha(QColor(raw, raw, raw), alpha);
+  return QColor(raw, raw, raw, 255);
 }
 
 QColor ColorForScheme(const std::string& scheme, int32_t value, float alpha) {
+  QColor palette;
   if (scheme == "costmap") {
-    return CostmapColor(value, alpha);
+    palette = CostmapPaletteColor(value);
+  } else if (scheme == "raw") {
+    palette = RawPaletteColor(value);
+  } else {
+    palette = MapPaletteColor(value);
   }
-  if (scheme == "raw") {
-    return RawColor(value, alpha);
-  }
-  return MapColor(value, alpha);
+  return ApplyDisplayAlpha(palette, alpha);
 }
 
 int32_t AggregateBlock(const automsgs::msgs::map_msgs::OccupancyGrid& message,

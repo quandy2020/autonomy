@@ -44,7 +44,8 @@ const std::map<QString, std::string>& TutorialChannelMessageTypes() {
       {QStringLiteral("/fake/plot/sine"), "automsgs.msgs.std_msgs.Float64"},
       {QStringLiteral("/fake/plot/cosine"), "automsgs.msgs.std_msgs.Float64"},
       {QStringLiteral("/fake/plot/cmd"), "automsgs.msgs.geometry_msgs.Twist"},
-      {QStringLiteral("/cmd_vel"), "automsgs.msgs.geometry_msgs.Twist"},
+      {QStringLiteral("/cmd_vel"),
+       "automsgs.msgs.geometry_msgs.TwistStamped"},
   };
   return kTutorialChannels;
 }

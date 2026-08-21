@@ -17,7 +17,10 @@
 
 #include <unordered_map>
 
-#include "autolink/message/raw_message.hpp"
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+
+#include "autolink/node/writer.hpp"
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/ui/icon_loader.hpp"
@@ -206,24 +209,37 @@ void TeleopPanel::publishTwist(const automsgs::msgs::geometry_msgs::Twist& twist
   if (node == nullptr) {
     return;
   }
-  std::string payload;
-  if (!twist.SerializeToString(&payload)) {
-    return;
-  }
-  static thread_local std::unordered_map<std::string,
-      std::shared_ptr<::autolink::Writer<::autolink::message::RawMessage>>>
+  // Must advertise TwistStamped — same type as controller_server / autosim_bridge.
+  // Skip creating a writer for all-zero stop unless we already published (avoids
+  // declaring /cmd_vel at panel open and fighting autonomy.control).
+  const bool is_zero =
+      std::abs(twist.linear().x()) < 1e-9 && std::abs(twist.linear().y()) < 1e-9 &&
+      std::abs(twist.linear().z()) < 1e-9 && std::abs(twist.angular().x()) < 1e-9 &&
+      std::abs(twist.angular().y()) < 1e-9 && std::abs(twist.angular().z()) < 1e-9;
+
+  static thread_local std::unordered_map<
+      std::string,
+      std::shared_ptr<
+          ::autolink::Writer<automsgs::msgs::geometry_msgs::TwistStamped>>>
       writers;
   const std::string channel = config_.topic.toStdString();
   auto& writer = writers[channel];
   if (writer == nullptr) {
-    writer = node->CreateWriter<::autolink::message::RawMessage>(channel);
+    if (is_zero) {
+      return;
+    }
+    writer =
+        node->CreateWriter<automsgs::msgs::geometry_msgs::TwistStamped>(channel);
   }
   if (writer == nullptr) {
     return;
   }
-  auto message = std::make_shared<::autolink::message::RawMessage>();
-  message->message = payload;
-  writer->Write(message);
+  automsgs::msgs::geometry_msgs::TwistStamped stamped;
+  *stamped.mutable_header()->mutable_stamp() =
+      automsgs::msgs::builtin_interfaces::TimeNow();
+  stamped.mutable_header()->set_frame_id("base_link");
+  *stamped.mutable_twist() = twist;
+  writer->Write(stamped);
 }
 
 void TeleopPanel::publishStop() {

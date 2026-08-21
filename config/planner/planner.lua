@@ -119,7 +119,7 @@ AUTONOMY_PLANNER = {
             subscribe_to_updates = false,
             transform_tolerance = 0.1,
             footprint_clearing_enabled = false,
-            map_topic = "map",
+            map_topic = "/map",
         },
 
         denoise_layer = {

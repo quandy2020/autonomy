@@ -57,6 +57,8 @@ public:
     void TouchWatchdog();
 
     bool IsWatchdogOk() const;
+    /** Assist off / bypass → true; otherwise point-cloud freshness from assist. */
+    bool IsPerceptionOk() const;
     bool PublishVelocity();
     void PublishZeroVelocity();
 

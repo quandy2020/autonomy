@@ -12,6 +12,7 @@
 #include <thread>
 
 #include "autolink/action/simple_action_server.hpp"
+#include "autolink/node/reader.hpp"
 #include "autolink/node/writer.hpp"
 
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
@@ -22,6 +23,7 @@
 #include <automsgs/actions/nav_actions.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
 #include <automsgs/msgs/time_utils.hpp>
 #include "autonomy/common/logging.hpp"
 #include "autonomy/control/common/controller_exceptions.hpp"
@@ -87,6 +89,85 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                 kCmdVelChannel);
     }
 
+    if (!odom_reader_) {
+        ControllerServer* self = this;
+        odom_reader_ = node_->CreateReader<automsgs::msgs::nav_msgs::Odometry>(
+            kOdomTopicName,
+            [self](const std::shared_ptr<automsgs::msgs::nav_msgs::Odometry>&
+                       msg) {
+                if (msg) {
+                    self->UpdateOdometry(*msg);
+                }
+            });
+        if (odom_reader_) {
+            AINFO << "ControllerServer: Odometry on " << kOdomTopicName;
+        } else {
+            AWARN << "ControllerServer: failed to subscribe " << kOdomTopicName;
+        }
+    }
+
+    if (!map_reader_ && costmap_wrapper_) {
+        ControllerServer* self = this;
+        map_reader_ =
+            node_->CreateReader<automsgs::msgs::map_msgs::OccupancyGrid>(
+                kMapTopicName,
+                [self](
+                    const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>&
+                        msg) {
+                    if (!msg || !self->costmap_wrapper_) {
+                        return;
+                    }
+                    if (!self->costmap_wrapper_->applyOccupancyGrid(*msg)) {
+                        AWARN << "ControllerServer: applyOccupancyGrid(/map) "
+                                 "failed";
+                    }
+                });
+        if (map_reader_) {
+            AINFO << "ControllerServer: OccupancyGrid on " << kMapTopicName;
+        } else {
+            AWARN << "ControllerServer: failed to subscribe " << kMapTopicName;
+        }
+    }
+
+    if (!scan_reader_ && costmap_wrapper_) {
+        auto* costmap = costmap_wrapper_.get();
+        scan_reader_ =
+            node_->CreateReader<automsgs::msgs::sensor_msgs::LaserScan>(
+                kScanTopicName,
+                [costmap](
+                    const std::shared_ptr<automsgs::msgs::sensor_msgs::LaserScan>&
+                        msg) {
+                    if (msg && costmap) {
+                        costmap->feedLaserScan(*msg);
+                    }
+                });
+        if (scan_reader_) {
+            AINFO << "ControllerServer: LaserScan on " << kScanTopicName;
+        } else {
+            AWARN << "ControllerServer: failed to subscribe " << kScanTopicName;
+        }
+    }
+
+    if (!costmap_writer_ && costmap_wrapper_) {
+        costmap_writer_ =
+            node_->CreateWriter<automsgs::msgs::map_msgs::OccupancyGrid>(
+                kLocalCostmapTopicName);
+        if (costmap_writer_) {
+            auto writer = costmap_writer_;
+            costmap_wrapper_->SetMapPublishCallback(
+                [writer](const automsgs::msgs::map_msgs::OccupancyGrid& grid) {
+                    if (writer) {
+                        writer->Write(grid);
+                    }
+                });
+            AINFO << "ControllerServer: OccupancyGrid on "
+                  << kLocalCostmapTopicName;
+        } else {
+            AWARN << "ControllerServer: failed to create writer "
+                  << kLocalCostmapTopicName;
+        }
+    }
+
     if (autolink_actions_) {
         return true;
     }
@@ -130,9 +211,13 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
             }
 
             const auto period = ControlPeriod(self->controller_frequency_);
-            auto cancel = [&]() { return server->IsCancelRequested(); };
+            auto should_stop = [&]() {
+                return server->IsCancelRequested() ||
+                       server->IsPreemptRequested();
+            };
 
-            while (autolink::OK() && !cancel() && self->follow_path_active_) {
+            while (autolink::OK() && !should_stop() &&
+                   self->follow_path_active_) {
                 automsgs::msgs::geometry_msgs::PoseStamped pose;
                 if (self->GetRobotPose(pose)) {
                     const double distance =
@@ -154,6 +239,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                         std::make_shared<nav_proto::FollowPathAction::Result>();
                     result->set_error_code(err_proto::OK);
                     self->OnGoalExit();
+                    self->PublishZeroVelocity();
                     server->SucceededCurrent(result);
                     return;
                 }
@@ -167,6 +253,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                     result->set_error_code(err_proto::CONTROL_FAILED_TO_MAKE_PROGRESS);
                     result->set_error_msg(ex.what());
                     self->OnGoalExit();
+                    self->PublishZeroVelocity();
                     server->TerminateCurrent(result);
                     return;
                 } catch (const common::PatienceExceeded& ex) {
@@ -176,6 +263,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                     result->set_error_code(err_proto::CONTROL_PATIENCE_EXCEEDED);
                     result->set_error_msg(ex.what());
                     self->OnGoalExit();
+                    self->PublishZeroVelocity();
                     server->TerminateCurrent(result);
                     return;
                 } catch (const common::ControllerException& ex) {
@@ -185,6 +273,17 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                     result->set_error_code(err_proto::CONTROL_UNKNOWN);
                     result->set_error_msg(ex.what());
                     self->OnGoalExit();
+                    self->PublishZeroVelocity();
+                    server->TerminateCurrent(result);
+                    return;
+                } catch (const std::exception& ex) {
+                    AERROR << "FollowPath unexpected error: " << ex.what();
+                    auto result =
+                        std::make_shared<nav_proto::FollowPathAction::Result>();
+                    result->set_error_code(err_proto::CONTROL_UNKNOWN);
+                    result->set_error_msg(ex.what());
+                    self->OnGoalExit();
+                    self->PublishZeroVelocity();
                     server->TerminateCurrent(result);
                     return;
                 }
@@ -192,11 +291,22 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                 std::this_thread::sleep_for(period);
             }
 
+            // Cancel: terminate. Preempt: just exit — SimpleActionServer::Work
+            // will AcceptPendingGoal and re-enter execute for the new path.
+            self->OnGoalExit();
+            self->PublishZeroVelocity();
             if (server->IsCancelRequested()) {
                 auto result =
                     std::make_shared<nav_proto::FollowPathAction::Result>();
                 result->set_error_code(err_proto::CONTROL_UNKNOWN);
-                self->OnGoalExit();
+                result->set_error_msg("FollowPath canceled");
+                server->TerminateCurrent(result);
+            } else if (server->IsPreemptRequested()) {
+                AINFO << "FollowPath preempted; switching to pending goal";
+            } else {
+                auto result =
+                    std::make_shared<nav_proto::FollowPathAction::Result>();
+                result->set_error_code(err_proto::CONTROL_UNKNOWN);
                 server->TerminateCurrent(result);
             }
         });

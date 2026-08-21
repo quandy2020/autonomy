@@ -21,7 +21,7 @@ AUTONOMY_CONTROLLER = {
     -- Allow short TF/control hiccups without tearing down FollowPath.
     -- Allow long MPPI laps in controller_test before FollowPath aborts.
     failure_tolerance = 30.0,
-    publish_zero_velocity = false,
+    publish_zero_velocity = true,
 
     controller_plugins = {
         "graceful_controller:GracefulController",
@@ -33,23 +33,24 @@ AUTONOMY_CONTROLLER = {
     goal_checker = {
         xy_goal_tolerance = AUTONOMY_COMMON.goal_reached_tolerance,
         -- Keep heading convergence stricter than XY tolerance at goal.
-        yaw_goal_tolerance = 0.35,
+        yaw_goal_tolerance = 0.20,
         stateful = true,
-        path_length_tolerance = 1.0,
+        -- Remaining path length must be within this before XY/yaw checks.
+        path_length_tolerance = 0.35,
     },
     progress_checker = {
-        required_movement_radius = 0.5,
-        movement_time_allowance = 10.0,
+        -- Allow in-place rotation / slow start before declaring stuck.
+        required_movement_radius = 0.15,
+        movement_time_allowance = 30.0,
     },
 
-    -- Local costmap disabled in attached mode; TaskScheduler shares planner global costmap.
     costmap = {
-        enabled = false,
+        enabled = true,
         name = "local_costmap",
         frame_id = AUTONOMY_COMMON.global_frame,
         resolution = 0.05,
-        width = 3.0,
-        height = 3.0,
+        width = 10.0,
+        height = 10.0,
         robot_radius = 0.22,
         -- Rectangle footprint (x: forward, y: left), counter-clockwise.
         footprint = {
@@ -58,58 +59,45 @@ AUTONOMY_CONTROLLER = {
             {x = -0.18, y = -0.14},
             {x = -0.18, y = 0.14},
         },
-        update_frequency = 30.0,
+        update_frequency = 10.0,
         rolling_window = true,
-        publish_frequency = 30.0,
-        plugins = {"obstacle_layer", "denoise_layer", "inflation_layer"},
-        
-        -- 障碍物层配置：使用传感器数据检测动态障碍物
+        publish_frequency = 5.0,
+        always_send_full_costmap = true,
+        plugins = {"static_layer", "obstacle_layer", "inflation_layer"},
+
+        static_layer = {
+            plugin = "libautonomy_map_layers_static_layer.so",
+            enabled = true,
+            subscribe_to_updates = false,
+            transform_tolerance = 0.1,
+            footprint_clearing_enabled = false,
+            map_topic = "/map",
+        },
+
         obstacle_layer = {
             plugin = "libautonomy_map_layers_obstacle_layer.so",
             enabled = true,
-            footprint_clearing_enabled = true,   -- 清除机器人足迹区域的障碍物
+            footprint_clearing_enabled = true,
             sensor_sources = {
-                pointcloud = {
-                    topic = "/points2",
-                    data_type = "PointCloud2",
-                    max_obstacle_height = 2.0,
-                    min_obstacle_height = 0.0,
-                    obstacle_min_height = 0.0,
-                    obstacle_max_height = 2.0,
+                scan = {
+                    topic = "/scan",
+                    data_type = "LaserScan",
+                    marking = true,
+                    clearing = true,
+                    obstacle_max_range = 5.0,
+                    raytrace_max_range = 5.0,
                 },
             },
         },
-        
-        -- 降噪层配置：过滤噪声导致的孤立障碍物
-        denoise_layer = {
-            plugin = "libautonomy_map_layers_denoise_layer.so",
-            enabled = true,
-            denoise_radius = 2,  -- 降噪半径（像素）
-        },
-        
-        -- 膨胀层配置：膨胀障碍物以保持安全距离
+
         inflation_layer = {
             plugin = "libautonomy_map_layers_inflation_layer.so",
             enabled = true,
-            cost_scaling_factor = 3.0,  -- 代价衰减因子
-            inflation_radius = 0.55,    -- 膨胀半径（米）
-            inflate_unknown = false,    -- 是否膨胀未知区域
-            inflate_around_unknown = false,  -- 是否在未知区域周围膨胀
+            cost_scaling_factor = 3.0,
+            inflation_radius = 0.40,
+            inflate_unknown = false,
+            inflate_around_unknown = false,
         },
-        
-        -- 体素层配置（可选）：3D障碍物检测
-        -- voxel_layer = {
-        --     plugin = "libautonomy_map_layers_voxel_layer.so",
-        --     enabled = false,
-        --     footprint_clearing_enabled = true,
-        --     sensor_sources = {...},
-        -- },
-        
-        -- 范围传感器层配置（可选）：用于超声波/红外传感器
-        -- range_sensor_layer = {
-        --     plugin = "libautonomy_map_layers_range_sensor_layer.so",
-        --     enabled = false,
-        -- },
     },
 
     graceful_controller = {
@@ -132,7 +120,7 @@ AUTONOMY_CONTROLLER = {
         prefer_final_rotation = true,
         rotation_scaling_factor = 0.5,
         allow_backward = false,
-        use_collision_detection = true,
+        use_collision_detection = false,
         in_place_collision_resolution = 0.1,
         footprint_scaling_linear_vel = 0.5,
         footprint_scaling_factor = 0.25,
@@ -177,7 +165,7 @@ AUTONOMY_CONTROLLER = {
         ay_max = 3.0,
         ay_min = -3.0,
         az_max = 3.5,
-        retry_attempt_limit = 1,
+        retry_attempt_limit = 3,
         regenerate_noises = false,
         open_loop = false,
         clamp_raw_controls = false,

@@ -177,12 +177,13 @@ if(BUILD_GRPC)
   google_binary(autonomy_bridge
     SRCS autonomy/bridge/bridge_main.cpp)
 endif()
-# Temporarily disabled: incomplete cartographer node migration.
-google_binary(autonomy.cartographer
-  SRCS autonomy/localization/localization_main.cpp)
-google_binary(planning
+# Temporarily disabled: incomplete cartographer node migration
+# (node sources excluded from ALL_LIBRARY_SRCS in autonomy_sources.cmake).
+# google_binary(autonomy.cartographer
+#   SRCS autonomy/localization/localization_main.cpp)
+google_binary(autonomy.planning
   SRCS autonomy/planning/planning_main.cpp)
-google_binary(control
+google_binary(autonomy.control
   SRCS autonomy/control/control_main.cpp)
 # Temporarily disabled: incomplete automsgs migration in these modules.
 # google_binary(exploration

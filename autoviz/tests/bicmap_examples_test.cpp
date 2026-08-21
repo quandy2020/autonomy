@@ -409,9 +409,10 @@ TEST_F(StrataOverlayDisplaysTest, MapDisplayUsesRvizMapPalette) {
     EXPECT_EQ(expected.green(), actual.green());
     EXPECT_EQ(expected.blue(), actual.blue());
   };
+  // RViz makeMapPalette: unknown / free / mid / near-lethal / lethal
   expect_rgb(0, QColor(0x70, 0x89, 0x86));
   expect_rgb(1, QColor(255, 255, 255));
-  expect_rgb(2, QColor(127, 127, 127));
+  expect_rgb(2, QColor(128, 128, 128));  // 255 - (255*50)/100
   expect_rgb(3, QColor(3, 3, 3));
   expect_rgb(4, QColor(0, 0, 0));
 }
@@ -422,17 +423,19 @@ TEST_F(StrataOverlayDisplaysTest, MapDisplayUsesRvizCostmapPalette) {
   feedAndDraw(display, MakePaletteProbeGrid());
   ASSERT_EQ(1u, scene().texturedBatches().size());
   const QImage& image = scene().texturedBatches().front().image;
-  const auto expect_rgb = [&](int x, const QColor& expected) {
+  const auto expect_rgba = [&](int x, const QColor& expected) {
     const QColor actual = image.pixelColor(x, 0);
     EXPECT_EQ(expected.red(), actual.red());
     EXPECT_EQ(expected.green(), actual.green());
     EXPECT_EQ(expected.blue(), actual.blue());
+    EXPECT_EQ(expected.alpha(), actual.alpha());
   };
-  expect_rgb(0, QColor(0x70, 0x89, 0x86));
-  expect_rgb(1, QColor(0, 0, 0));
-  expect_rgb(2, QColor(127, 0, 128));
-  expect_rgb(3, QColor(0, 255, 255));
-  expect_rgb(4, QColor(255, 0, 255));
+  // RViz makeCostmapPalette: free is fully transparent (alpha 0).
+  expect_rgba(0, QColor(0x70, 0x89, 0x86, 179));
+  expect_rgba(1, QColor(0, 0, 0, 0));
+  expect_rgba(2, QColor(127, 0, 128, 179));
+  expect_rgba(3, QColor(0, 255, 255, 179));
+  expect_rgba(4, QColor(255, 0, 255, 179));
 }
 
 TEST_F(StrataOverlayDisplaysTest, MapDisplayUsesRvizRawPalette) {
@@ -476,11 +479,12 @@ TEST_F(StrataOverlayDisplaysTest, MapDisplayRebuildsImmediatelyOnPropertyChange)
   display.drawOverlay(scene());
   ASSERT_EQ(1u, scene().texturedBatches().size());
   {
+    // Costmap free cells stay fully transparent regardless of Alpha.
     const QColor actual = scene().texturedBatches().front().image.pixelColor(1, 0);
     EXPECT_EQ(0, actual.red());
     EXPECT_EQ(0, actual.green());
     EXPECT_EQ(0, actual.blue());
-    EXPECT_EQ(179, actual.alpha());
+    EXPECT_EQ(0, actual.alpha());
   }
 }
 

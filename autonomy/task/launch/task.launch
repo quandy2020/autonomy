@@ -1,12 +1,52 @@
 <!--
   Copyright 2026 The Openbot Authors
 
-  Task server only (expects planning/control action servers elsewhere).
+  Navigation task stack: planning + control + task (one-shot).
+
+  Starts the Autolink action servers that navigate_to_pose BT needs, then the
+  TaskServer that binds /goal_pose and runs navigate_to_pose.xml.
+
+  Prerequisites:
+    - config/autonomy.lua (planning / control)
+    - config/task/* (BT XML under config/task/behavior_tree/...)
+    - PATH includes build bin (or install bin)
+    - Optional: AUTONOMY_BT_PLUGIN_PATH if using out-of-tree BT plugins
+      (default: nodes are linked into libautonomy)
+
+  Colcon / Docker workspace (/workspace/autonomy):
+    cd /workspace/autonomy/src/autonomy
+    export PATH=/workspace/autonomy/build/autonomy/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/task/launch
+    autolink launch start task.launch
+  # or: autolink launch start $PWD/autonomy/task/launch/task.launch
+
+  Stop:
+    autolink launch stop task.launch
+
+  Do not run together with autonomy/system/launch/autonomy.launch (overlaps
+  planning/control/task). Prefer this file for Autoviz 2D Goal Pose smoke tests.
 -->
 <autolink>
-    <module>
-        <name>task</name>
-        <type>binary</type>
-        <process_name>task --config_directory=config</process_name>
-    </module>
+  <module>
+    <name>planning</name>
+    <type>binary</type>
+    <process_name>autonomy.planning --configuration_directory=config --configuration_basename=autonomy.lua</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>control</name>
+    <type>binary</type>
+    <process_name>autonomy.control --configuration_directory=config --configuration_basename=autonomy.lua</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>task</name>
+    <type>binary</type>
+    <!-- CMake target / binary is autonomy.task (google_binary). -->
+    <process_name>autonomy.task --config_directory=config</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
 </autolink>

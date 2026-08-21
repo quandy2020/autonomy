@@ -17,6 +17,8 @@
 #include "autonomy/task/task_server.hpp"
 
 #include <chrono>
+#include <cmath>
+#include <thread>
 
 #include "autolink/autolink.hpp"
 #include "autonomy/common/logging.hpp"
@@ -105,11 +107,63 @@ void TaskServer::Bind() {
                     if (!pose) {
                         return;
                     }
-                    proto::NavigationGoal goal;
-                    goal.set_command(proto::NAV_CMD_START);
-                    goal.set_mode(proto::NAV_MODE_SINGLE_POSE);
-                    *goal.add_goals() = *pose;
-                    Submit(goal);
+                    const auto now = std::chrono::steady_clock::now();
+                    const double x = pose->pose().position().x();
+                    const double y = pose->pose().position().y();
+                    // Only drop near-duplicate Autoviz publishes (same click),
+                    // never block intentional preemption to a new pose.
+                    if (last_goal_pose_time_.time_since_epoch().count() > 0 &&
+                        now - last_goal_pose_time_ <
+                            std::chrono::milliseconds(120) &&
+                        std::hypot(x - last_goal_pose_x_, y - last_goal_pose_y_) <
+                            0.05) {
+                        return;
+                    }
+                    last_goal_pose_time_ = now;
+                    last_goal_pose_x_ = x;
+                    last_goal_pose_y_ = y;
+                    AINFO << "TaskServer: /goal_pose (" << x << ", " << y << ")";
+
+                    {
+                        std::lock_guard<std::mutex> lock(goal_pose_mutex_);
+                        pending_goal_pose_ = *pose;
+                    }
+                    // Single worker applies the latest pose; rapid clicks coalesce.
+                    if (goal_pose_worker_busy_.exchange(true)) {
+                        return;
+                    }
+                    std::thread([this]() {
+                        for (;;) {
+                            std::optional<
+                                ::automsgs::msgs::geometry_msgs::PoseStamped>
+                                pose;
+                            {
+                                std::lock_guard<std::mutex> lock(
+                                    goal_pose_mutex_);
+                                pose = pending_goal_pose_;
+                                pending_goal_pose_.reset();
+                            }
+                            if (!pose) {
+                                goal_pose_worker_busy_.store(false);
+                                // A click may have arrived after we cleared.
+                                std::lock_guard<std::mutex> lock(
+                                    goal_pose_mutex_);
+                                if (pending_goal_pose_ &&
+                                    !goal_pose_worker_busy_.exchange(true)) {
+                                    continue;
+                                }
+                                return;
+                            }
+                            proto::NavigationGoal goal;
+                            goal.set_command(proto::NAV_CMD_START);
+                            goal.set_mode(proto::NAV_MODE_SINGLE_POSE);
+                            *goal.add_goals() = *pose;
+                            if (!Submit(goal)) {
+                                AWARN << "TaskServer: /goal_pose submit failed "
+                                         "(preempt/start)";
+                            }
+                        }
+                    }).detach();
                 });
 
         navigator_ = std::make_shared<interface::Navigator>();

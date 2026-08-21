@@ -168,12 +168,12 @@ void SimpleSmoother::SmoothImpl(automsgs::msgs::nav_msgs::Path& path,
         double elapsed_seconds = duration_cast<duration<double>>(b - a).count();
         if (max_time_seconds > 0.0 && elapsed_seconds > max_time_seconds) {
             AWARN << "Smoothing time exceeded limit of " << max_time_seconds
-                  << " seconds (elapsed " << elapsed_seconds << " s)";
+                  << " seconds (elapsed " << elapsed_seconds
+                  << " s); keeping last feasible path";
             path = last_path;
             map::costmap_2d::utils::updateApproximatePathOrientations(
                 path, reversing_segment);
-            throw common::SmootherException(
-                "Smoothing time exceed allowed duration");
+            return;
         }
 
         for (unsigned int i = 1; i != path_size - 1; i++) {
@@ -200,17 +200,16 @@ void SimpleSmoother::SmoothImpl(automsgs::msgs::nav_msgs::Path& path,
 
             if (cost > map::costmap_2d::MAX_NON_OBSTACLE &&
                 cost != map::costmap_2d::NO_INFORMATION) {
-                AWARN
-                    << "Smoothing process resulted in an infeasible collision. "
-                       "Returning the last path before the infeasibility was "
-                       "introduced.";
+                // Keep last collision-free iterate and finish successfully so
+                // navigation can FollowPath with the unsmoothed/partial path
+                // instead of aborting the whole BT into recovery.
+                AWARN << "Smoothing hit infeasible collision; keeping last "
+                         "feasible path ("
+                      << last_path.poses_size() << " poses)";
                 path = last_path;
                 map::costmap_2d::utils::updateApproximatePathOrientations(
                     path, reversing_segment);
-                throw common::SmootherException(
-                    "Smoothing process resulted in an infeasible collision. "
-                    "Returning the last path before the infeasibility was "
-                    "introduced.");
+                return;
             }
         }
 

@@ -54,8 +54,9 @@ public:
     }
 
 private:
-    std::unique_ptr<StaticTransform> static_transform_;
+    // Declaration order must match constructor init: options before StaticTransform.
     autonomy::transform::proto::TransformOptions transform_options_;
+    std::unique_ptr<StaticTransform> static_transform_;
     bool running_{false};
 };
 

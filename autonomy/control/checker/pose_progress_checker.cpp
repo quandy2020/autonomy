@@ -16,6 +16,8 @@
 
 #include "autonomy/control/checker/pose_progress_checker.hpp"
 
+#include <chrono>
+
 #include "autonomy/common/math/angle.hpp"
 #include "autonomy/transform/tf2/utils.h"
 #include <automsgs/msgs/geometry_msgs/pose2d.pb.h>
@@ -27,24 +29,27 @@ namespace checker {
 void PoseProgressChecker::Initialize(const std::string& plugin_name) {
     plugin_name_ = plugin_name;
     SimpleProgressChecker::Initialize(plugin_name);
-    required_movement_angle_ =
-        0.5;  // Default value, can be configured via parameters
+    required_movement_angle_ = 0.5;
 }
 
 bool PoseProgressChecker::Check(
     automsgs::msgs::geometry_msgs::PoseStamped& current_pose) {
-    // Convert Pose to Pose2D
     automsgs::msgs::geometry_msgs::Pose2D current_pose2d;
     current_pose2d.set_x(current_pose.pose().position().x());
     current_pose2d.set_y(current_pose.pose().position().y());
-    current_pose2d.set_theta(transform::tf2::getYaw(current_pose.pose().orientation()));
+    current_pose2d.set_theta(
+        transform::tf2::getYaw(current_pose.pose().orientation()));
 
     if (!baseline_pose_set_ ||
         PoseProgressChecker::IsRobotMovedEnough(current_pose2d)) {
         ResetBaselinePose(current_pose2d);
         return true;
     }
-    return false;
+
+    const auto elapsed = std::chrono::duration<double>(
+                             std::chrono::steady_clock::now() - baseline_time_)
+                             .count();
+    return elapsed <= time_allowance_sec_;
 }
 
 bool PoseProgressChecker::IsRobotMovedEnough(
@@ -56,8 +61,7 @@ bool PoseProgressChecker::IsRobotMovedEnough(
 double PoseProgressChecker::PoseAngleDistance(
     const automsgs::msgs::geometry_msgs::Pose2D& pose1,
     const automsgs::msgs::geometry_msgs::Pose2D& pose2) {
-    // Calculate shortest angular distance between two angles
-    double diff = pose1.theta() - pose2.theta();
+    const double diff = pose1.theta() - pose2.theta();
     return std::abs(autonomy::common::math::NormalizeAngleDifference(diff));
 }
 

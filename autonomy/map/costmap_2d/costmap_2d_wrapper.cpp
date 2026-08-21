@@ -441,15 +441,17 @@ void Costmap2DWrapper::updateMap() {
         return;
     }
 
-    double robot_x = 0.0;
-    double robot_y = 0.0;
-    double robot_yaw = 0.0;
+    // Do not fall back to (0,0): default costmap origin is (0,0) with size
+    // [0,width]×[0,height], while the robot (and static map origin) often sit
+    // in negative map coordinates — that falsely trips "out of bounds".
     automsgs::msgs::geometry_msgs::PoseStamped robot_pose;
-    if (getRobotPose(robot_pose)) {
-        robot_x = robot_pose.pose().position().x();
-        robot_y = robot_pose.pose().position().y();
-        robot_yaw = autonomy::transform::tf2::getYaw(robot_pose.pose().orientation());
+    if (!getRobotPose(robot_pose)) {
+        return;
     }
+    const double robot_x = robot_pose.pose().position().x();
+    const double robot_y = robot_pose.pose().position().y();
+    const double robot_yaw =
+        autonomy::transform::tf2::getYaw(robot_pose.pose().orientation());
 
     layered_costmap_->updateMap(robot_x, robot_y, robot_yaw);
     if (!ready_) {
@@ -787,6 +789,11 @@ bool Costmap2DWrapper::applyOccupancyGrid(
     return true;
 }
 
+void Costmap2DWrapper::SetMapPublishCallback(MapPublishCallback callback) {
+    std::lock_guard<std::mutex> lock(map_publish_mutex_);
+    map_publish_callback_ = std::move(callback);
+}
+
 void Costmap2DWrapper::publishMap() {
     // Build a costmap snapshot only. Do not mutate occupancy_grid_, which stores
     // the static map from MapServer (race with applyOccupancyGrid caused malformed
@@ -794,6 +801,14 @@ void Costmap2DWrapper::publishMap() {
     automsgs::msgs::map_msgs::OccupancyGrid snapshot;
     if (!snapshotOccupancyGrid(snapshot)) {
         return;
+    }
+    MapPublishCallback callback;
+    {
+        std::lock_guard<std::mutex> lock(map_publish_mutex_);
+        callback = map_publish_callback_;
+    }
+    if (callback) {
+        callback(snapshot);
     }
 }
 

@@ -3,7 +3,7 @@
 -->
 <root BTCPP_format="4" main_tree_to_execute="FollowTarget">
   <BehaviorTree ID="FollowTarget">
-    <Retry num_attempts="5" name="FollowRetry">
+    <RetryUntilSuccessful num_attempts="5" name="FollowRetry">
       <Sequence name="FollowSequence">
         <TargetLocked/>
         <ComputeFollowGoal goal="{goal}"/>
@@ -20,6 +20,6 @@
                        error_msg="{follow_path_error_msg}"/>
         <GoalReached goal_reached_tol="{goal_reached_tol}"/>
       </Sequence>
-    </Retry>
+    </RetryUntilSuccessful>
   </BehaviorTree>
 </root>

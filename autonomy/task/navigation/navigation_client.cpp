@@ -194,6 +194,17 @@ bool NavigationClient::SmoothPath(const automsgs::msgs::nav_msgs::Path& unsmooth
                                   automsgs::msgs::nav_msgs::Path& smoothed,
                                   int* error_code, std::string* error_message)
 {
+    return SmoothPath(unsmoothed, smoother_id, 1.0, false, smoothed, error_code,
+                      error_message);
+}
+
+bool NavigationClient::SmoothPath(const automsgs::msgs::nav_msgs::Path& unsmoothed,
+                                  const std::string& smoother_id,
+                                  double max_smoothing_duration,
+                                  bool check_for_collisions,
+                                  automsgs::msgs::nav_msgs::Path& smoothed,
+                                  int* error_code, std::string* error_message)
+{
     if (!smooth_path_client_ || !smooth_path_client_->ActionServerIsReady()) {
         SetError(error_code, error_message, kErrorNoServer,
                  "planning action server not ready: smooth_path");
@@ -209,6 +220,15 @@ bool NavigationClient::SmoothPath(const automsgs::msgs::nav_msgs::Path& unsmooth
     if (!smoother_id.empty()) {
         remote_goal.set_smoother_id(smoother_id);
     }
+    if (max_smoothing_duration > 0.0) {
+        const int64_t nanos =
+            static_cast<int64_t>(max_smoothing_duration * 1e9);
+        remote_goal.mutable_max_smoothing_duration()->set_sec(
+            static_cast<int32_t>(nanos / 1000000000LL));
+        remote_goal.mutable_max_smoothing_duration()->set_nanosec(
+            static_cast<uint32_t>(nanos % 1000000000LL));
+    }
+    remote_goal.set_check_for_collisions(check_for_collisions);
 
     const auto wrapped = smooth_path_client_->SendGoalAndWait(remote_goal);
     if (!wrapped || wrapped->code != autolink::action::ResultCode::SUCCEEDED ||
@@ -273,19 +293,44 @@ bool NavigationClient::TryGetDistanceToGoal(float* distance_to_goal) const
 
 void NavigationClient::CancelActiveMotion()
 {
-    follow_session_.Cancel(*follow_path_client_);
-    if (spin_client_) {
-        spin_client_->AsyncCancelAllGoals();
+    // Best-effort only: never block the BT on cancel RPCs.
+    const bool follow_busy = follow_session_.is_busy();
+    try {
+        if (follow_busy) {
+            follow_session_.Cancel(*follow_path_client_);
+        } else {
+            follow_session_.Reset();
+        }
+    } catch (const std::exception& ex) {
+        AWARN << "CancelActiveMotion: follow session cancel failed: "
+              << ex.what();
+        follow_session_.Reset();
     }
-    if (backup_client_) {
-        backup_client_->AsyncCancelAllGoals();
+
+    auto fire_cancel_all = [](auto& client, const char* label) {
+        if (!client) {
+            return;
+        }
+        if (!client->ActionServerIsReady()) {
+            return;
+        }
+        try {
+            (void)client->AsyncCancelAllGoals();
+        } catch (const std::exception& ex) {
+            AWARN << "CancelActiveMotion: " << label
+                  << " CancelAll failed: " << ex.what();
+        }
+    };
+
+    // Only CancelAll while FollowPath is actually accepting/running. Doing so
+    // after a completed goal races the next send_goal and makes 2D Goal look
+    // dead (AsyncSendGoal timeout).
+    if (follow_busy) {
+        fire_cancel_all(follow_path_client_, "follow_path");
     }
-    if (wait_client_) {
-        wait_client_->AsyncCancelAllGoals();
-    }
-    if (follow_path_client_) {
-        follow_path_client_->AsyncCancelAllGoals();
-    }
+    fire_cancel_all(spin_client_, "spin");
+    fire_cancel_all(backup_client_, "backup");
+    fire_cancel_all(wait_client_, "wait");
 }
 
 }  // namespace navigation

@@ -153,6 +153,50 @@ void PlannerServer::RegisterAutolinkEndpoints()
                 self->ClearEntireCostmap();
             });
 
+    // autosim publishes OccupancyGrid on /map; StaticLayer has no Autolink
+    // subscription of its own — feed Costmap2DWrapper directly.
+    map_reader_ =
+        node_->CreateReader<automsgs::msgs::map_msgs::OccupancyGrid>(
+            kMapTopicName,
+            [self](const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>&
+                       msg) {
+                if (!msg || !self->costmap_wrapper_) {
+                    return;
+                }
+                if (!self->costmap_wrapper_->applyOccupancyGrid(*msg)) {
+                    AWARN << "PlannerServer: applyOccupancyGrid(/map) failed";
+                }
+            });
+    if (map_reader_) {
+        AINFO << "PlannerServer: OccupancyGrid on " << kMapTopicName;
+    } else {
+        AWARN << "PlannerServer: failed to subscribe " << kMapTopicName;
+    }
+
+    plan_writer_ =
+        node_->CreateWriter<automsgs::msgs::nav_msgs::Path>(kPlanTopicName);
+    if (plan_writer_) {
+        AINFO << "PlannerServer: Path on " << kPlanTopicName;
+    } else {
+        AWARN << "PlannerServer: failed to create writer " << kPlanTopicName;
+    }
+
+    costmap_writer_ =
+        node_->CreateWriter<automsgs::msgs::map_msgs::OccupancyGrid>(
+            kCostmapTopicName);
+    if (costmap_writer_ && costmap_wrapper_) {
+        auto writer = costmap_writer_;
+        costmap_wrapper_->SetMapPublishCallback(
+            [writer](const automsgs::msgs::map_msgs::OccupancyGrid& grid) {
+                if (writer) {
+                    writer->Write(grid);
+                }
+            });
+        AINFO << "PlannerServer: OccupancyGrid on " << kCostmapTopicName;
+    } else {
+        AWARN << "PlannerServer: failed to create writer " << kCostmapTopicName;
+    }
+
     AINFO << "PlannerServer autolink action/service endpoints started.";
 }
 

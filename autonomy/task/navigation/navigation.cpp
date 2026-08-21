@@ -3,8 +3,10 @@
  */
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "autolink/autolink.hpp"
@@ -27,9 +29,9 @@ namespace {
 constexpr char kGlobalFrame[] = "map";
 constexpr char kRobotBaseFrame[] = "base_link";
 constexpr char kDefaultPlannerId[] = "navfn_planner";
-constexpr char kDefaultControllerId[] = "FollowPath";
+constexpr char kDefaultControllerId[] = "graceful_controller";
 constexpr char kDefaultSmootherId[] = "simple_smoother";
-constexpr double kDefaultGoalReachedTol = 0.25;
+constexpr double kDefaultGoalReachedTol = 0.10;
 constexpr float kMaxReportedDistance = 100.f;
 
 automsgs::msgs::geometry_msgs::PoseStamped ToPoseStamped(
@@ -127,6 +129,9 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
     switch (goal.command()) {
     case Command::NAV_CMD_START:
     case Command::NAV_CMD_REPLAN: {
+        // One preempt/start at a time — Autoviz can fire many /goal_pose threads.
+        std::lock_guard<std::mutex> goal_lock(goal_mutex_);
+
         if (!EnsureNavigationClient()) {
             AERROR << "NavigationTask: navigation client missing";
             return false;
@@ -135,13 +140,52 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
             AERROR << "NavigationTask: empty goals";
             return false;
         }
-        if (Lifecycle() == TaskLifecycle::kRunning ||
-            Lifecycle() == TaskLifecycle::kPaused) {
-            if (navigation()) {
-                navigation()->CancelActiveMotion();
-            }
-            StopTree();
+
+        const bool preempting =
+            Lifecycle() == TaskLifecycle::kRunning ||
+            Lifecycle() == TaskLifecycle::kPaused;
+        if (preempting) {
+            AINFO << "NavigationTask: preempting active navigation with new "
+                     "goal";
         }
+
+        // Tear down prior BT / FollowPath so the new goal owns the stack.
+        if (navigation()) {
+            navigation()->CancelActiveMotion();
+        }
+        StopTree();
+        // Brief settle so control observes cancel/preempt before send_goal.
+        std::this_thread::sleep_for(std::chrono::milliseconds(
+            preempting ? 100 : 20));
+        if (navigation()) {
+            navigation()->CancelActiveMotion();
+        }
+
+        // Wait for planner + follow_path. Control may be respawning after a
+        // crash — allow several seconds instead of refusing the click.
+        {
+            const auto deadline =
+                std::chrono::steady_clock::now() +
+                std::chrono::milliseconds(preempting ? 8000 : 5000);
+            while (std::chrono::steady_clock::now() < deadline) {
+                if (navigation() && navigation()->IsPlanningReady() &&
+                    navigation()->IsControlReady()) {
+                    break;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+            if (!navigation() || !navigation()->IsPlanningReady()) {
+                AERROR << "NavigationTask: planner not ready; refusing goal";
+                return false;
+            }
+            if (!navigation()->IsControlReady()) {
+                // Still start the BT: ServersReady + Retry will wait for
+                // autonomy.control instead of dropping the user's 2D Goal.
+                AWARN << "NavigationTask: follow_path not ready yet; starting "
+                         "BT anyway (is autonomy.control restarting?)";
+            }
+        }
+
         active_goal_ = goal;
         initial_distance_ = -1.f;
         const auto tree = ResolveTreeForGoal(goal);
@@ -156,9 +200,9 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
             return false;
         }
         SetLifecycle(TaskLifecycle::kRunning);
-        SetProgress(0.f, "bt:" + tree);
-        AINFO << "NavigationTask: started " << tree
-              << " goals=" << goal.goals_size();
+        SetProgress(0.f, preempting ? "preempted:" + tree : "bt:" + tree);
+        AINFO << "NavigationTask: " << (preempting ? "preempted -> " : "")
+              << "started " << tree << " goals=" << goal.goals_size();
         return true;
     }
     case Command::NAV_CMD_RESUME:
@@ -190,15 +234,23 @@ void NavigationTask::OnTreeTick()
 {
     switch (runner()->state()) {
     case BtRunState::kSucceeded:
+        if (navigation()) {
+            navigation()->CancelActiveMotion();
+        }
         SetLifecycle(TaskLifecycle::kSucceeded);
         SetProgress(1.f, "bt succeeded: " + runner()->active_tree());
+        AINFO << "NavigationTask: bt succeeded " << runner()->active_tree();
         active_goal_.reset();
         initial_distance_ = -1.f;
         return;
     case BtRunState::kFailed:
+        if (navigation()) {
+            navigation()->CancelActiveMotion();
+        }
         SetLifecycle(TaskLifecycle::kFailed);
         SetProgress(progress_.progress(),
                     "bt failed: " + runner()->active_tree());
+        AWARN << "NavigationTask: bt failed " << runner()->active_tree();
         active_goal_.reset();
         initial_distance_ = -1.f;
         return;

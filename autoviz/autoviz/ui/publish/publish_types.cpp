@@ -27,7 +27,8 @@ QString ExpressionPreview(const QString& json) {
 PublishPanelConfig DefaultPublishPanelConfig() {
   PublishPanelConfig config;
   config.channel = QStringLiteral("/cmd_vel");
-  config.message_type = QStringLiteral("automsgs.msgs.geometry_msgs.Twist");
+  config.message_type =
+      QStringLiteral("automsgs.msgs.geometry_msgs.TwistStamped");
   return config;
 }
 

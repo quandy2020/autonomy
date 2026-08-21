@@ -46,7 +46,7 @@ const PanelCatalogEntry kPanelCatalog[] = {
     {"TableDock", "PanelTable", "Table",
      "Show repeated message arrays as sortable tables"},
     {"TeleopDock", "PanelTeleop", "Teleop",
-     "Publish geometry_msgs/Twist velocity commands (cmd_vel)"},
+     "Publish geometry_msgs/TwistStamped velocity commands (cmd_vel)"},
     {"ChannelGraphDock", "PanelChannelGraph", "Channel Graph",
      "Visualize Autolink node, channel, and service topology"},
     {"VariablesDock", "PanelVariables", "Variables",

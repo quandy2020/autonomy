@@ -114,7 +114,7 @@ ControllerServer::ControllerServer(const proto::ControllerOptions& options)
     if (options_.has_costmap_2d_options() &&
         options_.costmap_2d_options().enabled()) {
         costmap_wrapper_ = std::make_shared<map::costmap_2d::Costmap2DWrapper>(
-            options_.costmap_2d_options(), "local_costmap");
+            options_.costmap_2d_options(), kLocalCostmapTopicName);
     }
 
     controller_frequency_ = options_.controller_frequency() > 0.0
@@ -220,13 +220,13 @@ void ControllerServer::LoadPlugins() {
     if (checker_opts.has_goal_checker()) {
         const auto& gc = checker_opts.goal_checker();
         goal_checker->SetTolerances(
-            gc.xy_goal_tolerance() > 0.0 ? gc.xy_goal_tolerance() : 0.25,
-            gc.yaw_goal_tolerance() > 0.0 ? gc.yaw_goal_tolerance() : 0.35,
+            gc.xy_goal_tolerance() > 0.0 ? gc.xy_goal_tolerance() : 0.10,
+            gc.yaw_goal_tolerance() > 0.0 ? gc.yaw_goal_tolerance() : 0.20,
             gc.stateful(),
             gc.path_length_tolerance() > 0.0 ? gc.path_length_tolerance()
-                                             : 1.0);
+                                             : 0.35);
     } else {
-        goal_checker->SetTolerances(goal_reached_tolerance_, 0.35, true);
+        goal_checker->SetTolerances(goal_reached_tolerance_, 0.20, true, 0.35);
     }
     goal_checkers_.insert({"goal_checker", goal_checker});
     default_goal_checker_ids_.push_back("goal_checker");
@@ -239,6 +239,11 @@ void ControllerServer::LoadPlugins() {
             pc.required_movement_radius() > 0.0
                 ? pc.required_movement_radius()
                 : 0.5);
+        progress_checker->SetMovementTimeAllowance(
+            pc.movement_time_allowance() > 0.0 ? pc.movement_time_allowance()
+                                               : 10.0);
+    } else {
+        progress_checker->SetMovementTimeAllowance(10.0);
     }
     progress_checkers_.insert({"progress_checker", progress_checker});
     default_progress_checker_ids_.push_back("progress_checker");
@@ -265,14 +270,19 @@ void ControllerServer::Start() {
         AttachAutolinkNode(node_);
     }
 
-    if (costmap_wrapper_) {
-        LoadPlugins();
-    }
+    LoadPlugins();
 }
 
 void ControllerServer::Shutdown() {
     DetachAutolinkNode();
     cmd_vel_writer_.reset();
+    odom_reader_.reset();
+    scan_reader_.reset();
+    map_reader_.reset();
+    if (costmap_wrapper_) {
+        costmap_wrapper_->SetMapPublishCallback(nullptr);
+    }
+    costmap_writer_.reset();
     node_.reset();
     if (costmap_wrapper_) {
         costmap_wrapper_->Stop();
@@ -307,8 +317,15 @@ bool ControllerServer::GetLatestOdometry(
 bool ControllerServer::FindControllerId(const std::string& c_name,
                                         std::string& current_controller) {
     auto resolve_alias = [&](const std::string& name) -> std::string {
-        if (name == "FollowPath" || name == "follow_path") {
-            return controller_ids_.empty() ? std::string() : controller_ids_.front();
+        if (name == "FollowPath" || name == "follow_path" || name.empty()) {
+            if (controllers_.count("graceful_controller") > 0) {
+                return "graceful_controller";
+            }
+            if (controllers_.count("mppi_controller") > 0) {
+                return "mppi_controller";
+            }
+            return controller_ids_.empty() ? std::string()
+                                           : controller_ids_.front();
         }
         return name;
     };
@@ -493,6 +510,7 @@ void ControllerServer::ComputeAndPublishVelocity() {
 
     automsgs::msgs::geometry_msgs::TwistStamped cmd_vel;
     std::string message;
+    uint32_t code = proto::CONTROLLER_RESULT_SUCCESS;
 
     std::unique_lock<map::costmap_2d::Costmap2D::mutex_t> costmap_lock;
     if (costmap_wrapper_ && costmap_wrapper_->getCostmap()) {
@@ -500,8 +518,13 @@ void ControllerServer::ComputeAndPublishVelocity() {
             *(costmap_wrapper_->getCostmap()->getMutex()));
     }
 
-    const uint32_t code = controller->ComputeVelocityCommands(
-        pose, velocity, cmd_vel, goal_checker, message);
+    try {
+        code = controller->ComputeVelocityCommands(
+            pose, velocity, cmd_vel, goal_checker, message);
+    } catch (const common::ControllerException& ex) {
+        code = proto::CONTROLLER_RESULT_FAILURE;
+        message = ex.what();
+    }
 
     if (code != proto::CONTROLLER_RESULT_SUCCESS) {
         if (failure_tolerance_ > 0.0) {
@@ -516,6 +539,13 @@ void ControllerServer::ComputeAndPublishVelocity() {
             }
             AWARN << "Controller returned code=" << code
                   << " (within failure_tolerance): " << message;
+            // Keep last good command so the robot does not freeze on a single
+            // bad MPPI sample.
+            if (last_cmd_vel_.twist().linear().x() != 0.0 ||
+                last_cmd_vel_.twist().linear().y() != 0.0 ||
+                last_cmd_vel_.twist().angular().z() != 0.0) {
+                PublishVelocity(last_cmd_vel_);
+            }
             return;
         }
         if (publish_zero_velocity_) {
@@ -526,9 +556,10 @@ void ControllerServer::ComputeAndPublishVelocity() {
 
     last_valid_cmd_time_ = NowTime();
     if (cmd_vel.header().frame_id().empty()) {
-        cmd_vel.mutable_header()->set_frame_id( robot_base_frame_);
+        cmd_vel.mutable_header()->set_frame_id(robot_base_frame_);
     }
-    if (cmd_vel.header().stamp().sec() == 0 && cmd_vel.header().stamp().nanosec() == 0) {
+    if (cmd_vel.header().stamp().sec() == 0 &&
+        cmd_vel.header().stamp().nanosec() == 0) {
         *cmd_vel.mutable_header()->mutable_stamp() = NowTime();
     }
     PublishVelocity(cmd_vel);
@@ -585,8 +616,17 @@ bool ControllerServer::IsGoalReached() {
         velocity = odom.twist().twist();
     }
 
-    const auto& goal_pose = current_path_.poses(current_path_.poses_size() - 1).pose();
-    return goal_checker->IsGoalReached(pose.pose(), goal_pose, velocity);
+    // Use the goal captured at FollowPath start so in-controller path pruning
+    // cannot change the terminal pose used for success.
+    const bool reached =
+        goal_checker->IsGoalReached(pose.pose(), end_pose_.pose(), velocity);
+    if (reached) {
+        const double dist = std::hypot(
+            pose.pose().position().x() - end_pose_.pose().position().x(),
+            pose.pose().position().y() - end_pose_.pose().position().y());
+        AINFO << "FollowPath goal reached: dist=" << dist << " m";
+    }
+    return reached;
 }
 
 bool ControllerServer::GetRobotPose(
@@ -595,18 +635,34 @@ bool ControllerServer::GetRobotPose(
         return true;
     }
 
-    if (odom_smoother_) {
-        automsgs::msgs::nav_msgs::Odometry odom;
-        if (odom_smoother_->GetLatestOdometry(odom) &&
-            !odom.header().frame_id().empty()) {
-            pose.mutable_header()->set_frame_id(
-                odom.header().frame_id().empty() ? global_frame_
-                                             : odom.header().frame_id());
-            *pose.mutable_header()->mutable_stamp() = odom.header().stamp();
-            *pose.mutable_pose() = odom.pose().pose().pose();
+    const std::string map_frame =
+        global_frame_.empty() ? "map" : global_frame_;
+    const std::string base_frame =
+        robot_base_frame_.empty() ? "base_link" : robot_base_frame_;
+
+    if (tf_buffer_) {
+        try {
+            const auto tf = tf_buffer_->lookupTransform(
+                map_frame, base_frame,
+                automsgs::msgs::builtin_interfaces::ZeroTime(), 0.05f);
+            pose.mutable_header()->set_frame_id(map_frame);
+            *pose.mutable_header()->mutable_stamp() = tf.header().stamp();
+            pose.mutable_pose()->mutable_position()->set_x(
+                tf.transform().translation().x());
+            pose.mutable_pose()->mutable_position()->set_y(
+                tf.transform().translation().y());
+            pose.mutable_pose()->mutable_position()->set_z(
+                tf.transform().translation().z());
+            *pose.mutable_pose()->mutable_orientation() =
+                tf.transform().rotation();
             return true;
+        } catch (const std::exception& ex) {
+            ADEBUG << "GetRobotPose TF fallback failed: " << ex.what();
         }
     }
+
+    // Odometry is usually in the odom frame — never treat it as map pose for
+    // goal checking / path following.
     return false;
 }
 
