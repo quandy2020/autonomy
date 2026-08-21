@@ -1,14 +1,14 @@
 <!--
-  Navigation task BT — single goal.
-  TF check → Plan → Smooth → Validate → Follow → GoalReached, with recovery.
+  Navigate to pose: cancel leftover → plan and follow; recover then retry.
+  Node IDs must match BT registrations in autonomy/task/navigation/plugins.
 -->
-<root BTCPP_format="4" main_tree_to_execute="NavigationTask">
-  <BehaviorTree ID="NavigationTask">
+<root BTCPP_format="4" main_tree_to_execute="NavigatePose">
+  <BehaviorTree ID="NavigatePose">
     <Retry num_attempts="6" name="NavigateRetry">
-      <Sequence name="NavigateWithRecovery">
+      <Sequence name="Attempt">
         <NavControllerCancel/>
-        <ReactiveFallback name="NavigateOrRecover">
-          <Sequence name="NavigatePipeline">
+        <ReactiveFallback name="FollowRecover">
+          <Sequence name="PlanFollow">
             <NavInitialPoseReceived/>
             <NavTfAvailable child="{robot_base_frame}" parent="{global_frame}"/>
             <NavServersReady/>
@@ -25,13 +25,15 @@
             <NavGoalReached goal="{goal}" goal_reached_tol="{goal_reached_tol}"
                             robot_base_frame="{robot_base_frame}"/>
           </Sequence>
-          <Sequence name="RecoverySequence">
-            <NavClearCostmap service_name="global_costmap/clear_entirely_global_costmap"/>
-            <NavSpin spin_dist="1.57" time_allowance="5.0" is_recovery="true"/>
-            <NavBackUp backup_dist="0.30" backup_speed="0.10" time_allowance="5.0"
-                       is_recovery="true"/>
-            <NavWait wait_duration="0.5"/>
-          </Sequence>
+          <ForceFailure name="Recover">
+            <Sequence>
+              <NavClearCostmap service_name="global_costmap/clear_entirely_global_costmap"/>
+              <NavSpin spin_dist="1.57" time_allowance="5.0" is_recovery="true"/>
+              <NavBackUp backup_dist="0.30" backup_speed="0.10" time_allowance="5.0"
+                         is_recovery="true"/>
+              <NavWait wait_duration="0.5"/>
+            </Sequence>
+          </ForceFailure>
         </ReactiveFallback>
       </Sequence>
     </Retry>

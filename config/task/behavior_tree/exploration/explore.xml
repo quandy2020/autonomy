@@ -9,18 +9,18 @@
         <SelectFrontier goal="{goal}"
                         error_code_id="{select_frontier_error_code}"
                         error_msg="{select_frontier_error_msg}"/>
-        <NavTfAvailable/>
-        <NavComputePath goal="{goal}" path="{path}" planner_id="{default_planner_id}"
+        <TransformValid/>
+        <PlanPath goal="{goal}" path="{path}" planner_id="{default_planner_id}"
                         error_code_id="{compute_path_error_code}"
                         error_msg="{compute_path_error_msg}"/>
-        <NavSmoothPath unsmoothed_path="{path}" smoothed_path="{path}"
+        <SmoothPath unsmoothed_path="{path}" smoothed_path="{path}"
                        smoother_id="{default_smoother_id}"
                        max_smoothing_duration="1.0" check_for_collisions="false"/>
-        <NavPathValid path="{path}"/>
-        <NavFollowPath path="{path}" controller_id="{default_controller_id}"
+        <PathValid path="{path}"/>
+        <FollowPath path="{path}" controller_id="{default_controller_id}"
                        error_code_id="{follow_path_error_code}"
                        error_msg="{follow_path_error_msg}"/>
-        <NavGoalReached goal_reached_tol="{goal_reached_tol}"/>
+        <GoalReached goal_reached_tol="{goal_reached_tol}"/>
         <SaveExplorationMap map_name="{map_name}"/>
       </Sequence>
     </Retry>
