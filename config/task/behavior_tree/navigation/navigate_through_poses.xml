@@ -1,11 +1,11 @@
 <!--
-  Navigation task BT — through poses.
-  TF check → Plan all waypoints → Smooth → Validate → Follow → GoalReached.
+  Navigate through poses: cancel leftover → plan all waypoints → follow; recover then retry.
+  Node IDs must match BT registrations in autonomy/task/navigation/plugins.
 -->
 <root BTCPP_format="4" main_tree_to_execute="NavigationThroughPoses">
   <BehaviorTree ID="NavigationThroughPoses">
     <Retry num_attempts="4" name="ThroughPosesRetry">
-      <Sequence name="ThroughPosesWithRecovery">
+      <Sequence name="Attempt">
         <NavControllerCancel/>
         <ReactiveFallback name="ThroughPosesOrRecover">
           <Sequence name="ThroughPosesPipeline">
@@ -26,12 +26,14 @@
             <NavGoalReached goal="{goal}" goal_reached_tol="{goal_reached_tol}"
                             robot_base_frame="{robot_base_frame}"/>
           </Sequence>
-          <Sequence name="RecoverySequence">
-            <NavClearCostmap service_name="global_costmap/clear_entirely_global_costmap"/>
-            <NavSpin spin_dist="1.57" time_allowance="5.0" is_recovery="true"/>
-            <NavBackUp backup_dist="0.30" backup_speed="0.10" time_allowance="5.0"
-                       is_recovery="true"/>
-          </Sequence>
+          <ForceFailure name="Recover">
+            <Sequence>
+              <NavClearCostmap service_name="global_costmap/clear_entirely_global_costmap"/>
+              <NavSpin spin_dist="1.57" time_allowance="5.0" is_recovery="true"/>
+              <NavBackUp backup_dist="0.30" backup_speed="0.10" time_allowance="5.0"
+                         is_recovery="true"/>
+            </Sequence>
+          </ForceFailure>
         </ReactiveFallback>
       </Sequence>
     </Retry>
