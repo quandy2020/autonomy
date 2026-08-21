@@ -269,6 +269,12 @@ PlannerServer::~PlannerServer() {
         smooth_path_server_.reset();
     }
     path_valid_service_.reset();
+    map_reader_.reset();
+    plan_writer_.reset();
+    if (costmap_wrapper_) {
+        costmap_wrapper_->SetMapPublishCallback(nullptr);
+    }
+    costmap_writer_.reset();
     node_.reset();
 
     planners_.clear();
@@ -351,6 +357,12 @@ void PlannerServer::SetPathUpdateCallback(PathUpdateCallback callback) {
 }
 
 void PlannerServer::PublishPlan(const automsgs::msgs::nav_msgs::Path& path) {
+    if (plan_writer_) {
+        plan_writer_->Write(path);
+        AINFO << "PlannerServer: published " << path.poses_size()
+              << " poses on " << kPlanTopicName
+              << " frame=" << path.header().frame_id();
+    }
     if (path_update_callback_) {
         path_update_callback_(path);
     }

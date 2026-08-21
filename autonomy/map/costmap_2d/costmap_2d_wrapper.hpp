@@ -39,7 +39,9 @@
 #pragma once
 
 #include <atomic>
+#include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -285,6 +287,14 @@ public:
     void publishMap();
 
     /**
+     * @brief Register a sink for OccupancyGrid snapshots (Autoviz /debug).
+     * Called from the costmap update thread at map_publish_frequency.
+     */
+    using MapPublishCallback =
+        std::function<void(const automsgs::msgs::map_msgs::OccupancyGrid&)>;
+    void SetMapPublishCallback(MapPublishCallback callback);
+
+    /**
      * @brief Inject laser scan into ObstacleLayer plugins (ROS bridge entry).
      */
     void feedLaserScan(const automsgs::msgs::sensor_msgs::LaserScan& scan);
@@ -381,6 +391,9 @@ protected:
 
     // Map data
     automsgs::msgs::map_msgs::OccupancyGrid occupancy_grid_;
+
+    MapPublishCallback map_publish_callback_;
+    std::mutex map_publish_mutex_;
 
     // Derived parameters
     bool use_radius_{false};

@@ -17,8 +17,11 @@
 #ifndef AUTONOMY_TASK_TASK_SERVER_HPP_
 #define AUTONOMY_TASK_TASK_SERVER_HPP_
 
+#include <atomic>
 #include <chrono>
 #include <memory>
+#include <mutex>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -127,9 +130,16 @@ private:
         if (!task || !scheduler_) {
             return false;
         }
+        // Drop stale exclusive / session state after SUCCEEDED/FAILED so the
+        // next /goal_pose can RequestActivation without fighting a dead hold.
+        if (!task->IsActive()) {
+            scheduler_->ReleaseActivation(task);
+        }
         const bool needs_activation =
             !task->IsActive() && NeedsSlot(goal);
         if (needs_activation && !scheduler_->RequestActivation(task)) {
+            AWARN << "TaskServer: RequestActivation failed for task type "
+                  << static_cast<int>(task->GetTaskType());
             return false;
         }
         if (!task->SubmitGoal(goal)) {
@@ -194,6 +204,14 @@ private:
     std::shared_ptr<
         autolink::Reader<::automsgs::msgs::geometry_msgs::PoseStamped>>
         goal_pose_reader_;
+    std::chrono::steady_clock::time_point last_goal_pose_time_{};
+    double last_goal_pose_x_{0.0};
+    double last_goal_pose_y_{0.0};
+    // Coalesce rapid Autoviz 2D Goal clicks onto the latest pose only.
+    std::mutex goal_pose_mutex_;
+    std::optional<::automsgs::msgs::geometry_msgs::PoseStamped>
+        pending_goal_pose_;
+    std::atomic<bool> goal_pose_worker_busy_{false};
     interface::Navigator::SharedPtr navigator_;
 
     interface::GoalIngress<proto::TeleopGoal, proto::TeleopFeedback>

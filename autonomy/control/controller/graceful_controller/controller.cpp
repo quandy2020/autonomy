@@ -148,7 +148,9 @@ void GracefulController::Configure(
         params_.slowdown_radius, params_.deceleration_max, params_.v_linear_min,
         params_.v_linear_max, params_.v_angular_max);
 
-    if (params_.use_collision_detection && costmap_wrapper_) {
+    // Always attach a costmap for GetMaxCost / approach checks. Collision
+    // avoidance itself remains gated by params_.use_collision_detection.
+    if (costmap_wrapper_ && costmap_wrapper_->getCostmap()) {
         collision_checker_ = std::make_unique<
             map::costmap_2d::FootprintCollisionChecker<
                 map::costmap_2d::Costmap2D*>>(
@@ -534,8 +536,12 @@ double GracefulController::GetMaxCost(
     const automsgs::msgs::nav_msgs::Path& path,
     automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform) {
     double max_cost = 0.0;
+    auto* costmap =
+        costmap_wrapper_ ? costmap_wrapper_->getCostmap() : nullptr;
+    if (!costmap || !collision_checker_) {
+        return max_cost;
+    }
     const auto tf2_transform = ToTf2Transform(costmap_transform);
-    auto* costmap = costmap_wrapper_->getCostmap();
 
     for (const auto& pose : path.poses()) {
         automsgs::msgs::geometry_msgs::PoseStamped costmap_pose;
@@ -545,7 +551,9 @@ double GracefulController::GetMaxCost(
                                 costmap_pose.pose().position().y(), mx, my)) {
             max_cost = std::max(max_cost,
                                 static_cast<double>(
-                                    collision_checker_->pointCost(mx, my)));
+                                    collision_checker_->pointCost(
+                                        static_cast<int>(mx),
+                                        static_cast<int>(my))));
         }
     }
     return max_cost;

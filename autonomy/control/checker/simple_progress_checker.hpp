@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <string>
 #include <vector>
@@ -39,10 +40,9 @@ namespace checker {
 
 /**
  * @class SimpleProgressChecker
- * @brief This plugin is used to check the position of the robot to make sure
- * that it is actually progressing towards a goal.
+ * @brief Ensures the robot advances at least required_movement_radius within
+ *        movement_time_allowance (Nav2-compatible semantics).
  */
-
 class SimpleProgressChecker : public common::ProgressChecker
 {
 public:
@@ -51,6 +51,7 @@ public:
     void Reset() override;
 
     void SetRequiredMovementRadius(double radius);
+    void SetMovementTimeAllowance(double seconds);
 
 protected:
     /**
@@ -68,9 +69,10 @@ protected:
     static double PoseDistance(const automsgs::msgs::geometry_msgs::Pose2D&,
                                const automsgs::msgs::geometry_msgs::Pose2D&);
 
-    double radius_;
+    double radius_{0.5};
+    double time_allowance_sec_{10.0};
     automsgs::msgs::geometry_msgs::Pose2D baseline_pose_;
-    // automsgs::msgs::time::Time baseline_time_;
+    std::chrono::steady_clock::time_point baseline_time_{};
 
     bool baseline_pose_set_{false};
     std::string plugin_name_;

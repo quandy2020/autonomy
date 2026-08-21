@@ -3,7 +3,7 @@
 -->
 <root BTCPP_format="4" main_tree_to_execute="Explore">
   <BehaviorTree ID="Explore">
-    <Retry num_attempts="6" name="ExploreRetry">
+    <RetryUntilSuccessful num_attempts="6" name="ExploreRetry">
       <Sequence name="ExplorePipeline">
         <FrontierAvailable/>
         <SelectFrontier goal="{goal}"
@@ -23,6 +23,6 @@
         <GoalReached goal_reached_tol="{goal_reached_tol}"/>
         <SaveExplorationMap map_name="{map_name}"/>
       </Sequence>
-    </Retry>
+    </RetryUntilSuccessful>
   </BehaviorTree>
 </root>

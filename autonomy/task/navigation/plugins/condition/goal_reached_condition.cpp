@@ -41,5 +41,5 @@ protected:
 BT_REGISTER_NODES(factory)
 {
     factory.registerNodeType<
-        autonomy::task::plugins::navigation::GoalReachedCondition>("NavGoalReached");
+        autonomy::task::plugins::navigation::GoalReachedCondition>("GoalReached");
 }

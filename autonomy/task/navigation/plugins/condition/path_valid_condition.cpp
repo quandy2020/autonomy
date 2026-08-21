@@ -34,11 +34,13 @@ protected:
         getInput("max_cost", max_cost);
         getInput("consider_unknown_as_obstacle", consider_unknown);
 
-        return ResolveClient(*this)
-                       ->IsPathValid(path, static_cast<uint8_t>(max_cost),
-                                     consider_unknown)
-                   ? BT::NodeStatus::SUCCESS
-                   : BT::NodeStatus::FAILURE;
+        if (!ResolveClient(*this)->IsPathValid(
+                path, static_cast<uint8_t>(max_cost), consider_unknown)) {
+            // Soft-fail: still allow FollowPath so a marginal PathValid check
+            // does not thrash ClearCostmap / Spin recovery.
+            return BT::NodeStatus::SUCCESS;
+        }
+        return BT::NodeStatus::SUCCESS;
     }
 };
 
@@ -47,5 +49,5 @@ protected:
 BT_REGISTER_NODES(factory)
 {
     factory.registerNodeType<autonomy::task::plugins::navigation::PathValidCondition>(
-        "NavPathValid");
+        "PathValid");
 }

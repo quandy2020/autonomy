@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <filesystem>
 #include <memory>
 #include <string>
 
@@ -115,22 +116,27 @@ protected:
 
     bool StartTree(const std::string& tree_xml_path = {}) {
         std::string path = tree_xml_path;
-        if (!path.empty() && path.front() != '/') {
-            path = profile_.ResolvePath(config_directory_, path);
-        }
         if (path.empty()) {
             path = profile_.DefaultTreePath(config_directory_);
+        } else if (!std::filesystem::exists(path)) {
+            // ResolveTreeForGoal may already return config-relative paths.
+            // Only join config_directory when the given path is missing.
+            const std::string resolved =
+                profile_.ResolvePath(config_directory_, path);
+            if (std::filesystem::exists(resolved)) {
+                path = resolved;
+            }
         }
-        if (path.empty()) {
+        if (path.empty() || !std::filesystem::exists(path)) {
             return false;
         }
         return runner_.Run(path);
     }
 
     void StopTree() {
-        if (runner_.IsRunning()) {
-            runner_.Cancel();
-        }
+        // Always cancel: after Succeeded/Failed IsRunning() is false but a new
+        // goal must still reset runner state before StartTree.
+        runner_.Cancel();
     }
 
     bool PauseTree() { return runner_.Pause(); }

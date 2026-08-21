@@ -225,5 +225,28 @@ void SeedBenchmarkTfTree(Buffer* buffer, const std::string& authority) {
                                   true);
 }
 
+void SeedIdentityMapToOdom(Buffer* buffer, const std::string& authority) {
+    if (buffer == nullptr) {
+        return;
+    }
+    const auto stamp = automsgs::msgs::builtin_interfaces::TimeNow();
+    auto make = [&stamp](const std::string& parent,
+                         const std::string& child) {
+        automsgs::msgs::geometry_msgs::TransformStamped t;
+        *t.mutable_header()->mutable_stamp() = stamp;
+        t.mutable_header()->set_frame_id(parent);
+        t.set_child_frame_id(child);
+        t.mutable_transform()->mutable_rotation()->set_w(1.0);
+        return t;
+    };
+    // Seed a single connected tree so canTransform(map, base_link) works before
+    // the first live /tf tick. Live odom→base_footprint overwrites the seed.
+    ApplyTransformStampedToBuffer(buffer, make("map", "odom"), authority, true);
+    ApplyTransformStampedToBuffer(buffer, make("odom", "base_footprint"),
+                                  authority, true);
+    ApplyTransformStampedToBuffer(buffer, make("base_footprint", "base_link"),
+                                  authority, true);
+}
+
 }  // namespace transform
 }  // namespace autonomy

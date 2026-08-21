@@ -2,6 +2,9 @@
  * Copyright 2026 The Openbot Authors
  */
 
+#include <cmath>
+#include <string>
+
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/actions/nav_actions.pb.h>
@@ -50,7 +53,23 @@ protected:
         }
         getInput("controller_id", controller_id);
 
-        *goal.mutable_path() = path;
+        // Keep FollowPath RPC small: a dense global path (200+ poses) can exceed
+        // the default 16KB SHM slot and leave send_goal without a response.
+        constexpr int kMaxPoses = 40;
+        if (path.poses_size() > kMaxPoses) {
+            automsgs::msgs::nav_msgs::Path sparse;
+            sparse.mutable_header()->CopyFrom(path.header());
+            const int n = path.poses_size();
+            *sparse.add_poses() = path.poses(0);
+            for (int i = 1; i < kMaxPoses - 1; ++i) {
+                const int idx = (i * (n - 1)) / (kMaxPoses - 1);
+                *sparse.add_poses() = path.poses(idx);
+            }
+            *sparse.add_poses() = path.poses(n - 1);
+            *goal.mutable_path() = sparse;
+        } else {
+            *goal.mutable_path() = path;
+        }
         if (!controller_id.empty()) {
             goal.set_controller_id(controller_id);
         }
@@ -58,12 +77,14 @@ protected:
     }
 
     const char* ServerLabel() const override { return "follow_path"; }
+
+private:
 };
 
 }  // namespace autonomy::task::plugins::navigation
 
 BT_REGISTER_NODES(factory)
 {
-    factory.registerNodeType<autonomy::task::plugins::navigation::FollowPathAction>(
-        "NavFollowPath");
+    factory.registerNodeType<
+        autonomy::task::plugins::navigation::FollowPathAction>("FollowPath");
 }

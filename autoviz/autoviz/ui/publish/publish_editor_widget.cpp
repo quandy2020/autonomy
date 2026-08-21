@@ -389,6 +389,25 @@ PublishPanelConfig PublishEditorWidget::config() const {
 void PublishEditorWidget::setConfig(const PublishPanelConfig& config) {
   stopAllPublisherTimers();
   config_ = config;
+  // Persistently saved layouts may still use plain Twist on /cmd_vel; autonomy
+  // stack requires TwistStamped (controller / autosim / task).
+  if (config_.channel == QStringLiteral("/cmd_vel") &&
+      (config_.message_type == QStringLiteral("automsgs.msgs.geometry_msgs.Twist") ||
+       config_.message_type == QStringLiteral("geometry_msgs/Twist") ||
+       config_.message_type == QStringLiteral("geometry_msgs.Twist"))) {
+    config_.message_type =
+        QStringLiteral("automsgs.msgs.geometry_msgs.TwistStamped");
+  }
+  for (auto& entry : config_.publishers) {
+    if (entry.channel == QStringLiteral("/cmd_vel") &&
+        (entry.message_type ==
+             QStringLiteral("automsgs.msgs.geometry_msgs.Twist") ||
+         entry.message_type == QStringLiteral("geometry_msgs/Twist") ||
+         entry.message_type == QStringLiteral("geometry_msgs.Twist"))) {
+      entry.message_type =
+          QStringLiteral("automsgs.msgs.geometry_msgs.TwistStamped");
+    }
+  }
   custom_channels_ = config_.custom_channels;
   suppress_template_update_ = true;
   suppress_draft_sync_ = true;
@@ -560,7 +579,7 @@ bool PublishEditorWidget::prepareDraftPublisher(PublishEntry* entry,
     if (error != nullptr) {
       *error = tr("Could not build an expression for %1.\n"
                   "Check that the type is registered (e.g. "
-                  "automsgs.msgs.geometry_msgs.Twist).")
+                  "automsgs.msgs.geometry_msgs.TwistStamped).")
                    .arg(ShortTypeLabel(config_.message_type.toStdString()));
     }
     return false;

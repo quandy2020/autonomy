@@ -29,7 +29,7 @@ constexpr char kSmoothPathActionName[] = "smooth_path";
 constexpr char kIsPathValidServiceName[] = "is_path_valid";
 constexpr char kClearGlobalCostmapServiceName[] =
     "global_costmap/clear_entirely_global_costmap";
-constexpr char kPlanTopicName[] = "plan";
+constexpr char kPlanTopicName[] = "/plan";
 constexpr char kComputePathToPoseServiceName[] = "/compute_path_to_pose";
 constexpr char kComputePathThroughPosesServiceName[] =
     "/compute_path_through_poses";

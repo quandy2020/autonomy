@@ -22,6 +22,7 @@ public:
             BT::InputPort<double>("backup_dist", 0.30, "m"),
             BT::InputPort<double>("backup_speed", 0.10, "m/s"),
             BT::InputPort<double>("time_allowance", 10.0, "sec"),
+            BT::InputPort<bool>("is_recovery", false, "recovery behavior flag"),
             BT::OutputPort<int>("error_code_id"),
             BT::OutputPort<std::string>("error_msg"),
         };
@@ -55,5 +56,5 @@ protected:
 BT_REGISTER_NODES(factory)
 {
     factory.registerNodeType<autonomy::task::plugins::navigation::BackUpAction>(
-        "NavBackUp");
+        "BackUp");
 }

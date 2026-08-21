@@ -1,41 +1,29 @@
 <!--
-  Navigate to pose: cancel leftover → plan and follow; recover then retry.
-  Node IDs must match BT registrations in autonomy/task/navigation/plugins.
+  Navigate to pose: plan once, then follow until goal.
+
+  Continuous RateController replan was removed: it thrashed FollowPath /
+  control and left sessions half-finished so later 2D Goals looked dead.
 -->
 <root BTCPP_format="4" main_tree_to_execute="NavigatePose">
   <BehaviorTree ID="NavigatePose">
-    <Retry num_attempts="6" name="NavigateRetry">
-      <Sequence name="Attempt">
-        <NavControllerCancel/>
-        <ReactiveFallback name="FollowRecover">
-          <Sequence name="PlanFollow">
-            <NavInitialPoseReceived/>
-            <NavTfAvailable child="{robot_base_frame}" parent="{global_frame}"/>
-            <NavServersReady/>
-            <NavComputePath goal="{goal}" path="{path}" planner_id="{default_planner_id}"
-                            error_code_id="{compute_path_error_code}"
-                            error_msg="{compute_path_error_msg}"/>
-            <NavSmoothPath unsmoothed_path="{path}" smoothed_path="{path}"
-                           smoother_id="{default_smoother_id}"
-                           max_smoothing_duration="1.0" check_for_collisions="false"/>
-            <NavPathValid path="{path}"/>
-            <NavFollowPath path="{path}" controller_id="{default_controller_id}"
-                           error_code_id="{follow_path_error_code}"
-                           error_msg="{follow_path_error_msg}"/>
-            <NavGoalReached goal="{goal}" goal_reached_tol="{goal_reached_tol}"
-                            robot_base_frame="{robot_base_frame}"/>
-          </Sequence>
-          <ForceFailure name="Recover">
-            <Sequence>
-              <NavClearCostmap service_name="global_costmap/clear_entirely_global_costmap"/>
-              <NavSpin spin_dist="1.57" time_allowance="5.0" is_recovery="true"/>
-              <NavBackUp backup_dist="0.30" backup_speed="0.10" time_allowance="5.0"
-                         is_recovery="true"/>
-              <NavWait wait_duration="0.5"/>
-            </Sequence>
-          </ForceFailure>
-        </ReactiveFallback>
-      </Sequence>
-    </Retry>
+    <RetryUntilSuccessful num_attempts="6" name="NavigateRetry">
+      <Fallback name="FollowRecover">
+        <Sequence name="PlanFollow">
+          <PoseReady/>
+          <TransformValid child="{robot_base_frame}" parent="{global_frame}"/>
+          <ServersReady/>
+          <PlanPath goal="{goal}" path="{path}" planner_id="{default_planner_id}"
+                    error_code_id="{compute_path_error_code}"
+                    error_msg="{compute_path_error_msg}"/>
+          <PathValid path="{path}"/>
+          <FollowPath path="{path}" controller_id="{default_controller_id}"
+                      error_code_id="{follow_path_error_code}"
+                      error_msg="{follow_path_error_msg}"/>
+        </Sequence>
+        <ForceFailure name="Recover">
+          <AlwaysSuccess/>
+        </ForceFailure>
+      </Fallback>
+    </RetryUntilSuccessful>
   </BehaviorTree>
 </root>

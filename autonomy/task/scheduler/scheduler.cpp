@@ -228,14 +228,18 @@ bool TaskScheduler::TryAcquireExclusiveSlot(RobotTaskType task_type,
         return true;
     }
     std::lock_guard<std::mutex> lock(mutex_);
-    if (exclusive_holder_ != RobotTaskType::ROBOT_TASK_NONE) {
-        if (holder_snapshot != nullptr) {
-            *holder_snapshot = exclusive_holder_;
-        }
-        return false;
+    if (exclusive_holder_ == RobotTaskType::ROBOT_TASK_NONE) {
+        exclusive_holder_ = task_type;
+        return true;
     }
-    exclusive_holder_ = task_type;
-    return true;
+    // Same navigation-class task already owns the slot (e.g. reclaim lagged).
+    if (exclusive_holder_ == task_type) {
+        return true;
+    }
+    if (holder_snapshot != nullptr) {
+        *holder_snapshot = exclusive_holder_;
+    }
+    return false;
 }
 
 void TaskScheduler::ReleaseExclusiveSlot(RobotTaskType task_type) {

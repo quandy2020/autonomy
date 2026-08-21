@@ -18,7 +18,9 @@
 
  #include "autonomy/common/configuration_file_resolver.hpp"
  #include "autonomy/common/lua_parameter_dictionary.hpp"
+ #include "autonomy/control/common/controller_exceptions.hpp"
  #include "autonomy/control/controller/mppi_controller/tools/mppi_options.hpp"
+ #include "autonomy/control/proto/controller_options.pb.h"
  
  namespace autonomy {
  namespace control {
@@ -77,18 +79,24 @@
  #ifdef BENCHMARK_TESTING
      auto start = std::chrono::system_clock::now();
  #endif
- 
+
+  try {
     // Transform path first so closed-loop rolling goal uses the latest closest pose.
     automsgs::msgs::nav_msgs::Path transformed_plan =
         path_handler_.transformPath(pose);
 
     automsgs::msgs::geometry_msgs::Pose goal =
         path_handler_.getTransformedGoal(pose.header().stamp()).pose();
- 
+
+     if (!costmap_wrapper_ || !costmap_wrapper_->getCostmap()) {
+         message = "MPPI: costmap unavailable";
+         return proto::CONTROLLER_RESULT_MAP_ERROR;
+     }
+
      map::costmap_2d::Costmap2D* costmap = costmap_wrapper_->getCostmap();
      std::unique_lock<map::costmap_2d::Costmap2D::mutex_t> costmap_lock(
          *(costmap->getMutex()));
- 
+
     automsgs::msgs::geometry_msgs::Twist robot_speed;
     *robot_speed.mutable_linear() = velocity.twist().linear();
     *robot_speed.mutable_angular() = velocity.twist().angular();
@@ -101,7 +109,7 @@
 
     cmd_vel = optimizer_.evalControl(pose, robot_speed, transformed_plan, goal,
                                      goal_checker);
- 
+
  #ifdef BENCHMARK_TESTING
      auto end = std::chrono::system_clock::now();
      auto duration =
@@ -109,26 +117,28 @@
              .count();
      AINFO << "Control loop execution time: " << duration << " [ms]";
  #endif
- 
-     // TODO: Trajectory type not available, need to define or use alternative
-     // Eigen::ArrayXXf optimal_trajectory;
-     // if (publish_optimal_trajectory_ &&
-     //     opt_traj_pub_->get_subscription_count() > 0) {
-     //     optimal_trajectory = optimizer_.getOptimizedTrajectory();
-     //     auto trajectory_msg = utils::toTrajectoryMsg(
-     //         optimal_trajectory, optimizer_.getOptimalControlSequence(),
-     //         optimizer_.getSettings().model_dt, cmd.header());
-     //     opt_traj_pub_->publish(std::move(trajectory_msg));
-     // }
- 
+
      if (visualize_ && trajectory_visualizer_.get()) {
          Eigen::ArrayXXf optimal_trajectory;
          Visualize(std::move(transformed_plan), cmd_vel.header().stamp(),
                    optimal_trajectory);
      }
- 
-     // Return success code
-     return 0;  // CONTROLLER_RESULT_SUCCESS
+
+     message.clear();
+     return proto::CONTROLLER_RESULT_SUCCESS;
+  } catch (const common::NoValidControl& ex) {
+     message = ex.what();
+     return proto::CONTROLLER_RESULT_NO_VALID_CMD;
+  } catch (const common::InvalidPath& ex) {
+     message = ex.what();
+     return proto::CONTROLLER_RESULT_INVALID_PATH;
+  } catch (const common::ControllerTFError& ex) {
+     message = ex.what();
+     return proto::CONTROLLER_RESULT_TF_ERROR;
+  } catch (const common::ControllerException& ex) {
+     message = ex.what();
+     return proto::CONTROLLER_RESULT_FAILURE;
+  }
  }
  
  void MPPIController::Visualize(

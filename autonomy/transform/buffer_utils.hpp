@@ -64,5 +64,9 @@ proto::TransformOptions MakeTransformOptions(const std::string& yaml_path);
 /** Identity map→odom→base_link (matches fakedata static tree). */
 void SeedBenchmarkTfTree(Buffer* buffer, const std::string& authority = "task_tf_seed");
 
+/** Identity map→odom only (safe with live odom→base_* from autosim). */
+void SeedIdentityMapToOdom(Buffer* buffer,
+                           const std::string& authority = "autolink_tf_seed");
+
 }  // namespace transform
 }  // namespace autonomy

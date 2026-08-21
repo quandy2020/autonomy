@@ -26,6 +26,7 @@
 
 
 #include "autolink/autolink.hpp"
+#include "autolink/node/reader.hpp"
 #include "autolink/node/writer.hpp"
 #include "autonomy/control/constants.hpp"
 #include "autonomy/common/macros.hpp"
@@ -43,6 +44,7 @@
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 #include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
 #include <automsgs/msgs/sensor_msgs/imu.pb.h>
@@ -242,6 +244,14 @@ protected:
 
     std::shared_ptr<autolink::Writer<automsgs::msgs::geometry_msgs::TwistStamped>>
         cmd_vel_writer_;
+    std::shared_ptr<autolink::Writer<automsgs::msgs::map_msgs::OccupancyGrid>>
+        costmap_writer_;
+    std::shared_ptr<autolink::Reader<automsgs::msgs::nav_msgs::Odometry>>
+        odom_reader_;
+    std::shared_ptr<autolink::Reader<automsgs::msgs::sensor_msgs::LaserScan>>
+        scan_reader_;
+    std::shared_ptr<autolink::Reader<automsgs::msgs::map_msgs::OccupancyGrid>>
+        map_reader_;
 
     bool follow_path_active_{false};
     bool follow_path_is_closed_{false};

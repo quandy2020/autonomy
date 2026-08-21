@@ -114,6 +114,14 @@ bool TeleopClient::IsWatchdogOk() const
     return elapsed_sec <= watchdog_timeout_sec_;
 }
 
+bool TeleopClient::IsPerceptionOk() const
+{
+    if (!assist_ || !assist_->enabled() || assist_bypass_) {
+        return true;
+    }
+    return assist_->IsPerceptionOk();
+}
+
 bool TeleopClient::PublishVelocity()
 {
     if (!cmd_vel_writer_) {

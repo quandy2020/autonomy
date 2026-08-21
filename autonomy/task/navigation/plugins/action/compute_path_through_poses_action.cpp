@@ -58,5 +58,5 @@ BT_REGISTER_NODES(factory)
 {
     factory.registerNodeType<
         autonomy::task::plugins::navigation::ComputePathThroughPosesAction>(
-        "NavComputePathThroughPoses");
+        "PlanPoses");
 }

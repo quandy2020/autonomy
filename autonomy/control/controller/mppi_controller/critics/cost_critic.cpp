@@ -171,8 +171,10 @@
          tools::getCriticGoal(data, enforce_path_inversion_);
  
      // Setup cost information for various parts of the critic
-     is_tracking_unknown_ =
-         costmap_ros_->getLayeredCostmap()->isTrackingUnknown();
+     // Local rolling costmaps are mostly NO_INFORMATION until lasers clear
+     // free space. Treating unknown as lethal makes every sample collide and
+     // aborts FollowPath ("Optimizer fail to compute path").
+     is_tracking_unknown_ = true;
      auto* costmap = collision_checker_.getCostmap();
      origin_x_ = static_cast<float>(costmap->getOriginX());
      origin_y_ = static_cast<float>(costmap->getOriginY());
@@ -231,14 +233,16 @@
              // footprint is over it So the center point has more information
              // than the footprint
              if (!worldToMapFloat(Tx, Ty, x_i, y_i)) {
-                 pose_cost = 255.0f;  // NO_INFORMATION in float
-             } else {
-                 pose_cost =
-                     static_cast<float>(costmap->getCost(getIndex(x_i, y_i)));
-                 if (pose_cost < 1.0f) {
-                     continue;  // In free space
-                 }
-             }
+                // Outside the local window: soft penalty, not a hard collision.
+                traj_cost += critical_cost_;
+                continue;
+            } else {
+                pose_cost =
+                    static_cast<float>(costmap->getCost(getIndex(x_i, y_i)));
+                if (pose_cost < 1.0f) {
+                    continue;  // In free space
+                }
+            }
  
              if (inCollision(pose_cost, Tx, Ty, traj_yaw(i, j))) {
                  traj_cost = collision_cost_;

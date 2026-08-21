@@ -25,23 +25,29 @@ namespace checker {
 
 void SimpleProgressChecker::Initialize(const std::string& plugin_name) {
     plugin_name_ = plugin_name;
-    radius_ = 0.5;  // Default value, can be configured via parameters
+    radius_ = 0.5;
+    time_allowance_sec_ = 10.0;
 }
 
 bool SimpleProgressChecker::Check(
     automsgs::msgs::geometry_msgs::PoseStamped& current_pose) {
-    // Convert Pose to Pose2D
     automsgs::msgs::geometry_msgs::Pose2D current_pose2d;
     current_pose2d.set_x(current_pose.pose().position().x());
     current_pose2d.set_y(current_pose.pose().position().y());
-    current_pose2d.set_theta(transform::tf2::getYaw(current_pose.pose().orientation()));
+    current_pose2d.set_theta(
+        transform::tf2::getYaw(current_pose.pose().orientation()));
 
-    if ((!baseline_pose_set_) || (IsRobotMovedEnough(current_pose2d))) {
+    // Nav2 semantics: reset baseline when unset or moved enough; otherwise
+    // allow up to movement_time_allowance before declaring no progress.
+    if (!baseline_pose_set_ || IsRobotMovedEnough(current_pose2d)) {
         ResetBaselinePose(current_pose2d);
         return true;
     }
-    // If robot hasn't moved enough, progress check fails
-    return false;
+
+    const auto elapsed = std::chrono::duration<double>(
+                             std::chrono::steady_clock::now() - baseline_time_)
+                             .count();
+    return elapsed <= time_allowance_sec_;
 }
 
 void SimpleProgressChecker::Reset() {
@@ -54,10 +60,16 @@ void SimpleProgressChecker::SetRequiredMovementRadius(double radius) {
     }
 }
 
+void SimpleProgressChecker::SetMovementTimeAllowance(double seconds) {
+    if (seconds > 0.0) {
+        time_allowance_sec_ = seconds;
+    }
+}
+
 void SimpleProgressChecker::ResetBaselinePose(
     const automsgs::msgs::geometry_msgs::Pose2D& pose) {
     baseline_pose_ = pose;
-    // baseline_time_ = clock_->now();
+    baseline_time_ = std::chrono::steady_clock::now();
     baseline_pose_set_ = true;
 }
 
@@ -69,9 +81,8 @@ bool SimpleProgressChecker::IsRobotMovedEnough(
 double SimpleProgressChecker::PoseDistance(
     const automsgs::msgs::geometry_msgs::Pose2D& pose1,
     const automsgs::msgs::geometry_msgs::Pose2D& pose2) {
-    double dx = pose1.x() - pose2.x();
-    double dy = pose1.y() - pose2.y();
-
+    const double dx = pose1.x() - pose2.x();
+    const double dy = pose1.y() - pose2.y();
     return std::hypot(dx, dy);
 }
 

@@ -5,6 +5,7 @@
  */
 
 #include <cstdlib>
+#include <memory>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -15,6 +16,7 @@
 #include "autonomy/control/controller_server.hpp"
 #include "autonomy/system/options.hpp"
 #include "autonomy/system/proto/autonomy_options.pb.h"
+#include "autonomy/transform/autolink_tf_listener.hpp"
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/geometry_msgs/transform_stamped.h"
 #include "autonomy/transform/transform_server.hpp"
@@ -25,15 +27,17 @@ namespace {
 
 using AutonomyOptions = ::autonomy::system::proto::AutonomyOptions;
 
-void InitTransformStack(const AutonomyOptions& options)
+std::unique_ptr<transform::TransformServer> InitTransformStack(
+    const AutonomyOptions& options)
 {
     auto* tf_buffer = transform::Buffer::Instance();
     if (tf_buffer->Init() != 0) {
         AWARN << "control_main: transform::Buffer::Init returned non-zero";
     }
 
-    if (!options.has_transform_options()) {
-        return;
+    if (!options.has_transform_options() ||
+        options.transform_options().extrinsic_file().empty()) {
+        return nullptr;
     }
 
     auto transform_server = std::make_unique<transform::TransformServer>(
@@ -56,6 +60,7 @@ void InitTransformStack(const AutonomyOptions& options)
         geo_msg.transform.rotation.w = trans.transform().rotation().w();
         tf_buffer->setTransform(geo_msg, "control_main", true);
     }
+    return transform_server;
 }
 
 }  // namespace
@@ -80,7 +85,19 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    autonomy::control::InitTransformStack(options);
+    auto static_tf =
+        autonomy::control::InitTransformStack(options);
+
+    auto tf_node = autolink::CreateNode("control_tf");
+    auto tf_listener =
+        std::make_shared<autonomy::transform::AutolinkTfListener>();
+    if (!tf_listener->Start(tf_node)) {
+        LOG(WARNING) << "control_main: AutolinkTfListener start failed "
+                        "(map←base_link may be unavailable)";
+        tf_listener.reset();
+        tf_node.reset();
+    }
+
     auto controller = std::make_shared<autonomy::control::ControllerServer>(
         options.controller_options());
     controller->Start();
@@ -89,5 +106,9 @@ int main(int argc, char** argv)
     autolink::WaitForShutdown();
 
     controller->Shutdown();
+    if (tf_listener) {
+        tf_listener->Stop();
+    }
+    static_tf.reset();
     return EXIT_SUCCESS;
 }

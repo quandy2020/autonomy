@@ -106,6 +106,9 @@ bool FootprintCollisionChecker<CostmapT>::worldToMap(double wx, double wy,
 
 template <typename CostmapT>
 double FootprintCollisionChecker<CostmapT>::pointCost(int x, int y) const {
+    if (!costmap_) {
+        return static_cast<double>(NO_INFORMATION);
+    }
     return static_cast<double>(costmap_->getCost(x, y));
 }
 

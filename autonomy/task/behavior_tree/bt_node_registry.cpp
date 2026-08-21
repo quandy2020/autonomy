@@ -5,6 +5,7 @@
 #include "autonomy/task/behavior_tree/bt_node_registry.hpp"
 
 #include <mutex>
+#include <string>
 #include <vector>
 
 namespace autonomy {
@@ -38,7 +39,15 @@ void RegisterBuiltinBtNodes(BT::BehaviorTreeFactory& factory)
 {
     std::lock_guard<std::mutex> lock(RegistrarMutex());
     for (BtNodeRegistrar registrar : Registrars()) {
-        registrar(factory);
+        try {
+            registrar(factory);
+        } catch (const BT::BehaviorTreeException& ex) {
+            // Shared XML ids (e.g. ClearCostmap) must register once; skip dupes.
+            if (std::string(ex.what()).find("already registered") ==
+                std::string::npos) {
+                throw;
+            }
+        }
     }
 }
 

@@ -85,6 +85,13 @@ public:
                     int* error_code = nullptr,
                     std::string* error_message = nullptr);
 
+    bool SmoothPath(const automsgs::msgs::nav_msgs::Path& unsmoothed,
+                    const std::string& smoother_id,
+                    double max_smoothing_duration, bool check_for_collisions,
+                    automsgs::msgs::nav_msgs::Path& smoothed,
+                    int* error_code = nullptr,
+                    std::string* error_message = nullptr);
+
     bool IsPathValid(const automsgs::msgs::nav_msgs::Path& path, uint8_t max_cost,
                      bool consider_unknown_as_obstacle) const;
 

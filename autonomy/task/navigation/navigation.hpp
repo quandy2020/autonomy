@@ -9,6 +9,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 
@@ -53,6 +54,8 @@ private:
 
     std::optional<::autonomy::task::proto::NavigationGoal> active_goal_;
     float initial_distance_{-1.f};
+    // Serialize Autoviz /goal_pose preempt threads (detached Submit).
+    mutable std::mutex goal_mutex_;
 };
 
 }  // namespace task

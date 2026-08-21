@@ -134,21 +134,23 @@ bool Buffer::canTransform(const std::string& target_frame,
                           const automsgs::msgs::builtin_interfaces::Time& time,
                           const float timeout_second,
                           std::string* errstr) const {
+    std::string local_err;
+    std::string* err = errstr != nullptr ? errstr : &local_err;
     const uint64_t requested_ns = ToTf2TimeNs(time);
     uint64_t timeout_ns =
         static_cast<uint64_t>(timeout_second * kSecondToNanoFactor);
     const uint64_t start_time = ToTf2TimeNs(automsgs::msgs::builtin_interfaces::TimeNow());
     while (ToTf2TimeNs(automsgs::msgs::builtin_interfaces::TimeNow()) < start_time + timeout_ns) {
-        errstr->clear();
+        err->clear();
         bool retval = tf2::BufferCore::canTransform(
-            target_frame, source_frame, requested_ns, errstr);
+            target_frame, source_frame, requested_ns, err);
         if (retval) {
             return true;
         }
         // In single-process mock mode, cmd_vel integration may publish TF
         // slightly behind the caller thread. If caller asks for a tiny future
         // timestamp, gracefully fall back to latest available transform.
-        if (requested_ns != 0 && IsFutureExtrapolation(*errstr)) {
+        if (requested_ns != 0 && IsFutureExtrapolation(*err)) {
             std::string latest_err;
             if (tf2::BufferCore::canTransform(target_frame, source_frame, 0ULL,
                                               &latest_err)) {
@@ -157,12 +159,12 @@ bool Buffer::canTransform(const std::string& target_frame,
         }
         {
             const int sleep_time_ms = 3;
-            LOG(WARNING) << "BufferCore::canTransform failed: " << *errstr;
+            LOG(WARNING) << "BufferCore::canTransform failed: " << *err;
             std::this_thread::sleep_for(
                 std::chrono::milliseconds(sleep_time_ms));
         }
     }
-    *errstr = *errstr + ":timeout";
+    *err = *err + ":timeout";
     return false;
 }
 
@@ -173,6 +175,8 @@ bool Buffer::canTransform(const std::string& target_frame,
                           const std::string& fixed_frame,
                           const float timeout_second,
                           std::string* errstr) const {
+    std::string local_err;
+    std::string* err = errstr != nullptr ? errstr : &local_err;
     const uint64_t target_ns = ToTf2TimeNs(target_time);
     const uint64_t source_ns = ToTf2TimeNs(source_time);
     // poll for transform if timeout is set
@@ -180,17 +184,16 @@ bool Buffer::canTransform(const std::string& target_frame,
         static_cast<uint64_t>(timeout_second * kSecondToNanoFactor);
     const uint64_t start_time = ToTf2TimeNs(automsgs::msgs::builtin_interfaces::TimeNow());
     while (ToTf2TimeNs(automsgs::msgs::builtin_interfaces::TimeNow()) < start_time + timeout_ns) {
-        // Make sure we haven't been stopped
-        errstr->clear();
+        err->clear();
 
         bool retval = tf2::BufferCore::canTransform(
             target_frame, target_ns, source_frame, source_ns, fixed_frame,
-            errstr);
+            err);
         if (retval) {
             return true;
         }
         if ((target_ns != 0 || source_ns != 0) &&
-            IsFutureExtrapolation(*errstr)) {
+            IsFutureExtrapolation(*err)) {
             std::string latest_err;
             if (tf2::BufferCore::canTransform(target_frame, 0ULL, source_frame,
                                               0ULL, fixed_frame,
@@ -200,12 +203,12 @@ bool Buffer::canTransform(const std::string& target_frame,
         }
         {
             const int sleep_time_ms = 3;
-            LOG(WARNING) << "BufferCore::canTransform failed: " << *errstr;
+            LOG(WARNING) << "BufferCore::canTransform failed: " << *err;
             std::this_thread::sleep_for(
                 std::chrono::milliseconds(sleep_time_ms));
         }
     }
-    *errstr = *errstr + ":timeout";
+    *err = *err + ":timeout";
     return false;
 }
 

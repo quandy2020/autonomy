@@ -28,12 +28,12 @@ protected:
         auto client = ResolveClient(*this);
         if (!client) {
             setOutput("error_code_id", 1);
-            setOutput("error_msg", std::string("ApplyTeleopVelocity: missing teleop client"));
+            setOutput("error_msg", std::string("TrackCommand: missing teleop client"));
             return BT::NodeStatus::FAILURE;
         }
         if (!client->PublishVelocity()) {
             setOutput("error_code_id", 2);
-            setOutput("error_msg", std::string("ApplyTeleopVelocity: publish failed"));
+            setOutput("error_msg", std::string("TrackCommand: publish failed"));
             return BT::NodeStatus::FAILURE;
         }
 
@@ -49,5 +49,5 @@ BT_REGISTER_NODES(factory)
 {
     factory.registerNodeType<
         autonomy::task::plugins::teleop::ApplyTeleopVelocityAction>(
-        "ApplyTeleopVelocity");
+        "TrackCommand");
 }

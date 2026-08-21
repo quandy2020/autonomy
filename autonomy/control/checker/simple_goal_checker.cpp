@@ -87,8 +87,12 @@ bool SimpleGoalChecker::IsGoalXYReached(
     const automsgs::msgs::geometry_msgs::Twist& velocity,
     const automsgs::msgs::nav_msgs::Path& transformed_global_plan) {
     (void)velocity;
-    if (map::costmap_2d::utils::calculate_path_length(transformed_global_plan) >
-        path_length_tolerance_) {
+    // Only enforce remaining-path length when the caller provided a plan.
+    // An empty path (ControllerServer::IsGoalReached) must not be treated as
+    // "remaining length 0" or the robot can latch goal far from the true end.
+    if (transformed_global_plan.poses_size() > 0 &&
+        map::costmap_2d::utils::calculate_path_length(transformed_global_plan) >
+            path_length_tolerance_) {
         return false;
     }
     if (check_xy_) {
@@ -115,8 +119,12 @@ bool SimpleGoalChecker::IsGoalReached(
     const automsgs::msgs::geometry_msgs::Pose& query_pose,
     const automsgs::msgs::geometry_msgs::Pose& goal_pose,
     const automsgs::msgs::geometry_msgs::Twist& velocity) {
-    if (!IsGoalXYReached(query_pose, goal_pose, velocity,
-                         automsgs::msgs::nav_msgs::Path{})) {
+    (void)velocity;
+    // Terminal check always requires XY + yaw against the true goal pose.
+    // Do not reuse stateful check_xy_ from mid-path IsGoalXYReached() calls.
+    const double dx = query_pose.position().x() - goal_pose.position().x();
+    const double dy = query_pose.position().y() - goal_pose.position().y();
+    if (dx * dx + dy * dy > xy_goal_tolerance_sq_) {
         return false;
     }
     const double dyaw = autonomy::common::math::AngleDiff(

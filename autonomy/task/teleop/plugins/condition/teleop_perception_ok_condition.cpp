@@ -7,11 +7,11 @@
 
 namespace autonomy::task::plugins::teleop {
 
-class TeleopWatchdogOkCondition : public BtCondition
+class TeleopPerceptionOkCondition : public BtCondition
 {
 public:
-    TeleopWatchdogOkCondition(const std::string& name,
-                              const BT::NodeConfig& config)
+    TeleopPerceptionOkCondition(const std::string& name,
+                                const BT::NodeConfig& config)
         : BtCondition(name, config) {}
 
 protected:
@@ -21,8 +21,8 @@ protected:
         if (!client) {
             return BT::NodeStatus::FAILURE;
         }
-        return client->IsWatchdogOk() ? BT::NodeStatus::SUCCESS
-                                      : BT::NodeStatus::FAILURE;
+        return client->IsPerceptionOk() ? BT::NodeStatus::SUCCESS
+                                        : BT::NodeStatus::FAILURE;
     }
 };
 
@@ -31,6 +31,6 @@ protected:
 BT_REGISTER_NODES(factory)
 {
     factory.registerNodeType<
-        autonomy::task::plugins::teleop::TeleopWatchdogOkCondition>(
-        "CommandValid");
+        autonomy::task::plugins::teleop::TeleopPerceptionOkCondition>(
+        "PerceptionValid");
 }

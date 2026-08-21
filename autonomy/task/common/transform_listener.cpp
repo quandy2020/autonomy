@@ -49,7 +49,7 @@ bool TransformListener::Start(const std::shared_ptr<autolink::Node>& node,
     if (buffer->Init() != 0) {
         AWARN << "TransformListener: transform::Buffer::Init non-zero";
     }
-    transform::SeedBenchmarkTfTree(buffer, "task_tf_seed");
+    transform::SeedIdentityMapToOdom(buffer, "task_tf_seed");
 
     node_ = node;
 
