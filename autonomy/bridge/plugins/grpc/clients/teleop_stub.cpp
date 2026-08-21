@@ -18,7 +18,7 @@
 
 #include "autonomy/bridge/plugins/grpc/teleop_goal_convert.hpp"
 #include "autonomy/common/logging.hpp"
-#include "autonomy/task/teleop_goal_channel.hpp"
+#include "autonomy/task/interface/names.hpp"
 
 namespace autonomy {
 namespace bridge {
@@ -56,21 +56,22 @@ TeleopStub::TeleopStub(std::shared_ptr<autolink::Node> node)
     if (!node_) {
         return;
     }
-    goal_writer_ = node_->CreateWriter<tp::TeleopGoal>(task::kTeleopGoalChannel);
+    goal_writer_ = node_->CreateWriter<tp::TeleopGoal>(
+        ::autonomy::task::kTeleopGoal);
     if (!goal_writer_) {
         AERROR << "TeleopStub: failed to create writer on "
-               << task::kTeleopGoalChannel;
+               << ::autonomy::task::kTeleopGoal;
     }
 
     TeleopStub* self = this;
     feedback_reader_ = node_->CreateReader<tp::TeleopFeedback>(
-        task::kTeleopFeedbackChannel,
+        ::autonomy::task::kTeleopFeedback,
         [self](const std::shared_ptr<tp::TeleopFeedback>& feedback) {
             self->OnFeedback(feedback);
         });
     if (!feedback_reader_) {
         AWARN << "TeleopStub: feedback reader unavailable on "
-              << task::kTeleopFeedbackChannel;
+              << ::autonomy::task::kTeleopFeedback;
     }
 }
 

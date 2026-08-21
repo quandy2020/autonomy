@@ -1,6 +1,6 @@
 # Task behavior trees
 
-Each app under `autonomy/task/apps/*` owns a **TaskBtProfile**:
+Each app under `autonomy/task/*` owns a **TaskBtProfile**:
 
 | Task | Default XML | Alternate XML | Tick (ms) |
 |------|-------------|---------------|-----------|

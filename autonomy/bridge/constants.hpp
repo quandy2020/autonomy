@@ -16,14 +16,15 @@
 
 #pragma once
 
+#include "autonomy/task/interface/names.hpp"
+
 namespace autonomy {
 namespace bridge {
 
-/** autolink action server names registered by navigator BtActionServer.
- *  Values must match navigator/constants.hpp (kNavigatorNavigateToPose, …). */
-constexpr char kNavigateToPoseActionServerName[] = "navigate_to_pose";
-constexpr char kNavigateThroughPosesActionServerName[] =
-    "navigate_through_poses";
+constexpr const char* kNavigateToPoseActionServerName =
+    task::kNavigateToPose;
+constexpr const char* kNavigateThroughPosesActionServerName =
+    task::kNavigateThroughPoses;
 
 }  // namespace bridge
 }  // namespace autonomy

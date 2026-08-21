@@ -16,23 +16,25 @@
 
 #include "autonomy/task/task_server.hpp"
 
-#include "autonomy/common/logging.hpp"
+#include <chrono>
+
 #include "autolink/autolink.hpp"
-#include "autonomy/task/apps/behavior_tree/bt_defaults.hpp"
-#include "autonomy/task/apps/navigation/navigation_client.hpp"
+#include "autonomy/common/logging.hpp"
+#include "autonomy/task/interface/names.hpp"
+#include "autonomy/task/behavior_tree/bt_defaults.hpp"
+#include "autonomy/task/navigation/navigation_client.hpp"
 
 namespace autonomy {
 namespace task {
 
 TaskServer::TaskServer() = default;
-
 TaskServer::~TaskServer() { Shutdown(); }
 
-::autonomy::task::proto::TaskServerOptions TaskServer::DefaultOptions()
-{
-    ::autonomy::task::proto::TaskServerOptions options;
+proto::TaskServerOptions TaskServer::DefaultOptions() {
+    proto::TaskServerOptions options;
     auto* scheduler = options.mutable_scheduler();
     scheduler->set_exclusive_navigation_tasks(true);
+    scheduler->set_allow_preemption(true);
     scheduler->set_feedback_period_ms(100);
     scheduler->set_default_task_timeout_sec(0.f);
 
@@ -49,239 +51,263 @@ TaskServer::~TaskServer() { Shutdown(); }
     return options;
 }
 
-bool TaskServer::Configure(
-    const ::autonomy::task::proto::TaskServerOptions& options)
-{
+bool TaskServer::Configure(const proto::TaskServerOptions& options) {
     if (configured_) {
         Shutdown();
     }
-
     options_ = options;
     scheduler_ = std::make_shared<TaskScheduler>(options.scheduler());
     if (!scheduler_->Initialize(options)) {
-        AERROR << "TaskServer scheduler initialize failed";
         scheduler_.reset();
         return false;
     }
 
-    task_node_ = autolink::CreateNode("task", "/autonomy/task");
-    if (!task_node_) {
-        AERROR << "TaskServer: failed to create autolink node";
+    node_ = autolink::CreateNode("task", "/autonomy/task");
+    if (!node_) {
         scheduler_->Shutdown();
         scheduler_.reset();
         return false;
     }
 
-    navigation_client_ = navigation::NavigationClient::Create(task_node_);
+    navigation_client_ = navigation::NavigationClient::Create(node_);
     if (!navigation_client_) {
-        AERROR << "TaskServer: failed to create navigation client";
-        task_node_.reset();
+        node_.reset();
         scheduler_->Shutdown();
         scheduler_.reset();
         return false;
     }
     navigation::NavigationClient::SetShared(navigation_client_);
 
-    autolink_tf_listener_ = std::make_shared<AutolinkTfListener>();
-    if (!autolink_tf_listener_->Start(task_node_)) {
-        AWARN << "TaskServer: Autolink TF listener failed (costmap/assist need "
-                 "/tf or tf)";
-        autolink_tf_listener_.reset();
+    transform_listener_ = std::make_shared<TransformListener>();
+    if (!transform_listener_->Start(node_)) {
+        transform_listener_.reset();
     }
 
-    RegisterEnabledPlugins(options.apps());
-    if (options.apps().enable_teleop() && teleop_) {
-        const auto feedback_period = std::chrono::milliseconds(
-            options.scheduler().feedback_period_ms() > 0
-                ? options.scheduler().feedback_period_ms()
-                : 100);
-
-        teleop_feedback_publisher_ =
-            std::make_shared<TeleopFeedbackPublisher>();
-        if (!teleop_feedback_publisher_->Start(task_node_, teleop_,
-                                               feedback_period)) {
-            AWARN << "TaskServer: teleop feedback publisher failed";
-            teleop_feedback_publisher_.reset();
-        }
-
-        const auto feedback_publisher = teleop_feedback_publisher_;
-        teleop_goal_ingress_ = std::make_shared<TeleopGoalIngress>();
-        if (!teleop_goal_ingress_->Start(
-                task_node_,
-                [this](const ::autonomy::task::proto::TeleopGoal& g) {
-                    return SubmitTeleopGoal(g);
-                },
-                [feedback_publisher](
-                    const ::autonomy::task::proto::TeleopGoal& /*goal*/) {
-                    if (!feedback_publisher) {
-                        return;
-                    }
-                    ::autonomy::task::proto::TeleopFeedback feedback;
-                    feedback.set_status(
-                        ::autonomy::task::proto::TELEOP_STATUS_REJECTED);
-                    feedback_publisher->Publish(feedback);
-                })) {
-            AWARN << "TaskServer: teleop goal ingress failed; "
-                     "SubmitTeleopGoal in-process only";
-            teleop_goal_ingress_.reset();
-        }
-    }
+    AddApps(options.apps());
+    Bind();
     configured_ = true;
     AINFO << "TaskServer configured";
     return true;
 }
 
-void TaskServer::RegisterEnabledPlugins(
-    const ::autonomy::task::proto::TaskAppOptions& apps)
-{
-    const auto wire = [this](const auto& task) {
-        if (task) {
-            task->SetAutolinkNode(task_node_);
-            task->SetNavigationClient(navigation_client_);
-            scheduler_->RegisterTask(task);
+void TaskServer::Bind() {
+    const auto period = std::chrono::milliseconds(
+        options_.scheduler().feedback_period_ms() > 0
+            ? options_.scheduler().feedback_period_ms()
+            : 100);
+
+    if (options_.apps().enable_navigation() && navigation_) {
+        goal_pose_reader_ =
+            node_->CreateReader<::automsgs::msgs::geometry_msgs::PoseStamped>(
+                kGoalPose,
+                [this](const std::shared_ptr<
+                       ::automsgs::msgs::geometry_msgs::PoseStamped>& pose) {
+                    if (!pose) {
+                        return;
+                    }
+                    proto::NavigationGoal goal;
+                    goal.set_command(proto::NAV_CMD_START);
+                    goal.set_mode(proto::NAV_MODE_SINGLE_POSE);
+                    *goal.add_goals() = *pose;
+                    Submit(goal);
+                });
+
+        navigator_ = std::make_shared<interface::Navigator>();
+        if (!navigator_->Start(
+                node_,
+                [this](const proto::NavigationGoal& g) { return Submit(g); },
+                [this](proto::NavigationFeedback* feedback) {
+                    return navigation_ && navigation_->GetFeedback(feedback);
+                },
+                [this](proto::NavigationResult* result) {
+                    return navigation_ && navigation_->GetResult(result);
+                },
+                period)) {
+            navigator_.reset();
         }
-    };
+    }
 
-    if (apps.enable_navigation()) {
-        navigation_ = std::make_shared<NavigationTask>();
-        wire(navigation_);
-    }
-    if (apps.enable_tracking()) {
-        tracking_ = std::make_shared<TrackerTask>();
-        wire(tracking_);
-    }
-    if (apps.enable_teleop()) {
-        teleop_ = std::make_shared<TeleopTask>();
-        wire(teleop_);
-    }
-    if (apps.enable_exploration()) {
-        AWARN << "TaskServer: exploration app temporarily disabled "
-                 "(automsgs migration)";
-    }
-    if (apps.enable_charging()) {
-        charging_ = std::make_shared<ChargingTask>();
-        wire(charging_);
-    }
-    if (apps.enable_mapping()) {
-        mapping_ = std::make_shared<MappingTask>();
-        wire(mapping_);
-    }
-    if (apps.enable_localization()) {
-        localization_ = std::make_shared<LocalizationTask>();
-        wire(localization_);
-    }
+    BindDomain(
+        options_.apps().enable_teleop(), teleop_, kTeleopGoal, kTeleopFeedback,
+        period, &teleop_ingress_,
+        [](const proto::TeleopFeedback& feedback) {
+            return feedback.status() == proto::TELEOP_STATUS_TIMEOUT ||
+                   feedback.status() == proto::TELEOP_STATUS_REJECTED ||
+                   feedback.status() == proto::TELEOP_STATUS_IDLE;
+        },
+        []() {
+            proto::TeleopFeedback feedback;
+            feedback.set_status(proto::TELEOP_STATUS_REJECTED);
+            return feedback;
+        });
+
+    BindDomain(
+        options_.apps().enable_tracking(), tracking_, kTrackingGoal,
+        kTrackingFeedback, period, &tracking_ingress_,
+        [](const proto::TrackerFeedback& feedback) {
+            return feedback.status() == proto::TRACKER_STATUS_SUCCEEDED ||
+                   feedback.status() == proto::TRACKER_STATUS_FAILED ||
+                   feedback.status() == proto::TRACKER_STATUS_CANCELED ||
+                   feedback.status() == proto::TRACKER_STATUS_IDLE;
+        },
+        []() {
+            proto::TrackerFeedback feedback;
+            feedback.set_status(proto::TRACKER_STATUS_FAILED);
+            return feedback;
+        });
+
+    BindDomain(
+        options_.apps().enable_exploration(), exploration_, kExplorationGoal,
+        kExplorationFeedback, period, &exploration_ingress_,
+        [](const proto::ExplorationFeedback& feedback) {
+            return feedback.status() == proto::EXPLORATION_STATUS_COMPLETED ||
+                   feedback.status() == proto::EXPLORATION_STATUS_FAILED ||
+                   feedback.status() == proto::EXPLORATION_STATUS_CANCELED ||
+                   feedback.status() == proto::EXPLORATION_STATUS_IDLE;
+        },
+        []() {
+            proto::ExplorationFeedback feedback;
+            feedback.set_status(proto::EXPLORATION_STATUS_FAILED);
+            return feedback;
+        });
+
+    BindDomain(
+        options_.apps().enable_charging(), charging_, kChargingGoal,
+        kChargingFeedback, period, &charging_ingress_,
+        [](const proto::ChargingFeedback& feedback) {
+            return feedback.status() == proto::DOCK_STATUS_SUCCEEDED ||
+                   feedback.status() == proto::DOCK_STATUS_FAILED ||
+                   feedback.status() == proto::DOCK_STATUS_CANCELED ||
+                   feedback.status() == proto::DOCK_STATUS_IDLE;
+        },
+        []() {
+            proto::ChargingFeedback feedback;
+            feedback.set_status(proto::DOCK_STATUS_FAILED);
+            return feedback;
+        });
+
+    BindDomain(
+        options_.apps().enable_mapping(), mapping_, kMappingGoal,
+        kMappingFeedback, period, &mapping_ingress_,
+        [](const proto::MappingFeedback& feedback) {
+            return feedback.status() == proto::MAP_STATUS_SUCCEEDED ||
+                   feedback.status() == proto::MAP_STATUS_FAILED ||
+                   feedback.status() == proto::MAP_STATUS_IDLE;
+        },
+        []() {
+            proto::MappingFeedback feedback;
+            feedback.set_status(proto::MAP_STATUS_FAILED);
+            return feedback;
+        });
+
+    BindDomain(
+        options_.apps().enable_localization(), localization_,
+        kLocalizationGoal, kLocalizationFeedback, period,
+        &localization_ingress_,
+        [](const proto::LocalizationFeedback& feedback) {
+            return feedback.status() == proto::LOCALIZATION_STATUS_SUCCEEDED ||
+                   feedback.status() == proto::LOCALIZATION_STATUS_FAILED ||
+                   feedback.status() == proto::LOCALIZATION_STATUS_CANCELED ||
+                   feedback.status() == proto::LOCALIZATION_STATUS_IDLE;
+        },
+        []() {
+            proto::LocalizationFeedback feedback;
+            feedback.set_status(proto::LOCALIZATION_STATUS_FAILED);
+            return feedback;
+        });
 }
 
-bool TaskServer::Start()
-{
-    if (!configured_ || !scheduler_) {
-        AERROR << "TaskServer::Start before Configure";
-        return false;
+void TaskServer::Unbind() {
+    teleop_ingress_.Stop();
+    tracking_ingress_.Stop();
+    exploration_ingress_.Stop();
+    charging_ingress_.Stop();
+    mapping_ingress_.Stop();
+    localization_ingress_.Stop();
+    if (navigator_) {
+        navigator_->Stop();
+        navigator_.reset();
     }
-    return scheduler_->Start();
+    goal_pose_reader_.reset();
 }
 
-void TaskServer::Shutdown()
-{
+void TaskServer::AddApps(const proto::TaskAppOptions& apps) {
+    RegisterBuiltinTasks(
+        apps, [this](const auto& task) { Register(task); }, &navigation_,
+        &tracking_, &teleop_, &exploration_, &charging_, &mapping_,
+        &localization_);
+}
+
+bool TaskServer::Start() {
+    return configured_ && scheduler_ && scheduler_->Start();
+}
+
+void TaskServer::Shutdown() {
     if (scheduler_) {
         scheduler_->Stop();
     }
-
-    const auto shutdown_plugin = [](auto& task) {
-        if (task) {
-            task->Shutdown();
+    const auto stop = [](auto& t) {
+        if (t) {
+            t->Shutdown();
         }
     };
-    shutdown_plugin(navigation_);
-    shutdown_plugin(tracking_);
-    shutdown_plugin(teleop_);
-    shutdown_plugin(charging_);
-    shutdown_plugin(mapping_);
-    shutdown_plugin(localization_);
-
+    stop(navigation_);
+    stop(tracking_);
+    stop(teleop_);
+    stop(exploration_);
+    stop(charging_);
+    stop(mapping_);
+    stop(localization_);
     if (scheduler_) {
         scheduler_->Shutdown();
         scheduler_.reset();
     }
+    Unbind();
     navigation_.reset();
     tracking_.reset();
     teleop_.reset();
+    exploration_.reset();
     charging_.reset();
     mapping_.reset();
     localization_.reset();
     navigation_client_.reset();
-    if (teleop_goal_ingress_) {
-        teleop_goal_ingress_->Stop();
-        teleop_goal_ingress_.reset();
+    if (transform_listener_) {
+        transform_listener_->Stop();
+        transform_listener_.reset();
     }
-    if (teleop_feedback_publisher_) {
-        teleop_feedback_publisher_->Stop();
-        teleop_feedback_publisher_.reset();
-    }
-    if (autolink_tf_listener_) {
-        autolink_tf_listener_->Stop();
-        autolink_tf_listener_.reset();
-    }
-    task_node_.reset();
+    node_.reset();
     configured_ = false;
 }
 
-bool TaskServer::IsRunning() const
-{
+bool TaskServer::IsRunning() const {
     return scheduler_ && scheduler_->IsRunning();
 }
 
-bool TaskServer::SubmitNavigationGoal(
-    const ::autonomy::task::proto::NavigationGoal& goal)
-{
-    return SubmitGoal(navigation_, goal);
+bool TaskServer::Submit(const proto::NavigationGoal& goal) {
+    return Dispatch(navigation_, goal);
+}
+bool TaskServer::Submit(const proto::TrackerGoal& goal) {
+    return Dispatch(tracking_, goal);
+}
+bool TaskServer::Submit(const proto::TeleopGoal& goal) {
+    return Dispatch(teleop_, goal);
+}
+bool TaskServer::Submit(const proto::ExplorationGoal& goal) {
+    return Dispatch(exploration_, goal);
+}
+bool TaskServer::Submit(const proto::ChargingGoal& goal) {
+    return Dispatch(charging_, goal);
+}
+bool TaskServer::Submit(const proto::MappingGoal& goal) {
+    return Dispatch(mapping_, goal);
+}
+bool TaskServer::Submit(const proto::LocalizationGoal& goal) {
+    return Dispatch(localization_, goal);
 }
 
-bool TaskServer::SubmitTrackerGoal(
-    const ::autonomy::task::proto::TrackerGoal& goal)
-{
-    return SubmitGoal(tracking_, goal);
-}
-
-bool TaskServer::SubmitTeleopGoal(
-    const ::autonomy::task::proto::TeleopGoal& goal)
-{
-    return SubmitGoal(teleop_, goal);
-}
-
-bool TaskServer::SubmitExplorationGoal(
-    const ::autonomy::task::proto::ExplorationGoal& goal)
-{
-    (void)goal;
-    AWARN << "TaskServer::SubmitExplorationGoal: exploration temporarily disabled";
-    return false;
-}
-
-bool TaskServer::SubmitChargingGoal(
-    const ::autonomy::task::proto::ChargingGoal& goal)
-{
-    return SubmitGoal(charging_, goal);
-}
-
-bool TaskServer::SubmitMappingGoal(
-    const ::autonomy::task::proto::MappingGoal& goal)
-{
-    return SubmitGoal(mapping_, goal);
-}
-
-bool TaskServer::SubmitLocalizationGoal(
-    const ::autonomy::task::proto::LocalizationGoal& goal)
-{
-    return SubmitGoal(localization_, goal);
-}
-
-std::vector<::autonomy::task::proto::ActiveTaskSnapshot>
-TaskServer::GetActiveSnapshots() const
-{
-    if (!scheduler_) {
-        return {};
-    }
-    return scheduler_->GetActiveSnapshots();
+std::vector<proto::ActiveTaskSnapshot> TaskServer::GetActiveSnapshots() const {
+    return scheduler_ ? scheduler_->GetActiveSnapshots()
+                      : std::vector<proto::ActiveTaskSnapshot>{};
 }
 
 }  // namespace task

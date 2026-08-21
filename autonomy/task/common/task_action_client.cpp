@@ -10,15 +10,15 @@ namespace autonomy {
 namespace task {
 namespace common {
 
-namespace nav_proto = automsgs::actions;
+namespace navigation_actions = automsgs::actions;
 
-template class TaskActionClient<nav_proto::ComputePathToPoseAction>;
-template class TaskActionClient<nav_proto::ComputePathThroughPosesAction>;
-template class TaskActionClient<nav_proto::SmoothPathAction>;
-template class TaskActionClient<nav_proto::FollowPathAction>;
-template class TaskActionClient<nav_proto::SpinAction>;
-template class TaskActionClient<nav_proto::BackUpAction>;
-template class TaskActionClient<nav_proto::WaitAction>;
+template class TaskActionClient<navigation_actions::ComputePathToPoseAction>;
+template class TaskActionClient<navigation_actions::ComputePathThroughPosesAction>;
+template class TaskActionClient<navigation_actions::SmoothPathAction>;
+template class TaskActionClient<navigation_actions::FollowPathAction>;
+template class TaskActionClient<navigation_actions::SpinAction>;
+template class TaskActionClient<navigation_actions::BackUpAction>;
+template class TaskActionClient<navigation_actions::WaitAction>;
 
 }  // namespace common
 }  // namespace task

@@ -40,7 +40,7 @@ QString HelpHtml() {
 <tr><td><b>3</b></td><td>Interact — 拖拽 Interactive Marker；右键菜单；Shift 微调</td></tr>
 <tr><td><b>4</b></td><td>Focus Camera — 左键将视点聚焦到地面交点</td></tr>
 <tr><td><b>5</b></td><td>Measure — 两次左键测量距离</td></tr>
-<tr><td><b>6</b></td><td>2D Nav Goal — 拖拽箭头发布目标位姿</td></tr>
+<tr><td><b>6</b></td><td>2D Goal Pose — 拖拽箭头发布 /goal_pose</td></tr>
 <tr><td><b>7</b></td><td>2D Pose Estimate — 拖拽发布初始位姿</td></tr>
 <tr><td><b>8</b></td><td>Publish Point — 左键发布点击点</td></tr>
 </table>
