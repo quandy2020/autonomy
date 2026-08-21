@@ -18,7 +18,7 @@ package autonomy.task.proto;
 
 import "autonomy/task/proto/task_common.proto";
 
-// apps/localization — SLAM / localization backend control.
+// localization — SLAM / localization backend control.
 
 enum LocalizationAlgorithm {
   LOCALIZATION_ALGO_UNSPECIFIED = 0;

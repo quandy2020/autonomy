@@ -22,7 +22,7 @@ import "automsgs/msgs/geometry_msgs/point.proto";
 import "automsgs/msgs/geometry_msgs/twist_stamped.proto";
 import "autonomy/task/proto/task_common.proto";
 
-// apps/tracking — enum values match bridge Follow* for adapter mapping.
+// tracking — enum values match bridge Follow* for adapter mapping.
 
 enum TrackerMode {
   TRACKER_MODE_UNSPECIFIED = 0;

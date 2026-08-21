@@ -226,22 +226,20 @@ bool GoalPoseTool::mouseReleaseEvent(QMouseEvent* event) {
     return true;
   }
 
+  // RViz PoseTool::processMouseLeftButtonReleased → onPoseSet + Finished.
+  // Nav2 / RViz do not keep a lingering arrow after the click; deactivate hides it.
   onPoseSet(*arrow_position_, angle_);
-
-  committed_position_ = *arrow_position_;
-  committed_angle_ = angle_;
 
   state_ = State::kPosition;
   arrow_visible_ = false;
   arrow_position_.reset();
+  committed_position_.reset();
+  committed_angle_ = 0.f;
   angle_ = 0.f;
-  refreshArrowVisual();
+  hideArrowVisual();
 
   if (context() != nullptr && context()->request_redraw) {
     context()->request_redraw();
-  }
-  if (context() != nullptr && context()->set_status) {
-    context()->set_status(statusText());
   }
   if (context() != nullptr && context()->revert_to_default_tool) {
     context()->revert_to_default_tool();

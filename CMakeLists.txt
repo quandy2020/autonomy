@@ -178,8 +178,8 @@ if(BUILD_GRPC)
     SRCS autonomy/bridge/bridge_main.cpp)
 endif()
 # Temporarily disabled: incomplete cartographer node migration.
-# google_binary(localization
-#   SRCS autonomy/localization/localization_main.cpp)
+google_binary(autonomy.cartographer
+  SRCS autonomy/localization/localization_main.cpp)
 google_binary(planning
   SRCS autonomy/planning/planning_main.cpp)
 google_binary(control
@@ -187,18 +187,8 @@ google_binary(control
 # Temporarily disabled: incomplete automsgs migration in these modules.
 # google_binary(exploration
 #   SRCS autonomy/exploration/exploration_main.cpp)
-google_binary(task
+google_binary(autonomy.task
   SRCS autonomy/task/task_main.cpp)
-google_binary(monitor
-  SRCS autonomy/system/monitor/monitor_main.cpp)
-google_binary(task_teleop_smoke
-  SRCS autonomy/task/tools/teleop_smoke_main.cpp)
-# google_binary(cartographer_occupancy
-#   SRCS autonomy/localization/cartographer/node/occupancy_grid_node_main.cpp)
-# google_binary(cartographer_pbstream_to_map
-#   SRCS autonomy/localization/cartographer/node/pbstream_to_map_main.cpp)
-# google_binary(strata_bridge
-#   SRCS autonomy/map/strata/bridge/strata_bridge_main.cpp)
 if(foxglove-sdk_FOUND)
   # google_binary(autonomy_foxglove_fakedata
   #   SRCS autonomy/visualization/fakedata_test.cpp)

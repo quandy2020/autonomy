@@ -11,6 +11,7 @@
           <Sequence name="ThroughPosesPipeline">
             <NavInitialPoseReceived/>
             <NavTfAvailable child="{robot_base_frame}" parent="{global_frame}"/>
+            <NavServersReady/>
             <NavComputePathThroughPoses goals="{goals}" path="{path}"
                                         planner_id="{default_planner_id}"
                                         error_code_id="{compute_path_error_code}"

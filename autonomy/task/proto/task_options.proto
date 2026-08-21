@@ -36,6 +36,10 @@ message SchedulerOptions {
   bool exclusive_navigation_tasks = 1;
   uint32 feedback_period_ms = 2;
   float default_task_timeout_sec = 3;
+  // When exclusive slot is held, cancel the holder and grant the new task
+  // (Nav2-style preemption). When false, RequestActivation rejects.
+  // Unset => TaskScheduler defaults to true.
+  optional bool allow_preemption = 4;
 }
 
 message ActiveTaskSnapshot {

@@ -20,8 +20,8 @@
 #include "autonomy/common/logging.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/system/monitor/ops_types.hpp"
-#include "autonomy/task/apps/teleop/constants.hpp"
-#include "autonomy/task/teleop_goal_channel.hpp"
+#include "autonomy/task/teleop/constants.hpp"
+#include "autonomy/task/interface/names.hpp"
 
 namespace autonomy {
 namespace system {
@@ -101,15 +101,15 @@ void ApplyDefaultWatches(MonitorOptions* opts) {
         return;
     if (opts->channel_watches.empty()) {
         opts->channel_watches.push_back(
-            {task::teleop::kCmdVelTopic, 1.0, 0.0});
+            {task::teleop::kCommandVelocityTopic, 1.0, 0.0});
         opts->channel_watches.push_back(
-            {task::kTeleopGoalChannel, 5.0, 0.0});
+            {task::kTeleopGoal, 5.0, 0.0});
         opts->channel_watches.push_back(
-            {task::kTeleopFeedbackChannel, 5.0, 0.0});
+            {task::kTeleopFeedback, 5.0, 0.0});
     }
     if (opts->latency_watches.empty()) {
         opts->latency_watches.push_back(
-            {task::teleop::kCmdVelTopic, 0.5});
+            {task::teleop::kCommandVelocityTopic, 0.5});
     }
 }
 

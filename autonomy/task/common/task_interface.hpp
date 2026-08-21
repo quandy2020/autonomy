@@ -78,7 +78,7 @@ inline bool IsTerminalLifecycle(TaskLifecycle lifecycle)
 /**
  * @brief 任务插件统一生命周期接口
  *
- * TaskServer / Scheduler 通过 TaskInterface::SharedPtr 管理各 apps/* 实现。
+ * TaskServer / Scheduler 通过 TaskInterface::SharedPtr 管理各 domain 任务 实现。
  * 具体 Goal / Feedback / Result 由 TypedTaskInterface 子类承载，与
  * autonomy/task/proto 中各 *Goal / *Feedback / *Result 一一对应。
  */
@@ -134,7 +134,7 @@ public:
 /**
  * @brief 强类型任务接口：Goal / Feedback / Result 与 task proto 对齐
  *
- * 各 apps/* 实现本模板，通过 SubmitGoal 接收带 TaskHeader 的目标或子命令，
+ * 各 domain 任务 实现本模板，通过 SubmitGoal 接收带 TaskHeader 的目标或子命令，
  * 周期性调用 GetFeedback，终态时通过 GetResult 取回 TaskResult 信封。
  */
 template <typename GoalT, typename FeedbackT, typename ResultT>
@@ -170,43 +170,43 @@ public:
     virtual bool GetResult(Result* result) const = 0;
 };
 
-// apps/navigation
+// navigation
 using NavigationTaskInterface = TypedTaskInterface<
     ::autonomy::task::proto::NavigationGoal,
     ::autonomy::task::proto::NavigationFeedback,
     ::autonomy::task::proto::NavigationResult>;
 
-// apps/tracking
+// tracking
 using TrackerTaskInterface = TypedTaskInterface<
     ::autonomy::task::proto::TrackerGoal,
     ::autonomy::task::proto::TrackerFeedback,
     ::autonomy::task::proto::TrackerResult>;
 
-// apps/teleop
+// teleop
 using TeleopTaskInterface = TypedTaskInterface<
     ::autonomy::task::proto::TeleopGoal,
     ::autonomy::task::proto::TeleopFeedback,
     ::autonomy::task::proto::TeleopResult>;
 
-// apps/exploration
+// exploration
 using ExplorationTaskInterface = TypedTaskInterface<
     ::autonomy::task::proto::ExplorationGoal,
     ::autonomy::task::proto::ExplorationFeedback,
     ::autonomy::task::proto::ExplorationResult>;
 
-// apps/charging
+// charging
 using ChargingTaskInterface = TypedTaskInterface<
     ::autonomy::task::proto::ChargingGoal,
     ::autonomy::task::proto::ChargingFeedback,
     ::autonomy::task::proto::ChargingResult>;
 
-// apps/mapping
+// mapping
 using MappingTaskInterface = TypedTaskInterface<
     ::autonomy::task::proto::MappingGoal,
     ::autonomy::task::proto::MappingFeedback,
     ::autonomy::task::proto::MappingResult>;
 
-// apps/localization（内部 SLAM 后端控制，无对应 RobotTaskType）
+// localization（内部 SLAM 后端控制，无对应 RobotTaskType）
 using LocalizationTaskInterface = TypedTaskInterface<
     ::autonomy::task::proto::LocalizationGoal,
     ::autonomy::task::proto::LocalizationFeedback,
