@@ -99,6 +99,20 @@ proto::Costmap2DOptions CreateCostmap2DOptions(
         static_layer->set_footprint_clearing_enabled(
             static_layer_dict->GetBool("footprint_clearing_enabled"));
         static_layer->set_map_topic(static_layer_dict->GetString("map_topic"));
+        // Defaults match StaticLayer::getParameters SLAM-friendly values.
+        static_layer->set_track_unknown_space(
+            static_layer_dict->HasKey("track_unknown_space")
+                ? static_layer_dict->GetBool("track_unknown_space")
+                : true);
+        static_layer->set_lethal_cost_threshold(
+            static_layer_dict->HasKey("lethal_cost_threshold")
+                ? static_cast<int32_t>(
+                      static_layer_dict->GetDouble("lethal_cost_threshold"))
+                : 65);
+        static_layer->set_trinary_costmap(
+            static_layer_dict->HasKey("trinary_costmap")
+                ? static_layer_dict->GetBool("trinary_costmap")
+                : true);
     }
 
     if (parameter_dictionary->HasKey("denoise_layer")) {

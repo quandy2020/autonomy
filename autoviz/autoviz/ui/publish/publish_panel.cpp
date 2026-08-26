@@ -43,6 +43,11 @@ PublishPanel::PublishPanel(common::VisualizationManager* manager, QWidget* paren
     : manager_(manager), config_(DefaultPublishPanelConfig()), QWidget(parent) {
   setFocusPolicy(Qt::StrongFocus);
   ApplyPanelShell(this);
+  setObjectName(QStringLiteral("PublishPanelContent"));
+  setStyleSheet(QStringLiteral(
+      "PublishPanel, QWidget#PublishPanelContent {"
+      "  background: #f8f9fb; color: #1e293b;"
+      "}"));
 
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);

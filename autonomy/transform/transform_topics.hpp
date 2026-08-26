@@ -19,8 +19,9 @@
 namespace autonomy {
 namespace transform {
 
-constexpr char kTfTopic[] = "tf";
-constexpr char kTfStaticTopic[] = "tf_static";
+/** Absolute Autolink channel names (Foxglove / autosim / Cartographer). */
+constexpr char kTfTopic[] = "/tf";
+constexpr char kTfStaticTopic[] = "/tf_static";
 
 }  // namespace transform
 }  // namespace autonomy

@@ -19,6 +19,9 @@ class TeleopJoystickWidget : public QWidget {
   QPointF normalizedValue() const;
   void reset();
   void resetVisual();
+  /** Update knob without mouse drag (keyboard / external control). */
+  void setNormalizedValue(const QPointF& value, bool emit_signal = true);
+  void setLabel(const QString& label);
 
  signals:
   void valueChanged(double x, double y);

@@ -31,11 +31,21 @@ struct TeleopButtonConfig {
   double value = 0.0;
 };
 
+enum class TeleopStickMode {
+  kDual = 0,    /** Move + Turn sticks (default). */
+  kArcade = 1,  /** One stick: forward/back = speed, left/right = yaw. */
+};
+
 struct TeleopPanelConfig {
   QString title = QStringLiteral("Teleop");
   QString topic = QStringLiteral("/cmd_vel");
   double publish_rate_hz = 1.0;
   bool stop_on_release = true;
+  TeleopStickMode stick_mode = TeleopStickMode::kDual;
+  /** Max |linear.x / linear.y| in m/s when stick is fully deflected. */
+  double max_linear_speed = 0.5;
+  /** Max |angular.z| in rad/s when stick is fully deflected. */
+  double max_angular_speed = 0.5;
   TeleopButtonConfig up;
   TeleopButtonConfig down;
   TeleopButtonConfig left;

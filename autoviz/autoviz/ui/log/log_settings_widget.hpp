@@ -51,6 +51,7 @@ class LogSettingsWidget : public QWidget {
   QComboBox* min_level_combo_ = nullptr;
   QDoubleSpinBox* font_size_spin_ = nullptr;
   QCheckBox* capture_glog_check_ = nullptr;
+  QCheckBox* auto_subscribe_check_ = nullptr;
   QCheckBox* follow_playback_check_ = nullptr;
   QVBoxLayout* namespace_layout_ = nullptr;
 };

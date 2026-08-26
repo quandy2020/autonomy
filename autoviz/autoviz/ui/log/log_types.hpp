@@ -31,12 +31,15 @@ struct LogEntry {
 
 struct LogPanelConfig {
   QString title = QStringLiteral("Log");
+  /** Preferred foxglove.Log channel; empty means auto-discover (/rosout + all Log types). */
   QString topic;
   LogLevel min_level = LogLevel::kDebug;
-  double font_size = 10.0;
+  double font_size = 11.0;
   bool capture_glog = true;
   bool follow_playback = true;
   bool settings_visible = false;
+  /** When true (default), also subscribe every discovered foxglove.Log channel. */
+  bool auto_subscribe_log_channels = true;
 };
 
 LogPanelConfig DefaultLogPanelConfig();

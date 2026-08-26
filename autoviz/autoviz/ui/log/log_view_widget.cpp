@@ -31,29 +31,29 @@ constexpr int kRoleMessage = Qt::UserRole + 4;
 QString ListStyleSheet() {
   return QStringLiteral(
       "QListWidget {"
-      "  background: transparent;"
+      "  background: #ffffff;"
       "  border: none;"
       "  outline: none;"
       "  padding: 0px;"
       "}"
       "QListWidget::item {"
       "  border: none;"
-      "  border-bottom: 1px solid palette(midlight);"
       "  padding: 0px;"
       "  margin: 0px;"
       "}"
       "QScrollBar:vertical {"
-      "  background: transparent;"
-      "  width: 8px;"
+      "  background: #f8f9fb;"
+      "  width: 10px;"
       "  margin: 0px;"
       "}"
       "QScrollBar::handle:vertical {"
-      "  background: rgba(255, 255, 255, 0.14);"
+      "  background: #cbd5e1;"
       "  min-height: 24px;"
-      "  border-radius: 4px;"
+      "  border-radius: 5px;"
+      "  margin: 2px;"
       "}"
       "QScrollBar::handle:vertical:hover {"
-      "  background: rgba(255, 255, 255, 0.22);"
+      "  background: #0891b2;"
       "}"
       "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {"
       "  height: 0px;"
@@ -67,7 +67,7 @@ QString ListStyleSheet() {
 
 LogViewWidget::LogViewWidget(QWidget* parent) : QWidget(parent) {
   setAttribute(Qt::WA_StyledBackground, true);
-  setStyleSheet(QStringLiteral("LogViewWidget { background: transparent; }"));
+  setStyleSheet(QStringLiteral("LogViewWidget { background: #ffffff; }"));
 
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);
@@ -75,7 +75,7 @@ LogViewWidget::LogViewWidget(QWidget* parent) : QWidget(parent) {
 
   list_container_ = new QFrame(this);
   list_container_->setFrameShape(QFrame::NoFrame);
-  list_container_->setStyleSheet(QStringLiteral("QFrame { background: transparent; }"));
+  list_container_->setStyleSheet(QStringLiteral("QFrame { background: #ffffff; }"));
   list_container_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
   auto* container_layout = new QVBoxLayout(list_container_);
   container_layout->setContentsMargins(0, 0, 0, 0);
@@ -96,7 +96,7 @@ LogViewWidget::LogViewWidget(QWidget* parent) : QWidget(parent) {
   empty_label_ = new QLabel(tr("No log entries yet"), list_container_);
   empty_label_->setAlignment(Qt::AlignCenter);
   empty_label_->setStyleSheet(
-      QStringLiteral("color: palette(mid); font-size: 12px; background: transparent;"));
+      QStringLiteral("color: #64748b; font-size: 12px; background: transparent;"));
   empty_label_->hide();
   container_layout->addWidget(empty_label_, 1, Qt::AlignCenter);
 
@@ -105,25 +105,27 @@ LogViewWidget::LogViewWidget(QWidget* parent) : QWidget(parent) {
   scroll_footer_->setStyleSheet(
       QStringLiteral(
           "QFrame {"
-          "  background: palette(alternate-base);"
-          "  border-top: 1px solid palette(midlight);"
+          "  background: #f8f9fb;"
+          "  border-top: 1px solid #cbd5e1;"
           "}"));
   auto* footer_layout = new QHBoxLayout(scroll_footer_);
-  footer_layout->setContentsMargins(6, 2, 6, 2);
+  footer_layout->setContentsMargins(6, 4, 6, 4);
   scroll_bottom_button_ = new QPushButton(tr("↓ Latest"), scroll_footer_);
   scroll_bottom_button_->setCursor(Qt::PointingHandCursor);
   scroll_bottom_button_->setFlat(true);
   scroll_bottom_button_->setStyleSheet(
       QStringLiteral(
           "QPushButton {"
-          "  color: palette(mid);"
-          "  background: transparent;"
-          "  border: none;"
-          "  padding: 2px 6px;"
+          "  color: #0891b2;"
+          "  background: rgba(8,145,178,0.10);"
+          "  border: 1px solid rgba(8,145,178,0.28);"
+          "  border-radius: 8px;"
+          "  padding: 4px 12px;"
           "  font-size: 11px;"
+          "  font-weight: 600;"
           "}"
           "QPushButton:hover {"
-          "  color: palette(text);"
+          "  background: rgba(8,145,178,0.18);"
           "}"));
   footer_layout->addStretch();
   footer_layout->addWidget(scroll_bottom_button_);

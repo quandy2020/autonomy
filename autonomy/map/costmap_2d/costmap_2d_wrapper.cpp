@@ -766,21 +766,19 @@ bool Costmap2DWrapper::applyOccupancyGrid(
 
     if (layered_costmap_ && grid_copy.info().width() > 0 &&
         grid_copy.info().height() > 0) {
-        const unsigned int size_x = grid_copy.info().width();
-        const unsigned int size_y = grid_copy.info().height();
-        const double resolution = grid_copy.info().resolution();
-        const double origin_x = grid_copy.info().origin().position().x();
-        const double origin_y = grid_copy.info().origin().position().y();
-
-        resolution_ = resolution;
-        map_width_meters_ = size_x * resolution;
-        map_height_meters_ = size_y * resolution;
-        origin_x_ = origin_x;
-        origin_y_ = origin_y;
-
-        layered_costmap_->resizeMap(size_x, size_y, resolution, origin_x,
-                                    origin_y);
+        // Do not resize/clear the master costmap here. A pre-clear races with
+        // planners and briefly marks the world free → wall-crossing paths.
+        // StaticLayer::processMap resizes under LayeredCostmap::updateMap's
+        // lock, then copies lethal cells in the same update cycle.
         applyLoadedOccupancyGrid(grid_copy);
+
+        if (Costmap2D* costmap = layered_costmap_->getCostmap()) {
+            resolution_ = costmap->getResolution();
+            map_width_meters_ = costmap->getSizeInMetersX();
+            map_height_meters_ = costmap->getSizeInMetersY();
+            origin_x_ = costmap->getOriginX();
+            origin_y_ = costmap->getOriginY();
+        }
     }
 
     map_loaded_ = true;

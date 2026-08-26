@@ -40,8 +40,8 @@
           error_msg="{follow_path_error_msg}"/>
       </PipelineSequence>
       <Sequence name="ThroughPosesRecovery">
-        <ClearEntireCostmap service_name="local_costmap/clear_costmap"/>
-        <ClearEntireCostmap service_name="global_costmap/clear_costmap"/>
+        <ClearEntireCostmap service_name="/local_costmap/clear_costmap"/>
+        <ClearEntireCostmap service_name="/global_costmap/clear_costmap"/>
         <Wait wait_duration="0.5"/>
       </Sequence>
     </RecoveryNode>

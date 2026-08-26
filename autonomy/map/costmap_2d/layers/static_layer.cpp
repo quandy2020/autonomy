@@ -60,9 +60,11 @@ void StaticLayer::getParameters() {
         map_topic_ = "map";
         transform_tolerance_ = 0;
         map_subscribe_transient_local_ = true;
-        track_unknown_space_ = false;
+        // Unknown must stay NO_INFORMATION so allow_unknown=false blocks it.
+        track_unknown_space_ = true;
         use_maximum_ = false;
-        lethal_threshold_ = 100;
+        // Cartographer walls are often 65–99, not only exactly 100.
+        lethal_threshold_ = 65;
         unknown_cost_value_ = 0xff;
         trinary_costmap_ = true;
         map_received_ = false;
@@ -97,12 +99,20 @@ void StaticLayer::getParameters() {
     // Map subscribe transient local (default to true)
     map_subscribe_transient_local_ = true;
 
-    // Other parameters from costmap options (if available)
-    track_unknown_space_ = false;  // default
-    use_maximum_ = false;          // default
-    lethal_threshold_ = 100;       // default
-    unknown_cost_value_ = 0xff;    // default
-    trinary_costmap_ = true;       // default
+    // SLAM-friendly defaults (Cartographer walls often < 100; unknown must
+    // remain NO_INFORMATION so navfn allow_unknown=false works).
+    track_unknown_space_ = true;
+    use_maximum_ = false;
+    lethal_threshold_ = 65;
+    unknown_cost_value_ = 0xff;
+    trinary_costmap_ = true;
+    if (static_layer_config.lethal_cost_threshold() > 0) {
+        lethal_threshold_ = static_cast<unsigned char>(std::min(
+            static_layer_config.lethal_cost_threshold(), 100));
+    }
+    // map_options always writes these when static_layer is present (see lua).
+    track_unknown_space_ = static_layer_config.track_unknown_space();
+    trinary_costmap_ = static_layer_config.trinary_costmap();
 
     map_received_ = false;
     map_received_in_update_bounds_ = false;
@@ -117,27 +127,31 @@ void StaticLayer::processMap(const automsgs::msgs::map_msgs::OccupancyGrid& new_
     ADEBUG << "StaticLayer: Received a " << size_x << " X " << size_y
            << " map at " << new_map.info().resolution() << " m/pix";
 
-    // resize costmap if size, resolution or origin do not match
+    // Keep master costmap aligned with growing SLAM /map. Cartographer shifts
+    // origin as the painted AABB expands; locking size after the first map
+    // leaves master on a stale origin while this layer updates — index copies
+    // then place walls in the wrong cells and planners cut through obstacles.
     Costmap2D* master = layered_costmap_->getCostmap();
-    if (!layered_costmap_->isRolling() &&
-        (master->getSizeInCellsX() != size_x ||
-         master->getSizeInCellsY() != size_y ||
-         master->getResolution() != new_map.info().resolution() ||
-         master->getOriginX() != new_map.info().origin().position().x() ||
-         master->getOriginY() != new_map.info().origin().position().y() ||
-         !layered_costmap_->isSizeLocked())) {
-        // Update the size of the layered costmap (and all layers, including
-        // this one)
-        ADEBUG << "StaticLayer: Resizing costmap to " << size_x << " X "
-               << size_y << " at " << new_map.info().resolution() << " m/pix";
+    const bool geometry_changed =
+        master->getSizeInCellsX() != size_x ||
+        master->getSizeInCellsY() != size_y ||
+        master->getResolution() != new_map.info().resolution() ||
+        master->getOriginX() != new_map.info().origin().position().x() ||
+        master->getOriginY() != new_map.info().origin().position().y();
+
+    if (!layered_costmap_->isRolling() && geometry_changed) {
+        AINFO << "StaticLayer: Resizing costmap to " << size_x << " X " << size_y
+              << " at " << new_map.info().resolution() << " m/pix origin=("
+              << new_map.info().origin().position().x() << ", "
+              << new_map.info().origin().position().y() << ")";
         layered_costmap_->resizeMap(size_x, size_y, new_map.info().resolution(),
                                     new_map.info().origin().position().x(),
-                                    new_map.info().origin().position().y(), true);
+                                    new_map.info().origin().position().y(),
+                                    /*size_locked=*/false);
     } else if (size_x_ != size_x || size_y_ != size_y ||  // NOLINT
                resolution_ != new_map.info().resolution() ||
                origin_x_ != new_map.info().origin().position().x() ||
                origin_y_ != new_map.info().origin().position().y()) {
-        // only update the size of the costmap stored locally in this layer
         ADEBUG << "StaticLayer: Resizing static layer to " << size_x << " X "
                << size_y << " at " << new_map.info().resolution() << " m/pix";
         resizeMap(size_x, size_y, new_map.info().resolution(),
@@ -245,14 +259,15 @@ void StaticLayer::incomingMap(
         return;
     }
 
-    if (!map_received_) {
-        AINFO << "StaticLayer: First map, calling processMap...";
-        processMap(*new_map);
-        map_received_ = true;
-        return;
-    }
+    // Always buffer and apply inside LayeredCostmap::updateMap so resize +
+    // lethal copy happen under the master costmap lock (no free-world race).
     std::lock_guard<Costmap2D::mutex_t> guard(*getMutex());
+    if (!map_received_) {
+        AINFO << "StaticLayer: First map queued (" << new_map->info().width()
+              << "x" << new_map->info().height() << ")";
+    }
     map_buffer_ = new_map;
+    map_received_ = true;
 }
 
 void StaticLayer::incomingUpdate(

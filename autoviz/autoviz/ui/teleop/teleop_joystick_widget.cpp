@@ -29,9 +29,31 @@ TeleopJoystickWidget::TeleopJoystickWidget(const QString& label, QWidget* parent
   setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
   setMouseTracking(true);
   setFocusPolicy(Qt::StrongFocus);
+  setAttribute(Qt::WA_OpaquePaintEvent, false);
 }
 
 QPointF TeleopJoystickWidget::normalizedValue() const { return knob_; }
+
+void TeleopJoystickWidget::setLabel(const QString& label) {
+  if (label_ == label) {
+    return;
+  }
+  label_ = label;
+  update();
+}
+
+void TeleopJoystickWidget::setNormalizedValue(const QPointF& value,
+                                              bool emit_signal) {
+  const QPointF clamped = clampToUnitDisk(value);
+  if (std::hypot(clamped.x() - knob_.x(), clamped.y() - knob_.y()) < 1e-4) {
+    return;
+  }
+  knob_ = clamped;
+  update();
+  if (emit_signal) {
+    emit valueChanged(knob_.x(), knob_.y());
+  }
+}
 
 void TeleopJoystickWidget::reset() {
   resetVisual();
@@ -53,10 +75,10 @@ void TeleopJoystickWidget::resetVisual() {
 
 QRectF TeleopJoystickWidget::outerRect() const {
   const QFontMetrics metrics(font());
-  const int label_h = metrics.height() + 8;
+  const int label_h = metrics.height() + 10;
   const int side = std::min(width(), height() - label_h);
   const double x = (width() - side) * 0.5;
-  const double y = (height() - label_h - side) * 0.5 + 4.0;
+  const double y = (height() - label_h - side) * 0.5 + 2.0;
   return QRectF(x, y, side, side);
 }
 
@@ -95,36 +117,37 @@ void TeleopJoystickWidget::paintEvent(QPaintEvent* /*event*/) {
   QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing, true);
 
-  painter.fillRect(rect(), QColor(28, 28, 30));
-
   const QRectF outer = outerRect();
   const QPointF center_pt = outer.center();
   const double outer_r = outer.width() * 0.5;
   const double knob_r = outer_r * kKnobRadiusRatio;
+  const bool active = dragging_ || std::hypot(knob_.x(), knob_.y()) > 1e-3;
 
+  // Soft pad fill
   QRadialGradient base_gradient(center_pt, outer_r);
-  base_gradient.setColorAt(0.0, QColor(52, 54, 58));
-  base_gradient.setColorAt(0.72, QColor(36, 38, 42));
-  base_gradient.setColorAt(1.0, QColor(22, 24, 28));
-  painter.setPen(QPen(QColor(18, 18, 20), 2.0));
+  base_gradient.setColorAt(0.0, QColor(248, 250, 252));
+  base_gradient.setColorAt(0.65, QColor(241, 245, 249));
+  base_gradient.setColorAt(1.0, QColor(226, 232, 240));
+  painter.setPen(QPen(QColor(203, 213, 225), 1.5));
   painter.setBrush(base_gradient);
   painter.drawEllipse(outer);
 
-  QRadialGradient rim_gradient(center_pt, outer_r);
-  rim_gradient.setColorAt(0.85, QColor(0, 0, 0, 0));
-  rim_gradient.setColorAt(1.0, QColor(0, 0, 0, 80));
-  painter.setPen(Qt::NoPen);
-  painter.setBrush(rim_gradient);
-  painter.drawEllipse(outer);
+  // Accent ring when active
+  painter.setPen(QPen(active ? QColor(8, 145, 178, 160) : QColor(148, 163, 184, 90),
+                      active ? 2.4 : 1.4));
+  painter.setBrush(Qt::NoBrush);
+  painter.drawEllipse(outer.adjusted(2.0, 2.0, -2.0, -2.0));
 
-  painter.setPen(QPen(QColor(70, 74, 82, 120), 1.0, Qt::DashLine));
+  // Crosshair
+  painter.setPen(QPen(QColor(148, 163, 184, 140), 1.0, Qt::DashLine));
   painter.drawLine(QPointF(center_pt.x() - outer_r * 0.72, center_pt.y()),
                    QPointF(center_pt.x() + outer_r * 0.72, center_pt.y()));
   painter.drawLine(QPointF(center_pt.x(), center_pt.y() - outer_r * 0.72),
                    QPointF(center_pt.x(), center_pt.y() + outer_r * 0.72));
 
+  // Deadzone
   const double deadzone_r = outer_r * kDeadzoneRatio;
-  painter.setPen(QPen(QColor(90, 96, 108, 90), 1.0));
+  painter.setPen(QPen(QColor(148, 163, 184, 110), 1.0));
   painter.setBrush(Qt::NoBrush);
   painter.drawEllipse(center_pt, deadzone_r, deadzone_r);
 
@@ -132,24 +155,36 @@ void TeleopJoystickWidget::paintEvent(QPaintEvent* /*event*/) {
   const QPointF knob_center(center_pt.x() + knob_.x() * travel,
                             center_pt.y() + knob_.y() * travel);
 
-  QRadialGradient knob_gradient(knob_center - QPointF(knob_r * 0.25, knob_r * 0.25),
-                                knob_r * 1.4);
-  knob_gradient.setColorAt(0.0, QColor(120, 188, 255));
-  knob_gradient.setColorAt(0.55, QColor(58, 132, 220));
-  knob_gradient.setColorAt(1.0, QColor(28, 72, 140));
-  painter.setPen(QPen(QColor(170, 210, 255, 180), 1.2));
+  // Knob shadow
+  painter.setPen(Qt::NoPen);
+  painter.setBrush(QColor(15, 23, 42, 28));
+  painter.drawEllipse(knob_center + QPointF(0.0, 1.5), knob_r + 1.0, knob_r + 1.0);
+
+  QRadialGradient knob_gradient(knob_center - QPointF(knob_r * 0.28, knob_r * 0.28),
+                                knob_r * 1.35);
+  if (active) {
+    knob_gradient.setColorAt(0.0, QColor(103, 232, 249));
+    knob_gradient.setColorAt(0.45, QColor(8, 145, 178));
+    knob_gradient.setColorAt(1.0, QColor(14, 116, 144));
+  } else {
+    knob_gradient.setColorAt(0.0, QColor(226, 232, 240));
+    knob_gradient.setColorAt(0.5, QColor(148, 163, 184));
+    knob_gradient.setColorAt(1.0, QColor(100, 116, 139));
+  }
+  painter.setPen(QPen(active ? QColor(165, 243, 252, 220) : QColor(255, 255, 255, 180),
+                      1.2));
   painter.setBrush(knob_gradient);
   painter.drawEllipse(knob_center, knob_r, knob_r);
 
-  painter.setPen(QPen(QColor(255, 255, 255, 40), 1.0));
+  painter.setPen(QPen(QColor(255, 255, 255, active ? 90 : 60), 1.0));
   painter.setBrush(Qt::NoBrush);
   painter.drawEllipse(knob_center, knob_r * 0.55, knob_r * 0.55);
 
   QFont label_font = font();
-  label_font.setPointSize(std::max(9, label_font.pointSize()));
+  label_font.setPointSize(std::max(10, label_font.pointSize()));
   label_font.setWeight(QFont::DemiBold);
   painter.setFont(label_font);
-  painter.setPen(QColor(190, 194, 202));
+  painter.setPen(QColor(30, 41, 59));
   const QRect label_rect(0, height() - 28, width(), 24);
   painter.drawText(label_rect, Qt::AlignHCenter | Qt::AlignVCenter, label_);
 }
@@ -161,7 +196,7 @@ void TeleopJoystickWidget::resizeEvent(QResizeEvent* event) {
 
 void TeleopJoystickWidget::mousePressEvent(QMouseEvent* event) {
   if (event->button() != Qt::LeftButton) {
-      return;
+    return;
   }
   dragging_ = true;
   grabMouse();

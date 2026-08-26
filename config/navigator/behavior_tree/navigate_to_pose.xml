@@ -88,15 +88,15 @@
             </RoundRobin>
           </Sequence>
           <Sequence name="RelocalizationRecovery">
-            <ClearEntireCostmap service_name="local_costmap/clear_costmap"/>
+            <ClearEntireCostmap service_name="/local_costmap/clear_costmap"/>
             <Wait wait_duration="0.2"/>
           </Sequence>
         </RecoveryNode>
       </ReactiveFallback>
 
       <Sequence name="NavigationRecovery">
-        <ClearEntireCostmap service_name="local_costmap/clear_costmap"/>
-        <ClearEntireCostmap service_name="global_costmap/clear_costmap"/>
+            <ClearEntireCostmap service_name="/local_costmap/clear_costmap"/>
+            <ClearEntireCostmap service_name="/global_costmap/clear_costmap"/>
         <BackUp
           backup_dist="0.25"
           backup_speed="0.08"

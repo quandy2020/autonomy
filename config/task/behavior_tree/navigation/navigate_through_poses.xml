@@ -27,7 +27,7 @@
           </Sequence>
           <ForceFailure name="Recover">
             <Sequence>
-              <ClearCostmap service_name="global_costmap/clear_entirely_global_costmap"/>
+              <ClearCostmap service_name="/global_costmap/clear_entirely_global_costmap"/>
               <Spin spin_dist="1.57" time_allowance="5.0" is_recovery="true"/>
               <BackUp backup_dist="0.30" backup_speed="0.10" time_allowance="5.0"
                       is_recovery="true"/>

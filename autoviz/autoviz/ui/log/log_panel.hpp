@@ -8,6 +8,7 @@
 
 #include <QPointer>
 #include <QSet>
+#include <QVector>
 
 #include "autoviz/integration/channel_reader_registry.hpp"
 #include "autoviz/ui/log/log_types.hpp"
@@ -63,7 +64,7 @@ class LogPanel : public QWidget {
  private slots:
   void onToggleSettings(bool visible);
   void onHubLogAppended(const LogEntry& entry);
-  void onChannelPayload(const std::string& payload);
+  void onChannelPayload(const QString& channel, const std::string& payload);
   void onFollowTick();
   void onSearchChanged(const QString& text);
   void onEntryClicked(const LogEntry& entry);
@@ -75,10 +76,13 @@ class LogPanel : public QWidget {
   void ingestEntry(const LogEntry& entry);
   void resubscribeTopic();
   void unsubscribeTopic();
+  void refreshLogChannelSubscriptions();
+  QStringList discoverLogChannels() const;
   void applyConfigToUi();
   void syncSettingsWidgetFromConfig();
   void syncSettingsToolState();
   void updateNamespaceUi();
+  void applyChromeStyles();
   QStringList parseSearchTerms(const QString& text) const;
   QSet<QString> enabledNamespacesFromSettings() const;
 
@@ -94,8 +98,11 @@ class LogPanel : public QWidget {
   QPointer<QToolButton> settings_button_;
   QPointer<QToolButton> expand_button_;
   QTimer* follow_timer_ = nullptr;
+  QTimer* channel_refresh_timer_ = nullptr;
   QSet<QString> known_namespaces_;
-  integration::ChannelReaderRegistry::SubscriptionId topic_subscription_id_ = 0;
+  QSet<QString> subscribed_channels_;
+  QVector<integration::ChannelReaderRegistry::SubscriptionId>
+      topic_subscription_ids_;
 };
 
 }  // namespace log_panel

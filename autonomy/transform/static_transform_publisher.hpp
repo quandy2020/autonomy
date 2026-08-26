@@ -22,16 +22,15 @@
 #include "autolink/autolink.hpp"
 #include "autonomy/common/macros.hpp"
 #include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
-#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
-#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/tf2_msgs/tf_message.pb.h>
 #include "autonomy/transform/buffer.hpp"
 
 namespace autonomy {
 namespace transform {
 
 /**
- * Loads static transforms from YAML and publishes them on tf_static.
- * Also supports injecting transforms into the process-local TF buffer.
+ * Loads static transforms from YAML and publishes them on /tf_static as
+ * tf2_msgs.TFMessage (same wire type as autosim / Cartographer).
  */
 class StaticTransformPublisher
 {
@@ -48,7 +47,7 @@ public:
                       const std::string& authority = "static_transform");
 
     /**
-     * Publish loaded transforms on tf_static (latched).
+     * Publish loaded transforms on /tf_static (TFMessage).
      * Requires a valid autolink node with initialized transport.
      */
     bool Publish(std::shared_ptr<autolink::Node> node);
@@ -60,7 +59,7 @@ public:
     bool IsLoaded() const { return !transforms_.transforms().empty(); }
 
 private:
-    std::shared_ptr<autolink::Writer<automsgs::msgs::geometry_msgs::TransformStampeds>>
+    std::shared_ptr<autolink::Writer<automsgs::msgs::tf2_msgs::TFMessage>>
         writer_;
     automsgs::msgs::geometry_msgs::TransformStampeds transforms_;
 };

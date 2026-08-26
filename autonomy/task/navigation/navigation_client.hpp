@@ -42,16 +42,16 @@ namespace navigation {
 namespace navigation_actions = automsgs::actions;
 namespace navigation_services = automsgs::srvs;
 
-constexpr char kComputePathToPoseAction[] = "compute_path_to_pose";
-constexpr char kComputePathThroughPosesAction[] = "compute_path_through_poses";
-constexpr char kSmoothPathAction[] = "smooth_path";
-constexpr char kIsPathValidService[] = "is_path_valid";
-constexpr char kFollowPathAction[] = "follow_path";
-constexpr char kSpinAction[] = "spin";
-constexpr char kBackUpAction[] = "backup";
-constexpr char kWaitAction[] = "wait";
+constexpr char kComputePathToPoseAction[] = "/compute_path_to_pose";
+constexpr char kComputePathThroughPosesAction[] = "/compute_path_through_poses";
+constexpr char kSmoothPathAction[] = "/smooth_path";
+constexpr char kIsPathValidService[] = "/is_path_valid";
+constexpr char kFollowPathAction[] = "/follow_path";
+constexpr char kSpinAction[] = "/spin";
+constexpr char kBackUpAction[] = "/backup";
+constexpr char kWaitAction[] = "/wait";
 constexpr char kClearGlobalCostmapService[] =
-    "global_costmap/clear_entirely_global_costmap";
+    "/global_costmap/clear_entirely_global_costmap";
 constexpr char kNavigationClientBlackboardKey[] = "navigation_client";
 
 /** Cross-process RPC bundle for navigation BT plugins. */

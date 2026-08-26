@@ -22,13 +22,13 @@ namespace planning {
 constexpr char kPlannerServerNodeName[] = "planner_server";
 constexpr char kMapTopicName[] = "/map";
 constexpr char kCostmapTopicName[] = "/global_costmap";
-constexpr char kComputePathToPoseActionName[] = "compute_path_to_pose";
+constexpr char kComputePathToPoseActionName[] = "/compute_path_to_pose";
 constexpr char kComputePathThroughPosesActionName[] =
-    "compute_path_through_poses";
-constexpr char kSmoothPathActionName[] = "smooth_path";
-constexpr char kIsPathValidServiceName[] = "is_path_valid";
+    "/compute_path_through_poses";
+constexpr char kSmoothPathActionName[] = "/smooth_path";
+constexpr char kIsPathValidServiceName[] = "/is_path_valid";
 constexpr char kClearGlobalCostmapServiceName[] =
-    "global_costmap/clear_entirely_global_costmap";
+    "/global_costmap/clear_entirely_global_costmap";
 constexpr char kPlanTopicName[] = "/plan";
 constexpr char kComputePathToPoseServiceName[] = "/compute_path_to_pose";
 constexpr char kComputePathThroughPosesServiceName[] =

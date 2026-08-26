@@ -37,19 +37,17 @@ namespace teleop {
 namespace {
 
 
-double ScaleSignedAxis(double normalized, double positive_value,
-                       double negative_value) {
-  if (normalized >= 0.0) {
-    return normalized * positive_value;
-  }
-  return normalized * std::abs(negative_value);
-}
-
 }  // namespace
 
 TeleopPanel::TeleopPanel(common::VisualizationManager* manager, QWidget* parent)
     : manager_(manager), config_(DefaultTeleopPanelConfig()), QWidget(parent) {
   setFocusPolicy(Qt::StrongFocus);
+  ApplyPanelShell(this);
+  setObjectName(QStringLiteral("TeleopPanelContent"));
+  setStyleSheet(QStringLiteral(
+      "TeleopPanel, QWidget#TeleopPanelContent {"
+      "  background: #f8f9fb; color: #1e293b;"
+      "}"));
 
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);
@@ -86,8 +84,29 @@ TeleopPanel::TeleopPanel(common::VisualizationManager* manager, QWidget* parent)
           &TeleopPanel::onAngularReleased);
   connect(control_, &TeleopControlWidget::stopClicked, this,
           &TeleopPanel::onStopClicked);
+  connect(control_, &TeleopControlWidget::stickModeChanged, this,
+          [this](TeleopStickMode mode) {
+            config_.stick_mode = mode;
+            syncSettingsWidgetFromConfig();
+            emit configChanged();
+          });
+  connect(control_, &TeleopControlWidget::maxSpeedsChanged, this,
+          [this](double max_linear, double max_angular) {
+            config_.max_linear_speed = max_linear;
+            config_.max_angular_speed = max_angular;
+            config_.up.value = max_linear;
+            config_.down.value = -max_linear;
+            config_.left.value = max_angular;
+            config_.right.value = -max_angular;
+            syncSettingsWidgetFromConfig();
+            emit configChanged();
+          });
 
   updatePublishTimer();
+  if (control_ != nullptr) {
+    control_->setStickMode(config_.stick_mode);
+    control_->setMaxSpeeds(config_.max_linear_speed, config_.max_angular_speed);
+  }
   syncSettingsWidgetFromConfig();
 }
 
@@ -127,6 +146,10 @@ TeleopPanelConfig TeleopPanel::config() const { return config_; }
 void TeleopPanel::setConfig(const TeleopPanelConfig& config) {
   config_ = config;
   updatePublishTimer();
+  if (control_ != nullptr) {
+    control_->setStickMode(config_.stick_mode);
+    control_->setMaxSpeeds(config_.max_linear_speed, config_.max_angular_speed);
+  }
   syncSettingsWidgetFromConfig();
   syncSettingsToolState();
 }
@@ -134,6 +157,10 @@ void TeleopPanel::setConfig(const TeleopPanelConfig& config) {
 void TeleopPanel::cloneConfigFrom(const TeleopPanelConfig& config) {
   publishStop();
   config_ = config;
+  if (control_ != nullptr) {
+    control_->setStickMode(config_.stick_mode);
+    control_->setMaxSpeeds(config_.max_linear_speed, config_.max_angular_speed);
+  }
   syncSettingsWidgetFromConfig();
   syncSettingsToolState();
 }
@@ -259,15 +286,15 @@ void TeleopPanel::publishStop() {
 automsgs::msgs::geometry_msgs::Twist TeleopPanel::composeTwist() const {
   automsgs::msgs::geometry_msgs::Twist twist = ZeroTwist();
 
-  const double forward = -linear_y_;
-  twist.mutable_linear()->set_x(
-      ScaleSignedAxis(forward, config_.up.value, config_.down.value));
-  twist.mutable_linear()->set_y(
-      ScaleSignedAxis(linear_x_, config_.right.value, config_.left.value));
+  const double max_linear = std::max(0.01, config_.max_linear_speed);
+  const double max_angular = std::max(0.01, config_.max_angular_speed);
 
-  const double turn = angular_turn_;
-  twist.mutable_angular()->set_z(
-      turn >= 0.0 ? turn * config_.right.value : turn * (-config_.left.value));
+  // Stick Y is screen-down positive; negate so stick-up = forward (+linear.x).
+  const double forward = -linear_y_;
+  twist.mutable_linear()->set_x(forward * max_linear);
+  // Dual Move stick X = strafe; Arcade keeps this at 0.
+  twist.mutable_linear()->set_y(linear_x_ * max_linear);
+  twist.mutable_angular()->set_z(angular_turn_ * max_angular);
 
   return twist;
 }

@@ -6,6 +6,8 @@
 
 #include <QWidget>
 
+#include "autoviz/ui/channel_graph/channel_graph_view.hpp"
+
 class QCheckBox;
 class QComboBox;
 class QLineEdit;
@@ -21,12 +23,14 @@ class VisualizationManager;
 }
 namespace channel_graph {
 
-class ChannelGraphView;
-
 struct ChannelGraphPanelConfig {
   bool show_services = true;
   bool show_channels = true;
   bool auto_refresh = true;
+  bool neighborhood_mode = true;
+  bool show_edge_labels = false;
+  VertexArrangeMode channel_arrange = VertexArrangeMode::kGrid;
+  VertexArrangeMode service_arrange = VertexArrangeMode::kGrid;
   QString filter;
   QString prefix_filter;
 };
@@ -68,23 +72,37 @@ class ChannelGraphPanel : public QWidget {
   void onPrefixChanged(int index);
   void onShowServicesToggled(bool enabled);
   void onShowChannelsToggled(bool enabled);
+  void onChannelArrangeChanged(int index);
+  void onServiceArrangeChanged(int index);
+  void onNeighborhoodToggled(bool enabled);
+  void onShowEdgeLabelsToggled(bool enabled);
   void onAutoRefreshToggled(bool enabled);
   void onRefreshClicked();
   void onZoomFitClicked();
   void onGraphRendered(int vertex_count, int edge_count);
+  void onVertexDoubleClicked(const QString& vertex_id,
+                             integration::GraphVertexKind kind,
+                             const QString& label, const QString& detail);
 
  private:
   void setupUi();
   void applyConfigToUi();
   void rebuildPrefixCombo();
   void updateStatusText(const QString& text);
+  void applyViewOptions();
+  void showVertexProperties(integration::GraphVertexKind kind,
+                            const QString& label, const QString& detail);
 
   common::VisualizationManager* manager_ = nullptr;
   ChannelGraphPanelConfig config_;
   ChannelGraphView* graph_view_ = nullptr;
   QCheckBox* show_services_check_ = nullptr;
   QCheckBox* show_channels_check_ = nullptr;
+  QCheckBox* neighborhood_check_ = nullptr;
+  QCheckBox* edge_labels_check_ = nullptr;
   QCheckBox* auto_refresh_check_ = nullptr;
+  QComboBox* channel_arrange_combo_ = nullptr;
+  QComboBox* service_arrange_combo_ = nullptr;
   QComboBox* prefix_combo_ = nullptr;
   QLineEdit* filter_edit_ = nullptr;
   QLabel* status_label_ = nullptr;

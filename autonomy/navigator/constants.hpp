@@ -25,8 +25,8 @@ namespace navigator {
 constexpr char kNavigatorNodeName[] = "navigator";
 
 /** BT navigator ids implemented by BtNavigator. */
-constexpr char kNavigatorNavigateToPose[] = "navigate_to_pose";
-constexpr char kNavigatorNavigateThroughPoses[] = "navigate_through_poses";
+constexpr char kNavigatorNavigateToPose[] = "/navigate_to_pose";
+constexpr char kNavigatorNavigateThroughPoses[] = "/navigate_through_poses";
 
 inline constexpr std::size_t kMinPathPoses = 2;
 inline constexpr double kDirectNavDefaultTimeoutSec = 300.0;
