@@ -6,13 +6,17 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <fstream>
 #include <limits>
+#include <unordered_map>
 
+#include <automsgs/msgs/sensor_msgs/point_cloud2_iterator.hpp>
 #include <automsgs/msgs/time_utils.hpp>
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/map/grid_map/grid_map_core/grid_map_core.hpp"
+#include "autonomy/map/grid_map/grid_map_cv/grid_map_cv_converter.hpp"
 #include "autonomy/map/grid_map/grid_map_msgs/msg_helpers.hpp"
 
 namespace grid_map {
@@ -23,6 +27,82 @@ void setIdentityOrientation(automsgs::msgs::geometry_msgs::Pose* pose) {
   pose->mutable_orientation()->set_y(0.0);
   pose->mutable_orientation()->set_z(0.0);
   pose->mutable_orientation()->set_w(1.0);
+}
+
+void setHeaderFromGridMap(const GridMap& gridMap,
+                          automsgs::msgs::std_msgs::Header* header) {
+  *header->mutable_stamp() =
+      automsgs::msgs::builtin_interfaces::TimeFromNanoseconds(
+          gridMap.getTimestamp());
+  header->set_frame_id(gridMap.getFrameId());
+}
+
+int encodingToCvType(const std::string& encoding) {
+  if (encoding == "mono8") {
+    return CV_8UC1;
+  }
+  if (encoding == "mono16") {
+    return CV_16UC1;
+  }
+  if (encoding == "bgr8" || encoding == "rgb8") {
+    return CV_8UC3;
+  }
+  if (encoding == "bgra8" || encoding == "rgba8") {
+    return CV_8UC4;
+  }
+  if (encoding == "bgr16" || encoding == "rgb16") {
+    return CV_16UC3;
+  }
+  if (encoding == "bgra16" || encoding == "rgba16") {
+    return CV_16UC4;
+  }
+  return -1;
+}
+
+bool matFromImageMessage(const automsgs::msgs::sensor_msgs::Image& image,
+                         cv::Mat* mat) {
+  const int cvType = encodingToCvType(image.encoding());
+  if (cvType < 0) {
+    AERROR << "Unsupported image encoding: " << image.encoding();
+    return false;
+  }
+  const size_t elemSize = CV_ELEM_SIZE(cvType);
+  const size_t expected =
+      static_cast<size_t>(image.height()) * static_cast<size_t>(image.step());
+  if (image.data().size() < expected) {
+    AERROR << "Image data size does not match height/step.";
+    return false;
+  }
+  *mat = cv::Mat(static_cast<int>(image.height()),
+                 static_cast<int>(image.width()), cvType);
+  if (image.step() == static_cast<uint32_t>(image.width()) * elemSize) {
+    std::memcpy(mat->data, image.data().data(), expected);
+  } else {
+    for (uint32_t r = 0; r < image.height(); ++r) {
+      std::memcpy(mat->ptr(static_cast<int>(r)),
+                  image.data().data() + r * image.step(),
+                  static_cast<size_t>(image.width()) * elemSize);
+    }
+  }
+  return true;
+}
+
+bool imageMessageFromMat(const cv::Mat& mat, const std::string& encoding,
+                         const GridMap& gridMap,
+                         automsgs::msgs::sensor_msgs::Image* image) {
+  if (!mat.isContinuous()) {
+    AERROR << "OpenCV image must be continuous for conversion.";
+    return false;
+  }
+  setHeaderFromGridMap(gridMap, image->mutable_header());
+  image->set_height(static_cast<uint32_t>(mat.rows));
+  image->set_width(static_cast<uint32_t>(mat.cols));
+  image->set_encoding(encoding);
+  image->set_is_bigendian(false);
+  image->set_step(static_cast<uint32_t>(mat.step));
+  image->set_data(reinterpret_cast<const char*>(mat.data),
+                  static_cast<size_t>(mat.rows) * mat.step);
+  return true;
 }
 
 }  // namespace
@@ -253,6 +333,299 @@ bool GridMapConverter::loadFromFile(const std::string& filename,
     return false;
   }
   return fromMessage(message, gridMap);
+}
+
+void GridMapConverter::toPointCloud(
+    const GridMap& gridMap, const std::string& pointLayer,
+    automsgs::msgs::sensor_msgs::PointCloud2& pointCloud) {
+  toPointCloud(gridMap, gridMap.getLayers(), pointLayer, pointCloud);
+}
+
+void GridMapConverter::toPointCloud(
+    const GridMap& gridMap, const std::vector<std::string>& layers,
+    const std::string& pointLayer,
+    automsgs::msgs::sensor_msgs::PointCloud2& pointCloud) {
+  pointCloud.Clear();
+  setHeaderFromGridMap(gridMap, pointCloud.mutable_header());
+  pointCloud.set_is_dense(false);
+
+  std::vector<std::string> fieldNames;
+  for (const auto& layer : layers) {
+    if (layer == pointLayer) {
+      fieldNames.push_back("x");
+      fieldNames.push_back("y");
+      fieldNames.push_back("z");
+    } else if (layer == "color") {
+      fieldNames.push_back("rgb");
+    } else {
+      fieldNames.push_back(layer);
+    }
+  }
+
+  int offset = 0;
+  for (const auto& name : fieldNames) {
+    auto* field = pointCloud.add_fields();
+    field->set_name(name);
+    field->set_count(1);
+    field->set_datatype(automsgs::msgs::sensor_msgs::PointField::FLOAT32);
+    field->set_offset(static_cast<uint32_t>(offset));
+    offset += 4;
+  }
+
+  const size_t maxNumberOfPoints = gridMap.getSize().prod();
+  pointCloud.set_height(1);
+  pointCloud.set_width(static_cast<uint32_t>(maxNumberOfPoints));
+  pointCloud.set_point_step(static_cast<uint32_t>(offset));
+  pointCloud.set_row_step(pointCloud.width() * pointCloud.point_step());
+  pointCloud.mutable_data()->resize(pointCloud.height() * pointCloud.row_step());
+
+  std::unordered_map<std::string,
+                     automsgs::msgs::sensor_msgs::PointCloud2Iterator<float>>
+      fieldIterators;
+  for (const auto& name : fieldNames) {
+    fieldIterators.emplace(
+        name, automsgs::msgs::sensor_msgs::PointCloud2Iterator<float>(
+                  pointCloud, name));
+  }
+
+  GridMapIterator mapIterator(gridMap);
+  const bool hasBasicLayers = !gridMap.getBasicLayers().empty();
+  size_t realNumberOfPoints = 0;
+  for (size_t i = 0; i < maxNumberOfPoints; ++i) {
+    if (hasBasicLayers && !gridMap.isValid(*mapIterator)) {
+      ++mapIterator;
+      continue;
+    }
+
+    Position3 position;
+    if (!gridMap.getPosition3(pointLayer, *mapIterator, position)) {
+      ++mapIterator;
+      continue;
+    }
+
+    for (auto& iterator : fieldIterators) {
+      if (iterator.first == "x") {
+        *iterator.second = static_cast<float>(position.x());
+      } else if (iterator.first == "y") {
+        *iterator.second = static_cast<float>(position.y());
+      } else if (iterator.first == "z") {
+        *iterator.second = static_cast<float>(position.z());
+      } else if (iterator.first == "rgb") {
+        *iterator.second = gridMap.at("color", *mapIterator);
+      } else {
+        *iterator.second = gridMap.at(iterator.first, *mapIterator);
+      }
+    }
+
+    ++mapIterator;
+    for (auto& iterator : fieldIterators) {
+      ++iterator.second;
+    }
+    ++realNumberOfPoints;
+  }
+
+  if (realNumberOfPoints != maxNumberOfPoints) {
+    pointCloud.set_width(static_cast<uint32_t>(realNumberOfPoints));
+    pointCloud.set_row_step(pointCloud.width() * pointCloud.point_step());
+    pointCloud.mutable_data()->resize(pointCloud.height() *
+                                      pointCloud.row_step());
+  }
+}
+
+void GridMapConverter::toPointCloud(
+    const SignedDistanceField& signedDistanceField,
+    automsgs::msgs::sensor_msgs::PointCloud2& pointCloud, size_t decimation,
+    const std::function<bool(float)>& condition) {
+  pointCloud.Clear();
+  *pointCloud.mutable_header()->mutable_stamp() =
+      automsgs::msgs::builtin_interfaces::TimeFromNanoseconds(
+          signedDistanceField.getTime());
+  pointCloud.mutable_header()->set_frame_id(signedDistanceField.getFrameId());
+
+  const std::vector<std::string> fieldNames{"x", "y", "z", "intensity"};
+  size_t offset = 0;
+  for (const auto& name : fieldNames) {
+    auto* field = pointCloud.add_fields();
+    field->set_name(name);
+    field->set_count(1);
+    field->set_datatype(automsgs::msgs::sensor_msgs::PointField::FLOAT32);
+    field->set_offset(static_cast<uint32_t>(offset));
+    offset += sizeof(float);
+  }
+
+  const size_t pointCloudMaxSize = signedDistanceField.size();
+  pointCloud.set_height(1);
+  pointCloud.set_width(static_cast<uint32_t>(pointCloudMaxSize));
+  pointCloud.set_point_step(static_cast<uint32_t>(offset));
+  pointCloud.set_row_step(pointCloud.width() * pointCloud.point_step());
+  pointCloud.mutable_data()->resize(pointCloud.height() * pointCloud.row_step());
+
+  automsgs::msgs::sensor_msgs::PointCloud2Iterator<float> iter_x(pointCloud,
+                                                                 "x");
+  automsgs::msgs::sensor_msgs::PointCloud2Iterator<float> iter_y(pointCloud,
+                                                                 "y");
+  automsgs::msgs::sensor_msgs::PointCloud2Iterator<float> iter_z(pointCloud,
+                                                                 "z");
+  automsgs::msgs::sensor_msgs::PointCloud2Iterator<float> iter_i(pointCloud,
+                                                                 "intensity");
+
+  size_t addedPoints = 0;
+  signedDistanceField.filterPoints(
+      [&](const Position3& p, float sdfValue,
+          const SignedDistanceField::Derivative3&) {
+        if (condition(sdfValue)) {
+          *iter_x = static_cast<float>(p.x());
+          *iter_y = static_cast<float>(p.y());
+          *iter_z = static_cast<float>(p.z());
+          *iter_i = sdfValue;
+          ++iter_x;
+          ++iter_y;
+          ++iter_z;
+          ++iter_i;
+          ++addedPoints;
+        }
+      },
+      decimation);
+
+  if (addedPoints != pointCloudMaxSize) {
+    pointCloud.set_width(static_cast<uint32_t>(addedPoints));
+    pointCloud.set_row_step(pointCloud.width() * pointCloud.point_step());
+    pointCloud.mutable_data()->resize(pointCloud.height() *
+                                      pointCloud.row_step());
+  }
+}
+
+bool GridMapConverter::initializeFromImage(
+    const automsgs::msgs::sensor_msgs::Image& image, double resolution,
+    GridMap& gridMap, const Position& position) {
+  const double lengthX = resolution * image.height();
+  const double lengthY = resolution * image.width();
+  gridMap.setGeometry(Length(lengthX, lengthY), resolution, position);
+  gridMap.setFrameId(image.header().frame_id());
+  gridMap.setTimestamp(automsgs::msgs::builtin_interfaces::TimeToNanoseconds(
+      image.header().stamp()));
+  return true;
+}
+
+bool GridMapConverter::addLayerFromImage(
+    const automsgs::msgs::sensor_msgs::Image& image, const std::string& layer,
+    GridMap& gridMap, float lowerValue, float upperValue,
+    double alphaThreshold) {
+  cv::Mat mat;
+  if (!matFromImageMessage(image, &mat)) {
+    return false;
+  }
+  switch (encodingToCvType(image.encoding())) {
+    case CV_8UC1:
+      return GridMapCvConverter::addLayerFromImage<unsigned char, 1>(
+          mat, layer, gridMap, lowerValue, upperValue, alphaThreshold);
+    case CV_8UC3:
+      return GridMapCvConverter::addLayerFromImage<unsigned char, 3>(
+          mat, layer, gridMap, lowerValue, upperValue, alphaThreshold);
+    case CV_8UC4:
+      return GridMapCvConverter::addLayerFromImage<unsigned char, 4>(
+          mat, layer, gridMap, lowerValue, upperValue, alphaThreshold);
+    case CV_16UC1:
+      return GridMapCvConverter::addLayerFromImage<unsigned short, 1>(
+          mat, layer, gridMap, lowerValue, upperValue, alphaThreshold);
+    case CV_16UC3:
+      return GridMapCvConverter::addLayerFromImage<unsigned short, 3>(
+          mat, layer, gridMap, lowerValue, upperValue, alphaThreshold);
+    case CV_16UC4:
+      return GridMapCvConverter::addLayerFromImage<unsigned short, 4>(
+          mat, layer, gridMap, lowerValue, upperValue, alphaThreshold);
+    default:
+      AERROR << "Expected MONO8/16 or RGB(A)/BGR(A) 8/16 image encoding.";
+      return false;
+  }
+}
+
+bool GridMapConverter::addColorLayerFromImage(
+    const automsgs::msgs::sensor_msgs::Image& image, const std::string& layer,
+    GridMap& gridMap) {
+  cv::Mat mat;
+  if (!matFromImageMessage(image, &mat)) {
+    return false;
+  }
+  switch (encodingToCvType(image.encoding())) {
+    case CV_8UC3:
+      return GridMapCvConverter::addColorLayerFromImage<unsigned char, 3>(
+          mat, layer, gridMap);
+    case CV_8UC4:
+      return GridMapCvConverter::addColorLayerFromImage<unsigned char, 4>(
+          mat, layer, gridMap);
+    case CV_16UC3:
+      return GridMapCvConverter::addColorLayerFromImage<unsigned short, 3>(
+          mat, layer, gridMap);
+    case CV_16UC4:
+      return GridMapCvConverter::addColorLayerFromImage<unsigned short, 4>(
+          mat, layer, gridMap);
+    default:
+      AERROR << "Expected RGB(A)/BGR(A) 8/16 image encoding for color layer.";
+      return false;
+  }
+}
+
+bool GridMapConverter::toImage(
+    const GridMap& gridMap, const std::string& layer, const std::string& encoding,
+    automsgs::msgs::sensor_msgs::Image& image) {
+  cv::Mat mat;
+  if (!toCvImage(gridMap, layer, encoding, mat)) {
+    return false;
+  }
+  return imageMessageFromMat(mat, encoding, gridMap, &image);
+}
+
+bool GridMapConverter::toImage(
+    const GridMap& gridMap, const std::string& layer, const std::string& encoding,
+    float lowerValue, float upperValue,
+    automsgs::msgs::sensor_msgs::Image& image) {
+  cv::Mat mat;
+  if (!toCvImage(gridMap, layer, encoding, lowerValue, upperValue, mat)) {
+    return false;
+  }
+  return imageMessageFromMat(mat, encoding, gridMap, &image);
+}
+
+bool GridMapConverter::toCvImage(const GridMap& gridMap, const std::string& layer,
+                                const std::string& encoding, cv::Mat& image) {
+  const float minValue = gridMap.get(layer).minCoeffOfFinites();
+  const float maxValue = gridMap.get(layer).maxCoeffOfFinites();
+  return toCvImage(gridMap, layer, encoding, minValue, maxValue, image);
+}
+
+bool GridMapConverter::toCvImage(const GridMap& gridMap, const std::string& layer,
+                                const std::string& encoding, float lowerValue,
+                                float upperValue, cv::Mat& image) {
+  switch (encodingToCvType(encoding)) {
+    case CV_8UC1:
+      return GridMapCvConverter::toImage<unsigned char, 1>(
+          gridMap, layer, encodingToCvType(encoding), lowerValue, upperValue,
+          image);
+    case CV_8UC3:
+      return GridMapCvConverter::toImage<unsigned char, 3>(
+          gridMap, layer, encodingToCvType(encoding), lowerValue, upperValue,
+          image);
+    case CV_8UC4:
+      return GridMapCvConverter::toImage<unsigned char, 4>(
+          gridMap, layer, encodingToCvType(encoding), lowerValue, upperValue,
+          image);
+    case CV_16UC1:
+      return GridMapCvConverter::toImage<unsigned short, 1>(
+          gridMap, layer, encodingToCvType(encoding), lowerValue, upperValue,
+          image);
+    case CV_16UC3:
+      return GridMapCvConverter::toImage<unsigned short, 3>(
+          gridMap, layer, encodingToCvType(encoding), lowerValue, upperValue,
+          image);
+    case CV_16UC4:
+      return GridMapCvConverter::toImage<unsigned short, 4>(
+          gridMap, layer, encodingToCvType(encoding), lowerValue, upperValue,
+          image);
+    default:
+      AERROR << "Expected MONO8/16 or RGB(A)/BGR(A) 8/16 image encoding.";
+      return false;
+  }
 }
 
 }  // namespace grid_map

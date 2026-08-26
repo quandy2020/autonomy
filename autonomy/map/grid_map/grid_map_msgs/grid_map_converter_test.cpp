@@ -77,5 +77,46 @@ TEST(Costmap2DConverter, Bidirectional) {
   EXPECT_NEAR(restored.at("cost", Index(0, 0)), 100.0f, 1e-3);
 }
 
+TEST(GridMapConverter, ToPointCloud) {
+  GridMap map({"elevation"});
+  map.setGeometry(Length(2.0, 2.0), 1.0, Position(0.0, 0.0));
+  map.setFrameId("map");
+  map["elevation"].setConstant(1.0f);
+  map.at("elevation", Index(0, 0)) = 2.0f;
+
+  automsgs::msgs::sensor_msgs::PointCloud2 cloud;
+  GridMapConverter::toPointCloud(map, "elevation", cloud);
+  EXPECT_EQ(cloud.header().frame_id(), "map");
+  EXPECT_EQ(cloud.height(), 1u);
+  EXPECT_EQ(cloud.width(), 4u);
+  ASSERT_EQ(cloud.fields_size(), 3);
+  EXPECT_EQ(cloud.fields(0).name(), "x");
+  EXPECT_EQ(cloud.fields(1).name(), "y");
+  EXPECT_EQ(cloud.fields(2).name(), "z");
+}
+
+TEST(GridMapConverter, ImageRoundTripMono8) {
+  GridMap map({"elevation"});
+  map.setGeometry(Length(2.0, 2.0), 1.0, Position(0.0, 0.0));
+  map.setFrameId("map");
+  map["elevation"].setConstant(0.0f);
+  map.at("elevation", Index(0, 0)) = 1.0f;
+  map.at("elevation", Index(1, 1)) = 0.5f;
+
+  automsgs::msgs::sensor_msgs::Image image;
+  ASSERT_TRUE(GridMapConverter::toImage(map, "elevation", "mono8", 0.0f, 1.0f,
+                                        image));
+  EXPECT_EQ(image.encoding(), "mono8");
+  EXPECT_EQ(image.width(), 2u);
+  EXPECT_EQ(image.height(), 2u);
+
+  GridMap restored;
+  ASSERT_TRUE(GridMapConverter::initializeFromImage(image, 1.0, restored));
+  ASSERT_TRUE(GridMapConverter::addLayerFromImage(image, "elevation", restored,
+                                                  0.0f, 1.0f));
+  EXPECT_NEAR(restored.at("elevation", Index(0, 0)), 1.0f, 1.0 / 255.0 + 1e-3);
+  EXPECT_NEAR(restored.at("elevation", Index(1, 1)), 0.5f, 1.0 / 255.0 + 1e-3);
+}
+
 }  // namespace
 }  // namespace grid_map

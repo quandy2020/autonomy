@@ -35,11 +35,6 @@ class MedianFillFilter : public filters::FilterBase<GridMap> {
   ~MedianFillFilter() override;
 
   /*!
-   * Configures the filter from parameters on the Parameter Server
-   */
-  bool configure() override;
-
-  /*!
    * Adds a new output layer to the map.
    * Uses the Boost accumulator median in the input layer.
    * Saves the filter output in mapOut[output_layer].
@@ -48,7 +43,14 @@ class MedianFillFilter : public filters::FilterBase<GridMap> {
    */
   bool update(const GridMap& mapIn, GridMap& mapOut) override;
 
+  using filters::FilterBase<GridMap>::configure;
+
  protected:
+  /*!
+   * Configures the filter from parameters on the Parameter Server
+   */
+  bool configure() override;
+
   /*!
    * Returns the median of the values in inputData in the neighbourhood around the centerIndex. The size of the quadratic neighbourhood is
    * specified by radiusInPixels. If the number of values is even the "lower center" value is taken, eg with four values the second lowest
@@ -80,7 +82,7 @@ class MedianFillFilter : public filters::FilterBase<GridMap> {
    * @param inputMask Initial mask possibly containing also sparse valid regions that will be removed.
    * @return An opencv mask of the same size as input mask with small sparse valid regions removed.
    */
-  static cv::Mat_<bool> cleanedMask(const cv::Mat_<bool>& inputMask);
+  static cv::Mat cleanedMask(const cv::Mat& inputMask);
 
   /**
    * Performs morphological closing on a boolean cv matrix mask.
@@ -88,7 +90,8 @@ class MedianFillFilter : public filters::FilterBase<GridMap> {
    * @param [in] numDilationClosingIterations Algorithm specific parameter. Higher means that bigger holes will still be filled.
    * @return A mask of the same size as isValidMask but with small holes filled.
    */
-  static cv::Mat_<bool> fillHoles(const cv::Mat_<bool>& isValidMask, size_t numDilationClosingIterations);
+  static cv::Mat fillHoles(const cv::Mat& isValidMask,
+                           size_t numDilationClosingIterations);
 
   /**
    * Adds a float cv matrix as layer to a given map.

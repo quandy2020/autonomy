@@ -26,11 +26,30 @@ file(GLOB_RECURSE TEST_LIBRARY_SRCS
   "${_AUTONOMY_ROOT}/*test*.cpp"
   "${_AUTONOMY_ROOT}/mock_*.cpp")
 
+# Production filter (ROS grid_map MockFilter), not a test double.
+list(REMOVE_ITEM TEST_LIBRARY_HDRS
+  "${_AUTONOMY_ROOT}/map/grid_map/grid_map_filters/mock_filter.hpp")
+list(REMOVE_ITEM TEST_LIBRARY_SRCS
+  "${_AUTONOMY_ROOT}/map/grid_map/grid_map_filters/mock_filter.cpp")
+
 file(GLOB_RECURSE ALL_TOOLS "${_AUTONOMY_ROOT}/tools/*")
 file(GLOB_RECURSE ALL_EXECUTABLES "${_AUTONOMY_ROOT}/*main.cpp")
 file(GLOB_RECURSE ALL_TESTS "${_AUTONOMY_ROOT}/*_test.cpp")
 file(GLOB_RECURSE VISUALIZATION_SRCS "${_AUTONOMY_ROOT}/visualization/*.cpp")
 file(GLOB_RECURSE ONNX_NETWORK_SRCS "${_AUTONOMY_ROOT}/common/network/*.cpp")
+
+# Offline demos are built as separate binaries (see grid_map_demos/CMakeLists.txt).
+file(GLOB_RECURSE _GRID_MAP_DEMOS_SRCS
+  "${_AUTONOMY_ROOT}/map/grid_map/grid_map_demos/*")
+if(_GRID_MAP_DEMOS_SRCS)
+  list(REMOVE_ITEM ALL_LIBRARY_HDRS ${_GRID_MAP_DEMOS_SRCS})
+  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${_GRID_MAP_DEMOS_SRCS})
+  list(REMOVE_ITEM TEST_LIBRARY_HDRS ${_GRID_MAP_DEMOS_SRCS})
+  list(REMOVE_ITEM TEST_LIBRARY_SRCS ${_GRID_MAP_DEMOS_SRCS})
+  list(REMOVE_ITEM ALL_TESTS ${_GRID_MAP_DEMOS_SRCS})
+  list(REMOVE_ITEM ALL_EXECUTABLES ${_GRID_MAP_DEMOS_SRCS})
+endif()
+unset(_GRID_MAP_DEMOS_SRCS)
 
 unset(_AUTONOMY_ROOT)
 unset(_AUTONOMY_GRPC_DIRS)

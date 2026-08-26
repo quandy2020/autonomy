@@ -7,6 +7,7 @@
 
 #include "autonomy/map/grid_map/grid_map_filters/filters/filter_base.hpp"
 #include "autonomy/map/grid_map/grid_map_filters/filters/filter_chain.hpp"
+#include "autonomy/map/grid_map/grid_map_filters/filter_factory.hpp"
 #include "autonomy/map/grid_map/grid_map_filters/buffer_normalizer_filter.hpp"
 #include "autonomy/map/grid_map/grid_map_filters/color_blending_filter.hpp"
 #include "autonomy/map/grid_map/grid_map_filters/color_fill_filter.hpp"

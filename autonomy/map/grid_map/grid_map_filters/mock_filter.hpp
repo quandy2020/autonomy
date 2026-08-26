@@ -31,16 +31,19 @@ class MockFilter : public filters::FilterBase<GridMap> {
   ~MockFilter() override;
 
   /*!
-   * Configures the filter from parameters on the parameter server.
-   */
-  bool configure() override;
-
-  /*!
    * Copies the input to the output. The time for the update is specified by processingTime_. Optionally the update is logged.
    * @param mapIn Input.
    * @param mapOut Output.
    */
   bool update(const GridMap& mapIn, GridMap& mapOut) override;
+
+  using filters::FilterBase<GridMap>::configure;
+
+ protected:
+  /*!
+   * Configures the filter from parameters on the parameter server.
+   */
+  bool configure() override;
 
  private:
   //! Flag indicating wheter to also log on update.

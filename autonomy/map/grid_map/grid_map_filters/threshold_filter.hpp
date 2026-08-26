@@ -33,17 +33,20 @@ class ThresholdFilter : public filters::FilterBase<GridMap> {
   virtual ~ThresholdFilter();
 
   /*!
-   * Configures the filter from parameters on the parameter server.
-   */
-  virtual bool configure();
-
-  /*!
    * Uses either an upper or lower threshold. If the threshold is exceeded
    * the cell value is set to the predefined value setTo_.
    * @param mapIn GridMap with the different layers to apply a threshold.
    * @param mapOut GridMap with the threshold applied to the layers.
    */
   virtual bool update(const GridMap& mapIn, GridMap& mapOut);
+
+  using filters::FilterBase<GridMap>::configure;
+
+ protected:
+  /*!
+   * Configures the filter from parameters on the parameter server.
+   */
+  bool configure() override;
 
  private:
   //! Layer the threshold will be evaluated.
