@@ -25,8 +25,12 @@ class InpaintFilter : public filters::FilterBase<GridMap> {
   InpaintFilter();
   ~InpaintFilter() override;
 
-  bool configure() override;
   bool update(const GridMap& mapIn, GridMap& mapOut) override;
+
+  using filters::FilterBase<GridMap>::configure;
+
+ protected:
+  bool configure() override;
 
  private:
   double radius_;

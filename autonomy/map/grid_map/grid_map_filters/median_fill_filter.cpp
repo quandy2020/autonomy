@@ -188,32 +188,42 @@ float MedianFillFilter::getMedian(Eigen::Ref<const Matrix> inputMap, const Index
 
 Eigen::MatrixXf MedianFillFilter::computeAndAddFillMask(const Eigen::MatrixXf& inputMap, GridMap& mapOut) {
   Eigen::MatrixXf shouldFill;
-  // Precompute mask of valid height values
-  using MaskMatrix = Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic>;
-  const MaskMatrix isValid{inputMap.array().unaryExpr([&](float v) { return std::isfinite(v); })};
+  // Precompute mask of valid height values (OpenCV morphology requires 8-bit).
+  cv::Mat isValidCV(static_cast<int>(inputMap.rows()),
+                    static_cast<int>(inputMap.cols()), CV_8UC1);
+  for (int r = 0; r < isValidCV.rows; ++r) {
+    for (int c = 0; c < isValidCV.cols; ++c) {
+      isValidCV.at<uint8_t>(r, c) =
+          std::isfinite(inputMap(r, c)) ? static_cast<uint8_t>(255) : 0;
+    }
+  }
 
   // Remove sparse valid values and fill holes.
-  cv::Mat isValidCV;
-  cv::eigen2cv(isValid, isValidCV);
-  cv::Mat_<bool> isValidOutlierRemoved{cleanedMask(isValidCV)};
-  cv::Mat shouldFillCV{fillHoles(isValidOutlierRemoved, numErodeDilationIterations_)};
+  cv::Mat isValidOutlierRemoved = cleanedMask(isValidCV);
+  cv::Mat shouldFillCV =
+      fillHoles(isValidOutlierRemoved, numErodeDilationIterations_);
 
   // Outlier removed mask to eigen.
   if (debug_) {
     addCvMatAsLayer(mapOut, isValidOutlierRemoved, debugInfillMaskLayer_);
   }
 
-  // Convert to eigen and add to the map.
-  cv::cv2eigen(shouldFillCV, shouldFill);
+  // Convert to eigen float mask (0 / 1) and add to the map.
+  shouldFill = Eigen::MatrixXf::Zero(inputMap.rows(), inputMap.cols());
+  for (int r = 0; r < shouldFillCV.rows; ++r) {
+    for (int c = 0; c < shouldFillCV.cols; ++c) {
+      shouldFill(r, c) = shouldFillCV.at<uint8_t>(r, c) != 0 ? 1.0f : 0.0f;
+    }
+  }
   mapOut.add(fillMaskLayer_, shouldFill);
 
   return shouldFill;
 }
 
-cv::Mat_<bool> MedianFillFilter::cleanedMask(const cv::Mat_<bool>& inputMask) {
+cv::Mat MedianFillFilter::cleanedMask(const cv::Mat& inputMask) {
   auto element{cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3), cv::Point(1, 1))};
 
-  cv::Mat_<bool> cleanedInputMask(inputMask.size(), false);
+  cv::Mat cleanedInputMask;
 
   // Erode then dilate to remove sparse points
   cv::dilate(inputMask, cleanedInputMask, element);
@@ -224,9 +234,10 @@ cv::Mat_<bool> MedianFillFilter::cleanedMask(const cv::Mat_<bool>& inputMask) {
   return cleanedInputMask;
 }
 
-cv::Mat_<bool> MedianFillFilter::fillHoles(const cv::Mat_<bool>& isValidMask, const size_t numDilationClosingIterations) {
+cv::Mat MedianFillFilter::fillHoles(const cv::Mat& isValidMask,
+                                    const size_t numDilationClosingIterations) {
   auto element{cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3), cv::Point(1, 1))};
-  cv::Mat_<bool> holesFilledMask(isValidMask.size(), false);
+  cv::Mat holesFilledMask;
   // Remove holes in the mask by morphological closing.
   cv::dilate(isValidMask, holesFilledMask, element);
   for (size_t iteration = 1; iteration < numDilationClosingIterations; iteration++) {
@@ -240,8 +251,18 @@ cv::Mat_<bool> MedianFillFilter::fillHoles(const cv::Mat_<bool>& isValidMask, co
 }
 
 void MedianFillFilter::addCvMatAsLayer(GridMap& gridMap, const cv::Mat& cvLayer, const std::string& layerName) {
-  Eigen::MatrixXf tmpEigenMatrix;
-  cv::cv2eigen(cvLayer, tmpEigenMatrix);
+  Eigen::MatrixXf tmpEigenMatrix =
+      Eigen::MatrixXf::Zero(cvLayer.rows, cvLayer.cols);
+  if (cvLayer.type() == CV_8UC1) {
+    for (int r = 0; r < cvLayer.rows; ++r) {
+      for (int c = 0; c < cvLayer.cols; ++c) {
+        tmpEigenMatrix(r, c) =
+            cvLayer.at<uint8_t>(r, c) != 0 ? 1.0f : 0.0f;
+      }
+    }
+  } else {
+    cv::cv2eigen(cvLayer, tmpEigenMatrix);
+  }
   gridMap.add(layerName, tmpEigenMatrix);
 }
 

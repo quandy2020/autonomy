@@ -1,0 +1,71 @@
+# Adapted from ROS grid_map_demos/filters_demo_filter_chain.yaml (pluginlib → FilterFactory).
+# Top-level is a YAML sequence for filters::FilterChain.
+- name: buffer_normalizer
+  type: BufferNormalizerFilter
+
+- name: delete_original_layers
+  type: DeletionFilter
+  params:
+    layers: [color]
+
+- name: inpaint
+  type: InpaintFilter
+  params:
+    input_layer: elevation
+    output_layer: elevation_inpainted
+    radius: 0.05
+
+- name: mean_in_radius
+  type: MeanInRadiusFilter
+  params:
+    input_layer: elevation_inpainted
+    output_layer: elevation_smooth
+    radius: 0.06
+
+- name: surface_normals
+  type: NormalVectorsFilter
+  params:
+    input_layer: elevation_inpainted
+    output_layers_prefix: normal_vectors_
+    radius: 0.05
+    normal_vector_positive_axis: z
+
+- name: normal_color_map
+  type: NormalColorMapFilter
+  params:
+    input_layers_prefix: normal_vectors_
+    output_layer: normal_color
+
+- name: slope
+  type: MathExpressionFilter
+  params:
+    output_layer: slope
+    expression: acos(normal_vectors_z)
+
+- name: roughness
+  type: MathExpressionFilter
+  params:
+    output_layer: roughness
+    expression: abs(elevation_inpainted - elevation_smooth)
+
+- name: traversability
+  type: MathExpressionFilter
+  params:
+    output_layer: traversability
+    expression: 0.5 * (1.0 - (slope / 0.6)) + 0.5 * (1.0 - (roughness / 0.1))
+
+- name: traversability_lower_threshold
+  type: ThresholdFilter
+  params:
+    condition_layer: traversability
+    output_layer: traversability
+    lower_threshold: 0.0
+    set_to: 0.0
+
+- name: traversability_upper_threshold
+  type: ThresholdFilter
+  params:
+    condition_layer: traversability
+    output_layer: traversability
+    upper_threshold: 1.0
+    set_to: 1.0

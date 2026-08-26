@@ -39,6 +39,7 @@ option(BUILD_PROMETHEUS "Build prometheus monitoring support" OFF)
 option(BUILD_DOCS "Build autonomy docs support" ON)
 option(BUILD_TEST "Build autonomy unit test" ON)
 option(BUILD_TOOLS "Build autonomy tools sources" ON)
+option(BUILD_GRID_MAP_DEMOS "Build ROS-free grid_map demos" ON)
 option(BUILD_AUTODRIVER "Build autodriver sensor HAL subproject" ON)
 option(BUILD_AUTOVIZ "Build native 3D visualization tool (autoviz)" ON)
 option(BUILD_AUTOSIM "Build autonomous simulation tool (autosim)" ON)
@@ -205,6 +206,10 @@ if(foxglove-sdk_FOUND)
   #   SRCS autonomy/visualization/fakedata_test.cpp)
   google_binary(autonomy_foxglove_bridge
     SRCS autonomy/visualization/foxglove_main.cpp)
+endif()
+
+if(BUILD_GRID_MAP_DEMOS)
+  add_subdirectory(autonomy/map/grid_map/grid_map_demos)
 endif()
 
 if(BUILD_AUTOVIZ)
