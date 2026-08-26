@@ -1,55 +1,38 @@
 /*
  * GridMapLoader.hpp
  *
- *  Created on: Aug 24, 2015
- *      Author: Peter Fankhauser
- *	 Institute: ETH Zurich, ANYbotics
- *
+ * Loads a grid map from a protobuf file (replacement for ROS bag loader).
  */
 
 #pragma once
 
-// STD
 #include <string>
 
 #include "autonomy/map/grid_map/grid_map_core/grid_map.hpp"
 
 namespace grid_map_loader {
 
-/*!
- * Loads and publishes a grid map from a bag file.
- */
-class GridMapLoader
-{
-public:
-    /*!
-     * Constructor.
-     */
-    GridMapLoader();
+class GridMapLoader {
+ public:
+  GridMapLoader() = default;
+  explicit GridMapLoader(std::string filePath) : filePath_(std::move(filePath)) {}
+  ~GridMapLoader() = default;
 
-    /*!
-     * Destructor.
-     */
-    virtual ~GridMapLoader();
+  void setFilePath(const std::string& filePath) { filePath_ = filePath; }
+  const std::string& filePath() const { return filePath_; }
 
-    /*!
-     * Reads and verifies the ROS parameters.
-     * @return true if successful.
-     */
-    bool readParameters();
+  /*!
+   * Loads the grid map from the configured protobuf file.
+   * @return true if successful, false otherwise.
+   */
+  bool load();
 
-    /*!
-     * Loads the grid map from the bag file.
-     * @return true if successful, false otherwise.
-     */
-    bool load();
+  const grid_map::GridMap& getGridMap() const { return map_; }
+  grid_map::GridMap& getGridMap() { return map_; }
 
-private:
-    //! Grid map data.
-    grid_map::GridMap map_;
-
-    //! Path the ROS bag to be published.
-    std::string filePath_;
+ private:
+  grid_map::GridMap map_;
+  std::string filePath_;
 };
 
 }  // namespace grid_map_loader

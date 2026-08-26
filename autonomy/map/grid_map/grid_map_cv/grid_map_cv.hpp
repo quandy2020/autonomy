@@ -18,3 +18,5 @@
 
 #include "autonomy/map/grid_map/grid_map_core/grid_map_core.hpp"
 #include "autonomy/map/grid_map/grid_map_cv/grid_map_cv_converter.hpp"
+#include "autonomy/map/grid_map/grid_map_cv/grid_map_cv_processing.hpp"
+#include "autonomy/map/grid_map/grid_map_cv/inpaint_filter.hpp"

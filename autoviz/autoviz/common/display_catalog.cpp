@@ -81,6 +81,12 @@ const std::vector<DisplayTypeInfo>& BuiltinCatalog() {
       MakeInfo("Map", "autoviz", "Shows a map from map_msgs/OccupancyGrid.",
                {"automsgs.msgs.map_msgs.OccupancyGrid",
                 "map_msgs.OccupancyGrid"}),
+      MakeInfo("GridMap", "autoviz",
+               "Shows map_msgs/GridMap (mesh / point_cloud / occupancy_grid / "
+               "grid_cells / map_region / vectors — grid_map_visualization + "
+               "grid_map_rviz_plugin).",
+               {"automsgs.msgs.map_msgs.GridMap", "map_msgs.GridMap",
+                "grid_map_msgs.GridMap"}),
       MakeInfo("Path", "autoviz", "Shows a nav_msgs/Path message.",
                {"automsgs.msgs.nav_msgs.Path", "nav_msgs.Path"}),
       MakeInfo("Odometry", "autoviz", "Shows nav_msgs/Odometry as axes and path.",

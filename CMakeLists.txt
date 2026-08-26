@@ -75,6 +75,16 @@ find_package(SQLite3 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS iostreams)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(CAIRO REQUIRED IMPORTED_TARGET cairo)
+find_package(PCL REQUIRED COMPONENTS
+  common
+  features
+  filters
+  io
+  kdtree
+  segmentation
+  surface)
+find_package(OpenMP QUIET)
+find_package(TBB REQUIRED)
 
 # Optional
 find_package(Ipopt QUIET)

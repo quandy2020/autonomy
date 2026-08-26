@@ -17,6 +17,7 @@
 #include "autonomy/map/grid_map/grid_map_wrapper.hpp"
 
 #include "autonomy/common/logging.hpp"
+#include "autonomy/map/grid_map/grid_map_msgs/grid_map_converter.hpp"
 
 namespace autonomy {
 namespace map {
@@ -147,14 +148,15 @@ bool GridMapWrapper::loadMap(const std::string& filename) {
         return false;
     }
 
-    // TODO: Implement file loading based on file format
-    // This could support bag files, yaml files, or other formats
-    LOG(WARNING) << "[GridMapWrapper] GridMap file loading from " << filename
-                 << " is not fully implemented.";
-
-    // For now, just log the request
+    ::grid_map::GridMap loaded;
+    if (!::grid_map::GridMapConverter::loadFromFile(filename, loaded)) {
+        LOG(ERROR) << "[GridMapWrapper] Failed to load grid map from "
+                   << filename;
+        return false;
+    }
+    *grid_map_ = std::move(loaded);
     options_.set_map_file(filename);
-
+    LOG(INFO) << "[GridMapWrapper] Loaded grid map from " << filename;
     return true;
 }
 
@@ -167,9 +169,18 @@ void GridMapWrapper::publishMap() {
         return;
     }
 
-    // TODO: Implement map publishing
-    // This would convert GridMap to a message and publish it
-    LOG(INFO) << "[GridMapWrapper] Publish map (publisher disabled): " << name_;
+    if (!grid_map_) {
+        LOG(WARNING) << "[GridMapWrapper] No grid map to publish: " << name_;
+        return;
+    }
+
+    // Convert to protobuf message. Autolink writer wiring is left to callers
+    // that own a Writer<GridMap>; this keeps a ready-to-send snapshot path.
+    last_published_message_.Clear();
+    ::grid_map::GridMapConverter::toMessage(*grid_map_, last_published_message_);
+    has_published_message_ = true;
+    LOG(INFO) << "[GridMapWrapper] Prepared GridMap protobuf ("
+              << last_published_message_.layers_size() << " layers): " << name_;
 }
 
 proto::GridMapOptions CreateGridMapOptions(

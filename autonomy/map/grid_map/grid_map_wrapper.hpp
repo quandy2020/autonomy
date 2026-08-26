@@ -121,6 +121,14 @@ public:
      */
     void publishMap();
 
+    /**
+     * @brief Last protobuf snapshot prepared by publishMap().
+     * @return nullptr if publishMap() has not succeeded yet.
+     */
+    const automsgs::msgs::map_msgs::GridMap* lastPublishedMessage() const {
+        return has_published_message_ ? &last_published_message_ : nullptr;
+    }
+
 protected:
     // Grid map data
     std::shared_ptr<::grid_map::GridMap> grid_map_;
@@ -135,6 +143,10 @@ protected:
 
     // Options for grid map
     proto::GridMapOptions options_;
+
+    // Last published protobuf snapshot (filled by publishMap).
+    automsgs::msgs::map_msgs::GridMap last_published_message_;
+    bool has_published_message_{false};
 };
 
 proto::GridMapOptions CreateGridMapOptions(

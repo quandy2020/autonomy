@@ -18,6 +18,7 @@ function(autonomy_link_dependencies target)
     "${OpenCV_INCLUDE_DIRS}"
     "${OSQP_INCLUDE_DIRS}"
     ${SQLite3_INCLUDE_DIRS}
+    ${PCL_INCLUDE_DIRS}
   )
   target_link_libraries(${target} PUBLIC
     protobuf::libprotobuf
@@ -45,7 +46,16 @@ function(autonomy_link_dependencies target)
     PkgConfig::CAIRO
     Threads::Threads
     nlohmann_json::nlohmann_json
+    ${PCL_LIBRARIES}
+    TBB::tbb
   )
+  if(PCL_DEFINITIONS)
+    target_compile_definitions(${target} PUBLIC ${PCL_DEFINITIONS})
+  endif()
+  if(OpenMP_CXX_FOUND)
+    target_compile_definitions(${target} PUBLIC GRID_MAP_PCL_OPENMP_FOUND=1)
+    target_link_libraries(${target} PUBLIC OpenMP::OpenMP_CXX)
+  endif()
 
   if(TARGET BT::behaviortree_cpp)
     target_link_libraries(${target} PUBLIC BT::behaviortree_cpp)

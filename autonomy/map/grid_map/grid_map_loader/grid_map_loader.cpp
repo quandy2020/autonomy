@@ -1,45 +1,25 @@
 /*
  * GridMapLoader.cpp
- *
- *  Created on: Aug 24, 2015
- *      Author: Peter Fankhauser
- *	 Institute: ETH Zurich, ANYbotics
- *
  */
 
 #include "autonomy/map/grid_map/grid_map_loader/grid_map_loader.hpp"
 
-using namespace grid_map;
+#include "autonomy/common/logging.hpp"
+#include "autonomy/map/grid_map/grid_map_msgs/grid_map_converter.hpp"
 
 namespace grid_map_loader {
 
-GridMapLoader::GridMapLoader() {
-    readParameters();
-}
-
-GridMapLoader::~GridMapLoader() {}
-
-bool GridMapLoader::readParameters() {
-    //   nodeHandle_.param("bag_topic", bagTopic_, std::string("/grid_map"));
-    //   nodeHandle_.param("publish_topic", publishTopic_, bagTopic_);
-    //   nodeHandle_.param("file_path", filePath_, std::string());
-    //   double durationInSec;
-    //   nodeHandle_.param("duration", durationInSec, 5.0);
-    //   duration_.fromSec(durationInSec);
-    return true;
-}
-
 bool GridMapLoader::load() {
-    // ROS_INFO_STREAM("Loading grid map from path " << filePath_ << ".");
-    // return GridMapRosConverter::loadFromBag(filePath_, bagTopic_, map_);
-    return true;
+  if (filePath_.empty()) {
+    AERROR << "GridMapLoader: file path is empty.";
+    return false;
+  }
+  AINFO << "Loading grid map from path " << filePath_;
+  if (!grid_map::GridMapConverter::loadFromFile(filePath_, map_)) {
+    AERROR << "GridMapLoader: failed to load " << filePath_;
+    return false;
+  }
+  return true;
 }
-
-// void GridMapLoader::publish()
-// {
-//     grid_map_msgs::GridMap message;
-//     grid_map::GridMapRosConverter::toMessage(map_, message);
-//     // publisher_.publish(message);
-// }
 
 }  // namespace grid_map_loader
