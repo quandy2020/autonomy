@@ -37,6 +37,10 @@ class ChannelDisplay : public Display {
     queue_.clear();
     has_received_message_ = false;
     parse_failed_ = false;
+    clearReceivedData();
+    if (context_ != nullptr && context_->request_redraw) {
+      context_->request_redraw();
+    }
   }
 
   std::string typeId() const override { return type_id_; }
@@ -57,6 +61,9 @@ class ChannelDisplay : public Display {
   }
 
  protected:
+  /** Drop cached visuals derived from channel messages (Time panel Reset). */
+  virtual void clearReceivedData() {}
+
   void onEnable() override {
     has_received_message_ = false;
     parse_failed_ = false;

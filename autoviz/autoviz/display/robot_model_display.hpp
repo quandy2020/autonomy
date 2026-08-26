@@ -34,6 +34,7 @@ class RobotModelDisplay : public Display {
  protected:
   void onEnable() override;
   void onDisable() override;
+  void reset() override;
   void onUpdate() override;
   void onPropertyChanged(const std::string& key) override;
   void onDraw(rendering::SceneOverlay& scene) override;

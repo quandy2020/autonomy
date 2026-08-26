@@ -28,6 +28,7 @@ class PoseArrayDisplay
   void processMessage(
       const automsgs::msgs::geometry_msgs::PoseArray& message)
       override;
+  void clearReceivedData() override;
   void onDraw(rendering::SceneOverlay& scene) override;
 
  private:

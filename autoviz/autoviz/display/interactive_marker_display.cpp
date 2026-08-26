@@ -108,6 +108,12 @@ void InteractiveMarkerDisplay::onUpdate() {
       onUpdate();
 }
 
+void InteractiveMarkerDisplay::clearReceivedData() {
+  markers_.clear();
+  init_queue_.clear();
+  syncRegistry();
+}
+
 void InteractiveMarkerDisplay::onDraw(rendering::SceneOverlay& scene) {
   if (registry_ != nullptr) {
     for (const auto& [marker_name, state] : registry_->markers()) {

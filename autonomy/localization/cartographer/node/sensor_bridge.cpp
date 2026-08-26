@@ -81,7 +81,8 @@ std::unique_ptr<carto::sensor::OdometryData> SensorBridge::ToOdometryData(
     }
     return std::make_unique<carto::sensor::OdometryData>(
         carto::sensor::OdometryData{
-            time, ToRigid3d(msg.pose().pose()) * sensor_to_tracking->inverse()});
+            time, ToRigid3d(msg.pose().pose().pose()) *
+                      sensor_to_tracking->inverse()});
 }
 
 void SensorBridge::HandleOdometryMessage(
@@ -103,13 +104,13 @@ void SensorBridge::HandleOdometryMessage(
 
 std::unique_ptr<carto::sensor::ImuData> SensorBridge::ToImuData(
     const automsgs::msgs::sensor_msgs::Imu& msg) {
-    if (!msg.linear_acceleration_covariance.empty()) {
-        CHECK_NE(msg.linear_acceleration_covariance[0], -1)
+    if (!msg.linear_acceleration_covariance().empty()) {
+        CHECK_NE(msg.linear_acceleration_covariance()[0], -1)
             << "IMU linear_acceleration_covariance[0] is -1; Cartographer "
                "requires linear acceleration.";
     }
-    if (!msg.angular_velocity_covariance.empty()) {
-        CHECK_NE(msg.angular_velocity_covariance[0], -1)
+    if (!msg.angular_velocity_covariance().empty()) {
+        CHECK_NE(msg.angular_velocity_covariance()[0], -1)
             << "IMU angular_velocity_covariance[0] is -1; Cartographer "
                "requires angular velocity.";
     }
@@ -124,8 +125,8 @@ std::unique_ptr<carto::sensor::ImuData> SensorBridge::ToImuData(
         << "The IMU frame must be colocated with the tracking frame.";
     return std::make_unique<carto::sensor::ImuData>(carto::sensor::ImuData{
         time,
-        sensor_to_tracking->rotation() * ToEigen(msg.linear_acceleration),
-        sensor_to_tracking->rotation() * ToEigen(msg.angular_velocity)});
+        sensor_to_tracking->rotation() * ToEigen(msg.linear_acceleration()),
+        sensor_to_tracking->rotation() * ToEigen(msg.angular_velocity())});
 }
 
 void SensorBridge::HandleImuMessage(const std::string& sensor_id,
@@ -174,7 +175,7 @@ void SensorBridge::HandlePointCloud2Message(
 void SensorBridge::HandleNavSatFixMessage(
     const std::string& sensor_id, const automsgs::msgs::sensor_msgs::NavSatFix& msg) {
     const carto::common::Time time = FromCommsgs(msg.header().stamp());
-    if (msg.status.status ==
+    if (msg.status().status() ==
         automsgs::msgs::sensor_msgs::NavSatStatus::STATUS_NO_FIX) {
         trajectory_builder_->AddSensorData(
             sensor_id,
@@ -184,9 +185,9 @@ void SensorBridge::HandleNavSatFixMessage(
 
     if (!ecef_to_local_frame_.has_value()) {
         ecef_to_local_frame_ =
-            ComputeLocalFrameFromLatLong(msg.latitude, msg.longitude);
+            ComputeLocalFrameFromLatLong(msg.latitude(), msg.longitude());
         LOG(INFO) << "Using NavSatFix. Setting ecef_to_local_frame with lat = "
-                  << msg.latitude << ", long = " << msg.longitude << ".";
+                  << msg.latitude() << ", long = " << msg.longitude() << ".";
     }
 
     trajectory_builder_->AddSensorData(
@@ -196,8 +197,8 @@ void SensorBridge::HandleNavSatFixMessage(
             std::optional<carto::transform::Rigid3d>(
                 carto::transform::Rigid3d::Translation(
                     ecef_to_local_frame_.value() *
-                    LatLongAltToEcef(msg.latitude, msg.longitude,
-                                     msg.altitude)))});
+                    LatLongAltToEcef(msg.latitude(), msg.longitude(),
+                                     msg.altitude())))});
 }
 
 void SensorBridge::HandleLandmarkMessage(const std::string& sensor_id,
@@ -221,16 +222,16 @@ void SensorBridge::HandleLaserScan(
     const std::string& sensor_id, const carto::common::Time time,
     const std::string& frame_id,
     const carto::sensor::PointCloudWithIntensities& points) {
-    if (points.points().empty()) {
+    if (points.points.empty()) {
         return;
     }
     CHECK_LE(points.points.back().time, 0.f);
     for (int i = 0; i != num_subdivisions_per_laser_scan_; ++i) {
         const size_t start_index =
-            points.points_size() * static_cast<size_t>(i) /
+            points.points.size() * static_cast<size_t>(i) /
             static_cast<size_t>(num_subdivisions_per_laser_scan_);
         const size_t end_index =
-            points.points_size() * static_cast<size_t>(i + 1) /
+            points.points.size() * static_cast<size_t>(i + 1) /
             static_cast<size_t>(num_subdivisions_per_laser_scan_);
         carto::sensor::TimedPointCloud subdivision(
             points.points.begin() + start_index,

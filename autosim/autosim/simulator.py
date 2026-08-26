@@ -567,11 +567,13 @@ class Simulator:
         origin = mn.Vector3(float(origin_x), float(origin_y), float(origin_z))
         # map_y = -Habitat_Z: yaw rotates +X toward +map_y = -Habitat_Z,
         # so Habitat direction_Z = -sin(yaw).
-        direction = mn.Vector3(
-            math.cos(yaw) * math.cos(pitch),
-            math.sin(pitch),
-            -math.sin(yaw) * math.cos(pitch),
-        )
+        dx = math.cos(yaw) * math.cos(pitch)
+        dy = math.sin(pitch)
+        dz = -math.sin(yaw) * math.cos(pitch)
+        length = math.sqrt(dx * dx + dy * dy + dz * dz)
+        if length < 1e-12:
+            return None
+        direction = mn.Vector3(dx / length, dy / length, dz / length)
         ray = habitat_sim.geo.Ray(origin, direction)
         try:
             results = self.session.cast_ray(ray, max_distance=float(range_max))
@@ -582,15 +584,19 @@ class Simulator:
             return None
         if distance <= 1e-4:
             return None
-        hx = float(origin_x) + distance * math.cos(yaw) * math.cos(pitch)
-        hy = float(origin_y) + distance * math.sin(pitch)
-        hz = float(origin_z) + distance * (-math.sin(yaw)) * math.cos(pitch)
+        hx = float(origin_x) + distance * dx / length
+        hy = float(origin_y) + distance * dy / length
+        hz = float(origin_z) + distance * dz / length
         # map frame: map_x = hx, map_y = -hz, map_z = hy  (map_y = -Habitat_Z)
         return (hx, -hz, hy)
 
     @staticmethod
     def raycast_hit_distance(results: Any, origin: Any = None) -> float | None:
-        """First hit range from Habitat ``RaycastResults`` (``has_hits()`` / ``hits``)."""
+        """Closest hit range from Habitat ``RaycastResults``.
+
+        Bullet may return multiple intersections; always take the nearest so
+        rays stop at the first wall instead of a far surface behind it.
+        """
         if results is None:
             return None
         checker = getattr(results, "has_hits", None)
@@ -604,30 +610,39 @@ class Simulator:
                 return None
         elif checker is False:
             return None
-        target: Any = results
+
+        candidates: list[Any] = []
         hits = getattr(results, "hits", None)
         if hits:
             try:
-                target = hits[0]
-            except (TypeError, IndexError):
-                target = results
-        if hasattr(target, "ray_distance"):
-            try:
-                distance = float(target.ray_distance)
-            except (TypeError, ValueError):
-                distance = None
-            else:
-                if math.isfinite(distance):
-                    return distance
-        point = getattr(target, "point", None)
-        if point is None or origin is None:
-            return None
-        try:
-            delta = point - origin
-            distance = float(math.sqrt(delta.dot(delta)))
-        except Exception:
-            return None
-        return distance if math.isfinite(distance) else None
+                candidates.extend(list(hits))
+            except TypeError:
+                candidates.append(hits)
+        if not candidates:
+            candidates.append(results)
+
+        best: float | None = None
+        for target in candidates:
+            distance = None
+            if hasattr(target, "ray_distance"):
+                try:
+                    distance = float(target.ray_distance)
+                except (TypeError, ValueError):
+                    distance = None
+            if distance is None or not math.isfinite(distance):
+                point = getattr(target, "point", None)
+                if point is None or origin is None:
+                    continue
+                try:
+                    delta = point - origin
+                    distance = float(math.sqrt(delta.dot(delta)))
+                except Exception:
+                    continue
+            if not math.isfinite(distance) or distance <= 1e-4:
+                continue
+            if best is None or distance < best:
+                best = distance
+        return best
 
     def world_cloud(
         self,
@@ -676,17 +691,23 @@ class Simulator:
             Distance in meters, or ``None`` on miss / beyond ``range_max``.
         """
         ox, oy, oz = self.laser_origin()  # Habitat: (x, floor_y, -map_y)
-        hit = self.cast_from_origin(
-            ox, oy, oz, self.yaw + yaw_offset, pitch, range_max
-        )
-        if hit is None:
-            return None
-        # hit is in map frame: (map_x, map_y, map_z); laser_origin is Habitat frame.
-        # Convert laser_origin to map frame for distance calc: map_x=ox, map_y=-oz, map_z=oy
-        dx = hit[0] - ox
-        dy = hit[1] - (-oz)
-        dz = hit[2] - oy
-        return float(math.sqrt(dx * dx + dy * dy + dz * dz))
+        # Small vertical fan approximates a physical 2D beam thickness and
+        # avoids missing thin wall collision at a single exact height.
+        best: float | None = None
+        for height_offset in (0.0, 0.04, -0.04, 0.08):
+            hit = self.cast_from_origin(
+                ox, oy + height_offset, oz, self.yaw + yaw_offset, pitch, range_max
+            )
+            if hit is None:
+                continue
+            # hit is map frame; laser_origin is Habitat → map: (ox, -oz, oy)
+            dx = hit[0] - ox
+            dy = hit[1] - (-oz)
+            dz = hit[2] - (oy + height_offset)
+            distance = float(math.sqrt(dx * dx + dy * dy + dz * dz))
+            if best is None or distance < best:
+                best = distance
+        return best
 
     def laser_ranges(
         self,
@@ -714,6 +735,32 @@ class Simulator:
                 float(distance) if distance is not None else float("inf")
             )
         return ranges
+
+    def clip_laser_to_occupancy(
+        self, ranges: np.ndarray, angles: np.ndarray
+    ) -> np.ndarray:
+        """Stop beams at the first occupied cell of the published map grid."""
+        mapper = getattr(self, "map_builder", None)
+        if mapper is None:
+            return ranges
+        clip = getattr(mapper, "clip_laser_ranges", None)
+        if not callable(clip):
+            return ranges
+        finite = np.asarray(ranges, dtype=np.float64)
+        finite = finite[np.isfinite(finite)]
+        range_max = float(np.max(finite)) if finite.size else 30.0
+        if range_max <= 0.0:
+            range_max = 30.0
+        # Keep a little headroom above the farthest Habitat hit.
+        range_max = max(range_max, 30.0)
+        return clip(
+            ranges,
+            angles,
+            float(self.x),
+            float(self.y),
+            float(self.yaw),
+            float(range_max),
+        )
 
     @staticmethod
     def spherical_point(

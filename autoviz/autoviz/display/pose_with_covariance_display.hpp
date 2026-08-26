@@ -30,6 +30,7 @@ class PoseWithCovarianceDisplay
   void processMessage(
       const automsgs::msgs::geometry_msgs::PoseWithCovarianceStamped& message)
       override;
+  void clearReceivedData() override;
   void onDraw(rendering::SceneOverlay& scene) override;
 
  private:

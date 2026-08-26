@@ -266,6 +266,11 @@ class Config:
         if not isinstance(habitat, Mapping):
             raise ValueError("habitat must be a mapping")
 
+        mode = habitat.get("mode", "nav")
+        if mode is not None:
+            if not isinstance(mode, str) or str(mode).strip().lower() not in ("slam", "nav"):
+                raise ValueError("habitat.mode must be 'slam' or 'nav'")
+
         robot = habitat.get("robot")
         if not isinstance(robot, Mapping):
             raise ValueError("habitat.robot must be a mapping")
@@ -303,7 +308,15 @@ class Config:
             truth["channel"],
         ]
         mapping = habitat.get("map")
-        if isinstance(mapping, Mapping) and mapping.get("enabled", False):
+        slam = str(habitat.get("mode", "nav")).strip().lower() == "slam"
+        map_publish = (
+            False
+            if slam
+            else bool(mapping.get("publish", True))
+            if isinstance(mapping, Mapping)
+            else True
+        )
+        if isinstance(mapping, Mapping) and mapping.get("enabled", False) and map_publish:
             ply = mapping.get("ply") or {}
             grid = mapping.get("grid") or {}
             ply_channel = str(ply.get("channel") or "").strip()
@@ -372,6 +385,8 @@ class Config:
             raise ValueError("habitat.map must be a mapping")
         if "enabled" in block and not isinstance(block["enabled"], bool):
             raise ValueError("habitat.map.enabled must be a bool")
+        if "publish" in block and not isinstance(block["publish"], bool):
+            raise ValueError("habitat.map.publish must be a bool")
         if not block.get("enabled", False):
             return
         if not isinstance(block.get("frame"), str) or not str(block["frame"]).strip():
@@ -383,15 +398,18 @@ class Config:
         if not isinstance(grid, Mapping):
             raise ValueError("habitat.map.grid must be a mapping")
         file_path = str(ply.get("file") or "").strip()
+        source_path = str(ply.get("source") or "").strip()
         channel = str(ply.get("channel") or "").strip()
-        if not file_path and not channel:
-            raise ValueError("habitat.map.ply requires file and/or channel")
-        if not isinstance(grid.get("channel"), str) or not str(grid["channel"]).strip():
+        publish = bool(block.get("publish", True))
+        if publish and not file_path and not source_path and not channel:
+            raise ValueError("habitat.map.ply requires file, source, and/or channel")
+        if publish and (
+            not isinstance(grid.get("channel"), str) or not str(grid["channel"]).strip()
+        ):
             raise ValueError("habitat.map.grid.channel must be a non-empty string")
         # horizontal/vertical/range_max are only required for Habitat ray-cast mode.
         # When ply.source is set the cloud is loaded from an external file and these
         # fields are not needed.
-        source_path = str(ply.get("source") or "").strip()
         if not source_path:
             horizontal = ply.get("horizontal")
             vertical = ply.get("vertical")

@@ -48,6 +48,10 @@ void StrataBuildingDisplay::processMessage(
   }
 }
 
+void StrataBuildingDisplay::clearReceivedData() {
+  markers_.clear();
+}
+
 void StrataBuildingDisplay::onDraw(rendering::SceneOverlay& scene) {
   drawStoredMarkers(scene, context_, properties(), markers_, name());
 }

@@ -266,6 +266,16 @@ void RobotModelDisplay::onDisable() {
   description_reader_.reset();
 }
 
+void RobotModelDisplay::reset() {
+  Display::reset();
+  joint_queue_.clear();
+  description_queue_.clear();
+  joint_positions_.clear();
+  if (context_ != nullptr && context_->request_redraw) {
+    context_->request_redraw();
+  }
+}
+
 void RobotModelDisplay::onUpdate() {
   while (auto payload = description_queue_.pop()) {
     automsgs::msgs::std_msgs::String message;

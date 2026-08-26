@@ -38,6 +38,7 @@ class InteractiveMarkerDisplay
   void processMessage(
       const automsgs::msgs::visualization_msgs::InteractiveMarkerUpdate&
           message) override;
+  void clearReceivedData() override;
   void onDraw(rendering::SceneOverlay& scene) override;
 
  private:

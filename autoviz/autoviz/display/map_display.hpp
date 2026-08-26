@@ -37,6 +37,7 @@ class MapDisplay
       const automsgs::msgs::map_msgs::OccupancyGrid& message)
       override;
   void onDraw(rendering::SceneOverlay& scene) override;
+  void clearReceivedData() override;
 
  private:
   void rebuildGeometry();

@@ -28,6 +28,7 @@ class LaserScanDisplay
   void processMessage(
       const automsgs::msgs::sensor_msgs::LaserScan& message) override;
   void onDraw(rendering::SceneOverlay& scene) override;
+  void clearReceivedData() override;
 
  private:
   struct ScanPoint {

@@ -80,6 +80,10 @@ void StrataRoadGraphDisplay::processMessage(
   }
 }
 
+void StrataRoadGraphDisplay::clearReceivedData() {
+  edges_.clear();
+}
+
 void StrataRoadGraphDisplay::onDraw(rendering::SceneOverlay& scene) {
   node_color_ = common::ParseColorProperty(propertyValue("node_color", "51;230;77"),
                                            QColor(51, 230, 77));

@@ -60,6 +60,10 @@ void PolygonDisplay::processMessage(
   }
 }
 
+void PolygonDisplay::clearReceivedData() {
+  points_.clear();
+}
+
 void PolygonDisplay::onDraw(rendering::SceneOverlay& scene) {
   if (points_.size() < 2) {
     return;

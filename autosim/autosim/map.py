@@ -392,3 +392,73 @@ class Map:
         # Unknown cells → conservative occupied.
         grid[grid < 0] = 100
         return grid, resolution, ox, oy, width, height
+
+    @staticmethod
+    def occupancy_range(
+        origin_x: float,
+        origin_y: float,
+        yaw: float,
+        grid: np.ndarray,
+        resolution: float,
+        grid_origin_x: float,
+        grid_origin_y: float,
+        range_max: float,
+        occupied_threshold: int = 50,
+    ) -> float | None:
+        """First occupied-cell distance along a map-frame ray (Bresenham-like).
+
+        Ensures 2D lidar cannot report hits behind walls that appear on the
+        published occupancy grid (Habitat mesh holes / missing collision).
+        """
+        cells = np.asarray(grid)
+        if cells.ndim != 2 or cells.size == 0 or resolution <= 0.0:
+            return None
+        height, width = cells.shape
+        step = max(float(resolution) * 0.5, 1e-3)
+        cos_y = math.cos(float(yaw))
+        sin_y = math.sin(float(yaw))
+        dist = 0.0
+        while dist < float(range_max):
+            dist += step
+            x = float(origin_x) + dist * cos_y
+            y = float(origin_y) + dist * sin_y
+            col = int(math.floor((x - float(grid_origin_x)) / resolution))
+            row = int(math.floor((y - float(grid_origin_y)) / resolution))
+            if row < 0 or col < 0 or row >= height or col >= width:
+                return None
+            if int(cells[row, col]) >= int(occupied_threshold):
+                return float(dist)
+        return None
+
+    def clip_laser_ranges(
+        self,
+        ranges: np.ndarray,
+        angles: np.ndarray,
+        origin_x: float,
+        origin_y: float,
+        yaw: float,
+        range_max: float,
+    ) -> np.ndarray:
+        """Clip Habitat ranges so beams stop at the first occupied grid cell."""
+        cached = self.cached_grid
+        if cached is None:
+            return ranges
+        grid, resolution, ox, oy, _, _ = cached
+        out = np.asarray(ranges, dtype=np.float32).copy()
+        for index, angle in enumerate(np.asarray(angles, dtype=np.float64).reshape(-1)):
+            occupied = self.occupancy_range(
+                origin_x,
+                origin_y,
+                float(yaw) + float(angle),
+                grid,
+                resolution,
+                ox,
+                oy,
+                float(range_max),
+            )
+            if occupied is None:
+                continue
+            current = float(out[index])
+            if not math.isfinite(current) or occupied < current:
+                out[index] = float(occupied)
+        return out

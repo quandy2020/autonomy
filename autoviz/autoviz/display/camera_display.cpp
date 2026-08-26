@@ -70,6 +70,20 @@ void CameraDisplay::onDisable() {
   camera_info_reader_.reset();
 }
 
+void CameraDisplay::reset() {
+  Display::reset();
+  image_queue_.clear();
+  camera_info_queue_.clear();
+  image_ = QImage();
+  have_camera_info_ = false;
+  if (context_ != nullptr && context_->image_updated) {
+    context_->image_updated(name(), image_);
+  }
+  if (context_ != nullptr && context_->request_redraw) {
+    context_->request_redraw();
+  }
+}
+
 void CameraDisplay::onUpdate() {
   while (auto payload = camera_info_queue_.pop()) {
     automsgs::msgs::sensor_msgs::CameraInfo info;

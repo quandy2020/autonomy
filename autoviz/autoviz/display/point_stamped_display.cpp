@@ -50,6 +50,11 @@ void PointStampedDisplay::processMessage(
   }
 }
 
+void PointStampedDisplay::clearReceivedData() {
+  have_point_ = false;
+  position_ = QVector3D();
+}
+
 void PointStampedDisplay::onDraw(rendering::SceneOverlay& scene) {
   if (!have_point_) {
     return;

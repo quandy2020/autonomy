@@ -3198,6 +3198,17 @@ void VisualizationFrame::onReset() {
   if (manager_ != nullptr) {
     manager_->resetTime();
   }
+#ifdef AUTOVIZ_USE_OGRE
+  // Persistent Ogre geometry is not rebuilt every frame; clear hosts now so
+  // emptied Displays do not leave stale meshes/point clouds on screen.
+  forEachViewportPanel([](ViewportPanelEntry& entry) {
+    if (entry.ogre_viewport != nullptr) {
+      if (auto* host = entry.ogre_viewport->ogreSceneHost()) {
+        host->clear();
+      }
+    }
+  });
+#endif
   if (time_panel_ != nullptr) {
     time_panel_->syncAfterReset();
   }

@@ -27,6 +27,7 @@ class OdometryDisplay
   void processMessage(
       const automsgs::msgs::nav_msgs::Odometry& message) override;
   void onDraw(rendering::SceneOverlay& scene) override;
+  void clearReceivedData() override;
 
  private:
   struct OdometryVisual {

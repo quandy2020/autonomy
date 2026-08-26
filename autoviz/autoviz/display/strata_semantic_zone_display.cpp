@@ -238,6 +238,10 @@ void StrataSemanticZoneDisplay::DrawZoneOutline(rendering::SceneOverlay& scene,
   scene.addLine(zone.polygon.back(), zone.polygon.front(), zone.outline_color);
 }
 
+void StrataSemanticZoneDisplay::clearReceivedData() {
+  zones_.clear();
+}
+
 void StrataSemanticZoneDisplay::onDraw(rendering::SceneOverlay& scene) {
   const bool show_fill =
       common::ParseBoolProperty(propertyValue("show_fill", "true"), true);

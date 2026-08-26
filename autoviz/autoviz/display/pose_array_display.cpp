@@ -82,6 +82,10 @@ void PoseArrayDisplay::processMessage(
   }
 }
 
+void PoseArrayDisplay::clearReceivedData() {
+  poses_.clear();
+}
+
 void PoseArrayDisplay::onDraw(rendering::SceneOverlay& scene) {
   const QColor color =
       common::ParseColorProperty(propertyValue("color", "255;120;80"));

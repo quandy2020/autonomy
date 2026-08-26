@@ -153,6 +153,16 @@ class Runner:
         self.map_builder: Optional[Map] = None
         if self.map_cfg.get("enabled", False):
             self.map_builder = Map(self.map_cfg)
+            # Let 2D lidar clip Habitat hits against the published occupancy grid.
+            self.simulator.map_builder = self.map_builder
+            try:
+                origin = (float(self.spawn[0]), float(self.spawn[1]))
+                self.map_builder.sample(self.simulator, origin)
+            except Exception as exc:
+                warnings.warn(
+                    f"autosim occupancy warmup failed (laser wall-clip disabled): {exc!r}",
+                    stacklevel=2,
+                )
         # Worker for protobuf encoding + bridge publish only.
         # All Habitat GL/ray-cast calls remain on the main thread.
         self._sensor_worker = SensorWorker()
@@ -193,10 +203,25 @@ class Runner:
         self.odom = sensors["odom"]
         self.spawn = settings["habitat"]["spawn"]
         self.map_cfg = settings["habitat"].get("map") or {"enabled": False}
-        self.tf_cfg = self.robot_cfg.get("tf") or {"enabled": False}
+        self.tf_cfg = dict(self.robot_cfg.get("tf") or {"enabled": False})
         self.clock_cfg = self.robot_cfg.get("clock") or {"enabled": False}
         self.footprint = self.robot_cfg.get("footprint") or {"enabled": False}
         self.tf_static_elapsed = TF_STATIC_REPUBLISH_SEC
+        # slam: Cartographer owns map→odom and /map; autosim publishes odom→base_link.
+        # nav:  identity map→odom→base_link (+ URDF mounts); may publish GT /map.
+        mode = str(settings["habitat"].get("mode", "nav")).strip().lower()
+        self.mode = mode if mode in ("slam", "nav") else "nav"
+        self.odom = dict(self.odom)
+        self.odom["child_frame"] = "base_link"
+        if isinstance(self.footprint, dict) and self.footprint.get("enabled", False):
+            self.footprint = dict(self.footprint)
+            self.footprint["frame"] = "base_link"
+        if self.mode == "slam":
+            self.tf_cfg["publish_map_odom"] = False
+            self.map_publish = False
+        else:
+            self.tf_cfg["publish_map_odom"] = True
+            self.map_publish = bool(self.map_cfg.get("publish", True))
 
     def assemble_plant(self, simulator: Optional[Simulator]) -> None:
         """Construct robot, simulator, and sensor sampler.
@@ -263,7 +288,7 @@ class Runner:
             types["gt_pose"] = PoseStamped
         if self.footprint.get("enabled", False):
             types["footprint"] = PolygonStamped
-        if self.map_cfg.get("enabled", False):
+        if self.map_cfg.get("enabled", False) and self.map_publish:
             if str((self.map_cfg.get("ply") or {}).get("channel") or "").strip():
                 types["map_cloud"] = PointCloud2
             types["map_grid"] = OccupancyGrid
@@ -439,7 +464,11 @@ class Runner:
         decode waits behind a PointCloud2 rebuild). Sample once, then only
         republish the small OccupancyGrid for late subscribers.
         """
-        if self.map_builder is None or not self.map_cfg.get("enabled", False):
+        if (
+            self.map_builder is None
+            or not self.map_cfg.get("enabled", False)
+            or not self.map_publish
+        ):
             return
         rate = float(self.map_cfg.get("rate_hz", 0.0))
         first = not self.map_published
@@ -553,12 +582,12 @@ class Runner:
         self.tf_static_elapsed += dt
 
     def odom_child_frame(self) -> str:
-        """Dynamic child frame used by both ``/odom`` and ``/tf``."""
-        urdf = getattr(self.simulator, "urdf", None)
-        configured = str(self.odom.get("child_frame", "base_link"))
-        if urdf is None:
-            return configured
-        return urdf.odom_child_frame(configured)
+        """Dynamic child frame used by both ``/odom`` and ``/tf``.
+
+        Both ``slam`` and ``nav`` use ``base_link`` so the tree is
+        ``(map→)odom→base_link`` without inserting ``base_footprint``.
+        """
+        return self.body_frame()
 
     def body_frame(self) -> str:
         """Robot body frame that owns sensor mounts."""
@@ -705,7 +734,11 @@ class Runner:
         Args:
             stamp: Message timestamp.
         """
-        if self.map_builder is None or not self.map_cfg.get("enabled", False):
+        if (
+            self.map_builder is None
+            or not self.map_cfg.get("enabled", False)
+            or not self.map_publish
+        ):
             return
         rate = float(self.map_cfg.get("rate_hz", 0.0))
         if rate <= 0.0:
@@ -795,12 +828,12 @@ class Runner:
         )
 
     def publish_tf(self, stamp: Tuple[int, int]) -> None:
-        """Publish TF aligned with ``autonomy_ros`` ``habitat/odom.py``.
+        """Publish robot TF for Autoviz / Cartographer / planning.
 
-        ``map→odom`` is a static identity (shared origin). ``odom→base_*`` uses
-        ground-truth planar pose so Autoviz heading matches the Habitat camera.
-        URDF sensor mounts ride on ``/tf`` every tick and ``/tf_static`` at low
-        rate for late joiners (autolink is not latched).
+        - ``nav``: ``map→odom`` corrects wheel drift so ``map→base`` = GT (laser
+          rays are cast from GT; identity ``map→odom`` misplaces ``/scan`` on the
+          GT map). ``odom→base_link`` stays wheel odometry.
+        - ``slam``: only ``odom→base_link`` (+ URDF); Cartographer owns ``map→odom``.
         """
         if not self.tf_cfg.get("enabled", False):
             return
@@ -808,18 +841,25 @@ class Runner:
         odom_frame = self.odom["frame"]
         odom_child = self.odom_child_frame()
         body_frame = self.body_frame()
-        gx, gy, gyaw = self.robot.pose()
+        # Must match /odom (wheel pose), not ground truth — Cartographer looks up
+        # odom→base from TF while integrating /odom; GT vs wheel mismatch makes
+        # map→odom jump, especially during pure rotation.
+        ox, oy, oyaw = self.robot.odometry_pose()
         base_z = float(self.robot_cfg.get("base_link_height", 0.0))
-        # Include map→odom on every /tf tick: Autolink is not latched, so late
-        # joiners (planning/control) otherwise only see map on 1 Hz /tf_static.
+        publish_map_odom = bool(self.tf_cfg.get("publish_map_odom", True))
+        # Drift-corrected map→odom so Autoviz LaserScan (GT rays) lands on GT map.
+        mx, my, myaw = self.robot.map_to_odom(
+            self.robot.pose(), self.robot.odometry_pose()
+        )
         map_odom = Messages.encode_transform(
-            stamp, map_frame, odom_frame, (0.0, 0.0, 0.0), 0.0
+            stamp, map_frame, odom_frame, (mx, my, 0.0), myaw
         )
         dynamic = [
-            map_odom,
-            Messages.encode_transform(stamp, odom_frame, odom_child, (gx, gy, base_z), gyaw),
+            Messages.encode_transform(stamp, odom_frame, odom_child, (ox, oy, base_z), oyaw),
         ]
-        static_map_odom = [map_odom]
+        if publish_map_odom:
+            dynamic.insert(0, map_odom)
+        # map→odom is dynamic (tracks odom drift); never latch it on /tf_static.
         mounts = []
         urdf = getattr(self.simulator, "urdf", None)
         if urdf is not None:
@@ -832,6 +872,23 @@ class Runner:
                         parent,
                         child,
                         xyz,
+                        0.0,
+                    )
+                )
+            # odom→base_link skips URDF base_footprint→base_link; publish the
+            # inverse so footprint / Autoviz still see base_footprint.
+            if (
+                odom_child == "base_link"
+                and "base_link" in urdf.parents
+                and urdf.parents["base_link"][0] == "base_footprint"
+            ):
+                fx, fy, fz = urdf.parents["base_link"][1]
+                mounts.append(
+                    Messages.encode_transform(
+                        stamp,
+                        "base_link",
+                        "base_footprint",
+                        (-float(fx), -float(fy), -float(fz)),
                         0.0,
                     )
                 )
@@ -851,7 +908,7 @@ class Runner:
         self.bridge.publish("tf", Messages.encode_tf_message(dynamic + mounts))
         if self.tf_static_elapsed >= TF_STATIC_REPUBLISH_SEC:
             self.bridge.publish(
-                "tf_static", Messages.encode_tf_message(static_map_odom + mounts)
+                "tf_static", Messages.encode_tf_message(mounts)
             )
             self.tf_static_elapsed = 0.0
 

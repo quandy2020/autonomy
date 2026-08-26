@@ -221,10 +221,7 @@ void TimePanel::onResetClicked() {
   if (pause_button_ != nullptr && pause_button_->isChecked()) {
     pause_button_->setChecked(false);
   }
-  if (manager_ != nullptr) {
-    manager_->resetTime();
-  }
-  refreshTimes();
+  // VisualizationFrame::onReset performs resetTime + viewport/Ogre cleanup.
   emit resetRequested();
 }
 

@@ -331,6 +331,13 @@ void MapDisplay::processMessage(
   rebuildGeometry();
 }
 
+void MapDisplay::clearReceivedData() {
+  has_full_map_ = false;
+  current_message_.Clear();
+  update_queue_.clear();
+  clearGeometry();
+}
+
 void MapDisplay::onDraw(rendering::SceneOverlay& scene) {
   if (!has_geometry_ || image_.isNull()) {
     return;

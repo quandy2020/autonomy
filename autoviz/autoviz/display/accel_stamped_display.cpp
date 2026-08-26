@@ -68,6 +68,10 @@ void AccelStampedDisplay::processMessage(
   }
 }
 
+void AccelStampedDisplay::clearReceivedData() {
+  have_accel_ = false;
+}
+
 void AccelStampedDisplay::onDraw(rendering::SceneOverlay& scene) {
   if (!have_accel_) {
     return;

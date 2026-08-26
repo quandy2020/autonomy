@@ -26,6 +26,7 @@ class StrataCanvasLabelDisplay
  protected:
   void processMessage(
       const automsgs::msgs::strata_msgs::CanvasLabelArray& message) override;
+  void clearReceivedData() override;
   void onDraw(rendering::SceneOverlay& scene) override;
 
  private:

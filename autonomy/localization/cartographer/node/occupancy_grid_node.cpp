@@ -84,7 +84,7 @@ void OccupancyGridNode::HandleSubmapList(
             continue;
         }
         SubmapSlice& submap_slice = submap_slices_[id];
-        *submap_slice.mutable_pose() = ToRigid3d(FromProtoPose(submap_msg.pose()));
+        submap_slice.pose = ToRigid3d(FromProtoPose(submap_msg.pose()));
         submap_slice.metadata_version = submap_msg.submap_version();
         if (submap_slice.surface != nullptr &&
             submap_slice.version == submap_msg.submap_version()) {
@@ -106,7 +106,7 @@ void OccupancyGridNode::HandleSubmapList(
     }
 
     if (msg->has_header()) {
-        last_timestamp_ = msg->header(.stamp());
+        last_timestamp_ = msg->header().stamp();
         last_frame_id_ = msg->header().frame_id();
     }
 }

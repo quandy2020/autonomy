@@ -65,6 +65,12 @@ find_package(LuaGoogle REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(glog REQUIRED)
 find_package(OSQP REQUIRED)
+# Autoviz needs Qt6 versionless Qt::* targets. Find Qt6 before OpenCV/PCL so
+# their Qt5 transitive deps (highgui / VTK GUISupportQt) do not claim Qt::Core
+# first and break Qt6CoreVersionlessTargets.
+if(BUILD_AUTOVIZ)
+  find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets OpenGLWidgets OpenGL Xml Svg Network)
+endif()
 find_package(OpenCV REQUIRED)
 include(EnsureProtobuf319)
 find_package(yaml-cpp REQUIRED)
@@ -188,10 +194,8 @@ if(BUILD_GRPC)
   google_binary(autonomy_bridge
     SRCS autonomy/bridge/bridge_main.cpp)
 endif()
-# Temporarily disabled: incomplete cartographer node migration
-# (node sources excluded from ALL_LIBRARY_SRCS in autonomy_sources.cmake).
-# google_binary(autonomy.cartographer
-#   SRCS autonomy/localization/localization_main.cpp)
+google_binary(autonomy.cartographer
+  SRCS autonomy/localization/localization_main.cpp)
 google_binary(autonomy.planning
   SRCS autonomy/planning/planning_main.cpp)
 google_binary(autonomy.control

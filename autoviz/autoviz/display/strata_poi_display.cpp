@@ -68,6 +68,10 @@ void StrataPoiDisplay::processMessage(
   }
 }
 
+void StrataPoiDisplay::clearReceivedData() {
+  pois_.clear();
+}
+
 void StrataPoiDisplay::onDraw(rendering::SceneOverlay& scene) {
   const QColor normal_color = common::ParseColorProperty(
       propertyValue("color", "51;153;255"), QColor(51, 153, 255));

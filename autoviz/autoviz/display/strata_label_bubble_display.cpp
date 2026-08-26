@@ -89,6 +89,10 @@ void StrataLabelBubbleDisplay::processMessage(
   }
 }
 
+void StrataLabelBubbleDisplay::clearReceivedData() {
+  bubbles_.clear();
+}
+
 void StrataLabelBubbleDisplay::onDraw(rendering::SceneOverlay& scene) {
   const QColor text_color = common::ParseColorProperty(
       propertyValue("text_color", "30;41;59"), QColor(30, 41, 59));

@@ -119,8 +119,12 @@ class Robot:
         if self.odometry_noise > 0.0 and abs(ds) + abs(dth) > 0.0:
             path = abs(ds) + 0.5 * self.wheel_separation * abs(dth)
             sigma = self.odometry_noise * math.sqrt(max(path, 1e-9))
-            ds += float(self.rng.normal(0.0, sigma))
-            dth += float(self.rng.normal(0.0, sigma / self.wheel_separation))
+            # Pure rotation must not inject fake translation noise into Δs —
+            # that makes Cartographer map→odom jump while spinning in place.
+            if abs(ds) > 1e-9:
+                ds += float(self.rng.normal(0.0, sigma))
+            if abs(dth) > 1e-9:
+                dth += float(self.rng.normal(0.0, sigma / self.wheel_separation))
         self.odometry_x += ds * math.cos(self.odometry_yaw)
         self.odometry_y += ds * math.sin(self.odometry_yaw)
         self.odometry_yaw = self.wrap_yaw(self.odometry_yaw + dth)

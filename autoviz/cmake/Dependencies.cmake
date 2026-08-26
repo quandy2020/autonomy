@@ -38,6 +38,8 @@ if(AUTOVIZ_STANDALONE)
   find_package(gflags QUIET)
 endif()
 
+# Prefer Qt6::* (and Qt::* aliases claimed by an early find_package in the
+# autonomy super-project). Re-running find_package is safe once Qt6 owns them.
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets OpenGLWidgets OpenGL Xml Svg Network)
 
 # Qt Multimedia is optional; missing package disables Audio panel playback only.

@@ -109,6 +109,8 @@ void StrataRobot3DDisplay::processMessage(
   }
 }
 
+void StrataRobot3DDisplay::clearReceivedData() { layers_.clear(); }
+
 void StrataRobot3DDisplay::onDraw(rendering::SceneOverlay& scene) {
   const float axis_len =
       common::ParseFloatProperty(propertyValue("axis_length", "0.5"), 0.5f);

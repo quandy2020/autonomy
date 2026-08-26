@@ -25,6 +25,7 @@ class TwistStampedDisplay
  protected:
   void processMessage(
       const automsgs::msgs::geometry_msgs::TwistStamped& message) override;
+  void clearReceivedData() override;
   void onDraw(rendering::SceneOverlay& scene) override;
 
  private:

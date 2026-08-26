@@ -26,6 +26,7 @@ class StrataLabelBubbleDisplay
  protected:
   void processMessage(
       const automsgs::msgs::strata_msgs::LabelBubbleArray& message) override;
+  void clearReceivedData() override;
   void onDraw(rendering::SceneOverlay& scene) override;
 
  private:

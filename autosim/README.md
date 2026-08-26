@@ -60,15 +60,16 @@ cd src/autonomy/autosim
 
 键盘遥控与 `autonomy_teleop` 相同：`w`/`x` 增减线速度，`a`/`d` 增减角速度，`space`/`s` 停车；速度会保持直到下一次按键。需在交互式 TTY 中运行（`docker exec -it SpaceHero /bin/bash`），并点击该终端窗口取得焦点。
 
-`habitat.path` 为空时使用 Habitat 空舞台（仍需 `habitat-sim`）。真值地图默认关闭；加载真实场景后再设 `habitat.map.enabled: true`。  
+`habitat.path` 为空时使用 Habitat 空舞台（仍需 `habitat-sim`）。默认 `habitat.mode: nav`：发漂移修正的 `map→odom→base_link`（激光按真值投射，与 GT `/map` 对齐）与 GT `/map`。SLAM 联调用 `mode: slam`（不发 `map→odom`/`/map`，仅 `odom→base_link`）。
 测试需要已安装的 `automsgs` Python 绑定（仓库内不再附带 `stubs/`）。
 
 ## 配置要点
 
 - 噪声字段为高斯 σ；里程计为**积分噪声**（非每拍贴 GT）。
-- `robot.tf` → `/tf` + `/tf_static`（默认 `map→odom→base_footprint→base_link`，再挂 URDF 传感器外参）。
+- `habitat.mode`：`nav`（默认）发漂移修正的 `map→odom→base_link`（LaserScan 与 GT 地图对齐）；`slam` 仅发 `odom→base_link`（Cartographer 负责 `map→odom`/`/map`）。
+- `robot.tf` → `/tf` + `/tf_static`（主链见上；另附 URDF 传感器外参）。
 - `robot.clock` → `/clock`（`builtin_interfaces/Time`）。
-- `map.ply`：`file` 与/或 `channel` 至少其一；`map.grid` → `/map` OccupancyGrid。
+- `map.ply`：`source`/`file` 与/或 `channel`；`map.publish: true` 时 `map.grid` → `/map` OccupancyGrid。
 
 | 方向 | 通道（默认） | Proto |
 |------|------|-------|
@@ -96,7 +97,7 @@ cd autosim && pytest tests -v
 
 ## Autoviz 点云联调
 
-1. 在 `config/default.yaml`（或副本）中启用地图点云，例如 `habitat.map.enabled: true`、`map.ply.channel: /map_points`。
+1. 在 `config/default.yaml`（或副本）中设 `habitat.mode: nav`、`map.enabled: true`、`map.publish: true`，例如 `map.ply.channel: /map_points`。
 2. 启动仿真（需已安装 `habitat-sim`）：
 
 ```bash

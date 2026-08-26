@@ -22,5 +22,12 @@ void ImageDisplay::processMessage(
   }
 }
 
+void ImageDisplay::clearReceivedData() {
+  image_ = QImage();
+  if (context_ != nullptr && context_->image_updated) {
+    context_->image_updated(name(), image_);
+  }
+}
+
 }  // namespace display
 }  // namespace autoviz

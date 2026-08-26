@@ -28,6 +28,7 @@ class GridCellsDisplay
   void processMessage(const automsgs::msgs::map_msgs::GridCells& message)
       override;
   void onDraw(rendering::SceneOverlay& scene) override;
+  void clearReceivedData() override;
 
  private:
   struct Cell {

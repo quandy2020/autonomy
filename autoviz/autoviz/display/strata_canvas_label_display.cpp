@@ -93,6 +93,10 @@ void StrataCanvasLabelDisplay::processMessage(
   }
 }
 
+void StrataCanvasLabelDisplay::clearReceivedData() {
+  labels_.clear();
+}
+
 void StrataCanvasLabelDisplay::onDraw(rendering::SceneOverlay& scene) {
   const float label_height =
       common::ParseFloatProperty(propertyValue("label_height", "0.1"), 0.1f);

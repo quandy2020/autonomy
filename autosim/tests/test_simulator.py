@@ -239,6 +239,20 @@ def test_raycast_hit_distance_reads_habitat_hits_list():
     assert Simulator.raycast_hit_distance(Results()) == 4.25
 
 
+def test_raycast_hit_distance_picks_closest_hit():
+    class Hit:
+        def __init__(self, distance):
+            self.ray_distance = distance
+
+    class Results:
+        hits = [Hit(8.0), Hit(1.5), Hit(3.0)]
+
+        def has_hits(self):
+            return True
+
+    assert Simulator.raycast_hit_distance(Results()) == 1.5
+
+
 def test_raycast_hit_distance_miss_on_has_hits_false():
     class Results:
         hits = []

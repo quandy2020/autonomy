@@ -23,6 +23,7 @@ class ImuDisplay : public ChannelDisplay<automsgs::msgs::sensor_msgs::Imu> {
 
  protected:
   void processMessage(const automsgs::msgs::sensor_msgs::Imu& message) override;
+  void clearReceivedData() override;
   void onDraw(rendering::SceneOverlay& scene) override;
 
  private:

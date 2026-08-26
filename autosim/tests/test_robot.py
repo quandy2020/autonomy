@@ -71,6 +71,27 @@ def test_odometry_noise_drifts_from_gt():
     assert abs(ox - gx) + abs(oy - gy) > 1e-3
 
 
+def test_pure_rotation_odometry_keeps_xy():
+    """Spin-in-place must not invent translational odometry noise."""
+    robot = Robot(
+        max_linear=0.5,
+        max_angular=1.0,
+        watchdog_sec=10.0,
+        odometry_noise=0.2,
+        seed=7,
+    )
+    robot.set_twist(0.0, 1.0, t=0.0)
+    for step in range(50):
+        robot.step(dt=0.05, t=0.05 * (step + 1))
+    ox, oy, oyaw = robot.odometry_pose()
+    gx, gy, _ = robot.pose()
+    assert abs(ox) < 1e-9
+    assert abs(oy) < 1e-9
+    assert abs(gx) < 1e-9
+    assert abs(gy) < 1e-9
+    assert abs(oyaw) > 0.1
+
+
 def test_inertial_finite_difference():
     robot = Robot(max_linear=0.5, max_angular=1.0, watchdog_sec=0.5)
     robot.reset_inertial(yaw=0.0, t=0.0, speed=1.0)

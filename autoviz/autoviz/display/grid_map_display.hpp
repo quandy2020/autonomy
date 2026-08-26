@@ -42,6 +42,7 @@ class GridMapDisplay
       override;
   void onDraw(rendering::SceneOverlay& scene) override;
   void onPropertyChanged(const std::string& key) override;
+  void clearReceivedData() override;
 
  private:
   struct LayerData {

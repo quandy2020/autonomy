@@ -11,8 +11,10 @@
 #include "autoviz/common/display_context.hpp"
 #include "autolink/service_discovery/topology_manager.hpp"
 #include "autoviz/integration/channel_reader_registry.hpp"
+#include "autoviz/integration/channel_stats_registry.hpp"
 #include "autoviz/integration/service_client_registry.hpp"
 #include "autoviz/integration/channel_writer_registry.hpp"
+#include "autoviz/integration/message_queue.hpp"
 #include "autoviz/ui/log/log_hub.hpp"
 #include "autoviz/display/display.hpp"
 #include "autoviz/display/display_group.hpp"
@@ -867,6 +869,10 @@ void VisualizationManager::setTimeSyncSource(const std::string& source) {
 }
 
 void VisualizationManager::resetTime() {
+  // Drop every pending channel payload (Displays + Image/Plot/Raw panels).
+  integration::MessageQueue::clearAllPending();
+  integration::ChannelStatsRegistry::instance().reset();
+
   wall_start_ = std::chrono::steady_clock::now();
   time_paused_ = false;
   paused_sim_sec_ = 0.0;
@@ -879,6 +885,10 @@ void VisualizationManager::resetTime() {
     if (display != nullptr) {
       display->reset();
     }
+  }
+  scene_overlay_.clear();
+  if (redraw_callback_) {
+    redraw_callback_();
   }
 }
 

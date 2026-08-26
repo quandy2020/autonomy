@@ -36,6 +36,11 @@ void CameraInfoDisplay::processMessage(
   }
 }
 
+void CameraInfoDisplay::clearReceivedData() {
+  have_info_ = false;
+  camera_info_ = {};
+}
+
 void CameraInfoDisplay::onDraw(rendering::SceneOverlay& scene) {
   if (!have_info_ || context_ == nullptr || context_->tf_buffer == nullptr) {
     return;

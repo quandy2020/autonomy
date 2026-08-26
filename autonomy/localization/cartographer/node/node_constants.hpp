@@ -29,21 +29,21 @@ namespace node {
 
 struct TrajectoryOptions;
 
-constexpr char kLaserScanTopic[] = "scan";
-constexpr char kMultiEchoLaserScanTopic[] = "echoes";
-constexpr char kPointCloud2Topic[] = "points2";
-constexpr char kImuTopic[] = "imu";
-constexpr char kOdometryTopic[] = "odom";
-constexpr char kNavSatFixTopic[] = "fix";
-constexpr char kLandmarkTopic[] = "landmark";
+constexpr char kLaserScanTopic[] = "/scan";
+constexpr char kMultiEchoLaserScanTopic[] = "/echoes";
+constexpr char kPointCloud2Topic[] = "/points2";
+constexpr char kImuTopic[] = "/imu";
+constexpr char kOdometryTopic[] = "/odom";
+constexpr char kNavSatFixTopic[] = "/fix";
+constexpr char kLandmarkTopic[] = "/landmark";
 constexpr char kFinishTrajectoryServiceName[] = "finish_trajectory";
-constexpr char kOccupancyGridTopic[] = "map";
-constexpr char kSubmapListTopic[] = "submap_list";
-constexpr char kTrackedPoseTopic[] = "tracked_pose";
-constexpr char kSubmapQueryServiceName[] = "submap_query";
-constexpr char kStartTrajectoryServiceName[] = "start_trajectory";
-constexpr char kWriteStateServiceName[] = "write_state";
-constexpr char kTfTopic[] = "tf";
+constexpr char kOccupancyGridTopic[] = "/map";
+constexpr char kSubmapListTopic[] = "/submap_list";
+constexpr char kTrackedPoseTopic[] = "/tracked_pose";
+constexpr char kSubmapQueryServiceName[] = "/submap_query";
+constexpr char kStartTrajectoryServiceName[] = "/start_trajectory";
+constexpr char kWriteStateServiceName[] = "/write_state";
+constexpr char kTfTopic[] = "/tf";
 constexpr double kDefaultOccupancyGridResolution = 0.05;
 constexpr double kDefaultOccupancyGridPublishPeriodSec = 1.0;
 constexpr double kDefaultMapImageSavePeriodSec = 10.0;
@@ -55,6 +55,9 @@ constexpr int kLatestOnlyPublisherQueueSize = 1;
 
 std::vector<std::string> ComputeRepeatedTopicNames(const std::string& topic,
                                                    int num_topics);
+
+std::vector<std::string> ResolveLaserScanTopics(
+    const TrajectoryOptions& options);
 
 std::vector<std::string> ResolveMultiEchoLaserScanTopics(
     const TrajectoryOptions& options);

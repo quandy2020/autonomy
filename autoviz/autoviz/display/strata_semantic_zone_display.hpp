@@ -26,6 +26,7 @@ class StrataSemanticZoneDisplay
  protected:
   void processMessage(
       const automsgs::msgs::strata_msgs::SemanticZoneArray& message) override;
+  void clearReceivedData() override;
   void onDraw(rendering::SceneOverlay& scene) override;
 
  private:

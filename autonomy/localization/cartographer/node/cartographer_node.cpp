@@ -6,6 +6,8 @@
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 #include <automsgs/msgs/sensor_msgs/multi_echo_laser_scan.pb.h>
 #include <automsgs/msgs/sensor_msgs/nav_sat_fix.pb.h>
+#include <automsgs/msgs/tf2_msgs/tf_message.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
 /*
  * Copyright 2016 The Cartographer Authors
  *
@@ -37,7 +39,6 @@
 #include "autonomy/localization/cartographer/node/occupancy_grid_builder.hpp"
 #include "autonomy/localization/cartographer/node/time_conversion.hpp"
 #include "autonomy/transform/buffer_utils.hpp"
-#include "autonomy/transform/geometry_msgs/transform_stamped.h"
 #include "autonomy/transform/transform_topics.hpp"
 
 namespace autonomy {
@@ -53,23 +54,42 @@ using TrajectoryState =
 
 namespace {
 
-void SetTransformInBuffer(
-    transform::Buffer* buffer,
-    const automsgs::msgs::geometry_msgs::TransformStamped& trans,
-    const std::string& authority, bool is_static) {
-    geometry_msgs::TransformStamped geo_msg;
-    *geo_msg.mutable_header()->mutable_stamp() = static_cast<uint64_t>(trans.header().stamp().sec()) * 1000000000ULL +
-        static_cast<uint64_t>(trans.header().stamp().nanosec());
-    geo_msg.mutable_header()->set_frame_id(trans.header().frame_id());
-    geo_msg.child_frame_id() = trans.child_frame_id();
-    geo_msg.transform().translation().x() = trans.transform().translation().x();
-    geo_msg.transform().translation().y() = trans.transform().translation().y();
-    geo_msg.transform().translation().z() = trans.transform().translation().z();
-    geo_msg.transform().rotation().x() = trans.transform().rotation().x();
-    geo_msg.transform().rotation().y() = trans.transform().rotation().y();
-    geo_msg.transform().rotation().z() = trans.transform().rotation().z();
-    geo_msg.transform().rotation().w() = trans.transform().rotation().w();
-    buffer->setTransform(geo_msg, authority, is_static);
+constexpr char kAutosimTfTopic[] = "/tf";
+constexpr char kAutosimTfStaticTopic[] = "/tf_static";
+
+// Cache robot TF from autosim (everything except map→*) for full-tree republish.
+void CacheRobotTf(const automsgs::msgs::tf2_msgs::TFMessage& message,
+                  const std::string& skip_parent,
+                  automsgs::msgs::tf2_msgs::TFMessage* out) {
+    if (!out) {
+        return;
+    }
+    out->clear_transforms();
+    for (const auto& transform : message.transforms()) {
+        if (!skip_parent.empty() &&
+            transform.header().frame_id() == skip_parent) {
+            continue;
+        }
+        *out->add_transforms() = transform;
+    }
+}
+
+// Ingest autosim /tf into Cartographer's buffer. Skip parent=map when this
+// node publishes map→odom (publish_to_tf); otherwise keep identity map→odom.
+void IngestTfMessage(transform::Buffer* buffer,
+                     const automsgs::msgs::tf2_msgs::TFMessage& message,
+                     const std::string& authority,
+                     const std::string& skip_parent) {
+    if (!buffer) {
+        return;
+    }
+    if (skip_parent.empty()) {
+        transform::ApplyTfMessageToBuffer(buffer, message, authority, false);
+        return;
+    }
+    automsgs::msgs::tf2_msgs::TFMessage filtered;
+    CacheRobotTf(message, skip_parent, &filtered);
+    transform::ApplyTfMessageToBuffer(buffer, filtered, authority, false);
 }
 
 }  // namespace
@@ -135,6 +155,36 @@ bool CartographerNode::Init(std::shared_ptr<autolink::Node> node) {
             HandleWriteState(request, response);
         });
 
+    // Publish map→odom on /tf; skip autosim map→* and republish full tree.
+    if (node_options_.publish_to_tf) {
+        tf_writer_ = node_->CreateWriter<automsgs::msgs::tf2_msgs::TFMessage>(
+            kAutosimTfTopic);
+    }
+    const std::string skip_map =
+        node_options_.publish_to_tf ? node_options_.map_frame : "";
+    node_->CreateReader<automsgs::msgs::tf2_msgs::TFMessage>(
+        kAutosimTfTopic,
+        [this, skip_map](
+            const std::shared_ptr<automsgs::msgs::tf2_msgs::TFMessage>& msg) {
+            if (!msg) {
+                return;
+            }
+            {
+                std::lock_guard<std::mutex> lock(latest_robot_tf_mutex_);
+                CacheRobotTf(*msg, node_options_.map_frame, &latest_robot_tf_);
+            }
+            IngestTfMessage(tf_buffer_, *msg, "autosim_tf", skip_map);
+        });
+    node_->CreateReader<automsgs::msgs::tf2_msgs::TFMessage>(
+        kAutosimTfStaticTopic,
+        [this, skip_map](
+            const std::shared_ptr<automsgs::msgs::tf2_msgs::TFMessage>& msg) {
+            if (!msg) {
+                return;
+            }
+            IngestTfMessage(tf_buffer_, *msg, "autosim_tf_static", skip_map);
+        });
+    // Legacy TransformStampeds publishers (without leading slash).
     node_->CreateReader<automsgs::msgs::geometry_msgs::TransformStampeds>(
         transform::kTfTopic,
         [this](const std::shared_ptr<automsgs::msgs::geometry_msgs::TransformStampeds>&
@@ -142,16 +192,11 @@ bool CartographerNode::Init(std::shared_ptr<autolink::Node> node) {
             if (!msg || !tf_buffer_) {
                 return;
             }
-            for (const auto& transform : msg->transforms) {
-                try {
-                    SetTransformInBuffer(tf_buffer_, transform,
-                                         "cartographer_node", false);
-                } catch (const std::exception& ex) {
-                    LOG(WARNING) << "Failed to set transform: " << ex.what();
-                }
+            for (const auto& transform : msg->transforms()) {
+                transform::ApplyTransformStampedToBuffer(
+                    tf_buffer_, transform, "cartographer_node", false);
             }
         });
-
     node_->CreateReader<automsgs::msgs::geometry_msgs::TransformStampeds>(
         transform::kTfStaticTopic,
         [this](const std::shared_ptr<automsgs::msgs::geometry_msgs::TransformStampeds>&
@@ -248,8 +293,7 @@ CartographerNode::ComputeExpectedSensorIds(
         ::cartographer::mapping::TrajectoryBuilderInterface::SensorId;
     using SensorType = SensorId::SensorType;
     std::set<SensorId> expected_topics;
-    for (const std::string& topic :
-         ComputeRepeatedTopicNames(kLaserScanTopic, options.num_laser_scans)) {
+    for (const std::string& topic : ResolveLaserScanTopics(options)) {
         expected_topics.insert(SensorId{SensorType::RANGE, topic});
     }
     for (const std::string& topic :
@@ -264,10 +308,11 @@ CartographerNode::ComputeExpectedSensorIds(
         (node_options_.map_builder_options.use_trajectory_builder_2d() &&
          options.trajectory_builder_options.trajectory_builder_2d_options()
              .use_imu_data())) {
-        expected_topics.insert(SensorId{SensorType::IMU, kImuTopic});
+        expected_topics.insert(SensorId{SensorType::IMU, options.imu_topic});
     }
     if (options.use_odometry) {
-        expected_topics.insert(SensorId{SensorType::ODOMETRY, kOdometryTopic});
+        expected_topics.insert(
+            SensorId{SensorType::ODOMETRY, options.odometry_topic});
     }
     if (options.use_nav_sat) {
         expected_topics.insert(
@@ -293,8 +338,7 @@ int CartographerNode::AddTrajectory(const TrajectoryOptions& options) {
 void CartographerNode::LaunchSubscribers(const TrajectoryOptions& options,
                                          const int trajectory_id) {
     CartographerNode* self = this;
-    for (const std::string& topic :
-         ComputeRepeatedTopicNames(kLaserScanTopic, options.num_laser_scans)) {
+    for (const std::string& topic : ResolveLaserScanTopics(options)) {
         node_->CreateReader<automsgs::msgs::sensor_msgs::LaserScan>(
             topic,
             [self, trajectory_id, topic](
@@ -334,23 +378,25 @@ void CartographerNode::LaunchSubscribers(const TrajectoryOptions& options,
         (node_options_.map_builder_options.use_trajectory_builder_2d() &&
          options.trajectory_builder_options.trajectory_builder_2d_options()
              .use_imu_data())) {
+        const std::string imu_topic = options.imu_topic;
         node_->CreateReader<automsgs::msgs::sensor_msgs::Imu>(
-            kImuTopic,
-            [self, trajectory_id](
+            imu_topic,
+            [self, trajectory_id, imu_topic](
                 const std::shared_ptr<automsgs::msgs::sensor_msgs::Imu>& msg) {
                 if (msg) {
-                    self->HandleImuMessage(trajectory_id, kImuTopic, *msg);
+                    self->HandleImuMessage(trajectory_id, imu_topic, *msg);
                 }
             });
     }
 
     if (options.use_odometry) {
+        const std::string odom_topic = options.odometry_topic;
         node_->CreateReader<automsgs::msgs::nav_msgs::Odometry>(
-            kOdometryTopic,
-            [self, trajectory_id](
+            odom_topic,
+            [self, trajectory_id, odom_topic](
                 const std::shared_ptr<automsgs::msgs::nav_msgs::Odometry>& msg) {
                 if (msg) {
-                    self->HandleOdometryMessage(trajectory_id, kOdometryTopic,
+                    self->HandleOdometryMessage(trajectory_id, odom_topic,
                                                 *msg);
                 }
             });
@@ -416,7 +462,7 @@ void CartographerNode::PublishSubmapList() {
         return;
     }
     std::lock_guard<std::mutex> lock(mutex_);
-    const auto now = automsgs::msgs::builtin_interfaces::Time::Now();
+    const auto now = automsgs::msgs::builtin_interfaces::Now();
     submap_list_writer_->Write(
         map_builder_bridge_->GetSubmapList(now));
 }
@@ -424,8 +470,9 @@ void CartographerNode::PublishSubmapList() {
 void CartographerNode::PublishLocalTrajectoryData() {
     std::lock_guard<std::mutex> lock(mutex_);
     for (const auto& entry : map_builder_bridge_->GetLocalTrajectoryData()) {
+        const int trajectory_id = entry.first;
         const auto& trajectory_data = entry.second;
-        auto& extrapolator = extrapolators_.at(entry.first);
+        auto& extrapolator = extrapolators_.at(trajectory_id);
 
         if (trajectory_data.local_slam_data->time !=
             extrapolator.GetLastPoseTime()) {
@@ -433,24 +480,40 @@ void CartographerNode::PublishLocalTrajectoryData() {
                                  trajectory_data.local_slam_data->local_pose);
         }
 
-        automsgs::msgs::geometry_msgs::TransformStamped stamped_transform;
-        const carto::common::Time now = std::max(
-            FromCommsgs(automsgs::msgs::builtin_interfaces::Time::Now()),
+        // When published_frame == odom (external wheel TF), map→odom =
+        // tracking_to_map * tracking_T_odom. Extrapolating tracking to wall
+        // "now" while keeping tracking_T_odom at the last scan time mixes two
+        // epochs: during pure yaw that incorrectly folds odom motion into
+        // map→odom and looks like violent TF jumps. Keep both factors at the
+        // same time (prefer last SLAM pose time for external odom).
+        const bool external_odom_publish =
+            trajectory_data.trajectory_options.published_frame ==
+            trajectory_data.trajectory_options.odom_frame;
+        const carto::common::Time wall_now = std::max(
+            FromCommsgs(automsgs::msgs::builtin_interfaces::Now()),
             extrapolator.GetLastExtrapolatedTime());
-        *stamped_transform.mutable_header()->mutable_stamp() = node_options_.use_pose_extrapolator
-                ? ToCommsgs(now)
-                : ToCommsgs(trajectory_data.local_slam_data->time);
+        const carto::common::Time publish_time =
+            (node_options_.use_pose_extrapolator && !external_odom_publish)
+                ? wall_now
+                : trajectory_data.local_slam_data->time;
 
-        if (last_published_tf_stamps_.count(entry.first) &&
-            last_published_tf_stamps_[entry.first] ==
-                stamped_transform.header().stamp()) {
+        automsgs::msgs::geometry_msgs::TransformStamped stamped_transform;
+        *stamped_transform.mutable_header()->mutable_stamp() =
+            ToCommsgs(publish_time);
+
+        if (last_published_tf_stamps_.count(trajectory_id) &&
+            automsgs::msgs::builtin_interfaces::TimeToNanoseconds(
+                last_published_tf_stamps_[trajectory_id]) ==
+                automsgs::msgs::builtin_interfaces::TimeToNanoseconds(
+                    stamped_transform.header().stamp())) {
             continue;
         }
-        last_published_tf_stamps_[entry.first] = stamped_transform.header().stamp();
+        last_published_tf_stamps_[trajectory_id] =
+            stamped_transform.header().stamp();
 
         const Rigid3d tracking_to_local_3d =
-            node_options_.use_pose_extrapolator
-                ? extrapolator.ExtrapolatePose(now)
+            (node_options_.use_pose_extrapolator && !external_odom_publish)
+                ? extrapolator.ExtrapolatePose(publish_time)
                 : trajectory_data.local_slam_data->local_pose;
         const Rigid3d tracking_to_local = [&] {
             if (trajectory_data.trajectory_options
@@ -464,42 +527,87 @@ void CartographerNode::PublishLocalTrajectoryData() {
         const Rigid3d tracking_to_map =
             trajectory_data.local_to_map * tracking_to_local;
 
-        if (trajectory_data.published_to_tracking != nullptr) {
-            if (node_options_.publish_to_tf && tf_broadcaster_) {
-                std::vector<automsgs::msgs::geometry_msgs::TransformStamped>
-                    stamped_transforms;
+        // Look up published→tracking at the same time as tracking_to_map.
+        std::unique_ptr<Rigid3d> published_to_tracking;
+        if (external_odom_publish ||
+            trajectory_data.published_to_tracking == nullptr) {
+            published_to_tracking =
+                map_builder_bridge_->sensor_bridge(trajectory_id)
+                    ->tf_bridge()
+                    .LookupToTracking(
+                        publish_time,
+                        trajectory_data.trajectory_options.published_frame);
+        } else {
+            published_to_tracking =
+                std::make_unique<Rigid3d>(*trajectory_data.published_to_tracking);
+        }
+
+        if (node_options_.publish_to_tf && tf_broadcaster_) {
+            std::vector<automsgs::msgs::geometry_msgs::TransformStamped>
+                stamped_transforms;
+            if (published_to_tracking != nullptr) {
+                std::string published_frame =
+                    trajectory_data.trajectory_options.published_frame;
                 if (trajectory_data.trajectory_options.provide_odom_frame) {
-                    stamped_transform.mutable_header()->set_frame_id(node_options_.map_frame);
-                    stamped_transform.child_frame_id() =
-                        trajectory_data.trajectory_options.odom_frame;
-                    *stamped_transform.mutable_transform() = ToGeometryMsgTransform(trajectory_data.local_to_map);
+                    stamped_transform.mutable_header()->set_frame_id(
+                        node_options_.map_frame);
+                    stamped_transform.set_child_frame_id(
+                        trajectory_data.trajectory_options.odom_frame);
+                    *stamped_transform.mutable_transform() =
+                        ToGeometryMsgTransform(trajectory_data.local_to_map);
                     stamped_transforms.push_back(stamped_transform);
 
-                    stamped_transform.mutable_header()->set_frame_id(trajectory_data.trajectory_options.odom_frame);
-                    stamped_transform.child_frame_id() =
-                        trajectory_data.trajectory_options.published_frame;
-                    *stamped_transform.mutable_transform() = ToGeometryMsgTransform(
-                        tracking_to_local *
-                        (*trajectory_data.published_to_tracking));
+                    stamped_transform.mutable_header()->set_frame_id(
+                        trajectory_data.trajectory_options.odom_frame);
+                    stamped_transform.set_child_frame_id(published_frame);
+                    *stamped_transform.mutable_transform() =
+                        ToGeometryMsgTransform(tracking_to_local *
+                                               (*published_to_tracking));
                     stamped_transforms.push_back(stamped_transform);
                 } else {
-                    stamped_transform.mutable_header()->set_frame_id(node_options_.map_frame);
-                    stamped_transform.child_frame_id() =
-                        trajectory_data.trajectory_options.published_frame;
-                    *stamped_transform.mutable_transform() = ToGeometryMsgTransform(
-                        tracking_to_map *
-                        (*trajectory_data.published_to_tracking));
+                    stamped_transform.mutable_header()->set_frame_id(
+                        node_options_.map_frame);
+                    stamped_transform.set_child_frame_id(published_frame);
+                    *stamped_transform.mutable_transform() =
+                        ToGeometryMsgTransform(tracking_to_map *
+                                               (*published_to_tracking));
                     stamped_transforms.push_back(stamped_transform);
                 }
+            }
+            if (!stamped_transforms.empty()) {
                 tf_broadcaster_->SendTransform(stamped_transforms);
+                for (const auto& published : stamped_transforms) {
+                    transform::ApplyTransformStampedToBuffer(
+                        tf_buffer_, published, "cartographer", false);
+                }
+                if (tf_writer_) {
+                    automsgs::msgs::tf2_msgs::TFMessage tf_msg;
+                    for (const auto& published : stamped_transforms) {
+                        *tf_msg.add_transforms() = published;
+                    }
+                    // Forward odom→base + mounts with the same stamp so Autoviz
+                    // does not interpolate across mismatched epochs.
+                    {
+                        std::lock_guard<std::mutex> lock(latest_robot_tf_mutex_);
+                        for (const auto& robot_tf :
+                             latest_robot_tf_.transforms()) {
+                            auto* out = tf_msg.add_transforms();
+                            *out = robot_tf;
+                            *out->mutable_header()->mutable_stamp() =
+                                stamped_transform.header().stamp();
+                        }
+                    }
+                    tf_writer_->Write(tf_msg);
+                }
             }
-            if (node_options_.publish_tracked_pose && tracked_pose_writer_) {
-                automsgs::msgs::geometry_msgs::PoseStamped pose_msg;
-                pose_msg.mutable_header()->set_frame_id(node_options_.map_frame);
-                *pose_msg.mutable_header()->mutable_stamp() = stamped_transform.header().stamp();
-                *pose_msg.mutable_pose() = ToGeometryMsgPose(tracking_to_map);
-                tracked_pose_writer_->Write(pose_msg);
-            }
+        }
+        if (node_options_.publish_tracked_pose && tracked_pose_writer_) {
+            automsgs::msgs::geometry_msgs::PoseStamped pose_msg;
+            pose_msg.mutable_header()->set_frame_id(node_options_.map_frame);
+            *pose_msg.mutable_header()->mutable_stamp() =
+                stamped_transform.header().stamp();
+            *pose_msg.mutable_pose() = ToGeometryMsgPose(tracking_to_map);
+            tracked_pose_writer_->Write(pose_msg);
         }
     }
 }
@@ -510,7 +618,7 @@ void CartographerNode::PublishOccupancyGrid() {
     }
 
     const auto submap_slices = CollectSubmapSlices();
-    const auto now = automsgs::msgs::builtin_interfaces::Time::Now();
+    const auto now = automsgs::msgs::builtin_interfaces::Now();
     if (auto grid = BuildOccupancyGrid(submap_slices,
                                        node_options_.occupancy_grid_resolution,
                                        node_options_.map_frame, now)) {
@@ -525,7 +633,7 @@ CartographerNode::CollectSubmapSlices() {
     {
         std::lock_guard<std::mutex> lock(mutex_);
         submap_list = map_builder_bridge_->GetSubmapList(
-            automsgs::msgs::builtin_interfaces::Time::Now());
+            automsgs::msgs::builtin_interfaces::Now());
     }
 
     for (const auto& submap_msg : submap_list.submap()) {
@@ -715,8 +823,7 @@ void CartographerNode::HandleLandmarkMessage(
     const proto::LandmarkList& msg) {
     const auto sensor_time =
         msg.has_header()
-            ? FromCommsgs(
-                  msg.header(.stamp()))
+            ? FromCommsgs(msg.header().stamp())
             : carto::common::Time::min();
     auto msg_ptr = std::make_shared<proto::LandmarkList>(msg);
     std::lock_guard<std::mutex> lock(mutex_);
