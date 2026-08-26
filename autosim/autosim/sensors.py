@@ -83,6 +83,12 @@ class Sensors:
         ranges = simulator.laser_ranges(
             self.angle_min, self.angle_max, self.num_beams, self.range_max
         ).astype(np.float32)
+        clip = getattr(simulator, "clip_laser_to_occupancy", None)
+        if callable(clip):
+            angles = simulator.linspace_angles(
+                self.angle_min, self.angle_max, self.num_beams
+            )
+            ranges = clip(ranges, angles).astype(np.float32)
         valid = np.isfinite(ranges) & (ranges >= self.range_min) & (ranges <= self.range_max)
         if self.noise > 0.0 and np.any(valid):
             noisy = ranges.copy()
@@ -91,6 +97,7 @@ class Sensors:
             ).astype(np.float32)
             noisy[valid] = np.clip(noisy[valid], self.range_min, self.range_max)
             ranges = noisy
+            valid = np.isfinite(ranges) & (ranges >= self.range_min) & (ranges <= self.range_max)
         out = np.full(ranges.shape, np.inf, dtype=np.float32)
         out[valid] = ranges[valid]
         return out

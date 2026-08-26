@@ -27,6 +27,7 @@ class StrataRobot3DDisplay
  protected:
   void processMessage(
       const automsgs::msgs::strata_msgs::Robot3DLayerArray& message) override;
+  void clearReceivedData() override;
   void onDraw(rendering::SceneOverlay& scene) override;
 
  private:

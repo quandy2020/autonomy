@@ -68,6 +68,10 @@ void TwistStampedDisplay::processMessage(
   }
 }
 
+void TwistStampedDisplay::clearReceivedData() {
+  have_twist_ = false;
+}
+
 void TwistStampedDisplay::onDraw(rendering::SceneOverlay& scene) {
   if (!have_twist_) {
     return;

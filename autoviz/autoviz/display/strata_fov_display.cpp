@@ -127,6 +127,10 @@ void StrataFovDisplay::processMessage(
   }
 }
 
+void StrataFovDisplay::clearReceivedData() {
+  bands_.clear();
+}
+
 void StrataFovDisplay::onDraw(rendering::SceneOverlay& scene) {
   const bool show_fill =
       common::ParseBoolProperty(propertyValue("show_fill", "true"), true);

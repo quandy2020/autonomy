@@ -45,6 +45,7 @@
 #include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
 #include <automsgs/msgs/sensor_msgs/multi_echo_laser_scan.pb.h>
 #include <automsgs/msgs/sensor_msgs/nav_sat_fix.pb.h>
+#include <automsgs/msgs/tf2_msgs/tf_message.pb.h>
 #include "autonomy/localization/cartographer/common/fixed_ratio_sampler.hpp"
 #include "autonomy/localization/cartographer/common/port.hpp"
 #include "autonomy/localization/cartographer/mapping/map_builder_interface.hpp"
@@ -167,6 +168,14 @@ private:
         tracked_pose_writer_;
     std::shared_ptr<autolink::Writer<automsgs::msgs::map_msgs::OccupancyGrid>>
         occupancy_grid_writer_;
+    std::shared_ptr<autolink::Writer<automsgs::msgs::tf2_msgs::TFMessage>>
+        tf_writer_;
+
+    /** Latest autosim robot TF (odom→base + mounts), used to republish a full
+     *  connected tree together with Cartographer's map→odom. */
+    std::mutex latest_robot_tf_mutex_;
+    automsgs::msgs::tf2_msgs::TFMessage latest_robot_tf_
+        GUARDED_BY(latest_robot_tf_mutex_);
 
     std::vector<std::unique_ptr<autolink::Timer>> timers_;
 

@@ -31,6 +31,7 @@ class PointCloud2Display
       const automsgs::msgs::sensor_msgs::PointCloud2& message)
       override;
   void onDraw(rendering::SceneOverlay& scene) override;
+  void clearReceivedData() override;
 
  private:
   struct CloudPoint {

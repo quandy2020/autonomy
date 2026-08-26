@@ -27,6 +27,7 @@ class RangeDisplay
  protected:
   void processMessage(const automsgs::msgs::sensor_msgs::Range& message)
       override;
+  void clearReceivedData() override;
   void onDraw(rendering::SceneOverlay& scene) override;
 
  private:

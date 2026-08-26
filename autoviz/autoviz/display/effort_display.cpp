@@ -124,6 +124,16 @@ void EffortDisplay::onDisable() {
   description_reader_.reset();
 }
 
+void EffortDisplay::reset() {
+  Display::reset();
+  joint_queue_.clear();
+  joint_positions_.clear();
+  joint_efforts_.clear();
+  if (context_ != nullptr && context_->request_redraw) {
+    context_->request_redraw();
+  }
+}
+
 void EffortDisplay::onUpdate() {
   while (auto payload = joint_queue_.pop()) {
     proto_wire::ParsedJointState message;

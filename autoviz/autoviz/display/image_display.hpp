@@ -24,6 +24,7 @@ class ImageDisplay
  protected:
   void processMessage(
       const automsgs::msgs::sensor_msgs::Image& message) override;
+  void clearReceivedData() override;
   void onDraw(rendering::SceneOverlay& /*scene*/) override {}
 
  private:

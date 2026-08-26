@@ -28,6 +28,7 @@ class StrataBuildingDisplay
  protected:
   void processMessage(
       const automsgs::msgs::visualization_msgs::MarkerArray& message) override;
+  void clearReceivedData() override;
   void onDraw(rendering::SceneOverlay& scene) override;
 
  private:

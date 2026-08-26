@@ -20,7 +20,12 @@ void ApplyTfMessageToBuffer(
   // returning from the background.
   buffer->_setTransformsChangedSuppressed(true);
   for (const auto& transform : message.transforms()) {
-    buffer->setTransform(transform, authority, is_static);
+    // Same policy as autonomy::transform::ApplyTfMessageToBuffer: only
+    // odom→* and map→* are dynamic on mixed /tf batches; URDF mounts static.
+    const std::string& parent = transform.header().frame_id();
+    const bool edge_static =
+        is_static || (parent != "odom" && parent != "map");
+    buffer->setTransform(transform, authority, edge_static);
   }
   buffer->_setTransformsChangedSuppressed(false);
   if (!message.transforms().empty()) {

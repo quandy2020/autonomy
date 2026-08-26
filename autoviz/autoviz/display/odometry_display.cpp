@@ -81,6 +81,11 @@ void OdometryDisplay::processMessage(
   }
 }
 
+void OdometryDisplay::clearReceivedData() {
+  has_odom_ = false;
+  odom_ = OdometryVisual{};
+}
+
 void OdometryDisplay::onDraw(rendering::SceneOverlay& scene) {
   if (!has_odom_) {
     return;

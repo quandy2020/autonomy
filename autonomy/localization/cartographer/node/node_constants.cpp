@@ -38,6 +38,14 @@ std::vector<std::string> ComputeRepeatedTopicNames(const std::string& topic,
     return topics;
 }
 
+std::vector<std::string> ResolveLaserScanTopics(
+    const TrajectoryOptions& options) {
+    if (!options.laser_scan_topics.empty()) {
+        return options.laser_scan_topics;
+    }
+    return ComputeRepeatedTopicNames(kLaserScanTopic, options.num_laser_scans);
+}
+
 std::vector<std::string> ResolveMultiEchoLaserScanTopics(
     const TrajectoryOptions& options) {
     if (!options.multi_echo_laser_scan_topics.empty()) {

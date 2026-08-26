@@ -25,6 +25,7 @@ class PointStampedDisplay
  protected:
   void processMessage(
       const automsgs::msgs::geometry_msgs::PointStamped& message) override;
+  void clearReceivedData() override;
   void onDraw(rendering::SceneOverlay& scene) override;
 
  private:

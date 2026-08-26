@@ -1,0 +1,27 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Cartographer 2D mapping with autosim sensors/TF.
+
+  Expects autosim (default.yaml):
+    /scan (LaserScan, laser_link), /imu (imu_link), /tf + /tf_static (URDF)
+
+  Colcon / Docker:
+    cd /workspace/autonomy/src/autonomy
+    mkdir -p data/maps
+    export PATH=/workspace/autonomy/build/autonomy/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=/workspace/autonomy/src/autonomy/autonomy/localization/launch
+    autolink launch start localization.launch
+
+  Stop:
+    autolink launch stop localization.launch
+-->
+<autolink>
+  <module>
+    <name>cartographer</name>
+    <type>binary</type>
+    <process_name>autonomy.cartographer --localization_mode=cartographer --configuration_directory=config/localization/cartographer --configuration_basename=autosim_2d.lua --start_trajectory_with_default_topics=true --save_state_filename=data/maps/cartographer.pbstream</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

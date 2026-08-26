@@ -90,6 +90,12 @@ void PoseWithCovarianceDisplay::processMessage(
   }
 }
 
+void PoseWithCovarianceDisplay::clearReceivedData() {
+  have_pose_ = false;
+  position_ = QVector3D();
+  yaw_ = 0.f;
+}
+
 void PoseWithCovarianceDisplay::onDraw(rendering::SceneOverlay& scene) {
   if (!have_pose_) {
     return;

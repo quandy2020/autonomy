@@ -56,6 +56,10 @@ void RangeDisplay::processMessage(
   }
 }
 
+void RangeDisplay::clearReceivedData() {
+  history_.clear();
+}
+
 void RangeDisplay::onDraw(rendering::SceneOverlay& scene) {
   if (history_.empty()) {
     return;

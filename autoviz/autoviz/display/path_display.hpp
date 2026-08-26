@@ -29,6 +29,7 @@ class PathDisplay
   void processMessage(
       const automsgs::msgs::nav_msgs::Path& message) override;
   void onDraw(rendering::SceneOverlay& scene) override;
+  void clearReceivedData() override;
 
  private:
   struct PathPose {

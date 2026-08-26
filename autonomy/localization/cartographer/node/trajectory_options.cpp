@@ -19,6 +19,7 @@
 #include <glog/logging.h>
 
 #include "autonomy/localization/cartographer/mapping/trajectory_builder_interface.hpp"
+#include "autonomy/localization/cartographer/node/node_constants.hpp"
 
 namespace autonomy {
 namespace localization {
@@ -64,6 +65,14 @@ TrajectoryOptions CreateTrajectoryOptions(
     options.num_multi_echo_laser_scans =
         lua_parameter_dictionary->GetNonNegativeInt(
             "num_multi_echo_laser_scans");
+    if (lua_parameter_dictionary->HasKey("laser_scan_topics")) {
+        options.laser_scan_topics =
+            lua_parameter_dictionary->GetDictionary("laser_scan_topics")
+                ->GetArrayValuesAsStrings();
+        CHECK_EQ(options.laser_scan_topics.size(),
+                 static_cast<size_t>(options.num_laser_scans))
+            << "'laser_scan_topics' size must match 'num_laser_scans'.";
+    }
     if (lua_parameter_dictionary->HasKey("multi_echo_laser_scan_topics")) {
         options.multi_echo_laser_scan_topics =
             lua_parameter_dictionary
@@ -79,6 +88,14 @@ TrajectoryOptions CreateTrajectoryOptions(
             "num_subdivisions_per_laser_scan");
     options.num_point_clouds =
         lua_parameter_dictionary->GetNonNegativeInt("num_point_clouds");
+    options.imu_topic =
+        lua_parameter_dictionary->HasKey("imu_topic")
+            ? lua_parameter_dictionary->GetString("imu_topic")
+            : kImuTopic;
+    options.odometry_topic =
+        lua_parameter_dictionary->HasKey("odometry_topic")
+            ? lua_parameter_dictionary->GetString("odometry_topic")
+            : kOdometryTopic;
     options.rangefinder_sampling_ratio =
         lua_parameter_dictionary->GetDouble("rangefinder_sampling_ratio");
     options.odometry_sampling_ratio =

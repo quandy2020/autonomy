@@ -26,6 +26,7 @@ class StrataPoiDisplay
  protected:
   void processMessage(
       const automsgs::msgs::strata_msgs::PoiMarkerArray& message) override;
+  void clearReceivedData() override;
   void onDraw(rendering::SceneOverlay& scene) override;
 
  private:

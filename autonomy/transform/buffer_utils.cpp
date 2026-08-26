@@ -87,9 +87,13 @@ void ApplyTfMessageToBuffer(
         return;
     }
     for (const auto& proto_tf : message.transforms()) {
-        ApplyTransformStampedToBuffer(
-            buffer, proto_tf, authority,
-            is_static);
+        // Mixed /tf batches from autosim: odom→base and map→odom stay
+        // dynamic; URDF mounts must be static or laser→map lookups fail
+        // when scan stamps fall outside the short dynamic cache.
+        const std::string& parent = proto_tf.header().frame_id();
+        const bool edge_static =
+            is_static || (parent != "odom" && parent != "map");
+        ApplyTransformStampedToBuffer(buffer, proto_tf, authority, edge_static);
     }
 }
 

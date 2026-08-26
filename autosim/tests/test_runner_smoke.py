@@ -84,6 +84,12 @@ def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
     import autosim.runner as runner_module
 
     monkeypatch.setattr(runner_module.time, "sleep", lambda seconds: None)
+    # Run encode/publish inline so assertions are not racing the worker queue.
+    monkeypatch.setattr(
+        runner_module.SensorWorker,
+        "submit",
+        lambda self, fn, *args: fn(*args),
+    )
 
     root = Path(__file__).resolve().parents[1]
     settings = Config.load(root / "config" / "default.yaml")
@@ -96,12 +102,24 @@ def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
     sensors["camera"]["enabled"] = False
     sensors["imu"]["enabled"] = False
     sensors["odom"]["enabled"] = True
+    settings.data["habitat"]["mode"] = "nav"
     settings.data["habitat"]["map"]["enabled"] = True
+    settings.data["habitat"]["map"]["publish"] = True
     settings.data["habitat"]["map"]["rate_hz"] = 0.0
     settings.data["habitat"]["map"]["ply"]["file"] = ""
+    settings.data["habitat"]["map"]["ply"]["source"] = ""
     settings.data["habitat"]["map"]["ply"]["channel"] = "/map/points"
-    settings.data["habitat"]["map"]["ply"]["horizontal"]["num_beams"] = 8
-    settings.data["habitat"]["map"]["ply"]["vertical"]["num_rings"] = 2
+    settings.data["habitat"]["map"]["ply"]["range_max"] = 10.0
+    settings.data["habitat"]["map"]["ply"]["horizontal"] = {
+        "angle_min": -1.0,
+        "angle_max": 1.0,
+        "num_beams": 8,
+    }
+    settings.data["habitat"]["map"]["ply"]["vertical"] = {
+        "angle_min": -0.1,
+        "angle_max": 0.1,
+        "num_rings": 2,
+    }
     settings.data["habitat"]["robot"]["tf"]["enabled"] = True
     settings.data["habitat"]["robot"]["clock"]["enabled"] = True
 
@@ -125,9 +143,9 @@ def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
     assert "/footprint" in runner.node.writers
     assert len(runner.node.writers["/tf"].msgs) >= 1
     odom_msg = runner.node.writers["/odom"].msgs[0]
-    assert odom_msg.child_frame_id == "base_footprint"
+    assert odom_msg.child_frame_id == "base_link"
     footprint = runner.node.writers["/footprint"].msgs[0]
-    assert footprint.header.frame_id == "base_footprint"
+    assert footprint.header.frame_id == "base_link"
     assert len(footprint.polygon.points) == 4
     assert abs(footprint.polygon.points[0].x - 0.4935) < 1e-6
     assert abs(footprint.polygon.points[0].y - 0.285) < 1e-6
@@ -141,8 +159,10 @@ def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
         for item in message.transforms
     }
     assert ("map", "odom") in tf_edges
-    assert ("odom", "base_footprint") in tf_edges
-    assert ("base_footprint", "base_link") in tf_edges
+    assert ("odom", "base_link") in tf_edges
+    assert ("odom", "base_footprint") not in tf_edges
+    assert ("base_link", "base_footprint") in tf_edges
+    assert ("base_link", "base_scan") in tf_edges or ("base_link", "laser_link") in tf_edges
     latest_tf = runner.node.writers["/tf"].msgs[-1]
     stamps = {
         (item.header.stamp.sec, item.header.stamp.nanosec)
@@ -153,8 +173,8 @@ def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
         (item.header.frame_id, item.child_frame_id)
         for item in latest_tf.transforms
     }
-    assert ("odom", "base_footprint") in latest_edges
-    assert ("base_footprint", "base_link") in latest_edges
+    assert ("map", "odom") in latest_edges
+    assert ("odom", "base_link") in latest_edges
     static_tf = runner.node.writers["/tf_static"].msgs[0]
     edges = {
         (item.header.frame_id, item.child_frame_id): (
@@ -164,13 +184,15 @@ def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
         )
         for item in static_tf.transforms
     }
-    assert ("base_footprint", "base_link") in edges
+    # map→odom is dynamic (odom drift correction); must not be latched on /tf_static.
+    assert ("map", "odom") not in edges
+    assert ("base_link", "base_footprint") in edges
     assert ("base_link", "base_scan") in edges
     assert ("base_scan", "laser_link") in edges
     assert ("base_link", "imu_link") in edges
     assert ("base_link", "front_left_wheel_link") in edges
     assert ("base_link", "front_right_wheel_link") in edges
-    assert abs(edges[("base_footprint", "base_link")][2] - 0.165) < 1e-6
+    assert abs(edges[("base_link", "base_footprint")][2] + 0.165) < 1e-6
     assert abs(edges[("base_link", "base_scan")][0] - 0.15) < 1e-6
     assert abs(edges[("base_link", "base_scan")][2] - 0.3) < 1e-6
     assert abs(edges[("base_link", "imu_link")][0] - 0.1) < 1e-6
@@ -200,6 +222,61 @@ def test_runner_skips_odom_when_disabled(monkeypatch):
     runner.run()
     assert "/odom" not in runner.node.writers
     assert "/map" not in runner.node.writers
+
+
+def test_runner_slam_skips_map_and_map_odom(monkeypatch):
+    """SLAM mode must not publish GT /map or identity map→odom (Cartographer owns both)."""
+    import autosim.runner as runner_module
+
+    monkeypatch.setattr(runner_module.time, "sleep", lambda seconds: None)
+
+    root = Path(__file__).resolve().parents[1]
+    settings = Config.load(root / "config" / "default.yaml")
+    settings.data["habitat"]["mode"] = "slam"
+    sensors = settings.data["habitat"]["sensors"]
+    sensors["lidar_2d"]["enabled"] = True
+    sensors["lidar_2d"]["num_beams"] = 8
+    sensors["lidar_3d"]["enabled"] = False
+    sensors["camera"]["enabled"] = False
+    sensors["imu"]["enabled"] = False
+    # Keep map.enabled for internal occupancy; publishing must stay off in slam.
+    settings.data["habitat"]["map"]["enabled"] = True
+    settings.data["habitat"]["map"]["publish"] = True  # must be ignored under mode: slam
+    settings.data["habitat"]["map"]["ply"]["source"] = ""
+    settings.data["habitat"]["map"]["ply"]["file"] = ""
+    settings.data["habitat"]["map"]["ply"]["channel"] = "/overall/map"
+    settings.data["habitat"]["map"]["ply"]["range_max"] = 10.0
+    settings.data["habitat"]["map"]["ply"]["horizontal"] = {
+        "angle_min": -1.0,
+        "angle_max": 1.0,
+        "num_beams": 4,
+    }
+    settings.data["habitat"]["map"]["ply"]["vertical"] = {
+        "angle_min": -0.1,
+        "angle_max": 0.1,
+        "num_rings": 2,
+    }
+    settings.data["habitat"]["robot"]["tf"]["enabled"] = True
+    settings.data["habitat"]["robot"]["tf"]["publish_map_odom"] = True  # ignored in slam
+    settings.data["habitat"]["robot"]["clock"]["enabled"] = False
+    settings.data["habitat"]["robot"]["footprint"]["enabled"] = False
+
+    link = FakeLink()
+    runner = Runner(settings, max_steps=3, link=link, simulator=FakeSimulator())
+    runner.run()
+    assert runner.mode == "slam"
+    assert runner.map_publish is False
+    assert "/map" not in runner.node.writers
+    assert "/overall/map" not in runner.node.writers
+    assert "/tf" in runner.node.writers
+    tf_edges = {
+        (item.header.frame_id, item.child_frame_id)
+        for message in runner.node.writers["/tf"].msgs
+        for item in message.transforms
+    }
+    assert ("map", "odom") not in tf_edges
+    assert ("odom", "base_link") in tf_edges
+    assert ("odom", "base_footprint") not in tf_edges
 
 
 def test_subsample_points():

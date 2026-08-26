@@ -87,6 +87,20 @@ void DepthCloudDisplay::onDisable() {
   color_reader_.reset();
 }
 
+void DepthCloudDisplay::reset() {
+  Display::reset();
+  depth_queue_.clear();
+  camera_info_queue_.clear();
+  color_queue_.clear();
+  have_depth_ = false;
+  have_camera_info_ = false;
+  color_image_ = QImage();
+  points_.clear();
+  if (context_ != nullptr && context_->request_redraw) {
+    context_->request_redraw();
+  }
+}
+
 void DepthCloudDisplay::onUpdate() {
   while (auto payload = camera_info_queue_.pop()) {
     automsgs::msgs::sensor_msgs::CameraInfo info;

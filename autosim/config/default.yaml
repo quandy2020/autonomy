@@ -13,6 +13,10 @@
 # limitations under the License.
 
 habitat:
+  # slam: Cartographer owns map→odom and /map (autosim: odom→base_link only).
+  # nav:  drift-corrected map→odom→base_link so LaserScan matches GT map.
+  mode: slam
+
   # --- Scene loading (two modes, mirrors autonomy_ros habitat/sim.py) ---
   #
   # Mode 1 (preferred): MP3D dataset config + scene_id.
@@ -24,7 +28,7 @@ habitat:
   # scene_id: 17DRP5sb8fy/17DRP5sb8fy.glb
   #
   # Mode 2 (legacy): direct .glb path.
-  path: /workspace/autonomy/src/17DRP5sb8fy/17DRP5sb8fy.glb
+  path: /workspace/autonomy/src/8WUmhLawc2A/8WUmhLawc2A.glb
   spawn: [0.0, 0.0, 0.0]  # x, y, yaw
   gpu: 0
 
@@ -34,7 +38,7 @@ habitat:
     max_angular: 1.0
     wheel_separation: 0.55  # m; used for odom yaw-noise scale
     map_frame: map
-    base_link_height: 0.01   # odom→base_footprint z (matches autonomy_ros)
+    base_link_height: 0.01   # odom→base_link z
     watchdog_sec: 0.5
     control_hz: 50.0
     cmd_vel: /cmd_vel
@@ -45,13 +49,16 @@ habitat:
       enabled: true
       channel: /tf
       static_channel: /tf_static
+      # Forced true in nav (drift-corrected map→odom so LaserScan matches GT map).
+      # Forced false in slam (Cartographer owns map→odom).
+      publish_map_odom: true
     clock:
       enabled: true
       channel: /clock
     footprint:
       enabled: true
       channel: /footprint
-      frame: base_footprint
+      frame: base_link
 
   sensors:
     lidar_2d:
@@ -112,15 +119,17 @@ habitat:
       enabled: true
       channel: /odom
       frame: odom
-      child_frame: base_footprint
+      # Both slam and nav use base_link (nav tree: map→odom→base_link).
+      child_frame: base_link
       noise: 0.02          # integrated σ scale (m / sqrt(m) on Δs)
 
   map:
-    enabled: true          # MP3D scene loaded via habitat.path
+    enabled: false          # load PLY → internal occupancy for lidar wall-clip
+    publish: false          # nav: publish GT /map; slam mode forces this off
     frame: map
     rate_hz: 1.0           # OccupancyGrid republish for late subscribers; PLY cloud is sent once
     ply:
-      source: /workspace/autonomy/src/17DRP5sb8fy/17DRP5sb8fy_semantic.ply
+      source: /workspace/autonomy/src/8WUmhLawc2A/8WUmhLawc2A_semantic.ply
       channel: /overall/map
       stride: 1            # no downsampling; use autoviz Decimate to thin on the viewer side
     grid:                  # height-slice + free-space carve → OccupancyGrid

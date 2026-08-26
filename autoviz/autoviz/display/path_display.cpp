@@ -63,8 +63,9 @@ PathDisplay::PathDisplay(std::string channel)
 }
 
 std::vector<common::DisplayPropertySpec> PathDisplay::propertySpecs() const {
-  return {{"line_style", "Line Style", "Billboards", {"Lines", "Billboards"}},
-          {"line_width", "Line Width", "0.08"},
+  // Defaults match rviz_default_plugins PathDisplay (Billboards + meters width).
+  return {{"line_style", "Line Style", "Lines", {"Lines", "Billboards"}},
+          {"line_width", "Line Width", "0.03"},
           {"color", "Color", "25;255;0", {}, common::DisplayPropertyKind::kColor},
           {"alpha", "Alpha", "1.0"},
           {"buffer_length", "Buffer Length", "1"},
@@ -148,6 +149,13 @@ void PathDisplay::processMessage(
     context_->request_redraw();
   }
   setStatusOk();
+}
+
+void PathDisplay::clearReceivedData() {
+  for (auto& buffer : path_buffers_) {
+    buffer.poses.clear();
+  }
+  messages_received_ = 0;
 }
 
 void PathDisplay::drawPathPolyline(

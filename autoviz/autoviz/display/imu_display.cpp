@@ -81,6 +81,10 @@ void ImuDisplay::processMessage(const automsgs::msgs::sensor_msgs::Imu& message)
   }
 }
 
+void ImuDisplay::clearReceivedData() {
+  have_imu_ = false;
+}
+
 void ImuDisplay::onDraw(rendering::SceneOverlay& scene) {
   if (!have_imu_) {
     return;

@@ -40,9 +40,12 @@ struct TrajectoryOptions {
     bool publish_frame_projected_to_2d;
     int num_laser_scans;
     int num_multi_echo_laser_scans;
+    std::vector<std::string> laser_scan_topics;
     std::vector<std::string> multi_echo_laser_scan_topics;
     int num_subdivisions_per_laser_scan;
     int num_point_clouds;
+    std::string imu_topic;
+    std::string odometry_topic;
     double rangefinder_sampling_ratio;
     double odometry_sampling_ratio;
     double fixed_frame_pose_sampling_ratio;

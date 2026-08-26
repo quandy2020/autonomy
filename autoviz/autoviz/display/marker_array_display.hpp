@@ -30,6 +30,7 @@ class MarkerArrayDisplay
       const automsgs::msgs::visualization_msgs::MarkerArray& message)
       override;
   void onDraw(rendering::SceneOverlay& scene) override;
+  void clearReceivedData() override;
 
  private:
   std::map<MarkerKey, StoredMarker> markers_;

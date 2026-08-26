@@ -111,6 +111,8 @@ void LaserScanDisplay::processMessage(
   }
 }
 
+void LaserScanDisplay::clearReceivedData() { points_.clear(); }
+
 void LaserScanDisplay::onDraw(rendering::SceneOverlay& scene) {
   const float point_size =
       common::ParseFloatProperty(propertyValue("point_size", "4"), 4.f);

@@ -102,6 +102,10 @@ void StrataIotBubbleDisplay::processMessage(
   }
 }
 
+void StrataIotBubbleDisplay::clearReceivedData() {
+  bubbles_.clear();
+}
+
 void StrataIotBubbleDisplay::onDraw(rendering::SceneOverlay& scene) {
   const bool use_event_color =
       common::ParseBoolProperty(propertyValue("use_event_color", "true"), true);

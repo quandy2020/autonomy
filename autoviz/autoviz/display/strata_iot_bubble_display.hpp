@@ -27,6 +27,7 @@ class StrataIotBubbleDisplay
  protected:
   void processMessage(
       const automsgs::msgs::strata_msgs::IotBubbleArray& message) override;
+  void clearReceivedData() override;
   void onDraw(rendering::SceneOverlay& scene) override;
 
  private:

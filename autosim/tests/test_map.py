@@ -140,3 +140,50 @@ def test_sample_prefers_navmesh_grid_when_available():
     # Habitat (x=0.25, z=0.25) → ROS cell (col=0, row=0), which is free.
     assert grid[0, 0] == 0
     # Habitat (x=0.75, z=0.25) → occupied; robot +X stays along columns.
+
+
+def test_occupancy_range_stops_at_first_wall():
+    grid = np.array(
+        [
+            [0, 0, 100, 0],
+            [0, 0, 100, 0],
+        ],
+        dtype=np.int8,
+    )
+    # Origin in free cell (0.25, 0.25); shoot +X into occupied column 2.
+    distance = Map.occupancy_range(
+        origin_x=0.25,
+        origin_y=0.25,
+        yaw=0.0,
+        grid=grid,
+        resolution=1.0,
+        grid_origin_x=0.0,
+        grid_origin_y=0.0,
+        range_max=10.0,
+    )
+    assert distance is not None
+    assert 1.5 <= distance <= 2.5
+
+
+def test_clip_laser_ranges_blocks_through_wall_hits():
+    builder = Map({"grid": {"resolution": 1.0, "z_min": 0.1, "z_max": 2.0}})
+    builder.cached_grid = (
+        np.array([[0, 0, 100, 0]], dtype=np.int8),
+        1.0,
+        0.0,
+        0.0,
+        4,
+        1,
+    )
+    # Fake Habitat hit beyond the wall (3.5 m); clip must shrink to wall.
+    ranges = np.array([3.5], dtype=np.float32)
+    clipped = builder.clip_laser_ranges(
+        ranges,
+        np.array([0.0]),
+        origin_x=0.25,
+        origin_y=0.25,
+        yaw=0.0,
+        range_max=10.0,
+    )
+    assert clipped[0] < 3.0
+    assert clipped[0] >= 1.5

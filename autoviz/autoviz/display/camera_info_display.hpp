@@ -25,6 +25,7 @@ class CameraInfoDisplay
  protected:
   void processMessage(
       const automsgs::msgs::sensor_msgs::CameraInfo& message) override;
+  void clearReceivedData() override;
   void onDraw(rendering::SceneOverlay& scene) override;
 
  private:

@@ -743,6 +743,14 @@ void GridMapDisplay::processMessage(
   rebuildGeometry();
 }
 
+void GridMapDisplay::clearReceivedData() {
+  has_message_ = false;
+  layers_.clear();
+  basic_layers_.clear();
+  current_message_.Clear();
+  clearGeometry();
+}
+
 void GridMapDisplay::onDraw(rendering::SceneOverlay& scene) {
   if (!has_geometry_) {
     return;

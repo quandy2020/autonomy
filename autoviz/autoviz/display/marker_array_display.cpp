@@ -40,6 +40,8 @@ void MarkerArrayDisplay::processMessage(
   }
 }
 
+void MarkerArrayDisplay::clearReceivedData() { markers_.clear(); }
+
 void MarkerArrayDisplay::onDraw(rendering::SceneOverlay& scene) {
   drawStoredMarkers(scene, context_, properties(), markers_, name());
 }

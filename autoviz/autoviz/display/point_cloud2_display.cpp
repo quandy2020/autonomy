@@ -236,6 +236,12 @@ void PointCloud2Display::processMessage(
   }
 }
 
+void PointCloud2Display::clearReceivedData() {
+  batches_.clear();
+  intensity_auto_min_ = std::numeric_limits<float>::max();
+  intensity_auto_max_ = std::numeric_limits<float>::lowest();
+}
+
 void PointCloud2Display::onDraw(rendering::SceneOverlay& scene) {
   if (batches_.empty()) {
     return;

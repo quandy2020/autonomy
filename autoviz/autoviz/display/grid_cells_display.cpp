@@ -61,6 +61,8 @@ void GridCellsDisplay::processMessage(
   }
 }
 
+void GridCellsDisplay::clearReceivedData() { cells_.clear(); }
+
 void GridCellsDisplay::onDraw(rendering::SceneOverlay& scene) {
   if (cells_.empty()) {
     return;

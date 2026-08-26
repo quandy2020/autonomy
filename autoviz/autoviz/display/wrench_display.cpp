@@ -68,6 +68,10 @@ void WrenchDisplay::processMessage(
   }
 }
 
+void WrenchDisplay::clearReceivedData() {
+  have_wrench_ = false;
+}
+
 void WrenchDisplay::onDraw(rendering::SceneOverlay& scene) {
   if (!have_wrench_) {
     return;

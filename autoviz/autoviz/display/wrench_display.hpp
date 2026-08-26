@@ -27,6 +27,7 @@ class WrenchDisplay
   void processMessage(
       const automsgs::msgs::geometry_msgs::WrenchStamped& message)
       override;
+  void clearReceivedData() override;
   void onDraw(rendering::SceneOverlay& scene) override;
 
  private:

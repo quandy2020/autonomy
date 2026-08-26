@@ -147,7 +147,8 @@ class SceneOverlay {
   /** Screen-aligned quad (TEXT markers, billboards). Expanded at render time. */
   void addViewFacingQuad(const QVector3D& center, float half_extent,
                          const QColor& color);
-  /** Camera-facing polyline strip (Path Billboards on OpenGL backend). */
+  /** Camera-facing polyline strip (rviz Path Billboards / Ogre BillboardChain).
+   *  line_width is world meters; expanded each frame to face the camera. */
   void addViewFacingPolylineStrip(const std::vector<QVector3D>& points,
                                   float line_width, const QColor& color);
   /** Screen-space wide closed loop using GL line width. */

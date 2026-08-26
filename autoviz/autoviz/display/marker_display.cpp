@@ -36,6 +36,8 @@ void MarkerDisplay::processMessage(
   }
 }
 
+void MarkerDisplay::clearReceivedData() { markers_.clear(); }
+
 void MarkerDisplay::onDraw(rendering::SceneOverlay& scene) {
   drawStoredMarkers(scene, context_, properties(), markers_, name());
 }

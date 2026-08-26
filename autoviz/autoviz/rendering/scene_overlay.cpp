@@ -931,33 +931,81 @@ void SceneOverlay::appendViewFacingPolylineStrips(
   if (triangles == nullptr || polyline_strip_requests_.empty()) {
     return;
   }
+  // Match Ogre::BillboardChain / rviz BillboardLine: expand each vertex in the
+  // plane facing the camera (cross of path tangent and eye vector), and share
+  // left/right offsets across joints so the strip stays continuous.
   const QMatrix4x4 inv_view = view.inverted();
-  const QVector3D camera_right = inv_view.column(0).toVector3D().normalized();
-  const QVector3D camera_up = inv_view.column(1).toVector3D().normalized();
+  const QVector3D camera_pos = inv_view.column(3).toVector3D();
+  const QVector3D camera_fallback = inv_view.column(2).toVector3D();
+  const QVector3D camera_up = inv_view.column(1).toVector3D();
+  const QVector3D camera_right = inv_view.column(0).toVector3D();
 
   for (const PolylineStripRequest& strip : polyline_strip_requests_) {
     if (strip.points.size() < 2 || strip.half_width <= 0.f) {
       continue;
     }
-    triangles->reserve(triangles->size() + (strip.points.size() - 1) * 6);
-    for (std::size_t i = 1; i < strip.points.size(); ++i) {
-      const QVector3D& a = strip.points[i - 1];
-      const QVector3D& b = strip.points[i];
-      const QVector3D delta = b - a;
-      if (delta.lengthSquared() < 1e-8f) {
+    const std::size_t n = strip.points.size();
+    std::vector<QVector3D> left;
+    std::vector<QVector3D> right;
+    left.reserve(n);
+    right.reserve(n);
+
+    for (std::size_t i = 0; i < n; ++i) {
+      QVector3D tangent;
+      if (i == 0) {
+        tangent = strip.points[1] - strip.points[0];
+      } else if (i + 1 == n) {
+        tangent = strip.points[i] - strip.points[i - 1];
+      } else {
+        const QVector3D t0 = strip.points[i] - strip.points[i - 1];
+        const QVector3D t1 = strip.points[i + 1] - strip.points[i];
+        const float l0 = t0.length();
+        const float l1 = t1.length();
+        if (l0 > 1e-6f && l1 > 1e-6f) {
+          tangent = t0 / l0 + t1 / l1;
+        } else if (l1 > 1e-6f) {
+          tangent = t1;
+        } else {
+          tangent = t0;
+        }
+      }
+      if (tangent.lengthSquared() < 1e-12f) {
+        left.push_back(strip.points[i]);
+        right.push_back(strip.points[i]);
         continue;
       }
-      const QVector3D tangent = delta.normalized();
-      QVector3D side = QVector3D::crossProduct(tangent, camera_up);
-      if (side.lengthSquared() < 1e-6f) {
+      tangent.normalize();
+
+      QVector3D to_camera = camera_pos - strip.points[i];
+      if (to_camera.lengthSquared() < 1e-8f) {
+        to_camera = camera_fallback;
+      }
+      QVector3D side = QVector3D::crossProduct(tangent, to_camera);
+      if (side.lengthSquared() < 1e-8f) {
+        side = QVector3D::crossProduct(tangent, camera_up);
+      }
+      if (side.lengthSquared() < 1e-8f) {
         side = QVector3D::crossProduct(tangent, camera_right);
       }
-      side.normalize();
-      const QVector3D offset = side * strip.half_width;
-      const QVector3D p0 = a - offset;
-      const QVector3D p1 = a + offset;
-      const QVector3D p2 = b + offset;
-      const QVector3D p3 = b - offset;
+      if (side.lengthSquared() < 1e-8f) {
+        left.push_back(strip.points[i]);
+        right.push_back(strip.points[i]);
+        continue;
+      }
+      side = side.normalized() * strip.half_width;
+      left.push_back(strip.points[i] - side);
+      right.push_back(strip.points[i] + side);
+    }
+
+    triangles->reserve(triangles->size() + (n - 1) * 6);
+    for (std::size_t i = 1; i < n; ++i) {
+      const QVector3D& p0 = left[i - 1];
+      const QVector3D& p1 = right[i - 1];
+      const QVector3D& p2 = right[i];
+      const QVector3D& p3 = left[i];
+      if ((p2 - p0).lengthSquared() < 1e-16f) {
+        continue;
+      }
       triangles->push_back({p0, strip.color});
       triangles->push_back({p1, strip.color});
       triangles->push_back({p2, strip.color});

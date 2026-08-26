@@ -16,6 +16,9 @@
 
 #include "autonomy/localization/cartographer/node/tf_bridge.hpp"
 
+#include <algorithm>
+
+#include <automsgs/msgs/time_utils.hpp>
 #include <glog/logging.h>
 
 #include "autonomy/localization/cartographer/node/msg_conversion.hpp"
@@ -47,14 +50,20 @@ std::unique_ptr<::cartographer::transform::Rigid3d> TfBridge::LookupToTracking(
                 .header().stamp();
         const automsgs::msgs::builtin_interfaces::Time requested_time = ToCommsgs(time);
 
-        if (latest_tf_time >= requested_time) {
-            timeout = 0.f;
+        if (automsgs::msgs::builtin_interfaces::TimeToNanoseconds(
+                latest_tf_time) >=
+            automsgs::msgs::builtin_interfaces::TimeToNanoseconds(
+                requested_time)) {
+            // Keep a short timeout so Buffer can fall back on future
+            // extrapolation instead of immediately returning empty ":timeout".
+            timeout = std::min(timeout, 0.05f);
         }
         return std::make_unique<::cartographer::transform::Rigid3d>(
             ToRigid3d(buffer_->lookupTransform(tracking_frame_, frame_id,
                                                requested_time, timeout)));
     } catch (const autonomy::transform::tf2::TransformException& ex) {
-        LOG(WARNING) << ex.what();
+        LOG_EVERY_N(WARNING, 50) << "TF " << frame_id << " -> "
+                                 << tracking_frame_ << ": " << ex.what();
     }
     return nullptr;
 }

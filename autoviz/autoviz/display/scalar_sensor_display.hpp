@@ -67,6 +67,8 @@ class ScalarSensorDisplay : public ChannelDisplay<MessageT> {
     }
   }
 
+  void clearReceivedData() override { have_sample_ = false; }
+
   void onDraw(rendering::SceneOverlay& scene) override {
     if (!have_sample_) {
       return;

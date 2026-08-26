@@ -75,6 +75,12 @@ void PoseDisplay::processMessage(
   }
 }
 
+void PoseDisplay::clearReceivedData() {
+  have_pose_ = false;
+  position_ = QVector3D();
+  yaw_ = 0.f;
+}
+
 void PoseDisplay::onDraw(rendering::SceneOverlay& scene) {
   if (!have_pose_) {
     return;

@@ -30,6 +30,7 @@ class PoseDisplay
       const automsgs::msgs::geometry_msgs::PoseStamped& message)
       override;
   void onDraw(rendering::SceneOverlay& scene) override;
+  void clearReceivedData() override;
 
  private:
   bool have_pose_ = false;
