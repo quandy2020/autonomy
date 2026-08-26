@@ -20,13 +20,13 @@ constexpr int kRoleLevel = Qt::UserRole + 2;
 constexpr int kRoleName = Qt::UserRole + 3;
 constexpr int kRoleMessage = Qt::UserRole + 4;
 
-constexpr int kPaddingH = 6;
-constexpr int kPaddingV = 1;
-constexpr int kColumnGap = 6;
-constexpr int kTimeWidth = 76;
-constexpr int kLevelWidth = 34;
-constexpr int kMinRowHeight = 17;
-constexpr int kAccentWidth = 2;
+constexpr int kPaddingH = 10;
+constexpr int kPaddingV = 3;
+constexpr int kColumnGap = 8;
+constexpr int kTimeWidth = 88;
+constexpr int kLevelWidth = 42;
+constexpr int kMinRowHeight = 22;
+constexpr int kAccentWidth = 3;
 
 QString ShortLevelLabel(LogLevel level) {
   switch (level) {
@@ -45,61 +45,49 @@ QString ShortLevelLabel(LogLevel level) {
   }
 }
 
-QColor RowBackground(const QPalette& palette, bool selected, bool hovered) {
+QColor RowBackground(bool selected, bool hovered, int row) {
   if (selected) {
-    return palette.color(QPalette::Highlight).lighter(140);
+    return QColor(8, 145, 178, 36);
   }
   if (hovered) {
-    return palette.color(QPalette::AlternateBase);
+    return QColor(15, 23, 42, 12);
   }
-  return Qt::transparent;
+  return (row % 2 == 0) ? QColor(255, 255, 255) : QColor(248, 250, 252);
 }
 
 QColor AccentColor(LogLevel level) {
   switch (level) {
+    case LogLevel::kDebug:
+      return QColor(100, 116, 139);
+    case LogLevel::kInfo:
+      return QColor(8, 145, 178);
     case LogLevel::kWarn:
-      return QColor(180, 140, 60);
+      return QColor(217, 119, 6);
     case LogLevel::kError:
-      return QColor(190, 90, 90);
+      return QColor(220, 38, 38);
     case LogLevel::kFatal:
-      return QColor(160, 90, 130);
+      return QColor(190, 24, 93);
     default:
-      return Qt::transparent;
+      return QColor(148, 163, 184);
   }
 }
 
-QColor LevelColor(LogLevel level, const QPalette& palette) {
-  switch (level) {
-    case LogLevel::kDebug:
-      return palette.color(QPalette::PlaceholderText);
-    case LogLevel::kInfo:
-      return palette.color(QPalette::Mid);
-    case LogLevel::kWarn:
-      return QColor(158, 122, 48);
-    case LogLevel::kError:
-      return QColor(178, 88, 88);
-    case LogLevel::kFatal:
-      return QColor(150, 88, 120);
-    default:
-      return palette.color(QPalette::Mid);
-  }
+QColor LevelColor(LogLevel level) {
+  return AccentColor(level);
 }
 
-QColor MessageColor(LogLevel level, const QPalette& palette) {
-  const QColor text = palette.color(QPalette::Text);
+QColor MessageColor(LogLevel level) {
   switch (level) {
     case LogLevel::kDebug:
-      return palette.color(QPalette::PlaceholderText);
-    case LogLevel::kInfo:
-      return text;
+      return QColor(100, 116, 139);
     case LogLevel::kWarn:
-      return QColor(158, 122, 48);
+      return QColor(180, 83, 9);
     case LogLevel::kError:
-      return QColor(178, 88, 88);
+      return QColor(185, 28, 28);
     case LogLevel::kFatal:
-      return QColor(150, 88, 120);
+      return QColor(157, 23, 77);
     default:
-      return text;
+      return QColor(30, 41, 59);
   }
 }
 
@@ -129,27 +117,24 @@ void LogEntryDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
       static_cast<LogLevel>(index.data(kRoleLevel).toInt());
   const bool selected = option.state & QStyle::State_Selected;
   const bool hovered = option.state & QStyle::State_MouseOver;
-  const QPalette& palette = option.palette;
 
   painter->save();
-  painter->fillRect(option.rect, RowBackground(palette, selected, hovered));
+  painter->setRenderHint(QPainter::TextAntialiasing, true);
+  painter->fillRect(option.rect, RowBackground(selected, hovered, index.row()));
 
   const QColor accent = AccentColor(level);
-  if (accent.alpha() > 0) {
-    painter->fillRect(QRect(option.rect.left(), option.rect.top(), kAccentWidth,
-                            option.rect.height()),
-                      accent);
-  }
+  painter->fillRect(QRect(option.rect.left(), option.rect.top(), kAccentWidth,
+                          option.rect.height()),
+                    accent);
 
   const QString timestamp = index.data(kRoleTimestamp).toString();
   const QString name = index.data(kRoleName).toString();
   const QString message = index.data(kRoleMessage).toString();
   const QString body = BuildBodyText(name, message);
 
-  QRect content = option.rect.adjusted(kPaddingH, kPaddingV, -kPaddingH, -kPaddingV);
-  if (accent.alpha() > 0) {
-    content.setLeft(content.left() + kAccentWidth);
-  }
+  QRect content =
+      option.rect.adjusted(kPaddingH + kAccentWidth, kPaddingV, -kPaddingH,
+                           -kPaddingV);
 
   QFont font = option.font;
   font.setFamily(QStringLiteral("Monospace"));
@@ -158,17 +143,21 @@ void LogEntryDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
 
   int x = content.left();
 
-  painter->setPen(palette.color(QPalette::PlaceholderText));
+  painter->setPen(QColor(100, 116, 139));
   painter->drawText(QRect(x, content.top(), kTimeWidth, content.height()),
                     Qt::AlignLeft | Qt::AlignVCenter, timestamp);
   x += kTimeWidth + kColumnGap;
 
-  painter->setPen(LevelColor(level, palette));
+  QFont level_font = font;
+  level_font.setBold(true);
+  painter->setFont(level_font);
+  painter->setPen(LevelColor(level));
   painter->drawText(QRect(x, content.top(), kLevelWidth, content.height()),
                     Qt::AlignLeft | Qt::AlignVCenter, ShortLevelLabel(level));
   x += kLevelWidth + kColumnGap;
 
-  painter->setPen(MessageColor(level, palette));
+  painter->setFont(font);
+  painter->setPen(MessageColor(level));
   const int body_width = std::max(20, content.right() - x + 1);
   QRect body_rect(x, content.top(), body_width, content.height());
   painter->drawText(body_rect, Qt::AlignLeft | Qt::AlignVCenter,

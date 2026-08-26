@@ -9,14 +9,16 @@ namespace teleop {
 
 TeleopPanelConfig DefaultTeleopPanelConfig() {
   TeleopPanelConfig config;
+  config.max_linear_speed = 0.5;
+  config.max_angular_speed = 0.5;
   config.up.field = TeleopTwistField::kLinearX;
-  config.up.value = 0.5;
+  config.up.value = config.max_linear_speed;
   config.down.field = TeleopTwistField::kLinearX;
-  config.down.value = -0.5;
+  config.down.value = -config.max_linear_speed;
   config.left.field = TeleopTwistField::kAngularZ;
-  config.left.value = 0.5;
+  config.left.value = config.max_angular_speed;
   config.right.field = TeleopTwistField::kAngularZ;
-  config.right.value = -0.5;
+  config.right.value = -config.max_angular_speed;
   config.stop.value = 0.0;
   return config;
 }

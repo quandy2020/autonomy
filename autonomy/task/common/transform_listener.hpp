@@ -46,11 +46,12 @@ public:
 
     /**
      * @param transform_message_topic e.g. /tf (fakedata, Foxglove convention)
-     * @param transform_stampeds_topic e.g. tf (TransformStampeds publishers)
+     * @param transform_stampeds_topic optional legacy TransformStampeds channel
+     *        (empty = disabled)
      */
     bool Start(const std::shared_ptr<autolink::Node>& node,
                const std::string& transform_message_topic = "/tf",
-               const std::string& transform_stampeds_topic = "tf");
+               const std::string& transform_stampeds_topic = "");
 
     void Stop();
 

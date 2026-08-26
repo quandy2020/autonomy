@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <numeric>
 #include <unordered_map>
 #include <vector>
 
@@ -15,16 +16,23 @@
 #include <QFontMetricsF>
 #include <QGraphicsObject>
 #include <QGraphicsScene>
+#include <QGraphicsSceneHoverEvent>
 #include <QLinearGradient>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPainterPathStroker>
 #include <QPen>
 #include <QPolygonF>
+#include <QRadialGradient>
+#include <QSet>
 #include <QShowEvent>
 #include <QStyle>
 #include <QStyleOptionGraphicsItem>
+#include <QTimer>
 #include <QWheelEvent>
+
+#include "autoviz/integration/channel_stats_registry.hpp"
 
 namespace autoviz {
 namespace channel_graph {
@@ -35,6 +43,7 @@ constexpr double kMaxZoom = 4.0;
 constexpr double kNodeDiameterMin = 76.0;
 constexpr double kNodeDiameterMax = 108.0;
 constexpr double kChannelWidthMin = 280.0;
+constexpr double kChannelWidthMax = 420.0;
 constexpr double kChannelHeight = 46.0;
 constexpr double kServiceWidth = 168.0;
 constexpr double kServiceHeight = 148.0;
@@ -42,6 +51,189 @@ constexpr double kTextPadding = 10.0;
 constexpr double kArrowLength = 11.0;
 constexpr double kArrowWidth = 5.5;
 constexpr double kConnectionSpread = 13.0;
+
+enum class GraphVisualMode { kNormal, kEmphasized, kDimmed };
+
+bool IsPubSubEdge(integration::GraphEdgeKind kind) {
+  return kind == integration::GraphEdgeKind::kPublish ||
+         kind == integration::GraphEdgeKind::kSubscribe;
+}
+
+bool IsServiceEdge(integration::GraphEdgeKind kind) {
+  return kind == integration::GraphEdgeKind::kServiceServer ||
+         kind == integration::GraphEdgeKind::kServiceClient;
+}
+
+/** Edges that show traveling-packet flow when a vertex is focused. */
+bool IsAnimatedFlowEdge(integration::GraphEdgeKind kind) {
+  return IsPubSubEdge(kind) || IsServiceEdge(kind);
+}
+
+/** Which edge kinds belong to a focused vertex of the given kind. */
+bool IsFocusRelatedEdge(integration::GraphVertexKind focus_kind,
+                        integration::GraphEdgeKind edge_kind) {
+  switch (focus_kind) {
+    case integration::GraphVertexKind::kNode:
+    case integration::GraphVertexKind::kChannel:
+      return IsPubSubEdge(edge_kind);
+    case integration::GraphVertexKind::kService:
+      return IsServiceEdge(edge_kind);
+  }
+  return false;
+}
+
+struct NodeLayoutSlot {
+  std::string id;
+  double preferred_y = 0.0;
+  int pub_count = 0;
+  int sub_count = 0;
+};
+
+double MedianOf(std::vector<double> values) {
+  if (values.empty()) {
+    return 0.0;
+  }
+  std::nth_element(values.begin(), values.begin() + values.size() / 2, values.end());
+  return values[values.size() / 2];
+}
+
+/** Pack nodes top-to-bottom with a minimum gap, biased toward preferred Y. */
+std::vector<double> PackPreferredPositions(std::vector<double> preferred,
+                                           double min_gap) {
+  if (preferred.empty()) {
+    return {};
+  }
+  std::vector<std::size_t> order(preferred.size());
+  std::iota(order.begin(), order.end(), 0);
+  std::stable_sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) {
+    return preferred[a] < preferred[b];
+  });
+
+  std::vector<double> packed(preferred.size(), 0.0);
+  packed[order.front()] = preferred[order.front()];
+  for (std::size_t i = 1; i < order.size(); ++i) {
+    const std::size_t idx = order[i];
+    const std::size_t prev = order[i - 1];
+    packed[idx] = std::max(preferred[idx], packed[prev] + min_gap);
+  }
+
+  // Shift the packed column so its median stays near the preferred median.
+  std::vector<double> preferred_sorted = preferred;
+  std::vector<double> packed_sorted;
+  packed_sorted.reserve(order.size());
+  for (std::size_t idx : order) {
+    packed_sorted.push_back(packed[idx]);
+  }
+  const double shift = MedianOf(std::move(preferred_sorted)) - MedianOf(std::move(packed_sorted));
+  for (double& value : packed) {
+    value += shift;
+  }
+
+  // Re-resolve collisions after the shift.
+  for (std::size_t i = 1; i < order.size(); ++i) {
+    const std::size_t idx = order[i];
+    const std::size_t prev = order[i - 1];
+    packed[idx] = std::max(packed[idx], packed[prev] + min_gap);
+  }
+  return packed;
+}
+
+ChannelGraphLayoutOptions ComputeAdaptiveLayoutOptions(
+    int channel_count, int node_count, int service_count, int edge_count,
+    double max_channel_half_width, double viewport_width,
+    VertexArrangeMode channel_mode, VertexArrangeMode service_mode) {
+  ChannelGraphLayoutOptions options;
+  const int channels = std::max(channel_count, 0);
+  const int services = std::max(service_count, 0);
+
+  if (channel_mode == VertexArrangeMode::kColumn || channels <= 1) {
+    options.channel_columns = 1;
+    options.channel_rows = std::max(channels, 1);
+  } else {
+    // Prefer a readable height; wrap channels into multiple columns instead of
+    // making one ultra-tall stack.
+    const int target_channel_rows =
+        channels <= 12
+            ? std::max(channels, 1)
+            : std::clamp(static_cast<int>(std::ceil(std::sqrt(channels * 2.2))),
+                         10, 16);
+    options.channel_columns = std::max(
+        1, static_cast<int>(std::ceil(static_cast<double>(channels) /
+                                      static_cast<double>(target_channel_rows))));
+    options.channel_rows = static_cast<int>(
+        std::ceil(static_cast<double>(channels) /
+                  static_cast<double>(options.channel_columns)));
+  }
+
+  options.channel_row_gap = kChannelHeight + 32.0;
+  options.node_row_gap = kNodeDiameterMax + 48.0;
+  options.section_gap = 260.0;
+
+  const double channel_half =
+      std::max(kChannelWidthMin * 0.5, max_channel_half_width);
+  options.channel_col_gap = channel_half * 2.0 + 64.0;
+
+  const double channel_block_width =
+      (options.channel_columns - 1) * options.channel_col_gap;
+  options.channel_block_left_x = -channel_block_width * 0.5;
+  options.channel_block_right_x = channel_block_width * 0.5;
+  options.channel_column_x = 0.0;
+
+  const double side_lane =
+      std::clamp(220.0 + node_count * 12.0 + edge_count * 0.15, 240.0, 420.0);
+  options.writer_column_x =
+      options.channel_block_left_x - channel_half - side_lane;
+  options.reader_column_x =
+      options.channel_block_right_x + channel_half + side_lane;
+  options.both_writer_column_x =
+      (options.writer_column_x + options.channel_block_left_x) * 0.5;
+  options.both_reader_column_x =
+      (options.reader_column_x + options.channel_block_right_x) * 0.5;
+
+  // Services sit under the channel band.
+  const double channel_band_height =
+      std::max(0, options.channel_rows - 1) * options.channel_row_gap;
+  options.service_origin_y = channel_band_height + options.section_gap;
+  options.service_col_gap = kServiceWidth + 56.0;
+  options.service_row_gap = kServiceHeight + 48.0;
+
+  if (service_mode == VertexArrangeMode::kColumn || services <= 1) {
+    options.service_columns = 1;
+  } else {
+    const double usable_width = std::max(
+        viewport_width * 0.92,
+        options.reader_column_x - options.writer_column_x + 200.0);
+    const int max_service_cols_by_width = std::max(
+        1, static_cast<int>(usable_width / options.service_col_gap));
+    if (services <= 4) {
+      options.service_columns = std::max(services, 1);
+    } else {
+      options.service_columns = std::clamp(
+          static_cast<int>(std::ceil(std::sqrt(services * 1.35))), 3,
+          std::min(8, max_service_cols_by_width));
+    }
+  }
+  const double service_block_width =
+      (options.service_columns - 1) * options.service_col_gap;
+  options.service_origin_x = -service_block_width * 0.5;
+  return options;
+}
+
+QPointF ChannelGridPosition(const ChannelGraphLayoutOptions& layout, int index) {
+  const int cols = std::max(1, layout.channel_columns);
+  const int col = index % cols;
+  const int row = index / cols;
+  return QPointF(layout.channel_block_left_x + col * layout.channel_col_gap,
+                 row * layout.channel_row_gap);
+}
+
+QPointF ServiceGridPosition(const ChannelGraphLayoutOptions& layout, int index) {
+  const int cols = std::max(1, layout.service_columns);
+  const int col = index % cols;
+  const int row = index / cols;
+  return QPointF(layout.service_origin_x + col * layout.service_col_gap,
+                 layout.service_origin_y + row * layout.service_row_gap);
+}
 
 QColor ColorForKind(integration::GraphVertexKind kind) {
   switch (kind) {
@@ -127,6 +319,19 @@ QString ShortTypeName(const QString& type_name) {
     return type_name.mid(dot + 1);
   }
   return ShortPathTail(type_name);
+}
+
+QString FormatChannelHz(double hz) {
+  if (hz <= 0.0) {
+    return QStringLiteral("— Hz");
+  }
+  if (hz >= 100.0) {
+    return QString::number(hz, 'f', 0) + QStringLiteral(" Hz");
+  }
+  if (hz >= 10.0) {
+    return QString::number(hz, 'f', 1) + QStringLiteral(" Hz");
+  }
+  return QString::number(hz, 'f', 2) + QStringLiteral(" Hz");
 }
 
 QFont MakeTitleFont() {
@@ -224,7 +429,39 @@ class GraphVertexItem : public QGraphicsObject {
   }
 
   QString vertexId() const { return id_; }
+  QString fullLabel() const { return full_label_; }
+  QString fullDetail() const { return full_detail_; }
   integration::GraphVertexKind vertexKind() const { return kind_; }
+  const std::vector<GraphEdgeItem*>& connectedEdges() const { return edges_; }
+
+  void setVisualMode(GraphVisualMode mode) {
+    if (visual_mode_ == mode) {
+      return;
+    }
+    visual_mode_ = mode;
+    update();
+  }
+
+  GraphVisualMode visualMode() const { return visual_mode_; }
+
+  void setActivityHz(double hz) {
+    if (kind_ != integration::GraphVertexKind::kChannel) {
+      return;
+    }
+    if (std::abs(activity_hz_ - hz) < 0.01 && activity_initialized_) {
+      return;
+    }
+    activity_hz_ = hz;
+    activity_initialized_ = true;
+    const QFontMetricsF detail_metrics(detail_font_);
+    detail_text_ = detail_metrics.elidedText(
+        FormatChannelHz(activity_hz_), Qt::ElideRight,
+        static_cast<int>(detail_rect_.width()));
+    updateToolTip();
+    update();
+  }
+
+  double activityHz() const { return activity_hz_; }
 
   QRectF boundingRect() const override {
     return content_rect_.adjusted(-6.0, -6.0, 6.0, 6.0);
@@ -245,11 +482,17 @@ class GraphVertexItem : public QGraphicsObject {
     Q_UNUSED(widget);
     painter->setRenderHint(QPainter::Antialiasing, true);
     painter->setRenderHint(QPainter::TextAntialiasing, true);
+    if (visual_mode_ == GraphVisualMode::kDimmed) {
+      painter->setOpacity(0.22);
+    } else if (visual_mode_ == GraphVisualMode::kEmphasized) {
+      painter->setOpacity(1.0);
+    }
 
     const QColor fill = ColorForKind(kind_);
     const bool selected = option != nullptr && (option->state & QStyle::State_Selected);
     const bool hovered = option != nullptr && (option->state & QStyle::State_MouseOver);
-    const double pen_width = selected ? 2.2 : 1.5;
+    const bool emphasized = visual_mode_ == GraphVisualMode::kEmphasized;
+    const double pen_width = selected || emphasized ? 2.4 : 1.5;
     QPen outline(fill.darker(selected ? 145 : 128), pen_width);
 
     if (kind_ == integration::GraphVertexKind::kNode) {
@@ -271,9 +514,15 @@ class GraphVertexItem : public QGraphicsObject {
         painter->drawText(detail_rect_, Qt::AlignHCenter | Qt::AlignTop, detail_text_);
       }
     } else if (kind_ == integration::GraphVertexKind::kChannel) {
+      QColor fill_color = fill;
+      if (activity_initialized_ && activity_hz_ <= 0.0) {
+        fill_color = fill_color.darker(130);
+      } else if (activity_hz_ > 0.0) {
+        fill_color = fill_color.lighter(108);
+      }
       QLinearGradient gradient(shape_rect_.topLeft(), shape_rect_.bottomLeft());
-      gradient.setColorAt(0.0, fill.lighter(hovered ? 122 : 110));
-      gradient.setColorAt(1.0, fill.darker(hovered ? 108 : 118));
+      gradient.setColorAt(0.0, fill_color.lighter(hovered ? 122 : 110));
+      gradient.setColorAt(1.0, fill_color.darker(hovered ? 108 : 118));
       painter->setPen(outline);
       painter->setBrush(gradient);
       painter->drawPath(CapsulePath(shape_rect_));
@@ -286,7 +535,8 @@ class GraphVertexItem : public QGraphicsObject {
       painter->setFont(title_font_);
       painter->drawText(title_rect_, Qt::AlignVCenter | Qt::AlignLeft, title_text_);
       if (!detail_text_.isEmpty()) {
-        painter->setPen(QColor(255, 255, 255, 205));
+        painter->setPen(activity_hz_ > 0.0 ? QColor(200, 255, 210, 230)
+                                           : QColor(255, 255, 255, 205));
         painter->setFont(detail_font_);
         painter->drawText(detail_rect_, Qt::AlignVCenter | Qt::AlignRight, detail_text_);
       }
@@ -309,8 +559,8 @@ class GraphVertexItem : public QGraphicsObject {
       }
     }
 
-    if (selected) {
-      QPen highlight(QColor(255, 214, 90), 2.0);
+    if (selected || emphasized) {
+      QPen highlight(QColor(255, 214, 90), emphasized ? 2.4 : 2.0);
       painter->setPen(highlight);
       painter->setBrush(Qt::NoBrush);
       painter->drawPath(shape().translated(0, 0));
@@ -337,17 +587,26 @@ class GraphVertexItem : public QGraphicsObject {
     if (kind_ == integration::GraphVertexKind::kChannel) {
       const double title_width =
           title_metrics.horizontalAdvance(full_label_) + kTextPadding * 2.0 + 28.0;
-      const double width = std::max(kChannelWidthMin, title_width);
+      const double width =
+          std::clamp(title_width, kChannelWidthMin, kChannelWidthMax);
       const double height = kChannelHeight;
+      // Keep Hz clear of the decorative end-caps (radius ~4 at ±9 from edges).
+      constexpr double kPortClearance = 20.0;
+      const double detail_width = std::min(width * 0.28, 88.0);
+      const double title_width_budget =
+          width - kPortClearance * 2.0 - detail_width - 8.0;
       shape_rect_ = QRectF(-width * 0.5, -height * 0.5, width, height);
       title_text_ = title_metrics.elidedText(full_label_, Qt::ElideMiddle,
-                                             static_cast<int>(width - 56.0));
-      detail_text_ = detail_metrics.elidedText(ShortTypeName(full_detail_), Qt::ElideRight,
-                                               static_cast<int>(width * 0.35));
-      title_rect_ = QRectF(shape_rect_.left() + 20.0, shape_rect_.top(),
-                           shape_rect_.width() - 40.0 - width * 0.35, height);
-      detail_rect_ = QRectF(shape_rect_.right() - width * 0.35 - 8.0, shape_rect_.top(),
-                            width * 0.35, height);
+                                             static_cast<int>(title_width_budget));
+      detail_text_ = detail_metrics.elidedText(
+          activity_initialized_ ? FormatChannelHz(activity_hz_)
+                                : ShortTypeName(full_detail_),
+          Qt::ElideRight, static_cast<int>(detail_width));
+      title_rect_ = QRectF(shape_rect_.left() + kPortClearance, shape_rect_.top(),
+                           title_width_budget, height);
+      detail_rect_ =
+          QRectF(shape_rect_.right() - kPortClearance - detail_width,
+                 shape_rect_.top(), detail_width, height);
       content_rect_ = shape_rect_;
       return;
     }
@@ -403,6 +662,9 @@ class GraphVertexItem : public QGraphicsObject {
     if (!full_detail_.isEmpty()) {
       tip += QStringLiteral("\n") + full_detail_;
     }
+    if (kind_ == integration::GraphVertexKind::kChannel && activity_initialized_) {
+      tip += QStringLiteral("\n") + FormatChannelHz(activity_hz_);
+    }
     tip += QStringLiteral("\n(") + KindBadge(kind_) + QLatin1Char(')');
     setToolTip(tip);
   }
@@ -423,6 +685,9 @@ class GraphVertexItem : public QGraphicsObject {
   QFont detail_font_;
   std::vector<GraphEdgeItem*> edges_;
   std::function<void()> move_notifier_;
+  GraphVisualMode visual_mode_ = GraphVisualMode::kNormal;
+  double activity_hz_ = 0.0;
+  bool activity_initialized_ = false;
 };
 
 class GraphEdgeItem : public QGraphicsObject {
@@ -432,6 +697,7 @@ class GraphEdgeItem : public QGraphicsObject {
       : QGraphicsObject(parent), from_(from), to_(to), kind_(kind) {
     setZValue(-1.0);
     setAcceptHoverEvents(true);
+    setFlag(QGraphicsItem::ItemIsSelectable, false);
     if (from_ != nullptr) {
       from_->registerEdge(this);
     }
@@ -446,7 +712,41 @@ class GraphEdgeItem : public QGraphicsObject {
     return (from_ == a && to_ == b) || (from_ == b && to_ == a);
   }
 
-  QRectF boundingRect() const override { return path_.boundingRect().adjusted(-12, -12, 12, 12); }
+  bool touches(const GraphVertexItem* vertex) const {
+    return from_ == vertex || to_ == vertex;
+  }
+
+  GraphVertexItem* fromVertex() const { return from_; }
+  GraphVertexItem* toVertex() const { return to_; }
+  integration::GraphEdgeKind edgeKind() const { return kind_; }
+
+  void setVisualMode(GraphVisualMode mode) {
+    if (visual_mode_ == mode) {
+      return;
+    }
+    visual_mode_ = mode;
+    setZValue(mode == GraphVisualMode::kEmphasized ? 1.0 : -1.0);
+    update();
+  }
+
+  void setShowLabelAlways(bool enabled) {
+    if (show_label_always_ == enabled) {
+      return;
+    }
+    show_label_always_ = enabled;
+    update();
+  }
+
+  void setFlowPhase(double phase) {
+    flow_phase_ = phase;
+    if (visual_mode_ == GraphVisualMode::kEmphasized && IsAnimatedFlowEdge(kind_)) {
+      update();
+    }
+  }
+
+  QRectF boundingRect() const override {
+    return path_.boundingRect().adjusted(-16, -16, 16, 16);
+  }
 
   QPainterPath shape() const override {
     QPainterPath hit;
@@ -467,25 +767,65 @@ class GraphEdgeItem : public QGraphicsObject {
     }
 
     painter->setRenderHint(QPainter::Antialiasing, true);
-    const QColor color = ColorForEdge(kind_);
-    QPen pen(color, kind_ == integration::GraphEdgeKind::kRelay ? 1.4 : 1.8,
-             PenStyleForEdge(kind_), Qt::RoundCap, Qt::RoundJoin);
+    QColor color = ColorForEdge(kind_);
+    double width = kind_ == integration::GraphEdgeKind::kRelay ? 1.4 : 1.8;
+    if (visual_mode_ == GraphVisualMode::kDimmed) {
+      color.setAlpha(28);
+      width = 1.2;
+    } else if (visual_mode_ == GraphVisualMode::kEmphasized) {
+      color = color.lighter(125);
+      color.setAlpha(255);
+      width = IsAnimatedFlowEdge(kind_) ? 3.4 : 2.6;
+    }
+
+    QPen pen(color, width, PenStyleForEdge(kind_), Qt::RoundCap, Qt::RoundJoin);
     painter->setPen(pen);
     painter->setBrush(Qt::NoBrush);
     painter->drawPath(path_);
+
+    if (visual_mode_ == GraphVisualMode::kEmphasized && IsAnimatedFlowEdge(kind_)) {
+      // Moving dash overlay — direction follows the edge arrow.
+      QPen flow_pen(QColor(255, 255, 255, 220), std::max(1.6, width * 0.55),
+                    Qt::CustomDashLine, Qt::RoundCap, Qt::RoundJoin);
+      flow_pen.setDashPattern({5.0, 12.0});
+      flow_pen.setDashOffset(-flow_phase_);
+      painter->setPen(flow_pen);
+      painter->drawPath(path_);
+
+      // Traveling packets along the cubic.
+      const int packet_count = 3;
+      for (int i = 0; i < packet_count; ++i) {
+        const double t =
+            std::fmod(flow_phase_ * 0.035 + static_cast<double>(i) / packet_count,
+                      1.0);
+        const QPointF packet =
+            CubicBezierPoint(start_, c1_, c2_, end_, static_cast<float>(t));
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(QColor(255, 255, 255, 240));
+        painter->drawEllipse(packet, 3.4, 3.4);
+        painter->setBrush(color.lighter(145));
+        painter->drawEllipse(packet, 2.1, 2.1);
+      }
+    }
 
     const QPointF tip = end_;
     const QPointF direction = tip - CubicBezierPoint(start_, c1_, c2_, end_, 0.90);
     DrawArrowHead(painter, tip, direction, color);
 
-    const QPointF label_pos = CubicBezierPoint(start_, c1_, c2_, end_, 0.50);
     const QString label = EdgeKindLabel(kind_);
-    if (label.isEmpty()) {
+    const bool show_label =
+        !label.isEmpty() && visual_mode_ != GraphVisualMode::kDimmed &&
+        (show_label_always_ || visual_mode_ == GraphVisualMode::kEmphasized ||
+         hovered_);
+    if (!show_label) {
       return;
     }
 
+    const QPointF label_pos = CubicBezierPoint(start_, c1_, c2_, end_, 0.50);
     QFont label_font;
-    label_font.setPointSize(8);
+    label_font.setPointSize(visual_mode_ == GraphVisualMode::kEmphasized || hovered_
+                                ? 9
+                                : 8);
     label_font.setBold(true);
     const QFontMetricsF metrics(label_font);
     const QRectF text_rect =
@@ -519,6 +859,19 @@ class GraphEdgeItem : public QGraphicsObject {
     update();
   }
 
+ protected:
+  void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override {
+    Q_UNUSED(event);
+    hovered_ = true;
+    update();
+  }
+
+  void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override {
+    Q_UNUSED(event);
+    hovered_ = false;
+    update();
+  }
+
  private:
   double laneOffset(const GraphVertexItem* from, const GraphVertexItem* to) const {
     int total = 1;
@@ -537,6 +890,10 @@ class GraphEdgeItem : public QGraphicsObject {
   QPointF end_;
   QPointF c1_;
   QPointF c2_;
+  GraphVisualMode visual_mode_ = GraphVisualMode::kNormal;
+  double flow_phase_ = 0.0;
+  bool show_label_always_ = false;
+  bool hovered_ = false;
 };
 
 int GraphVertexItem::edgeBundleIndex(const GraphVertexItem* peer,
@@ -630,8 +987,18 @@ ChannelGraphView::ChannelGraphView(QWidget* parent) : QGraphicsView(parent) {
   setDragMode(QGraphicsView::ScrollHandDrag);
   setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
   setResizeAnchor(QGraphicsView::AnchorViewCenter);
-  setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
+  setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
   setBackgroundBrush(QColor(18, 18, 20));
+
+  flow_timer_ = new QTimer(this);
+  flow_timer_->setInterval(33);
+  connect(flow_timer_, &QTimer::timeout, this, &ChannelGraphView::onFlowTick);
+  activity_timer_ = new QTimer(this);
+  activity_timer_->setInterval(500);
+  connect(activity_timer_, &QTimer::timeout, this, &ChannelGraphView::onActivityTick);
+  activity_timer_->start();
+  connect(scene_, &QGraphicsScene::selectionChanged, this,
+          &ChannelGraphView::onSelectionChanged);
 }
 
 void ChannelGraphView::setGraph(const integration::TopologyGraph& graph,
@@ -640,6 +1007,9 @@ void ChannelGraphView::setGraph(const integration::TopologyGraph& graph,
       last_topology_hash_ == QString::fromStdString(graph.topology_hash)) {
     return;
   }
+
+  focused_vertex_id_.clear();
+  setFlowAnimationActive(false);
 
   QHash<QString, QPointF> positions =
       preserve_positions ? saved_positions_ : QHash<QString, QPointF>();
@@ -713,34 +1083,16 @@ void ChannelGraphView::setGraph(const integration::TopologyGraph& graph,
   }
   for (GraphEdgeItem* edge_item : edge_items) {
     edge_item->updatePath();
+    edge_item->setShowLabelAlways(show_edge_labels_);
   }
 
   if (!graph.vertices.empty()) {
-    QFont header_font;
-    header_font.setPointSize(9);
-    header_font.setBold(true);
-    const QColor header_color(150, 150, 158);
-    const double header_y =
-        scene_->itemsBoundingRect().top() - 28.0;
-    auto add_header = [&](const QString& text, double x) {
-      auto* label = scene_->addText(text, header_font);
-      label->setDefaultTextColor(header_color);
-      const QRectF bounds = label->boundingRect();
-      label->setPos(x - bounds.width() * 0.5, header_y);
-      label->setZValue(-2);
-      label->setFlag(QGraphicsItem::ItemIsSelectable, false);
-      label->setFlag(QGraphicsItem::ItemIsMovable, false);
-    };
-    add_header(tr("Writers"), layout_.writer_column_x);
-    add_header(tr("Channels"), layout_.channel_column_x);
-    add_header(tr("Readers"), layout_.reader_column_x);
-    if (service_count > 0) {
-      add_header(tr("Services"), layout_.service_column_x);
-    }
+    updateColumnHeaders(service_count);
   }
 
   saved_positions_ = positions;
   last_topology_hash_ = QString::fromStdString(graph.topology_hash);
+  onActivityTick();
   emit graphRendered(static_cast<int>(graph.vertices.size()),
                      static_cast<int>(graph.edges.size()));
 }
@@ -754,8 +1106,34 @@ void ChannelGraphView::resetSavedPositions() {
   last_topology_hash_.clear();
 }
 
+void ChannelGraphView::setArrangeModes(VertexArrangeMode channel_mode,
+                                       VertexArrangeMode service_mode) {
+  channel_arrange_mode_ = channel_mode;
+  service_arrange_mode_ = service_mode;
+}
+
+void ChannelGraphView::setNeighborhoodMode(bool enabled) {
+  if (neighborhood_mode_ == enabled) {
+    return;
+  }
+  neighborhood_mode_ = enabled;
+  if (!focused_vertex_id_.isEmpty()) {
+    applyFocusHighlight(focused_vertex_id_);
+  } else {
+    clearFocusHighlight();
+  }
+}
+
+void ChannelGraphView::setShowEdgeLabels(bool enabled) {
+  if (show_edge_labels_ == enabled) {
+    return;
+  }
+  show_edge_labels_ = enabled;
+  applyEdgeLabelPolicy();
+}
+
 void ChannelGraphView::zoomToFit() {
-  const QRectF bounds = scene_->itemsBoundingRect().adjusted(-80, -80, 80, 80);
+  const QRectF bounds = scene_->itemsBoundingRect().adjusted(-120, -100, 120, 120);
   if (bounds.isEmpty()) {
     return;
   }
@@ -777,6 +1155,50 @@ void ChannelGraphView::showEvent(QShowEvent* event) {
   zoomToFit();
 }
 
+void ChannelGraphView::mousePressEvent(QMouseEvent* event) {
+  if (event->button() == Qt::LeftButton) {
+    QGraphicsItem* item = itemAt(event->pos());
+    auto* vertex = dynamic_cast<GraphVertexItem*>(item);
+    if (vertex == nullptr && item != nullptr) {
+      vertex = dynamic_cast<GraphVertexItem*>(item->topLevelItem());
+    }
+    if (vertex != nullptr) {
+      scene_->clearSelection();
+      vertex->setSelected(true);
+      applyFocusHighlight(vertex->vertexId());
+      event->accept();
+      // Still allow the base class to begin a potential pan if the user drags.
+      QGraphicsView::mousePressEvent(event);
+      return;
+    }
+    if (item == nullptr) {
+      scene_->clearSelection();
+      clearFocusHighlight();
+    }
+  }
+  QGraphicsView::mousePressEvent(event);
+}
+
+void ChannelGraphView::mouseDoubleClickEvent(QMouseEvent* event) {
+  if (event->button() == Qt::LeftButton) {
+    QGraphicsItem* item = itemAt(event->pos());
+    auto* vertex = dynamic_cast<GraphVertexItem*>(item);
+    if (vertex == nullptr && item != nullptr) {
+      vertex = dynamic_cast<GraphVertexItem*>(item->topLevelItem());
+    }
+    if (vertex != nullptr) {
+      scene_->clearSelection();
+      vertex->setSelected(true);
+      applyFocusHighlight(vertex->vertexId());
+      emit vertexDoubleClicked(vertex->vertexId(), vertex->vertexKind(),
+                               vertex->fullLabel(), vertex->fullDetail());
+      event->accept();
+      return;
+    }
+  }
+  QGraphicsView::mouseDoubleClickEvent(event);
+}
+
 void ChannelGraphView::onVertexMoved() {
   const QList<QGraphicsItem*> items = scene_->items();
   for (QGraphicsItem* item : items) {
@@ -785,6 +1207,178 @@ void ChannelGraphView::onVertexMoved() {
       continue;
     }
     saved_positions_.insert(vertex->vertexId(), vertex->pos());
+  }
+}
+
+void ChannelGraphView::onSelectionChanged() {
+  const QList<QGraphicsItem*> selected = scene_->selectedItems();
+  for (QGraphicsItem* item : selected) {
+    auto* vertex = dynamic_cast<GraphVertexItem*>(item);
+    if (vertex != nullptr) {
+      applyFocusHighlight(vertex->vertexId());
+      return;
+    }
+  }
+  if (selected.isEmpty()) {
+    clearFocusHighlight();
+  }
+}
+
+void ChannelGraphView::onFlowTick() {
+  flow_phase_ += 1.6;
+  if (flow_phase_ > 100000.0) {
+    flow_phase_ = 0.0;
+  }
+  for (QGraphicsItem* item : scene_->items()) {
+    if (auto* edge = dynamic_cast<GraphEdgeItem*>(item)) {
+      if (edge->isVisible()) {
+        edge->setFlowPhase(flow_phase_);
+      }
+    }
+  }
+}
+
+void ChannelGraphView::onActivityTick() {
+  if (scene_ == nullptr) {
+    return;
+  }
+  for (QGraphicsItem* item : scene_->items()) {
+    auto* vertex = dynamic_cast<GraphVertexItem*>(item);
+    if (vertex == nullptr ||
+        vertex->vertexKind() != integration::GraphVertexKind::kChannel) {
+      continue;
+    }
+    const integration::ChannelStats stats =
+        integration::ChannelStatsRegistry::instance().stats(
+            vertex->fullLabel().toStdString());
+    vertex->setActivityHz(stats.frequency_hz);
+  }
+}
+
+void ChannelGraphView::setFlowAnimationActive(bool active) {
+  if (flow_timer_ == nullptr) {
+    return;
+  }
+  if (active) {
+    if (!flow_timer_->isActive()) {
+      flow_phase_ = 0.0;
+      flow_timer_->start();
+    }
+  } else if (flow_timer_->isActive()) {
+    flow_timer_->stop();
+  }
+}
+
+void ChannelGraphView::applyEdgeLabelPolicy() {
+  if (scene_ == nullptr) {
+    return;
+  }
+  for (QGraphicsItem* item : scene_->items()) {
+    if (auto* edge = dynamic_cast<GraphEdgeItem*>(item)) {
+      edge->setShowLabelAlways(show_edge_labels_);
+    }
+  }
+}
+
+void ChannelGraphView::clearFocusHighlight() {
+  focused_vertex_id_.clear();
+  setFlowAnimationActive(false);
+  for (QGraphicsItem* item : scene_->items()) {
+    if (auto* vertex = dynamic_cast<GraphVertexItem*>(item)) {
+      vertex->setVisible(true);
+      vertex->setVisualMode(GraphVisualMode::kNormal);
+    } else if (auto* edge = dynamic_cast<GraphEdgeItem*>(item)) {
+      edge->setVisible(true);
+      edge->setVisualMode(GraphVisualMode::kNormal);
+      edge->setFlowPhase(0.0);
+    }
+  }
+}
+
+void ChannelGraphView::applyFocusHighlight(const QString& vertex_id) {
+  focused_vertex_id_ = vertex_id;
+  GraphVertexItem* focus_vertex = nullptr;
+  for (QGraphicsItem* item : scene_->items()) {
+    auto* vertex = dynamic_cast<GraphVertexItem*>(item);
+    if (vertex != nullptr && vertex->vertexId() == vertex_id) {
+      focus_vertex = vertex;
+      break;
+    }
+  }
+  if (focus_vertex == nullptr) {
+    clearFocusHighlight();
+    return;
+  }
+
+  QSet<GraphVertexItem*> related_vertices;
+  QSet<GraphEdgeItem*> related_edges;
+  related_vertices.insert(focus_vertex);
+  for (GraphEdgeItem* edge : focus_vertex->connectedEdges()) {
+    if (edge == nullptr ||
+        !IsFocusRelatedEdge(focus_vertex->vertexKind(), edge->edgeKind())) {
+      continue;
+    }
+    related_edges.insert(edge);
+    if (edge->fromVertex() != nullptr) {
+      related_vertices.insert(edge->fromVertex());
+    }
+    if (edge->toVertex() != nullptr) {
+      related_vertices.insert(edge->toVertex());
+    }
+  }
+
+  for (QGraphicsItem* item : scene_->items()) {
+    if (auto* vertex = dynamic_cast<GraphVertexItem*>(item)) {
+      const bool related = related_vertices.contains(vertex);
+      if (neighborhood_mode_) {
+        vertex->setVisible(related);
+        vertex->setVisualMode(related ? GraphVisualMode::kEmphasized
+                                      : GraphVisualMode::kNormal);
+      } else {
+        vertex->setVisible(true);
+        vertex->setVisualMode(related ? GraphVisualMode::kEmphasized
+                                      : GraphVisualMode::kDimmed);
+      }
+    } else if (auto* edge = dynamic_cast<GraphEdgeItem*>(item)) {
+      const bool related = related_edges.contains(edge);
+      if (neighborhood_mode_) {
+        edge->setVisible(related);
+        edge->setVisualMode(related ? GraphVisualMode::kEmphasized
+                                    : GraphVisualMode::kNormal);
+      } else {
+        edge->setVisible(true);
+        edge->setVisualMode(related ? GraphVisualMode::kEmphasized
+                                    : GraphVisualMode::kDimmed);
+      }
+    }
+  }
+  setFlowAnimationActive(!related_edges.isEmpty());
+}
+
+void ChannelGraphView::updateColumnHeaders(int service_count) {
+  QFont header_font;
+  header_font.setPointSize(10);
+  header_font.setBold(true);
+  const QColor header_color(150, 150, 158);
+  const double channel_header_y = -42.0;
+  auto add_header = [&](const QString& text, double x, double y) {
+    auto* label = scene_->addText(text, header_font);
+    label->setDefaultTextColor(header_color);
+    const QRectF bounds = label->boundingRect();
+    label->setPos(x - bounds.width() * 0.5, y);
+    label->setZValue(-2);
+    label->setFlag(QGraphicsItem::ItemIsSelectable, false);
+    label->setFlag(QGraphicsItem::ItemIsMovable, false);
+  };
+  add_header(tr("Writers"), layout_.writer_column_x, channel_header_y);
+  add_header(tr("Channels"), layout_.channel_column_x, channel_header_y);
+  add_header(tr("Readers"), layout_.reader_column_x, channel_header_y);
+  if (service_count > 0) {
+    add_header(tr("Services"),
+               layout_.service_origin_x +
+                   (std::max(1, layout_.service_columns) - 1) *
+                       layout_.service_col_gap * 0.5,
+               layout_.service_origin_y - 48.0);
   }
 }
 
@@ -797,7 +1391,42 @@ void ChannelGraphView::applyAutoLayout(const integration::TopologyGraph& graph) 
     }
   }
 
-  std::unordered_map<std::string, double> node_y;
+  const int channel_count = static_cast<int>(std::count_if(
+      graph.vertices.begin(), graph.vertices.end(), [](const integration::GraphVertex& vertex) {
+        return vertex.kind == integration::GraphVertexKind::kChannel;
+      }));
+  const int node_count = static_cast<int>(std::count_if(
+      graph.vertices.begin(), graph.vertices.end(), [](const integration::GraphVertex& vertex) {
+        return vertex.kind == integration::GraphVertexKind::kNode;
+      }));
+  const int service_count = static_cast<int>(std::count_if(
+      graph.vertices.begin(), graph.vertices.end(), [](const integration::GraphVertex& vertex) {
+        return vertex.kind == integration::GraphVertexKind::kService;
+      }));
+
+  double max_channel_half_width = kChannelWidthMin * 0.5;
+  for (const integration::GraphVertex& vertex : graph.vertices) {
+    if (vertex.kind != integration::GraphVertexKind::kChannel) {
+      continue;
+    }
+    if (auto it = items.find(vertex.id); it != items.end()) {
+      max_channel_half_width =
+          std::max(max_channel_half_width, it->second->boundingRect().width() * 0.5);
+    }
+  }
+
+  const double viewport_width =
+      viewport() != nullptr
+          ? static_cast<double>(viewport()->width()) /
+                std::max(0.2, transform().m11())
+          : 1400.0;
+  layout_ = ComputeAdaptiveLayoutOptions(
+      channel_count, node_count, service_count,
+      static_cast<int>(graph.edges.size()), max_channel_half_width, viewport_width,
+      channel_arrange_mode_, service_arrange_mode_);
+
+  std::unordered_map<std::string, double> channel_y;
+  std::unordered_map<std::string, std::vector<double>> node_channel_ys;
   std::unordered_map<std::string, int> node_pub_count;
   std::unordered_map<std::string, int> node_sub_count;
 
@@ -806,65 +1435,122 @@ void ChannelGraphView::applyAutoLayout(const integration::TopologyGraph& graph) 
     if (vertex.kind != integration::GraphVertexKind::kChannel) {
       continue;
     }
-    const double y = channel_index * layout_.channel_row_gap;
+    const QPointF pos = ChannelGridPosition(layout_, channel_index);
+    channel_y[vertex.id] = pos.y();
     if (auto it = items.find(vertex.id); it != items.end()) {
-      it->second->setPos(layout_.channel_column_x, y);
+      it->second->setPos(pos);
     }
     ++channel_index;
+  }
 
-    for (const integration::GraphEdge& edge : graph.edges) {
-      if (edge.to_id != vertex.id && edge.from_id != vertex.id) {
+  for (const integration::GraphEdge& edge : graph.edges) {
+    if (edge.kind == integration::GraphEdgeKind::kPublish) {
+      auto channel_it = channel_y.find(edge.to_id);
+      if (channel_it == channel_y.end()) {
         continue;
       }
-      if (edge.kind == integration::GraphEdgeKind::kPublish) {
-        node_pub_count[edge.from_id] += 1;
-        node_y[edge.from_id] += y;
-      } else if (edge.kind == integration::GraphEdgeKind::kSubscribe) {
-        node_sub_count[edge.to_id] += 1;
-        node_y[edge.to_id] += y;
+      node_pub_count[edge.from_id] += 1;
+      node_channel_ys[edge.from_id].push_back(channel_it->second);
+    } else if (edge.kind == integration::GraphEdgeKind::kSubscribe) {
+      auto channel_it = channel_y.find(edge.from_id);
+      if (channel_it == channel_y.end()) {
+        continue;
       }
+      node_sub_count[edge.to_id] += 1;
+      node_channel_ys[edge.to_id].push_back(channel_it->second);
     }
   }
 
-  for (auto& entry : node_y) {
-    const int pub = node_pub_count[entry.first];
-    const int sub = node_sub_count[entry.first];
-    const int count = std::max(pub + sub, 1);
-    entry.second /= count;
-    auto it = items.find(entry.first);
-    if (it == items.end()) {
-      continue;
-    }
-    const double x = (pub > 0 && sub > 0) ? (layout_.writer_column_x + layout_.reader_column_x) * 0.5
-                      : pub > 0 ? layout_.writer_column_x
-                                : layout_.reader_column_x;
-    it->second->setPos(x, entry.second);
-  }
+  std::vector<NodeLayoutSlot> writer_slots;
+  std::vector<NodeLayoutSlot> reader_slots;
+  std::vector<NodeLayoutSlot> both_writer_slots;
+  std::vector<NodeLayoutSlot> both_reader_slots;
+  writer_slots.reserve(static_cast<std::size_t>(node_count));
+  reader_slots.reserve(static_cast<std::size_t>(node_count));
 
-  int service_index = 0;
-  const double service_base_y =
-      std::max(0, channel_index) * layout_.channel_row_gap + layout_.service_row_gap;
-  for (const integration::GraphVertex& vertex : graph.vertices) {
-    if (vertex.kind != integration::GraphVertexKind::kService) {
-      continue;
-    }
-    if (auto it = items.find(vertex.id); it != items.end()) {
-      it->second->setPos(layout_.service_column_x,
-                         service_base_y + service_index * layout_.service_row_gap);
-    }
-    ++service_index;
-  }
+  const double channel_band_mid_y =
+      std::max(0, layout_.channel_rows - 1) * layout_.channel_row_gap * 0.5;
 
   for (const integration::GraphVertex& vertex : graph.vertices) {
     if (vertex.kind != integration::GraphVertexKind::kNode) {
       continue;
     }
-    if (node_y.find(vertex.id) != node_y.end()) {
+    NodeLayoutSlot slot;
+    slot.id = vertex.id;
+    slot.pub_count = node_pub_count[vertex.id];
+    slot.sub_count = node_sub_count[vertex.id];
+    auto ys_it = node_channel_ys.find(vertex.id);
+    if (ys_it != node_channel_ys.end() && !ys_it->second.empty()) {
+      slot.preferred_y = MedianOf(ys_it->second);
+    } else {
+      slot.preferred_y = channel_band_mid_y;
+    }
+
+    if (slot.pub_count > 0 && slot.sub_count > 0) {
+      if (slot.pub_count >= slot.sub_count) {
+        both_writer_slots.push_back(slot);
+      } else {
+        both_reader_slots.push_back(slot);
+      }
+    } else if (slot.pub_count > 0) {
+      writer_slots.push_back(slot);
+    } else if (slot.sub_count > 0) {
+      reader_slots.push_back(slot);
+    }
+  }
+
+  auto place_column = [&](std::vector<NodeLayoutSlot>& node_slots, double x) {
+    if (node_slots.empty()) {
+      return;
+    }
+    std::vector<double> preferred;
+    preferred.reserve(node_slots.size());
+    for (const NodeLayoutSlot& slot : node_slots) {
+      preferred.push_back(slot.preferred_y);
+    }
+    const std::vector<double> packed =
+        PackPreferredPositions(std::move(preferred), layout_.node_row_gap);
+    for (std::size_t i = 0; i < node_slots.size(); ++i) {
+      if (auto it = items.find(node_slots[i].id); it != items.end()) {
+        it->second->setPos(x, packed[i]);
+      }
+    }
+  };
+
+  place_column(writer_slots, layout_.writer_column_x);
+  place_column(reader_slots, layout_.reader_column_x);
+  place_column(both_writer_slots, layout_.both_writer_column_x);
+  place_column(both_reader_slots, layout_.both_reader_column_x);
+
+  int service_index = 0;
+  for (const integration::GraphVertex& vertex : graph.vertices) {
+    if (vertex.kind != integration::GraphVertexKind::kService) {
       continue;
     }
     if (auto it = items.find(vertex.id); it != items.end()) {
-      it->second->setPos(layout_.writer_column_x, service_base_y + service_index * 48.0);
-      ++service_index;
+      it->second->setPos(ServiceGridPosition(layout_, service_index));
+    }
+    ++service_index;
+  }
+
+  int orphan_index = 0;
+  const double orphan_x =
+      layout_.service_origin_x - kServiceWidth * 0.5 - kNodeDiameterMax - 80.0;
+  for (const integration::GraphVertex& vertex : graph.vertices) {
+    if (vertex.kind != integration::GraphVertexKind::kNode) {
+      continue;
+    }
+    if (node_channel_ys.find(vertex.id) != node_channel_ys.end()) {
+      continue;
+    }
+    if (node_pub_count[vertex.id] > 0 || node_sub_count[vertex.id] > 0) {
+      continue;
+    }
+    if (auto it = items.find(vertex.id); it != items.end()) {
+      it->second->setPos(
+          orphan_x,
+          layout_.service_origin_y + orphan_index * layout_.node_row_gap);
+      ++orphan_index;
     }
   }
 
@@ -882,14 +1568,13 @@ QPointF ChannelGraphView::defaultPositionForVertex(
   Q_UNUSED(service_count);
   switch (vertex.kind) {
     case integration::GraphVertexKind::kChannel:
-      return QPointF(layout_.channel_column_x, channel_index * layout_.channel_row_gap);
+      return ChannelGridPosition(layout_, channel_index);
     case integration::GraphVertexKind::kService:
-      return QPointF(layout_.service_column_x,
-                     channel_count * layout_.channel_row_gap + layout_.service_row_gap +
-                         service_index * layout_.service_row_gap);
+      return ServiceGridPosition(layout_, service_index);
     case integration::GraphVertexKind::kNode:
     default:
-      return QPointF(layout_.writer_column_x, channel_index * layout_.channel_row_gap);
+      return QPointF(layout_.writer_column_x,
+                     channel_index * layout_.channel_row_gap);
   }
 }
 

@@ -452,6 +452,18 @@ bool PlannerServer::ValidatePath(
         return false;
     }
 
+    // Reject plans that intersect lethal / inscribed cells on the global
+    // costmap (NavFn gradient extraction can still clip thin / misaligned
+    // walls when the static layer briefly lags the published /map).
+    constexpr uint8_t kMaxPathCost = 252;
+    if (!IsPathValid(path, kMaxPathCost, /*consider_unknown_as_obstacle=*/true)) {
+        AWARN << "Planning algorithm " << planner_id
+              << " path collides with costmap obstacles toward ("
+              << curr_goal.pose().position().x() << ", "
+              << curr_goal.pose().position().y() << ")";
+        return false;
+    }
+
     AINFO << "Found valid path of size " << path.poses_size() << " to ("
           << curr_goal.pose().position().x() << ", " << curr_goal.pose().position().y()
           << ")";

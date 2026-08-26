@@ -38,16 +38,28 @@ namespace {
 
 constexpr int kRoleFrameId = Qt::UserRole;
 
+/** Light tokens shared with TfTreeGraphView. */
+constexpr char kBg[] = "#f8f9fb";
+constexpr char kSurface[] = "#ffffff";
+constexpr char kSurfaceRaised[] = "#ffffff";
+constexpr char kBorder[] = "#cbd5e1";
+constexpr char kText[] = "#1e293b";
+constexpr char kTextMuted[] = "#64748b";
+constexpr char kAccent[] = "#0891b2";
+constexpr char kStatic[] = "#d97706";
+
 QLabel* MakeDetailLabel(const QString& text, QWidget* parent) {
   auto* label = new QLabel(text, parent);
-  label->setStyleSheet(QStringLiteral("color: palette(mid); font-size: 12px;"));
+  label->setStyleSheet(
+      QStringLiteral("color: %1; font-size: 11px;").arg(QLatin1String(kTextMuted)));
   label->setWordWrap(true);
   return label;
 }
 
 QLabel* MakeDetailValue(QWidget* parent) {
   auto* label = new QLabel(QStringLiteral("—"), parent);
-  label->setStyleSheet(QStringLiteral("color: palette(text); font-size: 12px;"));
+  label->setStyleSheet(
+      QStringLiteral("color: %1; font-size: 12px;").arg(QLatin1String(kText)));
   label->setTextInteractionFlags(Qt::TextSelectableByMouse);
   label->setWordWrap(true);
   return label;
@@ -133,6 +145,12 @@ void TfTreePanel::showEvent(QShowEvent* event) {
 
 void TfTreePanel::setupUi() {
   ApplyPanelShell(this);
+  setStyleSheet(QStringLiteral(
+      "TfTreePanel, QWidget#TfTreePanelContent {"
+      "  background: %1; color: %2;"
+      "}")
+                    .arg(QLatin1String(kBg), QLatin1String(kText)));
+  setObjectName(QStringLiteral("TfTreePanelContent"));
 
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);
@@ -146,7 +164,8 @@ void TfTreePanel::setupUi() {
 
   auto* filter_row = new QHBoxLayout();
   auto* filter_icon = new QLabel(QStringLiteral("⌕"), toolbar);
-  filter_icon->setStyleSheet(QStringLiteral("color: palette(mid); font-size: 14px;"));
+  filter_icon->setStyleSheet(
+      QStringLiteral("color: %1; font-size: 14px;").arg(QLatin1String(kTextMuted)));
   filter_icon->setFixedWidth(16);
   filter_row->addWidget(filter_icon);
 
@@ -158,6 +177,15 @@ void TfTreePanel::setupUi() {
   auto* fit_button = new QToolButton(toolbar);
   fit_button->setText(tr("Fit"));
   fit_button->setToolTip(tr("Zoom the TF graph to fit"));
+  fit_button->setCursor(Qt::PointingHandCursor);
+  fit_button->setStyleSheet(QStringLiteral(
+      "QToolButton {"
+      "  color: %1; background: rgba(8,145,178,0.10);"
+      "  border: 1px solid rgba(8,145,178,0.35); border-radius: 8px;"
+      "  padding: 4px 12px;"
+      "}"
+      "QToolButton:hover { background: rgba(8,145,178,0.18); }")
+                                .arg(QLatin1String(kAccent)));
   filter_row->addWidget(fit_button);
   toolbar_layout->addLayout(filter_row);
 
@@ -169,6 +197,21 @@ void TfTreePanel::setupUi() {
   view_tabs_ = new QTabWidget(this);
   view_tabs_->setDocumentMode(true);
   view_tabs_->setTabPosition(QTabWidget::North);
+  view_tabs_->setStyleSheet(QStringLiteral(
+      "QTabWidget::pane {"
+      "  border: none; background: %1;"
+      "}"
+      "QTabBar::tab {"
+      "  background: transparent; color: %2;"
+      "  padding: 8px 16px; margin-right: 2px;"
+      "  border-bottom: 2px solid transparent;"
+      "}"
+      "QTabBar::tab:selected {"
+      "  color: %3; border-bottom: 2px solid %3;"
+      "}"
+      "QTabBar::tab:hover { color: %4; }")
+                                .arg(QLatin1String(kBg), QLatin1String(kTextMuted),
+                                     QLatin1String(kAccent), QLatin1String(kText)));
   root->addWidget(view_tabs_, 1);
 
   auto* tree_page = new QWidget(view_tabs_);
@@ -179,41 +222,76 @@ void TfTreePanel::setupUi() {
   auto* splitter = new QSplitter(Qt::Horizontal, tree_page);
   splitter->setChildrenCollapsible(false);
   splitter->setHandleWidth(1);
-  splitter->setStyleSheet(PanelSplitterStyle());
+  splitter->setStyleSheet(QStringLiteral(
+      "QSplitter::handle { background: %1; }").arg(QLatin1String(kBorder)));
 
   tree_ = new QTreeWidget(splitter);
   tree_->setHeaderHidden(true);
   tree_->setRootIsDecorated(true);
   tree_->setUniformRowHeights(true);
-  // Animated expand/collapse is expensive when the tree is rebuilt often.
   tree_->setAnimated(false);
   tree_->setIndentation(18);
-  StylePanelTree(tree_);
+  tree_->setStyleSheet(QStringLiteral(
+      "QTreeWidget {"
+      "  background: %1; color: %2; border: none; outline: none;"
+      "}"
+      "QTreeWidget::item {"
+      "  padding: 4px 6px; border-radius: 6px;"
+      "}"
+      "QTreeWidget::item:selected {"
+      "  background: rgba(8,145,178,0.14); color: %2;"
+      "}"
+      "QTreeWidget::item:hover {"
+      "  background: rgba(15,23,42,0.04);"
+      "}")
+                           .arg(QLatin1String(kSurface), QLatin1String(kText)));
 
   auto* detail_panel = new QFrame(splitter);
-  detail_panel->setMinimumWidth(220);
-  detail_panel->setStyleSheet(
-      QStringLiteral(
-          "QFrame { background: palette(window); border-left: 1px solid palette(midlight); }"));
+  detail_panel->setMinimumWidth(240);
+  detail_panel->setStyleSheet(QStringLiteral(
+      "QFrame {"
+      "  background: %1;"
+      "  border-left: 1px solid %2;"
+      "}")
+                                  .arg(QLatin1String(kBg), QLatin1String(kBorder)));
   auto* detail_layout = new QVBoxLayout(detail_panel);
-  detail_layout->setContentsMargins(14, 14, 14, 14);
-  detail_layout->setSpacing(10);
+  detail_layout->setContentsMargins(14, 16, 14, 14);
+  detail_layout->setSpacing(12);
+
+  auto* badge = new QLabel(tr("FRAME"), detail_panel);
+  badge->setStyleSheet(QStringLiteral(
+      "color: white; background: %1; border-radius: 9px;"
+      "padding: 3px 8px; font-size: 10px; font-weight: 600;")
+                           .arg(QLatin1String(kAccent)));
+  badge->setFixedWidth(56);
+  detail_layout->addWidget(badge, 0, Qt::AlignLeft);
 
   detail_title_ = new QLabel(tr("Frame details"), detail_panel);
+  detail_title_->setWordWrap(true);
+  detail_title_->setTextInteractionFlags(Qt::TextSelectableByMouse);
   detail_title_->setStyleSheet(
-      QStringLiteral("color: palette(text); font-size: 14px; font-weight: 600;"));
+      QStringLiteral("color: %1; font-size: 15px; font-weight: 600;")
+          .arg(QLatin1String(kText)));
   detail_layout->addWidget(detail_title_);
 
   detail_hint_ = new QLabel(tr("Select a frame to inspect transform metadata."),
                             detail_panel);
   detail_hint_->setWordWrap(true);
-  StyleHintLabel(detail_hint_);
+  detail_hint_->setStyleSheet(
+      QStringLiteral("color: %1; font-size: 12px;").arg(QLatin1String(kTextMuted)));
   detail_layout->addWidget(detail_hint_);
 
   detail_body_ = new QWidget(detail_panel);
+  detail_body_->setStyleSheet(QStringLiteral(
+      "QWidget {"
+      "  background: %1; border: 1px solid %2; border-radius: 12px;"
+      "}")
+                                  .arg(QLatin1String(kSurfaceRaised),
+                                       QLatin1String(kBorder)));
   auto* form = new QFormLayout(detail_body_);
-  form->setContentsMargins(0, 0, 0, 0);
-  form->setSpacing(8);
+  form->setContentsMargins(12, 12, 12, 12);
+  form->setHorizontalSpacing(12);
+  form->setVerticalSpacing(10);
   form->setLabelAlignment(Qt::AlignLeft | Qt::AlignTop);
   detail_parent_value_ = MakeDetailValue(detail_body_);
   detail_type_value_ = MakeDetailValue(detail_body_);
@@ -223,10 +301,12 @@ void TfTreePanel::setupUi() {
   detail_count_value_ = MakeDetailValue(detail_body_);
   form->addRow(MakeDetailLabel(tr("Parent"), detail_body_), detail_parent_value_);
   form->addRow(MakeDetailLabel(tr("Type"), detail_body_), detail_type_value_);
-  form->addRow(MakeDetailLabel(tr("Authority"), detail_body_), detail_authority_value_);
+  form->addRow(MakeDetailLabel(tr("Authority"), detail_body_),
+               detail_authority_value_);
   form->addRow(MakeDetailLabel(tr("Last transform"), detail_body_),
                detail_last_time_value_);
-  form->addRow(MakeDetailLabel(tr("Time since update"), detail_body_), detail_age_value_);
+  form->addRow(MakeDetailLabel(tr("Time since update"), detail_body_),
+               detail_age_value_);
   form->addRow(MakeDetailLabel(tr("Transforms received"), detail_body_),
                detail_count_value_);
   detail_body_->hide();
@@ -472,9 +552,13 @@ void TfTreePanel::rebuildTree() {
     }
     auto* item = new QTreeWidgetItem({frame_id});
     item->setData(0, kRoleFrameId, frame_id);
-    item->setToolTip(0, frame_id);
     if (stats.is_static) {
-      item->setForeground(0, QColor(136, 192, 208));
+      item->setText(0, frame_id + QStringLiteral("  · static"));
+      item->setToolTip(0, tr("%1 (static transform)").arg(frame_id));
+      item->setForeground(0, QBrush(QColor(kText)));
+    } else {
+      item->setToolTip(0, frame_id);
+      item->setForeground(0, QBrush(QColor(kText)));
     }
     frame_nodes_.insert(frame_id, FrameNode{stats, item});
     item_by_frame.insert(frame_id, item);
@@ -587,6 +671,14 @@ void TfTreePanel::updateDetailsForItem(QTreeWidgetItem* item) {
                  parent.isEmpty() ? tr("(root)") : parent);
   set_if_changed(detail_type_value_,
                  node.stats.is_static ? tr("Static") : tr("Dynamic"));
+  if (detail_type_value_ != nullptr) {
+    detail_type_value_->setStyleSheet(
+        node.stats.is_static
+            ? QStringLiteral("color: %1; font-size: 12px; font-weight: 600;")
+                  .arg(QLatin1String(kStatic))
+            : QStringLiteral("color: %1; font-size: 12px; font-weight: 600;")
+                  .arg(QLatin1String(kAccent)));
+  }
   set_if_changed(
       detail_authority_value_,
       node.stats.authority.empty() ? tr("Unknown")

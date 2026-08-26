@@ -111,6 +111,8 @@ class PublishEditorWidget : public QWidget {
   void syncConfigFromPublishersTree();
   void syncPublisherJsonFromTree(int index);
   void emitConfigChanged();
+  void applyChromeStyles();
+  void refreshPublishButtonAppearance();
 
   common::VisualizationManager* manager_ = nullptr;
   PublishPanelConfig config_;

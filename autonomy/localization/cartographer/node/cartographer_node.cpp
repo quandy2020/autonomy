@@ -39,7 +39,6 @@
 #include "autonomy/localization/cartographer/node/occupancy_grid_builder.hpp"
 #include "autonomy/localization/cartographer/node/time_conversion.hpp"
 #include "autonomy/transform/buffer_utils.hpp"
-#include "autonomy/transform/transform_topics.hpp"
 
 namespace autonomy {
 namespace localization {
@@ -183,29 +182,6 @@ bool CartographerNode::Init(std::shared_ptr<autolink::Node> node) {
                 return;
             }
             IngestTfMessage(tf_buffer_, *msg, "autosim_tf_static", skip_map);
-        });
-    // Legacy TransformStampeds publishers (without leading slash).
-    node_->CreateReader<automsgs::msgs::geometry_msgs::TransformStampeds>(
-        transform::kTfTopic,
-        [this](const std::shared_ptr<automsgs::msgs::geometry_msgs::TransformStampeds>&
-                   msg) {
-            if (!msg || !tf_buffer_) {
-                return;
-            }
-            for (const auto& transform : msg->transforms()) {
-                transform::ApplyTransformStampedToBuffer(
-                    tf_buffer_, transform, "cartographer_node", false);
-            }
-        });
-    node_->CreateReader<automsgs::msgs::geometry_msgs::TransformStampeds>(
-        transform::kTfStaticTopic,
-        [this](const std::shared_ptr<automsgs::msgs::geometry_msgs::TransformStampeds>&
-                   msg) {
-            if (!msg || !tf_buffer_) {
-                return;
-            }
-            transform::ApplyStaticTransformsToBuffer(tf_buffer_, *msg,
-                                                     "tf_static");
         });
 
     timers_.emplace_back(std::make_unique<autolink::Timer>(

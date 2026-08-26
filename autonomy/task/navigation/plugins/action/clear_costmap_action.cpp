@@ -18,7 +18,7 @@ public:
         return {
             BT::InputPort<std::string>(
                 "service_name",
-                "global_costmap/clear_entirely_global_costmap",
+                "/global_costmap/clear_entirely_global_costmap",
                 "clear-costmap service (currently fixed on client)"),
             BT::OutputPort<int>("error_code_id"),
             BT::OutputPort<std::string>("error_msg"),

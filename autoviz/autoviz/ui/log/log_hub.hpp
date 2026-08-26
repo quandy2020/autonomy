@@ -4,9 +4,12 @@
 
 #pragma once
 
+#include <deque>
 #include <memory>
+#include <mutex>
 
 #include <QObject>
+#include <QVector>
 
 #include "autoviz/ui/log/log_types.hpp"
 
@@ -28,6 +31,9 @@ class LogHub : public QObject {
   void uninstallGlogCapture();
   void append(LogEntry entry);
 
+  /** Snapshot of recent entries for late-joining panels. */
+  QVector<LogEntry> recentEntries() const;
+
  signals:
   void logAppended(const LogEntry& entry);
 
@@ -35,7 +41,13 @@ class LogHub : public QObject {
   LogHub();
   ~LogHub() override;
 
+  bool isDuplicateLocked(const LogEntry& entry) const;
+  void storeLocked(const LogEntry& entry);
+
   std::unique_ptr<google::LogSink> glog_sink_;
+  mutable std::mutex mutex_;
+  std::deque<LogEntry> recent_;
+  static constexpr int kMaxRecent = 2000;
 };
 
 }  // namespace log_panel

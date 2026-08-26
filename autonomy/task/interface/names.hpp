@@ -24,8 +24,8 @@ namespace task {
 // Bridge / Autoviz must match these strings.
 
 constexpr char kGoalPose[] = "/goal_pose";
-constexpr char kNavigateToPose[] = "navigate_to_pose";
-constexpr char kNavigateThroughPoses[] = "navigate_through_poses";
+constexpr char kNavigateToPose[] = "/navigate_to_pose";
+constexpr char kNavigateThroughPoses[] = "/navigate_through_poses";
 
 constexpr char kTeleopGoal[] = "/autonomy/task/teleop/goal";
 constexpr char kTeleopFeedback[] = "/autonomy/task/teleop/feedback";    

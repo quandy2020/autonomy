@@ -431,8 +431,9 @@ void NavfnPlanner::mapToWorld(double mx, double my, double& wx, double& wy) {
         return;
     }
 
-    wx = costmap->getOriginX() + mx * costmap->getResolution();
-    wy = costmap->getOriginY() + my * costmap->getResolution();
+    // Cell center — matches Costmap2D::mapToWorld.
+    wx = costmap->getOriginX() + (mx + 0.5) * costmap->getResolution();
+    wy = costmap->getOriginY() + (my + 0.5) * costmap->getResolution();
 }
 
 }  // namespace navfn

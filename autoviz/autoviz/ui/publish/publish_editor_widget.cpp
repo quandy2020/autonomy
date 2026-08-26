@@ -20,6 +20,7 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QSizePolicy>
 #include <QSplitter>
 #include <QTabWidget>
 #include <QTimer>
@@ -43,6 +44,14 @@ namespace autoviz {
 namespace publish_panel {
 namespace {
 
+/** Light tokens aligned with Transform Tree. */
+constexpr char kBg[] = "#f8f9fb";
+constexpr char kSurface[] = "#ffffff";
+constexpr char kBorder[] = "#cbd5e1";
+constexpr char kText[] = "#1e293b";
+constexpr char kTextMuted[] = "#64748b";
+constexpr char kAccent[] = "#0891b2";
+
 QString ShortTypeLabel(const std::string& type) {
   QString label = QString::fromStdString(type);
   static const QString kPrefix = QStringLiteral("automsgs.msgs.");
@@ -50,6 +59,90 @@ QString ShortTypeLabel(const std::string& type) {
     label = label.mid(kPrefix.size());
   }
   return label;
+}
+
+QLabel* MakeFieldLabel(const QString& text, QWidget* parent) {
+  auto* label = new QLabel(text, parent);
+  label->setStyleSheet(
+      QStringLiteral("color: %1; font-size: 12px; font-weight: 600;")
+          .arg(QLatin1String(kTextMuted)));
+  return label;
+}
+
+void StyleToolbarCombo(QComboBox* combo) {
+  if (combo == nullptr) {
+    return;
+  }
+  combo->setStyleSheet(QStringLiteral(
+      "QComboBox {"
+      "  background: %1; color: %2;"
+      "  border: 1px solid %3; border-radius: 8px;"
+      "  padding: 5px 10px; min-height: 26px;"
+      "}"
+      "QComboBox:hover { border-color: %4; }"
+      "QComboBox:focus { border-color: %4; }"
+      "QComboBox::drop-down { border: none; width: 22px; }"
+      "QComboBox QAbstractItemView {"
+      "  background: %1; color: %2;"
+      "  border: 1px solid %3; selection-background-color: rgba(8,145,178,0.16);"
+      "  selection-color: %2;"
+      "}")
+                           .arg(QLatin1String(kSurface), QLatin1String(kText),
+                                QLatin1String(kBorder), QLatin1String(kAccent)));
+}
+
+void StyleToolbarSpin(QDoubleSpinBox* spin) {
+  if (spin == nullptr) {
+    return;
+  }
+  spin->setStyleSheet(QStringLiteral(
+      "QDoubleSpinBox {"
+      "  background: %1; color: %2;"
+      "  border: 1px solid %3; border-radius: 8px;"
+      "  padding: 4px 8px; min-height: 26px;"
+      "}"
+      "QDoubleSpinBox:focus { border-color: %4; }")
+                          .arg(QLatin1String(kSurface), QLatin1String(kText),
+                               QLatin1String(kBorder), QLatin1String(kAccent)));
+}
+
+void StyleIconChipButton(QPushButton* button) {
+  if (button == nullptr) {
+    return;
+  }
+  button->setFlat(false);
+  button->setCursor(Qt::PointingHandCursor);
+  button->setFixedSize(32, 32);
+  button->setStyleSheet(QStringLiteral(
+      "QPushButton {"
+      "  background: rgba(8,145,178,0.08); color: %1;"
+      "  border: 1px solid rgba(8,145,178,0.28); border-radius: 8px;"
+      "  font-size: 15px; font-weight: 600; padding: 0;"
+      "}"
+      "QPushButton:hover { background: rgba(8,145,178,0.16); }"
+      "QPushButton:pressed { background: rgba(8,145,178,0.24); }"
+      "QPushButton:disabled {"
+      "  color: %2; background: %3; border-color: %4;"
+      "}")
+                            .arg(QLatin1String(kAccent), QLatin1String(kTextMuted),
+                                 QLatin1String(kBg), QLatin1String(kBorder)));
+}
+
+void StyleGhostButton(QPushButton* button) {
+  if (button == nullptr) {
+    return;
+  }
+  button->setFlat(true);
+  button->setCursor(Qt::PointingHandCursor);
+  button->setStyleSheet(QStringLiteral(
+      "QPushButton {"
+      "  color: %1; background: transparent; border: none;"
+      "  border-radius: 6px; padding: 4px 10px; font-weight: 600;"
+      "}"
+      "QPushButton:hover { background: rgba(8,145,178,0.10); color: %2; }"
+      "QPushButton:disabled { color: %3; }")
+                            .arg(QLatin1String(kAccent), QLatin1String(kText),
+                                 QLatin1String(kTextMuted)));
 }
 
 int FindPresetIndex(const QVector<PublishPreset>& presets, const QString& name) {
@@ -72,38 +165,44 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
     : manager_(manager), config_(DefaultPublishPanelConfig()), QWidget(parent) {
   ApplyPanelShell(this);
   setFocusPolicy(Qt::StrongFocus);
+  setObjectName(QStringLiteral("PublishEditorContent"));
+  applyChromeStyles();
 
   latest_fill_timer_ = new QTimer(this);
   latest_fill_timer_->setSingleShot(true);
 
   auto* root = new QVBoxLayout(this);
-  root->setContentsMargins(PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
-                           PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
-  root->setSpacing(6);
+  root->setContentsMargins(10, 10, 10, 10);
+  root->setSpacing(10);
 
-  collection_bar_ = new QWidget(this);
-  auto* collection_layout = new QHBoxLayout(collection_bar_);
-  collection_layout->setContentsMargins(0, 0, 0, 0);
-  collection_layout->setSpacing(6);
-  preset_combo_ = new QComboBox(collection_bar_);
+  auto* collection_frame = new QFrame(this);
+  collection_frame->setObjectName(QStringLiteral("PublishCollectionBar"));
+  collection_bar_ = collection_frame;
+  auto* collection_layout = new QHBoxLayout(collection_frame);
+  collection_layout->setContentsMargins(12, 8, 12, 8);
+  collection_layout->setSpacing(8);
+  collection_layout->addWidget(MakeFieldLabel(tr("Collection"), collection_frame));
+  preset_combo_ = new QComboBox(collection_frame);
   preset_combo_->setMinimumWidth(140);
-  save_preset_button_ = new QPushButton(tr("Save"), collection_bar_);
-  save_preset_button_->setFlat(true);
-  delete_preset_button_ = new QPushButton(tr("Delete"), collection_bar_);
-  delete_preset_button_->setFlat(true);
-  collection_layout->addWidget(new QLabel(tr("Collection"), collection_bar_));
+  StyleToolbarCombo(preset_combo_);
+  save_preset_button_ = new QPushButton(tr("Save"), collection_frame);
+  StyleGhostButton(save_preset_button_);
+  delete_preset_button_ = new QPushButton(tr("Delete"), collection_frame);
+  StyleGhostButton(delete_preset_button_);
   collection_layout->addWidget(preset_combo_, 1);
   collection_layout->addWidget(save_preset_button_);
   collection_layout->addWidget(delete_preset_button_);
   collection_layout->addStretch();
   root->addWidget(collection_bar_);
 
-  rqt_top_bar_ = new QWidget(this);
-  auto* top_layout = new QHBoxLayout(rqt_top_bar_);
-  top_layout->setContentsMargins(0, 0, 0, 0);
-  top_layout->setSpacing(6);
-  top_layout->addWidget(new QLabel(tr("Channel:"), rqt_top_bar_));
-  channel_combo_ = new QComboBox(rqt_top_bar_);
+  auto* top_frame = new QFrame(this);
+  top_frame->setObjectName(QStringLiteral("PublishToolbar"));
+  rqt_top_bar_ = top_frame;
+  auto* top_layout = new QHBoxLayout(top_frame);
+  top_layout->setContentsMargins(12, 10, 12, 10);
+  top_layout->setSpacing(8);
+  top_layout->addWidget(MakeFieldLabel(tr("Channel"), top_frame));
+  channel_combo_ = new QComboBox(top_frame);
   channel_combo_->setEditable(true);
   channel_combo_->setInsertPolicy(QComboBox::NoInsert);
   channel_combo_->setMinimumWidth(140);
@@ -111,58 +210,61 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   channel_combo_->setCompleter(new QCompleter(channel_combo_));
   channel_combo_->completer()->setCaseSensitivity(Qt::CaseInsensitive);
   channel_combo_->completer()->setFilterMode(Qt::MatchContains);
+  StyleToolbarCombo(channel_combo_);
   top_layout->addWidget(channel_combo_, 2);
-  top_layout->addWidget(new QLabel(tr("Type:"), rqt_top_bar_));
-  message_type_combo_ = new QComboBox(rqt_top_bar_);
+  top_layout->addWidget(MakeFieldLabel(tr("Type"), top_frame));
+  message_type_combo_ = new QComboBox(top_frame);
   message_type_combo_->setEditable(true);
   message_type_combo_->setInsertPolicy(QComboBox::NoInsert);
   message_type_combo_->setMinimumWidth(160);
   message_type_combo_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  StyleToolbarCombo(message_type_combo_);
   top_layout->addWidget(message_type_combo_, 2);
-  top_layout->addWidget(new QLabel(tr("Freq.:"), rqt_top_bar_));
-  publish_rate_spin_ = new QDoubleSpinBox(rqt_top_bar_);
+  top_layout->addWidget(MakeFieldLabel(tr("Freq"), top_frame));
+  publish_rate_spin_ = new QDoubleSpinBox(top_frame);
   publish_rate_spin_->setRange(0.1, 100.0);
   publish_rate_spin_->setSingleStep(0.5);
   publish_rate_spin_->setDecimals(1);
   publish_rate_spin_->setValue(config_.publish_rate_hz);
-  publish_rate_spin_->setFixedWidth(64);
+  publish_rate_spin_->setFixedWidth(72);
+  StyleToolbarSpin(publish_rate_spin_);
   top_layout->addWidget(publish_rate_spin_);
-  top_layout->addWidget(new QLabel(tr("Hz"), rqt_top_bar_));
-  editing_mode_check_ = new QCheckBox(tr("Advanced"), rqt_top_bar_);
+  auto* hz_label = MakeFieldLabel(tr("Hz"), top_frame);
+  hz_label->setStyleSheet(
+      QStringLiteral("color: %1; font-size: 12px;").arg(QLatin1String(kTextMuted)));
+  top_layout->addWidget(hz_label);
+  editing_mode_check_ = new QCheckBox(tr("Advanced"), top_frame);
   editing_mode_check_->setChecked(config_.editing_mode);
   editing_mode_check_->setToolTip(tr("Show JSON editor and collection"));
+  editing_mode_check_->setStyleSheet(
+      QStringLiteral("QCheckBox { color: %1; spacing: 6px; }")
+          .arg(QLatin1String(kText)));
   top_layout->addWidget(editing_mode_check_);
 
-  auto style_icon_button = [](QPushButton* button) {
-    button->setFlat(true);
-    button->setFixedSize(32, 32);
-    QFont font = button->font();
-    font.setPointSizeF(font.pointSizeF() + 2.0);
-    button->setFont(font);
-  };
-
-  add_publisher_button_ = new QPushButton(QStringLiteral("+"), rqt_top_bar_);
+  add_publisher_button_ = new QPushButton(QStringLiteral("+"), top_frame);
   add_publisher_button_->setToolTip(tr("Add publisher to list"));
-  style_icon_button(add_publisher_button_);
-  remove_publisher_button_ = new QPushButton(QStringLiteral("-"), rqt_top_bar_);
+  StyleIconChipButton(add_publisher_button_);
+  remove_publisher_button_ = new QPushButton(QStringLiteral("−"), top_frame);
   remove_publisher_button_->setToolTip(tr("Remove selected publisher"));
-  style_icon_button(remove_publisher_button_);
-  refresh_topics_button_ = new QPushButton(QStringLiteral("\u21bb"), rqt_top_bar_);
+  StyleIconChipButton(remove_publisher_button_);
+  refresh_topics_button_ = new QPushButton(QStringLiteral("↻"), top_frame);
   refresh_topics_button_->setToolTip(tr("Refresh channel list"));
-  style_icon_button(refresh_topics_button_);
+  StyleIconChipButton(refresh_topics_button_);
 
-  auto* action_separator = new QFrame(rqt_top_bar_);
-  action_separator->setFrameShape(QFrame::VLine);
-  action_separator->setFrameShadow(QFrame::Sunken);
-  action_separator->setFixedWidth(2);
+  auto* action_separator = new QFrame(top_frame);
+  action_separator->setFrameShape(QFrame::NoFrame);
+  action_separator->setFixedWidth(1);
+  action_separator->setStyleSheet(
+      QStringLiteral("background: %1;").arg(QLatin1String(kBorder)));
+  action_separator->setMinimumHeight(22);
 
-  publish_once_button_ = new QPushButton(tr("Publish"), rqt_top_bar_);
+  publish_once_button_ = new QPushButton(tr("Publish"), top_frame);
   publish_once_button_->setToolTip(tr("Publish once (Ctrl+Enter)"));
-  publish_once_button_->setMinimumSize(88, 32);
+  publish_once_button_->setMinimumSize(96, 34);
   publish_once_button_->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
   publish_once_button_->setDefault(true);
-  publish_once_button_->setStyleSheet(
-      QStringLiteral("QPushButton { font-weight: 600; padding: 4px 16px; }"));
+  publish_once_button_->setCursor(Qt::PointingHandCursor);
+  refreshPublishButtonAppearance();
 
   top_layout->addWidget(add_publisher_button_);
   top_layout->addWidget(remove_publisher_button_);
@@ -171,7 +273,12 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   top_layout->addWidget(publish_once_button_);
   root->addWidget(rqt_top_bar_);
 
-  publishers_tree_ = new PublishFieldTreeWidget(this);
+  auto* tree_card = new QFrame(this);
+  tree_card->setObjectName(QStringLiteral("PublishTreeCard"));
+  auto* tree_card_layout = new QVBoxLayout(tree_card);
+  tree_card_layout->setContentsMargins(0, 0, 0, 0);
+  tree_card_layout->setSpacing(0);
+  publishers_tree_ = new PublishFieldTreeWidget(tree_card);
   publishers_tree_->setDisplayMode(PublishFieldTreeWidget::DisplayMode::kRqtPublishers);
   publishers_tree_->setMinimumHeight(160);
   publishers_tree_->setToolTip(
@@ -179,22 +286,24 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
          "Checkbox toggles loop publish.\n"
          "Edit expression values inline.\n"
          "Right-click arrays for +/- elements."));
-  root->addWidget(publishers_tree_, 1);
+  tree_card_layout->addWidget(publishers_tree_, 1);
+  root->addWidget(tree_card, 1);
 
   editor_body_ = new QWidget(this);
   auto* editor_layout = new QVBoxLayout(editor_body_);
   editor_layout->setContentsMargins(0, 0, 0, 0);
-  editor_layout->setSpacing(6);
+  editor_layout->setSpacing(8);
 
   expression_toolbar_ = new QWidget(editor_body_);
   auto* expression_toolbar_layout = new QHBoxLayout(expression_toolbar_);
-  expression_toolbar_layout->setContentsMargins(0, 0, 0, 0);
+  expression_toolbar_layout->setContentsMargins(2, 0, 2, 0);
   expression_toolbar_layout->setSpacing(6);
-  expression_toolbar_layout->addWidget(new QLabel(tr("Expression"), expression_toolbar_));
+  expression_toolbar_layout->addWidget(
+      MakeFieldLabel(tr("Expression"), expression_toolbar_));
   reset_template_button_ = new QPushButton(tr("Use template"), expression_toolbar_);
-  reset_template_button_->setFlat(true);
+  StyleGhostButton(reset_template_button_);
   fill_latest_button_ = new QPushButton(tr("From latest"), expression_toolbar_);
-  fill_latest_button_->setFlat(true);
+  StyleGhostButton(fill_latest_button_);
   expression_toolbar_layout->addWidget(reset_template_button_);
   expression_toolbar_layout->addWidget(fill_latest_button_);
   expression_toolbar_layout->addStretch();
@@ -202,27 +311,31 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
 
   payload_splitter_ = new QSplitter(Qt::Vertical, editor_body_);
   payload_splitter_->setChildrenCollapsible(false);
+  payload_splitter_->setHandleWidth(1);
+  payload_splitter_->setStyleSheet(
+      QStringLiteral("QSplitter::handle { background: %1; }")
+          .arg(QLatin1String(kBorder)));
 
   request_group_ = new QGroupBox(tr("Message"), editor_body_);
   auto* request_layout = new QVBoxLayout(request_group_);
-  request_layout->setContentsMargins(8, 12, 8, 8);
+  request_layout->setContentsMargins(10, 14, 10, 10);
   message_tabs_ = new QTabWidget(request_group_);
   message_edit_ = makeJsonEditor(message_tabs_, tr("Message expression (JSON)"));
 
   auto* fields_tab = new QWidget(message_tabs_);
   auto* fields_layout = new QVBoxLayout(fields_tab);
-  fields_layout->setContentsMargins(0, 0, 0, 0);
-  fields_layout->setSpacing(4);
+  fields_layout->setContentsMargins(4, 4, 4, 4);
+  fields_layout->setSpacing(6);
   auto* fields_toolbar = new QHBoxLayout();
   fields_toolbar->setContentsMargins(0, 0, 0, 0);
   auto* expand_all_button = new QPushButton(tr("Expand all"), fields_tab);
-  expand_all_button->setFlat(true);
+  StyleGhostButton(expand_all_button);
   auto* collapse_all_button = new QPushButton(tr("Collapse all"), fields_tab);
-  collapse_all_button->setFlat(true);
+  StyleGhostButton(collapse_all_button);
   auto* add_array_button = new QPushButton(QStringLiteral("+"), fields_tab);
-  add_array_button->setFlat(true);
-  auto* remove_array_button = new QPushButton(QStringLiteral("-"), fields_tab);
-  remove_array_button->setFlat(true);
+  StyleIconChipButton(add_array_button);
+  auto* remove_array_button = new QPushButton(QStringLiteral("−"), fields_tab);
+  StyleIconChipButton(remove_array_button);
   fields_toolbar->addWidget(expand_all_button);
   fields_toolbar->addWidget(collapse_all_button);
   fields_toolbar->addStretch();
@@ -242,7 +355,7 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
 
   result_group_ = new QGroupBox(tr("Status"), editor_body_);
   auto* result_layout = new QVBoxLayout(result_group_);
-  result_layout->setContentsMargins(8, 12, 8, 8);
+  result_layout->setContentsMargins(10, 14, 10, 10);
   result_status_label_ = new QLabel(tr("Ready"), result_group_);
   result_edit_ = makeJsonEditor(result_group_, tr("Publish status"), true);
   result_edit_->setMaximumHeight(80);
@@ -335,10 +448,105 @@ QPlainTextEdit* PublishEditorWidget::makeJsonEditor(QWidget* parent,
   mono.setFamily(QStringLiteral("Monospace"));
   mono.setPointSizeF(std::max(9.0, mono.pointSizeF() - 1.0));
   editor->setFont(mono);
-  if (read_only) {
-    editor->setStyleSheet(QStringLiteral("QPlainTextEdit { background: palette(alternate-base); }"));
-  }
+  editor->setStyleSheet(QStringLiteral(
+      "QPlainTextEdit {"
+      "  background: %1; color: %2;"
+      "  border: 1px solid %3; border-radius: 8px;"
+      "  padding: 8px;"
+      "  selection-background-color: rgba(8,145,178,0.22);"
+      "}")
+                            .arg(read_only ? QLatin1String(kBg) : QLatin1String(kSurface),
+                                 QLatin1String(kText), QLatin1String(kBorder)));
   return editor;
+}
+
+void PublishEditorWidget::applyChromeStyles() {
+  setStyleSheet(QStringLiteral(
+      "QWidget#PublishEditorContent {"
+      "  background: %1; color: %2;"
+      "}"
+      "QFrame#PublishToolbar, QFrame#PublishCollectionBar {"
+      "  background: %3;"
+      "  border: 1px solid %4;"
+      "  border-radius: 12px;"
+      "}"
+      "QFrame#PublishTreeCard {"
+      "  background: %3;"
+      "  border: 1px solid %4;"
+      "  border-radius: 12px;"
+      "}"
+      "QGroupBox {"
+      "  background: %3;"
+      "  border: 1px solid %4;"
+      "  border-radius: 12px;"
+      "  margin-top: 12px;"
+      "  padding: 16px 10px 10px 10px;"
+      "  font-weight: 600;"
+      "  color: %2;"
+      "}"
+      "QGroupBox::title {"
+      "  subcontrol-origin: margin;"
+      "  left: 12px;"
+      "  padding: 0 6px;"
+      "  color: %5;"
+      "}"
+      "QTabWidget::pane {"
+      "  border: 1px solid %4;"
+      "  border-radius: 8px;"
+      "  background: %3;"
+      "  top: -1px;"
+      "}"
+      "QTabBar::tab {"
+      "  background: transparent;"
+      "  color: %5;"
+      "  padding: 7px 14px;"
+      "  margin-right: 2px;"
+      "  border-bottom: 2px solid transparent;"
+      "}"
+      "QTabBar::tab:selected {"
+      "  color: %6;"
+      "  border-bottom: 2px solid %6;"
+      "}"
+      "QTabBar::tab:hover { color: %2; }")
+                    .arg(QLatin1String(kBg), QLatin1String(kText),
+                         QLatin1String(kSurface), QLatin1String(kBorder),
+                         QLatin1String(kTextMuted), QLatin1String(kAccent)));
+}
+
+void PublishEditorWidget::refreshPublishButtonAppearance() {
+  if (publish_once_button_ == nullptr) {
+    return;
+  }
+  const QString label = config_.button_label.trimmed().isEmpty()
+                            ? tr("Publish")
+                            : config_.button_label.trimmed();
+  publish_once_button_->setText(label);
+  if (!config_.button_tooltip.trimmed().isEmpty()) {
+    publish_once_button_->setToolTip(config_.button_tooltip);
+  } else {
+    publish_once_button_->setToolTip(tr("Publish once (Ctrl+Enter)"));
+  }
+
+  QColor accent(kAccent);
+  if (config_.button_color.isValid()) {
+    accent = config_.button_color;
+  }
+  const QString hover = accent.lighter(112).name();
+  publish_once_button_->setStyleSheet(QStringLiteral(
+      "QPushButton {"
+      "  background: %1; color: white;"
+      "  border: 1px solid %1; border-radius: 9px;"
+      "  padding: 6px 18px; font-weight: 700;"
+      "}"
+      "QPushButton:hover { background: %2; border-color: %2; }"
+      "QPushButton:pressed { background: %1; }"
+      "QPushButton:disabled {"
+      "  background: %3; color: %4; border-color: %5;"
+      "}")
+                                          .arg(accent.name(), hover,
+                                               QLatin1String(kBg),
+                                               QLatin1String(kTextMuted),
+                                               QLatin1String(kBorder)));
 }
 
 void PublishEditorWidget::keyPressEvent(QKeyEvent* event) {
@@ -458,6 +666,7 @@ void PublishEditorWidget::setConfig(const PublishPanelConfig& config) {
     maybeFillTemplateForType(config_.message_type);
   }
   applyEditingModeUi();
+  refreshPublishButtonAppearance();
   updatePublishButtonState();
 }
 
@@ -690,8 +899,8 @@ void PublishEditorWidget::showResult(bool success, const QString& summary,
                                      const QString& details) {
   result_status_label_->setText(summary);
   result_status_label_->setStyleSheet(
-      success ? QStringLiteral("color: #49cc90; font-weight: 600;")
-              : QStringLiteral("color: #f93e3e; font-weight: 600;"));
+      success ? QStringLiteral("color: #059669; font-weight: 700;")
+              : QStringLiteral("color: #dc2626; font-weight: 700;"));
   if (!details.isEmpty()) {
     result_edit_->setPlainText(details);
   }

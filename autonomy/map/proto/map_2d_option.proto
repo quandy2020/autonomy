@@ -109,6 +109,12 @@ message StaticLayer
     double transform_tolerance = 4;
     bool footprint_clearing_enabled = 5;
     string map_topic = 6;
+    // When true, OccupancyGrid -1 stays NO_INFORMATION (blocks allow_unknown=false).
+    bool track_unknown_space = 7;
+    // OccupancyGrid value >= this becomes LETHAL (Cartographer walls often 65–99).
+    int32 lethal_cost_threshold = 8;
+    // When true, values in (0, threshold) become FREE; else scaled costs.
+    bool trinary_costmap = 9;
 }
 
 message Costmap2DOptions

@@ -71,6 +71,28 @@ TeleopSettingsWidget::TeleopSettingsWidget(common::VisualizationManager* manager
   stop_on_release_check_ = new QCheckBox(tr("Stop on release"), general_body);
   stop_on_release_check_->setChecked(config_.stop_on_release);
   general_form->addRow(QString(), stop_on_release_check_);
+  stick_mode_combo_ = new QComboBox(general_body);
+  stick_mode_combo_->addItem(tr("Dual sticks (Move + Turn)"),
+                             static_cast<int>(TeleopStickMode::kDual));
+  stick_mode_combo_->addItem(tr("Arcade (one stick + keyboard)"),
+                             static_cast<int>(TeleopStickMode::kArcade));
+  stick_mode_combo_->setCurrentIndex(
+      stick_mode_combo_->findData(static_cast<int>(config_.stick_mode)));
+  general_form->addRow(tr("Control mode"), stick_mode_combo_);
+  max_linear_spin_ = new QDoubleSpinBox(general_body);
+  max_linear_spin_->setRange(0.01, 10.0);
+  max_linear_spin_->setSingleStep(0.05);
+  max_linear_spin_->setDecimals(2);
+  max_linear_spin_->setSuffix(QStringLiteral(" m/s"));
+  max_linear_spin_->setValue(config_.max_linear_speed);
+  general_form->addRow(tr("Max linear speed"), max_linear_spin_);
+  max_angular_spin_ = new QDoubleSpinBox(general_body);
+  max_angular_spin_->setRange(0.01, 10.0);
+  max_angular_spin_->setSingleStep(0.05);
+  max_angular_spin_->setDecimals(2);
+  max_angular_spin_->setSuffix(QStringLiteral(" rad/s"));
+  max_angular_spin_->setValue(config_.max_angular_speed);
+  general_form->addRow(tr("Max angular speed"), max_angular_spin_);
   outer->addWidget(MakeCollapsibleSection(this, tr("General"), general_body, true));
 
   auto* buttons_body = new QWidget(this);
@@ -93,6 +115,12 @@ TeleopSettingsWidget::TeleopSettingsWidget(common::VisualizationManager* manager
           this, &TeleopSettingsWidget::emitConfigChanged);
   connect(stop_on_release_check_, &QCheckBox::toggled, this,
           &TeleopSettingsWidget::emitConfigChanged);
+  connect(stick_mode_combo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, &TeleopSettingsWidget::emitConfigChanged);
+  connect(max_linear_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+          this, &TeleopSettingsWidget::emitConfigChanged);
+  connect(max_angular_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+          this, &TeleopSettingsWidget::emitConfigChanged);
 }
 
 QWidget* TeleopSettingsWidget::makeButtonSection(const QString& title,
@@ -142,6 +170,14 @@ TeleopPanelConfig TeleopSettingsWidget::config() const {
   out.topic = topic_edit_->text().trimmed();
   out.publish_rate_hz = publish_rate_spin_->value();
   out.stop_on_release = stop_on_release_check_->isChecked();
+  out.stick_mode =
+      static_cast<TeleopStickMode>(stick_mode_combo_->currentData().toInt());
+  out.max_linear_speed = max_linear_spin_->value();
+  out.max_angular_speed = max_angular_spin_->value();
+  out.up.value = out.max_linear_speed;
+  out.down.value = -out.max_linear_speed;
+  out.left.value = out.max_angular_speed;
+  out.right.value = -out.max_angular_speed;
 
   const auto readSection = [&](TeleopButtonConfig* target, int section_index) {
     auto* section = button_sections_layout_->itemAt(section_index)->widget();
@@ -172,6 +208,10 @@ void TeleopSettingsWidget::setConfig(const TeleopPanelConfig& config) {
   topic_edit_->setText(config_.topic);
   publish_rate_spin_->setValue(config_.publish_rate_hz);
   stop_on_release_check_->setChecked(config_.stop_on_release);
+  stick_mode_combo_->setCurrentIndex(
+      stick_mode_combo_->findData(static_cast<int>(config_.stick_mode)));
+  max_linear_spin_->setValue(config_.max_linear_speed);
+  max_angular_spin_->setValue(config_.max_angular_speed);
   rebuildButtonSections();
 }
 

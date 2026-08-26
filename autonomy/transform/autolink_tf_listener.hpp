@@ -27,12 +27,13 @@ public:
 
     /**
      * @param transform_message_topic TFMessage channel (Foxglove/autosim: /tf)
-     * @param transform_stampeds_topic optional TransformStampeds channel
+     * @param transform_stampeds_topic optional legacy TransformStampeds channel
+     *        (empty = disabled; do not use /tf — that carries TFMessage)
      * @param static_transform_message_topic optional static TFMessage (/tf_static)
      */
     bool Start(const std::shared_ptr<autolink::Node>& node,
                const std::string& transform_message_topic = "/tf",
-               const std::string& transform_stampeds_topic = "tf",
+               const std::string& transform_stampeds_topic = "",
                const std::string& static_transform_message_topic =
                    "/tf_static");
 

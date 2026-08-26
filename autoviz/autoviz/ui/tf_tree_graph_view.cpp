@@ -16,6 +16,7 @@
 #include <QGraphicsPathItem>
 #include <QGraphicsScene>
 #include <QGraphicsSimpleTextItem>
+#include <QLinearGradient>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPalette>
@@ -23,7 +24,6 @@
 #include <QPolygonF>
 #include <QScrollBar>
 #include <QMouseEvent>
-#include <QResizeEvent>
 #include <QResizeEvent>
 #include <QShowEvent>
 #include <QStringList>
@@ -67,38 +67,55 @@ constexpr double kScenePadding = 22.0;
 constexpr double kLegendGap = 22.0;
 constexpr double kLegendPaddingX = 10.0;
 constexpr double kLegendPaddingY = 6.0;
-constexpr double kStrokeWidth = 1.0;
+constexpr double kStrokeWidth = 1.4;
 /** Beyond this the clock feeding the panel is not on the transforms' timeline
  *  (wall clock against simulated time), so the age annotation is meaningless
  *  and only makes every label wider. `_allFramesAsDot` omits it too when it has
  *  no usable clock. */
 constexpr double kMaxPlausibleAgeSeconds = 86400.0;
+constexpr double kStaleAgeSeconds = 1.0;
 
-/** graphviz draws unfilled shapes and black text on white. Deriving the ink and
- *  canvas from the palette keeps that look in a light theme while staying
- *  readable in a dark one. */
+/** Light chrome shared with TfTreePanel — no dark canvas. */
 struct GraphPalette {
   QColor canvas;
   QColor node_fill;
+  QColor node_fill_bottom;
   QColor node_static_fill;
+  QColor node_static_fill_bottom;
+  QColor node_current_fill;
   QColor edge;
+  QColor edge_stale;
   QColor ink;
   QColor secondary_text;
   QColor accent;
+  QColor accent_soft;
+  QColor static_accent;
   QColor placeholder_fill;
+  QColor label_bg;
+  QColor legend_fill;
+  QColor legend_border;
 };
 
 GraphPalette MakeGraphPalette(const QPalette& palette) {
-  GraphPalette graph;
   Q_UNUSED(palette);
-  graph.canvas = QColor(255, 255, 255);
+  GraphPalette graph;
+  graph.canvas = QColor(248, 249, 251);
   graph.node_fill = QColor(255, 255, 255);
-  graph.node_static_fill = QColor(250, 250, 250);
-  graph.edge = QColor(32, 32, 32);
-  graph.ink = QColor(24, 24, 24);
-  graph.secondary_text = QColor(32, 32, 32);
-  graph.accent = QColor(32, 160, 255);
+  graph.node_fill_bottom = QColor(241, 245, 249);
+  graph.node_static_fill = QColor(255, 251, 245);
+  graph.node_static_fill_bottom = QColor(255, 243, 224);
+  graph.node_current_fill = QColor(224, 247, 250);
+  graph.edge = QColor(100, 116, 139);
+  graph.edge_stale = QColor(148, 163, 184);
+  graph.ink = QColor(30, 41, 59);
+  graph.secondary_text = QColor(71, 85, 105);
+  graph.accent = QColor(8, 145, 178);
+  graph.accent_soft = QColor(8, 145, 178, 45);
+  graph.static_accent = QColor(217, 119, 6);
   graph.placeholder_fill = QColor(255, 255, 255);
+  graph.label_bg = QColor(255, 255, 255, 245);
+  graph.legend_fill = QColor(255, 255, 255);
+  graph.legend_border = QColor(203, 213, 225);
   return graph;
 }
 
@@ -200,6 +217,8 @@ struct LayoutNode {
   QSizeF label;
   double center_x = 0.0;
   double center_y = 0.0;
+  double age_seconds = -1.0;
+  double average_rate_hertz = 0.0;
   int depth = 0;
   int parent_index = -1;
   /** Position among the parent's children, left to right, and their count. */
@@ -215,6 +234,9 @@ struct LayoutNode {
                     label.isEmpty() ? 0.0
                                     : kMaxLabelShiftX + kLabelOffsetX +
                                           label.width());
+  }
+  bool isStale() const {
+    return age_seconds >= 0.0 && age_seconds > kStaleAgeSeconds;
   }
 };
 
@@ -363,14 +385,18 @@ void TfTreeGraphView::setCurrentFrame(const QString& frame_id) {
 void TfTreeGraphView::showMessage(const QString& message) {
   scene_->clear();
   const GraphPalette graph_palette = MakeGraphPalette(palette());
+  setBackgroundBrush(graph_palette.canvas);
   auto* text = scene_->addSimpleText(message, NodeFont());
-  text->setBrush(graph_palette.ink);
+  text->setBrush(graph_palette.secondary_text);
   const QRectF bounds = text->boundingRect();
-  const QRectF box(bounds.adjusted(-18, -12, 18, 12));
-  auto* rect = scene_->addRect(box, QPen(graph_palette.edge, 1.0),
+  const QRectF box(bounds.adjusted(-22, -14, 22, 14));
+  QPainterPath message_path;
+  message_path.addRoundedRect(box, 10.0, 10.0);
+  auto* rect = scene_->addPath(message_path, QPen(graph_palette.legend_border, 1.0),
                                QBrush(graph_palette.placeholder_fill));
   rect->setZValue(-1.0);
   text->setPos(-bounds.width() * 0.5, -bounds.height() * 0.5);
+  text->setZValue(1.0);
   scene_->setSceneRect(box.adjusted(-220, -140, 220, 140));
   resetTransform();
   zoom_factor_ = 1.0;
@@ -413,11 +439,19 @@ void TfTreeGraphView::setFrames(
     node.frame_id = frame_id;
     node.parent_id = parent_id;
     node.is_static = stats.is_static;
+    node.average_rate_hertz = stats.average_rate_hertz;
     node.ellipse = EllipseForText(MeasureBlock(node_metrics, {frame_id}));
     if (!parent_id.isEmpty()) {
       node.edge_label = BuildEdgeLabel(stats, current_time_seconds);
       node.label =
           MeasureBlock(label_metrics, node.edge_label, label_line_spacing);
+      const double latest = static_cast<double>(stats.last_stamp_ns) / 1e9;
+      if (current_time_seconds > 0.0 && latest > 0.0) {
+        const double age = current_time_seconds - latest;
+        if (age >= 0.0 && age < kMaxPlausibleAgeSeconds) {
+          node.age_seconds = age;
+        }
+      }
     }
     index_by_frame.emplace(stats.frame_id, static_cast<int>(nodes.size()));
     nodes.push_back(std::move(node));
@@ -577,10 +611,6 @@ void TfTreeGraphView::setFrames(
   setBackgroundBrush(graph_palette.canvas);
   scene_->clear();
 
-  const QPen stroke(graph_palette.edge, kStrokeWidth);
-
-  QPainterPath edge_path;
-  QPainterPath arrow_path;
   for (const LayoutNode& node : nodes) {
     if (node.parent_index < 0) {
       continue;
@@ -590,9 +620,6 @@ void TfTreeGraphView::setFrames(
     const QPointF heading = approach_line.heading;
     const QPointF tip = approach_line.tip;
     const QPointF end = approach_line.end;
-    // Reach the child's column inside the corridor above the label row, then
-    // run in along the approach. A spline that spread out gradually would cut
-    // through the labels of every column it passes.
     const double corridor_y =
         node.label.isEmpty()
             ? (parent.center_y + parent.ellipse.height() * 0.5 + end.y()) * 0.5
@@ -603,10 +630,8 @@ void TfTreeGraphView::setFrames(
     const QPointF start = EllipseExit(parent, node, corridor_exit);
     const double drop = std::max(1.0, corridor_y - start.y());
     const double spread = corridor_exit.x() - start.x();
-    // A quarter-arc: the outward handle continues the departure so the bend is
-    // spent in one gentle sweep, and the second handle lies on the approach so
-    // the arc joins it tangentially. Both handles collapse onto the vertical as
-    // `spread` shrinks, so a single child stays straight.
+
+    QPainterPath edge_path;
     edge_path.moveTo(start);
     edge_path.cubicTo(
         QPointF(start.x() + spread * 0.40, start.y() + drop * 0.30),
@@ -614,23 +639,22 @@ void TfTreeGraphView::setFrames(
                 corridor_y - heading.y() * drop * 0.70),
         corridor_exit);
     edge_path.lineTo(end);
+
+    QPainterPath arrow_path;
     AppendArrowHead(&arrow_path, tip, heading);
-  }
-  if (!edge_path.isEmpty()) {
-    auto* edges = scene_->addPath(edge_path, stroke, QBrush(Qt::NoBrush));
-    edges->setZValue(-2.0);
-  }
-  if (!arrow_path.isEmpty()) {
-    auto* arrows =
-        scene_->addPath(arrow_path, stroke, QBrush(graph_palette.edge));
-    arrows->setZValue(-2.0);
+
+    const QColor edge_color =
+        node.isStale() ? graph_palette.edge_stale : graph_palette.edge;
+    const QPen stroke(edge_color, node.isStale() ? 1.0 : kStrokeWidth,
+                      node.isStale() ? Qt::DashLine : Qt::SolidLine, Qt::RoundCap,
+                      Qt::RoundJoin);
+    auto* edge_item = scene_->addPath(edge_path, stroke, QBrush(Qt::NoBrush));
+    edge_item->setZValue(-2.0);
+    auto* arrow_item =
+        scene_->addPath(arrow_path, QPen(Qt::NoPen), QBrush(edge_color));
+    arrow_item->setZValue(-2.0);
   }
 
-  // dot hangs the edge label beside the edge, not inside a box on top of it.
-  // Centring it in the gap keeps the text clear of the fan-out — every edge is
-  // already vertical in its own column by the first line, and a sibling's column
-  // starts beyond this label's right edge — while spacing it evenly from the two
-  // frames it describes.
   for (const LayoutNode& node : nodes) {
     if (node.parent_index < 0 || node.edge_label.isEmpty()) {
       continue;
@@ -639,7 +663,17 @@ void TfTreeGraphView::setFrames(
     const double label_top = EdgeLabelTop(parent, node);
     const double label_left =
         EdgeLabelLeft(MakeEdgeApproach(parent, node), node, label_top);
-    AddCenteredBlock(scene_, node.edge_label, label_font, graph_palette.secondary_text,
+    const QRectF label_box(
+        label_left - 6.0, label_top - 4.0, node.label.width() + 12.0,
+        node.label.height() + 8.0);
+    QPainterPath label_path;
+    label_path.addRoundedRect(label_box, 6.0, 6.0);
+    auto* label_bg = scene_->addPath(label_path, QPen(Qt::NoPen),
+                                     QBrush(graph_palette.label_bg));
+    label_bg->setZValue(-1.5);
+    AddCenteredBlock(scene_, node.edge_label, label_font,
+                     node.isStale() ? graph_palette.edge_stale
+                                    : graph_palette.secondary_text,
                      QPointF(label_left, label_top), node.label.width(),
                      label_line_spacing, -1.0);
   }
@@ -648,22 +682,49 @@ void TfTreeGraphView::setFrames(
     const QRectF bounds(node.center_x - node.ellipse.width() * 0.5,
                         node.center_y - node.ellipse.height() * 0.5,
                         node.ellipse.width(), node.ellipse.height());
-    const QColor fill = node.is_static ? graph_palette.node_static_fill
-                                       : graph_palette.node_fill;
-    QPen node_pen = stroke;
+    const bool current = node.frame_id == current_frame_id_;
+    QColor fill_top = node.is_static ? graph_palette.node_static_fill
+                                     : graph_palette.node_fill;
+    QColor fill_bottom = node.is_static ? graph_palette.node_static_fill_bottom
+                                        : graph_palette.node_fill_bottom;
+    if (current) {
+      fill_top = graph_palette.node_current_fill;
+      fill_bottom = graph_palette.node_fill_bottom;
+    }
+    QLinearGradient gradient(bounds.topLeft(), bounds.bottomLeft());
+    gradient.setColorAt(0.0, fill_top);
+    gradient.setColorAt(1.0, fill_bottom);
+
+    QPen node_pen(graph_palette.edge, 1.2);
     if (node.is_static) {
-      node_pen.setColor(graph_palette.accent);
+      node_pen.setColor(graph_palette.static_accent);
+      node_pen.setStyle(Qt::DashLine);
     }
-    if (node.frame_id == current_frame_id_) {
+    if (current) {
       node_pen.setColor(graph_palette.accent);
-      node_pen.setWidthF(2.0);
+      node_pen.setWidthF(2.4);
+      node_pen.setStyle(Qt::SolidLine);
+      auto* glow = scene_->addEllipse(
+          bounds.adjusted(-4, -4, 4, 4), QPen(Qt::NoPen),
+          QBrush(graph_palette.accent_soft));
+      glow->setZValue(0.5);
     }
-    auto* ellipse = scene_->addEllipse(bounds, node_pen, QBrush(fill));
+
+    auto* ellipse =
+        scene_->addEllipse(bounds, node_pen, QBrush(gradient));
     ellipse->setZValue(1.0);
     ellipse->setData(kFrameIdRole, node.frame_id);
-    ellipse->setToolTip(node.is_static
-                            ? tr("%1 (static)").arg(node.frame_id)
-                            : node.frame_id);
+    QString tip = node.frame_id;
+    if (node.is_static) {
+      tip += tr(" (static)");
+    }
+    if (node.average_rate_hertz > 0.0) {
+      tip += tr("\n%1 Hz").arg(FormatFixed(node.average_rate_hertz, 2));
+    }
+    if (node.age_seconds >= 0.0) {
+      tip += tr("\n%1 s old").arg(FormatFixed(node.age_seconds, 2));
+    }
+    ellipse->setToolTip(tip);
 
     auto* text = scene_->addSimpleText(node.frame_id, node_font);
     text->setBrush(graph_palette.ink);
@@ -674,45 +735,54 @@ void TfTreeGraphView::setFrames(
     text->setData(kFrameIdRole, node.frame_id);
   }
 
-  // rqt prints the capture stamp in a framed caption above the tree.
+  // Caption card above the tree.
   const QRectF graph_bounds = scene_->itemsBoundingRect();
   QStringList caption;
   caption << tr("Transform Tree");
   QStringList detail;
+  detail << tr("%1 frames · %2 roots")
+                .arg(node_count)
+                .arg(static_cast<int>(roots.size()));
   if (current_time_seconds > 0.0) {
-    detail << tr("Recorded at time: %1").arg(FormatFixed(current_time_seconds, 7));
+    detail << tr("Recorded at %1").arg(FormatFixed(current_time_seconds, 3));
   }
   const QSizeF caption_size = MeasureBlock(node_metrics, caption);
   const QSizeF detail_size =
       MeasureBlock(label_metrics, detail, label_line_spacing);
   const double legend_width =
       std::max(caption_size.width(), detail_size.width()) +
-      kLegendPaddingX * 2.0;
+      kLegendPaddingX * 2.0 + 8.0;
   const double legend_height = caption_size.height() + detail_size.height() +
-                               kLegendPaddingY * (detail.isEmpty() ? 2.0 : 4.0);
+                               kLegendPaddingY * 4.0;
   const QRectF legend_rect(graph_bounds.center().x() - legend_width * 0.5,
                            graph_bounds.top() - kLegendGap - legend_height,
                            legend_width, legend_height);
-  auto* legend_box =
-      scene_->addRect(legend_rect, stroke, QBrush(graph_palette.node_fill));
+  QPainterPath legend_path;
+  legend_path.addRoundedRect(legend_rect, 10.0, 10.0);
+  auto* legend_box = scene_->addPath(
+      legend_path, QPen(graph_palette.legend_border, 1.0),
+      QBrush(graph_palette.legend_fill));
   legend_box->setZValue(1.0);
+  // Accent bar on the left of the legend.
+  QPainterPath accent_path;
+  accent_path.addRoundedRect(
+      QRectF(legend_rect.left() + 3.0, legend_rect.top() + 8.0, 3.0,
+             legend_rect.height() - 16.0),
+      1.5, 1.5);
+  auto* accent_bar =
+      scene_->addPath(accent_path, QPen(Qt::NoPen), QBrush(graph_palette.accent));
+  accent_bar->setZValue(2.0);
   AddCenteredBlock(scene_, caption, node_font, graph_palette.ink,
-                   QPointF(legend_rect.left() + kLegendPaddingX,
+                   QPointF(legend_rect.left() + kLegendPaddingX + 4.0,
                            legend_rect.top() + kLegendPaddingY),
-                   legend_width - kLegendPaddingX * 2.0,
+                   legend_width - kLegendPaddingX * 2.0 - 4.0,
                    node_metrics.lineSpacing(), 2.0);
-  if (!detail.isEmpty()) {
-    const double divider_y =
-        legend_rect.top() + kLegendPaddingY * 2.0 + caption_size.height();
-    auto* divider = scene_->addLine(legend_rect.left(), divider_y,
-                                    legend_rect.right(), divider_y, stroke);
-    divider->setZValue(2.0);
-    AddCenteredBlock(scene_, detail, label_font, graph_palette.secondary_text,
-                     QPointF(legend_rect.left() + kLegendPaddingX,
-                             divider_y + kLegendPaddingY),
-                     legend_width - kLegendPaddingX * 2.0,
-                     label_line_spacing, 2.0);
-  }
+  AddCenteredBlock(scene_, detail, label_font, graph_palette.secondary_text,
+                   QPointF(legend_rect.left() + kLegendPaddingX + 4.0,
+                           legend_rect.top() + kLegendPaddingY * 2.0 +
+                               caption_size.height()),
+                   legend_width - kLegendPaddingX * 2.0 - 4.0,
+                   label_line_spacing, 2.0);
 
   scene_->setSceneRect(scene_->itemsBoundingRect().adjusted(
       -kScenePadding, -kScenePadding, kScenePadding, kScenePadding));

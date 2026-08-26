@@ -103,7 +103,7 @@ AUTONOMY_PLANNER = {
             footprint_clearing_enabled = true,
             sensor_sources = {
                 scan = {
-                    topic = "scan",
+                    topic = "/scan",
                     data_type = "LaserScan",
                     marking = true,
                     clearing = true,
@@ -120,6 +120,11 @@ AUTONOMY_PLANNER = {
             transform_tolerance = 0.1,
             footprint_clearing_enabled = false,
             map_topic = "/map",
+            -- Cartographer occupancy is often 65–99 for walls; keep unknown
+            -- as NO_INFORMATION so allow_unknown=false actually blocks it.
+            track_unknown_space = true,
+            lethal_cost_threshold = 65,
+            trinary_costmap = true,
         },
 
         denoise_layer = {
@@ -132,7 +137,7 @@ AUTONOMY_PLANNER = {
             plugin = "libautonomy_map_layers_inflation_layer.so",
             enabled = true,
             cost_scaling_factor = 3.0,
-            inflation_radius = 0.35,
+            inflation_radius = 0.40,
             inflate_unknown = false,
             inflate_around_unknown = false,
         },

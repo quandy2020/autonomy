@@ -42,7 +42,7 @@ struct PublishPanelConfig {
   bool editing_mode = false;
   bool loop_publish = false;
   double publish_rate_hz = 1.0;
-  QString button_label = QStringLiteral("Send");
+  QString button_label = QStringLiteral("Publish");
   QString button_tooltip;
   QColor button_color;
   QVector<PublishPreset> saved_presets;

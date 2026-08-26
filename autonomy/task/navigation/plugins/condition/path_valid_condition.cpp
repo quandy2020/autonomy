@@ -36,9 +36,7 @@ protected:
 
         if (!ResolveClient(*this)->IsPathValid(
                 path, static_cast<uint8_t>(max_cost), consider_unknown)) {
-            // Soft-fail: still allow FollowPath so a marginal PathValid check
-            // does not thrash ClearCostmap / Spin recovery.
-            return BT::NodeStatus::SUCCESS;
+            return BT::NodeStatus::FAILURE;
         }
         return BT::NodeStatus::SUCCESS;
     }

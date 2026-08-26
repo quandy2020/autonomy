@@ -72,6 +72,9 @@ AUTONOMY_CONTROLLER = {
             transform_tolerance = 0.1,
             footprint_clearing_enabled = false,
             map_topic = "/map",
+            track_unknown_space = true,
+            lethal_cost_threshold = 65,
+            trinary_costmap = true,
         },
 
         obstacle_layer = {

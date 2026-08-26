@@ -19,7 +19,6 @@
 #include <glog/logging.h>
 
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>
-#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
 #include <automsgs/msgs/time_utils.hpp>
 #include "autonomy/transform/buffer_utils.hpp"
 #include "autonomy/transform/transform_topics.hpp"
@@ -61,16 +60,20 @@ bool StaticTransformPublisher::Publish(std::shared_ptr<autolink::Node> node) {
     }
 
     if (!writer_) {
-        writer_ =
-            node->CreateWriter<automsgs::msgs::geometry_msgs::TransformStampeds>(
-                kTfStaticTopic);
+        writer_ = node->CreateWriter<automsgs::msgs::tf2_msgs::TFMessage>(
+            kTfStaticTopic);
         if (!writer_) {
-            LOG(ERROR) << "Failed to create tf_static writer.";
+            LOG(ERROR) << "Failed to create " << kTfStaticTopic << " writer.";
             return false;
         }
     }
 
-    if (!writer_->Write(transforms_)) {
+    automsgs::msgs::tf2_msgs::TFMessage msg;
+    for (const auto& transform : transforms_.transforms()) {
+        *msg.add_transforms() = transform;
+    }
+
+    if (!writer_->Write(msg)) {
         LOG(ERROR) << "Failed to publish static transforms on " << kTfStaticTopic;
         return false;
     }

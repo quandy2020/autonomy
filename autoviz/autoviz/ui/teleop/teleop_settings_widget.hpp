@@ -48,6 +48,9 @@ class TeleopSettingsWidget : public QWidget {
   QLineEdit* topic_edit_ = nullptr;
   QDoubleSpinBox* publish_rate_spin_ = nullptr;
   QCheckBox* stop_on_release_check_ = nullptr;
+  QComboBox* stick_mode_combo_ = nullptr;
+  QDoubleSpinBox* max_linear_spin_ = nullptr;
+  QDoubleSpinBox* max_angular_spin_ = nullptr;
   QVBoxLayout* button_sections_layout_ = nullptr;
   TeleopButtonConfig* up_config_ = nullptr;
   TeleopButtonConfig* down_config_ = nullptr;
