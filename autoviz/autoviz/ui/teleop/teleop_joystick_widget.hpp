@@ -16,6 +16,8 @@ class TeleopJoystickWidget : public QWidget {
  public:
   explicit TeleopJoystickWidget(const QString& label, QWidget* parent = nullptr);
 
+  QSize sizeHint() const override;
+  QSize minimumSizeHint() const override;
   QPointF normalizedValue() const;
   void reset();
   void resetVisual();
