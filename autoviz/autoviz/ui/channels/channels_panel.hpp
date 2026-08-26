@@ -6,6 +6,7 @@
 
 #include <QWidget>
 
+class QLabel;
 class QLineEdit;
 class QTreeWidget;
 class QTreeWidgetItem;
@@ -28,14 +29,19 @@ class ChannelsPanel : public QWidget {
   void refreshStats();
 
  private:
+  void applyChromeStyles();
   void rebuildTree();
   void applyFilter();
   void onItemExpanded(QTreeWidgetItem* item);
   bool channelsStructureChanged() const;
   void updateChannelStatsColumns();
+  void updateStatusChip();
+  void styleChannelItem(QTreeWidgetItem* item, bool is_channel_leaf) const;
 
   common::VisualizationManager* manager_ = nullptr;
   QLineEdit* filter_edit_ = nullptr;
+  QLabel* status_label_ = nullptr;
+  QLabel* empty_hint_ = nullptr;
   QTreeWidget* tree_ = nullptr;
   QTimer* stats_timer_ = nullptr;
   QStringList cached_channel_keys_;
