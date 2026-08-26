@@ -1,9 +1,5 @@
 /*
- * grid_map.hpp
- *
- *  Created on: Jul 14, 2014
- *      Author: Péter Fankhauser
- *	 Institute: ETH Zurich, ANYbotics
+ * grid_map_costmap_2d.hpp
  */
 
 #pragma once

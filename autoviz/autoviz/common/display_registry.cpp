@@ -47,6 +47,7 @@
 #include "autoviz/display/strata_semantic_zone_display.hpp"
 #include "autoviz/display/effort_display.hpp"
 #include "autoviz/display/grid_cells_display.hpp"
+#include "autoviz/display/grid_map_display.hpp"
 #include "autoviz/display/point_stamped_display.hpp"
 #include "autoviz/display/polygon_display.hpp"
 #include "autoviz/display/pose_with_covariance_display.hpp"
@@ -269,6 +270,14 @@ void DisplayRegistry::registerBuiltinTypes() {
                                config);
       },
       [] { return MakeDefault("Map", "Map", "/fake/occupancy_grid"); });
+
+  registerType(
+      "GridMap",
+      [](const DisplayConfig& config) {
+        return FinalizeDisplay(
+            std::make_unique<display::GridMapDisplay>(config.channel), config);
+      },
+      [] { return MakeDefault("GridMap", "GridMap", "/grid_map"); });
 
   registerType(
       "Odometry",

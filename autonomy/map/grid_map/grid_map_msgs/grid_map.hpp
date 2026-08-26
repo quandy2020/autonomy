@@ -16,28 +16,17 @@
 
 #pragma once
 
-#include "autonomy/common/time.hpp"
 #include <automsgs/msgs/map_msgs/grid_map.pb.h>
 #include <automsgs/msgs/map_msgs/grid_map_info.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
+
+#include "autonomy/map/grid_map/grid_map_msgs/grid_map_converter.hpp"
+#include "autonomy/map/grid_map/grid_map_msgs/msg_helpers.hpp"
 
 namespace grid_map {
 
-using GridMapInfoData = automsgs::msgs::map_msgs::GridMapInfo;
 using GridMapInfoProto = automsgs::msgs::map_msgs::GridMapInfo;
-
-using GridMapData = automsgs::msgs::map_msgs::GridMap;
 using GridMapProto = automsgs::msgs::map_msgs::GridMap;
-
-// Converts 'data' to a proto::map_msgs::GridMapInfo.
-GridMapInfoProto ToProto(const GridMapInfoData& data);
-
-// Converts 'proto' to GridMapInfo.
-GridMapInfoData FromProto(const GridMapInfoProto& proto);
-
-// Converts 'data' to a proto::map_msgs::GridMap.
-GridMapProto ToProto(const GridMapData& data);
-
-// Converts 'proto' to GridMapData.
-GridMapData FromProto(const GridMapProto& proto);
+using OccupancyGridProto = automsgs::msgs::map_msgs::OccupancyGrid;
 
 }  // namespace grid_map

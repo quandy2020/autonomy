@@ -555,6 +555,18 @@ void SceneOverlay::addBoxSolid(const QVector3D& center,
   triangle_dirty_ = true;
 }
 
+void SceneOverlay::addColoredTriangle(const QVector3D& a, const QVector3D& b,
+                                      const QVector3D& c, const QColor& ca,
+                                      const QColor& cb, const QColor& cc) {
+  triangle_vertices_.push_back({a, ToVec4(ca)});
+  triangle_vertices_.push_back({b, ToVec4(cb)});
+  triangle_vertices_.push_back({c, ToVec4(cc)});
+  recordPick(a);
+  recordPick(b);
+  recordPick(c);
+  triangle_dirty_ = true;
+}
+
 void SceneOverlay::addTriangleMeshWireframe(const display::ObjMesh& mesh,
                                             const QMatrix4x4& transform,
                                             const QColor& color) {

@@ -4,61 +4,34 @@
  *  Created on: May 6, 2017
  *      Author: Tanja Baumann, Peter Fankhauser
  *   Institute: ETH Zurich, ANYbotics
+ *
+ * Adapted for autonomy (ROS-free FilterBase).
  */
 
 #pragma once
 
-// OpenCV
-#include <opencv2/opencv.hpp>
 #include <string>
-#include <vector>
 
-#include "autonomy/map/grid_map/grid_map_cv/grid_map_cv.hpp"
+#include "autonomy/map/grid_map/grid_map_core/grid_map.hpp"
+#include "autonomy/map/grid_map/grid_map_filters/filters/filter_base.hpp"
 
 namespace grid_map {
 
-// /*!
-//  * Uses OpenCV function to inpaint/fill holes in the input layer.
-//  */
-// template<typename T>
-// class InpaintFilter : public filters::FilterBase<T>
-// {
+/*!
+ * Uses OpenCV inpaint to fill holes in the input layer.
+ */
+class InpaintFilter : public filters::FilterBase<GridMap> {
+ public:
+  InpaintFilter();
+  ~InpaintFilter() override;
 
-// public:
-//   /*!
-//    * Constructor
-//    */
-//   InpaintFilter();
+  bool configure() override;
+  bool update(const GridMap& mapIn, GridMap& mapOut) override;
 
-//   /*!
-//    * Destructor.
-//    */
-//   virtual ~InpaintFilter();
-
-//   /*!
-//    * Configures the filter from parameters on the Parameter Server
-//    */
-//   virtual bool configure();
-
-//   /*!
-//    * Adds a new output layer to the map.
-//    * Uses the OpenCV function inpaint holes in the input layer.
-//    * Saves to filled map in the outputlayer.
-//    * @param mapIn grid map containing input layer
-//    * @param mapOut grid map containing mapIn and inpainted input layer.
-//    */
-//   virtual bool update(const T& mapIn, T& mapOut);
-
-// private:
-
-//   //! Inpainting radius.
-//   double radius_;
-
-//   //! Input layer name.
-//   std::string inputLayer_;
-
-//   //! Output layer name.
-//   std::string outputLayer_;
-// };
+ private:
+  double radius_;
+  std::string inputLayer_;
+  std::string outputLayer_;
+};
 
 }  // namespace grid_map

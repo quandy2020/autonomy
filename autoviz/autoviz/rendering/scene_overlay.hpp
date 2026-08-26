@@ -121,6 +121,10 @@ class SceneOverlay {
                        const QMatrix4x4& transform, const QColor& color);
   void addBoxSolid(const QVector3D& center, const QVector3D& half_extents,
                    const QMatrix4x4& transform, const QColor& color);
+  /** Per-vertex colored triangle (grid_map elevation mesh). */
+  void addColoredTriangle(const QVector3D& a, const QVector3D& b,
+                          const QVector3D& c, const QColor& ca, const QColor& cb,
+                          const QColor& cc);
   void addTriangleMeshWireframe(const display::ObjMesh& mesh,
                                 const QMatrix4x4& transform,
                                 const QColor& color);
