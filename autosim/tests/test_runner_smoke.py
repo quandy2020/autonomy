@@ -279,6 +279,42 @@ def test_runner_slam_skips_map_and_map_odom(monkeypatch):
     assert ("odom", "base_footprint") not in tf_edges
 
 
+
+def test_runner_slam_glues_odom_to_ground_truth(monkeypatch):
+    """SLAM must keep wheel odom == GT so GT-cast /scan matches odom→base TF."""
+    import autosim.runner as runner_module
+
+    monkeypatch.setattr(runner_module.time, "sleep", lambda seconds: None)
+
+    root = Path(__file__).resolve().parents[1]
+    settings = Config.load(root / "config" / "default.yaml")
+    settings.data["habitat"]["mode"] = "slam"
+    settings.data["habitat"]["map"]["enabled"] = False
+    sensors = settings.data["habitat"]["sensors"]
+    # Intentional mismatch on odom noise only; lidar stays clean (yaml noise=0).
+    sensors["lidar_2d"]["enabled"] = False
+    sensors["lidar_3d"]["enabled"] = False
+    sensors["camera"]["enabled"] = False
+    sensors["imu"]["enabled"] = False
+    sensors["odom"]["enabled"] = True
+    sensors["odom"]["noise"] = 0.05
+    settings.data["habitat"]["robot"]["tf"]["enabled"] = True
+    settings.data["habitat"]["robot"]["clock"]["enabled"] = False
+    settings.data["habitat"]["robot"]["footprint"]["enabled"] = False
+
+    link = FakeLink()
+    runner = Runner(settings, max_steps=20, link=link, simulator=FakeSimulator())
+    assert float(runner.lidar_2d.get("noise", 0.0)) == 0.0
+    assert runner.lidar_2d.get("frame", "laser_link") == "laser_link"
+    runner.robot.set_twist(0.3, 0.5, 0.0)
+    runner.run()
+    gx, gy, gyaw = runner.robot.pose()
+    ox, oy, oyaw = runner.robot.odometry_pose()
+    assert abs(gx - ox) < 1e-9
+    assert abs(gy - oy) < 1e-9
+    assert abs(gyaw - oyaw) < 1e-9
+
+
 def test_subsample_points():
     import numpy as np
 

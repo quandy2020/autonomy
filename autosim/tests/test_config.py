@@ -112,23 +112,24 @@ def test_load_default_yaml():
     assert settings["habitat"]["sensors"]["lidar_3d"]["enabled"] is False
     assert settings["habitat"]["sensors"]["lidar_3d"]["vertical"]["num_rings"] == 16
     assert settings["habitat"]["sensors"]["camera"]["width"] == 640
-    assert settings["habitat"]["sensors"]["lidar_2d"]["noise"] == 0.01
+    assert settings["habitat"]["sensors"]["lidar_2d"]["noise"] == 0.0
     assert settings["habitat"]["sensors"]["lidar_3d"]["noise"] == 0.015
-    assert settings["habitat"]["sensors"]["odom"]["noise"] == 0.02
+    assert settings["habitat"]["sensors"]["odom"]["noise"] == 0.0
     assert settings["habitat"]["sensors"]["imu"]["noise"]["gyro"] == 0.01
     assert settings["habitat"]["sensors"]["imu"]["noise"]["accel"] == 0.05
     assert settings["habitat"]["sensors"]["camera"]["noise"]["depth"] == 0.0
-    assert settings["habitat"]["map"]["enabled"] is True
-    assert settings["habitat"]["map"]["publish"] is True
-    assert settings["habitat"]["mode"] == "nav"
+    assert settings["habitat"]["map"]["enabled"] is False
+    assert settings["habitat"]["map"]["publish"] is False
+    assert settings["habitat"]["mode"] == "slam"
     assert settings["habitat"]["map"]["ply"]["channel"] == "/overall/map"
     assert settings["habitat"]["map"]["grid"]["channel"] == "/map"
     assert settings["habitat"]["robot"]["tf"]["enabled"] is True
-    assert settings["habitat"]["robot"]["tf"]["publish_map_odom"] is True
+    assert settings["habitat"]["robot"]["tf"]["publish_map_odom"] is False
     assert settings.channel_map()["tf"] == "/tf"
     assert settings.channel_map()["clock"] == "/clock"
     assert settings.channel_map()["footprint"] == "/footprint"
     assert settings["habitat"]["sensors"]["odom"]["child_frame"] == "base_link"
+    assert settings["habitat"]["sensors"]["odom"]["noise"] == 0.0
     assert settings["habitat"]["robot"]["footprint"]["frame"] == "base_link"
 
 

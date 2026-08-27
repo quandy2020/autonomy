@@ -87,7 +87,6 @@ int RunCartographerNode(const CartographerNodeFlags& flags) {
 
     cartographer_node.FinishAllTrajectories();
     cartographer_node.RunFinalOptimization();
-    cartographer_node.SaveMapImageIfEnabled();
 
     if (!flags.save_state_filename.empty()) {
         cartographer_node.SerializeState(flags.save_state_filename, true);

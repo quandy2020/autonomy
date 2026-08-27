@@ -60,7 +60,7 @@ cd src/autonomy/autosim
 
 键盘遥控与 `autonomy_teleop` 相同：`w`/`x` 增减线速度，`a`/`d` 增减角速度，`space`/`s` 停车；速度会保持直到下一次按键。需在交互式 TTY 中运行（`docker exec -it SpaceHero /bin/bash`），并点击该终端窗口取得焦点。
 
-`habitat.path` 为空时使用 Habitat 空舞台（仍需 `habitat-sim`）。默认 `habitat.mode: nav`：发漂移修正的 `map→odom→base_link`（激光按真值投射，与 GT `/map` 对齐）与 GT `/map`。SLAM 联调用 `mode: slam`（不发 `map→odom`/`/map`，仅 `odom→base_link`）。
+`habitat.path` 为空时使用 Habitat 空舞台（仍需 `habitat-sim`）。默认 `habitat.mode: slam`：仅发 `odom→base_link`（并令轮式里程计贴合真值，避免 `/scan` 相对地图旋转）；Cartographer 负责 `map→odom`/`/map`。导航演示用 `mode: nav`（漂移修正的 `map→odom→base_link` + GT `/map`）。
 测试需要已安装的 `automsgs` Python 绑定（仓库内不再附带 `stubs/`）。
 
 ## 配置要点

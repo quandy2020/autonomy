@@ -80,8 +80,6 @@ public:
     void FinishAllTrajectories();
     bool FinishTrajectory(int trajectory_id);
     void RunFinalOptimization();
-    /** Save map image once if save_map_image is enabled in node options. */
-    void SaveMapImageIfEnabled();
     void StartTrajectoryWithDefaultTopics(const TrajectoryOptions& options);
     void SerializeState(const std::string& filename,
                         bool include_unfinished_submaps);
@@ -117,9 +115,10 @@ private:
     void PublishSubmapList();
     void PublishLocalTrajectoryData();
     void PublishOccupancyGrid();
-    void SaveMapImage();
 
-    std::map<::cartographer::mapping::SubmapId, ::cartographer::io::SubmapSlice>
+    /** Updates occupancy_submap_slices_ (version-cached) and returns it. */
+    const std::map<::cartographer::mapping::SubmapId,
+                   ::cartographer::io::SubmapSlice>&
     CollectSubmapSlices();
 
     void HandleOdometryMessage(int trajectory_id, const std::string& sensor_id,
@@ -168,14 +167,12 @@ private:
         tracked_pose_writer_;
     std::shared_ptr<autolink::Writer<automsgs::msgs::map_msgs::OccupancyGrid>>
         occupancy_grid_writer_;
+    /** Cached painted submap textures; skip HandleSubmapQuery when version
+     *  unchanged (OccupancyGridNode already does this; embedded path did not). */
+    std::map<::cartographer::mapping::SubmapId, ::cartographer::io::SubmapSlice>
+        occupancy_submap_slices_;
     std::shared_ptr<autolink::Writer<automsgs::msgs::tf2_msgs::TFMessage>>
         tf_writer_;
-
-    /** Latest autosim robot TF (odom→base + mounts), used to republish a full
-     *  connected tree together with Cartographer's map→odom. */
-    std::mutex latest_robot_tf_mutex_;
-    automsgs::msgs::tf2_msgs::TFMessage latest_robot_tf_
-        GUARDED_BY(latest_robot_tf_mutex_);
 
     std::vector<std::unique_ptr<autolink::Timer>> timers_;
 
@@ -186,8 +183,6 @@ private:
                                 std::function<void()>>>
         sensor_dispatch_queues_;
     std::map<int, uint64_t> sensor_dispatch_sequence_;
-
-    std::string map_image_save_directory_;
 };
 
 }  // namespace node

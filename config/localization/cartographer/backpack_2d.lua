@@ -38,10 +38,6 @@ options = {
   publish_occupancy_grid = true,
   occupancy_grid_publish_period_sec = 1.0,
   occupancy_grid_resolution = 0.05,
-  save_map_image = true,
-  map_image_save_period_sec = 10.0,
-  map_image_save_directory = "data",
-  map_image_filestem = "map",
 }
 
 MAP_BUILDER.use_trajectory_builder_2d = true

@@ -28,6 +28,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <set>
 #include <utility>
 
 #include <glog/logging.h>
@@ -56,7 +57,7 @@ namespace {
 constexpr char kAutosimTfTopic[] = "/tf";
 constexpr char kAutosimTfStaticTopic[] = "/tf_static";
 
-// Cache robot TF from autosim (everything except map→*) for full-tree republish.
+// CacheRobotTf: copy transforms, optionally dropping parent==skip_parent.
 void CacheRobotTf(const automsgs::msgs::tf2_msgs::TFMessage& message,
                   const std::string& skip_parent,
                   automsgs::msgs::tf2_msgs::TFMessage* out) {
@@ -98,9 +99,7 @@ CartographerNode::CartographerNode(
     std::unique_ptr<::cartographer::mapping::MapBuilderInterface> map_builder)
     : node_options_(node_options),
       tf_buffer_(transform::Buffer::Instance()),
-      tf_broadcaster_(std::make_shared<transform::TransformBroadcaster>()),
-      map_image_save_directory_(ResolveWorkspacePath(
-          node_options.map_image_save_directory)) {
+      tf_broadcaster_(std::make_shared<transform::TransformBroadcaster>()) {
     map_builder_bridge_ = std::make_unique<MapBuilderBridge>(
         node_options_, std::move(map_builder), tf_buffer_);
 }
@@ -154,7 +153,7 @@ bool CartographerNode::Init(std::shared_ptr<autolink::Node> node) {
             HandleWriteState(request, response);
         });
 
-    // Publish map→odom on /tf; skip autosim map→* and republish full tree.
+    // Publish map→odom on /tf; skip autosim map→* when ingesting.
     if (node_options_.publish_to_tf) {
         tf_writer_ = node_->CreateWriter<automsgs::msgs::tf2_msgs::TFMessage>(
             kAutosimTfTopic);
@@ -167,10 +166,6 @@ bool CartographerNode::Init(std::shared_ptr<autolink::Node> node) {
             const std::shared_ptr<automsgs::msgs::tf2_msgs::TFMessage>& msg) {
             if (!msg) {
                 return;
-            }
-            {
-                std::lock_guard<std::mutex> lock(latest_robot_tf_mutex_);
-                CacheRobotTf(*msg, node_options_.map_frame, &latest_robot_tf_);
             }
             IngestTfMessage(tf_buffer_, *msg, "autosim_tf", skip_map);
         });
@@ -196,12 +191,6 @@ bool CartographerNode::Init(std::shared_ptr<autolink::Node> node) {
         timers_.emplace_back(std::make_unique<autolink::Timer>(
             TimerPeriodMs(node_options_.occupancy_grid_publish_period_sec),
             [this]() { PublishOccupancyGrid(); }, false));
-    }
-    if (node_options_.save_map_image &&
-        node_options_.map_image_save_period_sec > 0) {
-        timers_.emplace_back(std::make_unique<autolink::Timer>(
-            TimerPeriodMs(node_options_.map_image_save_period_sec),
-            [this]() { SaveMapImage(); }, false));
     }
     for (auto& timer : timers_) {
         timer->Start();
@@ -236,12 +225,6 @@ bool CartographerNode::FinishTrajectory(const int trajectory_id) {
 void CartographerNode::RunFinalOptimization() {
     std::lock_guard<std::mutex> lock(mutex_);
     map_builder_bridge_->RunFinalOptimization();
-}
-
-void CartographerNode::SaveMapImageIfEnabled() {
-    if (node_options_.save_map_image) {
-        SaveMapImage();
-    }
 }
 
 void CartographerNode::StartTrajectoryWithDefaultTopics(
@@ -557,21 +540,15 @@ void CartographerNode::PublishLocalTrajectoryData() {
                         tf_buffer_, published, "cartographer", false);
                 }
                 if (tf_writer_) {
+                    // Only map→odom (or map→published). Do NOT restamp cached
+                    // odom→base / mounts to the SLAM time: that stamps the
+                    // *latest* robot pose at an older epoch and makes LaserScan
+                    // look motion-distorted under yaw (Autoviz interpolates a
+                    // lying odom→base). Autosim already publishes robot TF at
+                    // the correct sim stamps.
                     automsgs::msgs::tf2_msgs::TFMessage tf_msg;
                     for (const auto& published : stamped_transforms) {
                         *tf_msg.add_transforms() = published;
-                    }
-                    // Forward odom→base + mounts with the same stamp so Autoviz
-                    // does not interpolate across mismatched epochs.
-                    {
-                        std::lock_guard<std::mutex> lock(latest_robot_tf_mutex_);
-                        for (const auto& robot_tf :
-                             latest_robot_tf_.transforms()) {
-                            auto* out = tf_msg.add_transforms();
-                            *out = robot_tf;
-                            *out->mutable_header()->mutable_stamp() =
-                                stamped_transform.header().stamp();
-                        }
                     }
                     tf_writer_->Write(tf_msg);
                 }
@@ -593,7 +570,7 @@ void CartographerNode::PublishOccupancyGrid() {
         return;
     }
 
-    const auto submap_slices = CollectSubmapSlices();
+    const auto& submap_slices = CollectSubmapSlices();
     const auto now = automsgs::msgs::builtin_interfaces::Now();
     if (auto grid = BuildOccupancyGrid(submap_slices,
                                        node_options_.occupancy_grid_resolution,
@@ -602,9 +579,8 @@ void CartographerNode::PublishOccupancyGrid() {
     }
 }
 
-std::map<carto::mapping::SubmapId, carto::io::SubmapSlice>
+const std::map<carto::mapping::SubmapId, carto::io::SubmapSlice>&
 CartographerNode::CollectSubmapSlices() {
-    std::map<carto::mapping::SubmapId, carto::io::SubmapSlice> submap_slices;
     proto::SubmapList submap_list;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -612,9 +588,20 @@ CartographerNode::CollectSubmapSlices() {
             automsgs::msgs::builtin_interfaces::Now());
     }
 
+    std::set<carto::mapping::SubmapId> keep;
     for (const auto& submap_msg : submap_list.submap()) {
         const carto::mapping::SubmapId id{submap_msg.trajectory_id(),
                                           submap_msg.submap_index()};
+        keep.insert(id);
+        carto::io::SubmapSlice& submap_slice = occupancy_submap_slices_[id];
+        submap_slice.pose = ToRigid3d(FromProtoPose(submap_msg.pose()));
+        submap_slice.metadata_version = submap_msg.submap_version();
+        // Finished / unchanged submaps: reuse cairo surface.
+        if (submap_slice.surface != nullptr &&
+            submap_slice.version == submap_msg.submap_version()) {
+            continue;
+        }
+
         proto::SubmapQueryRequest request;
         request.set_trajectory_id(id.trajectory_id);
         request.set_submap_index(id.submap_index);
@@ -623,27 +610,23 @@ CartographerNode::CollectSubmapSlices() {
             std::lock_guard<std::mutex> lock(mutex_);
             map_builder_bridge_->HandleSubmapQuery(request, &response);
         }
-        carto::io::SubmapSlice& submap_slice = submap_slices[id];
         if (!UpdateSubmapSliceFromQueryResponse(
                 &submap_slice, response, FromProtoPose(submap_msg.pose()),
                 submap_msg.submap_version())) {
-            submap_slices.erase(id);
+            occupancy_submap_slices_.erase(id);
+            keep.erase(id);
         }
     }
-    return submap_slices;
-}
 
-void CartographerNode::SaveMapImage() {
-    const auto submap_slices = CollectSubmapSlices();
-    std::vector<::cartographer::mapping::proto::Trajectory> trajectories;
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        trajectories = BuildTrajectoryProtos(
-            map_builder_bridge_->map_builder()->pose_graph()->GetTrajectoryNodes());
+    for (auto it = occupancy_submap_slices_.begin();
+         it != occupancy_submap_slices_.end();) {
+        if (keep.count(it->first) == 0) {
+            it = occupancy_submap_slices_.erase(it);
+        } else {
+            ++it;
+        }
     }
-    SaveMapImageFiles(submap_slices, node_options_.occupancy_grid_resolution,
-                      map_image_save_directory_,
-                      node_options_.map_image_filestem, trajectories);
+    return occupancy_submap_slices_;
 }
 
 void CartographerNode::DispatchSensorMessage(
