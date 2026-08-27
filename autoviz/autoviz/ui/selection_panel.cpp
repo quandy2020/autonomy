@@ -6,11 +6,13 @@
 
 #include <QComboBox>
 #include <QFormLayout>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
 #include <QVBoxLayout>
 
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 #include "autoviz/variables/variable_store.hpp"
 #include "autoviz/variables/variable_types.hpp"
 
@@ -19,19 +21,31 @@ namespace autoviz {
 SelectionPanel::SelectionPanel(common::VisualizationManager* manager,
                              QWidget* parent)
     : manager_(manager), QWidget(parent) {
+  ApplyPanelShell(this);
   auto* layout = new QVBoxLayout(this);
-  layout->addWidget(new QLabel(tr("Selected Points"), this));
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(0);
+
+  QHBoxLayout* toolbar_layout = nullptr;
+  auto* toolbar = MakePanelToolbar(this, &toolbar_layout);
+  auto* title = new QLabel(tr("Selected Points"), toolbar);
+  StyleSectionTitle(title);
+  toolbar_layout->addWidget(title, 1);
+  layout->addWidget(toolbar);
+
   list_ = new QListWidget(this);
   layout->addWidget(list_, 1);
 
   auto* variable_box = new QWidget(this);
   auto* form = new QFormLayout(variable_box);
+  ApplyCompactForm(form);
   variable_combo_ = new QComboBox(variable_box);
   axis_combo_ = new QComboBox(variable_box);
   axis_combo_->addItem(tr("X"), 0);
   axis_combo_->addItem(tr("Y"), 1);
   axis_combo_->addItem(tr("Z"), 2);
-  set_button_ = new QPushButton(tr("Set variable from selection"), variable_box);
+  set_button_ = MakeFlatActionButton(tr("Set variable from selection"),
+                                     variable_box);
   form->addRow(tr("Variable"), variable_combo_);
   form->addRow(tr("Axis"), axis_combo_);
   form->addRow(set_button_);

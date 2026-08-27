@@ -6,6 +6,8 @@
 
 #include <QVBoxLayout>
 
+#include "autoviz/ui/panel_settings_styles.hpp"
+
 namespace autoviz {
 
 namespace {
@@ -84,9 +86,13 @@ QString HelpHtml() {
 }  // namespace
 
 HelpPanel::HelpPanel(QWidget* parent) : QWidget(parent) {
+  ApplyPanelShell(this);
   auto* layout = new QVBoxLayout(this);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(0);
   auto* browser = new QTextBrowser(this);
   browser->setOpenExternalLinks(true);
+  browser->setStyleSheet(PanelHelpBrowserStyle());
   browser->setHtml(HelpHtml());
   layout->addWidget(browser);
 }

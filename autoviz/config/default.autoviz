@@ -1,23 +1,155 @@
-Global:
-  FixedFrame: map
-  ShowGrid: true
-  BackgroundColor: 48;48;48
-  FrameRate: 30
-  ViewController: Orbit
-  RenderBackend: OpenGL
+CurrentView:
+  Distance: 10
+  FocalShapeFixedSize: true
+  FocalShapeSize: 0.05000000074505806
+  FpsPitch: 0
+  FpsPosition:
+    X: 0
+    Y: 0
+    Z: 2
+  FpsYaw: 3.140000104904175
+  InvertZAxis: false
+  Name: Current
+  NearClipDistance: 0.009999999776482582
+  Pitch: 0.785398006439209
+  Target:
+    X: 0
+    Y: 0
+    Z: 0
+  Type: Orbit
+  Yaw: 0.785398006439209
 Displays:
-  - Type: Grid
+  - Channel: ""
+    Enabled: false
     Name: Grid
-    Channel: ""
-    Enabled: true
     Properties:
-      reference_frame: "<Fixed Frame>"
-      cell_count: "10"
-      normal_cell_count: "0"
-      cell_size: "1.0"
-      line_style: "Lines"
-      line_width: "0.03"
-      color: "160;160;160"
-      alpha: "0.5"
-      plane: "XY"
-      offset: "0;0;0"
+      alpha: 0.5
+      cell_count: 10
+      cell_size: 1.0
+      color: 160;160;160
+      line_style: Lines
+      line_width: 0.03
+      normal_cell_count: 0
+      offset: 0;0;0
+      plane: XY
+      reference_frame: <Fixed Frame>
+    Type: Grid
+Global:
+  ActiveTool: Interact
+  BackgroundColor: 48;48;48
+  FixedFrame: map
+  FrameRate: 30
+  RenderBackend: OpenGL
+  ShowGrid: true
+  Transformer: autoviz/AutolinkTf
+  ViewController: Orbit
+ImagePanels:
+  - BackgroundColor: "#000000"
+    CalibrationChannel: ""
+    ClickPublishChannel: ""
+    ColorMax: 255
+    ColorMin: 0
+    ColorMode: 0
+    EnableUndistort: false
+    FlipHorizontal: false
+    FlipVertical: false
+    HoverPublishChannel: ""
+    ImageChannel: /fake/image
+    LabelScale: 1
+    ObjectName: ImageDock
+    Rotation: 0
+    SettingsVisible: false
+    StrictTimeSync: false
+    Title: Image
+PlotPanels:
+  - LockAxisScales: false
+    MessagePathMode: 1
+    ObjectName: PlotDock
+    SettingsVisible: false
+    SettingsWidth: 300
+    ShowLegendValues: true
+    SyncWithOtherPlots: true
+    Title: Plot
+    XAxisMode: 0
+    XWindowSec: 30
+PublishPanels:
+  - ActivePresetName: ""
+    ButtonColor: ""
+    ButtonLabel: Publish
+    ButtonTooltip: ""
+    Channel: /cmd_vel
+    CustomChannels:
+      - /cmd_vel
+    EditingMode: false
+    LoopPublish: false
+    MessageJson: "{}\n"
+    MessageType: automsgs.msgs.geometry_msgs.TwistStamped
+    ObjectName: PublishDock
+    PublishRateHz: 1
+    SelectedPublisherIndex: -1
+    SettingsVisible: false
+    Title: ""
+Toolbar:
+  - Interact
+  - MoveCamera
+  - Select
+  - FocusCamera
+  - Measure
+  - PoseEstimate
+  - NavGoal
+  - PublishPoint
+Tools:
+  - Id: Interact
+    Properties:
+      client_id: autoviz
+  - Id: PoseEstimate
+    Properties:
+      covariance_x: 0.25
+      covariance_y: 0.25
+      covariance_yaw: 0.0685385
+      topic: /initialpose
+  - Id: NavGoal
+    Properties:
+      topic: /goal_pose
+  - Id: PublishPoint
+    Properties:
+      topic: /clicked_point
+Views: ~
+Window:
+  Geometry: AdnQywADAAAAAABCAAAAIAAACf8AAAWfAAAAdAAAAHcAAAVzAAADlgAAAAACAAAACgAAAABCAAAARQAACf8AAAWf
+  Height: 1371
+  HideLeftDock: false
+  HideRightDock: false
+  MainPanelState: AAAA/wAAAAD9AAAAAgAAAAAAAAOFAAAFBvwCAAAACPsAAAAOAEwAbwBnAEQAbwBjAGsAAAAAAAAAAjgAAAC6AP////sAAAAYAFAAbABhAHkAYgBhAGMAawBEAG8AYwBrAAAAAAD/////AAABCAD////7AAAAJABWAGEAcgBpAGEAYgBsAGUAUwBsAGkAZABlAHIARABvAGMAawAAAAAA/////wAAAScA////+wAAABQAVABmAFQAcgBlAGUARABvAGMAawAAAAAA/////wAAAPEA////+wAAABIASQBtAGEAZwBlAEQAbwBjAGsAAAAAAAAAAd8AAACVAP////sAAAAQAFAAbABvAHQARABvAGMAawAAAAAAAAAFBgAAAPkA////+wAAABYARAByAG8AbgBlADMARABEAG8AYwBrAAAAAAD/////AAAAHQD////7AAAAFgBQAHUAYgBsAGkAcwBoAEQAbwBjAGsAAAAAAAAABQYAAAEZAP///wAAAAEAAAcQAAAFBvwCAAAAAfsAAAAYAFYAaQBlAHcAcABvAHIAdABEAG8AYwBrAQAAAAAAAAUGAAACDQD///8AAAAAAAAFBgAAAAQAAAAEAAAACAAAAAj8AAAAAA==
+  Panels:
+    - Name: ViewportDock
+    - Name: DisplaysDock
+    - Name: StrataFloorDock
+    - Name: SelectionDock
+    - Name: ToolPropertiesDock
+    - Name: ViewsDock
+    - Name: TimeDock
+    - Name: PlaybackDock
+    - Name: ChannelsDock
+    - Name: ChannelBrowserDock
+    - Name: ProblemsDock
+    - Name: VariablesDock
+    - Name: PropertyInspectorDock
+    - Name: TransformationDock
+    - Name: TfTreeDock
+    - Name: ImageDock
+    - Name: PlotDock
+    - Name: Drone3DDock
+    - Name: HelpDock
+    - Name: LogDock
+    - Name: VariableSliderDock
+    - Name: PublishDock
+  PlotSettingsVisible: false
+  State: AAAA/wAAAAD9AAAAAwAAAAAAAAE+AAAFBvwCAAAABfwAAAAA/////wAAAAAA////+gAAAAACAAAAAvsAAAAYAEMAaABhAG4AbgBlAGwAcwBEAG8AYwBrAQAAAAD/////AAAAAAAAAAD7AAAAJABDAGgAYQBuAG4AZQBsAEIAcgBvAHcAcwBlAHIARABvAGMAawEAAAAA/////wAAAAAAAAAA+wAAABgAUAByAG8AYgBsAGUAbQBzAEQAbwBjAGsBAAAAAP////8AAAAAAAAAAPsAAAAYAEQAaQBzAHAAbABhAHkAcwBEAG8AYwBrAQAAAD8AAAUGAAAArQD////7AAAAHgBTAHQAcgBhAHQAYQBGAGwAbwBvAHIARABvAGMAawEAAAAA/////wAAAAAAAAAA+wAAACoAUAByAG8AcABlAHIAdAB5AEkAbgBzAHAAZQBjAHQAbwByAEQAbwBjAGsAAAAEXQAAAOgAAABZAP///wAAAAEAAAFeAAAFBvwCAAAABvsAAAASAFYAaQBlAHcAcwBEAG8AYwBrAQAAAD8AAAUGAAAAsAD////7AAAAJABUAG8AbwBsAFAAcgBvAHAAZQByAHQAaQBlAHMARABvAGMAawEAAAAA/////wAAAAAAAAAA+wAAABoAUwBlAGwAZQBjAHQAaQBvAG4ARABvAGMAawEAAAAA/////wAAAAAAAAAA+wAAABoAVgBhAHIAaQBhAGIAbABlAHMARABvAGMAawAAAAAA/////wAAAAAAAAAA+wAAACQAVAByAGEAbgBzAGYAbwByAG0AYQB0AGkAbwBuAEQAbwBjAGsBAAAAAP////8AAAAAAAAAAPsAAAAQAEgAZQBsAHAARABvAGMAawAAAAAA/////wAAAAAAAAAAAAAAAwAACb4AAABt/AEAAAAB+wAAABAAVABpAG0AZQBEAG8AYwBrAAAAAAAAAAm+AAACogD///8AAAcWAAAFBgAAAAEAAAACAAAACAAAAAj8AAAAAQAAAAIAAAABAAAACgBUAG8AbwBsAHMBAAAAAP////8AAAAAAAAAAA==
+  VisiblePanels:
+    - ViewportDock
+    - DisplaysDock
+    - ViewsDock
+  Width: 2494
+  X: 66
+  Y: 69

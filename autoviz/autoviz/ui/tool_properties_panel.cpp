@@ -7,6 +7,8 @@
 
 #include <QVBoxLayout>
 
+#include "autoviz/ui/panel_settings_styles.hpp"
+
 namespace autoviz {
 
 ToolPropertiesPanel::ToolPropertiesPanel(
@@ -17,12 +19,21 @@ ToolPropertiesPanel::ToolPropertiesPanel(
 }
 
 void ToolPropertiesPanel::setupUi() {
+  ApplyPanelShell(this);
   auto* layout = new QVBoxLayout(this);
-  tool_label_ = new QLabel(this);
-  layout->addWidget(tool_label_);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(0);
+
+  QHBoxLayout* toolbar_layout = nullptr;
+  auto* toolbar = MakePanelToolbar(this, &toolbar_layout);
+  tool_label_ = new QLabel(toolbar);
+  StyleSectionTitle(tool_label_);
+  toolbar_layout->addWidget(tool_label_, 1);
+  layout->addWidget(toolbar);
 
   property_container_ = new QWidget(this);
   property_form_ = new QFormLayout(property_container_);
+  ApplyCompactForm(property_form_);
   layout->addWidget(property_container_);
   layout->addStretch();
 }
@@ -45,7 +56,9 @@ void ToolPropertiesPanel::populateProperties() {
 
   const auto specs = manager_->tools().activeToolPropertySpecs();
   if (specs.empty()) {
-    property_form_->addRow(new QLabel(tr("No configurable properties"), this));
+    auto* empty = new QLabel(tr("No configurable properties"), this);
+    StyleHintLabel(empty);
+    property_form_->addRow(empty);
     return;
   }
 
@@ -53,6 +66,7 @@ void ToolPropertiesPanel::populateProperties() {
   for (const auto& spec : specs) {
     auto* edit = new QLineEdit(this);
     edit->setProperty("property_key", QString::fromStdString(spec.key));
+    StyleFilterLineEdit(edit);
     if (tool != nullptr) {
       edit->setText(QString::fromStdString(
           tool->propertyValue(spec.key, spec.default_value)));

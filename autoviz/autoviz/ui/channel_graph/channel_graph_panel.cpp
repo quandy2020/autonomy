@@ -44,6 +44,14 @@ namespace {
 constexpr int kAutoRefreshMs = 2000;
 constexpr int kFilterDebounceMs = 250;
 
+/** Light tokens shared with Log / Channels / TF Tree. */
+constexpr char kBg[] = "#f8f9fb";
+constexpr char kSurface[] = "#ffffff";
+constexpr char kBorder[] = "#cbd5e1";
+constexpr char kText[] = "#1e293b";
+constexpr char kTextMuted[] = "#64748b";
+constexpr char kAccent[] = "#0891b2";
+
 QString FormatHzText(double hz) {
   if (hz <= 0.0) {
     return QStringLiteral("—");
@@ -345,11 +353,12 @@ QWidget* MakeMetricChip(const QString& label, const QString& value,
   chip->setObjectName(QStringLiteral("PropertyMetricChip"));
   chip->setStyleSheet(QStringLiteral(
       "QFrame#PropertyMetricChip {"
-      "  background: rgba(255,255,255,0.05);"
-      "  border: 1px solid rgba(255,255,255,0.08);"
+      "  background: %1;"
+      "  border: 1px solid %2;"
       "  border-radius: 10px;"
       "  padding: 2px;"
-      "}"));
+      "}")
+                          .arg(QLatin1String(kSurface), QLatin1String(kBorder)));
   auto* layout = new QVBoxLayout(chip);
   layout->setContentsMargins(12, 8, 12, 8);
   layout->setSpacing(2);
@@ -365,7 +374,9 @@ QWidget* MakeMetricChip(const QString& label, const QString& value,
 
   auto* key_label = new QLabel(label, chip);
   key_label->setAlignment(Qt::AlignCenter);
-  key_label->setStyleSheet(QStringLiteral("color: #9aa0a6; font-size: 11px;"));
+  key_label->setStyleSheet(
+      QStringLiteral("color: %1; font-size: 11px;")
+          .arg(QLatin1String(kTextMuted)));
 
   layout->addWidget(value_label);
   layout->addWidget(key_label);
@@ -377,10 +388,11 @@ QWidget* MakeSectionCard(const PropertySectionData& section, QWidget* parent) {
   card->setObjectName(QStringLiteral("PropertySectionCard"));
   card->setStyleSheet(QStringLiteral(
       "QFrame#PropertySectionCard {"
-      "  background: #1c1c20;"
-      "  border: 1px solid #2a2a30;"
+      "  background: %1;"
+      "  border: 1px solid %2;"
       "  border-radius: 12px;"
-      "}"));
+      "}")
+                          .arg(QLatin1String(kSurface), QLatin1String(kBorder)));
   auto* layout = new QVBoxLayout(card);
   layout->setContentsMargins(14, 12, 14, 12);
   layout->setSpacing(8);
@@ -392,11 +404,15 @@ QWidget* MakeSectionCard(const PropertySectionData& section, QWidget* parent) {
   title_font.setPointSize(11);
   title_font.setBold(true);
   title->setFont(title_font);
-  title->setStyleSheet(QStringLiteral("color: #e8eaed;"));
+  title->setStyleSheet(
+      QStringLiteral("color: %1;").arg(QLatin1String(kText)));
   auto* count = new QLabel(QString::number(section.entries.size()), card);
   count->setStyleSheet(QStringLiteral(
-      "color: #9aa0a6; background: rgba(255,255,255,0.06);"
-      "border-radius: 8px; padding: 2px 8px; font-size: 11px;"));
+      "color: %1; background: %2;"
+      "border: 1px solid %3; border-radius: 8px;"
+      "padding: 2px 8px; font-size: 11px;")
+                           .arg(QLatin1String(kTextMuted), QLatin1String(kBg),
+                                QLatin1String(kBorder)));
   // Don't count the placeholder "None" as a real entry count for empty lists.
   if (section.entries.size() == 1 &&
       section.entries.front().title == QObject::tr("None")) {
@@ -413,8 +429,10 @@ QWidget* MakeSectionCard(const PropertySectionData& section, QWidget* parent) {
     row->setStyleSheet(QStringLiteral(
         "QFrame { background: transparent; border: none;"
         "border-top: %1; }")
-                           .arg(i == 0 ? QStringLiteral("none")
-                                       : QStringLiteral("1px solid #2a2a30")));
+                           .arg(i == 0
+                                    ? QStringLiteral("none")
+                                    : QStringLiteral("1px solid %1").arg(
+                                          QLatin1String(kBorder))));
     auto* row_layout = new QVBoxLayout(row);
     row_layout->setContentsMargins(0, 8, 0, 4);
     row_layout->setSpacing(2);
@@ -422,14 +440,18 @@ QWidget* MakeSectionCard(const PropertySectionData& section, QWidget* parent) {
     auto* name = new QLabel(entry.title, row);
     name->setWordWrap(true);
     name->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    name->setStyleSheet(QStringLiteral("color: #f1f3f4; font-size: 12px;"));
+    name->setStyleSheet(
+        QStringLiteral("color: %1; font-size: 12px;")
+            .arg(QLatin1String(kText)));
     row_layout->addWidget(name);
 
     if (!entry.subtitle.isEmpty()) {
       auto* meta = new QLabel(entry.subtitle, row);
       meta->setWordWrap(true);
       meta->setTextInteractionFlags(Qt::TextSelectableByMouse);
-      meta->setStyleSheet(QStringLiteral("color: #9aa0a6; font-size: 11px;"));
+      meta->setStyleSheet(
+          QStringLiteral("color: %1; font-size: 11px;")
+              .arg(QLatin1String(kTextMuted)));
       row_layout->addWidget(meta);
     }
     layout->addWidget(row);
@@ -446,19 +468,21 @@ QDialog* CreatePropertyDialog(QWidget* parent, const PropertyPage& page) {
   dialog->resize(520, 560);
   dialog->setStyleSheet(QStringLiteral(
       "QDialog {"
-      "  background: #141417;"
-      "  color: #e8eaed;"
+      "  background: %1;"
+      "  color: %2;"
       "}"
       "QScrollArea { border: none; background: transparent; }"
       "QScrollBar:vertical {"
       "  background: transparent; width: 10px; margin: 4px 2px;"
       "}"
       "QScrollBar::handle:vertical {"
-      "  background: #3c4043; border-radius: 4px; min-height: 24px;"
+      "  background: %3; border-radius: 4px; min-height: 24px;"
       "}"
       "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {"
       "  height: 0;"
-      "}"));
+      "}")
+                            .arg(QLatin1String(kBg), QLatin1String(kText),
+                                 QLatin1String(kBorder)));
 
   auto* root = new QVBoxLayout(dialog);
   root->setContentsMargins(0, 0, 0, 0);
@@ -468,11 +492,12 @@ QDialog* CreatePropertyDialog(QWidget* parent, const PropertyPage& page) {
   header->setStyleSheet(QStringLiteral(
       "QFrame {"
       "  background: qlineargradient(x1:0,y1:0,x2:1,y2:1,"
-      "    stop:0 %1, stop:1 #1a1a1f);"
-      "  border-bottom: 1px solid #2a2a30;"
+      "    stop:0 %1, stop:1 %2);"
+      "  border-bottom: 1px solid %3;"
       "}")
-                            .arg(QColor(accent.red(), accent.green(), accent.blue(), 70)
-                                     .name(QColor::HexArgb)));
+                            .arg(QColor(accent.red(), accent.green(), accent.blue(), 36)
+                                     .name(QColor::HexArgb),
+                                 QLatin1String(kSurface), QLatin1String(kBorder)));
   auto* header_layout = new QVBoxLayout(header);
   header_layout->setContentsMargins(18, 16, 18, 16);
   header_layout->setSpacing(10);
@@ -492,11 +517,17 @@ QDialog* CreatePropertyDialog(QWidget* parent, const PropertyPage& page) {
   close_button->setCursor(Qt::PointingHandCursor);
   close_button->setStyleSheet(QStringLiteral(
       "QPushButton {"
-      "  color: #e8eaed; background: rgba(255,255,255,0.06);"
-      "  border: 1px solid rgba(255,255,255,0.10); border-radius: 8px;"
+      "  color: %1; background: %2;"
+      "  border: 1px solid %3; border-radius: 8px;"
       "  padding: 6px 14px;"
       "}"
-      "QPushButton:hover { background: rgba(255,255,255,0.12); }"));
+      "QPushButton:hover {"
+      "  color: %4; background: rgba(8,145,178,0.10);"
+      "  border-color: %4;"
+      "}")
+                                  .arg(QLatin1String(kText), QLatin1String(kSurface),
+                                       QLatin1String(kBorder),
+                                       QLatin1String(kAccent)));
   QObject::connect(close_button, &QPushButton::clicked, dialog, &QDialog::accept);
   top_row->addWidget(close_button, 0, Qt::AlignRight);
   header_layout->addLayout(top_row);
@@ -508,14 +539,17 @@ QDialog* CreatePropertyDialog(QWidget* parent, const PropertyPage& page) {
   name_font.setPointSize(16);
   name_font.setBold(true);
   name->setFont(name_font);
-  name->setStyleSheet(QStringLiteral("color: #f8f9fa;"));
+  name->setStyleSheet(
+      QStringLiteral("color: %1;").arg(QLatin1String(kText)));
   header_layout->addWidget(name);
 
   if (!page.subtitle.isEmpty()) {
     auto* subtitle = new QLabel(page.subtitle, header);
     subtitle->setWordWrap(true);
     subtitle->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    subtitle->setStyleSheet(QStringLiteral("color: #c5c8ce; font-size: 12px;"));
+    subtitle->setStyleSheet(
+        QStringLiteral("color: %1; font-size: 12px;")
+            .arg(QLatin1String(kTextMuted)));
     header_layout->addWidget(subtitle);
   }
 
@@ -534,7 +568,8 @@ QDialog* CreatePropertyDialog(QWidget* parent, const PropertyPage& page) {
   scroll->setWidgetResizable(true);
   scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   auto* body = new QWidget(scroll);
-  body->setStyleSheet(QStringLiteral("background: #141417;"));
+  body->setStyleSheet(
+      QStringLiteral("background: %1;").arg(QLatin1String(kBg)));
   auto* body_layout = new QVBoxLayout(body);
   body_layout->setContentsMargins(16, 16, 16, 16);
   body_layout->setSpacing(12);

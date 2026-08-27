@@ -14,6 +14,7 @@
 
 #include "autoviz/integration/playback_controller.hpp"
 #include "autoviz/ui/import_record_dialog.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 #include "autoviz/ui/record_open_utils.hpp"
 
 namespace autoviz {
@@ -26,61 +27,74 @@ PlaybackPanel::PlaybackPanel(integration::PlaybackController* controller,
 }
 
 void PlaybackPanel::setupUi() {
+  ApplyPanelShell(this);
   auto* layout = new QVBoxLayout(this);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(0);
 
-  file_label_ = new QLabel(tr("No record loaded"), this);
+  QHBoxLayout* toolbar_layout = nullptr;
+  auto* toolbar = MakePanelToolbar(this, &toolbar_layout);
+  file_label_ = new QLabel(tr("No record loaded"), toolbar);
   file_label_->setWordWrap(true);
-  layout->addWidget(file_label_);
+  toolbar_layout->addWidget(file_label_, 1);
+  status_label_ = new QLabel(tr("Stopped"), toolbar);
+  StyleHintLabel(status_label_);
+  toolbar_layout->addWidget(status_label_);
+  layout->addWidget(toolbar);
 
-  status_label_ = new QLabel(tr("Stopped"), this);
-  layout->addWidget(status_label_);
+  auto* body = new QWidget(this);
+  auto* body_layout = new QVBoxLayout(body);
+  ApplyCompactVBox(body_layout);
 
-  channels_label_ = new QLabel(tr("Channels: —"), this);
+  channels_label_ = new QLabel(tr("Channels: —"), body);
   channels_label_->setWordWrap(true);
-  layout->addWidget(channels_label_);
+  StyleHintLabel(channels_label_);
+  body_layout->addWidget(channels_label_);
 
-  seek_slider_ = new QSlider(Qt::Horizontal, this);
+  seek_slider_ = new QSlider(Qt::Horizontal, body);
   seek_slider_->setRange(0, 1000);
   seek_slider_->setEnabled(false);
-  layout->addWidget(seek_slider_);
+  body_layout->addWidget(seek_slider_);
 
-  time_label_ = new QLabel(tr("Sim Time: 0.000 / 0.000 s"), this);
-  layout->addWidget(time_label_);
+  time_label_ = new QLabel(tr("Sim Time: 0.000 / 0.000 s"), body);
+  body_layout->addWidget(time_label_);
 
-  auto* sync_label = new QLabel(tr("Time Source: Sim Time"), this);
-  sync_label->setStyleSheet(QStringLiteral("color: palette(mid);"));
-  layout->addWidget(sync_label);
+  auto* sync_label = new QLabel(tr("Time Source: Sim Time"), body);
+  StyleHintLabel(sync_label);
+  body_layout->addWidget(sync_label);
 
   auto* step_row = new QHBoxLayout();
-  auto* step_back = new QPushButton(tr("−0.1s"), this);
-  auto* step_forward = new QPushButton(tr("+0.1s"), this);
+  auto* step_back = new QPushButton(tr("−0.1s"), body);
+  auto* step_forward = new QPushButton(tr("+0.1s"), body);
   step_row->addWidget(step_back);
   step_row->addWidget(step_forward);
-  layout->addLayout(step_row);
+  body_layout->addLayout(step_row);
 
   auto* rate_row = new QHBoxLayout();
-  rate_row->addWidget(new QLabel(tr("Rate"), this));
-  rate_spin_ = new QDoubleSpinBox(this);
+  rate_row->addWidget(new QLabel(tr("Rate"), body));
+  rate_spin_ = new QDoubleSpinBox(body);
   rate_spin_->setRange(0.1, 8.0);
   rate_spin_->setSingleStep(0.1);
   rate_spin_->setValue(1.0);
   rate_row->addWidget(rate_spin_);
-  loop_check_ = new QCheckBox(tr("Loop"), this);
+  loop_check_ = new QCheckBox(tr("Loop"), body);
   rate_row->addWidget(loop_check_);
-  layout->addLayout(rate_row);
+  body_layout->addLayout(rate_row);
 
   auto* button_row = new QHBoxLayout();
-  auto* open_button = new QPushButton(tr("Open..."), this);
-  auto* import_button = new QPushButton(tr("Import..."), this);
-  play_button_ = new QPushButton(tr("Play"), this);
-  pause_button_ = new QPushButton(tr("Pause"), this);
-  stop_button_ = new QPushButton(tr("Stop"), this);
+  auto* open_button = new QPushButton(tr("Open..."), body);
+  auto* import_button = new QPushButton(tr("Import..."), body);
+  play_button_ = new QPushButton(tr("Play"), body);
+  pause_button_ = new QPushButton(tr("Pause"), body);
+  stop_button_ = new QPushButton(tr("Stop"), body);
   button_row->addWidget(open_button);
   button_row->addWidget(import_button);
   button_row->addWidget(play_button_);
   button_row->addWidget(pause_button_);
   button_row->addWidget(stop_button_);
-  layout->addLayout(button_row);
+  body_layout->addLayout(button_row);
+  body_layout->addStretch();
+  layout->addWidget(body, 1);
 
   connect(open_button, &QPushButton::clicked, this, &PlaybackPanel::onOpenRecord);
   connect(import_button, &QPushButton::clicked, this, &PlaybackPanel::onImport);

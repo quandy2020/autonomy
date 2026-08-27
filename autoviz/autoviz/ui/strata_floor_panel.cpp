@@ -5,6 +5,7 @@
 #include "autoviz/ui/strata_floor_panel.hpp"
 
 #include <QComboBox>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QShowEvent>
 #include <QTimer>
@@ -17,6 +18,7 @@
 #include "autolink/node/reader.hpp"
 #include "autolink/node/writer.hpp"
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 
@@ -27,14 +29,29 @@ StrataFloorPanel::StrataFloorPanel(common::VisualizationManager* manager,
 }
 
 void StrataFloorPanel::setupUi() {
+  ApplyPanelShell(this);
   auto* layout = new QVBoxLayout(this);
-  active_label_ = new QLabel(tr("Active floor: —"), this);
-  floor_selector_ = new QComboBox(this);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(0);
+
+  QHBoxLayout* toolbar_layout = nullptr;
+  auto* toolbar = MakePanelToolbar(this, &toolbar_layout);
+  auto* title = new QLabel(tr("Strata Floors"), toolbar);
+  StyleSectionTitle(title);
+  toolbar_layout->addWidget(title, 1);
+  layout->addWidget(toolbar);
+
+  auto* body = new QWidget(this);
+  auto* body_layout = new QVBoxLayout(body);
+  ApplyCompactVBox(body_layout);
+  active_label_ = new QLabel(tr("Active floor: —"), body);
+  StyleHintLabel(active_label_);
+  floor_selector_ = new QComboBox(body);
   floor_selector_->setEnabled(false);
-  layout->addWidget(new QLabel(tr("Strata Floors"), this));
-  layout->addWidget(active_label_);
-  layout->addWidget(floor_selector_);
-  layout->addStretch();
+  body_layout->addWidget(active_label_);
+  body_layout->addWidget(floor_selector_);
+  body_layout->addStretch();
+  layout->addWidget(body, 1);
   connect(floor_selector_, qOverload<int>(&QComboBox::activated), this,
           &StrataFloorPanel::onFloorSelected);
 
