@@ -10,6 +10,7 @@
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QEvent>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QKeyEvent>
@@ -23,6 +24,7 @@
 #include <functional>
 
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 #include "autoviz/variables/variable_store.hpp"
 #include "autoviz/variables/variable_types.hpp"
 
@@ -132,17 +134,21 @@ QVariant DefaultValueForType(VariableType type) {
 VariablesPanel::VariablesPanel(common::VisualizationManager* manager,
                              QWidget* parent)
     : manager_(manager), QWidget(parent) {
+  ApplyPanelShell(this);
   auto* root = new QVBoxLayout(this);
-  root->setContentsMargins(8, 8, 8, 8);
-  root->setSpacing(6);
+  root->setContentsMargins(0, 0, 0, 0);
+  root->setSpacing(0);
 
+  QHBoxLayout* hint_layout = nullptr;
+  auto* hint_bar = MakePanelToolbar(this, &hint_layout);
   auto* hint = new QLabel(
       tr("Define global variables referenced in message paths as $name. "
          "Example: objects[:]{id==$vehicle_id}.speed"),
-      this);
+      hint_bar);
   hint->setWordWrap(true);
-  hint->setStyleSheet(QStringLiteral("color: palette(mid); font-size: 11px;"));
-  root->addWidget(hint);
+  StyleHintLabel(hint);
+  hint_layout->addWidget(hint, 1);
+  root->addWidget(hint_bar);
 
   table_ = new QTableWidget(this);
   table_->setColumnCount(3);
@@ -156,13 +162,20 @@ VariablesPanel::VariablesPanel(common::VisualizationManager* manager,
   table_->verticalHeader()->setVisible(false);
   root->addWidget(table_, 1);
 
-  auto* buttons = new QHBoxLayout();
-  add_button_ = new QPushButton(tr("Add variable"), this);
-  remove_button_ = new QPushButton(tr("Remove"), this);
+  auto* button_bar = new QFrame(this);
+  ApplyPanelFooterChrome(button_bar);
+  auto* buttons = new QHBoxLayout(button_bar);
+  buttons->setContentsMargins(PanelChromeLayout::kFooterMarginH,
+                              PanelChromeLayout::kFooterMarginV,
+                              PanelChromeLayout::kFooterMarginH,
+                              PanelChromeLayout::kFooterMarginV);
+  buttons->setSpacing(PanelChromeLayout::kToolbarSpacing);
+  add_button_ = MakeFlatActionButton(tr("Add variable"), button_bar);
+  remove_button_ = MakeFlatActionButton(tr("Remove"), button_bar);
   buttons->addWidget(add_button_);
   buttons->addWidget(remove_button_);
   buttons->addStretch();
-  root->addLayout(buttons);
+  root->addWidget(button_bar);
 
   connect(add_button_, &QPushButton::clicked, this, &VariablesPanel::onAddVariable);
   connect(remove_button_, &QPushButton::clicked, this,

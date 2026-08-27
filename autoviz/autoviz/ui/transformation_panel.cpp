@@ -4,6 +4,7 @@
 
 #include "autoviz/ui/transformation_panel.hpp"
 
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QListWidget>
 #include <QListWidgetItem>
@@ -11,6 +12,7 @@
 #include <QVBoxLayout>
 
 #include "autoviz/common/transformation_manager.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 
@@ -25,21 +27,29 @@ TransformationPanel::TransformationPanel(
 }
 
 void TransformationPanel::setupUi() {
+  ApplyPanelShell(this);
   auto* layout = new QVBoxLayout(this);
-  layout->setContentsMargins(2, 6, 2, 2);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(0);
 
   list_ = new QListWidget(this);
   list_->setObjectName(QStringLiteral("TransformationPanel/TransformerList"));
   layout->addWidget(list_, 1);
 
-  auto* button_row = new QHBoxLayout();
-  save_button_ = new QPushButton(tr("Save"), this);
+  auto* button_bar = new QFrame(this);
+  ApplyPanelFooterChrome(button_bar);
+  auto* button_row = new QHBoxLayout(button_bar);
+  button_row->setContentsMargins(PanelChromeLayout::kFooterMarginH,
+                                 PanelChromeLayout::kFooterMarginV,
+                                 PanelChromeLayout::kFooterMarginH,
+                                 PanelChromeLayout::kFooterMarginV);
+  save_button_ = MakeFlatActionButton(tr("Save"), button_bar);
   save_button_->setToolTip(
       tr("Apply the selected transformation plugin (RViz-style)."));
   save_button_->setEnabled(false);
   button_row->addStretch();
   button_row->addWidget(save_button_);
-  layout->addLayout(button_row);
+  layout->addWidget(button_bar);
 
   connect(list_, &QListWidget::itemChanged, this,
           &TransformationPanel::onItemChanged);

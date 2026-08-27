@@ -6,6 +6,7 @@
 
 #include <QCheckBox>
 #include <QComboBox>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -14,11 +15,13 @@
 #include <QVBoxLayout>
 
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 
 TimePanel::TimePanel(common::VisualizationManager* manager, QWidget* parent)
     : QWidget(parent), manager_(manager) {
+  ApplyPanelShell(this);
   sim_time_label_ = makeTimeLabel();
   sim_elapsed_label_ = makeTimeLabel();
   wall_time_label_ = makeTimeLabel();
@@ -74,6 +77,7 @@ TimePanel::TimePanel(common::VisualizationManager* manager, QWidget* parent)
   fps_label_ = new QLabel(this);
   fps_label_->setMinimumWidth(48);
   fps_label_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+  StyleHintLabel(fps_label_);
 
   bottom_row_ = new QWidget(this);
   auto* bottom_layout = new QHBoxLayout(bottom_row_);
@@ -83,18 +87,17 @@ TimePanel::TimePanel(common::VisualizationManager* manager, QWidget* parent)
   bottom_layout->addWidget(experimental_cb_);
   bottom_layout->addWidget(fps_label_);
 
-  auto* top_row = new QWidget(this);
-  auto* top_layout = new QHBoxLayout(top_row);
-  top_layout->setContentsMargins(0, 0, 0, 0);
+  QHBoxLayout* top_layout = nullptr;
+  auto* top_row = MakePanelToolbar(this, &top_layout);
   top_layout->addWidget(experimental_widget_);
-  top_layout->addWidget(new QLabel(tr("Time:"), this));
+  top_layout->addWidget(new QLabel(tr("Time:"), top_row));
   top_layout->addWidget(sim_time_label_);
   top_layout->addWidget(old_widget_);
   top_layout->addStretch(100);
 
   auto* layout = new QVBoxLayout(this);
-  layout->setContentsMargins(11, 5, 11, 5);
-  layout->setSpacing(4);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(0);
   layout->addWidget(top_row);
   layout->addWidget(bottom_row_);
   setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);

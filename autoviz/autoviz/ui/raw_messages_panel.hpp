@@ -15,8 +15,9 @@ class QComboBox;
 class QDragEnterEvent;
 class QDragMoveEvent;
 class QDropEvent;
-class QLineEdit;
+class QFrame;
 class QLabel;
+class QLineEdit;
 class QMimeData;
 class QTimer;
 
@@ -64,6 +65,7 @@ class RawMessagesPanel : public QWidget {
   void onTick();
 
  private:
+  void applyChromeStyles();
   void resubscribe();
   void unsubscribe();
   void clearSelection();
@@ -71,6 +73,7 @@ class RawMessagesPanel : public QWidget {
   bool channelsStructureChanged();
   void rebuildChannelCombo();
   void updateSchemaHeader();
+  void updateStatusChip(const QString& text);
   void showSchemaPlaceholder();
   void showPayload(const std::string& payload);
   void renderMessage(const google::protobuf::Message& message);
@@ -81,7 +84,10 @@ class RawMessagesPanel : public QWidget {
   common::VisualizationManager* manager_ = nullptr;
   QComboBox* channel_combo_ = nullptr;
   QLineEdit* message_path_edit_ = nullptr;
+  QLabel* schema_badge_ = nullptr;
   QLabel* schema_label_ = nullptr;
+  QLabel* status_label_ = nullptr;
+  QFrame* empty_hint_ = nullptr;
   raw_messages::RawMessageTreeWidget* message_tree_ = nullptr;
   QTimer* tick_timer_ = nullptr;
   integration::MessageQueue payload_queue_;

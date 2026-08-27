@@ -19,11 +19,12 @@
 namespace autoviz {
 
 QString SettingsWidgetBackgroundStyle() {
-  return QStringLiteral("background: palette(window);");
+  return QStringLiteral("background: #f8f9fb;");
 }
 
 QString PanelShellStyle(const QString& object_name) {
-  return QStringLiteral("#%1 { background: palette(window); }").arg(object_name);
+  return QStringLiteral("#%1 { background: #f8f9fb; color: #1e293b; }")
+      .arg(object_name);
 }
 
 bool ShouldSkipPanelShellBackground(const QWidget* widget) {
@@ -35,92 +36,151 @@ bool ShouldSkipPanelShellBackground(const QWidget* widget) {
 }
 
 QString CompactGroupStyle() {
-  return QString();
+  return QStringLiteral(
+      "QGroupBox {"
+      "  border: 1px solid #cbd5e1;"
+      "  border-radius: 10px;"
+      "  margin-top: 12px;"
+      "  padding: 14px 10px 10px 10px;"
+      "  background: #ffffff;"
+      "}"
+      "QGroupBox::title {"
+      "  subcontrol-origin: margin; left: 10px; padding: 0 6px;"
+      "  color: #64748b; font-weight: 700; font-size: 11px;"
+      "}");
 }
 
 QString SegmentedToggleStyle() {
-  return QString();
+  return QStringLiteral(
+      "QWidget {"
+      "  background: #f1f5f9; border: 1px solid #cbd5e1;"
+      "  border-radius: 8px; padding: 2px;"
+      "}"
+      "QPushButton {"
+      "  border: none; padding: 4px 10px; background: transparent;"
+      "  border-radius: 6px; color: #64748b;"
+      "}"
+      "QPushButton:checked {"
+      "  background: #ffffff; color: #0891b2; font-weight: 700;"
+      "}");
 }
 
 QString PanelStatusBarStyle() {
-  return QString();
+  return QStringLiteral(
+      "background: #f8f9fb; border-top: 1px solid #cbd5e1;");
 }
 
 QString PanelFooterStyle() {
-  return QString();
+  return QStringLiteral(
+      "background: #f8f9fb; border-top: 1px solid #cbd5e1;");
 }
 
 QString PanelStatusLabelStyle() {
-  return QStringLiteral("color: palette(mid); font-size: 10px; padding: 0; margin: 0;");
+  return QStringLiteral("color: #64748b; font-size: 11px; padding: 0; margin: 0;");
 }
 
 QString PanelStatusLabelErrorStyle() {
-  return QStringLiteral("color: #c62828; font-size: 10px; padding: 0; margin: 0;");
+  return QStringLiteral("color: #dc2626; font-size: 11px; padding: 0; margin: 0;");
 }
 
 QString PanelHintLabelStyle() {
-  return QString();
+  return QStringLiteral("color: #64748b; font-size: 11px;");
 }
 
 QString PanelFilterLineEditStyle() {
-  return QString();
+  return QStringLiteral(
+      "QLineEdit {"
+      "  background: #ffffff; color: #1e293b;"
+      "  border: 1px solid #cbd5e1; border-radius: 8px;"
+      "  padding: 6px 10px; min-height: 26px;"
+      "}"
+      "QLineEdit:focus { border-color: #0891b2; }");
 }
 
 QString PanelIconClearButtonStyle() {
   return QStringLiteral(
       "QToolButton {"
-      "  color: palette(mid);"
+      "  color: #64748b;"
       "  background: transparent;"
       "  border: none;"
       "  font-size: 14px;"
       "  padding: 0px;"
       "  border-radius: 6px;"
       "}"
-      "QToolButton:hover { color: palette(text); background: palette(alternate-base); }");
+      "QToolButton:hover { color: #0891b2; background: rgba(8,145,178,0.10); }");
 }
 
 QString PanelCompactButtonStyle() {
-  return QString();
+  return QStringLiteral(
+      "QPushButton, QToolButton {"
+      "  color: #0891b2; background: rgba(8,145,178,0.10);"
+      "  border: 1px solid rgba(8,145,178,0.35); border-radius: 8px;"
+      "  padding: 4px 10px; font-size: 12px; font-weight: 600;"
+      "}"
+      "QPushButton:hover, QToolButton:hover { background: rgba(8,145,178,0.18); }"
+      "QPushButton:pressed, QToolButton:pressed { background: rgba(8,145,178,0.26); }");
 }
 
 QString PanelHelpBrowserStyle() {
   return QStringLiteral(
       "QTextBrowser {"
-      "  background: palette(base);"
-      "  color: palette(text);"
+      "  background: #ffffff;"
+      "  color: #1e293b;"
       "  border: none;"
-      "  border-top: 1px solid palette(mid);"
-      "  padding: 8px;"
-      "  font-size: 11px;"
+      "  border-top: 1px solid #cbd5e1;"
+      "  padding: 10px;"
+      "  font-size: 12px;"
       "}");
 }
 
 QString PanelTreeWidgetStyle() {
-  return QString();
+  return QStringLiteral(
+      "QTreeWidget, QTreeView {"
+      "  background: #ffffff; color: #1e293b; border: none; outline: none;"
+      "}"
+      "QTreeWidget::item, QTreeView::item {"
+      "  padding: 3px 6px; min-height: 24px;"
+      "}"
+      "QTreeWidget::item:selected, QTreeView::item:selected {"
+      "  background: rgba(8,145,178,0.14); color: #1e293b;"
+      "}"
+      "QTreeWidget::item:hover:!selected, QTreeView::item:hover:!selected {"
+      "  background: rgba(15,23,42,0.04);"
+      "}"
+      "QHeaderView::section {"
+      "  background: #f8f9fb; color: #64748b;"
+      "  border: none; border-bottom: 1px solid #cbd5e1;"
+      "  padding: 7px 8px; font-size: 11px; font-weight: 700;"
+      "}");
 }
 
 QString PanelSplitterStyle() {
-  return QString();
+  return QStringLiteral("QSplitter::handle { background: #cbd5e1; }");
 }
 
 QString DockTitleBarStyle() {
-  return QString();
+  return QStringLiteral(
+      "background: #ffffff; border-bottom: 1px solid #cbd5e1;");
 }
 
 QString DockTitleLabelStyle() {
-  return QString();
+  return QStringLiteral(
+      "font-weight: 600; color: #1e293b; padding: 0 4px;");
 }
 
 QString MainWindowStatusBarStyle() {
-  return QString();
+  return QStringLiteral(
+      "background: #f8f9fb; color: #64748b; border-top: 1px solid #cbd5e1;");
 }
 
 QString PropertyInspectorTitleStyle() {
-  return QString();
+  return QStringLiteral(
+      "font-weight: 700; padding: 6px 8px; color: #1e293b;"
+      "border-bottom: 1px solid #cbd5e1; background: #f8f9fb;");
 }
 
 QString PropertyInspectorHintStyle() {
-  return QString();
+  return QStringLiteral("color: #64748b; font-size: 11px;");
 }
 
 void ApplyPanelShell(QWidget* widget) {
@@ -192,7 +252,7 @@ void StyleHintLabel(QLabel* label) {
     return;
   }
   label->setObjectName(QString::fromLatin1(AppThemeIds::kHintLabel));
-  label->setStyleSheet(QString());
+  label->setStyleSheet(PanelHintLabelStyle());
 }
 
 void StyleSectionTitle(QLabel* label) {
@@ -200,7 +260,8 @@ void StyleSectionTitle(QLabel* label) {
     return;
   }
   label->setObjectName(QString::fromLatin1(AppThemeIds::kSectionTitle));
-  label->setStyleSheet(QString());
+  label->setStyleSheet(QStringLiteral(
+      "font-size: 13px; font-weight: 700; color: #1e293b; background: transparent;"));
 }
 
 void StyleSettingsGroupBox(QGroupBox* group) {
@@ -222,7 +283,7 @@ void StylePanelTree(QWidget* tree) {
     return;
   }
   tree->setObjectName(QString::fromLatin1(AppThemeIds::kPanelTree));
-  tree->setStyleSheet(QString());
+  tree->setStyleSheet(PanelTreeWidgetStyle());
 }
 
 void ApplyPanelToolbarChrome(QFrame* toolbar) {
@@ -230,7 +291,10 @@ void ApplyPanelToolbarChrome(QFrame* toolbar) {
     return;
   }
   toolbar->setObjectName(QString::fromLatin1(AppThemeIds::kPanelToolbar));
-  toolbar->setStyleSheet(QString());
+  toolbar->setStyleSheet(QStringLiteral(
+      "QFrame#AutovizPanelToolbar {"
+      "  background: #ffffff; border-bottom: 1px solid #cbd5e1;"
+      "}"));
 }
 
 void ApplyPanelFooterChrome(QFrame* footer) {
@@ -238,7 +302,10 @@ void ApplyPanelFooterChrome(QFrame* footer) {
     return;
   }
   footer->setObjectName(QString::fromLatin1(AppThemeIds::kPanelFooter));
-  footer->setStyleSheet(QString());
+  footer->setStyleSheet(QStringLiteral(
+      "QFrame#AutovizPanelFooter {"
+      "  background: #f8f9fb; border-top: 1px solid #cbd5e1;"
+      "}"));
 }
 
 void ApplyPanelTitleToolsChrome(QWidget* tools) {
@@ -251,8 +318,7 @@ void ApplyPanelTitleToolsChrome(QWidget* tools) {
 
 QFrame* MakePanelToolbar(QWidget* parent, QHBoxLayout** layout_out) {
   auto* toolbar = new QFrame(parent);
-  toolbar->setObjectName(QString::fromLatin1(AppThemeIds::kPanelToolbar));
-  toolbar->setStyleSheet(QString());
+  ApplyPanelToolbarChrome(toolbar);
   auto* layout = new QHBoxLayout(toolbar);
   ApplyPanelToolbarLayout(layout);
   if (layout_out != nullptr) {
@@ -263,9 +329,8 @@ QFrame* MakePanelToolbar(QWidget* parent, QHBoxLayout** layout_out) {
 
 QFrame* MakePanelFooter(QWidget* parent, QLabel** status_label_out) {
   auto* footer = new QFrame(parent);
-  footer->setObjectName(QString::fromLatin1(AppThemeIds::kPanelFooter));
+  ApplyPanelFooterChrome(footer);
   footer->setFixedHeight(PanelChromeLayout::kFooterHeight);
-  footer->setStyleSheet(QString());
   auto* layout = new QHBoxLayout(footer);
   layout->setContentsMargins(PanelChromeLayout::kFooterMarginH, 0,
                              PanelChromeLayout::kFooterMarginH, 0);

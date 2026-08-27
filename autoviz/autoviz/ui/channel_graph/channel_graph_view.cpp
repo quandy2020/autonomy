@@ -505,11 +505,12 @@ class GraphVertexItem : public QGraphicsObject {
       painter->setPen(QColor(255, 255, 255, 230));
       painter->setFont(kind_font_);
       painter->drawText(kind_badge_rect_, Qt::AlignCenter, KindBadge(kind_));
-      painter->setPen(QColor(210, 220, 235));
+      // Labels sit outside the filled circle — use dark text on light canvas.
+      painter->setPen(QColor(0x1e, 0x29, 0x3b));
       painter->setFont(title_font_);
       painter->drawText(title_rect_, Qt::AlignHCenter | Qt::AlignTop, title_text_);
       if (!detail_text_.isEmpty()) {
-        painter->setPen(QColor(170, 180, 195));
+        painter->setPen(QColor(0x64, 0x74, 0x8b));
         painter->setFont(detail_font_);
         painter->drawText(detail_rect_, Qt::AlignHCenter | Qt::AlignTop, detail_text_);
       }
@@ -785,14 +786,14 @@ class GraphEdgeItem : public QGraphicsObject {
 
     if (visual_mode_ == GraphVisualMode::kEmphasized && IsAnimatedFlowEdge(kind_)) {
       // Moving dash overlay — direction follows the edge arrow.
-      QPen flow_pen(QColor(255, 255, 255, 220), std::max(1.6, width * 0.55),
+      QPen flow_pen(QColor(255, 255, 255, 200), std::max(1.6, width * 0.55),
                     Qt::CustomDashLine, Qt::RoundCap, Qt::RoundJoin);
       flow_pen.setDashPattern({5.0, 12.0});
       flow_pen.setDashOffset(-flow_phase_);
       painter->setPen(flow_pen);
       painter->drawPath(path_);
 
-      // Traveling packets along the cubic.
+      // Traveling packets along the cubic (ring for contrast on light canvas).
       const int packet_count = 3;
       for (int i = 0; i < packet_count; ++i) {
         const double t =
@@ -800,10 +801,11 @@ class GraphEdgeItem : public QGraphicsObject {
                       1.0);
         const QPointF packet =
             CubicBezierPoint(start_, c1_, c2_, end_, static_cast<float>(t));
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(255, 255, 255, 240));
+        painter->setPen(QPen(QColor(0x1e, 0x29, 0x3b, 90), 0.8));
+        painter->setBrush(QColor(255, 255, 255, 245));
         painter->drawEllipse(packet, 3.4, 3.4);
-        painter->setBrush(color.lighter(145));
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(color.lighter(130));
         painter->drawEllipse(packet, 2.1, 2.1);
       }
     }
@@ -832,10 +834,10 @@ class GraphEdgeItem : public QGraphicsObject {
         metrics.boundingRect(label).adjusted(-4.0, -2.0, 4.0, 2.0);
     const QRectF bg_rect = text_rect.translated(label_pos - text_rect.center());
 
-    painter->setPen(Qt::NoPen);
-    painter->setBrush(QColor(18, 18, 20, 225));
+    painter->setPen(QPen(QColor(0xcb, 0xd5, 0xe1), 1.0));
+    painter->setBrush(QColor(255, 255, 255, 240));
     painter->drawRoundedRect(bg_rect, 3.0, 3.0);
-    painter->setPen(color.lighter(135));
+    painter->setPen(color.darker(115));
     painter->setFont(label_font);
     painter->drawText(bg_rect, Qt::AlignCenter, label);
   }
@@ -988,7 +990,7 @@ ChannelGraphView::ChannelGraphView(QWidget* parent) : QGraphicsView(parent) {
   setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
   setResizeAnchor(QGraphicsView::AnchorViewCenter);
   setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
-  setBackgroundBrush(QColor(18, 18, 20));
+  setBackgroundBrush(QColor(0xf8, 0xf9, 0xfb));
 
   flow_timer_ = new QTimer(this);
   flow_timer_->setInterval(33);
@@ -1359,7 +1361,7 @@ void ChannelGraphView::updateColumnHeaders(int service_count) {
   QFont header_font;
   header_font.setPointSize(10);
   header_font.setBold(true);
-  const QColor header_color(150, 150, 158);
+  const QColor header_color(0x64, 0x74, 0x8b);
   const double channel_header_y = -42.0;
   auto add_header = [&](const QString& text, double x, double y) {
     auto* label = scene_->addText(text, header_font);

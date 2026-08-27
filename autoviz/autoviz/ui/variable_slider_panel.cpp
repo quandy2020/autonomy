@@ -15,6 +15,7 @@
 #include <QVBoxLayout>
 
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 #include "autoviz/variables/variable_store.hpp"
 #include "autoviz/variables/variable_types.hpp"
 
@@ -23,32 +24,41 @@ namespace autoviz {
 VariableSliderPanel::VariableSliderPanel(common::VisualizationManager* manager,
                                          QWidget* parent)
     : manager_(manager), QWidget(parent) {
+  ApplyPanelShell(this);
   auto* root = new QVBoxLayout(this);
-  root->setContentsMargins(8, 8, 8, 8);
-  root->setSpacing(8);
+  root->setContentsMargins(0, 0, 0, 0);
+  root->setSpacing(0);
 
+  QHBoxLayout* hint_layout = nullptr;
+  auto* hint_bar = MakePanelToolbar(this, &hint_layout);
   hint_label_ = new QLabel(
-      tr("Adjust a numeric global variable with a slider."), this);
+      tr("Adjust a numeric global variable with a slider."), hint_bar);
   hint_label_->setWordWrap(true);
-  hint_label_->setStyleSheet(QStringLiteral("color: palette(mid); font-size: 11px;"));
-  root->addWidget(hint_label_);
+  StyleHintLabel(hint_label_);
+  hint_layout->addWidget(hint_label_, 1);
+  root->addWidget(hint_bar);
 
-  variable_combo_ = new QComboBox(this);
-  root->addWidget(variable_combo_);
+  auto* body = new QWidget(this);
+  auto* body_layout = new QVBoxLayout(body);
+  ApplyCompactVBox(body_layout);
 
-  slider_ = new QSlider(Qt::Horizontal, this);
+  variable_combo_ = new QComboBox(body);
+  body_layout->addWidget(variable_combo_);
+
+  slider_ = new QSlider(Qt::Horizontal, body);
   slider_->setRange(0, 1000);
-  root->addWidget(slider_);
+  body_layout->addWidget(slider_);
 
-  value_spin_ = new QDoubleSpinBox(this);
+  value_spin_ = new QDoubleSpinBox(body);
   value_spin_->setDecimals(6);
   value_spin_->setRange(-1e12, 1e12);
-  root->addWidget(value_spin_);
+  body_layout->addWidget(value_spin_);
 
   auto* range_form = new QFormLayout();
-  min_spin_ = new QDoubleSpinBox(this);
-  max_spin_ = new QDoubleSpinBox(this);
-  step_spin_ = new QDoubleSpinBox(this);
+  ApplyCompactForm(range_form);
+  min_spin_ = new QDoubleSpinBox(body);
+  max_spin_ = new QDoubleSpinBox(body);
+  step_spin_ = new QDoubleSpinBox(body);
   min_spin_->setDecimals(4);
   max_spin_->setDecimals(4);
   step_spin_->setDecimals(4);
@@ -61,8 +71,9 @@ VariableSliderPanel::VariableSliderPanel(common::VisualizationManager* manager,
   range_form->addRow(tr("Min"), min_spin_);
   range_form->addRow(tr("Max"), max_spin_);
   range_form->addRow(tr("Step"), step_spin_);
-  root->addLayout(range_form);
-  root->addStretch();
+  body_layout->addLayout(range_form);
+  body_layout->addStretch();
+  root->addWidget(body, 1);
 
   connect(variable_combo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, &VariableSliderPanel::onVariableSelected);

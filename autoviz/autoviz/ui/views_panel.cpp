@@ -5,6 +5,7 @@
 #include "autoviz/ui/views_panel.hpp"
 
 #include <QComboBox>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QInputDialog>
@@ -18,6 +19,7 @@
 #include "autoviz/common/view_controller_registry.hpp"
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/rendering/view_controller.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 namespace {
@@ -77,21 +79,22 @@ void ViewsPanel::setViewController(rendering::ViewController* view_controller) {
 }
 
 void ViewsPanel::setupUi() {
+  ApplyPanelShell(this);
   auto* layout = new QVBoxLayout(this);
   layout->setContentsMargins(0, 0, 0, 0);
   layout->setSpacing(0);
 
-  auto* top_row = new QHBoxLayout();
-  top_row->setContentsMargins(2, 6, 2, 2);
-  top_row->addWidget(new QLabel(tr("Type:"), this));
-  type_selector_ = new QComboBox(this);
+  QHBoxLayout* top_row = nullptr;
+  auto* toolbar = MakePanelToolbar(this, &top_row);
+  top_row->addWidget(new QLabel(tr("Type:"), toolbar));
+  type_selector_ = new QComboBox(toolbar);
   type_selector_->setObjectName(QStringLiteral("ViewsPanel/TypeSelector"));
   top_row->addWidget(type_selector_, 1);
-  auto* zero_button = new QPushButton(tr("Zero"), this);
+  auto* zero_button = new QPushButton(tr("Zero"), toolbar);
   zero_button->setToolTip(
       tr("Jump to 0,0,0 with the current view controller. Shortcut: Z"));
   top_row->addWidget(zero_button);
-  layout->addLayout(top_row);
+  layout->addWidget(toolbar);
 
   tree_ = new QTreeWidget(this);
   tree_->setObjectName(QStringLiteral("ViewsPanel/PropertyTree"));
@@ -104,22 +107,31 @@ void ViewsPanel::setupUi() {
   tree_->header()->setSectionResizeMode(kViewTreeColName,
                                         QHeaderView::ResizeToContents);
   tree_->setEditTriggers(QAbstractItemView::AllEditTriggers);
+  StylePanelTree(tree_);
+  tree_->setObjectName(QStringLiteral("ViewsPanel/PropertyTree"));
   value_delegate_ = new ViewTreeDelegate(tree_);
   tree_->setItemDelegateForColumn(kViewTreeColValue, value_delegate_);
   updateFrameDelegate();
   layout->addWidget(tree_, 1);
 
-  auto* button_row = new QHBoxLayout();
-  button_row->setContentsMargins(2, 0, 2, 2);
-  auto* save_button = new QPushButton(tr("Save"), this);
-  remove_button_ = new QPushButton(tr("Remove"), this);
-  rename_button_ = new QPushButton(tr("Rename"), this);
+  auto* button_bar = new QFrame(this);
+  ApplyPanelFooterChrome(button_bar);
+  auto* button_row = new QHBoxLayout(button_bar);
+  button_row->setContentsMargins(PanelChromeLayout::kFooterMarginH,
+                                 PanelChromeLayout::kFooterMarginV,
+                                 PanelChromeLayout::kFooterMarginH,
+                                 PanelChromeLayout::kFooterMarginV);
+  button_row->setSpacing(PanelChromeLayout::kToolbarSpacing);
+  auto* save_button = MakeFlatActionButton(tr("Save"), button_bar);
+  remove_button_ = MakeFlatActionButton(tr("Remove"), button_bar);
+  rename_button_ = MakeFlatActionButton(tr("Rename"), button_bar);
   remove_button_->setEnabled(false);
   rename_button_->setEnabled(false);
   button_row->addWidget(save_button);
   button_row->addWidget(remove_button_);
   button_row->addWidget(rename_button_);
-  layout->addLayout(button_row);
+  button_row->addStretch();
+  layout->addWidget(button_bar);
 
   populateTypeSelector();
 

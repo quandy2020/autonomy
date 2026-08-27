@@ -78,6 +78,7 @@ PlotPanel::PlotPanel(common::VisualizationManager* manager, QWidget* parent)
     : manager_(manager), QWidget(parent) {
   setFocusPolicy(Qt::StrongFocus);
   setAcceptDrops(true);
+  ApplyPanelShell(this);
 
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);
