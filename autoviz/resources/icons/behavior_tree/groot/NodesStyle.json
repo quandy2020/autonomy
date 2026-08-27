@@ -1,0 +1,92 @@
+{
+    "Action": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/letter_A.svg"
+    },
+    "Condition": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/letter_C.svg",
+        "caption_color": "#44bb44"
+    },
+    "Decorator": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/magic-wand.svg",
+        "caption_color": "#ffee77"
+    },
+    "SubTree": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/subtree.svg"
+    },
+    "AlwaysFailure": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/letter_A.svg",
+        "caption_color": "#ff2222",
+        "caption_alias": "Failure"
+    },
+    "ForceFailure": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/letter_A.svg",
+        "caption_color": "#ff2222"
+    },
+    "AlwaysSuccess": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/letter_A.svg",
+        "caption_color": "#00FF00",
+        "caption_alias": "Success"
+    },
+    "ForceSuccess": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/letter_A.svg",
+        "caption_color": "#00FF00"
+    },
+    "SetBlackboard": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/edit_list.svg"
+    },
+    "RetryUntilSuccessful": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/retry.svg"
+    },
+    "Inverter": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/not_equal.svg"
+    },
+    "Repeat": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/repeat.svg"
+    },
+    "Timeout": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/timeout.svg"
+    },
+    "Sequence": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/sequence.svg",
+        "caption_color": "#ff99bb"
+    },
+    "SequenceStar": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/sequence_star.svg",
+        "caption_color": "#ffaacc"
+    },
+    "ReactiveSequence": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/sequence_reactive.svg",
+        "caption_color": "#ff77aa"
+    },
+    "Fallback": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/fallback.svg",
+        "caption_color": "#77ccff"
+    },
+    "ReactiveFallback": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/fallback_reactive.svg",
+        "caption_color": "#44aadd"
+    },
+    "Control": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/sequence.svg"
+    },
+    "PipelineSequence": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/sequence_star.svg",
+        "caption_color": "#ffaacc"
+    },
+    "SequenceWithMemory": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/sequence_star.svg",
+        "caption_color": "#ffaacc"
+    },
+    "Delay": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/timeout.svg"
+    },
+    "KeepRunningUntilFailure": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/repeat.svg"
+    },
+    "RunOnce": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/asterix.svg"
+    },
+    "Retry": {
+        "icon": ":/autoviz/icons/behavior_tree/groot/svg/retry.svg"
+    }
+}

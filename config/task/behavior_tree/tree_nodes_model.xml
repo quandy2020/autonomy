@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  BehaviorTree.CPP v4 node manifest for autonomy task plugins.
+  Loaded by autoviz and the task BT runner for custom node metadata.
+-->
+<root BTCPP_format="4">
+  <TreeNodesModel>
+    <!-- Actions -->
+    <Action ID="BackUp">
+      <input_port name="backup_dist" type="double" default="0.30">m</input_port>
+      <input_port name="backup_speed" type="double" default="0.10">m/s</input_port>
+      <input_port name="time_allowance" type="double" default="10.0">sec</input_port>
+      <input_port name="is_recovery" type="bool" default="false">recovery behavior flag</input_port>
+      <output_port name="error_code_id" type="int"/>
+      <output_port name="error_msg" type="string"/>
+    </Action>
+    <Action ID="CancelControl"/>
+    <Action ID="ClearCostmap">
+      <input_port name="service_name" type="string"/>
+      <output_port name="error_code_id" type="int"/>
+      <output_port name="error_msg" type="string"/>
+    </Action>
+    <Action ID="ComputeFollowGoal">
+      <output_port name="goal" type="PoseStamped"/>
+    </Action>
+    <Action ID="DockApproach"/>
+    <Action ID="DockConnect">
+      <input_port name="battery_target_percent" type="float" default="100.0">percent</input_port>
+    </Action>
+    <Action ID="DockSearch"/>
+    <Action ID="FollowPath">
+      <input_port name="path" type="Path"/>
+      <input_port name="controller_id" type="string"/>
+      <output_port name="error_code_id" type="int"/>
+      <output_port name="error_msg" type="string"/>
+    </Action>
+    <Action ID="LoadMap">
+      <input_port name="map_name" type="string"/>
+    </Action>
+    <Action ID="PlanPath">
+      <input_port name="goal" type="PoseStamped"/>
+      <input_port name="planner_id" type="string"/>
+      <output_port name="path" type="Path"/>
+      <output_port name="error_code_id" type="int"/>
+      <output_port name="error_msg" type="string"/>
+    </Action>
+    <Action ID="PlanPoses">
+      <input_port name="goals" type="PoseStamped[]"/>
+      <input_port name="planner_id" type="string"/>
+      <output_port name="path" type="Path"/>
+      <output_port name="error_code_id" type="int"/>
+      <output_port name="error_msg" type="string"/>
+    </Action>
+    <Action ID="SaveExplorationMap">
+      <input_port name="map_name" type="string">exploration map name</input_port>
+      <output_port name="error_code_id" type="int"/>
+      <output_port name="error_msg" type="string"/>
+    </Action>
+    <Action ID="SelectFrontier">
+      <output_port name="goal" type="PoseStamped">next frontier pose</output_port>
+      <output_port name="error_code_id" type="int"/>
+      <output_port name="error_msg" type="string"/>
+    </Action>
+    <Action ID="SetInitialPose"/>
+    <Action ID="SmoothPath">
+      <input_port name="unsmoothed_path" type="Path"/>
+      <input_port name="smoother_id" type="string" default="simple_smoother"/>
+      <input_port name="max_smoothing_duration" type="double" default="1.0"/>
+      <input_port name="check_for_collisions" type="bool" default="false"/>
+      <output_port name="smoothed_path" type="Path"/>
+      <output_port name="smoothing_duration" type="double"/>
+      <output_port name="was_completed" type="bool"/>
+      <output_port name="error_code_id" type="int"/>
+      <output_port name="error_msg" type="string"/>
+    </Action>
+    <Action ID="Spin">
+      <input_port name="spin_dist" type="double" default="1.57">rad</input_port>
+      <input_port name="time_allowance" type="double" default="10.0">sec</input_port>
+      <input_port name="is_recovery" type="bool" default="false">recovery behavior flag</input_port>
+      <output_port name="error_code_id" type="int"/>
+      <output_port name="error_msg" type="string"/>
+    </Action>
+    <Action ID="StartLocalization">
+      <input_port name="algorithm" type="int"/>
+    </Action>
+    <Action ID="StopLocalization"/>
+    <Action ID="TrackCommand">
+      <output_port name="error_code_id" type="int"/>
+      <output_port name="error_msg" type="string"/>
+    </Action>
+    <Action ID="Wait">
+      <input_port name="wait_duration" type="double" default="1.0">sec</input_port>
+      <output_port name="error_code_id" type="int"/>
+      <output_port name="error_msg" type="string"/>
+    </Action>
+
+    <!-- Conditions -->
+    <Condition ID="ChargerVisible"/>
+    <Condition ID="CommandValid"/>
+    <Condition ID="FrontierAvailable"/>
+    <Condition ID="GoalReached">
+      <input_port name="goal" type="PoseStamped"/>
+      <input_port name="robot_base_frame" type="string" default="base_link"/>
+      <input_port name="goal_reached_tol" type="double" default="0.25">m</input_port>
+    </Condition>
+    <Condition ID="LocalizationReady"/>
+    <Condition ID="PathValid">
+      <input_port name="path" type="Path"/>
+      <input_port name="max_cost" type="int" default="253">costmap threshold</input_port>
+      <input_port name="consider_unknown_as_obstacle" type="bool" default="false"/>
+    </Condition>
+    <Condition ID="PerceptionValid"/>
+    <Condition ID="PoseReady"/>
+    <Condition ID="ServersReady"/>
+    <Condition ID="TargetLocked"/>
+    <Condition ID="TransformValid">
+      <input_port name="child" type="string" default="base_link">source / robot frame</input_port>
+      <input_port name="parent" type="string" default="map">target / global frame</input_port>
+    </Condition>
+
+    <!-- Controls -->
+    <Control ID="PipelineSequence"/>
+
+    <!-- Decorators -->
+    <Decorator ID="RateController">
+      <input_port name="hz" type="double" default="1.0">max child tick rate</input_port>
+    </Decorator>
+  </TreeNodesModel>
+</root>

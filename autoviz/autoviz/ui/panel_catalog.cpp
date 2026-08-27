@@ -49,6 +49,8 @@ const PanelCatalogEntry kPanelCatalog[] = {
      "Publish geometry_msgs/TwistStamped velocity commands (cmd_vel)"},
     {"ChannelGraphDock", "PanelChannelGraph", "Channel Graph",
      "Visualize Autolink node, channel, and service topology"},
+    {"BehaviorTreeDock", "PanelBehaviorTree", "Behavior Tree",
+     "Edit and monitor BehaviorTree.CPP trees"},
     {"VariablesDock", "PanelVariables", "Variables",
      "Global variables for message path expressions ($name)"},
     {"VariableSliderDock", "PanelVariableSlider", "Variable Slider",
