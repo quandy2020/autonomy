@@ -36,9 +36,11 @@ private:
             return BT::NodeStatus::SUCCESS;
         }
 
+        // Re-tick children [0..current] so RateController keeps planning while
+        // FollowPath is RUNNING. Never advance past the last child in a way
+        // that expands the for-bound (that OOB-crashed autonomy.task on goal
+        // reached and triggered launch respawn).
         while (current_child_idx_ < children_count) {
-            // Tick every child up through the current one so RateController
-            // keeps re-planning while FollowPath is RUNNING.
             for (size_t i = 0; i <= current_child_idx_; ++i) {
                 const BT::NodeStatus status = children_nodes_[i]->executeTick();
                 switch (status) {
@@ -49,10 +51,15 @@ private:
                 case BT::NodeStatus::RUNNING:
                     return BT::NodeStatus::RUNNING;
                 case BT::NodeStatus::SUCCESS:
-                    if (i == current_child_idx_) {
-                        ++current_child_idx_;
-                        // Fall through to activate the next child in the while.
+                    if (i != current_child_idx_) {
+                        break;
                     }
+                    if (current_child_idx_ + 1 >= children_count) {
+                        haltChildren();
+                        current_child_idx_ = 0;
+                        return BT::NodeStatus::SUCCESS;
+                    }
+                    ++current_child_idx_;
                     break;
                 default:
                     break;
@@ -60,6 +67,7 @@ private:
             }
         }
 
+        haltChildren();
         current_child_idx_ = 0;
         return BT::NodeStatus::SUCCESS;
     }
