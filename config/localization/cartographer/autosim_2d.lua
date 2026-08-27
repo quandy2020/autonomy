@@ -29,7 +29,7 @@ options = {
   odometry_topic = "/odom",
   lookup_transform_timeout_sec = 0.5,
   submap_publish_period_sec = 0.3,
-  pose_publish_period_sec = 20e-3,
+  pose_publish_period_sec = 5e-2,
   trajectory_publish_period_sec = 30e-3,
   rangefinder_sampling_ratio = 1.,
   odometry_sampling_ratio = 1.,
@@ -42,34 +42,31 @@ options = {
   publish_occupancy_grid = true,
   occupancy_grid_publish_period_sec = 1.0,
   occupancy_grid_resolution = 0.05,
-  save_map_image = true,
-  map_image_save_period_sec = 10.0,
-  map_image_save_directory = "data/maps",
-  map_image_filestem = "autosim_map",
 }
 
 MAP_BUILDER.use_trajectory_builder_2d = true
 MAP_BUILDER.use_trajectory_builder_3d = false
 
 TRAJECTORY_BUILDER_2D.min_range = 0.12
-TRAJECTORY_BUILDER_2D.max_range = 20.
-TRAJECTORY_BUILDER_2D.missing_data_ray_length = 3.
+-- Match autosim lidar range_max; short max_range invents miss rays.
+TRAJECTORY_BUILDER_2D.max_range = 30.
+TRAJECTORY_BUILDER_2D.missing_data_ray_length = 5.
+-- One full 360° scan per local SLAM step (not backpack multi-echo).
 TRAJECTORY_BUILDER_2D.num_accumulated_range_data = 1
 TRAJECTORY_BUILDER_2D.use_imu_data = false
--- Trust wheel odom translation during spin; large CSM linear window causes
--- map→odom jumps when rotating in place (scan match invents translation).
+-- Online CSM for a coarse prior; ceres weights at Cartographer defaults so
+-- laser can correct GT-glued odom instead of painting walls at wrong poses.
 TRAJECTORY_BUILDER_2D.use_online_correlative_scan_matching = true
-TRAJECTORY_BUILDER_2D.real_time_correlative_scan_matcher.linear_search_window = 0.05
-TRAJECTORY_BUILDER_2D.real_time_correlative_scan_matcher.angular_search_window = math.rad(10.)
-TRAJECTORY_BUILDER_2D.real_time_correlative_scan_matcher.translation_delta_cost_weight = 1e1
-TRAJECTORY_BUILDER_2D.real_time_correlative_scan_matcher.rotation_delta_cost_weight = 1e-1
-TRAJECTORY_BUILDER_2D.ceres_scan_matcher.translation_weight = 20.
+TRAJECTORY_BUILDER_2D.ceres_scan_matcher.translation_weight = 10.
 TRAJECTORY_BUILDER_2D.ceres_scan_matcher.rotation_weight = 40.
-TRAJECTORY_BUILDER_2D.submaps.num_range_data = 60
+TRAJECTORY_BUILDER_2D.submaps.num_range_data = 90
 
-POSE_GRAPH.optimize_every_n_nodes = 40
+POSE_GRAPH.optimize_every_n_nodes = 90
 POSE_GRAPH.constraint_builder.min_score = 0.55
+-- Default odometry weights (1e5); 1e7 blocked loop closure from fixing drift.
 POSE_GRAPH.optimization_problem.odometry_translation_weight = 1e5
 POSE_GRAPH.optimization_problem.odometry_rotation_weight = 1e5
+-- Do NOT enable overlapping_submaps_trimmer_2d: trimming old submaps causes
+-- double walls / ghosting when revisiting corridors.
 
 return options

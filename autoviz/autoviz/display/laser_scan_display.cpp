@@ -46,7 +46,6 @@ void LaserScanDisplay::processMessage(
     return;
   }
 
-  const auto zero_time = autoviz::commsgs::ZeroTime();
   const std::string frame = message.header().frame_id().empty()
                                 ? context_->fixed_frame
                                 : message.header().frame_id();
@@ -54,11 +53,15 @@ void LaserScanDisplay::processMessage(
   bool have_tf = false;
   if (frame != context_->fixed_frame) {
     try {
-      tf = context_->tf_buffer->lookupTransform(context_->fixed_frame, frame,
-                                                zero_time);
+      // Instantaneous sim scans must use the message stamp. Falling back to
+      // "latest" TF during yaw makes the whole ring rotate with the live pose
+      // while ranges still belong to an older heading (classic spin smear).
+      tf = context_->tf_buffer->lookupTransform(
+          context_->fixed_frame, frame, message.header().stamp());
       have_tf = true;
     } catch (...) {
-      setStatusWarn("TF missing: " + frame + " -> " + context_->fixed_frame);
+      setStatusWarn("TF missing: " + frame + " -> " + context_->fixed_frame +
+                    " @ scan stamp");
       return;
     }
   }

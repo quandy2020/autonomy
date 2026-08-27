@@ -354,6 +354,13 @@ class Runner:
         """
         self.poll_command()
         x, y, yaw = self.robot.step(dt=dt, t=self.clock.now() + dt)
+        # SLAM: keep wheel odom glued to GT so Habitat laser rays (cast at GT)
+        # match odom→base_link TF used by Cartographer / Autoviz. Noisy odom
+        # with GT-cast scans is what makes /scan look rotated on the map.
+        if self.mode == "slam":
+            self.robot.odometry_x = float(x)
+            self.robot.odometry_y = float(y)
+            self.robot.odometry_yaw = float(yaw)
         self.simulator.set_pose(x, y, yaw)
         self.simulator.step()
         self.clock.tick(dt)
@@ -390,12 +397,18 @@ class Runner:
         return self.points_elapsed >= 1.0 / self.lidar_3d["rate_hz"]
 
     def submit_scan(self, stamp: Tuple[int, int]) -> None:
-        """Ray-cast lidar on the main (GL-context) thread, then encode/publish async."""
+        """Ray-cast and publish lidar on the control thread.
+
+        Instantaneous Habitat casts must share the same stamp as ``publish_tf``
+        in this cycle. Async encode used to let Autoviz see the scan after many
+        newer TFs arrived; with a latest-TF fallback that looked like spin
+        motion distortion.
+        """
         if not self.scan_is_due():
             return
         self.scan_elapsed = 0.0
         ranges = self.sensors.sample_laser(self.simulator)
-        self._sensor_worker.submit(self.encode_publish_scan, ranges, stamp)
+        self.encode_publish_scan(ranges, stamp)
 
     def encode_publish_scan(self, ranges: Any, stamp: Tuple[int, int]) -> None:
         self.bridge.publish(
@@ -409,7 +422,8 @@ class Runner:
                 angle_increment=self.sensors.angle_increment,
                 range_min=self.sensors.range_min,
                 range_max=self.sensors.range_max,
-                scan_time=1.0 / self.lidar_2d["rate_hz"],
+                # Instantaneous cast: do not advertise a spinning-lidar duration.
+                scan_time=0.0,
             ),
         )
 
@@ -689,7 +703,7 @@ class Runner:
                 angle_increment=self.sensors.angle_increment,
                 range_min=self.sensors.range_min,
                 range_max=self.sensors.range_max,
-                scan_time=1.0 / self.lidar_2d["rate_hz"],
+                scan_time=0.0,
             ),
         )
 

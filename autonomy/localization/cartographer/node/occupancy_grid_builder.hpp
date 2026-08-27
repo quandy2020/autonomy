@@ -19,7 +19,6 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <vector>
 
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>
 #include <automsgs/msgs/builtin_interfaces/duration.pb.h>
@@ -36,8 +35,6 @@
 #include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include "autonomy/localization/cartographer/io/submap_painter.hpp"
 #include "autonomy/localization/cartographer/mapping/id.hpp"
-#include "autonomy/localization/cartographer/mapping/proto/trajectory.pb.h"
-#include "autonomy/localization/cartographer/mapping/trajectory_node.hpp"
 #include "autonomy/localization/cartographer/proto/cartographer_services.pb.h"
 
 namespace autonomy {
@@ -61,20 +58,6 @@ std::unique_ptr<automsgs::msgs::map_msgs::OccupancyGrid> BuildOccupancyGrid(
                    ::cartographer::io::SubmapSlice>& slices,
     double resolution, const std::string& frame_id,
     const automsgs::msgs::builtin_interfaces::Time& stamp);
-
-std::vector<::cartographer::mapping::proto::Trajectory> BuildTrajectoryProtos(
-    const ::cartographer::mapping::MapById<::cartographer::mapping::NodeId,
-                                           ::cartographer::mapping::TrajectoryNode>&
-        trajectory_nodes);
-
-/** Save painted submaps as map.pgm, map.yaml and map.png under output_directory. */
-bool SaveMapImageFiles(
-    const std::map<::cartographer::mapping::SubmapId,
-                   ::cartographer::io::SubmapSlice>& slices,
-    double resolution, const std::string& output_directory,
-    const std::string& filestem,
-    const std::vector<::cartographer::mapping::proto::Trajectory>&
-        trajectories = {});
 
 }  // namespace node
 }  // namespace cartographer

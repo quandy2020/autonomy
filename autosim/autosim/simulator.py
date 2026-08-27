@@ -413,6 +413,10 @@ class Simulator:
     def laser_origin(self) -> Tuple[float, float, float]:
         """Habitat world origin for lidar rays (Y-up).
 
+        Planar mount offsets are applied in the map/ROS yaw frame. When
+        ``/scan`` is published in ``base_link`` (slam), rays still use the
+        physical lidar height so thin walls are not missed.
+
         Returns:
             ``(x, y, z)`` with planar offsets rotated by yaw.
         """
@@ -691,23 +695,16 @@ class Simulator:
             Distance in meters, or ``None`` on miss / beyond ``range_max``.
         """
         ox, oy, oz = self.laser_origin()  # Habitat: (x, floor_y, -map_y)
-        # Small vertical fan approximates a physical 2D beam thickness and
-        # avoids missing thin wall collision at a single exact height.
-        best: float | None = None
-        for height_offset in (0.0, 0.04, -0.04, 0.08):
-            hit = self.cast_from_origin(
-                ox, oy + height_offset, oz, self.yaw + yaw_offset, pitch, range_max
-            )
-            if hit is None:
-                continue
-            # hit is map frame; laser_origin is Habitat → map: (ox, -oz, oy)
-            dx = hit[0] - ox
-            dy = hit[1] - (-oz)
-            dz = hit[2] - (oy + height_offset)
-            distance = float(math.sqrt(dx * dx + dy * dy + dz * dz))
-            if best is None or distance < best:
-                best = distance
-        return best
+        # Single-height ray for 2D SLAM: a vertical min-fan pulls ranges onto
+        # furniture tops/edges and paints fuzzy / double walls in Cartographer.
+        hit = self.cast_from_origin(ox, oy, oz, self.yaw + yaw_offset, pitch, range_max)
+        if hit is None:
+            return None
+        # hit is map frame; laser_origin is Habitat → map: (ox, -oz, oy)
+        dx = hit[0] - ox
+        dy = hit[1] - (-oz)
+        dz = hit[2] - oy
+        return float(math.sqrt(dx * dx + dy * dy + dz * dz))
 
     def laser_ranges(
         self,

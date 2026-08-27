@@ -51,7 +51,7 @@ habitat:
       static_channel: /tf_static
       # Forced true in nav (drift-corrected map→odom so LaserScan matches GT map).
       # Forced false in slam (Cartographer owns map→odom).
-      publish_map_odom: true
+      publish_map_odom: false
     clock:
       enabled: true
       channel: /clock
@@ -64,6 +64,8 @@ habitat:
     lidar_2d:
       enabled: true
       channel: /scan
+      # Sensor frame: LaserScan is planar (z=0) in this frame; Autoviz height
+      # comes from TF base_link→laser_link (~0.17 m on turtlebot3).
       frame: laser_link
       rate_hz: 10.0
       angle_min: -3.14159
@@ -71,7 +73,7 @@ habitat:
       range_min: 0.1
       range_max: 30.0
       num_beams: 360
-      noise: 0.01          # Gaussian σ on range (m)
+      noise: 0.0           # no Gaussian range noise (clean sim scan)
 
     lidar_3d:
       enabled: false
@@ -121,7 +123,9 @@ habitat:
       frame: odom
       # Both slam and nav use base_link (nav tree: map→odom→base_link).
       child_frame: base_link
-      noise: 0.02          # integrated σ scale (m / sqrt(m) on Δs)
+      # Keep 0 in slam so wheel odom matches GT laser rays (runner also glues
+      # odom←GT each tick in slam mode). Non-zero only for nav odometry demos.
+      noise: 0.0
 
   map:
     enabled: false          # load PLY → internal occupancy for lidar wall-clip

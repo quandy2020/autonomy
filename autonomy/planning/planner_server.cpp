@@ -452,11 +452,12 @@ bool PlannerServer::ValidatePath(
         return false;
     }
 
-    // Reject plans that intersect lethal / inscribed cells on the global
-    // costmap (NavFn gradient extraction can still clip thin / misaligned
-    // walls when the static layer briefly lags the published /map).
-    constexpr uint8_t kMaxPathCost = 252;
-    if (!IsPathValid(path, kMaxPathCost, /*consider_unknown_as_obstacle=*/true)) {
+    // Reject only lethal / inscribed cells. max_cost=252 incorrectly rejected
+    // MAX_NON_OBSTACLE (still navigable inflation). Treating unknown as
+    // obstacle rejects Cartographer paths whose footprint grazes unexplored
+    // cells — matching BT PathValid defaults (253, false).
+    if (!IsPathValid(path, map::costmap_2d::INSCRIBED_INFLATED_OBSTACLE,
+                     /*consider_unknown_as_obstacle=*/false)) {
         AWARN << "Planning algorithm " << planner_id
               << " path collides with costmap obstacles toward ("
               << curr_goal.pose().position().x() << ", "
