@@ -11,6 +11,7 @@
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/task/behavior_tree/bt_node_registry.hpp"
+#include "autonomy/task/behavior_tree/bt_status_logger.hpp"
 #include "behaviortree_cpp/decorators/retry_node.h"
 
 namespace autonomy {
@@ -46,6 +47,11 @@ void BtRunner::SetBlackboardSetup(BlackboardSetupCallback callback)
 void BtRunner::SetTickCallback(TickCallback callback)
 {
     tick_callback_ = std::move(callback);
+}
+
+void BtRunner::SetStatusLogCallback(BtStatusLogCallback callback)
+{
+    status_log_callback_ = std::move(callback);
 }
 
 bool BtRunner::Run(const std::string& tree_xml_path)
@@ -112,6 +118,12 @@ void BtRunner::WorkerLoop()
         return;
     }
 
+    std::unique_ptr<BtStatusLogger> status_logger;
+    if (status_log_callback_ && tree.rootNode() != nullptr) {
+        status_logger = std::make_unique<BtStatusLogger>(tree.rootNode());
+        status_logger->setFlushCallback(status_log_callback_);
+    }
+
     const auto loop_period =
         std::chrono::milliseconds(profile_.loop_period_ms);
     state_.store(RunTree(
@@ -121,7 +133,10 @@ void BtRunner::WorkerLoop()
                 tick_callback_();
             }
         },
-        loop_period));
+        loop_period, status_logger.get()));
+    if (status_logger) {
+        status_logger->flush();
+    }
     running_.store(false);
 }
 
@@ -142,7 +157,8 @@ BT::Tree BtRunner::CreateTreeFromFile(const std::string& file_path,
 
 BtRunState BtRunner::RunTree(BT::Tree* tree,
                              const std::function<void()>& on_tick,
-                             std::chrono::milliseconds loop_period)
+                             std::chrono::milliseconds loop_period,
+                             BtStatusLogger* status_logger)
 {
     BT::NodeStatus result = BT::NodeStatus::RUNNING;
 
@@ -150,11 +166,17 @@ BtRunState BtRunner::RunTree(BT::Tree* tree,
         while (result == BT::NodeStatus::RUNNING) {
             if (cancel_requested_.load()) {
                 tree->haltTree();
+                if (status_logger != nullptr) {
+                    status_logger->flush();
+                }
                 return BtRunState::kCanceled;
             }
 
             if (!paused_.load()) {
                 result = tree->tickOnce();
+            }
+            if (status_logger != nullptr) {
+                status_logger->flush();
             }
             if (on_tick) {
                 on_tick();

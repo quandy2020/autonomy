@@ -14,6 +14,7 @@
 #include <thread>
 
 #include "autonomy/task/behavior_tree/bt_profile.hpp"
+#include "autonomy/task/behavior_tree/bt_status_logger.hpp"
 #include "behaviortree_cpp/behavior_tree.h"
 #include "behaviortree_cpp/blackboard.h"
 #include "behaviortree_cpp/bt_factory.h"
@@ -46,6 +47,7 @@ public:
     bool Configure(const BtProfile& profile);
     void SetBlackboardSetup(BlackboardSetupCallback callback);
     void SetTickCallback(TickCallback callback);
+    void SetStatusLogCallback(BtStatusLogCallback callback);
 
     bool Run(const std::string& tree_xml_path);
     bool Cancel();
@@ -62,12 +64,14 @@ private:
     BT::Tree CreateTreeFromFile(const std::string& file_path,
                                 BT::Blackboard::Ptr blackboard);
     BtRunState RunTree(BT::Tree* tree, const std::function<void()>& on_tick,
-                       std::chrono::milliseconds loop_period);
+                       std::chrono::milliseconds loop_period,
+                       BtStatusLogger* status_logger);
 
     BtProfile profile_;
     std::unique_ptr<BT::BehaviorTreeFactory> factory_;
     BlackboardSetupCallback blackboard_setup_;
     TickCallback tick_callback_;
+    BtStatusLogCallback status_log_callback_;
     std::string active_tree_;
     std::atomic<BtRunState> state_{BtRunState::kIdle};
     std::atomic<bool> running_{false};

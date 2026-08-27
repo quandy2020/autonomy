@@ -9,15 +9,22 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "autolink/node/node.hpp"
+#include "autolink/node/writer.hpp"
 #include "autonomy/task/behavior_tree/bt_defaults.hpp"
 #include "autonomy/task/behavior_tree/bt_profile.hpp"
 #include "autonomy/task/behavior_tree/bt_runner.hpp"
+#include "autonomy/task/behavior_tree/bt_status_logger.hpp"
 #include "autonomy/task/navigation/navigation_client.hpp"
 #include "autonomy/task/common/typed_task.hpp"
 #include "autonomy/task/proto/task_options.pb.h"
 #include "behaviortree_cpp/blackboard.h"
+
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/nav_msgs/behavior_tree.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
 
 namespace autonomy {
 namespace task {
@@ -77,6 +84,11 @@ protected:
                 PopulateBlackboard(blackboard);
             });
         runner_.SetTickCallback([this]() { OnTreeTick(); });
+        EnsureBehaviorTreeLogWriter();
+        runner_.SetStatusLogCallback(
+            [this](const std::vector<BtStatusEvent>& events) {
+                PublishBehaviorTreeLog(events);
+            });
         return OnTreeInitialize(options);
     }
 
@@ -88,6 +100,45 @@ protected:
     virtual void PopulateBlackboard(const BT::Blackboard::Ptr& /*blackboard*/) {}
 
     virtual void OnTreeTick() {}
+
+    void EnsureBehaviorTreeLogWriter() {
+        if (bt_log_writer_ || !node_) {
+            return;
+        }
+        bt_log_writer_ =
+            node_->template CreateWriter<::automsgs::msgs::nav_msgs::BehaviorTreeLog>(
+                "/behavior_tree/log");
+    }
+
+    void PublishBehaviorTreeLog(const std::vector<BtStatusEvent>& events) {
+        if (!bt_log_writer_ || events.empty()) {
+            return;
+        }
+        ::automsgs::msgs::nav_msgs::BehaviorTreeLog log;
+        const auto now = ::automsgs::msgs::builtin_interfaces::Now();
+        *log.mutable_timestamp() = now;
+        for (const BtStatusEvent& event : events) {
+            auto* entry = log.add_event_log();
+            if (event.timestamp_ns > 0) {
+                entry->mutable_timestamp()->set_sec(
+                    static_cast<int32_t>(event.timestamp_ns / 1000000000LL));
+                entry->mutable_timestamp()->set_nanosec(
+                    static_cast<uint32_t>(event.timestamp_ns % 1000000000LL));
+            } else {
+                *entry->mutable_timestamp() = now;
+            }
+            // Prefer instance / path; append registration id for Autoviz matching.
+            if (!event.registration_id.empty() &&
+                event.node_name.find(event.registration_id) == std::string::npos) {
+                entry->set_node_name(event.node_name + "/" + event.registration_id);
+            } else {
+                entry->set_node_name(event.node_name);
+            }
+            entry->set_previous_status(event.previous_status);
+            entry->set_current_status(event.current_status);
+        }
+        bt_log_writer_->Write(log);
+    }
 
     [[nodiscard]] const std::shared_ptr<autolink::Node>& node() const {
         return node_;
@@ -161,6 +212,8 @@ private:
     std::shared_ptr<autolink::Node> node_;
     navigation::NavigationClient::Ptr navigation_client_;
     BtRunner runner_;
+    std::shared_ptr<::autolink::Writer<::automsgs::msgs::nav_msgs::BehaviorTreeLog>>
+        bt_log_writer_;
 };
 
 }  // namespace task

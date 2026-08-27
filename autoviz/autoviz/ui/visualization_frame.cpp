@@ -101,6 +101,7 @@
 #include "autoviz/ui/indicator/indicator_panel.hpp"
 #include "autoviz/ui/parameters/parameters_panel.hpp"
 #include "autoviz/ui/channel_graph/channel_graph_panel.hpp"
+#include "autoviz/ui/behavior_tree/behavior_tree_panel.hpp"
 #include "autoviz/ui/state_transitions/state_transition_panel.hpp"
 #include "autoviz/ui/audio/audio_panel.hpp"
 #include "autoviz/ui/service/service_panel.hpp"
@@ -2068,6 +2069,7 @@ void VisualizationFrame::setupUi() {
         panelTypeId(dock) == QLatin1String("IndicatorDock") ||
         panelTypeId(dock) == QLatin1String("ParametersDock") ||
         panelTypeId(dock) == QLatin1String("ChannelGraphDock") ||
+        panelTypeId(dock) == QLatin1String("BehaviorTreeDock") ||
         panelTypeId(dock) == QLatin1String("StateTransitionDock") ||
         panelTypeId(dock) == QLatin1String("AudioDock") ||
         panelTypeId(dock) == QLatin1String("ServiceDock") ||
@@ -4076,6 +4078,10 @@ void VisualizationFrame::showPanelByObjectName(const QString& object_name) {
     dock = createChannelGraphPanelDock(object_name);
     addMainPanelDock(dock, Qt::LeftDockWidgetArea);
   }
+  if (dock == nullptr && object_name == QLatin1String("BehaviorTreeDock")) {
+    dock = createBehaviorTreePanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
   if (dock == nullptr && object_name == QLatin1String("StateTransitionDock")) {
     dock = createStateTransitionPanelDock(object_name);
     addMainPanelDock(dock, Qt::LeftDockWidgetArea);
@@ -4153,6 +4159,8 @@ void VisualizationFrame::onSplitActiveDock(PanelDockWidget* source,
   const bool is_map = panelTypeId(source) == QLatin1String("MapDock");
   const bool is_channel_graph =
       panelTypeId(source) == QLatin1String("ChannelGraphDock");
+  const bool is_behavior_tree =
+      panelTypeId(source) == QLatin1String("BehaviorTreeDock");
   const bool is_audio = panelTypeId(source) == QLatin1String("AudioDock");
   const bool is_indicator = panelTypeId(source) == QLatin1String("IndicatorDock");
   const bool is_state_transition =
@@ -4214,6 +4222,11 @@ void VisualizationFrame::onSplitActiveDock(PanelDockWidget* source,
             qobject_cast<channel_graph::ChannelGraphPanel*>(duplicate->widget())) {
       panel->refreshGraph();
     }
+  } else if (is_behavior_tree) {
+    if (auto* panel =
+            qobject_cast<behavior_tree::BehaviorTreePanel*>(duplicate->widget())) {
+      panel->refreshFileTree();
+    }
   } else if (is_audio) {
     if (auto* panel = qobject_cast<audio_panel::AudioPanel*>(duplicate->widget())) {
       setActiveAudioPanel(panel);
@@ -4263,6 +4276,7 @@ bool VisualizationFrame::panelTypeSupportsMultiInstance(
          panel_type_id == QLatin1String("IndicatorDock") ||
          panel_type_id == QLatin1String("ParametersDock") ||
          panel_type_id == QLatin1String("ChannelGraphDock") ||
+         panel_type_id == QLatin1String("BehaviorTreeDock") ||
          panel_type_id == QLatin1String("StateTransitionDock") ||
          panel_type_id == QLatin1String("AudioDock") ||
          panel_type_id == QLatin1String("ServiceDock") ||
@@ -6352,6 +6366,27 @@ void VisualizationFrame::wireChannelGraphPanel(
           [this]() { markConfigModified(); });
 }
 
+void VisualizationFrame::wireBehaviorTreePanel(
+    PanelDockWidget* dock, behavior_tree::BehaviorTreePanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  connect(panel, &behavior_tree::BehaviorTreePanel::panelRemoveRequested, dock,
+          &QDockWidget::close);
+  connect(panel, &behavior_tree::BehaviorTreePanel::panelExpandRequested, this,
+          [this, dock]() { expandPanelDock(dock); });
+  connect(panel, &behavior_tree::BehaviorTreePanel::panelSplitRequested, this,
+          [this, dock](Qt::Orientation orientation) {
+            onSplitActiveDock(dock, orientation);
+          });
+  connect(panel, &behavior_tree::BehaviorTreePanel::panelChangeRequested, this,
+          [this, dock](const QString& object_name) {
+            changePanelInDock(dock, object_name);
+          });
+  connect(panel, &behavior_tree::BehaviorTreePanel::configChanged, this,
+          [this]() { markConfigModified(); });
+}
+
 void VisualizationFrame::wireStateTransitionPanel(
     PanelDockWidget* dock, state_transitions::StateTransitionPanel* panel) {
   if (dock == nullptr || panel == nullptr) {
@@ -6433,6 +6468,25 @@ PanelDockWidget* VisualizationFrame::createChannelGraphPanelDock(
   panel->installTitleBarTools(dock);
   dock->setContentWidget(panel);
   wireChannelGraphPanel(dock, panel);
+  configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
+PanelDockWidget* VisualizationFrame::createBehaviorTreePanelDock(
+    const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty() ? uniquePanelObjectName(QStringLiteral("BehaviorTreeDock"))
+                            : object_name;
+  auto* dock = new PanelDockWidget(tr("Behavior Tree"), this);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("BehaviorTreeDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelBehaviorTree")));
+  auto* panel = new behavior_tree::BehaviorTreePanel(manager_.get(), dock);
+  behavior_tree_panel_ = panel;
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wireBehaviorTreePanel(dock, panel);
   configureMainPanelDock(dock);
   registerPanelDock(dock);
   return dock;
@@ -6697,6 +6751,9 @@ PanelDockWidget* VisualizationFrame::duplicatePanelDock(
       dst_panel->cloneConfigFrom(src_panel->config());
     }
     return dock;
+  }
+  if (type == QLatin1String("BehaviorTreeDock")) {
+    return createBehaviorTreePanelDock();
   }
   if (type == QLatin1String("StateTransitionDock")) {
     PanelDockWidget* dock = createStateTransitionPanelDock();

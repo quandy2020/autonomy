@@ -86,6 +86,9 @@ class ParametersPanel;
 namespace channel_graph {
 class ChannelGraphPanel;
 }
+namespace behavior_tree {
+class BehaviorTreePanel;
+}
 namespace state_transitions {
 class StateTransitionPanel;
 }
@@ -297,6 +300,7 @@ class VisualizationFrame : public QMainWindow {
   PanelDockWidget* createIndicatorPanelDock(const QString& object_name = QString());
   PanelDockWidget* createParametersPanelDock(const QString& object_name = QString());
   PanelDockWidget* createChannelGraphPanelDock(const QString& object_name = QString());
+  PanelDockWidget* createBehaviorTreePanelDock(const QString& object_name = QString());
   PanelDockWidget* createStateTransitionPanelDock(
       const QString& object_name = QString());
   PanelDockWidget* createAudioPanelDock(const QString& object_name = QString());
@@ -315,6 +319,8 @@ class VisualizationFrame : public QMainWindow {
                            parameters_panel::ParametersPanel* panel);
   void wireChannelGraphPanel(PanelDockWidget* dock,
                              channel_graph::ChannelGraphPanel* panel);
+  void wireBehaviorTreePanel(PanelDockWidget* dock,
+                             behavior_tree::BehaviorTreePanel* panel);
   void wireStateTransitionPanel(
       PanelDockWidget* dock, state_transitions::StateTransitionPanel* panel);
   void wireAudioPanel(PanelDockWidget* dock, audio_panel::AudioPanel* panel);
@@ -516,6 +522,7 @@ class VisualizationFrame : public QMainWindow {
   PropertyInspectorPanel* property_inspector_panel_ = nullptr;
   HelpPanel* help_panel_ = nullptr;
   TfTreePanel* tf_tree_panel_ = nullptr;
+  behavior_tree::BehaviorTreePanel* behavior_tree_panel_ = nullptr;
   TransformationPanel* transformation_panel_ = nullptr;
   QToolBar* tool_bar_ = nullptr;
   QWidget* toolbar_spacer_ = nullptr;
