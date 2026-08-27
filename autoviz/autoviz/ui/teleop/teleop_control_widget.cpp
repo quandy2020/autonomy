@@ -421,11 +421,14 @@ void TeleopControlWidget::updateArcadeFromKeyboard() {
   }
   double x = 0.0;
   double y = 0.0;
+  // ROS / teleop_twist_keyboard: A = CCW (positive angular.z), D = CW.
+  // Stick X already maps left→negative; keyboard must invert relative to that
+  // screen-space convention so A/D match expected yaw.
   if (key_left_) {
-    x -= 1.0;
+    x += 1.0;
   }
   if (key_right_) {
-    x += 1.0;
+    x -= 1.0;
   }
   if (key_forward_) {
     y -= 1.0;

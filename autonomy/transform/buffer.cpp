@@ -16,6 +16,7 @@
 
 #include "autonomy/transform/buffer.hpp"
 
+#include <algorithm>
 #include <thread>
 
 #include "autonomy/common/logging.hpp"
@@ -138,9 +139,12 @@ bool Buffer::canTransform(const std::string& target_frame,
     std::string* err = errstr != nullptr ? errstr : &local_err;
     const uint64_t requested_ns = ToTf2TimeNs(time);
     uint64_t timeout_ns =
-        static_cast<uint64_t>(timeout_second * kSecondToNanoFactor);
-    const uint64_t start_time = ToTf2TimeNs(automsgs::msgs::builtin_interfaces::TimeNow());
-    while (ToTf2TimeNs(automsgs::msgs::builtin_interfaces::TimeNow()) < start_time + timeout_ns) {
+        static_cast<uint64_t>(std::max(0.0f, timeout_second) *
+                              kSecondToNanoFactor);
+    const uint64_t start_time =
+        ToTf2TimeNs(automsgs::msgs::builtin_interfaces::TimeNow());
+    // timeout==0 means try once (ROS tf2 semantics), not "never try".
+    do {
         err->clear();
         bool retval = tf2::BufferCore::canTransform(
             target_frame, source_frame, requested_ns, err);
@@ -157,13 +161,17 @@ bool Buffer::canTransform(const std::string& target_frame,
                 return true;
             }
         }
+        if (timeout_ns == 0) {
+            break;
+        }
         {
             const int sleep_time_ms = 3;
             LOG(WARNING) << "BufferCore::canTransform failed: " << *err;
             std::this_thread::sleep_for(
                 std::chrono::milliseconds(sleep_time_ms));
         }
-    }
+    } while (ToTf2TimeNs(automsgs::msgs::builtin_interfaces::TimeNow()) <
+             start_time + timeout_ns);
     *err = *err + ":timeout";
     return false;
 }
@@ -179,11 +187,13 @@ bool Buffer::canTransform(const std::string& target_frame,
     std::string* err = errstr != nullptr ? errstr : &local_err;
     const uint64_t target_ns = ToTf2TimeNs(target_time);
     const uint64_t source_ns = ToTf2TimeNs(source_time);
-    // poll for transform if timeout is set
     uint64_t timeout_ns =
-        static_cast<uint64_t>(timeout_second * kSecondToNanoFactor);
-    const uint64_t start_time = ToTf2TimeNs(automsgs::msgs::builtin_interfaces::TimeNow());
-    while (ToTf2TimeNs(automsgs::msgs::builtin_interfaces::TimeNow()) < start_time + timeout_ns) {
+        static_cast<uint64_t>(std::max(0.0f, timeout_second) *
+                              kSecondToNanoFactor);
+    const uint64_t start_time =
+        ToTf2TimeNs(automsgs::msgs::builtin_interfaces::TimeNow());
+    // timeout==0 means try once (ROS tf2 semantics), not "never try".
+    do {
         err->clear();
 
         bool retval = tf2::BufferCore::canTransform(
@@ -201,13 +211,17 @@ bool Buffer::canTransform(const std::string& target_frame,
                 return true;
             }
         }
+        if (timeout_ns == 0) {
+            break;
+        }
         {
             const int sleep_time_ms = 3;
             LOG(WARNING) << "BufferCore::canTransform failed: " << *err;
             std::this_thread::sleep_for(
                 std::chrono::milliseconds(sleep_time_ms));
         }
-    }
+    } while (ToTf2TimeNs(automsgs::msgs::builtin_interfaces::TimeNow()) <
+             start_time + timeout_ns);
     *err = *err + ":timeout";
     return false;
 }

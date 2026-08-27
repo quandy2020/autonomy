@@ -1,0 +1,65 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Atlas visual SLAM (OpenVSLAM) for autosim / Habitat.
+
+  Backend: autonomy.localization --localization_mode=atlas
+
+  Config (under config/localization/atlas/):
+    autosim_mono.yaml   RGB monocular (default)
+    autosim_rgbd.yaml   RGB + depth (meters)
+    orb_vocab.fbow      ORB vocabulary (loop closure)
+
+  Expects autosim (default.yaml camera enabled):
+    /camera/rgb/image_raw     Image   rgb8      → feed_monocular_frame / RGBD
+    /camera/depth/image_raw   Image   32FC1     (rgbd only)
+    /camera/camera_info       CameraInfo
+
+  Atlas VizBridge publishes (autoviz):
+    /atlas/tracking_image           Image          feature points overlay
+    /atlas/frame_match_image        Image          inter-frame matches
+    /atlas/trajectory               Path           camera trajectory
+    /atlas/camera_pose              Odometry       current camera pose
+    /atlas/current_camera_frustum   Marker         current FOV pyramid
+    /atlas/keyframe_frustums        MarkerArray    keyframe FOV pyramids
+    /atlas/map_points               PointCloud2    sparse ORB landmarks
+    /atlas/cloud_map                PointCloud2    dense merged cloud
+    /atlas/cloud_ground             PointCloud2    ground layer
+    /atlas/cloud_obstacles          PointCloud2    obstacle layer
+    /map                            OccupancyGrid  2D occupancy (RTAB-Map style)
+    /atlas/grid_prob_map            OccupancyGrid  optional probabilistic grid
+    /atlas/octomap_occupied         PointCloud2    3D occupancy voxels
+    /atlas/octomap_ground           PointCloud2    3D ground voxels
+    /atlas/octomap_grid             OccupancyGrid  OctoMap XY projection
+    /atlas/elevation_cloud          PointCloud2    elevation surface (max-z)
+    /atlas/elevation_map            OccupancyGrid  height encoded 0–100
+    /tf                             map→odom
+
+  Dense map notes:
+    - keyframe_trigger: integrate on new Atlas keyframes
+    - normals_segmentation: ground via normals+clustering (else height-band)
+    - update_error: loop-closure pose drift → full LocalGrid reassembly
+
+  Run (Docker / Colcon):
+    cd /workspace/autonomy/src/autonomy
+    mkdir -p data/maps
+    export PATH=/workspace/autonomy/build/autonomy/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=/workspace/autonomy/src/autonomy/autonomy/localization/launch
+    # start autosim first, then:
+    autolink launch start localization_atlas.launch
+
+  Stop:
+    autolink launch stop localization_atlas.launch
+
+  RGB-D:
+    swap --atlas_config to config/localization/atlas/autosim_rgbd.yaml
+-->
+<autolink>
+  <module>
+    <name>localization_atlas</name>
+    <type>binary</type>
+    <process_name>autonomy.localization --localization_mode=atlas --atlas_config=config/localization/atlas/autosim_rgbd.yaml --atlas_vocab=config/localization/atlas/orb_vocab.fbow --atlas_rgb_topic=/camera/rgb/image_raw --atlas_depth_topic=/camera/depth/image_raw --atlas_map_save=data/maps/atlas.msg</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

@@ -48,6 +48,25 @@ def test_encode_image_rgb8():
     assert message.data[0:3] == bytes([1, 2, 3])
 
 
+def test_rgb_and_depth_images_share_identical_stamp():
+    """RGB-D pair must carry the same header.stamp for Atlas sync."""
+    stamp = (42, 123456789)
+    rgb = Messages.encode_image(
+        np.zeros((4, 4, 3), dtype=np.uint8),
+        stamp=stamp,
+        frame_id="camera_link",
+        encoding="rgb8",
+    )
+    depth = Messages.encode_image(
+        np.ones((4, 4), dtype=np.float32),
+        stamp=stamp,
+        frame_id="camera_link",
+        encoding="32FC1",
+    )
+    assert rgb.header.stamp.sec == depth.header.stamp.sec == stamp[0]
+    assert rgb.header.stamp.nanosec == depth.header.stamp.nanosec == stamp[1]
+
+
 def test_parse_command_velocity_twist_and_stamped():
     from automsgs.msgs.geometry_msgs.twist_pb2 import Twist
     from automsgs.msgs.geometry_msgs.twist_stamped_pb2 import TwistStamped

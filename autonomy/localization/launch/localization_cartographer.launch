@@ -1,0 +1,35 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Cartographer 2D lidar SLAM (autosim / Habitat).
+
+  Backend: autonomy.localization --localization_mode=cartographer
+
+  Expects autosim (habitat.mode=slam, default.yaml):
+    /scan   LaserScan   laser_link
+    /odom   Odometry    odom → base_link
+    /tf + /tf_static    URDF mounts (no map→odom from sim)
+
+  Run (Docker / Colcon):
+    cd /workspace/autonomy/src/autonomy
+    mkdir -p data/maps
+    export PATH=/workspace/autonomy/build/autonomy/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=/workspace/autonomy/src/autonomy/autonomy/localization/launch
+    autolink launch start localization_cartographer.launch
+
+  Stop:
+    autolink launch stop localization_cartographer.launch
+
+  Optional:
+    --load_state_filename=data/maps/cartographer.pbstream
+    --configuration_basename=backpack_2d.lua
+-->
+<autolink>
+  <module>
+    <name>localization_cartographer</name>
+    <type>binary</type>
+    <process_name>autonomy.localization --localization_mode=cartographer --configuration_directory=config/localization/cartographer --configuration_basename=autosim_2d.lua --start_trajectory_with_default_topics=true --save_state_filename=data/maps/cartographer.pbstream</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

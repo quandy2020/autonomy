@@ -194,7 +194,7 @@ if(BUILD_GRPC)
   google_binary(autonomy_bridge
     SRCS autonomy/bridge/bridge_main.cpp)
 endif()
-google_binary(autonomy.cartographer
+google_binary(autonomy.localization
   SRCS autonomy/localization/localization_main.cpp)
 google_binary(autonomy.planning
   SRCS autonomy/planning/planning_main.cpp)
