@@ -27,6 +27,8 @@ struct AtlasNodeFlags {
     std::string vocab_path;
     std::string map_load_path;
     std::string map_save_path;
+    std::string rgb_topic = "/camera/rgb/image_raw";
+    std::string depth_topic = "/camera/depth/image_raw";
 };
 
 int RunAtlasNode(const AtlasNodeFlags& flags);

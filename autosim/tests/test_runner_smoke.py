@@ -224,6 +224,46 @@ def test_runner_skips_odom_when_disabled(monkeypatch):
     assert "/map" not in runner.node.writers
 
 
+def test_runner_camera_rgb_depth_share_stamp(monkeypatch):
+    """Every published RGB frame must share stamp with the paired depth frame."""
+    import autosim.runner as runner_module
+
+    monkeypatch.setattr(runner_module.time, "sleep", lambda seconds: None)
+
+    root = Path(__file__).resolve().parents[1]
+    settings = Config.load(root / "config" / "default.yaml")
+    settings.data["habitat"]["mode"] = "slam"
+    settings.data["habitat"]["map"]["enabled"] = False
+    sensors = settings.data["habitat"]["sensors"]
+    sensors["lidar_2d"]["enabled"] = False
+    sensors["lidar_3d"]["enabled"] = False
+    sensors["camera"]["enabled"] = True
+    sensors["camera"]["rate_hz"] = 50.0
+    sensors["imu"]["enabled"] = False
+    sensors["odom"]["enabled"] = False
+    settings.data["habitat"]["robot"]["tf"]["enabled"] = False
+    settings.data["habitat"]["robot"]["clock"]["enabled"] = False
+    settings.data["habitat"]["robot"]["footprint"]["enabled"] = False
+
+    link = FakeLink()
+    runner = Runner(settings, max_steps=40, link=link, simulator=FakeSimulator())
+    runner.run()
+    rgb_msgs = runner.node.writers["/camera/rgb/image_raw"].msgs
+    depth_msgs = runner.node.writers["/camera/depth/image_raw"].msgs
+    info_msgs = runner.node.writers["/camera/camera_info"].msgs
+    assert len(rgb_msgs) >= 1
+    assert len(rgb_msgs) == len(depth_msgs) == len(info_msgs)
+    for rgb, depth, info in zip(rgb_msgs, depth_msgs, info_msgs):
+        assert (rgb.header.stamp.sec, rgb.header.stamp.nanosec) == (
+            depth.header.stamp.sec,
+            depth.header.stamp.nanosec,
+        )
+        assert (rgb.header.stamp.sec, rgb.header.stamp.nanosec) == (
+            info.header.stamp.sec,
+            info.header.stamp.nanosec,
+        )
+
+
 def test_runner_slam_skips_map_and_map_odom(monkeypatch):
     """SLAM mode must not publish GT /map or identity map→odom (Cartographer owns both)."""
     import autosim.runner as runner_module

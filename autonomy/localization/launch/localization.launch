@@ -1,26 +1,23 @@
 <!--
   Copyright 2026 The Openbot Authors
 
-  Cartographer 2D mapping with autosim sensors/TF.
+  Default localization launch → Cartographer 2D (autosim).
 
-  Expects autosim (default.yaml):
-    /scan (LaserScan, laser_link), /imu (imu_link), /tf + /tf_static (URDF)
+  Prefer the explicit files when choosing a backend:
+    localization_cartographer.launch  — lidar SLAM (Cartographer)
+    localization_atlas.launch         — visual SLAM (Atlas / OpenVSLAM)
 
-  Colcon / Docker:
-    cd /workspace/autonomy/src/autonomy
-    mkdir -p data/maps
+  Run:
     export PATH=/workspace/autonomy/build/autonomy/bin:$PATH
     export AUTOLINK_LAUNCH_PATH=/workspace/autonomy/src/autonomy/autonomy/localization/launch
+    mkdir -p data/maps
     autolink launch start localization.launch
-
-  Stop:
-    autolink launch stop localization.launch
 -->
 <autolink>
   <module>
-    <name>cartographer</name>
+    <name>localization</name>
     <type>binary</type>
-    <process_name>autonomy.cartographer --localization_mode=cartographer --configuration_directory=config/localization/cartographer --configuration_basename=autosim_2d.lua --start_trajectory_with_default_topics=true --save_state_filename=data/maps/cartographer.pbstream</process_name>
+    <process_name>autonomy.localization --localization_mode=cartographer --configuration_directory=config/localization/cartographer --configuration_basename=autosim_2d.lua --start_trajectory_with_default_topics=true --save_state_filename=data/maps/cartographer.pbstream</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>

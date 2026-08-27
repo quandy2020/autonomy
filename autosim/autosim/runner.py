@@ -445,30 +445,42 @@ class Runner:
         )
 
     def submit_camera(self, stamp: Tuple[int, int]) -> None:
-        """Render RGB-D on the main (GL-context) thread, then encode/publish async."""
+        """Render and publish RGB-D on the control thread with one shared stamp.
+
+        Habitat returns color+depth from one observation. Publishing them async
+        via the sensor worker let Atlas see RGB_N with depth_N-1 (QoS/order),
+        which looks like desynced timestamps. Keep encode+publish atomic.
+        """
         if not self.camera.get("enabled", False):
             return
         if self.camera_elapsed < 1.0 / self.camera["rate_hz"]:
             return
         self.camera_elapsed = 0.0
         color, depth = self.sensors.sample_camera(self.simulator)
-        self._sensor_worker.submit(self.encode_publish_camera, color, depth, stamp)
+        self.encode_publish_camera(color, depth, stamp)
 
     def encode_publish_camera(self, color: Any, depth: Any, stamp: Tuple[int, int]) -> None:
+        """Publish RGB, depth, and CameraInfo with identical ``header.stamp``."""
         frame = self.camera["frame"]
-        self.bridge.publish("rgb", Messages.encode_image(color, stamp, frame, "rgb8"))
-        self.bridge.publish(
-            "depth",
-            Messages.encode_image(depth.astype(np.float32), stamp, frame, "32FC1"),
+        rgb_msg = Messages.encode_image(color, stamp, frame, "rgb8")
+        depth_msg = Messages.encode_image(
+            np.asarray(depth, dtype=np.float32), stamp, frame, "32FC1"
         )
+        # Hard-sync stamps so Atlas / Autoviz never see RGB≠depth time.
+        depth_msg.header.stamp.sec = int(rgb_msg.header.stamp.sec)
+        depth_msg.header.stamp.nanosec = int(rgb_msg.header.stamp.nanosec)
         height, width = color.shape[:2]
         camera_matrix = Messages.camera_intrinsics(
             width, height, float(self.camera.get("hfov_deg", 90.0))
         )
-        self.bridge.publish(
-            "camera_info",
-            Messages.encode_camera_info(stamp, frame, width, height, camera_matrix),
+        info_msg = Messages.encode_camera_info(
+            stamp, frame, width, height, camera_matrix
         )
+        info_msg.header.stamp.sec = int(rgb_msg.header.stamp.sec)
+        info_msg.header.stamp.nanosec = int(rgb_msg.header.stamp.nanosec)
+        self.bridge.publish("rgb", rgb_msg)
+        self.bridge.publish("depth", depth_msg)
+        self.bridge.publish("camera_info", info_msg)
 
     def submit_map(self, stamp: Tuple[int, int]) -> None:
         """Publish the static map without blocking the control loop after first sample.
@@ -786,7 +798,7 @@ class Runner:
         """Publish RGB, depth, and ``CameraInfo`` when enabled and due.
 
         Args:
-            stamp: Message timestamp.
+            stamp: Message timestamp shared by RGB, depth, and CameraInfo.
         """
         if not self.camera.get("enabled", False):
             return
@@ -794,20 +806,7 @@ class Runner:
             return
         self.camera_elapsed = 0.0
         color, depth = self.sensors.sample_camera(self.simulator)
-        frame = self.camera["frame"]
-        self.bridge.publish("rgb", Messages.encode_image(color, stamp, frame, "rgb8"))
-        self.bridge.publish(
-            "depth",
-            Messages.encode_image(depth.astype(np.float32), stamp, frame, "32FC1"),
-        )
-        height, width = color.shape[:2]
-        camera_matrix = Messages.camera_intrinsics(
-            width, height, float(self.camera.get("hfov_deg", 90.0))
-        )
-        self.bridge.publish(
-            "camera_info",
-            Messages.encode_camera_info(stamp, frame, width, height, camera_matrix),
-        )
+        self.encode_publish_camera(color, depth, stamp)
 
     def publish_imu(self, yaw: float, linear: float, stamp: Tuple[int, int]) -> None:
         """Publish IMU when enabled and due.

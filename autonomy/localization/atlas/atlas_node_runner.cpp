@@ -17,61 +17,27 @@
 #include "autonomy/localization/atlas/atlas_node_runner.hpp"
 
 #include <cstdlib>
-#include <memory>
 
 #include <glog/logging.h>
 
 #include "autolink/autolink.hpp"
-#include "autonomy/localization/atlas/config.hpp"
-#include "autonomy/localization/atlas/system.hpp"
-#include "autonomy/localization/cartographer/node/node_utils.hpp"
+#include "autonomy/localization/localization_server.hpp"
 
 namespace autonomy {
 namespace localization {
 namespace atlas {
 
 int RunAtlasNode(const AtlasNodeFlags& flags) {
-    if (flags.config_path.empty()) {
-        LOG(ERROR) << "Atlas config path is required (--atlas_config).";
+    LocalizationOptions options = OptionsFromAtlasFlags(flags);
+    LocalizationServer server(std::move(options));
+    if (!server.Start()) {
+        LOG(ERROR) << "RunAtlasNode: LocalizationServer::Start failed.";
         return EXIT_FAILURE;
     }
 
-    const std::string config_path =
-        cartographer::node::ResolveWorkspacePath(flags.config_path);
-    auto cfg = std::make_shared<config>(config_path);
-    const std::string vocab_path =
-        cartographer::node::ResolveWorkspacePath(flags.vocab_path);
-
-    system atlas(cfg, vocab_path);
-
-    if (!flags.map_load_path.empty()) {
-        const std::string map_path =
-            cartographer::node::ResolveWorkspacePath(flags.map_load_path);
-        atlas.startup(/*need_initialize=*/false);
-        if (!atlas.load_map_database(map_path)) {
-            LOG(ERROR) << "Failed to load Atlas map: " << map_path;
-            return EXIT_FAILURE;
-        }
-        LOG(INFO) << "Loaded Atlas map from " << map_path;
-    } else {
-        atlas.startup(/*need_initialize=*/true);
-    }
-
-    LOG(INFO) << "Atlas visual SLAM running (config: " << config_path << ").";
+    LOG(INFO) << "Atlas visual SLAM running.";
     autolink::WaitForShutdown();
-
-    if (!flags.map_save_path.empty()) {
-        const std::string map_path =
-            cartographer::node::ResolveWorkspacePath(flags.map_save_path);
-        if (!atlas.save_map_database(map_path)) {
-            LOG(ERROR) << "Failed to save Atlas map: " << map_path;
-            atlas.shutdown();
-            return EXIT_FAILURE;
-        }
-        LOG(INFO) << "Saved Atlas map to " << map_path;
-    }
-
-    atlas.shutdown();
+    server.Shutdown();
     return EXIT_SUCCESS;
 }
 

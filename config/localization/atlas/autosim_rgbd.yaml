@@ -1,0 +1,83 @@
+# Autosim / Habitat RGB-D (matches autosim/config/default.yaml camera)
+#
+# Intrinsics same as autosim_mono.yaml. Depth is meters (32FC1) → depthmap_factor=1.0
+# Topics (when image bridge is wired):
+#   /camera/rgb/image_raw     rgb8
+#   /camera/depth/image_raw   32FC1 (meters)
+#   /camera/camera_info
+
+Camera:
+  name: "autosim RGBD"
+  setup: "RGBD"
+  model: "perspective"
+
+  fx: 320.0
+  fy: 320.0
+  cx: 320.0
+  cy: 240.0
+
+  k1: 0.0
+  k2: 0.0
+  p1: 0.0
+  p2: 0.0
+  k3: 0.0
+
+  fps: 15.0
+  cols: 640
+  rows: 480
+  # fx * baseline; Habitat RGB-D has no stereo baseline — keep a small positive value.
+  focal_x_baseline: 40.0
+  depth_threshold: 40.0
+
+  color_order: "RGB"
+
+Tracking:
+  backend: "g2o"
+  margin_local_map_projection: 10.0
+  enable_temporal_keyframe_only_tracking: false
+
+Preprocessing:
+  min_size: 800
+  depthmap_factor: 1.0
+
+Feature:
+  name: "default ORB feature extraction setting"
+  scale_factor: 1.2
+  num_levels: 8
+  ini_fast_threshold: 20
+  min_fast_threshold: 7
+
+Mapping:
+  backend: "g2o"
+  baseline_dist_thr: 0.1
+  redundant_obs_ratio_thr: 0.9
+  num_covisibilities_for_landmark_generation: 20
+  num_covisibilities_for_landmark_fusion: 20
+  erase_temporal_keyframes: false
+  num_temporal_keyframes: 15
+
+KeyframeInserter:
+  wait_for_local_bundle_adjustment: false
+
+Relocalizer:
+  search_neighbor: true
+
+LoopDetector:
+  backend: "g2o"
+
+System:
+  map_format: "msgpack"
+  num_grid_cols: 47
+  num_grid_rows: 30
+
+PangolinViewer:
+  keyframe_size: 0.05
+  keyframe_line_width: 1
+  graph_line_width: 1
+  point_size: 2
+  camera_size: 0.08
+  camera_line_width: 3
+  viewpoint_x: 0
+  viewpoint_y: -0.9
+  viewpoint_z: -1.9
+  viewpoint_f: 400
