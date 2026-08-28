@@ -74,3 +74,10 @@ TEST_F(GrpcJsonCodecTest, InvalidJsonFails) {
   EXPECT_EQ(msg, nullptr);
   EXPECT_FALSE(err.empty());
 }
+
+TEST(GrpcJsonCodec, NullDescriptorFails) {
+  std::string err;
+  auto msg = JsonToDynamicMessage(R"({"greeting":"x"})", nullptr, &err);
+  EXPECT_EQ(msg, nullptr);
+  EXPECT_FALSE(err.empty());
+}
