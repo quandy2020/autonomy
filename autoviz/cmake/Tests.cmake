@@ -178,4 +178,21 @@ if(GTest_FOUND)
     ${AUTOVIZ_ROOT}/tests/gtest_main.cpp
     ${AUTOVIZ_ROOT}/tests/image_utils_test.cpp
     ${AUTOVIZ_SRC_ROOT}/display/image_utils.cpp)
+
+  # Lightweight protobuf-only gtest (no autolink/automsgs) for JSON DynamicMessage codec.
+  add_executable(grpc_json_codec_test
+    ${AUTOVIZ_ROOT}/tests/gtest_main.cpp
+    ${AUTOVIZ_ROOT}/tests/grpc_json_codec_test.cpp
+    ${AUTOVIZ_SRC_ROOT}/integration/grpc/grpc_json_codec.cpp)
+  target_include_directories(grpc_json_codec_test PRIVATE
+    ${AUTOVIZ_ROOT} ${AUTOVIZ_DEPS_ROOT})
+  target_link_libraries(grpc_json_codec_test PRIVATE
+    GTest::gtest Qt6::Core protobuf::libprotobuf ${CMAKE_DL_LIBS})
+  if(TARGET protobuf::libprotoc)
+    target_link_libraries(grpc_json_codec_test PRIVATE protobuf::libprotoc)
+  endif()
+  target_compile_features(grpc_json_codec_test PRIVATE cxx_std_17)
+  target_compile_definitions(grpc_json_codec_test PRIVATE
+    AUTOVIZ_TEST_FIXTURES_DIR="${AUTOVIZ_ROOT}/tests/fixtures")
+  add_test(NAME grpc_json_codec_test COMMAND grpc_json_codec_test)
 endif()
