@@ -33,6 +33,7 @@ class GrpcDescriptorStore {
   /** Load all .proto files under AUTOVIZ_AUTOMSGS_PROTO_ROOT/rpcs when set. */
   bool loadAutomsgsRpcs(std::string* err);
 
+  /** Build files regardless of FDS order (multi-pass until deps resolve). */
   bool loadFromFileDescriptorSet(
       const google::protobuf::FileDescriptorSet& fds, std::string* err);
 
@@ -47,6 +48,9 @@ class GrpcDescriptorStore {
   /** Stub example JSON for |msg| (scalars default; nested messages {}). */
   std::string exampleJson(const google::protobuf::Descriptor* msg) const;
 
+  /** Factory bound to this store's DescriptorPool. Task 5 codec callers should
+   *  pass this into JsonToDynamicMessage(..., factory, ...) rather than the
+   *  static-factory overload. */
   google::protobuf::DynamicMessageFactory& factory() { return factory_; }
 
  private:
@@ -57,6 +61,7 @@ class GrpcDescriptorStore {
   void indexFile(const google::protobuf::FileDescriptor* file);
 
   google::protobuf::DescriptorPool pool_;
+  // Constructed with &pool_ so extensions/prototypes resolve against store.
   mutable google::protobuf::DynamicMessageFactory factory_;
   std::vector<MethodInfo> methods_;
 };
