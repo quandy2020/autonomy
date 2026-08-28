@@ -33,8 +33,12 @@ std::unique_ptr<google::protobuf::Message> JsonToDynamicMessage(
 
   // Factory must outlive messages created from its prototypes (TypeInfo).
   static google::protobuf::DynamicMessageFactory factory;
-  std::unique_ptr<google::protobuf::Message> message(
-      factory.GetPrototype(descriptor)->New());
+  const google::protobuf::Message* prototype = factory.GetPrototype(descriptor);
+  if (prototype == nullptr) {
+    SetError(error, "Failed to get DynamicMessage prototype");
+    return nullptr;
+  }
+  std::unique_ptr<google::protobuf::Message> message(prototype->New());
   if (message == nullptr) {
     SetError(error, "Failed to create DynamicMessage");
     return nullptr;
