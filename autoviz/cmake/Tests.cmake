@@ -195,4 +195,22 @@ if(GTest_FOUND)
   target_compile_definitions(grpc_json_codec_test PRIVATE
     AUTOVIZ_TEST_FIXTURES_DIR="${AUTOVIZ_ROOT}/tests/fixtures")
   add_test(NAME grpc_json_codec_test COMMAND grpc_json_codec_test)
+
+  # Lightweight protobuf-only gtest for DescriptorStore (proto file + method list).
+  add_executable(grpc_descriptor_store_test
+    ${AUTOVIZ_ROOT}/tests/gtest_main.cpp
+    ${AUTOVIZ_ROOT}/tests/grpc_descriptor_store_test.cpp
+    ${AUTOVIZ_SRC_ROOT}/integration/grpc/grpc_descriptor_store.cpp)
+  target_include_directories(grpc_descriptor_store_test PRIVATE
+    ${AUTOVIZ_ROOT} ${AUTOVIZ_DEPS_ROOT})
+  target_link_libraries(grpc_descriptor_store_test PRIVATE
+    GTest::gtest Qt6::Core protobuf::libprotobuf ${CMAKE_DL_LIBS})
+  if(TARGET protobuf::libprotoc)
+    target_link_libraries(grpc_descriptor_store_test PRIVATE protobuf::libprotoc)
+  endif()
+  target_compile_features(grpc_descriptor_store_test PRIVATE cxx_std_17)
+  target_compile_definitions(grpc_descriptor_store_test PRIVATE
+    AUTOVIZ_TEST_FIXTURES_DIR="${AUTOVIZ_ROOT}/tests/fixtures"
+    AUTOVIZ_AUTOMSGS_PROTO_ROOT="${AUTOVIZ_DEPS_ROOT}/automsgs/proto")
+  add_test(NAME grpc_descriptor_store_test COMMAND grpc_descriptor_store_test)
 endif()

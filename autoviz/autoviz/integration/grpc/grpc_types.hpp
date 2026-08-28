@@ -18,6 +18,13 @@ enum class MethodType {
   kBidiStreaming,
 };
 
+struct MethodInfo {
+  std::string full_name;     // e.g. autoviz.test.HelloService.SayHello
+  std::string service_name;  // autoviz.test.HelloService
+  std::string method_name;   // SayHello
+  MethodType type = MethodType::kUnary;
+};
+
 struct GrpcStatusView {
   int code = 0;  // grpc_status_code
   std::string message;
