@@ -21,6 +21,9 @@
 #include "autonomy/localization/atlas/camera/base.hpp"
 #include "autonomy/localization/atlas/module/local_map_cleaner.hpp"
 #include "autonomy/localization/atlas/optimize/local_bundle_adjuster.hpp"
+#include "autonomy/localization/atlas/optimize/local_bundle_adjuster_extended_line.hpp"
+#include "autonomy/localization/atlas/optimize/local_bundle_adjuster_extended_plane.hpp"
+#include "autonomy/localization/atlas/plp/planar_mapping_module.hpp"
 #include "autonomy/localization/atlas/data/bow_vocabulary_fwd.hpp"
 
 #include <mutex>
@@ -35,6 +38,10 @@ namespace autonomy::localization::atlas {
 class config;
 class tracking_module;
 class global_optimization_module;
+
+namespace plp {
+class planar_mapping_module;
+}
 
 namespace camera {
 class base;
@@ -65,6 +72,9 @@ public:
 
     //! Run main loop of the mapping module
     void run();
+
+    //! Set planar mapping module (Structure-PLP-SLAM)
+    void set_planar_mapping_module(plp::planar_mapping_module* planar_mapper);
 
     //! Queue a keyframe to process the mapping
     std::shared_future<void> async_add_keyframe(const std::shared_ptr<data::keyframe>& keyfrm);
@@ -132,12 +142,17 @@ private:
     void triangulate_with_two_keyframes(const std::shared_ptr<data::keyframe>& keyfrm_1, const std::shared_ptr<data::keyframe>& keyfrm_2,
                                         const std::vector<std::pair<unsigned int, unsigned int>>& matches);
 
+    void triangulate_line_with_two_keyframes(const std::shared_ptr<data::keyframe>& cur_keyfrm,
+                                             const std::shared_ptr<data::keyframe>& ngh_keyfrm);
+
     //! Update the new keyframe
     void update_new_keyframe();
 
     //! Fuse duplicated landmarks between current keyframe and covisibility keyframes
     void fuse_landmark_duplication(const std::vector<std::shared_ptr<data::keyframe>>& fuse_tgt_keyfrms,
                                    nondeterministic::unordered_map<std::shared_ptr<data::landmark>, std::shared_ptr<data::landmark>>& replaced_lms);
+
+    void fuse_landmark_line_duplication(const std::vector<std::shared_ptr<data::keyframe>>& fuse_tgt_keyfrms);
 
     //-----------------------------------------
     // management for reset process
@@ -243,6 +258,14 @@ private:
 
     //! local bundle adjuster
     std::unique_ptr<optimize::local_bundle_adjuster> local_bundle_adjuster_ = nullptr;
+
+    //! point + line local bundle adjuster (Structure-PLP-SLAM)
+    std::unique_ptr<optimize::local_bundle_adjuster_extended_line> local_bundle_adjuster_extended_line_ = nullptr;
+
+    //! point + plane local bundle adjuster (Structure-PLP-SLAM)
+    std::unique_ptr<optimize::local_bundle_adjuster_extended_plane> local_bundle_adjuster_extended_plane_ = nullptr;
+
+    plp::planar_mapping_module* planar_mapper_ = nullptr;
 
     //! bridge flag to abort local BA
     bool abort_local_BA_ = false;

@@ -29,6 +29,8 @@ class config;
 namespace data {
 class keyframe;
 class landmark;
+class landmark_plane;
+class landmark_line;
 class map_database;
 class marker;
 } // namespace data
@@ -82,6 +84,10 @@ public:
                                std::set<std::shared_ptr<data::landmark>>& local_landmarks);
 
     unsigned int get_markers(std::vector<std::shared_ptr<data::marker>>& all_markers);
+
+    unsigned int get_landmark_planes(std::vector<std::shared_ptr<data::landmark_plane>>& all_planes) const;
+
+    unsigned int get_landmark_lines(std::vector<std::shared_ptr<data::landmark_line>>& all_lines) const;
 
 private:
     //! config

@@ -39,7 +39,7 @@ public:
      * @param yaml_node
      * @param fix_scale
      */
-    explicit graph_optimizer(const YAML::Node& yaml_node, const bool fix_scale);
+    explicit graph_optimizer(const YAML::Node& yaml_node, data::map_database* map_db, bool fix_scale);
 
     /**
      * Destructor
@@ -61,7 +61,7 @@ public:
                   std::unordered_map<unsigned int, unsigned int>& found_lm_to_ref_keyfrm_id) const;
 
 private:
-    //! SE3 optimization or Sim3 optimization
+    data::map_database* map_db_ = nullptr;
     const bool fix_scale_;
 
     unsigned int min_num_shared_lms_ = 100;

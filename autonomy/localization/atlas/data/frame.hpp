@@ -22,6 +22,8 @@
 #include "autonomy/localization/atlas/feature/orb_params.hpp"
 #include "autonomy/localization/atlas/util/converter.hpp"
 #include "autonomy/localization/atlas/data/frame_observation.hpp"
+#include "autonomy/localization/atlas/data/line_frame_observation.hpp"
+#include "autonomy/localization/atlas/data/landmark_line.hpp"
 #include "autonomy/localization/atlas/data/bow_vocabulary.hpp"
 #include "autonomy/localization/atlas/data/marker2d.hpp"
 #include "autonomy/localization/atlas/data/bow_vocabulary_fwd.hpp"
@@ -158,6 +160,24 @@ public:
 
     void set_landmarks(const std::vector<std::shared_ptr<landmark>>& landmarks);
 
+    /** Initialize line landmark associations after line_obs_ is filled. */
+    void init_line_tracking(unsigned int num_scale_levels, float scale_factor);
+
+    bool can_observe_line(const std::shared_ptr<landmark_line>& lm_line,
+                          Vec2_t& reproj_sp, float& x_right_sp,
+                          Vec2_t& reproj_ep, float& x_right_ep,
+                          unsigned int& pred_scale_level) const;
+
+    void add_landmark_line(const std::shared_ptr<landmark_line>& lm_line, unsigned int idx);
+    std::shared_ptr<landmark_line> get_landmark_line(unsigned int idx) const;
+    void erase_landmark_line_with_index(unsigned int idx);
+    std::vector<std::shared_ptr<landmark_line>> get_landmarks_line() const;
+    void erase_landmarks_line();
+
+    std::vector<unsigned int> get_keylines_in_cell(float ref_x1, float ref_y1,
+                                                   float ref_x2, float ref_y2, float margin,
+                                                   int min_level = -1, int max_level = -1) const;
+
     /**
      * Get keypoint indices in the cell which reference point is located
      * @param ref_x
@@ -175,6 +195,7 @@ public:
      * @return
      */
     Vec3_t triangulate_stereo(const unsigned int idx) const;
+    Vec6_t triangulate_stereo_for_line(unsigned int idx) const;
 
     //! current frame ID
     unsigned int id_;
@@ -190,6 +211,23 @@ public:
 
     //! constant observations
     frame_observation frm_obs_;
+
+    //! optional LSD/LBD line observations (Structure-PLP-SLAM)
+    line_frame_observation line_obs_;
+
+    /** Instance segmentation mask (CV_8UC3, RGB label per pixel). */
+    cv::Mat img_seg_mask_;
+
+    /** RGB-D depth map in meters (CV_32FC1), used for dense plane sampling. */
+    cv::Mat depth_map_;
+
+    //! line landmark associations (parallel to line_obs_.keylines)
+    std::vector<std::shared_ptr<landmark_line>> landmarks_line_;
+    std::vector<bool> outlier_flags_line_;
+    std::vector<float> scale_factors_lsd_;
+    std::vector<float> inv_level_sigma_sq_lsd_;
+    float log_scale_factor_lsd_ = 0.f;
+    unsigned int num_scale_levels_lsd_ = 1;
 
     //! markers 2D (ID to marker2d map)
     std::unordered_map<unsigned int, marker2d> markers_2d_;

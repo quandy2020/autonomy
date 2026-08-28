@@ -90,6 +90,14 @@ class Config:
         }
         if isinstance(footprint_cfg, Mapping) and footprint_cfg.get("enabled", False):
             channels["footprint"] = footprint_cfg.get("channel", "/footprint")
+        camera_cfg = sensors.get("camera") or {}
+        if camera_cfg.get("semantic_enabled", False):
+            semantic_channel = str(camera_cfg.get("semantic_channel") or "").strip()
+            if semantic_channel:
+                channels["semantic"] = semantic_channel
+            semantic_ids_channel = str(camera_cfg.get("semantic_ids_channel") or "").strip()
+            if semantic_ids_channel:
+                channels["semantic_ids"] = semantic_ids_channel
         ply_channel = str(ply.get("channel") or "").strip()
         if ply_channel:
             channels["map_cloud"] = ply_channel

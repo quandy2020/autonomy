@@ -29,6 +29,8 @@
 #include "autonomy/localization/atlas/camera/perspective.hpp"
 #include "autonomy/localization/atlas/data/keyframe.hpp"
 #include "autonomy/localization/atlas/data/landmark.hpp"
+#include "autonomy/localization/atlas/data/landmark_line.hpp"
+#include "autonomy/localization/atlas/data/landmark_plane.hpp"
 #include "autonomy/localization/atlas/publish/frame_publisher.hpp"
 #include "autonomy/localization/atlas/publish/map_publisher.hpp"
 #include "autonomy/transform/buffer_utils.hpp"
@@ -60,6 +62,10 @@ Mat44_t OpencvPoseToRosMap(const Mat44_t& T_wc_opencv) {
 
 Eigen::Vector3d OpencvPointToRosMap(const Eigen::Vector3d& p_opencv) {
     return OpencvWorldToRosMapR() * p_opencv;
+}
+
+Eigen::Vector3d OpencvNormalToRosMap(const Eigen::Vector3d& n_opencv) {
+    return OpencvWorldToRosMapR() * n_opencv;
 }
 
 /** OpenCV optical → REP-103 camera_link (X forward, Y left, Z up). */
@@ -216,6 +222,21 @@ bool VizBridge::Start(const std::shared_ptr<autolink::Node>& node) {
             node_->CreateWriter<automsgs::msgs::sensor_msgs::PointCloud2>(
                 options_.map_points_topic);
     }
+    if (options_.publish_map_planes) {
+        map_planes_writer_ = node_->CreateWriter<
+            automsgs::msgs::visualization_msgs::MarkerArray>(
+            options_.map_planes_topic);
+    }
+    if (options_.publish_map_lines) {
+        map_lines_writer_ = node_->CreateWriter<
+            automsgs::msgs::visualization_msgs::MarkerArray>(
+            options_.map_lines_topic);
+    }
+    if (options_.publish_loop_edges) {
+        loop_edges_writer_ = node_->CreateWriter<
+            automsgs::msgs::visualization_msgs::MarkerArray>(
+            options_.loop_edges_topic);
+    }
 
     if (options_.publish_map_odom_tf) {
         tf_buffer_ = transform::Buffer::Instance();
@@ -264,6 +285,9 @@ void VizBridge::Stop() {
     current_frustum_writer_.reset();
     keyframe_frustums_writer_.reset();
     map_points_writer_.reset();
+    map_planes_writer_.reset();
+    map_lines_writer_.reset();
+    loop_edges_writer_.reset();
     tf_writer_.reset();
     tf_buffer_ = nullptr;
     node_.reset();
@@ -404,6 +428,12 @@ void VizBridge::PublishTrackingImage(double timestamp_sec) {
         return;
     }
     cv::Mat img = fp->draw_frame();
+    const cv::Mat seg_panel = fp->draw_seg_mask();
+    if (!seg_panel.empty()) {
+        cv::Mat stacked;
+        cv::vconcat(img, seg_panel, stacked);
+        img = stacked;
+    }
     automsgs::msgs::sensor_msgs::Image msg;
     if (!CvMatToImageMsg(img, timestamp_sec, options_.camera_frame, &msg)) {
         return;
@@ -628,7 +658,10 @@ void VizBridge::PublishMapPoints(double timestamp_sec) {
     mp->get_landmarks(landmarks, local_landmarks);
 
     std::vector<float> xyz;
+    std::vector<uint32_t> rgb_packed;
     xyz.reserve(landmarks.size() * 3);
+    rgb_packed.reserve(landmarks.size());
+    constexpr uint32_t kWhiteRgb = 0x00FFFFFFu;
     for (std::size_t i = 0; i < landmarks.size();
          i += static_cast<std::size_t>(options_.map_points_skip)) {
         const auto& lm = landmarks[i];
@@ -640,6 +673,7 @@ void VizBridge::PublishMapPoints(double timestamp_sec) {
         xyz.push_back(static_cast<float>(pos(0)));
         xyz.push_back(static_cast<float>(pos(1)));
         xyz.push_back(static_cast<float>(pos(2)));
+        rgb_packed.push_back(kWhiteRgb);
     }
 
     automsgs::msgs::sensor_msgs::PointCloud2 cloud;
@@ -648,11 +682,11 @@ void VizBridge::PublishMapPoints(double timestamp_sec) {
     cloud.set_width(static_cast<uint32_t>(xyz.size() / 3));
     cloud.set_is_dense(true);
     cloud.set_is_bigendian(false);
-    cloud.set_point_step(12);
+    cloud.set_point_step(16);
     cloud.set_row_step(cloud.point_step() * cloud.width());
 
-    const char* names[] = {"x", "y", "z"};
-    for (int i = 0; i < 3; ++i) {
+    const char* names[] = {"x", "y", "z", "rgb"};
+    for (int i = 0; i < 4; ++i) {
         auto* field = cloud.add_fields();
         field->set_name(names[i]);
         field->set_offset(static_cast<uint32_t>(i * 4));
@@ -660,10 +694,242 @@ void VizBridge::PublishMapPoints(double timestamp_sec) {
         field->set_count(1);
     }
     if (!xyz.empty()) {
-        cloud.set_data(reinterpret_cast<const char*>(xyz.data()),
-                       xyz.size() * sizeof(float));
+        std::vector<float> data;
+        data.reserve(xyz.size() + rgb_packed.size());
+        for (std::size_t i = 0; i < rgb_packed.size(); ++i) {
+            data.push_back(xyz[i * 3 + 0]);
+            data.push_back(xyz[i * 3 + 1]);
+            data.push_back(xyz[i * 3 + 2]);
+            float rgb_as_float = 0.f;
+            const uint32_t rgb = rgb_packed[i];
+            std::memcpy(&rgb_as_float, &rgb, sizeof(float));
+            data.push_back(rgb_as_float);
+        }
+        cloud.set_data(reinterpret_cast<const char*>(data.data()),
+                       data.size() * sizeof(float));
     }
     map_points_writer_->Write(cloud);
+}
+
+void VizBridge::PublishMapPlanes(double timestamp_sec) {
+    if (!map_planes_writer_) {
+        return;
+    }
+    const auto mp = slam_->get_map_publisher();
+    if (!mp) {
+        return;
+    }
+
+    std::vector<std::shared_ptr<data::landmark_plane>> planes;
+    mp->get_landmark_planes(planes);
+
+    using Marker = automsgs::msgs::visualization_msgs::Marker;
+    using MarkerArray = automsgs::msgs::visualization_msgs::MarkerArray;
+    MarkerArray array;
+
+    int marker_id = 0;
+    constexpr double kSquareSize = 0.10;
+    constexpr float kPlaneAlpha = 0.7f;
+
+    for (const auto& plane : planes) {
+        if (!plane || !plane->is_valid()) {
+            continue;
+        }
+        const auto map_pts = plane->get_landmarks();
+        if (map_pts.empty()) {
+            continue;
+        }
+
+        const double err_thr = plane->get_best_error();
+        const Vec3_t n_cv = plane->get_normal().normalized();
+        Vec3_t base1_cv = Vec3_t::Zero();
+        Vec3_t base2_cv = Vec3_t::Zero();
+        bool found_basis = false;
+        for (size_t i = 0; i < map_pts.size() && !found_basis; ++i) {
+            if (!map_pts[i] || map_pts[i]->will_be_erased() ||
+                !map_pts[i]->get_owning_plane() ||
+                plane->calculate_distance(map_pts[i]->get_pos_in_world()) > err_thr) {
+                continue;
+            }
+            for (size_t j = i + 1; j < map_pts.size(); ++j) {
+                if (!map_pts[j] || map_pts[j]->will_be_erased() ||
+                    !map_pts[j]->get_owning_plane() ||
+                    plane->calculate_distance(map_pts[j]->get_pos_in_world()) > err_thr) {
+                    continue;
+                }
+                const Vec3_t diff =
+                    map_pts[i]->get_pos_in_world() - map_pts[j]->get_pos_in_world();
+                if (diff.norm() < 1e-3) {
+                    continue;
+                }
+                base1_cv = diff.normalized();
+                base2_cv = base1_cv.cross(n_cv).normalized();
+                if (base2_cv.norm() > 1e-6) {
+                    found_basis = true;
+                    break;
+                }
+            }
+        }
+        if (!found_basis) {
+            continue;
+        }
+
+        auto* marker = array.add_markers();
+        SetHeader(marker->mutable_header(), timestamp_sec, options_.map_frame);
+        marker->set_ns("map_planes");
+        marker->set_id(marker_id++);
+        marker->set_type(Marker::TRIANGLE_LIST);
+        marker->set_action(Marker::ADD);
+        marker->mutable_pose()->mutable_orientation()->set_w(1.0);
+
+        float pr = 0.5f;
+        float pg = 0.5f;
+        float pb = 0.5f;
+        plane->get_display_color(pr, pg, pb);
+        marker->mutable_color()->set_r(pr);
+        marker->mutable_color()->set_g(pg);
+        marker->mutable_color()->set_b(pb);
+        marker->mutable_color()->set_a(kPlaneAlpha);
+
+        auto add_point = [&](const Vec3_t& p_ros) {
+            auto* pt = marker->add_points();
+            pt->set_x(p_ros(0));
+            pt->set_y(p_ros(1));
+            pt->set_z(p_ros(2));
+        };
+        for (const auto& point : map_pts) {
+            if (!point || point->will_be_erased() || !point->get_owning_plane()) {
+                continue;
+            }
+            if (plane->calculate_distance(point->get_pos_in_world()) > err_thr) {
+                continue;
+            }
+            const Vec3_t center = point->get_pos_in_world();
+            const Vec3_t tr = center + kSquareSize * (base1_cv + base2_cv);
+            const Vec3_t br = center + kSquareSize * (base1_cv - base2_cv);
+            const Vec3_t bl = center - kSquareSize * (base1_cv + base2_cv);
+            const Vec3_t tl = center + kSquareSize * (base2_cv - base1_cv);
+            add_point(OpencvPointToRosMap(tr));
+            add_point(OpencvPointToRosMap(br));
+            add_point(OpencvPointToRosMap(bl));
+            add_point(OpencvPointToRosMap(tr));
+            add_point(OpencvPointToRosMap(bl));
+            add_point(OpencvPointToRosMap(tl));
+        }
+    }
+
+    map_planes_writer_->Write(array);
+    last_plane_count_ = static_cast<unsigned int>(planes.size());
+}
+
+void VizBridge::PublishMapLines(double timestamp_sec) {
+    if (!map_lines_writer_) {
+        return;
+    }
+    const auto mp = slam_->get_map_publisher();
+    if (!mp) {
+        return;
+    }
+
+    std::vector<std::shared_ptr<data::landmark_line>> lines;
+    mp->get_landmark_lines(lines);
+
+    using Marker = automsgs::msgs::visualization_msgs::Marker;
+    using MarkerArray = automsgs::msgs::visualization_msgs::MarkerArray;
+    MarkerArray array;
+
+    auto* marker = array.add_markers();
+    SetHeader(marker->mutable_header(), timestamp_sec, options_.map_frame);
+    marker->set_ns("map_lines");
+    marker->set_id(0);
+    marker->set_type(Marker::LINE_LIST);
+    marker->set_action(Marker::ADD);
+    marker->mutable_scale()->set_x(0.02);
+    marker->mutable_color()->set_r(0.4f);
+    marker->mutable_color()->set_g(0.35f);
+    marker->mutable_color()->set_b(0.8f);
+    marker->mutable_color()->set_a(0.95f);
+
+    for (const auto& lm_line : lines) {
+        if (!lm_line || lm_line->will_be_erased()) {
+            continue;
+        }
+        const Vec6_t pos_w = lm_line->get_pos_in_world();
+        const Vec3_t sp = OpencvPointToRosMap(pos_w.head<3>());
+        const Vec3_t ep = OpencvPointToRosMap(pos_w.tail<3>());
+
+        auto* pt_sp = marker->add_points();
+        pt_sp->set_x(sp(0));
+        pt_sp->set_y(sp(1));
+        pt_sp->set_z(sp(2));
+        auto* pt_ep = marker->add_points();
+        pt_ep->set_x(ep(0));
+        pt_ep->set_y(ep(1));
+        pt_ep->set_z(ep(2));
+    }
+
+    map_lines_writer_->Write(array);
+    last_line_count_ = static_cast<unsigned int>(lines.size());
+}
+
+void VizBridge::PublishLoopEdges(double timestamp_sec) {
+    if (!loop_edges_writer_) {
+        return;
+    }
+    using Marker = automsgs::msgs::visualization_msgs::Marker;
+    using MarkerArray = automsgs::msgs::visualization_msgs::MarkerArray;
+
+    std::vector<std::shared_ptr<data::keyframe>> keyframes;
+    const auto mp = slam_->get_map_publisher();
+    if (!mp) {
+        return;
+    }
+    mp->get_keyframes(keyframes);
+
+    MarkerArray array;
+    {
+        auto* clear = array.add_markers();
+        clear->set_action(Marker::DELETEALL);
+    }
+
+    Marker* marker = array.add_markers();
+    SetHeader(marker->mutable_header(), timestamp_sec, options_.map_frame);
+    marker->set_ns("loop_edges");
+    marker->set_id(0);
+    marker->set_type(Marker::LINE_LIST);
+    marker->set_action(Marker::ADD);
+    marker->mutable_pose()->mutable_orientation()->set_w(1.0);
+    marker->mutable_scale()->set_x(0.025);
+    marker->mutable_color()->set_r(0.1f);
+    marker->mutable_color()->set_g(1.0f);
+    marker->mutable_color()->set_b(0.2f);
+    marker->mutable_color()->set_a(0.95f);
+
+    std::set<std::pair<unsigned int, unsigned int>> drawn;
+    for (const auto& keyfrm : keyframes) {
+        if (!keyfrm || keyfrm->will_be_erased()) {
+            continue;
+        }
+        const Vec3_t p0 = OpencvPointToRosMap(keyfrm->get_trans_wc());
+        for (const auto& connected : keyfrm->graph_node_->get_loop_edges()) {
+            if (!connected || connected->will_be_erased()) {
+                continue;
+            }
+            unsigned int id0 = keyfrm->id_;
+            unsigned int id1 = connected->id_;
+            if (id0 > id1) {
+                std::swap(id0, id1);
+            }
+            if (!drawn.insert({id0, id1}).second) {
+                continue;
+            }
+            const Vec3_t p1 = OpencvPointToRosMap(connected->get_trans_wc());
+            AddLine(marker->mutable_points(), p0, p1);
+        }
+    }
+
+    loop_edges_writer_->Write(array);
+    last_loop_edge_count_ = static_cast<unsigned int>(drawn.size());
 }
 
 void VizBridge::PublishFrame(double timestamp_sec,
@@ -675,6 +941,15 @@ void VizBridge::PublishFrame(double timestamp_sec,
     if (!running_) {
         return;
     }
+
+    const bool loop_ba_running = slam_->loop_BA_is_running();
+    if (was_loop_ba_running_ && !loop_ba_running) {
+        last_keyframe_count_ = 0;
+        last_plane_count_ = 0;
+        last_line_count_ = 0;
+        last_loop_edge_count_ = 0;
+    }
+    was_loop_ba_running_ = loop_ba_running;
 
     if (options_.publish_tracking_image) {
         PublishTrackingImage(timestamp_sec);
@@ -695,6 +970,11 @@ void VizBridge::PublishFrame(double timestamp_sec,
         }
     }
 
+    // Do not read the map graph while loop BA holds mtx_database_ (avoids g2o / viz races).
+    if (loop_ba_running) {
+        return;
+    }
+
     unsigned int kf_count = 0;
     if (const auto mp = slam_->get_map_publisher()) {
         std::vector<std::shared_ptr<data::keyframe>> tmp;
@@ -708,6 +988,49 @@ void VizBridge::PublishFrame(double timestamp_sec,
     if (options_.publish_map_points &&
         (keyframes_changed || last_keyframe_count_ == 0)) {
         PublishMapPoints(timestamp_sec);
+    }
+    if (options_.publish_map_planes) {
+        unsigned int plane_count = 0;
+        if (const auto mp = slam_->get_map_publisher()) {
+            std::vector<std::shared_ptr<data::landmark_plane>> tmp;
+            plane_count = mp->get_landmark_planes(tmp);
+        }
+        if (keyframes_changed || plane_count != last_plane_count_) {
+            PublishMapPlanes(timestamp_sec);
+        }
+    }
+    if (options_.publish_map_lines) {
+        PublishMapLines(timestamp_sec);
+    }
+    if (options_.publish_loop_edges) {
+        unsigned int loop_edge_count = last_loop_edge_count_;
+        if (const auto mp = slam_->get_map_publisher()) {
+            std::vector<std::shared_ptr<data::keyframe>> tmp;
+            mp->get_keyframes(tmp);
+            loop_edge_count = 0;
+            std::set<std::pair<unsigned int, unsigned int>> counted;
+            for (const auto& keyfrm : tmp) {
+                if (!keyfrm) {
+                    continue;
+                }
+                for (const auto& connected : keyfrm->graph_node_->get_loop_edges()) {
+                    if (!connected) {
+                        continue;
+                    }
+                    unsigned int id0 = keyfrm->id_;
+                    unsigned int id1 = connected->id_;
+                    if (id0 > id1) {
+                        std::swap(id0, id1);
+                    }
+                    if (counted.insert({id0, id1}).second) {
+                        ++loop_edge_count;
+                    }
+                }
+            }
+        }
+        if (keyframes_changed || loop_edge_count != last_loop_edge_count_) {
+            PublishLoopEdges(timestamp_sec);
+        }
     }
     last_keyframe_count_ = kf_count;
 }

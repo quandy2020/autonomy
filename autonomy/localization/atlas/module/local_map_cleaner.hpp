@@ -25,6 +25,7 @@ namespace autonomy::localization::atlas {
 namespace data {
 class keyframe;
 class landmark;
+class landmark_line;
 class bow_database;
 class map_database;
 } // namespace data
@@ -50,6 +51,10 @@ public:
         fresh_landmarks_.push_back(lm);
     }
 
+    void add_fresh_landmark_line(const std::shared_ptr<data::landmark_line>& lm_line) {
+        fresh_landmarks_line_.push_back(lm_line);
+    }
+
     /**
      * Reset the buffer
      */
@@ -59,6 +64,8 @@ public:
      * Remove redundant landmarks
      */
     unsigned int remove_invalid_landmarks(const unsigned int cur_keyfrm_id);
+
+    unsigned int remove_redundant_landmarks_line(const unsigned int cur_keyfrm_id);
 
     /**
      * Remove redundant keyframes
@@ -90,6 +97,7 @@ private:
 
     //! fresh landmarks to check their redundancy
     std::list<std::shared_ptr<data::landmark>> fresh_landmarks_;
+    std::list<std::shared_ptr<data::landmark_line>> fresh_landmarks_line_;
 };
 
 } // namespace module

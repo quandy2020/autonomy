@@ -34,6 +34,7 @@ namespace data {
 class frame;
 
 class keyframe;
+class landmark_plane;
 
 class map_database;
 
@@ -99,6 +100,10 @@ public:
     int get_index_in_keyframe(const std::shared_ptr<keyframe>& keyfrm) const;
     //! whether this landmark is observed in the specified keyframe
     bool is_observed_in_keyframe(const std::shared_ptr<keyframe>& keyfrm) const;
+
+    std::shared_ptr<landmark_plane> get_owning_plane() const;
+    void set_owning_plane(const std::shared_ptr<landmark_plane>& plane);
+    void remove_owning_plane();
 
     //! check the distance between landmark and camera is in ORB scale variance
     inline bool is_inside_in_orb_scale(const float cam_to_lm_dist, const float margin_far, const float margin_near) const {
@@ -198,6 +203,8 @@ private:
 
     mutable std::mutex mtx_position_;
     mutable std::mutex mtx_observations_;
+
+    std::weak_ptr<landmark_plane> owning_plane_;
 };
 
 } // namespace data

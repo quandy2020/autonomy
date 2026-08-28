@@ -251,7 +251,10 @@ class Runner:
         snap = getattr(self.simulator, "snap_to_navmesh", None)
         if callable(snap):
             snap()
-            self.robot.teleport(*self.simulator.pose())
+        ensure = getattr(self.simulator, "ensure_semantic_spawn", None)
+        if callable(ensure):
+            ensure()
+        self.robot.teleport(*self.simulator.pose())
         cam_noise = self.camera.get("noise") or {}
         self.sensors = Sensors(
             angle_min=self.lidar_2d["angle_min"],
@@ -282,6 +285,12 @@ class Runner:
             types["rgb"] = Image
             types["depth"] = Image
             types["camera_info"] = CameraInfo
+            if self.camera.get("semantic_enabled", False) and str(
+                self.camera.get("semantic_channel") or ""
+            ).strip():
+                types["semantic"] = Image
+            if str(self.camera.get("semantic_ids_channel") or "").strip():
+                types["semantic_ids"] = Image
         if self.imu.get("enabled", False):
             types["imu"] = Imu
         if self.robot_cfg["truth"]["enabled"]:
@@ -456,11 +465,29 @@ class Runner:
         if self.camera_elapsed < 1.0 / self.camera["rate_hz"]:
             return
         self.camera_elapsed = 0.0
-        color, depth = self.sensors.sample_camera(self.simulator)
-        self.encode_publish_camera(color, depth, stamp)
+        with_semantic = bool(
+            self.camera.get("semantic_enabled", False)
+            and "semantic" in self.bridge.writers
+        )
+        sampled = self.sensors.sample_camera(
+            self.simulator, with_semantic=with_semantic
+        )
+        if with_semantic:
+            color, depth, semantic = sampled
+            self.encode_publish_camera(color, depth, stamp, semantic=semantic)
+        else:
+            color, depth = sampled
+            self.encode_publish_camera(color, depth, stamp)
 
-    def encode_publish_camera(self, color: Any, depth: Any, stamp: Tuple[int, int]) -> None:
-        """Publish RGB, depth, and CameraInfo with identical ``header.stamp``."""
+    def encode_publish_camera(
+        self,
+        color: Any,
+        depth: Any,
+        stamp: Tuple[int, int],
+        *,
+        semantic: Any | None = None,
+    ) -> None:
+        """Publish RGB, depth, semantic, and CameraInfo with identical ``header.stamp``."""
         frame = self.camera["frame"]
         rgb_msg = Messages.encode_image(color, stamp, frame, "rgb8")
         depth_msg = Messages.encode_image(
@@ -481,6 +508,27 @@ class Runner:
         self.bridge.publish("rgb", rgb_msg)
         self.bridge.publish("depth", depth_msg)
         self.bridge.publish("camera_info", info_msg)
+        if (
+            semantic is not None
+            and self.camera.get("semantic_enabled", False)
+            and "semantic" in self.bridge.writers
+        ):
+            colored_fn = getattr(self.simulator, "semantic_ids_to_colored_rgb", None)
+            if not callable(colored_fn):
+                raise RuntimeError("simulator cannot colorize semantic ids")
+            colored = colored_fn(semantic)
+            semantic_msg = Messages.encode_image(colored, stamp, frame, "rgb8")
+            semantic_msg.header.stamp.sec = int(rgb_msg.header.stamp.sec)
+            semantic_msg.header.stamp.nanosec = int(rgb_msg.header.stamp.nanosec)
+            self.bridge.publish("semantic", semantic_msg)
+        ids_channel = str(self.camera.get("semantic_ids_channel") or "").strip()
+        if semantic is not None and ids_channel and "semantic_ids" in self.bridge.writers:
+            ids_msg = Messages.encode_image(
+                np.asarray(semantic, dtype=np.uint16), stamp, frame, "mono16"
+            )
+            ids_msg.header.stamp.sec = int(rgb_msg.header.stamp.sec)
+            ids_msg.header.stamp.nanosec = int(rgb_msg.header.stamp.nanosec)
+            self.bridge.publish("semantic_ids", ids_msg)
 
     def submit_map(self, stamp: Tuple[int, int]) -> None:
         """Publish the static map without blocking the control loop after first sample.
@@ -805,8 +853,19 @@ class Runner:
         if self.camera_elapsed < 1.0 / self.camera["rate_hz"]:
             return
         self.camera_elapsed = 0.0
-        color, depth = self.sensors.sample_camera(self.simulator)
-        self.encode_publish_camera(color, depth, stamp)
+        with_semantic = bool(
+            self.camera.get("semantic_enabled", False)
+            and "semantic" in self.bridge.writers
+        )
+        sampled = self.sensors.sample_camera(
+            self.simulator, with_semantic=with_semantic
+        )
+        if with_semantic:
+            color, depth, semantic = sampled
+            self.encode_publish_camera(color, depth, stamp, semantic=semantic)
+        else:
+            color, depth = sampled
+            self.encode_publish_camera(color, depth, stamp)
 
     def publish_imu(self, yaw: float, linear: float, stamp: Tuple[int, int]) -> None:
         """Publish IMU when enabled and due.

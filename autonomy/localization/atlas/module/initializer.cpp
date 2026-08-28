@@ -1,6 +1,7 @@
 #include "autonomy/localization/atlas/config.hpp"
 #include "autonomy/localization/atlas/data/keyframe.hpp"
 #include "autonomy/localization/atlas/data/landmark.hpp"
+#include "autonomy/localization/atlas/data/landmark_line.hpp"
 #include "autonomy/localization/atlas/data/marker.hpp"
 #include "autonomy/localization/atlas/data/map_database.hpp"
 #include "autonomy/localization/atlas/initialize/bearing_vector.hpp"
@@ -277,7 +278,7 @@ bool initializer::create_map_for_monocular(data::bow_vocabulary* bow_vocab, data
     assign_marker_associations(curr_keyfrm);
 
     // global bundle adjustment
-    const auto global_bundle_adjuster = optimize::global_bundle_adjuster(num_ba_iters_, true, verbose_);
+    const auto global_bundle_adjuster = optimize::global_bundle_adjuster(map_db_, num_ba_iters_, true, verbose_);
     std::vector<std::shared_ptr<data::keyframe>> keyfrms{init_keyfrm, curr_keyfrm};
     if (markers.size() > 0) {
         // Adjust map scale with reference to marker width.
@@ -383,6 +384,28 @@ bool initializer::create_map_for_stereo(data::bow_vocabulary* bow_vocab, data::f
 
         // add the landmark to the map DB
         map_db_->add_landmark(lm);
+    }
+
+    if (map_db_->use_line_tracking() && !curr_frm.line_obs_.empty()) {
+        curr_frm.init_line_tracking(1, 2.f);
+        for (unsigned int idx_l = 0; idx_l < static_cast<unsigned int>(curr_frm.line_obs_.size()); ++idx_l) {
+            if (idx_l >= curr_frm.line_obs_.depths_start.size() ||
+                curr_frm.line_obs_.depths_start.at(idx_l) <= 0.0f ||
+                curr_frm.line_obs_.depths_end.at(idx_l) <= 0.0f) {
+                continue;
+            }
+            const Vec6_t pos_w_line = curr_frm.triangulate_stereo_for_line(idx_l);
+            if (pos_w_line.isZero()) {
+                continue;
+            }
+            auto lm_line = std::make_shared<data::landmark_line>(map_db_->next_landmark_line_id_++, pos_w_line, curr_keyfrm);
+            lm_line->add_observation(curr_keyfrm, idx_l);
+            curr_keyfrm->add_landmark_line(lm_line, idx_l);
+            lm_line->compute_descriptor();
+            lm_line->update_information();
+            curr_frm.add_landmark_line(lm_line, idx_l);
+            map_db_->add_landmark_line(lm_line);
+        }
     }
 
     AINFO << "new map created with " << map_db_->get_num_landmarks() << " points: frame " << curr_frm.id_;

@@ -10,6 +10,7 @@
 #include "autonomy/localization/atlas/match/projection.hpp"
 #include "autonomy/localization/atlas/module/local_map_updater.hpp"
 #include "autonomy/localization/atlas/optimize/pose_optimizer_factory.hpp"
+#include "autonomy/localization/atlas/optimize/pose_optimizer_extended_line.hpp"
 #include "autonomy/localization/atlas/util/yaml.hpp"
 
 #include <chrono>
@@ -51,6 +52,12 @@ void tracking_module::set_mapping_module(mapping_module* mapper) {
 
 void tracking_module::set_global_optimization_module(global_optimization_module* global_optimizer) {
     global_optimizer_ = global_optimizer;
+}
+
+void tracking_module::configure_plp_line_tracking() {
+    pose_optimizer_extended_line_ = std::make_shared<optimize::pose_optimizer_extended_line>();
+    frame_tracker_.set_line_tracking(map_db_, pose_optimizer_extended_line_);
+    relocalizer_.set_line_tracking(pose_optimizer_extended_line_, map_db_->use_line_tracking());
 }
 
 bool tracking_module::request_relocalize_by_pose(const Mat44_t& pose_cw) {
@@ -129,6 +136,9 @@ std::shared_ptr<Mat44_t> tracking_module::feed_frame(data::frame curr_frm) {
     }
 
     curr_frm_ = curr_frm;
+    if (map_db_->use_line_tracking() && !curr_frm_.line_obs_.empty()) {
+        curr_frm_.init_line_tracking(1, 2.f);
+    }
 
     bool succeeded = false;
     if (tracking_state_ == tracker_state_t::Initializing) {
@@ -188,6 +198,12 @@ bool tracking_module::track(bool relocalization_is_needed,
                             unsigned int& num_tracked_lms,
                             unsigned int& num_reliable_lms,
                             const unsigned int min_num_obs_thr) {
+    struct track_busy_guard {
+        std::atomic<bool>* flag;
+        explicit track_busy_guard(std::atomic<bool>* f) : flag(f) { flag->store(true, std::memory_order_release); }
+        ~track_busy_guard() { flag->store(false, std::memory_order_release); }
+    } busy_guard(&track_in_progress_);
+
     // LOCK the map database
     std::lock_guard<std::mutex> lock1(data::map_database::mtx_database_);
     std::lock_guard<std::mutex> lock2(mtx_last_frm_);
@@ -260,6 +276,9 @@ bool tracking_module::track_local_map(unsigned int& num_tracked_lms,
 
     if (succeeded) {
         succeeded = search_local_landmarks(fixed_keyframe_id_threshold);
+        if (succeeded && map_db_->use_line_tracking()) {
+            search_local_landmarks_line();
+        }
     }
 
     if (succeeded) {
@@ -443,7 +462,12 @@ bool tracking_module::optimize_current_frame_with_local_map(unsigned int& num_tr
     // optimize the pose
     Mat44_t optimized_pose;
     std::vector<bool> outlier_flags;
-    pose_optimizer_->optimize(curr_frm_, optimized_pose, outlier_flags);
+    std::vector<bool> outlier_flags_line;
+    if (map_db_->use_line_tracking() && pose_optimizer_extended_line_ && !curr_frm_.line_obs_.empty()) {
+        pose_optimizer_extended_line_->optimize(curr_frm_, optimized_pose, outlier_flags, outlier_flags_line);
+    } else {
+        pose_optimizer_->optimize(curr_frm_, optimized_pose, outlier_flags);
+    }
     curr_frm_.set_pose_cw(optimized_pose);
 
     // Reject outliers
@@ -452,6 +476,14 @@ bool tracking_module::optimize_current_frame_with_local_map(unsigned int& num_tr
             continue;
         }
         curr_frm_.erase_landmark_with_index(idx);
+    }
+    if (!outlier_flags_line.empty()) {
+        for (unsigned int idx = 0; idx < outlier_flags_line.size(); ++idx) {
+            if (!outlier_flags_line.at(idx)) {
+                continue;
+            }
+            curr_frm_.erase_landmark_line_with_index(idx);
+        }
     }
 
     // count up the number of tracked landmarks
@@ -513,11 +545,12 @@ bool tracking_module::update_local_map(unsigned int fixed_keyframe_id_threshold,
     // acquire the current local map
     local_landmarks_.clear();
     auto local_map_updater = module::local_map_updater(max_num_local_keyfrms_);
-    if (!local_map_updater.acquire_local_map(curr_frm_.get_landmarks(), fixed_keyframe_id_threshold, num_temporal_keyfrms)) {
+    if (!local_map_updater.acquire_local_map(curr_frm_.get_landmarks(), fixed_keyframe_id_threshold, num_temporal_keyfrms, curr_frm_.id_)) {
         return false;
     }
     // update the variables
     local_landmarks_ = local_map_updater.get_local_landmarks();
+    local_landmarks_line_ = local_map_updater.get_local_landmarks_line();
     auto nearest_covisibility = local_map_updater.get_nearest_covisibility();
 
     // update the reference keyframe for the current frame
@@ -526,6 +559,7 @@ bool tracking_module::update_local_map(unsigned int fixed_keyframe_id_threshold,
     }
 
     map_db_->set_local_landmarks(local_landmarks_);
+    map_db_->set_local_landmarks_line(local_landmarks_line_);
     return true;
 }
 
@@ -606,6 +640,46 @@ bool tracking_module::search_local_landmarks(unsigned int fixed_keyframe_id_thre
     return true;
 }
 
+void tracking_module::search_local_landmarks_line() {
+    for (const auto& lm_line : curr_frm_.get_landmarks_line()) {
+        if (!lm_line || lm_line->will_be_erased()) {
+            continue;
+        }
+        lm_line->is_observable_in_tracking_ = false;
+        lm_line->identifier_in_local_lm_search_ = curr_frm_.id_;
+        lm_line->increase_num_observable();
+    }
+
+    bool found_proj_candidate = false;
+    Vec2_t reproj_sp, reproj_ep;
+    float x_right_sp, x_right_ep;
+    unsigned int pred_scale_level;
+    for (const auto& lm_line : local_landmarks_line_) {
+        if (lm_line->identifier_in_local_lm_search_ == curr_frm_.id_ || lm_line->will_be_erased()) {
+            continue;
+        }
+        if (curr_frm_.can_observe_line(lm_line, reproj_sp, x_right_sp, reproj_ep, x_right_ep, pred_scale_level)) {
+            lm_line->reproj_in_tracking_sp_ = reproj_sp;
+            lm_line->reproj_in_tracking_ep_ = reproj_ep;
+            lm_line->scale_level_in_tracking_ = static_cast<int>(pred_scale_level);
+            lm_line->is_observable_in_tracking_ = true;
+            lm_line->increase_num_observable();
+            found_proj_candidate = true;
+        } else {
+            lm_line->is_observable_in_tracking_ = false;
+        }
+    }
+    if (!found_proj_candidate) {
+        return;
+    }
+
+    match::projection projection_matcher(0.8);
+    const float margin = (curr_frm_.id_ < last_reloc_frm_id_ + 2)
+                             ? margin_local_map_projection_unstable_
+                             : margin_local_map_projection_;
+    projection_matcher.match_frame_and_landmarks_line(curr_frm_, local_landmarks_line_, margin);
+}
+
 bool tracking_module::new_keyframe_is_needed(unsigned int num_tracked_lms,
                                              unsigned int num_reliable_lms,
                                              const unsigned int min_num_obs_thr) const {
@@ -674,6 +748,12 @@ void tracking_module::resume() {
     pause_is_requested_ = false;
 
     AINFO << "resume tracking module";
+}
+
+void tracking_module::wait_until_track_idle() const {
+    while (track_in_progress_.load(std::memory_order_acquire)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
 }
 
 bool tracking_module::pause_if_requested() {

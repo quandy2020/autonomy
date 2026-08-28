@@ -21,15 +21,18 @@
 #include "autonomy/localization/atlas/match/projection.hpp"
 #include "autonomy/localization/atlas/match/robust.hpp"
 #include "autonomy/localization/atlas/optimize/pose_optimizer.hpp"
+#include "autonomy/localization/atlas/optimize/pose_optimizer_extended_line.hpp"
 #include "autonomy/localization/atlas/solve/pnp_solver.hpp"
 
 #include <memory>
+#include <set>
 
 namespace autonomy::localization::atlas {
 
 namespace data {
 class frame;
 class bow_database;
+class landmark_line;
 } // namespace data
 
 namespace module {
@@ -52,6 +55,9 @@ public:
 
     //! Destructor
     virtual ~relocalizer();
+
+    void set_line_tracking(const std::shared_ptr<optimize::pose_optimizer_extended_line>& pose_optimizer_extended_line,
+                           bool enabled);
 
     //! Relocalize the specified frame
     bool relocalize(data::bow_database* bow_db, data::frame& curr_frm);
@@ -88,6 +94,13 @@ private:
                                                         const std::vector<std::shared_ptr<data::landmark>>& matched_landmarks,
                                                         const std::vector<float>& scale_factors) const;
 
+    unsigned int run_pose_optimizer(data::frame& curr_frm, Mat44_t& optimized_pose,
+                                    std::vector<bool>& outlier_flags) const;
+
+    std::set<std::shared_ptr<data::landmark_line>> collect_observed_lines(const data::frame& curr_frm) const;
+
+    void reject_line_outliers(data::frame& curr_frm, const std::vector<bool>& outlier_flags_line) const;
+
     //! minimum threshold of the number of BoW matches
     const unsigned int min_num_bow_matches_;
     //! minimum threshold of the number of valid (= inlier after pose optimization) matches
@@ -101,6 +114,8 @@ private:
     const match::robust robust_matcher_;
     //! pose optimizer
     std::shared_ptr<optimize::pose_optimizer> pose_optimizer_ = nullptr;
+    std::shared_ptr<optimize::pose_optimizer_extended_line> pose_optimizer_extended_line_ = nullptr;
+    bool use_line_tracking_ = false;
 
     //! Use fixed random seed for RANSAC if true
     const bool use_fixed_seed_ = false;

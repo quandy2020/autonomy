@@ -40,12 +40,15 @@ namespace atlas {
  *
  * Monocular: /rgb → feed_monocular_frame
  * RGBD:      /rgb + /depth (exact stamp match preferred) → feed_RGBD_frame
+ * Optional:  /seg (CV_8UC3 or mono8 instance labels) when plane mapping is enabled
  */
 class ImageBridge {
 public:
     struct Options {
         std::string rgb_topic = "/camera/rgb/image_raw";
         std::string depth_topic = "/camera/depth/image_raw";
+        /** Semantic / instance segmentation (CV_8UC3 or mono8). Empty = disabled. */
+        std::string seg_topic = "";
         /** Max |rgb_stamp - depth_stamp| for RGBD pairing (seconds). */
         double sync_slop_sec = 0.05;
         /** How many recent frames to keep per stream while waiting for a pair. */
@@ -76,27 +79,37 @@ private:
 
     void OnRgb(const std::shared_ptr<automsgs::msgs::sensor_msgs::Image>& msg);
     void OnDepth(const std::shared_ptr<automsgs::msgs::sensor_msgs::Image>& msg);
+    void OnSeg(const std::shared_ptr<automsgs::msgs::sensor_msgs::Image>& msg);
 
     void PushFrame(std::deque<BufferedFrame>* queue, BufferedFrame frame);
     /** Prefer exact stamp_ns equality; else closest pair within sync_slop. */
-    bool TakeSyncedRgbd(cv::Mat* rgb, cv::Mat* depth, double* timestamp_sec);
+    bool TakeSyncedRgbd(cv::Mat* rgb, cv::Mat* depth, double* timestamp_sec,
+                        int64_t* stamp_ns = nullptr);
+    /** Match segmentation mask to an RGB-D pair stamp (exact, then slop). */
+    bool TakeSegForStamp(int64_t stamp_ns, cv::Mat* seg);
 
     void FeedMonocular(const cv::Mat& rgb, double timestamp_sec);
-    void FeedRgbd(const cv::Mat& rgb, const cv::Mat& depth, double timestamp_sec);
+    void FeedRgbd(const cv::Mat& rgb, const cv::Mat& depth, double timestamp_sec,
+                  const cv::Mat& seg_mask = cv::Mat{});
 
     system* slam_ = nullptr;
     Options options_;
     std::shared_ptr<autolink::Node> node_;
     std::atomic<bool> running_{false};
     bool is_rgbd_ = false;
+    bool use_seg_ = false;
     VizBridge* viz_ = nullptr;
     map::DenseMapBuilder* dense_map_ = nullptr;
 
     std::mutex mutex_;
+    /** Serializes feed_*_frame / viz / dense map (Atlas is not thread-safe). */
+    std::mutex feed_mutex_;
     std::deque<BufferedFrame> pending_rgb_;
     std::deque<BufferedFrame> pending_depth_;
+    std::deque<BufferedFrame> pending_seg_;
     uint64_t rgb_count_ = 0;
     uint64_t depth_count_ = 0;
+    uint64_t seg_count_ = 0;
     uint64_t fed_count_ = 0;
     uint64_t drop_count_ = 0;
 };

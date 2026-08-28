@@ -86,6 +86,7 @@ LocalizationOptions OptionsFromAtlasFlags(const atlas::AtlasNodeFlags& flags) {
     options.atlas_map_save_path = flags.map_save_path;
     options.atlas_rgb_topic = flags.rgb_topic;
     options.atlas_depth_topic = flags.depth_topic;
+    options.atlas_seg_topic = flags.seg_topic;
     return options;
 }
 
@@ -111,6 +112,7 @@ atlas::AtlasNodeFlags AtlasFlagsFromOptions(
     flags.map_save_path = options.atlas_map_save_path;
     flags.rgb_topic = options.atlas_rgb_topic;
     flags.depth_topic = options.atlas_depth_topic;
+    flags.seg_topic = options.atlas_seg_topic;
     return flags;
 }
 
@@ -263,6 +265,7 @@ public:
         atlas::ImageBridge::Options bridge_opts;
         bridge_opts.rgb_topic = options_.atlas_rgb_topic;
         bridge_opts.depth_topic = options_.atlas_depth_topic;
+        bridge_opts.seg_topic = options_.atlas_seg_topic;
         image_bridge_ =
             std::make_unique<atlas::ImageBridge>(system_.get(), bridge_opts);
 

@@ -1,5 +1,6 @@
 #include "autonomy/localization/atlas/data/keyframe.hpp"
 #include "autonomy/localization/atlas/data/landmark.hpp"
+#include "autonomy/localization/atlas/data/landmark_line.hpp"
 #include "autonomy/localization/atlas/data/map_database.hpp"
 #include "autonomy/localization/atlas/module/local_map_cleaner.hpp"
 
@@ -15,6 +16,7 @@ local_map_cleaner::local_map_cleaner(const YAML::Node& yaml_node, data::map_data
 
 void local_map_cleaner::reset() {
     fresh_landmarks_.clear();
+    fresh_landmarks_line_.clear();
 }
 
 unsigned int local_map_cleaner::remove_invalid_landmarks(const unsigned int cur_keyfrm_id) {
@@ -59,6 +61,45 @@ unsigned int local_map_cleaner::remove_invalid_landmarks(const unsigned int cur_
         else {
             // hold decision because the state is NotClear
             iter++;
+        }
+    }
+
+    return num_removed;
+}
+
+unsigned int local_map_cleaner::remove_redundant_landmarks_line(const unsigned int cur_keyfrm_id) {
+    constexpr float observed_ratio_thr = 0.3f;
+    constexpr unsigned int num_reliable_keyfrms = 2;
+    constexpr unsigned int num_obs_thr = 3;
+
+    enum class lm_state_t { Valid, Invalid, NotClear };
+
+    std::lock_guard<std::mutex> lock(data::map_database::mtx_database_);
+    unsigned int num_removed = 0;
+    auto iter = fresh_landmarks_line_.begin();
+    while (iter != fresh_landmarks_line_.end()) {
+        const auto& lm_line = *iter;
+
+        auto lm_state = lm_state_t::NotClear;
+        if (lm_line->will_be_erased()) {
+            lm_state = lm_state_t::Valid;
+        } else if (lm_line->get_observed_ratio() < observed_ratio_thr) {
+            lm_state = lm_state_t::Invalid;
+        } else if (num_reliable_keyfrms + lm_line->first_keyfrm_id_ <= cur_keyfrm_id &&
+                   lm_line->num_observations() <= num_obs_thr) {
+            lm_state = lm_state_t::Invalid;
+        } else if (num_reliable_keyfrms + 1U + lm_line->first_keyfrm_id_ <= cur_keyfrm_id) {
+            lm_state = lm_state_t::Valid;
+        }
+
+        if (lm_state == lm_state_t::Valid) {
+            iter = fresh_landmarks_line_.erase(iter);
+        } else if (lm_state == lm_state_t::Invalid) {
+            ++num_removed;
+            lm_line->prepare_for_erasing(map_db_);
+            iter = fresh_landmarks_line_.erase(iter);
+        } else {
+            ++iter;
         }
     }
 

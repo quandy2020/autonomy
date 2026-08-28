@@ -22,6 +22,7 @@
 namespace autonomy::localization::atlas {
 
 class mapping_module;
+class tracking_module;
 
 namespace data {
 class keyframe;
@@ -50,6 +51,8 @@ public:
      */
     void set_mapping_module(mapping_module* mapper);
 
+    void set_tracking_module(tracking_module* tracker);
+
     /**
      * Abort loop BA externally
      */
@@ -71,6 +74,9 @@ private:
 
     //! mapping module
     mapping_module* mapper_ = nullptr;
+
+    //! tracking module (paused during loop BA to avoid map races)
+    tracking_module* tracker_ = nullptr;
 
     //! number of iteration for optimization
     const unsigned int num_iter_ = 10;

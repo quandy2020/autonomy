@@ -2,7 +2,9 @@
 #include "autonomy/localization/atlas/camera/base.hpp"
 #include "autonomy/localization/atlas/data/keyframe.hpp"
 #include "autonomy/localization/atlas/data/landmark.hpp"
+#include "autonomy/localization/atlas/data/landmark_line.hpp"
 
+#include <cmath>
 #include <vector>
 
 namespace autonomy::localization::atlas {
@@ -177,5 +179,129 @@ template unsigned int fuse::detect_duplication(const std::shared_ptr<data::keyfr
                                                std::unordered_map<std::shared_ptr<data::landmark>, std::shared_ptr<data::landmark>>&,
                                                std::unordered_map<unsigned int, std::shared_ptr<data::landmark>>&,
                                                bool) const;
+
+template<typename T>
+unsigned int fuse::replace_duplication_line(const std::shared_ptr<data::keyframe>& keyfrm,
+                                            const T& landmarks_to_check,
+                                            const float margin) const {
+    if (keyfrm->line_obs_.empty() || keyfrm->scale_factors_lsd_.empty()) {
+        return 0;
+    }
+
+    unsigned int num_fused = 0;
+    const Mat33_t rot_cw = keyfrm->get_rot_cw();
+    const Vec3_t trans_cw = keyfrm->get_trans_cw();
+    const Vec3_t cam_center = keyfrm->get_trans_wc();
+
+    float log_scale_factor = 0.693147f;
+    if (keyfrm->scale_factors_lsd_.size() >= 2) {
+        log_scale_factor = std::log(keyfrm->scale_factors_lsd_.at(1) / keyfrm->scale_factors_lsd_.at(0));
+    }
+
+    for (const auto& lm : landmarks_to_check) {
+        if (!lm || lm->will_be_erased() || lm->is_observed_in_keyframe(keyfrm)) {
+            continue;
+        }
+
+        const Vec6_t pos_w = lm->get_pos_in_world();
+        const Vec3_t pos_w_sp = pos_w.head<3>();
+        const Vec3_t pos_w_ep = pos_w.tail<3>();
+
+        Vec2_t reproj_sp, reproj_ep;
+        float x_right_sp, x_right_ep;
+        const bool in_image_sp = keyfrm->camera_->reproject_to_image(rot_cw, trans_cw, pos_w_sp, reproj_sp, x_right_sp);
+        const bool in_image_ep = keyfrm->camera_->reproject_to_image(rot_cw, trans_cw, pos_w_ep, reproj_ep, x_right_ep);
+        if (!in_image_sp && !in_image_ep) {
+            continue;
+        }
+        if (!in_image_sp || !in_image_ep) {
+            const Vec3_t pos_w_mp = 0.5 * (pos_w_sp + pos_w_ep);
+            Vec2_t reproj_mp;
+            float x_right_mp;
+            if (!keyfrm->camera_->reproject_to_image(rot_cw, trans_cw, pos_w_mp, reproj_mp, x_right_mp)) {
+                continue;
+            }
+        }
+
+        const auto cam_to_lm_dist_sp = (pos_w_sp - cam_center).norm();
+        const auto cam_to_lm_dist_ep = (pos_w_ep - cam_center).norm();
+        const auto max_cam_to_lm_dist = lm->get_max_valid_distance();
+        const auto min_cam_to_lm_dist = lm->get_min_valid_distance();
+        if (cam_to_lm_dist_sp < min_cam_to_lm_dist || max_cam_to_lm_dist < cam_to_lm_dist_sp ||
+            cam_to_lm_dist_ep < min_cam_to_lm_dist || max_cam_to_lm_dist < cam_to_lm_dist_ep) {
+            continue;
+        }
+
+        const Vec3_t cam_to_lm_vec_mp = 0.5 * (pos_w_sp + pos_w_ep) - cam_center;
+        const auto cam_to_lm_dist_mp = cam_to_lm_vec_mp.norm();
+        const auto pred_scale_level = lm->predict_scale_level(cam_to_lm_dist_mp, log_scale_factor, keyfrm->num_line_scale_levels_);
+        const auto indices = keyfrm->get_keylines_in_cell(
+            reproj_sp(0), reproj_sp(1), reproj_ep(0), reproj_ep(1),
+            margin * keyfrm->scale_factors_lsd_.at(pred_scale_level));
+        if (indices.empty()) {
+            continue;
+        }
+
+        const auto lm_desc = lm->get_descriptor();
+        unsigned int best_dist = MAX_HAMMING_DIST;
+        int best_idx = -1;
+
+        for (const auto idx : indices) {
+            const auto& keyline = keyfrm->line_obs_.keylines.at(idx);
+            const auto scale_level = static_cast<unsigned int>(keyline.octave);
+
+            const Vec3_t proj_sp(reproj_sp(0), reproj_sp(1), 1.0);
+            const Vec3_t proj_ep(reproj_ep(0), reproj_ep(1), 1.0);
+            const Vec3_t proj_line = proj_sp.cross(proj_ep);
+            const double line_norm = std::sqrt(proj_line(0) * proj_line(0) + proj_line(1) * proj_line(1));
+
+            const auto reproj_error_sp = (keyline.startPointX * proj_line(0) + keyline.startPointY * proj_line(1) + proj_line(2)) / line_norm;
+            const auto reproj_error_ep = (keyline.endPointX * proj_line(0) + keyline.endPointY * proj_line(1) + proj_line(2)) / line_norm;
+
+            constexpr float chi_sq_2D = 5.99146f;
+            if (chi_sq_2D < static_cast<float>(reproj_error_sp * reproj_error_sp + reproj_error_ep * reproj_error_ep) *
+                                  keyfrm->inv_level_sigma_sq_lsd_.at(scale_level)) {
+                continue;
+            }
+
+            const auto hamm_dist = compute_descriptor_distance_32(lm_desc, keyfrm->line_obs_.lbd_descriptors.row(idx));
+            if (hamm_dist < best_dist) {
+                best_dist = hamm_dist;
+                best_idx = static_cast<int>(idx);
+            }
+        }
+
+        if (HAMMING_DIST_THR_LOW < best_dist || best_idx < 0) {
+            continue;
+        }
+
+        auto lm_in_keyfrm = keyfrm->get_landmark_line(static_cast<unsigned int>(best_idx));
+        if (lm_in_keyfrm) {
+            if (!lm_in_keyfrm->will_be_erased()) {
+                if (lm->num_observations() < lm_in_keyfrm->num_observations()) {
+                    lm->replace(lm_in_keyfrm);
+                } else {
+                    lm_in_keyfrm->replace(lm);
+                }
+            }
+        } else {
+            lm->add_observation(keyfrm, static_cast<unsigned int>(best_idx));
+            keyfrm->add_landmark_line(lm, static_cast<unsigned int>(best_idx));
+        }
+        ++num_fused;
+    }
+
+    return num_fused;
+}
+
+template unsigned int fuse::replace_duplication_line(const std::shared_ptr<data::keyframe>&,
+                                                       const std::vector<std::shared_ptr<data::landmark_line>>&,
+                                                       float) const;
+template unsigned int fuse::replace_duplication_line(const std::shared_ptr<data::keyframe>&,
+                                                       const std::unordered_set<std::shared_ptr<data::landmark_line>>&,
+                                                       float) const;
+template unsigned int fuse::replace_duplication_line(const std::shared_ptr<data::keyframe>&,
+                                                       const id_ordered_set<std::shared_ptr<data::landmark_line>>&,
+                                                       float) const;
 } // namespace match
 }  // namespace autonomy::localization::atlas

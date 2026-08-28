@@ -27,6 +27,7 @@
 #include <mutex>
 #include <memory>
 #include <future>
+#include <atomic>
 
 #include <opencv2/core/types.hpp>
 #include <opencv2/features2d.hpp>
@@ -41,6 +42,11 @@ namespace data {
 class map_database;
 class bow_database;
 } // namespace data
+
+namespace optimize {
+class pose_optimizer;
+class pose_optimizer_extended_line;
+} // namespace optimize
 
 // tracker state
 enum class tracker_state_t {
@@ -73,6 +79,9 @@ public:
 
     //! Set the global optimization module
     void set_global_optimization_module(global_optimization_module* global_optimizer);
+
+    //! Enable PLP line tracking in frame_tracker (call after map_db line flag is set)
+    void configure_plp_line_tracking();
 
     //-----------------------------------------
     // interfaces for mapping module and global optimization module
@@ -120,6 +129,9 @@ public:
 
     //! Resume the tracking module
     void resume();
+
+    /** Block until the current track() call finishes (map mutex released). */
+    void wait_until_track_idle() const;
 
     //-----------------------------------------
     // configurations
@@ -211,6 +223,8 @@ protected:
     //! Acquire more 2D-3D matches using initial camera pose estimation
     bool search_local_landmarks(unsigned int fixed_keyframe_id_threshold);
 
+    void search_local_landmarks_line();
+
     //! Check the new keyframe is needed or not
     bool new_keyframe_is_needed(unsigned int num_tracked_lms,
                                 unsigned int num_reliable_lms,
@@ -235,9 +249,10 @@ protected:
 
     //! pose optimizer
     std::shared_ptr<optimize::pose_optimizer> pose_optimizer_ = nullptr;
+    std::shared_ptr<optimize::pose_optimizer_extended_line> pose_optimizer_extended_line_ = nullptr;
 
     //! frame tracker for current frame
-    const module::frame_tracker frame_tracker_;
+    module::frame_tracker frame_tracker_;
 
     //! relocalizer
     module::relocalizer relocalizer_;
@@ -247,6 +262,7 @@ protected:
 
     //! local landmarks
     std::vector<std::shared_ptr<data::landmark>> local_landmarks_;
+    std::vector<std::shared_ptr<data::landmark_line>> local_landmarks_line_;
 
     //! last frame
     data::frame last_frm_;
@@ -296,6 +312,9 @@ protected:
 
     //! Pause of the tracking module is requested or not
     bool pause_is_requested_ = false;
+
+    //! True while track() holds mtx_database_
+    std::atomic<bool> track_in_progress_{false};
 
     //-----------------------------------------
     // force relocalization

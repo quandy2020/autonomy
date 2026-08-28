@@ -68,6 +68,9 @@ public:
         std::string current_frustum_topic = "/atlas/current_camera_frustum";
         std::string keyframe_frustums_topic = "/atlas/keyframe_frustums";
         std::string map_points_topic = "/atlas/map_points";
+        std::string map_planes_topic = "/atlas/map_planes";
+        std::string map_lines_topic = "/atlas/map_lines";
+        std::string loop_edges_topic = "/atlas/loop_edges";
         std::string tf_topic = "/tf";
         std::string tf_static_topic = "/tf_static";
 
@@ -78,6 +81,9 @@ public:
         bool publish_current_frustum = true;
         bool publish_keyframe_frustums = true;
         bool publish_map_points = true;
+        bool publish_map_planes = true;
+        bool publish_map_lines = true;
+        bool publish_loop_edges = true;
         /** Publish map→odom on /tf (Cartographer-compatible tree). */
         bool publish_map_odom_tf = true;
 
@@ -124,6 +130,9 @@ private:
     void PublishCurrentFrustum(double timestamp_sec, const Mat44_t& T_wc);
     void PublishKeyframeFrustums(double timestamp_sec);
     void PublishMapPoints(double timestamp_sec);
+    void PublishMapPlanes(double timestamp_sec);
+    void PublishMapLines(double timestamp_sec);
+    void PublishLoopEdges(double timestamp_sec);
 
     void AppendFrustumEdges(
         const Mat44_t& T_wc,
@@ -153,6 +162,15 @@ private:
         keyframe_frustums_writer_;
     std::shared_ptr<autolink::Writer<automsgs::msgs::sensor_msgs::PointCloud2>>
         map_points_writer_;
+    std::shared_ptr<
+        autolink::Writer<automsgs::msgs::visualization_msgs::MarkerArray>>
+        map_planes_writer_;
+    std::shared_ptr<
+        autolink::Writer<automsgs::msgs::visualization_msgs::MarkerArray>>
+        map_lines_writer_;
+    std::shared_ptr<
+        autolink::Writer<automsgs::msgs::visualization_msgs::MarkerArray>>
+        loop_edges_writer_;
     std::shared_ptr<autolink::Writer<automsgs::msgs::tf2_msgs::TFMessage>>
         tf_writer_;
 
@@ -162,6 +180,10 @@ private:
     automsgs::msgs::nav_msgs::Path trajectory_path_;
     int trajectory_frame_counter_ = 0;
     unsigned int last_keyframe_count_ = 0;
+    unsigned int last_plane_count_ = 0;
+    unsigned int last_line_count_ = 0;
+    unsigned int last_loop_edge_count_ = 0;
+    bool was_loop_ba_running_ = false;
     uint64_t map_odom_warn_count_ = 0;
     uint64_t map_odom_pub_count_ = 0;
 };

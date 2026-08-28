@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+from pathlib import Path
 
 from autosim.sensors import Sensors
 from autosim.simulator import Simulator
@@ -253,7 +254,101 @@ def test_raycast_hit_distance_picks_closest_hit():
     assert Simulator.raycast_hit_distance(Results()) == 1.5
 
 
-def test_raycast_hit_distance_miss_on_has_hits_false():
+def test_resolve_mp3d_scene_dataset_from_glb_layout(tmp_path):
+    scene_dir = tmp_path / "8WUmhLawc2A"
+    scene_dir.mkdir()
+    glb = scene_dir / "8WUmhLawc2A.glb"
+    glb.write_bytes(b"glb")
+    (scene_dir / "8WUmhLawc2A_semantic.ply").write_text("ply")
+    (scene_dir / "8WUmhLawc2A.house").write_text("house")
+
+    dataset_file, scene_id = Simulator.resolve_mp3d_scene_dataset(glb)
+    assert scene_id == "8WUmhLawc2A/8WUmhLawc2A.glb"
+    assert Path(dataset_file).name == "mp3d.scene_dataset_config.json"
+    assert Path(dataset_file).parent == tmp_path
+    assert Path(dataset_file).is_file()
+
+
+def test_resolve_mp3d_scene_dataset_requires_semantic_assets(tmp_path):
+    scene_dir = tmp_path / "sceneA"
+    scene_dir.mkdir()
+    glb = scene_dir / "sceneA.glb"
+    glb.write_bytes(b"glb")
+    assert Simulator.resolve_mp3d_scene_dataset(glb) is None
+
+
+def test_semantic_ids_to_bgr_packs_object_ids():
+    ids = np.array([[0, 1], [256, 65536]], dtype=np.uint32)
+    bgr = Simulator.semantic_ids_to_bgr(ids)
+    assert bgr.shape == (2, 2, 3)
+    assert tuple(bgr[0, 1]) == (1, 0, 0)
+    assert tuple(bgr[1, 0]) == (0, 1, 0)
+    assert tuple(bgr[1, 1]) == (0, 0, 1)
+
+
+def test_resolve_scene_dataset_prefers_path_when_config_in_wrong_dir(tmp_path):
+    scene_dir = tmp_path / "sceneA"
+    scene_dir.mkdir()
+    glb = scene_dir / "sceneA.glb"
+    glb.write_bytes(b"glb")
+    (scene_dir / "sceneA_semantic.ply").write_text("ply")
+    (scene_dir / "sceneA.house").write_text("house")
+    wrong_config = tmp_path / "wrong" / "mp3d.scene_dataset_config.json"
+    wrong_config.parent.mkdir()
+    wrong_config.write_text("{}")
+
+    hab_cfg = {
+        "dataset_config": str(wrong_config),
+        "scene_id": "sceneA/sceneA.glb",
+        "path": str(glb),
+    }
+    resolved = Simulator.resolve_scene_dataset(hab_cfg)
+    assert resolved is not None
+    dataset_file, scene_id = resolved
+    assert scene_id == "sceneA/sceneA.glb"
+    assert Path(dataset_file).parent == tmp_path
+
+
+def test_habitat_configuration_auto_upgrades_semantic_glb(tmp_path):
+    scene_dir = tmp_path / "sceneA"
+    scene_dir.mkdir()
+    glb = scene_dir / "sceneA.glb"
+    glb.write_bytes(b"glb")
+    (scene_dir / "sceneA_semantic.ply").write_text("ply")
+    (scene_dir / "sceneA.house").write_text("house")
+
+    class FakeConfig:
+        def __init__(self):
+            self.gpu_device_id = -1
+            self.enable_physics = False
+            self.allow_sliding = False
+            self.requires_textures = False
+            self.scene_id = ""
+            self.scene_dataset_config_file = ""
+            self.load_semantic_mesh = False
+
+    class FakeHabitat:
+        SimulatorConfiguration = FakeConfig
+
+    simulator = Simulator(
+        backend="minimal",
+        width=64,
+        height=48,
+        settings={
+            "habitat": {
+                "path": str(glb),
+                "gpu": 0,
+                "spawn": [0.0, 0.0, 0.0],
+                "robot": {"urdf": ""},
+                "sensors": {"camera": {"semantic_enabled": True}},
+            }
+        },
+        open_session=False,
+    )
+    configuration = simulator.habitat_configuration(FakeHabitat)
+    assert configuration.load_semantic_mesh is True
+    assert configuration.scene_id == "sceneA/sceneA.glb"
+    assert Path(configuration.scene_dataset_config_file).is_file()
     class Results:
         hits = []
 

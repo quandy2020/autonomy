@@ -3,6 +3,8 @@
 #include "autonomy/localization/atlas/data/frame.hpp"
 #include "autonomy/localization/atlas/data/keyframe.hpp"
 #include "autonomy/localization/atlas/data/landmark.hpp"
+#include "autonomy/localization/atlas/data/landmark_line.hpp"
+#include "autonomy/localization/atlas/data/landmark_plane.hpp"
 #include "autonomy/localization/atlas/data/marker.hpp"
 #include "autonomy/localization/atlas/data/camera_database.hpp"
 #include "autonomy/localization/atlas/data/orb_params_database.hpp"
@@ -75,6 +77,84 @@ std::shared_ptr<landmark> map_database::get_landmark(unsigned int id) const {
         return nullptr;
     }
     return landmarks_.at(id);
+}
+
+void map_database::add_landmark_line(const std::shared_ptr<landmark_line>& lm_line) {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    landmarks_line_[lm_line->id_] = lm_line;
+}
+
+void map_database::erase_landmark_line(unsigned int id) {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    landmarks_line_.erase(id);
+}
+
+std::shared_ptr<landmark_line> map_database::get_landmark_line(unsigned int id) const {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    if (!landmarks_line_.count(id)) {
+        return nullptr;
+    }
+    return landmarks_line_.at(id);
+}
+
+std::vector<std::shared_ptr<landmark_line>> map_database::get_all_landmarks_line() const {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    std::vector<std::shared_ptr<landmark_line>> all;
+    all.reserve(landmarks_line_.size());
+    for (const auto& id_lm : landmarks_line_) {
+        all.push_back(id_lm.second);
+    }
+    return all;
+}
+
+void map_database::set_local_landmarks_line(const std::vector<std::shared_ptr<landmark_line>>& local_lms_line) {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    local_landmarks_line_ = local_lms_line;
+}
+
+std::vector<std::shared_ptr<landmark_line>> map_database::get_local_landmarks_line() const {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    return local_landmarks_line_;
+}
+
+void map_database::add_landmark_plane(const std::shared_ptr<landmark_plane>& lm_plane) {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    landmarks_plane_[lm_plane->id_] = lm_plane;
+}
+
+void map_database::erase_landmark_plane(const unsigned int id) {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    landmarks_plane_.erase(id);
+}
+
+void map_database::erase_landmark_plane(const std::shared_ptr<landmark_plane>& lm_plane) {
+    if (!lm_plane) {
+        return;
+    }
+    erase_landmark_plane(lm_plane->id_);
+}
+
+std::shared_ptr<landmark_plane> map_database::get_landmark_plane(const unsigned int id) const {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    if (!landmarks_plane_.count(id)) {
+        return nullptr;
+    }
+    return landmarks_plane_.at(id);
+}
+
+std::vector<std::shared_ptr<landmark_plane>> map_database::get_all_landmark_planes() const {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    std::vector<std::shared_ptr<landmark_plane>> all;
+    all.reserve(landmarks_plane_.size());
+    for (const auto& id_lm : landmarks_plane_) {
+        all.push_back(id_lm.second);
+    }
+    return all;
+}
+
+unsigned int map_database::get_num_landmark_planes() const {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    return landmarks_plane_.size();
 }
 
 void map_database::add_marker(const std::shared_ptr<marker>& mkr) {
@@ -238,16 +318,20 @@ void map_database::clear() {
     std::lock_guard<std::mutex> lock(mtx_map_access_);
 
     landmarks_.clear();
+    landmarks_line_.clear();
+    landmarks_plane_.clear();
     keyframes_.clear();
     markers_.clear();
     last_inserted_keyfrm_ = nullptr;
     local_landmarks_.clear();
+    local_landmarks_line_.clear();
     spanning_roots_.clear();
 
     frm_stats_.clear();
 
     next_keyframe_id_ = 0;
     next_landmark_id_ = 0;
+    next_landmark_line_id_ = 0;
     fixed_keyframe_id_threshold_ = 0;
 
     AINFO << "clear map database";
@@ -402,6 +486,19 @@ void map_database::register_keyframe(camera_database* cam_db, orb_params_databas
         id, timestamp, pose_cw, camera, orb_params,
         frm_obs, bow_vec, bow_feat_vec);
 
+    if (json_keyfrm.contains("keylines")) {
+        data::line_frame_observation line_obs;
+        line_obs.keylines = convert_json_to_keylines(json_keyfrm.at("keylines"));
+        if (json_keyfrm.contains("line_descs")) {
+            line_obs.lbd_descriptors = convert_json_to_descriptors(json_keyfrm.at("line_descs"));
+        }
+        if (json_keyfrm.contains("line_depths_start")) {
+            line_obs.depths_start = json_keyfrm.at("line_depths_start").get<std::vector<float>>();
+            line_obs.depths_end = json_keyfrm.at("line_depths_end").get<std::vector<float>>();
+        }
+        keyfrm->init_line_obs_for_map_load(std::move(line_obs));
+    }
+
     // Append to map database
     assert(!keyframes_.count(id));
     keyframes_[keyfrm->id_] = keyfrm;
@@ -420,6 +517,24 @@ void map_database::register_landmark(const unsigned int id, const nlohmann::json
         num_visible, num_found);
     assert(!landmarks_.count(id));
     landmarks_[lm->id_] = lm;
+}
+
+void map_database::register_landmark_line(const unsigned int id, const nlohmann::json& json_landmark_line) {
+    const auto first_keyfrm_id = json_landmark_line.at("first_keyfrm_id").get<unsigned int>() + next_keyframe_id_;
+    const auto pos_w_vec = json_landmark_line.at("pos_w").get<std::vector<double>>();
+    Vec6_t pos_w;
+    for (int i = 0; i < 6; ++i) {
+        pos_w(i) = pos_w_vec.at(i);
+    }
+    const auto ref_keyfrm_id = json_landmark_line.at("ref_keyfrm_id").get<unsigned int>() + next_keyframe_id_;
+    const auto ref_keyfrm = keyframes_.at(ref_keyfrm_id);
+    const auto num_visible = json_landmark_line.at("n_vis").get<unsigned int>();
+    const auto num_found = json_landmark_line.at("n_fnd").get<unsigned int>();
+
+    auto lm_line = std::make_shared<data::landmark_line>(
+        id, first_keyfrm_id, pos_w, ref_keyfrm, num_visible, num_found);
+    assert(!landmarks_line_.count(id));
+    landmarks_line_[lm_line->id_] = lm_line;
 }
 
 void map_database::register_graph(const unsigned int id, const nlohmann::json& json_keyfrm) {
@@ -464,6 +579,27 @@ void map_database::register_association(const unsigned int keyfrm_id, const nloh
     }
 }
 
+void map_database::register_association_line(const unsigned int keyfrm_id, const nlohmann::json& json_keyfrm) {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    const auto landmark_line_ids = json_keyfrm.at("lm_line_ids").get<std::vector<int>>();
+    assert(keyframes_.count(keyfrm_id));
+    auto keyfrm = keyframes_.at(keyfrm_id);
+    for (unsigned int idx = 0; idx < landmark_line_ids.size(); ++idx) {
+        const auto lm_line_id = landmark_line_ids.at(idx);
+        if (lm_line_id < 0) {
+            continue;
+        }
+        const auto id = static_cast<unsigned int>(lm_line_id) + next_landmark_line_id_;
+        if (!landmarks_line_.count(id)) {
+            AWARN << "landmark line " << id << ": not found in the database";
+            continue;
+        }
+        const auto lm_line = landmarks_line_.at(id);
+        lm_line->add_observation(keyfrm, idx);
+        keyfrm->add_landmark_line(lm_line, idx);
+    }
+}
+
 void map_database::to_json(nlohmann::json& json_keyfrms, nlohmann::json& json_landmarks) const {
     std::lock_guard<std::mutex> lock(mtx_map_access_);
 
@@ -495,6 +631,87 @@ void map_database::to_json(nlohmann::json& json_keyfrms, nlohmann::json& json_la
         landmarks[std::to_string(id)] = lm->to_json();
     }
     json_landmarks = landmarks;
+}
+
+void map_database::to_json_planes(nlohmann::json& json_planes) const {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    std::map<std::string, nlohmann::json> planes;
+    for (const auto& id_plane : landmarks_plane_) {
+        const auto& plane = id_plane.second;
+        if (!plane || !plane->is_valid()) {
+            continue;
+        }
+        planes[std::to_string(id_plane.first)] = plane->to_json();
+    }
+    json_planes = planes;
+}
+
+void map_database::to_json_lines(nlohmann::json& json_lines) const {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    std::map<std::string, nlohmann::json> lines;
+    for (const auto& id_lm_line : landmarks_line_) {
+        const auto& lm_line = id_lm_line.second;
+        if (!lm_line || lm_line->will_be_erased()) {
+            continue;
+        }
+        lines[std::to_string(id_lm_line.first)] = lm_line->to_json();
+    }
+    json_lines = lines;
+}
+
+void map_database::from_json_planes(const nlohmann::json& json_planes) {
+    if (json_planes.is_null()) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    for (const auto& item : json_planes.items()) {
+        const auto id = std::stoul(item.key());
+        const auto& json_plane = item.value();
+        std::shared_ptr<keyframe> ref_keyfrm;
+        if (!keyframes_.empty()) {
+            ref_keyfrm = keyframes_.begin()->second;
+        }
+        auto plane = landmark_plane::from_json(json_plane, this, ref_keyfrm);
+        if (!plane) {
+            continue;
+        }
+        landmarks_plane_[id] = plane;
+        if (id >= next_landmark_plane_id_) {
+            next_landmark_plane_id_ = id + 1;
+        }
+        for (const auto& lm_id_json : json_plane.at("landmark_ids")) {
+            const auto lm_id = lm_id_json.get<unsigned int>();
+            if (!landmarks_.count(lm_id)) {
+                continue;
+            }
+            const auto lm = landmarks_.at(lm_id);
+            plane->add_landmark(lm);
+        }
+    }
+}
+
+void map_database::from_json_lines(const nlohmann::json& json_lines) {
+    if (json_lines.is_null()) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    for (const auto& item : json_lines.items()) {
+        const auto landmark_line_id_in_storage = std::stoi(item.key());
+        assert(0 <= landmark_line_id_in_storage);
+        const auto landmark_line_id = landmark_line_id_in_storage + next_landmark_line_id_;
+        register_landmark_line(landmark_line_id, item.value());
+    }
+
+    for (auto& id_lm_line : landmarks_line_) {
+        const auto& lm_line = id_lm_line.second;
+        if (!lm_line || lm_line->will_be_erased()) {
+            continue;
+        }
+        lm_line->update_information();
+        if (lm_line->get_descriptor().empty()) {
+            lm_line->compute_descriptor();
+        }
+    }
 }
 
 bool map_database::from_db(sqlite3* db,
