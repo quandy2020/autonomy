@@ -17,6 +17,15 @@ target_link_libraries(autoviz PRIVATE
   Qt6::Xml Qt6::Svg Qt6::Network
   glog::glog protobuf::libprotobuf)
 
+if(AUTOVIZ_ENABLE_GRPC AND _AUTOVIZ_HAS_GRPC)
+  target_compile_definitions(autoviz PRIVATE AUTOVIZ_ENABLE_GRPC=1)
+  target_link_libraries(autoviz PRIVATE gRPC::grpc++)
+  target_compile_definitions(autoviz PRIVATE
+    AUTOVIZ_AUTOMSGS_PROTO_ROOT="${AUTOVIZ_DEPS_ROOT}/automsgs/proto")
+else()
+  target_compile_definitions(autoviz PRIVATE AUTOVIZ_ENABLE_GRPC=0)
+endif()
+
 if(_AUTOVIZ_HAS_QT_MULTIMEDIA)
   target_link_libraries(autoviz PRIVATE Qt6::Multimedia)
   target_compile_definitions(autoviz PRIVATE AUTOVIZ_USE_QT_MULTIMEDIA)
