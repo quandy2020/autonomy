@@ -1,5 +1,7 @@
 #include "autonomy/localization/atlas/data/keyframe.hpp"
 #include "autonomy/localization/atlas/data/landmark.hpp"
+#include "autonomy/localization/atlas/data/landmark_line.hpp"
+#include "autonomy/localization/atlas/optimize/line_geometry_util.hpp"
 #include "autonomy/localization/atlas/data/map_database.hpp"
 #include "autonomy/localization/atlas/optimize/graph_optimizer.hpp"
 #include "autonomy/localization/atlas/optimize/terminate_action.hpp"
@@ -19,8 +21,9 @@
 namespace autonomy::localization::atlas {
 namespace optimize {
 
-graph_optimizer::graph_optimizer(const YAML::Node& yaml_node, const bool fix_scale)
-    : fix_scale_(fix_scale),
+graph_optimizer::graph_optimizer(const YAML::Node& yaml_node, data::map_database* map_db, const bool fix_scale)
+    : map_db_(map_db),
+      fix_scale_(fix_scale),
       min_num_shared_lms_(yaml_node["min_num_shared_lms"].as<unsigned int>(100)) {}
 
 void graph_optimizer::optimize(const std::shared_ptr<data::keyframe>& loop_keyfrm, const std::shared_ptr<data::keyframe>& curr_keyfrm,
@@ -293,6 +296,62 @@ void graph_optimizer::optimize(const std::shared_ptr<data::keyframe>& loop_keyfr
 
             lm->set_pos_in_world(corrected_pos_w);
             lm->update_mean_normal_and_obs_scale_variance();
+        }
+
+        if (map_db_ && map_db_->use_line_tracking()) {
+            std::unordered_set<unsigned int> already_found_line_ids;
+            std::vector<std::shared_ptr<data::landmark_line>> all_lms_line;
+            for (const auto& keyfrm : all_keyfrms) {
+                for (const auto& lm_line : keyfrm->get_landmarks_line()) {
+                    if (!lm_line || lm_line->will_be_erased() || already_found_line_ids.count(lm_line->id_)) {
+                        continue;
+                    }
+                    already_found_line_ids.insert(lm_line->id_);
+                    all_lms_line.push_back(lm_line);
+                }
+            }
+
+            std::unordered_set<unsigned int> keyframe_ids;
+            for (const auto& keyfrm : all_keyfrms) {
+                keyframe_ids.insert(keyfrm->id_);
+            }
+
+            for (const auto& lm_line : all_lms_line) {
+                if (lm_line->will_be_erased()) {
+                    continue;
+                }
+                const auto ref_keyfrm = lm_line->get_ref_keyframe();
+                if (!ref_keyfrm || !keyframe_ids.count(ref_keyfrm->id_)) {
+                    lm_line->prepare_for_erasing(map_db_);
+                    continue;
+                }
+
+                const auto id = (lm_line->loop_fusion_identifier_ == curr_keyfrm->id_)
+                                    ? lm_line->ref_keyfrm_id_in_loop_fusion_
+                                    : ref_keyfrm->id_;
+                const g2o::Sim3& Sim3_cw = Sim3s_cw.at(id);
+                const g2o::Sim3& corrected_Sim3_wc = corrected_Sim3s_wc.at(id);
+
+                const double scale_cw = Sim3_cw.scale();
+                const Mat33_t rot_cw = Sim3_cw.rotation().toRotationMatrix();
+                const Vec3_t trans_cw = Sim3_cw.translation();
+                const double scale_wc = corrected_Sim3_wc.scale();
+                const Mat33_t rot_wc = corrected_Sim3_wc.rotation().toRotationMatrix();
+                const Vec3_t trans_wc = corrected_Sim3_wc.translation();
+
+                const Vec6_t pos_w = lm_line->get_pluecker_coord();
+                const Vec6_t step1 = transform_pluecker_with_sim3(pos_w, rot_cw, trans_cw, scale_cw);
+                const Vec6_t corrected_pos_w = transform_pluecker_with_sim3(step1, rot_wc, trans_wc, scale_wc);
+
+                lm_line->set_pluecker_coord_without_update_endpoints(corrected_pos_w);
+                Vec6_t updated_pose_w;
+                if (line_endpoint_trimming(lm_line, corrected_pos_w, updated_pose_w)) {
+                    lm_line->set_pos_in_world_without_update_pluecker(updated_pose_w);
+                    lm_line->update_information();
+                } else {
+                    lm_line->prepare_for_erasing(map_db_);
+                }
+            }
         }
     }
 }

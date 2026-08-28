@@ -1,4 +1,6 @@
+#include "autonomy/localization/atlas/data/landmark_line.hpp"
 #include "autonomy/localization/atlas/data/landmark.hpp"
+#include "autonomy/localization/atlas/data/landmark_plane.hpp"
 #include "autonomy/localization/atlas/data/keyframe.hpp"
 #include "autonomy/localization/atlas/data/map_database.hpp"
 #include "autonomy/localization/atlas/data/marker.hpp"
@@ -70,6 +72,16 @@ unsigned int map_publisher::get_landmarks(std::vector<std::shared_ptr<data::land
 unsigned int map_publisher::get_markers(std::vector<std::shared_ptr<data::marker>>& all_markers) {
     all_markers = map_db_->get_all_markers();
     return all_markers.size();
+}
+
+unsigned int map_publisher::get_landmark_planes(std::vector<std::shared_ptr<data::landmark_plane>>& all_planes) const {
+    all_planes = map_db_->get_all_landmark_planes();
+    return static_cast<unsigned int>(all_planes.size());
+}
+
+unsigned int map_publisher::get_landmark_lines(std::vector<std::shared_ptr<data::landmark_line>>& all_lines) const {
+    all_lines = map_db_->get_all_landmarks_line();
+    return static_cast<unsigned int>(all_lines.size());
 }
 
 } // namespace publish

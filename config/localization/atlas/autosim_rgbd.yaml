@@ -4,6 +4,8 @@
 # Topics (when image bridge is wired):
 #   /camera/rgb/image_raw     rgb8
 #   /camera/depth/image_raw   32FC1 (meters)
+#   /camera/semantic/instance_ids  mono16 instance ids (PLP via --atlas_seg_topic)
+#   /camera/semantic/image_raw      rgb8 colored (debug viz only)
 #   /camera/camera_info
 
 Camera:
@@ -81,3 +83,29 @@ PangolinViewer:
   viewpoint_y: -0.9
   viewpoint_z: -1.9
   viewpoint_f: 400
+
+# Structure-PLP-SLAM (point-line-plane sparse mapping)
+PLP:
+  enabled: true
+  use_line_tracking: true
+  use_plane_mapping: true
+  Line:
+    min_line_length_ratio: 0.125
+    min_line_pixels: 40
+    equalize_histogram: true
+  Plane:
+    use_graph_cut_ransac: false
+    check_seg_3x3_window: true
+    min_points_before_ransac: 12
+    points_per_ransac: 12
+    ransac_iterations: 50
+    plane_distance_correction: 0.02
+    final_error_correction: 0.01
+    inliers_ratio_thr: 0.7
+    dot_product_threshold: 0.8
+    offset_delta_factor: 6.0
+    gc_confidence: 0.99
+    spatial_coherence_weight: 0.6
+    gc_adaptive_number: 6
+    gc_minimum_inlier_ratio_for_sprt: 0.05
+    refine_landmark_positions: false

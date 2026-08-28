@@ -1,6 +1,7 @@
 #include "autonomy/localization/atlas/data/common.hpp"
 #include "autonomy/localization/atlas/data/frame.hpp"
 #include "autonomy/localization/atlas/data/keyframe.hpp"
+#include "autonomy/localization/atlas/data/line_triangulation.hpp"
 #include "autonomy/localization/atlas/data/landmark.hpp"
 #include "autonomy/localization/atlas/data/marker.hpp"
 #include "autonomy/localization/atlas/data/marker2d.hpp"
@@ -104,9 +105,19 @@ keyframe::keyframe(unsigned int id, const frame& frm)
     : id_(id), timestamp_(frm.timestamp_),
       camera_(frm.camera_), orb_params_(frm.orb_params_),
       frm_obs_(frm.frm_obs_),
+      line_obs_(frm.line_obs_),
+      scale_factors_lsd_(frm.scale_factors_lsd_),
+      inv_level_sigma_sq_lsd_(frm.inv_level_sigma_sq_lsd_),
+      num_line_scale_levels_(frm.num_scale_levels_lsd_),
+      seg_mask_(frm.img_seg_mask_.clone()),
+      depth_map_(frm.depth_map_.clone()),
       bow_vec_(frm.bow_vec_), bow_feat_vec_(frm.bow_feat_vec_),
       markers_2d_(frm.markers_2d_),
-      landmarks_(frm.get_landmarks()) {
+      landmarks_(frm.get_landmarks()),
+      landmarks_line_(frm.get_landmarks_line()) {
+    if (landmarks_line_.empty() && !line_obs_.empty()) {
+        landmarks_line_.assign(line_obs_.size(), nullptr);
+    }
     // set pose parameters (pose_wc_, trans_wc_) using frm.pose_cw_
     set_pose_cw(frm.get_pose_cw());
 }
@@ -259,6 +270,16 @@ nlohmann::json keyframe::to_json() const {
         }
     }
 
+    std::vector<int> landmark_line_ids;
+    if (!line_obs_.empty()) {
+        landmark_line_ids.assign(landmarks_line_.size(), -1);
+        for (unsigned int i = 0; i < landmark_line_ids.size(); ++i) {
+            if (landmarks_line_.at(i) && !landmarks_line_.at(i)->will_be_erased()) {
+                landmark_line_ids.at(i) = static_cast<int>(landmarks_line_.at(i)->id_);
+            }
+        }
+    }
+
     // extract spanning tree parent
     const auto& spanning_parent = graph_node_->get_spanning_parent();
 
@@ -279,23 +300,36 @@ nlohmann::json keyframe::to_json() const {
 
     // TODO: msgpack format does not yet support markers save/load
 
-    return {{"ts", timestamp_},
-            {"cam", camera_->name_},
-            {"orb_params", orb_params_->name_},
-            // camera pose
-            {"rot_cw", convert_rotation_to_json(pose_cw_.block<3, 3>(0, 0))},
-            {"trans_cw", convert_translation_to_json(pose_cw_.block<3, 1>(0, 3))},
-            // features and observations
-            {"n_keypts", frm_obs_.undist_keypts_.size()},
-            {"undist_keypts", convert_keypoints_to_json(frm_obs_.undist_keypts_)},
-            {"x_rights", frm_obs_.stereo_x_right_},
-            {"depths", frm_obs_.depths_},
-            {"descs", convert_descriptors_to_json(frm_obs_.descriptors_)},
-            {"lm_ids", landmark_ids},
-            // graph information
-            {"span_parent", spanning_parent ? spanning_parent->id_ : -1},
-            {"span_children", spanning_child_ids},
-            {"loop_edges", loop_edge_ids}};
+    nlohmann::json json = {{"ts", timestamp_},
+                           {"cam", camera_->name_},
+                           {"orb_params", orb_params_->name_},
+                           // camera pose
+                           {"rot_cw", convert_rotation_to_json(pose_cw_.block<3, 3>(0, 0))},
+                           {"trans_cw", convert_translation_to_json(pose_cw_.block<3, 1>(0, 3))},
+                           // features and observations
+                           {"n_keypts", frm_obs_.undist_keypts_.size()},
+                           {"undist_keypts", convert_keypoints_to_json(frm_obs_.undist_keypts_)},
+                           {"x_rights", frm_obs_.stereo_x_right_},
+                           {"depths", frm_obs_.depths_},
+                           {"descs", convert_descriptors_to_json(frm_obs_.descriptors_)},
+                           {"lm_ids", landmark_ids},
+                           // graph information
+                           {"span_parent", spanning_parent ? spanning_parent->id_ : -1},
+                           {"span_children", spanning_child_ids},
+                           {"loop_edges", loop_edge_ids}};
+
+    if (!line_obs_.empty()) {
+        json["n_keylines"] = line_obs_.keylines.size();
+        json["keylines"] = convert_keylines_to_json(line_obs_.keylines);
+        json["line_descs"] = convert_descriptors_to_json(line_obs_.lbd_descriptors);
+        json["lm_line_ids"] = landmark_line_ids;
+        if (!line_obs_.depths_start.empty()) {
+            json["line_depths_start"] = line_obs_.depths_start;
+            json["line_depths_end"] = line_obs_.depths_end;
+        }
+    }
+
+    return json;
 }
 
 bool keyframe::bind_to_stmt(sqlite3* db, sqlite3_stmt* stmt) const {
@@ -426,6 +460,72 @@ void keyframe::erase_landmark(const std::shared_ptr<landmark>& lm) {
     }
 }
 
+void keyframe::add_landmark_line(const std::shared_ptr<landmark_line>& lm_line, unsigned int idx) {
+    std::lock_guard<std::mutex> lock(mtx_observations_);
+    if (landmarks_line_.size() <= idx) {
+        landmarks_line_.resize(idx + 1, nullptr);
+    }
+    landmarks_line_.at(idx) = lm_line;
+}
+
+void keyframe::erase_landmark_line_with_index(unsigned int idx) {
+    std::lock_guard<std::mutex> lock(mtx_observations_);
+    if (idx < landmarks_line_.size()) {
+        landmarks_line_.at(idx) = nullptr;
+    }
+}
+
+void keyframe::erase_landmark_line(const std::shared_ptr<landmark_line>& lm_line) {
+    std::lock_guard<std::mutex> lock(mtx_observations_);
+    const int idx = lm_line->get_index_in_keyframe(shared_from_this());
+    if (0 <= idx) {
+        landmarks_line_.at(static_cast<unsigned int>(idx)) = nullptr;
+    }
+}
+
+void keyframe::replace_landmark_line(const std::shared_ptr<landmark_line>& lm_line, unsigned int idx) {
+    std::lock_guard<std::mutex> lock(mtx_observations_);
+    if (landmarks_line_.size() <= idx) {
+        landmarks_line_.resize(idx + 1, nullptr);
+    }
+    landmarks_line_.at(idx) = lm_line;
+}
+
+std::vector<std::shared_ptr<landmark_line>> keyframe::get_landmarks_line() const {
+    std::lock_guard<std::mutex> lock(mtx_observations_);
+    return landmarks_line_;
+}
+
+void keyframe::set_segmentation_mask(const cv::Mat& mask) {
+    seg_mask_ = mask.clone();
+}
+
+cv::Mat keyframe::get_segmentation_mask() const {
+    return seg_mask_;
+}
+
+std::shared_ptr<landmark_line> keyframe::get_landmark_line(unsigned int idx) const {
+    std::lock_guard<std::mutex> lock(mtx_observations_);
+    if (idx >= landmarks_line_.size()) {
+        return nullptr;
+    }
+    return landmarks_line_.at(idx);
+}
+
+std::vector<unsigned int> keyframe::get_keylines_in_cell(const float ref_x1, const float ref_y1,
+                                                          const float ref_x2, const float ref_y2, const float margin,
+                                                          const int min_level, const int max_level) const {
+    return data::get_keylines_in_cell(line_obs_.keylines, ref_x1, ref_y1, ref_x2, ref_y2, margin, min_level, max_level);
+}
+
+void keyframe::init_line_obs_for_map_load(data::line_frame_observation line_obs) {
+    line_obs_ = std::move(line_obs);
+    landmarks_line_.assign(line_obs_.size(), nullptr);
+    num_line_scale_levels_ = 1;
+    scale_factors_lsd_ = {1.f};
+    inv_level_sigma_sq_lsd_ = {1.f};
+}
+
 void keyframe::update_landmarks() {
     std::lock_guard<std::mutex> lock(mtx_observations_);
     for (unsigned int idx = 0; idx < landmarks_.size(); ++idx) {
@@ -519,6 +619,15 @@ Vec3_t keyframe::triangulate_stereo(const unsigned int idx) const {
         pose_wc = pose_wc_;
     }
     return data::triangulate_stereo(camera_, pose_wc.block<3, 3>(0, 0), pose_wc.block<3, 1>(0, 3), frm_obs_, idx);
+}
+
+Vec6_t keyframe::triangulate_stereo_for_line(const unsigned int idx) const {
+    Mat44_t pose_wc;
+    {
+        std::lock_guard<std::mutex> lock(mtx_pose_);
+        pose_wc = pose_wc_;
+    }
+    return triangulate_stereo_for_line_impl(camera_, pose_wc.block<3, 3>(0, 0), pose_wc.block<3, 1>(0, 3), line_obs_, idx);
 }
 
 float keyframe::compute_median_depth(const bool abs) const {

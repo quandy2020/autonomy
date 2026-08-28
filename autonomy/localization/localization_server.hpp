@@ -54,6 +54,7 @@ struct LocalizationOptions {
     std::string atlas_map_save_path;
     std::string atlas_rgb_topic = "/camera/rgb/image_raw";
     std::string atlas_depth_topic = "/camera/depth/image_raw";
+    std::string atlas_seg_topic = "";
 };
 
 LocalizationBackend ParseLocalizationBackend(const std::string& name);

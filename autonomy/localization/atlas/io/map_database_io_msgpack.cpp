@@ -26,14 +26,22 @@ bool map_database_io_msgpack::save(const std::string& path,
     const auto orb_params = orb_params_db->to_json();
     nlohmann::json keyfrms;
     nlohmann::json landmarks;
+    nlohmann::json planes;
+    nlohmann::json lines;
     map_db->to_json(keyfrms, landmarks);
+    map_db->to_json_planes(planes);
+    map_db->to_json_lines(lines);
 
     nlohmann::json json{{"cameras", cameras},
                         {"orb_params", orb_params},
                         {"keyframes", keyfrms},
                         {"landmarks", landmarks},
+                        {"landmark_planes", planes},
+                        {"landmarks_line", lines},
                         {"keyframe_next_id", static_cast<unsigned int>(map_db->next_keyframe_id_)},
-                        {"landmark_next_id", static_cast<unsigned int>(map_db->next_landmark_id_)}};
+                        {"landmark_next_id", static_cast<unsigned int>(map_db->next_landmark_id_)},
+                        {"landmark_plane_next_id", static_cast<unsigned int>(map_db->next_landmark_plane_id_)},
+                        {"landmark_line_next_id", static_cast<unsigned int>(map_db->next_landmark_line_id_)}};
 
     std::ofstream ofs(path, std::ios::out | std::ios::binary);
 
@@ -91,9 +99,29 @@ bool map_database_io_msgpack::load(const std::string& path,
     const auto json_keyfrms = json.at("keyframes");
     const auto json_landmarks = json.at("landmarks");
     map_db->from_json(cam_db, orb_params_db, bow_vocab, json_keyfrms, json_landmarks);
+    if (json.contains("landmark_planes")) {
+        map_db->from_json_planes(json.at("landmark_planes"));
+    }
+    if (json.contains("landmarks_line")) {
+        map_db->from_json_lines(json.at("landmarks_line"));
+        const auto keyfrm_base = map_db->next_keyframe_id_.load();
+        for (const auto& item : json_keyfrms.items()) {
+            if (!item.value().contains("lm_line_ids")) {
+                continue;
+            }
+            const auto keyfrm_id = std::stoul(item.key()) + keyfrm_base;
+            map_db->register_association_line(keyfrm_id, item.value());
+        }
+    }
     // load next ID
     map_db->next_keyframe_id_ += json.at("keyframe_next_id").get<unsigned int>();
     map_db->next_landmark_id_ += json.at("landmark_next_id").get<unsigned int>();
+    if (json.contains("landmark_plane_next_id")) {
+        map_db->next_landmark_plane_id_ += json.at("landmark_plane_next_id").get<unsigned int>();
+    }
+    if (json.contains("landmark_line_next_id")) {
+        map_db->next_landmark_line_id_ += json.at("landmark_line_next_id").get<unsigned int>();
+    }
 
     // update bow database
     const auto keyfrms = map_db->get_all_keyframes();

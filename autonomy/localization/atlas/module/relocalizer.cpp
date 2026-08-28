@@ -3,8 +3,9 @@
 #include "autonomy/localization/atlas/data/landmark.hpp"
 #include "autonomy/localization/atlas/data/bow_database.hpp"
 #include "autonomy/localization/atlas/module/local_map_updater.hpp"
+#include "autonomy/localization/atlas/data/landmark_line.hpp"
+#include "autonomy/localization/atlas/match/base.hpp"
 #include "autonomy/localization/atlas/module/relocalizer.hpp"
-#include "autonomy/localization/atlas/optimize/pose_optimizer_g2o.hpp"
 #include "autonomy/localization/atlas/util/fancy_index.hpp"
 #include "autolink/common/log.hpp"
 
@@ -50,6 +51,46 @@ relocalizer::relocalizer(const std::shared_ptr<optimize::pose_optimizer>& pose_o
 
 relocalizer::~relocalizer() {
     ADEBUG << "DESTRUCT: module::relocalizer";
+}
+
+void relocalizer::set_line_tracking(
+    const std::shared_ptr<optimize::pose_optimizer_extended_line>& pose_optimizer_extended_line,
+    bool enabled) {
+    pose_optimizer_extended_line_ = pose_optimizer_extended_line;
+    use_line_tracking_ = enabled && pose_optimizer_extended_line_ != nullptr;
+}
+
+std::set<std::shared_ptr<data::landmark_line>> relocalizer::collect_observed_lines(
+    const data::frame& curr_frm) const {
+    std::set<std::shared_ptr<data::landmark_line>> observed;
+    for (unsigned int idx = 0; idx < curr_frm.line_obs_.size(); ++idx) {
+        const auto& lm_line = curr_frm.get_landmark_line(idx);
+        if (lm_line) {
+            observed.insert(lm_line);
+        }
+    }
+    return observed;
+}
+
+void relocalizer::reject_line_outliers(data::frame& curr_frm,
+                                       const std::vector<bool>& outlier_flags_line) const {
+    for (unsigned int idx = 0; idx < outlier_flags_line.size(); ++idx) {
+        if (outlier_flags_line.at(idx)) {
+            curr_frm.erase_landmark_line_with_index(idx);
+        }
+    }
+}
+
+unsigned int relocalizer::run_pose_optimizer(data::frame& curr_frm, Mat44_t& optimized_pose,
+                                             std::vector<bool>& outlier_flags) const {
+    if (use_line_tracking_ && !collect_observed_lines(curr_frm).empty()) {
+        std::vector<bool> outlier_flags_line(curr_frm.line_obs_.size(), false);
+        const auto num_valid_obs = pose_optimizer_extended_line_->optimize(
+            curr_frm, optimized_pose, outlier_flags, outlier_flags_line);
+        reject_line_outliers(curr_frm, outlier_flags_line);
+        return num_valid_obs;
+    }
+    return pose_optimizer_->optimize(curr_frm, optimized_pose, outlier_flags);
 }
 
 bool relocalizer::relocalize(data::bow_database* bow_db, data::frame& curr_frm) {
@@ -210,9 +251,8 @@ bool relocalizer::relocalize_by_pnp_solver(data::frame& curr_frm,
 bool relocalizer::optimize_pose(data::frame& curr_frm,
                                 const std::shared_ptr<autonomy::localization::atlas::data::keyframe>& candidate_keyfrm,
                                 std::vector<bool>& outlier_flags) const {
-    // Pose optimization
     Mat44_t optimized_pose;
-    auto num_valid_obs = pose_optimizer_->optimize(curr_frm, optimized_pose, outlier_flags);
+    auto num_valid_obs = run_pose_optimizer(curr_frm, optimized_pose, outlier_flags);
     curr_frm.set_pose_cw(optimized_pose);
 
     // Discard the candidate if the number of the inliers is less than the threshold
@@ -241,16 +281,23 @@ bool relocalizer::refine_pose(data::frame& curr_frm,
 
     // Projection match based on the pre-optimized camera pose
     auto num_found = proj_matcher_.match_frame_and_keyframe(curr_frm, candidate_keyfrm, already_found_landmarks, 10, 100);
+
+    unsigned int num_line_found = 0;
+    if (use_line_tracking_ && !curr_frm.line_obs_.empty()) {
+        num_line_found = proj_matcher_.match_frame_and_keyframe_line(
+            curr_frm, candidate_keyfrm, collect_observed_lines(curr_frm), 10.f, match::HAMMING_DIST_THR_HIGH);
+    }
+
     // Discard the candidate if the number of the inliers is less than the threshold
-    if (num_valid_obs + num_found < min_num_valid_obs_) {
+    if (num_valid_obs + num_found < min_num_valid_obs_ && num_line_found == 0) {
         ADEBUG << "Number of inliers (" << num_valid_obs + num_found << ") < threshold (" << min_num_valid_obs_ << "). candidate keyframe id is " << candidate_keyfrm->id_;
         return false;
     }
 
     Mat44_t optimized_pose1;
     std::vector<bool> outlier_flags1;
-    auto num_valid_obs1 = pose_optimizer_->optimize(curr_frm, optimized_pose1, outlier_flags1);
-    ADEBUG << "refine_pose: num_valid_obs1=" << num_valid_obs1;
+    auto num_valid_obs1 = run_pose_optimizer(curr_frm, optimized_pose1, outlier_flags1);
+    ADEBUG << "refine_pose: num_valid_obs1=" << num_valid_obs1 << " line_matches=" << num_line_found;
     curr_frm.set_pose_cw(optimized_pose1);
 
     // Exclude the already-associated landmarks
@@ -265,17 +312,23 @@ bool relocalizer::refine_pose(data::frame& curr_frm,
     // Apply projection match again, then set the 2D-3D matches
     auto num_additional = proj_matcher_.match_frame_and_keyframe(curr_frm, candidate_keyfrm, already_found_landmarks1, 3, 64);
 
+    unsigned int num_additional_line = 0;
+    if (use_line_tracking_ && !curr_frm.line_obs_.empty()) {
+        num_additional_line = proj_matcher_.match_frame_and_keyframe_line(
+            curr_frm, candidate_keyfrm, collect_observed_lines(curr_frm), 3.f, match::HAMMING_DIST_THR_HIGH);
+    }
+
     // Discard if the number of the observations is less than the threshold
-    if (num_valid_obs1 + num_additional < min_num_valid_obs_) {
+    if (num_valid_obs1 + num_additional < min_num_valid_obs_ && num_additional_line == 0) {
         ADEBUG << "Number of observations (" << num_valid_obs1 + num_additional << ") < threshold (" << min_num_valid_obs_ << "). candidate keyframe id is " << candidate_keyfrm->id_;
         return false;
     }
 
-    // Perform optimization again
     Mat44_t optimized_pose2;
     std::vector<bool> outlier_flags2;
-    auto num_valid_obs2 = pose_optimizer_->optimize(curr_frm, optimized_pose2, outlier_flags2);
-    ADEBUG << "refine_pose: num_valid_obs2=" << num_valid_obs2;
+    auto num_valid_obs2 = run_pose_optimizer(curr_frm, optimized_pose2, outlier_flags2);
+    ADEBUG << "refine_pose: num_valid_obs2=" << num_valid_obs2
+           << " additional_line=" << num_additional_line;
     curr_frm.set_pose_cw(optimized_pose2);
 
     // Discard if falling below the threshold

@@ -19,7 +19,7 @@ transform_optimizer::transform_optimizer(const bool fix_scale, const unsigned in
 
 unsigned int transform_optimizer::optimize(const std::shared_ptr<data::keyframe>& keyfrm_1, const std::shared_ptr<data::keyframe>& keyfrm_2,
                                            std::vector<std::shared_ptr<data::landmark>>& matched_lms_in_keyfrm_2,
-                                           ::g2o::Sim3& g2o_Sim3_12, const float chi_sq) const {
+                                           g2o::Sim3& g2o_Sim3_12, const float chi_sq) const {
     const float sqrt_chi_sq = std::sqrt(chi_sq);
 
     // 1. Construct an optimizer

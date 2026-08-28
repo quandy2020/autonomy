@@ -1,3 +1,4 @@
+#include "autonomy/localization/atlas/feature/line_descriptor/line_descriptor_custom.hpp"
 #include "autonomy/localization/atlas/data/common.hpp"
 #include "autonomy/localization/atlas/data/frame_observation.hpp"
 #include "autonomy/localization/atlas/camera/perspective.hpp"
@@ -78,6 +79,31 @@ cv::Mat convert_json_to_descriptors(const nlohmann::json& json_descriptors) {
         }
     }
     return descriptors;
+}
+
+nlohmann::json convert_keylines_to_json(const std::vector<cv::line_descriptor::KeyLine>& keylines) {
+    std::vector<nlohmann::json> json_keylines(keylines.size());
+    for (unsigned int idx = 0; idx < keylines.size(); ++idx) {
+        json_keylines.at(idx) = {{"pt_s", {keylines.at(idx).startPointX, keylines.at(idx).startPointY}},
+                                 {"pt_e", {keylines.at(idx).endPointX, keylines.at(idx).endPointY}},
+                                 {"ang", keylines.at(idx).angle},
+                                 {"oct", static_cast<unsigned int>(keylines.at(idx).octave)}};
+    }
+    return json_keylines;
+}
+
+std::vector<cv::line_descriptor::KeyLine> convert_json_to_keylines(const nlohmann::json& json_keylines) {
+    std::vector<cv::line_descriptor::KeyLine> keylines(json_keylines.size());
+    for (unsigned int idx = 0; idx < json_keylines.size(); ++idx) {
+        const auto& json_keyline = json_keylines.at(idx);
+        keylines.at(idx) = cv::line_descriptor::KeyLine(json_keyline.at("pt_s").at(0).get<float>(),
+                                                        json_keyline.at("pt_s").at(1).get<float>(),
+                                                        json_keyline.at("pt_e").at(0).get<float>(),
+                                                        json_keyline.at("pt_e").at(1).get<float>(),
+                                                        json_keyline.at("ang").get<float>(),
+                                                        json_keyline.at("oct").get<unsigned int>());
+    }
+    return keylines;
 }
 
 void assign_keypoints_to_grid(const camera::base* camera, const std::vector<cv::KeyPoint>& undist_keypts,
@@ -257,6 +283,39 @@ Vec3_t triangulate_stereo(const camera::base* camera,
     }
 
     return Vec3_t::Zero();
+}
+
+std::vector<unsigned int> get_keylines_in_cell(
+    const std::vector<cv::line_descriptor::KeyLine>& keylines,
+    const float ref_x1, const float ref_y1, const float ref_x2, const float ref_y2, const float margin,
+    const int min_level, const int max_level) {
+    std::vector<unsigned int> indices;
+    indices.reserve(keylines.size());
+
+    const Vec3_t point_sp(ref_x1, ref_y1, 1.0);
+    const Vec3_t point_ep(ref_x2, ref_y2, 1.0);
+    const Vec3_t proj_line = point_sp.cross(point_ep);
+    const double line_norm = std::sqrt(proj_line(0) * proj_line(0) + proj_line(1) * proj_line(1));
+    const bool check_level = (0 < min_level) || (0 <= max_level);
+
+    for (size_t i = 0; i < keylines.size(); ++i) {
+        const auto& keyline = keylines[i];
+        const float dist_sp = static_cast<float>((keyline.startPointX * proj_line(0) + keyline.startPointY * proj_line(1) + proj_line(2)) / line_norm);
+        const float dist_ep = static_cast<float>((keyline.endPointX * proj_line(0) + keyline.endPointY * proj_line(1) + proj_line(2)) / line_norm);
+        if (std::abs(dist_sp) > margin || std::abs(dist_ep) > margin) {
+            continue;
+        }
+        if (check_level) {
+            if (keyline.octave < min_level) {
+                continue;
+            }
+            if (max_level > 0 && keyline.octave > max_level) {
+                continue;
+            }
+        }
+        indices.push_back(static_cast<unsigned int>(i));
+    }
+    return indices;
 }
 
 } // namespace data

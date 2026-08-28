@@ -9,6 +9,10 @@
 #include "autonomy/localization/atlas/match/robust.hpp"
 #include "autonomy/localization/atlas/module/two_view_triangulator.hpp"
 #include "autonomy/localization/atlas/optimize/local_bundle_adjuster_factory.hpp"
+#include "autonomy/localization/atlas/plp/planar_mapping_module.hpp"
+#include "autonomy/localization/atlas/module/two_view_triangulator_line.hpp"
+#include "autonomy/localization/atlas/data/landmark_line.hpp"
+#include "autonomy/localization/atlas/feature/line_descriptor/line_descriptor_custom.hpp"
 #include "autonomy/localization/atlas/solve/essential_solver.hpp"
 
 #include <thread>
@@ -20,6 +24,8 @@ mapping_module::mapping_module(const YAML::Node& yaml_node, data::map_database* 
     : local_map_cleaner_(new module::local_map_cleaner(yaml_node, map_db, bow_db)),
       map_db_(map_db), bow_db_(bow_db), bow_vocab_(bow_vocab),
       local_bundle_adjuster_(optimize::local_bundle_adjuster_factory::create(yaml_node)),
+      local_bundle_adjuster_extended_line_(std::make_unique<optimize::local_bundle_adjuster_extended_line>(yaml_node)),
+      local_bundle_adjuster_extended_plane_(std::make_unique<optimize::local_bundle_adjuster_extended_plane>(yaml_node)),
       enable_interruption_of_landmark_generation_(yaml_node["enable_interruption_of_landmark_generation"].as<bool>(true)),
       enable_interruption_before_local_BA_(yaml_node["enable_interruption_before_local_BA"].as<bool>(true)),
       num_covisibilities_for_landmark_generation_(yaml_node["num_covisibilities_for_landmark_generation"].as<unsigned int>(10)),
@@ -57,6 +63,10 @@ void mapping_module::set_tracking_module(tracking_module* tracker) {
 
 void mapping_module::set_global_optimization_module(global_optimization_module* global_optimizer) {
     global_optimizer_ = global_optimizer;
+}
+
+void mapping_module::set_planar_mapping_module(plp::planar_mapping_module* planar_mapper) {
+    planar_mapper_ = planar_mapper;
 }
 
 void mapping_module::run() {
@@ -160,6 +170,9 @@ void mapping_module::mapping_with_new_keyframe() {
 
     // remove invalid landmarks
     local_map_cleaner_->remove_invalid_landmarks(cur_keyfrm_->id_);
+    if (map_db_->use_line_tracking()) {
+        local_map_cleaner_->remove_redundant_landmarks_line(cur_keyfrm_->id_);
+    }
 
     // triangulate new landmarks between the current frame and each of the covisibilities
     std::atomic<bool> abort_create_new_landmarks{false};
@@ -183,6 +196,12 @@ void mapping_module::mapping_with_new_keyframe() {
     // detect and resolve the duplication of the landmarks observed in the current frame
     update_new_keyframe();
 
+    if (map_db_->use_plane_mapping() && planar_mapper_) {
+        if (planar_mapper_->process_new_keyframe(cur_keyfrm_)) {
+            planar_mapper_->refinement();
+        }
+    }
+
     if (enable_interruption_before_local_BA_ && (keyframe_is_queued() || pause_is_requested())) {
         {
             std::lock_guard<std::mutex> lock(mtx_keyfrm_queue_);
@@ -202,7 +221,13 @@ void mapping_module::mapping_with_new_keyframe() {
             ADEBUG << "Skipped localBA due to insufficient performance";
         }
         else {
-            local_bundle_adjuster_->optimize(map_db_, cur_keyfrm_, &abort_local_BA_);
+            if (map_db_->use_line_tracking()) {
+                local_bundle_adjuster_extended_line_->optimize(map_db_, cur_keyfrm_, &abort_local_BA_);
+            } else if (map_db_->use_plane_mapping() && map_db_->get_num_landmark_planes() > 0) {
+                local_bundle_adjuster_extended_plane_->optimize(map_db_, cur_keyfrm_, &abort_local_BA_);
+            } else {
+                local_bundle_adjuster_->optimize(map_db_, cur_keyfrm_, &abort_local_BA_);
+            }
         }
     }
 
@@ -262,6 +287,16 @@ void mapping_module::store_new_keyframe() {
         }
 
         local_map_cleaner_->add_fresh_landmark(lm);
+    }
+
+    if (map_db_->use_line_tracking()) {
+        const auto cur_lms_line = cur_keyfrm_->get_landmarks_line();
+        for (const auto& lm_line : cur_lms_line) {
+            if (!lm_line || lm_line->will_be_erased()) {
+                continue;
+            }
+            local_map_cleaner_->add_fresh_landmark_line(lm_line);
+        }
     }
 
     // update graph
@@ -336,6 +371,9 @@ void mapping_module::create_new_landmarks(std::atomic<bool>& abort_create_new_la
 
         // triangulation
         triangulate_with_two_keyframes(cur_keyfrm_, ngh_keyfrm, matches);
+        if (map_db_->use_line_tracking()) {
+            triangulate_line_with_two_keyframes(cur_keyfrm_, ngh_keyfrm);
+        }
     }
 }
 
@@ -379,6 +417,57 @@ void mapping_module::triangulate_with_two_keyframes(const std::shared_ptr<data::
     }
 }
 
+void mapping_module::triangulate_line_with_two_keyframes(const std::shared_ptr<data::keyframe>& cur_keyfrm,
+                                                         const std::shared_ptr<data::keyframe>& ngh_keyfrm) {
+    if (cur_keyfrm->line_obs_.empty() || ngh_keyfrm->line_obs_.empty()) {
+        return;
+    }
+
+    std::vector<cv::DMatch> lsd_matches;
+    auto matcher = cv::line_descriptor::BinaryDescriptorMatcher::createBinaryDescriptorMatcher();
+    matcher->match(cur_keyfrm->line_obs_.lbd_descriptors, ngh_keyfrm->line_obs_.lbd_descriptors, lsd_matches);
+
+    std::vector<cv::DMatch> good_matches;
+    for (const auto& mt : lsd_matches) {
+        if (mt.distance >= 50) {
+            continue;
+        }
+        const auto& line1 = cur_keyfrm->line_obs_.keylines.at(mt.queryIdx);
+        const auto& line2 = ngh_keyfrm->line_obs_.keylines.at(mt.trainIdx);
+        const cv::Point2f serr = line1.getStartPoint() - line2.getStartPoint();
+        const cv::Point2f eerr = line1.getEndPoint() - line2.getEndPoint();
+        const float distance_s = std::sqrt(serr.dot(serr));
+        const float distance_e = std::sqrt(eerr.dot(eerr));
+        const float angle = std::abs(std::abs(line1.angle) - std::abs(line2.angle)) * 180.f / 3.14159f;
+        if (distance_s < 400.f && distance_e < 400.f && angle < 20.f) {
+            good_matches.push_back(mt);
+        }
+    }
+
+    const module::two_view_triangulator_line triangulator(cur_keyfrm, ngh_keyfrm, 1.0f);
+    std::lock_guard<std::mutex> lock(data::map_database::mtx_database_);
+
+    for (const auto& mt : good_matches) {
+        if (cur_keyfrm->get_landmark_line(mt.queryIdx) || ngh_keyfrm->get_landmark_line(mt.trainIdx)) {
+            continue;
+        }
+        Vec6_t pos_w_line;
+        if (!triangulator.triangulate(mt.queryIdx, mt.trainIdx, pos_w_line)) {
+            continue;
+        }
+
+        auto lm_line = std::make_shared<data::landmark_line>(map_db_->next_landmark_line_id_++, pos_w_line, cur_keyfrm);
+        lm_line->add_observation(cur_keyfrm, mt.queryIdx);
+        lm_line->add_observation(ngh_keyfrm, mt.trainIdx);
+        cur_keyfrm->add_landmark_line(lm_line, mt.queryIdx);
+        ngh_keyfrm->add_landmark_line(lm_line, mt.trainIdx);
+        lm_line->compute_descriptor();
+        lm_line->update_information();
+        map_db_->add_landmark_line(lm_line);
+        local_map_cleaner_->add_fresh_landmark_line(lm_line);
+    }
+}
+
 void mapping_module::update_new_keyframe() {
     std::lock_guard<std::mutex> lock(data::map_database::mtx_database_);
 
@@ -388,6 +477,9 @@ void mapping_module::update_new_keyframe() {
     // resolve the duplication of landmarks between the current keyframe and the targets
     nondeterministic::unordered_map<std::shared_ptr<data::landmark>, std::shared_ptr<data::landmark>> replaced_lms;
     fuse_landmark_duplication(fuse_tgt_keyfrms, replaced_lms);
+    if (map_db_->use_line_tracking()) {
+        fuse_landmark_line_duplication(fuse_tgt_keyfrms);
+    }
     tracker_->replace_landmarks_in_last_frm(replaced_lms);
 
     // update the geometries
@@ -532,6 +624,31 @@ void mapping_module::fuse_landmark_duplication(const std::vector<std::shared_ptr
             lm->update_mean_normal_and_obs_scale_variance();
             lm->compute_descriptor();
         }
+    }
+}
+
+void mapping_module::fuse_landmark_line_duplication(const std::vector<std::shared_ptr<data::keyframe>>& fuse_tgt_keyfrms) {
+    match::fuse fuse_matcher(0.6);
+    constexpr float margin = 3.0f;
+
+    {
+        const auto cur_landmarks_line = cur_keyfrm_->get_landmarks_line();
+        for (const auto& fuse_tgt_keyfrm : fuse_tgt_keyfrms) {
+            fuse_matcher.replace_duplication_line(fuse_tgt_keyfrm, cur_landmarks_line, margin);
+        }
+    }
+
+    {
+        nondeterministic::unordered_set<std::shared_ptr<data::landmark_line>> candidate_landmarks_to_fuse;
+        for (const auto& fuse_tgt_keyfrm : fuse_tgt_keyfrms) {
+            for (const auto& lm_line : fuse_tgt_keyfrm->get_landmarks_line()) {
+                if (!lm_line || lm_line->will_be_erased()) {
+                    continue;
+                }
+                candidate_landmarks_to_fuse.insert(lm_line);
+            }
+        }
+        fuse_matcher.replace_duplication_line(cur_keyfrm_, candidate_landmarks_to_fuse, margin);
     }
 }
 

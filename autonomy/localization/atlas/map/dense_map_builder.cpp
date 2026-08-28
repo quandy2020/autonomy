@@ -347,6 +347,9 @@ void DenseMapBuilder::Integrate(
     if (!running_ || !options_.enabled || !slam_ || !cam_pose_wc) {
         return;
     }
+    if (slam_->loop_BA_is_running()) {
+        return;
+    }
 
     uint64_t id = 0;
     unsigned int keyframe_id = 0;

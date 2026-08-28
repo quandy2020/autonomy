@@ -24,6 +24,8 @@
 #include <opencv2/core/types.hpp>
 #include <nlohmann/json_fwd.hpp>
 
+#include "autonomy/localization/atlas/feature/line_descriptor/line_descriptor_custom.hpp"
+
 namespace autonomy::localization::atlas {
 namespace data {
 
@@ -42,6 +44,10 @@ nlohmann::json convert_keypoints_to_json(const std::vector<cv::KeyPoint>& keypts
 std::vector<cv::KeyPoint> convert_json_to_keypoints(const nlohmann::json& json_keypts);
 
 nlohmann::json convert_descriptors_to_json(const cv::Mat& descriptors);
+
+nlohmann::json convert_keylines_to_json(const std::vector<cv::line_descriptor::KeyLine>& keylines);
+
+std::vector<cv::line_descriptor::KeyLine> convert_json_to_keylines(const nlohmann::json& json_keylines);
 
 cv::Mat convert_json_to_descriptors(const nlohmann::json& json_descriptors);
 
@@ -103,6 +109,11 @@ std::vector<unsigned int> get_keypoints_in_cell(const camera::base* camera, cons
 std::vector<unsigned int> get_keypoints_in_cell(const camera::base* camera, const frame_observation& frm_obs,
                                                 const float ref_x, const float ref_y, const float margin,
                                                 const int min_level = -1, const int max_level = -1);
+
+std::vector<unsigned int> get_keylines_in_cell(
+    const std::vector<cv::line_descriptor::KeyLine>& keylines,
+    float ref_x1, float ref_y1, float ref_x2, float ref_y2, float margin,
+    int min_level = -1, int max_level = -1);
 
 /**
  * Triangulate the keypoint using the disparity

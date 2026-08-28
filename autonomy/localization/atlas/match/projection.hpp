@@ -23,6 +23,8 @@
 #include <set>
 #include <memory>
 
+#include "autonomy/localization/atlas/data/landmark_line.hpp"
+
 namespace autonomy::localization::atlas {
 
 namespace data {
@@ -75,6 +77,18 @@ public:
     //! matched_lms_in_keyfrm_1には，keyframe1の特徴点(index)と対応する，keyframe2で観測されている3次元点が記録される
     unsigned int match_keyframes_mutually(const std::shared_ptr<data::keyframe>& keyfrm_1, const std::shared_ptr<data::keyframe>& keyfrm_2, std::vector<std::shared_ptr<data::landmark>>& matched_lms_in_keyfrm_1,
                                           const float& s_12, const Mat33_t& rot_12, const Vec3_t& trans_12, const float margin) const;
+
+    unsigned int match_frame_and_landmarks_line(data::frame& frm,
+                                                const std::vector<std::shared_ptr<data::landmark_line>>& local_landmarks_line,
+                                                float margin = 5.0f) const;
+
+    unsigned int match_frame_and_keyframe_line(data::frame& curr_frm,
+                                               const std::shared_ptr<data::keyframe>& keyfrm,
+                                               const std::set<std::shared_ptr<data::landmark_line>>& already_matched_lms,
+                                               float margin = 10.0f,
+                                               unsigned int hamm_dist_thr = HAMMING_DIST_THR_HIGH) const;
+
+    unsigned int match_current_and_last_frames_line(data::frame& curr_frm, const data::frame& last_frm, float margin) const;
 };
 
 } // namespace match

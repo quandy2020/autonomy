@@ -21,6 +21,7 @@ Requires ``habitat-sim``; there is no mock backend.
 from __future__ import annotations
 
 import math
+import shutil
 import warnings
 from pathlib import Path
 from typing import Any, Mapping, Tuple
@@ -135,6 +136,8 @@ class Simulator:
         self.attach_urdf(habitat_sim)
         spawn = self.settings["habitat"].get("spawn", [0.0, 0.0, 0.0])
         self.reset(float(spawn[0]), float(spawn[1]), float(spawn[2]))
+        self.snap_to_navmesh()
+        self.ensure_semantic_spawn()
 
     def habitat_configuration(self, habitat_sim: Any) -> Any:
         """Build ``SimulatorConfiguration`` from settings.
@@ -155,20 +158,25 @@ class Simulator:
         hab_cfg = self.settings.get("habitat", {})
         dataset_config = str(hab_cfg.get("dataset_config") or "").strip()
         scene_id = str(hab_cfg.get("scene_id") or "").strip()
+        scene_path = str(hab_cfg.get("path") or "").strip()
 
-        if dataset_config and scene_id:
-            # MP3D dataset config mode (preferred, matches autonomy_ros).
-            if not Path(dataset_config).exists():
-                raise FileNotFoundError(
-                    f"MP3D scene dataset config not found: {dataset_config}"
-                )
-            configuration.scene_dataset_config_file = dataset_config
-            configuration.scene_id = scene_id
+        resolved = self.resolve_scene_dataset(hab_cfg)
+        if resolved is not None:
+            dataset_file, resolved_scene_id = resolved
+            configuration.scene_dataset_config_file = dataset_file
+            configuration.scene_id = resolved_scene_id
             configuration.load_semantic_mesh = True
             return configuration
 
-        # Legacy: direct GLB path.
-        scene_path = str(hab_cfg.get("path") or "").strip()
+        if dataset_config and scene_id:
+            raise FileNotFoundError(
+                f"MP3D scene {scene_id!r} not found relative to dataset config "
+                f"{dataset_config!r}. Place mp3d.scene_dataset_config.json beside "
+                "the scene folders (e.g. .../src/mp3d.scene_dataset_config.json) "
+                "or set habitat.path to the .glb for auto-detection."
+            )
+
+        # Legacy: direct GLB path (no semantic mesh).
         if not scene_path:
             if hasattr(habitat_sim, "STAGE_EMPTY_SCENE"):
                 configuration.scene_id = habitat_sim.STAGE_EMPTY_SCENE
@@ -177,10 +185,213 @@ class Simulator:
                     "scene", "NONE"
                 )
             return configuration
-        if not Path(scene_path).exists():
+        glb_path = Path(scene_path)
+        if not glb_path.exists():
             raise FileNotFoundError(f"scene path does not exist: {scene_path}")
+
+        camera_cfg = hab_cfg.get("sensors", {}).get("camera", {})
+        if camera_cfg.get("semantic_enabled", False):
+            warnings.warn(
+                "semantic_enabled but no MP3D semantic assets beside the GLB "
+                f"({glb_path.stem}_semantic.ply + {glb_path.stem}.house); "
+                "semantic sensor will not align with RGB. Use dataset_config + "
+                "scene_id beside the scene folders, or habitat.path auto-detection.",
+                stacklevel=2,
+            )
+
         configuration.scene_id = scene_path
         return configuration
+
+    @classmethod
+    def resolve_scene_dataset(cls, hab_cfg: Mapping[str, Any]) -> Tuple[str, str] | None:
+        """Resolve MP3D dataset config + scene_id from yaml or GLB path.
+
+        Habitat resolves ``*/*.glb`` globs relative to the directory that
+        contains ``mp3d.scene_dataset_config.json``, not the autosim package.
+        """
+        dataset_config = str(hab_cfg.get("dataset_config") or "").strip()
+        scene_id = str(hab_cfg.get("scene_id") or "").strip()
+        scene_path = str(hab_cfg.get("path") or "").strip()
+
+        if dataset_config and scene_id:
+            ds_path = Path(dataset_config)
+            if ds_path.is_file() and (ds_path.parent / scene_id).is_file():
+                return str(ds_path), scene_id
+
+        if scene_path:
+            glb_path = Path(scene_path)
+            if glb_path.is_file():
+                mp3d = cls.resolve_mp3d_scene_dataset(glb_path)
+                if mp3d is not None:
+                    return mp3d
+
+        return None
+
+    @staticmethod
+    def bundled_mp3d_dataset_config() -> Path:
+        """Packaged ``mp3d.scene_dataset_config.json`` (same as autonomy_ros)."""
+        return Path(__file__).resolve().parent.parent / "config" / "mp3d.scene_dataset_config.json"
+
+    @classmethod
+    def ensure_mp3d_dataset_config(cls, mp3d_root: Path) -> Path:
+        """Install dataset config beside MP3D scene folders when missing."""
+        dest = mp3d_root / "mp3d.scene_dataset_config.json"
+        if dest.is_file():
+            return dest
+        bundled = cls.bundled_mp3d_dataset_config()
+        if not bundled.is_file():
+            raise FileNotFoundError(
+                f"MP3D scene dataset config missing at {dest} and bundled copy "
+                f"not found at {bundled}"
+            )
+        mp3d_root.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(bundled, dest)
+        return dest
+
+    @classmethod
+    def resolve_mp3d_scene_dataset(cls, glb_path: Path) -> Tuple[str, str] | None:
+        """Infer dataset config + scene_id from ``{scene}/{scene}.glb`` MP3D layout.
+
+        Habitat semantic cameras require ``{scene}_semantic.ply`` and ``{scene}.house``
+        registered via ``mp3d.scene_dataset_config.json`` (not raw GLB loading).
+        """
+        if glb_path.suffix.lower() != ".glb":
+            return None
+        scene_dir = glb_path.parent
+        scene_name = glb_path.stem
+        semantic_ply = scene_dir / f"{scene_name}_semantic.ply"
+        house_file = scene_dir / f"{scene_name}.house"
+        if not semantic_ply.is_file() or not house_file.is_file():
+            return None
+        mp3d_root = scene_dir.parent
+        dataset_config = cls.ensure_mp3d_dataset_config(mp3d_root)
+        scene_id = f"{scene_name}/{glb_path.name}"
+        return str(dataset_config), scene_id
+
+    def camera_semantic_enabled(self) -> bool:
+        """Whether the Habitat agent includes a semantic pinhole sensor."""
+        camera_cfg = self.settings.get("habitat", {}).get("sensors", {}).get("camera", {})
+        return bool(camera_cfg.get("semantic_enabled", False))
+
+    def semantic_unique_count(self) -> int:
+        """Count distinct Habitat semantic / instance ids in the current view."""
+        if self.session is None:
+            return 0
+        observations = self.session.get_sensor_observations()
+        semantic_key = None
+        for name in ("semantic", "semantic_sensor"):
+            if name in observations:
+                semantic_key = name
+                break
+        if semantic_key is None:
+            return 0
+        semantic = np.squeeze(np.asarray(observations[semantic_key]))
+        return int(len(np.unique(semantic)))
+
+    def ensure_semantic_spawn(
+        self,
+        *,
+        min_unique: int = 20,
+        max_tries: int = 48,
+    ) -> bool:
+        """Relocate spawn when the semantic buffer is degenerate at the configured pose.
+
+        MP3D semantic meshes can render as a flat id field at some navigable poses
+        (e.g. map origin) while RGB still looks valid.  Sample random navmesh points
+        and keep the pose with the richest semantic view.
+
+        Returns:
+            ``True`` when the agent pose was changed.
+        """
+        if self.session is None or not self.camera_semantic_enabled():
+            return False
+
+        initial = self.semantic_unique_count()
+        if initial >= min_unique:
+            return False
+
+        pathfinder = getattr(self.session, "pathfinder", None)
+        random_nav = getattr(pathfinder, "get_random_navigable_point", None)
+        if pathfinder is None or not callable(random_nav):
+            warnings.warn(
+                "semantic_enabled but semantic view has only "
+                f"{initial} ids and navmesh is unavailable for respawn",
+                stacklevel=2,
+            )
+            return False
+        if not bool(getattr(pathfinder, "is_loaded", False)):
+            warnings.warn(
+                "semantic_enabled but semantic view has only "
+                f"{initial} ids and navmesh is not loaded",
+                stacklevel=2,
+            )
+            return False
+
+        best_count = initial
+        best_pose = self.pose()
+        spawn_yaw = best_pose[2]
+        for _ in range(max(1, int(max_tries))):
+            try:
+                sample = self.finite_xyz(random_nav())
+            except Exception:
+                sample = None
+            if sample is None:
+                continue
+            map_x = float(sample[0])
+            map_y = float(-sample[2])
+            self.set_pose(map_x, map_y, spawn_yaw)
+            self.snap_to_navmesh()
+            count = self.semantic_unique_count()
+            if count > best_count:
+                best_count = count
+                best_pose = self.pose()
+            if count >= min_unique:
+                break
+
+        if best_count <= initial:
+            warnings.warn(
+                "semantic_enabled but could not find a spawn with rich semantic "
+                f"labels (best={best_count}, need>={min_unique}); "
+                "segmentation may not align with RGB at this pose",
+                stacklevel=2,
+            )
+            self.set_pose(*best_pose)
+            return False
+
+        self.set_pose(*best_pose)
+        warnings.warn(
+            "Relocated spawn for semantic camera: "
+            f"unique ids {initial} -> {best_count} at "
+            f"({best_pose[0]:.2f}, {best_pose[1]:.2f}, yaw={best_pose[2]:.2f})",
+            stacklevel=2,
+        )
+        return True
+
+    @staticmethod
+    def semantic_ids_to_colored_rgb(semantic: np.ndarray) -> np.ndarray:
+        """Colorize Habitat semantic ids for human viewing (matches autonomy_ros)."""
+        ids = np.squeeze(np.asarray(semantic))
+        if ids.ndim != 2:
+            raise RuntimeError(f"unexpected semantic shape: {ids.shape!r}")
+        try:
+            from habitat_sim.utils.viz_utils import semantic_to_rgb
+        except ImportError as exc:
+            raise RuntimeError("habitat-sim is required for semantic visualization") from exc
+        colored = np.asarray(semantic_to_rgb(ids.astype(np.uint32, copy=False)))
+        if colored.ndim == 3 and colored.shape[-1] >= 3:
+            return np.ascontiguousarray(colored[..., :3].astype(np.uint8, copy=False))
+        raise RuntimeError(f"unexpected semantic_to_rgb shape: {colored.shape!r}")
+
+    @staticmethod
+    def semantic_bgr_to_colored_rgb(semantic_bgr: np.ndarray) -> np.ndarray:
+        """Decode packed BGR8 ids and colorize for visualization."""
+        bgr = np.asarray(semantic_bgr)
+        ids = (
+            bgr[..., 0].astype(np.uint32)
+            | (bgr[..., 1].astype(np.uint32) << 8)
+            | (bgr[..., 2].astype(np.uint32) << 16)
+        )
+        return Simulator.semantic_ids_to_colored_rgb(ids)
 
     def agent_configuration(self, habitat_sim: Any) -> Any:
         """RGB-D agent specs; camera height from URDF when present."""
@@ -213,7 +424,19 @@ class Simulator:
                 spec.near = 0.05
             if hasattr(spec, "far"):
                 spec.far = 100.0
-        agent_configuration.sensor_specifications = [color_sensor, depth_sensor]
+        sensor_specs = [color_sensor, depth_sensor]
+        if camera_cfg.get("semantic_enabled", False):
+            semantic_sensor = habitat_sim.CameraSensorSpec()
+            semantic_sensor.uuid = "semantic"
+            semantic_sensor.sensor_type = habitat_sim.SensorType.SEMANTIC
+            semantic_sensor.resolution = [self.height, self.width]
+            semantic_sensor.hfov = hfov_deg
+            if hasattr(habitat_sim, "SensorSubType"):
+                semantic_sensor.sensor_subtype = habitat_sim.SensorSubType.PINHOLE
+            semantic_sensor.position = [offset[0], offset[1], offset[2]]
+            semantic_sensor.orientation = [0.0, 0.0, 0.0]
+            sensor_specs.append(semantic_sensor)
+        agent_configuration.sensor_specifications = sensor_specs
         return agent_configuration
 
     def camera_local_offset(self) -> Tuple[float, float, float]:
@@ -822,14 +1045,21 @@ class Simulator:
         v_angles = self.linspace_angles(v_min, v_max, v_rings)
         return self.raycast_cloud(h_angles, v_angles, range_max)
 
-    def color_depth(self) -> Tuple[np.ndarray, np.ndarray]:
-        """RGB and depth observations from Habitat.
+    def camera_observations(
+        self, *, with_semantic: bool = False
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray | None]:
+        """One Habitat render for RGB, depth, and optional semantic.
+
+        Args:
+            with_semantic: When ``True``, decode the semantic sensor from the
+                same ``get_sensor_observations()`` call as RGB-D.
 
         Returns:
-            ``(color, depth)`` with depth squeezed to ``HxW float32``.
+            ``(color, depth, semantic_ids)`` where ``semantic_ids`` is ``HxW uint16``
+            when ``with_semantic`` is false or the sensor is absent, ``None``.
 
         Raises:
-            RuntimeError: Session not open.
+            RuntimeError: Session not open or unexpected tensor shapes.
         """
         if self.session is None:
             raise RuntimeError("Habitat session is not open")
@@ -842,7 +1072,65 @@ class Simulator:
         if depth.ndim != 2:
             raise RuntimeError(f"unexpected depth shape: {depth.shape!r}")
         np.nan_to_num(depth, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
+
+        semantic_ids: np.ndarray | None = None
+        if with_semantic:
+            semantic_key = None
+            for name in ("semantic", "semantic_sensor"):
+                if name in observations:
+                    semantic_key = name
+                    break
+            if semantic_key is not None:
+                semantic = self.align_camera_image(observations[semantic_key])
+                semantic_ids = np.squeeze(np.asarray(semantic)).astype(np.uint16, copy=False)
+                if semantic_ids.ndim != 2:
+                    raise RuntimeError(f"unexpected semantic shape: {semantic_ids.shape!r}")
+        return color, depth, semantic_ids
+
+    def color_depth(self) -> Tuple[np.ndarray, np.ndarray]:
+        """RGB and depth observations from Habitat.
+
+        Returns:
+            ``(color, depth)`` with depth squeezed to ``HxW float32``.
+
+        Raises:
+            RuntimeError: Session not open.
+        """
+        color, depth, _ = self.camera_observations(with_semantic=False)
         return color, depth
+
+    def color_depth_semantic(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """RGB, depth, and semantic from a single Habitat observation.
+
+        Returns:
+            ``(color, depth, semantic_ids)`` with semantic as HxW uint16 instance ids.
+
+        Raises:
+            RuntimeError: Session not open or semantic sensor missing.
+        """
+        color, depth, semantic = self.camera_observations(with_semantic=True)
+        if semantic is None:
+            raise RuntimeError("Habitat semantic sensor is not configured")
+        return color, depth, semantic
+
+    @staticmethod
+    def semantic_ids_to_bgr(semantic: np.ndarray) -> np.ndarray:
+        """Encode Habitat semantic/instance ids as BGR8 for visualization."""
+        ids = np.squeeze(np.asarray(semantic))
+        if ids.ndim != 2:
+            raise RuntimeError(f"unexpected semantic shape: {ids.shape!r}")
+        ids = ids.astype(np.uint32, copy=False)
+        b = (ids & 0xFF).astype(np.uint8)
+        g = ((ids >> 8) & 0xFF).astype(np.uint8)
+        r = ((ids >> 16) & 0xFF).astype(np.uint8)
+        return np.stack([b, g, r], axis=-1)
+
+    def semantic_bgr(self) -> np.ndarray:
+        """Semantic segmentation as HxWx3 uint8 (BGR), aligned with RGB-D."""
+        _, _, semantic = self.camera_observations(with_semantic=True)
+        if semantic is None:
+            raise RuntimeError("Habitat semantic sensor is not configured")
+        return self.semantic_ids_to_bgr(semantic)
 
     @staticmethod
     def align_camera_image(image: np.ndarray) -> np.ndarray:

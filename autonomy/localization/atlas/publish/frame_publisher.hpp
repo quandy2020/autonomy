@@ -28,11 +28,14 @@
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/types.hpp>
 
+#include "autonomy/localization/atlas/feature/line_descriptor/line_descriptor_custom.hpp"
+
 namespace autonomy::localization::atlas {
 
 class tracking_module;
 
 namespace data {
+class landmark_line;
 class map_database;
 } // namespace data
 
@@ -62,13 +65,21 @@ public:
                 std::vector<data::marker2d>& mkrs2d,
                 const cv::Mat& img,
                 double tracking_time_elapsed_ms,
-                double extraction_time_elapsed_ms);
+                double extraction_time_elapsed_ms,
+                const std::vector<cv::line_descriptor::KeyLine>& keylines = {},
+                const std::vector<std::shared_ptr<data::landmark_line>>& curr_lms_line = {},
+                const cv::Mat& seg_mask = cv::Mat{},
+                bool loop_ba_running = false,
+                bool loop_closure_active = false);
 
     /**
      * Get the current image with tracking information
      * NOTE: should be accessed from viewer thread
      */
     cv::Mat draw_frame();
+
+    /** Colored instance segmentation panel (PLP Pangolin lower row). */
+    cv::Mat draw_seg_mask();
 
     /**
      * Side-by-side previous/current frame with matched feature lines.
@@ -99,6 +110,19 @@ protected:
 
     void draw_markers2d(cv::Mat& img, const std::vector<data::marker2d>& mkrs2d, const float mag = 1.0);
 
+    unsigned int draw_tracked_lines(
+        cv::Mat& img, const std::vector<cv::line_descriptor::KeyLine>& keylines,
+        const std::vector<bool>& is_tracked_line, bool mapping_is_enabled,
+        float mag = 1.0f) const;
+
+    void draw_info_text(cv::Mat& img, tracker_state_t tracking_state,
+                        unsigned int num_tracked, unsigned int num_tracked_line,
+                        double elapsed_ms, bool mapping_is_enabled,
+                        bool loop_ba_running, bool loop_closure_active) const;
+
+    cv::Mat render_seg_mask_panel(const cv::Mat& seg_mask, const cv::Size& out_size,
+                                  float mag = 1.0f) const;
+
     void draw_match_lines(cv::Mat& canvas, int prev_panel_width,
                           const std::vector<cv::KeyPoint>& prev_keypts,
                           const std::vector<std::shared_ptr<data::landmark>>& prev_lms,
@@ -111,6 +135,12 @@ protected:
     const cv::Scalar localization_color_{255, 255, 0};
     const cv::Scalar marker_color_{255, 0, 255};
     const cv::Scalar match_line_color_{0, 255, 0};
+    const cv::Scalar lsd_line_untracked_color_{static_cast<int>(0.4 * 255),
+                                              static_cast<int>(0.35 * 255),
+                                              static_cast<int>(0.8 * 255)};
+    const cv::Scalar lsd_line_tracked_color_{static_cast<int>(0.8 * 255),
+                                              static_cast<int>(0.35 * 255),
+                                              static_cast<int>(0.4 * 255)};
     const cv::Scalar match_point_color_{0, 200, 255};
 
     //! config
@@ -142,8 +172,16 @@ protected:
 
     //! mapping module status
     bool mapping_is_enabled_;
+    bool loop_ba_running_ = false;
+    bool loop_closure_active_ = false;
 
     std::vector<std::shared_ptr<data::landmark>> curr_lms_;
+
+    std::vector<cv::line_descriptor::KeyLine> curr_keylines_;
+    std::vector<bool> is_tracked_line_;
+
+    cv::Mat curr_seg_mask_;
+    cv::Mat seg_mask_panel_;
 
     bool has_prev_frame_ = false;
     cv::Mat prev_img_;

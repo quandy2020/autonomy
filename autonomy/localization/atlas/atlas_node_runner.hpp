@@ -29,6 +29,7 @@ struct AtlasNodeFlags {
     std::string map_save_path;
     std::string rgb_topic = "/camera/rgb/image_raw";
     std::string depth_topic = "/camera/depth/image_raw";
+    std::string seg_topic = "";
 };
 
 int RunAtlasNode(const AtlasNodeFlags& flags);

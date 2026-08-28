@@ -1,6 +1,7 @@
 #include "autonomy/localization/atlas/data/frame.hpp"
 #include "autonomy/localization/atlas/data/keyframe.hpp"
 #include "autonomy/localization/atlas/data/landmark.hpp"
+#include "autonomy/localization/atlas/data/landmark_line.hpp"
 #include "autonomy/localization/atlas/module/local_map_updater.hpp"
 #include "autolink/common/log.hpp"
 
@@ -18,6 +19,10 @@ std::vector<std::shared_ptr<data::landmark>> local_map_updater::get_local_landma
     return local_lms_;
 }
 
+std::vector<std::shared_ptr<data::landmark_line>> local_map_updater::get_local_landmarks_line() const {
+    return local_lms_line_;
+}
+
 std::shared_ptr<data::keyframe> local_map_updater::get_nearest_covisibility() const {
     return nearest_covisibility_;
 }
@@ -32,10 +37,14 @@ bool local_map_updater::acquire_local_map(const std::vector<std::shared_ptr<data
 
 bool local_map_updater::acquire_local_map(const std::vector<std::shared_ptr<data::landmark>>& frm_lms,
                                           const unsigned int keyframe_id_threshold,
-                                          unsigned int& num_temporal_keyfrms) {
+                                          unsigned int& num_temporal_keyfrms,
+                                          unsigned int frm_id) {
     num_temporal_keyfrms = 0;
     const auto local_keyfrms_was_found = find_local_keyframes(frm_lms, keyframe_id_threshold, num_temporal_keyfrms);
     const auto local_lms_was_found = find_local_landmarks(frm_lms);
+    if (frm_id > 0) {
+        find_local_landmarks_line(frm_id);
+    }
     return local_keyfrms_was_found && local_lms_was_found;
 }
 
@@ -240,6 +249,25 @@ bool local_map_updater::find_local_landmarks(const std::vector<std::shared_ptr<d
         }
     }
 
+    return true;
+}
+
+bool local_map_updater::find_local_landmarks_line(unsigned int frm_id) {
+    local_lms_line_.clear();
+    local_lms_line_.reserve(50 * local_keyfrms_.size());
+
+    for (const auto& keyfrm : local_keyfrms_) {
+        for (const auto& lm_line : keyfrm->get_landmarks_line()) {
+            if (!lm_line || lm_line->will_be_erased()) {
+                continue;
+            }
+            if (lm_line->identifier_in_local_map_update_ == frm_id) {
+                continue;
+            }
+            lm_line->identifier_in_local_map_update_ = frm_id;
+            local_lms_line_.push_back(lm_line);
+        }
+    }
     return true;
 }
 

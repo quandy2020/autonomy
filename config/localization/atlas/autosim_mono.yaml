@@ -75,3 +75,8 @@ PangolinViewer:
   viewpoint_y: -0.9
   viewpoint_z: -1.9
   viewpoint_f: 400
+
+PLP:
+  enabled: true
+  use_line_tracking: true
+  use_plane_mapping: false

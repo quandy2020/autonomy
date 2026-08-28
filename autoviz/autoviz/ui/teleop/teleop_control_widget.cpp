@@ -295,7 +295,7 @@ TeleopControlWidget::TeleopControlWidget(QWidget* parent) : QWidget(parent) {
   connect(turn_joystick_, &TeleopJoystickWidget::valueChanged, this,
           [this](double x, double /*y*/) {
             if (stick_mode_ == TeleopStickMode::kDual) {
-              emit angularChanged(x);
+              emit angularChanged(-x);
             }
           });
   connect(turn_joystick_, &TeleopJoystickWidget::released, this, [this]() {
@@ -398,9 +398,10 @@ void TeleopControlWidget::applyModeUi() {
 }
 
 void TeleopControlWidget::emitArcadeFromStick(double x, double y, bool released) {
-  // Stick Y: forward is negative (screen up). Stick X: turn.
+  // Stick Y: forward is negative (screen up). Stick X: left is negative on screen;
+  // negate for ROS angular.z (CCW positive).
   emit linearChanged(0.0, y);
-  emit angularChanged(x);
+  emit angularChanged(-x);
   if (released) {
     emit linearReleased();
     emit angularReleased();
@@ -421,14 +422,12 @@ void TeleopControlWidget::updateArcadeFromKeyboard() {
   }
   double x = 0.0;
   double y = 0.0;
-  // ROS / teleop_twist_keyboard: A = CCW (positive angular.z), D = CW.
-  // Stick X already maps left→negative; keyboard must invert relative to that
-  // screen-space convention so A/D match expected yaw.
+  // Match stick axes: left = negative X, right = positive X (see emitArcadeFromStick).
   if (key_left_) {
-    x += 1.0;
+    x -= 1.0;
   }
   if (key_right_) {
-    x -= 1.0;
+    x += 1.0;
   }
   if (key_forward_) {
     y -= 1.0;

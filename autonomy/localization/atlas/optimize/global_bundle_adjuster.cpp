@@ -1,7 +1,11 @@
 #include "autonomy/localization/atlas/data/keyframe.hpp"
 #include "autonomy/localization/atlas/data/landmark.hpp"
 #include "autonomy/localization/atlas/data/marker.hpp"
+#include "autonomy/localization/atlas/data/landmark_line.hpp"
 #include "autonomy/localization/atlas/data/map_database.hpp"
+#include "autonomy/localization/atlas/optimize/g2o/landmark_vertex_container_line3d.hpp"
+#include "autonomy/localization/atlas/optimize/g2o/se3/line_reproj_edge_wrapper.hpp"
+#include "autonomy/localization/atlas/optimize/line_geometry_util.hpp"
 #include "autonomy/localization/atlas/marker_model/base.hpp"
 #include "autonomy/localization/atlas/optimize/global_bundle_adjuster.hpp"
 #include "autonomy/localization/atlas/optimize/terminate_action.hpp"
@@ -31,17 +35,32 @@ void optimize_impl(g2o::SparseOptimizer& optimizer,
                    internal::landmark_vertex_container& lm_vtx_container,
                    internal::marker_vertex_container& marker_vtx_container,
                    std::unordered_set<unsigned int>& mkr_has_vtx,
+                   data::map_database* map_db,
+                   std::vector<std::shared_ptr<data::landmark_line>>* lms_line,
+                   std::vector<bool>* is_optimized_lm_line,
+                   plp_g2o::landmark_vertex_container_line3d* line_vtx_container,
                    unsigned int num_iter,
                    bool use_huber_kernel,
                    bool fix_markers,
                    bool verbose,
                    bool* const force_stop_flag) {
     // 2. Construct an optimizer
+    // Line landmarks use 4-DOF VertexLine3D; BlockSolver_6_3 only supports 3-DOF points.
+    const bool use_mixed_solver =
+        map_db && map_db->use_line_tracking() && lms_line && line_vtx_container && !lms_line->empty();
 
-    std::unique_ptr<g2o::BlockSolverBase> block_solver;
-    auto linear_solver = autonomy::localization::atlas::make_unique<g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>>();
-    block_solver = autonomy::localization::atlas::make_unique<g2o::BlockSolver_6_3>(std::move(linear_solver));
-    auto algorithm = new g2o::OptimizationAlgorithmLevenberg(std::move(block_solver));
+    g2o::OptimizationAlgorithmLevenberg* algorithm = nullptr;
+    if (use_mixed_solver) {
+        auto linear_solver = autonomy::localization::atlas::make_unique<
+            g2o::LinearSolverEigen<g2o::BlockSolverX::PoseMatrixType>>();
+        auto block_solver = autonomy::localization::atlas::make_unique<g2o::BlockSolverX>(std::move(linear_solver));
+        algorithm = new g2o::OptimizationAlgorithmLevenberg(std::move(block_solver));
+    } else {
+        auto linear_solver = autonomy::localization::atlas::make_unique<
+            g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>>();
+        auto block_solver = autonomy::localization::atlas::make_unique<g2o::BlockSolver_6_3>(std::move(linear_solver));
+        algorithm = new g2o::OptimizationAlgorithmLevenberg(std::move(block_solver));
+    }
 
     optimizer.setAlgorithm(algorithm);
 
@@ -104,6 +123,9 @@ void optimize_impl(g2o::SparseOptimizer& optimizer,
             }
 
             if (!keyfrm_vtx_container.contain(keyfrm)) {
+                continue;
+            }
+            if (idx >= keyfrm->frm_obs_.undist_keypts_.size()) {
                 continue;
             }
 
@@ -179,6 +201,61 @@ void optimize_impl(g2o::SparseOptimizer& optimizer,
         }
     }
 
+    if (map_db && map_db->use_line_tracking() && lms_line && is_optimized_lm_line && line_vtx_container &&
+        !lms_line->empty()) {
+        std::vector<plp_g2o::se3::line_reproj_edge_wrapper> line_reproj_edge_wraps;
+        line_reproj_edge_wraps.reserve(lms_line->size() * 4);
+
+        for (unsigned int i = 0; i < lms_line->size(); ++i) {
+            const auto& lm_line = lms_line->at(i);
+            if (!lm_line || lm_line->will_be_erased()) {
+                continue;
+            }
+
+            const Vec6_t pluecker = lm_line->get_pluecker_coord();
+            if (!pluecker.tail<3>().allFinite() || pluecker.tail<3>().norm() < 1e-8) {
+                is_optimized_lm_line->at(i) = false;
+                continue;
+            }
+
+            auto* line_vtx = line_vtx_container->create_vertex(lm_line, false);
+            optimizer.addVertex(line_vtx);
+
+            unsigned int num_edges = 0;
+            for (const auto& obs : lm_line->get_observations()) {
+                const auto keyfrm = obs.first.lock();
+                const auto idx = obs.second;
+                if (!keyfrm || keyfrm->will_be_erased() || !keyfrm_vtx_container.contain(keyfrm)) {
+                    continue;
+                }
+                if (idx >= keyfrm->line_obs_.keylines.size() || keyfrm->inv_level_sigma_sq_lsd_.empty()) {
+                    continue;
+                }
+                if (keyfrm->get_landmark_line(idx) != lm_line) {
+                    continue;
+                }
+
+                const auto& keyline = keyfrm->line_obs_.keylines.at(idx);
+                if (keyline.octave < 0 ||
+                    static_cast<size_t>(keyline.octave) >= keyfrm->inv_level_sigma_sq_lsd_.size()) {
+                    continue;
+                }
+                const float inv_sigma_sq =
+                    keyfrm->inv_level_sigma_sq_lsd_.at(static_cast<size_t>(keyline.octave));
+                line_reproj_edge_wraps.emplace_back(keyfrm, keyfrm_vtx_container.get_vertex(keyfrm), line_vtx, idx,
+                                                    keyline.getStartPoint(), keyline.getEndPoint(), inv_sigma_sq,
+                                                    sqrt_chi_sq_2D, use_huber_kernel);
+                optimizer.addEdge(line_reproj_edge_wraps.back().edge_);
+                ++num_edges;
+            }
+
+            if (num_edges == 0) {
+                optimizer.removeVertex(line_vtx);
+                is_optimized_lm_line->at(i) = false;
+            }
+        }
+    }
+
     // 5. Perform optimization
 
     optimizer.initializeOptimization();
@@ -191,10 +268,12 @@ void optimize_impl(g2o::SparseOptimizer& optimizer,
 }
 
 global_bundle_adjuster::global_bundle_adjuster(
+    data::map_database* map_db,
     const unsigned int num_iter,
     const bool use_huber_kernel,
     const bool verbose)
-    : num_iter_(num_iter),
+    : map_db_(map_db),
+      num_iter_(num_iter),
       use_huber_kernel_(use_huber_kernel),
       verbose_(verbose) {}
 
@@ -206,13 +285,27 @@ void global_bundle_adjuster::optimize_for_initialization(const std::vector<std::
                                                          bool* const force_stop_flag) const {
     std::vector<bool> is_optimized_lm(lms.size(), true);
 
+    std::vector<std::shared_ptr<data::landmark_line>> lms_line;
+    std::vector<bool> is_optimized_lm_line;
+    if (map_db_ && map_db_->use_line_tracking()) {
+        std::unordered_set<unsigned int> already_found_line_ids;
+        for (const auto& keyfrm : keyfrms) {
+            for (const auto& lm_line : keyfrm->get_landmarks_line()) {
+                if (!lm_line || lm_line->will_be_erased() || already_found_line_ids.count(lm_line->id_)) {
+                    continue;
+                }
+                already_found_line_ids.insert(lm_line->id_);
+                lms_line.push_back(lm_line);
+            }
+        }
+        is_optimized_lm_line.assign(lms_line.size(), true);
+    }
+
     auto vtx_id_offset = std::make_shared<unsigned int>(0);
-    // Container of the shot vertices
     internal::se3::shot_vertex_container keyfrm_vtx_container(vtx_id_offset, keyfrms.size());
-    // Container of the landmark vertices
     internal::landmark_vertex_container lm_vtx_container(vtx_id_offset, lms.size());
-    // Container of the landmark vertices
     internal::marker_vertex_container marker_vtx_container(vtx_id_offset, markers.size());
+    plp_g2o::landmark_vertex_container_line3d line_vtx_container(vtx_id_offset, lms_line.size());
     std::unordered_set<unsigned int> mkr_has_vtx;
 
     g2o::SparseOptimizer optimizer;
@@ -220,8 +313,11 @@ void global_bundle_adjuster::optimize_for_initialization(const std::vector<std::
     terminateAction->setGainThreshold(gain_threshold);
     optimizer.addPostIterationAction(terminateAction);
 
-    optimize_impl(optimizer, keyfrms, lms, markers, is_optimized_lm, keyfrm_vtx_container, lm_vtx_container, marker_vtx_container,
-                  mkr_has_vtx, num_iter_, use_huber_kernel_, fix_markers, verbose_, force_stop_flag);
+    optimize_impl(optimizer, keyfrms, lms, markers, is_optimized_lm, keyfrm_vtx_container, lm_vtx_container,
+                  marker_vtx_container, mkr_has_vtx, map_db_, lms_line.empty() ? nullptr : &lms_line,
+                  is_optimized_lm_line.empty() ? nullptr : &is_optimized_lm_line,
+                  lms_line.empty() ? nullptr : &line_vtx_container, num_iter_, use_huber_kernel_, fix_markers,
+                  verbose_, force_stop_flag);
 
     if (force_stop_flag && *force_stop_flag) {
         return;
@@ -273,13 +369,36 @@ void global_bundle_adjuster::optimize_for_initialization(const std::vector<std::
             mkr->corners_pos_w_[corner_idx] = marker_vtx_container.get_vertex(mkr, corner_idx)->estimate();
         }
     }
+
+    if (map_db_ && map_db_->use_line_tracking() && !lms_line.empty()) {
+        for (unsigned int i = 0; i < lms_line.size(); ++i) {
+            if (!is_optimized_lm_line.at(i)) {
+                continue;
+            }
+            const auto& lm_line = lms_line.at(i);
+            if (!lm_line || lm_line->will_be_erased()) {
+                continue;
+            }
+            const Vec6_t pos_w_pluecker = static_cast<Vec6_t>(line_vtx_container.get_vertex(lm_line)->estimate());
+            lm_line->set_pluecker_coord_without_update_endpoints(pos_w_pluecker);
+            Vec6_t updated_pose_w;
+            if (line_endpoint_trimming(lm_line, pos_w_pluecker, updated_pose_w)) {
+                lm_line->set_pos_in_world_without_update_pluecker(updated_pose_w);
+                lm_line->update_information();
+            } else {
+                lm_line->prepare_for_erasing(map_db_);
+            }
+        }
+    }
 }
 
 bool global_bundle_adjuster::optimize(const std::vector<std::shared_ptr<data::keyframe>>& keyfrms,
                                       std::unordered_set<unsigned int>& optimized_keyfrm_ids,
                                       std::unordered_set<unsigned int>& optimized_landmark_ids,
+                                      std::unordered_set<unsigned int>& optimized_landmark_line_ids,
                                       std::unordered_set<unsigned int>& optimized_marker_ids,
                                       eigen_alloc_unord_map<unsigned int, Vec3_t>& lm_to_pos_w_after_global_BA,
+                                      eigen_alloc_unord_map<unsigned int, Vec6_t>& lm_line_to_plucker_after_global_BA,
                                       eigen_alloc_unord_map<unsigned int, Mat44_t>& keyfrm_to_pose_cw_after_global_BA,
                                       eigen_alloc_unord_map<unsigned int, std::array<Vec3_t, 4>>& marker_to_pos_w_after_global_BA,
                                       bool* const force_stop_flag) const {
@@ -318,6 +437,22 @@ bool global_bundle_adjuster::optimize(const std::vector<std::shared_ptr<data::ke
         }
     }
 
+    std::vector<std::shared_ptr<data::landmark_line>> lms_line;
+    std::vector<bool> is_optimized_lm_line;
+    if (map_db_ && map_db_->use_line_tracking()) {
+        std::unordered_set<unsigned int> already_found_line_ids;
+        for (const auto& keyfrm : keyfrms) {
+            for (const auto& lm_line : keyfrm->get_landmarks_line()) {
+                if (!lm_line || lm_line->will_be_erased() || already_found_line_ids.count(lm_line->id_)) {
+                    continue;
+                }
+                already_found_line_ids.insert(lm_line->id_);
+                lms_line.push_back(lm_line);
+            }
+        }
+        is_optimized_lm_line.assign(lms_line.size(), true);
+    }
+
     std::vector<bool> is_optimized_lm(lms.size(), true);
 
     auto vtx_id_offset = std::make_shared<unsigned int>(0);
@@ -327,6 +462,7 @@ bool global_bundle_adjuster::optimize(const std::vector<std::shared_ptr<data::ke
     internal::landmark_vertex_container lm_vtx_container(vtx_id_offset, lms.size());
     // Container of the landmark vertices
     internal::marker_vertex_container marker_vtx_container(vtx_id_offset, markers.size());
+    plp_g2o::landmark_vertex_container_line3d line_vtx_container(vtx_id_offset, lms_line.size());
     std::unordered_set<unsigned int> mkr_has_vtx;
 
     g2o::SparseOptimizer optimizer;
@@ -334,8 +470,11 @@ bool global_bundle_adjuster::optimize(const std::vector<std::shared_ptr<data::ke
     terminateAction->setGainThreshold(1e-3);
     optimizer.addPostIterationAction(terminateAction);
 
-    optimize_impl(optimizer, keyfrms, lms, markers, is_optimized_lm, keyfrm_vtx_container, lm_vtx_container, marker_vtx_container,
-                  mkr_has_vtx, num_iter_, use_huber_kernel_, false, verbose_, force_stop_flag);
+    optimize_impl(optimizer, keyfrms, lms, markers, is_optimized_lm, keyfrm_vtx_container, lm_vtx_container,
+                  marker_vtx_container, mkr_has_vtx, map_db_, lms_line.empty() ? nullptr : &lms_line,
+                  is_optimized_lm_line.empty() ? nullptr : &is_optimized_lm_line,
+                  lms_line.empty() ? nullptr : &line_vtx_container, num_iter_, use_huber_kernel_, false, verbose_,
+                  force_stop_flag);
 
     if (force_stop_flag && *force_stop_flag && !terminateAction->stopped_by_terminate_action_) {
         return false;
@@ -374,6 +513,19 @@ bool global_bundle_adjuster::optimize(const std::vector<std::shared_ptr<data::ke
 
         lm_to_pos_w_after_global_BA[lm->id_] = pos_w;
         optimized_landmark_ids.insert(lm->id_);
+    }
+
+    for (unsigned int i = 0; i < lms_line.size(); ++i) {
+        if (!is_optimized_lm_line.at(i)) {
+            continue;
+        }
+        const auto& lm_line = lms_line.at(i);
+        if (!lm_line || lm_line->will_be_erased()) {
+            continue;
+        }
+        const Vec6_t pluecker = static_cast<Vec6_t>(line_vtx_container.get_vertex(lm_line)->estimate());
+        lm_line_to_plucker_after_global_BA[lm_line->id_] = pluecker;
+        optimized_landmark_line_ids.insert(lm_line->id_);
     }
 
     for (auto& mkr : markers) {

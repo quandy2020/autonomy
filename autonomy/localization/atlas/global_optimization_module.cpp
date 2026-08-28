@@ -3,8 +3,10 @@
 #include "autonomy/localization/atlas/tracking_module.hpp"
 #include "autonomy/localization/atlas/data/keyframe.hpp"
 #include "autonomy/localization/atlas/data/landmark.hpp"
+#include "autonomy/localization/atlas/data/landmark_line.hpp"
 #include "autonomy/localization/atlas/data/map_database.hpp"
 #include "autonomy/localization/atlas/match/fuse.hpp"
+#include "autonomy/localization/atlas/optimize/line_geometry_util.hpp"
 #include "autonomy/localization/atlas/util/converter.hpp"
 #include "autonomy/localization/atlas/util/yaml.hpp"
 #include "autolink/common/log.hpp"
@@ -21,7 +23,7 @@ global_optimization_module::global_optimization_module(data::map_database* map_d
           util::yaml_optional_ref(yaml_node, "GlobalOptimizer")["use_huber_kernel"].as<bool>(false),
           util::yaml_optional_ref(yaml_node, "GlobalOptimizer")["verbose"].as<bool>(false))),
       map_db_(map_db),
-      graph_optimizer_(new optimize::graph_optimizer(util::yaml_optional_ref(yaml_node, "GraphOptimizer"), fix_scale)),
+      graph_optimizer_(new optimize::graph_optimizer(util::yaml_optional_ref(yaml_node, "GraphOptimizer"), map_db, fix_scale)),
       thr_neighbor_keyframes_(util::yaml_optional_ref(yaml_node, "GlobalOptimizer")["thr_neighbor_keyframes"].as<unsigned int>(15)) {
     ADEBUG << "CONSTRUCT: global_optimization_module";
 }
@@ -36,6 +38,9 @@ global_optimization_module::~global_optimization_module() {
 
 void global_optimization_module::set_tracking_module(tracking_module* tracker) {
     tracker_ = tracker;
+    if (loop_bundle_adjuster_) {
+        loop_bundle_adjuster_->set_tracking_module(tracker);
+    }
 }
 
 void global_optimization_module::set_mapping_module(mapping_module* mapper) {
@@ -160,6 +165,16 @@ void global_optimization_module::run() {
             continue;
         }
 
+        while (loop_bundle_adjuster_->is_running()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            if (terminate_is_requested()) {
+                break;
+            }
+        }
+        if (terminate_is_requested()) {
+            break;
+        }
+
         // dequeue the keyframe from the queue -> cur_keyfrm_
         {
             std::lock_guard<std::mutex> lock(mtx_keyfrm_queue_);
@@ -262,6 +277,9 @@ void global_optimization_module::correct_loop() {
 
         // correct covibisibility landmark positions
         correct_covisibility_landmarks(Sim3s_nw_before_correction, Sim3s_nw_after_correction, found_lm_to_ref_keyfrm_id);
+        if (map_db_->use_line_tracking()) {
+            correct_covisibility_landmarks_line(Sim3s_nw_before_correction, Sim3s_nw_after_correction);
+        }
         // correct covisibility keyframe camera poses
         correct_covisibility_keyframes(Sim3s_nw_after_correction);
     }
@@ -301,10 +319,7 @@ void global_optimization_module::correct_loop() {
     thread_for_loop_BA_ = std::unique_ptr<std::thread>(new std::thread(&module::loop_bundle_adjuster::optimize, loop_bundle_adjuster_.get(), cur_keyfrm_));
 
     // 6. post-processing
-
-    ADEBUG << "global_optimization_module: resume the mapping module";
-    // resume the mapping module
-    mapper_->resume();
+    // Mapping stays paused until loop_bundle_adjuster finishes and calls resume().
 
     // set the loop fusion information to the loop detector
     loop_detector_->set_loop_correct_keyframe_id(cur_keyfrm_->id_);
@@ -379,6 +394,51 @@ void global_optimization_module::correct_covisibility_landmarks(const module::ke
             lm->set_pos_in_world(pos_w_after_correction);
             // update geometry
             lm->update_mean_normal_and_obs_scale_variance();
+        }
+    }
+}
+
+void global_optimization_module::correct_covisibility_landmarks_line(
+    const module::keyframe_Sim3_pairs_t& Sim3s_nw_before_correction,
+    const module::keyframe_Sim3_pairs_t& Sim3s_nw_after_correction) const {
+    for (const auto& t : Sim3s_nw_after_correction) {
+        const auto& neighbor = t.first;
+        const auto Sim3_wn_after_correction = t.second.inverse();
+        const auto& Sim3_nw_before_correction = Sim3s_nw_before_correction.at(neighbor);
+
+        const double scale_nw_before = Sim3_nw_before_correction.scale();
+        const Mat33_t rot_nw_before = Sim3_nw_before_correction.rotation().toRotationMatrix();
+        const Vec3_t trans_nw_before = Sim3_nw_before_correction.translation();
+
+        const double scale_wn_after = Sim3_wn_after_correction.scale();
+        const Mat33_t rot_wn_after = Sim3_wn_after_correction.rotation().toRotationMatrix();
+        const Vec3_t trans_wn_after = Sim3_wn_after_correction.translation();
+
+        for (const auto& lm_line : neighbor->get_landmarks_line()) {
+            if (!lm_line || lm_line->will_be_erased()) {
+                continue;
+            }
+
+            if (lm_line->loop_fusion_identifier_ == cur_keyfrm_->id_) {
+                continue;
+            }
+            lm_line->loop_fusion_identifier_ = cur_keyfrm_->id_;
+
+            const Vec6_t pos_w_before = lm_line->get_pluecker_coord();
+            const Vec6_t step1 = optimize::transform_pluecker_with_sim3(pos_w_before, rot_nw_before, trans_nw_before,
+                                                                        scale_nw_before);
+            const Vec6_t pos_w_after =
+                optimize::transform_pluecker_with_sim3(step1, rot_wn_after, trans_wn_after, scale_wn_after);
+            lm_line->set_pluecker_coord_without_update_endpoints(pos_w_after);
+
+            Vec6_t updated_pose_w;
+            if (optimize::line_endpoint_trimming(lm_line, pos_w_after, updated_pose_w)) {
+                lm_line->set_pos_in_world_without_update_pluecker(updated_pose_w);
+                lm_line->update_information();
+                lm_line->ref_keyfrm_id_in_loop_fusion_ = neighbor->id_;
+            } else {
+                lm_line->prepare_for_erasing(map_db_);
+            }
         }
     }
 }

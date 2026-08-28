@@ -25,6 +25,7 @@ namespace data {
 class frame;
 class keyframe;
 class landmark;
+class landmark_line;
 } // namespace data
 
 namespace module {
@@ -45,6 +46,8 @@ public:
     //! Get the local landmarks
     std::vector<std::shared_ptr<data::landmark>> get_local_landmarks() const;
 
+    std::vector<std::shared_ptr<data::landmark_line>> get_local_landmarks_line() const;
+
     //! Get the nearest covisibility
     std::shared_ptr<data::keyframe> get_nearest_covisibility() const;
 
@@ -52,7 +55,8 @@ public:
     bool acquire_local_map(const std::vector<std::shared_ptr<data::landmark>>& frm_lms);
     bool acquire_local_map(const std::vector<std::shared_ptr<data::landmark>>& frm_lms,
                            unsigned int keyframe_id_threshold,
-                           unsigned int& num_temporal_keyfrms);
+                           unsigned int& num_temporal_keyfrms,
+                           unsigned int frm_id = 0);
 
 private:
     //! Find the local keyframes
@@ -84,6 +88,8 @@ private:
     //! Find the local landmarks
     bool find_local_landmarks(const std::vector<std::shared_ptr<data::landmark>>& frm_lms);
 
+    bool find_local_landmarks_line(unsigned int frm_id);
+
     // maximum number of the local keyframes
     const unsigned int max_num_local_keyfrms_;
 
@@ -91,6 +97,7 @@ private:
     std::vector<std::shared_ptr<data::keyframe>> local_keyfrms_;
     // found local landmarks
     std::vector<std::shared_ptr<data::landmark>> local_lms_;
+    std::vector<std::shared_ptr<data::landmark_line>> local_lms_line_;
     // the nearst keyframe in covisibility graph, which will be found in find_first_local_keyframes()
     std::shared_ptr<data::keyframe> nearest_covisibility_;
 };

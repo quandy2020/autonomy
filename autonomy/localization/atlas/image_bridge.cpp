@@ -73,6 +73,44 @@ bool NormalizeDepth(cv::Mat* depth) {
     return false;
 }
 
+/** Segmentation as CV_8UC3 (bgr8/rgb8) or mono8/mono16 instance labels → BGR triplets. */
+bool NormalizeSegMask(cv::Mat* seg) {
+    if (seg == nullptr || seg->empty()) {
+        return false;
+    }
+    if (seg->type() == CV_8UC3) {
+        return true;
+    }
+    if (seg->type() == CV_8UC1) {
+        cv::Mat out(seg->rows, seg->cols, CV_8UC3);
+        for (int y = 0; y < seg->rows; ++y) {
+            for (int x = 0; x < seg->cols; ++x) {
+                const uint8_t id = seg->at<uint8_t>(y, x);
+                out.at<cv::Vec3b>(y, x) = cv::Vec3b(id, 0, 0);
+            }
+        }
+        *seg = out;
+        return true;
+    }
+    if (seg->type() == CV_16UC1) {
+        cv::Mat out(seg->rows, seg->cols, CV_8UC3);
+        for (int y = 0; y < seg->rows; ++y) {
+            const uint16_t* row = seg->ptr<uint16_t>(y);
+            for (int x = 0; x < seg->cols; ++x) {
+                const uint32_t id = row[x];
+                out.at<cv::Vec3b>(y, x) =
+                    cv::Vec3b(static_cast<uint8_t>(id & 0xFF),
+                              static_cast<uint8_t>((id >> 8) & 0xFF),
+                              static_cast<uint8_t>((id >> 16) & 0xFF));
+            }
+        }
+        *seg = out;
+        return true;
+    }
+    AWARN << "Atlas ImageBridge: unsupported seg type " << seg->type();
+    return false;
+}
+
 }  // namespace
 
 bool ImageMsgToCvMat(const automsgs::msgs::sensor_msgs::Image& msg,
@@ -158,6 +196,7 @@ bool ImageBridge::Start(const std::shared_ptr<autolink::Node>& node) {
     node_ = node;
     running_ = true;
     is_rgbd_ = (cam->setup_type_ == camera::setup_type_t::RGBD);
+    use_seg_ = !options_.seg_topic.empty();
 
     ImageBridge* self = this;
     node_->CreateReader<automsgs::msgs::sensor_msgs::Image>(
@@ -182,8 +221,19 @@ bool ImageBridge::Start(const std::shared_ptr<autolink::Node>& node) {
                     self->OnDepth(msg);
                 }
             });
+        if (use_seg_) {
+            node_->CreateReader<automsgs::msgs::sensor_msgs::Image>(
+                options_.seg_topic,
+                [self](
+                    const std::shared_ptr<automsgs::msgs::sensor_msgs::Image>& msg) {
+                    if (msg) {
+                        self->OnSeg(msg);
+                    }
+                });
+        }
         AINFO << "Atlas ImageBridge: RGBD rgb=" << options_.rgb_topic
               << " depth=" << options_.depth_topic
+              << (use_seg_ ? (" seg=" + options_.seg_topic) : "")
               << " sync_slop=" << options_.sync_slop_sec << "s"
               << " queue=" << options_.sync_queue_size;
     } else if (cam->setup_type_ == camera::setup_type_t::Monocular) {
@@ -203,6 +253,7 @@ void ImageBridge::Stop() {
     std::lock_guard<std::mutex> lock(mutex_);
     pending_rgb_.clear();
     pending_depth_.clear();
+    pending_seg_.clear();
     node_.reset();
 }
 
@@ -219,7 +270,7 @@ void ImageBridge::PushFrame(std::deque<BufferedFrame>* queue,
 }
 
 bool ImageBridge::TakeSyncedRgbd(cv::Mat* rgb, cv::Mat* depth,
-                                 double* timestamp_sec) {
+                                 double* timestamp_sec, int64_t* stamp_ns) {
     if (rgb == nullptr || depth == nullptr || timestamp_sec == nullptr) {
         return false;
     }
@@ -236,6 +287,9 @@ bool ImageBridge::TakeSyncedRgbd(cv::Mat* rgb, cv::Mat* depth,
             *rgb = std::move(pending_rgb_[ri].image);
             *depth = std::move(pending_depth_[di].image);
             *timestamp_sec = pending_rgb_[ri].timestamp_sec;
+            if (stamp_ns != nullptr) {
+                *stamp_ns = pending_rgb_[ri].stamp_ns;
+            }
             pending_rgb_.erase(pending_rgb_.begin(),
                                pending_rgb_.begin() +
                                    static_cast<std::ptrdiff_t>(ri) + 1);
@@ -284,6 +338,9 @@ bool ImageBridge::TakeSyncedRgbd(cv::Mat* rgb, cv::Mat* depth,
     // Shared observation time: use the earlier of the two stamps.
     *timestamp_sec = std::min(pending_rgb_[best_ri].timestamp_sec,
                               pending_depth_[best_di].timestamp_sec);
+    if (stamp_ns != nullptr) {
+        *stamp_ns = std::min(pending_rgb_[best_ri].stamp_ns, pending_depth_[best_di].stamp_ns);
+    }
     pending_rgb_.erase(pending_rgb_.begin(),
                        pending_rgb_.begin() +
                            static_cast<std::ptrdiff_t>(best_ri) + 1);
@@ -293,10 +350,30 @@ bool ImageBridge::TakeSyncedRgbd(cv::Mat* rgb, cv::Mat* depth,
     return true;
 }
 
+bool ImageBridge::TakeSegForStamp(const int64_t stamp_ns, cv::Mat* seg) {
+    if (seg == nullptr || pending_seg_.empty()) {
+        return false;
+    }
+
+    for (std::size_t si = 0; si < pending_seg_.size(); ++si) {
+        if (pending_seg_[si].stamp_ns == stamp_ns) {
+            *seg = std::move(pending_seg_[si].image);
+            pending_seg_.erase(pending_seg_.begin(),
+                               pending_seg_.begin() +
+                                   static_cast<std::ptrdiff_t>(si) + 1);
+            return true;
+        }
+    }
+
+    // Do not slop-match segmentation: wrong stamp causes visible panel jumping.
+    return false;
+}
+
 void ImageBridge::FeedMonocular(const cv::Mat& rgb, double timestamp_sec) {
     if (!slam_ || !running_) {
         return;
     }
+    std::lock_guard<std::mutex> feed_lock(feed_mutex_);
     const auto cam_pose_wc = slam_->feed_monocular_frame(rgb, timestamp_sec);
     if (viz_) {
         viz_->PublishFrame(timestamp_sec, cam_pose_wc);
@@ -314,15 +391,16 @@ void ImageBridge::FeedMonocular(const cv::Mat& rgb, double timestamp_sec) {
 }
 
 void ImageBridge::FeedRgbd(const cv::Mat& rgb, const cv::Mat& depth,
-                           double timestamp_sec) {
+                           double timestamp_sec, const cv::Mat& seg_mask) {
     if (!slam_ || !running_) {
         return;
     }
-    const auto cam_pose_wc = slam_->feed_RGBD_frame(rgb, depth, timestamp_sec);
+    std::lock_guard<std::mutex> feed_lock(feed_mutex_);
+    const auto cam_pose_wc = slam_->feed_RGBD_frame(rgb, depth, timestamp_sec, cv::Mat{}, seg_mask);
     if (viz_) {
         viz_->PublishFrame(timestamp_sec, cam_pose_wc);
     }
-    if (dense_map_) {
+    if (dense_map_ && !slam_->loop_BA_is_running()) {
         dense_map_->Integrate(rgb, depth, timestamp_sec, cam_pose_wc);
     }
     uint64_t fed_snapshot = 0;
@@ -337,6 +415,28 @@ void ImageBridge::FeedRgbd(const cv::Mat& rgb, const cv::Mat& depth,
     }
 }
 
+void ImageBridge::OnSeg(
+    const std::shared_ptr<automsgs::msgs::sensor_msgs::Image>& msg) {
+    if (!running_ || !use_seg_) {
+        return;
+    }
+    cv::Mat seg;
+    if (!ImageMsgToCvMat(*msg, &seg) || !NormalizeSegMask(&seg)) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!running_) {
+        return;
+    }
+    ++seg_count_;
+    BufferedFrame frame;
+    frame.image = std::move(seg);
+    frame.stamp_ns = StampToNanoseconds(*msg);
+    frame.timestamp_sec = StampToSeconds(*msg);
+    PushFrame(&pending_seg_, std::move(frame));
+}
+
 void ImageBridge::OnDepth(
     const std::shared_ptr<automsgs::msgs::sensor_msgs::Image>& msg) {
     if (!running_ || !is_rgbd_) {
@@ -349,7 +449,9 @@ void ImageBridge::OnDepth(
 
     cv::Mat rgb_pair;
     cv::Mat depth_pair;
+    cv::Mat seg_pair;
     double timestamp_sec = 0.0;
+    int64_t pair_stamp_ns = 0;
     bool ready = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -362,10 +464,13 @@ void ImageBridge::OnDepth(
         frame.stamp_ns = StampToNanoseconds(*msg);
         frame.timestamp_sec = StampToSeconds(*msg);
         PushFrame(&pending_depth_, std::move(frame));
-        ready = TakeSyncedRgbd(&rgb_pair, &depth_pair, &timestamp_sec);
+        ready = TakeSyncedRgbd(&rgb_pair, &depth_pair, &timestamp_sec, &pair_stamp_ns);
+        if (ready && use_seg_) {
+            TakeSegForStamp(pair_stamp_ns, &seg_pair);
+        }
     }
     if (ready) {
-        FeedRgbd(rgb_pair, depth_pair, timestamp_sec);
+        FeedRgbd(rgb_pair, depth_pair, timestamp_sec, seg_pair);
     }
 }
 
@@ -397,7 +502,9 @@ void ImageBridge::OnRgb(
 
     cv::Mat rgb_pair;
     cv::Mat depth_pair;
+    cv::Mat seg_pair;
     double timestamp_sec = 0.0;
+    int64_t pair_stamp_ns = 0;
     bool ready = false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -410,14 +517,21 @@ void ImageBridge::OnRgb(
         frame.stamp_ns = stamp_ns;
         frame.timestamp_sec = timestamp;
         PushFrame(&pending_rgb_, std::move(frame));
-        ready = TakeSyncedRgbd(&rgb_pair, &depth_pair, &timestamp_sec);
+        ready = TakeSyncedRgbd(&rgb_pair, &depth_pair, &timestamp_sec, &pair_stamp_ns);
         if (!ready && pending_depth_.empty() && (rgb_count_ % 30 == 1)) {
             AWARN << "Atlas ImageBridge: waiting for depth on "
                   << options_.depth_topic;
         }
+        if (ready && use_seg_) {
+            TakeSegForStamp(pair_stamp_ns, &seg_pair);
+            if (seg_pair.empty() && (fed_count_ % 30 == 0)) {
+                AWARN << "Atlas ImageBridge: no seg mask for stamp (topic "
+                      << options_.seg_topic << ")";
+            }
+        }
     }
     if (ready) {
-        FeedRgbd(rgb_pair, depth_pair, timestamp_sec);
+        FeedRgbd(rgb_pair, depth_pair, timestamp_sec, seg_pair);
     }
 }
 

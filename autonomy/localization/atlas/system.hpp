@@ -19,8 +19,8 @@
 
 #include "autonomy/localization/atlas/type.hpp"
 #include "autonomy/localization/atlas/data/bow_vocabulary_fwd.hpp"
-
-#include <string>
+#include "autonomy/localization/atlas/plp/plp_options.hpp"
+#include "autonomy/localization/atlas/plp/planar_mapping_module.hpp"
 #include <thread>
 #include <memory>
 #include <mutex>
@@ -34,6 +34,10 @@ class config;
 class tracking_module;
 class mapping_module;
 class global_optimization_module;
+
+namespace plp {
+class planar_mapping_module;
+}
 
 namespace camera {
 class base;
@@ -50,6 +54,7 @@ class bow_database;
 namespace feature {
 class orb_extractor;
 struct orb_params;
+class line_extractor;
 } // namespace feature
 
 namespace publish {
@@ -152,8 +157,10 @@ public:
 
     //! Feed an RGBD frame to SLAM system
     //! (Note: RGB and Depth images must be aligned)
-    data::frame create_RGBD_frame(const cv::Mat& rgb_img, const cv::Mat& depthmap, const double timestamp, const cv::Mat& mask);
-    std::shared_ptr<Mat44_t> feed_RGBD_frame(const cv::Mat& rgb_img, const cv::Mat& depthmap, const double timestamp, const cv::Mat& mask = cv::Mat{});
+    data::frame create_RGBD_frame(const cv::Mat& rgb_img, const cv::Mat& depthmap, const double timestamp,
+                                  const cv::Mat& mask = cv::Mat{}, const cv::Mat& seg_mask = cv::Mat{});
+    std::shared_ptr<Mat44_t> feed_RGBD_frame(const cv::Mat& rgb_img, const cv::Mat& depthmap, const double timestamp,
+                                             const cv::Mat& mask = cv::Mat{}, const cv::Mat& seg_mask = cv::Mat{});
 
     //-----------------------------------------
     // pose initializing/updating
@@ -197,6 +204,8 @@ public:
     // config
 
     camera::base* get_camera() const;
+
+    const plp::Options& plp_options() const { return plp_options_; }
 
     //! depthmap factor (pixel_value / depthmap_factor = true_depth)
     double depthmap_factor_ = 1.0;
@@ -257,6 +266,11 @@ private:
     feature::orb_extractor* extractor_right_ = nullptr;
     //! ORB extractor only when used in initializing
     feature::orb_extractor* ini_extractor_left_ = nullptr;
+
+    //! LSD/LBD line extractor (Structure-PLP-SLAM)
+    feature::line_extractor* line_extractor_ = nullptr;
+    plp::Options plp_options_;
+    std::unique_ptr<plp::planar_mapping_module> planar_mapper_ = nullptr;
 
     //! number of columns of grid to accelerate reprojection matching
     unsigned int num_grid_cols_ = 64;

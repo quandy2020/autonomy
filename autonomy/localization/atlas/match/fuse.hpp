@@ -27,6 +27,7 @@ namespace autonomy::localization::atlas {
 namespace data {
 class keyframe;
 class landmark;
+class landmark_line;
 class map_database;
 } // namespace data
 
@@ -49,6 +50,11 @@ public:
                                     std::unordered_map<std::shared_ptr<data::landmark>, std::shared_ptr<data::landmark>>& duplicated_lms_in_keyfrm,
                                     std::unordered_map<unsigned int, std::shared_ptr<data::landmark>>& new_connections,
                                     bool do_reprojection_matching = false) const;
+
+    template<typename T>
+    unsigned int replace_duplication_line(const std::shared_ptr<data::keyframe>& keyfrm,
+                                          const T& landmarks_to_check,
+                                          float margin) const;
 
 protected:
     const float lowe_ratio_;

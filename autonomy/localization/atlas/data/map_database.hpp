@@ -40,6 +40,8 @@ namespace data {
 class frame;
 class keyframe;
 class landmark;
+class landmark_line;
+class landmark_plane;
 class marker;
 class camera_database;
 class orb_params_database;
@@ -66,6 +68,11 @@ public:
      * Get fixed_keyframe_id_threshold
      */
     unsigned int get_fixed_keyframe_id_threshold();
+
+    void set_use_line_tracking(bool v) { use_line_tracking_ = v; }
+    bool use_line_tracking() const { return use_line_tracking_; }
+    void set_use_plane_mapping(bool v) { use_plane_mapping_ = v; }
+    bool use_plane_mapping() const { return use_plane_mapping_; }
 
     /**
      * Add keyframe to the database
@@ -102,6 +109,20 @@ public:
      * @param id
      */
     std::shared_ptr<landmark> get_landmark(unsigned int id) const;
+
+    void add_landmark_line(const std::shared_ptr<landmark_line>& lm_line);
+    void erase_landmark_line(unsigned int id);
+    std::shared_ptr<landmark_line> get_landmark_line(unsigned int id) const;
+    std::vector<std::shared_ptr<landmark_line>> get_all_landmarks_line() const;
+    void set_local_landmarks_line(const std::vector<std::shared_ptr<landmark_line>>& local_lms_line);
+    std::vector<std::shared_ptr<landmark_line>> get_local_landmarks_line() const;
+
+    void add_landmark_plane(const std::shared_ptr<landmark_plane>& lm_plane);
+    void erase_landmark_plane(unsigned int id);
+    void erase_landmark_plane(const std::shared_ptr<landmark_plane>& lm_plane);
+    std::shared_ptr<landmark_plane> get_landmark_plane(unsigned int id) const;
+    std::vector<std::shared_ptr<landmark_plane>> get_all_landmark_planes() const;
+    unsigned int get_num_landmark_planes() const;
 
     /**
      * Add marker to the database
@@ -267,6 +288,11 @@ public:
      * @param json_landmarks
      */
     void to_json(nlohmann::json& json_keyfrms, nlohmann::json& json_landmarks) const;
+    void to_json_planes(nlohmann::json& json_planes) const;
+    void from_json_planes(const nlohmann::json& json_planes);
+    void to_json_lines(nlohmann::json& json_lines) const;
+    void from_json_lines(const nlohmann::json& json_lines);
+    void register_association_line(unsigned int keyfrm_id, const nlohmann::json& json_keyfrm);
 
     /**
      * Load keyframes and landmarks from database
@@ -288,6 +314,8 @@ public:
     //! next ID
     std::atomic<unsigned int> next_keyframe_id_{0};
     std::atomic<unsigned int> next_landmark_id_{0};
+    std::atomic<unsigned int> next_landmark_line_id_{0};
+    std::atomic<unsigned int> next_landmark_plane_id_{0};
 
 private:
     /**
@@ -309,6 +337,8 @@ private:
      * @param json_landmark
      */
     void register_landmark(const unsigned int id, const nlohmann::json& json_landmark);
+
+    void register_landmark_line(const unsigned int id, const nlohmann::json& json_landmark_line);
 
     /**
      * Decode JSON and register essential graph information
@@ -362,6 +392,10 @@ private:
     std::unordered_map<unsigned int, std::shared_ptr<keyframe>> keyframes_;
     //! IDs and landmarks
     std::unordered_map<unsigned int, std::shared_ptr<landmark>> landmarks_;
+    //! IDs and line landmarks
+    std::unordered_map<unsigned int, std::shared_ptr<landmark_line>> landmarks_line_;
+
+    std::unordered_map<unsigned int, std::shared_ptr<landmark_plane>> landmarks_plane_;
     //! IDs and markers
     std::unordered_map<unsigned int, std::shared_ptr<marker>> markers_;
 
@@ -373,6 +407,7 @@ private:
 
     //! local landmarks
     std::vector<std::shared_ptr<landmark>> local_landmarks_;
+    std::vector<std::shared_ptr<landmark_line>> local_landmarks_line_;
 
     //! keyframes with id less than or equal to fixed_keyframe_id_threshold are not optimized
     unsigned int fixed_keyframe_id_threshold_ = 0;
@@ -388,6 +423,10 @@ private:
 
     //! frame statistics
     frame_statistics frm_stats_;
+
+    //! Structure-PLP-SLAM: enable line / plane sparse mapping
+    bool use_line_tracking_ = false;
+    bool use_plane_mapping_ = false;
 };
 
 } // namespace data

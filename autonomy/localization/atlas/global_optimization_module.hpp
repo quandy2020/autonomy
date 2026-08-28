@@ -145,6 +145,10 @@ private:
                                         const module::keyframe_Sim3_pairs_t& Sim3s_nw_after_correction,
                                         std::unordered_map<unsigned int, unsigned int>& found_lm_to_ref_keyfrm_id) const;
 
+    //! Correct 3D line landmarks in covisibilities (loop fusion propagation)
+    void correct_covisibility_landmarks_line(const module::keyframe_Sim3_pairs_t& Sim3s_nw_before_correction,
+                                             const module::keyframe_Sim3_pairs_t& Sim3s_nw_after_correction) const;
+
     //! Correct the camera poses of the covisibilities
     void correct_covisibility_keyframes(const module::keyframe_Sim3_pairs_t& Sim3s_nw_after_correction) const;
 

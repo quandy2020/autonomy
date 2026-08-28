@@ -51,6 +51,8 @@ DEFINE_string(atlas_rgb_topic, "/camera/rgb/image_raw",
               "Atlas: RGB Image topic for feed_*_frame.");
 DEFINE_string(atlas_depth_topic, "/camera/depth/image_raw",
               "Atlas: Depth Image topic (RGBD setup only).");
+DEFINE_string(atlas_seg_topic, "",
+              "Atlas: segmentation Image topic (CV_8UC3 or mono8) for PLP plane mapping.");
 
 namespace autonomy::localization {
 namespace {
@@ -82,6 +84,7 @@ LocalizationOptions BuildOptionsFromFlags() {
     options.atlas_map_save_path = FLAGS_atlas_map_save;
     options.atlas_rgb_topic = FLAGS_atlas_rgb_topic;
     options.atlas_depth_topic = FLAGS_atlas_depth_topic;
+    options.atlas_seg_topic = FLAGS_atlas_seg_topic;
     return options;
 }
 

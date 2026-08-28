@@ -1,6 +1,7 @@
 #include "autonomy/localization/atlas/data/frame.hpp"
 #include "autonomy/localization/atlas/data/keyframe.hpp"
 #include "autonomy/localization/atlas/data/landmark.hpp"
+#include "autonomy/localization/atlas/data/landmark_plane.hpp"
 #include "autonomy/localization/atlas/data/map_database.hpp"
 #include "autonomy/localization/atlas/match/base.hpp"
 
@@ -182,6 +183,21 @@ int landmark::get_index_in_keyframe(const std::shared_ptr<keyframe>& keyfrm) con
 bool landmark::is_observed_in_keyframe(const std::shared_ptr<keyframe>& keyfrm) const {
     std::lock_guard<std::mutex> lock(mtx_observations_);
     return static_cast<bool>(observations_.count(keyfrm));
+}
+
+std::shared_ptr<landmark_plane> landmark::get_owning_plane() const {
+    std::lock_guard<std::mutex> lock(mtx_observations_);
+    return owning_plane_.lock();
+}
+
+void landmark::set_owning_plane(const std::shared_ptr<landmark_plane>& plane) {
+    std::lock_guard<std::mutex> lock(mtx_observations_);
+    owning_plane_ = plane;
+}
+
+void landmark::remove_owning_plane() {
+    std::lock_guard<std::mutex> lock(mtx_observations_);
+    owning_plane_.reset();
 }
 
 bool landmark::has_representative_descriptor() const {

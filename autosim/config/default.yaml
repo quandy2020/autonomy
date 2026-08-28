@@ -19,17 +19,15 @@ habitat:
 
   # --- Scene loading (two modes, mirrors autonomy_ros habitat/sim.py) ---
   #
-  # Mode 1 (preferred): MP3D dataset config + scene_id.
-  #   dataset_config: path to mp3d.scene_dataset_config.json
-  #   scene_id:       scene asset relative to dataset config, e.g. 17DRP5sb8fy/17DRP5sb8fy.glb
-  #   Enables semantic mesh loading (required for semantic sensor / colored PLY).
+  # Mode 1: dataset config must sit beside scene folders (glob */*.glb is relative
+  # to that file). Example: /workspace/autonomy/src/mp3d.scene_dataset_config.json
+  # dataset_config: /workspace/autonomy/src/mp3d.scene_dataset_config.json
+  # scene_id: 8WUmhLawc2A/8WUmhLawc2A.glb
   #
-  # dataset_config: /media/quandy/0d708864-2623-44e1-8e26-435b41edea21/datasets/habitat/mp3d/mp3d/mp3d.scene_dataset_config.json
-  # scene_id: 17DRP5sb8fy/17DRP5sb8fy.glb
-  #
-  # Mode 2 (legacy): direct .glb path.
-  path: /workspace/autonomy/src/8WUmhLawc2A/8WUmhLawc2A.glb
-  spawn: [0.0, 0.0, 0.0]  # x, y, yaw
+  # Mode 2 (default): direct .glb — auto-installs dataset config in the scene parent.
+  path: /workspace/autonomy/src/17DRP5sb8fy/17DRP5sb8fy.glb
+  # MP3D origin (0,0) often yields a flat semantic field; autosim also auto-relocates on start.
+  spawn: [-4.0, 0.18, 0.0]  # x, y, yaw — valid semantic mesh pose for this scene
   gpu: 0
 
   robot:
@@ -101,6 +99,9 @@ habitat:
       rgb_channel: /camera/rgb/image_raw
       depth_channel: /camera/depth/image_raw
       info_channel: /camera/camera_info
+      semantic_enabled: true
+      semantic_channel: /camera/semantic/image_raw   # rgb8 colored (Habitat semantic_to_rgb)
+      semantic_ids_channel: /camera/semantic/instance_ids  # mono16 ids for Atlas PLP
       frame: camera_link
       rate_hz: 15.0        # Habitat render ~20-40ms/frame; 30Hz overloads sensor worker
       noise:
@@ -133,7 +134,7 @@ habitat:
     frame: map
     rate_hz: 1.0           # OccupancyGrid republish for late subscribers; PLY cloud is sent once
     ply:
-      source: /workspace/autonomy/src/8WUmhLawc2A/8WUmhLawc2A_semantic.ply
+      source: /workspace/autonomy/src/17DRP5sb8fy/17DRP5sb8fy_semantic.ply
       channel: /overall/map
       stride: 1            # no downsampling; use autoviz Decimate to thin on the viewer side
     grid:                  # height-slice + free-space carve → OccupancyGrid

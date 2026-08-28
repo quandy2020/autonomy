@@ -138,16 +138,32 @@ class Sensors:
         mask = (distances >= range_min) & (distances <= range_max)
         return points[mask]
 
-    def sample_camera(self, simulator: object) -> Tuple[np.ndarray, np.ndarray]:
+    def sample_camera(
+        self, simulator: object, *, with_semantic: bool = False
+    ) -> Tuple[np.ndarray, np.ndarray] | Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Sample one color frame and the aligned depth map.
 
         Args:
-            simulator: Backend implementing ``color_depth()``.
+            simulator: Backend implementing ``color_depth()`` or
+                ``color_depth_semantic()``.
+            with_semantic: When ``True``, return semantic BGR from the same
+                Habitat observation as RGB-D.
 
         Returns:
-            ``(color, depth)`` where color is ``uint8`` HxWx3 and depth is ``float32`` HxW.
+            ``(color, depth)`` or ``(color, depth, semantic_bgr)``.
         """
-        color, depth = simulator.color_depth()
+        if with_semantic:
+            semantic_fn = getattr(simulator, "color_depth_semantic", None)
+            if callable(semantic_fn):
+                color, depth, semantic = semantic_fn()
+            else:
+                color, depth = simulator.color_depth()
+                semantic = getattr(simulator, "semantic_bgr", lambda: None)()
+                if semantic is None:
+                    raise RuntimeError("simulator has no semantic sensor")
+        else:
+            color, depth = simulator.color_depth()
+            semantic = None
         depth = np.squeeze(depth).astype(np.float32, copy=False)
         if depth.ndim != 2:
             depth = depth.reshape(color.shape[0], color.shape[1])
@@ -162,4 +178,6 @@ class Sensors:
                 ).astype(np.float32)
                 noisy[valid] = np.maximum(noisy[valid], self.depth_min_valid)
                 depth = noisy
+        if with_semantic:
+            return color, depth, semantic
         return color, depth

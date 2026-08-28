@@ -23,6 +23,8 @@
 #include "autonomy/localization/atlas/data/graph_node.hpp"
 #include "autonomy/localization/atlas/data/bow_vocabulary.hpp"
 #include "autonomy/localization/atlas/data/frame_observation.hpp"
+#include "autonomy/localization/atlas/data/line_frame_observation.hpp"
+#include "autonomy/localization/atlas/data/landmark_line.hpp"
 #include "autonomy/localization/atlas/data/marker2d.hpp"
 #include "autonomy/localization/atlas/data/bow_vocabulary_fwd.hpp"
 
@@ -211,10 +213,27 @@ public:
     std::vector<unsigned int> get_keypoints_in_cell(const float ref_x, const float ref_y, const float margin,
                                                     const int min_level = -1, const int max_level = -1) const;
 
+    void add_landmark_line(const std::shared_ptr<landmark_line>& lm_line, unsigned int idx);
+    void erase_landmark_line_with_index(unsigned int idx);
+    void erase_landmark_line(const std::shared_ptr<landmark_line>& lm_line);
+    void replace_landmark_line(const std::shared_ptr<landmark_line>& lm_line, unsigned int idx);
+    std::vector<std::shared_ptr<landmark_line>> get_landmarks_line() const;
+
+    void set_segmentation_mask(const cv::Mat& mask);
+    cv::Mat get_segmentation_mask() const;
+    std::shared_ptr<landmark_line> get_landmark_line(unsigned int idx) const;
+
+    std::vector<unsigned int> get_keylines_in_cell(float ref_x1, float ref_y1,
+                                                   float ref_x2, float ref_y2, float margin,
+                                                   int min_level = -1, int max_level = -1) const;
+
+    void init_line_obs_for_map_load(data::line_frame_observation line_obs);
+
     /**
      * Triangulate the keypoint using the disparity
      */
     Vec3_t triangulate_stereo(const unsigned int idx) const;
+    Vec6_t triangulate_stereo_for_line(unsigned int idx) const;
 
     /**
      * Compute median of depths
@@ -291,6 +310,15 @@ public:
 
     frame_observation frm_obs_;
 
+    //! LSD/LBD line observations
+    line_frame_observation line_obs_;
+    std::vector<float> scale_factors_lsd_;
+    std::vector<float> inv_level_sigma_sq_lsd_;
+    unsigned int num_line_scale_levels_ = 1;
+
+    cv::Mat seg_mask_;
+    cv::Mat depth_map_;
+
     //! BoW features (DBoW2 or FBoW)
     bow_vector bow_vec_;
     bow_feature_vector bow_feat_vec_;
@@ -324,6 +352,7 @@ private:
     mutable std::mutex mtx_observations_;
     //! observed landmarks
     std::vector<std::shared_ptr<landmark>> landmarks_;
+    std::vector<std::shared_ptr<landmark_line>> landmarks_line_;
 
     //-----------------------------------------
     // marker observations

@@ -14,6 +14,8 @@
 #include "autonomy/localization/atlas/data/marker2d.hpp"
 #include "autonomy/localization/atlas/match/stereo.hpp"
 #include "autonomy/localization/atlas/feature/orb_extractor.hpp"
+#include "autonomy/localization/atlas/feature/line_extractor.hpp"
+#include "autonomy/localization/atlas/plp/planar_mapping_module.hpp"
 #include "autonomy/localization/atlas/io/trajectory_io.hpp"
 #include "autonomy/localization/atlas/io/map_database_io_factory.hpp"
 #include "autonomy/localization/atlas/publish/map_publisher.hpp"
@@ -23,9 +25,37 @@
 #include "autonomy/localization/atlas/util/yaml.hpp"
 
 #include <thread>
+#include <cmath>
 #include "autolink/common/log.hpp"
 
 namespace autonomy::localization::atlas {
+namespace {
+
+float sample_depth_bilinear(const cv::Mat& depth, float u, float v) {
+    if (depth.empty() || depth.type() != CV_32FC1) {
+        return -1.f;
+    }
+    if (u < 0.f || v < 0.f || u >= static_cast<float>(depth.cols - 1) ||
+        v >= static_cast<float>(depth.rows - 1)) {
+        return -1.f;
+    }
+    const int x0 = static_cast<int>(std::floor(u));
+    const int y0 = static_cast<int>(std::floor(v));
+    const float dx = u - static_cast<float>(x0);
+    const float dy = v - static_cast<float>(y0);
+    const float d00 = depth.at<float>(y0, x0);
+    const float d10 = depth.at<float>(y0, x0 + 1);
+    const float d01 = depth.at<float>(y0 + 1, x0);
+    const float d11 = depth.at<float>(y0 + 1, x0 + 1);
+    if (d00 <= 0.f || d10 <= 0.f || d01 <= 0.f || d11 <= 0.f) {
+        return -1.f;
+    }
+    const float d0 = d00 * (1.f - dx) + d10 * dx;
+    const float d1 = d01 * (1.f - dx) + d11 * dx;
+    return d0 * (1.f - dy) + d1 * dy;
+}
+
+}  // namespace
 
 system::system(const std::shared_ptr<config>& cfg, const std::string& vocab_file_path)
     : cfg_(cfg) {
@@ -95,6 +125,21 @@ system::system(const std::shared_ptr<config>& cfg, const std::string& vocab_file
     num_grid_cols_ = preprocessing_params["num_grid_cols"].as<unsigned int>(64);
     num_grid_rows_ = preprocessing_params["num_grid_rows"].as<unsigned int>(48);
 
+    plp_options_ = plp::Options::FromYaml(cfg->yaml_node_);
+    if (plp_options_.enabled && plp_options_.use_line_tracking) {
+        line_extractor_ = new feature::line_extractor(camera_, plp_options_);
+        map_db_->set_use_line_tracking(true);
+        tracker_->configure_plp_line_tracking();
+        AINFO << "Atlas PLP: line tracking enabled (LSD/LBD)";
+    }
+    if (plp_options_.enabled && plp_options_.use_plane_mapping) {
+        map_db_->set_use_plane_mapping(true);
+        const bool is_monocular = (camera_->setup_type_ == camera::setup_type_t::Monocular);
+        planar_mapper_ = std::make_unique<plp::planar_mapping_module>(map_db_, is_monocular, plp_options_);
+        mapper_->set_planar_mapping_module(planar_mapper_.get());
+        AINFO << "Atlas PLP: plane mapping enabled (requires instance seg mask)";
+    }
+
     // connect modules each other
     tracker_->set_mapping_module(mapper_);
     mapper_->set_tracking_module(tracker_);
@@ -135,6 +180,8 @@ system::~system() {
     extractor_left_ = nullptr;
     delete extractor_right_;
     extractor_right_ = nullptr;
+    delete line_extractor_;
+    line_extractor_ = nullptr;
 
     delete orb_params_db_;
     orb_params_db_ = nullptr;
@@ -179,6 +226,12 @@ void system::startup(const bool need_initialize) {
 }
 
 void system::shutdown() {
+    if (planar_mapper_ && map_db_->use_plane_mapping()) {
+        pause_other_threads();
+        planar_mapper_->refinement();
+        resume_other_threads();
+    }
+
     // terminate the other threads
     if (global_optimizer_) {
         auto future_mapper_terminate = mapper_->async_terminate();
@@ -317,10 +370,19 @@ data::frame system::create_monocular_frame(const cv::Mat& img, const double time
     util::convert_to_grayscale(img_gray, camera_->color_order_);
 
     data::frame_observation frm_obs;
+    data::line_frame_observation line_obs;
+    std::thread line_thread;
 
-    // Extract ORB feature
     keypts_.clear();
+    if (line_extractor_) {
+        line_thread = std::thread([this, &img_gray, &line_obs]() {
+            line_extractor_->extract(img_gray, &line_obs);
+        });
+    }
     extractor_left_->extract(img_gray, mask, keypts_, frm_obs.descriptors_);
+    if (line_thread.joinable()) {
+        line_thread.join();
+    }
     if (keypts_.empty()) {
         AWARN << "preprocess: cannot extract any keypoints";
     }
@@ -337,7 +399,9 @@ data::frame system::create_monocular_frame(const cv::Mat& img, const double time
     data::assign_keypoints_to_grid(camera_, frm_obs.undist_keypts_, frm_obs.keypt_indices_in_cells_,
                                    frm_obs.num_grid_cols_, frm_obs.num_grid_rows_);
 
-    return data::frame(next_frame_id_++, timestamp, camera_, orb_params_, frm_obs, {});
+    data::frame frm(next_frame_id_++, timestamp, camera_, orb_params_, frm_obs, {});
+    frm.line_obs_ = std::move(line_obs);
+    return frm;
 }
 
 data::frame system::create_stereo_frame(const cv::Mat& left_img, const cv::Mat& right_img, const double timestamp, const cv::Mat& mask) {
@@ -354,12 +418,12 @@ data::frame system::create_stereo_frame(const cv::Mat& left_img, const cv::Mat& 
     util::convert_to_grayscale(right_img_gray, camera_->color_order_);
 
     data::frame_observation frm_obs;
+    data::line_frame_observation line_obs;
     //! keypoints of stereo right image
     std::vector<cv::KeyPoint> keypts_right;
     //! ORB descriptors of stereo right image
     cv::Mat descriptors_right;
 
-    // Extract ORB feature
     keypts_.clear();
     std::thread thread_left([this, &frm_obs, &img_gray, &mask]() {
         extractor_left_->extract(img_gray, mask, keypts_, frm_obs.descriptors_);
@@ -367,8 +431,17 @@ data::frame system::create_stereo_frame(const cv::Mat& left_img, const cv::Mat& 
     std::thread thread_right([this, &frm_obs, &right_img_gray, &mask, &keypts_right, &descriptors_right]() {
         extractor_right_->extract(right_img_gray, mask, keypts_right, descriptors_right);
     });
+    std::thread line_thread;
+    if (line_extractor_) {
+        line_thread = std::thread([this, &img_gray, &line_obs]() {
+            line_extractor_->extract(img_gray, &line_obs);
+        });
+    }
     thread_left.join();
     thread_right.join();
+    if (line_thread.joinable()) {
+        line_thread.join();
+    }
     if (keypts_.empty()) {
         AWARN << "preprocess: cannot extract any keypoints";
     }
@@ -392,10 +465,13 @@ data::frame system::create_stereo_frame(const cv::Mat& left_img, const cv::Mat& 
     data::assign_keypoints_to_grid(camera_, frm_obs.undist_keypts_, frm_obs.keypt_indices_in_cells_,
                                    frm_obs.num_grid_cols_, frm_obs.num_grid_rows_);
 
-    return data::frame(next_frame_id_++, timestamp, camera_, orb_params_, frm_obs, {});
+    data::frame frm(next_frame_id_++, timestamp, camera_, orb_params_, frm_obs, {});
+    frm.line_obs_ = std::move(line_obs);
+    return frm;
 }
 
-data::frame system::create_RGBD_frame(const cv::Mat& rgb_img, const cv::Mat& depthmap, const double timestamp, const cv::Mat& mask) {
+data::frame system::create_RGBD_frame(const cv::Mat& rgb_img, const cv::Mat& depthmap, const double timestamp,
+                                      const cv::Mat& mask, const cv::Mat& seg_mask) {
     // color and depth scale conversion
     if (!camera_->is_valid_shape(rgb_img)) {
         AWARN << "preprocess: Input image size is invalid";
@@ -409,10 +485,19 @@ data::frame system::create_RGBD_frame(const cv::Mat& rgb_img, const cv::Mat& dep
     util::convert_to_true_depth(img_depth, depthmap_factor_);
 
     data::frame_observation frm_obs;
+    data::line_frame_observation line_obs;
+    std::thread line_thread;
 
-    // Extract ORB feature
     keypts_.clear();
+    if (line_extractor_) {
+        line_thread = std::thread([this, &img_gray, &line_obs]() {
+            line_extractor_->extract(img_gray, &line_obs);
+        });
+    }
     extractor_left_->extract(img_gray, mask, keypts_, frm_obs.descriptors_);
+    if (line_thread.joinable()) {
+        line_thread.join();
+    }
     if (keypts_.empty()) {
         AWARN << "preprocess: cannot extract any keypoints";
     }
@@ -451,7 +536,32 @@ data::frame system::create_RGBD_frame(const cv::Mat& rgb_img, const cv::Mat& dep
     data::assign_keypoints_to_grid(camera_, frm_obs.undist_keypts_, frm_obs.keypt_indices_in_cells_,
                                    frm_obs.num_grid_cols_, frm_obs.num_grid_rows_);
 
-    return data::frame(next_frame_id_++, timestamp, camera_, orb_params_, frm_obs, {});
+    data::frame frm(next_frame_id_++, timestamp, camera_, orb_params_, frm_obs, {});
+    frm.line_obs_ = std::move(line_obs);
+    if (!frm.line_obs_.empty() && !img_depth.empty()) {
+        frm.line_obs_.depths_start.assign(frm.line_obs_.keylines.size(), -1.f);
+        frm.line_obs_.depths_end.assign(frm.line_obs_.keylines.size(), -1.f);
+        frm.line_obs_.stereo_x_right.assign(frm.line_obs_.keylines.size(), -1.f);
+        for (size_t idx_l = 0; idx_l < frm.line_obs_.keylines.size(); ++idx_l) {
+            const auto& keyline = frm.line_obs_.keylines.at(idx_l);
+            const auto& sp = keyline.getStartPoint();
+            const auto& ep = keyline.getEndPoint();
+            const float depth_sp = sample_depth_bilinear(img_depth, sp.x, sp.y);
+            const float depth_ep = sample_depth_bilinear(img_depth, ep.x, ep.y);
+            if (depth_sp <= 0.0f || depth_ep <= 0.0f) {
+                continue;
+            }
+            frm.line_obs_.depths_start.at(idx_l) = depth_sp;
+            frm.line_obs_.depths_end.at(idx_l) = depth_ep;
+            frm.line_obs_.stereo_x_right.at(idx_l) =
+                sp.x - camera_->focal_x_baseline_ / depth_sp;
+        }
+    }
+    if (!seg_mask.empty()) {
+        frm.img_seg_mask_ = seg_mask.clone();
+    }
+    frm.depth_map_ = img_depth.clone();
+    return frm;
 }
 
 std::shared_ptr<Mat44_t> system::feed_monocular_frame(const cv::Mat& img, const double timestamp, const cv::Mat& mask) {
@@ -484,7 +594,8 @@ std::shared_ptr<Mat44_t> system::feed_stereo_frame(const cv::Mat& left_img, cons
     return feed_frame(frm, left_img, extraction_time_elapsed_ms);
 }
 
-std::shared_ptr<Mat44_t> system::feed_RGBD_frame(const cv::Mat& rgb_img, const cv::Mat& depthmap, const double timestamp, const cv::Mat& mask) {
+std::shared_ptr<Mat44_t> system::feed_RGBD_frame(const cv::Mat& rgb_img, const cv::Mat& depthmap, const double timestamp,
+                                                 const cv::Mat& mask, const cv::Mat& seg_mask) {
     check_reset_request();
 
     assert(camera_->setup_type_ == camera::setup_type_t::RGBD);
@@ -493,7 +604,7 @@ std::shared_ptr<Mat44_t> system::feed_RGBD_frame(const cv::Mat& rgb_img, const c
         return nullptr;
     }
     const auto start = std::chrono::system_clock::now();
-    auto frm = create_RGBD_frame(rgb_img, depthmap, timestamp, mask);
+    auto frm = create_RGBD_frame(rgb_img, depthmap, timestamp, mask, seg_mask);
     const auto end = std::chrono::system_clock::now();
     double extraction_time_elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     return feed_frame(frm, rgb_img, extraction_time_elapsed_ms);
@@ -518,7 +629,12 @@ std::shared_ptr<Mat44_t> system::feed_frame(const data::frame& frm, const cv::Ma
                              mkrs2d,
                              img,
                              tracking_time_elapsed_ms,
-                             extraction_time_elapsed_ms);
+                             extraction_time_elapsed_ms,
+                             tracker_->curr_frm_.line_obs_.keylines,
+                             tracker_->curr_frm_.get_landmarks_line(),
+                             tracker_->curr_frm_.img_seg_mask_,
+                             loop_BA_is_running(),
+                             mapper_->is_paused() && !loop_BA_is_running());
     if (tracker_->tracking_state_ == tracker_state_t::Tracking && cam_pose_wc) {
         map_publisher_->set_current_cam_pose(util::converter::inverse_pose(*cam_pose_wc));
     }

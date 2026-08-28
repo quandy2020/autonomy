@@ -23,6 +23,8 @@
     /atlas/current_camera_frustum   Marker         current FOV pyramid
     /atlas/keyframe_frustums        MarkerArray    keyframe FOV pyramids
     /atlas/map_points               PointCloud2    sparse ORB landmarks
+    /atlas/map_planes               MarkerArray    PLP plane patches (semi-transparent)
+    /atlas/loop_edges               MarkerArray    loop-closure edges (green)
     /atlas/cloud_map                PointCloud2    dense merged cloud
     /atlas/cloud_ground             PointCloud2    ground layer
     /atlas/cloud_obstacles          PointCloud2    obstacle layer
@@ -35,10 +37,14 @@
     /atlas/elevation_map            OccupancyGrid  height encoded 0–100
     /tf                             map→odom
 
-  Dense map notes:
+    Dense map notes:
     - keyframe_trigger: integrate on new Atlas keyframes
     - normals_segmentation: ground via normals+clustering (else height-band)
     - update_error: loop-closure pose drift → full LocalGrid reassembly
+
+  PLP (Structure-PLP-SLAM): set PLP.enabled/use_line_tracking in atlas YAML
+    - LSD/LBD lines overlay on /atlas/tracking_image (green segments)
+    - Plane mapping: enable PLP.use_plane_mapping + --atlas_seg_topic (bgr8/mono8)
 
   Run (Docker / Colcon):
     cd /workspace/autonomy/src/autonomy
@@ -58,7 +64,7 @@
   <module>
     <name>localization_atlas</name>
     <type>binary</type>
-    <process_name>autonomy.localization --localization_mode=atlas --atlas_config=config/localization/atlas/autosim_rgbd.yaml --atlas_vocab=config/localization/atlas/orb_vocab.fbow --atlas_rgb_topic=/camera/rgb/image_raw --atlas_depth_topic=/camera/depth/image_raw --atlas_map_save=data/maps/atlas.msg</process_name>
+    <process_name>autonomy.localization --localization_mode=atlas --atlas_config=config/localization/atlas/autosim_rgbd.yaml --atlas_vocab=config/localization/atlas/orb_vocab.fbow --atlas_rgb_topic=/camera/rgb/image_raw --atlas_depth_topic=/camera/depth/image_raw --atlas_seg_topic=/camera/semantic/instance_ids --atlas_map_save=data/maps/atlas.msg</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>

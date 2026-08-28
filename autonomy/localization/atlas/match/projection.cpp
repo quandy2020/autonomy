@@ -4,6 +4,7 @@
 #include "autonomy/localization/atlas/data/frame_observation.hpp"
 #include "autonomy/localization/atlas/data/keyframe.hpp"
 #include "autonomy/localization/atlas/data/landmark.hpp"
+#include "autonomy/localization/atlas/data/landmark_line.hpp"
 #include "autonomy/localization/atlas/match/projection.hpp"
 #include "autonomy/localization/atlas/util/angle.hpp"
 
@@ -625,6 +626,246 @@ unsigned int projection::match_keyframes_mutually(const std::shared_ptr<data::ke
         }
     }
 
+    return num_matches;
+}
+
+unsigned int projection::match_frame_and_keyframe_line(
+    data::frame& curr_frm,
+    const std::shared_ptr<data::keyframe>& keyfrm,
+    const std::set<std::shared_ptr<data::landmark_line>>& already_matched_lms,
+    const float margin,
+    const unsigned int hamm_dist_thr) const {
+    unsigned int num_matches = 0;
+    if (!keyfrm || curr_frm.line_obs_.empty() || curr_frm.scale_factors_lsd_.empty()) {
+        return 0;
+    }
+
+    const Mat33_t rot_cw = curr_frm.get_rot_cw();
+    const Vec3_t trans_cw = curr_frm.get_trans_cw();
+    const Vec3_t cam_center = curr_frm.get_trans_wc();
+
+    const auto landmarks_line = keyfrm->get_landmarks_line();
+    for (unsigned int idx = 0; idx < landmarks_line.size(); ++idx) {
+        const auto& lm_line = landmarks_line.at(idx);
+        if (!lm_line || lm_line->will_be_erased()) {
+            continue;
+        }
+        if (already_matched_lms.count(lm_line)) {
+            continue;
+        }
+
+        const Vec6_t pos_w = lm_line->get_pos_in_world();
+        const Vec3_t pos_w_sp = pos_w.head<3>();
+        const Vec3_t pos_w_ep = pos_w.tail<3>();
+
+        Vec2_t reproj_sp;
+        float x_right_sp = 0.f;
+        const bool in_image_sp =
+            curr_frm.camera_->reproject_to_image(rot_cw, trans_cw, pos_w_sp, reproj_sp, x_right_sp);
+        Vec2_t reproj_ep;
+        float x_right_ep = 0.f;
+        const bool in_image_ep =
+            curr_frm.camera_->reproject_to_image(rot_cw, trans_cw, pos_w_ep, reproj_ep, x_right_ep);
+        if (!in_image_sp && !in_image_ep) {
+            continue;
+        }
+        if (!in_image_sp || !in_image_ep) {
+            const Vec3_t pos_w_mp = 0.5 * (pos_w_sp + pos_w_ep);
+            Vec2_t reproj_mp;
+            float x_right_mp = 0.f;
+            if (!curr_frm.camera_->reproject_to_image(rot_cw, trans_cw, pos_w_mp, reproj_mp, x_right_mp)) {
+                continue;
+            }
+        }
+
+        const Vec3_t cam_to_lm_vec = 0.5 * (pos_w_sp + pos_w_ep) - cam_center;
+        const float cam_to_lm_dist = static_cast<float>(cam_to_lm_vec.norm());
+        if (!lm_line->is_inside_in_feature_scale(cam_to_lm_dist)) {
+            continue;
+        }
+
+        const auto pred_scale_level = lm_line->predict_scale_level(
+            cam_to_lm_dist, curr_frm.log_scale_factor_lsd_, curr_frm.num_scale_levels_lsd_);
+        const float scale_margin =
+            margin * curr_frm.scale_factors_lsd_.at(static_cast<size_t>(pred_scale_level));
+        const int min_level = std::max(0, static_cast<int>(pred_scale_level) - 1);
+        const int max_level =
+            std::min(static_cast<int>(curr_frm.num_scale_levels_lsd_) - 1,
+                     static_cast<int>(pred_scale_level) + 1);
+        const auto indices = curr_frm.get_keylines_in_cell(
+            static_cast<float>(reproj_sp(0)), static_cast<float>(reproj_sp(1)),
+            static_cast<float>(reproj_ep(0)), static_cast<float>(reproj_ep(1)),
+            scale_margin, min_level, max_level);
+        if (indices.empty()) {
+            continue;
+        }
+
+        const cv::Mat lm_line_desc = lm_line->get_descriptor();
+        unsigned int best_hamm_dist = MAX_HAMMING_DIST;
+        int best_idx = -1;
+        for (const auto curr_idx : indices) {
+            if (curr_frm.get_landmark_line(curr_idx)) {
+                continue;
+            }
+            const cv::Mat& desc = curr_frm.line_obs_.lbd_descriptors.row(static_cast<int>(curr_idx));
+            const auto dist = compute_descriptor_distance_32(lm_line_desc, desc);
+            if (dist < best_hamm_dist) {
+                best_hamm_dist = dist;
+                best_idx = static_cast<int>(curr_idx);
+            }
+        }
+        if (best_idx < 0 || hamm_dist_thr < best_hamm_dist) {
+            continue;
+        }
+
+        curr_frm.add_landmark_line(lm_line, static_cast<unsigned int>(best_idx));
+        ++num_matches;
+    }
+    return num_matches;
+}
+
+unsigned int projection::match_frame_and_landmarks_line(
+    data::frame& frm,
+    const std::vector<std::shared_ptr<data::landmark_line>>& local_landmarks_line,
+    const float margin) const {
+    unsigned int num_matches = 0;
+    if (local_landmarks_line.empty() || frm.line_obs_.empty()) {
+        return 0;
+    }
+
+    for (const auto& local_lm_line : local_landmarks_line) {
+        if (!local_lm_line || !local_lm_line->is_observable_in_tracking_ || local_lm_line->will_be_erased()) {
+            continue;
+        }
+
+        const auto pred_scale_level = static_cast<unsigned int>(local_lm_line->scale_level_in_tracking_);
+        const float scale_margin = frm.scale_factors_lsd_.at(pred_scale_level) * margin;
+        const auto indices_in_cell = frm.get_keylines_in_cell(
+            local_lm_line->reproj_in_tracking_sp_(0), local_lm_line->reproj_in_tracking_sp_(1),
+            local_lm_line->reproj_in_tracking_ep_(0), local_lm_line->reproj_in_tracking_ep_(1),
+            scale_margin, static_cast<int>(pred_scale_level) - 1, static_cast<int>(pred_scale_level));
+        if (indices_in_cell.empty()) {
+            continue;
+        }
+
+        const cv::Mat lm_line_desc = local_lm_line->get_descriptor();
+        unsigned int best_hamm_dist = MAX_HAMMING_DIST;
+        int best_scale_level = -1;
+        unsigned int second_best_hamm_dist = MAX_HAMMING_DIST;
+        int second_best_scale_level = -1;
+        int best_idx = -1;
+
+        for (const auto idx : indices_in_cell) {
+            if (frm.get_landmark_line(idx) && frm.get_landmark_line(idx)->has_observation()) {
+                continue;
+            }
+            const cv::Mat& desc = frm.line_obs_.lbd_descriptors.row(static_cast<int>(idx));
+            const auto dist = compute_descriptor_distance_32(lm_line_desc, desc);
+            const int octave = frm.line_obs_.keylines.at(idx).octave;
+            if (dist < best_hamm_dist) {
+                second_best_hamm_dist = best_hamm_dist;
+                best_hamm_dist = dist;
+                second_best_scale_level = best_scale_level;
+                best_scale_level = octave;
+                best_idx = static_cast<int>(idx);
+            } else if (dist < second_best_hamm_dist) {
+                second_best_scale_level = octave;
+                second_best_hamm_dist = dist;
+            }
+        }
+
+        if (best_idx >= 0 && best_hamm_dist <= HAMMING_DIST_THR_HIGH) {
+            if (best_scale_level == second_best_scale_level && best_hamm_dist > lowe_ratio_ * second_best_hamm_dist) {
+                continue;
+            }
+            frm.add_landmark_line(local_lm_line, static_cast<unsigned int>(best_idx));
+            local_lm_line->increase_num_observed();
+            ++num_matches;
+        }
+    }
+    return num_matches;
+}
+
+unsigned int projection::match_current_and_last_frames_line(data::frame& curr_frm, const data::frame& last_frm,
+                                                            const float margin) const {
+    unsigned int num_matches = 0;
+    if (last_frm.line_obs_.empty() || curr_frm.line_obs_.empty()) {
+        return 0;
+    }
+
+    const Mat33_t rot_cw = curr_frm.get_rot_cw();
+    const Vec3_t trans_cw = curr_frm.get_trans_cw();
+    const Vec3_t trans_wc = curr_frm.get_trans_wc();
+    const Mat33_t rot_lw = last_frm.get_rot_cw();
+    const Vec3_t trans_lw = last_frm.get_trans_cw();
+    const Vec3_t trans_lc = rot_lw * trans_wc + trans_lw;
+
+    const bool assume_forward = (curr_frm.camera_->setup_type_ != camera::setup_type_t::Monocular)
+                                && trans_lc(2) > curr_frm.camera_->true_baseline_;
+    const bool assume_backward = (curr_frm.camera_->setup_type_ != camera::setup_type_t::Monocular)
+                                 && -trans_lc(2) > curr_frm.camera_->true_baseline_;
+
+    for (unsigned int idx_last = 0; idx_last < last_frm.line_obs_.size(); ++idx_last) {
+        const auto& lm_line = last_frm.get_landmark_line(idx_last);
+        if (!lm_line || last_frm.outlier_flags_line_.at(idx_last)) {
+            continue;
+        }
+
+        const Vec6_t pos_w = lm_line->get_pos_in_world();
+        Vec2_t reproj_sp, reproj_ep;
+        float x_right_sp, x_right_ep;
+        const bool in_image_sp = curr_frm.camera_->reproject_to_image(rot_cw, trans_cw, pos_w.head<3>(), reproj_sp, x_right_sp);
+        const bool in_image_ep = curr_frm.camera_->reproject_to_image(rot_cw, trans_cw, pos_w.tail<3>(), reproj_ep, x_right_ep);
+        if (!in_image_sp && !in_image_ep) {
+            continue;
+        }
+        if (!in_image_sp || !in_image_ep) {
+            const Vec3_t pos_w_mp = 0.5 * (pos_w.head<3>() + pos_w.tail<3>());
+            Vec2_t reproj_mp;
+            float x_right_mp;
+            if (!curr_frm.camera_->reproject_to_image(rot_cw, trans_cw, pos_w_mp, reproj_mp, x_right_mp)) {
+                continue;
+            }
+        }
+
+        const auto last_scale_level = static_cast<unsigned int>(last_frm.line_obs_.keylines.at(idx_last).octave);
+        const float scale_margin = margin * curr_frm.scale_factors_lsd_.at(last_scale_level);
+        std::vector<unsigned int> indices;
+        if (assume_forward) {
+            indices = curr_frm.get_keylines_in_cell(reproj_sp(0), reproj_sp(1), reproj_ep(0), reproj_ep(1),
+                                                    scale_margin, static_cast<int>(last_scale_level),
+                                                    static_cast<int>(last_frm.num_scale_levels_lsd_));
+        } else if (assume_backward) {
+            indices = curr_frm.get_keylines_in_cell(reproj_sp(0), reproj_sp(1), reproj_ep(0), reproj_ep(1),
+                                                    scale_margin, 0, static_cast<int>(last_scale_level) + 1);
+        } else {
+            indices = curr_frm.get_keylines_in_cell(reproj_sp(0), reproj_sp(1), reproj_ep(0), reproj_ep(1),
+                                                    scale_margin, static_cast<int>(last_scale_level) - 1,
+                                                    static_cast<int>(last_scale_level) + 1);
+        }
+        if (indices.empty()) {
+            continue;
+        }
+
+        const cv::Mat lm_line_desc = lm_line->get_descriptor();
+        unsigned int best_hamm_dist = MAX_HAMMING_DIST;
+        int best_idx = -1;
+        for (const auto idx : indices) {
+            if (curr_frm.get_landmark_line(idx) && curr_frm.get_landmark_line(idx)->has_observation()) {
+                continue;
+            }
+            const cv::Mat& desc = curr_frm.line_obs_.lbd_descriptors.row(static_cast<int>(idx));
+            const auto dist = compute_descriptor_distance_32(lm_line_desc, desc);
+            if (dist < best_hamm_dist) {
+                best_hamm_dist = dist;
+                best_idx = static_cast<int>(idx);
+            }
+        }
+        if (best_idx >= 0 && best_hamm_dist <= HAMMING_DIST_THR_HIGH) {
+            curr_frm.add_landmark_line(lm_line, static_cast<unsigned int>(best_idx));
+            ++num_matches;
+        }
+    }
     return num_matches;
 }
 
