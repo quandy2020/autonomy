@@ -12,7 +12,7 @@
 #include <g2o/core/block_solver.h>
 #include <g2o/core/sparse_optimizer.h>
 #include <g2o/core/robust_kernel_impl.h>
-#include <g2o/solvers/csparse/linear_solver_csparse.h>
+#include <g2o/solvers/eigen/linear_solver_eigen.h>
 #include <g2o/core/optimization_algorithm_levenberg.h>
 #include <g2o/core/sparse_optimizer_terminate_action.h>
 
@@ -30,7 +30,7 @@ void graph_optimizer::optimize(const std::shared_ptr<data::keyframe>& loop_keyfr
                                std::unordered_map<unsigned int, unsigned int>& found_lm_to_ref_keyfrm_id) const {
     // 1. Construct an optimizer
 
-    auto linear_solver = autonomy::localization::atlas::make_unique<g2o::LinearSolverCSparse<g2o::BlockSolver_7_3::PoseMatrixType>>();
+    auto linear_solver = autonomy::localization::atlas::make_unique<g2o::LinearSolverEigen<g2o::BlockSolver_7_3::PoseMatrixType>>();
     auto block_solver = autonomy::localization::atlas::make_unique<g2o::BlockSolver_7_3>(std::move(linear_solver));
     auto algorithm = new g2o::OptimizationAlgorithmLevenberg(std::move(block_solver));
 
