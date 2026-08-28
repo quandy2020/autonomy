@@ -38,8 +38,6 @@ function(autonomy_link_dependencies target)
     g2o::types_sim3
     g2o::solver_dense
     g2o::solver_eigen
-    g2o::solver_csparse
-    g2o::csparse_extension
     ${SQLite3_LIBRARIES}
     autolink
     Boost::iostreams

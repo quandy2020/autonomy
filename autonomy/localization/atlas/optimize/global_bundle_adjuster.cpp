@@ -17,7 +17,6 @@
 #include <g2o/core/robust_kernel_impl.h>
 #include <g2o/types/sba/types_six_dof_expmap.h>
 #include <g2o/solvers/eigen/linear_solver_eigen.h>
-#include <g2o/solvers/csparse/linear_solver_csparse.h>
 #include <g2o/core/optimization_algorithm_levenberg.h>
 
 namespace autonomy::localization::atlas {
@@ -40,7 +39,7 @@ void optimize_impl(g2o::SparseOptimizer& optimizer,
     // 2. Construct an optimizer
 
     std::unique_ptr<g2o::BlockSolverBase> block_solver;
-    auto linear_solver = autonomy::localization::atlas::make_unique<g2o::LinearSolverCSparse<g2o::BlockSolver_6_3::PoseMatrixType>>();
+    auto linear_solver = autonomy::localization::atlas::make_unique<g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>>();
     block_solver = autonomy::localization::atlas::make_unique<g2o::BlockSolver_6_3>(std::move(linear_solver));
     auto algorithm = new g2o::OptimizationAlgorithmLevenberg(std::move(block_solver));
 
