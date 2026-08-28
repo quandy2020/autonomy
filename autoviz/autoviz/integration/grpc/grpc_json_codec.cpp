@@ -4,8 +4,6 @@
 
 #include "autoviz/integration/grpc/grpc_json_codec.hpp"
 
-#include <google/protobuf/descriptor.h>
-#include <google/protobuf/dynamic_message.h>
 #include <google/protobuf/util/json_util.h>
 
 #include "autoviz/common/protobuf_json_compat.hpp"
@@ -25,14 +23,12 @@ void SetError(std::string* error, const std::string& message) {
 
 std::unique_ptr<google::protobuf::Message> JsonToDynamicMessage(
     const std::string& json, const google::protobuf::Descriptor* descriptor,
-    std::string* error) {
+    google::protobuf::DynamicMessageFactory& factory, std::string* error) {
   if (descriptor == nullptr) {
     SetError(error, "Descriptor is null");
     return nullptr;
   }
 
-  // Factory must outlive messages created from its prototypes (TypeInfo).
-  static google::protobuf::DynamicMessageFactory factory;
   const google::protobuf::Message* prototype = factory.GetPrototype(descriptor);
   if (prototype == nullptr) {
     SetError(error, "Failed to get DynamicMessage prototype");
@@ -53,6 +49,14 @@ std::unique_ptr<google::protobuf::Message> JsonToDynamicMessage(
     return nullptr;
   }
   return message;
+}
+
+std::unique_ptr<google::protobuf::Message> JsonToDynamicMessage(
+    const std::string& json, const google::protobuf::Descriptor* descriptor,
+    std::string* error) {
+  // Factory must outlive messages created from its prototypes (TypeInfo).
+  static google::protobuf::DynamicMessageFactory factory;
+  return JsonToDynamicMessage(json, descriptor, factory, error);
 }
 
 bool DynamicMessageToJson(const google::protobuf::Message& message,

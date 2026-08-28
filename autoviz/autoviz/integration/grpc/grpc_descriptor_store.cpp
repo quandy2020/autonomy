@@ -9,6 +9,7 @@
 
 #include <filesystem>
 #include <utility>
+#include <vector>
 
 #include "autoviz/common/protobuf_json_compat.hpp"
 
@@ -100,7 +101,7 @@ std::string VirtualImportName(const std::string& path,
 
 }  // namespace
 
-GrpcDescriptorStore::GrpcDescriptorStore() = default;
+GrpcDescriptorStore::GrpcDescriptorStore() : factory_(&pool_) {}
 GrpcDescriptorStore::~GrpcDescriptorStore() = default;
 
 bool GrpcDescriptorStore::buildFileProto(
@@ -246,10 +247,45 @@ bool GrpcDescriptorStore::loadFromFileDescriptorSet(
     SetError(err, "FileDescriptorSet is empty");
     return false;
   }
+
+  // Multi-pass BuildFile: FDS order is not required to be topological.
+  std::vector<const google::protobuf::FileDescriptorProto*> pending;
+  pending.reserve(static_cast<size_t>(fds.file_size()));
   for (const auto& file_proto : fds.file()) {
-    if (!buildFileProto(file_proto, err)) {
+    pending.push_back(&file_proto);
+  }
+
+  std::string last_err;
+  while (!pending.empty()) {
+    std::vector<const google::protobuf::FileDescriptorProto*> still_pending;
+    still_pending.reserve(pending.size());
+    size_t progress = 0;
+
+    for (const auto* file_proto : pending) {
+      if (pool_.FindFileByName(file_proto->name()) != nullptr) {
+        ++progress;
+        continue;
+      }
+      PoolErrorCollector collector;
+      const google::protobuf::FileDescriptor* built =
+          pool_.BuildFileCollectingErrors(*file_proto, &collector);
+      if (built != nullptr) {
+        indexFile(built);
+        ++progress;
+        continue;
+      }
+      last_err = collector.text.empty() ? "BuildFile failed for " + file_proto->name()
+                                        : collector.text;
+      still_pending.push_back(file_proto);
+    }
+
+    if (progress == 0) {
+      SetError(err, last_err.empty()
+                        ? "Failed to resolve FileDescriptorSet dependencies"
+                        : last_err);
       return false;
     }
+    pending.swap(still_pending);
   }
   return true;
 }

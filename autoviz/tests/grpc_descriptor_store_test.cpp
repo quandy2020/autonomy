@@ -74,6 +74,57 @@ TEST(GrpcDescriptorStore, LoadFromFileDescriptorSet) {
   EXPECT_EQ(store.listMethods().size(), 4u);
 }
 
+TEST(GrpcDescriptorStore, LoadFromFileDescriptorSetOutOfOrderDeps) {
+  using google::protobuf::FieldDescriptorProto;
+  using google::protobuf::FileDescriptorProto;
+
+  FileDescriptorProto base;
+  base.set_name("order_base.proto");
+  base.set_package("autoviz.test.order");
+  base.set_syntax("proto3");
+  auto* base_msg = base.add_message_type();
+  base_msg->set_name("BaseMsg");
+  auto* name_field = base_msg->add_field();
+  name_field->set_name("name");
+  name_field->set_number(1);
+  name_field->set_label(FieldDescriptorProto::LABEL_OPTIONAL);
+  name_field->set_type(FieldDescriptorProto::TYPE_STRING);
+
+  FileDescriptorProto dependent;
+  dependent.set_name("order_dependent.proto");
+  dependent.set_package("autoviz.test.order");
+  dependent.set_syntax("proto3");
+  dependent.add_dependency("order_base.proto");
+  auto* dep_msg = dependent.add_message_type();
+  dep_msg->set_name("DepMsg");
+  auto* nested = dep_msg->add_field();
+  nested->set_name("nested");
+  nested->set_number(1);
+  nested->set_label(FieldDescriptorProto::LABEL_OPTIONAL);
+  nested->set_type(FieldDescriptorProto::TYPE_MESSAGE);
+  nested->set_type_name(".autoviz.test.order.BaseMsg");
+  auto* service = dependent.add_service();
+  service->set_name("OrderService");
+  auto* rpc = service->add_method();
+  rpc->set_name("Do");
+  rpc->set_input_type(".autoviz.test.order.DepMsg");
+  rpc->set_output_type(".autoviz.test.order.BaseMsg");
+
+  google::protobuf::FileDescriptorSet fds;
+  // Dependent file first — must still resolve via multi-pass BuildFile.
+  *fds.add_file() = dependent;
+  *fds.add_file() = base;
+
+  GrpcDescriptorStore store;
+  std::string err;
+  ASSERT_TRUE(store.loadFromFileDescriptorSet(fds, &err)) << err;
+  const auto* found = store.findMethod("autoviz.test.order.OrderService.Do");
+  ASSERT_NE(found, nullptr);
+  EXPECT_EQ(store.methodType(found), MethodType::kUnary);
+  EXPECT_NE(store.exampleJson(found->input_type()).find('{'),
+            std::string::npos);
+}
+
 TEST(GrpcDescriptorStore, ExampleJsonIsObject) {
   GrpcDescriptorStore store;
   std::string err;
