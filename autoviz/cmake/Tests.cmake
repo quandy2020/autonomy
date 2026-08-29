@@ -213,4 +213,17 @@ if(GTest_FOUND)
     AUTOVIZ_TEST_FIXTURES_DIR="${AUTOVIZ_ROOT}/tests/fixtures"
     AUTOVIZ_AUTOMSGS_PROTO_ROOT="${AUTOVIZ_DEPS_ROOT}/automsgs/proto")
   add_test(NAME grpc_descriptor_store_test COMMAND grpc_descriptor_store_test)
+
+  # Target / method name normalization only (no gRPC runtime / no live server).
+  add_executable(grpc_session_normalize_test
+    ${AUTOVIZ_ROOT}/tests/gtest_main.cpp
+    ${AUTOVIZ_ROOT}/tests/grpc_session_normalize_test.cpp
+    ${AUTOVIZ_SRC_ROOT}/integration/grpc/grpc_session.cpp)
+  target_include_directories(grpc_session_normalize_test PRIVATE
+    ${AUTOVIZ_ROOT} ${AUTOVIZ_DEPS_ROOT})
+  target_link_libraries(grpc_session_normalize_test PRIVATE
+    GTest::gtest Qt6::Core ${CMAKE_DL_LIBS})
+  target_compile_definitions(grpc_session_normalize_test PRIVATE AUTOVIZ_ENABLE_GRPC=0)
+  target_compile_features(grpc_session_normalize_test PRIVATE cxx_std_17)
+  add_test(NAME grpc_session_normalize_test COMMAND grpc_session_normalize_test)
 endif()
