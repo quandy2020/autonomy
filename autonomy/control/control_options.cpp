@@ -21,6 +21,7 @@
 #include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/control/controller/graceful_controller/parameter_options.hpp"
 #include "autonomy/control/controller/mppi_controller/tools/mppi_options.hpp"
+#include "autonomy/control/controller/nmpc_controller/parameter_options.hpp"
 #include "autonomy/control/controller/pure_pursuit_controller/parameter_options.hpp"
 #include "autonomy/map/map_options.hpp"
 
@@ -144,6 +145,13 @@ proto::ControllerOptions LoadOptions(
                 parameter_dictionary
                     ->GetNonReferenceCountedDictionary(
                         "pure_pursuit_controller")
+                    .get());
+    }
+    if (parameter_dictionary->HasKey("nmpc_controller")) {
+        *options.mutable_nmpc_controller_options() =
+            controller::nmpc_controller::LoadOptions(
+                parameter_dictionary
+                    ->GetNonReferenceCountedDictionary("nmpc_controller")
                     .get());
     }
     return options;

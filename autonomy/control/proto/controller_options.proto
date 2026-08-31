@@ -20,6 +20,7 @@ import "autonomy/map/proto/map_2d_option.proto";
 import "autonomy/control/proto/mppi_controller.proto";
 import "autonomy/control/proto/graceful_controller.proto";
 import "autonomy/control/proto/pure_pursuit_controller.proto";
+import "autonomy/control/proto/nmpc_controller.proto";
 import "autonomy/control/proto/checker_options.proto";
 
 // Controller result codes for ComputeVelocityCommands return value
@@ -64,6 +65,7 @@ message ControllerOptions
     double controller_frequency = 6;
     double failure_tolerance = 7;
     bool publish_zero_velocity = 8;
+    autonomy.control.proto.NMPCControllerOptions nmpc_controller_options = 11;
 
     // Each entry is "id" or "id:ClassName" (autolink plugin_manager)
     repeated string controller_plugins = 9;

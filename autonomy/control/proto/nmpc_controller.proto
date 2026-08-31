@@ -1,0 +1,54 @@
+// Copyright 2025 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.control.proto;
+
+// NMPC controller (DDP-based differential drive).
+message NMPCControllerOptions {
+    double transform_tolerance = 1;
+    double model_dt = 2;
+    int32 horizon_steps = 3;
+    int32 max_solver_iter = 4;
+
+    double max_linear_vel = 5;
+    double min_linear_vel = 6;
+    double max_angular_vel = 7;
+
+    double lookahead_dist = 8;
+    double weight_pos = 9;
+    double weight_yaw = 10;
+    double weight_linear = 11;
+    double weight_angular = 12;
+    double weight_terminal_pos = 13;
+    double weight_terminal_yaw = 14;
+
+    // "ddp" or "fmpc" (fmpc reserved for inequality constraints).
+    string solver_type = 15;
+
+    // Search window behind current progress when projecting onto the path [m].
+    double path_search_window = 16;
+    // Scale linear speed down within this distance to the goal [m].
+    double approach_velocity_scaling_dist = 17;
+    double min_approach_linear_vel = 18;
+
+    bool enable_collision_check = 19;
+    double collision_cost_threshold = 20;
+    bool use_footprint_collision_check = 21;
+    double max_plan_search_dist = 22;
+    double prune_distance = 23;
+    int32 cgmres_horizon_divisions = 24;
+    int32 cgmres_k_max = 25;
+}
