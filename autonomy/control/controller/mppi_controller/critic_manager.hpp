@@ -32,17 +32,17 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
- #include "autonomy/control/controller/mppi_controller/critic_data.hpp"
- #include "autonomy/control/controller/mppi_controller/critic_function.hpp"
- #include "autonomy/control/controller/mppi_controller/tools/utils.hpp"
- #include "autonomy/control/proto/mppi_controller.pb.h"
- #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
- 
- namespace autonomy {
- namespace control {
- namespace controller {
- namespace mppi_controller {
- 
+#include "autonomy/control/controller/mppi_controller/critic_data.hpp"
+#include "autonomy/control/controller/mppi_controller/critic_function.hpp"
+#include "autonomy/control/controller/mppi_controller/tools/utils.hpp"
+#include "autonomy/control/proto/mppi_controller.pb.h"
+#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
+
+namespace autonomy {
+namespace control {
+namespace controller {
+namespace mppi_controller {
+
  /**
   * @class mppi::CriticManager
   * @brief Manager of objective function plugins for scoring trajectories

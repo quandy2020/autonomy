@@ -33,6 +33,7 @@
 #include "autonomy/control/constants.hpp"
 #include "autonomy/control/controller/graceful_controller/controller.hpp"
 #include "autonomy/control/controller/mppi_controller/controller.hpp"
+#include "autonomy/control/controller/nmpc_controller/controller.hpp"
 #include "autonomy/control/controller/pure_pursuit_controller/controller.hpp"
 #include "autonomy/control/proto/controller_options.pb.h"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
@@ -57,6 +58,7 @@ const std::unordered_map<std::string, std::string>& ControllerClassAliases() {
         {"regulated_pure_pursuit", "RegulatedPurePursuitController"},
         {"pure_pursuit", "RegulatedPurePursuitController"},
         {"rpp", "RegulatedPurePursuitController"},
+        {"nmpc_controller", "NMPCController"},
     };
     return kAliases;
 }
@@ -188,6 +190,12 @@ void ControllerServer::LoadPlugins() {
         } else if (resolved == "RegulatedPurePursuitController") {
             auto ctrl = std::make_shared<
                 controller::pure_pursuit_controller::RegulatedPurePursuitController>();
+            ctrl->Configure(options_, spec.id, tf_buffer_, costmap_wrapper_);
+            ctrl->Activate();
+            instance = std::move(ctrl);
+        } else if (resolved == "NMPCController" || resolved == "NmpcController") {
+            auto ctrl =
+                std::make_shared<controller::nmpc_controller::NMPCController>();
             ctrl->Configure(options_, spec.id, tf_buffer_, costmap_wrapper_);
             ctrl->Activate();
             instance = std::move(ctrl);

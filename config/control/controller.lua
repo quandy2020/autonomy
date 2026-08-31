@@ -26,6 +26,7 @@ AUTONOMY_CONTROLLER = {
     controller_plugins = {
         "graceful_controller:GracefulController",
         "mppi_controller:MppiController",
+        "nmpc_controller:NMPCController",
     },
     controller_plugin_libraries = {},
 
@@ -286,6 +287,34 @@ AUTONOMY_CONTROLLER = {
             twirling_cost_power = 1, 
             twirling_cost_weight = 10.0,
         },
+    },
+
+    nmpc_controller = {
+        transform_tolerance = 0.1,
+        model_dt = 0.05,
+        horizon_steps = 40,
+        max_solver_iter = 30,
+        max_linear_vel = 0.5,
+        min_linear_vel = -0.2,
+        max_angular_vel = 1.5,
+        lookahead_dist = 0.6,
+        weight_pos = 10.0,
+        weight_yaw = 5.0,
+        weight_linear = 0.1,
+        weight_angular = 0.05,
+        weight_terminal_pos = 50.0,
+        weight_terminal_yaw = 20.0,
+        solver_type = "ddp",
+        path_search_window = 2.0,
+        approach_velocity_scaling_dist = 0.8,
+        min_approach_linear_vel = 0.05,
+        enable_collision_check = true,
+        collision_cost_threshold = 253.0,
+        use_footprint_collision_check = true,
+        max_plan_search_dist = 5.0,
+        prune_distance = 1.5,
+        cgmres_horizon_divisions = 25,
+        cgmres_k_max = 5,
     },
 
 }
