@@ -12,8 +12,8 @@
 #include "autonomy/map/map_server.hpp"
 #include "autonomy/planning/planner_server.hpp"
 #include "autonomy/sensor/internal/sensor_collator.hpp"
-#include "autonomy/navigator/constants.hpp"
-#include "autonomy/navigator/options.hpp"
+#include "autonomy/task/navigation/constants.hpp"
+#include "autonomy/task/navigation/options.hpp"
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/geometry_msgs/transform_stamped.h"
 #include "autonomy/transform/transform_server.hpp"
@@ -199,7 +199,7 @@ void Autonomy::Configure(const RuntimeOptions& runtime) {
     if (options_.has_navigator_options()) {
         navigator_options_ = options_.navigator_options();
     } else if (!runtime.config_directory.empty()) {
-        navigator_options_ = navigator::CreateOptions(
+        navigator_options_ = task::navigation::CreateOptions(
             runtime.config_directory, "navigator/navigator.lua");
     }
 
@@ -363,7 +363,7 @@ bool Autonomy::NavigateDirectToPose(
         AERROR << "GetPlan failed: " << ex.what();
         return false;
     }
-    if (path.poses_size() < navigator::kMinPathPoses) {
+    if (path.poses_size() < task::navigation::kMinPathPoses) {
         AERROR << "NavigateDirectToPose: planned path too short.";
         return false;
     }

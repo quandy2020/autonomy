@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "autonomy/task/interface/names.hpp"
+#include "autonomy/task/common/names.hpp"
 
 namespace autonomy {
 namespace bridge {

@@ -441,17 +441,24 @@ void Costmap2DWrapper::updateMap() {
         return;
     }
 
-    // Do not fall back to (0,0): default costmap origin is (0,0) with size
-    // [0,width]×[0,height], while the robot (and static map origin) often sit
-    // in negative map coordinates — that falsely trips "out of bounds".
-    automsgs::msgs::geometry_msgs::PoseStamped robot_pose;
-    if (!getRobotPose(robot_pose)) {
-        return;
+    double robot_x = 0.0;
+    double robot_y = 0.0;
+    double robot_yaw = 0.0;
+    if (global_frame_ == robot_base_frame_) {
+        // Local rolling costmap in the robot frame: origin stays at (0,0,0).
+    } else {
+        // Do not fall back to (0,0): default costmap origin is (0,0) with size
+        // [0,width]×[0,height], while the robot (and static map origin) often sit
+        // in negative map coordinates — that falsely trips "out of bounds".
+        automsgs::msgs::geometry_msgs::PoseStamped robot_pose;
+        if (!getRobotPose(robot_pose)) {
+            return;
+        }
+        robot_x = robot_pose.pose().position().x();
+        robot_y = robot_pose.pose().position().y();
+        robot_yaw =
+            autonomy::transform::tf2::getYaw(robot_pose.pose().orientation());
     }
-    const double robot_x = robot_pose.pose().position().x();
-    const double robot_y = robot_pose.pose().position().y();
-    const double robot_yaw =
-        autonomy::transform::tf2::getYaw(robot_pose.pose().orientation());
 
     layered_costmap_->updateMap(robot_x, robot_y, robot_yaw);
     if (!ready_) {

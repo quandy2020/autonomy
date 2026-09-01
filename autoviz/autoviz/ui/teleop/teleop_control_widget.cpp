@@ -2,6 +2,7 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
+#include "autoviz/integration/teleop_channels.hpp"
 #include "autoviz/ui/teleop/teleop_control_widget.hpp"
 
 #include <algorithm>
@@ -9,6 +10,7 @@
 #include <QAbstractButton>
 #include <QAbstractSpinBox>
 #include <QButtonGroup>
+#include <QCheckBox>
 #include <QDoubleSpinBox>
 #include <QFocusEvent>
 #include <QFrame>
@@ -192,6 +194,35 @@ TeleopControlWidget::TeleopControlWidget(QWidget* parent) : QWidget(parent) {
   speed_row->addStretch(1);
   toolbar_layout->addLayout(speed_row);
 
+  auto* smart_row = new QHBoxLayout();
+  smart_row->setSpacing(8);
+  smart_teleop_check_ = new QCheckBox(tr("智能摇操"), toolbar);
+  smart_teleop_check_->setCursor(Qt::PointingHandCursor);
+  smart_teleop_check_->setStyleSheet(QStringLiteral(
+      "QCheckBox {"
+      "  color: %1; font-size: 12px; font-weight: 700;"
+      "  spacing: 8px;"
+      "}"
+      "QCheckBox::indicator {"
+      "  width: 16px; height: 16px; border-radius: 4px;"
+      "  border: 1px solid %2; background: %3;"
+      "}"
+      "QCheckBox::indicator:checked {"
+      "  background: %4; border-color: %4;"
+      "}"
+      "QCheckBox:disabled { color: %5; }")
+                                         .arg(QLatin1String(kText),
+                                              QLatin1String(kBorder),
+                                              QLatin1String(kSurface),
+                                              QLatin1String(kAccent),
+                                              QLatin1String(kTextMuted)));
+  smart_teleop_check_->setToolTip(
+      tr("通过 autonomy task teleop 发送速度（MPPI 避障 assist），"
+         "不再直接发布 /cmd_vel"));
+  smart_row->addWidget(smart_teleop_check_);
+  smart_row->addStretch(1);
+  toolbar_layout->addLayout(smart_row);
+
   hint_label_ = new QLabel(toolbar);
   hint_label_->setWordWrap(true);
   hint_label_->setStyleSheet(QStringLiteral(
@@ -281,6 +312,11 @@ TeleopControlWidget::TeleopControlWidget(QWidget* parent) : QWidget(parent) {
           this, [this](double) { emitMaxSpeedsFromUi(); });
   connect(max_angular_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
           this, [this](double) { emitMaxSpeedsFromUi(); });
+  connect(smart_teleop_check_, &QCheckBox::toggled, this, [this](bool checked) {
+    smart_teleop_enabled_ = checked;
+    updateSmartTeleopHint();
+    emit smartTeleopChanged(checked);
+  });
   connect(move_joystick_, &TeleopJoystickWidget::valueChanged, this,
           [this](double x, double y) {
             if (stick_mode_ == TeleopStickMode::kDual) {
@@ -320,7 +356,58 @@ TeleopControlWidget::TeleopControlWidget(QWidget* parent) : QWidget(parent) {
   });
 
   installEventFilter(this);
+  updateSmartTeleopHint();
   applyModeUi();
+}
+
+void TeleopControlWidget::setSmartTeleopEnabled(bool enabled) {
+  smart_teleop_enabled_ = enabled;
+  if (smart_teleop_check_ != nullptr) {
+    smart_teleop_check_->blockSignals(true);
+    smart_teleop_check_->setChecked(enabled);
+    smart_teleop_check_->blockSignals(false);
+  }
+  updateSmartTeleopHint();
+}
+
+void TeleopControlWidget::setSmartTeleopAvailable(bool available) {
+  if (smart_teleop_check_ == nullptr) {
+    return;
+  }
+  smart_teleop_check_->setEnabled(available);
+  if (!available) {
+    smart_teleop_check_->setToolTip(
+        tr("需要与 autonomy 一同构建（task teleop proto）"));
+  } else {
+    smart_teleop_check_->setToolTip(
+        tr("通过 autonomy task teleop 发送速度（MPPI 避障 assist），"
+           "不再直接发布 /cmd_vel"));
+  }
+}
+
+void TeleopControlWidget::setSmartTeleopStatusText(const QString& status) {
+  smart_teleop_status_text_ = status;
+  updateSmartTeleopHint();
+}
+
+void TeleopControlWidget::updateSmartTeleopHint() {
+  if (hint_label_ == nullptr) {
+    return;
+  }
+  QString mode_hint;
+  if (stick_mode_ == TeleopStickMode::kArcade) {
+    mode_hint = tr("Arcade · 前后控速度，左右控转向 · WASD / 方向键 / Space 急停");
+  } else {
+    mode_hint = tr("Dual · 左盘移动（前后/平移），右盘转向");
+  }
+  if (smart_teleop_enabled_) {
+    mode_hint += tr(" · 智能摇操 → %1")
+                    .arg(QString::fromUtf8(integration::kTeleopGoalChannel));
+    if (!smart_teleop_status_text_.isEmpty()) {
+      mode_hint += tr(" · %1").arg(smart_teleop_status_text_);
+    }
+  }
+  hint_label_->setText(mode_hint);
 }
 
 void TeleopControlWidget::resetJoysticks() {
@@ -387,10 +474,7 @@ void TeleopControlWidget::applyModeUi() {
     arcade_frame_->setVisible(arcade);
   }
   if (hint_label_ != nullptr) {
-    hint_label_->setText(
-        arcade
-            ? tr("Arcade · 前后控速度，左右控转向 · WASD / 方向键 / Space 急停")
-            : tr("Dual · 左盘移动（前后/平移），右盘转向"));
+    updateSmartTeleopHint();
   }
   if (arcade) {
     setFocus(Qt::OtherFocusReason);

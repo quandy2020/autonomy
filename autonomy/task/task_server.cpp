@@ -22,7 +22,7 @@
 
 #include "autolink/autolink.hpp"
 #include "autonomy/common/logging.hpp"
-#include "autonomy/task/interface/names.hpp"
+#include "autonomy/task/common/names.hpp"
 #include "autonomy/task/behavior_tree/bt_defaults.hpp"
 #include "autonomy/task/navigation/navigation_client.hpp"
 
@@ -166,7 +166,7 @@ void TaskServer::Bind() {
                     }).detach();
                 });
 
-        navigator_ = std::make_shared<interface::Navigator>();
+        navigator_ = std::make_shared<common::Navigator>();
         if (!navigator_->Start(
                 node_,
                 [this](const proto::NavigationGoal& g) { return Submit(g); },

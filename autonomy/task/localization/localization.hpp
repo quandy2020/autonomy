@@ -9,7 +9,7 @@
 
 #include "autonomy/task/behavior_tree/bt_task_app.hpp"
 #include "autonomy/task/localization/localization_client.hpp"
-#include "autonomy/task/proto/localization.pb.h"
+#include <automsgs/task/localization.pb.h>
 #include "behaviortree_cpp/blackboard.h"
 
 namespace autonomy {

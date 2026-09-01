@@ -1,25 +1,132 @@
-<!--
-  Tracking: lock target → plan → follow to follow pose.
--->
+<?xml version="1.0" encoding="UTF-8"?>
 <root BTCPP_format="4" main_tree_to_execute="FollowTarget">
-  <BehaviorTree ID="FollowTarget">
-    <RetryUntilSuccessful num_attempts="5" name="FollowRetry">
-      <Sequence name="FollowSequence">
-        <TargetLocked/>
-        <ComputeFollowGoal goal="{goal}"/>
-        <TransformValid/>
-        <PlanPath goal="{goal}" path="{path}" planner_id="{default_planner_id}"
-                        error_code_id="{compute_path_error_code}"
-                        error_msg="{compute_path_error_msg}"/>
-        <SmoothPath unsmoothed_path="{path}" smoothed_path="{path}"
-                       smoother_id="{default_smoother_id}"
-                       max_smoothing_duration="1.0" check_for_collisions="false"/>
-        <PathValid path="{path}"/>
-        <FollowPath path="{path}" controller_id="{default_controller_id}"
-                       error_code_id="{follow_path_error_code}"
-                       error_msg="{follow_path_error_msg}"/>
-        <GoalReached goal_reached_tol="{goal_reached_tol}"/>
-      </Sequence>
-    </RetryUntilSuccessful>
-  </BehaviorTree>
+    <TreeNodesModel>
+        <Condition ID="FrontierAvailable"/>
+        <Condition ID="TransformValid">
+            <input_port name="child" type="string" default="base_link">source / robot frame</input_port>
+            <input_port name="parent" type="string" default="map">target / global frame</input_port>
+        </Condition>
+        <Condition ID="PathValid">
+            <input_port name="path" type="Path"/>
+            <input_port name="max_cost" type="int" default="253">costmap threshold</input_port>
+            <input_port name="consider_unknown_as_obstacle" type="bool" default="false"/>
+        </Condition>
+        <Action ID="Wait">
+            <input_port name="wait_duration" type="double" default="1.0">sec</input_port>
+            <output_port name="error_code_id" type="int"/>
+            <output_port name="error_msg" type="string"/>
+        </Action>
+        <Action ID="PlanPath">
+            <input_port name="goal" type="PoseStamped"/>
+            <input_port name="planner_id" type="string"/>
+            <output_port name="path" type="Path"/>
+            <output_port name="error_code_id" type="int"/>
+            <output_port name="error_msg" type="string"/>
+        </Action>
+        <Action ID="CancelControl"/>
+        <Action ID="SaveExplorationMap">
+            <input_port name="map_name" type="string">exploration map name</input_port>
+            <output_port name="error_code_id" type="int"/>
+            <output_port name="error_msg" type="string"/>
+        </Action>
+        <Action ID="FollowPath">
+            <input_port name="path" type="Path"/>
+            <input_port name="controller_id" type="string"/>
+            <output_port name="error_code_id" type="int"/>
+            <output_port name="error_msg" type="string"/>
+        </Action>
+        <Action ID="ComputeFollowGoal">
+            <output_port name="goal" type="PoseStamped"/>
+        </Action>
+        <Condition ID="PerceptionValid"/>
+        <Action ID="SelectFrontier">
+            <output_port name="goal" type="PoseStamped">next frontier pose</output_port>
+            <output_port name="error_code_id" type="int"/>
+            <output_port name="error_msg" type="string"/>
+        </Action>
+        <Action ID="SmoothPath">
+            <input_port name="unsmoothed_path" type="Path"/>
+            <input_port name="smoother_id" type="string" default="simple_smoother"/>
+            <input_port name="max_smoothing_duration" type="double" default="1.0"/>
+            <input_port name="check_for_collisions" type="bool" default="false"/>
+            <output_port name="smoothed_path" type="Path"/>
+            <output_port name="smoothing_duration" type="double"/>
+            <output_port name="was_completed" type="bool"/>
+            <output_port name="error_code_id" type="int"/>
+            <output_port name="error_msg" type="string"/>
+        </Action>
+        <Condition ID="ChargerVisible"/>
+        <Condition ID="TargetLocked"/>
+        <Decorator ID="RateController">
+            <input_port name="hz" type="double" default="1.0">max child tick rate</input_port>
+        </Decorator>
+        <Action ID="DockApproach"/>
+        <Action ID="LoadMap">
+            <input_port name="map_name" type="string"/>
+        </Action>
+        <Action ID="DockConnect">
+            <input_port name="battery_target_percent" type="float" default="100.0">percent</input_port>
+        </Action>
+        <Condition ID="ServersReady"/>
+        <Condition ID="LocalizationReady"/>
+        <Action ID="BackUp">
+            <input_port name="backup_dist" type="double" default="0.30">m</input_port>
+            <input_port name="backup_speed" type="double" default="0.10">m/s</input_port>
+            <input_port name="time_allowance" type="double" default="10.0">sec</input_port>
+            <input_port name="is_recovery" type="bool" default="false">recovery behavior flag</input_port>
+            <output_port name="error_code_id" type="int"/>
+            <output_port name="error_msg" type="string"/>
+        </Action>
+        <Action ID="StartLocalization">
+            <input_port name="algorithm" type="int"/>
+        </Action>
+        <Action ID="TrackCommand">
+            <output_port name="error_code_id" type="int"/>
+            <output_port name="error_msg" type="string"/>
+        </Action>
+        <Condition ID="CommandValid"/>
+        <Control ID="PipelineSequence"/>
+        <Action ID="ClearCostmap">
+            <input_port name="service_name" type="string"/>
+            <output_port name="error_code_id" type="int"/>
+            <output_port name="error_msg" type="string"/>
+        </Action>
+        <Action ID="DockSearch"/>
+        <Action ID="SetInitialPose"/>
+        <Condition ID="GoalReached">
+            <input_port name="goal" type="PoseStamped"/>
+            <input_port name="robot_base_frame" type="string" default="base_link"/>
+            <input_port name="goal_reached_tol" type="double" default="0.25">m</input_port>
+        </Condition>
+        <Action ID="PlanPoses">
+            <input_port name="goals" type="PoseStamped[]"/>
+            <input_port name="planner_id" type="string"/>
+            <output_port name="path" type="Path"/>
+            <output_port name="error_code_id" type="int"/>
+            <output_port name="error_msg" type="string"/>
+        </Action>
+        <Condition ID="PoseReady"/>
+        <Action ID="Spin">
+            <input_port name="spin_dist" type="double" default="1.57">rad</input_port>
+            <input_port name="time_allowance" type="double" default="10.0">sec</input_port>
+            <input_port name="is_recovery" type="bool" default="false">recovery behavior flag</input_port>
+            <output_port name="error_code_id" type="int"/>
+            <output_port name="error_msg" type="string"/>
+        </Action>
+        <Action ID="StopLocalization"/>
+    </TreeNodesModel>
+    <BehaviorTree ID="FollowTarget">
+        <RetryUntilSuccessful name="FollowRetry" num_attempts="5" _autoviz_x="868.0" _autoviz_y="162.0">
+            <Sequence name="FollowSequence" _autoviz_x="868.0" _autoviz_y="324.0">
+                <TargetLocked _autoviz_x="0.0" _autoviz_y="486.0"/>
+                <ComputeFollowGoal goal="{goal}" _autoviz_x="248.0" _autoviz_y="486.0"/>
+                <TransformValid _autoviz_x="502.8" _autoviz_y="497.8"/>
+                <PlanPath goal="{goal}" error_msg="{compute_path_error_msg}" error_code_id="{compute_path_error_code}" path="{path}" planner_id="{default_planner_id}" _autoviz_x="744.0" _autoviz_y="486.0"/>
+                <SmoothPath smoothed_path="{path}" unsmoothed_path="{path}" smoother_id="{default_smoother_id}" max_smoothing_duration="1.0" check_for_collisions="false" _autoviz_x="992.0" _autoviz_y="486.0"/>
+                <PathValid path="{path}" _autoviz_x="1240.0" _autoviz_y="486.0"/>
+                <FollowPath error_msg="{follow_path_error_msg}" controller_id="{default_controller_id}" error_code_id="{follow_path_error_code}" path="{path}" _autoviz_x="1488.0" _autoviz_y="486.0"/>
+                <GoalReached goal_reached_tol="{goal_reached_tol}" _autoviz_x="1736.0" _autoviz_y="486.0"/>
+            </Sequence>
+        </RetryUntilSuccessful>
+    </BehaviorTree>
 </root>

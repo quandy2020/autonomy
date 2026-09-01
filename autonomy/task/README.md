@@ -64,7 +64,7 @@ autonomy.task --config_directory=config
 5. TaskServer 转为 `NavigationGoal(START, SINGLE_POSE)` → 加载  
    `config/task/behavior_tree/navigation/navigate_to_pose.xml`
 
-接口名见 `interface/names.hpp`：`kGoalPose`、`navigate_to_pose`、`navigate_through_poses`。
+接口名见 `common/names.hpp`：`kGoalPose`、`navigate_to_pose`、`navigate_through_poses`。
 
 ## 相关路径
 

@@ -118,11 +118,16 @@ CameraFarPlane buildCameraFarPlane(
   return plane;
 }
 
+QMatrix4x4 opticalToCameraLinkMatrix() {
+  return QMatrix4x4(0.0f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+                    -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+}
+
 QMatrix4x4 opticalToWorld(
     const automsgs::msgs::sensor_msgs::CameraInfo& info,
     const QMatrix4x4& camera_to_fixed) {
   Q_UNUSED(info);
-  return camera_to_fixed;
+  return camera_to_fixed * opticalToCameraLinkMatrix();
 }
 
 }  // namespace display

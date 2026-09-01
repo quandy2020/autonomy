@@ -1,6 +1,6 @@
 -- Copyright 2025 The Openbot Authors(duyongquan)
 --
--- Navigator / BT options → navigator::LoadOptions (see navigator/proto/navigator_options.proto).
+-- Navigator / BT options → task::navigation::LoadOptions (see task/navigation/proto/navigator_options.proto).
 -- Loaded from autonomy.lua or navigator/navigator.lua via system::Autonomy::Configure().
 --
 -- BT plugins: AUTONOMY_BT_PLUGIN_PATH, or leave plugin_lib_path empty for install lib.
@@ -26,7 +26,7 @@ navigator = {
     local_survival_timeout = 120.0,  -- seconds; navigate_to_pose local survival
 
     plugin_lib_path = "",
-    -- Must match autonomy/navigator/behavior_tree/plugins/*.cpp and cmake plugin targets.
+    -- Must match autonomy/task/navigation/plugins/*.cpp and cmake plugin targets.
     plugin_lib_names = {
         -- action (one .so per file; clear_costmap_service registers 3 nodes like nav2)
         "autonomy_behavior_tree_action_back_up_action",

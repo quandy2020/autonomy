@@ -41,6 +41,8 @@ struct TeleopPanelConfig {
   QString topic = QStringLiteral("/cmd_vel");
   double publish_rate_hz = 1.0;
   bool stop_on_release = true;
+  /** Route commands through task teleop goal channel instead of /cmd_vel. */
+  bool smart_teleop_enabled = false;
   TeleopStickMode stick_mode = TeleopStickMode::kDual;
   /** Max |linear.x / linear.y| in m/s when stick is fully deflected. */
   double max_linear_speed = 0.5;

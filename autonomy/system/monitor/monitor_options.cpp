@@ -21,7 +21,7 @@
 #include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/system/monitor/ops_types.hpp"
 #include "autonomy/task/teleop/constants.hpp"
-#include "autonomy/task/interface/names.hpp"
+#include "autonomy/task/common/names.hpp"
 
 namespace autonomy {
 namespace system {

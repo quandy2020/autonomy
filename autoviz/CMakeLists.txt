@@ -1,7 +1,7 @@
 # Copyright 2026 The Openbot Authors (duyongquan)
 #
 # Autoviz — standalone Qt visualizer; depends on sibling autolink + automsgs only
-# (does not build libautonomy).
+# (does not link libautonomy; task schemas come from automsgs/proto/task/).
 #
 # Standalone:
 #   cmake -B build && cmake --build build --target autoviz

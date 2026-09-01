@@ -10,6 +10,7 @@
     - config/autonomy.lua (planning / control)
     - config/task/* (BT XML under config/task/behavior_tree/...)
     - PATH includes build bin (or install bin)
+    - autosim in nav mode with map.publish (see autosim/README.md) for /map + /scan
     - Optional: AUTONOMY_BT_PLUGIN_PATH if using out-of-tree BT plugins
       (default: nodes are linked into libautonomy)
 

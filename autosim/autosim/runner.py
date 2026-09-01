@@ -156,8 +156,7 @@ class Runner:
             # Let 2D lidar clip Habitat hits against the published occupancy grid.
             self.simulator.map_builder = self.map_builder
             try:
-                origin = (float(self.spawn[0]), float(self.spawn[1]))
-                self.map_builder.sample(self.simulator, origin)
+                self.map_builder.sample(self.simulator, self._map_sample_origin())
             except Exception as exc:
                 warnings.warn(
                     f"autosim occupancy warmup failed (laser wall-clip disabled): {exc!r}",
@@ -285,6 +284,11 @@ class Runner:
             types["rgb"] = Image
             types["depth"] = Image
             types["camera_info"] = CameraInfo
+            depth_points_channel = str(
+                self.camera.get("depth_points_channel") or ""
+            ).strip()
+            if depth_points_channel:
+                types["depth_points"] = PointCloud2
             if self.camera.get("semantic_enabled", False) and str(
                 self.camera.get("semantic_channel") or ""
             ).strip():
@@ -508,6 +512,27 @@ class Runner:
         self.bridge.publish("rgb", rgb_msg)
         self.bridge.publish("depth", depth_msg)
         self.bridge.publish("camera_info", info_msg)
+        depth_points_channel = str(
+            self.camera.get("depth_points_channel") or ""
+        ).strip()
+        if depth_points_channel and "depth_points" in self.bridge.writers:
+            stride = int(self.camera.get("depth_points_stride", 4))
+            points = Messages.project_depth_to_points(
+                np.asarray(depth, dtype=np.float32),
+                camera_matrix,
+                stride=stride,
+                min_depth=0.15,
+                max_depth=3.5,
+            )
+            if points.shape[0] > 0:
+                self.bridge.publish(
+                    "depth_points",
+                    Messages.encode_point_cloud2(
+                        Messages.optical_to_camera_link(points),
+                        stamp,
+                        frame,
+                    ),
+                )
         if (
             semantic is not None
             and self.camera.get("semantic_enabled", False)
@@ -530,6 +555,11 @@ class Runner:
             ids_msg.header.stamp.nanosec = int(rgb_msg.header.stamp.nanosec)
             self.bridge.publish("semantic_ids", ids_msg)
 
+    def _map_sample_origin(self) -> Tuple[float, float]:
+        """Planar hint for map sampling; use robot pose after spawn relocation."""
+        x, y, _ = self.simulator.pose()
+        return (float(x), float(y))
+
     def submit_map(self, stamp: Tuple[int, int]) -> None:
         """Publish the static map without blocking the control loop after first sample.
 
@@ -537,6 +567,9 @@ class Runner:
         every ``rate_hz`` stalls Habitat (TF/cmd_vel hitch) and Autoviz (image
         decode waits behind a PointCloud2 rebuild). Sample once, then only
         republish the small OccupancyGrid for late subscribers.
+
+        OccupancyGrid is published synchronously: SensorWorker keeps only one
+        pending job and scan/camera encoding would otherwise drop the map task.
         """
         if (
             self.map_builder is None
@@ -552,13 +585,12 @@ class Runner:
             if self.map_elapsed < 1.0 / rate:
                 return
         self.map_elapsed = 0.0
+        cloud, grid, resolution, ox, oy, _, _ = self.map_builder.sample(
+            self.simulator, self._map_sample_origin()
+        )
+        self.encode_publish_map_grid(grid, resolution, ox, oy, stamp)
         self.map_published = True
-        origin = (float(self.spawn[0]), float(self.spawn[1]))
-        cloud, grid, resolution, ox, oy, _, _ = self.map_builder.sample(self.simulator, origin)
         if not first:
-            self._sensor_worker.submit(
-                self.encode_publish_map_grid, grid, resolution, ox, oy, stamp
-            )
             return
         cloud_rgb = getattr(self.map_builder, "cloud_rgb", None)
         ply_cfg = self.map_cfg.get("ply") or {}
@@ -568,8 +600,37 @@ class Runner:
             if cloud_rgb is not None:
                 cloud_rgb = cloud_rgb[::stride]
         self._sensor_worker.submit(
-            self.encode_publish_map, cloud, cloud_rgb, grid, resolution, ox, oy, stamp
+            self.encode_publish_map_cloud, cloud, cloud_rgb, stamp
         )
+
+    def encode_publish_map_cloud(
+        self,
+        cloud: Any,
+        cloud_rgb: Any,
+        stamp: Tuple[int, int],
+    ) -> None:
+        """Publish the heavy panoramic PLY cloud (first sample only)."""
+        ply_cfg = self.map_cfg.get("ply") or {}
+        frame = self.map_cfg["frame"]
+        ply_channel = str(ply_cfg.get("channel") or "").strip()
+        if not ply_channel:
+            return
+        if cloud_rgb is not None and cloud_rgb.shape[0] == cloud.shape[0]:
+            self.bridge.publish(
+                "map_cloud",
+                Messages.encode_point_cloud2(cloud, stamp, frame, rgb=cloud_rgb),
+            )
+        else:
+            if cloud_rgb is not None and cloud_rgb.shape[0] != cloud.shape[0]:
+                warnings.warn(
+                    f"map cloud_rgb shape mismatch: xyz={cloud.shape[0]} "
+                    f"rgb={cloud_rgb.shape[0]}; falling back to flat white",
+                    stacklevel=2,
+                )
+            self.bridge.publish(
+                "map_cloud",
+                Messages.encode_point_cloud2(cloud, stamp, frame),
+            )
 
     def encode_publish_map(
         self,
@@ -581,31 +642,9 @@ class Runner:
         oy: float,
         stamp: Tuple[int, int],
     ) -> None:
-        ply_cfg = self.map_cfg.get("ply") or {}
-        frame = self.map_cfg["frame"]
-        ply_channel = str(ply_cfg.get("channel") or "").strip()
-        if ply_channel:
-            if cloud_rgb is not None and cloud_rgb.shape[0] == cloud.shape[0]:
-                self.bridge.publish(
-                    "map_cloud",
-                    Messages.encode_point_cloud2(cloud, stamp, frame, rgb=cloud_rgb),
-                )
-            else:
-                if cloud_rgb is not None and cloud_rgb.shape[0] != cloud.shape[0]:
-                    import warnings
-                    warnings.warn(
-                        f"map cloud_rgb shape mismatch: xyz={cloud.shape[0]} "
-                        f"rgb={cloud_rgb.shape[0]}; falling back to flat white",
-                        stacklevel=2,
-                    )
-                self.bridge.publish(
-                    "map_cloud",
-                    Messages.encode_point_cloud2(cloud, stamp, frame),
-                )
-        self.bridge.publish(
-            "map_grid",
-            Messages.encode_occupancy_grid(grid, resolution, ox, oy, stamp, frame),
-        )
+        """Publish PLY cloud and OccupancyGrid (tests / legacy callers)."""
+        self.encode_publish_map_cloud(cloud, cloud_rgb, stamp)
+        self.encode_publish_map_grid(grid, resolution, ox, oy, stamp)
 
     def encode_publish_map_grid(
         self,
@@ -821,26 +860,15 @@ class Runner:
         elif self.map_elapsed < 1.0 / rate and self.map_published:
             return
         self.map_elapsed = 0.0
-        origin = (float(self.spawn[0]), float(self.spawn[1]))
-        cloud, grid, resolution, ox, oy, _, _ = self.map_builder.sample(self.simulator, origin)
+        cloud, grid, resolution, ox, oy, _, _ = self.map_builder.sample(
+            self.simulator, self._map_sample_origin()
+        )
+        self.encode_publish_map_grid(grid, resolution, ox, oy, stamp)
+        self.map_published = True
         ply_cfg = self.map_cfg.get("ply") or {}
         stride = int(ply_cfg.get("stride", 1))
         cloud = self.subsample_points(cloud, stride)
-        frame = self.map_cfg["frame"]
-        ply_channel = str(ply_cfg.get("channel") or "").strip()
-        if ply_channel:
-            intensity = None
-            if cloud.size > 0:
-                intensity = np.linalg.norm(cloud, axis=1).astype(np.float32)
-            self.bridge.publish(
-                "map_cloud",
-                Messages.encode_point_cloud2(cloud, stamp, frame, intensity=intensity),
-            )
-        self.bridge.publish(
-            "map_grid",
-            Messages.encode_occupancy_grid(grid, resolution, ox, oy, stamp, frame),
-        )
-        self.map_published = True
+        self.encode_publish_map_cloud(cloud, getattr(self.map_builder, "cloud_rgb", None), stamp)
 
     def publish_camera(self, stamp: Tuple[int, int]) -> None:
         """Publish RGB, depth, and ``CameraInfo`` when enabled and due.

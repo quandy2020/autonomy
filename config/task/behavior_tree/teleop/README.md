@@ -34,7 +34,7 @@ Bridge  SendTeleopCommand (START / VELOCITY / STOP)
 
 | 层 | 职责 |
 |---|---|
-| `TeleopTask` | `START`/`VELOCITY`/`STOP`；`ApplyGoalParams`（限速、看门狗窗、`disable_collision_checks`）；树成败映射 `TeleopStatus` |
+| `TeleopTask` | `START`/`VELOCITY`/`STOP`；`ApplyGoal`（限速、看门狗窗、`disable_collision_checks`）；树成败映射 `TeleopStatus` |
 | `teleop.xml` | 每拍：指令是否仍有效 → 感知是否仍有效 → 跟踪参考 |
 | `TeleopClient` | 保存最近 `vx, ωz`；看门狗时间戳；写 `/cmd_vel` |
 | `TeleopMppiAssist` | 可选。`config/task/teleop_assist.lua` 默认 `assist_enabled = false` |
@@ -43,9 +43,9 @@ Bridge  SendTeleopCommand (START / VELOCITY / STOP)
 
 | XML | 插件 | 语义 |
 |---|---|---|
-| `CommandValid` | `teleop_watchdog_ok_condition.cpp` | 距上次指令 ≤ `watchdog_timeout_sec`（默认 0.5 s） |
-| `PerceptionValid` | `teleop_perception_ok_condition.cpp` | assist 开且未 bypass 时点云新鲜；否则恒 SUCCESS |
-| `TrackCommand` | `apply_teleop_velocity_action.cpp` | `PublishVelocity()`；assist 开时经 MPPI |
+| `CommandValid` | `watchdog_ok.cpp` | 距上次指令 ≤ `watchdog_timeout_sec`（默认 0.5 s） |
+| `PerceptionValid` | `perception_ok.cpp` | assist 开且未 bypass 时点云新鲜；否则恒 SUCCESS |
+| `TrackCommand` | `apply_velocity.cpp` | `PublishVelocity()`；assist 开时经 MPPI |
 | `ZeroCommand` | `apply_teleop_hold_stop_action.cpp` | 发零速、保留意图。**当前 XML 未引用** |
 
 ---

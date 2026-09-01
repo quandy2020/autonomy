@@ -69,7 +69,7 @@ bool BtRunner::Run(const std::string& tree_xml_path)
         return false;
     }
 
-    StopWorker();
+    DetachWorker();
     active_tree_ = tree_xml_path;
     cancel_requested_.store(false);
     paused_.store(false);
@@ -138,6 +138,15 @@ void BtRunner::WorkerLoop()
         status_logger->flush();
     }
     running_.store(false);
+}
+
+void BtRunner::DetachWorker()
+{
+    cancel_requested_.store(true);
+    running_.store(false);
+    if (worker_.joinable()) {
+        worker_.detach();
+    }
 }
 
 void BtRunner::StopWorker()

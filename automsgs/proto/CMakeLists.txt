@@ -29,7 +29,8 @@ file(GLOB_RECURSE AM_ALL_PROTO_SOURCES
   "${CMAKE_CURRENT_SOURCE_DIR}/msgs/*.proto"
   "${CMAKE_CURRENT_SOURCE_DIR}/srvs/*.proto"
   "${CMAKE_CURRENT_SOURCE_DIR}/rpcs/*.proto"
-  "${CMAKE_CURRENT_SOURCE_DIR}/actions/*.proto")
+  "${CMAKE_CURRENT_SOURCE_DIR}/actions/*.proto"
+  "${CMAKE_CURRENT_SOURCE_DIR}/task/*.proto")
 
 add_custom_command(
   OUTPUT ${AM_PROTO_STAMP}
@@ -38,6 +39,7 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/srvs ${AM_PROTO_INCLUDE_DIR}/automsgs/srvs
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/rpcs ${AM_PROTO_INCLUDE_DIR}/automsgs/rpcs
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/actions ${AM_PROTO_INCLUDE_DIR}/automsgs/actions
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/task ${AM_PROTO_INCLUDE_DIR}/automsgs/task
   COMMAND ${CMAKE_COMMAND} -E touch ${AM_PROTO_STAMP}
   DEPENDS ${AM_ALL_PROTO_SOURCES}
   COMMENT "Copy proto tree to ${AM_PROTO_INCLUDE_DIR}/automsgs for protoc -I"
@@ -155,6 +157,11 @@ install(
 )
 install(
   DIRECTORY actions
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/automsgs/proto
+  FILES_MATCHING PATTERN "*.proto"
+)
+install(
+  DIRECTORY task
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/automsgs/proto
   FILES_MATCHING PATTERN "*.proto"
 )

@@ -13,9 +13,9 @@
 # limitations under the License.
 
 habitat:
-  # slam: Cartographer owns map→odom and /map (autosim: odom→base_link only).
-  # nav:  drift-corrected map→odom→base_link so LaserScan matches GT map.
-  mode: slam
+  # task.launch + Autoviz 导航：用 nav + map.publish（见 autosim/README.md）。
+  # Cartographer SLAM：改回 mode: slam，并单独起 localization。
+  mode: nav
 
   # --- Scene loading (two modes, mirrors autonomy_ros habitat/sim.py) ---
   #
@@ -98,6 +98,8 @@ habitat:
       sensor_height: 0.6   # Habitat agent camera Y (matches autonomy_ros sensor_height)
       rgb_channel: /camera/rgb/image_raw
       depth_channel: /camera/depth/image_raw
+      depth_points_channel: /camera/depth/points
+      depth_points_stride: 1
       info_channel: /camera/camera_info
       semantic_enabled: true
       semantic_channel: /camera/semantic/image_raw   # rgb8 colored (Habitat semantic_to_rgb)
@@ -129,8 +131,8 @@ habitat:
       noise: 0.0
 
   map:
-    enabled: false          # load PLY → internal occupancy for lidar wall-clip
-    publish: false          # nav: publish GT /map; slam mode forces this off
+    enabled: true           # GT occupancy for lidar clip + /map
+    publish: true           # static_layer subscribes to /map (required by task.launch)
     frame: map
     rate_hz: 1.0           # OccupancyGrid republish for late subscribers; PLY cloud is sent once
     ply:

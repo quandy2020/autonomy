@@ -22,7 +22,7 @@
 #include "autonomy/control/control_options.hpp"
 #include "autonomy/map/map_options.hpp"
 #include "autonomy/planning/planner_options.hpp"
-#include "autonomy/navigator/options.hpp"
+#include "autonomy/task/navigation/options.hpp"
 #include "autonomy/transform/common/transform_interface.hpp"
 
 namespace autonomy {
@@ -53,7 +53,7 @@ proto::AutonomyOptions LoadOptions(
     }
     if (parameter_dictionary->HasKey("navigator")) {
         *options.mutable_navigator_options() =
-            navigator::LoadOptions(parameter_dictionary);
+            task::navigation::LoadOptions(parameter_dictionary);
     }
     if (parameter_dictionary->HasKey("transform")) {
         *options.mutable_transform_options() =

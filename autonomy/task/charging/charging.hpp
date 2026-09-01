@@ -9,7 +9,7 @@
 
 #include "autonomy/task/behavior_tree/bt_task_app.hpp"
 #include "autonomy/task/charging/charging_client.hpp"
-#include "autonomy/task/proto/charging.pb.h"
+#include <automsgs/task/charging.pb.h>
 #include "behaviortree_cpp/blackboard.h"
 
 namespace autonomy {

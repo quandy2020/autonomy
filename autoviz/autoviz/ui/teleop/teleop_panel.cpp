@@ -7,22 +7,25 @@
 #include <algorithm>
 #include <cmath>
 
+#include <QElapsedTimer>
 #include <QFocusEvent>
 #include <QFrame>
 #include <QHBoxLayout>
+#include <QMetaObject>
 #include <QScrollArea>
 #include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
+
+#include <glog/logging.h>
 
 #include <unordered_map>
 
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/time_utils.hpp>
 
-#include "autolink/node/writer.hpp"
-
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/integration/teleop_channels.hpp"
 #include "autoviz/ui/icon_loader.hpp"
 #include "autoviz/ui/panel_context_menu.hpp"
 #include "autoviz/ui/panel_dock_widget.hpp"
@@ -36,6 +39,49 @@ namespace autoviz {
 namespace teleop {
 namespace {
 
+constexpr int kGoalWriterResetCooldownMs = 5000;
+
+namespace tp = ::autonomy::task::proto;
+
+QString TeleopStatusLabel(tp::TeleopStatus status) {
+  switch (status) {
+    case tp::TELEOP_STATUS_ACTIVE:
+      return QObject::tr("运行中");
+    case tp::TELEOP_STATUS_TIMEOUT:
+      return QObject::tr("超时");
+    case tp::TELEOP_STATUS_REJECTED:
+      return QObject::tr("被拒绝");
+    case tp::TELEOP_STATUS_IDLE:
+      return QObject::tr("空闲");
+    default:
+      return QObject::tr("未知");
+  }
+}
+
+float TeleopWatchdogSec(double publish_rate_hz) {
+  const double hz = std::max(publish_rate_hz, 0.1);
+  return static_cast<float>(std::max(1.0, 2.5 / hz));
+}
+
+tp::TeleopGoal MakeTeleopGoal(tp::TeleopCommand command,
+                             const automsgs::msgs::geometry_msgs::Twist& twist,
+                             float max_linear, float max_angular,
+                             float watchdog_sec) {
+  tp::TeleopGoal goal;
+  goal.set_command(command);
+  goal.set_max_linear_speed(max_linear);
+  goal.set_max_angular_speed(max_angular);
+  goal.set_watchdog_timeout_sec(watchdog_sec);
+  goal.set_disable_collision_checks(false);
+  if (command == tp::TELEOP_CMD_VELOCITY || command == tp::TELEOP_CMD_START) {
+    auto* velocity = goal.mutable_velocity();
+    *velocity->mutable_header()->mutable_stamp() =
+        automsgs::msgs::builtin_interfaces::TimeNow();
+    velocity->mutable_header()->set_frame_id("base_link");
+    *velocity->mutable_twist() = twist;
+  }
+  return goal;
+}
 
 }  // namespace
 
@@ -101,11 +147,38 @@ TeleopPanel::TeleopPanel(common::VisualizationManager* manager, QWidget* parent)
             syncSettingsWidgetFromConfig();
             emit configChanged();
           });
+  connect(control_, &TeleopControlWidget::smartTeleopChanged, this,
+          [this](bool enabled) {
+            if (config_.smart_teleop_enabled && !enabled) {
+              publishTeleopSessionStop();
+            }
+            config_.smart_teleop_enabled = enabled;
+            if (enabled) {
+              smart_teleop_session_active_ = false;
+              teleop_start_logged_this_connect_ = false;
+              ensureTeleopGoalWriter();
+              ensureTeleopFeedbackReader();
+              publishTeleopSessionStart();
+            } else {
+              shutdownTeleopReaders();
+            }
+            updateSmartTeleopUiStatus();
+            syncSettingsWidgetFromConfig();
+            emit configChanged();
+          });
 
   updatePublishTimer();
   if (control_ != nullptr) {
     control_->setStickMode(config_.stick_mode);
     control_->setMaxSpeeds(config_.max_linear_speed, config_.max_angular_speed);
+    control_->setSmartTeleopEnabled(config_.smart_teleop_enabled);
+    control_->setSmartTeleopAvailable(true);
+    if (config_.smart_teleop_enabled) {
+      ensureTeleopGoalWriter();
+      ensureTeleopFeedbackReader();
+      publishTeleopSessionStart();
+    }
+    updateSmartTeleopUiStatus();
   }
   syncSettingsWidgetFromConfig();
 }
@@ -113,6 +186,7 @@ TeleopPanel::TeleopPanel(common::VisualizationManager* manager, QWidget* parent)
 TeleopPanel::~TeleopPanel() {
   publishStop();
   publish_timer_->stop();
+  shutdownTeleopReaders();
 }
 
 void TeleopPanel::installTitleBarTools(PanelDockWidget* dock) {
@@ -144,11 +218,23 @@ void TeleopPanel::installTitleBarTools(PanelDockWidget* dock) {
 TeleopPanelConfig TeleopPanel::config() const { return config_; }
 
 void TeleopPanel::setConfig(const TeleopPanelConfig& config) {
+  if (config_.smart_teleop_enabled && !config.smart_teleop_enabled) {
+    publishTeleopSessionStop();
+  }
   config_ = config;
   updatePublishTimer();
   if (control_ != nullptr) {
     control_->setStickMode(config_.stick_mode);
     control_->setMaxSpeeds(config_.max_linear_speed, config_.max_angular_speed);
+    control_->setSmartTeleopEnabled(config_.smart_teleop_enabled);
+    if (config_.smart_teleop_enabled) {
+      ensureTeleopGoalWriter();
+      ensureTeleopFeedbackReader();
+      publishTeleopSessionStart();
+    } else {
+      shutdownTeleopReaders();
+    }
+    updateSmartTeleopUiStatus();
   }
   syncSettingsWidgetFromConfig();
   syncSettingsToolState();
@@ -229,6 +315,10 @@ void TeleopPanel::setActiveTwist(
 }
 
 void TeleopPanel::publishTwist(const automsgs::msgs::geometry_msgs::Twist& twist) {
+  if (config_.smart_teleop_enabled) {
+    publishTeleopVelocity(twist);
+    return;
+  }
   if (config_.topic.isEmpty() || manager_ == nullptr) {
     return;
   }
@@ -269,6 +359,243 @@ void TeleopPanel::publishTwist(const automsgs::msgs::geometry_msgs::Twist& twist
   writer->Write(stamped);
 }
 
+void TeleopPanel::publishTeleopSessionStart() {
+  if (!config_.smart_teleop_enabled || manager_ == nullptr) {
+    return;
+  }
+  ensureTeleopGoalWriter();
+  if (!teleop_goal_writer_) {
+    return;
+  }
+  const float max_linear =
+      static_cast<float>(std::max(0.01, config_.max_linear_speed));
+  const float max_angular =
+      static_cast<float>(std::max(0.01, config_.max_angular_speed));
+  const float watchdog = TeleopWatchdogSec(config_.publish_rate_hz);
+  if (!teleop_goal_writer_->Write(MakeTeleopGoal(
+          tp::TELEOP_CMD_START, ZeroTwist(), max_linear, max_angular, watchdog))) {
+    ++goal_write_fail_streak_;
+    if (goal_write_fail_streak_ == 1) {
+      LOG(WARNING) << "TeleopPanel: failed to write TELEOP_CMD_START "
+                      "(waiting for autonomy.task)";
+    }
+    smart_teleop_status_text_ = tr("等待 task 连接…");
+    QMetaObject::invokeMethod(
+        this, [this]() { updateSmartTeleopUiStatus(); }, Qt::QueuedConnection);
+  } else {
+    goal_write_fail_streak_ = 0;
+    smart_teleop_session_active_ = true;
+    if (!teleop_start_logged_this_connect_) {
+      teleop_start_logged_this_connect_ = true;
+      LOG(INFO) << "TeleopPanel: wrote TELEOP_CMD_START";
+    }
+  }
+}
+
+void TeleopPanel::publishTeleopVelocity(
+    const automsgs::msgs::geometry_msgs::Twist& twist) {
+  if (!config_.smart_teleop_enabled || manager_ == nullptr) {
+    return;
+  }
+  ensureTeleopGoalWriter();
+  if (!teleop_goal_writer_) {
+    return;
+  }
+
+  const float max_linear =
+      static_cast<float>(std::max(0.01, config_.max_linear_speed));
+  const float max_angular =
+      static_cast<float>(std::max(0.01, config_.max_angular_speed));
+  const float watchdog = TeleopWatchdogSec(config_.publish_rate_hz);
+
+  const bool twist_active =
+      std::abs(twist.linear().x()) >= 1e-4 ||
+      std::abs(twist.angular().z()) >= 1e-4;
+  if (!smart_teleop_session_active_ && !twist_active) {
+    return;
+  }
+  if (!teleop_goal_writer_->Write(MakeTeleopGoal(tp::TELEOP_CMD_VELOCITY, twist, max_linear,
+                               max_angular, watchdog))) {
+    ++goal_write_fail_streak_;
+  } else {
+    goal_write_fail_streak_ = 0;
+  }
+}
+
+void TeleopPanel::startSessionConnectTimer() {
+  if (session_connect_timer_ == nullptr) {
+    session_connect_timer_ = new QTimer(this);
+    session_connect_timer_->setInterval(250);
+    connect(session_connect_timer_, &QTimer::timeout, this, [this]() {
+      if (!config_.smart_teleop_enabled) {
+        stopSessionConnectTimer();
+        return;
+      }
+      if (!teleop_goal_writer_) {
+        ensureTeleopGoalWriter();
+      }
+      if (!teleop_goal_writer_) {
+        return;
+      }
+      if (!smart_teleop_session_active_) {
+        maybeResetTeleopGoalWriter();
+        publishTeleopSessionStart();
+      }
+      if (linear_active_ || angular_active_) {
+        publishTeleopVelocity(composeTwist());
+      } else if (smart_teleop_session_active_) {
+        stopSessionConnectTimer();
+      }
+    });
+  }
+  if (!session_connect_timer_->isActive()) {
+    teleop_start_logged_this_connect_ = false;
+    session_connect_timer_->start();
+  }
+}
+
+void TeleopPanel::stopSessionConnectTimer() {
+  if (session_connect_timer_ != nullptr) {
+    session_connect_timer_->stop();
+  }
+}
+
+void TeleopPanel::maybeResetTeleopGoalWriter() {
+  if (!config_.smart_teleop_enabled || goal_write_fail_streak_ <= 0) {
+    return;
+  }
+  if (goal_writer_reset_timer_ == nullptr) {
+    goal_writer_reset_timer_ = new QElapsedTimer();
+    goal_writer_reset_timer_->start();
+    return;
+  }
+  if (goal_writer_reset_timer_->elapsed() < kGoalWriterResetCooldownMs) {
+    return;
+  }
+  resetTeleopGoalWriter();
+}
+
+void TeleopPanel::resetTeleopGoalWriter() {
+  if (!config_.smart_teleop_enabled) {
+    return;
+  }
+  LOG(INFO) << "TeleopPanel: resetting TeleopGoal writer (SHM reconnect)";
+  teleop_goal_writer_.reset();
+  smart_teleop_session_active_ = false;
+  goal_write_fail_streak_ = 0;
+  if (goal_writer_reset_timer_ != nullptr) {
+    goal_writer_reset_timer_->restart();
+  }
+  ensureTeleopGoalWriter();
+}
+
+void TeleopPanel::ensureTeleopGoalWriter() {
+  if (teleop_goal_writer_ != nullptr || manager_ == nullptr) {
+    return;
+  }
+  auto node = manager_->autolinkNode();
+  if (node == nullptr) {
+    LOG(ERROR) << "TeleopPanel: autolink node unavailable for smart teleop";
+    return;
+  }
+  teleop_goal_writer_ =
+      node->CreateWriter<::autonomy::task::proto::TeleopGoal>(
+          integration::kTeleopGoalChannel);
+  if (!teleop_goal_writer_) {
+    LOG(ERROR) << "TeleopPanel: failed to create writer on "
+               << integration::kTeleopGoalChannel;
+  } else {
+    LOG(INFO) << "TeleopPanel: publishing TeleopGoal on "
+              << integration::kTeleopGoalChannel;
+    startSessionConnectTimer();
+  }
+  updateSmartTeleopUiStatus();
+}
+
+void TeleopPanel::ensureTeleopFeedbackReader() {
+  if (teleop_feedback_reader_ != nullptr || manager_ == nullptr) {
+    return;
+  }
+  auto node = manager_->autolinkNode();
+  if (node == nullptr) {
+    return;
+  }
+  node->DeleteReader(integration::kTeleopFeedbackChannel);
+  teleop_feedback_reader_ =
+      node->CreateReader<::autonomy::task::proto::TeleopFeedback>(
+          integration::kTeleopFeedbackChannel,
+          [this](const std::shared_ptr<tp::TeleopFeedback>& feedback) {
+            if (!feedback) {
+              return;
+            }
+            if (feedback->status() == tp::TELEOP_STATUS_ACTIVE) {
+              smart_teleop_session_active_ = true;
+              stopSessionConnectTimer();
+            } else if (feedback->status() == tp::TELEOP_STATUS_REJECTED ||
+                       feedback->status() == tp::TELEOP_STATUS_IDLE) {
+              smart_teleop_session_active_ = false;
+            }
+            smart_teleop_status_text_ =
+                TeleopStatusLabel(feedback->status());
+            QMetaObject::invokeMethod(
+                this, [this]() { updateSmartTeleopUiStatus(); },
+                Qt::QueuedConnection);
+          });
+  if (!teleop_feedback_reader_) {
+    LOG(WARNING) << "TeleopPanel: failed to subscribe "
+                 << integration::kTeleopFeedbackChannel;
+  }
+}
+
+void TeleopPanel::shutdownTeleopReaders() {
+  stopSessionConnectTimer();
+  auto node = manager_ != nullptr ? manager_->autolinkNode() : nullptr;
+  teleop_goal_writer_.reset();
+  if (teleop_feedback_reader_) {
+    teleop_feedback_reader_.reset();
+    if (node != nullptr) {
+      node->DeleteReader(integration::kTeleopFeedbackChannel);
+    }
+  }
+  smart_teleop_status_text_.clear();
+  smart_teleop_session_active_ = false;
+  goal_write_fail_streak_ = 0;
+  updateSmartTeleopUiStatus();
+}
+
+void TeleopPanel::updateSmartTeleopUiStatus() {
+  if (control_ == nullptr) {
+    return;
+  }
+  if (!config_.smart_teleop_enabled) {
+    control_->setSmartTeleopStatusText(QString());
+    return;
+  }
+  QString status;
+  if (!teleop_goal_writer_) {
+    status = tr("通道未就绪");
+  } else if (goal_write_fail_streak_ > 0 && !smart_teleop_session_active_) {
+    status = tr("等待 task 连接…");
+  } else if (!smart_teleop_status_text_.isEmpty()) {
+    status = smart_teleop_status_text_;
+  } else {
+    status = tr("已连接，拖动摇杆发送");
+  }
+  control_->setSmartTeleopStatusText(status);
+}
+
+void TeleopPanel::publishTeleopSessionStop() {
+  if (!smart_teleop_session_active_ || teleop_goal_writer_ == nullptr) {
+    smart_teleop_session_active_ = false;
+    return;
+  }
+
+  const float watchdog = TeleopWatchdogSec(config_.publish_rate_hz);
+  teleop_goal_writer_->Write(MakeTeleopGoal(tp::TELEOP_CMD_STOP, ZeroTwist(), 0.f, 0.f,
+                              watchdog));
+  smart_teleop_session_active_ = false;
+}
+
 void TeleopPanel::publishStop() {
   linear_x_ = 0.0;
   linear_y_ = 0.0;
@@ -279,7 +606,11 @@ void TeleopPanel::publishStop() {
     control_->resetJoysticks();
   }
   setActiveTwist(ZeroTwist());
-  publishTwist(ZeroTwist());
+  if (config_.smart_teleop_enabled) {
+    publishTeleopSessionStop();
+  } else {
+    publishTwist(ZeroTwist());
+  }
   publish_timer_->stop();
 }
 
@@ -326,6 +657,12 @@ void TeleopPanel::onLinearReleased() {
   linear_y_ = 0.0;
   linear_active_ = false;
   if (config_.stop_on_release && !angular_active_) {
+    if (config_.smart_teleop_enabled) {
+      setActiveTwist(ZeroTwist());
+      publishTeleopVelocity(ZeroTwist());
+      publish_timer_->stop();
+      return;
+    }
     publishStop();
     return;
   }
@@ -336,6 +673,12 @@ void TeleopPanel::onAngularReleased() {
   angular_turn_ = 0.0;
   angular_active_ = false;
   if (config_.stop_on_release && !linear_active_) {
+    if (config_.smart_teleop_enabled) {
+      setActiveTwist(ZeroTwist());
+      publishTeleopVelocity(ZeroTwist());
+      publish_timer_->stop();
+      return;
+    }
     publishStop();
     return;
   }

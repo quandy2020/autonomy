@@ -30,7 +30,7 @@
 #include "autonomy/common/macros.hpp"
 #include <automsgs/msgs/vehicle_msgs/robot_task_type.pb.h>
 #include "autonomy/task/common/task_interface.hpp"
-#include "autonomy/task/proto/task_options.pb.h"
+#include <automsgs/task/task_options.pb.h>
 
 namespace autonomy {
 namespace task {

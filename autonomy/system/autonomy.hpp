@@ -40,8 +40,8 @@
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/system/proto/autonomy_options.pb.h"
-#include "autonomy/navigator/constants.hpp"
-#include "autonomy/navigator/options.hpp"
+#include "autonomy/task/navigation/constants.hpp"
+#include "autonomy/task/navigation/options.hpp"
 #include "autonomy/sensor/collator_interface.hpp"
 
 namespace autonomy {
@@ -113,13 +113,13 @@ public:
         const automsgs::msgs::geometry_msgs::PoseStamped& goal,
         std::function<bool()> cancel_checker,
         std::function<bool()> keep_alive,
-        double timeout_sec = navigator::kDirectNavDefaultTimeoutSec);
+        double timeout_sec = task::navigation::kDirectNavDefaultTimeoutSec);
 
     bool NavigateThroughPoses(
         const std::vector<automsgs::msgs::geometry_msgs::PoseStamped>& goals,
         std::function<bool()> cancel_checker,
         std::function<bool()> keep_alive,
-        double timeout_sec = navigator::kDirectNavDefaultTimeoutSec);
+        double timeout_sec = task::navigation::kDirectNavDefaultTimeoutSec);
 
     void ReplanToGoal(const automsgs::msgs::geometry_msgs::PoseStamped& goal);
     std::optional<automsgs::msgs::nav_msgs::Path> GetLastPath();
@@ -158,7 +158,7 @@ private:
 
     proto::AutonomyOptions options_;
     RuntimeOptions runtime_;
-    navigator::proto::NavigatorOptions navigator_options_;
+    task::navigation::proto::NavigatorOptions navigator_options_;
 
     std::shared_ptr<map::MapServer> map_server_;
     std::shared_ptr<planning::PlannerServer> planner_;

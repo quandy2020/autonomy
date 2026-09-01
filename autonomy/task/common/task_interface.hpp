@@ -22,15 +22,15 @@
 #include "autonomy/common/macros.hpp"
 #include <automsgs/msgs/vehicle_msgs/robot_task_status.pb.h>
 #include <automsgs/msgs/vehicle_msgs/robot_task_type.pb.h>
-#include "autonomy/task/proto/charging.pb.h"
-#include "autonomy/task/proto/exploration.pb.h"
-#include "autonomy/task/proto/localization.pb.h"
-#include "autonomy/task/proto/mapping.pb.h"
-#include "autonomy/task/proto/navigation.pb.h"
-#include "autonomy/task/proto/task_common.pb.h"
-#include "autonomy/task/proto/task_options.pb.h"
-#include "autonomy/task/proto/teleop.pb.h"
-#include "autonomy/task/proto/tracker.pb.h"
+#include <automsgs/task/charging.pb.h>
+#include <automsgs/task/exploration.pb.h>
+#include <automsgs/task/localization.pb.h>
+#include <automsgs/task/mapping.pb.h>
+#include <automsgs/task/navigation.pb.h>
+#include <automsgs/task/task_common.pb.h>
+#include <automsgs/task/task_options.pb.h>
+#include <automsgs/task/teleop.pb.h>
+#include <automsgs/task/tracker.pb.h>
 
 namespace autonomy {
 namespace task {
@@ -80,7 +80,7 @@ inline bool IsTerminalLifecycle(TaskLifecycle lifecycle)
  *
  * TaskServer / Scheduler 通过 TaskInterface::SharedPtr 管理各 domain 任务 实现。
  * 具体 Goal / Feedback / Result 由 TypedTaskInterface 子类承载，与
- * autonomy/task/proto 中各 *Goal / *Feedback / *Result 一一对应。
+ * automsgs/task 中各 *Goal / *Feedback / *Result 一一对应。
  */
 class TaskInterface
 {

@@ -18,7 +18,7 @@
 
 #include "autonomy/bridge/plugins/grpc/teleop_goal_convert.hpp"
 #include "autonomy/common/logging.hpp"
-#include "autonomy/task/interface/names.hpp"
+#include "autonomy/task/common/names.hpp"
 
 namespace autonomy {
 namespace bridge {

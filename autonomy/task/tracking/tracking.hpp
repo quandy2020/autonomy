@@ -10,7 +10,7 @@
 
 #include "autonomy/task/behavior_tree/bt_task_app.hpp"
 #include "autonomy/task/tracking/tracking_client.hpp"
-#include "autonomy/task/proto/tracker.pb.h"
+#include <automsgs/task/tracker.pb.h>
 #include "behaviortree_cpp/blackboard.h"
 
 namespace autonomy {
