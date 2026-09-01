@@ -6,7 +6,7 @@
 
 #include <automsgs/msgs/vehicle_msgs/robot_task_type.pb.h>
 #include "autonomy/task/behavior_tree/bt_profile.hpp"
-#include "autonomy/task/proto/task_options.pb.h"
+#include <automsgs/task/task_options.pb.h>
 
 namespace autonomy {
 namespace task {

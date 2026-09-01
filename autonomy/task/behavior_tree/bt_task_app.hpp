@@ -19,7 +19,7 @@
 #include "autonomy/task/behavior_tree/bt_status_logger.hpp"
 #include "autonomy/task/navigation/navigation_client.hpp"
 #include "autonomy/task/common/typed_task.hpp"
-#include "autonomy/task/proto/task_options.pb.h"
+#include <automsgs/task/task_options.pb.h>
 #include "behaviortree_cpp/blackboard.h"
 
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>

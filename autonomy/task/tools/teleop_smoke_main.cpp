@@ -14,7 +14,7 @@
 
 #include "autolink/autolink.hpp"
 #include "autolink/time/rate.hpp"
-#include "autonomy/task/proto/teleop.pb.h"
+#include <automsgs/task/teleop.pb.h>
 #include "autonomy/task/task_server.hpp"
 
 DEFINE_string(config_directory, "config",

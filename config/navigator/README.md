@@ -1,6 +1,6 @@
 # Navigator 配置
 
-`navigator.lua` 由 `navigator::LoadOptions` 解析，字段与 `navigator/proto/navigator_options.proto` 对应。
+`navigator.lua` 由 `task::navigation::LoadOptions` 解析，字段与 `task/navigation/proto/navigator_options.proto` 对应。
 
 ## 主要字段
 
@@ -18,5 +18,5 @@
 
 ```
 autonomy.lua → include navigator/navigator.lua
-system::CreateOptions → navigator::LoadOptions
+system::CreateOptions → task::navigation::LoadOptions
 ```

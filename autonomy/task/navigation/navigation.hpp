@@ -15,7 +15,7 @@
 
 #include "autonomy/task/behavior_tree/bt_task_app.hpp"
 #include "autonomy/task/navigation/navigation_client.hpp"
-#include "autonomy/task/proto/navigation.pb.h"
+#include <automsgs/task/navigation.pb.h>
 #include "behaviortree_cpp/blackboard.h"
 
 namespace autonomy {

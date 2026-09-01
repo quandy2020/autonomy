@@ -205,9 +205,24 @@ void ObservationBuffer::bufferCloud(
             if (pz < min_obstacle_height_ || pz > max_obstacle_height_) {
                 continue;
             }
+            if (!std::isfinite(px) || !std::isfinite(py) || !std::isfinite(pz)) {
+                continue;
+            }
+
+            std::vector<unsigned char> point_copy(point_data,
+                                                  point_data + cloud.point_step());
+            if (need_transform) {
+                automsgs::msgs::sensor_msgs::writePointCloud2BufferValue(
+                    point_copy.data() + offsets.x, offsets.x_datatype, px);
+                automsgs::msgs::sensor_msgs::writePointCloud2BufferValue(
+                    point_copy.data() + offsets.y, offsets.y_datatype, py);
+                automsgs::msgs::sensor_msgs::writePointCloud2BufferValue(
+                    point_copy.data() + offsets.z, offsets.z_datatype, pz);
+            }
 
             observation_cloud.mutable_data()->append(
-                reinterpret_cast<const char*>(point_data), cloud.point_step());
+                reinterpret_cast<const char*>(point_copy.data()),
+                cloud.point_step());
         }
 
         observation_cloud.set_width(

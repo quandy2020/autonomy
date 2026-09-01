@@ -4,16 +4,21 @@
 
 #pragma once
 
-#include <QWidget>
-
+#include <memory>
 #include <optional>
 
 #include <QPointer>
+#include <QWidget>
 
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 
+#include <autolink/node/reader.hpp>
+#include <autolink/node/writer.hpp>
+#include <automsgs/task/teleop.pb.h>
 #include "autoviz/ui/teleop/teleop_types.hpp"
 
+class QElapsedTimer;
+class QFocusEvent;
 class QScrollArea;
 class QTimer;
 class QToolButton;
@@ -73,6 +78,9 @@ class TeleopPanel : public QWidget {
 
  private:
   void publishTwist(const automsgs::msgs::geometry_msgs::Twist& twist);
+  void publishTeleopVelocity(const automsgs::msgs::geometry_msgs::Twist& twist);
+  void publishTeleopSessionStart();
+  void publishTeleopSessionStop();
   void publishStop();
   void setActiveTwist(const automsgs::msgs::geometry_msgs::Twist& twist);
   void updatePublishTimer();
@@ -80,6 +88,14 @@ class TeleopPanel : public QWidget {
   void publishComposedTwist();
   void syncSettingsWidgetFromConfig();
   void syncSettingsToolState();
+  void ensureTeleopGoalWriter();
+  void resetTeleopGoalWriter();
+  void ensureTeleopFeedbackReader();
+  void shutdownTeleopReaders();
+  void updateSmartTeleopUiStatus();
+  void startSessionConnectTimer();
+  void stopSessionConnectTimer();
+  void maybeResetTeleopGoalWriter();
 
   common::VisualizationManager* manager_ = nullptr;
   TeleopPanelConfig config_;
@@ -95,6 +111,16 @@ class TeleopPanel : public QWidget {
   double angular_turn_ = 0.0;
   bool linear_active_ = false;
   bool angular_active_ = false;
+  bool smart_teleop_session_active_ = false;
+  bool teleop_start_logged_this_connect_ = false;
+  QString smart_teleop_status_text_;
+  std::shared_ptr<::autolink::Writer<::autonomy::task::proto::TeleopGoal>>
+      teleop_goal_writer_;
+  std::shared_ptr<::autolink::Reader<::autonomy::task::proto::TeleopFeedback>>
+      teleop_feedback_reader_;
+  QTimer* session_connect_timer_ = nullptr;
+  QElapsedTimer* goal_writer_reset_timer_ = nullptr;
+  int goal_write_fail_streak_ = 0;
 };
 
 }  // namespace teleop

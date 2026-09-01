@@ -10,6 +10,7 @@
 
 class QAbstractButton;
 class QButtonGroup;
+class QCheckBox;
 class QDoubleSpinBox;
 class QEvent;
 class QFocusEvent;
@@ -34,6 +35,10 @@ class TeleopControlWidget : public QWidget {
   void setMaxSpeeds(double max_linear, double max_angular);
   double maxLinearSpeed() const { return max_linear_speed_; }
   double maxAngularSpeed() const { return max_angular_speed_; }
+  void setSmartTeleopEnabled(bool enabled);
+  bool smartTeleopEnabled() const { return smart_teleop_enabled_; }
+  void setSmartTeleopAvailable(bool available);
+  void setSmartTeleopStatusText(const QString& status);
 
  signals:
   /** Dual Move stick / Arcade stick Y: x = strafe (dual only), y = forward. */
@@ -45,6 +50,7 @@ class TeleopControlWidget : public QWidget {
   void stopClicked();
   void stickModeChanged(TeleopStickMode mode);
   void maxSpeedsChanged(double max_linear, double max_angular);
+  void smartTeleopChanged(bool enabled);
 
  protected:
   void keyPressEvent(QKeyEvent* event) override;
@@ -58,8 +64,11 @@ class TeleopControlWidget : public QWidget {
   void updateArcadeFromKeyboard();
   void clearKeyboardState();
   void emitMaxSpeedsFromUi();
+  void updateSmartTeleopHint();
 
   TeleopStickMode stick_mode_ = TeleopStickMode::kDual;
+  bool smart_teleop_enabled_ = false;
+  QString smart_teleop_status_text_;
   double max_linear_speed_ = 0.5;
   double max_angular_speed_ = 0.5;
   QButtonGroup* mode_group_ = nullptr;
@@ -73,6 +82,7 @@ class TeleopControlWidget : public QWidget {
   TeleopJoystickWidget* turn_joystick_ = nullptr;
   TeleopJoystickWidget* arcade_joystick_ = nullptr;
   QLabel* hint_label_ = nullptr;
+  QCheckBox* smart_teleop_check_ = nullptr;
   bool key_forward_ = false;
   bool key_back_ = false;
   bool key_left_ = false;

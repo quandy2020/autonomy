@@ -172,6 +172,53 @@ class Messages:
         b = array[:, 2].astype(np.uint32)
         return (r << 16) | (g << 8) | b
 
+    @staticmethod
+    def project_depth_to_points(
+        depth: np.ndarray,
+        camera_matrix: Sequence[float],
+        *,
+        stride: int = 4,
+        min_depth: float = 0.1,
+        max_depth: float = 4.0,
+    ) -> np.ndarray:
+        """Project a depth image to ROS optical-frame XYZ (x right, y down, z forward)."""
+        array = np.asarray(depth, dtype=np.float32)
+        if array.ndim != 2 or len(camera_matrix) < 9:
+            return np.zeros((0, 3), dtype=np.float32)
+        fx = float(camera_matrix[0])
+        fy = float(camera_matrix[4])
+        cx = float(camera_matrix[2])
+        cy = float(camera_matrix[5])
+        if fx <= 0.0 or fy <= 0.0:
+            return np.zeros((0, 3), dtype=np.float32)
+
+        step = max(1, int(stride))
+        height, width = array.shape[:2]
+        us = np.arange(0, width, step, dtype=np.float32)
+        vs = np.arange(0, height, step, dtype=np.float32)
+        uu, vv = np.meshgrid(us, vs, indexing="xy")
+        d = array[vv.astype(int), uu.astype(int)]
+        valid = np.isfinite(d) & (d > min_depth) & (d < max_depth)
+        if not np.any(valid):
+            return np.zeros((0, 3), dtype=np.float32)
+        d = d[valid]
+        u = uu[valid]
+        v = vv[valid]
+        x = (u - cx) * d / fx
+        y = (v - cy) * d / fy
+        z = d
+        return np.stack([x, y, z], axis=1).astype(np.float32)
+
+    @staticmethod
+    def optical_to_camera_link(points: np.ndarray) -> np.ndarray:
+        """OpenCV optical (X right, Y down, Z forward) → REP-103 camera_link."""
+        array = np.asarray(points, dtype=np.float32).reshape(-1, 3)
+        if array.size == 0:
+            return array
+        return np.stack(
+            [array[:, 2], -array[:, 0], -array[:, 1]], axis=1
+        ).astype(np.float32)
+
     @classmethod
     def encode_point_cloud2(
         cls,

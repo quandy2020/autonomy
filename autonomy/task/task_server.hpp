@@ -31,19 +31,19 @@
 #include "autonomy/task/charging/charging.hpp"
 #include "autonomy/task/common/transform_listener.hpp"
 #include "autonomy/task/exploration/exploration.hpp"
-#include "autonomy/task/interface/goal_ingress.hpp"
-#include "autonomy/task/interface/navigator.hpp"
+#include "autonomy/task/common/goal_ingress.hpp"
+#include "autonomy/task/common/navigator.hpp"
 #include "autonomy/task/localization/localization.hpp"
 #include "autonomy/task/mapping/mapping.hpp"
 #include "autonomy/task/navigation/navigation.hpp"
 #include "autonomy/task/navigation/navigation_client.hpp"
-#include "autonomy/task/proto/charging.pb.h"
-#include "autonomy/task/proto/exploration.pb.h"
-#include "autonomy/task/proto/localization.pb.h"
-#include "autonomy/task/proto/mapping.pb.h"
-#include "autonomy/task/proto/navigation.pb.h"
-#include "autonomy/task/proto/teleop.pb.h"
-#include "autonomy/task/proto/tracker.pb.h"
+#include <automsgs/task/charging.pb.h>
+#include <automsgs/task/exploration.pb.h>
+#include <automsgs/task/localization.pb.h>
+#include <automsgs/task/mapping.pb.h>
+#include <automsgs/task/navigation.pb.h>
+#include <automsgs/task/teleop.pb.h>
+#include <automsgs/task/tracker.pb.h>
 #include "autonomy/task/register_tasks.hpp"
 #include "autonomy/task/scheduler/scheduler.hpp"
 #include "autonomy/task/teleop/teleop.hpp"
@@ -106,7 +106,10 @@ private:
                goal.command() == proto::NAV_CMD_REPLAN;
     }
     static bool NeedsSlot(const proto::TeleopGoal& goal) {
-        return goal.command() == proto::TELEOP_CMD_START;
+        (void)goal;
+        // Teleop preempts navigation motion inside TeleopTask::OnGoal; avoid
+        // dropping goals when the exclusive slot is still held.
+        return false;
     }
     static bool NeedsSlot(const proto::TrackerGoal& goal) {
         return goal.command() == proto::TRACKER_CMD_START ||
@@ -128,7 +131,13 @@ private:
     template <typename TaskT, typename GoalT>
     bool Dispatch(const std::shared_ptr<TaskT>& task, const GoalT& goal) {
         if (!task || !scheduler_) {
+            AWARN << "TaskServer::Dispatch: null task or scheduler";
             return false;
+        }
+        // Teleop velocity updates must not touch the exclusive scheduler; doing
+        // so can deadlock the goal worker against ReclaimLoop.
+        if (!NeedsSlot(goal)) {
+            return task->SubmitGoal(goal);
         }
         // Drop stale exclusive / session state after SUCCEEDED/FAILED so the
         // next /goal_pose can RequestActivation without fighting a dead hold.
@@ -146,6 +155,8 @@ private:
             if (needs_activation) {
                 scheduler_->ReleaseActivation(task);
             }
+            AWARN << "TaskServer: SubmitGoal failed task_type="
+                  << static_cast<int>(task->GetTaskType());
             return false;
         }
         return true;
@@ -169,7 +180,7 @@ private:
         bool enabled, const std::shared_ptr<TaskT>& task,
         const char* goal_channel, const char* feedback_channel,
         std::chrono::milliseconds period,
-        interface::GoalIngress<GoalT, FeedbackT>* ingress,
+        common::GoalIngress<GoalT, FeedbackT>* ingress,
         TerminalFn&& is_terminal, RejectedFn&& make_rejected) {
         if (!enabled || !task || ingress == nullptr) {
             return false;
@@ -212,19 +223,19 @@ private:
     std::optional<::automsgs::msgs::geometry_msgs::PoseStamped>
         pending_goal_pose_;
     std::atomic<bool> goal_pose_worker_busy_{false};
-    interface::Navigator::SharedPtr navigator_;
+    common::Navigator::SharedPtr navigator_;
 
-    interface::GoalIngress<proto::TeleopGoal, proto::TeleopFeedback>
+    common::GoalIngress<proto::TeleopGoal, proto::TeleopFeedback>
         teleop_ingress_;
-    interface::GoalIngress<proto::TrackerGoal, proto::TrackerFeedback>
+    common::GoalIngress<proto::TrackerGoal, proto::TrackerFeedback>
         tracking_ingress_;
-    interface::GoalIngress<proto::ExplorationGoal, proto::ExplorationFeedback>
+    common::GoalIngress<proto::ExplorationGoal, proto::ExplorationFeedback>
         exploration_ingress_;
-    interface::GoalIngress<proto::ChargingGoal, proto::ChargingFeedback>
+    common::GoalIngress<proto::ChargingGoal, proto::ChargingFeedback>
         charging_ingress_;
-    interface::GoalIngress<proto::MappingGoal, proto::MappingFeedback>
+    common::GoalIngress<proto::MappingGoal, proto::MappingFeedback>
         mapping_ingress_;
-    interface::GoalIngress<proto::LocalizationGoal, proto::LocalizationFeedback>
+    common::GoalIngress<proto::LocalizationGoal, proto::LocalizationFeedback>
         localization_ingress_;
 
     TransformListener::SharedPtr transform_listener_;

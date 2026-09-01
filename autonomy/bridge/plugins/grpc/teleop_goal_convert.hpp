@@ -17,7 +17,7 @@
 #pragma once
 
 #include "autonomy/bridge/proto/external_command_service.pb.h"
-#include "autonomy/task/proto/teleop.pb.h"
+#include <automsgs/task/teleop.pb.h>
 
 namespace autonomy {
 namespace bridge {

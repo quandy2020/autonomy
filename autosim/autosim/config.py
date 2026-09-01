@@ -98,6 +98,9 @@ class Config:
             semantic_ids_channel = str(camera_cfg.get("semantic_ids_channel") or "").strip()
             if semantic_ids_channel:
                 channels["semantic_ids"] = semantic_ids_channel
+        depth_points_channel = str(camera_cfg.get("depth_points_channel") or "").strip()
+        if depth_points_channel:
+            channels["depth_points"] = depth_points_channel
         ply_channel = str(ply.get("channel") or "").strip()
         if ply_channel:
             channels["map_cloud"] = ply_channel
@@ -315,6 +318,11 @@ class Config:
             sensors["odom"]["channel"],
             truth["channel"],
         ]
+        depth_points_channel = str(
+            (sensors.get("camera") or {}).get("depth_points_channel") or ""
+        ).strip()
+        if depth_points_channel:
+            names.append(depth_points_channel)
         mapping = habitat.get("map")
         slam = str(habitat.get("mode", "nav")).strip().lower() == "slam"
         map_publish = (

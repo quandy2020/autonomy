@@ -20,7 +20,7 @@
 #include <string>
 
 #include "autonomy/task/common/task_interface.hpp"
-#include "autonomy/task/proto/task_common.pb.h"
+#include <automsgs/task/task_common.pb.h>
 
 namespace autonomy {
 namespace task {
@@ -38,20 +38,22 @@ public:
     ~TypedTaskAppBase() override = default;
 
     TaskLifecycle GetLifecycle() const override {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
         return lifecycle_;
     }
 
     bool Initialize(
         const ::autonomy::task::proto::TaskServerOptions& options) override {
-        std::lock_guard<std::mutex> lock(mutex_);
-        server_options_ = options;
+        {
+            std::lock_guard<std::recursive_mutex> lock(mutex_);
+            server_options_ = options;
+        }
         return OnInitialize(options);
     }
 
     void Shutdown() override {
         Cancel();
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
         lifecycle_ = TaskLifecycle::kIdle;
         progress_.Clear();
         task_id_.clear();
@@ -59,7 +61,7 @@ public:
     }
 
     bool Cancel() override {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
         if (lifecycle_ == TaskLifecycle::kIdle ||
             IsTerminalLifecycle(lifecycle_)) {
             return false;
@@ -69,7 +71,7 @@ public:
     }
 
     bool Pause() override {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
         if (lifecycle_ != TaskLifecycle::kRunning) {
             return false;
         }
@@ -78,7 +80,7 @@ public:
     }
 
     bool Resume() override {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
         if (lifecycle_ != TaskLifecycle::kPaused) {
             return false;
         }
@@ -87,7 +89,7 @@ public:
     }
 
     ::autonomy::task::proto::ActiveTaskSnapshot GetSnapshot() const override {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
         ::autonomy::task::proto::ActiveTaskSnapshot snapshot;
         snapshot.set_task_type(this->GetTaskType());
         snapshot.set_task_status(ToRobotTaskStatus(lifecycle_));
@@ -99,7 +101,7 @@ public:
 
     bool SubmitGoal(const GoalType& goal) override {
         {
-            std::lock_guard<std::mutex> lock(mutex_);
+            std::lock_guard<std::recursive_mutex> lock(mutex_);
             if (goal.has_header()) {
                 task_id_ = goal.header().task_id();
                 client_id_ = goal.header().client_id();
@@ -114,7 +116,7 @@ public:
         if (feedback == nullptr) {
             return false;
         }
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
         FillFeedback(feedback);
         return true;
     }
@@ -123,7 +125,7 @@ public:
         if (result == nullptr) {
             return false;
         }
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
         if (!IsTerminalLifecycle(lifecycle_)) {
             return false;
         }
@@ -138,16 +140,18 @@ protected:
     }
 
     virtual bool OnGoal(const GoalType& goal) = 0;
+    /** Called with mutex_ held; do not call Lifecycle() (re-locks). */
     virtual void FillFeedback(FeedbackType* feedback) const = 0;
+    /** Called with mutex_ held; do not call Lifecycle() (re-locks). */
     virtual void FillResult(ResultType* result) const = 0;
 
     void SetLifecycle(TaskLifecycle lifecycle) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
         lifecycle_ = lifecycle;
     }
 
     void SetProgress(float progress, const std::string& detail = {}) {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
         progress_.set_progress(progress);
         if (!detail.empty()) {
             progress_.set_detail(detail);
@@ -155,7 +159,7 @@ protected:
     }
 
     [[nodiscard]] TaskLifecycle Lifecycle() const {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
         return lifecycle_;
     }
 
@@ -166,7 +170,7 @@ protected:
         return envelope;
     }
 
-    mutable std::mutex mutex_;
+    mutable std::recursive_mutex mutex_;
     TaskLifecycle lifecycle_{TaskLifecycle::kIdle};
     ::autonomy::task::proto::TaskServerOptions server_options_;
     ::autonomy::task::proto::TaskProgress progress_;

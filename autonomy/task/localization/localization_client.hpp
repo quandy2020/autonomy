@@ -8,7 +8,7 @@
 #include <string>
 
 #include "autolink/node/node.hpp"
-#include "autonomy/task/proto/localization.pb.h"
+#include <automsgs/task/localization.pb.h>
 
 namespace BT {
 class Blackboard;

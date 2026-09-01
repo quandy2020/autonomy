@@ -98,6 +98,12 @@ def test_encode_odometry_frames():
     assert abs(message.pose.pose.pose.position.x - 1.0) < 1e-9
 
 
+def test_optical_to_camera_link():
+    optical = np.array([[1.0, 2.0, 3.0]], dtype=np.float32)
+    link = Messages.optical_to_camera_link(optical)
+    np.testing.assert_allclose(link, np.array([[3.0, -1.0, -2.0]], dtype=np.float32))
+
+
 def test_encode_point_cloud2_xyz():
     points = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype=np.float32)
     message = Messages.encode_point_cloud2(points, (1, 0), "lidar_link")

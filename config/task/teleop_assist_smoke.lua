@@ -4,7 +4,6 @@
 return {
   assist_enabled = true,
 
-  global_frame = "map",
   angular_to_dir_gain = 1.0,
   stopped_linear_epsilon = 0.02,
   in_place_angular_scale = 0.5,

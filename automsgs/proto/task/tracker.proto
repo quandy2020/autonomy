@@ -1,0 +1,79 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.task.proto;
+
+import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
+import "automsgs/msgs/geometry_msgs/pose.proto";
+import "automsgs/msgs/geometry_msgs/point.proto";
+import "automsgs/msgs/geometry_msgs/twist_stamped.proto";
+import "automsgs/task/task_common.proto";
+
+// tracking — enum values match bridge Follow* for adapter mapping.
+
+enum TrackerMode {
+  TRACKER_MODE_UNSPECIFIED = 0;
+  TRACKER_MODE_PERSON = 1;
+  TRACKER_MODE_TARGET_POSE = 2;
+  TRACKER_MODE_TARGET_ID = 3;
+}
+
+enum TrackerCommand {
+  TRACKER_CMD_UNSPECIFIED = 0;
+  TRACKER_CMD_START = 1;
+  TRACKER_CMD_STOP = 2;
+  TRACKER_CMD_PAUSE = 3;
+  TRACKER_CMD_RESUME = 4;
+  TRACKER_CMD_CANCEL = 5;
+  TRACKER_CMD_UPDATE_TARGET = 6;
+}
+
+enum TrackerStatus {
+  TRACKER_STATUS_UNKNOWN = 0;
+  TRACKER_STATUS_IDLE = 1;
+  TRACKER_STATUS_TRACKING = 2;
+  TRACKER_STATUS_PAUSED = 3;
+  TRACKER_STATUS_TARGET_LOST = 4;
+  TRACKER_STATUS_SUCCEEDED = 5;
+  TRACKER_STATUS_FAILED = 6;
+  TRACKER_STATUS_CANCELED = 7;
+}
+
+message TrackerGoal {
+  TaskHeader header = 1;
+  TrackerCommand command = 2;
+  TrackerMode mode = 3;
+  float follow_distance = 4;
+  float follow_angle = 5;
+  float session_timeout_sec = 6;
+  bool reacquire_on_lost = 7;
+  oneof target {
+    automsgs.msgs.geometry_msgs.PoseStamped target_pose = 8;
+    string target_id = 9;
+  }
+}
+
+message TrackerFeedback {
+  TrackerStatus status = 1;
+  TaskProgress progress = 2;
+  float distance_to_target = 3;
+  automsgs.msgs.geometry_msgs.PoseStamped target_pose = 4;
+}
+
+message TrackerResult {
+  TaskResult result = 1;
+  TrackerStatus final_status = 2;
+}

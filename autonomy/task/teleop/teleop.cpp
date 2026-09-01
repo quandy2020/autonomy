@@ -1,5 +1,17 @@
 /*
- * Copyright 2026 The Openbot Authors
+ * Copyright 2026 The Openbot Authors (duyongquan)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #include <automsgs/msgs/geometry_msgs/point.pb.h>
@@ -13,32 +25,32 @@
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/task/teleop/teleop.hpp"
 
+#include <thread>
+
 #include "autolink/autolink.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/task/teleop/constants.hpp"
-#include "autonomy/task/teleop/teleop_assist_options.hpp"
+#include "autonomy/task/teleop/assist_options.hpp"
+#include "autonomy/task/navigation/navigation_client.hpp"
 #include "autonomy/transform/buffer.hpp"
 
 namespace autonomy {
 namespace task {
-namespace {
-
-automsgs::msgs::geometry_msgs::TwistStamped ToTwistStamped(
-    const ::automsgs::msgs::geometry_msgs::TwistStamped& proto)
-{
-    return proto;
-}
-
-}  // namespace
 
 using RobotTaskType = ::automsgs::msgs::vehicle_msgs::RobotTaskType;
 namespace tp = ::autonomy::task::proto;
 
+/**
+ * @brief Return teleop robot task type
+ */
 RobotTaskType TeleopTask::GetTaskType() const
 {
     return RobotTaskType::ROBOT_TASK_TELEOP;
 }
 
+/**
+ * @brief Inject shared teleop client and wire assist
+ */
 void TeleopTask::SetTeleopClient(teleop::TeleopClient::Ptr client)
 {
     teleop_client_ = std::move(client);
@@ -48,6 +60,9 @@ void TeleopTask::SetTeleopClient(teleop::TeleopClient::Ptr client)
     }
 }
 
+/**
+ * @brief Stop client, assist, and base task shutdown
+ */
 void TeleopTask::Shutdown()
 {
     if (teleop_client_) {
@@ -61,7 +76,10 @@ void TeleopTask::Shutdown()
     BtTaskApp::Shutdown();
 }
 
-bool TeleopTask::EnsureTeleopClient()
+/**
+ * @brief Create TeleopClient on first use
+ */
+bool TeleopTask::EnsureClient()
 {
     if (teleop_client_) {
         return true;
@@ -74,9 +92,12 @@ bool TeleopTask::EnsureTeleopClient()
     return static_cast<bool>(teleop_client_);
 }
 
+/**
+ * @brief Load assist config and configure MPPI pipeline
+ */
 bool TeleopTask::OnTreeInitialize(const tp::TaskServerOptions& /*options*/)
 {
-    if (!EnsureTeleopClient()) {
+    if (!EnsureClient()) {
         return false;
     }
 
@@ -100,7 +121,22 @@ bool TeleopTask::OnTreeInitialize(const tp::TaskServerOptions& /*options*/)
     return true;
 }
 
-void TeleopTask::ApplyGoalParams(const tp::TeleopGoal& goal)
+/**
+ * @brief Cancel active navigation before teleop starts
+ */
+void TeleopTask::CancelNav()
+{
+    if (!navigation()) {
+        return;
+    }
+    auto nav = navigation();
+    std::thread([nav]() { nav->CancelActiveMotion(); }).detach();
+}
+
+/**
+ * @brief Apply velocity limits and stick from TeleopGoal
+ */
+void TeleopTask::ApplyGoal(const tp::TeleopGoal& goal)
 {
     if (!teleop_client_) {
         return;
@@ -118,11 +154,19 @@ void TeleopTask::ApplyGoalParams(const tp::TeleopGoal& goal)
     teleop_client_->Configure(max_linear, max_angular, watchdog);
     teleop_client_->SetAssistBypass(goal.disable_collision_checks());
 
-    if (goal.has_velocity()) {
-        teleop_client_->SetVelocity(ToTwistStamped(goal.velocity()));
+    if (goal.command() == tp::TeleopCommand::TELEOP_CMD_START) {
+        teleop_client_->TouchWatchdog();
+    }
+    if (goal.command() == tp::TeleopCommand::TELEOP_CMD_VELOCITY) {
+        const auto& twist = goal.velocity().twist();
+        teleop_client_->SetCommand(twist.linear().x(),
+                                             twist.angular().z());
     }
 }
 
+/**
+ * @brief Publish teleop_client and stick state to BT blackboard
+ */
 void TeleopTask::PopulateBlackboard(const BT::Blackboard::Ptr& blackboard)
 {
     if (!blackboard || !teleop_client_) {
@@ -135,6 +179,9 @@ void TeleopTask::PopulateBlackboard(const BT::Blackboard::Ptr& blackboard)
     blackboard->set("angular_z", teleop_client_->angular_z());
 }
 
+/**
+ * @brief Zero velocity, stop BT, clear active goal
+ */
 void TeleopTask::StopTeleop()
 {
     if (teleop_client_) {
@@ -144,44 +191,62 @@ void TeleopTask::StopTeleop()
     active_goal_.reset();
 }
 
+/**
+ * @brief Dispatch START / VELOCITY / STOP teleop commands
+ */
 bool TeleopTask::OnGoal(const tp::TeleopGoal& goal)
 {
     using Command = tp::TeleopCommand;
+    AINFO << "TeleopTask::OnGoal cmd=" << static_cast<int>(goal.command())
+          << " lin=" << goal.velocity().twist().linear().x()
+          << " ang=" << goal.velocity().twist().angular().z();
     switch (goal.command()) {
     case Command::TELEOP_CMD_START: {
-        if (!EnsureTeleopClient()) {
+        if (!EnsureClient()) {
+            AWARN << "TeleopTask: START failed, no client";
             return false;
         }
+        CancelNav();
         watchdog_timed_out_ = false;
         active_goal_ = goal;
-        ApplyGoalParams(goal);
+        SetLifecycle(TaskLifecycle::kRunning);
+        ApplyGoal(goal);
 
         if (!runner()->IsRunning()) {
             if (!StartTree()) {
                 active_goal_.reset();
+                SetLifecycle(TaskLifecycle::kIdle);
                 return false;
             }
         }
-        SetLifecycle(TaskLifecycle::kRunning);
+        if (teleop_assist_) {
+            teleop_assist_->ClearPathViz();
+            if (goal.has_velocity()) {
+                teleop_assist_->CacheJoy(
+                    goal.velocity().twist().linear().x(),
+                    goal.velocity().twist().angular().z());
+            }
+        }
         SetProgress(0.f, "teleop active");
         return true;
     }
     case Command::TELEOP_CMD_VELOCITY: {
-        if (!EnsureTeleopClient()) {
+        if (!EnsureClient()) {
+            AWARN << "TeleopTask: VELOCITY failed, no client";
             return false;
         }
         watchdog_timed_out_ = false;
         if (!active_goal_.has_value()) {
             active_goal_ = goal;
         }
-        ApplyGoalParams(goal);
+        SetLifecycle(TaskLifecycle::kRunning);
+        ApplyGoal(goal);
 
         if (!runner()->IsRunning()) {
             if (!StartTree()) {
                 return false;
             }
         }
-        SetLifecycle(TaskLifecycle::kRunning);
         return true;
     }
     case Command::TELEOP_CMD_STOP:
@@ -193,6 +258,9 @@ bool TeleopTask::OnGoal(const tp::TeleopGoal& goal)
     }
 }
 
+/**
+ * @brief Update lifecycle from BT state and watchdog
+ */
 void TeleopTask::OnTreeTick()
 {
     switch (runner()->state()) {
@@ -238,6 +306,9 @@ void TeleopTask::OnTreeTick()
     SetProgress(0.5f, "teleop watchdog ok");
 }
 
+/**
+ * @brief Map task lifecycle to TeleopStatus proto
+ */
 tp::TeleopStatus TeleopTask::MapStatus() const
 {
     using Status = tp::TeleopStatus;
@@ -258,6 +329,9 @@ tp::TeleopStatus TeleopTask::MapStatus() const
     }
 }
 
+/**
+ * @brief Fill teleop feedback with status and applied velocity
+ */
 void TeleopTask::FillFeedback(tp::TeleopFeedback* feedback) const
 {
     feedback->set_status(MapStatus());
@@ -267,6 +341,9 @@ void TeleopTask::FillFeedback(tp::TeleopFeedback* feedback) const
     }
 }
 
+/**
+ * @brief Fill teleop result with final status
+ */
 void TeleopTask::FillResult(tp::TeleopResult* result) const
 {
     *result->mutable_result() = MakeTaskResult();

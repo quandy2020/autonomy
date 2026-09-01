@@ -20,7 +20,7 @@
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose_with_covariance_stamped.pb.h>
 #include "autonomy/task/navigation/navigation_client.hpp"
-#include "autonomy/task/proto/mapping.pb.h"
+#include <automsgs/task/mapping.pb.h>
 
 namespace BT {
 class Blackboard;

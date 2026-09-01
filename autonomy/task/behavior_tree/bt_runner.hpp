@@ -60,6 +60,8 @@ public:
 
 private:
     void WorkerLoop();
+    /** Detach a previous worker so Run() never blocks the caller on join. */
+    void DetachWorker();
     void StopWorker();
     BT::Tree CreateTreeFromFile(const std::string& file_path,
                                 BT::Blackboard::Ptr blackboard);

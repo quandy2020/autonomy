@@ -112,7 +112,8 @@ void PointCloud2Display::processMessage(
                                                 zero_time);
       have_tf = true;
     } catch (...) {
-      return;
+      // Fall back to sensor frame so points remain visible when TF is missing.
+      have_tf = false;
     }
   }
 

@@ -264,6 +264,51 @@ def test_runner_camera_rgb_depth_share_stamp(monkeypatch):
         )
 
 
+def test_map_grid_published_when_sensor_worker_drops(monkeypatch):
+    """OccupancyGrid must publish even if the async sensor queue is saturated."""
+    import autosim.runner as runner_module
+
+    monkeypatch.setattr(runner_module.time, "sleep", lambda seconds: None)
+
+    root = Path(__file__).resolve().parents[1]
+    settings = Config.load(root / "config" / "default.yaml")
+    sensors = settings.data["habitat"]["sensors"]
+    sensors["lidar_2d"]["enabled"] = True
+    sensors["lidar_2d"]["num_beams"] = 8
+    sensors["lidar_3d"]["enabled"] = False
+    sensors["camera"]["enabled"] = False
+    sensors["imu"]["enabled"] = False
+    sensors["odom"]["enabled"] = False
+    settings.data["habitat"]["mode"] = "nav"
+    settings.data["habitat"]["map"]["enabled"] = True
+    settings.data["habitat"]["map"]["publish"] = True
+    settings.data["habitat"]["map"]["rate_hz"] = 0.0
+    settings.data["habitat"]["map"]["ply"]["source"] = ""
+    settings.data["habitat"]["map"]["ply"]["file"] = ""
+    settings.data["habitat"]["map"]["ply"]["channel"] = "/map/points"
+    settings.data["habitat"]["map"]["ply"]["range_max"] = 10.0
+    settings.data["habitat"]["map"]["ply"]["horizontal"] = {
+        "angle_min": -1.0,
+        "angle_max": 1.0,
+        "num_beams": 4,
+    }
+    settings.data["habitat"]["map"]["ply"]["vertical"] = {
+        "angle_min": -0.1,
+        "angle_max": 0.1,
+        "num_rings": 2,
+    }
+    settings.data["habitat"]["robot"]["tf"]["enabled"] = False
+    settings.data["habitat"]["robot"]["clock"]["enabled"] = False
+    settings.data["habitat"]["robot"]["footprint"]["enabled"] = False
+
+    link = FakeLink()
+    runner = Runner(settings, max_steps=1, link=link, simulator=FakeSimulator())
+    runner._sensor_worker.submit = lambda fn, *args: None  # drop async cloud work
+    runner.run()
+    assert "/map" in runner.node.writers
+    assert len(runner.node.writers["/map"].msgs) >= 1
+
+
 def test_runner_slam_skips_map_and_map_odom(monkeypatch):
     """SLAM mode must not publish GT /map or identity map→odom (Cartographer owns both)."""
     import autosim.runner as runner_module

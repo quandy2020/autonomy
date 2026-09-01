@@ -61,6 +61,7 @@ class Bridge:
                 "points",
                 "rgb",
                 "depth",
+                "depth_points",
                 "semantic",
                 "semantic_ids",
                 "camera_info",

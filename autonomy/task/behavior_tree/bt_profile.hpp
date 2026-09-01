@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/task/proto/task_options.pb.h"
+#include <automsgs/task/task_options.pb.h>
 
 namespace autonomy {
 namespace task {

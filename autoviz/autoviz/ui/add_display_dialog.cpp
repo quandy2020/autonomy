@@ -25,6 +25,7 @@
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/integration/channel_manager.hpp"
 #include "autoviz/ui/icon_loader.hpp"
+#include "autoviz/ui/panel_settings_styles.hpp"
 
 namespace autoviz {
 namespace {
@@ -262,6 +263,7 @@ AddDisplayDialog::AddDisplayDialog(
   display_tree->setObjectName(QStringLiteral("AddDisplayDialog/DisplayTypeTree"));
   display_tree->setHeaderHidden(true);
   display_tree->setIconSize(QSize(28, 28));
+  display_tree->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
   PopulateDisplayTypeTree(display_tree);
 
   auto* topic_widget = new QWidget(type_box);
@@ -270,32 +272,45 @@ AddDisplayDialog::AddDisplayDialog(
   topic_tree_->setHeaderHidden(true);
   topic_tree_->setIconSize(QSize(28, 28));
   topic_tree_->header()->setStretchLastSection(true);
+  topic_tree_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
   show_unvisualizable_topics_ =
       new QCheckBox(tr("Show unvisualizable topics"), topic_widget);
-  auto* filter_label = new QLabel(tr("Filter topics by name:"), topic_widget);
   topic_filter_box_ = new QLineEdit(topic_widget);
+  auto* filter_body = new QWidget(topic_widget);
+  auto* filter_body_layout = new QVBoxLayout(filter_body);
+  filter_body_layout->setContentsMargins(0, 0, 0, 0);
+  filter_body_layout->setSpacing(4);
+  filter_body_layout->addWidget(
+      new QLabel(tr("Filter topics by name:"), filter_body));
+  filter_body_layout->addWidget(topic_filter_box_);
+  auto* filter_section = MakeCollapsibleSection(
+      topic_widget, tr("Filter topics by name"), filter_body, false);
   auto* topic_layout = new QVBoxLayout(topic_widget);
   topic_layout->setContentsMargins(0, 0, 0, 0);
-  topic_layout->addWidget(topic_tree_);
+  topic_layout->addWidget(topic_tree_, 1);
   topic_layout->addWidget(show_unvisualizable_topics_);
-  topic_layout->addWidget(filter_label);
-  topic_layout->addWidget(topic_filter_box_);
+  topic_layout->addWidget(filter_section);
   refreshTopicTree();
 
   tab_widget_ = new QTabWidget(type_box);
   tab_widget_->setObjectName(QStringLiteral("Visualization_Typebox/TabWidget"));
+  tab_widget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
   display_tab_ = tab_widget_->addTab(display_tree, tr("By display type"));
   topic_tab_ = tab_widget_->addTab(topic_widget, tr("By channel"));
 
-  auto* description_label = new QLabel(tr("Description:"), type_box);
   description_ = new QTextBrowser(type_box);
   description_->setMaximumHeight(100);
   description_->setOpenExternalLinks(true);
+  auto* description_body = new QWidget(type_box);
+  auto* description_body_layout = new QVBoxLayout(description_body);
+  description_body_layout->setContentsMargins(0, 0, 0, 0);
+  description_body_layout->addWidget(description_);
+  auto* description_section =
+      MakeCollapsibleSection(type_box, tr("Description"), description_body, false);
 
   auto* type_layout = new QVBoxLayout(type_box);
-  type_layout->addWidget(tab_widget_);
-  type_layout->addWidget(description_label);
-  type_layout->addWidget(description_);
+  type_layout->addWidget(tab_widget_, 1);
+  type_layout->addWidget(description_section);
 
   auto* name_box = new QGroupBox(tr("Display Name"), this);
   name_box->setObjectName(QStringLiteral("AddDisplayDialog/DisplayNameBox"));

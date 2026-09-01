@@ -32,6 +32,9 @@ CameraFarPlane buildCameraFarPlane(
     const automsgs::msgs::sensor_msgs::CameraInfo& info,
     float far_distance);
 
+/** OpenCV optical (X right, Y down, Z forward) → REP-103 camera_link. */
+QMatrix4x4 opticalToCameraLinkMatrix();
+
 QMatrix4x4 opticalToWorld(
     const automsgs::msgs::sensor_msgs::CameraInfo& info,
     const QMatrix4x4& camera_to_fixed);

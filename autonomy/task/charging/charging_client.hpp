@@ -19,7 +19,7 @@
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/task/navigation/navigation_client.hpp"
-#include "autonomy/task/proto/charging.pb.h"
+#include <automsgs/task/charging.pb.h>
 
 namespace BT {
 class Blackboard;

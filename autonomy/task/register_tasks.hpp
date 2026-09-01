@@ -18,7 +18,7 @@
 #include "autonomy/task/navigation/navigation.hpp"
 #include "autonomy/task/teleop/teleop.hpp"
 #include "autonomy/task/tracking/tracking.hpp"
-#include "autonomy/task/proto/task_options.pb.h"
+#include <automsgs/task/task_options.pb.h>
 
 namespace autonomy {
 namespace task {

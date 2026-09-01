@@ -12,7 +12,7 @@
 
 #include "autonomy/task/behavior_tree/bt_task_app.hpp"
 #include "autonomy/task/exploration/exploration_client.hpp"
-#include "autonomy/task/proto/exploration.pb.h"
+#include <automsgs/task/exploration.pb.h>
 #include "behaviortree_cpp/blackboard.h"
 
 namespace autonomy {

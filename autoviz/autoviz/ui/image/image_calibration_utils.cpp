@@ -74,13 +74,8 @@ QMatrix4x4 fixedToOpticalMatrix(
     const automsgs::msgs::sensor_msgs::CameraInfo& info,
     const QMatrix4x4& camera_to_fixed) {
   Q_UNUSED(info);
-  const QMatrix4x4 optical_to_camera(
-      0.0f, 0.0f, 1.0f, 0.0f,
-      -1.0f, 0.0f, 0.0f, 0.0f,
-      0.0f, -1.0f, 0.0f, 0.0f,
-      0.0f, 0.0f, 0.0f, 1.0f);
   const QMatrix4x4 fixed_to_camera = camera_to_fixed.inverted();
-  return optical_to_camera.inverted() * fixed_to_camera;
+  return display::opticalToCameraLinkMatrix().inverted() * fixed_to_camera;
 }
 
 std::optional<QPointF> projectOpticalPointToPixel(
