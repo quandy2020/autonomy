@@ -595,10 +595,8 @@ void TeleopPathVisualizer::StartDiscovery(
                 }
             }
             ++publish_count;
-            if (publish_count == 1 || publish_count % 10 == 0) {
-                AINFO << "TeleopPathVisualizer: discovery publish #"
-                      << publish_count;
-            }
+            AINFO_EVERY(60) << "TeleopPathVisualizer: discovery publish #"
+                            << publish_count;
             const auto step = std::chrono::milliseconds(50);
             auto remaining = discovery_period_;
             while (remaining.count() > 0 &&
@@ -681,10 +679,10 @@ void TeleopPathVisualizer::PublishLibrary(
  * @brief Publish obstacle-clipped library fan
  */
 void TeleopPathVisualizer::PublishClipped(
-    const IntentPathSelector& selector, const PathObstacleGrid& grid,
+    const IntentPathSelector& selector, const PathObstacleGrid* grid,
     const std::string& frame_id, std::optional<int> best_index,
     const PathSelectionResult* selection) {
-    PublishMarkers(selector, &grid, frame_id, best_index, selection);
+    PublishMarkers(selector, grid, frame_id, best_index, selection);
 }
 
 /**

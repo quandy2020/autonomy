@@ -19,6 +19,7 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include "autonomy/control/checker/simple_goal_checker.hpp"
@@ -253,9 +254,31 @@ private:
     /**
      * @brief Run IntentPathSelector for current joystick intent
      */
-    PathSelectionResult SelectPaths(double joy_linear_x, double joy_angular_z,
+    PathSelectionResult SelectPaths(const CostmapObstacleGrid& grid,
+                                    double joy_linear_x, double joy_angular_z,
                                     const automsgs::msgs::geometry_msgs::Twist&
                                         robot_speed);
+
+    /**
+     * @brief Cache last path selection for the viz discovery thread
+     */
+    void UpdatePreviewCache(const PathSelectionResult& selection,
+                            double joy_linear_x, double joy_angular_z);
+
+    /**
+     * @brief Invalidate cached preview (e.g. stick centered)
+     */
+    void InvalidatePreviewCache();
+
+    // Cached path selection for visualization (updated in Tick).
+    struct PreviewCache {
+        PathSelectionResult selection;
+        double joy_linear{0.0};
+        double joy_angular{0.0};
+        bool valid{false};
+    };
+    mutable std::mutex preview_mutex_;
+    PreviewCache preview_cache_;
 
     // Loaded assist configuration.
     Options options_;

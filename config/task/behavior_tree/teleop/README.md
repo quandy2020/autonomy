@@ -1,8 +1,8 @@
 # 遥操行为树
 
-`teleop.xml` 是 `TeleopTask` 的默认树：在指令与感知门控都成立时，按 50 ms 周期把操作员速度跟踪到 `/cmd_vel`。任一扇门失败则退出环；**不**做导航式 Retry / Spin / BackUp。
+`teleop.xml` 是 `TeleopTask` 的默认树：在指令与感知门控都成立时，按 20 ms 周期把操作员速度跟踪到 `/cmd_vel`。任一扇门失败则退出环；**不**做导航式 Retry / Spin / BackUp。
 
-加载路径：`BtDefaults` → `task/behavior_tree/teleop/teleop.xml`。周期：`bt_loop_duration_ms = 50`。
+加载路径：`BtDefaults` → `task/behavior_tree/teleop/teleop.xml`。周期：`bt_loop_duration_ms = 20`（摇杆 VELOCITY 到达时亦会立即发布）。
 
 ---
 
