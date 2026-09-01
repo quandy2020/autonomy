@@ -7,11 +7,11 @@
 return {
   assist_enabled = true,
   publish_path_viz = true,
-  path_viz_rate_hz = 15.0,
+  path_viz_rate_hz = 5.0,
 
   angular_to_dir_gain = 1.0,
   stopped_linear_epsilon = 0.02,
-  in_place_angular_scale = 0.5,
+  in_place_angular_scale = 0.85,
   -- Forward blocked: zero linear, safe in-place turn toward joystick heading.
   blocked_turn_enabled = true,
   blocked_turn_probe_length = 0.35,
@@ -63,7 +63,7 @@ return {
     path_range_by_speed = true,
     max_linear_speed = 0.5,
     use_rot_dir_search = true,
-    num_rot_dirs = 36,
+    num_rot_dirs = 24,
     def_path_scale = 1.25,
     min_path_scale = 0.75,
     path_scale_step = 0.25,

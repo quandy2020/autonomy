@@ -102,8 +102,8 @@ control::proto::MPPIControllerOptions DefaultMppiOptions() {
     options.add_critics("ConstraintCritic");
     options.add_critics("TwirlingCritic");
     options.set_model_dt(0.05);
-    options.set_time_steps(56);
-    options.set_batch_size(2000);
+    options.set_time_steps(40);
+    options.set_batch_size(1200);
     options.set_iteration_count(1);
     options.set_temperature(0.3);
     options.set_gamma(0.015);
@@ -411,6 +411,24 @@ CostmapObstacleGrid TeleopMppiAssist::RefreshGrid() const {
     return CostmapObstacleGrid(*costmap_->getCostmap());
 }
 
+void TeleopMppiAssist::UpdatePreviewCache(
+    const PathSelectionResult& selection, double joy_linear_x,
+    double joy_angular_z) {
+    if (!options_.publish_path_viz) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(preview_mutex_);
+    preview_cache_.selection = selection;
+    preview_cache_.joy_linear = joy_linear_x;
+    preview_cache_.joy_angular = joy_angular_z;
+    preview_cache_.valid = true;
+}
+
+void TeleopMppiAssist::InvalidatePreviewCache() {
+    std::lock_guard<std::mutex> lock(preview_mutex_);
+    preview_cache_.valid = false;
+}
+
 /**
  * @brief Select paths and publish visualization topics
  */
@@ -426,6 +444,23 @@ void TeleopMppiAssist::PublishPreview(double joy_linear_x,
         return;
     }
 
+    {
+        std::lock_guard<std::mutex> lock(preview_mutex_);
+        if (preview_cache_.valid) {
+            const auto& selection = preview_cache_.selection;
+            if (selection.best_path.has_value()) {
+                path_visualizer_.PublishSelected(selection, frame);
+            }
+            const std::optional<int> best_index =
+                selection.best_index >= 0
+                    ? std::optional<int>(selection.best_index)
+                    : std::nullopt;
+            path_visualizer_.PublishClipped(selector_, nullptr, frame,
+                                            best_index, &selection);
+            return;
+        }
+    }
+
     if (!costmap_) {
         path_visualizer_.PublishLibrary(selector_, frame);
         return;
@@ -434,10 +469,11 @@ void TeleopMppiAssist::PublishPreview(double joy_linear_x,
     const auto grid = RefreshGrid();
     automsgs::msgs::geometry_msgs::Twist preview_speed;
     PathSelectionResult selection =
-        SelectPaths(joy_linear_x, joy_angular_z, preview_speed);
+        SelectPaths(grid, joy_linear_x, joy_angular_z, preview_speed);
     IntentPathSelector::FillPreviewScales(
         &selection, JoySpeedNorm(joy_linear_x, joy_angular_z),
         selector_.library_options());
+    UpdatePreviewCache(selection, joy_linear_x, joy_angular_z);
 
     if (selection.best_path.has_value()) {
         path_visualizer_.PublishSelected(selection, frame);
@@ -446,7 +482,7 @@ void TeleopMppiAssist::PublishPreview(double joy_linear_x,
     const std::optional<int> best_index =
         selection.best_index >= 0 ? std::optional<int>(selection.best_index)
                                   : std::nullopt;
-    path_visualizer_.PublishClipped(selector_, grid, frame, best_index,
+    path_visualizer_.PublishClipped(selector_, &grid, frame, best_index,
                                            &selection);
 }
 
@@ -519,15 +555,14 @@ double TeleopMppiAssist::JoySpeedNorm(double joy_linear_x,
  * @brief Run path library selection for current stick
  */
 PathSelectionResult TeleopMppiAssist::SelectPaths(
-    double joy_linear_x, double joy_angular_z,
+    const CostmapObstacleGrid& grid, double joy_linear_x, double joy_angular_z,
     const automsgs::msgs::geometry_msgs::Twist& robot_speed) {
     const double joy_dir_deg = JoyDirDeg(joy_angular_z, joy_linear_x);
     const double joy_speed_norm = JoySpeedNorm(joy_linear_x, joy_angular_z);
     PathSelectContext context;
     context.robot_vx = robot_speed.linear().x();
     context.robot_wz = robot_speed.angular().z();
-    const CostmapObstacleGrid obstacle_grid(*costmap_->getCostmap());
-    return selector_.Select(obstacle_grid, joy_dir_deg, joy_speed_norm, context);
+    return selector_.Select(grid, joy_dir_deg, joy_speed_norm, context);
 }
 
 /**
@@ -657,18 +692,20 @@ bool TeleopMppiAssist::Tick(double joy_linear_x, double joy_angular_z,
         return false;
     }
 
-    // Assist disabled: forward joystick command unchanged.
     if (!options_.enabled) {
         EmitPassthrough(joy_linear_x, joy_angular_z, command_out);
         return true;
     }
 
-    PathSelectionResult path_selection;
-    if (costmap_ && HasForwardStick(joy_linear_x)) {
-        path_selection = SelectPaths(joy_linear_x, joy_angular_z, robot_speed);
+    // Angular-only stick: fast path without costmap / path library / MPPI.
+    if (!HasForwardStick(joy_linear_x)) {
+        InvalidatePreviewCache();
+        EmitPassthrough(0.0,
+                           joy_angular_z * options_.in_place_angular_scale,
+                           command_out);
+        return true;
     }
 
-    // No fresh perception: passthrough (assist cannot validate obstacles).
     if (!IsPerceptionOk()) {
         EmitPassthrough(joy_linear_x, joy_angular_z, command_out);
         if (GotPerception()) {
@@ -681,17 +718,14 @@ bool TeleopMppiAssist::Tick(double joy_linear_x, double joy_angular_z,
         return true;
     }
 
-    // Angular-only stick: in-place rotation, no path library / MPPI.
-    if (!HasForwardStick(joy_linear_x)) {
-        EmitPassthrough(0.0,
-                           joy_angular_z * options_.in_place_angular_scale,
-                           command_out);
-        return true;
-    }
-
     const auto grid = RefreshGrid();
+    PathSelectionResult path_selection =
+        SelectPaths(grid, joy_linear_x, joy_angular_z, robot_speed);
+    IntentPathSelector::FillPreviewScales(
+        &path_selection, JoySpeedNorm(joy_linear_x, joy_angular_z),
+        selector_.library_options());
+    UpdatePreviewCache(path_selection, joy_linear_x, joy_angular_z);
 
-    // Forward blocked: zero linear, safe turn toward joystick heading.
     if (NeedsBlockedTurn(grid, path_selection, joy_linear_x, joy_angular_z)) {
         EmitBlockedTurn(grid, joy_linear_x, joy_angular_z, command_out);
         return true;

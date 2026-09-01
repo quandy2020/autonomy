@@ -118,9 +118,9 @@ public:
     void SetVelocity(const automsgs::msgs::geometry_msgs::TwistStamped& velocity);
 
     /**
-     * @brief Update commanded twist and watchdog without publishing
+     * @brief Update commanded twist, watchdog, and publish /cmd_vel immediately
      *
-     * Used by TeleopTask on TELEOP_CMD_VELOCITY; BT TrackCommand publishes.
+     * BT TrackCommand republishes at bt_loop_duration_ms as a keepalive.
      * @param linear_x Commanded forward speed (m/s)
      * @param angular_z Commanded yaw rate (rad/s)
      */

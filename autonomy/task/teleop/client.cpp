@@ -116,6 +116,8 @@ void TeleopClient::SetCommand(double linear_x, double angular_z)
     if (assist_ && assist_->enabled() && !assist_bypass_) {
         assist_->CacheJoy(linear_x_, angular_z_);
     }
+    // Publish on every stick update so control is not gated by BT tick period.
+    (void)PublishVelocity();
 }
 
 void TeleopClient::SetVelocity(double linear_x, double angular_z)

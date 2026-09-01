@@ -95,7 +95,7 @@ public:
      * @brief Library fan clipped at costmap obstacles; best_index highlighted
      */
     void PublishClipped(const IntentPathSelector& selector,
-                               const PathObstacleGrid& grid,
+                               const PathObstacleGrid* grid,
                                const std::string& frame_id,
                                std::optional<int> best_index = std::nullopt,
                                const PathSelectionResult* selection = nullptr);
