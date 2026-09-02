@@ -37,15 +37,21 @@ namespace autodriver {
  */
 class SensorDriver {
 public:
-    /** @brief Callback invoked for each captured sample on the driver thread. */
+    // Callback invoked for each captured sample on the driver thread.
     using SampleCallback =
         std::function<void(std::unique_ptr<SensorSample> sample)>;
 
-    /** @brief Copy construction is disabled. */
+    /**
+     * @brief Copy construction is disabled.
+     */
     SensorDriver(const SensorDriver&) = delete;
-    /** @brief Copy assignment is disabled. */
+    /**
+     * @brief Copy assignment is disabled.
+     */
     SensorDriver& operator=(const SensorDriver&) = delete;
-    /** @brief Virtual destructor for polymorphic drivers. */
+    /**
+     * @brief Virtual destructor for polymorphic drivers.
+     */
     virtual ~SensorDriver() = default;
 
     /**
@@ -84,7 +90,9 @@ public:
     virtual void SetSampleCallback(SampleCallback callback) = 0;
 
 protected:
-    /** @brief Protected default constructor for derived drivers. */
+    /**
+     * @brief Protected default constructor for derived drivers.
+     */
     SensorDriver() = default;
 };
 

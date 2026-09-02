@@ -35,16 +35,18 @@ namespace protocol {
  */
 struct NmeaGgaFix
 {
-  /** @brief Latitude in decimal degrees. */
+  // Latitude in decimal degrees.
   double latitude_deg{0.0};
 
-  /** @brief Longitude in decimal degrees. */
+  // Longitude in decimal degrees.
   double longitude_deg{0.0};
 
-  /** @brief Altitude above mean sea level in meters. */
+  // Altitude above mean sea level in meters.
   double altitude_m{0.0};
 
-  /** @brief NavSatStatus fix quality derived from the GGA fix type field. */
+  /**
+   * @brief NavSatStatus fix quality derived from the GGA fix type field.
+   */
   automsgs::msgs::sensor_msgs::NavSatStatus::Status status{
       automsgs::msgs::sensor_msgs::NavSatStatus::STATUS_NO_FIX};
 };

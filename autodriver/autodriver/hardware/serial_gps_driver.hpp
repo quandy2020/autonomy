@@ -37,7 +37,6 @@ namespace hardware {
 /**
  * @class autodriver::hardware::SerialGpsDriver
  * @brief Reads NMEA 0183 GGA/RMC sentences from a serial GNSS module.
- *
  * Required params: device (/dev/ttyUSB0). Optional: baud (115200).
  */
 class SerialGpsDriver : public SensorDriver
@@ -96,25 +95,25 @@ private:
    */
   void ReadLoop();
 
-  /** @brief Sensor identifier for this driver instance. */
+  // Sensor identifier for this driver instance.
   SensorId id_;
 
-  /** @brief Parsed driver parameters from configuration. */
+  // Parsed driver parameters from configuration.
   DriverParams params_;
 
-  /** @brief Serial port connected to the GNSS module. */
+  // Serial port connected to the GNSS module.
   io::SerialPort port_;
 
-  /** @brief User callback for delivered GPS samples. */
+  // User callback for delivered GPS samples.
   SampleCallback callback_;
 
-  /** @brief True while Start() succeeded and Stop() has not been called. */
+  // True while Start() succeeded and Stop() has not been called.
   std::atomic<bool> running_{false};
 
-  /** @brief Worker thread running ReadLoop(). */
+  // Worker thread running ReadLoop().
   std::thread worker_;
 
-  /** @brief Partial NMEA sentence accumulator between reads. */
+  // Partial NMEA sentence accumulator between reads.
   std::string line_buffer_;
 };
 

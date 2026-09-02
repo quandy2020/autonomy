@@ -30,19 +30,33 @@ namespace autodriver {
  * @brief Supported sensor modalities in autodriver.
  */
 enum class SensorType : std::uint8_t {
-    /** @brief Inertial measurement unit. */
+    /**
+     * @brief Inertial measurement unit.
+     */
     kImu = 0,
-    /** @brief Global navigation satellite receiver. */
+    /**
+     * @brief Global navigation satellite receiver.
+     */
     kGps,
-    /** @brief Camera image stream. */
+    /**
+     * @brief Camera image stream.
+     */
     kCamera,
-    /** @brief Two-dimensional lidar scan. */
+    /**
+     * @brief Two-dimensional lidar scan.
+     */
     kLidar2d,
-    /** @brief Three-dimensional point cloud. */
+    /**
+     * @brief Three-dimensional point cloud.
+     */
     kLidar3d,
-    /** @brief Single-beam or narrow range sensor. */
+    /**
+     * @brief Single-beam or narrow range sensor.
+     */
     kRangeFinder,
-    /** @brief Wheel encoder odometry. */
+    /**
+     * @brief Wheel encoder odometry.
+     */
     kWheelOdometry,
 };
 

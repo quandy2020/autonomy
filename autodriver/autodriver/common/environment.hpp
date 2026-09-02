@@ -58,7 +58,6 @@ inline std::string DistributionHome() {
 
 /**
  * @brief Autodriver configuration root (directory containing config/).
- *
  * Uses AUTODRIVER_PATH when set; otherwise derives from kDefaultConfigDir.
  * @return Work root directory
  */

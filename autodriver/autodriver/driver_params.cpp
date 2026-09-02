@@ -31,7 +31,9 @@ namespace hardware {
 
 namespace {
 
-/** @brief Parses a string as decimal or hex integer. */
+/**
+ * @brief Parses a string as decimal or hex integer.
+ */
 int ParseIntString(const std::string & text, int default_value)
 {
   if (text.empty()) {
@@ -54,13 +56,17 @@ int ParseIntString(const std::string & text, int default_value)
 
 }  // namespace
 
-/** @brief Reads an integer parameter, falling back to default_value. */
+/**
+ * @brief Reads an integer parameter, falling back to default_value.
+ */
 int ParseInt(const DriverParams & params, const std::string & key, int default_value)
 {
   return ParseIntString(GetString(params, key), default_value);
 }
 
-/** @brief Reads a CAN frame id parameter as uint32_t. */
+/**
+ * @brief Reads a CAN frame id parameter as uint32_t.
+ */
 std::uint32_t ParseCanId(
   const DriverParams & params,
   const std::string & key,
@@ -70,7 +76,9 @@ std::uint32_t ParseCanId(
   return parsed < 0 ? default_value : static_cast<std::uint32_t>(parsed);
 }
 
-/** @brief Reads a floating-point parameter via strtod. */
+/**
+ * @brief Reads a floating-point parameter via strtod.
+ */
 double ParseDouble(
   const DriverParams & params,
   const std::string & key,
@@ -89,7 +97,9 @@ double ParseDouble(
   return parsed;
 }
 
-/** @brief Reads a boolean parameter from common textual truth values. */
+/**
+ * @brief Reads a boolean parameter from common textual truth values.
+ */
 bool ParseBool(
   const DriverParams & params,
   const std::string & key,

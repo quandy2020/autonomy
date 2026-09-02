@@ -41,7 +41,9 @@ namespace {
 using autolink::common::GetAbsolutePath;
 using autolink::common::PathExists;
 
-/** @brief Converts a YAML scalar node to string, trying multiple types. */
+/**
+ * @brief Converts a YAML scalar node to string, trying multiple types.
+ */
 std::string ScalarToString(const YAML::Node& node) {
     if (!node || node.IsNull() || !node.IsScalar()) {
         return {};
@@ -65,12 +67,16 @@ std::string ScalarToString(const YAML::Node& node) {
     return {};
 }
 
-/** @brief Reads a string field from a YAML map node. */
+/**
+ * @brief Reads a string field from a YAML map node.
+ */
 std::string ReadString(const YAML::Node& node, const char* key) {
     return ScalarToString(node[key]);
 }
 
-/** @brief Reads an integer field, returning default_value when absent or invalid. */
+/**
+ * @brief Reads an integer field, returning default_value when absent or invalid.
+ */
 int ReadInt(const YAML::Node& node, const char* key, int default_value = 0) {
     const YAML::Node value = node[key];
     if (!value || value.IsNull()) {
@@ -86,7 +92,9 @@ int ReadInt(const YAML::Node& node, const char* key, int default_value = 0) {
     return default_value;
 }
 
-/** @brief Reads a boolean field, returning default_value when absent or invalid. */
+/**
+ * @brief Reads a boolean field, returning default_value when absent or invalid.
+ */
 bool ReadBool(const YAML::Node& node, const char* key, bool default_value) {
     const YAML::Node value = node[key];
     if (!value || value.IsNull()) {
@@ -99,7 +107,9 @@ bool ReadBool(const YAML::Node& node, const char* key, bool default_value) {
     }
 }
 
-/** @brief Sets a string driver param only when key is unset and value is non-empty. */
+/**
+ * @brief Sets a string driver param only when key is unset and value is non-empty.
+ */
 void SetParamIfAbsent(hardware::DriverParams* params, const std::string& key,
                       const std::string& value) {
     if (value.empty() || params->count(key) != 0) {
@@ -108,7 +118,9 @@ void SetParamIfAbsent(hardware::DriverParams* params, const std::string& key,
     (*params)[key] = value;
 }
 
-/** @brief Sets an integer driver param only when key is unset and value is positive. */
+/**
+ * @brief Sets an integer driver param only when key is unset and value is positive.
+ */
 void SetParamIfAbsent(hardware::DriverParams* params, const std::string& key,
                       int value) {
     if (value <= 0 || params->count(key) != 0) {
@@ -118,7 +130,9 @@ void SetParamIfAbsent(hardware::DriverParams* params, const std::string& key,
 }
 
 
-/** @brief Parses a DeviceMatch block from a YAML map node. */
+/**
+ * @brief Parses a DeviceMatch block from a YAML map node.
+ */
 DeviceMatch ReadMatch(const YAML::Node& node) {
     DeviceMatch out;
     if (!node || !node.IsMap()) {
@@ -132,7 +146,9 @@ DeviceMatch ReadMatch(const YAML::Node& node) {
     return out;
 }
 
-/** @brief Copies all entries from a YAML params map into DriverParams. */
+/**
+ * @brief Copies all entries from a YAML params map into DriverParams.
+ */
 void ReadParamsMap(const YAML::Node& node, hardware::DriverParams* params) {
     if (!node || !node.IsMap() || params == nullptr) {
         return;
@@ -142,7 +158,9 @@ void ReadParamsMap(const YAML::Node& node, hardware::DriverParams* params) {
     }
 }
 
-/** @brief Derives udev match fields from serial device params when missing. */
+/**
+ * @brief Derives udev match fields from serial device params when missing.
+ */
 void FinalizeSensor(Config::Sensor* sensor) {
     const auto device_it = sensor->params.find("device");
     if (device_it != sensor->params.end() && !device_it->second.empty() &&
@@ -153,7 +171,9 @@ void FinalizeSensor(Config::Sensor* sensor) {
     }
 }
 
-/** @brief Prefixes a bare sensor name with id_prefix unless already qualified. */
+/**
+ * @brief Prefixes a bare sensor name with id_prefix unless already qualified.
+ */
 std::string QualifySensorId(const std::string& name, const char* prefix) {
     if (name.empty()) {
         return {};
@@ -164,7 +184,9 @@ std::string QualifySensorId(const std::string& name, const char* prefix) {
     return std::string(prefix) + name;
 }
 
-/** @brief Maps hardware shorthand YAML fields into backend-specific params. */
+/**
+ * @brief Maps hardware shorthand YAML fields into backend-specific params.
+ */
 void ApplyHardwareShorthand(const YAML::Node& hardware,
                             const std::string& backend,
                             hardware::DriverParams* params) {
@@ -205,7 +227,9 @@ void ApplyHardwareShorthand(const YAML::Node& hardware,
     }
 }
 
-/** @brief Reads publish channel names from scalar or sequence YAML nodes. */
+/**
+ * @brief Reads publish channel names from scalar or sequence YAML nodes.
+ */
 void ReadChannels(const YAML::Node& node,
                   std::vector<std::string>* channels) {
     if (!node || !node["channel"] || channels == nullptr) {
@@ -227,7 +251,9 @@ void ReadChannels(const YAML::Node& node,
     }
 }
 
-/** @brief Applies publisher shorthand for channels and publish rate. */
+/**
+ * @brief Applies publisher shorthand for channels and publish rate.
+ */
 void ApplyPublisherShorthand(const YAML::Node& publisher,
                              std::vector<std::string>* channels,
                              hardware::DriverParams* params) {
@@ -244,7 +270,9 @@ void ApplyPublisherShorthand(const YAML::Node& publisher,
     SetParamIfAbsent(params, "publish_rate_hz", rate);
 }
 
-/** @brief Merges flat device YAML fields into params and channel lists. */
+/**
+ * @brief Merges flat device YAML fields into params and channel lists.
+ */
 void ApplyFlatDeviceFields(const YAML::Node& node, const std::string& backend,
                            const std::string& module,
                            hardware::DriverParams* params,
@@ -274,14 +302,18 @@ void ApplyFlatDeviceFields(const YAML::Node& node, const std::string& backend,
     }
 }
 
-/** @brief Module name, id prefix, and default backend for a sensor group. */
+/**
+ * @brief Module name, id prefix, and default backend for a sensor group.
+ */
 struct DeviceKind {
     const char* module;
     const char* id_prefix;
     const char* default_backend;
 };
 
-/** @brief Returns true when enable or legacy attach_on_start is set. */
+/**
+ * @brief Returns true when enable or legacy attach_on_start is set.
+ */
 bool IsDeviceEnabled(const YAML::Node& node) {
     if (ReadBool(node, "enable", false)) {
         return true;
@@ -290,7 +322,9 @@ bool IsDeviceEnabled(const YAML::Node& node) {
     return ReadBool(node, "attach_on_start", false);
 }
 
-/** @brief Builds a typed Config::Sensor from a YAML device entry. */
+/**
+ * @brief Builds a typed Config::Sensor from a YAML device entry.
+ */
 Config::Sensor TypedDeviceFromYaml(const YAML::Node& node,
                                    const DeviceKind& kind) {
     Config::Sensor out;
@@ -309,7 +343,9 @@ Config::Sensor TypedDeviceFromYaml(const YAML::Node& node,
     return out;
 }
 
-/** @brief Appends enabled devices from a YAML sequence using kind metadata. */
+/**
+ * @brief Appends enabled devices from a YAML sequence using kind metadata.
+ */
 void AppendTypedList(const YAML::Node& devices, const DeviceKind& kind,
                      std::vector<Config::Sensor>* sensors) {
     if (!devices || !devices.IsSequence()) {
@@ -323,7 +359,9 @@ void AppendTypedList(const YAML::Node& devices, const DeviceKind& kind,
     }
 }
 
-/** @brief Returns true when dimension/type indicates a 3D lidar device. */
+/**
+ * @brief Returns true when dimension/type indicates a 3D lidar device.
+ */
 bool IsLidar3d(const YAML::Node& node) {
     std::string dim = ReadString(node, "dimension");
     if (dim.empty()) {
@@ -335,15 +373,18 @@ bool IsLidar3d(const YAML::Node& node) {
     return dim == "3d" || dim == "lidar3d" || dim == "pointcloud";
 }
 
-/** @brief Appends lidar devices, choosing 2D or 3D module by dimension field. */
+/**
+ * @brief Appends lidar devices, choosing 2D or 3D module by dimension field.
+ */
 void AppendLidarList(const YAML::Node& devices,
                      std::vector<Config::Sensor>* sensors) {
     if (!devices || !devices.IsSequence()) {
         return;
     }
-    /** @brief Default metadata for 2D lidar entries in mixed lidar lists. */
+    // Default metadata for 2D lidar entries in mixed lidar lists.
     static constexpr DeviceKind kLidar2d{"Lidar2dModule", "lidar/", "serial"};
-    /** @brief Default metadata for 3D lidar entries in mixed lidar lists. */
+
+    // Default metadata for 3D lidar entries in mixed lidar lists.
     static constexpr DeviceKind kLidar3d{"Lidar3dModule", "lidar/", "serial"};
     for (const auto& device : devices) {
         if (!IsDeviceEnabled(device)) {
@@ -354,7 +395,9 @@ void AppendLidarList(const YAML::Node& devices,
     }
 }
 
-/** @brief Appends all known sensor groups from a YAML map. */
+/**
+ * @brief Appends all known sensor groups from a YAML map.
+ */
 void AppendSensorGroups(const YAML::Node& groups,
                         std::vector<Config::Sensor>* sensors) {
     static constexpr DeviceKind kImu{"ImuModule", "imu/", "serial"};
@@ -378,7 +421,9 @@ void AppendSensorGroups(const YAML::Node& groups,
     AppendTypedList(groups["range"], kRange, sensors);
 }
 
-/** @brief Parses a legacy flat sensor entry from YAML. */
+/**
+ * @brief Parses a legacy flat sensor entry from YAML.
+ */
 Config::Sensor SensorFromYaml(const YAML::Node& node) {
     if (!IsDeviceEnabled(node)) {
         return {};
@@ -415,7 +460,9 @@ Config::Sensor SensorFromYaml(const YAML::Node& node) {
     return out;
 }
 
-/** @brief Builds a Config from the root YAML document. */
+/**
+ * @brief Builds a Config from the root YAML document.
+ */
 Config FromYaml(const YAML::Node& root) {
     Config config;
     const std::string node_name = ReadString(root, "node_name");
@@ -474,17 +521,23 @@ Config FromYaml(const YAML::Node& root) {
     return config;
 }
 
-/** @brief Resolves an autodriver config path from work root or install tree. */
+/**
+ * @brief Resolves an autodriver config path from work root or install tree.
+ */
 std::string ResolveConfigPath(const std::string& configuration_directory,
                               const std::string& config_basename) {
-    /** @brief Config filename, defaulting to kDefaultConfigBasename when empty. */
+    /**
+     * @brief Config filename, defaulting to kDefaultConfigBasename when empty.
+     */
     std::string basename = config_basename.empty() ? kDefaultConfigBasename
                                                    : config_basename;
     if (!basename.empty() && basename.front() == '/') {
         return basename;
     }
 
-    /** @brief Work root used to locate config/ when no directory is given. */
+    /**
+     * @brief Work root used to locate config/ when no directory is given.
+     */
     const std::string root = configuration_directory.empty()
                                  ? common::WorkRoot()
                                  : configuration_directory;
@@ -493,7 +546,9 @@ std::string ResolveConfigPath(const std::string& configuration_directory,
         return path;
     }
 
-    /** @brief Install-tree fallback when source-tree config is missing. */
+    /**
+     * @brief Install-tree fallback when source-tree config is missing.
+     */
     const std::string install_path = GetAbsolutePath(
         conf::kDefaultDistributionHome, "share/autodriver/config/" + basename);
     if (PathExists(install_path)) {
@@ -505,7 +560,9 @@ std::string ResolveConfigPath(const std::string& configuration_directory,
     return path;
 }
 
-/** @brief Loads and parses a YAML config file at path. */
+/**
+ * @brief Loads and parses a YAML config file at path.
+ */
 Config LoadFromPath(const std::string& path) {
     try {
         return FromYaml(YAML::LoadFile(path));
@@ -519,15 +576,21 @@ Config LoadFromPath(const std::string& path) {
 
 }  // namespace
 
-/** @brief Loads the default autodriver_hardware.yaml config. */
+/**
+ * @brief Loads the default autodriver_hardware.yaml config.
+ */
 Config LoadConfig() { return LoadConfig(kDefaultConfigBasename); }
 
-/** @brief Loads config by basename from the default configuration directory. */
+/**
+ * @brief Loads config by basename from the default configuration directory.
+ */
 Config LoadConfig(const std::string& config_basename) {
     return LoadConfig({}, config_basename);
 }
 
-/** @brief Loads config from an explicit directory and basename. */
+/**
+ * @brief Loads config from an explicit directory and basename.
+ */
 Config LoadConfig(const std::string& configuration_directory,
                   const std::string& config_basename) {
     return LoadFromPath(

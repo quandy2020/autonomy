@@ -53,34 +53,45 @@ public:
      * @brief Tuning knobs for ring buffers and the alignment publisher loop.
      */
     struct Options {
-        /** @brief Maximum host-time span for samples in one aligned snapshot. */
+        // Maximum host-time span for samples in one aligned snapshot.
         autolink::Duration alignment_window{50'000'000};
-        /** @brief Period between aligned snapshot publications. */
+
+        // Period between aligned snapshot publications.
         autolink::Duration publish_period{20'000'000};
-        /** @brief Maximum samples retained per sensor ring buffer. */
+
+        // Maximum samples retained per sensor ring buffer.
         std::size_t buffer_capacity{32};
     };
 
-    /** @brief Callback invoked when a multi-sensor aligned snapshot is ready. */
+    // Callback invoked when a multi-sensor aligned snapshot is ready.
     using AlignedCallback =
         autolink::base::Signal<const AlignedSnapshot&>::Callback;
-    /** @brief Callback invoked for each raw sample before alignment. */
+
+    // Callback invoked for each raw sample before alignment.
     using RawSampleCallback =
         autolink::base::Signal<const SensorSample&>::Callback;
 
-    /** @brief Construct with default Options. */
+    /**
+     * @brief Construct with default Options.
+     */
     SensorHub();
     /**
      * @brief Construct with explicit buffer and alignment tuning.
      * @param options Hub configuration for buffers and the alignment loop.
      */
     explicit SensorHub(Options options);
-    /** @brief Stop the alignment thread and release resources. */
+    /**
+     * @brief Stop the alignment thread and release resources.
+     */
     ~SensorHub();
 
-    /** @brief Copy construction is disabled. */
+    /**
+     * @brief Copy construction is disabled.
+     */
     SensorHub(const SensorHub&) = delete;
-    /** @brief Copy assignment is disabled. */
+    /**
+     * @brief Copy assignment is disabled.
+     */
     SensorHub& operator=(const SensorHub&) = delete;
 
     /**
@@ -119,7 +130,9 @@ public:
      */
     bool Start();
 
-    /** @brief Stop the alignment publisher loop. */
+    /**
+     * @brief Stop the alignment publisher loop.
+     */
     void Stop();
 
     /**
@@ -141,7 +154,9 @@ private:
      */
     void OnSample(std::shared_ptr<SensorSample> sample);
 
-    /** @brief Background loop that publishes aligned snapshots periodically. */
+    /**
+     * @brief Background loop that publishes aligned snapshots periodically.
+     */
     void AlignmentLoop();
 
     /**
@@ -151,27 +166,37 @@ private:
      */
     AlignedSnapshot BuildSnapshot(const autolink::Time& time) const;
 
-    /** @brief Hub tuning for buffers and alignment publishing. */
+    // Hub tuning for buffers and alignment publishing.
     Options options_;
-    /** @brief Estimates device-to-host clock offsets per sensor. */
+
+    // Estimates device-to-host clock offsets per sensor.
     TimeSync time_sync_;
-    /** @brief Protects the registered drivers vector. */
+
+    // Protects the registered drivers vector.
     mutable autolink::base::AtomicRWLock drivers_lock_;
-    /** @brief Registered sensor drivers observed by the hub. */
+
+    // Registered sensor drivers observed by the hub.
     std::vector<std::shared_ptr<SensorDriver>> drivers_;
-    /** @brief Protects per-sensor sample buffers. */
+
+    // Protects per-sensor sample buffers.
     mutable autolink::base::AtomicRWLock buffers_lock_;
-    /** @brief Ring buffers keyed by sensor id. */
+
+    // Ring buffers keyed by sensor id.
     std::unordered_map<SensorId, std::unique_ptr<SampleBuffer>> buffers_;
-    /** @brief Signal for aligned snapshot subscribers. */
+
+    // Signal for aligned snapshot subscribers.
     autolink::base::Signal<const AlignedSnapshot&> aligned_;
-    /** @brief Signal for raw sample subscribers. */
+
+    // Signal for raw sample subscribers.
     autolink::base::Signal<const SensorSample&> raw_sample_;
-    /** @brief True while the alignment thread is running. */
+
+    // True while the alignment thread is running.
     std::atomic<bool> running_{false};
-    /** @brief Monotonic sequence number assigned to each aligned snapshot. */
+
+    // Monotonic sequence number assigned to each aligned snapshot.
     std::atomic<std::uint64_t> seq_{0};
-    /** @brief Thread that periodically builds and publishes aligned snapshots. */
+
+    // Thread that periodically builds and publishes aligned snapshots.
     std::thread alignment_thread_;
 };
 

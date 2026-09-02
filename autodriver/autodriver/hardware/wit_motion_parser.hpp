@@ -35,16 +35,16 @@ namespace protocol {
  */
 struct WitMotionState
 {
-  /** @brief Linear acceleration in m/s^2 (x, y, z). */
+  // Linear acceleration in m/s^2 (x, y, z).
   std::array<double, 3> linear_acceleration{{0.0, 0.0, 0.0}};
 
-  /** @brief Angular velocity in rad/s (x, y, z). */
+  // Angular velocity in rad/s (x, y, z).
   std::array<double, 3> angular_velocity{{0.0, 0.0, 0.0}};
 
-  /** @brief True after an accelerometer packet was parsed. */
+  // True after an accelerometer packet was parsed.
   bool have_accel{false};
 
-  /** @brief True after a gyroscope packet was parsed. */
+  // True after a gyroscope packet was parsed.
   bool have_gyro{false};
 };
 
@@ -98,19 +98,19 @@ private:
    */
   bool ParsePacket();
 
-  /** @brief Accelerometer scale factor in m/s^2 per LSB. */
+  // Accelerometer scale factor in m/s^2 per LSB.
   double accel_scale_;
 
-  /** @brief Gyroscope scale factor in rad/s per LSB. */
+  // Gyroscope scale factor in rad/s per LSB.
   double gyro_scale_;
 
-  /** @brief Incremental receive buffer for one WIT packet. */
+  // Incremental receive buffer for one WIT packet.
   std::uint8_t buffer_[11]{};
 
-  /** @brief Number of bytes currently buffered. */
+  // Number of bytes currently buffered.
   std::size_t index_{0};
 
-  /** @brief Accumulated IMU state updated by ParsePacket(). */
+  // Accumulated IMU state updated by ParsePacket().
   WitMotionState state_;
 };
 
@@ -119,10 +119,10 @@ private:
  */
 struct Nmea2000LatLon
 {
-  /** @brief Latitude in decimal degrees. */
+  // Latitude in decimal degrees.
   double latitude_deg{0.0};
 
-  /** @brief Longitude in decimal degrees. */
+  // Longitude in decimal degrees.
   double longitude_deg{0.0};
 };
 

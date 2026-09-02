@@ -66,7 +66,9 @@ public:
     autolink::Time ToHostTime(const SensorId& id,
                               const autolink::Time& device) const;
 
-    /** @brief Clear all per-sensor offset estimates. */
+    /**
+     * @brief Clear all per-sensor offset estimates.
+     */
     void Reset();
 
     /**
@@ -77,19 +79,24 @@ public:
     std::int64_t OffsetNs(const SensorId& id) const;
 
 private:
-    /** @brief Smoothed clock offset state for one sensor. */
+    /**
+     * @brief Smoothed clock offset state for one sensor.
+     */
     struct Offset {
-        /** @brief Offset in nanoseconds (host - device). */
+        // Offset in nanoseconds (host - device).
         std::int64_t ns{0};
-        /** @brief True after at least one observation has been applied. */
+
+        // True after at least one observation has been applied.
         bool ready{false};
     };
 
-    /** @brief Protects the offsets_ map. */
+    // Protects the offsets_ map.
     mutable autolink::base::AtomicRWLock lock_;
-    /** @brief Per-sensor smoothed offset estimates. */
+
+    // Per-sensor smoothed offset estimates.
     std::unordered_map<SensorId, Offset> offsets_;
-    /** @brief Exponential smoothing factor for offset updates. */
+
+    // Exponential smoothing factor for offset updates.
     static constexpr double kAlpha = 0.2;
 };
 

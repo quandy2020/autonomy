@@ -39,7 +39,6 @@ namespace hardware {
 /**
  * @class autodriver::hardware::CanImuDriver
  * @brief Fuses accel/gyro from two CAN frames with int16×3 layout.
- *
  * Params:
  * - interface (can0)
  * - accel_can_id, gyro_can_id (default 0x100 / 0x101)
@@ -106,46 +105,46 @@ private:
    */
   void TryEmit();
 
-  /** @brief Sensor identifier for this driver instance. */
+  // Sensor identifier for this driver instance.
   SensorId id_;
 
-  /** @brief Parsed driver parameters from configuration. */
+  // Parsed driver parameters from configuration.
   DriverParams params_;
 
-  /** @brief CAN identifier for accelerometer frames. */
+  // CAN identifier for accelerometer frames.
   std::uint32_t accel_can_id_{0};
 
-  /** @brief CAN identifier for gyroscope frames. */
+  // CAN identifier for gyroscope frames.
   std::uint32_t gyro_can_id_{0};
 
-  /** @brief Accelerometer scale factor in m/s^2 per LSB. */
+  // Accelerometer scale factor in m/s^2 per LSB.
   double accel_scale_{0.001};
 
-  /** @brief Gyroscope scale factor in rad/s per LSB. */
+  // Gyroscope scale factor in rad/s per LSB.
   double gyro_scale_{0.0001};
 
-  /** @brief SocketCAN receiver bound to the configured interface. */
+  // SocketCAN receiver bound to the configured interface.
   io::CanSocket socket_;
 
-  /** @brief User callback for delivered IMU samples. */
+  // User callback for delivered IMU samples.
   SampleCallback callback_;
 
-  /** @brief Latest linear acceleration vector (m/s^2). */
+  // Latest linear acceleration vector (m/s^2).
   std::array<double, 3> accel_{{0.0, 0.0, 0.0}};
 
-  /** @brief Latest angular velocity vector (rad/s). */
+  // Latest angular velocity vector (rad/s).
   std::array<double, 3> gyro_{{0.0, 0.0, 0.0}};
 
-  /** @brief True after at least one accel frame was decoded. */
+  // True after at least one accel frame was decoded.
   bool have_accel_{false};
 
-  /** @brief True after at least one gyro frame was decoded. */
+  // True after at least one gyro frame was decoded.
   bool have_gyro_{false};
 
-  /** @brief True while Start() succeeded and Stop() has not been called. */
+  // True while Start() succeeded and Stop() has not been called.
   std::atomic<bool> running_{false};
 
-  /** @brief Worker thread running ReadLoop(). */
+  // Worker thread running ReadLoop().
   std::thread worker_;
 };
 

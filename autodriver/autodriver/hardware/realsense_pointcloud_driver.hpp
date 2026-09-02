@@ -96,31 +96,31 @@ class RealSensePointCloudDriver : public SensorDriver {
   void SetSampleCallback(SampleCallback callback) override;
 
  private:
-    /** @brief Sensor identifier for this driver instance. */
+    // Sensor identifier for this driver instance.
     SensorId id_;
 
-    /** @brief Parsed driver parameters from configuration. */
+    // Parsed driver parameters from configuration.
     DriverParams params_;
 
-    /** @brief Requested depth map width in pixels. */
+    // Requested depth map width in pixels.
     int width_{640};
 
-    /** @brief Requested depth map height in pixels. */
+    // Requested depth map height in pixels.
     int height_{480};
 
-    /** @brief Requested frames per second. */
+    // Requested frames per second.
     int fps_{30};
 
-    /** @brief True while Start() succeeded and Stop() has not been called. */
+    // True while Start() succeeded and Stop() has not been called.
     std::atomic<bool> running_{false};
 
-    /** @brief Shared device hub managing the librealsense pipeline. */
+    // Shared device hub managing the librealsense pipeline.
     std::shared_ptr<io::RealSenseDeviceHub> hub_;
 
-    /** @brief Hub subscription handle returned by SubscribePointCloud(). */
+    // Hub subscription handle returned by SubscribePointCloud().
     std::uint64_t subscription_id_{0};
 
-    /** @brief User callback for delivered point cloud samples. */
+    // User callback for delivered point cloud samples.
     SampleCallback callback_;
 };
 

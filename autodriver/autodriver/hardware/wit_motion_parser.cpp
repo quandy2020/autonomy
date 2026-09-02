@@ -29,7 +29,9 @@ namespace protocol {
 
 namespace {
 
-/** @brief Reads a little-endian int16 from a byte buffer. */
+/**
+ * @brief Reads a little-endian int16 from a byte buffer.
+ */
 std::int16_t ReadInt16Le(const std::uint8_t * data)
 {
   std::int16_t value = 0;
@@ -37,7 +39,9 @@ std::int16_t ReadInt16Le(const std::uint8_t * data)
   return value;
 }
 
-/** @brief Reads a little-endian int32 from a byte buffer. */
+/**
+ * @brief Reads a little-endian int32 from a byte buffer.
+ */
 std::int32_t ReadInt32Le(const std::uint8_t * data)
 {
   std::int32_t value = 0;
@@ -45,7 +49,9 @@ std::int32_t ReadInt32Le(const std::uint8_t * data)
   return value;
 }
 
-/** @brief Computes the WIT-motion 11-byte packet checksum. */
+/**
+ * @brief Computes the WIT-motion 11-byte packet checksum.
+ */
 std::uint8_t WitChecksum(const std::uint8_t * data)
 {
   std::uint8_t sum = 0;
@@ -57,14 +63,18 @@ std::uint8_t WitChecksum(const std::uint8_t * data)
 
 }  // namespace
 
-/** @brief Stores accel and gyro scale factors for WIT-motion decoding. */
+/**
+ * @brief Stores accel and gyro scale factors for WIT-motion decoding.
+ */
 WitMotionParser::WitMotionParser(double accel_scale, double gyro_scale)
 : accel_scale_(accel_scale),
   gyro_scale_(gyro_scale)
 {
 }
 
-/** @brief Feeds one byte and returns true when a valid packet was parsed. */
+/**
+ * @brief Feeds one byte and returns true when a valid packet was parsed.
+ */
 bool WitMotionParser::Feed(std::uint8_t byte)
 {
   if (index_ == 0) {
@@ -84,7 +94,9 @@ bool WitMotionParser::Feed(std::uint8_t byte)
   return ParsePacket();
 }
 
-/** @brief Validates checksum and decodes accel or gyro payload from buffer_. */
+/**
+ * @brief Validates checksum and decodes accel or gyro payload from buffer_.
+ */
 bool WitMotionParser::ParsePacket()
 {
   if (buffer_[10] != WitChecksum(buffer_)) {
@@ -115,14 +127,18 @@ bool WitMotionParser::ParsePacket()
   return false;
 }
 
-/** @brief Clears have_accel and have_gyro after emitting a fused sample. */
+/**
+ * @brief Clears have_accel and have_gyro after emitting a fused sample.
+ */
 void WitMotionParser::ResetSampleFlags()
 {
   state_.have_accel = false;
   state_.have_gyro = false;
 }
 
-/** @brief Decodes an NMEA 2000 latitude/longitude CAN payload. */
+/**
+ * @brief Decodes an NMEA 2000 latitude/longitude CAN payload.
+ */
 std::optional<Nmea2000LatLon> ParseNmea2000LatLonFrame(
   const std::uint8_t * data,
   std::size_t length)
@@ -139,7 +155,9 @@ std::optional<Nmea2000LatLon> ParseNmea2000LatLonFrame(
   return fix;
 }
 
-/** @brief Decodes three scaled int16 axis values from six CAN data bytes. */
+/**
+ * @brief Decodes three scaled int16 axis values from six CAN data bytes.
+ */
 std::array<double, 3> DecodeScaledInt16Triplet(
   const std::uint8_t * data,
   double scale)

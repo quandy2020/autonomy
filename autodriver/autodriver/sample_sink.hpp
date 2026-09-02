@@ -37,7 +37,9 @@ namespace autodriver {
  */
 class SampleSink {
 public:
-    /** @brief Virtual destructor for polymorphic sinks. */
+    /**
+     * @brief Virtual destructor for polymorphic sinks.
+     */
     virtual ~SampleSink() = default;
 
     /**
@@ -61,7 +63,9 @@ public:
     virtual void OnSample(std::shared_ptr<SensorSample> sample) = 0;
 
 protected:
-    /** @brief Protected default constructor for derived sinks. */
+    /**
+     * @brief Protected default constructor for derived sinks.
+     */
     SampleSink() = default;
 };
 

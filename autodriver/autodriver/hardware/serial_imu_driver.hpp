@@ -95,25 +95,25 @@ private:
    */
   void ReadLoop();
 
-  /** @brief Sensor identifier for this driver instance. */
+  // Sensor identifier for this driver instance.
   SensorId id_;
 
-  /** @brief Parsed driver parameters from configuration. */
+  // Parsed driver parameters from configuration.
   DriverParams params_;
 
-  /** @brief Serial port connected to the IMU module. */
+  // Serial port connected to the IMU module.
   io::SerialPort port_;
 
-  /** @brief Incremental WIT-motion protocol parser. */
+  // Incremental WIT-motion protocol parser.
   protocol::WitMotionParser parser_;
 
-  /** @brief User callback for delivered IMU samples. */
+  // User callback for delivered IMU samples.
   SampleCallback callback_;
 
-  /** @brief True while Start() succeeded and Stop() has not been called. */
+  // True while Start() succeeded and Stop() has not been called.
   std::atomic<bool> running_{false};
 
-  /** @brief Worker thread running ReadLoop(). */
+  // Worker thread running ReadLoop().
   std::thread worker_;
 };
 

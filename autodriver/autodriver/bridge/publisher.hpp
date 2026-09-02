@@ -94,7 +94,7 @@ public:
     void OnSample(std::shared_ptr<SensorSample> sample) override;
 
 private:
-    /** @brief Callable that serializes and writes one sample type. */
+    // Callable that serializes and writes one sample type.
     using WriteFn = std::function<void(const std::shared_ptr<SensorSample>&)>;
 
     /**
@@ -113,16 +113,16 @@ private:
      */
     bool OpenCameraWriter(const Config::Sensor& sensor);
 
-    /** @brief Autolink node name passed at construction. */
+    // Autolink node name passed at construction.
     std::string node_name_;
 
-    /** @brief Shared Autolink node owning all writers. */
+    // Shared Autolink node owning all writers.
     std::shared_ptr<autolink::Node> node_;
 
-    /** @brief Per-sensor write dispatch table keyed by SensorId. */
+    // Per-sensor write dispatch table keyed by SensorId.
     std::unordered_map<SensorId, WriteFn> writers_;
 
-    /** @brief Protects writers_ during attach/detach/sample. */
+    // Protects writers_ during attach/detach/sample.
     mutable autolink::base::AtomicRWLock lock_;
 };
 

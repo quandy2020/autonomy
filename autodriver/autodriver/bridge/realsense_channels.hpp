@@ -29,11 +29,9 @@ namespace bridge {
 
 /**
  * @brief Derive the camera_info channel from an image topic name.
- *
  * Examples:
  * - /camera/color/image_raw        -> /camera/color/camera_info
  * - /camera/depth/image_rect_raw   -> /camera/depth/camera_info
- *
  * @param image_channel Image topic or channel name
  * @return Matching camera_info channel name
  */

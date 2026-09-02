@@ -42,11 +42,17 @@ struct SensorTraits;
 #define AUTODRIVER_TRAITS(enum_name, sample_t)                   \
     template <>                                                  \
     struct SensorTraits<SensorType::enum_name> {                 \
-        /** @brief Concrete typed sample for this modality. */   \
+        /**
+         * @brief Concrete typed sample for this modality.
+         */   \
         using Sample = sample_t;                                 \
-        /** @brief Underlying automsgs protobuf message type. */ \
+        /**
+         * @brief Underlying automsgs protobuf message type.
+         */ \
         using Message = typename Sample::Message;                \
-        /** @brief Stamp the sample header and return the message. */ \
+        /**
+         * @brief Stamp the sample header and return the message.
+         */ \
         static Message& ToMessage(Sample& sample) {            \
             return sample.StampInPlace();                      \
         }                                                        \
@@ -88,7 +94,6 @@ inline std::string ChannelSuffix(SensorType type, std::string_view stream = {}) 
 
 /**
  * @brief Resolve the publish channel for a sensor.
- *
  * When channel is empty, returns "/{id}" plus a type-specific suffix so
  * multiple sensors of the same modality never share a topic.
  * @param channel Explicit channel from configuration; may be empty.

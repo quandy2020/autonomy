@@ -33,16 +33,16 @@ namespace io {
  */
 struct CanFrame
 {
-  /** @brief CAN identifier (11- or 29-bit depending on extended). */
+  // CAN identifier (11- or 29-bit depending on extended).
   std::uint32_t id{0};
 
-  /** @brief True for 29-bit extended identifiers. */
+  // True for 29-bit extended identifiers.
   bool extended{false};
 
-  /** @brief Data length code (0-8). */
+  // Data length code (0-8).
   std::uint8_t dlc{0};
 
-  /** @brief Payload bytes (only first dlc entries are valid). */
+  // Payload bytes (only first dlc entries are valid).
   std::uint8_t data[8]{};
 };
 
@@ -106,10 +106,10 @@ public:
   const std::string & last_error() const { return last_error_; }
 
 private:
-  /** @brief Open socket file descriptor, or -1 when closed. */
+  // Open socket file descriptor, or -1 when closed.
   int fd_{-1};
 
-  /** @brief Last reported I/O error message. */
+  // Last reported I/O error message.
   std::string last_error_;
 };
 

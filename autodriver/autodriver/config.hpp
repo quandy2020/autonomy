@@ -36,15 +36,19 @@ namespace autodriver {
  * @brief Observed or expected device identity (udev ADD/REMOVE, Sensor::match).
  */
 struct DeviceMatch {
-    /** @brief udev subsystem, e.g. "usb" or "iio". */
+    // udev subsystem, e.g. "usb" or "iio".
     std::string subsystem;
-    /** @brief udev DEVNAME or kernel device node. */
+
+    // udev DEVNAME or kernel device node.
     std::string device;
-    /** @brief USB or PCI vendor id string. */
+
+    // USB or PCI vendor id string.
     std::string vendor;
-    /** @brief USB or PCI product id string. */
+
+    // USB or PCI product id string.
     std::string product;
-    /** @brief Device serial number when available. */
+
+    // Device serial number when available.
     std::string serial;
 
     /**
@@ -68,7 +72,6 @@ bool MatchDevice(const DeviceMatch& observed, const DeviceMatch& rule);
 /**
  * @struct autodriver::Config
  * @brief In-memory snapshot of the autodriver process configuration.
- *
  * Autolink Node/Writers live in bridge/; this struct only describes sensors.
  */
 struct Config {
@@ -76,47 +79,63 @@ struct Config {
      * @brief One configured sensor instance.
      */
     struct Sensor {
-        /** @brief class_loader plugin class name. */
+        // class_loader plugin class name.
         std::string module;
-        /** @brief Shared library path or basename for the plugin. */
+
+        // Shared library path or basename for the plugin.
         std::string library;
-        /** @brief Stable instance identifier, e.g. "imu/torso". */
+
+        // Stable instance identifier, e.g. "imu/torso".
         SensorId id;
-        /** @brief Explicit Autolink channel names; empty uses defaults. */
+
+        // Explicit Autolink channel names; empty uses defaults.
         std::vector<std::string> channels;
-        /** @brief Hardware backend name passed to the plugin factory. */
+
+        // Hardware backend name passed to the plugin factory.
         std::string backend;
-        /** @brief Attach automatically when the process starts. */
+
+        // Attach automatically when the process starts.
         bool autostart = false;
-        /** @brief udev match rule for hotplug attach/detach. */
+
+        // udev match rule for hotplug attach/detach.
         DeviceMatch match;
-        /** @brief Driver-specific key/value parameters from YAML. */
+
+        // Driver-specific key/value parameters from YAML.
         hardware::DriverParams params;
     };
 
-    /** @brief Hotplug monitoring settings. */
+    /**
+     * @brief Hotplug monitoring settings.
+     */
     struct Hotplug {
-        /** @brief Enable udev-based device arrival and removal handling. */
+        // Enable udev-based device arrival and removal handling.
         bool udev = true;
     };
 
-    /** @brief Multi-sensor time alignment settings. */
+    /**
+     * @brief Multi-sensor time alignment settings.
+     */
     struct Alignment {
-        /** @brief Enable periodic aligned snapshot publishing. */
+        // Enable periodic aligned snapshot publishing.
         bool enable = false;
-        /** @brief Hub options used when alignment is enabled. */
+
+        // Hub options used when alignment is enabled.
         SensorHub::Options options;
     };
 
-    /** @brief Autolink node name for bridge publishing. */
+    // Autolink node name for bridge publishing.
     std::string node_name = "autodriver";
-    /** @brief Directory or search path for sensor plugin libraries. */
+
+    // Directory or search path for sensor plugin libraries.
     std::string plugins;
-    /** @brief Hotplug configuration block. */
+
+    // Hotplug configuration block.
     Hotplug hotplug;
-    /** @brief Alignment configuration block. */
+
+    // Alignment configuration block.
     Alignment alignment;
-    /** @brief All configured sensor instances. */
+
+    // All configured sensor instances.
     std::vector<Sensor> sensors;
 
     /**

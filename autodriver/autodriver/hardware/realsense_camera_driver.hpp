@@ -37,7 +37,6 @@ namespace hardware {
 /**
  * @class autodriver::hardware::RealSenseCameraDriver
  * @brief Publishes CameraFrame samples from a RealSense video stream.
- *
  * Params:
  * - model (D455), serial, index
  * - stream (color, depth, ir1, ir2, aligned_depth_to_color)
@@ -96,34 +95,34 @@ public:
   void SetSampleCallback(SampleCallback callback) override;
 
 private:
-  /** @brief Sensor identifier for this driver instance. */
+  // Sensor identifier for this driver instance.
   SensorId id_;
 
-  /** @brief Parsed driver parameters from configuration. */
+  // Parsed driver parameters from configuration.
   DriverParams params_;
 
-  /** @brief Selected RealSense video stream kind. */
+  // Selected RealSense video stream kind.
   realsense::StreamKind stream_{realsense::StreamKind::kColor};
 
-  /** @brief Requested frame width in pixels. */
+  // Requested frame width in pixels.
   int width_{640};
 
-  /** @brief Requested frame height in pixels. */
+  // Requested frame height in pixels.
   int height_{480};
 
-  /** @brief Requested frames per second. */
+  // Requested frames per second.
   int fps_{30};
 
-  /** @brief Shared device hub managing the librealsense pipeline. */
+  // Shared device hub managing the librealsense pipeline.
   std::shared_ptr<io::RealSenseDeviceHub> hub_;
 
-  /** @brief Hub subscription handle returned by SubscribeVideo(). */
+  // Hub subscription handle returned by SubscribeVideo().
   std::uint64_t subscription_id_{0};
 
-  /** @brief User callback for delivered camera samples. */
+  // User callback for delivered camera samples.
   SampleCallback callback_;
 
-  /** @brief True while Start() succeeded and Stop() has not been called. */
+  // True while Start() succeeded and Stop() has not been called.
   std::atomic<bool> running_{false};
 };
 

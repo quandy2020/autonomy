@@ -34,7 +34,6 @@ namespace autodriver {
 /**
  * @class autodriver::SampleBuffer
  * @brief Time-ordered deque of samples; not internally synchronized.
- *
  * SensorHub holds buffers_lock_ around all access.
  */
 class SampleBuffer {
@@ -65,7 +64,9 @@ public:
      */
     std::shared_ptr<SensorSample> Latest() const;
 
-    /** @brief Remove all buffered samples. */
+    /**
+     * @brief Remove all buffered samples.
+     */
     void Clear();
 
     /**
@@ -75,9 +76,10 @@ public:
     std::size_t Size() const;
 
 private:
-    /** @brief Maximum samples retained before dropping the oldest. */
+    // Maximum samples retained before dropping the oldest.
     std::size_t capacity_;
-    /** @brief Time-ordered deque of shared samples. */
+
+    // Time-ordered deque of shared samples.
     std::deque<std::shared_ptr<SensorSample>> samples_;
 };
 
