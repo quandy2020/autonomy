@@ -37,18 +37,15 @@ class SerialPort
 {
 public:
   /**
-   * @brief Constructor for autodriver::io::SerialPort
+   * @brief Copy constructor (deleted)
    */
   SerialPort();
 
   /**
-   * @brief Destructor for autodriver::io::SerialPort
+   * @brief Closes the serial port if still open.
    */
   ~SerialPort();
 
-  /**
-   * @brief Copy constructor (deleted)
-   */
   SerialPort(const SerialPort &) = delete;
 
   /**
@@ -57,41 +54,27 @@ public:
   SerialPort & operator=(const SerialPort &) = delete;
 
   /**
-   * @brief Opens a TTY device.
-   * @param device Path such as /dev/ttyUSB0.
-   * @param baud_rate 9600, 115200, 460800, etc.
-   * @return True on success
+   * @brief Opens a TTY device in raw 8N1 mode at the given baud rate.
    */
   bool Open(const std::string & device, int baud_rate);
 
   /**
-   * @brief Close the open TTY device.
+   * @brief Closes the underlying serial file descriptor.
    */
   void Close();
 
   /**
-   * @brief Whether a TTY device is currently open.
-   * @return True when Open() succeeded and Close() has not been called
+   * @brief Returns true when the serial port is open.
    */
   bool IsOpen() const;
 
-  /**
-   * @brief Read up to max_bytes from the port.
-   * @param buffer Destination buffer
-   * @param max_bytes Maximum bytes to read
-   * @param timeout_ms Read timeout in milliseconds
-   * @return Bytes read (0 on timeout)
-   */
   std::size_t Read(
     std::uint8_t * buffer,
     std::size_t max_bytes,
     int timeout_ms);
 
   /**
-   * @brief Write all bytes to the port.
-   * @param buffer Source buffer
-   * @param length Number of bytes to write
-   * @return False on short write or error
+   * @brief Writes length bytes to the serial port, retrying partial writes.
    */
   bool Write(const std::uint8_t * buffer, std::size_t length);
 

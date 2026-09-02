@@ -39,39 +39,30 @@ namespace autodriver {
 class SampleBuffer {
 public:
     /**
-     * @brief Construct a ring buffer with a fixed capacity.
-     * @param capacity Maximum number of samples to retain.
+     * @brief Constructs a ring buffer with at least one slot of capacity.
      */
     explicit SampleBuffer(std::size_t capacity = 32);
 
     /**
-     * @brief Append a sample; drops the oldest entry when at capacity.
-     * @param sample Shared sample to store in time order.
+     * @brief Appends a sample and evicts the oldest when over capacity.
      */
     void Push(std::shared_ptr<SensorSample> sample);
 
-    /**
-     * @brief Return the newest sample at or before the given host time.
-     * @param time Upper bound on sample host time.
-     * @return Matching sample, or nullptr when the buffer is empty.
-     */
     std::shared_ptr<SensorSample> LatestAtOrBefore(
         const autolink::Time& time) const;
 
     /**
-     * @brief Return the most recently pushed sample.
-     * @return Latest sample, or nullptr when the buffer is empty.
+     * @brief Returns the most recently pushed sample, or nullptr if empty.
      */
     std::shared_ptr<SensorSample> Latest() const;
 
     /**
-     * @brief Remove all buffered samples.
+     * @brief Removes all buffered samples.
      */
     void Clear();
 
     /**
-     * @brief Number of samples currently stored.
-     * @return Current buffer size.
+     * @brief Returns the number of samples currently stored.
      */
     std::size_t Size() const;
 

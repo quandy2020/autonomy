@@ -48,14 +48,12 @@ class RealSenseCameraDriver : public SensorDriver
 {
 public:
   /**
-   * @brief Constructor for autodriver::hardware::RealSenseCameraDriver
-   * @param id Sensor identifier
-   * @param params Driver configuration parameters
+   * @brief Parses stream and resolution params and stores sensor identity.
    */
   RealSenseCameraDriver(SensorId id, DriverParams params);
 
   /**
-   * @brief Destructor for autodriver::hardware::RealSenseCameraDriver
+   * @brief Unsubscribes and stops the shared device hub on destruction.
    */
   ~RealSenseCameraDriver() override;
 
@@ -72,25 +70,22 @@ public:
   const SensorId & GetSensorId() const override { return id_; }
 
   /**
-   * @brief Subscribe to the hub and begin streaming
-   * @return True on success
+   * @brief Subscribes to a RealSense video stream via the shared hub.
    */
   bool Start() override;
 
   /**
-   * @brief Unsubscribe and stop streaming
+   * @brief Unsubscribes from the hub and releases the shared device handle.
    */
   void Stop() override;
 
   /**
-   * @brief Whether the driver is actively streaming
-   * @return True while running
+   * @brief Returns true while the video subscription is active.
    */
   bool IsRunning() const override;
 
   /**
-   * @brief Register callback invoked for each camera frame
-   * @param callback Sample delivery callback
+   * @brief Registers the callback invoked for each camera frame sample.
    */
   void SetSampleCallback(SampleCallback callback) override;
 
@@ -126,12 +121,6 @@ private:
   std::atomic<bool> running_{false};
 };
 
-/**
- * @brief Factory used by CameraModule.
- * @param id Sensor identifier
- * @param params Driver configuration parameters
- * @return Shared sensor driver instance
- */
 std::shared_ptr<SensorDriver> CreateRealSenseCameraDriver(
   const SensorId & id,
   const DriverParams & params);

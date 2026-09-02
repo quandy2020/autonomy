@@ -51,82 +51,32 @@ namespace autodriver {
  */
 class SensorManager {
 public:
-    /**
-     * @brief Default-construct with an empty configuration.
-     */
     SensorManager();
-    /**
-     * @brief Construct with a pre-loaded configuration.
-     * @param config Process configuration snapshot.
-     */
     explicit SensorManager(Config config);
-    /**
-     * @brief Stop all sensors and join background threads.
-     */
     ~SensorManager();
 
-    /**
-     * @brief Copy construction is disabled.
-     */
     SensorManager(const SensorManager&) = delete;
     /**
      * @brief Copy assignment is disabled.
      */
     SensorManager& operator=(const SensorManager&) = delete;
 
-    /**
-     * @brief Register the downstream sink before Start() so Attach can open writers.
-     * @param sink Not owned; typically bridge::Publisher.
-     */
     void SetSink(SampleSink* sink);
 
-    /**
-     * @brief Load plugins and prepare the hub; does not start capture.
-     * @return True when initialization succeeds.
-     */
     bool Initialize();
 
-    /**
-     * @brief Attach autostart sensors and begin udev monitoring when enabled.
-     * @return True when startup succeeds.
-     */
     bool Start();
 
-    /**
-     * @brief Detach all sensors and stop background threads.
-     */
     void Stop();
 
-    /**
-     * @brief Load and start a sensor by id.
-     * @param id Configured sensor identifier to attach.
-     * @return False for unknown ids or plugin load failures; the process keeps running.
-     */
     bool Attach(const SensorId& id);
 
-    /**
-     * @brief Stop and unload a sensor by id.
-     * @param id Configured sensor identifier to detach.
-     */
     void Detach(const SensorId& id);
 
-    /**
-     * @brief Handle a udev add/remove event.
-     * @param added True for device arrival, false for removal.
-     * @param device Observed device identity from udev.
-     */
     void HandleDeviceEvent(bool added, const DeviceMatch& device);
 
-    /**
-     * @brief Whether the manager has started and is running.
-     * @return True after a successful Start() and before Stop().
-     */
     bool IsRunning() const;
 
-    /**
-     * @brief Number of currently attached sensor modules.
-     * @return Count of loaded and started plugins.
-     */
     std::size_t AttachedCount() const;
 
     /**
@@ -141,71 +91,27 @@ public:
      */
     const SensorHub& hub() const { return hub_; }
 
-    /**
-     * @brief Callback fired when optional multi-sensor alignment produces a snapshot.
-     * @param callback Invoked for each aligned snapshot from the hub.
-     */
     void SetAlignedCallback(SensorHub::AlignedCallback callback);
 
-    /**
-     * @brief Callback fired for every raw sample before alignment.
-     * @param callback Invoked for each sample routed through the hub.
-     */
     void SetRawSampleCallback(SensorHub::RawSampleCallback callback);
 
 private:
-    /**
-     * @brief Look up a sensor configuration entry by id.
-     * @param id Sensor identifier to find.
-     * @return Pointer to the sensor entry, or nullptr when not configured.
-     */
     const Config::Sensor* FindSensor(const SensorId& id) const;
 
-    /**
-     * @brief Resolve the shared-library path for a sensor plugin.
-     * @param sensor Sensor configuration entry.
-     * @return Absolute or relative path to the plugin library.
-     */
     std::string LibraryPath(const Config::Sensor& sensor) const;
 
-    /**
-     * @brief Unload a class loader when no modules reference its library.
-     * @param path Plugin library path used as the loader key.
-     */
     void UnloadIfUnused(const std::string& path);
 
-    /**
-     * @brief Attach a sensor while holding the manager lock.
-     * @param id Sensor identifier to attach.
-     * @return True when the sensor is loaded and started.
-     */
     bool AttachLocked(const SensorId& id);
 
-    /**
-     * @brief Detach a sensor while holding the manager lock.
-     * @param id Sensor identifier to detach.
-     */
     void DetachLocked(const SensorId& id);
 
-    /**
-     * @brief Start the udev hotplug monitoring thread.
-     */
     void StartUdev();
 
-    /**
-     * @brief Stop the udev hotplug monitoring thread.
-     */
     void StopUdev();
 
-    /**
-     * @brief Main loop for processing udev device events.
-     */
     void UdevLoop();
 
-    /**
-     * @brief Route a sample to the hub and optional sink.
-     * @param sample Shared sample produced by a sensor module.
-     */
     void DispatchSample(std::shared_ptr<SensorSample> sample);
 
     // Process configuration loaded at construction.

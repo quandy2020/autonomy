@@ -51,10 +51,6 @@ struct DeviceMatch {
     // Device serial number when available.
     std::string serial;
 
-    /**
-     * @brief Whether all match fields are empty.
-     * @return True when no match criteria are configured.
-     */
     bool empty() const {
         return subsystem.empty() && device.empty() && vendor.empty() &&
                product.empty() && serial.empty();
@@ -62,10 +58,7 @@ struct DeviceMatch {
 };
 
 /**
- * @brief Returns true when an observed udev event matches a configured rule.
- * @param observed Device identity from a udev event.
- * @param rule Configured match rule with optional fields.
- * @return True when every non-empty rule field equals the observed value.
+ * @brief Returns true when all non-empty rule fields match the observed device.
  */
 bool MatchDevice(const DeviceMatch& observed, const DeviceMatch& rule);
 
@@ -138,17 +131,8 @@ struct Config {
     // All configured sensor instances.
     std::vector<Sensor> sensors;
 
-    /**
-     * @brief Detect duplicate sensor ids in the configuration.
-     * @return True when two or more sensors share the same id.
-     */
     bool HasDuplicateId() const;
 
-    /**
-     * @brief Map a hotplug event to the matching sensor id, if any.
-     * @param observed Device identity from a udev event.
-     * @return Matching sensor id, or an empty string when no rule matches.
-     */
     SensorId FindId(const DeviceMatch& observed) const;
 };
 

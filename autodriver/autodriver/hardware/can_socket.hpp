@@ -54,18 +54,15 @@ class CanSocket
 {
 public:
   /**
-   * @brief Constructor for autodriver::io::CanSocket
+   * @brief Copy constructor (deleted)
    */
   CanSocket();
 
   /**
-   * @brief Destructor for autodriver::io::CanSocket
+   * @brief Closes the socket if still open.
    */
   ~CanSocket();
 
-  /**
-   * @brief Copy constructor (deleted)
-   */
   CanSocket(const CanSocket &) = delete;
 
   /**
@@ -74,28 +71,22 @@ public:
   CanSocket & operator=(const CanSocket &) = delete;
 
   /**
-   * @brief Binds to interface such as "can0".
-   * @param interface Linux CAN network interface name
-   * @return True on success
+   * @brief Opens a raw SocketCAN interface for reading frames.
    */
   bool Open(const std::string & interface);
 
   /**
-   * @brief Close the bound CAN socket.
+   * @brief Closes the underlying CAN socket descriptor.
    */
   void Close();
 
   /**
-   * @brief Whether a CAN socket is currently open.
-   * @return True when Open() succeeded and Close() has not been called
+   * @brief Returns true when the CAN socket is open.
    */
   bool IsOpen() const;
 
   /**
-   * @brief Read one frame from the socket.
-   * @param frame Output frame structure
-   * @param timeout_ms Read timeout in milliseconds
-   * @return False on timeout or error
+   * @brief Reads one CAN frame, waiting up to timeout_ms milliseconds.
    */
   bool Read(CanFrame & frame, int timeout_ms);
 

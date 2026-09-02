@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-/**
- * @file
- * @brief RealSensePointCloudDriver implementation.
- */
-
 #include "autodriver/hardware/realsense_pointcloud_driver.hpp"
 
 #include <utility>
@@ -39,9 +34,6 @@ autolink::Time TimeFromMilliseconds(const double ms) {
 
 }  // namespace
 
-/**
- * @brief Parses resolution params and stores sensor identity.
- */
 RealSensePointCloudDriver::RealSensePointCloudDriver(SensorId id,
                                                      DriverParams params)
     : id_(std::move(id)),
@@ -50,14 +42,8 @@ RealSensePointCloudDriver::RealSensePointCloudDriver(SensorId id,
       height_(ParseInt(params_, "height", 480)),
       fps_(ParseInt(params_, "fps", 30)) {}
 
-/**
- * @brief Unsubscribes and stops the shared device hub on destruction.
- */
 RealSensePointCloudDriver::~RealSensePointCloudDriver() { Stop(); }
 
-/**
- * @brief Subscribes to a RealSense depth point cloud via the shared hub.
- */
 bool RealSensePointCloudDriver::Start() {
     if (running_.exchange(true)) {
         return true;
@@ -89,9 +75,6 @@ bool RealSensePointCloudDriver::Start() {
     return true;
 }
 
-/**
- * @brief Unsubscribes from the hub and releases the shared device handle.
- */
 void RealSensePointCloudDriver::Stop() {
     if (!running_.exchange(false)) {
         return;
@@ -104,21 +87,12 @@ void RealSensePointCloudDriver::Stop() {
     hub_.reset();
 }
 
-/**
- * @brief Returns true while the point-cloud subscription is active.
- */
 bool RealSensePointCloudDriver::IsRunning() const { return running_.load(); }
 
-/**
- * @brief Registers the callback invoked for each point-cloud sample.
- */
 void RealSensePointCloudDriver::SetSampleCallback(SampleCallback callback) {
     callback_ = std::move(callback);
 }
 
-/**
- * @brief Factory that constructs a RealSensePointCloudDriver instance.
- */
 std::shared_ptr<SensorDriver> CreateRealSensePointCloudDriver(
     const SensorId& id, const DriverParams& params) {
     return std::make_shared<RealSensePointCloudDriver>(id, params);

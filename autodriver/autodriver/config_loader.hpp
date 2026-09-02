@@ -32,24 +32,15 @@ namespace autodriver {
 inline constexpr const char* kDefaultConfigBasename = "autodriver_hardware.yaml";
 
 /**
- * @brief Load config/autodriver_hardware.yaml from WorkRoot() (see AUTODRIVER_PATH).
- * @return Parsed process configuration.
+ * @brief Loads the default autodriver_hardware.yaml config.
  */
 Config LoadConfig();
 
 /**
- * @brief Load config/<basename> under WorkRoot(), or an absolute path.
- * @param config_basename Empty basename defaults to autodriver_hardware.yaml.
- * @return Parsed process configuration.
+ * @brief Loads config by basename from the default configuration directory.
  */
 Config LoadConfig(const std::string& config_basename);
 
-/**
- * @brief Load with an explicit configuration root plus basename under config/.
- * @param configuration_directory Root directory containing config/.
- * @param config_basename File name inside config/.
- * @return Parsed process configuration.
- */
 Config LoadConfig(const std::string& configuration_directory,
                   const std::string& config_basename);
 

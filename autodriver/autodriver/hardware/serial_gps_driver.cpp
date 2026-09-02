@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-/**
- * @file
- * @brief Implements SerialGpsDriver.
- */
-
 #include "autodriver/hardware/serial_gps_driver.hpp"
 
 #include <utility>
@@ -30,26 +25,17 @@
 namespace autodriver {
 namespace hardware {
 
-/**
- * @brief Stores sensor identity and serial driver params.
- */
 SerialGpsDriver::SerialGpsDriver(SensorId id, DriverParams params)
 : id_(std::move(id)),
   params_(std::move(params))
 {
 }
 
-/**
- * @brief Stops the reader thread and closes the serial port.
- */
 SerialGpsDriver::~SerialGpsDriver()
 {
   Stop();
 }
 
-/**
- * @brief Opens the serial device and starts the NMEA reader thread.
- */
 bool SerialGpsDriver::Start()
 {
   if (running_.exchange(true)) {
@@ -67,9 +53,6 @@ bool SerialGpsDriver::Start()
   return true;
 }
 
-/**
- * @brief Stops reading and joins the worker thread.
- */
 void SerialGpsDriver::Stop()
 {
   if (!running_.exchange(false)) {
@@ -81,25 +64,16 @@ void SerialGpsDriver::Stop()
   }
 }
 
-/**
- * @brief Returns true while the serial reader thread is active.
- */
 bool SerialGpsDriver::IsRunning() const
 {
   return running_.load();
 }
 
-/**
- * @brief Registers the callback invoked for each GPS fix sample.
- */
 void SerialGpsDriver::SetSampleCallback(SampleCallback callback)
 {
   callback_ = std::move(callback);
 }
 
-/**
- * @brief Reads NMEA lines from serial and emits parsed GPS samples.
- */
 void SerialGpsDriver::ReadLoop()
 {
   std::uint8_t chunk[256];
@@ -139,9 +113,6 @@ void SerialGpsDriver::ReadLoop()
   }
 }
 
-/**
- * @brief Factory that constructs a SerialGpsDriver instance.
- */
 std::shared_ptr<SensorDriver> CreateSerialGpsDriver(
   const SensorId & id,
   const DriverParams & params)

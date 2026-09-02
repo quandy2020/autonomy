@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-/**
- * @file
- * @brief Implements WIT-motion and CAN decode helpers.
- */
-
 #include "autodriver/hardware/wit_motion_parser.hpp"
 
 #include <cmath>
@@ -72,9 +67,6 @@ WitMotionParser::WitMotionParser(double accel_scale, double gyro_scale)
 {
 }
 
-/**
- * @brief Feeds one byte and returns true when a valid packet was parsed.
- */
 bool WitMotionParser::Feed(std::uint8_t byte)
 {
   if (index_ == 0) {
@@ -94,9 +86,6 @@ bool WitMotionParser::Feed(std::uint8_t byte)
   return ParsePacket();
 }
 
-/**
- * @brief Validates checksum and decodes accel or gyro payload from buffer_.
- */
 bool WitMotionParser::ParsePacket()
 {
   if (buffer_[10] != WitChecksum(buffer_)) {
@@ -127,18 +116,12 @@ bool WitMotionParser::ParsePacket()
   return false;
 }
 
-/**
- * @brief Clears have_accel and have_gyro after emitting a fused sample.
- */
 void WitMotionParser::ResetSampleFlags()
 {
   state_.have_accel = false;
   state_.have_gyro = false;
 }
 
-/**
- * @brief Decodes an NMEA 2000 latitude/longitude CAN payload.
- */
 std::optional<Nmea2000LatLon> ParseNmea2000LatLonFrame(
   const std::uint8_t * data,
   std::size_t length)
@@ -155,9 +138,6 @@ std::optional<Nmea2000LatLon> ParseNmea2000LatLonFrame(
   return fix;
 }
 
-/**
- * @brief Decodes three scaled int16 axis values from six CAN data bytes.
- */
 std::array<double, 3> DecodeScaledInt16Triplet(
   const std::uint8_t * data,
   double scale)

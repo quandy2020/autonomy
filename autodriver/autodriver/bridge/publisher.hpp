@@ -41,19 +41,15 @@ namespace bridge {
 class Publisher : public SampleSink {
 public:
     /**
-     * @brief Constructor for autodriver::bridge::Publisher
-     * @param node_name Autolink node name (default "autodriver")
+     * @brief Stores the Autolink node name used for writers.
      */
     explicit Publisher(std::string node_name = "autodriver");
 
     /**
-     * @brief Destructor for autodriver::bridge::Publisher
+     * @brief Tears down all writers and the Autolink node.
      */
     ~Publisher() override;
 
-    /**
-     * @brief Copy constructor (deleted)
-     */
     Publisher(const Publisher&) = delete;
 
     /**
@@ -62,8 +58,7 @@ public:
     Publisher& operator=(const Publisher&) = delete;
 
     /**
-     * @brief Create the Autolink node.
-     * @return True on success
+     * @brief Creates the Autolink node if not already present.
      */
     bool Initialize();
 
@@ -74,22 +69,17 @@ public:
     autolink::Node* node() { return node_.get(); }
 
     /**
-     * @brief Register a writer for a sensor channel
-     * @param sensor Sensor configuration from YAML
-     * @param type Sensor message type
-     * @return True when the writer was opened successfully
+     * @brief Opens protobuf writers for a newly attached sensor.
      */
     bool OnAttach(const Config::Sensor& sensor, SensorType type) override;
 
     /**
-     * @brief Tear down the writer for a detached sensor
-     * @param id Sensor identifier
+     * @brief Removes writers when a sensor detaches.
      */
     void OnDetach(const SensorId& id) override;
 
     /**
-     * @brief Publish a sensor sample to its registered writer
-     * @param sample Decoded sensor payload
+     * @brief Converts a sample to protobuf and writes it to the sensor channel.
      */
     void OnSample(std::shared_ptr<SensorSample> sample) override;
 
@@ -104,12 +94,13 @@ private:
      * @return True when the writer was opened successfully
      */
     template <SensorType kType>
+    /**
+     * @brief Opens typed protobuf writers and registers a multi-channel fanout.
+     */
     bool OpenWriter(const Config::Sensor& sensor);
 
     /**
-     * @brief Open image and paired camera_info writers for RealSense cameras.
-     * @param sensor Sensor configuration from YAML
-     * @return True when both writers were opened successfully
+     * @brief Opens image and optional CameraInfo writers for a camera sensor.
      */
     bool OpenCameraWriter(const Config::Sensor& sensor);
 

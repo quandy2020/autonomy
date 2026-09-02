@@ -14,24 +14,13 @@
  * limitations under the License.
  */
 
-/**
- * @file
- * @brief SampleBuffer ring buffer implementation.
- */
-
 #include "autodriver/sample_buffer.hpp"
 
 namespace autodriver {
 
-/**
- * @brief Constructs a ring buffer with at least one slot of capacity.
- */
 SampleBuffer::SampleBuffer(std::size_t capacity)
     : capacity_(capacity > 0 ? capacity : 1) {}
 
-/**
- * @brief Appends a sample and evicts the oldest when over capacity.
- */
 void SampleBuffer::Push(std::shared_ptr<SensorSample> sample) {
     if (!sample) {
         return;
@@ -55,9 +44,6 @@ std::shared_ptr<SensorSample> SampleBuffer::LatestAtOrBefore(
     return nullptr;
 }
 
-/**
- * @brief Returns the most recently pushed sample, or nullptr if empty.
- */
 std::shared_ptr<SensorSample> SampleBuffer::Latest() const {
     if (samples_.empty()) {
         return nullptr;
@@ -65,14 +51,8 @@ std::shared_ptr<SensorSample> SampleBuffer::Latest() const {
     return samples_.back();
 }
 
-/**
- * @brief Removes all buffered samples.
- */
 void SampleBuffer::Clear() { samples_.clear(); }
 
-/**
- * @brief Returns the number of samples currently stored.
- */
 std::size_t SampleBuffer::Size() const { return samples_.size(); }
 
 }  // namespace autodriver

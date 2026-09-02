@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-/**
- * @file
- * @brief Shared librealsense pipeline, stream dispatch, and device options.
- */
-
 #include "autodriver/hardware/realsense_device_hub.hpp"
 
 #ifdef AUTODRIVER_HAVE_REALSENSE
@@ -68,9 +63,6 @@ std::string DeviceKey(const hardware::DriverParams& params) {
 
 }  // namespace
 
-/**
- * @brief Returns true when librealsense was linked at build time.
- */
 bool RealSenseAvailable() {
 #ifdef AUTODRIVER_HAVE_REALSENSE
     return true;
@@ -739,18 +731,12 @@ struct RealSenseDeviceHub::Impl {
 #endif
 };
 
-/**
- * @brief Constructs a hub bound to driver params and a device pool key.
- */
 RealSenseDeviceHub::RealSenseDeviceHub(const hardware::DriverParams& params)
     : impl_(std::make_unique<Impl>()) {
     impl_->params = params;
     impl_->device_key = DeviceKey(params);
 }
 
-/**
- * @brief Stops the pipeline and worker thread on destruction.
- */
 RealSenseDeviceHub::~RealSenseDeviceHub() { Stop(); }
 
 /**
@@ -826,9 +812,6 @@ std::uint64_t RealSenseDeviceHub::SubscribePointCloud(
     return id;
 }
 
-/**
- * @brief Registers an IMU callback and restarts the hub if running.
- */
 std::uint64_t RealSenseDeviceHub::SubscribeImu(RealSenseImuCallback callback) {
     const bool restart = impl_->running.load();
     if (restart) {
@@ -849,9 +832,6 @@ std::uint64_t RealSenseDeviceHub::SubscribeImu(RealSenseImuCallback callback) {
     return id;
 }
 
-/**
- * @brief Removes a subscription and restarts the hub when others remain.
- */
 void RealSenseDeviceHub::Unsubscribe(const std::uint64_t subscription_id) {
     const bool was_running = impl_->running.load();
     if (was_running) {
@@ -894,9 +874,6 @@ void RealSenseDeviceHub::Unsubscribe(const std::uint64_t subscription_id) {
     }
 }
 
-/**
- * @brief Starts the pipeline and frame capture worker thread.
- */
 bool RealSenseDeviceHub::Start() {
     if (impl_->running.exchange(true)) {
         return true;
@@ -922,9 +899,6 @@ bool RealSenseDeviceHub::Start() {
     return true;
 }
 
-/**
- * @brief Stops the pipeline and joins the capture worker thread.
- */
 void RealSenseDeviceHub::Stop() {
     if (!impl_->running.exchange(false)) {
         return;
@@ -936,14 +910,8 @@ void RealSenseDeviceHub::Stop() {
     }
 }
 
-/**
- * @brief Returns true while the capture loop is active.
- */
 bool RealSenseDeviceHub::IsRunning() const { return impl_->running.load(); }
 
-/**
- * @brief Returns the most recent pipeline or device error message.
- */
 const std::string& RealSenseDeviceHub::last_error() const {
     return impl_->last_error;
 }
@@ -966,9 +934,6 @@ std::string ToLower(std::string text) {
 
 }  // namespace
 
-/**
- * @brief Parses a stream name string into a StreamKind enum value.
- */
 StreamKind ParseStreamKind(const std::string& text,
                            const StreamKind default_kind) {
     const std::string value = ToLower(text);
@@ -994,9 +959,6 @@ StreamKind ParseStreamKind(const std::string& text,
     return default_kind;
 }
 
-/**
- * @brief Returns true when product_name contains the model_filter substring.
- */
 bool MatchesModelFilter(const std::string& product_name,
                         const std::string& model_filter) {
     if (model_filter.empty()) {
@@ -1007,9 +969,6 @@ bool MatchesModelFilter(const std::string& product_name,
     return name.find(model) != std::string::npos;
 }
 
-/**
- * @brief Returns the image encoding string for a RealSense stream kind.
- */
 std::string EncodingForStreamKind(const StreamKind kind) {
     switch (kind) {
         case StreamKind::kColor:
@@ -1026,9 +985,6 @@ std::string EncodingForStreamKind(const StreamKind kind) {
     return "rgb8";
 }
 
-/**
- * @brief Returns the default TF frame_id for a RealSense stream kind.
- */
 std::string DefaultFrameId(const StreamKind kind) {
     switch (kind) {
         case StreamKind::kColor:
