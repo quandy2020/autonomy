@@ -45,6 +45,29 @@ option(BUILD_AUTOVIZ "Build native 3D visualization tool (autoviz)" ON)
 option(BUILD_AUTOSIM "Build autonomous simulation tool (autosim)" ON)
 set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
 
+option(BUILD_ONNXRUNTIME "Build ONNX Runtime inference support" ON)
+
+option(AUTONOMY_EXPLORATION_ORTOOLS
+  "Link vendored OR-Tools for exploration TSP (set AUTONOMY_ORTOOLS_ROOT)" OFF)
+set(AUTONOMY_ORTOOLS_ROOT "" CACHE PATH
+  "Root of vendored or-tools (include/ + lib/libortools.so)")
+
+if(NOT AUTONOMY_ORTOOLS_ROOT)
+  set(_ORTOOLS_CANDIDATES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../../ros2/autonomous_exploration_development_environment/src/tare_planner/src/tare_planner/or-tools"
+    "/home/quandy/workspace/github/ros2/autonomous_exploration_development_environment/src/tare_planner/src/tare_planner/or-tools")
+  foreach(_cand IN LISTS _ORTOOLS_CANDIDATES)
+    if(EXISTS "${_cand}/lib/libortools.so")
+      set(AUTONOMY_ORTOOLS_ROOT "${_cand}" CACHE PATH
+        "Auto-detected TARE vendored or-tools" FORCE)
+      set(AUTONOMY_EXPLORATION_ORTOOLS ON CACHE BOOL
+        "Auto-enable OR-Tools from TARE vendored path" FORCE)
+      message(STATUS "Exploration OR-Tools: ${_cand}")
+      break()
+    endif()
+  endforeach()
+endif()
+
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -129,6 +152,10 @@ unset(_autonomy_config_dir)
 # -----------------------------------------------------------------------------
 # 4. Sources + codegen
 # -----------------------------------------------------------------------------
+if(AUTONOMY_EXPLORATION_ORTOOLS)
+  find_package(ORtools)
+endif()
+
 include("${PROJECT_SOURCE_DIR}/cmake/autonomy_sources.cmake")
 autonomy_filter_library_sources()
 
@@ -200,11 +227,10 @@ google_binary(autonomy.planning
   SRCS autonomy/planning/planning_main.cpp)
 google_binary(autonomy.control
   SRCS autonomy/control/control_main.cpp)
-# Temporarily disabled: incomplete automsgs migration in these modules.
-# google_binary(exploration
-#   SRCS autonomy/exploration/exploration_main.cpp)
 google_binary(autonomy.task
   SRCS autonomy/task/task_main.cpp)
+google_binary(autonomy.perception
+  SRCS autonomy/perception/perception_main.cpp)
 if(foxglove-sdk_FOUND)
   # google_binary(autonomy_foxglove_fakedata
   #   SRCS autonomy/visualization/fakedata_test.cpp)

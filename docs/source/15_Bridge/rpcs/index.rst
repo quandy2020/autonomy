@@ -21,7 +21,6 @@ AutonomyService API
    05 推送接口 Stream <05_stream_api>
    06 系统控制 System <06_system_api>
    07 SendNavigationCommand <07_navigation_command>
-   08 SendExplorationCommand <08_exploration_command>
    09 SendFollowCommand <09_follow_command>
    10 SendTeleopCommand <10_teleop_command>
    11 SendDockCommand <11_dock_command>

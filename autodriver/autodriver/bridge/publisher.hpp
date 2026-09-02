@@ -50,6 +50,7 @@ private:
 
     template <SensorType kType>
     bool OpenWriter(const Config::Sensor& sensor);
+    bool OpenCameraWriter(const Config::Sensor& sensor);
 
     std::string node_name_;
     std::shared_ptr<autolink::Node> node_;

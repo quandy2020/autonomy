@@ -76,9 +76,16 @@ function(autonomy_link_dependencies target)
   endif()
 
   if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
+    target_compile_definitions(${target} PUBLIC AUTONOMY_HAS_ONNXRUNTIME)
     target_include_directories(${target} SYSTEM PUBLIC
       ${OnnxRuntime_INCLUDE_DIRS})
     target_link_libraries(${target} PUBLIC ${OnnxRuntime_LIBRARIES})
+  endif()
+
+  if(AUTONOMY_EXPLORATION_ORTOOLS AND ORtools_FOUND)
+    target_compile_definitions(${target} PUBLIC AUTONOMY_HAS_ORTOOLS)
+    target_include_directories(${target} SYSTEM PUBLIC ${ORtools_INCLUDE_DIRS})
+    target_link_libraries(${target} PUBLIC ${ORtools_LIBRARIES})
   endif()
 
   if(Ipopt_FOUND)
@@ -100,4 +107,5 @@ function(autonomy_link_dependencies target)
       "foxglove-sdk not found; visualization sources excluded from libautonomy. "
       "Set CMAKE_PREFIX_PATH or install foxglove-sdk to enable.")
   endif()
+
 endfunction()

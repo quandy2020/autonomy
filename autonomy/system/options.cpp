@@ -24,6 +24,7 @@
 #include "autonomy/planning/planner_options.hpp"
 #include "autonomy/task/navigation/options.hpp"
 #include "autonomy/transform/common/transform_interface.hpp"
+#include "autonomy/perception/common/perception_interface.hpp"
 
 namespace autonomy {
 namespace system {
@@ -45,12 +46,6 @@ proto::AutonomyOptions LoadOptions(
         *options.mutable_planner_options() = planning::LoadOptions(
             parameter_dictionary->GetDictionary("planning").get());
     }
-    if (parameter_dictionary->HasKey("exploration")) {
-        // Exploration module is temporarily excluded from the library build
-        // during the automsgs field-access migration.
-        AWARN << "system::LoadOptions: skipping exploration options "
-                 "(module temporarily disabled)";
-    }
     if (parameter_dictionary->HasKey("navigator")) {
         *options.mutable_navigator_options() =
             task::navigation::LoadOptions(parameter_dictionary);
@@ -59,6 +54,10 @@ proto::AutonomyOptions LoadOptions(
         *options.mutable_transform_options() =
             transform::common::LoadOptions(
                 parameter_dictionary->GetDictionary("transform").get());
+    }
+    if (parameter_dictionary->HasKey("perception")) {
+        *options.mutable_perception_options() = perception::common::LoadOptions(
+            parameter_dictionary->GetDictionary("perception").get());
     }
     return options;
 }

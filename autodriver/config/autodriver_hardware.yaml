@@ -1,8 +1,12 @@
-# Autodriver hardware config.
+# Autodriver hardware config — Intel RealSense D455
 # export AUTODRIVER_PATH=<directory containing config/>
 #
-# enable: true — 加载并在进程启动时 attach；false — 忽略该设备
-# port 仅为示例；实际上线请用 /dev/serial/by-id/ 固定设备节点
+# Channels align with ros2/realsense-ros (realsense2_camera) defaults,
+# using automsgs on Autolink instead of ROS 2 topics.
+#
+# RealSense device options (shared by all streams on the same camera):
+#   emitter_enabled: false   # disable IR projector speckles on infra streams
+#   enable_ir_emitter: false # alias for emitter_enabled (realsense-ros style)
 
 sensors:
   lidar_2d:
@@ -10,7 +14,7 @@ sensors:
       enable: false
       channel: /lidar/front/scan
       port: /dev/ttyUSB4
-      baudrate: 115200  # RPLidar / Hokuyo 等常见值
+      baudrate: 115200
       fps: 10
 
   lidar_3d:
@@ -41,54 +45,93 @@ sensors:
       fps: 400
 
     - name: realsense_d455_imu
-      enable: false
+      enable: true
       channel: /camera/imu
       backend: realsense
+      params:
+        model: D455
+        frame_id: camera_imu_optical_frame
 
   gps:
     - name: gps_main
       enable: false
       channel: /gps/fix
       port: /dev/ttyUSB2
-      baudrate: 9600  # NMEA 模块出厂常见值
+      baudrate: 9600
 
   camera:
-    # D455：每路 stream 一条；channel 对齐 ROS realsense2_camera
     - name: realsense_d455_color
-      enable: false
+      enable: true
       channel: /camera/color/image_raw
       backend: realsense
       stream: color
       width: 848
       height: 480
       fps: 30
+      params:
+        model: D455
+        emitter_enabled: false
+        frame_id: camera_color_optical_frame
 
     - name: realsense_d455_depth
-      enable: false
-      channel: /camera/depth/image_raw
+      enable: true
+      channel: /camera/depth/image_rect_raw
       backend: realsense
       stream: depth
       width: 848
       height: 480
       fps: 30
+      params:
+        model: D455
+        frame_id: camera_depth_optical_frame
 
     - name: realsense_d455_ir1
-      enable: false
-      channel: /camera/infra1/image_raw
+      enable: true
+      channel: /camera/infra1/image_rect_raw
       backend: realsense
       stream: ir1
       width: 848
       height: 480
       fps: 30
+      params:
+        model: D455
+        frame_id: camera_infra1_optical_frame
 
     - name: realsense_d455_ir2
-      enable: false
-      channel: /camera/infra2/image_raw
+      enable: true
+      channel: /camera/infra2/image_rect_raw
       backend: realsense
       stream: ir2
       width: 848
       height: 480
       fps: 30
+      params:
+        model: D455
+        frame_id: camera_infra2_optical_frame
+
+    - name: realsense_d455_aligned_depth
+      enable: true
+      channel: /camera/aligned_depth_to_color/image_raw
+      backend: realsense
+      stream: aligned_depth_to_color
+      width: 848
+      height: 480
+      fps: 30
+      params:
+        model: D455
+        frame_id: camera_color_optical_frame
+
+  point_cloud:
+    - name: realsense_d455_points
+      enable: true
+      channel: /camera/depth/color/points
+      backend: realsense
+      width: 848
+      height: 480
+      fps: 30
+      params:
+        model: D455
+        frame_id: camera_depth_optical_frame
 
   range:
     - name: range_main

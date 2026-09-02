@@ -16,24 +16,53 @@
 
 #pragma once
 
-#include "autonomy/common/lua_parameter_dictionary.hpp"
+#include <memory>
+#include <string>
+
+#include "autolink/autolink.hpp"
 #include "autonomy/common/macros.hpp"
+#include "autonomy/perception/exploration/core/exploration_client.hpp"
 #include "autonomy/perception/proto/perception_options.pb.h"
+#include "autonomy/transform/buffer.hpp"
 
 namespace autonomy {
 namespace perception {
 
-class PerceptionServer
-{
-public:
-    /**
-     * Define PerceptionServer::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(PerceptionServer)
+constexpr char kPerceptionServerNodeName[] = "perception_server";
 
-    PerceptionServer();
+// Process-level facade for perception backends (RGB-D exploration, future vision).
+class PerceptionServer {
+ public:
+  AUTONOMY_SMART_PTR_DEFINITIONS(PerceptionServer)
 
-    ~PerceptionServer();
+  explicit PerceptionServer(const proto::PerceptionOptions& options);
+  ~PerceptionServer();
+
+  PerceptionServer(const PerceptionServer&) = delete;
+  PerceptionServer& operator=(const PerceptionServer&) = delete;
+
+  void SetConfigDirectory(const std::string& config_directory);
+  void SetTransformBuffer(std::shared_ptr<transform::Buffer> tf_buffer);
+
+  void Start();
+  void Shutdown();
+
+  [[nodiscard]] bool is_running() const { return running_; }
+  [[nodiscard]] const proto::PerceptionOptions& options() const {
+    return options_;
+  }
+
+  exploration::ExplorationClient* exploration_client() {
+    return exploration_client_.get();
+  }
+
+ private:
+  proto::PerceptionOptions options_;
+  std::string config_directory_;
+  std::shared_ptr<autolink::Node> node_;
+  std::shared_ptr<transform::Buffer> tf_buffer_;
+  std::unique_ptr<exploration::ExplorationClient> exploration_client_;
+  bool running_{false};
 };
 
 }  // namespace perception

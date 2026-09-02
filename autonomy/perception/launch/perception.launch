@@ -1,0 +1,24 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Standalone perception process (RGB-D exploration).
+
+  Prerequisites:
+    - config/exploration_autonomy.lua (or set enabled=true in perception.lua)
+    - PATH includes build/autonomy/bin
+    - Sensor topics: /odom, depth camera (or point cloud for lidar_tare / far3d)
+
+  Usage (from src/autonomy):
+    export PATH=$PWD/../../build/autonomy/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/perception/launch
+    autolink launch start perception.launch
+-->
+<autolink>
+  <module>
+    <name>perception</name>
+    <type>binary</type>
+    <process_name>autonomy.perception --configuration_directory=config --configuration_basename=exploration_autonomy.lua</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

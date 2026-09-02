@@ -51,16 +51,6 @@
       <output_port name="error_code_id" type="int"/>
       <output_port name="error_msg" type="string"/>
     </Action>
-    <Action ID="SaveExplorationMap">
-      <input_port name="map_name" type="string">exploration map name</input_port>
-      <output_port name="error_code_id" type="int"/>
-      <output_port name="error_msg" type="string"/>
-    </Action>
-    <Action ID="SelectFrontier">
-      <output_port name="goal" type="PoseStamped">next frontier pose</output_port>
-      <output_port name="error_code_id" type="int"/>
-      <output_port name="error_msg" type="string"/>
-    </Action>
     <Action ID="SetInitialPose"/>
     <Action ID="SmoothPath">
       <input_port name="unsmoothed_path" type="Path"/>
@@ -97,7 +87,6 @@
     <!-- Conditions -->
     <Condition ID="ChargerVisible"/>
     <Condition ID="CommandValid"/>
-    <Condition ID="FrontierAvailable"/>
     <Condition ID="GoalReached">
       <input_port name="goal" type="PoseStamped"/>
       <input_port name="robot_base_frame" type="string" default="base_link"/>

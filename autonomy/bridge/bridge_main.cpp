@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 #include <signal.h>
 
+#include <atomic>
 #include <cstdlib>
 #include <string>
 
@@ -50,8 +51,14 @@ std::string ConfigurationBasename() {
     return env != nullptr ? std::string(env) : std::string(kDefaultConfigBasename);
 }
 
+std::atomic<bool> g_shutdown_requested{false};
+
 void SigintHandler(int /*sig*/) {
-    LOG(INFO) << "Shutdown autonomy bridge.";
+    bool expected = false;
+    if (!g_shutdown_requested.compare_exchange_strong(
+            expected, true, std::memory_order_acq_rel)) {
+        return;
+    }
     autolink::AsyncShutdown();
 }
 
@@ -81,6 +88,9 @@ int Run() {
     }
     LOG(INFO) << "Bridge server running. Press Ctrl+C to exit.";
     autolink::WaitForShutdown();
+    if (g_shutdown_requested.load(std::memory_order_acquire)) {
+        LOG(INFO) << "Shutdown autonomy bridge.";
+    }
     server.Shutdown();
     return EXIT_SUCCESS;
 }

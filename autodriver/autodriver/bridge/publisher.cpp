@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 
+#include "autodriver/bridge/realsense_channels.hpp"
 #include "autodriver/driver_params.hpp"
 #include "autodriver/sensor_traits.hpp"
 #include "autolink/autolink.hpp"
@@ -27,6 +28,7 @@
 #include "autolink/common/log.hpp"
 #include "autolink/node/writer.hpp"
 #include "autolink/proto/role_attributes.pb.h"
+#include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
 
 namespace autodriver {
 namespace bridge {
@@ -88,7 +90,7 @@ bool Publisher::OnAttach(const Config::Sensor& sensor, SensorType type) {
         case SensorType::kGps:
             return OpenWriter<SensorType::kGps>(sensor);
         case SensorType::kCamera:
-            return OpenWriter<SensorType::kCamera>(sensor);
+            return OpenCameraWriter(sensor);
         case SensorType::kLidar2d:
             return OpenWriter<SensorType::kLidar2d>(sensor);
         case SensorType::kLidar3d:
@@ -121,6 +123,87 @@ void Publisher::OnSample(std::shared_ptr<SensorSample> sample) {
         write = it->second;
     }
     write(sample);
+}
+
+bool Publisher::OpenCameraWriter(const Config::Sensor& sensor) {
+    using Traits = SensorTraits<SensorType::kCamera>;
+    using Sample = CameraFrame;
+    using Message = typename Traits::Message;
+    const std::vector<std::string> channels =
+        ResolvePublishChannels(sensor, SensorType::kCamera);
+    if (channels.empty()) {
+        AERROR << "no publish channel for " << sensor.id;
+        return false;
+    }
+
+    using CameraInfo = automsgs::msgs::sensor_msgs::CameraInfo;
+    using CameraInfoWriter = std::shared_ptr<autolink::Writer<CameraInfo>>;
+
+    struct ChannelWriters {
+        std::shared_ptr<autolink::Writer<Message>> image;
+        CameraInfoWriter camera_info;
+        std::string camera_info_channel;
+    };
+
+    std::vector<ChannelWriters> channel_writers;
+    channel_writers.reserve(channels.size());
+    std::string joined;
+    for (const std::string& channel : channels) {
+        auto image_writer = node_->CreateWriter<Message>(WriterAttr(channel));
+        if (!image_writer) {
+            AERROR << "CreateWriter failed on " << channel;
+            return false;
+        }
+        ChannelWriters writers;
+        writers.image = std::move(image_writer);
+        if (sensor.backend == "realsense") {
+            writers.camera_info_channel = CameraInfoChannelForImage(channel);
+            writers.camera_info =
+                node_->CreateWriter<CameraInfo>(
+                    WriterAttr(writers.camera_info_channel));
+            if (!writers.camera_info) {
+                AERROR << "CreateWriter failed on "
+                       << writers.camera_info_channel;
+                return false;
+            }
+        }
+        channel_writers.push_back(std::move(writers));
+        if (!joined.empty()) {
+            joined += ", ";
+        }
+        joined += channel;
+        if (!channel_writers.back().camera_info_channel.empty()) {
+            joined += " + " + channel_writers.back().camera_info_channel;
+        }
+    }
+
+    WriteFn fanout =
+        [channel_writers = std::move(channel_writers)](
+            const std::shared_ptr<SensorSample>& sample) {
+            if (!sample) {
+                return;
+            }
+            auto& data = static_cast<Sample&>(*sample);
+            const auto image =
+                std::shared_ptr<Message>(sample, &data.msg);
+            for (const ChannelWriters& writers : channel_writers) {
+                writers.image->Write(image);
+                if (writers.camera_info && data.has_camera_info) {
+                    auto info = std::make_shared<CameraInfo>(data.camera_info);
+                    info->mutable_header()->mutable_stamp()->CopyFrom(
+                        data.msg.header().stamp());
+                    if (!data.frame_id.empty()) {
+                        info->mutable_header()->set_frame_id(data.frame_id);
+                    }
+                    writers.camera_info->Write(info);
+                }
+            }
+        };
+
+    WriteLock lock(lock_);
+    writers_[sensor.id] = std::move(fanout);
+    AINFO << "writer " << sensor.id << " -> " << joined;
+    return true;
 }
 
 template <SensorType kType>

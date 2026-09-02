@@ -41,7 +41,7 @@ namespace task {
  * Responsibilities (Nav2 NavigatorMuxer + session reaper):
  *   1. Own the plugin registry keyed by RobotTaskType.
  *   2. Guard navigation-class exclusivity (navigation / follow / teleop /
- *      exploration / dock share one active slot when configured).
+ *      dock shares the exclusive slot with navigation-class tasks when configured).
  *   3. Track active sessions and reclaim them when they reach a terminal
  *      lifecycle state.
  *
@@ -175,7 +175,6 @@ public:
             case RobotTaskType::ROBOT_TASK_NAVIGATION:
             case RobotTaskType::ROBOT_TASK_FOLLOW:
             case RobotTaskType::ROBOT_TASK_TELEOP:
-            case RobotTaskType::ROBOT_TASK_EXPLORATION:
             case RobotTaskType::ROBOT_TASK_DOCK:
                 return true;
             default:

@@ -30,7 +30,6 @@
 #include "autonomy/task/behavior_tree/bt_defaults.hpp"
 #include "autonomy/task/charging/charging.hpp"
 #include "autonomy/task/common/transform_listener.hpp"
-#include "autonomy/task/exploration/exploration.hpp"
 #include "autonomy/task/common/goal_ingress.hpp"
 #include "autonomy/task/common/navigator.hpp"
 #include "autonomy/task/localization/localization.hpp"
@@ -38,7 +37,6 @@
 #include "autonomy/task/navigation/navigation.hpp"
 #include "autonomy/task/navigation/navigation_client.hpp"
 #include <automsgs/task/charging.pb.h>
-#include <automsgs/task/exploration.pb.h>
 #include <automsgs/task/localization.pb.h>
 #include <automsgs/task/mapping.pb.h>
 #include <automsgs/task/navigation.pb.h>
@@ -49,6 +47,7 @@
 #include "autonomy/task/teleop/teleop.hpp"
 #include "autonomy/task/tracking/tracking.hpp"
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/std_msgs/bool.pb.h>
 
 namespace autonomy {
 namespace task {
@@ -79,7 +78,6 @@ public:
     NavigationTask::SharedPtr navigation() const { return navigation_; }
     TrackerTask::SharedPtr tracking() const { return tracking_; }
     TeleopTask::SharedPtr teleop() const { return teleop_; }
-    ExplorationTask::SharedPtr exploration() const { return exploration_; }
     ChargingTask::SharedPtr charging() const { return charging_; }
     MappingTask::SharedPtr mapping() const { return mapping_; }
     LocalizationTask::SharedPtr localization() const { return localization_; }
@@ -87,7 +85,6 @@ public:
     bool Submit(const proto::NavigationGoal& goal);
     bool Submit(const proto::TrackerGoal& goal);
     bool Submit(const proto::TeleopGoal& goal);
-    bool Submit(const proto::ExplorationGoal& goal);
     bool Submit(const proto::ChargingGoal& goal);
     bool Submit(const proto::MappingGoal& goal);
     bool Submit(const proto::LocalizationGoal& goal);
@@ -123,9 +120,6 @@ private:
     static bool NeedsSlot(const proto::LocalizationGoal& goal) {
         return goal.command() == proto::LOCALIZATION_CMD_START ||
                goal.command() == proto::LOCALIZATION_CMD_SWITCH_ALGORITHM;
-    }
-    static bool NeedsSlot(const proto::ExplorationGoal& goal) {
-        return goal.command() == proto::EXPLORATION_CMD_START;
     }
 
     template <typename TaskT, typename GoalT>
@@ -204,7 +198,6 @@ private:
     NavigationTask::SharedPtr navigation_;
     TrackerTask::SharedPtr tracking_;
     TeleopTask::SharedPtr teleop_;
-    ExplorationTask::SharedPtr exploration_;
     ChargingTask::SharedPtr charging_;
     MappingTask::SharedPtr mapping_;
     LocalizationTask::SharedPtr localization_;
@@ -225,12 +218,24 @@ private:
     std::atomic<bool> goal_pose_worker_busy_{false};
     common::Navigator::SharedPtr navigator_;
 
+    std::shared_ptr<
+        autolink::Reader<::automsgs::msgs::geometry_msgs::PoseStamped>>
+        exploration_waypoint_reader_;
+    std::shared_ptr<autolink::Reader<::automsgs::msgs::std_msgs::Bool>>
+        exploration_finished_reader_;
+    std::shared_ptr<autolink::Writer<::automsgs::msgs::std_msgs::Bool>>
+        exploration_waypoint_reached_writer_;
+    std::thread exploration_monitor_thread_;
+    std::atomic<bool> exploration_monitor_running_{false};
+    std::atomic<bool> exploration_nav_pending_{false};
+    std::atomic<bool> exploration_was_active_{false};
+    double last_exploration_waypoint_x_{0.0};
+    double last_exploration_waypoint_y_{0.0};
+
     common::GoalIngress<proto::TeleopGoal, proto::TeleopFeedback>
         teleop_ingress_;
     common::GoalIngress<proto::TrackerGoal, proto::TrackerFeedback>
         tracking_ingress_;
-    common::GoalIngress<proto::ExplorationGoal, proto::ExplorationFeedback>
-        exploration_ingress_;
     common::GoalIngress<proto::ChargingGoal, proto::ChargingFeedback>
         charging_ingress_;
     common::GoalIngress<proto::MappingGoal, proto::MappingFeedback>

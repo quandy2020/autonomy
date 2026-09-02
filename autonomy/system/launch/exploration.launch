@@ -1,0 +1,58 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Closed-loop exploration stack: planning + control + task + perception.
+
+  Data flow:
+    perception --/exploration/waypoint--> task (NavigationGoal)
+    perception <--/exploration/waypoint_reached-- task
+
+  Prerequisites:
+    - config/exploration_autonomy.lua
+    - config/task/* (BT XML)
+    - PATH: build/autonomy/bin
+    - Optional: AUTONOMY_BT_PLUGIN_PATH=build/lib
+
+  Usage (from src/autonomy):
+    export PATH=$PWD/../../build/autonomy/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/system/launch
+    autolink launch start exploration.launch
+
+  Do not run together with autonomy/system/launch/autonomy.launch (overlaps
+  planning/control/task). Do not run system/main.cpp monolith at the same time.
+-->
+<autolink>
+  <module>
+    <name>monitor</name>
+    <type>binary</type>
+    <process_name>monitor --configuration_directory=config --configuration_basename=system/monitor.lua</process_name>
+  </module>
+  <module>
+    <name>planning</name>
+    <type>binary</type>
+    <process_name>autonomy.planning --configuration_directory=config --configuration_basename=exploration_autonomy.lua</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>control</name>
+    <type>binary</type>
+    <process_name>autonomy.control --configuration_directory=config --configuration_basename=exploration_autonomy.lua</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>task</name>
+    <type>binary</type>
+    <process_name>autonomy.task --config_directory=config</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>perception</name>
+    <type>binary</type>
+    <process_name>autonomy.perception --configuration_directory=config --configuration_basename=exploration_autonomy.lua</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

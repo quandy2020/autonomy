@@ -22,7 +22,7 @@ flowchart TB
     BS["<div style='width:18rem;height:4.5rem;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.35;font-size:13px;box-sizing:border-box;padding:0.45rem 0.65rem;overflow:hidden;background:#e0f2f2;border-radius:6px;color:#1a4d6e'>L2<br/>BridgeServer</div>"]
     TX["<div style='width:18rem;height:4.5rem;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.35;font-size:13px;box-sizing:border-box;padding:0.45rem 0.65rem;overflow:hidden;background:#fff8e1;border-radius:6px;color:#e65100'>L3<br/>GrpcBridgeServer / MqttBridgeServer</div>"]
     HD["<div style='width:18rem;height:4.5rem;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.35;font-size:13px;box-sizing:border-box;padding:0.45rem 0.65rem;overflow:hidden;background:#f3e5f5;border-radius:6px;color:#6a1b9a'>L3<br/>Handler + FSM/BT</div>"]
-    Stack["<div style='width:18rem;height:4.5rem;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.35;font-size:13px;box-sizing:border-box;padding:0.45rem 0.65rem;overflow:hidden;background:#e8f5e9;border-radius:6px;color:#2e7d32'>L4<br/>Navigator · Exploration · Map</div>"]
+    Stack["<div style='width:18rem;height:4.5rem;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.35;font-size:13px;box-sizing:border-box;padding:0.45rem 0.65rem;overflow:hidden;background:#e8f5e9;border-radius:6px;color:#2e7d32'>L4<br/>Navigator · Map</div>"]
 
     Client -->|"RPC 下行"| BS --> TX --> HD --> Stack
     Stack -.-> HD -.-> TX -.-> BS -.->|"响应上行"| Client
@@ -57,7 +57,6 @@ flowchart TB
 | Command | `SendNavigationCommand` | `NavigationCommandRequest` → stream `NavigationCommandResponse` | Unary → Stream | [rpcs/07](rpcs/07_navigation_command.md) |
 | | `SendFollowCommand` | `FollowCommandRequest` → stream `FollowCommandResponse` | Unary → Stream | [rpcs/09](rpcs/09_follow_command.md) |
 | | `SendTeleopCommand` | stream `TeleopCommandRequest` → stream `TeleopCommandResponse` | Stream ↔ Stream | [rpcs/10](rpcs/10_teleop_command.md) |
-| | `SendExplorationCommand` | `ExplorationCommandRequest` → stream `ExplorationCommandResponse` | Unary → Stream | [rpcs/08](rpcs/08_exploration_command.md) |
 | | `SendDockCommand` | `DockCommandRequest` → stream `DockCommandResponse` | Unary → Stream | [rpcs/11](rpcs/11_dock_command.md) |
 | | `SendMapCommand` | `MapCommandRequest` → stream `MapCommandResponse` | Unary → Stream | [rpcs/12](rpcs/12_map_command.md) |
 

@@ -1,0 +1,107 @@
+// RGB-D exploration options (TARE + FAR).
+syntax = "proto3";
+
+package autonomy.perception.exploration.proto;
+
+message ExplorationOptions {
+  string map_frame = 1;
+  double default_area_half_extent_m = 2;
+  double completion_coverage_ratio = 3;
+
+  double grid_cell_size_m = 10;
+  int32 grid_cols = 11;
+  int32 grid_rows = 12;
+  int32 grid_nearby_radius = 13;
+
+  double sensor_range_m = 20;
+  double camera_height_m = 21;
+  double depth_min_m = 22;
+  double depth_max_m = 23;
+  int32 depth_stride = 24;
+  double ground_height_tol_m = 25;
+
+  double costmap_resolution_m = 30;
+  int32 costmap_size_cells = 31;
+  double collision_radius_m = 32;
+
+  int32 viewpoint_num_x = 40;
+  int32 viewpoint_num_y = 41;
+  double viewpoint_resolution_m = 42;
+  int32 viewpoint_yaw_samples = 43;
+
+  double keypose_spacing_m = 50;
+  double keypose_connect_dist_m = 51;
+
+  double lookahead_distance_m = 60;
+  bool use_line_of_sight_lookahead = 61;
+
+  int32 min_frontier_cluster_size = 70;
+  int32 tsp_exact_max_nodes = 71;
+
+  bool rush_home = 80;
+  double at_home_dist_m = 81;
+
+  string explorer_backend = 90;
+  double far_connect_dist_m = 91;
+  int32 far_contour_stride_cells = 92;
+  bool far_attempt_unknown = 93;
+
+  double far3d_voxel_dim_m = 100;
+  int32 far3d_contour_thresh = 101;
+  int32 far3d_contour_blur_size = 102;
+  int32 far3d_graph_pool_size = 103;
+  int32 far3d_edge_finalize_thred = 104;
+  double far3d_height_margin_m = 105;
+  double far3d_position_filter_m = 106;
+  double far3d_pillar_perimeter_m = 107;
+  int32 far3d_dumper_thred = 108;
+
+  // TARE extended
+  int32 viewpoint_num_z = 109;
+  double viewpoint_resolution_z_m = 110;
+  bool use_momentum = 111;
+  double momentum_dist_m = 112;
+  int32 momentum_thred = 113;
+  int32 local_path_optimization_iters = 114;
+  bool use_frontier_points = 115;
+  bool use_terrain_height = 116;
+  double nogo_half_extent_m = 117;
+  double point_cloud_voxel_m = 118;
+  int32 point_cloud_min_points_per_voxel = 119;
+  double lidar_h_res_deg = 120;
+  double lidar_v_res_deg = 121;
+  bool tsp_use_two_opt = 122;
+
+  // FAR extended
+  bool far_is_autoswitch = 123;
+  bool far_viewpoint_extend = 124;
+  double far_local_planner_range_m = 125;
+  int32 far_path_momentum_thred = 126;
+  bool far_is_static_env = 127;
+  double far_converge_dist_m = 128;
+  double far_terrain_grid_res_m = 129;
+  double far_scan_voxel_m = 130;
+
+  // Boundaries + TSP backend
+  string boundary_ply_path = 131;
+  string nogo_ply_path = 132;
+  bool tsp_use_ortools = 133;
+  bool use_lidar_primary = 134;
+  string boundary_vgh_path = 135;
+
+  // Prior map fusion + FAR goal scoring + 2D persistent VG
+  bool use_prior_map = 136;
+  string prior_map_topic = 137;
+  int32 prior_map_lethal_threshold = 138;
+  int32 far2d_graph_pool_size = 139;
+  int32 far2d_dumper_thred = 140;
+  double far_goal_distance_weight = 141;
+  double far_goal_unknown_weight = 142;
+  bool publish_vg_markers = 143;
+
+  bool use_planner_costmap = 144;
+  string planner_costmap_topic = 145;
+  int32 planner_costmap_lethal_threshold = 146;
+  bool far_use_trajectory_edges = 147;
+  int32 far_trajectory_node_count = 148;
+}

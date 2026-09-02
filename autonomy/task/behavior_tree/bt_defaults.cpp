@@ -25,8 +25,6 @@ const proto::TaskBehaviorTreeProfile* ProtoProfile(
         return trees.has_tracking() ? &trees.tracking() : nullptr;
     case RobotTaskType::ROBOT_TASK_TELEOP:
         return trees.has_teleop() ? &trees.teleop() : nullptr;
-    case RobotTaskType::ROBOT_TASK_EXPLORATION:
-        return trees.has_exploration() ? &trees.exploration() : nullptr;
     case RobotTaskType::ROBOT_TASK_DOCK:
         return trees.has_charging() ? &trees.charging() : nullptr;
     case RobotTaskType::ROBOT_TASK_MAP:
@@ -84,9 +82,6 @@ void BtDefaults::Apply(proto::TaskServerOptions* options)
 
     SetProfile(bt->mutable_teleop(), "task/behavior_tree/teleop/teleop.xml",
                nullptr, 50);
-
-    SetProfile(bt->mutable_exploration(),
-               "task/behavior_tree/exploration/explore.xml", nullptr, 10);
 
     SetProfile(bt->mutable_charging(), "task/behavior_tree/charging/dock.xml",
                nullptr, 10);

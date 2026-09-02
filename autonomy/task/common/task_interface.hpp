@@ -23,7 +23,6 @@
 #include <automsgs/msgs/vehicle_msgs/robot_task_status.pb.h>
 #include <automsgs/msgs/vehicle_msgs/robot_task_type.pb.h>
 #include <automsgs/task/charging.pb.h>
-#include <automsgs/task/exploration.pb.h>
 #include <automsgs/task/localization.pb.h>
 #include <automsgs/task/mapping.pb.h>
 #include <automsgs/task/navigation.pb.h>
@@ -187,12 +186,6 @@ using TeleopTaskInterface = TypedTaskInterface<
     ::autonomy::task::proto::TeleopGoal,
     ::autonomy::task::proto::TeleopFeedback,
     ::autonomy::task::proto::TeleopResult>;
-
-// exploration
-using ExplorationTaskInterface = TypedTaskInterface<
-    ::autonomy::task::proto::ExplorationGoal,
-    ::autonomy::task::proto::ExplorationFeedback,
-    ::autonomy::task::proto::ExplorationResult>;
 
 // charging
 using ChargingTaskInterface = TypedTaskInterface<

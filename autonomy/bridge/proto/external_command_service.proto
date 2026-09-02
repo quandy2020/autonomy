@@ -261,47 +261,6 @@ message TeleopCommandResponse {
 }
 
 // =============================================================================
-// 探索建图
-// =============================================================================
-
-enum ExplorationCommand {
-  EXPLORATION_CMD_UNSPECIFIED = 0;
-  EXPLORATION_CMD_START = 1;
-  EXPLORATION_CMD_STOP = 2;
-  EXPLORATION_CMD_PAUSE = 3;
-  EXPLORATION_CMD_RESUME = 4;
-  EXPLORATION_CMD_CANCEL = 5;
-  EXPLORATION_CMD_SAVE_MAP = 6;
-  EXPLORATION_CMD_SET_AREA = 7;
-}
-
-enum ExplorationStatus {
-  EXPLORATION_STATUS_UNKNOWN = 0;
-  EXPLORATION_STATUS_IDLE = 1;
-  EXPLORATION_STATUS_EXPLORING = 2;
-  EXPLORATION_STATUS_PAUSED = 3;
-  EXPLORATION_STATUS_COMPLETED = 4;
-  EXPLORATION_STATUS_FAILED = 5;
-  EXPLORATION_STATUS_CANCELED = 6;
-}
-
-message ExplorationCommandRequest {
-  RequestHeader header = 1;
-  ExplorationCommand command = 2;
-  oneof params {
-    automsgs.msgs.geometry_msgs.Polygon area = 3;
-    string map_name = 4;
-  }
-}
-
-message ExplorationCommandResponse {
-  CommandAck ack = 1;
-  ExplorationStatus status = 2;
-  float explored_area = 3;
-  float exploration_progress = 4;
-}
-
-// =============================================================================
 // 自动回充 / 对接
 // =============================================================================
 
@@ -423,8 +382,6 @@ service AutonomyService {
       returns (stream FollowCommandResponse);
   rpc SendTeleopCommand(stream TeleopCommandRequest)
       returns (stream TeleopCommandResponse);
-  rpc SendExplorationCommand(ExplorationCommandRequest)
-      returns (stream ExplorationCommandResponse);
   rpc SendDockCommand(DockCommandRequest)
       returns (stream DockCommandResponse);
   rpc SendMapCommand(MapCommandRequest)

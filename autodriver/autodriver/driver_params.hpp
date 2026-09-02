@@ -38,6 +38,8 @@ std::uint32_t ParseCanId(const DriverParams& params, const std::string& key,
                          std::uint32_t default_value);
 double ParseDouble(const DriverParams& params, const std::string& key,
                    double default_value);
+bool ParseBool(const DriverParams& params, const std::string& key,
+               bool default_value);
 
 }  // namespace hardware
 }  // namespace autodriver

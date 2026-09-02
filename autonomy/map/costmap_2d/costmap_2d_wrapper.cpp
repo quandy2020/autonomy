@@ -42,6 +42,8 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "autolink/node/node.hpp"
+#include "autolink/node/reader_base.hpp"
 #include "autonomy/common/logging.hpp"
 
 namespace {
@@ -387,9 +389,9 @@ void Costmap2DWrapper::applyLoadedOccupancyGrid(
     }
 
     if (!fed_to_static_layer) {
-        Costmap2D loaded_grid(grid);
-        *layered_costmap_->getCostmap() = loaded_grid;
-        AINFO << "Applied loaded map directly to master costmap";
+        // Rolling costmaps (no static_layer plugin) must not be overwritten by /map.
+        ADEBUG << "No StaticLayer plugin; ignore external OccupancyGrid";
+        return;
     }
 
     if (plugins != nullptr && !plugins->empty()) {
@@ -550,6 +552,8 @@ void Costmap2DWrapper::Start() {
 
 void Costmap2DWrapper::Stop() {
     stop_updates_ = true;
+    sensor_readers_.clear();
+    sensor_readers_attached_ = false;
 
     // 等待更新线程退出
     if (map_update_thread_ && map_update_thread_->joinable()) {
@@ -815,6 +819,67 @@ void Costmap2DWrapper::publishMap() {
     if (callback) {
         callback(snapshot);
     }
+}
+
+void Costmap2DWrapper::AttachSensorReaders(
+    const std::shared_ptr<autolink::Node>& node) {
+    if (!node || sensor_readers_attached_ || !options_.has_obstacle_layer()) {
+        return;
+    }
+    const auto& sources = options_.obstacle_layer().sensor_sources();
+    if (sources.empty()) {
+        return;
+    }
+
+    Costmap2DWrapper* self = this;
+    for (const auto& entry : sources) {
+        const auto& src = entry.second;
+        const std::string topic =
+            src.topic().empty() ? entry.first : src.topic();
+        const std::string data_type =
+            src.data_type().empty() ? "PointCloud2" : src.data_type();
+
+        if (data_type == "LaserScan") {
+            auto reader =
+                node->CreateReader<automsgs::msgs::sensor_msgs::LaserScan>(
+                    topic,
+                    [self](const std::shared_ptr<
+                           automsgs::msgs::sensor_msgs::LaserScan>& msg) {
+                        if (msg) {
+                            self->feedLaserScan(*msg);
+                        }
+                    });
+            if (reader) {
+                sensor_readers_.push_back(reader);
+                AINFO << "Costmap2D: LaserScan on " << topic;
+            } else {
+                AWARN << "Costmap2D: failed to subscribe LaserScan "
+                      << topic;
+            }
+        } else if (data_type == "PointCloud2") {
+            auto reader =
+                node->CreateReader<automsgs::msgs::sensor_msgs::PointCloud2>(
+                    topic,
+                    [self](const std::shared_ptr<
+                           automsgs::msgs::sensor_msgs::PointCloud2>& msg) {
+                        if (msg) {
+                            self->feedPointCloud2(*msg);
+                        }
+                    });
+            if (reader) {
+                sensor_readers_.push_back(reader);
+                AINFO << "Costmap2D: PointCloud2 on " << topic;
+            } else {
+                AWARN << "Costmap2D: failed to subscribe PointCloud2 "
+                      << topic;
+            }
+        } else {
+            AWARN << "Costmap2D: unsupported sensor data_type " << data_type
+                  << " on " << topic;
+        }
+    }
+
+    sensor_readers_attached_ = !sensor_readers_.empty();
 }
 
 void Costmap2DWrapper::feedLaserScan(

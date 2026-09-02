@@ -79,7 +79,13 @@ cd "${WORKSPACE}"
 
 CONFIG="${CONFIG:-config/default.yaml}"
 if [[ "${CONFIG}" != /* ]]; then
-  CONFIG="${AUTOSIM}/${CONFIG}"
+  if [[ -f "${AUTOSIM}/${CONFIG}" ]]; then
+    CONFIG="${AUTOSIM}/${CONFIG}"
+  elif [[ -f "${WORKSPACE}/${CONFIG}" ]]; then
+    CONFIG="${WORKSPACE}/${CONFIG}"
+  else
+    CONFIG="${AUTOSIM}/${CONFIG}"
+  fi
 fi
 MODE="${1:-sim}"
 
