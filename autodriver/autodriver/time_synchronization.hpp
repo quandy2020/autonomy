@@ -47,8 +47,14 @@ public:
     autolink::Time ToHostTime(const SensorId& id,
                               const autolink::Time& device) const;
 
+    /**
+     * @brief Clears all per-sensor offset estimates.
+     */
     void Reset();
 
+    /**
+     * @brief Returns the stored host-minus-device offset in nanoseconds.
+     */
     std::int64_t OffsetNs(const SensorId& id) const;
 
 private:

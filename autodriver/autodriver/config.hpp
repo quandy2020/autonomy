@@ -131,8 +131,14 @@ struct Config {
     // All configured sensor instances.
     std::vector<Sensor> sensors;
 
+    /**
+     * @brief Returns true when two or more sensors share the same id.
+     */
     bool HasDuplicateId() const;
 
+    /**
+     * @brief Returns the sensor id whose match rule fits the observed device.
+     */
     SensorId FindId(const DeviceMatch& observed) const;
 };
 

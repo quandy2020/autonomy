@@ -86,13 +86,6 @@ bool MatchDevice(const DeviceMatch& observed, const DeviceMatch& rule) {
            FieldMatches(rule.serial, observed.serial, false);
 }
 
-/**
- * @brief Returns true when two or more sensors share the same id.
- */
-    /**
-     * @brief Detect duplicate sensor ids in the configuration.
-     * @return True when two or more sensors share the same id.
-     */
 bool Config::HasDuplicateId() const {
     // Tracks sensor ids seen so far during duplicate detection.
     std::unordered_set<SensorId> seen;
@@ -105,14 +98,6 @@ bool Config::HasDuplicateId() const {
     return false;
 }
 
-/**
- * @brief Returns the sensor id whose match rule fits the observed device.
- */
-    /**
-     * @brief Map a hotplug event to the matching sensor id, if any.
-     * @param observed Device identity from a udev event.
-     * @return Matching sensor id, or an empty string when no rule matches.
-     */
 SensorId Config::FindId(const DeviceMatch& observed) const {
     for (const Sensor& sensor : sensors) {
         if (MatchDevice(observed, sensor.match)) {

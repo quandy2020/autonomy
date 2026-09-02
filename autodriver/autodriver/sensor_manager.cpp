@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-/**
- * @file
- * @brief SensorManager implementation: plugin loading, udev hotplug, sample dispatch.
- */
-
 #include "autodriver/sensor_manager.hpp"
 
 #include <string>
@@ -65,25 +60,13 @@ std::string NativeLibraryName(std::string name) {
 
 }  // namespace
 
-/**
- * @brief Default-constructs a manager with an empty config.
- */
 SensorManager::SensorManager() : SensorManager(Config{}) {}
 
-/**
- * @brief Constructs a manager bound to the given sensor configuration.
- */
 SensorManager::SensorManager(Config config)
     : config_(std::move(config)), hub_(config_.alignment.options) {}
 
-/**
- * @brief Stops the manager and detaches all sensors.
- */
 SensorManager::~SensorManager() { Stop(); }
 
-/**
- * @brief Validates config and marks the manager as initialized.
- */
 bool SensorManager::Initialize() {
     WriteLock lock(lock_);
     if (initialized_) {
@@ -97,17 +80,11 @@ bool SensorManager::Initialize() {
     return true;
 }
 
-/**
- * @brief Registers the downstream consumer for raw or aligned samples.
- */
 void SensorManager::SetSink(SampleSink* sink) {
     WriteLock lock(lock_);
     sink_ = sink;
 }
 
-/**
- * @brief Attaches autostart sensors, starts alignment, and udev hotplug.
- */
 bool SensorManager::Start() {
     if (!initialized_ && !Initialize()) {
         return false;
@@ -128,9 +105,6 @@ bool SensorManager::Start() {
     return true;
 }
 
-/**
- * @brief Detaches all sensors, stops the hub, and shuts down udev.
- */
 void SensorManager::Stop() {
     running_ = false;
     StopUdev();
@@ -148,9 +122,6 @@ void SensorManager::Stop() {
     hub_.Stop();
 }
 
-/**
- * @brief Loads and starts the sensor module for id if not already attached.
- */
 bool SensorManager::Attach(const SensorId& id) {
     if (!initialized_ && !Initialize()) {
         return false;
@@ -159,17 +130,11 @@ bool SensorManager::Attach(const SensorId& id) {
     return AttachLocked(id);
 }
 
-/**
- * @brief Stops and unloads the sensor module for id.
- */
 void SensorManager::Detach(const SensorId& id) {
     WriteLock lock(lock_);
     DetachLocked(id);
 }
 
-/**
- * @brief Attaches or detaches a sensor in response to a hotplug event.
- */
 void SensorManager::HandleDeviceEvent(bool added, const DeviceMatch& device) {
     const SensorId id = config_.FindId(device);
     if (id.empty()) {
@@ -182,36 +147,21 @@ void SensorManager::HandleDeviceEvent(bool added, const DeviceMatch& device) {
     }
 }
 
-/**
- * @brief Returns true while Start has been called and Stop has not.
- */
 bool SensorManager::IsRunning() const { return running_.load(); }
 
-/**
- * @brief Returns the number of currently attached sensor modules.
- */
 std::size_t SensorManager::AttachedCount() const {
     ReadLock lock(lock_);
     return modules_.size();
 }
 
-/**
- * @brief Forwards aligned snapshot callbacks to the internal hub.
- */
 void SensorManager::SetAlignedCallback(SensorHub::AlignedCallback callback) {
     hub_.SetAlignedCallback(std::move(callback));
 }
 
-/**
- * @brief Forwards per-sample callbacks to the internal hub.
- */
 void SensorManager::SetRawSampleCallback(SensorHub::RawSampleCallback callback) {
     hub_.SetRawSampleCallback(std::move(callback));
 }
 
-/**
- * @brief Routes a sample through alignment and/or the registered sink.
- */
 void SensorManager::DispatchSample(std::shared_ptr<SensorSample> sample) {
     if (!sample) {
         return;
@@ -224,9 +174,6 @@ void SensorManager::DispatchSample(std::shared_ptr<SensorSample> sample) {
     }
 }
 
-/**
- * @brief Looks up a sensor entry by id in the active config.
- */
 const Config::Sensor* SensorManager::FindSensor(const SensorId& id) const {
     for (const Config::Sensor& sensor : config_.sensors) {
         if (sensor.id == id) {
@@ -236,9 +183,6 @@ const Config::Sensor* SensorManager::FindSensor(const SensorId& id) const {
     return nullptr;
 }
 
-/**
- * @brief Resolves the native shared-library path for a sensor plugin.
- */
 std::string SensorManager::LibraryPath(const Config::Sensor& sensor) const {
     const std::string name = NativeLibraryName(sensor.library);
     const std::string dir =
@@ -249,9 +193,6 @@ std::string SensorManager::LibraryPath(const Config::Sensor& sensor) const {
     return dir + "/" + name;
 }
 
-/**
- * @brief Unloads a plugin library when no attached sensor still references it.
- */
 void SensorManager::UnloadIfUnused(const std::string& path) {
     if (path.empty()) {
         return;
@@ -266,9 +207,6 @@ void SensorManager::UnloadIfUnused(const std::string& path) {
     loaders_.erase(path);
 }
 
-/**
- * @brief Loads, initializes, and starts a sensor module; caller holds lock.
- */
 bool SensorManager::AttachLocked(const SensorId& id) {
     if (modules_.count(id) != 0) {
         return true;
@@ -331,9 +269,6 @@ bool SensorManager::AttachLocked(const SensorId& id) {
     return true;
 }
 
-/**
- * @brief Stops and removes a sensor module; caller holds lock.
- */
 void SensorManager::DetachLocked(const SensorId& id) {
     auto it = modules_.find(id);
     if (it == modules_.end()) {
@@ -353,9 +288,6 @@ void SensorManager::DetachLocked(const SensorId& id) {
     AINFO << "detached " << id;
 }
 
-/**
- * @brief Spawns the udev monitor thread when hotplug is enabled.
- */
 void SensorManager::StartUdev() {
 #ifdef AUTODRIVER_HAVE_UDEV
     if (!config_.hotplug.udev || udev_thread_.joinable()) {
@@ -365,9 +297,6 @@ void SensorManager::StartUdev() {
 #endif
 }
 
-/**
- * @brief Joins the udev monitor thread if it was started.
- */
 void SensorManager::StopUdev() {
 #ifdef AUTODRIVER_HAVE_UDEV
     if (udev_thread_.joinable()) {
@@ -376,9 +305,6 @@ void SensorManager::StopUdev() {
 #endif
 }
 
-/**
- * @brief Polls udev for device add/remove events and dispatches matches.
- */
 void SensorManager::UdevLoop() {
 #ifdef AUTODRIVER_HAVE_UDEV
     udev* udev = udev_new();
