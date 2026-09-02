@@ -51,8 +51,17 @@ namespace autodriver {
  */
 class SensorManager {
 public:
+    /**
+     * @brief Default-constructs a manager with an empty config.
+     */
+    /**
+     * @brief Constructs a manager bound to the given sensor configuration.
+     */
     SensorManager();
     explicit SensorManager(Config config);
+    /**
+     * @brief Stops the manager and detaches all sensors.
+     */
     ~SensorManager();
 
     SensorManager(const SensorManager&) = delete;
@@ -61,22 +70,49 @@ public:
      */
     SensorManager& operator=(const SensorManager&) = delete;
 
+    /**
+     * @brief Registers the downstream consumer for raw or aligned samples.
+     */
     void SetSink(SampleSink* sink);
 
+    /**
+     * @brief Validates config and marks the manager as initialized.
+     */
     bool Initialize();
 
+    /**
+     * @brief Attaches autostart sensors, starts alignment, and udev hotplug.
+     */
     bool Start();
 
+    /**
+     * @brief Detaches all sensors, stops the hub, and shuts down udev.
+     */
     void Stop();
 
+    /**
+     * @brief Loads and starts the sensor module for id if not already attached.
+     */
     bool Attach(const SensorId& id);
 
+    /**
+     * @brief Stops and unloads the sensor module for id.
+     */
     void Detach(const SensorId& id);
 
+    /**
+     * @brief Attaches or detaches a sensor in response to a hotplug event.
+     */
     void HandleDeviceEvent(bool added, const DeviceMatch& device);
 
+    /**
+     * @brief Returns true while Start has been called and Stop has not.
+     */
     bool IsRunning() const;
 
+    /**
+     * @brief Returns the number of currently attached sensor modules.
+     */
     std::size_t AttachedCount() const;
 
     /**
@@ -91,27 +127,60 @@ public:
      */
     const SensorHub& hub() const { return hub_; }
 
+    /**
+     * @brief Forwards aligned snapshot callbacks to the internal hub.
+     */
     void SetAlignedCallback(SensorHub::AlignedCallback callback);
 
+    /**
+     * @brief Forwards per-sample callbacks to the internal hub.
+     */
     void SetRawSampleCallback(SensorHub::RawSampleCallback callback);
 
 private:
+    /**
+     * @brief Looks up a sensor entry by id in the active config.
+     */
     const Config::Sensor* FindSensor(const SensorId& id) const;
 
+    /**
+     * @brief Resolves the native shared-library path for a sensor plugin.
+     */
     std::string LibraryPath(const Config::Sensor& sensor) const;
 
+    /**
+     * @brief Unloads a plugin library when no attached sensor still references it.
+     */
     void UnloadIfUnused(const std::string& path);
 
+    /**
+     * @brief Loads, initializes, and starts a sensor module; caller holds lock.
+     */
     bool AttachLocked(const SensorId& id);
 
+    /**
+     * @brief Stops and removes a sensor module; caller holds lock.
+     */
     void DetachLocked(const SensorId& id);
 
+    /**
+     * @brief Spawns the udev monitor thread when hotplug is enabled.
+     */
     void StartUdev();
 
+    /**
+     * @brief Joins the udev monitor thread if it was started.
+     */
     void StopUdev();
 
+    /**
+     * @brief Polls udev for device add/remove events and dispatches matches.
+     */
     void UdevLoop();
 
+    /**
+     * @brief Routes a sample through alignment and/or the registered sink.
+     */
     void DispatchSample(std::shared_ptr<SensorSample> sample);
 
     // Process configuration loaded at construction.

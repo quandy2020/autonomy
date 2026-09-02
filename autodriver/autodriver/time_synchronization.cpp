@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-/**
- * @file
- * @brief TimeSync offset estimation implementation.
- */
-
 #include "autodriver/time_synchronization.hpp"
 
 #include <cmath>
@@ -77,17 +72,11 @@ autolink::Time TimeSync::ToHostTime(const SensorId& id,
     return device + autolink::Duration(it->second.ns);
 }
 
-/**
- * @brief Clears all per-sensor offset estimates.
- */
 void TimeSync::Reset() {
     WriteLock lock(lock_);
     offsets_.clear();
 }
 
-/**
- * @brief Returns the stored host-minus-device offset in nanoseconds.
- */
 std::int64_t TimeSync::OffsetNs(const SensorId& id) const {
     ReadLock lock(lock_);
     const auto it = offsets_.find(id);
