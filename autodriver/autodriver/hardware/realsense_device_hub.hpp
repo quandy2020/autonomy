@@ -159,6 +159,9 @@ using RealSenseImuCallback = std::function<void(
  */
 class RealSenseDeviceHub {
  public:
+    /**
+     * @brief Returns a shared hub for the device key, creating one if needed.
+     */
     static std::shared_ptr<RealSenseDeviceHub> Acquire(
         const hardware::DriverParams& params);
 
@@ -167,10 +170,16 @@ class RealSenseDeviceHub {
      */
     ~RealSenseDeviceHub();
 
+    /**
+     * @brief Registers a video stream callback and restarts the hub if running.
+     */
     std::uint64_t SubscribeVideo(hardware::realsense::StreamKind stream, int width,
                                  int height, int fps,
                                  RealSenseVideoCallback callback);
 
+    /**
+     * @brief Registers a point-cloud callback and restarts the hub if running.
+     */
     std::uint64_t SubscribePointCloud(int width, int height, int fps,
                                       RealSensePointCloudCallback callback);
 

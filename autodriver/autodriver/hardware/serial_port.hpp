@@ -68,6 +68,9 @@ public:
    */
   bool IsOpen() const;
 
+  /**
+   * @brief Reads up to max_bytes with a select-based timeout.
+   */
   std::size_t Read(
     std::uint8_t * buffer,
     std::size_t max_bytes,

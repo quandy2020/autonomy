@@ -117,9 +117,6 @@ bool SerialPort::IsOpen() const
   return fd_ >= 0;
 }
 
-/**
- * @brief Reads up to max_bytes with a select-based timeout.
- */
 std::size_t SerialPort::Read(
   std::uint8_t * buffer,
   std::size_t max_bytes,

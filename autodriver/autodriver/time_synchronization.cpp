@@ -29,9 +29,6 @@ using WriteLock = autolink::base::WriteLockGuard<AtomicRWLock>;
 
 }  // namespace
 
-/**
- * @brief Updates and returns host-aligned time for a device timestamp.
- */
 autolink::Time TimeSync::Observe(const SensorId& id, const autolink::Time& device,
                                  const autolink::Time& host) {
     /**
@@ -51,17 +48,11 @@ autolink::Time TimeSync::Observe(const SensorId& id, const autolink::Time& devic
     return device + autolink::Duration(offset.ns);
 }
 
-/**
- * @brief Alias for Observe; records a host-device time pair.
- */
 void TimeSync::Update(const SensorId& id, const autolink::Time& device,
                       const autolink::Time& host) {
     Observe(id, device, host);
 }
 
-/**
- * @brief Converts a device timestamp to host time using the stored offset.
- */
 autolink::Time TimeSync::ToHostTime(const SensorId& id,
                                     const autolink::Time& device) const {
     ReadLock lock(lock_);

@@ -55,6 +55,9 @@ struct WitMotionState
 class WitMotionParser
 {
 public:
+  /**
+   * @brief Stores accel and gyro scale factors for WIT-motion decoding.
+   */
   explicit WitMotionParser(
     double accel_scale = 16.0 * 9.80665 / 32768.0,
     double gyro_scale = 2000.0 * 3.141592653589793 / 180.0 / 32768.0);
