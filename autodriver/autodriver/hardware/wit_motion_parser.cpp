@@ -58,9 +58,6 @@ std::uint8_t WitChecksum(const std::uint8_t * data)
 
 }  // namespace
 
-/**
- * @brief Stores accel and gyro scale factors for WIT-motion decoding.
- */
 WitMotionParser::WitMotionParser(double accel_scale, double gyro_scale)
 : accel_scale_(accel_scale),
   gyro_scale_(gyro_scale)

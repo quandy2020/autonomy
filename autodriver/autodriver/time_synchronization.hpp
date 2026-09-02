@@ -38,12 +38,21 @@ namespace autodriver {
  */
 class TimeSync {
 public:
+    /**
+     * @brief Updates and returns host-aligned time for a device timestamp.
+     */
     autolink::Time Observe(const SensorId& id, const autolink::Time& device,
                            const autolink::Time& host);
 
+    /**
+     * @brief Alias for Observe; records a host-device time pair.
+     */
     void Update(const SensorId& id, const autolink::Time& device,
                 const autolink::Time& host);
 
+    /**
+     * @brief Converts a device timestamp to host time using the stored offset.
+     */
     autolink::Time ToHostTime(const SensorId& id,
                               const autolink::Time& device) const;
 

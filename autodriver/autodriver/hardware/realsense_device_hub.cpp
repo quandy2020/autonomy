@@ -739,9 +739,6 @@ RealSenseDeviceHub::RealSenseDeviceHub(const hardware::DriverParams& params)
 
 RealSenseDeviceHub::~RealSenseDeviceHub() { Stop(); }
 
-/**
- * @brief Returns a shared hub for the device key, creating one if needed.
- */
 std::shared_ptr<RealSenseDeviceHub> RealSenseDeviceHub::Acquire(
     const hardware::DriverParams& params) {
     const std::string key = DeviceKey(params);
@@ -760,9 +757,6 @@ std::shared_ptr<RealSenseDeviceHub> RealSenseDeviceHub::Acquire(
     return hub;
 }
 
-/**
- * @brief Registers a video stream callback and restarts the hub if running.
- */
 std::uint64_t RealSenseDeviceHub::SubscribeVideo(
     const hardware::realsense::StreamKind stream, const int width,
     const int height, const int fps, RealSenseVideoCallback callback) {
@@ -786,9 +780,6 @@ std::uint64_t RealSenseDeviceHub::SubscribeVideo(
     return id;
 }
 
-/**
- * @brief Registers a point-cloud callback and restarts the hub if running.
- */
 std::uint64_t RealSenseDeviceHub::SubscribePointCloud(
     const int width, const int height, const int fps,
     RealSensePointCloudCallback callback) {

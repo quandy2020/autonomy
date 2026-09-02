@@ -31,9 +31,6 @@ void SampleBuffer::Push(std::shared_ptr<SensorSample> sample) {
     }
 }
 
-/**
- * @brief Returns the newest sample whose host time is at or before time.
- */
 std::shared_ptr<SensorSample> SampleBuffer::LatestAtOrBefore(
     const autolink::Time& time) const {
     for (auto it = samples_.rbegin(); it != samples_.rend(); ++it) {
