@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ * @brief Autolink Writer setup and sample-to-protobuf conversion.
+ */
+
 #include "autodriver/bridge/publisher.hpp"
 
 #include <string_view>
@@ -38,8 +43,10 @@ using AtomicRWLock = autolink::base::AtomicRWLock;
 using ReadLock = autolink::base::ReadLockGuard<AtomicRWLock>;
 using WriteLock = autolink::base::WriteLockGuard<AtomicRWLock>;
 
+/** @brief Default Autolink writer queue depth for sensor publishers. */
 constexpr int kWriterDepth = 10;
 
+/** @brief Builds RoleAttributes with keep-last QoS for a channel name. */
 autolink::proto::RoleAttributes WriterAttr(std::string_view channel) {
     autolink::proto::RoleAttributes attr;
     attr.set_channel_name(std::string(channel));
@@ -49,6 +56,7 @@ autolink::proto::RoleAttributes WriterAttr(std::string_view channel) {
     return attr;
 }
 
+/** @brief Returns configured channels or a default derived from sensor metadata. */
 std::vector<std::string> ResolvePublishChannels(
     const Config::Sensor& sensor, SensorType type) {
     if (!sensor.channels.empty()) {
@@ -60,14 +68,17 @@ std::vector<std::string> ResolvePublishChannels(
 
 }  // namespace
 
+/** @brief Stores the Autolink node name used for writers. */
 Publisher::Publisher(std::string node_name) : node_name_(std::move(node_name)) {}
 
+/** @brief Tears down all writers and the Autolink node. */
 Publisher::~Publisher() {
     WriteLock lock(lock_);
     writers_.clear();
     node_.reset();
 }
 
+/** @brief Creates the Autolink node if not already present. */
 bool Publisher::Initialize() {
     if (node_) {
         return true;
@@ -80,6 +91,7 @@ bool Publisher::Initialize() {
     return true;
 }
 
+/** @brief Opens protobuf writers for a newly attached sensor. */
 bool Publisher::OnAttach(const Config::Sensor& sensor, SensorType type) {
     if (!Initialize()) {
         return false;
@@ -104,15 +116,18 @@ bool Publisher::OnAttach(const Config::Sensor& sensor, SensorType type) {
     return false;
 }
 
+/** @brief Removes writers when a sensor detaches. */
 void Publisher::OnDetach(const SensorId& id) {
     WriteLock lock(lock_);
     writers_.erase(id);
 }
 
+/** @brief Converts a sample to protobuf and writes it to the sensor channel. */
 void Publisher::OnSample(std::shared_ptr<SensorSample> sample) {
     if (!sample) {
         return;
     }
+    /** @brief Per-sensor write callback resolved under a read lock. */
     WriteFn write;
     {
         ReadLock lock(lock_);
@@ -125,6 +140,7 @@ void Publisher::OnSample(std::shared_ptr<SensorSample> sample) {
     write(sample);
 }
 
+/** @brief Opens image and optional CameraInfo writers for a camera sensor. */
 bool Publisher::OpenCameraWriter(const Config::Sensor& sensor) {
     using Traits = SensorTraits<SensorType::kCamera>;
     using Sample = CameraFrame;
@@ -206,6 +222,7 @@ bool Publisher::OpenCameraWriter(const Config::Sensor& sensor) {
     return true;
 }
 
+/** @brief Opens typed protobuf writers and registers a multi-channel fanout. */
 template <SensorType kType>
 bool Publisher::OpenWriter(const Config::Sensor& sensor) {
     using Traits = SensorTraits<kType>;

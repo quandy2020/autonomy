@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ * @brief Stable per-sensor instance identifier.
+ */
+
 #ifndef AUTODRIVER_SENSOR_ID_HPP_
 #define AUTODRIVER_SENSOR_ID_HPP_
 
@@ -21,7 +26,11 @@
 
 namespace autodriver {
 
-// Stable instance id, e.g. "imu/serial" or "lidar/front".
+/**
+ * @brief Stable instance id, e.g. "imu/torso" or "lidar/front".
+ *
+ * Used as a map key, topic prefix, and frame identifier throughout autodriver.
+ */
 using SensorId = std::string;
 
 }  // namespace autodriver

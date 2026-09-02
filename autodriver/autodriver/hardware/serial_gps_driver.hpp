@@ -35,7 +35,7 @@ namespace autodriver {
 namespace hardware {
 
 /**
- * @class SerialGpsDriver
+ * @class autodriver::hardware::SerialGpsDriver
  * @brief Reads NMEA 0183 GGA/RMC sentences from a serial GNSS module.
  *
  * Required params: device (/dev/ttyUSB0). Optional: baud (115200).
@@ -43,28 +43,87 @@ namespace hardware {
 class SerialGpsDriver : public SensorDriver
 {
 public:
+  /**
+   * @brief Constructor for autodriver::hardware::SerialGpsDriver
+   * @param id Sensor identifier
+   * @param params Driver configuration parameters
+   */
   SerialGpsDriver(SensorId id, DriverParams params);
+
+  /**
+   * @brief Destructor for autodriver::hardware::SerialGpsDriver
+   */
   ~SerialGpsDriver() override;
 
+  /**
+   * @brief Report sensor type
+   * @return SensorType::kGps
+   */
   SensorType GetType() const override { return SensorType::kGps; }
+
+  /**
+   * @brief Return this driver's sensor identifier
+   * @return Sensor id assigned at construction
+   */
   const SensorId & GetSensorId() const override { return id_; }
+
+  /**
+   * @brief Open the serial port and start the read thread
+   * @return True on success
+   */
   bool Start() override;
+
+  /**
+   * @brief Stop the read thread and close the serial port
+   */
   void Stop() override;
+
+  /**
+   * @brief Whether the driver is actively reading
+   * @return True while running
+   */
   bool IsRunning() const override;
+
+  /**
+   * @brief Register callback invoked for each parsed GPS fix
+   * @param callback Sample delivery callback
+   */
   void SetSampleCallback(SampleCallback callback) override;
 
 private:
+  /**
+   * @brief Background loop that assembles NMEA lines and emits fixes
+   */
   void ReadLoop();
 
+  /** @brief Sensor identifier for this driver instance. */
   SensorId id_;
+
+  /** @brief Parsed driver parameters from configuration. */
   DriverParams params_;
+
+  /** @brief Serial port connected to the GNSS module. */
   io::SerialPort port_;
+
+  /** @brief User callback for delivered GPS samples. */
   SampleCallback callback_;
+
+  /** @brief True while Start() succeeded and Stop() has not been called. */
   std::atomic<bool> running_{false};
+
+  /** @brief Worker thread running ReadLoop(). */
   std::thread worker_;
+
+  /** @brief Partial NMEA sentence accumulator between reads. */
   std::string line_buffer_;
 };
 
+/**
+ * @brief Factory used by GpsModule.
+ * @param id Sensor identifier
+ * @param params Driver configuration parameters
+ * @return Shared sensor driver instance
+ */
 std::shared_ptr<SensorDriver> CreateSerialGpsDriver(
   const SensorId & id,
   const DriverParams & params);

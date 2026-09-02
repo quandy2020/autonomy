@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ * @brief Multi-sensor snapshot at a common alignment time.
+ */
+
 #ifndef AUTODRIVER_ALIGNED_SNAPSHOT_HPP_
 #define AUTODRIVER_ALIGNED_SNAPSHOT_HPP_
 
@@ -28,10 +33,22 @@
 
 namespace autodriver {
 
+/**
+ * @struct autodriver::AlignedSnapshot
+ * @brief One sample per sensor id, chosen near a shared host timestamp.
+ */
 struct AlignedSnapshot {
+    /** @brief Common host time used to select samples in this snapshot. */
     autolink::Time time;
+    /** @brief Latest aligned sample per sensor id. */
     std::unordered_map<SensorId, std::shared_ptr<SensorSample>> samples;
 
+    /**
+     * @brief Typed lookup for a single sensor id.
+     * @tparam SampleT Concrete sample type to cast to.
+     * @param id Sensor identifier to look up.
+     * @return Pointer to the sample, or nullptr when missing or wrong type.
+     */
     template <typename SampleT>
     const SampleT* Get(const SensorId& id) const {
         const auto it = samples.find(id);
@@ -41,6 +58,12 @@ struct AlignedSnapshot {
         return dynamic_cast<const SampleT*>(it->second.get());
     }
 
+    /**
+     * @brief Collect all samples of a given type in this snapshot.
+     * @tparam SampleT Concrete sample type to cast to.
+     * @param type Sensor modality filter applied before casting.
+     * @return Vector of matching sample pointers; empty when none match.
+     */
     template <typename SampleT>
     std::vector<const SampleT*> GetAll(SensorType type) const {
         std::vector<const SampleT*> out;

@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ * @brief Sensor modality enumeration.
+ */
+
 #ifndef AUTODRIVER_TYPES_SENSOR_TYPE_HPP_
 #define AUTODRIVER_TYPES_SENSOR_TYPE_HPP_
 
@@ -21,13 +26,23 @@
 
 namespace autodriver {
 
+/**
+ * @brief Supported sensor modalities in autodriver.
+ */
 enum class SensorType : std::uint8_t {
+    /** @brief Inertial measurement unit. */
     kImu = 0,
+    /** @brief Global navigation satellite receiver. */
     kGps,
+    /** @brief Camera image stream. */
     kCamera,
+    /** @brief Two-dimensional lidar scan. */
     kLidar2d,
+    /** @brief Three-dimensional point cloud. */
     kLidar3d,
+    /** @brief Single-beam or narrow range sensor. */
     kRangeFinder,
+    /** @brief Wheel encoder odometry. */
     kWheelOdometry,
 };
 

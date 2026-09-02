@@ -28,42 +28,88 @@
 namespace autodriver {
 namespace io {
 
-/** @brief One classical CAN frame (8-byte payload). */
+/**
+ * @brief One classical CAN frame (8-byte payload).
+ */
 struct CanFrame
 {
+  /** @brief CAN identifier (11- or 29-bit depending on extended). */
   std::uint32_t id{0};
+
+  /** @brief True for 29-bit extended identifiers. */
   bool extended{false};
+
+  /** @brief Data length code (0-8). */
   std::uint8_t dlc{0};
+
+  /** @brief Payload bytes (only first dlc entries are valid). */
   std::uint8_t data[8]{};
 };
 
 /**
- * @class CanSocket
+ * @class autodriver::io::CanSocket
  * @brief Non-blocking SocketCAN receiver.
  */
 class CanSocket
 {
 public:
+  /**
+   * @brief Constructor for autodriver::io::CanSocket
+   */
   CanSocket();
+
+  /**
+   * @brief Destructor for autodriver::io::CanSocket
+   */
   ~CanSocket();
 
+  /**
+   * @brief Copy constructor (deleted)
+   */
   CanSocket(const CanSocket &) = delete;
+
+  /**
+   * @brief Copy assignment operator (deleted)
+   */
   CanSocket & operator=(const CanSocket &) = delete;
 
-  /** @brief Binds to interface such as "can0". */
+  /**
+   * @brief Binds to interface such as "can0".
+   * @param interface Linux CAN network interface name
+   * @return True on success
+   */
   bool Open(const std::string & interface);
 
+  /**
+   * @brief Close the bound CAN socket.
+   */
   void Close();
 
+  /**
+   * @brief Whether a CAN socket is currently open.
+   * @return True when Open() succeeded and Close() has not been called
+   */
   bool IsOpen() const;
 
-  /** @brief Reads one frame; returns false on timeout. */
+  /**
+   * @brief Read one frame from the socket.
+   * @param frame Output frame structure
+   * @param timeout_ms Read timeout in milliseconds
+   * @return False on timeout or error
+   */
   bool Read(CanFrame & frame, int timeout_ms);
 
+  /**
+   * @brief Last error message from Open() or Read().
+   * @return Human-readable error text
+   */
   const std::string & last_error() const { return last_error_; }
 
 private:
+  /** @brief Open socket file descriptor, or -1 when closed. */
   int fd_{-1};
+
+  /** @brief Last reported I/O error message. */
   std::string last_error_;
 };
 

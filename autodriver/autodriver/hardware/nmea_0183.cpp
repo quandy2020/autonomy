@@ -31,6 +31,7 @@ namespace autodriver {
 namespace protocol {
 namespace {
 
+/** @brief Parses a string field into a double, returning false on failure. */
 bool ParseDoubleField(const std::string & text, double * out)
 {
   if (text.empty() || out == nullptr) {
@@ -45,6 +46,7 @@ bool ParseDoubleField(const std::string & text, double * out)
   return true;
 }
 
+/** @brief Converts NMEA ddmm.mmmm latitude to decimal degrees. */
 double NmeaLatitudeToDegrees(double raw, char hemisphere)
 {
   const int degrees = static_cast<int>(raw / 100.0);
@@ -56,6 +58,7 @@ double NmeaLatitudeToDegrees(double raw, char hemisphere)
   return value;
 }
 
+/** @brief Converts NMEA dddmm.mmmm longitude to decimal degrees. */
 double NmeaLongitudeToDegrees(double raw, char hemisphere)
 {
   const int degrees = static_cast<int>(raw / 100.0);
@@ -67,6 +70,7 @@ double NmeaLongitudeToDegrees(double raw, char hemisphere)
   return value;
 }
 
+/** @brief Splits a comma-separated NMEA sentence into fields. */
 std::vector<std::string> SplitFields(const std::string & sentence)
 {
   std::vector<std::string> fields;
@@ -80,6 +84,7 @@ std::vector<std::string> SplitFields(const std::string & sentence)
 
 }  // namespace
 
+/** @brief Validates the XOR checksum suffix of an NMEA sentence. */
 bool ValidateNmeaChecksum(const std::string & sentence)
 {
   const auto star = sentence.find('*');
@@ -97,6 +102,7 @@ bool ValidateNmeaChecksum(const std::string & sentence)
   return result.ec == std::errc() && checksum == static_cast<std::uint8_t>(expected);
 }
 
+/** @brief Parses a GGA sentence into latitude, longitude, and fix status. */
 std::optional<NmeaGgaFix> ParseGgaSentence(const std::string & sentence)
 {
   if (sentence.size() < 6 || sentence[0] != '$') {
@@ -144,6 +150,7 @@ std::optional<NmeaGgaFix> ParseGgaSentence(const std::string & sentence)
   return fix;
 }
 
+/** @brief Parses an RMC sentence when navigation status is active. */
 std::optional<NmeaGgaFix> ParseRmcSentence(const std::string & sentence)
 {
   if (sentence.size() < 6 || sentence[0] != '$') {

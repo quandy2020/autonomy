@@ -30,23 +30,44 @@
 namespace autodriver {
 namespace protocol {
 
-/** @brief Parsed fix from $GNGGA / $GPGGA. */
+/**
+ * @brief Parsed fix from $GNGGA / $GPGGA.
+ */
 struct NmeaGgaFix
 {
+  /** @brief Latitude in decimal degrees. */
   double latitude_deg{0.0};
+
+  /** @brief Longitude in decimal degrees. */
   double longitude_deg{0.0};
+
+  /** @brief Altitude above mean sea level in meters. */
   double altitude_m{0.0};
+
+  /** @brief NavSatStatus fix quality derived from the GGA fix type field. */
   automsgs::msgs::sensor_msgs::NavSatStatus::Status status{
       automsgs::msgs::sensor_msgs::NavSatStatus::STATUS_NO_FIX};
 };
 
-/** @brief Parses a GGA sentence (talker id GP/GN/GL... + GGA). */
+/**
+ * @brief Parse a GGA sentence (talker id GP/GN/GL... + GGA).
+ * @param sentence Complete NMEA sentence including leading '$'
+ * @return Parsed fix when checksum and fields are valid
+ */
 std::optional<NmeaGgaFix> ParseGgaSentence(const std::string & sentence);
 
-/** @brief Parses an RMC sentence for lat/lon fix. */
+/**
+ * @brief Parse an RMC sentence for lat/lon fix.
+ * @param sentence Complete NMEA sentence including leading '$'
+ * @return Parsed fix when checksum and fields are valid
+ */
 std::optional<NmeaGgaFix> ParseRmcSentence(const std::string & sentence);
 
-/** @brief Validates NMEA XOR checksum suffix *HH. */
+/**
+ * @brief Validate NMEA XOR checksum suffix *HH.
+ * @param sentence Complete NMEA sentence including checksum field
+ * @return True when the checksum matches
+ */
 bool ValidateNmeaChecksum(const std::string & sentence);
 
 }  // namespace protocol

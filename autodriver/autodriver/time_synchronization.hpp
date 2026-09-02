@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ * @brief Per-sensor device-to-host clock offset estimation.
+ */
+
 #ifndef AUTODRIVER_TIME_SYNCHRONIZATION_HPP_
 #define AUTODRIVER_TIME_SYNCHRONIZATION_HPP_
 
@@ -27,25 +32,64 @@
 
 namespace autodriver {
 
+/**
+ * @class autodriver::TimeSync
+ * @brief Tracks host = device + offset per sensor using exponential smoothing.
+ */
 class TimeSync {
 public:
+    /**
+     * @brief Observe a device/host pair and return the mapped host time.
+     * @param id Sensor identifier for the offset estimate.
+     * @param device Timestamp reported by the device.
+     * @param host Host receive time for the same sample.
+     * @return Mapped host time using the updated offset.
+     */
     autolink::Time Observe(const SensorId& id, const autolink::Time& device,
                            const autolink::Time& host);
+
+    /**
+     * @brief Update the offset estimate without returning a mapped time.
+     * @param id Sensor identifier for the offset estimate.
+     * @param device Timestamp reported by the device.
+     * @param host Host receive time for the same sample.
+     */
     void Update(const SensorId& id, const autolink::Time& device,
                 const autolink::Time& host);
+
+    /**
+     * @brief Map a device timestamp to host time using the current offset.
+     * @param id Sensor identifier whose offset should be applied.
+     * @param device Device timestamp to convert.
+     * @return Host time computed as device plus the stored offset.
+     */
     autolink::Time ToHostTime(const SensorId& id,
                               const autolink::Time& device) const;
+
+    /** @brief Clear all per-sensor offset estimates. */
     void Reset();
+
+    /**
+     * @brief Current offset in nanoseconds (host - device).
+     * @param id Sensor identifier to query.
+     * @return Offset in nanoseconds; zero when no estimate exists yet.
+     */
     std::int64_t OffsetNs(const SensorId& id) const;
 
 private:
+    /** @brief Smoothed clock offset state for one sensor. */
     struct Offset {
+        /** @brief Offset in nanoseconds (host - device). */
         std::int64_t ns{0};
+        /** @brief True after at least one observation has been applied. */
         bool ready{false};
     };
 
+    /** @brief Protects the offsets_ map. */
     mutable autolink::base::AtomicRWLock lock_;
+    /** @brief Per-sensor smoothed offset estimates. */
     std::unordered_map<SensorId, Offset> offsets_;
+    /** @brief Exponential smoothing factor for offset updates. */
     static constexpr double kAlpha = 0.2;
 };
 

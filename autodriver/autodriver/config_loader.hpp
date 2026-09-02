@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ * @brief YAML configuration loader for autodriver_hardware.yaml.
+ */
+
 #ifndef AUTODRIVER_CONFIG_LOADER_HPP_
 #define AUTODRIVER_CONFIG_LOADER_HPP_
 
@@ -23,16 +28,28 @@
 
 namespace autodriver {
 
+/** @brief Default configuration file name under config/. */
 inline constexpr const char* kDefaultConfigBasename = "autodriver_hardware.yaml";
 
-// Loads config/autodriver_hardware.yaml from WorkRoot() (see AUTODRIVER_PATH).
+/**
+ * @brief Load config/autodriver_hardware.yaml from WorkRoot() (see AUTODRIVER_PATH).
+ * @return Parsed process configuration.
+ */
 Config LoadConfig();
 
-// Loads config/<basename> under WorkRoot(), or an absolute path.
-// Empty basename defaults to autodriver_hardware.yaml.
+/**
+ * @brief Load config/<basename> under WorkRoot(), or an absolute path.
+ * @param config_basename Empty basename defaults to autodriver_hardware.yaml.
+ * @return Parsed process configuration.
+ */
 Config LoadConfig(const std::string& config_basename);
 
-// Optional root override (AUTODRIVER_PATH) plus basename under config/.
+/**
+ * @brief Load with an explicit configuration root plus basename under config/.
+ * @param configuration_directory Root directory containing config/.
+ * @param config_basename File name inside config/.
+ * @return Parsed process configuration.
+ */
 Config LoadConfig(const std::string& configuration_directory,
                   const std::string& config_basename);
 

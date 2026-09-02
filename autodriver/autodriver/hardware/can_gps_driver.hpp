@@ -36,7 +36,7 @@ namespace autodriver {
 namespace hardware {
 
 /**
- * @class CanGpsDriver
+ * @class autodriver::hardware::CanGpsDriver
  * @brief Decodes lat/lon from a CAN frame (NMEA2000 PGN 129025 layout).
  *
  * Params: interface (can0), can_id (default 0x12902500), format (nmea2000_latlon).
@@ -44,28 +44,87 @@ namespace hardware {
 class CanGpsDriver : public SensorDriver
 {
 public:
+  /**
+   * @brief Constructor for autodriver::hardware::CanGpsDriver
+   * @param id Sensor identifier
+   * @param params Driver configuration parameters
+   */
   CanGpsDriver(SensorId id, DriverParams params);
+
+  /**
+   * @brief Destructor for autodriver::hardware::CanGpsDriver
+   */
   ~CanGpsDriver() override;
 
+  /**
+   * @brief Report sensor type
+   * @return SensorType::kGps
+   */
   SensorType GetType() const override { return SensorType::kGps; }
+
+  /**
+   * @brief Return this driver's sensor identifier
+   * @return Sensor id assigned at construction
+   */
   const SensorId & GetSensorId() const override { return id_; }
+
+  /**
+   * @brief Open the CAN socket and start the read thread
+   * @return True on success
+   */
   bool Start() override;
+
+  /**
+   * @brief Stop the read thread and close the CAN socket
+   */
   void Stop() override;
+
+  /**
+   * @brief Whether the driver is actively reading
+   * @return True while running
+   */
   bool IsRunning() const override;
+
+  /**
+   * @brief Register callback invoked for each decoded GPS fix
+   * @param callback Sample delivery callback
+   */
   void SetSampleCallback(SampleCallback callback) override;
 
 private:
+  /**
+   * @brief Background loop that reads CAN frames and emits GPS fixes
+   */
   void ReadLoop();
 
+  /** @brief Sensor identifier for this driver instance. */
   SensorId id_;
+
+  /** @brief Parsed driver parameters from configuration. */
   DriverParams params_;
+
+  /** @brief Expected CAN frame identifier for lat/lon messages. */
   std::uint32_t can_id_{0};
+
+  /** @brief SocketCAN receiver bound to the configured interface. */
   io::CanSocket socket_;
+
+  /** @brief User callback for delivered GPS samples. */
   SampleCallback callback_;
+
+  /** @brief True while Start() succeeded and Stop() has not been called. */
   std::atomic<bool> running_{false};
+
+  /** @brief Worker thread running ReadLoop(). */
   std::thread worker_;
 };
 
+/**
+ * @brief Factory used by GpsModule.
+ * @param id Sensor identifier
+ * @param params Driver configuration parameters
+ * @return Shared sensor driver instance
+ */
 std::shared_ptr<SensorDriver> CreateCanGpsDriver(
   const SensorId & id,
   const DriverParams & params);

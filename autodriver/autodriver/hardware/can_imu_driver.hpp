@@ -37,7 +37,7 @@ namespace autodriver {
 namespace hardware {
 
 /**
- * @class CanImuDriver
+ * @class autodriver::hardware::CanImuDriver
  * @brief Fuses accel/gyro from two CAN frames with int16×3 layout.
  *
  * Params:
@@ -48,36 +48,113 @@ namespace hardware {
 class CanImuDriver : public SensorDriver
 {
 public:
+  /**
+   * @brief Constructor for autodriver::hardware::CanImuDriver
+   * @param id Sensor identifier
+   * @param params Driver configuration parameters
+   */
   CanImuDriver(SensorId id, DriverParams params);
+
+  /**
+   * @brief Destructor for autodriver::hardware::CanImuDriver
+   */
   ~CanImuDriver() override;
 
+  /**
+   * @brief Report sensor type
+   * @return SensorType::kImu
+   */
   SensorType GetType() const override { return SensorType::kImu; }
+
+  /**
+   * @brief Return this driver's sensor identifier
+   * @return Sensor id assigned at construction
+   */
   const SensorId & GetSensorId() const override { return id_; }
+
+  /**
+   * @brief Open the CAN socket and start the read thread
+   * @return True on success
+   */
   bool Start() override;
+
+  /**
+   * @brief Stop the read thread and close the CAN socket
+   */
   void Stop() override;
+
+  /**
+   * @brief Whether the driver is actively reading
+   * @return True while running
+   */
   bool IsRunning() const override;
+
+  /**
+   * @brief Register callback invoked for each fused IMU sample
+   * @param callback Sample delivery callback
+   */
   void SetSampleCallback(SampleCallback callback) override;
 
 private:
+  /**
+   * @brief Background loop that reads CAN frames and updates IMU state
+   */
   void ReadLoop();
+
+  /**
+   * @brief Emit a sample when both accel and gyro frames have been received
+   */
   void TryEmit();
 
+  /** @brief Sensor identifier for this driver instance. */
   SensorId id_;
+
+  /** @brief Parsed driver parameters from configuration. */
   DriverParams params_;
+
+  /** @brief CAN identifier for accelerometer frames. */
   std::uint32_t accel_can_id_{0};
+
+  /** @brief CAN identifier for gyroscope frames. */
   std::uint32_t gyro_can_id_{0};
+
+  /** @brief Accelerometer scale factor in m/s^2 per LSB. */
   double accel_scale_{0.001};
+
+  /** @brief Gyroscope scale factor in rad/s per LSB. */
   double gyro_scale_{0.0001};
+
+  /** @brief SocketCAN receiver bound to the configured interface. */
   io::CanSocket socket_;
+
+  /** @brief User callback for delivered IMU samples. */
   SampleCallback callback_;
+
+  /** @brief Latest linear acceleration vector (m/s^2). */
   std::array<double, 3> accel_{{0.0, 0.0, 0.0}};
+
+  /** @brief Latest angular velocity vector (rad/s). */
   std::array<double, 3> gyro_{{0.0, 0.0, 0.0}};
+
+  /** @brief True after at least one accel frame was decoded. */
   bool have_accel_{false};
+
+  /** @brief True after at least one gyro frame was decoded. */
   bool have_gyro_{false};
+
+  /** @brief True while Start() succeeded and Stop() has not been called. */
   std::atomic<bool> running_{false};
+
+  /** @brief Worker thread running ReadLoop(). */
   std::thread worker_;
 };
 
+/**
+ * @brief Factory used by ImuModule.
+ * @param id Sensor identifier
+ * @param params Driver configuration parameters
+ * @return Shared sensor driver instance
+ */
 std::shared_ptr<SensorDriver> CreateCanImuDriver(
   const SensorId & id,
   const DriverParams & params);

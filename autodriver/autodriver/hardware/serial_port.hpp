@@ -30,42 +30,82 @@ namespace autodriver {
 namespace io {
 
 /**
- * @class SerialPort
+ * @class autodriver::io::SerialPort
  * @brief Blocking read/write serial I/O for sensor backends.
  */
 class SerialPort
 {
 public:
+  /**
+   * @brief Constructor for autodriver::io::SerialPort
+   */
   SerialPort();
+
+  /**
+   * @brief Destructor for autodriver::io::SerialPort
+   */
   ~SerialPort();
 
+  /**
+   * @brief Copy constructor (deleted)
+   */
   SerialPort(const SerialPort &) = delete;
+
+  /**
+   * @brief Copy assignment operator (deleted)
+   */
   SerialPort & operator=(const SerialPort &) = delete;
 
   /**
    * @brief Opens a TTY device.
    * @param device Path such as /dev/ttyUSB0.
    * @param baud_rate 9600, 115200, 460800, etc.
+   * @return True on success
    */
   bool Open(const std::string & device, int baud_rate);
 
+  /**
+   * @brief Close the open TTY device.
+   */
   void Close();
 
+  /**
+   * @brief Whether a TTY device is currently open.
+   * @return True when Open() succeeded and Close() has not been called
+   */
   bool IsOpen() const;
 
-  /** @brief Reads up to max_bytes; returns bytes read (0 on timeout). */
+  /**
+   * @brief Read up to max_bytes from the port.
+   * @param buffer Destination buffer
+   * @param max_bytes Maximum bytes to read
+   * @param timeout_ms Read timeout in milliseconds
+   * @return Bytes read (0 on timeout)
+   */
   std::size_t Read(
     std::uint8_t * buffer,
     std::size_t max_bytes,
     int timeout_ms);
 
-  /** @brief Writes all bytes; returns false on short write or error. */
+  /**
+   * @brief Write all bytes to the port.
+   * @param buffer Source buffer
+   * @param length Number of bytes to write
+   * @return False on short write or error
+   */
   bool Write(const std::uint8_t * buffer, std::size_t length);
 
+  /**
+   * @brief Last error message from Open(), Read(), or Write().
+   * @return Human-readable error text
+   */
   const std::string & last_error() const { return last_error_; }
 
 private:
+  /** @brief Open file descriptor, or -1 when closed. */
   int fd_{-1};
+
+  /** @brief Last reported I/O error message. */
   std::string last_error_;
 };
 
