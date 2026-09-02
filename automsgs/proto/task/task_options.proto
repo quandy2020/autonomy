@@ -25,10 +25,12 @@ message TaskAppOptions {
   bool enable_navigation = 1;
   bool enable_tracking = 2;
   bool enable_teleop = 3;
-  bool enable_exploration = 4;
+  reserved 4;
+  reserved "enable_exploration";
   bool enable_charging = 5;
   bool enable_mapping = 6;
   bool enable_localization = 7;
+  bool enable_exploration_bridge = 8;
 }
 
 message SchedulerOptions {
@@ -74,7 +76,8 @@ message TaskBehaviorTreeOptions {
   TaskBehaviorTreeProfile navigation = 1;
   TaskBehaviorTreeProfile tracking = 2;
   TaskBehaviorTreeProfile teleop = 3;
-  TaskBehaviorTreeProfile exploration = 4;
+  reserved 4;
+  reserved "exploration";
   TaskBehaviorTreeProfile charging = 5;
   TaskBehaviorTreeProfile mapping = 6;
   TaskBehaviorTreeProfile localization = 7;

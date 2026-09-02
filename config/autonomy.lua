@@ -30,6 +30,7 @@ AUTONOMY = {
   controller = AUTONOMY_CONTROLLER,
   navigator = navigator,
   transform = AUTONOMY_TRANSFORM,
+  perception = AUTONOMY_PERCEPTION,
 }
 
 return AUTONOMY

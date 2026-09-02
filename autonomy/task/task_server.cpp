@@ -44,12 +44,12 @@ proto::TaskServerOptions TaskServer::DefaultOptions() {
     apps->set_enable_navigation(true);
     apps->set_enable_tracking(true);
     apps->set_enable_teleop(true);
-    apps->set_enable_exploration(true);
     apps->set_enable_charging(true);
     apps->set_enable_mapping(true);
-    apps->set_enable_localization(true);
+  apps->set_enable_localization(true);
+  apps->set_enable_exploration_bridge(true);
 
-    BtDefaults::Apply(&options);
+  BtDefaults::Apply(&options);
     return options;
 }
 
@@ -181,6 +181,83 @@ void TaskServer::Bind() {
         }
     }
 
+    if (options_.apps().enable_exploration_bridge() && navigation_) {
+        exploration_waypoint_reader_ =
+            node_->CreateReader<::automsgs::msgs::geometry_msgs::PoseStamped>(
+                kExplorationWaypoint,
+                [this](const std::shared_ptr<
+                       ::automsgs::msgs::geometry_msgs::PoseStamped>& pose) {
+                    if (!pose) {
+                        return;
+                    }
+                    const double x = pose->pose().position().x();
+                    const double y = pose->pose().position().y();
+                    if (exploration_nav_pending_.load() &&
+                        std::hypot(x - last_exploration_waypoint_x_,
+                                   y - last_exploration_waypoint_y_) < 0.12) {
+                        return;
+                    }
+                    last_exploration_waypoint_x_ = x;
+                    last_exploration_waypoint_y_ = y;
+                    proto::NavigationGoal goal;
+                    goal.set_command(proto::NAV_CMD_START);
+                    goal.set_mode(proto::NAV_MODE_SINGLE_POSE);
+                    *goal.add_goals() = *pose;
+                    if (Submit(goal)) {
+                        exploration_nav_pending_.store(true);
+                        exploration_was_active_.store(false);
+                        AINFO << "TaskServer: exploration waypoint (" << x << ", "
+                              << y << ")";
+                    }
+                });
+
+        exploration_finished_reader_ =
+            node_->CreateReader<::automsgs::msgs::std_msgs::Bool>(
+                kExplorationFinished,
+                [this](const std::shared_ptr<::automsgs::msgs::std_msgs::Bool>&
+                           msg) {
+                    if (!msg || !msg->data()) {
+                        return;
+                    }
+                    proto::NavigationGoal goal;
+                    goal.set_command(proto::NAV_CMD_CANCEL);
+                    Submit(goal);
+                    exploration_nav_pending_.store(false);
+                });
+
+        exploration_waypoint_reached_writer_ =
+            node_->CreateWriter<::automsgs::msgs::std_msgs::Bool>(
+                kExplorationWaypointReached);
+
+        exploration_monitor_running_.store(true);
+        exploration_monitor_thread_ = std::thread([this, period]() {
+            while (exploration_monitor_running_.load()) {
+                if (navigation_) {
+                    if (navigation_->IsActive()) {
+                        exploration_was_active_.store(true);
+                    } else if (exploration_nav_pending_.load() &&
+                               exploration_was_active_.load()) {
+                        proto::NavigationResult result;
+                        if (navigation_->GetResult(&result) &&
+                            result.final_status() ==
+                                proto::NAV_STATUS_SUCCEEDED) {
+                            ::automsgs::msgs::std_msgs::Bool reached;
+                            reached.set_data(true);
+                            if (exploration_waypoint_reached_writer_) {
+                                exploration_waypoint_reached_writer_->Write(
+                                    reached);
+                            }
+                            exploration_nav_pending_.store(false);
+                            exploration_was_active_.store(false);
+                            AINFO << "TaskServer: exploration waypoint reached";
+                        }
+                    }
+                }
+                std::this_thread::sleep_for(period);
+            }
+        });
+    }
+
     BindDomain(
         options_.apps().enable_teleop(), teleop_, kTeleopGoal, kTeleopFeedback,
         period, &teleop_ingress_,
@@ -207,21 +284,6 @@ void TaskServer::Bind() {
         []() {
             proto::TrackerFeedback feedback;
             feedback.set_status(proto::TRACKER_STATUS_FAILED);
-            return feedback;
-        });
-
-    BindDomain(
-        options_.apps().enable_exploration(), exploration_, kExplorationGoal,
-        kExplorationFeedback, period, &exploration_ingress_,
-        [](const proto::ExplorationFeedback& feedback) {
-            return feedback.status() == proto::EXPLORATION_STATUS_COMPLETED ||
-                   feedback.status() == proto::EXPLORATION_STATUS_FAILED ||
-                   feedback.status() == proto::EXPLORATION_STATUS_CANCELED ||
-                   feedback.status() == proto::EXPLORATION_STATUS_IDLE;
-        },
-        []() {
-            proto::ExplorationFeedback feedback;
-            feedback.set_status(proto::EXPLORATION_STATUS_FAILED);
             return feedback;
         });
 
@@ -272,9 +334,15 @@ void TaskServer::Bind() {
 }
 
 void TaskServer::Unbind() {
+    exploration_monitor_running_.store(false);
+    if (exploration_monitor_thread_.joinable()) {
+        exploration_monitor_thread_.join();
+    }
+    exploration_waypoint_reader_.reset();
+    exploration_finished_reader_.reset();
+    exploration_waypoint_reached_writer_.reset();
     teleop_ingress_.Stop();
     tracking_ingress_.Stop();
-    exploration_ingress_.Stop();
     charging_ingress_.Stop();
     mapping_ingress_.Stop();
     localization_ingress_.Stop();
@@ -288,8 +356,7 @@ void TaskServer::Unbind() {
 void TaskServer::AddApps(const proto::TaskAppOptions& apps) {
     RegisterBuiltinTasks(
         apps, [this](const auto& task) { Register(task); }, &navigation_,
-        &tracking_, &teleop_, &exploration_, &charging_, &mapping_,
-        &localization_);
+        &tracking_, &teleop_, &charging_, &mapping_, &localization_);
 }
 
 bool TaskServer::Start() {
@@ -308,7 +375,6 @@ void TaskServer::Shutdown() {
     stop(navigation_);
     stop(tracking_);
     stop(teleop_);
-    stop(exploration_);
     stop(charging_);
     stop(mapping_);
     stop(localization_);
@@ -320,7 +386,6 @@ void TaskServer::Shutdown() {
     navigation_.reset();
     tracking_.reset();
     teleop_.reset();
-    exploration_.reset();
     charging_.reset();
     mapping_.reset();
     localization_.reset();
@@ -345,9 +410,6 @@ bool TaskServer::Submit(const proto::TrackerGoal& goal) {
 }
 bool TaskServer::Submit(const proto::TeleopGoal& goal) {
     return Dispatch(teleop_, goal);
-}
-bool TaskServer::Submit(const proto::ExplorationGoal& goal) {
-    return Dispatch(exploration_, goal);
 }
 bool TaskServer::Submit(const proto::ChargingGoal& goal) {
     return Dispatch(charging_, goal);

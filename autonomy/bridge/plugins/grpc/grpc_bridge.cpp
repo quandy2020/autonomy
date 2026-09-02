@@ -18,7 +18,6 @@
 
 #include "autolink/autolink.hpp"
 #include "autonomy/bridge/plugins/grpc/grpc_bridge_context.hpp"
-#include "autonomy/bridge/plugins/grpc/handlers/exploration_handler.hpp"
 #include "autonomy/bridge/plugins/grpc/handlers/navigation_handler.hpp"
 #include "autonomy/bridge/plugins/grpc/handlers/teleop_handler.hpp"
 #include "autonomy/common/logging.hpp"
@@ -71,7 +70,6 @@ GrpcBridgeServer::GrpcBridgeServer(const proto::GrpcOptions& options)
     }
 
     server_builder.RegisterHandler<handlers::SendNavigationHandler>();
-    server_builder.RegisterHandler<handlers::SendExplorationHandler>();
     server_builder.RegisterHandler<handlers::SendTeleopHandler>();
     grpc_server_ = server_builder.Build();
     if (!grpc_server_) {

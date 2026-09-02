@@ -28,6 +28,7 @@
 #include "autodriver/types/sensor_type.hpp"
 #include "autolink/time/time.hpp"
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
 #include <automsgs/msgs/sensor_msgs/image.pb.h>
 #include <automsgs/msgs/sensor_msgs/imu.pb.h>
 #include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
@@ -95,26 +96,71 @@ using ImuSample =
     TypedSample<SensorType::kImu, automsgs::msgs::sensor_msgs::Imu>;
 using GpsSample =
     TypedSample<SensorType::kGps, automsgs::msgs::sensor_msgs::NavSatFix>;
-using CameraFrame =
-    TypedSample<SensorType::kCamera, automsgs::msgs::sensor_msgs::Image>;
+
+class CameraFrame
+    : public TypedSample<SensorType::kCamera,
+                         automsgs::msgs::sensor_msgs::Image> {
+ public:
+    using Base =
+        TypedSample<SensorType::kCamera, automsgs::msgs::sensor_msgs::Image>;
+    using Base::Base;
+
+    automsgs::msgs::sensor_msgs::CameraInfo camera_info;
+    bool has_camera_info{false};
+    std::string frame_id;
+
+    Message& StampInPlace() {
+        Stamp(msg.mutable_header());
+        if (!frame_id.empty()) {
+            msg.mutable_header()->set_frame_id(frame_id);
+        }
+        return msg;
+    }
+};
+
 using LidarScan =
     TypedSample<SensorType::kLidar2d, automsgs::msgs::sensor_msgs::LaserScan>;
-using LidarCloud =
-    TypedSample<SensorType::kLidar3d, automsgs::msgs::sensor_msgs::PointCloud2>;
+
+class LidarCloud
+    : public TypedSample<SensorType::kLidar3d,
+                         automsgs::msgs::sensor_msgs::PointCloud2> {
+ public:
+    using Base = TypedSample<SensorType::kLidar3d,
+                             automsgs::msgs::sensor_msgs::PointCloud2>;
+    using Base::Base;
+
+    std::string frame_id;
+
+    Message& StampInPlace() {
+        Stamp(msg.mutable_header());
+        if (!frame_id.empty()) {
+            msg.mutable_header()->set_frame_id(frame_id);
+        }
+        return msg;
+    }
+};
+
 using RangeSample =
     TypedSample<SensorType::kRangeFinder, automsgs::msgs::sensor_msgs::Range>;
 using WheelOdometrySample =
     TypedSample<SensorType::kWheelOdometry, automsgs::msgs::nav_msgs::Odometry>;
 
 inline automsgs::msgs::sensor_msgs::Imu ImuMsg(
-    const std::array<double, 3>& gyro, const std::array<double, 3>& accel) {
+    const std::array<double, 3>& gyro, const std::array<double, 3>& accel,
+    const std::string& frame_id = "camera_imu_optical_frame") {
     automsgs::msgs::sensor_msgs::Imu msg;
+    msg.mutable_header()->set_frame_id(frame_id);
     msg.mutable_angular_velocity()->set_x(gyro[0]);
     msg.mutable_angular_velocity()->set_y(gyro[1]);
     msg.mutable_angular_velocity()->set_z(gyro[2]);
     msg.mutable_linear_acceleration()->set_x(accel[0]);
     msg.mutable_linear_acceleration()->set_y(accel[1]);
     msg.mutable_linear_acceleration()->set_z(accel[2]);
+    for (int i = 0; i < 9; ++i) {
+        msg.add_angular_velocity_covariance(0.0);
+        msg.add_linear_acceleration_covariance(0.0);
+        msg.add_orientation_covariance(i == 0 ? -1.0 : 0.0);
+    }
     return msg;
 }
 

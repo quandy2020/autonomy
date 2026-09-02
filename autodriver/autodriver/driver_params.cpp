@@ -85,5 +85,27 @@ double ParseDouble(
   return parsed;
 }
 
+bool ParseBool(
+  const DriverParams & params,
+  const std::string & key,
+  bool default_value)
+{
+  const std::string text = GetString(params, key);
+  if (text.empty()) {
+    return default_value;
+  }
+  if (text == "1" || text == "true" || text == "True" || text == "TRUE" ||
+    text == "yes" || text == "Yes" || text == "on" || text == "On")
+  {
+    return true;
+  }
+  if (text == "0" || text == "false" || text == "False" || text == "FALSE" ||
+    text == "no" || text == "No" || text == "off" || text == "Off")
+  {
+    return false;
+  }
+  return default_value;
+}
+
 }  // namespace hardware
 }  // namespace autodriver

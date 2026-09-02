@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,13 +14,7 @@
  * limitations under the License.
  */
 
-/**
- * @file
- * @brief Shared Intel RealSense device session (one pipeline per serial).
- */
-
-#ifndef AUTODRIVER_HARDWARE_REALSENSE_DEVICE_HUB_HPP_
-#define AUTODRIVER_HARDWARE_REALSENSE_DEVICE_HUB_HPP_
+#pragma once
 
 #include <array>
 #include <cstdint>
@@ -28,6 +22,9 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+#include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 
 #include "autodriver/driver_params.hpp"
 
@@ -40,85 +37,78 @@ enum class StreamKind {
     kDepth,
     kInfrared1,
     kInfrared2,
+    kAlignedDepthToColor,
+    kPointCloud,
 };
 
 StreamKind ParseStreamKind(const std::string& text, StreamKind default_kind);
 bool MatchesModelFilter(const std::string& product_name,
                         const std::string& model_filter);
 std::string EncodingForStreamKind(StreamKind kind);
+std::string DefaultFrameId(StreamKind kind);
 
 }  // namespace realsense
 }  // namespace hardware
 
 namespace io {
 
-/** @brief Returns true when autodriver was built with librealsense2. */
 bool RealSenseAvailable();
 
-/**
- * @struct RealSenseVideoFrame
- * @brief Decoded video buffer emitted by RealSenseDeviceHub.
- */
-struct RealSenseVideoFrame
-{
-  std::uint32_t width{0};
-  std::uint32_t height{0};
-  std::string encoding;
-  std::vector<std::uint8_t> data;
+struct RealSenseVideoFrame {
+    std::uint32_t width{0};
+    std::uint32_t height{0};
+    std::string encoding;
+    std::vector<std::uint8_t> data;
+    double timestamp_ms{0.0};
+    std::string frame_id;
+    automsgs::msgs::sensor_msgs::CameraInfo camera_info;
+    bool has_camera_info{false};
+};
+
+struct RealSensePointCloudFrame {
+    double timestamp_ms{0.0};
+    std::string frame_id;
+    automsgs::msgs::sensor_msgs::PointCloud2 cloud;
 };
 
 using RealSenseVideoCallback = std::function<void(RealSenseVideoFrame frame)>;
+using RealSensePointCloudCallback =
+    std::function<void(RealSensePointCloudFrame frame)>;
 using RealSenseImuCallback = std::function<void(
     std::array<double, 3> linear_acceleration,
-    std::array<double, 3> angular_velocity)>;
+    std::array<double, 3> angular_velocity,
+    double timestamp_ms)>;
 
-/**
- * @class RealSenseDeviceHub
- * @brief Reference-counted pipeline shared by camera/IMU drivers on one device.
- *
- * Multiple HAL drivers (color + depth + IMU on D435i) attach to the same hub
- * keyed by serial number so librealsense opens a single pipeline profile.
- */
-class RealSenseDeviceHub
-{
-public:
-  /** @brief Acquires or creates a hub for the device described in params. */
-  static std::shared_ptr<RealSenseDeviceHub> Acquire(
-    const hardware::DriverParams & params);
+class RealSenseDeviceHub {
+ public:
+    static std::shared_ptr<RealSenseDeviceHub> Acquire(
+        const hardware::DriverParams& params);
 
-  ~RealSenseDeviceHub();
+    ~RealSenseDeviceHub();
 
-  /**
-   * @brief Registers a video stream consumer.
-   * @return Subscription id for Unsubscribe().
-   */
-  std::uint64_t SubscribeVideo(
-    hardware::realsense::StreamKind stream,
-    int width,
-    int height,
-    int fps,
-    RealSenseVideoCallback callback);
+    std::uint64_t SubscribeVideo(hardware::realsense::StreamKind stream, int width,
+                                 int height, int fps,
+                                 RealSenseVideoCallback callback);
 
-  /** @brief Registers an IMU consumer (D435i and compatible models). */
-  std::uint64_t SubscribeImu(RealSenseImuCallback callback);
+    std::uint64_t SubscribePointCloud(int width, int height, int fps,
+                                      RealSensePointCloudCallback callback);
 
-  void Unsubscribe(std::uint64_t subscription_id);
+    std::uint64_t SubscribeImu(RealSenseImuCallback callback);
 
-  bool Start();
-  void Stop();
-  bool IsRunning() const;
+    void Unsubscribe(std::uint64_t subscription_id);
 
-  /** @brief Last error from Start() or the capture thread. */
-  const std::string & last_error() const;
+    bool Start();
+    void Stop();
+    bool IsRunning() const;
 
-private:
-  explicit RealSenseDeviceHub(const hardware::DriverParams & params);
+    const std::string& last_error() const;
 
-  struct Impl;
-  std::unique_ptr<Impl> impl_;
+ private:
+    explicit RealSenseDeviceHub(const hardware::DriverParams& params);
+
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
 };
 
 }  // namespace io
 }  // namespace autodriver
-
-#endif  // AUTODRIVER_HARDWARE_REALSENSE_DEVICE_HUB_HPP_

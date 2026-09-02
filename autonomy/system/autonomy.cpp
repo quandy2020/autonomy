@@ -10,6 +10,7 @@
 #include "autonomy/common/logging.hpp"
 #include "autonomy/control/controller_server.hpp"
 #include "autonomy/map/map_server.hpp"
+#include "autonomy/perception/perception_server.hpp"
 #include "autonomy/planning/planner_server.hpp"
 #include "autonomy/sensor/internal/sensor_collator.hpp"
 #include "autonomy/task/navigation/constants.hpp"
@@ -212,6 +213,15 @@ void Autonomy::Configure(const RuntimeOptions& runtime) {
         return;
     }
 
+    if (options_.has_perception_options() &&
+        options_.perception_options().enabled() && !perception_server_) {
+        perception_server_ = std::make_shared<perception::PerceptionServer>(
+            options_.perception_options());
+        perception_server_->SetConfigDirectory(runtime_.config_directory);
+        perception_server_->SetTransformBuffer(tf_buffer_);
+        perception_server_->Start();
+    }
+
     configured_ = true;
     AINFO << "Autonomy configured (direct planner wiring).";
 }
@@ -223,6 +233,9 @@ void Autonomy::Shutdown() {
     if (controller_) {
         controller_->Shutdown();
     }
+    if (perception_server_) {
+        perception_server_->Shutdown();
+    }
     if (map_server_) {
         map_server_->Shutdown();
     }
@@ -230,6 +243,7 @@ void Autonomy::Shutdown() {
     map_server_.reset();
     planner_.reset();
     controller_.reset();
+    perception_server_.reset();
     sensor_collator_.reset();
     transform_server_.reset();
     AINFO << "Autonomy shut down.";
@@ -254,6 +268,10 @@ sensor::CollatorInterface& Autonomy::GetSensorCollator() {
 
 control::ControllerServer* Autonomy::GetController() {
     return controller_.get();
+}
+
+perception::PerceptionServer* Autonomy::GetPerceptionServer() {
+    return perception_server_.get();
 }
 
 void Autonomy::AddMapPublishListener(MapPublishListener listener) {

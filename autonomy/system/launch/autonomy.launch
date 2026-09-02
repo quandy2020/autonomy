@@ -4,7 +4,7 @@
   Full Autonomy multi-process stack (all shipped *_main binaries except tools).
 
   Processes:
-    monitor, planning, control, task,
+    monitor, planning, control, task, perception (disabled by default),
     localization + cartographer_occupancy_grid_node,
     autonomy_bridge (BUILD_GRPC=ON),
     autonomy_foxglove_bridge
@@ -35,17 +35,23 @@
   <module>
     <name>planning</name>
     <type>binary</type>
-    <process_name>planning --configuration_directory=config --configuration_basename=autonomy.lua</process_name>
+    <process_name>autonomy.planning --configuration_directory=config --configuration_basename=autonomy.lua</process_name>
   </module>
   <module>
     <name>control</name>
     <type>binary</type>
-    <process_name>control --configuration_directory=config --configuration_basename=autonomy.lua</process_name>
+    <process_name>autonomy.control --configuration_directory=config --configuration_basename=autonomy.lua</process_name>
   </module>
   <module>
     <name>task</name>
     <type>binary</type>
-    <process_name>task --config_directory=config</process_name>
+    <process_name>autonomy.task --config_directory=config</process_name>
+  </module>
+  <module>
+    <name>perception</name>
+    <type>binary</type>
+    <!-- perception.lua has enabled=false; use exploration.launch for closed-loop -->
+    <process_name>autonomy.perception --configuration_directory=config --configuration_basename=autonomy.lua</process_name>
   </module>
   <module>
     <name>bridge</name>

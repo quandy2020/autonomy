@@ -27,6 +27,10 @@ TEST(RealSenseTypes, ParsesStreamNames)
   EXPECT_EQ(ParseStreamKind("depth", StreamKind::kColor), StreamKind::kDepth);
   EXPECT_EQ(ParseStreamKind("ir", StreamKind::kColor), StreamKind::kInfrared1);
   EXPECT_EQ(ParseStreamKind("ir2", StreamKind::kColor), StreamKind::kInfrared2);
+  EXPECT_EQ(ParseStreamKind("aligned_depth_to_color", StreamKind::kColor),
+            StreamKind::kAlignedDepthToColor);
+  EXPECT_EQ(ParseStreamKind("pointcloud", StreamKind::kColor),
+            StreamKind::kPointCloud);
 }
 
 TEST(RealSenseTypes, MatchesModelFilter)

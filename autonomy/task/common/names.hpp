@@ -33,9 +33,6 @@ constexpr char kTeleopFeedback[] = "/autonomy/task/teleop/feedback";
 constexpr char kTrackingGoal[] = "/autonomy/task/tracking/goal";
 constexpr char kTrackingFeedback[] = "/autonomy/task/tracking/feedback";
 
-constexpr char kExplorationGoal[] = "/autonomy/task/exploration/goal";
-constexpr char kExplorationFeedback[] = "/autonomy/task/exploration/feedback";
-
 constexpr char kChargingGoal[] = "/autonomy/task/charging/goal";
 constexpr char kChargingFeedback[] = "/autonomy/task/charging/feedback";
 
@@ -45,6 +42,10 @@ constexpr char kMappingFeedback[] = "/autonomy/task/mapping/feedback";
 constexpr char kLocalizationGoal[] = "/autonomy/task/localization/goal";
 constexpr char kLocalizationFeedback[] =
     "/autonomy/task/localization/feedback";
+
+constexpr char kExplorationWaypoint[] = "/exploration/waypoint";
+constexpr char kExplorationWaypointReached[] = "/exploration/waypoint_reached";
+constexpr char kExplorationFinished[] = "/exploration/finished";
 
 }  // namespace task
 }  // namespace autonomy

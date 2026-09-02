@@ -54,6 +54,9 @@ class MapServer;
 namespace planning {
 class PlannerServer;
 }
+namespace perception {
+class PerceptionServer;
+}
 namespace sensor {
 class SensorCollator;
 }
@@ -105,6 +108,7 @@ public:
     map::costmap_2d::Costmap2DWrapper::SharedPtr GetGlobalCostmap();
     sensor::CollatorInterface& GetSensorCollator();
     control::ControllerServer* GetController();
+    perception::PerceptionServer* GetPerceptionServer();
 
     void AddMapPublishListener(MapPublishListener listener);
     void AddPathListener(PathListener listener);
@@ -163,6 +167,7 @@ private:
     std::shared_ptr<map::MapServer> map_server_;
     std::shared_ptr<planning::PlannerServer> planner_;
     std::shared_ptr<control::ControllerServer> controller_;
+    std::shared_ptr<perception::PerceptionServer> perception_server_;
     std::shared_ptr<transform::Buffer> tf_buffer_;
     std::unique_ptr<transform::TransformServer> transform_server_;
     std::unique_ptr<sensor::SensorCollator> sensor_collator_;

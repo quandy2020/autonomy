@@ -7,7 +7,6 @@ Each app under `autonomy/task/*` owns a **TaskBtProfile**:
 | navigation | `navigation/navigate_to_pose.xml` | `navigation/navigate_through_poses.xml` | 10 |
 | tracking | `tracking/follow_target.xml` | `tracking/follow_person.xml` | 20 |
 | teleop | `teleop/teleop.xml` | — | 50 |
-| exploration | `exploration/explore.xml` | — | 10 |
 | charging | `charging/dock.xml` | — | 10 |
 | mapping | `mapping/map_ops.xml` | — | 100 |
 | localization | `localization/localization.xml` | — | 100 |

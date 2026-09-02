@@ -74,6 +74,11 @@
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/tf2/utils.h"
 
+namespace autolink {
+class Node;
+class ReaderBase;
+}  // namespace autolink
+
 namespace autonomy {
 namespace map {
 namespace costmap_2d {
@@ -304,6 +309,12 @@ public:
     void feedRange(const automsgs::msgs::sensor_msgs::Range& range);
 
     /**
+     * @brief Subscribe to obstacle_layer sensor_sources and feed this costmap.
+     * Idempotent; readers are held until Stop().
+     */
+    void AttachSensorReaders(const std::shared_ptr<autolink::Node>& node);
+
+    /**
      * @brief Fill @p grid with the latest costmap as an OccupancyGrid snapshot.
      * @return false if the costmap is not initialized.
      */
@@ -403,6 +414,9 @@ protected:
 
     // options for costmap 2D
     proto::Costmap2DOptions options_;
+
+    std::vector<std::shared_ptr<autolink::ReaderBase>> sensor_readers_;
+    bool sensor_readers_attached_{false};
 };
 
 }  // namespace costmap_2d

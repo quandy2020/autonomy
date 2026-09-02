@@ -75,8 +75,10 @@ if(AUTODRIVER_WITH_REALSENSE)
   if(realsense2_FOUND)
     message(STATUS "autodriver: librealsense2 ${realsense2_VERSION} enabled")
     target_sources(autodriver PRIVATE
+      hardware/realsense_camera_info.cpp
       hardware/realsense_imu_driver.cpp
-      hardware/realsense_camera_driver.cpp)
+      hardware/realsense_camera_driver.cpp
+      hardware/realsense_pointcloud_driver.cpp)
     target_link_libraries(autodriver PUBLIC realsense2::realsense2)
     target_compile_definitions(autodriver PUBLIC AUTODRIVER_HAVE_REALSENSE)
   else()

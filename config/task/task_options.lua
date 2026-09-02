@@ -26,11 +26,6 @@ task = {
       default_server_timeout_ms = 20000,
       -- MPPI assist: config/task/teleop_assist.lua (see assist_options)
     },
-    exploration = {
-      default_tree_file = "task/behavior_tree/exploration/explore.xml",
-      bt_loop_duration_ms = 10,
-      default_server_timeout_ms = 20000,
-    },
     charging = {
       default_tree_file = "task/behavior_tree/charging/dock.xml",
       bt_loop_duration_ms = 10,

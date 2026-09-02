@@ -1,0 +1,131 @@
+# Copyright 2026 The Openbot Authors (duyongquan)
+#
+# SLAM 联调配置：autosim 只发 /odom、/scan、/tf；Cartographer 负责 /map + map→odom。
+# 探索任务：GLEAM 语义图用 RGB-D（exploration.lua mapping.source=depth）；SLAM 仍用 /scan。
+#
+# 启动（任选其一）：
+#   CONFIG=config/slam.yaml src/autonomy/autosim/scripts/run.sh sim
+#   CONFIG=src/autonomy/autosim/config/slam.yaml src/autonomy/autosim/scripts/run.sh sim
+#
+# 另开终端（任选其一）：
+#   src/autonomy/autonomy/localization/scripts/start_cartographer.sh
+#   cd src/autonomy && export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/localization/launch && \
+#     export PATH=/workspace/autonomy/build/autonomy/bin:$PATH && \
+#     autolink launch start localization_cartographer.launch
+#   cd src/autonomy && export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/exploration/launch && \
+#     autolink launch start exploration.launch
+
+habitat:
+  mode: slam
+
+  path: /workspace/autonomy/src/17DRP5sb8fy/17DRP5sb8fy.glb
+  spawn: [-4.0, 0.18, 0.0]
+  gpu: 0
+
+  robot:
+    urdf: urdf/turtlebot3_burger.urdf
+    max_linear: 0.5
+    max_angular: 1.0
+    wheel_separation: 0.55
+    map_frame: map
+    base_link_height: 0.01
+    watchdog_sec: 0.5
+    control_hz: 50.0
+    cmd_vel: /cmd_vel
+    truth:
+      enabled: false
+      channel: /gt/pose
+    tf:
+      enabled: true
+      channel: /tf
+      static_channel: /tf_static
+      publish_map_odom: false
+    clock:
+      enabled: true
+      channel: /clock
+    footprint:
+      enabled: true
+      channel: /footprint
+      frame: base_link
+
+  sensors:
+    lidar_2d:
+      enabled: true
+      channel: /scan
+      frame: laser_link
+      rate_hz: 10.0
+      angle_min: -3.14159
+      angle_max: 3.14159
+      range_min: 0.1
+      range_max: 30.0
+      num_beams: 360
+      noise: 0.0
+
+    lidar_3d:
+      enabled: false
+      channel: /points
+      frame: lidar_link
+      rate_hz: 10.0
+      horizontal:
+        angle_min: -3.14159
+        angle_max: 3.14159
+        num_beams: 360
+      vertical:
+        angle_min: -0.26
+        angle_max: 0.26
+        num_rings: 16
+      range_min: 0.1
+      range_max: 30.0
+      noise: 0.015
+
+    camera:
+      enabled: true
+      width: 640
+      height: 480
+      hfov_deg: 90.0
+      sensor_height: 0.6
+      rgb_channel: /camera/rgb/image_raw
+      depth_channel: /camera/depth/image_raw
+      depth_points_channel: /camera/depth/points
+      depth_points_stride: 1
+      info_channel: /camera/camera_info
+      semantic_enabled: true
+      semantic_channel: /camera/semantic/image_raw
+      semantic_ids_channel: /camera/semantic/instance_ids
+      frame: camera_link
+      rate_hz: 15.0
+      noise:
+        depth: 0.0
+
+    imu:
+      enabled: true
+      channel: /imu
+      frame: imu_link
+      rate_hz: 200.0
+      noise:
+        gyro: 0.01
+        accel: 0.05
+        gyro_bias: 0.001
+        accel_bias: 0.01
+
+    odom:
+      enabled: true
+      channel: /odom
+      frame: odom
+      child_frame: base_link
+      noise: 0.0
+
+  map:
+    enabled: true
+    publish: false
+    frame: map
+    rate_hz: 1.0
+    ply:
+      source: /workspace/autonomy/src/17DRP5sb8fy/17DRP5sb8fy_semantic.ply
+      channel: /overall/map
+      stride: 1
+    grid:
+      channel: /map
+      resolution: 0.05
+      z_min: 0.1
+      z_max: 2.5

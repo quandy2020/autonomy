@@ -173,6 +173,10 @@ void PlannerServer::RegisterAutolinkEndpoints()
         AWARN << "PlannerServer: failed to subscribe " << kMapTopicName;
     }
 
+    if (costmap_wrapper_) {
+        costmap_wrapper_->AttachSensorReaders(node_);
+    }
+
     plan_writer_ =
         node_->CreateWriter<automsgs::msgs::nav_msgs::Path>(kPlanTopicName);
     if (plan_writer_) {

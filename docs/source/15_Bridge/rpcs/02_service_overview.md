@@ -17,7 +17,6 @@ Bridge 对外暴露的唯一 gRPC 服务，定义于 `autonomy/bridge/proto/exte
 | `EmergencyStop` | System | `EmergencyStopRequest` → `CommandAck` | [06](06_system_api.md) |
 | `CancelAllTasks` | System | `CancelAllTasksRequest` → `CommandAck` | [06](06_system_api.md) |
 | `SendNavigationCommand` | Command | `NavigationCommandRequest` → stream `*Response` | [07](07_navigation_command.md) |
-| `SendExplorationCommand` | Command | `ExplorationCommandRequest` → stream `*Response` | [08](08_exploration_command.md) |
 | `SendFollowCommand` | Command | `FollowCommandRequest` → stream `*Response` | [09](09_follow_command.md) |
 | `SendTeleopCommand` | Command | stream `TeleopCommandRequest` → stream `*Response` | [10](10_teleop_command.md) |
 | `SendDockCommand` | Command | `DockCommandRequest` → stream `*Response` | [11](11_dock_command.md) |

@@ -26,6 +26,7 @@
 #include <vector>
 
 #include <automsgs/msgs/sensor_msgs/point_field_conversion.hpp>
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
 #include "autonomy/common/logging.hpp"
 #include "autonomy/transform/tf2/convert.h"
 
@@ -88,6 +89,20 @@ float TimeoutSeconds(transform::tf2::Duration tolerance) {
     return static_cast<float>(SecondsFromDuration(tolerance));
 }
 
+automsgs::msgs::geometry_msgs::TransformStamped LookupTransformLatestFallback(
+    autonomy::transform::Buffer& tf_buffer, const std::string& target_frame,
+    const std::string& source_frame,
+    const automsgs::msgs::builtin_interfaces::Time& stamp, float timeout) {
+    try {
+        return tf_buffer.lookupTransform(target_frame, source_frame, stamp,
+                                         timeout);
+    } catch (const transform::tf2::TransformException&) {
+        return tf_buffer.lookupTransform(
+            target_frame, source_frame,
+            automsgs::msgs::builtin_interfaces::Time{}, timeout);
+    }
+}
+
 }  // namespace
 
 ObservationBuffer::ObservationBuffer(
@@ -138,8 +153,9 @@ void ObservationBuffer::bufferCloud(
                 std::max(obstacle_max_range_, 1.0e6);
             observation.obstacle_min_range_ = 0.0;
         } else {
-            const auto origin_transform = tf_buffer_.lookupTransform(
-                global_frame_, origin_frame, cloud.header().stamp(), timeout);
+            const auto origin_transform = LookupTransformLatestFallback(
+                tf_buffer_, global_frame_, origin_frame, cloud.header().stamp(),
+                timeout);
             double ox = 0.0, oy = 0.0, oz = 0.0;
             TransformPoint(origin_transform.transform(), 0.0, 0.0, 0.0, ox, oy,
                            oz);
@@ -163,9 +179,9 @@ void ObservationBuffer::bufferCloud(
         automsgs::msgs::geometry_msgs::Transform cloud_transform;
         bool need_transform = cloud.header().frame_id() != global_frame_;
         if (need_transform) {
-            const auto stamped_transform = tf_buffer_.lookupTransform(
-                global_frame_, cloud.header().frame_id(), cloud.header().stamp(),
-                timeout);
+            const auto stamped_transform = LookupTransformLatestFallback(
+                tf_buffer_, global_frame_, cloud.header().frame_id(),
+                cloud.header().stamp(), timeout);
             cloud_transform = stamped_transform.transform();
         }
 

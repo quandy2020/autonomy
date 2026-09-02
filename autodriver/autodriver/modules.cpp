@@ -28,6 +28,7 @@
 #ifdef AUTODRIVER_HAVE_REALSENSE
 #include "autodriver/hardware/realsense_imu_driver.hpp"
 #include "autodriver/hardware/realsense_camera_driver.hpp"
+#include "autodriver/hardware/realsense_pointcloud_driver.hpp"
 #endif
 
 #include "autolink/class_loader/class_loader_register_macro.hpp"
@@ -123,10 +124,30 @@ class Lidar3dModule
     : public autodriver::SensorPlugin<autodriver::SensorType::kLidar3d,
                                       false> {};
 
+class PointCloudModule
+    : public autodriver::SensorPlugin<autodriver::SensorType::kLidar3d> {
+protected:
+    std::shared_ptr<autodriver::SensorDriver> MakeDriver(
+        const autodriver::Config::Sensor& sensor) override {
+        if (sensor.backend != "realsense") {
+            AERROR << "unsupported point cloud backend: " << sensor.backend;
+            return nullptr;
+        }
+#ifdef AUTODRIVER_HAVE_REALSENSE
+        return autodriver::hardware::CreateRealSensePointCloudDriver(
+            sensor.id, sensor.params);
+#else
+        AERROR << "point cloud realsense backend not compiled";
+        return nullptr;
+#endif
+    }
+};
+
 class LidarModule : public Lidar2dModule {};
 
 CLASS_LOADER_REGISTER_CLASS(Lidar2dModule, autodriver::SensorModule)
 CLASS_LOADER_REGISTER_CLASS(Lidar3dModule, autodriver::SensorModule)
+CLASS_LOADER_REGISTER_CLASS(PointCloudModule, autodriver::SensorModule)
 CLASS_LOADER_REGISTER_CLASS(LidarModule, autodriver::SensorModule)
 
 // ---------------------------------------------------------------------------

@@ -28,7 +28,8 @@ namespace grpc {
 namespace handlers {
 
 DEFINE_HANDLER_SIGNATURE(
-    SendTeleopSignature, proto::TeleopCommandRequest,
+    SendTeleopSignature,
+    autonomy::common::async_grpc::Stream<proto::TeleopCommandRequest>,
     autonomy::common::async_grpc::Stream<proto::TeleopCommandResponse>,
     "/autonomy.bridge.proto.AutonomyService/SendTeleopCommand")
 

@@ -109,6 +109,9 @@ void SetParamIfAbsent(hardware::DriverParams* params, const std::string& key,
 
 DeviceMatch ReadMatch(const YAML::Node& node) {
     DeviceMatch out;
+    if (!node || !node.IsMap()) {
+        return out;
+    }
     out.subsystem = ReadString(node, "subsystem");
     out.device = ReadString(node, "device");
     out.vendor = ReadString(node, "vendor");
@@ -118,7 +121,7 @@ DeviceMatch ReadMatch(const YAML::Node& node) {
 }
 
 void ReadParamsMap(const YAML::Node& node, hardware::DriverParams* params) {
-    if (!node || !node.IsMap()) {
+    if (!node || !node.IsMap() || params == nullptr) {
         return;
     }
     for (const auto& entry : node) {
@@ -236,12 +239,13 @@ void ApplyFlatDeviceFields(const YAML::Node& node, const std::string& backend,
     ApplyPublisherShorthand(node["publisher"], channels, params);
 
     int fps = ReadInt(node, "fps");
-    if (module == "CameraModule") {
+    if (module == "CameraModule" || module == "PointCloudModule") {
         SetParamIfAbsent(params, "fps", fps);
         SetParamIfAbsent(params, "width", ReadInt(node, "width"));
         SetParamIfAbsent(params, "height", ReadInt(node, "height"));
         SetParamIfAbsent(params, "model", ReadString(node, "model"));
         SetParamIfAbsent(params, "stream", ReadString(node, "stream"));
+        SetParamIfAbsent(params, "frame_id", ReadString(node, "frame_id"));
     } else {
         int rate = ReadInt(node, "rate");
         if (rate <= 0) {
@@ -331,10 +335,13 @@ void AppendSensorGroups(const YAML::Node& groups,
     static constexpr DeviceKind kLidar3d{"Lidar3dModule", "lidar/", "serial"};
     static constexpr DeviceKind kCamera{"CameraModule", "camera/", "realsense"};
     static constexpr DeviceKind kRange{"RangeModule", "range/", "serial"};
+    static constexpr DeviceKind kPointCloud{"PointCloudModule", "camera/",
+                                            "realsense"};
 
     AppendTypedList(groups["lidar_2d"], kLidar2d, sensors);
     AppendTypedList(groups["lidar_3d"], kLidar3d, sensors);
     AppendLidarList(groups["lidar"], sensors);
+    AppendTypedList(groups["point_cloud"], kPointCloud, sensors);
     AppendTypedList(groups["imu"], kImu, sensors);
     AppendTypedList(groups["imu_devices"], kImu, sensors);
     AppendTypedList(groups["gps"], kGps, sensors);
@@ -362,6 +369,7 @@ Config::Sensor SensorFromYaml(const YAML::Node& node) {
     SetParamIfAbsent(&out.params, "interface", ReadString(node, "interface"));
     SetParamIfAbsent(&out.params, "model", ReadString(node, "model"));
     SetParamIfAbsent(&out.params, "stream", ReadString(node, "stream"));
+    SetParamIfAbsent(&out.params, "frame_id", ReadString(node, "frame_id"));
     SetParamIfAbsent(&out.params, "width", ReadInt(node, "width"));
     SetParamIfAbsent(&out.params, "height", ReadInt(node, "height"));
     SetParamIfAbsent(&out.params, "fps", ReadInt(node, "fps"));

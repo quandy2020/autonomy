@@ -130,22 +130,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
     }
 
     if (!scan_reader_ && costmap_wrapper_) {
-        auto* costmap = costmap_wrapper_.get();
-        scan_reader_ =
-            node_->CreateReader<automsgs::msgs::sensor_msgs::LaserScan>(
-                kScanTopicName,
-                [costmap](
-                    const std::shared_ptr<automsgs::msgs::sensor_msgs::LaserScan>&
-                        msg) {
-                    if (msg && costmap) {
-                        costmap->feedLaserScan(*msg);
-                    }
-                });
-        if (scan_reader_) {
-            AINFO << "ControllerServer: LaserScan on " << kScanTopicName;
-        } else {
-            AWARN << "ControllerServer: failed to subscribe " << kScanTopicName;
-        }
+        costmap_wrapper_->AttachSensorReaders(node_);
     }
 
     if (!costmap_writer_ && costmap_wrapper_) {
