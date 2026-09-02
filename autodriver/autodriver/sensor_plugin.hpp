@@ -34,16 +34,16 @@ namespace autodriver {
 /**
  * @class autodriver::SensorPlugin
  * @brief Connects a hardware driver to the module lifecycle and sample hook.
- *
  * @tparam kType Sensor modality handled by this plugin.
  * @tparam kCapture When false, the plugin is attach-only (no hardware capture).
  */
 template <SensorType kType, bool kCapture = true>
 class SensorPlugin : public SensorModule {
 public:
-    /** @brief Compile-time traits for the sensor modality. */
+    // Compile-time traits for the sensor modality.
     using Traits = SensorTraits<kType>;
-    /** @brief Concrete typed sample for this sensor modality. */
+
+    // Concrete typed sample for this sensor modality.
     using Sample = typename Traits::Sample;
 
     /**
@@ -141,13 +141,16 @@ private:
         }
     }
 
-    /** @brief Configured sensor identifier. */
+    // Configured sensor identifier.
     SensorId id_;
-    /** @brief Upstream callback invoked after stamping each sample. */
+
+    // Upstream callback invoked after stamping each sample.
     SampleHook hook_;
-    /** @brief Hardware backend when kCapture is true. */
+
+    // Hardware backend when kCapture is true.
     std::shared_ptr<SensorDriver> driver_;
-    /** @brief Running flag for attach-only plugins when kCapture is false. */
+
+    // Running flag for attach-only plugins when kCapture is false.
     bool running_ = false;
 };
 

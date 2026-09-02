@@ -17,7 +17,7 @@
 /**
  * @file
  * @brief Registers all built-in sensor modules with the class_loader so that
- *        SensorManager can instantiate them without loading a separate .so.
+ * SensorManager can instantiate them without loading a separate .so.
  */
 
 #include "autodriver/sensor_plugin.hpp"
@@ -37,7 +37,6 @@
 // ---------------------------------------------------------------------------
 // IMU module — serial, CAN, and RealSense backends.
 // ---------------------------------------------------------------------------
-
 /**
  * @class ImuModule
  * @brief SensorPlugin for IMU devices (serial WIT, CAN, RealSense).
@@ -45,7 +44,9 @@
 class ImuModule
     : public autodriver::SensorPlugin<autodriver::SensorType::kImu> {
 protected:
-    /** @brief Instantiates a serial, CAN, or RealSense IMU driver from config. */
+    /**
+     * @brief Instantiates a serial, CAN, or RealSense IMU driver from config.
+     */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
         if (sensor.backend == "serial") {
@@ -75,7 +76,6 @@ CLASS_LOADER_REGISTER_CLASS(ImuModule, autodriver::SensorModule)
 // ---------------------------------------------------------------------------
 // GPS module — serial and CAN backends.
 // ---------------------------------------------------------------------------
-
 /**
  * @class GpsModule
  * @brief SensorPlugin for GNSS receivers (serial NMEA, CAN NMEA2000).
@@ -83,7 +83,9 @@ CLASS_LOADER_REGISTER_CLASS(ImuModule, autodriver::SensorModule)
 class GpsModule
     : public autodriver::SensorPlugin<autodriver::SensorType::kGps> {
 protected:
-    /** @brief Instantiates a serial or CAN GPS driver from config. */
+    /**
+     * @brief Instantiates a serial or CAN GPS driver from config.
+     */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
         if (sensor.backend == "serial") {
@@ -104,7 +106,6 @@ CLASS_LOADER_REGISTER_CLASS(GpsModule, autodriver::SensorModule)
 // ---------------------------------------------------------------------------
 // Camera module — RealSense video streams.
 // ---------------------------------------------------------------------------
-
 /**
  * @class CameraModule
  * @brief SensorPlugin for RealSense color/depth/IR video streams.
@@ -112,7 +113,9 @@ CLASS_LOADER_REGISTER_CLASS(GpsModule, autodriver::SensorModule)
 class CameraModule
     : public autodriver::SensorPlugin<autodriver::SensorType::kCamera> {
 protected:
-    /** @brief Instantiates a RealSense camera driver from config. */
+    /**
+     * @brief Instantiates a RealSense camera driver from config.
+     */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
         if (sensor.backend != "realsense") {
@@ -134,13 +137,18 @@ CLASS_LOADER_REGISTER_CLASS(CameraModule, autodriver::SensorModule)
 // ---------------------------------------------------------------------------
 // Lidar modules — 2D/3D placeholders and RealSense point cloud.
 // ---------------------------------------------------------------------------
-
-/** @class Lidar2dModule @brief Attach-only placeholder for 2D lidar plugins. */
+/**
+ * @class Lidar2dModule
+ * @brief Attach-only placeholder for 2D lidar plugins.
+ */
 class Lidar2dModule
     : public autodriver::SensorPlugin<autodriver::SensorType::kLidar2d,
                                       false> {};
 
-/** @class Lidar3dModule @brief Attach-only placeholder for 3D lidar plugins. */
+/**
+ * @class Lidar3dModule
+ * @brief Attach-only placeholder for 3D lidar plugins.
+ */
 class Lidar3dModule
     : public autodriver::SensorPlugin<autodriver::SensorType::kLidar3d,
                                       false> {};
@@ -152,7 +160,9 @@ class Lidar3dModule
 class PointCloudModule
     : public autodriver::SensorPlugin<autodriver::SensorType::kLidar3d> {
 protected:
-    /** @brief Instantiates a RealSense point-cloud driver from config. */
+    /**
+     * @brief Instantiates a RealSense point-cloud driver from config.
+     */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
         if (sensor.backend != "realsense") {
@@ -169,7 +179,10 @@ protected:
     }
 };
 
-/** @class LidarModule @brief Alias module registered for legacy lidar plugin names. */
+/**
+ * @class LidarModule
+ * @brief Alias module registered for legacy lidar plugin names.
+ */
 class LidarModule : public Lidar2dModule {};
 
 CLASS_LOADER_REGISTER_CLASS(Lidar2dModule, autodriver::SensorModule)
@@ -180,8 +193,10 @@ CLASS_LOADER_REGISTER_CLASS(LidarModule, autodriver::SensorModule)
 // ---------------------------------------------------------------------------
 // Range finder module — attach-only placeholder.
 // ---------------------------------------------------------------------------
-
-/** @class RangeModule @brief Attach-only placeholder for range finder plugins. */
+/**
+ * @class RangeModule
+ * @brief Attach-only placeholder for range finder plugins.
+ */
 class RangeModule
     : public autodriver::SensorPlugin<autodriver::SensorType::kRangeFinder,
                                       false> {};

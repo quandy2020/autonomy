@@ -30,12 +30,16 @@ namespace autodriver {
 namespace hardware {
 namespace {
 
-/** @brief Converts a RealSense timestamp in milliseconds to autolink::Time. */
+/**
+ * @brief Converts a RealSense timestamp in milliseconds to autolink::Time.
+ */
 autolink::Time TimeFromMilliseconds(const double ms) {
     return autolink::Time(static_cast<std::uint64_t>(ms * 1000000.0));
 }
 
-/** @brief Returns configured frame_id or the default for the stream kind. */
+/**
+ * @brief Returns configured frame_id or the default for the stream kind.
+ */
 std::string ResolveFrameId(const DriverParams& params,
                            const hardware::realsense::StreamKind stream) {
     const std::string configured = GetString(params, "frame_id");
@@ -47,7 +51,9 @@ std::string ResolveFrameId(const DriverParams& params,
 
 }  // namespace
 
-/** @brief Parses stream and resolution params and stores sensor identity. */
+/**
+ * @brief Parses stream and resolution params and stores sensor identity.
+ */
 RealSenseCameraDriver::RealSenseCameraDriver(SensorId id, DriverParams params)
     : id_(std::move(id)),
       params_(std::move(params)),
@@ -57,10 +63,14 @@ RealSenseCameraDriver::RealSenseCameraDriver(SensorId id, DriverParams params)
       height_(ParseInt(params_, "height", 480)),
       fps_(ParseInt(params_, "fps", 30)) {}
 
-/** @brief Unsubscribes and stops the shared device hub on destruction. */
+/**
+ * @brief Unsubscribes and stops the shared device hub on destruction.
+ */
 RealSenseCameraDriver::~RealSenseCameraDriver() { Stop(); }
 
-/** @brief Subscribes to a RealSense video stream via the shared hub. */
+/**
+ * @brief Subscribes to a RealSense video stream via the shared hub.
+ */
 bool RealSenseCameraDriver::Start() {
     if (running_.exchange(true)) {
         return true;
@@ -100,7 +110,9 @@ bool RealSenseCameraDriver::Start() {
     return true;
 }
 
-/** @brief Unsubscribes from the hub and releases the shared device handle. */
+/**
+ * @brief Unsubscribes from the hub and releases the shared device handle.
+ */
 void RealSenseCameraDriver::Stop() {
     if (!running_.exchange(false)) {
         return;
@@ -113,15 +125,21 @@ void RealSenseCameraDriver::Stop() {
     hub_.reset();
 }
 
-/** @brief Returns true while the video subscription is active. */
+/**
+ * @brief Returns true while the video subscription is active.
+ */
 bool RealSenseCameraDriver::IsRunning() const { return running_.load(); }
 
-/** @brief Registers the callback invoked for each camera frame sample. */
+/**
+ * @brief Registers the callback invoked for each camera frame sample.
+ */
 void RealSenseCameraDriver::SetSampleCallback(SampleCallback callback) {
     callback_ = std::move(callback);
 }
 
-/** @brief Factory that constructs a RealSenseCameraDriver instance. */
+/**
+ * @brief Factory that constructs a RealSenseCameraDriver instance.
+ */
 std::shared_ptr<SensorDriver> CreateRealSenseCameraDriver(
     const SensorId& id, const DriverParams& params) {
     return std::make_shared<RealSenseCameraDriver>(id, params);

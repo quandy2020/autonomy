@@ -38,24 +38,31 @@ namespace autodriver {
  */
 class SensorModule {
 public:
-    /** @brief Upstream hook invoked when the module produces a sample. */
+    // Upstream hook invoked when the module produces a sample.
     using SampleHook = std::function<void(std::shared_ptr<SensorSample>)>;
 
     /**
      * @brief Per-sensor initialization context passed to Init().
      */
     struct Context {
-        /** @brief Sensor entry parsed from YAML configuration. */
+        // Sensor entry parsed from YAML configuration.
         Config::Sensor sensor;
-        /** @brief Callback that receives samples after capture or stamping. */
+
+        // Callback that receives samples after capture or stamping.
         SampleHook hook;
     };
 
-    /** @brief Copy construction is disabled. */
+    /**
+     * @brief Copy construction is disabled.
+     */
     SensorModule(const SensorModule&) = delete;
-    /** @brief Copy assignment is disabled. */
+    /**
+     * @brief Copy assignment is disabled.
+     */
     SensorModule& operator=(const SensorModule&) = delete;
-    /** @brief Virtual destructor for polymorphic modules. */
+    /**
+     * @brief Virtual destructor for polymorphic modules.
+     */
     virtual ~SensorModule() = default;
 
     /**
@@ -95,7 +102,9 @@ public:
     virtual bool IsRunning() const = 0;
 
 protected:
-    /** @brief Protected default constructor for derived modules. */
+    /**
+     * @brief Protected default constructor for derived modules.
+     */
     SensorModule() = default;
 };
 

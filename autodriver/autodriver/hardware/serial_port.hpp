@@ -102,10 +102,10 @@ public:
   const std::string & last_error() const { return last_error_; }
 
 private:
-  /** @brief Open file descriptor, or -1 when closed. */
+  // Open file descriptor, or -1 when closed.
   int fd_{-1};
 
-  /** @brief Last reported I/O error message. */
+  // Last reported I/O error message.
   std::string last_error_;
 };
 

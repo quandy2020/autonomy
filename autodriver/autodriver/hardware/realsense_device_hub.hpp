@@ -41,17 +41,29 @@ namespace realsense {
  * @brief RealSense video stream kinds supported by autodriver.
  */
 enum class StreamKind {
-    /** @brief RGB color stream. */
+    /**
+     * @brief RGB color stream.
+     */
     kColor,
-    /** @brief Raw depth stream. */
+    /**
+     * @brief Raw depth stream.
+     */
     kDepth,
-    /** @brief First infrared stream. */
+    /**
+     * @brief First infrared stream.
+     */
     kInfrared1,
-    /** @brief Second infrared stream. */
+    /**
+     * @brief Second infrared stream.
+     */
     kInfrared2,
-    /** @brief Depth aligned to the color optical frame. */
+    /**
+     * @brief Depth aligned to the color optical frame.
+     */
     kAlignedDepthToColor,
-    /** @brief Colored point cloud derived from depth and color. */
+    /**
+     * @brief Colored point cloud derived from depth and color.
+     */
     kPointCloud,
 };
 
@@ -101,21 +113,28 @@ bool RealSenseAvailable();
  * @brief Decoded video frame with optional CameraInfo metadata.
  */
 struct RealSenseVideoFrame {
-    /** @brief Image width in pixels. */
+    // Image width in pixels.
     std::uint32_t width{0};
-    /** @brief Image height in pixels. */
+
+    // Image height in pixels.
     std::uint32_t height{0};
-    /** @brief Pixel encoding (e.g. rgb8, 16UC1). */
+
+    // Pixel encoding (e.g. rgb8, 16UC1).
     std::string encoding;
-    /** @brief Raw pixel buffer. */
+
+    // Raw pixel buffer.
     std::vector<std::uint8_t> data;
-    /** @brief Frame timestamp in milliseconds. */
+
+    // Frame timestamp in milliseconds.
     double timestamp_ms{0.0};
-    /** @brief TF frame_id for the optical frame. */
+
+    // TF frame_id for the optical frame.
     std::string frame_id;
-    /** @brief Intrinsics when available from the device. */
+
+    // Intrinsics when available from the device.
     automsgs::msgs::sensor_msgs::CameraInfo camera_info;
-    /** @brief True when camera_info was populated. */
+
+    // True when camera_info was populated.
     bool has_camera_info{false};
 };
 
@@ -123,22 +142,24 @@ struct RealSenseVideoFrame {
  * @brief Decoded colored point cloud frame.
  */
 struct RealSensePointCloudFrame {
-    /** @brief Frame timestamp in milliseconds. */
+    // Frame timestamp in milliseconds.
     double timestamp_ms{0.0};
-    /** @brief TF frame_id for the cloud. */
+
+    // TF frame_id for the cloud.
     std::string frame_id;
-    /** @brief Serialized PointCloud2 message. */
+
+    // Serialized PointCloud2 message.
     automsgs::msgs::sensor_msgs::PointCloud2 cloud;
 };
 
-/** @brief Callback invoked for each decoded video frame. */
+// Callback invoked for each decoded video frame.
 using RealSenseVideoCallback = std::function<void(RealSenseVideoFrame frame)>;
 
-/** @brief Callback invoked for each decoded point cloud frame. */
+// Callback invoked for each decoded point cloud frame.
 using RealSensePointCloudCallback =
     std::function<void(RealSensePointCloudFrame frame)>;
 
-/** @brief Callback invoked for fused IMU accel/gyro samples. */
+// Callback invoked for fused IMU accel/gyro samples.
 using RealSenseImuCallback = std::function<void(
     std::array<double, 3> linear_acceleration,
     std::array<double, 3> angular_velocity,
@@ -147,7 +168,6 @@ using RealSenseImuCallback = std::function<void(
 /**
  * @class autodriver::io::RealSenseDeviceHub
  * @brief One librealsense pipeline per physical device, shared by all drivers.
- *
  * Drivers subscribe to individual streams (color, depth, IR, IMU, point cloud).
  * Device options such as emitter_enabled are read from DriverParams.
  */
@@ -235,7 +255,7 @@ class RealSenseDeviceHub {
 
     struct Impl;
 
-    /** @brief Opaque librealsense pipeline and subscription state. */
+    // Opaque librealsense pipeline and subscription state.
     std::unique_ptr<Impl> impl_;
 };
 

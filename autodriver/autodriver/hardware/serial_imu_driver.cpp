@@ -29,7 +29,9 @@
 namespace autodriver {
 namespace hardware {
 
-/** @brief Stores sensor identity and WIT-motion parser scale factors. */
+/**
+ * @brief Stores sensor identity and WIT-motion parser scale factors.
+ */
 SerialImuDriver::SerialImuDriver(SensorId id, DriverParams params)
 : id_(std::move(id)),
   params_(std::move(params)),
@@ -41,13 +43,17 @@ SerialImuDriver::SerialImuDriver(SensorId id, DriverParams params)
 {
 }
 
-/** @brief Stops the reader thread and closes the serial port. */
+/**
+ * @brief Stops the reader thread and closes the serial port.
+ */
 SerialImuDriver::~SerialImuDriver()
 {
   Stop();
 }
 
-/** @brief Opens the serial device and starts the byte reader thread. */
+/**
+ * @brief Opens the serial device and starts the byte reader thread.
+ */
 bool SerialImuDriver::Start()
 {
   if (running_.exchange(true)) {
@@ -65,7 +71,9 @@ bool SerialImuDriver::Start()
   return true;
 }
 
-/** @brief Stops reading and joins the worker thread. */
+/**
+ * @brief Stops reading and joins the worker thread.
+ */
 void SerialImuDriver::Stop()
 {
   if (!running_.exchange(false)) {
@@ -77,19 +85,25 @@ void SerialImuDriver::Stop()
   }
 }
 
-/** @brief Returns true while the serial reader thread is active. */
+/**
+ * @brief Returns true while the serial reader thread is active.
+ */
 bool SerialImuDriver::IsRunning() const
 {
   return running_.load();
 }
 
-/** @brief Registers the callback invoked for each fused IMU sample. */
+/**
+ * @brief Registers the callback invoked for each fused IMU sample.
+ */
 void SerialImuDriver::SetSampleCallback(SampleCallback callback)
 {
   callback_ = std::move(callback);
 }
 
-/** @brief Reads serial bytes, parses WIT packets, and emits IMU samples. */
+/**
+ * @brief Reads serial bytes, parses WIT packets, and emits IMU samples.
+ */
 void SerialImuDriver::ReadLoop()
 {
   std::uint8_t chunk[256];
@@ -110,7 +124,9 @@ void SerialImuDriver::ReadLoop()
   }
 }
 
-/** @brief Factory that constructs a SerialImuDriver instance. */
+/**
+ * @brief Factory that constructs a SerialImuDriver instance.
+ */
 std::shared_ptr<SensorDriver> CreateSerialImuDriver(
   const SensorId & id,
   const DriverParams & params)

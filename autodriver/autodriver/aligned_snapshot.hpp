@@ -38,9 +38,10 @@ namespace autodriver {
  * @brief One sample per sensor id, chosen near a shared host timestamp.
  */
 struct AlignedSnapshot {
-    /** @brief Common host time used to select samples in this snapshot. */
+    // Common host time used to select samples in this snapshot.
     autolink::Time time;
-    /** @brief Latest aligned sample per sensor id. */
+
+    // Latest aligned sample per sensor id.
     std::unordered_map<SensorId, std::shared_ptr<SensorSample>> samples;
 
     /**

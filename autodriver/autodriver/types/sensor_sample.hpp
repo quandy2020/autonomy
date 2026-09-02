@@ -62,7 +62,9 @@ public:
         : id_(std::move(id)), type_(type), device_time_(device_time),
           host_time_(device_time) {}
 
-    /** @brief Virtual destructor for polymorphic samples. */
+    /**
+     * @brief Virtual destructor for polymorphic samples.
+     */
     virtual ~SensorSample() = default;
 
     /**
@@ -113,13 +115,16 @@ public:
     }
 
 protected:
-    /** @brief Stable sensor instance identifier. */
+    // Stable sensor instance identifier.
     SensorId id_;
-    /** @brief Sensor modality of this reading. */
+
+    // Sensor modality of this reading.
     SensorType type_;
-    /** @brief Timestamp reported by the device. */
+
+    // Timestamp reported by the device.
     autolink::Time device_time_;
-    /** @brief Mapped host receive time for this sample. */
+
+    // Mapped host receive time for this sample.
     autolink::Time host_time_;
 };
 
@@ -132,7 +137,7 @@ protected:
 template <SensorType kType, typename Msg>
 class TypedSample : public SensorSample {
 public:
-    /** @brief Underlying automsgs protobuf message type. */
+    // Underlying automsgs protobuf message type.
     using Message = Msg;
 
     /**
@@ -162,14 +167,15 @@ public:
         return msg;
     }
 
-    /** @brief Embedded automsgs protobuf payload. */
+    // Embedded automsgs protobuf payload.
     Msg msg;
 };
 
-/** @brief IMU sample using sensor_msgs/Imu. */
+// IMU sample using sensor_msgs/Imu.
 using ImuSample =
     TypedSample<SensorType::kImu, automsgs::msgs::sensor_msgs::Imu>;
-/** @brief GPS sample using sensor_msgs/NavSatFix. */
+
+// GPS sample using sensor_msgs/NavSatFix.
 using GpsSample =
     TypedSample<SensorType::kGps, automsgs::msgs::sensor_msgs::NavSatFix>;
 
@@ -181,16 +187,18 @@ class CameraFrame
     : public TypedSample<SensorType::kCamera,
                          automsgs::msgs::sensor_msgs::Image> {
  public:
-    /** @brief Base TypedSample alias for sensor_msgs/Image. */
+    // Base TypedSample alias for sensor_msgs/Image.
     using Base =
         TypedSample<SensorType::kCamera, automsgs::msgs::sensor_msgs::Image>;
     using Base::Base;
 
-    /** @brief Optional camera calibration metadata. */
+    // Optional camera calibration metadata.
     automsgs::msgs::sensor_msgs::CameraInfo camera_info;
-    /** @brief True when camera_info has been populated. */
+
+    // True when camera_info has been populated.
     bool has_camera_info{false};
-    /** @brief Optional frame_id override for the image header. */
+
+    // Optional frame_id override for the image header.
     std::string frame_id;
 
     /**
@@ -206,7 +214,7 @@ class CameraFrame
     }
 };
 
-/** @brief Two-dimensional lidar scan using sensor_msgs/LaserScan. */
+// Two-dimensional lidar scan using sensor_msgs/LaserScan.
 using LidarScan =
     TypedSample<SensorType::kLidar2d, automsgs::msgs::sensor_msgs::LaserScan>;
 
@@ -218,12 +226,12 @@ class LidarCloud
     : public TypedSample<SensorType::kLidar3d,
                          automsgs::msgs::sensor_msgs::PointCloud2> {
  public:
-    /** @brief Base TypedSample alias for sensor_msgs/PointCloud2. */
+    // Base TypedSample alias for sensor_msgs/PointCloud2.
     using Base = TypedSample<SensorType::kLidar3d,
                              automsgs::msgs::sensor_msgs::PointCloud2>;
     using Base::Base;
 
-    /** @brief Optional frame_id override for the cloud header. */
+    // Optional frame_id override for the cloud header.
     std::string frame_id;
 
     /**
@@ -239,10 +247,11 @@ class LidarCloud
     }
 };
 
-/** @brief Range sample using sensor_msgs/Range. */
+// Range sample using sensor_msgs/Range.
 using RangeSample =
     TypedSample<SensorType::kRangeFinder, automsgs::msgs::sensor_msgs::Range>;
-/** @brief Wheel odometry sample using nav_msgs/Odometry. */
+
+// Wheel odometry sample using nav_msgs/Odometry.
 using WheelOdometrySample =
     TypedSample<SensorType::kWheelOdometry, automsgs::msgs::nav_msgs::Odometry>;
 

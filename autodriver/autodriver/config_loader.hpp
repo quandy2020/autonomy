@@ -28,7 +28,7 @@
 
 namespace autodriver {
 
-/** @brief Default configuration file name under config/. */
+// Default configuration file name under config/.
 inline constexpr const char* kDefaultConfigBasename = "autodriver_hardware.yaml";
 
 /**

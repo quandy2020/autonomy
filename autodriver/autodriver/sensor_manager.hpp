@@ -47,23 +47,31 @@ namespace autodriver {
 /**
  * @class autodriver::SensorManager
  * @brief Loads one plugin instance per sensor id; routes samples to SensorHub
- *        and an optional SampleSink (Autolink publishing lives in bridge/).
+ * and an optional SampleSink (Autolink publishing lives in bridge/).
  */
 class SensorManager {
 public:
-    /** @brief Default-construct with an empty configuration. */
+    /**
+     * @brief Default-construct with an empty configuration.
+     */
     SensorManager();
     /**
      * @brief Construct with a pre-loaded configuration.
      * @param config Process configuration snapshot.
      */
     explicit SensorManager(Config config);
-    /** @brief Stop all sensors and join background threads. */
+    /**
+     * @brief Stop all sensors and join background threads.
+     */
     ~SensorManager();
 
-    /** @brief Copy construction is disabled. */
+    /**
+     * @brief Copy construction is disabled.
+     */
     SensorManager(const SensorManager&) = delete;
-    /** @brief Copy assignment is disabled. */
+    /**
+     * @brief Copy assignment is disabled.
+     */
     SensorManager& operator=(const SensorManager&) = delete;
 
     /**
@@ -179,13 +187,19 @@ private:
      */
     void DetachLocked(const SensorId& id);
 
-    /** @brief Start the udev hotplug monitoring thread. */
+    /**
+     * @brief Start the udev hotplug monitoring thread.
+     */
     void StartUdev();
 
-    /** @brief Stop the udev hotplug monitoring thread. */
+    /**
+     * @brief Stop the udev hotplug monitoring thread.
+     */
     void StopUdev();
 
-    /** @brief Main loop for processing udev device events. */
+    /**
+     * @brief Main loop for processing udev device events.
+     */
     void UdevLoop();
 
     /**
@@ -194,25 +208,34 @@ private:
      */
     void DispatchSample(std::shared_ptr<SensorSample> sample);
 
-    /** @brief Process configuration loaded at construction. */
+    // Process configuration loaded at construction.
     Config config_;
-    /** @brief Central router for buffering and time alignment. */
+
+    // Central router for buffering and time alignment.
     SensorHub hub_;
-    /** @brief Optional downstream sink; not owned. */
+
+    // Optional downstream sink; not owned.
     SampleSink* sink_ = nullptr;
-    /** @brief Loaded sensor module instances keyed by sensor id. */
+
+    // Loaded sensor module instances keyed by sensor id.
     std::unordered_map<SensorId, std::shared_ptr<SensorModule>> modules_;
-    /** @brief Shared class loaders keyed by plugin library path. */
+    /**
+     * @brief Shared class loaders keyed by plugin library path.
+     */
     std::unordered_map<std::string,
                        std::unique_ptr<autolink::class_loader::ClassLoader>>
         loaders_;
-    /** @brief Protects modules_, loaders_, and attach/detach state. */
+
+    // Protects modules_, loaders_, and attach/detach state.
     mutable autolink::base::AtomicRWLock lock_;
-    /** @brief True after Initialize() completes successfully. */
+
+    // True after Initialize() completes successfully.
     bool initialized_ = false;
-    /** @brief True while the manager is started. */
+
+    // True while the manager is started.
     std::atomic<bool> running_{false};
-    /** @brief Background thread that polls udev when hotplug is enabled. */
+
+    // Background thread that polls udev when hotplug is enabled.
     std::thread udev_thread_;
 };
 

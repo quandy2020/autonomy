@@ -39,13 +39,17 @@ namespace io {
 
 CanSocket::CanSocket() = default;
 
-/** @brief Closes the socket if still open. */
+/**
+ * @brief Closes the socket if still open.
+ */
 CanSocket::~CanSocket()
 {
   Close();
 }
 
-/** @brief Opens a raw SocketCAN interface for reading frames. */
+/**
+ * @brief Opens a raw SocketCAN interface for reading frames.
+ */
 bool CanSocket::Open(const std::string & interface)
 {
   Close();
@@ -81,7 +85,9 @@ bool CanSocket::Open(const std::string & interface)
 #endif
 }
 
-/** @brief Closes the underlying CAN socket descriptor. */
+/**
+ * @brief Closes the underlying CAN socket descriptor.
+ */
 void CanSocket::Close()
 {
 #if defined(__linux__)
@@ -92,13 +98,17 @@ void CanSocket::Close()
 #endif
 }
 
-/** @brief Returns true when the CAN socket is open. */
+/**
+ * @brief Returns true when the CAN socket is open.
+ */
 bool CanSocket::IsOpen() const
 {
   return fd_ >= 0;
 }
 
-/** @brief Reads one CAN frame, waiting up to timeout_ms milliseconds. */
+/**
+ * @brief Reads one CAN frame, waiting up to timeout_ms milliseconds.
+ */
 bool CanSocket::Read(CanFrame & frame, int timeout_ms)
 {
 #if !defined(__linux__)

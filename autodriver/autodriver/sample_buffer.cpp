@@ -23,11 +23,15 @@
 
 namespace autodriver {
 
-/** @brief Constructs a ring buffer with at least one slot of capacity. */
+/**
+ * @brief Constructs a ring buffer with at least one slot of capacity.
+ */
 SampleBuffer::SampleBuffer(std::size_t capacity)
     : capacity_(capacity > 0 ? capacity : 1) {}
 
-/** @brief Appends a sample and evicts the oldest when over capacity. */
+/**
+ * @brief Appends a sample and evicts the oldest when over capacity.
+ */
 void SampleBuffer::Push(std::shared_ptr<SensorSample> sample) {
     if (!sample) {
         return;
@@ -38,7 +42,9 @@ void SampleBuffer::Push(std::shared_ptr<SensorSample> sample) {
     }
 }
 
-/** @brief Returns the newest sample whose host time is at or before time. */
+/**
+ * @brief Returns the newest sample whose host time is at or before time.
+ */
 std::shared_ptr<SensorSample> SampleBuffer::LatestAtOrBefore(
     const autolink::Time& time) const {
     for (auto it = samples_.rbegin(); it != samples_.rend(); ++it) {
@@ -49,7 +55,9 @@ std::shared_ptr<SensorSample> SampleBuffer::LatestAtOrBefore(
     return nullptr;
 }
 
-/** @brief Returns the most recently pushed sample, or nullptr if empty. */
+/**
+ * @brief Returns the most recently pushed sample, or nullptr if empty.
+ */
 std::shared_ptr<SensorSample> SampleBuffer::Latest() const {
     if (samples_.empty()) {
         return nullptr;
@@ -57,10 +65,14 @@ std::shared_ptr<SensorSample> SampleBuffer::Latest() const {
     return samples_.back();
 }
 
-/** @brief Removes all buffered samples. */
+/**
+ * @brief Removes all buffered samples.
+ */
 void SampleBuffer::Clear() { samples_.clear(); }
 
-/** @brief Returns the number of samples currently stored. */
+/**
+ * @brief Returns the number of samples currently stored.
+ */
 std::size_t SampleBuffer::Size() const { return samples_.size(); }
 
 }  // namespace autodriver

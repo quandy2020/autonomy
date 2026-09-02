@@ -29,7 +29,7 @@
 namespace autodriver {
 namespace hardware {
 
-/** @brief Flat key/value map from YAML sensor params. */
+// Flat key/value map from YAML sensor params.
 using DriverParams = std::unordered_map<std::string, std::string>;
 
 /**

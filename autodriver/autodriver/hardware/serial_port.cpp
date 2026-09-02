@@ -37,7 +37,9 @@ namespace io {
 namespace {
 
 #if defined(__linux__)
-/** @brief Maps a numeric baud rate to a termios speed_t constant. */
+/**
+ * @brief Maps a numeric baud rate to a termios speed_t constant.
+ */
 speed_t ToTermiosBaud(int baud_rate)
 {
   switch (baud_rate) {
@@ -58,13 +60,17 @@ speed_t ToTermiosBaud(int baud_rate)
 
 SerialPort::SerialPort() = default;
 
-/** @brief Closes the serial port if still open. */
+/**
+ * @brief Closes the serial port if still open.
+ */
 SerialPort::~SerialPort()
 {
   Close();
 }
 
-/** @brief Opens a TTY device in raw 8N1 mode at the given baud rate. */
+/**
+ * @brief Opens a TTY device in raw 8N1 mode at the given baud rate.
+ */
 bool SerialPort::Open(const std::string & device, int baud_rate)
 {
   Close();
@@ -107,7 +113,9 @@ bool SerialPort::Open(const std::string & device, int baud_rate)
 #endif
 }
 
-/** @brief Closes the underlying serial file descriptor. */
+/**
+ * @brief Closes the underlying serial file descriptor.
+ */
 void SerialPort::Close()
 {
 #if defined(__linux__)
@@ -118,13 +126,17 @@ void SerialPort::Close()
 #endif
 }
 
-/** @brief Returns true when the serial port is open. */
+/**
+ * @brief Returns true when the serial port is open.
+ */
 bool SerialPort::IsOpen() const
 {
   return fd_ >= 0;
 }
 
-/** @brief Reads up to max_bytes with a select-based timeout. */
+/**
+ * @brief Reads up to max_bytes with a select-based timeout.
+ */
 std::size_t SerialPort::Read(
   std::uint8_t * buffer,
   std::size_t max_bytes,
@@ -160,7 +172,9 @@ std::size_t SerialPort::Read(
 #endif
 }
 
-/** @brief Writes length bytes to the serial port, retrying partial writes. */
+/**
+ * @brief Writes length bytes to the serial port, retrying partial writes.
+ */
 bool SerialPort::Write(const std::uint8_t * buffer, std::size_t length)
 {
 #if !defined(__linux__)

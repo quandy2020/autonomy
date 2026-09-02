@@ -37,7 +37,6 @@ namespace hardware {
 /**
  * @class autodriver::hardware::RealSenseImuDriver
  * @brief Reads fused accel/gyro motion streams from a RealSense D400 device.
- *
  * Params: model, serial, index, frame_id.
  */
 class RealSenseImuDriver : public SensorDriver
@@ -91,22 +90,22 @@ public:
   void SetSampleCallback(SampleCallback callback) override;
 
 private:
-  /** @brief Sensor identifier for this driver instance. */
+  // Sensor identifier for this driver instance.
   SensorId id_;
 
-  /** @brief Parsed driver parameters from configuration. */
+  // Parsed driver parameters from configuration.
   DriverParams params_;
 
-  /** @brief Shared device hub managing the librealsense pipeline. */
+  // Shared device hub managing the librealsense pipeline.
   std::shared_ptr<io::RealSenseDeviceHub> hub_;
 
-  /** @brief Hub subscription handle returned by SubscribeImu(). */
+  // Hub subscription handle returned by SubscribeImu().
   std::uint64_t subscription_id_{0};
 
-  /** @brief User callback for delivered IMU samples. */
+  // User callback for delivered IMU samples.
   SampleCallback callback_;
 
-  /** @brief True while Start() succeeded and Stop() has not been called. */
+  // True while Start() succeeded and Stop() has not been called.
   std::atomic<bool> running_{false};
 };
 

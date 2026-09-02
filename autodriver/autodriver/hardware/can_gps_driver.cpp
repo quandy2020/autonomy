@@ -30,7 +30,9 @@
 namespace autodriver {
 namespace hardware {
 
-/** @brief Stores sensor identity and the target CAN frame id for GPS fixes. */
+/**
+ * @brief Stores sensor identity and the target CAN frame id for GPS fixes.
+ */
 CanGpsDriver::CanGpsDriver(SensorId id, DriverParams params)
 : id_(std::move(id)),
   params_(std::move(params)),
@@ -38,13 +40,17 @@ CanGpsDriver::CanGpsDriver(SensorId id, DriverParams params)
 {
 }
 
-/** @brief Stops the reader thread and closes the CAN socket. */
+/**
+ * @brief Stops the reader thread and closes the CAN socket.
+ */
 CanGpsDriver::~CanGpsDriver()
 {
   Stop();
 }
 
-/** @brief Opens the CAN interface and starts the frame reader thread. */
+/**
+ * @brief Opens the CAN interface and starts the frame reader thread.
+ */
 bool CanGpsDriver::Start()
 {
   if (running_.exchange(true)) {
@@ -61,7 +67,9 @@ bool CanGpsDriver::Start()
   return true;
 }
 
-/** @brief Stops reading and joins the worker thread. */
+/**
+ * @brief Stops reading and joins the worker thread.
+ */
 void CanGpsDriver::Stop()
 {
   if (!running_.exchange(false)) {
@@ -73,19 +81,25 @@ void CanGpsDriver::Stop()
   }
 }
 
-/** @brief Returns true while the CAN reader thread is active. */
+/**
+ * @brief Returns true while the CAN reader thread is active.
+ */
 bool CanGpsDriver::IsRunning() const
 {
   return running_.load();
 }
 
-/** @brief Registers the callback invoked for each GPS fix sample. */
+/**
+ * @brief Registers the callback invoked for each GPS fix sample.
+ */
 void CanGpsDriver::SetSampleCallback(SampleCallback callback)
 {
   callback_ = std::move(callback);
 }
 
-/** @brief Reads CAN frames and emits GPS samples for matching NMEA2000 ids. */
+/**
+ * @brief Reads CAN frames and emits GPS samples for matching NMEA2000 ids.
+ */
 void CanGpsDriver::ReadLoop()
 {
   while (running_.load()) {
@@ -94,7 +108,7 @@ void CanGpsDriver::ReadLoop()
       continue;
     }
 
-    /** @brief CAN id with extended-frame flag stripped for comparison. */
+    // CAN id with extended-frame flag stripped for comparison.
     const std::uint32_t match_id = frame.extended ? (frame.id & 0x1FFFFFFF) : frame.id;
     if (match_id != can_id_) {
       continue;
@@ -112,7 +126,9 @@ void CanGpsDriver::ReadLoop()
   }
 }
 
-/** @brief Factory that constructs a CanGpsDriver instance. */
+/**
+ * @brief Factory that constructs a CanGpsDriver instance.
+ */
 std::shared_ptr<SensorDriver> CreateCanGpsDriver(
   const SensorId & id,
   const DriverParams & params)

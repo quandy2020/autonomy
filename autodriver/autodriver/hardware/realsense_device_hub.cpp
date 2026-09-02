@@ -47,12 +47,15 @@ namespace {
 using AtomicRWLock = autolink::base::AtomicRWLock;
 using WriteLock = autolink::base::WriteLockGuard<AtomicRWLock>;
 
-/** @brief Protects the shared RealSense device hub pool. */
+// Protects the shared RealSense device hub pool.
 AtomicRWLock g_pool_mutex;
-/** @brief Weak handles to hubs keyed by serial or index/model. */
+
+// Weak handles to hubs keyed by serial or index/model.
 std::unordered_map<std::string, std::weak_ptr<RealSenseDeviceHub>> g_pool;
 
-/** @brief Builds a stable lookup key from serial, index, or model params. */
+/**
+ * @brief Builds a stable lookup key from serial, index, or model params.
+ */
 std::string DeviceKey(const hardware::DriverParams& params) {
     const std::string serial = hardware::GetString(params, "serial");
     if (!serial.empty()) {
@@ -65,7 +68,9 @@ std::string DeviceKey(const hardware::DriverParams& params) {
 
 }  // namespace
 
-/** @brief Returns true when librealsense was linked at build time. */
+/**
+ * @brief Returns true when librealsense was linked at build time.
+ */
 bool RealSenseAvailable() {
 #ifdef AUTODRIVER_HAVE_REALSENSE
     return true;
@@ -75,69 +80,96 @@ bool RealSenseAvailable() {
 }
 
 struct RealSenseDeviceHub::Impl {
-    /** @brief Merged driver parameters from all subscribers on this device. */
+    // Merged driver parameters from all subscribers on this device.
     hardware::DriverParams params;
-    /** @brief Pool lookup key derived from serial or index/model. */
+
+    // Pool lookup key derived from serial or index/model.
     std::string device_key;
-    /** @brief Most recent pipeline or device error message. */
+
+    // Most recent pipeline or device error message.
     std::string last_error;
-    /** @brief True while the capture worker thread is active. */
+
+    // True while the capture worker thread is active.
     std::atomic<bool> running{false};
-    /** @brief Monotonic id generator for stream subscriptions. */
+
+    // Monotonic id generator for stream subscriptions.
     std::atomic<std::uint64_t> next_subscription_id{1};
-    /** @brief Protects subscription vectors during subscribe/unsubscribe. */
+
+    // Protects subscription vectors during subscribe/unsubscribe.
     autolink::base::AtomicRWLock mutex;
 
-    /** @brief Active video stream subscription state. */
+    /**
+     * @brief Active video stream subscription state.
+     */
     struct VideoSubscription {
-        /** @brief Unique subscription handle. */
+        // Unique subscription handle.
         std::uint64_t id{0};
-        /** @brief Logical stream kind requested by the driver. */
+        /**
+         * @brief Logical stream kind requested by the driver.
+         */
         hardware::realsense::StreamKind stream{
             hardware::realsense::StreamKind::kColor};
-        /** @brief Requested frame width in pixels. */
+
+        // Requested frame width in pixels.
         int width{640};
-        /** @brief Requested frame height in pixels. */
+
+        // Requested frame height in pixels.
         int height{480};
-        /** @brief Requested frames per second. */
+
+        // Requested frames per second.
         int fps{30};
-        /** @brief Callback invoked for each decoded video frame. */
+
+        // Callback invoked for each decoded video frame.
         RealSenseVideoCallback callback;
     };
 
-    /** @brief Active point-cloud subscription state. */
+    /**
+     * @brief Active point-cloud subscription state.
+     */
     struct PointCloudSubscription {
-        /** @brief Unique subscription handle. */
+        // Unique subscription handle.
         std::uint64_t id{0};
-        /** @brief Depth stream width used for point generation. */
+
+        // Depth stream width used for point generation.
         int width{640};
-        /** @brief Depth stream height used for point generation. */
+
+        // Depth stream height used for point generation.
         int height{480};
-        /** @brief Requested frames per second. */
+
+        // Requested frames per second.
         int fps{30};
-        /** @brief Callback invoked for each colored point cloud. */
+
+        // Callback invoked for each colored point cloud.
         RealSensePointCloudCallback callback;
     };
 
-    /** @brief Active IMU subscription state. */
+    /**
+     * @brief Active IMU subscription state.
+     */
     struct ImuSubscription {
-        /** @brief Unique subscription handle. */
+        // Unique subscription handle.
         std::uint64_t id{0};
-        /** @brief Callback invoked when accel and gyro samples are available. */
+
+        // Callback invoked when accel and gyro samples are available.
         RealSenseImuCallback callback;
     };
 
-    /** @brief Registered video stream subscriptions. */
+    // Registered video stream subscriptions.
     std::vector<VideoSubscription> video_subscriptions;
-    /** @brief Registered point-cloud subscriptions. */
+
+    // Registered point-cloud subscriptions.
     std::vector<PointCloudSubscription> pointcloud_subscriptions;
-    /** @brief Registered IMU subscriptions. */
+
+    // Registered IMU subscriptions.
     std::vector<ImuSubscription> imu_subscriptions;
-    /** @brief Background thread running CaptureLoop(). */
+
+    // Background thread running CaptureLoop().
     std::thread worker;
 
 #ifndef AUTODRIVER_HAVE_REALSENSE
-    /** @brief Reports missing librealsense when RealSense support is disabled. */
+    /**
+     * @brief Reports missing librealsense when RealSense support is disabled.
+     */
     bool StartPipeline() {
         last_error =
             "librealsense2 not found at build time; install librealsense2-dev "
@@ -145,32 +177,45 @@ struct RealSenseDeviceHub::Impl {
         return false;
     }
 
-    /** @brief No-op pipeline stop when RealSense support is disabled. */
+    /**
+     * @brief No-op pipeline stop when RealSense support is disabled.
+     */
     void StopPipeline() {}
 
-    /** @brief No-op capture loop when RealSense support is disabled. */
+    /**
+     * @brief No-op capture loop when RealSense support is disabled.
+     */
     void CaptureLoop() {}
 #else
-    /** @brief librealsense runtime context for device enumeration. */
+    // librealsense runtime context for device enumeration.
     rs2::context context;
-    /** @brief Active streaming pipeline bound to one physical device. */
+
+    // Active streaming pipeline bound to one physical device.
     rs2::pipeline pipeline;
-    /** @brief Pipeline stream configuration rebuilt on each restart. */
+
+    // Pipeline stream configuration rebuilt on each restart.
     rs2::config config;
-    /** @brief Serial number of the device bound to the pipeline. */
+
+    // Serial number of the device bound to the pipeline.
     std::string bound_serial;
-    /** @brief Depth scale in meters per depth unit from the depth sensor. */
+
+    // Depth scale in meters per depth unit from the depth sensor.
     float depth_scale_{0.001f};
 
-    /** @brief librealsense stream type and index pair. */
+    /**
+     * @brief librealsense stream type and index pair.
+     */
     struct StreamSpec {
-        /** @brief librealsense stream type constant. */
+        // librealsense stream type constant.
         rs2_stream type{RS2_STREAM_COLOR};
-        /** @brief Stream index within the type (e.g. IR1 vs IR2). */
+
+        // Stream index within the type (e.g. IR1 vs IR2).
         int index{0};
     };
 
-    /** @brief Maps a StreamKind to librealsense stream type and index. */
+    /**
+     * @brief Maps a StreamKind to librealsense stream type and index.
+     */
     StreamSpec StreamSpecFor(
         const hardware::realsense::StreamKind kind) const {
         StreamSpec spec;
@@ -195,7 +240,9 @@ struct RealSenseDeviceHub::Impl {
         return spec;
     }
 
-    /** @brief Finds the first frame matching a stream type and index. */
+    /**
+     * @brief Finds the first frame matching a stream type and index.
+     */
     rs2::frame FindVideoFrame(const rs2::frameset& frames,
                               const StreamSpec& spec) const {
         rs2::frame holder;
@@ -212,7 +259,9 @@ struct RealSenseDeviceHub::Impl {
         return holder;
     }
 
-    /** @brief Returns the librealsense pixel format for a stream kind. */
+    /**
+     * @brief Returns the librealsense pixel format for a stream kind.
+     */
     rs2_format StreamFormat(const hardware::realsense::StreamKind kind) const {
         switch (kind) {
             case hardware::realsense::StreamKind::kColor:
@@ -229,7 +278,9 @@ struct RealSenseDeviceHub::Impl {
         return RS2_FORMAT_RGB8;
     }
 
-    /** @brief Returns true when aligned depth or point cloud needs color+depth. */
+    /**
+     * @brief Returns true when aligned depth or point cloud needs color+depth.
+     */
     bool NeedsColorDepthPair() const {
         for (const VideoSubscription& sub : video_subscriptions) {
             if (sub.stream ==
@@ -240,7 +291,9 @@ struct RealSenseDeviceHub::Impl {
         return !pointcloud_subscriptions.empty();
     }
 
-    /** @brief Returns true when any subscription requires the given stream. */
+    /**
+     * @brief Returns true when any subscription requires the given stream.
+     */
     bool HasStream(const hardware::realsense::StreamKind kind) const {
         for (const VideoSubscription& sub : video_subscriptions) {
             if (sub.stream == kind) {
@@ -258,7 +311,9 @@ struct RealSenseDeviceHub::Impl {
         return false;
     }
 
-    /** @brief Selects a RealSense device by serial, model filter, or index. */
+    /**
+     * @brief Selects a RealSense device by serial, model filter, or index.
+     */
     rs2::device ResolveDevice() {
         const std::string serial = hardware::GetString(params, "serial");
         const std::string model = hardware::GetString(params, "model");
@@ -306,7 +361,9 @@ struct RealSenseDeviceHub::Impl {
         return candidates[static_cast<std::size_t>(index)];
     }
 
-    /** @brief Enables a stream in the pipeline config when a subscriber needs it. */
+    /**
+     * @brief Enables a stream in the pipeline config when a subscriber needs it.
+     */
     void EnableStreamIfNeeded(const hardware::realsense::StreamKind kind,
                               int width, int height, int fps) {
         if (!HasStream(kind)) {
@@ -317,7 +374,9 @@ struct RealSenseDeviceHub::Impl {
                              StreamFormat(kind), fps);
     }
 
-    /** @brief Builds CameraInfo from a RealSense video frame intrinsics. */
+    /**
+     * @brief Builds CameraInfo from a RealSense video frame intrinsics.
+     */
     automsgs::msgs::sensor_msgs::CameraInfo BuildCameraInfo(
         const rs2::video_frame& frame,
         const hardware::realsense::StreamKind kind) const {
@@ -331,7 +390,9 @@ struct RealSenseDeviceHub::Impl {
             intr.fy, intr.ppx, intr.ppy, intr.coeffs, RS2_DISTORTION_COUNT);
     }
 
-    /** @brief Configures streams and IMU based on active subscriptions. */
+    /**
+     * @brief Configures streams and IMU based on active subscriptions.
+     */
     bool ConfigurePipeline() {
         config = rs2::config();
         const rs2::device device = ResolveDevice();
@@ -399,7 +460,9 @@ struct RealSenseDeviceHub::Impl {
         return true;
     }
 
-    /** @brief Applies depth emitter and related device options from params. */
+    /**
+     * @brief Applies depth emitter and related device options from params.
+     */
     void ApplyDeviceOptions(const rs2::device& device) {
         const bool emitter_enabled = hardware::ParseBool(
             params, "emitter_enabled",
@@ -414,7 +477,9 @@ struct RealSenseDeviceHub::Impl {
         }
     }
 
-    /** @brief Starts the librealsense pipeline with the current config. */
+    /**
+     * @brief Starts the librealsense pipeline with the current config.
+     */
     bool StartPipeline() {
         StopPipeline();
         if (!ConfigurePipeline()) {
@@ -437,7 +502,9 @@ struct RealSenseDeviceHub::Impl {
         }
     }
 
-    /** @brief Stops the librealsense pipeline, ignoring errors. */
+    /**
+     * @brief Stops the librealsense pipeline, ignoring errors.
+     */
     void StopPipeline() {
         try {
             pipeline.stop();
@@ -445,7 +512,9 @@ struct RealSenseDeviceHub::Impl {
         }
     }
 
-    /** @brief Converts a video frame into a RealSenseVideoFrame callback payload. */
+    /**
+     * @brief Converts a video frame into a RealSenseVideoFrame callback payload.
+     */
     void DispatchVideoFrame(const VideoSubscription& sub,
                             const rs2::video_frame& frame) {
         if (!sub.callback || !frame) {
@@ -467,7 +536,9 @@ struct RealSenseDeviceHub::Impl {
         sub.callback(std::move(payload));
     }
 
-    /** @brief Builds a colored PointCloud2 message from depth and texture. */
+    /**
+     * @brief Builds a colored PointCloud2 message from depth and texture.
+     */
     automsgs::msgs::sensor_msgs::PointCloud2 BuildPointCloud(
         const rs2::points& points, const rs2::video_frame& color,
         const std::string& frame_id, const double timestamp_ms) const {
@@ -547,17 +618,23 @@ struct RealSenseDeviceHub::Impl {
         return cloud;
     }
 
-    /** @brief Polls frames and dispatches video, point cloud, and IMU callbacks. */
+    /**
+     * @brief Polls frames and dispatches video, point cloud, and IMU callbacks.
+     */
     void CaptureLoop() {
-        /** @brief Latest accelerometer sample pending IMU fusion. */
+        // Latest accelerometer sample pending IMU fusion.
         std::array<double, 3> latest_accel{{0.0, 0.0, 0.0}};
-        /** @brief Latest gyroscope sample pending IMU fusion. */
+
+        // Latest gyroscope sample pending IMU fusion.
         std::array<double, 3> latest_gyro{{0.0, 0.0, 0.0}};
-        /** @brief Timestamp of the most recent partial IMU frame. */
+
+        // Timestamp of the most recent partial IMU frame.
         double imu_timestamp_ms = 0.0;
-        /** @brief True after an accel frame has been received this cycle. */
+
+        // True after an accel frame has been received this cycle.
         bool have_accel = false;
-        /** @brief True after a gyro frame has been received this cycle. */
+
+        // True after a gyro frame has been received this cycle.
         bool have_gyro = false;
         rs2::align align_to_color(RS2_STREAM_COLOR);
         rs2::pointcloud pc;
@@ -662,17 +739,23 @@ struct RealSenseDeviceHub::Impl {
 #endif
 };
 
-/** @brief Constructs a hub bound to driver params and a device pool key. */
+/**
+ * @brief Constructs a hub bound to driver params and a device pool key.
+ */
 RealSenseDeviceHub::RealSenseDeviceHub(const hardware::DriverParams& params)
     : impl_(std::make_unique<Impl>()) {
     impl_->params = params;
     impl_->device_key = DeviceKey(params);
 }
 
-/** @brief Stops the pipeline and worker thread on destruction. */
+/**
+ * @brief Stops the pipeline and worker thread on destruction.
+ */
 RealSenseDeviceHub::~RealSenseDeviceHub() { Stop(); }
 
-/** @brief Returns a shared hub for the device key, creating one if needed. */
+/**
+ * @brief Returns a shared hub for the device key, creating one if needed.
+ */
 std::shared_ptr<RealSenseDeviceHub> RealSenseDeviceHub::Acquire(
     const hardware::DriverParams& params) {
     const std::string key = DeviceKey(params);
@@ -691,7 +774,9 @@ std::shared_ptr<RealSenseDeviceHub> RealSenseDeviceHub::Acquire(
     return hub;
 }
 
-/** @brief Registers a video stream callback and restarts the hub if running. */
+/**
+ * @brief Registers a video stream callback and restarts the hub if running.
+ */
 std::uint64_t RealSenseDeviceHub::SubscribeVideo(
     const hardware::realsense::StreamKind stream, const int width,
     const int height, const int fps, RealSenseVideoCallback callback) {
@@ -715,7 +800,9 @@ std::uint64_t RealSenseDeviceHub::SubscribeVideo(
     return id;
 }
 
-/** @brief Registers a point-cloud callback and restarts the hub if running. */
+/**
+ * @brief Registers a point-cloud callback and restarts the hub if running.
+ */
 std::uint64_t RealSenseDeviceHub::SubscribePointCloud(
     const int width, const int height, const int fps,
     RealSensePointCloudCallback callback) {
@@ -739,7 +826,9 @@ std::uint64_t RealSenseDeviceHub::SubscribePointCloud(
     return id;
 }
 
-/** @brief Registers an IMU callback and restarts the hub if running. */
+/**
+ * @brief Registers an IMU callback and restarts the hub if running.
+ */
 std::uint64_t RealSenseDeviceHub::SubscribeImu(RealSenseImuCallback callback) {
     const bool restart = impl_->running.load();
     if (restart) {
@@ -760,7 +849,9 @@ std::uint64_t RealSenseDeviceHub::SubscribeImu(RealSenseImuCallback callback) {
     return id;
 }
 
-/** @brief Removes a subscription and restarts the hub when others remain. */
+/**
+ * @brief Removes a subscription and restarts the hub when others remain.
+ */
 void RealSenseDeviceHub::Unsubscribe(const std::uint64_t subscription_id) {
     const bool was_running = impl_->running.load();
     if (was_running) {
@@ -803,7 +894,9 @@ void RealSenseDeviceHub::Unsubscribe(const std::uint64_t subscription_id) {
     }
 }
 
-/** @brief Starts the pipeline and frame capture worker thread. */
+/**
+ * @brief Starts the pipeline and frame capture worker thread.
+ */
 bool RealSenseDeviceHub::Start() {
     if (impl_->running.exchange(true)) {
         return true;
@@ -829,7 +922,9 @@ bool RealSenseDeviceHub::Start() {
     return true;
 }
 
-/** @brief Stops the pipeline and joins the capture worker thread. */
+/**
+ * @brief Stops the pipeline and joins the capture worker thread.
+ */
 void RealSenseDeviceHub::Stop() {
     if (!impl_->running.exchange(false)) {
         return;
@@ -841,10 +936,14 @@ void RealSenseDeviceHub::Stop() {
     }
 }
 
-/** @brief Returns true while the capture loop is active. */
+/**
+ * @brief Returns true while the capture loop is active.
+ */
 bool RealSenseDeviceHub::IsRunning() const { return impl_->running.load(); }
 
-/** @brief Returns the most recent pipeline or device error message. */
+/**
+ * @brief Returns the most recent pipeline or device error message.
+ */
 const std::string& RealSenseDeviceHub::last_error() const {
     return impl_->last_error;
 }
@@ -855,7 +954,9 @@ namespace hardware {
 namespace realsense {
 namespace {
 
-/** @brief Lowercases a string for case-insensitive RealSense matching. */
+/**
+ * @brief Lowercases a string for case-insensitive RealSense matching.
+ */
 std::string ToLower(std::string text) {
     std::transform(
         text.begin(), text.end(), text.begin(),
@@ -865,7 +966,9 @@ std::string ToLower(std::string text) {
 
 }  // namespace
 
-/** @brief Parses a stream name string into a StreamKind enum value. */
+/**
+ * @brief Parses a stream name string into a StreamKind enum value.
+ */
 StreamKind ParseStreamKind(const std::string& text,
                            const StreamKind default_kind) {
     const std::string value = ToLower(text);
@@ -891,7 +994,9 @@ StreamKind ParseStreamKind(const std::string& text,
     return default_kind;
 }
 
-/** @brief Returns true when product_name contains the model_filter substring. */
+/**
+ * @brief Returns true when product_name contains the model_filter substring.
+ */
 bool MatchesModelFilter(const std::string& product_name,
                         const std::string& model_filter) {
     if (model_filter.empty()) {
@@ -902,7 +1007,9 @@ bool MatchesModelFilter(const std::string& product_name,
     return name.find(model) != std::string::npos;
 }
 
-/** @brief Returns the image encoding string for a RealSense stream kind. */
+/**
+ * @brief Returns the image encoding string for a RealSense stream kind.
+ */
 std::string EncodingForStreamKind(const StreamKind kind) {
     switch (kind) {
         case StreamKind::kColor:
@@ -919,7 +1026,9 @@ std::string EncodingForStreamKind(const StreamKind kind) {
     return "rgb8";
 }
 
-/** @brief Returns the default TF frame_id for a RealSense stream kind. */
+/**
+ * @brief Returns the default TF frame_id for a RealSense stream kind.
+ */
 std::string DefaultFrameId(const StreamKind kind) {
     switch (kind) {
         case StreamKind::kColor:
