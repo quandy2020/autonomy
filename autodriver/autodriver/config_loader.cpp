@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-/**
- * @file
- * @brief YAML parser for autodriver_hardware.yaml sensor entries.
- */
-
 #include "autodriver/config_loader.hpp"
 
 #include <cctype>
@@ -128,7 +123,6 @@ void SetParamIfAbsent(hardware::DriverParams* params, const std::string& key,
     }
     (*params)[key] = std::to_string(value);
 }
-
 
 /**
  * @brief Parses a DeviceMatch block from a YAML map node.
@@ -576,21 +570,12 @@ Config LoadFromPath(const std::string& path) {
 
 }  // namespace
 
-/**
- * @brief Loads the default autodriver_hardware.yaml config.
- */
 Config LoadConfig() { return LoadConfig(kDefaultConfigBasename); }
 
-/**
- * @brief Loads config by basename from the default configuration directory.
- */
 Config LoadConfig(const std::string& config_basename) {
     return LoadConfig({}, config_basename);
 }
 
-/**
- * @brief Loads config from an explicit directory and basename.
- */
 Config LoadConfig(const std::string& configuration_directory,
                   const std::string& config_basename) {
     return LoadFromPath(

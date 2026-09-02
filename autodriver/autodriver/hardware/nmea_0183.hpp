@@ -52,23 +52,17 @@ struct NmeaGgaFix
 };
 
 /**
- * @brief Parse a GGA sentence (talker id GP/GN/GL... + GGA).
- * @param sentence Complete NMEA sentence including leading '$'
- * @return Parsed fix when checksum and fields are valid
+ * @brief Parses a GGA sentence into latitude, longitude, and fix status.
  */
 std::optional<NmeaGgaFix> ParseGgaSentence(const std::string & sentence);
 
 /**
- * @brief Parse an RMC sentence for lat/lon fix.
- * @param sentence Complete NMEA sentence including leading '$'
- * @return Parsed fix when checksum and fields are valid
+ * @brief Parses an RMC sentence when navigation status is active.
  */
 std::optional<NmeaGgaFix> ParseRmcSentence(const std::string & sentence);
 
 /**
- * @brief Validate NMEA XOR checksum suffix *HH.
- * @param sentence Complete NMEA sentence including checksum field
- * @return True when the checksum matches
+ * @brief Validates the XOR checksum suffix of an NMEA sentence.
  */
 bool ValidateNmeaChecksum(const std::string & sentence);
 

@@ -43,14 +43,12 @@ class SerialGpsDriver : public SensorDriver
 {
 public:
   /**
-   * @brief Constructor for autodriver::hardware::SerialGpsDriver
-   * @param id Sensor identifier
-   * @param params Driver configuration parameters
+   * @brief Stores sensor identity and serial driver params.
    */
   SerialGpsDriver(SensorId id, DriverParams params);
 
   /**
-   * @brief Destructor for autodriver::hardware::SerialGpsDriver
+   * @brief Stops the reader thread and closes the serial port.
    */
   ~SerialGpsDriver() override;
 
@@ -67,31 +65,28 @@ public:
   const SensorId & GetSensorId() const override { return id_; }
 
   /**
-   * @brief Open the serial port and start the read thread
-   * @return True on success
+   * @brief Opens the serial device and starts the NMEA reader thread.
    */
   bool Start() override;
 
   /**
-   * @brief Stop the read thread and close the serial port
+   * @brief Stops reading and joins the worker thread.
    */
   void Stop() override;
 
   /**
-   * @brief Whether the driver is actively reading
-   * @return True while running
+   * @brief Returns true while the serial reader thread is active.
    */
   bool IsRunning() const override;
 
   /**
-   * @brief Register callback invoked for each parsed GPS fix
-   * @param callback Sample delivery callback
+   * @brief Registers the callback invoked for each GPS fix sample.
    */
   void SetSampleCallback(SampleCallback callback) override;
 
 private:
   /**
-   * @brief Background loop that assembles NMEA lines and emits fixes
+   * @brief Reads NMEA lines from serial and emits parsed GPS samples.
    */
   void ReadLoop();
 
@@ -117,12 +112,6 @@ private:
   std::string line_buffer_;
 };
 
-/**
- * @brief Factory used by GpsModule.
- * @param id Sensor identifier
- * @param params Driver configuration parameters
- * @return Shared sensor driver instance
- */
 std::shared_ptr<SensorDriver> CreateSerialGpsDriver(
   const SensorId & id,
   const DriverParams & params);

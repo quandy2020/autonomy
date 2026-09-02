@@ -30,19 +30,6 @@ namespace autodriver {
 namespace hardware {
 namespace realsense {
 
-/**
- * @brief Populate a CameraInfo message from calibrated intrinsics.
- * @param width Image width in pixels
- * @param height Image height in pixels
- * @param frame_id TF frame_id for the optical frame
- * @param fx Focal length x in pixels
- * @param fy Focal length y in pixels
- * @param ppx Principal point x in pixels
- * @param ppy Principal point y in pixels
- * @param coeffs Distortion coefficient array (may be nullptr)
- * @param coeff_count Number of distortion coefficients
- * @return Populated CameraInfo protobuf message
- */
 automsgs::msgs::sensor_msgs::CameraInfo MakeCameraInfo(
     std::uint32_t width, std::uint32_t height, const std::string& frame_id,
     double fx, double fy, double ppx, double ppy, const float* coeffs,

@@ -43,14 +43,12 @@ class RealSenseImuDriver : public SensorDriver
 {
 public:
   /**
-   * @brief Constructor for autodriver::hardware::RealSenseImuDriver
-   * @param id Sensor identifier
-   * @param params Driver configuration parameters
+   * @brief Stores sensor identity and driver params for RealSense IMU.
    */
   RealSenseImuDriver(SensorId id, DriverParams params);
 
   /**
-   * @brief Destructor for autodriver::hardware::RealSenseImuDriver
+   * @brief Unsubscribes and stops the shared device hub on destruction.
    */
   ~RealSenseImuDriver() override;
 
@@ -67,25 +65,22 @@ public:
   const SensorId & GetSensorId() const override { return id_; }
 
   /**
-   * @brief Subscribe to the hub IMU stream and begin sampling
-   * @return True on success
+   * @brief Subscribes to fused accel/gyro frames via the shared hub.
    */
   bool Start() override;
 
   /**
-   * @brief Unsubscribe and stop sampling
+   * @brief Unsubscribes from the hub and releases the shared device handle.
    */
   void Stop() override;
 
   /**
-   * @brief Whether the driver is actively streaming
-   * @return True while running
+   * @brief Returns true while the IMU subscription is active.
    */
   bool IsRunning() const override;
 
   /**
-   * @brief Register callback invoked for each IMU sample
-   * @param callback Sample delivery callback
+   * @brief Registers the callback invoked for each IMU sample.
    */
   void SetSampleCallback(SampleCallback callback) override;
 
@@ -109,12 +104,6 @@ private:
   std::atomic<bool> running_{false};
 };
 
-/**
- * @brief Factory used by ImuModule.
- * @param id Sensor identifier
- * @param params Driver configuration parameters
- * @return Shared sensor driver instance
- */
 std::shared_ptr<SensorDriver> CreateRealSenseImuDriver(
   const SensorId & id,
   const DriverParams & params);

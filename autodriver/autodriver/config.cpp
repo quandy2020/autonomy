@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-/**
- * @file
- * @brief Config helpers: device matching and duplicate id detection.
- */
-
 #include "autodriver/config.hpp"
 
 #include <cstddef>
@@ -68,6 +63,10 @@ bool EqualsHexId(std::string_view a, std::string_view b) {
  */
 bool FieldMatches(std::string_view expected, std::string_view actual,
                   bool hex) {
+    /**
+     * @brief Whether all match fields are empty.
+     * @return True when no match criteria are configured.
+     */
     if (expected.empty()) {
         return true;
     }
@@ -76,9 +75,6 @@ bool FieldMatches(std::string_view expected, std::string_view actual,
 
 }  // namespace
 
-/**
- * @brief Returns true when all non-empty rule fields match the observed device.
- */
 bool MatchDevice(const DeviceMatch& observed, const DeviceMatch& rule) {
     if (rule.empty()) {
         return false;
@@ -93,6 +89,10 @@ bool MatchDevice(const DeviceMatch& observed, const DeviceMatch& rule) {
 /**
  * @brief Returns true when two or more sensors share the same id.
  */
+    /**
+     * @brief Detect duplicate sensor ids in the configuration.
+     * @return True when two or more sensors share the same id.
+     */
 bool Config::HasDuplicateId() const {
     // Tracks sensor ids seen so far during duplicate detection.
     std::unordered_set<SensorId> seen;
@@ -108,6 +108,11 @@ bool Config::HasDuplicateId() const {
 /**
  * @brief Returns the sensor id whose match rule fits the observed device.
  */
+    /**
+     * @brief Map a hotplug event to the matching sensor id, if any.
+     * @param observed Device identity from a udev event.
+     * @return Matching sensor id, or an empty string when no rule matches.
+     */
 SensorId Config::FindId(const DeviceMatch& observed) const {
     for (const Sensor& sensor : sensors) {
         if (MatchDevice(observed, sensor.match)) {

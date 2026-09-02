@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-/**
- * @file
- * @brief SensorHub implementation: buffering, time sync, and alignment loop.
- */
-
 #include "autodriver/sensor_hub.hpp"
 
 #include <utility>
@@ -34,24 +29,12 @@ using WriteLock = autolink::base::WriteLockGuard<AtomicRWLock>;
 
 }  // namespace
 
-/**
- * @brief Default-constructs a hub with default alignment options.
- */
 SensorHub::SensorHub() : SensorHub(Options{}) {}
 
-/**
- * @brief Constructs a hub with alignment and buffer options.
- */
 SensorHub::SensorHub(Options options) : options_(options) {}
 
-/**
- * @brief Stops the hub if still running.
- */
 SensorHub::~SensorHub() { Stop(); }
 
-/**
- * @brief Registers a driver and wires its samples into this hub.
- */
 void SensorHub::RegisterDriver(std::shared_ptr<SensorDriver> driver) {
     if (!driver) {
         return;
@@ -63,9 +46,6 @@ void SensorHub::RegisterDriver(std::shared_ptr<SensorDriver> driver) {
     drivers_.push_back(std::move(driver));
 }
 
-/**
- * @brief Sets the callback invoked with aligned multi-sensor snapshots.
- */
 void SensorHub::SetAlignedCallback(AlignedCallback callback) {
     aligned_.DisconnectAllSlots();
     if (callback) {
@@ -73,9 +53,6 @@ void SensorHub::SetAlignedCallback(AlignedCallback callback) {
     }
 }
 
-/**
- * @brief Sets the callback invoked for every raw sample after time sync.
- */
 void SensorHub::SetRawSampleCallback(RawSampleCallback callback) {
     raw_sample_.DisconnectAllSlots();
     if (callback) {
@@ -83,9 +60,6 @@ void SensorHub::SetRawSampleCallback(RawSampleCallback callback) {
     }
 }
 
-/**
- * @brief Starts all registered drivers and the alignment publish thread.
- */
 bool SensorHub::Start() {
     if (running_.exchange(true)) {
         return true;
@@ -108,9 +82,6 @@ bool SensorHub::Start() {
     return true;
 }
 
-/**
- * @brief Stops drivers, the alignment thread, and clears the running flag.
- */
 void SensorHub::Stop() {
     if (!running_.exchange(false)) {
         return;
@@ -126,29 +97,17 @@ void SensorHub::Stop() {
     }
 }
 
-/**
- * @brief Returns true while the hub and alignment loop are active.
- */
 bool SensorHub::IsRunning() const { return running_.load(); }
 
-/**
- * @brief Ingests an externally produced sample into buffering and callbacks.
- */
 void SensorHub::PushSample(std::shared_ptr<SensorSample> sample) {
     OnSample(std::move(sample));
 }
 
-/**
- * @brief Removes the per-sensor buffer when a driver detaches.
- */
 void SensorHub::DropBuffer(const SensorId& id) {
     WriteLock lock(buffers_lock_);
     buffers_.erase(id);
 }
 
-/**
- * @brief Time-syncs, stores, and forwards a sample to raw callbacks.
- */
 void SensorHub::OnSample(std::shared_ptr<SensorSample> sample) {
     if (!sample) {
         return;
@@ -167,9 +126,6 @@ void SensorHub::OnSample(std::shared_ptr<SensorSample> sample) {
     seq_.fetch_add(1, std::memory_order_relaxed);
 }
 
-/**
- * @brief Periodically publishes aligned snapshots when new samples arrive.
- */
 void SensorHub::AlignmentLoop() {
     autolink::Rate rate(options_.publish_period);
 
@@ -188,9 +144,6 @@ void SensorHub::AlignmentLoop() {
     }
 }
 
-/**
- * @brief Builds a time-aligned snapshot from the latest in-window samples.
- */
 AlignedSnapshot SensorHub::BuildSnapshot(const autolink::Time& time) const {
     AlignedSnapshot snapshot;
     snapshot.time = time;

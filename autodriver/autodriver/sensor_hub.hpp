@@ -72,22 +72,18 @@ public:
         autolink::base::Signal<const SensorSample&>::Callback;
 
     /**
-     * @brief Construct with default Options.
+     * @brief Default-constructs a hub with default alignment options.
      */
     SensorHub();
     /**
-     * @brief Construct with explicit buffer and alignment tuning.
-     * @param options Hub configuration for buffers and the alignment loop.
+     * @brief Constructs a hub with alignment and buffer options.
      */
     explicit SensorHub(Options options);
     /**
-     * @brief Stop the alignment thread and release resources.
+     * @brief Stops the hub if still running.
      */
     ~SensorHub();
 
-    /**
-     * @brief Copy construction is disabled.
-     */
     SensorHub(const SensorHub&) = delete;
     /**
      * @brief Copy assignment is disabled.
@@ -95,49 +91,42 @@ public:
     SensorHub& operator=(const SensorHub&) = delete;
 
     /**
-     * @brief Register a driver whose samples will be buffered on PushSample().
-     * @param driver Shared pointer to a sensor driver instance.
+     * @brief Registers a driver and wires its samples into this hub.
      */
     void RegisterDriver(std::shared_ptr<SensorDriver> driver);
 
     /**
-     * @brief Register a callback for aligned multi-sensor snapshots.
-     * @param callback Invoked on the alignment thread for each snapshot.
+     * @brief Sets the callback invoked with aligned multi-sensor snapshots.
      */
     void SetAlignedCallback(AlignedCallback callback);
 
     /**
-     * @brief Register a callback for every raw ingested sample.
-     * @param callback Invoked synchronously from PushSample().
+     * @brief Sets the callback invoked for every raw sample after time sync.
      */
     void SetRawSampleCallback(RawSampleCallback callback);
 
     /**
-     * @brief Ingest a sample, update time sync, and fan out to raw listeners.
-     * @param sample Shared sample to buffer and broadcast.
+     * @brief Ingests an externally produced sample into buffering and callbacks.
      */
     void PushSample(std::shared_ptr<SensorSample> sample);
 
     /**
-     * @brief Drop buffered history for a detached sensor.
-     * @param id Sensor identifier whose buffer should be cleared.
+     * @brief Removes the per-sensor buffer when a driver detaches.
      */
     void DropBuffer(const SensorId& id);
 
     /**
-     * @brief Start the background alignment publisher loop.
-     * @return True when the hub starts successfully.
+     * @brief Starts all registered drivers and the alignment publish thread.
      */
     bool Start();
 
     /**
-     * @brief Stop the alignment publisher loop.
+     * @brief Stops drivers, the alignment thread, and clears the running flag.
      */
     void Stop();
 
     /**
-     * @brief Whether the alignment publisher loop is active.
-     * @return True after Start() and before Stop().
+     * @brief Returns true while the hub and alignment loop are active.
      */
     bool IsRunning() const;
 
@@ -149,20 +138,17 @@ public:
 
 private:
     /**
-     * @brief Internal handler that buffers a sample and notifies raw listeners.
-     * @param sample Shared sample received from a driver callback.
+     * @brief Time-syncs, stores, and forwards a sample to raw callbacks.
      */
     void OnSample(std::shared_ptr<SensorSample> sample);
 
     /**
-     * @brief Background loop that publishes aligned snapshots periodically.
+     * @brief Periodically publishes aligned snapshots when new samples arrive.
      */
     void AlignmentLoop();
 
     /**
-     * @brief Build a snapshot from the latest samples near a host timestamp.
-     * @param time Target host time for sample selection.
-     * @return Aligned snapshot containing one sample per sensor when available.
+     * @brief Builds a time-aligned snapshot from the latest in-window samples.
      */
     AlignedSnapshot BuildSnapshot(const autolink::Time& time) const;
 

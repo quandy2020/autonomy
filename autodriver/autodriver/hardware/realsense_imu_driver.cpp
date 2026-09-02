@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-/**
- * @file
- * @brief RealSenseImuDriver implementation.
- */
-
 #include "autodriver/hardware/realsense_imu_driver.hpp"
 
 #include <utility>
@@ -39,20 +34,11 @@ autolink::Time TimeFromMilliseconds(const double ms) {
 
 }  // namespace
 
-/**
- * @brief Stores sensor identity and driver params for RealSense IMU.
- */
 RealSenseImuDriver::RealSenseImuDriver(SensorId id, DriverParams params)
     : id_(std::move(id)), params_(std::move(params)) {}
 
-/**
- * @brief Unsubscribes and stops the shared device hub on destruction.
- */
 RealSenseImuDriver::~RealSenseImuDriver() { Stop(); }
 
-/**
- * @brief Subscribes to fused accel/gyro frames via the shared hub.
- */
 bool RealSenseImuDriver::Start() {
     if (running_.exchange(true)) {
         return true;
@@ -89,9 +75,6 @@ bool RealSenseImuDriver::Start() {
     return true;
 }
 
-/**
- * @brief Unsubscribes from the hub and releases the shared device handle.
- */
 void RealSenseImuDriver::Stop() {
     if (!running_.exchange(false)) {
         return;
@@ -104,21 +87,12 @@ void RealSenseImuDriver::Stop() {
     hub_.reset();
 }
 
-/**
- * @brief Returns true while the IMU subscription is active.
- */
 bool RealSenseImuDriver::IsRunning() const { return running_.load(); }
 
-/**
- * @brief Registers the callback invoked for each IMU sample.
- */
 void RealSenseImuDriver::SetSampleCallback(SampleCallback callback) {
     callback_ = std::move(callback);
 }
 
-/**
- * @brief Factory that constructs a RealSenseImuDriver instance.
- */
 std::shared_ptr<SensorDriver> CreateRealSenseImuDriver(const SensorId& id,
                                                        const DriverParams& params) {
     return std::make_shared<RealSenseImuDriver>(id, params);

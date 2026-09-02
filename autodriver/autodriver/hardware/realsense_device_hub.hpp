@@ -68,33 +68,20 @@ enum class StreamKind {
 };
 
 /**
- * @brief Parse a stream kind from configuration text.
- * @param text Stream name from YAML (e.g. "color", "depth")
- * @param default_kind Value returned when text is unrecognized
- * @return Parsed stream kind
+ * @brief Parses a stream name string into a StreamKind enum value.
  */
 StreamKind ParseStreamKind(const std::string& text, StreamKind default_kind);
 
-/**
- * @brief Check whether a device product name matches a model filter.
- * @param product_name librealsense product name string
- * @param model_filter Substring or model token from configuration
- * @return True when the device matches the filter
- */
 bool MatchesModelFilter(const std::string& product_name,
                         const std::string& model_filter);
 
 /**
- * @brief Image encoding string for a stream kind.
- * @param kind Video stream kind
- * @return ROS-style encoding name (e.g. rgb8, 16UC1)
+ * @brief Returns the image encoding string for a RealSense stream kind.
  */
 std::string EncodingForStreamKind(StreamKind kind);
 
 /**
- * @brief Default TF frame_id for a stream kind.
- * @param kind Video stream kind
- * @return Frame identifier string
+ * @brief Returns the default TF frame_id for a RealSense stream kind.
  */
 std::string DefaultFrameId(StreamKind kind);
 
@@ -104,8 +91,7 @@ std::string DefaultFrameId(StreamKind kind);
 namespace io {
 
 /**
- * @brief Whether librealsense was linked at build time.
- * @return True when RealSense support is available
+ * @brief Returns true when librealsense was linked at build time.
  */
 bool RealSenseAvailable();
 
@@ -173,83 +159,54 @@ using RealSenseImuCallback = std::function<void(
  */
 class RealSenseDeviceHub {
  public:
-    /**
-     * @brief Acquire or create a hub for the device identified by params.
-     * @param params Must include model and/or serial; options are merged on reuse.
-     * @return Shared hub instance for the physical device
-     */
     static std::shared_ptr<RealSenseDeviceHub> Acquire(
         const hardware::DriverParams& params);
 
     /**
-     * @brief Destructor for autodriver::io::RealSenseDeviceHub
+     * @brief Stops the pipeline and worker thread on destruction.
      */
     ~RealSenseDeviceHub();
 
-    /**
-     * @brief Subscribe to a video stream.
-     * @param stream Video stream kind
-     * @param width Requested frame width
-     * @param height Requested frame height
-     * @param fps Requested frame rate
-     * @param callback Invoked for each decoded frame
-     * @return Subscription id for Unsubscribe()
-     */
     std::uint64_t SubscribeVideo(hardware::realsense::StreamKind stream, int width,
                                  int height, int fps,
                                  RealSenseVideoCallback callback);
 
-    /**
-     * @brief Subscribe to a colored depth point cloud.
-     * @param width Requested depth map width
-     * @param height Requested depth map height
-     * @param fps Requested frame rate
-     * @param callback Invoked for each decoded cloud
-     * @return Subscription id for Unsubscribe()
-     */
     std::uint64_t SubscribePointCloud(int width, int height, int fps,
                                       RealSensePointCloudCallback callback);
 
     /**
-     * @brief Subscribe to fused accel/gyro motion streams.
-     * @param callback Invoked for each IMU sample
-     * @return Subscription id for Unsubscribe()
+     * @brief Registers an IMU callback and restarts the hub if running.
      */
     std::uint64_t SubscribeImu(RealSenseImuCallback callback);
 
     /**
-     * @brief Remove a subscription; restarts the pipeline when already running.
-     * @param subscription_id Id returned from Subscribe*()
+     * @brief Removes a subscription and restarts the hub when others remain.
      */
     void Unsubscribe(std::uint64_t subscription_id);
 
     /**
-     * @brief Start the librealsense pipeline when subscriptions exist.
-     * @return True on success
+     * @brief Starts the pipeline and frame capture worker thread.
      */
     bool Start();
 
     /**
-     * @brief Stop the librealsense pipeline and release streams.
+     * @brief Stops the pipeline and joins the capture worker thread.
      */
     void Stop();
 
     /**
-     * @brief Whether the pipeline is currently running.
-     * @return True while capturing
+     * @brief Returns true while the capture loop is active.
      */
     bool IsRunning() const;
 
     /**
-     * @brief Last librealsense or configuration error message.
-     * @return Human-readable error text
+     * @brief Returns the most recent pipeline or device error message.
      */
     const std::string& last_error() const;
 
  private:
     /**
-     * @brief Private constructor; use Acquire() to obtain shared instances.
-     * @param params Device selection and option parameters
+     * @brief Constructs a hub bound to driver params and a device pool key.
      */
     explicit RealSenseDeviceHub(const hardware::DriverParams& params);
 

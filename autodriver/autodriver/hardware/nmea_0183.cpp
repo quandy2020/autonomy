@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-/**
- * @file
- * @brief Implements NMEA 0183 parsing helpers.
- */
-
 #include "autodriver/hardware/nmea_0183.hpp"
 
 #include <charconv>
@@ -92,9 +87,6 @@ std::vector<std::string> SplitFields(const std::string & sentence)
 
 }  // namespace
 
-/**
- * @brief Validates the XOR checksum suffix of an NMEA sentence.
- */
 bool ValidateNmeaChecksum(const std::string & sentence)
 {
   const auto star = sentence.find('*');
@@ -112,9 +104,6 @@ bool ValidateNmeaChecksum(const std::string & sentence)
   return result.ec == std::errc() && checksum == static_cast<std::uint8_t>(expected);
 }
 
-/**
- * @brief Parses a GGA sentence into latitude, longitude, and fix status.
- */
 std::optional<NmeaGgaFix> ParseGgaSentence(const std::string & sentence)
 {
   if (sentence.size() < 6 || sentence[0] != '$') {
@@ -162,9 +151,6 @@ std::optional<NmeaGgaFix> ParseGgaSentence(const std::string & sentence)
   return fix;
 }
 
-/**
- * @brief Parses an RMC sentence when navigation status is active.
- */
 std::optional<NmeaGgaFix> ParseRmcSentence(const std::string & sentence)
 {
   if (sentence.size() < 6 || sentence[0] != '$') {

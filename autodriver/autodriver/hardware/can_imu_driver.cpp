@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-/**
- * @file
- * @brief Implements CanImuDriver.
- */
-
 #include "autodriver/hardware/can_imu_driver.hpp"
 
 #include <utility>
@@ -30,9 +25,6 @@
 namespace autodriver {
 namespace hardware {
 
-/**
- * @brief Stores sensor identity and CAN ids/scales for accel and gyro frames.
- */
 CanImuDriver::CanImuDriver(SensorId id, DriverParams params)
 : id_(std::move(id)),
   params_(std::move(params)),
@@ -43,17 +35,11 @@ CanImuDriver::CanImuDriver(SensorId id, DriverParams params)
 {
 }
 
-/**
- * @brief Stops the reader thread and closes the CAN socket.
- */
 CanImuDriver::~CanImuDriver()
 {
   Stop();
 }
 
-/**
- * @brief Opens the CAN interface and starts the frame reader thread.
- */
 bool CanImuDriver::Start()
 {
   if (running_.exchange(true)) {
@@ -70,9 +56,6 @@ bool CanImuDriver::Start()
   return true;
 }
 
-/**
- * @brief Stops reading and joins the worker thread.
- */
 void CanImuDriver::Stop()
 {
   if (!running_.exchange(false)) {
@@ -84,25 +67,16 @@ void CanImuDriver::Stop()
   }
 }
 
-/**
- * @brief Returns true while the CAN reader thread is active.
- */
 bool CanImuDriver::IsRunning() const
 {
   return running_.load();
 }
 
-/**
- * @brief Registers the callback invoked for each fused IMU sample.
- */
 void CanImuDriver::SetSampleCallback(SampleCallback callback)
 {
   callback_ = std::move(callback);
 }
 
-/**
- * @brief Emits an IMU sample when both accel and gyro frames have arrived.
- */
 void CanImuDriver::TryEmit()
 {
   if (!have_accel_ || !have_gyro_ || !callback_) {
@@ -114,9 +88,6 @@ void CanImuDriver::TryEmit()
   have_gyro_ = false;
 }
 
-/**
- * @brief Reads CAN frames and updates partial accel/gyro state by frame id.
- */
 void CanImuDriver::ReadLoop()
 {
   while (running_.load()) {
@@ -139,9 +110,6 @@ void CanImuDriver::ReadLoop()
   }
 }
 
-/**
- * @brief Factory that constructs a CanImuDriver instance.
- */
 std::shared_ptr<SensorDriver> CreateCanImuDriver(
   const SensorId & id,
   const DriverParams & params)

@@ -55,19 +55,12 @@ struct WitMotionState
 class WitMotionParser
 {
 public:
-  /**
-   * @brief Constructor for autodriver::protocol::WitMotionParser
-   * @param accel_scale m/s^2 per LSB (default 16g range -> 0.0048828)
-   * @param gyro_scale rad/s per LSB (default 2000 dps range)
-   */
   explicit WitMotionParser(
     double accel_scale = 16.0 * 9.80665 / 32768.0,
     double gyro_scale = 2000.0 * 3.141592653589793 / 180.0 / 32768.0);
 
   /**
-   * @brief Feed one byte into the incremental parser.
-   * @param byte Next serial byte
-   * @return True when a full packet was parsed
+   * @brief Feeds one byte and returns true when a valid packet was parsed.
    */
   bool Feed(std::uint8_t byte);
 
@@ -87,14 +80,13 @@ public:
   }
 
   /**
-   * @brief Clear have_accel and have_gyro flags after emitting a sample.
+   * @brief Clears have_accel and have_gyro after emitting a fused sample.
    */
   void ResetSampleFlags();
 
 private:
   /**
-   * @brief Parse a complete 11-byte packet from the internal buffer.
-   * @return True when checksum and type were valid
+   * @brief Validates checksum and decodes accel or gyro payload from buffer_.
    */
   bool ParsePacket();
 
@@ -126,22 +118,10 @@ struct Nmea2000LatLon
   double longitude_deg{0.0};
 };
 
-/**
- * @brief Parse NMEA2000 PGN 129025 lat/lon (int32, 1e-7 deg).
- * @param data CAN payload bytes
- * @param length Payload length in bytes
- * @return Parsed fix when the frame layout matches
- */
 std::optional<Nmea2000LatLon> ParseNmea2000LatLonFrame(
   const std::uint8_t * data,
   std::size_t length);
 
-/**
- * @brief Decode 3x int16 little-endian values scaled to physical units.
- * @param data At least 6 bytes of little-endian int16 triplet data
- * @param scale Physical units per LSB
- * @return Decoded (x, y, z) vector
- */
 std::array<double, 3> DecodeScaledInt16Triplet(
   const std::uint8_t * data,
   double scale);

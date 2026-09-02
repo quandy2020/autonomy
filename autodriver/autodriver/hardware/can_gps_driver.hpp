@@ -44,14 +44,12 @@ class CanGpsDriver : public SensorDriver
 {
 public:
   /**
-   * @brief Constructor for autodriver::hardware::CanGpsDriver
-   * @param id Sensor identifier
-   * @param params Driver configuration parameters
+   * @brief Stores sensor identity and the target CAN frame id for GPS fixes.
    */
   CanGpsDriver(SensorId id, DriverParams params);
 
   /**
-   * @brief Destructor for autodriver::hardware::CanGpsDriver
+   * @brief Stops the reader thread and closes the CAN socket.
    */
   ~CanGpsDriver() override;
 
@@ -68,31 +66,28 @@ public:
   const SensorId & GetSensorId() const override { return id_; }
 
   /**
-   * @brief Open the CAN socket and start the read thread
-   * @return True on success
+   * @brief Opens the CAN interface and starts the frame reader thread.
    */
   bool Start() override;
 
   /**
-   * @brief Stop the read thread and close the CAN socket
+   * @brief Stops reading and joins the worker thread.
    */
   void Stop() override;
 
   /**
-   * @brief Whether the driver is actively reading
-   * @return True while running
+   * @brief Returns true while the CAN reader thread is active.
    */
   bool IsRunning() const override;
 
   /**
-   * @brief Register callback invoked for each decoded GPS fix
-   * @param callback Sample delivery callback
+   * @brief Registers the callback invoked for each GPS fix sample.
    */
   void SetSampleCallback(SampleCallback callback) override;
 
 private:
   /**
-   * @brief Background loop that reads CAN frames and emits GPS fixes
+   * @brief Reads CAN frames and emits GPS samples for matching NMEA2000 ids.
    */
   void ReadLoop();
 
@@ -118,12 +113,6 @@ private:
   std::thread worker_;
 };
 
-/**
- * @brief Factory used by GpsModule.
- * @param id Sensor identifier
- * @param params Driver configuration parameters
- * @return Shared sensor driver instance
- */
 std::shared_ptr<SensorDriver> CreateCanGpsDriver(
   const SensorId & id,
   const DriverParams & params);

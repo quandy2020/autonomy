@@ -33,12 +33,6 @@
 namespace autodriver {
 namespace hardware {
 
-/**
- * @brief Factory used by Lidar3dModule.
- * @param id Sensor identifier
- * @param params Driver configuration parameters
- * @return Shared sensor driver instance
- */
 std::shared_ptr<SensorDriver> CreateRealSensePointCloudDriver(
     const SensorId& id, const DriverParams& params);
 
@@ -49,14 +43,12 @@ std::shared_ptr<SensorDriver> CreateRealSensePointCloudDriver(
 class RealSensePointCloudDriver : public SensorDriver {
  public:
   /**
-   * @brief Constructor for autodriver::hardware::RealSensePointCloudDriver
-   * @param id Sensor identifier
-   * @param params Driver configuration parameters
+   * @brief Parses resolution params and stores sensor identity.
    */
   RealSensePointCloudDriver(SensorId id, DriverParams params);
 
   /**
-   * @brief Destructor for autodriver::hardware::RealSensePointCloudDriver
+   * @brief Unsubscribes and stops the shared device hub on destruction.
    */
   ~RealSensePointCloudDriver() override;
 
@@ -73,25 +65,22 @@ class RealSensePointCloudDriver : public SensorDriver {
   const SensorId& GetSensorId() const override { return id_; }
 
   /**
-   * @brief Subscribe to the hub point cloud stream and begin streaming
-   * @return True on success
+   * @brief Subscribes to a RealSense depth point cloud via the shared hub.
    */
   bool Start() override;
 
   /**
-   * @brief Unsubscribe and stop streaming
+   * @brief Unsubscribes from the hub and releases the shared device handle.
    */
   void Stop() override;
 
   /**
-   * @brief Whether the driver is actively streaming
-   * @return True while running
+   * @brief Returns true while the point-cloud subscription is active.
    */
   bool IsRunning() const override;
 
   /**
-   * @brief Register callback invoked for each point cloud sample
-   * @param callback Sample delivery callback
+   * @brief Registers the callback invoked for each point-cloud sample.
    */
   void SetSampleCallback(SampleCallback callback) override;
 

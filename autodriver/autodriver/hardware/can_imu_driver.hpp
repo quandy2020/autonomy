@@ -48,14 +48,12 @@ class CanImuDriver : public SensorDriver
 {
 public:
   /**
-   * @brief Constructor for autodriver::hardware::CanImuDriver
-   * @param id Sensor identifier
-   * @param params Driver configuration parameters
+   * @brief Stores sensor identity and CAN ids/scales for accel and gyro frames.
    */
   CanImuDriver(SensorId id, DriverParams params);
 
   /**
-   * @brief Destructor for autodriver::hardware::CanImuDriver
+   * @brief Stops the reader thread and closes the CAN socket.
    */
   ~CanImuDriver() override;
 
@@ -72,36 +70,33 @@ public:
   const SensorId & GetSensorId() const override { return id_; }
 
   /**
-   * @brief Open the CAN socket and start the read thread
-   * @return True on success
+   * @brief Opens the CAN interface and starts the frame reader thread.
    */
   bool Start() override;
 
   /**
-   * @brief Stop the read thread and close the CAN socket
+   * @brief Stops reading and joins the worker thread.
    */
   void Stop() override;
 
   /**
-   * @brief Whether the driver is actively reading
-   * @return True while running
+   * @brief Returns true while the CAN reader thread is active.
    */
   bool IsRunning() const override;
 
   /**
-   * @brief Register callback invoked for each fused IMU sample
-   * @param callback Sample delivery callback
+   * @brief Registers the callback invoked for each fused IMU sample.
    */
   void SetSampleCallback(SampleCallback callback) override;
 
 private:
   /**
-   * @brief Background loop that reads CAN frames and updates IMU state
+   * @brief Reads CAN frames and updates partial accel/gyro state by frame id.
    */
   void ReadLoop();
 
   /**
-   * @brief Emit a sample when both accel and gyro frames have been received
+   * @brief Emits an IMU sample when both accel and gyro frames have arrived.
    */
   void TryEmit();
 
@@ -148,12 +143,6 @@ private:
   std::thread worker_;
 };
 
-/**
- * @brief Factory used by ImuModule.
- * @param id Sensor identifier
- * @param params Driver configuration parameters
- * @return Shared sensor driver instance
- */
 std::shared_ptr<SensorDriver> CreateCanImuDriver(
   const SensorId & id,
   const DriverParams & params);

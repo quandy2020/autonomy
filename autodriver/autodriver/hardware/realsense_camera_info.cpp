@@ -14,20 +14,12 @@
  * limitations under the License.
  */
 
-/**
- * @file
- * @brief CameraInfo builder from RealSense intrinsics.
- */
-
 #include "autodriver/hardware/realsense_camera_info.hpp"
 
 namespace autodriver {
 namespace hardware {
 namespace realsense {
 
-/**
- * @brief Builds a CameraInfo message from RealSense intrinsics fields.
- */
 automsgs::msgs::sensor_msgs::CameraInfo MakeCameraInfo(
     const std::uint32_t width, const std::uint32_t height,
     const std::string& frame_id, const double fx, const double fy,

@@ -43,14 +43,12 @@ class SerialImuDriver : public SensorDriver
 {
 public:
   /**
-   * @brief Constructor for autodriver::hardware::SerialImuDriver
-   * @param id Sensor identifier
-   * @param params Driver configuration parameters
+   * @brief Stores sensor identity and WIT-motion parser scale factors.
    */
   SerialImuDriver(SensorId id, DriverParams params);
 
   /**
-   * @brief Destructor for autodriver::hardware::SerialImuDriver
+   * @brief Stops the reader thread and closes the serial port.
    */
   ~SerialImuDriver() override;
 
@@ -67,31 +65,28 @@ public:
   const SensorId & GetSensorId() const override { return id_; }
 
   /**
-   * @brief Open the serial port and start the read thread
-   * @return True on success
+   * @brief Opens the serial device and starts the byte reader thread.
    */
   bool Start() override;
 
   /**
-   * @brief Stop the read thread and close the serial port
+   * @brief Stops reading and joins the worker thread.
    */
   void Stop() override;
 
   /**
-   * @brief Whether the driver is actively reading
-   * @return True while running
+   * @brief Returns true while the serial reader thread is active.
    */
   bool IsRunning() const override;
 
   /**
-   * @brief Register callback invoked for each complete IMU sample
-   * @param callback Sample delivery callback
+   * @brief Registers the callback invoked for each fused IMU sample.
    */
   void SetSampleCallback(SampleCallback callback) override;
 
 private:
   /**
-   * @brief Background loop that reads bytes and emits fused IMU samples
+   * @brief Reads serial bytes, parses WIT packets, and emits IMU samples.
    */
   void ReadLoop();
 
@@ -117,12 +112,6 @@ private:
   std::thread worker_;
 };
 
-/**
- * @brief Factory used by ImuModule.
- * @param id Sensor identifier
- * @param params Driver configuration parameters
- * @return Shared sensor driver instance
- */
 std::shared_ptr<SensorDriver> CreateSerialImuDriver(
   const SensorId & id,
   const DriverParams & params);
