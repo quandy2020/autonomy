@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ * @brief Abstract hardware backend that captures timestamped sensor samples.
+ */
+
 #ifndef AUTODRIVER_SENSOR_DRIVER_HPP_
 #define AUTODRIVER_SENSOR_DRIVER_HPP_
 
@@ -26,26 +31,60 @@
 
 namespace autodriver {
 
-// Hardware backend that pushes timestamped samples on its capture thread.
+/**
+ * @class autodriver::SensorDriver
+ * @brief Hardware backend that pushes timestamped samples on its capture thread.
+ */
 class SensorDriver {
 public:
+    /** @brief Callback invoked for each captured sample on the driver thread. */
     using SampleCallback =
         std::function<void(std::unique_ptr<SensorSample> sample)>;
 
+    /** @brief Copy construction is disabled. */
     SensorDriver(const SensorDriver&) = delete;
+    /** @brief Copy assignment is disabled. */
     SensorDriver& operator=(const SensorDriver&) = delete;
+    /** @brief Virtual destructor for polymorphic drivers. */
     virtual ~SensorDriver() = default;
 
+    /**
+     * @brief Sensor modality implemented by this driver.
+     * @return The sensor type handled by this backend.
+     */
     virtual SensorType GetType() const = 0;
+
+    /**
+     * @brief Stable instance id from configuration.
+     * @return Configured sensor identifier.
+     */
     virtual const SensorId& GetSensorId() const = 0;
+
+    /**
+     * @brief Open the device and start the capture thread.
+     * @return True on success.
+     */
     virtual bool Start() = 0;
+
+    /**
+     * @brief Stop capture and release hardware resources.
+     */
     virtual void Stop() = 0;
+
+    /**
+     * @brief Whether the capture thread is active.
+     * @return True when capture is running.
+     */
     virtual bool IsRunning() const = 0;
 
-    // Invoked on the driver's thread; the callee must not block for long.
+    /**
+     * @brief Register the callback invoked for each captured sample.
+     * @param callback Invoked on the driver's thread; must not block for long.
+     */
     virtual void SetSampleCallback(SampleCallback callback) = 0;
 
 protected:
+    /** @brief Protected default constructor for derived drivers. */
     SensorDriver() = default;
 };
 

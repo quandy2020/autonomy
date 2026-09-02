@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief Intel RealSense on-board IMU driver (D435i, ...).
+ * @brief Intel RealSense on-board IMU driver (D435i, D455, ...).
  */
 
 #ifndef AUTODRIVER_HARDWARE_REALSENSE_IMU_DRIVER_HPP_
@@ -35,31 +35,87 @@ namespace autodriver {
 namespace hardware {
 
 /**
- * @class RealSenseImuDriver
- * @brief Reads accel/gyro motion streams from a RealSense D400 device.
+ * @class autodriver::hardware::RealSenseImuDriver
+ * @brief Reads fused accel/gyro motion streams from a RealSense D400 device.
+ *
+ * Params: model, serial, index, frame_id.
  */
 class RealSenseImuDriver : public SensorDriver
 {
 public:
+  /**
+   * @brief Constructor for autodriver::hardware::RealSenseImuDriver
+   * @param id Sensor identifier
+   * @param params Driver configuration parameters
+   */
   RealSenseImuDriver(SensorId id, DriverParams params);
+
+  /**
+   * @brief Destructor for autodriver::hardware::RealSenseImuDriver
+   */
   ~RealSenseImuDriver() override;
 
+  /**
+   * @brief Report sensor type
+   * @return SensorType::kImu
+   */
   SensorType GetType() const override { return SensorType::kImu; }
+
+  /**
+   * @brief Return this driver's sensor identifier
+   * @return Sensor id assigned at construction
+   */
   const SensorId & GetSensorId() const override { return id_; }
+
+  /**
+   * @brief Subscribe to the hub IMU stream and begin sampling
+   * @return True on success
+   */
   bool Start() override;
+
+  /**
+   * @brief Unsubscribe and stop sampling
+   */
   void Stop() override;
+
+  /**
+   * @brief Whether the driver is actively streaming
+   * @return True while running
+   */
   bool IsRunning() const override;
+
+  /**
+   * @brief Register callback invoked for each IMU sample
+   * @param callback Sample delivery callback
+   */
   void SetSampleCallback(SampleCallback callback) override;
 
 private:
+  /** @brief Sensor identifier for this driver instance. */
   SensorId id_;
+
+  /** @brief Parsed driver parameters from configuration. */
   DriverParams params_;
+
+  /** @brief Shared device hub managing the librealsense pipeline. */
   std::shared_ptr<io::RealSenseDeviceHub> hub_;
+
+  /** @brief Hub subscription handle returned by SubscribeImu(). */
   std::uint64_t subscription_id_{0};
+
+  /** @brief User callback for delivered IMU samples. */
   SampleCallback callback_;
+
+  /** @brief True while Start() succeeded and Stop() has not been called. */
   std::atomic<bool> running_{false};
 };
 
+/**
+ * @brief Factory used by ImuModule.
+ * @param id Sensor identifier
+ * @param params Driver configuration parameters
+ * @return Shared sensor driver instance
+ */
 std::shared_ptr<SensorDriver> CreateRealSenseImuDriver(
   const SensorId & id,
   const DriverParams & params);

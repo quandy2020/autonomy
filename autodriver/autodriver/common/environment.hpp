@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ * @brief Runtime path helpers (AUTODRIVER_PATH, distribution home).
+ */
+
 #pragma once
 
 #include <cstdlib>
@@ -24,6 +29,12 @@
 namespace autodriver {
 namespace common {
 
+/**
+ * @brief Read an environment variable with a default fallback.
+ * @param var_name Environment variable name
+ * @param default_value Value returned when unset or empty
+ * @return Variable value or default_value
+ */
 inline std::string GetEnv(const std::string& var_name,
                           const std::string& default_value = "") {
     const char* var = std::getenv(var_name.c_str());
@@ -33,6 +44,10 @@ inline std::string GetEnv(const std::string& var_name,
     return std::string(var);
 }
 
+/**
+ * @brief Install prefix or AUTODRIVER_DISTRIBUTION_HOME when set.
+ * @return Distribution root directory
+ */
 inline std::string DistributionHome() {
     const std::string from_env = GetEnv("AUTODRIVER_DISTRIBUTION_HOME");
     if (!from_env.empty()) {
@@ -43,7 +58,9 @@ inline std::string DistributionHome() {
 
 /**
  * @brief Autodriver configuration root (directory containing config/).
+ *
  * Uses AUTODRIVER_PATH when set; otherwise derives from kDefaultConfigDir.
+ * @return Work root directory
  */
 inline std::string WorkRoot() {
     const std::string from_env = GetEnv("AUTODRIVER_PATH");
