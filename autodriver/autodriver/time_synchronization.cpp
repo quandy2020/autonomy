@@ -31,9 +31,7 @@ using WriteLock = autolink::base::WriteLockGuard<AtomicRWLock>;
 
 autolink::Time TimeSync::Observe(const SensorId& id, const autolink::Time& device,
                                  const autolink::Time& host) {
-    /**
-     * @brief Raw host-minus-device offset for this observation in nanoseconds.
-     */
+    // Raw host-minus-device offset for this observation in nanoseconds.
     const std::int64_t sample_ns = (host - device).ToNanosecond();
     WriteLock lock(lock_);
     Offset& offset = offsets_[id];

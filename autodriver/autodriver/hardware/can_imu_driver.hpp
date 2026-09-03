@@ -143,6 +143,9 @@ private:
   std::thread worker_;
 };
 
+/**
+ * @brief Factory used by ImuModule.
+ */
 std::shared_ptr<SensorDriver> CreateCanImuDriver(
   const SensorId & id,
   const DriverParams & params);

@@ -53,13 +53,6 @@ int ParseIntString(const std::string & text, int default_value)
 
 int ParseInt(const DriverParams & params, const std::string & key, int default_value)
 {
-/**
- * @brief Read a string parameter with a default fallback.
- * @param params Driver parameter map from configuration.
- * @param key Parameter name to look up.
- * @param default_value Value returned when the key is absent.
- * @return Stored string value or default_value.
- */
   return ParseIntString(GetString(params, key), default_value);
 }
 

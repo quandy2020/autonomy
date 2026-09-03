@@ -121,10 +121,16 @@ struct Nmea2000LatLon
   double longitude_deg{0.0};
 };
 
+/**
+ * @brief Parse NMEA2000 PGN 129025 lat/lon (int32, 1e-7 deg).
+ */
 std::optional<Nmea2000LatLon> ParseNmea2000LatLonFrame(
   const std::uint8_t * data,
   std::size_t length);
 
+/**
+ * @brief Decode 3x int16 little-endian values scaled to physical units.
+ */
 std::array<double, 3> DecodeScaledInt16Triplet(
   const std::uint8_t * data,
   double scale);
