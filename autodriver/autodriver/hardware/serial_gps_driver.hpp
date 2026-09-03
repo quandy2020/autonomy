@@ -112,6 +112,9 @@ private:
   std::string line_buffer_;
 };
 
+/**
+ * @brief Factory used by GpsModule.
+ */
 std::shared_ptr<SensorDriver> CreateSerialGpsDriver(
   const SensorId & id,
   const DriverParams & params);

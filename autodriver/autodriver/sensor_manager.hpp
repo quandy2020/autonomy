@@ -54,10 +54,10 @@ public:
     /**
      * @brief Default-constructs a manager with an empty config.
      */
+    SensorManager();
     /**
      * @brief Constructs a manager bound to the given sensor configuration.
      */
-    SensorManager();
     explicit SensorManager(Config config);
     /**
      * @brief Stops the manager and detaches all sensors.

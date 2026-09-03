@@ -41,6 +41,9 @@ Config LoadConfig();
  */
 Config LoadConfig(const std::string& config_basename);
 
+/**
+ * @brief Loads config from an explicit directory and basename.
+ */
 Config LoadConfig(const std::string& configuration_directory,
                   const std::string& config_basename);
 

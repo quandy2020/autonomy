@@ -38,15 +38,27 @@ inline std::string GetString(const DriverParams& params, const std::string& key,
     return it == params.end() ? default_value : it->second;
 }
 
+/**
+ * @brief Reads an integer parameter, falling back to default_value.
+ */
 int ParseInt(const DriverParams& params, const std::string& key,
              int default_value);
 
+/**
+ * @brief Reads a CAN frame id parameter as uint32_t.
+ */
 std::uint32_t ParseCanId(const DriverParams& params, const std::string& key,
                          std::uint32_t default_value);
 
+/**
+ * @brief Reads a floating-point parameter via strtod.
+ */
 double ParseDouble(const DriverParams& params, const std::string& key,
                    double default_value);
 
+/**
+ * @brief Reads a boolean parameter from common textual truth values.
+ */
 bool ParseBool(const DriverParams& params, const std::string& key,
                bool default_value);
 

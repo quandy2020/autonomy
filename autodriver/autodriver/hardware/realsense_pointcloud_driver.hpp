@@ -33,6 +33,9 @@
 namespace autodriver {
 namespace hardware {
 
+/**
+ * @brief Factory used by Lidar3dModule.
+ */
 std::shared_ptr<SensorDriver> CreateRealSensePointCloudDriver(
     const SensorId& id, const DriverParams& params);
 

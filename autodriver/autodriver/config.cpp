@@ -63,10 +63,6 @@ bool EqualsHexId(std::string_view a, std::string_view b) {
  */
 bool FieldMatches(std::string_view expected, std::string_view actual,
                   bool hex) {
-    /**
-     * @brief Whether all match fields are empty.
-     * @return True when no match criteria are configured.
-     */
     if (expected.empty()) {
         return true;
     }

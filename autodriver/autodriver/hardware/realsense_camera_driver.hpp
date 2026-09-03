@@ -121,6 +121,9 @@ private:
   std::atomic<bool> running_{false};
 };
 
+/**
+ * @brief Factory used by CameraModule.
+ */
 std::shared_ptr<SensorDriver> CreateRealSenseCameraDriver(
   const SensorId & id,
   const DriverParams & params);

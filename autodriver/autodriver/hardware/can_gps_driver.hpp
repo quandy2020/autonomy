@@ -113,6 +113,9 @@ private:
   std::thread worker_;
 };
 
+/**
+ * @brief Factory used by GpsModule.
+ */
 std::shared_ptr<SensorDriver> CreateCanGpsDriver(
   const SensorId & id,
   const DriverParams & params);

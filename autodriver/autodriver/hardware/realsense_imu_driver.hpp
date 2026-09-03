@@ -104,6 +104,9 @@ private:
   std::atomic<bool> running_{false};
 };
 
+/**
+ * @brief Factory used by ImuModule.
+ */
 std::shared_ptr<SensorDriver> CreateRealSenseImuDriver(
   const SensorId & id,
   const DriverParams & params);
