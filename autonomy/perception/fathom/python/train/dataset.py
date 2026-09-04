@@ -1,6 +1,7 @@
 """JSONL manifest dataset for RGB-D fine-tuning."""
 
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +22,11 @@ class RgbdManifestDataset(Dataset[dict[str, torch.Tensor]]):
         generator: torch.Generator | None = None,
     ) -> None:
         self.manifest_path = Path(manifest_path)
+        if (
+            not math.isfinite(dropout_probability)
+            or not 0.0 <= dropout_probability <= 1.0
+        ):
+            raise ValueError("dropout_probability must be finite and within [0, 1]")
         self.dropout_probability = dropout_probability
         self.depth_scale = depth_scale
         self.generator = generator

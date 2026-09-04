@@ -23,6 +23,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <string>
 
 namespace autonomy {
@@ -142,6 +143,36 @@ TEST(ProjectDepthTest, RejectsMaskMessageWithInsufficientData) {
 
     EXPECT_FALSE(ProjectDepth(depth_m, mask, MakeCameraInfo(1.0F, 1.0F),
                               &cloud, &error));
+    EXPECT_FALSE(error.empty());
+}
+
+TEST(ProjectDepthTest, RejectsCameraMatrixWithWrongCardinality) {
+    auto depth_m = MakeImage("32FC1", 1, 1, 4);
+    const float depth = 1.0F;
+    std::memcpy(depth_m.mutable_data()->data(), &depth, sizeof(depth));
+    auto mask = MakeImage("mono8", 1, 1, 1);
+    mask.mutable_data()->at(0) = 1;
+    automsgs::msgs::sensor_msgs::CameraInfo camera_info;
+    camera_info.add_k(1.0);
+    automsgs::msgs::sensor_msgs::PointCloud2 cloud;
+    std::string error;
+
+    EXPECT_FALSE(ProjectDepth(depth_m, mask, camera_info, &cloud, &error));
+    EXPECT_FALSE(error.empty());
+}
+
+TEST(ProjectDepthTest, RejectsNonFiniteCameraIntrinsics) {
+    auto depth_m = MakeImage("32FC1", 1, 1, 4);
+    const float depth = 1.0F;
+    std::memcpy(depth_m.mutable_data()->data(), &depth, sizeof(depth));
+    auto mask = MakeImage("mono8", 1, 1, 1);
+    mask.mutable_data()->at(0) = 1;
+    auto camera_info = MakeCameraInfo(1.0F, 1.0F);
+    camera_info.set_k(2, std::numeric_limits<double>::quiet_NaN());
+    automsgs::msgs::sensor_msgs::PointCloud2 cloud;
+    std::string error;
+
+    EXPECT_FALSE(ProjectDepth(depth_m, mask, camera_info, &cloud, &error));
     EXPECT_FALSE(error.empty());
 }
 
