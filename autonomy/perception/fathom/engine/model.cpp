@@ -18,7 +18,6 @@
 
 #include "autonomy/common/network/backend/engine.hpp"
 #include "autonomy/common/network/common/options.hpp"
-#include "autonomy/perception/fathom/depth/refiner.hpp"
 
 #include <cstdint>
 #include <utility>
@@ -139,18 +138,6 @@ bool FathomEngine::Run(const common::network::TensorMap& inputs,
         return false;
     }
     return true;
-}
-
-std::unique_ptr<DepthRefiner> DepthRefiner::Create(const FathomConfig& config,
-                                                    std::string* error) {
-    if (error != nullptr) {
-        error->clear();
-    }
-    std::unique_ptr<FathomModelRunner> runner = FathomEngine::Create(config, error);
-    if (runner == nullptr) {
-        return nullptr;
-    }
-    return Create(config, std::move(runner), error);
 }
 
 }  // namespace fathom
