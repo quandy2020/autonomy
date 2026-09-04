@@ -18,7 +18,8 @@
 #define AUTONOMY_PERCEPTION_FATHOM_PROCESSING_RGBD_HPP_
 
 #include "autonomy/common/network/common/tensor.hpp"
-#include "autonomy/perception/fathom/depth/types.hpp"
+
+#include <automsgs/msgs/sensor_msgs/image.pb.h>
 
 #include <string>
 
@@ -41,7 +42,8 @@ namespace fathom {
  * fixed ONNX graph accepts only `image` and `raw_depth`; projection happens
  * after the refiner restores outputs to that original resolution.
  *
- * @param input Aligned CV_8UC3 BGR and CV_16UC1 raw-depth images
+ * @param rgb Aligned `bgr8` RGB image message
+ * @param raw_depth Aligned `16UC1` raw-depth image message
  * @param width Fixed model input width, greater than zero
  * @param height Fixed model input height, greater than zero
  * @param depth_scale Sensor-depth-unit to meter scale, finite and positive
@@ -49,7 +51,9 @@ namespace fathom {
  * @param error Optional failure message
  * @return True when both tensors are produced
  */
-bool PrepareRgbd(const DepthInput& input, int width, int height,
+bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,
+                 const automsgs::msgs::sensor_msgs::Image& raw_depth,
+                 int width, int height,
                  float depth_scale, common::network::TensorMap* tensors,
                  std::string* error = nullptr);
 

@@ -19,24 +19,46 @@
 #include "gtest/gtest.h"
 
 #include <cstdint>
+#include <cstring>
 #include <string>
 
 namespace autonomy {
 namespace perception {
 namespace fathom {
 
+namespace {
+
+automsgs::msgs::sensor_msgs::Image MakeImage(const std::string& encoding,
+                                              uint32_t width, uint32_t height,
+                                              uint32_t step) {
+    automsgs::msgs::sensor_msgs::Image image;
+    image.set_encoding(encoding);
+    image.set_width(width);
+    image.set_height(height);
+    image.set_step(step);
+    image.set_is_bigendian(false);
+    image.mutable_data()->resize(static_cast<size_t>(height) * step);
+    return image;
+}
+
+}  // namespace
+
 TEST(PrepareRgbdTest, ConvertsBgrAndMillimeterDepthToModelTensors) {
-    cv::Mat bgr(1, 2, CV_8UC3);
-    bgr.at<cv::Vec3b>(0, 0) = cv::Vec3b(0, 128, 255);
-    bgr.at<cv::Vec3b>(0, 1) = cv::Vec3b(255, 64, 0);
-    cv::Mat raw_depth(1, 2, CV_16UC1);
-    raw_depth.at<uint16_t>(0, 0) = 1000;
-    raw_depth.at<uint16_t>(0, 1) = 0;
+    auto rgb = MakeImage("bgr8", 2, 1, 6);
+    rgb.mutable_data()->at(0) = 0;
+    rgb.mutable_data()->at(1) = static_cast<char>(128);
+    rgb.mutable_data()->at(2) = static_cast<char>(255);
+    rgb.mutable_data()->at(3) = static_cast<char>(255);
+    rgb.mutable_data()->at(4) = 64;
+    rgb.mutable_data()->at(5) = 0;
+    auto raw_depth = MakeImage("16UC1", 2, 1, 4);
+    const uint16_t raw_values[] = {1000, 0};
+    std::memcpy(raw_depth.mutable_data()->data(), raw_values,
+                sizeof(raw_values));
 
     common::network::TensorMap tensors;
     std::string error;
-    ASSERT_TRUE(PrepareRgbd({bgr, raw_depth, {2.0F, 2.0F, 0.0F, 0.0F}},
-                            2, 1, 0.001F, &tensors, &error))
+    ASSERT_TRUE(PrepareRgbd(rgb, raw_depth, 2, 1, 0.001F, &tensors, &error))
         << error;
 
     ASSERT_EQ(tensors.size(), 2U);
@@ -61,12 +83,24 @@ TEST(PrepareRgbdTest, ConvertsBgrAndMillimeterDepthToModelTensors) {
 }
 
 TEST(PrepareRgbdTest, RejectsMismatchedRgbAndDepthDimensions) {
-    cv::Mat bgr(1, 2, CV_8UC3, cv::Scalar());
-    cv::Mat raw_depth(1, 1, CV_16UC1, cv::Scalar());
+    const auto rgb = MakeImage("bgr8", 2, 1, 6);
+    const auto raw_depth = MakeImage("16UC1", 1, 1, 2);
     common::network::TensorMap tensors;
     std::string error;
 
-    EXPECT_FALSE(PrepareRgbd({bgr, raw_depth, {}}, 2, 1, 0.001F, &tensors,
+    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 2, 1, 0.001F, &tensors,
+                             &error));
+    EXPECT_FALSE(error.empty());
+}
+
+TEST(PrepareRgbdTest, RejectsDepthMessageWithAnInvalidStep) {
+    const auto rgb = MakeImage("bgr8", 1, 1, 3);
+    auto raw_depth = MakeImage("16UC1", 1, 1, 2);
+    raw_depth.set_step(1);
+    common::network::TensorMap tensors;
+    std::string error;
+
+    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 0.001F, &tensors,
                              &error));
     EXPECT_FALSE(error.empty());
 }
