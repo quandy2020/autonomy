@@ -105,6 +105,41 @@ TEST(PrepareRgbdTest, RejectsDepthMessageWithAnInvalidStep) {
     EXPECT_FALSE(error.empty());
 }
 
+TEST(PrepareRgbdTest, RejectsRgbMessageWithInsufficientData) {
+    auto rgb = MakeImage("bgr8", 1, 1, 3);
+    rgb.mutable_data()->clear();
+    const auto raw_depth = MakeImage("16UC1", 1, 1, 2);
+    common::network::TensorMap tensors;
+    std::string error;
+
+    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 0.001F, &tensors,
+                             &error));
+    EXPECT_FALSE(error.empty());
+}
+
+TEST(PrepareRgbdTest, RejectsUnsupportedRgbEncoding) {
+    const auto rgb = MakeImage("rgb8", 1, 1, 3);
+    const auto raw_depth = MakeImage("16UC1", 1, 1, 2);
+    common::network::TensorMap tensors;
+    std::string error;
+
+    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 0.001F, &tensors,
+                             &error));
+    EXPECT_FALSE(error.empty());
+}
+
+TEST(PrepareRgbdTest, RejectsBigEndianDepthMessage) {
+    const auto rgb = MakeImage("bgr8", 1, 1, 3);
+    auto raw_depth = MakeImage("16UC1", 1, 1, 2);
+    raw_depth.set_is_bigendian(true);
+    common::network::TensorMap tensors;
+    std::string error;
+
+    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 0.001F, &tensors,
+                             &error));
+    EXPECT_FALSE(error.empty());
+}
+
 }  // namespace fathom
 }  // namespace perception
 }  // namespace autonomy

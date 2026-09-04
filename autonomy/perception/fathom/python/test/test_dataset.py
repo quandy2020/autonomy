@@ -1,6 +1,7 @@
 import json
 
 import numpy as np
+import pytest
 import torch
 from PIL import Image
 
@@ -81,3 +82,18 @@ def test_manifest_dataset_dropout_is_reproducible_with_injected_generator(tmp_pa
     )[0]
 
     assert torch.equal(first["raw_depth"], second["raw_depth"])
+
+
+@pytest.mark.parametrize(
+    "dropout_probability",
+    [-0.1, 1.1, float("nan"), float("inf"), float("-inf")],
+)
+def test_manifest_dataset_rejects_dropout_probability_outside_unit_interval(
+    tmp_path, dropout_probability
+):
+    with pytest.raises(ValueError, match="dropout_probability"):
+        RgbdManifestDataset(
+            _write_manifest_sample(tmp_path),
+            dropout_probability=dropout_probability,
+            depth_scale=0.001,
+        )
