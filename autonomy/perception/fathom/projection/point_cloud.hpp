@@ -17,7 +17,9 @@
 #ifndef AUTONOMY_PERCEPTION_FATHOM_PROJECTION_POINT_CLOUD_HPP_
 #define AUTONOMY_PERCEPTION_FATHOM_PROJECTION_POINT_CLOUD_HPP_
 
-#include "autonomy/perception/fathom/depth/types.hpp"
+#include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
+#include <automsgs/msgs/sensor_msgs/image.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 
 #include <string>
 
@@ -31,21 +33,23 @@ namespace fathom {
  */
 
 /**
- * Project metric depth and its validity mask into a CV_32FC3 XYZ image.
+ * Project metric depth and its validity mask into an organized PointCloud2.
  *
  * Each valid `(u, v)` position becomes
  * `((u - cx) * z / fx, (v - cy) * z / fy, z)`. Masked, non-finite, and
  * non-positive depth pixels are represented by NaN in all three coordinates.
  *
- * @param depth_m CV_32FC1 metric depth image in meters
- * @param mask CV_8UC1 validity mask; non-zero values are valid
- * @param intrinsics Original image pixel intrinsics with positive focal lengths
- * @param xyz Output organized CV_32FC3 camera-frame points
+ * @param depth_m `32FC1` metric depth image in meters
+ * @param mask `mono8` validity mask; non-zero values are valid
+ * @param camera_info Original image pixel intrinsics with positive focal lengths
+ * @param cloud Output organized XYZ PointCloud2, stamped from `depth_m`
  * @param error Optional failure message
  * @return True when projection succeeds
  */
-bool ProjectDepth(const cv::Mat& depth_m, const cv::Mat& mask,
-                  const CameraIntrinsics& intrinsics, cv::Mat* xyz,
+bool ProjectDepth(const automsgs::msgs::sensor_msgs::Image& depth_m,
+                  const automsgs::msgs::sensor_msgs::Image& mask,
+                  const automsgs::msgs::sensor_msgs::CameraInfo& camera_info,
+                  automsgs::msgs::sensor_msgs::PointCloud2* cloud,
                   std::string* error = nullptr);
 
 }  // namespace fathom
