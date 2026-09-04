@@ -77,7 +77,7 @@ The exporter enables the released model's ONNX-compatible interpolation path, ru
 
 ### `depth`
 
-Defines Fathom's public input/output types and the depth-refinement facade. Consumers do not depend on ONNX Runtime or TensorRT types.
+Defines the depth-refinement facade. Its public C++ API uses existing `automsgs::msgs::sensor_msgs::Image`, `CameraInfo`, and `PointCloud2` messages directly; Fathom does not define parallel image, camera, or point-cloud types. Consumers do not depend on ONNX Runtime or TensorRT types.
 
 ### `engine`
 
@@ -85,11 +85,11 @@ Adapts the exported model to `autonomy::common::network::Engine`. ONNX Runtime i
 
 ### `processing`
 
-Validates aligned RGB/depth dimensions, converts BGR input to normalized RGB NCHW tensors, converts sensor depth to meters, and maps invalid depth values to the exported model convention. It restores the refined depth and mask to OpenCV matrices.
+Validates aligned automsgs RGB/depth dimensions and buffers, converts the RGB message to normalized RGB NCHW tensors, converts sensor depth to meters, and maps invalid depth values to the exported model convention. It restores refined depth and mask as automsgs image messages.
 
 ### `projection`
 
-Projects valid metric depth into an organized camera-frame point cloud using pixel-center coordinates and the original camera intrinsics. Invalid pixels remain explicitly marked and are not converted to finite 3D points.
+Projects valid metric-depth and mask image messages into an organized automsgs `PointCloud2` using pixel-center coordinates and the original automsgs `CameraInfo`. Invalid pixels remain explicitly marked and are not converted to finite 3D points.
 
 ### Root files
 
