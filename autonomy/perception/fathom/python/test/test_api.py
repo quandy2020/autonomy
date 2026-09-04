@@ -15,12 +15,39 @@ class FakeModel:
 
 def test_infer_normalizes_shapes_and_invalid_depth():
     image = torch.full((2, 3, 3), 255, dtype=torch.uint8)
-    raw_depth = torch.tensor([[1.0, 0.0, float("nan")], [2.0, -1.0, 3.0]])
+    raw_depth = torch.tensor([[1.0, 0.0, float("nan")], [2.0, -1.0, float("inf")]])
     output = infer(FakeModel(), image, raw_depth, use_fp16=False)
     assert output["depth"].shape == (2, 3)
     assert torch.isfinite(output["raw_depth"]).all()
     assert output["raw_depth"][0, 1].item() == 0.0
+    assert output["raw_depth"][0, 2].item() == 0.0
     assert output["raw_depth"][1, 1].item() == 0.0
+    assert output["raw_depth"][1, 2].item() == 0.0
+
+
+def test_infer_normalizes_uint8_rgb_values():
+    class ImageValueModel:
+        def infer(self, image, depth_in, intrinsics, apply_mask, use_fp16):
+            return {"depth": depth_in + image.mean(), "mask": depth_in > 0}
+
+    output = infer(
+        ImageValueModel(),
+        torch.full((2, 3, 3), 255, dtype=torch.uint8),
+        torch.ones((2, 3), dtype=torch.float32),
+        use_fp16=False,
+    )
+
+    assert torch.equal(output["depth"], torch.full((2, 3), 2.0))
+
+
+def test_infer_rejects_out_of_range_float_rgb():
+    with pytest.raises(ValueError, match=r"\[0, 1\]"):
+        infer(
+            FakeModel(),
+            torch.full((3, 2, 3), 255.0, dtype=torch.float32),
+            torch.ones((2, 3), dtype=torch.float32),
+            use_fp16=False,
+        )
 
 
 def test_infer_rejects_mismatched_spatial_dimensions():
@@ -46,6 +73,39 @@ def test_infer_batches_intrinsics():
     )
 
     assert output["depth"].shape == (2, 3)
+
+
+@pytest.mark.parametrize("intrinsics", [torch.eye(2), torch.eye(3).unsqueeze(0)])
+def test_infer_rejects_intrinsics_other_than_one_3x3_matrix(intrinsics):
+    with pytest.raises(ValueError, match="single 3x3 matrix"):
+        infer(
+            FakeModel(),
+            torch.zeros((3, 2, 3), dtype=torch.float32),
+            torch.ones((2, 3), dtype=torch.float32),
+            intrinsics=intrinsics,
+            use_fp16=False,
+        )
+
+
+def test_infer_moves_batched_inputs_to_model_device():
+    class DeviceAwareModel:
+        device = torch.device("meta")
+
+        def infer(self, image, depth_in, intrinsics, apply_mask, use_fp16):
+            refined_depth = depth_in + image[:, 0] + intrinsics[:, 0, 0, None, None]
+            return {"depth": refined_depth, "mask": depth_in > 0}
+
+    model = DeviceAwareModel()
+    output = infer(
+        model,
+        torch.zeros((3, 2, 3), dtype=torch.float32),
+        torch.ones((2, 3), dtype=torch.float32),
+        intrinsics=torch.eye(3),
+        use_fp16=False,
+    )
+
+    assert output["depth"].device == model.device
+    assert output["raw_depth"].device == model.device
 
 
 def test_depth_exports_model_type():
