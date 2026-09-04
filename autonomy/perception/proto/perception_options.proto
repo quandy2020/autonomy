@@ -40,4 +40,7 @@ message PerceptionOptions {
   bool enable_exploration_nav_bridge = 21;
   string prior_map_topic = 22;
   string vg_markers_topic = 23;
+  bool enable_yopo_track = 24;
+  string track_config = 25;
+  string cmd_vel_topic = 26;
 }

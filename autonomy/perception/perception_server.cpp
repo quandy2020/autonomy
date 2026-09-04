@@ -98,12 +98,29 @@ void PerceptionServer::Start() {
     AINFO << "PerceptionServer: RGB-D exploration client started.";
   }
 
+  if (options_.enable_yopo_track()) {
+    track_client_ = std::make_unique<track::TrackClient>();
+    track::TrackClient::Options client_options;
+    client_options.config_directory = config_directory_;
+    if (!options_.track_config().empty()) {
+      client_options.track_config = options_.track_config();
+    }
+    track_client_->SetOptions(client_options);
+    track_client_->AttachNode(node_);
+    track_client_->Start();
+    AINFO << "PerceptionServer: YOPO track client started.";
+  }
+
   running_ = true;
 }
 
 void PerceptionServer::Shutdown() {
   if (!running_) {
     return;
+  }
+  if (track_client_) {
+    track_client_->Shutdown();
+    track_client_.reset();
   }
   if (exploration_client_) {
     exploration_client_->Shutdown();

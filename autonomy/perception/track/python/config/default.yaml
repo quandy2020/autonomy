@@ -1,0 +1,40 @@
+# Ground-robot YOPO-Track training defaults (aligned with track_yopo.lua).
+
+velocity: 0.5
+vel_max: 0.5
+wz_max: 1.0
+
+# Cost weights (unit-speed normalized in loss).
+wg: 0.20          # follow / guidance
+ws: 5.0           # smoothness
+wc: 1.0           # collision / safety
+wt: 1.0           # tracking objectness BCE weight
+w_score: 0.5      # score regression weight
+
+image_height: 96
+image_width: 160
+horizon_num: 5
+vertical_num: 1
+horizon_camera_fov: 90.0
+radio_range: 3.0
+follow_distance: 1.5
+
+objectness_threshold: 0.35
+nms_angle_deg: 15.0
+
+# Trajectory representation: simple terminal-state or planar YOPO-MINCO.
+trajectory_mode: simple   # simple | minco
+minco_piece_duration_s: 1.0
+acc_max: 1.0
+
+batch_size: 16
+epochs: 40
+lr: 0.0003
+hidden_dim: 64
+num_workers: 2
+seed: 42
+
+# Synthetic dataset size when no external dataset is provided.
+synthetic_samples: 2048
+checkpoint_dir: "checkpoints"
+onnx_path: "checkpoints/yopo_track.onnx"
