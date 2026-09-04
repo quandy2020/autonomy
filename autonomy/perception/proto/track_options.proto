@@ -1,0 +1,46 @@
+// Copyright 2026 The Openbot Authors
+//
+// Ground-robot YOPO human-following options.
+
+syntax = "proto3";
+
+package autonomy.perception.proto;
+
+message TrackOptions {
+  bool enabled = 1;
+  string model_path = 2;
+  string backend_id = 3;  // "onnx" or "tensorrt"
+  string odom_topic = 4;
+  string depth_topic = 5;
+  string camera_info_topic = 6;
+  string camera_frame = 7;
+  string base_frame = 8;
+  string cmd_vel_topic = 9;
+  string debug_path_topic = 10;
+  double control_hz = 11;
+
+  int32 image_height = 12;
+  int32 image_width = 13;
+  int32 horizon_num = 14;
+  int32 vertical_num = 15;
+  double horizon_camera_fov_deg = 16;
+  double radio_range_m = 17;
+  double vel_max_mps = 18;
+  double wz_max_rps = 19;
+
+  double objectness_threshold = 20;
+  double nms_angle_deg = 21;
+  double follow_distance_m = 22;
+  double depth_scale = 23;  // meters = raw * depth_scale (1.0 if already meters)
+  bool allow_heuristic_fallback = 24;
+  string config_basename = 25;
+
+  // Trajectory representation: "simple" (terminal state) or "minco" (2-piece planar MINCO).
+  string trajectory_mode = 26;
+  // Nominal duration per MINCO piece [s]; decoded durations ≈ (tanh+1)*piece_duration_s.
+  double minco_piece_duration_s = 27;
+  // Max planar acceleration used to denormalize MINCO tail acc [m/s^2].
+  double acc_max_mps2 = 28;
+  // Sample horizon for debug path / cmd_vel look-ahead [s].
+  double minco_sample_horizon_s = 29;
+}

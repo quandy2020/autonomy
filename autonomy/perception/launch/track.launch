@@ -1,0 +1,28 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  YOPO ground-robot human following (perception process).
+
+  Prerequisites:
+    - config/track_autonomy.lua
+    - PATH includes build/autonomy/bin
+    - Sensor topics from autosim: /odom, /camera/depth/image_raw
+    - Publishes /cmd_vel (TwistStamped)
+
+  Usage (from src/autonomy):
+    export PATH=$PWD/../../build/autonomy/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/perception/launch
+    # Terminal A: autosim
+    ./autosim/scripts/run.sh sim
+    # Terminal B:
+    autolink launch start track.launch
+-->
+<autolink>
+  <module>
+    <name>perception_track</name>
+    <type>binary</type>
+    <process_name>autonomy.perception --configuration_directory=config --configuration_basename=track_autonomy.lua</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

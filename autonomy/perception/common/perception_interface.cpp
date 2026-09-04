@@ -60,6 +60,9 @@ proto::PerceptionOptions LoadOptions(
   options.set_enable_exploration_nav_bridge(true);
   options.set_prior_map_topic("/map");
   options.set_vg_markers_topic(exploration::kExplorationVgMarkersTopic);
+  options.set_enable_yopo_track(false);
+  options.set_track_config("perception/track_yopo.lua");
+  options.set_cmd_vel_topic("/cmd_vel");
 
   if (parameter_dictionary == nullptr) {
     return options;
@@ -70,6 +73,10 @@ proto::PerceptionOptions LoadOptions(
   if (parameter_dictionary->HasKey("enable_rgbd_exploration")) {
     options.set_enable_rgbd_exploration(
         parameter_dictionary->GetBool("enable_rgbd_exploration"));
+  }
+  if (parameter_dictionary->HasKey("enable_yopo_track")) {
+    options.set_enable_yopo_track(
+        parameter_dictionary->GetBool("enable_yopo_track"));
   }
   SetStringIfPresent(parameter_dictionary, "exploration_config",
                      options.mutable_exploration_config());
@@ -116,6 +123,10 @@ proto::PerceptionOptions LoadOptions(
                      options.mutable_prior_map_topic());
   SetStringIfPresent(parameter_dictionary, "vg_markers_topic",
                      options.mutable_vg_markers_topic());
+  SetStringIfPresent(parameter_dictionary, "track_config",
+                     options.mutable_track_config());
+  SetStringIfPresent(parameter_dictionary, "cmd_vel_topic",
+                     options.mutable_cmd_vel_topic());
   return options;
 }
 
