@@ -22,6 +22,8 @@
 - Do not commit model weights, ONNX files, TensorRT engines, datasets, or generated outputs.
 - The training pipeline is a Fathom fine-tuning implementation, not an official training reproduction.
 - Do not modify or discard unrelated working-tree changes.
+- Use existing automsgs `Image`, `CameraInfo`, and `PointCloud2` messages for every public C++ data interface; do not define parallel Fathom image, camera, depth-output, or point-cloud types.
+- Per the user's execution constraint, generate and statically review source and test code only; do not compile, run tests, execute Python, train, export, infer, or download models.
 
 ## File Map
 
@@ -47,7 +49,6 @@
 
 - `autonomy/perception/fathom/config.hpp`: Fathom deployment options and validation API.
 - `autonomy/perception/fathom/config.cpp`: option validation.
-- `autonomy/perception/fathom/depth/types.hpp`: public camera, input, and output types.
 - `autonomy/perception/fathom/depth/refiner.hpp`: public `DepthRefiner` facade.
 - `autonomy/perception/fathom/depth/refiner.cpp`: processing, engine, and output orchestration.
 - `autonomy/perception/fathom/engine/model.hpp`: model-specific `FathomEngine` wrapper.
@@ -276,7 +277,6 @@ git commit -m "feat(perception): export Fathom models to ONNX"
 ### Task 5: Implement C++ RGB-D processing and projection
 
 **Files:**
-- Create: `autonomy/perception/fathom/depth/types.hpp`
 - Create: `autonomy/perception/fathom/processing/rgbd.hpp`
 - Create: `autonomy/perception/fathom/processing/rgbd.cpp`
 - Create: `autonomy/perception/fathom/processing/rgbd_test.cpp`
@@ -285,18 +285,17 @@ git commit -m "feat(perception): export Fathom models to ONNX"
 - Create: `autonomy/perception/fathom/projection/point_cloud_test.cpp`
 
 **Interfaces:**
-- Produces: `CameraIntrinsics {fx, fy, cx, cy}` in pixels.
-- Produces: `DepthInput {cv::Mat bgr, cv::Mat raw_depth, CameraIntrinsics intrinsics}`.
-- Produces: `PrepareRgbd(input, width, height, depth_scale, TensorMap*, error) -> bool`.
-- Produces: `ProjectDepth(depth_m, mask, intrinsics, cv::Mat* xyz, error) -> bool`.
+- Consumes: automsgs `sensor_msgs::Image` RGB and raw depth messages plus `CameraInfo`.
+- Produces: `PrepareRgbd(rgb, raw_depth, width, height, depth_scale, TensorMap*, error) -> bool`.
+- Produces: `ProjectDepth(depth_m, mask, camera_info, PointCloud2*, error) -> bool`.
 
 - [ ] **Step 1: Write failing preprocessing tests**
 
-Assert that a 1x2 BGR8 image becomes planar RGB float data in `[0,1]`, uint16 depth is multiplied by `0.001`, zero remains invalid/zero, and mismatched RGB/depth dimensions return false with a non-empty error.
+Assert that a 1x2 automsgs `bgr8` image becomes planar RGB float data in `[0,1]`, an automsgs `16UC1` depth image is multiplied by `0.001`, zero remains invalid/zero, and malformed step/data sizes or mismatched dimensions return false with a non-empty error.
 
 - [ ] **Step 2: Write failing projection tests**
 
-For depth `[[2, 2]]` and intrinsics `fx=2, fy=2, cx=0, cy=0`, assert points `(0,0,2)` and `(1,0,2)`. Assert invalid mask positions contain NaN XYZ and non-positive focal lengths are rejected.
+For automsgs depth `[[2, 2]]` and `CameraInfo.k=[2,0,0,0,2,0,0,0,1]`, assert the organized automsgs `PointCloud2` contains `(0,0,2)` and `(1,0,2)`. Assert invalid mask positions contain NaN XYZ and malformed/non-positive intrinsics are rejected.
 
 - [ ] **Step 3: Run tests and verify failure**
 
@@ -306,7 +305,7 @@ Expected: build fails because the APIs do not exist.
 
 - [ ] **Step 4: Implement minimal processing and projection**
 
-Use OpenCV resize, BGR-to-RGB conversion, and explicit planar NCHW loops. Scale intrinsics by output/input width and height during resize. Bind tensors using exact names `image` and `raw_depth`. Projection uses `x=(u-cx)*z/fx`, `y=(v-cy)*z/fy`, `z=depth`.
+Decode validated automsgs image buffers, use OpenCV resize and BGR-to-RGB conversion, and explicit planar NCHW loops. Bind tensors using exact names `image` and `raw_depth`. Projection writes organized automsgs `PointCloud2` XYZ fields using `x=(u-cx)*z/fx`, `y=(v-cy)*z/fy`, `z=depth`; projection uses original-resolution depth and camera intrinsics.
 
 - [ ] **Step 5: Configure and run C++ tests**
 
@@ -323,7 +322,7 @@ Expected: two tests PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add autonomy/perception/fathom/depth/types.hpp autonomy/perception/fathom/processing autonomy/perception/fathom/projection
+git add autonomy/perception/fathom/processing autonomy/perception/fathom/projection
 git commit -m "feat(perception): process and project Fathom RGB-D data"
 ```
 
@@ -342,7 +341,7 @@ git commit -m "feat(perception): process and project Fathom RGB-D data"
 - Produces: `FathomConfig {model_path, backend, input_width, input_height, num_tokens, depth_scale, mask_threshold}`.
 - Produces: `FathomEngine::Create(config, error) -> unique_ptr<FathomEngine>`.
 - Produces: `FathomEngine::Run(TensorMap, TensorMap*, error) -> bool`.
-- Produces: `DepthRefiner::Create(config, error)` and `Refine(input, DepthOutput*, error) -> bool`.
+- Produces: `DepthRefiner::Create(config, error)` and `Refine(rgb, raw_depth, camera_info, refined_depth, point_cloud, error) -> bool`, using automsgs messages directly.
 
 - [ ] **Step 1: Write failing configuration tests in `refiner_test.cpp`**
 
@@ -350,7 +349,7 @@ Assert empty model path, non-positive dimensions, non-positive depth scale, and 
 
 - [ ] **Step 2: Write a facade test with an injectable fake runner**
 
-Inject a runner that returns static `refined_depth` and `validity` tensors. Assert `DepthRefiner::Refine` restores output to the original input size, thresholds validity, and produces an organized XYZ image using the original intrinsics.
+Inject a runner that returns static `refined_depth` and `validity` tensors. Assert `DepthRefiner::Refine` restores automsgs output images to the original input size, thresholds validity, and produces an organized automsgs `PointCloud2` using the original `CameraInfo`.
 
 - [ ] **Step 3: Run tests and verify failure**
 
@@ -394,7 +393,7 @@ git commit -m "feat(perception): deploy Fathom through common network"
 
 **Interfaces:**
 - Consumes: Task 6 `DepthRefiner`.
-- Produces: `FathomNodeRunner::Create(FathomConfig, error)` and synchronous `Process(DepthInput, DepthOutput*, error)`.
+- Produces: `FathomNodeRunner::Create(FathomConfig, error)` and synchronous `Process(rgb, raw_depth, camera_info, refined_depth, point_cloud, error)` using automsgs messages.
 
 - [ ] **Step 1: Add a build-only runner contract**
 
