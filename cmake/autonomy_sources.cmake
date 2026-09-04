@@ -37,6 +37,14 @@ file(GLOB_RECURSE ALL_EXECUTABLES "${_AUTONOMY_ROOT}/*main.cpp")
 file(GLOB_RECURSE ALL_TESTS "${_AUTONOMY_ROOT}/*_test.cpp")
 file(GLOB_RECURSE VISUALIZATION_SRCS "${_AUTONOMY_ROOT}/visualization/*.cpp")
 file(GLOB_RECURSE ONNX_NETWORK_SRCS "${_AUTONOMY_ROOT}/common/network/*.cpp")
+# Tensor buffers are also used by Fathom's injected-runner facade and do not
+# depend on an inference backend.
+list(REMOVE_ITEM ONNX_NETWORK_SRCS
+  "${_AUTONOMY_ROOT}/common/network/common/tensor.cpp")
+file(GLOB_RECURSE FATHOM_NETWORK_SRCS
+  "${_AUTONOMY_ROOT}/perception/fathom/engine/*.cpp")
+list(APPEND FATHOM_NETWORK_SRCS
+  "${_AUTONOMY_ROOT}/perception/fathom/fathom_node_runner.cpp")
 
 # Offline demos are built as separate binaries (see grid_map_demos/CMakeLists.txt).
 file(GLOB_RECURSE _GRID_MAP_DEMOS_SRCS
@@ -78,6 +86,9 @@ function(autonomy_filter_library_sources)
 
   if(NOT BUILD_ONNXRUNTIME OR NOT OnnxRuntime_FOUND)
     list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ONNX_NETWORK_SRCS})
+    # Keep Fathom configuration, RGB-D processing, projection, and its
+    # injected-runner refiner available when no concrete backend is built.
+    list(REMOVE_ITEM ALL_LIBRARY_SRCS ${FATHOM_NETWORK_SRCS})
   endif()
 
   if(NOT BUILD_GRPC)

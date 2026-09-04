@@ -17,8 +17,7 @@
 #ifndef AUTONOMY_PERCEPTION_FATHOM_ENGINE_MODEL_HPP_
 #define AUTONOMY_PERCEPTION_FATHOM_ENGINE_MODEL_HPP_
 
-#include "autonomy/common/network/common/tensor.hpp"
-#include "autonomy/perception/fathom/config.hpp"
+#include "autonomy/perception/fathom/depth/refiner.hpp"
 
 #include <memory>
 #include <string>
@@ -37,16 +36,6 @@ namespace fathom {
  * @file model.hpp
  * @brief Fathom-specific runner and common-network adapter.
  */
-
-/** Small model contract used by the Fathom depth-refinement facade. */
-class FathomModelRunner {
-public:
-    virtual ~FathomModelRunner() = default;
-
-    virtual bool Run(const common::network::TensorMap& inputs,
-                     common::network::TensorMap* outputs,
-                     std::string* error = nullptr) = 0;
-};
 
 /**
  * Adapts the fixed Fathom ONNX graph to common::network::Engine.

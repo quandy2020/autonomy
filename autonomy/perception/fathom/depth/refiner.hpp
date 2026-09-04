@@ -17,8 +17,8 @@
 #ifndef AUTONOMY_PERCEPTION_FATHOM_DEPTH_REFINER_HPP_
 #define AUTONOMY_PERCEPTION_FATHOM_DEPTH_REFINER_HPP_
 
+#include "autonomy/common/network/common/tensor.hpp"
 #include "autonomy/perception/fathom/config.hpp"
-#include "autonomy/perception/fathom/engine/model.hpp"
 
 #include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
 #include <automsgs/msgs/sensor_msgs/image.pb.h>
@@ -37,16 +37,27 @@ namespace fathom {
  */
 
 /**
+ * Fathom's backend-independent model-runner contract. Concrete runtime
+ * adapters, such as FathomEngine, implement this contract outside the
+ * refiner so fake-runner processing remains available without ONNX Runtime.
+ */
+class FathomModelRunner {
+public:
+    virtual ~FathomModelRunner() = default;
+
+    virtual bool Run(const common::network::TensorMap& inputs,
+                     common::network::TensorMap* outputs,
+                     std::string* error = nullptr) = 0;
+};
+
+/**
  * Converts aligned RGB-D messages to Fathom tensors and reconstructs outputs.
  *
- * The overload accepting a FathomModelRunner keeps facade orchestration
- * independent from the concrete common-network backend and is intended for
- * embedding and focused tests. The no-runner overload creates FathomEngine.
+ * Construction accepts the model-runner contract so this facade remains
+ * independent from any concrete inference backend.
  */
 class DepthRefiner {
 public:
-    static std::unique_ptr<DepthRefiner> Create(const FathomConfig& config,
-                                                std::string* error = nullptr);
     static std::unique_ptr<DepthRefiner> Create(
         const FathomConfig& config, std::unique_ptr<FathomModelRunner> runner,
         std::string* error = nullptr);
