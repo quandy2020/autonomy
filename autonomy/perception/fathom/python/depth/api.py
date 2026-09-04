@@ -24,6 +24,13 @@ def infer(
     image_batch = _prepare_image(image).unsqueeze(0)
     depth = _prepare_depth(raw_depth)
     intrinsics_batch = _prepare_intrinsics(intrinsics)
+    model_device = getattr(model, "device", None)
+
+    if model_device is not None:
+        image_batch = image_batch.to(device=model_device)
+        depth = depth.to(device=model_device)
+        if intrinsics_batch is not None:
+            intrinsics_batch = intrinsics_batch.to(device=model_device)
 
     if image_batch.shape[-2:] != depth.shape:
         raise ValueError(
@@ -58,6 +65,8 @@ def _prepare_image(image: torch.Tensor) -> torch.Tensor:
 
     if not torch.is_floating_point(image) or image.shape[0] != 3:
         raise ValueError("image must be HWC uint8 or CHW floating-point RGB")
+    if not torch.all(torch.isfinite(image) & (image >= 0) & (image <= 1)):
+        raise ValueError("CHW floating-point RGB image values must be in [0, 1]")
     return image.to(dtype=torch.float32)
 
 
@@ -72,4 +81,6 @@ def _prepare_intrinsics(intrinsics: torch.Tensor | None) -> torch.Tensor | None:
     if intrinsics is None:
         return None
     intrinsics = torch.as_tensor(intrinsics)
-    return intrinsics.unsqueeze(0) if intrinsics.ndim == 2 else intrinsics
+    if intrinsics.shape != (3, 3):
+        raise ValueError("intrinsics must be a single 3x3 matrix")
+    return intrinsics.unsqueeze(0)
