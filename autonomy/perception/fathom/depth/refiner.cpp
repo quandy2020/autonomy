@@ -115,6 +115,9 @@ DepthRefiner::DepthRefiner(FathomConfig config,
 std::unique_ptr<DepthRefiner> DepthRefiner::Create(
     const FathomConfig& config, std::unique_ptr<FathomModelRunner> runner,
     std::string* error) {
+    if (error != nullptr) {
+        error->clear();
+    }
     if (!ValidateFathomConfig(config, error)) {
         return nullptr;
     }
@@ -132,12 +135,19 @@ bool DepthRefiner::Refine(
     const automsgs::msgs::sensor_msgs::CameraInfo& camera_info,
     automsgs::msgs::sensor_msgs::Image* refined_depth,
     automsgs::msgs::sensor_msgs::PointCloud2* point_cloud, std::string* error) {
+    if (error != nullptr) {
+        error->clear();
+    }
+    if (refined_depth != nullptr) {
+        refined_depth->Clear();
+    }
+    if (point_cloud != nullptr) {
+        point_cloud->Clear();
+    }
     if (refined_depth == nullptr || point_cloud == nullptr) {
         SetError(error, "refined_depth and point_cloud outputs must not be null.");
         return false;
     }
-    refined_depth->Clear();
-    point_cloud->Clear();
 
     common::network::TensorMap inputs;
     std::string detail;

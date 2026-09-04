@@ -100,6 +100,9 @@ FathomEngine::~FathomEngine() = default;
 
 std::unique_ptr<FathomEngine> FathomEngine::Create(const FathomConfig& config,
                                                     std::string* error) {
+    if (error != nullptr) {
+        error->clear();
+    }
     if (!ValidateFathomConfig(config, error)) {
         return nullptr;
     }
@@ -122,6 +125,9 @@ std::unique_ptr<FathomEngine> FathomEngine::Create(const FathomConfig& config,
 bool FathomEngine::Run(const common::network::TensorMap& inputs,
                        common::network::TensorMap* outputs,
                        std::string* error) {
+    if (error != nullptr) {
+        error->clear();
+    }
     if (outputs == nullptr) {
         SetError(error, "model output map is null.");
         return false;
@@ -137,6 +143,9 @@ bool FathomEngine::Run(const common::network::TensorMap& inputs,
 
 std::unique_ptr<DepthRefiner> DepthRefiner::Create(const FathomConfig& config,
                                                     std::string* error) {
+    if (error != nullptr) {
+        error->clear();
+    }
     std::unique_ptr<FathomModelRunner> runner = FathomEngine::Create(config, error);
     if (runner == nullptr) {
         return nullptr;

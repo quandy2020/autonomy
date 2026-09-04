@@ -159,10 +159,12 @@ TEST(DepthRefinerTest, RestoresImagesThresholdsValidityAndProjectsCloud) {
     raw_depth.mutable_header()->set_frame_id("camera_optical");
     automsgs::msgs::sensor_msgs::Image refined_depth;
     automsgs::msgs::sensor_msgs::PointCloud2 cloud;
+    error = "stale error";
 
     ASSERT_TRUE(refiner->Refine(rgb, raw_depth, MakeCameraInfo(),
                                 &refined_depth, &cloud, &error))
         << error;
+    EXPECT_TRUE(error.empty());
 
     EXPECT_EQ(refined_depth.encoding(), "32FC1");
     EXPECT_EQ(refined_depth.width(), 4U);
@@ -205,6 +207,41 @@ TEST(DepthRefinerTest, ClearsOutputsWhenInferenceFails) {
                                  &refined_depth, &cloud, &error));
     EXPECT_FALSE(error.empty());
     EXPECT_EQ(refined_depth.width(), 0U);
+    EXPECT_EQ(cloud.width(), 0U);
+}
+
+TEST(DepthRefinerTest, ClearsRefinedDepthWhenPointCloudOutputIsNull) {
+    const FathomConfig config = MakeConfig();
+    std::string error;
+    auto refiner = DepthRefiner::Create(config, std::make_unique<StaticRunner>(),
+                                        &error);
+    ASSERT_NE(refiner, nullptr) << error;
+
+    automsgs::msgs::sensor_msgs::Image refined_depth;
+    refined_depth.set_width(9);
+
+    EXPECT_FALSE(refiner->Refine(automsgs::msgs::sensor_msgs::Image(),
+                                 automsgs::msgs::sensor_msgs::Image(),
+                                 MakeCameraInfo(), &refined_depth, nullptr,
+                                 &error));
+    EXPECT_FALSE(error.empty());
+    EXPECT_EQ(refined_depth.width(), 0U);
+}
+
+TEST(DepthRefinerTest, ClearsPointCloudWhenRefinedDepthOutputIsNull) {
+    const FathomConfig config = MakeConfig();
+    std::string error;
+    auto refiner = DepthRefiner::Create(config, std::make_unique<StaticRunner>(),
+                                        &error);
+    ASSERT_NE(refiner, nullptr) << error;
+
+    automsgs::msgs::sensor_msgs::PointCloud2 cloud;
+    cloud.set_width(9);
+
+    EXPECT_FALSE(refiner->Refine(automsgs::msgs::sensor_msgs::Image(),
+                                 automsgs::msgs::sensor_msgs::Image(),
+                                 MakeCameraInfo(), nullptr, &cloud, &error));
+    EXPECT_FALSE(error.empty());
     EXPECT_EQ(cloud.width(), 0U);
 }
 
