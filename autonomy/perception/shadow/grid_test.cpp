@@ -308,6 +308,46 @@ void ExpectOdometryShiftRejectedAtomically(double x, double y) {
     EXPECT_NEAR(grid.map().at("variance", index), 0.01F, 1.0e-6F);
 }
 
+void ExpectNearLimitShiftRejectedAfterRoll(double direction) {
+    auto options = ValidOptions();
+    options.set_obstacle_min_height(1.0F);
+    LocalGrid grid(options);
+    ASSERT_TRUE(grid.Update(kFirstStampNs, DepthAt(1.0F), Camera(),
+                            CameraToMap(kFirstStampNs), Odom(kFirstStampNs)));
+
+    constexpr int64_t kRollStampNs = kFirstStampNs + 100'000'000;
+    ASSERT_TRUE(grid.Update(kRollStampNs, UnknownDepth(), Camera(),
+                            CameraToMap(kRollStampNs),
+                            Odom(kRollStampNs, 0.30)));
+    ASSERT_NE(grid.map().getStartIndex().x(), 0);
+    const grid_map::GridMap before = grid.map();
+
+    using IndexScalar = grid_map::Index::Scalar;
+    const double normalized_shift =
+        direction *
+        (static_cast<double>(std::numeric_limits<IndexScalar>::max()) - 1.0);
+    const double near_limit_x =
+        before.getPosition().x() + normalized_shift * before.getResolution();
+    ASSERT_TRUE(std::isfinite(near_limit_x));
+
+    constexpr int64_t kFailedStampNs = kRollStampNs + 100'000'000;
+    std::string error;
+    EXPECT_FALSE(grid.Update(kFailedStampNs, UnknownDepth(), Camera(),
+                             CameraToMap(kFailedStampNs),
+                             Odom(kFailedStampNs, near_limit_x), &error));
+    EXPECT_FALSE(error.empty());
+    ExpectMapsEqual(grid.map(), before);
+
+    constexpr int64_t kRecoveryStampNs = kFailedStampNs + 100'000'000;
+    ASSERT_TRUE(grid.Update(kRecoveryStampNs, DepthAt(1.2F), Camera(),
+                            CameraToMap(kRecoveryStampNs),
+                            Odom(kRecoveryStampNs, 0.30)));
+    grid_map::Index index;
+    ASSERT_TRUE(grid.map().getIndex(grid_map::Position(0.0, 0.0), index));
+    EXPECT_NEAR(grid.map().at("elevation", index), 1.1F, 1.0e-6F);
+    EXPECT_NEAR(grid.map().at("variance", index), 0.01F, 1.0e-6F);
+}
+
 TEST(LocalGridTest, InitializesExactlyFourUnknownLayers) {
     LocalGrid grid(ValidOptions());
     const auto& map = grid.map();
@@ -518,6 +558,17 @@ TEST(LocalGridTest, RejectsUnrepresentableOdometryShiftAtomically) {
     {
         SCOPED_TRACE("unrepresentable y shift");
         ExpectOdometryShiftRejectedAtomically(0.0, huge);
+    }
+}
+
+TEST(LocalGridTest, RejectsPositiveAndNegativeNearLimitShiftsAfterRoll) {
+    {
+        SCOPED_TRACE("positive near-limit shift");
+        ExpectNearLimitShiftRejectedAfterRoll(1.0);
+    }
+    {
+        SCOPED_TRACE("negative near-limit shift");
+        ExpectNearLimitShiftRejectedAfterRoll(-1.0);
     }
 }
 
