@@ -19,7 +19,7 @@
  * @brief Fathom model loading, tensor-contract validation, and inference.
  */
 
-#include "autonomy/perception/fathom/engine/model.hpp"
+#include "autonomy/perception/fathom/model.hpp"
 
 #include "autonomy/common/network/backend/engine.hpp"
 #include "autonomy/common/network/common/options.hpp"

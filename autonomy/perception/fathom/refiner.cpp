@@ -19,10 +19,10 @@
  * @brief End-to-end RGB-D preprocessing, inference, and reconstruction.
  */
 
-#include "autonomy/perception/fathom/depth/refiner.hpp"
+#include "autonomy/perception/fathom/refiner.hpp"
 
-#include "autonomy/perception/fathom/processing/rgbd.hpp"
-#include "autonomy/perception/fathom/projection/point_cloud.hpp"
+#include "autonomy/perception/fathom/point_cloud.hpp"
+#include "autonomy/perception/fathom/rgbd.hpp"
 
 #include <opencv2/imgproc.hpp>
 

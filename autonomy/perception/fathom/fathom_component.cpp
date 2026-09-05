@@ -21,7 +21,7 @@
 
 #include "autonomy/perception/fathom/fathom_component.hpp"
 
-#include "autonomy/perception/fathom/engine/model.hpp"
+#include "autonomy/perception/fathom/model.hpp"
 #include "autonomy/perception/fathom/options.hpp"
 
 #include <string>
