@@ -61,3 +61,29 @@ layout:
 - `config/perception/fathom_component.pb.txt`
 
 No tracked or pre-existing main-checkout files were modified or removed.
+
+## Round 1 reviewer fixes
+
+- Extended `PrepareRgbd` to accept Autosim's `rgb8` and metric `32FC1` input
+  while preserving `bgr8` and `16UC1`. Float rows are copied using each message
+  row's `step`, reject big-endian and undersized layouts, and sanitize
+  non-finite/non-positive samples to zero before tensor construction.
+- Clarified and preserved depth-scale semantics: it multiplies numeric depth
+  samples for both encodings. The Autosim sample now uses `depth_scale: 1.0`;
+  millimeter `16UC1` deployments continue to use `0.001`.
+- Added source coverage for RGB color order, metric float input, invalid float
+  values, and float layout/endianness failures.
+- Added Fathom-component-local runner and publisher callbacks, used only as a
+  narrow test seam while production still creates and invokes autolink writers.
+  The tests cover null/uninitialized rejection, one runner call, both writer
+  failure paths, and repeated `Clear()`.
+- Rejected equal refined-depth and point-cloud output topics with focused test
+  coverage.
+- Added installed-tree rules for `fathom_component`, its DAG, and the
+  perception launch artifact, plus an explicit component-config install rule.
+  Updated launch/README environment setup for `AUTOLINK_LIB_PATH`,
+  `AUTOLINK_DAG_PATH`, and `AUTOLINK_CONF_PATH` in both build-tree and
+  installed-tree layouts.
+
+No build, configure, compilation, test execution, model download, or inference
+was run for this reviewer-fix round. Static source and diff review only.

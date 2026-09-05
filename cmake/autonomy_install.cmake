@@ -86,6 +86,22 @@ install(
 )
 
 set(_autonomy_launch_mods localization planning control task system)
+if(TARGET fathom_component)
+  install(
+    TARGETS fathom_component
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+  )
+  install(
+    FILES autonomy/perception/fathom/fathom.dag
+    DESTINATION share/autonomy/dag/perception/fathom
+  )
+  install(
+    FILES config/perception/fathom_component.pb.txt
+    DESTINATION share/autonomy/config/perception
+  )
+  list(APPEND _autonomy_launch_mods perception)
+endif()
 if(BUILD_GRPC)
   list(APPEND _autonomy_launch_mods bridge)
 endif()

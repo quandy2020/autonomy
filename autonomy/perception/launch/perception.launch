@@ -11,6 +11,9 @@
   Usage (from src/autonomy):
     export PATH=$PWD/../../build/autonomy/bin:$PATH
     export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/perception/launch
+    export AUTOLINK_DAG_PATH=$PWD/autonomy
+    export AUTOLINK_CONF_PATH=$PWD
+    export AUTOLINK_LIB_PATH=$PWD/../../build/autonomy/lib
     autolink launch start perception.launch
 -->
 <autolink>
@@ -23,7 +26,7 @@
   </module>
   <module>
     <name>fathom</name>
-    <dag_conf>autonomy/perception/fathom/fathom.dag</dag_conf>
+    <dag_conf>perception/fathom/fathom.dag</dag_conf>
     <process_name>fathom</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>

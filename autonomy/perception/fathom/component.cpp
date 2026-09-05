@@ -47,6 +47,13 @@ bool FathomComponent::Init() {
         Clear();
         return false;
     }
+    runner_process_ = [this](const Image& rgb, const Image& raw_depth,
+                             const CameraInfo& camera_info,
+                             Image* refined_depth, PointCloud2* point_cloud,
+                             std::string* process_error) {
+        return runner_->Process(rgb, raw_depth, camera_info, refined_depth,
+                                point_cloud, process_error);
+    };
 
     refined_depth_writer_ = node_->CreateWriter<Image>(topics.refined_depth);
     point_cloud_writer_ = node_->CreateWriter<PointCloud2>(topics.point_cloud);
@@ -57,6 +64,12 @@ bool FathomComponent::Init() {
         Clear();
         return false;
     }
+    refined_depth_publish_ = [this](const Image& message) {
+        return refined_depth_writer_->Write(message);
+    };
+    point_cloud_publish_ = [this](const PointCloud2& message) {
+        return point_cloud_writer_->Write(message);
+    };
     return true;
 }
 
@@ -68,24 +81,23 @@ bool FathomComponent::Proc(const std::shared_ptr<Image>& rgb,
                   "CameraInfo input.";
         return false;
     }
-    if (runner_ == nullptr || refined_depth_writer_ == nullptr ||
-        point_cloud_writer_ == nullptr) {
+    if (!runner_process_ || !refined_depth_publish_ || !point_cloud_publish_) {
         AERROR << "Fathom component is not initialized with a runner and both "
-                  "output writers.";
+                  "output publishers.";
         return false;
     }
 
     Image refined_depth;
     PointCloud2 point_cloud;
     std::string error;
-    if (!runner_->Process(*rgb, *raw_depth, *camera_info, &refined_depth,
-                          &point_cloud, &error)) {
+    if (!runner_process_(*rgb, *raw_depth, *camera_info, &refined_depth,
+                         &point_cloud, &error)) {
         AERROR << "Fathom component refinement failed: " << error;
         return false;
     }
 
-    const bool depth_published = refined_depth_writer_->Write(refined_depth);
-    const bool cloud_published = point_cloud_writer_->Write(point_cloud);
+    const bool depth_published = refined_depth_publish_(refined_depth);
+    const bool cloud_published = point_cloud_publish_(point_cloud);
     if (!depth_published) {
         AERROR << "Fathom component failed to publish refined depth.";
     }
@@ -96,6 +108,9 @@ bool FathomComponent::Proc(const std::shared_ptr<Image>& rgb,
 }
 
 void FathomComponent::Clear() {
+    point_cloud_publish_ = nullptr;
+    refined_depth_publish_ = nullptr;
+    runner_process_ = nullptr;
     point_cloud_writer_.reset();
     refined_depth_writer_.reset();
     runner_.reset();

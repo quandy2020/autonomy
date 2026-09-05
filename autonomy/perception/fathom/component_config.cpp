@@ -56,6 +56,12 @@ bool TranslateFathomComponentConfig(
         SetError(error, "point_cloud_topic must not be empty.");
         return false;
     }
+    if (component_config.refined_depth_topic() ==
+        component_config.point_cloud_topic()) {
+        SetError(error,
+                 "refined_depth_topic and point_cloud_topic must differ.");
+        return false;
+    }
     if (!FitsInt(component_config.input_width()) ||
         !FitsInt(component_config.input_height())) {
         SetError(error, "input_width and input_height exceed supported range.");
