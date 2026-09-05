@@ -105,13 +105,29 @@ inference. Use `0.001` for millimeter `16UC1`, and `1.0` for Autosim's metric
 
 When ONNX Runtime is available, `fathom_component` is built as an independent
 autolink-loadable shared library (`libfathom_component.so`). It is loaded by
-`fathom.dag` into its own mainboard process; the existing `PerceptionServer`
-continues to run as the separate binary module in
-`autonomy/perception/launch/perception.launch`.
+`dag/fathom.dag` into its own mainboard process; the existing
+`PerceptionServer` continues to run as the separate binary module in
+`autonomy/perception/launch/perception.launch`. For component-only deployment,
+use `launch/fathom.launch`.
+
+The component follows the repository's Apollo-style runtime layout:
+
+```text
+fathom/
+├── conf/fathom.pb.txt
+├── dag/fathom.dag
+├── launch/fathom.launch
+├── proto/fathom.proto
+├── fathom_component.hpp
+├── fathom_component.cpp
+├── fathom_component_test.cpp
+├── options.hpp
+└── options.cpp
+```
 
 The DAG reader order is fixed: RGB `Image`, raw-depth `Image`, then
 `CameraInfo`. The sample component configuration is
-`config/perception/fathom_component.pb.txt`; it uses Autosim's camera topics
+`conf/fathom.pb.txt`; it uses Autosim's camera topics
 `/camera/rgb/image_raw`, `/camera/depth/image_raw`, and
 `/camera/camera_info`. Autosim publishes `rgb8` and metric `32FC1`, so the
 sample uses `depth_scale: 1.0`. Replace its `/models/fathom.onnx` placeholder
@@ -129,8 +145,8 @@ configured `CMAKE_BINARY_DIR` is `$PWD/build`):
 ```bash
 export PATH="$PWD/build/bin:$PATH"
 export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/perception/launch"
-export AUTOLINK_DAG_PATH="$PWD/autonomy"
-export AUTOLINK_CONF_PATH="$PWD"
+export AUTOLINK_DAG_PATH="$PWD/autonomy/perception/fathom"
+export AUTOLINK_CONF_PATH="$PWD/autonomy/perception/fathom"
 export AUTOLINK_LIB_PATH="$PWD/build/lib"
 autolink launch start perception.launch
 ```
@@ -141,17 +157,18 @@ places this package's CMake binary directory at `$PWD/../../build/autonomy`:
 ```bash
 export PATH="$PWD/../../build/autonomy/bin:$PATH"
 export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/perception/launch"
-export AUTOLINK_DAG_PATH="$PWD/autonomy"
-export AUTOLINK_CONF_PATH="$PWD"
+export AUTOLINK_DAG_PATH="$PWD/autonomy/perception/fathom"
+export AUTOLINK_CONF_PATH="$PWD/autonomy/perception/fathom"
 export AUTOLINK_LIB_PATH="$PWD/../../build/autonomy/lib"
 autolink launch start perception.launch
 ```
 
 Installation places `libfathom_component.so` in `lib`, the DAG in
-`share/autonomy/dag/perception/fathom`, the sample config below
-`share/autonomy/config`, and the launch file below
+`share/autonomy/fathom/dag`, the sample config in
+`share/autonomy/fathom/conf`, the standalone launch file in
+`share/autonomy/fathom/launch`, and the combined launch file below
 `share/autonomy/perception/launch`. For an installed tree, set
-`AUTOLINK_DAG_PATH=$prefix/share/autonomy/dag`,
-`AUTOLINK_CONF_PATH=$prefix/share/autonomy`, and
+`AUTOLINK_DAG_PATH=$prefix/share/autonomy/fathom`,
+`AUTOLINK_CONF_PATH=$prefix/share/autonomy/fathom`, and
 `AUTOLINK_LIB_PATH=$prefix/lib` before launching the installed perception
 launch file.

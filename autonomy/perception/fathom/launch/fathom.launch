@@ -1,0 +1,18 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Standalone Fathom autolink component.
+
+  Set AUTOLINK_DAG_PATH and AUTOLINK_CONF_PATH to the installed or source
+  Fathom directory, and AUTOLINK_LIB_PATH to the directory containing
+  libfathom_component.so.
+-->
+<autolink>
+  <module>
+    <name>fathom</name>
+    <dag_conf>dag/fathom.dag</dag_conf>
+    <process_name>fathom</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

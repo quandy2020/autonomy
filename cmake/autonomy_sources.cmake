@@ -46,9 +46,9 @@ file(GLOB_RECURSE FATHOM_NETWORK_SRCS
 list(APPEND FATHOM_NETWORK_SRCS
   "${_AUTONOMY_ROOT}/perception/fathom/fathom_node_runner.cpp")
 set(FATHOM_COMPONENT_SRCS
-  "${_AUTONOMY_ROOT}/perception/fathom/component.cpp")
+  "${_AUTONOMY_ROOT}/perception/fathom/fathom_component.cpp")
 set(FATHOM_COMPONENT_TEST_SRCS
-  "${_AUTONOMY_ROOT}/perception/fathom/component_test.cpp")
+  "${_AUTONOMY_ROOT}/perception/fathom/fathom_component_test.cpp")
 
 # Offline demos are built as separate binaries (see grid_map_demos/CMakeLists.txt).
 file(GLOB_RECURSE _GRID_MAP_DEMOS_SRCS
