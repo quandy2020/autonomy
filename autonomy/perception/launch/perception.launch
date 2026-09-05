@@ -21,4 +21,11 @@
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>
+  <module>
+    <name>fathom</name>
+    <dag_conf>autonomy/perception/fathom/fathom.dag</dag_conf>
+    <process_name>fathom</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
 </autolink>
