@@ -98,6 +98,81 @@ Image FloatDepth(uint32_t width, uint32_t height,
     return image;
 }
 
+void WriteUint16(std::string* data, std::size_t offset, uint16_t value,
+                 bool big_endian) {
+    for (std::size_t byte = 0; byte < sizeof(value); ++byte) {
+        const std::size_t shift_byte =
+            big_endian ? sizeof(value) - 1U - byte : byte;
+        (*data)[offset + byte] = static_cast<char>(
+            (value >> (8U * shift_byte)) & static_cast<uint16_t>(0xffU));
+    }
+}
+
+void WriteFloat32(std::string* data, std::size_t offset, float value,
+                  bool big_endian) {
+    uint32_t bits = 0U;
+    std::memcpy(&bits, &value, sizeof(bits));
+    for (std::size_t byte = 0; byte < sizeof(bits); ++byte) {
+        const std::size_t shift_byte =
+            big_endian ? sizeof(bits) - 1U - byte : byte;
+        (*data)[offset + byte] = static_cast<char>(
+            (bits >> (8U * shift_byte)) & static_cast<uint32_t>(0xffU));
+    }
+}
+
+Image PaddedUint16Depth(bool big_endian) {
+    constexpr uint32_t kWidth = 3U;
+    constexpr uint32_t kHeight = 2U;
+    constexpr uint32_t kBytesPerPixel = sizeof(uint16_t);
+    constexpr uint32_t kStep = kWidth * kBytesPerPixel + 3U;
+    const std::vector<uint16_t> values = {1000U, 1100U, 1200U,
+                                          1300U, 1400U, 1500U};
+    std::string data(kHeight * kStep, static_cast<char>(0x7f));
+    for (uint32_t row = 0U; row < kHeight; ++row) {
+        for (uint32_t column = 0U; column < kWidth; ++column) {
+            const std::size_t value_index = row * kWidth + column;
+            const std::size_t offset = row * kStep + column * kBytesPerPixel;
+            WriteUint16(&data, offset, values[value_index], big_endian);
+        }
+    }
+
+    Image image;
+    image.mutable_header()->set_frame_id("camera_optical");
+    image.set_encoding("16UC1");
+    image.set_width(kWidth);
+    image.set_height(kHeight);
+    image.set_is_bigendian(big_endian);
+    image.set_step(kStep);
+    image.set_data(data);
+    return image;
+}
+
+Image PaddedFloatDepth(bool big_endian) {
+    constexpr uint32_t kWidth = 3U;
+    constexpr uint32_t kHeight = 2U;
+    constexpr uint32_t kBytesPerPixel = sizeof(float);
+    constexpr uint32_t kStep = kWidth * kBytesPerPixel + 5U;
+    const std::vector<float> values = {1.0F, 1.1F, 1.2F, 1.3F, 1.4F, 1.5F};
+    std::string data(kHeight * kStep, static_cast<char>(0x7f));
+    for (uint32_t row = 0U; row < kHeight; ++row) {
+        for (uint32_t column = 0U; column < kWidth; ++column) {
+            const std::size_t value_index = row * kWidth + column;
+            const std::size_t offset = row * kStep + column * kBytesPerPixel;
+            WriteFloat32(&data, offset, values[value_index], big_endian);
+        }
+    }
+
+    Image image;
+    image.mutable_header()->set_frame_id("camera_optical");
+    image.set_encoding("32FC1");
+    image.set_width(kWidth);
+    image.set_height(kHeight);
+    image.set_is_bigendian(big_endian);
+    image.set_step(kStep);
+    image.set_data(data);
+    return image;
+}
+
 Image DepthAt(float depth_m) {
     return FloatDepth(1, 1, {depth_m});
 }
@@ -175,6 +250,64 @@ void ExpectMapsEqual(const grid_map::GridMap& actual,
     }
 }
 
+void ExpectFrameRejectedAtomically(const std::string& depth_frame,
+                                   const std::string& camera_frame) {
+    auto options = ValidOptions();
+    options.set_obstacle_min_height(1.0F);
+    LocalGrid grid(options);
+    ASSERT_TRUE(grid.Update(kFirstStampNs, DepthAt(1.0F), Camera(),
+                            CameraToMap(kFirstStampNs), Odom(kFirstStampNs)));
+    const grid_map::GridMap before = grid.map();
+
+    constexpr int64_t kFailedStampNs = kFirstStampNs + 100'000'000;
+    auto depth = DepthAt(1.2F);
+    depth.mutable_header()->set_frame_id(depth_frame);
+    auto camera = Camera();
+    camera.mutable_header()->set_frame_id(camera_frame);
+    std::string error;
+
+    EXPECT_FALSE(grid.Update(kFailedStampNs, depth, camera,
+                             CameraToMap(kFailedStampNs),
+                             Odom(kFailedStampNs, 0.30), &error));
+    EXPECT_FALSE(error.empty());
+    ExpectMapsEqual(grid.map(), before);
+
+    constexpr int64_t kRecoveryStampNs = kFailedStampNs + 100'000'000;
+    ASSERT_TRUE(grid.Update(kRecoveryStampNs, DepthAt(1.2F), Camera(),
+                            CameraToMap(kRecoveryStampNs),
+                            Odom(kRecoveryStampNs)));
+    grid_map::Index index;
+    ASSERT_TRUE(grid.map().getIndex(grid_map::Position(0.0, 0.0), index));
+    EXPECT_NEAR(grid.map().at("elevation", index), 1.1F, 1.0e-6F);
+    EXPECT_NEAR(grid.map().at("variance", index), 0.01F, 1.0e-6F);
+}
+
+void ExpectOdometryShiftRejectedAtomically(double x, double y) {
+    auto options = ValidOptions();
+    options.set_obstacle_min_height(1.0F);
+    LocalGrid grid(options);
+    ASSERT_TRUE(grid.Update(kFirstStampNs, DepthAt(1.0F), Camera(),
+                            CameraToMap(kFirstStampNs), Odom(kFirstStampNs)));
+    const grid_map::GridMap before = grid.map();
+
+    constexpr int64_t kFailedStampNs = kFirstStampNs + 100'000'000;
+    std::string error;
+    EXPECT_FALSE(grid.Update(kFailedStampNs, DepthAt(1.2F), Camera(),
+                             CameraToMap(kFailedStampNs),
+                             Odom(kFailedStampNs, x, y), &error));
+    EXPECT_FALSE(error.empty());
+    ExpectMapsEqual(grid.map(), before);
+
+    constexpr int64_t kRecoveryStampNs = kFailedStampNs + 100'000'000;
+    ASSERT_TRUE(grid.Update(kRecoveryStampNs, DepthAt(1.2F), Camera(),
+                            CameraToMap(kRecoveryStampNs),
+                            Odom(kRecoveryStampNs)));
+    grid_map::Index index;
+    ASSERT_TRUE(grid.map().getIndex(grid_map::Position(0.0, 0.0), index));
+    EXPECT_NEAR(grid.map().at("elevation", index), 1.1F, 1.0e-6F);
+    EXPECT_NEAR(grid.map().at("variance", index), 0.01F, 1.0e-6F);
+}
+
 TEST(LocalGridTest, InitializesExactlyFourUnknownLayers) {
     LocalGrid grid(ValidOptions());
     const auto& map = grid.map();
@@ -215,6 +348,55 @@ TEST(LocalGridTest, AccumulatesPerCellElevationMeanAndVariance) {
     EXPECT_FLOAT_EQ(grid.map().at("obstacle", index), 0.0F);
     EXPECT_GE(grid.map().at("traversability", index), 0.0F);
     EXPECT_LE(grid.map().at("traversability", index), 1.0F);
+}
+
+TEST(LocalGridTest, DecodesPaddedDepthRowsInBothEndianModes) {
+    auto options = ValidOptions();
+    options.set_obstacle_min_height(1.0F);
+    const auto camera = Camera(3U, 2U, 1.0e6, 1.0e6);
+
+    for (const bool big_endian : {false, true}) {
+        for (const auto& depth :
+             {PaddedUint16Depth(big_endian), PaddedFloatDepth(big_endian)}) {
+            SCOPED_TRACE(::testing::Message() << "encoding=" << depth.encoding()
+                                              << ", big_endian=" << big_endian);
+            const uint32_t bytes_per_pixel =
+                depth.encoding() == "16UC1" ? sizeof(uint16_t) : sizeof(float);
+            ASSERT_GT(depth.step(), depth.width() * bytes_per_pixel);
+            LocalGrid grid(options);
+            ASSERT_TRUE(grid.Update(kFirstStampNs, depth, camera,
+                                    CameraToMap(kFirstStampNs, 0.025, 0.025),
+                                    Odom(kFirstStampNs)));
+
+            grid_map::Index index;
+            ASSERT_TRUE(
+                grid.map().getIndex(grid_map::Position(0.025, 0.025), index));
+            EXPECT_NEAR(grid.map().at("elevation", index), 1.25F, 1.0e-6F);
+            EXPECT_NEAR(grid.map().at("variance", index), 0.02916667F, 1.0e-6F);
+        }
+    }
+}
+
+TEST(LocalGridTest, RejectsEmptyDepthOrCameraFrameAtomically) {
+    {
+        SCOPED_TRACE("empty depth frame");
+        ExpectFrameRejectedAtomically("", "camera_optical");
+    }
+    {
+        SCOPED_TRACE("empty camera frame");
+        ExpectFrameRejectedAtomically("camera_optical", "");
+    }
+}
+
+TEST(LocalGridTest, RejectsMismatchedDepthOrCameraFrameAtomically) {
+    {
+        SCOPED_TRACE("mismatched depth frame");
+        ExpectFrameRejectedAtomically("other_camera", "camera_optical");
+    }
+    {
+        SCOPED_TRACE("mismatched camera frame");
+        ExpectFrameRejectedAtomically("camera_optical", "other_camera");
+    }
 }
 
 TEST(LocalGridTest, ClassifiesHeightAboveSupportPlaneAsObstacle) {
@@ -325,6 +507,18 @@ TEST(LocalGridTest, RollingPreservesOverlapAndLeavesNewRegionUnknown) {
     EXPECT_FLOAT_EQ(grid.map().at("traversability", preserved_index), 0.0F);
     EXPECT_NEAR(grid.map().getPosition().x(), 0.30, 1.0e-6);
     ExpectCellUnknown(grid.map(), grid_map::Position(0.75, 0.0));
+}
+
+TEST(LocalGridTest, RejectsUnrepresentableOdometryShiftAtomically) {
+    const double huge = std::numeric_limits<double>::max();
+    {
+        SCOPED_TRACE("unrepresentable x shift");
+        ExpectOdometryShiftRejectedAtomically(huge, 0.0);
+    }
+    {
+        SCOPED_TRACE("unrepresentable y shift");
+        ExpectOdometryShiftRejectedAtomically(0.0, huge);
+    }
 }
 
 TEST(LocalGridTest, ExpiredCellReturnsToUnknownInEveryLayer) {

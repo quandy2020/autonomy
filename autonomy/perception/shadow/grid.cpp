@@ -169,10 +169,8 @@ bool validate_camera(const proto::ShadowOptions& options,
         set_error(error, "camera intrinsics are invalid.");
         return false;
     }
-    if ((!depth.header().frame_id().empty() &&
-         depth.header().frame_id() != options.camera_frame()) ||
-        (!camera.header().frame_id().empty() &&
-         camera.header().frame_id() != options.camera_frame())) {
+    if (depth.header().frame_id() != options.camera_frame() ||
+        camera.header().frame_id() != options.camera_frame()) {
         set_error(error, "depth and camera frames must match camera_frame.");
         return false;
     }
@@ -257,6 +255,27 @@ bool validate_inputs(const proto::ShadowOptions& options, int64_t stamp_ns,
                               error) &&
            validate_odometry(options, odometry, &inputs->robot_position,
                              &inputs->support_height, error);
+}
+
+bool validate_roll_shift(const grid_map::GridMap& map,
+                         const grid_map::Position& robot_position,
+                         std::string* error) {
+    const grid_map::Position normalized_shift =
+        (robot_position - map.getPosition()) / map.getResolution();
+    using IndexScalar = grid_map::Index::Scalar;
+    constexpr double kMaxIndex =
+        static_cast<double>(std::numeric_limits<IndexScalar>::max());
+    for (Eigen::Index axis = 0; axis < normalized_shift.size(); ++axis) {
+        const double component = normalized_shift(axis);
+        const double rounded_component =
+            component + 0.5 * (component > 0.0 ? 1.0 : -1.0);
+        if (!std::isfinite(rounded_component) ||
+            rounded_component < -kMaxIndex || rounded_component > kMaxIndex) {
+            set_error(error, "odometry shift exceeds GridMap index range.");
+            return false;
+        }
+    }
+    return true;
 }
 
 grid_map::GridMap make_empty_map(const proto::ShadowOptions& options) {
@@ -563,12 +582,19 @@ bool LocalGrid::Update(int64_t stamp_ns, const Image& depth,
         return false;
     }
 
+    const bool should_roll =
+        (inputs.robot_position - map_.getPosition()).norm() >
+        options_.map_roll_threshold();
+    if (should_roll &&
+        !validate_roll_shift(map_, inputs.robot_position, error)) {
+        return false;
+    }
+
     grid_map::GridMap candidate_map = map_;
     CountMatrix candidate_count = sample_count_;
     grid_map::Matrix candidate_m2 = elevation_m2_;
     TimestampMatrix candidate_observed_ns = last_observed_ns_;
-    if ((inputs.robot_position - candidate_map.getPosition()).norm() >
-        options_.map_roll_threshold()) {
+    if (should_roll) {
         std::vector<grid_map::BufferRegion> new_regions;
         candidate_map.move(inputs.robot_position, new_regions);
         clear_regions(&candidate_count, new_regions);
