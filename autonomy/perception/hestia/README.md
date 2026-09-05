@@ -71,7 +71,57 @@ Requires `BUILD_ONNXRUNTIME` and a found OnnxRuntime, same as Fathom.
 
 Standalone launch: `autonomy/perception/hestia/launch/hestia.launch`.
 
+## Python fine-tuning and export
+
+From `autonomy/perception/hestia/python`:
+
+```bash
+export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
+pytest -q
+```
+
+### Home closed-set (dual fast path)
+
+1. Build a JSONL manifest (paths relative to the manifest directory):
+
+```json
+{"image":"rgb/0001.jpg","boxes":[[0,0.50,0.50,0.20,0.30]]}
+```
+
+2. Materialize Ultralytics `data.yaml` and fine-tune (requires installed `ultralytics`):
+
+```bash
+python -c 'from pathlib import Path; from hestia.dataset import HomeManifestDataset, write_yolo_dataset; from hestia.prompts import load_label_list; labels=load_label_list(Path("labels.json")); ds=HomeManifestDataset(Path("train.jsonl"), labels); print(write_yolo_dataset(ds, Path("yolo_data")))'
+python -m hestia.train_home --checkpoint yolo11n.pt --data yolo_data/data.yaml --output runs/home --labels labels.json
+```
+
+3. Export a fixed ONNX profile for C++:
+
+```bash
+python -m hestia.export --kind home --checkpoint runs/home/home/weights/best.pt \
+  --output /models/hestia_home.onnx --labels labels.json --image-size 640 --max-detections 100
+```
+
+### Open vocabulary
+
+v1 does **not** train open-vocab models in-tree. Export an already-trained
+YOLO-World / YOLOE checkpoint and write the prompt sidecar that must match
+`HestiaOptions.open_prompts` order:
+
+```bash
+python -m hestia.export --kind open --checkpoint yoloworld.pt \
+  --output /models/hestia_open.onnx --labels open_prompts.json --image-size 640 --max-detections 100
+```
+
+Tensor contract (must match `detector.cpp`):
+
+| Tensor | Shape |
+| --- | --- |
+| `images` | float32 `[1, 3, H, W]`, RGB in `[0, 1]` |
+| `output0` | float32 `[1, max_detections, 6]` = `x1,y1,x2,y2,score,class_index` |
+
 ## Licensing
+
 
 Hestia integration code is Apache-2.0. Detector training/export typically
 depends on YOLO-World, YOLOE, and/or Ultralytics. Deployers are responsible
