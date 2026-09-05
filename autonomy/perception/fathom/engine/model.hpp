@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file model.hpp
+ * @brief Fathom adapter for the project common-network inference engine.
+ */
+
 #ifndef AUTONOMY_PERCEPTION_FATHOM_ENGINE_MODEL_HPP_
 #define AUTONOMY_PERCEPTION_FATHOM_ENGINE_MODEL_HPP_
 
@@ -33,19 +38,21 @@ namespace perception {
 namespace fathom {
 
 /**
- * @file model.hpp
- * @brief Fathom-specific runner and common-network adapter.
- */
-
-/**
- * Adapts the fixed Fathom ONNX graph to common::network::Engine.
+ * @brief Adapts the fixed Fathom graph to common::network::Engine.
  *
  * This is deliberately the only concrete inference adapter in the Fathom
  * module. The depth facade depends on FathomModelRunner so it remains testable
  * with a small fake runner and has no backend type in its public API.
  */
-class FathomEngine final : public FathomModelRunner {
+class FathomEngine final : public FathomModelRunner
+{
 public:
+    /**
+     * @brief Creates and validates a fixed-profile inference engine.
+     * @param config Model path, backend, and expected spatial profile.
+     * @param error Optional diagnostic output, cleared on entry.
+     * @return A ready engine adapter, or nullptr on failure.
+     */
     static std::unique_ptr<FathomEngine> Create(const FathomConfig& config,
                                                 std::string* error = nullptr);
 
@@ -56,6 +63,7 @@ public:
     FathomEngine(FathomEngine&&) = delete;
     FathomEngine& operator=(FathomEngine&&) = delete;
 
+    /** @copydoc FathomModelRunner::Run */
     bool Run(const common::network::TensorMap& inputs,
              common::network::TensorMap* outputs,
              std::string* error = nullptr) override;

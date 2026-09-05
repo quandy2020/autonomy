@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file point_cloud_test.cpp
+ * @brief Unit tests for calibrated depth-to-point-cloud projection.
+ */
+
 #include "autonomy/perception/fathom/projection/point_cloud.hpp"
 
 #include <automsgs/msgs/sensor_msgs/point_cloud2_iterator.hpp>
@@ -33,8 +38,8 @@ namespace fathom {
 namespace {
 
 automsgs::msgs::sensor_msgs::Image MakeImage(const std::string& encoding,
-                                              uint32_t width, uint32_t height,
-                                              uint32_t step) {
+                                             uint32_t width, uint32_t height,
+                                             uint32_t step) {
     automsgs::msgs::sensor_msgs::Image image;
     image.set_encoding(encoding);
     image.set_width(width);
@@ -79,12 +84,9 @@ TEST(ProjectDepthTest, ProjectsValidMetricDepthInCameraCoordinates) {
     EXPECT_EQ(cloud.width(), 2U);
     EXPECT_EQ(cloud.fields_size(), 3);
     EXPECT_EQ(cloud.header().frame_id(), "camera_optical");
-    automsgs::msgs::sensor_msgs::PointCloud2ConstIterator<float> x(cloud,
-                                                                      "x");
-    automsgs::msgs::sensor_msgs::PointCloud2ConstIterator<float> y(cloud,
-                                                                      "y");
-    automsgs::msgs::sensor_msgs::PointCloud2ConstIterator<float> z(cloud,
-                                                                      "z");
+    automsgs::msgs::sensor_msgs::PointCloud2ConstIterator<float> x(cloud, "x");
+    automsgs::msgs::sensor_msgs::PointCloud2ConstIterator<float> y(cloud, "y");
+    automsgs::msgs::sensor_msgs::PointCloud2ConstIterator<float> z(cloud, "z");
     EXPECT_FLOAT_EQ(*x, 0.0F);
     EXPECT_FLOAT_EQ(*y, 0.0F);
     EXPECT_FLOAT_EQ(*z, 2.0F);
@@ -105,15 +107,12 @@ TEST(ProjectDepthTest, MarksInvalidMaskPositionsAsNan) {
     mask.mutable_data()->at(1) = 0;
     automsgs::msgs::sensor_msgs::PointCloud2 cloud;
 
-    ASSERT_TRUE(ProjectDepth(depth_m, mask, MakeCameraInfo(2.0F, 2.0F, 2, 1),
-                             &cloud));
+    ASSERT_TRUE(
+        ProjectDepth(depth_m, mask, MakeCameraInfo(2.0F, 2.0F, 2, 1), &cloud));
 
-    automsgs::msgs::sensor_msgs::PointCloud2ConstIterator<float> x(cloud,
-                                                                      "x");
-    automsgs::msgs::sensor_msgs::PointCloud2ConstIterator<float> y(cloud,
-                                                                      "y");
-    automsgs::msgs::sensor_msgs::PointCloud2ConstIterator<float> z(cloud,
-                                                                      "z");
+    automsgs::msgs::sensor_msgs::PointCloud2ConstIterator<float> x(cloud, "x");
+    automsgs::msgs::sensor_msgs::PointCloud2ConstIterator<float> y(cloud, "y");
+    automsgs::msgs::sensor_msgs::PointCloud2ConstIterator<float> z(cloud, "z");
     ++x;
     ++y;
     ++z;
@@ -131,8 +130,7 @@ TEST(ProjectDepthTest, RejectsNonPositiveFocalLengths) {
     automsgs::msgs::sensor_msgs::PointCloud2 cloud;
     std::string error;
 
-    EXPECT_FALSE(ProjectDepth(depth_m, mask,
-                              MakeCameraInfo(0.0F, 1.0F, 1, 1),
+    EXPECT_FALSE(ProjectDepth(depth_m, mask, MakeCameraInfo(0.0F, 1.0F, 1, 1),
                               &cloud, &error));
     EXPECT_FALSE(error.empty());
 }
@@ -146,8 +144,7 @@ TEST(ProjectDepthTest, RejectsMaskMessageWithInsufficientData) {
     automsgs::msgs::sensor_msgs::PointCloud2 cloud;
     std::string error;
 
-    EXPECT_FALSE(ProjectDepth(depth_m, mask,
-                              MakeCameraInfo(1.0F, 1.0F, 1, 1),
+    EXPECT_FALSE(ProjectDepth(depth_m, mask, MakeCameraInfo(1.0F, 1.0F, 1, 1),
                               &cloud, &error));
     EXPECT_FALSE(error.empty());
 }
@@ -193,8 +190,7 @@ TEST(ProjectDepthTest, RejectsCameraInfoWithMismatchedWidth) {
     automsgs::msgs::sensor_msgs::PointCloud2 cloud;
     std::string error;
 
-    EXPECT_FALSE(ProjectDepth(depth_m, mask,
-                              MakeCameraInfo(1.0F, 1.0F, 2, 1),
+    EXPECT_FALSE(ProjectDepth(depth_m, mask, MakeCameraInfo(1.0F, 1.0F, 2, 1),
                               &cloud, &error));
     EXPECT_FALSE(error.empty());
 }
@@ -208,8 +204,7 @@ TEST(ProjectDepthTest, RejectsCameraInfoWithMismatchedHeight) {
     automsgs::msgs::sensor_msgs::PointCloud2 cloud;
     std::string error;
 
-    EXPECT_FALSE(ProjectDepth(depth_m, mask,
-                              MakeCameraInfo(1.0F, 1.0F, 1, 2),
+    EXPECT_FALSE(ProjectDepth(depth_m, mask, MakeCameraInfo(1.0F, 1.0F, 1, 2),
                               &cloud, &error));
     EXPECT_FALSE(error.empty());
 }
@@ -220,8 +215,7 @@ TEST(ProjectDepthTest, RejectsCameraInfoWithZeroDimensions) {
     automsgs::msgs::sensor_msgs::PointCloud2 cloud;
     std::string error;
 
-    EXPECT_FALSE(ProjectDepth(depth_m, mask,
-                              MakeCameraInfo(1.0F, 1.0F, 0, 0),
+    EXPECT_FALSE(ProjectDepth(depth_m, mask, MakeCameraInfo(1.0F, 1.0F, 0, 0),
                               &cloud, &error));
     EXPECT_FALSE(error.empty());
 }
@@ -234,8 +228,7 @@ TEST(ProjectDepthTest, ClearsStaleOutputBeforeValidationFailure) {
     cloud.add_fields()->set_name("stale");
     std::string error = "stale error";
 
-    EXPECT_FALSE(ProjectDepth(depth_m, mask,
-                              MakeCameraInfo(1.0F, 1.0F, 2, 1),
+    EXPECT_FALSE(ProjectDepth(depth_m, mask, MakeCameraInfo(1.0F, 1.0F, 2, 1),
                               &cloud, &error));
     EXPECT_EQ(cloud.width(), 0U);
     EXPECT_EQ(cloud.fields_size(), 0);
@@ -254,8 +247,7 @@ TEST(ProjectDepthTest, ClearsStaleErrorAndReplacesOutputOnSuccess) {
     cloud.add_fields()->set_name("stale");
     std::string error = "stale error";
 
-    ASSERT_TRUE(ProjectDepth(depth_m, mask,
-                             MakeCameraInfo(1.0F, 1.0F, 1, 1),
+    ASSERT_TRUE(ProjectDepth(depth_m, mask, MakeCameraInfo(1.0F, 1.0F, 1, 1),
                              &cloud, &error))
         << error;
     EXPECT_TRUE(error.empty());

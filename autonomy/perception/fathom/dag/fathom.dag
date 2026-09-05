@@ -1,3 +1,4 @@
+# Loads the Fathom component in an isolated autolink mainboard process.
 module_config {
   module_library: "libfathom_component.so"
   components {
@@ -5,6 +6,7 @@ module_config {
     config {
       name: "fathom"
       config_file_path: "conf/fathom.pb.txt"
+      # Reader order must match FathomComponent's RGB, depth, CameraInfo types.
       readers {
         channel: "/camera/rgb/image_raw"
       }

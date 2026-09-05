@@ -2,14 +2,22 @@ syntax = "proto3";
 
 package autonomy.perception.fathom.proto;
 
-// Runtime configuration for the autolink Fathom RGB-D refinement component.
+// Runtime options for the autolink Fathom RGB-D refinement component.
 message FathomOptions {
+  // Fixed-profile ONNX or TensorRT model artifact.
   string model_path = 1;
+  // Common-network backend identifier: "onnx" or "tensorrt".
   string backend = 2;
+  // Model input width in pixels.
   uint32 input_width = 3;
+  // Model input height in pixels.
   uint32 input_height = 4;
+  // Multiplier converting incoming depth samples to meters.
   float depth_scale = 5;
+  // Minimum model validity score accepted for point projection.
   float mask_threshold = 6;
+  // Output topic for the refined 32FC1 metric depth image.
   string refined_depth_topic = 7;
+  // Output topic for the organized XYZ point cloud.
   string point_cloud_topic = 8;
 }

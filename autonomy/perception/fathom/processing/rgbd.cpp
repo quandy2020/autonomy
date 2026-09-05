@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file rgbd.cpp
+ * @brief Validation and tensor conversion for aligned RGB-D input frames.
+ */
+
 #include "autonomy/perception/fathom/processing/rgbd.hpp"
 
 #include <opencv2/imgproc.hpp>
@@ -39,8 +44,7 @@ void SetError(std::string* error, const std::string& message) {
 }
 
 bool ValidateImage(const automsgs::msgs::sensor_msgs::Image& image,
-                   uint32_t bytes_per_pixel,
-                   std::string* error) {
+                   uint32_t bytes_per_pixel, std::string* error) {
     if (image.width() == 0 || image.height() == 0) {
         SetError(error, "Fathom RGB-D image dimensions must be positive.");
         return false;
@@ -92,10 +96,9 @@ float SanitizeDepth(float value) {
 }  // namespace
 
 bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,
-                 const automsgs::msgs::sensor_msgs::Image& raw_depth,
-                 int width, int height,
-                 float depth_scale, common::network::TensorMap* tensors,
-                 std::string* error) {
+                 const automsgs::msgs::sensor_msgs::Image& raw_depth, int width,
+                 int height, float depth_scale,
+                 common::network::TensorMap* tensors, std::string* error) {
     if (error != nullptr) {
         error->clear();
     }
@@ -106,7 +109,8 @@ bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,
         SetError(error, "Fathom RGB-D tensor output is null.");
         return false;
     }
-    if (!ValidateRgbImage(rgb, error) || !ValidateDepthImage(raw_depth, error)) {
+    if (!ValidateRgbImage(rgb, error) ||
+        !ValidateDepthImage(raw_depth, error)) {
         return false;
     }
     if (rgb.width() > static_cast<uint32_t>(std::numeric_limits<int>::max()) ||
@@ -114,7 +118,8 @@ bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,
         SetError(error, "Fathom RGB-D image dimensions exceed OpenCV limits.");
         return false;
     }
-    if (rgb.width() != raw_depth.width() || rgb.height() != raw_depth.height()) {
+    if (rgb.width() != raw_depth.width() ||
+        rgb.height() != raw_depth.height()) {
         SetError(error, "Fathom RGB and depth dimensions must match.");
         return false;
     }
@@ -139,11 +144,11 @@ bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,
         source_depth = cv::Mat(static_cast<int>(raw_depth.height()),
                                static_cast<int>(raw_depth.width()), CV_16UC1);
         for (uint32_t row = 0; row < raw_depth.height(); ++row) {
-            std::memcpy(source_depth.ptr(static_cast<int>(row)),
-                        raw_depth.data().data() +
-                            static_cast<size_t>(row) * raw_depth.step(),
-                        static_cast<size_t>(raw_depth.width()) *
-                            sizeof(uint16_t));
+            std::memcpy(
+                source_depth.ptr(static_cast<int>(row)),
+                raw_depth.data().data() +
+                    static_cast<size_t>(row) * raw_depth.step(),
+                static_cast<size_t>(raw_depth.width()) * sizeof(uint16_t));
         }
     } else {
         source_depth = cv::Mat(static_cast<int>(raw_depth.height()),
@@ -162,8 +167,8 @@ bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,
 
     cv::Mat resized_source_rgb;
     cv::Mat resized_depth;
-    cv::resize(source_rgb, resized_source_rgb, cv::Size(width, height), 0.0, 0.0,
-               cv::INTER_LINEAR);
+    cv::resize(source_rgb, resized_source_rgb, cv::Size(width, height), 0.0,
+               0.0, cv::INTER_LINEAR);
     cv::resize(source_depth, resized_depth, cv::Size(width, height), 0.0, 0.0,
                cv::INTER_NEAREST);
     cv::Mat resized_rgb;
@@ -184,20 +189,20 @@ bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,
             image[plane_size + index] = static_cast<float>(pixel[1]) / 255.0F;
             image[2 * plane_size + index] =
                 static_cast<float>(pixel[2]) / 255.0F;
-            const float raw_value = raw_depth.encoding() == "16UC1"
-                                        ? static_cast<float>(
-                                              resized_depth.at<uint16_t>(row, col))
-                                        : resized_depth.at<float>(row, col);
+            const float raw_value =
+                raw_depth.encoding() == "16UC1"
+                    ? static_cast<float>(resized_depth.at<uint16_t>(row, col))
+                    : resized_depth.at<float>(row, col);
             depth[index] =
                 SanitizeDepth(SanitizeDepth(raw_value) * depth_scale);
         }
     }
 
     common::network::TensorMap prepared;
-    prepared.emplace("image", common::network::Tensor::FromFloat32(
-                                  std::move(image)));
-    prepared.emplace("raw_depth", common::network::Tensor::FromFloat32(
-                                      std::move(depth)));
+    prepared.emplace("image",
+                     common::network::Tensor::FromFloat32(std::move(image)));
+    prepared.emplace("raw_depth",
+                     common::network::Tensor::FromFloat32(std::move(depth)));
     *tensors = std::move(prepared);
     return true;
 }

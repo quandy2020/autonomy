@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file refiner.cpp
+ * @brief End-to-end RGB-D preprocessing, inference, and reconstruction.
+ */
+
 #include "autonomy/perception/fathom/depth/refiner.hpp"
 
 #include "autonomy/perception/fathom/processing/rgbd.hpp"
@@ -35,8 +40,8 @@ namespace {
 
 void SetError(std::string* error, const std::string& message) {
     if (error != nullptr) {
-        *error = message.rfind("Fathom: ", 0) == 0 ? message
-                                                    : "Fathom: " + message;
+        *error =
+            message.rfind("Fathom: ", 0) == 0 ? message : "Fathom: " + message;
     }
 }
 
@@ -83,8 +88,8 @@ automsgs::msgs::sensor_msgs::Image MakeFloatImage(
 }
 
 automsgs::msgs::sensor_msgs::Image MakeValidityImage(
-    const cv::Mat& validity, const automsgs::msgs::sensor_msgs::Image& reference,
-    float threshold) {
+    const cv::Mat& validity,
+    const automsgs::msgs::sensor_msgs::Image& reference, float threshold) {
     automsgs::msgs::sensor_msgs::Image image;
     *image.mutable_header() = reference.header();
     image.set_height(static_cast<uint32_t>(validity.rows));
@@ -100,7 +105,8 @@ automsgs::msgs::sensor_msgs::Image MakeValidityImage(
                             static_cast<size_t>(row) * image.step();
         for (int col = 0; col < validity.cols; ++col) {
             destination[col] = static_cast<char>(
-                std::isfinite(source[col]) && source[col] >= threshold ? 255 : 0);
+                std::isfinite(source[col]) && source[col] >= threshold ? 255
+                                                                       : 0);
         }
     }
     return image;
@@ -145,7 +151,8 @@ bool DepthRefiner::Refine(
         point_cloud->Clear();
     }
     if (refined_depth == nullptr || point_cloud == nullptr) {
-        SetError(error, "refined_depth and point_cloud outputs must not be null.");
+        SetError(error,
+                 "refined_depth and point_cloud outputs must not be null.");
         return false;
     }
 
@@ -179,27 +186,28 @@ bool DepthRefiner::Refine(
         return false;
     }
 
-    cv::Mat profile_depth_mat(config_.input_height, config_.input_width, CV_32FC1,
-                              const_cast<float*>(profile_depth));
+    cv::Mat profile_depth_mat(config_.input_height, config_.input_width,
+                              CV_32FC1, const_cast<float*>(profile_depth));
     cv::Mat profile_validity_mat(config_.input_height, config_.input_width,
                                  CV_32FC1,
                                  const_cast<float*>(profile_validity));
     cv::Mat restored_depth;
     cv::Mat restored_validity;
-    cv::resize(profile_depth_mat, restored_depth,
-               cv::Size(static_cast<int>(rgb.width()),
-                        static_cast<int>(rgb.height())),
-               0.0, 0.0, cv::INTER_LINEAR);
-    cv::resize(profile_validity_mat, restored_validity,
-               cv::Size(static_cast<int>(rgb.width()),
-                        static_cast<int>(rgb.height())),
-               0.0, 0.0, cv::INTER_LINEAR);
+    cv::resize(
+        profile_depth_mat, restored_depth,
+        cv::Size(static_cast<int>(rgb.width()), static_cast<int>(rgb.height())),
+        0.0, 0.0, cv::INTER_LINEAR);
+    cv::resize(
+        profile_validity_mat, restored_validity,
+        cv::Size(static_cast<int>(rgb.width()), static_cast<int>(rgb.height())),
+        0.0, 0.0, cv::INTER_LINEAR);
 
     const auto depth_image = MakeFloatImage(restored_depth, raw_depth);
-    const auto validity_image = MakeValidityImage(restored_validity, raw_depth,
-                                                  config_.mask_threshold);
+    const auto validity_image =
+        MakeValidityImage(restored_validity, raw_depth, config_.mask_threshold);
     automsgs::msgs::sensor_msgs::PointCloud2 cloud;
-    if (!ProjectDepth(depth_image, validity_image, camera_info, &cloud, &detail)) {
+    if (!ProjectDepth(depth_image, validity_image, camera_info, &cloud,
+                      &detail)) {
         SetError(error, detail);
         return false;
     }

@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file model.cpp
+ * @brief Fathom model loading, tensor-contract validation, and inference.
+ */
+
 #include "autonomy/perception/fathom/engine/model.hpp"
 
 #include "autonomy/common/network/backend/engine.hpp"
@@ -53,7 +58,8 @@ bool ValidateTensor(const common::network::ModelTensorInfo& info,
         return false;
     }
     if (info.shape.Rank() != expected.size() || info.shape.Dims() != expected) {
-        SetError(error, std::string(label) + " has an unexpected static shape.");
+        SetError(error,
+                 std::string(label) + " has an unexpected static shape.");
         return false;
     }
     return true;
@@ -72,9 +78,11 @@ bool ValidateModelContract(const common::network::Engine& engine,
                  "model inputs must be exactly 'image' and 'raw_depth'.");
         return false;
     }
-    if (outputs.size() != 2 || refined_depth == nullptr || validity == nullptr) {
-        SetError(error,
-                 "model outputs must be exactly 'refined_depth' and 'validity'.");
+    if (outputs.size() != 2 || refined_depth == nullptr ||
+        validity == nullptr) {
+        SetError(
+            error,
+            "model outputs must be exactly 'refined_depth' and 'validity'.");
         return false;
     }
 
@@ -102,7 +110,7 @@ FathomEngine::FathomEngine(std::unique_ptr<common::network::Engine> engine)
 FathomEngine::~FathomEngine() = default;
 
 std::unique_ptr<FathomEngine> FathomEngine::Create(const FathomConfig& config,
-                                                    std::string* error) {
+                                                   std::string* error) {
     if (error != nullptr) {
         error->clear();
     }

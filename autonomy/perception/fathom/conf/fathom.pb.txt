@@ -1,10 +1,13 @@
-# Replace model_path with a deployed fixed-profile Fathom ONNX model.
+# Fixed-profile inference configuration. Replace this placeholder model path
+# with the deployed artifact that matches input_width and input_height.
 model_path: "/models/fathom.onnx"
 backend: "onnx"
 input_width: 640
 input_height: 480
-# Autosim publishes 32FC1 metric depth, so depth values already use metres.
+# Autosim publishes metric 32FC1 depth, so no unit conversion is required.
 depth_scale: 1.0
 mask_threshold: 0.5
+
+# Component-owned automsgs output topics.
 refined_depth_topic: "/perception/fathom/refined_depth"
 point_cloud_topic: "/perception/fathom/points"

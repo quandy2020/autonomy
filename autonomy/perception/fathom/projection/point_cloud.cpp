@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file point_cloud.cpp
+ * @brief Camera-model projection into organized XYZ PointCloud2 messages.
+ */
+
 #include "autonomy/perception/fathom/projection/point_cloud.hpp"
 
 #include <automsgs/msgs/sensor_msgs/point_cloud2_iterator.hpp>
@@ -51,7 +56,8 @@ bool ValidateImage(const automsgs::msgs::sensor_msgs::Image& image,
     const size_t minimum_step =
         static_cast<size_t>(image.width()) * bytes_per_pixel;
     if (image.step() < minimum_step ||
-        image.data().size() < static_cast<size_t>(image.height()) * image.step()) {
+        image.data().size() <
+            static_cast<size_t>(image.height()) * image.step()) {
         SetError(error, "Fathom projection image step or data is invalid.");
         return false;
     }
@@ -80,7 +86,8 @@ bool ProjectDepth(const automsgs::msgs::sensor_msgs::Image& depth_m,
         return false;
     }
     if (depth_m.width() != mask.width() || depth_m.height() != mask.height()) {
-        SetError(error, "Fathom depth and validity mask dimensions must match.");
+        SetError(error,
+                 "Fathom depth and validity mask dimensions must match.");
         return false;
     }
     if (camera_info.width() == 0 || camera_info.height() == 0 ||
@@ -120,12 +127,11 @@ bool ProjectDepth(const automsgs::msgs::sensor_msgs::Image& depth_m,
         field->set_name(name);
         field->set_offset(static_cast<uint32_t>(projected.fields_size() - 1) *
                           sizeof(float));
-        field->set_datatype(
-            automsgs::msgs::sensor_msgs::PointField::FLOAT32);
+        field->set_datatype(automsgs::msgs::sensor_msgs::PointField::FLOAT32);
         field->set_count(1);
     }
-    projected.mutable_data()->resize(
-        static_cast<size_t>(projected.height()) * projected.row_step());
+    projected.mutable_data()->resize(static_cast<size_t>(projected.height()) *
+                                     projected.row_step());
 
     automsgs::msgs::sensor_msgs::PointCloud2Iterator<float> x(projected, "x");
     automsgs::msgs::sensor_msgs::PointCloud2Iterator<float> y(projected, "y");
@@ -133,8 +139,9 @@ bool ProjectDepth(const automsgs::msgs::sensor_msgs::Image& depth_m,
     const float nan = std::numeric_limits<float>::quiet_NaN();
     for (uint32_t row = 0; row < depth_m.height(); ++row) {
         for (uint32_t col = 0; col < depth_m.width(); ++col, ++x, ++y, ++z) {
-            const size_t depth_offset = static_cast<size_t>(row) * depth_m.step() +
-                                        static_cast<size_t>(col) * sizeof(float);
+            const size_t depth_offset =
+                static_cast<size_t>(row) * depth_m.step() +
+                static_cast<size_t>(col) * sizeof(float);
             float depth = 0.0F;
             std::memcpy(&depth, depth_m.data().data() + depth_offset,
                         sizeof(depth));
