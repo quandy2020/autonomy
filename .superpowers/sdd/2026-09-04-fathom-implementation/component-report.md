@@ -87,3 +87,24 @@ No tracked or pre-existing main-checkout files were modified or removed.
 
 No build, configure, compilation, test execution, model download, or inference
 was run for this reviewer-fix round. Static source and diff review only.
+
+## Round 2 reviewer fixes
+
+- Split launch documentation into two explicit build-tree layouts: plain CMake
+  commands run from the repository root and use `$PWD/build/lib`; colcon/package
+  commands run from `src/autonomy` and use
+  `$PWD/../../build/autonomy/lib`. Each recipe sets matching launch, DAG, and
+  config search roots. The installed-tree environment remains unchanged.
+- Removed `component_test.cpp` from both the generic `ALL_TESTS` list and
+  `autonomy_test_library` source list. Under the existing ONNX Runtime guard,
+  the Fathom CMake subdirectory now creates a dedicated lifecycle test target
+  that links `fathom_component` directly.
+  `component.cpp` remains owned solely by that DSO, so neither libautonomy nor
+  the generic test graph defines its lifecycle symbols or component
+  registration.
+- Static CMake ordering review: source filtering removes the lifecycle test
+  before generic test targets are created; `fathom_component` and its test are
+  created only after libautonomy exists and only with the concrete ORT backend.
+
+No configure, build, compilation, test execution, or other project executable
+was run for this reviewer-fix round. Static source and diff review only.

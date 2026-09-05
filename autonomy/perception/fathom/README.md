@@ -123,8 +123,8 @@ The component publishes a `32FC1` metric refined-depth `Image` to
 `/perception/fathom/points` by default. Change those two explicit output
 topics in the component config when integrating another graph.
 
-For a build-tree launch from the repository root, make the component library,
-DAG, and config discoverable before starting the perception launch:
+For a plain CMake build, run the following from the repository root (where the
+configured `CMAKE_BINARY_DIR` is `$PWD/build`):
 
 ```bash
 export PATH="$PWD/build/bin:$PATH"
@@ -132,6 +132,18 @@ export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/perception/launch"
 export AUTOLINK_DAG_PATH="$PWD/autonomy"
 export AUTOLINK_CONF_PATH="$PWD"
 export AUTOLINK_LIB_PATH="$PWD/build/lib"
+autolink launch start perception.launch
+```
+
+For a colcon/package build, run the following from `src/autonomy`; this layout
+places this package's CMake binary directory at `$PWD/../../build/autonomy`:
+
+```bash
+export PATH="$PWD/../../build/autonomy/bin:$PATH"
+export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/perception/launch"
+export AUTOLINK_DAG_PATH="$PWD/autonomy"
+export AUTOLINK_CONF_PATH="$PWD"
+export AUTOLINK_LIB_PATH="$PWD/../../build/autonomy/lib"
 autolink launch start perception.launch
 ```
 
