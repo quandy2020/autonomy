@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package autonomy.perception.shadow.proto;
+
+// Single runtime configuration for Shadow selected-person following.
+message ShadowOptions {
+  // Detector and policy model profiles.
+  string detector_model_path = 1;
+  string policy_model_path = 2;
+  string detector_backend = 3;
+  string policy_backend = 4;
+  uint32 detector_width = 5;
+  uint32 detector_height = 6;
+  uint32 max_detections = 7;
+  int32 person_class_id = 8;
+  float confidence_threshold = 9;
+
+  // Tracking association and lifetime thresholds.
+  float track_high_threshold = 10;
+  float track_low_threshold = 11;
+  float association_iou_threshold = 12;
+  uint32 min_confirmed_hits = 13;
+  float prediction_timeout_sec = 14;
+  float lost_timeout_sec = 15;
+
+  // RGB-D localization limits.
+  float inner_box_scale = 16;
+  float min_depth_m = 17;
+  float max_depth_m = 18;
+  uint32 min_depth_samples = 19;
+  float depth_outlier_m = 20;
+
+  // Rolling local-map configuration.
+  string map_frame = 21;
+  string base_frame = 22;
+  string camera_frame = 23;
+  float map_length_x = 24;
+  float map_length_y = 25;
+  float map_resolution = 26;
+  float map_roll_threshold = 27;
+  float cell_ttl_sec = 28;
+  float max_step_height = 29;
+  float max_slope_rad = 30;
+  float obstacle_min_height = 31;
+  float robot_radius = 32;
+  float inflation_radius = 33;
+
+  // Fixed policy profile and motion bounds.
+  uint32 policy_width = 34;
+  uint32 policy_height = 35;
+  uint32 candidate_count = 36;
+  uint32 trajectory_steps = 37;
+  float max_linear_speed = 38;
+  float max_angular_speed = 39;
+  float follow_distance = 40;
+
+  // Candidate planner cost weights.
+  float learned_weight = 41;
+  float clearance_weight = 42;
+  float traversability_weight = 43;
+  float curvature_weight = 44;
+  float progress_weight = 45;
+  float distance_weight = 46;
+  float visibility_weight = 47;
+
+  // Existing automsgs transport topics.
+  string select_topic = 48;
+  string detections_topic = 49;
+  string target_topic = 50;
+  string path_topic = 51;
+  string grid_topic = 52;
+
+  // Input freshness and depth conversion.
+  float max_input_skew_sec = 53;
+  float max_data_age_sec = 54;
+  float depth_scale = 55;
+}
