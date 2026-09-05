@@ -210,6 +210,7 @@ autonomy_link_dependencies(${PROJECT_NAME})
 # runner and is deliberately a separate mainboard-loadable shared library.
 if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
   add_subdirectory(autonomy/perception/fathom)
+  add_subdirectory(autonomy/perception/hestia)
 endif()
 
 # Echo tool needs automsgs protos for DebugString when topology omits type.

@@ -48,6 +48,19 @@ set(FATHOM_COMPONENT_SRCS
   "${_AUTONOMY_ROOT}/perception/fathom/fathom_component.cpp")
 set(FATHOM_COMPONENT_TEST_SRCS
   "${_AUTONOMY_ROOT}/perception/fathom/fathom_component_test.cpp")
+set(HESTIA_COMPONENT_SRCS
+  "${_AUTONOMY_ROOT}/perception/hestia/hestia_component.cpp")
+set(HESTIA_COMPONENT_TEST_SRCS
+  "${_AUTONOMY_ROOT}/perception/hestia/hestia_component_test.cpp")
+# Concrete Engine::Create paths need an inference backend; keep injectable
+# runner facades available without ORT by excluding only the engine-backed
+# Create() translation unit when needed. detector.cpp currently mixes both —
+# it stays in libautonomy when ORT is on (same as Fathom model.cpp pattern).
+set(HESTIA_NETWORK_SRCS
+  "${_AUTONOMY_ROOT}/perception/hestia/detector.cpp")
+set(HESTIA_NETWORK_TEST_SRCS
+  "${_AUTONOMY_ROOT}/perception/hestia/detector_test.cpp"
+  "${_AUTONOMY_ROOT}/perception/hestia/open_worker_test.cpp")
 
 # Offline demos are built as separate binaries (see grid_map_demos/CMakeLists.txt).
 file(GLOB_RECURSE _GRID_MAP_DEMOS_SRCS
@@ -85,9 +98,12 @@ function(autonomy_filter_library_sources)
   list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_TESTS})
   # The autolink entrypoint is built only into libfathom_component.so.
   list(REMOVE_ITEM ALL_LIBRARY_SRCS ${FATHOM_COMPONENT_SRCS})
+  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${HESTIA_COMPONENT_SRCS})
   # Component lifecycle tests link the component DSO directly when ORT exists.
   list(REMOVE_ITEM ALL_TESTS ${FATHOM_COMPONENT_TEST_SRCS})
   list(REMOVE_ITEM TEST_LIBRARY_SRCS ${FATHOM_COMPONENT_TEST_SRCS})
+  list(REMOVE_ITEM ALL_TESTS ${HESTIA_COMPONENT_TEST_SRCS})
+  list(REMOVE_ITEM TEST_LIBRARY_SRCS ${HESTIA_COMPONENT_TEST_SRCS})
   list(REMOVE_ITEM ALL_LIBRARY_HDRS ${TEST_LIBRARY_HDRS})
   list(REMOVE_ITEM ALL_LIBRARY_SRCS ${TEST_LIBRARY_SRCS})
   list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_TESTS})
@@ -97,6 +113,9 @@ function(autonomy_filter_library_sources)
     # Keep Fathom option validation, RGB-D processing, projection, and its
     # injected-runner refiner available when no concrete backend is built.
     list(REMOVE_ITEM ALL_LIBRARY_SRCS ${FATHOM_NETWORK_SRCS})
+    list(REMOVE_ITEM ALL_LIBRARY_SRCS ${HESTIA_NETWORK_SRCS})
+    list(REMOVE_ITEM ALL_TESTS ${HESTIA_NETWORK_TEST_SRCS})
+    list(REMOVE_ITEM TEST_LIBRARY_SRCS ${HESTIA_NETWORK_TEST_SRCS})
   endif()
 
   if(NOT BUILD_GRPC)
