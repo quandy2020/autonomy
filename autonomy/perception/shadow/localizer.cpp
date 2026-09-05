@@ -113,10 +113,6 @@ bool validate_depth_image(const Image& depth, uint32_t* bytes_per_pixel,
         set_error(error, "depth dimensions must be positive.");
         return false;
     }
-    if (depth.is_bigendian()) {
-        set_error(error, "big-endian depth images are unsupported.");
-        return false;
-    }
     const size_t minimum_step =
         static_cast<size_t>(depth.width()) * *bytes_per_pixel;
     if (depth.step() < minimum_step) {
@@ -136,6 +132,35 @@ bool validate_depth_image(const Image& depth, uint32_t* bytes_per_pixel,
         return false;
     }
     return true;
+}
+
+uint16_t decode_uint16(const char* data, bool big_endian) {
+    const auto* bytes = reinterpret_cast<const uint8_t*>(data);
+    if (big_endian) {
+        return static_cast<uint16_t>((static_cast<uint16_t>(bytes[0]) << 8) |
+                                     static_cast<uint16_t>(bytes[1]));
+    }
+    return static_cast<uint16_t>(static_cast<uint16_t>(bytes[0]) |
+                                 (static_cast<uint16_t>(bytes[1]) << 8));
+}
+
+float decode_float32(const char* data, bool big_endian) {
+    const auto* bytes = reinterpret_cast<const uint8_t*>(data);
+    uint32_t bits = 0;
+    if (big_endian) {
+        bits = (static_cast<uint32_t>(bytes[0]) << 24) |
+               (static_cast<uint32_t>(bytes[1]) << 16) |
+               (static_cast<uint32_t>(bytes[2]) << 8) |
+               static_cast<uint32_t>(bytes[3]);
+    } else {
+        bits = static_cast<uint32_t>(bytes[0]) |
+               (static_cast<uint32_t>(bytes[1]) << 8) |
+               (static_cast<uint32_t>(bytes[2]) << 16) |
+               (static_cast<uint32_t>(bytes[3]) << 24);
+    }
+    float value = 0.0F;
+    std::memcpy(&value, &bits, sizeof(value));
+    return value;
 }
 
 bool inner_region(const Detection2D& detection, const Image& depth, float scale,
@@ -283,11 +308,15 @@ bool TargetLocalizer::EstimateRange(const Detection2D& detection,
         !validate_camera(camera, depth, error)) {
         return false;
     }
-    if ((!depth.header().frame_id().empty() &&
+    if ((!detection.header().frame_id().empty() &&
+         detection.header().frame_id() != options_.camera_frame()) ||
+        (!depth.header().frame_id().empty() &&
          depth.header().frame_id() != options_.camera_frame()) ||
         (!camera.header().frame_id().empty() &&
          camera.header().frame_id() != options_.camera_frame())) {
-        set_error(error, "depth and camera frames must match camera_frame.");
+        set_error(
+            error,
+            "detection, depth, and camera frames must match camera_frame.");
         return false;
     }
 
@@ -307,12 +336,12 @@ bool TargetLocalizer::EstimateRange(const Detection2D& detection,
             const char* sample_data =
                 row_data + static_cast<size_t>(col) * bytes_per_pixel;
             if (depth.encoding() == "16UC1") {
-                uint16_t raw_value = 0;
-                std::memcpy(&raw_value, sample_data, sizeof(raw_value));
+                const uint16_t raw_value =
+                    decode_uint16(sample_data, depth.is_bigendian());
                 value_m =
                     static_cast<float>(raw_value) * options_.depth_scale();
             } else {
-                std::memcpy(&value_m, sample_data, sizeof(value_m));
+                value_m = decode_float32(sample_data, depth.is_bigendian());
             }
             if (std::isfinite(value_m) && value_m >= options_.min_depth_m() &&
                 value_m <= options_.max_depth_m()) {
