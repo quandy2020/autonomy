@@ -32,6 +32,9 @@ void SetError(std::string* error, const std::string& message) {
 }  // namespace
 
 bool ValidateFathomConfig(const FathomConfig& config, std::string* error) {
+    if (error != nullptr) {
+        error->clear();
+    }
     if (config.model_path.empty()) {
         SetError(error, "model_path must not be empty.");
         return false;
@@ -42,10 +45,6 @@ bool ValidateFathomConfig(const FathomConfig& config, std::string* error) {
     }
     if (config.input_width <= 0 || config.input_height <= 0) {
         SetError(error, "input_width and input_height must be positive.");
-        return false;
-    }
-    if (config.num_tokens <= 0) {
-        SetError(error, "num_tokens must be positive.");
         return false;
     }
     if (!std::isfinite(config.depth_scale) || config.depth_scale <= 0.0F) {

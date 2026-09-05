@@ -75,9 +75,69 @@ def test_infer_batches_intrinsics():
     assert output["depth"].shape == (2, 3)
 
 
-@pytest.mark.parametrize("intrinsics", [torch.eye(2), torch.eye(3).unsqueeze(0)])
-def test_infer_rejects_intrinsics_other_than_one_3x3_matrix(intrinsics):
-    with pytest.raises(ValueError, match="single 3x3 matrix"):
+def test_infer_preserves_batched_inputs_and_outputs():
+    class BatchedModel:
+        def infer(self, image, depth_in, intrinsics, apply_mask, use_fp16):
+            assert image.shape == (2, 3, 2, 3)
+            assert depth_in.shape == (2, 2, 3)
+            assert intrinsics.shape == (2, 3, 3)
+            return {"depth": depth_in + image[:, 0], "mask": depth_in > 0}
+
+    image = torch.stack(
+        [
+            torch.zeros((3, 2, 3), dtype=torch.float32),
+            torch.ones((3, 2, 3), dtype=torch.float32),
+        ]
+    )
+    raw_depth = torch.tensor(
+        [
+            [[1.0, 0.0, float("nan")], [2.0, 3.0, 4.0]],
+            [[5.0, -1.0, 6.0], [float("inf"), 7.0, 8.0]],
+        ]
+    )
+    intrinsics = torch.stack([torch.eye(3), 2.0 * torch.eye(3)])
+
+    output = infer(
+        BatchedModel(),
+        image,
+        raw_depth,
+        intrinsics=intrinsics,
+        use_fp16=False,
+    )
+
+    assert output["depth"].shape == (2, 2, 3)
+    assert output["mask"].shape == (2, 2, 3)
+    assert output["raw_depth"].shape == (2, 2, 3)
+    assert torch.isfinite(output["raw_depth"]).all()
+    assert output["raw_depth"][0, 0, 2].item() == 0.0
+    assert output["raw_depth"][1, 0, 1].item() == 0.0
+    assert output["raw_depth"][1, 1, 0].item() == 0.0
+
+
+def test_infer_rejects_image_and_depth_batch_mismatch():
+    with pytest.raises(ValueError, match="batch dimensions"):
+        infer(
+            FakeModel(),
+            torch.zeros((2, 3, 2, 3), dtype=torch.float32),
+            torch.ones((3, 2, 3), dtype=torch.float32),
+            use_fp16=False,
+        )
+
+
+def test_infer_rejects_intrinsics_batch_mismatch():
+    with pytest.raises(ValueError, match="intrinsics batch dimension"):
+        infer(
+            FakeModel(),
+            torch.zeros((2, 3, 2, 3), dtype=torch.float32),
+            torch.ones((2, 2, 3), dtype=torch.float32),
+            intrinsics=torch.eye(3).unsqueeze(0),
+            use_fp16=False,
+        )
+
+
+@pytest.mark.parametrize("intrinsics", [torch.eye(2), torch.ones((2, 3, 2))])
+def test_infer_rejects_intrinsics_with_invalid_matrix_shape(intrinsics):
+    with pytest.raises(ValueError, match="intrinsics"):
         infer(
             FakeModel(),
             torch.zeros((3, 2, 3), dtype=torch.float32),

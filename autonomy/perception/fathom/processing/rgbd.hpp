@@ -47,8 +47,8 @@ namespace fathom {
  * @param width Fixed model input width, greater than zero
  * @param height Fixed model input height, greater than zero
  * @param depth_scale Sensor-depth-unit to meter scale, finite and positive
- * @param tensors Output tensors named `image` and `raw_depth`
- * @param error Optional failure message
+ * @param tensors Output tensors named `image` and `raw_depth`; cleared on entry
+ * @param error Optional failure message, cleared on entry
  * @return True when both tensors are produced
  */
 bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,

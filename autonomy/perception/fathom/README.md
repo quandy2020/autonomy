@@ -4,6 +4,9 @@
 [LingBot-Depth](https://github.com/robbyant/lingbot-depth) at commit
 [`f3a237e434ae987bc38281476d6cfb5df3e4d739`](https://github.com/robbyant/lingbot-depth/tree/f3a237e434ae987bc38281476d6cfb5df3e4d739).
 Those files are distributed under the upstream [Apache License 2.0](https://github.com/robbyant/lingbot-depth/blob/f3a237e434ae987bc38281476d6cfb5df3e4d739/LICENSE).
+Their upstream formatting, including trailing whitespace, is retained for
+provenance; `.gitattributes` suppresses only blank-at-end-of-line and
+blank-at-end-of-file diagnostics inside these two vendored source trees.
 
 The dataset, fine-tuning loop, loss, checkpoint helpers, ONNX wrapper, and C++
 integration in this directory are Fathom-authored integration code. They are
@@ -62,11 +65,13 @@ The exported graph contract is:
 ## C++ deployment
 
 `FathomConfig` must specify `model_path`, `backend`, `input_width`,
-`input_height`, `num_tokens`, `depth_scale`, and `mask_threshold`. `backend`
-is `onnx` or `tensorrt`; it is passed to the project common-network engine.
-The configured width, height, and token count must exactly match the fixed
-profile used for ONNX export. The graph itself takes only the two tensors above;
-camera intrinsics are used after inference to project the refined depth.
+`input_height`, `depth_scale`, and `mask_threshold`. `backend` is `onnx` or
+`tensorrt`; it is passed to the project common-network engine. The configured
+width and height must exactly match the fixed profile used for ONNX export.
+The token count is selected only when exporting and is baked into the graph;
+the current C++ engine metadata does not expose it for runtime validation.
+The graph itself takes only the two tensors above; camera intrinsics are used
+after inference to project the refined depth.
 
 ```cpp
 FathomConfig config;
@@ -74,7 +79,6 @@ config.model_path = "/models/fathom.onnx";
 config.backend = "onnx";  // Or "tensorrt" for a supported engine artifact.
 config.input_width = 640;
 config.input_height = 480;
-config.num_tokens = 2400;
 config.depth_scale = 0.001F;  // Incoming 16UC1 millimetres to metres.
 config.mask_threshold = 0.5F;
 ```
@@ -83,8 +87,10 @@ config.mask_threshold = 0.5F;
 `Process(rgb, raw_depth, camera_info, &refined_depth, &point_cloud, &error)`
 then synchronously accepts aligned automsgs `Image` RGB/depth and `CameraInfo`,
 and returns an automsgs `Image` (`32FC1`, metres) plus organized `PointCloud2`
-(XYZ in metres). The runner deliberately declares no transport topics and does
-not alter `PerceptionOptions`; perception-server transport is deferred.
+(XYZ in metres). `CameraInfo.width` and `CameraInfo.height` must be positive and
+match the aligned input images. The runner deliberately declares no transport
+topics and does not alter `PerceptionOptions`; perception-server transport is
+deferred.
 
 The concrete model engine and process runner are compiled only when
 `BUILD_ONNXRUNTIME=ON` and ONNX Runtime is found. Configuration, RGB-D

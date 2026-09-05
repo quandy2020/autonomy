@@ -93,7 +93,11 @@ Projects valid metric-depth and mask image messages into an organized automsgs `
 
 ### Root files
 
-`config.*` owns model path, backend, input resolution, token count, depth scale, and mask threshold. `fathom_node_runner.*` connects the module to the perception process without embedding model-specific tensor logic.
+`config.*` owns model path, backend, input resolution, depth scale, and mask
+threshold. Token count is an export-time choice baked into the fixed ONNX
+artifact; the C++ engine metadata exposes no reliable runtime token binding.
+`fathom_node_runner.*` connects the module to the perception process without
+embedding model-specific tensor logic.
 
 ## Error Handling
 

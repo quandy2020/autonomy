@@ -41,9 +41,10 @@ namespace fathom {
  *
  * @param depth_m `32FC1` metric depth image in meters
  * @param mask `mono8` validity mask; non-zero values are valid
- * @param camera_info Original image pixel intrinsics with positive focal lengths
- * @param cloud Output organized XYZ PointCloud2, stamped from `depth_m`
- * @param error Optional failure message
+ * @param camera_info Original image pixel intrinsics and matching dimensions
+ * @param cloud Output organized XYZ PointCloud2, cleared on entry and stamped
+ *     from `depth_m` only on success
+ * @param error Optional failure message, cleared on entry
  * @return True when projection succeeds
  */
 bool ProjectDepth(const automsgs::msgs::sensor_msgs::Image& depth_m,

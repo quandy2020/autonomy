@@ -65,6 +65,12 @@ bool ProjectDepth(const automsgs::msgs::sensor_msgs::Image& depth_m,
                   const automsgs::msgs::sensor_msgs::CameraInfo& camera_info,
                   automsgs::msgs::sensor_msgs::PointCloud2* cloud,
                   std::string* error) {
+    if (error != nullptr) {
+        error->clear();
+    }
+    if (cloud != nullptr) {
+        cloud->Clear();
+    }
     if (cloud == nullptr) {
         SetError(error, "Fathom point cloud output is null.");
         return false;
@@ -75,6 +81,14 @@ bool ProjectDepth(const automsgs::msgs::sensor_msgs::Image& depth_m,
     }
     if (depth_m.width() != mask.width() || depth_m.height() != mask.height()) {
         SetError(error, "Fathom depth and validity mask dimensions must match.");
+        return false;
+    }
+    if (camera_info.width() == 0 || camera_info.height() == 0 ||
+        camera_info.width() != depth_m.width() ||
+        camera_info.height() != depth_m.height()) {
+        SetError(error,
+                 "Fathom camera calibration dimensions must be positive and "
+                 "match the depth and validity images.");
         return false;
     }
     if (camera_info.k_size() != 9) {
@@ -93,29 +107,29 @@ bool ProjectDepth(const automsgs::msgs::sensor_msgs::Image& depth_m,
         return false;
     }
 
-    cloud->Clear();
-    *cloud->mutable_header() = depth_m.header();
-    cloud->set_height(depth_m.height());
-    cloud->set_width(depth_m.width());
-    cloud->set_is_bigendian(false);
-    cloud->set_is_dense(false);
-    cloud->set_point_step(3 * sizeof(float));
-    cloud->set_row_step(cloud->width() * cloud->point_step());
+    automsgs::msgs::sensor_msgs::PointCloud2 projected;
+    *projected.mutable_header() = depth_m.header();
+    projected.set_height(depth_m.height());
+    projected.set_width(depth_m.width());
+    projected.set_is_bigendian(false);
+    projected.set_is_dense(false);
+    projected.set_point_step(3 * sizeof(float));
+    projected.set_row_step(projected.width() * projected.point_step());
     for (const char* name : {"x", "y", "z"}) {
-        auto* field = cloud->add_fields();
+        auto* field = projected.add_fields();
         field->set_name(name);
-        field->set_offset(static_cast<uint32_t>(cloud->fields_size() - 1) *
+        field->set_offset(static_cast<uint32_t>(projected.fields_size() - 1) *
                           sizeof(float));
         field->set_datatype(
             automsgs::msgs::sensor_msgs::PointField::FLOAT32);
         field->set_count(1);
     }
-    cloud->mutable_data()->resize(
-        static_cast<size_t>(cloud->height()) * cloud->row_step());
+    projected.mutable_data()->resize(
+        static_cast<size_t>(projected.height()) * projected.row_step());
 
-    automsgs::msgs::sensor_msgs::PointCloud2Iterator<float> x(*cloud, "x");
-    automsgs::msgs::sensor_msgs::PointCloud2Iterator<float> y(*cloud, "y");
-    automsgs::msgs::sensor_msgs::PointCloud2Iterator<float> z(*cloud, "z");
+    automsgs::msgs::sensor_msgs::PointCloud2Iterator<float> x(projected, "x");
+    automsgs::msgs::sensor_msgs::PointCloud2Iterator<float> y(projected, "y");
+    automsgs::msgs::sensor_msgs::PointCloud2Iterator<float> z(projected, "z");
     const float nan = std::numeric_limits<float>::quiet_NaN();
     for (uint32_t row = 0; row < depth_m.height(); ++row) {
         for (uint32_t col = 0; col < depth_m.width(); ++col, ++x, ++y, ++z) {
@@ -137,6 +151,7 @@ bool ProjectDepth(const automsgs::msgs::sensor_msgs::Image& depth_m,
             }
         }
     }
+    cloud->CopyFrom(projected);
     return true;
 }
 
