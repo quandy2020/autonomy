@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef AUTONOMY_PERCEPTION_FATHOM_COMPONENT_HPP_
-#define AUTONOMY_PERCEPTION_FATHOM_COMPONENT_HPP_
+#ifndef AUTONOMY_PERCEPTION_FATHOM_FATHOM_COMPONENT_HPP_
+#define AUTONOMY_PERCEPTION_FATHOM_FATHOM_COMPONENT_HPP_
 
 #include "autonomy/perception/fathom/fathom_node_runner.hpp"
 
@@ -35,7 +35,8 @@ namespace fathom {
 
 class FathomComponentTestApi;
 
-class FathomComponent
+/** Autolink entrypoint for synchronized RGB-D refinement and publication. */
+class FathomComponent final
     : public autolink::Component<automsgs::msgs::sensor_msgs::Image,
                                  automsgs::msgs::sensor_msgs::Image,
                                  automsgs::msgs::sensor_msgs::CameraInfo> {
@@ -46,11 +47,12 @@ public:
 
     ~FathomComponent() override = default;
 
-protected:
     bool Init() override;
     bool Proc(const std::shared_ptr<Image>& rgb,
               const std::shared_ptr<Image>& raw_depth,
               const std::shared_ptr<CameraInfo>& camera_info) override;
+
+protected:
     void Clear() override;
 
 private:
@@ -74,4 +76,4 @@ private:
 }  // namespace perception
 }  // namespace autonomy
 
-#endif  // AUTONOMY_PERCEPTION_FATHOM_COMPONENT_HPP_
+#endif  // AUTONOMY_PERCEPTION_FATHOM_FATHOM_COMPONENT_HPP_

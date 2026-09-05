@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "autonomy/perception/fathom/component.hpp"
-#include "autonomy/perception/fathom/component_config.hpp"
+#include "autonomy/perception/fathom/fathom_component.hpp"
+#include "autonomy/perception/fathom/options.hpp"
 
 #include <gtest/gtest.h>
 
@@ -47,17 +47,17 @@ public:
 
 namespace {
 
-proto::FathomComponentConfig ValidComponentConfig() {
-    proto::FathomComponentConfig config;
-    config.set_model_path("/models/fathom.onnx");
-    config.set_backend("onnx");
-    config.set_input_width(640);
-    config.set_input_height(480);
-    config.set_depth_scale(0.001F);
-    config.set_mask_threshold(0.5F);
-    config.set_refined_depth_topic("/perception/fathom/refined_depth");
-    config.set_point_cloud_topic("/perception/fathom/points");
-    return config;
+proto::FathomOptions ValidOptions() {
+    proto::FathomOptions options;
+    options.set_model_path("/models/fathom.onnx");
+    options.set_backend("onnx");
+    options.set_input_width(640);
+    options.set_input_height(480);
+    options.set_depth_scale(0.001F);
+    options.set_mask_threshold(0.5F);
+    options.set_refined_depth_topic("/perception/fathom/refined_depth");
+    options.set_point_cloud_topic("/perception/fathom/points");
+    return options;
 }
 
 std::shared_ptr<FathomComponent::Image> MakeImage() {
@@ -68,14 +68,14 @@ std::shared_ptr<FathomComponent::CameraInfo> MakeCameraInfo() {
     return std::make_shared<FathomComponent::CameraInfo>();
 }
 
-TEST(FathomComponentConfigTest, TranslatesValidatedDeploymentProfile) {
-    const auto config = ValidComponentConfig();
+TEST(FathomOptionsTest, TranslatesValidatedDeploymentProfile) {
+    const auto options = ValidOptions();
     FathomConfig fathom_config;
-    FathomComponentTopics topics;
+    FathomTopics topics;
     std::string error;
 
-    ASSERT_TRUE(TranslateFathomComponentConfig(config, &fathom_config, &topics,
-                                                &error));
+    ASSERT_TRUE(TranslateFathomOptions(options, &fathom_config, &topics,
+                                      &error));
 
     EXPECT_EQ(fathom_config.model_path, "/models/fathom.onnx");
     EXPECT_EQ(fathom_config.backend, "onnx");
@@ -88,46 +88,46 @@ TEST(FathomComponentConfigTest, TranslatesValidatedDeploymentProfile) {
     EXPECT_TRUE(error.empty());
 }
 
-TEST(FathomComponentConfigTest, RejectsEmptyOutputTopics) {
-    auto config = ValidComponentConfig();
-    config.clear_refined_depth_topic();
+TEST(FathomOptionsTest, RejectsEmptyOutputTopics) {
+    auto options = ValidOptions();
+    options.clear_refined_depth_topic();
     FathomConfig fathom_config;
-    FathomComponentTopics topics;
+    FathomTopics topics;
     std::string error;
 
-    EXPECT_FALSE(TranslateFathomComponentConfig(config, &fathom_config, &topics,
-                                                 &error));
+    EXPECT_FALSE(TranslateFathomOptions(options, &fathom_config, &topics,
+                                        &error));
     EXPECT_EQ(error, "Fathom component: refined_depth_topic must not be empty.");
 
-    config = ValidComponentConfig();
-    config.clear_point_cloud_topic();
-    EXPECT_FALSE(TranslateFathomComponentConfig(config, &fathom_config, &topics,
-                                                 &error));
+    options = ValidOptions();
+    options.clear_point_cloud_topic();
+    EXPECT_FALSE(TranslateFathomOptions(options, &fathom_config, &topics,
+                                        &error));
     EXPECT_EQ(error, "Fathom component: point_cloud_topic must not be empty.");
 }
 
-TEST(FathomComponentConfigTest, RejectsInvalidInferenceProfile) {
-    auto config = ValidComponentConfig();
-    config.set_input_width(0);
+TEST(FathomOptionsTest, RejectsInvalidInferenceProfile) {
+    auto options = ValidOptions();
+    options.set_input_width(0);
     FathomConfig fathom_config;
-    FathomComponentTopics topics;
+    FathomTopics topics;
     std::string error;
 
-    EXPECT_FALSE(TranslateFathomComponentConfig(config, &fathom_config, &topics,
-                                                 &error));
+    EXPECT_FALSE(TranslateFathomOptions(options, &fathom_config, &topics,
+                                        &error));
     EXPECT_EQ(error,
               "Fathom: input_width and input_height must be positive.");
 }
 
-TEST(FathomComponentConfigTest, RejectsEqualOutputTopics) {
-    auto config = ValidComponentConfig();
-    config.set_point_cloud_topic(config.refined_depth_topic());
+TEST(FathomOptionsTest, RejectsEqualOutputTopics) {
+    auto options = ValidOptions();
+    options.set_point_cloud_topic(options.refined_depth_topic());
     FathomConfig fathom_config;
-    FathomComponentTopics topics;
+    FathomTopics topics;
     std::string error;
 
-    EXPECT_FALSE(TranslateFathomComponentConfig(config, &fathom_config, &topics,
-                                                 &error));
+    EXPECT_FALSE(TranslateFathomOptions(options, &fathom_config, &topics,
+                                        &error));
     EXPECT_EQ(error,
               "Fathom component: refined_depth_topic and point_cloud_topic "
               "must differ.");

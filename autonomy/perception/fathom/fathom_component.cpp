@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include "autonomy/perception/fathom/component.hpp"
+#include "autonomy/perception/fathom/fathom_component.hpp"
 
-#include "autonomy/perception/fathom/component_config.hpp"
+#include "autonomy/perception/fathom/options.hpp"
 
 #include <string>
 
@@ -25,18 +25,17 @@ namespace perception {
 namespace fathom {
 
 bool FathomComponent::Init() {
-    proto::FathomComponentConfig component_config;
-    if (!GetProtoConfig(&component_config)) {
+    proto::FathomOptions options;
+    if (!GetProtoConfig(&options)) {
         AERROR << "Fathom component failed to load config from '"
                << ConfigFilePath() << "'.";
         return false;
     }
 
     FathomConfig fathom_config;
-    FathomComponentTopics topics;
+    FathomTopics topics;
     std::string error;
-    if (!TranslateFathomComponentConfig(component_config, &fathom_config,
-                                        &topics, &error)) {
+    if (!TranslateFathomOptions(options, &fathom_config, &topics, &error)) {
         AERROR << error;
         return false;
     }

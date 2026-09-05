@@ -4,7 +4,7 @@ module_config {
     class_name: "autonomy::perception::fathom::FathomComponent"
     config {
       name: "fathom"
-      config_file_path: "config/perception/fathom_component.pb.txt"
+      config_file_path: "conf/fathom.pb.txt"
       readers {
         channel: "/camera/rgb/image_raw"
       }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "autonomy/perception/fathom/component_config.hpp"
+#include "autonomy/perception/fathom/options.hpp"
 
 #include <cstdint>
 #include <limits>
@@ -37,9 +37,9 @@ bool FitsInt(uint32_t value) {
 
 }  // namespace
 
-bool TranslateFathomComponentConfig(
-    const proto::FathomComponentConfig& component_config,
-    FathomConfig* fathom_config, FathomComponentTopics* topics,
+bool TranslateFathomOptions(
+    const proto::FathomOptions& options,
+    FathomConfig* fathom_config, FathomTopics* topics,
     std::string* error) {
     if (error != nullptr) {
         error->clear();
@@ -48,40 +48,38 @@ bool TranslateFathomComponentConfig(
         SetError(error, "output configuration pointers must not be null.");
         return false;
     }
-    if (component_config.refined_depth_topic().empty()) {
+    if (options.refined_depth_topic().empty()) {
         SetError(error, "refined_depth_topic must not be empty.");
         return false;
     }
-    if (component_config.point_cloud_topic().empty()) {
+    if (options.point_cloud_topic().empty()) {
         SetError(error, "point_cloud_topic must not be empty.");
         return false;
     }
-    if (component_config.refined_depth_topic() ==
-        component_config.point_cloud_topic()) {
+    if (options.refined_depth_topic() == options.point_cloud_topic()) {
         SetError(error,
                  "refined_depth_topic and point_cloud_topic must differ.");
         return false;
     }
-    if (!FitsInt(component_config.input_width()) ||
-        !FitsInt(component_config.input_height())) {
+    if (!FitsInt(options.input_width()) || !FitsInt(options.input_height())) {
         SetError(error, "input_width and input_height exceed supported range.");
         return false;
     }
 
     FathomConfig translated;
-    translated.model_path = component_config.model_path();
-    translated.backend = component_config.backend();
-    translated.input_width = static_cast<int>(component_config.input_width());
-    translated.input_height = static_cast<int>(component_config.input_height());
-    translated.depth_scale = component_config.depth_scale();
-    translated.mask_threshold = component_config.mask_threshold();
+    translated.model_path = options.model_path();
+    translated.backend = options.backend();
+    translated.input_width = static_cast<int>(options.input_width());
+    translated.input_height = static_cast<int>(options.input_height());
+    translated.depth_scale = options.depth_scale();
+    translated.mask_threshold = options.mask_threshold();
     if (!ValidateFathomConfig(translated, error)) {
         return false;
     }
 
-    FathomComponentTopics translated_topics;
-    translated_topics.refined_depth = component_config.refined_depth_topic();
-    translated_topics.point_cloud = component_config.point_cloud_topic();
+    FathomTopics translated_topics;
+    translated_topics.refined_depth = options.refined_depth_topic();
+    translated_topics.point_cloud = options.point_cloud_topic();
     *fathom_config = std::move(translated);
     *topics = std::move(translated_topics);
     return true;

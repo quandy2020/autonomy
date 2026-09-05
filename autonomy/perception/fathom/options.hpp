@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#ifndef AUTONOMY_PERCEPTION_FATHOM_COMPONENT_CONFIG_HPP_
-#define AUTONOMY_PERCEPTION_FATHOM_COMPONENT_CONFIG_HPP_
+#ifndef AUTONOMY_PERCEPTION_FATHOM_OPTIONS_HPP_
+#define AUTONOMY_PERCEPTION_FATHOM_OPTIONS_HPP_
 
 #include "autonomy/perception/fathom/config.hpp"
-#include "autonomy/perception/fathom/proto/fathom_component_config.pb.h"
+#include "autonomy/perception/fathom/proto/fathom.pb.h"
 
 #include <string>
 
@@ -26,18 +26,20 @@ namespace autonomy {
 namespace perception {
 namespace fathom {
 
-struct FathomComponentTopics {
+/** Output channels owned by the autolink component. */
+struct FathomTopics {
     std::string refined_depth;
     std::string point_cloud;
 };
 
-bool TranslateFathomComponentConfig(
-    const proto::FathomComponentConfig& component_config,
-    FathomConfig* fathom_config, FathomComponentTopics* topics,
+/** Validate component options and derive the runtime/profile configuration. */
+bool TranslateFathomOptions(
+    const proto::FathomOptions& options,
+    FathomConfig* fathom_config, FathomTopics* topics,
     std::string* error = nullptr);
 
 }  // namespace fathom
 }  // namespace perception
 }  // namespace autonomy
 
-#endif  // AUTONOMY_PERCEPTION_FATHOM_COMPONENT_CONFIG_HPP_
+#endif  // AUTONOMY_PERCEPTION_FATHOM_OPTIONS_HPP_

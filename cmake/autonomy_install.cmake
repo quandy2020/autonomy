@@ -93,12 +93,16 @@ if(TARGET fathom_component)
     ARCHIVE DESTINATION lib
   )
   install(
-    FILES autonomy/perception/fathom/fathom.dag
-    DESTINATION share/autonomy/dag/perception/fathom
+    FILES autonomy/perception/fathom/dag/fathom.dag
+    DESTINATION share/autonomy/fathom/dag
   )
   install(
-    FILES config/perception/fathom_component.pb.txt
-    DESTINATION share/autonomy/config/perception
+    FILES autonomy/perception/fathom/conf/fathom.pb.txt
+    DESTINATION share/autonomy/fathom/conf
+  )
+  install(
+    FILES autonomy/perception/fathom/launch/fathom.launch
+    DESTINATION share/autonomy/fathom/launch
   )
   list(APPEND _autonomy_launch_mods perception)
 endif()

@@ -11,16 +11,16 @@
   Plain CMake build (run from the repository root):
     export PATH=$PWD/build/bin:$PATH
     export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/perception/launch
-    export AUTOLINK_DAG_PATH=$PWD/autonomy
-    export AUTOLINK_CONF_PATH=$PWD
+    export AUTOLINK_DAG_PATH=$PWD/autonomy/perception/fathom
+    export AUTOLINK_CONF_PATH=$PWD/autonomy/perception/fathom
     export AUTOLINK_LIB_PATH=$PWD/build/lib
     autolink launch start perception.launch
 
   Colcon/package build (run from src/autonomy):
     export PATH=$PWD/../../build/autonomy/bin:$PATH
     export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/perception/launch
-    export AUTOLINK_DAG_PATH=$PWD/autonomy
-    export AUTOLINK_CONF_PATH=$PWD
+    export AUTOLINK_DAG_PATH=$PWD/autonomy/perception/fathom
+    export AUTOLINK_CONF_PATH=$PWD/autonomy/perception/fathom
     export AUTOLINK_LIB_PATH=$PWD/../../build/autonomy/lib
     autolink launch start perception.launch
 -->
@@ -34,7 +34,7 @@
   </module>
   <module>
     <name>fathom</name>
-    <dag_conf>perception/fathom/fathom.dag</dag_conf>
+    <dag_conf>dag/fathom.dag</dag_conf>
     <process_name>fathom</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
