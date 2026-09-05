@@ -19,8 +19,8 @@
  * @brief Backend-independent RGB-D refinement over automsgs sensor messages.
  */
 
-#ifndef AUTONOMY_PERCEPTION_FATHOM_DEPTH_REFINER_HPP_
-#define AUTONOMY_PERCEPTION_FATHOM_DEPTH_REFINER_HPP_
+#ifndef AUTONOMY_PERCEPTION_FATHOM_REFINER_HPP_
+#define AUTONOMY_PERCEPTION_FATHOM_REFINER_HPP_
 
 #include "autonomy/common/network/common/tensor.hpp"
 #include "autonomy/perception/fathom/options.hpp"
@@ -119,4 +119,4 @@ private:
 }  // namespace perception
 }  // namespace autonomy
 
-#endif  // AUTONOMY_PERCEPTION_FATHOM_DEPTH_REFINER_HPP_
+#endif  // AUTONOMY_PERCEPTION_FATHOM_REFINER_HPP_

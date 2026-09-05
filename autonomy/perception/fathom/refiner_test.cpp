@@ -19,7 +19,7 @@
  * @brief Unit tests for backend-independent Fathom depth refinement.
  */
 
-#include "autonomy/perception/fathom/depth/refiner.hpp"
+#include "autonomy/perception/fathom/refiner.hpp"
 #include "autonomy/perception/fathom/options.hpp"
 
 #include <automsgs/msgs/sensor_msgs/point_cloud2_iterator.hpp>

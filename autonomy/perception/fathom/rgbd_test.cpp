@@ -19,7 +19,7 @@
  * @brief Unit tests for aligned RGB-D validation and tensor conversion.
  */
 
-#include "autonomy/perception/fathom/processing/rgbd.hpp"
+#include "autonomy/perception/fathom/rgbd.hpp"
 
 #include "gtest/gtest.h"
 

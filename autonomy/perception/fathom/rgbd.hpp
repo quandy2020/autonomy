@@ -19,8 +19,8 @@
  * @brief RGB-D conversion for the fixed Fathom model input contract.
  */
 
-#ifndef AUTONOMY_PERCEPTION_FATHOM_PROCESSING_RGBD_HPP_
-#define AUTONOMY_PERCEPTION_FATHOM_PROCESSING_RGBD_HPP_
+#ifndef AUTONOMY_PERCEPTION_FATHOM_RGBD_HPP_
+#define AUTONOMY_PERCEPTION_FATHOM_RGBD_HPP_
 
 #include "autonomy/common/network/common/tensor.hpp"
 
@@ -63,4 +63,4 @@ bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,
 }  // namespace perception
 }  // namespace autonomy
 
-#endif  // AUTONOMY_PERCEPTION_FATHOM_PROCESSING_RGBD_HPP_
+#endif  // AUTONOMY_PERCEPTION_FATHOM_RGBD_HPP_

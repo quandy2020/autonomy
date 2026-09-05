@@ -19,7 +19,7 @@
  * @brief Unit tests for calibrated depth-to-point-cloud projection.
  */
 
-#include "autonomy/perception/fathom/projection/point_cloud.hpp"
+#include "autonomy/perception/fathom/point_cloud.hpp"
 
 #include <automsgs/msgs/sensor_msgs/point_cloud2_iterator.hpp>
 

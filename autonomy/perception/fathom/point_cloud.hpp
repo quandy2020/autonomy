@@ -19,8 +19,8 @@
  * @brief Projection of metric depth into organized automsgs point clouds.
  */
 
-#ifndef AUTONOMY_PERCEPTION_FATHOM_PROJECTION_POINT_CLOUD_HPP_
-#define AUTONOMY_PERCEPTION_FATHOM_PROJECTION_POINT_CLOUD_HPP_
+#ifndef AUTONOMY_PERCEPTION_FATHOM_POINT_CLOUD_HPP_
+#define AUTONOMY_PERCEPTION_FATHOM_POINT_CLOUD_HPP_
 
 #include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
 #include <automsgs/msgs/sensor_msgs/image.pb.h>
@@ -57,4 +57,4 @@ bool ProjectDepth(const automsgs::msgs::sensor_msgs::Image& depth_m,
 }  // namespace perception
 }  // namespace autonomy
 
-#endif  // AUTONOMY_PERCEPTION_FATHOM_PROJECTION_POINT_CLOUD_HPP_
+#endif  // AUTONOMY_PERCEPTION_FATHOM_POINT_CLOUD_HPP_

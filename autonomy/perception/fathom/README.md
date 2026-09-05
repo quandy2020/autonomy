@@ -121,11 +121,17 @@ fathom/
 ├── dag/fathom.dag
 ├── launch/fathom.launch
 ├── proto/fathom.proto
-├── fathom_component.hpp
-├── fathom_component.cpp
+├── fathom_component.{hpp,cpp}
+├── model.{hpp,cpp}
+├── refiner.{hpp,cpp}
+├── rgbd.{hpp,cpp}
+├── point_cloud.{hpp,cpp}
+├── options.{hpp,cpp}
 ├── fathom_component_test.cpp
-├── options.hpp
-└── options.cpp
+├── refiner_test.cpp
+├── rgbd_test.cpp
+├── point_cloud_test.cpp
+└── python/
 ```
 
 The DAG reader order is fixed: RGB `Image`, raw-depth `Image`, then

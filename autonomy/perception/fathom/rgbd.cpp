@@ -19,7 +19,7 @@
  * @brief Validation and tensor conversion for aligned RGB-D input frames.
  */
 
-#include "autonomy/perception/fathom/processing/rgbd.hpp"
+#include "autonomy/perception/fathom/rgbd.hpp"
 
 #include <opencv2/imgproc.hpp>
 

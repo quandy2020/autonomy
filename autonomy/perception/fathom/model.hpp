@@ -19,10 +19,10 @@
  * @brief Fathom adapter for the project common-network inference engine.
  */
 
-#ifndef AUTONOMY_PERCEPTION_FATHOM_ENGINE_MODEL_HPP_
-#define AUTONOMY_PERCEPTION_FATHOM_ENGINE_MODEL_HPP_
+#ifndef AUTONOMY_PERCEPTION_FATHOM_MODEL_HPP_
+#define AUTONOMY_PERCEPTION_FATHOM_MODEL_HPP_
 
-#include "autonomy/perception/fathom/depth/refiner.hpp"
+#include "autonomy/perception/fathom/refiner.hpp"
 
 #include <memory>
 #include <string>
@@ -78,4 +78,4 @@ private:
 }  // namespace perception
 }  // namespace autonomy
 
-#endif  // AUTONOMY_PERCEPTION_FATHOM_ENGINE_MODEL_HPP_
+#endif  // AUTONOMY_PERCEPTION_FATHOM_MODEL_HPP_

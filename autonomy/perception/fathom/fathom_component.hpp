@@ -22,7 +22,7 @@
 #ifndef AUTONOMY_PERCEPTION_FATHOM_FATHOM_COMPONENT_HPP_
 #define AUTONOMY_PERCEPTION_FATHOM_FATHOM_COMPONENT_HPP_
 
-#include "autonomy/perception/fathom/depth/refiner.hpp"
+#include "autonomy/perception/fathom/refiner.hpp"
 
 #include "autolink/component/component.hpp"
 
