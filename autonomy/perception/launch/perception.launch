@@ -8,7 +8,15 @@
     - PATH includes build/autonomy/bin
     - Sensor topics: /odom, depth camera (or point cloud for lidar_tare / far3d)
 
-  Usage (from src/autonomy):
+  Plain CMake build (run from the repository root):
+    export PATH=$PWD/build/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/perception/launch
+    export AUTOLINK_DAG_PATH=$PWD/autonomy
+    export AUTOLINK_CONF_PATH=$PWD
+    export AUTOLINK_LIB_PATH=$PWD/build/lib
+    autolink launch start perception.launch
+
+  Colcon/package build (run from src/autonomy):
     export PATH=$PWD/../../build/autonomy/bin:$PATH
     export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/perception/launch
     export AUTOLINK_DAG_PATH=$PWD/autonomy
