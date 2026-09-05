@@ -1,0 +1,66 @@
+# Fixed-profile selected-person detector and ground-policy artifacts.
+detector_model_path: "/models/shadow_detector.onnx"
+policy_model_path: "/models/shadow_policy.onnx"
+detector_backend: "onnx"
+policy_backend: "onnx"
+detector_width: 640
+detector_height: 640
+max_detections: 300
+person_class_id: 0
+confidence_threshold: 0.35
+
+# ByteTrack-style association and target lifetime.
+track_high_threshold: 0.50
+track_low_threshold: 0.10
+association_iou_threshold: 0.30
+min_confirmed_hits: 3
+prediction_timeout_sec: 0.35
+lost_timeout_sec: 1.5
+
+# RGB-D target localization in meters.
+inner_box_scale: 0.50
+min_depth_m: 0.20
+max_depth_m: 8.0
+min_depth_samples: 12
+depth_outlier_m: 0.25
+depth_scale: 0.001
+
+# Rolling 2.5D local map.
+map_frame: "map"
+base_frame: "base_link"
+camera_frame: "camera_link"
+map_length_x: 10.0
+map_length_y: 10.0
+map_resolution: 0.05
+map_roll_threshold: 0.35
+cell_ttl_sec: 1.0
+max_step_height: 0.20
+max_slope_rad: 0.35
+obstacle_min_height: 0.10
+robot_radius: 0.25
+inflation_radius: 0.35
+
+# Fixed ground-motion policy profile and candidate bounds.
+policy_width: 160
+policy_height: 96
+candidate_count: 64
+trajectory_steps: 12
+max_linear_speed: 0.8
+max_angular_speed: 1.2
+follow_distance: 1.5
+learned_weight: 1.0
+clearance_weight: 1.0
+traversability_weight: 1.0
+curvature_weight: 1.0
+progress_weight: 1.0
+distance_weight: 1.0
+visibility_weight: 1.0
+
+# Existing automsgs input selection and output topics.
+select_topic: "/perception/shadow/select"
+detections_topic: "/perception/shadow/detections"
+target_topic: "/perception/shadow/target"
+path_topic: "/perception/shadow/path"
+grid_topic: "/perception/shadow/grid"
+max_input_skew_sec: 0.10
+max_data_age_sec: 0.50
