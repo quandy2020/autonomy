@@ -1,0 +1,23 @@
+# Loads the Hestia component in an isolated autolink mainboard process.
+module_config {
+  module_library: "libhestia_component.so"
+  components {
+    class_name: "autonomy::perception::hestia::HestiaComponent"
+    config {
+      name: "hestia"
+      config_file_path: "conf/hestia.pb.txt"
+      # Reader order must match HestiaComponent's RGB, depth, CameraInfo types.
+      readers {
+        channel: "/camera/rgb/image_raw"
+      }
+      readers {
+        # Prefer Fathom refined depth when use_fathom_depth is true in conf:
+        # channel: "/perception/fathom/refined_depth"
+        channel: "/camera/depth/image_raw"
+      }
+      readers {
+        channel: "/camera/camera_info"
+      }
+    }
+  }
+}

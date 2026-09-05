@@ -106,6 +106,26 @@ if(TARGET fathom_component)
   )
   list(APPEND _autonomy_launch_mods perception)
 endif()
+if(TARGET hestia_component)
+  install(
+    TARGETS hestia_component
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+  )
+  install(
+    FILES autonomy/perception/hestia/dag/hestia.dag
+    DESTINATION share/autonomy/hestia/dag
+  )
+  install(
+    FILES autonomy/perception/hestia/conf/hestia.pb.txt
+    DESTINATION share/autonomy/hestia/conf
+  )
+  install(
+    FILES autonomy/perception/hestia/launch/hestia.launch
+    DESTINATION share/autonomy/hestia/launch
+  )
+  list(APPEND _autonomy_launch_mods perception)
+endif()
 if(BUILD_GRPC)
   list(APPEND _autonomy_launch_mods bridge)
 endif()
