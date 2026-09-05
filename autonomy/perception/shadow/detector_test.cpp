@@ -190,12 +190,14 @@ TEST(YoloDetectorTest, ConvertsRgbAndBgrToNormalizedNchwWithLetterboxPadding) {
     EXPECT_FLOAT_EQ(rgb[0], kPadding);
     EXPECT_FLOAT_EQ(rgb[2], 1.0F);
     EXPECT_FLOAT_EQ(rgb[3], 0.0F);
-    EXPECT_FLOAT_EQ(rgb[6], 1.0F);
-    EXPECT_FLOAT_EQ(rgb[7], 0.0F);
+    EXPECT_FLOAT_EQ(rgb[6], kPadding);
+    EXPECT_FLOAT_EQ(rgb[7], kPadding);
     EXPECT_FLOAT_EQ(rgb[8], kPadding);
+    EXPECT_FLOAT_EQ(rgb[10], 0.0F);
+    EXPECT_FLOAT_EQ(rgb[11], 1.0F);
     EXPECT_FLOAT_EQ(rgb[16], kPadding);
     EXPECT_FLOAT_EQ(rgb[18], 0.0F);
-    EXPECT_FLOAT_EQ(rgb[19], 1.0F);
+    EXPECT_FLOAT_EQ(rgb[19], 0.0F);
 
     auto bgr_runner = MakeRunner(output);
     FakeRunner* bgr_runner_ptr = bgr_runner.get();
@@ -209,8 +211,12 @@ TEST(YoloDetectorTest, ConvertsRgbAndBgrToNormalizedNchwWithLetterboxPadding) {
     ASSERT_NE(bgr, nullptr);
     EXPECT_FLOAT_EQ(bgr[2], 1.0F);
     EXPECT_FLOAT_EQ(bgr[3], 0.0F);
+    EXPECT_FLOAT_EQ(bgr[6], kPadding);
+    EXPECT_FLOAT_EQ(bgr[7], kPadding);
+    EXPECT_FLOAT_EQ(bgr[10], 0.0F);
+    EXPECT_FLOAT_EQ(bgr[11], 1.0F);
     EXPECT_FLOAT_EQ(bgr[18], 0.0F);
-    EXPECT_FLOAT_EQ(bgr[19], 1.0F);
+    EXPECT_FLOAT_EQ(bgr[19], 0.0F);
 }
 
 TEST(YoloDetectorTest, FiltersClassAndKeepsThresholdEquality) {
