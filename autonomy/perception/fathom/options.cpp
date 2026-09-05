@@ -16,14 +16,14 @@
 
 /**
  * @file options.cpp
- * @brief Validation and translation of Fathom component protobuf options.
+ * @brief Validation for Fathom model and component protobuf options.
  */
 
 #include "autonomy/perception/fathom/options.hpp"
 
+#include <cmath>
 #include <cstdint>
 #include <limits>
-#include <utility>
 
 namespace autonomy {
 namespace perception {
@@ -32,7 +32,7 @@ namespace {
 
 void SetError(std::string* error, const std::string& message) {
     if (error != nullptr) {
-        *error = "Fathom component: " + message;
+        *error = "Fathom: " + message;
     }
 }
 
@@ -42,14 +42,43 @@ bool FitsInt(uint32_t value) {
 
 }  // namespace
 
-bool TranslateFathomOptions(const proto::FathomOptions& options,
-                            FathomConfig* fathom_config, FathomTopics* topics,
-                            std::string* error) {
+bool ValidateModelOptions(const proto::FathomOptions& options,
+                          std::string* error) {
     if (error != nullptr) {
         error->clear();
     }
-    if (fathom_config == nullptr || topics == nullptr) {
-        SetError(error, "output configuration pointers must not be null.");
+    if (options.model_path().empty()) {
+        SetError(error, "model_path must not be empty.");
+        return false;
+    }
+    if (options.backend() != "onnx" && options.backend() != "tensorrt") {
+        SetError(error, "backend must be 'onnx' or 'tensorrt'.");
+        return false;
+    }
+    if (options.input_width() == 0 || options.input_height() == 0) {
+        SetError(error, "input_width and input_height must be positive.");
+        return false;
+    }
+    if (!FitsInt(options.input_width()) || !FitsInt(options.input_height())) {
+        SetError(error, "input_width and input_height exceed supported range.");
+        return false;
+    }
+    if (!std::isfinite(options.depth_scale()) ||
+        options.depth_scale() <= 0.0F) {
+        SetError(error, "depth_scale must be finite and positive.");
+        return false;
+    }
+    if (!std::isfinite(options.mask_threshold()) ||
+        options.mask_threshold() < 0.0F || options.mask_threshold() > 1.0F) {
+        SetError(error, "mask_threshold must be finite and within [0, 1].");
+        return false;
+    }
+    return true;
+}
+
+bool ValidateFathomOptions(const proto::FathomOptions& options,
+                           std::string* error) {
+    if (!ValidateModelOptions(options, error)) {
         return false;
     }
     if (options.refined_depth_topic().empty()) {
@@ -65,27 +94,6 @@ bool TranslateFathomOptions(const proto::FathomOptions& options,
                  "refined_depth_topic and point_cloud_topic must differ.");
         return false;
     }
-    if (!FitsInt(options.input_width()) || !FitsInt(options.input_height())) {
-        SetError(error, "input_width and input_height exceed supported range.");
-        return false;
-    }
-
-    FathomConfig translated;
-    translated.model_path = options.model_path();
-    translated.backend = options.backend();
-    translated.input_width = static_cast<int>(options.input_width());
-    translated.input_height = static_cast<int>(options.input_height());
-    translated.depth_scale = options.depth_scale();
-    translated.mask_threshold = options.mask_threshold();
-    if (!ValidateFathomConfig(translated, error)) {
-        return false;
-    }
-
-    FathomTopics translated_topics;
-    translated_topics.refined_depth = options.refined_depth_topic();
-    translated_topics.point_cloud = options.point_cloud_topic();
-    *fathom_config = std::move(translated);
-    *topics = std::move(translated_topics);
     return true;
 }
 

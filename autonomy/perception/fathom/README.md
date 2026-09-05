@@ -64,8 +64,9 @@ The exported graph contract is:
 
 ## C++ deployment
 
-`FathomConfig` must specify `model_path`, `backend`, `input_width`,
-`input_height`, `depth_scale`, and `mask_threshold`. `backend` is `onnx` or
+`proto::FathomOptions` is the single C++ configuration model. It specifies
+`model_path`, `backend`, `input_width`, `input_height`, `depth_scale`, and
+`mask_threshold`, plus the component output topics. `backend` is `onnx` or
 `tensorrt`; it is passed to the project common-network engine. The configured
 width and height must exactly match the fixed profile used for ONNX export.
 The token count is selected only when exporting and is baked into the graph;
@@ -74,13 +75,15 @@ The graph itself takes only the two tensors above; camera intrinsics are used
 after inference to project the refined depth.
 
 ```cpp
-FathomConfig config;
-config.model_path = "/models/fathom.onnx";
-config.backend = "onnx";  // Or "tensorrt" for a supported engine artifact.
-config.input_width = 640;
-config.input_height = 480;
-config.depth_scale = 0.001F;  // Incoming 16UC1 millimetres to metres.
-config.mask_threshold = 0.5F;
+proto::FathomOptions options;
+options.set_model_path("/models/fathom.onnx");
+options.set_backend("onnx");  // Or "tensorrt".
+options.set_input_width(640);
+options.set_input_height(480);
+options.set_depth_scale(0.001F);  // Incoming 16UC1 millimetres to metres.
+options.set_mask_threshold(0.5F);
+options.set_refined_depth_topic("/perception/fathom/refined_depth");
+options.set_point_cloud_topic("/perception/fathom/points");
 ```
 
 `FathomComponent::Init()` creates the concrete model engine and `DepthRefiner`
@@ -92,7 +95,7 @@ aligned input images. Transport topics are owned by the component protobuf
 options and remain independent from `PerceptionOptions`.
 
 The concrete model engine and autolink component are compiled only when
-`BUILD_ONNXRUNTIME=ON` and ONNX Runtime is found. Configuration, RGB-D
+`BUILD_ONNXRUNTIME=ON` and ONNX Runtime is found. Option validation, RGB-D
 preprocessing, projection, and the injected-runner `DepthRefiner` remain
 available without that runtime.
 
