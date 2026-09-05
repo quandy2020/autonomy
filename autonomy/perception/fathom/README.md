@@ -89,10 +89,30 @@ then synchronously accepts aligned automsgs `Image` RGB/depth and `CameraInfo`,
 and returns an automsgs `Image` (`32FC1`, metres) plus organized `PointCloud2`
 (XYZ in metres). `CameraInfo.width` and `CameraInfo.height` must be positive and
 match the aligned input images. The runner deliberately declares no transport
-topics and does not alter `PerceptionOptions`; perception-server transport is
-deferred.
+topics and does not alter `PerceptionOptions`.
 
 The concrete model engine and process runner are compiled only when
 `BUILD_ONNXRUNTIME=ON` and ONNX Runtime is found. Configuration, RGB-D
 preprocessing, projection, and the injected-runner `DepthRefiner` remain
 available without that runtime.
+
+## Autolink DAG deployment
+
+When ONNX Runtime is available, `fathom_component` is built as an independent
+autolink-loadable shared library (`libfathom_component.so`). It is loaded by
+`fathom.dag` into its own mainboard process; the existing `PerceptionServer`
+continues to run as the separate binary module in
+`autonomy/perception/launch/perception.launch`.
+
+The DAG reader order is fixed: RGB `Image`, raw-depth `Image`, then
+`CameraInfo`. The sample component configuration is
+`config/perception/fathom_component.pb.txt`; it uses Autosim's camera topics
+`/camera/rgb/image_raw`, `/camera/depth/image_raw`, and
+`/camera/camera_info`. Replace its `/models/fathom.onnx` placeholder with a
+deployed model whose fixed width and height match `input_width` and
+`input_height`. No model artifacts are stored in this repository.
+
+The component publishes a `32FC1` metric refined-depth `Image` to
+`/perception/fathom/refined_depth` and an organized XYZ `PointCloud2` to
+`/perception/fathom/points` by default. Change those two explicit output
+topics in the component config when integrating another graph.

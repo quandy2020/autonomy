@@ -1,0 +1,19 @@
+module_config {
+  module_library: "libfathom_component.so"
+  components {
+    class_name: "autonomy::perception::fathom::FathomComponent"
+    config {
+      name: "fathom"
+      config_file_path: "config/perception/fathom_component.pb.txt"
+      readers {
+        channel: "/camera/rgb/image_raw"
+      }
+      readers {
+        channel: "/camera/depth/image_raw"
+      }
+      readers {
+        channel: "/camera/camera_info"
+      }
+    }
+  }
+}
