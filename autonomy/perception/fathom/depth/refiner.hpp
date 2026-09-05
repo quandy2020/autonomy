@@ -23,7 +23,7 @@
 #define AUTONOMY_PERCEPTION_FATHOM_DEPTH_REFINER_HPP_
 
 #include "autonomy/common/network/common/tensor.hpp"
-#include "autonomy/perception/fathom/config.hpp"
+#include "autonomy/perception/fathom/options.hpp"
 
 #include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
 #include <automsgs/msgs/sensor_msgs/image.pb.h>
@@ -39,9 +39,9 @@ namespace fathom {
 /**
  * @brief Backend-independent inference contract used by DepthRefiner.
  *
- * Concrete runtime
- * adapters, such as FathomEngine, implement this contract outside the
- * refiner so fake-runner processing remains available without ONNX Runtime.
+ * Concrete runtime adapters, such as FathomEngine, implement this contract
+ * outside the refiner so fake-runner processing remains available without
+ * ONNX Runtime.
  */
 class FathomModelRunner
 {
@@ -71,13 +71,14 @@ class DepthRefiner
 public:
     /**
      * @brief Creates a refiner from validated options and an inference runner.
-     * @param config Fixed deployment profile.
+     * @param options Validated Fathom model options.
      * @param runner Concrete or test inference runner; ownership transfers.
      * @param error Optional diagnostic output, cleared on entry.
      * @return A ready refiner, or nullptr when validation fails.
      */
     static std::unique_ptr<DepthRefiner> Create(
-        const FathomConfig& config, std::unique_ptr<FathomModelRunner> runner,
+        const proto::FathomOptions& options,
+        std::unique_ptr<FathomModelRunner> runner,
         std::string* error = nullptr);
 
     DepthRefiner(const DepthRefiner&) = delete;
@@ -107,10 +108,10 @@ public:
                 std::string* error = nullptr);
 
 private:
-    DepthRefiner(FathomConfig config,
+    DepthRefiner(proto::FathomOptions options,
                  std::unique_ptr<FathomModelRunner> runner);
 
-    FathomConfig config_;
+    proto::FathomOptions options_;
     std::unique_ptr<FathomModelRunner> runner_;
 };
 

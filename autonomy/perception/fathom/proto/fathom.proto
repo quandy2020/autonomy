@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package autonomy.perception.fathom.proto;
 
-// Runtime options for the autolink Fathom RGB-D refinement component.
+// Single runtime configuration for Fathom model execution and publication.
 message FathomOptions {
   // Fixed-profile ONNX or TensorRT model artifact.
   string model_path = 1;

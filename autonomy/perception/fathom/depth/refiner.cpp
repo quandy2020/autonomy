@@ -114,17 +114,17 @@ automsgs::msgs::sensor_msgs::Image MakeValidityImage(
 
 }  // namespace
 
-DepthRefiner::DepthRefiner(FathomConfig config,
+DepthRefiner::DepthRefiner(proto::FathomOptions options,
                            std::unique_ptr<FathomModelRunner> runner)
-    : config_(std::move(config)), runner_(std::move(runner)) {}
+    : options_(std::move(options)), runner_(std::move(runner)) {}
 
 std::unique_ptr<DepthRefiner> DepthRefiner::Create(
-    const FathomConfig& config, std::unique_ptr<FathomModelRunner> runner,
-    std::string* error) {
+    const proto::FathomOptions& options,
+    std::unique_ptr<FathomModelRunner> runner, std::string* error) {
     if (error != nullptr) {
         error->clear();
     }
-    if (!ValidateFathomConfig(config, error)) {
+    if (!ValidateModelOptions(options, error)) {
         return nullptr;
     }
     if (runner == nullptr) {
@@ -132,7 +132,7 @@ std::unique_ptr<DepthRefiner> DepthRefiner::Create(
         return nullptr;
     }
     return std::unique_ptr<DepthRefiner>(
-        new DepthRefiner(config, std::move(runner)));
+        new DepthRefiner(options, std::move(runner)));
 }
 
 bool DepthRefiner::Refine(
@@ -158,8 +158,9 @@ bool DepthRefiner::Refine(
 
     common::network::TensorMap inputs;
     std::string detail;
-    if (!PrepareRgbd(rgb, raw_depth, config_.input_width, config_.input_height,
-                     config_.depth_scale, &inputs, &detail)) {
+    if (!PrepareRgbd(rgb, raw_depth, static_cast<int>(options_.input_width()),
+                     static_cast<int>(options_.input_height()),
+                     options_.depth_scale(), &inputs, &detail)) {
         SetError(error, detail);
         return false;
     }
@@ -170,8 +171,8 @@ bool DepthRefiner::Refine(
         return false;
     }
 
-    const size_t profile_pixels = static_cast<size_t>(config_.input_width) *
-                                  static_cast<size_t>(config_.input_height);
+    const size_t profile_pixels = static_cast<size_t>(options_.input_width()) *
+                                  static_cast<size_t>(options_.input_height());
     const float* profile_depth = nullptr;
     const float* profile_validity = nullptr;
     if (!OutputFloat32(outputs, "refined_depth", profile_pixels, &profile_depth,
@@ -186,9 +187,11 @@ bool DepthRefiner::Refine(
         return false;
     }
 
-    cv::Mat profile_depth_mat(config_.input_height, config_.input_width,
+    cv::Mat profile_depth_mat(static_cast<int>(options_.input_height()),
+                              static_cast<int>(options_.input_width()),
                               CV_32FC1, const_cast<float*>(profile_depth));
-    cv::Mat profile_validity_mat(config_.input_height, config_.input_width,
+    cv::Mat profile_validity_mat(static_cast<int>(options_.input_height()),
+                                 static_cast<int>(options_.input_width()),
                                  CV_32FC1,
                                  const_cast<float*>(profile_validity));
     cv::Mat restored_depth;
@@ -203,8 +206,8 @@ bool DepthRefiner::Refine(
         0.0, 0.0, cv::INTER_LINEAR);
 
     const auto depth_image = MakeFloatImage(restored_depth, raw_depth);
-    const auto validity_image =
-        MakeValidityImage(restored_validity, raw_depth, config_.mask_threshold);
+    const auto validity_image = MakeValidityImage(restored_validity, raw_depth,
+                                                  options_.mask_threshold());
     automsgs::msgs::sensor_msgs::PointCloud2 cloud;
     if (!ProjectDepth(depth_image, validity_image, camera_info, &cloud,
                       &detail)) {

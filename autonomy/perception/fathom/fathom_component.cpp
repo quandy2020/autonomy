@@ -39,16 +39,14 @@ bool FathomComponent::Init() {
         return false;
     }
 
-    FathomConfig fathom_config;
-    FathomTopics topics;
     std::string error;
-    if (!TranslateFathomOptions(options, &fathom_config, &topics, &error)) {
+    if (!ValidateFathomOptions(options, &error)) {
         AERROR << error;
         return false;
     }
 
     std::unique_ptr<FathomModelRunner> model =
-        FathomEngine::Create(fathom_config, &error);
+        FathomEngine::Create(options, &error);
     if (model == nullptr) {
         AERROR << "Fathom component failed to create inference engine: "
                << error;
@@ -56,7 +54,7 @@ bool FathomComponent::Init() {
         return false;
     }
 
-    refiner_ = DepthRefiner::Create(fathom_config, std::move(model), &error);
+    refiner_ = DepthRefiner::Create(options, std::move(model), &error);
     if (refiner_ == nullptr) {
         AERROR << "Fathom component failed to create depth refiner: " << error;
         Clear();
@@ -69,12 +67,14 @@ bool FathomComponent::Init() {
                                 point_cloud, process_error);
     };
 
-    refined_depth_writer_ = node_->CreateWriter<Image>(topics.refined_depth);
-    point_cloud_writer_ = node_->CreateWriter<PointCloud2>(topics.point_cloud);
+    refined_depth_writer_ =
+        node_->CreateWriter<Image>(options.refined_depth_topic());
+    point_cloud_writer_ =
+        node_->CreateWriter<PointCloud2>(options.point_cloud_topic());
     if (refined_depth_writer_ == nullptr || point_cloud_writer_ == nullptr) {
         AERROR << "Fathom component failed to create output writers for '"
-               << topics.refined_depth << "' and '" << topics.point_cloud
-               << "'.";
+               << options.refined_depth_topic() << "' and '"
+               << options.point_cloud_topic() << "'.";
         Clear();
         return false;
     }

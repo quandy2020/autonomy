@@ -49,12 +49,12 @@ class FathomEngine final : public FathomModelRunner
 public:
     /**
      * @brief Creates and validates a fixed-profile inference engine.
-     * @param config Model path, backend, and expected spatial profile.
+     * @param options Model path, backend, and expected spatial profile.
      * @param error Optional diagnostic output, cleared on entry.
      * @return A ready engine adapter, or nullptr on failure.
      */
-    static std::unique_ptr<FathomEngine> Create(const FathomConfig& config,
-                                                std::string* error = nullptr);
+    static std::unique_ptr<FathomEngine> Create(
+        const proto::FathomOptions& options, std::string* error = nullptr);
 
     ~FathomEngine() override;
 

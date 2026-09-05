@@ -94,7 +94,7 @@ function(autonomy_filter_library_sources)
 
   if(NOT BUILD_ONNXRUNTIME OR NOT OnnxRuntime_FOUND)
     list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ONNX_NETWORK_SRCS})
-    # Keep Fathom configuration, RGB-D processing, projection, and its
+    # Keep Fathom option validation, RGB-D processing, projection, and its
     # injected-runner refiner available when no concrete backend is built.
     list(REMOVE_ITEM ALL_LIBRARY_SRCS ${FATHOM_NETWORK_SRCS})
   endif()

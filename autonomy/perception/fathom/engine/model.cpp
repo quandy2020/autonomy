@@ -66,7 +66,8 @@ bool ValidateTensor(const common::network::ModelTensorInfo& info,
 }
 
 bool ValidateModelContract(const common::network::Engine& engine,
-                           const FathomConfig& config, std::string* error) {
+                           const proto::FathomOptions& options,
+                           std::string* error) {
     const auto inputs = engine.GetInputInfos();
     const auto outputs = engine.GetOutputInfos();
     const auto* image = FindTensorInfo(inputs, "image");
@@ -90,8 +91,8 @@ bool ValidateModelContract(const common::network::Engine& engine,
     // Python token-count constant baked into the exported graph. Validate the
     // observable fixed spatial contract here; token selection remains an
     // export-time artifact property.
-    const int64_t width = static_cast<int64_t>(config.input_width);
-    const int64_t height = static_cast<int64_t>(config.input_height);
+    const int64_t width = static_cast<int64_t>(options.input_width());
+    const int64_t height = static_cast<int64_t>(options.input_height());
     return ValidateTensor(*image, "model input 'image'", {1, 3, height, width},
                           error) &&
            ValidateTensor(*raw_depth, "model input 'raw_depth'",
@@ -109,25 +110,26 @@ FathomEngine::FathomEngine(std::unique_ptr<common::network::Engine> engine)
 
 FathomEngine::~FathomEngine() = default;
 
-std::unique_ptr<FathomEngine> FathomEngine::Create(const FathomConfig& config,
-                                                   std::string* error) {
+std::unique_ptr<FathomEngine> FathomEngine::Create(
+    const proto::FathomOptions& options, std::string* error) {
     if (error != nullptr) {
         error->clear();
     }
-    if (!ValidateFathomConfig(config, error)) {
+    if (!ValidateModelOptions(options, error)) {
         return nullptr;
     }
 
-    common::network::InferenceOptions options;
-    options.backend_id = config.backend;
-    options.model_path = config.model_path;
+    common::network::InferenceOptions inference_options;
+    inference_options.backend_id = options.backend();
+    inference_options.model_path = options.model_path();
     std::string engine_error;
-    auto engine = common::network::Engine::CreateEngine(options, &engine_error);
+    auto engine =
+        common::network::Engine::CreateEngine(inference_options, &engine_error);
     if (engine == nullptr) {
         SetError(error, engine_error);
         return nullptr;
     }
-    if (!ValidateModelContract(*engine, config, error)) {
+    if (!ValidateModelContract(*engine, options, error)) {
         return nullptr;
     }
     return std::unique_ptr<FathomEngine>(new FathomEngine(std::move(engine)));

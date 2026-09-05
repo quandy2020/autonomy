@@ -20,7 +20,7 @@
  */
 
 #include "autonomy/perception/fathom/depth/refiner.hpp"
-#include "autonomy/perception/fathom/config.hpp"
+#include "autonomy/perception/fathom/options.hpp"
 
 #include <automsgs/msgs/sensor_msgs/point_cloud2_iterator.hpp>
 
@@ -29,6 +29,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <memory>
 #include <string>
 #include <utility>
@@ -38,15 +39,15 @@ namespace perception {
 namespace fathom {
 namespace {
 
-FathomConfig MakeConfig() {
-    FathomConfig config;
-    config.model_path = "fathom.onnx";
-    config.backend = "onnx";
-    config.input_width = 2;
-    config.input_height = 1;
-    config.depth_scale = 0.001F;
-    config.mask_threshold = 0.5F;
-    return config;
+proto::FathomOptions MakeOptions() {
+    proto::FathomOptions options;
+    options.set_model_path("fathom.onnx");
+    options.set_backend("onnx");
+    options.set_input_width(2);
+    options.set_input_height(1);
+    options.set_depth_scale(0.001F);
+    options.set_mask_threshold(0.5F);
+    return options;
 }
 
 automsgs::msgs::sensor_msgs::Image MakeImage(const std::string& encoding,
@@ -110,53 +111,57 @@ public:
 
 }  // namespace
 
-TEST(FathomConfigTest, RejectsInvalidDeploymentValues) {
+TEST(FathomModelOptionsTest, RejectsInvalidDeploymentValues) {
     std::string error;
 
-    FathomConfig config = MakeConfig();
-    config.model_path.clear();
-    EXPECT_FALSE(ValidateFathomConfig(config, &error));
+    auto options = MakeOptions();
+    options.clear_model_path();
+    EXPECT_FALSE(ValidateModelOptions(options, &error));
     EXPECT_FALSE(error.empty());
 
-    config = MakeConfig();
-    config.input_width = 0;
-    EXPECT_FALSE(ValidateFathomConfig(config, &error));
+    options = MakeOptions();
+    options.set_input_width(0);
+    EXPECT_FALSE(ValidateModelOptions(options, &error));
 
-    config = MakeConfig();
-    config.input_height = -1;
-    EXPECT_FALSE(ValidateFathomConfig(config, &error));
+    options = MakeOptions();
+    options.set_input_height(0);
+    EXPECT_FALSE(ValidateModelOptions(options, &error));
 
-    config = MakeConfig();
-    config.depth_scale = 0.0F;
-    EXPECT_FALSE(ValidateFathomConfig(config, &error));
+    options = MakeOptions();
+    options.set_input_width(std::numeric_limits<uint32_t>::max());
+    EXPECT_FALSE(ValidateModelOptions(options, &error));
 
-    config = MakeConfig();
-    config.mask_threshold = -0.01F;
-    EXPECT_FALSE(ValidateFathomConfig(config, &error));
+    options = MakeOptions();
+    options.set_depth_scale(0.0F);
+    EXPECT_FALSE(ValidateModelOptions(options, &error));
 
-    config = MakeConfig();
-    config.mask_threshold = 1.01F;
-    EXPECT_FALSE(ValidateFathomConfig(config, &error));
+    options = MakeOptions();
+    options.set_mask_threshold(-0.01F);
+    EXPECT_FALSE(ValidateModelOptions(options, &error));
+
+    options = MakeOptions();
+    options.set_mask_threshold(1.01F);
+    EXPECT_FALSE(ValidateModelOptions(options, &error));
 }
 
-TEST(FathomConfigTest, AcceptsSupportedBackends) {
+TEST(FathomModelOptionsTest, AcceptsSupportedBackends) {
     std::string error = "stale error";
-    FathomConfig config = MakeConfig();
+    auto options = MakeOptions();
 
-    config.backend = "onnx";
-    EXPECT_TRUE(ValidateFathomConfig(config, &error)) << error;
+    options.set_backend("onnx");
+    EXPECT_TRUE(ValidateModelOptions(options, &error)) << error;
     EXPECT_TRUE(error.empty());
     error = "stale error";
-    config.backend = "tensorrt";
-    EXPECT_TRUE(ValidateFathomConfig(config, &error)) << error;
+    options.set_backend("tensorrt");
+    EXPECT_TRUE(ValidateModelOptions(options, &error)) << error;
     EXPECT_TRUE(error.empty());
 }
 
 TEST(DepthRefinerTest, RestoresImagesThresholdsValidityAndProjectsCloud) {
-    const FathomConfig config = MakeConfig();
+    const auto options = MakeOptions();
     std::string error;
     auto refiner =
-        DepthRefiner::Create(config, std::make_unique<StaticRunner>(), &error);
+        DepthRefiner::Create(options, std::make_unique<StaticRunner>(), &error);
     ASSERT_NE(refiner, nullptr) << error;
 
     auto rgb = MakeImage("bgr8", 4, 2, 12);
@@ -196,10 +201,10 @@ TEST(DepthRefinerTest, RestoresImagesThresholdsValidityAndProjectsCloud) {
 }
 
 TEST(DepthRefinerTest, ClearsOutputsWhenInferenceFails) {
-    const FathomConfig config = MakeConfig();
+    const auto options = MakeOptions();
     std::string error;
-    auto refiner =
-        DepthRefiner::Create(config, std::make_unique<FailingRunner>(), &error);
+    auto refiner = DepthRefiner::Create(
+        options, std::make_unique<FailingRunner>(), &error);
     ASSERT_NE(refiner, nullptr) << error;
 
     auto rgb = MakeImage("bgr8", 2, 1, 6);
@@ -217,10 +222,10 @@ TEST(DepthRefinerTest, ClearsOutputsWhenInferenceFails) {
 }
 
 TEST(DepthRefinerTest, ClearsRefinedDepthWhenPointCloudOutputIsNull) {
-    const FathomConfig config = MakeConfig();
+    const auto options = MakeOptions();
     std::string error;
     auto refiner =
-        DepthRefiner::Create(config, std::make_unique<StaticRunner>(), &error);
+        DepthRefiner::Create(options, std::make_unique<StaticRunner>(), &error);
     ASSERT_NE(refiner, nullptr) << error;
 
     automsgs::msgs::sensor_msgs::Image refined_depth;
@@ -235,10 +240,10 @@ TEST(DepthRefinerTest, ClearsRefinedDepthWhenPointCloudOutputIsNull) {
 }
 
 TEST(DepthRefinerTest, ClearsPointCloudWhenRefinedDepthOutputIsNull) {
-    const FathomConfig config = MakeConfig();
+    const auto options = MakeOptions();
     std::string error;
     auto refiner =
-        DepthRefiner::Create(config, std::make_unique<StaticRunner>(), &error);
+        DepthRefiner::Create(options, std::make_unique<StaticRunner>(), &error);
     ASSERT_NE(refiner, nullptr) << error;
 
     automsgs::msgs::sensor_msgs::PointCloud2 cloud;
