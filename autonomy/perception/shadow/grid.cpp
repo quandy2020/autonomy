@@ -269,8 +269,14 @@ bool validate_roll_shift(const grid_map::GridMap& map,
         const double component = normalized_shift(axis);
         const double rounded_component =
             component + 0.5 * (component > 0.0 ? 1.0 : -1.0);
-        if (!std::isfinite(rounded_component) ||
-            rounded_component < -kMaxIndex || rounded_component > kMaxIndex) {
+        // GridMap sign-inverts this value before adding it to a circular-buffer
+        // start index, so reserve headroom for every valid start index.
+        const double max_start_index =
+            static_cast<double>(map.getSize()(axis) - 1);
+        const double safe_index_limit = kMaxIndex - max_start_index;
+        if (!std::isfinite(rounded_component) || safe_index_limit < 0.0 ||
+            rounded_component < -safe_index_limit ||
+            rounded_component > safe_index_limit) {
             set_error(error, "odometry shift exceeds GridMap index range.");
             return false;
         }
