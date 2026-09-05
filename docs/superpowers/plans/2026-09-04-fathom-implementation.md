@@ -338,7 +338,7 @@ git commit -m "feat(perception): process and project Fathom RGB-D data"
 - Create: `autonomy/perception/fathom/depth/refiner_test.cpp`
 
 **Interfaces:**
-- Produces: `FathomConfig {model_path, backend, input_width, input_height, num_tokens, depth_scale, mask_threshold}`.
+- Produces: `FathomConfig {model_path, backend, input_width, input_height, depth_scale, mask_threshold}`; token count remains an export-time artifact property because the C++ engine metadata does not expose it.
 - Produces: `FathomEngine::Create(config, error) -> unique_ptr<FathomEngine>`.
 - Produces: `FathomEngine::Run(TensorMap, TensorMap*, error) -> bool`.
 - Produces: `DepthRefiner::Create(config, error)` and `Refine(rgb, raw_depth, camera_info, refined_depth, point_cloud, error) -> bool`, using automsgs messages directly.

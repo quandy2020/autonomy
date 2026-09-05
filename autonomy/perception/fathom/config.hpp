@@ -34,7 +34,6 @@ struct FathomConfig {
     std::string backend = "onnx";
     int input_width = 0;
     int input_height = 0;
-    int num_tokens = 0;
     float depth_scale = 0.001F;
     float mask_threshold = 0.5F;
 };
@@ -42,9 +41,10 @@ struct FathomConfig {
 /**
  * Validate a Fathom deployment profile before model construction.
  *
- * The exported graph fixes its spatial profile and token count, so all profile
- * fields must be valid before a frame is accepted. Supported backends are the
- * project network backend ids `onnx` and `tensorrt`.
+ * The configured spatial profile must match the exported graph. The token
+ * count is baked into the graph and is not exposed by the C++ engine metadata.
+ * Supported backends are the project network backend ids `onnx` and
+ * `tensorrt`. The optional error is cleared on entry.
  */
 bool ValidateFathomConfig(const FathomConfig& config,
                           std::string* error = nullptr);

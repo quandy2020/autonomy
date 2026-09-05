@@ -39,7 +39,6 @@ FathomConfig MakeConfig() {
     config.backend = "onnx";
     config.input_width = 2;
     config.input_height = 1;
-    config.num_tokens = 12;
     config.depth_scale = 0.001F;
     config.mask_threshold = 0.5F;
     return config;
@@ -58,8 +57,11 @@ automsgs::msgs::sensor_msgs::Image MakeImage(const std::string& encoding,
     return image;
 }
 
-automsgs::msgs::sensor_msgs::CameraInfo MakeCameraInfo() {
+automsgs::msgs::sensor_msgs::CameraInfo MakeCameraInfo(uint32_t width,
+                                                       uint32_t height) {
     automsgs::msgs::sensor_msgs::CameraInfo info;
+    info.set_width(width);
+    info.set_height(height);
     const double matrix[] = {2.0, 0.0, 0.0,
                              0.0, 2.0, 0.0,
                              0.0, 0.0, 1.0};
@@ -134,13 +136,16 @@ TEST(FathomConfigTest, RejectsInvalidDeploymentValues) {
 }
 
 TEST(FathomConfigTest, AcceptsSupportedBackends) {
-    std::string error;
+    std::string error = "stale error";
     FathomConfig config = MakeConfig();
 
     config.backend = "onnx";
     EXPECT_TRUE(ValidateFathomConfig(config, &error)) << error;
+    EXPECT_TRUE(error.empty());
+    error = "stale error";
     config.backend = "tensorrt";
     EXPECT_TRUE(ValidateFathomConfig(config, &error)) << error;
+    EXPECT_TRUE(error.empty());
 }
 
 TEST(DepthRefinerTest, RestoresImagesThresholdsValidityAndProjectsCloud) {
@@ -161,7 +166,7 @@ TEST(DepthRefinerTest, RestoresImagesThresholdsValidityAndProjectsCloud) {
     automsgs::msgs::sensor_msgs::PointCloud2 cloud;
     error = "stale error";
 
-    ASSERT_TRUE(refiner->Refine(rgb, raw_depth, MakeCameraInfo(),
+    ASSERT_TRUE(refiner->Refine(rgb, raw_depth, MakeCameraInfo(4, 2),
                                 &refined_depth, &cloud, &error))
         << error;
     EXPECT_TRUE(error.empty());
@@ -203,7 +208,7 @@ TEST(DepthRefinerTest, ClearsOutputsWhenInferenceFails) {
     automsgs::msgs::sensor_msgs::PointCloud2 cloud;
     cloud.set_width(9);
 
-    EXPECT_FALSE(refiner->Refine(rgb, raw_depth, MakeCameraInfo(),
+    EXPECT_FALSE(refiner->Refine(rgb, raw_depth, MakeCameraInfo(2, 1),
                                  &refined_depth, &cloud, &error));
     EXPECT_FALSE(error.empty());
     EXPECT_EQ(refined_depth.width(), 0U);
@@ -222,7 +227,7 @@ TEST(DepthRefinerTest, ClearsRefinedDepthWhenPointCloudOutputIsNull) {
 
     EXPECT_FALSE(refiner->Refine(automsgs::msgs::sensor_msgs::Image(),
                                  automsgs::msgs::sensor_msgs::Image(),
-                                 MakeCameraInfo(), &refined_depth, nullptr,
+                                 MakeCameraInfo(1, 1), &refined_depth, nullptr,
                                  &error));
     EXPECT_FALSE(error.empty());
     EXPECT_EQ(refined_depth.width(), 0U);
@@ -240,7 +245,7 @@ TEST(DepthRefinerTest, ClearsPointCloudWhenRefinedDepthOutputIsNull) {
 
     EXPECT_FALSE(refiner->Refine(automsgs::msgs::sensor_msgs::Image(),
                                  automsgs::msgs::sensor_msgs::Image(),
-                                 MakeCameraInfo(), nullptr, &cloud, &error));
+                                 MakeCameraInfo(1, 1), nullptr, &cloud, &error));
     EXPECT_FALSE(error.empty());
     EXPECT_EQ(cloud.width(), 0U);
 }

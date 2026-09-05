@@ -1,5 +1,7 @@
 """Fine-tuning losses for Fathom RGB-D depth refinement."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 import torch

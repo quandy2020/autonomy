@@ -78,6 +78,10 @@ bool ValidateModelContract(const common::network::Engine& engine,
         return false;
     }
 
+    // common::network::Engine exposes the graph's tensor metadata, not the
+    // Python token-count constant baked into the exported graph. Validate the
+    // observable fixed spatial contract here; token selection remains an
+    // export-time artifact property.
     const int64_t width = static_cast<int64_t>(config.input_width);
     const int64_t height = static_cast<int64_t>(config.input_height);
     return ValidateTensor(*image, "model input 'image'", {1, 3, height, width},

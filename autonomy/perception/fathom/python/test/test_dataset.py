@@ -97,3 +97,18 @@ def test_manifest_dataset_rejects_dropout_probability_outside_unit_interval(
             dropout_probability=dropout_probability,
             depth_scale=0.001,
         )
+
+
+@pytest.mark.parametrize(
+    "depth_scale",
+    [0.0, -0.001, float("nan"), float("inf"), float("-inf")],
+)
+def test_manifest_dataset_rejects_non_positive_or_non_finite_depth_scale(
+    tmp_path, depth_scale
+):
+    with pytest.raises(ValueError, match="depth_scale"):
+        RgbdManifestDataset(
+            _write_manifest_sample(tmp_path),
+            dropout_probability=0.0,
+            depth_scale=depth_scale,
+        )

@@ -75,6 +75,12 @@ bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,
                  int width, int height,
                  float depth_scale, common::network::TensorMap* tensors,
                  std::string* error) {
+    if (error != nullptr) {
+        error->clear();
+    }
+    if (tensors != nullptr) {
+        tensors->clear();
+    }
     if (tensors == nullptr) {
         SetError(error, "Fathom RGB-D tensor output is null.");
         return false;

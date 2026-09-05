@@ -140,6 +140,37 @@ TEST(PrepareRgbdTest, RejectsBigEndianDepthMessage) {
     EXPECT_FALSE(error.empty());
 }
 
+TEST(PrepareRgbdTest, ClearsStaleOutputBeforeValidationFailure) {
+    const auto rgb = MakeImage("rgb8", 1, 1, 3);
+    const auto raw_depth = MakeImage("16UC1", 1, 1, 2);
+    common::network::TensorMap tensors;
+    tensors.emplace("stale",
+                    common::network::Tensor::FromFloat32({123.0F}));
+    std::string error = "stale error";
+
+    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 0.001F, &tensors,
+                             &error));
+    EXPECT_TRUE(tensors.empty());
+    EXPECT_FALSE(error.empty());
+    EXPECT_NE(error, "stale error");
+}
+
+TEST(PrepareRgbdTest, ClearsStaleErrorAndReplacesOutputOnSuccess) {
+    const auto rgb = MakeImage("bgr8", 1, 1, 3);
+    const auto raw_depth = MakeImage("16UC1", 1, 1, 2);
+    common::network::TensorMap tensors;
+    tensors.emplace("stale",
+                    common::network::Tensor::FromFloat32({123.0F}));
+    std::string error = "stale error";
+
+    ASSERT_TRUE(PrepareRgbd(rgb, raw_depth, 1, 1, 0.001F, &tensors,
+                            &error))
+        << error;
+    EXPECT_TRUE(error.empty());
+    EXPECT_EQ(tensors.size(), 2U);
+    EXPECT_EQ(tensors.count("stale"), 0U);
+}
+
 }  // namespace fathom
 }  // namespace perception
 }  // namespace autonomy
