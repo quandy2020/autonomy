@@ -3,7 +3,8 @@ model_path: "/models/fathom.onnx"
 backend: "onnx"
 input_width: 640
 input_height: 480
-depth_scale: 0.001
+# Autosim publishes 32FC1 metric depth, so depth values already use metres.
+depth_scale: 1.0
 mask_threshold: 0.5
 refined_depth_topic: "/perception/fathom/refined_depth"
 point_cloud_topic: "/perception/fathom/points"

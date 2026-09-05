@@ -25,11 +25,15 @@
 #include <automsgs/msgs/sensor_msgs/image.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 
+#include <functional>
 #include <memory>
+#include <string>
 
 namespace autonomy {
 namespace perception {
 namespace fathom {
+
+class FathomComponentTestApi;
 
 class FathomComponent
     : public autolink::Component<automsgs::msgs::sensor_msgs::Image,
@@ -50,9 +54,20 @@ protected:
     void Clear() override;
 
 private:
+    friend class FathomComponentTestApi;
+
+    using RunnerFunction = std::function<bool(
+        const Image&, const Image&, const CameraInfo&, Image*, PointCloud2*,
+        std::string*)>;
+    using ImagePublisher = std::function<bool(const Image&)>;
+    using PointCloudPublisher = std::function<bool(const PointCloud2&)>;
+
     std::unique_ptr<FathomNodeRunner> runner_;
     std::shared_ptr<autolink::Writer<Image>> refined_depth_writer_;
     std::shared_ptr<autolink::Writer<PointCloud2>> point_cloud_writer_;
+    RunnerFunction runner_process_;
+    ImagePublisher refined_depth_publish_;
+    PointCloudPublisher point_cloud_publish_;
 };
 
 }  // namespace fathom

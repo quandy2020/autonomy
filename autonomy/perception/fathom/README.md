@@ -96,6 +96,11 @@ The concrete model engine and process runner are compiled only when
 preprocessing, projection, and the injected-runner `DepthRefiner` remain
 available without that runtime.
 
+`PrepareRgbd` accepts `bgr8` and `rgb8` color input. Depth input can be
+`16UC1` sensor units or `32FC1`; both are multiplied by `depth_scale` before
+inference. Use `0.001` for millimeter `16UC1`, and `1.0` for Autosim's metric
+`32FC1`. Non-finite and non-positive `32FC1` samples are converted to zero.
+
 ## Autolink DAG deployment
 
 When ONNX Runtime is available, `fathom_component` is built as an independent
@@ -108,11 +113,33 @@ The DAG reader order is fixed: RGB `Image`, raw-depth `Image`, then
 `CameraInfo`. The sample component configuration is
 `config/perception/fathom_component.pb.txt`; it uses Autosim's camera topics
 `/camera/rgb/image_raw`, `/camera/depth/image_raw`, and
-`/camera/camera_info`. Replace its `/models/fathom.onnx` placeholder with a
-deployed model whose fixed width and height match `input_width` and
+`/camera/camera_info`. Autosim publishes `rgb8` and metric `32FC1`, so the
+sample uses `depth_scale: 1.0`. Replace its `/models/fathom.onnx` placeholder
+with a deployed model whose fixed width and height match `input_width` and
 `input_height`. No model artifacts are stored in this repository.
 
 The component publishes a `32FC1` metric refined-depth `Image` to
 `/perception/fathom/refined_depth` and an organized XYZ `PointCloud2` to
 `/perception/fathom/points` by default. Change those two explicit output
 topics in the component config when integrating another graph.
+
+For a build-tree launch from the repository root, make the component library,
+DAG, and config discoverable before starting the perception launch:
+
+```bash
+export PATH="$PWD/build/bin:$PATH"
+export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/perception/launch"
+export AUTOLINK_DAG_PATH="$PWD/autonomy"
+export AUTOLINK_CONF_PATH="$PWD"
+export AUTOLINK_LIB_PATH="$PWD/build/lib"
+autolink launch start perception.launch
+```
+
+Installation places `libfathom_component.so` in `lib`, the DAG in
+`share/autonomy/dag/perception/fathom`, the sample config below
+`share/autonomy/config`, and the launch file below
+`share/autonomy/perception/launch`. For an installed tree, set
+`AUTOLINK_DAG_PATH=$prefix/share/autonomy/dag`,
+`AUTOLINK_CONF_PATH=$prefix/share/autonomy`, and
+`AUTOLINK_LIB_PATH=$prefix/lib` before launching the installed perception
+launch file.

@@ -39,14 +39,10 @@ void SetError(std::string* error, const std::string& message) {
 }
 
 bool ValidateImage(const automsgs::msgs::sensor_msgs::Image& image,
-                   const char* encoding, uint32_t bytes_per_pixel,
+                   uint32_t bytes_per_pixel,
                    std::string* error) {
     if (image.width() == 0 || image.height() == 0) {
         SetError(error, "Fathom RGB-D image dimensions must be positive.");
-        return false;
-    }
-    if (image.encoding() != encoding) {
-        SetError(error, "Fathom RGB-D image encoding is unsupported.");
         return false;
     }
     if (image.is_bigendian()) {
@@ -68,6 +64,31 @@ bool ValidateImage(const automsgs::msgs::sensor_msgs::Image& image,
     return true;
 }
 
+bool ValidateRgbImage(const automsgs::msgs::sensor_msgs::Image& image,
+                      std::string* error) {
+    if (image.encoding() != "bgr8" && image.encoding() != "rgb8") {
+        SetError(error, "Fathom RGB-D image encoding is unsupported.");
+        return false;
+    }
+    return ValidateImage(image, 3, error);
+}
+
+bool ValidateDepthImage(const automsgs::msgs::sensor_msgs::Image& image,
+                        std::string* error) {
+    if (image.encoding() == "16UC1") {
+        return ValidateImage(image, sizeof(uint16_t), error);
+    }
+    if (image.encoding() == "32FC1") {
+        return ValidateImage(image, sizeof(float), error);
+    }
+    SetError(error, "Fathom RGB-D image encoding is unsupported.");
+    return false;
+}
+
+float SanitizeDepth(float value) {
+    return std::isfinite(value) && value > 0.0F ? value : 0.0F;
+}
+
 }  // namespace
 
 bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,
@@ -85,8 +106,7 @@ bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,
         SetError(error, "Fathom RGB-D tensor output is null.");
         return false;
     }
-    if (!ValidateImage(rgb, "bgr8", 3, error) ||
-        !ValidateImage(raw_depth, "16UC1", 2, error)) {
+    if (!ValidateRgbImage(rgb, error) || !ValidateDepthImage(raw_depth, error)) {
         return false;
     }
     if (rgb.width() > static_cast<uint32_t>(std::numeric_limits<int>::max()) ||
@@ -107,27 +127,51 @@ bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,
         return false;
     }
 
-    cv::Mat bgr(static_cast<int>(rgb.height()), static_cast<int>(rgb.width()),
-                CV_8UC3);
-    cv::Mat raw_depth_mat(static_cast<int>(raw_depth.height()),
-                          static_cast<int>(raw_depth.width()), CV_16UC1);
+    cv::Mat source_rgb(static_cast<int>(rgb.height()),
+                       static_cast<int>(rgb.width()), CV_8UC3);
     for (uint32_t row = 0; row < rgb.height(); ++row) {
-        std::memcpy(bgr.ptr(static_cast<int>(row)),
+        std::memcpy(source_rgb.ptr(static_cast<int>(row)),
                     rgb.data().data() + static_cast<size_t>(row) * rgb.step(),
                     static_cast<size_t>(rgb.width()) * 3);
-        std::memcpy(raw_depth_mat.ptr(static_cast<int>(row)),
-                    raw_depth.data().data() +
-                        static_cast<size_t>(row) * raw_depth.step(),
-                    static_cast<size_t>(raw_depth.width()) * sizeof(uint16_t));
     }
-    cv::Mat resized_bgr;
+    cv::Mat source_depth;
+    if (raw_depth.encoding() == "16UC1") {
+        source_depth = cv::Mat(static_cast<int>(raw_depth.height()),
+                               static_cast<int>(raw_depth.width()), CV_16UC1);
+        for (uint32_t row = 0; row < raw_depth.height(); ++row) {
+            std::memcpy(source_depth.ptr(static_cast<int>(row)),
+                        raw_depth.data().data() +
+                            static_cast<size_t>(row) * raw_depth.step(),
+                        static_cast<size_t>(raw_depth.width()) *
+                            sizeof(uint16_t));
+        }
+    } else {
+        source_depth = cv::Mat(static_cast<int>(raw_depth.height()),
+                               static_cast<int>(raw_depth.width()), CV_32FC1);
+        for (uint32_t row = 0; row < raw_depth.height(); ++row) {
+            std::memcpy(source_depth.ptr(static_cast<int>(row)),
+                        raw_depth.data().data() +
+                            static_cast<size_t>(row) * raw_depth.step(),
+                        static_cast<size_t>(raw_depth.width()) * sizeof(float));
+            float* values = source_depth.ptr<float>(static_cast<int>(row));
+            for (uint32_t col = 0; col < raw_depth.width(); ++col) {
+                values[col] = SanitizeDepth(values[col]);
+            }
+        }
+    }
+
+    cv::Mat resized_source_rgb;
     cv::Mat resized_depth;
-    cv::resize(bgr, resized_bgr, cv::Size(width, height), 0.0, 0.0,
+    cv::resize(source_rgb, resized_source_rgb, cv::Size(width, height), 0.0, 0.0,
                cv::INTER_LINEAR);
-    cv::resize(raw_depth_mat, resized_depth, cv::Size(width, height), 0.0,
-               0.0, cv::INTER_NEAREST);
+    cv::resize(source_depth, resized_depth, cv::Size(width, height), 0.0, 0.0,
+               cv::INTER_NEAREST);
     cv::Mat resized_rgb;
-    cv::cvtColor(resized_bgr, resized_rgb, cv::COLOR_BGR2RGB);
+    if (rgb.encoding() == "bgr8") {
+        cv::cvtColor(resized_source_rgb, resized_rgb, cv::COLOR_BGR2RGB);
+    } else {
+        resized_rgb = resized_source_rgb;
+    }
 
     const size_t plane_size = static_cast<size_t>(width) * height;
     std::vector<float> image(3 * plane_size);
@@ -140,9 +184,12 @@ bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,
             image[plane_size + index] = static_cast<float>(pixel[1]) / 255.0F;
             image[2 * plane_size + index] =
                 static_cast<float>(pixel[2]) / 255.0F;
+            const float raw_value = raw_depth.encoding() == "16UC1"
+                                        ? static_cast<float>(
+                                              resized_depth.at<uint16_t>(row, col))
+                                        : resized_depth.at<float>(row, col);
             depth[index] =
-                static_cast<float>(resized_depth.at<uint16_t>(row, col)) *
-                depth_scale;
+                SanitizeDepth(SanitizeDepth(raw_value) * depth_scale);
         }
     }
 

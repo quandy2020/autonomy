@@ -20,6 +20,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <string>
 
 namespace autonomy {
@@ -82,6 +83,60 @@ TEST(PrepareRgbdTest, ConvertsBgrAndMillimeterDepthToModelTensors) {
     EXPECT_FLOAT_EQ(depth[1], 0.0F);
 }
 
+TEST(PrepareRgbdTest, ConvertsRgbAndMetricFloatDepthToModelTensors) {
+    auto rgb = MakeImage("rgb8", 2, 1, 6);
+    rgb.mutable_data()->at(0) = static_cast<char>(255);
+    rgb.mutable_data()->at(1) = static_cast<char>(128);
+    rgb.mutable_data()->at(2) = 0;
+    rgb.mutable_data()->at(3) = 0;
+    rgb.mutable_data()->at(4) = static_cast<char>(64);
+    rgb.mutable_data()->at(5) = static_cast<char>(255);
+    auto raw_depth = MakeImage("32FC1", 2, 1, 8);
+    const float raw_values[] = {1.25F, 2.5F};
+    std::memcpy(raw_depth.mutable_data()->data(), raw_values,
+                sizeof(raw_values));
+
+    common::network::TensorMap tensors;
+    std::string error;
+    ASSERT_TRUE(PrepareRgbd(rgb, raw_depth, 2, 1, 1.0F, &tensors, &error))
+        << error;
+
+    const float* image = tensors.at("image").data_as<float>();
+    const float* depth = tensors.at("raw_depth").data_as<float>();
+    ASSERT_NE(image, nullptr);
+    ASSERT_NE(depth, nullptr);
+    EXPECT_FLOAT_EQ(image[0], 1.0F);
+    EXPECT_FLOAT_EQ(image[1], 0.0F);
+    EXPECT_FLOAT_EQ(image[2], 128.0F / 255.0F);
+    EXPECT_FLOAT_EQ(image[3], 64.0F / 255.0F);
+    EXPECT_FLOAT_EQ(image[4], 0.0F);
+    EXPECT_FLOAT_EQ(image[5], 1.0F);
+    EXPECT_FLOAT_EQ(depth[0], 1.25F);
+    EXPECT_FLOAT_EQ(depth[1], 2.5F);
+}
+
+TEST(PrepareRgbdTest, SanitizesInvalidFloatDepthValuesToZero) {
+    const auto rgb = MakeImage("rgb8", 4, 1, 12);
+    auto raw_depth = MakeImage("32FC1", 4, 1, 16);
+    const float raw_values[] = {std::numeric_limits<float>::quiet_NaN(),
+                                std::numeric_limits<float>::infinity(),
+                                -1.0F, 3.0F};
+    std::memcpy(raw_depth.mutable_data()->data(), raw_values,
+                sizeof(raw_values));
+
+    common::network::TensorMap tensors;
+    std::string error;
+    ASSERT_TRUE(PrepareRgbd(rgb, raw_depth, 4, 1, 1.0F, &tensors, &error))
+        << error;
+
+    const float* depth = tensors.at("raw_depth").data_as<float>();
+    ASSERT_NE(depth, nullptr);
+    EXPECT_FLOAT_EQ(depth[0], 0.0F);
+    EXPECT_FLOAT_EQ(depth[1], 0.0F);
+    EXPECT_FLOAT_EQ(depth[2], 0.0F);
+    EXPECT_FLOAT_EQ(depth[3], 3.0F);
+}
+
 TEST(PrepareRgbdTest, RejectsMismatchedRgbAndDepthDimensions) {
     const auto rgb = MakeImage("bgr8", 2, 1, 6);
     const auto raw_depth = MakeImage("16UC1", 1, 1, 2);
@@ -118,7 +173,7 @@ TEST(PrepareRgbdTest, RejectsRgbMessageWithInsufficientData) {
 }
 
 TEST(PrepareRgbdTest, RejectsUnsupportedRgbEncoding) {
-    const auto rgb = MakeImage("rgb8", 1, 1, 3);
+    const auto rgb = MakeImage("mono8", 1, 1, 1);
     const auto raw_depth = MakeImage("16UC1", 1, 1, 2);
     common::network::TensorMap tensors;
     std::string error;
@@ -140,8 +195,38 @@ TEST(PrepareRgbdTest, RejectsBigEndianDepthMessage) {
     EXPECT_FALSE(error.empty());
 }
 
-TEST(PrepareRgbdTest, ClearsStaleOutputBeforeValidationFailure) {
+TEST(PrepareRgbdTest, RejectsFloatDepthMessageWithAnInvalidLayout) {
     const auto rgb = MakeImage("rgb8", 1, 1, 3);
+    auto raw_depth = MakeImage("32FC1", 1, 1, 4);
+    raw_depth.set_step(3);
+    common::network::TensorMap tensors;
+    std::string error;
+
+    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 1.0F, &tensors,
+                             &error));
+    EXPECT_FALSE(error.empty());
+
+    raw_depth = MakeImage("32FC1", 1, 1, 4);
+    raw_depth.mutable_data()->clear();
+    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 1.0F, &tensors,
+                             &error));
+    EXPECT_FALSE(error.empty());
+}
+
+TEST(PrepareRgbdTest, RejectsBigEndianFloatDepthMessage) {
+    const auto rgb = MakeImage("rgb8", 1, 1, 3);
+    auto raw_depth = MakeImage("32FC1", 1, 1, 4);
+    raw_depth.set_is_bigendian(true);
+    common::network::TensorMap tensors;
+    std::string error;
+
+    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 1.0F, &tensors,
+                             &error));
+    EXPECT_FALSE(error.empty());
+}
+
+TEST(PrepareRgbdTest, ClearsStaleOutputBeforeValidationFailure) {
+    const auto rgb = MakeImage("mono8", 1, 1, 1);
     const auto raw_depth = MakeImage("16UC1", 1, 1, 2);
     common::network::TensorMap tensors;
     tensors.emplace("stale",

@@ -33,17 +33,21 @@ namespace fathom {
  */
 
 /**
- * Convert an aligned BGR8/depth16 frame to fixed-profile Fathom tensors.
+ * Convert an aligned bgr8/rgb8 image and 16UC1/32FC1 depth frame to
+ * fixed-profile Fathom tensors.
  *
  * The output map contains float32 `image` with shape `[1, 3, height, width]`
  * in planar RGB order normalized to [0, 1], and float32 `raw_depth` with
- * shape `[1, height, width]` in meters. A raw-depth value of zero remains
- * zero. Camera intrinsics stay in the original image pixel frame because the
+ * shape `[1, height, width]` in meters. `depth_scale` multiplies the numeric
+ * samples in either supported depth encoding: use `0.001` for millimeter
+ * `16UC1`, and `1.0` for Autosim's metric `32FC1`. Non-finite and non-positive
+ * float depth samples are sanitized to zero. Camera intrinsics stay in the
+ * original image pixel frame because the
  * fixed ONNX graph accepts only `image` and `raw_depth`; projection happens
  * after the refiner restores outputs to that original resolution.
  *
- * @param rgb Aligned `bgr8` RGB image message
- * @param raw_depth Aligned `16UC1` raw-depth image message
+ * @param rgb Aligned `bgr8` or `rgb8` image message
+ * @param raw_depth Aligned `16UC1` or `32FC1` raw-depth image message
  * @param width Fixed model input width, greater than zero
  * @param height Fixed model input height, greater than zero
  * @param depth_scale Sensor-depth-unit to meter scale, finite and positive
