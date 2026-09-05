@@ -113,6 +113,44 @@ Image DepthAt(float depth_m) {
     return DepthImage<float>("32FC1", 6, 6, std::vector<float>(36, depth_m));
 }
 
+Image BigEndian16DepthAt(uint16_t raw_depth) {
+    Image image;
+    image.mutable_header()->set_frame_id("camera_optical");
+    image.set_encoding("16UC1");
+    image.set_width(6);
+    image.set_height(6);
+    image.set_is_bigendian(true);
+    image.set_step(12);
+    std::string data(72, '\0');
+    for (size_t offset = 0; offset < data.size(); offset += 2) {
+        data[offset] = static_cast<char>((raw_depth >> 8) & 0xffU);
+        data[offset + 1] = static_cast<char>(raw_depth & 0xffU);
+    }
+    image.set_data(data);
+    return image;
+}
+
+Image BigEndianFloatDepthAt(float depth_m) {
+    uint32_t bits = 0;
+    std::memcpy(&bits, &depth_m, sizeof(bits));
+    Image image;
+    image.mutable_header()->set_frame_id("camera_optical");
+    image.set_encoding("32FC1");
+    image.set_width(6);
+    image.set_height(6);
+    image.set_is_bigendian(true);
+    image.set_step(24);
+    std::string data(144, '\0');
+    for (size_t offset = 0; offset < data.size(); offset += 4) {
+        data[offset] = static_cast<char>((bits >> 24) & 0xffU);
+        data[offset + 1] = static_cast<char>((bits >> 16) & 0xffU);
+        data[offset + 2] = static_cast<char>((bits >> 8) & 0xffU);
+        data[offset + 3] = static_cast<char>(bits & 0xffU);
+    }
+    image.set_data(data);
+    return image;
+}
+
 TransformStamped CameraToMap(int64_t stamp_ns, double x = 0.0, double y = 0.0,
                              double z = 0.0, double qx = 0.0, double qy = 0.0,
                              double qz = 0.0, double qw = 1.0) {
@@ -153,6 +191,24 @@ TEST(TargetLocalizerTest, Treats32BitFloatDepthAsMetric) {
 
     ASSERT_TRUE(
         localizer.EstimateRange(Box(), DepthAt(2.5F), Camera(), &range_m));
+    EXPECT_FLOAT_EQ(range_m, 2.5F);
+}
+
+TEST(TargetLocalizerTest, DecodesBigEndian16BitDepth) {
+    TargetLocalizer localizer(ValidOptions());
+    float range_m = 0.0F;
+
+    ASSERT_TRUE(localizer.EstimateRange(Box(), BigEndian16DepthAt(2250),
+                                        Camera(), &range_m));
+    EXPECT_FLOAT_EQ(range_m, 2.25F);
+}
+
+TEST(TargetLocalizerTest, DecodesBigEndian32BitFloatDepth) {
+    TargetLocalizer localizer(ValidOptions());
+    float range_m = 0.0F;
+
+    ASSERT_TRUE(localizer.EstimateRange(Box(), BigEndianFloatDepthAt(2.5F),
+                                        Camera(), &range_m));
     EXPECT_FLOAT_EQ(range_m, 2.5F);
 }
 
@@ -233,6 +289,19 @@ TEST(TargetLocalizerTest, RejectsInvalidCameraIntrinsics) {
 
     EXPECT_FALSE(localizer.EstimateRange(
         Box(), DepthAt(2.0F), Camera(6, 6, 0.0, 1.0), &range_m, &error));
+    EXPECT_FLOAT_EQ(range_m, 0.0F);
+    EXPECT_FALSE(error.empty());
+}
+
+TEST(TargetLocalizerTest, RejectsMismatchedDetectionFrame) {
+    TargetLocalizer localizer(ValidOptions());
+    auto detection = Box();
+    detection.mutable_header()->set_frame_id("other_camera");
+    float range_m = 99.0F;
+    std::string error;
+
+    EXPECT_FALSE(localizer.EstimateRange(detection, DepthAt(2.0F), Camera(),
+                                         &range_m, &error));
     EXPECT_FLOAT_EQ(range_m, 0.0F);
     EXPECT_FALSE(error.empty());
 }
