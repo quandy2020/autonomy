@@ -1,5 +1,6 @@
-# Fathom is a loadable autolink module. Keep its entrypoint out of libautonomy
-# so mainboard owns the component registration in this shared object.
+# Build Fathom as a loadable autolink component only when its concrete
+# inference backend and component runtime are available. The entrypoint stays
+# outside libautonomy so registration is owned by this shared object.
 if(NOT BUILD_ONNXRUNTIME OR NOT OnnxRuntime_FOUND OR NOT TARGET autolink)
   return()
 endif()

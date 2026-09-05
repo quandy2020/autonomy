@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file rgbd_test.cpp
+ * @brief Unit tests for aligned RGB-D validation and tensor conversion.
+ */
+
 #include "autonomy/perception/fathom/processing/rgbd.hpp"
 
 #include "gtest/gtest.h"
@@ -30,8 +35,8 @@ namespace fathom {
 namespace {
 
 automsgs::msgs::sensor_msgs::Image MakeImage(const std::string& encoding,
-                                              uint32_t width, uint32_t height,
-                                              uint32_t step) {
+                                             uint32_t width, uint32_t height,
+                                             uint32_t step) {
     automsgs::msgs::sensor_msgs::Image image;
     image.set_encoding(encoding);
     image.set_width(width);
@@ -119,8 +124,8 @@ TEST(PrepareRgbdTest, SanitizesInvalidFloatDepthValuesToZero) {
     const auto rgb = MakeImage("rgb8", 4, 1, 12);
     auto raw_depth = MakeImage("32FC1", 4, 1, 16);
     const float raw_values[] = {std::numeric_limits<float>::quiet_NaN(),
-                                std::numeric_limits<float>::infinity(),
-                                -1.0F, 3.0F};
+                                std::numeric_limits<float>::infinity(), -1.0F,
+                                3.0F};
     std::memcpy(raw_depth.mutable_data()->data(), raw_values,
                 sizeof(raw_values));
 
@@ -143,8 +148,7 @@ TEST(PrepareRgbdTest, RejectsMismatchedRgbAndDepthDimensions) {
     common::network::TensorMap tensors;
     std::string error;
 
-    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 2, 1, 0.001F, &tensors,
-                             &error));
+    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 2, 1, 0.001F, &tensors, &error));
     EXPECT_FALSE(error.empty());
 }
 
@@ -155,8 +159,7 @@ TEST(PrepareRgbdTest, RejectsDepthMessageWithAnInvalidStep) {
     common::network::TensorMap tensors;
     std::string error;
 
-    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 0.001F, &tensors,
-                             &error));
+    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 0.001F, &tensors, &error));
     EXPECT_FALSE(error.empty());
 }
 
@@ -167,8 +170,7 @@ TEST(PrepareRgbdTest, RejectsRgbMessageWithInsufficientData) {
     common::network::TensorMap tensors;
     std::string error;
 
-    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 0.001F, &tensors,
-                             &error));
+    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 0.001F, &tensors, &error));
     EXPECT_FALSE(error.empty());
 }
 
@@ -178,8 +180,7 @@ TEST(PrepareRgbdTest, RejectsUnsupportedRgbEncoding) {
     common::network::TensorMap tensors;
     std::string error;
 
-    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 0.001F, &tensors,
-                             &error));
+    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 0.001F, &tensors, &error));
     EXPECT_FALSE(error.empty());
 }
 
@@ -190,8 +191,7 @@ TEST(PrepareRgbdTest, RejectsBigEndianDepthMessage) {
     common::network::TensorMap tensors;
     std::string error;
 
-    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 0.001F, &tensors,
-                             &error));
+    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 0.001F, &tensors, &error));
     EXPECT_FALSE(error.empty());
 }
 
@@ -202,14 +202,12 @@ TEST(PrepareRgbdTest, RejectsFloatDepthMessageWithAnInvalidLayout) {
     common::network::TensorMap tensors;
     std::string error;
 
-    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 1.0F, &tensors,
-                             &error));
+    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 1.0F, &tensors, &error));
     EXPECT_FALSE(error.empty());
 
     raw_depth = MakeImage("32FC1", 1, 1, 4);
     raw_depth.mutable_data()->clear();
-    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 1.0F, &tensors,
-                             &error));
+    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 1.0F, &tensors, &error));
     EXPECT_FALSE(error.empty());
 }
 
@@ -220,8 +218,7 @@ TEST(PrepareRgbdTest, RejectsBigEndianFloatDepthMessage) {
     common::network::TensorMap tensors;
     std::string error;
 
-    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 1.0F, &tensors,
-                             &error));
+    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 1.0F, &tensors, &error));
     EXPECT_FALSE(error.empty());
 }
 
@@ -229,12 +226,10 @@ TEST(PrepareRgbdTest, ClearsStaleOutputBeforeValidationFailure) {
     const auto rgb = MakeImage("mono8", 1, 1, 1);
     const auto raw_depth = MakeImage("16UC1", 1, 1, 2);
     common::network::TensorMap tensors;
-    tensors.emplace("stale",
-                    common::network::Tensor::FromFloat32({123.0F}));
+    tensors.emplace("stale", common::network::Tensor::FromFloat32({123.0F}));
     std::string error = "stale error";
 
-    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 0.001F, &tensors,
-                             &error));
+    EXPECT_FALSE(PrepareRgbd(rgb, raw_depth, 1, 1, 0.001F, &tensors, &error));
     EXPECT_TRUE(tensors.empty());
     EXPECT_FALSE(error.empty());
     EXPECT_NE(error, "stale error");
@@ -244,12 +239,10 @@ TEST(PrepareRgbdTest, ClearsStaleErrorAndReplacesOutputOnSuccess) {
     const auto rgb = MakeImage("bgr8", 1, 1, 3);
     const auto raw_depth = MakeImage("16UC1", 1, 1, 2);
     common::network::TensorMap tensors;
-    tensors.emplace("stale",
-                    common::network::Tensor::FromFloat32({123.0F}));
+    tensors.emplace("stale", common::network::Tensor::FromFloat32({123.0F}));
     std::string error = "stale error";
 
-    ASSERT_TRUE(PrepareRgbd(rgb, raw_depth, 1, 1, 0.001F, &tensors,
-                            &error))
+    ASSERT_TRUE(PrepareRgbd(rgb, raw_depth, 1, 1, 0.001F, &tensors, &error))
         << error;
     EXPECT_TRUE(error.empty());
     EXPECT_EQ(tensors.size(), 2U);

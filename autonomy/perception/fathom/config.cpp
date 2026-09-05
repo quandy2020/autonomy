@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file config.cpp
+ * @brief Validation for fixed-profile Fathom runtime configuration.
+ */
+
 #include "autonomy/perception/fathom/config.hpp"
 
 #include <cmath>

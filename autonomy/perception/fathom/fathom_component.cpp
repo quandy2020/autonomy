@@ -14,11 +14,18 @@
  * limitations under the License.
  */
 
+/**
+ * @file fathom_component.cpp
+ * @brief Fathom autolink component lifecycle and frame-processing logic.
+ */
+
 #include "autonomy/perception/fathom/fathom_component.hpp"
 
+#include "autonomy/perception/fathom/engine/model.hpp"
 #include "autonomy/perception/fathom/options.hpp"
 
 #include <string>
+#include <utility>
 
 namespace autonomy {
 namespace perception {
@@ -40,17 +47,25 @@ bool FathomComponent::Init() {
         return false;
     }
 
-    runner_ = FathomNodeRunner::Create(fathom_config, &error);
-    if (runner_ == nullptr) {
-        AERROR << "Fathom component failed to create runner: " << error;
+    std::unique_ptr<FathomModelRunner> model =
+        FathomEngine::Create(fathom_config, &error);
+    if (model == nullptr) {
+        AERROR << "Fathom component failed to create inference engine: "
+               << error;
         Clear();
         return false;
     }
-    runner_process_ = [this](const Image& rgb, const Image& raw_depth,
-                             const CameraInfo& camera_info,
-                             Image* refined_depth, PointCloud2* point_cloud,
-                             std::string* process_error) {
-        return runner_->Process(rgb, raw_depth, camera_info, refined_depth,
+
+    refiner_ = DepthRefiner::Create(fathom_config, std::move(model), &error);
+    if (refiner_ == nullptr) {
+        AERROR << "Fathom component failed to create depth refiner: " << error;
+        Clear();
+        return false;
+    }
+    refine_ = [this](const Image& rgb, const Image& raw_depth,
+                     const CameraInfo& camera_info, Image* refined_depth,
+                     PointCloud2* point_cloud, std::string* process_error) {
+        return refiner_->Refine(rgb, raw_depth, camera_info, refined_depth,
                                 point_cloud, process_error);
     };
 
@@ -80,8 +95,8 @@ bool FathomComponent::Proc(const std::shared_ptr<Image>& rgb,
                   "CameraInfo input.";
         return false;
     }
-    if (!runner_process_ || !refined_depth_publish_ || !point_cloud_publish_) {
-        AERROR << "Fathom component is not initialized with a runner and both "
+    if (!refine_ || !refined_depth_publish_ || !point_cloud_publish_) {
+        AERROR << "Fathom component is not initialized with a refiner and both "
                   "output publishers.";
         return false;
     }
@@ -89,8 +104,8 @@ bool FathomComponent::Proc(const std::shared_ptr<Image>& rgb,
     Image refined_depth;
     PointCloud2 point_cloud;
     std::string error;
-    if (!runner_process_(*rgb, *raw_depth, *camera_info, &refined_depth,
-                         &point_cloud, &error)) {
+    if (!refine_(*rgb, *raw_depth, *camera_info, &refined_depth, &point_cloud,
+                 &error)) {
         AERROR << "Fathom component refinement failed: " << error;
         return false;
     }
@@ -109,10 +124,10 @@ bool FathomComponent::Proc(const std::shared_ptr<Image>& rgb,
 void FathomComponent::Clear() {
     point_cloud_publish_ = nullptr;
     refined_depth_publish_ = nullptr;
-    runner_process_ = nullptr;
+    refine_ = nullptr;
     point_cloud_writer_.reset();
     refined_depth_writer_.reset();
-    runner_.reset();
+    refiner_.reset();
 }
 
 }  // namespace fathom

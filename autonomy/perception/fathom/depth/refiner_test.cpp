@@ -14,8 +14,13 @@
  * limitations under the License.
  */
 
-#include "autonomy/perception/fathom/config.hpp"
+/**
+ * @file refiner_test.cpp
+ * @brief Unit tests for backend-independent Fathom depth refinement.
+ */
+
 #include "autonomy/perception/fathom/depth/refiner.hpp"
+#include "autonomy/perception/fathom/config.hpp"
 
 #include <automsgs/msgs/sensor_msgs/point_cloud2_iterator.hpp>
 
@@ -45,8 +50,8 @@ FathomConfig MakeConfig() {
 }
 
 automsgs::msgs::sensor_msgs::Image MakeImage(const std::string& encoding,
-                                              uint32_t width, uint32_t height,
-                                              uint32_t step) {
+                                             uint32_t width, uint32_t height,
+                                             uint32_t step) {
     automsgs::msgs::sensor_msgs::Image image;
     image.set_encoding(encoding);
     image.set_width(width);
@@ -62,20 +67,18 @@ automsgs::msgs::sensor_msgs::CameraInfo MakeCameraInfo(uint32_t width,
     automsgs::msgs::sensor_msgs::CameraInfo info;
     info.set_width(width);
     info.set_height(height);
-    const double matrix[] = {2.0, 0.0, 0.0,
-                             0.0, 2.0, 0.0,
-                             0.0, 0.0, 1.0};
+    const double matrix[] = {2.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 1.0};
     for (double value : matrix) {
         info.add_k(value);
     }
     return info;
 }
 
-class StaticRunner final : public FathomModelRunner {
+class StaticRunner final : public FathomModelRunner
+{
 public:
     bool Run(const common::network::TensorMap& inputs,
-             common::network::TensorMap* outputs,
-             std::string* error) override {
+             common::network::TensorMap* outputs, std::string* error) override {
         if (outputs == nullptr || inputs.count("image") == 0 ||
             inputs.count("raw_depth") == 0) {
             if (error != nullptr) {
@@ -93,10 +96,11 @@ public:
     }
 };
 
-class FailingRunner final : public FathomModelRunner {
+class FailingRunner final : public FathomModelRunner
+{
 public:
-    bool Run(const common::network::TensorMap&,
-             common::network::TensorMap*, std::string* error) override {
+    bool Run(const common::network::TensorMap&, common::network::TensorMap*,
+             std::string* error) override {
         if (error != nullptr) {
             *error = "inference failed";
         }
@@ -151,8 +155,8 @@ TEST(FathomConfigTest, AcceptsSupportedBackends) {
 TEST(DepthRefinerTest, RestoresImagesThresholdsValidityAndProjectsCloud) {
     const FathomConfig config = MakeConfig();
     std::string error;
-    auto refiner = DepthRefiner::Create(config, std::make_unique<StaticRunner>(),
-                                        &error);
+    auto refiner =
+        DepthRefiner::Create(config, std::make_unique<StaticRunner>(), &error);
     ASSERT_NE(refiner, nullptr) << error;
 
     auto rgb = MakeImage("bgr8", 4, 2, 12);
@@ -181,10 +185,8 @@ TEST(DepthRefinerTest, RestoresImagesThresholdsValidityAndProjectsCloud) {
     EXPECT_EQ(cloud.fields_size(), 3);
     EXPECT_EQ(cloud.header().frame_id(), "camera_optical");
 
-    automsgs::msgs::sensor_msgs::PointCloud2ConstIterator<float> x(cloud,
-                                                                      "x");
-    automsgs::msgs::sensor_msgs::PointCloud2ConstIterator<float> z(cloud,
-                                                                      "z");
+    automsgs::msgs::sensor_msgs::PointCloud2ConstIterator<float> x(cloud, "x");
+    automsgs::msgs::sensor_msgs::PointCloud2ConstIterator<float> z(cloud, "z");
     EXPECT_TRUE(std::isnan(*x));
     EXPECT_TRUE(std::isnan(*z));
     x += 3;
@@ -196,9 +198,8 @@ TEST(DepthRefinerTest, RestoresImagesThresholdsValidityAndProjectsCloud) {
 TEST(DepthRefinerTest, ClearsOutputsWhenInferenceFails) {
     const FathomConfig config = MakeConfig();
     std::string error;
-    auto refiner = DepthRefiner::Create(config,
-                                        std::make_unique<FailingRunner>(),
-                                        &error);
+    auto refiner =
+        DepthRefiner::Create(config, std::make_unique<FailingRunner>(), &error);
     ASSERT_NE(refiner, nullptr) << error;
 
     auto rgb = MakeImage("bgr8", 2, 1, 6);
@@ -218,8 +219,8 @@ TEST(DepthRefinerTest, ClearsOutputsWhenInferenceFails) {
 TEST(DepthRefinerTest, ClearsRefinedDepthWhenPointCloudOutputIsNull) {
     const FathomConfig config = MakeConfig();
     std::string error;
-    auto refiner = DepthRefiner::Create(config, std::make_unique<StaticRunner>(),
-                                        &error);
+    auto refiner =
+        DepthRefiner::Create(config, std::make_unique<StaticRunner>(), &error);
     ASSERT_NE(refiner, nullptr) << error;
 
     automsgs::msgs::sensor_msgs::Image refined_depth;
@@ -236,8 +237,8 @@ TEST(DepthRefinerTest, ClearsRefinedDepthWhenPointCloudOutputIsNull) {
 TEST(DepthRefinerTest, ClearsPointCloudWhenRefinedDepthOutputIsNull) {
     const FathomConfig config = MakeConfig();
     std::string error;
-    auto refiner = DepthRefiner::Create(config, std::make_unique<StaticRunner>(),
-                                        &error);
+    auto refiner =
+        DepthRefiner::Create(config, std::make_unique<StaticRunner>(), &error);
     ASSERT_NE(refiner, nullptr) << error;
 
     automsgs::msgs::sensor_msgs::PointCloud2 cloud;
@@ -245,7 +246,8 @@ TEST(DepthRefinerTest, ClearsPointCloudWhenRefinedDepthOutputIsNull) {
 
     EXPECT_FALSE(refiner->Refine(automsgs::msgs::sensor_msgs::Image(),
                                  automsgs::msgs::sensor_msgs::Image(),
-                                 MakeCameraInfo(1, 1), nullptr, &cloud, &error));
+                                 MakeCameraInfo(1, 1), nullptr, &cloud,
+                                 &error));
     EXPECT_FALSE(error.empty());
     EXPECT_EQ(cloud.width(), 0U);
 }

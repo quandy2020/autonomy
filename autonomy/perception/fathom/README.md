@@ -83,15 +83,15 @@ config.depth_scale = 0.001F;  // Incoming 16UC1 millimetres to metres.
 config.mask_threshold = 0.5F;
 ```
 
-`FathomNodeRunner::Create(config, &error)` initializes the concrete model once.
-`Process(rgb, raw_depth, camera_info, &refined_depth, &point_cloud, &error)`
-then synchronously accepts aligned automsgs `Image` RGB/depth and `CameraInfo`,
-and returns an automsgs `Image` (`32FC1`, metres) plus organized `PointCloud2`
-(XYZ in metres). `CameraInfo.width` and `CameraInfo.height` must be positive and
-match the aligned input images. The runner deliberately declares no transport
-topics and does not alter `PerceptionOptions`.
+`FathomComponent::Init()` creates the concrete model engine and `DepthRefiner`
+once. `Proc(rgb, raw_depth, camera_info)` then synchronously accepts aligned
+automsgs `Image` RGB/depth and `CameraInfo`, and publishes an automsgs `Image`
+(`32FC1`, metres) plus organized `PointCloud2` (XYZ in metres).
+`CameraInfo.width` and `CameraInfo.height` must be positive and match the
+aligned input images. Transport topics are owned by the component protobuf
+options and remain independent from `PerceptionOptions`.
 
-The concrete model engine and process runner are compiled only when
+The concrete model engine and autolink component are compiled only when
 `BUILD_ONNXRUNTIME=ON` and ONNX Runtime is found. Configuration, RGB-D
 preprocessing, projection, and the injected-runner `DepthRefiner` remain
 available without that runtime.

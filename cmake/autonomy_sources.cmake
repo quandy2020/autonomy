@@ -43,8 +43,7 @@ list(REMOVE_ITEM ONNX_NETWORK_SRCS
   "${_AUTONOMY_ROOT}/common/network/common/tensor.cpp")
 file(GLOB_RECURSE FATHOM_NETWORK_SRCS
   "${_AUTONOMY_ROOT}/perception/fathom/engine/*.cpp")
-list(APPEND FATHOM_NETWORK_SRCS
-  "${_AUTONOMY_ROOT}/perception/fathom/fathom_node_runner.cpp")
+# The autolink entrypoint is compiled only into libfathom_component.so.
 set(FATHOM_COMPONENT_SRCS
   "${_AUTONOMY_ROOT}/perception/fathom/fathom_component.cpp")
 set(FATHOM_COMPONENT_TEST_SRCS

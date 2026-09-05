@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file options.cpp
+ * @brief Validation and translation of Fathom component protobuf options.
+ */
+
 #include "autonomy/perception/fathom/options.hpp"
 
 #include <cstdint>
@@ -37,10 +42,9 @@ bool FitsInt(uint32_t value) {
 
 }  // namespace
 
-bool TranslateFathomOptions(
-    const proto::FathomOptions& options,
-    FathomConfig* fathom_config, FathomTopics* topics,
-    std::string* error) {
+bool TranslateFathomOptions(const proto::FathomOptions& options,
+                            FathomConfig* fathom_config, FathomTopics* topics,
+                            std::string* error) {
     if (error != nullptr) {
         error->clear();
     }

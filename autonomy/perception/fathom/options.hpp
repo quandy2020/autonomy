@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file options.hpp
+ * @brief Translation from protobuf component options to runtime settings.
+ */
+
 #ifndef AUTONOMY_PERCEPTION_FATHOM_OPTIONS_HPP_
 #define AUTONOMY_PERCEPTION_FATHOM_OPTIONS_HPP_
 
@@ -26,17 +31,25 @@ namespace autonomy {
 namespace perception {
 namespace fathom {
 
-/** Output channels owned by the autolink component. */
+/** @brief Validated output channels owned by the Fathom component. */
 struct FathomTopics {
+    /** Topic for the refined `32FC1` depth image. */
     std::string refined_depth;
+    /** Topic for the organized XYZ point cloud. */
     std::string point_cloud;
 };
 
-/** Validate component options and derive the runtime/profile configuration. */
-bool TranslateFathomOptions(
-    const proto::FathomOptions& options,
-    FathomConfig* fathom_config, FathomTopics* topics,
-    std::string* error = nullptr);
+/**
+ * @brief Validates protobuf options and derives internal runtime settings.
+ * @param options Component configuration loaded by autolink.
+ * @param fathom_config Output model and preprocessing profile.
+ * @param topics Output publication topics.
+ * @param error Optional diagnostic output, cleared on entry.
+ * @return True when the complete component configuration is valid.
+ */
+bool TranslateFathomOptions(const proto::FathomOptions& options,
+                            FathomConfig* fathom_config, FathomTopics* topics,
+                            std::string* error = nullptr);
 
 }  // namespace fathom
 }  // namespace perception

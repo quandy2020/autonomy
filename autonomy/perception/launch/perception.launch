@@ -1,12 +1,14 @@
 <!--
   Copyright 2026 The Openbot Authors
 
-  Standalone perception process (RGB-D exploration).
+  Combined perception launcher:
+    - PerceptionServer binary process
+    - Fathom RGB-D refinement component process
 
   Prerequisites:
-    - config/exploration_autonomy.lua (or set enabled=true in perception.lua)
-    - PATH includes build/autonomy/bin
-    - Sensor topics: /odom, depth camera (or point cloud for lidar_tare / far3d)
+    - config/exploration_autonomy.lua for PerceptionServer
+    - A deployed fixed-profile Fathom model configured in conf/fathom.pb.txt
+    - RGB, raw-depth, and CameraInfo topics configured by dag/fathom.dag
 
   Plain CMake build (run from the repository root):
     export PATH=$PWD/build/bin:$PATH

@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file fathom_component_test.cpp
+ * @brief Unit tests for Fathom component lifecycle and publication behavior.
+ */
+
 #include "autonomy/perception/fathom/fathom_component.hpp"
 #include "autonomy/perception/fathom/options.hpp"
 
@@ -24,25 +29,29 @@
 #include <utility>
 
 namespace autonomy::perception::fathom {
-class FathomComponentTestApi {
+class FathomComponentTestApi
+{
 public:
-    static void SetCallbacks(FathomComponent* component,
-                             FathomComponent::RunnerFunction runner,
-                             FathomComponent::ImagePublisher depth_publisher,
-                             FathomComponent::PointCloudPublisher cloud_publisher) {
-        component->runner_process_ = std::move(runner);
+    static void SetCallbacks(
+        FathomComponent* component, FathomComponent::RefineFunction refine,
+        FathomComponent::ImagePublisher depth_publisher,
+        FathomComponent::PointCloudPublisher cloud_publisher) {
+        component->refine_ = std::move(refine);
         component->refined_depth_publish_ = std::move(depth_publisher);
         component->point_cloud_publish_ = std::move(cloud_publisher);
     }
 
-    static bool Process(FathomComponent* component,
-                        const std::shared_ptr<FathomComponent::Image>& rgb,
-                        const std::shared_ptr<FathomComponent::Image>& depth,
-                        const std::shared_ptr<FathomComponent::CameraInfo>& info) {
+    static bool Process(
+        FathomComponent* component,
+        const std::shared_ptr<FathomComponent::Image>& rgb,
+        const std::shared_ptr<FathomComponent::Image>& depth,
+        const std::shared_ptr<FathomComponent::CameraInfo>& info) {
         return component->Proc(rgb, depth, info);
     }
 
-    static void Clear(FathomComponent* component) { component->Clear(); }
+    static void Clear(FathomComponent* component) {
+        component->Clear();
+    }
 };
 
 namespace {
@@ -74,8 +83,8 @@ TEST(FathomOptionsTest, TranslatesValidatedDeploymentProfile) {
     FathomTopics topics;
     std::string error;
 
-    ASSERT_TRUE(TranslateFathomOptions(options, &fathom_config, &topics,
-                                      &error));
+    ASSERT_TRUE(
+        TranslateFathomOptions(options, &fathom_config, &topics, &error));
 
     EXPECT_EQ(fathom_config.model_path, "/models/fathom.onnx");
     EXPECT_EQ(fathom_config.backend, "onnx");
@@ -95,14 +104,15 @@ TEST(FathomOptionsTest, RejectsEmptyOutputTopics) {
     FathomTopics topics;
     std::string error;
 
-    EXPECT_FALSE(TranslateFathomOptions(options, &fathom_config, &topics,
-                                        &error));
-    EXPECT_EQ(error, "Fathom component: refined_depth_topic must not be empty.");
+    EXPECT_FALSE(
+        TranslateFathomOptions(options, &fathom_config, &topics, &error));
+    EXPECT_EQ(error,
+              "Fathom component: refined_depth_topic must not be empty.");
 
     options = ValidOptions();
     options.clear_point_cloud_topic();
-    EXPECT_FALSE(TranslateFathomOptions(options, &fathom_config, &topics,
-                                        &error));
+    EXPECT_FALSE(
+        TranslateFathomOptions(options, &fathom_config, &topics, &error));
     EXPECT_EQ(error, "Fathom component: point_cloud_topic must not be empty.");
 }
 
@@ -113,10 +123,9 @@ TEST(FathomOptionsTest, RejectsInvalidInferenceProfile) {
     FathomTopics topics;
     std::string error;
 
-    EXPECT_FALSE(TranslateFathomOptions(options, &fathom_config, &topics,
-                                        &error));
-    EXPECT_EQ(error,
-              "Fathom: input_width and input_height must be positive.");
+    EXPECT_FALSE(
+        TranslateFathomOptions(options, &fathom_config, &topics, &error));
+    EXPECT_EQ(error, "Fathom: input_width and input_height must be positive.");
 }
 
 TEST(FathomOptionsTest, RejectsEqualOutputTopics) {
@@ -126,24 +135,23 @@ TEST(FathomOptionsTest, RejectsEqualOutputTopics) {
     FathomTopics topics;
     std::string error;
 
-    EXPECT_FALSE(TranslateFathomOptions(options, &fathom_config, &topics,
-                                        &error));
+    EXPECT_FALSE(
+        TranslateFathomOptions(options, &fathom_config, &topics, &error));
     EXPECT_EQ(error,
               "Fathom component: refined_depth_topic and point_cloud_topic "
               "must differ.");
 }
 
-TEST(FathomComponentTest, RejectsNullInputsWithoutRunningTheRunner) {
+TEST(FathomComponentTest, RejectsNullInputsWithoutRefining) {
     FathomComponent component;
-    int runner_calls = 0;
+    int refine_calls = 0;
     FathomComponentTestApi::SetCallbacks(
         &component,
-        [&runner_calls](const FathomComponent::Image&,
-                        const FathomComponent::Image&,
-                        const FathomComponent::CameraInfo&,
-                        FathomComponent::Image*, FathomComponent::PointCloud2*,
-                        std::string*) {
-            ++runner_calls;
+        [&refine_calls](
+            const FathomComponent::Image&, const FathomComponent::Image&,
+            const FathomComponent::CameraInfo&, FathomComponent::Image*,
+            FathomComponent::PointCloud2*, std::string*) {
+            ++refine_calls;
             return true;
         },
         [](const FathomComponent::Image&) { return true; },
@@ -151,7 +159,7 @@ TEST(FathomComponentTest, RejectsNullInputsWithoutRunningTheRunner) {
 
     EXPECT_FALSE(FathomComponentTestApi::Process(
         &component, nullptr, MakeImage(), MakeCameraInfo()));
-    EXPECT_EQ(runner_calls, 0);
+    EXPECT_EQ(refine_calls, 0);
 }
 
 TEST(FathomComponentTest, RejectsUninitializedState) {
@@ -161,19 +169,18 @@ TEST(FathomComponentTest, RejectsUninitializedState) {
         &component, MakeImage(), MakeImage(), MakeCameraInfo()));
 }
 
-TEST(FathomComponentTest, InvokesRunnerOnceAndReportsDepthPublishFailure) {
+TEST(FathomComponentTest, RefinesOnceAndReportsDepthPublishFailure) {
     FathomComponent component;
-    int runner_calls = 0;
+    int refine_calls = 0;
     int depth_publish_calls = 0;
     int cloud_publish_calls = 0;
     FathomComponentTestApi::SetCallbacks(
         &component,
-        [&runner_calls](const FathomComponent::Image&,
-                        const FathomComponent::Image&,
-                        const FathomComponent::CameraInfo&,
-                        FathomComponent::Image*, FathomComponent::PointCloud2*,
-                        std::string*) {
-            ++runner_calls;
+        [&refine_calls](
+            const FathomComponent::Image&, const FathomComponent::Image&,
+            const FathomComponent::CameraInfo&, FathomComponent::Image*,
+            FathomComponent::PointCloud2*, std::string*) {
+            ++refine_calls;
             return true;
         },
         [&depth_publish_calls](const FathomComponent::Image&) {
@@ -187,7 +194,7 @@ TEST(FathomComponentTest, InvokesRunnerOnceAndReportsDepthPublishFailure) {
 
     EXPECT_FALSE(FathomComponentTestApi::Process(
         &component, MakeImage(), MakeImage(), MakeCameraInfo()));
-    EXPECT_EQ(runner_calls, 1);
+    EXPECT_EQ(refine_calls, 1);
     EXPECT_EQ(depth_publish_calls, 1);
     EXPECT_EQ(cloud_publish_calls, 1);
 }

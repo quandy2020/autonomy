@@ -1,11 +1,12 @@
 <!--
   Copyright 2026 The Openbot Authors
 
-  Standalone Fathom autolink component.
+  Standalone launcher for the Fathom autolink component.
 
-  Set AUTOLINK_DAG_PATH and AUTOLINK_CONF_PATH to the installed or source
-  Fathom directory, and AUTOLINK_LIB_PATH to the directory containing
-  libfathom_component.so.
+  Runtime search paths:
+    AUTOLINK_DAG_PATH  Fathom source or installation root
+    AUTOLINK_CONF_PATH Fathom source or installation root
+    AUTOLINK_LIB_PATH  Directory containing libfathom_component.so
 -->
 <autolink>
   <module>

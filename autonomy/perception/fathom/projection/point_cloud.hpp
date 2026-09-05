@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file point_cloud.hpp
+ * @brief Projection of metric depth into organized automsgs point clouds.
+ */
+
 #ifndef AUTONOMY_PERCEPTION_FATHOM_PROJECTION_POINT_CLOUD_HPP_
 #define AUTONOMY_PERCEPTION_FATHOM_PROJECTION_POINT_CLOUD_HPP_
 
@@ -28,24 +33,19 @@ namespace perception {
 namespace fathom {
 
 /**
- * @file point_cloud.hpp
- * @brief Metric depth projection into an organized camera-frame point cloud.
- */
-
-/**
- * Project metric depth and its validity mask into an organized PointCloud2.
+ * @brief Projects metric depth and a validity mask into organized XYZ points.
  *
  * Each valid `(u, v)` position becomes
  * `((u - cx) * z / fx, (v - cy) * z / fy, z)`. Masked, non-finite, and
  * non-positive depth pixels are represented by NaN in all three coordinates.
  *
- * @param depth_m `32FC1` metric depth image in meters
- * @param mask `mono8` validity mask; non-zero values are valid
- * @param camera_info Original image pixel intrinsics and matching dimensions
+ * @param depth_m `32FC1` metric depth image in meters.
+ * @param mask `mono8` validity mask; non-zero values are valid.
+ * @param camera_info Original-image intrinsics and matching dimensions.
  * @param cloud Output organized XYZ PointCloud2, cleared on entry and stamped
- *     from `depth_m` only on success
- * @param error Optional failure message, cleared on entry
- * @return True when projection succeeds
+ *     from `depth_m` only on success.
+ * @param error Optional diagnostic output, cleared on entry.
+ * @return True when projection succeeds.
  */
 bool ProjectDepth(const automsgs::msgs::sensor_msgs::Image& depth_m,
                   const automsgs::msgs::sensor_msgs::Image& mask,

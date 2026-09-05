@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file rgbd.hpp
+ * @brief RGB-D conversion for the fixed Fathom model input contract.
+ */
+
 #ifndef AUTONOMY_PERCEPTION_FATHOM_PROCESSING_RGBD_HPP_
 #define AUTONOMY_PERCEPTION_FATHOM_PROCESSING_RGBD_HPP_
 
@@ -28,13 +33,7 @@ namespace perception {
 namespace fathom {
 
 /**
- * @file rgbd.hpp
- * @brief RGB-D frame conversion to the fixed Fathom ONNX input contract.
- */
-
-/**
- * Convert an aligned bgr8/rgb8 image and 16UC1/32FC1 depth frame to
- * fixed-profile Fathom tensors.
+ * @brief Converts aligned RGB and depth messages to fixed-profile tensors.
  *
  * The output map contains float32 `image` with shape `[1, 3, height, width]`
  * in planar RGB order normalized to [0, 1], and float32 `raw_depth` with
@@ -42,23 +41,22 @@ namespace fathom {
  * samples in either supported depth encoding: use `0.001` for millimeter
  * `16UC1`, and `1.0` for Autosim's metric `32FC1`. Non-finite and non-positive
  * float depth samples are sanitized to zero. Camera intrinsics stay in the
- * original image pixel frame because the
- * fixed ONNX graph accepts only `image` and `raw_depth`; projection happens
- * after the refiner restores outputs to that original resolution.
+ * original image pixel frame because the fixed graph accepts only `image` and
+ * `raw_depth`; projection happens after output restoration.
  *
- * @param rgb Aligned `bgr8` or `rgb8` image message
- * @param raw_depth Aligned `16UC1` or `32FC1` raw-depth image message
- * @param width Fixed model input width, greater than zero
- * @param height Fixed model input height, greater than zero
- * @param depth_scale Sensor-depth-unit to meter scale, finite and positive
- * @param tensors Output tensors named `image` and `raw_depth`; cleared on entry
- * @param error Optional failure message, cleared on entry
- * @return True when both tensors are produced
+ * @param rgb Aligned `bgr8` or `rgb8` image message.
+ * @param raw_depth Aligned `16UC1` or `32FC1` raw-depth image message.
+ * @param width Fixed model input width, greater than zero.
+ * @param height Fixed model input height, greater than zero.
+ * @param depth_scale Sensor-depth-unit to meter scale, finite and positive.
+ * @param tensors Output tensors named `image` and `raw_depth`; cleared first.
+ * @param error Optional diagnostic output, cleared on entry.
+ * @return True when both input tensors are produced.
  */
 bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,
-                 const automsgs::msgs::sensor_msgs::Image& raw_depth,
-                 int width, int height,
-                 float depth_scale, common::network::TensorMap* tensors,
+                 const automsgs::msgs::sensor_msgs::Image& raw_depth, int width,
+                 int height, float depth_scale,
+                 common::network::TensorMap* tensors,
                  std::string* error = nullptr);
 
 }  // namespace fathom
