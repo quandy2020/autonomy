@@ -146,22 +146,44 @@ TEST(PersonTrackerTest, DoesNotCreateTrackFromLowConfidenceDetection) {
     EXPECT_EQ(confirmed.detections_size(), 0);
 }
 
-TEST(PersonTrackerTest, DoesNotSwitchSelectedPersonAtCrossing) {
+TEST(PersonTrackerTest, FollowsSelectedTrajectoryThroughCrossing) {
     auto options = ValidOptions();
     options.set_min_confirmed_hits(1);
     PersonTracker tracker(options);
+    // Selected person: 10 -> 30 -> 50 -> 70 -> 90.
+    // Other person:   110 -> 90 -> 70 -> 50 -> 30.
     auto first =
-        Detections({Box(10, 10, 40, 80, 0.9), Box(100, 10, 40, 80, 0.9)});
+        Detections({Box(10, 10, 40, 80, 0.9), Box(110, 10, 40, 80, 0.9)});
     ASSERT_TRUE(tracker.Update(1'000'000'000, &first));
-    tracker.Select(first.detections(0).id());
+    const std::string selected_id = first.detections(0).id();
+    tracker.Select(selected_id);
+
+    auto approaching =
+        Detections({Box(30, 10, 40, 80, 0.9), Box(90, 10, 40, 80, 0.9)});
+    ASSERT_TRUE(tracker.Update(2'000'000'000, &approaching));
+    EXPECT_EQ(approaching.detections(0).id(), selected_id);
+
+    auto nearly_crossed =
+        Detections({Box(50, 10, 40, 80, 0.9), Box(70, 10, 40, 80, 0.9)});
+    ASSERT_TRUE(tracker.Update(3'000'000'000, &nearly_crossed));
+    EXPECT_EQ(nearly_crossed.detections(0).id(), selected_id);
 
     auto crossed =
-        Detections({Box(95, 10, 40, 80, 0.9), Box(15, 10, 40, 80, 0.9)});
-    ASSERT_TRUE(tracker.Update(1'100'000'000, &crossed));
+        Detections({Box(50, 10, 40, 80, 0.9), Box(70, 10, 40, 80, 0.9)});
+    ASSERT_TRUE(tracker.Update(4'000'000'000, &crossed));
+    EXPECT_EQ(crossed.detections(1).id(), selected_id);
     Detection2D selected;
     ASSERT_TRUE(tracker.Selected(&selected));
-    EXPECT_EQ(selected.id(), first.detections(0).id());
-    EXPECT_DOUBLE_EQ(selected.bbox().center().position().x(), 15.0);
+    EXPECT_EQ(selected.id(), selected_id);
+    EXPECT_DOUBLE_EQ(selected.bbox().center().position().x(), 70.0);
+
+    auto departing =
+        Detections({Box(90, 10, 40, 80, 0.9), Box(30, 10, 40, 80, 0.9)});
+    ASSERT_TRUE(tracker.Update(5'000'000'000, &departing));
+    EXPECT_EQ(departing.detections(0).id(), selected_id);
+    ASSERT_TRUE(tracker.Selected(&selected));
+    EXPECT_EQ(selected.id(), selected_id);
+    EXPECT_DOUBLE_EQ(selected.bbox().center().position().x(), 90.0);
 }
 
 TEST(PersonTrackerTest, ExposesPredictionOnlyWithinPredictionTimeout) {
