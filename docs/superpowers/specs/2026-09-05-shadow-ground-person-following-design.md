@@ -105,6 +105,7 @@ autonomy/perception/shadow/
 ├── grid_test.cpp
 ├── policy_test.cpp
 ├── planner_test.cpp
+├── options_test.cpp
 └── python/
     ├── shadow/
     │   ├── __init__.py
@@ -189,8 +190,9 @@ overlap and motion consistency. Track IDs are monotonically increasing strings
 within one component lifetime.
 
 The selected ID is never silently replaced by another visible person. An empty
-selection request chooses the nearest confirmed person once and then locks its
-ID. Short occlusions use the track predictor for no longer than
+selection request asks the component to compare valid RGB-D ranges for all
+confirmed visible tracks, choose the nearest person once, and then lock its ID.
+Short occlusions use the track predictor for no longer than
 `prediction_timeout_sec`; after `lost_timeout_sec`, the target becomes lost and
 the current path is invalidated. Automatic reacquisition may restore only the
 same surviving track ID.
@@ -202,6 +204,9 @@ of the selected bounding box, rejects depth discontinuity outliers, and uses
 the median surviving depth. Camera intrinsics back-project the box center into
 the camera frame. The transform buffer converts this point into `map` at the
 image timestamp.
+
+The same robust range estimator is available without changing filter history,
+so the component can choose the nearest confirmed track before locking it.
 
 The localizer filters successive selected-target positions and derives the
 planar target velocity used by the policy. A new target lock resets this filter
@@ -314,7 +319,7 @@ velocity generation.
 
 - detector and policy model paths, backend IDs, tensor profiles, thresholds,
   and person class ID;
-- tracking association thresholds and prediction/loss timeouts;
+- tracking association thresholds plus prediction and target-loss timeouts;
 - RGB-D sampling limits and valid depth range;
 - map frame names, geometry, resolution, rolling threshold, cell TTL, step,
   slope, obstacle height, and robot inflation radius;
