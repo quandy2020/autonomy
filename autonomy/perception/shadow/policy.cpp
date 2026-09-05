@@ -88,11 +88,10 @@ bool ValidateTensor(const common::network::ModelTensorInfo& info,
     return true;
 }
 
-bool ValidateModelContract(const PolicyRunner& runner,
-                           const proto::ShadowOptions& options,
-                           std::string* error) {
-    const auto inputs = runner.GetInputInfos();
-    const auto outputs = runner.GetOutputInfos();
+bool ValidateModelContract(
+    const std::vector<common::network::ModelTensorInfo>& inputs,
+    const std::vector<common::network::ModelTensorInfo>& outputs,
+    const proto::ShadowOptions& options, std::string* error) {
     const auto* depth = FindTensorInfo(inputs, kDepthName);
     const auto* robot_state = FindTensorInfo(inputs, kRobotStateName);
     const auto* target_state = FindTensorInfo(inputs, kTargetStateName);
@@ -131,17 +130,8 @@ class EnginePolicyRunner final : public PolicyRunner
 {
 public:
     explicit EnginePolicyRunner(std::unique_ptr<common::network::Engine> engine)
-        : engine_(std::move(engine)) {}
-
-    std::vector<common::network::ModelTensorInfo> GetInputInfos()
-        const override {
-        return engine_->GetInputInfos();
-    }
-
-    std::vector<common::network::ModelTensorInfo> GetOutputInfos()
-        const override {
-        return engine_->GetOutputInfos();
-    }
+        : PolicyRunner(engine->GetInputInfos(), engine->GetOutputInfos()),
+          engine_(std::move(engine)) {}
 
     bool Run(const common::network::TensorMap& inputs,
              common::network::TensorMap* outputs, std::string* error) override {
@@ -473,6 +463,12 @@ bool DecodeOutputs(const proto::ShadowOptions& options,
 
 }  // namespace
 
+PolicyRunner::PolicyRunner(
+    std::vector<common::network::ModelTensorInfo> input_infos,
+    std::vector<common::network::ModelTensorInfo> output_infos)
+    : input_infos_(std::move(input_infos)),
+      output_infos_(std::move(output_infos)) {}
+
 YopoPolicy::YopoPolicy(proto::ShadowOptions options,
                        std::unique_ptr<PolicyRunner> runner)
     : options_(std::move(options)), runner_(std::move(runner)) {}
@@ -514,7 +510,8 @@ std::unique_ptr<YopoPolicy> YopoPolicy::Create(
         SetError(error, "policy runner is null.");
         return nullptr;
     }
-    if (!ValidateModelContract(*runner, options, error)) {
+    if (!ValidateModelContract(runner->input_infos_, runner->output_infos_,
+                               options, error)) {
         return nullptr;
     }
     return std::unique_ptr<YopoPolicy>(

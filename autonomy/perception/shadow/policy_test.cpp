@@ -29,6 +29,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -49,6 +50,20 @@ using PoseStamped = automsgs::msgs::geometry_msgs::PoseStamped;
 using TwistStamped = automsgs::msgs::geometry_msgs::TwistStamped;
 
 constexpr double kPi = 3.14159265358979323846;
+
+template <typename T, typename = void>
+struct HasPublicMetadataAccess : std::false_type {
+};
+
+template <typename T>
+struct HasPublicMetadataAccess<
+    T, std::void_t<decltype(std::declval<const T&>().GetInputInfos()),
+                   decltype(std::declval<const T&>().GetOutputInfos())>>
+    : std::true_type {
+};
+
+static_assert(!HasPublicMetadataAccess<PolicyRunner>::value,
+              "PolicyRunner metadata must not be part of its public API");
 
 proto::ShadowOptions Options(uint32_t candidate_count = 1,
                              uint32_t trajectory_steps = 2) {
@@ -135,19 +150,10 @@ public:
                      std::vector<ModelTensorInfo> output_infos,
                      std::vector<float> trajectories, std::vector<float> scores,
                      bool succeeds = true)
-        : input_infos_(std::move(input_infos)),
-          output_infos_(std::move(output_infos)),
+        : PolicyRunner(std::move(input_infos), std::move(output_infos)),
           trajectories_(std::move(trajectories)),
           scores_(std::move(scores)),
           succeeds_(succeeds) {}
-
-    std::vector<ModelTensorInfo> GetInputInfos() const override {
-        return input_infos_;
-    }
-
-    std::vector<ModelTensorInfo> GetOutputInfos() const override {
-        return output_infos_;
-    }
 
     bool Run(const TensorMap& inputs, TensorMap* outputs,
              std::string* error) override {
@@ -174,8 +180,6 @@ public:
     }
 
 private:
-    std::vector<ModelTensorInfo> input_infos_;
-    std::vector<ModelTensorInfo> output_infos_;
     std::vector<float> trajectories_;
     std::vector<float> scores_;
     bool succeeds_;

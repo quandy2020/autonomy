@@ -39,24 +39,15 @@ namespace autonomy {
 namespace perception {
 namespace shadow {
 
+class YopoPolicy;
+
 /**
  * @brief Backend-independent fixed-profile inference contract for YopoPolicy.
- *
- * Tensor metadata is exposed through this seam so model-backed and injected
- * runners receive the same startup contract validation.
  */
 class PolicyRunner
 {
 public:
     virtual ~PolicyRunner() = default;
-
-    /** @return Ordered metadata for every model input. */
-    virtual std::vector<common::network::ModelTensorInfo> GetInputInfos()
-        const = 0;
-
-    /** @return Ordered metadata for every model output. */
-    virtual std::vector<common::network::ModelTensorInfo> GetOutputInfos()
-        const = 0;
 
     /**
      * @brief Executes one policy inference request.
@@ -68,6 +59,19 @@ public:
     virtual bool Run(const common::network::TensorMap& inputs,
                      common::network::TensorMap* outputs,
                      std::string* error = nullptr) = 0;
+
+protected:
+    /**
+     * @brief Captures fixed model metadata for private startup validation.
+     */
+    PolicyRunner(std::vector<common::network::ModelTensorInfo> input_infos,
+                 std::vector<common::network::ModelTensorInfo> output_infos);
+
+private:
+    friend class YopoPolicy;
+
+    std::vector<common::network::ModelTensorInfo> input_infos_;
+    std::vector<common::network::ModelTensorInfo> output_infos_;
 };
 
 /**
