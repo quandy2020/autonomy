@@ -4,7 +4,7 @@
 
 | 本文 §14 | 相关文档 |
 |---------|----------|
-| 启用、双机、Discovery Server、升 3.x | [§0 指南](00_guide.md) · [§1 架构](01_architecture.md) · [§3 Channel](03_channel.md) |
+| 启用、双机、Security、Discovery Server、升 3.x | [§0 指南](00_guide.md) · [§1 架构](01_architecture.md) · [§3 Channel](03_channel.md) |
 
 ---
 
@@ -43,6 +43,8 @@ ctest --test-dir autolink/build-fastdds \
 | `AUTOLINK_DISCOVERY_SERVER` | 空（SIMPLE） | `ip:port[,ip:port]` → CLIENT 发现 |
 | `AUTOLINK_RTPS_MAX_PAYLOAD_BYTES` | `4194304`（4 MiB） | Underlay payload 软限；`0` = 不检查 |
 | `AUTOLINK_RTPS_REJECT_OVERSIZE` | 未设（仅 WARN） | `1` → 超限拒发并计 `oversize` |
+| `AUTOLINK_RTPS_SECURITY` | 未设（关） | `1` → 启用 DDS Security（Auth + Crypto）；其它值 / 未设 = 明文 |
+| `AUTOLINK_RTPS_SECURITY_DIR` | 无 | 启用时必填；证书与已签名策略目录（见 §14.3 Security） |
 
 诊断：进程内 `RtpsStats::Instance().Dump()` 输出 `sent` / `recv` / `write_fail` / `oversize` / `matched_readers` / `matched_writers`。
 
@@ -76,9 +78,54 @@ ctest --test-dir autolink/build-fastdds \
 
 二者独立 name/端口，避免拓扑流量与业务数据面争用同一端点集合。
 
-### Security
+### Security（M6，opt-in）
 
-DDS Security（身份认证、加密、权限）**当前未实现**。多机拓扑与数据面均依赖可信局域网；勿在不可信网络上默认开启跨机 RTPS。
+默认**仍为明文**（未设 `AUTOLINK_RTPS_SECURITY`）。仅当 `AUTOLINK_RTPS_SECURITY=1` 时启用 DDS Security（Authentication + Cryptography）；Access 本里程碑仅为 **allow-all**（满足插件链，非 topic ACL）。FetchContent 构建已开 `SECURITY=ON` 并链接 OpenSSL。
+
+| 行为 | 说明 |
+|------|------|
+| 未设 / 非 `1` | 与 M5 相同明文路径；无 Security 属性 |
+| `=1` 且目录有效 | topology / transport 两 Participant 均注入 PKI-DH + Access-Permissions + AES-GCM-GMAC |
+| `=1` 但缺目录/文件或插件失败 | `RtpsParticipantHub::Init` **fail-loud**（AERROR，不回退明文） |
+
+**证书目录**（`AUTOLINK_RTPS_SECURITY_DIR=$DIR`）必备六文件：
+
+```text
+$DIR/
+  identity_ca.crt       # Identity CA
+  permissions_ca.crt    # Permissions CA（可与 identity CA 同材料副本）
+  cert.pem              # 本节点 identity 证书
+  key.pem               # 本节点私钥
+  governance.smime      # 已签名 Governance（要求加密；策略可放宽）
+  permissions.smime     # 已签名 Permissions（allow-all）
+```
+
+同进程 topology/transport **共用**同一 identity。仓库不提交生产私钥。
+
+**开发证书（简要）**：用 openssl 生成 CA、节点证书与私钥后，对 governance / permissions XML 做 S/MIME 签名，例如：
+
+```bash
+openssl smime -sign -in governance.xml -text \
+  -out governance.smime -signer permissions_ca.crt -inkey permissions_ca.key \
+  -outform PEM
+# permissions.smime 同理（XML 内容为本里程碑 allow-all）
+```
+
+亦可参考 Fast DDS 源码树 `test/certs` / 官方 Security 文档中的示例材料与工具链。
+
+**双机加密清单**（在 §14.3 明文双机清单之上）：
+
+| 项 | 要求 |
+|----|------|
+| 两端构建 | `AUTOLINK_ENABLE_FASTDDS=ON`（含 Security 插件） |
+| `AUTOLINK_RTPS_SECURITY` | 两端均为 `1` |
+| CA | 信任同一 Identity CA（及 Permissions CA） |
+| 身份 | 各主机 `$DIR` 使用**不同** `cert.pem` / `key.pem` |
+| 一侧 ON / 一侧 OFF | 不应明文互通（握手失败或无业务回调） |
+
+**Permissions**：本里程碑仅为 allow-all；细粒度 ACL 不在 M6。
+
+**与 Discovery Server**：`AUTOLINK_DISCOVERY_SERVER` 与 Security **正交**；加密域内两端仍须 Security 配置一致（均 ON、同 CA）。
 
 ---
 
@@ -111,6 +158,6 @@ export AUTOLINK_DISCOVERY_SERVER=192.168.1.10:11811
 | Discovery Server API | `load_environment_server_info` / `m_DiscoveryServers` | 按 3.x 迁移指南核对 CLIENT 配置 |
 | Underlay / TypeSupport | 2.14 `TypeSupport` / Topic 创建方式 | 按 3.x 迁移指南改 `create_topic` / 类型注册 |
 | FetchContent / pin | `GIT_TAG v2.14.6` | 换 3.x tag 并重跑 RTPS 集成测 |
-| Security | 未实现 | 仍不引入；勿默认假设 3.x Security 可用 |
+| Security | M6 opt-in（2.14 PropertyPolicy） | M7 跟迁属性名 / 插件路径；勿默认假设已加密 |
 
 升版后至少跑：`topology_backend_factory_test`（OFF/ON）、`rtps_topology_backend_test`（ON）、`rtps_transceiver_test`（ON）、`payload_limit_test` / `rtps_stats_test`。
