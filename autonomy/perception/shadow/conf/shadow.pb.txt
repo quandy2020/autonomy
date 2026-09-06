@@ -45,6 +45,7 @@ policy_width: 160
 policy_height: 96
 candidate_count: 64
 trajectory_steps: 12
+trajectory_step_sec: 0.1
 max_linear_speed: 0.8
 max_angular_speed: 1.2
 follow_distance: 1.5

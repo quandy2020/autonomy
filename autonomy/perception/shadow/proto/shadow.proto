@@ -74,4 +74,7 @@ message ShadowOptions {
   float max_input_skew_sec = 53;
   float max_data_age_sec = 54;
   float depth_scale = 55;
+
+  // Fixed duration between consecutive decoded trajectory poses in seconds.
+  float trajectory_step_sec = 56;
 }

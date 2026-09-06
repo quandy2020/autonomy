@@ -168,10 +168,11 @@ bool ValidateShadowOptions(const proto::ShadowOptions& options,
     }
     if (!IsPositive(options.max_linear_speed()) ||
         !IsPositive(options.max_angular_speed()) ||
+        !IsPositive(options.trajectory_step_sec()) ||
         !IsPositive(options.follow_distance())) {
         SetError(error,
-                 "kinematic bounds and follow_distance must be finite and "
-                 "positive.");
+                 "kinematic bounds, trajectory_step_sec, and follow_distance "
+                 "must be finite and positive.");
         return false;
     }
     const std::initializer_list<float> planner_weights = {

@@ -57,6 +57,7 @@ proto::ShadowOptions Options() {
     options.set_max_linear_speed(1.0F);
     options.set_max_angular_speed(1.0F);
     options.set_follow_distance(1.0F);
+    options.set_trajectory_step_sec(1.0F);
     options.set_learned_weight(1.0F);
     options.set_clearance_weight(1.0F);
     options.set_traversability_weight(1.0F);
@@ -265,35 +266,52 @@ TEST(FollowPlannerTest, RejectsObstacleAndTraversabilityThresholds) {
     }
 }
 
-TEST(FollowPlannerTest, RejectsPathExceedingLinearSpeedLimit) {
+TEST(FollowPlannerTest, RejectsLinearSpeedWhenDisplacementIsBelowLimit) {
     auto options = Options();
     options.set_max_linear_speed(0.5F);
+    options.set_trajectory_step_sec(0.1F);
     const FollowPlanner planner(options);
     Path output;
 
     ASSERT_TRUE(planner.Select(
         2'000'000'000,
-        {Candidate({{0.75, 0.0, 0.0}}), Candidate({{0.4, 0.0, 0.0}})},
+        {Candidate({{0.06, 0.0, 0.0}}), Candidate({{0.05, 0.0, 0.0}})},
         {0.0F, 1.0F}, OpenGrid(), Odom(), Target(), &output));
 
     ASSERT_EQ(output.poses_size(), 2);
-    EXPECT_NEAR(output.poses(1).pose().position().x(), 0.4, 1.0e-9);
+    EXPECT_NEAR(output.poses(1).pose().position().x(), 0.05, 1.0e-9);
 }
 
-TEST(FollowPlannerTest, RejectsPathExceedingAngularSpeedLimit) {
+TEST(FollowPlannerTest, RejectsAngularSpeedWhenYawDeltaIsBelowLimit) {
     auto options = Options();
     options.set_max_angular_speed(0.5F);
+    options.set_trajectory_step_sec(0.1F);
     const FollowPlanner planner(options);
     Path output;
 
     ASSERT_TRUE(planner.Select(
         2'000'000'000,
-        {Candidate({{0.4, 0.0, 0.75}}), Candidate({{0.4, 0.0, 0.25}})},
+        {Candidate({{0.05, 0.0, 0.06}}), Candidate({{0.05, 0.0, 0.05}})},
         {0.0F, 1.0F}, OpenGrid(), Odom(), Target(), &output));
 
     ASSERT_EQ(output.poses_size(), 2);
-    EXPECT_NEAR(output.poses(1).pose().orientation().z(), std::sin(0.125),
+    EXPECT_NEAR(output.poses(1).pose().orientation().z(), std::sin(0.025),
                 1.0e-9);
+}
+
+TEST(FollowPlannerTest, RejectsInvalidTrajectoryStepDuration) {
+    auto options = Options();
+    options.set_trajectory_step_sec(0.0F);
+    const FollowPlanner planner(options);
+    Path output;
+    SeedOutput(&output);
+    std::string error;
+
+    EXPECT_FALSE(planner.Select(2'000'000'000, {Candidate({{0.05, 0.0, 0.0}})},
+                                {0.1F}, OpenGrid(), Odom(), Target(), &output,
+                                &error));
+    EXPECT_TRUE(output.poses().empty());
+    EXPECT_FALSE(error.empty());
 }
 
 TEST(FollowPlannerTest, PrefersTerminalFollowDistance) {

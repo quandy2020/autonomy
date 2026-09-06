@@ -178,6 +178,7 @@ bool ValidateOptions(const proto::ShadowOptions& options,
     if (!FinitePositive(options.robot_radius()) ||
         !FinitePositive(options.max_linear_speed()) ||
         !FinitePositive(options.max_angular_speed()) ||
+        !FinitePositive(options.trajectory_step_sec()) ||
         !FinitePositive(options.follow_distance())) {
         SetError(error, "footprint, motion, and following limits are invalid.");
         return false;
@@ -573,17 +574,21 @@ bool EvaluateCandidate(const proto::ShadowOptions& options,
                                 .pose()
                                 .position()
                                 .y());
-        const double linear_speed = std::hypot(base_dx, base_dy);
+        const double linear_displacement = std::hypot(base_dx, base_dy);
         const double yaw_change =
             NormalizeAngle(relative_yaws[segment] - relative_yaws[segment - 1]);
+        const double linear_speed =
+            linear_displacement / options.trajectory_step_sec();
+        const double angular_speed =
+            std::abs(yaw_change) / options.trajectory_step_sec();
         if (!std::isfinite(linear_speed) || !std::isfinite(yaw_change) ||
             linear_speed > options.max_linear_speed() + kComparisonTolerance ||
-            std::abs(yaw_change) >
+            angular_speed >
                 options.max_angular_speed() + kComparisonTolerance) {
             return false;
         }
         const double curvature =
-            yaw_change / std::max(linear_speed, maximum_sample_step);
+            yaw_change / std::max(linear_displacement, maximum_sample_step);
         curvature_change += std::abs(curvature - previous_curvature);
         previous_curvature = curvature;
 
