@@ -31,6 +31,13 @@ if(BUILD_AUTODRIVER AND TARGET autodriver)
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
   )
+  if(TARGET autodriver_main)
+    install(
+      TARGETS autodriver_main
+      EXPORT AutonomyExport
+      RUNTIME DESTINATION bin
+    )
+  endif()
 endif()
 
 install(DIRECTORY config DESTINATION share/autonomy)

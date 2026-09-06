@@ -2,16 +2,24 @@ syntax = "proto3";
 
 package autonomy.perception.hestia.proto;
 
+enum Mode {
+  MODE_UNSPECIFIED = 0;
+  MODE_OPEN = 1;
+  MODE_DUAL = 2;
+}
+
+enum Backend {
+  BACKEND_UNSPECIFIED = 0;
+  BACKEND_ONNX = 1;
+  BACKEND_TENSORRT = 2;
+}
+
 // Single runtime configuration for Hestia open-vocabulary home perception.
 message HestiaOptions {
-  // Operating mode: "open" or "dual".
-  string mode = 1;
-  // Fixed-profile open-vocabulary detector artifact.
+  Mode mode = 1;
   string open_model_path = 2;
-  // Fixed-profile closed-set home ontology detector (dual mode).
   string home_model_path = 3;
-  // Common-network backend identifier: "onnx" or "tensorrt".
-  string backend = 4;
+  Backend backend = 4;
   uint32 open_width = 5;
   uint32 open_height = 6;
   uint32 home_width = 7;
@@ -35,12 +43,15 @@ message HestiaOptions {
   float merge_iou_threshold = 23;
   string detections_2d_topic = 24;
   string detections_3d_topic = 25;
-  // Optional open-prompt query override topic; empty disables the reader.
-  string query_topic = 26;
   float max_input_skew_sec = 27;
-  float max_data_age_sec = 28;
-  // Documentation / DAG hint: prefer Fathom refined depth as the depth input.
-  bool use_fathom_depth = 29;
-  // 0 = run open detection inline (including dual); 1+ enables async worker.
-  uint32 open_async_queue = 30;
+  // Dual mode: run open detection on a background Async slot (stale-OK).
+  bool open_async = 30;
+  // Optional post-decode NMS; 0 disables (assume export already applied NMS).
+  float nms_iou_threshold = 31;
+  // TF lookup timeout when lifting into base_frame.
+  float tf_timeout_sec = 32;
+
+  reserved 26, 28, 29;
+  reserved "query_topic", "max_data_age_sec", "use_fathom_depth",
+      "open_async_queue";
 }

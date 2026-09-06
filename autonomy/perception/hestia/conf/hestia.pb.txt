@@ -1,6 +1,6 @@
-mode: "open"
+mode: MODE_OPEN
 open_model_path: "/models/hestia_open.onnx"
-backend: "onnx"
+backend: BACKEND_ONNX
 open_width: 640
 open_height: 640
 max_detections: 100
@@ -21,6 +21,6 @@ merge_iou_threshold: 0.5
 detections_2d_topic: "/perception/hestia/detections_2d"
 detections_3d_topic: "/perception/hestia/detections_3d"
 max_input_skew_sec: 0.05
-max_data_age_sec: 0.2
-use_fathom_depth: false
-open_async_queue: 0
+open_async: false
+nms_iou_threshold: 0.0
+tf_timeout_sec: 0.05

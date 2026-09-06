@@ -30,10 +30,10 @@ namespace {
 
 proto::HestiaOptions Options() {
     proto::HestiaOptions o;
-    o.set_mode("dual");
+    o.set_mode(proto::MODE_DUAL);
     o.set_open_model_path("/m/open.onnx");
     o.set_home_model_path("/m/home.onnx");
-    o.set_backend("onnx");
+    o.set_backend(proto::BACKEND_ONNX);
     o.set_open_width(640);
     o.set_open_height(640);
     o.set_home_width(640);
@@ -55,7 +55,8 @@ proto::HestiaOptions Options() {
     o.set_detections_2d_topic("/a");
     o.set_detections_3d_topic("/b");
     o.set_max_input_skew_sec(0.05F);
-    o.set_max_data_age_sec(0.2F);
+    o.set_nms_iou_threshold(0.0F);
+    o.set_tf_timeout_sec(0.05F);
     return o;
 }
 
@@ -71,26 +72,26 @@ automsgs::msgs::vision_msgs::Detection2D Det(double cx, double cy, double score,
     return d;
 }
 
-TEST(DetectionMergerTest, KeepsHigherScoreOnOverlap) {
-    DetectionMerger merger(Options());
+TEST(MergerTest, KeepsHigherScoreOnOverlap) {
+    Merger merger(Options());
     automsgs::msgs::vision_msgs::Detection2DArray home;
     automsgs::msgs::vision_msgs::Detection2DArray open;
     *home.add_detections() = Det(100, 100, 0.6, "chair");
     *open.add_detections() = Det(102, 101, 0.9, "cup");
     automsgs::msgs::vision_msgs::Detection2DArray out;
-    merger.Merge(home, open, &out);
+    merger.Fuse(home, open, &out);
     ASSERT_EQ(out.detections_size(), 1);
     EXPECT_EQ(out.detections(0).results(0).hypothesis().class_id(), "cup");
 }
 
-TEST(DetectionMergerTest, ConcatenatesNonOverlapping) {
-    DetectionMerger merger(Options());
+TEST(MergerTest, ConcatenatesNonOverlapping) {
+    Merger merger(Options());
     automsgs::msgs::vision_msgs::Detection2DArray home;
     automsgs::msgs::vision_msgs::Detection2DArray open;
     *home.add_detections() = Det(100, 100, 0.6, "chair");
     *open.add_detections() = Det(400, 400, 0.7, "cup");
     automsgs::msgs::vision_msgs::Detection2DArray out;
-    merger.Merge(home, open, &out);
+    merger.Fuse(home, open, &out);
     EXPECT_EQ(out.detections_size(), 2);
 }
 

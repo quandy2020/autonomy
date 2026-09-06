@@ -16,7 +16,7 @@
 
 /**
  * @file detector.cpp
- * @brief Fixed-profile open/home YOLO preprocessing, parsing, and engine adapter.
+ * @brief Letterbox infer pipeline and Detector<PromptKind> factories.
  */
 
 #include "autonomy/perception/hestia/detector.hpp"
@@ -41,13 +41,12 @@
 namespace autonomy {
 namespace perception {
 namespace hestia {
-namespace {
 
 constexpr char kInputName[] = "images";
 constexpr char kOutputName[] = "output0";
 constexpr float kLetterboxPadding = 114.0F;
 
-void SetError(std::string* error, const std::string& message) {
+void SetPipelineError(std::string* error, const std::string& message) {
     if (error != nullptr) {
         *error = "Hestia detector: " + message;
     }
@@ -68,11 +67,11 @@ bool ValidateTensor(const common::network::ModelTensorInfo& info,
                     const char* label, const std::vector<int64_t>& expected,
                     std::string* error) {
     if (info.element_type != common::network::ElementType::kFloat32) {
-        SetError(error, std::string(label) + " must use float32 elements.");
+        SetPipelineError(error, std::string(label) + " must use float32 elements.");
         return false;
     }
     if (info.shape.Rank() != expected.size() || info.shape.Dims() != expected) {
-        SetError(error,
+        SetPipelineError(error,
                  std::string(label) + " has an unexpected static shape.");
         return false;
     }
@@ -87,11 +86,11 @@ bool ValidateModelContract(const common::network::Engine& engine, uint32_t width
     const auto* images = FindTensorInfo(inputs, kInputName);
     const auto* output0 = FindTensorInfo(outputs, kOutputName);
     if (inputs.size() != 1 || images == nullptr) {
-        SetError(error, "model input must be exactly 'images'.");
+        SetPipelineError(error, "model input must be exactly 'images'.");
         return false;
     }
     if (outputs.size() != 1 || output0 == nullptr) {
-        SetError(error, "model output must be exactly 'output0'.");
+        SetPipelineError(error, "model output must be exactly 'output0'.");
         return false;
     }
     return ValidateTensor(*images, "model input 'images'",
@@ -102,10 +101,12 @@ bool ValidateModelContract(const common::network::Engine& engine, uint32_t width
                           {1, static_cast<int64_t>(max_detections), 6}, error);
 }
 
-class EngineDetectorRunner final : public DetectorRunner
+namespace {
+
+class EngineRunner final : public Runner
 {
 public:
-    explicit EngineDetectorRunner(
+    explicit EngineRunner(
         std::unique_ptr<common::network::Engine> engine)
         : engine_(std::move(engine)) {}
 
@@ -135,36 +136,39 @@ private:
     std::unique_ptr<common::network::Engine> engine_;
 };
 
+}  // namespace
+
+
 bool ValidateImage(const automsgs::msgs::sensor_msgs::Image& image,
                    std::string* error) {
     if (image.encoding() != "rgb8" && image.encoding() != "bgr8") {
-        SetError(error, "image encoding must be 'rgb8' or 'bgr8'.");
+        SetPipelineError(error, "image encoding must be 'rgb8' or 'bgr8'.");
         return false;
     }
     if (image.width() == 0 || image.height() == 0) {
-        SetError(error, "image dimensions must be positive.");
+        SetPipelineError(error, "image dimensions must be positive.");
         return false;
     }
     if (image.is_bigendian()) {
-        SetError(error, "big-endian images are unsupported.");
+        SetPipelineError(error, "big-endian images are unsupported.");
         return false;
     }
     if (image.width() >
             static_cast<uint32_t>(std::numeric_limits<int>::max()) ||
         image.height() >
             static_cast<uint32_t>(std::numeric_limits<int>::max())) {
-        SetError(error, "image dimensions exceed OpenCV limits.");
+        SetPipelineError(error, "image dimensions exceed OpenCV limits.");
         return false;
     }
     const size_t minimum_step = static_cast<size_t>(image.width()) * 3;
     if (image.step() < minimum_step) {
-        SetError(error, "image step is too small.");
+        SetPipelineError(error, "image step is too small.");
         return false;
     }
     const size_t required_data =
         static_cast<size_t>(image.height()) * image.step();
     if (image.data().size() < required_data) {
-        SetError(error, "image data is too small.");
+        SetPipelineError(error, "image data is too small.");
         return false;
     }
     return true;
@@ -176,7 +180,7 @@ bool PrepareInput(const automsgs::msgs::sensor_msgs::Image& image,
                   int* padding_left, int* padding_top, std::string* error) {
     if (tensors == nullptr || scale == nullptr || padding_left == nullptr ||
         padding_top == nullptr) {
-        SetError(error, "detector preprocessing output is null.");
+        SetPipelineError(error, "detector preprocessing output is null.");
         return false;
     }
     tensors->clear();
@@ -184,7 +188,7 @@ bool PrepareInput(const automsgs::msgs::sensor_msgs::Image& image,
         return false;
     }
     if (target_width <= 0 || target_height <= 0) {
-        SetError(error, "detector dimensions must be positive.");
+        SetPipelineError(error, "detector dimensions must be positive.");
         return false;
     }
 
@@ -251,31 +255,31 @@ bool OutputFloat32(const common::network::TensorMap& outputs,
                    std::string* error) {
     const auto output = outputs.find(kOutputName);
     if (output == outputs.end()) {
-        SetError(error, "model output 'output0' is missing.");
+        SetPipelineError(error, "model output 'output0' is missing.");
         return false;
     }
     std::string detail;
     size_t count = 0;
     if (!output->second.TryViewFloat32(data, &count, &detail)) {
-        SetError(error, "model output 'output0' must be float32: " + detail);
+        SetPipelineError(error, "model output 'output0' must be float32: " + detail);
         return false;
     }
     if (count != expected_count) {
-        SetError(error,
+        SetPipelineError(error,
                  "model output 'output0' has an unexpected tensor size.");
         return false;
     }
     return true;
 }
 
-std::vector<std::string> CopyLabels(
-    const google::protobuf::RepeatedPtrField<std::string>& labels) {
-    return std::vector<std::string>(labels.begin(), labels.end());
+std::vector<std::string> CopyClassNames(
+    const google::protobuf::RepeatedPtrField<std::string>& class_names) {
+    return std::vector<std::string>(class_names.begin(), class_names.end());
 }
 
-bool RunDetect(const proto::HestiaOptions& options,
-               DetectorRunner* runner,
-               const std::vector<std::string>& labels, uint32_t width,
+bool InferDetections(const proto::HestiaOptions& options,
+               Runner* runner,
+               const std::vector<std::string>& class_names, uint32_t width,
                uint32_t height,
                const automsgs::msgs::sensor_msgs::Image& image,
                automsgs::msgs::vision_msgs::Detection2DArray* detections,
@@ -287,16 +291,16 @@ bool RunDetect(const proto::HestiaOptions& options,
         detections->Clear();
     }
     if (detections == nullptr || runner == nullptr) {
-        SetError(error, "detection output or runner is null.");
+        SetPipelineError(error, "detection output or runner is null.");
         return false;
     }
     if (width > static_cast<uint32_t>(std::numeric_limits<int>::max()) ||
         height > static_cast<uint32_t>(std::numeric_limits<int>::max())) {
-        SetError(error, "detector dimensions exceed OpenCV limits.");
+        SetPipelineError(error, "detector dimensions exceed OpenCV limits.");
         return false;
     }
-    if (labels.empty()) {
-        SetError(error, "label table is empty.");
+    if (class_names.empty()) {
+        SetPipelineError(error, "class name table is empty.");
         return false;
     }
 
@@ -312,7 +316,7 @@ bool RunDetect(const proto::HestiaOptions& options,
     common::network::TensorMap outputs;
     std::string detail;
     if (!runner->Run(inputs, &outputs, &detail)) {
-        SetError(error, detail);
+        SetPipelineError(error, detail);
         return false;
     }
 
@@ -341,7 +345,7 @@ bool RunDetect(const proto::HestiaOptions& options,
         }
         const int label_index = static_cast<int>(std::lround(class_index));
         if (label_index < 0 ||
-            label_index >= static_cast<int>(labels.size())) {
+            label_index >= static_cast<int>(class_names.size())) {
             continue;
         }
         if (!std::isfinite(x1) || !std::isfinite(y1) || !std::isfinite(x2) ||
@@ -364,7 +368,7 @@ bool RunDetect(const proto::HestiaOptions& options,
         auto* detection = parsed.add_detections();
         *detection->mutable_header() = image.header();
         auto* hypothesis = detection->add_results()->mutable_hypothesis();
-        hypothesis->set_class_id(labels[static_cast<size_t>(label_index)]);
+        hypothesis->set_class_id(class_names[static_cast<size_t>(label_index)]);
         hypothesis->set_score(confidence);
         auto* bbox = detection->mutable_bbox();
         bbox->mutable_center()->mutable_position()->set_x((left + right) /
@@ -375,11 +379,61 @@ bool RunDetect(const proto::HestiaOptions& options,
         bbox->set_size_y(bottom - top);
     }
 
+    if (options.nms_iou_threshold() > 0.0F && parsed.detections_size() > 1) {
+        using Detection2D = automsgs::msgs::vision_msgs::Detection2D;
+        std::vector<Detection2D> boxes(parsed.detections().begin(),
+                                       parsed.detections().end());
+        std::sort(boxes.begin(), boxes.end(),
+                  [](const Detection2D& lhs, const Detection2D& rhs) {
+                      const double ls =
+                          lhs.results().empty() ? 0.0
+                                                : lhs.results(0).hypothesis().score();
+                      const double rs =
+                          rhs.results().empty() ? 0.0
+                                                : rhs.results(0).hypothesis().score();
+                      return ls > rs;
+                  });
+        auto BoxIoU = [](const Detection2D& lhs, const Detection2D& rhs) {
+            const auto& a = lhs.bbox();
+            const auto& b = rhs.bbox();
+            const double a_left = a.center().position().x() - a.size_x() * 0.5;
+            const double a_top = a.center().position().y() - a.size_y() * 0.5;
+            const double a_right = a.center().position().x() + a.size_x() * 0.5;
+            const double a_bottom = a.center().position().y() + a.size_y() * 0.5;
+            const double b_left = b.center().position().x() - b.size_x() * 0.5;
+            const double b_top = b.center().position().y() - b.size_y() * 0.5;
+            const double b_right = b.center().position().x() + b.size_x() * 0.5;
+            const double b_bottom = b.center().position().y() + b.size_y() * 0.5;
+            const double iw = std::max(
+                0.0, std::min(a_right, b_right) - std::max(a_left, b_left));
+            const double ih = std::max(
+                0.0, std::min(a_bottom, b_bottom) - std::max(a_top, b_top));
+            const double intersection = iw * ih;
+            const double union_area =
+                a.size_x() * a.size_y() + b.size_x() * b.size_y() - intersection;
+            return union_area > 0.0 ? intersection / union_area : 0.0;
+        };
+        std::vector<bool> suppressed(boxes.size(), false);
+        const double thr = options.nms_iou_threshold();
+        parsed.clear_detections();
+        for (size_t i = 0; i < boxes.size(); ++i) {
+            if (suppressed[i]) {
+                continue;
+            }
+            *parsed.add_detections() = boxes[i];
+            for (size_t j = i + 1; j < boxes.size(); ++j) {
+                if (!suppressed[j] && BoxIoU(boxes[i], boxes[j]) >= thr) {
+                    suppressed[j] = true;
+                }
+            }
+        }
+    }
+
     *detections = std::move(parsed);
     return true;
 }
 
-std::unique_ptr<DetectorRunner> CreateEngineRunner(
+std::unique_ptr<Runner> CreateEngineRunner(
     const std::string& backend, const std::string& model_path, uint32_t width,
     uint32_t height, uint32_t max_detections, std::string* error) {
     common::network::InferenceOptions inference_options;
@@ -389,133 +443,60 @@ std::unique_ptr<DetectorRunner> CreateEngineRunner(
     auto engine =
         common::network::Engine::CreateEngine(inference_options, &engine_error);
     if (engine == nullptr) {
-        SetError(error, engine_error);
+        SetPipelineError(error, engine_error);
         return nullptr;
     }
     if (!ValidateModelContract(*engine, width, height, max_detections,
                                error)) {
         return nullptr;
     }
-    return std::make_unique<EngineDetectorRunner>(std::move(engine));
+    return std::make_unique<EngineRunner>(std::move(engine));
 }
 
-}  // namespace
 
-OpenDetector::OpenDetector(proto::HestiaOptions options,
-                           std::unique_ptr<DetectorRunner> runner,
-                           std::vector<std::string> labels)
-    : options_(std::move(options)),
-      runner_(std::move(runner)),
-      labels_(std::move(labels)) {}
-
-std::unique_ptr<OpenDetector> OpenDetector::Create(
+template <PromptKind K>
+std::unique_ptr<Detector<K>> Detector<K>::Create(
     const proto::HestiaOptions& options, std::string* error) {
+    proto::HestiaOptions normalized = Detector<K>::Normalize(options);
     if (error != nullptr) {
         error->clear();
     }
-    if (!ValidateHestiaOptions(options, error)) {
+    if (!ValidateHestiaOptions(normalized, error)) {
         return nullptr;
     }
-    auto runner =
-        CreateEngineRunner(options.backend(), options.open_model_path(),
-                           options.open_width(), options.open_height(),
-                           options.max_detections(), error);
+    auto runner = CreateEngineRunner(
+        BackendId(normalized.backend()), Detector<K>::ModelPath(normalized),
+        Detector<K>::Width(normalized), Detector<K>::Height(normalized),
+        normalized.max_detections(), error);
     if (runner == nullptr) {
         return nullptr;
     }
-    return std::unique_ptr<OpenDetector>(new OpenDetector(
-        options, std::move(runner), CopyLabels(options.open_prompts())));
+    return Create(normalized, std::move(runner), error);
 }
 
-std::unique_ptr<OpenDetector> OpenDetector::Create(
-    const proto::HestiaOptions& options, std::unique_ptr<DetectorRunner> runner,
-    std::string* error) {
+template <PromptKind K>
+std::unique_ptr<Detector<K>> Detector<K>::Create(
+    const proto::HestiaOptions& options,
+    std::unique_ptr<Runner> runner, std::string* error) {
+    proto::HestiaOptions normalized = Detector<K>::Normalize(options);
     if (error != nullptr) {
         error->clear();
     }
-    if (!ValidateHestiaOptions(options, error)) {
+    if (!ValidateHestiaOptions(normalized, error)) {
         return nullptr;
     }
     if (runner == nullptr) {
-        SetError(error, "detector runner is null.");
+        SetPipelineError(error, "inference runner is null.");
         return nullptr;
     }
-    return std::unique_ptr<OpenDetector>(new OpenDetector(
-        options, std::move(runner), CopyLabels(options.open_prompts())));
+    return std::unique_ptr<Detector<K>>(new Detector<K>(
+        normalized, std::move(runner),
+        CopyClassNames(Detector<K>::ClassNames(normalized)),
+        Detector<K>::Width(normalized), Detector<K>::Height(normalized)));
 }
 
-void OpenDetector::SetPrompts(const std::vector<std::string>& prompts) {
-    if (!prompts.empty()) {
-        labels_ = prompts;
-    }
-}
-
-bool OpenDetector::Detect(
-    const automsgs::msgs::sensor_msgs::Image& image,
-    automsgs::msgs::vision_msgs::Detection2DArray* detections,
-    std::string* error) {
-    return RunDetect(options_, runner_.get(), labels_, options_.open_width(),
-                     options_.open_height(), image, detections, error);
-}
-
-HomeDetector::HomeDetector(proto::HestiaOptions options,
-                           std::unique_ptr<DetectorRunner> runner,
-                           std::vector<std::string> labels)
-    : options_(std::move(options)),
-      runner_(std::move(runner)),
-      labels_(std::move(labels)) {}
-
-std::unique_ptr<HomeDetector> HomeDetector::Create(
-    const proto::HestiaOptions& options, std::string* error) {
-    if (error != nullptr) {
-        error->clear();
-    }
-    proto::HestiaOptions dual = options;
-    if (dual.mode() != "dual") {
-        dual.set_mode("dual");
-    }
-    if (!ValidateHestiaOptions(dual, error)) {
-        return nullptr;
-    }
-    auto runner =
-        CreateEngineRunner(dual.backend(), dual.home_model_path(),
-                           dual.home_width(), dual.home_height(),
-                           dual.max_detections(), error);
-    if (runner == nullptr) {
-        return nullptr;
-    }
-    return std::unique_ptr<HomeDetector>(new HomeDetector(
-        dual, std::move(runner), CopyLabels(dual.home_labels())));
-}
-
-std::unique_ptr<HomeDetector> HomeDetector::Create(
-    const proto::HestiaOptions& options, std::unique_ptr<DetectorRunner> runner,
-    std::string* error) {
-    if (error != nullptr) {
-        error->clear();
-    }
-    proto::HestiaOptions dual = options;
-    if (dual.mode() != "dual") {
-        dual.set_mode("dual");
-    }
-    if (!ValidateHestiaOptions(dual, error)) {
-        return nullptr;
-    }
-    if (runner == nullptr) {
-        SetError(error, "detector runner is null.");
-        return nullptr;
-    }
-    return std::unique_ptr<HomeDetector>(new HomeDetector(
-        dual, std::move(runner), CopyLabels(dual.home_labels())));
-}
-
-bool HomeDetector::Detect(
-    const automsgs::msgs::sensor_msgs::Image& image,
-    automsgs::msgs::vision_msgs::Detection2DArray* detections,
-    std::string* error) {
-    return RunDetect(options_, runner_.get(), labels_, options_.home_width(),
-                     options_.home_height(), image, detections, error);
-}
+template class Detector<PromptKind::OpenVocabulary>;
+template class Detector<PromptKind::ClosedSet>;
 
 }  // namespace hestia
 }  // namespace perception

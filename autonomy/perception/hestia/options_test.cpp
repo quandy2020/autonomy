@@ -32,9 +32,9 @@ namespace {
 
 proto::HestiaOptions ValidOptions() {
     proto::HestiaOptions o;
-    o.set_mode("open");
+    o.set_mode(proto::MODE_OPEN);
     o.set_open_model_path("/models/hestia_open.onnx");
-    o.set_backend("onnx");
+    o.set_backend(proto::BACKEND_ONNX);
     o.set_open_width(640);
     o.set_open_height(640);
     o.set_max_detections(100);
@@ -55,14 +55,14 @@ proto::HestiaOptions ValidOptions() {
     o.set_detections_2d_topic("/perception/hestia/detections_2d");
     o.set_detections_3d_topic("/perception/hestia/detections_3d");
     o.set_max_input_skew_sec(0.05F);
-    o.set_max_data_age_sec(0.2F);
-    o.set_use_fathom_depth(false);
+    o.set_nms_iou_threshold(0.0F);
+    o.set_tf_timeout_sec(0.05F);
     return o;
 }
 
 proto::HestiaOptions ValidDualOptions() {
     auto o = ValidOptions();
-    o.set_mode("dual");
+    o.set_mode(proto::MODE_DUAL);
     o.set_home_model_path("/models/hestia_home.onnx");
     o.set_home_width(640);
     o.set_home_height(640);
@@ -85,7 +85,7 @@ TEST(HestiaOptionsTest, AcceptsValidDualMode) {
 
 TEST(HestiaOptionsTest, RejectsUnknownMode) {
     auto o = ValidOptions();
-    o.set_mode("all");
+    o.set_mode(proto::MODE_UNSPECIFIED);
     std::string error;
     EXPECT_FALSE(ValidateHestiaOptions(o, &error));
     EXPECT_FALSE(error.empty());
@@ -110,8 +110,10 @@ TEST(HestiaOptionsTest, RejectsInvalidIndividualFields) {
          [](proto::HestiaOptions* o) { o->clear_open_model_path(); }},
         {"empty open prompts in open mode",
          [](proto::HestiaOptions* o) { o->clear_open_prompts(); }},
-        {"unknown backend",
-         [](proto::HestiaOptions* o) { o->set_backend("rknn"); }},
+        {"unspecified backend",
+         [](proto::HestiaOptions* o) {
+             o->set_backend(proto::BACKEND_UNSPECIFIED);
+         }},
         {"zero open width",
          [](proto::HestiaOptions* o) { o->set_open_width(0); }},
         {"zero open height",

@@ -32,9 +32,9 @@ namespace {
 
 proto::HestiaOptions Options() {
     proto::HestiaOptions o;
-    o.set_mode("open");
+    o.set_mode(proto::MODE_OPEN);
     o.set_open_model_path("/models/hestia_open.onnx");
-    o.set_backend("onnx");
+    o.set_backend(proto::BACKEND_ONNX);
     o.set_open_width(640);
     o.set_open_height(640);
     o.set_max_detections(10);
@@ -53,7 +53,8 @@ proto::HestiaOptions Options() {
     o.set_detections_2d_topic("/a");
     o.set_detections_3d_topic("/b");
     o.set_max_input_skew_sec(0.05F);
-    o.set_max_data_age_sec(0.2F);
+    o.set_nms_iou_threshold(0.0F);
+    o.set_tf_timeout_sec(0.05F);
     return o;
 }
 
@@ -68,52 +69,65 @@ automsgs::msgs::vision_msgs::Detection2D MakeDet(double cx, double cy,
     return detection;
 }
 
-TEST(ObjectTrackerTest, ReusesIdForSameBox) {
-    ObjectTracker tracker(Options());
+TEST(TrackerTest, ReusesIdForSameBox) {
+    Tracker tracker(Options());
     automsgs::msgs::vision_msgs::Detection2DArray frame;
     *frame.add_detections() = MakeDet(100, 100, "chair");
-    tracker.Update(1.0, &frame);
+    tracker.Associate(1.0, &frame);
     const std::string first_id = frame.detections(0).id();
     EXPECT_FALSE(first_id.empty());
 
     frame.Clear();
     *frame.add_detections() = MakeDet(102, 101, "chair");
-    tracker.Update(1.1, &frame);
+    tracker.Associate(1.1, &frame);
     EXPECT_EQ(frame.detections(0).id(), first_id);
 }
 
-TEST(ObjectTrackerTest, AssignsNewIdForDistantBox) {
-    ObjectTracker tracker(Options());
+TEST(TrackerTest, AssignsNewIdForDistantBox) {
+    Tracker tracker(Options());
     automsgs::msgs::vision_msgs::Detection2DArray frame;
     *frame.add_detections() = MakeDet(100, 100, "chair");
-    tracker.Update(1.0, &frame);
+    tracker.Associate(1.0, &frame);
     const std::string first_id = frame.detections(0).id();
 
     frame.Clear();
     *frame.add_detections() = MakeDet(400, 400, "chair");
-    tracker.Update(1.1, &frame);
+    tracker.Associate(1.1, &frame);
     EXPECT_NE(frame.detections(0).id(), first_id);
 }
 
-TEST(ObjectTrackerTest, ExpiresTrackAfterTimeout) {
-    ObjectTracker tracker(Options());
+TEST(TrackerTest, ExpiresTrackAfterTimeout) {
+    Tracker tracker(Options());
     automsgs::msgs::vision_msgs::Detection2DArray frame;
     *frame.add_detections() = MakeDet(100, 100, "chair");
-    tracker.Update(1.0, &frame);
+    tracker.Associate(1.0, &frame);
     const std::string first_id = frame.detections(0).id();
 
     frame.Clear();
-    tracker.Update(3.0, &frame);  // lost_timeout 1.5s
+    tracker.Associate(3.0, &frame);  // lost_timeout 1.5s
     *frame.add_detections() = MakeDet(100, 100, "chair");
-    tracker.Update(3.1, &frame);
+    tracker.Associate(3.1, &frame);
     EXPECT_NE(frame.detections(0).id(), first_id);
 }
 
-TEST(ObjectTrackerTest, HandlesEmptyFrame) {
-    ObjectTracker tracker(Options());
+TEST(TrackerTest, HandlesEmptyFrame) {
+    Tracker tracker(Options());
     automsgs::msgs::vision_msgs::Detection2DArray frame;
-    tracker.Update(1.0, &frame);
+    tracker.Associate(1.0, &frame);
     EXPECT_EQ(frame.detections_size(), 0);
+}
+
+TEST(TrackerTest, RejectsDifferentClassOverlap) {
+    Tracker tracker(Options());
+    automsgs::msgs::vision_msgs::Detection2DArray frame;
+    *frame.add_detections() = MakeDet(100, 100, "chair");
+    tracker.Associate(1.0, &frame);
+    const std::string first_id = frame.detections(0).id();
+
+    frame.Clear();
+    *frame.add_detections() = MakeDet(102, 101, "cup");
+    tracker.Associate(1.1, &frame);
+    EXPECT_NE(frame.detections(0).id(), first_id);
 }
 
 }  // namespace
