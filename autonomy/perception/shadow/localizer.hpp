@@ -70,7 +70,8 @@ public:
      * @param camera Camera intrinsics corresponding to depth.
      * @param camera_to_map Rigid transform from camera into map.
      * @param pose Filtered map-frame target pose, cleared before validation.
-     * @param velocity Filtered planar target velocity, cleared before validation.
+     * @param velocity Filtered planar target velocity, cleared before
+     * validation.
      * @param error Optional diagnostic output, cleared on entry.
      * @return True when localization and filter update succeed.
      */
@@ -84,7 +85,7 @@ public:
         automsgs::msgs::geometry_msgs::TwistStamped* velocity,
         std::string* error = nullptr);
 
-    /** 
+    /**
      * @brief Clears selected-target position and velocity history.
      */
     void Clear();
