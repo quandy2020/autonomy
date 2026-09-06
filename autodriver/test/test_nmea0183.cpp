@@ -16,7 +16,7 @@
 
 #include <gtest/gtest.h>
 
-#include "autodriver/hardware/nmea_0183.hpp"
+#include "autodriver/gps/nmea_0183.hpp"
 #include <automsgs/msgs/sensor_msgs/nav_sat_status.pb.h>
 
 using autodriver::protocol::ParseGgaSentence;

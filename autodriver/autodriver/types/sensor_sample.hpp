@@ -247,6 +247,38 @@ class LidarCloud
     }
 };
 
+/**
+ * @class autodriver::LidarPacketScan
+ * @brief Aggregated raw lidar firing packets (Scan).
+ * Uses kLidar3d modality; Publisher may ignore until a typed scan channel exists.
+ */
+class LidarPacketScan : public SensorSample {
+public:
+    LidarPacketScan(SensorId id, autolink::Time device_time,
+                    std::vector<std::uint8_t> payload, std::size_t packet_bytes)
+        : SensorSample(std::move(id), SensorType::kLidar3d, device_time),
+          payload_(std::move(payload)),
+          packet_bytes_(packet_bytes) {}
+
+    std::unique_ptr<SensorSample> Clone() const override {
+        return std::make_unique<LidarPacketScan>(id(), device_time(), payload_,
+                                                 packet_bytes_);
+    }
+
+    const std::vector<std::uint8_t>& payload() const { return payload_; }
+    std::size_t packet_bytes() const { return packet_bytes_; }
+    std::size_t packet_count() const {
+        return packet_bytes_ == 0 ? 0 : payload_.size() / packet_bytes_;
+    }
+
+    std::string frame_id;
+    std::string channel;  // optional scan_channel hint
+
+private:
+    std::vector<std::uint8_t> payload_;
+    std::size_t packet_bytes_ = 0;
+};
+
 // Range sample using sensor_msgs/Range.
 using RangeSample =
     TypedSample<SensorType::kRangeFinder, automsgs::msgs::sensor_msgs::Range>;
@@ -254,6 +286,14 @@ using RangeSample =
 // Wheel odometry sample using nav_msgs/Odometry.
 using WheelOdometrySample =
     TypedSample<SensorType::kWheelOdometry, automsgs::msgs::nav_msgs::Odometry>;
+
+// Radar: temporary PointCloud2 placeholder until dedicated radar msgs land.
+using RadarSample =
+    TypedSample<SensorType::kRadar, automsgs::msgs::sensor_msgs::PointCloud2>;
+
+// Microphone: Image used as raw PCM byte bag (encoding e.g. audio/pcm16).
+using MicrophoneSample =
+    TypedSample<SensorType::kMicrophone, automsgs::msgs::sensor_msgs::Image>;
 
 /**
  * @brief Build a sensor_msgs/Imu message from gyro and accel arrays.

@@ -30,6 +30,8 @@
 #include "autodriver/sample_sink.hpp"
 #include "autolink/base/atomic_rw_lock.hpp"
 #include "autolink/node/node.hpp"
+#include "autolink/node/writer.hpp"
+#include <automsgs/msgs/diagnostic_msgs/diagnostic_array.pb.h>
 
 namespace autodriver {
 namespace bridge {
@@ -83,6 +85,16 @@ public:
      */
     void OnSample(std::shared_ptr<SensorSample> sample) override;
 
+    /**
+     * @brief Publishes DiagnosticArray on /diagnostics (created lazily).
+     */
+    void OnDiagnostic(const diagnostics::DiagnosticSnapshot& snapshot) override;
+
+    /**
+     * @brief Optional override for the diagnostics channel (default /diagnostics).
+     */
+    void SetDiagnosticsChannel(std::string channel);
+
 private:
     // Callable that serializes and writes one sample type.
     using WriteFn = std::function<void(const std::shared_ptr<SensorSample>&)>;
@@ -112,6 +124,12 @@ private:
 
     // Per-sensor write dispatch table keyed by SensorId.
     std::unordered_map<SensorId, WriteFn> writers_;
+
+    // Autolink diagnostics writer (lazy).
+    std::shared_ptr<
+        autolink::Writer<automsgs::msgs::diagnostic_msgs::DiagnosticArray>>
+        diagnostics_writer_;
+    std::string diagnostics_channel_ = "/diagnostics";
 
     // Protects writers_ during attach/detach/sample.
     mutable autolink::base::AtomicRWLock lock_;

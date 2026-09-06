@@ -1,110 +1,126 @@
 # 配置
 
-Autodriver 使用 **YAML** 配置文件（`autodriver_hardware.yaml`），由 `yaml-cpp` 解析为运行时 `Config`。
+Autodriver 使用 **YAML**（`yaml-cpp`）解析为运行时 `autodriver::Config`。
 
-唯一配置文件：`config/autodriver_hardware.yaml`。设备均写在顶层 `sensors` 下；进程级默认值在 `Config` 中定义：
+默认文件：`config/autodriver_hardware.yaml`。设备写在顶层 `sensors` 下；仅 `enable: true`（或旧别名 `attach_on_start`）的条目会进入 `Config`。
 
-| 字段 | 默认值 |
-|---|---|
-| `node_name` | `autodriver` |
-| `plugin_dir` | 空（使用 `AUTODRIVER_PLUGIN_DIR`） |
-| `hotplug.enable_udev` | `true` |
-| `alignment.enable` | `false` |
-| `alignment_window_ms` | 50 |
-| `publish_period_ms` | 20 |
-| `buffer_capacity` | 32 |
+## 进程级字段
 
-需要覆盖时再写顶层字段，例如：
+写在 YAML 根节点（均可省略，使用默认值）：
+
+| YAML 键 | 运行时 | 默认 | 说明 |
+|---|---|---|---|
+| `node_name` | `node_name` | `autodriver` | Autolink 节点名 |
+| `plugin_dir` | `plugins` | 空 | 外置 `.so` 搜索目录；空则用编译宏 `AUTODRIVER_PLUGIN_DIR` |
+| `hotplug.enable_udev` | `hotplug.udev` | `true` | 是否启动 udev 线程 |
+| `alignment.enable` | `alignment.enable` | `false` | 是否启用 SensorHub 对齐 |
+| `alignment.alignment_window_ms` | `options.alignment_window` | `50` | 对齐窗口 (ms) |
+| `alignment.publish_period_ms` | `options.publish_period` | `20` | 对齐发布周期 (ms) |
+| `alignment.buffer_capacity` | `options.buffer_capacity` | `32` | 每路样本缓冲容量 |
+| `compensator.pose_channel` | `compensator.pose_channel` | 空 | `nav_msgs/Odometry` 通道；空则不启 PoseFeeder |
+
+示例：
 
 ```yaml
+node_name: autodriver
 hotplug:
   enable_udev: false
+alignment:
+  enable: false
+  alignment_window_ms: 50
+  publish_period_ms: 20
+  buffer_capacity: 32
+compensator:
+  pose_channel: /localization/odom   # 可选；enable_compensator 的 lidar 用
 ```
 
 ## 路径解析
 
-查找顺序（`LoadConfig(configuration_directory, config_basename)`）：
+`LoadConfig(configuration_directory, config_basename)` 查找顺序：
 
-1. 若 `config_basename` 以 `/` 开头 → 视为绝对路径
+1. `config_basename` 以 `/` 开头 → 绝对路径
 2. `{WorkRoot}/config/{basename}`
 3. 回退 `{prefix}/share/autodriver/config/{basename}`
 
-空文件名默认 `autodriver_hardware.yaml`。
-
-### 环境变量
+空文件名默认 `autodriver_hardware.yaml`。`WorkRoot` 优先取 `AUTODRIVER_PATH`。
 
 | 变量 | 含义 |
 |---|---|
 | `AUTODRIVER_PATH` | 配置根（目录下应有 `config/autodriver_hardware.yaml`） |
-| `AUTODRIVER_DISTRIBUTION_HOME` | 安装/发行根 |
+| `AUTODRIVER_DISTRIBUTION_HOME` | 安装/发行根（安装树回退） |
 
 ```bash
 export AUTODRIVER_PATH=/path/to/autodriver
-autodriver_hub
+autodriver
 ```
 
-## 传感器配置总览
+## 传感器类型键
 
-所有设备写在顶层 **`sensors`** 下，按类型分组。每条设备为一组 YAML 映射（扁平字段）。
+| YAML 键 | Module | 默认 `backend` | 运行时 id 前缀 | 采集状态 |
+|---|---|---|---|---|
+| `lidar_2d` | `Lidar2dModule` | `serial` | `lidar/` | attach-only 骨架 |
+| `lidar_3d` | `Lidar3dModule` | `velodyne` | `lidar/` | Velodyne / Hesai；其它厂商 stub |
+| `lidar` | 由 `dimension`/`type` 决定 | `serial` / `velodyne` | `lidar/` | 同上 |
+| `point_cloud` | `PointCloudModule` | `realsense` / `orbbec` | `camera/` | 深度点云 |
+| `imu` / `imu_devices` | `ImuModule` | `serial` | `imu/` | serial / can / realsense |
+| `gps` / `gps_devices` | `GpsModule` | `serial` | `gps/` | serial / can |
+| `camera` | `CameraModule` | `realsense` / `orbbec` / `smartereye` | `camera/` | 图像 |
+| `radar` | `RadarModule` | `conti` | `radar/` | stub |
+| `microphone` | `MicrophoneModule` | `respeaker` | `mic/` | stub |
+| `range` | `RangeModule` | `serial` | `range/` | attach-only 骨架 |
 
-### 支持的类型键
+合并键 `lidar`：`dimension: 2d|3d`（或 `type`；`3d` / `lidar3d` / `pointcloud` 表示三维）。
 
-| 键 | 模块 | 默认 `backend` | 运行时 sensor id 前缀 |
-|---|---|---|---|
-| `lidar_2d` | `Lidar2dModule` | `serial` | `lidar/` |
-| `lidar_3d` | `Lidar3dModule` | `serial` | `lidar/` |
-| `lidar` | 见 `dimension` | `serial` | `lidar/` |
-| `imu` | `ImuModule` | `serial` | `imu/` |
-| `gps` | `GpsModule` | `serial` | `gps/` |
-| `camera` | `CameraModule` | `realsense` | `camera/` |
-| `range` | `RangeModule` | `serial` | `range/` |
-
-合并键 `lidar` 可用 `dimension: 2d|3d`（或 `type`）区分二维/三维雷达。
-
-### 通用字段（所有传感器）
+## 通用字段
 
 | 字段 | 必填 | 说明 |
 |---|---|---|
-| `name` | 是 | 设备短名；加载后 id 为 `<前缀><name>`，如 `name: torso_imu` → `imu/torso_imu`。若 `name` 已含 `/` 则原样作为 id |
-| `enable` | 否 | `true` 时加载并在进程启动时 attach；`false` 时忽略（默认 `false`）。旧别名 `attach_on_start` 仍兼容 |
-| `channel` | 否 | Autolink 发布通道；**字符串或字符串数组**。省略时按类型与 `stream` 自动推导（见下文） |
-| `backend` | 否 | 硬件后端；省略时使用上表默认值 |
-| `params` | 否 | 额外驱动参数字典，会合并进运行时 `params` |
-| `match` | 否 | udev 热插拔匹配规则（见「热插拔匹配」） |
-| `module` / `library` | 否 | 高级用法：覆盖插件模块名与 `.so` 路径；通常省略 |
+| `name` | 是 | 短名；加载后 id 为 `<前缀><name>`。若已含 `/` 则原样作为 id |
+| `enable` | 否 | `true` 时进入 Config 并 autostart；默认 `false`（不加载） |
+| `channel` | 否 | Autolink 通道；**字符串或字符串数组**。省略则 `ResolveChannel` |
+| `backend` | 否 | 硬件后端；省略用上表默认 |
+| `params` | 否 | 额外驱动参数，合并进运行时 `params` |
+| `match` | 否 | udev 匹配（见下文） |
+| `module` / `library` | 否 | 高级：覆盖类名与外置 `.so`；typed 组通常省略 |
 
-#### `channel` 语义
+### `channel` 语义
 
-- **单个字符串**：发布到该 Autolink 话题。
-- **字符串数组**：将**同一份**传感器 sample **fan-out** 到多个话题（适合 IMU 等同构多订阅）。
-- **不能**用数组表示相机的 color/depth/ir 等多路不同图像流；每路 stream 需单独一条 `camera` 配置。
+- **单个字符串**：发布到该话题
+- **字符串数组**：同一份 sample **fan-out** 到多个话题
+- **不能**用数组表示相机 color/depth/ir 等多路不同流；每路 stream 写一条 `camera` 配置
 
-#### 默认 channel 推导
+### 默认 channel（`ResolveChannel`）
 
-未写 `channel` 时，Publisher 使用 `ResolveChannel`：
+未写 `channel` 时：`"/" + id + 后缀`。
 
-| 类型 | 默认 channel |
+| 类型 | 默认 |
 |---|---|
 | IMU / GPS / Range | `/<id>` |
-| Camera（`stream: color` 或省略） | `/<id>/image_raw` |
+| Camera（`stream` 非 `depth`） | `/<id>/image_raw` |
 | Camera（`stream: depth`） | `/<id>/depth/image_raw` |
 | Lidar 2D | `/<id>/scan` |
-| Lidar 3D | `/<id>/points` |
+| Lidar 3D / PointCloud | `/<id>/points` |
+| Radar | `/<id>/radar` |
+| Microphone | `/<id>/audio` |
 
-#### 串口 shorthand
+示例 YAML 常显式写 ROS 风格名（如 `/camera/color/image_raw`、`/camera/depth/image_rect_raw`）。`aligned_depth_to_color`、`ir1` 等靠**显式 channel**，不是 `ResolveChannel` 的特殊后缀。
 
-对 `backend: serial`（或未指定 backend 且类型默认为 serial）的设备，下列扁平字段会写入 `params`：
+相机还会自动开 **camera_info** 通道（由图像话题推导，对齐 realsense-ros）。
 
-| YAML 字段 | 写入 `params` | 说明 |
+### 串口 shorthand
+
+`backend: serial`（或类型默认 serial）时，扁平字段写入 `params`：
+
+| YAML | `params` | 说明 |
 |---|---|---|
-| `port` | `device` | 串口设备路径，如 `/dev/ttyUSB0`；也可用 `device` |
-| `baudrate` | `baud` | 波特率；也可用 `baud` |
+| `port` / `device` | `device` | 串口路径 |
+| `baudrate` / `baud` | `baud` | 波特率 |
 
-上线时建议用 `/dev/serial/by-id/` 固定 `port`，避免 USB 插拔导致编号变化。
+建议用 `/dev/serial/by-id/` 固定 `port`。
 
-#### 嵌套写法（可选）
+### 嵌套写法（可选）
 
-仍支持将硬件参数写在 `hardware` / `publisher` 子块；`publisher.channel` 仅在顶层未写 `channel` 时作为回退。
+仍支持 `hardware` / `publisher` 子块；`publisher.channel` 仅在顶层未写 `channel` 时回退。
 
 ```yaml
 - name: example
@@ -118,21 +134,15 @@ autodriver_hub
 
 ---
 
-## lidar_2d — 二维激光雷达
+## lidar_2d
 
-**消息类型**：`sensor_msgs.LaserScan`  
-**当前驱动状态**：插件为 attach-only 骨架，串口采集驱动尚未实现；字段为预留配置。
+**消息**：`sensor_msgs.LaserScan`  
+**状态**：attach-only；串口驱动未实现。
 
-| 字段 | 必填 | 说明 |
-|---|---|---|
-| `name` | 是 | 如 `front` → id `lidar/front` |
-| `enable` | 否 | 是否启用 |
-| `channel` | 否 | 默认 `/<id>/scan` |
-| `port` | 是* | 串口路径（*启用且 backend 为 serial 时） |
-| `baudrate` | 否 | 常见 **115200**（RPLidar / Hokuyo 等）；9600 对多数 2D 雷达偏低 |
-| `fps` | 否 | 期望扫描/发布频率 (Hz)，常见 5–20；写入 `publish_rate_hz` |
-
-示例（见 `autodriver_hardware.yaml`）：
+| 字段 | 说明 |
+|---|---|
+| `port` / `baudrate` | 预留；常见波特率 115200 |
+| `fps` | 写入 `publish_rate_hz` |
 
 ```yaml
 lidar_2d:
@@ -146,90 +156,102 @@ lidar_2d:
 
 ---
 
-## lidar_3d — 三维激光雷达
+## lidar_3d
 
-**消息类型**：`sensor_msgs.PointCloud2`  
-**当前驱动状态**：插件为 attach-only 骨架；网口/UDP 驱动尚未实现。
+**消息**：`sensor_msgs.PointCloud2`  
+**Module**：`Lidar3dModule`  
+**backend**：`velodyne` / `udp`（默认 `velodyne`），或 `hesai` / `pandar`（PandarXT / XT32）— UDP 收包 → PacketQueue → 方位角切帧 → Convert 点云。  
+其它厂商名（`livox`、`rslidar`、`lslidar`、`seyond`、`vanjee`）已注册为 **stub**（`Create`→nullptr）。
 
-Velodyne 等常见 3D 雷达走**以太网 UDP**，不是 `/dev/ttyUSB`。网口参数建议放在 `params`：
+| 字段 | 说明 |
+|---|---|
+| `params.data_port` | UDP 端口，默认 `2368` |
+| `params.packets_per_scan` | 一帧包数**上限**；Velodyne 默认 `75`，Hesai 默认 `180` |
+| `params.use_azimuth_cut` | 默认 `true`；按末 block 方位角跨 cut 切帧 |
+| `params.scan_cut_angle_deg` | cut 角度（度），默认 `0` |
+| `params.packet_queue_capacity` | online 队列容量，默认 `256`（满丢最旧） |
+| `params.model` | Velodyne：`VLP-16`；Hesai：`XT32` / `PandarXT` |
+| `params.frame_id` | 点云 frame |
+| `params.source_type` | `online`（默认）或 `raw_packet`（回放：`PushRawPacket` / `PushScan`） |
+| `params.bind_host` | 绑定地址，默认任意 |
+| `params.reconnect_attempts` | UDP 断线重连次数 |
+| `params.calibration_path` | Velodyne / Hesai beam YAML（`vert_correction`） |
+| `params.enable_compensator` | 运动补偿；经 `compensator.pose_channel` / `PoseFeeder` 灌姿 |
+| `params.pose_channel` | 覆盖进程级 `compensator.pose_channel` |
+| `params.extrinsic_path` | 有则 `world_T_lidar = odom × base_T_lidar` |
+| `params.publish_scan` | 先发 `LidarPacketScan` 再发点云（Publisher 仅发点云） |
+| `params.scan_channel` | 原始 Scan 通道提示（当前不经 Autolink Writer） |
+| `params.world_frame_id` | 补偿世界系，默认 `world` |
 
-| 字段 | 必填 | 说明 |
-|---|---|---|
-| `name` | 是 | 如 `vlp16` → id `lidar/vlp16` |
-| `enable` | 否 | 是否启用 |
-| `channel` | 否 | 默认 `/<id>/points` |
-| `fps` | 否 | 期望点云发布频率 (Hz)，VLP-16 常见 10–20 |
-| `params.ip` | 否 | 雷达 IP，如 `192.168.1.201` |
-| `params.data_port` | 否 | UDP 数据端口，VLP-16 默认 `2368` |
-| `params.model` | 否 | 型号标识，供未来驱动使用 |
-
-示例：
+点云字段：`x,y,z,intensity`（float32）+ `timestamp`（float64 ns）。静态外参可用 `LoadExtrinsicYaml`。Hesai 默认 XT32 仰角；可用 `calibration_path`（见 `config/params/XT32_calibration.yaml`，`vert_correction` 为度）。
 
 ```yaml
 lidar_3d:
   - name: vlp16
     enable: false
     channel: /lidar/vlp16/points
-    fps: 10
+    backend: velodyne
     params:
-      ip: 192.168.1.201
       data_port: 2368
+      packets_per_scan: 75
       model: VLP-16
-```
-
-### 合并键 `lidar`
-
-```yaml
-lidar:
-  - name: front
-    dimension: 2d   # 或 type: 2d；3d / lidar3d / pointcloud 表示三维
-    port: /dev/ttyUSB4
-    baudrate: 115200
+      source_type: online
+      use_azimuth_cut: true
+      scan_cut_angle_deg: 0
+      enable_compensator: false
+  - name: xt32
+    enable: false
+    channel: /lidar/xt32/points
+    backend: hesai
+    params:
+      data_port: 2368
+      packets_per_scan: 180
+      model: XT32
+      source_type: online
+      use_azimuth_cut: true
 ```
 
 ---
 
-## imu — 惯性测量单元
+## point_cloud
 
-**消息类型**：`sensor_msgs.Imu`
-
-| 字段 | 必填 | 说明 |
-|---|---|---|
-| `name` | 是 | 如 `torso_imu` → id `imu/torso_imu` |
-| `enable` | 否 | 是否启用 |
-| `channel` | 否 | 字符串或数组；数组表示同一份 IMU 数据发布到多个话题 |
-| `backend` | 否 | `serial`（默认）、`can`、`realsense` |
-| `port` | serial 时 | 串口路径 |
-| `baudrate` | serial 时 | 常见 115200 / 460800 / 921600，需与模块输出速率匹配 |
-| `fps` | 否 | 期望发布频率 (Hz)；写入 `publish_rate_hz`（串口驱动当前按硬件实际速率输出，尚未限频） |
-
-### backend: serial
+**消息**：`sensor_msgs.PointCloud2`（运行时类型 `kLidar3d`）  
+**Module**：`PointCloudModule`；**id 前缀**：`camera/`  
+**backend**：`realsense`（默认）或 `orbbec`（需 OrbbecSDK）
 
 | 字段 | 说明 |
 |---|---|
-| `port` / `baudrate` | 见串口 shorthand |
-| `params.accel_scale` / `gyro_scale` | WitMotion 等协议换算系数 |
+| `width` / `height` / `fps` | 传入厂商 pipeline |
+| `params.model` / `params.serial` / `params.index` | 设备选择 |
+| `params.frame_id` | 点云 frame |
 
-### backend: can
+```yaml
+point_cloud:
+  - name: realsense_d455_points
+    enable: true
+    channel: /camera/depth/color/points
+    backend: realsense
+    width: 848
+    height: 480
+    fps: 30
+    params:
+      model: D455
+      frame_id: camera_depth_optical_frame
+```
+
+---
+
+## imu
+
+**消息**：`sensor_msgs.Imu`  
+**backend**：`serial`（默认）、`can`、`realsense`
 
 | 字段 | 说明 |
 |---|---|
-| `interface` | CAN 网卡，如 `can0` |
-| `accel_can_id` / `gyro_can_id` | 加速度/陀螺 CAN ID |
-| `can_id` | 合并帧 ID |
-| `accel_scale` / `gyro_scale` | 换算系数 |
-
-### backend: realsense
-
-用于 RealSense D435i / D455 等**板载 IMU**，与 `camera` 条目共用同一物理设备（RealSense hub 按 `serial` 或 `index+model` 合并）。
-
-| 字段 | 说明 |
-|---|---|
-| `model` | 可选；型号过滤子串，如 `D455`。单台设备可省略 |
-| `params.serial` | 可选；设备序列号，多台 RealSense 时必填 |
-| `params.index` | 可选；同型号设备索引，默认 `0` |
-
-示例：
+| `port` / `baudrate` | serial |
+| `interface`、`accel_can_id`、`gyro_can_id`、`can_id` | can |
+| `params.model` / `serial` / `index` | realsense 板载 IMU |
+| `fps` | 写入 `publish_rate_hz`（串口当前按硬件速率输出） |
 
 ```yaml
 imu:
@@ -243,29 +265,20 @@ imu:
     fps: 200
 
   - name: realsense_d455_imu
-    enable: false
+    enable: true
     channel: /camera/imu
     backend: realsense
+    params:
+      model: D455
+      frame_id: camera_imu_optical_frame
 ```
 
 ---
 
-## gps — 全球导航卫星系统
+## gps
 
-**消息类型**：`sensor_msgs.NavSatFix`
-
-| 字段 | 必填 | 说明 |
-|---|---|---|
-| `name` | 是 | 如 `gps_main` → id `gps/gps_main` |
-| `enable` | 否 | 是否启用 |
-| `channel` | 否 | 常见 `/gps/fix` 或 `/<id>` |
-| `backend` | 否 | `serial`（默认）、`can` |
-| `port` | serial 时 | 串口路径 |
-| `baudrate` | serial 时 | NMEA 模块出厂常见 **9600**；部分 u-blox 配置为 115200 |
-
-`backend: can` 时使用 `interface`、`can_id` 等，见 IMU CAN 字段说明。
-
-示例：
+**消息**：`sensor_msgs.NavSatFix`  
+**backend**：`serial`（默认）、`can`
 
 ```yaml
 gps:
@@ -278,78 +291,97 @@ gps:
 
 ---
 
-## camera — 相机
+## camera
 
-**消息类型**：`sensor_msgs.Image`
+**消息**：`sensor_msgs.Image`（另开 camera_info）  
+**backend**：`realsense`（默认）、`orbbec`（需 OrbbecSDK）、`smartereye`（**stub**，无 SDK 时 Create→nullptr）
 
-| 字段 | 必填 | 说明 |
+| `stream` | 含义 | 示例 channel |
 |---|---|---|
-| `name` | 是 | 如 `realsense_d455_color` → id `camera/realsense_d455_color` |
-| `enable` | 否 | 是否启用 |
-| `channel` | 否 | 单路图像的 Autolink 话题 |
-| `backend` | 否 | 当前实现 **`realsense`**（默认） |
-| `stream` | realsense 时 | 视频流类型（见下表） |
-| `width` / `height` | realsense 时 | 分辨率 |
-| `fps` | realsense 时 | 帧率，**会传入 RealSense pipeline** |
+| `color` / `rgb`（默认） | RGB | `/camera/color/image_raw` |
+| `depth` / `z16` | 深度 | `/camera/depth/image_rect_raw` |
+| `ir1` / `infrared1` / `ir` | 红外 1（RealSense）/ Orbbec IR | `/camera/infra1/image_rect_raw` |
+| `ir2` / `infrared2` | 红外 2（RealSense） | `/camera/infra2/image_rect_raw` |
+| `aligned_depth_to_color` | 对齐到彩色的深度（RealSense） | `/camera/aligned_depth_to_color/image_raw` |
 
-### RealSense `stream` 取值
+多路 stream 写多条 `camera`；同一物理机用相同 `params.serial` 或 `index`+`model` 共用厂商 hub。
 
-| `stream` | 含义 | 典型 channel（ROS 风格） |
-|---|---|---|
-| `color` / `rgb`（默认） | RGB 彩色 | `/camera/color/image_raw` |
-| `depth` / `z16` | 深度 | `/camera/depth/image_raw` |
-| `ir1` / `infrared1` / `ir` | 红外 1 | `/camera/infra1/image_raw` |
-| `ir2` / `infrared2` | 红外 2 | `/camera/infra2/image_raw` |
+设备级选项（可放在 `params`，同机多流共享）：
 
-**多路 stream（color + depth + ir）必须写多条 `camera` 配置**，每条一个 `stream` 和一个 `channel`。同一 D455 的多条目共用 RealSense hub（相同 `params.serial` 或相同 `index`+`model`）。
-
-| 字段 | 说明 |
+| 键 | 说明 |
 |---|---|
-| `model` | 可选；如 `D455`。单台设备可省略 |
-| `params.serial` | 可选；多台 RealSense 时按序列号绑定 |
-
-D455 常用分辨率 **848×480 @ 30fps**（深度与彩色对齐）。
-
-示例：
+| `emitter_enabled` / `enable_ir_emitter` | IR 投影灯 |
+| `frame_id` | 图像 frame |
+| `model` / `serial` / `index` | 设备过滤 |
 
 ```yaml
 camera:
   - name: realsense_d455_color
-    enable: false
+    enable: true
     channel: /camera/color/image_raw
     backend: realsense
     stream: color
     width: 848
     height: 480
     fps: 30
-
-  - name: realsense_d455_depth
-    enable: false
-    channel: /camera/depth/image_raw
-    backend: realsense
-    stream: depth
-    width: 848
-    height: 480
-    fps: 30
+    params:
+      model: D455
+      emitter_enabled: false
+      frame_id: camera_color_optical_frame
 ```
 
 ---
 
-## range — 测距传感器
+## radar
 
-**消息类型**：`sensor_msgs.Range`  
-**当前驱动状态**：插件为 attach-only 骨架，串口驱动尚未实现。
+**消息**：暂用 `PointCloud2`（`RadarSample` 占位）  
+**Module**：`RadarModule`  
+**backend**：`conti`（alias `continental`）  
+**状态**：**stub** — 注册表存在，`Create` 返回 `nullptr`，直至 Conti ProtocolData + `canbus` 落地。
 
-| 字段 | 必填 | 说明 |
-|---|---|---|
-| `name` | 是 | 如 `range_main` → id `range/range_main` |
-| `enable` | 否 | 是否启用 |
-| `channel` | 否 | 默认 `/<id>` |
-| `port` | 是* | 串口路径（*启用且 backend 为 serial 时） |
-| `baudrate` | 否 | 超声波/红外模块常见 9600 或 115200 |
-| `fps` | 否 | 期望发布频率 (Hz)，常见 10 |
+| 字段 | 说明 |
+|---|---|
+| `params.interface` | 预留 SocketCAN ifname（如 `can0` / `fake0`） |
+| `channel` | 目标话题；默认 `/radar/<name>/radar` |
 
-示例：
+```yaml
+radar:
+  - name: front
+    enable: false
+    channel: /radar/front/objects
+    backend: conti
+    params:
+      interface: can0
+```
+
+---
+
+## microphone
+
+**消息**：暂用 `sensor_msgs/Image` 装 PCM（`MicrophoneSample`）  
+**Module**：`MicrophoneModule`  
+**backend**：`respeaker`  
+**状态**：**stub** — 需 PortAudio / USB HID 后再实现真采集。
+
+| 字段 | 说明 |
+|---|---|
+| `params.device` / `sample_rate` | 预留 |
+| `channel` | 默认 `/mic/<name>/audio` |
+
+```yaml
+microphone:
+  - name: cabin
+    enable: false
+    channel: /mic/cabin/audio
+    backend: respeaker
+```
+
+---
+
+## range
+
+**消息**：`sensor_msgs.Range`  
+**状态**：attach-only。
 
 ```yaml
 range:
@@ -365,26 +397,22 @@ range:
 
 ## 热插拔匹配
 
-每条传感器可配置 `match`，供 Linux udev 热插拔匹配（`hotplug.enable_udev: true` 时）：
+`hotplug.enable_udev: true` 时：
 
 | 字段 | 说明 |
 |---|---|
 | `match.subsystem` | 如 `tty`、`usb` |
-| `match.device` | 设备节点，如 `/dev/ttyUSB0` |
-| `match.vendor` / `match.product` | USB 厂商/产品 ID（十六进制字符串） |
-| `match.serial` | 设备序列号 |
+| `match.device` | 设备节点 |
+| `match.vendor` / `match.product` | USB 厂商/产品 ID |
+| `match.serial` | 序列号 |
 
-配置了 `port` 的 serial 设备会自动填充 `match.subsystem=tty` 与 `match.device=<port>`（若未显式写 `match`）。
+配置了 `port` 的 serial 会自动填 `match.subsystem=tty` 与 `match.device=<port>`（若未显式写 `match`）。空 `match` 不参与 udev。
 
-无 `match` 的条目不参与 udev，仅响应 `enable: true` 或显式 `Attach`。
+详见 [生命周期](lifecycle.md)。
 
----
+## 默认示例内容
 
-## 默认内容
-
-`config/autodriver_hardware.yaml` 包含上述各类传感器的示例条目（默认均为 `enable: false`）。
-
-参考 schema：`autodriver/proto/autodriver_conf.proto`（文档用，运行时读 YAML）。
+`config/autodriver_hardware.yaml` 以 Intel RealSense D455 为主：多路 camera、`point_cloud`、板载 IMU 默认 `enable: true`；串口/激光等示例为 `enable: false`。通道命名对齐 realsense-ros。
 
 ## 代码加载
 

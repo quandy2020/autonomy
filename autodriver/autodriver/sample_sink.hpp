@@ -25,6 +25,7 @@
 #include <memory>
 
 #include "autodriver/config.hpp"
+#include "autodriver/common/status.hpp"
 #include "autodriver/sensor_id.hpp"
 #include "autodriver/types/sensor_sample.hpp"
 #include "autodriver/types/sensor_type.hpp"
@@ -61,6 +62,11 @@ public:
      * @param sample Shared sample to emit downstream.
      */
     virtual void OnSample(std::shared_ptr<SensorSample> sample) = 0;
+
+    /**
+     * @brief Optional device health update (default: ignore).
+     */
+    virtual void OnDiagnostic(const diagnostics::DiagnosticSnapshot&) {}
 
 protected:
     /**
