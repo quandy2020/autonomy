@@ -126,6 +126,26 @@ if(TARGET hestia_component)
   )
   list(APPEND _autonomy_launch_mods perception)
 endif()
+if(TARGET shadow_component)
+  install(
+    TARGETS shadow_component
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+  )
+  install(
+    FILES autonomy/perception/shadow/dag/shadow.dag
+    DESTINATION share/autonomy/shadow/dag
+  )
+  install(
+    FILES autonomy/perception/shadow/conf/shadow.pb.txt
+    DESTINATION share/autonomy/shadow/conf
+  )
+  install(
+    FILES autonomy/perception/shadow/launch/shadow.launch
+    DESTINATION share/autonomy/shadow/launch
+  )
+  list(APPEND _autonomy_launch_mods perception)
+endif()
 if(BUILD_GRPC)
   list(APPEND _autonomy_launch_mods bridge)
 endif()

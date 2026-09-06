@@ -206,11 +206,12 @@ endif()
 include("${PROJECT_SOURCE_DIR}/cmake/autonomy_deps.cmake")
 autonomy_link_dependencies(${PROJECT_NAME})
 
-# Fathom's autolink component requires the concrete ONNX/common-network
-# runner and is deliberately a separate mainboard-loadable shared library.
+# Perception autolink components with concrete common-network runners are
+# deliberately separate mainboard-loadable shared libraries.
 if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
   add_subdirectory(autonomy/perception/fathom)
   add_subdirectory(autonomy/perception/hestia)
+  add_subdirectory(autonomy/perception/shadow)
 endif()
 
 # Echo tool needs automsgs protos for DebugString when topology omits type.
