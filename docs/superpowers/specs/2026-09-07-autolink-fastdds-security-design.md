@@ -1,7 +1,7 @@
 # Autolink FastDDS Security 设计（M6）
 
 - **日期**：2026-09-07
-- **状态**：已批准（实现计划已就绪）
+- **状态**：已实现（M6）
 - **计划**：`docs/superpowers/plans/2026-09-07-autolink-fastdds-security.md`
 - **前置**：
   - `docs/superpowers/specs/2026-09-06-autolink-fastdds-multimachine-design.md`（M1–M3）
