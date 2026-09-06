@@ -24,6 +24,7 @@
 #include <gtest/gtest.h>
 
 #include <functional>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -72,6 +73,7 @@ proto::ShadowOptions ValidOptions() {
     options.set_max_linear_speed(0.8F);
     options.set_max_angular_speed(1.2F);
     options.set_follow_distance(1.5F);
+    options.set_trajectory_step_sec(0.1F);
     options.set_learned_weight(1.0F);
     options.set_clearance_weight(1.0F);
     options.set_traversability_weight(1.0F);
@@ -159,6 +161,19 @@ TEST(ShadowOptionsTest, RejectsInvalidIndividualFields) {
         {"zero map resolution",
          [](proto::ShadowOptions* options) {
              options->set_map_resolution(0.0F);
+         }},
+        {"zero trajectory step duration",
+         [](proto::ShadowOptions* options) {
+             options->set_trajectory_step_sec(0.0F);
+         }},
+        {"negative trajectory step duration",
+         [](proto::ShadowOptions* options) {
+             options->set_trajectory_step_sec(-0.1F);
+         }},
+        {"non-finite trajectory step duration",
+         [](proto::ShadowOptions* options) {
+             options->set_trajectory_step_sec(
+                 std::numeric_limits<float>::infinity());
          }},
         {"negative learned planner weight",
          [](proto::ShadowOptions* options) {

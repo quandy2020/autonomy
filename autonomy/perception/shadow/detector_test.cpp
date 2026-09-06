@@ -112,6 +112,7 @@ proto::ShadowOptions Options(uint32_t width = 640, uint32_t height = 640,
     options.set_max_linear_speed(0.8F);
     options.set_max_angular_speed(1.2F);
     options.set_follow_distance(1.5F);
+    options.set_trajectory_step_sec(0.1F);
     options.set_learned_weight(1.0F);
     options.set_clearance_weight(1.0F);
     options.set_traversability_weight(1.0F);
