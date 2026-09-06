@@ -28,6 +28,7 @@ ctest --test-dir autolink/build-fastdds -R rtps_transceiver -V
 ```
 
 说明：同进程 RTPS PubSub 在部分平台上可能只完成匹配、不触发 `DataReaderListener`；双机清单仍是正式验收路径。`autolink/conf/fastdds_profiles.xml` 将 intraprocess 设为 `OFF`，优先走 UDP。
+
 ---
 
 ## 14.2 双机清单
