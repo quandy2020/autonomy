@@ -1,7 +1,8 @@
 # Autolink FastDDS 多机通信设计（A→B→C）
 
 - **日期**：2026-09-06
-- **状态**：待用户审阅
+- **状态**：已批准（实现计划已就绪）
+- **计划**：`docs/superpowers/plans/2026-09-06-autolink-fastdds-multimachine.md`
 - **来源**：Apollo Cyber RT 孵化；Autolink 已移除 FastDDS，仅保留本机 INTRA + SHM
 - **范围**：文档/配置真相（A）→ 可插拔拓扑后端工厂（B）→ Fast DDS **2.14** 可选数据面 + Hybrid `diff_host→RTPS`（C）
 - **不做（本轮）**：Discovery Server、DDS Security、大消息外带、完整 RTPS 拓扑 SDP（`RtpsTopologyBackend` 实装）、Fast DDS 3.x 编译、双 Participant 拆分
