@@ -73,7 +73,7 @@ Autonomy 算法模块不直接操作 DDS/SHM，而是经 **Node + 消息边界**
     <div class="plan-arch-header">
       <span class="plan-arch-badge">传输层</span>
       <span class="plan-arch-title">同进程 / 同机 / 跨主机（可选）</span>
-      <span class="plan-arch-sub">发现：本机文件总线（默认）/ DDS 端点发现（可选 RTPS 数据面）</span>
+      <span class="plan-arch-sub">拓扑发现：本机文件总线；DDS 端点发现仅属可选 RTPS 数据面内部</span>
     </div>
     <div class="plan-arch-body">
       <div class="nav-chip-list">
@@ -115,7 +115,7 @@ Autonomy 算法模块不直接操作 DDS/SHM，而是经 **Node + 消息边界**
     <div class="plan-arch-header">
       <span class="plan-arch-badge">L2 发现</span>
       <span class="plan-arch-title">Service Discovery</span>
-      <span class="plan-arch-sub">本机文件总线（默认）/ DDS 端点发现（可选 RTPS 数据面）</span>
+      <span class="plan-arch-sub">本机文件总线（Autolink 拓扑）；DDS 端点发现不属本层</span>
     </div>
   </div>
 
@@ -333,6 +333,7 @@ Channel 直驱回调路径见 [§3.7](03_channel.md#37-数据路径)。
 | `AUTOLINK_PLUGIN_*` | 插件描述与 `.so` | 见 [§7](07_plugin.md) |
 | `AUTOLINK_SCHED_CONF` | 调度配置 | `conf/compute_sched_choreography.conf` |
 | `AUTOLINK_DOMAIN_ID` | 可选跨机 RTPS 的 DDS domain | `setup.bash` 默认 `80`；需 `AUTOLINK_ENABLE_FASTDDS` |
+| `AUTOLINK_IP` | 可选跨机 RTPS 的本机可达地址 | 需 `AUTOLINK_ENABLE_FASTDDS` |
 | `GLOG_*` | 日志 | 见 [§8](08_log.md) |
 
 Python 另需 `PYTHONPATH` 指向 `autolink_py3`（`examples/python/README.md`）。
