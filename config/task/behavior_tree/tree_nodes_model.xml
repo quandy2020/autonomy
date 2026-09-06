@@ -114,10 +114,17 @@
 
     <!-- Controls -->
     <Control ID="PipelineSequence"/>
+    <Control ID="ReactiveSequence"/>
 
     <!-- Decorators -->
+    <Decorator ID="Delay">
+      <input_port name="delay_msec" type="int" default="1000">milliseconds</input_port>
+    </Decorator>
     <Decorator ID="RateController">
       <input_port name="hz" type="double" default="1.0">max child tick rate</input_port>
+    </Decorator>
+    <Decorator ID="RetryUntilSuccessful">
+      <input_port name="num_attempts" type="int" default="1"/>
     </Decorator>
   </TreeNodesModel>
 </root>

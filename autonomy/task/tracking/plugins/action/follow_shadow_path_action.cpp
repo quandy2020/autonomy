@@ -38,6 +38,10 @@ BT::NodeStatus ShadowPathExecutor::Tick(const std::string& controller_id,
                  error_message);
             return BT::NodeStatus::FAILURE;
         }
+        if (!active_ && has_completed_revision_ &&
+            revision == completed_revision_) {
+            return BT::NodeStatus::RUNNING;
+        }
         if (!operations_.action_ready()) {
             Fail(1, "FollowShadowPath: follow_path server not ready",
                  error_code, error_message);
@@ -48,13 +52,21 @@ BT::NodeStatus ShadowPathExecutor::Tick(const std::string& controller_id,
             operations_.begin(path, controller_id);
             active_revision_ = revision;
             has_active_revision_ = true;
+            has_completed_revision_ = false;
             active_ = true;
             return BT::NodeStatus::RUNNING;
         }
 
         const BT::NodeStatus status =
             operations_.tick(error_code, error_message);
-        if (status != BT::NodeStatus::RUNNING) {
+        if (status == BT::NodeStatus::SUCCESS) {
+            active_ = false;
+            has_active_revision_ = false;
+            completed_revision_ = active_revision_;
+            has_completed_revision_ = true;
+            return BT::NodeStatus::RUNNING;
+        }
+        if (status == BT::NodeStatus::FAILURE) {
             active_ = false;
             has_active_revision_ = false;
         }
@@ -71,6 +83,7 @@ void ShadowPathExecutor::Halt() {
     }
     active_ = false;
     has_active_revision_ = false;
+    has_completed_revision_ = false;
 }
 
 void ShadowPathExecutor::Fail(int code, const std::string& message,
@@ -80,6 +93,7 @@ void ShadowPathExecutor::Fail(int code, const std::string& message,
     }
     active_ = false;
     has_active_revision_ = false;
+    has_completed_revision_ = false;
     if (error_code != nullptr) {
         *error_code = code;
     }

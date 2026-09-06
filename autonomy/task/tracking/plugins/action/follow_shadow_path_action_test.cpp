@@ -133,7 +133,7 @@ TEST(FollowShadowPathActionTest, RejectsUnavailableFollowPathClient) {
     EXPECT_NE(error_message.find("ready"), std::string::npos);
 }
 
-TEST(FollowShadowPathActionTest, PropagatesFollowPathResult) {
+TEST(FollowShadowPathActionTest, CompletedRevisionWaitsForANewPath) {
     FakeSession session;
     ShadowPathExecutor executor(session.Operations());
     int error_code = 0;
@@ -145,9 +145,23 @@ TEST(FollowShadowPathActionTest, PropagatesFollowPathResult) {
     session.result_message = "complete";
 
     EXPECT_EQ(executor.Tick("controller", &error_code, &error_message),
-              BT::NodeStatus::SUCCESS);
+              BT::NodeStatus::RUNNING);
     EXPECT_EQ(error_code, 17);
     EXPECT_EQ(error_message, "complete");
+    EXPECT_EQ(session.begin_count, 1);
+    EXPECT_EQ(session.tick_count, 1);
+
+    EXPECT_EQ(executor.Tick("controller", &error_code, &error_message),
+              BT::NodeStatus::RUNNING);
+    EXPECT_EQ(session.begin_count, 1);
+    EXPECT_EQ(session.tick_count, 1);
+
+    session.revision = 2;
+    session.path = NonEmptyPath(1.0);
+    EXPECT_EQ(executor.Tick("controller", &error_code, &error_message),
+              BT::NodeStatus::RUNNING);
+    EXPECT_EQ(session.begin_count, 2);
+    EXPECT_EQ(session.tick_count, 1);
 }
 
 TEST(FollowShadowPathActionTest, PropagatesFollowPathFailure) {
