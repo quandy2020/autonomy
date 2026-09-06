@@ -1,0 +1,19 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Standalone launcher for the Shadow autolink component.
+
+  Runtime search paths:
+    AUTOLINK_DAG_PATH  Shadow source or installation root
+    AUTOLINK_CONF_PATH Shadow source or installation root
+    AUTOLINK_LIB_PATH  Directory containing libshadow_component.so
+-->
+<autolink>
+  <module>
+    <name>shadow</name>
+    <dag_conf>dag/shadow.dag</dag_conf>
+    <process_name>shadow</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>
