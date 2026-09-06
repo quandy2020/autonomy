@@ -16,7 +16,7 @@
 
 | 维度 | ROS 2 | Cyber RT | autolink |
 |------|-------|----------|----------|
-| 发现 | DDS | 自研 UDP | 自研 UDP |
+| 发现 | DDS | 自研 UDP | 本机文件；跨机：可选 FastDDS |
 | 消息 | rosidl | protobuf | protobuf + commsgs |
 | 发布订阅 | topic | channel | channel |
 | RPC | Service | Service | Service |
@@ -55,7 +55,7 @@
 
 ## 13.5 性能要点
 
-- 同机默认 **SHM**；跨机 **RTPS**
+- 同机默认 **SHM**；跨机 **RTPS** 为可选（需 `AUTOLINK_ENABLE_FASTDDS`）
 - 控制环 **`pending_queue_size=1`**，避免队列堆积
 - 延迟敏感链路：**choreography 绑核**（[§12](12_scheduler.md)）
 - `Proc` / Reader 回调内 **避免阻塞 I/O**

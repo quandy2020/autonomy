@@ -10,13 +10,18 @@ Channel 是 autolink 的 **持续数据流** 抽象，对标 ROS 2 topic。Write
 
 ## 3.1 传输与发现
 
+默认传输：同进程 INTRA、同机多进程 SHM；拓扑发现为本机文件总线（`/tmp/autolink_topology_events.log`）。
+跨机 Channel 为**可选**能力：编译打开 `AUTOLINK_ENABLE_FASTDDS`，配置 `diff_host: RTPS`，
+双方设置可达 `AUTOLINK_IP` 与相同 `AUTOLINK_DOMAIN_ID`（默认 80），依赖 Fast DDS SIMPLE 多播做端点匹配。
+完整跨机拓扑图（ChangeMsg over RTPS）不在本阶段。
+
 | 场景 | 传输 |
 |------|------|
 | 同进程 | INTRA（内存直传） |
 | 同机多进程 | SHM（共享内存） |
-| 跨主机 | RTPS（Fast DDS） |
+| 跨主机 | RTPS（可选；需 Fast DDS） |
 
-发现经 **UDP 多播**，无 central master；匹配完成后数据不经发现通道。
+发现层：本机文件总线（默认）/ DDS 端点发现（可选 RTPS 数据面）；匹配完成后业务数据不经发现通道。
 
 ---
 
@@ -167,7 +172,7 @@ while not autolink.is_shutdown():
     <span class="comm-flow-step-title">Writer::Write</span>
   </div>
   <div class="comm-flow-link comm-flow-link--labeled">
-    <span class="comm-flow-link-label">INTRA · SHM · RTPS</span>
+    <span class="comm-flow-link-label">INTRA · SHM · RTPS（可选）</span>
     <span class="comm-flow-link-arrow" aria-hidden="true">→</span>
   </div>
   <div class="comm-flow-step comm-flow-step-mid">

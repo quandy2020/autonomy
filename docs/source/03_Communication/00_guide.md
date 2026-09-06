@@ -128,8 +128,13 @@ cmake --build build/autolink -j8
 | `AUTOLINK_LAUNCH_PATH` | `.launch` 搜索路径 |
 | `AUTOLINK_SCHED_CONF` | 调度配置文件路径 |
 | `AUTOLINK_PLUGIN_*` | 插件描述与 `.so` 路径（见 [§7](07_plugin.md)） |
-| `AUTOLINK_DOMAIN_ID` | 跨主机发现域 ID（默认见 `setup.bash`） |
+| `AUTOLINK_DOMAIN_ID` | 可选跨机 RTPS 时的 DDS domain（默认 80；需 `AUTOLINK_ENABLE_FASTDDS`） |
 | `GLOG_*` | 日志级别与输出目录（见 [§8](08_log.md)） |
+
+默认传输：同进程 INTRA、同机多进程 SHM；拓扑发现为本机文件总线（`/tmp/autolink_topology_events.log`）。
+跨机 Channel 为**可选**能力：编译打开 `AUTOLINK_ENABLE_FASTDDS`，配置 `diff_host: RTPS`，
+双方设置可达 `AUTOLINK_IP` 与相同 `AUTOLINK_DOMAIN_ID`（默认 80），依赖 Fast DDS SIMPLE 多播做端点匹配。
+完整跨机拓扑图（ChangeMsg over RTPS）不在本阶段。
 
 ---
 
