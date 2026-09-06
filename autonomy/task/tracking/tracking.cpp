@@ -39,6 +39,11 @@ bool TrackerTask::EnsureTrackingClient()
     if (tracking_client_) {
         return true;
     }
+    if (node()) {
+        tracking_client_ = tracking::TrackingClient::Create(node());
+        tracking::TrackingClient::SetShared(tracking_client_);
+        return static_cast<bool>(tracking_client_);
+    }
     if (!navigation()) {
         return false;
     }
@@ -157,6 +162,11 @@ void TrackerTask::OnTreeTick()
 tp::TrackerStatus TrackerTask::MapStatus() const
 {
     using Status = tp::TrackerStatus;
+    if (Lifecycle() == TaskLifecycle::kRunning && tracking_client_ &&
+        tracking_client_->mode() == tp::TRACKER_MODE_PERSON &&
+        !tracking_client_->IsTargetLocked()) {
+        return Status::TRACKER_STATUS_TARGET_LOST;
+    }
     switch (Lifecycle()) {
     case TaskLifecycle::kIdle:
         return Status::TRACKER_STATUS_IDLE;
@@ -181,8 +191,13 @@ void TrackerTask::FillFeedback(tp::TrackerFeedback* feedback) const
     *feedback->mutable_progress() = progress_;
     if (tracking_client_) {
         feedback->set_distance_to_target(tracking_client_->DistanceToTarget());
-        if (active_goal_.has_value() &&
-            active_goal_->has_target_pose()) {
+        if (tracking_client_->mode() == tp::TRACKER_MODE_PERSON) {
+            automsgs::msgs::geometry_msgs::PoseStamped target;
+            if (tracking_client_->GetShadowTarget(&target)) {
+                *feedback->mutable_target_pose() = target;
+            }
+        } else if (active_goal_.has_value() &&
+                   active_goal_->has_target_pose()) {
             *feedback->mutable_target_pose() = active_goal_->target_pose();
         }
     }
