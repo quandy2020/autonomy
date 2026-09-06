@@ -24,26 +24,45 @@ cmake --build autolink/build-fastdds -j
 验证：
 
 ```bash
-ctest --test-dir autolink/build-fastdds -R rtps_transceiver -V
+ctest --test-dir autolink/build-fastdds \
+  -R 'rtps_transceiver|topology_backend_factory|rtps_topology_backend' -V
 ```
 
 说明：同进程 RTPS PubSub 在部分平台上可能只完成匹配、不触发 `DataReaderListener`；双机清单仍是正式验收路径。`autolink/conf/fastdds_profiles.xml` 将 intraprocess 设为 `OFF`，优先走 UDP。
 
 ---
 
-## 14.2 双机清单
+## 14.2 双机清单（数据面 + 拓扑）
 
 两端均需 `AUTOLINK_ENABLE_FASTDDS=ON` 构建，并：
 
 | 项 | 要求 |
 |----|------|
 | `diff_host` | conf 中设为 `RTPS`（勿依赖默认 SHM） |
+| `AUTOLINK_TOPOLOGY_BACKEND` | 设为 `rtps`（跨机 ChangeMsg；默认 `local` 仅本机文件总线） |
 | `AUTOLINK_IP` | 对端可达的本机地址（勿用仅回环） |
 | `AUTOLINK_DOMAIN_ID` | 两端相同（默认 `80`） |
 | 网络 | 同 LAN；Fast DDS **SIMPLE** 发现依赖多播可达 |
 | 防火墙 | 放行 DDS 多播与动态端口 |
 
-拓扑图仍为本机文件总线；完整跨机 ChangeMsg over RTPS 当前未提供。DDS 端点匹配与业务数据走 RTPS，不属于 Autolink L2 发现。
+- **数据面**：Channel Writer/Reader 在 `diff_host=RTPS` 时走 RTPS。
+- **拓扑面**：`AUTOLINK_TOPOLOGY_BACKEND=rtps` 时，`ChangeMsg`（node/channel/service JOIN/LEAVE）经 `RtpsTopologyBackend` 在三路 broadcast topic 上传播；对端 `ChannelManager` / `NodeManager` 可见远端角色。
+- **失败回退**：`BACKEND=rtps` 且 Hub/Backend `Start` 失败时，进程打 `AERROR` 并回退 `local`（仅同机发现），保证可启动。
+
+### 双 Participant
+
+`RtpsParticipantHub` 在同一 Domain 内持有两个 `DomainParticipant`：
+
+| Participant | 用途 |
+|-------------|------|
+| topology | `RtpsTopologyBackend` 的 ChangeMsg Writer/Reader |
+| transport | Channel RTPS 收发（`Transport`） |
+
+二者独立 name/端口，避免拓扑流量与业务数据面争用同一端点集合。
+
+### Security
+
+DDS Security（身份认证、加密、权限）**当前未实现**。多机拓扑与数据面均依赖可信局域网；勿在不可信网络上默认开启跨机 RTPS。
 
 ---
 
@@ -58,4 +77,4 @@ ctest --test-dir autolink/build-fastdds -R rtps_transceiver -V
 | Underlay / TypeSupport | 2.14 `TypeSupport` / Topic 创建方式 | 按 3.x 迁移指南改 `create_topic` / 类型注册 |
 | FetchContent / pin | `GIT_TAG v2.14.6` | 换 3.x tag 并重跑 RTPS 集成测 |
 
-升版后至少跑：`topology_backend_factory_test`（OFF 回归）与 `rtps_transceiver_test`（ON）。
+升版后至少跑：`topology_backend_factory_test`（OFF/ON）、`rtps_topology_backend_test`（ON）与 `rtps_transceiver_test`（ON）。
