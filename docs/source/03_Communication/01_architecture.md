@@ -67,19 +67,19 @@ Autonomy 算法模块不直接操作 DDS/SHM，而是经 **Node + 消息边界**
     </div>
   </div>
 
-  <div class="plan-arch-pipe"><span>INTRA · SHM · RTPS</span></div>
+  <div class="plan-arch-pipe"><span>INTRA · SHM · RTPS（可选）</span></div>
 
   <div class="plan-arch-layer plan-arch-map">
     <div class="plan-arch-header">
       <span class="plan-arch-badge">传输层</span>
-      <span class="plan-arch-title">同进程 / 同机 / 跨主机</span>
-      <span class="plan-arch-sub">发现：UDP 多播，无 central master</span>
+      <span class="plan-arch-title">同进程 / 同机 / 跨主机（可选）</span>
+      <span class="plan-arch-sub">发现：本机文件总线（默认）/ DDS 端点发现（可选 RTPS 数据面）</span>
     </div>
     <div class="plan-arch-body">
       <div class="nav-chip-list">
         <span class="nav-chip">INTRA</span>
         <span class="nav-chip">SHM</span>
-        <span class="nav-chip">RTPS</span>
+        <span class="nav-chip">RTPS（可选）</span>
         <span class="nav-chip">Bridge → ROS 2</span>
       </div>
     </div>
@@ -115,7 +115,7 @@ Autonomy 算法模块不直接操作 DDS/SHM，而是经 **Node + 消息边界**
     <div class="plan-arch-header">
       <span class="plan-arch-badge">L2 发现</span>
       <span class="plan-arch-title">Service Discovery</span>
-      <span class="plan-arch-sub">UDP 多播 · 拓扑注册与匹配</span>
+      <span class="plan-arch-sub">本机文件总线（默认）/ DDS 端点发现（可选 RTPS 数据面）</span>
     </div>
   </div>
 
@@ -125,7 +125,7 @@ Autonomy 算法模块不直接操作 DDS/SHM，而是经 **Node + 消息边界**
     <div class="plan-arch-header">
       <span class="plan-arch-badge">L3 传输</span>
       <span class="plan-arch-title">Transport</span>
-      <span class="plan-arch-sub">按拓扑自动选择 INTRA / SHM / RTPS</span>
+      <span class="plan-arch-sub">按拓扑自动选择 INTRA / SHM / RTPS（可选）</span>
     </div>
   </div>
 
@@ -332,7 +332,7 @@ Channel 直驱回调路径见 [§3.7](03_channel.md#37-数据路径)。
 | `AUTOLINK_LAUNCH_PATH` | `.launch` 文件 | 同 DAG |
 | `AUTOLINK_PLUGIN_*` | 插件描述与 `.so` | 见 [§7](07_plugin.md) |
 | `AUTOLINK_SCHED_CONF` | 调度配置 | `conf/compute_sched_choreography.conf` |
-| `AUTOLINK_DOMAIN_ID` | RTPS 发现域 | `setup.bash` 默认 `80` |
+| `AUTOLINK_DOMAIN_ID` | 可选跨机 RTPS 的 DDS domain | `setup.bash` 默认 `80`；需 `AUTOLINK_ENABLE_FASTDDS` |
 | `GLOG_*` | 日志 | 见 [§8](08_log.md) |
 
 Python 另需 `PYTHONPATH` 指向 `autolink_py3`（`examples/python/README.md`）。
