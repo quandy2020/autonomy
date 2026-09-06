@@ -44,6 +44,7 @@
 | 11 | [时间 Time / Rate / Timer](11_timer.md) | Time/Rate/Clock、Timer、TimerComponent |
 | 12 | [调度 Scheduler](12_scheduler.md) | classic / choreography |
 | 13 | [综述 Survey](13_survey.md) | ROS2/Cyber 对比、模式选型 |
+| 14 | [可选 FastDDS](14_fastdds.md) | 启用 RTPS、双机清单、升 3.x |
 
 ---
 
