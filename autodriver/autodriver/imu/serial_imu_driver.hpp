@@ -1,0 +1,125 @@
+/*
+ * Copyright 2026 Autodriver contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file
+ * @brief Serial WIT-motion IMU driver.
+ */
+
+#ifndef AUTODRIVER_IMU_SERIAL_IMU_DRIVER_HPP_
+#define AUTODRIVER_IMU_SERIAL_IMU_DRIVER_HPP_
+
+#include <atomic>
+#include <memory>
+#include <string>
+#include <thread>
+
+#include "autodriver/common/stream.hpp"
+#include "autodriver/driver_params.hpp"
+#include "autodriver/imu/wit_motion_parser.hpp"
+#include "autodriver/sensor_driver.hpp"
+
+namespace autodriver {
+namespace hardware {
+
+/**
+ * @class autodriver::hardware::SerialImuDriver
+ * @brief WIT-motion 0x55 via common::Stream + WitMotionParser.
+ */
+class SerialImuDriver : public SensorDriver
+{
+public:
+  /**
+   * @brief Stores sensor identity and WIT-motion parser scale factors.
+   */
+  SerialImuDriver(SensorId id, DriverParams params);
+
+  /**
+   * @brief Stops the reader thread and closes the serial port.
+   */
+  ~SerialImuDriver() override;
+
+  /**
+   * @brief Report sensor type
+   * @return SensorType::kImu
+   */
+  SensorType GetType() const override { return SensorType::kImu; }
+
+  /**
+   * @brief Return this driver's sensor identifier
+   * @return Sensor id assigned at construction
+   */
+  const SensorId & GetSensorId() const override { return id_; }
+
+  /**
+   * @brief Opens the serial device and starts the byte reader thread.
+   */
+  bool Start() override;
+
+  /**
+   * @brief Stops reading and joins the worker thread.
+   */
+  void Stop() override;
+
+  /**
+   * @brief Returns true while the serial reader thread is active.
+   */
+  bool IsRunning() const override;
+
+  /**
+   * @brief Registers the callback invoked for each fused IMU sample.
+   */
+  void SetSampleCallback(SampleCallback callback) override;
+
+private:
+  /**
+   * @brief Reads serial bytes, parses WIT packets, and emits IMU samples.
+   */
+  void ReadLoop();
+
+  // Sensor identifier for this driver instance.
+  SensorId id_;
+
+  // Parsed driver parameters from configuration.
+  DriverParams params_;
+
+  // Serial (or future TCP/UDP) transport to the IMU module.
+  std::unique_ptr<common::Stream> stream_;
+
+  // Incremental WIT-motion protocol parser.
+  protocol::WitMotionParser parser_;
+
+  // User callback for delivered IMU samples.
+  SampleCallback callback_;
+
+  // True while Start() succeeded and Stop() has not been called.
+  std::atomic<bool> running_{false};
+
+  // Worker thread running ReadLoop().
+  std::thread worker_;
+};
+
+/**
+ * @brief Factory used by ImuModule.
+ */
+std::shared_ptr<SensorDriver> CreateSerialImuDriver(
+  const SensorId & id,
+  const DriverParams & params);
+
+}  // namespace hardware
+}  // namespace autodriver
+
+#endif  // AUTODRIVER_IMU_SERIAL_IMU_DRIVER_HPP_

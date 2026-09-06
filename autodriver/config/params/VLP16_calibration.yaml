@@ -1,0 +1,19 @@
+# Velodyne beam calibration (vert_correction in radians)
+num_lasers: 16
+lasers:
+- {laser_id: 0, vert_correction: -0.2617993877991494}
+- {laser_id: 1, vert_correction: 0.017453292519943295}
+- {laser_id: 2, vert_correction: -0.22689280275926285}
+- {laser_id: 3, vert_correction: 0.05235987755982989}
+- {laser_id: 4, vert_correction: -0.19198621771937624}
+- {laser_id: 5, vert_correction: 0.08726646259971647}
+- {laser_id: 6, vert_correction: -0.15707963267948966}
+- {laser_id: 7, vert_correction: 0.12217304763960307}
+- {laser_id: 8, vert_correction: -0.12217304763960307}
+- {laser_id: 9, vert_correction: 0.15707963267948966}
+- {laser_id: 10, vert_correction: -0.08726646259971647}
+- {laser_id: 11, vert_correction: 0.19198621771937624}
+- {laser_id: 12, vert_correction: -0.05235987755982989}
+- {laser_id: 13, vert_correction: 0.22689280275926285}
+- {laser_id: 14, vert_correction: -0.017453292519943295}
+- {laser_id: 15, vert_correction: 0.2617993877991494}

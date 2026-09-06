@@ -1,0 +1,36 @@
+# Hesai PandarXT / XT32 elevations (degrees by default; channel 0 = +15°)
+# Optional: unit: rad  or  angles_in_radians: true
+num_lasers: 32
+lasers:
+- {laser_id: 0, vert_correction: 15.0}
+- {laser_id: 1, vert_correction: 14.0}
+- {laser_id: 2, vert_correction: 13.0}
+- {laser_id: 3, vert_correction: 12.0}
+- {laser_id: 4, vert_correction: 11.0}
+- {laser_id: 5, vert_correction: 10.0}
+- {laser_id: 6, vert_correction: 9.0}
+- {laser_id: 7, vert_correction: 8.0}
+- {laser_id: 8, vert_correction: 7.0}
+- {laser_id: 9, vert_correction: 6.0}
+- {laser_id: 10, vert_correction: 5.0}
+- {laser_id: 11, vert_correction: 4.0}
+- {laser_id: 12, vert_correction: 3.0}
+- {laser_id: 13, vert_correction: 2.0}
+- {laser_id: 14, vert_correction: 1.0}
+- {laser_id: 15, vert_correction: 0.0}
+- {laser_id: 16, vert_correction: -1.0}
+- {laser_id: 17, vert_correction: -2.0}
+- {laser_id: 18, vert_correction: -3.0}
+- {laser_id: 19, vert_correction: -4.0}
+- {laser_id: 20, vert_correction: -5.0}
+- {laser_id: 21, vert_correction: -6.0}
+- {laser_id: 22, vert_correction: -7.0}
+- {laser_id: 23, vert_correction: -8.0}
+- {laser_id: 24, vert_correction: -9.0}
+- {laser_id: 25, vert_correction: -10.0}
+- {laser_id: 26, vert_correction: -11.0}
+- {laser_id: 27, vert_correction: -12.0}
+- {laser_id: 28, vert_correction: -13.0}
+- {laser_id: 29, vert_correction: -14.0}
+- {laser_id: 30, vert_correction: -15.0}
+- {laser_id: 31, vert_correction: -16.0}

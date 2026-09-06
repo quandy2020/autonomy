@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 
+#include "autodriver/lidar/motion_pose_sink.hpp"
 #include "autolink/class_loader/class_loader.hpp"
 #include "autolink/class_loader/class_loader_manager.hpp"
 #include "autolink/common/log.hpp"
@@ -162,6 +163,45 @@ void SensorManager::SetRawSampleCallback(SensorHub::RawSampleCallback callback) 
     hub_.SetRawSampleCallback(std::move(callback));
 }
 
+void SensorManager::ReportDiagnostic(
+    diagnostics::DiagnosticSnapshot snapshot) {
+    if (sink_ != nullptr) {
+        sink_->OnDiagnostic(snapshot);
+    }
+}
+
+bool SensorManager::PushLidarPose(const SensorId& id, std::uint64_t time_ns,
+                                  const Eigen::Affine3d& pose) {
+    ReadLock lock(lock_);
+    const auto it = modules_.find(id);
+    if (it == modules_.end() || !it->second) {
+        return false;
+    }
+    auto driver = it->second->GetDriver();
+    auto* sink = dynamic_cast<lidar::MotionPoseSink*>(driver.get());
+    if (sink == nullptr) {
+        return false;
+    }
+    sink->PushPose(time_ns, pose);
+    return true;
+}
+
+bool SensorManager::SetLidarPoseLookup(const SensorId& id,
+                                       lidar::PoseLookup lookup) {
+    ReadLock lock(lock_);
+    const auto it = modules_.find(id);
+    if (it == modules_.end() || !it->second) {
+        return false;
+    }
+    auto driver = it->second->GetDriver();
+    auto* sink = dynamic_cast<lidar::MotionPoseSink*>(driver.get());
+    if (sink == nullptr) {
+        return false;
+    }
+    sink->SetPoseLookup(std::move(lookup));
+    return true;
+}
+
 void SensorManager::DispatchSample(std::shared_ptr<SensorSample> sample) {
     if (!sample) {
         return;
@@ -233,6 +273,8 @@ bool SensorManager::AttachLocked(const SensorId& id) {
     if (!instance) {
         AERROR << "CreateClassObj failed: " << sensor->module;
         UnloadIfUnused(path);
+        ReportDiagnostic({id, diagnostics::DeviceStatus::kError,
+                          "CreateClassObj failed: " + sensor->module, 0});
         return false;
     }
 
@@ -245,6 +287,8 @@ bool SensorManager::AttachLocked(const SensorId& id) {
         AERROR << "module Init failed: " << id;
         instance.reset();
         UnloadIfUnused(path);
+        ReportDiagnostic(
+            {id, diagnostics::DeviceStatus::kError, "Init failed", 0});
         return false;
     }
     if (sink_ != nullptr && !sink_->OnAttach(*sensor, instance->GetType())) {
@@ -252,6 +296,8 @@ bool SensorManager::AttachLocked(const SensorId& id) {
         instance->Stop();
         instance.reset();
         UnloadIfUnused(path);
+        ReportDiagnostic(
+            {id, diagnostics::DeviceStatus::kError, "OnAttach failed", 0});
         return false;
     }
     if (!instance->Start()) {
@@ -262,10 +308,13 @@ bool SensorManager::AttachLocked(const SensorId& id) {
         instance->Stop();
         instance.reset();
         UnloadIfUnused(path);
+        ReportDiagnostic(
+            {id, diagnostics::DeviceStatus::kError, "Start failed", 0});
         return false;
     }
     modules_[id] = std::move(instance);
     AINFO << "attached " << id;
+    ReportDiagnostic({id, diagnostics::DeviceStatus::kOk, "attached", 0});
     return true;
 }
 
@@ -286,6 +335,8 @@ void SensorManager::DetachLocked(const SensorId& id) {
         UnloadIfUnused(LibraryPath(*sensor));
     }
     AINFO << "detached " << id;
+    ReportDiagnostic({id, diagnostics::DeviceStatus::kDisconnected,
+                      "detached", 0});
 }
 
 void SensorManager::StartUdev() {

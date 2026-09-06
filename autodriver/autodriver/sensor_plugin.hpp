@@ -115,6 +115,11 @@ public:
         return running_;
     }
 
+    /**
+     * @brief Underlying SensorDriver when kCapture is true.
+     */
+    std::shared_ptr<SensorDriver> GetDriver() const final { return driver_; }
+
 protected:
     /**
      * @brief Factory for the hardware backend; override in concrete modules.

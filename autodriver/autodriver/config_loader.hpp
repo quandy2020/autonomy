@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief YAML configuration loader for autodriver_hardware.yaml.
+ * @brief Configuration loader (YAML only).
  */
 
 #ifndef AUTODRIVER_CONFIG_LOADER_HPP_
@@ -37,12 +37,13 @@ inline constexpr const char* kDefaultConfigBasename = "autodriver_hardware.yaml"
 Config LoadConfig();
 
 /**
- * @brief Loads config by basename from the default configuration directory.
+ * @brief Loads a YAML config by basename from the default configuration directory.
  */
 Config LoadConfig(const std::string& config_basename);
 
 /**
- * @brief Loads config from an explicit directory and basename.
+ * @brief Loads YAML from `{configuration_directory}/config/{basename}`
+ *        (with install-tree fallback). Basename should be `.yaml` / `.yml`.
  */
 Config LoadConfig(const std::string& configuration_directory,
                   const std::string& config_basename);

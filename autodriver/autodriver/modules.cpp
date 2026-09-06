@@ -21,14 +21,16 @@
  */
 
 #include "autodriver/sensor_plugin.hpp"
-#include "autodriver/hardware/can_imu_driver.hpp"
-#include "autodriver/hardware/serial_imu_driver.hpp"
-#include "autodriver/hardware/can_gps_driver.hpp"
-#include "autodriver/hardware/serial_gps_driver.hpp"
+#include "autodriver/imu/can_imu_driver.hpp"
+#include "autodriver/imu/serial_imu_driver.hpp"
+#include "autodriver/gps/can_gps_driver.hpp"
+#include "autodriver/gps/serial_gps_driver.hpp"
+#include "autodriver/camera/backend_registry.hpp"
+#include "autodriver/lidar/backend_registry.hpp"
+#include "autodriver/radar/backend_registry.hpp"
+#include "autodriver/microphone/backend_registry.hpp"
 #ifdef AUTODRIVER_HAVE_REALSENSE
-#include "autodriver/hardware/realsense_imu_driver.hpp"
-#include "autodriver/hardware/realsense_camera_driver.hpp"
-#include "autodriver/hardware/realsense_pointcloud_driver.hpp"
+#include "autodriver/camera/realsense/imu_driver.hpp"
 #endif
 
 #include "autolink/class_loader/class_loader_register_macro.hpp"
@@ -104,31 +106,22 @@ protected:
 CLASS_LOADER_REGISTER_CLASS(GpsModule, autodriver::SensorModule)
 
 // ---------------------------------------------------------------------------
-// Camera module — RealSense video streams.
+// Camera module — backends via CameraBackendRegistry (realsense/orbbec/…).
 // ---------------------------------------------------------------------------
 /**
  * @class CameraModule
- * @brief SensorPlugin for RealSense color/depth/IR video streams.
+ * @brief SensorPlugin for RGB/depth/IR; backends via CameraBackendRegistry.
  */
 class CameraModule
     : public autodriver::SensorPlugin<autodriver::SensorType::kCamera> {
 protected:
     /**
-     * @brief Instantiates a RealSense camera driver from config.
+     * @brief Instantiates an Image driver from the camera backend registry.
      */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
-        if (sensor.backend != "realsense") {
-            AERROR << "unsupported camera backend: " << sensor.backend;
-            return nullptr;
-        }
-#ifdef AUTODRIVER_HAVE_REALSENSE
-        return autodriver::hardware::CreateRealSenseCameraDriver(
-            sensor.id, sensor.params);
-#else
-        AERROR << "camera realsense backend not compiled";
-        return nullptr;
-#endif
+        return autodriver::camera::CameraBackendRegistry::Instance().Create(
+            sensor.backend, sensor.id, sensor.params);
     }
 };
 
@@ -136,10 +129,12 @@ CLASS_LOADER_REGISTER_CLASS(CameraModule, autodriver::SensorModule)
 
 // ---------------------------------------------------------------------------
 // Lidar modules — 2D/3D placeholders and RealSense point cloud.
+// Vendors should use autodriver/lidar/lidar_component_base.hpp
+// (Scan → Convert → PointCloud, SourceType online|raw_packet).
 // ---------------------------------------------------------------------------
 /**
  * @class Lidar2dModule
- * @brief Attach-only placeholder for 2D lidar plugins.
+ * @brief Attach-only placeholder until a Stream/UDP backend lands.
  */
 class Lidar2dModule
     : public autodriver::SensorPlugin<autodriver::SensorType::kLidar2d,
@@ -147,35 +142,34 @@ class Lidar2dModule
 
 /**
  * @class Lidar3dModule
- * @brief Attach-only placeholder for 3D lidar plugins.
+ * @brief 3D lidar: backends via LidarBackendRegistry (e.g. velodyne|udp).
  */
 class Lidar3dModule
-    : public autodriver::SensorPlugin<autodriver::SensorType::kLidar3d,
-                                      false> {};
-
+    : public autodriver::SensorPlugin<autodriver::SensorType::kLidar3d> {
+protected:
+    /**
+     * @brief Instantiates a 3D lidar driver from LidarBackendRegistry.
+     */
+    std::shared_ptr<autodriver::SensorDriver> MakeDriver(
+        const autodriver::Config::Sensor& sensor) override {
+        return autodriver::lidar::LidarBackendRegistry::Instance().Create(
+            sensor.backend, sensor.id, sensor.params);
+    }
+};
 /**
  * @class PointCloudModule
- * @brief SensorPlugin for RealSense colored point clouds.
+ * @brief Depth/color point clouds; backends via PointCloudBackendRegistry.
  */
 class PointCloudModule
     : public autodriver::SensorPlugin<autodriver::SensorType::kLidar3d> {
 protected:
     /**
-     * @brief Instantiates a RealSense point-cloud driver from config.
+     * @brief Instantiates a PointCloud2 driver from PointCloudBackendRegistry.
      */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
-        if (sensor.backend != "realsense") {
-            AERROR << "unsupported point cloud backend: " << sensor.backend;
-            return nullptr;
-        }
-#ifdef AUTODRIVER_HAVE_REALSENSE
-        return autodriver::hardware::CreateRealSensePointCloudDriver(
-            sensor.id, sensor.params);
-#else
-        AERROR << "point cloud realsense backend not compiled";
-        return nullptr;
-#endif
+        return autodriver::camera::PointCloudBackendRegistry::Instance().Create(
+            sensor.backend, sensor.id, sensor.params);
     }
 };
 
@@ -202,3 +196,43 @@ class RangeModule
                                       false> {};
 
 CLASS_LOADER_REGISTER_CLASS(RangeModule, autodriver::SensorModule)
+
+// ---------------------------------------------------------------------------
+// Radar / Microphone modules — backends via registries (stubs until wired).
+// ---------------------------------------------------------------------------
+/**
+ * @class RadarModule
+ * @brief SensorPlugin for automotive radar; backends via RadarBackendRegistry.
+ */
+class RadarModule
+    : public autodriver::SensorPlugin<autodriver::SensorType::kRadar> {
+protected:
+    /**
+     * @brief Instantiates a radar driver (may be nullptr for stubs).
+     */
+    std::shared_ptr<autodriver::SensorDriver> MakeDriver(
+        const autodriver::Config::Sensor& sensor) override {
+        return autodriver::radar::RadarBackendRegistry::Instance().Create(
+            sensor.backend, sensor.id, sensor.params);
+    }
+};
+
+/**
+ * @class MicrophoneModule
+ * @brief SensorPlugin for audio capture; backends via MicrophoneBackendRegistry.
+ */
+class MicrophoneModule
+    : public autodriver::SensorPlugin<autodriver::SensorType::kMicrophone> {
+protected:
+    /**
+     * @brief Instantiates a microphone driver (may be nullptr for stubs).
+     */
+    std::shared_ptr<autodriver::SensorDriver> MakeDriver(
+        const autodriver::Config::Sensor& sensor) override {
+        return autodriver::microphone::MicrophoneBackendRegistry::Instance()
+            .Create(sensor.backend, sensor.id, sensor.params);
+    }
+};
+
+CLASS_LOADER_REGISTER_CLASS(RadarModule, autodriver::SensorModule)
+CLASS_LOADER_REGISTER_CLASS(MicrophoneModule, autodriver::SensorModule)
