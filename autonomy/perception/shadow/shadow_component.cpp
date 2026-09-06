@@ -31,6 +31,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <exception>
 #include <limits>
 #include <memory>
@@ -130,6 +131,26 @@ bool VectorIsFinite(const automsgs::msgs::geometry_msgs::Vector3& vector) {
            std::isfinite(vector.z());
 }
 
+uint16_t DecodeUint16(const char* data, bool big_endian) {
+    const auto* bytes = reinterpret_cast<const uint8_t*>(data);
+    if (big_endian) {
+        return static_cast<uint16_t>((static_cast<uint16_t>(bytes[0]) << 8) |
+                                     static_cast<uint16_t>(bytes[1]));
+    }
+    return static_cast<uint16_t>(static_cast<uint16_t>(bytes[0]) |
+                                 (static_cast<uint16_t>(bytes[1]) << 8));
+}
+
+void EncodeFloat32LittleEndian(float value, char* data) {
+    uint32_t bits = 0;
+    static_assert(sizeof(bits) == sizeof(value));
+    std::memcpy(&bits, &value, sizeof(bits));
+    data[0] = static_cast<char>(bits & 0xffU);
+    data[1] = static_cast<char>((bits >> 8) & 0xffU);
+    data[2] = static_cast<char>((bits >> 16) & 0xffU);
+    data[3] = static_cast<char>((bits >> 24) & 0xffU);
+}
+
 }  // namespace
 
 ShadowComponent::~ShadowComponent() {
@@ -186,6 +207,9 @@ bool ShadowComponent::Init() {
         tracker_->Select(target_id);
         localizer_->Clear();
     };
+    confirmed_tracks_ = [this](Detection2DArray* output) {
+        tracker_->Confirmed(output);
+    };
     selection_reader_ = node_->CreateReader<Selection>(
         options_.select_topic(),
         [this](const std::shared_ptr<Selection>& selection) {
@@ -205,14 +229,18 @@ bool ShadowComponent::Init() {
         return false;
     }
 
-    tf_listener_ = std::make_unique<transform::AutolinkTfListener>();
-    if (!tf_listener_->Start(node_, "/tf", "", "/tf_static")) {
-        AERROR << "Shadow component failed to subscribe to /tf and "
-                  "/tf_static.";
+    listener_start_ = [](transform::AutolinkTfListener* listener,
+                         const std::shared_ptr<autolink::Node>& node,
+                         const std::string& dynamic_topic,
+                         const std::string& legacy_topic,
+                         const std::string& static_topic) {
+        return listener->Start(node, dynamic_topic, legacy_topic, static_topic);
+    };
+    if (!StartTransformListeners(&error)) {
+        AERROR << error;
         Clear();
         return false;
     }
-    tf_buffer_ = transform::Buffer::Instance();
 
     now_ = [] { return autolink::Clock::Now().ToNanosecond(); };
     lookup_transform_ = [this](const Image& rgb, TransformStamped* transform,
@@ -268,11 +296,120 @@ void ShadowComponent::ApplyPendingSelection() {
     select_(target_id);
 }
 
+bool ShadowComponent::CanonicalizeDepth(const Image& input, Image* output,
+                                        std::string* error) const {
+    if (error != nullptr) {
+        error->clear();
+    }
+    if (output == nullptr) {
+        SetError(error, "canonical depth output is null.");
+        return false;
+    }
+    output->Clear();
+
+    size_t input_bytes_per_pixel = 0;
+    if (input.encoding() == "16UC1") {
+        input_bytes_per_pixel = sizeof(uint16_t);
+        if (!std::isfinite(options_.depth_scale()) ||
+            options_.depth_scale() <= 0.0F) {
+            SetError(error, "depth_scale must be finite and positive.");
+            return false;
+        }
+    } else if (input.encoding() == "32FC1") {
+        input_bytes_per_pixel = sizeof(float);
+    } else {
+        SetError(error, "depth encoding must be '16UC1' or '32FC1'.");
+        return false;
+    }
+    if (!ImageStorageIsValid(input, input_bytes_per_pixel, "depth image",
+                             error)) {
+        return false;
+    }
+    if (input.width() > std::numeric_limits<uint32_t>::max() / sizeof(float)) {
+        SetError(error, "canonical depth row size exceeds uint32 step.");
+        return false;
+    }
+    const uint32_t output_step =
+        input.width() * static_cast<uint32_t>(sizeof(float));
+    if (static_cast<size_t>(input.height()) >
+        std::numeric_limits<size_t>::max() / static_cast<size_t>(output_step)) {
+        SetError(error, "canonical depth byte size overflows.");
+        return false;
+    }
+
+    Image canonical;
+    *canonical.mutable_header() = input.header();
+    canonical.set_height(input.height());
+    canonical.set_width(input.width());
+    canonical.set_encoding("32FC1");
+    canonical.set_is_bigendian(false);
+    canonical.set_step(output_step);
+    canonical.mutable_data()->resize(static_cast<size_t>(input.height()) *
+                                     output_step);
+    for (uint32_t row = 0; row < input.height(); ++row) {
+        const char* input_row =
+            input.data().data() + static_cast<size_t>(row) * input.step();
+        char* output_row = canonical.mutable_data()->data() +
+                           static_cast<size_t>(row) * output_step;
+        for (uint32_t column = 0; column < input.width(); ++column) {
+            const char* source =
+                input_row + static_cast<size_t>(column) * input_bytes_per_pixel;
+            char* destination =
+                output_row + static_cast<size_t>(column) * sizeof(float);
+            if (input.encoding() == "16UC1") {
+                const float value_m = static_cast<float>(DecodeUint16(
+                                          source, input.is_bigendian())) *
+                                      options_.depth_scale();
+                if (!std::isfinite(value_m)) {
+                    SetError(
+                        error,
+                        "scaled 16UC1 depth is not a finite metric value.");
+                    return false;
+                }
+                EncodeFloat32LittleEndian(value_m, destination);
+            } else if (input.is_bigendian()) {
+                destination[0] = source[3];
+                destination[1] = source[2];
+                destination[2] = source[1];
+                destination[3] = source[0];
+            } else {
+                std::memcpy(destination, source, sizeof(float));
+            }
+        }
+    }
+    *output = std::move(canonical);
+    return true;
+}
+
+bool ShadowComponent::StartTransformListeners(std::string* error) {
+    if (error != nullptr) {
+        error->clear();
+    }
+    if (!listener_start_) {
+        SetError(error, "TF listener start callback is unavailable.");
+        return false;
+    }
+
+    tf_buffer_ = transform::Buffer::Instance();
+    dynamic_tf_listener_ = std::make_unique<transform::AutolinkTfListener>();
+    static_tf_listener_ = std::make_unique<transform::AutolinkTfListener>();
+    if (!listener_start_(dynamic_tf_listener_.get(), node_, "/tf", "", "")) {
+        SetError(error, "failed to subscribe to dynamic TF on /tf.");
+        return false;
+    }
+    if (!listener_start_(static_tf_listener_.get(), node_, "", "",
+                         "/tf_static")) {
+        SetError(error, "failed to subscribe to static TF on /tf_static.");
+        return false;
+    }
+    return true;
+}
+
 bool ShadowComponent::ResolveAutomaticSelection(const Image& depth,
                                                 const CameraInfo& camera,
                                                 std::string* error) {
     Detection2DArray confirmed;
-    tracker_->Confirmed(&confirmed);
+    confirmed_tracks_(&confirmed);
     std::string nearest_id;
     float nearest_range = std::numeric_limits<float>::infinity();
     for (const auto& detection : confirmed.detections()) {
@@ -328,18 +465,6 @@ ShadowComponent::InputStatus ShadowComponent::ValidateInputs(
         return InputStatus::kInvalid;
     }
 
-    size_t depth_bytes = 0;
-    if (depth.encoding() == "16UC1") {
-        depth_bytes = sizeof(uint16_t);
-    } else if (depth.encoding() == "32FC1") {
-        depth_bytes = sizeof(float);
-    } else {
-        SetError(error, "depth encoding must be '16UC1' or '32FC1'.");
-        return InputStatus::kInvalid;
-    }
-    if (!ImageStorageIsValid(depth, depth_bytes, "depth image", error)) {
-        return InputStatus::kInvalid;
-    }
     if (camera.width() == 0 || camera.height() == 0 ||
         rgb.width() != depth.width() || rgb.height() != depth.height() ||
         depth.width() != camera.width() || depth.height() != camera.height()) {
@@ -595,9 +720,9 @@ bool ShadowComponent::Proc(const std::shared_ptr<Image>& rgb,
                   "Odometry input.";
         return false;
     }
-    if (!initialized_ || !now_ || !select_ || !lookup_transform_ || !process_ ||
-        !publish_detections_ || !publish_target_ || !publish_path_ ||
-        !publish_grid_) {
+    if (!initialized_ || !now_ || !select_ || !confirmed_tracks_ ||
+        !lookup_transform_ || !process_ || !publish_detections_ ||
+        !publish_target_ || !publish_path_ || !publish_grid_) {
         AERROR << "Shadow component is not initialized.";
         return false;
     }
@@ -619,6 +744,16 @@ bool ShadowComponent::Proc(const std::shared_ptr<Image>& rgb,
         return false;
     }
 
+    Image canonical_depth;
+    if (!CanonicalizeDepth(*depth, &canonical_depth, &error)) {
+        AWARN << "Shadow component failed to canonicalize depth: " << error;
+        FrameOutputs outputs;
+        StampEmptyPath(*rgb, &outputs.path);
+        outputs.has_path = true;
+        PublishOutputs(outputs);
+        return false;
+    }
+
     ApplyPendingSelection();
 
     TransformStamped camera_to_map;
@@ -633,8 +768,8 @@ bool ShadowComponent::Proc(const std::shared_ptr<Image>& rgb,
     }
 
     FrameOutputs outputs;
-    const bool processed = process_(*rgb, *depth, *camera_info, *odometry,
-                                    camera_to_map, &outputs, &error);
+    const bool processed = process_(*rgb, canonical_depth, *camera_info,
+                                    *odometry, camera_to_map, &outputs, &error);
     if (!processed) {
         AWARN << "Shadow component frame processing failed closed: " << error;
         StampEmptyPath(*rgb, &outputs.path);
@@ -658,14 +793,21 @@ void ShadowComponent::Clear() {
         node_->DeleteReader(options_.select_topic());
     }
     selection_reader_.reset();
-    if (tf_listener_ != nullptr) {
-        tf_listener_->Stop();
+    if (dynamic_tf_listener_ != nullptr) {
+        dynamic_tf_listener_->Stop();
+    }
+    if (static_tf_listener_ != nullptr) {
+        static_tf_listener_->Stop();
     }
     if (node_ != nullptr) {
         node_->DeleteReader("/tf");
         node_->DeleteReader("/tf_static");
     }
-    tf_listener_.reset();
+    dynamic_tf_listener_.reset();
+    static_tf_listener_.reset();
+    if (tf_buffer_ != nullptr) {
+        tf_buffer_->clear();
+    }
     tf_buffer_ = nullptr;
 
     publish_grid_ = nullptr;
@@ -674,6 +816,8 @@ void ShadowComponent::Clear() {
     publish_detections_ = nullptr;
     process_ = nullptr;
     lookup_transform_ = nullptr;
+    listener_start_ = nullptr;
+    confirmed_tracks_ = nullptr;
     select_ = nullptr;
     now_ = nullptr;
     grid_writer_.reset();

@@ -15,18 +15,19 @@
  */
 
 /**
- * @file hestia_component.hpp
+ * @file component.hpp
  * @brief Autolink component for open-vocabulary home perception.
  */
 
-#ifndef AUTONOMY_PERCEPTION_HESTIA_HESTIA_COMPONENT_HPP_
-#define AUTONOMY_PERCEPTION_HESTIA_HESTIA_COMPONENT_HPP_
+#ifndef AUTONOMY_PERCEPTION_HESTIA_COMPONENT_HPP_
+#define AUTONOMY_PERCEPTION_HESTIA_COMPONENT_HPP_
 
+#include "autonomy/perception/hestia/async.hpp"
 #include "autonomy/perception/hestia/detector.hpp"
-#include "autonomy/perception/hestia/lifter.hpp"
+#include "autonomy/perception/hestia/lift.hpp"
 #include "autonomy/perception/hestia/merger.hpp"
-#include "autonomy/perception/hestia/open_worker.hpp"
 #include "autonomy/perception/hestia/tracker.hpp"
+#include "autonomy/transform/buffer.hpp"
 
 #include "autolink/component/component.hpp"
 
@@ -43,12 +44,9 @@ namespace autonomy {
 namespace perception {
 namespace hestia {
 
-class HestiaComponentTestApi;
+class ComponentTestApi;
 
-/**
- * @brief Detects home objects from synchronized RGB-D and publishes 2D/3D boxes.
- */
-class HestiaComponent final
+class Component final
     : public autolink::Component<automsgs::msgs::sensor_msgs::Image,
                                  automsgs::msgs::sensor_msgs::Image,
                                  automsgs::msgs::sensor_msgs::CameraInfo>
@@ -59,7 +57,7 @@ public:
     using Detection2DArray = automsgs::msgs::vision_msgs::Detection2DArray;
     using Detection3DArray = automsgs::msgs::vision_msgs::Detection3DArray;
 
-    ~HestiaComponent() override;
+    ~Component() override;
 
     bool Init() override;
 
@@ -71,7 +69,7 @@ protected:
     void Clear() override;
 
 private:
-    friend class HestiaComponentTestApi;
+    friend class ComponentTestApi;
 
     using FrameFunction = std::function<bool(
         const Image&, const Image&, const CameraInfo&, Detection2DArray*,
@@ -82,16 +80,20 @@ private:
     bool ProcessFrame(const Image& rgb, const Image& depth,
                       const CameraInfo& camera_info,
                       Detection2DArray* detections_2d,
-                      Detection3DArray* detections_3d,
-                      std::string* error);
+                      Detection3DArray* detections_3d, std::string* error);
+
+    bool LookupCameraToBase(
+        const Image& rgb,
+        automsgs::msgs::geometry_msgs::TransformStamped* transform) const;
 
     proto::HestiaOptions options_;
     std::unique_ptr<OpenDetector> open_detector_;
-    std::unique_ptr<HomeDetector> home_detector_;
-    std::unique_ptr<DepthLifter> lifter_;
-    std::unique_ptr<ObjectTracker> tracker_;
-    std::unique_ptr<DetectionMerger> merger_;
-    std::unique_ptr<OpenAsyncWorker> open_worker_;
+    std::unique_ptr<ClosedDetector> closed_detector_;
+    std::unique_ptr<Lifter> lifter_;
+    std::unique_ptr<Tracker> tracker_;
+    std::unique_ptr<Merger> merger_;
+    std::unique_ptr<Async<OpenDetector>> async_open_;
+    transform::Buffer* tf_buffer_ = nullptr;
     std::shared_ptr<autolink::Writer<Detection2DArray>> detections_2d_writer_;
     std::shared_ptr<autolink::Writer<Detection3DArray>> detections_3d_writer_;
     FrameFunction frame_;
@@ -103,4 +105,4 @@ private:
 }  // namespace perception
 }  // namespace autonomy
 
-#endif  // AUTONOMY_PERCEPTION_HESTIA_HESTIA_COMPONENT_HPP_
+#endif  // AUTONOMY_PERCEPTION_HESTIA_COMPONENT_HPP_

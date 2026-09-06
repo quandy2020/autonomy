@@ -15,11 +15,11 @@
  */
 
 /**
- * @file hestia_component_test.cpp
+ * @file component_test.cpp
  * @brief Unit tests for Hestia component lifecycle and publication seams.
  */
 
-#include "autonomy/perception/hestia/hestia_component.hpp"
+#include "autonomy/perception/hestia/component.hpp"
 
 #include <gtest/gtest.h>
 
@@ -29,135 +29,135 @@
 
 namespace autonomy::perception::hestia {
 
-class HestiaComponentTestApi
+class ComponentTestApi
 {
 public:
-    static void SetCallbacks(HestiaComponent* component,
-                             HestiaComponent::FrameFunction frame,
-                             HestiaComponent::Detection2dPublisher publish_2d,
-                             HestiaComponent::Detection3dPublisher publish_3d) {
+    static void SetCallbacks(Component* component,
+                             Component::FrameFunction frame,
+                             Component::Detection2dPublisher publish_2d,
+                             Component::Detection3dPublisher publish_3d) {
         component->frame_ = std::move(frame);
         component->publish_2d_ = std::move(publish_2d);
         component->publish_3d_ = std::move(publish_3d);
     }
 
-    static bool Process(HestiaComponent* component,
-                        const std::shared_ptr<HestiaComponent::Image>& rgb,
-                        const std::shared_ptr<HestiaComponent::Image>& depth,
-                        const std::shared_ptr<HestiaComponent::CameraInfo>& info) {
+    static bool Process(Component* component,
+                        const std::shared_ptr<Component::Image>& rgb,
+                        const std::shared_ptr<Component::Image>& depth,
+                        const std::shared_ptr<Component::CameraInfo>& info) {
         return component->Proc(rgb, depth, info);
     }
 
-    static void Clear(HestiaComponent* component) { component->Clear(); }
+    static void Clear(Component* component) { component->Clear(); }
 };
 
 namespace {
 
-std::shared_ptr<HestiaComponent::Image> MakeImage() {
-    return std::make_shared<HestiaComponent::Image>();
+std::shared_ptr<Component::Image> MakeImage() {
+    return std::make_shared<Component::Image>();
 }
 
-std::shared_ptr<HestiaComponent::CameraInfo> MakeCameraInfo() {
-    return std::make_shared<HestiaComponent::CameraInfo>();
+std::shared_ptr<Component::CameraInfo> MakeCameraInfo() {
+    return std::make_shared<Component::CameraInfo>();
 }
 
-TEST(HestiaComponentTest, RejectsNullInputs) {
-    HestiaComponent component;
+TEST(ComponentTest, RejectsNullInputs) {
+    Component component;
     int frame_calls = 0;
-    HestiaComponentTestApi::SetCallbacks(
+    ComponentTestApi::SetCallbacks(
         &component,
-        [&](const HestiaComponent::Image&, const HestiaComponent::Image&,
-            const HestiaComponent::CameraInfo&,
-            HestiaComponent::Detection2DArray*,
-            HestiaComponent::Detection3DArray*, std::string*) {
+        [&](const Component::Image&, const Component::Image&,
+            const Component::CameraInfo&,
+            Component::Detection2DArray*,
+            Component::Detection3DArray*, std::string*) {
             ++frame_calls;
             return true;
         },
-        [](const HestiaComponent::Detection2DArray&) { return true; },
-        [](const HestiaComponent::Detection3DArray&) { return true; });
+        [](const Component::Detection2DArray&) { return true; },
+        [](const Component::Detection3DArray&) { return true; });
 
-    EXPECT_FALSE(HestiaComponentTestApi::Process(
+    EXPECT_FALSE(ComponentTestApi::Process(
         &component, nullptr, MakeImage(), MakeCameraInfo()));
     EXPECT_EQ(frame_calls, 0);
 }
 
-TEST(HestiaComponentTest, RejectsUninitializedState) {
-    HestiaComponent component;
-    EXPECT_FALSE(HestiaComponentTestApi::Process(
+TEST(ComponentTest, RejectsUninitializedState) {
+    Component component;
+    EXPECT_FALSE(ComponentTestApi::Process(
         &component, MakeImage(), MakeImage(), MakeCameraInfo()));
 }
 
-TEST(HestiaComponentTest, PublishesBothTopicsOnSuccess) {
-    HestiaComponent component;
+TEST(ComponentTest, PublishesBothTopicsOnSuccess) {
+    Component component;
     int frame_calls = 0;
     int pub_2d = 0;
     int pub_3d = 0;
-    HestiaComponentTestApi::SetCallbacks(
+    ComponentTestApi::SetCallbacks(
         &component,
-        [&](const HestiaComponent::Image&, const HestiaComponent::Image&,
-            const HestiaComponent::CameraInfo&,
-            HestiaComponent::Detection2DArray* d2,
-            HestiaComponent::Detection3DArray* d3, std::string*) {
+        [&](const Component::Image&, const Component::Image&,
+            const Component::CameraInfo&,
+            Component::Detection2DArray* d2,
+            Component::Detection3DArray* d3, std::string*) {
             ++frame_calls;
             d2->Clear();
             d3->Clear();
             return true;
         },
-        [&](const HestiaComponent::Detection2DArray&) {
+        [&](const Component::Detection2DArray&) {
             ++pub_2d;
             return true;
         },
-        [&](const HestiaComponent::Detection3DArray&) {
+        [&](const Component::Detection3DArray&) {
             ++pub_3d;
             return true;
         });
 
-    EXPECT_TRUE(HestiaComponentTestApi::Process(
+    EXPECT_TRUE(ComponentTestApi::Process(
         &component, MakeImage(), MakeImage(), MakeCameraInfo()));
     EXPECT_EQ(frame_calls, 1);
     EXPECT_EQ(pub_2d, 1);
     EXPECT_EQ(pub_3d, 1);
 }
 
-TEST(HestiaComponentTest, DoesNotPublishWhenFrameFails) {
-    HestiaComponent component;
+TEST(ComponentTest, DoesNotPublishWhenFrameFails) {
+    Component component;
     int pub_2d = 0;
-    HestiaComponentTestApi::SetCallbacks(
+    ComponentTestApi::SetCallbacks(
         &component,
-        [&](const HestiaComponent::Image&, const HestiaComponent::Image&,
-            const HestiaComponent::CameraInfo&,
-            HestiaComponent::Detection2DArray*,
-            HestiaComponent::Detection3DArray*, std::string* error) {
+        [&](const Component::Image&, const Component::Image&,
+            const Component::CameraInfo&,
+            Component::Detection2DArray*,
+            Component::Detection3DArray*, std::string* error) {
             if (error != nullptr) {
                 *error = "boom";
             }
             return false;
         },
-        [&](const HestiaComponent::Detection2DArray&) {
+        [&](const Component::Detection2DArray&) {
             ++pub_2d;
             return true;
         },
-        [](const HestiaComponent::Detection3DArray&) { return true; });
+        [](const Component::Detection3DArray&) { return true; });
 
-    EXPECT_FALSE(HestiaComponentTestApi::Process(
+    EXPECT_FALSE(ComponentTestApi::Process(
         &component, MakeImage(), MakeImage(), MakeCameraInfo()));
     EXPECT_EQ(pub_2d, 0);
 }
 
-TEST(HestiaComponentTest, ReportsPublishFailure) {
-    HestiaComponent component;
-    HestiaComponentTestApi::SetCallbacks(
+TEST(ComponentTest, ReportsPublishFailure) {
+    Component component;
+    ComponentTestApi::SetCallbacks(
         &component,
-        [&](const HestiaComponent::Image&, const HestiaComponent::Image&,
-            const HestiaComponent::CameraInfo&,
-            HestiaComponent::Detection2DArray*,
-            HestiaComponent::Detection3DArray*, std::string*) {
+        [&](const Component::Image&, const Component::Image&,
+            const Component::CameraInfo&,
+            Component::Detection2DArray*,
+            Component::Detection3DArray*, std::string*) {
             return true;
         },
-        [](const HestiaComponent::Detection2DArray&) { return false; },
-        [](const HestiaComponent::Detection3DArray&) { return true; });
+        [](const Component::Detection2DArray&) { return false; },
+        [](const Component::Detection3DArray&) { return true; });
 
-    EXPECT_FALSE(HestiaComponentTestApi::Process(
+    EXPECT_FALSE(ComponentTestApi::Process(
         &component, MakeImage(), MakeImage(), MakeCameraInfo()));
 }
 

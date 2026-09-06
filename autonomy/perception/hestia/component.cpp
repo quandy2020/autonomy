@@ -15,11 +15,11 @@
  */
 
 /**
- * @file hestia_component.cpp
+ * @file component.cpp
  * @brief Hestia autolink component lifecycle and frame processing.
  */
 
-#include "autonomy/perception/hestia/hestia_component.hpp"
+#include "autonomy/perception/hestia/component.hpp"
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/perception/hestia/options.hpp"
@@ -38,10 +38,11 @@ double StampSeconds(const automsgs::msgs::std_msgs::Header& header) {
            1e-9 * static_cast<double>(header.stamp().nanosec());
 }
 
-bool InputsFresh(const HestiaComponent::Image& rgb,
-                 const HestiaComponent::Image& depth,
-                 const HestiaComponent::CameraInfo& camera,
-                 const proto::HestiaOptions& options, std::string* error) {
+bool ValidateInputSync(const Component::Image& rgb,
+                       const Component::Image& depth,
+                       const Component::CameraInfo& camera,
+                       const proto::HestiaOptions& options,
+                       std::string* error) {
     if (rgb.encoding() != "rgb8" && rgb.encoding() != "bgr8") {
         if (error != nullptr) {
             *error = "RGB encoding must be rgb8 or bgr8.";
@@ -64,6 +65,12 @@ bool InputsFresh(const HestiaComponent::Image& rgb,
     if (depth.width() != camera.width() || depth.height() != camera.height()) {
         if (error != nullptr) {
             *error = "depth and camera dimensions must match.";
+        }
+        return false;
+    }
+    if (rgb.width() != depth.width() || rgb.height() != depth.height()) {
+        if (error != nullptr) {
+            *error = "RGB and depth dimensions must match.";
         }
         return false;
     }
@@ -93,9 +100,9 @@ bool InputsFresh(const HestiaComponent::Image& rgb,
 
 }  // namespace
 
-HestiaComponent::~HestiaComponent() { Clear(); }
+Component::~Component() { Clear(); }
 
-bool HestiaComponent::Init() {
+bool Component::Init() {
     proto::HestiaOptions options;
     if (!GetProtoConfig(&options)) {
         AERROR << "Hestia component failed to load config from '"
@@ -110,38 +117,49 @@ bool HestiaComponent::Init() {
     }
     options_ = options;
 
-    if (options_.mode() == "open" || options_.open_async_queue() == 0) {
+    if (options_.mode() == proto::MODE_OPEN) {
         open_detector_ = OpenDetector::Create(options_, &error);
         if (open_detector_ == nullptr) {
-            AERROR << "Hestia failed to create open detector: " << error;
+            AERROR << "Hestia failed to create open-vocabulary detector: "
+                   << error;
             Clear();
             return false;
         }
-    }
-
-    if (options_.mode() == "dual") {
-        home_detector_ = HomeDetector::Create(options_, &error);
-        if (home_detector_ == nullptr) {
-            AERROR << "Hestia failed to create home detector: " << error;
+    } else {
+        closed_detector_ = ClosedDetector::Create(options_, &error);
+        if (closed_detector_ == nullptr) {
+            AERROR << "Hestia failed to create closed-set detector: " << error;
             Clear();
             return false;
         }
-        if (options_.open_async_queue() >= 1) {
+        if (options_.open_async()) {
             auto async_detector = OpenDetector::Create(options_, &error);
             if (async_detector == nullptr) {
-                AERROR << "Hestia failed to create async open detector: "
+                AERROR << "Hestia failed to create async open-vocabulary "
+                          "detector: "
                        << error;
                 Clear();
                 return false;
             }
-            open_worker_ = std::make_unique<OpenAsyncWorker>(
-                std::move(async_detector), options_.open_async_queue());
+            async_open_ =
+                std::make_unique<Async<OpenDetector>>(std::move(async_detector));
+        } else {
+            open_detector_ = OpenDetector::Create(options_, &error);
+            if (open_detector_ == nullptr) {
+                AERROR << "Hestia failed to create open-vocabulary detector: "
+                       << error;
+                Clear();
+                return false;
+            }
         }
-        merger_ = std::make_unique<DetectionMerger>(options_);
+        merger_ = std::make_unique<Merger>(options_);
     }
 
-    lifter_ = std::make_unique<DepthLifter>(options_);
-    tracker_ = std::make_unique<ObjectTracker>(options_);
+    lifter_ = std::make_unique<Lifter>(options_);
+    tracker_ = std::make_unique<Tracker>(options_);
+    if (!options_.base_frame().empty()) {
+        tf_buffer_ = transform::Buffer::Instance();
+    }
 
     detections_2d_writer_ =
         node_->CreateWriter<Detection2DArray>(options_.detections_2d_topic());
@@ -153,11 +171,6 @@ bool HestiaComponent::Init() {
         return false;
     }
 
-    frame_ = [this](const Image& rgb, const Image& depth,
-                    const CameraInfo& camera_info, Detection2DArray* d2,
-                    Detection3DArray* d3, std::string* process_error) {
-        return ProcessFrame(rgb, depth, camera_info, d2, d3, process_error);
-    };
     publish_2d_ = [this](const Detection2DArray& message) {
         return detections_2d_writer_->Write(message);
     };
@@ -167,32 +180,52 @@ bool HestiaComponent::Init() {
     return true;
 }
 
-bool HestiaComponent::ProcessFrame(const Image& rgb, const Image& depth,
-                                   const CameraInfo& camera_info,
-                                   Detection2DArray* detections_2d,
-                                   Detection3DArray* detections_3d,
-                                   std::string* error) {
-    if (!InputsFresh(rgb, depth, camera_info, options_, error)) {
+bool Component::LookupCameraToBase(
+    const Image& rgb,
+    automsgs::msgs::geometry_msgs::TransformStamped* transform) const {
+    if (transform == nullptr || tf_buffer_ == nullptr ||
+        options_.base_frame().empty()) {
+        return false;
+    }
+    try {
+        *transform = tf_buffer_->lookupTransform(
+            options_.base_frame(), options_.camera_frame(), rgb.header().stamp(),
+            options_.tf_timeout_sec());
+        return true;
+    } catch (const std::exception& ex) {
+        AWARN << "Hestia TF lookup " << options_.base_frame() << " <- "
+              << options_.camera_frame() << " failed: " << ex.what();
+        return false;
+    }
+}
+
+bool Component::ProcessFrame(const Image& rgb, const Image& depth,
+                             const CameraInfo& camera_info,
+                             Detection2DArray* detections_2d,
+                             Detection3DArray* detections_3d,
+                             std::string* error) {
+    if (!ValidateInputSync(rgb, depth, camera_info, options_, error)) {
         return false;
     }
 
-    Detection2DArray open_detections;
-    Detection2DArray home_detections;
-    Detection2DArray merged;
+    Detection2DArray open_vocab;
+    Detection2DArray closed_set;
+    Detection2DArray fused;
 
-    if (options_.mode() == "dual") {
-        if (home_detector_ == nullptr ||
-            !home_detector_->Detect(rgb, &home_detections, error)) {
+    if (options_.mode() == proto::MODE_DUAL) {
+        if (closed_detector_ == nullptr ||
+            !closed_detector_->Detect(rgb, &closed_set, error)) {
             if (error != nullptr && error->empty()) {
-                *error = "home detection failed.";
+                *error = "closed-set detection failed.";
             }
             return false;
         }
-        if (open_worker_ != nullptr) {
-            open_worker_->TrySubmit(rgb);
-            open_worker_->TryGetLatest(&open_detections);
+        if (async_open_ != nullptr) {
+            // Stale-OK: consume the latest completed open result, then enqueue.
+            async_open_->TryPoll(&open_vocab);
+            async_open_->TryEnqueue(rgb);
         } else if (open_detector_ != nullptr) {
-            if (!open_detector_->Detect(rgb, &open_detections, error)) {
+            if (!open_detector_->Detect(rgb, &open_vocab, error)) {
                 return false;
             }
         }
@@ -202,38 +235,44 @@ bool HestiaComponent::ProcessFrame(const Image& rgb, const Image& depth,
             }
             return false;
         }
-        merger_->Merge(home_detections, open_detections, &merged);
+        merger_->Fuse(closed_set, open_vocab, &fused);
     } else {
         if (open_detector_ == nullptr ||
-            !open_detector_->Detect(rgb, &merged, error)) {
+            !open_detector_->Detect(rgb, &fused, error)) {
             if (error != nullptr && error->empty()) {
-                *error = "open detection failed.";
+                *error = "open-vocabulary detection failed.";
             }
             return false;
         }
     }
 
     if (tracker_ != nullptr) {
-        tracker_->Update(StampSeconds(rgb.header()), &merged);
+        tracker_->Associate(StampSeconds(rgb.header()), &fused);
     }
-    *detections_2d = merged;
+    *detections_2d = fused;
+
+    automsgs::msgs::geometry_msgs::TransformStamped camera_to_base;
+    const automsgs::msgs::geometry_msgs::TransformStamped* lift_tf = nullptr;
+    if (LookupCameraToBase(rgb, &camera_to_base)) {
+        lift_tf = &camera_to_base;
+    }
 
     if (lifter_ == nullptr ||
-        !lifter_->Lift(merged, depth, camera_info, nullptr, detections_3d,
+        !lifter_->Lift(fused, depth, camera_info, lift_tf, detections_3d,
                        error)) {
         return false;
     }
     return true;
 }
 
-bool HestiaComponent::Proc(const std::shared_ptr<Image>& rgb,
-                           const std::shared_ptr<Image>& depth,
-                           const std::shared_ptr<CameraInfo>& camera_info) {
+bool Component::Proc(const std::shared_ptr<Image>& rgb,
+                     const std::shared_ptr<Image>& depth,
+                     const std::shared_ptr<CameraInfo>& camera_info) {
     if (rgb == nullptr || depth == nullptr || camera_info == nullptr) {
         AERROR << "Hestia component received a null RGB, depth, or CameraInfo.";
         return false;
     }
-    if (!frame_ || !publish_2d_ || !publish_3d_) {
+    if (!publish_2d_ || !publish_3d_) {
         AERROR << "Hestia component is not initialized.";
         return false;
     }
@@ -241,8 +280,12 @@ bool HestiaComponent::Proc(const std::shared_ptr<Image>& rgb,
     Detection2DArray detections_2d;
     Detection3DArray detections_3d;
     std::string error;
-    if (!frame_(*rgb, *depth, *camera_info, &detections_2d, &detections_3d,
-                &error)) {
+    const bool ok =
+        frame_ ? frame_(*rgb, *depth, *camera_info, &detections_2d,
+                        &detections_3d, &error)
+               : ProcessFrame(*rgb, *depth, *camera_info, &detections_2d,
+                              &detections_3d, &error);
+    if (!ok) {
         AERROR << "Hestia frame processing failed: " << error;
         return false;
     }
@@ -258,25 +301,26 @@ bool HestiaComponent::Proc(const std::shared_ptr<Image>& rgb,
     return ok_2d && ok_3d;
 }
 
-void HestiaComponent::Clear() {
+void Component::Clear() {
     publish_2d_ = nullptr;
     publish_3d_ = nullptr;
     frame_ = nullptr;
     detections_2d_writer_.reset();
     detections_3d_writer_.reset();
-    if (open_worker_ != nullptr) {
-        open_worker_->Shutdown();
+    if (async_open_ != nullptr) {
+        async_open_->Shutdown();
     }
-    open_worker_.reset();
+    async_open_.reset();
     merger_.reset();
     tracker_.reset();
     lifter_.reset();
-    home_detector_.reset();
+    closed_detector_.reset();
     open_detector_.reset();
+    tf_buffer_ = nullptr;
 }
 
 }  // namespace hestia
 }  // namespace perception
 }  // namespace autonomy
 
-AUTOLINK_REGISTER_COMPONENT(autonomy::perception::hestia::HestiaComponent)
+AUTOLINK_REGISTER_COMPONENT(autonomy::perception::hestia::Component)

@@ -128,6 +128,10 @@ private:
 
     using ClockFunction = std::function<uint64_t()>;
     using SelectionFunction = std::function<void(const std::string&)>;
+    using ConfirmedTracksFunction = std::function<void(Detection2DArray*)>;
+    using ListenerStartFunction = std::function<bool(
+        transform::AutolinkTfListener*, const std::shared_ptr<autolink::Node>&,
+        const std::string&, const std::string&, const std::string&)>;
     using TransformLookup =
         std::function<bool(const Image&, TransformStamped*, std::string*)>;
     using ProcessFunction = std::function<bool(
@@ -140,8 +144,11 @@ private:
 
     void HandleSelection(const std::shared_ptr<Selection>& selection);
     void ApplyPendingSelection();
+    bool CanonicalizeDepth(const Image& input, Image* output,
+                           std::string* error) const;
     bool ResolveAutomaticSelection(const Image& depth, const CameraInfo& camera,
                                    std::string* error);
+    bool StartTransformListeners(std::string* error);
     bool LookupCameraToMap(const Image& rgb, TransformStamped* transform,
                            std::string* error) const;
     InputStatus ValidateInputs(const Image& rgb, const Image& depth,
@@ -164,7 +171,8 @@ private:
     std::unique_ptr<LocalGrid> local_grid_;
     std::unique_ptr<YopoPolicy> policy_;
     std::unique_ptr<FollowPlanner> planner_;
-    std::unique_ptr<transform::AutolinkTfListener> tf_listener_;
+    std::unique_ptr<transform::AutolinkTfListener> dynamic_tf_listener_;
+    std::unique_ptr<transform::AutolinkTfListener> static_tf_listener_;
     transform::Buffer* tf_buffer_ = nullptr;
 
     std::shared_ptr<autolink::Reader<Selection>> selection_reader_;
@@ -180,6 +188,8 @@ private:
 
     ClockFunction now_;
     SelectionFunction select_;
+    ConfirmedTracksFunction confirmed_tracks_;
+    ListenerStartFunction listener_start_;
     TransformLookup lookup_transform_;
     ProcessFunction process_;
     DetectionPublisher publish_detections_;

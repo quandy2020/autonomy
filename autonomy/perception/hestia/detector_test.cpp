@@ -34,7 +34,7 @@ namespace perception {
 namespace hestia {
 namespace {
 
-class FakeRunner final : public DetectorRunner
+class FakeRunner final : public Runner
 {
 public:
     explicit FakeRunner(std::vector<float> output, bool succeeds = true)
@@ -72,9 +72,9 @@ private:
 proto::HestiaOptions OpenOptions(uint32_t width = 640, uint32_t height = 640,
                                  uint32_t max_detections = 1) {
     proto::HestiaOptions o;
-    o.set_mode("open");
+    o.set_mode(proto::MODE_OPEN);
     o.set_open_model_path("/models/hestia_open.onnx");
-    o.set_backend("onnx");
+    o.set_backend(proto::BACKEND_ONNX);
     o.set_open_width(width);
     o.set_open_height(height);
     o.set_max_detections(max_detections);
@@ -95,13 +95,14 @@ proto::HestiaOptions OpenOptions(uint32_t width = 640, uint32_t height = 640,
     o.set_detections_2d_topic("/perception/hestia/detections_2d");
     o.set_detections_3d_topic("/perception/hestia/detections_3d");
     o.set_max_input_skew_sec(0.05F);
-    o.set_max_data_age_sec(0.2F);
+    o.set_nms_iou_threshold(0.0F);
+    o.set_tf_timeout_sec(0.05F);
     return o;
 }
 
 proto::HestiaOptions DualOptions() {
     auto o = OpenOptions();
-    o.set_mode("dual");
+    o.set_mode(proto::MODE_DUAL);
     o.set_home_model_path("/models/hestia_home.onnx");
     o.set_home_width(640);
     o.set_home_height(640);
@@ -183,25 +184,10 @@ TEST(OpenDetectorTest, ClearsOutputWhenRunnerFails) {
     EXPECT_EQ(error, "Hestia detector: fake inference failure");
 }
 
-TEST(OpenDetectorTest, SetPromptsUpdatesLabelTable) {
-    auto runner = std::make_unique<FakeRunner>(
-        std::vector<float>{0.0F, 0.0F, 10.0F, 10.0F, 0.9F, 0.0F});
-    auto detector = OpenDetector::Create(OpenOptions(), std::move(runner));
-    detector->SetPrompts({"sofa", "lamp"});
-    automsgs::msgs::vision_msgs::Detection2DArray detections;
-
-    ASSERT_TRUE(detector->Detect(
-        MakeImage("rgb8", 640, 640, std::vector<uint8_t>(640 * 640 * 3)),
-        &detections));
-    ASSERT_EQ(detections.detections_size(), 1);
-    EXPECT_EQ(detections.detections(0).results(0).hypothesis().class_id(),
-              "sofa");
-}
-
-TEST(HomeDetectorTest, MapsClassIndexToHomeLabel) {
+TEST(ClosedDetectorTest, MapsClassIndexToHomeLabel) {
     auto runner = std::make_unique<FakeRunner>(
         std::vector<float>{0.0F, 0.0F, 20.0F, 20.0F, 0.8F, 1.0F});
-    auto detector = HomeDetector::Create(DualOptions(), std::move(runner));
+    auto detector = ClosedDetector::Create(DualOptions(), std::move(runner));
     automsgs::msgs::vision_msgs::Detection2DArray detections;
 
     ASSERT_NE(detector, nullptr);
@@ -211,6 +197,22 @@ TEST(HomeDetectorTest, MapsClassIndexToHomeLabel) {
     ASSERT_EQ(detections.detections_size(), 1);
     EXPECT_EQ(detections.detections(0).results(0).hypothesis().class_id(),
               "chair");
+}
+
+TEST(OpenDetectorTest, AppliesOptionalNms) {
+    auto options = OpenOptions(640, 640, 2);
+    options.set_nms_iou_threshold(0.5F);
+    auto runner = std::make_unique<FakeRunner>(std::vector<float>{
+        100.0F, 100.0F, 200.0F, 200.0F, 0.95F, 0.0F, 105.0F, 105.0F, 205.0F,
+        205.0F, 0.90F, 0.0F});
+    auto detector = OpenDetector::Create(options, std::move(runner));
+    automsgs::msgs::vision_msgs::Detection2DArray detections;
+
+    ASSERT_NE(detector, nullptr);
+    ASSERT_TRUE(detector->Detect(
+        MakeImage("rgb8", 640, 640, std::vector<uint8_t>(640 * 640 * 3)),
+        &detections));
+    EXPECT_EQ(detections.detections_size(), 1);
 }
 
 }  // namespace

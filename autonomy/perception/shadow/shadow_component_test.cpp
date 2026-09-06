@@ -20,15 +20,19 @@
  */
 
 #include "autonomy/perception/shadow/shadow_component.hpp"
+#include "autonomy/transform/buffer_utils.hpp"
 
 #include <gtest/gtest.h>
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
+#include <initializer_list>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace autonomy::perception::shadow {
 
@@ -37,6 +41,8 @@ class ShadowComponentTestApi
 public:
     using Outputs = ShadowComponent::FrameOutputs;
     using ProcessFunction = ShadowComponent::ProcessFunction;
+    using ConfirmedTracksFunction = ShadowComponent::ConfirmedTracksFunction;
+    using ListenerStartFunction = ShadowComponent::ListenerStartFunction;
     using DetectionPublisher = ShadowComponent::DetectionPublisher;
     using TargetPublisher = ShadowComponent::TargetPublisher;
     using PathPublisher = ShadowComponent::PathPublisher;
@@ -55,6 +61,8 @@ public:
         component->options_ = options;
         component->now_ = std::move(now);
         component->select_ = std::move(select);
+        component->confirmed_tracks_ =
+            [](ShadowComponent::Detection2DArray* out) { out->Clear(); };
         component->lookup_transform_ = std::move(lookup);
         component->process_ = std::move(process);
         component->publish_detections_ = std::move(detections);
@@ -62,6 +70,47 @@ public:
         component->publish_path_ = std::move(path);
         component->publish_grid_ = std::move(grid);
         component->initialized_ = true;
+    }
+
+    static bool CanonicalizeDepth(ShadowComponent* component,
+                                  const ShadowComponent::Image& input,
+                                  ShadowComponent::Image* output,
+                                  std::string* error) {
+        return component->CanonicalizeDepth(input, output, error);
+    }
+
+    static void ConfigureAutomaticSelection(
+        ShadowComponent* component, ConfirmedTracksFunction confirmed,
+        ShadowComponent::SelectionFunction select) {
+        component->confirmed_tracks_ = std::move(confirmed);
+        component->select_ = std::move(select);
+        component->localizer_ =
+            std::make_unique<TargetLocalizer>(component->options_);
+    }
+
+    static void ApplyPendingSelection(ShadowComponent* component) {
+        component->ApplyPendingSelection();
+    }
+
+    static bool ResolveAutomaticSelection(
+        ShadowComponent* component, const ShadowComponent::Image& depth,
+        const ShadowComponent::CameraInfo& camera, std::string* error) {
+        return component->ResolveAutomaticSelection(depth, camera, error);
+    }
+
+    static void ConfigureListenerStart(ShadowComponent* component,
+                                       ListenerStartFunction start) {
+        component->listener_start_ = std::move(start);
+    }
+
+    static bool StartTransformListeners(ShadowComponent* component,
+                                        std::string* error) {
+        return component->StartTransformListeners(error);
+    }
+
+    static void UseTransformBuffer(ShadowComponent* component,
+                                   transform::Buffer* buffer) {
+        component->tf_buffer_ = buffer;
     }
 
     static bool Process(
@@ -108,6 +157,12 @@ proto::ShadowOptions ComponentOptions() {
     options.set_map_frame("map");
     options.set_base_frame("base_link");
     options.set_camera_frame("camera_link");
+    options.set_inner_box_scale(1.0F);
+    options.set_min_depth_m(0.20F);
+    options.set_max_depth_m(10.0F);
+    options.set_min_depth_samples(2);
+    options.set_depth_outlier_m(0.10F);
+    options.set_depth_scale(0.001F);
     options.set_max_input_skew_sec(0.10F);
     options.set_max_data_age_sec(0.50F);
     return options;
@@ -158,6 +213,61 @@ Inputs ValidInputs(int64_t stamp_ns = kStampNs) {
         ->mutable_orientation()
         ->set_w(1.0);
     return inputs;
+}
+
+std::string Bytes(std::initializer_list<uint8_t> values) {
+    std::string bytes;
+    bytes.reserve(values.size());
+    for (const uint8_t value : values) {
+        bytes.push_back(static_cast<char>(value));
+    }
+    return bytes;
+}
+
+ShadowComponent::Image DepthBytes(const std::string& encoding, bool big_endian,
+                                  uint32_t width, uint32_t height,
+                                  uint32_t step, const std::string& data) {
+    ShadowComponent::Image image;
+    SetStamp(kStampNs, image.mutable_header());
+    image.mutable_header()->set_frame_id("camera_link");
+    image.set_encoding(encoding);
+    image.set_is_bigendian(big_endian);
+    image.set_width(width);
+    image.set_height(height);
+    image.set_step(step);
+    image.set_data(data);
+    return image;
+}
+
+automsgs::msgs::vision_msgs::Detection2D DetectionBox(const std::string& id,
+                                                      double center_x) {
+    automsgs::msgs::vision_msgs::Detection2D detection;
+    detection.set_id(id);
+    detection.mutable_header()->set_frame_id("camera_link");
+    detection.mutable_bbox()->mutable_center()->mutable_position()->set_x(
+        center_x);
+    detection.mutable_bbox()->mutable_center()->mutable_position()->set_y(0.5);
+    detection.mutable_bbox()->set_size_x(2.0);
+    detection.mutable_bbox()->set_size_y(1.0);
+    return detection;
+}
+
+ShadowComponent::CameraInfo CameraForDepth(uint32_t width, uint32_t height) {
+    ShadowComponent::CameraInfo camera;
+    SetStamp(kStampNs, camera.mutable_header());
+    camera.mutable_header()->set_frame_id("camera_link");
+    camera.set_width(width);
+    camera.set_height(height);
+    camera.add_k(100.0);
+    camera.add_k(0.0);
+    camera.add_k(static_cast<double>(width) * 0.5);
+    camera.add_k(0.0);
+    camera.add_k(100.0);
+    camera.add_k(static_cast<double>(height) * 0.5);
+    camera.add_k(0.0);
+    camera.add_k(0.0);
+    camera.add_k(1.0);
+    return camera;
 }
 
 bool IdentityLookup(const ShadowComponent::Image& rgb,
@@ -256,6 +366,315 @@ void ConfigureSuccess(
         [](const std::string&) {}, IdentityLookup, std::move(process),
         std::move(detections), std::move(target), std::move(path),
         std::move(grid));
+}
+
+TEST(ShadowComponentTest, CanonicalizesSixteenBitDepthInEitherByteOrder) {
+    ShadowComponent component;
+    ConfigureSuccess(&component);
+    const std::array<std::string, 2> encoded = {
+        Bytes({0xe8, 0x03, 0xc4, 0x09, 0xaa}),
+        Bytes({0x03, 0xe8, 0x09, 0xc4, 0xaa}),
+    };
+    const std::string expected =
+        Bytes({0x00, 0x00, 0x80, 0x3f, 0x00, 0x00, 0x20, 0x40});
+
+    for (size_t index = 0; index < encoded.size(); ++index) {
+        SCOPED_TRACE(index);
+        const auto input =
+            DepthBytes("16UC1", index == 1, 2, 1, 5, encoded[index]);
+        ShadowComponent::Image output;
+        std::string error;
+
+        ASSERT_TRUE(ShadowComponentTestApi::CanonicalizeDepth(&component, input,
+                                                              &output, &error))
+            << error;
+        EXPECT_EQ(output.header().frame_id(), "camera_link");
+        EXPECT_EQ(output.header().stamp().sec(), 10);
+        EXPECT_EQ(output.width(), 2U);
+        EXPECT_EQ(output.height(), 1U);
+        EXPECT_EQ(output.encoding(), "32FC1");
+        EXPECT_FALSE(output.is_bigendian());
+        EXPECT_EQ(output.step(), 8U);
+        EXPECT_EQ(output.data(), expected);
+    }
+}
+
+TEST(ShadowComponentTest, CanonicalizesFloatDepthInEitherByteOrder) {
+    ShadowComponent component;
+    ConfigureSuccess(&component);
+    const std::array<std::string, 2> encoded = {
+        Bytes({0x00, 0x00, 0xa0, 0x3f, 0x00, 0x00, 0x20, 0x40, 0xaa}),
+        Bytes({0x3f, 0xa0, 0x00, 0x00, 0x40, 0x20, 0x00, 0x00, 0xaa}),
+    };
+    const std::string expected =
+        Bytes({0x00, 0x00, 0xa0, 0x3f, 0x00, 0x00, 0x20, 0x40});
+
+    for (size_t index = 0; index < encoded.size(); ++index) {
+        SCOPED_TRACE(index);
+        const auto input =
+            DepthBytes("32FC1", index == 1, 2, 1, 9, encoded[index]);
+        ShadowComponent::Image output;
+        std::string error;
+
+        ASSERT_TRUE(ShadowComponentTestApi::CanonicalizeDepth(&component, input,
+                                                              &output, &error))
+            << error;
+        EXPECT_EQ(output.header().frame_id(), "camera_link");
+        EXPECT_EQ(output.header().stamp().sec(), 10);
+        EXPECT_EQ(output.width(), 2U);
+        EXPECT_EQ(output.height(), 1U);
+        EXPECT_EQ(output.encoding(), "32FC1");
+        EXPECT_FALSE(output.is_bigendian());
+        EXPECT_EQ(output.step(), 8U);
+        EXPECT_EQ(output.data(), expected);
+    }
+}
+
+TEST(ShadowComponentTest,
+     RejectsMalformedDepthBeforeSelectionAndPublishesEmptyPath) {
+    ShadowComponent component;
+    int selection_calls = 0;
+    int lookup_calls = 0;
+    int process_calls = 0;
+    int path_calls = 0;
+    ShadowComponent::Path published;
+    ShadowComponentTestApi::Configure(
+        &component, ComponentOptions(), [] { return kFreshNowNs; },
+        [&](const std::string&) { ++selection_calls; },
+        [&](const ShadowComponent::Image&, ShadowComponent::TransformStamped*,
+            std::string*) {
+            ++lookup_calls;
+            return true;
+        },
+        [&](const ShadowComponent::Image&, const ShadowComponent::Image&,
+            const ShadowComponent::CameraInfo&,
+            const ShadowComponent::Odometry&,
+            const ShadowComponent::TransformStamped&,
+            ShadowComponentTestApi::Outputs*, std::string*) {
+            ++process_calls;
+            return true;
+        },
+        PublishDetections, PublishTarget,
+        [&](const ShadowComponent::Path& path) {
+            ++path_calls;
+            published = path;
+            return true;
+        },
+        PublishGrid);
+    auto inputs = ValidInputs();
+    inputs.depth->set_encoding("16UC1");
+    inputs.depth->set_step(4);
+    inputs.depth->set_data(std::string(7, '\0'));
+    auto selection = std::make_shared<ShadowComponent::Selection>();
+    selection->set_data("track-17");
+    ShadowComponentTestApi::Select(&component, selection);
+
+    EXPECT_FALSE(ShadowComponentTestApi::Process(
+        &component, inputs.rgb, inputs.depth, inputs.camera, inputs.odometry));
+    EXPECT_EQ(selection_calls, 0);
+    EXPECT_EQ(lookup_calls, 0);
+    EXPECT_EQ(process_calls, 0);
+    EXPECT_EQ(path_calls, 1);
+    EXPECT_EQ(published.header().frame_id(), "map");
+    EXPECT_EQ(published.header().stamp().sec(), 10);
+    EXPECT_EQ(published.poses_size(), 0);
+}
+
+TEST(ShadowComponentTest, PassesCanonicalDepthIntoFrameTransaction) {
+    ShadowComponent component;
+    bool saw_canonical_depth = false;
+    const std::string expected = Bytes({
+        0x00,
+        0x00,
+        0x80,
+        0x3f,
+        0x00,
+        0x00,
+        0x20,
+        0x40,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x3f,
+    });
+    auto process = [&](const ShadowComponent::Image&,
+                       const ShadowComponent::Image& depth,
+                       const ShadowComponent::CameraInfo&,
+                       const ShadowComponent::Odometry&,
+                       const ShadowComponent::TransformStamped&,
+                       ShadowComponentTestApi::Outputs* outputs, std::string*) {
+        EXPECT_EQ(depth.encoding(), "32FC1");
+        EXPECT_FALSE(depth.is_bigendian());
+        EXPECT_EQ(depth.step(), 8U);
+        EXPECT_EQ(depth.data(), expected);
+        saw_canonical_depth = true;
+        PopulateAllOutputs(kStampNs, outputs);
+        return true;
+    };
+    ShadowComponentTestApi::Configure(
+        &component, ComponentOptions(), [] { return kFreshNowNs; },
+        [](const std::string&) {}, IdentityLookup, std::move(process),
+        PublishDetections, PublishTarget, PublishPath, PublishGrid);
+    auto inputs = ValidInputs();
+    inputs.depth->set_encoding("16UC1");
+    inputs.depth->set_is_bigendian(true);
+    inputs.depth->set_step(5);
+    inputs.depth->set_data(Bytes({
+        0x03,
+        0xe8,
+        0x09,
+        0xc4,
+        0xaa,
+        0x00,
+        0x00,
+        0x01,
+        0xf4,
+        0xbb,
+    }));
+
+    EXPECT_TRUE(ShadowComponentTestApi::Process(
+        &component, inputs.rgb, inputs.depth, inputs.camera, inputs.odometry));
+    EXPECT_TRUE(saw_canonical_depth);
+}
+
+TEST(ShadowComponentTest,
+     EmptySelectionChoosesNearestValidRangeAndKeepsStableIdOnTie) {
+    ShadowComponent component;
+    ConfigureSuccess(&component);
+    ShadowComponent::Detection2DArray confirmed;
+    *confirmed.add_detections() = DetectionBox("track-00", 1.0);
+    *confirmed.add_detections() = DetectionBox("track-01", 3.0);
+    *confirmed.add_detections() = DetectionBox("track-02", 5.0);
+    *confirmed.add_detections() = DetectionBox("track-03", 7.0);
+    std::vector<std::string> selections;
+    ShadowComponentTestApi::ConfigureAutomaticSelection(
+        &component,
+        [confirmed](ShadowComponent::Detection2DArray* output) {
+            *output = confirmed;
+        },
+        [&](const std::string& id) { selections.push_back(id); });
+    const auto raw_depth = DepthBytes("16UC1", true, 8, 1, 16,
+                                      Bytes({
+                                          0x00,
+                                          0x00,
+                                          0x00,
+                                          0x00,
+                                          0x05,
+                                          0xdc,
+                                          0x05,
+                                          0xdc,
+                                          0x05,
+                                          0xdc,
+                                          0x05,
+                                          0xdc,
+                                          0x0b,
+                                          0xb8,
+                                          0x0b,
+                                          0xb8,
+                                      }));
+    ShadowComponent::Image depth;
+    std::string error;
+    ASSERT_TRUE(ShadowComponentTestApi::CanonicalizeDepth(&component, raw_depth,
+                                                          &depth, &error))
+        << error;
+    const auto camera = CameraForDepth(8, 1);
+    auto selection = std::make_shared<ShadowComponent::Selection>();
+    selection->set_data("");
+
+    ShadowComponentTestApi::Select(&component, selection);
+    ShadowComponentTestApi::ApplyPendingSelection(&component);
+    ASSERT_TRUE(ShadowComponentTestApi::ResolveAutomaticSelection(
+        &component, depth, camera, &error))
+        << error;
+
+    ASSERT_EQ(selections.size(), 2U);
+    EXPECT_EQ(selections[0], "");
+    EXPECT_EQ(selections[1], "track-01");
+}
+
+TEST(ShadowComponentTest, RequiresDynamicAndStaticTfReadersIndependently) {
+    for (int failing_call = 0; failing_call < 2; ++failing_call) {
+        SCOPED_TRACE(failing_call);
+        ShadowComponent component;
+        std::vector<std::array<std::string, 3>> calls;
+        ShadowComponentTestApi::ConfigureListenerStart(
+            &component, [&](transform::AutolinkTfListener* listener,
+                            const std::shared_ptr<autolink::Node>&,
+                            const std::string& dynamic_topic,
+                            const std::string& legacy_topic,
+                            const std::string& static_topic) {
+                EXPECT_NE(listener, nullptr);
+                calls.push_back({dynamic_topic, legacy_topic, static_topic});
+                return static_cast<int>(calls.size()) - 1 != failing_call;
+            });
+        std::string error;
+
+        EXPECT_FALSE(ShadowComponentTestApi::StartTransformListeners(&component,
+                                                                     &error));
+        ASSERT_EQ(calls.size(), static_cast<size_t>(failing_call + 1));
+        EXPECT_EQ(calls[0], (std::array<std::string, 3>{"/tf", "", ""}));
+        if (failing_call == 1) {
+            EXPECT_EQ(calls[1],
+                      (std::array<std::string, 3>{"", "", "/tf_static"}));
+        }
+        ShadowComponentTestApi::Clear(&component);
+    }
+
+    ShadowComponent component;
+    std::vector<std::array<std::string, 3>> calls;
+    ShadowComponentTestApi::ConfigureListenerStart(
+        &component,
+        [&](transform::AutolinkTfListener*,
+            const std::shared_ptr<autolink::Node>&,
+            const std::string& dynamic_topic, const std::string& legacy_topic,
+            const std::string& static_topic) {
+            calls.push_back({dynamic_topic, legacy_topic, static_topic});
+            return true;
+        });
+    std::string error;
+
+    EXPECT_TRUE(
+        ShadowComponentTestApi::StartTransformListeners(&component, &error));
+    ASSERT_EQ(calls.size(), 2U);
+    EXPECT_EQ(calls[0], (std::array<std::string, 3>{"/tf", "", ""}));
+    EXPECT_EQ(calls[1], (std::array<std::string, 3>{"", "", "/tf_static"}));
+    ShadowComponentTestApi::Clear(&component);
+}
+
+TEST(ShadowComponentTest, ClearRemovesTransformCacheBeforeReconfiguration) {
+    auto* buffer = transform::Buffer::Instance();
+    buffer->clear();
+    ShadowComponent::TransformStamped stale;
+    SetStamp(kStampNs, stale.mutable_header());
+    stale.mutable_header()->set_frame_id("shadow_clear_parent");
+    stale.set_child_frame_id("shadow_clear_child");
+    stale.mutable_transform()->mutable_rotation()->set_w(1.0);
+    transform::ApplyTransformStampedToBuffer(buffer, stale,
+                                             "shadow_component_test", true);
+    std::string error;
+    ASSERT_TRUE(buffer->canTransform("shadow_clear_parent",
+                                     "shadow_clear_child",
+                                     stale.header().stamp(), 0.0F, &error))
+        << error;
+
+    ShadowComponent component;
+    ConfigureSuccess(&component);
+    ShadowComponentTestApi::UseTransformBuffer(&component, buffer);
+    ShadowComponentTestApi::Clear(&component);
+    EXPECT_FALSE(buffer->canTransform("shadow_clear_parent",
+                                      "shadow_clear_child",
+                                      stale.header().stamp(), 0.0F, &error));
+
+    ConfigureSuccess(&component);
+    ShadowComponentTestApi::UseTransformBuffer(&component, buffer);
+    EXPECT_FALSE(buffer->canTransform("shadow_clear_parent",
+                                      "shadow_clear_child",
+                                      stale.header().stamp(), 0.0F, &error));
+    ShadowComponentTestApi::Clear(&component);
 }
 
 TEST(ShadowComponentTest, RejectsNullInputsBeforeLookupOrProcessing) {

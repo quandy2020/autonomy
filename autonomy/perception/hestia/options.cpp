@@ -43,11 +43,18 @@ bool IsUnitInterval(float value) {
     return IsFinite(value) && value >= 0.0F && value <= 1.0F;
 }
 
-bool HasSupportedBackend(const std::string& backend) {
-    return backend == "onnx" || backend == "tensorrt";
-}
-
 }  // namespace
+
+std::string BackendId(proto::Backend backend) {
+    switch (backend) {
+        case proto::BACKEND_ONNX:
+            return "onnx";
+        case proto::BACKEND_TENSORRT:
+            return "tensorrt";
+        default:
+            return {};
+    }
+}
 
 bool ValidateHestiaOptions(const proto::HestiaOptions& options,
                            std::string* error) {
@@ -55,14 +62,14 @@ bool ValidateHestiaOptions(const proto::HestiaOptions& options,
         error->clear();
     }
 
-    const std::string& mode = options.mode();
-    if (mode != "open" && mode != "dual") {
-        SetError(error, "mode must be 'open' or 'dual'.");
+    if (options.mode() != proto::MODE_OPEN &&
+        options.mode() != proto::MODE_DUAL) {
+        SetError(error, "mode must be MODE_OPEN or MODE_DUAL.");
         return false;
     }
 
-    if (!HasSupportedBackend(options.backend())) {
-        SetError(error, "backend must be 'onnx' or 'tensorrt'.");
+    if (BackendId(options.backend()).empty()) {
+        SetError(error, "backend must be BACKEND_ONNX or BACKEND_TENSORRT.");
         return false;
     }
 
@@ -82,7 +89,7 @@ bool ValidateHestiaOptions(const proto::HestiaOptions& options,
         return false;
     }
 
-    if (mode == "dual") {
+    if (options.mode() == proto::MODE_DUAL) {
         if (options.home_model_path().empty()) {
             SetError(error, "home_model_path must not be empty in dual mode.");
             return false;
@@ -138,6 +145,10 @@ bool ValidateHestiaOptions(const proto::HestiaOptions& options,
                  "in [0, 1].");
         return false;
     }
+    if (!IsUnitInterval(options.nms_iou_threshold())) {
+        SetError(error, "nms_iou_threshold must be finite and within [0, 1].");
+        return false;
+    }
     if (!IsPositive(options.lost_timeout_sec())) {
         SetError(error, "lost_timeout_sec must be finite and positive.");
         return false;
@@ -153,11 +164,15 @@ bool ValidateHestiaOptions(const proto::HestiaOptions& options,
                  "detections_2d_topic and detections_3d_topic must differ.");
         return false;
     }
-    if (!IsPositive(options.max_input_skew_sec()) ||
-        !IsPositive(options.max_data_age_sec())) {
+    if (!IsPositive(options.max_input_skew_sec())) {
+        SetError(error, "max_input_skew_sec must be finite and positive.");
+        return false;
+    }
+    if (!options.base_frame().empty() &&
+        !IsPositive(options.tf_timeout_sec())) {
         SetError(error,
-                 "max_input_skew_sec and max_data_age_sec must be finite and "
-                 "positive.");
+                 "tf_timeout_sec must be finite and positive when base_frame "
+                 "is set.");
         return false;
     }
 

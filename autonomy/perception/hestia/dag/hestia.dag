@@ -2,16 +2,16 @@
 module_config {
   module_library: "libhestia_component.so"
   components {
-    class_name: "autonomy::perception::hestia::HestiaComponent"
+    class_name: "autonomy::perception::hestia::Component"
     config {
       name: "hestia"
       config_file_path: "conf/hestia.pb.txt"
-      # Reader order must match HestiaComponent's RGB, depth, CameraInfo types.
+      # Reader order must match Component's RGB, depth, CameraInfo types.
       readers {
         channel: "/camera/rgb/image_raw"
       }
       readers {
-        # Prefer Fathom refined depth when use_fathom_depth is true in conf:
+        # Optional Fathom refined depth:
         # channel: "/perception/fathom/refined_depth"
         channel: "/camera/depth/image_raw"
       }

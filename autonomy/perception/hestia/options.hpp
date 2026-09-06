@@ -39,6 +39,9 @@ namespace hestia {
 bool ValidateHestiaOptions(const proto::HestiaOptions& options,
                            std::string* error = nullptr);
 
+/** @brief Maps Backend enum to common-network backend_id string. */
+std::string BackendId(proto::Backend backend);
+
 }  // namespace hestia
 }  // namespace perception
 }  // namespace autonomy
