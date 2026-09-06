@@ -1,7 +1,8 @@
 # Autolink FastDDS 拓扑与运维设计（D+E）
 
 - **日期**：2026-09-07
-- **状态**：待用户审阅
+- **状态**：已批准（实现计划已就绪）
+- **计划**：`docs/superpowers/plans/2026-09-07-autolink-fastdds-topology-ops.md`
 - **前置**：`docs/superpowers/specs/2026-09-06-autolink-fastdds-multimachine-design.md`（M1–M3 已实现）
 - **范围**：跨机拓扑后端（D）+ Discovery Server / 大消息软限 / 诊断 / 3.x 文档（E）
 - **不做**：DDS Security；默认切 FastDDS 3.x；元数据+外带大对象通道
