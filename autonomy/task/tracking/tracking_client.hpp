@@ -61,7 +61,8 @@ public:
     static Ptr FromBlackboard(const std::shared_ptr<BT::Blackboard>& blackboard);
     static Ptr FromNode(const BT::TreeNode& node);
 
-    void ApplyGoal(const ::autonomy::task::proto::TrackerGoal& goal);
+    bool EnableShadowTransport(const std::shared_ptr<autolink::Node>& node);
+    bool ApplyGoal(const ::autonomy::task::proto::TrackerGoal& goal);
 
     bool IsTargetLocked() const;
     bool ComputeFollowGoal(automsgs::msgs::geometry_msgs::PoseStamped& goal) const;
@@ -71,9 +72,18 @@ public:
     bool GetShadowPath(automsgs::msgs::nav_msgs::Path* path,
                        uint64_t* revision) const;
     bool GetShadowDistanceToTarget(float* distance) const;
+    bool GetShadowSnapshot(automsgs::msgs::geometry_msgs::PoseStamped* target,
+                           automsgs::msgs::nav_msgs::Path* path,
+                           uint64_t* revision, float* distance) const;
 
     const std::string& target_id() const { return target_id_; }
     double follow_distance() const { return follow_distance_; }
+    bool reacquire_on_lost() const {
+        return reacquire_on_lost_;
+    }
+    bool shadow_transport_enabled() const {
+        return shadow_transport_enabled_;
+    }
     ::autonomy::task::proto::TrackerMode mode() const { return mode_; }
 
     navigation::NavigationClient::Ptr navigation_client() const
@@ -89,7 +99,6 @@ public:
 private:
     friend class TrackingClientTestApi;
 
-    bool InitializeShadowTransport(const std::shared_ptr<autolink::Node>& node);
     void HandleShadowTarget(
         const std::shared_ptr<automsgs::msgs::geometry_msgs::PoseStamped>&
             target);
@@ -161,7 +170,9 @@ private:
 
     Operations operations_;
     uint64_t active_revision_{0};
+    uint64_t completed_revision_{0};
     bool has_active_revision_{false};
+    bool has_completed_revision_{false};
     bool active_{false};
 };
 

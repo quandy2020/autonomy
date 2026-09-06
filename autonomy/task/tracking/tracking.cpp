@@ -39,11 +39,6 @@ bool TrackerTask::EnsureTrackingClient()
     if (tracking_client_) {
         return true;
     }
-    if (node()) {
-        tracking_client_ = tracking::TrackingClient::Create(node());
-        tracking::TrackingClient::SetShared(tracking_client_);
-        return static_cast<bool>(tracking_client_);
-    }
     if (!navigation()) {
         return false;
     }
@@ -74,6 +69,8 @@ void TrackerTask::PopulateBlackboard(const BT::Blackboard::Ptr& blackboard)
     blackboard->set("goal_reached_tol", kDefaultGoalReachedTol);
     blackboard->set("target_id", tracking_client_->target_id());
     blackboard->set("follow_distance", tracking_client_->follow_distance());
+    blackboard->set("reacquire_attempts",
+                    tracking_client_->reacquire_on_lost() ? -1 : 1);
 }
 
 std::string TrackerTask::ResolveTreeForGoal(const tp::TrackerGoal& goal) const
@@ -93,8 +90,15 @@ bool TrackerTask::OnGoal(const tp::TrackerGoal& goal)
         if (!EnsureTrackingClient()) {
             return false;
         }
+        if (goal.mode() == tp::TRACKER_MODE_PERSON &&
+            !tracking_client_->shadow_transport_enabled() &&
+            !tracking_client_->EnableShadowTransport(node())) {
+            return false;
+        }
+        if (!tracking_client_->ApplyGoal(goal)) {
+            return false;
+        }
         active_goal_ = goal;
-        tracking_client_->ApplyGoal(goal);
 
         const auto tree = ResolveTreeForGoal(goal);
         if (!StartTree(tree)) {
@@ -162,11 +166,6 @@ void TrackerTask::OnTreeTick()
 tp::TrackerStatus TrackerTask::MapStatus() const
 {
     using Status = tp::TrackerStatus;
-    if (Lifecycle() == TaskLifecycle::kRunning && tracking_client_ &&
-        tracking_client_->mode() == tp::TRACKER_MODE_PERSON &&
-        !tracking_client_->IsTargetLocked()) {
-        return Status::TRACKER_STATUS_TARGET_LOST;
-    }
     switch (Lifecycle()) {
     case TaskLifecycle::kIdle:
         return Status::TRACKER_STATUS_IDLE;
@@ -187,18 +186,28 @@ tp::TrackerStatus TrackerTask::MapStatus() const
 
 void TrackerTask::FillFeedback(tp::TrackerFeedback* feedback) const
 {
-    feedback->set_status(MapStatus());
+    const auto status = MapStatus();
+    feedback->set_status(status);
     *feedback->mutable_progress() = progress_;
     if (tracking_client_) {
-        feedback->set_distance_to_target(tracking_client_->DistanceToTarget());
         if (tracking_client_->mode() == tp::TRACKER_MODE_PERSON) {
             automsgs::msgs::geometry_msgs::PoseStamped target;
-            if (tracking_client_->GetShadowTarget(&target)) {
+            automsgs::msgs::nav_msgs::Path path;
+            uint64_t revision = 0;
+            float distance = 0.0F;
+            if (tracking_client_->GetShadowSnapshot(&target, &path, &revision,
+                                                    &distance)) {
                 *feedback->mutable_target_pose() = target;
+                feedback->set_distance_to_target(distance);
+            } else if (status == tp::TRACKER_STATUS_TRACKING) {
+                feedback->set_status(tp::TRACKER_STATUS_TARGET_LOST);
             }
-        } else if (active_goal_.has_value() &&
-                   active_goal_->has_target_pose()) {
-            *feedback->mutable_target_pose() = active_goal_->target_pose();
+        } else {
+            feedback->set_distance_to_target(
+                tracking_client_->DistanceToTarget());
+            if (active_goal_.has_value() && active_goal_->has_target_pose()) {
+                *feedback->mutable_target_pose() = active_goal_->target_pose();
+            }
         }
     }
 }

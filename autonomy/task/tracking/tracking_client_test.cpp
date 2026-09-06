@@ -65,6 +65,19 @@ public:
     void Fill(::autonomy::task::proto::TrackerFeedback* feedback) const {
         FillFeedback(feedback);
     }
+
+    bool InitializeClient(
+        const ::autonomy::task::proto::TaskServerOptions& options) {
+        return OnTreeInitialize(options);
+    }
+
+    void Populate(const BT::Blackboard::Ptr& blackboard) {
+        PopulateBlackboard(blackboard);
+    }
+
+    bool Submit(const ::autonomy::task::proto::TrackerGoal& goal) {
+        return OnGoal(goal);
+    }
 };
 
 automsgs::msgs::geometry_msgs::PoseStamped Pose(double x, double y) {
@@ -105,14 +118,43 @@ TEST(TrackingClientTest, PublishesPersonStartAndUpdateSelections) {
             return true;
         });
 
-    client->ApplyGoal(
-        PersonGoal(::autonomy::task::proto::TRACKER_CMD_START, "track-7"));
-    client->ApplyGoal(
-        PersonGoal(::autonomy::task::proto::TRACKER_CMD_UPDATE_TARGET, ""));
+    EXPECT_TRUE(client->ApplyGoal(
+        PersonGoal(::autonomy::task::proto::TRACKER_CMD_START, "track-7")));
+    EXPECT_TRUE(client->ApplyGoal(
+        PersonGoal(::autonomy::task::proto::TRACKER_CMD_UPDATE_TARGET, "")));
 
     ASSERT_EQ(selections.size(), 2U);
     EXPECT_EQ(selections[0], "track-7");
     EXPECT_TRUE(selections[1].empty());
+}
+
+TEST(TrackingClientTest, RejectsPersonGoalWhenSelectionCannotBePublished) {
+    TimePoint now{};
+    auto client = TrackingClientTestApi::Create(
+        [&now]() { return now; },
+        [](const automsgs::msgs::std_msgs::String&) { return false; });
+
+    EXPECT_FALSE(client->ApplyGoal(
+        PersonGoal(::autonomy::task::proto::TRACKER_CMD_START, "track-7")));
+    EXPECT_EQ(client->mode(),
+              ::autonomy::task::proto::TRACKER_MODE_UNSPECIFIED);
+    EXPECT_TRUE(client->target_id().empty());
+}
+
+TEST(TrackingClientTest, PreservesSynchronousSelectionResponse) {
+    TimePoint now{};
+    TrackingClient::Ptr client;
+    client = TrackingClientTestApi::Create(
+        [&now]() { return now; },
+        [&client](const automsgs::msgs::std_msgs::String&) {
+            TrackingClientTestApi::ReceiveTarget(client.get(), Pose(1.0, 0.0));
+            TrackingClientTestApi::ReceivePath(client.get(), Path());
+            return true;
+        });
+
+    ASSERT_TRUE(client->ApplyGoal(
+        PersonGoal(::autonomy::task::proto::TRACKER_CMD_START, "track-7")));
+    EXPECT_TRUE(client->IsTargetLocked());
 }
 
 TEST(TrackingClientTest, ReturnsFreshShadowTargetPathAndMonotonicRevision) {
@@ -120,8 +162,8 @@ TEST(TrackingClientTest, ReturnsFreshShadowTargetPathAndMonotonicRevision) {
     auto client = TrackingClientTestApi::Create(
         [&now]() { return now; },
         [](const automsgs::msgs::std_msgs::String&) { return true; });
-    client->ApplyGoal(
-        PersonGoal(::autonomy::task::proto::TRACKER_CMD_START, "track-7"));
+    ASSERT_TRUE(client->ApplyGoal(
+        PersonGoal(::autonomy::task::proto::TRACKER_CMD_START, "track-7")));
 
     TrackingClientTestApi::ReceiveTarget(client.get(), Pose(3.0, 4.0));
     TrackingClientTestApi::ReceivePath(client.get(), Path());
@@ -148,8 +190,8 @@ TEST(TrackingClientTest, RejectsStaleShadowData) {
     auto client = TrackingClientTestApi::Create(
         [&now]() { return now; },
         [](const automsgs::msgs::std_msgs::String&) { return true; });
-    client->ApplyGoal(
-        PersonGoal(::autonomy::task::proto::TRACKER_CMD_START, "track-7"));
+    ASSERT_TRUE(client->ApplyGoal(
+        PersonGoal(::autonomy::task::proto::TRACKER_CMD_START, "track-7")));
     TrackingClientTestApi::ReceiveTarget(client.get(), Pose(1.0, 0.0));
     TrackingClientTestApi::ReceivePath(client.get(), Path());
 
@@ -163,13 +205,33 @@ TEST(TrackingClientTest, RejectsStaleShadowData) {
     EXPECT_FALSE(client->IsTargetLocked());
 }
 
+TEST(TrackingClientTest, RejectsFreshPathWhenTargetIsStale) {
+    TimePoint now{};
+    auto client = TrackingClientTestApi::Create(
+        [&now]() { return now; },
+        [](const automsgs::msgs::std_msgs::String&) { return true; });
+    ASSERT_TRUE(client->ApplyGoal(
+        PersonGoal(::autonomy::task::proto::TRACKER_CMD_START, "track-7")));
+    TrackingClientTestApi::ReceiveTarget(client.get(), Pose(1.0, 0.0));
+    TrackingClientTestApi::ReceivePath(client.get(), Path());
+
+    now += TrackingClient::kShadowDataTimeout + std::chrono::milliseconds(1);
+    TrackingClientTestApi::ReceivePath(client.get(), Path(0.25, 0.0));
+
+    automsgs::msgs::nav_msgs::Path path;
+    uint64_t revision = 0;
+    EXPECT_FALSE(client->GetShadowPath(&path, &revision));
+    EXPECT_EQ(revision, 2U);
+    EXPECT_FALSE(client->IsTargetLocked());
+}
+
 TEST(TrackingClientTest, EmptyPathClearsPersonLockAndAdvancesRevision) {
     TimePoint now{};
     auto client = TrackingClientTestApi::Create(
         [&now]() { return now; },
         [](const automsgs::msgs::std_msgs::String&) { return true; });
-    client->ApplyGoal(
-        PersonGoal(::autonomy::task::proto::TRACKER_CMD_START, "track-7"));
+    ASSERT_TRUE(client->ApplyGoal(
+        PersonGoal(::autonomy::task::proto::TRACKER_CMD_START, "track-7")));
     TrackingClientTestApi::ReceiveTarget(client.get(), Pose(1.0, 0.0));
     TrackingClientTestApi::ReceivePath(client.get(), Path());
     TrackingClientTestApi::ReceivePath(client.get(),
@@ -190,8 +252,8 @@ TEST(TrackingClientTest, RequestedPersonIdAloneDoesNotProveLock) {
         [&now]() { return now; },
         [](const automsgs::msgs::std_msgs::String&) { return true; });
 
-    client->ApplyGoal(
-        PersonGoal(::autonomy::task::proto::TRACKER_CMD_START, "track-7"));
+    ASSERT_TRUE(client->ApplyGoal(
+        PersonGoal(::autonomy::task::proto::TRACKER_CMD_START, "track-7")));
 
     EXPECT_FALSE(client->IsTargetLocked());
 }
@@ -201,8 +263,8 @@ TEST(TrackingClientTest, PersonFeedbackUsesShadowAndRemainsReacquirable) {
     auto client = TrackingClientTestApi::Create(
         [&now]() { return now; },
         [](const automsgs::msgs::std_msgs::String&) { return true; });
-    client->ApplyGoal(
-        PersonGoal(::autonomy::task::proto::TRACKER_CMD_START, "track-7"));
+    ASSERT_TRUE(client->ApplyGoal(
+        PersonGoal(::autonomy::task::proto::TRACKER_CMD_START, "track-7")));
     TrackingClientTestApi::ReceiveTarget(client.get(), Pose(3.0, 4.0));
     TrackingClientTestApi::ReceivePath(client.get(), Path());
     TrackerTaskTestHarness task;
@@ -244,6 +306,56 @@ TEST(TrackingClientTest, NavigationOnlyConstructionNeedsNoShadowTransport) {
     EXPECT_FALSE(TrackingClientTestApi::ShadowTransportEnabled(*client));
 }
 
+TEST(TrackingClientTest, TrackerTaskInitializationUsesInjectedNavigationOnly) {
+    // The factory only stores this opaque navigation handle in this test; the
+    // aliasing pointer is never dereferenced.
+    auto owner = std::make_shared<int>(0);
+    auto navigation = navigation::NavigationClient::Ptr(
+        owner, reinterpret_cast<navigation::NavigationClient*>(owner.get()));
+    TrackerTaskTestHarness task;
+    task.SetNavigationClient(std::move(navigation));
+
+    ::autonomy::task::proto::TaskServerOptions options;
+    EXPECT_TRUE(task.InitializeClient(options));
+}
+
+TEST(TrackingClientTest, ReacquirePolicyIsExportedToBlackboard) {
+    TimePoint now{};
+    auto client = TrackingClientTestApi::Create(
+        [&now]() { return now; },
+        [](const automsgs::msgs::std_msgs::String&) { return true; });
+    TrackerTaskTestHarness task;
+    task.SetTrackingClient(client);
+    auto blackboard = BT::Blackboard::create();
+    auto goal =
+        PersonGoal(::autonomy::task::proto::TRACKER_CMD_START, "track-7");
+
+    goal.set_reacquire_on_lost(true);
+    ASSERT_TRUE(client->ApplyGoal(goal));
+    task.Populate(blackboard);
+    int attempts = 0;
+    ASSERT_TRUE(blackboard->get("reacquire_attempts", attempts));
+    EXPECT_EQ(attempts, -1);
+
+    goal.set_reacquire_on_lost(false);
+    ASSERT_TRUE(client->ApplyGoal(goal));
+    task.Populate(blackboard);
+    ASSERT_TRUE(blackboard->get("reacquire_attempts", attempts));
+    EXPECT_EQ(attempts, 1);
+}
+
+TEST(TrackingClientTest, TrackerTaskRejectsFailedPersonSelection) {
+    TimePoint now{};
+    auto client = TrackingClientTestApi::Create(
+        [&now]() { return now; },
+        [](const automsgs::msgs::std_msgs::String&) { return false; });
+    TrackerTaskTestHarness task;
+    task.SetTrackingClient(client);
+
+    EXPECT_FALSE(task.Submit(
+        PersonGoal(::autonomy::task::proto::TRACKER_CMD_START, "track-7")));
+}
+
 TEST(TrackingClientTest, TargetPoseModeRetainsExistingFollowGoalBehavior) {
     TimePoint now{};
     int selection_count = 0;
@@ -259,7 +371,7 @@ TEST(TrackingClientTest, TargetPoseModeRetainsExistingFollowGoalBehavior) {
     goal.set_follow_distance(1.5F);
     *goal.mutable_target_pose() = Pose(4.0, 2.0);
 
-    client->ApplyGoal(goal);
+    ASSERT_TRUE(client->ApplyGoal(goal));
 
     automsgs::msgs::geometry_msgs::PoseStamped follow_goal;
     ASSERT_TRUE(client->ComputeFollowGoal(follow_goal));
