@@ -1,7 +1,7 @@
 /*
  * Copyright 2026 The Openbot Authors
  */
-#include "autonomy/perception/exploration/far3d/visibility_graph3.hpp"
+#include "autonomy/perception/ariadne/far3d/visibility_graph3.hpp"
 #include <algorithm>
 #include <cmath>
 #include <fstream>
@@ -13,7 +13,7 @@
 #include <vector>
 #include "autonomy/common/configuration_file_resolver.hpp"
 #include "autonomy/common/logging.hpp"
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
 #include <automsgs/msgs/visualization_msgs/marker.pb.h>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/opencv.hpp>

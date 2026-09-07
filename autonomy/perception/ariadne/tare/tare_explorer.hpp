@@ -10,8 +10,8 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/perception/exploration/core/explorer.hpp"
-#include "autonomy/perception/exploration/tare/hierarchical_planner.hpp"
+#include "autonomy/perception/ariadne/core/explorer.hpp"
+#include "autonomy/perception/ariadne/tare/hierarchical_planner.hpp"
 
 namespace autonomy::perception::exploration {
 

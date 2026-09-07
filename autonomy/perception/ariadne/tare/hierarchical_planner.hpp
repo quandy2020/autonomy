@@ -15,17 +15,17 @@
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 #include <automsgs/msgs/geometry_msgs/transform.pb.h>
 
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
-#include "autonomy/perception/exploration/common/exploration_visualizer.hpp"
-#include "autonomy/perception/exploration/tare/grid_world.hpp"
-#include "autonomy/perception/exploration/tare/keypose_graph.hpp"
-#include "autonomy/perception/exploration/tare/local_coverage_planner.hpp"
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
-#include "autonomy/perception/exploration/common/planning_env.hpp"
-#include "autonomy/perception/exploration/common/point_cloud_manager.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/common/exploration_visualizer.hpp"
+#include "autonomy/perception/ariadne/tare/grid_world.hpp"
+#include "autonomy/perception/ariadne/tare/keypose_graph.hpp"
+#include "autonomy/perception/ariadne/tare/local_coverage_planner.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/common/planning_env.hpp"
+#include "autonomy/perception/ariadne/common/point_cloud_manager.hpp"
 #include "autonomy/perception/proto/exploration_options.pb.h"
-#include "autonomy/perception/exploration/common/terrain_height_map.hpp"
-#include "autonomy/perception/exploration/tare/viewpoint_manager.hpp"
+#include "autonomy/perception/ariadne/common/terrain_height_map.hpp"
+#include "autonomy/perception/ariadne/tare/viewpoint_manager.hpp"
 
 namespace autonomy::perception::exploration {
 

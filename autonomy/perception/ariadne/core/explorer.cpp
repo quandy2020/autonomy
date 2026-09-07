@@ -2,11 +2,11 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/perception/exploration/core/explorer.hpp"
+#include "autonomy/perception/ariadne/core/explorer.hpp"
 
-#include "autonomy/perception/exploration/far3d/far3d_explorer.hpp"
-#include "autonomy/perception/exploration/far2d/far_explorer.hpp"
-#include "autonomy/perception/exploration/tare/tare_explorer.hpp"
+#include "autonomy/perception/ariadne/far3d/far3d_explorer.hpp"
+#include "autonomy/perception/ariadne/far2d/far_explorer.hpp"
+#include "autonomy/perception/ariadne/tare/tare_explorer.hpp"
 
 namespace autonomy::perception::exploration {
 

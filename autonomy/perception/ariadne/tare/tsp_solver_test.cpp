@@ -2,7 +2,7 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/perception/exploration/tare/tsp_solver.hpp"
+#include "autonomy/perception/ariadne/tare/tsp_solver.hpp"
 
 #include "gtest/gtest.h"
 

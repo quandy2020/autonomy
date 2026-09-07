@@ -1,7 +1,7 @@
 /*
  * Copyright 2026 The Openbot Authors
  */
-#include "autonomy/perception/exploration/far3d/sensor_handlers3.hpp"
+#include "autonomy/perception/ariadne/far3d/sensor_handlers3.hpp"
 #include <cmath>
 #include <cstdint>
 #include <queue>

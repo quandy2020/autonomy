@@ -17,7 +17,15 @@ function(autonomy_add_unit_tests)
     string(REPLACE "/" "." TEST_TARGET_NAME "${DIR}/${FIL_WE}")
 
     google_test("${TEST_TARGET_NAME}" ${ABS_FIL})
+    # Wait for shared libs after scrub: linking against a stub/missing
+    # libautomsgs.so yields mass "undefined reference" from libautonomy.so.
     add_dependencies("${TEST_TARGET_NAME}" ${PROJECT_NAME})
+    if(TARGET automsgs)
+      add_dependencies("${TEST_TARGET_NAME}" automsgs)
+    endif()
+    if(TARGET ${PROJECT_NAME}_scrub_shared_libs)
+      add_dependencies("${TEST_TARGET_NAME}" ${PROJECT_NAME}_scrub_shared_libs)
+    endif()
     if(BUILD_GRPC)
       target_link_libraries("${TEST_TARGET_NAME}" PUBLIC grpc++ grpc)
     endif()

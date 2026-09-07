@@ -2,7 +2,7 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/perception/exploration/core/exploration_client.hpp"
+#include "autonomy/perception/ariadne/core/exploration_client.hpp"
 
 #include <chrono>
 #include <cmath>

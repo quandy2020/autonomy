@@ -2,13 +2,13 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/perception/exploration/tare/viewpoint_manager.hpp"
+#include "autonomy/perception/ariadne/tare/viewpoint_manager.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
 
 namespace autonomy::perception::exploration {
 namespace {

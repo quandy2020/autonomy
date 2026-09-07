@@ -2,7 +2,7 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/perception/exploration/common/terrain_height_map.hpp"
+#include "autonomy/perception/ariadne/common/terrain_height_map.hpp"
 
 #include <cmath>
 #include <cstring>

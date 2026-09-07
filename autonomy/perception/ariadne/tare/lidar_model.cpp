@@ -2,7 +2,7 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/perception/exploration/tare/lidar_model.hpp"
+#include "autonomy/perception/ariadne/tare/lidar_model.hpp"
 
 #include <algorithm>
 #include <cmath>

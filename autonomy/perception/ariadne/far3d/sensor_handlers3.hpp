@@ -14,7 +14,7 @@
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 
-#include "autonomy/perception/exploration/far3d/types.hpp"
+#include "autonomy/perception/ariadne/far3d/types.hpp"
 #include "autonomy/perception/proto/exploration_options.pb.h"
 
 namespace autonomy::perception::exploration::far3d {

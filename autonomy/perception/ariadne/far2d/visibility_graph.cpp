@@ -1,13 +1,13 @@
 /*
  * Copyright 2026 The Openbot Authors
  */
-#include "autonomy/perception/exploration/far2d/visibility_graph.hpp"
+#include "autonomy/perception/ariadne/far2d/visibility_graph.hpp"
 #include <algorithm>
 #include <cmath>
 #include <queue>
 #include <unordered_map>
 #include "autonomy/map/costmap_2d/cost_values.hpp"
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
 #include <automsgs/msgs/geometry_msgs/point.pb.h>
 #include <automsgs/msgs/visualization_msgs/marker.pb.h>
 

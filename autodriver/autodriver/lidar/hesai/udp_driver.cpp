@@ -97,13 +97,13 @@ bool HesaiUdpDriver::InitPacket() {
 
 void HesaiUdpDriver::WriteScan(std::shared_ptr<SensorSample> scan) {
     if (callback_ && scan) {
-        callback_(std::unique_ptr<SensorSample>(scan.release()));
+        callback_(scan->Clone());
     }
 }
 
 void HesaiUdpDriver::WritePointCloud(std::shared_ptr<SensorSample> cloud) {
     if (callback_ && cloud) {
-        callback_(std::unique_ptr<SensorSample>(cloud.release()));
+        callback_(cloud->Clone());
     }
 }
 

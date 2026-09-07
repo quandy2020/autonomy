@@ -233,6 +233,8 @@ class LidarCloud
 
     // Optional frame_id override for the cloud header.
     std::string frame_id;
+    // Optional cloud_channel hint for publishers.
+    std::string channel;
 
     /**
      * @brief Stamp the cloud header and apply frame_id override when set.

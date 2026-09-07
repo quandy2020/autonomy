@@ -2,15 +2,15 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
-#include "autonomy/perception/exploration/core/exploration_options.hpp"
-#include "autonomy/perception/exploration/far2d/far_explorer.hpp"
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/core/exploration_options.hpp"
+#include "autonomy/perception/ariadne/far2d/far_explorer.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
 
 #include <cmath>
 #include <limits>
 
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
 
 namespace autonomy::perception::exploration {
 namespace {

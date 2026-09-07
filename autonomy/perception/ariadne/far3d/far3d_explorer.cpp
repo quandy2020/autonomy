@@ -2,15 +2,15 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/perception/exploration/far3d/far3d_explorer.hpp"
+#include "autonomy/perception/ariadne/far3d/far3d_explorer.hpp"
 
 #include <cmath>
 
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
-#include "autonomy/perception/exploration/core/exploration_options.hpp"
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
-#include "autonomy/perception/exploration/far3d/visibility_graph3.hpp"
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/core/exploration_options.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/far3d/visibility_graph3.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
 
 namespace autonomy::perception::exploration::far3d {
 

@@ -2,7 +2,7 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/perception/exploration/tare/tare_visualizer.hpp"
+#include "autonomy/perception/ariadne/tare/tare_visualizer.hpp"
 
 #include <automsgs/msgs/geometry_msgs/point.pb.h>
 #include <automsgs/msgs/visualization_msgs/marker.pb.h>

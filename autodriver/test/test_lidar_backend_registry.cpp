@@ -31,7 +31,7 @@ struct DummyDriver : autodriver::SensorDriver {
     bool Start() override { return true; }
     void Stop() override {}
     bool IsRunning() const override { return false; }
-    void SetSampleCallback(autodriver::SampleCallback) override {}
+    void SetSampleCallback(autodriver::SensorDriver::SampleCallback) override {}
     autodriver::SensorId id_{"lidar/dummy"};
 };
 

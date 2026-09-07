@@ -6,12 +6,12 @@
 
 #pragma once
 
-#include "autonomy/perception/exploration/core/explorer.hpp"
-#include "autonomy/perception/exploration/far3d/sensor_handlers3.hpp"
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
-#include "autonomy/perception/exploration/common/planning_env.hpp"
-#include "autonomy/perception/exploration/far2d/visibility_graph.hpp"
-#include "autonomy/perception/exploration/far2d/visibility_graph.hpp"
+#include "autonomy/perception/ariadne/core/explorer.hpp"
+#include "autonomy/perception/ariadne/far3d/sensor_handlers3.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/common/planning_env.hpp"
+#include "autonomy/perception/ariadne/far2d/visibility_graph.hpp"
+#include "autonomy/perception/ariadne/far2d/visibility_graph.hpp"
 
 #include <deque>
 #include <utility>

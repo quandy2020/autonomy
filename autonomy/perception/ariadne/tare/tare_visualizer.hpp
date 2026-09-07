@@ -8,8 +8,8 @@
 
 #include <automsgs/msgs/visualization_msgs/marker_array.pb.h>
 
-#include "autonomy/perception/exploration/tare/grid_world.hpp"
-#include "autonomy/perception/exploration/tare/keypose_graph.hpp"
+#include "autonomy/perception/ariadne/tare/grid_world.hpp"
+#include "autonomy/perception/ariadne/tare/keypose_graph.hpp"
 
 namespace autonomy::perception::exploration {
 

@@ -21,7 +21,7 @@
 
 #include "autolink/autolink.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/perception/exploration/core/exploration_client.hpp"
+#include "autonomy/perception/ariadne/core/exploration_client.hpp"
 #include "autonomy/perception/proto/perception_options.pb.h"
 #include "autonomy/transform/buffer.hpp"
 
