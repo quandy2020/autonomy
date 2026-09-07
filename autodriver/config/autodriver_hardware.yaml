@@ -1,6 +1,9 @@
 # Autodriver hardware config.
 # export AUTODRIVER_PATH=<directory containing config/>
 #
+# Default enables: RealSense D455 (color/depth/ir/aligned/points/imu).
+# Orbbec Gemini 330 entries are present but enable: false — flip as needed.
+#
 # Camera streams stay here (channel / enable / stream / resolution).
 # Vendor device params live under config/camera/<vendor>/ and are merged with:
 #   params_file: camera/orbbec/gemini_330.yaml
@@ -58,7 +61,7 @@ sensors:
         frame_id: camera_gyro_optical_frame
 
     - name: realsense_d455_imu
-      enable: false
+      enable: true
       channel: /camera/imu
       backend: realsense
       params_file: camera/realsense/d455.yaml
@@ -75,7 +78,7 @@ sensors:
   camera:
     # --- Orbbec Gemini 330 (channels align OrbbecSDK_ROS2) ---
     - name: orbbec_color
-      enable: true
+      enable: false
       channel: /camera/color/image_raw
       backend: orbbec
       stream: color
@@ -87,7 +90,7 @@ sensors:
         frame_id: camera_color_optical_frame
 
     - name: orbbec_depth
-      enable: true
+      enable: false
       channel: /camera/depth/image_raw
       backend: orbbec
       stream: depth
@@ -99,7 +102,7 @@ sensors:
         frame_id: camera_depth_optical_frame
 
     - name: orbbec_left_ir
-      enable: true
+      enable: false
       channel: /camera/left_ir/image_raw
       backend: orbbec
       stream: left_ir
@@ -111,7 +114,7 @@ sensors:
         frame_id: camera_left_ir_optical_frame
 
     - name: orbbec_right_ir
-      enable: true
+      enable: false
       channel: /camera/right_ir/image_raw
       backend: orbbec
       stream: right_ir
@@ -124,7 +127,7 @@ sensors:
 
     # --- Intel RealSense D455 (channels align realsense-ros) ---
     - name: realsense_d455_color
-      enable: false
+      enable: true
       channel: /camera/color/image_raw
       backend: realsense
       stream: color
@@ -136,7 +139,7 @@ sensors:
         frame_id: camera_color_optical_frame
 
     - name: realsense_d455_depth
-      enable: false
+      enable: true
       channel: /camera/depth/image_rect_raw
       backend: realsense
       stream: depth
@@ -148,7 +151,7 @@ sensors:
         frame_id: camera_depth_optical_frame
 
     - name: realsense_d455_ir1
-      enable: false
+      enable: true
       channel: /camera/infra1/image_rect_raw
       backend: realsense
       stream: ir1
@@ -160,7 +163,7 @@ sensors:
         frame_id: camera_infra1_optical_frame
 
     - name: realsense_d455_ir2
-      enable: false
+      enable: true
       channel: /camera/infra2/image_rect_raw
       backend: realsense
       stream: ir2
@@ -172,7 +175,7 @@ sensors:
         frame_id: camera_infra2_optical_frame
 
     - name: realsense_d455_aligned_depth
-      enable: false
+      enable: true
       channel: /camera/aligned_depth_to_color/image_raw
       backend: realsense
       stream: aligned_depth_to_color
@@ -207,7 +210,7 @@ sensors:
         frame_id: camera_depth_optical_frame
 
     - name: realsense_d455_points
-      enable: false
+      enable: true
       channel: /camera/depth/color/points
       backend: realsense
       width: 848
