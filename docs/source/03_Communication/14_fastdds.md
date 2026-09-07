@@ -4,7 +4,7 @@
 
 | 本文 §14 | 相关文档 |
 |---------|----------|
-| 启用、双机、Security、Discovery Server、升 3.x | [§0 指南](00_guide.md) · [§1 架构](01_architecture.md) · [§3 Channel](03_channel.md) |
+| 启用、双机、Security、Discovery Server | [§0 指南](00_guide.md) · [§1 架构](01_architecture.md) · [§3 Channel](03_channel.md) |
 
 ---
 
@@ -13,19 +13,21 @@
 ```bash
 cmake -S autolink -B autolink/build-fastdds \
   -DAUTOLINK_BUILD_TEST=ON \
-  -DAUTOLINK_ENABLE_FASTDDS=ON
+  -DAUTOLINK_ENABLE_FASTDDS=ON \
+  -DOPENSSL_ROOT_DIR="$(brew --prefix openssl 2>/dev/null || true)"
 cmake --build autolink/build-fastdds -j
 ```
 
 - CMake option：`AUTOLINK_ENABLE_FASTDDS`（默认 **OFF**）。
-- 优先 `find_package(fastdds|fastrtps 2.14)`；未安装则 FetchContent 钉 **v2.14.6**。若前缀路径上探测到 Fast DDS **major≥3**（或 `find_package` 直接命中 ≥3），CMake 发出 WARNING（已验证基线为 2.14；3.x 未测，默认仍钉 2.14 FetchContent）。
-- 打开后库目标定义 `AUTOLINK_ENABLE_FASTDDS=1`，编译 `transport/rtps/` 与 Hybrid/Transport 的 RTPS 分支。
+- 基线 **Fast DDS 3.x**（FetchContent `GIT_TAG` **v3.6.2**）。优先 `find_package(fastdds 3)`，链接目标 **`fastdds`**（+ `fastcdr`）；未安装则 FetchContent 钉 v3.6.2，并强制 `SECURITY=ON`（需 **OpenSSL**）。
+- **不支持 2.14**：前缀路径上仅有 Fast DDS major&lt;3 时 CMake **FATAL_ERROR**，不会静默回退或混用 2.x。
+- 打开后库目标定义 `AUTOLINK_ENABLE_FASTDDS=1`，编译 `transport/rtps/` 与 Hybrid/Transport 的 RTPS 分支；API 已跟迁 3.x（`eprosima::fastdds::*`）。
 
 验证：
 
 ```bash
 ctest --test-dir autolink/build-fastdds \
-  -R 'rtps_transceiver|topology_backend_factory|rtps_topology_backend|payload_limit|rtps_stats' -V
+  -R 'rtps_transceiver|topology_backend_factory|rtps_topology_backend|payload_limit|rtps_stats|security_config|rtps_security_hub' -V
 ```
 
 说明：同进程 RTPS PubSub 在部分平台上可能只完成匹配、不触发 `DataReaderListener`；双机清单仍是正式验收路径。`autolink/conf/fastdds_profiles.xml` 将 intraprocess 设为 `OFF`，优先走 UDP。
@@ -78,9 +80,9 @@ ctest --test-dir autolink/build-fastdds \
 
 二者独立 name/端口，避免拓扑流量与业务数据面争用同一端点集合。
 
-### Security（M6，opt-in）
+### Security（M6，opt-in；API 已跟 3.x）
 
-默认**仍为明文**（未设 `AUTOLINK_RTPS_SECURITY`）。仅当 `AUTOLINK_RTPS_SECURITY=1` 时启用 DDS Security（Authentication + Cryptography）；Access 本里程碑仅为 **allow-all**（满足插件链，非 topic ACL）。FetchContent 构建已开 `SECURITY=ON` 并链接 OpenSSL。
+默认**仍为明文**（未设 `AUTOLINK_RTPS_SECURITY`）。仅当 `AUTOLINK_RTPS_SECURITY=1` 时启用 DDS Security（Authentication + Cryptography）；Access 本里程碑仅为 **allow-all**（满足插件链，非 topic ACL）。FetchContent 构建已开 `SECURITY=ON` 并链接 OpenSSL（见 §14.1）。
 
 | 行为 | 说明 |
 |------|------|
@@ -143,21 +145,18 @@ export AUTOLINK_DISCOVERY_SERVER=192.168.1.10:11811
 # export AUTOLINK_DISCOVERY_SERVER=192.168.1.10:11811,192.168.1.11:11811
 ```
 
-`RtpsParticipantHub` 将 env 传给 topology/transport 两个 Participant；非空时 `discoveryProtocol=CLIENT` 并注入 server locator 列表。
+`RtpsParticipantHub` 将 env 传给 topology/transport 两个 Participant（3.x CLIENT API）；非空时 `discoveryProtocol=CLIENT` 并注入 server locator 列表。
 
 ---
 
-## 14.5 升级到 Fast DDS 3.x 检查清单
+## 14.5 依赖与构建注意
 
-当前实现钉 **2.14.x**。CMake 若 `find_package` 到 major≥3 会 WARNING。升 3.x 前核对：
+| 项 | 说明 |
+|----|------|
+| 包 / 目标 | `find_package(fastdds 3)` → 链接 `fastdds`（+ `fastcdr`） |
+| FetchContent pin | `GIT_TAG v3.6.2`；`SECURITY=ON` |
+| OpenSSL | FetchContent 构建 Security 插件时 **必需**（可用 `-DOPENSSL_ROOT_DIR=...`） |
+| 系统仅 2.x | CMake **FATAL**；请升级到 3.x 或清空冲突的 `CMAKE_PREFIX_PATH` |
+| 首次 ON | 建议 wipe 旧 `build-fastdds`（避免缓存仍指向 2.x `fastrtps`） |
 
-| 项 | 2.14 | 3.x 预期 |
-|----|------|----------|
-| CMake 包名 / 链接目标 | 常见 `fastrtps`（亦试 `fastdds`） | 统一 `fastdds` |
-| `DomainParticipant` / QoS API | `fastdds/dds/...` + 部分 `fastrtps` 类型 | 核对头路径与 `ReturnCode_t` 命名空间 |
-| Discovery Server API | `load_environment_server_info` / `m_DiscoveryServers` | 按 3.x 迁移指南核对 CLIENT 配置 |
-| Underlay / TypeSupport | 2.14 `TypeSupport` / Topic 创建方式 | 按 3.x 迁移指南改 `create_topic` / 类型注册 |
-| FetchContent / pin | `GIT_TAG v2.14.6` | 换 3.x tag 并重跑 RTPS 集成测 |
-| Security | M6 opt-in（2.14 PropertyPolicy） | M7 跟迁属性名 / 插件路径；勿默认假设已加密 |
-
-升版后至少跑：`topology_backend_factory_test`（OFF/ON）、`rtps_topology_backend_test`（ON）、`rtps_transceiver_test`（ON）、`payload_limit_test` / `rtps_stats_test`。
+回归至少跑：`topology_backend_factory_test`（OFF/ON）、`rtps_topology_backend_test`（ON）、`rtps_transceiver_test`（ON）、`payload_limit_test` / `rtps_stats_test`、`security_config_test` / `rtps_security_hub_test`（ON）。明文测例请先 `unset AUTOLINK_RTPS_SECURITY AUTOLINK_RTPS_SECURITY_DIR`。
