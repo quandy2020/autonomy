@@ -9,8 +9,8 @@
 #include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
-#include "autonomy/perception/exploration/common/planning_env.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/common/planning_env.hpp"
 #include "autonomy/perception/proto/exploration_options.pb.h"
 
 namespace autonomy::perception::exploration {

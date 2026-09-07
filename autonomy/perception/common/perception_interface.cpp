@@ -16,7 +16,7 @@
 
 #include "autonomy/perception/common/perception_interface.hpp"
 
-#include "autonomy/perception/exploration/common/types.hpp"
+#include "autonomy/perception/ariadne/common/types.hpp"
 
 namespace autonomy {
 namespace perception {

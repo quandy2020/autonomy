@@ -2,7 +2,7 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/perception/exploration/tare/rolling_grid.hpp"
+#include "autonomy/perception/ariadne/tare/rolling_grid.hpp"
 
 #include <algorithm>
 #include <unordered_set>

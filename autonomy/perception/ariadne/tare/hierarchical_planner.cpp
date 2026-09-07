@@ -2,16 +2,16 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/perception/exploration/tare/hierarchical_planner.hpp"
+#include "autonomy/perception/ariadne/tare/hierarchical_planner.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
 
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
-#include "autonomy/perception/exploration/tare/tsp_solver.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/tare/tsp_solver.hpp"
 
 namespace autonomy::perception::exploration {
 namespace {

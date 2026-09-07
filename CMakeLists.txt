@@ -187,10 +187,11 @@ include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
 # -----------------------------------------------------------------------------
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
 
-# Drop truncated .so files before linking (interrupted builds leave 0-byte libs).
+# Drop truncated .so / empty .o before linking (interrupted builds leave stubs).
 add_custom_target(${PROJECT_NAME}_scrub_shared_libs ALL
   COMMAND ${CMAKE_COMMAND}
     -Dlib_dir=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+    -Dbinary_dir=${CMAKE_BINARY_DIR}
     -P ${PROJECT_SOURCE_DIR}/cmake/scrub_autonomy_shared_libraries.cmake
   COMMENT "Checking shared libraries for corruption")
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_scrub_shared_libs)
@@ -200,6 +201,12 @@ endif()
 if(TARGET automsgs)
   add_dependencies(automsgs ${PROJECT_NAME}_scrub_shared_libs)
 endif()
+# Executables that need a real main must not link against leftover empty .o.
+foreach(_scrub_exe IN ITEMS autolink_mainboard autolink_cli)
+  if(TARGET ${_scrub_exe})
+    add_dependencies(${_scrub_exe} ${PROJECT_NAME}_scrub_shared_libs)
+  endif()
+endforeach()
 if(TARGET automsgs_proto_copy)
   add_dependencies(${PROJECT_NAME} automsgs_proto_copy)
 endif()

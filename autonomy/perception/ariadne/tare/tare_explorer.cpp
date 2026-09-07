@@ -2,10 +2,10 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/perception/exploration/tare/tare_explorer.hpp"
+#include "autonomy/perception/ariadne/tare/tare_explorer.hpp"
 
-#include "autonomy/perception/exploration/core/exploration_options.hpp"
-#include "autonomy/perception/exploration/tare/tare_visualizer.hpp"
+#include "autonomy/perception/ariadne/core/exploration_options.hpp"
+#include "autonomy/perception/ariadne/tare/tare_visualizer.hpp"
 
 namespace autonomy::perception::exploration {
 

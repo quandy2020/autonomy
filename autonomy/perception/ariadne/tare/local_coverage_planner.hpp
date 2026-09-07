@@ -9,9 +9,9 @@
 #include <automsgs/msgs/geometry_msgs/point.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 
-#include "autonomy/perception/exploration/common/planning_env.hpp"
+#include "autonomy/perception/ariadne/common/planning_env.hpp"
 #include "autonomy/perception/proto/exploration_options.pb.h"
-#include "autonomy/perception/exploration/tare/viewpoint_manager.hpp"
+#include "autonomy/perception/ariadne/tare/viewpoint_manager.hpp"
 
 namespace autonomy::perception::exploration {
 

@@ -224,7 +224,7 @@ bool validate_odometry(const proto::ShadowOptions& options,
         set_error(error, "odometry frames are invalid.");
         return false;
     }
-    const auto& position = odometry.pose().pose().position();
+    const auto& position = odometry.pose().pose().pose().position();
     if (!std::isfinite(position.x()) || !std::isfinite(position.y()) ||
         !std::isfinite(position.z())) {
         set_error(error, "odometry position is non-finite.");

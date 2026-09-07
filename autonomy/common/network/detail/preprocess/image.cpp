@@ -137,14 +137,14 @@ bool Preprocess(const Sample& sample,
 
     if (!sample.named_tensors.empty()) {
         for (const ModelTensorInfo& info : inputs) {
-            const auto found = sample.named_tensors.find(info.name());
+            const auto found = sample.named_tensors.find(info.name);
             if (found == sample.named_tensors.end()) {
                 continue;
             }
-            (*tensors)[info.name()] = found->second;
+            (*tensors)[info.name] = found->second;
             if (found->second.element_type() != info.element_type) {
                 SetErrorMessage(error,
-                                "Named input \"" + info.name() + "\" element type does not match model.");
+                                "Named input \"" + info.name + "\" element type does not match model.");
                 return false;
             }
             if (!CheckSize(info, found->second.element_count(), error)) {
@@ -155,7 +155,7 @@ bool Preprocess(const Sample& sample,
 
     if (sample.image_bgr.has_value() && !sample.image_bgr->empty()) {
         for (const ModelTensorInfo& info : inputs) {
-            if (tensors->count(info.name()) != 0 || !IsImage(info)) {
+            if (tensors->count(info.name) != 0 || !IsImage(info)) {
                 continue;
             }
             TransformMeta* meta_out =
@@ -168,7 +168,7 @@ bool Preprocess(const Sample& sample,
             if (meta_out != nullptr) {
                 wrote_meta = true;
                 if (meta_by_input != nullptr) {
-                    (*meta_by_input)[info.name()] = *meta_out;
+                    (*meta_by_input)[info.name] = *meta_out;
                 }
             }
             std::string convert_err;
@@ -178,13 +178,13 @@ bool Preprocess(const Sample& sample,
                 SetErrorMessage(error, convert_err);
                 return false;
             }
-            (*tensors)[info.name()] = std::move(typed);
+            (*tensors)[info.name] = std::move(typed);
         }
     }
 
     if (!sample.vector_features.empty()) {
         for (const ModelTensorInfo& info : inputs) {
-            if (tensors->count(info.name()) != 0 || !IsVector(info)) {
+            if (tensors->count(info.name) != 0 || !IsVector(info)) {
                 continue;
             }
             if (!SetVector(sample.vector_features, info, tensors, error)) {
@@ -195,11 +195,11 @@ bool Preprocess(const Sample& sample,
     }
 
     for (const ModelTensorInfo& info : inputs) {
-        if (tensors->count(info.name()) != 0) {
+        if (tensors->count(info.name) != 0) {
             continue;
         }
         std::ostringstream msg;
-        msg << "no data for input \"" << info.name()<< "\".";
+        msg << "no data for input \"" << info.name<< "\".";
         SetErrorMessage(error, msg.str());
         return false;
     }

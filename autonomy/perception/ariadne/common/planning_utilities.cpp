@@ -2,7 +2,7 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
 
 #include <cmath>
 #include <fstream>

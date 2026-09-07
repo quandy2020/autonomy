@@ -2,7 +2,7 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/perception/exploration/common/exploration_visualizer.hpp"
+#include "autonomy/perception/ariadne/common/exploration_visualizer.hpp"
 
 namespace autonomy::perception::exploration {
 

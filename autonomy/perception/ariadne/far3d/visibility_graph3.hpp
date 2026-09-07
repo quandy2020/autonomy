@@ -15,8 +15,8 @@
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 #include <automsgs/msgs/visualization_msgs/marker_array.pb.h>
 
-#include "autonomy/perception/exploration/common/planning_env.hpp"
-#include "autonomy/perception/exploration/far3d/types.hpp"
+#include "autonomy/perception/ariadne/common/planning_env.hpp"
+#include "autonomy/perception/ariadne/far3d/types.hpp"
 #include "autonomy/perception/proto/exploration_options.pb.h"
 
 namespace autonomy::perception::exploration::far3d {

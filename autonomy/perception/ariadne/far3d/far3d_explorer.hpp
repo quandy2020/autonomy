@@ -11,11 +11,11 @@
 
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 
-#include "autonomy/perception/exploration/common/planning_env.hpp"
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
-#include "autonomy/perception/exploration/core/explorer.hpp"
-#include "autonomy/perception/exploration/far3d/sensor_handlers3.hpp"
-#include "autonomy/perception/exploration/far3d/visibility_graph3.hpp"
+#include "autonomy/perception/ariadne/common/planning_env.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/core/explorer.hpp"
+#include "autonomy/perception/ariadne/far3d/sensor_handlers3.hpp"
+#include "autonomy/perception/ariadne/far3d/visibility_graph3.hpp"
 
 namespace autonomy::perception::exploration::far3d {
 

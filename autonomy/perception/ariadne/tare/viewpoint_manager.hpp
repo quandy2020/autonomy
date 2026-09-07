@@ -8,13 +8,13 @@
 
 #include <automsgs/msgs/geometry_msgs/point.pb.h>
 
-#include "autonomy/perception/exploration/tare/lidar_model.hpp"
-#include "autonomy/perception/exploration/common/planning_env.hpp"
-#include "autonomy/perception/exploration/common/point_cloud_manager.hpp"
+#include "autonomy/perception/ariadne/tare/lidar_model.hpp"
+#include "autonomy/perception/ariadne/common/planning_env.hpp"
+#include "autonomy/perception/ariadne/common/point_cloud_manager.hpp"
 #include "autonomy/perception/proto/exploration_options.pb.h"
-#include "autonomy/perception/exploration/tare/rolling_grid.hpp"
-#include "autonomy/perception/exploration/common/terrain_height_map.hpp"
-#include "autonomy/perception/exploration/common/types.hpp"
+#include "autonomy/perception/ariadne/tare/rolling_grid.hpp"
+#include "autonomy/perception/ariadne/common/terrain_height_map.hpp"
+#include "autonomy/perception/ariadne/common/types.hpp"
 
 namespace autonomy::perception::exploration {
 

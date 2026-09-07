@@ -206,10 +206,10 @@ Odometry Odom(int64_t stamp_ns, double x = 0.0, double y = 0.0,
         static_cast<int32_t>(stamp_ns / 1'000'000'000));
     odometry.mutable_header()->mutable_stamp()->set_nanosec(
         static_cast<uint32_t>(stamp_ns % 1'000'000'000));
-    odometry.mutable_pose()->mutable_pose()->mutable_position()->set_x(x);
-    odometry.mutable_pose()->mutable_pose()->mutable_position()->set_y(y);
-    odometry.mutable_pose()->mutable_pose()->mutable_position()->set_z(z);
-    odometry.mutable_pose()->mutable_pose()->mutable_orientation()->set_w(1.0);
+    odometry.mutable_pose()->mutable_pose()->mutable_pose()->mutable_position()->set_x(x);
+    odometry.mutable_pose()->mutable_pose()->mutable_pose()->mutable_position()->set_y(y);
+    odometry.mutable_pose()->mutable_pose()->mutable_pose()->mutable_position()->set_z(z);
+    odometry.mutable_pose()->mutable_pose()->mutable_pose()->mutable_orientation()->set_w(1.0);
     return odometry;
 }
 

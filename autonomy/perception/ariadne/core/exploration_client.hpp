@@ -27,9 +27,9 @@
 #include "autolink/autolink.hpp"
 #include "autolink/node/reader.hpp"
 #include "autolink/node/writer.hpp"
-#include "autonomy/perception/exploration/common/types.hpp"
-#include "autonomy/perception/exploration/core/exploration_options.hpp"
-#include "autonomy/perception/exploration/core/explorer.hpp"
+#include "autonomy/perception/ariadne/common/types.hpp"
+#include "autonomy/perception/ariadne/core/exploration_options.hpp"
+#include "autonomy/perception/ariadne/core/explorer.hpp"
 #include "autonomy/transform/buffer.hpp"
 
 namespace autonomy::perception::exploration {

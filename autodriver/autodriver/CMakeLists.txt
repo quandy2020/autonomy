@@ -26,6 +26,9 @@ set(AUTODRIVER_SOURCES
   camera/orbbec/device_hub.cpp
   camera/orbbec/camera_driver.cpp
   camera/orbbec/pointcloud_driver.cpp
+  # Pure helpers + hub stubs (no librealsense required at link time).
+  camera/realsense/device_hub.cpp
+  camera/realsense/camera_info.cpp
   smartereye/camera_driver.cpp
   radar/backend_registry.cpp
   radar/conti/driver.cpp
@@ -115,15 +118,15 @@ if(AUTODRIVER_WITH_REALSENSE)
   if(realsense2_FOUND)
     message(STATUS "autodriver: librealsense2 ${realsense2_VERSION} enabled")
     target_sources(autodriver PRIVATE
-      camera/realsense/device_hub.cpp
-      camera/realsense/camera_info.cpp
       camera/realsense/imu_driver.cpp
       camera/realsense/camera_driver.cpp
       camera/realsense/pointcloud_driver.cpp)
     target_link_libraries(autodriver PUBLIC realsense2::realsense2)
     target_compile_definitions(autodriver PUBLIC AUTODRIVER_HAVE_REALSENSE)
   else()
-    message(STATUS "autodriver: librealsense2 not found; RealSense backends disabled")
+    message(STATUS
+      "autodriver: librealsense2 not found; RealSense drivers stubbed "
+      "(ParseStreamKind / MatchesModelFilter still available)")
   endif()
 endif()
 

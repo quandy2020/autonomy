@@ -7,8 +7,8 @@
 #include <limits>
 #include <queue>
 
-#include "autonomy/perception/exploration/tare/keypose_graph.hpp"
-#include "autonomy/perception/exploration/common/planning_utilities.hpp"
+#include "autonomy/perception/ariadne/tare/keypose_graph.hpp"
+#include "autonomy/perception/ariadne/common/planning_utilities.hpp"
 
 namespace autonomy::perception::exploration {
 namespace {

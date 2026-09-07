@@ -2,12 +2,12 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/perception/exploration/tare/grid_world.hpp"
+#include "autonomy/perception/ariadne/tare/grid_world.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-#include "autonomy/perception/exploration/tare/viewpoint_manager.hpp"
+#include "autonomy/perception/ariadne/tare/viewpoint_manager.hpp"
 
 namespace autonomy::perception::exploration {
 

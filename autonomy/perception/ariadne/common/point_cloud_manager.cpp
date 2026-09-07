@@ -2,13 +2,13 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/perception/exploration/common/point_cloud_manager.hpp"
+#include "autonomy/perception/ariadne/common/point_cloud_manager.hpp"
 
 #include <cmath>
 
 #include <automsgs/msgs/sensor_msgs/point_field_conversion.hpp>
 
-#include "autonomy/perception/exploration/common/planning_env.hpp"
+#include "autonomy/perception/ariadne/common/planning_env.hpp"
 
 namespace autonomy::perception::exploration {
 namespace {
