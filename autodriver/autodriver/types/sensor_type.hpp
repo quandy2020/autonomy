@@ -58,6 +58,14 @@ enum class SensorType : std::uint8_t {
      * @brief Wheel encoder odometry.
      */
     kWheelOdometry,
+    /**
+     * @brief Automotive radar (object list / clusters).
+     */
+    kRadar,
+    /**
+     * @brief Multi-channel microphone / audio chunk.
+     */
+    kMicrophone,
 };
 
 }  // namespace autodriver

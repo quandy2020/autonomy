@@ -1,0 +1,24 @@
+# Loads the Shadow component in an isolated autolink mainboard process.
+module_config {
+  module_library: "libshadow_component.so"
+  components {
+    class_name: "autonomy::perception::shadow::ShadowComponent"
+    config {
+      name: "shadow"
+      config_file_path: "conf/shadow.pb.txt"
+      # Reader order: RGB, aligned/refined depth, CameraInfo, Odometry.
+      readers {
+        channel: "/camera/rgb/image_raw"
+      }
+      readers {
+        channel: "/perception/fathom/refined_depth"
+      }
+      readers {
+        channel: "/camera/camera_info"
+      }
+      readers {
+        channel: "/odom"
+      }
+    }
+  }
+}

@@ -20,6 +20,8 @@ protected:
         if (!client) {
             return BT::NodeStatus::FAILURE;
         }
+        // In person mode the client requires fresh Shadow target/path data;
+        // the requested track ID alone never satisfies this condition.
         return client->IsTargetLocked() ? BT::NodeStatus::SUCCESS
                                         : BT::NodeStatus::FAILURE;
     }

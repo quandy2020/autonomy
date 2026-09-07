@@ -80,6 +80,9 @@ class IndicatorPanel;
 namespace service_panel {
 class ServicePanel;
 }
+namespace grpc_panel {
+class GrpcPanel;
+}
 namespace parameters_panel {
 class ParametersPanel;
 }
@@ -221,6 +224,8 @@ class VisualizationFrame : public QMainWindow {
   void clearPropertyInspectorForPublish(publish_panel::PublishPanel* panel);
   void bindServiceToPropertyInspector(service_panel::ServicePanel* panel);
   void clearPropertyInspectorForService(service_panel::ServicePanel* panel);
+  void bindGrpcToPropertyInspector(grpc_panel::GrpcPanel* panel);
+  void clearPropertyInspectorForGrpc(grpc_panel::GrpcPanel* panel);
   void bindGaugeToPropertyInspector(gauge::GaugePanel* panel);
   void clearPropertyInspectorForGauge(gauge::GaugePanel* panel);
   void bindAudioToPropertyInspector(audio_panel::AudioPanel* panel);
@@ -295,6 +300,7 @@ class VisualizationFrame : public QMainWindow {
   PanelDockWidget* createTablePanelDock(const QString& object_name = QString());
   PanelDockWidget* createPublishPanelDock(const QString& object_name = QString());
   PanelDockWidget* createServicePanelDock(const QString& object_name = QString());
+  PanelDockWidget* createGrpcPanelDock(const QString& object_name = QString());
   PanelDockWidget* createGaugePanelDock(const QString& object_name = QString());
   PanelDockWidget* createMapPanelDock(const QString& object_name = QString());
   PanelDockWidget* createIndicatorPanelDock(const QString& object_name = QString());
@@ -312,6 +318,7 @@ class VisualizationFrame : public QMainWindow {
   void wireTablePanel(PanelDockWidget* dock, table::TablePanel* panel);
   void wirePublishPanel(PanelDockWidget* dock, publish_panel::PublishPanel* panel);
   void wireServicePanel(PanelDockWidget* dock, service_panel::ServicePanel* panel);
+  void wireGrpcPanel(PanelDockWidget* dock, grpc_panel::GrpcPanel* panel);
   void wireGaugePanel(PanelDockWidget* dock, gauge::GaugePanel* panel);
   void wireMapPanel(PanelDockWidget* dock, map::MapPanel* panel);
   void wireIndicatorPanel(PanelDockWidget* dock, indicator::IndicatorPanel* panel);
@@ -333,6 +340,7 @@ class VisualizationFrame : public QMainWindow {
   void setActiveTablePanel(table::TablePanel* panel);
   void setActivePublishPanel(publish_panel::PublishPanel* panel);
   void setActiveServicePanel(service_panel::ServicePanel* panel);
+  void setActiveGrpcPanel(grpc_panel::GrpcPanel* panel);
   void setActiveGaugePanel(gauge::GaugePanel* panel);
   void setActiveAudioPanel(audio_panel::AudioPanel* panel);
   void setActiveMapPanel(map::MapPanel* panel);
@@ -348,6 +356,7 @@ class VisualizationFrame : public QMainWindow {
                               publish_panel::PublishPanel* panel);
   void updateServiceDockTitle(PanelDockWidget* dock,
                               service_panel::ServicePanel* panel);
+  void updateGrpcDockTitle(PanelDockWidget* dock, grpc_panel::GrpcPanel* panel);
   void updateGaugeDockTitle(PanelDockWidget* dock, gauge::GaugePanel* panel);
   void updateAudioDockTitle(PanelDockWidget* dock, audio_panel::AudioPanel* panel);
   void updateMapDockTitle(PanelDockWidget* dock, map::MapPanel* panel);
@@ -501,6 +510,7 @@ class VisualizationFrame : public QMainWindow {
   table::TablePanel* active_table_panel_ = nullptr;
   publish_panel::PublishPanel* active_publish_panel_ = nullptr;
   service_panel::ServicePanel* active_service_panel_ = nullptr;
+  grpc_panel::GrpcPanel* active_grpc_panel_ = nullptr;
   gauge::GaugePanel* active_gauge_panel_ = nullptr;
   audio_panel::AudioPanel* active_audio_panel_ = nullptr;
   map::MapPanel* active_map_panel_ = nullptr;
@@ -513,6 +523,7 @@ class VisualizationFrame : public QMainWindow {
   table::TablePanel* inspector_table_panel_ = nullptr;
   publish_panel::PublishPanel* inspector_publish_panel_ = nullptr;
   service_panel::ServicePanel* inspector_service_panel_ = nullptr;
+  grpc_panel::GrpcPanel* inspector_grpc_panel_ = nullptr;
   gauge::GaugePanel* inspector_gauge_panel_ = nullptr;
   audio_panel::AudioPanel* inspector_audio_panel_ = nullptr;
   map::MapPanel* inspector_map_panel_ = nullptr;

@@ -16,7 +16,7 @@
 
 #include <gtest/gtest.h>
 
-#include "autodriver/hardware/realsense_device_hub.hpp"
+#include "autodriver/camera/realsense/device_hub.hpp"
 
 TEST(RealSenseTypes, ParsesStreamNames)
 {

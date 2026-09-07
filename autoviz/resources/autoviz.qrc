@@ -124,6 +124,7 @@
     <file>icons/panels/panel_publish.svg</file>
     <file>icons/panels/panel_raw_messages.svg</file>
     <file>icons/panels/panel_service.svg</file>
+    <file>icons/panels/panel_grpc.svg</file>
     <file>icons/panels/panel_stack.svg</file>
     <file>icons/panels/panel_state.svg</file>
     <file>icons/panels/panel_tab.svg</file>

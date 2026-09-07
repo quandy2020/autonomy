@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,7 @@
 #include <memory>
 
 #include "autodriver/config.hpp"
+#include "autodriver/sensor_driver.hpp"
 #include "autodriver/sensor_id.hpp"
 #include "autodriver/types/sensor_sample.hpp"
 #include "autodriver/types/sensor_type.hpp"
@@ -100,6 +101,13 @@ public:
      * @return True when the module is running.
      */
     virtual bool IsRunning() const = 0;
+
+    /**
+     * @brief Hardware driver when this module owns capture; else nullptr.
+     */
+    virtual std::shared_ptr<SensorDriver> GetDriver() const {
+        return nullptr;
+    }
 
 protected:
     /**

@@ -1,6 +1,10 @@
 # Autodriver hardware config — Intel RealSense D455
 # export AUTODRIVER_PATH=<directory containing config/>
 #
+# Optional motion-compensator pose feed (nav_msgs/Odometry):
+# compensator:
+#   pose_channel: /localization/odom
+#
 # Channels align with ros2/realsense-ros (realsense2_camera) defaults,
 # using automsgs on Autolink instead of ROS 2 topics.
 #
@@ -21,11 +25,14 @@ sensors:
     - name: vlp16
       enable: false
       channel: /lidar/vlp16/points
+      backend: velodyne
       fps: 10
       params:
-        ip: 192.168.1.201
         data_port: 2368
+        packets_per_scan: 75
         model: VLP-16
+        frame_id: velodyne
+        source_type: online
 
   imu:
     - name: torso_imu

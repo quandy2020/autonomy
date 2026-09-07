@@ -1,0 +1,3 @@
+# Preserve imported LingBot-Depth formatting without weakening checks elsewhere.
+autonomy/perception/fathom/python/depth/model/** whitespace=-blank-at-eol,-blank-at-eof
+autonomy/perception/fathom/python/depth/utils/** whitespace=-blank-at-eol,-blank-at-eof

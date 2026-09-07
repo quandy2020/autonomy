@@ -24,12 +24,17 @@
 
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <thread>
 #include <unordered_map>
 
+#include <Eigen/Geometry>
+
 #include "autodriver/config.hpp"
+#include "autodriver/common/status.hpp"
+#include "autodriver/lidar/motion_compensator.hpp"
 #include "autodriver/sample_sink.hpp"
 #include "autodriver/sensor_module.hpp"
 #include "autodriver/sensor_hub.hpp"
@@ -136,6 +141,24 @@ public:
      * @brief Forwards per-sample callbacks to the internal hub.
      */
     void SetRawSampleCallback(SensorHub::RawSampleCallback callback);
+
+    /**
+     * @brief Publishes a diagnostic snapshot to the registered sink.
+     */
+    void ReportDiagnostic(diagnostics::DiagnosticSnapshot snapshot);
+
+    /**
+     * @brief Feed a world←lidar pose into an attached lidar MotionPoseSink.
+     * @return False when id is not attached or driver is not a MotionPoseSink
+     *         (e.g. compensator disabled / stub backend).
+     */
+    bool PushLidarPose(const SensorId& id, std::uint64_t time_ns,
+                       const Eigen::Affine3d& pose);
+
+    /**
+     * @brief Override PoseLookup for an attached lidar MotionPoseSink.
+     */
+    bool SetLidarPoseLookup(const SensorId& id, lidar::PoseLookup lookup);
 
 private:
     /**

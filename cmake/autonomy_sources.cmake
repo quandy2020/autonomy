@@ -37,6 +37,41 @@ file(GLOB_RECURSE ALL_EXECUTABLES "${_AUTONOMY_ROOT}/*main.cpp")
 file(GLOB_RECURSE ALL_TESTS "${_AUTONOMY_ROOT}/*_test.cpp")
 file(GLOB_RECURSE VISUALIZATION_SRCS "${_AUTONOMY_ROOT}/visualization/*.cpp")
 file(GLOB_RECURSE ONNX_NETWORK_SRCS "${_AUTONOMY_ROOT}/common/network/*.cpp")
+# Tensor buffers are also used by Fathom's injected-runner facade and do not
+# depend on an inference backend.
+list(REMOVE_ITEM ONNX_NETWORK_SRCS
+  "${_AUTONOMY_ROOT}/common/network/common/tensor.cpp")
+set(FATHOM_NETWORK_SRCS
+  "${_AUTONOMY_ROOT}/perception/fathom/model.cpp")
+# The autolink entrypoint is compiled only into libfathom_component.so.
+set(FATHOM_COMPONENT_SRCS
+  "${_AUTONOMY_ROOT}/perception/fathom/fathom_component.cpp")
+set(FATHOM_COMPONENT_TEST_SRCS
+  "${_AUTONOMY_ROOT}/perception/fathom/fathom_component_test.cpp")
+set(HESTIA_COMPONENT_SRCS
+  "${_AUTONOMY_ROOT}/perception/hestia/component.cpp")
+set(HESTIA_COMPONENT_TEST_SRCS
+  "${_AUTONOMY_ROOT}/perception/hestia/component_test.cpp")
+# Concrete Engine::Create paths need an inference backend. Detector pipeline
+# stays in libautonomy when ORT is on (Fathom model.cpp pattern).
+set(HESTIA_NETWORK_SRCS
+  "${_AUTONOMY_ROOT}/perception/hestia/detector.cpp")
+set(HESTIA_NETWORK_TEST_SRCS
+  "${_AUTONOMY_ROOT}/perception/hestia/detector_async_test.cpp"
+  "${_AUTONOMY_ROOT}/perception/hestia/detector_test.cpp"
+  "${_AUTONOMY_ROOT}/perception/hestia/smoke_test.cpp")
+set(SHADOW_COMPONENT_SRCS
+  "${_AUTONOMY_ROOT}/perception/shadow/shadow_component.cpp")
+set(SHADOW_COMPONENT_TEST_SRCS
+  "${_AUTONOMY_ROOT}/perception/shadow/shadow_component_test.cpp")
+# Detector and policy Create() paths directly instantiate the common-network
+# engine, while the remaining Shadow units stay backend-independent.
+set(SHADOW_NETWORK_SRCS
+  "${_AUTONOMY_ROOT}/perception/shadow/detector.cpp"
+  "${_AUTONOMY_ROOT}/perception/shadow/policy.cpp")
+set(SHADOW_NETWORK_TEST_SRCS
+  "${_AUTONOMY_ROOT}/perception/shadow/detector_test.cpp"
+  "${_AUTONOMY_ROOT}/perception/shadow/policy_test.cpp")
 
 # Offline demos are built as separate binaries (see grid_map_demos/CMakeLists.txt).
 file(GLOB_RECURSE _GRID_MAP_DEMOS_SRCS
@@ -72,12 +107,32 @@ function(autonomy_filter_library_sources)
 
   list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_EXECUTABLES})
   list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_TESTS})
+  # Autolink registration entrypoints belong only to their component DSOs.
+  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${FATHOM_COMPONENT_SRCS})
+  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${HESTIA_COMPONENT_SRCS})
+  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${SHADOW_COMPONENT_SRCS})
+  # Component lifecycle tests link the component DSO directly when ORT exists.
+  list(REMOVE_ITEM ALL_TESTS ${FATHOM_COMPONENT_TEST_SRCS})
+  list(REMOVE_ITEM TEST_LIBRARY_SRCS ${FATHOM_COMPONENT_TEST_SRCS})
+  list(REMOVE_ITEM ALL_TESTS ${HESTIA_COMPONENT_TEST_SRCS})
+  list(REMOVE_ITEM TEST_LIBRARY_SRCS ${HESTIA_COMPONENT_TEST_SRCS})
+  list(REMOVE_ITEM ALL_TESTS ${SHADOW_COMPONENT_TEST_SRCS})
+  list(REMOVE_ITEM TEST_LIBRARY_SRCS ${SHADOW_COMPONENT_TEST_SRCS})
   list(REMOVE_ITEM ALL_LIBRARY_HDRS ${TEST_LIBRARY_HDRS})
   list(REMOVE_ITEM ALL_LIBRARY_SRCS ${TEST_LIBRARY_SRCS})
   list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_TESTS})
 
   if(NOT BUILD_ONNXRUNTIME OR NOT OnnxRuntime_FOUND)
     list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ONNX_NETWORK_SRCS})
+    # Keep Fathom option validation, RGB-D processing, projection, and its
+    # injected-runner refiner available when no concrete backend is built.
+    list(REMOVE_ITEM ALL_LIBRARY_SRCS ${FATHOM_NETWORK_SRCS})
+    list(REMOVE_ITEM ALL_LIBRARY_SRCS ${HESTIA_NETWORK_SRCS})
+    list(REMOVE_ITEM ALL_TESTS ${HESTIA_NETWORK_TEST_SRCS})
+    list(REMOVE_ITEM TEST_LIBRARY_SRCS ${HESTIA_NETWORK_TEST_SRCS})
+    list(REMOVE_ITEM ALL_LIBRARY_SRCS ${SHADOW_NETWORK_SRCS})
+    list(REMOVE_ITEM ALL_TESTS ${SHADOW_NETWORK_TEST_SRCS})
+    list(REMOVE_ITEM TEST_LIBRARY_SRCS ${SHADOW_NETWORK_TEST_SRCS})
   endif()
 
   if(NOT BUILD_GRPC)

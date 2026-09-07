@@ -1,16 +1,26 @@
 <!--
   Copyright 2026 The Openbot Authors
 
-  Standalone perception process (RGB-D exploration).
+  Combined perception launcher, in startup order:
+    - PerceptionServer binary process
+    - Hestia home-perception component process
+    - Fathom RGB-D refinement component process
+    - Shadow selected-person following component process
 
-  Prerequisites:
-    - config/exploration_autonomy.lua (or set enabled=true in perception.lua)
-    - PATH includes build/autonomy/bin
-    - Sensor topics: /odom, depth camera (or point cloud for lidar_tare / far3d)
+  Plain CMake build (run from the repository root):
+    export PATH=$PWD/build/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/perception/launch
+    export AUTOLINK_DAG_PATH=$PWD/autonomy/perception/hestia:$PWD/autonomy/perception/fathom:$PWD/autonomy/perception/shadow
+    export AUTOLINK_CONF_PATH=$AUTOLINK_DAG_PATH
+    export AUTOLINK_LIB_PATH=$PWD/build/lib
+    autolink launch start perception.launch
 
-  Usage (from src/autonomy):
+  Colcon/package build (run from src/autonomy):
     export PATH=$PWD/../../build/autonomy/bin:$PATH
     export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/perception/launch
+    export AUTOLINK_DAG_PATH=$PWD/autonomy/perception/hestia:$PWD/autonomy/perception/fathom:$PWD/autonomy/perception/shadow
+    export AUTOLINK_CONF_PATH=$AUTOLINK_DAG_PATH
+    export AUTOLINK_LIB_PATH=$PWD/../../build/autonomy/lib
     autolink launch start perception.launch
 -->
 <autolink>
@@ -18,6 +28,27 @@
     <name>perception</name>
     <type>binary</type>
     <process_name>autonomy.perception --configuration_directory=config --configuration_basename=exploration_autonomy.lua</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>hestia</name>
+    <dag_conf>dag/hestia.dag</dag_conf>
+    <process_name>hestia</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>fathom</name>
+    <dag_conf>dag/fathom.dag</dag_conf>
+    <process_name>fathom</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>shadow</name>
+    <dag_conf>dag/shadow.dag</dag_conf>
+    <process_name>shadow</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>

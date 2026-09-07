@@ -105,6 +105,7 @@
 #include "autoviz/ui/state_transitions/state_transition_panel.hpp"
 #include "autoviz/ui/audio/audio_panel.hpp"
 #include "autoviz/ui/service/service_panel.hpp"
+#include "autoviz/ui/grpc/grpc_panel.hpp"
 #include "autoviz/ui/transformation_panel.hpp"
 #include "autoviz/ui/strata_floor_panel.hpp"
 #include "autoviz/ui/time_panel.hpp"
@@ -1354,6 +1355,9 @@ void VisualizationFrame::bindPublishToPropertyInspector(
   if (inspector_service_panel_ != nullptr) {
     clearPropertyInspectorForService(inspector_service_panel_);
   }
+  if (inspector_grpc_panel_ != nullptr) {
+    clearPropertyInspectorForGrpc(inspector_grpc_panel_);
+  }
   inspector_publish_panel_ = panel;
   const QString title = panel->config().title.trimmed();
   property_inspector_panel_->setContentWidget(
@@ -1417,6 +1421,9 @@ void VisualizationFrame::bindServiceToPropertyInspector(
   if (inspector_indicator_panel_ != nullptr) {
     clearPropertyInspectorForIndicator(inspector_indicator_panel_);
   }
+  if (inspector_grpc_panel_ != nullptr) {
+    clearPropertyInspectorForGrpc(inspector_grpc_panel_);
+  }
   inspector_service_panel_ = panel;
   const QString title = panel->config().title.trimmed();
   property_inspector_panel_->setContentWidget(panel->settingsWidgetForInspector(),
@@ -1435,6 +1442,69 @@ void VisualizationFrame::clearPropertyInspectorForService(
   panel->recallSettingsWidget();
   if (inspector_service_panel_ == panel) {
     inspector_service_panel_ = nullptr;
+    if (property_inspector_panel_ != nullptr) {
+      property_inspector_panel_->clearContent();
+    }
+  }
+}
+
+void VisualizationFrame::bindGrpcToPropertyInspector(grpc_panel::GrpcPanel* panel) {
+  if (panel == nullptr || property_inspector_panel_ == nullptr) {
+    return;
+  }
+  clearStateTransitionInspectorBinding();
+  if (inspector_grpc_panel_ != nullptr && inspector_grpc_panel_ != panel) {
+    inspector_grpc_panel_->recallSettingsWidget();
+  }
+  if (inspector_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(inspector_plot_panel_);
+  }
+  if (inspector_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(inspector_image_panel_);
+  }
+  if (inspector_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(inspector_teleop_panel_);
+  }
+  if (inspector_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(inspector_log_panel_);
+  }
+  if (inspector_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(inspector_table_panel_);
+  }
+  if (inspector_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(inspector_publish_panel_);
+  }
+  if (inspector_service_panel_ != nullptr) {
+    clearPropertyInspectorForService(inspector_service_panel_);
+  }
+  if (inspector_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(inspector_gauge_panel_);
+  }
+  if (inspector_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(inspector_audio_panel_);
+  }
+  if (inspector_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(inspector_map_panel_);
+  }
+  if (inspector_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(inspector_indicator_panel_);
+  }
+  inspector_grpc_panel_ = panel;
+  const QString title = panel->config().title.trimmed();
+  property_inspector_panel_->setContentWidget(panel->settingsWidgetForInspector(),
+                                              title.isEmpty() ? tr("gRPC") : title);
+  if (property_inspector_dock_ != nullptr) {
+    panel->setSettingsButtonChecked(property_inspector_dock_->isVisible());
+  }
+}
+
+void VisualizationFrame::clearPropertyInspectorForGrpc(grpc_panel::GrpcPanel* panel) {
+  if (panel == nullptr) {
+    return;
+  }
+  panel->recallSettingsWidget();
+  if (inspector_grpc_panel_ == panel) {
+    inspector_grpc_panel_ = nullptr;
     if (property_inspector_panel_ != nullptr) {
       property_inspector_panel_->clearContent();
     }
@@ -1536,6 +1606,9 @@ void VisualizationFrame::bindAudioToPropertyInspector(audio_panel::AudioPanel* p
   }
   if (inspector_service_panel_ != nullptr) {
     clearPropertyInspectorForService(inspector_service_panel_);
+  }
+  if (inspector_grpc_panel_ != nullptr) {
+    clearPropertyInspectorForGrpc(inspector_grpc_panel_);
   }
   inspector_audio_panel_ = panel;
   const QString title = panel->config().title.trimmed();
@@ -2073,6 +2146,7 @@ void VisualizationFrame::setupUi() {
         panelTypeId(dock) == QLatin1String("StateTransitionDock") ||
         panelTypeId(dock) == QLatin1String("AudioDock") ||
         panelTypeId(dock) == QLatin1String("ServiceDock") ||
+        panelTypeId(dock) == QLatin1String("GrpcDock") ||
         panelTypeId(dock) == QLatin1String("VariableSliderDock")) {
       continue;
     }
@@ -4070,6 +4144,10 @@ void VisualizationFrame::showPanelByObjectName(const QString& object_name) {
     dock = createServicePanelDock(object_name);
     addMainPanelDock(dock, Qt::LeftDockWidgetArea);
   }
+  if (dock == nullptr && object_name == QLatin1String("GrpcDock")) {
+    dock = createGrpcPanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
   if (dock == nullptr && object_name == QLatin1String("ParametersDock")) {
     dock = createParametersPanelDock(object_name);
     addMainPanelDock(dock, Qt::LeftDockWidgetArea);
@@ -4280,6 +4358,7 @@ bool VisualizationFrame::panelTypeSupportsMultiInstance(
          panel_type_id == QLatin1String("StateTransitionDock") ||
          panel_type_id == QLatin1String("AudioDock") ||
          panel_type_id == QLatin1String("ServiceDock") ||
+         panel_type_id == QLatin1String("GrpcDock") ||
          panel_type_id == QLatin1String("ViewportDock");
 }
 
@@ -4346,6 +4425,10 @@ void VisualizationFrame::registerPanelDock(PanelDockWidget* dock) {
     } else if (panelTypeId(dock) == QLatin1String("ServiceDock")) {
       if (auto* panel = qobject_cast<service_panel::ServicePanel*>(dock->widget())) {
         setActiveServicePanel(panel);
+      }
+    } else if (panelTypeId(dock) == QLatin1String("GrpcDock")) {
+      if (auto* panel = qobject_cast<grpc_panel::GrpcPanel*>(dock->widget())) {
+        setActiveGrpcPanel(panel);
       }
     } else if (panelTypeId(dock) == QLatin1String("GaugeDock")) {
       if (auto* panel = qobject_cast<gauge::GaugePanel*>(dock->widget())) {
@@ -4910,6 +4993,8 @@ void VisualizationFrame::activatePanelDock(PanelDockWidget* dock) {
     setActivePublishPanel(publish);
   } else if (auto* service = qobject_cast<service_panel::ServicePanel*>(dock->widget())) {
     setActiveServicePanel(service);
+  } else if (auto* grpc = qobject_cast<grpc_panel::GrpcPanel*>(dock->widget())) {
+    setActiveGrpcPanel(grpc);
   } else if (auto* gauge = qobject_cast<gauge::GaugePanel*>(dock->widget())) {
     setActiveGaugePanel(gauge);
   } else if (auto* map_panel = qobject_cast<map::MapPanel*>(dock->widget())) {
@@ -5075,6 +5160,10 @@ void VisualizationFrame::setActivePublishPanel(publish_panel::PublishPanel* pane
     clearPropertyInspectorForService(active_service_panel_);
     active_service_panel_ = nullptr;
   }
+  if (panel != nullptr && active_grpc_panel_ != nullptr) {
+    clearPropertyInspectorForGrpc(active_grpc_panel_);
+    active_grpc_panel_ = nullptr;
+  }
   active_publish_panel_ = panel;
   if (panel != nullptr) {
     bindPublishToPropertyInspector(panel);
@@ -5134,9 +5223,76 @@ void VisualizationFrame::setActiveServicePanel(service_panel::ServicePanel* pane
     clearPropertyInspectorForIndicator(active_indicator_panel_);
     active_indicator_panel_ = nullptr;
   }
+  if (panel != nullptr && active_grpc_panel_ != nullptr) {
+    clearPropertyInspectorForGrpc(active_grpc_panel_);
+    active_grpc_panel_ = nullptr;
+  }
   active_service_panel_ = panel;
   if (panel != nullptr) {
     bindServiceToPropertyInspector(panel);
+  }
+}
+
+void VisualizationFrame::setActiveGrpcPanel(grpc_panel::GrpcPanel* panel) {
+  if (active_grpc_panel_ == panel) {
+    if (panel != nullptr) {
+      bindGrpcToPropertyInspector(panel);
+    }
+    return;
+  }
+  if (panel != nullptr) {
+    deactivateStateTransitionIfNot(nullptr);
+  }
+  if (active_grpc_panel_ != nullptr) {
+    clearPropertyInspectorForGrpc(active_grpc_panel_);
+  }
+  if (panel != nullptr && active_plot_panel_ != nullptr) {
+    clearPropertyInspectorForPlot(active_plot_panel_);
+    active_plot_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_image_panel_ != nullptr) {
+    clearPropertyInspectorForImage(active_image_panel_);
+    active_image_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_teleop_panel_ != nullptr) {
+    clearPropertyInspectorForTeleop(active_teleop_panel_);
+    active_teleop_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_log_panel_ != nullptr) {
+    clearPropertyInspectorForLog(active_log_panel_);
+    active_log_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_table_panel_ != nullptr) {
+    clearPropertyInspectorForTable(active_table_panel_);
+    active_table_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_publish_panel_ != nullptr) {
+    clearPropertyInspectorForPublish(active_publish_panel_);
+    active_publish_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_service_panel_ != nullptr) {
+    clearPropertyInspectorForService(active_service_panel_);
+    active_service_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_gauge_panel_ != nullptr) {
+    clearPropertyInspectorForGauge(active_gauge_panel_);
+    active_gauge_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_audio_panel_ != nullptr) {
+    clearPropertyInspectorForAudio(active_audio_panel_);
+    active_audio_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_map_panel_ != nullptr) {
+    clearPropertyInspectorForMap(active_map_panel_);
+    active_map_panel_ = nullptr;
+  }
+  if (panel != nullptr && active_indicator_panel_ != nullptr) {
+    clearPropertyInspectorForIndicator(active_indicator_panel_);
+    active_indicator_panel_ = nullptr;
+  }
+  active_grpc_panel_ = panel;
+  if (panel != nullptr) {
+    bindGrpcToPropertyInspector(panel);
   }
 }
 
@@ -6070,6 +6226,92 @@ PanelDockWidget* VisualizationFrame::createServicePanelDock(
   return dock;
 }
 
+void VisualizationFrame::updateGrpcDockTitle(PanelDockWidget* dock,
+                                             grpc_panel::GrpcPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  const QString title = panel->config().title.trimmed();
+  dock->setPanelTitle(title.isEmpty() ? tr("gRPC") : title);
+}
+
+void VisualizationFrame::wireGrpcPanel(PanelDockWidget* dock,
+                                       grpc_panel::GrpcPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  connect(panel, &grpc_panel::GrpcPanel::activated, this,
+          [this, panel]() { setActiveGrpcPanel(panel); });
+  connect(panel, &grpc_panel::GrpcPanel::settingsToggled, this,
+          [this, panel](bool visible) {
+            setActiveGrpcPanel(panel);
+            showPropertyInspector(visible);
+            markConfigModified();
+          });
+  connect(panel, &grpc_panel::GrpcPanel::panelRemoveRequested, dock,
+          &QDockWidget::close);
+  connect(panel, &grpc_panel::GrpcPanel::panelExpandRequested, this,
+          [this, dock]() { expandPanelDock(dock); });
+  connect(panel, &grpc_panel::GrpcPanel::panelSplitRequested, this,
+          [this, dock](Qt::Orientation orientation) {
+            onSplitActiveDock(dock, orientation);
+          });
+  connect(panel, &grpc_panel::GrpcPanel::panelChangeRequested, this,
+          [this, dock](const QString& object_name) {
+            changePanelInDock(dock, object_name);
+          });
+  connect(panel, &grpc_panel::GrpcPanel::configChanged, this,
+          [this, dock, panel]() {
+            updateGrpcDockTitle(dock, panel);
+            if (panel == active_grpc_panel_ &&
+                property_inspector_panel_ != nullptr) {
+              const QString title = panel->config().title.trimmed();
+              property_inspector_panel_->setContentWidget(
+                  panel->settingsWidgetForInspector(),
+                  title.isEmpty() ? tr("gRPC") : title);
+            }
+            markConfigModified();
+          });
+  connect(dock, &QDockWidget::visibilityChanged, this,
+          [this, dock, panel](bool visible) {
+            if (visible || panel != active_grpc_panel_) {
+              return;
+            }
+            grpc_panel::GrpcPanel* fallback = nullptr;
+            for (PanelDockWidget* candidate : orderedDockWidgets()) {
+              if (candidate == nullptr || candidate == dock ||
+                  panelTypeId(candidate) != QLatin1String("GrpcDock") ||
+                  !candidate->isVisible()) {
+                continue;
+              }
+              fallback = qobject_cast<grpc_panel::GrpcPanel*>(candidate->widget());
+              if (fallback != nullptr) {
+                break;
+              }
+            }
+            setActiveGrpcPanel(fallback);
+          });
+}
+
+PanelDockWidget* VisualizationFrame::createGrpcPanelDock(
+    const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty() ? uniquePanelObjectName(QStringLiteral("GrpcDock"))
+                            : object_name;
+  auto* dock = new PanelDockWidget(tr("gRPC"), this);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("GrpcDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelGrpc")));
+  auto* panel = new grpc_panel::GrpcPanel(dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wireGrpcPanel(dock, panel);
+  updateGrpcDockTitle(dock, panel);
+  configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
 void VisualizationFrame::updateGaugeDockTitle(PanelDockWidget* dock,
                                               gauge::GaugePanel* panel) {
   if (dock == nullptr || panel == nullptr) {
@@ -6727,6 +6969,17 @@ PanelDockWidget* VisualizationFrame::duplicatePanelDock(
       dst_panel->cloneConfigFrom(src_panel->config());
       updateServiceDockTitle(dock, dst_panel);
       setActiveServicePanel(dst_panel);
+    }
+    return dock;
+  }
+  if (type == QLatin1String("GrpcDock")) {
+    PanelDockWidget* dock = createGrpcPanelDock();
+    auto* src_panel = qobject_cast<grpc_panel::GrpcPanel*>(source->widget());
+    auto* dst_panel = qobject_cast<grpc_panel::GrpcPanel*>(dock->widget());
+    if (src_panel != nullptr && dst_panel != nullptr) {
+      dst_panel->cloneConfigFrom(src_panel->config());
+      updateGrpcDockTitle(dock, dst_panel);
+      setActiveGrpcPanel(dst_panel);
     }
     return dock;
   }

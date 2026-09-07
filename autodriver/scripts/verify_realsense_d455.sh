@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Verify RealSense D455 via autodriver_hub (host or Docker with USB passthrough).
+# Verify RealSense D455 via autodriver (host or Docker with USB passthrough).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,11 +11,11 @@ INSTALL_PREFIX="${INSTALL_PREFIX:-${WORKSPACE_ROOT}/install/autonomy}"
 BUILD_PREFIX="${BUILD_PREFIX:-${WORKSPACE_ROOT}/build/autonomy}"
 
 pick_prefix() {
-  if [[ -x "${INSTALL_PREFIX}/bin/autodriver_hub" ]]; then
+  if [[ -x "${INSTALL_PREFIX}/bin/autodriver" ]]; then
     echo "${INSTALL_PREFIX}"
     return
   fi
-  if [[ -x "${BUILD_PREFIX}/bin/autodriver_hub" ]]; then
+  if [[ -x "${BUILD_PREFIX}/bin/autodriver" ]]; then
     echo "${BUILD_PREFIX}"
     return
   fi
@@ -79,14 +79,14 @@ if ! ldd "${LIB}" 2>/dev/null | grep -qi realsense; then
   exit 1
 fi
 
-if [[ ! -x "${PREFIX}/bin/autodriver_hub" ]]; then
-  echo "autodriver_hub not found under ${PREFIX}/bin" >&2
+if [[ ! -x "${PREFIX}/bin/autodriver" ]]; then
+  echo "autodriver not found under ${PREFIX}/bin" >&2
   exit 1
 fi
 
 echo "== Using prefix: ${PREFIX} =="
-echo "== Starting autodriver_hub =="
-"${PREFIX}/bin/autodriver_hub" &
+echo "== Starting autodriver =="
+"${PREFIX}/bin/autodriver" &
 HUB_PID=$!
 trap 'kill ${HUB_PID} >/dev/null 2>&1 || true' EXIT
 sleep 4

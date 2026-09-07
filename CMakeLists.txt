@@ -206,6 +206,14 @@ endif()
 include("${PROJECT_SOURCE_DIR}/cmake/autonomy_deps.cmake")
 autonomy_link_dependencies(${PROJECT_NAME})
 
+# Perception autolink components with concrete common-network runners are
+# deliberately separate mainboard-loadable shared libraries.
+if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
+  add_subdirectory(autonomy/perception/fathom)
+  add_subdirectory(autonomy/perception/hestia)
+  add_subdirectory(autonomy/perception/shadow)
+endif()
+
 # Echo tool needs automsgs protos for DebugString when topology omits type.
 if(TARGET autolink_channel)
   target_link_libraries(autolink_channel PRIVATE ${PROJECT_NAME})

@@ -1,0 +1,51 @@
+<h2>AMW + DDS 插件：选择核心边界</h2>
+<p class="subtitle">三种方案都保留 Autolink 的 Node / Reader / Writer API；区别在于 DDS 放在哪一层。</p>
+
+<div class="options">
+  <div class="option" data-choice="recommended" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>推荐：AMW 语义核心 + Transport 后端插件</h3>
+      <div class="mockup">
+        <div class="mockup-header">稳定 API 边界</div>
+        <div class="mockup-body">
+          <p><strong>Node / Writer / Reader / Service / Action</strong></p>
+          <p>↓ AMW Core：命名、QoS 归一化、拓扑、路由策略、序列化契约</p>
+          <p>↓ Transport Provider ABI</p>
+          <p>INTRA &nbsp;|&nbsp; SHM &nbsp;|&nbsp; Fast DDS &nbsp;|&nbsp; Cyclone DDS</p>
+        </div>
+      </div>
+      <p>业务 API 稳定；各 DDS 仅实现 Provider；可按节点关系选择后端。</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="rmw-like" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>严格 RMW：进程启动时选一个 DDS</h3>
+      <div class="mockup">
+        <div class="mockup-header">单一运行时实现</div>
+        <div class="mockup-body">
+          <p><strong>Autolink API</strong></p>
+          <p>↓ AMW / RMW ABI</p>
+          <p>Fast DDS <em>或</em> Cyclone DDS</p>
+        </div>
+      </div>
+      <p>实现与测试最简单，但不能在同一进程混用 SHM 与不同 DDS。</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="bridge" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>桥接优先：核心保持本地 SHM</h3>
+      <div class="mockup">
+        <div class="mockup-header">生态适配进程</div>
+        <div class="mockup-body">
+          <p>Autolink INTRA / SHM ↔ Bridge ↔ ROS 2 / DDS</p>
+        </div>
+      </div>
+      <p>最小风险、最容易对接 ROS 2；跨机路径多一次序列化和转发。</p>
+    </div>
+  </div>
+</div>

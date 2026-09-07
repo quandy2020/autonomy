@@ -20,7 +20,7 @@
 
 #include <gtest/gtest.h>
 
-#include "autodriver/hardware/wit_motion_parser.hpp"
+#include "autodriver/imu/wit_motion_parser.hpp"
 
 using autodriver::protocol::ParseNmea2000LatLonFrame;
 using autodriver::protocol::WitMotionParser;

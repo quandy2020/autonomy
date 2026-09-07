@@ -116,6 +116,14 @@ struct Config {
         SensorHub::Options options;
     };
 
+    /**
+     * @brief Motion compensator pose feed (Odometry → PushLidarPose).
+     */
+    struct Compensator {
+        // Autolink channel for nav_msgs/Odometry (empty = PoseFeeder disabled).
+        std::string pose_channel;
+    };
+
     // Autolink node name for bridge publishing.
     std::string node_name = "autodriver";
 
@@ -127,6 +135,9 @@ struct Config {
 
     // Alignment configuration block.
     Alignment alignment;
+
+    // Process-level compensator pose subscription.
+    Compensator compensator;
 
     // All configured sensor instances.
     std::vector<Sensor> sensors;
