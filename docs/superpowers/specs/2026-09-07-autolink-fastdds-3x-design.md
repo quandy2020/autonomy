@@ -1,7 +1,7 @@
 # Autolink FastDDS 3.x 硬切设计（M7）
 
 - **日期**：2026-09-07
-- **状态**：已批准（实现计划已就绪）
+- **状态**：已实现（M7）
 - **计划**：`docs/superpowers/plans/2026-09-07-autolink-fastdds-3x.md`
 - **前置**：
   - M1–M5：多机 RTPS 数据面 + 拓扑/运维（2.14）
