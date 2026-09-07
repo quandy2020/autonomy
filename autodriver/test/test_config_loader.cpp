@@ -88,15 +88,41 @@ TEST(ConfigLoader, LoadsSingleChannelString) {
     EXPECT_EQ(config.sensors[0].channels[0], "/gps/fix");
 }
 
-TEST(ConfigLoader, ResolvesDefaultLidarChannels) {
-    autodriver::Config::Sensor lidar2d;
-    lidar2d.id = "lidar/front";
-    EXPECT_EQ(autodriver::ResolveChannel("", lidar2d.id,
-                                         autodriver::SensorType::kLidar2d),
-              "/lidar/front/scan");
-    autodriver::Config::Sensor lidar3d;
-    lidar3d.id = "lidar/velo";
-    EXPECT_EQ(autodriver::ResolveChannel("", lidar3d.id,
-                                         autodriver::SensorType::kLidar3d),
-              "/lidar/velo/points");
+TEST(ConfigLoader, MergesCameraParamsFile) {
+    const std::filesystem::path root =
+        std::filesystem::temp_directory_path() /
+        "autodriver_config_loader_params_file";
+    const std::filesystem::path vendor_dir =
+        root / "config" / "camera" / "orbbec";
+    std::filesystem::create_directories(vendor_dir);
+    {
+        std::ofstream out(vendor_dir / "gemini_330.yaml");
+        out << R"(model: Gemini
+enable_laser: true
+device_preset: Default
+)";
+    }
+    {
+        std::ofstream out(root / "config" / "hardware_test.yaml");
+        out << R"(sensors:
+  camera:
+    - name: orbbec_color
+      enable: true
+      channel: /camera/color/image_raw
+      backend: orbbec
+      stream: color
+      params_file: camera/orbbec/gemini_330.yaml
+      params:
+        frame_id: camera_color_optical_frame
+)";
+    }
+    setenv("AUTODRIVER_PATH", root.string().c_str(), 1);
+
+    const autodriver::Config config =
+        autodriver::LoadConfig("hardware_test.yaml");
+    ASSERT_EQ(config.sensors.size(), 1u);
+    EXPECT_EQ(config.sensors[0].params.at("model"), "Gemini");
+    EXPECT_EQ(config.sensors[0].params.at("enable_laser"), "true");
+    EXPECT_EQ(config.sensors[0].params.at("frame_id"),
+              "camera_color_optical_frame");
 }

@@ -114,6 +114,7 @@ struct OrbbecDeviceHub::Impl {
     std::shared_ptr<ob::Config> config;
     std::shared_ptr<ob::PointCloudFilter> point_cloud_filter;
     std::shared_ptr<ob::Align> align_filter;
+    std::vector<std::shared_ptr<ob::Filter>> depth_filters;
 
     bool NeedsDepth() const {
         for (const VideoSubscription& sub : video_subscriptions) {
@@ -140,6 +141,42 @@ struct OrbbecDeviceHub::Impl {
             }
         }
         return false;
+    }
+
+    bool NeedsInfraredLeft() const {
+        for (const VideoSubscription& sub : video_subscriptions) {
+            if (sub.stream == hardware::orbbec::StreamKind::kInfraredLeft) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool NeedsInfraredRight() const {
+        for (const VideoSubscription& sub : video_subscriptions) {
+            if (sub.stream == hardware::orbbec::StreamKind::kInfraredRight) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    struct IrProfile {
+        int width{0};
+        int height{0};
+        int fps{0};
+    };
+
+    IrProfile ProfileFor(hardware::orbbec::StreamKind stream) const {
+        IrProfile profile;
+        for (const VideoSubscription& sub : video_subscriptions) {
+            if (sub.stream == stream) {
+                profile.width = sub.width;
+                profile.height = sub.height;
+                profile.fps = sub.fps;
+            }
+        }
+        return profile;
     }
 
     std::shared_ptr<ob::Device> ResolveDevice() {
@@ -186,17 +223,19 @@ struct OrbbecDeviceHub::Impl {
         return matched[static_cast<std::size_t>(index)];
     }
 
+    /** @brief 0 / negative → OB_*_ANY (OrbbecSDK_ROS2 width/height/fps:=0). */
+    static std::uint32_t StreamDim(int value) {
+        return value > 0 ? static_cast<std::uint32_t>(value) : OB_WIDTH_ANY;
+    }
+
     bool ConfigurePipeline(const std::shared_ptr<ob::Device>& device) {
         config = std::make_shared<ob::Config>();
-        int color_w = 640;
-        int color_h = 480;
-        int color_fps = 30;
-        int depth_w = 640;
-        int depth_h = 480;
-        int depth_fps = 30;
-        int ir_w = 640;
-        int ir_h = 480;
-        int ir_fps = 30;
+        int color_w = 0;
+        int color_h = 0;
+        int color_fps = 0;
+        int depth_w = 0;
+        int depth_h = 0;
+        int depth_fps = 0;
 
         for (const VideoSubscription& sub : video_subscriptions) {
             if (sub.stream == hardware::orbbec::StreamKind::kColor) {
@@ -207,37 +246,65 @@ struct OrbbecDeviceHub::Impl {
                 depth_w = sub.width;
                 depth_h = sub.height;
                 depth_fps = sub.fps;
-            } else if (sub.stream == hardware::orbbec::StreamKind::kInfrared) {
-                ir_w = sub.width;
-                ir_h = sub.height;
-                ir_fps = sub.fps;
             }
         }
         for (const PointCloudSubscription& sub : pointcloud_subscriptions) {
-            color_w = sub.width;
-            color_h = sub.height;
-            color_fps = sub.fps;
-            depth_w = sub.width;
-            depth_h = sub.height;
-            depth_fps = sub.fps;
+            if (sub.width > 0) {
+                color_w = sub.width;
+                depth_w = sub.width;
+            }
+            if (sub.height > 0) {
+                color_h = sub.height;
+                depth_h = sub.height;
+            }
+            if (sub.fps > 0) {
+                color_fps = sub.fps;
+                depth_fps = sub.fps;
+            }
         }
+
+        const IrProfile ir = ProfileFor(hardware::orbbec::StreamKind::kInfrared);
+        const IrProfile left_ir =
+            ProfileFor(hardware::orbbec::StreamKind::kInfraredLeft);
+        const IrProfile right_ir =
+            ProfileFor(hardware::orbbec::StreamKind::kInfraredRight);
 
         try {
             if (NeedsColor()) {
-                config->enableVideoStream(OB_STREAM_COLOR, color_w, color_h,
-                                          color_fps, OB_FORMAT_RGB);
+                // Prefer RGB for Image encoding rgb8; ROS2 default is ANY.
+                config->enableVideoStream(OB_STREAM_COLOR, StreamDim(color_w),
+                                          StreamDim(color_h),
+                                          StreamDim(color_fps), OB_FORMAT_RGB);
             }
             if (NeedsDepth()) {
-                config->enableVideoStream(OB_STREAM_DEPTH, depth_w, depth_h,
-                                          depth_fps, OB_FORMAT_Y16);
+                // Official depth_format:=ANY — let SDK pick with HW D2D.
+                config->enableVideoStream(OB_STREAM_DEPTH, StreamDim(depth_w),
+                                          StreamDim(depth_h),
+                                          StreamDim(depth_fps), OB_FORMAT_ANY);
+            }
+            // Gemini 330 series exposes stereo IR as LEFT/RIGHT, not OB_STREAM_IR.
+            if (NeedsInfraredLeft()) {
+                config->enableVideoStream(
+                    OB_STREAM_IR_LEFT, StreamDim(left_ir.width),
+                    StreamDim(left_ir.height), StreamDim(left_ir.fps),
+                    OB_FORMAT_Y8);
+            }
+            if (NeedsInfraredRight()) {
+                config->enableVideoStream(
+                    OB_STREAM_IR_RIGHT, StreamDim(right_ir.width),
+                    StreamDim(right_ir.height), StreamDim(right_ir.fps),
+                    OB_FORMAT_Y8);
             }
             if (NeedsInfrared()) {
-                config->enableVideoStream(OB_STREAM_IR, ir_w, ir_h, ir_fps,
-                                          OB_FORMAT_Y8);
+                config->enableVideoStream(OB_STREAM_IR, StreamDim(ir.width),
+                                          StreamDim(ir.height),
+                                          StreamDim(ir.fps), OB_FORMAT_Y8);
             }
-            if (NeedsColor() && NeedsDepth()) {
-                config->setFrameAggregateOutputMode(
-                    OB_FRAME_AGGREGATE_OUTPUT_ALL_TYPE_FRAME_REQUIRE);
+            // frame_aggregate_mode:=ANY (OrbbecSDK_ROS2 default).
+            config->setFrameAggregateOutputMode(
+                OB_FRAME_AGGREGATE_OUTPUT_ANY_SITUATION);
+            if (hardware::ParseBool(params, "enable_depth_scale", true)) {
+                config->setDepthScaleRequire(true);
             }
         } catch (const ob::Error& ex) {
             last_error =
@@ -255,6 +322,8 @@ struct OrbbecDeviceHub::Impl {
             return false;
         }
         try {
+            ApplyDeviceOptions(device);
+            SetupDepthFilters(device);
             pipeline = std::make_shared<ob::Pipeline>(device);
             if (!ConfigurePipeline(device)) {
                 return false;
@@ -273,6 +342,265 @@ struct OrbbecDeviceHub::Impl {
         }
     }
 
+    static bool PropertyWritable(const std::shared_ptr<ob::Device>& device,
+                                 OBPropertyID id) {
+        return device->isPropertySupported(id, OB_PERMISSION_WRITE) ||
+               device->isPropertySupported(id, OB_PERMISSION_READ_WRITE);
+    }
+
+    /**
+     * @brief Device-level options from OrbbecSDK_ROS2 gemini_330_series.launch.py.
+     */
+    void ApplyDeviceOptions(const std::shared_ptr<ob::Device>& device) {
+        if (!device) {
+            return;
+        }
+
+        // Official default: device_preset:=Default (not High Accuracy).
+        const std::string preset =
+            hardware::GetString(params, "device_preset", "Default");
+        if (!preset.empty() && preset != "Custom") {
+            try {
+                device->loadPreset(preset.c_str());
+            } catch (const ob::Error&) {
+            }
+        }
+
+        // disparity_to_depth_mode:=HW (OrbbecSDK_ROS2 default).
+        std::string d2d_mode =
+            hardware::GetString(params, "disparity_to_depth_mode", "HW");
+        for (char& c : d2d_mode) {
+            c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+        }
+        try {
+            if (PropertyWritable(device, OB_PROP_DISPARITY_TO_DEPTH_BOOL) &&
+                PropertyWritable(device, OB_PROP_SDK_DISPARITY_TO_DEPTH_BOOL)) {
+                if (d2d_mode == "HW") {
+                    device->setBoolProperty(OB_PROP_DISPARITY_TO_DEPTH_BOOL,
+                                            true);
+                    device->setBoolProperty(OB_PROP_SDK_DISPARITY_TO_DEPTH_BOOL,
+                                            false);
+                } else if (d2d_mode == "SW") {
+                    device->setBoolProperty(OB_PROP_DISPARITY_TO_DEPTH_BOOL,
+                                            false);
+                    device->setBoolProperty(OB_PROP_SDK_DISPARITY_TO_DEPTH_BOOL,
+                                            true);
+                } else if (d2d_mode == "DISABLE") {
+                    device->setBoolProperty(OB_PROP_DISPARITY_TO_DEPTH_BOOL,
+                                            false);
+                    device->setBoolProperty(OB_PROP_SDK_DISPARITY_TO_DEPTH_BOOL,
+                                            false);
+                }
+            }
+        } catch (const ob::Error&) {
+        }
+
+        const bool laser_enabled = hardware::ParseBool(
+            params, "enable_laser",
+            hardware::ParseBool(
+                params, "emitter_enabled",
+                hardware::ParseBool(params, "enable_ir_emitter", true)));
+        try {
+            if (PropertyWritable(device, OB_PROP_LASER_CONTROL_INT)) {
+                device->setIntProperty(OB_PROP_LASER_CONTROL_INT,
+                                       laser_enabled ? 1 : 0);
+            } else if (PropertyWritable(device, OB_PROP_LASER_BOOL)) {
+                device->setBoolProperty(OB_PROP_LASER_BOOL, laser_enabled);
+            }
+        } catch (const ob::Error&) {
+        }
+
+        const int laser_energy =
+            hardware::ParseInt(params, "laser_energy_level", -1);
+        if (laser_energy >= 0) {
+            try {
+                if (PropertyWritable(device, OB_PROP_LASER_ENERGY_LEVEL_INT)) {
+                    device->setIntProperty(OB_PROP_LASER_ENERGY_LEVEL_INT,
+                                           laser_energy);
+                }
+            } catch (const ob::Error&) {
+            }
+        }
+
+        // enable_hardware_noise_removal_filter:=false
+        const bool hw_noise = hardware::ParseBool(
+            params, "enable_hardware_noise_removal_filter", false);
+        try {
+            if (PropertyWritable(device,
+                                 OB_PROP_HW_NOISE_REMOVE_FILTER_ENABLE_BOOL)) {
+                device->setBoolProperty(
+                    OB_PROP_HW_NOISE_REMOVE_FILTER_ENABLE_BOOL, hw_noise);
+            }
+        } catch (const ob::Error&) {
+        }
+
+        // enable_noise_removal_filter:=true (soft speckle / cluster filter)
+        const bool soft_noise = hardware::ParseBool(
+            params, "enable_noise_removal_filter",
+            hardware::ParseBool(params, "enable_soft_filter", true));
+        try {
+            if (PropertyWritable(device, OB_PROP_DEPTH_SOFT_FILTER_BOOL)) {
+                device->setBoolProperty(OB_PROP_DEPTH_SOFT_FILTER_BOOL,
+                                        soft_noise);
+            }
+        } catch (const ob::Error&) {
+        }
+
+        const int min_diff = hardware::ParseInt(
+            params, "noise_removal_filter_min_diff",
+            hardware::ParseInt(params, "soft_filter_max_diff", 256));
+        if (min_diff >= 0) {
+            try {
+                if (PropertyWritable(device, OB_PROP_DEPTH_MAX_DIFF_INT)) {
+                    device->setIntProperty(OB_PROP_DEPTH_MAX_DIFF_INT, min_diff);
+                }
+            } catch (const ob::Error&) {
+            }
+        }
+
+        const int max_size = hardware::ParseInt(
+            params, "noise_removal_filter_max_size",
+            hardware::ParseInt(params, "soft_filter_speckle_size", 80));
+        if (max_size >= 0) {
+            try {
+                if (PropertyWritable(device, OB_PROP_DEPTH_MAX_SPECKLE_SIZE_INT)) {
+                    device->setIntProperty(OB_PROP_DEPTH_MAX_SPECKLE_SIZE_INT,
+                                           max_size);
+                }
+            } catch (const ob::Error&) {
+            }
+        }
+    }
+
+    /**
+     * @brief Depth post-process filters — setupDepthPostProcessFilter
+     * (OrbbecSDK_ROS2) + Gemini330PostFilterStrategy (OrbbecSDK_v2).
+     */
+    void SetupDepthFilters(const std::shared_ptr<ob::Device>& device) {
+        depth_filters.clear();
+        if (!device) {
+            return;
+        }
+        try {
+            auto depth_sensor = device->getSensor(OB_SENSOR_DEPTH);
+            if (!depth_sensor) {
+                return;
+            }
+            depth_filters = depth_sensor->createRecommendedFilters();
+        } catch (const ob::Error&) {
+            depth_filters.clear();
+            return;
+        }
+
+        // gemini_330_series.launch.py defaults.
+        const bool enable_spatial =
+            hardware::ParseBool(params, "enable_spatial_filter", false);
+        const bool enable_temporal =
+            hardware::ParseBool(params, "enable_temporal_filter", false);
+        const bool enable_hole =
+            hardware::ParseBool(params, "enable_hole_filling_filter", false);
+        const bool enable_threshold =
+            hardware::ParseBool(params, "enable_threshold_filter", false);
+        const bool enable_decimation =
+            hardware::ParseBool(params, "enable_decimation_filter", false);
+        const bool enable_hdr =
+            hardware::ParseBool(params, "enable_hdr_merge", false);
+        const bool enable_sequence =
+            hardware::ParseBool(params, "enable_sequence_id_filter", false);
+        const bool enable_disparity =
+            hardware::ParseBool(params, "enable_disparity_to_depth", true);
+        const bool enable_edge =
+            hardware::ParseBool(params, "enable_edge_noise_removal_filter",
+                                false);
+        const bool enable_spatial_fast =
+            hardware::ParseBool(params, "enable_spatial_fast_filter", false);
+        const bool enable_spatial_mod =
+            hardware::ParseBool(params, "enable_spatial_moderate_filter",
+                                false);
+        const bool enable_fp =
+            hardware::ParseBool(params, "enable_false_positive_filter", false);
+
+        const std::unordered_map<std::string, bool> toggles = {
+            {"DecimationFilter", enable_decimation},
+            {"HDRMerge", enable_hdr},
+            {"SequenceIdFilter", enable_sequence},
+            {"SpatialAdvancedFilter", enable_spatial},
+            {"SpatialFastFilter", enable_spatial_fast},
+            {"SpatialModerateFilter", enable_spatial_mod},
+            {"TemporalFilter", enable_temporal},
+            {"HoleFillingFilter", enable_hole},
+            {"ThresholdFilter", enable_threshold},
+            {"DisparityTransform", enable_disparity},
+            {"EdgeNoiseRemovalFilter", enable_edge},
+            {"FalsePositiveFilter", enable_fp},
+        };
+
+        for (const auto& filter : depth_filters) {
+            if (!filter) {
+                continue;
+            }
+            const std::string name = filter->type();
+            const auto it = toggles.find(name);
+            if (it == toggles.end()) {
+                // Keep SDK recommended default for unknown filters.
+                continue;
+            }
+            try {
+                filter->enable(it->second);
+            } catch (const ob::Error&) {
+            }
+
+            if (name == "SpatialAdvancedFilter" && it->second) {
+                const double alpha =
+                    hardware::ParseDouble(params, "spatial_filter_alpha", -1.0);
+                const int magnitude = hardware::ParseInt(
+                    params, "spatial_filter_magnitude", -1);
+                const int radius =
+                    hardware::ParseInt(params, "spatial_filter_radius", -1);
+                const int diff = hardware::ParseInt(
+                    params, "spatial_filter_diff_threshold", -1);
+                if (alpha >= 0.0 && magnitude >= 0 && radius >= 0 &&
+                    diff >= 0) {
+                    try {
+                        auto spatial = filter->as<ob::SpatialAdvancedFilter>();
+                        if (spatial) {
+                            OBSpatialAdvancedFilterParams p{};
+                            p.alpha = static_cast<float>(alpha);
+                            p.magnitude = static_cast<std::uint8_t>(magnitude);
+                            p.radius = static_cast<std::uint16_t>(radius);
+                            p.disp_diff = static_cast<std::uint16_t>(diff);
+                            spatial->setFilterParams(p);
+                        }
+                    } catch (const ob::Error&) {
+                    }
+                }
+            }
+        }
+    }
+
+    std::shared_ptr<ob::Frame> ProcessDepthFilters(
+        std::shared_ptr<ob::Frame> frame) {
+        // Match OBCameraNode::processDepthFrameFilter.
+        if (!frame || frame->getType() != OB_FRAME_DEPTH) {
+            return frame;
+        }
+        for (const auto& filter : depth_filters) {
+            if (!filter || !filter->isEnabled()) {
+                continue;
+            }
+            try {
+                auto out = filter->process(frame);
+                if (!out) {
+                    break;
+                }
+                frame = out;
+            } catch (const ob::Error&) {
+                break;
+            }
+        }
+        return frame;
+    }
+
     void StopPipeline() {
         if (pipeline) {
             try {
@@ -284,6 +612,7 @@ struct OrbbecDeviceHub::Impl {
         config.reset();
         point_cloud_filter.reset();
         align_filter.reset();
+        depth_filters.clear();
     }
 
     void DispatchVideo(const VideoSubscription& sub,
@@ -433,9 +762,16 @@ struct OrbbecDeviceHub::Impl {
                         break;
                     case hardware::orbbec::StreamKind::kDepth:
                         frame = frameset->getFrame(OB_FRAME_DEPTH);
+                        frame = ProcessDepthFilters(frame);
                         break;
                     case hardware::orbbec::StreamKind::kInfrared:
                         frame = frameset->getFrame(OB_FRAME_IR);
+                        break;
+                    case hardware::orbbec::StreamKind::kInfraredLeft:
+                        frame = frameset->getFrame(OB_FRAME_IR_LEFT);
+                        break;
+                    case hardware::orbbec::StreamKind::kInfraredRight:
+                        frame = frameset->getFrame(OB_FRAME_IR_RIGHT);
                         break;
                 }
                 DispatchVideo(sub, frame);
@@ -626,7 +962,15 @@ StreamKind ParseStreamKind(const std::string& text,
     if (value == "depth" || value == "z16") {
         return StreamKind::kDepth;
     }
-    if (value == "infrared" || value == "ir" || value == "ir1") {
+    // Gemini 330 series: stereo IR topics are left_ir / right_ir.
+    if (value == "left_ir" || value == "ir1" || value == "infrared1" ||
+        value == "ir" || value == "infrared") {
+        return StreamKind::kInfraredLeft;
+    }
+    if (value == "right_ir" || value == "ir2" || value == "infrared2") {
+        return StreamKind::kInfraredRight;
+    }
+    if (value == "ir0" || value == "mono_ir") {
         return StreamKind::kInfrared;
     }
     return default_kind;
@@ -639,6 +983,8 @@ std::string EncodingForStreamKind(const StreamKind kind) {
         case StreamKind::kDepth:
             return "16UC1";
         case StreamKind::kInfrared:
+        case StreamKind::kInfraredLeft:
+        case StreamKind::kInfraredRight:
             return "mono8";
     }
     return "rgb8";
@@ -651,7 +997,11 @@ std::string DefaultFrameId(const StreamKind kind) {
         case StreamKind::kDepth:
             return "camera_depth_optical_frame";
         case StreamKind::kInfrared:
-            return "camera_infra_optical_frame";
+            return "camera_ir_optical_frame";
+        case StreamKind::kInfraredLeft:
+            return "camera_left_ir_optical_frame";
+        case StreamKind::kInfraredRight:
+            return "camera_right_ir_optical_frame";
     }
     return "camera_link";
 }

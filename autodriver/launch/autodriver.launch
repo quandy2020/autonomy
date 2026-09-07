@@ -1,13 +1,13 @@
 <!--
   Autodriver hardware driver launch file.
 
-  Starts the autodriver binary which loads sensors from
-  autodriver_hardware.yaml, creates Autolink writers and manages sensor
-  lifecycle (hotplug).
+  Starts the autodriver binary which loads sensors from YAML under config/
+  (default autodriver_hardware.yaml, or camera/<vendor>/…), creates Autolink
+  writers and manages sensor lifecycle (hotplug).
 
   Prerequisites:
     - AUTODRIVER_PATH must point to the autodriver package root
-      (the directory that contains config/autodriver_hardware.yaml)
+      (the directory that contains config/)
     - libautodriver.so (and Autolink deps) must be on LD_LIBRARY_PATH
       Built-in sensor modules live inside libautodriver; no per-modality
       plugin .so is required unless YAML sets library=.
@@ -18,6 +18,8 @@
     export LD_LIBRARY_PATH=$PWD/build/lib:$LD_LIBRARY_PATH
     export PATH=$PWD/build/bin:$PATH
     autolink launch start autodriver.launch
+    # Or run binary directly with a vendor camera config:
+    #   autodriver $AUTODRIVER_PATH camera/orbbec/gemini_330.yaml
 
   To stop:
     autolink launch stop autodriver.launch
@@ -26,7 +28,7 @@
     <environment>
         <!--
           Set AUTODRIVER_PATH to the autodriver package root so that
-          autodriver can find config/autodriver_hardware.yaml.
+          autodriver can find config/ (and config/camera/<vendor>/).
           Adjust this path to match your deployment layout.
         -->
         <!-- <AUTODRIVER_PATH>/opt/autodriver</AUTODRIVER_PATH> -->

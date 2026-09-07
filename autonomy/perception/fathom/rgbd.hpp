@@ -49,15 +49,27 @@ namespace fathom {
  * @param width Fixed model input width, greater than zero.
  * @param height Fixed model input height, greater than zero.
  * @param depth_scale Sensor-depth-unit to meter scale, finite and positive.
+ * @param max_depth_m Clip depth to this metres upper bound; values below
+ *     0.01 m become zero. Pass <= 0 to disable clipping.
  * @param tensors Output tensors named `image` and `raw_depth`; cleared first.
  * @param error Optional diagnostic output, cleared on entry.
  * @return True when both input tensors are produced.
  */
 bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,
                  const automsgs::msgs::sensor_msgs::Image& raw_depth, int width,
-                 int height, float depth_scale,
+                 int height, float depth_scale, float max_depth_m,
                  common::network::TensorMap* tensors,
                  std::string* error = nullptr);
+
+/** @brief Overload without depth clipping (max_depth_m = 0). */
+inline bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,
+                        const automsgs::msgs::sensor_msgs::Image& raw_depth,
+                        int width, int height, float depth_scale,
+                        common::network::TensorMap* tensors,
+                        std::string* error = nullptr) {
+  return PrepareRgbd(rgb, raw_depth, width, height, depth_scale, 0.0F, tensors,
+                     error);
+}
 
 }  // namespace fathom
 }  // namespace perception

@@ -46,9 +46,9 @@ OrbbecCameraDriver::OrbbecCameraDriver(SensorId id, DriverParams params)
       params_(std::move(params)),
       stream_(orbbec::ParseStreamKind(GetString(params_, "stream"),
                                       orbbec::StreamKind::kColor)),
-      width_(ParseInt(params_, "width", 640)),
-      height_(ParseInt(params_, "height", 480)),
-      fps_(ParseInt(params_, "fps", 30)) {}
+      width_(ParseInt(params_, "width", 0)),
+      height_(ParseInt(params_, "height", 0)),
+      fps_(ParseInt(params_, "fps", 0)) {}
 
 OrbbecCameraDriver::~OrbbecCameraDriver() { Stop(); }
 

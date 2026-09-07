@@ -23,6 +23,7 @@
 
 #include "autonomy/perception/fathom/point_cloud.hpp"
 #include "autonomy/perception/fathom/rgbd.hpp"
+#include "autonomy/perception/fathom/sky.hpp"
 
 #include <opencv2/imgproc.hpp>
 
@@ -32,6 +33,7 @@
 #include <cstring>
 #include <limits>
 #include <utility>
+#include <vector>
 
 namespace autonomy {
 namespace perception {
@@ -48,28 +50,67 @@ void SetError(std::string* error, const std::string& message) {
 bool OutputFloat32(const common::network::TensorMap& outputs, const char* name,
                    size_t expected_count, const float** values,
                    std::string* error) {
-    const auto it = outputs.find(name);
-    if (it == outputs.end()) {
-        SetError(error, std::string("model output '") + name + "' is missing.");
-        return false;
-    }
-    if (it->second.element_type() != common::network::ElementType::kFloat32) {
-        SetError(error, std::string("model output '") + name +
-                            "' must use float32 elements.");
-        return false;
-    }
-    size_t count = 0;
-    std::string tensor_error;
-    if (!it->second.TryViewFloat32(values, &count, &tensor_error)) {
-        SetError(error, tensor_error);
-        return false;
-    }
-    if (count != expected_count) {
-        SetError(error, std::string("model output '") + name +
-                            "' has an unexpected element count.");
-        return false;
-    }
+  const auto it = outputs.find(name);
+  if (it == outputs.end()) {
+    SetError(error, std::string("model output '") + name + "' is missing.");
+    return false;
+  }
+  if (it->second.element_type() != common::network::ElementType::kFloat32) {
+    SetError(error, std::string("model output '") + name +
+                        "' must use float32 elements.");
+    return false;
+  }
+  size_t count = 0;
+  std::string tensor_error;
+  if (!it->second.TryViewFloat32(values, &count, &tensor_error)) {
+    SetError(error, tensor_error);
+    return false;
+  }
+  if (count != expected_count) {
+    SetError(error, std::string("model output '") + name +
+                        "' has an unexpected element count.");
+    return false;
+  }
+  return true;
+}
+
+bool ResolveDepthOutput(const common::network::TensorMap& outputs,
+                        size_t expected_count, const float** depth,
+                        std::string* error) {
+  if (OutputFloat32(outputs, "refined_depth", expected_count, depth, error)) {
     return true;
+  }
+  if (error != nullptr) {
+    error->clear();
+  }
+  return OutputFloat32(outputs, "pred_depth", expected_count, depth, error);
+}
+
+std::vector<float> SynthesizeValidity(const float* depth, size_t count) {
+  std::vector<float> validity(count);
+  for (size_t i = 0; i < count; ++i) {
+    validity[i] =
+        (std::isfinite(depth[i]) && depth[i] > 0.0F) ? 1.0F : 0.0F;
+  }
+  return validity;
+}
+
+cv::Mat BgrForSky(const automsgs::msgs::sensor_msgs::Image& rgb, int width,
+                  int height) {
+  cv::Mat source(static_cast<int>(rgb.height()), static_cast<int>(rgb.width()),
+                 CV_8UC3);
+  for (uint32_t row = 0; row < rgb.height(); ++row) {
+    std::memcpy(source.ptr(static_cast<int>(row)),
+                rgb.data().data() + static_cast<size_t>(row) * rgb.step(),
+                static_cast<size_t>(rgb.width()) * 3);
+  }
+  cv::Mat resized;
+  cv::resize(source, resized, cv::Size(width, height), 0.0, 0.0,
+             cv::INTER_LINEAR);
+  if (rgb.encoding() == "rgb8") {
+    cv::cvtColor(resized, resized, cv::COLOR_RGB2BGR);
+  }
+  return resized;
 }
 
 automsgs::msgs::sensor_msgs::Image MakeFloatImage(
@@ -160,7 +201,8 @@ bool DepthRefiner::Refine(
     std::string detail;
     if (!PrepareRgbd(rgb, raw_depth, static_cast<int>(options_.input_width()),
                      static_cast<int>(options_.input_height()),
-                     options_.depth_scale(), &inputs, &detail)) {
+                     options_.depth_scale(), options_.max_depth_m(), &inputs,
+                     &detail)) {
         SetError(error, detail);
         return false;
     }
@@ -174,13 +216,18 @@ bool DepthRefiner::Refine(
     const size_t profile_pixels = static_cast<size_t>(options_.input_width()) *
                                   static_cast<size_t>(options_.input_height());
     const float* profile_depth = nullptr;
-    const float* profile_validity = nullptr;
-    if (!OutputFloat32(outputs, "refined_depth", profile_pixels, &profile_depth,
-                       error) ||
-        !OutputFloat32(outputs, "validity", profile_pixels, &profile_validity,
-                       error)) {
+    if (!ResolveDepthOutput(outputs, profile_pixels, &profile_depth, error)) {
         return false;
     }
+
+    std::vector<float> synthesized_validity;
+    const float* profile_validity = nullptr;
+    if (!OutputFloat32(outputs, "validity", profile_pixels, &profile_validity,
+                       &detail)) {
+        synthesized_validity = SynthesizeValidity(profile_depth, profile_pixels);
+        profile_validity = synthesized_validity.data();
+    }
+
     if (rgb.width() > static_cast<uint32_t>(std::numeric_limits<int>::max()) ||
         rgb.height() > static_cast<uint32_t>(std::numeric_limits<int>::max())) {
         SetError(error, "input image dimensions exceed OpenCV limits.");
@@ -190,6 +237,14 @@ bool DepthRefiner::Refine(
     cv::Mat profile_depth_mat(static_cast<int>(options_.input_height()),
                               static_cast<int>(options_.input_width()),
                               CV_32FC1, const_cast<float*>(profile_depth));
+    // Own a contiguous copy so sky correction can mutate safely.
+    cv::Mat profile_depth_owned = profile_depth_mat.clone();
+    if (options_.sky_correct().enabled()) {
+        const cv::Mat bgr = BgrForSky(rgb, static_cast<int>(options_.input_width()),
+                                      static_cast<int>(options_.input_height()));
+        CorrectSkyFar(profile_depth_owned, bgr, options_.sky_correct(), nullptr);
+    }
+
     cv::Mat profile_validity_mat(static_cast<int>(options_.input_height()),
                                  static_cast<int>(options_.input_width()),
                                  CV_32FC1,
@@ -197,7 +252,7 @@ bool DepthRefiner::Refine(
     cv::Mat restored_depth;
     cv::Mat restored_validity;
     cv::resize(
-        profile_depth_mat, restored_depth,
+        profile_depth_owned, restored_depth,
         cv::Size(static_cast<int>(rgb.width()), static_cast<int>(rgb.height())),
         0.0, 0.0, cv::INTER_LINEAR);
     cv::resize(

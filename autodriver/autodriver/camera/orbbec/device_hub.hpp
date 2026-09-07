@@ -40,6 +40,8 @@ enum class StreamKind {
     kColor,
     kDepth,
     kInfrared,
+    kInfraredLeft,
+    kInfraredRight,
 };
 
 StreamKind ParseStreamKind(const std::string& text, StreamKind default_kind);

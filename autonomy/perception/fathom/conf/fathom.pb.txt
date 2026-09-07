@@ -1,12 +1,27 @@
-# Fixed-profile inference configuration. Replace this placeholder model path
-# with the deployed artifact that matches input_width and input_height.
-model_path: "/models/fathom.onnx"
-backend: "onnx"
+# TensorRT student engine from lingbot_depth_trt (480x640 FP16).
+# Replace model_path when deploying outside the Docker autonomy mount.
+model_path: "/workspace/autonomy/src/autonomy/autonomy/perception/fathom/model/student_fp16.engine"
+backend: "tensorrt"
 input_width: 640
 input_height: 480
-# Autosim publishes metric 32FC1 depth, so no unit conversion is required.
-depth_scale: 1.0
+# Orbbec / RealSense style millimeter 16UC1 depth → metres.
+depth_scale: 0.001
 mask_threshold: 0.5
+max_depth_m: 50.0
+
+sky_correct {
+  enabled: true
+  top_frac: 0.55
+  sat_max: 60
+  val_min: 130
+  tex_max: 12.0
+  far_floor: 20.0
+  min_far_area: 1024
+  near_thresh: 3.0
+  near_grow: 10.0
+  min_area: 1024
+  fallback_far: 50.0
+}
 
 # Component-owned automsgs output topics.
 refined_depth_topic: "/perception/fathom/refined_depth"

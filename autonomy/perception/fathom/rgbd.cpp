@@ -23,6 +23,7 @@
 
 #include <opencv2/imgproc.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -90,14 +91,25 @@ bool ValidateDepthImage(const automsgs::msgs::sensor_msgs::Image& image,
 }
 
 float SanitizeDepth(float value) {
-    return std::isfinite(value) && value > 0.0F ? value : 0.0F;
+  return std::isfinite(value) && value > 0.0F ? value : 0.0F;
+}
+
+float ClipDepth(float metres, float max_depth_m) {
+  float value = SanitizeDepth(metres);
+  if (max_depth_m > 0.0F && value > 0.0F) {
+    value = std::min(value, max_depth_m);
+    if (value < 0.01F) {
+      value = 0.0F;
+    }
+  }
+  return value;
 }
 
 }  // namespace
 
 bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,
                  const automsgs::msgs::sensor_msgs::Image& raw_depth, int width,
-                 int height, float depth_scale,
+                 int height, float depth_scale, float max_depth_m,
                  common::network::TensorMap* tensors, std::string* error) {
     if (error != nullptr) {
         error->clear();
@@ -194,7 +206,7 @@ bool PrepareRgbd(const automsgs::msgs::sensor_msgs::Image& rgb,
                     ? static_cast<float>(resized_depth.at<uint16_t>(row, col))
                     : resized_depth.at<float>(row, col);
             depth[index] =
-                SanitizeDepth(SanitizeDepth(raw_value) * depth_scale);
+                ClipDepth(SanitizeDepth(raw_value) * depth_scale, max_depth_m);
         }
     }
 

@@ -1,0 +1,24 @@
+# Orbbec Gemini 330 — device / depth params only
+# Merged via params_file from autodriver_hardware.yaml
+# (OrbbecSDK_ROS2 gemini_330_series.launch.py defaults)
+
+model: Gemini
+device_preset: Default
+disparity_to_depth_mode: HW
+enable_laser: true
+enable_disparity_to_depth: true
+enable_hardware_noise_removal_filter: false
+enable_noise_removal_filter: true
+noise_removal_filter_min_diff: 256
+noise_removal_filter_max_size: 80
+enable_spatial_filter: false
+enable_spatial_fast_filter: false
+enable_spatial_moderate_filter: false
+enable_temporal_filter: false
+enable_hole_filling_filter: false
+enable_threshold_filter: false
+enable_decimation_filter: false
+enable_hdr_merge: false
+enable_sequence_id_filter: false
+enable_false_positive_filter: false
+enable_depth_scale: true

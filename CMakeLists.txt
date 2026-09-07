@@ -46,6 +46,7 @@ option(BUILD_AUTOSIM "Build autonomous simulation tool (autosim)" ON)
 set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
 
 option(BUILD_ONNXRUNTIME "Build ONNX Runtime inference support" ON)
+option(BUILD_TENSORRT "Build TensorRT inference support" ON)
 
 option(AUTONOMY_EXPLORATION_ORTOOLS
   "Link vendored OR-Tools for exploration TSP (set AUTONOMY_ORTOOLS_ROOT)" OFF)
@@ -120,6 +121,15 @@ find_package(TBB REQUIRED)
 find_package(Ipopt QUIET)
 find_package(foxglove-sdk CONFIG QUIET)
 find_package(OnnxRuntime QUIET)
+if(BUILD_TENSORRT)
+  find_package(TensorRT QUIET)
+  find_package(CUDAToolkit QUIET)
+  if(TensorRT_FOUND)
+    message(STATUS "TensorRT found: ${TensorRT_INCLUDE_DIRS}")
+  else()
+    message(STATUS "TensorRT not found; tensorrt backend stubbed")
+  endif()
+endif()
 if(BUILD_GRPC)
   find_package(gRPC REQUIRED)
 endif()
@@ -215,11 +225,19 @@ autonomy_link_dependencies(${PROJECT_NAME})
 
 # Perception autolink components with concrete common-network runners are
 # deliberately separate mainboard-loadable shared libraries.
+set(_AUTONOMY_HAS_INFERENCE_BACKEND FALSE)
 if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
+  set(_AUTONOMY_HAS_INFERENCE_BACKEND TRUE)
+endif()
+if(BUILD_TENSORRT AND TensorRT_FOUND)
+  set(_AUTONOMY_HAS_INFERENCE_BACKEND TRUE)
+endif()
+if(_AUTONOMY_HAS_INFERENCE_BACKEND)
   add_subdirectory(autonomy/perception/fathom)
   add_subdirectory(autonomy/perception/hestia)
   add_subdirectory(autonomy/perception/shadow)
 endif()
+unset(_AUTONOMY_HAS_INFERENCE_BACKEND)
 
 # Echo tool needs automsgs protos for DebugString when topology omits type.
 if(TARGET autolink_channel)

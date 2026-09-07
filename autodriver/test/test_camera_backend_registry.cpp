@@ -43,5 +43,11 @@ TEST(OrbbecStreamKind, Parse) {
     using autodriver::hardware::orbbec::StreamKind;
     EXPECT_EQ(ParseStreamKind("color", StreamKind::kDepth), StreamKind::kColor);
     EXPECT_EQ(ParseStreamKind("depth", StreamKind::kColor), StreamKind::kDepth);
-    EXPECT_EQ(ParseStreamKind("ir", StreamKind::kColor), StreamKind::kInfrared);
+    EXPECT_EQ(ParseStreamKind("ir", StreamKind::kColor),
+              StreamKind::kInfraredLeft);
+    EXPECT_EQ(ParseStreamKind("left_ir", StreamKind::kColor),
+              StreamKind::kInfraredLeft);
+    EXPECT_EQ(ParseStreamKind("right_ir", StreamKind::kColor),
+              StreamKind::kInfraredRight);
+    EXPECT_EQ(ParseStreamKind("ir0", StreamKind::kColor), StreamKind::kInfrared);
 }
