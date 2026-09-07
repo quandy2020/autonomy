@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-#include <iostream>
-
 #include "autodriver/bridge/publisher.hpp"
 #include "autodriver/sensor_manager.hpp"
+#include "autolink/common/log.hpp"
 #include "autolink/init.hpp"
 #include "autolink/time/duration.hpp"
 
@@ -35,17 +34,18 @@ int main(int argc, char** argv) {
     config.sensors = {lidar2d, lidar3d};
     autodriver::bridge::Publisher publisher(config.node_name);
     if (!publisher.Initialize()) {
-        std::cerr << "autolink publisher failed\n";
+        AERROR << "autolink publisher failed";
         autolink::Clear();
         return 1;
     }
     autodriver::SensorManager manager(std::move(config));
     manager.SetSink(&publisher);
     if (!manager.Initialize() || !manager.Start()) {
-        std::cerr << "SensorManager failed\n";
+        AERROR << "SensorManager failed";
         autolink::Clear();
         return 1;
     }
+    AINFO << "autodriver_demo running";
     autolink::Duration(300'000'000).Sleep();
     manager.Stop();
     autolink::Clear();

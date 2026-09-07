@@ -65,6 +65,8 @@ AUTODRIVER_TRAITS(kLidar2d, LidarScan);
 AUTODRIVER_TRAITS(kLidar3d, LidarCloud);
 AUTODRIVER_TRAITS(kRangeFinder, RangeSample);
 AUTODRIVER_TRAITS(kWheelOdometry, WheelOdometrySample);
+AUTODRIVER_TRAITS(kRadar, RadarSample);
+AUTODRIVER_TRAITS(kMicrophone, MicrophoneSample);
 
 #undef AUTODRIVER_TRAITS
 
@@ -84,6 +86,10 @@ inline std::string ChannelSuffix(SensorType type, std::string_view stream = {}) 
             return "/points";
         case SensorType::kWheelOdometry:
             return "/odom";
+        case SensorType::kRadar:
+            return "/radar";
+        case SensorType::kMicrophone:
+            return "/audio";
         case SensorType::kImu:
         case SensorType::kGps:
         case SensorType::kRangeFinder:

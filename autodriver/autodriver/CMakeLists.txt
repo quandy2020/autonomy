@@ -17,25 +17,49 @@ set(AUTODRIVER_SOURCES
   config_loader.cpp
   sensor_manager.cpp
   driver_params.cpp
-  hardware/serial_port.cpp
-  hardware/can_socket.cpp
-  hardware/realsense_device_hub.cpp
-  hardware/nmea_0183.cpp
-  hardware/wit_motion_parser.cpp
+  common/serial_port.cpp
+  common/stream.cpp
+  common/can_socket.cpp
+  common/calibration.cpp
+  camera/backend_registry.cpp
+  camera/orbbec/camera_info.cpp
+  camera/orbbec/device_hub.cpp
+  camera/orbbec/camera_driver.cpp
+  camera/orbbec/pointcloud_driver.cpp
+  smartereye/camera_driver.cpp
+  radar/backend_registry.cpp
+  radar/conti/driver.cpp
+  microphone/backend_registry.cpp
+  microphone/respeaker_driver.cpp
+  gps/nmea_0183.cpp
+  gps/parser/parser.cpp
+  imu/wit_motion_parser.cpp
   time_synchronization.cpp
   sample_buffer.cpp
   sensor_hub.cpp
   # all sensor modules compiled directly into the shared library
   modules.cpp
-  hardware/serial_imu_driver.cpp
-  hardware/can_imu_driver.cpp
-  hardware/serial_gps_driver.cpp
-  hardware/can_gps_driver.cpp
+  imu/serial_imu_driver.cpp
+  imu/can_imu_driver.cpp
+  gps/serial_gps_driver.cpp
+  gps/can_gps_driver.cpp
+  lidar/backend_registry.cpp
+  lidar/motion_compensator.cpp
+  lidar/pose_buffer.cpp
+  lidar/velodyne/calibration.cpp
+  lidar/velodyne/convert.cpp
+  lidar/velodyne/udp_driver.cpp
+  lidar/hesai/convert.cpp
+  lidar/hesai/calibration.cpp
+  lidar/hesai/udp_driver.cpp
+  lidar/vendor_stubs.cpp
   bridge/publisher.cpp
+  bridge/pose_feeder.cpp
 )
 
 find_package(Threads REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 add_library(autodriver SHARED ${AUTODRIVER_SOURCES})
 
@@ -58,7 +82,7 @@ target_include_directories(autodriver
 
 target_compile_options(autodriver PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(autodriver PUBLIC Threads::Threads autolink automsgs
-  yaml-cpp)
+  yaml-cpp Eigen3::Eigen)
 target_compile_definitions(autodriver PUBLIC
   AUTODRIVER_SHARED_SUFFIX="${CMAKE_SHARED_LIBRARY_SUFFIX}")
 
@@ -70,15 +94,32 @@ if(UNIX AND NOT APPLE)
   endif()
 endif()
 
+if(AUTODRIVER_WITH_ORBBEC)
+  find_package(OrbbecSDK QUIET)
+  if(OrbbecSDK_FOUND OR TARGET OrbbecSDK::OrbbecSDK)
+    message(STATUS "autodriver: OrbbecSDK enabled")
+    if(TARGET OrbbecSDK::OrbbecSDK)
+      target_link_libraries(autodriver PUBLIC OrbbecSDK::OrbbecSDK)
+    else()
+      target_include_directories(autodriver PUBLIC ${OrbbecSDK_INCLUDE_DIRS})
+      target_link_libraries(autodriver PUBLIC ${OrbbecSDK_LIBRARY})
+    endif()
+    target_compile_definitions(autodriver PUBLIC AUTODRIVER_HAVE_ORBBEC)
+  else()
+    message(STATUS "autodriver: OrbbecSDK not found; Orbbec backends stubbed")
+  endif()
+endif()
+
 if(AUTODRIVER_WITH_REALSENSE)
   find_package(realsense2 QUIET)
   if(realsense2_FOUND)
     message(STATUS "autodriver: librealsense2 ${realsense2_VERSION} enabled")
     target_sources(autodriver PRIVATE
-      hardware/realsense_camera_info.cpp
-      hardware/realsense_imu_driver.cpp
-      hardware/realsense_camera_driver.cpp
-      hardware/realsense_pointcloud_driver.cpp)
+      camera/realsense/device_hub.cpp
+      camera/realsense/camera_info.cpp
+      camera/realsense/imu_driver.cpp
+      camera/realsense/camera_driver.cpp
+      camera/realsense/pointcloud_driver.cpp)
     target_link_libraries(autodriver PUBLIC realsense2::realsense2)
     target_compile_definitions(autodriver PUBLIC AUTODRIVER_HAVE_REALSENSE)
   else()

@@ -1,0 +1,17 @@
+# Static extrinsics: parent ← child (novatel ← velodyne)
+header:
+  frame_id: novatel
+  stamp:
+    secs: 0
+    nsecs: 0
+child_frame_id: velodyne
+transform:
+  translation:
+    x: 0.0
+    y: 0.0
+    z: 1.5
+  rotation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0

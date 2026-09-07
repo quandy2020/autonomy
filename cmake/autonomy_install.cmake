@@ -31,6 +31,13 @@ if(BUILD_AUTODRIVER AND TARGET autodriver)
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
   )
+  if(TARGET autodriver_main)
+    install(
+      TARGETS autodriver_main
+      EXPORT AutonomyExport
+      RUNTIME DESTINATION bin
+    )
+  endif()
 endif()
 
 install(DIRECTORY config DESTINATION share/autonomy)
@@ -86,6 +93,66 @@ install(
 )
 
 set(_autonomy_launch_mods localization planning control task system)
+if(TARGET fathom_component)
+  install(
+    TARGETS fathom_component
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+  )
+  install(
+    FILES autonomy/perception/fathom/dag/fathom.dag
+    DESTINATION share/autonomy/fathom/dag
+  )
+  install(
+    FILES autonomy/perception/fathom/conf/fathom.pb.txt
+    DESTINATION share/autonomy/fathom/conf
+  )
+  install(
+    FILES autonomy/perception/fathom/launch/fathom.launch
+    DESTINATION share/autonomy/fathom/launch
+  )
+  list(APPEND _autonomy_launch_mods perception)
+endif()
+if(TARGET hestia_component)
+  install(
+    TARGETS hestia_component
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+  )
+  install(
+    FILES autonomy/perception/hestia/dag/hestia.dag
+    DESTINATION share/autonomy/hestia/dag
+  )
+  install(
+    FILES autonomy/perception/hestia/conf/hestia.pb.txt
+    DESTINATION share/autonomy/hestia/conf
+  )
+  install(
+    FILES autonomy/perception/hestia/launch/hestia.launch
+    DESTINATION share/autonomy/hestia/launch
+  )
+  list(APPEND _autonomy_launch_mods perception)
+endif()
+if(TARGET shadow_component)
+  install(
+    TARGETS shadow_component
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+  )
+  install(
+    FILES autonomy/perception/shadow/dag/shadow.dag
+    DESTINATION share/autonomy/shadow/dag
+  )
+  install(
+    FILES autonomy/perception/shadow/conf/shadow.pb.txt
+    DESTINATION share/autonomy/shadow/conf
+  )
+  install(
+    FILES autonomy/perception/shadow/launch/shadow.launch
+    DESTINATION share/autonomy/shadow/launch
+  )
+  list(APPEND _autonomy_launch_mods perception)
+endif()
 if(BUILD_GRPC)
   list(APPEND _autonomy_launch_mods bridge)
 endif()

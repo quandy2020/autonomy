@@ -38,6 +38,8 @@ const PanelCatalogEntry kPanelCatalog[] = {
      "Playback and connection diagnostics"},
     {"ServiceDock", "PanelService", "Service Call",
      "Call Autolink services with JSON requests and inspect responses"},
+    {"GrpcDock", "PanelGrpc", "gRPC",
+     "Invoke gRPC methods (unary and streaming) with JSON payloads"},
     {"", "PanelStack", "Stack",
      "Stack panels vertically (not yet available)"},
     {"StateTransitionDock", "PanelState", "State Transitions",

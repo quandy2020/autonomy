@@ -33,6 +33,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 option(AUTODRIVER_WITH_REALSENSE "Build Intel RealSense camera/IMU drivers" ON)
+option(AUTODRIVER_WITH_ORBBEC "Build Orbbec camera/pointcloud drivers" ON)
 
 set(AUTODRIVER_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(AUTODRIVER_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/autodriver")
@@ -47,9 +48,12 @@ configure_file(
 
 add_subdirectory(autodriver)
 
-add_executable(autodriver_hub examples/hub_main.cpp)
-target_link_libraries(autodriver_hub PRIVATE autodriver)
-target_include_directories(autodriver_hub PRIVATE
+# Library target: autodriver → libautodriver.so
+# Process binary: autodriver (CMake target autodriver_main; cannot share lib name).
+add_executable(autodriver_main main.cpp)
+set_target_properties(autodriver_main PROPERTIES OUTPUT_NAME autodriver)
+target_link_libraries(autodriver_main PRIVATE autodriver)
+target_include_directories(autodriver_main PRIVATE
   ${AUTODRIVER_ROOT_DIR}/autodriver)
 
 if(AUTODRIVER_BUILD_EXAMPLES)
@@ -79,6 +83,16 @@ if(AUTODRIVER_BUILD_TEST)
   autodriver_add_test(test_config test/test_config.cpp)
   autodriver_add_test(test_config_loader test/test_config_loader.cpp)
   autodriver_add_test(test_manager test/test_manager.cpp)
+  autodriver_add_test(test_stream_lidar_base test/test_stream_lidar_base.cpp)
+  autodriver_add_test(test_pose_feeder test/test_pose_feeder.cpp)
+  autodriver_add_test(test_compensator_calibration
+                      test/test_compensator_calibration.cpp)
+  autodriver_add_test(test_lidar_backend_registry
+                      test/test_lidar_backend_registry.cpp)
+  autodriver_add_test(test_camera_backend_registry
+                      test/test_camera_backend_registry.cpp)
+  autodriver_add_test(test_canbus_skeleton test/test_canbus_skeleton.cpp)
+  autodriver_add_test(test_skeleton_modules test/test_skeleton_modules.cpp)
 endif()
 
 if(AUTODRIVER_BUILD_DOCS)

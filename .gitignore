@@ -91,3 +91,6 @@ autonomy/tools/bag_convert/.proto_gen/
 
 # data
 data/
+
+# Local feature worktrees
+.worktrees/

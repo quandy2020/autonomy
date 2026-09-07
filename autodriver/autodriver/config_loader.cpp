@@ -379,7 +379,7 @@ void AppendLidarList(const YAML::Node& devices,
     static constexpr DeviceKind kLidar2d{"Lidar2dModule", "lidar/", "serial"};
 
     // Default metadata for 3D lidar entries in mixed lidar lists.
-    static constexpr DeviceKind kLidar3d{"Lidar3dModule", "lidar/", "serial"};
+    static constexpr DeviceKind kLidar3d{"Lidar3dModule", "lidar/", "velodyne"};
     for (const auto& device : devices) {
         if (!IsDeviceEnabled(device)) {
             continue;
@@ -397,11 +397,14 @@ void AppendSensorGroups(const YAML::Node& groups,
     static constexpr DeviceKind kImu{"ImuModule", "imu/", "serial"};
     static constexpr DeviceKind kGps{"GpsModule", "gps/", "serial"};
     static constexpr DeviceKind kLidar2d{"Lidar2dModule", "lidar/", "serial"};
-    static constexpr DeviceKind kLidar3d{"Lidar3dModule", "lidar/", "serial"};
+    static constexpr DeviceKind kLidar3d{"Lidar3dModule", "lidar/", "velodyne"};
     static constexpr DeviceKind kCamera{"CameraModule", "camera/", "realsense"};
     static constexpr DeviceKind kRange{"RangeModule", "range/", "serial"};
     static constexpr DeviceKind kPointCloud{"PointCloudModule", "camera/",
                                             "realsense"};
+    static constexpr DeviceKind kRadar{"RadarModule", "radar/", "conti"};
+    static constexpr DeviceKind kMicrophone{"MicrophoneModule", "mic/",
+                                            "respeaker"};
 
     AppendTypedList(groups["lidar_2d"], kLidar2d, sensors);
     AppendTypedList(groups["lidar_3d"], kLidar3d, sensors);
@@ -413,6 +416,8 @@ void AppendSensorGroups(const YAML::Node& groups,
     AppendTypedList(groups["gps_devices"], kGps, sensors);
     AppendTypedList(groups["camera"], kCamera, sensors);
     AppendTypedList(groups["range"], kRange, sensors);
+    AppendTypedList(groups["radar"], kRadar, sensors);
+    AppendTypedList(groups["microphone"], kMicrophone, sensors);
 }
 
 /**
@@ -492,6 +497,11 @@ Config FromYaml(const YAML::Node& root) {
         }
     }
 
+    if (root["compensator"]) {
+        config.compensator.pose_channel =
+            ReadString(root["compensator"], "pose_channel");
+    }
+
     const YAML::Node sensors_node = root["sensors"];
     if (sensors_node && sensors_node.IsMap()) {
         AppendSensorGroups(sensors_node, &config.sensors);
@@ -555,7 +565,7 @@ std::string ResolveConfigPath(const std::string& configuration_directory,
 }
 
 /**
- * @brief Loads and parses a YAML config file at path.
+ * @brief Loads YAML config from an absolute path.
  */
 Config LoadFromPath(const std::string& path) {
     try {

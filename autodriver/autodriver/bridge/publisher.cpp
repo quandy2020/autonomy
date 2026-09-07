@@ -16,6 +16,7 @@
 
 #include "autodriver/bridge/publisher.hpp"
 
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -72,6 +73,7 @@ Publisher::Publisher(std::string node_name) : node_name_(std::move(node_name)) {
 Publisher::~Publisher() {
     WriteLock lock(lock_);
     writers_.clear();
+    diagnostics_writer_.reset();
     node_.reset();
 }
 
@@ -106,6 +108,10 @@ bool Publisher::OnAttach(const Config::Sensor& sensor, SensorType type) {
             return OpenWriter<SensorType::kRangeFinder>(sensor);
         case SensorType::kWheelOdometry:
             return OpenWriter<SensorType::kWheelOdometry>(sensor);
+        case SensorType::kRadar:
+            return OpenWriter<SensorType::kRadar>(sensor);
+        case SensorType::kMicrophone:
+            return OpenWriter<SensorType::kMicrophone>(sensor);
     }
     AERROR << "unknown sensor type for " << sensor.id;
     return false;
@@ -131,6 +137,57 @@ void Publisher::OnSample(std::shared_ptr<SensorSample> sample) {
         write = it->second;
     }
     write(sample);
+}
+
+void Publisher::SetDiagnosticsChannel(std::string channel) {
+    if (!channel.empty()) {
+        diagnostics_channel_ = std::move(channel);
+    }
+}
+
+void Publisher::OnDiagnostic(
+    const diagnostics::DiagnosticSnapshot& snapshot) {
+    if (!Initialize()) {
+        return;
+    }
+    {
+        WriteLock lock(lock_);
+        if (!diagnostics_writer_) {
+            diagnostics_writer_ = node_->CreateWriter<
+                automsgs::msgs::diagnostic_msgs::DiagnosticArray>(
+                WriterAttr(diagnostics_channel_));
+            if (!diagnostics_writer_) {
+                AERROR << "CreateWriter failed on " << diagnostics_channel_;
+                return;
+            }
+        }
+    }
+    auto array =
+        std::make_shared<automsgs::msgs::diagnostic_msgs::DiagnosticArray>();
+    auto* status = array->add_status();
+    switch (snapshot.status) {
+        case diagnostics::DeviceStatus::kOk:
+            status->set_level(
+                automsgs::msgs::diagnostic_msgs::DiagnosticStatus::OK);
+            break;
+        case diagnostics::DeviceStatus::kDisconnected:
+            status->set_level(
+                automsgs::msgs::diagnostic_msgs::DiagnosticStatus::STALE);
+            break;
+        case diagnostics::DeviceStatus::kError:
+            status->set_level(
+                automsgs::msgs::diagnostic_msgs::DiagnosticStatus::ERROR);
+            break;
+    }
+    status->set_name(snapshot.id);
+    status->set_hardware_id(snapshot.id);
+    status->set_message(snapshot.message);
+    if (snapshot.sample_count > 0) {
+        auto* kv = status->add_values();
+        kv->set_key("sample_count");
+        kv->set_value(std::to_string(snapshot.sample_count));
+    }
+    diagnostics_writer_->Write(array);
 }
 
 bool Publisher::OpenCameraWriter(const Config::Sensor& sensor) {
@@ -240,8 +297,13 @@ bool Publisher::OpenWriter(const Config::Sensor& sensor) {
                 if (!sample) {
                     return;
                 }
-                auto& data = static_cast<Sample&>(*sample);
-                writer->Write(std::shared_ptr<Message>(sample, &data.msg));
+                // Skip non-matching polymorphic samples (e.g. LidarPacketScan
+                // on a PointCloud2 writer).
+                auto* data = dynamic_cast<Sample*>(sample.get());
+                if (data == nullptr) {
+                    return;
+                }
+                writer->Write(std::shared_ptr<Message>(sample, &data->msg));
             });
         if (!joined.empty()) {
             joined += ", ";
