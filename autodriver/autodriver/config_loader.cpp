@@ -18,9 +18,11 @@
 
 #include <cctype>
 #include <cstdint>
+#include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "autodriver/common/environment.hpp"
 #include "autodriver/conf/conf.hpp"
@@ -33,6 +35,7 @@
 namespace autodriver {
 namespace {
 
+using autolink::common::DirectoryExists;
 using autolink::common::GetAbsolutePath;
 using autolink::common::PathExists;
 
@@ -149,6 +152,56 @@ void ReadParamsMap(const YAML::Node& node, hardware::DriverParams* params) {
     }
     for (const auto& entry : node) {
         params->emplace(ScalarToString(entry.first), ScalarToString(entry.second));
+    }
+}
+
+/**
+ * @brief Search root for params_file resolution (set while LoadFromPath runs).
+ */
+std::string g_config_search_root;
+
+std::string ResolveConfigPath(const std::string& configuration_directory,
+                              const std::string& config_basename);
+
+/**
+ * @brief Loads vendor camera params from config/camera/<vendor>/….
+ * File may be a flat map or `{ params: {…} }`. Existing keys are not overwritten
+ * so inline `params:` in the device entry win.
+ */
+void MergeParamsFile(const std::string& params_file,
+                     hardware::DriverParams* params) {
+    if (params_file.empty() || params == nullptr) {
+        return;
+    }
+    const std::string path =
+        ResolveConfigPath(g_config_search_root, params_file);
+    if (!PathExists(path)) {
+        AINFO << "params_file not found: " << params_file << " (" << path
+              << ")";
+        return;
+    }
+    try {
+        const YAML::Node root = YAML::LoadFile(path);
+        if (!root) {
+            return;
+        }
+        hardware::DriverParams file_params;
+        if (root.IsMap() && root["params"] && root["params"].IsMap()) {
+            ReadParamsMap(root["params"], &file_params);
+        } else if (root.IsMap() && !root["sensors"]) {
+            ReadParamsMap(root, &file_params);
+        } else {
+            AINFO << "params_file ignored (expected flat map or params:): "
+                  << path;
+            return;
+        }
+        for (const auto& entry : file_params) {
+            if (params->count(entry.first) == 0) {
+                (*params)[entry.first] = entry.second;
+            }
+        }
+    } catch (const YAML::Exception& ex) {
+        AINFO << "failed to load params_file " << path << ": " << ex.what();
     }
 }
 
@@ -331,6 +384,12 @@ Config::Sensor TypedDeviceFromYaml(const YAML::Node& node,
     out.autostart = true;
     out.match = ReadMatch(node["match"]);
     ReadParamsMap(node["params"], &out.params);
+    std::string params_file = ReadString(node, "params_file");
+    if (params_file.empty()) {
+        params_file = ReadString(node["params"], "params_file");
+    }
+    MergeParamsFile(params_file, &out.params);
+    out.params.erase("params_file");
     ApplyFlatDeviceFields(node, out.backend, out.module, &out.params,
                           &out.channels);
     FinalizeSensor(&out);
@@ -436,6 +495,12 @@ Config::Sensor SensorFromYaml(const YAML::Node& node) {
     ReadChannels(node, &out.channels);
     out.match = ReadMatch(node["match"]);
     ReadParamsMap(node["params"], &out.params);
+    std::string params_file = ReadString(node, "params_file");
+    if (params_file.empty()) {
+        params_file = ReadString(node["params"], "params_file");
+    }
+    MergeParamsFile(params_file, &out.params);
+    out.params.erase("params_file");
 
     SetParamIfAbsent(&out.params, "device", ReadString(node, "device"));
     SetParamIfAbsent(&out.params, "baud", ReadInt(node, "baud"));
@@ -526,48 +591,124 @@ Config FromYaml(const YAML::Node& root) {
 }
 
 /**
+ * @brief If path is a directory, pick autodriver.yaml or the sole *.yaml.
+ */
+std::string ResolveDirectoryConfig(const std::string& dir) {
+    if (!DirectoryExists(dir)) {
+        return {};
+    }
+    namespace fs = std::filesystem;
+    const fs::path preferred = fs::path(dir) / "autodriver.yaml";
+    if (fs::is_regular_file(preferred)) {
+        return preferred.string();
+    }
+    std::vector<fs::path> yamls;
+    std::error_code ec;
+    for (const auto& entry : fs::directory_iterator(dir, ec)) {
+        if (ec || !entry.is_regular_file()) {
+            continue;
+        }
+        const auto ext = entry.path().extension().string();
+        if (ext == ".yaml" || ext == ".yml") {
+            yamls.push_back(entry.path());
+        }
+    }
+    if (yamls.size() == 1) {
+        return yamls.front().string();
+    }
+    if (yamls.size() > 1) {
+        AINFO << "config directory has multiple YAML files, prefer "
+                 "autodriver.yaml or pass an explicit file under: "
+              << dir;
+    }
+    return {};
+}
+
+/**
+ * @brief Normalizes basename: strip leading config/, allow vendor shorthand.
+ */
+std::string NormalizeConfigBasename(std::string basename) {
+    if (basename.size() >= 2 && basename[0] == '.' && basename[1] == '/') {
+        basename.erase(0, 2);
+    }
+    constexpr const char kConfigPrefix[] = "config/";
+    if (basename.rfind(kConfigPrefix, 0) == 0) {
+        basename.erase(0, sizeof(kConfigPrefix) - 1);
+    }
+    // Vendor shorthand: "orbbec" → "camera/orbbec"
+    if (basename.find('/') == std::string::npos &&
+        basename.find('.') == std::string::npos) {
+        basename = std::string("camera/") + basename;
+    }
+    return basename;
+}
+
+/**
  * @brief Resolves an autodriver config path from work root or install tree.
+ *
+ * Accepts:
+ *   - absolute path to a .yaml
+ *   - basename under config/ (e.g. autodriver_hardware.yaml)
+ *   - vendor path (e.g. camera/orbbec/gemini_330.yaml)
+ *   - vendor directory (e.g. camera/orbbec or orbbec → sole/autodriver.yaml)
  */
 std::string ResolveConfigPath(const std::string& configuration_directory,
                               const std::string& config_basename) {
-    /**
-     * @brief Config filename, defaulting to kDefaultConfigBasename when empty.
-     */
     std::string basename = config_basename.empty() ? kDefaultConfigBasename
                                                    : config_basename;
     if (!basename.empty() && basename.front() == '/') {
+        if (DirectoryExists(basename)) {
+            const std::string from_dir = ResolveDirectoryConfig(basename);
+            if (!from_dir.empty()) {
+                return from_dir;
+            }
+        }
         return basename;
     }
 
-    /**
-     * @brief Work root used to locate config/ when no directory is given.
-     */
+    basename = NormalizeConfigBasename(std::move(basename));
+
     const std::string root = configuration_directory.empty()
                                  ? common::WorkRoot()
                                  : configuration_directory;
-    const std::string path = GetAbsolutePath(root, "config/" + basename);
-    if (PathExists(path)) {
-        return path;
-    }
 
-    /**
-     * @brief Install-tree fallback when source-tree config is missing.
-     */
-    const std::string install_path = GetAbsolutePath(
+    auto try_candidate = [](const std::string& candidate) -> std::string {
+        if (candidate.empty()) {
+            return {};
+        }
+        if (DirectoryExists(candidate)) {
+            return ResolveDirectoryConfig(candidate);
+        }
+        if (PathExists(candidate)) {
+            return candidate;
+        }
+        return {};
+    };
+
+    const std::string relative = GetAbsolutePath(root, "config/" + basename);
+    if (std::string hit = try_candidate(relative); !hit.empty()) {
+        return hit;
+    }
+    // Also allow basename already including camera/... without forcing
+    // another nesting when user passes camera/orbbec/gemini_330.yaml.
+
+    const std::string install_relative = GetAbsolutePath(
         conf::kDefaultDistributionHome, "share/autodriver/config/" + basename);
-    if (PathExists(install_path)) {
-        AINFO << "config_path: " << install_path << " (install-tree fallback)";
-        return install_path;
+    if (std::string hit = try_candidate(install_relative); !hit.empty()) {
+        AINFO << "config_path: " << hit << " (install-tree fallback)";
+        return hit;
     }
 
-    AINFO << "config_path: " << path;
-    return path;
+    AINFO << "config_path: " << relative;
+    return relative;
 }
 
 /**
  * @brief Loads YAML config from an absolute path.
  */
-Config LoadFromPath(const std::string& path) {
+Config LoadFromPath(const std::string& path,
+                    const std::string& configuration_directory) {
+    g_config_search_root = configuration_directory;
     try {
         return FromYaml(YAML::LoadFile(path));
     } catch (const YAML::Exception& ex) {
@@ -589,7 +730,8 @@ Config LoadConfig(const std::string& config_basename) {
 Config LoadConfig(const std::string& configuration_directory,
                   const std::string& config_basename) {
     return LoadFromPath(
-        ResolveConfigPath(configuration_directory, config_basename));
+        ResolveConfigPath(configuration_directory, config_basename),
+        configuration_directory);
 }
 
 }  // namespace autodriver

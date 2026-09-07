@@ -38,12 +38,15 @@ Config LoadConfig();
 
 /**
  * @brief Loads a YAML config by basename from the default configuration directory.
+ *
+ * Basename is typically `autodriver_hardware.yaml`. Camera vendor device
+ * params are merged via each sensor's `params_file` (under config/camera/).
  */
 Config LoadConfig(const std::string& config_basename);
 
 /**
  * @brief Loads YAML from `{configuration_directory}/config/{basename}`
- *        (with install-tree fallback). Basename should be `.yaml` / `.yml`.
+ *        (with install-tree fallback).
  */
 Config LoadConfig(const std::string& configuration_directory,
                   const std::string& config_basename);

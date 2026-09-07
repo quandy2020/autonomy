@@ -44,16 +44,41 @@ compensator:
 
 空文件名默认 `autodriver_hardware.yaml`。`WorkRoot` 优先取 `AUTODRIVER_PATH`。
 
-| 变量 | 含义 |
-|---|---|
-| `AUTODRIVER_PATH` | 配置根（目录下应有 `config/autodriver_hardware.yaml`） |
-| `AUTODRIVER_DISTRIBUTION_HOME` | 安装/发行根（安装树回退） |
+### 相机厂商参数
+
+主配置仍写在 `autodriver_hardware.yaml`（`enable` / `channel` / `stream` / 分辨率）。  
+厂商设备参数放在 `config/camera/<vendor>/`，用 `params_file` 合并；同名字段以条目内 `params:` 为准。
+
+```
+config/
+  autodriver_hardware.yaml
+  camera/
+    orbbec/gemini_330.yaml      # 仅 params
+    realsense/d455.yaml
+    smartereye/autodriver.yaml
+```
+
+```yaml
+camera:
+  - name: orbbec_color
+    enable: true
+    channel: /camera/color/image_raw
+    backend: orbbec
+    stream: color
+    params_file: camera/orbbec/gemini_330.yaml
+    params:
+      frame_id: camera_color_optical_frame
+```
 
 ```bash
 export AUTODRIVER_PATH=/path/to/autodriver
-autodriver
+autodriver   # 默认 autodriver_hardware.yaml
 ```
 
+| 变量 | 含义 |
+|---|---|
+| `AUTODRIVER_PATH` | 配置根（目录下应有 `config/`） |
+| `AUTODRIVER_DISTRIBUTION_HOME` | 安装/发行根（安装树回退） |
 ## 传感器类型键
 
 | YAML 键 | Module | 默认 `backend` | 运行时 id 前缀 | 采集状态 |
@@ -296,13 +321,16 @@ gps:
 **消息**：`sensor_msgs.Image`（另开 camera_info）  
 **backend**：`realsense`（默认）、`orbbec`（需 OrbbecSDK）、`smartereye`（**stub**，无 SDK 时 Create→nullptr）
 
-| `stream` | 含义 | 示例 channel |
-|---|---|---|
-| `color` / `rgb`（默认） | RGB | `/camera/color/image_raw` |
-| `depth` / `z16` | 深度 | `/camera/depth/image_rect_raw` |
-| `ir1` / `infrared1` / `ir` | 红外 1（RealSense）/ Orbbec IR | `/camera/infra1/image_rect_raw` |
-| `ir2` / `infrared2` | 红外 2（RealSense） | `/camera/infra2/image_rect_raw` |
-| `aligned_depth_to_color` | 对齐到彩色的深度（RealSense） | `/camera/aligned_depth_to_color/image_raw` |
+| `stream` | 含义 | RealSense channel | Orbbec Gemini 330 channel |
+|---|---|---|---|
+| `color` / `rgb`（默认） | RGB | `/camera/color/image_raw` | `/camera/color/image_raw` |
+| `depth` / `z16` | 深度 | `/camera/depth/image_rect_raw` | `/camera/depth/image_raw` |
+| `left_ir` / `ir` / `ir1` | 左红外（330） | `/camera/infra1/image_rect_raw` | `/camera/left_ir/image_raw` |
+| `right_ir` / `ir2` | 右红外（330） | `/camera/infra2/image_rect_raw` | `/camera/right_ir/image_raw` |
+| `aligned_depth_to_color` | 对齐深度（RealSense） | `/camera/aligned_depth_to_color/image_raw` | — |
+
+Orbbec 点云：默认 `/camera/depth/points`；彩色云 `/camera/depth_registered/points`。  
+完整 Gemini 330 厂商参数：`config/camera/orbbec/gemini_330.yaml`（经 `params_file` 引用）。
 
 多路 stream 写多条 `camera`；同一物理机用相同 `params.serial` 或 `index`+`model` 共用厂商 hub。
 
@@ -412,8 +440,12 @@ range:
 
 ## 默认示例内容
 
-`config/autodriver_hardware.yaml` 以 Intel RealSense D455 为主：多路 camera、`point_cloud`、板载 IMU 默认 `enable: true`；串口/激光等示例为 `enable: false`。通道命名对齐 realsense-ros。
+`config/autodriver_hardware.yaml` 为统一传感器列表（含 camera / point_cloud）。  
+厂商设备参数在 `config/camera/<vendor>/`，用 `params_file` 挂接：
 
+```bash
+autodriver $AUTODRIVER_PATH autodriver_hardware.yaml
+```
 ## 代码加载
 
 ```cpp

@@ -122,10 +122,25 @@ auto parser = autodriver::gps::GnssParserRegistry::Instance().Create("nmea");
 
 | `params` | 说明 |
 |---|---|
-| `stream` | `color` / `depth` / `ir` |
+| `stream` | `color` / `depth` / `left_ir` / `right_ir`（`ir`→left；`ir0` 单 IR） |
 | `serial` / `index` / `model` | 选设备 |
-| `width` / `height` / `fps` | 分辨率与帧率 |
+| `width` / `height` / `fps` | `0` = SDK 默认档（对齐 ROS2 `:=0` / `OB_*_ANY`） |
 | `frame_id` | 光学系覆盖 |
+| `enable_laser` | IR 投影灯；Gemini 330 官方默认 **true** |
+| `device_preset` | 官方默认 **`Default`**（勿默认改成 High Accuracy） |
+| `disparity_to_depth_mode` | **`HW`** / `SW` / `disable`（官方 HW） |
+| `enable_disparity_to_depth` | 后处理 `DisparityTransform`；官方 **true** |
+| `enable_hardware_noise_removal_filter` | 官方 **false** |
+| `enable_noise_removal_filter` | 软去噪；官方 **true** |
+| `noise_removal_filter_min_diff` / `max_size` | 官方 **256** / **80** |
+| `enable_spatial_filter` | 官方 **false** |
+
+**Channel 对齐 OrbbecSDK_ROS2 Gemini 330**（`camera_name:=camera`）：  
+`/camera/color|depth|left_ir|right_ir/image_raw`、`…/camera_info`、点云
+`/camera/depth/points`（默认）或 `/camera/depth_registered/points`。  
+示例：`config/camera/orbbec/gemini_330.yaml`（仅设备 params；由
+`autodriver_hardware.yaml` 的 `params_file` 合并）。
+加载：`autodriver $AUTODRIVER_PATH autodriver_hardware.yaml`。
 
 无 SDK 时 `Create` 返回 `nullptr` 并打日志。
 

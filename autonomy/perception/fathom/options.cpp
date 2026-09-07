@@ -68,12 +68,16 @@ bool ValidateModelOptions(const proto::FathomOptions& options,
         SetError(error, "depth_scale must be finite and positive.");
         return false;
     }
-    if (!std::isfinite(options.mask_threshold()) ||
-        options.mask_threshold() < 0.0F || options.mask_threshold() > 1.0F) {
-        SetError(error, "mask_threshold must be finite and within [0, 1].");
-        return false;
-    }
-    return true;
+  if (!std::isfinite(options.mask_threshold()) ||
+      options.mask_threshold() < 0.0F || options.mask_threshold() > 1.0F) {
+    SetError(error, "mask_threshold must be finite and within [0, 1].");
+    return false;
+  }
+  if (!std::isfinite(options.max_depth_m()) || options.max_depth_m() < 0.0F) {
+    SetError(error, "max_depth_m must be finite and non-negative.");
+    return false;
+  }
+  return true;
 }
 
 bool ValidateFathomOptions(const proto::FathomOptions& options,

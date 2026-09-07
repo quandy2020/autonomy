@@ -1,0 +1,21 @@
+# Intel RealSense D455 — device params only
+# Merged via params_file from autodriver_hardware.yaml
+#
+# Stream / channel / width / height / fps stay in autodriver_hardware.yaml.
+# This file is only what RealSenseDeviceHub reads as device-wide options.
+#
+# Supported by autodriver (camera/realsense/device_hub.cpp):
+#   model              — device name filter (e.g. D455)
+#   serial             — exact serial (optional; preferred if set)
+#   index              — N-th matching device when serial empty (default 0)
+#   emitter_enabled    — IR projector on depth/infra (default false)
+#   enable_ir_emitter  — alias of emitter_enabled
+#
+# Not implemented yet (realsense-ros has these; hub ignores them):
+#   visual_preset, depth_units, laser_power, filters, etc.
+
+model: D455
+# serial: ""
+# index: 0
+emitter_enabled: true
+enable_ir_emitter: true

@@ -85,8 +85,9 @@ if [[ ! -x "${PREFIX}/bin/autodriver" ]]; then
 fi
 
 echo "== Using prefix: ${PREFIX} =="
-echo "== Starting autodriver =="
-"${PREFIX}/bin/autodriver" &
+echo "== Starting autodriver (autodriver_hardware.yaml) =="
+# Enable RealSense entries in YAML (orbbec defaults are on; flip enables for D455).
+"${PREFIX}/bin/autodriver" "${AUTODRIVER_ROOT}" "autodriver_hardware.yaml" &
 HUB_PID=$!
 trap 'kill ${HUB_PID} >/dev/null 2>&1 || true' EXIT
 sleep 4

@@ -1,9 +1,21 @@
-# Build Fathom as a loadable autolink component only when its concrete
-# inference backend and component runtime are available. The entrypoint stays
-# outside libautonomy so registration is owned by this shared object.
-if(NOT BUILD_ONNXRUNTIME OR NOT OnnxRuntime_FOUND OR NOT TARGET autolink)
+# Build Fathom as a loadable autolink component when an inference backend and
+# autolink are available. Registration lives in this shared object, not
+# libautonomy.
+if(NOT TARGET autolink)
   return()
 endif()
+
+set(_fathom_backend FALSE)
+if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
+  set(_fathom_backend TRUE)
+endif()
+if(BUILD_TENSORRT AND TensorRT_FOUND)
+  set(_fathom_backend TRUE)
+endif()
+if(NOT _fathom_backend)
+  return()
+endif()
+unset(_fathom_backend)
 
 add_library(fathom_component SHARED fathom_component.cpp)
 target_include_directories(fathom_component PRIVATE

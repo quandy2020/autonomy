@@ -20,6 +20,7 @@
  *
  * Usage: autodriver [configuration_directory] [configuration_file]
  * Default config basename: autodriver_hardware.yaml
+ * Camera vendor params: config/camera/<vendor>/*.yaml via params_file
  */
 
 #include <atomic>

@@ -1,4 +1,5 @@
 # Loads the Fathom component in an isolated autolink mainboard process.
+# Readers match autodriver Orbbec Gemini topics (see autodriver_orbbec.yaml).
 module_config {
   module_library: "libfathom_component.so"
   components {
@@ -8,13 +9,13 @@ module_config {
       config_file_path: "conf/fathom.pb.txt"
       # Reader order must match FathomComponent's RGB, depth, CameraInfo types.
       readers {
-        channel: "/camera/rgb/image_raw"
+        channel: "/camera/color/image_raw"
       }
       readers {
         channel: "/camera/depth/image_raw"
       }
       readers {
-        channel: "/camera/camera_info"
+        channel: "/camera/color/camera_info"
       }
     }
   }

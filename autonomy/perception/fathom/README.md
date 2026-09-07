@@ -65,23 +65,49 @@ The exported graph contract is:
 ## C++ deployment
 
 `proto::FathomOptions` is the single C++ configuration model. It specifies
-`model_path`, `backend`, `input_width`, `input_height`, `depth_scale`, and
-`mask_threshold`, plus the component output topics. `backend` is `onnx` or
-`tensorrt`; it is passed to the project common-network engine. The configured
-width and height must exactly match the fixed profile used for ONNX export.
-The token count is selected only when exporting and is baked into the graph;
-the current C++ engine metadata does not expose it for runtime validation.
-The graph itself takes only the two tensors above; camera intrinsics are used
-after inference to project the refined depth.
+`model_path`, `backend`, `input_width`, `input_height`, `depth_scale`,
+`mask_threshold`, `max_depth_m`, optional `sky_correct`, plus the component
+output topics. `backend` is `onnx` or `tensorrt`; it is passed to the project
+common-network engine.
+
+### TensorRT / lingbot_depth_trt engines
+
+Fathom accepts the lingbot_depth_trt student engine IO in addition to the
+original dual-output ONNX export:
+
+| Tensor | Fathom ONNX | lingbot TRT |
+| --- | --- | --- |
+| `image` | `[1,3,H,W]` | `[1,3,H,W]` |
+| `raw_depth` | `[1,H,W]` | `[1,1,H,W]` |
+| depth out | `refined_depth` | `pred_depth` |
+| `validity` | required | synthesized from `pred > 0` |
+
+Place `student_fp16.engine` under `model/` (gitignored) or point `model_path`
+at an absolute path. Sample config:
+
+```text
+model_path: ".../fathom/model/student_fp16.engine"
+backend: "tensorrt"
+input_width: 640
+input_height: 480
+depth_scale: 0.001
+max_depth_m: 50.0
+sky_correct { enabled: true ... }
+```
+
+Build with `-DBUILD_TENSORRT=ON` and a discoverable TensorRT install
+(`NvInfer.h` + `libnvinfer`). The configured width and height must match the
+engine profile (480×640 for the shipped student FP16 engine).
 
 ```cpp
 proto::FathomOptions options;
 options.set_model_path("/models/fathom.onnx");
-options.set_backend("onnx");  // Or "tensorrt".
+options.set_backend("onnx");  // Or "tensorrt" for .engine / .plan.
 options.set_input_width(640);
 options.set_input_height(480);
 options.set_depth_scale(0.001F);  // Incoming 16UC1 millimetres to metres.
 options.set_mask_threshold(0.5F);
+options.set_max_depth_m(50.0F);
 options.set_refined_depth_topic("/perception/fathom/refined_depth");
 options.set_point_cloud_topic("/perception/fathom/points");
 ```
@@ -94,10 +120,10 @@ automsgs `Image` RGB/depth and `CameraInfo`, and publishes an automsgs `Image`
 aligned input images. Transport topics are owned by the component protobuf
 options and remain independent from `PerceptionOptions`.
 
-The concrete model engine and autolink component are compiled only when
-`BUILD_ONNXRUNTIME=ON` and ONNX Runtime is found. Option validation, RGB-D
-preprocessing, projection, and the injected-runner `DepthRefiner` remain
-available without that runtime.
+The concrete model engine and autolink component are compiled when
+`BUILD_ONNXRUNTIME` / ONNX Runtime **or** `BUILD_TENSORRT` / TensorRT is
+available. Option validation, RGB-D preprocessing, sky correction, projection,
+and the injected-runner `DepthRefiner` remain available without those runtimes.
 
 `PrepareRgbd` accepts `bgr8` and `rgb8` color input. Depth input can be
 `16UC1` sensor units or `32FC1`; both are multiplied by `depth_scale` before
@@ -136,12 +162,11 @@ fathom/
 
 The DAG reader order is fixed: RGB `Image`, raw-depth `Image`, then
 `CameraInfo`. The sample component configuration is
-`conf/fathom.pb.txt`; it uses Autosim's camera topics
-`/camera/rgb/image_raw`, `/camera/depth/image_raw`, and
-`/camera/camera_info`. Autosim publishes `rgb8` and metric `32FC1`, so the
-sample uses `depth_scale: 1.0`. Replace its `/models/fathom.onnx` placeholder
-with a deployed model whose fixed width and height match `input_width` and
-`input_height`. No model artifacts are stored in this repository.
+`conf/fathom.pb.txt`; it targets Orbbec Gemini topics
+`/camera/color/image_raw`, `/camera/depth/image_raw`, and
+`/camera/color/camera_info` with `backend: tensorrt` and the local
+`model/student_fp16.engine` artifact. For Autosim (`rgb8` + metric `32FC1`),
+set `depth_scale: 1.0` and point readers at `/camera/rgb/image_raw` as before.
 
 The component publishes a `32FC1` metric refined-depth `Image` to
 `/perception/fathom/refined_depth` and an organized XYZ `PointCloud2` to

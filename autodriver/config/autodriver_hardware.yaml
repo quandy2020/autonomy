@@ -1,16 +1,14 @@
-# Autodriver hardware config — Intel RealSense D455
+# Autodriver hardware config.
 # export AUTODRIVER_PATH=<directory containing config/>
+#
+# Camera streams stay here (channel / enable / stream / resolution).
+# Vendor device params live under config/camera/<vendor>/ and are merged with:
+#   params_file: camera/orbbec/gemini_330.yaml
+# Inline params: override the file (e.g. frame_id, serial).
 #
 # Optional motion-compensator pose feed (nav_msgs/Odometry):
 # compensator:
 #   pose_channel: /localization/odom
-#
-# Channels align with ros2/realsense-ros (realsense2_camera) defaults,
-# using automsgs on Autolink instead of ROS 2 topics.
-#
-# RealSense device options (shared by all streams on the same camera):
-#   emitter_enabled: false   # disable IR projector speckles on infra streams
-#   enable_ir_emitter: false # alias for emitter_enabled (realsense-ros style)
 
 sensors:
   lidar_2d:
@@ -51,12 +49,20 @@ sensors:
       baudrate: 921600
       fps: 400
 
+    - name: orbbec_imu
+      enable: false
+      channel: /camera/gyro_accel/sample
+      backend: orbbec
+      params_file: camera/orbbec/gemini_330.yaml
+      params:
+        frame_id: camera_gyro_optical_frame
+
     - name: realsense_d455_imu
-      enable: true
+      enable: false
       channel: /camera/imu
       backend: realsense
+      params_file: camera/realsense/d455.yaml
       params:
-        model: D455
         frame_id: camera_imu_optical_frame
 
   gps:
@@ -67,77 +73,148 @@ sensors:
       baudrate: 9600
 
   camera:
-    - name: realsense_d455_color
+    # --- Orbbec Gemini 330 (channels align OrbbecSDK_ROS2) ---
+    - name: orbbec_color
       enable: true
+      channel: /camera/color/image_raw
+      backend: orbbec
+      stream: color
+      width: 0
+      height: 0
+      fps: 0
+      params_file: camera/orbbec/gemini_330.yaml
+      params:
+        frame_id: camera_color_optical_frame
+
+    - name: orbbec_depth
+      enable: true
+      channel: /camera/depth/image_raw
+      backend: orbbec
+      stream: depth
+      width: 0
+      height: 0
+      fps: 0
+      params_file: camera/orbbec/gemini_330.yaml
+      params:
+        frame_id: camera_depth_optical_frame
+
+    - name: orbbec_left_ir
+      enable: true
+      channel: /camera/left_ir/image_raw
+      backend: orbbec
+      stream: left_ir
+      width: 0
+      height: 0
+      fps: 0
+      params_file: camera/orbbec/gemini_330.yaml
+      params:
+        frame_id: camera_left_ir_optical_frame
+
+    - name: orbbec_right_ir
+      enable: true
+      channel: /camera/right_ir/image_raw
+      backend: orbbec
+      stream: right_ir
+      width: 0
+      height: 0
+      fps: 0
+      params_file: camera/orbbec/gemini_330.yaml
+      params:
+        frame_id: camera_right_ir_optical_frame
+
+    # --- Intel RealSense D455 (channels align realsense-ros) ---
+    - name: realsense_d455_color
+      enable: false
       channel: /camera/color/image_raw
       backend: realsense
       stream: color
       width: 848
       height: 480
       fps: 30
+      params_file: camera/realsense/d455.yaml
       params:
-        model: D455
-        emitter_enabled: false
         frame_id: camera_color_optical_frame
 
     - name: realsense_d455_depth
-      enable: true
+      enable: false
       channel: /camera/depth/image_rect_raw
       backend: realsense
       stream: depth
       width: 848
       height: 480
       fps: 30
+      params_file: camera/realsense/d455.yaml
       params:
-        model: D455
         frame_id: camera_depth_optical_frame
 
     - name: realsense_d455_ir1
-      enable: true
+      enable: false
       channel: /camera/infra1/image_rect_raw
       backend: realsense
       stream: ir1
       width: 848
       height: 480
       fps: 30
+      params_file: camera/realsense/d455.yaml
       params:
-        model: D455
         frame_id: camera_infra1_optical_frame
 
     - name: realsense_d455_ir2
-      enable: true
+      enable: false
       channel: /camera/infra2/image_rect_raw
       backend: realsense
       stream: ir2
       width: 848
       height: 480
       fps: 30
+      params_file: camera/realsense/d455.yaml
       params:
-        model: D455
         frame_id: camera_infra2_optical_frame
 
     - name: realsense_d455_aligned_depth
-      enable: true
+      enable: false
       channel: /camera/aligned_depth_to_color/image_raw
       backend: realsense
       stream: aligned_depth_to_color
       width: 848
       height: 480
       fps: 30
+      params_file: camera/realsense/d455.yaml
       params:
-        model: D455
         frame_id: camera_color_optical_frame
 
   point_cloud:
+    - name: orbbec_depth_points
+      enable: false
+      channel: /camera/depth/points
+      backend: orbbec
+      width: 0
+      height: 0
+      fps: 0
+      params_file: camera/orbbec/gemini_330.yaml
+      params:
+        frame_id: camera_depth_optical_frame
+
+    - name: orbbec_registered_points
+      enable: false
+      channel: /camera/depth_registered/points
+      backend: orbbec
+      width: 0
+      height: 0
+      fps: 0
+      params_file: camera/orbbec/gemini_330.yaml
+      params:
+        frame_id: camera_depth_optical_frame
+
     - name: realsense_d455_points
-      enable: true
+      enable: false
       channel: /camera/depth/color/points
       backend: realsense
       width: 848
       height: 480
       fps: 30
+      params_file: camera/realsense/d455.yaml
       params:
-        model: D455
         frame_id: camera_depth_optical_frame
 
   range:

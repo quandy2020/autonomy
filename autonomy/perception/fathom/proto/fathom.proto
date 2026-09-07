@@ -2,22 +2,45 @@ syntax = "proto3";
 
 package autonomy.perception.fathom.proto;
 
+// Optional sky far-field hallucination correction (LingBot / lingbot_depth_trt).
+message SkyCorrectOptions {
+  bool enabled = 1;
+  float top_frac = 2;
+  int32 sat_max = 3;
+  int32 val_min = 4;
+  float tex_max = 5;
+  float far_floor = 6;
+  int32 min_far_area = 7;
+  float near_thresh = 8;
+  float near_grow = 9;
+  int32 min_area = 10;
+  float fallback_far = 11;
+}
+
 // Single runtime configuration for Fathom model execution and publication.
 message FathomOptions {
-  // Fixed-profile ONNX or TensorRT model artifact.
+  // Fixed-profile ONNX (.onnx) or TensorRT (.engine / .plan) artifact.
   string model_path = 1;
   // Common-network backend identifier: "onnx" or "tensorrt".
   string backend = 2;
-  // Model input width in pixels.
+  // Model input width in pixels (must match the fixed engine profile).
   uint32 input_width = 3;
   // Model input height in pixels.
   uint32 input_height = 4;
   // Multiplier converting incoming depth samples to meters.
+  // Use 0.001 for millimeter 16UC1; 1.0 for metric 32FC1.
   float depth_scale = 5;
-  // Minimum model validity score accepted for point projection.
+  // Minimum validity score accepted for point projection when the model
+  // emits a validity map. Engines without validity synthesize 1.0 / 0.0
+  // from positive predicted depth, so any threshold in (0, 1] works.
   float mask_threshold = 6;
   // Output topic for the refined 32FC1 metric depth image.
   string refined_depth_topic = 7;
   // Output topic for the organized XYZ point cloud.
   string point_cloud_topic = 8;
+  // Clip preprocessed depth to [0, max_depth_m] before inference (metres).
+  // Values below 0.01 m are treated as invalid (zero). 0 disables clipping.
+  float max_depth_m = 9;
+  // Optional outdoor sky near-value hallucination correction.
+  SkyCorrectOptions sky_correct = 10;
 }

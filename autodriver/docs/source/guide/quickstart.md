@@ -47,13 +47,16 @@ Linux 上若找到 `libudev`，会自动启用热插拔（宏 `AUTODRIVER_HAVE_U
 
 ### 直接运行
 
-默认读取 `config/autodriver_hardware.yaml`：
+默认读取 `config/autodriver_hardware.yaml`。相机通道写在该文件中；厂商设备参数在
+`config/camera/<vendor>/`，用 `params_file` 引用。
 
 ```bash
 autodriver
+# 或
+autodriver $AUTODRIVER_PATH autodriver_hardware.yaml
 ```
 
-编辑 YAML：将要用的传感器设为 `enable: true`。当前示例默认打开 RealSense D455 相关条目。
+编辑 YAML：将要用的传感器设为 `enable: true`。
 
 参数：
 
