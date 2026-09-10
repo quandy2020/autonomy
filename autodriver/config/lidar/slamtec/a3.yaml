@@ -1,0 +1,11 @@
+# Slamtec RPLidar A3 — device params (rplidar_ros rplidar_a3.launch)
+
+model: A3
+channel_type: serial
+baud: 256000
+frame_id: laser
+inverted: false
+angle_compensate: true
+scan_mode: Sensitivity
+scan_frequency: 10
+range_min: 0.15

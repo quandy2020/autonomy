@@ -214,9 +214,30 @@ class CameraFrame
     }
 };
 
-// Two-dimensional lidar scan using sensor_msgs/LaserScan.
-using LidarScan =
-    TypedSample<SensorType::kLidar2d, automsgs::msgs::sensor_msgs::LaserScan>;
+// Two-dimensional lidar scan using sensor_msgs/LaserScan with optional
+// frame_id override (same pattern as LidarCloud).
+/**
+ * @class autodriver::LidarScan
+ * @brief LaserScan sample with optional frame_id override.
+ */
+class LidarScan
+    : public TypedSample<SensorType::kLidar2d,
+                         automsgs::msgs::sensor_msgs::LaserScan> {
+ public:
+    using Base = TypedSample<SensorType::kLidar2d,
+                             automsgs::msgs::sensor_msgs::LaserScan>;
+    using Base::Base;
+
+    std::string frame_id;
+
+    Message& StampInPlace() {
+        Stamp(msg.mutable_header());
+        if (!frame_id.empty()) {
+            msg.mutable_header()->set_frame_id(frame_id);
+        }
+        return msg;
+    }
+};
 
 /**
  * @class autodriver::LidarCloud

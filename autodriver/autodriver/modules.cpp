@@ -27,6 +27,7 @@
 #include "autodriver/gps/serial_gps_driver.hpp"
 #include "autodriver/camera/backend_registry.hpp"
 #include "autodriver/lidar/backend_registry.hpp"
+#include "autodriver/lidar/lidar_2d_backend_registry.hpp"
 #include "autodriver/radar/backend_registry.hpp"
 #include "autodriver/microphone/backend_registry.hpp"
 #ifdef AUTODRIVER_HAVE_REALSENSE
@@ -134,11 +135,17 @@ CLASS_LOADER_REGISTER_CLASS(CameraModule, autodriver::SensorModule)
 // ---------------------------------------------------------------------------
 /**
  * @class Lidar2dModule
- * @brief Attach-only placeholder until a Stream/UDP backend lands.
+ * @brief 2D lidar: backends via Lidar2dBackendRegistry (e.g. rplidar|slamtec).
  */
 class Lidar2dModule
-    : public autodriver::SensorPlugin<autodriver::SensorType::kLidar2d,
-                                      false> {};
+    : public autodriver::SensorPlugin<autodriver::SensorType::kLidar2d> {
+protected:
+    std::shared_ptr<autodriver::SensorDriver> MakeDriver(
+        const autodriver::Config::Sensor& sensor) override {
+        return autodriver::lidar::Lidar2dBackendRegistry::Instance().Create(
+            sensor.backend, sensor.id, sensor.params);
+    }
+};
 
 /**
  * @class Lidar3dModule

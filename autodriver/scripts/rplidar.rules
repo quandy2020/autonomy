@@ -1,0 +1,3 @@
+# Fixed symlink /dev/rplidar for Slamtec USB-UART (CP210x).
+# idVendor/idProduct match common RPLidar A1/A2/A3 USB adapters.
+KERNEL=="ttyUSB*", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", MODE:="0666", GROUP="dialout", SYMLINK+="rplidar"

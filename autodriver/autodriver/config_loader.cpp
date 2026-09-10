@@ -240,7 +240,8 @@ void ApplyHardwareShorthand(const YAML::Node& hardware,
     if (!hardware) {
         return;
     }
-    if (backend == "serial" || backend.empty()) {
+    if (backend == "serial" || backend.empty() || backend == "rplidar" ||
+        backend == "slamtec") {
         std::string port = ReadString(hardware, "port");
         if (port.empty()) {
             port = ReadString(hardware, "device");
@@ -251,6 +252,11 @@ void ApplyHardwareShorthand(const YAML::Node& hardware,
             baud = ReadInt(hardware, "baud");
         }
         SetParamIfAbsent(params, "baud", baud);
+        if (backend == "rplidar" || backend == "slamtec") {
+            SetParamIfAbsent(params, "model", ReadString(hardware, "model"));
+            SetParamIfAbsent(params, "frame_id",
+                             ReadString(hardware, "frame_id"));
+        }
         return;
     }
     if (backend == "can") {
@@ -370,6 +376,24 @@ bool IsDeviceEnabled(const YAML::Node& node) {
 }
 
 /**
+ * @brief Reads params_file from the device node or nested params map.
+ */
+std::string ReadParamsFileField(const YAML::Node& node) {
+    if (!node || !node.IsMap()) {
+        return {};
+    }
+    std::string params_file = ReadString(node, "params_file");
+    if (!params_file.empty()) {
+        return params_file;
+    }
+    const YAML::Node params = node["params"];
+    if (params && params.IsMap()) {
+        return ReadString(params, "params_file");
+    }
+    return {};
+}
+
+/**
  * @brief Builds a typed Config::Sensor from a YAML device entry.
  */
 Config::Sensor TypedDeviceFromYaml(const YAML::Node& node,
@@ -384,11 +408,7 @@ Config::Sensor TypedDeviceFromYaml(const YAML::Node& node,
     out.autostart = true;
     out.match = ReadMatch(node["match"]);
     ReadParamsMap(node["params"], &out.params);
-    std::string params_file = ReadString(node, "params_file");
-    if (params_file.empty()) {
-        params_file = ReadString(node["params"], "params_file");
-    }
-    MergeParamsFile(params_file, &out.params);
+    MergeParamsFile(ReadParamsFileField(node), &out.params);
     out.params.erase("params_file");
     ApplyFlatDeviceFields(node, out.backend, out.module, &out.params,
                           &out.channels);
@@ -409,6 +429,203 @@ void AppendTypedList(const YAML::Node& devices, const DeviceKind& kind,
             continue;
         }
         sensors->push_back(TypedDeviceFromYaml(device, kind));
+    }
+}
+
+/**
+ * @brief Child stream/cloud/imu defaults to enabled when parent is enabled.
+ */
+bool IsChildEnabled(const YAML::Node& node) {
+    if (!node || !node.IsMap()) {
+        return true;
+    }
+    if (node["enable"]) {
+        return ReadBool(node, "enable", true);
+    }
+    if (node["attach_on_start"]) {
+        return ReadBool(node, "attach_on_start", true);
+    }
+    return true;
+}
+
+/**
+ * @brief True when a camera entry uses folded streams / point_clouds / imu.
+ */
+bool IsFoldedCameraDevice(const YAML::Node& device) {
+    return device["streams"] || device["point_clouds"] || device["imu"];
+}
+
+/**
+ * @brief Overwrites DriverParams keys from a YAML map (child overrides).
+ */
+void OverlayParamsMap(const YAML::Node& node, hardware::DriverParams* params) {
+    if (!node || !node.IsMap() || params == nullptr) {
+        return;
+    }
+    for (const auto& entry : node) {
+        (*params)[ScalarToString(entry.first)] = ScalarToString(entry.second);
+    }
+}
+
+/**
+ * @brief Builds one Sensor by inheriting parent device fields, then child overrides.
+ * @param resolved_name Bare sensor name (id prefix applied by QualifySensorId).
+ */
+Config::Sensor CameraChildFromYaml(const YAML::Node& parent,
+                                   const YAML::Node& child,
+                                   const DeviceKind& kind,
+                                   const std::string& resolved_name) {
+    Config::Sensor out;
+    out.module = kind.module;
+    out.backend = ReadString(child, "backend");
+    if (out.backend.empty()) {
+        out.backend = ReadString(parent, "backend");
+    }
+    if (out.backend.empty()) {
+        out.backend = kind.default_backend;
+    }
+
+    out.id = QualifySensorId(resolved_name, kind.id_prefix);
+    out.autostart = true;
+
+    out.match = ReadMatch(parent["match"]);
+    if (child["match"] && child["match"].IsMap()) {
+        const DeviceMatch child_match = ReadMatch(child["match"]);
+        if (!child_match.subsystem.empty()) {
+            out.match.subsystem = child_match.subsystem;
+        }
+        if (!child_match.device.empty()) {
+            out.match.device = child_match.device;
+        }
+        if (!child_match.vendor.empty()) {
+            out.match.vendor = child_match.vendor;
+        }
+        if (!child_match.product.empty()) {
+            out.match.product = child_match.product;
+        }
+        if (!child_match.serial.empty()) {
+            out.match.serial = child_match.serial;
+        }
+    }
+
+    ReadParamsMap(parent["params"], &out.params);
+    OverlayParamsMap(child["params"], &out.params);
+
+    std::string params_file = ReadParamsFileField(child);
+    if (params_file.empty()) {
+        params_file = ReadParamsFileField(parent);
+    }
+    MergeParamsFile(params_file, &out.params);
+    out.params.erase("params_file");
+
+    // Child flat fields win; parent fills gaps (width/height/fps/channel/…).
+    ApplyFlatDeviceFields(child, out.backend, out.module, &out.params,
+                          &out.channels);
+    ApplyFlatDeviceFields(parent, out.backend, out.module, &out.params,
+                          &out.channels);
+
+    // Top-level frame_id on imu / children (not only CameraModule paths).
+    SetParamIfAbsent(&out.params, "frame_id", ReadString(child, "frame_id"));
+    SetParamIfAbsent(&out.params, "frame_id", ReadString(parent, "frame_id"));
+
+    FinalizeSensor(&out);
+    return out;
+}
+
+/**
+ * @brief Prefixes a child leaf name with device name when not already qualified.
+ */
+std::string QualifyChildLeafName(const std::string& device_name,
+                                 const std::string& leaf) {
+    if (leaf.empty()) {
+        return device_name;
+    }
+    if (leaf.rfind(device_name + "_", 0) == 0 || leaf == device_name) {
+        return leaf;
+    }
+    return device_name + "_" + leaf;
+}
+
+/**
+ * @brief Expands a folded camera device into Camera / PointCloud / Imu sensors.
+ */
+void ExpandFoldedCameraDevice(const YAML::Node& device,
+                              std::vector<Config::Sensor>* sensors) {
+    static constexpr DeviceKind kCamera{"CameraModule", "camera/", "realsense"};
+    static constexpr DeviceKind kPointCloud{"PointCloudModule", "camera/",
+                                            "realsense"};
+    static constexpr DeviceKind kImu{"ImuModule", "imu/", "realsense"};
+
+    const std::string device_name = ReadString(device, "name");
+    if (device_name.empty()) {
+        AINFO << "folded camera device missing name; skipped";
+        return;
+    }
+
+    const YAML::Node streams = device["streams"];
+    if (streams && streams.IsSequence()) {
+        for (const auto& stream : streams) {
+            if (!IsChildEnabled(stream)) {
+                continue;
+            }
+            std::string leaf = ReadString(stream, "name");
+            if (leaf.empty()) {
+                leaf = ReadString(stream, "stream");
+            }
+            const std::string resolved =
+                QualifyChildLeafName(device_name, leaf);
+            sensors->push_back(
+                CameraChildFromYaml(device, stream, kCamera, resolved));
+        }
+    }
+
+    const YAML::Node clouds = device["point_clouds"];
+    if (clouds && clouds.IsSequence()) {
+        for (const auto& cloud : clouds) {
+            if (!IsChildEnabled(cloud)) {
+                continue;
+            }
+            std::string leaf = ReadString(cloud, "name");
+            if (leaf.empty()) {
+                leaf = "points";
+            }
+            const std::string resolved =
+                QualifyChildLeafName(device_name, leaf);
+            sensors->push_back(
+                CameraChildFromYaml(device, cloud, kPointCloud, resolved));
+        }
+    }
+
+    const YAML::Node imu = device["imu"];
+    if (imu && imu.IsMap() && IsChildEnabled(imu)) {
+        std::string leaf = ReadString(imu, "name");
+        if (leaf.empty()) {
+            leaf = "imu";
+        }
+        const std::string resolved = QualifyChildLeafName(device_name, leaf);
+        sensors->push_back(
+            CameraChildFromYaml(device, imu, kImu, resolved));
+    }
+}
+
+/**
+ * @brief Appends camera devices; expands folded streams/point_clouds/imu.
+ */
+void AppendCameraList(const YAML::Node& devices,
+                      std::vector<Config::Sensor>* sensors) {
+    static constexpr DeviceKind kCamera{"CameraModule", "camera/", "realsense"};
+    if (!devices || !devices.IsSequence()) {
+        return;
+    }
+    for (const auto& device : devices) {
+        if (!IsDeviceEnabled(device)) {
+            continue;
+        }
+        if (IsFoldedCameraDevice(device)) {
+            ExpandFoldedCameraDevice(device, sensors);
+        } else {
+            sensors->push_back(TypedDeviceFromYaml(device, kCamera));
+        }
     }
 }
 
@@ -435,9 +652,7 @@ void AppendLidarList(const YAML::Node& devices,
         return;
     }
     // Default metadata for 2D lidar entries in mixed lidar lists.
-    static constexpr DeviceKind kLidar2d{"Lidar2dModule", "lidar/", "serial"};
-
-    // Default metadata for 3D lidar entries in mixed lidar lists.
+    static constexpr DeviceKind kLidar2d{"Lidar2dModule", "lidar/", "rplidar"};
     static constexpr DeviceKind kLidar3d{"Lidar3dModule", "lidar/", "velodyne"};
     for (const auto& device : devices) {
         if (!IsDeviceEnabled(device)) {
@@ -455,9 +670,8 @@ void AppendSensorGroups(const YAML::Node& groups,
                         std::vector<Config::Sensor>* sensors) {
     static constexpr DeviceKind kImu{"ImuModule", "imu/", "serial"};
     static constexpr DeviceKind kGps{"GpsModule", "gps/", "serial"};
-    static constexpr DeviceKind kLidar2d{"Lidar2dModule", "lidar/", "serial"};
+    static constexpr DeviceKind kLidar2d{"Lidar2dModule", "lidar/", "rplidar"};
     static constexpr DeviceKind kLidar3d{"Lidar3dModule", "lidar/", "velodyne"};
-    static constexpr DeviceKind kCamera{"CameraModule", "camera/", "realsense"};
     static constexpr DeviceKind kRange{"RangeModule", "range/", "serial"};
     static constexpr DeviceKind kPointCloud{"PointCloudModule", "camera/",
                                             "realsense"};
@@ -473,7 +687,7 @@ void AppendSensorGroups(const YAML::Node& groups,
     AppendTypedList(groups["imu_devices"], kImu, sensors);
     AppendTypedList(groups["gps"], kGps, sensors);
     AppendTypedList(groups["gps_devices"], kGps, sensors);
-    AppendTypedList(groups["camera"], kCamera, sensors);
+    AppendCameraList(groups["camera"], sensors);
     AppendTypedList(groups["range"], kRange, sensors);
     AppendTypedList(groups["radar"], kRadar, sensors);
     AppendTypedList(groups["microphone"], kMicrophone, sensors);
@@ -495,11 +709,7 @@ Config::Sensor SensorFromYaml(const YAML::Node& node) {
     ReadChannels(node, &out.channels);
     out.match = ReadMatch(node["match"]);
     ReadParamsMap(node["params"], &out.params);
-    std::string params_file = ReadString(node, "params_file");
-    if (params_file.empty()) {
-        params_file = ReadString(node["params"], "params_file");
-    }
-    MergeParamsFile(params_file, &out.params);
+    MergeParamsFile(ReadParamsFileField(node), &out.params);
     out.params.erase("params_file");
 
     SetParamIfAbsent(&out.params, "device", ReadString(node, "device"));

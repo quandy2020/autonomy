@@ -1,0 +1,11 @@
+# Slamtec RPLidar A2 (A2M8 default baud) — device params
+# For A2M7 / A2M12 set baud: 256000 (see rplidar_a2m7 / a2m12.launch)
+
+model: A2
+channel_type: serial
+baud: 115200
+frame_id: laser
+inverted: false
+angle_compensate: true
+scan_frequency: 10
+range_min: 0.15
