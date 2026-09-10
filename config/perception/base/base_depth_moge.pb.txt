@@ -1,0 +1,19 @@
+# Base runtime sample: MoGe-2 monocular depth only.
+# Weights: config/perception/base/moge-2-vits-normal_518x518_fp16.engine
+backend: BACKEND_TENSORRT
+input_width: 518
+input_height: 518
+confidence_threshold: 0.25
+nms_iou_threshold: 0.7
+max_detections: 100
+camera_frame: "camera_color_optical_frame"
+
+tasks {
+  kind: TASK_DEPTH
+  enable: true
+  model_path: "/workspace/autonomy/src/autonomy/config/perception/base/moge-2-vits-normal_518x518_fp16.engine"
+  topic: "/perception/base/depth"
+  depth_backend: DEPTH_BACKEND_MOGE
+  moge_mask_threshold: 0.5
+  moge_fov_x_deg: 0
+}

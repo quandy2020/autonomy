@@ -1,0 +1,17 @@
+<!--
+  Copyright 2026 The OpenRobotic Beginner Authors (duyongquan)
+
+  Start the audio autolink component:
+    export PATH=<build>/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/audio/launch
+    autolink launch start audio.launch
+-->
+<autolink>
+  <module>
+    <name>audio</name>
+    <dag_conf>audio/dag/audio.dag</dag_conf>
+    <process_name>audio</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

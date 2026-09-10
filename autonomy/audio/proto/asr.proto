@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package autonomy.audio.proto;
+
+import "automsgs/msgs/std_msgs/header.proto";
+
+// Speech recognition result from the audio component ASR engine.
+message AsrResult {
+  automsgs.msgs.std_msgs.Header header = 1;
+  string text = 2;
+  float confidence = 3;
+  bool is_final = 4;
+  string language = 5;
+}

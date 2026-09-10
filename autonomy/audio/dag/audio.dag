@@ -1,0 +1,18 @@
+# Audio sound-source direction / motion component.
+# Readers must match AudioComponent template order (single AudioData).
+module_config {
+  module_library: "libaudio_component.so"
+  components {
+    class_name: "autonomy::audio::AudioComponent"
+    config {
+      name: "audio"
+      config_file_path: "conf/audio.pb.txt"
+      readers {
+        channel: "/mic/cabin/audio"
+        qos_profile {
+          depth: 1
+        }
+      }
+    }
+  }
+}

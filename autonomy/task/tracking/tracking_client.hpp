@@ -39,9 +39,9 @@ namespace tracking {
 
 constexpr char kTrackingClientBlackboardKey[] = "tracking_client";
 constexpr double kDefaultFollowDistance = 1.5;
-constexpr char kShadowSelectTopic[] = "/perception/shadow/select";
-constexpr char kShadowTargetTopic[] = "/perception/shadow/target";
-constexpr char kShadowPathTopic[] = "/perception/shadow/path";
+constexpr char kFollowSelectTopic[] = "/perception/follow/select";
+constexpr char kFollowTargetTopic[] = "/perception/follow/target";
+constexpr char kFollowPathTopic[] = "/perception/follow/path";
 
 class TrackingClientTestApi;
 
@@ -53,7 +53,7 @@ public:
     using Selection = automsgs::msgs::std_msgs::String;
     using SelectionPublisher = std::function<bool(const Selection&)>;
 
-    inline static constexpr std::chrono::milliseconds kShadowDataTimeout{500};
+    inline static constexpr std::chrono::milliseconds kFollowDataTimeout{500};
 
     static Ptr Create(navigation::NavigationClient::Ptr navigation);
     static Ptr Create(std::shared_ptr<autolink::Node> node);

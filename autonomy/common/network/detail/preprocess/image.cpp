@@ -77,7 +77,7 @@ bool Preprocess(const cv::Mat& bgr, const ModelTensorInfo& input,
     const LayoutPolicy layout = ResolveLayout(opt.layout, view.shape.Dims());
 
     cv::Mat resized;
-    if (!Resize(bgr, shape.height(), shape.width(), opt, &resized, meta, error)) {
+    if (!Resize(bgr, shape.height, shape.width, opt, &resized, meta, error)) {
         return false;
     }
 
@@ -95,12 +95,12 @@ bool Preprocess(const cv::Mat& bgr, const ModelTensorInfo& input,
 
     const int channels = std::max(1, shape.channel_count);
     ApplyNorm(&nchw, opt.normalize, opt.custom_normalize, channels,
-              shape.height(), shape.width(), opt.swap_red_blue);
+              shape.height, shape.width, opt.swap_red_blue);
 
     const bool layout_ok = VisitLayout(layout, [&](auto tag) {
         constexpr LayoutPolicy selected = decltype(tag)::value;
-        return ToLayout<selected>(std::move(nchw), channels, shape.height(),
-                                  shape.width(), tensor);
+        return ToLayout<selected>(std::move(nchw), channels, shape.height,
+                                  shape.width, tensor);
     });
     if (!layout_ok) {
         SetErrorMessage(error, "layout conversion failed.");

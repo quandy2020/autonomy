@@ -16,8 +16,6 @@
 
 #include "autonomy/perception/common/perception_interface.hpp"
 
-#include "autonomy/perception/ariadne/common/types.hpp"
-
 namespace autonomy {
 namespace perception {
 namespace common {
@@ -46,20 +44,20 @@ proto::PerceptionOptions LoadOptions(
   options.set_camera_frame("camera_depth_optical_frame");
   options.set_map_frame("map");
   options.set_planner_hz(2.0);
-  options.set_path_topic(exploration::kExplorationPathTopic);
-  options.set_waypoint_topic(exploration::kExplorationWaypointTopic);
-  options.set_map_topic(exploration::kExplorationMapTopic);
+  options.set_path_topic("/exploration/path");
+  options.set_waypoint_topic("/exploration/waypoint");
+  options.set_map_topic("/exploration/map");
   options.set_explorer_backend("rgbd_tare");
   options.set_point_cloud_topic("/velodyne_points");
-  options.set_global_path_topic(exploration::kExplorationGlobalPathTopic);
-  options.set_local_path_topic(exploration::kExplorationLocalPathTopic);
-  options.set_exploration_finished_topic(exploration::kExplorationFinishedTopic);
-  options.set_exploration_progress_topic(exploration::kExplorationProgressTopic);
-  options.set_navigation_boundary_topic(exploration::kNavigationBoundaryTopic);
+  options.set_global_path_topic("/exploration/global_path");
+  options.set_local_path_topic("/exploration/local_path");
+  options.set_exploration_finished_topic("/exploration/finished");
+  options.set_exploration_progress_topic("/exploration/progress");
+  options.set_navigation_boundary_topic("/exploration/navigation_boundary");
   options.set_terrain_map_topic("/terrain_map");
   options.set_enable_exploration_nav_bridge(true);
   options.set_prior_map_topic("/map");
-  options.set_vg_markers_topic(exploration::kExplorationVgMarkersTopic);
+  options.set_vg_markers_topic("/exploration/vg_markers");
 
   if (parameter_dictionary == nullptr) {
     return options;
