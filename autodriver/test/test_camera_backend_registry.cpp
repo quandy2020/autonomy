@@ -24,16 +24,18 @@
 TEST(CameraBackendRegistry, OrbbecRegistered) {
     auto& cameras = autodriver::camera::CameraBackendRegistry::Instance();
     auto& clouds = autodriver::camera::PointCloudBackendRegistry::Instance();
-    EXPECT_TRUE(cameras.Has("orbbec"));
-    EXPECT_TRUE(clouds.Has("orbbec"));
+    EXPECT_TRUE(cameras.HasBackend("orbbec"));
+    EXPECT_TRUE(clouds.HasBackend("orbbec"));
+    EXPECT_EQ(cameras.HasBackend(""), cameras.HasBackend("realsense"));
+    EXPECT_EQ(clouds.HasBackend(""), clouds.HasBackend("realsense"));
     autodriver::hardware::DriverParams params;
     if (autodriver::io::OrbbecAvailable()) {
-        EXPECT_NE(cameras.Create("orbbec", "camera/orbbec", params), nullptr);
-        EXPECT_NE(clouds.Create("orbbec", "camera/orbbec_points", params),
+        EXPECT_NE(cameras.CreateDriver("orbbec", "camera/orbbec", params), nullptr);
+        EXPECT_NE(clouds.CreateDriver("orbbec", "camera/orbbec_points", params),
                   nullptr);
     } else {
-        EXPECT_EQ(cameras.Create("orbbec", "camera/orbbec", params), nullptr);
-        EXPECT_EQ(clouds.Create("orbbec", "camera/orbbec_points", params),
+        EXPECT_EQ(cameras.CreateDriver("orbbec", "camera/orbbec", params), nullptr);
+        EXPECT_EQ(clouds.CreateDriver("orbbec", "camera/orbbec_points", params),
                   nullptr);
     }
 }

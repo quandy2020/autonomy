@@ -64,11 +64,7 @@ public:
   ~CanSocket();
 
   CanSocket(const CanSocket &) = delete;
-
-  /**
-   * @brief Copy assignment operator (deleted)
-   */
-  CanSocket & operator=(const CanSocket &) = delete;
+CanSocket & operator=(const CanSocket &) = delete;
 
   /**
    * @brief Opens a raw SocketCAN interface for reading frames.

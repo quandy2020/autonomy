@@ -97,13 +97,13 @@ bool HesaiUdpDriver::InitPacket() {
 
 void HesaiUdpDriver::WriteScan(std::shared_ptr<SensorSample> scan) {
     if (callback_ && scan) {
-        callback_(scan->Clone());
+        callback_(std::move(scan));
     }
 }
 
 void HesaiUdpDriver::WritePointCloud(std::shared_ptr<SensorSample> cloud) {
     if (callback_ && cloud) {
-        callback_(cloud->Clone());
+        callback_(std::move(cloud));
     }
 }
 
@@ -249,9 +249,8 @@ void HesaiUdpDriver::ReadLoop() {
 
 void HesaiUdpDriver::ProcessLoop() {
     while (running_.load()) {
-        auto item = packet_queue_->TryPop();
+        auto item = packet_queue_->WaitPop(std::chrono::milliseconds(1));
         if (!item) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
             continue;
         }
         HandlePacket(*item);
@@ -331,9 +330,10 @@ void HesaiUdpDriver::ConvertAndPublish(
     WritePointCloud(sample);
 }
 
-std::shared_ptr<SensorDriver> CreateHesaiUdpDriver(const SensorId& id,
+SensorDriver*
+CreateHesaiUdpDriver(const SensorId& id,
                                                    const DriverParams& params) {
-    return std::make_shared<HesaiUdpDriver>(id, params);
+    return new HesaiUdpDriver(id, params);
 }
 
 }  // namespace hardware

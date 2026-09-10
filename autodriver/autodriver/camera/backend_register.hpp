@@ -28,7 +28,7 @@
  * @brief Register a camera backend at static init time.
  * @param tag Unique C++ identifier suffix for the registrar object.
  * @param name Canonical backend string (e.g. "realsense").
- * @param factory Create function (may return nullptr without SDK).
+ * @param factory Creator returning owning SensorDriver* (nullptr without SDK).
  * @param ... Optional alias string literals.
  */
 #define REGISTER_CAMERA_BACKEND(tag, name, factory, ...)                      \
@@ -46,7 +46,7 @@
  * @brief Register a point_cloud backend at static init time.
  * @param tag Unique C++ identifier suffix for the registrar object.
  * @param name Canonical backend string (e.g. "realsense").
- * @param factory Create function (may return nullptr without SDK).
+ * @param factory Creator returning owning SensorDriver* (nullptr without SDK).
  * @param ... Optional alias string literals.
  */
 #define REGISTER_POINTCLOUD_BACKEND(tag, name, factory, ...)                  \

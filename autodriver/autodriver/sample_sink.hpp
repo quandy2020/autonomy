@@ -29,50 +29,61 @@
 #include "autodriver/sensor_id.hpp"
 #include "autodriver/types/sensor_sample.hpp"
 #include "autodriver/types/sensor_type.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 
 /**
  * @class autodriver::SampleSink
  * @brief Receives lifecycle events and samples; Autolink publishing lives in bridge/.
+ *
+ * SensorManager calls HandleSensorAttach before Start, HandleSensorSample on
+ * each sample (or aligned path), and HandleSensorDetach on Detach.
  */
 class SampleSink {
 public:
-    /**
-     * @brief Virtual destructor for polymorphic sinks.
-     */
-    virtual ~SampleSink() = default;
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(SampleSink)
 
-    /**
-     * @brief Open writers or channels when a sensor is attached.
-     * @param sensor Sensor configuration used to create output channels.
-     * @param type Sensor modality of the attached instance.
-     * @return False when channel setup fails.
-     */
-    virtual bool OnAttach(const Config::Sensor& sensor, SensorType type) = 0;
+  /**
+   * @brief Virtual destructor for polymorphic sinks.
+   */
+  virtual ~SampleSink() = default;
 
-    /**
-     * @brief Tear down writers when a sensor is detached.
-     * @param id Sensor identifier whose output channels should be closed.
-     */
-    virtual void OnDetach(const SensorId& id) = 0;
+  /**
+   * @brief Open writers or channels when a sensor is attached.
+   * @param sensor Sensor configuration used to create output channels.
+   * @param type Sensor modality of the attached instance.
+   * @return false when channel setup fails (attach should abort).
+   */
+  virtual bool HandleSensorAttach(const Config::Sensor& sensor,
+                                  SensorType type) = 0;
 
-    /**
-     * @brief Publish or forward a captured sample.
-     * @param sample Shared sample to emit downstream.
-     */
-    virtual void OnSample(std::shared_ptr<SensorSample> sample) = 0;
+  /**
+   * @brief Tear down writers when a sensor is detached.
+   * @param id Sensor identifier whose output channels should be closed.
+   */
+  virtual void HandleSensorDetach(const SensorId& id) = 0;
 
-    /**
-     * @brief Optional device health update (default: ignore).
-     */
-    virtual void OnDiagnostic(const diagnostics::DiagnosticSnapshot&) {}
+  /**
+   * @brief Publish or forward a captured sample.
+   * @param sample Shared sample to emit downstream (may be null; ignore).
+   */
+  virtual void HandleSensorSample(std::shared_ptr<SensorSample> sample) = 0;
+
+  /**
+   * @brief Optional device health update (default: ignore).
+   * @param snapshot Diagnostic payload from SensorManager::ReportDiagnostic.
+   */
+  virtual void HandleDiagnostic(const diagnostics::DiagnosticSnapshot&) {}
 
 protected:
-    /**
-     * @brief Protected default constructor for derived sinks.
-     */
-    SampleSink() = default;
+  /**
+   * @brief Protected default constructor for derived sinks.
+   */
+  SampleSink() = default;
 };
 
 }  // namespace autodriver

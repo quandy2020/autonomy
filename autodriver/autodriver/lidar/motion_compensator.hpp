@@ -28,6 +28,7 @@
 
 #include <Eigen/Geometry>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace lidar {
@@ -54,6 +55,11 @@ struct CompensatorOptions {
  */
 class MotionCompensator {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(MotionCompensator)
+
     explicit MotionCompensator(CompensatorOptions options = {});
 
     /** Install the pose source used by Compensate(). */

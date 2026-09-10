@@ -22,68 +22,97 @@
 #ifndef AUTODRIVER_LIDAR_BACKEND_REGISTRY_HPP_
 #define AUTODRIVER_LIDAR_BACKEND_REGISTRY_HPP_
 
-#include <functional>
 #include <initializer_list>
-#include <memory>
-#include <mutex>
 #include <string>
-#include <unordered_map>
 
+#include "autodriver/common/named_factory.hpp"
 #include "autodriver/driver_params.hpp"
 #include "autodriver/sensor_driver.hpp"
 #include "autodriver/sensor_id.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace lidar {
 
-/** Factory: (SensorId, DriverParams) → SensorDriver (or nullptr). */
-using LidarDriverFactory = std::function<std::shared_ptr<SensorDriver>(
-    const SensorId& id, const hardware::DriverParams& params)>;
+/**
+ * @brief Creator for autolink::common::Factory: returns owning SensorDriver*.
+ * @param id Sensor instance id from YAML (e.g. "lidar/top").
+ * @param params Backend-specific key/value map from YAML.
+ * @return New SensorDriver, or nullptr when construction fails / stub.
+ */
+using LidarDriverFactory =
+    NamedProductFactory<SensorDriver, SensorId>::Creator;
 
 /**
  * @class autodriver::lidar::LidarBackendRegistry
- * @brief Maps lidar_3d backend name → driver factory.
+ * @brief Maps YAML `lidar_3d.backend` → SensorDriver factory.
  *
- * YAML `lidar_3d` + `backend` resolves here via Lidar3dModule
- * (e.g. velodyne / udp, hesai / pandar).
+ * Internally uses NamedProductFactory (autolink::common::Factory).
+ * Built-ins: velodyne (alias udp), hesai (alias pandar), livox; stubs for
+ * rslidar / lslidar / seyond / vanjee.
  */
 class LidarBackendRegistry {
 public:
-    /** Process-wide singleton. */
-    static LidarBackendRegistry& Instance();
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(LidarBackendRegistry)
 
-    /** Register or replace a factory under @p name. */
-    void Register(const std::string& name, LidarDriverFactory factory);
+  /**
+   * @brief Access the process-wide singleton (static-init backends register here).
+   * @return Reference to the unique LidarBackendRegistry instance.
+   */
+  static LidarBackendRegistry& Instance();
 
-    /** Map @p alias to an already-registered canonical @p name. */
-    void RegisterAlias(const std::string& alias, const std::string& canonical);
+  /**
+   * @brief Register or replace a factory under a canonical backend name.
+   * @param name Canonical backend string (e.g. "velodyne").
+   * @param factory Creator returning new SensorDriver*.
+   */
+  void RegisterBackend(const std::string& name, LidarDriverFactory factory);
 
-    /**
-     * @brief Construct a driver for @p backend after alias resolve.
-     * @return nullptr when unknown or Create returns null.
-     */
-    std::shared_ptr<SensorDriver> Create(
-        const std::string& backend, const SensorId& id,
-        const hardware::DriverParams& params) const;
+  /**
+   * @brief Map an alias onto an already-registered canonical backend name.
+   * @param alias Alternate YAML name (e.g. "udp").
+   * @param canonical Existing registered name (e.g. "velodyne").
+   */
+  void RegisterBackendAlias(const std::string& alias,
+                            const std::string& canonical);
 
-    /** Whether @p backend (or its alias target) is registered. */
-    bool Has(const std::string& backend) const;
+  /**
+   * @brief Create a SensorDriver for @p backend after alias resolve.
+   * @param backend YAML `backend` or alias.
+   * @param id Sensor instance id passed to the factory.
+   * @param params YAML params (and shorthand merges).
+   * @return Shared driver, or nullptr if unknown / creator returns null.
+   */
+  SensorDriver::SharedPtr CreateDriver(
+      const std::string& backend, const SensorId& id,
+      const hardware::DriverParams& params) const;
+
+  /**
+   * @brief Check whether @p backend resolves to a registered factory.
+   * @param backend Canonical name or alias.
+   * @return true if a factory is available after alias resolve.
+   */
+  bool HasBackend(const std::string& backend) const;
 
 private:
-    LidarBackendRegistry() = default;
+  /**
+   * @brief Private default constructor for the process-wide singleton.
+   */
+  LidarBackendRegistry() = default;
 
-    /** Follow aliases until a factory name or unchanged string. */
-    std::string Resolve(const std::string& backend) const;
-
-    mutable std::mutex mutex_;
-    // backend name → factory.
-    std::unordered_map<std::string, LidarDriverFactory> factories_;
-    // alias → canonical name.
-    std::unordered_map<std::string, std::string> aliases_;
+  NamedProductFactory<SensorDriver, SensorId> factory_;
 };
 
 /**
- * @brief Register @p name and optional @p aliases in one call (used by macros).
+ * @brief Register a canonical backend plus optional aliases in one call.
+ *
+ * Used by REGISTER_LIDAR_BACKEND at static init.
+ * @param name Canonical backend string.
+ * @param factory LidarDriverFactory for @p name.
+ * @param aliases Optional null-terminated C string aliases (empty skipped).
  */
 void RegisterLidarBackendWithAliases(
     const std::string& name, LidarDriverFactory factory,

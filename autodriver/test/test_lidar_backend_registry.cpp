@@ -24,7 +24,7 @@
 namespace {
 
 struct DummyDriver : autodriver::SensorDriver {
-    autodriver::SensorType GetType() const override {
+    autodriver::SensorType GetSensorType() const override {
         return autodriver::SensorType::kLidar3d;
     }
     const autodriver::SensorId& GetSensorId() const override { return id_; }
@@ -39,18 +39,18 @@ struct DummyDriver : autodriver::SensorDriver {
 
 TEST(LidarBackendRegistry, RegisterAndCreate) {
     auto& reg = autodriver::lidar::LidarBackendRegistry::Instance();
-    reg.Register("fake_lidar_ut", [](const autodriver::SensorId& id,
+    reg.RegisterBackend("fake_lidar_ut", [](const autodriver::SensorId& id,
                                      const autodriver::hardware::DriverParams&) {
-        auto driver = std::make_shared<DummyDriver>();
+        auto* driver = new DummyDriver();
         driver->id_ = id;
         return driver;
     });
-    reg.RegisterAlias("fake_alias_ut", "fake_lidar_ut");
-    EXPECT_TRUE(reg.Has("fake_lidar_ut"));
-    EXPECT_TRUE(reg.Has("fake_alias_ut"));
+    reg.RegisterBackendAlias("fake_alias_ut", "fake_lidar_ut");
+    EXPECT_TRUE(reg.HasBackend("fake_lidar_ut"));
+    EXPECT_TRUE(reg.HasBackend("fake_alias_ut"));
     autodriver::hardware::DriverParams params;
-    auto driver = reg.Create("fake_alias_ut", "lidar/x", params);
+    auto driver = reg.CreateDriver("fake_alias_ut", "lidar/x", params);
     ASSERT_NE(driver, nullptr);
     EXPECT_EQ(driver->GetSensorId(), "lidar/x");
-    EXPECT_EQ(reg.Create("no_such_backend_ut", "lidar/y", params), nullptr);
+    EXPECT_EQ(reg.CreateDriver("no_such_backend_ut", "lidar/y", params), nullptr);
 }

@@ -121,10 +121,15 @@ void CanImuDriver::TryEmit() {
     have_gyro_ = false;
 }
 
-std::shared_ptr<SensorDriver> CreateCanImuDriver(const SensorId& id,
+SensorDriver*
+CreateCanImuDriver(const SensorId& id,
                                                  const DriverParams& params) {
-    return std::make_shared<CanImuDriver>(id, params);
+    return new CanImuDriver(id, params);
 }
 
 }  // namespace hardware
 }  // namespace autodriver
+
+#include "autodriver/imu/backend_register.hpp"
+
+REGISTER_IMU_BACKEND(can, "can", autodriver::hardware::CreateCanImuDriver, "");

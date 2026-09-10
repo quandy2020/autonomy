@@ -31,6 +31,7 @@
 #include "autodriver/driver_params.hpp"
 #include "autodriver/imu/wit_motion_parser.hpp"
 #include "autodriver/sensor_driver.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace hardware {
@@ -42,6 +43,11 @@ namespace hardware {
 class SerialImuDriver : public SensorDriver
 {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(SerialImuDriver)
+
   /**
    * @brief Stores sensor identity and WIT-motion parser scale factors.
    */
@@ -56,7 +62,7 @@ public:
    * @brief Report sensor type
    * @return SensorType::kImu
    */
-  SensorType GetType() const override { return SensorType::kImu; }
+  SensorType GetSensorType() const override { return SensorType::kImu; }
 
   /**
    * @brief Return this driver's sensor identifier
@@ -97,7 +103,7 @@ private:
   DriverParams params_;
 
   // Serial (or future TCP/UDP) transport to the IMU module.
-  std::unique_ptr<common::Stream> stream_;
+  std::unique_ptr<common::Stream> stream_{nullptr};
 
   // Incremental WIT-motion protocol parser.
   protocol::WitMotionParser parser_;
@@ -113,9 +119,10 @@ private:
 };
 
 /**
- * @brief Factory used by ImuModule.
+ * @brief Factory for ImuBackendRegistry (REGISTER_IMU_BACKEND).
  */
-std::shared_ptr<SensorDriver> CreateSerialImuDriver(
+SensorDriver*
+CreateSerialImuDriver(
   const SensorId & id,
   const DriverParams & params);
 

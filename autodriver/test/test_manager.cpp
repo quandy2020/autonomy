@@ -23,7 +23,7 @@
 
 class FakeModule : public autodriver::SensorModule {
 public:
-    autodriver::SensorType GetType() const override {
+    autodriver::SensorType GetSensorType() const override {
         return autodriver::SensorType::kImu;
     }
     const autodriver::SensorId& GetSensorId() const override { return id_; }
@@ -59,11 +59,11 @@ TEST_F(SensorManagerTest, AttachIsIdempotent) {
     config.sensors = {sensor};
     autodriver::SensorManager manager(config);
     ASSERT_TRUE(manager.Initialize());
-    EXPECT_TRUE(manager.Attach("imu/test"));
-    EXPECT_TRUE(manager.Attach("imu/test"));
+    EXPECT_TRUE(manager.AttachSensor("imu/test"));
+    EXPECT_TRUE(manager.AttachSensor("imu/test"));
     EXPECT_EQ(manager.AttachedCount(), 1u);
-    manager.Detach("imu/test");
-    manager.Detach("imu/test");
+    manager.DetachSensor("imu/test");
+    manager.DetachSensor("imu/test");
     EXPECT_EQ(manager.AttachedCount(), 0u);
 }
 
@@ -78,19 +78,19 @@ TEST_F(SensorManagerTest, AttachNImusBySensorId) {
     config.sensors = {a, b};
     autodriver::SensorManager manager(config);
     ASSERT_TRUE(manager.Initialize());
-    EXPECT_TRUE(manager.Attach("imu/a"));
-    EXPECT_TRUE(manager.Attach("imu/b"));
+    EXPECT_TRUE(manager.AttachSensor("imu/a"));
+    EXPECT_TRUE(manager.AttachSensor("imu/b"));
     EXPECT_EQ(manager.AttachedCount(), 2u);
-    manager.Detach("imu/a");
+    manager.DetachSensor("imu/a");
     EXPECT_EQ(manager.AttachedCount(), 1u);
-    manager.Detach("imu/b");
+    manager.DetachSensor("imu/b");
     EXPECT_EQ(manager.AttachedCount(), 0u);
 }
 
 TEST_F(SensorManagerTest, UnknownIdFails) {
     autodriver::SensorManager manager;
     ASSERT_TRUE(manager.Initialize());
-    EXPECT_FALSE(manager.Attach("nope"));
+    EXPECT_FALSE(manager.AttachSensor("nope"));
 }
 
 TEST_F(SensorManagerTest, DuplicateConfigFailsInitialize) {
@@ -111,7 +111,7 @@ TEST_F(SensorManagerTest, UnknownClassFails) {
     config.sensors = {sensor};
     autodriver::SensorManager manager(config);
     ASSERT_TRUE(manager.Initialize());
-    EXPECT_FALSE(manager.Attach("imu/test"));
+    EXPECT_FALSE(manager.AttachSensor("imu/test"));
     EXPECT_EQ(manager.AttachedCount(), 0u);
 }
 
@@ -124,7 +124,7 @@ TEST_F(SensorManagerTest, UnknownLibraryFails) {
     config.sensors = {sensor};
     autodriver::SensorManager manager(config);
     ASSERT_TRUE(manager.Initialize());
-    EXPECT_FALSE(manager.Attach("imu/test"));
+    EXPECT_FALSE(manager.AttachSensor("imu/test"));
     EXPECT_EQ(manager.AttachedCount(), 0u);
 }
 

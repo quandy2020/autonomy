@@ -30,7 +30,7 @@ namespace autodriver {
 namespace chassis {
 namespace {
 
-std::uint64_t NowNs() {
+std::uint64_t ReadSteadyTimeNanoseconds() {
   using clock = std::chrono::steady_clock;
   return static_cast<std::uint64_t>(
       std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -38,18 +38,23 @@ std::uint64_t NowNs() {
           .count());
 }
 
-double YawFromState(const ChassisState& state) {
+/**
+ * @brief Planar yaw (rad) from RobotState orientation quaternion.
+ */
+double ExtractYawFromState(const ChassisState& state) {
   if (!state.has_pose() || !state.pose().has_pose() ||
       !state.pose().pose().has_orientation()) {
     return 0.0;
   }
   const auto& q = state.pose().pose().orientation();
-  // yaw from quaternion (z,w dominant for planar)
   return std::atan2(2.0 * (q.w() * q.z() + q.x() * q.y()),
                     1.0 - 2.0 * (q.y() * q.y() + q.z() * q.z()));
 }
 
-void SetPlanarPose(ChassisState* state, double x, double y, double yaw) {
+/**
+ * @brief Write SE(2) pose (x, y, yaw) into RobotState.pose.
+ */
+void WritePlanarPose(ChassisState* state, double x, double y, double yaw) {
   auto* pose = state->mutable_pose()->mutable_pose();
   pose->mutable_position()->set_x(x);
   pose->mutable_position()->set_y(y);
@@ -78,7 +83,7 @@ public:
   bool Start() override {
     std::lock_guard<std::mutex> lock(mutex_);
     running_ = true;
-    last_integrate_ns_ = NowNs();
+    last_integrate_ns_ = ReadSteadyTimeNanoseconds();
     state_.set_motion_enabled(true);
     AINFO << "stub chassis started id=" << id_;
     return true;
@@ -95,7 +100,7 @@ public:
     return running_;
   }
 
-  bool ApplyCommand(const ChassisCommand& command) override {
+  bool ApplyVelocityCommand(const ChassisCommand& command) override {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!running_ || !state_.motion_enabled()) {
       return false;
@@ -104,32 +109,37 @@ public:
     return true;
   }
 
-  bool GetState(ChassisState* state) override {
+  bool ReadChassisState(ChassisState* state) override {
     if (state == nullptr) {
       return false;
     }
     std::lock_guard<std::mutex> lock(mutex_);
-    IntegrateLocked(NowNs());
+    IntegrateOdometryLocked(ReadSteadyTimeNanoseconds());
     *state = state_;
     return true;
   }
 
-  bool EmergencyStop() override {
+  bool TriggerEmergencyStop() override {
     std::lock_guard<std::mutex> lock(mutex_);
     command_.Clear();
     state_.set_motion_enabled(false);
     ChassisEvent event;
-    SetTimestampNs(event.mutable_timestamp(), NowNs());
+    FillTimestampFromNanoseconds(event.mutable_timestamp(),
+                                 ReadSteadyTimeNanoseconds());
     event.set_type(
         ::automsgs::msgs::vehicle_msgs::ROBOT_EVENT_EMERGENCY_STOP);
     event.set_severity(::automsgs::msgs::vehicle_msgs::EVENT_SEVERITY_ERROR);
     event.set_message("stub chassis emergency stop");
-    EmitEvent(event);
+    EmitChassisEvent(event);
     return true;
   }
 
 private:
-  void IntegrateLocked(std::uint64_t now_ns) {
+  /**
+   * @brief Integrate differential-drive odometry from the last velocity command.
+   * @pre Caller holds mutex_.
+   */
+  void IntegrateOdometryLocked(std::uint64_t now_ns) {
     if (!running_ || last_integrate_ns_ == 0) {
       last_integrate_ns_ = now_ns;
       return;
@@ -152,7 +162,7 @@ private:
 
     double x = 0.0;
     double y = 0.0;
-    double yaw = YawFromState(state_);
+    double yaw = ExtractYawFromState(state_);
     if (state_.has_pose() && state_.pose().has_pose() &&
         state_.pose().pose().has_position()) {
       x = state_.pose().pose().position().x();
@@ -161,7 +171,7 @@ private:
     x += vx * std::cos(yaw) * dt;
     y += vx * std::sin(yaw) * dt;
     yaw += wz * dt;
-    SetPlanarPose(&state_, x, y, yaw);
+    WritePlanarPose(&state_, x, y, yaw);
 
     auto* twist = state_.mutable_twist()->mutable_twist();
     twist->mutable_linear()->set_x(vx);
@@ -169,7 +179,7 @@ private:
     twist->mutable_angular()->set_z(wz);
     *state_.mutable_twist()->mutable_header() = command_.header();
 
-    SetTimestampNs(state_.mutable_timestamp(), now_ns);
+    FillTimestampFromNanoseconds(state_.mutable_timestamp(), now_ns);
     state_.set_battery_percent(static_cast<float>(
         hardware::ParseDouble(params_, "battery_soc", 1.0) * 100.0));
   }
@@ -185,9 +195,9 @@ private:
 
 }  // namespace
 
-std::shared_ptr<ChassisDriver> CreateStubChassisDriver(
+ChassisDriver* CreateStubChassisDriver(
     const ChassisId& id, const hardware::DriverParams& params) {
-  return std::make_shared<StubChassisDriver>(id, params);
+  return new StubChassisDriver(id, params);
 }
 
 }  // namespace chassis

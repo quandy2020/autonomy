@@ -37,6 +37,7 @@
 #include "autodriver/sensor_id.hpp"
 #include "autolink/node/node.hpp"
 #include "autolink/node/reader.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 
@@ -56,13 +57,13 @@ struct PoseFeedTarget {
 /**
  * @brief Convert geometry_msgs Pose → Affine3d (translation + quaternion).
  */
-Eigen::Affine3d Affine3dFromPose(
+Eigen::Affine3d ConvertPoseToAffine3d(
     const automsgs::msgs::geometry_msgs::Pose& pose);
 
 /**
  * @brief Header stamp → nanoseconds.
  */
-std::uint64_t StampToNanoseconds(
+std::uint64_t ConvertStampToNanoseconds(
     const automsgs::msgs::builtin_interfaces::Time& stamp);
 
 /**
@@ -80,37 +81,53 @@ std::unordered_map<std::string, std::vector<PoseFeedTarget>> BuildPoseFeedTarget
  */
 class PoseFeeder {
 public:
-    PoseFeeder() = default;
-    ~PoseFeeder();
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(PoseFeeder)
 
-    PoseFeeder(const PoseFeeder&) = delete;
-    PoseFeeder& operator=(const PoseFeeder&) = delete;
+  /**
+   * @brief Disable copy construction and copy assignment.
+   */
+  DISALLOW_COPY_AND_ASSIGN(PoseFeeder)
 
     /**
+     * @brief Construct an idle feeder; call Start() to create Odometry readers.
+     */
+    PoseFeeder() = default;
+
+    /**
+     * @brief Destructor; calls Stop() to tear down Odometry readers.
+     */
+    ~PoseFeeder();
+
+  /**
      * @brief Create readers on @p node; no-op when no pose channels configured.
      * @return False when manager is null while targets exist, or CreateReader
-     *         fails. Null @p node is allowed for tests (FeedOdometry only).
+     *         fails. Null @p node is allowed for tests (FeedOdometryMessage only).
      */
     bool Start(autolink::Node* node, SensorManager* manager,
                const Config& config);
 
+    /** Tear down Autolink Odometry readers. */
     void Stop();
 
-    bool running() const { return !readers_.empty(); }
+    /** @return true while at least one Odometry reader is active. */
+    bool IsRunning() const { return !readers_.empty(); }
 
     /**
      * @brief Test / manual inject: same path as Odometry callback.
      */
-    void FeedOdometry(
+    void FeedOdometryMessage(
         const std::string& channel,
         const std::shared_ptr<automsgs::msgs::nav_msgs::Odometry>& msg);
 
 private:
-    void OnOdometry(
+    void HandleOdometryMessage(
         const std::string& channel,
         const std::shared_ptr<automsgs::msgs::nav_msgs::Odometry>& msg);
 
-    SensorManager* manager_ = nullptr;
+    SensorManager* manager_{nullptr};
     std::unordered_map<std::string, std::vector<PoseFeedTarget>> targets_;
     std::vector<std::shared_ptr<
         autolink::Reader<automsgs::msgs::nav_msgs::Odometry>>>

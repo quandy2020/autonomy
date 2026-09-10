@@ -71,7 +71,7 @@ failed to load autodriver config: ... export AUTODRIVER_PATH=<config parent>
 ## GNSS Parser
 
 ```cpp
-auto p = autodriver::gps::GnssParserRegistry::Instance().Create("nmea");
+auto p = autodriver::gps::GnssParserRegistry::Instance().CreateParser("nmea");
 p->Consume(bytes, n);
 ```
 
@@ -79,7 +79,7 @@ p->Consume(bytes, n);
 
 ## 诊断
 
-Attach/Detach 成败 → `SampleSink::OnDiagnostic` → Publisher → `/diagnostics`（可 `SetDiagnosticsChannel`）。
+Attach/Detach 成败 → `SampleSink::HandleDiagnostic` → Publisher → `/diagnostics`（可 `SetDiagnosticsChannel`）。
 
 ## 源码索引
 

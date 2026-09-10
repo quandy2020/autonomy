@@ -21,7 +21,7 @@
 #include <utility>
 #include <vector>
 
-#include "autodriver/bridge/realsense_channels.hpp"
+#include "autodriver/bridge/channels.hpp"
 #include "autodriver/driver_params.hpp"
 #include "autodriver/sensor_traits.hpp"
 #include "autolink/autolink.hpp"
@@ -68,9 +68,12 @@ std::vector<std::string> ResolvePublishChannels(
 
 }  // namespace
 
-Publisher::Publisher(std::string node_name) : node_name_(std::move(node_name)) {}
+Publisher::Publisher(std::string node_name, std::size_t async_queue_capacity)
+    : node_name_(std::move(node_name)),
+      async_capacity_(async_queue_capacity == 0 ? 1 : async_queue_capacity) {}
 
 Publisher::~Publisher() {
+    StopPublishThread();
     WriteLock lock(lock_);
     writers_.clear();
     diagnostics_writer_.reset();
@@ -86,47 +89,87 @@ bool Publisher::Initialize() {
         AERROR << "CreateNode failed: " << node_name_;
         return false;
     }
+    EnsurePublishThread();
     return true;
 }
 
-bool Publisher::OnAttach(const Config::Sensor& sensor, SensorType type) {
+void Publisher::EnsurePublishThread() {
+    if (publish_running_.exchange(true)) {
+        return;
+    }
+    publish_thread_ = std::thread([this]() { PublishLoop(); });
+}
+
+void Publisher::StopPublishThread() {
+    if (!publish_running_.exchange(false)) {
+        return;
+    }
+    queue_cv_.notify_all();
+    if (publish_thread_.joinable()) {
+        publish_thread_.join();
+    }
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    queue_.clear();
+}
+
+void Publisher::PublishLoop() {
+    while (publish_running_.load()) {
+        PendingSample pending;
+        {
+            std::unique_lock<std::mutex> lock(queue_mutex_);
+            queue_cv_.wait(lock, [this]() {
+                return !queue_.empty() || !publish_running_.load();
+            });
+            if (queue_.empty()) {
+                continue;
+            }
+            pending = std::move(queue_.front());
+            queue_.pop_front();
+        }
+        if (pending.write && pending.sample) {
+            pending.write(pending.sample);
+        }
+    }
+}
+
+bool Publisher::HandleSensorAttach(const Config::Sensor& sensor, SensorType type) {
     if (!Initialize()) {
         return false;
     }
     switch (type) {
         case SensorType::kImu:
-            return OpenWriter<SensorType::kImu>(sensor);
+            return OpenTypedWriter<SensorType::kImu>(sensor);
         case SensorType::kGps:
-            return OpenWriter<SensorType::kGps>(sensor);
+            return OpenTypedWriter<SensorType::kGps>(sensor);
         case SensorType::kCamera:
-            return OpenCameraWriter(sensor);
+            return OpenCameraWriters(sensor);
         case SensorType::kLidar2d:
-            return OpenWriter<SensorType::kLidar2d>(sensor);
+            return OpenTypedWriter<SensorType::kLidar2d>(sensor);
         case SensorType::kLidar3d:
-            return OpenWriter<SensorType::kLidar3d>(sensor);
+            return OpenTypedWriter<SensorType::kLidar3d>(sensor);
         case SensorType::kRangeFinder:
-            return OpenWriter<SensorType::kRangeFinder>(sensor);
+            return OpenTypedWriter<SensorType::kRangeFinder>(sensor);
         case SensorType::kWheelOdometry:
-            return OpenWriter<SensorType::kWheelOdometry>(sensor);
+            return OpenTypedWriter<SensorType::kWheelOdometry>(sensor);
         case SensorType::kRadar:
-            return OpenWriter<SensorType::kRadar>(sensor);
+            return OpenTypedWriter<SensorType::kRadar>(sensor);
         case SensorType::kMicrophone:
-            return OpenWriter<SensorType::kMicrophone>(sensor);
+            return OpenTypedWriter<SensorType::kMicrophone>(sensor);
     }
     AERROR << "unknown sensor type for " << sensor.id;
     return false;
 }
 
-void Publisher::OnDetach(const SensorId& id) {
+void Publisher::HandleSensorDetach(const SensorId& id) {
     WriteLock lock(lock_);
     writers_.erase(id);
 }
 
-void Publisher::OnSample(std::shared_ptr<SensorSample> sample) {
+void Publisher::HandleSensorSample(std::shared_ptr<SensorSample> sample) {
     if (!sample) {
         return;
     }
-    // Per-sensor write callback resolved under a read lock.
+    // Resolve WriteFn under a short read lock; enqueue for the publish thread.
     WriteFn write;
     {
         ReadLock lock(lock_);
@@ -136,7 +179,14 @@ void Publisher::OnSample(std::shared_ptr<SensorSample> sample) {
         }
         write = it->second;
     }
-    write(sample);
+    {
+        std::lock_guard<std::mutex> lock(queue_mutex_);
+        if (queue_.size() >= async_capacity_) {
+            queue_.pop_front();
+        }
+        queue_.push_back(PendingSample{std::move(write), std::move(sample)});
+    }
+    queue_cv_.notify_one();
 }
 
 void Publisher::SetDiagnosticsChannel(std::string channel) {
@@ -145,7 +195,7 @@ void Publisher::SetDiagnosticsChannel(std::string channel) {
     }
 }
 
-void Publisher::OnDiagnostic(
+void Publisher::HandleDiagnostic(
     const diagnostics::DiagnosticSnapshot& snapshot) {
     if (!Initialize()) {
         return;
@@ -190,7 +240,7 @@ void Publisher::OnDiagnostic(
     diagnostics_writer_->Write(array);
 }
 
-bool Publisher::OpenCameraWriter(const Config::Sensor& sensor) {
+bool Publisher::OpenCameraWriters(const Config::Sensor& sensor) {
     using Traits = SensorTraits<SensorType::kCamera>;
     using Sample = CameraFrame;
     using Message = typename Traits::Message;
@@ -221,16 +271,14 @@ bool Publisher::OpenCameraWriter(const Config::Sensor& sensor) {
         }
         ChannelWriters writers;
         writers.image = std::move(image_writer);
-        if (sensor.backend == "realsense") {
-            writers.camera_info_channel = CameraInfoChannelForImage(channel);
-            writers.camera_info =
-                node_->CreateWriter<CameraInfo>(
-                    WriterAttr(writers.camera_info_channel));
-            if (!writers.camera_info) {
-                AERROR << "CreateWriter failed on "
-                       << writers.camera_info_channel;
-                return false;
-            }
+        writers.camera_info_channel = CameraInfoChannelForImage(channel);
+        writers.camera_info =
+            node_->CreateWriter<CameraInfo>(
+                WriterAttr(writers.camera_info_channel));
+        if (!writers.camera_info) {
+            AERROR << "CreateWriter failed on "
+                   << writers.camera_info_channel;
+            return false;
         }
         channel_writers.push_back(std::move(writers));
         if (!joined.empty()) {
@@ -272,7 +320,7 @@ bool Publisher::OpenCameraWriter(const Config::Sensor& sensor) {
 }
 
 template <SensorType kType>
-bool Publisher::OpenWriter(const Config::Sensor& sensor) {
+bool Publisher::OpenTypedWriter(const Config::Sensor& sensor) {
     using Traits = SensorTraits<kType>;
     using Sample = typename Traits::Sample;
     using Message = typename Traits::Message;

@@ -4,15 +4,15 @@
 
 ```text
 autonomy  --/cmd_vel-->  ChassisManager  --> ChassisDriver (vendor SDK)
-autonomy  <--/odom----  ChassisManager  <-- GetState()
+autonomy  <--/odom----  ChassisManager  <-- ReadChassisState()
 ```
 
 ## 分层
 
 | 层 | 职责 |
 |---|---|
-| `ChassisDriver` | 厂商插件：`ApplyCommand` / `GetState` |
-| `ChassisBackendRegistry` | YAML `backend` → 工厂 |
+| `ChassisDriver` | 厂商插件：`ApplyVelocityCommand` / `ReadChassisState` |
+| `ChassisBackendRegistry` | YAML `backend` → `CreateDriver` |
 | `ChassisManager` | Autolink IO、限速、看门狗；不链 `libautonomy` |
 | `stub/` | 无硬件差分积分，联调用 |
 

@@ -115,7 +115,7 @@ void LivoxSdk2Driver::SetSampleCallback(SampleCallback callback) {
 
 void LivoxSdk2Driver::WritePointCloud(std::shared_ptr<SensorSample> cloud) {
     if (callback_ && cloud) {
-        callback_(cloud->Clone());
+        callback_(std::move(cloud));
     }
 }
 
@@ -357,14 +357,15 @@ void LivoxSdk2Driver::OnPointCloud(std::uint32_t /*handle*/,
 #endif
 }
 
-std::shared_ptr<SensorDriver> CreateLivoxSdk2Driver(
+SensorDriver*
+CreateLivoxSdk2Driver(
     const SensorId& id, const DriverParams& params) {
 #ifndef AUTODRIVER_HAVE_LIVOX_SDK2
     (void)params;
     AERROR << "Livox SDK2 not linked; cannot create driver for " << id;
     return nullptr;
 #else
-    return std::make_shared<LivoxSdk2Driver>(id, params);
+    return new LivoxSdk2Driver(id, params);
 #endif
 }
 

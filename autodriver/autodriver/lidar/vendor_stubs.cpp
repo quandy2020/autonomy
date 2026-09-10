@@ -36,7 +36,7 @@ namespace autodriver {
 namespace hardware {
 namespace {
 
-std::shared_ptr<SensorDriver> MakeStub(const char* vendor, const SensorId& id) {
+SensorDriver* MakeStub(const char* vendor, const SensorId& id) {
     AERROR << vendor << " lidar backend not implemented (id=" << id
            << "); implement lidar/" << vendor << " backend";
     return nullptr;
@@ -44,22 +44,26 @@ std::shared_ptr<SensorDriver> MakeStub(const char* vendor, const SensorId& id) {
 
 }  // namespace
 
-std::shared_ptr<SensorDriver> CreateRsLidarDriver(const SensorId& id,
+SensorDriver*
+CreateRsLidarDriver(const SensorId& id,
                                                   const DriverParams&) {
     return MakeStub("rslidar", id);
 }
 
-std::shared_ptr<SensorDriver> CreateLsLidarDriver(const SensorId& id,
+SensorDriver*
+CreateLsLidarDriver(const SensorId& id,
                                                   const DriverParams&) {
     return MakeStub("lslidar", id);
 }
 
-std::shared_ptr<SensorDriver> CreateSeyondLidarDriver(const SensorId& id,
+SensorDriver*
+CreateSeyondLidarDriver(const SensorId& id,
                                                       const DriverParams&) {
     return MakeStub("seyond", id);
 }
 
-std::shared_ptr<SensorDriver> CreateVanjeeLidarDriver(const SensorId& id,
+SensorDriver*
+CreateVanjeeLidarDriver(const SensorId& id,
                                                       const DriverParams&) {
     return MakeStub("vanjee", id);
 }

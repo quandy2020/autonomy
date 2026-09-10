@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief Load static sensor extrinsics from YAML.
+ * @brief Load static sensor extrinsics from YAML (ROS-like transform layout).
  */
 
 #ifndef AUTODRIVER_COMMON_CALIBRATION_HPP_
@@ -30,17 +30,36 @@ namespace autodriver {
 namespace common {
 
 /**
- * @brief Static transform parent←child (world/novatel ← lidar/camera).
+ * @brief Static rigid transform from child frame into parent frame.
+ *
+ * Convention: @c transform maps points in @c child_frame into @c parent_frame
+ * (parent ← child), matching typical lidar/camera extrinsic YAML used with
+ * Velodyne-style params files.
  */
 struct Extrinsic {
-    std::string parent_frame;
-    std::string child_frame;
-    Eigen::Affine3d transform = Eigen::Affine3d::Identity();
+  /** Parent / reference frame id (e.g. "base_link", "novatel"). */
+  std::string parent_frame;
+  /** Child / sensor frame id (e.g. "velodyne", "camera_link"). */
+  std::string child_frame;
+  /** SE(3) transform parent ← child; identity when unset. */
+  Eigen::Affine3d transform = Eigen::Affine3d::Identity();
 };
 
 /**
- * @brief Parses YAML with header.frame_id, child_frame_id, transform.{translation,rotation}.
- * Matches common velodyne params extrinsics YAML shape.
+ * @brief Parse an extrinsic YAML file into @p out.
+ *
+ * Accepted layout (fields may be nested under @c header / @c transform):
+ * - @c header.frame_id or top-level @c frame_id → @c Extrinsic::parent_frame
+ * - @c child_frame_id → @c Extrinsic::child_frame
+ * - @c transform.translation.{x,y,z} and @c transform.rotation.{x,y,z,w}
+ *   (quaternion); if @c transform is absent, translation/rotation may sit at
+ *   the root.
+ *
+ * @param path Absolute or relative path to the YAML file.
+ * @param out Non-null destination; filled only on success.
+ * @param error Optional human-readable failure reason (YAML parse / null out).
+ * @return true on success; false leaves @p out unchanged (except when @p out
+ *         is null).
  */
 bool LoadExtrinsicYaml(const std::string& path, Extrinsic* out,
                        std::string* error = nullptr);

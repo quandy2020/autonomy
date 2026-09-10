@@ -34,16 +34,25 @@
 namespace autodriver {
 namespace chassis {
 
-/** Stable chassis instance id, e.g. "chassis/base". */
+/**
+ * @brief Stable chassis instance id from YAML, e.g. "chassis/base".
+ */
 using ChassisId = std::string;
 
-/** Command body: same as RobotState.twist (geometry_msgs). */
+/**
+ * @brief Velocity command body: geometry_msgs.TwistStamped
+ *        (same shape as RobotState.twist).
+ */
 using ChassisCommand = ::automsgs::msgs::geometry_msgs::TwistStamped;
 
-/** State body: vehicle_msgs.RobotState. */
+/**
+ * @brief Feedback body: vehicle_msgs.RobotState (pose / twist / battery / flags).
+ */
 using ChassisState = ::automsgs::msgs::vehicle_msgs::RobotState;
 
-/** Event body: vehicle_msgs.RobotEvent. */
+/**
+ * @brief Async event body: vehicle_msgs.RobotEvent (FAULT / E-STOP / BATTERY_LOW).
+ */
 using ChassisEvent = ::automsgs::msgs::vehicle_msgs::RobotEvent;
 
 }  // namespace chassis

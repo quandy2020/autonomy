@@ -25,29 +25,29 @@
 #include "autodriver/radar/backend_registry.hpp"
 
 TEST(SkeletonModules, RadarMicrophoneSmartereyeRegistered) {
-    EXPECT_TRUE(autodriver::radar::RadarBackendRegistry::Instance().Has("conti"));
+    EXPECT_TRUE(autodriver::radar::RadarBackendRegistry::Instance().HasBackend(
+        "conti"));
     EXPECT_TRUE(
-        autodriver::microphone::MicrophoneBackendRegistry::Instance().Has(
-            "respeaker"));
-    EXPECT_TRUE(
-        autodriver::camera::CameraBackendRegistry::Instance().Has("smartereye"));
+        autodriver::microphone::MicrophoneBackendRegistry::Instance()
+            .HasBackend("respeaker"));
+    EXPECT_TRUE(autodriver::camera::CameraBackendRegistry::Instance().HasBackend(
+        "smartereye"));
 
     autodriver::hardware::DriverParams params;
-    EXPECT_EQ(autodriver::radar::RadarBackendRegistry::Instance().Create(
+    EXPECT_EQ(autodriver::radar::RadarBackendRegistry::Instance().CreateDriver(
                   "conti", "radar/front", params),
               nullptr);
-    EXPECT_EQ(
-        autodriver::microphone::MicrophoneBackendRegistry::Instance().Create(
-            "respeaker", "mic/0", params),
-        nullptr);
-    EXPECT_EQ(autodriver::camera::CameraBackendRegistry::Instance().Create(
+    EXPECT_EQ(autodriver::microphone::MicrophoneBackendRegistry::Instance()
+                  .CreateDriver("respeaker", "mic/0", params),
+              nullptr);
+    EXPECT_EQ(autodriver::camera::CameraBackendRegistry::Instance().CreateDriver(
                   "smartereye", "camera/se", params),
               nullptr);
 }
 
 TEST(GnssParser, NmeaRegisteredAndParsesGga) {
-    EXPECT_TRUE(autodriver::gps::GnssParserRegistry::Instance().Has("nmea"));
-    auto parser = autodriver::gps::GnssParserRegistry::Instance().Create("nmea");
+    EXPECT_TRUE(autodriver::gps::GnssParserRegistry::Instance().HasParser("nmea"));
+    auto parser = autodriver::gps::GnssParserRegistry::Instance().CreateParser("nmea");
     ASSERT_NE(parser, nullptr);
     const char* line =
         "$GNGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*59\n";

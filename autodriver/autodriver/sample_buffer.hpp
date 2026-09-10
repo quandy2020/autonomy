@@ -28,6 +28,7 @@
 
 #include "autodriver/types/sensor_sample.hpp"
 #include "autolink/time/time.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 
@@ -38,6 +39,11 @@ namespace autodriver {
  */
 class SampleBuffer {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(SampleBuffer)
+
     /**
      * @brief Constructs a ring buffer with at least one slot of capacity.
      */

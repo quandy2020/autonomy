@@ -33,6 +33,7 @@
 #include "autodriver/lidar/lidar_component_base.hpp"
 #include "autodriver/lidar/livox/points.hpp"
 #include "autodriver/sensor_driver.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace hardware {
@@ -40,10 +41,15 @@ namespace hardware {
 class LivoxSdk1Driver : public SensorDriver,
                         public lidar::LidarComponentBase {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(LivoxSdk1Driver)
+
     LivoxSdk1Driver(SensorId id, DriverParams params);
     ~LivoxSdk1Driver() override;
 
-    SensorType GetType() const override { return SensorType::kLidar3d; }
+    SensorType GetSensorType() const override { return SensorType::kLidar3d; }
     const SensorId& GetSensorId() const override { return id_; }
 
     bool Start() override;
@@ -79,7 +85,8 @@ private:
     bool sdk_owned_ = false;
 };
 
-std::shared_ptr<SensorDriver> CreateLivoxSdk1Driver(const SensorId& id,
+SensorDriver*
+CreateLivoxSdk1Driver(const SensorId& id,
                                                     const DriverParams& params);
 
 }  // namespace hardware

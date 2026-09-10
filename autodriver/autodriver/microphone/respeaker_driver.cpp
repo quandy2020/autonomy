@@ -22,7 +22,8 @@
 namespace autodriver {
 namespace hardware {
 
-std::shared_ptr<SensorDriver> CreateRespeakerMicrophoneDriver(
+SensorDriver*
+CreateRespeakerMicrophoneDriver(
     const SensorId& id, const DriverParams& /*params*/) {
     AERROR << "Respeaker microphone backend not implemented (id=" << id
            << "); link PortAudio / device SDK under microphone/";

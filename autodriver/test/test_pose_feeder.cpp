@@ -45,13 +45,13 @@ std::shared_ptr<automsgs::msgs::nav_msgs::Odometry> MakeOdom(
 
 }  // namespace
 
-TEST(PoseFeeder, Affine3dFromPoseAndStamp) {
+TEST(PoseFeeder, ConvertPoseToAffine3dAndStamp) {
     automsgs::msgs::geometry_msgs::Pose pose;
     pose.mutable_position()->set_x(1.0);
     pose.mutable_position()->set_y(2.0);
     pose.mutable_position()->set_z(3.0);
     pose.mutable_orientation()->set_w(1.0);
-    const Eigen::Affine3d T = autodriver::bridge::Affine3dFromPose(pose);
+    const Eigen::Affine3d T = autodriver::bridge::ConvertPoseToAffine3d(pose);
     EXPECT_NEAR(T.translation().x(), 1.0, 1e-9);
     EXPECT_NEAR(T.translation().y(), 2.0, 1e-9);
     EXPECT_NEAR(T.translation().z(), 3.0, 1e-9);
@@ -59,7 +59,7 @@ TEST(PoseFeeder, Affine3dFromPoseAndStamp) {
     automsgs::msgs::builtin_interfaces::Time stamp;
     stamp.set_sec(2);
     stamp.set_nanosec(500);
-    EXPECT_EQ(autodriver::bridge::StampToNanoseconds(stamp),
+    EXPECT_EQ(autodriver::bridge::ConvertStampToNanoseconds(stamp),
               2'000'000'000ULL + 500ULL);
 }
 
@@ -137,7 +137,7 @@ TEST(PoseFeeder, FeedOdometryPushesThroughManager) {
 
     autodriver::bridge::PoseFeeder feeder;
     ASSERT_TRUE(feeder.Start(nullptr, &manager, config));
-    feeder.FeedOdometry("/odom", MakeOdom(1.0, 2.0, 3.0, 1, 0));
+    feeder.FeedOdometryMessage("/odom", MakeOdom(1.0, 2.0, 3.0, 1, 0));
 
     Eigen::Affine3d probe = Eigen::Affine3d::Identity();
     probe.translation() = Eigen::Vector3d(9, 9, 9);

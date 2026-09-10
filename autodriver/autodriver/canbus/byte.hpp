@@ -133,7 +133,7 @@ public:
 
 private:
     // Bound payload byte; null disables mutations.
-    std::uint8_t* value_ = nullptr;
+    std::uint8_t* value_{nullptr};
 };
 
 }  // namespace canbus

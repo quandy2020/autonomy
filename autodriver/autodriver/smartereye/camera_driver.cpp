@@ -22,7 +22,8 @@
 namespace autodriver {
 namespace hardware {
 
-std::shared_ptr<SensorDriver> CreateSmartereyeCameraDriver(
+SensorDriver*
+CreateSmartereyeCameraDriver(
     const SensorId& id, const DriverParams& /*params*/) {
     AERROR << "Smartereye camera backend not implemented (id=" << id
            << "); link vendor SDK under smartereye/";

@@ -754,6 +754,10 @@ Config FromYaml(const YAML::Node& root) {
         const YAML::Node alignment = root["alignment"];
         config.alignment.enable =
             ReadBool(alignment, "enable", config.alignment.enable);
+        config.alignment.publish_raw =
+            ReadBool(alignment, "publish_raw", config.alignment.publish_raw);
+        config.alignment.publish_aligned = ReadBool(
+            alignment, "publish_aligned", config.alignment.publish_aligned);
         const int alignment_window_ms =
             ReadInt(alignment, "alignment_window_ms");
         if (alignment_window_ms > 0) {

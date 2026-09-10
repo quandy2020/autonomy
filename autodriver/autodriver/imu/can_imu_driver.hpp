@@ -30,6 +30,7 @@
 #include "autodriver/canbus/can_receiver.hpp"
 #include "autodriver/driver_params.hpp"
 #include "autodriver/sensor_driver.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace hardware {
@@ -53,10 +54,15 @@ struct ImuCanEvent {
  */
 class CanImuDriver : public SensorDriver {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(CanImuDriver)
+
     CanImuDriver(SensorId id, DriverParams params);
     ~CanImuDriver() override;
 
-    SensorType GetType() const override { return SensorType::kImu; }
+    SensorType GetSensorType() const override { return SensorType::kImu; }
     const SensorId& GetSensorId() const override { return id_; }
 
     bool Start() override;
@@ -88,9 +94,10 @@ private:
 };
 
 /**
- * @brief Factory for CanImuDriver (used by ImuModule backend "can").
+ * @brief Factory for ImuBackendRegistry (REGISTER_IMU_BACKEND "can").
  */
-std::shared_ptr<SensorDriver> CreateCanImuDriver(const SensorId& id,
+SensorDriver*
+CreateCanImuDriver(const SensorId& id,
                                                  const DriverParams& params);
 
 }  // namespace hardware

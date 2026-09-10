@@ -17,6 +17,10 @@
 /**
  * @file
  * @brief String-keyed driver parameters and typed parsers.
+ *
+ * YAML flattens vendor params into DriverParams. Drivers must parse into
+ * member fields in their constructor (cold path); hot paths must not call
+ * GetString / Parse* repeatedly.
  */
 
 #ifndef AUTODRIVER_DRIVER_PARAMS_HPP_
@@ -29,7 +33,7 @@
 namespace autodriver {
 namespace hardware {
 
-// Flat key/value map from YAML sensor params.
+// Flat key/value map from YAML sensor params (startup / Attach only).
 using DriverParams = std::unordered_map<std::string, std::string>;
 
 inline std::string GetString(const DriverParams& params, const std::string& key,

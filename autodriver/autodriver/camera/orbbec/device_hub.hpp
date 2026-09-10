@@ -31,6 +31,7 @@
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 
 #include "autodriver/driver_params.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace hardware {
@@ -82,6 +83,11 @@ using OrbbecPointCloudCallback =
  */
 class OrbbecDeviceHub {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(OrbbecDeviceHub)
+
     static std::shared_ptr<OrbbecDeviceHub> Acquire(
         const hardware::DriverParams& params);
 
@@ -105,7 +111,7 @@ private:
     explicit OrbbecDeviceHub(const hardware::DriverParams& params);
 
     struct Impl;
-    std::unique_ptr<Impl> impl_;
+    std::unique_ptr<Impl> impl_{nullptr};
 };
 
 }  // namespace io

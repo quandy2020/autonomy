@@ -93,9 +93,10 @@ void RealSensePointCloudDriver::SetSampleCallback(SampleCallback callback) {
     callback_ = std::move(callback);
 }
 
-std::shared_ptr<SensorDriver> CreateRealSensePointCloudDriver(
+SensorDriver*
+CreateRealSensePointCloudDriver(
     const SensorId& id, const DriverParams& params) {
-    return std::make_shared<RealSensePointCloudDriver>(id, params);
+    return new RealSensePointCloudDriver(id, params);
 }
 
 }  // namespace hardware

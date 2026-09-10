@@ -32,6 +32,7 @@
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 
 #include "autodriver/driver_params.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace hardware {
@@ -159,6 +160,11 @@ using RealSenseImuCallback = std::function<void(
  */
 class RealSenseDeviceHub {
  public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(RealSenseDeviceHub)
+
     /**
      * @brief Returns a shared hub for the device key, creating one if needed.
      */
@@ -222,7 +228,7 @@ class RealSenseDeviceHub {
     struct Impl;
 
     // Opaque librealsense pipeline and subscription state.
-    std::unique_ptr<Impl> impl_;
+    std::unique_ptr<Impl> impl_{nullptr};
 };
 
 }  // namespace io

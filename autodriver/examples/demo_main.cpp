@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
         return 1;
     }
     autodriver::SensorManager manager(std::move(config));
-    manager.SetSink(&publisher);
+    manager.SetSampleSink(&publisher);
     if (!manager.Initialize() || !manager.Start()) {
         AERROR << "SensorManager failed";
         autolink::Clear();

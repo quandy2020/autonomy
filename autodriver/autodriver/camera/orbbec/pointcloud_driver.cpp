@@ -95,7 +95,8 @@ void OrbbecPointCloudDriver::SetSampleCallback(SampleCallback callback) {
     callback_ = std::move(callback);
 }
 
-std::shared_ptr<SensorDriver> CreateOrbbecPointCloudDriver(
+SensorDriver*
+CreateOrbbecPointCloudDriver(
     const SensorId& id, const DriverParams& params) {
     if (!io::OrbbecAvailable()) {
         AERROR << "Orbbec pointcloud backend not available (id=" << id
@@ -103,7 +104,7 @@ std::shared_ptr<SensorDriver> CreateOrbbecPointCloudDriver(
                   "AUTODRIVER_WITH_ORBBEC=ON";
         return nullptr;
     }
-    return std::make_shared<OrbbecPointCloudDriver>(id, params);
+    return new OrbbecPointCloudDriver(id, params);
 }
 
 }  // namespace hardware

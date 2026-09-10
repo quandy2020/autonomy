@@ -95,8 +95,9 @@ TEST(Diagnostics, ToString) {
 
 TEST(LidarBackendRegistry, VelodyneRegistered) {
     auto& reg = autodriver::lidar::LidarBackendRegistry::Instance();
-    EXPECT_TRUE(reg.Has("velodyne"));
-    EXPECT_TRUE(reg.Has("udp"));
+    EXPECT_TRUE(reg.HasBackend("velodyne"));
+    EXPECT_TRUE(reg.HasBackend("udp"));
+    EXPECT_TRUE(reg.HasBackend(""));
 }
 
 TEST(VelodyneConvert, EmptyScanYieldsEmptyCloud) {
@@ -256,25 +257,25 @@ TEST(Stream, CreateTcpStreamDefaultsDisconnected) {
 
 TEST(LidarBackendRegistry, HesaiRegistered) {
     auto& reg = autodriver::lidar::LidarBackendRegistry::Instance();
-    EXPECT_TRUE(reg.Has("hesai"));
-    EXPECT_TRUE(reg.Has("pandar"));
+    EXPECT_TRUE(reg.HasBackend("hesai"));
+    EXPECT_TRUE(reg.HasBackend("pandar"));
     autodriver::hardware::DriverParams params;
     params["source_type"] = "raw_packet";
-    auto driver = reg.Create("hesai", "lidar/hesai", params);
+    auto driver = reg.CreateDriver("hesai", "lidar/hesai", params);
     ASSERT_NE(driver, nullptr);
-    EXPECT_EQ(driver->GetType(), autodriver::SensorType::kLidar3d);
+    EXPECT_EQ(driver->GetSensorType(), autodriver::SensorType::kLidar3d);
 }
 
 TEST(LidarBackendRegistry, VendorStubsRegistered) {
     auto& reg = autodriver::lidar::LidarBackendRegistry::Instance();
-    EXPECT_TRUE(reg.Has("livox"));
-    EXPECT_TRUE(reg.Has("rslidar"));
-    EXPECT_TRUE(reg.Has("robosense"));
-    EXPECT_TRUE(reg.Has("lslidar"));
-    EXPECT_TRUE(reg.Has("seyond"));
-    EXPECT_TRUE(reg.Has("vanjee"));
-    EXPECT_TRUE(reg.Has("vanjeelidar"));
-    EXPECT_EQ(reg.Create("livox", "lidar/x", {}), nullptr);
+    EXPECT_TRUE(reg.HasBackend("livox"));
+    EXPECT_TRUE(reg.HasBackend("rslidar"));
+    EXPECT_TRUE(reg.HasBackend("robosense"));
+    EXPECT_TRUE(reg.HasBackend("lslidar"));
+    EXPECT_TRUE(reg.HasBackend("seyond"));
+    EXPECT_TRUE(reg.HasBackend("vanjee"));
+    EXPECT_TRUE(reg.HasBackend("vanjeelidar"));
+    EXPECT_EQ(reg.CreateDriver("livox", "lidar/x", {}), nullptr);
 }
 
 TEST(ScanCut, CrossedCutAngleDetectsWrapAtZero) {

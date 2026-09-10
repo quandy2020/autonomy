@@ -218,8 +218,8 @@ TEST(MotionPoseSink, VelodyneDriverAcceptsPushPose) {
     params["source_type"] = "raw_packet";
     params["enable_compensator"] = "true";
     params["packets_per_scan"] = "1";
-    auto driver =
-        autodriver::hardware::CreateVelodyneUdpDriver("lidar/vlp16", params);
+    auto driver = autodriver::SensorDriver::SharedPtr(
+        autodriver::hardware::CreateVelodyneUdpDriver("lidar/vlp16", params));
     ASSERT_NE(driver, nullptr);
     auto* sink =
         dynamic_cast<autodriver::lidar::MotionPoseSink*>(driver.get());

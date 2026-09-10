@@ -31,6 +31,7 @@
 
 #include "autodriver/canbus/can_client.hpp"
 #include "autodriver/common/can_socket.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace canbus {
@@ -44,6 +45,11 @@ namespace canbus {
  */
 class CanSender {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(CanSender)
+
     // Builds one classical CAN frame for a scheduled job.
     using FrameBuilder = std::function<io::CanFrame()>;
 
@@ -129,7 +135,7 @@ private:
     }
 
     // Non-owning CAN backend.
-    CanClient* client_ = nullptr;
+    CanClient* client_{nullptr};
 
     // Scheduled TX jobs.
     std::vector<Job> jobs_;

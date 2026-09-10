@@ -29,6 +29,7 @@
 #include "autolink/base/atomic_rw_lock.hpp"
 #include "autolink/base/rw_lock_guard.hpp"
 #include "autolink/time/time.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 
@@ -38,6 +39,11 @@ namespace autodriver {
  */
 class TimeSync {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(TimeSync)
+
     /**
      * @brief Updates and returns host-aligned time for a device timestamp.
      */

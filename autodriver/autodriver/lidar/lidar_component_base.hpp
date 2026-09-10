@@ -35,6 +35,7 @@
 
 #include "autodriver/lidar/source_type.hpp"
 #include "autodriver/types/sensor_sample.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace lidar {
@@ -57,6 +58,11 @@ struct LidarBaseOptions {
  */
 class LidarComponentBase {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(LidarComponentBase)
+
     virtual ~LidarComponentBase() = default;
 
     bool InitBase(const LidarBaseOptions& options) {

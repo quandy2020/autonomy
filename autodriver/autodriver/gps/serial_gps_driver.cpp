@@ -41,7 +41,7 @@ bool SerialGpsDriver::Start()
     return true;
   }
 
-  parser_ = gps::GnssParserRegistry::Instance().Create("nmea");
+  parser_ = gps::GnssParserRegistry::Instance().CreateParser("nmea");
   if (!parser_) {
     running_ = false;
     return false;
@@ -116,12 +116,18 @@ void SerialGpsDriver::ReadLoop()
   }
 }
 
-std::shared_ptr<SensorDriver> CreateSerialGpsDriver(
+SensorDriver*
+CreateSerialGpsDriver(
   const SensorId & id,
   const DriverParams & params)
 {
-  return std::make_shared<SerialGpsDriver>(id, params);
+  return new SerialGpsDriver(id, params);
 }
 
 }  // namespace hardware
 }  // namespace autodriver
+
+#include "autodriver/gps/backend_register.hpp"
+
+REGISTER_GPS_BACKEND(serial, "serial",
+                     autodriver::hardware::CreateSerialGpsDriver, "");

@@ -28,6 +28,7 @@
 #include "autodriver/sensor_driver.hpp"
 #include "autodriver/sensor_module.hpp"
 #include "autodriver/sensor_traits.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 
@@ -40,6 +41,11 @@ namespace autodriver {
 template <SensorType kType, bool kCapture = true>
 class SensorPlugin : public SensorModule {
 public:
+    /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(SensorPlugin)
+
     // Compile-time traits for the sensor modality.
     using Traits = SensorTraits<kType>;
 
@@ -50,7 +56,7 @@ public:
      * @brief Sensor modality implemented by this plugin.
      * @return The template parameter kType.
      */
-    SensorType GetType() const final { return kType; }
+    SensorType GetSensorType() const final { return kType; }
 
     /**
      * @brief Stable instance id from configuration.
@@ -73,7 +79,7 @@ public:
             }
             driver_->SetSampleCallback(
                 [this](std::unique_ptr<SensorSample> sample) {
-                    OnSample(std::move(sample));
+                    EmitCapturedSample(std::move(sample));
                 });
         }
         return true;
@@ -118,7 +124,7 @@ public:
     /**
      * @brief Underlying SensorDriver when kCapture is true.
      */
-    std::shared_ptr<SensorDriver> GetDriver() const final { return driver_; }
+    SensorDriver::SharedPtr GetDriver() const final { return driver_; }
 
 protected:
     /**
@@ -126,7 +132,7 @@ protected:
      * @param sensor Sensor configuration entry used to construct the driver.
      * @return Shared pointer to the driver, or nullptr when not implemented.
      */
-    virtual std::shared_ptr<SensorDriver> MakeDriver(const Config::Sensor&) {
+    virtual SensorDriver::SharedPtr MakeDriver(const Config::Sensor&) {
         return nullptr;
     }
 
@@ -135,7 +141,7 @@ private:
      * @brief Stamp and forward a captured sample to the upstream hook.
      * @param sample Unique pointer to the captured sample; ignored when null or wrong type.
      */
-    void OnSample(std::unique_ptr<SensorSample> sample) {
+    void EmitCapturedSample(std::unique_ptr<SensorSample> sample) {
         if (sample == nullptr || sample->type() != kType) {
             return;
         }
@@ -153,7 +159,7 @@ private:
     SampleHook hook_;
 
     // Hardware backend when kCapture is true.
-    std::shared_ptr<SensorDriver> driver_;
+    SensorDriver::SharedPtr driver_{nullptr};
 
     // Running flag for attach-only plugins when kCapture is false.
     bool running_ = false;

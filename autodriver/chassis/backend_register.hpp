@@ -20,14 +20,17 @@
 #include "chassis/backend_registry.hpp"
 
 /**
- * @brief Register a chassis backend at static init.
- * @param tag Unique C++ suffix for the registrar object.
+ * @brief Register a chassis backend factory at static initialization time.
+ *
+ * Expands to a file-local registrar that calls
+ * RegisterChassisBackendWithAliases once before main().
+ * @param tag Unique C++ identifier suffix for the registrar type / object.
  * @param name Canonical backend string (e.g. "stub", "scout").
- * @param factory Create function.
- * @param ... Optional alias string literals.
+ * @param factory Creator returning owning ChassisDriver* (e.g. CreateStubChassisDriver).
+ * @param ... Optional alias string literals (e.g. "sim", "fake").
  */
 #define REGISTER_CHASSIS_BACKEND(tag, name, factory, ...)                      \
-  namespace {                                                                   \
+  namespace {                                                                  \
   struct ChassisBackendRegistrar_##tag {                                       \
     ChassisBackendRegistrar_##tag() {                                          \
       ::autodriver::chassis::RegisterChassisBackendWithAliases(                \

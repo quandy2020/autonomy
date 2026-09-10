@@ -22,118 +22,171 @@
 #ifndef AUTODRIVER_CAMERA_BACKEND_REGISTRY_HPP_
 #define AUTODRIVER_CAMERA_BACKEND_REGISTRY_HPP_
 
-#include <functional>
 #include <initializer_list>
-#include <memory>
-#include <mutex>
 #include <string>
-#include <unordered_map>
 
+#include "autodriver/common/named_factory.hpp"
 #include "autodriver/driver_params.hpp"
 #include "autodriver/sensor_driver.hpp"
 #include "autodriver/sensor_id.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace camera {
 
-/** Factory: (SensorId, DriverParams) → SensorDriver (or nullptr). */
-using CameraDriverFactory = std::function<std::shared_ptr<SensorDriver>(
-    const SensorId& id, const hardware::DriverParams& params)>;
+/**
+ * @brief Creator for Image drivers: returns owning SensorDriver*.
+ * @param id Sensor instance id from YAML (e.g. "camera/front").
+ * @param params Backend-specific key/value map from YAML.
+ * @return New SensorDriver, or nullptr when SDK missing / construction fails.
+ */
+using CameraDriverFactory =
+    NamedProductFactory<SensorDriver, SensorId>::Creator;
 
+/**
+ * @brief Creator for PointCloud2 drivers (same signature as CameraDriverFactory).
+ */
 using PointCloudDriverFactory = CameraDriverFactory;
 
 /**
  * @class autodriver::camera::CameraBackendRegistry
- * @brief Maps camera backend name → Image driver factory.
+ * @brief Maps YAML camera `backend` → Image SensorDriver factory.
  *
- * YAML `camera` + `backend` resolves here via CameraModule
- * (e.g. realsense, orbbec, smartereye).
+ * Internally uses NamedProductFactory. Built-ins: realsense, orbbec,
+ * smartereye (stub).
  */
 class CameraBackendRegistry {
 public:
-    /** Process-wide singleton. */
-    static CameraBackendRegistry& Instance();
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(CameraBackendRegistry)
 
-    /** Register or replace a factory under @p name. */
-    void Register(const std::string& name, CameraDriverFactory factory);
+  /**
+   * @brief Access the process-wide singleton (static-init backends register here).
+   * @return Reference to the unique CameraBackendRegistry instance.
+   */
+  static CameraBackendRegistry& Instance();
 
-    /** Map @p alias to an already-registered canonical @p name. */
-    void RegisterAlias(const std::string& alias, const std::string& canonical);
+  /**
+   * @brief Register or replace a factory under a canonical backend name.
+   * @param name Canonical backend string (e.g. "realsense", "orbbec").
+   * @param factory Creator returning new SensorDriver*.
+   */
+  void RegisterBackend(const std::string& name, CameraDriverFactory factory);
 
-    /**
-     * @brief Construct a driver for @p backend after alias resolve.
-     * @return nullptr when unknown or Create returns null.
-     */
-    std::shared_ptr<SensorDriver> Create(
-        const std::string& backend, const SensorId& id,
-        const hardware::DriverParams& params) const;
+  /**
+   * @brief Map an alias onto an already-registered canonical backend name.
+   * @param alias Alternate YAML name.
+   * @param canonical Existing registered name.
+   */
+  void RegisterBackendAlias(const std::string& alias,
+                            const std::string& canonical);
 
-    /** Whether @p backend (or its alias target) is registered. */
-    bool Has(const std::string& backend) const;
+  /**
+   * @brief Create an Image SensorDriver for @p backend after alias resolve.
+   * @param backend YAML `backend` or alias.
+   * @param id Sensor instance id passed to the factory.
+   * @param params YAML params (and shorthand merges).
+   * @return Shared driver, or nullptr if unknown / creator returns null.
+   */
+  SensorDriver::SharedPtr CreateDriver(
+      const std::string& backend, const SensorId& id,
+      const hardware::DriverParams& params) const;
+
+  /**
+   * @brief Check whether @p backend resolves to a registered factory.
+   * @param backend Canonical name or alias.
+   * @return true if a factory is available after alias resolve.
+   */
+  bool HasBackend(const std::string& backend) const;
 
 private:
-    CameraBackendRegistry() = default;
+  /**
+   * @brief Private default constructor for the process-wide singleton.
+   */
+  CameraBackendRegistry() = default;
 
-    /** Follow aliases until a factory name or unchanged string. */
-    std::string Resolve(const std::string& backend) const;
-
-    mutable std::mutex mutex_;
-    // backend name → factory.
-    std::unordered_map<std::string, CameraDriverFactory> factories_;
-    // alias → canonical name.
-    std::unordered_map<std::string, std::string> aliases_;
+  NamedProductFactory<SensorDriver, SensorId> factory_;
 };
 
 /**
  * @class autodriver::camera::PointCloudBackendRegistry
- * @brief Maps point_cloud backend name → PointCloud2 driver factory.
+ * @brief Maps YAML point_cloud `backend` → PointCloud2 SensorDriver factory.
  *
- * YAML `point_cloud` + `backend` resolves here via PointCloudModule.
+ * Built-ins: realsense, orbbec (require SDK).
  */
 class PointCloudBackendRegistry {
 public:
-    /** Process-wide singleton. */
-    static PointCloudBackendRegistry& Instance();
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(PointCloudBackendRegistry)
 
-    /** Register or replace a factory under @p name. */
-    void Register(const std::string& name, PointCloudDriverFactory factory);
+  /**
+   * @brief Access the process-wide singleton (static-init backends register here).
+   * @return Reference to the unique PointCloudBackendRegistry instance.
+   */
+  static PointCloudBackendRegistry& Instance();
 
-    /** Map @p alias to an already-registered canonical @p name. */
-    void RegisterAlias(const std::string& alias, const std::string& canonical);
+  /**
+   * @brief Register or replace a factory under a canonical backend name.
+   * @param name Canonical backend string (e.g. "realsense").
+   * @param factory Creator returning new SensorDriver*.
+   */
+  void RegisterBackend(const std::string& name,
+                       PointCloudDriverFactory factory);
 
-    /**
-     * @brief Construct a driver for @p backend after alias resolve.
-     * @return nullptr when unknown or Create returns null.
-     */
-    std::shared_ptr<SensorDriver> Create(
-        const std::string& backend, const SensorId& id,
-        const hardware::DriverParams& params) const;
+  /**
+   * @brief Map an alias onto an already-registered canonical backend name.
+   * @param alias Alternate YAML name.
+   * @param canonical Existing registered name.
+   */
+  void RegisterBackendAlias(const std::string& alias,
+                            const std::string& canonical);
 
-    /** Whether @p backend (or its alias target) is registered. */
-    bool Has(const std::string& backend) const;
+  /**
+   * @brief Create a PointCloud2 SensorDriver for @p backend after alias resolve.
+   * @param backend YAML `backend` or alias.
+   * @param id Sensor instance id passed to the factory.
+   * @param params YAML params (and shorthand merges).
+   * @return Shared driver, or nullptr if unknown / creator returns null.
+   */
+  SensorDriver::SharedPtr CreateDriver(
+      const std::string& backend, const SensorId& id,
+      const hardware::DriverParams& params) const;
+
+  /**
+   * @brief Check whether @p backend resolves to a registered factory.
+   * @param backend Canonical name or alias.
+   * @return true if a factory is available after alias resolve.
+   */
+  bool HasBackend(const std::string& backend) const;
 
 private:
-    PointCloudBackendRegistry() = default;
+  /**
+   * @brief Private default constructor for the process-wide singleton.
+   */
+  PointCloudBackendRegistry() = default;
 
-    /** Follow aliases until a factory name or unchanged string. */
-    std::string Resolve(const std::string& backend) const;
-
-    mutable std::mutex mutex_;
-    // backend name → factory.
-    std::unordered_map<std::string, PointCloudDriverFactory> factories_;
-    // alias → canonical name.
-    std::unordered_map<std::string, std::string> aliases_;
+  NamedProductFactory<SensorDriver, SensorId> factory_;
 };
 
 /**
- * @brief Register @p name and optional @p aliases in one call (used by macros).
+ * @brief Register a camera backend plus optional aliases (static init).
+ * @param name Canonical backend string.
+ * @param factory CameraDriverFactory for @p name.
+ * @param aliases Optional null-terminated C string aliases (empty skipped).
  */
 void RegisterCameraBackendWithAliases(
     const std::string& name, CameraDriverFactory factory,
     std::initializer_list<const char*> aliases);
 
 /**
- * @brief Register @p name and optional @p aliases in one call (used by macros).
+ * @brief Register a point_cloud backend plus optional aliases (static init).
+ * @param name Canonical backend string.
+ * @param factory PointCloudDriverFactory for @p name.
+ * @param aliases Optional null-terminated C string aliases (empty skipped).
  */
 void RegisterPointCloudBackendWithAliases(
     const std::string& name, PointCloudDriverFactory factory,

@@ -40,6 +40,7 @@
 #include "autodriver/sensor_hub.hpp"
 #include "autolink/base/atomic_rw_lock.hpp"
 #include "autolink/base/rw_lock_guard.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autolink {
 namespace class_loader {
@@ -52,189 +53,235 @@ namespace autodriver {
 /**
  * @class autodriver::SensorManager
  * @brief Loads one plugin instance per sensor id; routes samples to SensorHub
- * and an optional SampleSink (Autolink publishing lives in bridge/).
+ *        and an optional SampleSink (Autolink publishing lives in bridge/).
+ *
+ * Lifecycle: construct → SetSampleSink (optional) → Initialize → Start →
+ * AttachSensor / DetachSensor / HandleDeviceEvent → Stop.
  */
 class SensorManager {
 public:
-    /**
-     * @brief Default-constructs a manager with an empty config.
-     */
-    SensorManager();
-    /**
-     * @brief Constructs a manager bound to the given sensor configuration.
-     */
-    explicit SensorManager(Config config);
-    /**
-     * @brief Stops the manager and detaches all sensors.
-     */
-    ~SensorManager();
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(SensorManager)
 
-    SensorManager(const SensorManager&) = delete;
-    /**
-     * @brief Copy assignment is disabled.
-     */
-    SensorManager& operator=(const SensorManager&) = delete;
+  /**
+   * @brief Disable copy construction and copy assignment.
+   */
+  DISALLOW_COPY_AND_ASSIGN(SensorManager)
 
-    /**
-     * @brief Registers the downstream consumer for raw or aligned samples.
-     */
-    void SetSink(SampleSink* sink);
+  /**
+   * @brief Default-constructs a manager with an empty config.
+   */
+  SensorManager();
 
-    /**
-     * @brief Validates config and marks the manager as initialized.
-     */
-    bool Initialize();
+  /**
+   * @brief Constructs a manager bound to the given sensor configuration.
+   * @param config Process config (sensors, hotplug, alignment, compensator).
+   */
+  explicit SensorManager(Config config);
 
-    /**
-     * @brief Attaches autostart sensors, starts alignment, and udev hotplug.
-     */
-    bool Start();
+  /**
+   * @brief Stops the manager and detaches all sensors.
+   */
+  ~SensorManager();
 
-    /**
-     * @brief Detaches all sensors, stops the hub, and shuts down udev.
-     */
-    void Stop();
+  /**
+   * @brief Registers the downstream consumer for raw or aligned samples.
+   * @param sink Non-owning pointer; may be nullptr to clear. Call before Start.
+   */
+  void SetSampleSink(SampleSink* sink);
 
-    /**
-     * @brief Loads and starts the sensor module for id if not already attached.
-     */
-    bool Attach(const SensorId& id);
+  /**
+   * @brief Validates config (e.g. duplicate ids) and marks the manager ready.
+   * @return false when config is invalid; Start must not be called then.
+   */
+  bool Initialize();
 
-    /**
-     * @brief Stops and unloads the sensor module for id.
-     */
-    void Detach(const SensorId& id);
+  /**
+   * @brief Attaches autostart sensors, starts the hub, and udev hotplug.
+   * @return false if not initialized or attach of an autostart sensor fails.
+   */
+  bool Start();
 
-    /**
-     * @brief Attaches or detaches a sensor in response to a hotplug event.
-     */
-    void HandleDeviceEvent(bool added, const DeviceMatch& device);
+  /**
+   * @brief Detaches all sensors, stops the hub, and shuts down udev.
+   */
+  void Stop();
 
-    /**
-     * @brief Returns true while Start has been called and Stop has not.
-     */
-    bool IsRunning() const;
+  /**
+   * @brief Loads and starts the sensor module for @p id if not already attached.
+   * @param id Configured sensor identifier (must exist in config.sensors).
+   * @return false if unknown id, already attached, or plugin/driver init fails.
+   */
+  bool AttachSensor(const SensorId& id);
 
-    /**
-     * @brief Returns the number of currently attached sensor modules.
-     */
-    std::size_t AttachedCount() const;
+  /**
+   * @brief Stops and unloads the sensor module for @p id (no-op if not attached).
+   * @param id Sensor identifier to detach.
+   */
+  void DetachSensor(const SensorId& id);
 
-    /**
-     * @brief Mutable access to the central sample hub.
-     * @return Reference to the owned SensorHub.
-     */
-    SensorHub& hub() { return hub_; }
+  /**
+   * @brief Attaches or detaches a sensor in response to a hotplug event.
+   * @param added true on device ADD, false on REMOVE.
+   * @param device Observed udev identity matched against Config::Sensor::match.
+   */
+  void HandleDeviceEvent(bool added, const DeviceMatch& device);
 
-    /**
-     * @brief Const access to the central sample hub.
-     * @return Const reference to the owned SensorHub.
-     */
-    const SensorHub& hub() const { return hub_; }
+  /**
+   * @brief Whether Start has been called and Stop has not.
+   * @return true while the manager is running.
+   */
+  bool IsRunning() const;
 
-    /**
-     * @brief Forwards aligned snapshot callbacks to the internal hub.
-     */
-    void SetAlignedCallback(SensorHub::AlignedCallback callback);
+  /**
+   * @brief Number of currently attached sensor modules.
+   * @return Count of entries in the internal modules_ map.
+   */
+  std::size_t AttachedCount() const;
 
-    /**
-     * @brief Forwards per-sample callbacks to the internal hub.
-     */
-    void SetRawSampleCallback(SensorHub::RawSampleCallback callback);
+  /**
+   * @brief Mutable access to the central sample hub.
+   * @return Reference to the owned SensorHub.
+   */
+  SensorHub& GetHub() { return hub_; }
 
-    /**
-     * @brief Publishes a diagnostic snapshot to the registered sink.
-     */
-    void ReportDiagnostic(diagnostics::DiagnosticSnapshot snapshot);
+  /**
+   * @brief Const access to the central sample hub.
+   * @return Const reference to the owned SensorHub.
+   */
+  const SensorHub& GetHub() const { return hub_; }
 
-    /**
-     * @brief Feed a world←lidar pose into an attached lidar MotionPoseSink.
-     * @return False when id is not attached or driver is not a MotionPoseSink
-     *         (e.g. compensator disabled / stub backend).
-     */
-    bool PushLidarPose(const SensorId& id, std::uint64_t time_ns,
-                       const Eigen::Affine3d& pose);
+  /**
+   * @brief Registers a user callback for aligned snapshots (composed with
+   *        config.alignment.publish_aligned sink publishing).
+   * @param callback Invoked when a multi-sensor AlignedSnapshot is ready.
+   */
+  void SetAlignedCallback(SensorHub::AlignedCallback callback);
 
-    /**
-     * @brief Override PoseLookup for an attached lidar MotionPoseSink.
-     */
-    bool SetLidarPoseLookup(const SensorId& id, lidar::PoseLookup lookup);
+  /**
+   * @brief Forwards per-sample callbacks to the internal hub.
+   * @param callback Invoked for each raw sample after time sync.
+   */
+  void SetRawSampleCallback(SensorHub::RawSampleCallback callback);
+
+  /**
+   * @brief Publishes a diagnostic snapshot to the registered sink.
+   * @param snapshot Device health / status payload.
+   */
+  void ReportDiagnostic(diagnostics::DiagnosticSnapshot snapshot);
+
+  /**
+   * @brief Feed a world←lidar pose into an attached lidar MotionPoseSink.
+   * @param id Attached 3D lidar sensor id.
+   * @param time_ns Pose timestamp in nanoseconds.
+   * @param pose World ← lidar transform.
+   * @return false when id is not attached or driver is not a MotionPoseSink
+   *         (e.g. compensator disabled / stub backend).
+   */
+  bool PushLidarPose(const SensorId& id, std::uint64_t time_ns,
+                     const Eigen::Affine3d& pose);
+
+  /**
+   * @brief Override PoseLookup for an attached lidar MotionPoseSink.
+   * @param id Attached 3D lidar sensor id.
+   * @param lookup Callable used by the motion compensator.
+   * @return false when id is not attached or driver is not a MotionPoseSink.
+   */
+  bool SetLidarPoseLookup(const SensorId& id, lidar::PoseLookup lookup);
 
 private:
-    /**
-     * @brief Looks up a sensor entry by id in the active config.
-     */
-    const Config::Sensor* FindSensor(const SensorId& id) const;
+  /**
+   * @brief Looks up a sensor entry by id in the active config.
+   * @param id Sensor identifier.
+   * @return Pointer into config_.sensors, or nullptr if not found.
+   */
+  const Config::Sensor* FindSensorConfig(const SensorId& id) const;
 
-    /**
-     * @brief Resolves the native shared-library path for a sensor plugin.
-     */
-    std::string LibraryPath(const Config::Sensor& sensor) const;
+  /**
+   * @brief Resolves the native shared-library path for a sensor plugin.
+   * @param sensor Sensor entry (library basename or absolute path).
+   * @return Absolute or search-ready library path string.
+   */
+  std::string ResolveLibraryPath(const Config::Sensor& sensor) const;
 
-    /**
-     * @brief Unloads a plugin library when no attached sensor still references it.
-     */
-    void UnloadIfUnused(const std::string& path);
+  /**
+   * @brief Unloads a plugin library when no attached sensor still references it.
+   * @param path Library path key in loaders_.
+   */
+  void UnloadIfUnused(const std::string& path);
 
-    /**
-     * @brief Loads, initializes, and starts a sensor module; caller holds lock.
-     */
-    bool AttachLocked(const SensorId& id);
+  /**
+   * @brief Loads, initializes, and starts a sensor module; caller holds lock.
+   * @param id Sensor identifier.
+   * @return false on config/plugin/driver failure.
+   */
+  bool AttachSensorLocked(const SensorId& id);
 
-    /**
-     * @brief Stops and removes a sensor module; caller holds lock.
-     */
-    void DetachLocked(const SensorId& id);
+  /**
+   * @brief Stops and removes a sensor module; caller holds lock.
+   * @param id Sensor identifier.
+   */
+  void DetachSensorLocked(const SensorId& id);
 
-    /**
-     * @brief Spawns the udev monitor thread when hotplug is enabled.
-     */
-    void StartUdev();
+  /**
+   * @brief Spawns the udev monitor thread when hotplug is enabled.
+   */
+  void StartUdev();
 
-    /**
-     * @brief Joins the udev monitor thread if it was started.
-     */
-    void StopUdev();
+  /**
+   * @brief Joins the udev monitor thread if it was started.
+   */
+  void StopUdev();
 
-    /**
-     * @brief Polls udev for device add/remove events and dispatches matches.
-     */
-    void UdevLoop();
+  /**
+   * @brief Polls udev for device add/remove events and dispatches matches.
+   */
+  void RunUdevMonitorLoop();
 
-    /**
-     * @brief Routes a sample through alignment and/or the registered sink.
-     */
-    void DispatchSample(std::shared_ptr<SensorSample> sample);
+  /**
+   * @brief Routes a sample through alignment and/or the registered sink.
+   * @param sample Shared sample produced by a sensor module.
+   */
+  void DispatchSensorSample(std::shared_ptr<SensorSample> sample);
 
-    // Process configuration loaded at construction.
-    Config config_;
+  /**
+   * @brief Installs Hub aligned callback: optional sink publish + user hook.
+   */
+  void WireAlignedPublishing();
 
-    // Central router for buffering and time alignment.
-    SensorHub hub_;
+  // Process configuration loaded at construction.
+  Config config_;
 
-    // Optional downstream sink; not owned.
-    SampleSink* sink_ = nullptr;
+  // Central router for buffering and time alignment.
+  SensorHub hub_;
 
-    // Loaded sensor module instances keyed by sensor id.
-    std::unordered_map<SensorId, std::shared_ptr<SensorModule>> modules_;
-    /**
-     * @brief Shared class loaders keyed by plugin library path.
-     */
-    std::unordered_map<std::string,
-                       std::unique_ptr<autolink::class_loader::ClassLoader>>
-        loaders_;
+  // Optional downstream sink; not owned.
+  SampleSink* sink_{nullptr};
 
-    // Protects modules_, loaders_, and attach/detach state.
-    mutable autolink::base::AtomicRWLock lock_;
+  // Optional user aligned-snapshot callback (composed with publish_aligned).
+  SensorHub::AlignedCallback user_aligned_callback_;
 
-    // True after Initialize() completes successfully.
-    bool initialized_ = false;
+  // Loaded sensor module instances keyed by sensor id.
+  std::unordered_map<SensorId, SensorModule::SharedPtr> modules_;
 
-    // True while the manager is started.
-    std::atomic<bool> running_{false};
+  // Shared class loaders keyed by plugin library path.
+  std::unordered_map<std::string,
+                     std::unique_ptr<autolink::class_loader::ClassLoader>>
+      loaders_;
 
-    // Background thread that polls udev when hotplug is enabled.
-    std::thread udev_thread_;
+  // Protects modules_, loaders_, and attach/detach state.
+  mutable autolink::base::AtomicRWLock lock_;
+
+  // True after Initialize() completes successfully.
+  bool initialized_ = false;
+
+  // True while the manager is started.
+  std::atomic<bool> running_{false};
+
+  // Background thread that polls udev when hotplug is enabled.
+  std::thread udev_thread_;
 };
 
 }  // namespace autodriver

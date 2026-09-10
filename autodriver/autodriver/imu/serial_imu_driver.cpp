@@ -111,12 +111,18 @@ void SerialImuDriver::ReadLoop()
   }
 }
 
-std::shared_ptr<SensorDriver> CreateSerialImuDriver(
+SensorDriver*
+CreateSerialImuDriver(
   const SensorId & id,
   const DriverParams & params)
 {
-  return std::make_shared<SerialImuDriver>(id, params);
+  return new SerialImuDriver(id, params);
 }
 
 }  // namespace hardware
 }  // namespace autodriver
+
+#include "autodriver/imu/backend_register.hpp"
+
+REGISTER_IMU_BACKEND(serial, "serial",
+                     autodriver::hardware::CreateSerialImuDriver, "");

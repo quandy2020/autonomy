@@ -102,13 +102,13 @@ bool VelodyneUdpDriver::InitPacket() {
 
 void VelodyneUdpDriver::WriteScan(std::shared_ptr<SensorSample> scan) {
     if (callback_ && scan) {
-        callback_(scan->Clone());
+        callback_(std::move(scan));
     }
 }
 
 void VelodyneUdpDriver::WritePointCloud(std::shared_ptr<SensorSample> cloud) {
     if (callback_ && cloud) {
-        callback_(cloud->Clone());
+        callback_(std::move(cloud));
     }
 }
 
@@ -250,9 +250,8 @@ void VelodyneUdpDriver::ReadLoop() {
 
 void VelodyneUdpDriver::ProcessLoop() {
     while (running_.load()) {
-        auto item = packet_queue_->TryPop();
+        auto item = packet_queue_->WaitPop(std::chrono::milliseconds(1));
         if (!item) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
             continue;
         }
         HandlePacket(*item);
@@ -333,9 +332,10 @@ void VelodyneUdpDriver::ConvertAndPublish(
     WritePointCloud(sample);
 }
 
-std::shared_ptr<SensorDriver> CreateVelodyneUdpDriver(
+SensorDriver*
+CreateVelodyneUdpDriver(
     const SensorId& id, const DriverParams& params) {
-    return std::make_shared<VelodyneUdpDriver>(id, params);
+    return new VelodyneUdpDriver(id, params);
 }
 
 }  // namespace hardware

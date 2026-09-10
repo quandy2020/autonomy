@@ -41,7 +41,8 @@ namespace hardware {
  * @param id Sensor id (e.g. camera/stereo).
  * @param params Stream / device options when implemented.
  */
-std::shared_ptr<SensorDriver> CreateSmartereyeCameraDriver(
+SensorDriver*
+CreateSmartereyeCameraDriver(
     const SensorId& id, const DriverParams& params);
 
 }  // namespace hardware

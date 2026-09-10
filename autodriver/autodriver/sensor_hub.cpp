@@ -35,12 +35,12 @@ SensorHub::SensorHub(Options options) : options_(options) {}
 
 SensorHub::~SensorHub() { Stop(); }
 
-void SensorHub::RegisterDriver(std::shared_ptr<SensorDriver> driver) {
+void SensorHub::RegisterDriver(SensorDriver::SharedPtr driver) {
     if (!driver) {
         return;
     }
     driver->SetSampleCallback([this](std::unique_ptr<SensorSample> sample) {
-        OnSample(std::shared_ptr<SensorSample>(std::move(sample)));
+        HandleIncomingSample(std::shared_ptr<SensorSample>(std::move(sample)));
     });
     WriteLock lock(drivers_lock_);
     drivers_.push_back(std::move(driver));
@@ -78,7 +78,7 @@ bool SensorHub::Start() {
             }
         }
     }
-    alignment_thread_ = std::thread([this]() { AlignmentLoop(); });
+    alignment_thread_ = std::thread([this]() { RunAlignmentLoop(); });
     return true;
 }
 
@@ -100,15 +100,15 @@ void SensorHub::Stop() {
 bool SensorHub::IsRunning() const { return running_.load(); }
 
 void SensorHub::PushSample(std::shared_ptr<SensorSample> sample) {
-    OnSample(std::move(sample));
+    HandleIncomingSample(std::move(sample));
 }
 
-void SensorHub::DropBuffer(const SensorId& id) {
+void SensorHub::DropSampleBuffer(const SensorId& id) {
     WriteLock lock(buffers_lock_);
     buffers_.erase(id);
 }
 
-void SensorHub::OnSample(std::shared_ptr<SensorSample> sample) {
+void SensorHub::HandleIncomingSample(std::shared_ptr<SensorSample> sample) {
     if (!sample) {
         return;
     }
@@ -126,7 +126,7 @@ void SensorHub::OnSample(std::shared_ptr<SensorSample> sample) {
     seq_.fetch_add(1, std::memory_order_relaxed);
 }
 
-void SensorHub::AlignmentLoop() {
+void SensorHub::RunAlignmentLoop() {
     autolink::Rate rate(options_.publish_period);
 
     // Sequence counter value at the last published snapshot.
@@ -135,7 +135,7 @@ void SensorHub::AlignmentLoop() {
         const std::uint64_t seq = seq_.load(std::memory_order_relaxed);
         if (seq != published) {
             published = seq;
-            AlignedSnapshot snapshot = BuildSnapshot(autolink::Time::Now());
+            AlignedSnapshot snapshot = BuildAlignedSnapshot(autolink::Time::Now());
             if (!snapshot.samples.empty()) {
                 aligned_(snapshot);
             }
@@ -144,7 +144,7 @@ void SensorHub::AlignmentLoop() {
     }
 }
 
-AlignedSnapshot SensorHub::BuildSnapshot(const autolink::Time& time) const {
+AlignedSnapshot SensorHub::BuildAlignedSnapshot(const autolink::Time& time) const {
     AlignedSnapshot snapshot;
     snapshot.time = time;
 

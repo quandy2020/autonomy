@@ -29,6 +29,7 @@
 #include <unordered_map>
 
 #include "autodriver/common/can_socket.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace canbus {
@@ -42,6 +43,11 @@ namespace canbus {
  */
 class CanClient {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(CanClient)
+
     virtual ~CanClient() = default;
 
     /**
@@ -84,6 +90,11 @@ public:
 class SocketCanClient : public CanClient {
 public:
     /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(SocketCanClient)
+
+    /**
      * @brief Open SocketCAN interface @p channel.
      */
     bool Init(const std::string& channel) override {
@@ -121,6 +132,11 @@ private:
  */
 class FakeCanClient : public CanClient {
 public:
+    /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(FakeCanClient)
+
     /**
      * @brief Bind this client to a named fake bus (creates the bus if needed).
      */

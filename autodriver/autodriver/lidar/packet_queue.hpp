@@ -22,6 +22,8 @@
 #ifndef AUTODRIVER_LIDAR_PACKET_QUEUE_HPP_
 #define AUTODRIVER_LIDAR_PACKET_QUEUE_HPP_
 
+#include <chrono>
+#include <condition_variable>
 #include <cstddef>
 #include <deque>
 #include <mutex>
@@ -36,8 +38,8 @@ namespace lidar {
  * @brief Thread-safe bounded FIFO; Push drops the oldest item when full (lossy).
  * @tparam T Element type (e.g. PacketBuffer).
  *
- * Use between a UDP read thread and a convert thread when
- * `packets_per_scan` aggregation is insufficient under bursty load.
+ * Use between a UDP read thread and a convert thread. WaitPop avoids a busy
+ * poll on the consumer side (notify from Push).
  */
 template <typename T>
 class PacketQueue {
@@ -55,12 +57,15 @@ public:
      * @return Always true (lossy drop still accepts the new item).
      */
     bool Push(T item) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (queue_.size() >= capacity_) {
-            queue_.pop_front();
-            ++dropped_;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (queue_.size() >= capacity_) {
+                queue_.pop_front();
+                ++dropped_;
+            }
+            queue_.push_back(std::move(item));
         }
-        queue_.push_back(std::move(item));
+        cv_.notify_one();
         return true;
     }
 
@@ -71,6 +76,22 @@ public:
     std::optional<T> TryPop() {
         std::lock_guard<std::mutex> lock(mutex_);
         if (queue_.empty()) {
+            return std::nullopt;
+        }
+        T item = std::move(queue_.front());
+        queue_.pop_front();
+        return item;
+    }
+
+    /**
+     * @brief Block until an item is available or @p timeout elapses.
+     * @param timeout Maximum wait duration.
+     * @return Popped item, or nullopt on timeout.
+     */
+    template <typename Rep, typename Period>
+    std::optional<T> WaitPop(const std::chrono::duration<Rep, Period>& timeout) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (!cv_.wait_for(lock, timeout, [this]() { return !queue_.empty(); })) {
             return std::nullopt;
         }
         T item = std::move(queue_.front());
@@ -107,6 +128,8 @@ private:
     std::size_t capacity_;
     // Guards queue_ and dropped_.
     mutable std::mutex mutex_;
+    // Wakes WaitPop when Push adds an item.
+    std::condition_variable cv_;
     // FIFO storage.
     std::deque<T> queue_;
     // Number of times Push dropped an oldest element.
