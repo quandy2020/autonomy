@@ -44,30 +44,71 @@ namespace hardware {
  */
 class OrbbecCameraDriver : public SensorDriver {
 public:
-  /**
-   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
-   */
-  AUTOLINK_SHARED_PTR_DEFINITIONS(OrbbecCameraDriver)
+    /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(OrbbecCameraDriver)
 
+    /**
+     * @brief Parse stream / resolution params (cold path).
+     * @param id Sensor instance id.
+     * @param params DriverParams from YAML.
+     */
     OrbbecCameraDriver(SensorId id, DriverParams params);
+
+    /**
+     * @brief Unsubscribe and stop the shared hub if this was the last user.
+     */
     ~OrbbecCameraDriver() override;
 
+    /**
+     * @brief Report sensor type.
+     * @return SensorType::kCamera.
+     */
     SensorType GetSensorType() const override { return SensorType::kCamera; }
+
+    /**
+     * @brief Stable instance id from configuration.
+     * @return Configured sensor identifier.
+     */
     const SensorId& GetSensorId() const override { return id_; }
 
+    /**
+     * @brief Acquire OrbbecDeviceHub and subscribe to the configured stream.
+     * @return true on successful subscription / hub start.
+     */
     bool Start() override;
+
+    /**
+     * @brief Unsubscribe and clear the running flag.
+     */
     void Stop() override;
+
+    /**
+     * @brief Whether the driver subscription is active.
+     * @return true after Start until Stop.
+     */
     bool IsRunning() const override;
+
+    /**
+     * @brief Register the sample sink callback (hub callback thread).
+     * @param callback May be empty to disable emission.
+     */
     void SetSampleCallback(SampleCallback callback) override;
 
 private:
+    // Sensor identifier for this driver instance.
     SensorId id_;
+    // Parsed driver parameters from configuration.
     DriverParams params_;
+    // Color / depth / IR stream selection.
     orbbec::StreamKind stream_{orbbec::StreamKind::kColor};
     int width_{640};
     int height_{480};
     int fps_{30};
+    // Shared pipeline hub for this physical device.
     io::OrbbecDeviceHub::SharedPtr hub_{nullptr};
+    // Hub subscription token; 0 when unsubscribed.
     std::uint64_t subscription_id_{0};
     SampleCallback callback_;
     std::atomic<bool> running_{false};
@@ -75,10 +116,12 @@ private:
 
 /**
  * @brief Factory for OrbbecCameraDriver (CameraBackendRegistry).
+ * @param id Sensor instance id from YAML.
+ * @param params Backend-specific key/value map.
+ * @return Owning OrbbecCameraDriver*, or nullptr without OrbbecSDK.
  */
-SensorDriver*
-CreateOrbbecCameraDriver(
-    const SensorId& id, const DriverParams& params);
+SensorDriver* CreateOrbbecCameraDriver(const SensorId& id,
+                                       const DriverParams& params);
 
 }  // namespace hardware
 }  // namespace autodriver

@@ -26,7 +26,13 @@
 
 namespace autodriver {
 
-// Stable instance id, e.g. "imu/torso" or "lidar/front". Used as a map key, topic prefix, and frame identifier throughout autodriver.
+/**
+ * @typedef autodriver::SensorId
+ * @brief Stable instance id (e.g. `"imu/torso"`, `"lidar/front"`).
+ *
+ * Used as a map key, Autolink topic prefix, and frame identifier throughout
+ * autodriver.
+ */
 using SensorId = std::string;
 
 }  // namespace autodriver

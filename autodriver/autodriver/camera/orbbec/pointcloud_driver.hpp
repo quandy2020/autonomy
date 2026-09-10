@@ -43,20 +43,56 @@ namespace hardware {
  */
 class OrbbecPointCloudDriver : public SensorDriver {
 public:
-  /**
-   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
-   */
-  AUTOLINK_SHARED_PTR_DEFINITIONS(OrbbecPointCloudDriver)
+    /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(OrbbecPointCloudDriver)
 
+    /**
+     * @brief Parse resolution / fps params (cold path).
+     * @param id Sensor instance id.
+     * @param params DriverParams from YAML.
+     */
     OrbbecPointCloudDriver(SensorId id, DriverParams params);
+
+    /**
+     * @brief Unsubscribe and release the shared hub reference.
+     */
     ~OrbbecPointCloudDriver() override;
 
+    /**
+     * @brief Report sensor type (depth cloud uses lidar3d sample path).
+     * @return SensorType::kLidar3d.
+     */
     SensorType GetSensorType() const override { return SensorType::kLidar3d; }
+
+    /**
+     * @brief Stable instance id from configuration.
+     * @return Configured sensor identifier.
+     */
     const SensorId& GetSensorId() const override { return id_; }
 
+    /**
+     * @brief Acquire OrbbecDeviceHub and subscribe to point cloud frames.
+     * @return true on successful subscription / hub start.
+     */
     bool Start() override;
+
+    /**
+     * @brief Unsubscribe and clear the running flag.
+     */
     void Stop() override;
+
+    /**
+     * @brief Whether the driver subscription is active.
+     * @return true after Start until Stop.
+     */
     bool IsRunning() const override;
+
+    /**
+     * @brief Register the sample sink callback (hub callback thread).
+     * @param callback May be empty to disable emission.
+     */
     void SetSampleCallback(SampleCallback callback) override;
 
 private:
@@ -73,10 +109,12 @@ private:
 
 /**
  * @brief Factory for OrbbecPointCloudDriver (PointCloudBackendRegistry).
+ * @param id Sensor instance id from YAML.
+ * @param params Backend-specific key/value map.
+ * @return Owning OrbbecPointCloudDriver*, or nullptr without OrbbecSDK.
  */
-SensorDriver*
-CreateOrbbecPointCloudDriver(
-    const SensorId& id, const DriverParams& params);
+SensorDriver* CreateOrbbecPointCloudDriver(const SensorId& id,
+                                           const DriverParams& params);
 
 }  // namespace hardware
 }  // namespace autodriver

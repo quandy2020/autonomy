@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ * @brief Static registration macro for chassis backends.
+ */
+
 #ifndef AUTODRIVER_CHASSIS_BACKEND_REGISTER_HPP_
 #define AUTODRIVER_CHASSIS_BACKEND_REGISTER_HPP_
 
