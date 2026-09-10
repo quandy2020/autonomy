@@ -16,14 +16,20 @@
 
 /**
  * @file
- * @brief Chassis identity and motion types (no autonomy/vehicle dependency).
+ * @brief Chassis types = automsgs vehicle_msgs (+ TwistStamped command).
+ *
+ * Wire / driver message bodies stay identical to
+ * `automsgs/msgs/vehicle_msgs/*` — no parallel ChassisCommand/State structs.
  */
 
 #ifndef AUTODRIVER_CHASSIS_TYPES_HPP_
 #define AUTODRIVER_CHASSIS_TYPES_HPP_
 
-#include <cstdint>
 #include <string>
+
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/vehicle_msgs/robot_event.pb.h>
+#include <automsgs/msgs/vehicle_msgs/robot_state.pb.h>
 
 namespace autodriver {
 namespace chassis {
@@ -31,53 +37,14 @@ namespace chassis {
 /** Stable chassis instance id, e.g. "chassis/base". */
 using ChassisId = std::string;
 
-/** Platform kinematics class (vendor maps SDK → this). */
-enum class ChassisKind {
-  kUnknown = 0,
-  kDifferential = 1,
-  kAckermann = 2,
-  kOmni = 3,
-  kMecanum = 4,
-};
+/** Command body: same as RobotState.twist (geometry_msgs). */
+using ChassisCommand = ::automsgs::msgs::geometry_msgs::TwistStamped;
 
-/**
- * @brief Velocity / actuator command sent to the robot body.
- *
- * Units: m/s, rad/s. Vendors translate to motor / CAN / SDK calls.
- * Deliberately not autonomy::vehicle::KinematicsControlCommand.
- */
-struct ChassisCommand {
-  std::uint64_t stamp_ns = 0;
-  double linear_x = 0.0;
-  double linear_y = 0.0;
-  double angular_z = 0.0;
-  bool emergency_stop = false;
-};
+/** State body: vehicle_msgs.RobotState. */
+using ChassisState = ::automsgs::msgs::vehicle_msgs::RobotState;
 
-/**
- * @brief Runtime state reported by the robot body.
- *
- * Pose is typically odom←base; vendors fill what their SDK provides.
- */
-struct ChassisState {
-  std::uint64_t stamp_ns = 0;
-  ChassisKind kind = ChassisKind::kUnknown;
-
-  double pose_x = 0.0;
-  double pose_y = 0.0;
-  double pose_yaw = 0.0;
-
-  double linear_x = 0.0;
-  double linear_y = 0.0;
-  double angular_z = 0.0;
-
-  bool emergency_stop_active = false;
-  bool fault_active = false;
-  std::int32_t fault_code = 0;
-
-  double battery_soc = -1.0;
-  double battery_voltage = 0.0;
-};
+/** Event body: vehicle_msgs.RobotEvent. */
+using ChassisEvent = ::automsgs::msgs::vehicle_msgs::RobotEvent;
 
 }  // namespace chassis
 }  // namespace autodriver
