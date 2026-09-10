@@ -9,9 +9,11 @@
 | 配置 | `config_loader` | YAML → `Config::Sensor`；`params_file` 合并；`camera` 折叠展开 | 新字段 / 折叠语法 |
 | 编排 | `SensorManager`、`SensorHub`、udev | Attach/Detach、对齐、热插拔 | 一般不改 |
 | 模态 | `modules.cpp` 中 `*Module` | 按 `SensorType` 调 Registry 建驱动 | **通常不改** |
-| 驱动 | `camera|lidar|imu|…/<vendor>/` | `SensorDriver` 实现 | **加厂商在此** |
+| 驱动 | `camera|lidar|imu|…/<vendor>/`、`chassis/<vendor>/` | `SensorDriver` / `ChassisDriver` | **加厂商在此** |
 | 传输 | `common::Stream`、`canbus`、厂商 SDK | 字节 / 帧 | 复用即可 |
-| 发布 | `SampleSink` / `bridge::Publisher` | Autolink Writer | 可换自定义 Sink |
+| 发布 | `SampleSink` / `bridge::Publisher`；`ChassisManager` | Autolink Writer/Reader | 可换自定义 Sink |
+
+传感路径：
 
 ```mermaid
 flowchart LR
@@ -21,6 +23,16 @@ flowchart LR
   Reg --> Drv[SensorDriver]
   Drv --> Sink[SampleSink]
   Sink --> Pub[Publisher]
+```
+
+本体路径（与 `autonomy/vehicle` 解耦）：
+
+```mermaid
+flowchart LR
+  YAML --> CM[ChassisManager]
+  CM -->|/cmd_vel| DrvC[ChassisDriver]
+  DrvC -->|GetState| CM
+  CM -->|/odom| AL[Autolink]
 ```
 
 ## Module ↔ Registry ↔ 默认 backend
@@ -36,6 +48,7 @@ flowchart LR
 | `RadarModule` | `radar` | `RadarBackendRegistry` | `conti` | `radar/` |
 | `MicrophoneModule` | `microphone` | Mic 注册表 | `respeaker` | `mic/` |
 | `RangeModule` | `range` | — | — | `range/`（attach-only） |
+| `ChassisManager` | `chassis` | `ChassisBackendRegistry` | `stub` | `chassis/` |
 
 内置类名须与 YAML `module`（legacy）或 typed 键推导一致：`CLASS_LOADER_REGISTER_CLASS` 在 `modules.cpp`。
 
@@ -46,6 +59,7 @@ flowchart LR
 | `REGISTER_CAMERA_BACKEND` / `REGISTER_POINTCLOUD_BACKEND` | `camera/backend_register.hpp` |
 | `REGISTER_LIDAR_BACKEND` | `lidar/backend_register.hpp` |
 | `REGISTER_LIDAR2D_BACKEND` | `lidar/lidar_2d_backend_register.hpp` |
+| `REGISTER_CHASSIS_BACKEND` | `chassis/backend_register.hpp` |
 
 工厂：`shared_ptr<SensorDriver>(const SensorId&, const DriverParams&)`。同名再注册会覆盖并打 WARN。
 

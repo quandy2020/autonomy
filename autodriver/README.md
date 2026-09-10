@@ -1,8 +1,13 @@
 # Autodriver
 
-统一传感器 HAL：YAML → 采集 →（可选对齐）→ Autolink。版本见 [`version.json`](version.json)。
+统一硬件 HAL：传感 + 本体（chassis）。YAML → 采集/执行 → Autolink。版本见 [`version.json`](version.json)。
 
 **Module 按模态固定；Driver 按厂商 Registry 插拔。** 详设见 [`docs/`](docs/source/index.md)。
+
+| 域 | 路径 | 说明 |
+|---|---|---|
+| 传感 | `camera/` `lidar/` … | `SensorDriver`，单向采样 |
+| 本体 | [`chassis/`](autodriver/chassis/README.md) | `ChassisDriver`，`/cmd_vel`↔`/odom`；**不依赖** `autonomy/vehicle` |
 
 ## 能力
 
@@ -13,6 +18,7 @@
 | 3D 激光 | `velodyne` `hesai` `livox` | 真 |
 | IMU/GPS | `serial` `can` | 真 |
 | Radar/Mic/SmarterEye | stub | Create→nullptr |
+| 底盘/本体 | `stub`（差分积分） | 真联调；厂商 SDK 按 Registry 加 |
 
 配置：[`config/autodriver_hardware.yaml`](config/autodriver_hardware.yaml)。
 
@@ -42,7 +48,7 @@ autodriver
 ## 目录
 
 ```
-autodriver/          # 库源码
+autodriver/          # 库源码（含 chassis/）
 config/              # 硬件 YAML + 厂商 params
 scripts/             # SDK / udev
 launch/ docs/ test/ examples/

@@ -9,6 +9,24 @@
 # Optional motion-compensator pose feed (nav_msgs/Odometry):
 # compensator:
 #   pose_channel: /localization/odom
+#
+# Robot body (chassis) — decoupled from autonomy/vehicle; vendor SDK here:
+# chassis:
+#   enable: true
+#   backend: stub   # or vendor name after REGISTER_CHASSIS_BACKEND
+
+chassis:
+  enable: false
+  name: base
+  backend: stub
+  cmd_vel_channel: /cmd_vel
+  odom_channel: /odom
+  watchdog_ms: 200
+  odom_period_ms: 20
+  max_linear_speed: 1.0
+  max_angular_speed: 1.5
+  odom_frame_id: odom
+  base_frame_id: base_link
 
 sensors:
   lidar_2d:

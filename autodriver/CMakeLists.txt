@@ -97,6 +97,8 @@ if(AUTODRIVER_BUILD_TEST)
                       test/test_lidar_backend_registry.cpp)
   autodriver_add_test(test_camera_backend_registry
                       test/test_camera_backend_registry.cpp)
+  autodriver_add_test(test_chassis_backend_registry
+                      test/test_chassis_backend_registry.cpp)
   autodriver_add_test(test_canbus_skeleton test/test_canbus_skeleton.cpp)
   autodriver_add_test(test_skeleton_modules test/test_skeleton_modules.cpp)
 endif()

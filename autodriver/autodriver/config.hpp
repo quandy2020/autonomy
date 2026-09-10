@@ -124,6 +124,32 @@ struct Config {
         std::string pose_channel;
     };
 
+    /**
+     * @brief Robot-body hardware (chassis) — separate from sensors.
+     *
+     * Lives in autodriver/chassis; does not use autonomy/vehicle.
+     * When enable=false, ChassisManager is a no-op.
+     */
+    struct Chassis {
+        bool enable = false;
+        // Instance id, e.g. "chassis/base".
+        std::string id = "chassis/base";
+        // Registry backend key (stub / scout / …).
+        std::string backend = "stub";
+        std::string cmd_vel_channel = "/cmd_vel";
+        std::string odom_channel = "/odom";
+        // Stop if no cmd_vel for this long (0 = disable).
+        int watchdog_ms = 200;
+        // Soft clamp before ApplyCommand (0 = no clamp).
+        double max_linear_speed = 0.0;
+        double max_angular_speed = 0.0;
+        // Odometry publish period.
+        int odom_period_ms = 20;
+        std::string odom_frame_id = "odom";
+        std::string base_frame_id = "base_link";
+        hardware::DriverParams params;
+    };
+
     // Autolink node name for bridge publishing.
     std::string node_name = "autodriver";
 
@@ -138,6 +164,9 @@ struct Config {
 
     // Process-level compensator pose subscription.
     Compensator compensator;
+
+    // Robot body / chassis hardware (optional).
+    Chassis chassis;
 
     // All configured sensor instances.
     std::vector<Sensor> sensors;
