@@ -29,6 +29,7 @@
 
 #include "autodriver/bridge/pose_feeder.hpp"
 #include "autodriver/bridge/publisher.hpp"
+#include "autodriver/chassis/chassis_manager.hpp"
 #include "autodriver/config_loader.hpp"
 #include "autodriver/sensor_manager.hpp"
 #include "autolink/common/log.hpp"
@@ -60,11 +61,19 @@ int Run(const std::string& configuration_directory,
         manager.Stop();
         return 1;
     }
+    autodriver::chassis::ChassisManager chassis;
+    if (!chassis.Start(publisher.node(), config)) {
+        AERROR << "ChassisManager failed";
+        pose_feeder.Stop();
+        manager.Stop();
+        return 1;
+    }
     AINFO << "autodriver running (Ctrl+C to stop)";
     while (g_running.load()) {
         autolink::Duration(100'000'000).Sleep();
     }
     AINFO << "autodriver shutting down";
+    chassis.Stop();
     pose_feeder.Stop();
     manager.Stop();
     return 0;

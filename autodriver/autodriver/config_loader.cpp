@@ -777,6 +777,63 @@ Config FromYaml(const YAML::Node& root) {
             ReadString(root["compensator"], "pose_channel");
     }
 
+    if (root["chassis"]) {
+        const YAML::Node ch = root["chassis"];
+        config.chassis.enable = ReadBool(ch, "enable", config.chassis.enable);
+        const std::string id = ReadString(ch, "id");
+        if (!id.empty()) {
+            config.chassis.id = id;
+        } else {
+            const std::string name = ReadString(ch, "name");
+            if (!name.empty()) {
+                config.chassis.id = "chassis/" + name;
+            }
+        }
+        const std::string backend = ReadString(ch, "backend");
+        if (!backend.empty()) {
+            config.chassis.backend = backend;
+        }
+        const std::string cmd = ReadString(ch, "cmd_vel_channel");
+        if (!cmd.empty()) {
+            config.chassis.cmd_vel_channel = cmd;
+        }
+        const std::string odom = ReadString(ch, "odom_channel");
+        if (!odom.empty()) {
+            config.chassis.odom_channel = odom;
+        }
+        config.chassis.watchdog_ms =
+            ReadInt(ch, "watchdog_ms", config.chassis.watchdog_ms);
+        config.chassis.odom_period_ms =
+            ReadInt(ch, "odom_period_ms", config.chassis.odom_period_ms);
+        const std::string odom_frame = ReadString(ch, "odom_frame_id");
+        if (!odom_frame.empty()) {
+            config.chassis.odom_frame_id = odom_frame;
+        }
+        const std::string base_frame = ReadString(ch, "base_frame_id");
+        if (!base_frame.empty()) {
+            config.chassis.base_frame_id = base_frame;
+        }
+        if (ch["max_linear_speed"] && ch["max_linear_speed"].IsScalar()) {
+            try {
+                config.chassis.max_linear_speed =
+                    ch["max_linear_speed"].as<double>();
+            } catch (const YAML::Exception&) {
+            }
+        }
+        if (ch["max_angular_speed"] && ch["max_angular_speed"].IsScalar()) {
+            try {
+                config.chassis.max_angular_speed =
+                    ch["max_angular_speed"].as<double>();
+            } catch (const YAML::Exception&) {
+            }
+        }
+        ReadParamsMap(ch["params"], &config.chassis.params);
+        MergeParamsFile(ReadParamsFileField(ch), &config.chassis.params);
+        config.chassis.params.erase("params_file");
+        ApplyHardwareShorthand(ch, config.chassis.backend,
+                               &config.chassis.params);
+    }
+
     const YAML::Node sensors_node = root["sensors"];
     if (sensors_node && sensors_node.IsMap()) {
         AppendSensorGroups(sensors_node, &config.sensors);
