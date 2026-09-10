@@ -17,7 +17,7 @@
 #ifndef AUTODRIVER_CHASSIS_BACKEND_REGISTER_HPP_
 #define AUTODRIVER_CHASSIS_BACKEND_REGISTER_HPP_
 
-#include "autodriver/chassis/backend_registry.hpp"
+#include "chassis/backend_registry.hpp"
 
 /**
  * @brief Register a chassis backend at static init.

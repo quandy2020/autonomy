@@ -25,7 +25,7 @@
 #ifndef AUTODRIVER_CHASSIS_CHASSIS_DRIVER_HPP_
 #define AUTODRIVER_CHASSIS_CHASSIS_DRIVER_HPP_
 
-#include "autodriver/chassis/types.hpp"
+#include "chassis/types.hpp"
 
 namespace autodriver {
 namespace chassis {

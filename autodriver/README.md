@@ -7,7 +7,7 @@
 | 域 | 路径 | 说明 |
 |---|---|---|
 | 传感 | `camera/` `lidar/` … | `SensorDriver`，单向采样 |
-| 本体 | [`chassis/`](autodriver/chassis/README.md) | `ChassisDriver`，`/cmd_vel`↔`/odom`；**不依赖** `autonomy/vehicle` |
+| 本体 | [`chassis/`](chassis/README.md) | `ChassisDriver`，`/cmd_vel`↔`/odom`；**不依赖** `autonomy/vehicle` |
 
 ## 能力
 
@@ -48,7 +48,8 @@ autodriver
 ## 目录
 
 ```
-autodriver/          # 库源码（含 chassis/）
+autodriver/          # 传感库源码
+chassis/             # 本体/底盘 HAL（独立子目录）
 config/              # 硬件 YAML + 厂商 params
 scripts/             # SDK / udev
 launch/ docs/ test/ examples/

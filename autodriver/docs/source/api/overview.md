@@ -19,7 +19,7 @@ SensorManager
   └─ SampleSink → bridge::Publisher
 ```
 
-源码按模态分包：`common/`、`canbus/`、`imu/`、`gps/`、`camera/`、`lidar/`、`radar/`、`microphone/`、`smartereye/`、`chassis/`、`bridge/`。
+源码按模态分包：传感在 `autodriver/{common,canbus,imu,gps,camera,lidar,radar,microphone,smartereye,bridge}/`；本体在顶层 `chassis/`。
 
 ## 注册表 API（模块化扩展点）
 
@@ -39,8 +39,8 @@ REGISTER_LIDAR2D_BACKEND(foo, "foo", CreateFooDriver);
 REGISTER_CAMERA_BACKEND(tag, "backend", CreateFn);
 REGISTER_POINTCLOUD_BACKEND(tag, "backend", CreateFn);
 
-// 本体 / 底盘（与 autonomy/vehicle 解耦）
-#include "autodriver/chassis/backend_register.hpp"
+// 本体 / 底盘（与 autonomy/vehicle 解耦；源码在顶层 chassis/）
+#include "chassis/backend_register.hpp"
 REGISTER_CHASSIS_BACKEND(mybot, "mybot", CreateMyBotDriver);
 ```
 

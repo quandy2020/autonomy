@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "autodriver/chassis/backend_registry.hpp"
-#include "autodriver/chassis/stub/driver.hpp"
+#include "chassis/backend_registry.hpp"
+#include "chassis/stub/driver.hpp"
 
 #include <gtest/gtest.h>
 

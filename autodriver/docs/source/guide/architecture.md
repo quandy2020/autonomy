@@ -9,7 +9,7 @@
 | 配置 | `config_loader` | YAML → `Config::Sensor`；`params_file` 合并；`camera` 折叠展开 | 新字段 / 折叠语法 |
 | 编排 | `SensorManager`、`SensorHub`、udev | Attach/Detach、对齐、热插拔 | 一般不改 |
 | 模态 | `modules.cpp` 中 `*Module` | 按 `SensorType` 调 Registry 建驱动 | **通常不改** |
-| 驱动 | `camera|lidar|imu|…/<vendor>/`、`chassis/<vendor>/` | `SensorDriver` / `ChassisDriver` | **加厂商在此** |
+| 驱动 | `autodriver/{camera,lidar,…}/<vendor>/`、`chassis/<vendor>/` | `SensorDriver` / `ChassisDriver` | **加厂商在此** |
 | 传输 | `common::Stream`、`canbus`、厂商 SDK | 字节 / 帧 | 复用即可 |
 | 发布 | `SampleSink` / `bridge::Publisher`；`ChassisManager` | Autolink Writer/Reader | 可换自定义 Sink |
 

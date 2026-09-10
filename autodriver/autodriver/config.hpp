@@ -127,7 +127,7 @@ struct Config {
     /**
      * @brief Robot-body hardware (chassis) — separate from sensors.
      *
-     * Lives in autodriver/chassis; does not use autonomy/vehicle.
+     * Lives in top-level chassis/; does not use autonomy/vehicle.
      * When enable=false, ChassisManager is a no-op.
      */
     struct Chassis {

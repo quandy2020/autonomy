@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "autodriver/chassis/backend_registry.hpp"
+#include "chassis/backend_registry.hpp"
 
 #include "autolink/common/log.hpp"
 

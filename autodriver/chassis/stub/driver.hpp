@@ -24,7 +24,7 @@
 
 #include <memory>
 
-#include "autodriver/chassis/chassis_driver.hpp"
+#include "chassis/chassis_driver.hpp"
 #include "autodriver/driver_params.hpp"
 
 namespace autodriver {

@@ -63,9 +63,6 @@ set(AUTODRIVER_SOURCES
   lidar/rplidar/convert.cpp
   lidar/rplidar/serial_driver.cpp
   lidar/vendor_stubs.cpp
-  chassis/backend_registry.cpp
-  chassis/chassis_manager.cpp
-  chassis/stub/driver.cpp
   bridge/publisher.cpp
   bridge/pose_feeder.cpp
 )
