@@ -34,8 +34,19 @@ cmake --build build -j8 --target autodriver autodriver_main autodriver_demo
 | `AUTODRIVER_BUILD_DOCS` | ON | MkDocs 目标 `docs` |
 | `AUTODRIVER_WITH_REALSENSE` | ON | RealSense 驱动（需 librealsense2） |
 | `AUTODRIVER_WITH_ORBBEC` | ON | Orbbec 驱动（需 OrbbecSDK；未找到则 stub） |
+| `AUTODRIVER_WITH_RPLIDAR` | ON | RPLidar（需系统安装 rplidar_sdk） |
+| `AUTODRIVER_WITH_LIVOX` | ON | Livox SDK1/SDK2（未找到则对应代 stub） |
 
 Linux 上若找到 `libudev`，会自动启用热插拔（宏 `AUTODRIVER_HAVE_UDEV`），无单独 CMake 开关。
+
+厂商 SDK：
+
+```bash
+# 在 autodriver 包根目录
+./scripts/install_rplidar_sdk.sh
+./scripts/install_livox_sdk2.sh
+./scripts/install_livox_sdk.sh
+```
 
 产物：
 
@@ -110,7 +121,12 @@ ctest --test-dir build -R 'test_(config|config_loader|manager|hub|realsense|nmea
 
 | 需求 | 文档 |
 |---|---|
+| 使用 / 嵌入 | [使用方式](usage.md) |
+| 架构 / 模块化 | [架构](architecture.md) |
+| 数据流 | [数据流](dataflow.md) |
+| 各厂商传感器 | [传感器手册](../sensor/index.md) |
 | 配置字段 | [配置](configuration.md) |
+| 测试 | [测试](testing.md) |
 | Attach / udev | [生命周期](lifecycle.md) |
 | serial / CAN / RealSense | [后端](backends.md) |
 | C++ API | [API 概览](../api/overview.md) |

@@ -2,6 +2,8 @@
 
 头文件均在 `autodriver/` 下；链接目标 `autodriver`（`libautodriver.so`）；进程入口产物 `autodriver`（CMake target：`autodriver_main`）。
 
+设计摘要见 [架构](../guide/architecture.md)；嵌入用法见 [使用方式](../guide/usage.md)。
+
 ## 类型关系
 
 ```
@@ -10,6 +12,7 @@ Config
 DeviceMatch
 SensorManager
   ├─ SensorModule / SensorPlugin
+  ├─ BackendRegistry → SensorDriver
   ├─ common::Stream × Parser（serial GPS/IMU）
   ├─ lidar::LidarComponentBase（厂商扩展）
   ├─ SensorHub
@@ -17,6 +20,39 @@ SensorManager
 ```
 
 源码按模态分包：`common/`、`canbus/`、`imu/`、`gps/`、`camera/`、`lidar/`、`radar/`、`microphone/`、`smartereye/`、`bridge/`。
+
+## 注册表 API（模块化扩展点）
+
+厂商驱动通过静态宏注册，Module 只查表：
+
+```cpp
+// 3D lidar
+#include "autodriver/lidar/backend_register.hpp"
+REGISTER_LIDAR_BACKEND(myvendor, "myvendor", CreateMyDriver, "alias");
+
+// 2D lidar
+#include "autodriver/lidar/lidar_2d_backend_register.hpp"
+REGISTER_LIDAR2D_BACKEND(foo, "foo", CreateFooDriver);
+
+// 相机 / 点云
+#include "autodriver/camera/backend_register.hpp"
+REGISTER_CAMERA_BACKEND(tag, "backend", CreateFn);
+REGISTER_POINTCLOUD_BACKEND(tag, "backend", CreateFn);
+```
+
+工厂签名统一为：
+
+```cpp
+std::shared_ptr<SensorDriver> CreateXxx(
+    const SensorId& id, const hardware::DriverParams& params);
+```
+
+运行时：
+
+```cpp
+auto drv = lidar::LidarBackendRegistry::Instance().Create(
+    "velodyne", id, params);
+```
 
 ## Config
 
@@ -139,6 +175,10 @@ bool MatchDevice(const DeviceMatch& observed, const DeviceMatch& rule);
 | `camera/orbbec/` | Orbbec hub + camera / pointcloud（需 OrbbecSDK） |
 | `lidar/backend_registry.hpp` | lidar_3d 厂商工厂注册表 |
 | `lidar/backend_register.hpp` | `REGISTER_LIDAR_BACKEND` 宏 |
+| `lidar/lidar_2d_backend_registry.hpp` | lidar_2d 注册表 |
+| `lidar/lidar_2d_backend_register.hpp` | `REGISTER_LIDAR2D_BACKEND` |
+| `lidar/livox/` | Livox SDK1/SDK2 驱动 |
+| `lidar/rplidar/` | RPLidar 串口驱动 |
 | `lidar/motion_compensator.hpp` | 扫面内运动补偿（需 PoseLookup） |
 | `lidar/hesai/udp_driver.hpp` | Hesai XT32 UDP → Convert → PointCloud2 |
 | `canbus/` | CAN Client/Sender/Receiver/ProtocolData/byte |

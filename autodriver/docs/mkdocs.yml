@@ -22,9 +22,24 @@ nav:
   - 首页: index.md
   - 入门:
       - 快速开始: guide/quickstart.md
+      - 使用方式: guide/usage.md
       - 配置: guide/configuration.md
       - 生命周期: guide/lifecycle.md
+  - 设计:
+      - 架构与模块化: guide/architecture.md
+      - 数据流: guide/dataflow.md
       - 后端: guide/backends.md
+      - 测试: guide/testing.md
+  - 传感器:
+      - 概览: sensor/index.md
+      - Intel RealSense: sensor/camera/realsense.md
+      - Orbbec: sensor/camera/orbbec.md
+      - Slamtec RPLidar: sensor/lidar/rplidar.md
+      - Velodyne: sensor/lidar/velodyne.md
+      - Hesai: sensor/lidar/hesai.md
+      - Livox: sensor/lidar/livox.md
+      - IMU / GPS: sensor/imu_gps.md
+      - Stub 与占位: sensor/stubs.md
   - API:
       - 概览: api/overview.md
   - 常见问题: faq.md

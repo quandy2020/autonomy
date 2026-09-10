@@ -6,12 +6,17 @@ Autodriver 是 autonomy 栈中的传感器采集库：YAML 配置 → 内置 `Se
 
 ## 阅读路径
 
-1. [快速开始](guide/quickstart.md) — 构建、`autodriver`、launch
-2. [配置](guide/configuration.md) — `autodriver_hardware.yaml` 字段说明
-3. [生命周期](guide/lifecycle.md) — Attach / Detach / udev
-4. [后端](guide/backends.md) — serial / canbus / RealSense / lidar / stub 模态
-5. [API 概览](api/overview.md) — `Config`、`SensorManager`、`Publisher`、canbus / parser
-6. [FAQ](faq.md) — 路径、权限、stub 与编译选项
+1. [快速开始](guide/quickstart.md) — 构建、`autodriver`、launch  
+2. [使用方式](guide/usage.md) — 进程 / launch / 嵌入库  
+3. [架构与模块化](guide/architecture.md) — 分层、Registry、如何加厂商  
+4. [数据流](guide/dataflow.md) — 相机 / 激光 / 串口路径  
+5. [传感器手册](sensor/index.md) — 各厂商简介与用法  
+6. [配置](guide/configuration.md) — YAML 字段  
+7. [生命周期](guide/lifecycle.md) — Attach / Detach / udev  
+8. [后端](guide/backends.md) — backend 与扩展  
+9. [测试](guide/testing.md) — ctest 与用例表  
+10. [API 概览](api/overview.md) — `Config`、`SensorManager`、注册表  
+11. [FAQ](faq.md)
 
 ## 架构概览
 
@@ -25,6 +30,8 @@ Autodriver 是 autonomy 栈中的传感器采集库：YAML 配置 → 内置 `Se
                                └─ SampleSink → bridge::Publisher → Autolink
 ```
 
+模块化要点：**Module 按模态固定，Driver 按厂商注册**；新增厂商一般只加 `camera|lidar/<vendor>/` + `REGISTER_*_BACKEND`，不必改 Manager。
+
 源码树（节选）：
 
 ```
@@ -37,7 +44,7 @@ autodriver/autodriver/
   smartereye/   # camera backend stub
   radar/        # Conti stub + registry
   microphone/   # Respeaker stub + registry
-  lidar/        # LidarComponentBase、packet_queue、scan_cut、velodyne/、hesai/、stubs
+  lidar/        # velodyne/、hesai/、livox/、rplidar/、stubs
   bridge/
 ```
 
@@ -46,10 +53,12 @@ autodriver/autodriver/
 在 autonomy **仓库根目录**：
 
 ```bash
-export AUTODRIVER_PATH=$PWD/autodriver
+export AUTODRIVER_PATH=$PWD/src/autonomy/autodriver
 export LD_LIBRARY_PATH=$PWD/build/lib:$LD_LIBRARY_PATH
 export PATH=$PWD/build/bin:$PATH
 
 ./build/bin/autodriver
 ctest --test-dir build -R autodriver --output-on-failure
 ```
+
+包级说明见 [`README.md`](../../README.md)。

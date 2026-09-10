@@ -14,7 +14,7 @@
 | `smartereye/` | Camera backend stub |
 | `radar/` | Registry + Conti stub |
 | `microphone/` | Registry + Respeaker stub |
-| `lidar/` | `SourceType`、`LidarComponentBase`、`packet_queue`、`scan_cut`、`MotionCompensator`、`velodyne/`、`hesai/`、厂商 stub |
+| `lidar/` | `SourceType`、`LidarComponentBase`、`packet_queue`、`scan_cut`、`MotionCompensator`、`velodyne/`、`hesai/`、`livox/`、`rplidar/`、厂商 stub |
 
 ## 总览
 
