@@ -93,69 +93,50 @@ install(
 )
 
 set(_autonomy_launch_mods localization planning control task system)
-if(TARGET fathom_component)
+if(TARGET base_component)
   install(
-    TARGETS fathom_component
+    TARGETS base_component
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
-  )
-  install(
-    FILES autonomy/perception/fathom/dag/fathom.dag
-    DESTINATION share/autonomy/fathom/dag
-  )
-  install(
-    FILES autonomy/perception/fathom/conf/fathom.pb.txt
-    DESTINATION share/autonomy/fathom/conf
-  )
-  install(
-    FILES autonomy/perception/fathom/launch/fathom.launch
-    DESTINATION share/autonomy/fathom/launch
   )
   list(APPEND _autonomy_launch_mods perception)
 endif()
-if(TARGET hestia_component)
+if(TARGET follow_component)
   install(
-    TARGETS hestia_component
+    TARGETS follow_component
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
-  )
-  install(
-    FILES autonomy/perception/hestia/dag/hestia.dag
-    DESTINATION share/autonomy/hestia/dag
-  )
-  install(
-    FILES autonomy/perception/hestia/conf/hestia.pb.txt
-    DESTINATION share/autonomy/hestia/conf
-  )
-  install(
-    FILES autonomy/perception/hestia/launch/hestia.launch
-    DESTINATION share/autonomy/hestia/launch
   )
   list(APPEND _autonomy_launch_mods perception)
 endif()
-if(TARGET shadow_component)
+if(TARGET audio_component)
   install(
-    TARGETS shadow_component
+    TARGETS audio_component
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
   )
+  list(APPEND _autonomy_launch_mods audio)
   install(
-    FILES autonomy/perception/shadow/dag/shadow.dag
-    DESTINATION share/autonomy/shadow/dag
+    DIRECTORY autonomy/audio/conf/
+    DESTINATION share/autonomy/audio/conf
+    FILES_MATCHING
+    PATTERN "*.pb.txt"
+    PATTERN "*.yaml"
   )
   install(
-    FILES autonomy/perception/shadow/conf/shadow.pb.txt
-    DESTINATION share/autonomy/shadow/conf
+    DIRECTORY autonomy/audio/dag/
+    DESTINATION share/autonomy/audio/dag
+    FILES_MATCHING
+    PATTERN "*.dag"
   )
-  install(
-    FILES autonomy/perception/shadow/launch/shadow.launch
-    DESTINATION share/autonomy/shadow/launch
-  )
+endif()
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/autonomy/perception/launch")
   list(APPEND _autonomy_launch_mods perception)
 endif()
 if(BUILD_GRPC)
   list(APPEND _autonomy_launch_mods bridge)
 endif()
+list(REMOVE_DUPLICATES _autonomy_launch_mods)
 foreach(_mod IN LISTS _autonomy_launch_mods)
   install(
     DIRECTORY autonomy/${_mod}/launch/

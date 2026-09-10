@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package autonomy.perception.follow.proto;
+
+// Person-following closed loop on top of base tracks + depth.
+message FollowOptions {
+  string tracks_topic = 1;
+  string depth_topic = 2;
+  string camera_info_topic = 3;
+  string odom_topic = 4;
+  string select_topic = 5;
+  string target_topic = 6;
+  string path_topic = 7;
+  string grid_topic = 8;
+
+  string camera_frame = 10;
+  string base_frame = 11;
+  string map_frame = 12;
+
+  float follow_distance_m = 20;
+  float min_depth_m = 21;
+  float max_depth_m = 22;
+  float inner_box_scale = 23;
+  uint32 min_depth_samples = 24;
+  float depth_outlier_m = 25;
+
+  float grid_length_m = 30;
+  float grid_resolution_m = 31;
+  float obstacle_height_m = 32;
+  float robot_radius_m = 33;
+  float cell_ttl_sec = 34;
+  float roll_threshold_m = 35;
+
+  float path_step_m = 40;
+  uint32 path_max_poses = 41;
+  float tf_timeout_sec = 42;
+  float max_input_skew_sec = 43;
+}

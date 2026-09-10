@@ -195,7 +195,7 @@ TEST(TrackingClientTest, RejectsStaleShadowData) {
     TrackingClientTestApi::ReceiveTarget(client.get(), Pose(1.0, 0.0));
     TrackingClientTestApi::ReceivePath(client.get(), Path());
 
-    now += TrackingClient::kShadowDataTimeout + std::chrono::milliseconds(1);
+    now += TrackingClient::kFollowDataTimeout + std::chrono::milliseconds(1);
 
     automsgs::msgs::geometry_msgs::PoseStamped target;
     automsgs::msgs::nav_msgs::Path path;
@@ -215,7 +215,7 @@ TEST(TrackingClientTest, RejectsFreshPathWhenTargetIsStale) {
     TrackingClientTestApi::ReceiveTarget(client.get(), Pose(1.0, 0.0));
     TrackingClientTestApi::ReceivePath(client.get(), Path());
 
-    now += TrackingClient::kShadowDataTimeout + std::chrono::milliseconds(1);
+    now += TrackingClient::kFollowDataTimeout + std::chrono::milliseconds(1);
     TrackingClientTestApi::ReceivePath(client.get(), Path(0.25, 0.0));
 
     automsgs::msgs::nav_msgs::Path path;
@@ -278,7 +278,7 @@ TEST(TrackingClientTest, PersonFeedbackUsesShadowAndRemainsReacquirable) {
     EXPECT_TRUE(feedback.has_target_pose());
     EXPECT_FLOAT_EQ(feedback.distance_to_target(), 5.0F);
 
-    now += TrackingClient::kShadowDataTimeout + std::chrono::milliseconds(1);
+    now += TrackingClient::kFollowDataTimeout + std::chrono::milliseconds(1);
     feedback.Clear();
     task.Fill(&feedback);
     EXPECT_EQ(feedback.status(),

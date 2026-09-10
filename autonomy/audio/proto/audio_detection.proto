@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package autonomy.audio.proto;
+
+import "automsgs/msgs/geometry_msgs/point.proto";
+import "automsgs/msgs/std_msgs/header.proto";
+import "autonomy/audio/proto/audio_common.proto";
+
+// Sound-source localization / motion output from the audio array pipeline.
+message AudioDetection {
+  automsgs.msgs.std_msgs.Header header = 1;
+  reserved 2;
+  reserved "is_siren";
+  MovingResult moving_result = 3;
+  automsgs.msgs.geometry_msgs.Point position = 4;
+  // Source azimuth in radians (vehicle / IMU frame after extrinsics).
+  double source_degree = 5;
+}

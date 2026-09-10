@@ -21,7 +21,6 @@
 
 #include "autolink/autolink.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/perception/ariadne/core/exploration_client.hpp"
 #include "autonomy/perception/proto/perception_options.pb.h"
 #include "autonomy/transform/buffer.hpp"
 
@@ -30,7 +29,7 @@ namespace perception {
 
 constexpr char kPerceptionServerNodeName[] = "perception_server";
 
-// Process-level facade for perception backends (exploration).
+// Process-level facade for perception backends.
 class PerceptionServer {
  public:
   AUTONOMY_SMART_PTR_DEFINITIONS(PerceptionServer)
@@ -52,16 +51,11 @@ class PerceptionServer {
     return options_;
   }
 
-  exploration::ExplorationClient* exploration_client() {
-    return exploration_client_.get();
-  }
-
  private:
   proto::PerceptionOptions options_;
   std::string config_directory_;
   std::shared_ptr<autolink::Node> node_;
   std::shared_ptr<transform::Buffer> tf_buffer_;
-  std::unique_ptr<exploration::ExplorationClient> exploration_client_;
   bool running_{false};
 };
 

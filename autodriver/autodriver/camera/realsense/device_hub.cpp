@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <cstdlib>
 #include <cstring>
 #include <thread>
 #include <unordered_map>
@@ -193,6 +194,28 @@ struct RealSenseDeviceHub::Impl {
 
     // Depth scale in meters per depth unit from the depth sensor.
     float depth_scale_{0.001f};
+
+    /**
+     * @brief Stereo depth post-process chain. Temporal state must not be
+     * shared between the raw depth image and the color-aligned depth image.
+     */
+    struct DepthPostprocess {
+        bool enabled{true};
+        bool use_threshold{true};
+        bool use_spatial{true};
+        bool use_temporal{true};
+        bool use_hole_fill{true};
+        rs2::threshold_filter threshold;
+        rs2::disparity_transform to_disparity{true};
+        rs2::spatial_filter spatial;
+        rs2::temporal_filter temporal;
+        rs2::hole_filling_filter hole;
+        rs2::disparity_transform to_depth{false};
+    };
+
+    DepthPostprocess raw_depth_filters_;
+    DepthPostprocess aligned_depth_filters_;
+    bool depth_filters_ready_{false};
 
     /**
      * @brief librealsense stream type and index pair.
@@ -452,21 +475,163 @@ struct RealSenseDeviceHub::Impl {
         return true;
     }
 
+    static bool SetOptionIfSupported(rs2::sensor& sensor, rs2_option option,
+                                     float value) {
+        try {
+            if (!sensor.supports(option)) {
+                return false;
+            }
+            const auto range = sensor.get_option_range(option);
+            const float clamped = std::max(range.min, std::min(range.max, value));
+            sensor.set_option(option, clamped);
+            return true;
+        } catch (const rs2::error&) {
+            return false;
+        }
+    }
+
+    static int VisualPresetValue(const std::string& name) {
+        std::string value = name;
+        std::transform(value.begin(), value.end(), value.begin(),
+                       [](unsigned char c) {
+                           return static_cast<char>(std::tolower(c));
+                       });
+        if (value == "high_accuracy" || value == "high-accuracy") {
+            return 3;
+        }
+        if (value == "high_density" || value == "high-density") {
+            return 4;
+        }
+        if (value == "medium_density" || value == "medium-density") {
+            return 5;
+        }
+        if (value == "hand") {
+            return 2;
+        }
+        if (value == "default" || value.empty()) {
+            return 1;
+        }
+        char* end = nullptr;
+        const long parsed = std::strtol(name.c_str(), &end, 10);
+        if (end != name.c_str() && end != nullptr && *end == '\0') {
+            return static_cast<int>(parsed);
+        }
+        return 1;
+    }
+
+    void ConfigureDepthFilters(DepthPostprocess* filters) {
+        if (filters == nullptr) {
+            return;
+        }
+        filters->enabled =
+            hardware::ParseBool(params, "filters_enabled", true);
+        filters->use_threshold =
+            hardware::ParseBool(params, "threshold_filter", true);
+        filters->use_spatial =
+            hardware::ParseBool(params, "spatial_filter", true);
+        filters->use_temporal =
+            hardware::ParseBool(params, "temporal_filter", true);
+        filters->use_hole_fill =
+            hardware::ParseBool(params, "hole_filling_filter", true);
+
+        try {
+            const float min_m = static_cast<float>(
+                hardware::ParseDouble(params, "depth_min_m", 0.2));
+            const float max_m = static_cast<float>(
+                hardware::ParseDouble(params, "depth_max_m", 6.0));
+            filters->threshold.set_option(RS2_OPTION_MIN_DISTANCE, min_m);
+            filters->threshold.set_option(RS2_OPTION_MAX_DISTANCE, max_m);
+
+            filters->spatial.set_option(
+                RS2_OPTION_FILTER_MAGNITUDE,
+                static_cast<float>(
+                    hardware::ParseInt(params, "spatial_magnitude", 2)));
+            filters->spatial.set_option(
+                RS2_OPTION_FILTER_SMOOTH_ALPHA,
+                static_cast<float>(hardware::ParseDouble(
+                    params, "spatial_smooth_alpha", 0.5)));
+            filters->spatial.set_option(
+                RS2_OPTION_FILTER_SMOOTH_DELTA,
+                static_cast<float>(
+                    hardware::ParseInt(params, "spatial_smooth_delta", 20)));
+
+            filters->temporal.set_option(
+                RS2_OPTION_FILTER_SMOOTH_ALPHA,
+                static_cast<float>(hardware::ParseDouble(
+                    params, "temporal_smooth_alpha", 0.4)));
+            filters->temporal.set_option(
+                RS2_OPTION_FILTER_SMOOTH_DELTA,
+                static_cast<float>(
+                    hardware::ParseInt(params, "temporal_smooth_delta", 20)));
+            filters->temporal.set_option(RS2_OPTION_HOLES_FILL, 2.f);
+
+            const int hole_mode =
+                hardware::ParseInt(params, "hole_filling", 1);
+            filters->hole.set_option(RS2_OPTION_HOLES_FILL,
+                                     static_cast<float>(hole_mode));
+        } catch (const rs2::error&) {
+        }
+    }
+
+    rs2::depth_frame FilterDepth(const rs2::depth_frame& depth,
+                                 DepthPostprocess* filters) {
+        if (!depth || filters == nullptr || !filters->enabled) {
+            return depth;
+        }
+        try {
+            rs2::frame current = depth;
+            if (filters->use_threshold) {
+                current = filters->threshold.process(current);
+            }
+            current = filters->to_disparity.process(current);
+            if (filters->use_spatial) {
+                current = filters->spatial.process(current);
+            }
+            if (filters->use_temporal) {
+                current = filters->temporal.process(current);
+            }
+            if (filters->use_hole_fill) {
+                current = filters->hole.process(current);
+            }
+            current = filters->to_depth.process(current);
+            if (auto filtered = current.as<rs2::depth_frame>()) {
+                return filtered;
+            }
+        } catch (const rs2::error&) {
+        }
+        return depth;
+    }
+
     /**
      * @brief Applies depth emitter and related device options from params.
      */
     void ApplyDeviceOptions(const rs2::device& device) {
         const bool emitter_enabled = hardware::ParseBool(
             params, "emitter_enabled",
-            hardware::ParseBool(params, "enable_ir_emitter", false));
+            hardware::ParseBool(params, "enable_ir_emitter", true));
         try {
-            const rs2::depth_sensor depth = device.first<rs2::depth_sensor>();
-            if (depth.supports(RS2_OPTION_EMITTER_ENABLED)) {
-                depth.set_option(RS2_OPTION_EMITTER_ENABLED,
+            rs2::depth_sensor depth = device.first<rs2::depth_sensor>();
+            SetOptionIfSupported(depth, RS2_OPTION_EMITTER_ENABLED,
                                  emitter_enabled ? 1.f : 0.f);
+            if (hardware::ParseBool(params, "enable_auto_exposure", true)) {
+                SetOptionIfSupported(depth, RS2_OPTION_ENABLE_AUTO_EXPOSURE,
+                                     1.f);
             }
+            const double laser_power =
+                hardware::ParseDouble(params, "laser_power", 240.0);
+            if (laser_power >= 0.0) {
+                SetOptionIfSupported(depth, RS2_OPTION_LASER_POWER,
+                                     static_cast<float>(laser_power));
+            }
+            const std::string preset =
+                hardware::GetString(params, "visual_preset", "high_accuracy");
+            SetOptionIfSupported(depth, RS2_OPTION_VISUAL_PRESET,
+                                 static_cast<float>(VisualPresetValue(preset)));
         } catch (const rs2::error&) {
         }
+        ConfigureDepthFilters(&raw_depth_filters_);
+        ConfigureDepthFilters(&aligned_depth_filters_);
+        depth_filters_ready_ = true;
     }
 
     /**
@@ -667,16 +832,26 @@ struct RealSenseDeviceHub::Impl {
             for (const VideoSubscription& sub : video_subs) {
                 if (sub.stream ==
                     hardware::realsense::StreamKind::kAlignedDepthToColor) {
-                    const rs2::depth_frame depth =
-                        aligned.get_depth_frame();
-                    DispatchVideoFrame(sub, depth);
+                    rs2::depth_frame depth = aligned.get_depth_frame();
+                    if (depth) {
+                        depth = FilterDepth(depth, &aligned_depth_filters_);
+                        DispatchVideoFrame(sub, depth);
+                    }
                     continue;
                 }
                 const StreamSpec spec = StreamSpecFor(sub.stream);
                 const rs2::frame frame = FindVideoFrame(frames, spec);
-                if (frame) {
-                    DispatchVideoFrame(sub, frame.as<rs2::video_frame>());
+                if (!frame) {
+                    continue;
                 }
+                if (sub.stream == hardware::realsense::StreamKind::kDepth) {
+                    if (auto depth = frame.as<rs2::depth_frame>()) {
+                        DispatchVideoFrame(
+                            sub, FilterDepth(depth, &raw_depth_filters_));
+                        continue;
+                    }
+                }
+                DispatchVideoFrame(sub, frame.as<rs2::video_frame>());
             }
 
             if (!pointcloud_subs.empty()) {

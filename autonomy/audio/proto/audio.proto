@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package autonomy.audio.proto;
+
+// Runtime options for AudioComponent (DAG config_file_path).
+// Generic PCM transport: automsgs.msgs.audio_msgs.AudioDataStamped
+// Array / detection wire types: microphone.proto, audio_detection.proto
+// ASR result: asr.proto (AsrResult); optional String on speech_recognition_topic
+message AudioOptions {
+  string audio_data_topic = 1;
+  string audio_detection_topic = 2;
+  string localization_topic = 3;
+  string audio_event_topic = 4;
+  string perception_topic = 5;
+  // Full AsrResult topic (confidence / is_final).
+  string asr_result_topic = 6;
+  // Compatibility text-only topic (e.g. autoviz /speech_recognition).
+  string speech_recognition_topic = 7;
+
+  // YAML extrinsics: respeaker -> vehicle/IMU (ROS transform style).
+  // Empty => identity transform.
+  string respeaker_extrinsics_path = 10;
+
+  // Seconds of RAW / ASR PCM retained for detectors and utterance windows.
+  int32 cache_signal_time_sec = 11;
+
+  bool enable_direction = 20;
+  bool enable_moving = 21;
+  bool enable_asr = 22;
+
+  // Sherpa-ONNX offline Zipformer (or compatible) model files.
+  // Required when enable_asr=true and BUILD_SHERPA_ONNX is linked.
+  string asr_model_dir = 30;
+  string asr_tokens = 31;
+  string asr_encoder = 32;
+  string asr_decoder = 33;
+  string asr_joiner = 34;
+  string asr_language = 35;
+  // Skip recognition when frame RMS is below this (int16 scale).
+  float asr_energy_threshold = 36;
+  // Prefer CHANNEL_TYPE_ASR; if absent, fall back to first RAW channel.
+  bool asr_prefer_asr_channel = 37;
+}

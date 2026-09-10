@@ -169,7 +169,10 @@ bool TensorRtBackend::LoadFromOptions(const InferenceOptions& opt) {
         impl_->engine.reset(
             impl_->runtime->deserializeCudaEngine(blob.data(), blob.size()));
         if (!impl_->engine) {
-            SetLastError("deserializeCudaEngine failed.");
+            SetLastError(
+                "deserializeCudaEngine failed (engine built for a different "
+                "platform/TRT/GPU than this runtime). Rebuild the .engine on "
+                "this machine.");
             return false;
         }
         return true;
@@ -239,7 +242,9 @@ bool TensorRtBackend::LoadFromOptions(const InferenceOptions& opt) {
                 SetLastError("buildSerializedNetwork failed.");
                 return false;
             }
-            engine_blob.assign(plan->data(), plan->data() + plan->size());
+            const auto* bytes =
+                static_cast<const char*>(plan->data());
+            engine_blob.assign(bytes, bytes + plan->size());
             if (!cache_path.empty()) {
                 std::ofstream cache_file(cache_path, std::ios::binary);
                 if (cache_file) {

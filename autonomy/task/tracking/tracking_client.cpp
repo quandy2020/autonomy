@@ -34,8 +34,8 @@ TrackingClient::TrackingClient(navigation::NavigationClient::Ptr navigation)
 
 TrackingClient::~TrackingClient() {
     if (node_) {
-        (void)node_->DeleteReader(kShadowTargetTopic);
-        (void)node_->DeleteReader(kShadowPathTopic);
+        (void)node_->DeleteReader(kFollowTargetTopic);
+        (void)node_->DeleteReader(kFollowPathTopic);
     }
 }
 
@@ -69,7 +69,7 @@ bool TrackingClient::EnableShadowTransport(
         return true;
     }
 
-    auto selection_writer = node->CreateWriter<Selection>(kShadowSelectTopic);
+    auto selection_writer = node->CreateWriter<Selection>(kFollowSelectTopic);
     if (!selection_writer) {
         return false;
     }
@@ -81,7 +81,7 @@ bool TrackingClient::EnableShadowTransport(
     const std::weak_ptr<TrackingClient> weak_self = shared_from_this();
     auto shadow_target_reader =
         node->CreateReader<automsgs::msgs::geometry_msgs::PoseStamped>(
-            kShadowTargetTopic,
+            kFollowTargetTopic,
             [weak_self](const std::shared_ptr<
                         automsgs::msgs::geometry_msgs::PoseStamped>& target) {
                 if (const auto self = weak_self.lock()) {
@@ -90,7 +90,7 @@ bool TrackingClient::EnableShadowTransport(
             });
     auto shadow_path_reader =
         node->CreateReader<automsgs::msgs::nav_msgs::Path>(
-            kShadowPathTopic,
+            kFollowPathTopic,
             [weak_self](
                 const std::shared_ptr<automsgs::msgs::nav_msgs::Path>& path) {
                 if (const auto self = weak_self.lock()) {
@@ -99,10 +99,10 @@ bool TrackingClient::EnableShadowTransport(
             });
     if (!shadow_target_reader || !shadow_path_reader) {
         if (shadow_target_reader) {
-            (void)node->DeleteReader(kShadowTargetTopic);
+            (void)node->DeleteReader(kFollowTargetTopic);
         }
         if (shadow_path_reader) {
-            (void)node->DeleteReader(kShadowPathTopic);
+            (void)node->DeleteReader(kFollowPathTopic);
         }
         return false;
     }
@@ -270,7 +270,7 @@ bool TrackingClient::GetShadowSnapshot(
     *revision = shadow_path_revision_;
     const auto now = clock_();
     const auto is_fresh = [now](std::chrono::steady_clock::time_point time) {
-        return now >= time && now - time <= kShadowDataTimeout;
+        return now >= time && now - time <= kFollowDataTimeout;
     };
     if (!has_shadow_target_ || !has_shadow_path_ ||
         shadow_path_.poses().empty() ||
@@ -329,7 +329,7 @@ void TrackingClient::HandleShadowPath(
 bool TrackingClient::IsFresh(
     std::chrono::steady_clock::time_point receive_time) const {
     const auto now = clock_();
-    return now >= receive_time && now - receive_time <= kShadowDataTimeout;
+    return now >= receive_time && now - receive_time <= kFollowDataTimeout;
 }
 
 void TrackingClient::ClearShadowState() {

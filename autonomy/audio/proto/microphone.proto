@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package autonomy.audio.proto;
+
+import "automsgs/msgs/std_msgs/header.proto";
+import "autonomy/audio/proto/audio_common.proto";
+
+// Multi-channel microphone array chunk for the audio perception pipeline.
+// Generic interleaved PCM uses automsgs.msgs.audio_msgs.AudioDataStamped.
+message MicrophoneConfig {
+  enum MicrophoneModel {
+    MICROPHONE_MODEL_UNKNOWN = 0;
+    MICROPHONE_MODEL_RESPEAKER = 1;
+  }
+
+  repeated ChannelType channel_type = 1;
+  MicrophoneModel microphone_model = 2;
+  // Samples per channel published in one AudioData message.
+  int32 chunk = 3;
+  float sample_rate = 4;
+  float record_seconds = 5;
+  // Bytes per sample (e.g. 2 for int16).
+  int32 sample_width = 6;
+  string channel_name = 7;
+  string frame_id = 8;
+  // Metres between opposite mics on a square array.
+  float mic_distance = 9;
+}
+
+message ChannelData {
+  ChannelType channel_type = 1;
+  // Little-endian PCM samples for this channel.
+  bytes data = 2;
+}
+
+message AudioData {
+  automsgs.msgs.std_msgs.Header header = 1;
+  MicrophoneConfig microphone_config = 2;
+  repeated ChannelData channel_data = 3;
+}

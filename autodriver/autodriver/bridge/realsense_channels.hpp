@@ -42,13 +42,13 @@ inline std::string CameraInfoChannelForImage(const std::string& image_channel) {
         image_channel.compare(image_channel.size() - kImageRectRaw.size(),
                               kImageRectRaw.size(), kImageRectRaw) == 0) {
         return image_channel.substr(0, image_channel.size() - kImageRectRaw.size()) +
-               "camera_info";
+               "/camera_info";
     }
     if (image_channel.size() >= kImageRaw.size() &&
         image_channel.compare(image_channel.size() - kImageRaw.size(),
                               kImageRaw.size(), kImageRaw) == 0) {
         return image_channel.substr(0, image_channel.size() - kImageRaw.size()) +
-               "camera_info";
+               "/camera_info";
     }
     return image_channel + "/camera_info";
 }

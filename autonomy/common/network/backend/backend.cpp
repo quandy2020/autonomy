@@ -16,9 +16,11 @@
 
 #include "autonomy/common/network/backend/backend.hpp"
 
-#include "autonomy/common/network/backend/onnx/onnx.hpp"
 #include "glog/logging.h"
 
+#ifdef AUTONOMY_HAS_ONNXRUNTIME
+#include "autonomy/common/network/backend/onnx/onnx.hpp"
+#endif
 #ifdef AUTONOMY_HAS_TENSORRT
 #include "autonomy/common/network/backend/tensorrt/tensorrt.hpp"
 #endif
@@ -56,10 +58,12 @@ bool Backend::Run(const FloatTensorMap& inputs, FloatTensorMap* outputs) {
     return true;
 }
 
+#ifdef AUTONOMY_HAS_ONNXRUNTIME
 template <>
 struct NetworkBackendTraits<OnnxBackend> {
     static constexpr const char* kId = "onnx";
 };
+#endif
 
 #ifdef AUTONOMY_HAS_TENSORRT
 template <>
@@ -69,15 +73,24 @@ struct NetworkBackendTraits<TensorRtBackend> {
 #endif
 
 bool RegisterBuiltinNetworkBackends(NetworkBackendFactory& factory) {
-    bool ok = RegisterNetworkBackend<OnnxBackend>(factory);
+    bool ok = true;
+#ifdef AUTONOMY_HAS_ONNXRUNTIME
+    ok = RegisterNetworkBackend<OnnxBackend>(factory);
     if (!ok) {
         LOG(ERROR) << "Failed to register network backend \"onnx\".";
     }
+#else
+    (void)factory;
+#endif
 #ifdef AUTONOMY_HAS_TENSORRT
     ok = RegisterNetworkBackend<TensorRtBackend>(factory) && ok;
     if (!ok) {
         LOG(ERROR) << "Failed to register network backend \"tensorrt\".";
     }
+#endif
+#if !defined(AUTONOMY_HAS_ONNXRUNTIME) && !defined(AUTONOMY_HAS_TENSORRT)
+    LOG(ERROR) << "No network inference backend compiled in.";
+    ok = false;
 #endif
     return ok;
 }

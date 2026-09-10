@@ -124,21 +124,31 @@ void TurboRgb(float t, uchar* rgb) {
   rgb[2] = static_cast<uchar>(std::clamp(b, 0.f, 1.f) * 255.f);
 }
 
-QImage colorizeDepthValues(const std::vector<float>& values, int width,
-                           int height) {
-  float min_value = std::numeric_limits<float>::max();
-  float max_value = std::numeric_limits<float>::lowest();
+void StableDepthRange(const std::vector<float>& values, float* low, float* high) {
+  // Per-frame min/max retints the whole image when a few holes or outliers
+  // appear. 32FC1 is metres; 16UC1 arrives as millimetres.
+  float peak = 0.f;
   for (float value : values) {
-    if (std::isfinite(value) && value > 0.f) {
-      min_value = std::min(min_value, value);
-      max_value = std::max(max_value, value);
+    if (std::isfinite(value) && value > peak) {
+      peak = value;
     }
   }
+  if (peak > 50.f) {
+    *low = 200.f;
+    *high = 8000.f;
+  } else {
+    *low = 0.25f;
+    *high = 6.0f;
+  }
+}
+
+QImage colorizeDepthValues(const std::vector<float>& values, int width,
+                           int height) {
+  float min_value = 0.f;
+  float max_value = 1.f;
+  StableDepthRange(values, &min_value, &max_value);
   QImage qimage(width, height, QImage::Format_RGB32);
   qimage.fill(qRgb(0, 0, 0));
-  if (!(max_value > min_value)) {
-    return qimage;
-  }
   const float span = max_value - min_value;
   for (int y = 0; y < height; ++y) {
     auto* dst = reinterpret_cast<QRgb*>(qimage.scanLine(y));

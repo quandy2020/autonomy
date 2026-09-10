@@ -1,0 +1,24 @@
+audio_data_topic: "/mic/cabin/audio"
+audio_detection_topic: "/audio/detection"
+localization_topic: "/localization/pose"
+audio_event_topic: "/audio/event"
+perception_topic: "/perception/obstacles"
+asr_result_topic: "/audio/asr"
+speech_recognition_topic: "/speech_recognition"
+
+respeaker_extrinsics_path: ""
+
+cache_signal_time_sec: 3
+
+enable_direction: true
+enable_moving: true
+enable_asr: false
+
+asr_model_dir: ""
+asr_tokens: ""
+asr_encoder: ""
+asr_decoder: ""
+asr_joiner: ""
+asr_language: "zh"
+asr_energy_threshold: 200
+asr_prefer_asr_channel: true

@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package autonomy.audio.proto;
+
+// Array-audio perception enums.
+enum MovingResult {
+  MOVING_RESULT_UNKNOWN = 0;
+  MOVING_RESULT_APPROACHING = 1;
+  MOVING_RESULT_DEPARTING = 2;
+  MOVING_RESULT_STATIONARY = 3;
+}
+
+enum AudioDirection {
+  AUDIO_DIRECTION_UNKNOWN = 0;
+  AUDIO_DIRECTION_FRONT = 1;
+  AUDIO_DIRECTION_LEFT = 2;
+  AUDIO_DIRECTION_BACK = 3;
+  AUDIO_DIRECTION_RIGHT = 4;
+}
+
+// Microphone channel roles (Apollo Respeaker layout).
+enum ChannelType {
+  CHANNEL_TYPE_UNKNOWN = 0;
+  CHANNEL_TYPE_ASR = 1;
+  CHANNEL_TYPE_RAW = 2;
+  CHANNEL_TYPE_PLAYBACK = 3;
+}
