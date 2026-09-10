@@ -18,9 +18,9 @@
 
 #include <algorithm>
 #include <chrono>
-#include <cmath>
 
 #include "chassis/backend_registry.hpp"
+#include "chassis/convert.hpp"
 #include "chassis/stub/driver.hpp"
 #include "autolink/common/log.hpp"
 #include "autolink/time/duration.hpp"
@@ -29,7 +29,6 @@ namespace autodriver {
 namespace chassis {
 namespace {
 
-using TwistStamped = automsgs::msgs::geometry_msgs::TwistStamped;
 using Odometry = automsgs::msgs::nav_msgs::Odometry;
 
 std::uint64_t SteadyNowNs() {
@@ -38,31 +37,6 @@ std::uint64_t SteadyNowNs() {
       std::chrono::duration_cast<std::chrono::nanoseconds>(
           clock::now().time_since_epoch())
           .count());
-}
-
-void FillOdometry(const ChassisState& state, const Config::Chassis& opt,
-                  Odometry* out) {
-  out->Clear();
-  auto* header = out->mutable_header();
-  header->set_frame_id(opt.odom_frame_id);
-  header->mutable_stamp()->set_sec(
-      static_cast<std::int32_t>(state.stamp_ns / 1'000'000'000ULL));
-  header->mutable_stamp()->set_nanosec(
-      static_cast<std::uint32_t>(state.stamp_ns % 1'000'000'000ULL));
-  out->set_child_frame_id(opt.base_frame_id);
-
-  auto* pose = out->mutable_pose()->mutable_pose();
-  pose->mutable_position()->set_x(state.pose_x);
-  pose->mutable_position()->set_y(state.pose_y);
-  pose->mutable_position()->set_z(0.0);
-  const double half = 0.5 * state.pose_yaw;
-  pose->mutable_orientation()->set_z(std::sin(half));
-  pose->mutable_orientation()->set_w(std::cos(half));
-
-  auto* twist = out->mutable_twist()->mutable_twist();
-  twist->mutable_linear()->set_x(state.linear_x);
-  twist->mutable_linear()->set_y(state.linear_y);
-  twist->mutable_angular()->set_z(state.angular_z);
 }
 
 }  // namespace
@@ -80,7 +54,6 @@ bool ChassisManager::Start(autolink::Node* node, const Config& config) {
     return false;
   }
 
-  // Ensure stub registrar is linked even if LTO drops unused TUs.
   (void)&CreateStubChassisDriver;
 
   ChassisId id = options_.id.empty() ? "chassis/base" : options_.id;
@@ -90,6 +63,8 @@ bool ChassisManager::Start(autolink::Node* node, const Config& config) {
     AERROR << "ChassisManager: failed to create backend=" << options_.backend;
     return false;
   }
+  driver_->SetEventCallback(
+      [this](const ChassisEvent& event) { OnDriverEvent(event); });
   if (!driver_->Start()) {
     AERROR << "ChassisManager: driver Start() failed";
     driver_.reset();
@@ -97,18 +72,25 @@ bool ChassisManager::Start(autolink::Node* node, const Config& config) {
   }
 
   node_ = node;
-  odom_writer_ = node_->CreateWriter<Odometry>(options_.odom_channel);
-  cmd_reader_ = node_->CreateReader<TwistStamped>(
+  state_writer_ = node_->CreateWriter<ChassisState>(options_.state_channel);
+  if (!options_.event_channel.empty()) {
+    event_writer_ = node_->CreateWriter<ChassisEvent>(options_.event_channel);
+  }
+  if (!options_.odom_channel.empty()) {
+    odom_writer_ = node_->CreateWriter<Odometry>(options_.odom_channel);
+  }
+  cmd_reader_ = node_->CreateReader<ChassisCommand>(
       options_.cmd_vel_channel,
-      [this](const std::shared_ptr<TwistStamped>& msg) { OnCmdVel(msg); });
+      [this](const std::shared_ptr<ChassisCommand>& msg) { OnCmdVel(msg); });
 
   last_cmd_ns_ = SteadyNowNs();
   running_ = true;
   publish_thread_ = std::thread([this] { PublishLoop(); });
 
-  AINFO << "ChassisManager started backend=" << options_.backend
-        << " id=" << id << " cmd=" << options_.cmd_vel_channel
-        << " odom=" << options_.odom_channel;
+  AINFO << "ChassisManager started backend=" << options_.backend << " id=" << id
+        << " cmd=" << options_.cmd_vel_channel
+        << " state=" << options_.state_channel
+        << " (vehicle_msgs.RobotState)";
   return true;
 }
 
@@ -118,6 +100,8 @@ void ChassisManager::Stop() {
     publish_thread_.join();
   }
   cmd_reader_.reset();
+  state_writer_.reset();
+  event_writer_.reset();
   odom_writer_.reset();
   if (driver_) {
     if (was_running) {
@@ -131,33 +115,40 @@ void ChassisManager::Stop() {
 
 ChassisCommand ChassisManager::Clamp(const ChassisCommand& in) const {
   ChassisCommand out = in;
+  if (!out.has_twist()) {
+    return out;
+  }
+  auto* twist = out.mutable_twist();
   if (options_.max_linear_speed > 0.0) {
-    out.linear_x = std::clamp(out.linear_x, -options_.max_linear_speed,
-                              options_.max_linear_speed);
-    out.linear_y = std::clamp(out.linear_y, -options_.max_linear_speed,
-                              options_.max_linear_speed);
+    twist->mutable_linear()->set_x(std::clamp(
+        twist->linear().x(), -options_.max_linear_speed,
+        options_.max_linear_speed));
+    twist->mutable_linear()->set_y(std::clamp(
+        twist->linear().y(), -options_.max_linear_speed,
+        options_.max_linear_speed));
   }
   if (options_.max_angular_speed > 0.0) {
-    out.angular_z = std::clamp(out.angular_z, -options_.max_angular_speed,
-                               options_.max_angular_speed);
+    twist->mutable_angular()->set_z(std::clamp(
+        twist->angular().z(), -options_.max_angular_speed,
+        options_.max_angular_speed));
   }
   return out;
 }
 
-void ChassisManager::OnCmdVel(const std::shared_ptr<TwistStamped>& msg) {
+void ChassisManager::OnCmdVel(const std::shared_ptr<ChassisCommand>& msg) {
   if (!msg || !driver_ || !running_.load()) {
     return;
   }
-  ChassisCommand cmd;
-  cmd.stamp_ns = SteadyNowNs();
-  cmd.linear_x = msg->twist().linear().x();
-  cmd.linear_y = msg->twist().linear().y();
-  cmd.angular_z = msg->twist().angular().z();
-  cmd = Clamp(cmd);
-
+  ChassisCommand cmd = Clamp(*msg);
   std::lock_guard<std::mutex> lock(mutex_);
-  last_cmd_ns_ = cmd.stamp_ns;
+  last_cmd_ns_ = SteadyNowNs();
   driver_->ApplyCommand(cmd);
+}
+
+void ChassisManager::OnDriverEvent(const ChassisEvent& event) {
+  if (event_writer_) {
+    event_writer_->Write(event);
+  }
 }
 
 void ChassisManager::ApplyWatchdogLocked(std::uint64_t now_ns) {
@@ -168,7 +159,7 @@ void ChassisManager::ApplyWatchdogLocked(std::uint64_t now_ns) {
       static_cast<std::uint64_t>(options_.watchdog_ms) * 1'000'000ULL;
   if (now_ns > last_cmd_ns_ && (now_ns - last_cmd_ns_) > timeout_ns) {
     ChassisCommand stop;
-    stop.stamp_ns = now_ns;
+    SetTimestampNs(stop.mutable_header()->mutable_stamp(), now_ns);
     driver_->ApplyCommand(stop);
   }
 }
@@ -180,12 +171,21 @@ void ChassisManager::PublishLoop() {
     {
       std::lock_guard<std::mutex> lock(mutex_);
       ApplyWatchdogLocked(SteadyNowNs());
-      if (driver_ && odom_writer_) {
+      if (driver_) {
         ChassisState state;
         if (driver_->GetState(&state)) {
-          Odometry odom;
-          FillOdometry(state, options_, &odom);
-          odom_writer_->Write(odom);
+          if (state.global_frame().empty()) {
+            state.set_global_frame(options_.odom_frame_id);
+          }
+          if (state_writer_) {
+            state_writer_->Write(state);
+          }
+          if (odom_writer_) {
+            Odometry odom;
+            RobotStateToOdometry(state, options_.odom_frame_id,
+                                 options_.base_frame_id, &odom);
+            odom_writer_->Write(odom);
+          }
         }
       }
     }
