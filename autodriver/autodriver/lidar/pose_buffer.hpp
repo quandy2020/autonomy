@@ -48,20 +48,35 @@ public:
 
     /**
      * @brief Construct with a maximum number of stored poses.
-     * @param capacity Older poses are dropped when exceeded.
+     * @param capacity Older poses are dropped when exceeded (minimum 1).
      */
     explicit PoseBuffer(std::size_t capacity = 200);
 
-    /** Append a pose stamped at @p time_ns (nanoseconds). */
+    /**
+     * @brief Append a pose stamped at @p time_ns (nanoseconds).
+     * @param time_ns Pose timestamp; should be non-decreasing for best results.
+     * @param pose world←lidar affine transform.
+     */
     void Push(std::uint64_t time_ns, const Eigen::Affine3d& pose);
 
-    /** Remove all stored poses. */
+    /**
+     * @brief Remove all stored poses.
+     */
     void Clear();
 
-    /** Bind Lookup to this buffer for MotionCompensator::SetPoseLookup. */
+    /**
+     * @brief Bind Lookup to this buffer for MotionCompensator::SetPoseLookup.
+     * @return PoseLookup that interpolates within the stored time range.
+     */
     PoseLookup AsLookup() const;
 
 private:
+    /**
+     * @brief Interpolate a pose at @p time_ns; caller must hold mutex_.
+     * @param time_ns Query time in nanoseconds.
+     * @param[out] pose Filled on success; must be non-null.
+     * @return true when @p time_ns lies within the buffered range.
+     */
     bool LookupUnlocked(std::uint64_t time_ns, Eigen::Affine3d* pose) const;
 
     mutable std::mutex mutex_;

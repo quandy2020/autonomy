@@ -38,6 +38,10 @@ namespace velodyne {
  * @brief Converts packets using optional beam calibration (vert radians).
  * Empty calibration → DefaultVlp16Calibration(). Unknown model → VLP-16 + warn
  * is handled by the caller; this function uses `calibration` only.
+ * @param packets One full scan of firing packets.
+ * @param frame_id Header frame_id for the output cloud.
+ * @param calibration Per-laser vertical corrections in radians.
+ * @return PointCloud2 with point_step=24 (x,y,z,intensity,timestamp).
  */
 automsgs::msgs::sensor_msgs::PointCloud2 ConvertPacketsToPointCloud(
     const ScanPackets& packets, const std::string& frame_id,
@@ -45,6 +49,10 @@ automsgs::msgs::sensor_msgs::PointCloud2 ConvertPacketsToPointCloud(
 
 /**
  * @brief Convenience: model "VLP-16" (default) or any string with built-in table.
+ * @param packets One full scan of firing packets.
+ * @param frame_id Header frame_id (default "velodyne").
+ * @param model Model name selecting a built-in calibration table.
+ * @return PointCloud2 with point_step=24 (x,y,z,intensity,timestamp).
  */
 automsgs::msgs::sensor_msgs::PointCloud2 ConvertPacketsToPointCloud(
     const ScanPackets& packets, const std::string& frame_id = "velodyne",

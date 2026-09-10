@@ -44,10 +44,14 @@ namespace lidar {
  * @brief Shared options for a lidar pipeline instance.
  */
 struct LidarBaseOptions {
+    /** ONLINE (live device) or RAW_PACKET (replay). */
     SourceType source = SourceType::kOnline;
-    std::string scan_channel;    // intermediate raw scan (optional)
-    std::string cloud_channel;   // PointCloud2 / LaserScan output
-    bool publish_scan = false;   // when true, emit Scan before Convert
+    /** Intermediate raw-scan channel name (optional / recordable). */
+    std::string scan_channel;
+    /** PointCloud2 / LaserScan output channel name. */
+    std::string cloud_channel;
+    /** When true, emit Scan before Convert on the online path. */
+    bool publish_scan = false;
 };
 
 /**
@@ -63,18 +67,31 @@ public:
    */
   AUTOLINK_SHARED_PTR_DEFINITIONS(LidarComponentBase)
 
+    /**
+     * @brief Virtual destructor for polymorphic lidar components.
+     */
     virtual ~LidarComponentBase() = default;
 
+    /**
+     * @brief Store @p options and run InitConverter + InitPacket.
+     * @param options Pipeline source / channel / publish_scan knobs.
+     * @return true when both vendor init hooks succeed.
+     */
     bool InitBase(const LidarBaseOptions& options) {
         options_ = options;
         return InitConverter() && InitPacket();
     }
 
+    /**
+     * @brief Access the options set by InitBase.
+     * @return Const reference to the stored LidarBaseOptions.
+     */
     const LidarBaseOptions& options() const { return options_; }
 
     /**
      * @brief RAW_PACKET entry: inject one recorded LidarPacketScan.
      * Dispatches to vendor ReadScanCallback (Convert → cloud).
+     * @param scan Aggregated packet scan sample; ignored when null.
      */
     void InjectScan(std::shared_ptr<SensorSample> scan) {
         ReadScanCallback(std::move(scan));
@@ -83,35 +100,43 @@ public:
 protected:
     /**
      * @brief Vendor: open socket/SDK or prepare replay buffer.
+     * @return true on success (default no-op succeeds).
      */
     virtual bool InitPacket() { return true; }
 
     /**
      * @brief Vendor: prepare model-specific packet→cloud convert.
+     * @return true on success (default no-op succeeds).
      */
     virtual bool InitConverter() { return true; }
 
     /**
      * @brief Emit an intermediate scan sample (recordable).
      * Default no-op; override when publish_scan / RAW_PACKET is used.
+     * @param scan Owning shared sample; caller may retain a reference.
      */
     virtual void WriteScan(std::shared_ptr<SensorSample> /*scan*/) {}
 
     /**
      * @brief Emit converted LaserScan / PointCloud2 sample.
+     * @param cloud Owning shared sample forwarded to SampleCallback (via Clone).
      */
     virtual void WritePointCloud(std::shared_ptr<SensorSample> cloud) = 0;
 
     /**
      * @brief RAW_PACKET path: inject one recorded scan into the converter.
+     * @param scan Aggregated LidarPacketScan; ignored by the default no-op.
      */
     virtual void ReadScanCallback(std::shared_ptr<SensorSample> /*scan*/) {}
 
+    /** Options stored by InitBase. */
     LidarBaseOptions options_;
 };
 
 /**
  * @brief Parse source_type from DriverParams ("online" | "raw_packet").
+ * @param value Case-sensitive token; unknown values map to kOnline.
+ * @return SourceType::kRawPacket for "raw_packet" / "RAW_PACKET", else kOnline.
  */
 inline SourceType ParseSourceType(const std::string& value) {
     if (value == "raw_packet" || value == "RAW_PACKET") {

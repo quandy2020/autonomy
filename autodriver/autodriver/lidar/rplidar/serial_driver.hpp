@@ -39,6 +39,9 @@ namespace rplidar {
 /**
  * @brief Factory used by Lidar2dModule (backend: rplidar / slamtec).
  * Requires AUTODRIVER_HAVE_RPLIDAR; otherwise returns nullptr.
+ * @param id Sensor instance id from YAML.
+ * @param params Port/baud/model and scan options (rplidar_ros aligned).
+ * @return Owning SensorDriver*, or nullptr when the SDK is not linked.
  */
 SensorDriver*
 CreateRpLidarDriver(
@@ -59,20 +62,74 @@ public:
    */
   AUTOLINK_SHARED_PTR_DEFINITIONS(RpLidarSerialDriver)
 
+    /**
+     * @brief Construct from sensor id and YAML params.
+     * @param id Stable sensor instance id (e.g. "lidar/front").
+     * @param params DriverParams parsed at construction (cold path).
+     */
     RpLidarSerialDriver(SensorId id, hardware::DriverParams params);
+
+    /**
+     * @brief Stop capture and disconnect the SDK device.
+     */
     ~RpLidarSerialDriver() override;
 
+    /**
+     * @brief Sensor modality for this driver.
+     * @return SensorType::kLidar2d.
+     */
     SensorType GetSensorType() const override { return SensorType::kLidar2d; }
+
+    /**
+     * @brief Configured sensor instance id.
+     * @return Reference to the id passed at construction.
+     */
     const SensorId& GetSensorId() const override { return id_; }
+
+    /**
+     * @brief Connect the device, start motor/scan, and launch CaptureLoop.
+     * @return true on success; false without SDK or on connect failure.
+     */
     bool Start() override;
+
+    /**
+     * @brief Stop CaptureLoop and disconnect the device.
+     */
     void Stop() override;
+
+    /**
+     * @brief Whether the capture loop is active.
+     * @return true while Start succeeded and Stop has not completed.
+     */
     bool IsRunning() const override { return running_.load(); }
+
+    /**
+     * @brief Register the sample sink for LidarScan frames.
+     * @param callback Invoked on the capture thread with owning unique_ptr.
+     */
     void SetSampleCallback(SampleCallback callback) override;
 
 private:
+    /**
+     * @brief Open the serial/UDP channel and create the SDK driver handle.
+     * @return true when channel_ and driver_ are ready.
+     */
     bool ConnectDevice();
+
+    /**
+     * @brief Stop scanning, destroy SDK handles, and clear opaque pointers.
+     */
     void DisconnectDevice();
+
+    /**
+     * @brief Start motor and enter the configured scan mode.
+     * @return true when the SDK reports scanning.
+     */
     bool StartMotorAndScan();
+
+    /**
+     * @brief Grab HQ nodes, convert to LaserScan, and invoke SampleCallback.
+     */
     void CaptureLoop();
 
     SensorId id_;

@@ -23,67 +23,75 @@
 #define AUTODRIVER_GPS_CAN_GPS_DRIVER_HPP_
 
 #include <cstdint>
-#include <memory>
-#include <string>
 
-#include "autodriver/canbus/can_receiver.hpp"
+#include "autodriver/common/can_sensor_driver_base.hpp"
 #include "autodriver/driver_params.hpp"
-#include "autodriver/sensor_driver.hpp"
 #include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace hardware {
 
 /**
+ * @struct autodriver::hardware::GpsCanFix
  * @brief Lat/lon fix decoded from one CAN frame (degrees).
  */
 struct GpsCanFix {
+    /** @brief Latitude in degrees. */
     double latitude_deg = 0.0;
+    /** @brief Longitude in degrees. */
     double longitude_deg = 0.0;
 };
 
 /**
  * @class autodriver::hardware::CanGpsDriver
- * @brief Decodes lat/lon via CanReceiver + MessageManager (NMEA2000 PGN 129025).
+ * @brief Decodes lat/lon via CanSensorDriverBase (NMEA2000 PGN 129025).
  *
  * Params: `interface` (e.g. can0), `can_id` (default 0x12902500).
  */
-class CanGpsDriver : public SensorDriver {
+class CanGpsDriver : public CanSensorDriverBase<CanGpsDriver, GpsCanFix> {
 public:
-  /**
-   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
-   */
-  AUTOLINK_SHARED_PTR_DEFINITIONS(CanGpsDriver)
+    /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(CanGpsDriver)
 
+    /**
+     * @brief Register lat/lon ProtocolData and publish callback.
+     * @param id Sensor instance id.
+     * @param params DriverParams (cold-path parse only).
+     */
     CanGpsDriver(SensorId id, DriverParams params);
-    ~CanGpsDriver() override;
 
+    /**
+     * @brief Stops the CAN receive loop.
+     */
+    ~CanGpsDriver() override { Stop(); }
+
+    /**
+     * @brief Report sensor type.
+     * @return SensorType::kGps.
+     */
     SensorType GetSensorType() const override { return SensorType::kGps; }
-    const SensorId& GetSensorId() const override { return id_; }
-
-    bool Start() override;
-    void Stop() override;
-    bool IsRunning() const override;
-    void SetSampleCallback(SampleCallback callback) override;
 
 private:
-    /** Publish NavSatFix from a decoded lat/lon frame. */
+    /**
+     * @brief Publish NavSatFix from a decoded lat/lon frame.
+     * @param fix Decoded fix from MessageManager.
+     */
     void OnFix(const GpsCanFix& fix);
 
-    SensorId id_;
-    DriverParams params_;
     // Expected CAN id for the lat/lon frame.
     std::uint32_t can_id_{0};
-    canbus::CanReceiver<GpsCanFix> receiver_;
-    SampleCallback callback_;
 };
 
 /**
  * @brief Factory for GpsBackendRegistry (REGISTER_GPS_BACKEND "can").
+ * @param id Sensor instance id from YAML.
+ * @param params Backend-specific key/value map.
+ * @return Owning CanGpsDriver* (never null).
  */
-SensorDriver*
-CreateCanGpsDriver(const SensorId& id,
-                                                 const DriverParams& params);
+SensorDriver* CreateCanGpsDriver(const SensorId& id,
+                                 const DriverParams& params);
 
 }  // namespace hardware
 }  // namespace autodriver

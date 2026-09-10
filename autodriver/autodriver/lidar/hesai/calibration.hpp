@@ -41,6 +41,7 @@ struct BeamCalibration {
 
 /**
  * @brief Built-in PandarXT / XT32 elevations (+15° … −16°).
+ * @return BeamCalibration with 32 elev_deg entries.
  */
 BeamCalibration DefaultXt32Calibration();
 
@@ -49,6 +50,10 @@ BeamCalibration DefaultXt32Calibration();
  *
  * Default unit is **degrees** (XT32 manual). Set root `unit: rad` or
  * `angles_in_radians: true` to interpret radians.
+ * @param path Absolute or relative path to the calibration YAML file.
+ * @param[out] out Filled calibration on success; must be non-null.
+ * @param[out] error Optional human-readable failure reason.
+ * @return true when @p out was populated.
  */
 bool LoadBeamCalibrationYaml(const std::string& path, BeamCalibration* out,
                              std::string* error = nullptr);

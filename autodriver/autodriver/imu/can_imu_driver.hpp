@@ -24,68 +24,83 @@
 
 #include <array>
 #include <cstdint>
-#include <memory>
-#include <string>
 
-#include "autodriver/canbus/can_receiver.hpp"
+#include "autodriver/common/can_sensor_driver_base.hpp"
 #include "autodriver/driver_params.hpp"
-#include "autodriver/sensor_driver.hpp"
 #include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace hardware {
 
 /**
+ * @struct autodriver::hardware::ImuCanEvent
  * @brief Partial accel/gyro event from one CAN frame (fused in driver).
  */
 struct ImuCanEvent {
+    /**
+     * @brief Which half of the IMU this frame carries.
+     */
     enum class Kind : std::uint8_t { kAccel, kGyro };
+
+    /** @brief Accel or gyro payload. */
     Kind kind = Kind::kAccel;
-    // Scaled physical values [x, y, z] (m/s^2 or rad/s).
+
+    /** @brief Scaled physical values [x, y, z] (m/s^2 or rad/s). */
     std::array<double, 3> values{{0.0, 0.0, 0.0}};
 };
 
 /**
  * @class autodriver::hardware::CanImuDriver
- * @brief Fuses accel/gyro from two CAN frames via CanReceiver + MessageManager.
+ * @brief Fuses accel/gyro from two CAN frames via CanSensorDriverBase.
  *
  * Params: `interface`, `accel_can_id`, `gyro_can_id`, `accel_scale`,
  * `gyro_scale`.
  */
-class CanImuDriver : public SensorDriver {
+class CanImuDriver : public CanSensorDriverBase<CanImuDriver, ImuCanEvent> {
 public:
-  /**
-   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
-   */
-  AUTOLINK_SHARED_PTR_DEFINITIONS(CanImuDriver)
+    /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(CanImuDriver)
 
+    /**
+     * @brief Register accel/gyro ProtocolData and publish callback.
+     * @param id Sensor instance id.
+     * @param params DriverParams (cold-path parse only).
+     */
     CanImuDriver(SensorId id, DriverParams params);
-    ~CanImuDriver() override;
 
+    /**
+     * @brief Stops the CAN receive loop.
+     */
+    ~CanImuDriver() override { Stop(); }
+
+    /**
+     * @brief Report sensor type.
+     * @return SensorType::kImu.
+     */
     SensorType GetSensorType() const override { return SensorType::kImu; }
-    const SensorId& GetSensorId() const override { return id_; }
-
-    bool Start() override;
-    void Stop() override;
-    bool IsRunning() const override;
-    void SetSampleCallback(SampleCallback callback) override;
 
 private:
-    /** Merge accel/gyro halves; emit Imu when both present. */
+    /**
+     * @brief Merge accel/gyro halves; emit ImuSample when both present.
+     * @param event Decoded frame from MessageManager.
+     */
     void OnEvent(const ImuCanEvent& event);
+
+    /**
+     * @brief Emit ImuSample if both halves and a callback are available.
+     */
     void TryEmit();
 
-    SensorId id_;
-    DriverParams params_;
     // CAN ids for accel / gyro frames.
     std::uint32_t accel_can_id_{0};
     std::uint32_t gyro_can_id_{0};
+
     // Raw int16 → physical scale factors.
     double accel_scale_{0.001};
     double gyro_scale_{0.0001};
 
-    canbus::CanReceiver<ImuCanEvent> receiver_;
-    SampleCallback callback_;
     // Latest fused halves.
     std::array<double, 3> accel_{{0.0, 0.0, 0.0}};
     std::array<double, 3> gyro_{{0.0, 0.0, 0.0}};
@@ -95,10 +110,12 @@ private:
 
 /**
  * @brief Factory for ImuBackendRegistry (REGISTER_IMU_BACKEND "can").
+ * @param id Sensor instance id from YAML.
+ * @param params Backend-specific key/value map.
+ * @return Owning CanImuDriver* (never null).
  */
-SensorDriver*
-CreateCanImuDriver(const SensorId& id,
-                                                 const DriverParams& params);
+SensorDriver* CreateCanImuDriver(const SensorId& id,
+                                 const DriverParams& params);
 
 }  // namespace hardware
 }  // namespace autodriver

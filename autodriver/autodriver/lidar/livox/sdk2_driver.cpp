@@ -16,19 +16,16 @@
 
 #include "autodriver/lidar/livox/sdk2_driver.hpp"
 
-#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <fstream>
 #include <functional>
 #include <sstream>
 #include <utility>
+#include <vector>
 
-#include "autodriver/lidar/livox/convert.hpp"
 #include "autodriver/lidar/livox/model.hpp"
-#include "autodriver/types/sensor_sample.hpp"
 #include "autolink/common/log.hpp"
-#include "autolink/time/time.hpp"
 
 #ifdef AUTODRIVER_HAVE_LIVOX_SDK2
 #include <livox_lidar_api.h>
@@ -38,13 +35,6 @@
 namespace autodriver {
 namespace hardware {
 namespace {
-
-std::uint64_t IntervalFromHz(double hz) {
-    if (hz <= 0.1) {
-        hz = 10.0;
-    }
-    return static_cast<std::uint64_t>(1e9 / hz);
-}
 
 #ifdef AUTODRIVER_HAVE_LIVOX_SDK2
 
@@ -58,8 +48,7 @@ void WorkModeCb(livox_status, uint32_t, LivoxLidarAsyncControlResponse*,
                 void*) {}
 
 void LivoxSdk2PointCloudThunk(uint32_t handle, const uint8_t dev_type,
-                              LivoxLidarEthernetPacket* data,
-                              void* client) {
+                              LivoxLidarEthernetPacket* data, void* client) {
     auto* self = static_cast<LivoxSdk2Driver*>(client);
     if (self != nullptr) {
         self->OnPointCloud(handle, dev_type, data);
@@ -79,44 +68,11 @@ void LivoxSdk2InfoChangeThunk(const uint32_t handle, const LivoxLidarInfo* info,
 }  // namespace
 
 LivoxSdk2Driver::LivoxSdk2Driver(SensorId id, DriverParams params)
-    : id_(std::move(id)),
-      params_(std::move(params)),
-      assembler_(IntervalFromHz(10.0)) {
-    model_ = GetString(params_, "model", "Mid-360");
-    frame_id_ = GetString(params_, "frame_id", id_);
-    config_path_ = GetString(params_, "config_path", "");
-    host_ip_ = GetString(params_, "host_ip", "192.168.1.5");
-    lidar_ip_ = GetString(params_, "lidar_ip", "192.168.1.12");
-    publish_freq_hz_ = ParseDouble(params_, "publish_freq", 0.0);
-    if (publish_freq_hz_ <= 0.0) {
-        publish_freq_hz_ = ParseDouble(params_, "fps", 10.0);
-    }
-    if (publish_freq_hz_ <= 0.0) {
-        publish_freq_hz_ = 10.0;
-    }
-    pcl_data_type_ = ParseInt(params_, "pcl_data_type", 1);
-    assembler_.SetIntervalNs(IntervalFromHz(publish_freq_hz_));
-
-    lidar::LidarBaseOptions options;
-    options.source = lidar::ParseSourceType(
-        GetString(params_, "source_type", "online"));
-    options.cloud_channel = GetString(params_, "channel", "");
-    options.publish_scan = false;
-    InitBase(options);
-}
-
-LivoxSdk2Driver::~LivoxSdk2Driver() { Stop(); }
-
-bool LivoxSdk2Driver::IsRunning() const { return running_.load(); }
-
-void LivoxSdk2Driver::SetSampleCallback(SampleCallback callback) {
-    callback_ = std::move(callback);
-}
-
-void LivoxSdk2Driver::WritePointCloud(std::shared_ptr<SensorSample> cloud) {
-    if (callback_ && cloud) {
-        callback_(std::move(cloud));
-    }
+    : Base(std::move(id), std::move(params)) {
+    config_path_ = GetString(this->params(), "config_path", "");
+    host_ip_ = GetString(this->params(), "host_ip", "192.168.1.5");
+    lidar_ip_ = GetString(this->params(), "lidar_ip", "192.168.1.12");
+    pcl_data_type_ = ParseInt(this->params(), "pcl_data_type", 1);
 }
 
 bool LivoxSdk2Driver::EnsureConfigFile(std::string* path, std::string* err) {
@@ -127,10 +83,10 @@ bool LivoxSdk2Driver::EnsureConfigFile(std::string* path, std::string* err) {
         *path = config_path_;
         return true;
     }
-    const std::string key = lidar::livox::Sdk2JsonModelKey(model_);
+    const std::string key = lidar::livox::Sdk2JsonModelKey(model());
     generated_config_path_ =
         "/tmp/autodriver_livox_" +
-        std::to_string(std::hash<std::string>{}(id_)) + ".json";
+        std::to_string(std::hash<std::string>{}(id())) + ".json";
 
     std::ostringstream oss;
     oss << "{\n"
@@ -195,7 +151,7 @@ bool LivoxSdk2Driver::InitSdk() {
     }
     SetLivoxLidarPointCloudCallBack(LivoxSdk2PointCloudThunk, this);
     SetLivoxLidarInfoChangeCallback(LivoxSdk2InfoChangeThunk, this);
-    sdk_owned_ = true;
+    set_sdk_owned(true);
     return true;
 #else
     AERROR << "Livox SDK2 not available; install via "
@@ -206,59 +162,11 @@ bool LivoxSdk2Driver::InitSdk() {
 
 void LivoxSdk2Driver::UninitSdk() {
 #ifdef AUTODRIVER_HAVE_LIVOX_SDK2
-    if (sdk_owned_) {
+    if (sdk_owned()) {
         LivoxLidarSdkUninit();
-        sdk_owned_ = false;
+        set_sdk_owned(false);
     }
 #endif
-}
-
-bool LivoxSdk2Driver::Start() {
-    bool expected = false;
-    if (!running_.compare_exchange_strong(expected, true)) {
-        return true;
-    }
-    if (!InitSdk()) {
-        running_ = false;
-        return false;
-    }
-    publisher_ = std::thread([this] { PublishLoop(); });
-    AINFO << "Livox SDK2 driver started id=" << id_ << " model=" << model_;
-    return true;
-}
-
-void LivoxSdk2Driver::Stop() {
-    if (!running_.exchange(false)) {
-        return;
-    }
-    if (publisher_.joinable()) {
-        publisher_.join();
-    }
-    assembler_.Clear();
-    UninitSdk();
-}
-
-void LivoxSdk2Driver::PublishLoop() {
-    while (running_.load()) {
-        std::vector<lidar::livox::PointXYZIT> frame;
-        const std::uint64_t now_ns =
-            static_cast<std::uint64_t>(autolink::Time::Now().ToNanosecond());
-        if (assembler_.TryFlush(now_ns, &frame) && !frame.empty()) {
-            PublishFrame(std::move(frame));
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
-}
-
-void LivoxSdk2Driver::PublishFrame(
-    std::vector<lidar::livox::PointXYZIT> points) {
-    auto cloud_msg =
-        lidar::livox::PointsToPointCloud(points, frame_id_);
-    auto sample = std::make_shared<LidarCloud>(
-        id_, autolink::Time::Now(), std::move(cloud_msg));
-    sample->frame_id = frame_id_;
-    sample->channel = options().cloud_channel;
-    WritePointCloud(sample);
 }
 
 void LivoxSdk2Driver::OnInfoChange(std::uint32_t handle, const void* info) {
@@ -349,17 +257,14 @@ void LivoxSdk2Driver::OnPointCloud(std::uint32_t /*handle*/,
         }
     }
 
-    if (!points.empty()) {
-        assembler_.Append(std::move(points));
-    }
+    AppendPoints(std::move(points));
 #else
     (void)data;
 #endif
 }
 
-SensorDriver*
-CreateLivoxSdk2Driver(
-    const SensorId& id, const DriverParams& params) {
+SensorDriver* CreateLivoxSdk2Driver(const SensorId& id,
+                                    const DriverParams& params) {
 #ifndef AUTODRIVER_HAVE_LIVOX_SDK2
     (void)params;
     AERROR << "Livox SDK2 not linked; cannot create driver for " << id;

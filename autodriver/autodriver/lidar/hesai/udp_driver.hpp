@@ -16,30 +16,14 @@
 
 /**
  * @file
- * @brief Hesai PandarXT-32 UDP driver (Scan → Convert → Compensate).
+ * @brief Hesai PandarXT-32 UDP driver — thin CRTP specialization of UdpScanDriverBase.
  */
 
 #ifndef AUTODRIVER_LIDAR_HESAI_UDP_DRIVER_HPP_
 #define AUTODRIVER_LIDAR_HESAI_UDP_DRIVER_HPP_
 
-#include <atomic>
-#include <memory>
-#include <mutex>
-#include <string>
-#include <thread>
-
-#include <Eigen/Geometry>
-
-#include "autodriver/common/stream.hpp"
-#include "autodriver/driver_params.hpp"
-#include "autodriver/lidar/hesai/calibration.hpp"
-#include "autodriver/lidar/hesai/packet.hpp"
-#include "autodriver/lidar/lidar_component_base.hpp"
-#include "autodriver/lidar/motion_compensator.hpp"
-#include "autodriver/lidar/motion_pose_sink.hpp"
-#include "autodriver/lidar/packet_queue.hpp"
-#include "autodriver/lidar/pose_buffer.hpp"
-#include "autodriver/sensor_driver.hpp"
+#include "autodriver/lidar/hesai/udp_traits.hpp"
+#include "autodriver/lidar/udp_scan_driver_base.hpp"
 #include "autolink/common/macros.hpp"
 
 namespace autodriver {
@@ -49,84 +33,37 @@ namespace hardware {
  * @class autodriver::hardware::HesaiUdpDriver
  * @brief Binds UDP data port, aggregates XT32 packets, converts to PointCloud2.
  *
- * Online: ReadLoop → PacketQueue → ProcessLoop. RAW_PACKET: PushRawPacket or
- * PushScan / ReadScanCallback (aggregated scan → Convert only).
- * Default model: XT32 (PandarXT). Unknown models fall back to XT32 angles.
+ * Pipeline (from UdpScanDriverBase): ReadLoop → PacketQueue → ProcessLoop →
+ * HandlePacket → Convert. Default model XT32; unknown models use XT32 angles.
  */
-class HesaiUdpDriver : public SensorDriver,
-                       public lidar::LidarComponentBase,
-                       public lidar::MotionPoseSink {
+class HesaiUdpDriver
+    : public lidar::UdpScanDriverBase<HesaiUdpDriver, lidar::hesai::UdpTraits> {
 public:
   /**
    * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
    */
   AUTOLINK_SHARED_PTR_DEFINITIONS(HesaiUdpDriver)
 
-    HesaiUdpDriver(SensorId id, DriverParams params);
-    ~HesaiUdpDriver() override;
+    using Base =
+        lidar::UdpScanDriverBase<HesaiUdpDriver, lidar::hesai::UdpTraits>;
 
-    SensorType GetSensorType() const override { return SensorType::kLidar3d; }
-    const SensorId& GetSensorId() const override { return id_; }
-
-    bool Start() override;
-    void Stop() override;
-    bool IsRunning() const override;
-    void SetSampleCallback(SampleCallback callback) override;
-
-    void SetPoseLookup(lidar::PoseLookup lookup) override;
-    void PushPose(std::uint64_t time_ns, const Eigen::Affine3d& pose) override;
-    lidar::PoseBuffer::SharedPtr pose_buffer() const override {
-        return pose_buffer_;
-    }
-
-    void PushRawPacket(const std::uint8_t* data, std::size_t size);
-    void PushScan(std::shared_ptr<SensorSample> scan);
-
-protected:
-    bool InitPacket() override;
-    void WriteScan(std::shared_ptr<SensorSample> scan) override;
-    void WritePointCloud(std::shared_ptr<SensorSample> cloud) override;
-    void ReadScanCallback(std::shared_ptr<SensorSample> scan) override;
-
-private:
-    void ReadLoop();
-    void ProcessLoop();
-    void HandlePacket(const lidar::hesai::PacketBuffer& packet);
-    void EmitScan();
-    void ConvertAndPublish(const lidar::hesai::ScanPackets& packets);
-
-    SensorId id_;
-    DriverParams params_;
-    SampleCallback callback_;
-    std::unique_ptr<common::Stream> stream_{nullptr};
-    std::atomic<bool> running_{false};
-    std::thread reader_;
-    std::thread processor_;
-    std::unique_ptr<lidar::PacketQueue<lidar::hesai::PacketBuffer>>
-        packet_queue_{nullptr};
-
-    int data_port_ = 2368;
-    int packets_per_scan_ = 180;
-    int reconnect_attempts_ = 3;
-    int packet_queue_capacity_ = 256;
-    bool use_azimuth_cut_ = true;
-    int scan_cut_angle_centideg_ = 0;
-    int last_azimuth_centideg_ = -1;
-    std::string model_ = "XT32";
-    std::string frame_id_ = "hesai";
-    std::string bind_host_;
-    bool enable_compensator_ = false;
-    std::unique_ptr<lidar::MotionCompensator> compensator_{nullptr};
-    lidar::PoseBuffer::SharedPtr pose_buffer_{nullptr};
-    lidar::hesai::BeamCalibration calibration_;
-
-    std::mutex scan_mutex_;
-    lidar::hesai::ScanPackets scan_;
+    /**
+     * @brief Construct from sensor id and YAML params.
+     * @param id Stable sensor instance id (e.g. "lidar/hesai").
+     * @param params DriverParams: data_port, model, calibration_path, …
+     */
+    HesaiUdpDriver(SensorId id, DriverParams params)
+        : Base(std::move(id), std::move(params)) {}
 };
 
-SensorDriver*
-CreateHesaiUdpDriver(const SensorId& id,
-                                                   const DriverParams& params);
+/**
+ * @brief Registry factory: construct a HesaiUdpDriver.
+ * @param id Sensor instance id.
+ * @param params YAML driver params.
+ * @return Owning SensorDriver*, never nullptr for this backend.
+ */
+SensorDriver* CreateHesaiUdpDriver(const SensorId& id,
+                                   const DriverParams& params);
 
 }  // namespace hardware
 }  // namespace autodriver

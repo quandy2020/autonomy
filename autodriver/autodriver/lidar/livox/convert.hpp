@@ -33,7 +33,10 @@ namespace lidar {
 namespace livox {
 
 /**
- * @brief Build PointCloud2 with point_step=24 (matches Velodyne/Hesai layout).
+ * @brief Build PointCloud2 with shared XYZIT layout (point_step=24).
+ * @param points XYZIT points in the lidar frame.
+ * @param frame_id Header frame_id written into the message.
+ * @return PointCloud2 via InitXyzitCloud / AppendXyzitPoint; empty when no points.
  */
 automsgs::msgs::sensor_msgs::PointCloud2 PointsToPointCloud(
     const std::vector<PointXYZIT>& points, const std::string& frame_id);

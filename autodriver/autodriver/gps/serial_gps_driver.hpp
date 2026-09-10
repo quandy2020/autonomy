@@ -22,15 +22,13 @@
 #ifndef AUTODRIVER_GPS_SERIAL_GPS_DRIVER_HPP_
 #define AUTODRIVER_GPS_SERIAL_GPS_DRIVER_HPP_
 
-#include <atomic>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
-#include <string>
-#include <thread>
 
-#include "autodriver/common/stream.hpp"
+#include "autodriver/common/serial_byte_driver_base.hpp"
 #include "autodriver/driver_params.hpp"
 #include "autodriver/gps/parser/parser.hpp"
-#include "autodriver/sensor_driver.hpp"
 #include "autolink/common/macros.hpp"
 
 namespace autodriver {
@@ -38,94 +36,66 @@ namespace hardware {
 
 /**
  * @class autodriver::hardware::SerialGpsDriver
- * @brief Reads NMEA via common::Stream + gps::GnssParser ("nmea").
- * Required params: device (/dev/ttyUSB0). Optional: baud (115200).
+ * @brief Reads NMEA via SerialByteDriverBase + gps::GnssParser ("nmea").
+ *
+ * Required params: `device` (default `/dev/ttyUSB0`). Optional: `baud` (115200).
  */
-class SerialGpsDriver : public SensorDriver
-{
+class SerialGpsDriver : public SerialByteDriverBase<SerialGpsDriver> {
 public:
-  /**
-   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
-   */
-  AUTOLINK_SHARED_PTR_DEFINITIONS(SerialGpsDriver)
+    /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(SerialGpsDriver)
 
-  /**
-   * @brief Stores sensor identity and serial driver params.
-   */
-  SerialGpsDriver(SensorId id, DriverParams params);
+    /**
+     * @brief Store sensor identity and serial driver params.
+     * @param id Sensor instance id.
+     * @param params DriverParams (cold-path parse only).
+     */
+    SerialGpsDriver(SensorId id, DriverParams params);
 
-  /**
-   * @brief Stops the reader thread and closes the serial port.
-   */
-  ~SerialGpsDriver() override;
+    /**
+     * @brief Stops the reader thread before destroying the NMEA parser.
+     */
+    ~SerialGpsDriver() override { Stop(); }
 
-  /**
-   * @brief Report sensor type
-   * @return SensorType::kGps
-   */
-  SensorType GetSensorType() const override { return SensorType::kGps; }
+    /**
+     * @brief Report sensor type.
+     * @return SensorType::kGps.
+     */
+    SensorType GetSensorType() const override { return SensorType::kGps; }
 
-  /**
-   * @brief Return this driver's sensor identifier
-   * @return Sensor id assigned at construction
-   */
-  const SensorId & GetSensorId() const override { return id_; }
+    /**
+     * @brief CRTP hook: create NMEA parser before opening the stream.
+     * @return true when GnssParserRegistry yields a parser.
+     */
+    bool PrepareStart();
 
-  /**
-   * @brief Opens the serial device and starts the NMEA reader thread.
-   */
-  bool Start() override;
+    /**
+     * @brief CRTP hook: release the NMEA parser after Stop().
+     */
+    void OnStopped();
 
-  /**
-   * @brief Stops reading and joins the worker thread.
-   */
-  void Stop() override;
-
-  /**
-   * @brief Returns true while the serial reader thread is active.
-   */
-  bool IsRunning() const override;
-
-  /**
-   * @brief Registers the callback invoked for each GPS fix sample.
-   */
-  void SetSampleCallback(SampleCallback callback) override;
+    /**
+     * @brief CRTP hook: feed NMEA parser and emit GpsSample for each fix.
+     * @param data Bytes read from the serial Stream.
+     * @param n Number of valid bytes in @p data.
+     */
+    void OnBytes(const std::uint8_t* data, std::size_t n);
 
 private:
-  /**
-   * @brief Reads NMEA lines from serial and emits parsed GPS samples.
-   */
-  void ReadLoop();
-
-  // Sensor identifier for this driver instance.
-  SensorId id_;
-
-  // Parsed driver parameters from configuration.
-  DriverParams params_;
-
-  // Serial (or future TCP/UDP) transport to the GNSS module.
-  std::unique_ptr<common::Stream> stream_{nullptr};
-
-  // User callback for delivered GPS samples.
-  SampleCallback callback_;
-
-  // True while Start() succeeded and Stop() has not been called.
-  std::atomic<bool> running_{false};
-
-  // Worker thread running ReadLoop().
-  std::thread worker_;
-
-  // Streaming NMEA parser (line buffer lives inside the parser).
-  std::unique_ptr<gps::GnssParser> parser_{nullptr};
+    // Streaming NMEA parser (line buffer lives inside the parser).
+    std::unique_ptr<gps::GnssParser> parser_{nullptr};
 };
 
 /**
- * @brief Factory for GpsBackendRegistry (REGISTER_GPS_BACKEND).
+ * @brief Factory for GpsBackendRegistry (REGISTER_GPS_BACKEND "serial").
+ * @param id Sensor instance id from YAML.
+ * @param params Backend-specific key/value map.
+ * @return Owning SerialGpsDriver* (never null).
  */
-SensorDriver*
-CreateSerialGpsDriver(
-  const SensorId & id,
-  const DriverParams & params);
+SensorDriver* CreateSerialGpsDriver(const SensorId& id,
+                                    const DriverParams& params);
 
 }  // namespace hardware
 }  // namespace autodriver

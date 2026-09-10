@@ -199,6 +199,9 @@ bool MatchDevice(const DeviceMatch& observed, const DeviceMatch& rule);
 | `sample_sink.hpp` / `bridge/publisher.hpp` | 发布 |
 | `bridge/pose_feeder.hpp` | Odometry → `PushLidarPose` |
 | `common/stream.hpp` | Serial/UDP + Reconnect |
+| `common/serial_byte_driver_base.hpp` | 串口读环 CRTP（IMU/GPS serial） |
+| `common/can_sensor_driver_base.hpp` | CAN `CanReceiver` 包装 CRTP |
+| `common/backend_registry.hpp` | 模态 Registry 模板（默认 backend + alias） |
 | `common/calibration.hpp` | 外参 YAML |
 | `common/status.hpp` | 健康；→ `/diagnostics` |
 | `common/named_factory.hpp` | `NamedProductFactory` → autolink Factory |

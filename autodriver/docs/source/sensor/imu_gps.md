@@ -8,7 +8,7 @@
 | 消息 | `sensor_msgs/Imu` |
 | backend | `serial`（默认）、`can`、`realsense`（需 librealsense） |
 | Registry | `ImuBackendRegistry` / `REGISTER_IMU_BACKEND` |
-| 源码 | `autodriver/imu/` |
+| 源码 | `autodriver/imu/`；serial → `SerialByteDriverBase`，can → `CanSensorDriverBase` |
 
 ```yaml
 imu:
@@ -35,7 +35,7 @@ imu:
 | 消息 | `NavSatFix` |
 | backend | `serial`（NMEA）、`can` |
 | Registry | `GpsBackendRegistry` / `REGISTER_GPS_BACKEND` |
-| 源码 | `autodriver/gps/` + `gps/parser` |
+| 源码 | `autodriver/gps/` + `gps/parser`；serial/CAN 同上 CRTP 基类 |
 
 ```yaml
 gps:

@@ -86,6 +86,10 @@ inline bool VelodyneLastAzimuthCentideg(const std::uint8_t* data,
 
 /**
  * @brief Last block azimuth of a Hesai XT32 1080B packet (0.01°).
+ * @param data Packet bytes.
+ * @param size Byte length; must be at least kPacketSize.
+ * @param[out] out_az Filled azimuth in centidegrees; must be non-null.
+ * @return false when @p data is too short or null.
  */
 inline bool HesaiLastAzimuthCentideg(const std::uint8_t* data, std::size_t size,
                                     int* out_az) {
@@ -106,6 +110,13 @@ inline bool HesaiLastAzimuthCentideg(const std::uint8_t* data, std::size_t size,
  *
  * When @p use_azimuth_cut is true, emit on cut crossing; always emit if
  * @p packet_count reaches @p max_packets (safety / fallback).
+ * @param use_azimuth_cut Prefer azimuth wrap cut when true.
+ * @param prev_az Previous packet last-block azimuth; negative = no history.
+ * @param curr_az Current packet last-block azimuth in [0, 36000).
+ * @param cut_az Cut angle in centidegrees.
+ * @param packet_count Packets accumulated in the current scan so far.
+ * @param max_packets Safety cap; <=0 disables the count trigger.
+ * @return true when the caller should EmitScan.
  */
 inline bool ShouldEmitScan(bool use_azimuth_cut, int prev_az, int curr_az,
                            int cut_az, int packet_count, int max_packets) {

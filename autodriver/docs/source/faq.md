@@ -85,10 +85,11 @@ Attach/Detach 成败 → `SampleSink::HandleDiagnostic` → Publisher → `/diag
 
 | 路径 | 内容 |
 |---|---|
-| `common/` | Stream、串口、UDP、外参、status |
+| `common/` | Stream、`SerialByteDriverBase`、`CanSensorDriverBase`、`BackendRegistry`、串口、UDP、外参、status |
 | `canbus/` | ProtocolData、Receiver、Client、Sender |
 | `camera/` | realsense、orbbec、registry |
-| `lidar/` | velodyne、hesai、livox、rplidar、queue、compensator、stubs |
+| `lidar/` | `UdpScanDriverBase`、Livox assembler 基类、velodyne/hesai、rplidar、queue、compensator、stubs |
+| `imu/` `gps/` | serial/CAN 驱动（CRTP 基类）+ registry |
 | `gps/parser/` | NMEA 工厂 |
 | `bridge/` | Publisher、PoseFeeder |
 | `config/` | 硬件 YAML + 厂商 params |

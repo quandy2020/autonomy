@@ -18,8 +18,9 @@
  * @file
  * @brief Named product factories wrapping autolink::common::Factory.
  *
- * Backend registries (camera / lidar / imu / gps / chassis / …) hold a
- * NamedProductFactory and expose SharedPtr CreateDriver(). GnssParser uses
+ * Backend registries (camera / lidar / imu / gps / chassis / …) are thin
+ * Policy aliases of BackendRegistry (common/backend_registry.hpp), which holds
+ * a NamedProductFactory and exposes SharedPtr CreateDriver(). GnssParser uses
  * NamedProductFactory0 (no id/params args).
  */
 

@@ -52,6 +52,7 @@ set(AUTODRIVER_SOURCES
   lidar/lidar_2d_backend_registry.cpp
   lidar/motion_compensator.cpp
   lidar/pose_buffer.cpp
+  lidar/beam_calibration_yaml.cpp
   lidar/velodyne/calibration.cpp
   lidar/velodyne/convert.cpp
   lidar/velodyne/udp_driver.cpp

@@ -24,98 +24,51 @@
 
 #include <initializer_list>
 #include <string>
+#include <utility>
 
-#include "autodriver/common/named_factory.hpp"
-#include "autodriver/driver_params.hpp"
+#include "autodriver/common/backend_registry.hpp"
 #include "autodriver/sensor_driver.hpp"
 #include "autodriver/sensor_id.hpp"
-#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace radar {
 
 /**
- * @brief Creator for autolink::common::Factory: returns owning SensorDriver*.
- * @param id Sensor instance id from YAML (e.g. "radar/front").
- * @param params Backend-specific key/value map from YAML.
- * @return New SensorDriver, or nullptr when construction fails / stub.
+ * @struct autodriver::radar::RadarBackendPolicy
+ * @brief BackendRegistry Policy for radar (empty backend → "conti").
  */
-using RadarDriverFactory =
-    NamedProductFactory<SensorDriver, SensorId>::Creator;
-
-/**
- * @class autodriver::radar::RadarBackendRegistry
- * @brief Maps YAML `radar.backend` → SensorDriver factory.
- *
- * Internally uses NamedProductFactory (autolink::common::Factory).
- * Default backend when empty: "conti" (may be stub → nullptr).
- */
-class RadarBackendRegistry {
-public:
-  /**
-   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
-   */
-  AUTOLINK_SHARED_PTR_DEFINITIONS(RadarBackendRegistry)
-
-  /**
-   * @brief Access the process-wide singleton (static-init backends register here).
-   * @return Reference to the unique RadarBackendRegistry instance.
-   */
-  static RadarBackendRegistry& Instance();
-
-  /**
-   * @brief Register or replace a factory under a canonical backend name.
-   * @param name Canonical backend string (e.g. "conti").
-   * @param factory Creator returning new SensorDriver*.
-   */
-  void RegisterBackend(const std::string& name, RadarDriverFactory factory);
-
-  /**
-   * @brief Map an alias onto an already-registered canonical backend name.
-   * @param alias Alternate YAML name (e.g. "continental").
-   * @param canonical Existing registered name (e.g. "conti").
-   */
-  void RegisterBackendAlias(const std::string& alias,
-                            const std::string& canonical);
-
-  /**
-   * @brief Create a SensorDriver for @p backend (empty string → "conti").
-   * @param backend YAML `backend` or alias.
-   * @param id Sensor instance id passed to the factory.
-   * @param params YAML params (and shorthand merges).
-   * @return Shared driver, or nullptr if unknown / creator returns null.
-   */
-  SensorDriver::SharedPtr CreateDriver(
-      const std::string& backend, const SensorId& id,
-      const hardware::DriverParams& params) const;
-
-  /**
-   * @brief Check whether @p backend resolves to a registered factory.
-   * @param backend Canonical name or alias (empty → "conti").
-   * @return true if a factory is available after alias resolve.
-   */
-  bool HasBackend(const std::string& backend) const;
-
-private:
-  /**
-   * @brief Private default constructor for the process-wide singleton.
-   */
-  RadarBackendRegistry() = default;
-
-  NamedProductFactory<SensorDriver, SensorId> factory_;
+struct RadarBackendPolicy {
+    /** @brief Default YAML backend when the string is empty. */
+    static constexpr const char* kDefaultBackend = "conti";
+    /** @brief AERROR prefix when CreateDriver fails. */
+    static constexpr const char* kUnknownPrefix = "unknown radar backend: ";
 };
 
 /**
- * @brief Register a canonical backend plus optional aliases in one call.
+ * @brief Maps YAML `radar.backend` → SensorDriver factory.
  *
- * Used by REGISTER_RADAR_BACKEND at static init.
- * @param name Canonical backend string.
+ * Alias of BackendRegistry with RadarBackendPolicy.
+ * Built-ins: conti (alias continental); Create may return nullptr (stub).
+ */
+using RadarBackendRegistry =
+    BackendRegistry<SensorDriver, SensorId, RadarBackendPolicy>;
+
+/**
+ * @brief Creator for RadarBackendRegistry: returns owning SensorDriver*.
+ */
+using RadarDriverFactory = RadarBackendRegistry::DriverFactory;
+
+/**
+ * @brief Register a canonical radar backend plus optional aliases.
+ * @param name Canonical backend string (e.g. "conti").
  * @param factory RadarDriverFactory for @p name.
  * @param aliases Optional null-terminated C string aliases (empty skipped).
  */
-void RegisterRadarBackendWithAliases(
+inline void RegisterRadarBackendWithAliases(
     const std::string& name, RadarDriverFactory factory,
-    std::initializer_list<const char*> aliases);
+    std::initializer_list<const char*> aliases) {
+    RadarBackendRegistry::RegisterWithAliases(name, std::move(factory), aliases);
+}
 
 }  // namespace radar
 }  // namespace autodriver

@@ -71,33 +71,18 @@ private:
 }  // namespace
 
 CanImuDriver::CanImuDriver(SensorId id, DriverParams params)
-    : id_(std::move(id)),
-      params_(std::move(params)),
+    : CanSensorDriverBase<CanImuDriver, ImuCanEvent>(std::move(id),
+                                                     std::move(params), 100),
       accel_can_id_(ParseCanId(params_, "accel_can_id", 0x100)),
       gyro_can_id_(ParseCanId(params_, "gyro_can_id", 0x101)),
       accel_scale_(ParseDouble(params_, "accel_scale", 0.001)),
       gyro_scale_(ParseDouble(params_, "gyro_scale", 0.0001)) {
-    receiver_.manager().Register(
+    receiver().manager().Register(
         std::make_shared<AccelProtocol>(accel_can_id_, accel_scale_));
-    receiver_.manager().Register(
+    receiver().manager().Register(
         std::make_shared<GyroProtocol>(gyro_can_id_, gyro_scale_));
-    receiver_.manager().SetPublishCallback(
+    receiver().manager().SetPublishCallback(
         [this](const ImuCanEvent& event) { OnEvent(event); });
-}
-
-CanImuDriver::~CanImuDriver() { Stop(); }
-
-bool CanImuDriver::Start() {
-    const std::string interface_name = GetString(params_, "interface", "can0");
-    return receiver_.Start(interface_name, 100);
-}
-
-void CanImuDriver::Stop() { receiver_.Stop(); }
-
-bool CanImuDriver::IsRunning() const { return receiver_.IsRunning(); }
-
-void CanImuDriver::SetSampleCallback(SampleCallback callback) {
-    callback_ = std::move(callback);
 }
 
 void CanImuDriver::OnEvent(const ImuCanEvent& event) {
@@ -112,18 +97,17 @@ void CanImuDriver::OnEvent(const ImuCanEvent& event) {
 }
 
 void CanImuDriver::TryEmit() {
-    if (!have_accel_ || !have_gyro_ || !callback_) {
+    if (!have_accel_ || !have_gyro_) {
         return;
     }
-    callback_(std::make_unique<ImuSample>(
+    EmitSample(std::make_unique<ImuSample>(
         id_, autolink::Time::Now(), ImuMsg(gyro_, accel_)));
     have_accel_ = false;
     have_gyro_ = false;
 }
 
-SensorDriver*
-CreateCanImuDriver(const SensorId& id,
-                                                 const DriverParams& params) {
+SensorDriver* CreateCanImuDriver(const SensorId& id,
+                                 const DriverParams& params) {
     return new CanImuDriver(id, params);
 }
 

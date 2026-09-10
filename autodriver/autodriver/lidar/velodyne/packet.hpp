@@ -37,17 +37,20 @@ inline constexpr std::size_t kChannelsPerBlock = 32;
 inline constexpr std::size_t kBlockSize = 100;
 
 #pragma pack(push, 1)
+/** @brief One laser return inside a Velodyne firing block. */
 struct RawChannel {
-    std::uint16_t distance;  // 2mm LSB
+    std::uint16_t distance;  ///< 2 mm LSB.
     std::uint8_t intensity;
 };
 
+/** @brief One azimuth block (upper or lower) inside a firing packet. */
 struct RawBlock {
-    std::uint16_t flag;     // 0xEEFF upper / 0xDDFF lower
-    std::uint16_t azimuth;  // 1/100 deg
+    std::uint16_t flag;     ///< 0xEEFF upper / 0xDDFF lower.
+    std::uint16_t azimuth;  ///< 0.01° units.
     RawChannel channels[kChannelsPerBlock];
 };
 
+/** @brief Full 1206-byte Velodyne firing packet. */
 struct RawPacket {
     RawBlock blocks[kBlocksPerPacket];
     std::uint32_t timestamp_us;

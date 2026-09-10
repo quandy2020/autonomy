@@ -14,56 +14,9 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ * @brief Microphone BackendRegistry TU placeholder (header-only).
+ */
+
 #include "autodriver/microphone/backend_registry.hpp"
-
-#include "autolink/common/log.hpp"
-
-namespace autodriver {
-namespace microphone {
-
-MicrophoneBackendRegistry& MicrophoneBackendRegistry::Instance() {
-  static MicrophoneBackendRegistry registry;
-  return registry;
-}
-
-void MicrophoneBackendRegistry::RegisterBackend(const std::string& name,
-    MicrophoneDriverFactory factory) {
-  factory_.Register(name, std::move(factory));
-}
-
-void MicrophoneBackendRegistry::RegisterBackendAlias(const std::string& alias,
-    const std::string& canonical) {
-  factory_.RegisterAlias(alias, canonical);
-}
-
-SensorDriver::SharedPtr MicrophoneBackendRegistry::CreateDriver(
-    const std::string& backend, const SensorId& id,
-    const hardware::DriverParams& params) const {
-  const std::string name =
-      backend.empty() ? "respeaker" : backend;
-  auto driver = factory_.CreateShared(name, id, params);
-  if (!driver) {
-    AERROR << "unknown microphone backend: " << backend;
-  }
-  return driver;
-}
-
-bool MicrophoneBackendRegistry::HasBackend(const std::string& backend) const {
-  return factory_.Contains(
-      backend.empty() ? "respeaker" : backend);
-}
-
-void RegisterMicrophoneBackendWithAliases(
-    const std::string& name, MicrophoneDriverFactory factory,
-    std::initializer_list<const char*> aliases) {
-  auto& reg = MicrophoneBackendRegistry::Instance();
-  reg.RegisterBackend(name, std::move(factory));
-  for (const char* alias : aliases) {
-    if (alias != nullptr && *alias != static_cast<char>(0)) {
-      reg.RegisterBackendAlias(alias, name);
-    }
-  }
-}
-
-}  // namespace microphone
-}  // namespace autodriver
