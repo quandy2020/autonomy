@@ -34,9 +34,9 @@
 | 配置 | `config_loader` | YAML → `Config`；`params_file`；`camera` 折叠 | 新字段 / 折叠语法 |
 | 编排 | `SensorManager`、`SensorHub`、udev | Attach/Detach、对齐旁路、热插拔 | 一般不改 |
 | 模态 | `modules.cpp` 中 `*Module` | 按 `SensorType` 调对应 Registry | **通常不改** |
-| 工厂 | `*BackendRegistry`、`NamedProductFactory` | `backend` 名 → Creator | 加宏注册即可 |
+| 工厂 | `BackendRegistry`（`common/backend_registry.hpp`）+ Policy | `backend` 名 → Creator | 加宏注册即可 |
 | 驱动 | `…/<vendor>/`、`chassis/<vendor>/` | 实现 `SensorDriver` / `ChassisDriver` | **加厂商在此** |
-| 传输 | `common::Stream`、`canbus`、厂商 SDK | 字节 / 帧 | 复用 |
+| 传输 | `common::Stream`、`SerialByteDriverBase` / `CanSensorDriverBase`、`canbus`、厂商 SDK | 字节 / 帧 | 复用 |
 | 传感发布 | `SampleSink` / `bridge::Publisher` | 样本 → Autolink Writer | 可换自定义 Sink |
 | 本体 IO | `ChassisManager` | cmd_vel / state / odom / event | 一般不改 |
 
@@ -198,9 +198,9 @@ SetEventCallback(optional)           // RobotEvent
 | 模态 | 要点 |
 |---|---|
 | 相机 / 点云 | `camera/<v>/` hub + driver；`REGISTER_CAMERA_*` / `POINTCLOUD_*` |
-| 3D 激光 | `lidar/<v>/`；`point_step=24`（`x,y,z,intensity,timestamp`） |
+| 3D 激光 | `lidar/<v>/` + `UdpScanDriverBase`（UDP 厂商）；`point_step=24` |
 | 2D 激光 | `REGISTER_LIDAR2D_BACKEND` |
-| IMU / GPS | `REGISTER_IMU_*` / `GPS_*`；串口走 `Stream`；NMEA 走 `GnssParserRegistry` |
+| IMU / GPS | `SerialByteDriverBase` / `CanSensorDriverBase`；NMEA 走 `GnssParserRegistry` |
 | 底盘 | `chassis/<v>/`；`REGISTER_CHASSIS_BACKEND`；消息用 vehicle_msgs |
 | Radar / Mic | 先 stub（Create→nullptr）占名，再换真实现 |
 
@@ -228,7 +228,7 @@ LoadConfig
 autodriver/
   autodriver/                 # 传感 HAL + bridge
     config_loader.*  sensor_manager.*  sensor_hub.*  modules.cpp
-    common/                   # Stream、calibration、named_factory
+    common/                   # Stream、BackendRegistry、Serial/CAN CRTP 基类、named_factory
     canbus/  bridge/  types/
     camera/  lidar/  imu/  gps/  radar/  microphone/  smartereye/
   chassis/                    # 本体：registry、manager、stub/

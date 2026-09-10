@@ -36,17 +36,26 @@ namespace autodriver {
 namespace lidar {
 namespace rplidar {
 
+/**
+ * @brief Options for NodesToLaserScan (rplidar_ros publish_scan aligned).
+ */
 struct ConvertOptions {
-    std::string frame_id{"laser"};
-    bool inverted{false};
-    float range_min{0.15f};
-    float range_max{12.0f};
-    double scan_time_s{0.1};
+    std::string frame_id{"laser"};  ///< LaserScan header frame_id.
+    bool inverted{false};           ///< Flip scan direction when true.
+    float range_min{0.15f};         ///< Metres; ranges below discarded.
+    float range_max{12.0f};         ///< Metres; ranges above discarded.
+    double scan_time_s{0.1};        ///< Time between scans (seconds).
 };
 
 #ifdef AUTODRIVER_HAVE_RPLIDAR
 /**
  * @brief Fill LaserScan from HQ nodes (aligned with rplidar_ros publish_scan).
+ * @param nodes Contiguous HQ measurement nodes from the SDK.
+ * @param count Number of nodes in @p nodes.
+ * @param angle_min_rad Inclusive start angle (radians).
+ * @param angle_max_rad Inclusive end angle (radians).
+ * @param opt Frame id, invert, range limits, and scan_time.
+ * @return Filled LaserScan message (may have empty ranges on bad input).
  */
 automsgs::msgs::sensor_msgs::LaserScan NodesToLaserScan(
     const sl_lidar_response_measurement_node_hq_t* nodes, std::size_t count,

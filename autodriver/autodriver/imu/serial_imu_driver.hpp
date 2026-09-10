@@ -22,15 +22,12 @@
 #ifndef AUTODRIVER_IMU_SERIAL_IMU_DRIVER_HPP_
 #define AUTODRIVER_IMU_SERIAL_IMU_DRIVER_HPP_
 
-#include <atomic>
-#include <memory>
-#include <string>
-#include <thread>
+#include <cstddef>
+#include <cstdint>
 
-#include "autodriver/common/stream.hpp"
+#include "autodriver/common/serial_byte_driver_base.hpp"
 #include "autodriver/driver_params.hpp"
 #include "autodriver/imu/wit_motion_parser.hpp"
-#include "autodriver/sensor_driver.hpp"
 #include "autolink/common/macros.hpp"
 
 namespace autodriver {
@@ -38,93 +35,55 @@ namespace hardware {
 
 /**
  * @class autodriver::hardware::SerialImuDriver
- * @brief WIT-motion 0x55 via common::Stream + WitMotionParser.
+ * @brief WIT-motion 0x55 via SerialByteDriverBase + WitMotionParser.
+ *
+ * Params: `device`, `baud`, `accel_scale`, `gyro_scale`.
  */
-class SerialImuDriver : public SensorDriver
-{
+class SerialImuDriver : public SerialByteDriverBase<SerialImuDriver> {
 public:
-  /**
-   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
-   */
-  AUTOLINK_SHARED_PTR_DEFINITIONS(SerialImuDriver)
+    /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(SerialImuDriver)
 
-  /**
-   * @brief Stores sensor identity and WIT-motion parser scale factors.
-   */
-  SerialImuDriver(SensorId id, DriverParams params);
+    /**
+     * @brief Store identity and construct WitMotionParser scale factors.
+     * @param id Sensor instance id.
+     * @param params DriverParams (cold-path parse only).
+     */
+    SerialImuDriver(SensorId id, DriverParams params);
 
-  /**
-   * @brief Stops the reader thread and closes the serial port.
-   */
-  ~SerialImuDriver() override;
+    /**
+     * @brief Stops the reader thread before destroying the parser.
+     */
+    ~SerialImuDriver() override { Stop(); }
 
-  /**
-   * @brief Report sensor type
-   * @return SensorType::kImu
-   */
-  SensorType GetSensorType() const override { return SensorType::kImu; }
+    /**
+     * @brief Report sensor type.
+     * @return SensorType::kImu.
+     */
+    SensorType GetSensorType() const override { return SensorType::kImu; }
 
-  /**
-   * @brief Return this driver's sensor identifier
-   * @return Sensor id assigned at construction
-   */
-  const SensorId & GetSensorId() const override { return id_; }
-
-  /**
-   * @brief Opens the serial device and starts the byte reader thread.
-   */
-  bool Start() override;
-
-  /**
-   * @brief Stops reading and joins the worker thread.
-   */
-  void Stop() override;
-
-  /**
-   * @brief Returns true while the serial reader thread is active.
-   */
-  bool IsRunning() const override;
-
-  /**
-   * @brief Registers the callback invoked for each fused IMU sample.
-   */
-  void SetSampleCallback(SampleCallback callback) override;
+    /**
+     * @brief CRTP hook: feed WIT parser and emit ImuSample when complete.
+     * @param data Bytes read from the serial Stream.
+     * @param n Number of valid bytes in @p data.
+     */
+    void OnBytes(const std::uint8_t* data, std::size_t n);
 
 private:
-  /**
-   * @brief Reads serial bytes, parses WIT packets, and emits IMU samples.
-   */
-  void ReadLoop();
-
-  // Sensor identifier for this driver instance.
-  SensorId id_;
-
-  // Parsed driver parameters from configuration.
-  DriverParams params_;
-
-  // Serial (or future TCP/UDP) transport to the IMU module.
-  std::unique_ptr<common::Stream> stream_{nullptr};
-
-  // Incremental WIT-motion protocol parser.
-  protocol::WitMotionParser parser_;
-
-  // User callback for delivered IMU samples.
-  SampleCallback callback_;
-
-  // True while Start() succeeded and Stop() has not been called.
-  std::atomic<bool> running_{false};
-
-  // Worker thread running ReadLoop().
-  std::thread worker_;
+    // Incremental WIT-motion protocol parser.
+    protocol::WitMotionParser parser_;
 };
 
 /**
- * @brief Factory for ImuBackendRegistry (REGISTER_IMU_BACKEND).
+ * @brief Factory for ImuBackendRegistry (REGISTER_IMU_BACKEND "serial").
+ * @param id Sensor instance id from YAML.
+ * @param params Backend-specific key/value map.
+ * @return Owning SerialImuDriver* (never null).
  */
-SensorDriver*
-CreateSerialImuDriver(
-  const SensorId & id,
-  const DriverParams & params);
+SensorDriver* CreateSerialImuDriver(const SensorId& id,
+                                    const DriverParams& params);
 
 }  // namespace hardware
 }  // namespace autodriver

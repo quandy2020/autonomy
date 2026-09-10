@@ -24,98 +24,51 @@
 
 #include <initializer_list>
 #include <string>
+#include <utility>
 
-#include "autodriver/common/named_factory.hpp"
-#include "autodriver/driver_params.hpp"
+#include "autodriver/common/backend_registry.hpp"
 #include "autodriver/sensor_driver.hpp"
 #include "autodriver/sensor_id.hpp"
-#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace imu {
 
 /**
- * @brief Creator for autolink::common::Factory: returns owning SensorDriver*.
- * @param id Sensor instance id from YAML (e.g. "imu/torso").
- * @param params Backend-specific key/value map from YAML.
- * @return New SensorDriver, or nullptr when construction fails.
+ * @struct autodriver::imu::ImuBackendPolicy
+ * @brief BackendRegistry Policy for IMU (empty backend → "serial").
  */
-using ImuDriverFactory =
-    NamedProductFactory<SensorDriver, SensorId>::Creator;
-
-/**
- * @class autodriver::imu::ImuBackendRegistry
- * @brief Maps YAML `imu.backend` → SensorDriver factory.
- *
- * Internally uses NamedProductFactory (autolink::common::Factory).
- * Built-ins: serial, can; realsense when librealsense is linked.
- */
-class ImuBackendRegistry {
-public:
-  /**
-   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
-   */
-  AUTOLINK_SHARED_PTR_DEFINITIONS(ImuBackendRegistry)
-
-  /**
-   * @brief Access the process-wide singleton (static-init backends register here).
-   * @return Reference to the unique ImuBackendRegistry instance.
-   */
-  static ImuBackendRegistry& Instance();
-
-  /**
-   * @brief Register or replace a factory under a canonical backend name.
-   * @param name Canonical backend string (e.g. "serial", "can", "realsense").
-   * @param factory Creator returning new SensorDriver*.
-   */
-  void RegisterBackend(const std::string& name, ImuDriverFactory factory);
-
-  /**
-   * @brief Map an alias onto an already-registered canonical backend name.
-   * @param alias Alternate YAML name.
-   * @param canonical Existing registered name.
-   */
-  void RegisterBackendAlias(const std::string& alias,
-                            const std::string& canonical);
-
-  /**
-   * @brief Create a SensorDriver for @p backend (empty string → "serial").
-   * @param backend YAML `backend` or alias.
-   * @param id Sensor instance id passed to the factory.
-   * @param params YAML params (and shorthand merges).
-   * @return Shared driver, or nullptr if unknown / creator returns null.
-   */
-  SensorDriver::SharedPtr CreateDriver(
-      const std::string& backend, const SensorId& id,
-      const hardware::DriverParams& params) const;
-
-  /**
-   * @brief Check whether @p backend resolves to a registered factory.
-   * @param backend Canonical name or alias (empty → "serial").
-   * @return true if a factory is available after alias resolve.
-   */
-  bool HasBackend(const std::string& backend) const;
-
-private:
-  /**
-   * @brief Private default constructor for the process-wide singleton.
-   */
-  ImuBackendRegistry() = default;
-
-  NamedProductFactory<SensorDriver, SensorId> factory_;
+struct ImuBackendPolicy {
+    /** @brief Default YAML backend when the string is empty. */
+    static constexpr const char* kDefaultBackend = "serial";
+    /** @brief AERROR prefix when CreateDriver fails. */
+    static constexpr const char* kUnknownPrefix = "unknown imu backend: ";
 };
 
 /**
- * @brief Register a canonical backend plus optional aliases in one call.
+ * @brief Maps YAML `imu.backend` → SensorDriver factory.
  *
- * Used by REGISTER_IMU_BACKEND at static init.
- * @param name Canonical backend string.
+ * Alias of BackendRegistry with ImuBackendPolicy.
+ * Built-ins: serial, can; realsense when librealsense is linked.
+ */
+using ImuBackendRegistry =
+    BackendRegistry<SensorDriver, SensorId, ImuBackendPolicy>;
+
+/**
+ * @brief Creator for ImuBackendRegistry: returns owning SensorDriver*.
+ */
+using ImuDriverFactory = ImuBackendRegistry::DriverFactory;
+
+/**
+ * @brief Register a canonical IMU backend plus optional aliases (static init).
+ * @param name Canonical backend string (e.g. "serial", "can").
  * @param factory ImuDriverFactory for @p name.
  * @param aliases Optional null-terminated C string aliases (empty skipped).
  */
-void RegisterImuBackendWithAliases(
+inline void RegisterImuBackendWithAliases(
     const std::string& name, ImuDriverFactory factory,
-    std::initializer_list<const char*> aliases);
+    std::initializer_list<const char*> aliases) {
+    ImuBackendRegistry::RegisterWithAliases(name, std::move(factory), aliases);
+}
 
 }  // namespace imu
 }  // namespace autodriver

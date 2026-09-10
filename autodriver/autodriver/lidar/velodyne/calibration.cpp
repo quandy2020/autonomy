@@ -16,11 +16,10 @@
 
 #include "autodriver/lidar/velodyne/calibration.hpp"
 
-#include <cmath>
-#include <map>
 #include <algorithm>
+#include <cmath>
 
-#include <yaml-cpp/yaml.h>
+#include "autodriver/lidar/beam_calibration_yaml.hpp"
 
 namespace autodriver {
 namespace lidar {
@@ -37,7 +36,8 @@ BeamCalibration DefaultVlp16Calibration() {
                             -7.0,  9.0,  -5.0,  11.0, -3.0,  13.0, -1.0, 15.0};
     cal.vert_correction_rad.resize(16);
     for (int i = 0; i < 16; ++i) {
-        cal.vert_correction_rad[static_cast<std::size_t>(i)] = deg[i] * kDegToRad;
+        cal.vert_correction_rad[static_cast<std::size_t>(i)] =
+            deg[i] * kDegToRad;
     }
     return cal;
 }
@@ -45,49 +45,26 @@ BeamCalibration DefaultVlp16Calibration() {
 bool LoadBeamCalibrationYaml(const std::string& path, BeamCalibration* out,
                              std::string* error) {
     if (out == nullptr) {
-        if (error) {
+        if (error != nullptr) {
             *error = "null BeamCalibration";
         }
         return false;
     }
-    try {
-        const YAML::Node root = YAML::LoadFile(path);
-        const YAML::Node lasers = root["lasers"] ? root["lasers"] : root;
-        if (!lasers || !lasers.IsSequence()) {
-            if (error) {
-                *error = "missing lasers sequence";
-            }
-            return false;
-        }
-        std::map<int, double> by_id;
-        int max_id = -1;
-        for (const auto& node : lasers) {
-            const int id = node["laser_id"] ? node["laser_id"].as<int>() : -1;
-            if (id < 0 || !node["vert_correction"]) {
-                continue;
-            }
-            by_id[id] = node["vert_correction"].as<double>();
-            max_id = std::max(max_id, id);
-        }
-        if (by_id.empty()) {
-            if (error) {
-                *error = "no laser vert_correction entries";
-            }
-            return false;
-        }
-        out->vert_correction_rad.assign(
-            static_cast<std::size_t>(max_id + 1), 0.0);
-        for (const auto& entry : by_id) {
-            out->vert_correction_rad[static_cast<std::size_t>(entry.first)] =
-                entry.second;
-        }
-        return true;
-    } catch (const YAML::Exception& ex) {
-        if (error) {
-            *error = ex.what();
-        }
+    LaserVertCorrectionTable table;
+    if (!LoadLaserVertCorrectionsYaml(path, &table, error)) {
         return false;
     }
+    int max_id = -1;
+    for (const auto& entry : table.by_id) {
+        max_id = std::max(max_id, entry.first);
+    }
+    out->vert_correction_rad.assign(static_cast<std::size_t>(max_id + 1), 0.0);
+    for (const auto& entry : table.by_id) {
+        // Velodyne YAML is documented as radians; ignore unit flag.
+        out->vert_correction_rad[static_cast<std::size_t>(entry.first)] =
+            entry.second;
+    }
+    return true;
 }
 
 }  // namespace velodyne

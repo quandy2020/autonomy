@@ -14,54 +14,9 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ * @brief GPS BackendRegistry TU placeholder (implementation is header-only).
+ */
+
 #include "autodriver/gps/backend_registry.hpp"
-
-#include "autolink/common/log.hpp"
-
-namespace autodriver {
-namespace gps {
-
-GpsBackendRegistry& GpsBackendRegistry::Instance() {
-  static GpsBackendRegistry registry;
-  return registry;
-}
-
-void GpsBackendRegistry::RegisterBackend(const std::string& name,
-                                         GpsDriverFactory factory) {
-  factory_.Register(name, std::move(factory));
-}
-
-void GpsBackendRegistry::RegisterBackendAlias(const std::string& alias,
-                                              const std::string& canonical) {
-  factory_.RegisterAlias(alias, canonical);
-}
-
-SensorDriver::SharedPtr GpsBackendRegistry::CreateDriver(
-    const std::string& backend, const SensorId& id,
-    const hardware::DriverParams& params) const {
-  const std::string name = backend.empty() ? "serial" : backend;
-  auto driver = factory_.CreateShared(name, id, params);
-  if (!driver) {
-    AERROR << "unknown gps backend: " << backend;
-  }
-  return driver;
-}
-
-bool GpsBackendRegistry::HasBackend(const std::string& backend) const {
-  return factory_.Contains(backend.empty() ? "serial" : backend);
-}
-
-void RegisterGpsBackendWithAliases(
-    const std::string& name, GpsDriverFactory factory,
-    std::initializer_list<const char*> aliases) {
-  auto& reg = GpsBackendRegistry::Instance();
-  reg.RegisterBackend(name, std::move(factory));
-  for (const char* alias : aliases) {
-    if (alias != nullptr && *alias != static_cast<char>(0)) {
-      reg.RegisterBackendAlias(alias, name);
-    }
-  }
-}
-
-}  // namespace gps
-}  // namespace autodriver

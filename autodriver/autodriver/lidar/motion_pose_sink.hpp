@@ -49,16 +49,29 @@ public:
    */
   AUTOLINK_SHARED_PTR_DEFINITIONS(MotionPoseSink)
 
+    /**
+     * @brief Virtual destructor for polymorphic pose sinks.
+     */
     virtual ~MotionPoseSink() = default;
 
-    /** Append a stamped pose (nanoseconds) to the built-in PoseBuffer. */
+    /**
+     * @brief Append a stamped pose (nanoseconds) to the built-in PoseBuffer.
+     * @param time_ns Pose timestamp in nanoseconds.
+     * @param pose world←lidar affine transform at @p time_ns.
+     */
     virtual void PushPose(std::uint64_t time_ns,
                           const Eigen::Affine3d& pose) = 0;
 
-    /** Replace the MotionCompensator pose source (advanced). */
+    /**
+     * @brief Replace the MotionCompensator pose source (advanced).
+     * @param lookup Callable used instead of / in addition to PoseBuffer.
+     */
     virtual void SetPoseLookup(PoseLookup lookup) = 0;
 
-    /** Shared PoseBuffer when the driver owns one; else nullptr. */
+    /**
+     * @brief Shared PoseBuffer when the driver owns one; else nullptr.
+     * @return PoseBuffer shared pointer, or nullptr when compensation is off.
+     */
     virtual std::shared_ptr<PoseBuffer> pose_buffer() const = 0;
 };
 

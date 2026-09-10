@@ -50,14 +50,16 @@ inline constexpr std::size_t kTimestampOffset =
 inline constexpr double kDistanceUnitM = 0.004;  // 4 mm
 
 #pragma pack(push, 1)
+/** @brief One channel sample inside an XT32 block. */
 struct RawChannel {
-    std::uint16_t distance;  // × Dis Unit (4 mm)
+    std::uint16_t distance;  ///< × Dis Unit (4 mm).
     std::uint8_t reflectivity;
     std::uint8_t reserved;
 };
 
+/** @brief One azimuth block (8 per XT32 packet). */
 struct RawBlock {
-    std::uint16_t azimuth;  // 0.01°
+    std::uint16_t azimuth;  ///< 0.01° units.
     RawChannel channels[kChannelsPerBlock];
 };
 #pragma pack(pop)
@@ -68,6 +70,12 @@ static_assert(sizeof(RawBlock) == kBlockSize, "XT32 block size");
 using PacketBuffer = std::array<std::uint8_t, kPacketSize>;
 using ScanPackets = std::vector<PacketBuffer>;
 
+/**
+ * @brief True when @p data looks like an XT32 point-cloud UDP payload.
+ * @param data Packet bytes (checks Pre-Header 0xEE 0xFF).
+ * @param size Byte length; must be at least kPacketSize.
+ * @return true for a plausible XT32 header.
+ */
 inline bool IsXt32PointCloudPacket(const std::uint8_t* data, std::size_t size) {
     if (data == nullptr || size < kPacketSize) {
         return false;

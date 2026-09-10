@@ -21,21 +21,21 @@ REGISTER_*_BACKEND(tag, "name", CreateFn, "alias"...)
 |---|---|
 | Creator | `Product*(const Id&, const DriverParams&)`，owning raw；stub 可 `nullptr` |
 | 宏 | `REGISTER_IMU/GPS/CAMERA/POINTCLOUD/LIDAR/LIDAR2D/RADAR/MICROPHONE/CHASSIS_BACKEND` |
-| 封装 | `common/named_factory.hpp` |
+| 封装 | `common/backend_registry.hpp`（内含 `NamedProductFactory`） |
 
 ## 目录与职责
 
 | 目录 | 内容 |
 |---|---|
-| `common/` | `Stream`、`SerialPort`、`CanSocket`、`calibration`、`named_factory` |
+| `common/` | `Stream`、`SerialPort`、`CanSocket`、`calibration`、`named_factory`、`BackendRegistry`、`SerialByteDriverBase`、`CanSensorDriverBase` |
 | `canbus/` | ProtocolData、Receiver、Client（Socket+Fake）、Sender、`byte` |
-| `imu/` | WitMotion、serial/CAN；`backend_registry` |
-| `gps/` | NMEA、`gps/parser`、serial/CAN；`backend_registry` |
+| `imu/` | WitMotion、serial/CAN（CRTP 基类）、`backend_registry` |
+| `gps/` | NMEA、`gps/parser`、serial/CAN（CRTP 基类）、`backend_registry` |
 | `camera/` | `backend_registry`、`realsense/`、`orbbec/` |
 | `smartereye/` | Camera stub |
 | `radar/` | Registry + Conti stub |
 | `microphone/` | Registry + Respeaker stub |
-| `lidar/` | 基类、queue、scan_cut、compensator、`velodyne/` `hesai/` `livox/` `rplidar/`、stubs |
+| `lidar/` | `UdpScanDriverBase`、Livox `AssemblerDriverBase`、queue、scan_cut、compensator、`point_cloud2_layout` / `byte_util` / `beam_calibration_yaml`、`velodyne/` `hesai/` `livox/` `rplidar/`、stubs |
 | `bridge/` | `Publisher`、`PoseFeeder`、`channels.hpp` |
 | `chassis/`（顶层） | `ChassisBackendRegistry`、`ChassisManager`、`stub/` |
 
@@ -43,8 +43,8 @@ REGISTER_*_BACKEND(tag, "name", CreateFn, "alias"...)
 
 | Module / 编排 | Registry | backends | 消息 | 状态 |
 |---|---|---|---|---|
-| `ImuModule` | `ImuBackendRegistry` | `serial`、`can`、`realsense` | `Imu` | 真（serial→`Stream`） |
-| `GpsModule` | `GpsBackendRegistry` | `serial`、`can` | `NavSatFix` | 真 |
+| `ImuModule` | `ImuBackendRegistry` | `serial`、`can`、`realsense` | `Imu` | 真（serial→`SerialByteDriverBase`） |
+| `GpsModule` | `GpsBackendRegistry` | `serial`、`can` | `NavSatFix` | 真（同上 CRTP） |
 | `CameraModule` | `CameraBackendRegistry` | `realsense`、`orbbec`、`smartereye` | `Image`（+ camera_info，若 `has_camera_info`） | RS/Orbbec 真；smartereye stub |
 | `PointCloudModule` | `PointCloudBackendRegistry` | `realsense`、`orbbec` | `PointCloud2` | 需 SDK |
 | `Lidar3dModule` | `LidarBackendRegistry` | `velodyne`/`udp`、`hesai`/`pandar`、`livox`；stub: rslidar/… | `PointCloud2` | 真 + stub |
@@ -123,9 +123,9 @@ auto parser = autodriver::gps::GnssParserRegistry::Instance().CreateParser("nmea
 
 | backend | 路径摘要 | 手册 |
 |---|---|---|
-| `velodyne` / `udp` | UDP→队列→切帧→Convert；校准 **rad** | [Velodyne](../sensor/lidar/velodyne.md) |
-| `hesai` / `pandar` | XT32；校准 **deg** | [Hesai](../sensor/lidar/hesai.md) |
-| `livox` | SDK1/SDK2；`model`/`sdk` 选型 | [Livox](../sensor/lidar/livox.md) |
+| `velodyne` / `udp` | `UdpScanDriverBase` + Traits；UDP→队列→切帧→Convert；校准 **rad** | [Velodyne](../sensor/lidar/velodyne.md) |
+| `hesai` / `pandar` | 同上（XT32）；校准 **deg** | [Hesai](../sensor/lidar/hesai.md) |
+| `livox` | `AssemblerDriverBase` + SDK1/SDK2；`model`/`sdk` 选型 | [Livox](../sensor/lidar/livox.md) |
 | `rplidar` / `slamtec` | 2D 串口 SDK；A3 常 256000 | [RPLidar](../sensor/lidar/rplidar.md) |
 
 | 约定 | 说明 |
@@ -134,6 +134,7 @@ auto parser = autodriver::gps::GnssParserRegistry::Instance().CreateParser("nmea
 | 回放 | `source_type: raw_packet` + `PushRawPacket` / `PushScan` |
 | 补偿 | `enable_compensator` + 进程 `compensator.pose_channel` |
 | 队列 | `lidar/packet_queue.hpp`：满丢最旧；online ReadLoop→ProcessLoop |
+| PC2 布局 | `point_cloud2_layout.hpp`（XYZIT `point_step=24`）；`byte_util.hpp`（LE 读） |
 | 切帧 | `scan_cut.hpp`：`use_azimuth_cut` + `packets_per_scan` 上限 |
 
 安装：`scripts/install_rplidar_sdk.sh`、`install_livox_sdk*.sh`。

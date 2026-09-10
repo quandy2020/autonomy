@@ -37,11 +37,16 @@ namespace hesai {
 /**
  * @brief Design vertical angles (deg) for PandarXT / XT32 channels 1..32.
  * Manual Appendix I; upward positive, channel 1 = +15°.
+ * @return Array of 32 elevations in degrees, index 0 = channel 1.
  */
 std::array<double, kChannelsPerBlock> DefaultXt32VerticalAnglesDeg();
 
 /**
  * @brief Convert XT32 UDP packets to PointCloud2 (x,y,z,intensity,timestamp).
+ * @param packets One full scan of XT32 packets.
+ * @param frame_id Header frame_id for the output cloud.
+ * @param calibration Per-channel elevations in degrees.
+ * @return PointCloud2 with point_step=24.
  */
 automsgs::msgs::sensor_msgs::PointCloud2 ConvertPacketsToPointCloud(
     const ScanPackets& packets, const std::string& frame_id,
@@ -49,6 +54,10 @@ automsgs::msgs::sensor_msgs::PointCloud2 ConvertPacketsToPointCloud(
 
 /**
  * @brief Convert using built-in XT32 elevations (or warn for unknown model).
+ * @param packets One full scan of XT32 packets.
+ * @param frame_id Header frame_id (default "hesai").
+ * @param model Model name; unknown names fall back to XT32 with a warning.
+ * @return PointCloud2 with point_step=24.
  */
 automsgs::msgs::sensor_msgs::PointCloud2 ConvertPacketsToPointCloud(
     const ScanPackets& packets, const std::string& frame_id = "hesai",

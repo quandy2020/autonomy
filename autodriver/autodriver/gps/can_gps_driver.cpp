@@ -53,42 +53,23 @@ private:
 }  // namespace
 
 CanGpsDriver::CanGpsDriver(SensorId id, DriverParams params)
-    : id_(std::move(id)),
-      params_(std::move(params)),
+    : CanSensorDriverBase<CanGpsDriver, GpsCanFix>(std::move(id),
+                                                   std::move(params), 100),
       can_id_(ParseCanId(params_, "can_id", 0x12902500)) {
-    receiver_.manager().Register(std::make_shared<LatLonProtocol>(can_id_));
-    receiver_.manager().SetPublishCallback(
+    receiver().manager().Register(std::make_shared<LatLonProtocol>(can_id_));
+    receiver().manager().SetPublishCallback(
         [this](const GpsCanFix& fix) { OnFix(fix); });
 }
 
-CanGpsDriver::~CanGpsDriver() { Stop(); }
-
-bool CanGpsDriver::Start() {
-    const std::string interface_name = GetString(params_, "interface", "can0");
-    return receiver_.Start(interface_name, 100);
-}
-
-void CanGpsDriver::Stop() { receiver_.Stop(); }
-
-bool CanGpsDriver::IsRunning() const { return receiver_.IsRunning(); }
-
-void CanGpsDriver::SetSampleCallback(SampleCallback callback) {
-    callback_ = std::move(callback);
-}
-
 void CanGpsDriver::OnFix(const GpsCanFix& fix) {
-    if (!callback_) {
-        return;
-    }
-    callback_(std::make_unique<GpsSample>(
+    EmitSample(std::make_unique<GpsSample>(
         id_, autolink::Time::Now(),
         GpsMsg(fix.latitude_deg, fix.longitude_deg, 0.0,
                automsgs::msgs::sensor_msgs::NavSatStatus::STATUS_FIX)));
 }
 
-SensorDriver*
-CreateCanGpsDriver(const SensorId& id,
-                                                 const DriverParams& params) {
+SensorDriver* CreateCanGpsDriver(const SensorId& id,
+                                 const DriverParams& params) {
     return new CanGpsDriver(id, params);
 }
 

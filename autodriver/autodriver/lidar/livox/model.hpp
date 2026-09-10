@@ -29,6 +29,11 @@ namespace autodriver {
 namespace lidar {
 namespace livox {
 
+/**
+ * @brief Lowercase ASCII copy of @p s (locale-independent).
+ * @param s Input string (copied then mutated).
+ * @return Lowercased string.
+ */
 inline std::string ToLower(std::string s) {
     for (char& c : s) {
         c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -39,6 +44,9 @@ inline std::string ToLower(std::string s) {
 /**
  * @brief True when model / sdk param selects Livox-SDK2 (HAP / Mid-360 / …).
  * SDK1: Mid-40/70, Horizon, Avia, Tele. Override with sdk=1|2|sdk1|sdk2.
+ * @param model YAML `model` string (may be empty).
+ * @param sdk Optional explicit override (`1`/`2`/`sdk1`/`sdk2`).
+ * @return true when SDK2 should be used.
  */
 inline bool UsesSdk2(const std::string& model, const std::string& sdk) {
     const std::string s = ToLower(sdk);
@@ -58,7 +66,11 @@ inline bool UsesSdk2(const std::string& model, const std::string& sdk) {
     return false;
 }
 
-/** JSON block key for SDK2 configs: MID360 / HAP / Mid360s / Avia2. */
+/**
+ * @brief JSON block key for SDK2 configs: MID360 / HAP / Mid360s / Avia2.
+ * @param model YAML `model` string.
+ * @return Config object key expected by Livox-SDK2 JSON.
+ */
 inline std::string Sdk2JsonModelKey(const std::string& model) {
     const std::string m = ToLower(model);
     if (m.find("hap") != std::string::npos) {

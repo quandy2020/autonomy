@@ -24,98 +24,53 @@
 
 #include <initializer_list>
 #include <string>
+#include <utility>
 
-#include "autodriver/common/named_factory.hpp"
-#include "autodriver/driver_params.hpp"
+#include "autodriver/common/backend_registry.hpp"
 #include "autodriver/sensor_driver.hpp"
 #include "autodriver/sensor_id.hpp"
-#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace lidar {
 
 /**
- * @brief Creator for autolink::common::Factory: returns owning SensorDriver*.
- * @param id Sensor instance id from YAML (e.g. "lidar/front").
- * @param params Backend-specific key/value map from YAML.
- * @return New SensorDriver, or nullptr when construction fails / no SDK.
+ * @struct autodriver::lidar::Lidar2dBackendPolicy
+ * @brief BackendRegistry Policy for 2D lidar (empty backend → "rplidar").
  */
-using Lidar2dDriverFactory =
-    NamedProductFactory<SensorDriver, SensorId>::Creator;
-
-/**
- * @class autodriver::lidar::Lidar2dBackendRegistry
- * @brief Maps YAML `lidar_2d.backend` → SensorDriver factory.
- *
- * Internally uses NamedProductFactory (autolink::common::Factory).
- * Built-ins: rplidar (alias slamtec).
- */
-class Lidar2dBackendRegistry {
-public:
-  /**
-   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
-   */
-  AUTOLINK_SHARED_PTR_DEFINITIONS(Lidar2dBackendRegistry)
-
-  /**
-   * @brief Access the process-wide singleton (static-init backends register here).
-   * @return Reference to the unique Lidar2dBackendRegistry instance.
-   */
-  static Lidar2dBackendRegistry& Instance();
-
-  /**
-   * @brief Register or replace a factory under a canonical backend name.
-   * @param name Canonical backend string (e.g. "rplidar").
-   * @param factory Creator returning new SensorDriver*.
-   */
-  void RegisterBackend(const std::string& name, Lidar2dDriverFactory factory);
-
-  /**
-   * @brief Map an alias onto an already-registered canonical backend name.
-   * @param alias Alternate YAML name (e.g. "slamtec").
-   * @param canonical Existing registered name (e.g. "rplidar").
-   */
-  void RegisterBackendAlias(const std::string& alias,
-                            const std::string& canonical);
-
-  /**
-   * @brief Create a SensorDriver for @p backend after alias resolve.
-   * @param backend YAML `backend` or alias.
-   * @param id Sensor instance id passed to the factory.
-   * @param params YAML params (and shorthand merges).
-   * @return Shared driver, or nullptr if unknown / creator returns null.
-   */
-  SensorDriver::SharedPtr CreateDriver(
-      const std::string& backend, const SensorId& id,
-      const hardware::DriverParams& params) const;
-
-  /**
-   * @brief Check whether @p backend resolves to a registered factory.
-   * @param backend Canonical name or alias.
-   * @return true if a factory is available after alias resolve.
-   */
-  bool HasBackend(const std::string& backend) const;
-
-private:
-  /**
-   * @brief Private default constructor for the process-wide singleton.
-   */
-  Lidar2dBackendRegistry() = default;
-
-  NamedProductFactory<SensorDriver, SensorId> factory_;
+struct Lidar2dBackendPolicy {
+    /** @brief Default YAML backend when the string is empty. */
+    static constexpr const char* kDefaultBackend = "rplidar";
+    /** @brief AERROR prefix when CreateDriver fails. */
+    static constexpr const char* kUnknownPrefix =
+        "unsupported lidar2d backend: ";
 };
 
 /**
- * @brief Register a canonical backend plus optional aliases in one call.
+ * @brief Maps YAML `lidar_2d.backend` → SensorDriver factory.
  *
- * Used by REGISTER_LIDAR2D_BACKEND at static init.
- * @param name Canonical backend string.
+ * Alias of BackendRegistry with Lidar2dBackendPolicy.
+ * Built-ins: rplidar (alias slamtec).
+ */
+using Lidar2dBackendRegistry =
+    BackendRegistry<SensorDriver, SensorId, Lidar2dBackendPolicy>;
+
+/**
+ * @brief Creator for Lidar2dBackendRegistry: returns owning SensorDriver*.
+ */
+using Lidar2dDriverFactory = Lidar2dBackendRegistry::DriverFactory;
+
+/**
+ * @brief Register a canonical 2D lidar backend plus optional aliases.
+ * @param name Canonical backend string (e.g. "rplidar").
  * @param factory Lidar2dDriverFactory for @p name.
  * @param aliases Optional null-terminated C string aliases (empty skipped).
  */
-void RegisterLidar2dBackendWithAliases(
+inline void RegisterLidar2dBackendWithAliases(
     const std::string& name, Lidar2dDriverFactory factory,
-    std::initializer_list<const char*> aliases);
+    std::initializer_list<const char*> aliases) {
+    Lidar2dBackendRegistry::RegisterWithAliases(name, std::move(factory),
+                                                aliases);
+}
 
 }  // namespace lidar
 }  // namespace autodriver

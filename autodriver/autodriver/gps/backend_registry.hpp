@@ -24,98 +24,51 @@
 
 #include <initializer_list>
 #include <string>
+#include <utility>
 
-#include "autodriver/common/named_factory.hpp"
-#include "autodriver/driver_params.hpp"
+#include "autodriver/common/backend_registry.hpp"
 #include "autodriver/sensor_driver.hpp"
 #include "autodriver/sensor_id.hpp"
-#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace gps {
 
 /**
- * @brief Creator for autolink::common::Factory: returns owning SensorDriver*.
- * @param id Sensor instance id from YAML (e.g. "gps/main").
- * @param params Backend-specific key/value map from YAML.
- * @return New SensorDriver, or nullptr when construction fails.
+ * @struct autodriver::gps::GpsBackendPolicy
+ * @brief BackendRegistry Policy for GPS (empty backend → "serial").
  */
-using GpsDriverFactory =
-    NamedProductFactory<SensorDriver, SensorId>::Creator;
-
-/**
- * @class autodriver::gps::GpsBackendRegistry
- * @brief Maps YAML `gps.backend` → SensorDriver factory.
- *
- * Internally uses NamedProductFactory (autolink::common::Factory).
- * Built-ins: serial (NMEA), can. Streaming parsers live in GnssParserRegistry.
- */
-class GpsBackendRegistry {
-public:
-  /**
-   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
-   */
-  AUTOLINK_SHARED_PTR_DEFINITIONS(GpsBackendRegistry)
-
-  /**
-   * @brief Access the process-wide singleton (static-init backends register here).
-   * @return Reference to the unique GpsBackendRegistry instance.
-   */
-  static GpsBackendRegistry& Instance();
-
-  /**
-   * @brief Register or replace a factory under a canonical backend name.
-   * @param name Canonical backend string (e.g. "serial", "can").
-   * @param factory Creator returning new SensorDriver*.
-   */
-  void RegisterBackend(const std::string& name, GpsDriverFactory factory);
-
-  /**
-   * @brief Map an alias onto an already-registered canonical backend name.
-   * @param alias Alternate YAML name.
-   * @param canonical Existing registered name.
-   */
-  void RegisterBackendAlias(const std::string& alias,
-                            const std::string& canonical);
-
-  /**
-   * @brief Create a SensorDriver for @p backend (empty string → "serial").
-   * @param backend YAML `backend` or alias.
-   * @param id Sensor instance id passed to the factory.
-   * @param params YAML params (and shorthand merges).
-   * @return Shared driver, or nullptr if unknown / creator returns null.
-   */
-  SensorDriver::SharedPtr CreateDriver(
-      const std::string& backend, const SensorId& id,
-      const hardware::DriverParams& params) const;
-
-  /**
-   * @brief Check whether @p backend resolves to a registered factory.
-   * @param backend Canonical name or alias (empty → "serial").
-   * @return true if a factory is available after alias resolve.
-   */
-  bool HasBackend(const std::string& backend) const;
-
-private:
-  /**
-   * @brief Private default constructor for the process-wide singleton.
-   */
-  GpsBackendRegistry() = default;
-
-  NamedProductFactory<SensorDriver, SensorId> factory_;
+struct GpsBackendPolicy {
+    /** @brief Default YAML backend when the string is empty. */
+    static constexpr const char* kDefaultBackend = "serial";
+    /** @brief AERROR prefix when CreateDriver fails. */
+    static constexpr const char* kUnknownPrefix = "unknown gps backend: ";
 };
 
 /**
- * @brief Register a canonical backend plus optional aliases in one call.
+ * @brief Maps YAML `gps.backend` → SensorDriver factory.
  *
- * Used by REGISTER_GPS_BACKEND at static init.
- * @param name Canonical backend string.
+ * Alias of BackendRegistry with GpsBackendPolicy.
+ * Built-ins: serial (NMEA), can. Streaming parsers live in GnssParserRegistry.
+ */
+using GpsBackendRegistry =
+    BackendRegistry<SensorDriver, SensorId, GpsBackendPolicy>;
+
+/**
+ * @brief Creator for GpsBackendRegistry: returns owning SensorDriver*.
+ */
+using GpsDriverFactory = GpsBackendRegistry::DriverFactory;
+
+/**
+ * @brief Register a canonical GPS backend plus optional aliases (static init).
+ * @param name Canonical backend string (e.g. "serial", "can").
  * @param factory GpsDriverFactory for @p name.
  * @param aliases Optional null-terminated C string aliases (empty skipped).
  */
-void RegisterGpsBackendWithAliases(
+inline void RegisterGpsBackendWithAliases(
     const std::string& name, GpsDriverFactory factory,
-    std::initializer_list<const char*> aliases);
+    std::initializer_list<const char*> aliases) {
+    GpsBackendRegistry::RegisterWithAliases(name, std::move(factory), aliases);
+}
 
 }  // namespace gps
 }  // namespace autodriver

@@ -34,6 +34,12 @@
 namespace autodriver {
 namespace hardware {
 
+/**
+ * @brief Registry factory: pick Livox SDK1 or SDK2 from model / sdk params.
+ * @param id Sensor instance id.
+ * @param params YAML params (`model`, optional `sdk`).
+ * @return Owning SensorDriver*, or nullptr when the selected SDK is unavailable.
+ */
 SensorDriver*
 CreateLivoxLidarDriver(
     const SensorId& id, const DriverParams& params) {

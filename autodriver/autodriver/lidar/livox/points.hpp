@@ -31,30 +31,51 @@ namespace autodriver {
 namespace lidar {
 namespace livox {
 
+/**
+ * @brief Single Livox point in SI units with host-aligned timestamp.
+ */
 struct PointXYZIT {
-    float x = 0.f;
-    float y = 0.f;
-    float z = 0.f;
-    float intensity = 0.f;
-    double timestamp_ns = 0.0;
+    float x = 0.f;             ///< Metres, lidar frame.
+    float y = 0.f;             ///< Metres, lidar frame.
+    float z = 0.f;             ///< Metres, lidar frame.
+    float intensity = 0.f;     ///< Reflectivity / intensity (vendor scale).
+    double timestamp_ns = 0.0; ///< Point time in nanoseconds.
 };
 
 /**
+ * @class autodriver::lidar::livox::FrameAssembler
  * @brief Accumulates points and flushes a frame after publish_interval_ns.
+ *
+ * Thread-safe: Append from SDK callbacks; TryFlush / Clear from the publish
+ * loop. Interval 0 is treated as 100 ms.
  */
 class FrameAssembler {
 public:
+    /**
+     * @brief Construct with a publish interval.
+     * @param publish_interval_ns Frame window in nanoseconds; 0 → 100 ms.
+     */
     explicit FrameAssembler(std::uint64_t publish_interval_ns)
         : publish_interval_ns_(publish_interval_ns == 0
                                    ? 100'000'000ULL
                                    : publish_interval_ns) {}
 
+    /**
+     * @brief Update the publish interval (thread-safe).
+     * @param interval_ns New window in nanoseconds; 0 → 100 ms.
+     */
     void SetIntervalNs(std::uint64_t interval_ns) {
         std::lock_guard<std::mutex> lock(mutex_);
         publish_interval_ns_ =
             interval_ns == 0 ? 100'000'000ULL : interval_ns;
     }
 
+    /**
+     * @brief Append points into the current frame buffer.
+     * @param points Points to move into the buffer; empty is a no-op.
+     *
+     * Sets frame_start_ns_ from the first point timestamp when unset.
+     */
     void Append(std::vector<PointXYZIT> points) {
         if (points.empty()) {
             return;
@@ -71,7 +92,9 @@ public:
 
     /**
      * @brief If the frame window elapsed, swaps out points and resets.
-     * @return true when a frame was ready.
+     * @param now_ns Current host time in nanoseconds.
+     * @param[out] out Receives the flushed points on success; must be non-null.
+     * @return true when a frame was ready and moved into @p out.
      */
     bool TryFlush(std::uint64_t now_ns, std::vector<PointXYZIT>* out) {
         if (out == nullptr) {
@@ -94,6 +117,9 @@ public:
         return true;
     }
 
+    /**
+     * @brief Drop buffered points and reset the frame start time.
+     */
     void Clear() {
         std::lock_guard<std::mutex> lock(mutex_);
         buffer_.clear();

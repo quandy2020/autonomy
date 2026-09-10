@@ -35,14 +35,20 @@ namespace lidar {
 
 /**
  * @brief Looks up world←lidar pose at an absolute time (nanoseconds).
+ * @param time_ns Query time in nanoseconds.
+ * @param child_frame Lidar / child frame id expected by the pose source.
+ * @param[out] pose Filled affine transform on success; must be non-null.
  * @return False when no pose is available for @p time_ns.
  */
 using PoseLookup = std::function<bool(
     std::uint64_t time_ns, const std::string& child_frame,
     Eigen::Affine3d* pose)>;
 
-/** Options for MotionCompensator (world frame id). */
+/**
+ * @brief Options for MotionCompensator (world frame id).
+ */
 struct CompensatorOptions {
+    /** Frame id written / expected as the world / odom parent. */
     std::string world_frame_id = "world";
 };
 
@@ -60,13 +66,22 @@ public:
    */
   AUTOLINK_SHARED_PTR_DEFINITIONS(MotionCompensator)
 
+    /**
+     * @brief Construct with optional world-frame settings.
+     * @param options CompensatorOptions (default world_frame_id = "world").
+     */
     explicit MotionCompensator(CompensatorOptions options = {});
 
-    /** Install the pose source used by Compensate(). */
+    /**
+     * @brief Install the pose source used by Compensate().
+     * @param lookup Callable queried per point timestamp; may be empty.
+     */
     void SetPoseLookup(PoseLookup lookup);
 
     /**
      * @brief Compensates in-place when possible; otherwise writes to @p out.
+     * @param in Input PointCloud2 with per-point timestamps.
+     * @param[out] out Compensated cloud; may alias @p in for in-place edits.
      * @return False if pose lookup fails or cloud lacks timestamps.
      */
     bool Compensate(const automsgs::msgs::sensor_msgs::PointCloud2& in,
@@ -79,6 +94,11 @@ private:
 
 /**
  * @brief Test helper: linear interpolation between two poses over [t_min,t_max].
+ * @param t_min Start of the interpolation window (nanoseconds).
+ * @param t_max End of the interpolation window (nanoseconds).
+ * @param pose_min world←lidar pose at @p t_min.
+ * @param pose_max world←lidar pose at @p t_max.
+ * @return PoseLookup usable with MotionCompensator::SetPoseLookup.
  */
 PoseLookup MakeLinearPoseLookup(std::uint64_t t_min, std::uint64_t t_max,
                                 const Eigen::Affine3d& pose_min,

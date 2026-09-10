@@ -29,11 +29,10 @@ namespace lidar {
 
 /**
  * @brief Where lidar packets / clouds come from.
- * kOnline: live device (UDP/SDK). kRawPacket: replay recorded scans.
  */
 enum class SourceType : std::uint8_t {
-    kOnline = 0,
-    kRawPacket = 1,
+    kOnline = 0,     ///< Live device (UDP / SDK).
+    kRawPacket = 1,  ///< Replay recorded scans via InjectScan / PushScan.
 };
 
 }  // namespace lidar

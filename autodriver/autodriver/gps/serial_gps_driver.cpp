@@ -18,110 +18,40 @@
 
 #include <utility>
 
-#include "autolink/time/time.hpp"
 #include "autodriver/types/sensor_sample.hpp"
+#include "autolink/time/time.hpp"
 
 namespace autodriver {
 namespace hardware {
 
 SerialGpsDriver::SerialGpsDriver(SensorId id, DriverParams params)
-: id_(std::move(id)),
-  params_(std::move(params))
-{
+    : SerialByteDriverBase<SerialGpsDriver>(std::move(id), std::move(params),
+                                            /*read_timeout_ms=*/100) {}
+
+bool SerialGpsDriver::PrepareStart() {
+    parser_ = gps::GnssParserRegistry::Instance().CreateParser("nmea");
+    return static_cast<bool>(parser_);
 }
 
-SerialGpsDriver::~SerialGpsDriver()
-{
-  Stop();
-}
+void SerialGpsDriver::OnStopped() { parser_.reset(); }
 
-bool SerialGpsDriver::Start()
-{
-  if (running_.exchange(true)) {
-    return true;
-  }
-
-  parser_ = gps::GnssParserRegistry::Instance().CreateParser("nmea");
-  if (!parser_) {
-    running_ = false;
-    return false;
-  }
-
-  const std::string device = GetString(params_, "device", "/dev/ttyUSB0");
-  const int baud = ParseInt(params_, "baud", 115200);
-  stream_ = common::CreateSerialStream(device, baud);
-  if (!stream_ || !stream_->Connect()) {
-    stream_.reset();
-    parser_.reset();
-    running_ = false;
-    return false;
-  }
-
-  worker_ = std::thread([this]() { ReadLoop(); });
-  return true;
-}
-
-void SerialGpsDriver::Stop()
-{
-  if (!running_.exchange(false)) {
-    return;
-  }
-  if (stream_) {
-    stream_->Disconnect();
-  }
-  if (worker_.joinable()) {
-    worker_.join();
-  }
-  stream_.reset();
-  parser_.reset();
-}
-
-bool SerialGpsDriver::IsRunning() const
-{
-  return running_.load();
-}
-
-void SerialGpsDriver::SetSampleCallback(SampleCallback callback)
-{
-  callback_ = std::move(callback);
-}
-
-void SerialGpsDriver::ReadLoop()
-{
-  std::uint8_t chunk[256];
-  while (running_.load()) {
-    if (!stream_ || !parser_) {
-      break;
+void SerialGpsDriver::OnBytes(const std::uint8_t* data, std::size_t n) {
+    if (!parser_) {
+        return;
     }
-    if (stream_->status() == common::Stream::Status::kError) {
-      if (!common::ReconnectStream(stream_.get(), 3, 200)) {
-        break;
-      }
-    }
-    const std::size_t n = stream_->Read(chunk, sizeof(chunk), 100);
-    if (n == 0) {
-      continue;
-    }
-
-    auto fix = parser_->Consume(chunk, n);
+    auto fix = parser_->Consume(data, n);
     while (fix) {
-      if (callback_) {
-        callback_(std::make_unique<GpsSample>(
+        EmitSample(std::make_unique<GpsSample>(
             id_, autolink::Time::Now(),
             GpsMsg(fix->latitude_deg, fix->longitude_deg, fix->altitude_m,
                    fix->status)));
-      }
-      fix = parser_->Consume(nullptr, 0);
+        fix = parser_->Consume(nullptr, 0);
     }
-  }
 }
 
-SensorDriver*
-CreateSerialGpsDriver(
-  const SensorId & id,
-  const DriverParams & params)
-{
-  return new SerialGpsDriver(id, params);
+SensorDriver* CreateSerialGpsDriver(const SensorId& id,
+                                    const DriverParams& params) {
+    return new SerialGpsDriver(id, params);
 }
 
 }  // namespace hardware

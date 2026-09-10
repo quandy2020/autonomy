@@ -29,18 +29,27 @@ namespace autodriver {
 namespace lidar {
 namespace velodyne {
 
+/**
+ * @brief Per-laser vertical corrections for Velodyne convert.
+ */
 struct BeamCalibration {
-    std::vector<double> vert_correction_rad;  // indexed by laser_id
+    /** Indexed by laser_id; radians, upward positive. */
+    std::vector<double> vert_correction_rad;
 };
 
 /**
  * @brief Loads lasers[].vert_correction (radians) from YAML.
+ * @param path Absolute or relative path to the calibration YAML file.
+ * @param[out] out Filled calibration on success; must be non-null.
+ * @param[out] error Optional human-readable failure reason.
+ * @return true when @p out was populated.
  */
 bool LoadBeamCalibrationYaml(const std::string& path, BeamCalibration* out,
                              std::string* error = nullptr);
 
 /**
  * @brief Built-in VLP-16 vertical angles (degrees → radians).
+ * @return BeamCalibration with 16 vert_correction_rad entries.
  */
 BeamCalibration DefaultVlp16Calibration();
 
