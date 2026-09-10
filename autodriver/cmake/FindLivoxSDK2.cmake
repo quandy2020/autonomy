@@ -22,8 +22,10 @@ find_path(LivoxSDK2_INCLUDE_DIR
   PATH_SUFFIXES include
 )
 
+# Prefer shared: static .a from upstream is often built without -fPIC and
+# cannot be linked into libautodriver.so.
 find_library(LivoxSDK2_LIBRARY
-  NAMES livox_lidar_sdk_static livox_lidar_sdk_shared livox_lidar_sdk
+  NAMES livox_lidar_sdk_shared livox_lidar_sdk livox_lidar_sdk_static
   HINTS ${_LivoxSDK2_hints}
   PATH_SUFFIXES lib lib64
 )

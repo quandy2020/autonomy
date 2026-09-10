@@ -59,7 +59,10 @@ fi
 
 BUILD_DIR="${SRC}/build"
 echo "== Building Livox-SDK in ${BUILD_DIR} =="
-cmake -S "${SRC}" -B "${BUILD_DIR}" -DCMAKE_BUILD_TYPE=Release
+# PIC required to link static .a into shared libautodriver.so.
+cmake -S "${SRC}" -B "${BUILD_DIR}" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 cmake --build "${BUILD_DIR}" -j"$(nproc)"
 
 echo "== Installing to ${PREFIX} (may need sudo) =="
