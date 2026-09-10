@@ -797,9 +797,15 @@ Config FromYaml(const YAML::Node& root) {
         if (!cmd.empty()) {
             config.chassis.cmd_vel_channel = cmd;
         }
-        const std::string odom = ReadString(ch, "odom_channel");
-        if (!odom.empty()) {
-            config.chassis.odom_channel = odom;
+        const std::string state = ReadString(ch, "state_channel");
+        if (!state.empty()) {
+            config.chassis.state_channel = state;
+        }
+        if (ch["event_channel"]) {
+            config.chassis.event_channel = ReadString(ch, "event_channel");
+        }
+        if (ch["odom_channel"]) {
+            config.chassis.odom_channel = ReadString(ch, "odom_channel");
         }
         config.chassis.watchdog_ms =
             ReadInt(ch, "watchdog_ms", config.chassis.watchdog_ms);

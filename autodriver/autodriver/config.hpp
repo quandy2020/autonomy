@@ -136,14 +136,20 @@ struct Config {
         std::string id = "chassis/base";
         // Registry backend key (stub / scout / …).
         std::string backend = "stub";
+        // TwistStamped (same body as RobotState.twist).
         std::string cmd_vel_channel = "/cmd_vel";
+        // vehicle_msgs.RobotState
+        std::string state_channel = "/robot_state";
+        // vehicle_msgs.RobotEvent (empty = do not publish)
+        std::string event_channel = "/robot_event";
+        // nav_msgs/Odometry derived from RobotState (empty = skip)
         std::string odom_channel = "/odom";
         // Stop if no cmd_vel for this long (0 = disable).
         int watchdog_ms = 200;
         // Soft clamp before ApplyCommand (0 = no clamp).
         double max_linear_speed = 0.0;
         double max_angular_speed = 0.0;
-        // Odometry publish period.
+        // RobotState / odom publish period.
         int odom_period_ms = 20;
         std::string odom_frame_id = "odom";
         std::string base_frame_id = "base_link";
