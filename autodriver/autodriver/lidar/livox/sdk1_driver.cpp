@@ -44,12 +44,6 @@ std::uint64_t IntervalFromHz(double hz) {
     return static_cast<std::uint64_t>(1e9 / hz);
 }
 
-std::uint64_t ReadTimestampNs(const std::uint8_t* stamp8) {
-    std::uint64_t t = 0;
-    std::memcpy(&t, stamp8, sizeof(t));
-    return t;
-}
-
 std::unordered_set<std::string> ParseBroadcastCodes(const std::string& raw) {
     std::unordered_set<std::string> out;
     std::string token;
@@ -76,6 +70,12 @@ std::unordered_set<std::string> ParseBroadcastCodes(const std::string& raw) {
 }
 
 #ifdef AUTODRIVER_HAVE_LIVOX_SDK1
+
+std::uint64_t ReadTimestampNs(const std::uint8_t* stamp8) {
+    std::uint64_t t = 0;
+    std::memcpy(&t, stamp8, sizeof(t));
+    return t;
+}
 
 void OnSampleCb(livox_status, uint8_t, uint8_t, void*) {}
 
@@ -369,6 +369,7 @@ void LivoxSdk1Driver::OnData(std::uint8_t /*handle*/, void* data,
 std::shared_ptr<SensorDriver> CreateLivoxSdk1Driver(
     const SensorId& id, const DriverParams& params) {
 #ifndef AUTODRIVER_HAVE_LIVOX_SDK1
+    (void)params;
     AERROR << "Livox SDK1 not linked; cannot create driver for " << id;
     return nullptr;
 #else

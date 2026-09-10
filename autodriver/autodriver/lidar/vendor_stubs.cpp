@@ -70,9 +70,9 @@ std::shared_ptr<SensorDriver> CreateVanjeeLidarDriver(const SensorId& id,
 REGISTER_LIDAR_BACKEND(rslidar, "rslidar",
                        autodriver::hardware::CreateRsLidarDriver, "robosense");
 REGISTER_LIDAR_BACKEND(lslidar, "lslidar",
-                       autodriver::hardware::CreateLsLidarDriver);
+                       autodriver::hardware::CreateLsLidarDriver, "");
 REGISTER_LIDAR_BACKEND(seyond, "seyond",
-                       autodriver::hardware::CreateSeyondLidarDriver);
+                       autodriver::hardware::CreateSeyondLidarDriver, "");
 REGISTER_LIDAR_BACKEND(vanjee, "vanjee",
                        autodriver::hardware::CreateVanjeeLidarDriver,
                        "vanjeelidar");

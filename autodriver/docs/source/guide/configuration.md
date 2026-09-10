@@ -88,7 +88,7 @@ autodriver   # 默认 autodriver_hardware.yaml
 | YAML 键 | Module | 默认 `backend` | 运行时 id 前缀 | 采集状态 |
 |---|---|---|---|---|
 | `lidar_2d` | `Lidar2dModule` | `rplidar` | `lidar/` | Slamtec RPLidar |
-| `lidar_3d` | `Lidar3dModule` | `velodyne` | `lidar/` | Velodyne / Hesai；其它厂商 stub |
+| `lidar_3d` | `Lidar3dModule` | `velodyne` | `lidar/` | Velodyne / Hesai / Livox；其它厂商 stub |
 | `lidar` | 由 `dimension`/`type` 决定 | `serial` / `velodyne` | `lidar/` | 同上 |
 | `point_cloud` | `PointCloudModule` | `realsense` / `orbbec` | `camera/` | 深度点云 |
 | `imu` / `imu_devices` | `ImuModule` | `serial` | `imu/` | serial / can / realsense |
