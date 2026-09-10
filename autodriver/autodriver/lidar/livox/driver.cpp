@@ -50,4 +50,5 @@ std::shared_ptr<SensorDriver> CreateLivoxLidarDriver(
 }  // namespace autodriver
 
 REGISTER_LIDAR_BACKEND(livox, "livox",
-                       autodriver::hardware::CreateLivoxLidarDriver);
+                       autodriver::hardware::CreateLivoxLidarDriver, "");
+

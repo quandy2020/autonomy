@@ -46,13 +46,13 @@ std::uint64_t IntervalFromHz(double hz) {
     return static_cast<std::uint64_t>(1e9 / hz);
 }
 
+#ifdef AUTODRIVER_HAVE_LIVOX_SDK2
+
 std::uint64_t ReadTimestampNs(const std::uint8_t* stamp8) {
     std::uint64_t t = 0;
     std::memcpy(&t, stamp8, sizeof(t));
     return t;
 }
-
-#ifdef AUTODRIVER_HAVE_LIVOX_SDK2
 
 void WorkModeCb(livox_status, uint32_t, LivoxLidarAsyncControlResponse*,
                 void*) {}
@@ -360,6 +360,7 @@ void LivoxSdk2Driver::OnPointCloud(std::uint32_t /*handle*/,
 std::shared_ptr<SensorDriver> CreateLivoxSdk2Driver(
     const SensorId& id, const DriverParams& params) {
 #ifndef AUTODRIVER_HAVE_LIVOX_SDK2
+    (void)params;
     AERROR << "Livox SDK2 not linked; cannot create driver for " << id;
     return nullptr;
 #else

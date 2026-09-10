@@ -24,7 +24,7 @@
 | `GpsModule` | `serial`、`can` | `NavSatFix` | 真采集（serial 经 `Stream`） |
 | `CameraModule` | `realsense`、`orbbec`、`smartereye` | `Image` + camera_info | RealSense/Orbbec 真；smartereye stub |
 | `PointCloudModule` | `realsense`、`orbbec` | `PointCloud2` | RealSense / Orbbec（需 SDK） |
-| `Lidar3dModule` | `velodyne` / `udp`、`hesai` / `pandar`；stub: livox/rslidar/… | PointCloud2 | Velodyne + Hesai XT32 |
+| `Lidar3dModule` | `velodyne` / `udp`、`hesai` / `pandar`、`livox`；stub: rslidar/… | PointCloud2 | Velodyne + Hesai + Livox |
 | `RadarModule` | `conti` | PointCloud2 占位 | **stub** |
 | `MicrophoneModule` | `respeaker` | Image PCM 占位 | **stub** |
 | `Lidar2dModule` | `rplidar` / `slamtec` | LaserScan | Slamtec RPLidar A1/A2/A3 |
