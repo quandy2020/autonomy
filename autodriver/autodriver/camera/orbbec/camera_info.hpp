@@ -32,7 +32,16 @@ namespace orbbec {
 
 /**
  * @brief Fill CameraInfo K/D from pinhole intrinsics (+ optional distortion).
+ * @param width Image width in pixels.
+ * @param height Image height in pixels.
+ * @param frame_id Header frame_id written into CameraInfo.
+ * @param fx Focal length x (pixels).
+ * @param fy Focal length y (pixels).
+ * @param ppx Principal point x (pixels).
+ * @param ppy Principal point y (pixels).
  * @param coeffs Distortion coefficients; may be null when @p coeff_count == 0.
+ * @param coeff_count Number of entries in @p coeffs.
+ * @return Filled CameraInfo message (K, D, size, frame_id).
  */
 automsgs::msgs::sensor_msgs::CameraInfo MakeCameraInfo(
     std::uint32_t width, std::uint32_t height, const std::string& frame_id,
