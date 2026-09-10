@@ -46,12 +46,13 @@ compensator:
 
 ### 相机厂商参数
 
-主配置仍写在 `autodriver_hardware.yaml`（`enable` / `channel` / `stream` / 分辨率）。  
-厂商设备参数放在 `config/camera/<vendor>/`，用 `params_file` 合并；同名字段以条目内 `params:` 为准。
+主配置仍写在 `autodriver_hardware.yaml`。推荐一台物理机一条 `camera` 条目，用 `streams` / `point_clouds` / `imu` 折叠（loader 展开）；也可继续写扁平单流。  
+厂商设备参数放在 `config/camera/<vendor>/`，用 `params_file` 合并；同名字段以条目内 `params:` / 子项为准。
 
 ```
 config/
   autodriver_hardware.yaml
+  examples/orbbec_gemini_330.yaml
   camera/
     orbbec/gemini_330.yaml      # 仅 params
     realsense/d455.yaml
@@ -60,14 +61,17 @@ config/
 
 ```yaml
 camera:
-  - name: orbbec_color
+  - name: realsense_d455
     enable: true
-    channel: /camera/color/image_raw
-    backend: orbbec
-    stream: color
-    params_file: camera/orbbec/gemini_330.yaml
-    params:
-      frame_id: camera_color_optical_frame
+    backend: realsense
+    params_file: camera/realsense/d455.yaml
+    width: 848
+    height: 480
+    fps: 30
+    streams:
+      - stream: color
+        channel: /camera/color/image_raw
+        frame_id: camera_color_optical_frame
 ```
 
 ```bash
@@ -83,7 +87,7 @@ autodriver   # 默认 autodriver_hardware.yaml
 
 | YAML 键 | Module | 默认 `backend` | 运行时 id 前缀 | 采集状态 |
 |---|---|---|---|---|
-| `lidar_2d` | `Lidar2dModule` | `serial` | `lidar/` | attach-only 骨架 |
+| `lidar_2d` | `Lidar2dModule` | `rplidar` | `lidar/` | Slamtec RPLidar |
 | `lidar_3d` | `Lidar3dModule` | `velodyne` | `lidar/` | Velodyne / Hesai；其它厂商 stub |
 | `lidar` | 由 `dimension`/`type` 决定 | `serial` / `velodyne` | `lidar/` | 同上 |
 | `point_cloud` | `PointCloudModule` | `realsense` / `orbbec` | `camera/` | 深度点云 |
@@ -162,21 +166,29 @@ autodriver   # 默认 autodriver_hardware.yaml
 ## lidar_2d
 
 **消息**：`sensor_msgs.LaserScan`  
-**状态**：attach-only；串口驱动未实现。
+**backend**：`rplidar`（别名 `slamtec`）；需已安装 rplidar_sdk（`scripts/install_rplidar_sdk.sh`）+ `-DAUTODRIVER_WITH_RPLIDAR=ON`  
+用法对齐 rplidar_ros；厂商参数见 `config/lidar/slamtec/{a1,a2,a3}.yaml`。可选 `scripts/create_udev_rules.sh` → `/dev/rplidar`。
 
 | 字段 | 说明 |
 |---|---|
-| `port` / `baudrate` | 预留；常见波特率 115200 |
-| `fps` | 写入 `publish_rate_hz` |
+| `port` / `baudrate` | 串口；A1/A2M8=`115200`，A3/A2M7/A2M12=`256000` |
+| `params_file` | 如 `lidar/slamtec/a1.yaml` |
+| `params.frame_id` | 默认 `laser` |
+| `params.angle_compensate` | 角度补偿（默认 true） |
+| `params.scan_mode` | 空=typical；A3 常用 `Sensitivity` |
+| `params.channel_type` | `serial`（默认）/ `tcp` / `udp` |
 
 ```yaml
 lidar_2d:
   - name: front
-    enable: false
+    enable: true
     channel: /lidar/front/scan
-    port: /dev/ttyUSB4
+    backend: rplidar
+    port: /dev/ttyUSB0
     baudrate: 115200
-    fps: 10
+    params_file: lidar/slamtec/a1.yaml
+    params:
+      frame_id: laser
 ```
 
 ---
@@ -250,6 +262,8 @@ lidar_3d:
 | `params.model` / `params.serial` / `params.index` | 设备选择 |
 | `params.frame_id` | 点云 frame |
 
+也可挂在折叠 `camera` 条目的 `point_clouds:` 下（见上节），无需单独 `point_cloud:` 列表。
+
 ```yaml
 point_cloud:
   - name: realsense_d455_points
@@ -277,6 +291,8 @@ point_cloud:
 | `interface`、`accel_can_id`、`gyro_can_id`、`can_id` | can |
 | `params.model` / `serial` / `index` | realsense 板载 IMU |
 | `fps` | 写入 `publish_rate_hz`（串口当前按硬件速率输出） |
+
+板载相机 IMU 也可写在折叠 `camera.imu:` 下（见 camera 节）。
 
 ```yaml
 imu:
@@ -330,17 +346,39 @@ gps:
 | `aligned_depth_to_color` | 对齐深度（RealSense） | `/camera/aligned_depth_to_color/image_raw` | — |
 
 Orbbec 点云：默认 `/camera/depth/points`；彩色云 `/camera/depth_registered/points`。  
-完整 Gemini 330 厂商参数：`config/camera/orbbec/gemini_330.yaml`（经 `params_file` 引用）。
+完整 Gemini 330 厂商参数：`config/camera/orbbec/gemini_330.yaml`（经 `params_file` 引用）。  
+折叠示例：`config/examples/orbbec_gemini_330.yaml`。
 
-多路 stream 写多条 `camera`；同一物理机用相同 `params.serial` 或 `index`+`model` 共用厂商 hub。
+### 折叠写法（推荐）
 
-设备级选项（可放在 `params`，同机多流共享）：
+一台物理机一条 `camera` 条目，用 `streams` / `point_clouds` / `imu`；loader 展开为多个 Sensor（id 如 `camera/<name>_<stream>`、`camera/<name>_points`、`imu/<name>_imu`）。子项可 `enable: false`。无这些键时仍按扁平单流通用。
 
-| 键 | 说明 |
-|---|---|
-| `emitter_enabled` / `enable_ir_emitter` | IR 投影灯 |
-| `frame_id` | 图像 frame |
-| `model` / `serial` / `index` | 设备过滤 |
+```yaml
+camera:
+  - name: realsense_d455
+    enable: true
+    backend: realsense
+    params_file: camera/realsense/d455.yaml
+    width: 848
+    height: 480
+    fps: 30
+    streams:
+      - stream: color
+        channel: /camera/color/image_raw
+        frame_id: camera_color_optical_frame
+      - stream: depth
+        channel: /camera/depth/image_rect_raw
+        frame_id: camera_depth_optical_frame
+    point_clouds:
+      - name: points
+        channel: /camera/depth/color/points
+        frame_id: camera_depth_optical_frame
+    imu:
+      channel: /camera/imu
+      frame_id: camera_imu_optical_frame
+```
+
+### 扁平写法（兼容）
 
 ```yaml
 camera:
@@ -352,11 +390,18 @@ camera:
     width: 848
     height: 480
     fps: 30
+    params_file: camera/realsense/d455.yaml
     params:
-      model: D455
-      emitter_enabled: false
       frame_id: camera_color_optical_frame
 ```
+
+设备级选项（可放在 `params` / `params_file`，同机多流共享）：
+
+| 键 | 说明 |
+|---|---|
+| `emitter_enabled` / `enable_ir_emitter` | IR 投影灯 |
+| `frame_id` | 图像 frame（子项可覆盖） |
+| `model` / `serial` / `index` | 设备过滤 |
 
 ---
 

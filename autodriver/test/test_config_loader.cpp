@@ -44,8 +44,17 @@ std::filesystem::path WriteTempConfig(const std::string& basename,
 }  // namespace
 
 TEST(ConfigLoader, SkipsDisabledDevices) {
-    unsetenv("AUTODRIVER_PATH");
-    const autodriver::Config config = autodriver::LoadConfig();
+    WriteTempConfig(
+        "all_disabled.yaml",
+        R"(sensors:
+  imu:
+    - name: torso
+      enable: false
+      channel: /imu/torso
+      port: /dev/ttyUSB0
+)");
+    const autodriver::Config config =
+        autodriver::LoadConfig("all_disabled.yaml");
     EXPECT_TRUE(config.sensors.empty());
 }
 
@@ -125,4 +134,108 @@ device_preset: Default
     EXPECT_EQ(config.sensors[0].params.at("enable_laser"), "true");
     EXPECT_EQ(config.sensors[0].params.at("frame_id"),
               "camera_color_optical_frame");
+}
+
+TEST(ConfigLoader, ExpandsFoldedCameraDevice) {
+    const std::filesystem::path root =
+        std::filesystem::temp_directory_path() /
+        "autodriver_config_loader_folded_camera";
+    const std::filesystem::path vendor_dir =
+        root / "config" / "camera" / "realsense";
+    std::filesystem::create_directories(vendor_dir);
+    {
+        std::ofstream out(vendor_dir / "d455.yaml");
+        out << "model: D455\nemitter_enabled: true\n";
+    }
+    {
+        std::ofstream out(root / "config" / "folded_camera.yaml");
+        out << R"(sensors:
+  camera:
+    - name: realsense_d455
+      enable: true
+      backend: realsense
+      params_file: camera/realsense/d455.yaml
+      width: 848
+      height: 480
+      fps: 30
+      streams:
+        - stream: color
+          channel: /camera/color/image_raw
+          frame_id: camera_color_optical_frame
+        - stream: depth
+          enable: false
+          channel: /camera/depth/image_rect_raw
+          frame_id: camera_depth_optical_frame
+      point_clouds:
+        - name: points
+          channel: /camera/depth/color/points
+          frame_id: camera_depth_optical_frame
+      imu:
+        channel: /camera/imu
+        frame_id: camera_imu_optical_frame
+)";
+    }
+    setenv("AUTODRIVER_PATH", root.string().c_str(), 1);
+
+    const autodriver::Config config =
+        autodriver::LoadConfig("folded_camera.yaml");
+    ASSERT_EQ(config.sensors.size(), 3u);
+
+    const autodriver::Config::Sensor* color = nullptr;
+    const autodriver::Config::Sensor* points = nullptr;
+    const autodriver::Config::Sensor* imu = nullptr;
+    for (const auto& sensor : config.sensors) {
+        if (sensor.id == "camera/realsense_d455_color") {
+            color = &sensor;
+        } else if (sensor.id == "camera/realsense_d455_points") {
+            points = &sensor;
+        } else if (sensor.id == "imu/realsense_d455_imu") {
+            imu = &sensor;
+        }
+    }
+    ASSERT_NE(color, nullptr);
+    ASSERT_NE(points, nullptr);
+    ASSERT_NE(imu, nullptr);
+
+    EXPECT_EQ(color->module, "CameraModule");
+    EXPECT_EQ(color->backend, "realsense");
+    ASSERT_EQ(color->channels.size(), 1u);
+    EXPECT_EQ(color->channels[0], "/camera/color/image_raw");
+    EXPECT_EQ(color->params.at("stream"), "color");
+    EXPECT_EQ(color->params.at("width"), "848");
+    EXPECT_EQ(color->params.at("model"), "D455");
+    EXPECT_EQ(color->params.at("frame_id"), "camera_color_optical_frame");
+
+    EXPECT_EQ(points->module, "PointCloudModule");
+    ASSERT_EQ(points->channels.size(), 1u);
+    EXPECT_EQ(points->channels[0], "/camera/depth/color/points");
+    EXPECT_EQ(points->params.at("model"), "D455");
+
+    EXPECT_EQ(imu->module, "ImuModule");
+    ASSERT_EQ(imu->channels.size(), 1u);
+    EXPECT_EQ(imu->channels[0], "/camera/imu");
+    EXPECT_EQ(imu->params.at("frame_id"), "camera_imu_optical_frame");
+    EXPECT_EQ(imu->backend, "realsense");
+}
+
+TEST(ConfigLoader, FlatCameraEntryStillWorks) {
+    WriteTempConfig(
+        "flat_camera.yaml",
+        R"(sensors:
+  camera:
+    - name: realsense_d455_color
+      enable: true
+      channel: /camera/color/image_raw
+      backend: realsense
+      stream: color
+      width: 640
+      height: 480
+      fps: 15
+)");
+    const autodriver::Config config =
+        autodriver::LoadConfig("flat_camera.yaml");
+    ASSERT_EQ(config.sensors.size(), 1u);
+    EXPECT_EQ(config.sensors[0].id, "camera/realsense_d455_color");
+    EXPECT_EQ(config.sensors[0].params.at("stream"), "color");
+    EXPECT_EQ(config.sensors[0].params.at("width"), "640");
 }

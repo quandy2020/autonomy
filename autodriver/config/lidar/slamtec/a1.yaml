@@ -1,0 +1,13 @@
+# Slamtec RPLidar A1 — device params (rplidar_ros rplidar_a1.launch)
+# Merged via params_file from autodriver_hardware.yaml
+
+model: A1
+channel_type: serial
+baud: 115200
+frame_id: laser
+inverted: false
+angle_compensate: true
+scan_frequency: 10
+range_min: 0.15
+# scan_mode: ""   # empty = typical
+# initial_reset: false

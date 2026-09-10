@@ -47,6 +47,7 @@ set(AUTODRIVER_SOURCES
   gps/serial_gps_driver.cpp
   gps/can_gps_driver.cpp
   lidar/backend_registry.cpp
+  lidar/lidar_2d_backend_registry.cpp
   lidar/motion_compensator.cpp
   lidar/pose_buffer.cpp
   lidar/velodyne/calibration.cpp
@@ -55,6 +56,8 @@ set(AUTODRIVER_SOURCES
   lidar/hesai/convert.cpp
   lidar/hesai/calibration.cpp
   lidar/hesai/udp_driver.cpp
+  lidar/rplidar/convert.cpp
+  lidar/rplidar/serial_driver.cpp
   lidar/vendor_stubs.cpp
   bridge/publisher.cpp
   bridge/pose_feeder.cpp
@@ -127,6 +130,22 @@ if(AUTODRIVER_WITH_REALSENSE)
     message(STATUS
       "autodriver: librealsense2 not found; RealSense drivers stubbed "
       "(ParseStreamKind / MatchesModelFilter still available)")
+  endif()
+endif()
+
+if(AUTODRIVER_WITH_RPLIDAR)
+  find_package(RplidarSDK QUIET)
+  if(RplidarSDK_FOUND)
+    message(STATUS
+      "autodriver: RPLidar SDK enabled (${RplidarSDK_INCLUDE_DIR}, "
+      "${RplidarSDK_LIBRARY})")
+    target_link_libraries(autodriver PRIVATE RplidarSDK::RplidarSDK)
+    target_compile_definitions(autodriver PUBLIC AUTODRIVER_HAVE_RPLIDAR)
+  else()
+    message(STATUS
+      "autodriver: RplidarSDK not found; install via "
+      "scripts/install_rplidar_sdk.sh or set RplidarSDK_ROOT "
+      "(RPLidar backend stubs to nullptr)")
   endif()
 endif()
 

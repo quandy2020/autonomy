@@ -24,7 +24,7 @@
  *
  * Concrete vendors (Velodyne/Hesai/…) inherit this alongside SensorDriver.
  * Lidar3dModule resolves backends via LidarBackendRegistry; Lidar2dModule
- * remains attach-only until a 2D backend lands.
+ * resolves backends via Lidar2dBackendRegistry (e.g. rplidar / slamtec).
  */
 
 #ifndef AUTODRIVER_LIDAR_LIDAR_COMPONENT_BASE_HPP_

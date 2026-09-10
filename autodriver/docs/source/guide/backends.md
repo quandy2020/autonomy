@@ -27,7 +27,7 @@
 | `Lidar3dModule` | `velodyne` / `udp`、`hesai` / `pandar`；stub: livox/rslidar/… | PointCloud2 | Velodyne + Hesai XT32 |
 | `RadarModule` | `conti` | PointCloud2 占位 | **stub** |
 | `MicrophoneModule` | `respeaker` | Image PCM 占位 | **stub** |
-| `Lidar2dModule` | — | LaserScan | **attach-only** |
+| `Lidar2dModule` | `rplidar` / `slamtec` | LaserScan | Slamtec RPLidar A1/A2/A3 |
 | `RangeModule` | — | `Range` | **attach-only** |
 
 ## Stream（传输）
@@ -153,9 +153,11 @@ auto parser = autodriver::gps::GnssParserRegistry::Instance().Create("nmea");
 
 ## 扩展真 Lidar
 
-已落地参考实现：`lidar/velodyne/`（`backend: velodyne`，别名 `udp`）。
+2D：`lidar/rplidar/` + `REGISTER_LIDAR2D_BACKEND`；配置 `config/lidar/<vendor>/`。
 
-新增厂商：
+3D：已落地参考实现：`lidar/velodyne/`（`backend: velodyne`，别名 `udp`）。
+
+新增 3D 厂商：
 
 1. 在 `lidar/<vendor>/` 实现 packet / convert / UDP（或 SDK）driver  
 2. `REGISTER_LIDAR_BACKEND(tag, "name", CreateFn, "alias"...)`（见 `lidar/backend_register.hpp`）  

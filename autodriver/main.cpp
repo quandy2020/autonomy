@@ -38,6 +38,11 @@
 namespace {
 std::atomic<bool> g_running{true};
 void HandleSignal(int) { g_running = false; }
+
+void Run()
+{
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {

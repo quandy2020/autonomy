@@ -1,0 +1,37 @@
+# Example: Orbbec Gemini 330 as one folded camera device.
+# Copy streams into autodriver_hardware.yaml or merge as needed.
+#
+# Requires OrbbecSDK and AUTODRIVER_WITH_ORBBEC.
+
+sensors:
+  camera:
+    - name: orbbec
+      enable: true
+      backend: orbbec
+      params_file: camera/orbbec/gemini_330.yaml
+      width: 0
+      height: 0
+      fps: 0
+      streams:
+        - stream: color
+          channel: /camera/color/image_raw
+          frame_id: camera_color_optical_frame
+        - stream: depth
+          channel: /camera/depth/image_raw
+          frame_id: camera_depth_optical_frame
+        - stream: left_ir
+          channel: /camera/left_ir/image_raw
+          frame_id: camera_left_ir_optical_frame
+        - stream: right_ir
+          channel: /camera/right_ir/image_raw
+          frame_id: camera_right_ir_optical_frame
+      point_clouds:
+        - name: depth_points
+          channel: /camera/depth/points
+          frame_id: camera_depth_optical_frame
+        - name: registered_points
+          channel: /camera/depth_registered/points
+          frame_id: camera_depth_optical_frame
+      imu:
+        channel: /camera/gyro_accel/sample
+        frame_id: camera_gyro_optical_frame

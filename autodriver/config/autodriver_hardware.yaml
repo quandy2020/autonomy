@@ -1,13 +1,10 @@
 # Autodriver hardware config.
 # export AUTODRIVER_PATH=<directory containing config/>
 #
-# Default enables: RealSense D455 (color/depth/ir/aligned/points/imu).
-# Orbbec Gemini 330 entries are present but enable: false — flip as needed.
+# Camera: one physical device with streams / point_clouds / imu (loader expands).
+# Flat per-stream entries still work. Orbbec example: config/examples/orbbec_gemini_330.yaml
 #
-# Camera streams stay here (channel / enable / stream / resolution).
-# Vendor device params live under config/camera/<vendor>/ and are merged with:
-#   params_file: camera/orbbec/gemini_330.yaml
-# Inline params: override the file (e.g. frame_id, serial).
+# Vendor params via params_file; inline params override the file.
 #
 # Optional motion-compensator pose feed (nav_msgs/Odometry):
 # compensator:
@@ -18,9 +15,9 @@ sensors:
     - name: front
       enable: false
       channel: /lidar/front/scan
-      port: /dev/ttyUSB4
-      baudrate: 115200
-      fps: 10
+      backend: rplidar
+      port: /dev/ttyUSB0
+      params_file: lidar/slamtec/a1.yaml
 
   lidar_3d:
     - name: vlp16
@@ -35,37 +32,36 @@ sensors:
         frame_id: velodyne
         source_type: online
 
-  imu:
-    - name: torso_imu
-      enable: false
-      channel:
-        - /imu/torso
-        - /imu/torso/raw
-      port: /dev/ttyUSB0
-      baudrate: 460800
-      fps: 200
-
-    - name: wrist_imu
-      enable: false
-      channel: /imu/wrist
-      port: /dev/ttyUSB1
-      baudrate: 921600
-      fps: 400
-
-    - name: orbbec_imu
-      enable: false
-      channel: /camera/gyro_accel/sample
-      backend: orbbec
-      params_file: camera/orbbec/gemini_330.yaml
-      params:
-        frame_id: camera_gyro_optical_frame
-
-    - name: realsense_d455_imu
+  camera:
+    - name: realsense_d455
       enable: true
-      channel: /camera/imu
       backend: realsense
       params_file: camera/realsense/d455.yaml
-      params:
+      width: 848
+      height: 480
+      fps: 30
+      streams:
+        - stream: color
+          channel: /camera/color/image_raw
+          frame_id: camera_color_optical_frame
+        - stream: depth
+          channel: /camera/depth/image_rect_raw
+          frame_id: camera_depth_optical_frame
+        - stream: ir1
+          channel: /camera/infra1/image_rect_raw
+          frame_id: camera_infra1_optical_frame
+        - stream: ir2
+          channel: /camera/infra2/image_rect_raw
+          frame_id: camera_infra2_optical_frame
+        - stream: aligned_depth_to_color
+          channel: /camera/aligned_depth_to_color/image_raw
+          frame_id: camera_color_optical_frame
+      point_clouds:
+        - name: points
+          channel: /camera/depth/color/points
+          frame_id: camera_depth_optical_frame
+      imu:
+        channel: /camera/imu
         frame_id: camera_imu_optical_frame
 
   gps:
@@ -74,151 +70,6 @@ sensors:
       channel: /gps/fix
       port: /dev/ttyUSB2
       baudrate: 9600
-
-  camera:
-    # --- Orbbec Gemini 330 (channels align OrbbecSDK_ROS2) ---
-    - name: orbbec_color
-      enable: false
-      channel: /camera/color/image_raw
-      backend: orbbec
-      stream: color
-      width: 0
-      height: 0
-      fps: 0
-      params_file: camera/orbbec/gemini_330.yaml
-      params:
-        frame_id: camera_color_optical_frame
-
-    - name: orbbec_depth
-      enable: false
-      channel: /camera/depth/image_raw
-      backend: orbbec
-      stream: depth
-      width: 0
-      height: 0
-      fps: 0
-      params_file: camera/orbbec/gemini_330.yaml
-      params:
-        frame_id: camera_depth_optical_frame
-
-    - name: orbbec_left_ir
-      enable: false
-      channel: /camera/left_ir/image_raw
-      backend: orbbec
-      stream: left_ir
-      width: 0
-      height: 0
-      fps: 0
-      params_file: camera/orbbec/gemini_330.yaml
-      params:
-        frame_id: camera_left_ir_optical_frame
-
-    - name: orbbec_right_ir
-      enable: false
-      channel: /camera/right_ir/image_raw
-      backend: orbbec
-      stream: right_ir
-      width: 0
-      height: 0
-      fps: 0
-      params_file: camera/orbbec/gemini_330.yaml
-      params:
-        frame_id: camera_right_ir_optical_frame
-
-    # --- Intel RealSense D455 (channels align realsense-ros) ---
-    - name: realsense_d455_color
-      enable: true
-      channel: /camera/color/image_raw
-      backend: realsense
-      stream: color
-      width: 848
-      height: 480
-      fps: 30
-      params_file: camera/realsense/d455.yaml
-      params:
-        frame_id: camera_color_optical_frame
-
-    - name: realsense_d455_depth
-      enable: true
-      channel: /camera/depth/image_rect_raw
-      backend: realsense
-      stream: depth
-      width: 848
-      height: 480
-      fps: 30
-      params_file: camera/realsense/d455.yaml
-      params:
-        frame_id: camera_depth_optical_frame
-
-    - name: realsense_d455_ir1
-      enable: true
-      channel: /camera/infra1/image_rect_raw
-      backend: realsense
-      stream: ir1
-      width: 848
-      height: 480
-      fps: 30
-      params_file: camera/realsense/d455.yaml
-      params:
-        frame_id: camera_infra1_optical_frame
-
-    - name: realsense_d455_ir2
-      enable: true
-      channel: /camera/infra2/image_rect_raw
-      backend: realsense
-      stream: ir2
-      width: 848
-      height: 480
-      fps: 30
-      params_file: camera/realsense/d455.yaml
-      params:
-        frame_id: camera_infra2_optical_frame
-
-    - name: realsense_d455_aligned_depth
-      enable: true
-      channel: /camera/aligned_depth_to_color/image_raw
-      backend: realsense
-      stream: aligned_depth_to_color
-      width: 848
-      height: 480
-      fps: 30
-      params_file: camera/realsense/d455.yaml
-      params:
-        frame_id: camera_color_optical_frame
-
-  point_cloud:
-    - name: orbbec_depth_points
-      enable: false
-      channel: /camera/depth/points
-      backend: orbbec
-      width: 0
-      height: 0
-      fps: 0
-      params_file: camera/orbbec/gemini_330.yaml
-      params:
-        frame_id: camera_depth_optical_frame
-
-    - name: orbbec_registered_points
-      enable: false
-      channel: /camera/depth_registered/points
-      backend: orbbec
-      width: 0
-      height: 0
-      fps: 0
-      params_file: camera/orbbec/gemini_330.yaml
-      params:
-        frame_id: camera_depth_optical_frame
-
-    - name: realsense_d455_points
-      enable: true
-      channel: /camera/depth/color/points
-      backend: realsense
-      width: 848
-      height: 480
-      fps: 30
-      params_file: camera/realsense/d455.yaml
-      params:
-        frame_id: camera_depth_optical_frame
 
   range:
     - name: range_main
