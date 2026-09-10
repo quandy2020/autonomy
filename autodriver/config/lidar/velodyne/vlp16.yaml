@@ -1,0 +1,16 @@
+# Velodyne VLP-16 device params (via params_file).
+# Beam angles are built-in; set calibration_path only to override.
+# Paths for calibration_path / extrinsic_path are filesystem paths
+# (absolute, or relative to process cwd). Example under this package:
+#   $AUTODRIVER_PATH/config/lidar/velodyne/vlp16_calibration.yaml
+
+model: VLP-16
+frame_id: velodyne
+data_port: 2368
+packets_per_scan: 75
+source_type: online
+use_azimuth_cut: true
+scan_cut_angle_deg: 0
+enable_compensator: false
+# calibration_path: /abs/path/to/vlp16_calibration.yaml
+# extrinsic_path: /abs/path/to/vlp16_extrinsics.yaml

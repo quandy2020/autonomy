@@ -1,6 +1,6 @@
 # 数据流
 
-从硬件字节到 Autolink 话题的路径，按模态分开说明。
+硬件 → 驱动回调 → `SampleSink` → Autolink。架构分层见 [架构](architecture.md)。
 
 ## 总路径
 
@@ -9,131 +9,93 @@ sequenceDiagram
   participant HW as 硬件/SDK
   participant Drv as SensorDriver
   participant Mod as SensorModule
-  participant SM as SensorManager
   participant Hub as SensorHub
   participant Pub as Publisher
   participant AL as Autolink
-
   HW->>Drv: 原始数据
-  Drv->>Drv: 解析 / Convert
-  Drv->>Mod: SampleCallback(SensorSample)
-  Mod->>SM: sink.OnSample
+  Drv->>Drv: 解析/Convert
+  Drv->>Mod: SampleCallback
+  Mod->>Pub: sink.OnSample
   opt alignment.enable
-    Mod->>Hub: 旁路 shared_ptr
+    Mod->>Hub: shared_ptr 旁路
     Hub->>Pub: 对齐后 OnSample
   end
-  SM->>Pub: OnSample
-  Pub->>AL: Writer.Write(msg)
+  Pub->>AL: Writer.Write
 ```
 
-热路径（对齐关闭）：**stamp → SampleSink → Writer**，不经过 Hub。
+- 对齐 **关**：热路径不经 Hub。  
+- 回调在**驱动线程**；Publisher 侧需线程安全 Writer。
 
----
-
-## 相机（RealSense / Orbbec）
+## 相机 RealSense / Orbbec
 
 ```text
-USB 设备
-  → DeviceHub（同机多流合并）
-      → CameraDriver / PointCloudDriver / ImuDriver
-          → ImageSample / LidarCloud / ImuSample
-              → Publisher（Image + camera_info Writer）
+USB → DeviceHub（同机多流）→ Camera/PointCloud/Imu Driver
+    → ImageSample | LidarCloud | ImuSample → Publisher
 ```
 
-| 步骤 | 说明 |
+| 项 | 事实 |
 |---|---|
-| 配置 | 折叠 `streams` / `point_clouds` / `imu` → 多个 `Config::Sensor` |
-| Registry | `CameraBackendRegistry` / PointCloud 表按 `backend` 建驱动 |
-| Hub | 一台物理机一个 pipeline；多 stream 共享 |
+| 配置 | 折叠 `streams`/`point_clouds`/`imu` → 多条 `Config::Sensor`；或扁平单流 |
+| 建驱动 | `CameraBackendRegistry` / PointCloud 表，`backend` 键 |
+| camera_info | `OnAttach` 可开第二 Writer；通道由 `CameraInfoChannelForImage` |
+| RealSense Writer | color 等开 camera_info（以 Publisher 实现为准） |
 
-通道由 YAML `channel` 决定；camera_info 由 `CameraInfoChannelForImage` 推导。
-
----
-
-## 2D 激光（RPLidar）
+## RPLidar（2D）
 
 ```text
-串口 /dev/ttyUSB* 或 /dev/rplidar
-  → rplidar_sdk（grab HQ nodes）
-      → convert → LaserScan
-          → LidarScan / 对应 Sample → Publisher
+tty → rplidar_sdk grab HQ → convert → LaserScan sample → Publisher
 ```
 
-参数：`port`/`baud` + `params_file`（型号波特率、`scan_mode`）。
+`port`/`baud` + `params_file`（`lidar/slamtec/a*.yaml`）。A3 波特率 256000。
 
----
-
-## 3D 激光 · UDP（Velodyne / Hesai）
+## Velodyne / Hesai（3D UDP）
 
 ```text
-UDP data_port
-  → ReadLoop → PacketQueue（有界，满丢最旧）
-      → ProcessLoop → 方位角切帧（scan_cut）
-          → optional LidarPacketScan（publish_scan）
-          → ConvertPacketsToPointCloud
-          → optional MotionCompensator（PoseBuffer / PoseFeeder）
-          → LidarCloud (PointCloud2) → Publisher
+UDP → ReadLoop → PacketQueue → ProcessLoop → 方位角切帧
+    → [publish_scan: LidarPacketScan]
+    → Convert → [MotionCompensator] → LidarCloud → Publisher
 ```
 
 | 模式 | 行为 |
 |---|---|
-| `source_type: online` | 起读包/处理线程 |
-| `raw_packet` | 不绑网卡；`PushRawPacket` / `PushScan` 回放 |
+| `online` | 绑 `data_port`，双线程 |
+| `raw_packet` | 无网卡；`PushRawPacket` / `PushScan` |
 
-点云布局：`point_step=24`（`x,y,z,intensity` f32 + `timestamp` f64 ns）。
+点云：`point_step=24`。Hesai XT32 包 1080B、距离 4mm。队列满丢最旧。
 
----
-
-## 3D 激光 · SDK（Livox）
+## Livox（3D SDK）
 
 ```text
-以太网 UDP（SDK 内部）
-  → Livox-SDK1 或 SDK2 点云回调
-      → FrameAssembler（按 publish_freq 组帧）
-          → PointsToPointCloud → LidarCloud → Publisher
+SDK UDP 回调 → FrameAssembler(publish_freq) → PointsToPointCloud → LidarCloud
 ```
 
-SDK2：`config_path` JSON 或由 `host_ip`/`lidar_ip` 生成临时配置。  
-SDK1：广播发现 + `broadcast_code` 白名单。
+| 代 | 选型 | 关键参数 |
+|---|---|---|
+| SDK2 | Mid-360/HAP/Mid360s/Avia2 | `host_ip`/`lidar_ip` 或 `config_path` |
+| SDK1 | Mid-40/70/Horizon/Avia/Tele | `broadcast_code`（空=全收） |
 
----
+进程内各代 SDK 当前按单实例使用。
 
-## 串口 IMU / GPS
+## 串口 / CAN IMU·GPS
 
 ```text
-SerialStream.Read
-  → WitMotion parser / NMEA parser（或 GnssParserRegistry）
-      → ImuSample / NavSatFix sample
-          → Publisher
+SerialStream | CanReceiver → Parser/ProtocolData → Imu/Gps sample → Publisher
 ```
 
-CAN 路径：`CanClient` → `CanReceiver` → `ProtocolData::Parse` → 同上。
+GNSS 工厂：`GnssParserRegistry::Create("nmea"|"nmea0183")`。
 
----
+## 发布
 
-## 发布与通道
+| 钩子 | 动作 |
+|---|---|
+| `OnAttach` | 开 Writer（按 `SensorType`） |
+| `OnSample` | 写 `channels`（缺省见 `ResolveChannel`） |
+| `OnDetach` | 关 Writer |
+| `OnDiagnostic` | `/diagnostics`（`DiagnosticArray`） |
 
-`bridge::Publisher`：
-
-1. `OnAttach`：按 `SensorType` 打开 Writer（相机可再开 camera_info）  
-2. `OnSample`：写入 `channels[0]`（多 channel 时由 traits / ResolveChannel 决定）  
-3. `OnDetach`：关闭 Writer  
-
-默认话题规则见 `sensor_traits.hpp` 的 `ResolveChannel`。
-
-## 运动补偿旁路
+## 运动补偿
 
 ```text
-compensator.pose_channel (Odometry)
-  → PoseFeeder → SensorManager.PushLidarPose
-      → MotionPoseSink / PoseBuffer
-          → Compensate(PointCloud2)
+Odometry(compensator.pose_channel) → PoseFeeder → PushLidarPose
+  → PoseBuffer → MotionCompensator（仅 enable_compensator 的 3D 驱动）
 ```
-
-仅 `enable_compensator: true` 的 3D lidar 驱动使用。
-
-## 相关
-
-- [架构](architecture.md)
-- [生命周期](lifecycle.md)
-- [传感器手册](../sensor/index.md)

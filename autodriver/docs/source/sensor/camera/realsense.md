@@ -1,28 +1,18 @@
 # Intel RealSense
 
-深度相机系列（本仓库以 **D455** 为主）。经 librealsense2 开流，多路
-`camera` / `point_cloud` / 板载 `imu` 共用一个 `device_hub`。
+D455 为主。librealsense2；多路共用 `device_hub`。
 
-## 简介
-
-- **消息**：`sensor_msgs/Image`、camera_info、深度点云 `PointCloud2`、`Imu`
-- **Backend**：`realsense`
-- **源码**：`autodriver/camera/realsense/`
-- **厂商参数**：`config/camera/realsense/d455.yaml`
-
-## 依赖
-
-| 项 | 说明 |
+| | |
 |---|---|
-| CMake | `AUTODRIVER_WITH_REALSENSE=ON`（默认） |
-| 库 | librealsense2（`find_package(realsense2)`） |
-| 权限 | 用户加入 `plugdev` / 厂商 udev；USB3 |
+| 消息 | Image、camera_info、PointCloud2、Imu |
+| backend | `realsense` |
+| 源码 | `autodriver/camera/realsense/` |
+| params | `config/camera/realsense/d455.yaml` |
+| CMake | `AUTODRIVER_WITH_REALSENSE` + `find_package(realsense2)` |
 
-未找到 SDK 时驱动 stub，`Create`→`nullptr`。
+## 折叠配置（推荐）
 
-## 配置（推荐折叠写法）
-
-一台物理机一条 `camera` 条目，loader 展开为多路 Sensor：
+展开 id：`camera/<name>_<stream>`、`camera/<name>_points`、`imu/<name>_imu`。
 
 ```yaml
 camera:
@@ -34,40 +24,24 @@ camera:
     height: 480
     fps: 30
     streams:
-      - stream: color
-        channel: /camera/color/image_raw
-        frame_id: camera_color_optical_frame
-      - stream: depth
-        channel: /camera/depth/image_rect_raw
-        frame_id: camera_depth_optical_frame
-      - stream: ir1
-        channel: /camera/infra1/image_rect_raw
-        frame_id: camera_infra1_optical_frame
-      - stream: ir2
-        channel: /camera/infra2/image_rect_raw
-        frame_id: camera_infra2_optical_frame
-      - stream: aligned_depth_to_color
-        channel: /camera/aligned_depth_to_color/image_raw
-        frame_id: camera_color_optical_frame
+      - {stream: color, channel: /camera/color/image_raw, frame_id: camera_color_optical_frame}
+      - {stream: depth, channel: /camera/depth/image_rect_raw, frame_id: camera_depth_optical_frame}
+      - {stream: ir1, channel: /camera/infra1/image_rect_raw, frame_id: camera_infra1_optical_frame}
+      - {stream: ir2, channel: /camera/infra2/image_rect_raw, frame_id: camera_infra2_optical_frame}
+      - {stream: aligned_depth_to_color, channel: /camera/aligned_depth_to_color/image_raw, frame_id: camera_color_optical_frame}
     point_clouds:
-      - name: points
-        channel: /camera/depth/color/points
-        frame_id: camera_depth_optical_frame
+      - {name: points, channel: /camera/depth/color/points, frame_id: camera_depth_optical_frame}
     imu:
       channel: /camera/imu
       frame_id: camera_imu_optical_frame
 ```
 
-通道命名对齐 **realsense-ros**。`params_file` 含激光功率、滤波、`model: D455` 等；
-`serial` / `index` 可选。
+通道对齐 realsense-ros。子项可 `enable: false`。无折叠键时仍支持扁平单流。
 
-## 使用要点
+## params_file 要点（d455.yaml）
 
-1. 默认主配置已启用 D455；换机改 `params_file` 或分辨率即可。
-2. 同机多流不要开多个独立 pipeline——折叠配置共享 hub。
-3. 验证脚本：`scripts/verify_realsense_d455.sh`（若存在）。
+`model`、`emitter_enabled`、`laser_power`、`visual_preset`、深度滤波（spatial/temporal/hole_fill）、可选 `serial`/`index`。
 
-## 相关
+## 注意
 
-- [配置 · camera](../guide/configuration.md#camera)
-- [后端 · RealSense](../guide/backends.md)
+USB3；用户组权限。与 Orbbec 勿同时抢同一 `/camera/*` 话题。校验：`scripts/verify_realsense_d455.sh`。

@@ -16,7 +16,7 @@ optional compensator → `PointCloud2`（`point_step=24`）。
 
 常用 `params`：`data_port`、`packets_per_scan`、`use_azimuth_cut`、
 `scan_cut_angle_deg`、`packet_queue_capacity`、`enable_compensator`、
-`calibration_path`（见 `config/params/XT32_calibration.yaml`，仰角为度）、
-`publish_scan`。
+`calibration_path`（见 `config/lidar/hesai/xt32_calibration.yaml`，仰角为度）、
+`publish_scan`。设备 params：`config/lidar/hesai/xt32.yaml`。
 
 回放：`PushRawPacket` / `PushScan(LidarPacketScan)`（整帧只出点云）。

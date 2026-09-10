@@ -88,6 +88,26 @@ lidar2d.autostart = true;
 config.sensors = {lidar2d};
 ```
 
+## SensorDriver
+
+```cpp
+#include "autodriver/sensor_driver.hpp"
+
+class SensorDriver {
+  using SampleCallback = std::function<void(std::unique_ptr<SensorSample>)>;
+  virtual SensorType GetType() const = 0;
+  virtual const SensorId& GetSensorId() const = 0;
+  virtual bool Start() = 0;
+  virtual void Stop() = 0;
+  virtual bool IsRunning() const = 0;
+  virtual void SetSampleCallback(SampleCallback) = 0;
+};
+```
+
+`DriverParams` = `unordered_map<string,string>`；辅助：`GetString`/`ParseInt`/`ParseBool`/`ParseDouble`（`driver_params.hpp`）。
+
+3D：`LidarComponentBase`（`WritePointCloud` 纯虚；`InitPacket`/`InjectScan` 可选）+ 可选 `MotionPoseSink`（`PushPose`/`SetPoseLookup`/`pose_buffer`）。Velodyne/Hesai 另有 `PushRawPacket`/`PushScan`（非虚，回放）。
+
 ## SensorManager
 
 ```cpp
@@ -108,12 +128,14 @@ manager.Stop();
 
 | 方法 | 说明 |
 |---|---|
-| `SetSink` | 注册 `SampleSink`（发布） |
-| `Initialize` | 查重；失败返回 false |
-| `Start` / `Stop` | 生命周期 |
-| `Attach` / `Detach` | 幂等 |
+| `SetSink` | 注册 `SampleSink` |
+| `Initialize` | id 查重；失败 false |
+| `Start` / `Stop` | 启停 Hub/udev/autostart Attach |
+| `Attach` / `Detach` | 幂等；失败 false 不崩进程 |
 | `HandleDeviceEvent` | udev 或测试注入 |
-| `hub()` | `SensorHub` 引用 |
+| `hub()` | `SensorHub&` |
+| `PushLidarPose` / `SetLidarPoseLookup` | 运动补偿灌姿 |
+| `ReportDiagnostic` | → sink `OnDiagnostic` |
 
 ## SensorHub
 
@@ -159,37 +181,29 @@ bool MatchDevice(const DeviceMatch& observed, const DeviceMatch& rule);
 
 | 头文件 | 内容 |
 |---|---|
-| `config_loader.hpp` | YAML 配置加载 |
-| `common/status.hpp` | 健康快照；经 Publisher 发到 `/diagnostics` |
+| 头文件 | 内容 |
+|---|---|
+| `config_loader.hpp` | YAML 加载 |
 | `sensor_manager.hpp` | 编排；`PushLidarPose` / `SetLidarPoseLookup` |
-| `bridge/pose_feeder.hpp` | Odometry → `PushLidarPose` |
-| `lidar/motion_pose_sink.hpp` | 补偿位姿灌入接口 |
-| `lidar/hesai/calibration.hpp` | XT32 仰角 YAML |
 | `sensor_hub.hpp` | 对齐 |
 | `sensor_module.hpp` / `sensor_plugin.hpp` | 插件 |
 | `sample_sink.hpp` / `bridge/publisher.hpp` | 发布 |
-| `common/stream.hpp` | 传输抽象（Serial / UDP + Reconnect） |
-| `common/calibration.hpp` | 外参 YAML → `Extrinsic` |
-| `camera/backend_registry.hpp` | camera / point_cloud 厂商工厂注册表 |
-| `camera/realsense/camera_driver.hpp` | RealSense 图像驱动 |
-| `camera/orbbec/` | Orbbec hub + camera / pointcloud（需 OrbbecSDK） |
-| `lidar/backend_registry.hpp` | lidar_3d 厂商工厂注册表 |
-| `lidar/backend_register.hpp` | `REGISTER_LIDAR_BACKEND` 宏 |
-| `lidar/lidar_2d_backend_registry.hpp` | lidar_2d 注册表 |
-| `lidar/lidar_2d_backend_register.hpp` | `REGISTER_LIDAR2D_BACKEND` |
-| `lidar/livox/` | Livox SDK1/SDK2 驱动 |
-| `lidar/rplidar/` | RPLidar 串口驱动 |
-| `lidar/motion_compensator.hpp` | 扫面内运动补偿（需 PoseLookup） |
-| `lidar/hesai/udp_driver.hpp` | Hesai XT32 UDP → Convert → PointCloud2 |
-| `canbus/` | CAN Client/Sender/Receiver/ProtocolData/byte |
-| `radar/` | Conti stub + Registry |
-| `microphone/` | Respeaker stub + Registry |
-| `smartereye/` | Camera backend stub |
-| `gps/parser/parser.hpp` | GNSS Parser 工厂（NMEA；serial GPS 已接入） |
-| `lidar/packet_queue.hpp` | 有界收包队列 |
-| `common/status.hpp` | 设备健康枚举 |
-| `sensor_traits.hpp` | 类型 traits、默认 channel |
-| `types/sensor_type.hpp` / `types/sensor_sample.hpp` | 模态与样本 |
+| `bridge/pose_feeder.hpp` | Odometry → `PushLidarPose` |
+| `common/stream.hpp` | Serial/UDP + Reconnect |
+| `common/calibration.hpp` | 外参 YAML |
+| `common/status.hpp` | 健康；→ `/diagnostics` |
+| `camera/backend_registry.hpp` + `backend_register.hpp` | 相机/点云 Registry |
+| `camera/realsense/` / `camera/orbbec/` | 真驱动（需 SDK） |
+| `lidar/backend_registry.hpp` + `backend_register.hpp` | 3D Registry / 宏 |
+| `lidar/lidar_2d_backend_*.hpp` | 2D Registry / 宏 |
+| `lidar/livox/` / `lidar/rplidar/` / `lidar/hesai/` / `lidar/velodyne/` | 厂商 |
+| `lidar/motion_pose_sink.hpp` / `motion_compensator.hpp` | 补偿 |
+| `lidar/packet_queue.hpp` / `scan_cut.hpp` | 收包 / 切帧 |
+| `canbus/` | Client/Sender/Receiver/ProtocolData |
+| `gps/parser/parser.hpp` | NMEA 工厂 |
+| `radar/` `microphone/` `smartereye/` | stub |
+| `sensor_traits.hpp` | 默认 channel |
+| `types/sensor_*.hpp` | 模态与样本 |
 
 ## canbus
 

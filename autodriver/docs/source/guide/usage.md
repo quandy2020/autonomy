@@ -1,119 +1,100 @@
 # 使用方式
 
-三种常见用法：独立进程、Autolink launch、嵌入其它程序。
+## 环境变量
 
-## 1. 独立进程 `autodriver`
+| 变量 | 含义 |
+|---|---|
+| `AUTODRIVER_PATH` | 包根（其下有 `config/`） |
+| `AUTODRIVER_DISTRIBUTION_HOME` | 安装树回退根 |
+| `AUTODRIVER_PLUGIN_DIR` | 外置 `.so`（YAML `plugin_dir` 优先） |
+| `LD_LIBRARY_PATH` | 须含 `build/lib`（`libautodriver` + Autolink） |
+| `PATH` | 须含 `build/bin` |
+| `AUTOLINK_PATH` / `AUTOLINK_LAUNCH_PATH` | Autolink 与 launch 目录 |
+| `GLOG_logtostderr` | `1` 打日志到终端 |
+
+## 1. 进程 `autodriver`
 
 ```bash
-export AUTODRIVER_PATH=/path/to/autodriver   # 目录下有 config/
-export LD_LIBRARY_PATH=.../build/lib:$LD_LIBRARY_PATH
-export PATH=.../build/bin:$PATH
-
-autodriver
-# 或指定配置根与文件名
+export AUTODRIVER_PATH=/path/to/autodriver   # 开发常为 …/src/autonomy/autodriver
+export LD_LIBRARY_PATH=$BUILD/lib:$LD_LIBRARY_PATH
+export PATH=$BUILD/bin:$PATH
+autodriver                                          # 默认 autodriver_hardware.yaml
+autodriver /path/to/autodriver                      # 指定配置根
 autodriver /path/to/autodriver autodriver_hardware.yaml
 ```
 
-进程内顺序（`main.cpp`）：
+参数：`[configuration_directory] [configuration_file]`。
 
-1. `LoadConfig(dir, file)`  
-2. `Publisher::Initialize()`  
-3. `SensorManager::SetSink` → `Initialize` → `Start`  
-4. `PoseFeeder::Start`（若配置了 `compensator.pose_channel`）  
-5. 等待 SIGINT/SIGTERM → `Stop`
+启动序：`LoadConfig` → `Publisher::Initialize` → `SensorManager::{SetSink,Initialize,Start}` → `PoseFeeder::Start`（有 `compensator.pose_channel`）→ 等信号 → `Stop`。
 
-编辑 `config/autodriver_hardware.yaml`：只用的设备 `enable: true`。
+只用的设备设 `enable: true`。相机折叠：`streams`/`point_clouds`/`imu`（见 [配置](configuration.md#camera)）。
 
-### 相机折叠
+### SDK 安装（包根 `scripts/`）
 
-一台物理机一条 `camera` 条目（`streams` / `point_clouds` / `imu`），详见
-[配置 · camera](configuration.md#camera) 与 [RealSense](../sensor/camera/realsense.md)。
-
-### 厂商 SDK
-
-| 设备 | 安装 |
+| 脚本 | 用途 |
 |---|---|
-| RPLidar | `./scripts/install_rplidar_sdk.sh` |
-| Livox | `./scripts/install_livox_sdk2.sh` / `install_livox_sdk.sh` |
-| RealSense / Orbbec | 系统包或官方 SDK，CMake `find_package` |
+| `install_rplidar_sdk.sh` | Slamtec SDK → 默认 `/usr/local` |
+| `install_livox_sdk2.sh` / `install_livox_sdk.sh` | Livox SDK2 / SDK1 |
+| `create_udev_rules.sh` / `delete_udev_rules.sh` | `/dev/rplidar` |
+| `verify_realsense_d455.sh` | D455 冒烟（若有） |
 
-未找到 SDK 时对应 backend stub，进程可启动但该传感器 Attach 失败并打日志。
+CMake：`AUTODRIVER_WITH_{REALSENSE,ORBBEC,RPLIDAR,LIVOX}`。未找到 SDK → 对应 Create 为 nullptr。
 
----
-
-## 2. Autolink launch
+## 2. Launch
 
 ```bash
-export AUTODRIVER_PATH=...
 export AUTOLINK_LAUNCH_PATH=$AUTODRIVER_PATH/launch
 autolink launch start autodriver.launch
 autolink launch list
 autolink launch stop autodriver.launch
 ```
 
-`launch/autodriver.launch` 默认 `exception_handler: respawn`。自定义参数：
+`launch/autodriver.launch`：`exception_handler: respawn`（最多重启 3 次）。自定义：
 
 ```xml
 <process_name>autodriver /path/to/autodriver autodriver_hardware.yaml</process_name>
 ```
 
----
-
-## 3. 嵌入库（C++）
-
-链接 `autodriver`，不启动 `main`：
+## 3. 嵌入库
 
 ```cpp
 #include "autodriver/bridge/publisher.hpp"
 #include "autodriver/config_loader.hpp"
 #include "autodriver/sensor_manager.hpp"
 
-autodriver::Config config = autodriver::LoadConfig(dir, "autodriver_hardware.yaml");
-// 或手写 config.sensors.push_back(...)
-
+auto config = autodriver::LoadConfig(dir, "autodriver_hardware.yaml");
 autodriver::bridge::Publisher publisher(config.node_name);
 publisher.Initialize();
-
 autodriver::SensorManager manager(config);
 manager.SetSink(&publisher);
 manager.Initialize();
 manager.Start();
-
-// 运行中：manager.Attach("imu/torso"); manager.Detach(...);
-
+// manager.Attach("imu/torso"); manager.Detach(...);
 manager.Stop();
 ```
 
-自定义发布：实现 `SampleSink`，在 `OnSample` 中写自有总线，不必用 `Publisher`。
+自定义总线：实现 `SampleSink`，不必用 `Publisher`。手写 Config：`examples/demo_main.cpp` → `autodriver_demo`。
 
-手写最小配置示例：`examples/demo_main.cpp`（`autodriver_demo`）。
+运行时 API：`PushLidarPose` / `SetLidarPoseLookup`（补偿）；`HandleDeviceEvent`（测 udev）。
 
----
+## 4. 约定
 
-## 4. 配置约定速查
-
-| 项 | 约定 |
+| 项 | 规则 |
 |---|---|
-| 配置根 | `AUTODRIVER_PATH` 指向含 `config/` 的包根 |
-| 默认文件 | `autodriver_hardware.yaml` |
-| 厂商参数 | `params_file: camera/...` 或 `lidar/...` |
-| 仅 enable | `enable: false` 的条目**不会**进入 Config |
-| 热插拔 | `hotplug.enable_udev` + `match`；serial 可自动填 tty |
+| `enable: false` | 不进 Config，无法 Attach |
+| `params_file` | 相对 `config/`；条目内 `params` 覆盖文件 |
+| id | `name` 无 `/` 时加前缀（如 `lidar/`+`front`） |
+| 折叠展开 id | `camera/<dev>_<stream>`、`camera/<dev>_points`、`imu/<dev>_imu` |
 
----
+## 5. 故障速查
 
-## 5. 调试
-
-```bash
-export GLOG_logtostderr=1
-autodriver
-```
-
-| 现象 | 排查 |
+| 现象 | 处理 |
 |---|---|
-| `no enabled sensors` | YAML 全是 `enable: false` 或路径错 |
-| backend Create nullptr | SDK 未装 / CMake 未找到 |
-| 串口权限 | 用户加入 `dialout`；或 `create_udev_rules.sh` |
-| 相机无图 | USB3、`rs-enumerate-devices` / Orbbec 工具 |
+| 找不到 YAML | 查 `AUTODRIVER_PATH`（含 `config/` 的父目录） |
+| `no enabled sensors` | 打开 `enable: true` |
+| Create nullptr | 装 SDK / 看 CMake STATUS |
+| Publisher 失败 | Autolink 环境、`AUTOLINK_PATH` |
+| 串口/CAN 权限 | `dialout`；`ip link set can0 up …` |
+| 无点云/无图 | 网段/UDP 端口；USB3；防火墙 |
 
-更多见 [FAQ](../faq.md)、[测试](testing.md)。
+系统化问答：[FAQ](../faq.md)。验证：[测试](testing.md)。

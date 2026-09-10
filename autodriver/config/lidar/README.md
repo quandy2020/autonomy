@@ -1,28 +1,17 @@
-# Slamtec (RPLidar) vendor **device params**
+# Lidar 厂商参数（`config/lidar/<vendor>/`）
 
-Main process config: `config/autodriver_hardware.yaml` (`lidar_2d` entries).
-Point each device at a model file with `params_file:`:
+主配置：`config/autodriver_hardware.yaml`。用 `params_file:` 引用本目录下型号文件；条目内 `params:` 覆盖文件。
 
-```yaml
-lidar_2d:
-  - name: front
-    enable: true
-    channel: /lidar/front/scan   # or /scan
-    backend: rplidar             # alias: slamtec
-    port: /dev/ttyUSB0
-    baudrate: 115200             # optional; overwritten by params_file baud
-    params_file: lidar/slamtec/a1.yaml
-    params:
-      frame_id: laser
-```
+| 目录 | backend | 内容 |
+|---|---|---|
+| `slamtec/` | `rplidar` | A1/A2/A3 串口 params |
+| `velodyne/` | `velodyne` | `vlp16.yaml` + 校准/外参例 |
+| `hesai/` | `hesai` | `xt32.yaml` + 校准 |
+| `livox/` | `livox` | Mid-360 / HAP / Mid-40 … |
 
-| Model | File | baud | notes |
-|---|---|---|---|
-| A1 | `a1.yaml` | 115200 | |
-| A2 / A2M8 | `a2.yaml` | 115200 | A2M7/A2M12 → 256000 |
-| A3 | `a3.yaml` | 256000 | `scan_mode: Sensitivity` |
+`calibration_path` / `extrinsic_path` 为**文件系统路径**（建议绝对路径，或相对进程 cwd）。包内示例：
 
-Usage aligned with rplidar_ros; publishes `sensor_msgs/LaserScan` on Autolink.
-Build: install SDK (`scripts/install_rplidar_sdk.sh`), then
-`-DAUTODRIVER_WITH_RPLIDAR=ON`. Optional udev: `scripts/create_udev_rules.sh`
-→ `/dev/rplidar`.
+- `$AUTODRIVER_PATH/config/lidar/velodyne/vlp16_calibration.yaml`
+- `$AUTODRIVER_PATH/config/lidar/hesai/xt32_calibration.yaml`
+
+无 `calibration_path` 时驱动使用内置默认仰角表。
