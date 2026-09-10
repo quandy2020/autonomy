@@ -18,12 +18,15 @@
  * @file
  * @brief Abstract robot-body hardware backend (vendor SDK boundary).
  *
- * Decoupled from autonomy/vehicle: that module stays a kinematics / model
- * abstraction inside the autonomy process. ChassisDriver owns real hardware.
+ * Message bodies are automsgs vehicle_msgs (RobotState / RobotEvent) and
+ * TwistStamped — identical to the rest of the stack. No autonomy/vehicle.
  */
 
 #ifndef AUTODRIVER_CHASSIS_CHASSIS_DRIVER_HPP_
 #define AUTODRIVER_CHASSIS_CHASSIS_DRIVER_HPP_
+
+#include <functional>
+#include <vector>
 
 #include "chassis/types.hpp"
 
@@ -32,16 +35,17 @@ namespace chassis {
 
 /**
  * @class ChassisDriver
- * @brief Vendor plugin: command in, state out. No Autolink, no autonomy/*.
+ * @brief Vendor plugin: TwistStamped in, RobotState out (+ optional events).
  */
 class ChassisDriver {
 public:
+  using EventCallback = std::function<void(const ChassisEvent&)>;
+
   ChassisDriver(const ChassisDriver&) = delete;
   ChassisDriver& operator=(const ChassisDriver&) = delete;
   virtual ~ChassisDriver() = default;
 
   virtual const ChassisId& GetChassisId() const = 0;
-  virtual ChassisKind GetKind() const = 0;
 
   /** Open device / SDK session. */
   virtual bool Start() = 0;
@@ -50,26 +54,35 @@ public:
   virtual bool IsRunning() const = 0;
 
   /**
-   * @brief Apply a motion command (may be zero after watchdog).
-   * @return false on hardware reject / fault.
+   * @brief Apply velocity command (vehicle_msgs-compatible TwistStamped).
+   * Zero twist = soft stop. Watchdog also sends zero twist.
    */
   virtual bool ApplyCommand(const ChassisCommand& command) = 0;
 
   /**
-   * @brief Read latest chassis state (odom, battery, faults).
-   * @return false if state unavailable.
+   * @brief Fill vehicle_msgs.RobotState (pose / twist / battery / flags).
+   * Task fields may be left default — autonomy fills those at bridge layer.
    */
   virtual bool GetState(ChassisState* state) = 0;
 
-  /** Immediate safe stop (E-stop / fault path). */
-  virtual bool EmergencyStop() {
-    ChassisCommand stop;
-    stop.emergency_stop = true;
-    return ApplyCommand(stop);
+  /** Hardware E-stop: stop actuators and set motion_enabled=false. */
+  virtual bool EmergencyStop() = 0;
+
+  /** Optional: vendor may push RobotEvent (FAULT / E-STOP / BATTERY_LOW). */
+  virtual void SetEventCallback(EventCallback callback) {
+    event_callback_ = std::move(callback);
   }
 
 protected:
   ChassisDriver() = default;
+
+  void EmitEvent(const ChassisEvent& event) {
+    if (event_callback_) {
+      event_callback_(event);
+    }
+  }
+
+  EventCallback event_callback_;
 };
 
 }  // namespace chassis

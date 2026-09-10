@@ -16,9 +16,13 @@
 
 /**
  * @file
- * @brief Orchestrates ChassisDriver + Autolink (/cmd_vel ↔ /odom).
+ * @brief Orchestrates ChassisDriver + Autolink (vehicle_msgs protocol).
  *
- * Bridges autonomy process traffic; does not link autonomy/vehicle.
+ * Channels:
+ *   cmd  : TwistStamped     (same body as RobotState.twist)
+ *   state: RobotState       (vehicle_msgs)
+ *   event: RobotEvent       (vehicle_msgs, optional)
+ *   odom : nav_msgs/Odometry (derived from RobotState for nav stack)
  */
 
 #ifndef AUTODRIVER_CHASSIS_CHASSIS_MANAGER_HPP_
@@ -37,6 +41,8 @@
 #include "autolink/node/writer.hpp"
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/vehicle_msgs/robot_event.pb.h>
+#include <automsgs/msgs/vehicle_msgs/robot_state.pb.h>
 
 namespace autodriver {
 namespace chassis {
@@ -66,8 +72,8 @@ public:
   ChassisDriver* driver() { return driver_.get(); }
 
 private:
-  void OnCmdVel(
-      const std::shared_ptr<automsgs::msgs::geometry_msgs::TwistStamped>& msg);
+  void OnCmdVel(const std::shared_ptr<ChassisCommand>& msg);
+  void OnDriverEvent(const ChassisEvent& event);
   void PublishLoop();
   void ApplyWatchdogLocked(std::uint64_t now_ns);
   ChassisCommand Clamp(const ChassisCommand& in) const;
@@ -76,9 +82,9 @@ private:
   Config::Chassis options_;
   std::shared_ptr<ChassisDriver> driver_;
 
-  std::shared_ptr<
-      autolink::Reader<automsgs::msgs::geometry_msgs::TwistStamped>>
-      cmd_reader_;
+  std::shared_ptr<autolink::Reader<ChassisCommand>> cmd_reader_;
+  std::shared_ptr<autolink::Writer<ChassisState>> state_writer_;
+  std::shared_ptr<autolink::Writer<ChassisEvent>> event_writer_;
   std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Odometry>>
       odom_writer_;
 
