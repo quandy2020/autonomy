@@ -1,0 +1,8 @@
+# Livox Mid-40 — SDK1 (broadcast_code discovery)
+
+model: Mid-40
+sdk: "1"
+publish_freq: 10
+frame_id: livox_frame
+# broadcast_code: "0AABCDEFG123456"   # empty = accept all non-Hub devices
+# broadcast_codes: "CODE1,CODE2"      # or CODE1&CODE2
