@@ -32,6 +32,12 @@ sensors:
         frame_id: velodyne
         source_type: online
 
+    - name: mid360
+      enable: false
+      channel: /lidar/mid360/points
+      backend: livox
+      params_file: lidar/livox/mid360.yaml
+
   camera:
     - name: realsense_d455
       enable: true

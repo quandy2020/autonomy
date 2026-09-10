@@ -1,0 +1,6 @@
+# Livox Tele-15 — SDK1
+
+model: Tele
+sdk: "1"
+publish_freq: 10
+frame_id: livox_frame

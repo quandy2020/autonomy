@@ -56,6 +56,10 @@ set(AUTODRIVER_SOURCES
   lidar/hesai/convert.cpp
   lidar/hesai/calibration.cpp
   lidar/hesai/udp_driver.cpp
+  lidar/livox/convert.cpp
+  lidar/livox/sdk1_driver.cpp
+  lidar/livox/sdk2_driver.cpp
+  lidar/livox/driver.cpp
   lidar/rplidar/convert.cpp
   lidar/rplidar/serial_driver.cpp
   lidar/vendor_stubs.cpp
@@ -146,6 +150,31 @@ if(AUTODRIVER_WITH_RPLIDAR)
       "autodriver: RplidarSDK not found; install via "
       "scripts/install_rplidar_sdk.sh or set RplidarSDK_ROOT "
       "(RPLidar backend stubs to nullptr)")
+  endif()
+endif()
+
+if(AUTODRIVER_WITH_LIVOX)
+  find_package(LivoxSDK2 QUIET)
+  if(LivoxSDK2_FOUND)
+    message(STATUS
+      "autodriver: Livox-SDK2 enabled (${LivoxSDK2_INCLUDE_DIR})")
+    target_link_libraries(autodriver PRIVATE LivoxSDK2::LivoxSDK2)
+    target_compile_definitions(autodriver PUBLIC AUTODRIVER_HAVE_LIVOX_SDK2)
+  else()
+    message(STATUS
+      "autodriver: Livox-SDK2 not found; install via "
+      "scripts/install_livox_sdk2.sh (Mid-360/HAP/Avia2)")
+  endif()
+  find_package(LivoxSDK QUIET)
+  if(LivoxSDK_FOUND)
+    message(STATUS
+      "autodriver: Livox-SDK enabled (${LivoxSDK_INCLUDE_DIR})")
+    target_link_libraries(autodriver PRIVATE LivoxSDK::LivoxSDK)
+    target_compile_definitions(autodriver PUBLIC AUTODRIVER_HAVE_LIVOX_SDK1)
+  else()
+    message(STATUS
+      "autodriver: Livox-SDK (v1) not found; install via "
+      "scripts/install_livox_sdk.sh (Mid-40/70/Horizon/Avia)")
   endif()
 endif()
 

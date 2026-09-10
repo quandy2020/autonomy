@@ -1,0 +1,9 @@
+# Livox Mid360s — SDK2
+
+model: Mid360s
+sdk: "2"
+host_ip: "192.168.1.5"
+lidar_ip: "192.168.1.12"
+pcl_data_type: 1
+publish_freq: 10
+frame_id: livox_frame

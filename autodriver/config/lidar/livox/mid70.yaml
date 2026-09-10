@@ -1,0 +1,7 @@
+# Livox Mid-70 — SDK1
+
+model: Mid-70
+sdk: "1"
+publish_freq: 10
+frame_id: livox_frame
+# broadcast_code: ""

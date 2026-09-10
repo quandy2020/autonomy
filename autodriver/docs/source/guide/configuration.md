@@ -197,17 +197,17 @@ lidar_2d:
 
 **消息**：`sensor_msgs.PointCloud2`  
 **Module**：`Lidar3dModule`  
-**backend**：`velodyne` / `udp`（默认 `velodyne`），或 `hesai` / `pandar`（PandarXT / XT32）— UDP 收包 → PacketQueue → 方位角切帧 → Convert 点云。  
-其它厂商名（`livox`、`rslidar`、`lslidar`、`seyond`、`vanjee`）已注册为 **stub**（`Create`→nullptr）。
+**backend**：`velodyne` / `udp`（默认 `velodyne`），或 `hesai` / `pandar`（PandarXT / XT32），或 `livox`（SDK1+SDK2，见 `config/lidar/livox/`）— UDP/SDK 收包 → 组帧 → Convert 点云。  
+其它厂商名（`rslidar`、`lslidar`、`seyond`、`vanjee`）已注册为 **stub**（`Create`→nullptr）。
 
 | 字段 | 说明 |
 |---|---|
-| `params.data_port` | UDP 端口，默认 `2368` |
+| `params.data_port` | UDP 端口，默认 `2368`（Velodyne/Hesai） |
 | `params.packets_per_scan` | 一帧包数**上限**；Velodyne 默认 `75`，Hesai 默认 `180` |
 | `params.use_azimuth_cut` | 默认 `true`；按末 block 方位角跨 cut 切帧 |
 | `params.scan_cut_angle_deg` | cut 角度（度），默认 `0` |
 | `params.packet_queue_capacity` | online 队列容量，默认 `256`（满丢最旧） |
-| `params.model` | Velodyne：`VLP-16`；Hesai：`XT32` / `PandarXT` |
+| `params.model` | Velodyne：`VLP-16`；Hesai：`XT32`；Livox：`Mid-360` / `HAP` / `Mid-40` … |
 | `params.frame_id` | 点云 frame |
 | `params.source_type` | `online`（默认）或 `raw_packet`（回放：`PushRawPacket` / `PushScan`） |
 | `params.bind_host` | 绑定地址，默认任意 |
@@ -219,8 +219,13 @@ lidar_2d:
 | `params.publish_scan` | 先发 `LidarPacketScan` 再发点云（Publisher 仅发点云） |
 | `params.scan_channel` | 原始 Scan 通道提示（当前不经 Autolink Writer） |
 | `params.world_frame_id` | 补偿世界系，默认 `world` |
+| `params.host_ip` / `lidar_ip` | Livox SDK2；或 `config_path` JSON |
+| `params.broadcast_code` | Livox SDK1 白名单（空=全部） |
+| `params.publish_freq` | Livox 组帧频率 Hz |
 
 点云字段：`x,y,z,intensity`（float32）+ `timestamp`（float64 ns）。静态外参可用 `LoadExtrinsicYaml`。Hesai 默认 XT32 仰角；可用 `calibration_path`（见 `config/params/XT32_calibration.yaml`，`vert_correction` 为度）。
+
+Livox 安装：`scripts/install_livox_sdk2.sh`（Mid-360/HAP）与/或 `scripts/install_livox_sdk.sh`（Mid-40/Horizon/Avia）。
 
 ```yaml
 lidar_3d:
@@ -246,6 +251,11 @@ lidar_3d:
       model: XT32
       source_type: online
       use_azimuth_cut: true
+  - name: mid360
+    enable: false
+    channel: /lidar/mid360/points
+    backend: livox
+    params_file: lidar/livox/mid360.yaml
 ```
 
 ---
