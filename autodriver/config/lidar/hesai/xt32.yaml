@@ -1,0 +1,13 @@
+# Hesai PandarXT / XT32 device params (via params_file).
+# Default elev angles are built-in; calibration_path overrides (degrees).
+# Example: $AUTODRIVER_PATH/config/lidar/hesai/xt32_calibration.yaml
+
+model: XT32
+frame_id: hesai
+data_port: 2368
+packets_per_scan: 180
+source_type: online
+use_azimuth_cut: true
+scan_cut_angle_deg: 0
+enable_compensator: false
+# calibration_path: /abs/path/to/xt32_calibration.yaml

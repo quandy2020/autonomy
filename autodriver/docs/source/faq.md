@@ -1,117 +1,103 @@
 # 常见问题
 
-## 找不到配置文件
+## 配置路径
 
 ```
-failed to load autodriver config: ... (optional override: export AUTODRIVER_PATH=<config parent>)
+failed to load autodriver config: ... export AUTODRIVER_PATH=<config parent>
 ```
 
-确认：
+1. `AUTODRIVER_PATH` = **含 `config/` 的包根**（不是 `config` 目录本身）  
+2. 默认 basename：`autodriver_hardware.yaml`  
+3. 回退：`$AUTODRIVER_DISTRIBUTION_HOME/share/autodriver/config/`  
 
-1. `AUTODRIVER_PATH` 指向**含 `config/` 的目录**（不是 `config` 本身）
-2. 默认文件名为 `autodriver_hardware.yaml`
-3. 安装树下检查 `share/autodriver/config/`
+开发示例：`export AUTODRIVER_PATH=$PWD/src/autonomy/autodriver`（按仓库布局调整）。
 
-仓库根目录开发时：
+## 无传感器
 
-```bash
-export AUTODRIVER_PATH=$PWD/autodriver
-```
+- 仅 `enable: true`（或 `attach_on_start: true`）进入 Config  
+- 全 false → 日志 `no enabled sensors`  
+- `enable: false` **不能**再 Attach；udev 也只作用于已加载且 `match` 有效的条目  
 
-## 没有传感器被加载
+## 类 / 插件加载失败
 
-- typed 组里只有 `enable: true` 的条目会进入 `Config`
-- 全为 `false` 时日志会有 `no enabled sensors`
-- `enable: false` 的设备**不能**再 `Attach`；热插拔也只作用于已加载且带 `match` 的条目
+模块编在 `libautodriver.so`，无需分模态 `.so`。  
+排查：链接的是否为当前构建；`module` 名是否为 `ImuModule`/`CameraModule`/…；仅 YAML `library:` 非空才加载外置库（`plugin_dir` / `LD_LIBRARY_PATH`）。
 
-## 插件 / 类创建失败
+## RealSense / Orbbec
 
-常规路径下模块已编入 `libautodriver.so`，**不需要** `libautodriver_imu.so` 之类分模态库。
+构建 STATUS 须出现 `librealsense2 … enabled` / `OrbbecSDK enabled`。否则 Create 空。多机用 `params.serial` 或 `index`+`model`；同机多流共用 hub（折叠配置）。
 
-若日志提示 CreateClassObj 失败：
+## RPLidar / Livox
 
-1. 确认链接的是当前构建的 `libautodriver`
-2. `module` 类名与注册名一致（如 `ImuModule`、`CameraModule`、`PointCloudModule`）
-3. 仅当 YAML 写了 `library` 时才需要外置 `.so`，并把目录放进 `plugin_dir` 或 `LD_LIBRARY_PATH`
+| 问题 | 处理 |
+|---|---|
+| RPLidar Create 空 | `./scripts/install_rplidar_sdk.sh`；CMake 找 `RplidarSDK` |
+| 连不上 A3 | `params_file: lidar/slamtec/a3.yaml`（256000） |
+| Livox Create 空 | `install_livox_sdk2.sh` 或 `install_livox_sdk.sh` |
+| Mid-360 无数据 | `host_ip`/`lidar_ip` 同网段；端口与官方 JSON 一致 |
 
-## RealSense 不可用
+## udev
 
-构建日志中若无 `librealsense2 ... enabled`，则 RealSense backend 未编入。安装 Intel librealsense2 后重新配置，或显式 `-DAUTODRIVER_WITH_REALSENSE=OFF`。
+需 Linux + `libudev`（`AUTODRIVER_HAVE_UDEV`）+ `hotplug.enable_udev: true` + 已 enable 且 `match` 非空。serial 的 `port` 会自动补 `match.subsystem=tty`。
 
-Orbbec 同理：需构建日志出现 `OrbbecSDK enabled`；否则 `Create("orbbec")` 返回空。安装 OrbbecSDK 后 `-DAUTODRIVER_WITH_ORBBEC=ON` 重新配置。
+## 串口 / CAN
 
-多台设备时在 `params.serial`（或 `index`+`model`）上区分；同机多流共用一个 hub。
+`dialout` 组；RPLidar 可用 `create_udev_rules.sh` → `/dev/rplidar`。CAN：`ip link set can0 up type can bitrate …`。
 
-## udev 热插拔不生效
+## Autolink
 
-- 仅 Linux + 链接到 `libudev`（`AUTODRIVER_HAVE_UDEV`）
-- `hotplug.enable_udev` 须为 `true`
-- 传感器须已 `enable: true` 且 `match` 非空（serial 的 `port` 会自动补 match）
+采集在 autodriver；发布经 `Publisher`。`Publisher::Initialize` 失败查 Autolink 运行时与 `AUTOLINK_PATH`。`LD_LIBRARY_PATH` 含 `build/lib`。
 
-## CAN / 串口权限
+## Lidar / 点云无数据
 
-访问 `/dev/ttyUSB*`、`can0` 通常需要 dialout 组或相应 udev 规则。CAN 需先 `ip link set can0 up type can ...`。
+| backend | 查 |
+|---|---|
+| `velodyne` / `hesai` | UDP `data_port`、防火墙、`model`/校准 |
+| `livox` | SDK、网段、JSON/`host_ip` |
+| `rplidar` | 串口、波特率、SDK |
+| RealSense/Orbbec 点云 | `point_clouds` 或扁平 `point_cloud` enable |
 
-## 与 Autolink 的关系
+## Stub（无真数据）
 
-Autodriver **采集**；**发布**经 `bridge::Publisher`（同一 `libautodriver`）写 Autolink。运行 `autodriver` 前设置好 `AUTOLINK_PATH` 与 Autolink 运行时，否则 `Publisher::Initialize` 可能失败。
+| YAML | backend | 待补 |
+|---|---|---|
+| `radar` | `conti` | ProtocolData + canbus |
+| `microphone` | `respeaker` | PortAudio |
+| `camera` + smartereye | `smartereye` | 厂商 SDK |
+| `rslidar`/`lslidar`/… | stub | 仿 Velodyne/Livox 实现 |
 
-`LD_LIBRARY_PATH` 需包含 `build/lib`，以便加载 `libautodriver` 与 Autolink 依赖（不是为了加载分模态传感器插件）。
+单测：`test_skeleton_modules`、`test_canbus_skeleton`。
 
-## Lidar / Range 无数据
-
-- **3D Velodyne / Hesai**：`backend: velodyne` 或 `hesai`，确认 `data_port` 可达且防火墙放行 UDP  
-- **2D / Range**：仍为 attach-only 骨架  
-- RealSense 点云：`point_cloud` + `PointCloudModule`
-
-## Radar / Microphone / SmarterEye 无数据
-
-这些是 **stub**：工厂已注册，但 `Create` 返回 `nullptr`，Attach 会失败或跳过采集。
-
-| YAML | Module | backend | 待补齐 |
-|---|---|---|---|
-| `radar` | `RadarModule` | `conti` | Conti ProtocolData + `canbus` |
-| `microphone` | `MicrophoneModule` | `respeaker` | PortAudio / USB |
-| `camera` + `backend: smartereye` | `CameraModule` | `smartereye` | 厂商 SDK |
-
-单测仅校验注册表 / FakeCan：`test_skeleton_modules`、`test_canbus_skeleton`。
-
-## GNSS Parser 怎么用
+## GNSS Parser
 
 ```cpp
-#include "autodriver/gps/parser/parser.hpp"
-
-auto parser = autodriver::gps::GnssParserRegistry::Instance().Create("nmea");
-auto fix = parser->Consume(bytes, n);  // 可选 ParsedFix
+auto p = autodriver::gps::GnssParserRegistry::Instance().Create("nmea");
+p->Consume(bytes, n);
 ```
 
-内置名：`nmea`、`nmea0183`。串口 GPS 驱动仍可直接调 `ParseGgaSentence`；工厂便于后续厂商报文。
+别名：`nmea0183`。
 
-## 诊断话题
+## 诊断
 
-`SensorManager::ReportDiagnostic` 在 Attach/Detach 成功或失败时回调 `SampleSink::OnDiagnostic`。  
-`bridge::Publisher` 懒创建 Writer，发布 `diagnostic_msgs/DiagnosticArray` 到 `/diagnostics`（可用 `SetDiagnosticsChannel` 覆盖）。
+Attach/Detach 成败 → `SampleSink::OnDiagnostic` → Publisher → `/diagnostics`（可 `SetDiagnosticsChannel`）。
 
-## 源码在哪
+## 源码索引
 
 | 路径 | 内容 |
 |---|---|
-| `autodriver/common/` | Stream、串口、CanSocket、外参 YAML、设备状态 |
-| `autodriver/canbus/` | ProtocolData、Receiver、Client、Sender、byte |
-| `autodriver/gps/parser/` | `GnssParserRegistry`（NMEA） |
-| `autodriver/camera/` | `realsense/`、`orbbec/`、backend 注册表 |
-| `autodriver/radar/` / `microphone/` / `smartereye/` | stub 模态 |
-| `autodriver/lidar/` | Lidar 基类、`packet_queue`、`scan_cut`、MotionCompensator、Velodyne/Hesai、厂商 stub |
+| `common/` | Stream、串口、UDP、外参、status |
+| `canbus/` | ProtocolData、Receiver、Client、Sender |
+| `camera/` | realsense、orbbec、registry |
+| `lidar/` | velodyne、hesai、livox、rplidar、queue、compensator、stubs |
+| `gps/parser/` | NMEA 工厂 |
+| `bridge/` | Publisher、PoseFeeder |
+| `config/` | 硬件 YAML + 厂商 params |
+| `scripts/` | SDK / udev |
 
 ## 文档构建
 
 ```bash
-pip install -r autodriver/docs/requirements.txt
-cmake --build build --target docs
-```
-
-需系统/环境可执行 `mkdocs`；未找到时 CMake 会禁用 `docs` 目标并打印提示。本地预览：
-
-```bash
-cd autodriver/docs && mkdocs serve
+pip install -r docs/requirements.txt
+cd docs && mkdocs serve
+# 或 cmake --build build --target docs
 ```

@@ -223,7 +223,7 @@ lidar_2d:
 | `params.broadcast_code` | Livox SDK1 白名单（空=全部） |
 | `params.publish_freq` | Livox 组帧频率 Hz |
 
-点云字段：`x,y,z,intensity`（float32）+ `timestamp`（float64 ns）。静态外参可用 `LoadExtrinsicYaml`。Hesai 默认 XT32 仰角；可用 `calibration_path`（见 `config/params/XT32_calibration.yaml`，`vert_correction` 为度）。
+点云字段：`x,y,z,intensity`（float32）+ `timestamp`（float64 ns）。静态外参可用 `LoadExtrinsicYaml`。Hesai 默认 XT32 仰角；可用 `calibration_path`（见 `config/lidar/hesai/xt32_calibration.yaml`，`vert_correction` 为度）。Velodyne 校准：`config/lidar/velodyne/vlp16_calibration.yaml`（rad）。`calibration_path`/`extrinsic_path` 为文件系统路径。
 
 Livox 安装：`scripts/install_livox_sdk2.sh`（Mid-360/HAP）与/或 `scripts/install_livox_sdk.sh`（Mid-40/Horizon/Avia）。
 
@@ -233,24 +233,12 @@ lidar_3d:
     enable: false
     channel: /lidar/vlp16/points
     backend: velodyne
-    params:
-      data_port: 2368
-      packets_per_scan: 75
-      model: VLP-16
-      source_type: online
-      use_azimuth_cut: true
-      scan_cut_angle_deg: 0
-      enable_compensator: false
+    params_file: lidar/velodyne/vlp16.yaml
   - name: xt32
     enable: false
     channel: /lidar/xt32/points
     backend: hesai
-    params:
-      data_port: 2368
-      packets_per_scan: 180
-      model: XT32
-      source_type: online
-      use_azimuth_cut: true
+    params_file: lidar/hesai/xt32.yaml
   - name: mid360
     enable: false
     channel: /lidar/mid360/points

@@ -25,12 +25,13 @@ sensors:
       channel: /lidar/vlp16/points
       backend: velodyne
       fps: 10
-      params:
-        data_port: 2368
-        packets_per_scan: 75
-        model: VLP-16
-        frame_id: velodyne
-        source_type: online
+      params_file: lidar/velodyne/vlp16.yaml
+
+    - name: xt32
+      enable: false
+      channel: /lidar/xt32/points
+      backend: hesai
+      params_file: lidar/hesai/xt32.yaml
 
     - name: mid360
       enable: false

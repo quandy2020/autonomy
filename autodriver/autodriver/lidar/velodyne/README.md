@@ -20,4 +20,5 @@ Pipeline: UDP → `PacketQueue` → 方位角切帧 → optional `LidarPacketSca
 
 回放：`PushRawPacket` 按包聚合；或 `PushScan(LidarPacketScan)` / `InjectScan` 整帧 Convert。
 
-示例校准：`config/params/VLP16_calibration.yaml`。
+示例校准：`config/lidar/velodyne/vlp16_calibration.yaml`。  
+设备 params：`config/lidar/velodyne/vlp16.yaml`（`params_file`）。

@@ -14,7 +14,7 @@
 | `smartereye/` | Camera backend stub |
 | `radar/` | Registry + Conti stub |
 | `microphone/` | Registry + Respeaker stub |
-| `lidar/` | `SourceType`、`LidarComponentBase`、`packet_queue`、`scan_cut`、`MotionCompensator`、`velodyne/`、`hesai/`、`livox/`、`rplidar/`、厂商 stub |
+| `lidar/` | Lidar 基类、queue、scan_cut、compensator、`velodyne/` `hesai/` `livox/` `rplidar/`、stubs |
 
 ## 总览
 
@@ -45,20 +45,14 @@ stream->Read(buf, n, timeout_ms);
 - `ReconnectStream`：串口 / Velodyne UDP 读循环断线退避重连
 - 后续可插：TCP / NTRIP；Parser（NMEA、WitMotion、Velodyne Convert）保持独立
 
-## Velodyne（lidar_3d）
+## Velodyne / Hesai / Livox / RPLidar
 
-UDP packet → 聚合 Scan → `ConvertPacketsToPointCloud` → `PointCloud2`（字段 `x,y,z,intensity,timestamp`，`point_step=24`）。
+- **Velodyne**（`velodyne`/`udp`）：UDP→队列→切帧→Convert；校准 rad。详见 [传感器·Velodyne](../sensor/lidar/velodyne.md)。  
+- **Hesai**（`hesai`/`pandar`）：XT32；校准 deg。详见 [Hesai](../sensor/lidar/hesai.md)。  
+- **Livox**（`livox`）：SDK1/SDK2；详见 [Livox](../sensor/lidar/livox.md)。  
+- **RPLidar**（`rplidar`/`slamtec`）：2D 串口 SDK；详见 [RPLidar](../sensor/lidar/rplidar.md)。  
 
-- 源码：`lidar/velodyne/{packet,convert,udp_driver}`
-- `source_type: raw_packet` 时用 `PushRawPacket` 回放（单测已覆盖）
-- `enable_compensator: true` 时内置 `PoseBuffer`；`autodriver` 进程经 `bridge::PoseFeeder` 订阅 `compensator.pose_channel`（`nav_msgs/Odometry`）并 `PushLidarPose`
-- `publish_scan: true` 时先发 `LidarPacketScan` 再发点云；`Publisher` 只转发 `LidarCloud`（Scan 仅走 SampleSink / 旁路回调）
-- `calibration_path`：Velodyne `VLP16_calibration.yaml`（rad）；Hesai `XT32_calibration.yaml`（deg）
-- 静态外参：`common::LoadExtrinsicYaml`；示例 `config/params/lidar_vlp16_extrinsics.yaml`
-- Hesai：`backend: hesai`（alias `pandar`）；**PandarXT / XT32** Convert 已实现（1080 字节包，4 mm）；XT32M2X 未覆盖
-- Online：`PacketQueue` 收转解耦；默认 `use_azimuth_cut` + `packets_per_scan` 上限
-- RAW_PACKET：`PushRawPacket`（按包）或 `PushScan`/`LidarComponentBase::InjectScan`（整帧 Scan→Convert，不再发 Scan）
-- Stream：`CreateTcpStream` / `CreateNtripStream`（差分 GNSS 输入）
+点云约定：`point_step=24`。RAW_PACKET：`PushRawPacket`/`PushScan`。补偿：`enable_compensator` + `compensator.pose_channel`。
 
 ## serial
 
@@ -114,7 +108,9 @@ auto parser = autodriver::gps::GnssParserRegistry::Instance().Create("nmea");
 
 切帧见 `lidar/scan_cut.hpp`：`use_azimuth_cut`（默认 true）+ `packets_per_scan` 上限。
 
-需 `AUTODRIVER_WITH_REALSENSE=ON` 且找到 librealsense2。同机多流经 `camera/realsense/device_hub` 合并。源码：`camera/realsense/`。多型号用 `params.model` / `serial` / `index` 区分，**不要**为型号新建 backend。
+## realsense
+
+需 `AUTODRIVER_WITH_REALSENSE=ON` + librealsense2。同机多流经 `device_hub`。源码：`camera/realsense/`。用 `model`/`serial`/`index` 选机，**勿**为型号新建 backend。详见 [RealSense](../sensor/camera/realsense.md)。
 
 ## orbbec
 
@@ -153,18 +149,8 @@ auto parser = autodriver::gps::GnssParserRegistry::Instance().Create("nmea");
 
 ## 扩展真 Lidar
 
-2D：`lidar/rplidar/` + `REGISTER_LIDAR2D_BACKEND`；配置 `config/lidar/<vendor>/`。
-
-3D：已落地参考实现：`lidar/velodyne/`（`backend: velodyne`，别名 `udp`）。
-
-新增 3D 厂商：
-
-1. 在 `lidar/<vendor>/` 实现 packet / convert / UDP（或 SDK）driver  
-2. `REGISTER_LIDAR_BACKEND(tag, "name", CreateFn, "alias"...)`（见 `lidar/backend_register.hpp`）  
-3. CMake 把源文件编入 `libautodriver`  
-4. **不必**改 `Lidar3dModule`（查 `LidarBackendRegistry`）
-
-点云字段约定：`x,y,z,intensity,timestamp`（`point_step=24`），以便复用 `MotionCompensator`。
+2D：`lidar/rplidar/` + `REGISTER_LIDAR2D_BACKEND`。  
+3D：`REGISTER_LIDAR_BACKEND`；参考 `velodyne/`、`hesai/`、`livox/`。点云 `point_step=24`。不必改 `Lidar*Module`。
 
 ## 外置插件（高级）
 
