@@ -29,8 +29,8 @@
 #include <string>
 #include <unordered_map>
 
-#include "autodriver/chassis/chassis_driver.hpp"
-#include "autodriver/chassis/types.hpp"
+#include "chassis/chassis_driver.hpp"
+#include "chassis/types.hpp"
 #include "autodriver/driver_params.hpp"
 
 namespace autodriver {

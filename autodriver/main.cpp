@@ -29,9 +29,9 @@
 
 #include "autodriver/bridge/pose_feeder.hpp"
 #include "autodriver/bridge/publisher.hpp"
-#include "autodriver/chassis/chassis_manager.hpp"
 #include "autodriver/config_loader.hpp"
 #include "autodriver/sensor_manager.hpp"
+#include "chassis/chassis_manager.hpp"
 #include "autolink/common/log.hpp"
 #include "autolink/init.hpp"
 #include "autolink/time/duration.hpp"

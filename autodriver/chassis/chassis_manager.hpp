@@ -30,7 +30,7 @@
 #include <mutex>
 #include <thread>
 
-#include "autodriver/chassis/chassis_driver.hpp"
+#include "chassis/chassis_driver.hpp"
 #include "autodriver/config.hpp"
 #include "autolink/node/node.hpp"
 #include "autolink/node/reader.hpp"

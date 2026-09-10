@@ -53,6 +53,7 @@ configure_file(
 )
 
 add_subdirectory(autodriver)
+add_subdirectory(chassis)
 
 # Library target: autodriver → libautodriver.so
 # Process binary: autodriver (CMake target autodriver_main; cannot share lib name).
@@ -60,12 +61,14 @@ add_executable(autodriver_main main.cpp)
 set_target_properties(autodriver_main PROPERTIES OUTPUT_NAME autodriver)
 target_link_libraries(autodriver_main PRIVATE autodriver)
 target_include_directories(autodriver_main PRIVATE
+  ${AUTODRIVER_ROOT_DIR}
   ${AUTODRIVER_ROOT_DIR}/autodriver)
 
 if(AUTODRIVER_BUILD_EXAMPLES)
   add_executable(autodriver_demo examples/demo_main.cpp)
   target_link_libraries(autodriver_demo PRIVATE autodriver)
   target_include_directories(autodriver_demo PRIVATE
+    ${AUTODRIVER_ROOT_DIR}
     ${AUTODRIVER_ROOT_DIR}/autodriver)
 endif()
 
@@ -77,6 +80,7 @@ if(AUTODRIVER_BUILD_TEST)
     add_executable(${NAME} ${SRC})
     target_link_libraries(${NAME} PRIVATE autodriver GTest::gtest_main)
     target_include_directories(${NAME} PRIVATE
+      ${AUTODRIVER_ROOT_DIR}
       ${AUTODRIVER_ROOT_DIR}/autodriver)
     add_test(NAME ${NAME} COMMAND ${NAME})
   endfunction()

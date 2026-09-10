@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include "autodriver/chassis/stub/driver.hpp"
+#include "chassis/stub/driver.hpp"
 
 #include <chrono>
 #include <cmath>
 #include <mutex>
 
-#include "autodriver/chassis/backend_register.hpp"
+#include "chassis/backend_register.hpp"
 #include "autodriver/driver_params.hpp"
 #include "autolink/common/log.hpp"
 

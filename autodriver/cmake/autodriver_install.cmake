@@ -15,6 +15,12 @@ install(
 )
 
 install(
+  DIRECTORY ${AUTODRIVER_ROOT_DIR}/chassis/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/chassis
+  FILES_MATCHING PATTERN "*.hpp"
+)
+
+install(
   FILES ${AUTODRIVER_GENERATED_DIR}/conf/conf.hpp
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/autodriver/conf
 )

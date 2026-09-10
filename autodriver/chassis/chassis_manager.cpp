@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include "autodriver/chassis/chassis_manager.hpp"
+#include "chassis/chassis_manager.hpp"
 
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 
-#include "autodriver/chassis/backend_registry.hpp"
-#include "autodriver/chassis/stub/driver.hpp"
+#include "chassis/backend_registry.hpp"
+#include "chassis/stub/driver.hpp"
 #include "autolink/common/log.hpp"
 #include "autolink/time/duration.hpp"
 
