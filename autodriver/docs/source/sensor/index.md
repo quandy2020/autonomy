@@ -1,8 +1,8 @@
 # 传感器手册
 
-按厂商与模态说明：简介、依赖、配置、运行要点。主配置仍是
-[`config/autodriver_hardware.yaml`](../../../../config/autodriver_hardware.yaml)；
-厂商细项放在 `config/camera/<vendor>/`、`config/lidar/<vendor>/`，经 `params_file` 合并。
+按厂商与模态说明：简介、依赖、配置、运行要点。主配置仍是包内
+`config/autodriver_hardware.yaml`；厂商细项放在 `config/camera/<vendor>/`、
+`config/lidar/<vendor>/`，经 `params_file` 合并。
 
 ## 能力一览
 
