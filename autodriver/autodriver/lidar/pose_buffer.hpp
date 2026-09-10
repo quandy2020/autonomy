@@ -30,6 +30,7 @@
 #include <Eigen/Geometry>
 
 #include "autodriver/lidar/motion_compensator.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace lidar {
@@ -40,6 +41,11 @@ namespace lidar {
  */
 class PoseBuffer {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(PoseBuffer)
+
     /**
      * @brief Construct with a maximum number of stored poses.
      * @param capacity Older poses are dropped when exceeded.

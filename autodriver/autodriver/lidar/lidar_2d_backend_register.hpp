@@ -28,7 +28,7 @@
  * @brief Register a lidar_2d backend at static init time.
  * @param tag Unique C++ identifier suffix for the registrar object.
  * @param name Canonical backend string (e.g. "rplidar").
- * @param factory Create function (may return nullptr).
+ * @param factory Creator returning owning SensorDriver* (nullptr ok for stubs).
  * @param ... Optional alias string literals (e.g. "slamtec").
  */
 #define REGISTER_LIDAR2D_BACKEND(tag, name, factory, ...)                   \

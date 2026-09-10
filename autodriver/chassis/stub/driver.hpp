@@ -30,7 +30,17 @@
 namespace autodriver {
 namespace chassis {
 
-std::shared_ptr<ChassisDriver> CreateStubChassisDriver(
+/**
+ * @brief Create the in-process stub ChassisDriver (backend name "stub").
+ *
+ * Integrates differential-drive odometry from ApplyVelocityCommand; used for
+ * bring-up and CI without real hardware. Also registered under aliases
+ * "sim" / "fake".
+ * @param id Chassis instance id from YAML (e.g. "chassis/base").
+ * @param params Optional keys such as battery_soc in [0, 1].
+ * @return Owning raw ChassisDriver* for NamedProductFactory / never null.
+ */
+ChassisDriver* CreateStubChassisDriver(
     const ChassisId& id, const hardware::DriverParams& params);
 
 }  // namespace chassis

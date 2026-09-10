@@ -23,15 +23,14 @@
 #define AUTODRIVER_GPS_PARSER_PARSER_HPP_
 
 #include <cstdint>
-#include <functional>
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "autodriver/gps/nmea_0183.hpp"
+#include "autodriver/common/named_factory.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace gps {
@@ -49,6 +48,11 @@ using ParsedFix = protocol::NmeaGgaFix;
  */
 class GnssParser {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(GnssParser)
+
     virtual ~GnssParser() = default;
 
     /**
@@ -61,15 +65,25 @@ public:
                                              std::size_t size) = 0;
 };
 
-// Factory that constructs a concrete GnssParser.
-using GnssParserFactory = std::function<std::unique_ptr<GnssParser>()>;
+/**
+ * @brief Creator for NamedProductFactory0: returns owning GnssParser*.
+ * @return New parser, or nullptr on failure.
+ */
+using GnssParserFactory = NamedProductFactory0<GnssParser>::Creator;
 
 /**
  * @class autodriver::gps::GnssParserRegistry
  * @brief Name → GnssParserFactory map ("nmea", "nmea0183", future vendors).
+ *
+ * Internally uses NamedProductFactory0 (autolink::common::Factory).
  */
 class GnssParserRegistry {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(GnssParserRegistry)
+
     /**
      * @brief Process-wide singleton; registers built-in NMEA on first use.
      */
@@ -77,25 +91,27 @@ public:
 
     /**
      * @brief Register or replace a factory under @p name.
+     * @param name Parser id (e.g. "nmea").
+     * @param factory Creator returning new GnssParser*.
      */
-    void Register(const std::string& name, GnssParserFactory factory);
+    void RegisterParser(const std::string& name, GnssParserFactory factory);
 
     /**
      * @brief Construct a parser by name.
-     * @return nullptr when @p name is unknown.
+     * @param name Parser id.
+     * @return Owning unique_ptr, or nullptr when @p name is unknown.
      */
-    std::unique_ptr<GnssParser> Create(const std::string& name) const;
+    std::unique_ptr<GnssParser> CreateParser(const std::string& name) const;
 
     /**
      * @brief Whether @p name is registered.
+     * @param name Parser id.
+     * @return true when a creator is available.
      */
-    bool Has(const std::string& name) const;
+    bool HasParser(const std::string& name) const;
 
 private:
-    // Guards factories_.
-    mutable std::mutex mutex_;
-    // parser name → factory.
-    std::unordered_map<std::string, GnssParserFactory> factories_;
+  NamedProductFactory0<GnssParser> factory_;
 };
 
 /**
@@ -104,6 +120,11 @@ private:
  */
 class Nmea0183Parser : public GnssParser {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(Nmea0183Parser)
+
     /**
      * @brief Append bytes (optional) then return the next complete fix.
      * Pass size==0 to drain remaining complete lines after a read.

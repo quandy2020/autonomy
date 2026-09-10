@@ -40,7 +40,8 @@ namespace hardware {
  * @param id Sensor id (e.g. radar/front).
  * @param params Expect `interface` / CAN ids when implemented.
  */
-std::shared_ptr<SensorDriver> CreateContiRadarDriver(
+SensorDriver*
+CreateContiRadarDriver(
     const SensorId& id, const DriverParams& params);
 
 }  // namespace hardware

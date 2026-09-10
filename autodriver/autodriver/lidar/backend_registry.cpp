@@ -16,81 +16,51 @@
 
 #include "autodriver/lidar/backend_registry.hpp"
 
-#include <utility>
-
 #include "autolink/common/log.hpp"
 
 namespace autodriver {
 namespace lidar {
 
 LidarBackendRegistry& LidarBackendRegistry::Instance() {
-    static LidarBackendRegistry registry;
-    return registry;
+  static LidarBackendRegistry registry;
+  return registry;
 }
 
-void LidarBackendRegistry::Register(const std::string& name,
-                                    LidarDriverFactory factory) {
-    if (name.empty() || !factory) {
-        AERROR << "LidarBackendRegistry::Register: empty name or factory";
-        return;
-    }
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (factories_.count(name) != 0) {
-        AWARN << "LidarBackendRegistry: overwriting backend \"" << name << "\"";
-    }
-    factories_[name] = std::move(factory);
+void LidarBackendRegistry::RegisterBackend(const std::string& name,
+                                           LidarDriverFactory factory) {
+  factory_.Register(name, std::move(factory));
 }
 
-void LidarBackendRegistry::RegisterAlias(const std::string& alias,
-                                         const std::string& canonical) {
-    if (alias.empty() || canonical.empty()) {
-        return;
-    }
-    std::lock_guard<std::mutex> lock(mutex_);
-    aliases_[alias] = canonical;
+void LidarBackendRegistry::RegisterBackendAlias(const std::string& alias,
+                                                const std::string& canonical) {
+  factory_.RegisterAlias(alias, canonical);
 }
 
-std::string LidarBackendRegistry::Resolve(const std::string& backend) const {
-    const auto it = aliases_.find(backend);
-    if (it != aliases_.end()) {
-        return it->second;
-    }
-    return backend;
-}
-
-bool LidarBackendRegistry::Has(const std::string& backend) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    const std::string name = Resolve(backend);
-    return factories_.count(name) != 0;
-}
-
-std::shared_ptr<SensorDriver> LidarBackendRegistry::Create(
+SensorDriver::SharedPtr LidarBackendRegistry::CreateDriver(
     const std::string& backend, const SensorId& id,
     const hardware::DriverParams& params) const {
-    LidarDriverFactory factory;
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        const std::string name = Resolve(backend);
-        const auto it = factories_.find(name);
-        if (it == factories_.end()) {
-            AERROR << "unsupported lidar3d backend: " << backend;
-            return nullptr;
-        }
-        factory = it->second;
-    }
-    return factory(id, params);
+  const std::string name = backend.empty() ? "velodyne" : backend;
+  auto driver = factory_.CreateShared(name, id, params);
+  if (!driver) {
+    AERROR << "unsupported lidar3d backend: " << name;
+  }
+  return driver;
+}
+
+bool LidarBackendRegistry::HasBackend(const std::string& backend) const {
+  return factory_.Contains(backend.empty() ? "velodyne" : backend);
 }
 
 void RegisterLidarBackendWithAliases(
     const std::string& name, LidarDriverFactory factory,
     std::initializer_list<const char*> aliases) {
-    auto& reg = LidarBackendRegistry::Instance();
-    reg.Register(name, std::move(factory));
-    for (const char* alias : aliases) {
-        if (alias != nullptr && alias[0] != '\0') {
-            reg.RegisterAlias(alias, name);
-        }
+  auto& reg = LidarBackendRegistry::Instance();
+  reg.RegisterBackend(name, std::move(factory));
+  for (const char* alias : aliases) {
+    if (alias != nullptr && alias[0] != '\0') {
+      reg.RegisterBackendAlias(alias, name);
     }
+  }
 }
 
 }  // namespace lidar

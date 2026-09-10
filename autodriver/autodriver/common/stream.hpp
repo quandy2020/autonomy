@@ -28,6 +28,7 @@
 #include <string>
 
 #include "autodriver/common/status.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace common {
@@ -38,6 +39,11 @@ namespace common {
  */
 class Stream {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(Stream)
+
     using Status = diagnostics::DeviceStatus;
 
     virtual ~Stream() = default;

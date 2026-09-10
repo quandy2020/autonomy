@@ -31,7 +31,7 @@ camera/
     stub_camera_driver.*, stub_pointcloud_driver.*  # Create → nullptr
 ```
 
-`bridge/realsense_channels.hpp` 保留原路径（话题命名辅助，非厂商驱动）。
+`bridge/channels.hpp` 保留话题命名辅助（如 `CameraInfoChannelForImage`），非厂商驱动。
 
 旧路径 `camera/realsense_*.hpp` 删除；全库更新 `#include`。
 

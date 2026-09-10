@@ -26,49 +26,39 @@ ChassisBackendRegistry& ChassisBackendRegistry::Instance() {
   return instance;
 }
 
-void ChassisBackendRegistry::Register(const std::string& name,
-                                      ChassisDriverFactory factory) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  factories_[name] = std::move(factory);
+void ChassisBackendRegistry::RegisterBackend(const std::string& name,
+                                             ChassisDriverFactory factory) {
+  factory_.Register(name, std::move(factory));
 }
 
-void ChassisBackendRegistry::RegisterAlias(const std::string& alias,
-                                           const std::string& canonical) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  aliases_[alias] = canonical;
+void ChassisBackendRegistry::RegisterBackendAlias(
+    const std::string& alias, const std::string& canonical) {
+  factory_.RegisterAlias(alias, canonical);
 }
 
-std::string ChassisBackendRegistry::Resolve(const std::string& backend) const {
-  const auto it = aliases_.find(backend);
-  return it == aliases_.end() ? backend : it->second;
-}
-
-std::shared_ptr<ChassisDriver> ChassisBackendRegistry::Create(
+ChassisDriver::SharedPtr ChassisBackendRegistry::CreateDriver(
     const std::string& backend, const ChassisId& id,
     const hardware::DriverParams& params) const {
-  std::lock_guard<std::mutex> lock(mutex_);
-  const std::string name = Resolve(backend.empty() ? "stub" : backend);
-  const auto it = factories_.find(name);
-  if (it == factories_.end()) {
+  const std::string name = backend.empty() ? "stub" : backend;
+  auto driver = factory_.CreateShared(name, id, params);
+  if (!driver) {
     AERROR << "unknown chassis backend: " << backend;
-    return nullptr;
   }
-  return it->second(id, params);
+  return driver;
 }
 
-bool ChassisBackendRegistry::Has(const std::string& backend) const {
-  std::lock_guard<std::mutex> lock(mutex_);
-  return factories_.count(Resolve(backend)) > 0;
+bool ChassisBackendRegistry::HasBackend(const std::string& backend) const {
+  return factory_.Contains(backend.empty() ? "stub" : backend);
 }
 
 void RegisterChassisBackendWithAliases(
     const std::string& name, ChassisDriverFactory factory,
     std::initializer_list<const char*> aliases) {
   auto& reg = ChassisBackendRegistry::Instance();
-  reg.Register(name, std::move(factory));
+  reg.RegisterBackend(name, std::move(factory));
   for (const char* alias : aliases) {
     if (alias && *alias) {
-      reg.RegisterAlias(alias, name);
+      reg.RegisterBackendAlias(alias, name);
     }
   }
 }

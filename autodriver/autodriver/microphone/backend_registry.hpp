@@ -22,71 +22,96 @@
 #ifndef AUTODRIVER_MICROPHONE_BACKEND_REGISTRY_HPP_
 #define AUTODRIVER_MICROPHONE_BACKEND_REGISTRY_HPP_
 
-#include <functional>
 #include <initializer_list>
-#include <memory>
-#include <mutex>
 #include <string>
-#include <unordered_map>
 
+#include "autodriver/common/named_factory.hpp"
 #include "autodriver/driver_params.hpp"
 #include "autodriver/sensor_driver.hpp"
 #include "autodriver/sensor_id.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace microphone {
 
-/** Factory: (SensorId, DriverParams) → SensorDriver (or nullptr for stubs). */
-using MicrophoneDriverFactory = std::function<std::shared_ptr<SensorDriver>(
-    const SensorId& id, const hardware::DriverParams& params)>;
+/**
+ * @brief Creator for autolink::common::Factory: returns owning SensorDriver*.
+ * @param id Sensor instance id from YAML (e.g. "mic/cabin").
+ * @param params Backend-specific key/value map from YAML.
+ * @return New SensorDriver, or nullptr when construction fails / stub.
+ */
+using MicrophoneDriverFactory =
+    NamedProductFactory<SensorDriver, SensorId>::Creator;
 
 /**
  * @class autodriver::microphone::MicrophoneBackendRegistry
- * @brief Maps microphone backend name → driver factory (ReSpeaker-style).
+ * @brief Maps YAML `microphone.backend` → SensorDriver factory.
  *
- * YAML `backend: respeaker` resolves here via MicrophoneModule.
+ * Internally uses NamedProductFactory (autolink::common::Factory).
+ * Default backend when empty: "respeaker" (may be stub → nullptr).
  */
 class MicrophoneBackendRegistry {
 public:
-    /** Process-wide singleton. */
-    static MicrophoneBackendRegistry& Instance();
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(MicrophoneBackendRegistry)
 
-    /**
-     * @brief Register or replace a factory under @p name.
-     */
-    void Register(const std::string& name, MicrophoneDriverFactory factory);
+  /**
+   * @brief Access the process-wide singleton (static-init backends register here).
+   * @return Reference to the unique MicrophoneBackendRegistry instance.
+   */
+  static MicrophoneBackendRegistry& Instance();
 
-    /**
-     * @brief Map @p alias to an already-registered canonical @p name.
-     */
-    void RegisterAlias(const std::string& alias, const std::string& canonical);
+  /**
+   * @brief Register or replace a factory under a canonical backend name.
+   * @param name Canonical backend string (e.g. "respeaker").
+   * @param factory Creator returning new SensorDriver*.
+   */
+  void RegisterBackend(const std::string& name, MicrophoneDriverFactory factory);
 
-    /**
-     * @brief Construct a driver for @p backend after alias resolve.
-     * @return nullptr when unknown or stub Create returns null.
-     */
-    std::shared_ptr<SensorDriver> Create(
-        const std::string& backend, const SensorId& id,
-        const hardware::DriverParams& params) const;
+  /**
+   * @brief Map an alias onto an already-registered canonical backend name.
+   * @param alias Alternate YAML name.
+   * @param canonical Existing registered name.
+   */
+  void RegisterBackendAlias(const std::string& alias,
+                            const std::string& canonical);
 
-    /** Whether @p backend (or its alias target) is registered. */
-    bool Has(const std::string& backend) const;
+  /**
+   * @brief Create a SensorDriver for @p backend (empty string → "respeaker").
+   * @param backend YAML `backend` or alias.
+   * @param id Sensor instance id passed to the factory.
+   * @param params YAML params (and shorthand merges).
+   * @return Shared driver, or nullptr if unknown / creator returns null.
+   */
+  SensorDriver::SharedPtr CreateDriver(
+      const std::string& backend, const SensorId& id,
+      const hardware::DriverParams& params) const;
+
+  /**
+   * @brief Check whether @p backend resolves to a registered factory.
+   * @param backend Canonical name or alias (empty → "respeaker").
+   * @return true if a factory is available after alias resolve.
+   */
+  bool HasBackend(const std::string& backend) const;
 
 private:
-    MicrophoneBackendRegistry() = default;
+  /**
+   * @brief Private default constructor for the process-wide singleton.
+   */
+  MicrophoneBackendRegistry() = default;
 
-    /** Follow aliases until a factory name or unchanged string. */
-    std::string Resolve(const std::string& backend) const;
-
-    mutable std::mutex mutex_;
-    // backend name → factory.
-    std::unordered_map<std::string, MicrophoneDriverFactory> factories_;
-    // alias → canonical name.
-    std::unordered_map<std::string, std::string> aliases_;
+  NamedProductFactory<SensorDriver, SensorId> factory_;
 };
 
 /**
- * @brief Register @p name and optional @p aliases in one call (used by macros).
+ * @brief Register a canonical backend plus optional aliases in one call.
+ *
+ * Used by REGISTER_MICROPHONE_BACKEND at static init.
+ * @param name Canonical backend string.
+ * @param factory MicrophoneDriverFactory for @p name.
+ * @param aliases Optional null-terminated C string aliases (empty skipped).
  */
 void RegisterMicrophoneBackendWithAliases(
     const std::string& name, MicrophoneDriverFactory factory,

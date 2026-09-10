@@ -114,7 +114,8 @@ void OrbbecCameraDriver::SetSampleCallback(SampleCallback callback) {
     callback_ = std::move(callback);
 }
 
-std::shared_ptr<SensorDriver> CreateOrbbecCameraDriver(
+SensorDriver*
+CreateOrbbecCameraDriver(
     const SensorId& id, const DriverParams& params) {
     if (!io::OrbbecAvailable()) {
         AERROR << "Orbbec camera backend not available (id=" << id
@@ -122,7 +123,7 @@ std::shared_ptr<SensorDriver> CreateOrbbecCameraDriver(
                   "AUTODRIVER_WITH_ORBBEC=ON";
         return nullptr;
     }
-    return std::make_shared<OrbbecCameraDriver>(id, params);
+    return new OrbbecCameraDriver(id, params);
 }
 
 }  // namespace hardware

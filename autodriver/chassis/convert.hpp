@@ -30,8 +30,13 @@
 namespace autodriver {
 namespace chassis {
 
-inline void SetTimestampNs(::automsgs::msgs::builtin_interfaces::Time* t,
-                           std::uint64_t stamp_ns) {
+/**
+ * @brief Write sec/nanosec into a builtin_interfaces Time from epoch nanoseconds.
+ * @param[out] t Destination timestamp; no-op when null.
+ * @param stamp_ns Epoch time in nanoseconds.
+ */
+inline void FillTimestampFromNanoseconds(
+    ::automsgs::msgs::builtin_interfaces::Time* t, std::uint64_t stamp_ns) {
   if (t == nullptr) {
     return;
   }
@@ -39,17 +44,28 @@ inline void SetTimestampNs(::automsgs::msgs::builtin_interfaces::Time* t,
   t->set_nanosec(static_cast<std::uint32_t>(stamp_ns % 1'000'000'000ULL));
 }
 
-inline std::uint64_t TimestampToNs(
+/**
+ * @brief Convert builtin_interfaces Time to epoch nanoseconds.
+ * @param t Source timestamp (sec + nanosec).
+ * @return Epoch time in nanoseconds.
+ */
+inline std::uint64_t ConvertTimestampToNanoseconds(
     const ::automsgs::msgs::builtin_interfaces::Time& t) {
   return static_cast<std::uint64_t>(t.sec()) * 1'000'000'000ULL +
          static_cast<std::uint64_t>(t.nanosec());
 }
 
-/** Derive nav_msgs/Odometry from vehicle_msgs.RobotState (same pose/twist). */
-inline void RobotStateToOdometry(const ChassisState& state,
-                                 const std::string& odom_frame,
-                                 const std::string& base_frame,
-                                 ::automsgs::msgs::nav_msgs::Odometry* out) {
+/**
+ * @brief Convert vehicle_msgs.RobotState pose/twist into nav_msgs/Odometry.
+ * @param state Chassis RobotState sample (pose / twist / timestamp).
+ * @param odom_frame Header frame_id; falls back to state.global_frame / "odom".
+ * @param base_frame child_frame_id; defaults to "base_link" when empty.
+ * @param[out] out Output odometry message (cleared then filled); no-op if null.
+ */
+inline void ConvertRobotStateToOdometry(
+    const ChassisState& state, const std::string& odom_frame,
+    const std::string& base_frame,
+    ::automsgs::msgs::nav_msgs::Odometry* out) {
   if (out == nullptr) {
     return;
   }

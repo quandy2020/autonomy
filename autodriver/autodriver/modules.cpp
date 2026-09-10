@@ -21,86 +21,55 @@
  */
 
 #include "autodriver/sensor_plugin.hpp"
-#include "autodriver/imu/can_imu_driver.hpp"
-#include "autodriver/imu/serial_imu_driver.hpp"
-#include "autodriver/gps/can_gps_driver.hpp"
-#include "autodriver/gps/serial_gps_driver.hpp"
+#include "autodriver/imu/backend_registry.hpp"
+#include "autodriver/gps/backend_registry.hpp"
 #include "autodriver/camera/backend_registry.hpp"
 #include "autodriver/lidar/backend_registry.hpp"
 #include "autodriver/lidar/lidar_2d_backend_registry.hpp"
 #include "autodriver/radar/backend_registry.hpp"
 #include "autodriver/microphone/backend_registry.hpp"
-#ifdef AUTODRIVER_HAVE_REALSENSE
-#include "autodriver/camera/realsense/imu_driver.hpp"
-#endif
 
 #include "autolink/class_loader/class_loader_register_macro.hpp"
-#include "autolink/common/log.hpp"
 
 // ---------------------------------------------------------------------------
-// IMU module — serial, CAN, and RealSense backends.
+// IMU module — backends via ImuBackendRegistry (serial/can/realsense).
 // ---------------------------------------------------------------------------
 /**
  * @class ImuModule
- * @brief SensorPlugin for IMU devices (serial WIT, CAN, RealSense).
+ * @brief SensorPlugin for IMU devices; backends via ImuBackendRegistry.
  */
 class ImuModule
     : public autodriver::SensorPlugin<autodriver::SensorType::kImu> {
 protected:
     /**
-     * @brief Instantiates a serial, CAN, or RealSense IMU driver from config.
+     * @brief Instantiates an IMU driver from ImuBackendRegistry.
      */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
-        if (sensor.backend == "serial") {
-            return autodriver::hardware::CreateSerialImuDriver(
-                sensor.id, sensor.params);
-        }
-        if (sensor.backend == "can") {
-            return autodriver::hardware::CreateCanImuDriver(
-                sensor.id, sensor.params);
-        }
-        if (sensor.backend == "realsense") {
-#ifdef AUTODRIVER_HAVE_REALSENSE
-            return autodriver::hardware::CreateRealSenseImuDriver(
-                sensor.id, sensor.params);
-#else
-            AERROR << "IMU realsense backend not compiled";
-            return nullptr;
-#endif
-        }
-        AERROR << "unknown IMU backend: " << sensor.backend;
-        return nullptr;
+        return autodriver::imu::ImuBackendRegistry::Instance().CreateDriver(
+            sensor.backend, sensor.id, sensor.params);
     }
 };
 
 CLASS_LOADER_REGISTER_CLASS(ImuModule, autodriver::SensorModule)
 
 // ---------------------------------------------------------------------------
-// GPS module — serial and CAN backends.
+// GPS module — backends via GpsBackendRegistry (serial/can).
 // ---------------------------------------------------------------------------
 /**
  * @class GpsModule
- * @brief SensorPlugin for GNSS receivers (serial NMEA, CAN NMEA2000).
+ * @brief SensorPlugin for GNSS; backends via GpsBackendRegistry.
  */
 class GpsModule
     : public autodriver::SensorPlugin<autodriver::SensorType::kGps> {
 protected:
     /**
-     * @brief Instantiates a serial or CAN GPS driver from config.
+     * @brief Instantiates a GPS driver from GpsBackendRegistry.
      */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
-        if (sensor.backend == "serial") {
-            return autodriver::hardware::CreateSerialGpsDriver(
-                sensor.id, sensor.params);
-        }
-        if (sensor.backend == "can") {
-            return autodriver::hardware::CreateCanGpsDriver(
-                sensor.id, sensor.params);
-        }
-        AERROR << "unknown GPS backend: " << sensor.backend;
-        return nullptr;
+        return autodriver::gps::GpsBackendRegistry::Instance().CreateDriver(
+            sensor.backend, sensor.id, sensor.params);
     }
 };
 
@@ -121,7 +90,7 @@ protected:
      */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
-        return autodriver::camera::CameraBackendRegistry::Instance().Create(
+        return autodriver::camera::CameraBackendRegistry::Instance().CreateDriver(
             sensor.backend, sensor.id, sensor.params);
     }
 };
@@ -142,7 +111,7 @@ class Lidar2dModule
 protected:
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
-        return autodriver::lidar::Lidar2dBackendRegistry::Instance().Create(
+        return autodriver::lidar::Lidar2dBackendRegistry::Instance().CreateDriver(
             sensor.backend, sensor.id, sensor.params);
     }
 };
@@ -159,7 +128,7 @@ protected:
      */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
-        return autodriver::lidar::LidarBackendRegistry::Instance().Create(
+        return autodriver::lidar::LidarBackendRegistry::Instance().CreateDriver(
             sensor.backend, sensor.id, sensor.params);
     }
 };
@@ -175,7 +144,7 @@ protected:
      */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
-        return autodriver::camera::PointCloudBackendRegistry::Instance().Create(
+        return autodriver::camera::PointCloudBackendRegistry::Instance().CreateDriver(
             sensor.backend, sensor.id, sensor.params);
     }
 };
@@ -219,7 +188,7 @@ protected:
      */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
-        return autodriver::radar::RadarBackendRegistry::Instance().Create(
+        return autodriver::radar::RadarBackendRegistry::Instance().CreateDriver(
             sensor.backend, sensor.id, sensor.params);
     }
 };
@@ -237,7 +206,7 @@ protected:
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
         return autodriver::microphone::MicrophoneBackendRegistry::Instance()
-            .Create(sensor.backend, sensor.id, sensor.params);
+            .CreateDriver(sensor.backend, sensor.id, sensor.params);
     }
 };
 

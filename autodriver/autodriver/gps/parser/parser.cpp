@@ -22,38 +22,31 @@ namespace autodriver {
 namespace gps {
 
 GnssParserRegistry& GnssParserRegistry::Instance() {
-    static GnssParserRegistry instance;
-    static std::once_flag once;
-    std::call_once(once, [&]() {
-        instance.factories_["nmea"] = []() {
-            return std::make_unique<Nmea0183Parser>();
-        };
-        instance.factories_["nmea0183"] = []() {
-            return std::make_unique<Nmea0183Parser>();
-        };
+  static GnssParserRegistry instance;
+  static std::once_flag once;
+  std::call_once(once, [&]() {
+    instance.RegisterParser("nmea", []() -> GnssParser* {
+      return new Nmea0183Parser();
     });
-    return instance;
+    instance.RegisterParser("nmea0183", []() -> GnssParser* {
+      return new Nmea0183Parser();
+    });
+  });
+  return instance;
 }
 
-void GnssParserRegistry::Register(const std::string& name,
-                                  GnssParserFactory factory) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    factories_[name] = std::move(factory);
+void GnssParserRegistry::RegisterParser(const std::string& name,
+                                        GnssParserFactory factory) {
+  factory_.Register(name, std::move(factory));
 }
 
-std::unique_ptr<GnssParser> GnssParserRegistry::Create(
+std::unique_ptr<GnssParser> GnssParserRegistry::CreateParser(
     const std::string& name) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    const auto it = factories_.find(name);
-    if (it == factories_.end()) {
-        return nullptr;
-    }
-    return it->second();
+  return factory_.CreateUnique(name);
 }
 
-bool GnssParserRegistry::Has(const std::string& name) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return factories_.count(name) > 0;
+bool GnssParserRegistry::HasParser(const std::string& name) const {
+  return factory_.Contains(name);
 }
 
 }  // namespace gps

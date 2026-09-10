@@ -22,56 +22,47 @@ namespace autodriver {
 namespace microphone {
 
 MicrophoneBackendRegistry& MicrophoneBackendRegistry::Instance() {
-    static MicrophoneBackendRegistry instance;
-    return instance;
+  static MicrophoneBackendRegistry registry;
+  return registry;
 }
 
-void MicrophoneBackendRegistry::Register(const std::string& name,
-                                         MicrophoneDriverFactory factory) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    factories_[name] = std::move(factory);
+void MicrophoneBackendRegistry::RegisterBackend(const std::string& name,
+    MicrophoneDriverFactory factory) {
+  factory_.Register(name, std::move(factory));
 }
 
-void MicrophoneBackendRegistry::RegisterAlias(const std::string& alias,
-                                              const std::string& canonical) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    aliases_[alias] = canonical;
+void MicrophoneBackendRegistry::RegisterBackendAlias(const std::string& alias,
+    const std::string& canonical) {
+  factory_.RegisterAlias(alias, canonical);
 }
 
-std::string MicrophoneBackendRegistry::Resolve(
-    const std::string& backend) const {
-    const auto it = aliases_.find(backend);
-    return it == aliases_.end() ? backend : it->second;
-}
-
-std::shared_ptr<SensorDriver> MicrophoneBackendRegistry::Create(
+SensorDriver::SharedPtr MicrophoneBackendRegistry::CreateDriver(
     const std::string& backend, const SensorId& id,
     const hardware::DriverParams& params) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    const std::string name = Resolve(backend.empty() ? "respeaker" : backend);
-    const auto it = factories_.find(name);
-    if (it == factories_.end()) {
-        AERROR << "unknown microphone backend: " << backend;
-        return nullptr;
-    }
-    return it->second(id, params);
+  const std::string name =
+      backend.empty() ? "respeaker" : backend;
+  auto driver = factory_.CreateShared(name, id, params);
+  if (!driver) {
+    AERROR << "unknown microphone backend: " << backend;
+  }
+  return driver;
 }
 
-bool MicrophoneBackendRegistry::Has(const std::string& backend) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return factories_.count(Resolve(backend)) > 0;
+bool MicrophoneBackendRegistry::HasBackend(const std::string& backend) const {
+  return factory_.Contains(
+      backend.empty() ? "respeaker" : backend);
 }
 
 void RegisterMicrophoneBackendWithAliases(
     const std::string& name, MicrophoneDriverFactory factory,
     std::initializer_list<const char*> aliases) {
-    auto& reg = MicrophoneBackendRegistry::Instance();
-    reg.Register(name, std::move(factory));
-    for (const char* alias : aliases) {
-        if (alias && *alias) {
-            reg.RegisterAlias(alias, name);
-        }
+  auto& reg = MicrophoneBackendRegistry::Instance();
+  reg.RegisterBackend(name, std::move(factory));
+  for (const char* alias : aliases) {
+    if (alias != nullptr && *alias != static_cast<char>(0)) {
+      reg.RegisterBackendAlias(alias, name);
     }
+  }
 }
 
 }  // namespace microphone

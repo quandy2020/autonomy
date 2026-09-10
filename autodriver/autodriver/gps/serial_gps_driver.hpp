@@ -31,6 +31,7 @@
 #include "autodriver/driver_params.hpp"
 #include "autodriver/gps/parser/parser.hpp"
 #include "autodriver/sensor_driver.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace hardware {
@@ -43,6 +44,11 @@ namespace hardware {
 class SerialGpsDriver : public SensorDriver
 {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(SerialGpsDriver)
+
   /**
    * @brief Stores sensor identity and serial driver params.
    */
@@ -57,7 +63,7 @@ public:
    * @brief Report sensor type
    * @return SensorType::kGps
    */
-  SensorType GetType() const override { return SensorType::kGps; }
+  SensorType GetSensorType() const override { return SensorType::kGps; }
 
   /**
    * @brief Return this driver's sensor identifier
@@ -98,7 +104,7 @@ private:
   DriverParams params_;
 
   // Serial (or future TCP/UDP) transport to the GNSS module.
-  std::unique_ptr<common::Stream> stream_;
+  std::unique_ptr<common::Stream> stream_{nullptr};
 
   // User callback for delivered GPS samples.
   SampleCallback callback_;
@@ -110,13 +116,14 @@ private:
   std::thread worker_;
 
   // Streaming NMEA parser (line buffer lives inside the parser).
-  std::unique_ptr<gps::GnssParser> parser_;
+  std::unique_ptr<gps::GnssParser> parser_{nullptr};
 };
 
 /**
- * @brief Factory used by GpsModule.
+ * @brief Factory for GpsBackendRegistry (REGISTER_GPS_BACKEND).
  */
-std::shared_ptr<SensorDriver> CreateSerialGpsDriver(
+SensorDriver*
+CreateSerialGpsDriver(
   const SensorId & id,
   const DriverParams & params);
 

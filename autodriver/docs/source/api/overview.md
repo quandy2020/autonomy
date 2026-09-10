@@ -26,6 +26,12 @@ SensorManager
 厂商驱动通过静态宏注册，Module 只查表：
 
 ```cpp
+// IMU / GPS
+#include "autodriver/imu/backend_register.hpp"
+REGISTER_IMU_BACKEND(serial, "serial", CreateSerialImuDriver);
+#include "autodriver/gps/backend_register.hpp"
+REGISTER_GPS_BACKEND(serial, "serial", CreateSerialGpsDriver);
+
 // 3D lidar
 #include "autodriver/lidar/backend_register.hpp"
 REGISTER_LIDAR_BACKEND(myvendor, "myvendor", CreateMyDriver, "alias");
@@ -44,18 +50,19 @@ REGISTER_POINTCLOUD_BACKEND(tag, "backend", CreateFn);
 REGISTER_CHASSIS_BACKEND(mybot, "mybot", CreateMyBotDriver);
 ```
 
-工厂签名统一为：
+Creator（`REGISTER_*` / `CreateXxx`）统一为 owning raw 指针：
 
 ```cpp
-std::shared_ptr<SensorDriver> CreateXxx(
+SensorDriver* CreateXxx(
     const SensorId& id, const hardware::DriverParams& params);
+// chassis：ChassisDriver* CreateXxx(const ChassisId&, const DriverParams&);
 ```
 
-运行时：
+Registry 运行时再包成 `SharedPtr`（`NamedProductFactory` / `autolink::common::Factory`）：
 
 ```cpp
-auto drv = lidar::LidarBackendRegistry::Instance().Create(
-    "velodyne", id, params);
+auto drv = lidar::LidarBackendRegistry::Instance().CreateDriver(
+    "velodyne", id, params);  // → SensorDriver::SharedPtr
 ```
 
 ## Config
@@ -99,7 +106,7 @@ config.sensors = {lidar2d};
 
 class SensorDriver {
   using SampleCallback = std::function<void(std::unique_ptr<SensorSample>)>;
-  virtual SensorType GetType() const = 0;
+  virtual SensorType GetSensorType() const = 0;
   virtual const SensorId& GetSensorId() const = 0;
   virtual bool Start() = 0;
   virtual void Stop() = 0;
@@ -122,24 +129,24 @@ autodriver::bridge::Publisher publisher(config.node_name);
 publisher.Initialize();
 
 autodriver::SensorManager manager(std::move(config));
-manager.SetSink(&publisher);
+manager.SetSampleSink(&publisher);
 manager.Initialize();
 manager.Start();
-// manager.Attach("imu/torso");
-// manager.Detach("imu/torso");
+// manager.AttachSensor("imu/torso");
+// manager.DetachSensor("imu/torso");
 manager.Stop();
 ```
 
 | 方法 | 说明 |
 |---|---|
-| `SetSink` | 注册 `SampleSink` |
+| `SetSampleSink` | 注册 `SampleSink` |
 | `Initialize` | id 查重；失败 false |
 | `Start` / `Stop` | 启停 Hub/udev/autostart Attach |
-| `Attach` / `Detach` | 幂等；失败 false 不崩进程 |
+| `AttachSensor` / `DetachSensor` | 幂等；失败 false 不崩进程 |
 | `HandleDeviceEvent` | udev 或测试注入 |
-| `hub()` | `SensorHub&` |
+| `GetHub()` | `SensorHub&` |
 | `PushLidarPose` / `SetLidarPoseLookup` | 运动补偿灌姿 |
-| `ReportDiagnostic` | → sink `OnDiagnostic` |
+| `ReportDiagnostic` | → sink `HandleDiagnostic` |
 
 ## SensorHub
 
@@ -162,9 +169,9 @@ manager.Stop();
 
 | 接口 | 时机 |
 |---|---|
-| `OnAttach(sensor, type)` | 开 Writer（相机含 camera_info） |
-| `OnDetach(id)` | 关 Writer |
-| `OnSample(sample)` | 写 Autolink |
+| `HandleSensorAttach(sensor, type)` | 开 Writer（相机含 camera_info） |
+| `HandleSensorDetach(id)` | 关 Writer |
+| `HandleSensorSample(sample)` | 写 Autolink |
 
 `bridge::Publisher` 拥有 Autolink `Node`；核心采集路径不直接调用 `Write`。通道解析见 `ResolveChannel`（`sensor_traits.hpp`）。
 
@@ -179,12 +186,10 @@ bool MatchDevice(const DeviceMatch& observed, const DeviceMatch& rule);
 ## 通道辅助
 
 - `ResolveChannel(channel, id, type, stream)` — 默认话题
-- `bridge::CameraInfoChannelForImage(image_channel)` — 由图像话题推导 camera_info
+- `bridge::CameraInfoChannelForImage`（`bridge/channels.hpp`）— 由图像话题推导 camera_info
 
 ## 相关头文件
 
-| 头文件 | 内容 |
-|---|---|
 | 头文件 | 内容 |
 |---|---|
 | `config_loader.hpp` | YAML 加载 |
@@ -196,6 +201,10 @@ bool MatchDevice(const DeviceMatch& observed, const DeviceMatch& rule);
 | `common/stream.hpp` | Serial/UDP + Reconnect |
 | `common/calibration.hpp` | 外参 YAML |
 | `common/status.hpp` | 健康；→ `/diagnostics` |
+| `common/named_factory.hpp` | `NamedProductFactory` → autolink Factory |
+| `imu/backend_registry.hpp` + `backend_register.hpp` | IMU Registry / 宏 |
+| `gps/backend_registry.hpp` + `backend_register.hpp` | GPS Registry / 宏 |
+| `gps/parser/parser.hpp` | NMEA `GnssParserRegistry` |
 | `camera/backend_registry.hpp` + `backend_register.hpp` | 相机/点云 Registry |
 | `camera/realsense/` / `camera/orbbec/` | 真驱动（需 SDK） |
 | `lidar/backend_registry.hpp` + `backend_register.hpp` | 3D Registry / 宏 |
@@ -204,7 +213,6 @@ bool MatchDevice(const DeviceMatch& observed, const DeviceMatch& rule);
 | `lidar/motion_pose_sink.hpp` / `motion_compensator.hpp` | 补偿 |
 | `lidar/packet_queue.hpp` / `scan_cut.hpp` | 收包 / 切帧 |
 | `canbus/` | Client/Sender/Receiver/ProtocolData |
-| `gps/parser/parser.hpp` | NMEA 工厂 |
 | `radar/` `microphone/` `smartereye/` | stub |
 | `sensor_traits.hpp` | 默认 channel |
 | `types/sensor_*.hpp` | 模态与样本 |
@@ -231,7 +239,7 @@ bool MatchDevice(const DeviceMatch& observed, const DeviceMatch& rule);
 ```cpp
 #include "autodriver/gps/parser/parser.hpp"
 
-auto p = autodriver::gps::GnssParserRegistry::Instance().Create("nmea");
+auto p = autodriver::gps::GnssParserRegistry::Instance().CreateParser("nmea");
 ```
 
 `Consume` 流式喂字节；内置 `nmea` / `nmea0183` → `Nmea0183Parser`。

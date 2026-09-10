@@ -34,7 +34,8 @@
 namespace autodriver {
 namespace hardware {
 
-std::shared_ptr<SensorDriver> CreateLivoxLidarDriver(
+SensorDriver*
+CreateLivoxLidarDriver(
     const SensorId& id, const DriverParams& params) {
     const std::string model = GetString(params, "model", "Mid-360");
     const std::string sdk = GetString(params, "sdk", "");

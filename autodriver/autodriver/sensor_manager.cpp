@@ -81,9 +81,10 @@ bool SensorManager::Initialize() {
     return true;
 }
 
-void SensorManager::SetSink(SampleSink* sink) {
+void SensorManager::SetSampleSink(SampleSink* sink) {
     WriteLock lock(lock_);
     sink_ = sink;
+    WireAlignedPublishing();
 }
 
 bool SensorManager::Start() {
@@ -93,12 +94,13 @@ bool SensorManager::Start() {
     {
         WriteLock lock(lock_);
         running_ = true;
+        WireAlignedPublishing();
         if (config_.alignment.enable) {
             hub_.Start();
         }
         for (const Config::Sensor& sensor : config_.sensors) {
             if (sensor.autostart) {
-                AttachLocked(sensor.id);
+                AttachSensorLocked(sensor.id);
             }
         }
     }
@@ -118,22 +120,22 @@ void SensorManager::Stop() {
         ids.push_back(entry.first);
     }
     for (const SensorId& id : ids) {
-        DetachLocked(id);
+        DetachSensorLocked(id);
     }
     hub_.Stop();
 }
 
-bool SensorManager::Attach(const SensorId& id) {
+bool SensorManager::AttachSensor(const SensorId& id) {
     if (!initialized_ && !Initialize()) {
         return false;
     }
     WriteLock lock(lock_);
-    return AttachLocked(id);
+    return AttachSensorLocked(id);
 }
 
-void SensorManager::Detach(const SensorId& id) {
+void SensorManager::DetachSensor(const SensorId& id) {
     WriteLock lock(lock_);
-    DetachLocked(id);
+    DetachSensorLocked(id);
 }
 
 void SensorManager::HandleDeviceEvent(bool added, const DeviceMatch& device) {
@@ -142,9 +144,9 @@ void SensorManager::HandleDeviceEvent(bool added, const DeviceMatch& device) {
         return;
     }
     if (added) {
-        Attach(id);
+        AttachSensor(id);
     } else {
-        Detach(id);
+        DetachSensor(id);
     }
 }
 
@@ -156,7 +158,8 @@ std::size_t SensorManager::AttachedCount() const {
 }
 
 void SensorManager::SetAlignedCallback(SensorHub::AlignedCallback callback) {
-    hub_.SetAlignedCallback(std::move(callback));
+    user_aligned_callback_ = std::move(callback);
+    WireAlignedPublishing();
 }
 
 void SensorManager::SetRawSampleCallback(SensorHub::RawSampleCallback callback) {
@@ -166,7 +169,7 @@ void SensorManager::SetRawSampleCallback(SensorHub::RawSampleCallback callback) 
 void SensorManager::ReportDiagnostic(
     diagnostics::DiagnosticSnapshot snapshot) {
     if (sink_ != nullptr) {
-        sink_->OnDiagnostic(snapshot);
+        sink_->HandleDiagnostic(snapshot);
     }
 }
 
@@ -202,19 +205,47 @@ bool SensorManager::SetLidarPoseLookup(const SensorId& id,
     return true;
 }
 
-void SensorManager::DispatchSample(std::shared_ptr<SensorSample> sample) {
+void SensorManager::DispatchSensorSample(std::shared_ptr<SensorSample> sample) {
     if (!sample) {
         return;
     }
     if (config_.alignment.enable) {
         hub_.PushSample(sample);
+        if (!config_.alignment.publish_raw) {
+            return;
+        }
     }
     if (sink_ != nullptr) {
-        sink_->OnSample(std::move(sample));
+        sink_->HandleSensorSample(std::move(sample));
     }
 }
 
-const Config::Sensor* SensorManager::FindSensor(const SensorId& id) const {
+void SensorManager::WireAlignedPublishing() {
+    const bool publish_aligned =
+        config_.alignment.enable && config_.alignment.publish_aligned;
+    if (!publish_aligned && !user_aligned_callback_) {
+        hub_.SetAlignedCallback({});
+        return;
+    }
+    SampleSink* sink = sink_;
+    SensorHub::AlignedCallback user = user_aligned_callback_;
+    hub_.SetAlignedCallback(
+        [publish_aligned, sink,
+         user = std::move(user)](const AlignedSnapshot& snapshot) {
+            if (publish_aligned && sink != nullptr) {
+                for (const auto& entry : snapshot.samples) {
+                    if (entry.second) {
+                        sink->HandleSensorSample(entry.second);
+                    }
+                }
+            }
+            if (user) {
+                user(snapshot);
+            }
+        });
+}
+
+const Config::Sensor* SensorManager::FindSensorConfig(const SensorId& id) const {
     for (const Config::Sensor& sensor : config_.sensors) {
         if (sensor.id == id) {
             return &sensor;
@@ -223,7 +254,7 @@ const Config::Sensor* SensorManager::FindSensor(const SensorId& id) const {
     return nullptr;
 }
 
-std::string SensorManager::LibraryPath(const Config::Sensor& sensor) const {
+std::string SensorManager::ResolveLibraryPath(const Config::Sensor& sensor) const {
     const std::string name = NativeLibraryName(sensor.library);
     const std::string dir =
         config_.plugins.empty() ? AUTODRIVER_PLUGIN_DIR : config_.plugins;
@@ -238,32 +269,32 @@ void SensorManager::UnloadIfUnused(const std::string& path) {
         return;
     }
     for (const auto& entry : modules_) {
-        const Config::Sensor* sensor = FindSensor(entry.first);
+        const Config::Sensor* sensor = FindSensorConfig(entry.first);
         if (sensor != nullptr && !sensor->library.empty() &&
-            LibraryPath(*sensor) == path) {
+            ResolveLibraryPath(*sensor) == path) {
             return;
         }
     }
     loaders_.erase(path);
 }
 
-bool SensorManager::AttachLocked(const SensorId& id) {
+bool SensorManager::AttachSensorLocked(const SensorId& id) {
     if (modules_.count(id) != 0) {
         return true;
     }
-    const Config::Sensor* sensor = FindSensor(id);
+    const Config::Sensor* sensor = FindSensorConfig(id);
     if (sensor == nullptr) {
         AERROR << "unknown id: " << id;
         return false;
     }
 
-    std::shared_ptr<SensorModule> instance;
+    SensorModule::SharedPtr instance;
     std::string path;
     if (sensor->library.empty()) {
         autolink::class_loader::ClassLoaderManager manager;
         instance = manager.CreateClassObj<SensorModule>(sensor->module);
     } else {
-        path = LibraryPath(*sensor);
+        path = ResolveLibraryPath(*sensor);
         auto& loader = loaders_[path];
         if (!loader) {
             loader = std::make_unique<autolink::class_loader::ClassLoader>(path);
@@ -281,7 +312,7 @@ bool SensorManager::AttachLocked(const SensorId& id) {
     SensorModule::Context context;
     context.sensor = *sensor;
     context.hook = [this](std::shared_ptr<SensorSample> sample) {
-        DispatchSample(std::move(sample));
+        DispatchSensorSample(std::move(sample));
     };
     if (!instance->Init(context)) {
         AERROR << "module Init failed: " << id;
@@ -291,19 +322,19 @@ bool SensorManager::AttachLocked(const SensorId& id) {
             {id, diagnostics::DeviceStatus::kError, "Init failed", 0});
         return false;
     }
-    if (sink_ != nullptr && !sink_->OnAttach(*sensor, instance->GetType())) {
-        AERROR << "sink OnAttach failed: " << id;
+    if (sink_ != nullptr && !sink_->HandleSensorAttach(*sensor, instance->GetSensorType())) {
+        AERROR << "sink HandleSensorAttach failed: " << id;
         instance->Stop();
         instance.reset();
         UnloadIfUnused(path);
         ReportDiagnostic(
-            {id, diagnostics::DeviceStatus::kError, "OnAttach failed", 0});
+            {id, diagnostics::DeviceStatus::kError, "HandleSensorAttach failed", 0});
         return false;
     }
     if (!instance->Start()) {
         AERROR << "module Start failed: " << id;
         if (sink_ != nullptr) {
-            sink_->OnDetach(id);
+            sink_->HandleSensorDetach(id);
         }
         instance->Stop();
         instance.reset();
@@ -318,21 +349,21 @@ bool SensorManager::AttachLocked(const SensorId& id) {
     return true;
 }
 
-void SensorManager::DetachLocked(const SensorId& id) {
+void SensorManager::DetachSensorLocked(const SensorId& id) {
     auto it = modules_.find(id);
     if (it == modules_.end()) {
         return;
     }
-    const Config::Sensor* sensor = FindSensor(id);
+    const Config::Sensor* sensor = FindSensorConfig(id);
     it->second->Stop();
     it->second.reset();
     modules_.erase(it);
     if (sink_ != nullptr) {
-        sink_->OnDetach(id);
+        sink_->HandleSensorDetach(id);
     }
-    hub_.DropBuffer(id);
+    hub_.DropSampleBuffer(id);
     if (sensor != nullptr && !sensor->library.empty()) {
-        UnloadIfUnused(LibraryPath(*sensor));
+        UnloadIfUnused(ResolveLibraryPath(*sensor));
     }
     AINFO << "detached " << id;
     ReportDiagnostic({id, diagnostics::DeviceStatus::kDisconnected,
@@ -344,7 +375,7 @@ void SensorManager::StartUdev() {
     if (!config_.hotplug.udev || udev_thread_.joinable()) {
         return;
     }
-    udev_thread_ = std::thread([this] { UdevLoop(); });
+    udev_thread_ = std::thread([this] { RunUdevMonitorLoop(); });
 #endif
 }
 
@@ -356,7 +387,7 @@ void SensorManager::StopUdev() {
 #endif
 }
 
-void SensorManager::UdevLoop() {
+void SensorManager::RunUdevMonitorLoop() {
 #ifdef AUTODRIVER_HAVE_UDEV
     udev* udev = udev_new();
     if (udev == nullptr) {

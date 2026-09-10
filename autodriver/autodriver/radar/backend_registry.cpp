@@ -22,55 +22,47 @@ namespace autodriver {
 namespace radar {
 
 RadarBackendRegistry& RadarBackendRegistry::Instance() {
-    static RadarBackendRegistry instance;
-    return instance;
+  static RadarBackendRegistry registry;
+  return registry;
 }
 
-void RadarBackendRegistry::Register(const std::string& name,
-                                    RadarDriverFactory factory) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    factories_[name] = std::move(factory);
+void RadarBackendRegistry::RegisterBackend(const std::string& name,
+    RadarDriverFactory factory) {
+  factory_.Register(name, std::move(factory));
 }
 
-void RadarBackendRegistry::RegisterAlias(const std::string& alias,
-                                         const std::string& canonical) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    aliases_[alias] = canonical;
+void RadarBackendRegistry::RegisterBackendAlias(const std::string& alias,
+    const std::string& canonical) {
+  factory_.RegisterAlias(alias, canonical);
 }
 
-std::string RadarBackendRegistry::Resolve(const std::string& backend) const {
-    const auto it = aliases_.find(backend);
-    return it == aliases_.end() ? backend : it->second;
-}
-
-std::shared_ptr<SensorDriver> RadarBackendRegistry::Create(
+SensorDriver::SharedPtr RadarBackendRegistry::CreateDriver(
     const std::string& backend, const SensorId& id,
     const hardware::DriverParams& params) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    const std::string name = Resolve(backend.empty() ? "conti" : backend);
-    const auto it = factories_.find(name);
-    if (it == factories_.end()) {
-        AERROR << "unknown radar backend: " << backend;
-        return nullptr;
-    }
-    return it->second(id, params);
+  const std::string name =
+      backend.empty() ? "conti" : backend;
+  auto driver = factory_.CreateShared(name, id, params);
+  if (!driver) {
+    AERROR << "unknown radar backend: " << backend;
+  }
+  return driver;
 }
 
-bool RadarBackendRegistry::Has(const std::string& backend) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return factories_.count(Resolve(backend)) > 0;
+bool RadarBackendRegistry::HasBackend(const std::string& backend) const {
+  return factory_.Contains(
+      backend.empty() ? "conti" : backend);
 }
 
 void RegisterRadarBackendWithAliases(
     const std::string& name, RadarDriverFactory factory,
     std::initializer_list<const char*> aliases) {
-    auto& reg = RadarBackendRegistry::Instance();
-    reg.Register(name, std::move(factory));
-    for (const char* alias : aliases) {
-        if (alias && *alias) {
-            reg.RegisterAlias(alias, name);
-        }
+  auto& reg = RadarBackendRegistry::Instance();
+  reg.RegisterBackend(name, std::move(factory));
+  for (const char* alias : aliases) {
+    if (alias != nullptr && *alias != static_cast<char>(0)) {
+      reg.RegisterBackendAlias(alias, name);
     }
+  }
 }
 
 }  // namespace radar

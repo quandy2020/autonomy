@@ -107,10 +107,22 @@ struct Config {
 
     /**
      * @brief Multi-sensor time alignment settings.
+     *
+     * When @c enable is true, every sample is tapped into SensorHub.
+     * @c publish_raw controls whether the same sample still goes to SampleSink
+     * (raw path). @c publish_aligned, when true, makes SensorManager publish
+     * each sample in an AlignedSnapshot through SampleSink (aligned path).
+     * Default matches historical behavior: raw on, aligned off (callback only).
      */
     struct Alignment {
-        // Enable periodic aligned snapshot publishing.
+        // Tap samples into SensorHub and run the alignment loop.
         bool enable = false;
+
+        // When enable is true, also forward raw samples to SampleSink.
+        bool publish_raw = true;
+
+        // When enable is true, publish AlignedSnapshot samples via SampleSink.
+        bool publish_aligned = false;
 
         // Hub options used when alignment is enabled.
         SensorHub::Options options;
@@ -131,28 +143,33 @@ struct Config {
      * When enable=false, ChassisManager is a no-op.
      */
     struct Chassis {
+        /** When false, ChassisManager::Start is a no-op. */
         bool enable = false;
-        // Instance id, e.g. "chassis/base".
+        /** Instance id, e.g. "chassis/base". */
         std::string id = "chassis/base";
-        // Registry backend key (stub / scout / …).
+        /** ChassisBackendRegistry key (stub / scout / …). */
         std::string backend = "stub";
-        // TwistStamped (same body as RobotState.twist).
+        /** Autolink channel for TwistStamped commands. */
         std::string cmd_vel_channel = "/cmd_vel";
-        // vehicle_msgs.RobotState
+        /** Autolink channel for vehicle_msgs.RobotState. */
         std::string state_channel = "/robot_state";
-        // vehicle_msgs.RobotEvent (empty = do not publish)
+        /** Autolink channel for RobotEvent; empty = do not publish. */
         std::string event_channel = "/robot_event";
-        // nav_msgs/Odometry derived from RobotState (empty = skip)
+        /** Autolink channel for nav_msgs/Odometry; empty = skip. */
         std::string odom_channel = "/odom";
-        // Stop if no cmd_vel for this long (0 = disable).
+        /** Soft-stop if no cmd_vel for this long; 0 disables watchdog. */
         int watchdog_ms = 200;
-        // Soft clamp before ApplyCommand (0 = no clamp).
+        /** Soft clamp before ApplyVelocityCommand; 0 = no clamp. */
         double max_linear_speed = 0.0;
+        /** Soft clamp for angular.z; 0 = no clamp. */
         double max_angular_speed = 0.0;
-        // RobotState / odom publish period.
+        /** RobotState / odom publish period in milliseconds. */
         int odom_period_ms = 20;
+        /** Odometry header.frame_id. */
         std::string odom_frame_id = "odom";
+        /** Odometry child_frame_id. */
         std::string base_frame_id = "base_link";
+        /** Backend-specific key/value map passed to CreateDriver. */
         hardware::DriverParams params;
     };
 

@@ -31,7 +31,10 @@ namespace {
 
 using Odometry = automsgs::msgs::nav_msgs::Odometry;
 
-std::uint64_t SteadyNowNs() {
+/**
+ * @brief Steady-clock epoch time in nanoseconds (watchdog / publish cadence).
+ */
+std::uint64_t ReadSteadyTimeNanoseconds() {
   using clock = std::chrono::steady_clock;
   return static_cast<std::uint64_t>(
       std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -54,17 +57,18 @@ bool ChassisManager::Start(autolink::Node* node, const Config& config) {
     return false;
   }
 
+  // Keep stub TU linked when only this manager is used from a binary.
   (void)&CreateStubChassisDriver;
 
   ChassisId id = options_.id.empty() ? "chassis/base" : options_.id;
-  driver_ = ChassisBackendRegistry::Instance().Create(
+  driver_ = ChassisBackendRegistry::Instance().CreateDriver(
       options_.backend, id, options_.params);
   if (!driver_) {
     AERROR << "ChassisManager: failed to create backend=" << options_.backend;
     return false;
   }
   driver_->SetEventCallback(
-      [this](const ChassisEvent& event) { OnDriverEvent(event); });
+      [this](const ChassisEvent& event) { HandleDriverEvent(event); });
   if (!driver_->Start()) {
     AERROR << "ChassisManager: driver Start() failed";
     driver_.reset();
@@ -81,11 +85,13 @@ bool ChassisManager::Start(autolink::Node* node, const Config& config) {
   }
   cmd_reader_ = node_->CreateReader<ChassisCommand>(
       options_.cmd_vel_channel,
-      [this](const std::shared_ptr<ChassisCommand>& msg) { OnCmdVel(msg); });
+      [this](const std::shared_ptr<ChassisCommand>& msg) {
+        HandleVelocityCommand(msg);
+      });
 
-  last_cmd_ns_ = SteadyNowNs();
+  last_cmd_ns_ = ReadSteadyTimeNanoseconds();
   running_ = true;
-  publish_thread_ = std::thread([this] { PublishLoop(); });
+  publish_thread_ = std::thread([this] { RunStatePublishLoop(); });
 
   AINFO << "ChassisManager started backend=" << options_.backend << " id=" << id
         << " cmd=" << options_.cmd_vel_channel
@@ -105,7 +111,7 @@ void ChassisManager::Stop() {
   odom_writer_.reset();
   if (driver_) {
     if (was_running) {
-      driver_->EmergencyStop();
+      driver_->TriggerEmergencyStop();
     }
     driver_->Stop();
     driver_.reset();
@@ -113,7 +119,8 @@ void ChassisManager::Stop() {
   node_ = nullptr;
 }
 
-ChassisCommand ChassisManager::Clamp(const ChassisCommand& in) const {
+ChassisCommand ChassisManager::ClampVelocityCommand(
+    const ChassisCommand& in) const {
   ChassisCommand out = in;
   if (!out.has_twist()) {
     return out;
@@ -135,23 +142,24 @@ ChassisCommand ChassisManager::Clamp(const ChassisCommand& in) const {
   return out;
 }
 
-void ChassisManager::OnCmdVel(const std::shared_ptr<ChassisCommand>& msg) {
+void ChassisManager::HandleVelocityCommand(
+    const std::shared_ptr<ChassisCommand>& msg) {
   if (!msg || !driver_ || !running_.load()) {
     return;
   }
-  ChassisCommand cmd = Clamp(*msg);
+  ChassisCommand cmd = ClampVelocityCommand(*msg);
   std::lock_guard<std::mutex> lock(mutex_);
-  last_cmd_ns_ = SteadyNowNs();
-  driver_->ApplyCommand(cmd);
+  last_cmd_ns_ = ReadSteadyTimeNanoseconds();
+  driver_->ApplyVelocityCommand(cmd);
 }
 
-void ChassisManager::OnDriverEvent(const ChassisEvent& event) {
+void ChassisManager::HandleDriverEvent(const ChassisEvent& event) {
   if (event_writer_) {
     event_writer_->Write(event);
   }
 }
 
-void ChassisManager::ApplyWatchdogLocked(std::uint64_t now_ns) {
+void ChassisManager::ApplyCommandWatchdogLocked(std::uint64_t now_ns) {
   if (options_.watchdog_ms <= 0 || !driver_) {
     return;
   }
@@ -159,21 +167,22 @@ void ChassisManager::ApplyWatchdogLocked(std::uint64_t now_ns) {
       static_cast<std::uint64_t>(options_.watchdog_ms) * 1'000'000ULL;
   if (now_ns > last_cmd_ns_ && (now_ns - last_cmd_ns_) > timeout_ns) {
     ChassisCommand stop;
-    SetTimestampNs(stop.mutable_header()->mutable_stamp(), now_ns);
-    driver_->ApplyCommand(stop);
+    FillTimestampFromNanoseconds(stop.mutable_header()->mutable_stamp(),
+                                 now_ns);
+    driver_->ApplyVelocityCommand(stop);
   }
 }
 
-void ChassisManager::PublishLoop() {
+void ChassisManager::RunStatePublishLoop() {
   const int period_ms =
       options_.odom_period_ms > 0 ? options_.odom_period_ms : 20;
   while (running_.load()) {
     {
       std::lock_guard<std::mutex> lock(mutex_);
-      ApplyWatchdogLocked(SteadyNowNs());
+      ApplyCommandWatchdogLocked(ReadSteadyTimeNanoseconds());
       if (driver_) {
         ChassisState state;
-        if (driver_->GetState(&state)) {
+        if (driver_->ReadChassisState(&state)) {
           if (state.global_frame().empty()) {
             state.set_global_frame(options_.odom_frame_id);
           }
@@ -182,8 +191,8 @@ void ChassisManager::PublishLoop() {
           }
           if (odom_writer_) {
             Odometry odom;
-            RobotStateToOdometry(state, options_.odom_frame_id,
-                                 options_.base_frame_id, &odom);
+            ConvertRobotStateToOdometry(state, options_.odom_frame_id,
+                                        options_.base_frame_id, &odom);
             odom_writer_->Write(odom);
           }
         }

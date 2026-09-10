@@ -31,6 +31,7 @@ ctest --test-dir build -R 'test_(config|config_loader|manager|hub|lidar|camera|r
 | `test_compensator_calibration` | `test_compensator_calibration.cpp` | 补偿与校准 YAML |
 | `test_lidar_backend_registry` | `test_lidar_backend_registry.cpp` | 3D Registry/alias |
 | `test_camera_backend_registry` | `test_camera_backend_registry.cpp` | 相机 Registry |
+| `test_chassis_backend_registry` | `test_chassis_backend_registry.cpp` | 底盘 Registry（stub） |
 | `test_canbus_skeleton` | `test_canbus_skeleton.cpp` | FakeCan / Protocol |
 | `test_skeleton_modules` | `test_skeleton_modules.cpp` | stub Module 可加载 |
 

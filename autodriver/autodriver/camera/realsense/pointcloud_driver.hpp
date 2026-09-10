@@ -29,6 +29,7 @@
 #include "autodriver/camera/realsense/device_hub.hpp"
 #include "autodriver/sensor_driver.hpp"
 #include "autodriver/sensor_id.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace hardware {
@@ -36,7 +37,8 @@ namespace hardware {
 /**
  * @brief Factory used by Lidar3dModule.
  */
-std::shared_ptr<SensorDriver> CreateRealSensePointCloudDriver(
+SensorDriver*
+CreateRealSensePointCloudDriver(
     const SensorId& id, const DriverParams& params);
 
 /**
@@ -45,6 +47,11 @@ std::shared_ptr<SensorDriver> CreateRealSensePointCloudDriver(
  */
 class RealSensePointCloudDriver : public SensorDriver {
  public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(RealSensePointCloudDriver)
+
   /**
    * @brief Parses resolution params and stores sensor identity.
    */
@@ -59,7 +66,7 @@ class RealSensePointCloudDriver : public SensorDriver {
    * @brief Report sensor type
    * @return SensorType::kLidar3d
    */
-  SensorType GetType() const override { return SensorType::kLidar3d; }
+  SensorType GetSensorType() const override { return SensorType::kLidar3d; }
 
   /**
    * @brief Return this driver's sensor identifier
@@ -107,7 +114,7 @@ class RealSensePointCloudDriver : public SensorDriver {
     std::atomic<bool> running_{false};
 
     // Shared device hub managing the librealsense pipeline.
-    std::shared_ptr<io::RealSenseDeviceHub> hub_;
+    io::RealSenseDeviceHub::SharedPtr hub_{nullptr};
 
     // Hub subscription handle returned by SubscribePointCloud().
     std::uint64_t subscription_id_{0};

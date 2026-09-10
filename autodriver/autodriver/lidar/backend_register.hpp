@@ -28,7 +28,7 @@
  * @brief Register a lidar backend at static init time.
  * @param tag Unique C++ identifier suffix for the registrar object.
  * @param name Canonical backend string (e.g. "velodyne").
- * @param factory Create function (may return nullptr).
+ * @param factory Creator returning owning SensorDriver* (nullptr ok for stubs).
  * @param ... Optional alias string literals (e.g. "udp").
  */
 #define REGISTER_LIDAR_BACKEND(tag, name, factory, ...)                     \

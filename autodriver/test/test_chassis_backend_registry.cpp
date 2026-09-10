@@ -24,26 +24,30 @@
 namespace {
 
 TEST(ChassisBackendRegistry, StubCreateAndDrive) {
-  ASSERT_TRUE(autodriver::chassis::ChassisBackendRegistry::Instance().Has(
+  ASSERT_TRUE(autodriver::chassis::ChassisBackendRegistry::Instance().HasBackend(
       "stub"));
-  ASSERT_TRUE(autodriver::chassis::ChassisBackendRegistry::Instance().Has(
+  ASSERT_TRUE(autodriver::chassis::ChassisBackendRegistry::Instance().HasBackend(
       "sim"));
 
   autodriver::hardware::DriverParams params;
-  auto driver = autodriver::chassis::ChassisBackendRegistry::Instance().Create(
-      "stub", "chassis/test", params);
+  auto driver =
+      autodriver::chassis::ChassisBackendRegistry::Instance().CreateDriver(
+          "stub", "chassis/test", params);
   ASSERT_NE(driver, nullptr);
   EXPECT_TRUE(driver->Start());
   EXPECT_TRUE(driver->IsRunning());
 
   autodriver::chassis::ChassisCommand cmd;
-  cmd.linear_x = 0.5;
-  cmd.angular_z = 0.1;
-  EXPECT_TRUE(driver->ApplyCommand(cmd));
+  cmd.mutable_twist()->mutable_linear()->set_x(0.5);
+  cmd.mutable_twist()->mutable_angular()->set_z(0.1);
+  EXPECT_TRUE(driver->ApplyVelocityCommand(cmd));
 
   autodriver::chassis::ChassisState state;
-  EXPECT_TRUE(driver->GetState(&state));
-  EXPECT_NEAR(state.linear_x, 0.5, 1e-6);
+  EXPECT_TRUE(driver->ReadChassisState(&state));
+  ASSERT_TRUE(state.has_twist());
+  ASSERT_TRUE(state.twist().has_twist());
+  EXPECT_NEAR(state.twist().twist().linear().x(), 0.5, 1e-6);
+  EXPECT_NEAR(state.twist().twist().angular().z(), 0.1, 1e-6);
 
   driver->Stop();
   EXPECT_FALSE(driver->IsRunning());
@@ -51,8 +55,9 @@ TEST(ChassisBackendRegistry, StubCreateAndDrive) {
 
 TEST(ChassisBackendRegistry, UnknownBackend) {
   autodriver::hardware::DriverParams params;
-  auto driver = autodriver::chassis::ChassisBackendRegistry::Instance().Create(
-      "no_such_vendor", "chassis/x", params);
+  auto driver =
+      autodriver::chassis::ChassisBackendRegistry::Instance().CreateDriver(
+          "no_such_vendor", "chassis/x", params);
   EXPECT_EQ(driver, nullptr);
 }
 

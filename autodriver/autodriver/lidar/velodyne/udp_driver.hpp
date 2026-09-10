@@ -41,6 +41,7 @@
 #include "autodriver/lidar/velodyne/calibration.hpp"
 #include "autodriver/lidar/velodyne/packet.hpp"
 #include "autodriver/sensor_driver.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace hardware {
@@ -58,10 +59,15 @@ class VelodyneUdpDriver : public SensorDriver,
                           public lidar::LidarComponentBase,
                           public lidar::MotionPoseSink {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(VelodyneUdpDriver)
+
     VelodyneUdpDriver(SensorId id, DriverParams params);
     ~VelodyneUdpDriver() override;
 
-    SensorType GetType() const override { return SensorType::kLidar3d; }
+    SensorType GetSensorType() const override { return SensorType::kLidar3d; }
     const SensorId& GetSensorId() const override { return id_; }
 
     bool Start() override;
@@ -71,7 +77,7 @@ public:
 
     void SetPoseLookup(lidar::PoseLookup lookup) override;
     void PushPose(std::uint64_t time_ns, const Eigen::Affine3d& pose) override;
-    std::shared_ptr<lidar::PoseBuffer> pose_buffer() const override {
+    lidar::PoseBuffer::SharedPtr pose_buffer() const override {
         return pose_buffer_;
     }
 
@@ -100,12 +106,12 @@ private:
     SensorId id_;
     DriverParams params_;
     SampleCallback callback_;
-    std::unique_ptr<common::Stream> stream_;
+    std::unique_ptr<common::Stream> stream_{nullptr};
     std::atomic<bool> running_{false};
     std::thread reader_;
     std::thread processor_;
     std::unique_ptr<lidar::PacketQueue<lidar::velodyne::PacketBuffer>>
-        packet_queue_;
+        packet_queue_{nullptr};
 
     int data_port_ = 2368;
     int packets_per_scan_ = 75;
@@ -118,15 +124,16 @@ private:
     std::string frame_id_ = "velodyne";
     std::string bind_host_;
     bool enable_compensator_ = false;
-    std::unique_ptr<lidar::MotionCompensator> compensator_;
-    std::shared_ptr<lidar::PoseBuffer> pose_buffer_;
+    std::unique_ptr<lidar::MotionCompensator> compensator_{nullptr};
+    lidar::PoseBuffer::SharedPtr pose_buffer_{nullptr};
     lidar::velodyne::BeamCalibration calibration_;
 
     std::mutex scan_mutex_;
     lidar::velodyne::ScanPackets scan_;
 };
 
-std::shared_ptr<SensorDriver> CreateVelodyneUdpDriver(
+SensorDriver*
+CreateVelodyneUdpDriver(
     const SensorId& id, const DriverParams& params);
 
 }  // namespace hardware

@@ -29,6 +29,7 @@
 #include "autodriver/canbus/can_receiver.hpp"
 #include "autodriver/driver_params.hpp"
 #include "autodriver/sensor_driver.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace hardware {
@@ -49,10 +50,15 @@ struct GpsCanFix {
  */
 class CanGpsDriver : public SensorDriver {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(CanGpsDriver)
+
     CanGpsDriver(SensorId id, DriverParams params);
     ~CanGpsDriver() override;
 
-    SensorType GetType() const override { return SensorType::kGps; }
+    SensorType GetSensorType() const override { return SensorType::kGps; }
     const SensorId& GetSensorId() const override { return id_; }
 
     bool Start() override;
@@ -73,9 +79,10 @@ private:
 };
 
 /**
- * @brief Factory for CanGpsDriver (used by GpsModule backend "can").
+ * @brief Factory for GpsBackendRegistry (REGISTER_GPS_BACKEND "can").
  */
-std::shared_ptr<SensorDriver> CreateCanGpsDriver(const SensorId& id,
+SensorDriver*
+CreateCanGpsDriver(const SensorId& id,
                                                  const DriverParams& params);
 
 }  // namespace hardware

@@ -50,19 +50,19 @@ int Run(const std::string& configuration_directory,
         return 1;
     }
     autodriver::SensorManager manager(config);
-    manager.SetSink(&publisher);
+    manager.SetSampleSink(&publisher);
     if (!manager.Initialize() || !manager.Start()) {
         AERROR << "SensorManager failed";
         return 1;
     }
     autodriver::bridge::PoseFeeder pose_feeder;
-    if (!pose_feeder.Start(publisher.node(), &manager, config)) {
+    if (!pose_feeder.Start(publisher.GetNode(), &manager, config)) {
         AERROR << "PoseFeeder failed";
         manager.Stop();
         return 1;
     }
     autodriver::chassis::ChassisManager chassis;
-    if (!chassis.Start(publisher.node(), config)) {
+    if (!chassis.Start(publisher.GetNode(), config)) {
         AERROR << "ChassisManager failed";
         pose_feeder.Stop();
         manager.Stop();

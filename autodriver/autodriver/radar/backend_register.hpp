@@ -28,7 +28,7 @@
  * @brief Register a radar backend at static init time.
  * @param tag Unique C++ identifier suffix for the registrar object.
  * @param name Canonical backend string (e.g. "conti").
- * @param factory Create function (may return nullptr for stubs).
+ * @param factory Creator returning owning SensorDriver* (nullptr ok for stubs).
  * @param ... Optional alias string literals (e.g. "continental").
  */
 #define REGISTER_RADAR_BACKEND(tag, name, factory, ...)                       \

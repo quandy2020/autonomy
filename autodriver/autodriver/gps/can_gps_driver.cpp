@@ -86,10 +86,15 @@ void CanGpsDriver::OnFix(const GpsCanFix& fix) {
                automsgs::msgs::sensor_msgs::NavSatStatus::STATUS_FIX)));
 }
 
-std::shared_ptr<SensorDriver> CreateCanGpsDriver(const SensorId& id,
+SensorDriver*
+CreateCanGpsDriver(const SensorId& id,
                                                  const DriverParams& params) {
-    return std::make_shared<CanGpsDriver>(id, params);
+    return new CanGpsDriver(id, params);
 }
 
 }  // namespace hardware
 }  // namespace autodriver
+
+#include "autodriver/gps/backend_register.hpp"
+
+REGISTER_GPS_BACKEND(can, "can", autodriver::hardware::CreateCanGpsDriver, "");

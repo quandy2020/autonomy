@@ -81,7 +81,8 @@ void RpLidarSerialDriver::DisconnectDevice() {}
 bool RpLidarSerialDriver::StartMotorAndScan() { return false; }
 void RpLidarSerialDriver::CaptureLoop() {}
 
-std::shared_ptr<SensorDriver> CreateRpLidarDriver(
+SensorDriver*
+CreateRpLidarDriver(
     const SensorId& /*id*/, const hardware::DriverParams& /*params*/) {
     AERROR << "RPLidar SDK not available; install via "
               "scripts/install_rplidar_sdk.sh and rebuild with "
@@ -361,9 +362,10 @@ void RpLidarSerialDriver::CaptureLoop() {
     }
 }
 
-std::shared_ptr<SensorDriver> CreateRpLidarDriver(
+SensorDriver*
+CreateRpLidarDriver(
     const SensorId& id, const hardware::DriverParams& params) {
-    return std::make_shared<RpLidarSerialDriver>(id, params);
+    return new RpLidarSerialDriver(id, params);
 }
 
 #endif  // AUTODRIVER_HAVE_RPLIDAR

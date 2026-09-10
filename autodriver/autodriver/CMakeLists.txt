@@ -36,7 +36,9 @@ set(AUTODRIVER_SOURCES
   microphone/respeaker_driver.cpp
   gps/nmea_0183.cpp
   gps/parser/parser.cpp
+  gps/backend_registry.cpp
   imu/wit_motion_parser.cpp
+  imu/backend_registry.cpp
   time_synchronization.cpp
   sample_buffer.cpp
   sensor_hub.cpp

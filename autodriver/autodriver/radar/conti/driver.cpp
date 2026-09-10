@@ -22,7 +22,8 @@
 namespace autodriver {
 namespace hardware {
 
-std::shared_ptr<SensorDriver> CreateContiRadarDriver(
+SensorDriver*
+CreateContiRadarDriver(
     const SensorId& id, const DriverParams& /*params*/) {
     AERROR << "Conti radar backend not implemented (id=" << id
            << "); add ProtocolData table under radar/conti/ "

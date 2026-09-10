@@ -29,6 +29,7 @@
 
 #include "autodriver/lidar/motion_compensator.hpp"
 #include "autodriver/lidar/pose_buffer.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace lidar {
@@ -43,6 +44,11 @@ namespace lidar {
  */
 class MotionPoseSink {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(MotionPoseSink)
+
     virtual ~MotionPoseSink() = default;
 
     /** Append a stamped pose (nanoseconds) to the built-in PoseBuffer. */

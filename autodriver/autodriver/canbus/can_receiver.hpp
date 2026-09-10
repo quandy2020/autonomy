@@ -29,6 +29,7 @@
 
 #include "autodriver/canbus/protocol_data.hpp"
 #include "autodriver/common/can_socket.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace canbus {
@@ -44,16 +45,26 @@ namespace canbus {
 template <typename T>
 class CanReceiver {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(CanReceiver)
+
+  /**
+   * @brief Disable copy construction and copy assignment.
+   */
+  DISALLOW_COPY_AND_ASSIGN(CanReceiver)
+
     // Optional hook invoked for every received frame before MessageManager.
     using FrameHook = std::function<void(const io::CanFrame&)>;
 
+    /**
+     * @brief Construct an idle receiver; call Start() to open the CAN interface.
+     */
     CanReceiver() = default;
     ~CanReceiver() { Stop(); }
 
-    CanReceiver(const CanReceiver&) = delete;
-    CanReceiver& operator=(const CanReceiver&) = delete;
-
-    /**
+  /**
      * @brief Access the MessageManager for Register / SetPublishCallback.
      */
     MessageManager<T>& manager() { return manager_; }

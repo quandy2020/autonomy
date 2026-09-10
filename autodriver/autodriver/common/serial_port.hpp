@@ -47,11 +47,7 @@ public:
   ~SerialPort();
 
   SerialPort(const SerialPort &) = delete;
-
-  /**
-   * @brief Copy assignment operator (deleted)
-   */
-  SerialPort & operator=(const SerialPort &) = delete;
+SerialPort & operator=(const SerialPort &) = delete;
 
   /**
    * @brief Opens a TTY device in raw 8N1 mode at the given baud rate.

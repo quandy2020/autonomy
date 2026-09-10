@@ -40,7 +40,8 @@ namespace hardware {
  * @param id Sensor id (e.g. mic/cabin).
  * @param params Device path / sample rate when implemented.
  */
-std::shared_ptr<SensorDriver> CreateRespeakerMicrophoneDriver(
+SensorDriver*
+CreateRespeakerMicrophoneDriver(
     const SensorId& id, const DriverParams& params);
 
 }  // namespace hardware

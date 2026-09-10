@@ -28,7 +28,7 @@
  * @brief Register a microphone backend at static init time.
  * @param tag Unique C++ identifier suffix for the registrar object.
  * @param name Canonical backend string (e.g. "respeaker").
- * @param factory Create function (may return nullptr for stubs).
+ * @param factory Creator returning owning SensorDriver* (nullptr ok for stubs).
  * @param ... Optional alias string literals.
  */
 #define REGISTER_MICROPHONE_BACKEND(tag, name, factory, ...)                  \

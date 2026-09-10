@@ -30,6 +30,7 @@
 #include "autodriver/camera/orbbec/device_hub.hpp"
 #include "autodriver/driver_params.hpp"
 #include "autodriver/sensor_driver.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace hardware {
@@ -43,10 +44,15 @@ namespace hardware {
  */
 class OrbbecCameraDriver : public SensorDriver {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(OrbbecCameraDriver)
+
     OrbbecCameraDriver(SensorId id, DriverParams params);
     ~OrbbecCameraDriver() override;
 
-    SensorType GetType() const override { return SensorType::kCamera; }
+    SensorType GetSensorType() const override { return SensorType::kCamera; }
     const SensorId& GetSensorId() const override { return id_; }
 
     bool Start() override;
@@ -61,7 +67,7 @@ private:
     int width_{640};
     int height_{480};
     int fps_{30};
-    std::shared_ptr<io::OrbbecDeviceHub> hub_;
+    io::OrbbecDeviceHub::SharedPtr hub_{nullptr};
     std::uint64_t subscription_id_{0};
     SampleCallback callback_;
     std::atomic<bool> running_{false};
@@ -70,7 +76,8 @@ private:
 /**
  * @brief Factory for OrbbecCameraDriver (CameraBackendRegistry).
  */
-std::shared_ptr<SensorDriver> CreateOrbbecCameraDriver(
+SensorDriver*
+CreateOrbbecCameraDriver(
     const SensorId& id, const DriverParams& params);
 
 }  // namespace hardware

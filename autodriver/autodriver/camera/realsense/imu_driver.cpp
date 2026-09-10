@@ -93,10 +93,16 @@ void RealSenseImuDriver::SetSampleCallback(SampleCallback callback) {
     callback_ = std::move(callback);
 }
 
-std::shared_ptr<SensorDriver> CreateRealSenseImuDriver(const SensorId& id,
+SensorDriver*
+CreateRealSenseImuDriver(const SensorId& id,
                                                        const DriverParams& params) {
-    return std::make_shared<RealSenseImuDriver>(id, params);
+    return new RealSenseImuDriver(id, params);
 }
 
 }  // namespace hardware
 }  // namespace autodriver
+
+#include "autodriver/imu/backend_register.hpp"
+
+REGISTER_IMU_BACKEND(realsense, "realsense",
+                     autodriver::hardware::CreateRealSenseImuDriver, "");

@@ -16,8 +16,6 @@
 
 #include "autodriver/camera/backend_registry.hpp"
 
-#include <utility>
-
 #include "autolink/common/log.hpp"
 
 namespace autodriver {
@@ -25,148 +23,91 @@ namespace camera {
 namespace {
 
 template <typename Registry>
-std::string ResolveLocked(
-    const Registry& /*unused*/,
-    const std::unordered_map<std::string, std::string>& aliases,
-    const std::string& backend) {
-    const auto it = aliases.find(backend);
-    if (it != aliases.end()) {
-        return it->second;
+void RegisterAliases(Registry& reg, const std::string& name,
+                     std::initializer_list<const char*> aliases) {
+  for (const char* alias : aliases) {
+    if (alias != nullptr && *alias != static_cast<char>(0)) {
+      reg.RegisterBackendAlias(alias, name);
     }
-    return backend;
+  }
 }
 
 }  // namespace
 
 CameraBackendRegistry& CameraBackendRegistry::Instance() {
-    static CameraBackendRegistry registry;
-    return registry;
+  static CameraBackendRegistry registry;
+  return registry;
 }
 
-void CameraBackendRegistry::Register(const std::string& name,
-                                     CameraDriverFactory factory) {
-    if (name.empty() || !factory) {
-        AERROR << "CameraBackendRegistry::Register: empty name or factory";
-        return;
-    }
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (factories_.count(name) != 0) {
-        AWARN << "CameraBackendRegistry: overwriting backend \"" << name
-              << "\"";
-    }
-    factories_[name] = std::move(factory);
+void CameraBackendRegistry::RegisterBackend(const std::string& name,
+                                            CameraDriverFactory factory) {
+  factory_.Register(name, std::move(factory));
 }
 
-void CameraBackendRegistry::RegisterAlias(const std::string& alias,
-                                          const std::string& canonical) {
-    if (alias.empty() || canonical.empty()) {
-        return;
-    }
-    std::lock_guard<std::mutex> lock(mutex_);
-    aliases_[alias] = canonical;
+void CameraBackendRegistry::RegisterBackendAlias(
+    const std::string& alias, const std::string& canonical) {
+  factory_.RegisterAlias(alias, canonical);
 }
 
-std::string CameraBackendRegistry::Resolve(const std::string& backend) const {
-    return ResolveLocked(*this, aliases_, backend);
-}
-
-bool CameraBackendRegistry::Has(const std::string& backend) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return factories_.count(Resolve(backend)) != 0;
-}
-
-std::shared_ptr<SensorDriver> CameraBackendRegistry::Create(
+SensorDriver::SharedPtr CameraBackendRegistry::CreateDriver(
     const std::string& backend, const SensorId& id,
     const hardware::DriverParams& params) const {
-    CameraDriverFactory factory;
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        const auto it = factories_.find(Resolve(backend));
-        if (it == factories_.end()) {
-            AERROR << "unsupported camera backend: " << backend;
-            return nullptr;
-        }
-        factory = it->second;
-    }
-    return factory(id, params);
+  const std::string name = backend.empty() ? "realsense" : backend;
+  auto driver = factory_.CreateShared(name, id, params);
+  if (!driver) {
+    AERROR << "unsupported camera backend: " << name;
+  }
+  return driver;
+}
+
+bool CameraBackendRegistry::HasBackend(const std::string& backend) const {
+  return factory_.Contains(backend.empty() ? "realsense" : backend);
 }
 
 PointCloudBackendRegistry& PointCloudBackendRegistry::Instance() {
-    static PointCloudBackendRegistry registry;
-    return registry;
+  static PointCloudBackendRegistry registry;
+  return registry;
 }
 
-void PointCloudBackendRegistry::Register(const std::string& name,
-                                         PointCloudDriverFactory factory) {
-    if (name.empty() || !factory) {
-        AERROR << "PointCloudBackendRegistry::Register: empty name or factory";
-        return;
-    }
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (factories_.count(name) != 0) {
-        AWARN << "PointCloudBackendRegistry: overwriting backend \"" << name
-              << "\"";
-    }
-    factories_[name] = std::move(factory);
+void PointCloudBackendRegistry::RegisterBackend(
+    const std::string& name, PointCloudDriverFactory factory) {
+  factory_.Register(name, std::move(factory));
 }
 
-void PointCloudBackendRegistry::RegisterAlias(const std::string& alias,
-                                              const std::string& canonical) {
-    if (alias.empty() || canonical.empty()) {
-        return;
-    }
-    std::lock_guard<std::mutex> lock(mutex_);
-    aliases_[alias] = canonical;
+void PointCloudBackendRegistry::RegisterBackendAlias(
+    const std::string& alias, const std::string& canonical) {
+  factory_.RegisterAlias(alias, canonical);
 }
 
-std::string PointCloudBackendRegistry::Resolve(
-    const std::string& backend) const {
-    return ResolveLocked(*this, aliases_, backend);
-}
-
-bool PointCloudBackendRegistry::Has(const std::string& backend) const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return factories_.count(Resolve(backend)) != 0;
-}
-
-std::shared_ptr<SensorDriver> PointCloudBackendRegistry::Create(
+SensorDriver::SharedPtr PointCloudBackendRegistry::CreateDriver(
     const std::string& backend, const SensorId& id,
     const hardware::DriverParams& params) const {
-    PointCloudDriverFactory factory;
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        const auto it = factories_.find(Resolve(backend));
-        if (it == factories_.end()) {
-            AERROR << "unsupported point cloud backend: " << backend;
-            return nullptr;
-        }
-        factory = it->second;
-    }
-    return factory(id, params);
+  const std::string name = backend.empty() ? "realsense" : backend;
+  auto driver = factory_.CreateShared(name, id, params);
+  if (!driver) {
+    AERROR << "unsupported point cloud backend: " << name;
+  }
+  return driver;
+}
+
+bool PointCloudBackendRegistry::HasBackend(const std::string& backend) const {
+  return factory_.Contains(backend.empty() ? "realsense" : backend);
 }
 
 void RegisterCameraBackendWithAliases(
     const std::string& name, CameraDriverFactory factory,
     std::initializer_list<const char*> aliases) {
-    auto& reg = CameraBackendRegistry::Instance();
-    reg.Register(name, std::move(factory));
-    for (const char* alias : aliases) {
-        if (alias != nullptr && alias[0] != '\0') {
-            reg.RegisterAlias(alias, name);
-        }
-    }
+  auto& reg = CameraBackendRegistry::Instance();
+  reg.RegisterBackend(name, std::move(factory));
+  RegisterAliases(reg, name, aliases);
 }
 
 void RegisterPointCloudBackendWithAliases(
     const std::string& name, PointCloudDriverFactory factory,
     std::initializer_list<const char*> aliases) {
-    auto& reg = PointCloudBackendRegistry::Instance();
-    reg.Register(name, std::move(factory));
-    for (const char* alias : aliases) {
-        if (alias != nullptr && alias[0] != '\0') {
-            reg.RegisterAlias(alias, name);
-        }
-    }
+  auto& reg = PointCloudBackendRegistry::Instance();
+  reg.RegisterBackend(name, std::move(factory));
+  RegisterAliases(reg, name, aliases);
 }
 
 }  // namespace camera

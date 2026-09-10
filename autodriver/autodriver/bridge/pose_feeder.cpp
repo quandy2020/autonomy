@@ -31,7 +31,7 @@ using Odometry = automsgs::msgs::nav_msgs::Odometry;
 
 }  // namespace
 
-Eigen::Affine3d Affine3dFromPose(
+Eigen::Affine3d ConvertPoseToAffine3d(
     const automsgs::msgs::geometry_msgs::Pose& pose) {
     Eigen::Affine3d out = Eigen::Affine3d::Identity();
     out.translation() = Eigen::Vector3d(pose.position().x(), pose.position().y(),
@@ -45,7 +45,7 @@ Eigen::Affine3d Affine3dFromPose(
     return out;
 }
 
-std::uint64_t StampToNanoseconds(
+std::uint64_t ConvertStampToNanoseconds(
     const automsgs::msgs::builtin_interfaces::Time& stamp) {
     return static_cast<std::uint64_t>(stamp.sec()) * 1'000'000'000ULL +
            static_cast<std::uint64_t>(stamp.nanosec());
@@ -103,14 +103,14 @@ bool PoseFeeder::Start(autolink::Node* node, SensorManager* manager,
         return false;
     }
     if (node == nullptr) {
-        AWARN << "PoseFeeder: no Autolink node; use FeedOdometry to inject";
+        AWARN << "PoseFeeder: no Autolink node; use FeedOdometryMessage to inject";
         return true;
     }
     for (const auto& entry : targets_) {
         const std::string channel = entry.first;
         auto reader = node->CreateReader<Odometry>(
             channel, [this, channel](const std::shared_ptr<Odometry>& msg) {
-                OnOdometry(channel, msg);
+                HandleOdometryMessage(channel, msg);
             });
         if (!reader) {
             AERROR << "PoseFeeder: CreateReader failed for " << channel;
@@ -130,12 +130,12 @@ void PoseFeeder::Stop() {
     manager_ = nullptr;
 }
 
-void PoseFeeder::FeedOdometry(const std::string& channel,
+void PoseFeeder::FeedOdometryMessage(const std::string& channel,
                               const std::shared_ptr<Odometry>& msg) {
-    OnOdometry(channel, msg);
+    HandleOdometryMessage(channel, msg);
 }
 
-void PoseFeeder::OnOdometry(const std::string& channel,
+void PoseFeeder::HandleOdometryMessage(const std::string& channel,
                             const std::shared_ptr<Odometry>& msg) {
     if (!msg || manager_ == nullptr) {
         return;
@@ -145,9 +145,9 @@ void PoseFeeder::OnOdometry(const std::string& channel,
         return;
     }
     const std::uint64_t time_ns =
-        StampToNanoseconds(msg->header().stamp());
+        ConvertStampToNanoseconds(msg->header().stamp());
     const Eigen::Affine3d odom_pose =
-        Affine3dFromPose(msg->pose().pose().pose());
+        ConvertPoseToAffine3d(msg->pose().pose().pose());
     for (const PoseFeedTarget& target : it->second) {
         const Eigen::Affine3d world_T_lidar = odom_pose * target.base_T_lidar;
         if (!manager_->PushLidarPose(target.id, time_ns, world_T_lidar)) {

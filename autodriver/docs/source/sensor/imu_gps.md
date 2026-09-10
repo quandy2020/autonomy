@@ -6,7 +6,8 @@
 |---|---|
 | YAML | `imu` |
 | 消息 | `sensor_msgs/Imu` |
-| backend | `serial`（默认）、`can`、板载 `realsense`/`orbbec` |
+| backend | `serial`（默认）、`can`、`realsense`（需 librealsense） |
+| Registry | `ImuBackendRegistry` / `REGISTER_IMU_BACKEND` |
 | 源码 | `autodriver/imu/` |
 
 ```yaml
@@ -33,6 +34,7 @@ imu:
 | YAML | `gps` |
 | 消息 | `NavSatFix` |
 | backend | `serial`（NMEA）、`can` |
+| Registry | `GpsBackendRegistry` / `REGISTER_GPS_BACKEND` |
 | 源码 | `autodriver/gps/` + `gps/parser` |
 
 ```yaml
@@ -44,4 +46,4 @@ gps:
     baudrate: 9600
 ```
 
-工厂：`GnssParserRegistry::Create("nmea"|"nmea0183")`。扩展二进制协议只加 Parser，不改 Module。
+工厂：`GnssParserRegistry::CreateParser("nmea"|"nmea0183")`。扩展二进制协议只加 Parser，不改 Module。

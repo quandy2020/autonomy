@@ -28,72 +28,81 @@
 #include "autodriver/sensor_id.hpp"
 #include "autodriver/types/sensor_sample.hpp"
 #include "autodriver/types/sensor_type.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 
 /**
  * @class autodriver::SensorDriver
  * @brief Hardware backend that pushes timestamped samples on its capture thread.
+ *
+ * Created by BackendRegistry creators (owning raw pointer → SharedPtr). Modules
+ * call Start/Stop; samples go to SetSampleCallback on the driver thread.
  */
 class SensorDriver {
 public:
-    // Callback invoked for each captured sample on the driver thread.
-    using SampleCallback =
-        std::function<void(std::unique_ptr<SensorSample> sample)>;
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(SensorDriver)
 
-    /**
-     * @brief Copy construction is disabled.
-     */
-    SensorDriver(const SensorDriver&) = delete;
-    /**
-     * @brief Copy assignment is disabled.
-     */
-    SensorDriver& operator=(const SensorDriver&) = delete;
-    /**
-     * @brief Virtual destructor for polymorphic drivers.
-     */
-    virtual ~SensorDriver() = default;
+  /**
+   * @brief Disable copy construction and copy assignment.
+   */
+  DISALLOW_COPY_AND_ASSIGN(SensorDriver)
 
-    /**
-     * @brief Sensor modality implemented by this driver.
-     * @return The sensor type handled by this backend.
-     */
-    virtual SensorType GetType() const = 0;
+  /**
+   * @brief Callback invoked for each captured sample on the driver thread.
+   * @param sample Owning unique_ptr transferred to the consumer.
+   */
+  using SampleCallback =
+      std::function<void(std::unique_ptr<SensorSample> sample)>;
 
-    /**
-     * @brief Stable instance id from configuration.
-     * @return Configured sensor identifier.
-     */
-    virtual const SensorId& GetSensorId() const = 0;
+  /**
+   * @brief Virtual destructor for polymorphic drivers.
+   */
+  virtual ~SensorDriver() = default;
 
-    /**
-     * @brief Open the device and start the capture thread.
-     * @return True on success.
-     */
-    virtual bool Start() = 0;
+  /**
+   * @brief Sensor modality implemented by this driver.
+   * @return The SensorType handled by this backend.
+   */
+  virtual SensorType GetSensorType() const = 0;
 
-    /**
-     * @brief Stop capture and release hardware resources.
-     */
-    virtual void Stop() = 0;
+  /**
+   * @brief Stable instance id from configuration.
+   * @return Configured sensor identifier (e.g. "imu/torso").
+   */
+  virtual const SensorId& GetSensorId() const = 0;
 
-    /**
-     * @brief Whether the capture thread is active.
-     * @return True when capture is running.
-     */
-    virtual bool IsRunning() const = 0;
+  /**
+   * @brief Open the device and start the capture thread.
+   * @return true on success.
+   */
+  virtual bool Start() = 0;
 
-    /**
-     * @brief Register the callback invoked for each captured sample.
-     * @param callback Invoked on the driver's thread; must not block for long.
-     */
-    virtual void SetSampleCallback(SampleCallback callback) = 0;
+  /**
+   * @brief Stop capture and release hardware resources.
+   */
+  virtual void Stop() = 0;
+
+  /**
+   * @brief Whether the capture thread is active.
+   * @return true when capture is running.
+   */
+  virtual bool IsRunning() const = 0;
+
+  /**
+   * @brief Register the callback invoked for each captured sample.
+   * @param callback Invoked on the driver's thread; must not block for long.
+   */
+  virtual void SetSampleCallback(SampleCallback callback) = 0;
 
 protected:
-    /**
-     * @brief Protected default constructor for derived drivers.
-     */
-    SensorDriver() = default;
+  /**
+   * @brief Protected default constructor for derived drivers.
+   */
+  SensorDriver() = default;
 };
 
 }  // namespace autodriver

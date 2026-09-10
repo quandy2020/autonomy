@@ -30,6 +30,7 @@
 #include "autodriver/driver_params.hpp"
 #include "autodriver/sensor_driver.hpp"
 #include "autodriver/sensor_id.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace lidar {
@@ -39,7 +40,8 @@ namespace rplidar {
  * @brief Factory used by Lidar2dModule (backend: rplidar / slamtec).
  * Requires AUTODRIVER_HAVE_RPLIDAR; otherwise returns nullptr.
  */
-std::shared_ptr<SensorDriver> CreateRpLidarDriver(
+SensorDriver*
+CreateRpLidarDriver(
     const SensorId& id, const hardware::DriverParams& params);
 
 /**
@@ -52,10 +54,15 @@ std::shared_ptr<SensorDriver> CreateRpLidarDriver(
  */
 class RpLidarSerialDriver : public SensorDriver {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(RpLidarSerialDriver)
+
     RpLidarSerialDriver(SensorId id, hardware::DriverParams params);
     ~RpLidarSerialDriver() override;
 
-    SensorType GetType() const override { return SensorType::kLidar2d; }
+    SensorType GetSensorType() const override { return SensorType::kLidar2d; }
     const SensorId& GetSensorId() const override { return id_; }
     bool Start() override;
     void Stop() override;

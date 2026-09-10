@@ -24,46 +24,94 @@
 
 #include <functional>
 #include <initializer_list>
-#include <memory>
-#include <mutex>
 #include <string>
-#include <unordered_map>
 
 #include "chassis/chassis_driver.hpp"
 #include "chassis/types.hpp"
+#include "autodriver/common/named_factory.hpp"
 #include "autodriver/driver_params.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace chassis {
 
-using ChassisDriverFactory = std::function<std::shared_ptr<ChassisDriver>(
-    const ChassisId& id, const hardware::DriverParams& params)>;
+/**
+ * @brief Creator for autolink::common::Factory: returns owning ChassisDriver*.
+ * @param id Chassis instance id from YAML (e.g. "chassis/base").
+ * @param params Backend-specific key/value map from YAML `chassis.params`.
+ * @return New ChassisDriver, or nullptr when construction fails.
+ */
+using ChassisDriverFactory = NamedProductFactory<ChassisDriver, ChassisId>::Creator;
 
 /**
  * @brief Maps YAML `chassis.backend` → ChassisDriver factory.
+ *
+ * Internally uses autodriver::NamedProductFactory (autolink::common::Factory).
  */
 class ChassisBackendRegistry {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(ChassisBackendRegistry)
+
+  /**
+   * @brief Access the process-wide singleton (static-init backends register here).
+   * @return Reference to the unique ChassisBackendRegistry instance.
+   */
   static ChassisBackendRegistry& Instance();
 
-  void Register(const std::string& name, ChassisDriverFactory factory);
-  void RegisterAlias(const std::string& alias, const std::string& canonical);
+  /**
+   * @brief Register or replace a factory under a canonical backend name.
+   * @param name Canonical backend string (e.g. "stub", "scout").
+   * @param factory Creator returning new ChassisDriver*.
+   */
+  void RegisterBackend(const std::string& name, ChassisDriverFactory factory);
 
-  std::shared_ptr<ChassisDriver> Create(
+  /**
+   * @brief Map an alias onto an already-registered canonical backend name.
+   * @param alias Alternate YAML name (e.g. "sim").
+   * @param canonical Existing registered name (e.g. "stub").
+   */
+  void RegisterBackendAlias(const std::string& alias,
+                            const std::string& canonical);
+
+  /**
+   * @brief Create a ChassisDriver for @p backend (empty string → "stub").
+   * @param backend YAML `chassis.backend` or alias.
+   * @param id Chassis instance id passed to the factory.
+   * @param params YAML `chassis.params` (and shorthand merges).
+   * @return Shared driver, or nullptr if the name / alias is unknown or the
+   *         factory returns null.
+   */
+  ChassisDriver::SharedPtr CreateDriver(
       const std::string& backend, const ChassisId& id,
       const hardware::DriverParams& params) const;
 
-  bool Has(const std::string& backend) const;
+  /**
+   * @brief Check whether @p backend resolves to a registered factory.
+   * @param backend Canonical name or alias.
+   * @return true if a factory is available after alias resolve.
+   */
+  bool HasBackend(const std::string& backend) const;
 
 private:
+  /**
+   * @brief Private default constructor for the process-wide singleton.
+   */
   ChassisBackendRegistry() = default;
-  std::string Resolve(const std::string& backend) const;
 
-  mutable std::mutex mutex_;
-  std::unordered_map<std::string, ChassisDriverFactory> factories_;
-  std::unordered_map<std::string, std::string> aliases_;
+  NamedProductFactory<ChassisDriver, ChassisId> factory_;
 };
 
+/**
+ * @brief Register a canonical backend plus optional aliases in one call.
+ *
+ * Used by REGISTER_CHASSIS_BACKEND at static init.
+ * @param name Canonical backend string.
+ * @param factory ChassisDriverFactory for @p name.
+ * @param aliases Optional null-terminated C string aliases (empty entries skipped).
+ */
 void RegisterChassisBackendWithAliases(
     const std::string& name, ChassisDriverFactory factory,
     std::initializer_list<const char*> aliases);

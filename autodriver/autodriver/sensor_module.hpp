@@ -30,6 +30,7 @@
 #include "autodriver/sensor_id.hpp"
 #include "autodriver/types/sensor_sample.hpp"
 #include "autodriver/types/sensor_type.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 
@@ -39,6 +40,16 @@ namespace autodriver {
  */
 class SensorModule {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(SensorModule)
+
+  /**
+   * @brief Disable copy construction and copy assignment.
+   */
+  DISALLOW_COPY_AND_ASSIGN(SensorModule)
+
     // Upstream hook invoked when the module produces a sample.
     using SampleHook = std::function<void(std::shared_ptr<SensorSample>)>;
 
@@ -53,15 +64,7 @@ public:
         SampleHook hook;
     };
 
-    /**
-     * @brief Copy construction is disabled.
-     */
-    SensorModule(const SensorModule&) = delete;
-    /**
-     * @brief Copy assignment is disabled.
-     */
-    SensorModule& operator=(const SensorModule&) = delete;
-    /**
+  /**
      * @brief Virtual destructor for polymorphic modules.
      */
     virtual ~SensorModule() = default;
@@ -70,7 +73,7 @@ public:
      * @brief Sensor modality implemented by this module.
      * @return The sensor type handled by this plugin.
      */
-    virtual SensorType GetType() const = 0;
+    virtual SensorType GetSensorType() const = 0;
 
     /**
      * @brief Stable instance id from configuration.
@@ -102,12 +105,13 @@ public:
      */
     virtual bool IsRunning() const = 0;
 
-    /**
-     * @brief Hardware driver when this module owns capture; else nullptr.
-     */
-    virtual std::shared_ptr<SensorDriver> GetDriver() const {
-        return nullptr;
-    }
+  /**
+   * @brief Hardware driver when this module owns capture; else nullptr.
+   * @return Shared driver pointer, or nullptr for attach-only modules.
+   */
+  virtual SensorDriver::SharedPtr GetDriver() const {
+    return nullptr;
+  }
 
 protected:
     /**

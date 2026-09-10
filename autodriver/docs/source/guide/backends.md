@@ -1,34 +1,60 @@
 # 后端
 
-传感器插件通过 `backend` 选择硬件驱动。模块在 `modules.cpp` 注册并编入 `libautodriver`；传输与协议尽量分离（`Stream` × `Parser` 分离）。
+YAML `backend` → 对应 `*BackendRegistry` → Creator 建驱动。模态 `*Module` 固定编在 `libautodriver`（`modules.cpp`）；厂商只加驱动 + `REGISTER_*`。传输与协议尽量分离（`Stream` × `Parser`）。
+
+| 相关 | 链接 |
+|---|---|
+| Registry / Creator 约定 | [架构](architecture.md) |
+| YAML 字段 | [配置](configuration.md) |
+| 厂商手册 | [传感器](../sensor/index.md) |
+| 加宏示例 | [API](../api/overview.md) |
+
+## 注册约定（速查）
+
+```text
+REGISTER_*_BACKEND(tag, "name", CreateFn, "alias"...)
+  → NamedProductFactory → autolink::common::Factory
+  → CreateDriver → SharedPtr
+```
+
+| 项 | 约定 |
+|---|---|
+| Creator | `Product*(const Id&, const DriverParams&)`，owning raw；stub 可 `nullptr` |
+| 宏 | `REGISTER_IMU/GPS/CAMERA/POINTCLOUD/LIDAR/LIDAR2D/RADAR/MICROPHONE/CHASSIS_BACKEND` |
+| 封装 | `common/named_factory.hpp` |
 
 ## 目录与职责
 
 | 目录 | 内容 |
 |---|---|
-| `common/` | `Stream`、`SerialPort`、`CanSocket`、`LoadExtrinsicYaml`、`DeviceStatus` |
+| `common/` | `Stream`、`SerialPort`、`CanSocket`、`calibration`、`named_factory` |
 | `canbus/` | ProtocolData、Receiver、Client（Socket+Fake）、Sender、`byte` |
-| `imu/` | WitMotion parser、serial/CAN IMU driver |
-| `gps/` | NMEA parser、`gps/parser` 工厂、serial/CAN GPS |
+| `imu/` | WitMotion、serial/CAN；`backend_registry` |
+| `gps/` | NMEA、`gps/parser`、serial/CAN；`backend_registry` |
 | `camera/` | `backend_registry`、`realsense/`、`orbbec/` |
-| `smartereye/` | Camera backend stub |
+| `smartereye/` | Camera stub |
 | `radar/` | Registry + Conti stub |
 | `microphone/` | Registry + Respeaker stub |
-| `lidar/` | Lidar 基类、queue、scan_cut、compensator、`velodyne/` `hesai/` `livox/` `rplidar/`、stubs |
+| `lidar/` | 基类、queue、scan_cut、compensator、`velodyne/` `hesai/` `livox/` `rplidar/`、stubs |
+| `bridge/` | `Publisher`、`PoseFeeder`、`channels.hpp` |
+| `chassis/`（顶层） | `ChassisBackendRegistry`、`ChassisManager`、`stub/` |
 
 ## 总览
 
-| Module | backends | 消息 | 状态 |
-|---|---|---|---|
-| `ImuModule` | `serial`、`can`、`realsense` | `Imu` | 真采集（serial 经 `Stream`） |
-| `GpsModule` | `serial`、`can` | `NavSatFix` | 真采集（serial 经 `Stream`） |
-| `CameraModule` | `realsense`、`orbbec`、`smartereye` | `Image` + camera_info | RealSense/Orbbec 真；smartereye stub |
-| `PointCloudModule` | `realsense`、`orbbec` | `PointCloud2` | RealSense / Orbbec（需 SDK） |
-| `Lidar3dModule` | `velodyne` / `udp`、`hesai` / `pandar`、`livox`；stub: rslidar/… | PointCloud2 | Velodyne + Hesai + Livox |
-| `RadarModule` | `conti` | PointCloud2 占位 | **stub** |
-| `MicrophoneModule` | `respeaker` | Image PCM 占位 | **stub** |
-| `Lidar2dModule` | `rplidar` / `slamtec` | LaserScan | Slamtec RPLidar A1/A2/A3 |
-| `RangeModule` | — | `Range` | **attach-only** |
+| Module / 编排 | Registry | backends | 消息 | 状态 |
+|---|---|---|---|---|
+| `ImuModule` | `ImuBackendRegistry` | `serial`、`can`、`realsense` | `Imu` | 真（serial→`Stream`） |
+| `GpsModule` | `GpsBackendRegistry` | `serial`、`can` | `NavSatFix` | 真 |
+| `CameraModule` | `CameraBackendRegistry` | `realsense`、`orbbec`、`smartereye` | `Image`（+ camera_info，若 `has_camera_info`） | RS/Orbbec 真；smartereye stub |
+| `PointCloudModule` | `PointCloudBackendRegistry` | `realsense`、`orbbec` | `PointCloud2` | 需 SDK |
+| `Lidar3dModule` | `LidarBackendRegistry` | `velodyne`/`udp`、`hesai`/`pandar`、`livox`；stub: rslidar/… | `PointCloud2` | 真 + stub |
+| `Lidar2dModule` | `Lidar2dBackendRegistry` | `rplidar`/`slamtec` | `LaserScan` | RPLidar |
+| `RadarModule` | `RadarBackendRegistry` | `conti`/`continental` | PointCloud2 占位 | **stub** |
+| `MicrophoneModule` | `MicrophoneBackendRegistry` | `respeaker` | Image PCM 占位 | **stub** |
+| `RangeModule` | — | — | `Range` | **attach-only** |
+| `ChassisManager` | `ChassisBackendRegistry` | `stub` / 厂商 | Twist↔RobotState/Odom | stub 可联调 |
+
+CMake：`AUTODRIVER_WITH_{REALSENSE,ORBBEC,RPLIDAR,LIVOX}`；未找到 SDK → 对应 Create→`nullptr`，不挡链接。
 
 ## Stream（传输）
 
@@ -40,27 +66,22 @@ stream->Connect();
 stream->Read(buf, n, timeout_ms);
 ```
 
-- `Status`：`diagnostics::DeviceStatus`（`kOk` / `kDisconnected` / `kError`）
-- 实现：`SerialStream`、`UdpStream`（`CreateUdpStream`）
-- `ReconnectStream`：串口 / Velodyne UDP 读循环断线退避重连
-- 后续可插：TCP / NTRIP；Parser（NMEA、WitMotion、Velodyne Convert）保持独立
-
-## Velodyne / Hesai / Livox / RPLidar
-
-- **Velodyne**（`velodyne`/`udp`）：UDP→队列→切帧→Convert；校准 rad。详见 [传感器·Velodyne](../sensor/lidar/velodyne.md)。  
-- **Hesai**（`hesai`/`pandar`）：XT32；校准 deg。详见 [Hesai](../sensor/lidar/hesai.md)。  
-- **Livox**（`livox`）：SDK1/SDK2；详见 [Livox](../sensor/lidar/livox.md)。  
-- **RPLidar**（`rplidar`/`slamtec`）：2D 串口 SDK；详见 [RPLidar](../sensor/lidar/rplidar.md)。  
-
-点云约定：`point_step=24`。RAW_PACKET：`PushRawPacket`/`PushScan`。补偿：`enable_compensator` + `compensator.pose_channel`。
+| 项 | 说明 |
+|---|---|
+| 状态 | `diagnostics::DeviceStatus`：`kOk` / `kDisconnected` / `kError` |
+| 实现 | `SerialStream`、`UdpStream`（`CreateUdpStream`） |
+| 重连 | `ReconnectStream`：串口 / Velodyne UDP 读循环退避重连 |
+| 预留 | TCP / NTRIP；Parser（NMEA、WitMotion、Convert）保持独立 |
 
 ## serial
 
 | `params` / YAML | 说明 |
 |---|---|
-| `device`（YAML `port`） | 串口路径 |
+| `device`（YAML `port`） | 串口路径；建议 `/dev/serial/by-id/…` |
 | `baud`（YAML `baudrate`） | 波特率 |
 | `accel_scale` / `gyro_scale` | IMU 换算（可选） |
+
+用于 IMU/GPS serial backend；RPLidar 走自有 SDK 通道参数（见下）。
 
 ## canbus
 
@@ -70,88 +91,120 @@ stream->Read(buf, n, timeout_ms);
 - `CanReceiver` + `ProtocolData` / `MessageManager`
 - `CanSender`：周期发帧；`byte.hpp`：位域打包
 
-IMU/GPS CAN 驱动参数：
+IMU/GPS CAN 参数：
 
 | 字段 | 说明 |
 |---|---|
-| `interface` | 如 `can0`（或 `fake0` 单测） |
+| `interface` | `can0` 或 `fake0`（单测） |
 | `accel_can_id` / `gyro_can_id` | IMU 分帧 ID |
 | `accel_scale` / `gyro_scale` | IMU 换算（可选） |
 | `can_id` | GPS lat/lon 帧 ID |
 
-## radar / microphone / smartereye
+上线前：`ip link set can0 up type can bitrate …`。
 
-| YAML | Module | backend | 状态 |
-|---|---|---|---|
-| `radar` | `RadarModule` | `conti`（alias `continental`） | stub：`Create`→nullptr |
-| `microphone` | `MicrophoneModule` | `respeaker` | stub：需 PortAudio |
-| `camera` + `backend: smartereye` | `CameraModule` | `smartereye` | stub：需厂商 SDK |
+## GNSS Parser（与 GPS backend 正交）
 
-样本占位：`RadarSample`=`PointCloud2`，`MicrophoneSample`=`Image`（PCM 字节袋）。扩展步骤同 lidar：实现 Create + ProtocolData/SDK，不必改 Module 类。
-
-## GNSS Parser 工厂
+传输后端由 `GpsBackendRegistry` 选择；**句解析**由 `GnssParserRegistry`（`NamedProductFactory0`）：
 
 ```cpp
 #include "autodriver/gps/parser/parser.hpp"
 
-auto parser = autodriver::gps::GnssParserRegistry::Instance().Create("nmea");
+auto parser = autodriver::gps::GnssParserRegistry::Instance().CreateParser("nmea");
+// 读循环：parser->Consume(buf, n) → optional ParsedFix
 ```
 
-- 内置：`nmea` / `nmea0183` → `Nmea0183Parser`（行缓冲 GGA/RMC）
-- 与 `common::Stream` 搭配：读循环 `Consume(buf, n)` → 可选 `ParsedFix`
-- 串口 GPS 驱动仍可直接用 `nmea_0183.hpp`；工厂便于后续厂商二进制协议
+| 名 | 实现 |
+|---|---|
+| `nmea` / `nmea0183` | `Nmea0183Parser`（行缓冲 GGA/RMC） |
 
-## Lidar PacketQueue
+扩展二进制协议：只加 Parser + `RegisterParser`，不必改 `GpsModule`。
 
-`lidar/packet_queue.hpp`：有界 FIFO，满则丢最旧并累计 `dropped()`。  
-**Velodyne / Hesai online 路径已接入**（ReadLoop → queue → ProcessLoop）。`PushRawPacket` 不经队列。
+## Velodyne / Hesai / Livox / RPLidar
 
-切帧见 `lidar/scan_cut.hpp`：`use_azimuth_cut`（默认 true）+ `packets_per_scan` 上限。
+| backend | 路径摘要 | 手册 |
+|---|---|---|
+| `velodyne` / `udp` | UDP→队列→切帧→Convert；校准 **rad** | [Velodyne](../sensor/lidar/velodyne.md) |
+| `hesai` / `pandar` | XT32；校准 **deg** | [Hesai](../sensor/lidar/hesai.md) |
+| `livox` | SDK1/SDK2；`model`/`sdk` 选型 | [Livox](../sensor/lidar/livox.md) |
+| `rplidar` / `slamtec` | 2D 串口 SDK；A3 常 256000 | [RPLidar](../sensor/lidar/rplidar.md) |
+
+| 约定 | 说明 |
+|---|---|
+| 点云 | `point_step=24`：`x,y,z,intensity,timestamp` |
+| 回放 | `source_type: raw_packet` + `PushRawPacket` / `PushScan` |
+| 补偿 | `enable_compensator` + 进程 `compensator.pose_channel` |
+| 队列 | `lidar/packet_queue.hpp`：满丢最旧；online ReadLoop→ProcessLoop |
+| 切帧 | `scan_cut.hpp`：`use_azimuth_cut` + `packets_per_scan` 上限 |
+
+安装：`scripts/install_rplidar_sdk.sh`、`install_livox_sdk*.sh`。
 
 ## realsense
 
-需 `AUTODRIVER_WITH_REALSENSE=ON` + librealsense2。同机多流经 `device_hub`。源码：`camera/realsense/`。用 `model`/`serial`/`index` 选机，**勿**为型号新建 backend。详见 [RealSense](../sensor/camera/realsense.md)。
+需 `AUTODRIVER_WITH_REALSENSE` + librealsense2 → `AUTODRIVER_HAVE_REALSENSE`。同机多流经 `camera/realsense/device_hub`。用 `model`/`serial`/`index` 选机，**勿**为型号新建 backend。
+
+| 注册 | 说明 |
+|---|---|
+| `REGISTER_CAMERA_BACKEND(realsense, …)` | 图像 |
+| `REGISTER_POINTCLOUD_BACKEND` | 深度点云 |
+| `REGISTER_IMU_BACKEND(realsense, …)` | 板载 IMU（仅链入 SDK 时） |
+
+`Publisher` 对每个 image channel 自动开 camera_info（`bridge/channels.hpp`）；帧级由 `has_camera_info` 决定是否写入。详见 [RealSense](../sensor/camera/realsense.md)。
 
 ## orbbec
 
-需 `AUTODRIVER_WITH_ORBBEC=ON` 且找到 OrbbecSDK。同机多流经 `camera/orbbec/device_hub` 合并。源码：`camera/orbbec/`。
+需 `AUTODRIVER_WITH_ORBBEC` 且找到 OrbbecSDK。同机多流经 `camera/orbbec/device_hub`。无 SDK 时 Create→`nullptr`。
 
 | `params` | 说明 |
 |---|---|
 | `stream` | `color` / `depth` / `left_ir` / `right_ir`（`ir`→left；`ir0` 单 IR） |
 | `serial` / `index` / `model` | 选设备 |
-| `width` / `height` / `fps` | `0` = SDK 默认档（对齐 ROS2 `:=0` / `OB_*_ANY`） |
+| `width` / `height` / `fps` | `0` = SDK 默认档 |
 | `frame_id` | 光学系覆盖 |
 | `enable_laser` | IR 投影灯；Gemini 330 官方默认 **true** |
-| `device_preset` | 官方默认 **`Default`**（勿默认改成 High Accuracy） |
-| `disparity_to_depth_mode` | **`HW`** / `SW` / `disable`（官方 HW） |
-| `enable_disparity_to_depth` | 后处理 `DisparityTransform`；官方 **true** |
+| `device_preset` | 官方默认 **`Default`** |
+| `disparity_to_depth_mode` | **`HW`** / `SW` / `disable` |
+| `enable_disparity_to_depth` | 后处理；官方 **true** |
 | `enable_hardware_noise_removal_filter` | 官方 **false** |
 | `enable_noise_removal_filter` | 软去噪；官方 **true** |
 | `noise_removal_filter_min_diff` / `max_size` | 官方 **256** / **80** |
 | `enable_spatial_filter` | 官方 **false** |
 
-**Channel 对齐 OrbbecSDK_ROS2 Gemini 330**（`camera_name:=camera`）：  
-`/camera/color|depth|left_ir|right_ir/image_raw`、`…/camera_info`、点云
-`/camera/depth/points`（默认）或 `/camera/depth_registered/points`。  
-示例：`config/camera/orbbec/gemini_330.yaml`（仅设备 params；由
-`autodriver_hardware.yaml` 的 `params_file` 合并）。
-加载：`autodriver $AUTODRIVER_PATH autodriver_hardware.yaml`。
+Channel 对齐 OrbbecSDK_ROS2 Gemini 330：`/camera/color|depth|left_ir|right_ir/image_raw`、点云 `/camera/depth/points` 或 `/camera/depth_registered/points`。参数文件：`config/camera/orbbec/gemini_330.yaml`。详见 [Orbbec](../sensor/camera/orbbec.md)。
 
-无 SDK 时 `Create` 返回 `nullptr` 并打日志。
+## chassis（本体）
 
-## 扩展真 Camera
+顶层 `chassis/`；与传感 Registry 同模式，消息为 automsgs vehicle_msgs + TwistStamped。
 
-1. `camera/<vendor>/` 实现 hub + drivers  
-2. `REGISTER_CAMERA_BACKEND` / `REGISTER_POINTCLOUD_BACKEND`  
-3. CMake 加入源（可选 `AUTODRIVER_WITH_*`）  
-4. **不必**改 `CameraModule` / `PointCloudModule`
+| backend | 状态 |
+|---|---|
+| `stub`（别名可 `sim`） | 差分积分，无硬件联调 |
+| 厂商名 | `REGISTER_CHASSIS_BACKEND` + `chassis/<vendor>/` |
 
-## 扩展真 Lidar
+加厂商：实现 `ChassisDriver` → 宏注册 → YAML `chassis.backend`。详见包内 [`chassis/README.md`](../../../chassis/README.md) · [配置 · chassis](configuration.md#chassis本体)。
 
-2D：`lidar/rplidar/` + `REGISTER_LIDAR2D_BACKEND`。  
-3D：`REGISTER_LIDAR_BACKEND`；参考 `velodyne/`、`hesai/`、`livox/`。点云 `point_step=24`。不必改 `Lidar*Module`。
+## radar / microphone / smartereye
+
+| YAML | backend | 状态 | 落地方向 |
+|---|---|---|---|
+| `radar` | `conti` / `continental` | stub | ProtocolData + canbus |
+| `microphone` | `respeaker` | stub | PortAudio / USB HID |
+| `camera` | `smartereye` | stub | 厂商 SDK |
+
+样本占位：`RadarSample`≈PointCloud2，`MicrophoneSample`≈Image（PCM）。扩展：实现 Create + 注册宏，**不必**改 Module。
+
+## 扩展清单
+
+| 模态 | 步骤 |
+|---|---|
+| 相机 / 点云 | `camera/<v>/` hub+driver → `REGISTER_CAMERA_*` / `POINTCLOUD_*` → CMake（可选 `WITH_*`）→ `config/camera/<v>/` |
+| 3D 激光 | `lidar/<v>/` → `REGISTER_LIDAR_BACKEND` → `point_step=24` → `config/lidar/<v>/` |
+| 2D 激光 | `REGISTER_LIDAR2D_BACKEND` |
+| IMU / GPS | `REGISTER_IMU_*` / `GPS_*`；串口用 `Stream`；新协议加 `GnssParser` |
+| 底盘 | `chassis/<v>/` → `REGISTER_CHASSIS_BACKEND` |
+| Radar / Mic | 先占名 stub，再换真 Create |
+
+**勿改** `*Module` / `SensorManager` / `ChassisManager` 编排语义（除非改编排本身）。
 
 ## 外置插件（高级）
 
-`library` 非空时从 `plugin_dir` 加载 `.so`。常规部署用内置 modules 即可。
+YAML `library` 非空时从 `plugin_dir` / `AUTODRIVER_PLUGIN_DIR` 加载 `.so`（须导出同名 `SensorModule`）。常规部署：`library` 留空，用内置 modules。

@@ -30,6 +30,7 @@
 #include "autodriver/driver_params.hpp"
 #include "autodriver/sensor_driver.hpp"
 #include "autodriver/camera/realsense/device_hub.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace hardware {
@@ -48,6 +49,11 @@ class RealSenseCameraDriver : public SensorDriver
 {
 public:
   /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(RealSenseCameraDriver)
+
+  /**
    * @brief Parses stream and resolution params and stores sensor identity.
    */
   RealSenseCameraDriver(SensorId id, DriverParams params);
@@ -61,7 +67,7 @@ public:
    * @brief Report sensor type
    * @return SensorType::kCamera
    */
-  SensorType GetType() const override { return SensorType::kCamera; }
+  SensorType GetSensorType() const override { return SensorType::kCamera; }
 
   /**
    * @brief Return this driver's sensor identifier
@@ -109,7 +115,7 @@ private:
   int fps_{30};
 
   // Shared device hub managing the librealsense pipeline.
-  std::shared_ptr<io::RealSenseDeviceHub> hub_;
+  io::RealSenseDeviceHub::SharedPtr hub_{nullptr};
 
   // Hub subscription handle returned by SubscribeVideo().
   std::uint64_t subscription_id_{0};
@@ -124,7 +130,8 @@ private:
 /**
  * @brief Factory used by CameraModule.
  */
-std::shared_ptr<SensorDriver> CreateRealSenseCameraDriver(
+SensorDriver*
+CreateRealSenseCameraDriver(
   const SensorId & id,
   const DriverParams & params);
 

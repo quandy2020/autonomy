@@ -114,9 +114,10 @@ void RealSenseCameraDriver::SetSampleCallback(SampleCallback callback) {
     callback_ = std::move(callback);
 }
 
-std::shared_ptr<SensorDriver> CreateRealSenseCameraDriver(
+SensorDriver*
+CreateRealSenseCameraDriver(
     const SensorId& id, const DriverParams& params) {
-    return std::make_shared<RealSenseCameraDriver>(id, params);
+    return new RealSenseCameraDriver(id, params);
 }
 
 }  // namespace hardware

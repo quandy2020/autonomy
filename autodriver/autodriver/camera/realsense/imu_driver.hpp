@@ -30,6 +30,7 @@
 #include "autodriver/driver_params.hpp"
 #include "autodriver/sensor_driver.hpp"
 #include "autodriver/camera/realsense/device_hub.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace hardware {
@@ -42,6 +43,11 @@ namespace hardware {
 class RealSenseImuDriver : public SensorDriver
 {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(RealSenseImuDriver)
+
   /**
    * @brief Stores sensor identity and driver params for RealSense IMU.
    */
@@ -56,7 +62,7 @@ public:
    * @brief Report sensor type
    * @return SensorType::kImu
    */
-  SensorType GetType() const override { return SensorType::kImu; }
+  SensorType GetSensorType() const override { return SensorType::kImu; }
 
   /**
    * @brief Return this driver's sensor identifier
@@ -92,7 +98,7 @@ private:
   DriverParams params_;
 
   // Shared device hub managing the librealsense pipeline.
-  std::shared_ptr<io::RealSenseDeviceHub> hub_;
+  io::RealSenseDeviceHub::SharedPtr hub_{nullptr};
 
   // Hub subscription handle returned by SubscribeImu().
   std::uint64_t subscription_id_{0};
@@ -105,9 +111,10 @@ private:
 };
 
 /**
- * @brief Factory used by ImuModule.
+ * @brief Factory for ImuBackendRegistry (REGISTER_IMU_BACKEND).
  */
-std::shared_ptr<SensorDriver> CreateRealSenseImuDriver(
+SensorDriver*
+CreateRealSenseImuDriver(
   const SensorId & id,
   const DriverParams & params);
 

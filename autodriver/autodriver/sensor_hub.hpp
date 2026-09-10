@@ -40,6 +40,7 @@
 #include "autolink/base/signal.hpp"
 #include "autolink/time/duration.hpp"
 #include "autolink/time/time.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 
@@ -49,6 +50,16 @@ namespace autodriver {
  */
 class SensorHub {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(SensorHub)
+
+  /**
+   * @brief Disable copy construction and copy assignment.
+   */
+  DISALLOW_COPY_AND_ASSIGN(SensorHub)
+
     /**
      * @brief Tuning knobs for ring buffers and the alignment publisher loop.
      */
@@ -84,73 +95,74 @@ public:
      */
     ~SensorHub();
 
-    SensorHub(const SensorHub&) = delete;
-    /**
-     * @brief Copy assignment is disabled.
-     */
-    SensorHub& operator=(const SensorHub&) = delete;
+  /**
+   * @brief Registers a driver and wires its samples into this hub.
+   * @param driver Shared driver; samples arrive via SetSampleCallback.
+   */
+  void RegisterDriver(SensorDriver::SharedPtr driver);
 
-    /**
-     * @brief Registers a driver and wires its samples into this hub.
-     */
-    void RegisterDriver(std::shared_ptr<SensorDriver> driver);
+  /**
+   * @brief Sets the callback invoked with aligned multi-sensor snapshots.
+   * @param callback May be empty to clear subscribers.
+   */
+  void SetAlignedCallback(AlignedCallback callback);
 
-    /**
-     * @brief Sets the callback invoked with aligned multi-sensor snapshots.
-     */
-    void SetAlignedCallback(AlignedCallback callback);
+  /**
+   * @brief Sets the callback invoked for every raw sample after time sync.
+   * @param callback May be empty to clear subscribers.
+   */
+  void SetRawSampleCallback(RawSampleCallback callback);
 
-    /**
-     * @brief Sets the callback invoked for every raw sample after time sync.
-     */
-    void SetRawSampleCallback(RawSampleCallback callback);
+  /**
+   * @brief Ingests an externally produced sample into buffering and callbacks.
+   * @param sample Shared sample; null is ignored.
+   */
+  void PushSample(std::shared_ptr<SensorSample> sample);
 
-    /**
-     * @brief Ingests an externally produced sample into buffering and callbacks.
-     */
-    void PushSample(std::shared_ptr<SensorSample> sample);
+  /**
+   * @brief Removes the per-sensor buffer when a driver detaches.
+   * @param id Sensor whose ring buffer should be dropped.
+   */
+  void DropSampleBuffer(const SensorId& id);
 
-    /**
-     * @brief Removes the per-sensor buffer when a driver detaches.
-     */
-    void DropBuffer(const SensorId& id);
+  /**
+   * @brief Starts all registered drivers and the alignment publish thread.
+   * @return false if a registered driver fails to Start.
+   */
+  bool Start();
 
-    /**
-     * @brief Starts all registered drivers and the alignment publish thread.
-     */
-    bool Start();
+  /**
+   * @brief Stops drivers, the alignment thread, and clears the running flag.
+   */
+  void Stop();
 
-    /**
-     * @brief Stops drivers, the alignment thread, and clears the running flag.
-     */
-    void Stop();
-
-    /**
-     * @brief Returns true while the hub and alignment loop are active.
-     */
-    bool IsRunning() const;
+  /**
+   * @brief Whether the hub and alignment loop are active.
+   * @return true while running after Start().
+   */
+  bool IsRunning() const;
 
     /**
      * @brief Access the per-sensor clock offset estimator.
      * @return Const reference to the owned TimeSync instance.
      */
-    const TimeSync& time_sync() const { return time_sync_; }
+    const TimeSync& GetTimeSync() const { return time_sync_; }
 
 private:
     /**
      * @brief Time-syncs, stores, and forwards a sample to raw callbacks.
      */
-    void OnSample(std::shared_ptr<SensorSample> sample);
+    void HandleIncomingSample(std::shared_ptr<SensorSample> sample);
 
     /**
      * @brief Periodically publishes aligned snapshots when new samples arrive.
      */
-    void AlignmentLoop();
+    void RunAlignmentLoop();
 
     /**
      * @brief Builds a time-aligned snapshot from the latest in-window samples.
      */
-    AlignedSnapshot BuildSnapshot(const autolink::Time& time) const;
+    AlignedSnapshot BuildAlignedSnapshot(const autolink::Time& time) const;
 
     // Hub tuning for buffers and alignment publishing.
     Options options_;
@@ -162,7 +174,7 @@ private:
     mutable autolink::base::AtomicRWLock drivers_lock_;
 
     // Registered sensor drivers observed by the hub.
-    std::vector<std::shared_ptr<SensorDriver>> drivers_;
+    std::vector<SensorDriver::SharedPtr> drivers_;
 
     // Protects per-sensor sample buffers.
     mutable autolink::base::AtomicRWLock buffers_lock_;

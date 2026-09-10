@@ -30,6 +30,7 @@
 #include "autodriver/driver_params.hpp"
 #include "autodriver/sensor_driver.hpp"
 #include "autodriver/sensor_id.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace hardware {
@@ -42,10 +43,15 @@ namespace hardware {
  */
 class OrbbecPointCloudDriver : public SensorDriver {
 public:
+  /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(OrbbecPointCloudDriver)
+
     OrbbecPointCloudDriver(SensorId id, DriverParams params);
     ~OrbbecPointCloudDriver() override;
 
-    SensorType GetType() const override { return SensorType::kLidar3d; }
+    SensorType GetSensorType() const override { return SensorType::kLidar3d; }
     const SensorId& GetSensorId() const override { return id_; }
 
     bool Start() override;
@@ -60,7 +66,7 @@ private:
     int height_{480};
     int fps_{30};
     std::atomic<bool> running_{false};
-    std::shared_ptr<io::OrbbecDeviceHub> hub_;
+    io::OrbbecDeviceHub::SharedPtr hub_{nullptr};
     std::uint64_t subscription_id_{0};
     SampleCallback callback_;
 };
@@ -68,7 +74,8 @@ private:
 /**
  * @brief Factory for OrbbecPointCloudDriver (PointCloudBackendRegistry).
  */
-std::shared_ptr<SensorDriver> CreateOrbbecPointCloudDriver(
+SensorDriver*
+CreateOrbbecPointCloudDriver(
     const SensorId& id, const DriverParams& params);
 
 }  // namespace hardware
