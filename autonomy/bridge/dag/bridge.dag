@@ -1,0 +1,38 @@
+# autonomy.bridge Autolink topology (documentation only).
+#
+# This process is a binary module (see launch/bridge.launch), not an autolink
+# Component DSO. Do not pass this file to mainboard (-d). Channel names must
+# stay aligned with autonomy/bridge/constants.hpp and task/common/names.hpp.
+#
+# Runtime config:
+#   --configuration_directory=config
+#   --configuration_basename=bridge/bridge_options.lua
+#
+# --- Actions (Navigator / relative teleop) ---
+#   /navigate_to_pose
+#   /navigate_through_poses
+#   /drive_on_heading
+#   /backup
+#   /spin
+#
+# --- Goal writers ---
+#   /autonomy/task/teleop/goal
+#   /autonomy/task/tracking/goal
+#   /autonomy/task/charging/goal
+#   /autonomy/task/mapping/goal
+#   /exploration/waypoint
+#
+# --- Feedback / status readers ---
+#   /autonomy/task/teleop/feedback
+#   /autonomy/task/tracking/feedback
+#   /autonomy/task/charging/feedback
+#   /autonomy/task/mapping/feedback
+#   /autonomy/task/localization/feedback
+#   /exploration/finished
+#   /amcl_pose
+#   /map
+#   /robot_state
+#   /robot_event
+#
+# --- External surface ---
+#   gRPC AutonomyService + automsgs.rpcs.*  (default 127.0.0.1:5005)

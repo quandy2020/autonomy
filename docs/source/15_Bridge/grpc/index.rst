@@ -1,7 +1,7 @@
 gRPC / async_grpc
 =================
 
-``plugins/grpc/`` 与 ``autonomy/common/async_grpc`` 专题。
+``autonomy/bridge/grpc/`` 与 ``autonomy/common/async_grpc`` 专题。
 
 - **§4 总览**：:doc:`../04_grpc`
 - **本目录**：``01_*``–``07_*``；子页 H2 编号与文件名前缀一致（``02`` → ``## 2.1``）

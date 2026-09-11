@@ -20,13 +20,5 @@ AUTONOMY_BRIDGE = {
         num_event_threads = 5,
     },
 
-    mqtt = {
-        host = "127.0.0.1",
-        port = 12345,
-    },
-    
     use_grpc = true,
-    use_mqtt = false
 }
-
-

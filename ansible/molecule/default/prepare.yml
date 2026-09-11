@@ -32,7 +32,7 @@
         - task
         - localization
         - cartographer_occupancy_grid_node
-        - autonomy_bridge
+        - autonomy.bridge
       loop_control:
         label: "{{ item }}"
 

@@ -260,8 +260,7 @@ endif()
 # 6. Binaries
 # -----------------------------------------------------------------------------
 if(BUILD_GRPC)
-  google_binary(autonomy_bridge
-    SRCS autonomy/bridge/bridge_main.cpp)
+  add_subdirectory(autonomy/bridge)
 endif()
 google_binary(autonomy.localization
   SRCS autonomy/localization/localization_main.cpp)
@@ -274,8 +273,6 @@ google_binary(autonomy.task
 google_binary(autonomy.perception
   SRCS autonomy/perception/perception_main.cpp)
 if(foxglove-sdk_FOUND)
-  # google_binary(autonomy_foxglove_fakedata
-  #   SRCS autonomy/visualization/fakedata_test.cpp)
   google_binary(autonomy_foxglove_bridge
     SRCS autonomy/visualization/foxglove_main.cpp)
 endif()

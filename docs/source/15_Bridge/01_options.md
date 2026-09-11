@@ -13,9 +13,7 @@ orphan: true
 ```protobuf
 message BridgeOptions {
   bool use_grpc = 1;
-  bool use_mqtt = 2;
   GrpcOptions grpc = 3;
-  MqttOptions mqtt = 4;
 }
 ```
 
@@ -28,22 +26,12 @@ message BridgeOptions {
 | `enable_ssl_encryption` | TLS | — |
 | `uplink_server_address` 等 | 上行预留 | — |
 
-> **已知限制**：`GrpcBridgeServer` 尚未将字段传入 `async_grpc::Server::Builder`，当前硬编码 `127.0.0.1`、4 线程。见 [§4.2](04_grpc.md#42-服务器构建)。
-
 ```lua
 AUTONOMY_BRIDGE = {
     use_grpc = true,
     grpc = { host = "127.0.0.1", port = 5005 },
 }
 ```
-
-## 1.3 MqttOptions
-
-| 字段 | 默认 |
-|------|------|
-| `host` / `port` | `127.0.0.1` / `12345` |
-
-MQTT 插件未实现；Topic 见 [§5 MQTT](05_mqtt.md) · [mqtt/04](mqtt/04_topic_protocol.md)。
 
 ---
 

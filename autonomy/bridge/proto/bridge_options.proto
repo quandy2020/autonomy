@@ -29,16 +29,8 @@ message GrpcOptions
     bool enable_google_auth = 9;
 }
 
-message MqttOptions
-{
-    string host = 1;
-    uint32 port = 2;
-}
-
 message BridgeOptions
 {
     bool use_grpc = 1;
-    bool use_mqtt = 2;
     GrpcOptions grpc = 3;
-    MqttOptions mqtt = 4;
 }

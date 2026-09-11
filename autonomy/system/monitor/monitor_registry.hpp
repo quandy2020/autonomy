@@ -22,6 +22,7 @@
 #include "autonomy/system/monitor/gperf_profiler.hpp"
 #include "autonomy/system/monitor/monitor_base.hpp"
 #include "autonomy/system/monitor/monitor_options.hpp"
+#include "autonomy/system/monitor/system_health_snapshot.hpp"
 
 namespace autolink {
 class Node;
@@ -59,6 +60,10 @@ public:
 
     /// 对所有已启用的 monitor 执行一次采集（可由定时器周期性调用）
     void CollectAll();
+
+    /// Aggregate host + channel/latency + hazard/MRM into one snapshot for RPC.
+    /// Call CollectAll() first for fresh gauges.
+    SystemHealthSnapshot Snapshot() const;
 
     /// 手动添加外部 monitor（可选）
     void AddMonitor(std::unique_ptr<MonitorBase> monitor);

@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
         "\n\n"
         "\033[31m External bridge process (gRPC AutonomyService).\033[0m \n"
         "Example:\n"
-        "  autonomy_bridge \\\n"
+        "  autonomy.bridge \\\n"
         "    --configuration_directory=config \\\n"
         "    --configuration_basename=bridge/bridge_options.lua\n");
 

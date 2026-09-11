@@ -10,7 +10,7 @@
 | Autonomy 路径 | `autonomy/common/async_grpc/` |
 | 上游 | [cartographer-project/async_grpc](https://github.com/cartographer-project/async_grpc)（Apache-2.0） |
 | 场景 | Cartographer Cloud 流式上传；Bridge 并发 Server Streaming |
-| 消费者 | `autonomy/bridge/plugins/grpc`（`AutonomyService`） |
+| 消费者 | `autonomy/bridge/grpc`（`AutonomyService`） |
 
 原生 gRPC 同步 server **每 RPC 一线程**；`async_grpc` 在 `CompletionQueue` 上封装 **Rpc 事件 + Handler 回调**，用固定 CQ/EQ 线程池 Multiplex 连接。相对手写异步 tag 状态机，提供 `RpcHandler` 抽象。
 

@@ -4,7 +4,7 @@ set(_AUTONOMY_ROOT "${PROJECT_SOURCE_DIR}/autonomy")
 file(GLOB_RECURSE ALL_LIBRARY_HDRS "${_AUTONOMY_ROOT}/*.hpp")
 file(GLOB_RECURSE ALL_LIBRARY_SRCS "${_AUTONOMY_ROOT}/*.cpp")
 
-set(_AUTONOMY_GRPC_DIRS common/async_grpc bridge/plugins/grpc)
+set(_AUTONOMY_GRPC_DIRS common/async_grpc bridge/grpc)
 foreach(_dir IN LISTS _AUTONOMY_GRPC_DIRS)
   file(GLOB_RECURSE _grpc_hdrs "${_AUTONOMY_ROOT}/${_dir}/*.hpp")
   file(GLOB_RECURSE _grpc_srcs "${_AUTONOMY_ROOT}/${_dir}/*.cpp")
