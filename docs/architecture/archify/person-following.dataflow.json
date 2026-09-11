@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Autonomy 人员跟随数据流",
+    "locale": "zh-CN",
+    "animation": "trace",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase",
+    "viewBox": [1080, 650],
+    "views": [
+      { "id": "perception-path", "label": "感知链路", "focus": ["camera", "tracks", "depth", "follow"], "note": "Camera 数据经基础感知形成目标轨迹与深度。" },
+      { "id": "tracking-path", "label": "目标跟随", "focus": ["follow", "tracking_output", "tracking_client"], "note": "Follow 发布目标与路径，由 TrackingClient 驱动跟随任务。" },
+      { "id": "obstacle-path", "label": "局部避障", "focus": ["follow", "grid", "mppi"], "note": "滚动栅格进入 MPPI GridObstaclesCritic。" }
+    ]
+  },
+  "stages": [
+    { "label": "传感器" },
+    { "label": "基础感知" },
+    { "label": "人员跟随" },
+    { "label": "Autolink RT" },
+    { "label": "任务与控制" }
+  ],
+  "nodes": [
+    { "id": "camera", "type": "external", "label": "Camera", "sublabel": "RGB 图像", "stage": 0, "row": 1, "tag": "sensor" },
+    { "id": "tracks", "type": "backend", "label": "Perception Base", "sublabel": "Person tracks", "stage": 1, "row": 0, "tag": "YOLO26" },
+    { "id": "depth", "type": "backend", "label": "Depth", "sublabel": "单目深度", "stage": 1, "row": 2, "tag": "MoGe" },
+    { "id": "follow", "type": "backend", "label": "Follow", "sublabel": "锁定 · 定位 · 规划", "stage": 2, "row": 1, "tag": "rolling 2.5D" },
+    { "id": "tracking_output", "type": "messagebus", "label": "Target / Path", "sublabel": "目标位姿与跟随路径", "stage": 3, "row": 0, "tag": "Channels" },
+    { "id": "grid", "type": "messagebus", "label": "Grid", "sublabel": "局部障碍栅格", "stage": 3, "row": 2, "tag": "Channel" },
+    { "id": "tracking_client", "type": "backend", "label": "TrackingClient", "sublabel": "目标与路径消费端", "stage": 4, "row": 0, "tag": "Task" },
+    { "id": "mppi", "type": "backend", "label": "MPPI", "sublabel": "GridObstaclesCritic", "stage": 4, "row": 2, "tag": "Control" }
+  ],
+  "flows": [
+    { "id": "camera-tracks", "from": "camera", "to": "tracks", "label": "RGB frames", "classification": "sensor data", "variant": "emphasis" },
+    { "id": "camera-depth", "from": "camera", "to": "depth", "label": "RGB frames", "classification": "sensor data", "variant": "default" },
+    { "id": "tracks-follow", "from": "tracks", "to": "follow", "label": "person tracks", "classification": "tracked objects", "variant": "emphasis" },
+    { "id": "depth-follow", "from": "depth", "to": "follow", "label": "depth image", "classification": "metric depth", "variant": "default" },
+    { "id": "follow-tracking-output", "from": "follow", "to": "tracking_output", "label": "目标与路径", "classification": "tracking output", "variant": "emphasis" },
+    { "id": "follow-grid", "from": "follow", "to": "grid", "label": "rolling grid", "classification": "2.5D obstacles", "variant": "default" },
+    { "id": "tracking-output-client", "from": "tracking_output", "to": "tracking_client", "label": "跟随更新", "classification": "task input", "variant": "emphasis" },
+    { "id": "grid-mppi", "from": "grid", "to": "mppi", "label": "障碍代价", "classification": "control input", "variant": "default" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "感知输入", "items": ["Perception Base 从 RGB 生成目标轨迹", "MoGe 提供米制单目深度"] },
+    { "dot": "emerald", "title": "Follow 输出", "items": ["滚动 2.5D grid_map 支撑人员定位与局部规划", "目标、路径和栅格通过独立 Channel 发布"] },
+    { "dot": "violet", "title": "下游消费", "items": ["TrackingClient 消费目标与路径", "MPPI GridObstaclesCritic 消费局部障碍栅格"] }
+  ]
+}
