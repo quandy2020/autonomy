@@ -1,6 +1,6 @@
 # Intel RealSense
 
-D455 为主。librealsense2；多路共用 `device_hub`。
+D455 为主。基于 librealsense2；同机多路共享 `device_hub`。
 
 | | |
 |---|---|
@@ -44,4 +44,4 @@ camera:
 
 ## 注意
 
-USB3；用户组权限。与 Orbbec 勿同时抢同一 `/camera/*` 话题。校验：`scripts/verify_realsense_d455.sh`。
+须使用 USB3，并确认用户组权限。请勿与 Orbbec 同时占用相同的 `/camera/*` 话题。冒烟验证：`scripts/verify_realsense_d455.sh`。

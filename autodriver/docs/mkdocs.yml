@@ -25,6 +25,7 @@ nav:
       - 使用方式: guide/usage.md
       - 配置: guide/configuration.md
       - 生命周期: guide/lifecycle.md
+      - 术语: guide/glossary.md
   - 设计:
       - 架构与模块化: guide/architecture.md
       - 数据流: guide/dataflow.md

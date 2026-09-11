@@ -1,6 +1,6 @@
 # Velodyne（3D）
 
-UDP 自研栈；VLP-16 为主。无闭源 SDK。
+UDP 自研协议栈，以 VLP-16 为主；不依赖闭源 SDK。
 
 | | |
 |---|---|
@@ -27,4 +27,4 @@ lidar_3d:
     #   calibration_path: $AUTODRIVER_PATH/config/lidar/velodyne/vlp16_calibration.yaml
 ```
 
-回放：`PushRawPacket` / `PushScan`。主机与雷达同网段，放行 UDP。
+回放：`PushRawPacket` / `PushScan`。主机须与雷达同网段，并放行 UDP。
