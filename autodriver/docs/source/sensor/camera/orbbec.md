@@ -1,6 +1,6 @@
 # Orbbec
 
-Gemini 330 为主。OrbbecSDK；多路共用 hub。
+Gemini 330 为主。基于 OrbbecSDK；同机多路共享 device hub。
 
 | | |
 |---|---|
@@ -13,7 +13,7 @@ Gemini 330 为主。OrbbecSDK；多路共用 hub。
 
 ## 配置
 
-折叠语法同 RealSense。通道对齐 OrbbecSDK_ROS2：  
+折叠语法与 RealSense 相同。通道命名对齐 OrbbecSDK_ROS2：  
 `/camera/{color,depth,left_ir,right_ir}/image_raw`；点云 `/camera/depth/points` 或 `depth_registered/points`；IMU `/camera/gyro_accel/sample`。
 
 | 参数 | 建议 |
@@ -23,8 +23,8 @@ Gemini 330 为主。OrbbecSDK；多路共用 hub。
 | `disparity_to_depth_mode` | `HW` |
 | `enable_laser` | `true` |
 | `enable_disparity_to_depth` | `true` |
-| HW 去噪 / spatial | 官方默认关；软去噪开 |
+| HW 去噪 / spatial | 官方默认关闭；软件去噪默认开启 |
 
 ## 注意
 
-无 SDK → stub。与 RealSense 默认话题冲突时只 enable 其一。
+未找到 SDK 时 Create 返回 `nullptr`（stub）。与 RealSense 默认话题冲突时，请仅启用其中之一。

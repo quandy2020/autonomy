@@ -1,6 +1,6 @@
 # Livox（3D）
 
-链官方 C SDK，不拷 `livox_ros_driver*`。`backend: livox`；按 `model`/`sdk` 选代。
+链接官方 C SDK，不拷贝 `livox_ros_driver*`。`backend: livox`；按 `model`/`sdk` 选择 SDK 代际。
 
 | 代 | 安装 | 机型 |
 |---|---|---|
@@ -25,17 +25,17 @@ lidar_3d:
     params_file: lidar/livox/mid360.yaml
 ```
 
-SDK2 文件含：`model`、`sdk: "2"`、`host_ip`、`lidar_ip`、`pcl_data_type`、`publish_freq`、`frame_id`；可选 `config_path` 覆盖自动 JSON。  
-SDK1：`broadcast_code` / `broadcast_codes`（`,` 或 `&`）；空=接受全部非 Hub。
+SDK2 文件含：`model`、`sdk: "2"`、`host_ip`、`lidar_ip`、`pcl_data_type`、`publish_freq`、`frame_id`；可选 `config_path` 覆盖自动生成的 JSON。  
+SDK1：`broadcast_code` / `broadcast_codes`（`,` 或 `&`）；空字符串表示接受全部非 Hub 设备。
 
-## 参数速查
+## 参数一览
 
 | 键 | 代 | 说明 |
 |---|---|---|
-| `sdk` | 双 | 强制 `1`/`sdk1` 或 `2`/`sdk2` |
-| `host_ip`/`lidar_ip` | 2 | 同网段 |
+| `sdk` | 双 | 强制指定 `1`/`sdk1` 或 `2`/`sdk2` |
+| `host_ip`/`lidar_ip` | 2 | 须同网段 |
 | `config_path` | 2 | 官方 JSON |
 | `broadcast_code` | 1 | 白名单 |
-| `publish_freq`/`fps` | 双 | 组帧 Hz，默认 10 |
+| `publish_freq`/`fps` | 双 | 组帧频率（Hz），默认 10 |
 
-点云与 Velodyne 同布局（`point_step=24`）。进程内各代 SDK 单实例。
+点云布局与 Velodyne 相同（`point_step=24`）。同一进程内，各代 SDK 仅允许单实例。
