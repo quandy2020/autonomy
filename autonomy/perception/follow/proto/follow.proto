@@ -30,6 +30,9 @@ message FollowOptions {
   float robot_radius_m = 33;
   float cell_ttl_sec = 34;
   float roll_threshold_m = 35;
+  // Clear inflated obstacles around the locked person so MPPI is not blocked
+  // by the follow target itself.
+  float person_clear_radius_m = 36;
 
   float path_step_m = 40;
   uint32 path_max_poses = 41;

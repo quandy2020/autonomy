@@ -16,6 +16,7 @@
 
 #include "autonomy/perception/follow/grid.hpp"
 
+#include "autonomy/map/grid_map/grid_map_core/iterators/grid_map_iterator.hpp"
 #include "autonomy/map/grid_map/grid_map_msgs/grid_map_converter.hpp"
 
 #include <cmath>
@@ -163,6 +164,24 @@ bool LocalGrid::ToMessage(automsgs::msgs::map_msgs::GridMap* message) const {
     }
     ::grid_map::GridMapConverter::toMessage(map_, *message);
     return true;
+}
+
+void LocalGrid::ClearDisk(double x, double y, double radius_m) {
+    if (!(radius_m > 0.0)) {
+        return;
+    }
+    const double radius_sq = radius_m * radius_m;
+    for (::grid_map::GridMapIterator it(map_); !it.isPastEnd(); ++it) {
+        ::grid_map::Position pos;
+        map_.getPosition(*it, pos);
+        const double dx = pos.x() - x;
+        const double dy = pos.y() - y;
+        if (dx * dx + dy * dy > radius_sq) {
+            continue;
+        }
+        map_.at("obstacle", *it) = 0.0F;
+        map_.at("traversability", *it) = 0.0F;
+    }
 }
 
 bool LocalGrid::IsTraversable(double x, double y) const {

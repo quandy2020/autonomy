@@ -76,6 +76,8 @@ private:
     const automsgs::msgs::vision_msgs::Detection2D* SelectTrack(
         const Tracks& tracks) const;
 
+    bool PublishMaps();
+
     proto::FollowOptions options_;
     std::unique_ptr<Localizer> localizer_;
     std::unique_ptr<LocalGrid> grid_;

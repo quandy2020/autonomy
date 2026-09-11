@@ -1,0 +1,33 @@
+# Follow — MoGe LocalGrid (grid_map 2.5D) → /perception/follow/grid → MPPI
+tracks_topic: "/perception/base/tracks"
+depth_topic: "/perception/base/depth"
+camera_info_topic: "/camera/color/camera_info"
+odom_topic: "/odom"
+select_topic: "/perception/follow/select"
+target_topic: "/perception/follow/target"
+path_topic: "/perception/follow/path"
+grid_topic: "/perception/follow/grid"
+
+camera_frame: "camera_color_optical_frame"
+base_frame: "base_link"
+map_frame: "map"
+
+follow_distance_m: 1.5
+min_depth_m: 0.4
+max_depth_m: 8.0
+inner_box_scale: 0.5
+min_depth_samples: 20
+depth_outlier_m: 0.35
+
+grid_length_m: 8.0
+grid_resolution_m: 0.1
+obstacle_height_m: 0.25
+robot_radius_m: 0.22
+cell_ttl_sec: 1.5
+roll_threshold_m: 0.15
+person_clear_radius_m: 0.45
+
+path_step_m: 0.2
+path_max_poses: 40
+tf_timeout_sec: 0.2
+max_input_skew_sec: 0.15

@@ -25,6 +25,7 @@
 #include "autonomy/control/controller/mppi_controller/critics/cost_critic.hpp"
 #include "autonomy/control/controller/mppi_controller/critics/goal_angle_critic.hpp"
 #include "autonomy/control/controller/mppi_controller/critics/goal_critic.hpp"
+#include "autonomy/control/controller/mppi_controller/critics/grid_obstacles_critic.hpp"
 #include "autonomy/control/controller/mppi_controller/critics/obstacles_critic.hpp"
 #include "autonomy/control/controller/mppi_controller/critics/path_align_critic.hpp"
 #include "autonomy/control/controller/mppi_controller/critics/path_angle_critic.hpp"
@@ -77,6 +78,9 @@ std::unique_ptr<CriticFunction> CreateCriticByName(const std::string& raw_name) 
     if (name == "ObstaclesCritic" || name == "obstacles_critic") {
         return std::make_unique<critics::ObstaclesCritic>();
     }
+    if (name == "GridObstaclesCritic" || name == "grid_obstacles_critic") {
+        return std::make_unique<critics::GridObstaclesCritic>();
+    }
     if (name == "VelocityDeadbandCritic" ||
         name == "velocity_deadband_critic") {
         return std::make_unique<critics::VelocityDeadbandCritic>();
@@ -92,14 +96,26 @@ std::unique_ptr<CriticFunction> CreateCriticByName(const std::string& raw_name) 
 void CriticManager::configure(
     std::shared_ptr<autolink::Node> parent, const std::string& name,
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_ros,
-    const proto::MPPIControllerOptions* options) {
+    const proto::MPPIControllerOptions* options,
+    std::shared_ptr<tools::GridMapBuffer> grid_map) {
     parent_ = parent;
     costmap_ros_ = costmap_ros;
+    grid_map_ = std::move(grid_map);
     name_ = name;
     options_ = options;
 
     getParams();
     loadCritics();
+}
+
+void CriticManager::setGridMapBuffer(
+    std::shared_ptr<tools::GridMapBuffer> grid_map) {
+    grid_map_ = std::move(grid_map);
+    for (auto& critic : critics_) {
+        if (critic) {
+            critic->setGridMapBuffer(grid_map_);
+        }
+    }
 }
 
 void CriticManager::getParams() {
@@ -122,7 +138,8 @@ void CriticManager::loadCritics() {
             return;
         }
         const std::string short_name = NormalizeCriticName(critic_name);
-        critic->configure(parent_, name_, short_name, costmap_ros_, options_);
+        critic->configure(parent_, name_, short_name, costmap_ros_, options_,
+                          grid_map_);
         critics_.push_back(std::move(critic));
         AINFO << "Loaded MPPI critic: " << short_name;
     };

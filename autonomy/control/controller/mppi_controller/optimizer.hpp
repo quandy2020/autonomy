@@ -39,6 +39,7 @@
 #include "autonomy/control/controller/mppi_controller/models/optimizer_settings.hpp"
 #include "autonomy/control/controller/mppi_controller/models/state.hpp"
 #include "autonomy/control/controller/mppi_controller/motion_models.hpp"
+#include "autonomy/control/controller/mppi_controller/tools/grid_map_buffer.hpp"
 #include "autonomy/control/controller/mppi_controller/tools/noise_generator.hpp"
 #include "autonomy/control/controller/mppi_controller/tools/utils.hpp"
 #include "autonomy/control/proto/mppi_controller.pb.h"
@@ -81,6 +82,8 @@
          std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_ros,
          const proto::MPPIControllerOptions* options,
          double controller_frequency = 20.0);
+
+     void setGridMapBuffer(std::shared_ptr<tools::GridMapBuffer> grid_map);
  
      /**
       * @brief Shutdown for optimizer at process end

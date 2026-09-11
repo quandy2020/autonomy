@@ -22,6 +22,7 @@
  #include "autolink/autolink.hpp"
  #include "autonomy/common/macros.hpp"
  #include "autonomy/control/controller/mppi_controller/critic_data.hpp"
+ #include "autonomy/control/controller/mppi_controller/tools/grid_map_buffer.hpp"
  #include "autonomy/control/proto/mppi_controller.pb.h"
  #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
  
@@ -68,18 +69,24 @@
          std::shared_ptr<autolink::Node> parent, const std::string& parent_name,
          const std::string& name,
          std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_ros,
-         const proto::MPPIControllerOptions* options) {
+         const proto::MPPIControllerOptions* options,
+         std::shared_ptr<tools::GridMapBuffer> grid_map = nullptr) {
          parent_ = parent;
          name_ = name;
          parent_name_ = parent_name;
          costmap_ros_ = costmap_ros;
-         costmap_ = costmap_ros_->getCostmap();
+         costmap_ = costmap_ros_ ? costmap_ros_->getCostmap() : nullptr;
          options_ = options;
+         grid_map_ = std::move(grid_map);
  
          // enabled_ will be set by each critic subclass from proto options
          enabled_ = true;  // Default, will be overridden by specific critic
  
          initialize();
+     }
+
+     void setGridMapBuffer(std::shared_ptr<tools::GridMapBuffer> grid_map) {
+         grid_map_ = std::move(grid_map);
      }
  
      /**
@@ -106,6 +113,7 @@
      std::shared_ptr<autolink::Node> parent_;
      std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_ros_;
      map::costmap_2d::Costmap2D* costmap_{nullptr};
+     std::shared_ptr<tools::GridMapBuffer> grid_map_;
  
      const proto::MPPIControllerOptions* options_;
  };

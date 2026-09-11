@@ -36,6 +36,7 @@
  #include "autonomy/control/common/controller_interface.hpp"
  #include "autonomy/control/controller/mppi_controller/models/constraints.hpp"
  #include "autonomy/control/controller/mppi_controller/optimizer.hpp"
+ #include "autonomy/control/controller/mppi_controller/tools/grid_map_buffer.hpp"
  #include "autonomy/control/controller/mppi_controller/tools/mppi_options.hpp"
  #include "autonomy/control/controller/mppi_controller/tools/path_handler.hpp"
  #include "autonomy/control/controller/mppi_controller/tools/trajectory_visualizer.hpp"
@@ -70,6 +71,8 @@
                     std::shared_ptr<autonomy::transform::Buffer> tf,
                     std::shared_ptr<map::costmap_2d::Costmap2DWrapper>
                         costmap_wrapper);
+
+     void SetGridMapBuffer(std::shared_ptr<tools::GridMapBuffer> grid_map);
  
      /**
       * @brief Cleanup resources
@@ -158,6 +161,7 @@
      std::string name_;
      std::shared_ptr<autolink::Node> parent_;
      std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
+     std::shared_ptr<tools::GridMapBuffer> grid_map_;
      std::shared_ptr<autonomy::transform::Buffer> tf_buffer_;
      std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>>
          opt_traj_pub_;

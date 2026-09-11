@@ -45,6 +45,7 @@
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/map_msgs/grid_map.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 #include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
 #include <automsgs/msgs/sensor_msgs/imu.pb.h>
@@ -54,6 +55,7 @@
 #include "autonomy/control/common/progress_checker_interface.hpp"
 #include "autonomy/control/proto/controller_options.pb.h"
 #include "autonomy/control/utils/odometry_utils.hpp"
+#include "autonomy/control/controller/mppi_controller/tools/grid_map_buffer.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/map/costmap_2d/utils/robot_utils.hpp"
 #include "autonomy/transform/buffer.hpp"
@@ -252,6 +254,10 @@ protected:
         scan_reader_;
     std::shared_ptr<autolink::Reader<automsgs::msgs::map_msgs::OccupancyGrid>>
         map_reader_;
+    std::shared_ptr<autolink::Reader<automsgs::msgs::map_msgs::GridMap>>
+        follow_grid_reader_;
+    std::shared_ptr<controller::mppi_controller::tools::GridMapBuffer>
+        follow_grid_buffer_;
 
     bool follow_path_active_{false};
     bool follow_path_is_closed_{false};

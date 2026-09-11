@@ -508,6 +508,51 @@
              }
          }
      }
+
+     // GridObstaclesCritic (MoGe LocalGrid / grid_map 2.5D)
+     if (parameter_dictionary->HasKey("GridObstaclesCritic")) {
+         auto dict = parameter_dictionary->GetDictionary("GridObstaclesCritic");
+         if (dict) {
+             auto* critic = options.mutable_grid_obstacles_critic();
+             if (dict->HasKey("enabled")) {
+                 critic->set_enabled(dict->GetBool("enabled"));
+             }
+             if (dict->HasKey("cost_power")) {
+                 critic->set_cost_power(dict->GetInt("cost_power"));
+             }
+             if (dict->HasKey("repulsion_weight")) {
+                 critic->set_repulsion_weight(
+                     dict->GetDouble("repulsion_weight"));
+             }
+             if (dict->HasKey("critical_weight")) {
+                 critic->set_critical_weight(dict->GetDouble("critical_weight"));
+             }
+             if (dict->HasKey("collision_cost")) {
+                 critic->set_collision_cost(dict->GetDouble("collision_cost"));
+             }
+             if (dict->HasKey("robot_radius_m")) {
+                 critic->set_robot_radius_m(dict->GetDouble("robot_radius_m"));
+             }
+             if (dict->HasKey("collision_margin_m")) {
+                 critic->set_collision_margin_m(
+                     dict->GetDouble("collision_margin_m"));
+             }
+             if (dict->HasKey("repulsion_radius_m")) {
+                 critic->set_repulsion_radius_m(
+                     dict->GetDouble("repulsion_radius_m"));
+             }
+             if (dict->HasKey("obstacle_threshold")) {
+                 critic->set_obstacle_threshold(
+                     dict->GetDouble("obstacle_threshold"));
+             }
+             if (dict->HasKey("obstacle_layer")) {
+                 critic->set_obstacle_layer(dict->GetString("obstacle_layer"));
+             }
+             if (dict->HasKey("unknown_as_free")) {
+                 critic->set_unknown_as_free(dict->GetBool("unknown_as_free"));
+             }
+         }
+     }
  
      // VelocityDeadbandCritic
      if (parameter_dictionary->HasKey("VelocityDeadbandCritic")) {

@@ -1,0 +1,18 @@
+# Base RGB → MoGe depth (and optional YOLO tasks).
+# Reader order must match Component<Image> (single RGB).
+module_config {
+  module_library: "libbase_component.so"
+  components {
+    class_name: "autonomy::perception::base::Component"
+    config {
+      name: "base"
+      config_file_path: "conf/base.pb.txt"
+      readers {
+        channel: "/camera/color/image_raw"
+        qos_profile {
+          depth: 1
+        }
+      }
+    }
+  }
+}

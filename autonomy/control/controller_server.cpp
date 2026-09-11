@@ -167,6 +167,11 @@ void ControllerServer::LoadPlugins() {
         specs = {{"mppi_controller", "MppiController"}};
     }
 
+    if (!follow_grid_buffer_) {
+        follow_grid_buffer_ = std::make_shared<
+            controller::mppi_controller::tools::GridMapBuffer>();
+    }
+
     for (const auto& spec : specs) {
         if (controllers_.count(spec.id) > 0) {
             AWARN << "Duplicate controller plugin id ignored: " << spec.id;
@@ -180,6 +185,9 @@ void ControllerServer::LoadPlugins() {
             auto ctrl =
                 std::make_shared<controller::mppi_controller::MPPIController>();
             ctrl->Configure(options_, spec.id, tf_buffer_, costmap_wrapper_);
+            if (follow_grid_buffer_) {
+                ctrl->SetGridMapBuffer(follow_grid_buffer_);
+            }
             ctrl->Activate();
             instance = std::move(ctrl);
         } else if (resolved == "GracefulController") {
@@ -287,6 +295,7 @@ void ControllerServer::Shutdown() {
     odom_reader_.reset();
     scan_reader_.reset();
     map_reader_.reset();
+    follow_grid_reader_.reset();
     if (costmap_wrapper_) {
         costmap_wrapper_->SetMapPublishCallback(nullptr);
     }

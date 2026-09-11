@@ -26,15 +26,18 @@ namespace autonomy {
 namespace vehicle {
 
 /**
- * @brief 车辆 / 移动机器人底层接口抽象
+ * @brief 车辆 / 移动机器人底层接口抽象（autonomy 进程内）
  *
  * 该接口负责对接具体硬件或仿真底层，实现：
  * - 基于 VehicleModel 进行初始化（几何参数、动力学约束等）
  * - 定期从底层读取状态，填充 VehicleInfo
  * - 接收上层的 KinematicsControlCommand，并下发到底层执行
  *
- * 上层模块通常通过 VehicleServer 持有一个 VehicleInterface::SharedPtr，
- * 而具体平台（差速底盘、阿克曼小车、无人机等）各自实现该接口。
+ * **厂商 SDK / 真实底盘不在此实现。** 硬件 HAL 见
+ * `autodriver/chassis`（`ChassisDriver` + Registry），经 Autolink
+ * `/cmd_vel` `/odom` 与本进程解耦。此处仅保留运动学 / 模型侧抽象。
+ *
+ * 上层模块通常通过 VehicleServer 持有一个 VehicleInterface::SharedPtr。
  */
 class VehicleInterface
 {

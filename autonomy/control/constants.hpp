@@ -13,6 +13,8 @@ constexpr char kLocalCostmapTopicName[] = "/local_costmap";
 constexpr char kMapTopicName[] = "/map";
 constexpr char kOdomTopicName[] = "/odom";
 constexpr char kScanTopicName[] = "/scan";
+// MoGe LocalGrid (grid_map 2.5D) for person-follow MPPI.
+constexpr char kFollowGridTopicName[] = "/perception/follow/grid";
 constexpr char kFollowPathActionName[] = "/follow_path";
 constexpr char kSpinActionName[] = "/spin";
 constexpr char kBackUpActionName[] = "/backup";
