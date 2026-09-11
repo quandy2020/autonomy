@@ -1,10 +1,18 @@
 # Chassis（机器人本体硬件）
 
-与 `autonomy/vehicle` **解耦**：本目录只做真实底盘 / 本体 SDK；`vehicle` 留在 autonomy 进程内做运动学与模型抽象。
+与 `autonomy/vehicle` **解耦**；消息体与 **`automsgs/msgs/vehicle_msgs`** 一致。
+
+| 方向 | Autolink 类型 | 协议 |
+|------|---------------|------|
+| 指令 | `geometry_msgs.TwistStamped` | 与 `RobotState.twist` 同体 |
+| 状态 | `vehicle_msgs.RobotState` | 本体快照 |
+| 事件 | `vehicle_msgs.RobotEvent` | FAULT / E-STOP / BATTERY_LOW … |
+| 里程计 | `nav_msgs.Odometry` | 由 `RobotState` 派生（导航用） |
 
 ```text
-autonomy  --/cmd_vel-->  ChassisManager  --> ChassisDriver (vendor SDK)
-autonomy  <--/odom----  ChassisManager  <-- ReadChassisState()
+autonomy  --TwistStamped-->  ChassisManager  --> ChassisDriver (vendor SDK)
+autonomy  <--RobotState----  ChassisManager  <-- ReadChassisState()
+autonomy  <--RobotEvent----  ChassisManager  <-- EmitChassisEvent()
 ```
 
 ## 分层
@@ -27,14 +35,10 @@ chassis:
   enable: true
   backend: mybot
   cmd_vel_channel: /cmd_vel
+  state_channel: /robot_state
+  event_channel: /robot_event
   odom_channel: /odom
   watchdog_ms: 200
-  max_linear_speed: 1.0
-  max_angular_speed: 1.5
 ```
 
-## 与传感的关系
-
-- 传感：`SensorManager` + `SensorDriver`（单向采样）
-- 本体：`ChassisManager` + `ChassisDriver`（双向：指令进、状态出）
-- 同属 `autodriver` 进程，共享 Autolink Node；互不 `#include` 对方 SDK
+厂商只填 `RobotState` 中硬件可知字段（pose / twist / battery / motion_enabled / dock / charge）；任务相关字段可由 autonomy 侧覆盖。

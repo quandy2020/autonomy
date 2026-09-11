@@ -20,7 +20,9 @@ chassis:
   name: base
   backend: stub
   cmd_vel_channel: /cmd_vel
-  odom_channel: /odom
+  state_channel: /robot_state      # vehicle_msgs.RobotState
+  event_channel: /robot_event      # vehicle_msgs.RobotEvent
+  odom_channel: /odom              # derived from RobotState for nav
   watchdog_ms: 200
   odom_period_ms: 20
   max_linear_speed: 1.0
