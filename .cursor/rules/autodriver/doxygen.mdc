@@ -1,0 +1,91 @@
+---
+description: autodriver 包内 C++ 注释须为 Doxygen 风格（与现有 lidar/sensor 头文件一致）。
+globs: autodriver/**/*.{hpp,h,cpp}
+alwaysApply: false
+---
+
+# autodriver Doxygen 注释规范
+
+编写或修改 `autodriver/` 下头文件与实现时，**使用 Doxygen**，对齐仓库内既有写法（范例：`sensor_driver.hpp`、`udp_scan_driver_base.hpp`、`common/backend_registry.hpp`）。
+
+## 文件头
+
+每个 `.hpp` / 对外 `.cpp` 在版权声明之后：
+
+```cpp
+/**
+ * @file
+ * @brief 一句话说明本文件职责。
+ *
+ * 可选：补充约束、与相关模块关系（2–4 行）。
+ */
+```
+
+## 类 / 结构 / 枚举
+
+```cpp
+/**
+ * @class autodriver::ns::ClassName
+ * @brief 一句话职责。
+ *
+ * @tparam T 模板参数含义（若有）。
+ *
+ * 可选：YAML 关键参数、线程模型、与基类/CRTP 约定。
+ */
+```
+
+- `@struct` / `@enum` 同理；枚举项可用 `///<` 行尾释义。
+- 限定名写全：`autodriver::hardware::SerialImuDriver`。
+
+## 函数 / 方法
+
+公开 API 与非显然的 protected/private 钩子：
+
+```cpp
+/**
+ * @brief 做什么。
+ * @param name 参数含义。
+ * @return 返回值含义；失败约定写清（nullptr / false）。
+ */
+```
+
+- 虚接口覆盖：`@return` 写清固定值时可用「`SensorType::kImu`。」这类短句。
+- 工厂函数：注明 Registry 名、是否可返回 `nullptr`（stub）。
+- CRTP 钩子（如 `OnBytes`）：标明「CRTP hook」及调用线程。
+
+## 宏
+
+```cpp
+/**
+ * @brief …
+ * @param tag …
+ * @param name …
+ * @param factory …
+ * @param ... 可选 alias 字符串字面量。
+ */
+```
+
+## 成员变量
+
+优先行上或紧邻：
+
+```cpp
+// Sensor identifier for this driver instance.
+SensorId id_;
+```
+
+或 `/**< … */` / `///< …`；与邻近文件保持一致即可，**不要**混用三种风格于同一类内。
+
+## 不做
+
+- 不写「本节介绍…」式空话；`@brief` 直接说职责。
+- 不把实现细节堆进 `@brief`（细节放正文段或 `@note`）。
+- 不删已有正确 Doxygen；只补缺、统一格式。
+- `.cpp` 内仅实现细节的局部函数可不强制；对外符号与复杂逻辑应有 `@brief` 或文件级 `@file`。
+
+## 改码时检查
+
+- [ ] 新头文件有 `@file` + `@brief`
+- [ ] 新类有 `@class`（或 `@struct`）+ `@brief`
+- [ ] 公开方法有 `@brief`，有参数/返回则有 `@param` / `@return`
+- [ ] Policy / Traits 静态常量有一行释义

@@ -1,0 +1,248 @@
+---
+description: 为 autodriver/docs 编写中文技术文档（架构、数据流、生命周期、厂商页、API）；以源码与配置为准，对齐 MkDocs 导航与术语表。
+globs:
+  - autodriver/docs/**/*.md
+  - autodriver/**/*.{hpp,h,cpp}
+  - autodriver/**/CMakeLists.txt
+  - autodriver/config/**/*.yaml
+  - autodriver/launch/**
+alwaysApply: false
+---
+
+# Autodriver 技术文档（robotics-docs）
+
+## 角色
+
+基于 **autodriver** 源码与配置，编写准确、可维护的中文技术文档，帮助开发者理解：
+
+- 双域边界（传感 / 本体）与系统分层
+- Module ↔ Registry ↔ Driver 扩展点
+- Autolink 发布面与通道约定
+- 数据流、生命周期、热插拔与对齐旁路
+- YAML 配置、厂商 backend、构建与排障
+
+**依据**：源码与配置。不得将推测写成已实现事实。
+
+**关联规则**：
+
+| 规则 | 用途 |
+|---|---|
+| `.cursor/rules/other/document.mdc` | 书面语、宜/不宜、Markdown 通例 |
+| `.cursor/rules/autodriver/doxygen.mdc` | C++ 头文件 Doxygen（非 MkDocs 正文） |
+| `.cursor/rules/robotics-math-writing.mdc` | 规划/控制**算法**长文（非本包驱动文档） |
+
+---
+
+## 文档落点（`autodriver/docs`）
+
+MkDocs：`autodriver/docs/mkdocs.yml`，源目录 `source/`。
+
+| 读者意图 | 写入页面 |
+|---|---|
+| 构建 / 运行 / launch | `guide/quickstart.md` |
+| 环境变量、嵌入、排障表 | `guide/usage.md` |
+| YAML 字段全集 | `guide/configuration.md` |
+| enable / Attach / udev | `guide/lifecycle.md` |
+| 术语 | `guide/glossary.md`（**唯一权威**） |
+| 分层、加厂商 | `guide/architecture.md` |
+| 字节 → 话题 | `guide/dataflow.md` |
+| Stream / CAN / 各 backend | `guide/backends.md` |
+| ctest / 回放 | `guide/testing.md` |
+| 厂商手册 | `sensor/*.md` |
+| C++ 入口与头文件索引 | `api/overview.md` |
+| 常见问题 | `faq.md` |
+| 阅读路径总览 | `index.md` |
+
+新增内容优先并入上表既有页；仅当主题无法归入时再新增文件，并同步 `mkdocs.yml` nav。
+
+**非目标（与架构页一致）**：
+
+- 不写 ROS 2 Node / pluginlib / Lifecycle Node 包装文档（发布面为 Autolink + automsgs）
+- 不把 `autonomy/vehicle` 运动学/任务层写成 autodriver 职责
+- 不把 stub / 仅 Attach 写成已实现采集
+
+---
+
+## 写作前检查清单
+
+按任务需要阅读（勿仅靠文件名推断）：
+
+| 类别 | 路径 |
+|---|---|
+| 包说明 | `autodriver/README.md` |
+| 构建 | `autodriver/CMakeLists.txt`、相关 `Find*.cmake` |
+| 编排 | `sensor_manager.hpp`、`chassis` 管理器、`modules.cpp` |
+| 扩展点 | `common/backend_registry.hpp`、各 `*/backend_register.hpp` |
+| 驱动基类 | `serial_byte_driver_base.hpp`、`can_sensor_driver_base.hpp`、lidar UDP/Livox CRTP |
+| 发布 | `bridge/publisher.hpp`、`sample_sink.hpp`、`sensor_traits.hpp` |
+| 配置 | `config_loader`、`config/autodriver_hardware.yaml`、`config/<模态>/<vendor>/` |
+| 启动 | `launch/`、`main.cpp` / 进程入口 |
+| 测试 | `tests/`、`guide/testing.md` 已列用例 |
+
+---
+
+## 证据等级
+
+| 等级 | 含义 | 写法 |
+|---|---|---|
+| 源码确认 | 当前代码可直接证明 | 直接陈述 + 符号/路径 |
+| 配置确认 | YAML / launch / CMake 可证明 | 「配置中…」 |
+| 静态推断 | 由调用关系推断、未运行验证 | 标明推断 |
+| 运行验证 | 已构建/测试/实机确认 | 可写「已验证」 |
+| 设计建议 | 尚未实现 | 「建议…」「待实现」 |
+
+未做构建或运行时，须写明：
+
+> 本文结论来自源码与配置的静态分析，尚未进行运行时验证。
+
+禁止把「看起来能工作」写成「已经验证可以工作」。
+
+---
+
+## 术语
+
+1. 以 `autodriver/docs/source/guide/glossary.md` 为准。
+2. 首次可用「中文（English）」；其后用已定中文或缩写。
+3. 代码标识符、YAML 键、消息类型、通道名**不译**。
+4. 样本类型须与代码一致：`CameraFrame`（禁止 `ImageSample`）、`GpsSample`、`LidarScan`、`LidarCloud` 等。
+
+高频约定（详见 glossary）：模态、传感/本体、backend、折叠配置、热路径、对齐旁路、仅 Attach、stub/占位、语句解析、切帧、看门狗。
+
+---
+
+## 须分析的工程要点（autodriver）
+
+### 架构与边界
+
+- 传感：`SensorManager` + `*Module` + `SensorDriver` → `SensorSample` → Autolink
+- 本体：`ChassisManager` + `ChassisDriver`；`/cmd_vel`、状态、odom、event
+- Module 按模态固定入库；Driver 经 `BackendRegistry` / `REGISTER_*_BACKEND` 插拔
+- Creator 返回 owning raw，Registry 再包 `SharedPtr`
+- stub：Create 常返回 `nullptr`；仅 Attach：无采集
+
+### C++ API（写入 `api/overview.md` 或设计页）
+
+说明：职责边界、头文件、主要接口、所有权、生命周期、失败方式（如返回 `false` / `nullptr`）、线程性（源码未写则标「未在源码中明确」）。
+
+勿把声明逐行「译成中文」而无语义。
+
+### 通信与配置面（非 ROS 2）
+
+| 项 | 说明 |
+|---|---|
+| 发布 | `bridge::Publisher` / `SampleSink` → Autolink Writer |
+| 通道 | YAML `channel` 或 `ResolveChannel` |
+| 诊断 | `/diagnostics`（及可配置话题） |
+| 底盘 IO | cmd_vel、robot_state、odom、event |
+| 参数 | YAML + `params_file` + `DriverParams` 字符串表 |
+| 热插拔 | udev + `DeviceMatch`（非 ROS lifecycle） |
+
+接口表建议列：名称、消息/类型、方向、用途、触发条件、频率、坐标系、单位、时效、失败/降级。无法确认处填「未在当前源码中明确」。
+
+### 机器人领域约束
+
+须写清（影响正确性时不可省略）：
+
+- `frame_id` / 外参与坐标方向
+- 物理单位（米、rad、度——Hesai 校准等）
+- 时间戳来源；对齐窗口与缓冲
+- 传感器频率、切帧、运动补偿位姿通道
+- 串口/CAN/UDP 超时与重连；底盘 `watchdog_ms`
+- Create 失败、SDK 缺失时的降级（stub / `nullptr`）
+
+---
+
+## 按页面类型的骨架
+
+按复杂度取舍，**禁止为空套模板而造空节**。
+
+### 设计页（architecture / dataflow / lifecycle / backends）
+
+1. 开篇：原则或范围（可链 glossary）
+2. 边界 / 非目标
+3. 分层或流程（表格 + 必要 Mermaid）
+4. 扩展点或异常路径
+5. 链到配置 / 厂商 / API
+
+### 厂商页（`sensor/**`）
+
+| 块 | 内容 |
+|---|---|
+| 摘要 | 机型、SDK、backend 名 |
+| 对照表 | YAML 键、源码路径、params、CMake 开关 |
+| 配置示例 | 最小可运行 YAML |
+| 管线 / 注意 | 单位、话题冲突、权限、stub 条件 |
+
+### API 概览
+
+类型关系 → Registry 宏 → Config / Manager / Driver → 头文件索引；示例指向 `examples/`。
+
+### FAQ / usage 排障表
+
+现象 → 处理；用语与 glossary、configuration 一致。
+
+---
+
+## 图表
+
+优先 Mermaid，随 Markdown 版本管理。节点名体现职责，禁止无意义 A/B/C。
+
+```mermaid
+flowchart LR
+  YAML --> Loader[config_loader]
+  Loader --> SM[SensorManager]
+  SM --> Mod[SensorModule]
+  Mod --> Reg[BackendRegistry]
+  Reg --> Drv[SensorDriver]
+  Drv --> Sink[SampleSink]
+  Sink --> Pub[Publisher]
+```
+
+| 目标 | 图表 |
+|---|---|
+| 分层与依赖 | flowchart |
+| 字节→话题 | flowchart |
+| Attach/Detach、启动序 | sequenceDiagram |
+| enable/运行态 | stateDiagram（仅当源码确有状态） |
+| Module/Registry/Driver | classDiagram（只画核心类型） |
+
+同一信息不在多图机械重复。时序图须含成功路径；有证据时再画失败/超时。
+
+---
+
+## 语言与 Markdown
+
+遵循 `document.mdc`：书面语、完整主谓；禁止电报体与口语（「搞定」「Create 空」「真驱动」等）。
+
+- 中文叙述；标识符/键/类型保留英文
+- 标题层级连续；表格字段一致；路径与命令用反引号
+- 多行代码带语言标识；图表用 `mermaid` 围栏
+- 不用 HTML 排版；不依赖仅某编辑器可用的语法
+- 引用实现：相对路径 + 符号名；**勿伪造行号**（仅在已读文件确认后可用）
+
+---
+
+## 质量检查（提交前）
+
+- [ ] 与源码/配置一致；stub 与已实现区分清楚
+- [ ] 证据等级清楚；未运行验证已标注
+- [ ] 术语与 glossary 一致；无杜撰类型名
+- [ ] 落点符合上表；`mkdocs.yml` nav 已更新（若新增页）
+- [ ] 通道、消息、单位、坐标系、时间语义已写清（适用时）
+- [ ] 所有权、失败方式、线程模型有依据或标明未知
+- [ ] 图方向与真实数据流一致；异常路径有证据才写
+- [ ] 构建/运行命令已验证或注明未验证
+- [ ] 已去掉口语/电报体
+
+---
+
+## 输出约定
+
+用户未指定格式时：
+
+1. 默认写入/修改 `autodriver/docs/source/` 下对应 Markdown（中文）
+2. 先概述与边界，再细节；复杂关系用 Mermaid；接口用表格
+3. 源码无法确认处明确标注；资料不足则先列已确认项与待确认项
+4. **不**借写文档之机改业务源码（除非用户同时要求）
+5. **不**声称执行过未实际执行的构建、测试或实机验证
+6. 输出前按 `document.mdc` 做书面语检查

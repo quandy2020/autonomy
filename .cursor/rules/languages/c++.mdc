@@ -69,5 +69,6 @@ alwaysApply: false
 - 为类、方法和关键逻辑编写清晰的注释。
 - 使用 Doxygen 生成 API 文档。
 - 记录代码的假设、约束和预期行为。
+- **`autodriver/` 包**：须遵循 `.cursor/rules/autodriver/doxygen.mdc`（`@file` / `@class` / `@brief` / `@param` / `@return`）。
 
 遵循官方 ISO C++ 标准和指南，获取现代 C++ 开发的最佳实践。
