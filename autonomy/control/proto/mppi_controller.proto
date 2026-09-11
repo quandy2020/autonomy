@@ -65,6 +65,7 @@ message MPPIControllerOptions {
     ObstaclesCriticOptions obstacles_critic = 27;  // Optional, alternative to CostCritic
     VelocityDeadbandCriticOptions velocity_deadband_critic = 28;  // Optional
     TwirlingCriticOptions twirling_critic = 29;  // Optional
+    GridObstaclesCriticOptions grid_obstacles_critic = 46;  // MoGe LocalGrid 2.5D
 
     // Checker Configuration
     GoalCheckerOptions goal_checker = 30;
@@ -208,6 +209,21 @@ message ObstaclesCriticOptions {
     double collision_cost = 6;  // Default: 10000.0
     double collision_margin_distance = 7;  // Default: 0.1
     double near_goal_distance = 8;  // Default: 0.5
+}
+
+// GridMap (2.5D) obstacle critic — MoGe LocalGrid, not costmap_2d.
+message GridObstaclesCriticOptions {
+    bool enabled = 1;
+    int32 cost_power = 2;
+    double repulsion_weight = 3;
+    double critical_weight = 4;
+    double collision_cost = 5;
+    double robot_radius_m = 6;
+    double collision_margin_m = 7;
+    double repulsion_radius_m = 8;
+    double obstacle_threshold = 9;
+    string obstacle_layer = 10;  // Default: "obstacle"
+    bool unknown_as_free = 11;   // Default: true (outside camera FOV)
 }
 
 // Velocity deadband critic configuration (optional)

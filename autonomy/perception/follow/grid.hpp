@@ -47,6 +47,9 @@ public:
 
     bool ToMessage(automsgs::msgs::map_msgs::GridMap* message) const;
 
+    /** @brief Clear obstacle/traversability in a disk (person keep-out). */
+    void ClearDisk(double x, double y, double radius_m);
+
     bool IsTraversable(double x, double y) const;
 
 private:

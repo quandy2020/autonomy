@@ -28,6 +28,7 @@
 #include "autonomy/common/logging.hpp"
 #include "autonomy/control/common/controller_exceptions.hpp"
 #include "autonomy/control/constants.hpp"
+#include "autonomy/control/controller/mppi_controller/controller.hpp"
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
 
 namespace autonomy {
@@ -126,6 +127,43 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
             AINFO << "ControllerServer: OccupancyGrid on " << kMapTopicName;
         } else {
             AWARN << "ControllerServer: failed to subscribe " << kMapTopicName;
+        }
+    }
+
+    if (!follow_grid_buffer_) {
+        follow_grid_buffer_ = std::make_shared<
+            controller::mppi_controller::tools::GridMapBuffer>();
+        for (auto& entry : controllers_) {
+            auto* mppi = dynamic_cast<
+                controller::mppi_controller::MPPIController*>(
+                entry.second.get());
+            if (mppi != nullptr) {
+                mppi->SetGridMapBuffer(follow_grid_buffer_);
+            }
+        }
+    }
+
+    if (!follow_grid_reader_ && follow_grid_buffer_) {
+        ControllerServer* self = this;
+        follow_grid_reader_ =
+            node_->CreateReader<automsgs::msgs::map_msgs::GridMap>(
+                kFollowGridTopicName,
+                [self](const std::shared_ptr<automsgs::msgs::map_msgs::GridMap>&
+                           msg) {
+                    if (!msg || !self->follow_grid_buffer_) {
+                        return;
+                    }
+                    if (!self->follow_grid_buffer_->Update(*msg)) {
+                        AWARN << "ControllerServer: follow GridMap update "
+                                 "failed";
+                    }
+                });
+        if (follow_grid_reader_) {
+            AINFO << "ControllerServer: follow GridMap (2.5D) on "
+                  << kFollowGridTopicName;
+        } else {
+            AWARN << "ControllerServer: failed to subscribe "
+                  << kFollowGridTopicName;
         }
     }
 

@@ -34,6 +34,7 @@
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/control/controller/mppi_controller/critic_data.hpp"
 #include "autonomy/control/controller/mppi_controller/critic_function.hpp"
+#include "autonomy/control/controller/mppi_controller/tools/grid_map_buffer.hpp"
 #include "autonomy/control/controller/mppi_controller/tools/utils.hpp"
 #include "autonomy/control/proto/mppi_controller.pb.h"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
@@ -71,7 +72,10 @@ namespace mppi_controller {
      void configure(std::shared_ptr<autolink::Node> parent,
                     const std::string& name,
                     std::shared_ptr<map::costmap_2d::Costmap2DWrapper>,
-                    const proto::MPPIControllerOptions*);
+                    const proto::MPPIControllerOptions*,
+                    std::shared_ptr<tools::GridMapBuffer> grid_map = nullptr);
+
+     void setGridMapBuffer(std::shared_ptr<tools::GridMapBuffer> grid_map);
  
      /**
       * @brief Score trajectories by the set of loaded critic functions
@@ -99,6 +103,7 @@ namespace mppi_controller {
  protected:
      std::shared_ptr<autolink::Node> parent_;
      std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_ros_;
+     std::shared_ptr<tools::GridMapBuffer> grid_map_;
      std::string name_;
  
      const proto::MPPIControllerOptions* options_;

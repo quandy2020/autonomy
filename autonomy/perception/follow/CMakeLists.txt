@@ -1,5 +1,5 @@
 # Follow is a loadable autolink component. It consumes base tracks + depth and
-# publishes target / path / grid for TrackingClient.
+# publishes target / path / grid for TrackingClient + MPPI GridObstaclesCritic.
 if(NOT TARGET autolink)
   return()
 endif()

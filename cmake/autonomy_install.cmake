@@ -133,6 +133,30 @@ endif()
 if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/autonomy/perception/launch")
   list(APPEND _autonomy_launch_mods perception)
 endif()
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/autonomy/perception/conf")
+  install(
+    DIRECTORY autonomy/perception/conf/
+    DESTINATION share/autonomy/perception/conf
+    FILES_MATCHING
+    PATTERN "*.pb.txt"
+  )
+endif()
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/autonomy/perception/base/dag")
+  install(
+    DIRECTORY autonomy/perception/base/dag/
+    DESTINATION share/autonomy/perception/base/dag
+    FILES_MATCHING
+    PATTERN "*.dag"
+  )
+endif()
+if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/autonomy/perception/follow/dag")
+  install(
+    DIRECTORY autonomy/perception/follow/dag/
+    DESTINATION share/autonomy/perception/follow/dag
+    FILES_MATCHING
+    PATTERN "*.dag"
+  )
+endif()
 if(BUILD_GRPC)
   list(APPEND _autonomy_launch_mods bridge)
 endif()

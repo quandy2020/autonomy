@@ -47,9 +47,18 @@
                            options.controller_frequency());
      path_handler_.initialize(parent_node, name_, costmap_wrapper_, tf_buffer_,
                               &options_);
+     if (grid_map_) {
+         optimizer_.setGridMapBuffer(grid_map_);
+     }
  
      AINFO << "Configured MPPI Controller: " << name_
            << " (visualize=" << (visualize_ ? "true" : "false") << ")";
+ }
+ 
+ void MPPIController::SetGridMapBuffer(
+     std::shared_ptr<tools::GridMapBuffer> grid_map) {
+     grid_map_ = std::move(grid_map);
+     optimizer_.setGridMapBuffer(grid_map_);
  }
  
  void MPPIController::Cleanup() {

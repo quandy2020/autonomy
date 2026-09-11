@@ -46,6 +46,11 @@ void Optimizer::initialize(std::shared_ptr<autolink::Node> parent, const std::st
   reset();
 }
 
+void Optimizer::setGridMapBuffer(
+    std::shared_ptr<tools::GridMapBuffer> grid_map) {
+  critic_manager_.setGridMapBuffer(std::move(grid_map));
+}
+
 void Optimizer::shutdown() { noise_generator_.shutdown(); }
 
 void Optimizer::getParams() {

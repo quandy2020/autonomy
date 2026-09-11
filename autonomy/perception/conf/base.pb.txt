@@ -1,5 +1,4 @@
-# Base runtime sample: MoGe-2 monocular depth only.
-# Canonical component conf: autonomy/perception/conf/base.pb.txt
+# Base — MoGe depth for Follow LocalGrid (grid_map 2.5D → MPPI).
 # Weights: config/perception/base/moge-2-vits-normal_518x518_fp16.engine
 backend: BACKEND_TENSORRT
 input_width: 518
@@ -18,3 +17,11 @@ tasks {
   moge_mask_threshold: 0.5
   moge_fov_x_deg: 0
 }
+
+# Enable when YOLO26 track weights are available (input size must be %32).
+# tasks {
+#   kind: TASK_TRACK
+#   enable: true
+#   model_path: "/workspace/autonomy/src/autonomy/config/perception/base/yolo26n_track.engine"
+#   topic: "/perception/base/tracks"
+# }

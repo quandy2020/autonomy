@@ -14,7 +14,7 @@ namespace {
 constexpr char kGlobalFrame[] = "map";
 constexpr char kRobotBaseFrame[] = "base_link";
 constexpr char kDefaultPlannerId[] = "navfn_planner";
-constexpr char kDefaultControllerId[] = "FollowPath";
+constexpr char kDefaultControllerId[] = "mppi_controller";
 constexpr char kDefaultSmootherId[] = "simple_smoother";
 constexpr double kDefaultGoalReachedTol = 0.35;
 

@@ -169,14 +169,10 @@ bool FollowComponent::Proc(const std::shared_ptr<Tracks>& tracks,
         AERROR << error;
         return false;
     }
-    automsgs::msgs::map_msgs::GridMap grid_msg;
-    if (!grid_->ToMessage(&grid_msg) || !grid_writer_->Write(grid_msg)) {
-        AERROR << "Follow failed to publish grid.";
-        return false;
-    }
 
     const auto* track = SelectTrack(*tracks);
     if (track == nullptr) {
+        PublishMaps();
         automsgs::msgs::nav_msgs::Path empty;
         empty.mutable_header()->CopyFrom(depth->header());
         empty.mutable_header()->set_frame_id(options_.map_frame());
@@ -188,6 +184,15 @@ bool FollowComponent::Proc(const std::shared_ptr<Tracks>& tracks,
     if (!localizer_->Localize(*track, *depth, *camera_info, camera_to_map,
                               &target, &error)) {
         AERROR << error;
+        return false;
+    }
+    // Keep the locked person from becoming a lethal wall for MPPI/path.
+    const float clear_r = options_.person_clear_radius_m() > 0.0F
+                              ? options_.person_clear_radius_m()
+                              : 0.45F;
+    grid_->ClearDisk(target.pose().position().x(), target.pose().position().y(),
+                     clear_r);
+    if (!PublishMaps()) {
         return false;
     }
     if (!target_writer_->Write(target)) {
@@ -207,6 +212,15 @@ bool FollowComponent::Proc(const std::shared_ptr<Tracks>& tracks,
     }
     if (!path_writer_->Write(path)) {
         AERROR << "Follow failed to publish path.";
+        return false;
+    }
+    return true;
+}
+
+bool FollowComponent::PublishMaps() {
+    automsgs::msgs::map_msgs::GridMap grid_msg;
+    if (!grid_->ToMessage(&grid_msg) || !grid_writer_->Write(grid_msg)) {
+        AERROR << "Follow failed to publish grid.";
         return false;
     }
     return true;

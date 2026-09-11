@@ -1,0 +1,37 @@
+# Follow: tracks + MoGe depth + CameraInfo + odom → target/path/grid.
+# Reader order must match FollowComponent template:
+#   Detection2DArray, Image, CameraInfo, Odometry
+module_config {
+  module_library: "libfollow_component.so"
+  components {
+    class_name: "autonomy::perception::follow::FollowComponent"
+    config {
+      name: "follow"
+      config_file_path: "conf/follow.pb.txt"
+      readers {
+        channel: "/perception/base/tracks"
+        qos_profile {
+          depth: 1
+        }
+      }
+      readers {
+        channel: "/perception/base/depth"
+        qos_profile {
+          depth: 1
+        }
+      }
+      readers {
+        channel: "/camera/color/camera_info"
+        qos_profile {
+          depth: 1
+        }
+      }
+      readers {
+        channel: "/odom"
+        qos_profile {
+          depth: 1
+        }
+      }
+    }
+  }
+}
