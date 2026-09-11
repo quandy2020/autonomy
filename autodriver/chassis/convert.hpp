@@ -23,6 +23,7 @@
 #define AUTODRIVER_CHASSIS_CONVERT_HPP_
 
 #include <cstdint>
+#include <string>
 
 #include "chassis/types.hpp"
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>

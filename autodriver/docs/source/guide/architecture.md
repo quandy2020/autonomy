@@ -76,7 +76,7 @@ flowchart LR
 | 所有权 | Creator 返回 owning `Product*`；Registry `CreateDriver` 收成 `SharedPtr` |
 | 锁 | `SensorManager` 用读写锁保护 Attach/Detach 与 module 表 |
 
-### 3.2 本体路径
+### 3.2 本体路径（消息体 = `vehicle_msgs`）
 
 ```mermaid
 flowchart LR

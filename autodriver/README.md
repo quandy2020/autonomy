@@ -7,7 +7,7 @@
 | 域 | 路径 | 说明 |
 |---|---|---|
 | 传感 | `camera/` `lidar/` … | `SensorDriver`，单向采样 |
-| 本体 | [`chassis/`](chassis/README.md) | `ChassisDriver`，`/cmd_vel`↔`/odom`；**不依赖** `autonomy/vehicle` |
+| 本体 | [`chassis/`](chassis/README.md) | `vehicle_msgs.RobotState` / `RobotEvent` + `TwistStamped`；**不依赖** `autonomy/vehicle` |
 
 ## 能力
 

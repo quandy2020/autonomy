@@ -36,8 +36,12 @@ option(AUTODRIVER_WITH_REALSENSE "Build Intel RealSense camera/IMU drivers" ON)
 option(AUTODRIVER_WITH_ORBBEC "Build Orbbec camera/pointcloud drivers" ON)
 option(AUTODRIVER_WITH_RPLIDAR "Build Slamtec RPLidar 2D lidar drivers" ON)
 option(AUTODRIVER_WITH_LIVOX "Build Livox 3D lidar drivers (SDK1+SDK2)" ON)
+# Optional: -DRplidarSDK_ROOT=/usr/local or RPLIDAR_SDK_DIR env (see cmake/module/FindRplidarSDK.cmake)
+# Optional: -DLivoxSDK2_ROOT=/usr/local -DLivoxSDK_ROOT=/usr/local
 
-list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(PREPEND CMAKE_MODULE_PATH
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/module")
 
 set(AUTODRIVER_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(AUTODRIVER_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/autodriver")

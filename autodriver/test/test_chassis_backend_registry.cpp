@@ -20,6 +20,7 @@
 #include <gtest/gtest.h>
 
 #include "autodriver/driver_params.hpp"
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 
 namespace {
 
@@ -48,6 +49,11 @@ TEST(ChassisBackendRegistry, StubCreateAndDrive) {
   ASSERT_TRUE(state.twist().has_twist());
   EXPECT_NEAR(state.twist().twist().linear().x(), 0.5, 1e-6);
   EXPECT_NEAR(state.twist().twist().angular().z(), 0.1, 1e-6);
+  EXPECT_TRUE(state.motion_enabled());
+
+  EXPECT_TRUE(driver->TriggerEmergencyStop());
+  EXPECT_TRUE(driver->ReadChassisState(&state));
+  EXPECT_FALSE(state.motion_enabled());
 
   driver->Stop();
   EXPECT_FALSE(driver->IsRunning());
