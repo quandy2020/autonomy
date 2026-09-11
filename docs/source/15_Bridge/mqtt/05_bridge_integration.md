@@ -33,7 +33,7 @@ BridgeServer
 // bridge_server.hpp（规划）
 class BridgeServer {
     // ...
-    plugins::grpc::GrpcBridgeServer::UniquePtr grpc_bridge_{nullptr};
+    GrpcBridgeServer::UniquePtr grpc_bridge_{nullptr};
     plugins::mqtt::MqttBridge::UniquePtr mqtt_bridge_{nullptr};  // 新增
 };
 
@@ -41,7 +41,7 @@ class BridgeServer {
 BridgeServer::BridgeServer(const proto::BridgeOptions& options)
     : options_{options} {
     if (options_.use_grpc()) {
-        grpc_bridge_ = std::make_unique<plugins::grpc::GrpcBridgeServer>(
+        grpc_bridge_ = std::make_unique<GrpcBridgeServer>(
             options_.grpc());
     }
     if (options_.use_mqtt()) {

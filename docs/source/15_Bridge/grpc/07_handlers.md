@@ -9,19 +9,42 @@
 
 | RPC | 规划类名 | 流模式 | 状态 |
 |-----|----------|--------|------|
-| `SendNavigationCommand` | `SendNavigationHandler` | Unary→Stream | ⏳ 已注册，`OnRequest` 空 |
-| `SendExplorationCommand` | `SendExplorationHandler` | Unary→Stream | ⏳ 已注册，业务空 |
-| `SendFollowCommand` | `SendFollowHandler` | Unary→Stream | ❌ |
-| `SendTeleopCommand` | `SendTeleopHandler` | **Bidi** | ⏳ goal + feedback Autolink；终态 REJECTED/TIMEOUT 回写流 |
-| `SendDockCommand` | `SendDockHandler` | Unary→Stream | ❌ |
-| `SendMapCommand` | `SendMapHandler` | Unary→Stream | ❌ |
-| `ReceiveBotStates` | `ReceiveBotStatesHandler` | Empty→Stream | ❌ |
-| `ReceiveBotEvents` | `ReceiveBotEventsHandler` | Empty→Stream | ❌ |
-| `GetRobotSnapshot` | `GetRobotSnapshotHandler` | Unary | ❌ |
-| `GetActiveTask` | `GetActiveTaskHandler` | Unary | ❌ |
-| `GetCapabilities` | `GetCapabilitiesHandler` | Unary | ❌ |
-| `EmergencyStop` | `EmergencyStopHandler` | Unary | ❌ |
-| `CancelAllTasks` | `CancelAllTasksHandler` | Unary | ❌ |
+| `SendNavigationCommand` | `SendNavigationHandler` | Unary→Stream | ✅ NavigatorStub |
+| `SendExplorationCommand` | `SendExplorationHandler` | Unary→Stream | ✅ ExplorationStub |
+| `SendFollowCommand` | `SendFollowHandler` | Unary→Stream | ✅ FollowStub |
+| `SendTeleopCommand` | `SendTeleopHandler` | **Bidi** | ✅ TeleopStub |
+| `SendDockCommand` | `SendDockHandler` | Unary→Stream | ✅ DockStub |
+| `SendMapCommand` | `SendMapHandler` | Unary→Stream | ✅ MapStub |
+| `SendVoiceCommand` | `SendVoiceHandler` | Unary→Stream | ✅ VoiceStub |
+| `ReceiveBotStates` | `ReceiveBotStatesHandler` | Empty→Stream | ✅ StateHub |
+| `ReceiveBotEvents` | `ReceiveBotEventsHandler` | Empty→Stream | ✅ StateHub |
+| `GetRobotSnapshot` | `GetRobotSnapshotHandler` | Unary | ✅ StateHub |
+| `GetActiveTask` | `GetActiveTaskHandler` | Unary | ✅ |
+| `GetCapabilities` | `GetCapabilitiesHandler` | Unary | ✅ |
+| `EmergencyStop` | `EmergencyStopHandler` | Unary | ✅ |
+| `CancelAllTasks` | `CancelAllTasksHandler` | Unary | ✅ |
+
+另注册完整 `automsgs.rpcs.*`（Navigation / Follow / Charge / Teleop 含相对运动 / Exploration / Voice / Map / Localization / System含 **GetHealth** / **SensorService**）。
+
+## 7.1.1 模板约定
+
+| 层 | 设施 | 用法 |
+|----|------|------|
+| Handler | `handlers/command_handlers.*` · `rpc_<domain>_handlers.*` | **同域多 class 同文件**；`rpc_handlers.hpp` 聚合 include |
+| Handler 工具 | `handlers/handler_util.hpp` | `RequireContext` / `ReplyUnary*` / `RunCommandStream` / `StreamUntil*` |
+| Stub | 设施 | 用法 |
+|------|------|------|
+| Goal 通道 | `goal_channel_stub.hpp` + Traits | Follow / Dock / Map / Teleop |
+| Action | `action_goal_session.hpp` | Navigator `SendActionGoal` |
+| 多通道会话 | `stream_session.hpp` | Exploration |
+| 最新消息 | `latest_message_cache.hpp` | Localization / MapService |
+| 传感器 | `sensor_sample_traits.hpp` | `SampleFieldTraits` 特化 + `SubscribeSample` |
+| 公共 | `stub_util.hpp` | `FillCommandAck` / `DispatchCommands` / `MakeCommandRule(s)` / Reject 守卫 |
+| 例外 | Teleop bidi、Sensor Record、Exploration、ReceiveBot* | 仅复用 `RequireContext` 或保持手写 |
+
+新增 Unary RPC：优先 `ReplyUnaryWithContext` / `ReplyStatusWithContext`。  
+新增带 `ack.final` 的命令流：优先 `RunCommandStream` 或 `StreamMappedUntilAckFinal`。
+
 
 (push-handler-signature)=
 ## 7.2 Push Handler 签名

@@ -14,7 +14,7 @@ Environment=AUTONOMY_CONFIGURATION_DIRECTORY={{ autonomy_bridge_configuration_di
 Environment=AUTONOMY_CONFIGURATION_BASENAME={{ autonomy_bridge_configuration_basename }}
 Environment=LD_LIBRARY_PATH={{ autonomy_install_prefix }}/lib:/usr/local/lib
 WorkingDirectory={{ autonomy_data_dir }}
-ExecStart={{ autonomy_install_prefix }}/bin/autonomy_bridge \
+ExecStart={{ autonomy_install_prefix }}/bin/autonomy.bridge \
   --configuration_directory={{ autonomy_bridge_configuration_directory }} \
   --configuration_basename={{ autonomy_bridge_configuration_basename }}
 Restart=on-failure

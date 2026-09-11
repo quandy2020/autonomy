@@ -26,5 +26,23 @@ constexpr const char* kNavigateToPoseActionServerName =
 constexpr const char* kNavigateThroughPosesActionServerName =
     task::kNavigateThroughPoses;
 
+constexpr const char* kTeleopGoalChannel = task::kTeleopGoal;
+constexpr const char* kTeleopFeedbackChannel = task::kTeleopFeedback;
+constexpr const char* kTrackingGoalChannel = task::kTrackingGoal;
+constexpr const char* kTrackingFeedbackChannel = task::kTrackingFeedback;
+constexpr const char* kChargingGoalChannel = task::kChargingGoal;
+constexpr const char* kChargingFeedbackChannel = task::kChargingFeedback;
+constexpr const char* kMappingGoalChannel = task::kMappingGoal;
+constexpr const char* kMappingFeedbackChannel = task::kMappingFeedback;
+constexpr const char* kExplorationWaypointChannel = task::kExplorationWaypoint;
+constexpr const char* kExplorationFinishedChannel = task::kExplorationFinished;
+
+constexpr const char* kRobotStateChannel = "/robot_state";
+constexpr const char* kRobotEventChannel = "/robot_event";
+constexpr const char* kSpinActionName = "/spin";
+constexpr const char* kBackUpActionName = "/backup";
+constexpr const char* kDriveOnHeadingActionName = "/drive_on_heading";
+constexpr const char* kMapChannel = "/map";
+
 }  // namespace bridge
 }  // namespace autonomy

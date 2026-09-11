@@ -21,6 +21,10 @@ Bridge 对外暴露的唯一 gRPC 服务，定义于 `autonomy/bridge/proto/exte
 | `SendTeleopCommand` | Command | stream `TeleopCommandRequest` → stream `*Response` | [10](10_teleop_command.md) |
 | `SendDockCommand` | Command | `DockCommandRequest` → stream `*Response` | [11](11_dock_command.md) |
 | `SendMapCommand` | Command | `MapCommandRequest` → stream `*Response` | [12](12_map_command.md) |
+| `SendExplorationCommand` | Command | `ExplorationCommandRequest` → stream `*Response` | — |
+| `SendVoiceCommand` | Command | `VoiceCommandRequest` → stream `*Response` | — |
+
+> 同时 `autonomy.bridge` 注册 `automsgs.rpcs.*` 域服务（Navigation / Follow / Charge / Teleop / Exploration / Voice / System），与上表业务一一对应；第三方优先用 `automsgs/tools/cli/rpc-cli.py`。
 
 ## 2.2 RPC 分类
 
@@ -58,3 +62,5 @@ Bridge 对外暴露的唯一 gRPC 服务，定义于 `autonomy/bridge/proto/exte
 | `TASK_TYPE_EXPLORATION` | 4 | `SendExplorationCommand` | `supports_exploration` |
 | `TASK_TYPE_DOCK` | 5 | `SendDockCommand` | `supports_docking` |
 | `TASK_TYPE_MAP` | 6 | `SendMapCommand` | `supports_map_management` |
+
+语音控制走 `SendVoiceCommand`（无独立 `TaskType`）：结构化 `VoiceIntent` 分发到导航 / 跟随 / 回充 / 探索 / 取消。

@@ -6,7 +6,7 @@
   Processes:
     monitor, planning, control, task, perception (disabled by default),
     localization + cartographer_occupancy_grid_node,
-    autonomy_bridge (BUILD_GRPC=ON),
+    autonomy.bridge (BUILD_GRPC=ON),
     autonomy_foxglove_bridge
 
   Not started here (tools / one-off):
@@ -56,7 +56,7 @@
   <module>
     <name>bridge</name>
     <type>binary</type>
-    <process_name>autonomy_bridge --configuration_directory=config --configuration_basename=bridge/bridge_options.lua</process_name>
+    <process_name>autonomy.bridge --configuration_directory=config --configuration_basename=bridge/bridge_options.lua</process_name>
   </module>
   <module>
     <name>foxglove</name>

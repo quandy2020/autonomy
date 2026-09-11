@@ -16,6 +16,9 @@
 
 #include "autonomy/system/monitor/monitor_registry.hpp"
 
+#include <algorithm>
+#include <cmath>
+
 #include "autolink/autolink.hpp"
 #include "autonomy/system/monitor/channel_monitor/channel_monitor.hpp"
 #include "autonomy/system/monitor/cpu_monitor/cpu_monitor_base.hpp"
@@ -95,6 +98,49 @@ void MonitorRegistry::CollectAll() {
         if (m && m->enabled())
             m->Collect();
     }
+}
+
+SystemHealthSnapshot MonitorRegistry::Snapshot() const {
+    SystemHealthSnapshot snap;
+    using namespace cpu_monitor;
+    for (const auto& m : monitors_) {
+        if (!m || !m->enabled()) {
+            continue;
+        }
+        if (const auto* cpu = dynamic_cast<const CpuMonitorBase*>(m.get())) {
+            snap.cpu_usage_percent =
+                static_cast<float>(cpu->usage().total_usage_percent);
+            snap.load_average_1m =
+                static_cast<float>(cpu->load_average().load_1);
+        } else if (const auto* mem = dynamic_cast<const MemMonitor*>(m.get())) {
+            snap.memory_usage_percent =
+                static_cast<float>(mem->usage_percent());
+        } else if (const auto* hdd = dynamic_cast<const HddMonitor*>(m.get())) {
+            float worst = -1.f;
+            for (const auto& mount : hdd->mounts()) {
+                worst = std::max(worst, static_cast<float>(mount.usage_percent));
+            }
+            snap.disk_usage_percent = worst;
+        } else if (const auto* ntp = dynamic_cast<const NtpMonitor*>(m.get())) {
+            if (ntp->chronyc_available() &&
+                !std::isnan(ntp->offset_seconds())) {
+                snap.ntp_offset_seconds =
+                    static_cast<float>(ntp->offset_seconds());
+            }
+        } else if (const auto* ch =
+                       dynamic_cast<const ChannelMonitor*>(m.get())) {
+            snap.channels = ch->SnapshotHealth();
+        } else if (const auto* lat =
+                       dynamic_cast<const LatencyMonitor*>(m.get())) {
+            snap.latencies = lat->SnapshotHealth();
+        } else if (const auto* haz =
+                       dynamic_cast<const HazardMonitor*>(m.get())) {
+            snap.hazard_level = haz->level();
+        } else if (const auto* mrm = dynamic_cast<const MrmHandler*>(m.get())) {
+            snap.mrm_active = mrm->active();
+        }
+    }
+    return snap;
 }
 
 void MonitorRegistry::AddMonitor(std::unique_ptr<MonitorBase> monitor) {

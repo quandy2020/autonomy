@@ -1,26 +1,36 @@
 <!--
-  Copyright 2025 The Openbot Authors (duyongquan)
+  Copyright 2026 The Openbot Authors
 
-  Starts autonomy_bridge (built from bridge_main.cpp) as a standalone binary.
+  Starts autonomy.bridge (gRPC AutonomyService / automsgs.rpcs.*).
 
-  autolink_launch binary module: process_name is the full command line
-  (see autolink/tools/autolink_launch/main.cpp StartProcess).
+  Binary: build/bin/autonomy.bridge  (requires -DBUILD_GRPC=ON)
+  Config: config/bridge/bridge_options.lua → include bridge/bridge.lua
+  Defaults (protobuf text, docs only): share/autonomy/bridge/conf/bridge.pb.txt
+  Channel map (docs only): share/autonomy/bridge/dag/bridge.dag
 
-  Build:  cmake -DBUILD_GRPC=ON && cmake --build build -j
-  Binary: build/bin/autonomy_bridge
+  Prerequisites:
+    - config/bridge/bridge.lua (+ bridge_options.lua)
+    - Autolink task / navigator channels already running when calling RPCs
+    - PATH includes build/bin (or install prefix bin)
 
-  Dev:
+  Dev (repo root):
     export PATH=$PWD/build/bin:$PATH
     export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/bridge/launch
     autolink_launch bridge.launch
+    # or: autolink launch start bridge.launch
 
-  Install (cwd = prefix, PATH includes <prefix>/bin):
+  Install:
     autolink_launch share/autonomy/bridge/launch/bridge.launch
+
+  Full stack (includes bridge):
+    autonomy/system/launch/autonomy.launch
 -->
 <autolink>
-    <module>
-        <name>bridge</name>
-        <type>binary</type>
-        <process_name>autonomy_bridge --configuration_directory=config --configuration_basename=bridge/bridge_options.lua</process_name>
-    </module>
+  <module>
+    <name>bridge</name>
+    <type>binary</type>
+    <process_name>autonomy.bridge --configuration_directory=config --configuration_basename=bridge/bridge_options.lua</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
 </autolink>

@@ -16,6 +16,7 @@
 | `system.proto` | `automsgs.rpcs.system` | `SystemService` | Heartbeat、状态、E-Stop/Clear、CancelAll、ActiveGoal、Capabilities |
 | `teleop.proto` | `automsgs.rpcs.teleop` | `TeleopService` | 遥控：Velocity + DriveOnHeading/BackUp/Spin + Pause/Resume |
 | `exploration.proto` | `automsgs.rpcs.exploration` | `ExplorationService` | 自主探索建图：Explore 流式 + Pause/Resume/Cancel/SetArea/SaveMap |
+| `voice.proto` | `automsgs.rpcs.voice` | `VoiceService` | 语音/意图：Execute 流式 → 导航/跟随/回充/探索/停止 |
 
 ## 包名与引用
 
@@ -147,6 +148,15 @@
 **关流：** COMPLETED / FAILED / CANCELLED / 拒收 / 断开。**`PAUSED` 不关流。**
 
 忙 → `EXPLORATION_BUSY`（1300）。地图 CRUD 不在本服务。
+
+### Voice（意图分发）
+
+| RPC | 形态 | 说明 |
+|-----|------|------|
+| `Execute` | **server streaming** | `intent` + 可选 `transcript` + `oneof payload` |
+| `Cancel` / `GetStatus` | **unary** | 取消当前分发 / 快照 |
+
+意图：`NAVIGATE` / `FOLLOW` / `DOCK` / `UNDOCK` / `EXPLORE` / `STOP` / `CANCEL_ALL`。Bridge 映射到对应域 Stub。
 
 ## 状态码（统一 `status_msgs.StatusCode`）
 

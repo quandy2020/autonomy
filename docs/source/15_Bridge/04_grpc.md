@@ -1,19 +1,19 @@
 (bridge-grpc)=
-# 4. gRPC 插件
+# 4. gRPC
 
-gRPC 插件（`plugins/grpc/`）是 Bridge **当前唯一可用**的传输实现，基于 `autonomy/common/async_grpc` 将 [§3 RPC](03_rpc_protocol.md) 落地为异步服务端。
+gRPC 实现位于 `autonomy/bridge/grpc/`，是 Bridge **当前唯一**的传输实现，基于 `autonomy/common/async_grpc` 将 [§3 RPC](03_rpc_protocol.md) 落地为异步服务端。
 
-> **编号约定**：本页 **§4.1–§4.6** 为插件总览；`grpc/01_*`–`06_*` 为 async_grpc 专题（子页 H2 为 `{文件前缀}.x`，如 `02` → `## 2.1`）。文档地图见 [00_guide §0.1](00_guide.md#01-文档地图)。
+> **编号约定**：本页 **§4.1–§4.6** 为总览；`grpc/01_*`–`07_*` 为 async_grpc / Handler 专题。文档地图见 [00_guide §0.1](00_guide.md#01-文档地图)。
 
 ## 4.1 组件
 
 | 路径 | 职责 |
 |------|------|
-| `grpc_bridge.*` | `GrpcBridgeServer` 生命周期、Handler 注册 |
-| `handlers/navigation_handler.*` | `SendNavigationCommand` |
-| `handlers/exploration_handler.*` | `SendExplorationCommand` |
-| `clients/navigator_stub.*` | Navigator 客户端（待实现） |
-| `grpc_bridge_context.*` | `ExecutionContext` 扩展（待接线） |
+| `grpc/grpc_bridge.*` | `GrpcBridgeServer` 生命周期、Handler 注册 |
+| `grpc/handlers/*` | AutonomyService + `automsgs.rpcs` Handler |
+| `grpc/clients/*` | 域 Stub（导航 / 跟随 / 遥操 / …） |
+| `grpc/grpc_bridge_context.*` | `ExecutionContext` + Stub 聚合 |
+| `grpc/task_muxer.*` / `state_hub.*` | 任务互斥与状态推送 |
 
 ## 4.2 服务器构建
 

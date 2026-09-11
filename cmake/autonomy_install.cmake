@@ -50,7 +50,7 @@ set(_autonomy_hdr_excludes PATTERN "internal" EXCLUDE)
 if(NOT BUILD_GRPC)
   list(APPEND _autonomy_hdr_excludes
     PATTERN "async_grpc" EXCLUDE
-    PATTERN "plugins/grpc" EXCLUDE
+    REGEX "bridge/grpc/" EXCLUDE
     PATTERN "bridge_server.*" EXCLUDE)
 endif()
 # Exclude only top-level autonomy/tools (path relative to autonomy/).
@@ -157,9 +157,7 @@ if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/autonomy/perception/follow/dag")
     PATTERN "*.dag"
   )
 endif()
-if(BUILD_GRPC)
-  list(APPEND _autonomy_launch_mods bridge)
-endif()
+# bridge conf/dag/launch: autonomy/bridge/CMakeLists.txt (BUILD_GRPC)
 list(REMOVE_DUPLICATES _autonomy_launch_mods)
 foreach(_mod IN LISTS _autonomy_launch_mods)
   install(

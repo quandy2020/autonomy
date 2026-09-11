@@ -903,6 +903,21 @@ $CLI call ExplorationService/Resume -d '{}'
 $CLI call ExplorationService/SaveMap -d '{"map_name":"explore_smoke"}'
 $CLI call ExplorationService/Cancel -d '{}'
 
+# 6c) Voice（意图分发到导航）
+$CLI call VoiceService/Execute -d '{
+  "goal_id": "voice-1",
+  "intent": "VOICE_INTENT_NAVIGATE",
+  "transcript": "go to the kitchen",
+  "navigate": {
+    "goal_id": "voice-nav-1",
+    "waypoints": [{
+      "header": {"frame_id": "map"},
+      "pose": {"position": {"x": 1.0, "y": 0.0, "z": 0.0},
+               "orientation": {"w": 1.0}}
+    }]
+  }
+}' --max-time 10
+
 # 7) 破坏性 / 高优先级（单独确认后再跑）
 # $CLI call MapService/DeleteMap -d '{"map_identifier":"smoke"}'
 # $CLI call SystemService/EmergencyStop -d '{"reason":"rpc-cli end"}'
@@ -924,6 +939,7 @@ $CLI call ExplorationService/Cancel -d '{}'
 | `LocalizationService` | GetPose, GetStatus, SetInitialPose |
 | `ChargeService` | Return, Leave, Pause, Resume, Cancel, GetStatus |
 | `FollowService` | Follow, Pause, Resume, Cancel, GetStatus |
+| `VoiceService` | Execute, Cancel, GetStatus |
 | `SensorService` | ListSensors, GetSample, GetParameters, SetParameters, SaveParameters, LoadParameters, Record, CancelRecord, GetRecordStatus |
 
 ```bash

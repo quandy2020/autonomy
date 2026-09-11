@@ -5,8 +5,10 @@
 
 | 文件 | 内容 |
 |------|------|
-| `external_command_service.proto` | `AutonomyService`（13 RPC） |
+| `external_command_service.proto` | `AutonomyService`（导航/跟随/遥操/回充/地图/探索/语音 + 查询/系统） |
 | `bridge_options.proto` | 机载配置（非 RPC）→ [§1](01_options.md) |
+
+**第三方域服务**：同进程另注册 `automsgs.rpcs.*`（见 `automsgs/proto/rpcs/`），与 AutonomyService 共用 Stub / `TaskMuxer`。
 
 **集成 / 调 API**：从侧边栏 [01 接入与验证](rpcs/01_connection_guide.md) 跑通 `grpcurl`；全量用例见 [13 集成测试](rpcs/13_integration_tests.md)。
 

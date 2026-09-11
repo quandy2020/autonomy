@@ -1,0 +1,13 @@
+# Default BridgeOptions (protobuf text). Runtime entry remains Lua:
+#   config/bridge/bridge_options.lua → include bridge/bridge.lua
+# Keep these defaults aligned with config/bridge/bridge.lua.
+
+use_grpc: true
+grpc {
+  host: "127.0.0.1"
+  port: 5005
+  num_grpc_threads: 5
+  num_event_threads: 5
+  enable_ssl_encryption: false
+  enable_google_auth: false
+}

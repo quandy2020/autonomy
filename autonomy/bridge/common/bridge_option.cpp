@@ -32,14 +32,6 @@ proto::GrpcOptions CreateGrpcOptions(
     return options;
 }
 
-proto::MqttOptions CreateMqttOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
-    proto::MqttOptions options;
-    options.set_host(parameter_dictionary->GetString("host"));
-    options.set_port(parameter_dictionary->GetInt("port"));
-    return options;
-}
-
 }  // namespace common
 }  // namespace bridge
 }  // namespace autonomy

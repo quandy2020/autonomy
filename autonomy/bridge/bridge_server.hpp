@@ -20,7 +20,7 @@
 #include <unordered_map>
 
 #include "autonomy/bridge/common/bridge_option.hpp"
-#include "autonomy/bridge/plugins/grpc/grpc_bridge.hpp"
+#include "autonomy/bridge/grpc/grpc_bridge.hpp"
 #include "autonomy/common/macros.hpp"
 
 namespace autonomy {
@@ -65,7 +65,7 @@ public:
 
 private:
     const proto::BridgeOptions options_;
-    plugins::grpc::GrpcBridgeServer::UniquePtr grpc_bridge_{nullptr};
+    grpc::GrpcBridgeServer::UniquePtr grpc_bridge_{nullptr};
 };
 
 }  // namespace bridge

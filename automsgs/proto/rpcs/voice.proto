@@ -1,0 +1,89 @@
+// Copyright 2025 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.rpcs.voice;
+
+import "automsgs/msgs/std_msgs/header.proto";
+import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
+import "automsgs/rpcs/common.proto";
+import "automsgs/rpcs/navigation.proto";
+import "automsgs/rpcs/follow.proto";
+import "automsgs/rpcs/charge.proto";
+import "automsgs/rpcs/exploration.proto";
+
+// =============================================================================
+// VoiceService — speech / intent control surface
+//
+// Bridge routes structured intents to Navigation / Follow / Charge /
+// Exploration / Teleop-stop. ASR text is optional metadata.
+// Busy → TASK_ALREADY_RUNNING (301) or domain busy codes.
+// =============================================================================
+service VoiceService {
+  rpc Execute(VoiceCommandRequest) returns (stream VoiceCommandResponse);
+  rpc Cancel(GoalRequest) returns (automsgs.rpcs.common.Status);
+  rpc GetStatus(GetStatusRequest) returns (VoiceCommandResponse);
+}
+
+enum VoiceIntent {
+  VOICE_INTENT_UNKNOWN = 0;
+  VOICE_INTENT_NAVIGATE = 1;
+  VOICE_INTENT_FOLLOW = 2;
+  VOICE_INTENT_DOCK = 3;
+  VOICE_INTENT_UNDOCK = 4;
+  VOICE_INTENT_EXPLORE = 5;
+  VOICE_INTENT_STOP = 6;
+  VOICE_INTENT_CANCEL_ALL = 7;
+}
+
+enum VoiceState {
+  VOICE_STATE_UNKNOWN = 0;
+  VOICE_STATE_IDLE = 1;
+  VOICE_STATE_DISPATCHING = 2;
+  VOICE_STATE_RUNNING = 3;
+  VOICE_STATE_SUCCEEDED = 4;
+  VOICE_STATE_FAILED = 5;
+  VOICE_STATE_CANCELLED = 6;
+}
+
+message VoiceCommandRequest {
+  automsgs.msgs.std_msgs.Header header = 1;
+  string goal_id = 2;
+  // Optional ASR transcript (UTF-8).
+  string transcript = 3;
+  VoiceIntent intent = 4;
+  oneof payload {
+    automsgs.rpcs.navigation.NavigateRequest navigate = 5;
+    automsgs.rpcs.follow.FollowRequest follow = 6;
+    automsgs.rpcs.charge.ReturnRequest dock = 7;
+    automsgs.rpcs.charge.LeaveRequest undock = 8;
+    automsgs.rpcs.exploration.ExploreRequest explore = 9;
+  }
+}
+
+message VoiceCommandResponse {
+  automsgs.rpcs.common.Status status = 1;
+  VoiceState state = 2;
+  string goal_id = 3;
+  VoiceIntent intent = 4;
+  string detail = 5;
+  bool active = 6;
+}
+
+message GoalRequest {
+  string goal_id = 1;
+}
+
+message GetStatusRequest {}

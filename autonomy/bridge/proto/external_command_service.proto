@@ -345,6 +345,95 @@ message MapCommandResponse {
 }
 
 // =============================================================================
+// 探索建图
+// =============================================================================
+
+enum ExplorationCommand {
+  EXPLORATION_CMD_UNSPECIFIED = 0;
+  EXPLORATION_CMD_START = 1;
+  EXPLORATION_CMD_STOP = 2;
+  EXPLORATION_CMD_PAUSE = 3;
+  EXPLORATION_CMD_RESUME = 4;
+  EXPLORATION_CMD_CANCEL = 5;
+  EXPLORATION_CMD_SET_AREA = 6;
+  EXPLORATION_CMD_SAVE_MAP = 7;
+}
+
+enum ExplorationStatus {
+  EXPLORATION_STATUS_UNKNOWN = 0;
+  EXPLORATION_STATUS_IDLE = 1;
+  EXPLORATION_STATUS_PLANNING = 2;
+  EXPLORATION_STATUS_EXPLORING = 3;
+  EXPLORATION_STATUS_PAUSED = 4;
+  EXPLORATION_STATUS_SUCCEEDED = 5;
+  EXPLORATION_STATUS_FAILED = 6;
+  EXPLORATION_STATUS_CANCELED = 7;
+}
+
+message ExplorationCommandRequest {
+  RequestHeader header = 1;
+  ExplorationCommand command = 2;
+  automsgs.msgs.geometry_msgs.Polygon area = 3;
+  string map_name = 4;
+  float timeout_sec = 5;
+  float coverage_target = 6;
+  bool enable_mapping = 7;
+}
+
+message ExplorationCommandResponse {
+  CommandAck ack = 1;
+  ExplorationStatus status = 2;
+  float progress = 3;
+  int32 frontier_count = 4;
+  string map_name = 5;
+  automsgs.msgs.geometry_msgs.PoseStamped current_pose = 6;
+}
+
+// =============================================================================
+// 语音控制（结构化意图 → 域任务）
+// =============================================================================
+
+enum VoiceIntent {
+  VOICE_INTENT_UNSPECIFIED = 0;
+  VOICE_INTENT_NAVIGATE = 1;
+  VOICE_INTENT_FOLLOW = 2;
+  VOICE_INTENT_DOCK = 3;
+  VOICE_INTENT_UNDOCK = 4;
+  VOICE_INTENT_EXPLORE = 5;
+  VOICE_INTENT_STOP = 6;
+  VOICE_INTENT_CANCEL_ALL = 7;
+}
+
+enum VoiceStatus {
+  VOICE_STATUS_UNKNOWN = 0;
+  VOICE_STATUS_IDLE = 1;
+  VOICE_STATUS_DISPATCHING = 2;
+  VOICE_STATUS_RUNNING = 3;
+  VOICE_STATUS_SUCCEEDED = 4;
+  VOICE_STATUS_FAILED = 5;
+  VOICE_STATUS_CANCELED = 6;
+}
+
+message VoiceCommandRequest {
+  RequestHeader header = 1;
+  VoiceIntent intent = 2;
+  string transcript = 3;
+  oneof payload {
+    NavigationCommandRequest navigate = 4;
+    FollowCommandRequest follow = 5;
+    DockCommandRequest dock = 6;
+    ExplorationCommandRequest explore = 7;
+  }
+}
+
+message VoiceCommandResponse {
+  CommandAck ack = 1;
+  VoiceStatus status = 2;
+  VoiceIntent intent = 3;
+  string detail = 4;
+}
+
+// =============================================================================
 // AutonomyService
 //
 // 交互约定：
@@ -386,4 +475,8 @@ service AutonomyService {
       returns (stream DockCommandResponse);
   rpc SendMapCommand(MapCommandRequest)
       returns (stream MapCommandResponse);
+  rpc SendExplorationCommand(ExplorationCommandRequest)
+      returns (stream ExplorationCommandResponse);
+  rpc SendVoiceCommand(VoiceCommandRequest)
+      returns (stream VoiceCommandResponse);
 }
