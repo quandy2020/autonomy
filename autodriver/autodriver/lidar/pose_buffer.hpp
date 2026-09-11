@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file pose_buffer.hpp
  * @brief Thread-safe pose buffer for MotionCompensator PoseLookup.
  */
 
@@ -47,15 +47,19 @@ public:
   AUTOLINK_SHARED_PTR_DEFINITIONS(PoseBuffer)
 
     /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(PoseBuffer)
+    /**
      * @brief Construct with a maximum number of stored poses.
-     * @param capacity Older poses are dropped when exceeded (minimum 1).
+     * @param[in] capacity Older poses are dropped when exceeded (minimum 1).
      */
     explicit PoseBuffer(std::size_t capacity = 200);
 
     /**
      * @brief Append a pose stamped at @p time_ns (nanoseconds).
-     * @param time_ns Pose timestamp; should be non-decreasing for best results.
-     * @param pose world←lidar affine transform.
+     * @param[in] time_ns Pose timestamp; should be non-decreasing for best results.
+     * @param[in] pose world←lidar affine transform.
      */
     void Push(std::uint64_t time_ns, const Eigen::Affine3d& pose);
 
@@ -73,7 +77,7 @@ public:
 private:
     /**
      * @brief Interpolate a pose at @p time_ns; caller must hold mutex_.
-     * @param time_ns Query time in nanoseconds.
+     * @param[in] time_ns Query time in nanoseconds.
      * @param[out] pose Filled on success; must be non-null.
      * @return true when @p time_ns lies within the buffered range.
      */

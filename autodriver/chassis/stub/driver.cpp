@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,12 @@
  * limitations under the License.
  */
 
+/**
+ * @file driver.cpp
+ * @brief Stub chassis backend (software differential odom, no hardware)
+ *        (implementation).
+ */
+
 #include "chassis/stub/driver.hpp"
 
 #include <chrono>
@@ -22,6 +28,8 @@
 
 #include "chassis/backend_register.hpp"
 #include "chassis/convert.hpp"
+#include "chassis/operational_mode.hpp"
+#include "chassis/tool_command.hpp"
 #include "autodriver/driver_params.hpp"
 #include "autolink/common/log.hpp"
 #include <automsgs/msgs/vehicle_msgs/robot_event_type.pb.h>
@@ -40,6 +48,8 @@ std::uint64_t ReadSteadyTimeNanoseconds() {
 
 /**
  * @brief Planar yaw (rad) from RobotState orientation quaternion.
+ * @param[in] state Chassis state carrying pose orientation.
+ * @return Planar yaw in radians, or 0 when orientation is missing.
  */
 double ExtractYawFromState(const ChassisState& state) {
   if (!state.has_pose() || !state.pose().has_pose() ||
@@ -53,6 +63,10 @@ double ExtractYawFromState(const ChassisState& state) {
 
 /**
  * @brief Write SE(2) pose (x, y, yaw) into RobotState.pose.
+ * @param[out] state Chassis state whose pose is overwritten.
+ * @param[in] x Planar x position (m).
+ * @param[in] y Planar y position (m).
+ * @param[in] yaw Planar yaw (rad).
  */
 void WritePlanarPose(ChassisState* state, double x, double y, double yaw) {
   auto* pose = state->mutable_pose()->mutable_pose();
@@ -109,6 +123,21 @@ public:
     return true;
   }
 
+  bool ApplyLocomotionIntent(LocomotionIntent intent) override {
+    std::lock_guard<std::mutex> lock(mutex_);
+    intent_ = intent;
+    AINFO << "stub chassis intent=" << LocomotionIntentToString(intent);
+    return true;
+  }
+
+  bool ApplyToolCommand(const ToolCommand& command) override {
+    std::lock_guard<std::mutex> lock(mutex_);
+    last_tool_ = command.name + "=" + command.value;
+    AINFO << "stub chassis tool " << last_tool_
+          << " enable=" << (command.enable ? "true" : "false");
+    return true;
+  }
+
   bool ReadChassisState(ChassisState* state) override {
     if (state == nullptr) {
       return false;
@@ -137,6 +166,7 @@ public:
 private:
   /**
    * @brief Integrate differential-drive odometry from the last velocity command.
+   * @param[in] now_ns Current steady-clock time in nanoseconds.
    * @pre Caller holds mutex_.
    */
   void IntegrateOdometryLocked(std::uint64_t now_ns) {
@@ -190,6 +220,8 @@ private:
   bool running_ = false;
   ChassisCommand command_;
   ChassisState state_;
+  LocomotionIntent intent_{LocomotionIntent::kUnspecified};
+  std::string last_tool_;
   std::uint64_t last_integrate_ns_ = 0;
 };
 

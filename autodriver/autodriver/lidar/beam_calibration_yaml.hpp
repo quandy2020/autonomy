@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file beam_calibration_yaml.hpp
  * @brief Shared YAML loader for lasers[].vert_correction (Velodyne / Hesai).
  */
 
@@ -32,7 +32,7 @@ namespace lidar {
  * @brief Result of loading a beam-calibration YAML file.
  */
 struct LaserVertCorrectionTable {
-    /** laser_id → vert_correction value (units as stored in the file). */
+    /** @brief laser_id → vert_correction value (units as stored in the file). */
     std::map<int, double> by_id;
     /**
      * @brief True when root `unit: rad` / `angles_in_radians: true`.
@@ -43,7 +43,7 @@ struct LaserVertCorrectionTable {
 
 /**
  * @brief Load lasers[].laser_id + vert_correction from a YAML file.
- * @param path Path to the calibration YAML.
+ * @param[in] path Path to the calibration YAML.
  * @param[out] out Filled table on success; must be non-null.
  * @param[out] error Optional human-readable failure reason.
  * @return true when at least one laser entry was parsed.

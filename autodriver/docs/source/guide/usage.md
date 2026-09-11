@@ -34,21 +34,33 @@
 
 ## 2. 进程 `autodriver`
 
+CLI（CLI11，见包根 `options.hpp` / `options.cpp`）：`autodriver --help` / `-V`。
+
 ```bash
 export AUTODRIVER_PATH=/path/to/autodriver   # 含 config/ 的包根
 export LD_LIBRARY_PATH=$BUILD/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 export PATH=$BUILD/bin${PATH:+:$PATH}
 
+autodriver --help
+autodriver -V
 autodriver                                          # 默认 autodriver_hardware.yaml
-autodriver /path/to/autodriver                      # 指定配置根，文件名仍默认
-autodriver /path/to/autodriver autodriver_hardware.yaml
-autodriver /path/to/autodriver camera/orbbec/gemini_330.yaml
+autodriver /path/to/autodriver                      # 指定配置根
+autodriver -c /path/to/autodriver --config-file autodriver_hardware.yaml
+autodriver -n                                       # dry-run：只加载配置
+autodriver --no-udev
 ```
+
+短选项遵循 Google CLI 约定（`-h` help、`-n` dry-run；**不用** `-f`/`-n` 表示配置文件或节点名）。
+`node_name` / `plugin_dir` / `compensator.pose_channel` 等运行时差异写在 YAML（或 `AUTODRIVER_PLUGIN_DIR`），不进命令行。
 
 | 参数 | 含义 |
 |---|---|
-| `argv[1]` | `configuration_directory`（包根或等价）；为空则使用 `AUTODRIVER_PATH` / 编译默认 |
-| `argv[2]` | 配置 basename 或相对 `config/` 的路径；默认 `autodriver_hardware.yaml` |
+| `-h` / `--help` | 帮助 |
+| `-V` / `--version` | 版本（来自 `version.json` → `conf/conf.hpp`） |
+| `-n` / `--dry-run` | 加载配置后退出，不启硬件 |
+| `--no-udev` | 关闭 udev 热插拔 |
+| `-c` / `--config-dir` / 位置参数 | 配置根（含 `config/`）；亦读 `AUTODRIVER_PATH` |
+| `--config-file` / 位置参数 | basename；默认 `autodriver_hardware.yaml`（**无**短选项 `-f`） |
 
 ### 2.1 启动 / 停止
 

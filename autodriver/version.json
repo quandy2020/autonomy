@@ -1,8 +1,18 @@
 {
-  "version": "0.1.0",
+  "version": "0.2.0",
   "major": 0,
-  "minor": 1,
+  "minor": 2,
   "patch": 0,
   "name": "Autodriver",
-  "description": "Unified sensor hardware abstraction layer for vehicle robots"
+  "description": "Sensor + chassis HAL for vehicle robots",
+  "full_version": "0.2.0+g63b8d64e-dirty",
+  "git_describe": "v0.2.0-231-g63b8d64e-dirty",
+  "git_commit": "63b8d64e",
+  "git_branch": "feature/library",
+  "git_commit_date": "2026-09-11 10:38:39",
+  "git_author": "duyongquan3",
+  "git_email": "duyongquan3@jd.com",
+  "git_dirty": true,
+  "build_date": "2026-09-11",
+  "build_time": "2026-09-11 13:33:58.507"
 }

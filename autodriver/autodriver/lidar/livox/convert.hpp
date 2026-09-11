@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file convert.hpp
  * @brief Livox points → sensor_msgs/PointCloud2 (x,y,z,intensity,timestamp).
  */
 
@@ -34,8 +34,8 @@ namespace livox {
 
 /**
  * @brief Build PointCloud2 with shared XYZIT layout (point_step=24).
- * @param points XYZIT points in the lidar frame.
- * @param frame_id Header frame_id written into the message.
+ * @param[in] points XYZIT points in the lidar frame.
+ * @param[in] frame_id Header frame_id written into the message.
  * @return PointCloud2 via InitXyzitCloud / AppendXyzitPoint; empty when no points.
  */
 automsgs::msgs::sensor_msgs::PointCloud2 PointsToPointCloud(

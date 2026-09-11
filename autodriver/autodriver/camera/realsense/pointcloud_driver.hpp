@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file pointcloud_driver.hpp
  * @brief Intel RealSense depth-to-color point cloud driver.
  */
 
@@ -36,6 +36,9 @@ namespace hardware {
 
 /**
  * @brief Factory used by Lidar3dModule.
+ * @param[in] id Sensor instance id from YAML.
+ * @param[in] params Backend-specific key/value map.
+ * @return Owning RealSensePointCloudDriver* (never null).
  */
 SensorDriver*
 CreateRealSensePointCloudDriver(
@@ -53,7 +56,13 @@ class RealSensePointCloudDriver : public SensorDriver {
   AUTOLINK_SHARED_PTR_DEFINITIONS(RealSensePointCloudDriver)
 
   /**
+   * @brief Disable copy construction and copy assignment.
+   */
+  DISALLOW_COPY_AND_ASSIGN(RealSensePointCloudDriver)
+  /**
    * @brief Parses resolution params and stores sensor identity.
+   * @param[in] id Sensor instance id.
+   * @param[in] params DriverParams (cold-path parse only).
    */
   RealSensePointCloudDriver(SensorId id, DriverParams params);
 
@@ -76,6 +85,7 @@ class RealSensePointCloudDriver : public SensorDriver {
 
   /**
    * @brief Subscribes to a RealSense depth point cloud via the shared hub.
+   * @return True on successful subscription / hub start.
    */
   bool Start() override;
 
@@ -86,11 +96,13 @@ class RealSensePointCloudDriver : public SensorDriver {
 
   /**
    * @brief Returns true while the point-cloud subscription is active.
+   * @return True after Start until Stop.
    */
   bool IsRunning() const override;
 
   /**
    * @brief Registers the callback invoked for each point-cloud sample.
+   * @param[in] callback May be empty to disable emission.
    */
   void SetSampleCallback(SampleCallback callback) override;
 

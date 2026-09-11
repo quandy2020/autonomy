@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file can_client.hpp
  * @brief CAN client abstraction: SocketCAN + in-process Fake bus.
  */
 
@@ -48,11 +48,22 @@ public:
    */
   AUTOLINK_SHARED_PTR_DEFINITIONS(CanClient)
 
+    /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(CanClient)
+    /**
+     * @brief Default constructor (DISALLOW_COPY suppresses the implicit one).
+     */
+    CanClient() = default;
+    /**
+     * @brief Virtual destructor for polymorphic CanClient deletion.
+     */
     virtual ~CanClient() = default;
 
     /**
      * @brief Open or bind the named channel (e.g. "can0" or "fake0").
-     * @param channel Interface or fake bus name.
+     * @param[in] channel Interface or fake bus name.
      * @return True on success.
      */
     virtual bool Init(const std::string& channel) = 0;
@@ -64,21 +75,22 @@ public:
 
     /**
      * @brief Transmit one frame.
-     * @param frame Classical CAN frame to send.
+     * @param[in] frame Classical CAN frame to send.
      * @return True when the frame was accepted by the backend.
      */
     virtual bool Send(const io::CanFrame& frame) = 0;
 
     /**
      * @brief Receive one frame, optionally waiting.
-     * @param frame Output frame; must not be null.
-     * @param timeout_ms Poll timeout for blocking backends (Fake ignores).
+     * @param[in] frame Output frame; must not be null.
+     * @param[in] timeout_ms Poll timeout for blocking backends (Fake ignores).
      * @return True when a frame was copied into @p frame.
      */
     virtual bool Receive(io::CanFrame* frame, int timeout_ms) = 0;
 
     /**
      * @brief Last Init/Send/Receive error string.
+     * @return Reference to the backend error text (empty when ok).
      */
     virtual const std::string& last_error() const = 0;
 };
@@ -95,18 +107,43 @@ public:
     AUTOLINK_SHARED_PTR_DEFINITIONS(SocketCanClient)
 
     /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(SocketCanClient)
+    /**
+     * @brief Default constructor (DISALLOW_COPY suppresses the implicit one).
+     */
+    SocketCanClient() = default;
+
+    /**
      * @brief Open SocketCAN interface @p channel.
+     * @param[in] channel SocketCAN ifname (e.g. "can0").
+     * @return True when the socket was opened successfully.
      */
     bool Init(const std::string& channel) override {
         return socket_.Open(channel);
     }
 
+    /**
+     * @brief Close the SocketCAN file descriptor.
+     */
     void Close() override { socket_.Close(); }
 
+    /**
+     * @brief Transmit one frame via SocketCAN.
+     * @param[in] frame Classical CAN frame to send.
+     * @return True when the frame was written successfully.
+     */
     bool Send(const io::CanFrame& frame) override {
         return socket_.Write(frame);
     }
 
+    /**
+     * @brief Receive one frame from SocketCAN.
+     * @param[in] frame Output frame; must not be null.
+     * @param[in] timeout_ms Poll timeout in milliseconds.
+     * @return True when a frame was copied into @p frame.
+     */
     bool Receive(io::CanFrame* frame, int timeout_ms) override {
         if (frame == nullptr) {
             return false;
@@ -114,6 +151,10 @@ public:
         return socket_.Read(*frame, timeout_ms);
     }
 
+    /**
+     * @brief Last SocketCAN open/I/O error string.
+     * @return Reference to the socket error text.
+     */
     const std::string& last_error() const override {
         return socket_.last_error();
     }
@@ -138,7 +179,19 @@ public:
     AUTOLINK_SHARED_PTR_DEFINITIONS(FakeCanClient)
 
     /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(FakeCanClient)
+
+    /**
+     * @brief Default constructor (DISALLOW_COPY suppresses the implicit one).
+     */
+    FakeCanClient() = default;
+
+    /**
      * @brief Bind this client to a named fake bus (creates the bus if needed).
+     * @param[in] channel Fake bus name (e.g. "fake0").
+     * @return Always true.
      */
     bool Init(const std::string& channel) override {
         channel_ = channel;
@@ -147,8 +200,16 @@ public:
         return true;
     }
 
+    /**
+     * @brief No-op close for the in-memory bus.
+     */
     void Close() override {}
 
+    /**
+     * @brief Enqueue @p frame onto the fake bus RX queue.
+     * @param[in] frame Frame to deliver to subsequent Receive() callers.
+     * @return Always true.
+     */
     bool Send(const io::CanFrame& frame) override {
         auto& bus = Bus(channel_);
         std::lock_guard<std::mutex> lock(bus.mutex);
@@ -156,6 +217,12 @@ public:
         return true;
     }
 
+    /**
+     * @brief Dequeue one frame from the fake bus RX queue.
+     * @param[in] frame Output frame; must not be null.
+     * @param[in] timeout_ms Ignored for the in-memory bus.
+     * @return True when a frame was available and copied.
+     */
     bool Receive(io::CanFrame* frame, int /*timeout_ms*/) override {
         if (frame == nullptr) {
             return false;
@@ -170,12 +237,16 @@ public:
         return true;
     }
 
+    /**
+     * @brief Last error string for the fake client.
+     * @return Reference to the error text (usually empty).
+     */
     const std::string& last_error() const override { return last_error_; }
 
     /**
      * @brief Push a frame onto the bus RX queue as if received from the wire.
-     * @param channel Fake bus name.
-     * @param frame Frame to inject.
+     * @param[in] channel Fake bus name.
+     * @param[in] frame Frame to inject.
      */
     static void Inject(const std::string& channel, const io::CanFrame& frame) {
         auto& bus = Bus(channel);
@@ -185,7 +256,7 @@ public:
 
     /**
      * @brief Drop all queued frames on a fake bus.
-     * @param channel Fake bus name.
+     * @param[in] channel Fake bus name.
      */
     static void Clear(const std::string& channel) {
         auto& bus = Bus(channel);
@@ -207,6 +278,8 @@ private:
 
     /**
      * @brief Lookup or create the shared bus for @p channel.
+     * @param[in] channel Fake bus name.
+     * @return Reference to the process-local SharedBus for @p channel.
      */
     static SharedBus& Bus(const std::string& channel) {
         static std::mutex map_mutex;
@@ -228,7 +301,7 @@ private:
 
 /**
  * @brief Factory: channel starting with "fake" → FakeCanClient, else SocketCAN.
- * @param channel Interface or fake bus name.
+ * @param[in] channel Interface or fake bus name.
  * @return New client instance (not yet Init()'d for Socket; Fake Init is cheap).
  */
 inline std::unique_ptr<CanClient> CreateCanClient(const std::string& channel) {

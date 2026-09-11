@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file channels.hpp
  * @brief Bridge-side Autolink channel naming helpers.
  *
  * Complements ResolveChannel() in sensor_traits.hpp (modality defaults).
@@ -39,7 +39,7 @@ namespace bridge {
  * - /camera/depth/image_rect_raw   → /camera/depth/camera_info
  * - other                          → @p image_channel + "/camera_info"
  *
- * @param image_channel Image topic or channel name.
+ * @param[in] image_channel Image topic or channel name.
  * @return Matching camera_info channel name.
  */
 inline std::string CameraInfoChannelForImage(const std::string& image_channel) {

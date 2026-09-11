@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file sensor_hub.hpp
  * @brief Buffers samples, estimates per-sensor clock offsets, and emits aligned snapshots.
  */
 
@@ -88,6 +88,7 @@ public:
     SensorHub();
     /**
      * @brief Constructs a hub with alignment and buffer options.
+     * @param[in] options Ring-buffer capacity and alignment publish settings.
      */
     explicit SensorHub(Options options);
     /**
@@ -97,37 +98,37 @@ public:
 
   /**
    * @brief Registers a driver and wires its samples into this hub.
-   * @param driver Shared driver; samples arrive via SetSampleCallback.
+   * @param[in] driver Shared driver; samples arrive via SetSampleCallback.
    */
   void RegisterDriver(SensorDriver::SharedPtr driver);
 
   /**
    * @brief Sets the callback invoked with aligned multi-sensor snapshots.
-   * @param callback May be empty to clear subscribers.
+   * @param[in] callback May be empty to clear subscribers.
    */
   void SetAlignedCallback(AlignedCallback callback);
 
   /**
    * @brief Sets the callback invoked for every raw sample after time sync.
-   * @param callback May be empty to clear subscribers.
+   * @param[in] callback May be empty to clear subscribers.
    */
   void SetRawSampleCallback(RawSampleCallback callback);
 
   /**
    * @brief Ingests an externally produced sample into buffering and callbacks.
-   * @param sample Shared sample; null is ignored.
+   * @param[out] sample Shared sample; null is ignored.
    */
   void PushSample(std::shared_ptr<SensorSample> sample);
 
   /**
    * @brief Removes the per-sensor buffer when a driver detaches.
-   * @param id Sensor whose ring buffer should be dropped.
+   * @param[in] id Sensor whose ring buffer should be dropped.
    */
   void DropSampleBuffer(const SensorId& id);
 
   /**
    * @brief Starts all registered drivers and the alignment publish thread.
-   * @return false if a registered driver fails to Start.
+   * @return true on success; false if a registered driver fails to Start.
    */
   bool Start();
 
@@ -151,6 +152,7 @@ public:
 private:
     /**
      * @brief Time-syncs, stores, and forwards a sample to raw callbacks.
+     * @param[out] sample Shared sample to ingest; ignored when null.
      */
     void HandleIncomingSample(std::shared_ptr<SensorSample> sample);
 
@@ -161,6 +163,8 @@ private:
 
     /**
      * @brief Builds a time-aligned snapshot from the latest in-window samples.
+     * @param[in] time Common host time used to select samples.
+     * @return Snapshot with one sample per sensor near @p time.
      */
     AlignedSnapshot BuildAlignedSnapshot(const autolink::Time& time) const;
 

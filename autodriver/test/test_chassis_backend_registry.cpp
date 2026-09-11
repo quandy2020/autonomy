@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,15 @@
  * limitations under the License.
  */
 
+/**
+ * @file test_chassis_backend_registry.cpp
+ * @brief Unit tests for chassis backend registry.
+ */
+
 #include "chassis/backend_registry.hpp"
 #include "chassis/stub/driver.hpp"
+
+#include <memory>
 
 #include <gtest/gtest.h>
 
@@ -25,6 +32,14 @@
 namespace {
 
 TEST(ChassisBackendRegistry, StubCreateAndDrive) {
+  // Force-link libautodriver.so so REGISTER_CHASSIS_BACKEND static init runs.
+  autodriver::hardware::DriverParams warmup_params;
+  auto warmup = std::unique_ptr<autodriver::chassis::ChassisDriver>(
+      autodriver::chassis::CreateStubChassisDriver("chassis/warmup",
+                                                   warmup_params));
+  ASSERT_NE(warmup, nullptr);
+  warmup.reset();
+
   ASSERT_TRUE(autodriver::chassis::ChassisBackendRegistry::Instance().HasBackend(
       "stub"));
   ASSERT_TRUE(autodriver::chassis::ChassisBackendRegistry::Instance().HasBackend(

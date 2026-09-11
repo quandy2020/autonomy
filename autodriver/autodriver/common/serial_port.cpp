@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,6 +12,11 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ */
+
+/**
+ * @file serial_port.cpp
+ * @brief Linux serial port wrapper (termios) (implementation).
  */
 
 #include "autodriver/common/serial_port.hpp"
@@ -34,6 +39,8 @@ namespace {
 #if defined(__linux__)
 /**
  * @brief Maps a numeric baud rate to a termios speed_t constant.
+ * @param[in] baud_rate Numeric baud rate (e.g. 115200).
+ * @return Matching termios speed_t, or B0 when unsupported.
  */
 speed_t ToTermiosBaud(int baud_rate)
 {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file imu_driver.hpp
  * @brief Intel RealSense on-board IMU driver (D435i, D455, ...).
  */
 
@@ -49,7 +49,13 @@ public:
   AUTOLINK_SHARED_PTR_DEFINITIONS(RealSenseImuDriver)
 
   /**
+   * @brief Disable copy construction and copy assignment.
+   */
+  DISALLOW_COPY_AND_ASSIGN(RealSenseImuDriver)
+  /**
    * @brief Stores sensor identity and driver params for RealSense IMU.
+   * @param[in] id Sensor instance id.
+   * @param[in] params DriverParams (cold-path parse only).
    */
   RealSenseImuDriver(SensorId id, DriverParams params);
 
@@ -72,6 +78,7 @@ public:
 
   /**
    * @brief Subscribes to fused accel/gyro frames via the shared hub.
+   * @return True on successful subscription / hub start.
    */
   bool Start() override;
 
@@ -82,11 +89,13 @@ public:
 
   /**
    * @brief Returns true while the IMU subscription is active.
+   * @return True after Start until Stop.
    */
   bool IsRunning() const override;
 
   /**
    * @brief Registers the callback invoked for each IMU sample.
+   * @param[in] callback May be empty to disable emission.
    */
   void SetSampleCallback(SampleCallback callback) override;
 
@@ -112,6 +121,9 @@ private:
 
 /**
  * @brief Factory for ImuBackendRegistry (REGISTER_IMU_BACKEND).
+ * @param[in] id Sensor instance id from YAML.
+ * @param[in] params Backend-specific key/value map.
+ * @return Owning RealSenseImuDriver* (never null).
  */
 SensorDriver*
 CreateRealSenseImuDriver(

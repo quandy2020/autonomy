@@ -1,4 +1,4 @@
-# Copyright 2026 Autodriver contributors
+# Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,6 +46,9 @@ list(PREPEND CMAKE_MODULE_PATH
 set(AUTODRIVER_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(AUTODRIVER_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/autodriver")
 
+include(${AUTODRIVER_ROOT_DIR}/cmake/autodriver_version.cmake)
+autodriver_collect_git_version()
+
 set(AUTODRIVER_DEFAULT_CONFIG_DIR "${AUTODRIVER_ROOT_DIR}/config")
 file(MAKE_DIRECTORY "${AUTODRIVER_GENERATED_DIR}/conf")
 configure_file(
@@ -54,17 +57,29 @@ configure_file(
   @ONLY
 )
 
+# Align CMake project() version with resolved semver (re-set after collect).
+set(PROJECT_VERSION "${AUTODRIVER_VERSION}")
+set(PROJECT_VERSION_MAJOR "${AUTODRIVER_VERSION_MAJOR}")
+set(PROJECT_VERSION_MINOR "${AUTODRIVER_VERSION_MINOR}")
+set(PROJECT_VERSION_PATCH "${AUTODRIVER_VERSION_PATCH}")
+
 add_subdirectory(autodriver)
 add_subdirectory(chassis)
 
 # Library target: autodriver → libautodriver.so
 # Process binary: autodriver (CMake target autodriver_main; cannot share lib name).
-add_executable(autodriver_main main.cpp)
+add_executable(autodriver_main main.cpp options.cpp)
 set_target_properties(autodriver_main PROPERTIES OUTPUT_NAME autodriver)
 target_link_libraries(autodriver_main PRIVATE autodriver)
+# CLI11 header-only (same tree as autolink tools).
+if(NOT AUTOLINK_ROOT_DIR)
+  set(AUTOLINK_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../autolink")
+endif()
 target_include_directories(autodriver_main PRIVATE
   ${AUTODRIVER_ROOT_DIR}
-  ${AUTODRIVER_ROOT_DIR}/autodriver)
+  ${AUTODRIVER_ROOT_DIR}/autodriver
+  ${CMAKE_CURRENT_BINARY_DIR}  # autodriver/conf/conf.hpp (from version.json)
+  ${AUTOLINK_ROOT_DIR}/thirdparty/CLI11/include)
 
 if(AUTODRIVER_BUILD_EXAMPLES)
   add_executable(autodriver_demo examples/demo_main.cpp)
@@ -105,6 +120,8 @@ if(AUTODRIVER_BUILD_TEST)
                       test/test_camera_backend_registry.cpp)
   autodriver_add_test(test_chassis_backend_registry
                       test/test_chassis_backend_registry.cpp)
+  autodriver_add_test(test_chassis_abstractions
+                      test/test_chassis_abstractions.cpp)
   autodriver_add_test(test_canbus_skeleton test/test_canbus_skeleton.cpp)
   autodriver_add_test(test_skeleton_modules test/test_skeleton_modules.cpp)
 endif()

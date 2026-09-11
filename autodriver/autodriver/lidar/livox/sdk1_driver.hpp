@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file sdk1_driver.hpp
  * @brief Livox-SDK (v1) driver — Mid-40/70, Horizon, Avia, Tele.
  */
 
@@ -62,14 +62,18 @@ public:
    */
   AUTOLINK_SHARED_PTR_DEFINITIONS(LivoxSdk1Driver)
 
+    /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(LivoxSdk1Driver)
     using Base =
         lidar::livox::AssemblerDriverBase<LivoxSdk1Driver,
                                           lidar::livox::Sdk1Traits>;
 
     /**
      * @brief Construct from sensor id and YAML params.
-     * @param id Stable sensor instance id.
-     * @param params DriverParams parsed at construction (cold path).
+     * @param[in] id Stable sensor instance id.
+     * @param[in] params DriverParams parsed at construction (cold path).
      */
     LivoxSdk1Driver(SensorId id, DriverParams params);
 
@@ -91,22 +95,22 @@ public:
 
     /**
      * @brief SDK data callback: append points into FrameAssembler.
-     * @param handle Device handle from Livox-SDK1.
-     * @param data Point packet pointer (SDK-owned).
-     * @param data_num Number of points in @p data.
+     * @param[in] handle Device handle from Livox-SDK1.
+     * @param[in] data Point packet pointer (SDK-owned).
+     * @param[in] data_num Number of points in @p data.
      */
     void OnData(std::uint8_t handle, void* data, std::uint32_t data_num);
 
     /**
      * @brief SDK broadcast callback: optionally connect matching devices.
-     * @param info Broadcast device info pointer (SDK type).
+     * @param[in] info Broadcast device info pointer (SDK type).
      */
     void OnBroadcast(const void* info);
 
     /**
      * @brief SDK device-info change callback (connect / disconnect / …).
-     * @param info Device info pointer (SDK type).
-     * @param type Change reason code from Livox-SDK1.
+     * @param[in] info Device info pointer (SDK type).
+     * @param[in] type Change reason code from Livox-SDK1.
      */
     void OnInfoChange(const void* info, std::uint8_t type);
 
@@ -116,8 +120,8 @@ private:
 
 /**
  * @brief Registry factory: construct LivoxSdk1Driver when SDK1 is linked.
- * @param id Sensor instance id.
- * @param params YAML driver params.
+ * @param[in] id Sensor instance id.
+ * @param[in] params YAML driver params.
  * @return Owning SensorDriver*, or nullptr without AUTODRIVER_HAVE_LIVOX_SDK1.
  */
 SensorDriver* CreateLivoxSdk1Driver(const SensorId& id,

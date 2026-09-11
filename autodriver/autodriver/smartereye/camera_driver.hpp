@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file camera_driver.hpp
  * @brief SmarterEye stereo camera backend factory (skeleton).
  */
 
@@ -38,8 +38,9 @@ namespace hardware {
  * `camera/` as a separate smartereye package; still consumed by
  * `CameraModule` via the shared camera registry.
  *
- * @param id Sensor id (e.g. camera/stereo).
- * @param params Stream / device options when implemented.
+ * @param[in] id Sensor id (e.g. camera/stereo).
+ * @param[in] params Stream / device options when implemented.
+ * @return Owning raw pointer (or nullptr on failure).
  */
 SensorDriver*
 CreateSmartereyeCameraDriver(

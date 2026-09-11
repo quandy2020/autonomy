@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file serial_driver.hpp
  * @brief Slamtec RPLidar serial driver (A1/A2/A3), Autolink LaserScan publisher.
  */
 
@@ -39,8 +39,8 @@ namespace rplidar {
 /**
  * @brief Factory used by Lidar2dModule (backend: rplidar / slamtec).
  * Requires AUTODRIVER_HAVE_RPLIDAR; otherwise returns nullptr.
- * @param id Sensor instance id from YAML.
- * @param params Port/baud/model and scan options (rplidar_ros aligned).
+ * @param[in] id Sensor instance id from YAML.
+ * @param[in] params Port/baud/model and scan options (rplidar_ros aligned).
  * @return Owning SensorDriver*, or nullptr when the SDK is not linked.
  */
 SensorDriver*
@@ -63,9 +63,13 @@ public:
   AUTOLINK_SHARED_PTR_DEFINITIONS(RpLidarSerialDriver)
 
     /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(RpLidarSerialDriver)
+    /**
      * @brief Construct from sensor id and YAML params.
-     * @param id Stable sensor instance id (e.g. "lidar/front").
-     * @param params DriverParams parsed at construction (cold path).
+     * @param[in] id Stable sensor instance id (e.g. "lidar/front").
+     * @param[in] params DriverParams parsed at construction (cold path).
      */
     RpLidarSerialDriver(SensorId id, hardware::DriverParams params);
 
@@ -105,7 +109,7 @@ public:
 
     /**
      * @brief Register the sample sink for LidarScan frames.
-     * @param callback Invoked on the capture thread with owning unique_ptr.
+     * @param[in] callback Invoked on the capture thread with owning unique_ptr.
      */
     void SetSampleCallback(SampleCallback callback) override;
 

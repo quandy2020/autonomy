@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file sample_buffer.hpp
  * @brief Fixed-capacity per-sensor sample ring buffer.
  */
 
@@ -45,23 +45,32 @@ public:
   AUTOLINK_SHARED_PTR_DEFINITIONS(SampleBuffer)
 
     /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(SampleBuffer)
+    /**
      * @brief Constructs a ring buffer with at least one slot of capacity.
+     * @param[in] capacity Maximum samples retained before dropping the oldest.
      */
     explicit SampleBuffer(std::size_t capacity = 32);
 
     /**
      * @brief Appends a sample and evicts the oldest when over capacity.
+     * @param[out] sample Shared sample to store; ignored when null.
      */
     void Push(std::shared_ptr<SensorSample> sample);
 
     /**
      * @brief Returns the newest sample whose host time is at or before time.
+     * @param[in] time Host-time query threshold.
+     * @return Matching sample, or nullptr when none qualify.
      */
     std::shared_ptr<SensorSample> LatestAtOrBefore(
         const autolink::Time& time) const;
 
     /**
      * @brief Returns the most recently pushed sample, or nullptr if empty.
+     * @return Newest buffered sample, or nullptr when empty.
      */
     std::shared_ptr<SensorSample> Latest() const;
 
@@ -72,6 +81,7 @@ public:
 
     /**
      * @brief Returns the number of samples currently stored.
+     * @return Current buffer occupancy.
      */
     std::size_t Size() const;
 

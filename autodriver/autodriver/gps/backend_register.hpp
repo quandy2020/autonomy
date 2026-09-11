@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file backend_register.hpp
  * @brief Static initializer macro for GPS backends.
  */
 
@@ -26,10 +26,10 @@
 
 /**
  * @brief Register a GPS backend at static init time.
- * @param tag Unique C++ identifier suffix for the registrar object.
- * @param name Canonical backend string (e.g. "serial").
- * @param factory Creator returning owning SensorDriver* (nullptr ok for stubs).
- * @param ... Optional alias string literals.
+ * @param[in] tag Unique C++ identifier suffix for the registrar object.
+ * @param[in] name Canonical backend string (e.g. "serial").
+ * @param[in] factory Creator returning owning SensorDriver* (nullptr ok for stubs).
+ * @param[in] ... Optional alias string literals.
  */
 #define REGISTER_GPS_BACKEND(tag, name, factory, ...)                         \
     namespace {                                                                \

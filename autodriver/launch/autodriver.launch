@@ -12,11 +12,11 @@
       Built-in sensor modules live inside libautodriver; no per-modality
       plugin .so is required unless YAML sets library=.
 
-  Usage (from the autonomy workspace):
-    export AUTODRIVER_PATH=$PWD/autodriver
-    export AUTOLINK_LAUNCH_PATH=$PWD/autodriver/launch
-    export LD_LIBRARY_PATH=$PWD/build/lib:$LD_LIBRARY_PATH
-    export PATH=$PWD/build/bin:$PATH
+  Usage (from the autonomy workspace root):
+    export AUTODRIVER_PATH=$PWD/src/autonomy/autodriver
+    export AUTOLINK_LAUNCH_PATH=$AUTODRIVER_PATH/launch
+    export LD_LIBRARY_PATH=$PWD/build/autonomy/lib:$LD_LIBRARY_PATH
+    export PATH=$PWD/build/autonomy/bin:$PATH
     autolink launch start autodriver.launch
     # Or run binary directly with a vendor camera config:
     #   autodriver $AUTODRIVER_PATH camera/orbbec/gemini_330.yaml

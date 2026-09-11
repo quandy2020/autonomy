@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file packet.hpp
  * @brief Hesai PandarXT / XT32 point-cloud UDP packet layout (manual §3.1).
  *
  * UDP payload = 1080 bytes: Pre-Header(6) + Header(6) + Body(8×130) + Tail(24)
@@ -72,8 +72,8 @@ using ScanPackets = std::vector<PacketBuffer>;
 
 /**
  * @brief True when @p data looks like an XT32 point-cloud UDP payload.
- * @param data Packet bytes (checks Pre-Header 0xEE 0xFF).
- * @param size Byte length; must be at least kPacketSize.
+ * @param[in] data Packet bytes (checks Pre-Header 0xEE 0xFF).
+ * @param[in] size Byte length; must be at least kPacketSize.
  * @return true for a plausible XT32 header.
  */
 inline bool IsXt32PointCloudPacket(const std::uint8_t* data, std::size_t size) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file driver_params.hpp
  * @brief String-keyed driver parameters and typed parsers.
  *
  * YAML flattens vendor params into DriverParams. Drivers must parse into
@@ -33,9 +33,16 @@
 namespace autodriver {
 namespace hardware {
 
-// Flat key/value map from YAML sensor params (startup / Attach only).
+/** @brief Flat key/value map from YAML sensor params (startup / Attach only). */
 using DriverParams = std::unordered_map<std::string, std::string>;
 
+/**
+ * @brief Looks up a string parameter.
+ * @param[in] params Driver parameter map.
+ * @param[in] key Parameter name.
+ * @param[in] default_value Value used when @p key is absent (default empty).
+ * @return The stored string, or @p default_value.
+ */
 inline std::string GetString(const DriverParams& params, const std::string& key,
                              const std::string& default_value = {}) {
     const auto it = params.find(key);
@@ -43,25 +50,41 @@ inline std::string GetString(const DriverParams& params, const std::string& key,
 }
 
 /**
- * @brief Reads an integer parameter, falling back to default_value.
+ * @brief Reads an integer parameter, falling back to @p default_value.
+ * @param[in] params Driver parameter map.
+ * @param[in] key Parameter name.
+ * @param[in] default_value Value used when missing or unparsable.
+ * @return Parsed integer, or @p default_value.
  */
 int ParseInt(const DriverParams& params, const std::string& key,
              int default_value);
 
 /**
  * @brief Reads a CAN frame id parameter as uint32_t.
+ * @param[in] params Driver parameter map.
+ * @param[in] key Parameter name.
+ * @param[in] default_value Value used when missing or unparsable.
+ * @return Parsed CAN id, or @p default_value.
  */
 std::uint32_t ParseCanId(const DriverParams& params, const std::string& key,
                          std::uint32_t default_value);
 
 /**
  * @brief Reads a floating-point parameter via strtod.
+ * @param[in] params Driver parameter map.
+ * @param[in] key Parameter name.
+ * @param[in] default_value Value used when missing or unparsable.
+ * @return Parsed double, or @p default_value.
  */
 double ParseDouble(const DriverParams& params, const std::string& key,
                    double default_value);
 
 /**
  * @brief Reads a boolean parameter from common textual truth values.
+ * @param[in] params Driver parameter map.
+ * @param[in] key Parameter name.
+ * @param[in] default_value Value used when missing or unrecognized.
+ * @return Parsed boolean, or @p default_value.
  */
 bool ParseBool(const DriverParams& params, const std::string& key,
                bool default_value);

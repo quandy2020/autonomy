@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file sensor_plugin.hpp
  * @brief Template base class that wires SensorDriver capture to SensorModule hooks.
  */
 
@@ -46,6 +46,15 @@ public:
      */
     AUTOLINK_SHARED_PTR_DEFINITIONS(SensorPlugin)
 
+    /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(SensorPlugin)
+    /**
+     * @brief Default constructor (DISALLOW_COPY suppresses the implicit one).
+     */
+    SensorPlugin() = default;
+
     // Compile-time traits for the sensor modality.
     using Traits = SensorTraits<kType>;
 
@@ -66,8 +75,8 @@ public:
 
     /**
      * @brief Bind configuration, create the driver, and register the sample callback.
-     * @param context Sensor entry from YAML and upstream sample hook.
-     * @return False when driver creation fails.
+     * @param[in] context Sensor entry from YAML and upstream sample hook.
+     * @return true on success; false when driver creation fails.
      */
     bool Init(const Context& context) final {
         id_ = context.sensor.id;
@@ -123,13 +132,14 @@ public:
 
     /**
      * @brief Underlying SensorDriver when kCapture is true.
+     * @return Shared driver pointer, or nullptr for attach-only plugins.
      */
     SensorDriver::SharedPtr GetDriver() const final { return driver_; }
 
 protected:
     /**
      * @brief Factory for the hardware backend; override in concrete modules.
-     * @param sensor Sensor configuration entry used to construct the driver.
+     * @param[in] sensor Sensor configuration entry used to construct the driver.
      * @return Shared pointer to the driver, or nullptr when not implemented.
      */
     virtual SensorDriver::SharedPtr MakeDriver(const Config::Sensor&) {
@@ -139,7 +149,7 @@ protected:
 private:
     /**
      * @brief Stamp and forward a captured sample to the upstream hook.
-     * @param sample Unique pointer to the captured sample; ignored when null or wrong type.
+     * @param[out] sample Unique pointer to the captured sample; ignored when null or wrong type.
      */
     void EmitCapturedSample(std::unique_ptr<SensorSample> sample) {
         if (sample == nullptr || sample->type() != kType) {

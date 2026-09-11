@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,6 +12,11 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ */
+
+/**
+ * @file device_hub.cpp
+ * @brief Shared OrbbecSDK pipeline hub for multi-stream devices (implementation).
  */
 
 #include "autodriver/camera/orbbec/device_hub.hpp"
@@ -223,7 +228,11 @@ struct OrbbecDeviceHub::Impl {
         return matched[static_cast<std::size_t>(index)];
     }
 
-    /** @brief 0 / negative → OB_*_ANY (OrbbecSDK_ROS2 width/height/fps:=0). */
+    /**
+     * @brief 0 / negative → OB_*_ANY (OrbbecSDK_ROS2 width/height/fps:=0).
+     * @param[in] value Width/height/fps; 0 or negative means ANY.
+     * @return Orbbec stream dimension constant (ANY when <= 0).
+     */
     static std::uint32_t StreamDim(int value) {
         return value > 0 ? static_cast<std::uint32_t>(value) : OB_WIDTH_ANY;
     }
@@ -350,6 +359,7 @@ struct OrbbecDeviceHub::Impl {
 
     /**
      * @brief Device-level options from OrbbecSDK_ROS2 gemini_330_series.launch.py.
+     * @param[in] device Opened Orbbec device to configure.
      */
     void ApplyDeviceOptions(const std::shared_ptr<ob::Device>& device) {
         if (!device) {
@@ -475,6 +485,7 @@ struct OrbbecDeviceHub::Impl {
     /**
      * @brief Depth post-process filters — setupDepthPostProcessFilter
      * (OrbbecSDK_ROS2) + Gemini330PostFilterStrategy (OrbbecSDK_v2).
+     * @param[in] device Opened Orbbec device for depth filters.
      */
     void SetupDepthFilters(const std::shared_ptr<ob::Device>& device) {
         depth_filters.clear();

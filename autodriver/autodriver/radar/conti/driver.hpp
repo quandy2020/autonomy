@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file driver.hpp
  * @brief Conti ARS-style radar driver factory (skeleton).
  */
 
@@ -37,8 +37,9 @@ namespace hardware {
  * Planned path: `canbus::CanReceiver` + Conti object-list ProtocolData →
  * `RadarSample` (currently PointCloud2 placeholder). YAML: `backend: conti`.
  *
- * @param id Sensor id (e.g. radar/front).
- * @param params Expect `interface` / CAN ids when implemented.
+ * @param[in] id Sensor id (e.g. radar/front).
+ * @param[in] params Expect `interface` / CAN ids when implemented.
+ * @return Owning raw pointer (or nullptr on failure).
  */
 SensorDriver*
 CreateContiRadarDriver(

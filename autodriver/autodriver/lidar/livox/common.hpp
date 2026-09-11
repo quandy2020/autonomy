@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file common.hpp
  * @brief Shared Livox helpers (publish interval, broadcast-code parsing).
  */
 
@@ -33,7 +33,7 @@ namespace livox {
 
 /**
  * @brief Convert publish frequency (Hz) to nanosecond interval.
- * @param hz Desired rate; values <= 0.1 fall back to 10 Hz.
+ * @param[in] hz Desired rate; values <= 0.1 fall back to 10 Hz.
  * @return Interval in nanoseconds.
  */
 inline std::uint64_t IntervalFromHz(double hz) {
@@ -45,7 +45,7 @@ inline std::uint64_t IntervalFromHz(double hz) {
 
 /**
  * @brief Parse comma- and/or '&'-separated broadcast codes (livox_ros style).
- * @param raw Raw param string (may be empty).
+ * @param[in] raw Raw param string (may be empty).
  * @return Set of trimmed non-empty codes.
  */
 inline std::unordered_set<std::string> ParseBroadcastCodes(
@@ -75,8 +75,8 @@ inline std::unordered_set<std::string> ParseBroadcastCodes(
 
 /**
  * @brief Resolve publish_freq / fps from DriverParams-style getters.
- * @param publish_freq Value of publish_freq (0 if unset).
- * @param fps Value of fps (used when publish_freq unset).
+ * @param[in] publish_freq Value of publish_freq (0 if unset).
+ * @param[in] fps Value of fps (used when publish_freq unset).
  * @return Positive Hz (default 10).
  */
 inline double ResolvePublishFreqHz(double publish_freq, double fps) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file can_sender.hpp
  * @brief Periodic CAN frame sender (simplified).
  */
 
@@ -50,6 +50,10 @@ public:
    */
   AUTOLINK_SHARED_PTR_DEFINITIONS(CanSender)
 
+    /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(CanSender)
     // Builds one classical CAN frame for a scheduled job.
     using FrameBuilder = std::function<io::CanFrame()>;
 
@@ -65,7 +69,7 @@ public:
 
     /**
      * @brief Construct a sender bound to @p client (non-owning).
-     * @param client Open CanClient used for Send(); must outlive this object.
+     * @param[in] client Open CanClient used for Send(); must outlive this object.
      */
     explicit CanSender(CanClient* client) : client_(client) {}
 
@@ -76,8 +80,8 @@ public:
 
     /**
      * @brief Register a periodic frame builder.
-     * @param build Callback that returns the next frame.
-     * @param period_ms Interval between sends; values ≤0 become 20 ms.
+     * @param[in] build Callback that returns the next frame.
+     * @param[in] period_ms Interval between sends; values ≤0 become 20 ms.
      */
     void AddJob(FrameBuilder build, int period_ms) {
         jobs_.push_back(Job{std::move(build), period_ms > 0 ? period_ms : 20});
@@ -109,6 +113,7 @@ public:
 
     /**
      * @brief Whether the send loop is active.
+     * @return True while Start succeeded and Stop has not completed.
      */
     bool IsRunning() const { return running_.load(); }
 

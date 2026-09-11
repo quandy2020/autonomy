@@ -1,4 +1,4 @@
-# Copyright 2026 Autodriver contributors
+# Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,8 +20,12 @@ if(NOT TARGET autodriver)
 endif()
 
 target_sources(autodriver PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/backend_registry.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/chassis_manager.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/locomotion_model.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/capability.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/operational_mode.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/safety_gate.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/tool_command.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/stub/driver.cpp
 )
 

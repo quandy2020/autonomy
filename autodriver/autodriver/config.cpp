@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file config.cpp
+ * @brief Config value helpers and defaults.
+ */
+
 #include "autodriver/config.hpp"
 
 #include <cstddef>
@@ -25,6 +30,8 @@ namespace {
 
 /**
  * @brief Converts an ASCII uppercase letter to lowercase.
+ * @param[in] c ASCII character to lowercase.
+ * @return Lowercase letter when A–Z; otherwise @p c unchanged.
  */
 constexpr char AsciiToLower(char c) {
     return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
@@ -32,6 +39,8 @@ constexpr char AsciiToLower(char c) {
 
 /**
  * @brief Strips a leading 0x/0X prefix from a hex string view.
+ * @param[in] value Hex string that may start with 0x/0X.
+ * @return View without leading 0x/0X when present.
  */
 constexpr std::string_view StripHexPrefix(std::string_view value) {
     if (value.size() >= 2 && value[0] == '0' &&
@@ -43,6 +52,9 @@ constexpr std::string_view StripHexPrefix(std::string_view value) {
 
 /**
  * @brief Compares two hex identifiers case-insensitively.
+ * @param[in] a First hex id (optional 0x prefix).
+ * @param[in] b Second hex id (optional 0x prefix).
+ * @return True when hex digits match case-insensitively.
  */
 bool EqualsHexId(std::string_view a, std::string_view b) {
     a = StripHexPrefix(a);
@@ -60,6 +72,10 @@ bool EqualsHexId(std::string_view a, std::string_view b) {
 
 /**
  * @brief Returns true when expected is empty or matches actual.
+ * @param[in] expected Rule value; empty means wildcard match.
+ * @param[in] actual Observed device field value.
+ * @param[in] hex When true, compare as hex ids.
+ * @return True when @p expected is empty or equals @p actual.
  */
 bool FieldMatches(std::string_view expected, std::string_view actual,
                   bool hex) {

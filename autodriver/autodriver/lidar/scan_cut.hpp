@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file scan_cut.hpp
  * @brief Azimuth-based scan cut helpers (Velodyne / Hesai 0.01° units).
  */
 
@@ -32,16 +32,17 @@
 namespace autodriver {
 namespace lidar {
 
-/** Azimuth full circle in vendor "centidegree" units (0.01°). */
+/** @brief Azimuth full circle in vendor "centidegree" units (0.01°). */
 inline constexpr int kAzimuthRangeCentideg = 36000;
 
 /**
  * @brief True when the sensor azimuth advanced from @p prev to @p curr
  *        across @p cut (inclusive on the far side), including 0-wrap.
  *
- * @param prev Previous packet last-block azimuth; negative means "no history".
- * @param curr Current packet last-block azimuth in [0, 36000).
- * @param cut  Cut angle in the same units (default 0).
+ * @param[in] prev Previous packet last-block azimuth; negative means "no history".
+ * @param[in] curr Current packet last-block azimuth in [0, 36000).
+ * @param[in] cut Cut angle in the same units (default 0).
+ * @return true when the azimuth path from @p prev to @p curr crosses @p cut.
  */
 inline bool CrossedCutAngle(int prev, int curr, int cut) {
     if (prev < 0) {
@@ -69,7 +70,10 @@ inline bool CrossedCutAngle(int prev, int curr, int cut) {
 
 /**
  * @brief Last firing-block azimuth of a Velodyne 1206B packet (0.01°).
- * @return false when @p data is too short.
+ * @param[in] data Packet bytes.
+ * @param[in] size Byte length; must be at least kFiringPacketSize.
+ * @param[out] out_az Filled azimuth in centidegrees; must be non-null.
+ * @return false when @p data is too short or null.
  */
 inline bool VelodyneLastAzimuthCentideg(const std::uint8_t* data,
                                        std::size_t size, int* out_az) {
@@ -86,8 +90,8 @@ inline bool VelodyneLastAzimuthCentideg(const std::uint8_t* data,
 
 /**
  * @brief Last block azimuth of a Hesai XT32 1080B packet (0.01°).
- * @param data Packet bytes.
- * @param size Byte length; must be at least kPacketSize.
+ * @param[in] data Packet bytes.
+ * @param[in] size Byte length; must be at least kPacketSize.
  * @param[out] out_az Filled azimuth in centidegrees; must be non-null.
  * @return false when @p data is too short or null.
  */
@@ -110,12 +114,12 @@ inline bool HesaiLastAzimuthCentideg(const std::uint8_t* data, std::size_t size,
  *
  * When @p use_azimuth_cut is true, emit on cut crossing; always emit if
  * @p packet_count reaches @p max_packets (safety / fallback).
- * @param use_azimuth_cut Prefer azimuth wrap cut when true.
- * @param prev_az Previous packet last-block azimuth; negative = no history.
- * @param curr_az Current packet last-block azimuth in [0, 36000).
- * @param cut_az Cut angle in centidegrees.
- * @param packet_count Packets accumulated in the current scan so far.
- * @param max_packets Safety cap; <=0 disables the count trigger.
+ * @param[in] use_azimuth_cut Prefer azimuth wrap cut when true.
+ * @param[in] prev_az Previous packet last-block azimuth; negative = no history.
+ * @param[in] curr_az Current packet last-block azimuth in [0, 36000).
+ * @param[in] cut_az Cut angle in centidegrees.
+ * @param[in] packet_count Packets accumulated in the current scan so far.
+ * @param[in] max_packets Safety cap; <=0 disables the count trigger.
  * @return true when the caller should EmitScan.
  */
 inline bool ShouldEmitScan(bool use_azimuth_cut, int prev_az, int curr_az,

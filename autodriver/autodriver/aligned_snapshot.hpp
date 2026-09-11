@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file aligned_snapshot.hpp
  * @brief Multi-sensor snapshot at a common alignment time.
  */
 
@@ -47,7 +47,7 @@ struct AlignedSnapshot {
     /**
      * @brief Typed lookup for a single sensor id.
      * @tparam SampleT Concrete sample type to cast to.
-     * @param id Sensor identifier to look up.
+     * @param[in] id Sensor identifier to look up.
      * @return Pointer to the sample, or nullptr when missing or wrong type.
      */
     template <typename SampleT>
@@ -62,7 +62,7 @@ struct AlignedSnapshot {
     /**
      * @brief Collect all samples of a given type in this snapshot.
      * @tparam SampleT Concrete sample type to cast to.
-     * @param type Sensor modality filter applied before casting.
+     * @param[in] type Sensor modality filter applied before casting.
      * @return Vector of matching sample pointers; empty when none match.
      */
     template <typename SampleT>

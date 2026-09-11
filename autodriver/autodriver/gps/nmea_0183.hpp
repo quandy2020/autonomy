@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file nmea_0183.hpp
  * @brief NMEA 0183 sentence parsing for GNSS receivers.
  */
 
@@ -53,16 +53,22 @@ struct NmeaGgaFix
 
 /**
  * @brief Parses a GGA sentence into latitude, longitude, and fix status.
+ * @param[in] sentence Full NMEA sentence including `$` and optional `*hh` checksum.
+ * @return Parsed fix, or nullopt when the sentence is invalid or not GGA.
  */
 std::optional<NmeaGgaFix> ParseGgaSentence(const std::string & sentence);
 
 /**
  * @brief Parses an RMC sentence when navigation status is active.
+ * @param[in] sentence Full NMEA sentence including `$` and optional `*hh` checksum.
+ * @return Parsed fix, or nullopt when inactive, invalid, or not RMC.
  */
 std::optional<NmeaGgaFix> ParseRmcSentence(const std::string & sentence);
 
 /**
  * @brief Validates the XOR checksum suffix of an NMEA sentence.
+ * @param[in] sentence Sentence that may end with `*hh` checksum.
+ * @return True when no checksum is present or the XOR matches.
  */
 bool ValidateNmeaChecksum(const std::string & sentence);
 

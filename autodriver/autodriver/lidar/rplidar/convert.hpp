@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file convert.hpp
  * @brief Convert RPLidar HQ nodes to sensor_msgs/LaserScan (rplidar_ros aligned).
  */
 
@@ -50,11 +50,11 @@ struct ConvertOptions {
 #ifdef AUTODRIVER_HAVE_RPLIDAR
 /**
  * @brief Fill LaserScan from HQ nodes (aligned with rplidar_ros publish_scan).
- * @param nodes Contiguous HQ measurement nodes from the SDK.
- * @param count Number of nodes in @p nodes.
- * @param angle_min_rad Inclusive start angle (radians).
- * @param angle_max_rad Inclusive end angle (radians).
- * @param opt Frame id, invert, range limits, and scan_time.
+ * @param[in] nodes Contiguous HQ measurement nodes from the SDK.
+ * @param[in] count Number of nodes in @p nodes.
+ * @param[in] angle_min_rad Inclusive start angle (radians).
+ * @param[in] angle_max_rad Inclusive end angle (radians).
+ * @param[in] opt Frame id, invert, range limits, and scan_time.
  * @return Filled LaserScan message (may have empty ranges on bad input).
  */
 automsgs::msgs::sensor_msgs::LaserScan NodesToLaserScan(

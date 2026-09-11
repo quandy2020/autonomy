@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,18 @@
  * limitations under the License.
  */
 
+/**
+ * @file camera_driver.cpp
+ * @brief Intel RealSense RGB/depth/IR camera driver (D435i, D455, ...)
+ *        (implementation).
+ */
+
 #include "autodriver/camera/realsense/camera_driver.hpp"
 
 #include <utility>
 
 #include "autodriver/types/sensor_sample.hpp"
+#include "autolink/common/log.hpp"
 #include "autolink/time/time.hpp"
 
 namespace autodriver {
@@ -27,6 +34,8 @@ namespace {
 
 /**
  * @brief Converts a RealSense timestamp in milliseconds to autolink::Time.
+ * @param[in] ms Timestamp in milliseconds.
+ * @return Equivalent autolink::Time value.
  */
 autolink::Time TimeFromMilliseconds(const double ms) {
     return autolink::Time(static_cast<std::uint64_t>(ms * 1000000.0));
@@ -34,6 +43,9 @@ autolink::Time TimeFromMilliseconds(const double ms) {
 
 /**
  * @brief Returns configured frame_id or the default for the stream kind.
+ * @param[in] params Driver params that may set frame_id.
+ * @param[in] stream Stream kind for the default frame_id.
+ * @return Configured frame_id or the stream default.
  */
 std::string ResolveFrameId(const DriverParams& params,
                            const hardware::realsense::StreamKind stream) {
@@ -87,6 +99,8 @@ bool RealSenseCameraDriver::Start() {
         });
 
     if (!hub_->IsRunning() && !hub_->Start()) {
+        AERROR << "RealSense camera start failed (id=" << id_
+               << "): " << hub_->last_error();
         hub_->Unsubscribe(subscription_id_);
         subscription_id_ = 0;
         running_ = false;

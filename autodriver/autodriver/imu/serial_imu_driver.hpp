@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file serial_imu_driver.hpp
  * @brief Serial WIT-motion IMU driver.
  */
 
@@ -47,9 +47,13 @@ public:
     AUTOLINK_SHARED_PTR_DEFINITIONS(SerialImuDriver)
 
     /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(SerialImuDriver)
+    /**
      * @brief Store identity and construct WitMotionParser scale factors.
-     * @param id Sensor instance id.
-     * @param params DriverParams (cold-path parse only).
+     * @param[in] id Sensor instance id.
+     * @param[in] params DriverParams (cold-path parse only).
      */
     SerialImuDriver(SensorId id, DriverParams params);
 
@@ -66,8 +70,8 @@ public:
 
     /**
      * @brief CRTP hook: feed WIT parser and emit ImuSample when complete.
-     * @param data Bytes read from the serial Stream.
-     * @param n Number of valid bytes in @p data.
+     * @param[in] data Bytes read from the serial Stream.
+     * @param[in] n Number of valid bytes in @p data.
      */
     void OnBytes(const std::uint8_t* data, std::size_t n);
 
@@ -78,8 +82,8 @@ private:
 
 /**
  * @brief Factory for ImuBackendRegistry (REGISTER_IMU_BACKEND "serial").
- * @param id Sensor instance id from YAML.
- * @param params Backend-specific key/value map.
+ * @param[in] id Sensor instance id from YAML.
+ * @param[in] params Backend-specific key/value map.
  * @return Owning SerialImuDriver* (never null).
  */
 SensorDriver* CreateSerialImuDriver(const SensorId& id,

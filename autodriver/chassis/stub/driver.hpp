@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file driver.hpp
  * @brief Stub chassis backend (software differential odom, no hardware).
  */
 
@@ -36,8 +36,8 @@ namespace chassis {
  * Integrates differential-drive odometry from ApplyVelocityCommand; used for
  * bring-up and CI without real hardware. Also registered under aliases
  * "sim" / "fake".
- * @param id Chassis instance id from YAML (e.g. "chassis/base").
- * @param params Optional keys such as battery_soc in [0, 1].
+ * @param[in] id Chassis instance id from YAML (e.g. "chassis/base").
+ * @param[in] params Optional keys such as battery_soc in [0, 1].
  * @return Owning raw ChassisDriver* for NamedProductFactory / never null.
  */
 ChassisDriver* CreateStubChassisDriver(

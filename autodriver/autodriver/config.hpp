@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file config.hpp
  * @brief Process configuration loaded from autodriver_hardware.yaml.
  */
 
@@ -51,6 +51,10 @@ struct DeviceMatch {
     // Device serial number when available.
     std::string serial;
 
+    /**
+     * @brief Whether this match rule / observation has no identifying fields.
+     * @return true when subsystem, device, vendor, product, and serial are all empty.
+     */
     bool empty() const {
         return subsystem.empty() && device.empty() && vendor.empty() &&
                product.empty() && serial.empty();
@@ -59,6 +63,9 @@ struct DeviceMatch {
 
 /**
  * @brief Returns true when all non-empty rule fields match the observed device.
+ * @param[in] observed Device identity reported by udev or probe.
+ * @param[in] rule Match rule from Config::Sensor::match (empty fields are wildcards).
+ * @return true when every non-empty field in @p rule equals @p observed.
  */
 bool MatchDevice(const DeviceMatch& observed, const DeviceMatch& rule);
 
@@ -141,35 +148,72 @@ struct Config {
      *
      * Lives in top-level chassis/; does not use autonomy/vehicle.
      * When enable=false, ChassisManager is a no-op.
+     *
+     * Abstraction knobs (locomotion / capability / mode / tool) are consumed
+     * by ChassisManager; wire channels stay Twist / RobotState / String.
      */
     struct Chassis {
-        /** When false, ChassisManager::Start is a no-op. */
+        /** @brief When false, ChassisManager::Start is a no-op. */
         bool enable = false;
-        /** Instance id, e.g. "chassis/base". */
+        /** @brief Instance id, e.g. "chassis/base". */
         std::string id = "chassis/base";
-        /** ChassisBackendRegistry key (stub / scout / …). */
+        /** @brief ChassisBackendRegistry key (stub / scout / …). */
         std::string backend = "stub";
-        /** Autolink channel for TwistStamped commands. */
+        /** @brief Autolink channel for TwistStamped commands. */
         std::string cmd_vel_channel = "/cmd_vel";
-        /** Autolink channel for vehicle_msgs.RobotState. */
+        /** @brief Autolink channel for vehicle_msgs.RobotState. */
         std::string state_channel = "/robot_state";
-        /** Autolink channel for RobotEvent; empty = do not publish. */
+        /** @brief Autolink channel for RobotEvent; empty = do not publish. */
         std::string event_channel = "/robot_event";
-        /** Autolink channel for nav_msgs/Odometry; empty = skip. */
+        /** @brief Autolink channel for nav_msgs/Odometry; empty = skip. */
         std::string odom_channel = "/odom";
-        /** Soft-stop if no cmd_vel for this long; 0 disables watchdog. */
+        /**
+         * @brief Latched-style capability JSON (std_msgs/String); empty = skip.
+         * Republished periodically with state for late subscribers.
+         */
+        std::string capability_channel = "/chassis/capability";
+        /** @brief Mode commands (arm/estop/walk/…); empty = disable reader. */
+        std::string mode_cmd_channel = "/chassis/mode";
+        /** @brief Current mode string publisher; empty = skip. */
+        std::string mode_state_channel = "/chassis/mode_state";
+        /** @brief Tool commands (brush=1); empty = disable tool reader. */
+        std::string tool_cmd_channel;
+        /** @brief Soft-stop if no cmd_vel for this long; 0 disables watchdog. */
         int watchdog_ms = 200;
-        /** Soft clamp before ApplyVelocityCommand; 0 = no clamp. */
+        /** @brief Soft clamp before ApplyVelocityCommand; 0 = no clamp. */
         double max_linear_speed = 0.0;
-        /** Soft clamp for angular.z; 0 = no clamp. */
+        /** @brief Soft clamp for angular.z; 0 = no clamp. */
         double max_angular_speed = 0.0;
-        /** RobotState / odom publish period in milliseconds. */
+        /** @brief Soft max linear accel (advertised; not yet rate-limited). */
+        double max_linear_accel = 0.0;
+        /** @brief Ackermann min turning radius (m); 0 = N/A. */
+        double min_turning_radius = 0.0;
+        /**
+         * @brief Locomotion model name: differential / omni / ackermann /
+         *        legged / wheel_legged / humanoid.
+         */
+        std::string locomotion = "differential";
+        /** @brief Override supports_lateral; empty = derive from locomotion. */
+        std::string supports_lateral;
+        /** @brief Override supports_inplace_turn; empty = derive. */
+        std::string supports_inplace_turn;
+        /** @brief Must arm via mode channel before twist (SafetyGate). */
+        bool require_arm = false;
+        /** @brief Advertise dock capability. */
+        bool has_dock = false;
+        /** @brief Advertise joint bypass side-channel (docs only). */
+        bool has_joint_bypass = false;
+        /** @brief Tool names advertised in capability JSON. */
+        std::vector<std::string> tools;
+        /** @brief RobotState / odom publish period in milliseconds. */
         int odom_period_ms = 20;
-        /** Odometry header.frame_id. */
+        /** @brief Capability republish every N state ticks (0 = every tick). */
+        int capability_period_ticks = 50;
+        /** @brief Odometry header.frame_id. */
         std::string odom_frame_id = "odom";
-        /** Odometry child_frame_id. */
+        /** @brief Odometry child_frame_id. */
         std::string base_frame_id = "base_link";
-        /** Backend-specific key/value map passed to CreateDriver. */
+        /** @brief Backend-specific key/value map passed to CreateDriver. */
         hardware::DriverParams params;
     };
 
@@ -196,11 +240,14 @@ struct Config {
 
     /**
      * @brief Returns true when two or more sensors share the same id.
+     * @return true if config.sensors contains duplicate SensorId values.
      */
     bool HasDuplicateId() const;
 
     /**
      * @brief Returns the sensor id whose match rule fits the observed device.
+     * @param[in] observed Device identity from a hotplug event.
+     * @return Matching SensorId, or empty string when no rule matches.
      */
     SensorId FindId(const DeviceMatch& observed) const;
 };

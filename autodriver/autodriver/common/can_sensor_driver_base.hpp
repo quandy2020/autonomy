@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file can_sensor_driver_base.hpp
  * @brief CRTP base for SocketCAN SensorDriver wrappers around CanReceiver.
  *
  * Derived registers ProtocolData on @c receiver().manager() in its constructor
@@ -32,6 +32,7 @@
 #include "autodriver/canbus/can_receiver.hpp"
 #include "autodriver/driver_params.hpp"
 #include "autodriver/sensor_driver.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace hardware {
@@ -50,10 +51,20 @@ template <typename Derived, typename EventT>
 class CanSensorDriverBase : public SensorDriver {
 public:
     /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(CanSensorDriverBase)
+
+    /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(CanSensorDriverBase)
+
+    /**
      * @brief Store identity / params and the CanReceiver poll timeout.
-     * @param id Sensor instance id from YAML.
-     * @param params Cold-path driver params (`interface`, CAN ids, scales, …).
-     * @param poll_timeout_ms Timeout passed to CanReceiver::Start; ≤0 → 100.
+     * @param[in] id Sensor instance id from YAML.
+     * @param[in] params Cold-path driver params (`interface`, CAN ids, scales, …).
+     * @param[in] poll_timeout_ms Timeout passed to CanReceiver::Start; ≤0 → 100.
      */
     CanSensorDriverBase(SensorId id, DriverParams params,
                         int poll_timeout_ms = 100)
@@ -74,7 +85,8 @@ public:
 
     /**
      * @brief Open SocketCAN via @c receiver_ using YAML `interface`.
-     * @return true when CanReceiver::Start succeeds (or already running).
+     * @return true when CanReceiver::Start succeeds (or already running);
+     *         false when the interface cannot be opened.
      */
     bool Start() override {
         const std::string interface_name =
@@ -95,7 +107,7 @@ public:
 
     /**
      * @brief Register the sample sink callback.
-     * @param callback May be empty to disable emission.
+     * @param[in] callback May be empty to disable emission.
      */
     void SetSampleCallback(SampleCallback callback) override {
         callback_ = std::move(callback);
@@ -128,7 +140,7 @@ protected:
 
     /**
      * @brief Invoke @p callback_ when set.
-     * @param sample Owning sample transferred to the sink.
+     * @param[out] sample Owning sample transferred to the sink.
      */
     void EmitSample(std::unique_ptr<SensorSample> sample) {
         if (callback_ && sample) {

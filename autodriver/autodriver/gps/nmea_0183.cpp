@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,6 +12,11 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ */
+
+/**
+ * @file nmea_0183.cpp
+ * @brief NMEA 0183 sentence parsing for GNSS receivers (implementation).
  */
 
 #include "autodriver/gps/nmea_0183.hpp"
@@ -28,6 +33,9 @@ namespace {
 
 /**
  * @brief Parses a string field into a double, returning false on failure.
+ * @param[in] text Numeric field text to parse.
+ * @param[out] out Receives parsed value on success.
+ * @return True when parsing succeeds.
  */
 bool ParseDoubleField(const std::string & text, double * out)
 {
@@ -45,6 +53,9 @@ bool ParseDoubleField(const std::string & text, double * out)
 
 /**
  * @brief Converts NMEA ddmm.mmmm latitude to decimal degrees.
+ * @param[in] raw NMEA ddmm.mmmm latitude value.
+ * @param[in] hemisphere N/S hemisphere character.
+ * @return Latitude in decimal degrees (south negative).
  */
 double NmeaLatitudeToDegrees(double raw, char hemisphere)
 {
@@ -59,6 +70,9 @@ double NmeaLatitudeToDegrees(double raw, char hemisphere)
 
 /**
  * @brief Converts NMEA dddmm.mmmm longitude to decimal degrees.
+ * @param[in] raw NMEA dddmm.mmmm longitude value.
+ * @param[in] hemisphere E/W hemisphere character.
+ * @return Longitude in decimal degrees (west negative).
  */
 double NmeaLongitudeToDegrees(double raw, char hemisphere)
 {
@@ -73,6 +87,8 @@ double NmeaLongitudeToDegrees(double raw, char hemisphere)
 
 /**
  * @brief Splits a comma-separated NMEA sentence into fields.
+ * @param[in] sentence Comma-separated NMEA sentence body.
+ * @return List of field strings split on commas.
  */
 std::vector<std::string> SplitFields(const std::string & sentence)
 {

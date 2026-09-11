@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file vendor_stubs.cpp
  * @brief Vendor lidar backends registered as stubs (Create → nullptr).
  *
  * Covers rslidar, lslidar, seyond, vanjeelidar.
@@ -38,8 +38,8 @@ namespace {
 
 /**
  * @brief Log and return nullptr for an unimplemented lidar vendor backend.
- * @param vendor Canonical vendor name used in the error message.
- * @param id Sensor instance id from YAML.
+ * @param[in] vendor Canonical vendor name used in the error message.
+ * @param[in] id Sensor instance id from YAML.
  * @return Always nullptr.
  */
 SensorDriver* MakeStub(const char* vendor, const SensorId& id) {
@@ -50,28 +50,48 @@ SensorDriver* MakeStub(const char* vendor, const SensorId& id) {
 
 }  // namespace
 
-/** @brief Stub factory for RoboSense (`rslidar` / alias `robosense`). */
+/**
+ * @brief Stub factory for RoboSense (`rslidar` / alias `robosense`).
+ * @param[in] id Sensor instance id from YAML.
+ * @param[in] params Unused driver params (stub).
+ * @return Always nullptr (backend not implemented).
+ */
 SensorDriver*
 CreateRsLidarDriver(const SensorId& id,
                                                   const DriverParams&) {
     return MakeStub("rslidar", id);
 }
 
-/** @brief Stub factory for LSLidar (`lslidar`). */
+/**
+ * @brief Stub factory for LSLidar (`lslidar`).
+ * @param[in] id Sensor instance id from YAML.
+ * @param[in] params Unused driver params (stub).
+ * @return Always nullptr (backend not implemented).
+ */
 SensorDriver*
 CreateLsLidarDriver(const SensorId& id,
                                                   const DriverParams&) {
     return MakeStub("lslidar", id);
 }
 
-/** @brief Stub factory for Seyond (`seyond`). */
+/**
+ * @brief Stub factory for Seyond (`seyond`).
+ * @param[in] id Sensor instance id from YAML.
+ * @param[in] params Unused driver params (stub).
+ * @return Always nullptr (backend not implemented).
+ */
 SensorDriver*
 CreateSeyondLidarDriver(const SensorId& id,
                                                       const DriverParams&) {
     return MakeStub("seyond", id);
 }
 
-/** @brief Stub factory for Vanjee (`vanjee` / alias `vanjeelidar`). */
+/**
+ * @brief Stub factory for Vanjee (`vanjee` / alias `vanjeelidar`).
+ * @param[in] id Sensor instance id from YAML.
+ * @param[in] params Unused driver params (stub).
+ * @return Always nullptr (backend not implemented).
+ */
 SensorDriver*
 CreateVanjeeLidarDriver(const SensorId& id,
                                                       const DriverParams&) {

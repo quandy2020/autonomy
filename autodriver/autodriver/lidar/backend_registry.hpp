@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file backend_registry.hpp
  * @brief Process-local lidar_3d backend factory registry.
  */
 
@@ -61,9 +61,9 @@ using LidarDriverFactory = LidarBackendRegistry::DriverFactory;
 
 /**
  * @brief Register a canonical 3D lidar backend plus optional aliases.
- * @param name Canonical backend string (e.g. "velodyne").
- * @param factory LidarDriverFactory for @p name.
- * @param aliases Optional null-terminated C string aliases (empty skipped).
+ * @param[in] name Canonical backend string (e.g. "velodyne").
+ * @param[in] factory LidarDriverFactory for @p name.
+ * @param[in] aliases Optional null-terminated C string aliases (empty skipped).
  */
 inline void RegisterLidarBackendWithAliases(
     const std::string& name, LidarDriverFactory factory,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file pose_feeder.hpp
  * @brief Subscribe to nav_msgs/Odometry and feed lidar MotionPoseSink.
  */
 
@@ -56,12 +56,16 @@ struct PoseFeedTarget {
 
 /**
  * @brief Convert geometry_msgs Pose → Affine3d (translation + quaternion).
+ * @param[in] pose Source geometry_msgs Pose (position + orientation).
+ * @return SE(3) transform built from @p pose.
  */
 Eigen::Affine3d ConvertPoseToAffine3d(
     const automsgs::msgs::geometry_msgs::Pose& pose);
 
 /**
  * @brief Header stamp → nanoseconds.
+ * @param[in] stamp builtin_interfaces Time (sec + nanosec).
+ * @return Epoch time in nanoseconds.
  */
 std::uint64_t ConvertStampToNanoseconds(
     const automsgs::msgs::builtin_interfaces::Time& stamp);
@@ -71,6 +75,8 @@ std::uint64_t ConvertStampToNanoseconds(
  *
  * Uses `compensator.pose_channel` as default; per-sensor `params.pose_channel`
  * overrides. Loads `extrinsic_path` when set.
+ * @param[in] config Process config providing compensator and lidar sensors.
+ * @return Map from Autolink pose channel name to lidar feed targets.
  */
 std::unordered_map<std::string, std::vector<PoseFeedTarget>> BuildPoseFeedTargets(
     const Config& config);
@@ -103,20 +109,29 @@ public:
 
   /**
      * @brief Create readers on @p node; no-op when no pose channels configured.
-     * @return False when manager is null while targets exist, or CreateReader
-     *         fails. Null @p node is allowed for tests (FeedOdometryMessage only).
+     * @param[in] node Autolink node that owns the Odometry readers; may be null
+     *                 for tests that only call FeedOdometryMessage().
+     * @param[in] manager SensorManager that receives PushLidarPose calls.
+     * @param[in] config Process config used to build pose-feed targets.
+     * @return false when manager is null while targets exist, or CreateReader
+     *         fails; true on success or when no channels are configured.
      */
     bool Start(autolink::Node* node, SensorManager* manager,
                const Config& config);
 
-    /** Tear down Autolink Odometry readers. */
+    /** @brief Tear down Autolink Odometry readers. */
     void Stop();
 
-    /** @return true while at least one Odometry reader is active. */
+    /**
+     * @brief Whether at least one Odometry reader is active.
+     * @return true while readers_ is non-empty.
+     */
     bool IsRunning() const { return !readers_.empty(); }
 
     /**
      * @brief Test / manual inject: same path as Odometry callback.
+     * @param[in] channel Pose channel name used to look up feed targets.
+     * @param[out] msg Shared Odometry message to feed; ignored when null.
      */
     void FeedOdometryMessage(
         const std::string& channel,

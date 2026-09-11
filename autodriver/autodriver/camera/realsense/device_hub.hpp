@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file device_hub.hpp
  * @brief Shared librealsense pipeline hub for multi-stream D400 devices.
  */
 
@@ -70,19 +70,32 @@ enum class StreamKind {
 
 /**
  * @brief Parses a stream name string into a StreamKind enum value.
+ * @param[in] text Stream string (e.g. "color", "depth", "ir1").
+ * @param[in] default_kind Fallback when @p text is empty or unknown.
+ * @return Resolved StreamKind.
  */
 StreamKind ParseStreamKind(const std::string& text, StreamKind default_kind);
 
+/**
+ * @brief Whether a device product name matches a YAML model filter.
+ * @param[in] product_name Device product / name string from librealsense.
+ * @param[in] model_filter Substring filter from DriverParams (empty matches all).
+ * @return True when @p model_filter is empty or found in @p product_name.
+ */
 bool MatchesModelFilter(const std::string& product_name,
                         const std::string& model_filter);
 
 /**
  * @brief Returns the image encoding string for a RealSense stream kind.
+ * @param[in] kind Stream selection.
+ * @return Encoding label suitable for sensor_msgs/Image.
  */
 std::string EncodingForStreamKind(StreamKind kind);
 
 /**
  * @brief Returns the default TF frame_id for a RealSense stream kind.
+ * @param[in] kind Stream selection.
+ * @return Default optical frame_id string.
  */
 std::string DefaultFrameId(StreamKind kind);
 
@@ -93,6 +106,7 @@ namespace io {
 
 /**
  * @brief Returns true when librealsense was linked at build time.
+ * @return True when AUTODRIVER_HAVE_REALSENSE (or equivalent) is enabled.
  */
 bool RealSenseAvailable();
 
@@ -166,7 +180,13 @@ class RealSenseDeviceHub {
   AUTOLINK_SHARED_PTR_DEFINITIONS(RealSenseDeviceHub)
 
     /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(RealSenseDeviceHub)
+    /**
      * @brief Returns a shared hub for the device key, creating one if needed.
+     * @param[in] params Device identity and options (serial / index / model).
+     * @return Shared hub instance for the resolved device key.
      */
     static std::shared_ptr<RealSenseDeviceHub> Acquire(
         const hardware::DriverParams& params);
@@ -178,6 +198,12 @@ class RealSenseDeviceHub {
 
     /**
      * @brief Registers a video stream callback and restarts the hub if running.
+     * @param[in] stream Color / depth / IR / aligned-depth selection.
+     * @param[in] width Requested width in pixels.
+     * @param[in] height Requested height in pixels.
+     * @param[in] fps Requested frames per second.
+     * @param[in] callback Invoked with each decoded video frame.
+     * @return Non-zero subscription id used with Unsubscribe().
      */
     std::uint64_t SubscribeVideo(hardware::realsense::StreamKind stream, int width,
                                  int height, int fps,
@@ -185,22 +211,31 @@ class RealSenseDeviceHub {
 
     /**
      * @brief Registers a point-cloud callback and restarts the hub if running.
+     * @param[in] width Requested depth width in pixels.
+     * @param[in] height Requested depth height in pixels.
+     * @param[in] fps Requested frames per second.
+     * @param[in] callback Invoked with each decoded point cloud frame.
+     * @return Non-zero subscription id used with Unsubscribe().
      */
     std::uint64_t SubscribePointCloud(int width, int height, int fps,
                                       RealSensePointCloudCallback callback);
 
     /**
      * @brief Registers an IMU callback and restarts the hub if running.
+     * @param[in] callback Invoked with fused accel/gyro samples.
+     * @return Non-zero subscription id used with Unsubscribe().
      */
     std::uint64_t SubscribeImu(RealSenseImuCallback callback);
 
     /**
      * @brief Removes a subscription and restarts the hub when others remain.
+     * @param[in] subscription_id Token from SubscribeVideo / PointCloud / Imu.
      */
     void Unsubscribe(std::uint64_t subscription_id);
 
     /**
      * @brief Starts the pipeline and frame capture worker thread.
+     * @return True when the pipeline started (or was already running).
      */
     bool Start();
 
@@ -211,17 +246,20 @@ class RealSenseDeviceHub {
 
     /**
      * @brief Returns true while the capture loop is active.
+     * @return True after a successful Start until Stop completes.
      */
     bool IsRunning() const;
 
     /**
      * @brief Returns the most recent pipeline or device error message.
+     * @return Reference to the hub error string (empty when ok).
      */
     const std::string& last_error() const;
 
  private:
     /**
      * @brief Constructs a hub bound to driver params and a device pool key.
+     * @param[in] params Device identity and stream defaults.
      */
     explicit RealSenseDeviceHub(const hardware::DriverParams& params);
 

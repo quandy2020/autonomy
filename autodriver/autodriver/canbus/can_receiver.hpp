@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file can_receiver.hpp
  * @brief CAN receive loop + MessageManager dispatch.
  */
 
@@ -62,28 +62,34 @@ public:
      * @brief Construct an idle receiver; call Start() to open the CAN interface.
      */
     CanReceiver() = default;
+
+    /**
+     * @brief Stops the receive loop on destruction.
+     */
     ~CanReceiver() { Stop(); }
 
   /**
      * @brief Access the MessageManager for Register / SetPublishCallback.
+     * @return Mutable reference to the embedded manager.
      */
     MessageManager<T>& manager() { return manager_; }
 
     /**
      * @brief Const access to the MessageManager.
+     * @return Const reference to the embedded manager.
      */
     const MessageManager<T>& manager() const { return manager_; }
 
     /**
      * @brief Install a pre-dispatch frame hook (e.g. logging / sniffing).
-     * @param hook Callback; empty clears the hook.
+     * @param[in] hook Callback; empty clears the hook.
      */
     void SetFrameHook(FrameHook hook) { frame_hook_ = std::move(hook); }
 
     /**
      * @brief Open @p interface and start the read loop.
-     * @param interface SocketCAN ifname (e.g. "can0").
-     * @param poll_timeout_ms Read timeout per iteration.
+     * @param[in] interface SocketCAN ifname (e.g. "can0").
+     * @param[in] poll_timeout_ms Read timeout per iteration.
      * @return False when Open fails.
      */
     bool Start(const std::string& interface, int poll_timeout_ms = 50) {
@@ -115,11 +121,13 @@ public:
 
     /**
      * @brief Whether the receive loop is active.
+     * @return True while Start succeeded and Stop has not completed.
      */
     bool IsRunning() const { return running_.load(); }
 
     /**
      * @brief Last Open failure message.
+     * @return Reference to the last error string (empty when ok).
      */
     const std::string& last_error() const { return last_error_; }
 

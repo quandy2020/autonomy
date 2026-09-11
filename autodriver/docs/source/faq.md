@@ -14,6 +14,24 @@ failed to load autodriver config: ... export AUTODRIVER_PATH=<config parent>
 
 开发示例：`export AUTODRIVER_PATH=$PWD/src/autonomy/autodriver`（按仓库布局调整）。
 
+## `undefined symbol: …ChassisManager::Start…`
+
+`LD_LIBRARY_PATH` 加载了**旧**的 `libautodriver.so`（不含 chassis）。colcon 嵌套构建产物在：
+
+```bash
+export LD_LIBRARY_PATH=$PWD/build/autonomy/lib:$LD_LIBRARY_PATH
+export PATH=$PWD/build/autonomy/bin:$PATH
+```
+
+不要优先使用过期的 `build/lib/libautodriver.so`。可用 `nm -D …/libautodriver.so | c++filt | grep ChassisManager::Start` 确认符号存在。
+
+## launch 找不到 `autodriver.launch`
+
+```bash
+export AUTOLINK_LAUNCH_PATH=$PWD/src/autonomy/autodriver/launch
+autolink launch start autodriver.launch
+```
+
 ## 无传感器输出
 
 - 仅 `enable: true`（或旧别名 `attach_on_start: true`）的条目进入 `Config`。  
@@ -28,6 +46,13 @@ failed to load autodriver config: ... export AUTODRIVER_PATH=<config parent>
 ## RealSense / Orbbec
 
 构建 STATUS 须出现 `librealsense2 … enabled` / `OrbbecSDK enabled`；否则 Create 返回 `nullptr`。多设备时使用 `params.serial` 或 `index` 与 `model`；同机多流共享 device hub（折叠配置）。
+
+若日志出现 `module Start failed: camera/realsense_*`，先看紧随其后的  
+`RealSense camera start failed: …`（例如 `Device or resource busy`）：
+
+- **同一时刻只能有一个** `autodriver` 打开 D455（不要同时跑 `autodriver` 与 `autolink launch start autodriver.launch`）。
+- 先 `pkill -f autodriver`，确认无残留进程后再启动。
+- USB 带宽不足时可关掉 `streams` 里不需要的 IR / points，或降低 `width`/`fps`。
 
 ## RPLidar / Livox
 

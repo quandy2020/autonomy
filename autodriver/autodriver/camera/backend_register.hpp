@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file backend_register.hpp
  * @brief Static registration macros for camera / point_cloud backends.
  */
 
@@ -26,10 +26,10 @@
 
 /**
  * @brief Register a camera backend at static init time.
- * @param tag Unique C++ identifier suffix for the registrar object.
- * @param name Canonical backend string (e.g. "realsense").
- * @param factory Creator returning owning SensorDriver* (nullptr without SDK).
- * @param ... Optional alias string literals.
+ * @param[in] tag Unique C++ identifier suffix for the registrar object.
+ * @param[in] name Canonical backend string (e.g. "realsense").
+ * @param[in] factory Creator returning owning SensorDriver* (nullptr without SDK).
+ * @param[in] ... Optional alias string literals.
  */
 #define REGISTER_CAMERA_BACKEND(tag, name, factory, ...)                      \
     namespace {                                                                \
@@ -44,10 +44,10 @@
 
 /**
  * @brief Register a point_cloud backend at static init time.
- * @param tag Unique C++ identifier suffix for the registrar object.
- * @param name Canonical backend string (e.g. "realsense").
- * @param factory Creator returning owning SensorDriver* (nullptr without SDK).
- * @param ... Optional alias string literals.
+ * @param[in] tag Unique C++ identifier suffix for the registrar object.
+ * @param[in] name Canonical backend string (e.g. "realsense").
+ * @param[in] factory Creator returning owning SensorDriver* (nullptr without SDK).
+ * @param[in] ... Optional alias string literals.
  */
 #define REGISTER_POINTCLOUD_BACKEND(tag, name, factory, ...)                  \
     namespace {                                                                \

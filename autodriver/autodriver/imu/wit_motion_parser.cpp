@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file wit_motion_parser.cpp
+ * @brief WIT-motion binary IMU protocol (0x55 header) (implementation).
+ */
+
 #include "autodriver/imu/wit_motion_parser.hpp"
 
 #include <cmath>
@@ -26,6 +31,8 @@ namespace {
 
 /**
  * @brief Reads a little-endian int16 from a byte buffer.
+ * @param[in] data Pointer to at least 2 little-endian bytes.
+ * @return Signed 16-bit value read from @p data.
  */
 std::int16_t ReadInt16Le(const std::uint8_t * data)
 {
@@ -36,6 +43,8 @@ std::int16_t ReadInt16Le(const std::uint8_t * data)
 
 /**
  * @brief Reads a little-endian int32 from a byte buffer.
+ * @param[in] data Pointer to at least 4 little-endian bytes.
+ * @return Signed 32-bit value read from @p data.
  */
 std::int32_t ReadInt32Le(const std::uint8_t * data)
 {
@@ -46,6 +55,8 @@ std::int32_t ReadInt32Le(const std::uint8_t * data)
 
 /**
  * @brief Computes the WIT-motion 11-byte packet checksum.
+ * @param[in] data Pointer to the 11-byte WIT packet.
+ * @return Sum of the first 10 bytes (checksum byte).
  */
 std::uint8_t WitChecksum(const std::uint8_t * data)
 {

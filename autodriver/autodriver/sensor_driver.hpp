@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file sensor_driver.hpp
  * @brief Abstract hardware backend that captures timestamped sensor samples.
  */
 
@@ -53,7 +53,7 @@ public:
 
   /**
    * @brief Callback invoked for each captured sample on the driver thread.
-   * @param sample Owning unique_ptr transferred to the consumer.
+   * @param[out] sample Owning unique_ptr transferred to the consumer.
    */
   using SampleCallback =
       std::function<void(std::unique_ptr<SensorSample> sample)>;
@@ -94,7 +94,7 @@ public:
 
   /**
    * @brief Register the callback invoked for each captured sample.
-   * @param callback Invoked on the driver's thread; must not block for long.
+   * @param[in] callback Invoked on the driver's thread; must not block for long.
    */
   virtual void SetSampleCallback(SampleCallback callback) = 0;
 

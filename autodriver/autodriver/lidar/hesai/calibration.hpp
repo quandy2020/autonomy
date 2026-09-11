@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file calibration.hpp
  * @brief Hesai / PandarXT beam elevation calibration.
  */
 
@@ -50,7 +50,7 @@ BeamCalibration DefaultXt32Calibration();
  *
  * Default unit is **degrees** (XT32 manual). Set root `unit: rad` or
  * `angles_in_radians: true` to interpret radians.
- * @param path Absolute or relative path to the calibration YAML file.
+ * @param[in] path Absolute or relative path to the calibration YAML file.
  * @param[out] out Filled calibration on success; must be non-null.
  * @param[out] error Optional human-readable failure reason.
  * @return true when @p out was populated.

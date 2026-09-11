@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file sample_sink.hpp
  * @brief Output interface for sensor attach/detach and published samples.
  */
 
@@ -48,34 +48,39 @@ public:
   AUTOLINK_SHARED_PTR_DEFINITIONS(SampleSink)
 
   /**
+   * @brief Disable copy construction and copy assignment.
+   */
+  DISALLOW_COPY_AND_ASSIGN(SampleSink)
+  /**
    * @brief Virtual destructor for polymorphic sinks.
    */
   virtual ~SampleSink() = default;
 
   /**
    * @brief Open writers or channels when a sensor is attached.
-   * @param sensor Sensor configuration used to create output channels.
-   * @param type Sensor modality of the attached instance.
-   * @return false when channel setup fails (attach should abort).
+   * @param[in] sensor Sensor configuration used to create output channels.
+   * @param[in] type Sensor modality of the attached instance.
+   * @return true when channels were set up successfully; false when setup fails
+   *         (attach should abort).
    */
   virtual bool HandleSensorAttach(const Config::Sensor& sensor,
                                   SensorType type) = 0;
 
   /**
    * @brief Tear down writers when a sensor is detached.
-   * @param id Sensor identifier whose output channels should be closed.
+   * @param[in] id Sensor identifier whose output channels should be closed.
    */
   virtual void HandleSensorDetach(const SensorId& id) = 0;
 
   /**
    * @brief Publish or forward a captured sample.
-   * @param sample Shared sample to emit downstream (may be null; ignore).
+   * @param[out] sample Shared sample to emit downstream (may be null; ignore).
    */
   virtual void HandleSensorSample(std::shared_ptr<SensorSample> sample) = 0;
 
   /**
    * @brief Optional device health update (default: ignore).
-   * @param snapshot Diagnostic payload from SensorManager::ReportDiagnostic.
+   * @param[out] snapshot Diagnostic payload from SensorManager::ReportDiagnostic.
    */
   virtual void HandleDiagnostic(const diagnostics::DiagnosticSnapshot&) {}
 

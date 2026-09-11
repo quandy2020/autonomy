@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file packet_queue.hpp
  * @brief Bounded packet queue for lidar receive/convert decoupling.
  */
 
@@ -29,6 +29,7 @@
 #include <mutex>
 #include <optional>
 #include <utility>
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace lidar {
@@ -45,15 +46,25 @@ template <typename T>
 class PacketQueue {
 public:
     /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(PacketQueue)
+
+    /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(PacketQueue)
+
+    /**
      * @brief Construct with a maximum number of queued elements.
-     * @param capacity Minimum capacity is 1.
+     * @param[in] capacity Minimum capacity is 1.
      */
     explicit PacketQueue(std::size_t capacity = 256)
         : capacity_(capacity == 0 ? 1 : capacity) {}
 
     /**
      * @brief Enqueue @p item; if full, drop the front and count a drop.
-     * @param item Value to move into the queue.
+     * @param[in] item Value to move into the queue.
      * @return Always true (lossy drop still accepts the new item).
      */
     bool Push(T item) {
@@ -85,7 +96,7 @@ public:
 
     /**
      * @brief Block until an item is available or @p timeout elapses.
-     * @param timeout Maximum wait duration.
+     * @param[in] timeout Maximum wait duration.
      * @return Popped item, or nullopt on timeout.
      */
     template <typename Rep, typename Period>
@@ -101,6 +112,7 @@ public:
 
     /**
      * @brief Current number of queued elements.
+     * @return Count of elements currently in the FIFO.
      */
     std::size_t size() const {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -109,6 +121,7 @@ public:
 
     /**
      * @brief Cumulative number of oldest-item drops due to capacity.
+     * @return Total drops since construction (not reset by Clear).
      */
     std::size_t dropped() const {
         std::lock_guard<std::mutex> lock(mutex_);
