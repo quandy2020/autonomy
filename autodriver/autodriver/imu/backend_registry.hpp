@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file backend_registry.hpp
  * @brief Process-local IMU backend factory registry.
  */
 
@@ -60,9 +60,9 @@ using ImuDriverFactory = ImuBackendRegistry::DriverFactory;
 
 /**
  * @brief Register a canonical IMU backend plus optional aliases (static init).
- * @param name Canonical backend string (e.g. "serial", "can").
- * @param factory ImuDriverFactory for @p name.
- * @param aliases Optional null-terminated C string aliases (empty skipped).
+ * @param[in] name Canonical backend string (e.g. "serial", "can").
+ * @param[in] factory ImuDriverFactory for @p name.
+ * @param[in] aliases Optional null-terminated C string aliases (empty skipped).
  */
 inline void RegisterImuBackendWithAliases(
     const std::string& name, ImuDriverFactory factory,

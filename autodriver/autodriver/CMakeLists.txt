@@ -1,4 +1,4 @@
-# Copyright 2026 Autodriver contributors
+# Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ set(AUTODRIVER_SOURCES
   common/stream.cpp
   common/can_socket.cpp
   common/calibration.cpp
-  camera/backend_registry.cpp
   camera/orbbec/camera_info.cpp
   camera/orbbec/device_hub.cpp
   camera/orbbec/camera_driver.cpp
@@ -30,15 +29,11 @@ set(AUTODRIVER_SOURCES
   camera/realsense/device_hub.cpp
   camera/realsense/camera_info.cpp
   smartereye/camera_driver.cpp
-  radar/backend_registry.cpp
   radar/conti/driver.cpp
-  microphone/backend_registry.cpp
   microphone/respeaker_driver.cpp
   gps/nmea_0183.cpp
   gps/parser/parser.cpp
-  gps/backend_registry.cpp
   imu/wit_motion_parser.cpp
-  imu/backend_registry.cpp
   time_synchronization.cpp
   sample_buffer.cpp
   sensor_hub.cpp
@@ -48,8 +43,6 @@ set(AUTODRIVER_SOURCES
   imu/can_imu_driver.cpp
   gps/serial_gps_driver.cpp
   gps/can_gps_driver.cpp
-  lidar/backend_registry.cpp
-  lidar/lidar_2d_backend_registry.cpp
   lidar/motion_compensator.cpp
   lidar/pose_buffer.cpp
   lidar/beam_calibration_yaml.cpp
@@ -75,6 +68,9 @@ find_package(yaml-cpp REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 add_library(autodriver SHARED ${AUTODRIVER_SOURCES})
+set_target_properties(autodriver PROPERTIES
+  VERSION "${AUTODRIVER_VERSION}"
+  SOVERSION "${AUTODRIVER_SOVERSION}")
 
 if(NOT TARGET autolink OR NOT TARGET automsgs)
   message(FATAL_ERROR

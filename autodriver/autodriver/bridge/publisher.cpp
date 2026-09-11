@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,6 +12,12 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ */
+
+/**
+ * @file publisher.cpp
+ * @brief Autolink bridge that publishes sensor samples to configured channels
+ *        (implementation).
  */
 
 #include "autodriver/bridge/publisher.hpp"
@@ -44,6 +50,8 @@ constexpr int kWriterDepth = 10;
 
 /**
  * @brief Builds RoleAttributes with keep-last QoS for a channel name.
+ * @param[in] channel Autolink channel name for the writer.
+ * @return RoleAttributes with HISTORY_KEEP_LAST QoS.
  */
 autolink::proto::RoleAttributes WriterAttr(std::string_view channel) {
     autolink::proto::RoleAttributes attr;
@@ -56,6 +64,9 @@ autolink::proto::RoleAttributes WriterAttr(std::string_view channel) {
 
 /**
  * @brief Returns configured channels or a default derived from sensor metadata.
+ * @param[in] sensor Sensor config (may list channels).
+ * @param[in] type Sensor type used for the default channel.
+ * @return Configured channels, or a single default channel name.
  */
 std::vector<std::string> ResolvePublishChannels(
     const Config::Sensor& sensor, SensorType type) {

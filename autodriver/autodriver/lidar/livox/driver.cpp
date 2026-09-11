@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file driver.cpp
  * @brief Livox lidar_3d factory — selects SDK1 or SDK2 by model/sdk param.
  */
 
@@ -36,8 +36,8 @@ namespace hardware {
 
 /**
  * @brief Registry factory: pick Livox SDK1 or SDK2 from model / sdk params.
- * @param id Sensor instance id.
- * @param params YAML params (`model`, optional `sdk`).
+ * @param[in] id Sensor instance id.
+ * @param[in] params YAML params (`model`, optional `sdk`).
  * @return Owning SensorDriver*, or nullptr when the selected SDK is unavailable.
  */
 SensorDriver*

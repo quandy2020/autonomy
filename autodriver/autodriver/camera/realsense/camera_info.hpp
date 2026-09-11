@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file camera_info.hpp
  * @brief Build sensor_msgs/CameraInfo from RealSense intrinsics.
  */
 
@@ -32,15 +32,15 @@ namespace realsense {
 
 /**
  * @brief Fill CameraInfo K/D from pinhole intrinsics (+ optional distortion).
- * @param width Image width in pixels.
- * @param height Image height in pixels.
- * @param frame_id Header frame_id written into CameraInfo.
- * @param fx Focal length x (pixels).
- * @param fy Focal length y (pixels).
- * @param ppx Principal point x (pixels).
- * @param ppy Principal point y (pixels).
- * @param coeffs Distortion coefficients; may be null when @p coeff_count == 0.
- * @param coeff_count Number of entries in @p coeffs.
+ * @param[in] width Image width in pixels.
+ * @param[in] height Image height in pixels.
+ * @param[in] frame_id Header frame_id written into CameraInfo.
+ * @param[in] fx Focal length x (pixels).
+ * @param[in] fy Focal length y (pixels).
+ * @param[in] ppx Principal point x (pixels).
+ * @param[in] ppy Principal point y (pixels).
+ * @param[in] coeffs Distortion coefficients; may be null when @p coeff_count == 0.
+ * @param[in] coeff_count Number of entries in @p coeffs.
  * @return Filled CameraInfo message (K, D, size, frame_id).
  */
 automsgs::msgs::sensor_msgs::CameraInfo MakeCameraInfo(

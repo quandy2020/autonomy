@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,6 +12,11 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ */
+
+/**
+ * @file sensor_manager.cpp
+ * @brief Sensor attach/start/stop orchestration implementation.
  */
 
 #include "autodriver/sensor_manager.hpp"
@@ -47,6 +52,8 @@ using WriteLock = autolink::base::WriteLockGuard<AtomicRWLock>;
 
 /**
  * @brief Normalizes plugin library names to the platform shared suffix.
+ * @param[in] name Plugin library basename or path.
+ * @return Name with the platform shared-library suffix applied.
  */
 std::string NativeLibraryName(std::string name) {
     // Default shared-library suffix on Unix.

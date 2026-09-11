@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file publisher.hpp
  * @brief Autolink bridge that publishes sensor samples to configured channels.
  */
 
@@ -66,8 +66,8 @@ public:
 
     /**
      * @brief Stores the Autolink node name used for writers.
-     * @param node_name Autolink node name.
-     * @param async_queue_capacity Bound for the publish queue (min 1).
+     * @param[in] node_name Autolink node name.
+     * @param[in] async_queue_capacity Bound for the publish queue (min 1).
      */
     explicit Publisher(std::string node_name = "autodriver",
                        std::size_t async_queue_capacity = 64);
@@ -79,37 +79,45 @@ public:
 
   /**
      * @brief Creates the Autolink node if not already present.
+     * @return true when the node exists or was created successfully.
      */
     bool Initialize();
 
     /**
-     * @brief Access the underlying Autolink node
-     * @return Raw pointer to the node, or nullptr before Initialize()
+     * @brief Access the underlying Autolink node.
+     * @return Raw pointer to the node, or nullptr before Initialize().
      */
     autolink::Node* GetNode() { return node_.get(); }
 
     /**
      * @brief Opens protobuf writers for a newly attached sensor.
+     * @param[in] sensor Sensor configuration used to create output channels.
+     * @param[in] type Sensor modality selecting the writer message type.
+     * @return true when writers were opened successfully; false on failure.
      */
     bool HandleSensorAttach(const Config::Sensor& sensor, SensorType type) override;
 
     /**
      * @brief Removes writers when a sensor detaches.
+     * @param[in] id Sensor identifier whose writers should be closed.
      */
     void HandleSensorDetach(const SensorId& id) override;
 
     /**
      * @brief Enqueues a sample for asynchronous protobuf Write.
+     * @param[out] sample Shared sample to publish; ignored when null.
      */
     void HandleSensorSample(std::shared_ptr<SensorSample> sample) override;
 
     /**
      * @brief Publishes DiagnosticArray on /diagnostics (created lazily).
+     * @param[out] snapshot Device health payload to convert and publish.
      */
     void HandleDiagnostic(const diagnostics::DiagnosticSnapshot& snapshot) override;
 
     /**
      * @brief Optional override for the diagnostics channel (default /diagnostics).
+     * @param[in] channel Autolink channel name for DiagnosticArray.
      */
     void SetDiagnosticsChannel(std::string channel);
 
@@ -125,14 +133,16 @@ private:
     /**
      * @brief Open typed protobuf writers and register multi-channel fanout.
      * @tparam kType SensorType specialization selecting the protobuf message.
-     * @param sensor Sensor configuration from YAML.
-     * @return True when the writer was opened successfully.
+     * @param[in] sensor Sensor configuration from YAML.
+     * @return true when the writer was opened successfully; false otherwise.
      */
     template <SensorType kType>
     bool OpenTypedWriter(const Config::Sensor& sensor);
 
     /**
      * @brief Opens image and optional CameraInfo writers for a camera sensor.
+     * @param[in] sensor Camera sensor configuration from YAML.
+     * @return true when writers were opened successfully; false otherwise.
      */
     bool OpenCameraWriters(const Config::Sensor& sensor);
 

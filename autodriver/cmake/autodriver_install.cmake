@@ -26,6 +26,10 @@ install(
 )
 
 install(
+  FILES ${AUTODRIVER_GENERATED_DIR}/version.json
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/autodriver
+)
+install(
   DIRECTORY ${AUTODRIVER_ROOT_DIR}/config/
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/autodriver/config
   FILES_MATCHING PATTERN "*.yaml"

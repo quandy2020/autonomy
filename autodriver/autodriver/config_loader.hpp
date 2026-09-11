@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file config_loader.hpp
  * @brief Configuration loader (YAML only).
  */
 
@@ -28,11 +28,12 @@
 
 namespace autodriver {
 
-// Default configuration file name under config/.
+/** @brief Default configuration file name under config/. */
 inline constexpr const char* kDefaultConfigBasename = "autodriver_hardware.yaml";
 
 /**
  * @brief Loads the default autodriver_hardware.yaml config.
+ * @return Parsed Config (empty/default fields when the file is missing).
  */
 Config LoadConfig();
 
@@ -41,12 +42,18 @@ Config LoadConfig();
  *
  * Basename is typically `autodriver_hardware.yaml`. Camera vendor device
  * params are merged via each sensor's `params_file` (under config/camera/).
+ *
+ * @param[in] config_basename File name under `config/` (not a full path).
+ * @return Parsed Config.
  */
 Config LoadConfig(const std::string& config_basename);
 
 /**
  * @brief Loads YAML from `{configuration_directory}/config/{basename}`
  *        (with install-tree fallback).
+ * @param[in] configuration_directory Package root that contains `config/`.
+ * @param[in] config_basename File name under `config/`.
+ * @return Parsed Config.
  */
 Config LoadConfig(const std::string& configuration_directory,
                   const std::string& config_basename);

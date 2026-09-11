@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file sensor_traits.hpp
  * @brief Compile-time mapping from SensorType to sample types and channel helpers.
  */
 
@@ -52,6 +52,8 @@ struct SensorTraits;
         using Message = typename Sample::Message;                \
         /**
          * @brief Stamp the sample header and return the message.
+         * @param[in,out] sample Typed sample whose embedded message is stamped.
+         * @return Reference to the stamped protobuf message.
          */ \
         static Message& ToMessage(Sample& sample) {            \
             return sample.StampInPlace();                      \
@@ -72,8 +74,8 @@ AUTODRIVER_TRAITS(kMicrophone, MicrophoneSample);
 
 /**
  * @brief Default Autolink channel suffix for a sensor type.
- * @param type Sensor modality used to choose the suffix.
- * @param stream Optional stream hint (e.g. "depth" for camera depth topics).
+ * @param[in] type Sensor modality used to choose the suffix.
+ * @param[in] stream Optional stream hint (e.g. "depth" for camera depth topics).
  * @return Topic suffix including a leading slash when applicable.
  */
 inline std::string ChannelSuffix(SensorType type, std::string_view stream = {}) {
@@ -102,10 +104,10 @@ inline std::string ChannelSuffix(SensorType type, std::string_view stream = {}) 
  * @brief Resolve the publish channel for a sensor.
  * When channel is empty, returns "/{id}" plus a type-specific suffix so
  * multiple sensors of the same modality never share a topic.
- * @param channel Explicit channel from configuration; may be empty.
- * @param id Sensor identifier used as the topic prefix.
- * @param type Sensor modality used to choose the default suffix.
- * @param stream Optional stream hint passed to ChannelSuffix().
+ * @param[in] channel Explicit channel from configuration; may be empty.
+ * @param[in] id Sensor identifier used as the topic prefix.
+ * @param[in] type Sensor modality used to choose the default suffix.
+ * @param[in] stream Optional stream hint passed to ChannelSuffix().
  * @return Fully qualified channel name.
  */
 inline std::string ResolveChannel(const std::string& channel, const SensorId& id,

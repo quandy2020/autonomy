@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file protocol_data.hpp
  * @brief CAN ProtocolData + MessageManager.
  */
 
@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "autodriver/common/can_socket.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace canbus {
@@ -43,17 +44,36 @@ namespace canbus {
 template <typename T>
 class ProtocolData {
 public:
+    /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(ProtocolData)
+
+    /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(ProtocolData)
+
+    /**
+     * @brief Default constructor (DISALLOW_COPY suppresses the implicit one).
+     */
+    ProtocolData() = default;
+
+    /**
+     * @brief Virtual destructor for polymorphic ProtocolData deletion.
+     */
     virtual ~ProtocolData() = default;
 
     /**
      * @brief CAN identifier this protocol handles (11-bit or 29-bit).
+     * @return CAN id matched by this decoder.
      */
     virtual std::uint32_t can_id() const = 0;
 
     /**
      * @brief Parse payload into @p msg.
-     * @param frame Incoming classical CAN frame (id already normalized).
-     * @param msg Output message; must not be null.
+     * @param[in] frame Incoming classical CAN frame (id already normalized).
+     * @param[out] msg Output message; must not be null.
      * @return False to skip the publish callback.
      */
     virtual bool Parse(const io::CanFrame& frame, T* msg) const = 0;
@@ -67,12 +87,27 @@ public:
 template <typename T>
 class MessageManager {
 public:
+    /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(MessageManager)
+
+    /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(MessageManager)
+    /**
+     * @brief Default constructor (DISALLOW_COPY suppresses the implicit one).
+     */
+    MessageManager() = default;
+
+
     using ProtocolPtr = std::shared_ptr<ProtocolData<T>>;
     using PublishFn = std::function<void(const T&)>;
 
     /**
      * @brief Register a protocol; later registrations with the same id replace.
-     * @param protocol Non-null ProtocolData instance.
+     * @param[in] protocol Non-null ProtocolData instance.
      */
     void Register(ProtocolPtr protocol) {
         if (!protocol) {
@@ -83,7 +118,7 @@ public:
 
     /**
      * @brief Callback invoked after a successful ProtocolData::Parse.
-     * @param callback May be empty to disable publishing.
+     * @param[in] callback May be empty to disable publishing.
      */
     void SetPublishCallback(PublishFn callback) {
         publish_ = std::move(callback);
@@ -91,7 +126,7 @@ public:
 
     /**
      * @brief Lookup protocol by frame.id, Parse, then optionally publish.
-     * @param frame Frame to dispatch (extended ids should already be masked).
+     * @param[in] frame Frame to dispatch (extended ids should already be masked).
      * @return True when a protocol matched and Parse succeeded.
      */
     bool Parse(const io::CanFrame& frame) {
@@ -111,6 +146,7 @@ public:
 
     /**
      * @brief Number of registered protocols.
+     * @return Count of can_id → ProtocolData entries.
      */
     std::size_t size() const { return protocols_.size(); }
 

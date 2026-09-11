@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file serial_gps_driver.hpp
  * @brief Serial NMEA GNSS receiver driver.
  */
 
@@ -48,9 +48,13 @@ public:
     AUTOLINK_SHARED_PTR_DEFINITIONS(SerialGpsDriver)
 
     /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(SerialGpsDriver)
+    /**
      * @brief Store sensor identity and serial driver params.
-     * @param id Sensor instance id.
-     * @param params DriverParams (cold-path parse only).
+     * @param[in] id Sensor instance id.
+     * @param[in] params DriverParams (cold-path parse only).
      */
     SerialGpsDriver(SensorId id, DriverParams params);
 
@@ -78,8 +82,8 @@ public:
 
     /**
      * @brief CRTP hook: feed NMEA parser and emit GpsSample for each fix.
-     * @param data Bytes read from the serial Stream.
-     * @param n Number of valid bytes in @p data.
+     * @param[in] data Bytes read from the serial Stream.
+     * @param[in] n Number of valid bytes in @p data.
      */
     void OnBytes(const std::uint8_t* data, std::size_t n);
 
@@ -90,8 +94,8 @@ private:
 
 /**
  * @brief Factory for GpsBackendRegistry (REGISTER_GPS_BACKEND "serial").
- * @param id Sensor instance id from YAML.
- * @param params Backend-specific key/value map.
+ * @param[in] id Sensor instance id from YAML.
+ * @param[in] params Backend-specific key/value map.
  * @return Owning SerialGpsDriver* (never null).
  */
 SensorDriver* CreateSerialGpsDriver(const SensorId& id,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file points.hpp
  * @brief Livox XYZIT point + publish-frequency frame assembler.
  */
 
@@ -26,6 +26,7 @@
 #include <mutex>
 #include <utility>
 #include <vector>
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace lidar {
@@ -52,8 +53,18 @@ struct PointXYZIT {
 class FrameAssembler {
 public:
     /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(FrameAssembler)
+
+    /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(FrameAssembler)
+
+    /**
      * @brief Construct with a publish interval.
-     * @param publish_interval_ns Frame window in nanoseconds; 0 → 100 ms.
+     * @param[in] publish_interval_ns Frame window in nanoseconds; 0 → 100 ms.
      */
     explicit FrameAssembler(std::uint64_t publish_interval_ns)
         : publish_interval_ns_(publish_interval_ns == 0
@@ -62,7 +73,7 @@ public:
 
     /**
      * @brief Update the publish interval (thread-safe).
-     * @param interval_ns New window in nanoseconds; 0 → 100 ms.
+     * @param[in] interval_ns New window in nanoseconds; 0 → 100 ms.
      */
     void SetIntervalNs(std::uint64_t interval_ns) {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -72,7 +83,7 @@ public:
 
     /**
      * @brief Append points into the current frame buffer.
-     * @param points Points to move into the buffer; empty is a no-op.
+     * @param[in] points Points to move into the buffer; empty is a no-op.
      *
      * Sets frame_start_ns_ from the first point timestamp when unset.
      */
@@ -92,7 +103,7 @@ public:
 
     /**
      * @brief If the frame window elapsed, swaps out points and resets.
-     * @param now_ns Current host time in nanoseconds.
+     * @param[in] now_ns Current host time in nanoseconds.
      * @param[out] out Receives the flushed points on success; must be non-null.
      * @return true when a frame was ready and moved into @p out.
      */

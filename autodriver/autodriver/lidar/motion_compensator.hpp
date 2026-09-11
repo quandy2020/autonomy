@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file motion_compensator.hpp
  * @brief Lidar motion compensation for PointCloud2 (xyz+i+t).
  */
 
@@ -35,8 +35,8 @@ namespace lidar {
 
 /**
  * @brief Looks up world←lidar pose at an absolute time (nanoseconds).
- * @param time_ns Query time in nanoseconds.
- * @param child_frame Lidar / child frame id expected by the pose source.
+ * @param[in] time_ns Query time in nanoseconds.
+ * @param[in] child_frame Lidar / child frame id expected by the pose source.
  * @param[out] pose Filled affine transform on success; must be non-null.
  * @return False when no pose is available for @p time_ns.
  */
@@ -48,7 +48,7 @@ using PoseLookup = std::function<bool(
  * @brief Options for MotionCompensator (world frame id).
  */
 struct CompensatorOptions {
-    /** Frame id written / expected as the world / odom parent. */
+    /** @brief Frame id written / expected as the world / odom parent. */
     std::string world_frame_id = "world";
 };
 
@@ -67,20 +67,24 @@ public:
   AUTOLINK_SHARED_PTR_DEFINITIONS(MotionCompensator)
 
     /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(MotionCompensator)
+    /**
      * @brief Construct with optional world-frame settings.
-     * @param options CompensatorOptions (default world_frame_id = "world").
+     * @param[in] options CompensatorOptions (default world_frame_id = "world").
      */
     explicit MotionCompensator(CompensatorOptions options = {});
 
     /**
      * @brief Install the pose source used by Compensate().
-     * @param lookup Callable queried per point timestamp; may be empty.
+     * @param[in] lookup Callable queried per point timestamp; may be empty.
      */
     void SetPoseLookup(PoseLookup lookup);
 
     /**
      * @brief Compensates in-place when possible; otherwise writes to @p out.
-     * @param in Input PointCloud2 with per-point timestamps.
+     * @param[in] in Input PointCloud2 with per-point timestamps.
      * @param[out] out Compensated cloud; may alias @p in for in-place edits.
      * @return False if pose lookup fails or cloud lacks timestamps.
      */
@@ -94,10 +98,10 @@ private:
 
 /**
  * @brief Test helper: linear interpolation between two poses over [t_min,t_max].
- * @param t_min Start of the interpolation window (nanoseconds).
- * @param t_max End of the interpolation window (nanoseconds).
- * @param pose_min world←lidar pose at @p t_min.
- * @param pose_max world←lidar pose at @p t_max.
+ * @param[in] t_min Start of the interpolation window (nanoseconds).
+ * @param[in] t_max End of the interpolation window (nanoseconds).
+ * @param[in] pose_min world←lidar pose at @p t_min.
+ * @param[in] pose_max world←lidar pose at @p t_max.
  * @return PoseLookup usable with MotionCompensator::SetPoseLookup.
  */
 PoseLookup MakeLinearPoseLookup(std::uint64_t t_min, std::uint64_t t_max,

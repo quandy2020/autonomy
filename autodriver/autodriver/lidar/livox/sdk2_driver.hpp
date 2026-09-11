@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file sdk2_driver.hpp
  * @brief Livox-SDK2 driver (HAP / Mid-360 / Mid360s / Avia2).
  */
 
@@ -60,14 +60,18 @@ public:
    */
   AUTOLINK_SHARED_PTR_DEFINITIONS(LivoxSdk2Driver)
 
+    /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(LivoxSdk2Driver)
     using Base =
         lidar::livox::AssemblerDriverBase<LivoxSdk2Driver,
                                           lidar::livox::Sdk2Traits>;
 
     /**
      * @brief Construct from sensor id and YAML params.
-     * @param id Stable sensor instance id.
-     * @param params DriverParams parsed at construction (cold path).
+     * @param[in] id Stable sensor instance id.
+     * @param[in] params DriverParams parsed at construction (cold path).
      */
     LivoxSdk2Driver(SensorId id, DriverParams params);
 
@@ -89,16 +93,16 @@ public:
 
     /**
      * @brief SDK point-cloud callback (public for C thunks).
-     * @param handle Device handle from Livox-SDK2.
-     * @param dev_type Device type code from the SDK.
-     * @param data Point cloud packet pointer (SDK-owned).
+     * @param[in] handle Device handle from Livox-SDK2.
+     * @param[in] dev_type Device type code from the SDK.
+     * @param[in] data Point cloud packet pointer (SDK-owned).
      */
     void OnPointCloud(std::uint32_t handle, std::uint8_t dev_type, void* data);
 
     /**
      * @brief SDK device-info change callback (public for C thunks).
-     * @param handle Device handle from Livox-SDK2.
-     * @param info Device info pointer (SDK type).
+     * @param[in] handle Device handle from Livox-SDK2.
+     * @param[in] info Device info pointer (SDK type).
      */
     void OnInfoChange(std::uint32_t handle, const void* info);
 
@@ -120,8 +124,8 @@ private:
 
 /**
  * @brief Registry factory: construct LivoxSdk2Driver when SDK2 is linked.
- * @param id Sensor instance id.
- * @param params YAML driver params.
+ * @param[in] id Sensor instance id.
+ * @param[in] params YAML driver params.
  * @return Owning SensorDriver*, or nullptr without AUTODRIVER_HAVE_LIVOX_SDK2.
  */
 SensorDriver* CreateLivoxSdk2Driver(const SensorId& id,

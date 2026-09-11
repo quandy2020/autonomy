@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file backend_registry.hpp
  * @brief Process-local chassis backend factory registry.
  */
 
@@ -60,9 +60,9 @@ using ChassisDriverFactory = ChassisBackendRegistry::DriverFactory;
 
 /**
  * @brief Register a canonical chassis backend plus optional aliases.
- * @param name Canonical backend string (e.g. "stub").
- * @param factory ChassisDriverFactory for @p name.
- * @param aliases Optional null-terminated C string aliases (empty skipped).
+ * @param[in] name Canonical backend string (e.g. "stub").
+ * @param[in] factory ChassisDriverFactory for @p name.
+ * @param[in] aliases Optional null-terminated C string aliases (empty skipped).
  */
 inline void RegisterChassisBackendWithAliases(
     const std::string& name, ChassisDriverFactory factory,

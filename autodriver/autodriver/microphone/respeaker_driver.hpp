@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file respeaker_driver.hpp
  * @brief ReSpeaker-style microphone driver factory (skeleton).
  */
 
@@ -37,8 +37,9 @@ namespace hardware {
  * Planned path: PortAudio (or USB HID) → PCM frames carried as
  * `MicrophoneSample` (Image byte bag placeholder). YAML: `backend: respeaker`.
  *
- * @param id Sensor id (e.g. mic/cabin).
- * @param params Device path / sample rate when implemented.
+ * @param[in] id Sensor id (e.g. mic/cabin).
+ * @param[in] params Device path / sample rate when implemented.
+ * @return Owning raw pointer (or nullptr on failure).
  */
 SensorDriver*
 CreateRespeakerMicrophoneDriver(

@@ -1,13 +1,14 @@
 # Autodriver
 
-统一硬件 HAL：传感 + 本体（chassis）。YAML → 采集/执行 → Autolink。版本见 [`version.json`](version.json)。
+统一硬件 HAL：传感 + 本体（chassis）。YAML → 采集/执行 → Autolink。  
+版本：CMake 配置时用 git 刷新 [`version.json`](version.json)（`full_version` / `git_*`）；CLI：`autodriver -V`。打标签 `autodriver-vX.Y.Z` 可同步 semver。
 
 **Module 按模态固定；Driver 按厂商 Registry 插拔。** 详设见 [`docs/`](docs/source/index.md)。
 
 | 域 | 路径 | 说明 |
 |---|---|---|
 | 传感 | `camera/` `lidar/` … | `SensorDriver`，单向采样 |
-| 本体 | [`chassis/`](chassis/README.md) | `vehicle_msgs.RobotState` / `RobotEvent` + `TwistStamped`；**不依赖** `autonomy/vehicle` |
+| 本体 | [`chassis/`](chassis/README.md) | Capability + Mode + SafetyGate；`RobotState` / `RobotEvent` + Twist；**不依赖** `autonomy/vehicle` |
 
 ## 能力
 
@@ -25,16 +26,23 @@
 ## 构建与运行
 
 ```bash
-# autonomy 仓库根
-cmake -S . -B build -DBUILD_AUTODRIVER=ON
-cmake --build build -j"$(nproc)" --target autodriver autodriver_main
+# autonomy 仓库根（colcon / 嵌套构建产物在 build/autonomy/）
+cmake --build build/autonomy -j"$(nproc)" --target autodriver autodriver_main
 
-export AUTODRIVER_PATH=$PWD/src/autonomy/autodriver   # 含 config/
-export LD_LIBRARY_PATH=$PWD/build/lib:$LD_LIBRARY_PATH
-export PATH=$PWD/build/bin:$PATH
+export AUTODRIVER_PATH=$PWD/src/autonomy/autodriver
+export LD_LIBRARY_PATH=$PWD/build/autonomy/lib:$LD_LIBRARY_PATH
+export PATH=$PWD/build/autonomy/bin:$PATH
+export AUTOLINK_LAUNCH_PATH=$AUTODRIVER_PATH/launch
+
 autodriver
-# 或 autolink launch start autodriver.launch
+# 或（二选一，勿同时开两个实例——会抢 RealSense）
+autolink launch start autodriver.launch
 ```
+
+> 若仍指向旧的 `build/lib/libautodriver.so`，会出现  
+> `undefined symbol: …ChassisManager::Start…`——请改用上面的 `build/autonomy/lib`，或重新编译后覆盖旧库。
+>
+> RealSense `module Start failed` 且错误含 `Device or resource busy`：先 `pkill -f autodriver` 再启一次。
 
 | CMake | 默认 | 依赖 |
 |---|---|---|

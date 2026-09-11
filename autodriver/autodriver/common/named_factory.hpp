@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file named_factory.hpp
  * @brief Named product factories wrapping autolink::common::Factory.
  *
  * Backend registries (camera / lidar / imu / gps / chassis / …) are thin
@@ -37,6 +37,7 @@
 #include "autodriver/driver_params.hpp"
 #include "autolink/common/factory.hpp"
 #include "autolink/common/log.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 
@@ -55,9 +56,24 @@ template <typename Product, typename Arg1 = std::string>
 class NamedProductFactory {
 public:
   /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(NamedProductFactory)
+
+  /**
+   * @brief Disable copy construction and copy assignment.
+   */
+  DISALLOW_COPY_AND_ASSIGN(NamedProductFactory)
+  /**
+   * @brief Default constructor (DISALLOW_COPY suppresses the implicit one).
+   */
+  NamedProductFactory() = default;
+
+
+  /**
    * @brief Creator signature expected by autolink::common::Factory.
-   * @param arg1 Instance id (sensor / chassis).
-   * @param params Backend-specific YAML key/value map.
+   * @param[in] arg1 Instance id (sensor / chassis).
+   * @param[in] params Backend-specific YAML key/value map.
    * @return Owning raw pointer (or nullptr); Factory takes ownership.
    */
   using Creator = std::function<Product*(
@@ -72,8 +88,8 @@ public:
 
   /**
    * @brief Register or replace a creator under @p name.
-   * @param name Canonical backend / product name (must be non-empty).
-   * @param creator Factory function returning new Product*.
+   * @param[in] name Canonical backend / product name (must be non-empty).
+   * @param[in] creator Factory function returning new Product*.
    * @return true when registered successfully; false if name/creator invalid.
    *
    * Replacing an existing name Unregister()s first and logs a warning.
@@ -93,8 +109,8 @@ public:
 
   /**
    * @brief Map @p alias onto an already-registered canonical name.
-   * @param alias Alternate YAML name (e.g. "udp", "sim"); empty ignored.
-   * @param canonical Existing registered name (e.g. "velodyne", "stub").
+   * @param[in] alias Alternate YAML name (e.g. "udp", "sim"); empty ignored.
+   * @param[in] canonical Existing registered name (e.g. "velodyne", "stub").
    */
   void RegisterAlias(const std::string& alias, const std::string& canonical) {
     if (alias.empty() || canonical.empty()) {
@@ -106,7 +122,7 @@ public:
 
   /**
    * @brief Resolve alias → canonical; unknown names pass through unchanged.
-   * @param name Canonical name or alias.
+   * @param[in] name Canonical name or alias.
    * @return Canonical name when @p name is an alias; otherwise @p name.
    * @note Public helpers that need consistency take mutex_ themselves; do not
    *       call Resolve unlocked alongside other mutating methods from outside.
@@ -118,7 +134,7 @@ public:
 
   /**
    * @brief Whether @p name (or its alias) is registered.
-   * @param name Canonical name or alias.
+   * @param[in] name Canonical name or alias.
    * @return true when a creator exists after alias resolve.
    */
   bool Contains(const std::string& name) const {
@@ -128,9 +144,9 @@ public:
 
   /**
    * @brief Create a shared product instance for @p name.
-   * @param name Canonical name or alias.
-   * @param arg1 Forwarded to the creator (id).
-   * @param params Forwarded to the creator.
+   * @param[in] name Canonical name or alias.
+   * @param[in] arg1 Forwarded to the creator (id).
+   * @param[in] params Forwarded to the creator.
    * @return Shared product, or nullptr when unknown / creator returns null.
    */
   std::shared_ptr<Product> CreateShared(
@@ -163,6 +179,21 @@ template <typename Product>
 class NamedProductFactory0 {
 public:
   /**
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(NamedProductFactory0)
+
+  /**
+   * @brief Disable copy construction and copy assignment.
+   */
+  DISALLOW_COPY_AND_ASSIGN(NamedProductFactory0)
+
+  /**
+   * @brief Default constructor (DISALLOW_COPY suppresses the implicit one).
+   */
+  NamedProductFactory0() = default;
+
+  /**
    * @brief Creator with no construction arguments.
    * @return Owning raw pointer (or nullptr); Factory takes ownership.
    */
@@ -177,8 +208,8 @@ public:
 
   /**
    * @brief Register or replace a creator under @p name.
-   * @param name Product id (e.g. "nmea"); must be non-empty.
-   * @param creator Factory function returning new Product*.
+   * @param[in] name Product id (e.g. "nmea"); must be non-empty.
+   * @param[in] creator Factory function returning new Product*.
    * @return true when registered successfully.
    */
   bool Register(const std::string& name, Creator creator) {
@@ -194,7 +225,7 @@ public:
 
   /**
    * @brief Whether @p name is registered.
-   * @param name Product id.
+   * @param[in] name Product id.
    * @return true when a creator is available.
    */
   bool Contains(const std::string& name) const {
@@ -204,7 +235,7 @@ public:
 
   /**
    * @brief Construct a unique product instance for @p name.
-   * @param name Product id.
+   * @param[in] name Product id.
    * @return Owning unique_ptr, or nullptr when unknown / creator returns null.
    */
   std::unique_ptr<Product> CreateUnique(const std::string& name) const {

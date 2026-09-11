@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file modules.cpp
  * @brief Registers all built-in sensor modules with the class_loader so that
  * SensorManager can instantiate them without loading a separate .so.
  */
@@ -43,6 +43,8 @@ class ImuModule
 protected:
     /**
      * @brief Instantiates an IMU driver from ImuBackendRegistry.
+     * @param[in] sensor Configured sensor entry (backend/id/params).
+     * @return Shared driver instance, or nullptr when backend is missing.
      */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
@@ -65,6 +67,8 @@ class GpsModule
 protected:
     /**
      * @brief Instantiates a GPS driver from GpsBackendRegistry.
+     * @param[in] sensor Configured sensor entry (backend/id/params).
+     * @return Shared driver instance, or nullptr when backend is missing.
      */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
@@ -87,6 +91,8 @@ class CameraModule
 protected:
     /**
      * @brief Instantiates an Image driver from the camera backend registry.
+     * @param[in] sensor Configured sensor entry (backend/id/params).
+     * @return Shared driver instance, or nullptr when backend is missing.
      */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
@@ -125,6 +131,8 @@ class Lidar3dModule
 protected:
     /**
      * @brief Instantiates a 3D lidar driver from LidarBackendRegistry.
+     * @param[in] sensor Configured sensor entry (backend/id/params).
+     * @return Shared driver instance, or nullptr when backend is missing.
      */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
@@ -141,6 +149,8 @@ class PointCloudModule
 protected:
     /**
      * @brief Instantiates a PointCloud2 driver from PointCloudBackendRegistry.
+     * @param[in] sensor Configured sensor entry (backend/id/params).
+     * @return Shared driver instance, or nullptr when backend is missing.
      */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
@@ -185,6 +195,8 @@ class RadarModule
 protected:
     /**
      * @brief Instantiates a radar driver (may be nullptr for stubs).
+     * @param[in] sensor Configured sensor entry (backend/id/params).
+     * @return Shared driver instance, or nullptr when backend is missing.
      */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {
@@ -202,6 +214,8 @@ class MicrophoneModule
 protected:
     /**
      * @brief Instantiates a microphone driver (may be nullptr for stubs).
+     * @param[in] sensor Configured sensor entry (backend/id/params).
+     * @return Shared driver instance, or nullptr when backend is missing.
      */
     std::shared_ptr<autodriver::SensorDriver> MakeDriver(
         const autodriver::Config::Sensor& sensor) override {

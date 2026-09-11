@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file can_gps_driver.hpp
  * @brief SocketCAN GNSS driver (NMEA2000 lat/lon frame).
  */
 
@@ -56,9 +56,13 @@ public:
     AUTOLINK_SHARED_PTR_DEFINITIONS(CanGpsDriver)
 
     /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(CanGpsDriver)
+    /**
      * @brief Register lat/lon ProtocolData and publish callback.
-     * @param id Sensor instance id.
-     * @param params DriverParams (cold-path parse only).
+     * @param[in] id Sensor instance id.
+     * @param[in] params DriverParams (cold-path parse only).
      */
     CanGpsDriver(SensorId id, DriverParams params);
 
@@ -76,7 +80,7 @@ public:
 private:
     /**
      * @brief Publish NavSatFix from a decoded lat/lon frame.
-     * @param fix Decoded fix from MessageManager.
+     * @param[in] fix Decoded fix from MessageManager.
      */
     void OnFix(const GpsCanFix& fix);
 
@@ -86,8 +90,8 @@ private:
 
 /**
  * @brief Factory for GpsBackendRegistry (REGISTER_GPS_BACKEND "can").
- * @param id Sensor instance id from YAML.
- * @param params Backend-specific key/value map.
+ * @param[in] id Sensor instance id from YAML.
+ * @param[in] params Backend-specific key/value map.
  * @return Owning CanGpsDriver* (never null).
  */
 SensorDriver* CreateCanGpsDriver(const SensorId& id,

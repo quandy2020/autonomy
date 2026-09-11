@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file motion_pose_sink.hpp
  * @brief Optional pose sink for lidar motion compensation (PushPose / PoseLookup).
  */
 
@@ -50,21 +50,31 @@ public:
   AUTOLINK_SHARED_PTR_DEFINITIONS(MotionPoseSink)
 
     /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(MotionPoseSink)
+
+    /**
+     * @brief Default constructor (DISALLOW_COPY suppresses the implicit one).
+     */
+    MotionPoseSink() = default;
+
+    /**
      * @brief Virtual destructor for polymorphic pose sinks.
      */
     virtual ~MotionPoseSink() = default;
 
     /**
      * @brief Append a stamped pose (nanoseconds) to the built-in PoseBuffer.
-     * @param time_ns Pose timestamp in nanoseconds.
-     * @param pose world←lidar affine transform at @p time_ns.
+     * @param[in] time_ns Pose timestamp in nanoseconds.
+     * @param[in] pose world←lidar affine transform at @p time_ns.
      */
     virtual void PushPose(std::uint64_t time_ns,
                           const Eigen::Affine3d& pose) = 0;
 
     /**
      * @brief Replace the MotionCompensator pose source (advanced).
-     * @param lookup Callable used instead of / in addition to PoseBuffer.
+     * @param[in] lookup Callable used instead of / in addition to PoseBuffer.
      */
     virtual void SetPoseLookup(PoseLookup lookup) = 0;
 

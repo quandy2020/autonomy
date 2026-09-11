@@ -1,11 +1,11 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,14 +15,17 @@
  */
 
 /**
- * @file
- * @brief Orchestrates ChassisDriver + Autolink (vehicle_msgs protocol).
+ * @file chassis_manager.hpp
+ * @brief Orchestrates ChassisDriver + Autolink with shared abstractions.
  *
  * Channels:
- *   cmd  : TwistStamped     (same body as RobotState.twist)
- *   state: RobotState       (vehicle_msgs)
- *   event: RobotEvent       (vehicle_msgs, optional)
- *   odom : nav_msgs/Odometry (derived from RobotState for nav stack)
+ *   cmd_vel      : TwistStamped
+ *   mode_cmd     : std_msgs/String (arm / estop / walk / …)
+ *   tool_cmd     : std_msgs/String (brush=1) — optional
+ *   state        : RobotState (active_cmd_id carries operational mode)
+ *   mode_state   : std_msgs/String mode+intent
+ *   capability   : std_msgs/String JSON profile
+ *   event / odom : RobotEvent / Odometry
  */
 
 #ifndef AUTODRIVER_CHASSIS_CHASSIS_MANAGER_HPP_
@@ -34,25 +37,28 @@
 #include <mutex>
 #include <thread>
 
-#include "chassis/chassis_driver.hpp"
 #include "autodriver/config.hpp"
+#include "chassis/capability.hpp"
+#include "chassis/chassis_driver.hpp"
+#include "chassis/operational_mode.hpp"
+#include "chassis/safety_gate.hpp"
+#include "autolink/common/macros.hpp"
 #include "autolink/node/node.hpp"
 #include "autolink/node/reader.hpp"
 #include "autolink/node/writer.hpp"
-#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
-#include <automsgs/msgs/vehicle_msgs/robot_event.pb.h>
-#include <automsgs/msgs/vehicle_msgs/robot_state.pb.h>
-#include "autolink/common/macros.hpp"
+#include <automsgs/msgs/std_msgs/string.pb.h>
 
 namespace autodriver {
 namespace chassis {
 
 /**
- * @brief Creates vendor ChassisDriver from Config::chassis and wires Autolink.
+ * @class autodriver::chassis::ChassisManager
+ * @brief Creates vendor ChassisDriver and wires Autolink + SafetyGate / modes.
  *
- * Responsibilities: backend factory, cmd_vel limit + watchdog, periodic
- * RobotState / Odometry publish. Does not link autonomy/vehicle.
+ * Responsibilities: backend factory, capability advertise, mode FSM, tool
+ * routing, velocity clamp + watchdog, periodic RobotState / Odometry publish.
+ * Does not link autonomy/vehicle.
  */
 class ChassisManager {
 public:
@@ -78,8 +84,8 @@ public:
 
   /**
    * @brief Create driver and Autolink IO when config.chassis.enable.
-   * @param node Existing Autolink node (usually bridge::Publisher::GetNode()).
-   * @param config Full autodriver config; only chassis fields are used.
+   * @param[in] node Existing Autolink node (usually bridge::Publisher::GetNode()).
+   * @param[in] config Full autodriver config; only chassis fields are used.
    * @return true if chassis is disabled, or started successfully.
    */
   bool Start(autolink::Node* node, const Config& config);
@@ -103,51 +109,99 @@ public:
    */
   ChassisDriver* GetDriver() { return driver_.get(); }
 
-private:
   /**
-   * @brief Autolink cmd_vel callback: clamp speeds then ApplyVelocityCommand.
-   * @param msg Incoming TwistStamped command; ignored when null or not running.
+   * @brief Current capability profile (valid after Start when chassis enabled).
+   */
+  const CapabilityProfile& capability() const { return capability_; }
+
+  /**
+   * @brief Operational mode FSM (thread-safe accessors on the controller).
+   */
+  const OperationalModeController& modes() const { return modes_; }
+
+private:
+  using StringMsg = ::automsgs::msgs::std_msgs::String;
+
+  /**
+   * @brief Autolink cmd_vel callback: SafetyGate clamp/gate then ApplyVelocityCommand.
+   * @param[in] msg Incoming TwistStamped; ignored when null or not running.
    */
   void HandleVelocityCommand(const std::shared_ptr<ChassisCommand>& msg);
 
   /**
-   * @brief Forward a vendor RobotEvent to the optional Autolink event Writer.
-   * @param event Event produced by ChassisDriver::EmitChassisEvent.
+   * @brief Autolink mode String callback (arm / estop / walk / …).
+   * @param[in] msg std_msgs/String payload.
+   */
+  void HandleModeCommand(const std::shared_ptr<StringMsg>& msg);
+
+  /**
+   * @brief Autolink tool String callback (brush=1); routed to ApplyToolCommand.
+   * @param[in] msg std_msgs/String payload.
+   */
+  void HandleToolCommand(const std::shared_ptr<StringMsg>& msg);
+
+  /**
+   * @brief Forward vendor RobotEvent; update mode FSM on FAULT / E-STOP.
+   * @param[in] event Event produced by ChassisDriver::EmitChassisEvent.
    */
   void HandleDriverEvent(const ChassisEvent& event);
 
   /**
-   * @brief Background loop: apply cmd_vel watchdog, ReadChassisState, and
-   *        publish RobotState / Odometry at odom_period_ms.
+   * @brief Background loop: watchdog, ReadChassisState, publish state/odom/capability.
    */
   void RunStatePublishLoop();
 
   /**
    * @brief If the last cmd_vel is older than watchdog_ms, apply zero twist.
-   * @param now_ns Steady-clock timestamp in nanoseconds.
+   * @param[in] now_ns Steady-clock timestamp in nanoseconds.
    * @pre Caller holds mutex_.
    */
   void ApplyCommandWatchdogLocked(std::uint64_t now_ns);
 
-  /**
-   * @brief Clamp linear/angular components to Config::Chassis max_* limits.
-   * @param in Raw TwistStamped from Autolink (max_* == 0 means no clamp).
-   * @return Clamped copy of @p in (header preserved).
-   */
-  ChassisCommand ClampVelocityCommand(const ChassisCommand& in) const;
+  /** @brief Publish capability JSON; @pre holds mutex_. */
+  void PublishCapabilityLocked();
 
-  autolink::Node* node_{nullptr};           ///< Shared Autolink node (not owned).
-  Config::Chassis options_;                 ///< Cached chassis YAML block.
+  /** @brief Publish mode,intent string; @pre holds mutex_. */
+  void PublishModeStateLocked();
+
+  /**
+   * @brief Write operational mode into RobotState.active_cmd_id / motion flags.
+   * @param[in,out] state Driver sample to enrich.
+   */
+  void EnrichStateWithMode(ChassisState* state) const;
+
+  /**
+   * @brief Build CapabilityProfile from YAML chassis block.
+   * @param[in] options Cached Config::Chassis.
+   */
+  CapabilityProfile BuildCapability(const Config::Chassis& options) const;
+
+  /**
+   * @brief Build SafetyLimits from YAML chassis block.
+   * @param[in] options Cached Config::Chassis.
+   */
+  SafetyLimits BuildSafetyLimits(const Config::Chassis& options) const;
+
+  autolink::Node* node_{nullptr};  ///< Shared Autolink node (not owned).
+  Config::Chassis options_;        ///< Cached chassis YAML block.
   ChassisDriver::SharedPtr driver_{nullptr};  ///< Vendor driver from registry.
+  CapabilityProfile capability_;   ///< Advertised once / periodically.
+  OperationalModeController modes_;  ///< Shared mode FSM.
+  std::unique_ptr<SafetyGate> safety_;  ///< Clamp + watchdog + mode gate.
 
   std::shared_ptr<autolink::Reader<ChassisCommand>> cmd_reader_{nullptr};
+  std::shared_ptr<autolink::Reader<StringMsg>> mode_reader_{nullptr};
+  std::shared_ptr<autolink::Reader<StringMsg>> tool_reader_{nullptr};
   std::shared_ptr<autolink::Writer<ChassisState>> state_writer_{nullptr};
   std::shared_ptr<autolink::Writer<ChassisEvent>> event_writer_{nullptr};
   std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Odometry>>
       odom_writer_{nullptr};
+  std::shared_ptr<autolink::Writer<StringMsg>> capability_writer_{nullptr};
+  std::shared_ptr<autolink::Writer<StringMsg>> mode_state_writer_{nullptr};
 
   std::mutex mutex_;                 ///< Guards last_cmd_ns_ and driver IO.
   std::uint64_t last_cmd_ns_ = 0;    ///< Steady-clock ns of last cmd_vel.
+  int capability_tick_ = 0;         ///< Republish capability every N ticks.
   std::atomic<bool> running_{false}; ///< Publish loop active.
   std::thread publish_thread_;       ///< RunStatePublishLoop worker.
 };

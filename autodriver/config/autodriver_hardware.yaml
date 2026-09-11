@@ -19,7 +19,16 @@ chassis:
   enable: false
   name: base
   backend: stub
+  locomotion: differential   # omni | ackermann | legged | wheel_legged | humanoid
+  require_arm: false
+  has_dock: false
+  has_joint_bypass: false
+  # tools: [brush]
   cmd_vel_channel: /cmd_vel
+  mode_cmd_channel: /chassis/mode
+  mode_state_channel: /chassis/mode_state
+  capability_channel: /chassis/capability
+  # tool_cmd_channel: /chassis/tool
   state_channel: /robot_state      # vehicle_msgs.RobotState
   event_channel: /robot_event      # vehicle_msgs.RobotEvent
   odom_channel: /odom              # derived from RobotState for nav

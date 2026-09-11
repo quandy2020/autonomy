@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file assembler_driver_base.hpp
  * @brief CRTP base for Livox SDK drivers: FrameAssembler → PointCloud2 publish.
  *
  * Derived must implement InitSdk() / UninitSdk() and friend this base (or make
@@ -42,6 +42,7 @@
 #include "autodriver/types/sensor_sample.hpp"
 #include "autolink/common/log.hpp"
 #include "autolink/time/time.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace lidar {
@@ -58,9 +59,19 @@ template <typename Derived, typename Traits>
 class AssemblerDriverBase : public SensorDriver, public LidarComponentBase {
 public:
     /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(AssemblerDriverBase)
+
+    /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(AssemblerDriverBase)
+
+    /**
      * @brief Parse common YAML params and InitBase.
-     * @param id Sensor instance id.
-     * @param params DriverParams (cold path).
+     * @param[in] id Sensor instance id.
+     * @param[in] params DriverParams (cold path).
      */
     AssemblerDriverBase(SensorId id, hardware::DriverParams params)
         : id_(std::move(id)),
@@ -100,7 +111,16 @@ public:
         assembler_.Clear();
     }
 
+    /**
+     * @brief Report sensor modality.
+     * @return SensorType::kLidar3d.
+     */
     SensorType GetSensorType() const override { return SensorType::kLidar3d; }
+
+    /**
+     * @brief Configured sensor instance id.
+     * @return Reference to the id passed at construction.
+     */
     const SensorId& GetSensorId() const override { return id_; }
 
     /**
@@ -136,13 +156,30 @@ public:
         self().UninitSdk();
     }
 
+    /**
+     * @brief Whether the publish loop is active.
+     * @return true while Start succeeded and Stop has not completed.
+     */
     bool IsRunning() const override { return running_.load(); }
 
+    /**
+     * @brief Register the sample sink for PointCloud2 frames.
+     * @param[in] callback Invoked with owning sample clones.
+     */
     void SetSampleCallback(SampleCallback callback) override {
         callback_ = std::move(callback);
     }
 
+    /**
+     * @brief CRTP access to the concrete driver.
+     * @return Reference to @p Derived.
+     */
     Derived& self() { return static_cast<Derived&>(*this); }
+
+    /**
+     * @brief Const CRTP access to the concrete driver.
+     * @return Const reference to @p Derived.
+     */
     const Derived& self() const {
         return static_cast<const Derived&>(*this);
     }
@@ -156,7 +193,7 @@ protected:
 
     /**
      * @brief Append decoded points into the shared FrameAssembler.
-     * @param points Points to move into the current frame buffer.
+     * @param[in] points Points to move into the current frame buffer.
      */
     void AppendPoints(std::vector<PointXYZIT> points) {
         if (!points.empty()) {

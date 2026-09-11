@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,44 @@
  * limitations under the License.
  */
 
+/**
+ * @file conf.hpp.in
+ * @brief Configure-time package constants (version.json + git via CMake).
+ */
+
 #pragma once
 
 namespace autodriver {
 namespace conf {
+
+/** Package display name (from version.json). */
+static constexpr const char* kPackageName = "@AUTODRIVER_PACKAGE_NAME@";
+/** Semver X.Y.Z (from version.json / autodriver-v* tag). */
+static constexpr const char* kVersion = "@AUTODRIVER_VERSION@";
+/** Semver + git: e.g. 0.1.0+g63b8d64e-dirty (CLI --version). */
+static constexpr const char* kFullVersion = "@AUTODRIVER_FULL_VERSION@";
+/** Short package blurb. */
+static constexpr const char* kPackageDescription =
+    "@AUTODRIVER_PACKAGE_DESCRIPTION@";
+
+/** `git describe --tags --always --dirty`. */
+static constexpr const char* kGitDescribe = "@AUTODRIVER_GIT_DESCRIBE@";
+/** Short commit SHA. */
+static constexpr const char* kGitCommit = "@AUTODRIVER_GIT_COMMIT@";
+/** Current branch name (`git rev-parse --abbrev-ref HEAD`). */
+static constexpr const char* kGitBranch = "@AUTODRIVER_GIT_BRANCH@";
+/** HEAD commit author date YYYY-MM-DD HH:MM:SS. */
+static constexpr const char* kGitCommitDate = "@AUTODRIVER_GIT_COMMIT_DATE@";
+/** HEAD commit author name. */
+static constexpr const char* kGitAuthor = "@AUTODRIVER_GIT_AUTHOR@";
+/** HEAD commit author email. */
+static constexpr const char* kGitEmail = "@AUTODRIVER_GIT_EMAIL@";
+/** "true" / "false". */
+static constexpr const char* kGitDirty = "@AUTODRIVER_GIT_DIRTY@";
+/** Configure-time local date YYYY-MM-DD. */
+static constexpr const char* kBuildDate = "@AUTODRIVER_BUILD_DATE@";
+/** Configure-time local timestamp YYYY-MM-DD HH:MM:SS.mmm. */
+static constexpr const char* kBuildTime = "@AUTODRIVER_BUILD_TIME@";
 
 /** Baked at configure time: source-tree config directory. */
 static constexpr const char* kDefaultConfigDir = "@AUTODRIVER_DEFAULT_CONFIG_DIR@";

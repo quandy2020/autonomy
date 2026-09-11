@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file can_socket.hpp
  * @brief Linux SocketCAN wrapper.
  */
 
@@ -24,6 +24,7 @@
 
 #include <cstdint>
 #include <string>
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace io {
@@ -54,7 +55,17 @@ class CanSocket
 {
 public:
   /**
-   * @brief Copy constructor (deleted)
+   * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+   */
+  AUTOLINK_SHARED_PTR_DEFINITIONS(CanSocket)
+
+  /**
+   * @brief Disable copy construction and copy assignment.
+   */
+  DISALLOW_COPY_AND_ASSIGN(CanSocket)
+
+  /**
+   * @brief Default-construct a closed SocketCAN wrapper.
    */
   CanSocket();
 
@@ -63,11 +74,12 @@ public:
    */
   ~CanSocket();
 
-  CanSocket(const CanSocket &) = delete;
-CanSocket & operator=(const CanSocket &) = delete;
+
 
   /**
    * @brief Opens a raw SocketCAN interface for reading frames.
+   * @param[in] interface Interface name (e.g. "can0").
+   * @return true when the socket was opened successfully; false on failure.
    */
   bool Open(const std::string & interface);
 
@@ -77,23 +89,29 @@ CanSocket & operator=(const CanSocket &) = delete;
   void Close();
 
   /**
-   * @brief Returns true when the CAN socket is open.
+   * @brief Whether the CAN socket is currently open.
+   * @return true when a valid file descriptor is held.
    */
   bool IsOpen() const;
 
   /**
    * @brief Reads one CAN frame, waiting up to timeout_ms milliseconds.
+   * @param[out] frame Destination classical CAN frame.
+   * @param[in] timeout_ms Poll/select timeout in milliseconds.
+   * @return true when a frame was read; false on timeout or error.
    */
   bool Read(CanFrame & frame, int timeout_ms);
 
   /**
    * @brief Writes one CAN frame (SocketCAN send).
+   * @param[in] frame Classical CAN frame to transmit.
+   * @return true when the frame was sent successfully; false on error.
    */
   bool Write(const CanFrame & frame);
 
   /**
    * @brief Last error message from Open() or Read().
-   * @return Human-readable error text
+   * @return Human-readable error text.
    */
   const std::string & last_error() const { return last_error_; }
 

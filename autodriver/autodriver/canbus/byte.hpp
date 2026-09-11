@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file byte.hpp
  * @brief Bit helpers for CAN protocol packing.
  */
 
@@ -39,13 +39,13 @@ class Byte {
 public:
     /**
      * @brief Bind to an existing byte in a CAN payload buffer.
-     * @param value Pointer to the byte to mutate; may be null (ops no-op).
+     * @param[in] value Pointer to the byte to mutate; may be null (ops no-op).
      */
     explicit Byte(std::uint8_t* value) : value_(value) {}
 
     /**
      * @brief Overwrite the entire byte.
-     * @param v New 8-bit value.
+     * @param[in] v New 8-bit value.
      */
     void set_value(std::uint8_t v) {
         if (value_) {
@@ -61,7 +61,7 @@ public:
 
     /**
      * @brief Set a single bit to 1.
-     * @param pos Bit index in [0, 7].
+     * @param[in] pos Bit index in [0, 7].
      */
     void set_bit(int pos) {
         if (value_ && pos >= 0 && pos < 8) {
@@ -71,7 +71,7 @@ public:
 
     /**
      * @brief Clear a single bit to 0.
-     * @param pos Bit index in [0, 7].
+     * @param[in] pos Bit index in [0, 7].
      */
     void clear_bit(int pos) {
         if (value_ && pos >= 0 && pos < 8) {
@@ -81,7 +81,7 @@ public:
 
     /**
      * @brief Test whether a bit is set.
-     * @param pos Bit index in [0, 7].
+     * @param[in] pos Bit index in [0, 7].
      * @return True when the bit is 1.
      */
     bool is_bit_1(int pos) const {
@@ -91,9 +91,9 @@ public:
 
     /**
      * @brief Write @p len bits starting at @p start from the low bits of @p value.
-     * @param value Source bits (only the low @p len bits are used).
-     * @param start First bit index (LSB = 0).
-     * @param len Number of bits to write (must fit in the byte).
+     * @param[in] value Source bits (only the low @p len bits are used).
+     * @param[in] start First bit index (LSB = 0).
+     * @param[in] len Number of bits to write (must fit in the byte).
      */
     void set_value(std::uint8_t value, int start, int len) {
         if (!value_ || start < 0 || len <= 0 || start + len > 8) {
@@ -107,8 +107,8 @@ public:
 
     /**
      * @brief Extract @p len bits starting at @p start.
-     * @param start First bit index (LSB = 0).
-     * @param len Number of bits to read.
+     * @param[in] start First bit index (LSB = 0).
+     * @param[in] len Number of bits to read.
      * @return Extracted field in the low bits of the return value.
      */
     std::uint8_t get_byte(int start, int len) const {
@@ -120,7 +120,7 @@ public:
 
     /**
      * @brief Format one byte as two uppercase hex digits.
-     * @param value Byte to format.
+     * @param[in] value Byte to format.
      * @return Two-character hex string (e.g. "1F").
      */
     static std::string byte_to_hex(std::uint8_t value) {

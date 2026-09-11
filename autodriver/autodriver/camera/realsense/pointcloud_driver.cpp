@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,17 @@
  * limitations under the License.
  */
 
+/**
+ * @file pointcloud_driver.cpp
+ * @brief Intel RealSense depth-to-color point cloud driver (implementation).
+ */
+
 #include "autodriver/camera/realsense/pointcloud_driver.hpp"
 
 #include <utility>
 
 #include "autodriver/types/sensor_sample.hpp"
+#include "autolink/common/log.hpp"
 #include "autolink/time/time.hpp"
 
 namespace autodriver {
@@ -27,6 +33,8 @@ namespace {
 
 /**
  * @brief Converts a RealSense timestamp in milliseconds to autolink::Time.
+ * @param[in] ms Timestamp in milliseconds.
+ * @return Equivalent autolink::Time value.
  */
 autolink::Time TimeFromMilliseconds(const double ms) {
     return autolink::Time(static_cast<std::uint64_t>(ms * 1000000.0));
@@ -66,6 +74,8 @@ bool RealSensePointCloudDriver::Start() {
         });
 
     if (!hub_->IsRunning() && !hub_->Start()) {
+        AERROR << "RealSense pointcloud start failed (id=" << id_
+               << "): " << hub_->last_error();
         hub_->Unsubscribe(subscription_id_);
         subscription_id_ = 0;
         running_ = false;

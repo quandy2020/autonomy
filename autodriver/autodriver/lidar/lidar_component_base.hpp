@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file lidar_component_base.hpp
  * @brief Vendor lidar extension hooks: Scan (optional) → PointCloud.
  *
  * LidarComponentBase pipeline:
@@ -44,13 +44,13 @@ namespace lidar {
  * @brief Shared options for a lidar pipeline instance.
  */
 struct LidarBaseOptions {
-    /** ONLINE (live device) or RAW_PACKET (replay). */
+    /** @brief ONLINE (live device) or RAW_PACKET (replay). */
     SourceType source = SourceType::kOnline;
-    /** Intermediate raw-scan channel name (optional / recordable). */
+    /** @brief Intermediate raw-scan channel name (optional / recordable). */
     std::string scan_channel;
-    /** PointCloud2 / LaserScan output channel name. */
+    /** @brief PointCloud2 / LaserScan output channel name. */
     std::string cloud_channel;
-    /** When true, emit Scan before Convert on the online path. */
+    /** @brief When true, emit Scan before Convert on the online path. */
     bool publish_scan = false;
 };
 
@@ -68,13 +68,23 @@ public:
   AUTOLINK_SHARED_PTR_DEFINITIONS(LidarComponentBase)
 
     /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(LidarComponentBase)
+
+    /**
+     * @brief Default constructor (DISALLOW_COPY suppresses the implicit one).
+     */
+    LidarComponentBase() = default;
+
+    /**
      * @brief Virtual destructor for polymorphic lidar components.
      */
     virtual ~LidarComponentBase() = default;
 
     /**
      * @brief Store @p options and run InitConverter + InitPacket.
-     * @param options Pipeline source / channel / publish_scan knobs.
+     * @param[in] options Pipeline source / channel / publish_scan knobs.
      * @return true when both vendor init hooks succeed.
      */
     bool InitBase(const LidarBaseOptions& options) {
@@ -91,7 +101,7 @@ public:
     /**
      * @brief RAW_PACKET entry: inject one recorded LidarPacketScan.
      * Dispatches to vendor ReadScanCallback (Convert → cloud).
-     * @param scan Aggregated packet scan sample; ignored when null.
+     * @param[in] scan Aggregated packet scan sample; ignored when null.
      */
     void InjectScan(std::shared_ptr<SensorSample> scan) {
         ReadScanCallback(std::move(scan));
@@ -113,29 +123,29 @@ protected:
     /**
      * @brief Emit an intermediate scan sample (recordable).
      * Default no-op; override when publish_scan / RAW_PACKET is used.
-     * @param scan Owning shared sample; caller may retain a reference.
+     * @param[in] scan Owning shared sample; caller may retain a reference.
      */
     virtual void WriteScan(std::shared_ptr<SensorSample> /*scan*/) {}
 
     /**
      * @brief Emit converted LaserScan / PointCloud2 sample.
-     * @param cloud Owning shared sample forwarded to SampleCallback (via Clone).
+     * @param[out] cloud Owning shared sample forwarded to SampleCallback (via Clone).
      */
     virtual void WritePointCloud(std::shared_ptr<SensorSample> cloud) = 0;
 
     /**
      * @brief RAW_PACKET path: inject one recorded scan into the converter.
-     * @param scan Aggregated LidarPacketScan; ignored by the default no-op.
+     * @param[in] scan Aggregated LidarPacketScan; ignored by the default no-op.
      */
     virtual void ReadScanCallback(std::shared_ptr<SensorSample> /*scan*/) {}
 
-    /** Options stored by InitBase. */
+    /** @brief Options stored by InitBase. */
     LidarBaseOptions options_;
 };
 
 /**
  * @brief Parse source_type from DriverParams ("online" | "raw_packet").
- * @param value Case-sensitive token; unknown values map to kOnline.
+ * @param[in] value Case-sensitive token; unknown values map to kOnline.
  * @return SourceType::kRawPacket for "raw_packet" / "RAW_PACKET", else kOnline.
  */
 inline SourceType ParseSourceType(const std::string& value) {

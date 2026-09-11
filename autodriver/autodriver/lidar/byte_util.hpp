@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file byte_util.hpp
  * @brief Little-endian readers and degree→radian helper for lidar convert.
  */
 
@@ -29,7 +29,7 @@ namespace lidar {
 
 /**
  * @brief Read a little-endian uint16 from @p p (unaligned-safe via bytes).
- * @param p Pointer to at least 2 readable bytes; must be non-null.
+ * @param[in] p Pointer to at least 2 readable bytes; must be non-null.
  * @return Value interpreted as LE uint16.
  */
 inline std::uint16_t ReadLe16(const std::uint8_t* p) {
@@ -39,7 +39,7 @@ inline std::uint16_t ReadLe16(const std::uint8_t* p) {
 
 /**
  * @brief Read a little-endian uint32 from @p p (unaligned-safe via bytes).
- * @param p Pointer to at least 4 readable bytes; must be non-null.
+ * @param[in] p Pointer to at least 4 readable bytes; must be non-null.
  * @return Value interpreted as LE uint32.
  */
 inline std::uint32_t ReadLe32(const std::uint8_t* p) {
@@ -51,7 +51,7 @@ inline std::uint32_t ReadLe32(const std::uint8_t* p) {
 
 /**
  * @brief Convert degrees to radians.
- * @param deg Angle in degrees.
+ * @param[in] deg Angle in degrees.
  * @return Angle in radians.
  */
 inline constexpr double DegToRad(double deg) {

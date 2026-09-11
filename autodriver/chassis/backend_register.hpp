@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file backend_register.hpp
  * @brief Static registration macro for chassis backends.
  */
 
@@ -29,10 +29,10 @@
  *
  * Expands to a file-local registrar that calls
  * RegisterChassisBackendWithAliases once before main().
- * @param tag Unique C++ identifier suffix for the registrar type / object.
- * @param name Canonical backend string (e.g. "stub", "scout").
- * @param factory Creator returning owning ChassisDriver* (e.g. CreateStubChassisDriver).
- * @param ... Optional alias string literals (e.g. "sim", "fake").
+ * @param[in] tag Unique C++ identifier suffix for the registrar type / object.
+ * @param[in] name Canonical backend string (e.g. "stub", "scout").
+ * @param[in] factory Creator returning owning ChassisDriver* (e.g. CreateStubChassisDriver).
+ * @param[in] ... Optional alias string literals (e.g. "sim", "fake").
  */
 #define REGISTER_CHASSIS_BACKEND(tag, name, factory, ...)                      \
   namespace {                                                                  \

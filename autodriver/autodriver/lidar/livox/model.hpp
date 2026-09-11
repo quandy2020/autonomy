@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file model.hpp
  * @brief Livox model → SDK generation helpers.
  */
 
@@ -31,7 +31,7 @@ namespace livox {
 
 /**
  * @brief Lowercase ASCII copy of @p s (locale-independent).
- * @param s Input string (copied then mutated).
+ * @param[in] s Input string (copied then mutated).
  * @return Lowercased string.
  */
 inline std::string ToLower(std::string s) {
@@ -44,8 +44,8 @@ inline std::string ToLower(std::string s) {
 /**
  * @brief True when model / sdk param selects Livox-SDK2 (HAP / Mid-360 / …).
  * SDK1: Mid-40/70, Horizon, Avia, Tele. Override with sdk=1|2|sdk1|sdk2.
- * @param model YAML `model` string (may be empty).
- * @param sdk Optional explicit override (`1`/`2`/`sdk1`/`sdk2`).
+ * @param[in] model YAML `model` string (may be empty).
+ * @param[in] sdk Optional explicit override (`1`/`2`/`sdk1`/`sdk2`).
  * @return true when SDK2 should be used.
  */
 inline bool UsesSdk2(const std::string& model, const std::string& sdk) {
@@ -68,7 +68,7 @@ inline bool UsesSdk2(const std::string& model, const std::string& sdk) {
 
 /**
  * @brief JSON block key for SDK2 configs: MID360 / HAP / Mid360s / Avia2.
- * @param model YAML `model` string.
+ * @param[in] model YAML `model` string.
  * @return Config object key expected by Livox-SDK2 JSON.
  */
 inline std::string Sdk2JsonModelKey(const std::string& model) {

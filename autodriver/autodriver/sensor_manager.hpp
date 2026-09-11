@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file sensor_manager.hpp
  * @brief Orchestrates sensor plugins, hotplug, and sample routing.
  */
 
@@ -77,7 +77,7 @@ public:
 
   /**
    * @brief Constructs a manager bound to the given sensor configuration.
-   * @param config Process config (sensors, hotplug, alignment, compensator).
+   * @param[in] config Process config (sensors, hotplug, alignment, compensator).
    */
   explicit SensorManager(Config config);
 
@@ -88,19 +88,19 @@ public:
 
   /**
    * @brief Registers the downstream consumer for raw or aligned samples.
-   * @param sink Non-owning pointer; may be nullptr to clear. Call before Start.
+   * @param[in] sink Non-owning pointer; may be nullptr to clear. Call before Start.
    */
   void SetSampleSink(SampleSink* sink);
 
   /**
    * @brief Validates config (e.g. duplicate ids) and marks the manager ready.
-   * @return false when config is invalid; Start must not be called then.
+   * @return true when config is valid; false when invalid (Start must not be called).
    */
   bool Initialize();
 
   /**
    * @brief Attaches autostart sensors, starts the hub, and udev hotplug.
-   * @return false if not initialized or attach of an autostart sensor fails.
+   * @return true on success; false if not initialized or an autostart attach fails.
    */
   bool Start();
 
@@ -111,21 +111,22 @@ public:
 
   /**
    * @brief Loads and starts the sensor module for @p id if not already attached.
-   * @param id Configured sensor identifier (must exist in config.sensors).
-   * @return false if unknown id, already attached, or plugin/driver init fails.
+   * @param[in] id Configured sensor identifier (must exist in config.sensors).
+   * @return true on success; false if unknown id, already attached, or
+   *         plugin/driver init fails.
    */
   bool AttachSensor(const SensorId& id);
 
   /**
    * @brief Stops and unloads the sensor module for @p id (no-op if not attached).
-   * @param id Sensor identifier to detach.
+   * @param[in] id Sensor identifier to detach.
    */
   void DetachSensor(const SensorId& id);
 
   /**
    * @brief Attaches or detaches a sensor in response to a hotplug event.
-   * @param added true on device ADD, false on REMOVE.
-   * @param device Observed udev identity matched against Config::Sensor::match.
+   * @param[in] added true on device ADD, false on REMOVE.
+   * @param[in] device Observed udev identity matched against Config::Sensor::match.
    */
   void HandleDeviceEvent(bool added, const DeviceMatch& device);
 
@@ -156,72 +157,74 @@ public:
   /**
    * @brief Registers a user callback for aligned snapshots (composed with
    *        config.alignment.publish_aligned sink publishing).
-   * @param callback Invoked when a multi-sensor AlignedSnapshot is ready.
+   * @param[in] callback Invoked when a multi-sensor AlignedSnapshot is ready.
    */
   void SetAlignedCallback(SensorHub::AlignedCallback callback);
 
   /**
    * @brief Forwards per-sample callbacks to the internal hub.
-   * @param callback Invoked for each raw sample after time sync.
+   * @param[in] callback Invoked for each raw sample after time sync.
    */
   void SetRawSampleCallback(SensorHub::RawSampleCallback callback);
 
   /**
    * @brief Publishes a diagnostic snapshot to the registered sink.
-   * @param snapshot Device health / status payload.
+   * @param[out] snapshot Device health / status payload.
    */
   void ReportDiagnostic(diagnostics::DiagnosticSnapshot snapshot);
 
   /**
    * @brief Feed a world←lidar pose into an attached lidar MotionPoseSink.
-   * @param id Attached 3D lidar sensor id.
-   * @param time_ns Pose timestamp in nanoseconds.
-   * @param pose World ← lidar transform.
-   * @return false when id is not attached or driver is not a MotionPoseSink
-   *         (e.g. compensator disabled / stub backend).
+   * @param[in] id Attached 3D lidar sensor id.
+   * @param[in] time_ns Pose timestamp in nanoseconds.
+   * @param[in] pose World ← lidar transform.
+   * @return true when the pose was accepted; false when id is not attached or
+   *         the driver is not a MotionPoseSink (e.g. compensator disabled /
+   *         stub backend).
    */
   bool PushLidarPose(const SensorId& id, std::uint64_t time_ns,
                      const Eigen::Affine3d& pose);
 
   /**
    * @brief Override PoseLookup for an attached lidar MotionPoseSink.
-   * @param id Attached 3D lidar sensor id.
-   * @param lookup Callable used by the motion compensator.
-   * @return false when id is not attached or driver is not a MotionPoseSink.
+   * @param[in] id Attached 3D lidar sensor id.
+   * @param[in] lookup Callable used by the motion compensator.
+   * @return true when the lookup was installed; false when id is not attached
+   *         or the driver is not a MotionPoseSink.
    */
   bool SetLidarPoseLookup(const SensorId& id, lidar::PoseLookup lookup);
 
 private:
   /**
    * @brief Looks up a sensor entry by id in the active config.
-   * @param id Sensor identifier.
+   * @param[in] id Sensor identifier.
    * @return Pointer into config_.sensors, or nullptr if not found.
    */
   const Config::Sensor* FindSensorConfig(const SensorId& id) const;
 
   /**
    * @brief Resolves the native shared-library path for a sensor plugin.
-   * @param sensor Sensor entry (library basename or absolute path).
+   * @param[in] sensor Sensor entry (library basename or absolute path).
    * @return Absolute or search-ready library path string.
    */
   std::string ResolveLibraryPath(const Config::Sensor& sensor) const;
 
   /**
    * @brief Unloads a plugin library when no attached sensor still references it.
-   * @param path Library path key in loaders_.
+   * @param[in] path Library path key in loaders_.
    */
   void UnloadIfUnused(const std::string& path);
 
   /**
    * @brief Loads, initializes, and starts a sensor module; caller holds lock.
-   * @param id Sensor identifier.
+   * @param[in] id Sensor identifier.
    * @return false on config/plugin/driver failure.
    */
   bool AttachSensorLocked(const SensorId& id);
 
   /**
    * @brief Stops and removes a sensor module; caller holds lock.
-   * @param id Sensor identifier.
+   * @param[in] id Sensor identifier.
    */
   void DetachSensorLocked(const SensorId& id);
 
@@ -242,7 +245,7 @@ private:
 
   /**
    * @brief Routes a sample through alignment and/or the registered sink.
-   * @param sample Shared sample produced by a sensor module.
+   * @param[out] sample Shared sample produced by a sensor module.
    */
   void DispatchSensorSample(std::shared_ptr<SensorSample> sample);
 

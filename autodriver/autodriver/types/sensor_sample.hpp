@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file sensor_sample.hpp
  * @brief Timestamped sensor samples and automsgs message helpers.
  */
 
@@ -43,6 +43,7 @@
 #include <automsgs/msgs/sensor_msgs/range.pb.h>
 #include <automsgs/msgs/std_msgs/header.pb.h>
 #include <automsgs/msgs/time_utils.hpp>
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 
@@ -53,10 +54,15 @@ namespace autodriver {
 class SensorSample {
 public:
     /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(SensorSample)
+
+    /**
      * @brief Construct a sample with device time initially equal to host time.
-     * @param id Stable sensor instance identifier.
-     * @param type Sensor modality of this reading.
-     * @param device_time Timestamp reported by the device.
+     * @param[in] id Stable sensor instance identifier.
+     * @param[in] type Sensor modality of this reading.
+     * @param[in] device_time Timestamp reported by the device.
      */
     SensorSample(SensorId id, SensorType type, autolink::Time device_time)
         : id_(std::move(id)), type_(type), device_time_(device_time),
@@ -99,13 +105,13 @@ public:
 
     /**
      * @brief Set the mapped host receive time.
-     * @param host_time Host time after clock synchronization.
+     * @param[in] host_time Host time after clock synchronization.
      */
     void set_host_time(autolink::Time host_time) { host_time_ = host_time; }
 
     /**
      * @brief Fill a protobuf header with host time and sensor id.
-     * @param header Output header to stamp; must not be null.
+     * @param[out] header Output header to stamp; must not be null.
      */
     void Stamp(automsgs::msgs::std_msgs::Header* header) const {
         *header->mutable_stamp() =
@@ -137,14 +143,19 @@ protected:
 template <SensorType kType, typename Msg>
 class TypedSample : public SensorSample {
 public:
+    /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(TypedSample)
+
     // Underlying automsgs protobuf message type.
     using Message = Msg;
 
     /**
      * @brief Construct a typed sample wrapping a protobuf message.
-     * @param id Stable sensor instance identifier.
-     * @param device_time Timestamp reported by the device.
-     * @param msg Populated protobuf payload.
+     * @param[in] id Stable sensor instance identifier.
+     * @param[in] device_time Timestamp reported by the device.
+     * @param[out] msg Populated protobuf payload.
      */
     TypedSample(SensorId id, autolink::Time device_time, Msg msg)
         : SensorSample(std::move(id), kType, device_time),
@@ -187,6 +198,11 @@ class CameraFrame
     : public TypedSample<SensorType::kCamera,
                          automsgs::msgs::sensor_msgs::Image> {
  public:
+    /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(CameraFrame)
+
     // Base TypedSample alias for sensor_msgs/Image.
     using Base =
         TypedSample<SensorType::kCamera, automsgs::msgs::sensor_msgs::Image>;
@@ -224,12 +240,21 @@ class LidarScan
     : public TypedSample<SensorType::kLidar2d,
                          automsgs::msgs::sensor_msgs::LaserScan> {
  public:
+    /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(LidarScan)
+
     using Base = TypedSample<SensorType::kLidar2d,
                              automsgs::msgs::sensor_msgs::LaserScan>;
     using Base::Base;
 
     std::string frame_id;
 
+    /**
+     * @brief Stamp the scan header and apply frame_id override when set.
+     * @return Reference to the stamped LaserScan message.
+     */
     Message& StampInPlace() {
         Stamp(msg.mutable_header());
         if (!frame_id.empty()) {
@@ -247,6 +272,11 @@ class LidarCloud
     : public TypedSample<SensorType::kLidar3d,
                          automsgs::msgs::sensor_msgs::PointCloud2> {
  public:
+    /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(LidarCloud)
+
     // Base TypedSample alias for sensor_msgs/PointCloud2.
     using Base = TypedSample<SensorType::kLidar3d,
                              automsgs::msgs::sensor_msgs::PointCloud2>;
@@ -277,19 +307,49 @@ class LidarCloud
  */
 class LidarPacketScan : public SensorSample {
 public:
+    /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(LidarPacketScan)
+
+    /**
+     * @brief Construct an aggregated raw lidar packet scan.
+     * @param[in] id Stable sensor instance identifier.
+     * @param[in] device_time Timestamp reported by the device.
+     * @param[in] payload Concatenated raw packet bytes.
+     * @param[in] packet_bytes Size of one packet in bytes (0 if unknown).
+     */
     LidarPacketScan(SensorId id, autolink::Time device_time,
                     std::vector<std::uint8_t> payload, std::size_t packet_bytes)
         : SensorSample(std::move(id), SensorType::kLidar3d, device_time),
           payload_(std::move(payload)),
           packet_bytes_(packet_bytes) {}
 
+    /**
+     * @brief Create a deep copy of this packet scan.
+     * @return Unique pointer to a cloned LidarPacketScan.
+     */
     std::unique_ptr<SensorSample> Clone() const override {
         return std::make_unique<LidarPacketScan>(id(), device_time(), payload_,
                                                  packet_bytes_);
     }
 
+    /**
+     * @brief Access the concatenated raw packet bytes.
+     * @return Const reference to the payload buffer.
+     */
     const std::vector<std::uint8_t>& payload() const { return payload_; }
+
+    /**
+     * @brief Size of one packet in bytes.
+     * @return Packet stride used to compute packet_count(); 0 if unknown.
+     */
     std::size_t packet_bytes() const { return packet_bytes_; }
+
+    /**
+     * @brief Number of complete packets in the payload.
+     * @return payload size / packet_bytes, or 0 when packet_bytes is 0.
+     */
     std::size_t packet_count() const {
         return packet_bytes_ == 0 ? 0 : payload_.size() / packet_bytes_;
     }
@@ -320,9 +380,9 @@ using MicrophoneSample =
 
 /**
  * @brief Build a sensor_msgs/Imu message from gyro and accel arrays.
- * @param gyro Angular velocity in rad/s as [x, y, z].
- * @param accel Linear acceleration in m/s^2 as [x, y, z].
- * @param frame_id Header frame_id for the message.
+ * @param[in] gyro Angular velocity in rad/s as [x, y, z].
+ * @param[in] accel Linear acceleration in m/s^2 as [x, y, z].
+ * @param[in] frame_id Header frame_id for the message.
  * @return Populated sensor_msgs/Imu protobuf message.
  */
 inline automsgs::msgs::sensor_msgs::Imu ImuMsg(
@@ -346,10 +406,10 @@ inline automsgs::msgs::sensor_msgs::Imu ImuMsg(
 
 /**
  * @brief Build a sensor_msgs/NavSatFix message from WGS84 coordinates.
- * @param latitude_deg Latitude in decimal degrees.
- * @param longitude_deg Longitude in decimal degrees.
- * @param altitude_m Altitude above the WGS84 ellipsoid in meters.
- * @param status Fix quality status for NavSatStatus.
+ * @param[in] latitude_deg Latitude in decimal degrees.
+ * @param[in] longitude_deg Longitude in decimal degrees.
+ * @param[in] altitude_m Altitude above the WGS84 ellipsoid in meters.
+ * @param[in] status Fix quality status for NavSatStatus.
  * @return Populated sensor_msgs/NavSatFix protobuf message.
  */
 inline automsgs::msgs::sensor_msgs::NavSatFix GpsMsg(
@@ -365,10 +425,10 @@ inline automsgs::msgs::sensor_msgs::NavSatFix GpsMsg(
 
 /**
  * @brief Build a sensor_msgs/Image message from raw pixel bytes.
- * @param width Image width in pixels.
- * @param height Image height in pixels.
- * @param encoding Pixel encoding string, e.g. "rgb8".
- * @param data Raw pixel bytes in row-major order.
+ * @param[in] width Image width in pixels.
+ * @param[in] height Image height in pixels.
+ * @param[in] encoding Pixel encoding string, e.g. "rgb8".
+ * @param[in] data Raw pixel bytes in row-major order.
  * @return Populated sensor_msgs/Image protobuf message.
  */
 inline automsgs::msgs::sensor_msgs::Image ImageMsg(

@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file camera_driver.hpp
  * @brief Intel RealSense RGB/depth/IR camera driver (D435i, D455, ...).
  */
 
@@ -54,7 +54,13 @@ public:
   AUTOLINK_SHARED_PTR_DEFINITIONS(RealSenseCameraDriver)
 
   /**
+   * @brief Disable copy construction and copy assignment.
+   */
+  DISALLOW_COPY_AND_ASSIGN(RealSenseCameraDriver)
+  /**
    * @brief Parses stream and resolution params and stores sensor identity.
+   * @param[in] id Sensor instance id.
+   * @param[in] params DriverParams (cold-path parse only).
    */
   RealSenseCameraDriver(SensorId id, DriverParams params);
 
@@ -77,6 +83,7 @@ public:
 
   /**
    * @brief Subscribes to a RealSense video stream via the shared hub.
+   * @return True on successful subscription / hub start.
    */
   bool Start() override;
 
@@ -87,11 +94,13 @@ public:
 
   /**
    * @brief Returns true while the video subscription is active.
+   * @return True after Start until Stop.
    */
   bool IsRunning() const override;
 
   /**
    * @brief Registers the callback invoked for each camera frame sample.
+   * @param[in] callback May be empty to disable emission.
    */
   void SetSampleCallback(SampleCallback callback) override;
 
@@ -129,6 +138,9 @@ private:
 
 /**
  * @brief Factory used by CameraModule.
+ * @param[in] id Sensor instance id from YAML.
+ * @param[in] params Backend-specific key/value map.
+ * @return Owning RealSenseCameraDriver* (never null).
  */
 SensorDriver*
 CreateRealSenseCameraDriver(

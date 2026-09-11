@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file environment.hpp
  * @brief Runtime path helpers (AUTODRIVER_PATH, distribution home).
  */
 
@@ -31,8 +31,8 @@ namespace common {
 
 /**
  * @brief Read an environment variable with a default fallback.
- * @param var_name Environment variable name
- * @param default_value Value returned when unset or empty
+ * @param[in] var_name Environment variable name
+ * @param[in] default_value Value returned when unset or empty
  * @return Variable value or default_value
  */
 inline std::string GetEnv(const std::string& var_name,

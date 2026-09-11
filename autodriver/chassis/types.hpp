@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,12 @@
  */
 
 /**
- * @file
- * @brief Chassis types = automsgs vehicle_msgs (+ TwistStamped command).
+ * @file types.hpp
+ * @brief Chassis wire types = automsgs vehicle_msgs (+ TwistStamped command).
  *
- * Wire / driver message bodies stay identical to
- * `automsgs/msgs/vehicle_msgs/*` — no parallel ChassisCommand/State structs.
+ * In-process abstractions (LocomotionModel, Capability, OperationalMode,
+ * MotionCommand, SafetyGate, ToolCommand) live in sibling headers — they do
+ * not duplicate RobotState fields.
  */
 
 #ifndef AUTODRIVER_CHASSIS_TYPES_HPP_

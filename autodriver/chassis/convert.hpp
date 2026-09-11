@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file convert.hpp
  * @brief Helpers between vehicle_msgs RobotState and nav_msgs Odometry.
  */
 
@@ -34,7 +34,7 @@ namespace chassis {
 /**
  * @brief Write sec/nanosec into a builtin_interfaces Time from epoch nanoseconds.
  * @param[out] t Destination timestamp; no-op when null.
- * @param stamp_ns Epoch time in nanoseconds.
+ * @param[in] stamp_ns Epoch time in nanoseconds.
  */
 inline void FillTimestampFromNanoseconds(
     ::automsgs::msgs::builtin_interfaces::Time* t, std::uint64_t stamp_ns) {
@@ -47,7 +47,7 @@ inline void FillTimestampFromNanoseconds(
 
 /**
  * @brief Convert builtin_interfaces Time to epoch nanoseconds.
- * @param t Source timestamp (sec + nanosec).
+ * @param[in] t Source timestamp (sec + nanosec).
  * @return Epoch time in nanoseconds.
  */
 inline std::uint64_t ConvertTimestampToNanoseconds(
@@ -58,9 +58,9 @@ inline std::uint64_t ConvertTimestampToNanoseconds(
 
 /**
  * @brief Convert vehicle_msgs.RobotState pose/twist into nav_msgs/Odometry.
- * @param state Chassis RobotState sample (pose / twist / timestamp).
- * @param odom_frame Header frame_id; falls back to state.global_frame / "odom".
- * @param base_frame child_frame_id; defaults to "base_link" when empty.
+ * @param[in] state Chassis RobotState sample (pose / twist / timestamp).
+ * @param[in] odom_frame Header frame_id; falls back to state.global_frame / "odom".
+ * @param[in] base_frame child_frame_id; defaults to "base_link" when empty.
  * @param[out] out Output odometry message (cleared then filled); no-op if null.
  */
 inline void ConvertRobotStateToOdometry(
@@ -79,8 +79,9 @@ inline void ConvertRobotStateToOdometry(
   }
   out->set_child_frame_id(base_frame.empty() ? "base_link" : base_frame);
 
-  if (state.has_pose() && state.pose().has_pose()) {
-    *out->mutable_pose()->mutable_pose() = state.pose().pose();
+  if (state.has_pose()) {
+    // PoseWithCovariance.pose is PoseStamped in automsgs.
+    *out->mutable_pose()->mutable_pose() = state.pose();
   }
   if (state.has_twist() && state.twist().has_twist()) {
     *out->mutable_twist()->mutable_twist() = state.twist().twist();

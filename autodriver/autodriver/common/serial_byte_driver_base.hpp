@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file serial_byte_driver_base.hpp
  * @brief CRTP base for serial (Stream) byte-reader sensor drivers.
  *
  * Derived must provide (public, called via CRTP):
@@ -44,6 +44,7 @@
 #include "autodriver/common/stream.hpp"
 #include "autodriver/driver_params.hpp"
 #include "autodriver/sensor_driver.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace hardware {
@@ -61,10 +62,20 @@ template <typename Derived>
 class SerialByteDriverBase : public SensorDriver {
 public:
     /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(SerialByteDriverBase)
+
+    /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(SerialByteDriverBase)
+
+    /**
      * @brief Store identity / params and the Stream::Read timeout.
-     * @param id Sensor instance id from YAML.
-     * @param params Cold-path driver params (`device`, `baud`, …).
-     * @param read_timeout_ms Timeout passed to `Stream::Read`; ≤0 → 50.
+     * @param[in] id Sensor instance id from YAML.
+     * @param[in] params Cold-path driver params (`device`, `baud`, …).
+     * @param[in] read_timeout_ms Timeout passed to `Stream::Read`; ≤0 → 50.
      */
     SerialByteDriverBase(SensorId id, DriverParams params, int read_timeout_ms)
         : id_(std::move(id)),
@@ -84,7 +95,8 @@ public:
 
     /**
      * @brief Open serial Stream, call Derived::PrepareStart, start ReadLoop.
-     * @return true when already running or the worker started successfully.
+     * @return true when already running or the worker started successfully;
+     *         false when PrepareStart or Connect fails.
      */
     bool Start() override {
         if (running_.exchange(true)) {
@@ -134,7 +146,7 @@ public:
 
     /**
      * @brief Register the sample sink callback (driver thread).
-     * @param callback May be empty to disable emission.
+     * @param[in] callback May be empty to disable emission.
      */
     void SetSampleCallback(SampleCallback callback) override {
         callback_ = std::move(callback);
@@ -168,7 +180,7 @@ protected:
 
     /**
      * @brief Invoke @p callback_ when set.
-     * @param sample Owning sample transferred to the sink.
+     * @param[out] sample Owning sample transferred to the sink.
      */
     void EmitSample(std::unique_ptr<SensorSample> sample) {
         if (callback_ && sample) {

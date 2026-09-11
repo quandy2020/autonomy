@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file udp_driver.hpp
  * @brief Velodyne UDP driver — thin CRTP specialization of UdpScanDriverBase.
  */
 
@@ -45,13 +45,17 @@ public:
    */
   AUTOLINK_SHARED_PTR_DEFINITIONS(VelodyneUdpDriver)
 
+    /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(VelodyneUdpDriver)
     using Base =
         lidar::UdpScanDriverBase<VelodyneUdpDriver, lidar::velodyne::UdpTraits>;
 
     /**
      * @brief Construct from sensor id and YAML params.
-     * @param id Stable sensor instance id (e.g. "lidar/top").
-     * @param params DriverParams: data_port, model, calibration_path, …
+     * @param[in] id Stable sensor instance id (e.g. "lidar/top").
+     * @param[in] params DriverParams: data_port, model, calibration_path, …
      */
     VelodyneUdpDriver(SensorId id, DriverParams params)
         : Base(std::move(id), std::move(params)) {}
@@ -59,8 +63,8 @@ public:
 
 /**
  * @brief Registry factory: construct a VelodyneUdpDriver.
- * @param id Sensor instance id.
- * @param params YAML driver params.
+ * @param[in] id Sensor instance id.
+ * @param[in] params YAML driver params.
  * @return Owning SensorDriver*, never nullptr for this backend.
  */
 SensorDriver* CreateVelodyneUdpDriver(const SensorId& id,

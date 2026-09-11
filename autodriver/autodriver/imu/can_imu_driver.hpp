@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file can_imu_driver.hpp
  * @brief SocketCAN IMU driver (scaled int16 triplet frames).
  */
 
@@ -64,9 +64,13 @@ public:
     AUTOLINK_SHARED_PTR_DEFINITIONS(CanImuDriver)
 
     /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(CanImuDriver)
+    /**
      * @brief Register accel/gyro ProtocolData and publish callback.
-     * @param id Sensor instance id.
-     * @param params DriverParams (cold-path parse only).
+     * @param[in] id Sensor instance id.
+     * @param[in] params DriverParams (cold-path parse only).
      */
     CanImuDriver(SensorId id, DriverParams params);
 
@@ -84,7 +88,7 @@ public:
 private:
     /**
      * @brief Merge accel/gyro halves; emit ImuSample when both present.
-     * @param event Decoded frame from MessageManager.
+     * @param[in] event Decoded frame from MessageManager.
      */
     void OnEvent(const ImuCanEvent& event);
 
@@ -110,8 +114,8 @@ private:
 
 /**
  * @brief Factory for ImuBackendRegistry (REGISTER_IMU_BACKEND "can").
- * @param id Sensor instance id from YAML.
- * @param params Backend-specific key/value map.
+ * @param[in] id Sensor instance id from YAML.
+ * @param[in] params Backend-specific key/value map.
  * @return Owning CanImuDriver* (never null).
  */
 SensorDriver* CreateCanImuDriver(const SensorId& id,

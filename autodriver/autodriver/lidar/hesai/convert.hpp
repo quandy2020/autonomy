@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file convert.hpp
  * @brief Hesai Scan packets → PointCloud2 (PandarXT-32 geometry).
  */
 
@@ -43,9 +43,9 @@ std::array<double, kChannelsPerBlock> DefaultXt32VerticalAnglesDeg();
 
 /**
  * @brief Convert XT32 UDP packets to PointCloud2 (x,y,z,intensity,timestamp).
- * @param packets One full scan of XT32 packets.
- * @param frame_id Header frame_id for the output cloud.
- * @param calibration Per-channel elevations in degrees.
+ * @param[in] packets One full scan of XT32 packets.
+ * @param[in] frame_id Header frame_id for the output cloud.
+ * @param[in] calibration Per-channel elevations in degrees.
  * @return PointCloud2 with point_step=24.
  */
 automsgs::msgs::sensor_msgs::PointCloud2 ConvertPacketsToPointCloud(
@@ -54,9 +54,9 @@ automsgs::msgs::sensor_msgs::PointCloud2 ConvertPacketsToPointCloud(
 
 /**
  * @brief Convert using built-in XT32 elevations (or warn for unknown model).
- * @param packets One full scan of XT32 packets.
- * @param frame_id Header frame_id (default "hesai").
- * @param model Model name; unknown names fall back to XT32 with a warning.
+ * @param[in] packets One full scan of XT32 packets.
+ * @param[in] frame_id Header frame_id (default "hesai").
+ * @param[in] model Model name; unknown names fall back to XT32 with a warning.
  * @return PointCloud2 with point_step=24.
  */
 automsgs::msgs::sensor_msgs::PointCloud2 ConvertPacketsToPointCloud(

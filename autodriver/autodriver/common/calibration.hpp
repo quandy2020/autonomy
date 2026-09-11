@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file calibration.hpp
  * @brief Load static sensor extrinsics from YAML (ROS-like transform layout).
  */
 
@@ -37,11 +37,11 @@ namespace common {
  * Velodyne-style params files.
  */
 struct Extrinsic {
-  /** Parent / reference frame id (e.g. "base_link", "novatel"). */
+  /** @brief Parent / reference frame id (e.g. "base_link", "novatel"). */
   std::string parent_frame;
-  /** Child / sensor frame id (e.g. "velodyne", "camera_link"). */
+  /** @brief Child / sensor frame id (e.g. "velodyne", "camera_link"). */
   std::string child_frame;
-  /** SE(3) transform parent ← child; identity when unset. */
+  /** @brief SE(3) transform parent ← child; identity when unset. */
   Eigen::Affine3d transform = Eigen::Affine3d::Identity();
 };
 
@@ -55,9 +55,9 @@ struct Extrinsic {
  *   (quaternion); if @c transform is absent, translation/rotation may sit at
  *   the root.
  *
- * @param path Absolute or relative path to the YAML file.
- * @param out Non-null destination; filled only on success.
- * @param error Optional human-readable failure reason (YAML parse / null out).
+ * @param[in] path Absolute or relative path to the YAML file.
+ * @param[out] out Non-null destination; filled only on success.
+ * @param[out] error Optional human-readable failure reason (YAML parse / null out).
  * @return true on success; false leaves @p out unchanged (except when @p out
  *         is null).
  */

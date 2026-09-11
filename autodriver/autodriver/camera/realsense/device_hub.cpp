@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,6 +12,12 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ */
+
+/**
+ * @file device_hub.cpp
+ * @brief Shared librealsense pipeline hub for multi-stream D400 devices
+ *        (implementation).
  */
 
 #include "autodriver/camera/realsense/device_hub.hpp"
@@ -51,6 +57,8 @@ std::unordered_map<std::string, std::weak_ptr<RealSenseDeviceHub>> g_pool;
 
 /**
  * @brief Builds a stable lookup key from serial, index, or model params.
+ * @param[in] params Driver params (serial/index/model).
+ * @return Stable hub lookup key string.
  */
 std::string DeviceKey(const hardware::DriverParams& params) {
     const std::string serial = hardware::GetString(params, "serial");
@@ -162,6 +170,7 @@ struct RealSenseDeviceHub::Impl {
 #ifndef AUTODRIVER_HAVE_REALSENSE
     /**
      * @brief Reports missing librealsense when RealSense support is disabled.
+     * @return Always false (librealsense unavailable at build time).
      */
     bool StartPipeline() {
         last_error =
@@ -230,6 +239,8 @@ struct RealSenseDeviceHub::Impl {
 
     /**
      * @brief Maps a StreamKind to librealsense stream type and index.
+     * @param[in] kind Logical stream kind to map.
+     * @return librealsense stream type and index pair.
      */
     StreamSpec StreamSpecFor(
         const hardware::realsense::StreamKind kind) const {
@@ -257,6 +268,9 @@ struct RealSenseDeviceHub::Impl {
 
     /**
      * @brief Finds the first frame matching a stream type and index.
+     * @param[in] frames Frameset to search.
+     * @param[in] spec Target stream type and index.
+     * @return Matching video frame, or empty frame when not found.
      */
     rs2::frame FindVideoFrame(const rs2::frameset& frames,
                               const StreamSpec& spec) const {
@@ -276,6 +290,8 @@ struct RealSenseDeviceHub::Impl {
 
     /**
      * @brief Returns the librealsense pixel format for a stream kind.
+     * @param[in] kind Logical stream kind.
+     * @return librealsense pixel format for @p kind.
      */
     rs2_format StreamFormat(const hardware::realsense::StreamKind kind) const {
         switch (kind) {
@@ -295,6 +311,7 @@ struct RealSenseDeviceHub::Impl {
 
     /**
      * @brief Returns true when aligned depth or point cloud needs color+depth.
+     * @return True when aligned depth or point cloud needs color+depth.
      */
     bool NeedsColorDepthPair() const {
         for (const VideoSubscription& sub : video_subscriptions) {
@@ -308,6 +325,8 @@ struct RealSenseDeviceHub::Impl {
 
     /**
      * @brief Returns true when any subscription requires the given stream.
+     * @param[in] kind Stream kind to check against subscriptions.
+     * @return True when any subscription requires @p kind.
      */
     bool HasStream(const hardware::realsense::StreamKind kind) const {
         for (const VideoSubscription& sub : video_subscriptions) {
@@ -328,6 +347,7 @@ struct RealSenseDeviceHub::Impl {
 
     /**
      * @brief Selects a RealSense device by serial, model filter, or index.
+     * @return Selected rs2::device for the configured serial/model/index.
      */
     rs2::device ResolveDevice() {
         const std::string serial = hardware::GetString(params, "serial");
@@ -378,6 +398,10 @@ struct RealSenseDeviceHub::Impl {
 
     /**
      * @brief Enables a stream in the pipeline config when a subscriber needs it.
+     * @param[in] kind Stream to enable when subscribed.
+     * @param[in] width Requested width in pixels.
+     * @param[in] height Requested height in pixels.
+     * @param[in] fps Requested frames per second.
      */
     void EnableStreamIfNeeded(const hardware::realsense::StreamKind kind,
                               int width, int height, int fps) {
@@ -391,6 +415,9 @@ struct RealSenseDeviceHub::Impl {
 
     /**
      * @brief Builds CameraInfo from a RealSense video frame intrinsics.
+     * @param[in] frame Video frame providing intrinsics.
+     * @param[in] kind Stream kind (selects frame_id defaults).
+     * @return CameraInfo message filled from frame intrinsics.
      */
     automsgs::msgs::sensor_msgs::CameraInfo BuildCameraInfo(
         const rs2::video_frame& frame,
@@ -407,6 +434,7 @@ struct RealSenseDeviceHub::Impl {
 
     /**
      * @brief Configures streams and IMU based on active subscriptions.
+     * @return True when streams/IMU are configured successfully.
      */
     bool ConfigurePipeline() {
         config = rs2::config();
@@ -450,6 +478,8 @@ struct RealSenseDeviceHub::Impl {
             depth_fps = sub.fps;
         }
 
+        bool color_enabled = false;
+        bool depth_enabled = false;
         for (const VideoSubscription& sub : video_subscriptions) {
             if (sub.stream ==
                 hardware::realsense::StreamKind::kAlignedDepthToColor) {
@@ -458,13 +488,25 @@ struct RealSenseDeviceHub::Impl {
             const StreamSpec spec = StreamSpecFor(sub.stream);
             config.enable_stream(spec.type, spec.index, sub.width, sub.height,
                                  StreamFormat(sub.stream), sub.fps);
+            if (sub.stream == hardware::realsense::StreamKind::kColor) {
+                color_enabled = true;
+            }
+            if (sub.stream == hardware::realsense::StreamKind::kDepth) {
+                depth_enabled = true;
+            }
         }
 
+        // Aligned depth / point cloud need color+depth without duplicating
+        // streams already requested by explicit subscribers.
         if (NeedsColorDepthPair()) {
-            config.enable_stream(RS2_STREAM_COLOR, 0, color_w, color_h,
-                                 RS2_FORMAT_RGB8, color_fps);
-            config.enable_stream(RS2_STREAM_DEPTH, 0, depth_w, depth_h,
-                                 RS2_FORMAT_Z16, depth_fps);
+            if (!color_enabled) {
+                config.enable_stream(RS2_STREAM_COLOR, 0, color_w, color_h,
+                                     RS2_FORMAT_RGB8, color_fps);
+            }
+            if (!depth_enabled) {
+                config.enable_stream(RS2_STREAM_DEPTH, 0, depth_w, depth_h,
+                                     RS2_FORMAT_Z16, depth_fps);
+            }
         }
 
         if (!imu_subscriptions.empty()) {
@@ -604,6 +646,7 @@ struct RealSenseDeviceHub::Impl {
 
     /**
      * @brief Applies depth emitter and related device options from params.
+     * @param[in] device Opened RealSense device to configure.
      */
     void ApplyDeviceOptions(const rs2::device& device) {
         const bool emitter_enabled = hardware::ParseBool(
@@ -636,6 +679,7 @@ struct RealSenseDeviceHub::Impl {
 
     /**
      * @brief Starts the librealsense pipeline with the current config.
+     * @return True when the pipeline starts successfully.
      */
     bool StartPipeline() {
         StopPipeline();
@@ -671,6 +715,8 @@ struct RealSenseDeviceHub::Impl {
 
     /**
      * @brief Converts a video frame into a RealSenseVideoFrame callback payload.
+     * @param[in] sub Video subscription receiving the frame.
+     * @param[in] frame librealsense video frame to convert.
      */
     void DispatchVideoFrame(const VideoSubscription& sub,
                             const rs2::video_frame& frame) {
@@ -695,6 +741,11 @@ struct RealSenseDeviceHub::Impl {
 
     /**
      * @brief Builds a colored PointCloud2 message from depth and texture.
+     * @param[in] points Depth-derived rs2::points.
+     * @param[in] color Color video frame used for texture.
+     * @param[in] frame_id PointCloud2 header frame_id.
+     * @param[in] timestamp_ms Frame timestamp in milliseconds.
+     * @return Colored PointCloud2 message.
      */
     automsgs::msgs::sensor_msgs::PointCloud2 BuildPointCloud(
         const rs2::points& points, const rs2::video_frame& color,
@@ -1090,6 +1141,8 @@ namespace {
 
 /**
  * @brief Lowercases a string for case-insensitive RealSense matching.
+ * @param[in] text Input string to lowercase.
+ * @return Lowercased copy of @p text.
  */
 std::string ToLower(std::string text) {
     std::transform(

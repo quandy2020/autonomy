@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,6 +12,11 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ */
+
+/**
+ * @file config_loader.cpp
+ * @brief YAML → Config (folded camera, params_file merge).
  */
 
 #include "autodriver/config_loader.hpp"
@@ -41,6 +46,8 @@ using autolink::common::PathExists;
 
 /**
  * @brief Converts a YAML scalar node to string, trying multiple types.
+ * @param[in] node YAML scalar node to stringify.
+ * @return String form of the scalar, or empty when not convertible.
  */
 std::string ScalarToString(const YAML::Node& node) {
     if (!node || node.IsNull() || !node.IsScalar()) {
@@ -67,6 +74,9 @@ std::string ScalarToString(const YAML::Node& node) {
 
 /**
  * @brief Reads a string field from a YAML map node.
+ * @param[in] node YAML map node to read from.
+ * @param[in] key Field name under @p node.
+ * @return Field value as string, or empty when missing/invalid.
  */
 std::string ReadString(const YAML::Node& node, const char* key) {
     return ScalarToString(node[key]);
@@ -74,6 +84,10 @@ std::string ReadString(const YAML::Node& node, const char* key) {
 
 /**
  * @brief Reads an integer field, returning default_value when absent or invalid.
+ * @param[in] node YAML map node to read from.
+ * @param[in] key Field name under @p node.
+ * @param[in] default_value Fallback when absent or not an int.
+ * @return Parsed integer, or @p default_value on failure.
  */
 int ReadInt(const YAML::Node& node, const char* key, int default_value = 0) {
     const YAML::Node value = node[key];
@@ -92,6 +106,10 @@ int ReadInt(const YAML::Node& node, const char* key, int default_value = 0) {
 
 /**
  * @brief Reads a boolean field, returning default_value when absent or invalid.
+ * @param[in] node YAML map node to read from.
+ * @param[in] key Field name under @p node.
+ * @param[in] default_value Fallback when absent or not a bool.
+ * @return Parsed boolean, or @p default_value on failure.
  */
 bool ReadBool(const YAML::Node& node, const char* key, bool default_value) {
     const YAML::Node value = node[key];
@@ -107,6 +125,9 @@ bool ReadBool(const YAML::Node& node, const char* key, bool default_value) {
 
 /**
  * @brief Sets a string driver param only when key is unset and value is non-empty.
+ * @param[in,out] params Driver param map to update.
+ * @param[in] key Param key to set when absent.
+ * @param[in] value Value written when key is unset (and valid).
  */
 void SetParamIfAbsent(hardware::DriverParams* params, const std::string& key,
                       const std::string& value) {
@@ -118,6 +139,9 @@ void SetParamIfAbsent(hardware::DriverParams* params, const std::string& key,
 
 /**
  * @brief Sets an integer driver param only when key is unset and value is positive.
+ * @param[in,out] params Driver param map to update.
+ * @param[in] key Param key to set when absent.
+ * @param[in] value Value written when key is unset (and valid).
  */
 void SetParamIfAbsent(hardware::DriverParams* params, const std::string& key,
                       int value) {
@@ -129,6 +153,8 @@ void SetParamIfAbsent(hardware::DriverParams* params, const std::string& key,
 
 /**
  * @brief Parses a DeviceMatch block from a YAML map node.
+ * @param[in] node YAML map for DeviceMatch fields.
+ * @return Parsed DeviceMatch; empty fields when @p node is not a map.
  */
 DeviceMatch ReadMatch(const YAML::Node& node) {
     DeviceMatch out;
@@ -145,6 +171,8 @@ DeviceMatch ReadMatch(const YAML::Node& node) {
 
 /**
  * @brief Copies all entries from a YAML params map into DriverParams.
+ * @param[in] node YAML map of string key/value pairs.
+ * @param[out] params Driver params populated from @p node.
  */
 void ReadParamsMap(const YAML::Node& node, hardware::DriverParams* params) {
     if (!node || !node.IsMap() || params == nullptr) {
@@ -167,6 +195,8 @@ std::string ResolveConfigPath(const std::string& configuration_directory,
  * @brief Loads vendor camera params from config/camera/<vendor>/….
  * File may be a flat map or `{ params: {…} }`. Existing keys are not overwritten
  * so inline `params:` in the device entry win.
+ * @param[in] params_file Basename/path under config/ for vendor params.
+ * @param[in,out] params Existing keys kept; file fills gaps only.
  */
 void MergeParamsFile(const std::string& params_file,
                      hardware::DriverParams* params) {
@@ -207,6 +237,7 @@ void MergeParamsFile(const std::string& params_file,
 
 /**
  * @brief Derives udev match fields from serial device params when missing.
+ * @param[in,out] sensor Sensor whose match may be derived from params.
  */
 void FinalizeSensor(Config::Sensor* sensor) {
     const auto device_it = sensor->params.find("device");
@@ -220,6 +251,9 @@ void FinalizeSensor(Config::Sensor* sensor) {
 
 /**
  * @brief Prefixes a bare sensor name with id_prefix unless already qualified.
+ * @param[in] name Bare or already-qualified sensor name.
+ * @param[in] prefix Id prefix such as "camera/" or "imu/".
+ * @return Qualified id, or empty when @p name is empty.
  */
 std::string QualifySensorId(const std::string& name, const char* prefix) {
     if (name.empty()) {
@@ -233,6 +267,9 @@ std::string QualifySensorId(const std::string& name, const char* prefix) {
 
 /**
  * @brief Maps hardware shorthand YAML fields into backend-specific params.
+ * @param[in] hardware YAML map with port/baud/model/… shorthand.
+ * @param[in] backend Backend name selecting which fields apply.
+ * @param[out] params Driver params receiving shorthand mappings.
  */
 void ApplyHardwareShorthand(const YAML::Node& hardware,
                             const std::string& backend,
@@ -282,6 +319,8 @@ void ApplyHardwareShorthand(const YAML::Node& hardware,
 
 /**
  * @brief Reads publish channel names from scalar or sequence YAML nodes.
+ * @param[in] node YAML node that may contain channel / channel:.
+ * @param[out] channels Appended publish channel names.
  */
 void ReadChannels(const YAML::Node& node,
                   std::vector<std::string>* channels) {
@@ -306,6 +345,9 @@ void ReadChannels(const YAML::Node& node,
 
 /**
  * @brief Applies publisher shorthand for channels and publish rate.
+ * @param[in] publisher YAML publisher: block (channel/rate/fps).
+ * @param[in,out] channels Filled from publisher when currently empty.
+ * @param[out] params May receive publish_rate_hz.
  */
 void ApplyPublisherShorthand(const YAML::Node& publisher,
                              std::vector<std::string>* channels,
@@ -325,6 +367,11 @@ void ApplyPublisherShorthand(const YAML::Node& publisher,
 
 /**
  * @brief Merges flat device YAML fields into params and channel lists.
+ * @param[in] node Device YAML map (flat fields + nested hardware).
+ * @param[in] backend Resolved backend name.
+ * @param[in] module Module class name (CameraModule, …).
+ * @param[in,out] params Driver params receiving flat/shorthand fields.
+ * @param[in,out] channels Publish channels from device/publisher.
  */
 void ApplyFlatDeviceFields(const YAML::Node& node, const std::string& backend,
                            const std::string& module,
@@ -366,6 +413,8 @@ struct DeviceKind {
 
 /**
  * @brief Returns true when enable or legacy attach_on_start is set.
+ * @param[in] node Device YAML map.
+ * @return True when enable or legacy attach_on_start is set.
  */
 bool IsDeviceEnabled(const YAML::Node& node) {
     if (ReadBool(node, "enable", false)) {
@@ -377,6 +426,8 @@ bool IsDeviceEnabled(const YAML::Node& node) {
 
 /**
  * @brief Reads params_file from the device node or nested params map.
+ * @param[in] node Device YAML map.
+ * @return params_file path string, or empty when unset.
  */
 std::string ReadParamsFileField(const YAML::Node& node) {
     if (!node || !node.IsMap()) {
@@ -395,6 +446,9 @@ std::string ReadParamsFileField(const YAML::Node& node) {
 
 /**
  * @brief Builds a typed Config::Sensor from a YAML device entry.
+ * @param[in] node YAML device entry.
+ * @param[in] kind Module/id-prefix/default-backend metadata.
+ * @return Fully populated Config::Sensor for @p kind.
  */
 Config::Sensor TypedDeviceFromYaml(const YAML::Node& node,
                                    const DeviceKind& kind) {
@@ -418,6 +472,9 @@ Config::Sensor TypedDeviceFromYaml(const YAML::Node& node,
 
 /**
  * @brief Appends enabled devices from a YAML sequence using kind metadata.
+ * @param[in] devices YAML sequence of device entries.
+ * @param[in] kind Module/id-prefix/default-backend metadata.
+ * @param[out] sensors Enabled sensors appended here.
  */
 void AppendTypedList(const YAML::Node& devices, const DeviceKind& kind,
                      std::vector<Config::Sensor>* sensors) {
@@ -434,6 +491,8 @@ void AppendTypedList(const YAML::Node& devices, const DeviceKind& kind,
 
 /**
  * @brief Child stream/cloud/imu defaults to enabled when parent is enabled.
+ * @param[in] node Child stream/cloud/imu YAML map.
+ * @return True when enabled (defaults true if flags omitted).
  */
 bool IsChildEnabled(const YAML::Node& node) {
     if (!node || !node.IsMap()) {
@@ -450,6 +509,8 @@ bool IsChildEnabled(const YAML::Node& node) {
 
 /**
  * @brief True when a camera entry uses folded streams / point_clouds / imu.
+ * @param[in] device Camera device YAML map.
+ * @return True when streams, point_clouds, or imu children exist.
  */
 bool IsFoldedCameraDevice(const YAML::Node& device) {
     return device["streams"] || device["point_clouds"] || device["imu"];
@@ -457,6 +518,8 @@ bool IsFoldedCameraDevice(const YAML::Node& device) {
 
 /**
  * @brief Overwrites DriverParams keys from a YAML map (child overrides).
+ * @param[in] node YAML map of overriding key/value pairs.
+ * @param[in,out] params Params overwritten by @p node entries.
  */
 void OverlayParamsMap(const YAML::Node& node, hardware::DriverParams* params) {
     if (!node || !node.IsMap() || params == nullptr) {
@@ -469,7 +532,11 @@ void OverlayParamsMap(const YAML::Node& node, hardware::DriverParams* params) {
 
 /**
  * @brief Builds one Sensor by inheriting parent device fields, then child overrides.
- * @param resolved_name Bare sensor name (id prefix applied by QualifySensorId).
+ * @param[in] parent Folded parent camera device YAML.
+ * @param[in] child Child stream / point_cloud / imu YAML.
+ * @param[in] kind Module/id-prefix/default-backend for the child.
+ * @param[in] resolved_name Bare sensor name (id prefix applied by QualifySensorId).
+ * @return Config::Sensor inheriting parent fields with child overrides.
  */
 Config::Sensor CameraChildFromYaml(const YAML::Node& parent,
                                    const YAML::Node& child,
@@ -534,6 +601,9 @@ Config::Sensor CameraChildFromYaml(const YAML::Node& parent,
 
 /**
  * @brief Prefixes a child leaf name with device name when not already qualified.
+ * @param[in] device_name Parent camera device name.
+ * @param[in] leaf Child leaf name or stream name.
+ * @return Qualified child name (device_leaf when needed).
  */
 std::string QualifyChildLeafName(const std::string& device_name,
                                  const std::string& leaf) {
@@ -548,6 +618,8 @@ std::string QualifyChildLeafName(const std::string& device_name,
 
 /**
  * @brief Expands a folded camera device into Camera / PointCloud / Imu sensors.
+ * @param[in] device Folded camera YAML with streams/point_clouds/imu.
+ * @param[out] sensors Expanded Camera/PointCloud/Imu sensors.
  */
 void ExpandFoldedCameraDevice(const YAML::Node& device,
                               std::vector<Config::Sensor>* sensors) {
@@ -610,6 +682,8 @@ void ExpandFoldedCameraDevice(const YAML::Node& device,
 
 /**
  * @brief Appends camera devices; expands folded streams/point_clouds/imu.
+ * @param[in] devices YAML sequence of camera devices.
+ * @param[out] sensors Enabled/expanded camera sensors appended.
  */
 void AppendCameraList(const YAML::Node& devices,
                       std::vector<Config::Sensor>* sensors) {
@@ -631,6 +705,8 @@ void AppendCameraList(const YAML::Node& devices,
 
 /**
  * @brief Returns true when dimension/type indicates a 3D lidar device.
+ * @param[in] node Lidar device YAML map.
+ * @return True when dimension/type indicates 3D lidar.
  */
 bool IsLidar3d(const YAML::Node& node) {
     std::string dim = ReadString(node, "dimension");
@@ -645,6 +721,8 @@ bool IsLidar3d(const YAML::Node& node) {
 
 /**
  * @brief Appends lidar devices, choosing 2D or 3D module by dimension field.
+ * @param[in] devices YAML sequence of mixed 2D/3D lidar devices.
+ * @param[out] sensors Enabled lidar sensors appended.
  */
 void AppendLidarList(const YAML::Node& devices,
                      std::vector<Config::Sensor>* sensors) {
@@ -665,6 +743,8 @@ void AppendLidarList(const YAML::Node& devices,
 
 /**
  * @brief Appends all known sensor groups from a YAML map.
+ * @param[in] groups YAML map of sensor group keys.
+ * @param[out] sensors All enabled sensors from known groups.
  */
 void AppendSensorGroups(const YAML::Node& groups,
                         std::vector<Config::Sensor>* sensors) {
@@ -695,6 +775,8 @@ void AppendSensorGroups(const YAML::Node& groups,
 
 /**
  * @brief Parses a legacy flat sensor entry from YAML.
+ * @param[in] node Legacy flat sensor YAML entry.
+ * @return Parsed Config::Sensor, or empty id when disabled.
  */
 Config::Sensor SensorFromYaml(const YAML::Node& node) {
     if (!IsDeviceEnabled(node)) {
@@ -736,6 +818,8 @@ Config::Sensor SensorFromYaml(const YAML::Node& node) {
 
 /**
  * @brief Builds a Config from the root YAML document.
+ * @param[in] root Root YAML document.
+ * @return Config populated from YAML (sensors, chassis, alignment, …).
  */
 Config FromYaml(const YAML::Node& root) {
     Config config;
@@ -811,10 +895,27 @@ Config FromYaml(const YAML::Node& root) {
         if (ch["odom_channel"]) {
             config.chassis.odom_channel = ReadString(ch, "odom_channel");
         }
+        if (ch["capability_channel"]) {
+            config.chassis.capability_channel =
+                ReadString(ch, "capability_channel");
+        }
+        if (ch["mode_cmd_channel"]) {
+            config.chassis.mode_cmd_channel = ReadString(ch, "mode_cmd_channel");
+        }
+        if (ch["mode_state_channel"]) {
+            config.chassis.mode_state_channel =
+                ReadString(ch, "mode_state_channel");
+        }
+        if (ch["tool_cmd_channel"]) {
+            config.chassis.tool_cmd_channel = ReadString(ch, "tool_cmd_channel");
+        }
         config.chassis.watchdog_ms =
             ReadInt(ch, "watchdog_ms", config.chassis.watchdog_ms);
         config.chassis.odom_period_ms =
             ReadInt(ch, "odom_period_ms", config.chassis.odom_period_ms);
+        config.chassis.capability_period_ticks = ReadInt(
+            ch, "capability_period_ticks",
+            config.chassis.capability_period_ticks);
         const std::string odom_frame = ReadString(ch, "odom_frame_id");
         if (!odom_frame.empty()) {
             config.chassis.odom_frame_id = odom_frame;
@@ -835,6 +936,70 @@ Config FromYaml(const YAML::Node& root) {
                 config.chassis.max_angular_speed =
                     ch["max_angular_speed"].as<double>();
             } catch (const YAML::Exception&) {
+            }
+        }
+        if (ch["max_linear_accel"] && ch["max_linear_accel"].IsScalar()) {
+            try {
+                config.chassis.max_linear_accel =
+                    ch["max_linear_accel"].as<double>();
+            } catch (const YAML::Exception&) {
+            }
+        }
+        if (ch["min_turning_radius"] && ch["min_turning_radius"].IsScalar()) {
+            try {
+                config.chassis.min_turning_radius =
+                    ch["min_turning_radius"].as<double>();
+            } catch (const YAML::Exception&) {
+            }
+        }
+        const std::string locomotion = ReadString(ch, "locomotion");
+        if (!locomotion.empty()) {
+            config.chassis.locomotion = locomotion;
+        }
+        if (ch["supports_lateral"]) {
+            config.chassis.supports_lateral =
+                ReadString(ch, "supports_lateral");
+            if (config.chassis.supports_lateral.empty() &&
+                ch["supports_lateral"].IsScalar()) {
+                try {
+                    config.chassis.supports_lateral =
+                        ch["supports_lateral"].as<bool>() ? "true" : "false";
+                } catch (const YAML::Exception&) {
+                }
+            }
+        }
+        if (ch["supports_inplace_turn"]) {
+            config.chassis.supports_inplace_turn =
+                ReadString(ch, "supports_inplace_turn");
+            if (config.chassis.supports_inplace_turn.empty() &&
+                ch["supports_inplace_turn"].IsScalar()) {
+                try {
+                    config.chassis.supports_inplace_turn =
+                        ch["supports_inplace_turn"].as<bool>() ? "true"
+                                                               : "false";
+                } catch (const YAML::Exception&) {
+                }
+            }
+        }
+        config.chassis.require_arm =
+            ReadBool(ch, "require_arm", config.chassis.require_arm);
+        config.chassis.has_dock =
+            ReadBool(ch, "has_dock", config.chassis.has_dock);
+        config.chassis.has_joint_bypass =
+            ReadBool(ch, "has_joint_bypass", config.chassis.has_joint_bypass);
+        if (ch["tools"] && ch["tools"].IsSequence()) {
+            config.chassis.tools.clear();
+            for (const auto& tool : ch["tools"]) {
+                if (!tool.IsScalar()) {
+                    continue;
+                }
+                try {
+                    const std::string name = tool.as<std::string>();
+                    if (!name.empty()) {
+                        config.chassis.tools.push_back(name);
+                    }
+                } catch (const YAML::Exception&) {
+                }
             }
         }
         ReadParamsMap(ch["params"], &config.chassis.params);
@@ -869,6 +1034,8 @@ Config FromYaml(const YAML::Node& root) {
 
 /**
  * @brief If path is a directory, pick autodriver.yaml or the sole *.yaml.
+ * @param[in] dir Directory that may contain autodriver.yaml.
+ * @return Chosen YAML path, or empty when none/ambiguous.
  */
 std::string ResolveDirectoryConfig(const std::string& dir) {
     if (!DirectoryExists(dir)) {
@@ -903,6 +1070,8 @@ std::string ResolveDirectoryConfig(const std::string& dir) {
 
 /**
  * @brief Normalizes basename: strip leading config/, allow vendor shorthand.
+ * @param[in] basename User-supplied config basename or vendor path.
+ * @return Normalized relative path under config/.
  */
 std::string NormalizeConfigBasename(std::string basename) {
     if (basename.size() >= 2 && basename[0] == '.' && basename[1] == '/') {
@@ -928,6 +1097,9 @@ std::string NormalizeConfigBasename(std::string basename) {
  *   - basename under config/ (e.g. autodriver_hardware.yaml)
  *   - vendor path (e.g. camera/orbbec/gemini_330.yaml)
  *   - vendor directory (e.g. camera/orbbec or orbbec → sole/autodriver.yaml)
+ * @param[in] configuration_directory Work/install root used to find config/.
+ * @param[in] config_basename Basename, vendor path, or absolute YAML path.
+ * @return Absolute path to the YAML file to load.
  */
 std::string ResolveConfigPath(const std::string& configuration_directory,
                               const std::string& config_basename) {
@@ -982,6 +1154,9 @@ std::string ResolveConfigPath(const std::string& configuration_directory,
 
 /**
  * @brief Loads YAML config from an absolute path.
+ * @param[in] path Absolute path to the YAML config file.
+ * @param[in] configuration_directory Search root for nested params_file.
+ * @return Loaded Config; throws on YAML parse failure.
  */
 Config LoadFromPath(const std::string& path,
                     const std::string& configuration_directory) {

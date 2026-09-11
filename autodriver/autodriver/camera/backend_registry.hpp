@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file backend_registry.hpp
  * @brief Process-local camera / point_cloud backend factory registries.
  */
 
@@ -84,9 +84,9 @@ using PointCloudDriverFactory = PointCloudBackendRegistry::DriverFactory;
 
 /**
  * @brief Register a camera backend plus optional aliases (static init).
- * @param name Canonical backend string (e.g. "realsense").
- * @param factory CameraDriverFactory for @p name.
- * @param aliases Optional null-terminated C string aliases (empty skipped).
+ * @param[in] name Canonical backend string (e.g. "realsense").
+ * @param[in] factory CameraDriverFactory for @p name.
+ * @param[in] aliases Optional null-terminated C string aliases (empty skipped).
  */
 inline void RegisterCameraBackendWithAliases(
     const std::string& name, CameraDriverFactory factory,
@@ -97,9 +97,9 @@ inline void RegisterCameraBackendWithAliases(
 
 /**
  * @brief Register a point_cloud backend plus optional aliases (static init).
- * @param name Canonical backend string (e.g. "realsense").
- * @param factory PointCloudDriverFactory for @p name.
- * @param aliases Optional null-terminated C string aliases (empty skipped).
+ * @param[in] name Canonical backend string (e.g. "realsense").
+ * @param[in] factory PointCloudDriverFactory for @p name.
+ * @param[in] aliases Optional null-terminated C string aliases (empty skipped).
  */
 inline void RegisterPointCloudBackendWithAliases(
     const std::string& name, PointCloudDriverFactory factory,

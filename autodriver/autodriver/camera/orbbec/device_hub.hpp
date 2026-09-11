@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file device_hub.hpp
  * @brief Shared OrbbecSDK pipeline hub for multi-stream devices.
  */
 
@@ -51,22 +51,22 @@ enum class StreamKind {
 
 /**
  * @brief Parse YAML stream name into StreamKind.
- * @param text Stream string (e.g. "color", "depth", "ir").
- * @param default_kind Fallback when @p text is empty or unknown.
+ * @param[in] text Stream string (e.g. "color", "depth", "ir").
+ * @param[in] default_kind Fallback when @p text is empty or unknown.
  * @return Resolved StreamKind.
  */
 StreamKind ParseStreamKind(const std::string& text, StreamKind default_kind);
 
 /**
  * @brief Default image encoding string for a stream kind.
- * @param kind Stream selection.
+ * @param[in] kind Stream selection.
  * @return Encoding label suitable for sensor_msgs/Image.
  */
 std::string EncodingForStreamKind(StreamKind kind);
 
 /**
  * @brief Default optical frame_id suffix for a stream kind.
- * @param kind Stream selection.
+ * @param[in] kind Stream selection.
  * @return Frame id fragment (e.g. for composing with sensor id).
  */
 std::string DefaultFrameId(StreamKind kind);
@@ -130,8 +130,12 @@ public:
     AUTOLINK_SHARED_PTR_DEFINITIONS(OrbbecDeviceHub)
 
     /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(OrbbecDeviceHub)
+    /**
      * @brief Acquire or create a hub for the device described by @p params.
-     * @param params Must identify the device (serial / index / model).
+     * @param[in] params Must identify the device (serial / index / model).
      * @return Shared hub, or empty when SDK is unavailable / open fails.
      */
     static std::shared_ptr<OrbbecDeviceHub> Acquire(
@@ -144,11 +148,11 @@ public:
 
     /**
      * @brief Subscribe to a video stream; starts the pipeline if needed.
-     * @param stream Color / depth / IR selection.
-     * @param width Requested width.
-     * @param height Requested height.
-     * @param fps Requested frame rate.
-     * @param callback Invoked on the hub/SDK thread with each frame.
+     * @param[in] stream Color / depth / IR selection.
+     * @param[in] width Requested width.
+     * @param[in] height Requested height.
+     * @param[in] fps Requested frame rate.
+     * @param[in] callback Invoked on the hub/SDK thread with each frame.
      * @return Non-zero subscription id, or 0 on failure.
      */
     std::uint64_t SubscribeVideo(hardware::orbbec::StreamKind stream, int width,
@@ -157,10 +161,10 @@ public:
 
     /**
      * @brief Subscribe to depth/RGB point clouds; starts the pipeline if needed.
-     * @param width Requested width.
-     * @param height Requested height.
-     * @param fps Requested frame rate.
-     * @param callback Invoked on the hub/SDK thread with each cloud.
+     * @param[in] width Requested width.
+     * @param[in] height Requested height.
+     * @param[in] fps Requested frame rate.
+     * @param[in] callback Invoked on the hub/SDK thread with each cloud.
      * @return Non-zero subscription id, or 0 on failure.
      */
     std::uint64_t SubscribePointCloud(int width, int height, int fps,
@@ -168,7 +172,7 @@ public:
 
     /**
      * @brief Remove a subscription; may stop the pipeline when unused.
-     * @param subscription_id Token from SubscribeVideo / SubscribePointCloud.
+     * @param[in] subscription_id Token from SubscribeVideo / SubscribePointCloud.
      */
     void Unsubscribe(std::uint64_t subscription_id);
 
@@ -198,7 +202,7 @@ public:
 private:
     /**
      * @brief Construct a hub for @p params (use Acquire).
-     * @param params Device identity and stream defaults.
+     * @param[in] params Device identity and stream defaults.
      */
     explicit OrbbecDeviceHub(const hardware::DriverParams& params);
 

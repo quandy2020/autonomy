@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file point_cloud2_layout.hpp
  * @brief Shared sensor_msgs/PointCloud2 layout: x,y,z,intensity,timestamp.
  *
  * Velodyne / Hesai / Livox convert paths all emit point_step=24 with the same
@@ -35,16 +35,16 @@
 namespace autodriver {
 namespace lidar {
 
-/** Byte size of one XYZIT point (float32×4 + float64). */
+/** @brief Byte size of one XYZIT point (float32×4 + float64). */
 inline constexpr std::uint32_t kXyzitPointStep = 24;
 
 /**
  * @brief Append a PointField descriptor to @p cloud.
- * @param cloud Target PointCloud2; must be non-null.
- * @param name Field name (e.g. "x").
- * @param offset Byte offset within each point.
- * @param datatype PointField data type enum.
- * @param count Number of elements (default 1).
+ * @param[out] cloud Target PointCloud2; must be non-null.
+ * @param[in] name Field name (e.g. "x").
+ * @param[in] offset Byte offset within each point.
+ * @param[in] datatype PointField data type enum.
+ * @param[in] count Number of elements (default 1).
  */
 inline void AddPointField(
     automsgs::msgs::sensor_msgs::PointCloud2* cloud, const std::string& name,
@@ -60,8 +60,8 @@ inline void AddPointField(
 
 /**
  * @brief Initialize an empty XYZIT PointCloud2 (fields + point_step=24).
- * @param cloud Output message; must be non-null (cleared fields assumed empty).
- * @param frame_id Header frame_id.
+ * @param[out] cloud Output message; must be non-null (cleared fields assumed empty).
+ * @param[in] frame_id Header frame_id.
  */
 inline void InitXyzitCloud(automsgs::msgs::sensor_msgs::PointCloud2* cloud,
                            const std::string& frame_id) {
@@ -82,12 +82,12 @@ inline void InitXyzitCloud(automsgs::msgs::sensor_msgs::PointCloud2* cloud,
 
 /**
  * @brief Append one XYZIT point to the packed @p data buffer.
- * @param data PointCloud2 mutable data string; must be non-null.
- * @param x X in metres.
- * @param y Y in metres.
- * @param z Z in metres.
- * @param intensity Intensity / reflectivity.
- * @param timestamp_ns Point timestamp in nanoseconds (stored as float64).
+ * @param[out] data PointCloud2 mutable data string; must be non-null.
+ * @param[in] x X in metres.
+ * @param[in] y Y in metres.
+ * @param[in] z Z in metres.
+ * @param[in] intensity Intensity / reflectivity.
+ * @param[in] timestamp_ns Point timestamp in nanoseconds (stored as float64).
  */
 inline void AppendXyzitPoint(std::string* data, float x, float y, float z,
                              float intensity, double timestamp_ns) {
@@ -102,8 +102,8 @@ inline void AppendXyzitPoint(std::string* data, float x, float y, float z,
 
 /**
  * @brief Set width and row_step after all points were appended.
- * @param cloud Target PointCloud2; must be non-null.
- * @param width Number of points written into data.
+ * @param[out] cloud Target PointCloud2; must be non-null.
+ * @param[in] width Number of points written into data.
  */
 inline void FinishXyzitCloud(automsgs::msgs::sensor_msgs::PointCloud2* cloud,
                              std::uint32_t width) {

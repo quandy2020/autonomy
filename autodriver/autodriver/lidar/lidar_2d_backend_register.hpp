@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file lidar_2d_backend_register.hpp
  * @brief Static registration macro for lidar_2d backends.
  */
 
@@ -26,10 +26,10 @@
 
 /**
  * @brief Register a lidar_2d backend at static init time.
- * @param tag Unique C++ identifier suffix for the registrar object.
- * @param name Canonical backend string (e.g. "rplidar").
- * @param factory Creator returning owning SensorDriver* (nullptr ok for stubs).
- * @param ... Optional alias string literals (e.g. "slamtec").
+ * @param[in] tag Unique C++ identifier suffix for the registrar object.
+ * @param[in] name Canonical backend string (e.g. "rplidar").
+ * @param[in] factory Creator returning owning SensorDriver* (nullptr ok for stubs).
+ * @param[in] ... Optional alias string literals (e.g. "slamtec").
  */
 #define REGISTER_LIDAR2D_BACKEND(tag, name, factory, ...)                   \
     namespace {                                                              \

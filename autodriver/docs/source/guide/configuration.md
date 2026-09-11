@@ -136,12 +136,21 @@ compensator:
 | `enable` | `false` | `false` 时 Manager Start 为 no-op |
 | `name` / `id` | `name` → `chassis/<name>`；或直接写 `id` | 实例 id |
 | `backend` | `stub` | `ChassisBackendRegistry` |
+| `locomotion` | `differential` | 运动学模型（非产品名） |
+| `require_arm` | `false` | `true` 时须 `/chassis/mode` arm 后才接受 twist |
+| `has_dock` / `has_joint_bypass` | `false` | 写入 capability JSON |
+| `tools` | `[]` | 工具名列表（capability） |
 | `cmd_vel_channel` | `/cmd_vel` | TwistStamped |
-| `state_channel` | `/robot_state` | RobotState |
+| `mode_cmd_channel` | `/chassis/mode` | String：arm/estop/walk/… |
+| `mode_state_channel` | `/chassis/mode_state` | String：`mode,intent` |
+| `capability_channel` | `/chassis/capability` | String JSON；空=不发 |
+| `tool_cmd_channel` | `""` | String 工具指令；空=关闭 |
+| `state_channel` | `/robot_state` | RobotState（`active_cmd_id`=mode） |
 | `event_channel` | `/robot_event` | RobotEvent；空字符串关闭 |
 | `odom_channel` | `/odom` | Odometry；空则不发布 |
 | `watchdog_ms` | `200` | 无新 cmd 则零速；`0` 关闭 |
 | `max_linear_speed` / `max_angular_speed` | `0` | `0` = 不限速 |
+| `max_linear_accel` / `min_turning_radius` | `0` | 广告 / Ackermann 约束 |
 | `odom_period_ms` | `20` | 状态 / odom 发布周期 |
 | `odom_frame_id` / `base_frame_id` | `odom` / `base_link` | Odometry 坐标系 |
 | `params` / `params_file` | — | 厂商参数 |
@@ -151,7 +160,11 @@ chassis:
   enable: false
   name: base
   backend: stub
+  locomotion: differential
+  require_arm: false
   cmd_vel_channel: /cmd_vel
+  mode_cmd_channel: /chassis/mode
+  capability_channel: /chassis/capability
   odom_channel: /odom
   watchdog_ms: 200
   odom_period_ms: 20

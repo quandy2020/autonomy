@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file udp_scan_driver_base.hpp
  * @brief CRTP base for UDP lidar drivers: Read → Queue → Cut → Convert → Publish.
  *
  * Traits must provide PacketBuffer, ScanPackets, BeamCalibration, packet size,
@@ -52,6 +52,7 @@
 #include "autodriver/types/sensor_sample.hpp"
 #include "autolink/common/log.hpp"
 #include "autolink/time/time.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 namespace lidar {
@@ -79,14 +80,24 @@ class UdpScanDriverBase : public SensorDriver,
                           public LidarComponentBase,
                           public MotionPoseSink {
 public:
+    /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(UdpScanDriverBase)
+
+    /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(UdpScanDriverBase)
+
     using PacketBuffer = typename Traits::PacketBuffer;
     using ScanPackets = typename Traits::ScanPackets;
     using BeamCalibration = typename Traits::BeamCalibration;
 
     /**
      * @brief Parse common YAML params, load calibration via Traits, InitBase.
-     * @param id Sensor instance id.
-     * @param params DriverParams (cold-path parse only).
+     * @param[in] id Sensor instance id.
+     * @param[in] params DriverParams (cold-path parse only).
      */
     UdpScanDriverBase(SensorId id, hardware::DriverParams params)
         : id_(std::move(id)), params_(std::move(params)) {
@@ -157,7 +168,16 @@ public:
      */
     ~UdpScanDriverBase() override { Stop(); }
 
+    /**
+     * @brief Report sensor modality.
+     * @return SensorType::kLidar3d.
+     */
     SensorType GetSensorType() const override { return SensorType::kLidar3d; }
+
+    /**
+     * @brief Configured sensor instance id.
+     * @return Reference to the id passed at construction.
+     */
     const SensorId& GetSensorId() const override { return id_; }
 
     /**
@@ -221,38 +241,65 @@ public:
         last_azimuth_centideg_ = -1;
     }
 
+    /**
+     * @brief Whether capture threads are active.
+     * @return true while Start succeeded and Stop has not completed.
+     */
     bool IsRunning() const override { return running_.load(); }
 
+    /**
+     * @brief Register the sample sink for scan / cloud samples.
+     * @param[in] callback Invoked with owning sample clones.
+     */
     void SetSampleCallback(SampleCallback callback) override {
         callback_ = std::move(callback);
     }
 
+    /**
+     * @brief Install pose lookup used by the motion compensator.
+     * @param[in] lookup PoseLookup callable; no-op when compensator is disabled.
+     */
     void SetPoseLookup(PoseLookup lookup) override {
         if (compensator_) {
             compensator_->SetPoseLookup(std::move(lookup));
         }
     }
 
+    /**
+     * @brief Push a timed world←lidar pose into the internal PoseBuffer.
+     * @param[in] time_ns Pose timestamp in nanoseconds.
+     * @param[in] pose Affine transform at @p time_ns.
+     */
     void PushPose(std::uint64_t time_ns, const Eigen::Affine3d& pose) override {
         if (pose_buffer_) {
             pose_buffer_->Push(time_ns, pose);
         }
     }
 
+    /**
+     * @brief Shared pose buffer used when enable_compensator is true.
+     * @return Shared PoseBuffer, or nullptr when compensator is disabled.
+     */
     PoseBuffer::SharedPtr pose_buffer() const override { return pose_buffer_; }
 
     /**
      * @brief CRTP access to the concrete driver.
+     * @return Reference to @p Derived.
      */
     Derived& self() { return static_cast<Derived&>(*this); }
+
+    /**
+     * @brief Const CRTP access to the concrete driver.
+     * @return Const reference to @p Derived.
+     */
     const Derived& self() const {
         return static_cast<const Derived&>(*this);
     }
 
     /**
      * @brief Inject one vendor packet (online aggregation / unit tests).
-     * @param data Packet bytes.
-     * @param size Byte length; must pass Traits::AcceptPacket.
+     * @param[in] data Packet bytes.
+     * @param[in] size Byte length; must pass Traits::AcceptPacket.
      */
     void PushRawPacket(const std::uint8_t* data, std::size_t size) {
         if (!Traits::AcceptPacket(data, size)) {
@@ -265,7 +312,7 @@ public:
 
     /**
      * @brief Replay one recorded LidarPacketScan (Convert → cloud only).
-     * @param scan Aggregated scan sample.
+     * @param[in] scan Aggregated scan sample.
      */
     void PushScan(std::shared_ptr<SensorSample> scan) {
         InjectScan(std::move(scan));
@@ -324,11 +371,26 @@ protected:
 
     /**
      * @brief Access Traits calibration held by the base.
+     * @return Const reference to the loaded / default BeamCalibration.
      */
     const BeamCalibration& calibration() const { return calibration_; }
 
+    /**
+     * @brief Sensor instance id.
+     * @return Const reference to @p id_.
+     */
     const SensorId& id() const { return id_; }
+
+    /**
+     * @brief PointCloud2 / scan frame_id.
+     * @return Const reference to @p frame_id_.
+     */
     const std::string& frame_id() const { return frame_id_; }
+
+    /**
+     * @brief YAML model string.
+     * @return Const reference to @p model_.
+     */
     const std::string& model() const { return model_; }
 
 private:

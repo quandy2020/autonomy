@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Autodriver contributors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  */
 
 /**
- * @file
+ * @file backend_registry.hpp
  * @brief Shared BackendRegistry template for sensor / chassis factories.
  *
  * Modality headers (imu / gps / camera / …) provide a Policy and
@@ -33,6 +33,7 @@
 #include "autodriver/common/named_factory.hpp"
 #include "autodriver/driver_params.hpp"
 #include "autolink/common/log.hpp"
+#include "autolink/common/macros.hpp"
 
 namespace autodriver {
 
@@ -53,20 +54,20 @@ template <typename Product, typename IdType, typename Policy>
 class BackendRegistry {
 public:
     /**
+     * @brief SharedPtr / ConstSharedPtr aliases and Class::make_shared().
+     */
+    AUTOLINK_SHARED_PTR_DEFINITIONS(BackendRegistry)
+
+    /**
+     * @brief Disable copy construction and copy assignment.
+     */
+    DISALLOW_COPY_AND_ASSIGN(BackendRegistry)
+
+    /**
      * @brief Creator signature: owning Product* (or nullptr).
      */
     using DriverFactory =
         typename NamedProductFactory<Product, IdType>::Creator;
-
-    /**
-     * @brief Shared ownership alias for the registry itself (rarely needed).
-     */
-    using SharedPtr = std::shared_ptr<BackendRegistry>;
-
-    /**
-     * @brief Const shared ownership alias for the registry itself.
-     */
-    using ConstSharedPtr = std::shared_ptr<const BackendRegistry>;
 
     /**
      * @brief Access the process-wide singleton (static-init backends register here).
@@ -79,8 +80,8 @@ public:
 
     /**
      * @brief Register or replace a factory under a canonical backend name.
-     * @param name Canonical backend string (e.g. "serial", "velodyne").
-     * @param factory Creator returning new Product*.
+     * @param[in] name Canonical backend string (e.g. "serial", "velodyne").
+     * @param[in] factory Creator returning new Product*.
      */
     void RegisterBackend(const std::string& name, DriverFactory factory) {
         factory_.Register(name, std::move(factory));
@@ -88,8 +89,8 @@ public:
 
     /**
      * @brief Map an alias onto an already-registered canonical backend name.
-     * @param alias Alternate YAML name (e.g. "udp", "sim").
-     * @param canonical Existing registered name (e.g. "velodyne", "stub").
+     * @param[in] alias Alternate YAML name (e.g. "udp", "sim").
+     * @param[in] canonical Existing registered name (e.g. "velodyne", "stub").
      */
     void RegisterBackendAlias(const std::string& alias,
                               const std::string& canonical) {
@@ -98,9 +99,9 @@ public:
 
     /**
      * @brief Create a driver for @p backend after alias resolve.
-     * @param backend YAML `backend` or alias; empty → Policy::kDefaultBackend.
-     * @param id Instance id passed to the factory.
-     * @param params YAML params (and shorthand merges).
+     * @param[in] backend YAML `backend` or alias; empty → Policy::kDefaultBackend.
+     * @param[in] id Instance id passed to the factory.
+     * @param[in] params YAML params (and shorthand merges).
      * @return Shared product, or nullptr if unknown / creator returns null.
      */
     std::shared_ptr<Product> CreateDriver(
@@ -117,7 +118,7 @@ public:
 
     /**
      * @brief Check whether @p backend resolves to a registered factory.
-     * @param backend Canonical name or alias; empty → Policy::kDefaultBackend.
+     * @param[in] backend Canonical name or alias; empty → Policy::kDefaultBackend.
      * @return true if a factory is available after alias resolve.
      */
     bool HasBackend(const std::string& backend) const {
@@ -129,9 +130,9 @@ public:
      * @brief Register a canonical backend plus optional aliases in one call.
      *
      * Used by REGISTER_*_BACKEND macros at static init.
-     * @param name Canonical backend string.
-     * @param factory DriverFactory for @p name.
-     * @param aliases Optional null-terminated C string aliases (empty skipped).
+     * @param[in] name Canonical backend string.
+     * @param[in] factory DriverFactory for @p name.
+     * @param[in] aliases Optional null-terminated C string aliases (empty skipped).
      */
     static void RegisterWithAliases(
         const std::string& name, DriverFactory factory,
