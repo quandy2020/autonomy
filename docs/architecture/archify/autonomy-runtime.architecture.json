@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Autonomy 运行时架构",
+    "locale": "zh-CN",
+    "animation": "trace",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase",
+    "viewBox": [1390, 690],
+    "views": [
+      { "id": "navigation-path", "label": "导航主链路", "focus": ["client", "task_api", "task", "planning", "control", "autolink", "autodriver", "hardware"], "note": "从外部任务请求追踪到机器人底盘执行。" },
+      { "id": "world-model", "label": "环境理解", "focus": ["perception", "localization", "map", "planning", "control"], "note": "查看感知、定位与地图如何支撑规划控制。" },
+      { "id": "observability", "label": "可视化链路", "focus": ["autolink", "visualization"], "note": "查看运行时消息如何进入 AutoViz 与 Foxglove。" }
+    ]
+  },
+  "components": [
+    { "id": "client", "type": "external", "label": "User / Client", "sublabel": "任务意图", "pos": [30, 315], "size": [130, 66] },
+    { "id": "task_api", "type": "frontend", "label": "Task API", "sublabel": "导航 · 跟踪 · 建图", "pos": [210, 315], "size": [140, 66] },
+    { "id": "task", "type": "backend", "label": "Task Orchestration", "sublabel": "Behavior Tree", "pos": [400, 315], "size": [160, 66] },
+    { "id": "perception", "type": "backend", "label": "Perception", "sublabel": "检测 · 深度 · 跟随", "pos": [400, 105], "size": [150, 66] },
+    { "id": "localization", "type": "backend", "label": "Localization", "sublabel": "Atlas / Cartographer", "pos": [590, 105], "size": [155, 66] },
+    { "id": "map", "type": "database", "label": "Map", "sublabel": "costmap_2d / grid_map", "pos": [785, 105], "size": [155, 66] },
+    { "id": "planning", "type": "backend", "label": "Planning", "sublabel": "Global path", "pos": [610, 315], "size": [140, 66] },
+    { "id": "control", "type": "backend", "label": "Control", "sublabel": "Local motion", "pos": [800, 315], "size": [140, 66] },
+    { "id": "autolink", "type": "messagebus", "label": "Autolink RT", "sublabel": "Channel · Service · Action", "pos": [990, 315], "size": [150, 66] },
+    { "id": "autodriver", "type": "backend", "label": "AutoDriver", "sublabel": "Hardware abstraction", "pos": [1190, 315], "size": [145, 66] },
+    { "id": "hardware", "type": "external", "label": "Robot Hardware", "sublabel": "Sensors · chassis", "pos": [1190, 515], "size": [145, 66] },
+    { "id": "visualization", "type": "frontend", "label": "Visualization", "sublabel": "AutoViz · Foxglove", "pos": [990, 515], "size": [150, 66] }
+  ],
+  "connections": [
+    { "id": "submit-task", "from": "client", "to": "task_api", "label": "提交任务", "variant": "emphasis" },
+    { "id": "dispatch-task", "from": "task_api", "to": "task", "label": "Action / Service", "variant": "emphasis", "labelAt": [375, 395] },
+    { "id": "plan-request", "from": "task", "to": "planning", "label": "规划请求", "variant": "emphasis" },
+    { "id": "path-to-control", "from": "planning", "to": "control", "label": "Path", "variant": "emphasis", "labelDy": 50 },
+    { "id": "control-command", "from": "control", "to": "autolink", "label": "cmd_vel", "variant": "emphasis" },
+    { "id": "runtime-to-driver", "from": "autolink", "to": "autodriver", "label": "Channel", "variant": "emphasis" },
+    { "id": "driver-to-hardware", "from": "autodriver", "to": "hardware", "label": "设备 I/O", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "labelAt": [1262, 395] },
+    { "id": "perception-to-task", "from": "perception", "to": "task", "label": "目标 / 场景", "variant": "default", "fromSide": "bottom", "toSide": "top" },
+    { "id": "localization-to-map", "from": "localization", "to": "map", "label": "Pose / TF", "variant": "default", "labelAt": [765, 185] },
+    { "id": "map-to-planning", "from": "map", "to": "planning", "label": "地图查询", "variant": "default", "fromSide": "bottom", "toSide": "top" },
+    { "id": "runtime-to-viz", "from": "autolink", "to": "visualization", "label": "消息流", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelAt": [1065, 395] }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "导航主链路", "items": ["任务由 Task API 进入行为树编排", "Planning 与 Control 分离，输出经 Autolink RT 到达设备层"] },
+    { "dot": "emerald", "title": "环境模型", "items": ["Perception 提供目标与场景信息", "Localization 和 Map 为规划控制提供位姿与代价信息"] },
+    { "dot": "violet", "title": "通信边界", "items": ["Autolink 提供 Channel、Service 与 Action", "AutoViz 和 Foxglove 只消费已发布的运行时消息"] }
+  ]
+}

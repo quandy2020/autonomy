@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1240" viewBox="0 0 2400 1240" role="img" aria-labelledby="title desc">
+  <title id="title">Autonomy system architecture</title>
+  <desc id="desc">Layered architecture of the Autonomy mobile robot framework, from development tools and applications through task orchestration, robot capabilities, Autolink RT, drivers, and hardware.</desc>
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#10233f" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .title { font: 700 52px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #12233a; }
+      .layer-title { font: 700 30px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #ffffff; }
+      .layer-note { font: 500 19px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #dbe9f7; }
+      .card-title { font: 700 25px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #18304c; }
+      .card-note { font: 500 18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #617288; }
+      .pill { font: 650 21px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #ffffff; }
+      .runtime-title { font: 750 29px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #ffffff; }
+      .runtime-note { font: 500 19px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #dfe8f5; }
+    </style>
+  </defs>
+
+  <rect width="2400" height="1240" fill="#f6f8fb"/>
+  <text x="120" y="82" class="title">Autonomy Architecture</text>
+
+  <g transform="translate(0,-40)">
+
+  <!-- Layer labels -->
+  <g filter="url(#shadow)">
+    <rect x="120" y="170" width="310" height="150" rx="18" fill="#123f73"/>
+    <text x="275" y="230" text-anchor="middle" class="layer-title">Ecosystem</text>
+    <text x="275" y="265" text-anchor="middle" class="layer-note">Development &amp; operations</text>
+
+    <rect x="120" y="342" width="310" height="190" rx="18" fill="#0b7180"/>
+    <text x="275" y="417" text-anchor="middle" class="layer-title">Application</text>
+    <text x="275" y="452" text-anchor="middle" class="layer-note">Interfaces &amp; task intent</text>
+
+    <rect x="120" y="554" width="310" height="354" rx="18" fill="#304564"/>
+    <text x="275" y="705" text-anchor="middle" class="layer-title">Autonomy Core</text>
+    <text x="275" y="740" text-anchor="middle" class="layer-note">Orchestration &amp; algorithms</text>
+
+    <rect x="120" y="930" width="310" height="156" rx="18" fill="#46536f"/>
+    <text x="275" y="990" text-anchor="middle" class="layer-title">Platform</text>
+    <text x="275" y="1025" text-anchor="middle" class="layer-note">Communication &amp; integration</text>
+
+    <rect x="120" y="1108" width="310" height="104" rx="18" fill="#655d13"/>
+    <text x="275" y="1172" text-anchor="middle" class="layer-title">Hardware</text>
+  </g>
+
+  <!-- Ecosystem -->
+  <g filter="url(#shadow)">
+    <rect x="462" y="170" width="1818" height="150" rx="18" fill="#ffffff"/>
+  </g>
+  <g>
+    <rect x="496" y="204" width="300" height="82" rx="13" fill="#e7eef8"/>
+    <rect x="818" y="204" width="300" height="82" rx="13" fill="#e7eef8"/>
+    <rect x="1140" y="204" width="300" height="82" rx="13" fill="#e7eef8"/>
+    <rect x="1462" y="204" width="300" height="82" rx="13" fill="#e7eef8"/>
+    <rect x="1784" y="204" width="462" height="82" rx="13" fill="#f4e8e8"/>
+    <text x="646" y="255" text-anchor="middle" class="card-title">AutoSim</text>
+    <text x="968" y="255" text-anchor="middle" class="card-title">Data</text>
+    <text x="1290" y="255" text-anchor="middle" class="card-title">Training</text>
+    <text x="1612" y="255" text-anchor="middle" class="card-title">Docker</text>
+    <text x="2015" y="255" text-anchor="middle" class="card-title">Ansible Deployment</text>
+  </g>
+
+  <!-- Application -->
+  <g filter="url(#shadow)">
+    <rect x="462" y="342" width="1818" height="190" rx="18" fill="#ffffff"/>
+  </g>
+  <g>
+    <rect x="496" y="377" width="410" height="120" rx="14" fill="#dff2f3"/>
+    <rect x="928" y="377" width="410" height="120" rx="14" fill="#dff2f3"/>
+    <rect x="1360" y="377" width="410" height="120" rx="14" fill="#dff2f3"/>
+    <rect x="1792" y="377" width="454" height="120" rx="14" fill="#dff2f3"/>
+    <text x="701" y="428" text-anchor="middle" class="card-title">Task API</text>
+    <text x="701" y="462" text-anchor="middle" class="card-note">Robot task interfaces</text>
+    <text x="1133" y="428" text-anchor="middle" class="card-title">Bridge</text>
+    <text x="1133" y="462" text-anchor="middle" class="card-note">gRPC · external clients</text>
+    <text x="1565" y="428" text-anchor="middle" class="card-title">Visualization</text>
+    <text x="1565" y="462" text-anchor="middle" class="card-note">AutoViz · Foxglove</text>
+    <text x="2019" y="428" text-anchor="middle" class="card-title">Tools</text>
+    <text x="2019" y="462" text-anchor="middle" class="card-note">CLI · evaluator · bag conversion</text>
+  </g>
+
+  <!-- Core: orchestration -->
+  <g filter="url(#shadow)">
+    <rect x="462" y="554" width="1818" height="136" rx="18" fill="#ffffff"/>
+  </g>
+  <text x="500" y="600" class="card-title">Task Orchestration · Behavior Tree</text>
+  <text x="500" y="632" class="card-note">Coordinates long-running robot capabilities</text>
+  <g>
+    <rect x="1140" y="582" width="170" height="72" rx="36" fill="#177785"/>
+    <rect x="1328" y="582" width="160" height="72" rx="36" fill="#177785"/>
+    <rect x="1506" y="582" width="160" height="72" rx="36" fill="#177785"/>
+    <rect x="1684" y="582" width="160" height="72" rx="36" fill="#177785"/>
+    <rect x="1862" y="582" width="160" height="72" rx="36" fill="#177785"/>
+    <rect x="2040" y="582" width="176" height="72" rx="36" fill="#177785"/>
+    <text x="1225" y="626" text-anchor="middle" class="pill">Navigation</text>
+    <text x="1408" y="626" text-anchor="middle" class="pill">Tracking</text>
+    <text x="1586" y="626" text-anchor="middle" class="pill">Mapping</text>
+    <text x="1764" y="626" text-anchor="middle" class="pill">Teleop</text>
+    <text x="1942" y="626" text-anchor="middle" class="pill">Charging</text>
+    <text x="2128" y="626" text-anchor="middle" class="pill">Scheduling</text>
+  </g>
+
+  <!-- Core: algorithms -->
+  <g filter="url(#shadow)">
+    <rect x="462" y="712" width="1818" height="196" rx="18" fill="#ffffff"/>
+  </g>
+  <text x="500" y="760" class="card-title">Robot Capabilities</text>
+  <g>
+    <rect x="496" y="790" width="230" height="82" rx="13" fill="#e8edf5"/>
+    <rect x="742" y="790" width="230" height="82" rx="13" fill="#e8edf5"/>
+    <rect x="988" y="790" width="230" height="82" rx="13" fill="#e8edf5"/>
+    <rect x="1234" y="790" width="230" height="82" rx="13" fill="#e8edf5"/>
+    <rect x="1480" y="790" width="230" height="82" rx="13" fill="#e8edf5"/>
+    <rect x="1726" y="790" width="230" height="82" rx="13" fill="#f8fafc" stroke="#aebaca" stroke-width="3" stroke-dasharray="10 8"/>
+    <rect x="1972" y="790" width="274" height="82" rx="13" fill="#e8edf5"/>
+    <text x="611" y="842" text-anchor="middle" class="card-title">Perception</text>
+    <text x="857" y="842" text-anchor="middle" class="card-title">Localization</text>
+    <text x="1103" y="842" text-anchor="middle" class="card-title">Map</text>
+    <text x="1349" y="842" text-anchor="middle" class="card-title">Planning</text>
+    <text x="1595" y="842" text-anchor="middle" class="card-title">Control</text>
+    <text x="1841" y="832" text-anchor="middle" class="card-title">Prediction</text>
+    <text x="1841" y="858" text-anchor="middle" class="card-note">Interface</text>
+    <text x="2109" y="842" text-anchor="middle" class="card-title">Audio</text>
+  </g>
+
+  <!-- Platform -->
+  <g filter="url(#shadow)">
+    <rect x="462" y="930" width="1818" height="156" rx="18" fill="#3d4d6d"/>
+  </g>
+  <text x="496" y="985" class="runtime-title">Autolink RT</text>
+  <text x="496" y="1020" class="runtime-note">Node · Channel · Service · Action · in-process / shared memory / RTPS</text>
+  <g>
+    <rect x="1580" y="962" width="300" height="86" rx="13" fill="#536584"/>
+    <rect x="1900" y="962" width="346" height="86" rx="13" fill="#536584"/>
+    <text x="1730" y="1014" text-anchor="middle" class="pill">AutoMsgs</text>
+    <text x="2073" y="1014" text-anchor="middle" class="pill">Linux · x86_64 / ARM64</text>
+  </g>
+
+  <!-- Hardware -->
+  <g filter="url(#shadow)">
+    <rect x="462" y="1108" width="1818" height="104" rx="18" fill="#ffffff"/>
+  </g>
+  <line x1="1080" y1="1130" x2="1080" y2="1190" stroke="#d9e0e9" stroke-width="2"/>
+  <line x1="1700" y1="1130" x2="1700" y2="1190" stroke="#d9e0e9" stroke-width="2"/>
+  <text x="500" y="1155" class="card-title">AutoDriver</text>
+  <text x="500" y="1183" class="card-note">Camera · LiDAR · Radar · GPS · CAN Bus</text>
+  <text x="1118" y="1155" class="card-title">Hardware Interface</text>
+  <text x="1118" y="1183" class="card-note">Device abstraction · chassis access</text>
+  <text x="1738" y="1155" class="card-title">Robot Hardware</text>
+  <text x="1738" y="1183" class="card-note">Sensors · compute · mobile base</text>
+
+  </g>
+</svg>

@@ -1,0 +1,59 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Autonomy 导航任务工作流",
+    "locale": "zh-CN",
+    "animation": "trace",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "happy-path", "label": "导航主流程", "focus": ["goal", "task", "context", "plan", "control", "cmd"], "note": "从目标输入到速度指令输出。" },
+      { "id": "planning-recovery", "label": "规划恢复", "focus": ["plan", "plan_fail", "replan"], "note": "规划失败后进入清理、等待或重新提交阶段。" },
+      { "id": "cancel-path", "label": "取消路径", "focus": ["task", "cancel", "stopped"], "note": "取消请求终止当前任务并停止控制输出。" }
+    ]
+  },
+  "lanes": [
+    { "id": "client", "label": "任务入口" },
+    { "id": "task_lane", "label": "Task / Behavior Tree" },
+    { "id": "navigation", "label": "导航栈" },
+    { "id": "recovery", "label": "恢复与终止", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "intake", "label": "接收任务", "fromCol": 0, "toCol": 1 },
+    { "id": "prepare", "label": "构建上下文", "fromCol": 2, "toCol": 2 },
+    { "id": "execute", "label": "规划与控制", "fromCol": 3, "toCol": 5, "variant": "emphasis" }
+  ],
+  "groups": [
+    { "id": "navigation_loop", "label": "导航执行循环", "lane": "navigation", "fromCol": 2, "toCol": 4, "variant": "emphasis" },
+    { "id": "recovery_paths", "label": "失败与取消", "lane": "recovery", "fromCol": 1, "toCol": 5, "variant": "security" }
+  ],
+  "mainPath": ["goal", "task", "context", "plan", "control", "cmd"],
+  "nodes": [
+    { "id": "goal", "lane": "client", "col": 0, "type": "external", "label": "Navigation Goal", "sublabel": "目标位姿", "width": 145 },
+    { "id": "cmd", "lane": "client", "col": 5, "type": "external", "label": "cmd_vel", "sublabel": "底盘速度指令", "width": 140 },
+    { "id": "task", "lane": "task_lane", "col": 1, "type": "backend", "label": "Task Server", "sublabel": "Behavior Tree tick", "width": 145 },
+    { "id": "context", "lane": "navigation", "col": 2, "type": "database", "label": "Navigation Context", "sublabel": "Pose · TF · Costmap", "width": 150 },
+    { "id": "plan", "lane": "navigation", "col": 3, "type": "backend", "label": "Planning", "sublabel": "生成全局路径", "width": 145 },
+    { "id": "control", "lane": "navigation", "col": 4, "type": "backend", "label": "Control", "sublabel": "计算局部速度", "width": 145 },
+    { "id": "cancel", "lane": "recovery", "col": 1, "type": "security", "label": "Cancel", "sublabel": "取消当前任务", "width": 140 },
+    { "id": "plan_fail", "lane": "recovery", "col": 3, "type": "security", "label": "Planning Failed", "sublabel": "无有效路径", "width": 150 },
+    { "id": "replan", "lane": "recovery", "col": 4, "type": "messagebus", "label": "Recovery Result", "sublabel": "清理 · 等待 · 重新提交", "width": 155 },
+    { "id": "stopped", "lane": "recovery", "col": 5, "type": "security", "label": "Stopped", "sublabel": "停止控制输出", "width": 140 }
+  ],
+  "edges": [
+    { "id": "goal-to-task", "from": "goal", "to": "task", "label": "NavigateToPose", "variant": "emphasis" },
+    { "id": "task-to-context", "from": "task", "to": "context", "label": "读取状态", "variant": "default" },
+    { "id": "context-to-plan", "from": "context", "to": "plan", "label": "Pose + Costmap", "variant": "emphasis" },
+    { "id": "plan-to-control", "from": "plan", "to": "control", "label": "Path", "variant": "emphasis" },
+    { "id": "control-to-cmd", "from": "control", "to": "cmd", "label": "速度命令", "variant": "emphasis" },
+    { "id": "task-cancel", "from": "task", "to": "cancel", "label": "取消请求", "variant": "security", "role": "branch" },
+    { "id": "cancel-stop", "from": "cancel", "to": "stopped", "label": "停止", "variant": "security", "role": "error" },
+    { "id": "planning-error", "from": "plan", "to": "plan_fail", "label": "失败", "variant": "security", "role": "error" },
+    { "id": "recover-plan", "from": "plan_fail", "to": "replan", "label": "进入恢复", "variant": "dashed", "role": "branch" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "正常路径", "items": ["Behavior Tree 驱动任务生命周期", "Planning 输出路径，Control 输出速度命令"] },
+    { "dot": "rose", "title": "异常路径", "items": ["规划失败进入恢复或重试", "取消请求必须停止当前控制输出"] }
+  ]
+}

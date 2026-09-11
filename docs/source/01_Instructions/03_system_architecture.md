@@ -4,7 +4,7 @@
 
 ![Autonomy 系统分层架构](./images/autonomy_architecture.png)
 
-上图自上而下分为四层：**Cloud Service**（仿真 / 数据 / 训练 / Tasks）、**Software Application**（应用与扩展插件）、**Software Core**（地图 / 定位 / 感知 / 规划 / 控制 / 仿真 + Autolink + OS）、**Hardware Device**（硬件接口）。下文 HTML 架构图与文档各章节一一对应。
+上图自上而下分为五层：**Ecosystem**（AutoSim、数据、训练、Docker 与 Ansible 部署）、**Application**（任务 API、Bridge、可视化与工具）、**Autonomy Core**（行为树任务编排与机器人算法能力）、**Platform**（Autolink RT、AutoMsgs 与 Linux 平台）和 **Hardware**（AutoDriver、硬件抽象与机器人硬件）。下文 HTML 架构图进一步展开核心模块与运行时数据流。
 
 ## 3.1 设计目标
 
@@ -139,9 +139,9 @@
 | `autonomy/map/` | 地图与代价地图 | [07 Mapping](../07_Map/index.rst) |
 | `autonomy/planning/` | 全局路径规划 | [08 Planning](../08_Planning/index.rst) |
 | `autonomy/control/` | 局部运动控制 | [09 Control](../09_Control/index.rst) |
-| `autonomy/navigator/` | 行为树**导航编排** | [16 Navigator](../16_Navigator/index.rst) |
+| `autonomy/task/` | 行为树任务编排（导航 / 跟踪 / 建图 / 遥操 / 回充） | [16 Navigator](../16_Navigator/index.rst) |
 | `autonomy/bridge/` | gRPC 等外部桥接 | [15 Bridge](../15_Bridge/index.rst) |
-| `autonomy/commsgs/` | 消息类型 | [14 Commsgs](../14_Commsgs/index.rst) |
+| `automsgs/` | 消息类型 | [14 Commsgs](../14_Commsgs/index.rst) |
 | `autonomy/transform/` | TF 缓冲与变换 | — |
 | `autonomy/sensor/` | 传感器同步 | — |
 | `autonomy/perception/` | 感知（扩展） | [10 Perception](../10_Perception/index.rst) |
