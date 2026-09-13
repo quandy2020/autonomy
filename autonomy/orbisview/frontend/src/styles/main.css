@@ -245,77 +245,53 @@ body { margin: 0; }
 
 .tf-list { list-style: none; padding: 0; margin: 0; font-size: 0.85rem; }
 .tf-list li { margin: 0.35rem 0; }
-.tf-tree-panel { min-height: 0; }
-.tf-tree-forest { display: flex; flex-direction: column; gap: 0.75rem; overflow: auto; }
-.tf-tree-root {
-  list-style: none;
-  margin: 0;
-  padding: 0.5rem 0.6rem;
-  background: #0c1117;
+.tf-tree-panel { min-height: 0; display: flex; flex-direction: column; }
+.tf-graph-scroll {
+  overflow: auto;
+  max-height: 100%;
+  background: #f7f7f7;
   border: 1px solid #243040;
   border-radius: 8px;
 }
-.tf-tree-children {
-  list-style: none;
-  margin: 0.15rem 0 0;
-  padding: 0 0 0 1.1rem;
-  position: relative;
+.tf-graph-svg { display: block; min-width: 100%; }
+.tf-graph-banner { fill: #ffffff; stroke: #333; stroke-width: 1.2; }
+.tf-graph-banner-title {
+  fill: #111;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: ui-sans-serif, system-ui, sans-serif;
 }
-.tf-tree-children::before {
-  content: '';
-  position: absolute;
-  left: 0.35rem;
-  top: 0;
-  bottom: 0.7rem;
-  width: 1px;
-  background: #3d5166;
+.tf-graph-banner-sub {
+  fill: #444;
+  font-size: 9px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
 }
-.tf-tree-item {
-  position: relative;
-  margin: 0.2rem 0;
+.tf-graph-node {
+  fill: #ffffff;
+  stroke: #222;
+  stroke-width: 1.5;
 }
-.tf-tree-item::before {
-  content: '';
-  position: absolute;
-  left: -0.75rem;
-  top: 0.7rem;
-  width: 0.7rem;
-  height: 1px;
-  background: #3d5166;
-}
-.tf-tree-root > .tf-tree-item::before { display: none; }
-.tf-tree-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.45rem 0.65rem;
-  padding: 0.2rem 0.35rem;
-  border-radius: 6px;
-}
-.tf-tree-row:hover { background: #151c24; }
-.tf-tree-frame {
-  font-family: ui-monospace, monospace;
-  font-size: 0.88rem;
+.tf-graph-node-label {
+  fill: #111;
+  font-size: 12px;
   font-weight: 600;
-  color: #e8eef5;
-  background: #1a2430;
-  border: 1px solid #2a3a4c;
-  border-radius: 999px;
-  padding: 0.12rem 0.55rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
 }
-.tf-tree-pose {
-  font-family: ui-monospace, monospace;
-  font-size: 0.75rem;
-  color: #9db0c4;
+.tf-graph-edge {
+  fill: none;
+  stroke: #555;
+  stroke-width: 1.4;
 }
-.tf-tree-root-tag {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #69f0ae;
-  border: 1px solid #2e7d4f;
-  border-radius: 4px;
-  padding: 0.05rem 0.35rem;
+.tf-graph-edge-label-bg {
+  fill: #ffffff;
+  stroke: #888;
+  stroke-width: 0.8;
+  opacity: 0.96;
+}
+.tf-graph-edge-label {
+  fill: #222;
+  font-size: 9px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 .tf-tree-note { font-size: 0.8rem; margin: 0.5rem 0 0; }
 .tf-tree-orphans { margin-top: 0.65rem; }
