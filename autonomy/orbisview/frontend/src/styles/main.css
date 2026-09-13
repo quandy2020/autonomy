@@ -154,3 +154,82 @@ body { margin: 0; }
 .wp-item.active { border-color: #2b6cb0; background: #1a2838; }
 .wp-actions { display: flex; gap: 0.25rem; }
 .wp-actions button { padding: 0.15rem 0.4rem; }
+
+/* —— Icon system —— */
+.ov-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+  color: inherit;
+}
+.ov-icon-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  line-height: 1.2;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  letter-spacing: 0.02em;
+}
+.brand .ov-icon { color: #4fc3f7; }
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.btn-icon .catalog-add {
+  margin-left: auto;
+  opacity: 0.55;
+}
+.catalog-item.btn-icon {
+  display: flex;
+  width: 100%;
+  justify-content: flex-start;
+  padding: 0.4rem 0.55rem;
+}
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid #2a3a4c;
+  background: #1a2430;
+}
+.status-pill.ok { color: #69f0ae; border-color: #2e7d4f; }
+.status-pill.warn { color: #ffd54f; border-color: #8d6e1a; }
+.status-pill.bad { color: #ef9a9a; border-color: #8b3a3a; }
+.topbar-hud {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.layer-toggle {
+  gap: 0.45rem;
+  cursor: pointer;
+  user-select: none;
+}
+.layer-toggle .ov-icon { color: #9db0c4; }
+.mosaic-window-toolbar .ov-icon-label {
+  font-size: 0.85rem;
+  color: #c5d4e3;
+}
+.mosaic-window-title {
+  flex: 1;
+  min-width: 0;
+  padding: 0 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.view3d-panel { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.view3d-host { position: relative; width: 100%; min-height: 240px; flex: 1; }
+.view3d-host canvas { display: block; width: 100%; height: 100%; }
+.view3d-toolbar { display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.35rem; }
+.view3d-toolbar label { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; color: #9db0c4; }
+
