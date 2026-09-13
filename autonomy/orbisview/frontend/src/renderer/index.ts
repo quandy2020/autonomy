@@ -13,9 +13,12 @@ export { drawMapHud } from './map2d/drawHud';
 export {
   toThree,
   createView3DScene,
+  syncView3DScene,
+  createCameraController,
 } from './view3d';
 export type {
   View3DContext,
   View3DSceneInput,
   View3DOpts,
+  CameraController,
 } from './view3d';

@@ -4,7 +4,7 @@
 
 - **不**引入 Cyber RT / Bazel
 - **不**替换 `autonomy/visualization`（Foxglove）或 `autoviz`
-- 目录布局对齐 Apollo Dreamview；**不** vendoring Dreamview 源码
+- **不** vendoring Dreamview 源码
 - 传输栈：**CivetWeb**（`thirdparty/civetweb`，MIT）
 
 设计：[`docs/superpowers/specs/2026-09-13-orbisview-layered-migration-design.md`](../../docs/superpowers/specs/2026-09-13-orbisview-layered-migration-design.md)
@@ -13,14 +13,14 @@
 
 ```shell
 autonomy/orbisview
-├── backend               # OrbisView backend（对齐 Dreamview）
+├── backend               # C++ 服务（WS / mock / HMI / recorder / plugins）
 ├── CMakeLists.txt
 ├── conf
 ├── frontend
 ├── launch
 ├── main.cc
-├── proto                 # 仅 *.proto（stream / render / record / plugin …）
-├── thirdparty/          # civetweb（构建）
+├── proto                 # 仅 *.proto
+├── thirdparty/           # civetweb
 └── README.md
 ```
 
@@ -172,6 +172,6 @@ cd autonomy/orbisview/frontend && npm test && npm run build
 浏览器 checklist：
 
 1. 启动 backend + `npm run dev`，Connect
-2. View3D：拖拽旋转 / 滚轮缩放，图层 `pointcloud` 开关
+2. View3D：Follow/Free/Reset；图层 grid/robot/path/pointcloud/footprint/map/costmap/laser；cloudColor / mapOpacity / laserHeight
 3. Image：同时显示 Image 与 Depth
 4. 停止 `autonomy.orbisview`，顶栏应变为 `reconnecting`；重启后自动恢复订阅

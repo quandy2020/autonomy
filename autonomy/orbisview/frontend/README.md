@@ -1,26 +1,21 @@
 # OrbisView frontend
 
-工程布局对齐 Apollo Dreamview `frontend/`（`assets` / `config` / `proto_bundle` / `setup.sh` / `src/{components,store,renderer,styles,utils}`）。
-构建工具为 **Vite**（DV 为 webpack），路径别名与 DV `jsconfig` 一致。
+Vite + React 前端。WS 载荷为 JSON。
 
 ```text
 frontend/
-├── assets/           # 静态资源（Vite publicDir）
-├── config/           # parameters.js
-├── proto_bundle/     # gen_pbjs 产物
-├── gen_pbjs.sh
-├── setup.sh
-├── package.json      # start / build（对标 DV scripts）
-├── jsconfig.json
+├── assets/           # Vite publicDir（plugins 清单等）
+├── package.json
 ├── vite.config.ts
 └── src/
-    ├── app.tsx       # 入口（对标 app.js）
-    ├── components/   # Orbisview.tsx + panels
-    ├── store/        # zustand + websocket/
-    ├── renderer/
-    ├── styles/main.css
-    ├── utils/
-    └── fonts/
+    ├── app.tsx
+    ├── config/parameters.ts
+    ├── components/
+    ├── store/
+    ├── renderer/map2d/
+    ├── renderer/view3d/
+    ├── plugins/
+    └── styles/main.css
 ```
 
 ## 运行
@@ -28,15 +23,20 @@ frontend/
 ```bash
 cd autonomy/orbisview/frontend
 npm install
-npm start          # setup + Vite :5173
+npm start          # Vite :5173
 # 或整栈：npm run dev:all
 ```
 
-浏览器 http://127.0.0.1:5173 → **Connect** → `ws://127.0.0.1:8766/ws`。
+浏览器 http://127.0.0.1:5173 → Connect → `ws://127.0.0.1:8766/ws`。
 
-Map2D P1：costmap 叠层、可流式 footprint、DIFF/ACKERMANN HUD（`renderer/map2d`）。
+Map2D：costmap / footprint / DIFF HUD（`renderer/map2d`）。
+
+View3D（`renderer/view3d`）：
+1. Catalog 打开 View3D → Follow / Free / Reset
+2. Layers 与 Map2D 共用：grid / robot / path / pointcloud / footprint / map / costmap / laser
+3. 工具条：cloudColor、laserHeight、mapOpacity；点云 stale 徽章
 
 ```bash
-npm run build      # dist/，勿提交
+npm run build
 npm test
 ```
