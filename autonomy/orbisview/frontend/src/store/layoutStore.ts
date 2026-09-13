@@ -4,7 +4,6 @@ import type { MosaicNode } from 'react-mosaic-component';
 
 export type PanelId = string;
 export type BottomMode = 'teleop' | 'pnc' | 'ops';
-
 export type SidebarTab = 'mode' | 'panels' | 'resources' | 'layers';
 
 export const GROUND_ROBOT_LAYOUT: MosaicNode<string> = {
@@ -30,6 +29,27 @@ export const GROUND_ROBOT_LAYOUT: MosaicNode<string> = {
   splitPercentages: [68, 32],
 };
 
+/** Collect mosaic leaf panel ids (depth-first). */
+export function collectMosaicIds(node: MosaicNode<string> | null): string[] {
+  if (node == null) return [];
+  if (typeof node === 'string') return [node];
+  if ('children' in node && Array.isArray(node.children)) {
+    return node.children.flatMap((c) => collectMosaicIds(c as MosaicNode<string>));
+  }
+  return [];
+}
+
+/** Drop corrupt trees (duplicate leaf ids crash react-mosaic). */
+export function sanitizeMosaic(
+  node: MosaicNode<string> | null,
+): MosaicNode<string> | null {
+  if (!node) return null;
+  const ids = collectMosaicIds(node);
+  if (ids.length === 0) return GROUND_ROBOT_LAYOUT;
+  if (new Set(ids).size !== ids.length) return GROUND_ROBOT_LAYOUT;
+  return node;
+}
+
 export interface LayoutState {
   mosaic: MosaicNode<string> | null;
   bottomMode: BottomMode;
@@ -40,57 +60,32 @@ export interface LayoutState {
   setCatalogOpen: (v: boolean) => void;
   setSidebarTab: (t: SidebarTab) => void;
   resetGroundPreset: () => void;
-  /** Legacy aux for non-mosaic fallbacks */
-  auxActive: PanelId;
-  open: PanelId[];
-  setAuxActive: (id: PanelId) => void;
-  toggleOpen: (id: PanelId) => void;
-  active: PanelId;
-  setActive: (id: PanelId) => void;
 }
 
 export const useLayoutStore = create<LayoutState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       mosaic: GROUND_ROBOT_LAYOUT,
       bottomMode: 'teleop',
       catalogOpen: true,
       sidebarTab: 'panels',
-      auxActive: 'dashboard',
-      active: 'dashboard',
-      open: [
-        'map2d',
-        'dashboard',
-        'mode_settings',
-        'module_delay',
-        'resources',
-        'robot_status',
-        'waypoints',
-        'view3d',
-        'image',
-        'pnc',
-        'charts',
-        'components',
-        'hmi',
-        'routing',
-        'tf_tree',
-        'log',
-      ],
-      setMosaic: (node) => set({ mosaic: node }),
+      setMosaic: (node) => set({ mosaic: sanitizeMosaic(node) }),
       setBottomMode: (mode) => set({ bottomMode: mode }),
       setCatalogOpen: (v) => set({ catalogOpen: v }),
       setSidebarTab: (t) => set({ sidebarTab: t, catalogOpen: true }),
       resetGroundPreset: () => set({ mosaic: GROUND_ROBOT_LAYOUT }),
-      setAuxActive: (id) => set({ auxActive: id, active: id }),
-      setActive: (id) => set({ auxActive: id, active: id }),
-      toggleOpen: (id) => {
-        const open = get().open.includes(id)
-          ? get().open.filter((x) => x !== id)
-          : [...get().open, id];
-        set({ open });
-      },
     }),
-    { name: 'orbisview-layout-v6' },
+    {
+      name: 'orbisview-layout-v8',
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<LayoutState>;
+        return {
+          ...current,
+          ...p,
+          mosaic: sanitizeMosaic(p.mosaic ?? current.mosaic),
+        };
+      },
+    },
   ),
 );
 

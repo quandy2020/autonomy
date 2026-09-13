@@ -6,6 +6,7 @@ import { useDataStore } from '@/store/dataStore';
 import {
   useLayoutStore,
   useLayerStore,
+  collectMosaicIds,
   type LayerKey,
 } from '@/store/layoutStore';
 import { getPanel, listPanels } from '@/components/registry';
@@ -15,6 +16,8 @@ import {
   ResourceManagerPanel,
 } from '@/components/Mode/ModePanels';
 import { SCHEMAS } from '@/store/websocket/types';
+import { DEFAULT_WS_URL } from '@/config/parameters';
+import { Icon, IconLabel, layerIcon, panelIcon } from '@/components/icons';
 
 const DEFAULT_CHANNELS = [
   '/orbisview/mock/pose',
@@ -84,7 +87,7 @@ function PanelTile({ id }: { id: string }) {
 }
 
 export function Orbisview() {
-  const [url, setUrl] = useState('ws://127.0.0.1:8766/ws');
+  const [url, setUrl] = useState(DEFAULT_WS_URL);
   const connectionState = useDataStore((s) => s.connectionState);
   const setConnectionState = useDataStore((s) => s.setConnectionState);
   const setChannels = useDataStore((s) => s.setChannels);
@@ -170,18 +173,34 @@ export function Orbisview() {
         ? 'warn'
         : 'bad';
 
+  const statusIcon =
+    connectionState === 'online'
+      ? 'statusOnline'
+      : connectionState === 'reconnecting' || connectionState === 'connecting'
+        ? 'statusWarn'
+        : 'statusOffline';
+
   const renderTile = useCallback(
-    (id: string, path: unknown) => (
-      <MosaicWindow<string>
-        path={path as never}
-        title={getPanel(id)?.title ?? id}
-        toolbarControls={<div />}
-      >
-        <div className="mosaic-panel-body">
-          <PanelTile id={id} />
-        </div>
-      </MosaicWindow>
-    ),
+    (id: string, path: unknown) => {
+      const title = getPanel(id)?.title ?? id;
+      return (
+        <MosaicWindow<string>
+          path={path as never}
+          title={title}
+          toolbarControls={<div />}
+          renderToolbar={() => (
+            <div className="mosaic-window-title ov-icon-label" title={title}>
+              <Icon name={panelIcon(id)} size={13} />
+              <span>{title}</span>
+            </div>
+          )}
+        >
+          <div className="mosaic-panel-body">
+            <PanelTile id={id} />
+          </div>
+        </MosaicWindow>
+      );
+    },
     [],
   );
 
@@ -191,6 +210,7 @@ export function Orbisview() {
       setMosaic(id);
       return;
     }
+    if (collectMosaicIds(cur).includes(id)) return;
     setMosaic({
       type: 'split',
       direction: 'row',
@@ -202,36 +222,43 @@ export function Orbisview() {
   return (
     <div className="app ops-shell">
       <header className="topbar">
-        <strong>OrbisView</strong>
+        <strong className="brand">
+          <Icon name="orbis" size={16} />
+          OrbisView
+        </strong>
         <input value={url} onChange={(e) => setUrl(e.target.value)} size={22} />
         {connectionState === 'online' || connectionState === 'reconnecting' ? (
-          <button type="button" onClick={disconnect}>
-            Disconnect
+          <button type="button" className="btn-icon" onClick={disconnect}>
+            <IconLabel name="unplug" label="Disconnect" size={14} />
           </button>
         ) : (
-          <button type="button" onClick={connect}>
-            Connect
+          <button type="button" className="btn-icon" onClick={connect}>
+            <IconLabel name="plug" label="Connect" size={14} />
           </button>
         )}
-        <span className={statusClass}>{connectionState}</span>
+        <span className={`status-pill ${statusClass}`}>
+          <Icon name={statusIcon} size={12} />
+          {connectionState}
+        </span>
         <span className="topbar-hud muted">
+          <Icon name="pose" size={12} />
           {pose
-            ? `pose ${pose.x.toFixed(2)},${pose.y.toFixed(2)},${(pose.yaw ?? 0).toFixed(2)}`
-            : 'pose —'}
+            ? `${pose.x.toFixed(2)}, ${pose.y.toFixed(2)}, ${(pose.yaw ?? 0).toFixed(2)}`
+            : '—'}
         </span>
         <span className="topbar-hud muted">
-          {twist
-            ? `vx ${twist.vx.toFixed(2)} wz ${twist.wz.toFixed(2)}`
-            : 'twist —'}
+          <Icon name="velocity" size={12} />
+          {twist ? `vx ${twist.vx.toFixed(2)}  wz ${twist.wz.toFixed(2)}` : '—'}
         </span>
         <span className="topbar-hud muted">
+          <Icon name="chassis" size={12} />
           {chassis?.driving_mode ?? 'mode —'} {chassis?.gear ?? ''}
         </span>
-        <button type="button" onClick={() => setCatalogOpen(!catalogOpen)}>
-          Catalog
+        <button type="button" className="btn-icon" onClick={() => setCatalogOpen(!catalogOpen)}>
+          <IconLabel name="catalog" label="Catalog" size={14} />
         </button>
-        <button type="button" onClick={resetGroundPreset}>
-          Ground preset
+        <button type="button" className="btn-icon" onClick={resetGroundPreset}>
+          <IconLabel name="preset" label="Ground" size={14} />
         </button>
       </header>
 
@@ -241,19 +268,19 @@ export function Orbisview() {
             <div className="row" style={{ gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
               {(
                 [
-                  ['mode', 'Mode'],
-                  ['panels', 'Add Panel'],
-                  ['resources', 'Resources'],
-                  ['layers', 'Layers'],
+                  ['mode', 'Mode', 'mode'],
+                  ['panels', 'Add Panel', 'panels'],
+                  ['resources', 'Resources', 'resources'],
+                  ['layers', 'Layers', 'layers'],
                 ] as const
-              ).map(([id, label]) => (
+              ).map(([id, label, icon]) => (
                 <button
                   key={id}
                   type="button"
-                  className={sidebarTab === id ? 'tab active' : 'tab'}
+                  className={sidebarTab === id ? 'tab active btn-icon' : 'tab btn-icon'}
                   onClick={() => setSidebarTab(id)}
                 >
-                  {label}
+                  <IconLabel name={icon} label={label} size={13} />
                 </button>
               ))}
             </div>
@@ -265,10 +292,11 @@ export function Orbisview() {
                   <button
                     key={p.id}
                     type="button"
-                    className="link catalog-item"
+                    className="link catalog-item btn-icon"
                     onClick={() => addPanel(p.id)}
                   >
-                    + {p.title}
+                    <IconLabel name={panelIcon(p.id)} label={p.title} size={14} />
+                    <Icon name="plus" size={12} className="catalog-add" />
                   </button>
                 ))}
               </>
@@ -276,15 +304,18 @@ export function Orbisview() {
             {sidebarTab === 'resources' ? <ResourceManagerPanel /> : null}
             {sidebarTab === 'layers' ? (
               <>
-                <h3>Layers</h3>
+                <h3>
+                  <IconLabel name="layers" label="Layers" size={13} />
+                </h3>
                 {LAYER_KEYS.map((k) => (
-                  <label key={k} className="row">
+                  <label key={k} className="row layer-toggle">
                     <input
                       type="checkbox"
                       checked={layers[k]}
                       onChange={(e) => layers.setLayer(k, e.target.checked)}
                     />
-                    {k}
+                    <Icon name={layerIcon(k)} size={13} />
+                    <span>{k}</span>
                   </label>
                 ))}
               </>
@@ -307,24 +338,24 @@ export function Orbisview() {
         <div className="bottom-mode">
           <button
             type="button"
-            className={bottomMode === 'teleop' ? 'tab active' : 'tab'}
+            className={bottomMode === 'teleop' ? 'tab active btn-icon' : 'tab btn-icon'}
             onClick={() => setBottomMode('teleop')}
           >
-            Teleop
+            <IconLabel name="teleop" label="Teleop" size={14} />
           </button>
           <button
             type="button"
-            className={bottomMode === 'pnc' ? 'tab active' : 'tab'}
+            className={bottomMode === 'pnc' ? 'tab active btn-icon' : 'tab btn-icon'}
             onClick={() => setBottomMode('pnc')}
           >
-            PNC
+            <IconLabel name="pnc" label="PNC" size={14} />
           </button>
           <button
             type="button"
-            className={bottomMode === 'ops' ? 'tab active' : 'tab'}
+            className={bottomMode === 'ops' ? 'tab active btn-icon' : 'tab btn-icon'}
             onClick={() => setBottomMode('ops')}
           >
-            Ops
+            <IconLabel name="ops" label="Ops" size={14} />
           </button>
         </div>
         <div className="bottom-content">
@@ -338,22 +369,25 @@ export function Orbisview() {
             <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
               <button
                 type="button"
+                className="btn-icon"
                 disabled={connectionState !== 'online'}
                 onClick={() =>
                   wsClient.send({ op: 'dump_snapshot', path: '/tmp/orbisview_dump.json' })
                 }
               >
-                Dump
+                <IconLabel name="dump" label="Dump" size={13} />
               </button>
               <button
                 type="button"
+                className="btn-icon"
                 disabled={connectionState !== 'online'}
                 onClick={() => wsClient.send({ op: 'clear_sim' })}
               >
-                Clear
+                <IconLabel name="clear" label="Clear" size={13} />
               </button>
               <button
                 type="button"
+                className="btn-icon"
                 disabled={connectionState !== 'online'}
                 onClick={() =>
                   wsClient.send({
@@ -363,21 +397,23 @@ export function Orbisview() {
                   })
                 }
               >
-                Play
+                <IconLabel name="play" label="Play" size={13} />
               </button>
               <button
                 type="button"
+                className="btn-icon"
                 disabled={connectionState !== 'online'}
                 onClick={() => wsClient.send({ op: 'playback_pause', paused: true })}
               >
-                Pause
+                <IconLabel name="pause" label="Pause" size={13} />
               </button>
               <button
                 type="button"
+                className="btn-icon"
                 disabled={connectionState !== 'online'}
                 onClick={() => wsClient.send({ op: 'playback_stop' })}
               >
-                Stop
+                <IconLabel name="stop" label="Stop" size={13} />
               </button>
               <span className="hint">DV+ bottom ops · Dump/Clear/Play</span>
             </div>
