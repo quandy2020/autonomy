@@ -1,0 +1,6 @@
+{
+  "id": "default",
+  "title": "Default",
+  "module_ids": ["localization", "perception", "planning", "control"],
+  "channel_hints": ["/orbisview/mock/pose", "/orbisview/mock/laser"]
+}

@@ -1,0 +1,39 @@
+// Copyright 2026 The Openbot Authors
+//
+// OrbisView stream envelope (WS wire contract). Runtime may still use JSON;
+// this proto is the canonical schema definition.
+
+syntax = "proto3";
+
+package autonomy.orbisview.proto;
+
+message StreamEnvelope {
+  string channel = 1;
+  string schema = 2;
+  int64 timestamp_ns = 3;
+  string frame_id = 4;
+  uint64 sequence = 5;
+  // "json" | "protobuf" | "raw"
+  string encoding = 6;
+  bytes payload = 7;
+  bool unsupported = 8;
+  bool stale = 9;
+}
+
+message ChannelInfo {
+  string name = 1;
+  string schema = 2;
+  string msg_type = 3;
+  bool has_writer = 4;
+  bool mock = 5;
+}
+
+message ChannelList {
+  repeated ChannelInfo channels = 1;
+}
+
+message SubscriptionOptions {
+  // 0 = unlimited
+  double max_hz = 1;
+  uint32 queue_capacity = 2;
+}

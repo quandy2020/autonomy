@@ -1,0 +1,11 @@
+// Copyright 2026 The Openbot Authors
+//
+// Compact point cloud push payload (Dreamview point_cloud.proto counterpart).
+
+syntax = "proto3";
+
+package autonomy.orbisview.proto;
+
+message PointCloud {
+  repeated float num = 1 [packed = true];
+}

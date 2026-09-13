@@ -1,0 +1,18 @@
+# OrbisView launch (Dreamview launch/ counterpart; no Cyber RT).
+#
+# Usage:
+#   bash autonomy/orbisview/launch/orbisview.launch
+#   # or one-shot FE+BE:
+#   bash autonomy/orbisview/launch/dev.sh
+
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+BIN="${ROOT}/build-orbisview/bin/autonomy.orbisview"
+CONF="${ROOT}/autonomy/orbisview/conf/orbisview.conf"
+
+if [[ ! -x "$BIN" ]]; then
+  echo "missing $BIN — build first: cmake -S autonomy/orbisview -B build-orbisview && cmake --build build-orbisview -j"
+  exit 1
+fi
+
+exec "$BIN" --flagfile="$CONF" "$@"
