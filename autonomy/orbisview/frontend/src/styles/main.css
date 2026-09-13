@@ -152,6 +152,25 @@ body { margin: 0; }
 .mosaic-default-control.expand-button::before { content: '⛶'; font-size: 13px; }
 .mosaic-default-control.close-button::before { content: '×'; font-size: 18px; font-weight: 600; }
 .catalog-item { display: block; margin: 0.2rem 0; text-align: left; width: 100%; }
+.catalog-groups { display: flex; flex-direction: column; gap: 0.65rem; }
+.catalog-group {
+  border: 1px solid #243040;
+  border-radius: 8px;
+  padding: 0.35rem 0.4rem 0.45rem;
+  background: #0c1117;
+}
+.catalog-group-title {
+  margin: 0 0 0.3rem;
+  padding: 0.15rem 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #9db0c4;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+.catalog-group .catalog-item {
+  margin: 0.12rem 0;
+}
 
 .dash-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem;
