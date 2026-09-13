@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>OrbisView Phase-2 Mock Client</title>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 1.5rem; }
+    #log { white-space: pre-wrap; background: #111; color: #d6ffd6; padding: 1rem;
+           height: 28rem; overflow: auto; border-radius: 8px; }
+    .row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    input, button { padding: 0.4rem 0.6rem; }
+  </style>
+</head>
+<body>
+  <h1>OrbisView Mock Client</h1>
+  <p>阶段二验证：连接后端 WebSocket，列出通道并订阅 mock pose/path。</p>
+  <div class="row">
+    <input id="url" size="40" value="ws://127.0.0.1:8766/ws" />
+    <button id="connect">Connect</button>
+    <button id="disconnect" disabled>Disconnect</button>
+    <button id="list" disabled>list_channels</button>
+    <button id="status" disabled>status</button>
+  </div>
+  <div class="row">
+    <input id="channel" size="40" value="/orbisview/mock/pose" />
+    <input id="hz" size="6" value="10" title="max_hz" />
+    <button id="sub" disabled>subscribe</button>
+    <button id="unsub" disabled>unsubscribe</button>
+  </div>
+  <div id="log"></div>
+  <script>
+    const logEl = document.getElementById('log');
+    const setEnabled = (on) => {
+      ['list','status','sub','unsub','disconnect'].forEach(id => {
+        document.getElementById(id).disabled = !on;
+      });
+      document.getElementById('connect').disabled = on;
+    };
+    let ws = null;
+    function log(msg) {
+      const t = new Date().toISOString().slice(11, 19);
+      logEl.textContent += `[${t}] ${msg}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+    function send(obj) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify(obj));
+      log('→ ' + JSON.stringify(obj));
+    }
+    document.getElementById('connect').onclick = () => {
+      const url = document.getElementById('url').value;
+      ws = new WebSocket(url);
+      ws.onopen = () => { log('connected ' + url); setEnabled(true); };
+      ws.onclose = () => { log('closed'); setEnabled(false); };
+      ws.onerror = (e) => log('error ' + e);
+      ws.onmessage = (ev) => {
+        const text = ev.data;
+        if (text.length > 400) log('← ' + text.slice(0, 400) + '…');
+        else log('← ' + text);
+      };
+    };
+    document.getElementById('disconnect').onclick = () => ws && ws.close();
+    document.getElementById('list').onclick = () => send({op: 'list_channels'});
+    document.getElementById('status').onclick = () => send({op: 'status'});
+    document.getElementById('sub').onclick = () => send({
+      op: 'subscribe',
+      channel: document.getElementById('channel').value,
+      max_hz: Number(document.getElementById('hz').value) || 0
+    });
+    document.getElementById('unsub').onclick = () => send({
+      op: 'unsubscribe',
+      channel: document.getElementById('channel').value
+    });
+  </script>
+</body>
+</html>

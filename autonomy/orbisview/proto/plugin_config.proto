@@ -1,0 +1,28 @@
+// Copyright 2026 The Openbot Authors
+//
+// Plugin manifest / channel conf (Dreamview plugin_config.proto counterpart).
+
+syntax = "proto3";
+
+package autonomy.orbisview.proto;
+
+message ChannelConf {
+  string location = 1;
+  repeated string support_msg_name = 2;
+  uint32 pending_queue_size = 3;
+}
+
+message PluginConfig {
+  string name = 1;
+  string launch_command = 2;
+  repeated ChannelConf reader_channel_conf = 3;
+  repeated ChannelConf writer_channel_conf = 4;
+  enum PluginType {
+    PLUGIN_TYPE_UNSPECIFIED = 0;
+    NATIVE_SO = 1;
+    BINARY = 2;
+  }
+  PluginType plugin_type = 5;
+  repeated string process_command_keywords = 6;
+  string stop_command = 7;
+}

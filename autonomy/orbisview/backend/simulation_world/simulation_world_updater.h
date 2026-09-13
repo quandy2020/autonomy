@@ -1,0 +1,35 @@
+/*
+ * Copyright 2026 The Openbot Authors
+ *
+ * SimulationWorldUpdater — wraps SimulationWorldService + ingest (DV updater).
+ */
+
+#pragma once
+
+#include <memory>
+#include <string>
+
+#include "autonomy/orbisview/backend/simulation_world/simulation_world_service.h"
+#include "autonomy/orbisview/backend/common/stream_envelope.h"
+
+namespace autonomy {
+namespace orbisview {
+namespace backend {
+
+class SimulationWorldUpdater {
+ public:
+  SimulationWorldUpdater();
+
+  core::SimulationWorldService* Service() { return service_.get(); }
+  const core::SimulationWorldService* Service() const { return service_.get(); }
+
+  void Ingest(const core::StreamEnvelope& env);
+  std::string WorldJson() const;
+
+ private:
+  std::unique_ptr<core::SimulationWorldService> service_;
+};
+
+}  // namespace backend
+}  // namespace orbisview
+}  // namespace autonomy

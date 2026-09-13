@@ -1,0 +1,28 @@
+// Copyright 2026 The Openbot Authors
+//
+// Record / bag listing (Dreamview record.proto counterpart).
+
+syntax = "proto3";
+
+package autonomy.orbisview.proto;
+
+message RecordList {
+  repeated string record_id = 1;
+  string userid = 2;
+  int32 category = 3;
+  string description = 4;
+}
+
+message Record {
+  string record_id = 1;
+  string userid = 2;
+  int32 category = 3;
+  string description = 4;
+}
+
+message RecordStatus {
+  bool recording = 1;
+  bool playing = 2;
+  string bag_path = 3;
+  uint64 frames = 4;
+}

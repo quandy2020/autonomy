@@ -1,0 +1,8 @@
+node_modules/
+dist/
+dist_offline/
+yarn-error.log
+.DS_Store
+*.local
+proto_bundle/*.json
+!proto_bundle/.gitkeep

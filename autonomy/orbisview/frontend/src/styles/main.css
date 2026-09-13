@@ -1,0 +1,156 @@
+:root {
+  color-scheme: dark;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  background: #0b0f14;
+  color: #e8eef5;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+
+.app { min-height: 100vh; display: flex; flex-direction: column; }
+.ops-shell { height: 100vh; max-height: 100vh; overflow: hidden; }
+.topbar {
+  display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;
+  padding: 0.5rem 1rem; border-bottom: 1px solid #243040;
+  background: #121820; flex-shrink: 0;
+}
+.topbar-hud { font-size: 0.8rem; font-family: ui-monospace, monospace; }
+.body { display: flex; flex: 1; min-height: 0; }
+.ops-body { flex: 1; }
+.sidebar {
+  width: 180px; padding: 0.75rem; border-right: 1px solid #243040;
+  background: #0f1419; overflow: auto; flex-shrink: 0;
+}
+.ops-sidebar { width: 160px; }
+.sidebar h3 { margin: 0.75rem 0 0.35rem; font-size: 0.8rem; color: #9db0c4; }
+.sidebar .row { display: flex; gap: 0.35rem; align-items: center; margin: 0.2rem 0; font-size: 0.85rem; }
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.ops-main { padding: 0; }
+.map-host {
+  flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0.5rem;
+}
+.map-primary { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.map-toolbar { gap: 1rem; margin-bottom: 0.35rem; align-items: center; }
+.map-canvas-fill { max-width: none !important; width: 100%; height: auto; flex: 1; }
+.aux-stack {
+  width: 360px; display: flex; flex-direction: column; min-height: 0;
+  border-left: 1px solid #243040; background: #0f1419; flex-shrink: 0;
+}
+.aux-tabs { flex-wrap: wrap; max-height: 88px; overflow: auto; }
+.aux-host { flex: 1; overflow: auto; }
+.tabs { display: flex; gap: 0.25rem; padding: 0.5rem; border-bottom: 1px solid #243040; }
+.tab, .link, button {
+  background: #1a2430; color: #e8eef5; border: 1px solid #2a3a4c;
+  border-radius: 6px; padding: 0.35rem 0.7rem; cursor: pointer;
+}
+.tab.active, .link.active { background: #2b6cb0; border-color: #2b6cb0; }
+.link { background: transparent; border: none; padding: 0; }
+.panel-host { padding: 0.75rem; overflow: auto; }
+.panel { background: #121820; border: 1px solid #243040; border-radius: 8px; padding: 0.5rem; }
+.map-canvas, .image-canvas { display: block; width: 100%; max-width: 720px; background: #0f1419; }
+.log-panel pre {
+  background: #0a0e12; color: #b6f5c6; padding: 0.75rem; height: 280px;
+  overflow: auto; border-radius: 6px;
+}
+.log-panel ul { list-style: none; padding: 0; margin: 0 0 0.75rem; }
+.channel-row { margin: 0.25rem 0; }
+.spark { display: block; background: #0a0e12; border: 1px solid #243040; border-radius: 6px; }
+.stats-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.stats-table th, .stats-table td {
+  border-bottom: 1px solid #243040; text-align: left; padding: 0.35rem 0.5rem;
+}
+.ok { color: #69f0ae; }
+.warn { color: #ffd54f; }
+.bad { color: #ef9a9a; }
+.muted { color: #7f93a8; }
+.stale-badge {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  background: #5d4037;
+  color: #ffccbc;
+}
+.unsupported-badge {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  background: #37474f;
+  color: #b0bec5;
+}
+.hint { color: #7f93a8; font-size: 0.8rem; margin: 0.35rem 0 0; }
+.row { display: flex; align-items: center; }
+
+.mosaic-main { flex: 1; min-width: 0; min-height: 0; padding: 0; }
+.mosaic-host { height: 100%; width: 100%; }
+.mosaic-panel-body { height: 100%; overflow: auto; padding: 0.35rem; background: #0b0f14; }
+.mosaic-window { background: #121820; }
+.mosaic-window-toolbar { background: #1a2430 !important; }
+.catalog-item { display: block; margin: 0.2rem 0; text-align: left; width: 100%; }
+
+.dash-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem;
+}
+.dash-card {
+  background: #0a0e12; border: 1px solid #243040; border-radius: 6px; padding: 0.5rem;
+}
+.dash-label { font-size: 0.75rem; color: #7f93a8; }
+.dash-value { font-size: 1.1rem; font-family: ui-monospace, monospace; margin-top: 0.2rem; }
+.dash-bars label {
+  display: flex; align-items: center; gap: 0.5rem; margin: 0.35rem 0; font-size: 0.85rem;
+}
+.dash-bars meter, .dash-bars input[type='range'] { flex: 1; }
+.sep { border: none; border-top: 1px solid #243040; margin: 0.75rem 0; }
+.ops-sidebar { width: 280px; }
+.ops-sidebar .panel { border: none; background: transparent; padding: 0; }
+
+.bottom-bar {
+  display: flex; gap: 0.75rem; align-items: stretch;
+  border-top: 1px solid #243040; background: #121820;
+  padding: 0.5rem 0.75rem; flex-shrink: 0; min-height: 120px;
+}
+.bottom-mode { display: flex; flex-direction: column; gap: 0.35rem; }
+.bottom-content { flex: 1; min-width: 0; }
+.pnc-mini { max-height: 140px; overflow: auto; }
+
+.teleop-bar { display: flex; align-items: center; gap: 1rem; }
+.joystick {
+  width: 96px; height: 96px; border-radius: 50%;
+  background: #1a2430; border: 2px solid #2a3a4c; position: relative;
+  touch-action: none; flex-shrink: 0;
+}
+.joystick-knob {
+  position: absolute; left: 50%; top: 50%; width: 36px; height: 36px;
+  margin: 0; border-radius: 50%; background: #2b6cb0; border: 2px solid #4fc3f7;
+  pointer-events: none;
+}
+.teleop-meta { display: flex; flex-direction: column; gap: 0.25rem; }
+.teleop-keys { font-size: 0.85rem; }
+.estop {
+  background: #b71c1c !important; border-color: #ef5350 !important;
+  font-weight: 700; padding: 0.6rem 1rem !important;
+}
+
+.tf-list { list-style: none; padding: 0; margin: 0; font-size: 0.85rem; }
+.tf-list li { margin: 0.35rem 0; }
+.tf-preview { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.tf-edge { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
+.tf-node {
+  background: #1a2430; border: 1px solid #2a3a4c; border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+}
+.tf-arrow { color: #ce93d8; }
+
+.wp-list { list-style: none; padding: 0; margin: 0; }
+.wp-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.35rem 0.5rem; margin: 0.2rem 0; border-radius: 6px;
+  border: 1px solid #243040; cursor: pointer; font-size: 0.85rem;
+}
+.wp-item.active { border-color: #2b6cb0; background: #1a2838; }
+.wp-actions { display: flex; gap: 0.25rem; }
+.wp-actions button { padding: 0.15rem 0.4rem; }
