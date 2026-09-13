@@ -1,0 +1,188 @@
+// Copyright 2026 The Openbot Authors
+//
+// Stable OrbisView render schemas. Schema IDs in StreamEnvelope.schema are
+// "orbisview.render.<MessageName>" (see backend/common/render_schemas.h).
+
+syntax = "proto3";
+
+package autonomy.orbisview.render;
+
+message Pose2D {
+  double x = 1;
+  double y = 2;
+  double yaw = 3;
+}
+
+message Path2D {
+  repeated Pose2D poses = 1;
+}
+
+message OccupancyGrid {
+  uint32 width = 1;
+  uint32 height = 2;
+  double resolution = 3;
+  double origin_x = 4;
+  double origin_y = 5;
+  // row-major occupancy cells (-1 unknown, 0 free, 100 occupied) as bytes
+  bytes data = 6;
+}
+
+message TfTransform {
+  string parent = 1;
+  string child = 2;
+  double x = 3;
+  double y = 4;
+  double yaw = 5;
+}
+
+message TfTree {
+  repeated TfTransform transforms = 1;
+}
+
+message LaserScan {
+  double angle_min = 1;
+  double angle_max = 2;
+  double angle_increment = 3;
+  double range_min = 4;
+  double range_max = 5;
+  repeated float ranges = 6 [packed = true];
+}
+
+message Image {
+  uint32 width = 1;
+  uint32 height = 2;
+  string encoding = 3;
+  bytes data = 4;
+}
+
+message PointCloud2 {
+  repeated float xyz = 1 [packed = true];  // x,y,z interleaved
+}
+
+message DepthImage {
+  uint32 width = 1;
+  uint32 height = 2;
+  repeated float depths = 3 [packed = true];
+}
+
+message Twist2D {
+  double vx = 1;
+  double wz = 2;
+}
+
+enum MotionModel {
+  MOTION_DIFF = 0;
+  MOTION_ACKERMANN = 1;
+}
+
+message ChassisState {
+  double vx = 1;
+  double wz = 2;
+  string gear = 3;
+  double throttle = 4;
+  double brake = 5;
+  double steering = 6;
+  string driving_mode = 7;
+  MotionModel motion_model = 8;
+}
+
+enum FootprintShape {
+  FOOTPRINT_RECT = 0;
+  FOOTPRINT_POLYGON = 1;
+  FOOTPRINT_CIRCLE = 2;
+}
+
+message RobotFootprint {
+  FootprintShape shape = 1;
+  repeated Pose2D points = 2;
+  double radius = 3;
+  double padding = 4;
+  double length = 5;
+  double width = 6;
+}
+
+message Obstacle {
+  int32 id = 1;
+  double x = 2;
+  double y = 3;
+  double yaw = 4;
+  double length = 5;
+  double width = 6;
+  string type = 7;
+  double vx = 8;
+  double vy = 9;
+}
+
+message ObstacleArray {
+  repeated Obstacle obstacles = 1;
+}
+
+message WorldState {
+  Pose2D pose = 1;
+  ChassisState chassis = 2;
+  repeated Obstacle obstacles = 3;
+  repeated Pose2D path = 4;
+  Pose2D goal = 5;
+  bool has_goal = 6;
+}
+
+message RoutePath {
+  repeated Pose2D waypoints = 1;
+}
+
+message VectorMapPolyline {
+  string id = 1;
+  repeated Pose2D points = 2;
+}
+
+message VectorMap {
+  repeated VectorMapPolyline polylines = 1;
+}
+
+message PredictionObstacle {
+  int32 id = 1;
+  repeated Pose2D trajectory = 2;
+}
+
+message PredictionObstacles {
+  repeated PredictionObstacle obstacles = 1;
+}
+
+message PlanningDebug {
+  repeated Pose2D trajectory = 1;
+  string debug_text = 2;
+}
+
+message Exploration {
+  string status = 1;
+  double coverage = 2;
+}
+
+message Navigation {
+  bool has_goal = 1;
+  Pose2D goal = 2;
+  string status = 3;
+}
+
+message Mapping {
+  string status = 1;
+  uint32 keyframes = 2;
+}
+
+message HmiStatus {
+  string mode = 1;
+  repeated string modes = 2;
+}
+
+message ComponentStatus {
+  string id = 1;
+  string title = 2;
+  bool expected = 3;
+  bool healthy = 4;
+  double delay_ms = 5;
+  string status = 6;
+}
+
+message ComponentsStatus {
+  repeated ComponentStatus components = 1;
+}
