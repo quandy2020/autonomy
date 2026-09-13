@@ -54,7 +54,35 @@ body { margin: 0; }
   overflow: auto; border-radius: 6px;
 }
 .log-panel ul { list-style: none; padding: 0; margin: 0 0 0.75rem; }
-.channel-row { margin: 0.25rem 0; }
+.channel-row {
+  margin: 0.35rem 0;
+  padding: 0.3rem 0.35rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+}
+.channel-row:hover { background: #121820; border-color: #243040; }
+.channel-row-main { align-items: flex-start; gap: 0.45rem; width: 100%; }
+.channel-meta { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; flex: 1; }
+.channel-name { font-size: 0.88rem; font-weight: 600; color: #e8eef5; word-break: break-all; }
+.channel-subrow {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; font-size: 0.78rem;
+}
+.channel-schema {
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hz-badge {
+  display: inline-block;
+  padding: 0.08rem 0.4rem;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  border: 1px solid #2a3a4c;
+  background: #1a2430;
+  color: #9db0c4;
+}
+.hz-badge.hz-on { color: #69f0ae; border-color: #2e7d4f; background: #13251c; }
+.hz-badge.hz-off { color: #7f93a8; }
+.channel-maxhz { font-family: ui-monospace, monospace; }
 .spark { display: block; background: #0a0e12; border: 1px solid #243040; border-radius: 6px; }
 .stats-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .stats-table th, .stats-table td {
