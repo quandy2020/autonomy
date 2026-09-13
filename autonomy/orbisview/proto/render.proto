@@ -56,7 +56,11 @@ message Image {
 }
 
 message PointCloud2 {
-  repeated float xyz = 1 [packed = true];  // x,y,z interleaved
+  // Wire JSON (StreamEnvelope.payload) is authoritative for the web UI:
+  //   {"points":[{"x":float,"y":float,"z":float,"i":float?}, ...]}
+  // Field `xyz` documents a packed XYZ layout for potential binary paths;
+  // mock and Autolink converters currently emit the points[] JSON shape.
+  repeated float xyz = 1 [packed = true];
 }
 
 message DepthImage {

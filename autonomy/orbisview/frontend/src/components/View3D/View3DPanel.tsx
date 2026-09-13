@@ -1,69 +1,73 @@
-import { useEffect, useRef } from 'react';
-import * as THREE from 'three';
-import { createView3DScene, type View3DContext } from '@/renderer/view3d';
+import { useEffect, useMemo, useRef } from 'react';
+import {
+  createCameraController,
+  type CameraController,
+} from '@/renderer/view3d/cameraController';
+import { createView3DScene, type View3DContext } from '@/renderer/view3d/createScene';
+import { toThree } from '@/renderer/view3d/coords';
+import { syncView3DScene } from '@/renderer/view3d/syncScene';
+import type {
+  OccupancyGridJson,
+  Pose2D,
+  RobotFootprintJson,
+} from '@/renderer/map2d/types';
+import type {
+  View3DCloudPoint,
+  View3DLaserScan,
+  View3DSceneInput,
+} from '@/renderer/view3d/types';
 import { useDataStore } from '@/store/dataStore';
 import { useLayerStore } from '@/store/layoutStore';
-import { SCHEMAS } from '@/store/websocket/types';
+import { useView3DStore } from '@/store/view3dStore';
+import { SCHEMAS, type StreamEnvelope } from '@/store/websocket/types';
+
+function asPayload<T>(env: { payload?: unknown } | undefined): T | null {
+  if (!env?.payload || typeof env.payload !== 'object') return null;
+  return env.payload as T;
+}
+
+function pickMapAndCostmap(envelopes: Record<string, StreamEnvelope>) {
+  const grids = Object.values(envelopes).filter((e) => e.schema === SCHEMAS.OccupancyGrid);
+  const costmapEnv = grids.find((e) => /costmap/i.test(e.channel));
+  const mapEnv =
+    grids.find((e) => e !== costmapEnv && !/costmap/i.test(e.channel)) ??
+    grids.find((e) => e !== costmapEnv);
+  return {
+    map: asPayload<OccupancyGridJson>(mapEnv),
+    costmap: asPayload<OccupancyGridJson>(costmapEnv),
+  };
+}
 
 export function View3DPanel() {
   const mountRef = useRef<HTMLDivElement>(null);
   const envelopes = useDataStore((s) => s.envelopes);
   const layers = useLayerStore();
+  const followRobot = useLayerStore((s) => s.followRobot);
+  const setFollowRobot = useLayerStore((s) => s.setFollowRobot);
+  const cloudColor = useView3DStore((s) => s.cloudColor);
+  const laserHeight = useView3DStore((s) => s.laserHeight);
+  const mapOpacity = useView3DStore((s) => s.mapOpacity);
+  const setCloudColor = useView3DStore((s) => s.setCloudColor);
+  const setLaserHeight = useView3DStore((s) => s.setLaserHeight);
+  const setMapOpacity = useView3DStore((s) => s.setMapOpacity);
+
   const sceneRef = useRef<View3DContext | null>(null);
-  const camRef = useRef({ yaw: 0.8, pitch: 0.6, distance: 8 });
+  const camRef = useRef<CameraController | null>(null);
 
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
     const ctx = createView3DScene(mount);
+    const cam = createCameraController(ctx.camera);
+    cam.setFollow(followRobot);
     sceneRef.current = ctx;
+    camRef.current = cam;
 
-    const updateCamera = () => {
-      const { yaw, pitch, distance } = camRef.current;
-      const cp = Math.cos(pitch);
-      ctx.camera.position.set(
-        distance * cp * Math.sin(yaw),
-        distance * Math.sin(pitch),
-        distance * cp * Math.cos(yaw),
-      );
-      ctx.camera.lookAt(0, 0, 0);
-    };
-    updateCamera();
-
-    let dragging = false;
-    let lastX = 0;
-    let lastY = 0;
-    const onDown = (e: MouseEvent) => {
-      dragging = true;
-      lastX = e.clientX;
-      lastY = e.clientY;
-    };
-    const onUp = () => {
-      dragging = false;
-    };
-    const onMove = (e: MouseEvent) => {
-      if (!dragging) return;
-      camRef.current.yaw -= (e.clientX - lastX) * 0.01;
-      camRef.current.pitch = Math.max(
-        0.1,
-        Math.min(1.4, camRef.current.pitch + (e.clientY - lastY) * 0.01),
-      );
-      lastX = e.clientX;
-      lastY = e.clientY;
-      updateCamera();
-    };
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      camRef.current.distance = Math.max(
-        2,
-        Math.min(40, camRef.current.distance + e.deltaY * 0.01),
-      );
-      updateCamera();
-    };
-    ctx.renderer.domElement.addEventListener('mousedown', onDown);
-    window.addEventListener('mouseup', onUp);
-    window.addEventListener('mousemove', onMove);
-    ctx.renderer.domElement.addEventListener('wheel', onWheel, { passive: false });
+    const el = ctx.renderer.domElement;
+    el.addEventListener('pointerdown', cam.onPointerDown);
+    window.addEventListener('pointerup', cam.onPointerUp);
+    window.addEventListener('pointermove', cam.onPointerMove);
+    el.addEventListener('wheel', cam.onWheel, { passive: false });
 
     const ro = new ResizeObserver((entries) => {
       const cr = entries[0]?.contentRect;
@@ -82,86 +86,139 @@ export function View3DPanel() {
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
-      ctx.renderer.domElement.removeEventListener('mousedown', onDown);
-      window.removeEventListener('mouseup', onUp);
-      window.removeEventListener('mousemove', onMove);
-      ctx.renderer.domElement.removeEventListener('wheel', onWheel);
+      el.removeEventListener('pointerdown', cam.onPointerDown);
+      window.removeEventListener('pointerup', cam.onPointerUp);
+      window.removeEventListener('pointermove', cam.onPointerMove);
+      el.removeEventListener('wheel', cam.onWheel);
       ctx.dispose();
       sceneRef.current = null;
+      camRef.current = null;
     };
+    // followRobot applied in sync effect via setFollow
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const input: View3DSceneInput = useMemo(() => {
+    const pose = asPayload<Pose2D>(
+      Object.values(envelopes).find((e) => e.schema === SCHEMAS.Pose2D),
+    );
+    const pathPayload = asPayload<{ poses: Pose2D[] }>(
+      Object.values(envelopes).find((e) => e.schema === SCHEMAS.Path2D),
+    );
+    const nav = asPayload<{ has_goal?: boolean; goal?: { x: number; y: number } }>(
+      Object.values(envelopes).find((e) => e.schema === SCHEMAS.Navigation),
+    );
+    const cloudPayload = asPayload<{ points: View3DCloudPoint[] }>(
+      Object.values(envelopes).find((e) => e.schema === SCHEMAS.PointCloud2),
+    );
+    const footprint = asPayload<RobotFootprintJson>(
+      Object.values(envelopes).find((e) => e.schema === SCHEMAS.RobotFootprint),
+    );
+    const laser = asPayload<View3DLaserScan>(
+      Object.values(envelopes).find((e) => e.schema === SCHEMAS.LaserScan),
+    );
+    const { map, costmap } = pickMapAndCostmap(envelopes);
+    const goal =
+      nav?.goal && nav.has_goal !== false
+        ? { x: nav.goal.x, y: nav.goal.y }
+        : null;
+
+    return {
+      pose,
+      path: pathPayload?.poses ?? null,
+      goal,
+      cloud: cloudPayload?.points ?? null,
+      footprint,
+      map,
+      costmap,
+      laser,
+      layers: {
+        grid: layers.grid,
+        robot: layers.robot,
+        path: layers.path,
+        pointcloud: layers.pointcloud,
+        footprint: layers.footprint,
+        map: layers.map,
+        costmap: layers.costmap,
+        laser: layers.laser,
+      },
+      opts: { cloudColor, laserHeight, mapOpacity },
+      followRobot,
+    };
+  }, [envelopes, layers, cloudColor, laserHeight, mapOpacity, followRobot]);
 
   useEffect(() => {
     const ctx = sceneRef.current;
-    if (!ctx) return;
-    ctx.grid.visible = layers.grid;
-    ctx.robot.visible = layers.robot;
-    ctx.path.visible = layers.path;
-    ctx.cloud.visible = layers.pointcloud;
-
-    const poseEnv = Object.values(envelopes).find((e) => e.schema === SCHEMAS.Pose2D);
-    const pose = poseEnv?.payload as { x: number; y: number; yaw?: number } | undefined;
-    if (pose && layers.robot) {
-      ctx.robot.position.set(pose.x, 0.2, -pose.y);
-      ctx.robot.rotation.z = -(pose.yaw ?? 0);
+    const cam = camRef.current;
+    if (!ctx || !cam) return;
+    cam.setFollow(input.followRobot);
+    if (input.followRobot && input.pose) {
+      const t = toThree(input.pose.x, input.pose.y, 0);
+      cam.setTarget(t.x, 0, t.z);
     }
+    cam.update();
+    syncView3DScene(ctx, input);
+  }, [input]);
 
-    const pathEnv = Object.values(envelopes).find((e) => e.schema === SCHEMAS.Path2D);
-    const path = pathEnv?.payload as { poses: { x: number; y: number }[] } | undefined;
-    if (path?.poses && layers.path) {
-      const pts = path.poses.map((p) => new THREE.Vector3(p.x, 0.05, -p.y));
-      ctx.path.geometry.setFromPoints(pts);
-    }
-
-    const navEnv = Object.values(envelopes).find((e) => e.schema === SCHEMAS.Navigation);
-    const nav = navEnv?.payload as
-      | { has_goal?: boolean; goal?: { x: number; y: number } }
-      | undefined;
-    const showGoal = !!(nav?.goal && nav.has_goal !== false);
-    ctx.goal.visible = showGoal;
-    ctx.goalLine.visible = showGoal && !!pose;
-    if (showGoal && nav?.goal) {
-      ctx.goal.position.set(nav.goal.x, 0.3, -nav.goal.y);
-      if (pose) {
-        ctx.goalLine.geometry.setFromPoints([
-          new THREE.Vector3(pose.x, 0.15, -pose.y),
-          new THREE.Vector3(nav.goal.x, 0.15, -nav.goal.y),
-        ]);
-        ctx.goalLine.computeLineDistances();
-      }
-    }
-
-    const cloudEnv = Object.values(envelopes).find((e) => e.schema === SCHEMAS.PointCloud2);
-    const cloud = cloudEnv?.payload as
-      | { points: { x: number; y: number; z: number; i?: number }[] }
-      | undefined;
-    if (cloud?.points && layers.pointcloud) {
-      const n = cloud.points.length;
-      const positions = new Float32Array(n * 3);
-      const colors = new Float32Array(n * 3);
-      for (let i = 0; i < n; i++) {
-        const p = cloud.points[i];
-        positions[i * 3] = p.x;
-        positions[i * 3 + 1] = p.z;
-        positions[i * 3 + 2] = -p.y;
-        const inten = p.i ?? 0.7;
-        colors[i * 3] = 0.2 + 0.8 * inten;
-        colors[i * 3 + 1] = 0.6 * inten;
-        colors[i * 3 + 2] = 1 - 0.5 * inten;
-      }
-      ctx.cloud.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      ctx.cloud.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-      ctx.cloud.geometry.computeBoundingSphere();
-    }
-  }, [envelopes, layers]);
-
-  const cloudStale = Object.values(envelopes).find((e) => e.schema === SCHEMAS.PointCloud2)?.stale;
+  const cloudStale = Object.values(envelopes).find((e) => e.schema === SCHEMAS.PointCloud2)
+    ?.stale;
 
   return (
     <div className="panel view3d-panel">
+      <div className="view3d-toolbar">
+        <button
+          type="button"
+          className={followRobot ? 'tab active' : 'tab'}
+          onClick={() => setFollowRobot(true)}
+        >
+          Follow
+        </button>
+        <button
+          type="button"
+          className={!followRobot ? 'tab active' : 'tab'}
+          onClick={() => setFollowRobot(false)}
+        >
+          Free
+        </button>
+        <button type="button" className="tab" onClick={() => camRef.current?.reset()}>
+          Reset
+        </button>
+        <label>
+          cloud
+          <select
+            value={cloudColor}
+            onChange={(e) => setCloudColor(e.target.value as 'height' | 'intensity')}
+          >
+            <option value="intensity">intensity</option>
+            <option value="height">height</option>
+          </select>
+        </label>
+        <label>
+          laser h
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={laserHeight}
+            onChange={(e) => setLaserHeight(Number(e.target.value))}
+          />
+        </label>
+        <label>
+          map α
+          <input
+            type="range"
+            min={0.1}
+            max={1}
+            step={0.05}
+            value={mapOpacity}
+            onChange={(e) => setMapOpacity(Number(e.target.value))}
+          />
+        </label>
+      </div>
       {cloudStale ? <div className="stale-badge">pointcloud stale</div> : null}
       <div className="view3d-host" ref={mountRef} />
-      <p className="hint">drag rotate · wheel zoom · orange = nav goal</p>
+      <p className="hint">drag orbit · shift-drag pan (free) · wheel zoom · layers shared with Map2D</p>
     </div>
   );
 }
