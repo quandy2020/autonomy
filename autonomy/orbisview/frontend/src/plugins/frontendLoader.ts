@@ -48,7 +48,12 @@ function installBridge(): void {
   window.__orbisviewRegisterPanel = (spec) => {
     const Comp: ComponentType = () =>
       createElement(ExternalMountPanel, { mount: spec.mount });
-    registerPanel({ id: spec.id, title: spec.title, component: Comp });
+    registerPanel({
+      id: spec.id,
+      title: spec.title,
+      category: 'system',
+      component: Comp,
+    });
   };
 }
 

@@ -15,7 +15,7 @@ import {
   collectMosaicIds,
   type LayerKey,
 } from '@/store/layoutStore';
-import { getPanel, listPanels } from '@/components/registry';
+import { getPanel, listPanelsByCategory } from '@/components/registry';
 import { TeleopPanel } from '@/components/Teleop/TeleopPanel';
 import {
   ModeSettingsPanel,
@@ -299,17 +299,26 @@ export function Orbisview() {
             {sidebarTab === 'panels' ? (
               <>
                 <h3>Add Panel</h3>
-                {listPanels().map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    className="link catalog-item btn-icon"
-                    onClick={() => addPanel(p.id)}
-                  >
-                    <IconLabel name={panelIcon(p.id)} label={p.title} size={14} />
-                    <Icon name="plus" size={12} className="catalog-add" />
-                  </button>
-                ))}
+                <div className="catalog-groups">
+                  {listPanelsByCategory().map(({ category, panels }) => (
+                    <section key={category.id} className="catalog-group">
+                      <h4 className="catalog-group-title">
+                        <IconLabel name={category.icon} label={category.label} size={13} />
+                      </h4>
+                      {panels.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          className="link catalog-item btn-icon"
+                          onClick={() => addPanel(p.id)}
+                        >
+                          <IconLabel name={panelIcon(p.id)} label={p.title} size={14} />
+                          <Icon name="plus" size={12} className="catalog-add" />
+                        </button>
+                      ))}
+                    </section>
+                  ))}
+                </div>
               </>
             ) : null}
             {sidebarTab === 'resources' ? <ResourceManagerPanel /> : null}

@@ -29,29 +29,95 @@ import {
 } from './Mode/ModePanels';
 
 export function registerBuiltinPanels(): void {
-  registerPanel({ id: 'map2d', title: 'Map 2D', component: Map2DPanel });
-  registerPanel({ id: 'dashboard', title: 'Dashboard', component: DashboardPanel });
-  registerPanel({ id: 'mode_settings', title: 'Mode Settings', component: ModeSettingsPanel });
-  registerPanel({ id: 'module_delay', title: 'Module Delay', component: ModuleDelayPanel });
-  registerPanel({ id: 'resources', title: 'Resources', component: ResourceManagerPanel });
-  registerPanel({ id: 'robot_status', title: 'Robot Status', component: RobotStatusPanel });
-  registerPanel({ id: 'tf_tree', title: 'TF Tree', component: TfTreePanel });
-  registerPanel({ id: 'waypoints', title: 'Waypoints', component: WaypointsPanel });
-  registerPanel({ id: 'routing', title: 'Routing', component: RoutingPanel });
-  registerPanel({ id: 'teleop', title: 'Teleop', component: TeleopPanel });
-  registerPanel({ id: 'view3d', title: 'View 3D', component: View3DPanel });
-  registerPanel({ id: 'image', title: 'Image', component: ImagePanel });
-  registerPanel({ id: 'log', title: 'Channels', component: ChannelLogPanel });
-  registerPanel({ id: 'inspector', title: 'Inspector', component: InspectorPanel });
-  registerPanel({ id: 'diagnostics', title: 'Diagnostics', component: DiagnosticsPanel });
-  registerPanel({ id: 'stats', title: 'Stats', component: StatsPanel });
-  registerPanel({ id: 'recorder', title: 'Recorder', component: RecorderPanel });
-  registerPanel({ id: 'plugins', title: 'Plugins', component: PluginsPanel });
-  registerPanel({ id: 'pnc', title: 'PNC Monitor', component: PncMonitorPanel });
-  registerPanel({ id: 'charts', title: 'Charts', component: ChartsPanel });
-  registerPanel({ id: 'components', title: 'Components', component: ComponentsPanel });
-  registerPanel({ id: 'hmi', title: 'HMI', component: HmiPanel });
-  registerPanel({ id: 'exploration', title: 'Exploration', component: ExplorationPanel });
-  registerPanel({ id: 'navigation', title: 'Navigation', component: NavigationPanel });
-  registerPanel({ id: 'mapping', title: 'Mapping', component: MappingPanel });
+  // 可视化
+  registerPanel({ id: 'map2d', title: 'Map 2D', category: 'viz', component: Map2DPanel });
+  registerPanel({ id: 'view3d', title: 'View 3D', category: 'viz', component: View3DPanel });
+
+  // 传感器
+  registerPanel({ id: 'image', title: 'Image', category: 'sensor', component: ImagePanel });
+  registerPanel({ id: 'log', title: 'Channels', category: 'sensor', component: ChannelLogPanel });
+
+  // 机器人
+  registerPanel({
+    id: 'dashboard',
+    title: 'Dashboard',
+    category: 'robot',
+    component: DashboardPanel,
+  });
+  registerPanel({
+    id: 'robot_status',
+    title: 'Robot Status',
+    category: 'robot',
+    component: RobotStatusPanel,
+  });
+  registerPanel({ id: 'tf_tree', title: 'TF Tree', category: 'robot', component: TfTreePanel });
+  registerPanel({ id: 'teleop', title: 'Teleop', category: 'robot', component: TeleopPanel });
+
+  // 规划任务
+  registerPanel({
+    id: 'waypoints',
+    title: 'Waypoints',
+    category: 'planning',
+    component: WaypointsPanel,
+  });
+  registerPanel({ id: 'routing', title: 'Routing', category: 'planning', component: RoutingPanel });
+  registerPanel({
+    id: 'navigation',
+    title: 'Navigation',
+    category: 'planning',
+    component: NavigationPanel,
+  });
+  registerPanel({
+    id: 'exploration',
+    title: 'Exploration',
+    category: 'planning',
+    component: ExplorationPanel,
+  });
+  registerPanel({ id: 'mapping', title: 'Mapping', category: 'planning', component: MappingPanel });
+  registerPanel({ id: 'pnc', title: 'PNC Monitor', category: 'planning', component: PncMonitorPanel });
+
+  // 监控
+  registerPanel({
+    id: 'diagnostics',
+    title: 'Diagnostics',
+    category: 'monitor',
+    component: DiagnosticsPanel,
+  });
+  registerPanel({ id: 'stats', title: 'Stats', category: 'monitor', component: StatsPanel });
+  registerPanel({ id: 'charts', title: 'Charts', category: 'monitor', component: ChartsPanel });
+  registerPanel({
+    id: 'inspector',
+    title: 'Inspector',
+    category: 'monitor',
+    component: InspectorPanel,
+  });
+  registerPanel({
+    id: 'module_delay',
+    title: 'Module Delay',
+    category: 'monitor',
+    component: ModuleDelayPanel,
+  });
+
+  // 系统
+  registerPanel({
+    id: 'mode_settings',
+    title: 'Mode Settings',
+    category: 'system',
+    component: ModeSettingsPanel,
+  });
+  registerPanel({
+    id: 'resources',
+    title: 'Resources',
+    category: 'system',
+    component: ResourceManagerPanel,
+  });
+  registerPanel({ id: 'recorder', title: 'Recorder', category: 'system', component: RecorderPanel });
+  registerPanel({ id: 'plugins', title: 'Plugins', category: 'system', component: PluginsPanel });
+  registerPanel({
+    id: 'components',
+    title: 'Components',
+    category: 'system',
+    component: ComponentsPanel,
+  });
+  registerPanel({ id: 'hmi', title: 'HMI', category: 'system', component: HmiPanel });
 }

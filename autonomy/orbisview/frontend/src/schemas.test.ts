@@ -44,6 +44,18 @@ describe('panel registry', () => {
     expect(ids).toContain('resources');
     expect(ids).toContain('pnc');
   });
+
+  it('assigns categories for catalog grouping', () => {
+    registerBuiltinPanels();
+    const panels = listPanels();
+    expect(panels.every((p) => !!p.category)).toBe(true);
+    expect(panels.find((p) => p.id === 'view3d')?.category).toBe('viz');
+    expect(panels.find((p) => p.id === 'image')?.category).toBe('sensor');
+    expect(panels.find((p) => p.id === 'teleop')?.category).toBe('robot');
+    expect(panels.find((p) => p.id === 'navigation')?.category).toBe('planning');
+    expect(panels.find((p) => p.id === 'diagnostics')?.category).toBe('monitor');
+    expect(panels.find((p) => p.id === 'plugins')?.category).toBe('system');
+  });
 });
 
 describe('layout persist keys', () => {
