@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Mosaic, MosaicWindow, type MosaicNode } from 'react-mosaic-component';
+import {
+  Mosaic,
+  MosaicWindow,
+  ExpandButton,
+  RemoveButton,
+  type MosaicNode,
+} from 'react-mosaic-component';
 import 'react-mosaic-component/react-mosaic-component.css';
 import { wsClient } from '@/store/websocket/client';
 import { useDataStore } from '@/store/dataStore';
@@ -187,11 +193,16 @@ export function Orbisview() {
         <MosaicWindow<string>
           path={path as never}
           title={title}
-          toolbarControls={<div />}
           renderToolbar={() => (
-            <div className="mosaic-window-title ov-icon-label" title={title}>
-              <Icon name={panelIcon(id)} size={13} />
-              <span>{title}</span>
+            <div className="mosaic-toolbar-row">
+              <div className="mosaic-window-title ov-icon-label" title={title}>
+                <Icon name={panelIcon(id)} size={13} />
+                <span className="mosaic-window-title-text">{title}</span>
+              </div>
+              <div className="mosaic-window-controls ov-mosaic-controls">
+                <ExpandButton />
+                <RemoveButton />
+              </div>
             </div>
           )}
         >

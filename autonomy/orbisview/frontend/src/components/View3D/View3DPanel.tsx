@@ -166,55 +166,61 @@ export function View3DPanel() {
   return (
     <div className="panel view3d-panel">
       <div className="view3d-toolbar">
-        <button
-          type="button"
-          className={followRobot ? 'tab active' : 'tab'}
-          onClick={() => setFollowRobot(true)}
-        >
-          Follow
-        </button>
-        <button
-          type="button"
-          className={!followRobot ? 'tab active' : 'tab'}
-          onClick={() => setFollowRobot(false)}
-        >
-          Free
-        </button>
-        <button type="button" className="tab" onClick={() => camRef.current?.reset()}>
-          Reset
-        </button>
-        <label>
-          cloud
-          <select
-            value={cloudColor}
-            onChange={(e) => setCloudColor(e.target.value as 'height' | 'intensity')}
+        <div className="view3d-toolbar-modes">
+          <button
+            type="button"
+            className={followRobot ? 'tab active' : 'tab'}
+            onClick={() => setFollowRobot(true)}
           >
-            <option value="intensity">intensity</option>
-            <option value="height">height</option>
-          </select>
-        </label>
-        <label>
-          laser h
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={laserHeight}
-            onChange={(e) => setLaserHeight(Number(e.target.value))}
-          />
-        </label>
-        <label>
-          map α
-          <input
-            type="range"
-            min={0.1}
-            max={1}
-            step={0.05}
-            value={mapOpacity}
-            onChange={(e) => setMapOpacity(Number(e.target.value))}
-          />
-        </label>
+            Follow
+          </button>
+          <button
+            type="button"
+            className={!followRobot ? 'tab active' : 'tab'}
+            onClick={() => setFollowRobot(false)}
+          >
+            Free
+          </button>
+          <button type="button" className="tab" onClick={() => camRef.current?.reset()}>
+            Reset
+          </button>
+        </div>
+        <div className="view3d-toolbar-opts">
+          <label className="view3d-opt" title="Point cloud color mode">
+            <span className="view3d-opt-label">Cloud</span>
+            <select
+              value={cloudColor}
+              onChange={(e) => setCloudColor(e.target.value as 'height' | 'intensity')}
+            >
+              <option value="intensity">intensity</option>
+              <option value="height">height</option>
+            </select>
+          </label>
+          <label className="view3d-opt" title="Laser height (m)">
+            <span className="view3d-opt-label">Laser</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={laserHeight}
+              onChange={(e) => setLaserHeight(Number(e.target.value))}
+            />
+            <span className="view3d-opt-val">{laserHeight.toFixed(2)}</span>
+          </label>
+          <label className="view3d-opt" title="Map / costmap opacity">
+            <span className="view3d-opt-label">Map</span>
+            <input
+              type="range"
+              min={0.1}
+              max={1}
+              step={0.05}
+              value={mapOpacity}
+              onChange={(e) => setMapOpacity(Number(e.target.value))}
+            />
+            <span className="view3d-opt-val">{mapOpacity.toFixed(2)}</span>
+          </label>
+        </div>
       </div>
       {cloudStale ? <div className="stale-badge">pointcloud stale</div> : null}
       <div className="view3d-host" ref={mountRef} />

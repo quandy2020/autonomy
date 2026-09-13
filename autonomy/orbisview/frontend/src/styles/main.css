@@ -87,9 +87,70 @@ body { margin: 0; }
 
 .mosaic-main { flex: 1; min-width: 0; min-height: 0; padding: 0; }
 .mosaic-host { height: 100%; width: 100%; }
-.mosaic-panel-body { height: 100%; overflow: auto; padding: 0.35rem; background: #0b0f14; }
-.mosaic-window { background: #121820; }
-.mosaic-window-toolbar { background: #1a2430 !important; }
+.mosaic-panel-body { height: 100%; overflow: auto; padding: 0.45rem; background: #0b0f14; }
+.mosaic-window { background: #121820; border: 1px solid #243040; }
+.mosaic-window-toolbar {
+  background: #1a2430 !important;
+  height: 34px !important;
+  display: flex !important;
+  align-items: stretch;
+}
+.mosaic-toolbar-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  gap: 0.25rem;
+  padding: 0 0.25rem 0 0;
+}
+.mosaic-window-title {
+  flex: 1;
+  min-width: 0;
+  padding: 0 0.55rem;
+  overflow: hidden;
+  display: flex !important;
+  align-items: center;
+  gap: 0.4rem;
+}
+.mosaic-window-title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  color: #c5d4e3;
+}
+.mosaic-window-controls.ov-mosaic-controls {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 2px;
+  padding-right: 2px;
+}
+.mosaic-default-control {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #9db0c4;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+}
+.mosaic-default-control:hover {
+  background: #243040;
+  color: #e8eef5;
+}
+.mosaic-default-control.close-button:hover {
+  background: #5d2a2a;
+  color: #ffcdd2;
+}
+.mosaic-default-control.expand-button::before { content: '⛶'; font-size: 13px; }
+.mosaic-default-control.close-button::before { content: '×'; font-size: 18px; font-weight: 600; }
 .catalog-item { display: block; margin: 0.2rem 0; text-align: left; width: 100%; }
 
 .dash-grid {
@@ -217,19 +278,58 @@ body { margin: 0; }
 .mosaic-window-toolbar .ov-icon-label {
   font-size: 0.85rem;
   color: #c5d4e3;
-}
-.mosaic-window-title {
-  flex: 1;
   min-width: 0;
-  padding: 0 0.5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .view3d-panel { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-.view3d-host { position: relative; width: 100%; min-height: 240px; flex: 1; }
+.view3d-host { position: relative; width: 100%; min-height: 200px; flex: 1; }
 .view3d-host canvas { display: block; width: 100%; height: 100%; }
-.view3d-toolbar { display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.35rem; }
-.view3d-toolbar label { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; color: #9db0c4; }
+.view3d-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+.view3d-toolbar-modes,
+.view3d-toolbar-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.view3d-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  color: #9db0c4;
+  background: #151c24;
+  border: 1px solid #243040;
+  border-radius: 6px;
+  padding: 0.2rem 0.45rem;
+}
+.view3d-opt-label {
+  flex-shrink: 0;
+  min-width: 2.6rem;
+  color: #c5d4e3;
+}
+.view3d-opt select {
+  background: #0f1419;
+  color: #e8eef5;
+  border: 1px solid #2a3a4c;
+  border-radius: 4px;
+  padding: 0.15rem 0.3rem;
+}
+.view3d-opt input[type='range'] {
+  width: 88px;
+  flex-shrink: 0;
+  accent-color: #2b6cb0;
+}
+.view3d-opt-val {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: #7f93a8;
+  min-width: 2.4rem;
+}
 
