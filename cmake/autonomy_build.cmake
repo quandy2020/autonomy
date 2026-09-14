@@ -100,7 +100,7 @@ function(autonomy_add_tests)
       get_filename_component(FIL_WE ${REL_FIL} NAME_WE)
       string(REPLACE "/" "." TEST_TARGET_NAME "${DIR}/${FIL_WE}")
 
-      autonomy_test("${TEST_TARGET_NAME}" ${ABS_FIL})
+      autonomy_test("${TEST_TARGET_NAME}" ${ABS_FIL} ${PROJECT_NAME})
       add_dependencies("${TEST_TARGET_NAME}" ${PROJECT_NAME})
       if(TARGET automsgs)
         add_dependencies("${TEST_TARGET_NAME}" automsgs)

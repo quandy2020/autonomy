@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import pathlib
+import re
 import subprocess
 import tempfile
 import textwrap
@@ -259,6 +260,57 @@ class AutonomyOptionsTest(unittest.TestCase):
         self.assertIn("autonomy.perception.base.options_test", collections["registered"])
         self.assertIn("autonomy.common.param_handler_test", inventory.stdout)
         self.assertIn("autonomy.perception.base.options_test", inventory.stdout)
+
+    def test_autonomy_test_requires_an_explicit_target(self):
+        common_helpers = REPOSITORY_ROOT.joinpath(
+            "cmake/autonomy_common.cmake"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            "function(autonomy_test NAME ARG_SRC LINK_TARGET)",
+            common_helpers,
+        )
+        self.assertIn(
+            "target_link_libraries(\"${NAME}\" PUBLIC ${LINK_TARGET})",
+            common_helpers,
+        )
+        self.assertIn('"${PROJECT_SOURCE_DIR}"', common_helpers)
+        self.assertIn('"${PROJECT_BINARY_DIR}"', common_helpers)
+        self.assertNotIn(
+            "function(autonomy_test NAME ARG_SRC LINK_TARGET)\n"
+            "  add_executable(${NAME} ${ARG_SRC})\n"
+            "  _common_compile_stuff()",
+            common_helpers,
+        )
+        self.assertNotIn(
+            "target_link_libraries(\"${NAME}\" PUBLIC ${PROJECT_NAME})",
+            common_helpers,
+        )
+
+        two_argument_calls = []
+        for path in REPOSITORY_ROOT.rglob("*"):
+            if path.name != "CMakeLists.txt" and path.suffix != ".cmake":
+                continue
+            relative = path.relative_to(REPOSITORY_ROOT)
+            if any(
+                part == ".git" or part == "thirdparty" or part.startswith("build")
+                for part in relative.parts
+            ):
+                continue
+            content = "\n".join(
+                line.split("#", 1)[0]
+                for line in path.read_text(encoding="utf-8").splitlines()
+            )
+            for match in re.finditer(
+                r"\bautonomy_test\s*\((.*?)\)", content, re.DOTALL
+            ):
+                arguments = re.findall(r'"(?:\\.|[^"\\])*"|\S+', match.group(1))
+                if len(arguments) < 3:
+                    two_argument_calls.append(
+                        f"{relative.as_posix()}: {match.group(0)}"
+                    )
+
+        self.assertEqual(two_argument_calls, [])
 
     def test_protobuf_is_discovered_only_in_enabled_modules(self):
         protobuf_helpers = REPOSITORY_ROOT.joinpath(
