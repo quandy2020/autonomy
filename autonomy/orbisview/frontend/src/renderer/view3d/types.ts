@@ -1,4 +1,5 @@
 import type { OccupancyGridJson, Pose2D, RobotFootprintJson } from '../map2d/types';
+import type { StaticSlamCanvasHandle } from '../map2d/staticSlam';
 
 export type CloudColorMode = 'height' | 'intensity';
 
@@ -16,6 +17,7 @@ export interface View3DOpts {
 
 export interface View3DLayerFlags {
   grid: boolean;
+  basemap?: boolean;
   robot: boolean;
   path: boolean;
   pointcloud: boolean;
@@ -62,6 +64,7 @@ export interface View3DSceneInput {
   footprint: RobotFootprintJson | null;
   map: OccupancyGridJson | null;
   costmap: OccupancyGridJson | null;
+  basemap?: StaticSlamCanvasHandle | null;
   laser: View3DLaserScan | null;
   layers: View3DLayerFlags;
   opts: View3DOpts;

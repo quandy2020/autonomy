@@ -73,6 +73,14 @@ export interface Map2DSceneInput {
   measurePts: { x: number; y: number; yaw?: number; label?: string }[];
   /** Live cursor while measuring (dashed preview to next point). */
   measurePreview?: { x: number; y: number } | null;
+  /** Static SLAM / occupancy image basemap (under live map). */
+  basemap?: {
+    canvas: HTMLCanvasElement;
+    originX: number;
+    originY: number;
+    worldW: number;
+    worldH: number;
+  } | null;
   /** Nav / multi pose handles: ring + direction arrow. */
   poseHandles?: {
     x: number;
@@ -211,6 +219,7 @@ export function paintMap2DScene(
     measurePreview = null,
     poseHandles = [],
     routePts = [],
+    basemap = null,
   } = input;
 
   const ox = viewOffset.x;
@@ -237,6 +246,25 @@ export function paintMap2DScene(
       ctx.lineTo(a1, b1);
       ctx.stroke();
     }
+  }
+
+  if ((layers.basemap ?? true) && basemap?.canvas) {
+    const x0 = basemap.originX;
+    const y0 = basemap.originY;
+    const x1 = x0 + basemap.worldW;
+    const y1 = y0 + basemap.worldH;
+    const [sx0, sy0] = toScreen(x0, y0);
+    const [sx1, sy1] = toScreen(x1, y1);
+    const left = Math.min(sx0, sx1);
+    const top = Math.min(sy0, sy1);
+    const bw = Math.abs(sx1 - sx0);
+    const bh = Math.abs(sy1 - sy0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.save();
+    ctx.translate(left, top + bh);
+    ctx.scale(1, -1);
+    ctx.drawImage(basemap.canvas, 0, 0, bw, bh);
+    ctx.restore();
   }
 
   if (layers.map && map) {

@@ -20,6 +20,7 @@ export interface View3DContext {
   footprint: THREE.LineLoop;
   mapPlane: THREE.Mesh;
   costmapPlane: THREE.Mesh;
+  basemapPlane: THREE.Mesh;
   laser: THREE.Points;
   setSize: (w: number, h: number) => void;
   dispose: () => void;
@@ -122,8 +123,10 @@ export function createView3DScene(mount: HTMLElement): View3DContext {
   footprint.visible = false;
   scene.add(footprint);
 
+  const basemapPlane = makePlane(0.005);
   const mapPlane = makePlane(0.01);
   const costmapPlane = makePlane(0.02);
+  scene.add(basemapPlane);
   scene.add(mapPlane);
   scene.add(costmapPlane);
 
@@ -177,6 +180,7 @@ export function createView3DScene(mount: HTMLElement): View3DContext {
     toolOverlay,
     cloud,
     footprint,
+    basemapPlane,
     mapPlane,
     costmapPlane,
     laser,

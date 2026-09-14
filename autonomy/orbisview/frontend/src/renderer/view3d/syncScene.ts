@@ -1,5 +1,6 @@
 import type { View3DContext } from './createScene';
 import type { View3DSceneInput } from './types';
+import { updateBasemapPlane } from './layers/basemap';
 import { updateCloud } from './layers/cloud';
 import { updateFootprint } from './layers/footprint';
 import { updateLaser } from './layers/laser';
@@ -22,6 +23,7 @@ export function syncView3DScene(ctx: View3DContext, input: View3DSceneInput): vo
     size: opts.cloudSize,
   });
   updateFootprint(ctx, input.pose, input.footprint, layers.footprint);
+  updateBasemapPlane(ctx.basemapPlane, input.basemap ?? null, layers.basemap ?? true);
   updateOccupancyPlane(ctx.mapPlane, input.map, {
     opacity: opts.mapOpacity,
     yLift: 0.01,
