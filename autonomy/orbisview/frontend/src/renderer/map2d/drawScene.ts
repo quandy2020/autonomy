@@ -217,7 +217,7 @@ export function paintMap2DScene(
   const oy = viewOffset.y;
   const toScreen = makeWorldToScreen(w, h, ox, oy, scale);
 
-  ctx.fillStyle = '#0f1419';
+  ctx.fillStyle = '#141b22';
   ctx.fillRect(0, 0, w, h);
 
   if (layers.grid) {
