@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# FindOSQP.cmake
-# This module looks for the OSQP library and headers
-# Once done, it defines
-#   OSQP_FOUND - system has OSQP
-#   OSQP_INCLUDE_DIRS - the OSQP include directories
-#   OSQP_LIBRARIES - the libraries needed to use OSQP
+# @file FindOSQP.cmake
+# @brief Find-module for the OSQP quadratic-programming library.
+#
+# @var OSQP_FOUND         Whether OSQP was found
+# @var OSQP_INCLUDE_DIRS  Include directories
+# @var OSQP_LIBRARIES     Libraries to link
+# @creates OSQP::OSQP     IMPORTED target (when found)
 
 find_path(OSQP_INCLUDE_DIR
   NAMES osqp/osqp.h

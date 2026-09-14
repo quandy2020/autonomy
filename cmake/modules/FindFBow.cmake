@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# FindFBow.cmake
+# @file FindFBow.cmake
+# @brief Find-module for stella-cv FBoW (Fast Bag of Words), used by atlas.
 #
-# Locates the stella-cv FBoW (Fast Bag of Words) library used by atlas.
-# Resolution order:
-#   1. CMake package config (fbowConfig.cmake from a system install)
-#   2. Header/library search on the system
-#   3. Bundled sources under autonomy/localization/stella_vslam/3rd/FBoW
+# @par Resolution order
+#   1. fbowConfig.cmake (system install)
+#   2. System header/library search
+#   3. Bundled: autonomy/localization/stella_vslam/3rd/FBoW
 #
-# Defines:
-#   FBow_FOUND
-#   FBow_INCLUDE_DIRS
+# @var FBow_FOUND FBow_INCLUDE_DIRS
 #   FBow_LIBRARIES
 #   FBow::fbow          - imported or built target
 #

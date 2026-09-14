@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# @file autonomy_config_version.cmake.in
+# @brief Version-compatibility check for find_package(autonomy VERSION ...)
+#        (PackageVersion file).
+
 set(PACKAGE_VERSION "@AUTONOMY_VERSION@")
 
 if("${PACKAGE_VERSION}" VERSION_EQUAL "${PACKAGE_FIND_VERSION}")

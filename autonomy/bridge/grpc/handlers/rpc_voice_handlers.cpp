@@ -24,20 +24,20 @@ void RpcVoiceExecuteHandler::OnRequest(
     }
     const auto bridge_request = ToBridgeVoice(request);
     context->voice().HandleCommand(
-        bridge_request, [this](const proto::VoiceCommandResponse& response) {
+        bridge_request, [this](const proto::VoiceCommandResponse& voice_response) {
             auto response =
                 std::make_unique<::automsgs::rpcs::voice::VoiceCommandResponse>();
             *response->mutable_status() =
-                response.ack().success()
-                    ? MakeOkStatus(response.ack().message())
+                voice_response.ack().success()
+                    ? MakeOkStatus(voice_response.ack().message())
                     : MakeRpcStatus(StatusCode::TASK_FAILED,
-                                    response.ack().message());
-            response->set_goal_id(response.ack().cmd_id());
+                                    voice_response.ack().message());
+            response->set_goal_id(voice_response.ack().cmd_id());
             response->set_intent(static_cast<::automsgs::rpcs::voice::VoiceIntent>(
-                response.intent()));
-            response->set_detail(response.detail());
-            response->set_active(!response.ack().final());
-            switch (response.status()) {
+                voice_response.intent()));
+            response->set_detail(voice_response.detail());
+            response->set_active(!voice_response.ack().final());
+            switch (voice_response.status()) {
                 case proto::VOICE_STATUS_DISPATCHING:
                     response->set_state(
                         ::automsgs::rpcs::voice::VOICE_STATE_DISPATCHING);
@@ -60,7 +60,7 @@ void RpcVoiceExecuteHandler::OnRequest(
                     response->set_state(::automsgs::rpcs::voice::VOICE_STATE_IDLE);
                     break;
             }
-            const bool final = response.ack().final();
+            const bool final = voice_response.ack().final();
             Send(std::move(response));
             if (final) {
                 Finish(::grpc::Status::OK);

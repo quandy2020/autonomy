@@ -1,4 +1,9 @@
-# Domain selection and dependency-graph validation.
+# @file autonomy_options.cmake
+# @brief Domain AUTONOMY_BUILD_* options, dependency graph, and enabled-module
+#        list computation.
+#
+# @details @c AUTONOMY_MODULE_DEPENDENCIES_${mod} defines hard deps between
+#          domains.
 
 include_guard(GLOBAL)
 
@@ -18,6 +23,9 @@ set(AUTONOMY_MODULE_DEPENDENCIES_audio common)
 set(AUTONOMY_MODULE_DEPENDENCIES_bridge common system task)
 set(AUTONOMY_MODULE_DEPENDENCIES_visualization map)
 
+# @brief Declare option(AUTONOMY_BUILD_*) for each entry in
+#        @c AUTONOMY_MODULE_ORDER.
+# @pre @c AUTONOMY_MODULE_ORDER must be set.
 function(autonomy_declare_module_options)
   if(NOT DEFINED AUTONOMY_MODULE_ORDER)
     message(FATAL_ERROR
@@ -31,6 +39,8 @@ function(autonomy_declare_module_options)
   endforeach()
 endfunction()
 
+# @brief Enabled domains must also enable every domain listed in
+#        @c AUTONOMY_MODULE_DEPENDENCIES_*.
 function(autonomy_validate_module_graph)
   if(NOT DEFINED AUTONOMY_MODULE_ORDER)
     message(FATAL_ERROR
@@ -54,6 +64,9 @@ function(autonomy_validate_module_graph)
   endforeach()
 endfunction()
 
+# @brief Write the enabled-domain list from AUTONOMY_BUILD_* options.
+# @param _out_variable Parent-scope output variable name
+#        (e.g. AUTONOMY_ENABLED_MODULES).
 function(autonomy_compute_enabled_modules _out_variable)
   if(NOT DEFINED AUTONOMY_MODULE_ORDER)
     message(FATAL_ERROR

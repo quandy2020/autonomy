@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# FindG2o.cmake
+# @file FindG2o.cmake
+# @brief Find-module for the g2o graph optimization library (localization / atlas).
 #
-# Locates g2o graph optimization library required by atlas.
+# @var G2o_FOUND  @creates g2o::* targets (CONFIG mode)
 
 if(G2o_FOUND)
   return()

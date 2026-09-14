@@ -12,27 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-include(CMakeParseArguments)
+# @file autonomy_common.cmake
+# @brief Global compile flags, gtest wrapper, and GMock discovery.
+#
+# Loaded by autonomy_configure_project() via autonomy_initialize_project().
 
-macro(_parse_arguments ARGS)
-  set(OPTIONS)
-  set(ONE_VALUE_ARG)
-  set(MULTI_VALUE_ARGS SRCS)
-  cmake_parse_arguments(ARG
-    "${OPTIONS}" "${ONE_VALUE_ARG}" "${MULTI_VALUE_ARGS}" ${ARGS})
-endmacro(_parse_arguments)
-
-macro(_common_compile_stuff)
-  set(TARGET_COMPILE_FLAGS "${TARGET_COMPILE_FLAGS} ${AUTONOMY_CXX_FLAGS}")
-
-  set_target_properties(${NAME} PROPERTIES
-    COMPILE_FLAGS ${TARGET_COMPILE_FLAGS})
-
-  target_include_directories(${NAME} PUBLIC ${PROJECT_NAME})
-  target_link_libraries(${NAME} PUBLIC ${PROJECT_NAME})
-  target_link_libraries(${NAME} PRIVATE glog::glog gflags::gflags)
-endmacro(_common_compile_stuff)
-
+# @brief Add a gtest executable and register_test.
+# @param NAME Target name (often a dotted path).
+# @param ARG_SRC Single .cpp source file.
+# @param LINK_TARGET Domain library under test.
 function(autonomy_test NAME ARG_SRC LINK_TARGET)
   add_executable(${NAME} ${ARG_SRC})
   set_target_properties(${NAME} PROPERTIES
@@ -60,8 +48,9 @@ function(autonomy_test NAME ARG_SRC LINK_TARGET)
   add_test(NAME ${NAME} COMMAND $<TARGET_FILE:${NAME}>)
 endfunction()
 
-# Create a variable 'VAR_NAME'='FLAG'. If VAR_NAME is already set, FLAG is
-# appended.
+# @brief Append a compile flag to @c VAR_NAME (space-separated).
+# @param VAR_NAME Parent-scope variable name.
+# @param FLAG Flag string to append.
 function(autonomy_add_flag VAR_NAME FLAG)
   if (${VAR_NAME})
     set(${VAR_NAME} "${${VAR_NAME}} ${FLAG}" PARENT_SCOPE)
@@ -70,6 +59,7 @@ function(autonomy_add_flag VAR_NAME FLAG)
   endif()
 endfunction()
 
+# @brief Set AUTONOMY_CXX_FLAGS, CMAKE_MODULE_PATH, and Debug-build policy.
 macro(autonomy_initialize_project)
   if(AUTONOMY_CMAKE_DIR)
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
@@ -130,6 +120,7 @@ macro(autonomy_initialize_project)
   endif()
 endmacro()
 
+# @brief enable_testing() and find_package(GMock).
 macro(autonomy_enable_testing)
   enable_testing()
   find_package(GMock REQUIRED)

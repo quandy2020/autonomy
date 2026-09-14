@@ -105,15 +105,20 @@ class AutonomyOptionsTest(unittest.TestCase):
         )
 
     def test_root_selects_modules_before_finding_dependencies(self):
+        super_cmake = REPOSITORY_ROOT.joinpath(
+            "cmake/autonomy_superproject.cmake"
+        ).read_text(encoding="utf-8")
         root_cmake = REPOSITORY_ROOT.joinpath("CMakeLists.txt").read_text(
             encoding="utf-8"
         )
-        compute = root_cmake.find(
+        compute = super_cmake.find(
             "autonomy_compute_enabled_modules(AUTONOMY_ENABLED_MODULES)"
         )
-        find = root_cmake.find("autonomy_find_dependencies()")
         self.assertGreaterEqual(compute, 0)
-        self.assertGreater(find, compute)
+        bootstrap = root_cmake.find("autonomy_superproject_bootstrap_modules()")
+        find = root_cmake.find("autonomy_find_dependencies()")
+        self.assertGreaterEqual(bootstrap, 0)
+        self.assertGreater(find, bootstrap)
 
     def test_build_traverses_only_enabled_modules(self):
         build_helpers = REPOSITORY_ROOT.joinpath(
@@ -126,7 +131,7 @@ class AutonomyOptionsTest(unittest.TestCase):
 
     def test_tests_are_discovered_only_in_enabled_modules(self):
         test_helpers = REPOSITORY_ROOT.joinpath(
-            "cmake/autonomy_tests.cmake"
+            "cmake/autonomy_build.cmake"
         ).read_text(encoding="utf-8")
         self.assertIn(
             "foreach(_mod IN LISTS AUTONOMY_ENABLED_MODULES)",
@@ -169,7 +174,6 @@ class AutonomyOptionsTest(unittest.TestCase):
                         PROPERTY AUTONOMY_TEST_COLLECTION_REGISTERED
                         "${{_registered}}")
                     endfunction()
-                    include("{CMAKE_MODULE_DIR.as_posix()}/autonomy_tests.cmake")
                     include("{CMAKE_MODULE_DIR.as_posix()}/autonomy_build.cmake")
                     autonomy_configure_tests()
                     autonomy_add_tests()
@@ -313,63 +317,69 @@ class AutonomyOptionsTest(unittest.TestCase):
         self.assertEqual(two_argument_calls, [])
 
     def test_protobuf_is_discovered_only_in_enabled_modules(self):
-        protobuf_helpers = REPOSITORY_ROOT.joinpath(
-            "cmake/autonomy_protobuf.cmake"
+        build_helpers = REPOSITORY_ROOT.joinpath(
+            "cmake/autonomy_build.cmake"
         ).read_text(encoding="utf-8")
+        self.assertIn("function(autonomy_collect_proto_sources)", build_helpers)
         self.assertIn(
             "foreach(_mod IN LISTS AUTONOMY_ENABLED_MODULES)",
-            protobuf_helpers,
+            build_helpers,
         )
-        self.assertIn("if(BUILD_ORBISVIEW)", protobuf_helpers)
-
-    def test_feature_gates_remain_secondary_to_domain_selection(self):
-        root_cmake = REPOSITORY_ROOT.joinpath("CMakeLists.txt").read_text(
-            encoding="utf-8"
+        # Companion orbisview schemas are not fed into autonomy_proto codegen.
+        self.assertNotIn(
+            'file(GLOB_RECURSE _orbisview_protos',
+            build_helpers,
         )
         self.assertIn(
+            "orbisview/*.proto are FE/schema docs",
+            build_helpers,
+        )
+
+    def test_feature_gates_remain_secondary_to_domain_selection(self):
+        super_cmake = REPOSITORY_ROOT.joinpath(
+            "cmake/autonomy_superproject.cmake"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
             "set(AUTONOMY_MODULE_CONDITION_bridge BUILD_GRPC)",
-            root_cmake,
+            super_cmake,
         )
         self.assertIn(
             "set(AUTONOMY_MODULE_CONDITION_visualization foxglove-sdk_FOUND)",
-            root_cmake,
+            super_cmake,
         )
 
     def test_root_reports_explicitly_disabled_domains(self):
-        root_cmake = REPOSITORY_ROOT.joinpath("CMakeLists.txt").read_text(
-            encoding="utf-8"
-        )
+        super_cmake = REPOSITORY_ROOT.joinpath(
+            "cmake/autonomy_superproject.cmake"
+        ).read_text(encoding="utf-8")
         self.assertIn(
             '"autonomy: module \'${_module}\' disabled by "',
-            root_cmake,
+            super_cmake,
         )
         self.assertIn(
             '"AUTONOMY_BUILD_${_module_upper}=OFF"',
-            root_cmake,
+            super_cmake,
         )
 
-    def test_common_osqp_has_a_separate_optional_target(self):
+    def test_superproject_sets_lazy_load_flag(self):
+        root_cmake = REPOSITORY_ROOT.joinpath("CMakeLists.txt").read_text(
+            encoding="utf-8"
+        )
+        module_cmake = REPOSITORY_ROOT.joinpath(
+            "cmake/autonomy_module.cmake"
+        ).read_text(encoding="utf-8")
+        self.assertIn("set(AUTONOMY_SUPERPROJECT ON)", root_cmake)
+        self.assertIn("if(AUTONOMY_SUPERPROJECT)", module_cmake)
+
+    def test_common_osqp_is_folded_into_autonomy_common(self):
         common_cmake = REPOSITORY_ROOT.joinpath(
             "autonomy/common/CMakeLists.txt"
         ).read_text(encoding="utf-8")
-        self.assertIn(
-            'list(REMOVE_ITEM _COMMON_SRCS "${_COMMON_OSQP_SOURCE}")',
-            common_cmake,
-        )
         self.assertIn("if(AUTONOMY_BUILD_COMMON_OSQP)", common_cmake)
-        self.assertIn("add_library(autonomy_common_osqp SHARED", common_cmake)
-        self.assertIn(
-            "autonomy_common Eigen3::Eigen OSQP::OSQP",
-            common_cmake,
-        )
-        self.assertIn(
-            "add_library(autonomy::common_osqp ALIAS autonomy_common_osqp)",
-            common_cmake,
-        )
-        self.assertIn(
-            "PROPERTY AUTONOMY_MODULE_TARGETS autonomy_common_osqp",
-            common_cmake,
-        )
+        self.assertIn("list(APPEND _COMMON_FEATURES osqp)", common_cmake)
+        self.assertIn("mpc_osqp", common_cmake)
+        self.assertNotIn("add_library(autonomy_common_osqp SHARED", common_cmake)
+        self.assertNotIn("autonomy::common_osqp", common_cmake)
 
     def test_common_ipopt_sources_require_discovered_ipopt(self):
         common_cmake = REPOSITORY_ROOT.joinpath(
@@ -381,14 +391,14 @@ class AutonomyOptionsTest(unittest.TestCase):
             common_cmake,
         )
         tests_cmake = REPOSITORY_ROOT.joinpath(
-            "cmake/autonomy_tests.cmake"
+            "cmake/autonomy_build.cmake"
         ).read_text(encoding="utf-8")
         self.assertIn("if(NOT Ipopt_FOUND)", tests_cmake)
         self.assertIn('list(FILTER _tests EXCLUDE REGEX "/optimization/(ipopt|test)/")', tests_cmake)
 
-    def test_osqp_test_is_filtered_when_optional_target_is_disabled(self):
+    def test_osqp_test_is_filtered_when_osqp_is_disabled(self):
         tests_cmake = REPOSITORY_ROOT.joinpath(
-            "cmake/autonomy_tests.cmake"
+            "cmake/autonomy_build.cmake"
         ).read_text(encoding="utf-8")
         self.assertIn("if(NOT AUTONOMY_BUILD_COMMON_OSQP)", tests_cmake)
         self.assertIn(

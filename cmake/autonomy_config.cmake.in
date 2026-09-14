@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# @file autonomy_config.cmake.in
+# @brief Config template for find_package(autonomy)
+#        (produced by configure_package_config_file).
+#
 #  Usage from an external project:
 #    In your CMakeLists.txt, add these lines:
 #
@@ -49,7 +53,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${AUTONOMY_CMAKE_DIR}/modules)
 include(EnsureProtobuf319)
 
 # Dependencies exported by every Autonomy installation profile.
-find_dependency(Eigen3 ${QUIET_OR_REQUIRED_OPTION})
+find_dependency(Eigen3 ${QUIET_OR_REQUIRED_OPTION} CONFIG)
 find_dependency(nlohmann_json ${QUIET_OR_REQUIRED_OPTION})
 set(GFLAGS_USE_TARGET_NAMESPACE TRUE)
 find_dependency(gflags ${QUIET_OR_REQUIRED_OPTION} CONFIG)
@@ -58,7 +62,10 @@ if(TARGET gflags::gflags AND NOT TARGET gflags)
   set_property(TARGET gflags PROPERTY
     INTERFACE_LINK_LIBRARIES gflags::gflags)
 endif()
-find_dependency(Glog ${QUIET_OR_REQUIRED_OPTION})
+find_dependency(glog ${QUIET_OR_REQUIRED_OPTION} CONFIG)
+if(TARGET glog::glog AND NOT TARGET glog)
+  add_library(glog ALIAS glog::glog)
+endif()
 find_dependency(yaml-cpp ${QUIET_OR_REQUIRED_OPTION})
 find_dependency(Threads ${QUIET_OR_REQUIRED_OPTION})
 
@@ -73,7 +80,7 @@ if(APPLE AND NOT TARGET PkgConfig::EPOLL_SHIM)
 endif()
 
 if(AUTONOMY_PACKAGE_HAS_COMMON_MATH)
-  find_package(Ceres ${QUIET_OR_REQUIRED_OPTION} HINTS ${CERES_DIR_HINTS})
+  find_package(Ceres ${QUIET_OR_REQUIRED_OPTION} CONFIG HINTS ${CERES_DIR_HINTS})
 endif()
 
 if(AUTONOMY_PACKAGE_HAS_COMMON_VISION)

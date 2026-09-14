@@ -1,18 +1,39 @@
-# OrbisView launch (Dreamview launch/ counterpart; no Cyber RT).
-#
-# Usage:
-#   bash autonomy/orbisview/launch/orbisview.launch
-#   # or one-shot FE+BE:
-#   bash autonomy/orbisview/launch/dev.sh
+<!--
+  Copyright 2026 The Openbot Authors
 
-set -euo pipefail
-ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-BIN="${ROOT}/build-orbisview/bin/autonomy.orbisview"
-CONF="${ROOT}/autonomy/orbisview/conf/orbisview.conf"
+  Starts autonomy.orbisview (CivetWeb HTTP/WS + optional static UI).
 
-if [[ ! -x "$BIN" ]]; then
-  echo "missing $BIN — build first: cmake -S autonomy/orbisview -B build-orbisview && cmake --build build-orbisview -j"
-  exit 1
-fi
+  Binary: build/autonomy/bin/autonomy.orbisview  (requires -DBUILD_ORBISVIEW=ON)
+  Config: conf/orbisview.conf via gflags --flagfile
+  Static: frontend/dist (CMake target orbisview_frontend) via --document_root
 
-exec "$BIN" --flagfile="$CONF" "$@"
+  UI:  http://127.0.0.1:8766/
+  WS:  ws://127.0.0.1:8766/ws
+
+  Prerequisites:
+    - Frontend built (orbisview_frontend / npm run build → frontend/dist)
+    - PATH / LD_LIBRARY_PATH include build/autonomy/{bin,lib} (or install prefix)
+    - Autolink + automsgs at build time; live channels need Autolink nodes
+
+  Dev (repo root):
+    export PATH=$PWD/build/autonomy/bin:$PATH
+    export LD_LIBRARY_PATH=$PWD/build/autonomy/lib:${LD_LIBRARY_PATH:-}
+    export AUTOLINK_LAUNCH_PATH=$PWD/src/autonomy/autonomy/orbisview/launch
+    autolink launch start orbisview.launch
+    # or: autolink launch start src/autonomy/autonomy/orbisview/launch/orbisview.launch
+
+  Install:
+    autolink launch start share/autonomy/orbisview/launch/orbisview.launch
+    # adjust --flagfile / --document_root to installed conf + www if needed
+
+  Vite HMR (optional, not via launch):
+    bash src/autonomy/autonomy/orbisview/script/run_frontend.sh
+-->
+<autolink>
+  <module>
+    <name>orbisview</name>
+    <type>binary</type>
+    <process_name>autonomy.orbisview --flagfile=src/autonomy/autonomy/orbisview/conf/orbisview.conf --document_root=src/autonomy/autonomy/orbisview/frontend/dist</process_name>
+    <exception_handler>exit</exception_handler>
+  </module>
+</autolink>

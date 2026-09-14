@@ -19,6 +19,8 @@ autonomy_module(localization)
 
 # Library sources: GLOB *.cpp under this dir; drop *main.cpp / *_test.cpp.
 autonomy_glob_srcs(_LOCALIZATION_SRCS)
+list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/(fake_|mock_)")
+list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "test_helpers")
 autonomy_library(
   DEPENDENCIES autonomy_common autonomy_transform
   FEATURES slam pcl cairo boost_iostreams lua

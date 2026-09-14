@@ -13,16 +13,13 @@
 # limitations under the License.
 
 # autonomy/common — shared utilities, math, time, optional inference
+# Single shared library: libautonomy_common.so
 
 include(autonomy_module)
 autonomy_module(common)
 
 # Library sources: GLOB *.cpp; drop *main.cpp / *_test.cpp.
 autonomy_glob_srcs(_COMMON_SRCS)
-
-set(_COMMON_OSQP_SOURCE
-  "${CMAKE_CURRENT_SOURCE_DIR}/math/mpc_osqp.cpp")
-list(REMOVE_ITEM _COMMON_SRCS "${_COMMON_OSQP_SOURCE}")
 
 # LuaParameterDictionary lives with localization (Cartographer); keep common Lua-free.
 list(FILTER _COMMON_SRCS EXCLUDE REGEX "lua_parameter_dictionary\\.cpp$")
@@ -33,9 +30,22 @@ if(NOT BUILD_GRPC)
   list(FILTER _COMMON_SRCS EXCLUDE REGEX "/async_grpc/")
 endif()
 
+# Optional OSQP MPC (math/mpc_osqp.cpp) — still one library when enabled.
+set(_COMMON_FEATURES inference)
+if(BUILD_GRPC)
+  list(APPEND _COMMON_FEATURES grpc)
+endif()
+if(AUTONOMY_BUILD_COMMON_OSQP)
+  list(APPEND _COMMON_FEATURES osqp)
+else()
+  list(FILTER _COMMON_SRCS EXCLUDE REGEX "/math/mpc_osqp\\.cpp$")
+endif()
+
 # The Ipopt adapter is available only when a consuming domain discovered Ipopt.
 if(NOT Ipopt_FOUND)
   list(FILTER _COMMON_SRCS EXCLUDE REGEX "/optimization/ipopt/")
+else()
+  list(APPEND _COMMON_FEATURES ipopt)
 endif()
 
 # network/: keep tensor.cpp always; add ONNX / TensorRT backends when found.
@@ -59,7 +69,8 @@ unset(_net_drop)
 unset(_onnx)
 unset(_trt)
 
-autonomy_library(NO_CORE FEATURES inference SRCS ${_COMMON_SRCS})
+autonomy_library(NO_CORE FEATURES ${_COMMON_FEATURES} SRCS ${_COMMON_SRCS})
+unset(_COMMON_FEATURES)
 target_link_libraries(autonomy_common PUBLIC
   protobuf::libprotobuf
   automsgs
@@ -72,18 +83,4 @@ target_link_libraries(autonomy_common PUBLIC
   Threads::Threads
   nlohmann_json::nlohmann_json)
 
-if(AUTONOMY_BUILD_COMMON_OSQP)
-  add_library(autonomy_common_osqp SHARED "${_COMMON_OSQP_SOURCE}")
-  target_include_directories(autonomy_common_osqp PUBLIC
-    $<BUILD_INTERFACE:${AUTONOMY_WORKSPACE_ROOT}>
-    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>
-    $<INSTALL_INTERFACE:include>)
-  target_link_libraries(autonomy_common_osqp PUBLIC
-    autonomy_common Eigen3::Eigen OSQP::OSQP)
-  add_library(autonomy::common_osqp ALIAS autonomy_common_osqp)
-  set_property(GLOBAL APPEND
-    PROPERTY AUTONOMY_MODULE_TARGETS autonomy_common_osqp)
-endif()
-
 unset(_COMMON_SRCS)
-unset(_COMMON_OSQP_SOURCE)

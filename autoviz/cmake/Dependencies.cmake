@@ -34,12 +34,15 @@ if(AUTOVIZ_STANDALONE)
   include(EnsureProtobuf319)
   autonomy_require_protobuf()
   find_package(yaml-cpp REQUIRED)
-  find_package(Glog REQUIRED)
+  find_package(glog CONFIG REQUIRED)
+  if(TARGET glog::glog AND NOT TARGET glog)
+    add_library(glog ALIAS glog::glog)
+  endif()
   find_package(gflags QUIET)
 endif()
 
-# Prefer Qt6::* (and Qt::* aliases claimed by an early find_package in the
-# autonomy super-project). Re-running find_package is safe once Qt6 owns them.
+# Qt6 must be found before PCL/VTK (see autonomy_deps.cmake).
+# Re-running find_package here is a no-op once Qt6::* are already in the cache.
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets OpenGLWidgets OpenGL Xml Svg Network)
 
 # Qt Multimedia is optional; missing package disables Audio panel playback only.

@@ -123,9 +123,12 @@ NodeClient<ActionT>::SendGoalAndWait(
     }
 }
 
-// Navigator action servers (see bridge/constants.hpp for action names).
+// Navigator / teleop action servers (see bridge/constants.hpp for action names).
 template class NodeClient<automsgs::actions::NavigateToPoseAction>;
 template class NodeClient<automsgs::actions::NavigateThroughPosesAction>;
+template class NodeClient<automsgs::actions::DriveOnHeadingAction>;
+template class NodeClient<automsgs::actions::BackUpAction>;
+template class NodeClient<automsgs::actions::SpinAction>;
 
 }  // namespace bridge
 }  // namespace autonomy

@@ -1,9 +1,7 @@
-# FindSherpaOnnx.cmake
-# Finds sherpa-onnx C API (include + library) for offline/online ASR.
-# Sets:
-#   SherpaOnnx_FOUND
-#   SherpaOnnx_INCLUDE_DIRS
-#   SherpaOnnx_LIBRARIES
+# @file FindSherpaOnnx.cmake
+# @brief Find-module for sherpa-onnx C API (optional audio ASR).
+#
+# @var SherpaOnnx_FOUND SherpaOnnx_INCLUDE_DIRS SherpaOnnx_LIBRARIES
 
 find_path(SherpaOnnx_INCLUDE_DIR
   NAMES sherpa-onnx/c-api/c-api.h

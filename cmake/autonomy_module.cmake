@@ -1,14 +1,23 @@
-# Module APIs + umbrella include for super-project helpers.
-# Style mirrors gz-cmake (library / add_component / configure_*).
+# @file autonomy_module.cmake
+# @brief Domain-module CMake API: library / component / binary and dependency
+#        resolution.
 #
-# Root: include(autonomy_module) then autonomy_configure_project().
-# Modules: include(autonomy_module) + autonomy_module(<name>).
+# @par Usage
+#   - Root: @c include(autonomy_module) then @c autonomy_configure_project()
+#   - Domain: @c autonomy_module(name) + @c autonomy_library(...)
+#
+# When @c AUTONOMY_SUPERPROJECT=ON, also loads build/package helpers.
+# @par gz-cmake mapping
+#   gz_create_core_library, gz_add_component
 
 include_guard(GLOBAL)
 
 include("${CMAKE_CURRENT_LIST_DIR}/autonomy_project.cmake")
-include("${CMAKE_CURRENT_LIST_DIR}/autonomy_dependencies.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/autonomy_deps.cmake")
 
+# @brief Resolve a logical dependency name to a linkable CMake target.
+# @param _dependency e.g. autonomy_common, common, or an existing TARGET name.
+# @param _out_var Output variable (parent scope).
 function(autonomy_resolve_dependency _dependency _out_var)
   if(TARGET "${_dependency}")
     set(${_out_var} "${_dependency}" PARENT_SCOPE)
@@ -27,6 +36,8 @@ function(autonomy_resolve_dependency _dependency _out_var)
     "autonomy_resolve_dependency: '${_dependency}' not found")
 endfunction()
 
+# @brief Set the current domain module name @c _AUTONOMY_MODULE_NAME.
+# @param _mod Domain directory name (e.g. planning, common).
 macro(autonomy_module _mod)
   set(_AUTONOMY_MODULE_NAME "${_mod}")
   if(NOT DEFINED AUTONOMY_WORKSPACE_ROOT)
@@ -34,6 +45,9 @@ macro(autonomy_module _mod)
   endif()
 endmacro()
 
+# @brief Recursively GLOB *.cpp under the current directory (exclude main and
+#        *_test).
+# @param _out Output list variable name.
 macro(autonomy_glob_srcs _out)
   file(GLOB_RECURSE ${_out} CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
@@ -41,9 +55,13 @@ macro(autonomy_glob_srcs _out)
   list(FILTER ${_out} EXCLUDE REGEX "_test\\.cpp$")
 endmacro()
 
-# Module library (gz_create_core_library analogue).
-# Prefer: autonomy_glob_srcs(_SRCS) then SRCS ${_SRCS}.
-# INTERFACE: header-only / placeholder modules (e.g. audio).
+# @brief Create domain shared library @c autonomy_${mod} or an INTERFACE
+#        placeholder.
+# @param INTERFACE Header-only / placeholder module with no sources.
+# @param NO_CORE Skip autonomy_link_core().
+# @param DEPENDENCIES Other autonomy modules or targets.
+# @param FEATURES Passed to autonomy_link_feature().
+# @param SRCS HDRS Source lists (prefer autonomy_glob_srcs).
 function(autonomy_library)
   cmake_parse_arguments(_ARG "INTERFACE;NO_CORE" "" "DEPENDENCIES;FEATURES;SRCS;HDRS" ${ARGN})
   set(_mod "${_AUTONOMY_MODULE_NAME}")
@@ -127,7 +145,11 @@ function(autonomy_library)
   set_property(GLOBAL APPEND PROPERTY AUTONOMY_MODULE_TARGETS ${_target})
 endfunction()
 
-# Loadable plugin DSO (gz_add_component analogue).
+# @brief Build a loadable component DSO (gz_add_component analogue).
+# @param _name Target name.
+# @param SOURCES Required.
+# @param NO_AUTOLINK Do not link autolink.
+# @param GET_TARGET_NAME Variable name to receive the actual target name.
 function(autonomy_component _name)
   cmake_parse_arguments(_ARG
     "NO_AUTOLINK"
@@ -179,6 +201,11 @@ function(autonomy_component _name)
   endif()
 endfunction()
 
+# @brief Executable installed to bin; links the umbrella @c ${PROJECT_NAME} by
+#        default.
+# @param _exe Target name.
+# @param SRCS Source list.
+# @param DEPENDENCIES Extra PRIVATE link targets.
 function(autonomy_binary _exe)
   cmake_parse_arguments(_ARG "" "" "SRCS;DEPENDENCIES" ${ARGN})
   if(NOT _ARG_SRCS)
@@ -209,6 +236,8 @@ function(autonomy_binary _exe)
   install(TARGETS ${_exe} RUNTIME DESTINATION bin)
 endfunction()
 
-include("${CMAKE_CURRENT_LIST_DIR}/autonomy_tests.cmake")
-include("${CMAKE_CURRENT_LIST_DIR}/autonomy_build.cmake")
-include("${CMAKE_CURRENT_LIST_DIR}/autonomy_package.cmake")
+# Super-project only: domain CMakeLists do not need install/test orchestration.
+if(AUTONOMY_SUPERPROJECT)
+  include("${CMAKE_CURRENT_LIST_DIR}/autonomy_build.cmake")
+  include("${CMAKE_CURRENT_LIST_DIR}/autonomy_package.cmake")
+endif()

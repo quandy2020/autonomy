@@ -42,10 +42,10 @@ class FindModulesTest(unittest.TestCase):
                 text=True,
             )
 
-    def test_eigen_config_mode_sets_imported_target_and_legacy_variables(self):
+    def test_eigen_uses_config_package(self):
         result = self.configure(
             """
-            find_package(Eigen3 REQUIRED)
+            find_package(Eigen3 REQUIRED CONFIG)
             if(NOT TARGET Eigen3::Eigen)
               message(FATAL_ERROR "Eigen3::Eigen missing")
             endif()
@@ -54,13 +54,15 @@ class FindModulesTest(unittest.TestCase):
             endif()
             """,
             {
-                "lib/cmake/eigen3/Eigen3Config.cmake": textwrap.dedent(
+                "share/eigen3/cmake/Eigen3Config.cmake": textwrap.dedent(
                     """
                     set(Eigen3_FOUND TRUE)
-                    set(Eigen3_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../include/eigen3")
+                    set(EIGEN3_FOUND TRUE)
+                    set(EIGEN3_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../include/eigen3")
+                    set(EIGEN3_INCLUDE_DIRS "${EIGEN3_INCLUDE_DIR}")
                     add_library(Eigen3::Eigen INTERFACE IMPORTED)
                     set_target_properties(Eigen3::Eigen PROPERTIES
-                      INTERFACE_INCLUDE_DIRECTORIES "${Eigen3_INCLUDE_DIR}")
+                      INTERFACE_INCLUDE_DIRECTORIES "${EIGEN3_INCLUDE_DIR}")
                     """
                 ),
                 "include/eigen3/Eigen/Core": "// fixture\n",
@@ -68,43 +70,57 @@ class FindModulesTest(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-    def test_glog_package_name_matches_find_module_case(self):
+    def test_glog_uses_config_package(self):
         result = self.configure(
             """
-            find_package(Glog REQUIRED)
+            find_package(glog REQUIRED CONFIG)
             if(NOT TARGET glog::glog)
               message(FATAL_ERROR "glog::glog missing")
             endif()
-            if(NOT Glog_FOUND OR NOT GLOG_FOUND OR NOT GLOG_INCLUDE_DIRS OR NOT GLOG_LIBRARIES)
-              message(FATAL_ERROR "Glog compatibility variables missing")
-            endif()
             """,
             {
+                "lib/cmake/glog/glog-config.cmake": textwrap.dedent(
+                    """
+                    add_library(glog::glog INTERFACE IMPORTED)
+                    set_target_properties(glog::glog PROPERTIES
+                      INTERFACE_INCLUDE_DIRECTORIES
+                        "${CMAKE_CURRENT_LIST_DIR}/../../../include")
+                    """
+                ),
                 "include/glog/logging.h": "// fixture\n",
-                "lib/libglog.dylib": "",
-                "lib/libglog.so": "",
             },
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-    def test_ceres_sets_imported_target_and_legacy_variables(self):
+    def test_ceres_uses_config_package(self):
         result = self.configure(
             """
-            find_package(Ceres REQUIRED)
+            find_package(Ceres REQUIRED CONFIG)
             if(NOT TARGET Ceres::ceres)
               message(FATAL_ERROR "Ceres::ceres missing")
             endif()
-            if(NOT Ceres_FOUND OR NOT CERES_FOUND OR NOT CERES_INCLUDE_DIRS OR NOT CERES_LIBRARIES)
-              message(FATAL_ERROR "Ceres compatibility variables missing")
-            endif()
             """,
             {
+                "lib/cmake/Ceres/CeresConfig.cmake": textwrap.dedent(
+                    """
+                    set(Ceres_FOUND TRUE)
+                    set(CERES_FOUND TRUE)
+                    add_library(Ceres::ceres INTERFACE IMPORTED)
+                    set_target_properties(Ceres::ceres PROPERTIES
+                      INTERFACE_INCLUDE_DIRECTORIES
+                        "${CMAKE_CURRENT_LIST_DIR}/../../../include")
+                    """
+                ),
                 "include/ceres/ceres.h": "// fixture\n",
-                "lib/libceres.dylib": "",
-                "lib/libceres.so": "",
             },
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_hand_written_eigen_ceres_glog_finds_removed(self):
+        modules = REPOSITORY_ROOT / "cmake" / "modules"
+        self.assertFalse((modules / "FindEigen3.cmake").exists())
+        self.assertFalse((modules / "FindCeres.cmake").exists())
+        self.assertFalse((modules / "FindGlog.cmake").exists())
 
 
 if __name__ == "__main__":
