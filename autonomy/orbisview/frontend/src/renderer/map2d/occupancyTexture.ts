@@ -1,28 +1,133 @@
 import type { OccupancyGridJson } from './types';
 
-export type OccupancyPaintMode = 'map' | 'costmap';
+/**
+ * Color schemes matching ROS 2 RViz Map display
+ * (`rviz_default_plugins/.../map/palette_builder.cpp`).
+ */
+export type OccupancyPaintMode = 'map' | 'costmap' | 'raw';
 export const OCCUPANCY_MAX_EDGE = 1024;
+
+/** RViz unknown (-1 as uint8 255): teal-gray. */
+const RVIZ_UNKNOWN: [number, number, number, number] = [0x70, 0x89, 0x86, 255];
+
+function clampInt8(v: number): number {
+  let i = Math.trunc(Number(v));
+  if (!Number.isFinite(i)) i = -1;
+  if (i > 127) i = 127;
+  if (i < -128) i = -128;
+  return i;
+}
+
+/** int8 cell → uint8 palette index (same as RViz MapDisplay). */
+export function occupancyToUint8(v: number): number {
+  return clampInt8(v) & 0xff;
+}
+
+function buildMapPalette(): Uint8ClampedArray {
+  const p = new Uint8ClampedArray(256 * 4);
+  for (let i = 0; i <= 100; i++) {
+    const g = 255 - Math.floor((255 * i) / 100);
+    const o = i * 4;
+    p[o] = g;
+    p[o + 1] = g;
+    p[o + 2] = g;
+    p[o + 3] = 255;
+  }
+  for (let i = 101; i <= 127; i++) {
+    const o = i * 4;
+    p[o] = 0;
+    p[o + 1] = 255;
+    p[o + 2] = 0;
+    p[o + 3] = 255;
+  }
+  for (let i = 128; i <= 254; i++) {
+    const o = i * 4;
+    p[o] = 255;
+    p[o + 1] = Math.floor((255 * (i - 128)) / (254 - 128));
+    p[o + 2] = 0;
+    p[o + 3] = 255;
+  }
+  const u = 255 * 4;
+  p[u] = RVIZ_UNKNOWN[0];
+  p[u + 1] = RVIZ_UNKNOWN[1];
+  p[u + 2] = RVIZ_UNKNOWN[2];
+  p[u + 3] = RVIZ_UNKNOWN[3];
+  return p;
+}
+
+function buildCostmapPalette(): Uint8ClampedArray {
+  const p = new Uint8ClampedArray(256 * 4);
+  // free → transparent
+  p[0] = 0;
+  p[1] = 0;
+  p[2] = 0;
+  p[3] = 0;
+  for (let i = 1; i <= 98; i++) {
+    const v = Math.floor((255 * i) / 100);
+    const o = i * 4;
+    p[o] = v;
+    p[o + 1] = 0;
+    p[o + 2] = 255 - v;
+    p[o + 3] = 255;
+  }
+  // 99 inscribed / inflated obstacle → cyan
+  p[99 * 4] = 0;
+  p[99 * 4 + 1] = 255;
+  p[99 * 4 + 2] = 255;
+  p[99 * 4 + 3] = 255;
+  // 100 lethal → purple
+  p[100 * 4] = 255;
+  p[100 * 4 + 1] = 0;
+  p[100 * 4 + 2] = 255;
+  p[100 * 4 + 3] = 255;
+  for (let i = 101; i <= 127; i++) {
+    const o = i * 4;
+    p[o] = 0;
+    p[o + 1] = 255;
+    p[o + 2] = 0;
+    p[o + 3] = 255;
+  }
+  for (let i = 128; i <= 254; i++) {
+    const o = i * 4;
+    p[o] = 255;
+    p[o + 1] = Math.floor((255 * (i - 128)) / (254 - 128));
+    p[o + 2] = 0;
+    p[o + 3] = 255;
+  }
+  const u = 255 * 4;
+  p[u] = RVIZ_UNKNOWN[0];
+  p[u + 1] = RVIZ_UNKNOWN[1];
+  p[u + 2] = RVIZ_UNKNOWN[2];
+  p[u + 3] = RVIZ_UNKNOWN[3];
+  return p;
+}
+
+function buildRawPalette(): Uint8ClampedArray {
+  const p = new Uint8ClampedArray(256 * 4);
+  for (let i = 0; i < 256; i++) {
+    const o = i * 4;
+    p[o] = i;
+    p[o + 1] = i;
+    p[o + 2] = i;
+    p[o + 3] = 255;
+  }
+  return p;
+}
+
+const PALETTES: Record<OccupancyPaintMode, Uint8ClampedArray> = {
+  map: buildMapPalette(),
+  costmap: buildCostmapPalette(),
+  raw: buildRawPalette(),
+};
 
 export function occupancyCellRgba(
   v: number,
   mode: OccupancyPaintMode,
 ): [number, number, number, number] {
-  if (mode === 'costmap') {
-    if (v < 0) return [0, 0, 0, 0];
-    if (v >= 100) return [255, 112, 67, 140];
-    if (v === 0) return [0, 0, 0, 0];
-    return [255, 167, 38, 90];
-  }
-  if (v < 0) return [160, 168, 176, 110];
-  if (v === 0) return [0, 0, 0, 0];
-  if (v >= 100) return [40, 44, 52, 230];
-  const t = v / 100;
-  return [
-    Math.round(40 * t),
-    Math.round(44 * t),
-    Math.round(52 * t),
-    Math.round(40 + 190 * t),
-  ];
+  const idx = occupancyToUint8(v);
+  const p = PALETTES[mode] ?? PALETTES.map;
+  const o = idx * 4;
+  return [p[o], p[o + 1], p[o + 2], p[o + 3]];
 }
 
 export function computeTextureSize(
@@ -48,17 +153,19 @@ export function fillOccupancyRgba(
   scale: number,
 ): void {
   const { width, height, data } = grid;
+  const palette = PALETTES[mode] ?? PALETTES.map;
   for (let j = 0; j < th; j++) {
     for (let i = 0; i < tw; i++) {
       const sx = Math.min(width - 1, Math.floor(i / scale));
       const sy = Math.min(height - 1, Math.floor(j / scale));
       const v = data[sy * width + sx] ?? -1;
-      const [r, g, b, a] = occupancyCellRgba(v, mode);
+      const idx = occupancyToUint8(v);
+      const src = idx * 4;
       const o = (j * tw + i) * 4;
-      out[o] = r;
-      out[o + 1] = g;
-      out[o + 2] = b;
-      out[o + 3] = a;
+      out[o] = palette[src];
+      out[o + 1] = palette[src + 1];
+      out[o + 2] = palette[src + 2];
+      out[o + 3] = palette[src + 3];
     }
   }
 }

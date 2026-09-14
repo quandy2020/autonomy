@@ -13,11 +13,11 @@ export const useView3DStore = create<View3DStore>()(
     (set) => ({
       cloudColor: 'intensity',
       laserHeight: 0.1,
-      mapOpacity: 0.55,
+      mapOpacity: 0.7,
       setCloudColor: (cloudColor) => set({ cloudColor }),
       setLaserHeight: (laserHeight) => set({ laserHeight }),
       setMapOpacity: (mapOpacity) => set({ mapOpacity }),
     }),
-    { name: 'orbisview-view3d-opts-v1' },
+    { name: 'orbisview-view3d-opts-v2' },
   ),
 );

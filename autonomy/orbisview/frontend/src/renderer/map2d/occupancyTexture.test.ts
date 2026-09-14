@@ -4,40 +4,72 @@ import {
   fillOccupancyRgba,
   occupancyCacheKey,
   occupancyCellRgba,
+  occupancyToUint8,
   OCCUPANCY_MAX_EDGE,
 } from './occupancyTexture';
 import type { OccupancyGridJson } from './types';
 
-describe('occupancyCellRgba map', () => {
-  it('unknown is translucent gray', () => {
-    const [r, g, , a] = occupancyCellRgba(-1, 'map');
-    expect(a).toBeGreaterThan(0);
-    expect(a).toBeLessThan(255);
-    expect(Math.abs(r - g)).toBeLessThan(20);
+describe('occupancyToUint8', () => {
+  it('maps -1 to 255 like int8→uint8', () => {
+    expect(occupancyToUint8(-1)).toBe(255);
   });
 
-  it('free is fully transparent', () => {
-    expect(occupancyCellRgba(0, 'map')[3]).toBe(0);
-  });
-
-  it('occupied is dark opaque-ish', () => {
-    const [r, g, b, a] = occupancyCellRgba(100, 'map');
-    expect(a).toBeGreaterThan(180);
-    expect(r).toBeLessThan(80);
-    expect(g).toBeLessThan(80);
-    expect(b).toBeLessThan(80);
+  it('keeps 0..100', () => {
+    expect(occupancyToUint8(0)).toBe(0);
+    expect(occupancyToUint8(100)).toBe(100);
   });
 });
 
-describe('occupancyCellRgba costmap', () => {
-  it('skips unknown (alpha 0)', () => {
-    expect(occupancyCellRgba(-1, 'costmap')[3]).toBe(0);
+describe('occupancyCellRgba map (RViz makeMapPalette)', () => {
+  it('unknown (-1) is RViz teal-gray 0x708986', () => {
+    expect(occupancyCellRgba(-1, 'map')).toEqual([0x70, 0x89, 0x86, 255]);
   });
 
-  it('lethal is warm', () => {
-    const [r, g, , a] = occupancyCellRgba(100, 'costmap');
-    expect(a).toBeGreaterThan(80);
-    expect(r).toBeGreaterThan(g);
+  it('free (0) is opaque white', () => {
+    expect(occupancyCellRgba(0, 'map')).toEqual([255, 255, 255, 255]);
+  });
+
+  it('occupied (100) is opaque black', () => {
+    expect(occupancyCellRgba(100, 'map')).toEqual([0, 0, 0, 255]);
+  });
+
+  it('mid value is gray scale', () => {
+    const [r, g, b, a] = occupancyCellRgba(50, 'map');
+    expect(r).toBe(g);
+    expect(g).toBe(b);
+    expect(r).toBe(255 - Math.floor((255 * 50) / 100));
+    expect(a).toBe(255);
+  });
+
+  it('illegal 101 is green', () => {
+    expect(occupancyCellRgba(101, 'map')).toEqual([0, 255, 0, 255]);
+  });
+});
+
+describe('occupancyCellRgba costmap (RViz makeCostmapPalette)', () => {
+  it('unknown (-1) is same teal-gray', () => {
+    expect(occupancyCellRgba(-1, 'costmap')).toEqual([0x70, 0x89, 0x86, 255]);
+  });
+
+  it('free (0) is transparent', () => {
+    expect(occupancyCellRgba(0, 'costmap')[3]).toBe(0);
+  });
+
+  it('lethal (100) is purple', () => {
+    expect(occupancyCellRgba(100, 'costmap')).toEqual([255, 0, 255, 255]);
+  });
+
+  it('inscribed (99) is cyan', () => {
+    expect(occupancyCellRgba(99, 'costmap')).toEqual([0, 255, 255, 255]);
+  });
+
+  it('cost 50 is blue→red blend', () => {
+    const [r, g, b, a] = occupancyCellRgba(50, 'costmap');
+    const v = Math.floor((255 * 50) / 100);
+    expect(r).toBe(v);
+    expect(g).toBe(0);
+    expect(b).toBe(255 - v);
+    expect(a).toBe(255);
   });
 });
 
@@ -54,7 +86,7 @@ describe('computeTextureSize', () => {
 });
 
 describe('fillOccupancyRgba', () => {
-  it('writes free cell as transparent', () => {
+  it('writes RViz free/occupied pixels', () => {
     const grid: OccupancyGridJson = {
       resolution: 0.05,
       width: 2,
@@ -64,8 +96,8 @@ describe('fillOccupancyRgba', () => {
     };
     const out = new Uint8ClampedArray(2 * 1 * 4);
     fillOccupancyRgba(out, grid, 'map', 2, 1, 1);
-    expect(out[3]).toBe(0);
-    expect(out[7]).toBeGreaterThan(180);
+    expect(Array.from(out.slice(0, 4))).toEqual([255, 255, 255, 255]);
+    expect(Array.from(out.slice(4, 8))).toEqual([0, 0, 0, 255]);
   });
 });
 
