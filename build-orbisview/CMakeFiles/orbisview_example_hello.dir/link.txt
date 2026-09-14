@@ -1,1 +1,0 @@
-/usr/bin/c++  -arch arm64 -bundle -Wl,-headerpad_max_install_names -o lib/orbisview/plugins/orbisview_example_hello.so CMakeFiles/orbisview_example_hello.dir/backend/common/plugins/examples/example_hello_plugin.cc.o
