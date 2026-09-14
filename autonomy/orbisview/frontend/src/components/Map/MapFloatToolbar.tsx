@@ -1,10 +1,13 @@
 import { Icon, type IconName } from '@/components/icons';
 import { MapViewModeToggle } from '@/components/Map/MapViewModeToggle';
+import { StaticSlamLoadPop } from '@/components/Map/StaticSlamLoadPop';
 import { useMapViewStore, type MapTool } from '@/store/mapViewStore';
 import { useLayerStore } from '@/store/layoutStore';
 import { useWaypointStore } from '@/store/waypointStore';
 import { useDataStore } from '@/store/dataStore';
+import { useStaticSlamStore } from '@/store/staticSlamStore';
 import { wsClient } from '@/store/websocket/client';
+import { useState } from 'react';
 
 interface Props {
   onClearMeasure?: () => void;
@@ -64,11 +67,13 @@ export function MapFloatToolbar({
   onZoomOut,
   onFit,
 }: Props) {
+  const [basemapOpen, setBasemapOpen] = useState(false);
   const tool = useMapViewStore((s) => s.tool);
   const statusMsg = useMapViewStore((s) => s.statusMsg);
   const selectTool = useMapViewStore((s) => s.selectTool);
   const followRobot = useLayerStore((s) => s.followRobot);
   const setFollowRobot = useLayerStore((s) => s.setFollowRobot);
+  const hasBasemap = !!useStaticSlamStore((s) => s.basemap);
   const waypoints = useWaypointStore((s) => s.waypoints);
   const clearWaypoints = useWaypointStore((s) => s.clear);
   const connected = useDataStore((s) => s.connected);
@@ -154,8 +159,20 @@ export function MapFloatToolbar({
             active={followRobot}
             onClick={() => setFollowRobot(!followRobot)}
           />
+          <RailBtn
+            title="静态底图"
+            icon="mapping"
+            active={basemapOpen || hasBasemap}
+            onClick={() => setBasemapOpen((v) => !v)}
+          />
         </div>
       </div>
+
+      {basemapOpen ? (
+        <div className="map-basemap-anchor">
+          <StaticSlamLoadPop onClose={() => setBasemapOpen(false)} />
+        </div>
+      ) : null}
 
       <div className="map-float-status muted" title={statusMsg}>
         {statusMsg}

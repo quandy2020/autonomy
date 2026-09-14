@@ -1273,6 +1273,77 @@ body { margin: 0; }
   text-overflow: ellipsis;
   pointer-events: none;
 }
+.map-basemap-anchor {
+  position: absolute;
+  top: 10px;
+  right: 58px;
+  z-index: 8;
+  width: 260px;
+}
+.map-basemap-pop {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(42, 58, 76, 0.95);
+  background: rgba(12, 18, 26, 0.96);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  color: #cfd8dc;
+  font-size: 0.78rem;
+}
+.map-basemap-pop-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.map-basemap-row {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: 0.35rem;
+  align-items: center;
+}
+.map-basemap-row input,
+.map-basemap-url input {
+  width: 100%;
+  background: #0b1016;
+  border: 1px solid #2a3a4c;
+  color: #e0e6eb;
+  border-radius: 6px;
+  padding: 0.25rem 0.4rem;
+}
+.map-basemap-url {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.35rem;
+}
+.map-basemap-btn {
+  background: #1a2633;
+  border: 1px solid #2a3a4c;
+  color: #cfd8dc;
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+}
+.map-basemap-btn.danger {
+  border-color: #8d3a3a;
+  color: #ffcdd2;
+}
+.map-basemap-check {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.map-basemap-err {
+  color: #ef9a9a;
+  margin: 0;
+}
+.map-basemap-assets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
 .map-float-badge {
   position: absolute;
   top: 10px;

@@ -16,3 +16,10 @@ export const DEFAULT_FOOTPRINT = {
   length: 0.9,
   width: 0.56,
 } as const;
+
+/** Optional packaged SLAM assets (image + meta URLs). Empty = hide shortcuts. */
+export const STATIC_SLAM_ASSETS: {
+  label: string;
+  imageUrl: string;
+  metaUrl?: string;
+}[] = [];
