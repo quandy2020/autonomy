@@ -769,16 +769,26 @@ export function Map2DPanel() {
     const w = canvas?.width ?? canvasSize.w;
     const h = canvas?.height ?? canvasSize.h;
     const pts: { x: number; y: number }[] = [];
-    if (pose) pts.push(pose);
-    if (goal) pts.push(goal);
-    waypoints.forEach((wp) => pts.push(wp));
-    if (map) {
-      const ox = map.origin?.x ?? 0;
-      const oy = map.origin?.y ?? 0;
-      const res = map.resolution ?? 0.05;
+
+    const pushGrid = (g: NonNullable<typeof map>) => {
+      const ox = g.origin?.x ?? 0;
+      const oy = g.origin?.y ?? 0;
+      const res = g.resolution ?? 0.05;
       pts.push({ x: ox, y: oy });
-      pts.push({ x: ox + map.width * res, y: oy + map.height * res });
+      pts.push({ x: ox + g.width * res, y: oy + g.height * res });
+    };
+
+    if (map && paintLayers.map) {
+      pushGrid(map);
+    } else if (costmap && paintLayers.costmap) {
+      pushGrid(costmap);
+    } else {
+      if (pose) pts.push(pose);
+      if (goal) pts.push(goal);
+      waypoints.forEach((wp) => pts.push(wp));
+      if (map) pushGrid(map);
     }
+
     if (!pts.length) {
       setScale(DEFAULT_SCALE);
       setViewOffset({ x: 0, y: 0 });
