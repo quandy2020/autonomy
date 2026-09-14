@@ -14,6 +14,7 @@ import {
   MappingPanel,
 } from './Tasks/TaskPanels';
 import { IndoorMapPanel } from './Tasks/IndoorMapPanel';
+import { AnnotationsPanel } from './Tasks/AnnotationsPanel';
 import { RobotStatusPanel } from './RobotStatus/RobotStatusPanel';
 import { TfTreePanel } from './RobotStatus/TfTreePanel';
 import { WaypointsPanel } from './Waypoints/WaypointsPanel';
@@ -85,6 +86,12 @@ export function registerBuiltinPanels(): void {
     title: 'Indoor Map',
     category: 'planning',
     component: IndoorMapPanel,
+  });
+  registerPanel({
+    id: 'annotations',
+    title: 'Annotations',
+    category: 'planning',
+    component: AnnotationsPanel,
   });
   registerPanel({ id: 'pnc', title: 'PNC Monitor', category: 'planning', component: PncMonitorPanel });
 

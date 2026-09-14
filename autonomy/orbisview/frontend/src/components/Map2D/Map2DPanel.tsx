@@ -18,6 +18,8 @@ import { MapMappingHud } from '@/components/Map/MapMappingHud';
 import { MapFloorBar } from '@/components/Map/MapFloorBar';
 import { useStaticSlamStore } from '@/store/staticSlamStore';
 import { useIndoorMapStore } from '@/store/indoorMapStore';
+import { useAnnotationStore } from '@/store/annotationStore';
+import { hitTestPoi } from '@/renderer/map2d/annotations';
 import {
   sharedStaticSlamCanvasCache,
   staticSlamCorners,
@@ -79,6 +81,11 @@ export function Map2DPanel() {
   const followRobot = useLayerStore((s) => s.followRobot);
   const staticBasemap = useStaticSlamStore((s) => s.basemap);
   const semanticZones = useIndoorMapStore((s) => s.zones);
+  const annPois = useAnnotationStore((s) => s.pois);
+  const annShapes = useAnnotationStore((s) => s.shapes);
+  const annDraft = useAnnotationStore((s) => s.draft);
+  const annDraftPreview = useAnnotationStore((s) => s.draftPreview);
+  const annSelectedId = useAnnotationStore((s) => s.selectedId);
   const [basemapHandle, setBasemapHandle] = useState<StaticSlamCanvasHandle | null>(null);
   const waypoints = useWaypointStore((s) => s.waypoints);
   const selectedId = useWaypointStore((s) => s.selectedId);
@@ -131,6 +138,7 @@ export function Map2DPanel() {
   const poseDragRef = useRef<PoseDrag | null>(null);
   const wpEditRef = useRef<WpEditDrag | null>(null);
   const viewPanRef = useRef<{ lastX: number; lastY: number } | null>(null);
+  const poiDragRef = useRef<{ id: string } | null>(null);
 
   useEffect(() => {
     setSketchPts([]);
@@ -138,11 +146,39 @@ export function Map2DPanel() {
     poseDragRef.current = null;
     wpEditRef.current = null;
     viewPanRef.current = null;
+    poiDragRef.current = null;
+    if (mapTool !== 'draw') {
+      useAnnotationStore.getState().cancelDraft();
+    }
     if (mapTool === 'pan') {
       useLayerStore.getState().setFollowRobot(false);
       setStatusMsg('拖动视图：左键平移，滚轮缩放');
     }
   }, [mapTool, setStatusMsg]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === 'Escape') {
+        useAnnotationStore.getState().cancelDraft();
+        return;
+      }
+      if (e.key === 'Backspace' && mapTool === 'draw') {
+        e.preventDefault();
+        useAnnotationStore.getState().undoDraftPoint();
+        return;
+      }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && mapTool === 'poi') {
+        const id = useAnnotationStore.getState().selectedId;
+        if (id) {
+          e.preventDefault();
+          useAnnotationStore.getState().removePoi(id);
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mapTool]);
   const pose = useMemo(() => {
     return asPayload<Pose2D>(pickDisplayEnvelope(envelopes, displays, 'pose'));
   }, [envelopes, displays]);
@@ -300,6 +336,8 @@ export function Map2DPanel() {
         costmap: paintLayers.costmap,
         semantic: paintLayers.semantic,
         vectormap: paintLayers.vectormap,
+        poi: paintLayers.poi,
+        draw: paintLayers.draw,
         path: paintLayers.path,
         robot: paintLayers.robot,
         footprint: paintLayers.footprint,
@@ -340,6 +378,13 @@ export function Map2DPanel() {
       obstacles,
       vectorMap,
       semanticZones,
+      annotations: {
+        pois: annPois,
+        shapes: annShapes,
+        draft: annDraft,
+        draftPreview: annDraftPreview,
+        selectedId: annSelectedId,
+      },
       prediction,
       goal,
       footprint,
@@ -385,6 +430,11 @@ export function Map2DPanel() {
     obstacles,
     vectorMap,
     semanticZones,
+    annPois,
+    annShapes,
+    annDraft,
+    annDraftPreview,
+    annSelectedId,
     prediction,
     sketchPts,
     waypoints,
@@ -495,9 +545,11 @@ export function Map2DPanel() {
       e.preventDefault();
       return;
     }
-    // Pan view: hand tool, middle button, or Space+left
+    // Pan view: hand tool, middle button, or Space+left (not under poi/draw)
     const wantPan =
-      mapTool === 'pan' || e.button === 1 || (e.button === 0 && e.shiftKey);
+      (mapTool === 'pan' || e.button === 1 || (e.button === 0 && e.shiftKey)) &&
+      mapTool !== 'poi' &&
+      mapTool !== 'draw';
     if (wantPan) {
       e.preventDefault();
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -510,8 +562,13 @@ export function Map2DPanel() {
     const w = worldFromEvent(e);
     if (!w) return;
 
-    // Hit existing waypoint → select + edit (any tool except measure/pick)
-    if (mapTool !== 'measure' && mapTool !== 'pick') {
+    // Hit existing waypoint → select + edit (any tool except measure/pick/poi/draw)
+    if (
+      mapTool !== 'measure' &&
+      mapTool !== 'pick' &&
+      mapTool !== 'poi' &&
+      mapTool !== 'draw'
+    ) {
       const hitId = hitWaypoint(w);
       if (hitId) {
         const wp = useWaypointStore.getState().waypoints.find((x) => x.id === hitId);
@@ -532,6 +589,32 @@ export function Map2DPanel() {
           return;
         }
       }
+    }
+
+    if (mapTool === 'poi') {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      const hit = hitTestPoi(useAnnotationStore.getState().pois, w.x, w.y, 0.35);
+      if (hit) {
+        poiDragRef.current = { id: hit.id };
+        useAnnotationStore.getState().setSelected(hit.id);
+        setStatusMsg(`拖移 POI ${hit.label ?? hit.kind}`);
+        return;
+      }
+      useAnnotationStore.getState().addPoi({
+        x: w.x,
+        y: w.y,
+        kind: useAnnotationStore.getState().poiDefaultKind,
+      });
+      setStatusMsg(`已添加 POI (${w.x.toFixed(2)}, ${w.y.toFixed(2)})`);
+      return;
+    }
+
+    if (mapTool === 'draw') {
+      if (e.detail > 1) return; // let dblclick commit
+      useAnnotationStore.getState().appendDraftPoint(w.x, w.y);
+      const n = useAnnotationStore.getState().draft?.points.length ?? 0;
+      setStatusMsg(`绘制点 ${n} · 双击/右击结束 · Esc 取消`);
+      return;
     }
 
     if (mapTool !== 'nav' && mapTool !== 'pick') return;
@@ -592,6 +675,18 @@ export function Map2DPanel() {
       return;
     }
 
+    const poiDrag = poiDragRef.current;
+    if (poiDrag) {
+      useAnnotationStore.getState().updatePoi(poiDrag.id, { x: w.x, y: w.y });
+      setStatusMsg(`POI (${w.x.toFixed(2)}, ${w.y.toFixed(2)})`);
+      return;
+    }
+
+    if (mapTool === 'draw' && useAnnotationStore.getState().draft) {
+      useAnnotationStore.getState().setDraftPreview(w);
+      return;
+    }
+
     if (mapTool === 'measure' && sketchPts.length === 1 && !poseDragRef.current) {
       setMeasurePreview(w);
       return;
@@ -649,6 +744,17 @@ export function Map2DPanel() {
           ? '拖动视图：左键平移，滚轮缩放'
           : useMapViewStore.getState().statusMsg,
       );
+      return;
+    }
+
+    if (poiDragRef.current) {
+      poiDragRef.current = null;
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      setStatusMsg(useMapViewStore.getState().statusMsg);
       return;
     }
 
@@ -742,6 +848,12 @@ export function Map2DPanel() {
   };
 
   const onDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (mapTool === 'draw') {
+      e.preventDefault();
+      const ok = useAnnotationStore.getState().commitDraft();
+      setStatusMsg(ok ? '已完成绘制' : '点数不足，继续加点或 Esc 取消');
+      return;
+    }
     const w = worldFromEvent(e);
     if (!w) return;
     const hitId = hitWaypoint(w, 0.8);
@@ -756,6 +868,11 @@ export function Map2DPanel() {
 
   const onContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault();
+    if (mapTool === 'draw') {
+      const ok = useAnnotationStore.getState().commitDraft();
+      setStatusMsg(ok ? '已完成绘制' : '点数不足，继续加点或 Esc 取消');
+      return;
+    }
     if (wpEditRef.current) {
       wpEditRef.current = null;
       setStatusMsg('已取消编辑');

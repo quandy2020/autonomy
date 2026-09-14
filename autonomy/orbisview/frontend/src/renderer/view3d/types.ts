@@ -1,6 +1,8 @@
 import type { OccupancyGridJson, Pose2D, RobotFootprintJson } from '../map2d/types';
 import type { StaticSlamCanvasHandle } from '../map2d/staticSlam';
 import type { SemanticZoneNorm } from '../map2d/semanticZones';
+import type { MapDrawShape, MapPoi } from '../map2d/annotations';
+import type { AnnotationDraft } from '@/store/annotationStore';
 
 export type CloudColorMode = 'height' | 'intensity';
 
@@ -20,6 +22,8 @@ export interface View3DLayerFlags {
   grid: boolean;
   basemap?: boolean;
   semantic?: boolean;
+  poi?: boolean;
+  draw?: boolean;
   robot: boolean;
   path: boolean;
   pointcloud: boolean;
@@ -68,6 +72,12 @@ export interface View3DSceneInput {
   costmap: OccupancyGridJson | null;
   basemap?: StaticSlamCanvasHandle | null;
   semanticZones?: SemanticZoneNorm[] | null;
+  annotations?: {
+    pois: MapPoi[];
+    shapes: MapDrawShape[];
+    draft: AnnotationDraft | null;
+    selectedId: string | null;
+  } | null;
   laser: View3DLaserScan | null;
   layers: View3DLayerFlags;
   opts: View3DOpts;

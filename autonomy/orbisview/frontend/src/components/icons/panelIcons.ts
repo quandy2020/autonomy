@@ -31,6 +31,7 @@ export const PANEL_ICONS: Record<string, IconName> = {
   navigation: 'nav',
   mapping: 'mapping',
   indoor_map: 'layers',
+  annotations: 'waypoint',
 };
 
 export const LAYER_ICONS: Record<string, IconName> = {
@@ -40,6 +41,8 @@ export const LAYER_ICONS: Record<string, IconName> = {
   basemap: 'mapping',
   semantic: 'layers',
   vectormap: 'route',
+  poi: 'waypoint',
+  draw: 'layers',
   path: 'path',
   robot: 'robot',
   footprint: 'footprint',

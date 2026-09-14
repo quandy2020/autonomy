@@ -22,6 +22,7 @@ export interface View3DContext {
   costmapPlane: THREE.Mesh;
   basemapPlane: THREE.Mesh;
   semanticGroup: THREE.Group;
+  annotationGroup: THREE.Group;
   laser: THREE.Points;
   setSize: (w: number, h: number) => void;
   dispose: () => void;
@@ -133,6 +134,8 @@ export function createView3DScene(mount: HTMLElement): View3DContext {
 
   const semanticGroup = new THREE.Group();
   scene.add(semanticGroup);
+  const annotationGroup = new THREE.Group();
+  scene.add(annotationGroup);
 
   const laserGeom = new THREE.BufferGeometry();
   laserGeom.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
@@ -188,6 +191,7 @@ export function createView3DScene(mount: HTMLElement): View3DContext {
     mapPlane,
     costmapPlane,
     semanticGroup,
+    annotationGroup,
     laser,
     setSize,
     dispose,
