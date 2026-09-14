@@ -484,6 +484,8 @@ bool ConvertFloorInfoArray(const std::string& bytes, core::StreamEnvelope* out) 
 }
 
 }  // namespace
+
+std::string SuggestedRenderSchema(const std::string& msg_type) {
   if (TypeIs(msg_type, "automsgs.msgs.geometry_msgs.Pose2D") ||
       TypeIs(msg_type, "automsgs.msgs.geometry_msgs.Pose2DStamped") ||
       TypeIs(msg_type, "automsgs.msgs.geometry_msgs.PoseStamped") ||
