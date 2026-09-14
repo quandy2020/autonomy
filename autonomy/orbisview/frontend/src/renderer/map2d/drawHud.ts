@@ -30,7 +30,7 @@ export function drawMapHud(
           : '')
       : `model=${model} twist —`,
     args.goal
-      ? `goal ${args.goal.x.toFixed(2)} ${args.goal.y.toFixed(2)}`
+      ? `goal ${args.goal.x.toFixed(2)} ${args.goal.y.toFixed(2)} ${(args.goal.yaw ?? 0).toFixed(2)}`
       : 'goal —',
     `footprint=${args.footprintSource}`,
   ];

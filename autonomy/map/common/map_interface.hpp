@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/map/proto/map_options.pb.h"
 

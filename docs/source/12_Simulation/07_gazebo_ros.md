@@ -90,16 +90,18 @@ ros2 launch autonomy_gazebo autonomy_house.launch.py gui:=true spawn_robot:=true
 
 ---
 
-## 7.7 与 nav_test 的对比
+## 7.7 与多进程栈的对比
 
-| 维度 | nav_test | Gazebo + ROS |
-|------|----------|--------------|
-| 依赖 | 无 ROS | ROS2 + Gazebo |
-| 物理 | 运动学积分 | 物理引擎 |
-| 传感器 | 无 | 激光、相机、IMU |
-| 动态障碍 | 无 | 可扩展 |
-| CI 友好 | ✅ | 较重 |
-| 调试可视化 | 日志 | RViz + Gazebo GUI |
+| 维度 | 多进程栈（无 Gazebo） | Gazebo + ROS |
+|------|----------------------|--------------|
+| 依赖 | Autolink | ROS2 + Gazebo |
+| 物理 | 由外部注入 / 无 | 物理引擎 |
+| 传感器 | 由 Bridge 注入 | 激光、相机、IMU |
+| 动态障碍 | 视后端 | 可扩展 |
+| CI 友好 | 较轻（无 GUI） | 较重 |
+| 调试可视化 | Foxglove / 日志 | RViz + Gazebo GUI |
+
+> 进程内 `autonomy_nav_test` 已移除；无 ROS 联调优先 `autolink_launch autonomy.launch`。
 
 ---
 

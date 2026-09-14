@@ -12,7 +12,7 @@
 
 ### Q: 导航超时？
 
-增大 `--timeout_sec`；检查 controller 配置与里程计是否正常注入。
+增大超时；检查 controller 配置与里程计是否由仿真 / Bridge 正常注入。
 
 ### Q: BT 插件 load 失败？
 
@@ -21,22 +21,20 @@ export AUTONOMY_BT_PLUGIN_PATH=build/lib
 ls build/lib/*bt*  # 确认 .so 存在
 ```
 
-插件源码目录 `autonomy/navigator/behavior_tree/plugins/` 当前可能为空，需等待迁回。
+### Q: 如何选择 BT vs 直驱路径？
 
-### Q: `--use_bt=true` 但仍走直驱？
-
-`Autonomy::Configure()` 当前可能强制 `use_bt_navigation_ = false`。以源码为准，见 [17 Tasks · 执行模式](../17_Tasks/06_execution_modes.md)。
+见 [17 Tasks · 执行模式](../17_Tasks/06_execution_modes.md)。端到端请用 launch + Bridge / Action。
 
 ### Q: `TransformAvailable` 失败 / `no robot pose`？
 
 - 确认 `global_frame` / `robot_base_frame` 与配置一致
-- `autonomy_nav_test` 会自动注入 odom 与 TF；自定义程序需自行发布
+- 多进程联调需由仿真、Bridge 或业务进程发布 odom 与 TF（`autonomy_nav_test` 已移除，不再自动注入）
 
 ### Q: BT 与 Nav2 行为不一致？
 
-对比 `config/navigator/behavior_tree/*.xml` 与 nav2 对应 XML；检查 `navigator.lua` 中插件列表。
+对比 `autonomy/task/conf/behavior_tree/*.xml` 与 nav2 对应 XML；检查 navigator conf 中插件列表。
 
 ### Q: 任务 API 与 Navigator 文档看哪个？
 
-- **任务语义 / API**： [17 Tasks](../17_Tasks/index.rst)
+- **任务语义 / 进程**： [17 Tasks](../17_Tasks/index.rst)
 - **BT 实现 / 插件**： [16 Navigator](../16_Navigator/index.rst)

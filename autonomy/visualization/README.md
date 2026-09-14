@@ -1,6 +1,6 @@
 # Foxglove Bridge
 
-`autonomy_foxglove_bridge` 是一个 C++ 原生可视化 bridge：
+`autonomy.foxglove_bridge` 是一个 C++ 原生可视化 bridge：
 
 - 复用 `autolink` 的 channel 自动发现能力；
 - 通过 registry 统一管理可视化消息、目标 schema、面板分类和转换策略；
@@ -49,7 +49,7 @@ find_package(foxglove-sdk CONFIG QUIET)
 
 ## Foxglove 支持数据
 
-registry 当前登记 **38** 种 autolink 消息类型。直接运行 `./bin/autonomy_foxglove_bridge`（不传 `--message_type_allowlist`）时，会转发下表全部已登记类型；仅当显式传入 allowlist 时才做前缀/精确过滤。
+registry 当前登记 **38** 种 autolink 消息类型。直接运行 `./bin/autonomy.foxglove_bridge`（不传 `--message_type_allowlist`）时，会转发下表全部已登记类型；仅当显式传入 allowlist 时才做前缀/精确过滤。
 
 | 源消息（autolink `message_type` 后缀） | 目标 Schema | Foxglove 面板 | 策略 |
 |---|---|---|---|
@@ -167,7 +167,7 @@ Foxglove 在 **protobuf** 编码下，3D 面板只识别 Foxglove 原生 schema�
 终端 1（bridge）：
 
 ```bash
-./bin/autonomy_foxglove_bridge
+./bin/autonomy.foxglove_bridge
 ```
 
 终端 2（假数据，TF 默认在 `/tf`）：
@@ -195,7 +195,7 @@ Foxglove 连接 `ws://127.0.0.1:8765` 后，在 **3D 面板** 中：
 ## 运行
 
 ```bash
-autonomy_foxglove_bridge \
+autonomy.foxglove_bridge \
   --foxglove_host=0.0.0.0 \
   --foxglove_port=8765 \
   --discovery_poll_interval_ms=1000 \
@@ -224,7 +224,7 @@ autonomy_foxglove_bridge \
 建议按下面顺序做端到端验证：
 
 1. 运行 `autolink_recorder play -f <record>` 回放现有 `.record`；
-2. 启动 `autonomy_foxglove_bridge`；
+2. 启动 `autonomy.foxglove_bridge`；
 3. 在 Foxglove 中连接 `ws://127.0.0.1:8765`；
 4. 先验证 `Marker`、`MarkerArray`、`Path`、`PoseStamped`、`Odometry` 是否出现在 3D topic 列表；
 5. 再验证 `echoes_1` 是否以 `sensor_msgs.LaserScan` 身份出现；

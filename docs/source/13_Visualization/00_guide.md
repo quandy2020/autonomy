@@ -2,7 +2,7 @@
 
 本文档说明如何在 Autonomy 导航栈中**查看地图、路径、传感器与状态数据**。
 
-> **实现状态**：内置 `autonomy/visualization` 模块与 `VisualizationServer` **尚未落地**；当前推荐通过 **ROS 2 + RViz2** 或 **Foxglove Studio + foxglove_bridge** 进行可视化。纯 C++ 离线运行依赖日志与 `autonomy_nav_test` 验证。
+> **实现状态**：内置 `autonomy/visualization` 模块与 `VisualizationServer` **尚未落地**；当前推荐通过 **ROS 2 + RViz2** 或 **Foxglove Studio + foxglove_bridge**（`autonomy.launch` 可拉起 foxglove）进行可视化。纯 C++ 联调依赖日志与多进程栈验证。
 
 **推荐阅读路径**
 

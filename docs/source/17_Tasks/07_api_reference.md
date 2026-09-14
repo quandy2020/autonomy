@@ -1,67 +1,55 @@
 # 7. API 参考
 
-### 7.1 system::Autonomy
+### 7.1 运行入口（推荐）
 
-头文件：`autonomy/system/autonomy.hpp`
+| 入口 | 说明 |
+|------|------|
+| `autolink_launch autonomy.launch` | 拉起 task / planning / control 等 |
+| `autonomy.task` | `TaskServer` 进程 |
+| Bridge / Action Client | 外部发令 |
 
-#### 工厂与生命周期
+进程内 `CreateAutonomy` / `system::Autonomy` **已移除**。
+
+### 7.2 TaskServer
+
+头文件：`autonomy/task/task_server.hpp`
 
 ```cpp
-std::unique_ptr<Autonomy> CreateAutonomy(const proto::AutonomyOptions& options);
-
-void Start();
-void Configure(const RuntimeOptions& runtime = {});
-void Shutdown();
+auto server = std::make_shared<autonomy::task::TaskServer>();
+auto options = autonomy::task::TaskServer::DefaultOptions();
+server->Configure(options);
+server->Start();
+// … WaitForShutdown …
+server->Shutdown();
 ```
 
-#### 导航任务
+导航 / 建图 / 遥操等目标提交接口以 `TaskServer` 与各 `*Task` 实现为准。
+
+### 7.3 共享 conf（CreateOptions）
+
+规划 / 控制等进程可加载共享快照：
 
 ```cpp
-bool NavigateToPose(
-    const commsgs::geometry_msgs::PoseStamped& goal,
-    const std::function<bool()>& cancel_checker,
-    bool keep_alive = true,
-    double timeout_sec = 0.0);
+#include "autonomy/system/options.hpp"
 
-bool NavigateThroughPoses(
-    const std::vector<commsgs::geometry_msgs::PoseStamped>& goals,
-    const std::function<bool()>& cancel_checker,
-    bool keep_alive = true,
-    double timeout_sec = 0.0);
-
-void ReplanToGoal(const commsgs::geometry_msgs::PoseStamped& goal);
+auto autonomy_opts = autonomy::system::CreateOptions("autonomy.pb.txt");
+// 取 planning / controller 等子字段构造对应 Server
 ```
 
-#### Server 访问
+Navigator 本地 conf：`autonomy::task::navigation::CreateOptions("navigator.pb.txt")`。
+
+### 7.4 NavigatorInterface
 
 ```cpp
-map::MapServer* GetMapServer();
-planning::PlannerServer* GetPlanner();
-control::ControllerServer* GetController();
-```
-
-### 7.2 RuntimeOptions
-
-```cpp
-struct RuntimeOptions {
-    bool enable_bt_tasks{true};      // 已定义，当前未读取
-    bool use_bt_navigation{true};    // Configure 中当前强制 false
-    std::string config_directory;
-    std::string planner_id;
-    std::string controller_id;
-    // ...
+enum class NavigatorState {
+    kIdle, kRunning, kCompleted, kFailed, kCanceled, kShutdown
 };
 ```
 
-### 7.3 NavigatorInterface
+见 `autonomy/task/navigation/interface.hpp`。
 
-```cpp
-enum class NavigatorStatus {
-    Idle, Running, Completed, Failed, Canceled
-};
-```
+### 7.5 相关文档
 
-### 7.4 相关文档
-
-- [05 Framework · Autonomy API](../05_Framework/02_quickstart.md)
+- [05 Framework · 快速开始](../05_Framework/02_quickstart.md)
 - [14 Commsgs · nav_msgs](../14_Commsgs/08_nav_planning_msgs.md)
+- [04 Running](../04_Running/03_autonomy_process.md)

@@ -23,10 +23,10 @@
 namespace autonomy::task::teleop {
 
 // Default relative path under the task config directory.
-constexpr char kDefaultTeleopAssistConfigRelPath[] = "task/teleop_assist.lua";
+constexpr char kDefaultTeleopAssistConfigRelPath[] = "teleop_assist.pb.txt";
 
 /**
- * @brief Load teleop assist options from Lua configuration
+ * @brief Load teleop assist options from conf (currently defaults; assist off)
  * @param config_directory Base config search path
  * @param relative_path Config file relative to config_directory
  * @return Options with enabled=false if the file is missing or invalid

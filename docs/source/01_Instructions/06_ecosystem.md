@@ -6,8 +6,9 @@ Autonomy 以独立 C++ 框架为核心，通过消息兼容层与桥接模块与
 
 | 方式 | 组件 | 用途 | 状态 |
 |------|------|------|------|
-| 进程内 API | `system::Autonomy` | 嵌入式 / 单机部署 | ✅ |
-| Autolink 通信 | `autolink` | 模块间 DDS 通信 | ✅ |
+| 多进程 launch | `autolink_launch` | 推荐运行入口 | ✅ |
+| 共享 conf | `CreateOptions` / `AutonomyOptions` | 各进程取子字段 | ✅ |
+| Autolink 通信 | `autolink` | 模块间通信 | ✅ |
 | ROS 2 消息兼容 | `commsgs` | 与 ROS 消息结构对齐 | ✅ |
 | gRPC Bridge | `bridge` | 云端 / 远程调度 | ⏳ |
 | ROS 2 节点包装 | 外部 `autonomy_ros`（可选） | RViz2 / ros2 CLI | 视部署而定 |

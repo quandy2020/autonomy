@@ -146,7 +146,7 @@ Autonomy 选型：**gRPC 强类型 RPC 为主，MQTT Pub/Sub 为辅**；与 Navi
 | v0.3 | BotStates Stream | 规划 |
 | v0.4 | MQTT 插件 | 规划 |
 | v0.5 | TLS / 认证 / uplink | 规划 |
-| v1.0 | 接入 `system::Autonomy` | 规划 |
+| v1.0 | 与多进程栈 / TaskServer 稳定联调 | 规划 |
 
 | 参考 | 与 Bridge 关系 |
 |------|----------------|

@@ -20,267 +20,110 @@ endif()
 
 project(autonomy)
 
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
-endif()
+# =============================================================================
+# 1. Configure project  (gz: gz_configure_project)
+# =============================================================================
+list(APPEND CMAKE_MODULE_PATH
+  "${PROJECT_SOURCE_DIR}/cmake"
+  "${PROJECT_SOURCE_DIR}/cmake/modules")
+include(autonomy_module)
+autonomy_configure_project()
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-# -----------------------------------------------------------------------------
-# 1. Options
-# -----------------------------------------------------------------------------
-include("${PROJECT_SOURCE_DIR}/cmake/version.cmake")
-read_version_from_json(AUTONOMY "${PROJECT_SOURCE_DIR}/version.json")
-
+# =============================================================================
+# 2. Options  (declared in root, like gz packages)
+# =============================================================================
+# Core product toggles
 option(BUILD_GRPC "Build autonomy gRPC support" ON)
 option(BUILD_PROMETHEUS "Build prometheus monitoring support" OFF)
 option(BUILD_DOCS "Build autonomy docs support" ON)
 option(BUILD_TEST "Build autonomy unit test" ON)
 option(BUILD_TOOLS "Build autonomy tools sources" ON)
-option(BUILD_GRID_MAP_DEMOS "Build ROS-free grid_map demos" ON)
+option(BUILD_GRID_MAP_DEMOS "Build ROS-free grid_map demos" OFF)
+
+# Nested / companion packages
 option(BUILD_AUTODRIVER "Build autodriver sensor HAL subproject" ON)
 option(BUILD_AUTOVIZ "Build native 3D visualization tool (autoviz)" ON)
-option(BUILD_AUTOSIM "Build autonomous simulation tool (autosim)" ON)
-set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
+option(BUILD_AUTOSIM "Build autonomous simulation tool (autosim)" OFF)
+option(BUILD_ORBISVIEW "Build OrbisView web HMI (autonomy/orbisview)" OFF)
 
+# Inference / ASR
 option(BUILD_ONNXRUNTIME "Build ONNX Runtime inference support" ON)
-option(BUILD_TENSORRT "Build TensorRT inference support" ON)
+option(BUILD_TENSORRT "Build TensorRT inference support" OFF)
 option(BUILD_SHERPA_ONNX "Build sherpa-onnx ASR support for audio" OFF)
 
-option(AUTONOMY_EXPLORATION_ORTOOLS
-  "Link vendored OR-Tools for exploration TSP (set AUTONOMY_ORTOOLS_ROOT)" OFF)
-set(AUTONOMY_ORTOOLS_ROOT "" CACHE PATH
-  "Root of vendored or-tools (include/ + lib/libortools.so)")
-
-if(NOT AUTONOMY_ORTOOLS_ROOT)
-  set(_ORTOOLS_CANDIDATES
-    "${CMAKE_CURRENT_SOURCE_DIR}/../../../../ros2/autonomous_exploration_development_environment/src/tare_planner/src/tare_planner/or-tools"
-    "/home/quandy/workspace/github/ros2/autonomous_exploration_development_environment/src/tare_planner/src/tare_planner/or-tools")
-  foreach(_cand IN LISTS _ORTOOLS_CANDIDATES)
-    if(EXISTS "${_cand}/lib/libortools.so")
-      set(AUTONOMY_ORTOOLS_ROOT "${_cand}" CACHE PATH
-        "Auto-detected TARE vendored or-tools" FORCE)
-      set(AUTONOMY_EXPLORATION_ORTOOLS ON CACHE BOOL
-        "Auto-enable OR-Tools from TARE vendored path" FORCE)
-      message(STATUS "Exploration OR-Tools: ${_cand}")
-      break()
-    endif()
-  endforeach()
-endif()
-
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-
-include("${PROJECT_SOURCE_DIR}/cmake/functions.cmake")
-google_initialize_autonomy_project()
-google_enable_testing()
-
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
-
-# -----------------------------------------------------------------------------
-# 2. Dependencies
-# -----------------------------------------------------------------------------
-# Required
-find_package(Ceres REQUIRED)
-find_package(Eigen3 REQUIRED)
-find_package(LuaGoogle REQUIRED)
-find_package(nlohmann_json REQUIRED)
-find_package(glog REQUIRED)
-find_package(OSQP REQUIRED)
-# Autoviz needs Qt6 versionless Qt::* targets. Find Qt6 before OpenCV/PCL so
-# their Qt5 transitive deps (highgui / VTK GUISupportQt) do not claim Qt::Core
-# first and break Qt6CoreVersionlessTargets.
-if(BUILD_AUTOVIZ)
-  find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets OpenGLWidgets OpenGL Xml Svg Network)
-endif()
-find_package(OpenCV REQUIRED)
-include(EnsureProtobuf319)
-find_package(yaml-cpp REQUIRED)
-find_package(Threads REQUIRED)
-find_package(behaviortree_cpp REQUIRED)
-find_package(FBow REQUIRED)
-find_package(G2o REQUIRED)
-find_package(SQLite3 REQUIRED)
-find_package(Boost REQUIRED COMPONENTS iostreams)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(CAIRO REQUIRED IMPORTED_TARGET cairo)
-find_package(PCL REQUIRED COMPONENTS
-  common
-  features
-  filters
-  io
-  kdtree
-  segmentation
-  surface)
-find_package(OpenMP QUIET)
-find_package(TBB REQUIRED)
-
-# Optional
-find_package(Ipopt QUIET)
-find_package(foxglove-sdk CONFIG QUIET)
-find_package(OnnxRuntime QUIET)
-if(BUILD_SHERPA_ONNX)
-  find_package(SherpaOnnx QUIET)
-  if(SherpaOnnx_FOUND)
-    message(STATUS "SherpaOnnx found: ${SherpaOnnx_INCLUDE_DIRS}")
-  else()
-    message(STATUS "SherpaOnnx not found; audio ASR uses stub engine")
+set(AUTONOMY_MODULE_ORDER
+  common transform map vehicle prediction control planning perception
+  localization sensor task system audio bridge visualization)
+include(autonomy_options)
+autonomy_declare_module_options()
+autonomy_validate_module_graph()
+autonomy_compute_enabled_modules(AUTONOMY_ENABLED_MODULES)
+foreach(_module IN LISTS AUTONOMY_MODULE_ORDER)
+  string(TOUPPER "${_module}" _module_upper)
+  if(NOT AUTONOMY_BUILD_${_module_upper})
+    message(STATUS
+      "autonomy: module '${_module}' disabled by "
+      "AUTONOMY_BUILD_${_module_upper}=OFF")
   endif()
-endif()
-if(BUILD_TENSORRT)
-  find_package(TensorRT QUIET)
-  find_package(CUDAToolkit QUIET)
-  if(TensorRT_FOUND)
-    message(STATUS "TensorRT found: ${TensorRT_INCLUDE_DIRS}")
-  else()
-    message(STATUS "TensorRT not found; tensorrt backend stubbed")
-  endif()
-endif()
-if(BUILD_GRPC)
-  find_package(gRPC REQUIRED)
-endif()
-if(BUILD_PROMETHEUS)
-  find_package(prometheus-cpp CONFIG REQUIRED)
-endif()
-if(foxglove-sdk_FOUND)
-  find_package(ZLIB REQUIRED)
-endif()
+endforeach()
+unset(_module)
+unset(_module_upper)
 
-# -----------------------------------------------------------------------------
-# 3. Subprojects (docs / autolink)
-# -----------------------------------------------------------------------------
+# =============================================================================
+# 3. Find dependencies  (gz: gz_find_package(...); stay in root)
+# =============================================================================
+include(autonomy_find_dependencies)
+autonomy_find_dependencies()
+
+# =============================================================================
+# 4. Embedded / companion subprojects
+# =============================================================================
 if(BUILD_DOCS)
   find_package(Sphinx)
   if(SPHINX_FOUND)
-    add_subdirectory("docs")
+    add_subdirectory(docs)
   endif()
 endif()
 
-include("${PROJECT_SOURCE_DIR}/cmake/autolink_embed.cmake")
+include(autonomy_autolink_embed)
 
-set(_autonomy_config_dir ${CMAKE_INSTALL_PREFIX}/share/autonomy/config)
-set(AUTONOMY_CONFIGURATION_FILES_DIRECTORY ${_autonomy_config_dir}
-  CACHE PATH ".lua configuration files directory")
-set(CARTOGRAPHER_CONFIGURATION_FILES_DIRECTORY ${_autonomy_config_dir}
-  CACHE PATH ".lua configuration files directory for cartographer")
-unset(_autonomy_config_dir)
+# =============================================================================
+# 5. Modules, messages, codegen
+# =============================================================================
+set(AUTONOMY_MODULE_CONDITION_bridge BUILD_GRPC)
+set(AUTONOMY_MODULE_CONDITION_visualization foxglove-sdk_FOUND)
 
-# -----------------------------------------------------------------------------
-# 4. Sources + codegen
-# -----------------------------------------------------------------------------
-if(AUTONOMY_EXPLORATION_ORTOOLS)
-  find_package(ORtools)
-endif()
-
-include("${PROJECT_SOURCE_DIR}/cmake/autonomy_sources.cmake")
-autonomy_filter_library_sources()
+autonomy_configure_tests()
 
 add_subdirectory(automsgs)
 
 if(BUILD_AUTODRIVER)
-  include("${PROJECT_SOURCE_DIR}/autodriver/cmake/autodriver_embed.cmake")
+  include(autonomy_autodriver_embed)
 endif()
 
-include("${PROJECT_SOURCE_DIR}/cmake/protobuf.cmake")
+include(autonomy_protobuf)
 
 configure_file(
-  ${PROJECT_SOURCE_DIR}/autonomy/common/config.hpp.cmake
-  ${PROJECT_SOURCE_DIR}/autonomy/common/config.hpp)
-configure_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/autonomy-config-version.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/autonomy-config-version.cmake @ONLY)
+  "${PROJECT_SOURCE_DIR}/autonomy/common/config.hpp.cmake"
+  "${PROJECT_BINARY_DIR}/autonomy/common/config.hpp"
+  @ONLY)
+autonomy_configure_version()
 
-include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
-list(REMOVE_ITEM ALL_LIBRARY_SRCS
-  "${PROJECT_SOURCE_DIR}/autonomy/common/version.cpp")
-list(APPEND ALL_LIBRARY_SRCS ${AUTONOMY_VERSION_CPP})
-set_source_files_properties(${AUTONOMY_VERSION_CPP} PROPERTIES GENERATED TRUE)
+# =============================================================================
+# 6. Configure build  (gz: gz_configure_build)
+# =============================================================================
+autonomy_configure_build()
 
-include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
-
-# -----------------------------------------------------------------------------
-# 5. libautonomy + link
-# -----------------------------------------------------------------------------
-add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
-
-# Drop truncated .so / empty .o before linking (interrupted builds leave stubs).
-add_custom_target(${PROJECT_NAME}_scrub_shared_libs ALL
-  COMMAND ${CMAKE_COMMAND}
-    -Dlib_dir=${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
-    -Dbinary_dir=${CMAKE_BINARY_DIR}
-    -P ${PROJECT_SOURCE_DIR}/cmake/scrub_autonomy_shared_libraries.cmake
-  COMMENT "Checking shared libraries for corruption")
-add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_scrub_shared_libs)
-if(TARGET autolink)
-  add_dependencies(autolink ${PROJECT_NAME}_scrub_shared_libs)
-endif()
-if(TARGET automsgs)
-  add_dependencies(automsgs ${PROJECT_NAME}_scrub_shared_libs)
-endif()
-# Executables that need a real main must not link against leftover empty .o.
-foreach(_scrub_exe IN ITEMS autolink_mainboard autolink_cli)
-  if(TARGET ${_scrub_exe})
-    add_dependencies(${_scrub_exe} ${PROJECT_NAME}_scrub_shared_libs)
-  endif()
-endforeach()
-if(TARGET automsgs_proto_copy)
-  add_dependencies(${PROJECT_NAME} automsgs_proto_copy)
-endif()
-include("${PROJECT_SOURCE_DIR}/cmake/autonomy_deps.cmake")
-autonomy_link_dependencies(${PROJECT_NAME})
-
-# Perception autolink components with concrete common-network runners are
-# deliberately separate mainboard-loadable shared libraries.
-set(_AUTONOMY_HAS_INFERENCE_BACKEND FALSE)
-if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
-  set(_AUTONOMY_HAS_INFERENCE_BACKEND TRUE)
-endif()
-if(BUILD_TENSORRT AND TensorRT_FOUND)
-  set(_AUTONOMY_HAS_INFERENCE_BACKEND TRUE)
-endif()
-if(_AUTONOMY_HAS_INFERENCE_BACKEND)
-  add_subdirectory(autonomy/perception/base)
-endif()
-add_subdirectory(autonomy/perception/follow)
-add_subdirectory(autonomy/audio)
-unset(_AUTONOMY_HAS_INFERENCE_BACKEND)
-
-# Echo tool needs automsgs protos for DebugString when topology omits type.
 if(TARGET autolink_channel)
-  target_link_libraries(autolink_channel PRIVATE ${PROJECT_NAME})
+  target_link_libraries(autolink_channel PRIVATE autonomy)
   target_include_directories(autolink_channel PRIVATE
     ${PROJECT_BINARY_DIR}
     ${PROJECT_SOURCE_DIR})
 endif()
 
-# -----------------------------------------------------------------------------
-# 6. Binaries
-# -----------------------------------------------------------------------------
-if(BUILD_GRPC)
-  add_subdirectory(autonomy/bridge)
-endif()
-google_binary(autonomy.localization
-  SRCS autonomy/localization/localization_main.cpp)
-google_binary(autonomy.planning
-  SRCS autonomy/planning/planning_main.cpp)
-google_binary(autonomy.control
-  SRCS autonomy/control/control_main.cpp)
-google_binary(autonomy.task
-  SRCS autonomy/task/task_main.cpp)
-google_binary(autonomy.perception
-  SRCS autonomy/perception/perception_main.cpp)
-if(foxglove-sdk_FOUND)
-  google_binary(autonomy_foxglove_bridge
-    SRCS autonomy/visualization/foxglove_main.cpp)
-endif()
-
-if(BUILD_GRID_MAP_DEMOS)
-  add_subdirectory(autonomy/map/grid_map/grid_map_demos)
-endif()
-
+# =============================================================================
+# 7. Extra packages (autoviz / autosim / orbisview)
+# =============================================================================
 if(BUILD_AUTOVIZ)
   set(_AUTOVIZ_BUILDING_AS_SUBDIRECTORY ON)
   add_subdirectory(autoviz)
@@ -288,16 +131,18 @@ if(BUILD_AUTOVIZ)
 endif()
 
 if(BUILD_AUTOSIM)
-  include("${PROJECT_SOURCE_DIR}/cmake/autosim_embed.cmake")
+  include(autonomy_autosim_embed)
 endif()
 
-# -----------------------------------------------------------------------------
-# 7. Tests
-# -----------------------------------------------------------------------------
-include("${PROJECT_SOURCE_DIR}/cmake/autonomy_tests.cmake")
-autonomy_add_unit_tests()
+if(BUILD_ORBISVIEW)
+  if(TARGET autolink)
+    set(ORBISVIEW_WITH_AUTOLINK ON CACHE BOOL
+      "Link OrbisView against Autolink" FORCE)
+  endif()
+  add_subdirectory(autonomy/orbisview)
+endif()
 
-# -----------------------------------------------------------------------------
-# 8. Install / export
-# -----------------------------------------------------------------------------
-include("${PROJECT_SOURCE_DIR}/cmake/autonomy_install.cmake")
+# =============================================================================
+# 8. Create packages  (gz: gz_create_packages)
+# =============================================================================
+autonomy_create_packages()

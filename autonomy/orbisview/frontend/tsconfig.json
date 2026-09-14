@@ -18,17 +18,7 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "store/*": ["src/store/*"],
-      "components/*": ["src/components/*"],
-      "styles/*": ["src/styles/*"],
-      "renderer/*": ["src/renderer/*"],
-      "utils/*": ["src/utils/*"],
-      "assets/*": ["assets/*"],
-      "proto_bundle/*": ["proto_bundle/*"],
-      "store": ["src/store/index.ts"],
-      "components": ["src/components/index.ts"],
-      "styles/main.css": ["src/styles/main.css"]
+      "@/*": ["src/*"]
     }
   },
   "include": ["src", "vite.config.ts"]

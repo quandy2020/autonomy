@@ -1,3 +1,10 @@
+# Audio — cabin mic / detection / optional ASR.
+# Proto: autonomy/audio/proto/audio_options.proto (or equivalent)
+# Load:  LoadModuleConf("audio", "audio.pb.txt")  / audio component dag
+#
+# Topics must be absolute (leading '/'). Extrinsics YAML optional.
+
+# ---------- I/O topics ----------
 audio_data_topic: "/mic/cabin/audio"
 audio_detection_topic: "/audio/detection"
 localization_topic: "/localization/pose"
@@ -6,16 +13,18 @@ perception_topic: "/perception/obstacles"
 asr_result_topic: "/audio/asr"
 speech_recognition_topic: "/speech_recognition"
 
-# Absolute path preferred; empty => identity extrinsics.
+# Empty → use default / no extrinsic file (see respeaker_extrinsics.yaml)
 respeaker_extrinsics_path: ""
 
+# Rolling audio buffer length for direction / event detection
 cache_signal_time_sec: 3
 
+# ---------- Feature switches ----------
 enable_direction: true
 enable_moving: true
-# Requires -DBUILD_SHERPA_ONNX=ON, libsherpa-onnx, and model files below.
 enable_asr: false
 
+# ---------- ASR (sherpa-onnx / stub when BUILD_SHERPA_ONNX off) ----------
 asr_model_dir: ""
 asr_tokens: ""
 asr_encoder: ""

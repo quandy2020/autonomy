@@ -167,8 +167,8 @@ PerceptionServer::OnPointCloud()
 
 | 仿真方式 | 传感器来源 | 配置 |
 |----------|------------|------|
-| `autonomy_nav_test` | 无真实传感器，静态地图 | costmap 静态层 |
+| 多进程 + Bridge | 无真实传感器时由静态地图 / 注入 | costmap 静态层或外部话题 |
 | Gazebo（`autonomy_gazebo`） | `/scan`, `/camera`, `/odom` | `autonomy_ros` bridge |
-| Stage（规划） | `cave.world` 中 hokuyolaser + camera | `simulation.lua` |
+| Stage（规划） | `cave.world` 中 hokuyolaser + camera | 仿真 conf 占位 |
 
 详见 [12 Simulation](../12_Simulation/index.rst)。

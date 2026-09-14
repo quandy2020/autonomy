@@ -12,7 +12,8 @@ Built with modern C++, Autolink RT, and behavior trees. Designed for production-
 **[Documentation](https://autonomy.readthedocs.io/en/latest/index.html)** ·
 **[Installation](docs/source/02_Installation/00_guide.md)** ·
 **[Quick Start](docs/source/04_Running/02_quickstart.md)** ·
-**[Architecture](docs/source/01_Instructions/03_system_architecture.md)**
+**[Architecture](docs/source/01_Instructions/03_system_architecture.md)** ·
+**[CMake layout](cmake/README.md)**
 
 ![Autonomy Architecture](images/autonomy_architecture.png)
 
@@ -119,8 +120,21 @@ cmake -S . -B build -G Ninja
 cmake --build build -j"$(nproc)"
 ```
 
-See the [Docker installation guide](docs/source/02_Installation/05_docker.md) for image, GPU, and ARM64 configuration.
+Per-module shared libraries (`libautonomy_common.so`, `libautonomy_map.so`, …) are aggregated by the INTERFACE target `autonomy` / `autonomy::autonomy`. Build a single module from the super-project:
 
+```bash
+cmake --build build --target autonomy_map -j"$(nproc)"
+cmake --build build --target autonomy.planning -j"$(nproc)"
+```
+
+Standalone module configure (requires an installed prefix with prior modules):
+
+```bash
+cmake -S autonomy/map -B build-map -DCMAKE_PREFIX_PATH=<prefix>
+cmake --build build-map -j"$(nproc)"
+```
+
+See the [Docker installation guide](docs/source/02_Installation/05_docker.md) for image, GPU, and ARM64 configuration.
 #### Build Directly on the Host
 
 ```bash
@@ -132,40 +146,38 @@ cmake -S . -B build -G Ninja
 cmake --build build -j"$(nproc)"
 ```
 
-### 4. Run a Minimal Navigation Check
+### 4. Run the Multi-Process Stack
 
-After building, run the ROS-independent behavior-tree navigation test:
+After building, launch the recommended multi-process autonomy stack:
 
 ```bash
+export PATH="$PWD/build/bin:$PATH"
+export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/system/launch"
 export AUTONOMY_BT_PLUGIN_PATH="$PWD/build/lib"
 export GLOG_logtostderr=1
 
-./build/bin/autonomy_nav_test \
-  --configuration_directory=config \
-  --start_x=1 --start_y=1 --start_yaw=0 \
-  --goal_x=5 --goal_y=5 --goal_yaw=0 \
-  --use_bt=true \
-  --timeout_sec=120
+autolink_launch autonomy.launch
 ```
 
-The start and goal positions must lie in free space in `config/data/map.pgm`. See [Quick Run](docs/source/04_Running/02_quickstart.md) and [Troubleshooting](docs/source/04_Running/08_troubleshooting.md) for details.
+Send navigation goals via Bridge or an autolink Action client. Map assets live under `autonomy/map/conf/`. See [Quick Run](docs/source/04_Running/02_quickstart.md) and [Troubleshooting](docs/source/04_Running/08_troubleshooting.md).
 
 ## Project Structure
 
 ```text
 autonomy/
-├── autonomy/      # Autonomous algorithms, tasks, system, and common C++ libraries
+├── autonomy/      # Per-module shared libs (autonomy_common, autonomy_map, …)
+│                  # + INTERFACE umbrella target `autonomy` / `autonomy::autonomy`
+│                  # Module conf under autonomy/<mod>/conf/
 ├── autolink/      # Communication runtime (Git submodule)
 ├── automsgs/      # Protobuf messages, services, and actions
 ├── autodriver/    # Sensor and chassis hardware abstraction
 ├── autosim/       # Habitat-Sim bridge
 ├── autoviz/       # Native 3D visualization
-├── config/        # Lua / YAML runtime configuration
 ├── docker/        # Development images and dependency installation
 ├── ansible/       # Bare-metal and fleet deployment
 ├── docs/          # Sphinx documentation and architecture assets
 ├── scripts/       # Dependency, formatting, and packaging tools
-└── CMakeLists.txt # Top-level build entry point
+└── CMakeLists.txt # Super-project: deps + add_subdirectory(autonomy/<mod>)
 ```
 
 ### Component Guides

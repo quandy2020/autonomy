@@ -27,7 +27,7 @@
 ### 5.2 独立进程
 
 ```bash
-monitor --configuration_directory=config --configuration_basename=system/monitor.lua
+autonomy.monitor --conf=monitor.pb.txt
 ```
 
 或通过 launch：

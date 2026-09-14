@@ -2,6 +2,29 @@
 
 机载 gRPC 对外接口。默认监听 `127.0.0.1:5005`（见 `config/bridge/`）。
 
+## 构建
+
+### 超工程（仓库根）
+
+```bash
+cmake -B build -DBUILD_GRPC=ON
+cmake --build build --target autonomy_bridge -j
+cmake --build build --target autonomy_bridge -j
+cmake --build build --target autonomy.bridge -j
+```
+
+### 单独工程（已安装 autonomy）
+
+前置：先安装带 gRPC 的 autonomy（`BUILD_GRPC=ON`）。
+
+```bash
+cmake -S autonomy/bridge -B build-bridge \
+  -DCMAKE_PREFIX_PATH=<autonomy-install-prefix> \
+  -DCMAKE_MODULE_PATH=<autonomy-workspace>/cmake
+cmake --build build-bridge -j
+cmake --install build-bridge
+```
+
 ## 部署资产
 
 | 路径 | 用途 |
@@ -12,8 +35,7 @@
 | `config/bridge/*.lua` | 运行时入口（`bridge_options.lua`） |
 
 ```bash
-# 需 -DBUILD_GRPC=ON
-export PATH=$PWD/build/bin:$PATH
+export PATH=$PWD/build/bin:$PATH   # 或 install/bin
 export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/bridge/launch
 autolink_launch bridge.launch
 ```

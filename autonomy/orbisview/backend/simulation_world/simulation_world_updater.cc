@@ -51,7 +51,8 @@ void SimulationWorldUpdater::Ingest(const core::StreamEnvelope& env) {
         if (brace != std::string::npos && end != std::string::npos) {
           const auto g = json.substr(brace, end - brace + 1);
           service_->SetGoal(ExtractJsonNumber(g, "x", 0.0),
-                            ExtractJsonNumber(g, "y", 0.0));
+                            ExtractJsonNumber(g, "y", 0.0),
+                            ExtractJsonNumber(g, "yaw", 0.0));
         } else {
           service_->SetGoal(gx, gy);
         }

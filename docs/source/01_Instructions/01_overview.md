@@ -47,7 +47,7 @@ Autonomy **不是 ROS 2 的替代品**，而是可独立部署、并按需与 RO
 | 控制 | `control` | ⏳ 骨架 + Checker，主循环待完成 |
 | 编排 | `navigator`（行为树） | ⏳ 配置/XML 就绪，BT 栈待恢复 |
 | 桥接 | `bridge`（gRPC） | ⏳ 部分实现 |
-| 系统 | `system::Autonomy` | ✅ 统一入口 |
+| 系统 | 多进程 `autolink_launch` | ✅ 推荐入口 |
 
 ### 1.5 适用场景
 

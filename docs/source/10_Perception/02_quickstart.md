@@ -97,18 +97,18 @@ AUTONOMY = {
 }
 ```
 
-### 2.5 进程内仿真验证
+### 2.5 多进程联调验证
 
-使用 `autonomy_nav_test` 可在无 ROS 环境下验证障碍感知链路（激光由 costmap 静态地图模拟）：
+在无 ROS 环境下用多进程栈验证感知链路（激光可由 costmap 静态地图或 Bridge 注入）：
 
 ```bash
-export AUTONOMY_BT_PLUGIN_PATH=/workspace/autonomy/build/lib
-./bin/autonomy_nav_test \
-  --configuration_directory=/workspace/autonomy/src/autonomy/config \
-  --start_x=1 --start_y=1 --goal_x=5 --goal_y=5
+export PATH="$PWD/build/bin:$PATH"
+export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/system/launch"
+export AUTONOMY_BT_PLUGIN_PATH="$PWD/build/lib"
+autolink_launch autonomy.launch
 ```
 
-详见 [12 Simulation · nav_test](../12_Simulation/06_nav_test.md)。
+详见 [04 Running](../04_Running/02_quickstart.md) 与 [12 Simulation](../12_Simulation/00_guide.md)。
 
 ### 2.6 依赖检查
 

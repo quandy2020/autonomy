@@ -57,7 +57,10 @@ std::vector<std::string> ConfigurationSearchDirectories(
     if (!user_configuration_directory.empty()) {
         directories.push_back(user_configuration_directory);
     }
-    directories.emplace_back(std::string(kSourceDirectory) + "/config");
+    directories.emplace_back(std::string(kSourceDirectory) +
+                           "/autonomy/localization/conf/cartographer");
+    directories.emplace_back(std::string(kSourceDirectory) +
+                           "/autonomy/localization/conf");
     return directories;
 }
 

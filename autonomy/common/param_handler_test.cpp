@@ -16,6 +16,8 @@
 
 #include "autonomy/common/param_handler.hpp"
 
+#include <filesystem>
+#include <fstream>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -33,14 +35,24 @@ class ParamHandlerTest : public ::testing::Test
 {
 protected:
     void SetUp() override {
-        param_handler_ = new ParamHandler("test_params.yaml");
+        params_path_ = std::filesystem::temp_directory_path() /
+                       "autonomy_param_handler_test.yaml";
+        std::ofstream params(params_path_);
+        params << "str_param: hello world\n"
+                  "int_param: 42\n"
+                  "float_param: 3.14\n"
+                  "bool_param: true\n";
+        params.close();
+        param_handler_ = new ParamHandler(params_path_.string());
     }
 
     void TearDown() override {
         delete param_handler_;
+        std::filesystem::remove(params_path_);
     }
 
     ParamHandler* param_handler_;
+    std::filesystem::path params_path_;
 };
 
 TEST_F(ParamHandlerTest, GetString) {

@@ -17,7 +17,7 @@
   <module>
     <name>localization</name>
     <type>binary</type>
-    <process_name>autonomy.localization --localization_mode=cartographer --configuration_directory=config/localization/cartographer --configuration_basename=autosim_2d.lua --start_trajectory_with_default_topics=true --save_state_filename=data/maps/cartographer.pbstream</process_name>
+    <process_name>autonomy.localization --localization_mode=cartographer --configuration_directory=autonomy/localization/conf/cartographer --configuration_basename=autosim_2d.lua --start_trajectory_with_default_topics=true --save_state_filename=data/maps/cartographer.pbstream</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>

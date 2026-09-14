@@ -1,3 +1,17 @@
+# Copyright 2025 The Openbot Authors (duyongquan)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # grid_map_demos — ROS-free ports of ANYbotics grid_map_demos.
 #
 # Built when BUILD_GRID_MAP_DEMOS=ON.
@@ -7,7 +21,7 @@ set(_GRID_MAP_DEMOS_ROOT
 
 function(grid_map_demo NAME)
   cmake_parse_arguments(ARG "" "" "SRCS" ${ARGN})
-  google_binary(${NAME} SRCS ${ARG_SRCS})
+  autonomy_binary(${NAME} SRCS ${ARG_SRCS})
   target_include_directories(${NAME} PRIVATE "${_GRID_MAP_DEMOS_ROOT}")
 endfunction()
 

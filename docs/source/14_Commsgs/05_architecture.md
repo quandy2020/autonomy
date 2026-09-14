@@ -194,7 +194,7 @@ Client (proto)  ◄─response──  Service (proto)
 同一进程内模块间可直接传递 C++ struct 引用或 `shared_ptr`，无需 proto 转换：
 
 ```cpp
-// system::Autonomy 内部
+// 同进程内模块调用（示意）
 controller_->SetPlan(path);  // planning_msgs::Path，无序列化
 ```
 

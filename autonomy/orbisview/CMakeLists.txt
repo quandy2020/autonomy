@@ -1,8 +1,7 @@
 # Copyright 2026 The Openbot Authors
 #
 # OrbisView — CivetWeb HTTP/WS + mock/autolink adapters + frontend (npm).
-# Directory layout mirrors Apollo Dreamview:
-#   backend / frontend / proto / conf / launch / main.cc
+# Layout: backend / frontend / proto / conf / launch / main.cc
 # thirdparty/civetweb IS built. Apollo Dreamview sources are not vendored.
 
 cmake_minimum_required(VERSION 3.20)
@@ -44,13 +43,9 @@ set(_ORBISVIEW_SRCS
   backend/common/stream_envelope.cc
   backend/simulation_world/simulation_world_service.cc
   backend/simulation_world/simulation_world_updater.cc
-  backend/hmi/hmi.cc
   backend/hmi/hmi_worker.cc
   backend/common/handlers/websocket_handler.cc
-  backend/common/map_service/map_service.cc
   backend/common/orbisview_gflags.cc
-  backend/point_cloud/point_cloud_updater.cc
-  backend/perception_camera_updater/perception_camera_updater.cc
   backend/teleop/teleop.cc
   backend/orbisview.cc
   backend/record_player/envelope_recorder.cc

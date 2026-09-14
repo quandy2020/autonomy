@@ -18,29 +18,37 @@ export function RoutingPanel() {
 
   const sendRoute = () => {
     if (!connected || !waypoints.length) return;
+    if (waypoints.length === 1) {
+      const w = waypoints[0];
+      wsClient.send({ op: 'set_goal', x: w.x, y: w.y, yaw: w.yaw ?? 0 });
+      return;
+    }
     wsClient.send({
       op: 'set_route',
-      waypoints: waypoints.map((w) => ({ x: w.x, y: w.y })),
+      waypoints: waypoints.map((w) => ({ x: w.x, y: w.y, yaw: w.yaw ?? 0 })),
     });
   };
 
   const clearRoute = () => {
     clear();
     wsClient.send({ op: 'clear_route' });
+    wsClient.send({ op: 'clear_goal' });
   };
 
   return (
     <div className="panel">
       <h3 style={{ marginTop: 0 }}>Routing</h3>
       <p className="hint">
-        Map RMB adds waypoints · send as route ({route?.state ?? '—'})
+        1 点 = set_goal · 多点 = set_route（{route?.state ?? '—'}）
       </p>
       <div className="row" style={{ gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
         <button type="button" disabled={!connected || !waypoints.length} onClick={sendRoute}>
-          set_route ({waypoints.length})
+          {waypoints.length <= 1
+            ? `set_goal (${waypoints.length})`
+            : `set_route (${waypoints.length})`}
         </button>
         <button type="button" disabled={!connected} onClick={clearRoute}>
-          clear_route
+          clear
         </button>
       </div>
       <ul className="wp-list">

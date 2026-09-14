@@ -147,12 +147,13 @@ void MockSource::Stop() {
   if (thread_.joinable()) thread_.join();
 }
 
-void MockSource::SetNavGoal(double x, double y) {
+void MockSource::SetNavGoal(double x, double y, double yaw) {
   std::lock_guard<std::mutex> lock(goal_mutex_);
   has_goal_ = true;
   goal_x_ = x;
   goal_y_ = y;
-  world_.SetGoal(x, y);
+  goal_yaw_ = yaw;
+  world_.SetGoal(x, y, yaw);
 }
 
 void MockSource::ClearNavGoal() {
@@ -161,11 +162,12 @@ void MockSource::ClearNavGoal() {
   world_.ClearGoal();
 }
 
-bool MockSource::HasNavGoal(double* x, double* y) const {
+bool MockSource::HasNavGoal(double* x, double* y, double* yaw) const {
   std::lock_guard<std::mutex> lock(goal_mutex_);
   if (!has_goal_) return false;
   if (x) *x = goal_x_;
   if (y) *y = goal_y_;
+  if (yaw) *yaw = goal_yaw_;
   return true;
 }
 
@@ -177,7 +179,7 @@ void MockSource::SetCmdVel(double vx, double wz) {
   teleop_active_ = true;
 }
 
-void MockSource::SetRoute(std::vector<std::pair<double, double>> waypoints) {
+void MockSource::SetRoute(std::vector<RoutePoint> waypoints) {
   std::lock_guard<std::mutex> lock(route_mutex_);
   route_ = std::move(waypoints);
 }
@@ -464,17 +466,20 @@ void MockSource::Loop() {
 
       double gx = 2.0;
       double gy = 1.0;
+      double gyaw = 0.0;
       bool has_goal = false;
       {
         std::lock_guard<std::mutex> lock(goal_mutex_);
         has_goal = has_goal_;
         gx = goal_x_;
         gy = goal_y_;
+        gyaw = goal_yaw_;
       }
       std::ostringstream nav;
       nav << "{\"state\":\"" << (has_goal ? "FOLLOWING" : "IDLE")
           << "\",\"goal\":{\"x\":" << gx << ",\"y\":" << gy
-          << "},\"has_goal\":" << (has_goal ? "true" : "false")
+          << ",\"yaw\":" << gyaw << "},\"has_goal\":"
+          << (has_goal ? "true" : "false")
           << ",\"distance_remaining\":"
           << (has_goal ? (std::abs(gx - x) + std::abs(gy - y)) : 0.0) << '}';
       EmitJson(kNavChannel, rendering::kSchemaNavigation, "map", &seq_nav_,
@@ -486,7 +491,7 @@ void MockSource::Loop() {
       EmitJson(kMappingChannel, rendering::kSchemaMapping, "map",
                &seq_map_task_, mapping.str());
 
-      std::vector<std::pair<double, double>> route_copy;
+      std::vector<RoutePoint> route_copy;
       {
         std::lock_guard<std::mutex> lock(route_mutex_);
         route_copy = route_;
@@ -496,8 +501,8 @@ void MockSource::Loop() {
             << "\",\"waypoints\":[";
       for (size_t i = 0; i < route_copy.size(); ++i) {
         if (i) route << ',';
-        route << "{\"x\":" << route_copy[i].first << ",\"y\":"
-              << route_copy[i].second << '}';
+        route << "{\"x\":" << route_copy[i].x << ",\"y\":" << route_copy[i].y
+              << ",\"yaw\":" << route_copy[i].yaw << '}';
       }
       route << "]}";
       EmitJson(kRouteChannel, rendering::kSchemaRoute, "map", &seq_route_,

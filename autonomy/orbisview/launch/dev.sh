@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-shot OrbisView mock backend + Vite frontend.
+# One-shot OrbisView mock backend + Vite frontend (LAN-reachable by default).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
@@ -7,10 +7,21 @@ ORBIS="$ROOT/autonomy/orbisview"
 BUILD="$ROOT/build-orbisview"
 BIN="$BUILD/bin/autonomy.orbisview"
 PORT="${ORBISVIEW_PORT:-8766}"
-HOST="${ORBISVIEW_HOST:-127.0.0.1}"
+HOST="${ORBISVIEW_HOST:-0.0.0.0}"
+FE_HOST="${ORBISVIEW_FE_HOST:-0.0.0.0}"
+FE_PORT="${ORBISVIEW_FE_PORT:-5173}"
 
 BE_PID=""
 FE_PID=""
+
+lan_ips() {
+  if command -v ipconfig >/dev/null 2>&1; then
+    ipconfig getifaddr en0 2>/dev/null || true
+    ipconfig getifaddr en1 2>/dev/null || true
+  elif command -v hostname >/dev/null 2>&1; then
+    hostname -I 2>/dev/null | awk '{print $1}' || true
+  fi
+}
 
 cleanup() {
   echo ""
@@ -42,12 +53,18 @@ if [[ ! -d node_modules ]]; then
   npm install
 fi
 
-echo "[orbisview] frontend  http://127.0.0.1:5173  (Connect → ws://$HOST:$PORT/ws)"
-npm start &
+echo "[orbisview] frontend  http://$FE_HOST:$FE_PORT"
+npm start -- --host "$FE_HOST" --port "$FE_PORT" &
 FE_PID=$!
 
+IPS="$(lan_ips | tr '\n' ' ' | xargs)"
 echo ""
-echo "  Open http://127.0.0.1:5173 → Connect"
+echo "  Local:   http://127.0.0.1:$FE_PORT → Connect (ws://127.0.0.1:$PORT/ws)"
+if [[ -n "$IPS" ]]; then
+  for ip in $IPS; do
+    echo "  LAN:     http://$ip:$FE_PORT → Connect (ws://$ip:$PORT/ws)"
+  done
+fi
 echo "  Ctrl+C to stop both"
 echo ""
 

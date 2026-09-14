@@ -13,6 +13,6 @@
     <module>
         <name>monitor</name>
         <type>binary</type>
-        <process_name>monitor --configuration_directory=config --configuration_basename=system/monitor.lua</process_name>
+        <process_name>autonomy.monitor --conf=monitor.pb.txt</process_name>
     </module>
 </autolink>

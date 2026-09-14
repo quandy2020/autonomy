@@ -21,12 +21,20 @@
 
 find_path(OSQP_INCLUDE_DIR
   NAMES osqp/osqp.h
-  PATHS ${CMAKE_INSTALL_PREFIX}/include /usr/local/include /usr/include
+  PATHS
+    ${CMAKE_INSTALL_PREFIX}/include
+    /opt/homebrew/include
+    /usr/local/include
+    /usr/include
 )
 
 find_library(OSQP_LIBRARY
   NAMES osqp
-  PATHS ${CMAKE_INSTALL_PREFIX}/lib /usr/local/lib /usr/lib
+  PATHS
+    ${CMAKE_INSTALL_PREFIX}/lib
+    /opt/homebrew/lib
+    /usr/local/lib
+    /usr/lib
 )
 
 include(FindPackageHandleStandardArgs)
@@ -35,6 +43,12 @@ find_package_handle_standard_args(OSQP DEFAULT_MSG OSQP_LIBRARY OSQP_INCLUDE_DIR
 if(OSQP_FOUND)
   set(OSQP_LIBRARIES ${OSQP_LIBRARY})
   set(OSQP_INCLUDE_DIRS ${OSQP_INCLUDE_DIR})
+  if(NOT TARGET OSQP::OSQP)
+    add_library(OSQP::OSQP UNKNOWN IMPORTED)
+    set_target_properties(OSQP::OSQP PROPERTIES
+      IMPORTED_LOCATION "${OSQP_LIBRARY}"
+      INTERFACE_INCLUDE_DIRECTORIES "${OSQP_INCLUDE_DIR}")
+  endif()
 endif()
 
 mark_as_advanced(OSQP_INCLUDE_DIR OSQP_LIBRARY)

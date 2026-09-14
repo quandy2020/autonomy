@@ -7,8 +7,8 @@
   TaskServer that binds /goal_pose and runs navigate_to_pose.xml.
 
   Prerequisites:
-    - config/autonomy.lua (planning / control)
-    - config/task/* (BT XML under config/task/behavior_tree/...)
+    - system/conf/autonomy.pb.txt (planning / control)
+    - task/conf/* (BT XML under config/task/behavior_tree/...)
     - PATH includes build bin (or install bin)
     - autosim in nav mode with map.publish (see autosim/README.md) for /map + /scan
     - Optional: AUTONOMY_BT_PLUGIN_PATH if using out-of-tree BT plugins
@@ -31,22 +31,22 @@
   <module>
     <name>planning</name>
     <type>binary</type>
-    <process_name>autonomy.planning --configuration_directory=config --configuration_basename=autonomy.lua</process_name>
+    <process_name>autonomy.planning --conf=autonomy.pb.txt</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>
   <module>
     <name>control</name>
     <type>binary</type>
-    <process_name>autonomy.control --configuration_directory=config --configuration_basename=autonomy.lua</process_name>
+    <process_name>autonomy.control --conf=autonomy.pb.txt</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>
   <module>
     <name>task</name>
     <type>binary</type>
-    <!-- CMake target / binary is autonomy.task (google_binary). -->
-    <process_name>autonomy.task --config_directory=config</process_name>
+    <!-- CMake target / binary is autonomy.task (autonomy_binary). -->
+    <process_name>autonomy.task</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>

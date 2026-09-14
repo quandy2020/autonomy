@@ -1,7 +1,7 @@
 (simulation-math)=
 # 3. 数学原理
 
-> 本文推导 Autonomy 仿真涉及的运动学模型与数值积分公式。`nav_test` 实现见 [06_nav_test.md](06_nav_test.md)；车辆限幅见 [08_vehicle_stage.md](08_vehicle_stage.md)。
+> 本文推导 Autonomy 仿真涉及的运动学模型与数值积分公式。进程内 `nav_test` 已移除；车辆限幅见 [08_vehicle_stage.md](08_vehicle_stage.md)，外部仿真见 [07_gazebo_ros.md](07_gazebo_ros.md)。
 
 ---
 
@@ -33,7 +33,7 @@ $$
 \begin{bmatrix} 0 \\ 0 \\ 1 \end{bmatrix} \omega
 $$
 
-#### Step 4：前向欧拉离散化（nav_test 使用）
+#### Step 4：前向欧拉离散化（运动学仿真常用）
 
 `IntegrateDiffDrive` 实现：
 
@@ -110,7 +110,7 @@ $$
 \mathbf{n}_k \sim \mathcal{N}(0, \Sigma_{odom})
 $$
 
-`nav_test` 为理想仿真（无噪声）；扩展时可加高斯噪声。
+理想运动学仿真通常无噪声；扩展时可加高斯噪声。
 
 ---
 

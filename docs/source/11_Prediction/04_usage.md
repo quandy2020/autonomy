@@ -63,8 +63,8 @@ struct PredictedTrajectory {
 ### 4.5 系统集成（规划）
 
 ```cpp
-// system::Autonomy 构造流程（规划）
-prediction_ = std::make_shared<prediction::PredictionServer>(options_.prediction_options());
+// prediction 进程 / Server 构造（示意）
+prediction_ = std::make_shared<prediction::PredictionServer>(options.prediction());
 prediction_->Start();
 
 // Perception 回调

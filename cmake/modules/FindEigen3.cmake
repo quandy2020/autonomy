@@ -13,18 +13,31 @@
 # limitations under the License.
 
 find_package(Eigen3 QUIET NO_MODULE)
-if (NOT EIGEN3_FOUND)
-  list(APPEND EIGEN3_POSSIBLE_DIRS
-    /usr/local/include/eigen3
-    /usr/include/eigen3
-  )
+
+if(TARGET Eigen3::Eigen)
+  get_target_property(EIGEN3_INCLUDE_DIR Eigen3::Eigen
+    INTERFACE_INCLUDE_DIRECTORIES)
+elseif(Eigen3_INCLUDE_DIR)
+  set(EIGEN3_INCLUDE_DIR "${Eigen3_INCLUDE_DIR}")
+else()
   find_path(EIGEN3_INCLUDE_DIR
     NAMES Eigen/Core
-    PATHS ${EIGEN3_POSSIBLE_DIRS}
-  )
-  if (EIGEN3_INCLUDE_DIR AND EXISTS ${EIGEN3_INCLUDE_DIR})
-    set(EIGEN3_FOUND TRUE)
-  else()
-    message(WARNING "Failed to find Eigen3. Please, define the path manually.")
+    HINTS /opt/homebrew /usr/local /usr
+    PATH_SUFFIXES include/eigen3 eigen3)
+endif()
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(Eigen3
+  REQUIRED_VARS EIGEN3_INCLUDE_DIR)
+
+if(Eigen3_FOUND)
+  set(EIGEN3_FOUND TRUE)
+  set(EIGEN3_INCLUDE_DIRS "${EIGEN3_INCLUDE_DIR}")
+  if(NOT TARGET Eigen3::Eigen)
+    add_library(Eigen3::Eigen INTERFACE IMPORTED)
+    set_target_properties(Eigen3::Eigen PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "${EIGEN3_INCLUDE_DIR}")
   endif()
 endif()
+
+mark_as_advanced(EIGEN3_INCLUDE_DIR)

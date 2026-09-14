@@ -1,24 +1,20 @@
 <!--
   Copyright 2026 The Openbot Authors
 
-  Full Autonomy multi-process stack (all shipped *_main binaries except tools).
+  Recommended Autonomy entry: multi-process stack via autolink_launch.
 
   Processes:
-    monitor, planning, control, task, perception (disabled by default),
-    localization + cartographer_occupancy_grid_node,
+    autonomy.monitor, planning, control, task, perception (disabled by default),
     autonomy.bridge (BUILD_GRPC=ON),
-    autonomy_foxglove_bridge
+    autonomy.foxglove_bridge
 
-  Not started here (tools / one-off):
+  Not started here (one-off):
     task_teleop_smoke, cartographer_pbstream_to_map, autonomy_foxglove_fakedata
 
-  Monolithic in-process runtime (system/main.cpp) is an alternative to
-  planning+control+task; do not run both.
-
   Prerequisites:
-    - config/autonomy.lua, config/task/*, config/system/monitor.lua
-    - config/localization/cartographer/backpack_2d_with_grid.lua (+ sensor TF/topics)
-    - config/bridge/bridge_options.lua when using bridge
+    - system/conf/autonomy.pb.txt, task/conf/*, system/conf/monitor.pb.txt
+    - localization/conf/cartographer/* when running localization launch separately
+    - bridge/conf/bridge.pb.txt when using bridge
     - PATH: build/bin; optional AUTONOMY_BT_PLUGIN_PATH=build/lib
 
   Dev (repo root):
@@ -30,37 +26,37 @@
   <module>
     <name>monitor</name>
     <type>binary</type>
-    <process_name>monitor --configuration_directory=config --configuration_basename=system/monitor.lua</process_name>
+    <process_name>autonomy.monitor --conf=monitor.pb.txt</process_name>
   </module>
   <module>
     <name>planning</name>
     <type>binary</type>
-    <process_name>autonomy.planning --configuration_directory=config --configuration_basename=autonomy.lua</process_name>
+    <process_name>autonomy.planning --conf=autonomy.pb.txt</process_name>
   </module>
   <module>
     <name>control</name>
     <type>binary</type>
-    <process_name>autonomy.control --configuration_directory=config --configuration_basename=autonomy.lua</process_name>
+    <process_name>autonomy.control --conf=autonomy.pb.txt</process_name>
   </module>
   <module>
     <name>task</name>
     <type>binary</type>
-    <process_name>autonomy.task --config_directory=config</process_name>
+    <process_name>autonomy.task</process_name>
   </module>
   <module>
     <name>perception</name>
     <type>binary</type>
-    <!-- perception.lua has enabled=false; use exploration.launch for closed-loop -->
-    <process_name>autonomy.perception --configuration_directory=config --configuration_basename=autonomy.lua</process_name>
+    <!-- perception conf often has enabled=false; use exploration.launch for closed-loop -->
+    <process_name>autonomy.perception --conf=autonomy.pb.txt</process_name>
   </module>
   <module>
     <name>bridge</name>
     <type>binary</type>
-    <process_name>autonomy.bridge --configuration_directory=config --configuration_basename=bridge/bridge_options.lua</process_name>
+    <process_name>autonomy.bridge --conf=bridge.pb.txt</process_name>
   </module>
   <module>
     <name>foxglove</name>
     <type>binary</type>
-    <process_name>autonomy_foxglove_bridge --foxglove_host=0.0.0.0 --foxglove_port=8765</process_name>
+    <process_name>autonomy.foxglove_bridge --foxglove_host=0.0.0.0 --foxglove_port=8765</process_name>
   </module>
 </autolink>

@@ -1,13 +1,17 @@
-# Default BridgeOptions (protobuf text). Runtime entry remains Lua:
-#   config/bridge/bridge_options.lua → include bridge/bridge.lua
-# Keep these defaults aligned with config/bridge/bridge.lua.
+# Bridge — external API (gRPC AutonomyService).
+# Proto: autonomy/bridge/proto/bridge_options.proto
+# Load:  LoadModuleConf("bridge", "bridge.pb.txt")  or  --conf=bridge.pb.txt
+#
+# CLI: autonomy.bridge --conf=bridge.pb.txt
 
+# Prefer gRPC server (MQTT path reserved / unused in default build).
 use_grpc: true
+
 grpc {
-  host: "127.0.0.1"
-  port: 5005
-  num_grpc_threads: 5
-  num_event_threads: 5
+  host: "127.0.0.1"          # bind / advertise address
+  port: 5005                  # gRPC listen port
+  num_grpc_threads: 5         # grpc completion-queue workers
+  num_event_threads: 5        # autolink / event loop threads
   enable_ssl_encryption: false
   enable_google_auth: false
 }

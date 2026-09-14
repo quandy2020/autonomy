@@ -1,0 +1,9 @@
+# Transform — static TF / extrinsic options.
+# Proto: autonomy/transform/proto/transform_options.proto
+# Load:  LoadModuleConf("transform", "transform.pb.txt")
+#        or nested transform_options in system/conf/*.pb.txt
+#
+# If extrinsic_file is empty, runtime resolves static_transform.yaml in this conf/.
+
+# Absolute path or basename under autonomy/transform/conf/
+# extrinsic_file: "static_transform.yaml"

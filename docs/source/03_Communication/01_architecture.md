@@ -356,13 +356,13 @@ Python 另需 `PYTHONPATH` 指向 `autolink_py3`（`examples/python/README.md`�
 
 ## 1.8 Autonomy 集成
 
-`system::Autonomy` 各 Server 在内部 `CreateNode`，将 commsgs 与 autolink 对接：
+各模块 Server 在对应进程内 `CreateNode`，将 commsgs 与 autolink 对接：
 
 | Server | autolink 用法 |
 |--------|---------------|
 | Planning | [Plugin](07_plugin.md) 加载 `GlobalPlanner` |
-| Navigator | [Action](05_action.md) Client → Controller |
-| 各模块 | Lua 配置 + 可选 [Parameter](06_parameter.md) |
+| Task / Navigator | [Action](05_action.md) Client → Controller |
+| 各模块 | conf + 可选 [Parameter](06_parameter.md) |
 
 详见 [Framework §3](../05_Framework/03_architecture.md)。
 

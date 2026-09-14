@@ -8,7 +8,7 @@
 ## 1.1 在导航栈中的位置
 
 ```
-Autonomy / Bridge ──Goal──► BtNavigator ──BT tick──► Planner / Control / Map
+Task / Bridge ──Goal──► BtNavigator ──BT tick──► Planner / Control / Map
                                 │
                                 ▼
                          navigate_to_pose.xml
@@ -16,9 +16,9 @@ Autonomy / Bridge ──Goal──► BtNavigator ──BT tick──► Planner
 
 | 边界 | 说明 |
 |------|------|
-| 上游 | `system::Autonomy`、Bridge、autolink Action Client |
+| 上游 | `TaskServer`、Bridge、autolink Action Client |
 | 下游 | `planning`、`control`、`map`、`transform` |
-| 入口 | `NavigatorOptions`（`navigator.lua`）· `NavigateToPose()` |
+| 入口 | `NavigatorOptions` · Action / Bridge 发令 |
 | 不负责 | 路径搜索、局部控制律、定位算法 |
 
 设计约束：**nav2 对齐** · **编排不实现算法** · **`common.lua` 三模块共享帧/容差** · **52 BT 插件 `.so`** · **局部生存增强**（TF 丢失时不立即失败）。
@@ -39,10 +39,10 @@ Autonomy / Bridge ──Goal──► BtNavigator ──BT tick──► Planner
 | BT 插件 `.so`（52 个） | ⏳ | 源码待从历史 `tasks` 迁回 |
 | `BtNavigator` 顶层编排 | ⏳ | 设计完成 |
 | `NavigateToPoseNavigator` / `NavigateThroughPosesNavigator` | ⏳ | 设计完成 |
-| `Autonomy` BT 接线 | ⏳ | 当前 `use_bt_navigation_ = false` |
-| 直驱规划路径 | ✅ | `NavigateDirectToPose` → `GetPlan` |
+| `Autonomy` BT 接线 | ❌ | 进程内聚合已移除；由 TaskServer 编排 |
+| 多进程联调 | ✅ | `autolink_launch` + Bridge / Action |
 
-> **当前阶段**：6 个源文件 + 配置/BT XML 已就绪；完整 BT 栈尚待迁回。`system::Autonomy` 以直驱模式验证规划链路。
+> **当前阶段**：BT 配置/XML 就绪；完整 BT 栈持续演进。运行入口为多进程 `autonomy.task`，不再经 `system::Autonomy`。
 
 ## 1.3 分层架构
 
@@ -53,7 +53,7 @@ Autonomy / Bridge ──Goal──► BtNavigator ──BT tick──► Planner
   <div class="plan-arch-layer plan-arch-app">
     <div class="plan-arch-header">
       <span class="plan-arch-badge">应用层</span>
-      <span class="plan-arch-title">Autonomy / Bridge / nav_test</span>
+      <span class="plan-arch-title">Task / Bridge / Action Client</span>
       <span class="plan-arch-sub">外部调用方，不隶属于 navigator 包</span>
     </div>
     <div class="plan-arch-body">
@@ -388,17 +388,16 @@ navigate_through_poses RUNNING  →  navigate_to_pose Goal REJECTED
 ## 1.7 与系统其他模块的集成
 
 ```
-config/autonomy.lua
-  include navigator/navigator.lua
+autonomy/task/conf/navigator.pb.txt
+  + behavior_tree/*.xml
         │
         ▼
-system::Autonomy
-  navigator_options_ = CreateOptions(...)
-  use_bt_navigation_ = false  (当前)
+autonomy.task (TaskServer)
+  加载 NavigatorOptions / BT
         │
-        ├── planner_  ← ComputePathToPose / GetPlan
-        ├── controller_  ← FollowPath / Spin / BackUp
-        ├── tf_buffer_  ← TransformAvailable
+        ├── planning  ← ComputePathToPose / GetPlan
+        ├── control   ← FollowPath / Spin / BackUp
+        ├── transform ← TransformAvailable
         └── map/costmap  ← IsPathValid / ClearEntireCostmap
 ```
 

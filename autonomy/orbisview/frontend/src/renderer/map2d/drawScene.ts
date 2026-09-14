@@ -1,15 +1,21 @@
 import { makeWorldToScreen } from './coords';
 import { drawOccupancyGrid } from './drawOccupancy';
 import { drawFootprint, resolveFootprintPoints } from './drawFootprint';
-import { drawMapHud } from './drawHud';
 import type {
-  ChassisJson,
   DefaultFootprint,
   LayerFlags,
   OccupancyGridJson,
   Pose2D,
   RobotFootprintJson,
 } from './types';
+
+function strokeFromHex(hex: string, alpha: number): string {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  const n = Number.parseInt(full, 16);
+  if (!Number.isFinite(n)) return `rgba(79,195,247,${alpha})`;
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, alpha))})`;
+}
 
 export interface Map2DSceneInput {
   width: number;
@@ -19,9 +25,29 @@ export interface Map2DSceneInput {
   layers: LayerFlags;
   pose: Pose2D | null;
   path: { poses: Pose2D[] } | null;
+  pathStyle?: { color: string; lineWidth: number; alpha: number };
   map: OccupancyGridJson | null;
   costmap: OccupancyGridJson | null;
+  /** @deprecated prefer lasers[] */
   laser: { angle_min: number; angle_increment: number; ranges: number[] } | null;
+  lasers?: {
+    scan: { angle_min: number; angle_increment: number; ranges: number[]; range_min?: number; range_max?: number };
+    color: string;
+    size: number;
+    alpha: number;
+  }[];
+  cloud?: {
+    points: { x: number; y: number; z: number; i?: number }[];
+    colorMode: 'intensity' | 'height' | 'rgb';
+    size: number;
+    alpha: number;
+  } | null;
+  ranges?: {
+    range: number;
+    field_of_view: number;
+    color: string;
+    alpha: number;
+  }[];
   tf: { transforms: { parent: string; child: string; x: number; y: number; yaw?: number }[] } | null;
   obstacles: {
     obstacles?: {
@@ -42,11 +68,117 @@ export interface Map2DSceneInput {
     obstacles?: { id: number; trajectory?: { x: number; y: number }[] }[];
   } | null;
   goal: Pose2D | null;
-  twist: { vx: number; wz: number } | null;
-  chassis: ChassisJson | null;
   footprint: RobotFootprintJson | null;
   defaultFootprint: DefaultFootprint;
-  measurePts: { x: number; y: number }[];
+  measurePts: { x: number; y: number; yaw?: number; label?: string }[];
+  /** Live cursor while measuring (dashed preview to next point). */
+  measurePreview?: { x: number; y: number } | null;
+  /** Nav / multi pose handles: ring + direction arrow. */
+  poseHandles?: {
+    x: number;
+    y: number;
+    yaw?: number;
+    label?: string;
+    /** Ring radius in meters (world). */
+    ringM?: number;
+    editing?: boolean;
+  }[];
+  routePts?: {
+    x: number;
+    y: number;
+    yaw?: number;
+    label?: string;
+    color?: string;
+    selected?: boolean;
+    editing?: boolean;
+  }[];
+}
+
+function drawPoseHandle(
+  ctx: CanvasRenderingContext2D,
+  toScreen: (x: number, y: number) => readonly [number, number],
+  scale: number,
+  p: {
+    x: number;
+    y: number;
+    yaw?: number;
+    label?: string;
+    ringM?: number;
+    editing?: boolean;
+  },
+  color: string,
+): void {
+  const [sx, sy] = toScreen(p.x, p.y);
+  const yaw = p.yaw ?? 0;
+  const ringM = Math.max(0.28, p.ringM ?? 0.5);
+  const ringPx = Math.max(16, ringM * scale);
+  const editing = !!p.editing;
+
+  // Outer ring
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = editing ? 2.4 : 1.6;
+  if (editing) ctx.setLineDash([5, 4]);
+  ctx.beginPath();
+  ctx.arc(sx, sy, ringPx, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Soft fill while editing
+  if (editing) {
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.12;
+    ctx.beginPath();
+    ctx.arc(sx, sy, ringPx, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Center
+  ctx.beginPath();
+  ctx.arc(sx, sy, editing ? 5 : 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Direction arrow to ring rim
+  const ex = sx + Math.cos(yaw) * ringPx;
+  const ey = sy - Math.sin(yaw) * ringPx;
+  ctx.lineWidth = editing ? 2.4 : 1.8;
+  ctx.beginPath();
+  ctx.moveTo(sx, sy);
+  ctx.lineTo(ex, ey);
+  ctx.stroke();
+
+  // Arrow head
+  const head = Math.min(14, ringPx * 0.45);
+  const ang = Math.atan2(ey - sy, ex - sx);
+  ctx.beginPath();
+  ctx.moveTo(ex, ey);
+  ctx.lineTo(ex - head * Math.cos(ang - 0.5), ey - head * Math.sin(ang - 0.5));
+  ctx.lineTo(ex - head * Math.cos(ang + 0.5), ey - head * Math.sin(ang + 0.5));
+  ctx.closePath();
+  ctx.fill();
+
+  if (p.label) {
+    ctx.font = '600 11px ui-sans-serif, system-ui, sans-serif';
+    ctx.strokeStyle = 'rgba(11,15,20,0.75)';
+    ctx.lineWidth = 3;
+    ctx.strokeText(p.label, sx + ringPx + 6, sy - 4);
+    ctx.fillStyle = color;
+    ctx.fillText(p.label, sx + ringPx + 6, sy - 4);
+  }
+
+  if (editing) {
+    const deg = (((yaw * 180) / Math.PI) % 360 + 360) % 360;
+    const tip = `${deg.toFixed(0)}°`;
+    ctx.font = '11px ui-monospace, monospace';
+    ctx.strokeStyle = 'rgba(11,15,20,0.8)';
+    ctx.lineWidth = 3;
+    ctx.strokeText(tip, ex + 8, ey - 4);
+    ctx.fillStyle = '#fff59d';
+    ctx.fillText(tip, ex + 8, ey - 4);
+  }
+  ctx.restore();
 }
 
 export function paintMap2DScene(
@@ -61,19 +193,24 @@ export function paintMap2DScene(
     layers,
     pose,
     path,
+    pathStyle,
     map,
     costmap,
     laser,
+    lasers,
+    cloud,
+    ranges: rangeOverlays,
     tf,
     obstacles,
     vectorMap,
     prediction,
     goal,
-    twist,
-    chassis,
     footprint,
     defaultFootprint,
     measurePts,
+    measurePreview = null,
+    poseHandles = [],
+    routePts = [],
   } = input;
 
   const ox = viewOffset.x;
@@ -181,8 +318,13 @@ export function paintMap2DScene(
   }
 
   if (layers.path && path?.poses?.length) {
-    ctx.strokeStyle = '#4fc3f7';
-    ctx.lineWidth = 2;
+    const color = pathStyle?.color ?? '#4fc3f7';
+    const alpha = pathStyle?.alpha ?? 0.9;
+    const lw = pathStyle?.lineWidth ?? 2;
+    ctx.strokeStyle = color.includes('rgba') ? color : strokeFromHex(color, alpha);
+    ctx.lineWidth = Math.max(1, lw);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
     ctx.beginPath();
     path.poses.forEach((p, i) => {
       const [sx, sy] = toScreen(p.x, p.y);
@@ -192,19 +334,97 @@ export function paintMap2DScene(
     ctx.stroke();
   }
 
-  if (layers.laser && laser && pose) {
-    ctx.fillStyle = '#ffeb3b';
-    laser.ranges.forEach((r, i) => {
-      const a =
-        (laser.angle_min ?? 0) +
-        i * (laser.angle_increment ?? 0) +
-        (pose.yaw ?? 0);
-      const [sx, sy] = toScreen(
-        pose.x + r * Math.cos(a),
-        pose.y + r * Math.sin(a),
-      );
-      ctx.fillRect(sx - 1, sy - 1, 2, 2);
-    });
+  if (layers.laser && pose) {
+    const laserList =
+      lasers && lasers.length
+        ? lasers
+        : laser
+          ? [{ scan: { ...laser, range_min: undefined, range_max: undefined }, color: '#ffeb3b', size: 0.05, alpha: 1 }]
+          : [];
+    for (const item of laserList) {
+      const { scan, color, size, alpha } = item;
+      const px = Math.max(1, size * scale * 0.35);
+      ctx.fillStyle = color.includes('rgba')
+        ? color
+        : (() => {
+            const h = color.replace('#', '');
+            const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+            const n = Number.parseInt(full, 16);
+            if (!Number.isFinite(n)) return `rgba(255,235,59,${alpha})`;
+            return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+          })();
+      const rMin = scan.range_min ?? 0;
+      const rMax = scan.range_max ?? Infinity;
+      scan.ranges.forEach((r, i) => {
+        if (!Number.isFinite(r) || r < rMin || r > rMax) return;
+        const a =
+          (scan.angle_min ?? 0) +
+          i * (scan.angle_increment ?? 0) +
+          (pose.yaw ?? 0);
+        const [sx, sy] = toScreen(
+          pose.x + r * Math.cos(a),
+          pose.y + r * Math.sin(a),
+        );
+        ctx.fillRect(sx - px / 2, sy - px / 2, px, px);
+      });
+    }
+
+    if (rangeOverlays?.length) {
+      for (const item of rangeOverlays) {
+        const yaw = pose.yaw ?? 0;
+        const fov = item.field_of_view || 0.2;
+        const r = item.range;
+        ctx.strokeStyle = item.color.includes('rgba')
+          ? item.color
+          : (() => {
+              const h = item.color.replace('#', '');
+              const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+              const n = Number.parseInt(full, 16);
+              if (!Number.isFinite(n)) return `rgba(128,203,196,${item.alpha})`;
+              return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${item.alpha})`;
+            })();
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.lineWidth = 1.5;
+        const [ox, oy] = toScreen(pose.x, pose.y);
+        ctx.beginPath();
+        ctx.moveTo(ox, oy);
+        const steps = 12;
+        for (let i = 0; i <= steps; i++) {
+          const a = yaw - fov / 2 + (fov * i) / steps;
+          const [sx, sy] = toScreen(pose.x + r * Math.cos(a), pose.y + r * Math.sin(a));
+          ctx.lineTo(sx, sy);
+        }
+        ctx.closePath();
+        ctx.globalAlpha = Math.min(1, item.alpha * 0.35);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.stroke();
+      }
+    }
+  }
+
+  if ((layers.pointcloud ?? true) && cloud?.points?.length) {
+    const px = Math.max(1, cloud.size * scale * 0.4);
+    let zMin = Infinity;
+    let zMax = -Infinity;
+    if (cloud.colorMode === 'height') {
+      for (const p of cloud.points) {
+        zMin = Math.min(zMin, p.z);
+        zMax = Math.max(zMax, p.z);
+      }
+    }
+    const zSpan = Math.max(1e-6, zMax - zMin);
+    for (const p of cloud.points) {
+      const [sx, sy] = toScreen(p.x, p.y);
+      if (cloud.colorMode === 'height') {
+        const t01 = (p.z - zMin) / zSpan;
+        ctx.fillStyle = `rgba(${Math.round(255 * t01)},${Math.round(100 + 100 * (1 - t01))},${Math.round(255 * (1 - t01))},${cloud.alpha})`;
+      } else {
+        const inten = p.i ?? 0.7;
+        ctx.fillStyle = `rgba(${Math.round(50 + 200 * inten)},${Math.round(150 * inten)},${Math.round(255 - 120 * inten)},${cloud.alpha})`;
+      }
+      ctx.fillRect(sx - px / 2, sy - px / 2, px, px);
+    }
   }
 
   if (layers.tf && tf?.transforms?.length) {
@@ -230,17 +450,17 @@ export function paintMap2DScene(
   }
 
   if (goal) {
-    const [sx, sy] = toScreen(goal.x, goal.y);
-    ctx.strokeStyle = '#ff7043';
-    ctx.fillStyle = '#ff7043';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(sx, sy - 10);
-    ctx.lineTo(sx + 8, sy + 6);
-    ctx.lineTo(sx - 8, sy + 6);
-    ctx.closePath();
-    ctx.fill();
+    drawPoseHandle(ctx, toScreen, scale, {
+      x: goal.x,
+      y: goal.y,
+      yaw: goal.yaw ?? 0,
+      label: 'G',
+      ringM: 0.45,
+    }, '#ff7043');
     if (pose) {
+      const [sx, sy] = toScreen(goal.x, goal.y);
+      ctx.strokeStyle = '#ff7043';
+      ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 4]);
       ctx.beginPath();
       const [rx, ry] = toScreen(pose.x, pose.y);
@@ -251,7 +471,6 @@ export function paintMap2DScene(
     }
   }
 
-  const footprintSource: 'stream' | 'default' = footprint ? 'stream' : 'default';
   if (layers.footprint && pose) {
     const pts = resolveFootprintPoints(footprint, defaultFootprint);
     drawFootprint(ctx, pose, pts, toScreen);
@@ -271,25 +490,159 @@ export function paintMap2DScene(
     ctx.stroke();
   }
 
-  drawMapHud(ctx, {
-    pose,
-    twist,
-    chassis,
-    goal,
-    footprintSource,
-  });
-
   if (measurePts.length) {
     ctx.strokeStyle = '#ffee58';
     ctx.fillStyle = '#ffee58';
     ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    measurePts.forEach((p, i) => {
+
+    // Confirmed solid segments
+    if (measurePts.length >= 2) {
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      measurePts.forEach((p, i) => {
+        const [sx, sy] = toScreen(p.x, p.y);
+        if (i === 0) ctx.moveTo(sx, sy);
+        else ctx.lineTo(sx, sy);
+      });
+      ctx.stroke();
+
+      let total = 0;
+      for (let i = 1; i < measurePts.length; i++) {
+        const a = measurePts[i - 1];
+        const b = measurePts[i];
+        const seg = Math.hypot(b.x - a.x, b.y - a.y);
+        total += seg;
+        const [ax, ay] = toScreen(a.x, a.y);
+        const [bx, by] = toScreen(b.x, b.y);
+        const mx = (ax + bx) / 2;
+        const my = (ay + by) / 2;
+        const dx = bx - ax;
+        const dy = by - ay;
+        const len = Math.hypot(dx, dy) || 1;
+        const ox = (-dy / len) * 10;
+        const oy = (dx / len) * 10;
+        ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
+        ctx.fillStyle = '#ffee58';
+        ctx.strokeStyle = 'rgba(11,15,20,0.75)';
+        ctx.lineWidth = 3;
+        const label = `${seg.toFixed(2)} m`;
+        ctx.strokeText(label, mx + ox, my + oy);
+        ctx.fillText(label, mx + ox, my + oy);
+        ctx.strokeStyle = '#ffee58';
+        ctx.lineWidth = 1.5;
+      }
+
+      const last = measurePts[measurePts.length - 1];
+      const [sx, sy] = toScreen(last.x, last.y);
+      const totalLabel = `Σ ${total.toFixed(2)} m`;
+      ctx.font = 'bold 12px ui-sans-serif, system-ui, sans-serif';
+      ctx.strokeStyle = 'rgba(11,15,20,0.8)';
+      ctx.lineWidth = 3;
+      ctx.fillStyle = '#fff59d';
+      ctx.strokeText(totalLabel, sx + 10, sy + 16);
+      ctx.fillText(totalLabel, sx + 10, sy + 16);
+    }
+
+    // Dashed preview from last confirmed point → cursor (before next click)
+    if (measurePreview && measurePts.length >= 1) {
+      const last = measurePts[measurePts.length - 1];
+      const [ax, ay] = toScreen(last.x, last.y);
+      const [bx, by] = toScreen(measurePreview.x, measurePreview.y);
+      const seg = Math.hypot(measurePreview.x - last.x, measurePreview.y - last.y);
+      ctx.strokeStyle = '#ffee58';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 5]);
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Preview distance (lighter)
+      const mx = (ax + bx) / 2;
+      const my = (ay + by) / 2;
+      ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
+      ctx.strokeStyle = 'rgba(11,15,20,0.75)';
+      ctx.lineWidth = 3;
+      ctx.fillStyle = 'rgba(255, 245, 157, 0.85)';
+      const previewLabel = `${seg.toFixed(2)} m`;
+      ctx.strokeText(previewLabel, mx + 6, my - 6);
+      ctx.fillText(previewLabel, mx + 6, my - 6);
+    }
+
+    measurePts.forEach((p) => {
       const [sx, sy] = toScreen(p.x, p.y);
-      if (i === 0) ctx.moveTo(sx, sy);
-      else ctx.lineTo(sx, sy);
-      ctx.fillRect(sx - 2, sy - 2, 4, 4);
+      ctx.fillStyle = '#ffee58';
+      ctx.fillRect(sx - 3, sy - 3, 6, 6);
+      if (p.label) {
+        ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
+        ctx.fillStyle = '#ffee58';
+        ctx.fillText(p.label, sx + 6, sy - 6);
+      }
     });
-    ctx.stroke();
+  }
+
+  if (poseHandles.length) {
+    // Connect AB with a light guide when two handles
+    if (poseHandles.length === 2) {
+      const [a, b] = poseHandles;
+      const [ax, ay] = toScreen(a.x, a.y);
+      const [bx, by] = toScreen(b.x, b.y);
+      ctx.strokeStyle = 'rgba(105, 240, 174, 0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    poseHandles.forEach((p) => {
+      drawPoseHandle(ctx, toScreen, scale, p, p.editing ? '#69f0ae' : '#80cbc4');
+    });
+  }
+
+  if (routePts.length) {
+    // Route polyline uses muted cyan; markers keep per-point colors.
+    ctx.strokeStyle = 'rgba(79, 195, 247, 0.55)';
+    ctx.lineWidth = 1.5;
+    if (routePts.length > 1) {
+      ctx.beginPath();
+      routePts.forEach((p, i) => {
+        const [sx, sy] = toScreen(p.x, p.y);
+        if (i === 0) ctx.moveTo(sx, sy);
+        else ctx.lineTo(sx, sy);
+      });
+      ctx.stroke();
+    }
+    routePts.forEach((p, i) => {
+      const color = p.color ?? '#4fc3f7';
+      const selected = !!p.selected;
+      if (selected) {
+        const [sx, sy] = toScreen(p.x, p.y);
+        const ringPx = Math.max(16, 0.55 * scale);
+        ctx.save();
+        ctx.strokeStyle = '#ffee58';
+        ctx.lineWidth = 3;
+        ctx.globalAlpha = 0.9;
+        ctx.beginPath();
+        ctx.arc(sx, sy, ringPx + 5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+      drawPoseHandle(
+        ctx,
+        toScreen,
+        scale,
+        {
+          x: p.x,
+          y: p.y,
+          yaw: p.yaw ?? 0,
+          label: p.label ?? `#${i + 1}`,
+          ringM: selected || p.editing ? 0.55 : 0.4,
+          editing: !!p.editing || selected,
+        },
+        color,
+      );
+    });
   }
 }

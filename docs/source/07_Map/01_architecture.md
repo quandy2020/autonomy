@@ -467,15 +467,14 @@ Costmap2DWrapper(options)
 ## 1.10 与系统其他模块的集成
 
 ```
-config/autonomy.lua
-  planning = AUTONOMY_PLANNER
+autonomy/system/conf/autonomy.pb.txt
+  planning = …
         │
         ▼
-system::Autonomy
-  planner_ = PlannerServer(options_.planner_options())
+autonomy.planning (PlannerServer)
         │
-        ├── planner_.costmap_ = Costmap2DWrapper
-        ├── Navigator（间接消费 costmap）
+        ├── costmap_ = Costmap2DWrapper
+        ├── Task / Navigator（间接消费 costmap）
         └── Visualization（订阅 costmap 快照）
 ```
 

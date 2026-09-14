@@ -23,7 +23,6 @@
 
 #include "autonomy/planning/proto/navfn_planner.pb.h"
 
-#include "autonomy/common/lua_parameter_dictionary.hpp"
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"

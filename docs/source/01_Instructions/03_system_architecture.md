@@ -9,8 +9,8 @@
 ## 3.1 设计目标
 
 1. **分层解耦**：感知/定位 → 地图 → 规划 → 控制 → 底盘，各层通过接口与消息通信
-2. **统一入口**：`system::Autonomy` 构造并持有各 Server，对外提供 `NavigateToPose` 等 API
-3. **配置集中**：`config/autonomy.lua` 聚合各子系统 Lua 配置
+2. **多进程入口**：`autolink_launch autonomy.launch` 拉起 planning / control / task 等；发令经 Bridge / Action
+3. **配置可共享**：`CreateOptions` 加载 `AutonomyOptions`；各模块也可使用本地 conf
 4. **通信抽象**：算法模块使用 C++ struct（`commsgs`），跨进程经 Autolink 序列化
 
 ## 3.2 分层架构
@@ -20,16 +20,16 @@
   <div class="plan-arch-layer plan-arch-app">
     <div class="plan-arch-header">
       <span class="plan-arch-badge">应用层</span>
-      <span class="plan-arch-title">用户 / Bridge / 测试工具</span>
-      <span class="plan-arch-sub">nav_test、gRPC Client、上层业务</span>
+      <span class="plan-arch-title">用户 / Bridge / 上层业务</span>
+      <span class="plan-arch-sub">autolink_launch、gRPC Client、Action Client</span>
     </div>
     <div class="plan-arch-body">
       <div class="nav-body-block">
         <div class="nav-body-label">典型入口</div>
         <div class="nav-chip-list">
-          <span class="nav-chip">Autonomy::NavigateToPose</span>
+          <span class="nav-chip">autonomy.launch</span>
           <span class="nav-chip">navigate_to_pose action</span>
-          <span class="nav-chip">gRPC NAV_CMD</span>
+          <span class="nav-chip">gRPC / Bridge</span>
         </div>
       </div>
     </div>
@@ -40,23 +40,23 @@
   <div class="plan-arch-layer plan-arch-server">
     <div class="plan-arch-header">
       <span class="plan-arch-badge">编排层</span>
-      <span class="plan-arch-title">system::Autonomy + navigator</span>
-      <span class="plan-arch-sub">任务生命周期 · 行为树 · 直驱规划</span>
+      <span class="plan-arch-title">TaskServer + navigator / BT</span>
+      <span class="plan-arch-sub">任务生命周期 · 行为树 · 多进程 IPC</span>
     </div>
     <div class="plan-arch-body plan-arch-body-cols">
       <div class="nav-body-block">
-        <div class="nav-body-label">持有组件</div>
+        <div class="nav-body-label">典型进程</div>
         <div class="nav-chip-list">
-          <span class="nav-chip">MapServer</span>
-          <span class="nav-chip">PlannerServer</span>
-          <span class="nav-chip">ControllerServer</span>
-          <span class="nav-chip">tf_buffer</span>
+          <span class="nav-chip">planning</span>
+          <span class="nav-chip">control</span>
+          <span class="nav-chip">task</span>
+          <span class="nav-chip">bridge</span>
         </div>
       </div>
       <div class="nav-body-block">
         <div class="nav-body-label">配置</div>
         <div class="nav-chip-list">
-          <span class="nav-chip">autonomy.lua</span>
+          <span class="nav-chip">autonomy.pb.txt</span>
           <span class="nav-chip">NavigatorOptions</span>
         </div>
       </div>
@@ -150,22 +150,17 @@
 ## 3.4 配置管线
 
 ```
-config/autonomy.lua
-  ├── include map/map.lua
-  ├── include planner/planner.lua
-  ├── include controller/controller.lua
-  ├── include navigator/navigator.lua
-  └── include localization/localization.lua
+autonomy/system/conf/autonomy.pb.txt
+  └── AutonomyOptions（planning / control / … 子字段）
         │
         ▼
-system::CreateOptions("config")
+system::CreateOptions("autonomy.pb.txt")
         │
         ▼
-AutonomyOptions (protobuf)
-        │
-        ▼
-system::Autonomy(options)
+各 *_main → PlannerServer / ControllerServer / TaskServer …
 ```
+
+模块本地 conf 见 `autonomy/<mod>/conf/`。进程内 `system::Autonomy` **已移除**。
 
 ## 3.5 运行时数据流
 
@@ -176,8 +171,8 @@ flowchart TB
         G[导航目标 Goal]
     end
 
-    subgraph Core["Autonomy 核心"]
-        SYS[system::Autonomy]
+    subgraph Core["Autonomy 核心（多进程）"]
+        TASK[TaskServer]
         NAV[navigator BT]
         PLN[PlannerServer]
         CTL[ControllerServer]
@@ -193,8 +188,8 @@ flowchart TB
 
     S --> MAP
     S --> LOC
-    G --> SYS
-    SYS --> NAV
+    G --> TASK
+    TASK --> NAV
     NAV --> PLN
     NAV --> CTL
     PLN --> MAP
@@ -208,10 +203,10 @@ flowchart TB
 
 | 场景 | 策略 |
 |------|------|
-| 单进程部署 | `Autonomy` 内所有 Server 同进程，Autolink 进程内通信 |
+| 推荐部署 | 多进程 `autolink_launch`，Autolink IPC |
 | 地图更新 vs 规划 | Costmap mutex，规划时复制快照 |
 | Atlas VSLAM | Tracking 主线程 + Mapping / GBA 独立线程 |
-| BT tick | 单线程 `tickOnce` 循环（默认 100 Hz） |
+| BT tick | task 进程内 `tickOnce` 循环 |
 
 ## 3.7 相关文档
 

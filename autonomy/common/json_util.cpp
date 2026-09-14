@@ -17,6 +17,7 @@
 #include "autonomy/common/json_util.hpp"
 
 #include "autonomy/common/string_util.hpp"
+#include "google/protobuf/stubs/common.h"
 #include "google/protobuf/util/json_util.h"
 
 namespace autonomy {
@@ -26,10 +27,13 @@ namespace {
 using Json = nlohmann::json;
 using google::protobuf::util::MessageToJsonString;
 
-google::protobuf::util::JsonOptions JsonOption() {
-    google::protobuf::util::JsonOptions json_option;
+google::protobuf::util::JsonPrintOptions JsonOption() {
+    google::protobuf::util::JsonPrintOptions json_option;
+#if GOOGLE_PROTOBUF_VERSION >= 5026000
+    json_option.always_print_fields_with_no_presence = true;
+#else
     json_option.always_print_primitive_fields = true;
-    // json_option.always_print_fields_with_no_presence = true;
+#endif
     return json_option;
 }
 

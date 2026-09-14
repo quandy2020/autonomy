@@ -6,49 +6,46 @@
 | 维度 | 说明 |
 |------|------|
 | 层级 | **导航任务层**（Navigation Task Layer） |
-| 入口 | `system::Autonomy` |
-| 编排 | [Navigator](../16_Navigator/00_guide.md) + 行为树（演进中） |
+| 入口 | `autonomy.task`（`TaskServer`） |
+| 编排 | [Navigator / BT](../16_Navigator/00_guide.md)（演进中） |
 | 对标 | nav2_bt_navigator 的任务语义 |
 | 消息 | `commsgs::nav_msgs::*Action` |
 
-Autonomy **无独立 `autonomy/tasks/` 包**。导航任务 = `Autonomy` 对外 API + Navigator 内部编排。
+导航任务由 **TaskServer** 在独立进程中运行；进程内 `system::Autonomy` 聚合入口 **已移除**。
 
 ### 1.2 任务与模块关系
 
 ```
-用户 / Bridge / 测试工具
+用户 / Bridge / Action Client
         │
         ▼
-  system::Autonomy          ← 本章（任务 API）
+  autonomy.task (TaskServer)   ← 本章（任务进程）
         │
-        ├── NavigateToPose / NavigateThroughPoses
+        ├── 导航 / 建图 / 遥操等任务类型
         │
         ▼
-  navigator（BT 编排）       ← 16 Navigator
-        │
-        ├── PlannerServer（规划）
-        ├── ControllerServer（跟踪）
-        └── Map / Transform
+  planning / control / map …   ← 多进程 IPC
 ```
 
 ### 1.3 支持的任务类型
 
-| 任务 | API | 说明 |
-|------|-----|------|
-| 单点导航 | `NavigateToPose()` | 从当前位姿到目标位姿 |
-| 多点导航 | `NavigateThroughPoses()` | 依次经过多个航点 |
-| 重规划 | `ReplanToGoal()` | 保持目标，重新计算路径 |
+| 任务 | 说明 |
+|------|------|
+| 单点导航 | NavigateToPose 语义（BT / Action） |
+| 多点导航 | NavigateThroughPoses |
+| 建图 / 遥操 / 跟踪 | 见 `autonomy/task/` 子模块 |
+
+具体 Action / 提交 API 以 `TaskServer` 与 Bridge stub 为准。
 
 ### 1.4 当前实现状态
 
 | 能力 | 状态 | 说明 |
 |------|------|------|
-| 任务 API 定义 | ✅ | `autonomy.hpp` |
-| 配置管线 | ✅ | `NavigatorOptions` / `navigator.lua` |
-| BT XML | ✅ | `navigate_to_pose.xml` 等 |
-| BT 引擎 + 插件 | ⏳ | 源码待恢复 |
-| 直驱规划 | ✅ | `NavigateDirectToPose` → `GetPlan` |
-| 完整闭环（规划+控制） | ⏳ | BT 未默认启用 |
+| `TaskServer` 进程 | ✅ | `task_main.cpp` |
+| NavigatorOptions conf | ✅ | `navigator.pb.txt` 等 |
+| BT XML | ✅ | `autonomy/task/conf/behavior_tree/` |
+| BT 引擎 + 插件 | ⏳ | 持续演进 |
+| Bridge 发令 | ⏳ | 部分 stub |
 
 ### 1.5 与 `common::Task` 的区别
 
@@ -58,4 +55,4 @@ Autonomy **无独立 `autonomy/tasks/` 包**。导航任务 = `Autonomy` 对外 
 
 - [§2 快速开始](02_quickstart.md)
 - [16 Navigator](../16_Navigator/index.rst)
-- [05 Framework · 模块 Server](../05_Framework/05_module_servers.md)
+- [04 Running · 多进程栈](../04_Running/03_autonomy_process.md)

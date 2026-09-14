@@ -28,9 +28,15 @@ else()
 endif()
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(glog DEFAULT_MSG GLOG_INCLUDE_DIR GLOG_LIBRARY)
+find_package_handle_standard_args(Glog DEFAULT_MSG GLOG_INCLUDE_DIR GLOG_LIBRARY)
 
-if(GLOG_FOUND AND NOT TARGET glog::glog)
+if(Glog_FOUND)
+  set(GLOG_FOUND TRUE)
+  set(GLOG_INCLUDE_DIRS "${GLOG_INCLUDE_DIR}")
+  set(GLOG_LIBRARIES "${GLOG_LIBRARY}")
+endif()
+
+if(Glog_FOUND AND NOT TARGET glog::glog)
   add_library(glog::glog UNKNOWN IMPORTED)
   set_target_properties(glog::glog PROPERTIES
     IMPORTED_LOCATION "${GLOG_LIBRARY}"

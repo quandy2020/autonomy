@@ -82,7 +82,8 @@ message ExplorationOptions {
   double far_scan_voxel_m = 130;
   string boundary_ply_path = 131;
   string nogo_ply_path = 132;
-  bool tsp_use_ortools = 133;
+  reserved 133;
+  reserved "tsp_use_ortools";
   bool use_lidar_primary = 134;
   string boundary_vgh_path = 135;
   bool use_prior_map = 136;

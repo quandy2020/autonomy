@@ -78,8 +78,7 @@ int main(int argc, char** argv)
     }
 
     const auto options = autonomy::system::CreateOptions(
-        autonomy::common::FLAGS_configuration_directory,
-        autonomy::common::FLAGS_configuration_basename);
+        autonomy::common::FLAGS_conf);
     if (!options.has_controller_options()) {
         LOG(ERROR) << "control_main: missing controller options in config";
         return EXIT_FAILURE;

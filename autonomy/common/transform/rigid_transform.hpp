@@ -23,7 +23,6 @@
 
 #include "Eigen/Core"
 #include "Eigen/Geometry"
-#include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/common/math/math.hpp"
 #include "autonomy/common/port.hpp"
 #include "autonomy/common/string_util.hpp"
@@ -228,10 +227,6 @@ using Rigid3f = Rigid3<float>;
 // specification http://wiki.ros.org/urdf/XML/joint.
 Eigen::Quaterniond RollPitchYaw(double roll, double pitch, double yaw);
 
-// Returns an transform::Rigid3d given a 'dictionary' containing 'translation'
-// (x, y, z) and 'rotation' which can either we an array of (roll, pitch, yaw)
-// or a dictionary with (w, x, y, z) values as a quaternion.
-Rigid3d FromDictionary(common::LuaParameterDictionary* dictionary);
 
 }  // namespace transform
 }  // namespace common

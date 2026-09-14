@@ -6,7 +6,7 @@
 
 #include "autonomy/orbisview/backend/common/orbisview_gflags.h"
 
-DEFINE_string(host, "127.0.0.1", "Bind host (informational; ports use host:port)");
+DEFINE_string(host, "0.0.0.0", "Bind address (0.0.0.0 = all interfaces / LAN)");
 DEFINE_uint32(port, 8766, "CivetWeb listening port");
 DEFINE_bool(mock, true, "Enable mock visualization channels");
 DEFINE_bool(autolink, false, "Enable Autolink channel discovery/subscribe");

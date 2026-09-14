@@ -41,6 +41,7 @@ export interface LayerFlags {
   prediction: boolean;
   laser: boolean;
   tf: boolean;
+  pointcloud?: boolean;
 }
 
 export interface DefaultFootprint {

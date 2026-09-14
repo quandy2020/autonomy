@@ -16,34 +16,24 @@
 
 #pragma once
 
+#include <string>
+
 #include "autonomy/bridge/proto/bridge_options.pb.h"
-#include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/common/macros.hpp"
 
 namespace autonomy {
 namespace bridge {
 namespace common {
 
-class BridgeInterface
-{
+class BridgeInterface {
 public:
-    /**
-     * Define BridgeInterface::SharedPtr type
-     */
     AUTONOMY_SMART_PTR_DEFINITIONS(BridgeInterface)
-
-    /**
-     * @brief A Destructor for BridgeInterface
-     */
     virtual ~BridgeInterface() = default;
 };
 
-proto::BridgeOptions LoadOptions(
-    autonomy::common::LuaParameterDictionary* const parameter_dictionary);
-
+/** Load bridge.pb.txt via LoadModuleConf("bridge", …). */
 proto::BridgeOptions CreateOptions(
-    const std::string& configuration_directory,
-    const std::string& configuration_basename);
+    const std::string& conf_file = "bridge.pb.txt");
 
 }  // namespace common
 }  // namespace bridge

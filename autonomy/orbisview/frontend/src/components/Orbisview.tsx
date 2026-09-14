@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Mosaic,
   MosaicWindow,
@@ -11,20 +11,31 @@ import { wsClient } from '@/store/websocket/client';
 import { useDataStore } from '@/store/dataStore';
 import {
   useLayoutStore,
-  useLayerStore,
   collectMosaicIds,
-  type LayerKey,
+  LAYOUT_PRESETS,
+  type LayoutPresetId,
+  type SidebarTab,
 } from '@/store/layoutStore';
 import { getPanel, listPanelsByCategory } from '@/components/registry';
-import { TeleopPanel } from '@/components/Teleop/TeleopPanel';
+import { allocPanelInstanceId, panelBaseId } from '@/components/panelId';
 import {
   ModeSettingsPanel,
-  ResourceManagerPanel,
 } from '@/components/Mode/ModePanels';
+import { ChannelsSidebar } from '@/components/Channels/ChannelsSidebar';
+import { SidebarTask } from '@/components/Sidebar/SidebarTask';
+import { SidebarSetting } from '@/components/Sidebar/SidebarSetting';
+import { emergencyStop } from '@/components/Teleop/emergencyStop';
 import { SCHEMAS } from '@/store/websocket/types';
-import { DEFAULT_WS_URL } from '@/config/parameters';
-import { Icon, IconLabel, layerIcon, panelIcon } from '@/components/icons';
+import { defaultWsUrl } from '@/config/parameters';
+import { Icon, IconLabel, panelIcon, type IconName } from '@/components/icons';
+import { usePanelOptsStore } from '@/store/panelOptsStore';
 
+const SIDEBAR_NAV: { id: SidebarTab; label: string; icon: IconName }[] = [
+  { id: 'panels', label: 'Panels', icon: 'panels' },
+  { id: 'channels', label: 'Channels', icon: 'channels' },
+  { id: 'task', label: 'Task', icon: 'task' },
+  { id: 'setting', label: 'Setting', icon: 'setting' },
+];
 const DEFAULT_CHANNELS = [
   '/orbisview/mock/pose',
   '/orbisview/mock/path',
@@ -51,23 +62,6 @@ const DEFAULT_CHANNELS = [
   '/orbisview/mock/components',
 ];
 
-const LAYER_KEYS: LayerKey[] = [
-  'grid',
-  'map',
-  'costmap',
-  'vectormap',
-  'path',
-  'robot',
-  'footprint',
-  'obstacles',
-  'prediction',
-  'laser',
-  'tf',
-  'pointcloud',
-  'image',
-  'depth',
-];
-
 function resubscribeTracked(): void {
   wsClient.listChannels();
   const { subscribed, markSubscribed } = useDataStore.getState();
@@ -89,11 +83,13 @@ function asPayload<T>(env: { payload?: unknown } | undefined): T | null {
 function PanelTile({ id }: { id: string }) {
   const Comp = getPanel(id)?.component;
   if (!Comp) return <div className="panel">Unknown panel: {id}</div>;
-  return <Comp />;
+  return <Comp panelId={id} />;
 }
 
 export function Orbisview() {
-  const [url, setUrl] = useState(DEFAULT_WS_URL);
+  const [url, setUrl] = useState(() => defaultWsUrl());
+  const [topPanel, setTopPanel] = useState<null | 'mode' | 'layout'>(null);
+  const layoutFileRef = useRef<HTMLInputElement>(null);
   const connectionState = useDataStore((s) => s.connectionState);
   const setConnectionState = useDataStore((s) => s.setConnectionState);
   const setChannels = useDataStore((s) => s.setChannels);
@@ -104,15 +100,72 @@ export function Orbisview() {
   const envelopes = useDataStore((s) => s.envelopes);
 
   const mosaic = useLayoutStore((s) => s.mosaic);
-  const setMosaic = useLayoutStore((s) => s.setMosaic);
-  const bottomMode = useLayoutStore((s) => s.bottomMode);
-  const setBottomMode = useLayoutStore((s) => s.setBottomMode);
+  const setMosaicRaw = useLayoutStore((s) => s.setMosaic);
+  const setMosaic = useCallback(
+    (node: MosaicNode<string> | null) => {
+      setMosaicRaw(node);
+      usePanelOptsStore.getState().prunePanels(collectMosaicIds(node));
+    },
+    [setMosaicRaw],
+  );
   const catalogOpen = useLayoutStore((s) => s.catalogOpen);
   const setCatalogOpen = useLayoutStore((s) => s.setCatalogOpen);
   const sidebarTab = useLayoutStore((s) => s.sidebarTab);
   const setSidebarTab = useLayoutStore((s) => s.setSidebarTab);
-  const resetGroundPreset = useLayoutStore((s) => s.resetGroundPreset);
-  const layers = useLayerStore();
+  const applyLayoutPreset = useLayoutStore((s) => s.applyLayoutPreset);
+  const exportLayoutJson = useLayoutStore((s) => s.exportLayoutJson);
+  const importLayoutJson = useLayoutStore((s) => s.importLayoutJson);
+
+  const applyPreset = (id: LayoutPresetId) => {
+    applyLayoutPreset(id);
+    usePanelOptsStore.getState().prunePanels(
+      collectMosaicIds(useLayoutStore.getState().mosaic),
+    );
+    setTopPanel(null);
+  };
+
+  const saveLayoutFile = () => {
+    const blob = new Blob([exportLayoutJson()], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `orbisview-layout-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setTopPanel(null);
+  };
+
+  const onLoadLayoutFile = (file: File | null) => {
+    if (!file) return;
+    void file.text().then((raw) => {
+      const ok = importLayoutJson(raw);
+      if (ok) {
+        usePanelOptsStore.getState().prunePanels(
+          collectMosaicIds(useLayoutStore.getState().mosaic),
+        );
+      } else {
+        window.alert('布局文件无效或无法解析');
+      }
+      setTopPanel(null);
+    });
+  };
+  useEffect(() => {
+    if (!topPanel) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setTopPanel(null);
+    };
+    const onPointer = (e: MouseEvent) => {
+      const t = e.target as Element | null;
+      if (t?.closest?.('.topbar-pop')) return;
+      setTopPanel(null);
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('mousedown', onPointer);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('mousedown', onPointer);
+    };
+  }, [topPanel]);
 
   useEffect(() => {
     const offMsg = wsClient.onMessage((msg) => {
@@ -170,7 +223,18 @@ export function Orbisview() {
 
   const connect = () => wsClient.connect(url);
   const disconnect = () => wsClient.close();
-  const PncMini = getPanel('pnc')?.component;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== ' ') return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      e.preventDefault();
+      emergencyStop();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const statusClass =
     connectionState === 'online'
@@ -188,16 +252,19 @@ export function Orbisview() {
 
   const renderTile = useCallback(
     (id: string, path: unknown) => {
-      const title = getPanel(id)?.title ?? id;
+      const meta = getPanel(id);
+      const title = meta?.title ?? panelBaseId(id);
+      const suffix = id.includes('#') ? ` · ${id.slice(id.indexOf('#') + 1)}` : '';
+      const label = `${title}${suffix}`;
       return (
         <MosaicWindow<string>
           path={path as never}
-          title={title}
+          title={label}
           renderToolbar={() => (
             <div className="mosaic-toolbar-row">
-              <div className="mosaic-window-title ov-icon-label" title={title}>
-                <Icon name={panelIcon(id)} size={13} />
-                <span className="mosaic-window-title-text">{title}</span>
+              <div className="mosaic-window-title ov-icon-label" title={label}>
+                <Icon name={panelIcon(panelBaseId(id))} size={13} />
+                <span className="mosaic-window-title-text">{label}</span>
               </div>
               <div className="mosaic-window-controls ov-mosaic-controls">
                 <ExpandButton />
@@ -215,13 +282,20 @@ export function Orbisview() {
     [],
   );
 
-  const addPanel = (id: string) => {
+  const addPanel = (typeId: string) => {
+    const meta = getPanel(typeId);
+    if (!meta) return;
     const cur = useLayoutStore.getState().mosaic;
+    const existing = collectMosaicIds(cur);
+    const id =
+      meta.allowMultiple === true
+        ? allocPanelInstanceId(meta.id, existing)
+        : meta.id;
+    if (!meta.allowMultiple && existing.includes(id)) return;
     if (!cur) {
       setMosaic(id);
       return;
     }
-    if (collectMosaicIds(cur).includes(id)) return;
     setMosaic({
       type: 'split',
       direction: 'row',
@@ -233,115 +307,243 @@ export function Orbisview() {
   return (
     <div className="app ops-shell">
       <header className="topbar">
-        <strong className="brand">
-          <Icon name="orbis" size={16} />
-          OrbisView
-        </strong>
-        <input value={url} onChange={(e) => setUrl(e.target.value)} size={22} />
-        {connectionState === 'online' || connectionState === 'reconnecting' ? (
-          <button type="button" className="btn-icon" onClick={disconnect}>
-            <IconLabel name="unplug" label="Disconnect" size={14} />
+        <div className="topbar-cluster topbar-brand-cluster">
+          <strong className="brand">
+            <Icon name="orbis" size={15} />
+            <span className="brand-text">OrbisView</span>
+          </strong>
+          <span className="topbar-vsep" aria-hidden />
+          <div className="topbar-conn">
+            <input
+              className="topbar-url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              spellCheck={false}
+              aria-label="WebSocket URL"
+            />
+            {connectionState === 'online' || connectionState === 'reconnecting' ? (
+              <button
+                type="button"
+                className="topbar-btn"
+                onClick={disconnect}
+                title="Disconnect"
+              >
+                <IconLabel name="unplug" label="Disconnect" size={13} />
+              </button>
+            ) : (
+              <button type="button" className="topbar-btn primary" onClick={connect} title="Connect">
+                <IconLabel name="plug" label="Connect" size={13} />
+              </button>
+            )}
+            <span className={`status-pill ${statusClass}`} title={connectionState}>
+              <Icon name={statusIcon} size={11} />
+              <span className="status-pill-text">{connectionState}</span>
+            </span>
+          </div>
+        </div>
+
+        <div className="topbar-cluster topbar-hud-cluster" aria-label="Vehicle status">
+          <div className="hud-chip" title="Pose">
+            <Icon name="pose" size={12} />
+            <span className="hud-k">pose</span>
+            <span className="hud-v">
+              {pose
+                ? `${pose.x.toFixed(2)}, ${pose.y.toFixed(2)}, ${(pose.yaw ?? 0).toFixed(2)}`
+                : '—'}
+            </span>
+          </div>
+          <div className="hud-chip" title="Twist">
+            <Icon name="velocity" size={12} />
+            <span className="hud-k">vel</span>
+            <span className="hud-v">
+              {twist ? `${twist.vx.toFixed(2)} / ${twist.wz.toFixed(2)}` : '—'}
+            </span>
+          </div>
+          <div className="hud-chip" title="Chassis">
+            <Icon name="chassis" size={12} />
+            <span className="hud-k">mode</span>
+            <span className="hud-v">
+              {chassis?.driving_mode ?? '—'}
+              {chassis?.gear ? ` ${chassis.gear}` : ''}
+            </span>
+          </div>
+        </div>
+
+        <div className="topbar-cluster topbar-actions">
+          <div className="topbar-pop">
+            <button
+              type="button"
+              className={topPanel === 'mode' ? 'topbar-btn active' : 'topbar-btn'}
+              onClick={() => setTopPanel((v) => (v === 'mode' ? null : 'mode'))}
+              title="Mode"
+            >
+              <IconLabel name="mode" label="Mode" size={13} />
+            </button>
+            {topPanel === 'mode' ? (
+              <div className="topbar-pop-card topbar-mode-card" role="dialog" aria-label="Mode">
+                <ModeSettingsPanel />
+              </div>
+            ) : null}
+          </div>
+          <div className="topbar-pop">
+            <button
+              type="button"
+              className={topPanel === 'layout' ? 'topbar-btn active' : 'topbar-btn'}
+              onClick={() => setTopPanel((v) => (v === 'layout' ? null : 'layout'))}
+              title="Layout"
+            >
+              <IconLabel name="layout" label="Layout" size={13} />
+            </button>
+            {topPanel === 'layout' ? (
+              <div className="topbar-pop-card topbar-layout-card" role="dialog" aria-label="Layout">
+                <h3 className="sidebar-section-title">
+                  <IconLabel name="layout" label="Layout" size={13} />
+                </h3>
+                <div className="layout-menu">
+                  {(Object.keys(LAYOUT_PRESETS) as LayoutPresetId[]).map((id) => {
+                    const p = LAYOUT_PRESETS[id];
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        className="layout-menu-item"
+                        onClick={() => applyPreset(id)}
+                      >
+                        <Icon name="preset" size={14} />
+                        <span className="layout-menu-text">
+                          <strong>{p.label}</strong>
+                          <em>{p.hint}</em>
+                        </span>
+                      </button>
+                    );
+                  })}
+                  <hr className="sep" />
+                  <button type="button" className="layout-menu-item" onClick={saveLayoutFile}>
+                    <Icon name="dump" size={14} />
+                    <span className="layout-menu-text">
+                      <strong>保存布局</strong>
+                      <em>导出当前 mosaic 为 JSON</em>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="layout-menu-item"
+                    onClick={() => layoutFileRef.current?.click()}
+                  >
+                    <Icon name="resources" size={14} />
+                    <span className="layout-menu-text">
+                      <strong>加载布局</strong>
+                      <em>从 JSON 文件恢复</em>
+                    </span>
+                  </button>
+                  <input
+                    ref={layoutFileRef}
+                    type="file"
+                    accept="application/json,.json"
+                    hidden
+                    onChange={(e) => {
+                      onLoadLayoutFile(e.target.files?.[0] ?? null);
+                      e.target.value = '';
+                    }}
+                  />
+                  <hr className="sep" />
+                  <button
+                    type="button"
+                    className="layout-menu-item"
+                    onClick={() => {
+                      setCatalogOpen(!catalogOpen);
+                      setTopPanel(null);
+                    }}
+                  >
+                    <Icon name="sidebar" size={14} />
+                    <span className="layout-menu-text">
+                      <strong>{catalogOpen ? '隐藏侧栏' : '显示侧栏'}</strong>
+                      <em>Panels / Channels / Task / Setting</em>
+                    </span>
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            className="estop topbar-estop"
+            onClick={emergencyStop}
+            disabled={connectionState !== 'online'}
+            title="Emergency stop (Space)"
+          >
+            E-STOP
           </button>
-        ) : (
-          <button type="button" className="btn-icon" onClick={connect}>
-            <IconLabel name="plug" label="Connect" size={14} />
-          </button>
-        )}
-        <span className={`status-pill ${statusClass}`}>
-          <Icon name={statusIcon} size={12} />
-          {connectionState}
-        </span>
-        <span className="topbar-hud muted">
-          <Icon name="pose" size={12} />
-          {pose
-            ? `${pose.x.toFixed(2)}, ${pose.y.toFixed(2)}, ${(pose.yaw ?? 0).toFixed(2)}`
-            : '—'}
-        </span>
-        <span className="topbar-hud muted">
-          <Icon name="velocity" size={12} />
-          {twist ? `vx ${twist.vx.toFixed(2)}  wz ${twist.wz.toFixed(2)}` : '—'}
-        </span>
-        <span className="topbar-hud muted">
-          <Icon name="chassis" size={12} />
-          {chassis?.driving_mode ?? 'mode —'} {chassis?.gear ?? ''}
-        </span>
-        <button type="button" className="btn-icon" onClick={() => setCatalogOpen(!catalogOpen)}>
-          <IconLabel name="catalog" label="Catalog" size={14} />
-        </button>
-        <button type="button" className="btn-icon" onClick={resetGroundPreset}>
-          <IconLabel name="preset" label="Ground" size={14} />
-        </button>
+        </div>
       </header>
 
       <div className="body ops-body">
-        {catalogOpen ? (
-          <aside className="sidebar ops-sidebar">
-            <div className="row" style={{ gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
-              {(
-                [
-                  ['mode', 'Mode', 'mode'],
-                  ['panels', 'Add Panel', 'panels'],
-                  ['resources', 'Resources', 'resources'],
-                  ['layers', 'Layers', 'layers'],
-                ] as const
-              ).map(([id, label, icon]) => (
-                <button
-                  key={id}
-                  type="button"
-                  className={sidebarTab === id ? 'tab active btn-icon' : 'tab btn-icon'}
-                  onClick={() => setSidebarTab(id)}
-                >
-                  <IconLabel name={icon} label={label} size={13} />
-                </button>
-              ))}
-            </div>
-            {sidebarTab === 'mode' ? <ModeSettingsPanel /> : null}
-            {sidebarTab === 'panels' ? (
-              <>
-                <h3>Add Panel</h3>
-                <div className="catalog-groups">
-                  {listPanelsByCategory().map(({ category, panels }) => (
-                    <section key={category.id} className="catalog-group">
-                      <h4 className="catalog-group-title">
-                        <IconLabel name={category.icon} label={category.label} size={13} />
-                      </h4>
-                      {panels.map((p) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          className="link catalog-item btn-icon"
-                          onClick={() => addPanel(p.id)}
-                        >
-                          <IconLabel name={panelIcon(p.id)} label={p.title} size={14} />
-                          <Icon name="plus" size={12} className="catalog-add" />
-                        </button>
+        <aside className={`ops-nav${catalogOpen ? ' is-open' : ' is-collapsed'}`}>
+          <nav className="ops-rail" aria-label="Sidebar">
+            {SIDEBAR_NAV.map(({ id, label, icon }) => (
+              <button
+                key={id}
+                type="button"
+                className={
+                  catalogOpen && sidebarTab === id ? 'ops-rail-btn active' : 'ops-rail-btn'
+                }
+                onClick={() => setSidebarTab(id)}
+                title={label}
+                aria-pressed={catalogOpen && sidebarTab === id}
+              >
+                <Icon name={icon} size={16} />
+                <span>{label}</span>
+              </button>
+            ))}
+            <button
+              type="button"
+              className="ops-rail-btn ops-rail-toggle"
+              onClick={() => setCatalogOpen(!catalogOpen)}
+              title={catalogOpen ? 'Hide sidebar' : 'Show sidebar'}
+            >
+              <Icon name="sidebar" size={16} />
+              <span>{catalogOpen ? 'Hide' : 'Show'}</span>
+            </button>
+          </nav>
+
+          {catalogOpen ? (
+            <div className="ops-pane sidebar">
+              <div className="sidebar-body">
+                {sidebarTab === 'channels' ? <ChannelsSidebar /> : null}
+                {sidebarTab === 'task' ? <SidebarTask /> : null}
+                {sidebarTab === 'setting' ? <SidebarSetting /> : null}
+                {sidebarTab === 'panels' ? (
+                  <div className="panels-sidebar">
+                    <h3 className="sidebar-section-title">
+                      <IconLabel name="panels" label="Panels" size={13} />
+                    </h3>
+                    <p className="hint sidebar-hint">Click to add a panel to the mosaic.</p>
+                    <div className="catalog-groups">
+                      {listPanelsByCategory().map(({ category, panels }) => (
+                        <section key={category.id} className="catalog-group">
+                          <h4 className="catalog-group-title">
+                            <IconLabel name={category.icon} label={category.label} size={13} />
+                          </h4>
+                          {panels.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              className="link catalog-item btn-icon"
+                              onClick={() => addPanel(p.id)}
+                            >
+                              <IconLabel name={panelIcon(p.id)} label={p.title} size={14} />
+                              <Icon name="plus" size={12} className="catalog-add" />
+                            </button>
+                          ))}
+                        </section>
                       ))}
-                    </section>
-                  ))}
-                </div>
-              </>
-            ) : null}
-            {sidebarTab === 'resources' ? <ResourceManagerPanel /> : null}
-            {sidebarTab === 'layers' ? (
-              <>
-                <h3>
-                  <IconLabel name="layers" label="Layers" size={13} />
-                </h3>
-                {LAYER_KEYS.map((k) => (
-                  <label key={k} className="row layer-toggle">
-                    <input
-                      type="checkbox"
-                      checked={layers[k]}
-                      onChange={(e) => layers.setLayer(k, e.target.checked)}
-                    />
-                    <Icon name={layerIcon(k)} size={13} />
-                    <span>{k}</span>
-                  </label>
-                ))}
-              </>
-            ) : null}
-          </aside>
-        ) : null}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+        </aside>
 
         <main className="main mosaic-main">
           <Mosaic<string>
@@ -349,97 +551,10 @@ export function Orbisview() {
             value={mosaic}
             onChange={(node: MosaicNode<string> | null) => setMosaic(node)}
             className="mosaic-blueprint-theme mosaic-host"
-            zeroStateView={<div className="panel">Add a panel from Catalog</div>}
+            zeroStateView={<div className="panel">Add a panel from Sidebar → Panels</div>}
           />
         </main>
       </div>
-
-      <footer className="bottom-bar">
-        <div className="bottom-mode">
-          <button
-            type="button"
-            className={bottomMode === 'teleop' ? 'tab active btn-icon' : 'tab btn-icon'}
-            onClick={() => setBottomMode('teleop')}
-          >
-            <IconLabel name="teleop" label="Teleop" size={14} />
-          </button>
-          <button
-            type="button"
-            className={bottomMode === 'pnc' ? 'tab active btn-icon' : 'tab btn-icon'}
-            onClick={() => setBottomMode('pnc')}
-          >
-            <IconLabel name="pnc" label="PNC" size={14} />
-          </button>
-          <button
-            type="button"
-            className={bottomMode === 'ops' ? 'tab active btn-icon' : 'tab btn-icon'}
-            onClick={() => setBottomMode('ops')}
-          >
-            <IconLabel name="ops" label="Ops" size={14} />
-          </button>
-        </div>
-        <div className="bottom-content">
-          {bottomMode === 'teleop' ? (
-            <TeleopPanel />
-          ) : bottomMode === 'pnc' && PncMini ? (
-            <div className="pnc-mini">
-              <PncMini />
-            </div>
-          ) : bottomMode === 'ops' ? (
-            <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="btn-icon"
-                disabled={connectionState !== 'online'}
-                onClick={() =>
-                  wsClient.send({ op: 'dump_snapshot', path: '/tmp/orbisview_dump.json' })
-                }
-              >
-                <IconLabel name="dump" label="Dump" size={13} />
-              </button>
-              <button
-                type="button"
-                className="btn-icon"
-                disabled={connectionState !== 'online'}
-                onClick={() => wsClient.send({ op: 'clear_sim' })}
-              >
-                <IconLabel name="clear" label="Clear" size={13} />
-              </button>
-              <button
-                type="button"
-                className="btn-icon"
-                disabled={connectionState !== 'online'}
-                onClick={() =>
-                  wsClient.send({
-                    op: 'playback_start',
-                    path: '/tmp/orbisview_record.jsonl',
-                    speed: 1,
-                  })
-                }
-              >
-                <IconLabel name="play" label="Play" size={13} />
-              </button>
-              <button
-                type="button"
-                className="btn-icon"
-                disabled={connectionState !== 'online'}
-                onClick={() => wsClient.send({ op: 'playback_pause', paused: true })}
-              >
-                <IconLabel name="pause" label="Pause" size={13} />
-              </button>
-              <button
-                type="button"
-                className="btn-icon"
-                disabled={connectionState !== 'online'}
-                onClick={() => wsClient.send({ op: 'playback_stop' })}
-              >
-                <IconLabel name="stop" label="Stop" size={13} />
-              </button>
-              <span className="hint">DV+ bottom ops · Dump/Clear/Play</span>
-            </div>
-          ) : null}
-        </div>
-      </footer>
     </div>
   );
 }

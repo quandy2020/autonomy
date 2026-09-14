@@ -1,0 +1,136 @@
+# Planning — global planners + global costmap + path smoother.
+# Proto: autonomy/planning/proto/planning_options.proto
+# Load:  nested planner_options in system/conf/*.pb.txt
+#        or LoadModuleConf("planning", "planner.pb.txt")
+#
+# CLI: autonomy.planning --conf=autonomy.pb.txt
+
+# ---------- Dijkstra planner ----------
+dijkstra {
+  tolerance: 0.1
+  allow_unknown: false
+  use_final_approach_orientation: false
+}
+
+# ---------- Path smoother (simple) ----------
+simple_smoother {
+  tolerance: 1e-10
+  w_data: 0.2
+  w_smooth: 0.3
+  do_refinement: true
+  refinement_num: 2
+  max_iterations: 1000
+  enforce_path_inversion: true
+}
+
+# Douglas–Peucker epsilon; 0 keeps dense path for controller
+path_simplify_epsilon: 0
+default_planner_id: "navfn_planner"
+
+# ---------- NavFn (default) ----------
+navfn {
+  tolerance: 0.1
+  use_astar: false
+  allow_unknown: false
+  use_final_approach_orientation: false
+}
+
+# Optional auto-smooth after MakePlan
+auto_smooth_after_plan: false
+auto_smooth_duration: 1
+default_smoother_id: "simple_smoother"
+
+# ---------- Global costmap ----------
+costmap {
+  robot_radius: 0.22
+  footprint {
+    points {
+      x: 0.18
+      y: 0.14
+    }
+    points {
+      x: 0.18
+      y: -0.14
+    }
+    points {
+      x: -0.18
+      y: -0.14
+    }
+    points {
+      x: -0.18
+      y: 0.14
+    }
+  }
+  name: "global_map"
+  update_frequency: 5
+  # Optional denoise (may remove thin walls — keep conservative)
+  denoise_layer {
+    plugin: "libautonomy_map_layers_denoise_layer.so"
+    enabled: true
+    denoise_radius: 2
+  }
+  obstacle_layer {
+    plugin: "libautonomy_map_layers_obstacle_layer.so"
+    sensor_sources {
+      key: "scan"
+      value {
+        topic: "/scan"
+        data_type: "LaserScan"
+        marking: true
+        clearing: true
+        raytrace_max_range: 3
+      }
+    }
+    enabled: true
+    footprint_clearing_enabled: true
+  }
+  always_send_full_costmap: true
+  plugins: "static_layer"
+  plugins: "obstacle_layer"
+  plugins: "inflation_layer"
+  # Cartographer occupancy often 65–99 for walls
+  static_layer {
+    map_topic: "/map"
+    track_unknown_space: true
+    lethal_cost_threshold: 65
+    trinary_costmap: true
+    enabled: true
+    plugin: "libautonomy_map_layers_static_layer.so"
+    transform_tolerance: 0.1
+    subscribe_to_updates: false
+    footprint_clearing_enabled: false
+  }
+  enabled: true
+  inflation_layer {
+    cost_scaling_factor: 3
+    enabled: true
+    inflate_unknown: false
+    plugin: "libautonomy_map_layers_inflation_layer.so"
+    inflate_around_unknown: false
+    inflation_radius: 0.4
+  }
+  frame_id: "map"
+  resolution: 0.05
+  width: 20
+  height: 20
+}
+
+# ---------- Theta* any-angle ----------
+theta_star {
+  w_traversal_cost: 1
+  w_heuristic_cost: 1
+  allow_unknown: false
+  terminal_checking_interval: 5000
+  how_many_corners: 8
+  w_euc_cost: 2
+}
+
+# ---------- Plugins / rates ----------
+expected_planner_frequency: 5
+costmap_update_timeout: 5
+planner_plugins: "navfn_planner"
+planner_plugins: "dijkstra_planner"
+planner_plugins: "theta_star_planner"
+planner_plugin_libraries {
+}
+smoother_plugins: "simple_smoother"

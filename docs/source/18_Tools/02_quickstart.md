@@ -19,15 +19,17 @@ python3 scripts/format.py
 python3 scripts/format.py --check
 ```
 
-### 2.3 离线导航测试
+### 2.3 端到端验证（多进程）
 
 ```bash
 cmake -G Ninja -B build && ninja -C build
-./build/bin/autonomy_nav_test --configuration_directory=config \
-  --start_x=1 --start_y=1 --goal_x=5 --goal_y=5
+export PATH="$PWD/build/bin:$PATH"
+export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/system/launch"
+export AUTONOMY_BT_PLUGIN_PATH="$PWD/build/lib"
+autolink_launch autonomy.launch
 ```
 
-> 若 `autonomy_nav_test` 未生成，见 [§4 离线导航测试](04_nav_test.md#44-构建说明)。
+发令请用 Bridge 或 autolink Action Client。详见 [04 Running · 快速运行](../04_Running/02_quickstart.md)。
 
 ### 2.4 Docker 开发环境
 
@@ -41,5 +43,5 @@ docker exec -it SpaceHero /bin/bash
 | 目标 | 文档 |
 |------|------|
 | 脚本详解 | [§3 开发脚本](03_dev_scripts.md) |
-| nav_test 参数 | [§4 离线导航测试](04_nav_test.md) |
-| Autolink 调试 | [§6 Autolink 工具](06_autolink_tools.md) |
+| 多进程栈 | [04 Running · 多进程栈](../04_Running/03_autonomy_process.md) |
+| Autolink 调试 | [§5 Autolink 工具](06_autolink_tools.md) |

@@ -81,7 +81,7 @@ public:
         static_assert(std::is_same<typename Derived::State, StateT>::value,
                       "\n\nProvided type StateT must match the filter "
                       "implementation State type.\n\n");
-        this->impl().template crtp_reset(state, covariance);
+        this->impl().crtp_reset(state, covariance);
     }
 
     /// @brief      Return current state.

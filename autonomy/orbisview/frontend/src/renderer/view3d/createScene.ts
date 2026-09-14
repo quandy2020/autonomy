@@ -1,4 +1,7 @@
 import * as THREE from 'three';
+import { Line2 } from 'three/examples/jsm/lines/Line2.js';
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 
 export interface View3DContext {
   renderer: THREE.WebGLRenderer;
@@ -8,7 +11,11 @@ export interface View3DContext {
   robot: THREE.Mesh;
   goal: THREE.Mesh;
   goalLine: THREE.Line;
-  path: THREE.Line;
+  path: Line2;
+  pathMaterial: LineMaterial;
+  waypoints: THREE.Group;
+  waypointRoute: THREE.Line;
+  toolOverlay: THREE.Group;
   cloud: THREE.Points;
   footprint: THREE.LineLoop;
   mapPlane: THREE.Mesh;
@@ -74,11 +81,30 @@ export function createView3DScene(mount: HTMLElement): View3DContext {
   goalLine.visible = false;
   scene.add(goalLine);
 
-  const path = new THREE.Line(
-    new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({ color: 0x4fc3f7 }),
-  );
+  const pathMaterial = new LineMaterial({
+    color: 0x4fc3f7,
+    linewidth: 2,
+    transparent: true,
+    opacity: 0.9,
+    depthTest: true,
+    worldUnits: false,
+  });
+  const path = new Line2(new LineGeometry(), pathMaterial);
+  path.visible = false;
   scene.add(path);
+
+  const waypoints = new THREE.Group();
+  scene.add(waypoints);
+
+  const waypointRoute = new THREE.Line(
+    new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0.55 }),
+  );
+  waypointRoute.visible = false;
+  scene.add(waypointRoute);
+
+  const toolOverlay = new THREE.Group();
+  scene.add(toolOverlay);
 
   const cloudGeom = new THREE.BufferGeometry();
   cloudGeom.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
@@ -116,6 +142,7 @@ export function createView3DScene(mount: HTMLElement): View3DContext {
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
+    pathMaterial.resolution.set(width, height);
   };
 
   const dispose = () => {
@@ -144,6 +171,10 @@ export function createView3DScene(mount: HTMLElement): View3DContext {
     goal,
     goalLine,
     path,
+    pathMaterial,
+    waypoints,
+    waypointRoute,
+    toolOverlay,
     cloud,
     footprint,
     mapPlane,

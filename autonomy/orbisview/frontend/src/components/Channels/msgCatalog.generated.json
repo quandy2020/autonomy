@@ -1,0 +1,1017 @@
+[
+  {
+    "package": "action_msgs",
+    "message": "GoalInfo",
+    "file": "action_msgs/goal_info.proto"
+  },
+  {
+    "package": "action_msgs",
+    "message": "GoalStatus",
+    "file": "action_msgs/goal_status.proto"
+  },
+  {
+    "package": "action_msgs",
+    "message": "GoalStatusArray",
+    "file": "action_msgs/goal_status_array.proto"
+  },
+  {
+    "package": "audio_msgs",
+    "message": "AudioDataStamped",
+    "file": "audio_msgs/audio_data_stamped.proto"
+  },
+  {
+    "package": "audio_msgs",
+    "message": "AudioInfo",
+    "file": "audio_msgs/audio_info.proto"
+  },
+  {
+    "package": "builtin_interfaces",
+    "message": "Duration",
+    "file": "builtin_interfaces/duration.proto"
+  },
+  {
+    "package": "builtin_interfaces",
+    "message": "Time",
+    "file": "builtin_interfaces/time.proto"
+  },
+  {
+    "package": "diagnostic_msgs",
+    "message": "DiagnosticArray",
+    "file": "diagnostic_msgs/diagnostic_array.proto"
+  },
+  {
+    "package": "diagnostic_msgs",
+    "message": "DiagnosticStatus",
+    "file": "diagnostic_msgs/diagnostic_status.proto"
+  },
+  {
+    "package": "diagnostic_msgs",
+    "message": "KeyValue",
+    "file": "diagnostic_msgs/key_value.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "Accel",
+    "file": "geometry_msgs/accel.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "AccelStamped",
+    "file": "geometry_msgs/accel_stamped.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "AccelWithCovariance",
+    "file": "geometry_msgs/accel_with_covariance.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "AccelWithCovarianceStamped",
+    "file": "geometry_msgs/accel_with_covariance_stamped.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "Inertia",
+    "file": "geometry_msgs/inertia.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "InertiaStamped",
+    "file": "geometry_msgs/inertia_stamped.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "Point",
+    "file": "geometry_msgs/point.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "PointENU",
+    "file": "geometry_msgs/point.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "PointLLH",
+    "file": "geometry_msgs/point.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "Point2D",
+    "file": "geometry_msgs/point.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "PointXYZIT",
+    "file": "geometry_msgs/point.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "Point32",
+    "file": "geometry_msgs/point32.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "PointStamped",
+    "file": "geometry_msgs/point_stamped.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "Polygon",
+    "file": "geometry_msgs/polygon.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "PolygonInstance",
+    "file": "geometry_msgs/polygon_instance.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "PolygonInstanceStamped",
+    "file": "geometry_msgs/polygon_instance_stamped.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "PolygonStamped",
+    "file": "geometry_msgs/polygon_stamped.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "Pose",
+    "file": "geometry_msgs/pose.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "Pose2D",
+    "file": "geometry_msgs/pose2d.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "Pose2DStamped",
+    "file": "geometry_msgs/pose2d.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "PoseArray",
+    "file": "geometry_msgs/pose_array.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "PoseStamped",
+    "file": "geometry_msgs/pose_stamped.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "PoseStampedArray",
+    "file": "geometry_msgs/pose_stamped.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "PoseWithCovariance",
+    "file": "geometry_msgs/pose_with_covariance.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "PoseWithCovarianceStamped",
+    "file": "geometry_msgs/pose_with_covariance_stamped.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "Quaternion",
+    "file": "geometry_msgs/quaternion.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "QuaternionStamped",
+    "file": "geometry_msgs/quaternion_stamped.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "Transform",
+    "file": "geometry_msgs/transform.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "TransformStamped",
+    "file": "geometry_msgs/transform_stamped.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "TransformStampeds",
+    "file": "geometry_msgs/transform_stamped.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "Twist",
+    "file": "geometry_msgs/twist.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "Twist2D",
+    "file": "geometry_msgs/twist.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "TwistStamped",
+    "file": "geometry_msgs/twist_stamped.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "TwistWithCovariance",
+    "file": "geometry_msgs/twist_with_covariance.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "TwistWithCovarianceStamped",
+    "file": "geometry_msgs/twist_with_covariance_stamped.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "Vector3",
+    "file": "geometry_msgs/vector3.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "Vector3Stamped",
+    "file": "geometry_msgs/vector3_stamped.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "VelocityStamped",
+    "file": "geometry_msgs/velocity_stamped.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "Wrench",
+    "file": "geometry_msgs/wrench.proto"
+  },
+  {
+    "package": "geometry_msgs",
+    "message": "WrenchStamped",
+    "file": "geometry_msgs/wrench_stamped.proto"
+  },
+  {
+    "package": "map_msgs",
+    "message": "GridCells",
+    "file": "map_msgs/grid_cells.proto"
+  },
+  {
+    "package": "map_msgs",
+    "message": "GridMap",
+    "file": "map_msgs/grid_map.proto"
+  },
+  {
+    "package": "map_msgs",
+    "message": "GridMapInfo",
+    "file": "map_msgs/grid_map_info.proto"
+  },
+  {
+    "package": "map_msgs",
+    "message": "MapMetaData",
+    "file": "map_msgs/map_meta_data.proto"
+  },
+  {
+    "package": "map_msgs",
+    "message": "OccupancyGrid",
+    "file": "map_msgs/occupancy_grid.proto"
+  },
+  {
+    "package": "map_msgs",
+    "message": "OccupancyGridUpdate",
+    "file": "map_msgs/occupancy_grid_update.proto"
+  },
+  {
+    "package": "map_msgs",
+    "message": "Octomap",
+    "file": "map_msgs/octomap.proto"
+  },
+  {
+    "package": "map_msgs",
+    "message": "OctomapWithPose",
+    "file": "map_msgs/octomap_with_pose.proto"
+  },
+  {
+    "package": "map_msgs",
+    "message": "PointCloud2Update",
+    "file": "map_msgs/point_cloud2_update.proto"
+  },
+  {
+    "package": "map_msgs",
+    "message": "ProjectedMap",
+    "file": "map_msgs/projected_map.proto"
+  },
+  {
+    "package": "map_msgs",
+    "message": "ProjectedMapInfo",
+    "file": "map_msgs/projected_map_info.proto"
+  },
+  {
+    "package": "nav_msgs",
+    "message": "BehaviorTreeStatusChange",
+    "file": "nav_msgs/behavior_tree.proto"
+  },
+  {
+    "package": "nav_msgs",
+    "message": "BehaviorTreeLog",
+    "file": "nav_msgs/behavior_tree.proto"
+  },
+  {
+    "package": "nav_msgs",
+    "message": "CollisionMonitorState",
+    "file": "nav_msgs/collision_monitor_state.proto"
+  },
+  {
+    "package": "nav_msgs",
+    "message": "CostmapMetaData",
+    "file": "nav_msgs/costmap.proto"
+  },
+  {
+    "package": "nav_msgs",
+    "message": "Costmap",
+    "file": "nav_msgs/costmap.proto"
+  },
+  {
+    "package": "nav_msgs",
+    "message": "CostmapUpdate",
+    "file": "nav_msgs/costmap.proto"
+  },
+  {
+    "package": "nav_msgs",
+    "message": "CostmapFilterInfo",
+    "file": "nav_msgs/costmap.proto"
+  },
+  {
+    "package": "nav_msgs",
+    "message": "Goals",
+    "file": "nav_msgs/goals.proto"
+  },
+  {
+    "package": "nav_msgs",
+    "message": "Odometry",
+    "file": "nav_msgs/odometry.proto"
+  },
+  {
+    "package": "nav_msgs",
+    "message": "Particle",
+    "file": "nav_msgs/particle.proto"
+  },
+  {
+    "package": "nav_msgs",
+    "message": "ParticleCloud",
+    "file": "nav_msgs/particle.proto"
+  },
+  {
+    "package": "nav_msgs",
+    "message": "Path",
+    "file": "nav_msgs/path.proto"
+  },
+  {
+    "package": "nav_msgs",
+    "message": "EdgeCost",
+    "file": "nav_msgs/route.proto"
+  },
+  {
+    "package": "nav_msgs",
+    "message": "RouteNode",
+    "file": "nav_msgs/route.proto"
+  },
+  {
+    "package": "nav_msgs",
+    "message": "RouteEdge",
+    "file": "nav_msgs/route.proto"
+  },
+  {
+    "package": "nav_msgs",
+    "message": "Route",
+    "file": "nav_msgs/route.proto"
+  },
+  {
+    "package": "nav_msgs",
+    "message": "SpeedLimit",
+    "file": "nav_msgs/speed_limit.proto"
+  },
+  {
+    "package": "nav_msgs",
+    "message": "VoxelGrid",
+    "file": "nav_msgs/voxel_grid.proto"
+  },
+  {
+    "package": "pcl_msgs",
+    "message": "ModelCoefficients",
+    "file": "pcl_msgs/model_coefficients.proto"
+  },
+  {
+    "package": "pcl_msgs",
+    "message": "PointIndices",
+    "file": "pcl_msgs/point_indices.proto"
+  },
+  {
+    "package": "pcl_msgs",
+    "message": "PolygonMesh",
+    "file": "pcl_msgs/polygon_mesh.proto"
+  },
+  {
+    "package": "pcl_msgs",
+    "message": "Vertices",
+    "file": "pcl_msgs/vertices.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "BatteryState",
+    "file": "sensor_msgs/battery_state.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "CameraInfo",
+    "file": "sensor_msgs/camera_info.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "ChannelFloat32",
+    "file": "sensor_msgs/channel_float32.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "CompressedImage",
+    "file": "sensor_msgs/compressed_image.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "FluidPressure",
+    "file": "sensor_msgs/fluid_pressure.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "Illuminance",
+    "file": "sensor_msgs/illuminance.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "Image",
+    "file": "sensor_msgs/image.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "Imu",
+    "file": "sensor_msgs/imu.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "JointState",
+    "file": "sensor_msgs/joint_state.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "Joy",
+    "file": "sensor_msgs/joy.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "JoyFeedback",
+    "file": "sensor_msgs/joy_feedback.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "JoyFeedbackArray",
+    "file": "sensor_msgs/joy_feedback_array.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "LaserEcho",
+    "file": "sensor_msgs/laser_echo.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "LaserScan",
+    "file": "sensor_msgs/laser_scan.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "MagneticField",
+    "file": "sensor_msgs/magnetic_field.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "MultiDOFJointState",
+    "file": "sensor_msgs/multi_dof_joint_state.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "MultiEchoLaserScan",
+    "file": "sensor_msgs/multi_echo_laser_scan.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "NavSatFix",
+    "file": "sensor_msgs/nav_sat_fix.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "NavSatStatus",
+    "file": "sensor_msgs/nav_sat_status.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "PointCloud",
+    "file": "sensor_msgs/point_cloud.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "PointCloud2",
+    "file": "sensor_msgs/point_cloud2.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "PointField",
+    "file": "sensor_msgs/point_field.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "Range",
+    "file": "sensor_msgs/range.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "RegionOfInterest",
+    "file": "sensor_msgs/region_of_interest.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "RelativeHumidity",
+    "file": "sensor_msgs/relative_humidity.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "Temperature",
+    "file": "sensor_msgs/temperature.proto"
+  },
+  {
+    "package": "sensor_msgs",
+    "message": "TimeReference",
+    "file": "sensor_msgs/time_reference.proto"
+  },
+  {
+    "package": "shape_msgs",
+    "message": "Mesh",
+    "file": "shape_msgs/mesh.proto"
+  },
+  {
+    "package": "shape_msgs",
+    "message": "MeshTriangle",
+    "file": "shape_msgs/mesh_triangle.proto"
+  },
+  {
+    "package": "shape_msgs",
+    "message": "Plane",
+    "file": "shape_msgs/plane.proto"
+  },
+  {
+    "package": "shape_msgs",
+    "message": "SolidPrimitive",
+    "file": "shape_msgs/solid_primitive.proto"
+  },
+  {
+    "package": "status_msgs",
+    "message": "StatusPb",
+    "file": "status_msgs/status_msgs.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "Bool",
+    "file": "std_msgs/bool.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "Byte",
+    "file": "std_msgs/byte.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "ByteMultiArray",
+    "file": "std_msgs/byte_multi_array.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "Char",
+    "file": "std_msgs/char.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "ColorRGBA",
+    "file": "std_msgs/color_rgba.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "Empty",
+    "file": "std_msgs/empty.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "Float32",
+    "file": "std_msgs/float32.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "Float32MultiArray",
+    "file": "std_msgs/float32_multi_array.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "Float64",
+    "file": "std_msgs/float64.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "Float64MultiArray",
+    "file": "std_msgs/float64_multi_array.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "Header",
+    "file": "std_msgs/header.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "Int16",
+    "file": "std_msgs/int16.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "Int16MultiArray",
+    "file": "std_msgs/int16_multi_array.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "Int32",
+    "file": "std_msgs/int32.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "Int32MultiArray",
+    "file": "std_msgs/int32_multi_array.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "Int64",
+    "file": "std_msgs/int64.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "Int64MultiArray",
+    "file": "std_msgs/int64_multi_array.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "Int8",
+    "file": "std_msgs/int8.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "Int8MultiArray",
+    "file": "std_msgs/int8_multi_array.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "MultiArrayDimension",
+    "file": "std_msgs/multi_array_dimension.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "MultiArrayLayout",
+    "file": "std_msgs/multi_array_layout.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "String",
+    "file": "std_msgs/string.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "UInt16",
+    "file": "std_msgs/uint16.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "UInt16MultiArray",
+    "file": "std_msgs/uint16_multi_array.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "UInt32",
+    "file": "std_msgs/uint32.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "UInt32MultiArray",
+    "file": "std_msgs/uint32_multi_array.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "UInt64",
+    "file": "std_msgs/uint64.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "UInt64MultiArray",
+    "file": "std_msgs/uint64_multi_array.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "UInt8",
+    "file": "std_msgs/uint8.proto"
+  },
+  {
+    "package": "std_msgs",
+    "message": "UInt8MultiArray",
+    "file": "std_msgs/uint8_multi_array.proto"
+  },
+  {
+    "package": "stereo_msgs",
+    "message": "DisparityImage",
+    "file": "stereo_msgs/disparity_image.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "CanvasLabelStyle",
+    "file": "strata_msgs/canvas_label.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "CanvasLabel",
+    "file": "strata_msgs/canvas_label.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "CanvasLabelArray",
+    "file": "strata_msgs/canvas_label.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "FloorInfo",
+    "file": "strata_msgs/floor_info.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "FloorInfoArray",
+    "file": "strata_msgs/floor_info.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "IotBubble",
+    "file": "strata_msgs/iot_bubble.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "IotBubbleArray",
+    "file": "strata_msgs/iot_bubble.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "LabelBubble",
+    "file": "strata_msgs/label_bubble.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "LabelBubbleArray",
+    "file": "strata_msgs/label_bubble.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "PoiMarker",
+    "file": "strata_msgs/poi_marker.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "PoiMarkerArray",
+    "file": "strata_msgs/poi_marker.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "GraphNode",
+    "file": "strata_msgs/road_graph.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "GraphEdge",
+    "file": "strata_msgs/road_graph.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "RoadGraph",
+    "file": "strata_msgs/road_graph.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "Robot3DLayer",
+    "file": "strata_msgs/robot_3d_layer.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "Robot3DLayerArray",
+    "file": "strata_msgs/robot_3d_layer.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "RobotMarker",
+    "file": "strata_msgs/robot_marker.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "RobotMarkerArray",
+    "file": "strata_msgs/robot_marker.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "SemanticZone",
+    "file": "strata_msgs/semantic_zone.proto"
+  },
+  {
+    "package": "strata_msgs",
+    "message": "SemanticZoneArray",
+    "file": "strata_msgs/semantic_zone.proto"
+  },
+  {
+    "package": "tf2_msgs",
+    "message": "TF2Error",
+    "file": "tf2_msgs/tf2_error.proto"
+  },
+  {
+    "package": "tf2_msgs",
+    "message": "TFMessage",
+    "file": "tf2_msgs/tf_message.proto"
+  },
+  {
+    "package": "trajectory_msgs",
+    "message": "JointTrajectory",
+    "file": "trajectory_msgs/joint_trajectory.proto"
+  },
+  {
+    "package": "trajectory_msgs",
+    "message": "JointTrajectoryPoint",
+    "file": "trajectory_msgs/joint_trajectory_point.proto"
+  },
+  {
+    "package": "trajectory_msgs",
+    "message": "MultiDOFJointTrajectory",
+    "file": "trajectory_msgs/multi_dof_joint_trajectory.proto"
+  },
+  {
+    "package": "trajectory_msgs",
+    "message": "MultiDOFJointTrajectoryPoint",
+    "file": "trajectory_msgs/multi_dof_joint_trajectory_point.proto"
+  },
+  {
+    "package": "unique_identifier_msgs",
+    "message": "UUID",
+    "file": "unique_identifier_msgs/uuid.proto"
+  },
+  {
+    "package": "vehicle_msgs",
+    "message": "RobotEvent",
+    "file": "vehicle_msgs/robot_event.proto"
+  },
+  {
+    "package": "vehicle_msgs",
+    "message": "RobotState",
+    "file": "vehicle_msgs/robot_state.proto"
+  },
+  {
+    "package": "vision_msgs",
+    "message": "BoundingBox2D",
+    "file": "vision_msgs/bounding_box2d.proto"
+  },
+  {
+    "package": "vision_msgs",
+    "message": "BoundingBox2DArray",
+    "file": "vision_msgs/bounding_box2d_array.proto"
+  },
+  {
+    "package": "vision_msgs",
+    "message": "BoundingBox3D",
+    "file": "vision_msgs/bounding_box3d.proto"
+  },
+  {
+    "package": "vision_msgs",
+    "message": "BoundingBox3DArray",
+    "file": "vision_msgs/bounding_box3d_array.proto"
+  },
+  {
+    "package": "vision_msgs",
+    "message": "Classification",
+    "file": "vision_msgs/classification.proto"
+  },
+  {
+    "package": "vision_msgs",
+    "message": "Detection2D",
+    "file": "vision_msgs/detection2d.proto"
+  },
+  {
+    "package": "vision_msgs",
+    "message": "Detection2DArray",
+    "file": "vision_msgs/detection2d_array.proto"
+  },
+  {
+    "package": "vision_msgs",
+    "message": "Detection3D",
+    "file": "vision_msgs/detection3d.proto"
+  },
+  {
+    "package": "vision_msgs",
+    "message": "Detection3DArray",
+    "file": "vision_msgs/detection3d_array.proto"
+  },
+  {
+    "package": "vision_msgs",
+    "message": "LabelInfo",
+    "file": "vision_msgs/label_info.proto"
+  },
+  {
+    "package": "vision_msgs",
+    "message": "ObjectHypothesis",
+    "file": "vision_msgs/object_hypothesis.proto"
+  },
+  {
+    "package": "vision_msgs",
+    "message": "ObjectHypothesisWithPose",
+    "file": "vision_msgs/object_hypothesis_with_pose.proto"
+  },
+  {
+    "package": "vision_msgs",
+    "message": "Point2D",
+    "file": "vision_msgs/point2d.proto"
+  },
+  {
+    "package": "vision_msgs",
+    "message": "Pose2D",
+    "file": "vision_msgs/pose2d.proto"
+  },
+  {
+    "package": "vision_msgs",
+    "message": "VisionClass",
+    "file": "vision_msgs/vision_class.proto"
+  },
+  {
+    "package": "vision_msgs",
+    "message": "VisionInfo",
+    "file": "vision_msgs/vision_info.proto"
+  },
+  {
+    "package": "visualization_msgs",
+    "message": "ImageMarker",
+    "file": "visualization_msgs/image_marker.proto"
+  },
+  {
+    "package": "visualization_msgs",
+    "message": "InteractiveMarker",
+    "file": "visualization_msgs/interactive_marker.proto"
+  },
+  {
+    "package": "visualization_msgs",
+    "message": "InteractiveMarkerControl",
+    "file": "visualization_msgs/interactive_marker_control.proto"
+  },
+  {
+    "package": "visualization_msgs",
+    "message": "InteractiveMarkerFeedback",
+    "file": "visualization_msgs/interactive_marker_feedback.proto"
+  },
+  {
+    "package": "visualization_msgs",
+    "message": "InteractiveMarkerInit",
+    "file": "visualization_msgs/interactive_marker_init.proto"
+  },
+  {
+    "package": "visualization_msgs",
+    "message": "InteractiveMarkerPose",
+    "file": "visualization_msgs/interactive_marker_pose.proto"
+  },
+  {
+    "package": "visualization_msgs",
+    "message": "InteractiveMarkerUpdate",
+    "file": "visualization_msgs/interactive_marker_update.proto"
+  },
+  {
+    "package": "visualization_msgs",
+    "message": "Marker",
+    "file": "visualization_msgs/marker.proto"
+  },
+  {
+    "package": "visualization_msgs",
+    "message": "MarkerArray",
+    "file": "visualization_msgs/marker_array.proto"
+  },
+  {
+    "package": "visualization_msgs",
+    "message": "MenuEntry",
+    "file": "visualization_msgs/menu_entry.proto"
+  },
+  {
+    "package": "visualization_msgs",
+    "message": "MeshFile",
+    "file": "visualization_msgs/mesh_file.proto"
+  },
+  {
+    "package": "visualization_msgs",
+    "message": "UVCoordinate",
+    "file": "visualization_msgs/uv_coordinate.proto"
+  }
+]

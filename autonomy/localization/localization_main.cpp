@@ -41,9 +41,9 @@ DEFINE_string(save_state_filename, "",
 
 // Atlas (OpenVSLAM)
 DEFINE_string(atlas_config,
-              "config/localization/atlas/autosim_mono.yaml",
+              "autonomy/localization/conf/atlas/autosim_mono.yaml",
               "Atlas: camera/system YAML config.");
-DEFINE_string(atlas_vocab, "config/localization/atlas/orb_vocab.fbow",
+DEFINE_string(atlas_vocab, "autonomy/localization/conf/atlas/orb_vocab.fbow",
               "Atlas: ORB vocabulary file (e.g. orb_vocab.fbow).");
 DEFINE_string(atlas_map_load, "", "Atlas: load map database on startup.");
 DEFINE_string(atlas_map_save, "", "Atlas: save map database on shutdown.");
@@ -66,7 +66,7 @@ LocalizationOptions BuildOptionsFromFlags() {
 
     options.configuration_directory = ResolveWorkspacePath(
         common::FLAGS_configuration_directory.empty()
-            ? "config/localization/cartographer"
+            ? "autonomy/localization/conf/cartographer"
             : common::FLAGS_configuration_directory);
     options.configuration_basename =
         common::FLAGS_configuration_basename.empty()

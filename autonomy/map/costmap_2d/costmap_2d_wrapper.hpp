@@ -46,7 +46,6 @@
 #include <thread>
 #include <vector>
 
-#include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/common/macros.hpp"
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>
 #include <automsgs/msgs/builtin_interfaces/duration.pb.h>

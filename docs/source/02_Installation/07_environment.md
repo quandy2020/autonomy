@@ -26,11 +26,13 @@ export GLOG_log_dir=${HOME}/.autonomy/log
 | `AUTONOMY_BT_PLUGIN_PATH` | BT 插件 `.so` 搜索路径（Navigator） |
 | `AUTONOMY_ENV` | Docker 挂载用仓库根路径 |
 
-Navigator BT 模式示例：
+Navigator / Task BT 模式示例：
 
 ```bash
+export PATH=/path/to/autonomy/build/bin:$PATH
+export AUTOLINK_LAUNCH_PATH=/path/to/autonomy/autonomy/system/launch
 export AUTONOMY_BT_PLUGIN_PATH=/path/to/autonomy/build/lib
-./bin/nav_test --config_directory=config --use_bt=true
+autolink_launch autonomy.launch
 ```
 
 ### 7.3 Autolink 路径（ROS 2 集成场景）

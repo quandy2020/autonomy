@@ -7,7 +7,7 @@
 | **RViz2** | ROS 生态标准、TF/插件丰富 | 本地 ROS 2 开发 | autonomy_ros → rviz2 |
 | **Foxglove** | 多模态、Web/远程、MCAP | 团队协作、远程调试 | foxglove_bridge |
 | **ros2 topic echo** | 零配置 | 快速排错 | 直接 |
-| **glog** | 无依赖 | 纯 C++ CI | autonomy_nav_test |
+| **glog** | 无依赖 | 纯 C++ CI | 多进程 launch |
 | **PlotJuggler** | 时序曲线强 | 控制调参 | ROS 2 bag / 实时 |
 
 ### 8.2 Bridge 与 Foxglove 对比

@@ -97,8 +97,8 @@ C++ 侧 `ObstacleLayer::updateBounds()` 将观测写入 costmap 栅格。
 ### 4.6 系统集成（规划）
 
 ```text
-// system::Autonomy 构造流程（规划）
-perception_ = std::make_shared<perception::PerceptionServer>(options_.perception_options());
+// autonomy.perception 进程构造（示意）
+perception_ = std::make_shared<perception::PerceptionServer>(options.perception());
 perception_->Start();
 
 // 传感器回调

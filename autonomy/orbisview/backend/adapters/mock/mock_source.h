@@ -32,14 +32,19 @@ class MockSource {
   void Start();
   void Stop();
 
-  void SetNavGoal(double x, double y);
+  void SetNavGoal(double x, double y, double yaw = 0.0);
   void ClearNavGoal();
-  bool HasNavGoal(double* x, double* y) const;
+  bool HasNavGoal(double* x, double* y, double* yaw = nullptr) const;
 
   void SetCmdVel(double vx, double wz);
 
   /** Multi-waypoint route (map frame). */
-  void SetRoute(std::vector<std::pair<double, double>> waypoints);
+  struct RoutePoint {
+    double x{0};
+    double y{0};
+    double yaw{0};
+  };
+  void SetRoute(std::vector<RoutePoint> waypoints);
   void ClearRoute();
 
  private:
@@ -79,6 +84,7 @@ class MockSource {
   bool has_goal_{false};
   double goal_x_{2.0};
   double goal_y_{1.0};
+  double goal_yaw_{0.0};
 
   mutable std::mutex motion_mutex_;
   double pose_x_{1.0};
@@ -90,7 +96,7 @@ class MockSource {
   bool teleop_active_{false};
 
   mutable std::mutex route_mutex_;
-  std::vector<std::pair<double, double>> route_;
+  std::vector<RoutePoint> route_;
 
   core::SimulationWorldService world_;
 };

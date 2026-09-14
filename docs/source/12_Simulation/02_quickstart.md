@@ -1,24 +1,19 @@
 # 2. 快速开始
 
-### 2.1 最快路径：nav_test（无 ROS）
+### 2.1 最快路径：多进程栈（无 ROS）
 
-**三步运行**：
-
-1. 构建：`cmake .. -DBUILD_TOOLS=ON -DBUILD_TASKS=ON && ninja autonomy_nav_test`
-2. 设置 BT 插件路径：`export AUTONOMY_BT_PLUGIN_PATH=<build>/lib`
-3. 运行：
+进程内 `autonomy_nav_test` **已移除**。本地验证用 launch 拉起 planning / control / task 等，再用 Bridge 或 Action 发令：
 
 ```bash
-./bin/autonomy_nav_test \
-  --configuration_directory=/workspace/autonomy/src/autonomy/config \
-  --start_x=1 --start_y=1 --start_yaw=0 \
-  --goal_x=5 --goal_y=5 --goal_yaw=0 \
-  --use_bt=true
+export PATH="$PWD/build/bin:$PATH"
+export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/system/launch"
+export AUTONOMY_BT_PLUGIN_PATH="$PWD/build/lib"
+export GLOG_logtostderr=1
+
+autolink_launch autonomy.launch
 ```
 
-成功输出：`Navigation succeeded.`
-
-详见 [§6 nav_test](06_nav_test.md)。
+详见 [04 Running · 快速运行](../04_Running/02_quickstart.md)。
 
 ### 2.2 Gazebo 仿真（ROS2）
 
@@ -34,35 +29,32 @@ ros2 launch autonomy_ros autonomy.launch.py \
   use_sim_time:=true
 ```
 
-详见 [§7 Gazebo ROS](07_gazebo_ros.md)。
+详见 [§6 Gazebo ROS](07_gazebo_ros.md)。
 
 ### 2.3 Docker 快速上手
 
 ```bash
-python3 src/autonomy/docker/run_autonomy.py -p x86_64
+python3 docker/run_autonomy.py -p x86_64
 
-# 容器内
-cmake -S src/autonomy -B build -DBUILD_TOOLS=ON -DBUILD_TASKS=ON
-cmake --build build -j$(nproc)
-export AUTONOMY_BT_PLUGIN_PATH=/workspace/autonomy/build/lib
-./build/bin/autonomy_nav_test \
-  --configuration_directory=/workspace/autonomy/src/autonomy/config \
-  --start_x=1 --start_y=1 --goal_x=5 --goal_y=5
+# 容器内编译后
+export PATH="$PWD/build/bin:$PATH"
+export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/system/launch"
+autolink_launch autonomy.launch
 ```
 
 ### 2.4 工具选型
 
 | 需求 | 工具 |
 |------|------|
-| 验证 BT + 全栈导航 | `autonomy_nav_test` |
-| 仅规划可视化 | `autonomy_planning_test` |
-| 仅控制器跟踪 | `autonomy_controller_test` |
+| 验证 BT + 全栈导航 | `autolink_launch` + Bridge / Action |
 | 物理 + 传感器 | Gazebo + `autonomy_ros` |
+| 车辆限幅 / Stage | [§7 Vehicle Stage](08_vehicle_stage.md) |
 
 ### 2.5 环境变量
 
 | 变量 | 说明 |
 |------|------|
+| `AUTOLINK_LAUNCH_PATH` | launch 文件搜索路径 |
 | `AUTONOMY_BT_PLUGIN_PATH` | BT 插件 `.so` 搜索路径 |
 | `GLOG_logtostderr=1` | 日志输出到终端 |
 | `AUTOLINK_PATH` | Autolink 配置路径（ROS 模式） |

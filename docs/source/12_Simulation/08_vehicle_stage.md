@@ -36,7 +36,7 @@ KinematicsControl::ApplyLimits(cmd)  # 速度/加速度限幅
 
 - Gazebo 差速插件
 - 真实底盘驱动
-- `nav_test` 积分器
+- 运动学仿真后端
 
 ---
 
@@ -130,7 +130,7 @@ class GazeboSimulator : public VehicleInterface {
 
 ---
 
-## 8.8 与 nav_test 的整合建议
+## 8.8 与多进程栈的整合建议
 
 将 `IntegrateDiffDrive` 移入 `Vehicle::ApplyCommand`：
 
@@ -145,4 +145,4 @@ bool Vehicle::ApplyCommand(const KinematicsControlCommand& cmd) {
 }
 ```
 
-`nav_test` 改为持有 `Vehicle` 而非直接调用 `IntegrateDiffDrive`。
+仿真进程或 Bridge 侧持有 `Vehicle`，向 control/task 注入 odom/TF；不再依赖已移除的进程内 `nav_test`。

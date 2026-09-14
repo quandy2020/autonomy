@@ -78,8 +78,7 @@ int main(int argc, char** argv)
     }
 
     const auto options = autonomy::system::CreateOptions(
-        autonomy::common::FLAGS_configuration_directory,
-        autonomy::common::FLAGS_configuration_basename);
+        autonomy::common::FLAGS_conf);
     if (!options.has_perception_options()) {
         LOG(ERROR) << "perception_main: missing perception options in config";
         return EXIT_FAILURE;
@@ -110,7 +109,7 @@ int main(int argc, char** argv)
 
     if (!options.perception_options().enabled()) {
         LOG(WARNING) << "perception_main: perception disabled in config "
-                        "(set enabled=true or use exploration_autonomy.lua)";
+                        "(set enabled=true or use exploration.pb.txt)";
     } else if (!options.perception_options().enable_rgbd_exploration()) {
         LOG(WARNING) << "perception_main: RGB-D exploration disabled in config";
     } else {

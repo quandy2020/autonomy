@@ -40,6 +40,7 @@ using std::sqrt;
 
 namespace {
 constexpr auto kEpsilon = 1.0e-6F;
+constexpr float32_t kPi = 3.14159265358979323846F;
 }  // namespace
 
 /// @test Make sure a static object stays static.
@@ -201,7 +202,7 @@ TEST(CvtrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     // Movement in Y direction.
     initial_state = CvtrMotionModel32::State{};
     initial_state.at<XY_VELOCITY>() = 1.0F;
-    initial_state.at<YAW>() = 0.5F * M_PIf32;
+    initial_state.at<YAW>() = 0.5F * kPi;
     expected_state = initial_state;
     expected_state.at<Y>() += 1.0F;
     EXPECT_EQ(expected_state,
@@ -209,7 +210,7 @@ TEST(CvtrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     // Movement in negative Y direction.
     initial_state = CvtrMotionModel32::State{};
     initial_state.at<XY_VELOCITY>() = 1.0F;
-    initial_state.at<YAW>() = -0.5F * M_PIf32;
+    initial_state.at<YAW>() = -0.5F * kPi;
     expected_state = initial_state;
     expected_state.at<Y>() -= 1.0F;
     EXPECT_EQ(expected_state,
@@ -218,7 +219,7 @@ TEST(CvtrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     // Movement in XY direction.
     initial_state = CvtrMotionModel32::State{};
     initial_state.at<XY_VELOCITY>() = 1.0F;
-    initial_state.at<YAW>() = 0.25F * M_PIf32;
+    initial_state.at<YAW>() = 0.25F * kPi;
     expected_state = initial_state;
     expected_state.at<X>() += 0.5F * sqrt(2.0F);
     expected_state.at<Y>() += 0.5F * sqrt(2.0F);
@@ -227,7 +228,7 @@ TEST(CvtrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     // Movement in negative XY direction.
     initial_state = CvtrMotionModel32::State{};
     initial_state.at<XY_VELOCITY>() = 1.0F;
-    initial_state.at<YAW>() = -0.75F * M_PIf32;
+    initial_state.at<YAW>() = -0.75F * kPi;
     expected_state = initial_state;
     expected_state.at<X>() -= 0.5F * sqrt(2.0F);
     expected_state.at<Y>() -= 0.5F * sqrt(2.0F);
@@ -267,7 +268,7 @@ TEST(CatrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     initial_state = CatrMotionModel32::State{};
     initial_state.at<XY_VELOCITY>() = 1.0F;
     initial_state.at<XY_ACCELERATION>() = 1.0F;
-    initial_state.at<YAW>() = 0.5F * M_PIf32;
+    initial_state.at<YAW>() = 0.5F * kPi;
     expected_state = initial_state;
     expected_state.at<Y>() +=
         dt * initial_state.at<XY_VELOCITY>() + 0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
@@ -278,7 +279,7 @@ TEST(CatrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     initial_state = CatrMotionModel32::State{};
     initial_state.at<XY_VELOCITY>() = 1.0F;
     initial_state.at<XY_ACCELERATION>() = 1.0F;
-    initial_state.at<YAW>() = -0.5F * M_PIf32;
+    initial_state.at<YAW>() = -0.5F * kPi;
     expected_state = initial_state;
     expected_state.at<Y>() -=
         dt * initial_state.at<XY_VELOCITY>() + 0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
@@ -290,7 +291,7 @@ TEST(CatrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     initial_state = CatrMotionModel32::State{};
     initial_state.at<XY_VELOCITY>() = 1.0F;
     initial_state.at<XY_ACCELERATION>() = 1.0F;
-    initial_state.at<YAW>() = 0.25F * M_PIf32;
+    initial_state.at<YAW>() = 0.25F * kPi;
     expected_state = initial_state;
     const auto distance = dt * initial_state.at<XY_VELOCITY>() + 0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
     expected_state.at<X>() += sqrt(0.5F * distance * distance);
@@ -302,7 +303,7 @@ TEST(CatrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     initial_state = CatrMotionModel32::State{};
     initial_state.at<XY_VELOCITY>() = 1.0F;
     initial_state.at<XY_ACCELERATION>() = 1.0F;
-    initial_state.at<YAW>() = -0.75F * M_PIf32;
+    initial_state.at<YAW>() = -0.75F * kPi;
     expected_state = initial_state;
     expected_state.at<X>() -= sqrt(0.5F * distance * distance);
     expected_state.at<Y>() -= sqrt(0.5F * distance * distance);

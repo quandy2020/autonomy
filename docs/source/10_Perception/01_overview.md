@@ -8,7 +8,7 @@
 | 感知层级 | 传感器融合 → 特征提取 → 语义/几何理解 |
 | 输入 | `sensor_msgs`（激光 `LaserScan`、点云 `PointCloud2`、图像 `Image`、深度 `Depth` 等） |
 | 输出 | `vision_msgs`（2D/3D 检测框、分类）、障碍列表、语义分割图（规划） |
-| 上游 | `driver` / `sensor`、仿真器（Gazebo / nav_test） |
+| 上游 | `driver` / `sensor`、仿真器（Gazebo / 外部注入） |
 | 下游 | `prediction`（动态障碍轨迹）、`map`（costmap 更新）、`planning`（避障） |
 | 对标 | Apollo Perception、ROS 2 `vision_msgs`、Nav2 costmap obstacle layer |
 

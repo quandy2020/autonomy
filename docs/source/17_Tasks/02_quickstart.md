@@ -1,58 +1,29 @@
 # 2. 快速开始
 
-### 2.1 使用离线测试工具（推荐）
-
-无需手写代码，用 `autonomy_nav_test` 下发导航任务：
+### 2.1 多进程栈 + 发令（推荐）
 
 ```bash
-./build/bin/autonomy_nav_test \
-  --configuration_directory=config \
-  --start_x=1 --start_y=1 --start_yaw=0 \
-  --goal_x=5 --goal_y=5 --goal_yaw=0 \
-  --timeout_sec=120
+export PATH="$PWD/build/bin:$PATH"
+export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/system/launch"
+export AUTONOMY_BT_PLUGIN_PATH="$PWD/build/lib"
+autolink_launch autonomy.launch
 ```
 
-详见 [18 Tools · 离线导航测试](../18_Tools/04_nav_test.md)。
+主栈不会自动下发目标。请用 **Bridge**、autolink Action Client 或上层业务向 `autonomy.task` 发令。见 [04 Running](../04_Running/02_quickstart.md)。
 
-### 2.2 C++ API 最小示例
+> 离线 `autonomy_nav_test` **已移除**。
 
-```cpp
-#include "autonomy/system/autonomy.hpp"
-#include "autonomy/system/options.hpp"
+### 2.2 TaskServer 进程
 
-// 初始化后 ...
-commsgs::geometry_msgs::PoseStamped goal;
-goal.pose.position.x = 5.0;
-goal.pose.position.y = 5.0;
-goal.header.frame_id = "map";
-
-auto cancel_checker = []() { return false; };
-bool ok = autonomy->NavigateToPose(goal, cancel_checker, true, 120.0);
-```
+`autonomy/task/task_main.cpp` 构造 `TaskServer`，加载 task / navigator conf 后进入 `WaitForShutdown`。共享栈 conf 仍可用 `system::CreateOptions("autonomy.pb.txt")` 中的相关子字段（若模块接入）。
 
 ### 2.3 配置前提
 
-确保 `config/autonomy.lua` 包含 navigator 配置：
+- BT XML：`autonomy/task/conf/behavior_tree/`
+- Navigator：`autonomy/task/conf/navigator.pb.txt`
+- 共享快照：`autonomy/system/conf/autonomy.pb.txt`
 
-```lua
-include "navigator/navigator.lua"
-
-AUTONOMY = {
-  -- ...
-  navigator = navigator,
-}
-```
-
-### 2.4 运行时选项
-
-```cpp
-autonomy::system::RuntimeOptions runtime;
-runtime.config_directory = "config";
-runtime.use_bt_navigation = false;  // 当前默认直驱
-autonomy->Configure(runtime);
-```
-
-### 2.5 下一步
+### 2.4 下一步
 
 | 目标 | 文档 |
 |------|------|

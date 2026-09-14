@@ -83,7 +83,7 @@ ros2 launch autonomy_ros autonomy.launch.py
 
 | 场景 | 推荐 |
 |------|------|
-| 算法 CI / 无 GUI | `autonomy_nav_test` |
+| 算法 CI / 无 GUI | 多进程 launch + 日志 |
 | 交互调试 / 演示 | ROS 2 + RViz2 |
 | 远程团队查看 | Foxglove（§6） |
 

@@ -43,4 +43,10 @@ find_package_handle_standard_args(Ceres DEFAULT_MSG
 if (CERES_FOUND)
   set(CERES_INCLUDE_DIRS ${CERES_INCLUDE_DIR})
   set(CERES_LIBRARIES ${CERES_LIBRARY})
+  if(NOT TARGET Ceres::ceres)
+    add_library(Ceres::ceres UNKNOWN IMPORTED)
+    set_target_properties(Ceres::ceres PROPERTIES
+      IMPORTED_LOCATION "${CERES_LIBRARY}"
+      INTERFACE_INCLUDE_DIRECTORIES "${CERES_INCLUDE_DIR}")
+  endif()
 endif()

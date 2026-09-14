@@ -16,9 +16,7 @@
 
  #include "autonomy/control/controller/mppi_controller/controller.hpp"
 
- #include "autonomy/common/configuration_file_resolver.hpp"
- #include "autonomy/common/lua_parameter_dictionary.hpp"
- #include "autonomy/control/common/controller_exceptions.hpp"
+  #include "autonomy/control/common/controller_exceptions.hpp"
  #include "autonomy/control/controller/mppi_controller/tools/mppi_options.hpp"
  #include "autonomy/control/proto/controller_options.pb.h"
  

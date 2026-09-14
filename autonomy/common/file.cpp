@@ -45,22 +45,23 @@ bool HasFileExtension(const std::string& file_name, const std::string& ext) {
 
 void SplitFileExtension(const std::string& path, std::string* root,
                         std::string* ext) {
-    const auto parts = StringSplit(path, ".");
-    THROW_CHECK_GT(parts.size(), 0);
-    if (parts.size() == 1) {
-        *root = parts[0];
+    if (path.empty()) {
+        *root = "";
+        *ext = "";
+        return;
+    }
+    const auto separator = path.find_last_of("/\\");
+    const auto dot = path.find_last_of('.');
+    if (dot == std::string::npos ||
+        (separator != std::string::npos && dot < separator)) {
+        *root = path;
+        *ext = "";
+    } else if (dot == path.size() - 1) {
+        *root = path.substr(0, dot);
         *ext = "";
     } else {
-        *root = "";
-        for (size_t i = 0; i < parts.size() - 1; ++i) {
-            *root += parts[i] + ".";
-        }
-        *root = root->substr(0, root->length() - 1);
-        if (parts.back() == "") {
-            *ext = "";
-        } else {
-            *ext = "." + parts.back();
-        }
+        *root = path.substr(0, dot);
+        *ext = path.substr(dot);
     }
 }
 
@@ -103,13 +104,17 @@ void CreateDirIfNotExists(const std::string& path, bool recursive) {
 }
 
 std::string GetPathBaseName(const std::string& path) {
-    const std::vector<std::string> names =
-        StringSplit(StringReplace(path, "\\", "/"), "/");
-    if (names.size() > 1 && names.back() == "") {
-        return names[names.size() - 2];
-    } else {
-        return names.back();
+    std::string normalized = StringReplace(path, "\\", "/");
+    while (!normalized.empty() && normalized.back() == '/') {
+        normalized.pop_back();
     }
+    if (normalized.empty()) {
+        return "";
+    }
+    const auto separator = normalized.find_last_of('/');
+    return separator == std::string::npos
+               ? normalized
+               : normalized.substr(separator + 1);
 }
 
 std::string GetParentDir(const std::string& path) {

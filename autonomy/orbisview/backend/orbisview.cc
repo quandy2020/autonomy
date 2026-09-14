@@ -122,9 +122,9 @@ std::unordered_set<std::string> ExtractJsonStringArray(
   return out;
 }
 
-std::vector<std::pair<double, double>> ExtractWaypoints(
+std::vector<adapters::MockSource::RoutePoint> ExtractWaypoints(
     const std::string& text) {
-  std::vector<std::pair<double, double>> out;
+  std::vector<adapters::MockSource::RoutePoint> out;
   const std::string needle = "\"waypoints\"";
   auto pos = text.find(needle);
   if (pos == std::string::npos) return out;
@@ -137,8 +137,9 @@ std::vector<std::pair<double, double>> ExtractWaypoints(
     auto end = text.find('}', obj);
     if (end == std::string::npos) break;
     const std::string obj_text = text.substr(obj, end - obj + 1);
-    out.emplace_back(ExtractJsonNumber(obj_text, "x", 0.0),
-                     ExtractJsonNumber(obj_text, "y", 0.0));
+    out.push_back({ExtractJsonNumber(obj_text, "x", 0.0),
+                   ExtractJsonNumber(obj_text, "y", 0.0),
+                   ExtractJsonNumber(obj_text, "yaw", 0.0)});
     pos = end + 1;
   }
   return out;
@@ -155,10 +156,7 @@ bool Orbisview::Init(const ServerOptions& options) {
   options_ = options;
   websocket_ = std::make_unique<WebSocketHandler>();
   sim_world_updater_ = std::make_unique<SimulationWorldUpdater>();
-  map_service_ = std::make_unique<MapService>();
-  hmi_ = std::make_unique<core::Hmi>();
-  point_cloud_updater_ = std::make_unique<PointCloudUpdater>();
-  perception_camera_updater_ = std::make_unique<PerceptionCameraUpdater>();
+  hmi_ = std::make_unique<core::HmiWorker>();
   teleop_ = std::make_unique<TeleopService>();
   plugins_.RegisterBuiltins();
   plugin_host_ = std::make_unique<plugins::PluginHost>(&plugins_);
@@ -391,11 +389,13 @@ void Orbisview::OnClientMessage(int client_id, const std::string& text) {
   } else if (op == "set_goal") {
     const double x = ExtractJsonNumber(text, "x", 0.0);
     const double y = ExtractJsonNumber(text, "y", 0.0);
+    const double yaw = ExtractJsonNumber(text, "yaw", 0.0);
     if (options_.enable_mock) {
-      mock_.SetNavGoal(x, y);
+      mock_.SetNavGoal(x, y, yaw);
     }
     std::ostringstream ack;
     ack << "{\"op\":\"goal_set\",\"x\":" << x << ",\"y\":" << y
+        << ",\"yaw\":" << yaw
         << ",\"mock\":" << (options_.enable_mock ? "true" : "false") << '}';
     websocket_->SendText(client_id, ack.str());
   } else if (op == "clear_goal") {
@@ -421,7 +421,8 @@ void Orbisview::OnClientMessage(int client_id, const std::string& text) {
     if (options_.enable_mock) {
       mock_.SetRoute(wps);
       if (!wps.empty()) {
-        mock_.SetNavGoal(wps.back().first, wps.back().second);
+        const auto& last = wps.back();
+        mock_.SetNavGoal(last.x, last.y, last.yaw);
       }
     }
     std::ostringstream ack;
@@ -580,9 +581,6 @@ void Orbisview::EmitEnvelope(core::StreamEnvelope env) {
 
 void Orbisview::IngestWorld(const core::StreamEnvelope& env) {
   if (sim_world_updater_) sim_world_updater_->Ingest(env);
-  if (map_service_) map_service_->Ingest(env);
-  if (point_cloud_updater_) point_cloud_updater_->Ingest(env);
-  if (perception_camera_updater_) perception_camera_updater_->Ingest(env);
 }
 bool Orbisview::ShouldForward(int client_id, const std::string& channel,
                                     core::SubscriptionState* state) {

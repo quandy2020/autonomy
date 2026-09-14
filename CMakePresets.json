@@ -1,0 +1,72 @@
+{
+  "version": 2,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "autonomy-minimal",
+      "displayName": "Autonomy minimal development build",
+      "description": "Build common, transform, and vehicle without optional product domains.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/autonomy-minimal",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "FORCE_DEBUG_BUILD": "ON",
+        "BUILD_TEST": "ON",
+        "BUILD_DOCS": "OFF",
+        "BUILD_TOOLS": "OFF",
+        "BUILD_GRPC": "OFF",
+        "BUILD_PROMETHEUS": "OFF",
+        "BUILD_GRID_MAP_DEMOS": "OFF",
+        "BUILD_AUTODRIVER": "OFF",
+        "BUILD_AUTOVIZ": "OFF",
+        "BUILD_AUTOSIM": "OFF",
+        "BUILD_ONNXRUNTIME": "OFF",
+        "BUILD_TENSORRT": "OFF",
+        "BUILD_SHERPA_ONNX": "OFF",
+        "AUTOLINK_BUILD_PYTHON": "OFF",
+        "AUTOMSGS_BUILD_EXAMPLES": "OFF",
+        "AUTOMSGS_BUILD_TOOLS": "OFF",
+        "AUTOMSGS_BUILD_PYTHON": "OFF",
+        "AUTOMSGS_BUILD_TESTS": "OFF",
+        "AUTONOMY_BUILD_COMMON": "ON",
+        "AUTONOMY_BUILD_COMMON_OSQP": "OFF",
+        "AUTONOMY_BUILD_TRANSFORM": "ON",
+        "AUTONOMY_BUILD_MAP": "OFF",
+        "AUTONOMY_BUILD_VEHICLE": "ON",
+        "AUTONOMY_BUILD_PREDICTION": "OFF",
+        "AUTONOMY_BUILD_CONTROL": "OFF",
+        "AUTONOMY_BUILD_PLANNING": "OFF",
+        "AUTONOMY_BUILD_PERCEPTION": "OFF",
+        "AUTONOMY_BUILD_LOCALIZATION": "OFF",
+        "AUTONOMY_BUILD_SENSOR": "OFF",
+        "AUTONOMY_BUILD_TASK": "OFF",
+        "AUTONOMY_BUILD_SYSTEM": "OFF",
+        "AUTONOMY_BUILD_AUDIO": "OFF",
+        "AUTONOMY_BUILD_BRIDGE": "OFF",
+        "AUTONOMY_BUILD_VISUALIZATION": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "autonomy-minimal",
+      "configurePreset": "autonomy-minimal"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "autonomy-minimal",
+      "configurePreset": "autonomy-minimal",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    }
+  ]
+}

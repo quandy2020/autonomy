@@ -1,7 +1,7 @@
 /*
  * Copyright 2026 The Openbot Authors
  *
- * SimulationWorldUpdater — wraps SimulationWorldService + ingest (DV updater).
+ * SimulationWorldUpdater — world state ingest + JSON dump.
  */
 
 #pragma once

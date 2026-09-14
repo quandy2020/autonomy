@@ -183,57 +183,6 @@ void GridMapWrapper::publishMap() {
               << last_published_message_.layers_size() << " layers): " << name_;
 }
 
-proto::GridMapOptions CreateGridMapOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
-    proto::GridMapOptions options;
-
-    if (parameter_dictionary->HasKey("map_file")) {
-        options.set_map_file(parameter_dictionary->GetString("map_file"));
-    }
-
-    if (parameter_dictionary->HasKey("frame_id")) {
-        options.set_frame_id(parameter_dictionary->GetString("frame_id"));
-    }
-
-    if (parameter_dictionary->HasKey("name")) {
-        options.set_name(parameter_dictionary->GetString("name"));
-    }
-
-    if (parameter_dictionary->HasKey("resolution")) {
-        options.set_resolution(parameter_dictionary->GetDouble("resolution"));
-    }
-
-    if (parameter_dictionary->HasKey("length_x")) {
-        options.set_length_x(parameter_dictionary->GetDouble("length_x"));
-    }
-
-    if (parameter_dictionary->HasKey("length_y")) {
-        options.set_length_y(parameter_dictionary->GetDouble("length_y"));
-    }
-
-    if (parameter_dictionary->HasKey("position_x")) {
-        options.set_position_x(parameter_dictionary->GetDouble("position_x"));
-    }
-
-    if (parameter_dictionary->HasKey("position_y")) {
-        options.set_position_y(parameter_dictionary->GetDouble("position_y"));
-    }
-
-    if (parameter_dictionary->HasKey("layers")) {
-        auto layers_dict = parameter_dictionary->GetDictionary("layers");
-        // Assuming layers is a list/array in Lua
-        // This would need to be implemented based on the LuaParameterDictionary
-        // API
-    }
-
-    if (parameter_dictionary->HasKey("basic_layers")) {
-        auto basic_layers_dict =
-            parameter_dictionary->GetDictionary("basic_layers");
-        // Similar to layers
-    }
-
-    return options;
-}
 
 }  // namespace grid_map
 }  // namespace map

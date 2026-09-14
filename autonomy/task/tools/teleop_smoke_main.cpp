@@ -17,8 +17,8 @@
 #include <automsgs/task/teleop.pb.h>
 #include "autonomy/task/task_server.hpp"
 
-DEFINE_string(config_directory, "config",
-              "Config root (task/teleop_assist.lua under this path).");
+DEFINE_string(config_directory, "",
+              "Task conf root (default: autonomy/task/conf).");
 DEFINE_double(linear_x, 0.25, "Commanded linear.x for VELOCITY frames (m/s).");
 DEFINE_double(angular_z, 0.0, "Commanded angular.z for VELOCITY frames (rad/s).");
 DEFINE_double(duration_sec, 5.0, "How long to stream VELOCITY after START.");

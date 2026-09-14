@@ -64,7 +64,7 @@
   <module>
     <name>localization_atlas</name>
     <type>binary</type>
-    <process_name>autonomy.localization --localization_mode=atlas --atlas_config=config/localization/atlas/autosim_rgbd.yaml --atlas_vocab=config/localization/atlas/orb_vocab.fbow --atlas_rgb_topic=/camera/rgb/image_raw --atlas_depth_topic=/camera/depth/image_raw --atlas_seg_topic=/camera/semantic/instance_ids --atlas_map_save=data/maps/atlas.msg</process_name>
+    <process_name>autonomy.localization --localization_mode=atlas --atlas_config=autonomy/localization/conf/atlas/autosim_rgbd.yaml --atlas_vocab=autonomy/localization/conf/atlas/orb_vocab.fbow --atlas_rgb_topic=/camera/rgb/image_raw --atlas_depth_topic=/camera/depth/image_raw --atlas_seg_topic=/camera/semantic/instance_ids --atlas_map_save=data/maps/atlas.msg</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>

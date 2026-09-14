@@ -1,7 +1,7 @@
 /*
  * Copyright 2026 The Openbot Authors
  *
- * HMIWorker — mode / component registry (Dreamview hmi_worker counterpart).
+ * HMIWorker — mode / component registry for soft HMI.
  */
 
 #pragma once
