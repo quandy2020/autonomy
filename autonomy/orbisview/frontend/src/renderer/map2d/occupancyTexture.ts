@@ -158,14 +158,18 @@ export function fillOccupancyRgba(
 ): void {
   const { width, height, data } = grid;
   const palette = PALETTES[mode] ?? PALETTES.map;
+  // Match Autoviz MapDisplay: image row 0 (top) = high grid-y so an upright
+  // drawImage places cell (0,0) at the world origin corner without canvas
+  // scale(1,-1) (which can introduce sub-pixel shifts vs laser overlays).
   for (let j = 0; j < th; j++) {
     for (let i = 0; i < tw; i++) {
       const sx = Math.min(width - 1, Math.floor(i / scale));
-      const sy = Math.min(height - 1, Math.floor(j / scale));
-      const v = data[sy * width + sx] ?? -1;
+      const syGrid = Math.min(height - 1, Math.floor(j / scale));
+      const v = data[syGrid * width + sx] ?? -1;
       const idx = occupancyToUint8(v);
       const src = idx * 4;
-      const o = (j * tw + i) * 4;
+      const destRow = th - 1 - j;
+      const o = (destRow * tw + i) * 4;
       out[o] = palette[src];
       out[o + 1] = palette[src + 1];
       out[o + 2] = palette[src + 2];
@@ -182,6 +186,7 @@ export function occupancyCacheKey(
   const mid = Math.floor(data.length / 2);
   return [
     mode,
+    'flipY-autoviz',
     grid.width,
     grid.height,
     grid.resolution,

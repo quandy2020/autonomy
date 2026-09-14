@@ -291,11 +291,8 @@ export function paintMap2DScene(
     const bw = Math.abs(sx1 - sx0);
     const bh = Math.abs(sy1 - sy0);
     ctx.imageSmoothingEnabled = false;
-    ctx.save();
-    ctx.translate(left, top + bh);
-    ctx.scale(1, -1);
-    ctx.drawImage(basemap.canvas, 0, 0, bw, bh);
-    ctx.restore();
+    // Image/canvas row 0 = high world Y (ROS map + Autoviz); upright blit.
+    ctx.drawImage(basemap.canvas, left, top, bw, bh);
   }
 
   if (layers.map && map) {
