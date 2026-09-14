@@ -14,6 +14,12 @@ import { SCHEMAS } from '@/store/websocket/types';
 import { wsClient } from '@/store/websocket/client';
 import { MapFloatToolbar } from '@/components/Map/MapFloatToolbar';
 import { MapInstrumentCluster } from '@/components/Map/MapInstrumentCluster';
+import { useStaticSlamStore } from '@/store/staticSlamStore';
+import {
+  sharedStaticSlamCanvasCache,
+  staticSlamCorners,
+  type StaticSlamCanvasHandle,
+} from '@/renderer/map2d/staticSlam';
 import {
   asPayload,
   effectiveMapLayers,
@@ -68,6 +74,8 @@ export function Map2DPanel() {
   const displays = useDisplayStore((s) => s.displays);
   const layers = useLayerStore();
   const followRobot = useLayerStore((s) => s.followRobot);
+  const staticBasemap = useStaticSlamStore((s) => s.basemap);
+  const [basemapHandle, setBasemapHandle] = useState<StaticSlamCanvasHandle | null>(null);
   const waypoints = useWaypointStore((s) => s.waypoints);
   const selectedId = useWaypointStore((s) => s.selectedId);
   const addWaypoint = useWaypointStore((s) => s.add);
@@ -214,6 +222,23 @@ export function Map2DPanel() {
     [layers, displays],
   );
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!staticBasemap?.imageSrc) {
+      setBasemapHandle(null);
+      return;
+    }
+    void sharedStaticSlamCanvasCache.get(staticBasemap).then((h) => {
+      if (!cancelled) setBasemapHandle(h);
+    }).catch((err) => {
+      console.warn('[orbisview] basemap load failed', err);
+      if (!cancelled) setBasemapHandle(null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [staticBasemap]);
+
   const goal =
     localGoal ??
     (nav?.has_goal !== false && nav?.goal ? nav.goal : null);
@@ -266,6 +291,7 @@ export function Map2DPanel() {
       viewOffset,
       layers: {
         grid: paintLayers.grid,
+        basemap: paintLayers.basemap,
         map: paintLayers.map,
         costmap: paintLayers.costmap,
         vectormap: paintLayers.vectormap,
@@ -278,6 +304,7 @@ export function Map2DPanel() {
         tf: paintLayers.tf,
         pointcloud: paintLayers.pointcloud,
       },
+      basemap: basemapHandle,
       pose,
       path,
       pathStyle,
@@ -359,6 +386,7 @@ export function Map2DPanel() {
     measurePreview,
     canvasSize,
     scale,
+    basemapHandle,
   ]);
 
   useEffect(() => {
@@ -778,7 +806,11 @@ export function Map2DPanel() {
       pts.push({ x: ox + g.width * res, y: oy + g.height * res });
     };
 
-    if (map && paintLayers.map) {
+    if (staticBasemap && paintLayers.basemap) {
+      const c = staticSlamCorners(staticBasemap);
+      pts.push({ x: c.x0, y: c.y0 });
+      pts.push({ x: c.x1, y: c.y1 });
+    } else if (map && paintLayers.map) {
       pushGrid(map);
     } else if (costmap && paintLayers.costmap) {
       pushGrid(costmap);

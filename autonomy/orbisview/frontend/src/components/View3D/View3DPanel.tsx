@@ -38,6 +38,11 @@ import {
   resolvePathStyle,
 } from '@/components/Channels/sensorDisplay';
 import { useDisplayStore } from '@/store/displayStore';
+import { useStaticSlamStore } from '@/store/staticSlamStore';
+import {
+  sharedStaticSlamCanvasCache,
+  type StaticSlamCanvasHandle,
+} from '@/renderer/map2d/staticSlam';
 import { formatPickPose, pickPoseStatus } from '@/utils/poseMath';
 
 function findWpId(obj: THREE.Object3D | null): string | null {
@@ -79,6 +84,8 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
   const layers = useLayerStore();
   const followRobot = useLayerStore((s) => s.followRobot);
   const setFollowRobot = useLayerStore((s) => s.setFollowRobot);
+  const staticBasemap = useStaticSlamStore((s) => s.basemap);
+  const [basemapHandle, setBasemapHandle] = useState<StaticSlamCanvasHandle | null>(null);
   const cloudColor = useView3DStore((s) => s.cloudColor);
   const laserHeight = useView3DStore((s) => s.laserHeight);
   const mapOpacity = useView3DStore((s) => s.mapOpacity);
@@ -105,6 +112,26 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
   const activeRef = useRef(active);
   activeRef.current = active;
   const inputRef = useRef<View3DSceneInput | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!staticBasemap?.imageSrc) {
+      setBasemapHandle(null);
+      return;
+    }
+    void sharedStaticSlamCanvasCache
+      .get(staticBasemap)
+      .then((h) => {
+        if (!cancelled) setBasemapHandle(h);
+      })
+      .catch((err) => {
+        console.warn('[orbisview] basemap load failed', err);
+        if (!cancelled) setBasemapHandle(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [staticBasemap]);
 
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
   const pointer = useMemo(() => new THREE.Vector2(), []);
@@ -549,11 +576,13 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
       })),
       map,
       costmap,
+      basemap: basemapHandle,
       footprint,
       laser,
       cloud: cloudOverlay?.points ?? null,
       layers: {
         grid: paintLayers.grid,
+        basemap: paintLayers.basemap,
         map: paintLayers.map,
         costmap: paintLayers.costmap,
         path: paintLayers.path,
@@ -586,6 +615,7 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
     waypoints,
     selectedId,
     goal,
+    basemapHandle,
   ]);
   inputRef.current = input;
 
