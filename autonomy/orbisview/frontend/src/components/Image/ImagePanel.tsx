@@ -254,19 +254,17 @@ export function ImagePanel({ panelId }: PanelProps) {
           {active}
         </div>
       ) : null}
-      {active && env?.payload ? (
-        <canvas
-          ref={canvasRef}
-          className="image-canvas"
-          style={{ width: '100%', maxWidth: 960, height: 'auto', imageRendering: 'auto' }}
-        />
-      ) : (
-        <p className="muted">
-          {candidates.length === 0
-            ? 'Add an Image display in Channels, or wait for discovery'
-            : 'waiting for frames…'}
-        </p>
-      )}
+      <div className="image-panel-viewport">
+        {active && env?.payload ? (
+          <canvas ref={canvasRef} className="image-canvas" />
+        ) : (
+          <p className="muted">
+            {candidates.length === 0
+              ? 'Add an Image display in Channels, or wait for discovery'
+              : 'waiting for frames…'}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
