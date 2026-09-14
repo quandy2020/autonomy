@@ -68,6 +68,8 @@ class MockSource {
   uint64_t seq_explore_{0};
   uint64_t seq_nav_{0};
   uint64_t seq_map_task_{0};
+  uint64_t seq_semantic_{0};
+  uint64_t seq_floors_{0};
   uint64_t seq_twist_{0};
   uint64_t seq_chassis_{0};
   uint64_t seq_obstacles_{0};

@@ -29,6 +29,8 @@ constexpr char kDepthChannel[] = "/orbisview/mock/depth";
 constexpr char kExploreChannel[] = "/orbisview/mock/exploration";
 constexpr char kNavChannel[] = "/orbisview/mock/navigation";
 constexpr char kMappingChannel[] = "/orbisview/mock/mapping";
+constexpr char kSemanticZonesChannel[] = "/orbisview/mock/semantic_zones";
+constexpr char kFloorsChannel[] = "/orbisview/mock/floors";
 constexpr char kTwistChannel[] = "/orbisview/mock/twist";
 constexpr char kChassisChannel[] = "/orbisview/mock/chassis";
 constexpr char kObstaclesChannel[] = "/orbisview/mock/obstacles";
@@ -106,6 +108,29 @@ std::string BuildVectorMapJson() {
   return R"({"lanes":[{"id":"L1","points":[[-3,-2],[-1,-1],[1,0],[3,1]]},{"id":"L2","points":[[-3,2],[-1,1],[1,0.5],[3,0]]}],"keepouts":[{"id":"K1","polygon":[[0.5,0.5],[1.5,0.5],[1.5,1.5],[0.5,1.5]]}]})";
 }
 
+std::string BuildSemanticZonesJson() {
+  return R"({"zones":[)"
+         R"({"id":"z_keep","zone_type":"keepout","label":"禁行",)"
+         R"("polygon":[{"x":0.5,"y":0.5},{"x":1.5,"y":0.5},{"x":1.5,"y":1.5},{"x":0.5,"y":1.5}],)"
+         R"("fill_color":{"r":1,"g":0.2,"b":0.2,"a":1},"fill_opacity":0.35,"outline_width":1.5},)"
+         R"({"id":"z_room","zone_type":"room","label":"大厅",)"
+         R"("polygon":[{"x":-2,"y":-1},{"x":-0.5,"y":-1},{"x":-0.5,"y":1},{"x":-2,"y":1}],)"
+         R"("fill_color":{"r":0.2,"g":0.5,"b":1,"a":1},"fill_opacity":0.28,"outline_width":1.5},)"
+         R"({"id":"z_pass","zone_type":"passable","label":"通道",)"
+         R"("polygon":[{"x":-0.4,"y":-0.4},{"x":0.4,"y":-0.4},{"x":0.4,"y":0.4},{"x":-0.4,"y":0.4}],)"
+         R"("fill_opacity":0.3}]})";
+}
+
+std::string BuildFloorsJson() {
+  // No fetchable slam_image_path in mock — floors list + switch only.
+  return R"({"floors":[)"
+         R"({"id":"F1","name":"1F","level":1,"start_x":-10,"start_y":-10,)"
+         R"("x_grid_count":384,"y_grid_count":384,"resolution":0.05},)"
+         R"({"id":"F2","name":"2F","level":2,"start_x":-10,"start_y":-10,)"
+         R"("x_grid_count":384,"y_grid_count":384,"resolution":0.05}],)"
+         R"("active_floor_id":"F1"})";
+}
+
 }  // namespace
 
 std::vector<core::ChannelInfo> MockSource::Channels() const {
@@ -124,6 +149,9 @@ std::vector<core::ChannelInfo> MockSource::Channels() const {
       {kExploreChannel, kSchemaExploration, kSchemaExploration, true, true},
       {kNavChannel, kSchemaNavigation, kSchemaNavigation, true, true},
       {kMappingChannel, kSchemaMapping, kSchemaMapping, true, true},
+      {kSemanticZonesChannel, kSchemaSemanticZones, kSchemaSemanticZones, true,
+       true},
+      {kFloorsChannel, kSchemaFloors, kSchemaFloors, true, true},
       {kTwistChannel, kSchemaTwist2D, kSchemaTwist2D, true, true},
       {kChassisChannel, kSchemaChassis, kSchemaChassis, true, true},
       {kObstaclesChannel, kSchemaObstacles, kSchemaObstacles, true, true},
@@ -490,6 +518,11 @@ void MockSource::Loop() {
               << ",\"loop_closures\":" << (tick_ / 50) << '}';
       EmitJson(kMappingChannel, rendering::kSchemaMapping, "map",
                &seq_map_task_, mapping.str());
+
+      EmitJson(kSemanticZonesChannel, rendering::kSchemaSemanticZones, "map",
+               &seq_semantic_, BuildSemanticZonesJson());
+      EmitJson(kFloorsChannel, rendering::kSchemaFloors, "map", &seq_floors_,
+               BuildFloorsJson());
 
       std::vector<RoutePoint> route_copy;
       {

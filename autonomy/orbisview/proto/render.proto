@@ -173,6 +173,44 @@ message Mapping {
   uint32 keyframes = 2;
 }
 
+message SemanticZone {
+  string id = 1;
+  string zone_type = 2;
+  repeated Pose2D polygon = 3;
+  string label = 4;
+  float fill_r = 5;
+  float fill_g = 6;
+  float fill_b = 7;
+  float fill_a = 8;
+  float fill_opacity = 9;
+  float outline_r = 10;
+  float outline_g = 11;
+  float outline_b = 12;
+  float outline_a = 13;
+  float outline_width = 14;
+}
+
+message SemanticZoneArray {
+  repeated SemanticZone zones = 1;
+}
+
+message FloorInfo {
+  string id = 1;
+  string name = 2;
+  int32 level = 3;
+  string slam_image_path = 4;
+  double start_x = 5;
+  double start_y = 6;
+  int32 x_grid_count = 7;
+  int32 y_grid_count = 8;
+  double resolution = 9;
+}
+
+message FloorInfoArray {
+  repeated FloorInfo floors = 1;
+  string active_floor_id = 2;
+}
+
 message HmiStatus {
   string mode = 1;
   repeated string modes = 2;

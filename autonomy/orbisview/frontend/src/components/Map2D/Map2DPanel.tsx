@@ -15,7 +15,9 @@ import { wsClient } from '@/store/websocket/client';
 import { MapFloatToolbar } from '@/components/Map/MapFloatToolbar';
 import { MapInstrumentCluster } from '@/components/Map/MapInstrumentCluster';
 import { MapMappingHud } from '@/components/Map/MapMappingHud';
+import { MapFloorBar } from '@/components/Map/MapFloorBar';
 import { useStaticSlamStore } from '@/store/staticSlamStore';
+import { useIndoorMapStore } from '@/store/indoorMapStore';
 import {
   sharedStaticSlamCanvasCache,
   staticSlamCorners,
@@ -76,6 +78,7 @@ export function Map2DPanel() {
   const layers = useLayerStore();
   const followRobot = useLayerStore((s) => s.followRobot);
   const staticBasemap = useStaticSlamStore((s) => s.basemap);
+  const semanticZones = useIndoorMapStore((s) => s.zones);
   const [basemapHandle, setBasemapHandle] = useState<StaticSlamCanvasHandle | null>(null);
   const waypoints = useWaypointStore((s) => s.waypoints);
   const selectedId = useWaypointStore((s) => s.selectedId);
@@ -295,6 +298,7 @@ export function Map2DPanel() {
         basemap: paintLayers.basemap,
         map: paintLayers.map,
         costmap: paintLayers.costmap,
+        semantic: paintLayers.semantic,
         vectormap: paintLayers.vectormap,
         path: paintLayers.path,
         robot: paintLayers.robot,
@@ -335,6 +339,7 @@ export function Map2DPanel() {
       tf,
       obstacles,
       vectorMap,
+      semanticZones,
       prediction,
       goal,
       footprint,
@@ -379,6 +384,7 @@ export function Map2DPanel() {
     viewOffset,
     obstacles,
     vectorMap,
+    semanticZones,
     prediction,
     sketchPts,
     waypoints,
@@ -857,6 +863,7 @@ export function Map2DPanel() {
     <div className="map-viewport map-primary" ref={hostRef}>
       {anyStale ? <div className="stale-badge map-float-badge">map data stale</div> : null}
       <MapInstrumentCluster />
+      <MapFloorBar />
       <MapMappingHud />
       <MapFloatToolbar
         measureActive={mapTool === 'measure' && sketchPts.length > 0}

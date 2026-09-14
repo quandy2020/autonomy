@@ -13,6 +13,7 @@ import {
   NavigationPanel,
   MappingPanel,
 } from './Tasks/TaskPanels';
+import { IndoorMapPanel } from './Tasks/IndoorMapPanel';
 import { RobotStatusPanel } from './RobotStatus/RobotStatusPanel';
 import { TfTreePanel } from './RobotStatus/TfTreePanel';
 import { WaypointsPanel } from './Waypoints/WaypointsPanel';
@@ -79,6 +80,12 @@ export function registerBuiltinPanels(): void {
     component: ExplorationPanel,
   });
   registerPanel({ id: 'mapping', title: 'Mapping', category: 'planning', component: MappingPanel });
+  registerPanel({
+    id: 'indoor_map',
+    title: 'Indoor Map',
+    category: 'planning',
+    component: IndoorMapPanel,
+  });
   registerPanel({ id: 'pnc', title: 'PNC Monitor', category: 'planning', component: PncMonitorPanel });
 
   // 监控

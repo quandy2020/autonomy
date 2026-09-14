@@ -14,6 +14,8 @@ describe('render schemas', () => {
     expect(SCHEMAS.Exploration).toBe('orbisview.render.Exploration');
     expect(SCHEMAS.Navigation).toBe('orbisview.render.Navigation');
     expect(SCHEMAS.Mapping).toBe('orbisview.render.Mapping');
+    expect(SCHEMAS.SemanticZoneArray).toBe('orbisview.render.SemanticZoneArray');
+    expect(SCHEMAS.FloorInfoArray).toBe('orbisview.render.FloorInfoArray');
     expect(SCHEMAS.Twist2D).toBe('orbisview.render.Twist2D');
     expect(SCHEMAS.ChassisState).toBe('orbisview.render.ChassisState');
     expect(SCHEMAS.ObstacleArray).toBe('orbisview.render.ObstacleArray');
@@ -68,8 +70,9 @@ describe('panel registry', () => {
 describe('layout persist keys', () => {
   it('uses versioned localStorage names', () => {
     expect('orbisview-layout-v11').toMatch(/^orbisview-layout-v\d+$/);
-    expect('orbisview-layers-v6').toMatch(/^orbisview-layers-v\d+$/);
+    expect('orbisview-layers-v7').toMatch(/^orbisview-layers-v\d+$/);
     expect('orbisview-static-slam-v1').toMatch(/^orbisview-static-slam-v\d+$/);
+    expect('orbisview-indoor-map-v1').toMatch(/^orbisview-indoor-map-v\d+$/);
   });
 
   it('uses versioned view3d opts key', () => {

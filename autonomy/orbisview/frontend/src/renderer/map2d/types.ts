@@ -34,6 +34,7 @@ export interface LayerFlags {
   basemap?: boolean;
   map: boolean;
   costmap: boolean;
+  semantic?: boolean;
   vectormap: boolean;
   path: boolean;
   robot: boolean;

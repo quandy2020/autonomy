@@ -198,6 +198,7 @@ export type LayerKey =
   | 'basemap'
   | 'map'
   | 'costmap'
+  | 'semantic'
   | 'vectormap'
   | 'path'
   | 'robot'
@@ -223,6 +224,7 @@ export const useLayerStore = create<LayerState>()(
       basemap: true,
       map: true,
       costmap: true,
+      semantic: true,
       vectormap: true,
       path: true,
       robot: true,
@@ -239,13 +241,14 @@ export const useLayerStore = create<LayerState>()(
       setFollowRobot: (v) => set({ followRobot: v }),
     }),
     {
-      name: 'orbisview-layers-v6',
+      name: 'orbisview-layers-v7',
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<LayerState>;
         return {
           ...current,
           ...p,
           basemap: p.basemap ?? true,
+          semantic: p.semantic ?? true,
         };
       },
     },

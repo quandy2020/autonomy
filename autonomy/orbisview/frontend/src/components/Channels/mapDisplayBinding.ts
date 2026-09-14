@@ -23,7 +23,9 @@ export type MapDisplayRole =
   | 'twist'
   | 'chassis'
   | 'navigation'
-  | 'range';
+  | 'range'
+  | 'semantic'
+  | 'floors';
 
 const ROLE_LAYER: Partial<Record<MapDisplayRole, LayerKey>> = {
   pose: 'robot',
@@ -38,6 +40,7 @@ const ROLE_LAYER: Partial<Record<MapDisplayRole, LayerKey>> = {
   vectormap: 'vectormap',
   pointcloud: 'pointcloud',
   range: 'laser',
+  semantic: 'semantic',
 };
 
 const ROLE_TYPE_IDS: Record<MapDisplayRole, string[]> = {
@@ -67,6 +70,8 @@ const ROLE_TYPE_IDS: Record<MapDisplayRole, string[]> = {
   chassis: ['vehicle_msgs/RobotState', 'status_msgs/Status'],
   navigation: ['nav_msgs/Goals', 'nav_msgs/Path'],
   range: ['sensor_msgs/Range'],
+  semantic: ['strata_msgs/SemanticZoneArray'],
+  floors: ['strata_msgs/FloorInfoArray'],
 };
 
 const ROLE_FALLBACK_SCHEMAS: Record<MapDisplayRole, string[]> = {
@@ -85,6 +90,8 @@ const ROLE_FALLBACK_SCHEMAS: Record<MapDisplayRole, string[]> = {
   chassis: [SCHEMAS.ChassisState],
   navigation: [SCHEMAS.Navigation],
   range: [],
+  semantic: [SCHEMAS.SemanticZoneArray],
+  floors: [SCHEMAS.FloorInfoArray],
 };
 
 function defForDisplay(d: ChannelDisplay): DisplayTypeDef {

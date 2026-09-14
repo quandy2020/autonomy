@@ -1,6 +1,8 @@
 import { makeWorldToScreen } from './coords';
 import { drawOccupancyGrid } from './drawOccupancy';
 import { drawFootprint, resolveFootprintPoints } from './drawFootprint';
+import { drawSemanticZones } from './drawSemantic';
+import type { SemanticZoneNorm } from './semanticZones';
 import type {
   DefaultFootprint,
   LayerFlags,
@@ -64,6 +66,7 @@ export interface Map2DSceneInput {
     lanes?: { id: string; points: number[][] }[];
     keepouts?: { id: string; polygon: number[][] }[];
   } | null;
+  semanticZones?: SemanticZoneNorm[] | null;
   prediction: {
     obstacles?: { id: number; trajectory?: { x: number; y: number }[] }[];
   } | null;
@@ -211,6 +214,7 @@ export function paintMap2DScene(
     tf,
     obstacles,
     vectorMap,
+    semanticZones = null,
     prediction,
     goal,
     footprint,
@@ -272,6 +276,10 @@ export function paintMap2DScene(
   }
   if (layers.costmap && costmap) {
     drawOccupancyGrid(ctx, costmap, toScreen, scale, 'costmap');
+  }
+
+  if ((layers.semantic ?? true) && semanticZones?.length) {
+    drawSemanticZones(ctx, semanticZones, toScreen, scale);
   }
 
   if (layers.vectormap && vectorMap) {

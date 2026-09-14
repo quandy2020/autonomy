@@ -7,6 +7,7 @@ import { updateLaser } from './layers/laser';
 import { updateOccupancyPlane } from './layers/occupancy';
 import { updatePathAndGoal } from './layers/path';
 import { updateRobot } from './layers/robot';
+import { updateSemanticZones } from './layers/semantic';
 import { updateWaypoints } from './layers/waypoints';
 
 export function syncView3DScene(ctx: View3DContext, input: View3DSceneInput): void {
@@ -36,6 +37,7 @@ export function syncView3DScene(ctx: View3DContext, input: View3DSceneInput): vo
     visible: layers.costmap,
     mode: 'costmap',
   });
+  updateSemanticZones(ctx.semanticGroup, input.semanticZones, layers.semantic ?? true);
   updateLaser(ctx, input.pose, input.laser, opts.laserHeight, layers.laser, {
     color: opts.laserColor,
     size: opts.laserSize,

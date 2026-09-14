@@ -30,12 +30,15 @@ export const PANEL_ICONS: Record<string, IconName> = {
   exploration: 'explore',
   navigation: 'nav',
   mapping: 'mapping',
+  indoor_map: 'layers',
 };
 
 export const LAYER_ICONS: Record<string, IconName> = {
   grid: 'grid',
   map: 'map2d',
   costmap: 'costmap',
+  basemap: 'mapping',
+  semantic: 'layers',
   vectormap: 'route',
   path: 'path',
   robot: 'robot',

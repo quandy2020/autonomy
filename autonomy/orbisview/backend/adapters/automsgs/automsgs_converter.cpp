@@ -24,6 +24,8 @@
 #include <automsgs/msgs/sensor_msgs/image.pb.h>
 #include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/strata_msgs/floor_info.pb.h>
+#include <automsgs/msgs/strata_msgs/semantic_zone.pb.h>
 #include <automsgs/msgs/tf2_msgs/tf_message.pb.h>
 #include <automsgs/msgs/vehicle_msgs/robot_state.pb.h>
 
@@ -38,6 +40,7 @@ namespace geometry_msgs = automsgs::msgs::geometry_msgs;
 namespace map_msgs = automsgs::msgs::map_msgs;
 namespace nav_msgs = automsgs::msgs::nav_msgs;
 namespace sensor_msgs = automsgs::msgs::sensor_msgs;
+namespace strata_msgs = automsgs::msgs::strata_msgs;
 namespace tf2_msgs = automsgs::msgs::tf2_msgs;
 namespace vehicle_msgs = automsgs::msgs::vehicle_msgs;
 
@@ -418,9 +421,69 @@ bool ConvertRobotState(const std::string& bytes, core::StreamEnvelope* out) {
   return true;
 }
 
-}  // namespace
+void AppendColorJson(std::ostringstream& oss, const automsgs::msgs::std_msgs::ColorRGBA& c) {
+  oss << "{\"r\":" << c.r() << ",\"g\":" << c.g() << ",\"b\":" << c.b()
+      << ",\"a\":" << c.a() << '}';
+}
 
-std::string SuggestedRenderSchema(const std::string& msg_type) {
+bool ConvertSemanticZoneArray(const std::string& bytes, core::StreamEnvelope* out) {
+  strata_msgs::SemanticZoneArray msg;
+  if (!msg.ParseFromString(bytes)) return false;
+  out->frame_id = msg.header().frame_id().empty() ? "map" : msg.header().frame_id();
+  std::ostringstream oss;
+  oss << "{\"zones\":[";
+  for (int i = 0; i < msg.zones_size(); ++i) {
+    if (i) oss << ',';
+    const auto& z = msg.zones(i);
+    oss << "{\"id\":" << core::JsonEscape(z.id())
+        << ",\"zone_type\":" << core::JsonEscape(z.zone_type())
+        << ",\"label\":" << core::JsonEscape(z.label())
+        << ",\"fill_opacity\":" << z.fill_opacity()
+        << ",\"outline_width\":" << z.outline_width()
+        << ",\"fill_color\":";
+    AppendColorJson(oss, z.fill_color());
+    oss << ",\"outline_color\":";
+    AppendColorJson(oss, z.outline_color());
+    oss << ",\"polygon\":[";
+    for (int j = 0; j < z.polygon_size(); ++j) {
+      if (j) oss << ',';
+      const auto& p = z.polygon(j);
+      oss << "{\"x\":" << p.x() << ",\"y\":" << p.y() << '}';
+    }
+    oss << "]}";
+  }
+  oss << "]}";
+  out->schema = rendering::kSchemaSemanticZones;
+  SetJsonPayload(out, oss.str());
+  return true;
+}
+
+bool ConvertFloorInfoArray(const std::string& bytes, core::StreamEnvelope* out) {
+  strata_msgs::FloorInfoArray msg;
+  if (!msg.ParseFromString(bytes)) return false;
+  out->frame_id = msg.header().frame_id().empty() ? "map" : msg.header().frame_id();
+  std::ostringstream oss;
+  oss << "{\"active_floor_id\":" << core::JsonEscape(msg.active_floor_id())
+      << ",\"floors\":[";
+  for (int i = 0; i < msg.floors_size(); ++i) {
+    if (i) oss << ',';
+    const auto& f = msg.floors(i);
+    oss << "{\"id\":" << core::JsonEscape(f.id())
+        << ",\"name\":" << core::JsonEscape(f.name())
+        << ",\"level\":" << f.level()
+        << ",\"slam_image_path\":" << core::JsonEscape(f.slam_image_path())
+        << ",\"start_x\":" << f.start_x() << ",\"start_y\":" << f.start_y()
+        << ",\"x_grid_count\":" << f.x_grid_count()
+        << ",\"y_grid_count\":" << f.y_grid_count()
+        << ",\"resolution\":" << f.resolution() << '}';
+  }
+  oss << "]}";
+  out->schema = rendering::kSchemaFloors;
+  SetJsonPayload(out, oss.str());
+  return true;
+}
+
+}  // namespace
   if (TypeIs(msg_type, "automsgs.msgs.geometry_msgs.Pose2D") ||
       TypeIs(msg_type, "automsgs.msgs.geometry_msgs.Pose2DStamped") ||
       TypeIs(msg_type, "automsgs.msgs.geometry_msgs.PoseStamped") ||
@@ -457,6 +520,12 @@ std::string SuggestedRenderSchema(const std::string& msg_type) {
   }
   if (TypeIs(msg_type, "automsgs.msgs.vehicle_msgs.RobotState")) {
     return rendering::kSchemaChassis;
+  }
+  if (TypeIs(msg_type, "automsgs.msgs.strata_msgs.SemanticZoneArray")) {
+    return rendering::kSchemaSemanticZones;
+  }
+  if (TypeIs(msg_type, "automsgs.msgs.strata_msgs.FloorInfoArray")) {
+    return rendering::kSchemaFloors;
   }
   // Obstacle / Prediction / Planning: no stable automsgs yet — documented gap.
   return {};
@@ -523,6 +592,12 @@ bool ConvertAutomsgsRaw(const std::string& channel, const std::string& msg_type,
   }
   if (TypeIs(msg_type, "automsgs.msgs.vehicle_msgs.RobotState")) {
     return ConvertRobotState(bytes, out);
+  }
+  if (TypeIs(msg_type, "automsgs.msgs.strata_msgs.SemanticZoneArray")) {
+    return ConvertSemanticZoneArray(bytes, out);
+  }
+  if (TypeIs(msg_type, "automsgs.msgs.strata_msgs.FloorInfoArray")) {
+    return ConvertFloorInfoArray(bytes, out);
   }
   return false;
 }
