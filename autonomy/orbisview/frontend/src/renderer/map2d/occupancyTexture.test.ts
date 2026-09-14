@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   computeTextureSize,
   fillOccupancyRgba,
+  occupancyCacheKey,
   occupancyCellRgba,
   OCCUPANCY_MAX_EDGE,
 } from './occupancyTexture';
@@ -65,5 +66,27 @@ describe('fillOccupancyRgba', () => {
     fillOccupancyRgba(out, grid, 'map', 2, 1, 1);
     expect(out[3]).toBe(0);
     expect(out[7]).toBeGreaterThan(180);
+  });
+});
+
+describe('occupancyCacheKey', () => {
+  const base = (): OccupancyGridJson => ({
+    resolution: 0.05,
+    width: 2,
+    height: 1,
+    origin: { x: 1, y: 2 },
+    data: [0, 100],
+  });
+
+  it('changes when mode changes', () => {
+    const g = base();
+    expect(occupancyCacheKey(g, 'map')).not.toBe(occupancyCacheKey(g, 'costmap'));
+  });
+
+  it('changes when a cell value changes', () => {
+    const g = base();
+    const a = occupancyCacheKey(g, 'map');
+    g.data[1] = 50;
+    expect(occupancyCacheKey(g, 'map')).not.toBe(a);
   });
 });
