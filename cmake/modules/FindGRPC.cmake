@@ -11,16 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# @file FindGRPC.cmake
+# @brief Find-module for gRPC C++ and the protoc plugin.
 #
-# Locate and configure the gRPC library
-#
-# Adds the following targets:
-#
-#  gRPC::grpc - gRPC library
-#  gRPC::grpc++ - gRPC C++ library
-#  gRPC::grpc++_reflection - gRPC C++ reflection library
-#  gRPC::grpc_cpp_plugin - C++ generator plugin for Protocol Buffers
-#
+# @creates gRPC::grpc gRPC::grpc++ gRPC::grpc++_reflection gRPC::grpc_cpp_plugin
 
 #
 # Generates C++ sources from the .proto files

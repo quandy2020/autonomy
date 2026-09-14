@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# @file FindGMock.cmake
+# @brief Find-module for Google Mock / Google Test (unit tests).
+#
+# @var GMock_FOUND GMOCK_INCLUDE_DIRS GMOCK_LIBRARIES GTEST_LIBRARIES
+
 if(NOT GMock_FOUND)
   find_path(GMOCK_INCLUDE_DIRS gmock/gmock.h
     HINTS

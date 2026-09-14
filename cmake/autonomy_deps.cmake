@@ -1,0 +1,366 @@
+# @file autonomy_deps.cmake
+# @brief Third-party package discovery (find_package groups) and link helpers.
+#
+# @par Main APIs
+#   - autonomy_collect_required_package_groups()
+#   - autonomy_find_dependencies() (macro; find results stay visible to link_*)
+#   - autonomy_link_core() / autonomy_link_feature()
+#
+# @par FEATURES keywords (autonomy_link_feature)
+#   pcl, slam, bt, grpc, inference, osqp, cairo, boost_iostreams,
+#   ipopt, foxglove, prometheus, lua
+
+include_guard(GLOBAL)
+
+# cmake -P / older hosts may not have CMP0057 NEW by default.
+if(POLICY CMP0057)
+  cmake_policy(SET CMP0057 NEW)
+endif()
+
+if(NOT DEFINED AUTONOMY_BUILD_COMMON_OSQP)
+  option(AUTONOMY_BUILD_COMMON_OSQP
+    "Build the OSQP-backed common MPC library" ON)
+endif()
+
+# @brief Derive required package-group names from @c AUTONOMY_ENABLED_MODULES
+#        and product options.
+# @param _out_variable Output variable name; value is a list of groups
+#        (core, map, grpc, ...).
+function(autonomy_collect_required_package_groups _out_variable)
+  set(_groups "")
+  if("common" IN_LIST AUTONOMY_ENABLED_MODULES)
+    list(APPEND _groups core common_math)
+    if(AUTONOMY_BUILD_COMMON_OSQP)
+      list(APPEND _groups osqp)
+    endif()
+  endif()
+  if("map" IN_LIST AUTONOMY_ENABLED_MODULES
+      OR "localization" IN_LIST AUTONOMY_ENABLED_MODULES
+      OR "perception" IN_LIST AUTONOMY_ENABLED_MODULES
+      OR ((BUILD_ONNXRUNTIME OR BUILD_TENSORRT)
+          AND "common" IN_LIST AUTONOMY_ENABLED_MODULES))
+    list(APPEND _groups common_vision)
+  endif()
+  if("map" IN_LIST AUTONOMY_ENABLED_MODULES)
+    list(APPEND _groups map)
+  endif()
+  if("control" IN_LIST AUTONOMY_ENABLED_MODULES)
+    list(APPEND _groups control)
+  endif()
+  if("task" IN_LIST AUTONOMY_ENABLED_MODULES)
+    list(APPEND _groups task)
+  endif()
+  if("localization" IN_LIST AUTONOMY_ENABLED_MODULES)
+    list(APPEND _groups localization)
+  endif()
+  if(BUILD_GRPC AND "bridge" IN_LIST AUTONOMY_ENABLED_MODULES)
+    list(APPEND _groups grpc)
+  endif()
+  if(BUILD_AUTOVIZ)
+    list(APPEND _groups autoviz)
+  endif()
+  if(BUILD_PROMETHEUS AND "system" IN_LIST AUTONOMY_ENABLED_MODULES)
+    list(APPEND _groups prometheus)
+  endif()
+  if(BUILD_SHERPA_ONNX AND "audio" IN_LIST AUTONOMY_ENABLED_MODULES)
+    list(APPEND _groups sherpa_onnx)
+  endif()
+  if((BUILD_ONNXRUNTIME OR BUILD_TENSORRT)
+      AND ("common" IN_LIST AUTONOMY_ENABLED_MODULES
+           OR "perception" IN_LIST AUTONOMY_ENABLED_MODULES))
+    list(APPEND _groups inference)
+  endif()
+  if("visualization" IN_LIST AUTONOMY_ENABLED_MODULES)
+    list(APPEND _groups foxglove)
+  endif()
+  list(REMOVE_DUPLICATES _groups)
+  set(${_out_variable} "${_groups}" PARENT_SCOPE)
+endfunction()
+
+# @brief Batch find_package by package group (includes ordering such as Qt6
+#        before PCL).
+# @note Implemented as a macro so Protobuf, PCL, etc. remain visible to callers.
+macro(autonomy_find_dependencies)
+  autonomy_collect_required_package_groups(_required_groups)
+
+  # PCL → VTK::GUISupportQt pulls Qt5 and claims versionless Qt::Core. Find Qt6
+  # first so Qt::* aliases belong to Qt6 (otherwise Qt6CoreVersionlessTargets fails).
+  if("autoviz" IN_LIST _required_groups)
+    find_package(Qt6 REQUIRED COMPONENTS
+      Core Gui Widgets OpenGLWidgets OpenGL Xml Svg Network)
+    list(REMOVE_ITEM _required_groups autoviz)
+  endif()
+
+  foreach(_group IN LISTS _required_groups)
+    if(_group STREQUAL "core")
+      find_package(Eigen3 REQUIRED CONFIG)
+      find_package(nlohmann_json REQUIRED)
+      set(GFLAGS_USE_TARGET_NAMESPACE TRUE)
+      find_package(gflags CONFIG REQUIRED)
+      # CeresConfig expects a bare `gflags` target (not only gflags::gflags).
+      if(TARGET gflags::gflags AND NOT TARGET gflags)
+        add_library(gflags INTERFACE IMPORTED)
+        set_property(TARGET gflags PROPERTY
+          INTERFACE_LINK_LIBRARIES gflags::gflags)
+      endif()
+      # Upstream exports package name `glog` (not `Glog`).
+      find_package(glog CONFIG REQUIRED)
+      if(TARGET glog::glog AND NOT TARGET glog)
+        add_library(glog ALIAS glog::glog)
+      endif()
+      include(EnsureProtobuf319)
+      find_package(yaml-cpp REQUIRED)
+      # Ubuntu/debian export the target as `yaml-cpp`; newer packages use
+      # `yaml-cpp::yaml-cpp`. Normalize so link helpers can use one name.
+      if(TARGET yaml-cpp AND NOT TARGET yaml-cpp::yaml-cpp)
+        add_library(yaml-cpp::yaml-cpp ALIAS yaml-cpp)
+      endif()
+      find_package(Threads REQUIRED)
+    elseif(_group STREQUAL "common_math")
+      find_package(Ceres REQUIRED CONFIG)
+    elseif(_group STREQUAL "common_vision")
+      find_package(OpenCV REQUIRED)
+      if(NOT TARGET autonomy_opencv)
+        add_library(autonomy_opencv INTERFACE)
+        target_include_directories(autonomy_opencv SYSTEM INTERFACE
+          $<BUILD_INTERFACE:${OpenCV_INCLUDE_DIRS}>)
+        target_link_libraries(autonomy_opencv INTERFACE ${OpenCV_LIBS})
+        add_library(autonomy::opencv ALIAS autonomy_opencv)
+        set_property(GLOBAL APPEND
+          PROPERTY AUTONOMY_MODULE_TARGETS autonomy_opencv)
+      endif()
+    elseif(_group STREQUAL "osqp")
+      find_package(OSQP REQUIRED)
+    elseif(_group STREQUAL "map")
+      find_package(PCL REQUIRED COMPONENTS
+        common features filters io kdtree segmentation surface)
+      find_package(TBB REQUIRED)
+      find_package(OpenMP QUIET)
+    elseif(_group STREQUAL "control")
+      find_package(Ipopt QUIET)
+    elseif(_group STREQUAL "task")
+      find_package(behaviortree_cpp REQUIRED)
+    elseif(_group STREQUAL "localization")
+      find_package(LuaGoogle REQUIRED)
+      find_package(FBow REQUIRED)
+      find_package(G2o REQUIRED)
+      find_package(SQLite3 REQUIRED)
+      find_package(Boost REQUIRED COMPONENTS iostreams)
+      find_package(PkgConfig REQUIRED)
+      pkg_check_modules(CAIRO REQUIRED IMPORTED_TARGET cairo)
+    elseif(_group STREQUAL "grpc")
+      find_package(gRPC REQUIRED)
+    elseif(_group STREQUAL "prometheus")
+      find_package(prometheus-cpp CONFIG REQUIRED)
+    elseif(_group STREQUAL "sherpa_onnx")
+      find_package(SherpaOnnx QUIET)
+      if(SherpaOnnx_FOUND)
+        message(STATUS "SherpaOnnx found: ${SherpaOnnx_INCLUDE_DIRS}")
+      else()
+        message(STATUS "SherpaOnnx not found; audio ASR uses stub engine")
+      endif()
+    elseif(_group STREQUAL "inference")
+      if(BUILD_ONNXRUNTIME)
+        find_package(OnnxRuntime QUIET)
+      endif()
+      if(BUILD_TENSORRT)
+        find_package(TensorRT QUIET)
+        find_package(CUDAToolkit QUIET)
+        if(TensorRT_FOUND)
+          message(STATUS "TensorRT found: ${TensorRT_INCLUDE_DIRS}")
+        else()
+          message(STATUS "TensorRT not found; tensorrt backend stubbed")
+        endif()
+      endif()
+    elseif(_group STREQUAL "foxglove")
+      find_package(foxglove-sdk CONFIG QUIET)
+      if(foxglove-sdk_FOUND)
+        find_package(ZLIB REQUIRED)
+      endif()
+    else()
+      message(FATAL_ERROR
+        "autonomy_find_dependencies: unknown package group '${_group}'")
+    endif()
+  endforeach()
+endmacro()
+
+# @brief Link the shared "core" dependency surface onto a domain library target
+#        (Eigen, Protobuf, autolink, yaml-cpp, ...).
+# @param target Existing CMake target name.
+function(autonomy_link_core target)
+  if(NOT DEFINED AUTONOMY_WORKSPACE_ROOT)
+    set(AUTONOMY_WORKSPACE_ROOT "${PROJECT_SOURCE_DIR}")
+  endif()
+  # Minimal shared surface used by nearly every module.
+  target_include_directories(${target} BEFORE PUBLIC
+    $<BUILD_INTERFACE:${AUTONOMY_WORKSPACE_ROOT}/autolink>
+    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>
+    $<BUILD_INTERFACE:${AUTONOMY_WORKSPACE_ROOT}>
+    $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/automsgs/proto/gen>
+    $<INSTALL_INTERFACE:include>
+  )
+  # Skip empty entries: CMake treats "" as CMAKE_CURRENT_SOURCE_DIR, which then
+  # breaks install(EXPORT) ("prefixed in the source directory").
+  set(_core_sys_includes "")
+  foreach(_inc IN LISTS
+      Protobuf_INCLUDE_DIRS EIGEN3_INCLUDE_DIR CERES_INCLUDE_DIRS
+      OpenCV_INCLUDE_DIRS)
+    if(_inc)
+      list(APPEND _core_sys_includes "${_inc}")
+    endif()
+  endforeach()
+  if(_core_sys_includes)
+    list(REMOVE_DUPLICATES _core_sys_includes)
+    target_include_directories(${target} SYSTEM PUBLIC ${_core_sys_includes})
+  endif()
+  unset(_core_sys_includes)
+
+  set(_core_libs
+    protobuf::libprotobuf
+    automsgs
+    yaml-cpp::yaml-cpp
+    gflags::gflags
+    autolink
+    Threads::Threads
+    nlohmann_json::nlohmann_json
+    TBB::tbb)
+  if(TARGET Eigen3::Eigen)
+    list(APPEND _core_libs Eigen3::Eigen)
+  elseif(EIGEN3_LIBRARIES)
+    list(APPEND _core_libs ${EIGEN3_LIBRARIES})
+  endif()
+  if(TARGET Ceres::ceres)
+    list(APPEND _core_libs Ceres::ceres)
+  elseif(CERES_LIBRARIES)
+    list(APPEND _core_libs ${CERES_LIBRARIES})
+  endif()
+  if(TARGET autonomy_opencv)
+    list(APPEND _core_libs autonomy_opencv)
+  elseif(OpenCV_LIBS)
+    list(APPEND _core_libs ${OpenCV_LIBS})
+  endif()
+  if(TARGET glog::glog)
+    list(APPEND _core_libs glog::glog)
+  elseif(TARGET glog)
+    list(APPEND _core_libs glog)
+  endif()
+  target_link_libraries(${target} PUBLIC ${_core_libs})
+  unset(_core_libs)
+endfunction()
+
+# @brief Link optional dependencies from a FEATURES list (PCL, SLAM, gRPC,
+#        inference backends, ...).
+# @param target Target name.
+# @param ... FEATURES strings (see file-level @par FEATURES).
+function(autonomy_link_feature target)
+  foreach(_feat IN LISTS ARGN)
+    string(TOLOWER "${_feat}" _feat)
+    if(_feat STREQUAL "pcl")
+      if(PCL_INCLUDE_DIRS)
+        target_include_directories(${target} SYSTEM PUBLIC ${PCL_INCLUDE_DIRS})
+      endif()
+      target_link_libraries(${target} PUBLIC ${PCL_LIBRARIES})
+      if(PCL_DEFINITIONS)
+        target_compile_definitions(${target} PUBLIC ${PCL_DEFINITIONS})
+      endif()
+      if(OpenMP_CXX_FOUND)
+        target_compile_definitions(${target} PUBLIC GRID_MAP_PCL_OPENMP_FOUND=1)
+        target_link_libraries(${target} PUBLIC OpenMP::OpenMP_CXX)
+      endif()
+    elseif(_feat STREQUAL "slam")
+      if(SQLite3_INCLUDE_DIRS)
+        target_include_directories(${target} SYSTEM PUBLIC ${SQLite3_INCLUDE_DIRS})
+      endif()
+      target_link_libraries(${target} PUBLIC
+        FBow::fbow
+        g2o::core g2o::stuff
+        g2o::types_sba g2o::types_sim3
+        g2o::solver_dense g2o::solver_eigen
+        ${SQLite3_LIBRARIES})
+    elseif(_feat STREQUAL "bt")
+      if(TARGET BT::behaviortree_cpp)
+        target_link_libraries(${target} PUBLIC BT::behaviortree_cpp)
+      elseif(TARGET behaviortree_cpp::behaviortree_cpp)
+        target_link_libraries(${target} PUBLIC behaviortree_cpp::behaviortree_cpp)
+      else()
+        message(FATAL_ERROR "behaviortree_cpp target not found")
+      endif()
+    elseif(_feat STREQUAL "grpc")
+      if(BUILD_GRPC)
+        target_link_libraries(${target} PUBLIC grpc++ grpc)
+      endif()
+    elseif(_feat STREQUAL "inference")
+      if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
+        target_compile_definitions(${target} PUBLIC AUTONOMY_HAS_ONNXRUNTIME)
+        if(OnnxRuntime_INCLUDE_DIRS)
+          target_include_directories(${target} SYSTEM PUBLIC
+            ${OnnxRuntime_INCLUDE_DIRS})
+        endif()
+        target_link_libraries(${target} PUBLIC ${OnnxRuntime_LIBRARIES})
+      endif()
+      if(BUILD_TENSORRT AND TensorRT_FOUND)
+        target_compile_definitions(${target} PUBLIC AUTONOMY_HAS_TENSORRT)
+        if(TensorRT_NVONNXPARSER_LIBRARY)
+          target_compile_definitions(${target} PUBLIC
+            AUTONOMY_HAS_TENSORRT_ONNX_PARSER)
+        endif()
+        if(TensorRT_INCLUDE_DIRS)
+          target_include_directories(${target} SYSTEM PUBLIC
+            ${TensorRT_INCLUDE_DIRS})
+        endif()
+        target_link_libraries(${target} PUBLIC ${TensorRT_LIBRARIES})
+        if(TARGET CUDA::cudart)
+          target_link_libraries(${target} PUBLIC CUDA::cudart)
+        endif()
+      endif()
+    elseif(_feat STREQUAL "osqp")
+      if(TARGET OSQP::OSQP)
+        target_link_libraries(${target} PUBLIC OSQP::OSQP)
+      else()
+        if(OSQP_INCLUDE_DIRS)
+          target_include_directories(${target} SYSTEM PUBLIC
+            "${OSQP_INCLUDE_DIRS}")
+        endif()
+        target_link_libraries(${target} PUBLIC ${OSQP_LIBRARIES})
+      endif()
+    elseif(_feat STREQUAL "cairo")
+      target_link_libraries(${target} PUBLIC PkgConfig::CAIRO)
+    elseif(_feat STREQUAL "boost_iostreams")
+      target_link_libraries(${target} PUBLIC Boost::iostreams)
+    elseif(_feat STREQUAL "ipopt")
+      if(Ipopt_FOUND)
+        if(IPOPT_INCLUDE_DIRS)
+          target_include_directories(${target} SYSTEM PUBLIC
+            ${IPOPT_INCLUDE_DIRS})
+        endif()
+        target_link_libraries(${target} PUBLIC ${IPOPT_LIBRARIES})
+      endif()
+    elseif(_feat STREQUAL "foxglove")
+      if(foxglove-sdk_FOUND)
+        target_link_libraries(${target} PUBLIC
+          foxglove-sdk::foxglove_cpp_shared ZLIB::ZLIB)
+        if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+          get_target_property(_viz_srcs ${target} SOURCES)
+          if(_viz_srcs)
+            set_source_files_properties(${_viz_srcs} PROPERTIES
+              COMPILE_OPTIONS "-Wno-error=maybe-uninitialized")
+          endif()
+        endif()
+      endif()
+    elseif(_feat STREQUAL "prometheus")
+      if(BUILD_PROMETHEUS)
+        target_compile_definitions(${target} PRIVATE USE_PROMETHEUS=1)
+        target_link_libraries(${target} PRIVATE
+          prometheus-cpp-core prometheus-cpp-pull)
+      endif()
+    elseif(_feat STREQUAL "lua")
+      if(NOT LUA_INCLUDE_DIR OR NOT LUA_LIBRARIES)
+        message(FATAL_ERROR "FEATURES lua requires LuaGoogle (find_package)")
+      endif()
+      target_include_directories(${target} SYSTEM PUBLIC "${LUA_INCLUDE_DIR}")
+      target_link_libraries(${target} PUBLIC ${LUA_LIBRARIES})
+    else()
+      message(FATAL_ERROR "autonomy_link_feature: unknown '${_feat}'")
+    endif()
+  endforeach()
+endfunction()

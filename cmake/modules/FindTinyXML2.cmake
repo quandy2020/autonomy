@@ -1,6 +1,10 @@
 # Copyright 2025 The Openbot Authors (duyongquan)
 #
-# Find TinyXML2 library (libtinyxml2-dev on Debian/Ubuntu).
+# @file FindTinyXML2.cmake
+# @brief Find-module for TinyXML2 (Debian/Ubuntu: libtinyxml2-dev).
+#
+# @var TinyXML2_FOUND TinyXML2_INCLUDE_DIRS TinyXML2_LIBRARIES
+# @creates TinyXML2::TinyXML2
 
 find_path(TINYXML2_INCLUDE_DIR NAMES tinyxml2.h)
 find_library(TINYXML2_LIBRARY NAMES tinyxml2)

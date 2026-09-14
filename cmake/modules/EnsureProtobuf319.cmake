@@ -1,10 +1,13 @@
-# Resolve Protobuf for Autonomy / automsgs / autoviz.
+# @file EnsureProtobuf319.cmake
+# @brief Resolve and pin Protobuf + protoc for Autonomy / automsgs / autoviz.
 #
-# Linux Docker (default): pin to Protobuf 3.19.x under /usr/local so gRPC /
-# torch CMAKE_PREFIX_PATH cannot mix headers with protoc.
+# @par Linux Docker
+#   Prefer Protobuf 3.19.x under /usr/local so torch's CMAKE_PREFIX_PATH cannot
+#   mix headers with /usr/local/bin/protoc.
+# @par macOS / other hosts
+#   Without a 3.19 pin, use Homebrew or system ProtobufConfig.cmake.
 #
-# macOS / Homebrew (and other hosts without the pin): use the system or brew
-# ProtobufConfig.cmake (e.g. /opt/homebrew) without requiring 3.19.x.
+# @var Protobuf_VERSION, Protobuf_PROTOC_EXECUTABLE, etc. from find_package.
 
 if(AUTONOMY_PROTOBUF319_CONFIGURED)
   return()
@@ -13,6 +16,7 @@ set(AUTONOMY_PROTOBUF319_CONFIGURED TRUE)
 
 # Docker NVIDIA images export CMAKE_PREFIX_PATH=<venv>/site-packages/torch, which
 # makes FindProtobuf pick torch/include while protoc stays at /usr/local/bin.
+# @brief Strip torch/site-packages entries from CMAKE_PREFIX_PATH and related vars.
 function(_autonomy_sanitize_cmake_prefix_path)
   foreach(_var IN ITEMS CMAKE_PREFIX_PATH CMAKE_APPLE_FRAMEWORK_PREFIX)
     if(NOT ${_var})
@@ -29,6 +33,8 @@ function(_autonomy_sanitize_cmake_prefix_path)
   endforeach()
 endfunction()
 
+# @param prefix Install prefix; sets _autonomy_protobuf_has_config_result in
+#        parent scope.
 function(_autonomy_protobuf_has_config prefix)
   if(EXISTS "${prefix}/lib/cmake/protobuf/protobuf-config.cmake"
       OR EXISTS "${prefix}/lib/cmake/protobuf/ProtobufConfig.cmake")
@@ -252,8 +258,8 @@ if(NOT Protobuf_LIBRARIES AND NOT TARGET protobuf::libprotobuf)
     "On Linux Docker: bash src/autonomy/docker/install/install_protobuf.sh")
 endif()
 
-# Call from subprojects instead of find_package(Protobuf) so torch cannot
-# overwrite include dirs while /usr/local/bin/protoc remains pinned.
+# @brief Subproject entry: include this module once so find results are not
+#        overwritten by torch.
 function(autonomy_require_protobuf)
   if(NOT AUTONOMY_PROTOBUF319_CONFIGURED)
     include(EnsureProtobuf319)

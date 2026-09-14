@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# @file FindLuaGoogle.cmake
+# @brief Find-module for Cartographer's Lua 5.2 (Google fork).
+# @details The .rst block below keeps CMake FindLua-style variable docs.
+
 # TODO(hrapp): Take from the cmake master branch and simplified. As soon as we
 # require a CMakeVersion that ships with this, remove again.
 
@@ -171,7 +175,8 @@ if (NOT LUA_VERSION_STRING)
         if (LUA_INCLUDE_PREFIX)
             _lua_check_header_version("${LUA_INCLUDE_PREFIX}/${subdir}/lua.h")
             if (LUA_VERSION_STRING)
-                set(LUA_INCLUDE_DIR "${LUA_INCLUDE_PREFIX}/${subdir}")
+                set(LUA_INCLUDE_DIR "${LUA_INCLUDE_PREFIX}/${subdir}"
+                    CACHE PATH "Directory containing lua.h" FORCE)
                 break()
             endif ()
         endif ()
@@ -199,22 +204,24 @@ if (LUA_LIBRARY)
     # include the math library for Unix
     if (UNIX AND NOT APPLE AND NOT BEOS)
         find_library(LUA_MATH_LIBRARY m)
-        set(LUA_LIBRARIES "${LUA_LIBRARY};${LUA_MATH_LIBRARY}")
+        set(LUA_LIBRARIES "${LUA_LIBRARY};${LUA_MATH_LIBRARY}"
+            CACHE STRING "Lua link libraries" FORCE)
     # For Windows and Mac, don't need to explicitly include the math library
     else ()
-        set(LUA_LIBRARIES "${LUA_LIBRARY}")
+        set(LUA_LIBRARIES "${LUA_LIBRARY}"
+            CACHE STRING "Lua link libraries" FORCE)
     endif ()
 endif ()
 
-# handle the QUIETLY and REQUIRED arguments and set LUA_FOUND to TRUE if
-# all listed variables are TRUE
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(Lua
+# Use package name LuaGoogle so LuaGoogle_FOUND is set (callers use find_package(LuaGoogle)).
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(LuaGoogle
                                   REQUIRED_VARS LUA_LIBRARIES LUA_INCLUDE_DIR
                                   VERSION_VAR LUA_VERSION_STRING)
 mark_as_advanced(LUA_INCLUDE_DIR LUA_LIBRARY LUA_MATH_LIBRARY)
 
-if (NOT LUA_FOUND)
-  MESSAGE(FATAL_ERROR "Did not find Lua >= 5.2.")
+if (NOT LuaGoogle_FOUND)
+  message(FATAL_ERROR "Did not find Lua >= 5.2.")
 endif ()
 
 

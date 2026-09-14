@@ -33,7 +33,7 @@ class AutonomyDependenciesTest(unittest.TestCase):
                     set(BUILD_TENSORRT OFF)
                     set(AUTONOMY_BUILD_COMMON_OSQP OFF)
                     {assignments}
-                    include(autonomy_find_dependencies)
+                    include(autonomy_deps)
                     autonomy_collect_required_package_groups(groups)
                     file(WRITE "{output.as_posix()}" "${{groups}}")
                     """

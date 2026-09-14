@@ -1,9 +1,7 @@
-# FindOnnxRuntime.cmake
-# Finds ONNX Runtime (include + library) for C++ inference.
-# Sets:
-#   OnnxRuntime_FOUND
-#   OnnxRuntime_INCLUDE_DIRS
-#   OnnxRuntime_LIBRARIES
+# @file FindOnnxRuntime.cmake
+# @brief Find-module for the ONNX Runtime C++ inference library.
+#
+# @var OnnxRuntime_FOUND OnnxRuntime_INCLUDE_DIRS OnnxRuntime_LIBRARIES
 
 find_path(OnnxRuntime_INCLUDE_DIR
   NAMES onnxruntime_cxx_api.h

@@ -1,14 +1,19 @@
-# Install / export (gz_create_packages install half).
+# @file autonomy_package.cmake
+# @brief Install/export @c AutonomyExport and @c autonomy-config.cmake
+#        (gz_create_packages install half).
+#
+# Invoked by autonomy_create_packages() at the end of configure.
 
 include_guard(GLOBAL)
 
-# Tests + install/export (gz_create_packages).
-# Defined here so callers can include package.cmake after build helpers.
+# @brief Register unit tests and run autonomy_install_package().
 function(autonomy_create_packages)
   autonomy_add_tests()
   autonomy_install_package()
 endfunction()
 
+# @brief Install libraries/headers/launch/conf; generate package config and
+#        uninstall target.
 function(autonomy_install_package)
   autonomy_collect_required_package_groups(_autonomy_package_groups)
   foreach(_group IN ITEMS

@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# FindIpopt.cmake
-# This module looks for the Ipopt (Interior Point Optimizer) library and headers
-# Once done, it defines
-#   IPOPT_FOUND - system has Ipopt
-#   IPOPT_INCLUDE_DIRS - the Ipopt include directories
-#   IPOPT_LIBRARIES - the libraries needed to use Ipopt
+# @file FindIpopt.cmake
+# @brief Find-module for COIN-OR Ipopt (interior-point NLP; optional for control).
+#
+# @var Ipopt_FOUND IPOPT_INCLUDE_DIRS IPOPT_LIBRARIES
 
 find_path(IPOPT_INCLUDE_DIR
   NAMES coin/IpIpoptApplication.hpp

@@ -1,9 +1,8 @@
-# FindTensorRT.cmake
-# Finds NVIDIA TensorRT (nvinfer, nvonnxparser) and CUDA runtime.
-# Sets:
-#   TensorRT_FOUND
-#   TensorRT_INCLUDE_DIRS
-#   TensorRT_LIBRARIES
+# @file FindTensorRT.cmake
+# @brief Find-module for NVIDIA TensorRT (nvinfer, nvonnxparser) and CUDA.
+#
+# @var TensorRT_FOUND TensorRT_INCLUDE_DIRS TensorRT_LIBRARIES
+# @var TensorRT_NVONNXPARSER_LIBRARY When the ONNX parser is present
 
 find_path(TensorRT_INCLUDE_DIR
   NAMES NvInfer.h

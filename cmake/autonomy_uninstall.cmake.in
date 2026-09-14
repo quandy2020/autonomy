@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# @file autonomy_uninstall.cmake.in
+# @brief Script template that removes installed files listed in
+#        install_manifest.txt (custom target uninstall).
+
 if(NOT EXISTS "@CMAKE_CURRENT_BINARY_DIR@/install_manifest.txt")
     message(FATAL_ERROR "Cannot find install manifest: @CMAKE_CURRENT_BINARY_DIR@/install_manifest.txt")
 endif()

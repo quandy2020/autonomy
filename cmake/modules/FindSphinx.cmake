@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# @file FindSphinx.cmake
+# @brief Find-module for the sphinx-build executable (documentation).
+#
+# @var Sphinx_FOUND SPHINX_EXECUTABLE
+
 # TODO(hrapp): Replace through the one of ceres
 
 find_program(SPHINX_EXECUTABLE
