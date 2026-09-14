@@ -62,3 +62,78 @@ export function fillOccupancyRgba(
     }
   }
 }
+
+export function occupancyCacheKey(
+  grid: OccupancyGridJson,
+  mode: OccupancyPaintMode,
+): string {
+  const data = grid.data ?? [];
+  const mid = Math.floor(data.length / 2);
+  return [
+    mode,
+    grid.width,
+    grid.height,
+    grid.resolution,
+    grid.origin?.x ?? 0,
+    grid.origin?.y ?? 0,
+    data.length,
+    data[0] ?? '',
+    data[mid] ?? '',
+    data[data.length - 1] ?? '',
+  ].join('|');
+}
+
+export interface OccupancyTextureHandle {
+  canvas: HTMLCanvasElement;
+  texW: number;
+  texH: number;
+  worldW: number;
+  worldH: number;
+  originX: number;
+  originY: number;
+}
+
+export class OccupancyTextureCache {
+  private key = '';
+  private handle: OccupancyTextureHandle | null = null;
+
+  get(
+    grid: OccupancyGridJson | null | undefined,
+    mode: OccupancyPaintMode,
+  ): OccupancyTextureHandle | null {
+    if (!grid || grid.width <= 0 || grid.height <= 0 || !(grid.resolution > 0)) {
+      return null;
+    }
+    const next = occupancyCacheKey(grid, mode);
+    if (this.handle && this.key === next) return this.handle;
+
+    const { tw, th, scale } = computeTextureSize(grid.width, grid.height);
+    const canvas = document.createElement('canvas');
+    canvas.width = tw;
+    canvas.height = th;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    const img = ctx.createImageData(tw, th);
+    fillOccupancyRgba(img.data, grid, mode, tw, th, scale);
+    ctx.putImageData(img, 0, 0);
+
+    const originX = grid.origin?.x ?? 0;
+    const originY = grid.origin?.y ?? 0;
+    this.handle = {
+      canvas,
+      texW: tw,
+      texH: th,
+      worldW: grid.width * grid.resolution,
+      worldH: grid.height * grid.resolution,
+      originX,
+      originY,
+    };
+    this.key = next;
+    return this.handle;
+  }
+
+  clear(): void {
+    this.key = '';
+    this.handle = null;
+  }
+}
