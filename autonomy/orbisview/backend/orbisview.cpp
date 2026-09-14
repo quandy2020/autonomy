@@ -25,7 +25,7 @@
 #include "autolink/node/writer.hpp"
 #if defined(ORBISVIEW_WITH_AUTOMSGS)
 #include "autonomy/orbisview/backend/adapters/automsgs/automsgs_converter.hpp"
-#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #endif
 #endif
 
@@ -175,7 +175,7 @@ bool Orbisview::Init(const ServerOptions& options) {
       [this](int id, const std::string& text) { OnClientMessage(id, text); });
 #if defined(ORBISVIEW_WITH_AUTOLINK)
   teleop_->SetPublisher([this](double vx, double wz) {
-    PublishCmdVelAutolink(vx, wz);
+    if (options_.enable_autolink) PublishCmdVelAutolink(vx, wz);
   });
 #endif
   initialized_ = true;
@@ -405,15 +405,11 @@ void Orbisview::OnClientMessage(int client_id, const std::string& text) {
   } else if (op == "cmd_vel") {
     const double vx = ExtractJsonNumber(text, "vx", 0.0);
     const double wz = ExtractJsonNumber(text, "wz", 0.0);
+    // TeleopService publisher (Autolink) + optional mock chassis.
     if (teleop_) teleop_->SetCmdVel(vx, wz);
     if (options_.enable_mock) {
       mock_.SetCmdVel(vx, wz);
     }
-#if defined(ORBISVIEW_WITH_AUTOLINK)
-    if (options_.enable_autolink) {
-      PublishCmdVelAutolink(vx, wz);
-    }
-#endif
     std::ostringstream ack;
     ack << "{\"op\":\"cmd_vel_ack\",\"vx\":" << vx << ",\"wz\":" << wz << '}';
     websocket_->SendText(client_id, ack.str());
@@ -713,17 +709,31 @@ void Orbisview::EnsureAutolinkSubscribe(const std::string& channel) {
 void Orbisview::PublishCmdVelAutolink(double vx, double wz) {
   if (!node_ || options_.cmd_vel_channel.empty()) return;
 #if defined(ORBISVIEW_WITH_AUTOMSGS)
-  using Twist2D = automsgs::msgs::geometry_msgs::Twist2D;
+  // autosim / nav stack subscribe TwistStamped on /cmd_vel (not Twist2D).
+  using TwistStamped = automsgs::msgs::geometry_msgs::TwistStamped;
   if (!cmd_vel_writer_) {
-    cmd_vel_writer_ = node_->CreateWriter<Twist2D>(options_.cmd_vel_channel);
+    cmd_vel_writer_ = node_->CreateWriter<TwistStamped>(options_.cmd_vel_channel);
   }
   auto writer =
-      std::static_pointer_cast<autolink::Writer<Twist2D>>(cmd_vel_writer_);
+      std::static_pointer_cast<autolink::Writer<TwistStamped>>(cmd_vel_writer_);
   if (!writer) return;
-  auto msg = std::make_shared<Twist2D>();
-  msg->set_x(static_cast<float>(vx));
-  msg->set_y(0.f);
-  msg->set_theta(static_cast<float>(wz));
+  auto msg = std::make_shared<TwistStamped>();
+  auto* header = msg->mutable_header();
+  header->set_frame_id("base_link");
+  const auto now = std::chrono::system_clock::now().time_since_epoch();
+  const auto sec = std::chrono::duration_cast<std::chrono::seconds>(now);
+  const auto nsec =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(now - sec);
+  auto* stamp = header->mutable_stamp();
+  stamp->set_sec(static_cast<int32_t>(sec.count()));
+  stamp->set_nanosec(static_cast<uint32_t>(nsec.count()));
+  auto* twist = msg->mutable_twist();
+  twist->mutable_linear()->set_x(vx);
+  twist->mutable_linear()->set_y(0.0);
+  twist->mutable_linear()->set_z(0.0);
+  twist->mutable_angular()->set_x(0.0);
+  twist->mutable_angular()->set_y(0.0);
+  twist->mutable_angular()->set_z(wz);
   writer->Write(msg);
 #else
   (void)vx;

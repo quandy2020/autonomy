@@ -15,4 +15,4 @@ DEFINE_string(document_root, "",
 DEFINE_string(plugin_dir, "",
               "Optional directory of *.so/*.dylib plugins to scan at start");
 DEFINE_string(cmd_vel_channel, "/cmd_vel",
-              "Autolink channel for Twist2D teleop publish");
+              "Autolink channel for TwistStamped teleop publish (autosim-compatible)");
