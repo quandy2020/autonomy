@@ -15,11 +15,8 @@ describe('occupancyGridRgba', () => {
     const { tw, th, data } = occupancyGridRgba(grid);
     expect(tw).toBe(2);
     expect(th).toBe(1);
-    expect(data[3]).toBe(0); // free
+    expect(Array.from(data.slice(0, 4))).toEqual([255, 255, 255, 255]); // free = RViz white
     const expected = occupancyCellRgba(100, 'map');
-    expect(data[4]).toBe(expected[0]);
-    expect(data[5]).toBe(expected[1]);
-    expect(data[6]).toBe(expected[2]);
-    expect(data[7]).toBe(expected[3]);
+    expect(Array.from(data.slice(4, 8))).toEqual([...expected]); // occupied = black
   });
 });
