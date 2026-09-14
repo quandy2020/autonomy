@@ -1,6 +1,0 @@
-<!-- Mapping: clear costmap via navigation RPC -->
-<root BTCPP_format="4" main_tree_to_execute="MapClearCostmap">
-  <BehaviorTree ID="MapClearCostmap">
-    <ClearCostmap/>
-  </BehaviorTree>
-</root>
