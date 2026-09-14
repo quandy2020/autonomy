@@ -22,8 +22,9 @@
 #include "autolink/autolink.hpp"
 #include "autonomy/task/task_server.hpp"
 
-DEFINE_string(config_directory, "config",
-              "Root directory for task behavior tree XML files.");
+DEFINE_string(config_directory, "",
+              "Task conf root (default: resolve autonomy/task/conf via "
+              "AUTONOMY_PATH). Contains behavior_tree/ XML.");
 DEFINE_uint32(feedback_period_ms, 100,
               "Scheduler feedback polling period in milliseconds.");
 DEFINE_bool(exclusive_navigation_tasks, true,

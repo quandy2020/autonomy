@@ -2,39 +2,37 @@
 
 > 前提：已完成 [02 Installation](../02_Installation/02_quickstart.md) 编译。
 
-### 2.1 最小命令（BT 单点导航）
+### 2.1 启动多进程栈
 
 ```bash
-export AUTONOMY_BT_PLUGIN_PATH=$(pwd)/build/lib
+export PATH="$PWD/build/bin:$PATH"
+export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/system/launch"
+export AUTONOMY_BT_PLUGIN_PATH="$PWD/build/lib"
 export GLOG_logtostderr=1
 
-./build/bin/autonomy_nav_test \
-  --configuration_directory=config \
-  --start_x=1 --start_y=1 --start_yaw=0 \
-  --goal_x=5 --goal_y=5 --goal_yaw=0 \
-  --use_bt=true \
-  --timeout_sec=120
+autolink_launch autonomy.launch
 ```
 
-成功时输出：`Navigation succeeded.` 及 `Last path poses: N`。
+将拉起 `monitor` / `planning` / `control` / `task` / `perception` / `bridge` / `foxglove` 等进程。发令请用 Bridge、autolink Action Client 或上层业务。
 
-### 2.2 构建测试工具
-
-若 `autonomy_nav_test` 不存在，启用 `BUILD_TOOLS` 后重新编译：
+### 2.2 探索闭环（可选）
 
 ```bash
-cmake -G Ninja .. -DBUILD_TOOLS=ON
-ninja autonomy_nav_test
+autolink_launch exploration.launch
 ```
 
-### 2.3 起终点选择
+与 `autonomy.launch` 进程有重叠，**不要同时启动**。
 
-默认地图 `config/data/map.pgm` 为世界坐标系栅格。起终点须在**自由空间**内，例如 `(1,1) → (5,5)`。
+### 2.3 配置与地图
+
+- 共享快照：`autonomy/system/conf/autonomy.pb.txt`（`--conf=autonomy.pb.txt`）
+- 地图等资产：`autonomy/map/conf/`
+- BT XML：`autonomy/task/conf/behavior_tree/`
 
 ### 2.4 下一步
 
 | 目标 | 文档 |
 |------|------|
-| 参数详解 | [§4 离线导航测试](04_nav_test.md) |
-| 常驻进程 | [§3 Autonomy 进程](03_autonomy_process.md) |
-| Docker 内运行 | [§5 Docker 运行时](05_docker_runtime.md) |
+| 进程与配置说明 | [§3 多进程栈](03_autonomy_process.md) |
+| Docker 内运行 | [§4 Docker 运行时](05_docker_runtime.md) |
+| 验证清单 | [§6 运行验证](07_verification.md) |

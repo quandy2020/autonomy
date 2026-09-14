@@ -10,7 +10,7 @@ namespace task {
 namespace navigation {
 
 /**
- * @brief Minimal lifecycle surface for system::Autonomy and test doubles.
+ * @brief Minimal lifecycle surface for navigators and test doubles.
  */
 class NavigatorInterface
 {

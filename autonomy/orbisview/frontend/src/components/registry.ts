@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import type { PanelId } from '@/store/layoutStore';
 import type { IconName } from '@/components/icons';
+import { panelBaseId } from '@/components/panelId';
 
 /** Catalog grouping for Add Panel. */
 export type PanelCategory =
@@ -24,21 +25,29 @@ export const PANEL_CATEGORIES: {
   { id: 'system', label: '系统', icon: 'ops' },
 ];
 
+export interface PanelProps {
+  panelId: string;
+}
+
 export interface PanelMeta {
   id: PanelId;
   title: string;
   category: PanelCategory;
-  component: ComponentType;
+  /** Catalog may open multiple mosaic leaves (ids like image#2). */
+  allowMultiple?: boolean;
+  component: ComponentType<PanelProps>;
 }
 
 const registry = new Map<PanelId, PanelMeta>();
 
-export function registerPanel(meta: PanelMeta): void {
-  registry.set(meta.id, meta);
+export function registerPanel(
+  meta: Omit<PanelMeta, 'component'> & { component: ComponentType<PanelProps> | ComponentType },
+): void {
+  registry.set(meta.id, meta as PanelMeta);
 }
 
 export function getPanel(id: PanelId): PanelMeta | undefined {
-  return registry.get(id);
+  return registry.get(panelBaseId(id)) ?? registry.get(id);
 }
 
 export function listPanels(): PanelMeta[] {

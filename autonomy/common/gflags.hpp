@@ -22,13 +22,10 @@ namespace autonomy {
 namespace common {
 
 DECLARE_bool(verbose);
+DECLARE_string(conf);
+DECLARE_string(conf_module);
 DECLARE_string(configuration_directory);
 DECLARE_string(configuration_basename);
-DECLARE_bool(run_navigate_to_pose);
-DECLARE_double(nav_goal_x);
-DECLARE_double(nav_goal_y);
-DECLARE_double(nav_goal_yaw);
-DECLARE_bool(mock_static_tf);
 
 }  // namespace common
 }  // namespace autonomy

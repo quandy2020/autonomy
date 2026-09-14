@@ -5,7 +5,8 @@
 
 | 现象 | 原因 | 处理 |
 |------|------|------|
-| 找不到 `autonomy_nav_test` | 未启用 `BUILD_TOOLS` | `cmake .. -DBUILD_TOOLS=ON && ninja autonomy_nav_test` |
+| 找不到 `autonomy.planning` 等 | 未完整编译 | `ninja -C build`；检查模块 CMake |
+| 找不到 `autolink_launch` | PATH 未含 `build/bin` | `export PATH=$PWD/build/bin:$PATH` |
 | `libautonomy.so: cannot open` | 库路径未设置 | `export LD_LIBRARY_PATH=build/lib` 或从 `build/bin` 运行 |
 
 ### 8.2 导航 / BT
@@ -18,7 +19,7 @@
 | `planned path too short` | 起终点重合或不可达 | 增大起终点距离 |
 | 超时 | 控制未收敛 | 增大 `--timeout_sec`；检查 controller 配置 |
 | `TransformAvailable` 失败 | TF 未发布 | 确认 `global_frame` / `base_frame` 与配置一致 |
-| `no robot pose` | 无里程计 | nav_test 会自动注入；检查 Controller `Start()` |
+| `no robot pose` | 无里程计 | 由仿真 / Bridge 注入 odom+TF；检查 control `Start()` |
 
 ### 8.3 Docker
 

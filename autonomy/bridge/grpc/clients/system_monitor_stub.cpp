@@ -31,7 +31,7 @@ system_rpc::HazardLevel ConvertHazardLevel(HazardLevel level) {
 }
 
 MonitorOptions BuildBridgeMonitorOptions() {
-    MonitorOptions options = LoadMonitorOptions("config", "system/monitor.lua");
+    MonitorOptions options = LoadMonitorOptions("monitor.pb.txt");
     options.enable_prometheus = false;
     options.enable_mrm_handler = false;
     options.enable_cpu_profile = false;

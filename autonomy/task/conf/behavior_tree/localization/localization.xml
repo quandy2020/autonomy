@@ -1,0 +1,8 @@
+<!--
+  Localization: single long-running node until STOP halts the tree.
+-->
+<root BTCPP_format="4" main_tree_to_execute="Localization">
+  <BehaviorTree ID="Localization">
+    <StartLocalization algorithm="{algorithm}"/>
+  </BehaviorTree>
+</root>

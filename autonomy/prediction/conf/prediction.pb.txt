@@ -1,0 +1,5 @@
+# Prediction — module options (placeholder).
+# Proto: autonomy/prediction/proto/prediction_options.proto
+# Load:  nested prediction_options in AutonomyOptions when present.
+#
+# No fields set: use proto3 defaults until prediction is wired.

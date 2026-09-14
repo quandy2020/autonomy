@@ -7,19 +7,23 @@ export LD_LIBRARY_PATH=build/lib:$LD_LIBRARY_PATH
 # 或从 build/bin 目录运行
 ```
 
-### Q: 找不到 `autonomy_nav_test`？
+### Q: `autonomy_nav_test` 找不到？
 
-目标可能未接入顶层 CMake。检查 `autonomy/system/tools/` 是否被 `add_subdirectory`，见 [18 Tools · nav_test](../18_Tools/04_nav_test.md#44-构建说明)。
-
-### Q: `Configuration directory empty` / 配置加载失败？
+该工具**已移除**。请改用多进程栈：
 
 ```bash
-./build/bin/autonomy_nav_test --configuration_directory=config
+export PATH="$PWD/build/bin:$PATH"
+export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/system/launch"
+autolink_launch autonomy.launch
 ```
 
-确认 `config/autonomy.lua` 存在。
+见 [04 Running · 快速运行](../04_Running/02_quickstart.md)。
 
-### Q: `Autonomy not ready`？
+### Q: 配置加载失败？
+
+确认 `autonomy/system/conf/autonomy.pb.txt` 与各模块 `--conf=` 路径正确；共享快照用 `CreateOptions`。
+
+### Q: Task / BT 未就绪？
 
 检查 BT 配置与插件路径：
 
@@ -29,7 +33,7 @@ export AUTONOMY_BT_PLUGIN_PATH=build/lib
 
 ### Q: TF / 帧名错误？
 
-统一 `config/common.lua` 中的 `global_frame` 与 `robot_base_frame`，与各子模块配置保持一致。
+统一共享 conf / 模块 conf 中的 `global_frame` 与 `robot_base_frame`。
 
 ### Q: ROS 2 节点无法启动？
 

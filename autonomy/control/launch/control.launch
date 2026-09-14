@@ -7,6 +7,6 @@
     <module>
         <name>control</name>
         <type>binary</type>
-        <process_name>control --configuration_directory=config --configuration_basename=autonomy.lua</process_name>
+        <process_name>control --conf=autonomy.pb.txt</process_name>
     </module>
 </autolink>

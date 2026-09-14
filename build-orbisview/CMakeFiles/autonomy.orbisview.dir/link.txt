@@ -1,0 +1,1 @@
+/usr/bin/c++  -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/autonomy.orbisview.dir/main.cc.o -o bin/autonomy.orbisview  -Wl,-rpath,/opt/homebrew/lib liborbisview_lib.a thirdparty/civetweb/liborbisview_civetweb.a /opt/homebrew/lib/libglog.0.6.0.dylib /opt/homebrew/lib/libgflags.2.3.0.dylib

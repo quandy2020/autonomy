@@ -16,13 +16,19 @@
 
 #pragma once
 
+#include <string>
+
 #include "autonomy/system/proto/autonomy_options.pb.h"
 
 namespace autonomy {
 namespace system {
 
-proto::AutonomyOptions CreateOptions(const std::string& configuration_directory,
-                                     const std::string& configuration_basename);
+/**
+ * Load AutonomyOptions from protobuf text under autonomy/system/conf/.
+ * @param conf_file basename (default autonomy.pb.txt) or absolute path.
+ */
+proto::AutonomyOptions CreateOptions(
+    const std::string& conf_file = "autonomy.pb.txt");
 
 }  // namespace system
 }  // namespace autonomy

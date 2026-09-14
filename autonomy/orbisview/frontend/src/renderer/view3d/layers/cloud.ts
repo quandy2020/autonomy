@@ -8,9 +8,14 @@ export function updateCloud(
   points: View3DCloudPoint[] | null,
   visible: boolean,
   mode: CloudColorMode,
+  opts?: { size?: number },
 ): void {
   ctx.cloud.visible = visible && !!points?.length;
   if (!visible || !points?.length) return;
+
+  if (opts?.size != null) {
+    (ctx.cloud.material as THREE.PointsMaterial).size = opts.size;
+  }
 
   const n = points.length;
   const positions = new Float32Array(n * 3);

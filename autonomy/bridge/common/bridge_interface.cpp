@@ -16,35 +16,20 @@
 
 #include "autonomy/bridge/common/bridge_interface.hpp"
 
-#include "autonomy/bridge/common/bridge_option.hpp"
-#include "autonomy/common/configuration_file_resolver.hpp"
+#include "autonomy/common/conf_loader.hpp"
+#include "autonomy/common/logging.hpp"
+
 namespace autonomy {
 namespace bridge {
 namespace common {
 
-proto::BridgeOptions LoadOptions(
-    autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
+proto::BridgeOptions CreateOptions(const std::string& conf_file) {
     proto::BridgeOptions options;
-    options.set_use_grpc(parameter_dictionary->GetBool("use_grpc"));
-    if (parameter_dictionary->HasKey("grpc")) {
-        *options.mutable_grpc() = CreateGrpcOptions(
-            parameter_dictionary->GetDictionary("grpc").get());
-    }
+    const std::string file =
+        conf_file.empty() ? std::string("bridge.pb.txt") : conf_file;
+    CHECK(autonomy::common::LoadModuleConf("bridge", file, &options))
+        << "Failed to load bridge conf: " << file;
     return options;
-}
-
-proto::BridgeOptions CreateOptions(
-    const std::string& configuration_directory,
-    const std::string& configuration_basename) {
-    auto file_resolver =
-        std::make_unique<::autonomy::common::ConfigurationFileResolver>(
-            std::vector<std::string>{configuration_directory});
-    const std::string code =
-        ::autonomy::common::GetLuaScriptWithCommonOrDie(*file_resolver,
-                                                        configuration_basename);
-    ::autonomy::common::LuaParameterDictionary lua_parameter_dictionary(
-        code, std::move(file_resolver));
-    return LoadOptions(&lua_parameter_dictionary);
 }
 
 }  // namespace common

@@ -1,11 +1,11 @@
 /**
- * OrbisView entry (Dreamview src/app.js counterpart).
+ * OrbisView entry.
  */
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Orbisview } from 'components/Orbisview';
-import { registerBuiltinPanels } from 'components';
-import 'styles/main.css';
+import { Orbisview } from '@/components/Orbisview';
+import { registerBuiltinPanels } from '@/components';
+import '@/styles/main.css';
 
 registerBuiltinPanels();
 

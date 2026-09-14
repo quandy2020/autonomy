@@ -71,9 +71,9 @@ struct MonitorOptions {
     static MonitorOptions Default();
 };
 
-/// 从 Lua 配置加载；文件缺失或解析失败时返回 Default() 并写日志。
-MonitorOptions LoadMonitorOptions(const std::string& configuration_directory,
-                                  const std::string& configuration_basename);
+/// 从 system/conf/*.pb.txt 加载；失败时返回 Default() 并写日志。
+MonitorOptions LoadMonitorOptions(
+    const std::string& conf_file = "monitor.pb.txt");
 
 }  // namespace monitor
 }  // namespace system

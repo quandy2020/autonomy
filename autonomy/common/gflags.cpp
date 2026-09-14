@@ -19,24 +19,21 @@
 namespace autonomy {
 namespace common {
 
-DEFINE_bool(verbose, false, "Show autnomy verison info");
+DEFINE_bool(verbose, false, "Show autonomy version info");
+
+DEFINE_string(conf, "",
+              "Protobuf text conf basename under autonomy/<module>/conf/ "
+              "(or absolute path). Empty → process default "
+              "(system: autonomy.pb.txt, bridge: bridge.pb.txt, …). "
+              "Localization still uses configuration_directory for Cartographer.");
+DEFINE_string(conf_module, "system",
+              "Module name for LoadModuleConf when --conf is a basename.");
 
 DEFINE_string(configuration_directory, "",
-              "First directory in which configuration files are searched, "
-              "second is always the Autonomy installation to allow "
-              "including files from there.");
+              "Cartographer / legacy: directory searched for Lua configs "
+              "(default: localization/conf/cartographer).");
 DEFINE_string(configuration_basename, "",
-              "Basename, i.e. not containing any directory prefix, of the "
-              "configuration file.");
-
-DEFINE_bool(run_navigate_to_pose, false,
-            "If true, run NavigateToPose once at startup (see nav_goal_*).");
-DEFINE_double(nav_goal_x, 0.0, "Navigation goal x in global_frame.");
-DEFINE_double(nav_goal_y, 0.0, "Navigation goal y in global_frame.");
-DEFINE_double(nav_goal_yaw, 0.0, "Navigation goal yaw (rad) in global_frame.");
-DEFINE_bool(mock_static_tf, true,
-            "Mock localization: static map->odom TF plus cmd_vel integration "
-            "for odom->base_link during NavigateToPose (single-process demo).");
+              "Cartographer / legacy: Lua config basename.");
 
 }  // namespace common
 }  // namespace autonomy

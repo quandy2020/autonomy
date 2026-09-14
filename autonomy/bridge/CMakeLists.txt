@@ -1,29 +1,45 @@
-# autonomy/bridge — standalone gRPC process (autonomy.bridge) + module assets.
+# Copyright 2025 The Openbot Authors (duyongquan)
 #
-# Runtime Lua config lives under share/autonomy/config/bridge/ (repo config/bridge/).
-# This directory ships optional protobuf-text defaults and channel topology docs.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-if(NOT BUILD_GRPC)
-  return()
-endif()
+# autonomy/bridge — onboard gRPC external API (skipped if BUILD_GRPC=OFF)
 
-google_binary(autonomy.bridge
-  SRCS bridge_main.cpp)
+include(autonomy_module)
+autonomy_module(bridge)
 
-# Module assets (install layout mirrors audio / perception components).
+# Library sources: GLOB *.cpp under this dir; drop *main.cpp / *_test.cpp.
+autonomy_glob_srcs(_BRIDGE_SRCS)
+autonomy_library(
+  DEPENDENCIES autonomy_common autonomy_system autonomy_task
+  FEATURES grpc
+  SRCS ${_BRIDGE_SRCS}
+)
+unset(_BRIDGE_SRCS)
+
+# Process entrypoint: autonomy.bridge
+autonomy_binary(autonomy.bridge SRCS bridge_main.cpp)
+
+# Runtime assets → share/autonomy/bridge/ (launch / conf / dag)
 install(
   DIRECTORY conf/
   DESTINATION share/autonomy/bridge/conf
-  FILES_MATCHING
-  PATTERN "*.pb.txt")
+  FILES_MATCHING PATTERN "*.pb.txt")
 install(
   DIRECTORY dag/
   DESTINATION share/autonomy/bridge/dag
-  FILES_MATCHING
-  PATTERN "*.dag")
+  FILES_MATCHING PATTERN "*.dag")
 install(
   DIRECTORY launch/
   DESTINATION share/autonomy/bridge/launch
   USE_SOURCE_PERMISSIONS
-  FILES_MATCHING
-  PATTERN "*.launch")
+  FILES_MATCHING PATTERN "*.launch")

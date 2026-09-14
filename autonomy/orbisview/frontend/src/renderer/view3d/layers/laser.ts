@@ -10,9 +10,14 @@ export function updateLaser(
   scan: View3DLaserScan | null,
   height: number,
   visible: boolean,
+  opts?: { color?: number; size?: number },
 ): void {
   ctx.laser.visible = visible && !!pose && !!scan?.ranges?.length;
   if (!visible || !pose || !scan?.ranges?.length) return;
+
+  const mat = ctx.laser.material as THREE.PointsMaterial;
+  if (opts?.color != null) mat.color.setHex(opts.color);
+  if (opts?.size != null) mat.size = opts.size;
 
   const yaw0 = pose.yaw ?? 0;
   const pts: number[] = [];

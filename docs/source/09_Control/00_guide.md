@@ -234,7 +234,7 @@ FollowPath 除「选哪种控制器」外，还需匹配 **Goal Checker** 与是
 
 1. 编辑 `config/control/controller.lua`
 2. 在 `config/autonomy.lua` 中设置 `control = AUTONOMY_CONTROLLER`
-3. 启动后 `system::Autonomy` 自动构造 `ControllerServer`
+3. 启动后 `autonomy.control` 进程构造 `ControllerServer`
 
 ### 0.11.2 最小配置
 

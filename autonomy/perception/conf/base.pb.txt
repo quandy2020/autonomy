@@ -1,5 +1,9 @@
-# Base — MoGe depth for Follow LocalGrid (grid_map 2.5D → MPPI).
-# Weights: config/perception/base/moge-2-vits-normal_518x518_fp16.engine
+# Base perception component — MoGe depth (+ optional track).
+# Proto: autonomy/perception base options
+# Load:  perception base component / dag (autonomy/perception/conf/base.pb.txt)
+#
+# Place TensorRT engine on disk and set model_path accordingly.
+
 backend: BACKEND_TENSORRT
 input_width: 518
 input_height: 518
@@ -11,17 +15,18 @@ camera_frame: "camera_color_optical_frame"
 tasks {
   kind: TASK_DEPTH
   enable: true
-  model_path: "/workspace/autonomy/src/autonomy/config/perception/base/moge-2-vits-normal_518x518_fp16.engine"
+  # Update to your engine path (example placeholder).
+  model_path: "/workspace/autonomy/src/autonomy/autonomy/perception/conf/moge-2-vits-normal_518x518_fp16.engine"
   topic: "/perception/base/depth"
   depth_backend: DEPTH_BACKEND_MOGE
   moge_mask_threshold: 0.5
-  moge_fov_x_deg: 0
+  moge_fov_x_deg: 0   # 0 = estimate from camera_info / model
 }
 
 # Enable when YOLO26 track weights are available (input size must be %32).
 # tasks {
 #   kind: TASK_TRACK
 #   enable: true
-#   model_path: "/workspace/autonomy/src/autonomy/config/perception/base/yolo26n_track.engine"
+#   model_path: "/path/to/yolo26n_track.engine"
 #   topic: "/perception/base/tracks"
 # }

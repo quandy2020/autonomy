@@ -61,6 +61,11 @@ TEST_P(CreationTest, CreateFromVariances) {
     EXPECT_FLOAT_EQ(covariance(0, 1), 0.0F);
 }
 
+INSTANTIATE_TEST_SUITE_P(
+    ValidVariances, CreationTest,
+    ::testing::Values(UniformNoise<StateXY>{
+        std::vector<float32_t>{kSigmaX, kSigmaY}}));
+
 /// @test Test that the noise model is correctly created.
 TEST(UniformNoiseTest, FailWhenWrongNumberOfVariancesPassed) {
     EXPECT_THROW((UniformNoise<StateXY>{std::vector<float32_t>{1.F, 2.F, 3.F}}),

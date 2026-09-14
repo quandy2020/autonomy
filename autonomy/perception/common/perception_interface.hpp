@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/perception/proto/perception_options.pb.h"
 
@@ -24,8 +23,7 @@ namespace autonomy {
 namespace perception {
 namespace common {
 
-proto::PerceptionOptions LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+// PerceptionOptions loaded via AutonomyOptions / perception.pb.txt
 
 }  // namespace common
 }  // namespace perception

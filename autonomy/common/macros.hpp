@@ -68,8 +68,7 @@
 #define AUTONOMY_SMART_PTR_ALIASES_ONLY(...) \
     __AUTONOMY_SHARED_PTR_ALIAS(__VA_ARGS__) \
     __AUTONOMY_WEAK_PTR_ALIAS(__VA_ARGS__)   \
-    __AUTONOMY_UNIQUE_PTR_ALIAS(__VA_ARGS__) \
-    __AUTONOMY_MAKE_SHARED_DEFINITION(__VA_ARGS__)
+    __AUTONOMY_UNIQUE_PTR_ALIAS(__VA_ARGS__)
 
 #define __AUTONOMY_SHARED_PTR_ALIAS(...)            \
     using SharedPtr = std::shared_ptr<__VA_ARGS__>; \

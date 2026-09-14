@@ -1,63 +1,47 @@
 # 6. 执行模式
 
-Autonomy 支持两种导航执行路径：**行为树（BT）模式**与**直驱（Direct）模式**。
+Autonomy 支持两种导航执行路径：**行为树（BT）模式**与较简的直驱/服务调用路径（演进中）。入口均为多进程 `TaskServer`，而非进程内聚合。
 
 ### 6.1 模式对比
 
-| 维度 | BT 模式 | 直驱模式 |
-|------|---------|----------|
-| 开关 | `use_bt_navigation = true` | `use_bt_navigation = false` |
-| 编排 | BT XML + 52 插件节点 | `Autonomy` 内直接调用 Server |
-| 恢复行为 | 支持（Replan、Spin 等） | 不支持 |
-| 当前默认 | ⏳ 待恢复 | ✅ 当前生效 |
+| 维度 | BT 模式 | 直驱 / 服务路径 |
+|------|---------|-----------------|
+| 编排 | BT XML + 插件节点 | 直接调用 Planner / Controller |
+| 恢复行为 | 支持（Replan、Spin 等） | 有限 |
+| 推荐验证 | launch + Bridge | 单模块调试 |
 
-### 6.2 BT 模式（设计目标）
+### 6.2 BT 模式
 
 ```
-NavigateToPose
-  → BtNavigator
-  → navigate_to_pose.xml
+Action / Bridge
+  → TaskServer
+  → navigate_to_pose.xml 等
   → ComputePathToPose → FollowPath → GoalReached
 ```
 
 需要：
 
-- `BtEngine` / `BtActionServer` 实现
 - BT 插件 `.so` 在 `AUTONOMY_BT_PLUGIN_PATH`
-- `Configure()` 中 `use_bt_navigation_ = true`
+- XML 位于 `autonomy/task/conf/behavior_tree/`
 
-### 6.3 直驱模式（当前实现）
-
-```
-NavigateToPose
-  → NavigateDirectToPose()
-  → PlannerServer::GetPlan()
-  → NotifyPath()（不自动 FollowPath）
-```
-
-`Autonomy::Configure()` 当前强制 `use_bt_navigation_ = false`，日志输出 `direct planner wiring`。
-
-### 6.4 nav_test 中的 `--use_bt`
+### 6.3 多进程联调
 
 ```bash
-# BT 模式（需 BT 栈完整）
-./build/bin/autonomy_nav_test --use_bt=true ...
-
-# 直驱模式
-./build/bin/autonomy_nav_test --use_bt=false ...
+autolink_launch autonomy.launch
+# 另开客户端：Bridge 或 autolink Action
 ```
 
-> 注意：即使传入 `--use_bt=true`，若 `Configure()` 强制关闭 BT，实际仍可能走直驱路径。以源码行为为准。
+> 离线 `autonomy_nav_test --use_bt=…` **已移除**。
 
-### 6.5 选型建议
+### 6.4 选型建议
 
 | 场景 | 建议 |
 |------|------|
-| 验证全局规划 | 直驱模式 + `GetPlan` |
-| 完整导航闭环 | BT 模式（待栈恢复） |
-| 对比 Nav2 行为 | BT 模式 + 相同 XML |
+| 验证全局规划 | planning 进程 + 服务/Action |
+| 完整导航闭环 | task + planning + control + Bridge |
+| 对比 Nav2 行为 | BT XML + 相同语义插件 |
 
-### 6.6 相关文档
+### 6.5 相关文档
 
-- [18 Tools · nav_test](../18_Tools/04_nav_test.md)
+- [04 Running · 多进程栈](../04_Running/03_autonomy_process.md)
 - [16 Navigator · BT 引擎](../16_Navigator/03_bt_engine.md)

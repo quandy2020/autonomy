@@ -1,0 +1,29 @@
+# Perception — exploration-enabled preset (RGB-D TARE).
+# Proto: autonomy/perception/proto/perception_options.proto
+# Used by: system/conf/exploration.pb.txt  /  --conf=exploration.pb.txt
+#
+# exploration_config points at Lua still required by the explorer backend.
+
+enabled: true
+enable_rgbd_exploration: true
+explorer_backend: "rgbd_tare"
+exploration_config: "exploration_rgbd_tare.lua"
+
+odom_topic: "/odom"
+depth_topic: "/camera/depth/image_raw"
+camera_info_topic: "/camera/depth/camera_info"
+camera_frame: "camera_depth_optical_frame"
+map_frame: "map"
+point_cloud_topic: "/velodyne_points"
+
+planner_hz: 2
+path_topic: "/exploration/path"
+waypoint_topic: "/exploration/waypoint"
+map_topic: "/exploration/map"
+global_path_topic: "/exploration/global_path"
+local_path_topic: "/exploration/local_path"
+exploration_finished_topic: "/exploration/finished"
+exploration_progress_topic: "/exploration/progress"
+navigation_boundary_topic: "/exploration/navigation_boundary"
+terrain_map_topic: "/terrain_map"
+enable_exploration_nav_bridge: true

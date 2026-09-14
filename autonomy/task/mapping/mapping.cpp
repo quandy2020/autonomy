@@ -12,7 +12,7 @@ namespace task {
 namespace {
 
 constexpr char kClearCostmapTree[] =
-    "task/behavior_tree/mapping/map_clear_costmap.xml";
+    "behavior_tree/mapping/map_clear_costmap.xml";
 
 }  // namespace
 

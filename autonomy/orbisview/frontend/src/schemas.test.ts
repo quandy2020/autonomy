@@ -33,7 +33,9 @@ describe('panel registry', () => {
   it('registers builtin panels including DV+ parity set', () => {
     registerBuiltinPanels();
     const ids = listPanels().map((p) => p.id);
-    expect(ids).toContain('map2d');
+    expect(ids).toContain('map');
+    expect(ids).not.toContain('map2d');
+    expect(ids).not.toContain('view3d');
     expect(ids).toContain('dashboard');
     expect(ids).toContain('charts');
     expect(ids).toContain('components');
@@ -43,28 +45,41 @@ describe('panel registry', () => {
     expect(ids).toContain('module_delay');
     expect(ids).toContain('resources');
     expect(ids).toContain('pnc');
+    expect(ids).toContain('ops');
+    expect(ids).toContain('teleop');
   });
 
   it('assigns categories for catalog grouping', () => {
     registerBuiltinPanels();
     const panels = listPanels();
     expect(panels.every((p) => !!p.category)).toBe(true);
-    expect(panels.find((p) => p.id === 'view3d')?.category).toBe('viz');
+    expect(panels.find((p) => p.id === 'map')?.category).toBe('viz');
+    expect(panels.find((p) => p.id === 'view3d')).toBeUndefined();
     expect(panels.find((p) => p.id === 'image')?.category).toBe('sensor');
     expect(panels.find((p) => p.id === 'teleop')?.category).toBe('robot');
+    expect(panels.find((p) => p.id === 'image')?.allowMultiple).toBe(true);
     expect(panels.find((p) => p.id === 'navigation')?.category).toBe('planning');
     expect(panels.find((p) => p.id === 'diagnostics')?.category).toBe('monitor');
     expect(panels.find((p) => p.id === 'plugins')?.category).toBe('system');
+    expect(panels.find((p) => p.id === 'ops')?.category).toBe('system');
   });
 });
 
 describe('layout persist keys', () => {
   it('uses versioned localStorage names', () => {
-    expect('orbisview-layout-v8').toMatch(/^orbisview-layout-v\d+$/);
+    expect('orbisview-layout-v11').toMatch(/^orbisview-layout-v\d+$/);
     expect('orbisview-layers-v5').toMatch(/^orbisview-layers-v\d+$/);
   });
 
   it('uses versioned view3d opts key', () => {
     expect('orbisview-view3d-opts-v1').toMatch(/^orbisview-view3d-opts-v\d+$/);
+  });
+
+  it('uses versioned map view key', () => {
+    expect('orbisview-map-view-v2').toMatch(/^orbisview-map-view-v\d+$/);
+  });
+
+  it('uses versioned panel opts key', () => {
+    expect('orbisview-panel-opts-v1').toMatch(/^orbisview-panel-opts-v\d+$/);
   });
 });

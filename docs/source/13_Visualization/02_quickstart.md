@@ -44,17 +44,16 @@ Docker 环境默认映射 8765 端口（见 `docker/scripts/docker_utils.py` 中
 
 详见 [§6 Foxglove](06_foxglove.md)。
 
-### 2.3 路径 C：纯 C++ 离线（无 GUI）
+### 2.3 路径 C：纯 C++ 多进程（无 GUI）
 
 ```bash
+export PATH="$PWD/build/bin:$PATH"
+export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/system/launch"
 export GLOG_logtostderr=1
-./build/bin/autonomy_nav_test \
-  --configuration_directory=config \
-  --start_x=1 --start_y=1 \
-  --goal_x=5 --goal_y=5
+autolink_launch autonomy.launch
 ```
 
-成功标志：`Navigation succeeded.` 及 `Last path poses: N`。
+发令用 Bridge / Action；观察各进程日志。`autonomy_nav_test` **已移除**。
 
 ### 2.4 验证话题（ROS 2）
 

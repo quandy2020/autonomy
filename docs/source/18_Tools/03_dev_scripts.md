@@ -23,7 +23,7 @@ python3 scripts/format.py autonomy autolink
 
 自动查找 `clang-format` / `clang-format-17` … `clang-format-13`，macOS 亦支持 Xcode CLT 路径。
 
-CMake 可选钩子：`google_format_code`（`cmake/functions.cmake`）在构建前调用此脚本。
+格式化：在仓库根目录运行 `python3 scripts/format.py`（或接入 pre-commit / CI）。
 
 ### 3.2 install_deps — 依赖安装
 

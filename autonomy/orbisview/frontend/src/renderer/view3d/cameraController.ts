@@ -11,6 +11,10 @@ export interface CameraController {
   onPointerMove: (e: PointerEvent) => void;
   onPointerUp: () => void;
   onWheel: (e: WheelEvent) => void;
+  zoomBy: (delta: number) => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  fit: () => void;
   reset: () => void;
   update: () => void;
 }
@@ -39,7 +43,7 @@ export function createCameraController(camera: THREE.PerspectiveCamera): CameraC
     },
     onPointerDown(e) {
       dragging = true;
-      panning = !follow && (e.shiftKey || e.button === 1);
+      panning = e.shiftKey || e.button === 1 || e.button === 2;
       lastX = e.clientX;
       lastY = e.clientY;
     },
@@ -69,9 +73,22 @@ export function createCameraController(camera: THREE.PerspectiveCamera): CameraC
       }
       ctrl.update();
     },
-    onWheel(e) {
+  onWheel(e) {
       e.preventDefault();
-      ctrl.distance = Math.max(2, Math.min(40, ctrl.distance + e.deltaY * 0.01));
+      ctrl.zoomBy(e.deltaY * 0.01);
+    },
+    zoomBy(delta) {
+      ctrl.distance = Math.max(2, Math.min(40, ctrl.distance + delta));
+      ctrl.update();
+    },
+    zoomIn() {
+      ctrl.zoomBy(-1.2);
+    },
+    zoomOut() {
+      ctrl.zoomBy(1.2);
+    },
+    fit() {
+      ctrl.distance = DEFAULT_DISTANCE;
       ctrl.update();
     },
     reset() {

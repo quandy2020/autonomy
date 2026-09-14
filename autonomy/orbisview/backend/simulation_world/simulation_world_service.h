@@ -49,6 +49,7 @@ struct WorldObstacle {
 struct WorldGoal {
   double x{0};
   double y{0};
+  double yaw{0};
   bool valid{false};
 };
 
@@ -58,7 +59,7 @@ class SimulationWorldService {
   void SetChassis(const WorldChassis& c);
   void SetObstacles(std::vector<WorldObstacle> obs);
   void SetPathPoses(std::vector<WorldPose> poses);
-  void SetGoal(double x, double y);
+  void SetGoal(double x, double y, double yaw = 0.0);
   void ClearGoal();
 
   /** Compact WorldState JSON for StreamEnvelope payload. */

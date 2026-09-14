@@ -31,26 +31,6 @@ namespace autonomy {
 namespace bridge {
 namespace {
 
-constexpr char kConfigDirEnv[] = "AUTONOMY_CONFIGURATION_DIRECTORY";
-constexpr char kConfigBasenameEnv[] = "AUTONOMY_CONFIGURATION_BASENAME";
-constexpr char kDefaultConfigBasename[] = "bridge/bridge_options.lua";
-
-std::string ConfigurationDirectory() {
-    if (!autonomy::common::FLAGS_configuration_directory.empty()) {
-        return autonomy::common::FLAGS_configuration_directory;
-    }
-    const char* env = std::getenv(kConfigDirEnv);
-    return env != nullptr ? std::string(env) : std::string();
-}
-
-std::string ConfigurationBasename() {
-    if (!autonomy::common::FLAGS_configuration_basename.empty()) {
-        return autonomy::common::FLAGS_configuration_basename;
-    }
-    const char* env = std::getenv(kConfigBasenameEnv);
-    return env != nullptr ? std::string(env) : std::string(kDefaultConfigBasename);
-}
-
 std::atomic<bool> g_shutdown_requested{false};
 
 void SigintHandler(int /*sig*/) {
@@ -63,23 +43,13 @@ void SigintHandler(int /*sig*/) {
 }
 
 int Run() {
-    if (ConfigurationDirectory().empty()) {
-        LOG(ERROR) << "configuration_directory is required (--configuration_directory "
-                      "or " << kConfigDirEnv << ").";
-        return EXIT_FAILURE;
-    }
-
-    if (ConfigurationBasename().empty()) {
-        LOG(ERROR) << "configuration_basename is required (--configuration_basename "
-                      "or " << kConfigBasenameEnv << ").";
-        return EXIT_FAILURE;
-    }
-
     autonomy::common::ShowVersion();
     LOG(INFO) << "Starting autonomy bridge (gRPC / MQTT external API).";
 
-    const auto options =
-        common::CreateOptions(ConfigurationDirectory(), ConfigurationBasename());
+    const std::string conf = autonomy::common::FLAGS_conf.empty()
+                                 ? std::string("bridge.pb.txt")
+                                 : autonomy::common::FLAGS_conf;
+    const auto options = common::CreateOptions(conf);
 
     BridgeServer server(options);
     if (!server.Start()) {
@@ -104,9 +74,8 @@ int main(int argc, char** argv) {
         "\n\n"
         "\033[31m External bridge process (gRPC AutonomyService).\033[0m \n"
         "Example:\n"
-        "  autonomy.bridge \\\n"
-        "    --configuration_directory=config \\\n"
-        "    --configuration_basename=bridge/bridge_options.lua\n");
+        "  autonomy.bridge --conf=bridge.pb.txt\n"
+        "  # or AUTONOMY_PATH=/path/to/prefix\n");
 
     google::InitGoogleLogging(argv[0]);
     google::ParseCommandLineFlags(&argc, &argv, true);

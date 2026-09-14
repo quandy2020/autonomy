@@ -29,7 +29,7 @@
   <module>
     <name>bridge</name>
     <type>binary</type>
-    <process_name>autonomy.bridge --configuration_directory=config --configuration_basename=bridge/bridge_options.lua</process_name>
+    <process_name>autonomy.bridge --conf=bridge.pb.txt</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>

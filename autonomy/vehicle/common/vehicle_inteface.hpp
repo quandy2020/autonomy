@@ -45,7 +45,7 @@ public:
     /**
      * Define VehicleInterface::SharedPtr type
      */
-    AUTONOMY_SMART_PTR_DEFINITIONS(VehicleInterface);
+    AUTONOMY_SMART_PTR_ALIASES_ONLY(VehicleInterface);
 
     /**
      * @brief A constructor for autonomy::vehicle::VehicleInterface

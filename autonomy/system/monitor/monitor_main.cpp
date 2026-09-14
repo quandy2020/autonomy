@@ -24,13 +24,9 @@
 #include <glog/logging.h>
 
 #include "autolink/autolink.hpp"
+#include "autonomy/common/gflags.hpp"
 #include "autonomy/system/monitor/monitor_options.hpp"
 #include "autonomy/system/monitor/monitor_registry.hpp"
-
-DEFINE_string(configuration_directory, "config",
-              "Directory containing monitor.lua and other config files.");
-DEFINE_string(configuration_basename, "system/monitor.lua",
-              "Monitor Lua configuration (relative to configuration_directory).");
 
 namespace autonomy::system::monitor {
 namespace {
@@ -54,8 +50,10 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    auto opts = autonomy::system::monitor::LoadMonitorOptions(
-        FLAGS_configuration_directory, FLAGS_configuration_basename);
+    const std::string conf = autonomy::common::FLAGS_conf.empty()
+                                 ? std::string("monitor.pb.txt")
+                                 : autonomy::common::FLAGS_conf;
+    auto opts = autonomy::system::monitor::LoadMonitorOptions(conf);
     auto node =
         autolink::CreateNode("system_monitor", "/autonomy/system/monitor");
     auto registry =

@@ -39,6 +39,9 @@ class MinimalTargetBoundariesTest(unittest.TestCase):
                         else()
                           get_target_property(_links ${{_target}} INTERFACE_LINK_LIBRARIES)
                         endif()
+                        if(_links MATCHES "-NOTFOUND$")
+                          set(_links "")
+                        endif()
                         get_target_property(_includes ${{_target}} INTERFACE_INCLUDE_DIRECTORIES)
                         file(APPEND "{report.as_posix()}"
                           "${{_target}}|${{_target_type}}|${{_links}}|${{_includes}}\n")
@@ -127,6 +130,14 @@ class MinimalTargetBoundariesTest(unittest.TestCase):
             self.assertIn("autonomy_common", rows["autonomy_vehicle"][1])
             self.assertIn("autonomy_proto", rows["autonomy_transform"][1])
             self.assertIn("autonomy_proto", rows["autonomy_vehicle"][1])
+
+            for support_target in (
+                "autonomy_common_test_support",
+                "autonomy_transform_test_support",
+            ):
+                target_type, links, _ = rows[support_target]
+                self.assertEqual(target_type, "INTERFACE_LIBRARY", support_target)
+                self.assertEqual(links, "", support_target)
 
             common_test_links = rows["autonomy.common.endian_test"][1]
             common_test_link_items = common_test_links.split(";")

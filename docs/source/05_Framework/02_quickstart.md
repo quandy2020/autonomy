@@ -1,71 +1,44 @@
 # 2. 快速开始
 
-### 2.1 最小启动流程
+### 2.1 推荐：多进程启动
+
+```bash
+export PATH="$PWD/build/bin:$PATH"
+export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/system/launch"
+export AUTONOMY_BT_PLUGIN_PATH="$PWD/build/lib"
+export GLOG_logtostderr=1
+
+autolink_launch autonomy.launch
+```
+
+各 `*_main.cpp` 内自行 `CreateOptions`（或模块 conf）→ 构造对应 Server → `autolink::WaitForShutdown`。详见 [04 Running](../04_Running/02_quickstart.md)。
+
+### 2.2 共享配置快照
+
+planning / control / perception 等可加载同一 `AutonomyOptions` 文本，只取子字段：
 
 ```cpp
-#include "autolink/autolink.hpp"
-#include "autonomy/system/autonomy.hpp"
 #include "autonomy/system/options.hpp"
 
-int main(int argc, char** argv) {
-    autolink::Init(argv[0]);
-
-    auto options = autonomy::system::CreateOptions(
-        "config", "autonomy.lua");
-
-    auto autonomy = autonomy::system::CreateAutonomy(options);
-    autonomy->Start();
-
-    autonomy::system::RuntimeOptions runtime;
-    runtime.config_directory = "config";
-    autonomy->Configure(runtime);
-
-    // 运行循环或调用 NavigateToPose ...
-    autonomy->Shutdown();
-    autolink::Clear();
-    return 0;
-}
+auto options = autonomy::system::CreateOptions("autonomy.pb.txt");
+// 例如：PlannerServer(options.planner_options()) …
 ```
 
-对应可执行逻辑见 `autonomy/system/main.cpp`。
-
-### 2.2 配置前提
-
-确保 `config/autonomy.lua` 存在且包含所需子模块：
-
-```lua
-include "map/map.lua"
-include "planner/planner.lua"
-include "controller/controller.lua"
-include "navigator/navigator.lua"
-
-AUTONOMY = {
-  map = AUTONOMY_MAP,
-  planning = AUTONOMY_PLANNER,
-  controller = AUTONOMY_CONTROLLER,
-  navigator = navigator,
-}
-```
+路径约定见 `autonomy/system/conf/autonomy.pb.txt` 与各模块 `autonomy/<mod>/conf/`。
 
 ### 2.3 命令行参数
 
-通过 `autonomy/common/gflags.hpp`：
+通过 `autonomy/common/gflags.hpp` 与各进程 `--conf=`：
 
-| gflag | 说明 |
-|-------|------|
-| `configuration_directory` | 配置根目录 |
-| `configuration_basename` | 主 Lua 文件名（默认 `autonomy.lua`） |
-| `--verbose` | 打印版本后退出 |
+| 参数 / gflag | 说明 |
+|--------------|------|
+| `--conf=` | 模块 / 共享 conf 文本（如 `autonomy.pb.txt`） |
+| `configuration_directory` 等 | 历史 gflag，视模块而定 |
+| `--verbose` | 打印版本后退出（若支持） |
 
-### 2.4 端到端测试
+### 2.4 端到端验证
 
-无需手写 main，使用离线工具：
-
-```bash
-./build/bin/autonomy_nav_test --configuration_directory=config
-```
-
-详见 [04 Running](../04_Running/04_nav_test.md)。
+进程内 `CreateAutonomy` / `autonomy_nav_test` **已移除**。发令用 Bridge 或 autolink Action Client。
 
 ### 2.5 下一步
 

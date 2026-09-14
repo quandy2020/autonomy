@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/port.hpp"
 #include "autonomy/prediction/proto/prediction_options.pb.h"
@@ -31,8 +30,7 @@ public:
     virtual ~PredictionInterface();
 };
 
-proto::PredictionOptions LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+// loaded from pb.txt
 
 }  // namespace common
 }  // namespace prediction

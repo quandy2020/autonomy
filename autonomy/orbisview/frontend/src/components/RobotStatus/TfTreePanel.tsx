@@ -29,12 +29,11 @@ interface LaidOut {
   children: LaidOut[];
 }
 
-const NODE_RX = 58;
-const NODE_RY = 22;
-const H_GAP = 36;
-const V_GAP = 110;
-const PAD = 28;
-
+const NODE_RX = 64;
+const NODE_RY = 24;
+const H_GAP = 48;
+const V_GAP = 128;
+const PAD = 24;
 function asPayload<T>(env: { payload?: unknown } | undefined): T | null {
   if (!env?.payload || typeof env.payload !== 'object') return null;
   return env.payload as T;
@@ -162,7 +161,7 @@ export function layoutForest(roots: TreeNode[]): {
   return {
     nodes,
     width: totalW + PAD * 2,
-    height: maxY + NODE_RY * 2 + PAD * 2 + 40,
+    height: maxY + NODE_RY * 2 + PAD * 2,
   };
 }
 
@@ -203,6 +202,8 @@ function TfGraph({
   const maxX = xs.length ? Math.max(...xs) : 0;
   const contentW = Math.max(width, maxX - minX + NODE_RX * 2 + PAD * 2);
   const offsetX = PAD + NODE_RX - minX;
+  const top = PAD;
+  const rootSet = useMemo(() => new Set(roots.map((r) => r.frame)), [roots]);
 
   return (
     <div className="tf-graph-scroll">
@@ -215,88 +216,82 @@ function TfGraph({
         aria-label="TF frames graph"
       >
         <defs>
+          <linearGradient id="tf-node-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#243044" />
+            <stop offset="100%" stopColor="#1a2430" />
+          </linearGradient>
+          <linearGradient id="tf-root-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1e3a4f" />
+            <stop offset="100%" stopColor="#163040" />
+          </linearGradient>
+          <filter id="tf-soft" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodColor="#000" floodOpacity="0.45" />
+          </filter>
           <marker
             id="tf-arrow"
             viewBox="0 0 10 10"
             refX="9"
             refY="5"
-            markerWidth="7"
-            markerHeight="7"
+            markerWidth="6"
+            markerHeight="6"
             orient="auto-start-reverse"
           >
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#9db0c4" />
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#6eb6ff" />
           </marker>
         </defs>
 
-        <rect
-          x={8}
-          y={8}
-          width={Math.min(220, contentW - 16)}
-          height={36}
-          rx={4}
-          className="tf-graph-banner"
-        />
-        <text x={18} y={24} className="tf-graph-banner-title">
-          view_frames Result
-        </text>
-        <text x={18} y={38} className="tf-graph-banner-sub">
-          OrbisView TF tree
-        </text>
-
         {edges.map(({ parent, child }) => {
           const x1 = parent.x + offsetX;
-          const y1 = parent.y + PAD + 48 + NODE_RY;
+          const y1 = parent.y + top + NODE_RY;
           const x2 = child.x + offsetX;
-          const y2 = child.y + PAD + 48 - NODE_RY;
+          const y2 = child.y + top - NODE_RY;
           const mx = (x1 + x2) / 2;
           const my = (y1 + y2) / 2;
           const e = child.edge;
-          const lines = [
-            'Broadcaster: mock',
-            avgHz != null && Number.isFinite(avgHz)
-              ? `Average rate: ${avgHz.toFixed(3)}`
-              : 'Average rate: —',
-            e
-              ? `xyz: ${e.x.toFixed(2)}, ${e.y.toFixed(2)}, 0.00`
-              : '',
-            e ? `yaw: ${(e.yaw ?? 0).toFixed(3)}` : '',
-          ].filter(Boolean);
+          const rate =
+            avgHz != null && Number.isFinite(avgHz) ? `${avgHz.toFixed(1)} Hz` : '— Hz';
+          const pose = e
+            ? `Δ ${e.x.toFixed(2)}, ${e.y.toFixed(2)}, ${(e.yaw ?? 0).toFixed(2)}`
+            : '';
+          const boxH = 42;
+          const boxW = 148;
           return (
-            <g key={`${parent.frame}->${child.frame}`}>
+            <g key={`${parent.frame}->${child.frame}`} className="tf-graph-link">
               <path
                 d={`M ${x1} ${y1} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${x2} ${y2}`}
                 className="tf-graph-edge"
                 markerEnd="url(#tf-arrow)"
               />
-              <rect
-                x={mx - 78}
-                y={my - 28}
-                width={156}
-                height={14 + lines.length * 11}
-                rx={3}
-                className="tf-graph-edge-label-bg"
-              />
-              {lines.map((line, i) => (
-                <text
-                  key={i}
-                  x={mx}
-                  y={my - 14 + i * 11}
-                  textAnchor="middle"
-                  className="tf-graph-edge-label"
-                >
-                  {line}
+              <g transform={`translate(${mx - boxW / 2}, ${my - boxH / 2})`}>
+                <rect width={boxW} height={boxH} rx={8} className="tf-graph-edge-card" />
+                <text x={boxW / 2} y={16} textAnchor="middle" className="tf-graph-edge-title">
+                  {parent.frame} → {child.frame}
                 </text>
-              ))}
+                <text x={boxW / 2} y={28} textAnchor="middle" className="tf-graph-edge-meta">
+                  {pose}
+                </text>
+                <text x={boxW / 2} y={38} textAnchor="middle" className="tf-graph-edge-rate">
+                  {rate}
+                </text>
+              </g>
             </g>
           );
         })}
 
         {flat.map((n) => {
           const cx = n.x + offsetX;
-          const cy = n.y + PAD + 48;
+          const cy = n.y + top;
+          const isRoot = rootSet.has(n.frame) && !n.edge;
           return (
-            <g key={n.frame}>
-              <ellipse cx={cx} cy={cy} rx={NODE_RX} ry={NODE_RY} className="tf-graph-node" />
+            <g key={n.frame} filter="url(#tf-soft)">
+              <ellipse
+                cx={cx}
+                cy={cy}
+                rx={NODE_RX}
+                ry={NODE_RY}
+                fill={isRoot ? 'url(#tf-root-fill)' : 'url(#tf-node-fill)'}
+                className={isRoot ? 'tf-graph-node is-root' : 'tf-graph-node'}
+              />
               <text x={cx} y={cy + 4} textAnchor="middle" className="tf-graph-node-label">
                 {n.frame}
               </text>
@@ -343,7 +338,17 @@ export function TfTreePanel() {
 
   return (
     <div className="panel tf-tree-panel">
-      <h3 style={{ marginTop: 0 }}>TF Tree</h3>
+      <div className="tf-tree-header">
+        <div>
+          <h3 style={{ margin: 0 }}>TF Tree</h3>
+          <p className="tf-tree-subtitle muted">
+            {list.length === 0
+              ? 'waiting for transforms'
+              : `${flatCount(roots)} frames · ${list.length} edges`}
+            {tfHz != null && Number.isFinite(tfHz) ? ` · ${tfHz.toFixed(1)} Hz` : ''}
+          </p>
+        </div>
+      </div>
       {list.length === 0 ? (
         <p className="muted">no transforms</p>
       ) : (
@@ -374,4 +379,14 @@ export function TfTreePanel() {
       )}
     </div>
   );
+}
+
+function flatCount(roots: TreeNode[]): number {
+  let n = 0;
+  function walk(node: TreeNode) {
+    n += 1;
+    node.children.forEach(walk);
+  }
+  roots.forEach(walk);
+  return n;
 }

@@ -43,12 +43,13 @@ cd /workspace/autonomy/build && cmake -G Ninja .. && ninja
 ### 2.4 配置与运行导航
 
 ```bash
-# 配置目录默认为 config/
-# 编辑 config/autonomy.lua 启用 map / planner / controller / navigator
-
-# 导航离线测试（见 autonomy/system/tools/README.md）
-./build/bin/nav_test --config_directory=config
+export PATH="$PWD/build/bin:$PATH"
+export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/system/launch"
+export AUTONOMY_BT_PLUGIN_PATH="$PWD/build/lib"
+autolink_launch autonomy.launch
 ```
+
+发令用 Bridge 或 Action Client。详见 [04 Running](../04_Running/02_quickstart.md)。
 
 ### 2.5 构建文档
 

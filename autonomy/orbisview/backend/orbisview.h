@@ -1,8 +1,8 @@
 /*
  * Copyright 2026 The Openbot Authors
  *
- * OrbisView application server (Dreamview dreamview.h counterpart):
- * CivetWeb HTTP+WS, mock/autolink sources, throttle, stats, recorder, plugins.
+ * OrbisView application server: CivetWeb HTTP+WS, mock/autolink sources,
+ * throttle, stats, recorder, plugins.
  */
 
 #pragma once
@@ -19,14 +19,11 @@
 
 #include "autonomy/orbisview/backend/adapters/mock/mock_source.h"
 #include "autonomy/orbisview/backend/common/handlers/websocket_handler.h"
-#include "autonomy/orbisview/backend/common/map_service/map_service.h"
 #include "autonomy/orbisview/backend/common/plugins/plugin_host.h"
 #include "autonomy/orbisview/backend/common/plugins/registry.h"
 #include "autonomy/orbisview/backend/common/streaming/channel_stats.h"
 #include "autonomy/orbisview/backend/common/streaming/throttle_queue.h"
-#include "autonomy/orbisview/backend/hmi/hmi.h"
-#include "autonomy/orbisview/backend/perception_camera_updater/perception_camera_updater.h"
-#include "autonomy/orbisview/backend/point_cloud/point_cloud_updater.h"
+#include "autonomy/orbisview/backend/hmi/hmi_worker.h"
 #include "autonomy/orbisview/backend/record_player/envelope_recorder.h"
 #include "autonomy/orbisview/backend/simulation_world/simulation_world_updater.h"
 #include "autonomy/orbisview/backend/teleop/teleop.h"
@@ -56,10 +53,6 @@ struct ServerOptions {
   std::string hmi_modes_dir;
 };
 
-/**
- * @class Orbisview
- * @brief Top-level server (mirrors apollo::dreamview::Dreamview lifecycle).
- */
 class Orbisview {
  public:
   Orbisview();
@@ -96,10 +89,7 @@ class Orbisview {
   std::unique_ptr<CivetServer> server_;
   std::unique_ptr<WebSocketHandler> websocket_;
   std::unique_ptr<SimulationWorldUpdater> sim_world_updater_;
-  std::unique_ptr<MapService> map_service_;
-  std::unique_ptr<core::Hmi> hmi_;
-  std::unique_ptr<PointCloudUpdater> point_cloud_updater_;
-  std::unique_ptr<PerceptionCameraUpdater> perception_camera_updater_;
+  std::unique_ptr<core::HmiWorker> hmi_;
   std::unique_ptr<TeleopService> teleop_;
   std::unique_ptr<plugins::PluginHost> plugin_host_;
 

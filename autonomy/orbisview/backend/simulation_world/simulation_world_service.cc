@@ -29,9 +29,9 @@ void SimulationWorldService::SetPathPoses(std::vector<WorldPose> poses) {
   path_ = std::move(poses);
 }
 
-void SimulationWorldService::SetGoal(double x, double y) {
+void SimulationWorldService::SetGoal(double x, double y, double yaw) {
   std::lock_guard<std::mutex> lock(mutex_);
-  goal_ = {x, y, true};
+  goal_ = {x, y, yaw, true};
 }
 
 void SimulationWorldService::ClearGoal() {
@@ -76,7 +76,8 @@ std::string SimulationWorldService::ToJson() const {
   }
   oss << "],\"goal\":";
   if (goal_.valid) {
-    oss << "{\"x\":" << goal_.x << ",\"y\":" << goal_.y << '}';
+    oss << "{\"x\":" << goal_.x << ",\"y\":" << goal_.y
+        << ",\"yaw\":" << goal_.yaw << '}';
   } else {
     oss << "null";
   }

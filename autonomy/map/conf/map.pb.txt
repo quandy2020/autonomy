@@ -1,0 +1,11 @@
+# Map — static occupancy map server options.
+# Proto: autonomy/map/proto/map_options.proto
+# Load:  nested in system/conf/autonomy.pb.txt  or  LoadModuleConf("map", …)
+#
+# map_file is resolved under autonomy/map/conf/ (see GetMapDataFilesDirectory).
+
+map_name: "map"
+map_file: "turtlebot3_house.yaml"   # YAML + sibling .pgm in this conf/
+map_topic: "map"                   # OccupancyGrid publish topic
+frame_id: "odom"                   # map message frame_id (stack often uses odom)
+publish_frequency: 0               # Hz; 0 = load once (static YAML/PGM)

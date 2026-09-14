@@ -66,9 +66,9 @@ ros2 launch autonomy_ros autonomy.launch.py
 
 | 场景 | 推荐 |
 |------|------|
-| 算法验证、CI | `autonomy_nav_test`（§4） |
-| 生产嵌入式 | `system::Autonomy` 进程内 API |
-| 可视化调试 | ROS 2 + RViz2 |
+| 算法验证、CI | `autolink_launch autonomy.launch` + Bridge / Action |
+| 生产部署 | 多进程栈（各 `*_main`） |
+| 可视化调试 | ROS 2 + RViz2 或 Foxglove |
 | 仿真 | Gazebo + ROS 2 launch |
 
 ### 6.7 相关文档

@@ -1,12 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { wsClient } from '@/store/websocket/client';
 import { useDataStore } from '@/store/dataStore';
+import { emergencyStop } from './emergencyStop';
 
 const MAX_VX = 0.8;
 const MAX_WZ = 1.2;
 const SEND_HZ = 15;
 
-type Keys = { w: boolean; a: boolean; s: boolean; d: boolean; up: boolean; down: boolean; left: boolean; right: boolean };
+type Keys = {
+  w: boolean;
+  a: boolean;
+  s: boolean;
+  d: boolean;
+  up: boolean;
+  down: boolean;
+  left: boolean;
+  right: boolean;
+};
 
 function keysToCmd(k: Keys): { vx: number; wz: number } {
   let vx = 0;
@@ -18,7 +28,7 @@ function keysToCmd(k: Keys): { vx: number; wz: number } {
   return { vx, wz };
 }
 
-/** Bottom-bar teleop: virtual stick + WASD / arrows; Space = e-stop. */
+/** Mosaic teleop panel: stick + WASD / arrows while mounted. */
 export function TeleopPanel() {
   const connected = useDataStore((s) => s.connected);
   const [stick, setStick] = useState({ x: 0, y: 0 });
@@ -45,7 +55,6 @@ export function TeleopPanel() {
       vx: -sy * MAX_VX,
       wz: -sx * MAX_WZ,
     };
-    // Prefer stick when active, else keys.
     if (Math.abs(sx) > 0.02 || Math.abs(sy) > 0.02) return fromStick;
     return fromKeys;
   }, []);
@@ -64,8 +73,8 @@ export function TeleopPanel() {
       right: false,
     };
     setHeld({ vx: 0, wz: 0 });
-    if (connected) wsClient.cmdVel(0, 0);
-  }, [connected]);
+    emergencyStop();
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent, down: boolean) => {
@@ -73,11 +82,6 @@ export function TeleopPanel() {
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       const k = e.key.toLowerCase();
       let handled = true;
-      if (k === ' ') {
-        e.preventDefault();
-        if (down) stop();
-        return;
-      }
       if (k === 'w') keysRef.current.w = down;
       else if (k === 'a') keysRef.current.a = down;
       else if (k === 's') keysRef.current.s = down;
@@ -97,7 +101,7 @@ export function TeleopPanel() {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
     };
-  }, [stop]);
+  }, []);
 
   useEffect(() => {
     if (!connected) return;
@@ -108,7 +112,7 @@ export function TeleopPanel() {
     }, 1000 / SEND_HZ);
     return () => {
       window.clearInterval(id);
-      wsClient.cmdVel(0, 0);
+      emergencyStop();
     };
   }, [connected, computeCmd]);
 
@@ -125,49 +129,50 @@ export function TeleopPanel() {
   };
 
   return (
-    <div className="teleop-bar">
-      <div
-        ref={padRef}
-        className="joystick"
-        onPointerDown={(e) => {
-          dragging.current = true;
-          (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-          setFromPointer(e.clientX, e.clientY);
-        }}
-        onPointerMove={(e) => {
-          if (!dragging.current) return;
-          setFromPointer(e.clientX, e.clientY);
-        }}
-        onPointerUp={() => {
-          dragging.current = false;
-          stickRef.current = { x: 0, y: 0 };
-          setStick({ x: 0, y: 0 });
-        }}
-        onPointerCancel={() => {
-          dragging.current = false;
-          stickRef.current = { x: 0, y: 0 };
-          setStick({ x: 0, y: 0 });
-        }}
-      >
+    <div className="panel teleop-panel">
+      <div className="teleop-panel-body">
         <div
-          className="joystick-knob"
-          style={{
-            transform: `translate(calc(-50% + ${stick.x * 36}px), calc(-50% + ${stick.y * 36}px))`,
+          ref={padRef}
+          className="joystick"
+          onPointerDown={(e) => {
+            dragging.current = true;
+            (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+            setFromPointer(e.clientX, e.clientY);
           }}
-        />
-      </div>
-      <div className="teleop-meta">
-        <div className="teleop-keys">
-          WASD / arrows · Space e-stop
+          onPointerMove={(e) => {
+            if (!dragging.current) return;
+            setFromPointer(e.clientX, e.clientY);
+          }}
+          onPointerUp={() => {
+            dragging.current = false;
+            stickRef.current = { x: 0, y: 0 };
+            setStick({ x: 0, y: 0 });
+          }}
+          onPointerCancel={() => {
+            dragging.current = false;
+            stickRef.current = { x: 0, y: 0 };
+            setStick({ x: 0, y: 0 });
+          }}
+        >
+          <div
+            className="joystick-knob"
+            style={{
+              transform: `translate(calc(-50% + ${stick.x * 36}px), calc(-50% + ${stick.y * 36}px))`,
+            }}
+          />
         </div>
-        <div className="muted">
-          vx={held.vx.toFixed(2)} wz={held.wz.toFixed(2)}
-          {!connected ? ' · offline' : ''}
+        <div className="teleop-meta">
+          <div className="teleop-keys">WASD / arrows</div>
+          <div className="muted teleop-vel">
+            vx={held.vx.toFixed(2)} wz={held.wz.toFixed(2)}
+            {!connected ? ' · offline' : ''}
+          </div>
+          <p className="muted teleop-hint">Space · top-bar E-STOP</p>
+          <button type="button" className="estop" onClick={stop} disabled={!connected}>
+            E-STOP
+          </button>
         </div>
       </div>
-      <button type="button" className="estop" onClick={stop} disabled={!connected}>
-        E-STOP
-      </button>
     </div>
   );
 }

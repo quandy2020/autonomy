@@ -22,7 +22,6 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/common/macros.hpp"
 #include <automsgs/msgs/geometry_msgs/point.pb.h>
 #include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
@@ -149,8 +148,6 @@ protected:
     bool has_published_message_{false};
 };
 
-proto::GridMapOptions CreateGridMapOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace grid_map
 }  // namespace map

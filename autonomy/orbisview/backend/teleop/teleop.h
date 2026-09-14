@@ -1,14 +1,13 @@
 /*
  * Copyright 2026 The Openbot Authors
  *
- * TeleopService — last cmd_vel command state (Dreamview teleop counterpart).
+ * TeleopService — last cmd_vel command + optional Autolink publish hook.
  */
 
 #pragma once
 
 #include <functional>
 #include <mutex>
-#include <string>
 
 namespace autonomy {
 namespace orbisview {
@@ -20,8 +19,6 @@ class TeleopService {
 
   void SetPublisher(PublishFn fn) { publish_ = std::move(fn); }
   void SetCmdVel(double vx, double wz);
-  void GetCmdVel(double* vx, double* wz) const;
-  std::string StatusJson() const;
 
  private:
   mutable std::mutex mutex_;

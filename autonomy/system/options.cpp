@@ -16,64 +16,37 @@
 
 #include "autonomy/system/options.hpp"
 
-#include "autonomy/common/configuration_file_resolver.hpp"
+#include "autonomy/common/conf_loader.hpp"
 #include "autonomy/common/logging.hpp"
-#include "autonomy/common/lua_parameter_dictionary.hpp"
-#include "autonomy/control/control_options.hpp"
-#include "autonomy/map/map_options.hpp"
-#include "autonomy/planning/planner_options.hpp"
-#include "autonomy/task/navigation/options.hpp"
-#include "autonomy/transform/common/transform_interface.hpp"
-#include "autonomy/perception/common/perception_interface.hpp"
+#include "autolink/common/file.hpp"
 
 namespace autonomy {
 namespace system {
-namespace {
 
-proto::AutonomyOptions LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
+proto::AutonomyOptions CreateOptions(const std::string& conf_file) {
     proto::AutonomyOptions options;
+    const std::string file =
+        conf_file.empty() ? std::string("autonomy.pb.txt") : conf_file;
 
-    if (parameter_dictionary->HasKey("map")) {
-        *options.mutable_map_options() =
-            map::LoadOptions(parameter_dictionary->GetDictionary("map").get());
+    if (autolink::common::PathIsAbsolute(file) ||
+        file.find('/') != std::string::npos) {
+        std::string path;
+        if (autolink::common::GetFilePathWithEnv(file, "AUTONOMY_CONF_PATH",
+                                                 &path) ||
+            autolink::common::PathExists(file)) {
+            if (path.empty()) {
+                path = file;
+            }
+            CHECK(autolink::common::GetProtoFromFile(path, &options))
+                << "Failed to load AutonomyOptions from " << path;
+            return options;
+        }
     }
-    if (parameter_dictionary->HasKey("controller")) {
-        *options.mutable_controller_options() = control::LoadOptions(
-            parameter_dictionary->GetDictionary("controller").get());
-    }
-    if (parameter_dictionary->HasKey("planning")) {
-        *options.mutable_planner_options() = planning::LoadOptions(
-            parameter_dictionary->GetDictionary("planning").get());
-    }
-    if (parameter_dictionary->HasKey("navigator")) {
-        *options.mutable_navigator_options() =
-            task::navigation::LoadOptions(parameter_dictionary);
-    }
-    if (parameter_dictionary->HasKey("transform")) {
-        *options.mutable_transform_options() =
-            transform::common::LoadOptions(
-                parameter_dictionary->GetDictionary("transform").get());
-    }
-    if (parameter_dictionary->HasKey("perception")) {
-        *options.mutable_perception_options() = perception::common::LoadOptions(
-            parameter_dictionary->GetDictionary("perception").get());
-    }
+
+    CHECK(common::LoadModuleConf("system", file, &options))
+        << "Failed to load system conf: " << file
+        << " (set AUTONOMY_PATH or AUTONOMY_CONF_PATH)";
     return options;
-}
-}  // namespace
-
-proto::AutonomyOptions CreateOptions(
-    const std::string& configuration_directory,
-    const std::string& configuration_basename) {
-    auto file_resolver =
-        std::make_unique<::autonomy::common::ConfigurationFileResolver>(
-            std::vector<std::string>{configuration_directory});
-    const std::string code =
-        file_resolver->GetFileContentOrDie(configuration_basename);
-    ::autonomy::common::LuaParameterDictionary lua_parameter_dictionary(
-        code, std::move(file_resolver));
-    return LoadOptions(&lua_parameter_dictionary);
 }
 
 }  // namespace system

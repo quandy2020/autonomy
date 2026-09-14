@@ -1,0 +1,32 @@
+# Perception — default stack options (exploration off).
+# Proto: autonomy/perception/proto/perception_options.proto
+# Load:  nested in system/conf/autonomy.pb.txt
+#        or LoadModuleConf("perception", "perception.pb.txt")
+#
+# Exploration preset: perception_exploration.pb.txt / system/conf/exploration.pb.txt
+# Backend Lua (still used by explorers): exploration_*.lua in this conf/
+
+enabled: false
+enable_rgbd_exploration: false
+explorer_backend: "rgbd_tare"
+# Relative to this conf/ directory
+exploration_config: "exploration_rgbd_tare.lua"
+
+odom_topic: "/odom"
+depth_topic: "/camera/depth/image_raw"
+camera_info_topic: "/camera/depth/camera_info"
+camera_frame: "camera_depth_optical_frame"
+map_frame: "map"
+point_cloud_topic: "/velodyne_points"
+
+planner_hz: 2
+path_topic: "/exploration/path"
+waypoint_topic: "/exploration/waypoint"
+map_topic: "/exploration/map"
+global_path_topic: "/exploration/global_path"
+local_path_topic: "/exploration/local_path"
+exploration_finished_topic: "/exploration/finished"
+exploration_progress_topic: "/exploration/progress"
+navigation_boundary_topic: "/exploration/navigation_boundary"
+terrain_map_topic: "/terrain_map"
+enable_exploration_nav_bridge: true

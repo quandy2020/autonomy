@@ -16,8 +16,10 @@ python3 run_autonomy.py -p x86_64
 
 ```bash
 docker exec -it SpaceHero /bin/bash
-cd /workspace/autonomy/build
-./bin/autonomy_nav_test --configuration_directory=config ...
+cd /workspace/autonomy
+export PATH="$PWD/build/bin:$PATH"
+export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/system/launch"
+autolink_launch autonomy.launch
 ```
 
 ### 5.2 常用参数
@@ -64,15 +66,15 @@ export AUTONOMY_CONTAINER_NAME=SpaceHero
 ```bash
 cd /workspace/autonomy
 python3 -m install_deps    # 若依赖不全
-cmake -G Ninja -S . -B build -DBUILD_TOOLS=ON
+cmake -G Ninja -S . -B build
 cmake --build build -j$(nproc)
 
+export PATH=/workspace/autonomy/build/bin:$PATH
+export AUTOLINK_LAUNCH_PATH=/workspace/autonomy/autonomy/system/launch
 export AUTONOMY_BT_PLUGIN_PATH=/workspace/autonomy/build/lib
 export GLOG_logtostderr=1
 
-./build/bin/autonomy_nav_test \
-  --configuration_directory=config \
-  --start_x=1 --start_y=1 --goal_x=5 --goal_y=5
+autolink_launch autonomy.launch
 ```
 
 ![命令行运行](./images/command_line_run.png)

@@ -1,0 +1,63 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.system.monitor.proto;
+
+message ChannelWatchOptions {
+  string channel = 1;
+  double timeout_sec = 2;
+  double min_rate_hz = 3;
+}
+
+message LatencyWatchOptions {
+  string channel = 1;
+  double max_age_sec = 2;
+}
+
+message MrmHandlerOptions {
+  string cmd_vel_channel = 1;
+  bool emergency_stop_on_error = 2;
+}
+
+message MonitorOptions {
+  bool enable_cpu_monitor = 1;
+  bool enable_gpu_monitor = 2;
+  bool enable_mem_monitor = 3;
+  bool enable_hdd_monitor = 4;
+  bool enable_net_monitor = 5;
+  bool enable_ntp_monitor = 6;
+  bool enable_process_monitor = 7;
+  bool enable_voltage_monitor = 8;
+
+  bool enable_channel_monitor = 9;
+  bool enable_latency_monitor = 10;
+  bool enable_hazard_monitor = 11;
+  bool enable_mrm_handler = 12;
+  repeated ChannelWatchOptions channel_watches = 13;
+  repeated LatencyWatchOptions latency_watches = 14;
+  MrmHandlerOptions mrm = 15;
+
+  bool enable_prometheus = 16;
+  string prometheus_bind_address = 17;
+  string prometheus_metrics_prefix = 18;
+
+  bool enable_cpu_profile = 19;
+  string cpu_profile_filename = 20;
+  bool enable_heap_profile = 21;
+  string heap_profile_filename = 22;
+
+  double collect_interval_sec = 23;
+}

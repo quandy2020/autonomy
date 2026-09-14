@@ -75,8 +75,10 @@ bool Generator::Generate(const FileDescriptor* file,
   std::unique_ptr<io::ZeroCopyOutputStream> index_stream(
       generator_context->Open(identifier + ".pb_index"));
   io::Printer index_printer(index_stream.get(), '$');
-  for (int i = 0; i < file->message_type_count(); ++i)
-    index_printer.PrintRaw(file->message_type(i)->name() + "\n");
+  for (int i = 0; i < file->message_type_count(); ++i) {
+    index_printer.PrintRaw(
+        std::string(file->message_type(i)->name()) + "\n");
+  }
 
   // Write wrapper header .am.h
   std::map<std::string, std::string> variables;
@@ -97,14 +99,14 @@ bool Generator::Generate(const FileDescriptor* file,
     "#include <automsgs/msgs/Export.hh>\n"
     "#include <$detail_header$>\n\n");
 
-  const std::string& package = file->package();
+  const std::string package(file->package());
   auto ns = getNamespaces(package);
   for (const auto& n : ns)
     printer.PrintRaw("namespace " + n + " {\n");
 
   for (int i = 0; i < file->message_type_count(); ++i) {
     const Descriptor* desc = file->message_type(i);
-    const std::string& name = desc->name();
+    const std::string name(desc->name());
     printer.PrintRaw("typedef std::unique_ptr<" + name + "> " + name + "UniquePtr;\n");
     printer.PrintRaw("typedef std::unique_ptr<const " + name + "> Const" + name + "UniquePtr;\n");
     printer.PrintRaw("typedef std::shared_ptr<" + name + "> " + name + "SharedPtr;\n");

@@ -4,55 +4,58 @@
 
 ```mermaid
 flowchart TB
-    subgraph API["任务 API 层"]
-        A[system::Autonomy]
+    subgraph API["发令层"]
+        B[Bridge / Action Client]
     end
     subgraph Nav["编排层"]
+        T[TaskServer]
         N[Navigator / BT]
     end
-    subgraph Srv["服务层"]
+    subgraph Srv["服务层（多进程）"]
         P[PlannerServer]
         C[ControllerServer]
         M[MapServer]
-        T[TransformServer]
+        X[Transform]
     end
 
-    A --> N
+    B --> T
+    T --> N
     N --> P
     N --> C
     N --> M
-    N --> T
+    N --> X
 ```
 
 ### 5.2 启动与配置时序
 
 ```
-CreateAutonomy(options)
-    → Start()        # 启动各 Server
-    → Configure()    # 加载 navigator 选项，附着 BT（演进中）
-    → NavigateToPose()
-    → Shutdown()
+autolink_launch autonomy.launch
+    → autonomy.planning / control / task / …
+    → TaskServer::Configure + Start
+    → Bridge / Action 发令
 ```
 
-### 5.3 NavigatorMuxer
+进程内 `CreateAutonomy` **已移除**。
 
-同一时刻仅允许一个 Navigator 实例活跃（`navigate_to_pose` 或 `navigate_through_poses`），由 `NavigatorMuxer` 互斥调度。
+### 5.3 任务互斥
+
+同一时刻通常仅允许一个导航类任务活跃（NavigateToPose 或 ThroughPoses），由 TaskServer / Navigator 侧互斥调度。
 
 ### 5.4 任务生命周期
 
 | 状态 | 说明 |
 |------|------|
 | Idle | 无活跃任务 |
-| Running | BT tick 或直驱循环中 |
+| Running | BT tick 或任务执行中 |
 | Completed | 到达目标 |
 | Failed | 规划/控制失败 |
 | Canceled | 用户取消 |
 
-接口定义：`autonomy/navigator/common/interface.hpp` → `NavigatorInterface`。
+接口定义：`autonomy/task/navigation/interface.hpp` → `NavigatorInterface`。
 
 ### 5.5 与 Bridge 的集成
 
-gRPC Bridge 可将外部请求转为 `NavigateToPose` Action 语义，当前 `navigator_stub` 为桩实现，详见 [15 Bridge](../15_Bridge/00_guide.md)。
+gRPC Bridge 可将外部请求转为导航 Action 语义，详见 [15 Bridge](../15_Bridge/00_guide.md)。
 
 ### 5.6 相关文档
 

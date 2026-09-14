@@ -1,17 +1,33 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_FOOTPRINT } from '../../../config/parameters.js';
+import { DEFAULT_FOOTPRINT } from '@/config/parameters';
 import { paintMap2DScene } from '@/renderer';
 import type {
-  ChassisJson,
   OccupancyGridJson,
   Pose2D,
   RobotFootprintJson,
 } from '@/renderer/map2d/types';
 import { useDataStore } from '@/store/dataStore';
-import { useLayerStore } from '@/store/layoutStore';
-import { useWaypointStore } from '@/store/waypointStore';
-import { SCHEMAS, type StreamEnvelope } from '@/store/websocket/types';
+import { useLayerStore, useLayoutStore } from '@/store/layoutStore';
+import { useWaypointStore, waypointColor } from '@/store/waypointStore';
+import { useMapViewStore } from '@/store/mapViewStore';
+import { SCHEMAS } from '@/store/websocket/types';
 import { wsClient } from '@/store/websocket/client';
+import { MapFloatToolbar } from '@/components/Map/MapFloatToolbar';
+import { MapInstrumentCluster } from '@/components/Map/MapInstrumentCluster';
+import {
+  asPayload,
+  effectiveMapLayers,
+  pickDisplayEnvelope,
+} from '@/components/Channels/mapDisplayBinding';
+import {
+  hexToRgba,
+  resolveCloudOverlay,
+  resolveLaserOverlays,
+  resolvePathStyle,
+  resolveRangeOverlays,
+} from '@/components/Channels/sensorDisplay';
+import { useDisplayStore } from '@/store/displayStore';
+import { formatPickPose, pickPoseStatus } from '@/utils/poseMath';
 
 interface Path2D {
   poses: Pose2D[];
@@ -30,11 +46,6 @@ interface NavPayload {
   distance_remaining?: number;
 }
 
-interface Twist2D {
-  vx: number;
-  wz: number;
-}
-
 interface TfTree {
   transforms: {
     parent: string;
@@ -45,93 +56,133 @@ interface TfTree {
   }[];
 }
 
-function asPayload<T>(env: { payload?: unknown } | undefined): T | null {
-  if (!env?.payload || typeof env.payload !== 'object') return null;
-  return env.payload as T;
-}
-
-function pickMapAndCostmap(envelopes: Record<string, StreamEnvelope>) {
-  const grids = Object.values(envelopes).filter(
-    (e) => e.schema === SCHEMAS.OccupancyGrid,
-  );
-  const costmapEnv = grids.find((e) => /costmap/i.test(e.channel));
-  const mapEnv =
-    grids.find((e) => e !== costmapEnv && !/costmap/i.test(e.channel)) ??
-    grids.find((e) => e !== costmapEnv);
-  return {
-    map: asPayload<OccupancyGridJson>(mapEnv),
-    costmap: asPayload<OccupancyGridJson>(costmapEnv),
-  };
-}
-
-const SCALE = 40;
+const DEFAULT_SCALE = 40;
+const MIN_SCALE = 8;
+const MAX_SCALE = 160;
 
 export function Map2DPanel() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const hostRef = useRef<HTMLDivElement>(null);
   const envelopes = useDataStore((s) => s.envelopes);
   const connected = useDataStore((s) => s.connected);
+  const displays = useDisplayStore((s) => s.displays);
   const layers = useLayerStore();
   const followRobot = useLayerStore((s) => s.followRobot);
-  const setFollowRobot = useLayerStore((s) => s.setFollowRobot);
+  const waypoints = useWaypointStore((s) => s.waypoints);
+  const selectedId = useWaypointStore((s) => s.selectedId);
   const addWaypoint = useWaypointStore((s) => s.add);
+  const updateWaypoint = useWaypointStore((s) => s.update);
+  const selectWaypoint = useWaypointStore((s) => s.select);
+  const mapTool = useMapViewStore((s) => s.tool);
+  const setStatusMsg = useMapViewStore((s) => s.setStatusMsg);
   const [localGoal, setLocalGoal] = useState<Pose2D | null>(null);
   const [viewOffset, setViewOffset] = useState({ x: 0, y: 0 });
-
-  const [mapTool, setMapTool] = useState<'goal' | 'measure' | 'copy'>('goal');
-  const [measurePts, setMeasurePts] = useState<{ x: number; y: number }[]>([]);
-  const [measureMsg, setMeasureMsg] = useState('');
-
-  const pose = useMemo(() => {
-    const e = Object.values(envelopes).find((x) => x.schema === SCHEMAS.Pose2D);
-    return asPayload<Pose2D>(e);
-  }, [envelopes]);
-
-  const path = useMemo(() => {
-    const e = Object.values(envelopes).find((x) => x.schema === SCHEMAS.Path2D);
-    return asPayload<Path2D>(e);
-  }, [envelopes]);
-
-  const { map, costmap } = useMemo(
-    () => pickMapAndCostmap(envelopes),
-    [envelopes],
+  const [scale, setScale] = useState(DEFAULT_SCALE);
+  const [canvasSize, setCanvasSize] = useState({ w: 640, h: 480 });
+  const [measurePreview, setMeasurePreview] = useState<{ x: number; y: number } | null>(
+    null,
   );
 
+  const [sketchPts, setSketchPts] = useState<
+    {
+      x: number;
+      y: number;
+      yaw?: number;
+      label?: string;
+      ringM?: number;
+      editing?: boolean;
+    }[]
+  >([]);
+  const sketchRef = useRef(sketchPts);
+  sketchRef.current = sketchPts;
+  const measurePreviewRef = useRef(measurePreview);
+  measurePreviewRef.current = measurePreview;
+
+  type PoseDrag = {
+    tool: 'nav' | 'pick';
+    x: number;
+    y: number;
+    yaw: number;
+    ringM: number;
+    moved: boolean;
+    label: string;
+  };
+  /** Drag an existing waypoint: move (near center) or set yaw (pull outward). */
+  type WpEditDrag = {
+    id: string;
+    originX: number;
+    originY: number;
+    yaw: number;
+    mode: 'move' | 'yaw';
+    moved: boolean;
+  };
+  const poseDragRef = useRef<PoseDrag | null>(null);
+  const wpEditRef = useRef<WpEditDrag | null>(null);
+  const viewPanRef = useRef<{ lastX: number; lastY: number } | null>(null);
+
+  useEffect(() => {
+    setSketchPts([]);
+    setMeasurePreview(null);
+    poseDragRef.current = null;
+    wpEditRef.current = null;
+    viewPanRef.current = null;
+    if (mapTool === 'pan') {
+      useLayerStore.getState().setFollowRobot(false);
+      setStatusMsg('拖动视图：左键平移，滚轮缩放');
+    }
+  }, [mapTool, setStatusMsg]);
+  const pose = useMemo(() => {
+    return asPayload<Pose2D>(pickDisplayEnvelope(envelopes, displays, 'pose'));
+  }, [envelopes, displays]);
+
+  const path = useMemo(() => {
+    return asPayload<Path2D>(pickDisplayEnvelope(envelopes, displays, 'path'));
+  }, [envelopes, displays]);
+
+  const map = useMemo(() => {
+    return asPayload<OccupancyGridJson>(pickDisplayEnvelope(envelopes, displays, 'map'));
+  }, [envelopes, displays]);
+
+  const costmap = useMemo(() => {
+    return asPayload<OccupancyGridJson>(pickDisplayEnvelope(envelopes, displays, 'costmap'));
+  }, [envelopes, displays]);
+
   const laser = useMemo(() => {
-    const e = Object.values(envelopes).find((x) => x.schema === SCHEMAS.LaserScan);
-    return asPayload<LaserScan>(e);
-  }, [envelopes]);
+    return asPayload<LaserScan>(pickDisplayEnvelope(envelopes, displays, 'laser'));
+  }, [envelopes, displays]);
+
+  const laserOverlays = useMemo(
+    () => resolveLaserOverlays(envelopes, displays),
+    [envelopes, displays],
+  );
+
+  const cloudOverlay = useMemo(
+    () => resolveCloudOverlay(envelopes, displays),
+    [envelopes, displays],
+  );
+
+  const rangeOverlays = useMemo(
+    () => resolveRangeOverlays(envelopes, displays),
+    [envelopes, displays],
+  );
+
+  const pathStyle = useMemo(() => resolvePathStyle(displays), [displays]);
 
   const nav = useMemo(() => {
-    const e = Object.values(envelopes).find((x) => x.schema === SCHEMAS.Navigation);
-    return asPayload<NavPayload>(e);
-  }, [envelopes]);
-
-  const twist = useMemo(() => {
-    const e = Object.values(envelopes).find((x) => x.schema === SCHEMAS.Twist2D);
-    return asPayload<Twist2D>(e);
-  }, [envelopes]);
-
-  const chassis = useMemo(() => {
-    const e = Object.values(envelopes).find(
-      (x) => x.schema === SCHEMAS.ChassisState,
-    );
-    return asPayload<ChassisJson>(e);
-  }, [envelopes]);
+    return asPayload<NavPayload>(pickDisplayEnvelope(envelopes, displays, 'navigation'));
+  }, [envelopes, displays]);
 
   const footprint = useMemo(() => {
-    const e = Object.values(envelopes).find(
-      (x) => x.schema === SCHEMAS.RobotFootprint,
+    return asPayload<RobotFootprintJson>(
+      pickDisplayEnvelope(envelopes, displays, 'footprint'),
     );
-    return asPayload<RobotFootprintJson>(e);
-  }, [envelopes]);
+  }, [envelopes, displays]);
 
   const tf = useMemo(() => {
-    const e = Object.values(envelopes).find((x) => x.schema === SCHEMAS.TfTree);
-    return asPayload<TfTree>(e);
-  }, [envelopes]);
+    return asPayload<TfTree>(pickDisplayEnvelope(envelopes, displays, 'tf'));
+  }, [envelopes, displays]);
 
   const obstacles = useMemo(() => {
-    const e = Object.values(envelopes).find((x) => x.schema === SCHEMAS.ObstacleArray);
     return asPayload<{
       obstacles?: {
         id: number;
@@ -142,25 +193,26 @@ export function Map2DPanel() {
         width?: number;
         type?: string;
       }[];
-    }>(e);
-  }, [envelopes]);
+    }>(pickDisplayEnvelope(envelopes, displays, 'obstacles'));
+  }, [envelopes, displays]);
 
   const vectorMap = useMemo(() => {
-    const e = Object.values(envelopes).find((x) => x.schema === SCHEMAS.VectorMap);
     return asPayload<{
       lanes?: { id: string; points: number[][] }[];
       keepouts?: { id: string; polygon: number[][] }[];
-    }>(e);
-  }, [envelopes]);
+    }>(pickDisplayEnvelope(envelopes, displays, 'vectormap'));
+  }, [envelopes, displays]);
 
   const prediction = useMemo(() => {
-    const e = Object.values(envelopes).find(
-      (x) => x.schema === SCHEMAS.PredictionObstacles,
-    );
     return asPayload<{
       obstacles?: { id: number; trajectory?: { x: number; y: number }[] }[];
-    }>(e);
-  }, [envelopes]);
+    }>(pickDisplayEnvelope(envelopes, displays, 'prediction'));
+  }, [envelopes, displays]);
+
+  const paintLayers = useMemo(
+    () => effectiveMapLayers(layers, displays),
+    [layers, displays],
+  );
 
   const goal =
     localGoal ??
@@ -171,6 +223,25 @@ export function Map2DPanel() {
       setViewOffset({ x: pose.x, y: pose.y });
     }
   }, [followRobot, pose]);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    const canvas = canvasRef.current;
+    if (!host || !canvas) return;
+    const sync = () => {
+      const w = Math.max(1, Math.floor(host.clientWidth));
+      const h = Math.max(1, Math.floor(host.clientHeight));
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        setCanvasSize({ w, h });
+      }
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(host);
+    return () => ro.disconnect();
+  }, []);
 
   const anyStale = Object.values(envelopes).some(
     (e) =>
@@ -191,55 +262,115 @@ export function Map2DPanel() {
     paintMap2DScene(ctx, {
       width: canvas.width,
       height: canvas.height,
-      scale: SCALE,
+      scale,
       viewOffset,
       layers: {
-        grid: layers.grid,
-        map: layers.map,
-        costmap: layers.costmap,
-        vectormap: layers.vectormap,
-        path: layers.path,
-        robot: layers.robot,
-        footprint: layers.footprint,
-        obstacles: layers.obstacles,
-        prediction: layers.prediction,
-        laser: layers.laser,
-        tf: layers.tf,
+        grid: paintLayers.grid,
+        map: paintLayers.map,
+        costmap: paintLayers.costmap,
+        vectormap: paintLayers.vectormap,
+        path: paintLayers.path,
+        robot: paintLayers.robot,
+        footprint: paintLayers.footprint,
+        obstacles: paintLayers.obstacles,
+        prediction: paintLayers.prediction,
+        laser: paintLayers.laser,
+        tf: paintLayers.tf,
+        pointcloud: paintLayers.pointcloud,
       },
       pose,
       path,
+      pathStyle,
       map,
       costmap,
       laser,
+      lasers: laserOverlays.map((o) => ({
+        scan: o.scan,
+        color: o.style.color,
+        size: o.style.size,
+        alpha: o.style.alpha,
+      })),
+      cloud: cloudOverlay
+        ? {
+            points: cloudOverlay.points,
+            colorMode: cloudOverlay.style.colorMode,
+            size: cloudOverlay.style.size,
+            alpha: cloudOverlay.style.alpha,
+          }
+        : null,
+      ranges: rangeOverlays.map((o) => ({
+        range: o.range.range,
+        field_of_view: o.range.field_of_view ?? 0.25,
+        color: hexToRgba(o.style.color, o.style.alpha),
+        alpha: o.style.alpha,
+      })),
       tf,
       obstacles,
       vectorMap,
       prediction,
       goal,
-      twist,
-      chassis,
       footprint,
       defaultFootprint: DEFAULT_FOOTPRINT,
-      measurePts,
+      measurePts: mapTool === 'measure' ? sketchPts : [],
+      measurePreview: mapTool === 'measure' ? measurePreview : null,
+      poseHandles:
+        mapTool === 'nav' || mapTool === 'pick'
+          ? sketchPts.map((p) => ({
+              x: p.x,
+              y: p.y,
+              yaw: p.yaw ?? 0,
+              label: p.label,
+              ringM: p.ringM ?? 0.5,
+              editing: !!p.editing,
+            }))
+          : [],
+      routePts: waypoints.map((w, i) => ({
+        x: w.x,
+        y: w.y,
+        yaw: w.yaw ?? 0,
+        label: w.label ?? `#${i + 1}`,
+        color: waypointColor(i),
+        selected: w.id === selectedId,
+        editing: wpEditRef.current?.id === w.id,
+      })),
     });
   }, [
     pose,
     path,
+    pathStyle,
     map,
     costmap,
     laser,
-    layers,
+    laserOverlays,
+    cloudOverlay,
+    rangeOverlays,
+    paintLayers,
     goal,
-    twist,
-    chassis,
     footprint,
     tf,
     viewOffset,
     obstacles,
     vectorMap,
     prediction,
-    measurePts,
+    sketchPts,
+    waypoints,
+    selectedId,
+    mapTool,
+    measurePreview,
+    canvasSize,
+    scale,
   ]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (mapTool === 'measure' && sketchPts.length) {
+        setStatusMsg(`${useMapViewStore.getState().statusMsg} · 结束`);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mapTool, sketchPts.length, setStatusMsg]);
 
   const worldFromEvent = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -247,127 +378,477 @@ export function Map2DPanel() {
     const rect = canvas.getBoundingClientRect();
     const sx = ((e.clientX - rect.left) / rect.width) * canvas.width;
     const sy = ((e.clientY - rect.top) / rect.height) * canvas.height;
-    const x = (sx - canvas.width / 2) / SCALE + viewOffset.x;
-    const y = (canvas.height / 2 - sy) / SCALE + viewOffset.y;
+    const x = (sx - canvas.width / 2) / scale + viewOffset.x;
+    const y = (canvas.height / 2 - sy) / scale + viewOffset.y;
     return { x, y };
   };
 
-  const onClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!connected && mapTool === 'goal') return;
+  const hitWaypoint = (w: { x: number; y: number }, radiusM = 0.65) => {
+    const list = useWaypointStore.getState().waypoints;
+    let best: { id: string; dist: number } | null = null;
+    for (const wp of list) {
+      const d = Math.hypot(wp.x - w.x, wp.y - w.y);
+      if (d <= radiusM && (!best || d < best.dist)) best = { id: wp.id, dist: d };
+    }
+    return best?.id ?? null;
+  };
+
+  const pathLength = (pts: { x: number; y: number }[]) => {
+    let dist = 0;
+    for (let i = 1; i < pts.length; i++) {
+      dist += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    }
+    return dist;
+  };
+
+  const yawDeg = (yaw: number) => ((yaw * 180) / Math.PI).toFixed(0);
+
+  const updateDragSketch = (drag: PoseDrag) => {
+    setSketchPts([
+      {
+        x: drag.x,
+        y: drag.y,
+        yaw: drag.yaw,
+        label: drag.label,
+        ringM: drag.ringM,
+        editing: true,
+      },
+    ]);
+    if (drag.tool === 'pick') {
+      setStatusMsg(
+        `取点 (${drag.x.toFixed(2)}, ${drag.y.toFixed(2)}) · 拖动设朝向 ${yawDeg(drag.yaw)}°` +
+          (drag.moved ? '' : ' · 或滚轮转动'),
+      );
+      return;
+    }
+    setStatusMsg(
+      `${drag.label} · 拖动箭头设朝向 ${yawDeg(drag.yaw)}°` +
+        (drag.moved ? '' : ' · 或滚轮转动'),
+    );
+  };
+
+  const finishPoseDrag = (drag: PoseDrag) => {
+    const yaw = drag.moved ? drag.yaw : 0;
+    if (drag.tool === 'pick') {
+      const text = formatPickPose(drag.x, drag.y, yaw);
+      void navigator.clipboard?.writeText(text);
+      setSketchPts([]);
+      setStatusMsg(pickPoseStatus(drag.x, drag.y, yaw));
+      return;
+    }
+    const n = useWaypointStore.getState().waypoints.length + 1;
+    addWaypoint(drag.x, drag.y, yaw, `#${n}`);
+    setSketchPts([]);
+    const list = useWaypointStore.getState().waypoints;
+    if (list.length === 1) {
+      setLocalGoal({ x: drag.x, y: drag.y, yaw });
+      if (connected) {
+        wsClient.send({ op: 'set_goal', x: drag.x, y: drag.y, yaw });
+      }
+      setStatusMsg(
+        `目标点 (${drag.x.toFixed(2)}, ${drag.y.toFixed(2)}) yaw ${yawDeg(yaw)}°` +
+          (!connected ? ' · offline' : ' · 已发送'),
+      );
+      return;
+    }
+    setStatusMsg(`导航点 #${list.length} · 共 ${list.length} 点 · 点发送下发路线`);
+  };
+
+  const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    // Measure: RMB finishes — suppress menu, do not pan.
+    if (mapTool === 'measure' && e.button === 2) {
+      e.preventDefault();
+      return;
+    }
+    // Pan view: hand tool, middle button, or Space+left
+    const wantPan =
+      mapTool === 'pan' || e.button === 1 || (e.button === 0 && e.shiftKey);
+    if (wantPan) {
+      e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      useLayerStore.getState().setFollowRobot(false);
+      viewPanRef.current = { lastX: e.clientX, lastY: e.clientY };
+      setStatusMsg('拖动平移视图中…');
+      return;
+    }
+    if (e.button !== 0) return;
     const w = worldFromEvent(e);
     if (!w) return;
-    if (mapTool === 'goal') {
-      setLocalGoal(w);
-      wsClient.send({ op: 'set_goal', x: w.x, y: w.y });
-      return;
-    }
-    if (mapTool === 'copy') {
-      const text = `${w.x.toFixed(4)},${w.y.toFixed(4)}`;
-      void navigator.clipboard?.writeText(text);
-      setMeasureMsg(`copied ${text}`);
-      return;
-    }
-    const next = [...measurePts, w];
-    setMeasurePts(next);
-    if (next.length >= 2) {
-      let dist = 0;
-      for (let i = 1; i < next.length; i++) {
-        const dx = next[i].x - next[i - 1].x;
-        const dy = next[i].y - next[i - 1].y;
-        dist += Math.hypot(dx, dy);
+
+    // Hit existing waypoint → select + edit (any tool except measure/pick)
+    if (mapTool !== 'measure' && mapTool !== 'pick') {
+      const hitId = hitWaypoint(w);
+      if (hitId) {
+        const wp = useWaypointStore.getState().waypoints.find((x) => x.id === hitId);
+        if (wp) {
+          e.currentTarget.setPointerCapture(e.pointerId);
+          selectWaypoint(hitId);
+          wpEditRef.current = {
+            id: hitId,
+            originX: wp.x,
+            originY: wp.y,
+            yaw: wp.yaw ?? 0,
+            mode: 'move',
+            moved: false,
+          };
+          setStatusMsg(
+            `选中 ${wp.label ?? hitId} · 拖动改位置 · 双击打开 Waypoints`,
+          );
+          return;
+        }
       }
-      setMeasureMsg(`path ${dist.toFixed(2)} m · ${next.length} pts (RMB finish)`);
-    } else {
-      setMeasureMsg('measure: click more points, RMB to finish');
     }
+
+    if (mapTool !== 'nav' && mapTool !== 'pick') return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+
+    const label = mapTool === 'pick' ? 'Pick' : `#${waypoints.length + 1}`;
+    const drag: PoseDrag = {
+      tool: mapTool,
+      x: w.x,
+      y: w.y,
+      yaw: 0,
+      ringM: 0.5,
+      moved: false,
+      label,
+    };
+    poseDragRef.current = drag;
+    updateDragSketch(drag);
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const pan = viewPanRef.current;
+    if (pan) {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const sx = canvas.width / Math.max(rect.width, 1);
+      const sy = canvas.height / Math.max(rect.height, 1);
+      const dx = (e.clientX - pan.lastX) * sx;
+      const dy = (e.clientY - pan.lastY) * sy;
+      pan.lastX = e.clientX;
+      pan.lastY = e.clientY;
+      setViewOffset((o) => ({
+        x: o.x - dx / scale,
+        y: o.y + dy / scale,
+      }));
+      return;
+    }
+
+    const w = worldFromEvent(e);
+    if (!w) return;
+
+    const edit = wpEditRef.current;
+    if (edit) {
+      const dist = Math.hypot(w.x - edit.originX, w.y - edit.originY);
+      if (edit.mode === 'yaw' || dist > 0.5) {
+        edit.mode = 'yaw';
+        edit.moved = true;
+        edit.yaw = Math.atan2(w.y - edit.originY, w.x - edit.originX);
+        updateWaypoint(edit.id, { x: edit.originX, y: edit.originY, yaw: edit.yaw });
+        setStatusMsg(`朝向 ${yawDeg(edit.yaw)}° · 松手确认`);
+      } else if (dist > 0.03) {
+        edit.mode = 'move';
+        edit.moved = true;
+        edit.originX = w.x;
+        edit.originY = w.y;
+        updateWaypoint(edit.id, { x: w.x, y: w.y });
+        setStatusMsg(`移动 (${w.x.toFixed(2)}, ${w.y.toFixed(2)})`);
+      }
+      return;
+    }
+
+    if (mapTool === 'measure' && sketchPts.length === 1 && !poseDragRef.current) {
+      setMeasurePreview(w);
+      return;
+    }
+
+    const drag = poseDragRef.current;
+    if (!drag) return;
+    const dist = Math.hypot(w.x - drag.x, w.y - drag.y);
+    if (dist > 0.05) {
+      drag.moved = true;
+      drag.yaw = Math.atan2(w.y - drag.y, w.x - drag.x);
+      drag.ringM = Math.max(0.4, Math.min(2.5, dist));
+    }
+    updateDragSketch({ ...drag });
+  };
+
+  const finishMeasureAt = (end: { x: number; y: number } | null) => {
+    const cur = sketchRef.current;
+    if (cur.length === 1 && end) {
+      const pts = [cur[0], end];
+      sketchRef.current = pts;
+      setSketchPts(pts);
+      setMeasurePreview(null);
+      const dist = pathLength(pts);
+      setStatusMsg(
+        `测距 ${dist.toFixed(2)} m · (${pts[0].x.toFixed(2)}, ${pts[0].y.toFixed(2)}) → (${end.x.toFixed(2)}, ${end.y.toFixed(2)}) · 结果保留`,
+      );
+      return;
+    }
+    if (cur.length >= 2) {
+      setStatusMsg(
+        `测距 ${pathLength(cur).toFixed(2)} m · 结果保留 · 左键可重新开始`,
+      );
+      return;
+    }
+    setStatusMsg('测距：请先左键确定起点');
+  };
+
+  const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (mapTool === 'measure' && e.button === 2) {
+      const w = worldFromEvent(e);
+      finishMeasureAt(measurePreviewRef.current ?? w);
+      return;
+    }
+
+    if (viewPanRef.current) {
+      viewPanRef.current = null;
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      setStatusMsg(
+        mapTool === 'pan'
+          ? '拖动视图：左键平移，滚轮缩放'
+          : useMapViewStore.getState().statusMsg,
+      );
+      return;
+    }
+
+    if (wpEditRef.current) {
+      const edit = wpEditRef.current;
+      wpEditRef.current = null;
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+      const wp = useWaypointStore.getState().waypoints.find((x) => x.id === edit.id);
+      if (wp) {
+        const list = useWaypointStore.getState().waypoints;
+        if (list.length === 1 && connected) {
+          setLocalGoal({ x: wp.x, y: wp.y, yaw: wp.yaw ?? 0 });
+          wsClient.send({ op: 'set_goal', x: wp.x, y: wp.y, yaw: wp.yaw ?? 0 });
+          setStatusMsg(
+            `已更新目标 (${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}) yaw ${yawDeg(wp.yaw ?? 0)}°`,
+          );
+        } else {
+          setStatusMsg(
+            `已更新 ${wp.label ?? '#'} (${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}) yaw ${yawDeg(wp.yaw ?? 0)}°`,
+          );
+        }
+      }
+      return;
+    }
+
+    const drag = poseDragRef.current;
+    if (!drag) return;
+    poseDragRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    finishPoseDrag(drag);
+  };
+
+  const onWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    const edit = wpEditRef.current;
+    if (edit) {
+      e.preventDefault();
+      edit.moved = true;
+      edit.mode = 'yaw';
+      edit.yaw += e.deltaY * 0.004;
+      updateWaypoint(edit.id, { yaw: edit.yaw });
+      setStatusMsg(`朝向 ${yawDeg(edit.yaw)}°`);
+      return;
+    }
+    const sel = useWaypointStore.getState().selectedId;
+    if (sel && !poseDragRef.current && mapTool !== 'measure' && mapTool !== 'pan') {
+      const wp = useWaypointStore.getState().waypoints.find((x) => x.id === sel);
+      if (wp) {
+        e.preventDefault();
+        const yaw = (wp.yaw ?? 0) + e.deltaY * 0.004;
+        updateWaypoint(sel, { yaw });
+        setStatusMsg(`选中点朝向 ${yawDeg(yaw)}°`);
+        return;
+      }
+    }
+    const drag = poseDragRef.current;
+    if (drag) {
+      e.preventDefault();
+      drag.moved = true;
+      drag.yaw += e.deltaY * 0.004;
+      updateDragSketch({ ...drag });
+      return;
+    }
+    // Default: zoom toward cursor
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+    setScale((s) => clampScale(s * factor));
+    useLayerStore.getState().setFollowRobot(false);
+  };
+
+  const onClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (mapTool === 'nav' || mapTool === 'pan' || mapTool === 'pick') return;
+    const w = worldFromEvent(e);
+    if (!w) return;
+
+    if (mapTool === 'measure') {
+      // Left click: start (or restart) a measurement — only the first point.
+      setSketchPts([w]);
+      setMeasurePreview(null);
+      setStatusMsg(
+        `测距起点 (${w.x.toFixed(2)}, ${w.y.toFixed(2)}) · 移动预览 · 右击落终点`,
+      );
+    }
+  };
+
+  const onDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const w = worldFromEvent(e);
+    if (!w) return;
+    const hitId = hitWaypoint(w, 0.8);
+    if (!hitId) return;
+    e.preventDefault();
+    selectWaypoint(hitId);
+    wpEditRef.current = null;
+    poseDragRef.current = null;
+    useLayoutStore.getState().ensurePanel('waypoints');
+    setStatusMsg('已打开 Waypoints · 可在列表中编辑');
   };
 
   const onContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault();
-    const w = worldFromEvent(e);
-    if (!w) return;
-    if (mapTool === 'measure') {
-      setMeasureMsg((m) => `${m} · done`);
+    if (wpEditRef.current) {
+      wpEditRef.current = null;
+      setStatusMsg('已取消编辑');
       return;
     }
-    addWaypoint(w.x, w.y);
+    if (poseDragRef.current) {
+      poseDragRef.current = null;
+      setSketchPts([]);
+      setStatusMsg('已取消落点');
+      return;
+    }
+    if (mapTool === 'measure') {
+      const w = worldFromEvent(e);
+      finishMeasureAt(measurePreviewRef.current ?? w);
+      return;
+    }
+    if (mapTool === 'nav') {
+      setSketchPts([]);
+      setStatusMsg('导航：落点设朝向；1 点发目标，多点发路线');
+    }
   };
 
   const clearGoal = () => {
     setLocalGoal(null);
+    setSketchPts([]);
     wsClient.send({ op: 'clear_goal' });
+    setStatusMsg('已清除目标');
   };
 
+  const clampScale = (s: number) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, s));
+
+  const zoomIn = () => {
+    setScale((s) => clampScale(s * 1.25));
+    useLayerStore.getState().setFollowRobot(false);
+    setStatusMsg('已放大');
+  };
+
+  const zoomOut = () => {
+    setScale((s) => clampScale(s / 1.25));
+    useLayerStore.getState().setFollowRobot(false);
+    setStatusMsg('已缩小');
+  };
+
+  const fitView = () => {
+    const canvas = canvasRef.current;
+    const w = canvas?.width ?? canvasSize.w;
+    const h = canvas?.height ?? canvasSize.h;
+    const pts: { x: number; y: number }[] = [];
+    if (pose) pts.push(pose);
+    if (goal) pts.push(goal);
+    waypoints.forEach((wp) => pts.push(wp));
+    if (map) {
+      const ox = map.origin?.x ?? 0;
+      const oy = map.origin?.y ?? 0;
+      const res = map.resolution ?? 0.05;
+      pts.push({ x: ox, y: oy });
+      pts.push({ x: ox + map.width * res, y: oy + map.height * res });
+    }
+    if (!pts.length) {
+      setScale(DEFAULT_SCALE);
+      setViewOffset({ x: 0, y: 0 });
+      useLayerStore.getState().setFollowRobot(false);
+      setStatusMsg('自适应 · 无地图数据，已复位');
+      return;
+    }
+    let minX = pts[0].x;
+    let maxX = pts[0].x;
+    let minY = pts[0].y;
+    let maxY = pts[0].y;
+    for (const p of pts) {
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y);
+      maxY = Math.max(maxY, p.y);
+    }
+    const pad = 1.2;
+    const spanX = Math.max(2, maxX - minX) * pad;
+    const spanY = Math.max(2, maxY - minY) * pad;
+    const nextScale = clampScale(Math.min(w / spanX, h / spanY));
+    setScale(nextScale);
+    setViewOffset({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
+    useLayerStore.getState().setFollowRobot(false);
+    setStatusMsg(`自适应 · scale ${nextScale.toFixed(0)}`);
+  };
+
+  const goalLabel = goal
+    ? `goal (${goal.x.toFixed(2)}, ${goal.y.toFixed(2)}, ${yawDeg(goal.yaw ?? 0)}°)`
+    : undefined;
+
   return (
-    <div className="panel map-primary">
-      {anyStale ? <div className="stale-badge">map data stale</div> : null}
-      <div className="row map-toolbar" style={{ flexWrap: 'wrap', gap: 8 }}>
-        <label className="row">
-          <input
-            type="checkbox"
-            checked={followRobot}
-            onChange={(e) => setFollowRobot(e.target.checked)}
-          />
-          Follow robot
-        </label>
-        <button
-          type="button"
-          className={mapTool === 'goal' ? 'tab active' : 'tab'}
-          onClick={() => setMapTool('goal')}
-        >
-          Goal
-        </button>
-        <button
-          type="button"
-          className={mapTool === 'measure' ? 'tab active' : 'tab'}
-          onClick={() => {
-            setMapTool('measure');
-            setMeasurePts([]);
-            setMeasureMsg('measure mode');
-          }}
-        >
-          Measure
-        </button>
-        <button
-          type="button"
-          className={mapTool === 'copy' ? 'tab active' : 'tab'}
-          onClick={() => setMapTool('copy')}
-        >
-          Copy XY
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setMeasurePts([]);
-            setMeasureMsg('');
-          }}
-        >
-          Clear measure
-        </button>
-        <span className="hint">{measureMsg || 'LMB tool · RMB waypoint'}</span>
-      </div>
+    <div className="map-viewport map-primary" ref={hostRef}>
+      {anyStale ? <div className="stale-badge map-float-badge">map data stale</div> : null}
+      <MapInstrumentCluster />
+      <MapFloatToolbar
+        measureActive={mapTool === 'measure' && sketchPts.length > 0}
+        onClearMeasure={() => {
+          setSketchPts([]);
+          setMeasurePreview(null);
+          setStatusMsg('测距：左键起点，移动预览，右击落终点');
+        }}
+        goalLabel={goalLabel}
+        onClearGoal={clearGoal}
+        onZoomIn={zoomIn}
+        onZoomOut={zoomOut}
+        onFit={fitView}
+      />
       <canvas
         ref={canvasRef}
-        width={960}
-        height={640}
         className="map-canvas map-canvas-fill"
         onClick={onClick}
+        onDoubleClick={onDoubleClick}
         onContextMenu={onContextMenu}
-        style={{ cursor: connected || mapTool !== 'goal' ? 'crosshair' : 'default' }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onPointerLeave={() => {
+          // Keep confirmed result; only drop live preview rubber-band.
+          if (mapTool === 'measure' && sketchRef.current.length < 2) {
+            setMeasurePreview(null);
+          }
+        }}
+        onWheel={onWheel}
+        style={{
+          cursor: mapTool === 'pan' ? 'grab' : 'crosshair',
+          touchAction: 'none',
+        }}
       />
-      <div className="row" style={{ gap: 8, marginTop: 8 }}>
-        <button type="button" onClick={clearGoal} disabled={!connected}>
-          Clear goal
-        </button>
-        {goal ? (
-          <span className="muted">
-            goal ({goal.x.toFixed(2)}, {goal.y.toFixed(2)})
-            {nav?.distance_remaining != null
-              ? ` · rem=${nav.distance_remaining.toFixed(2)}`
-              : ''}
-          </span>
-        ) : null}
-      </div>
     </div>
   );
 }

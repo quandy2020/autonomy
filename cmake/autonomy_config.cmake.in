@@ -1,0 +1,167 @@
+# Copyright 2016 The Cartographer Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#  Usage from an external project:
+#    In your CMakeLists.txt, add these lines:
+#
+#    find_package(autonomy REQUIRED)
+#    target_link_libraries(MY_TARGET_NAME PUBLIC autonomy)
+
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+set_and_check(AUTONOMY_CMAKE_DIR "@PACKAGE_AUTONOMY_CMAKE_DIR@")
+
+set(CERES_DIR_HINTS @Ceres_DIR@)
+set(AUTONOMY_HAS_GRPC @BUILD_GRPC@)
+set(AUTONOMY_PACKAGE_HAS_COMMON_MATH @AUTONOMY_PACKAGE_HAS_COMMON_MATH@)
+set(AUTONOMY_PACKAGE_HAS_COMMON_VISION @AUTONOMY_PACKAGE_HAS_COMMON_VISION@)
+set(AUTONOMY_PACKAGE_HAS_MAP @AUTONOMY_PACKAGE_HAS_MAP@)
+set(AUTONOMY_PACKAGE_HAS_TASK @AUTONOMY_PACKAGE_HAS_TASK@)
+set(AUTONOMY_PACKAGE_HAS_LOCALIZATION @AUTONOMY_PACKAGE_HAS_LOCALIZATION@)
+set(AUTONOMY_PACKAGE_HAS_IPOPT @AUTONOMY_PACKAGE_HAS_IPOPT@)
+
+if (autonomy_FIND_QUIETLY)
+   set(QUIET_OR_REQUIRED_OPTION "QUIET")
+elseif (autonomy_FIND_REQUIRED)
+   set(QUIET_OR_REQUIRED_OPTION "REQUIRED")
+else ()
+   set(QUIET_OR_REQUIRED_OPTION "")
+endif()
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${AUTONOMY_CMAKE_DIR}/modules)
+
+# Protobuf is part of the exported link interface (protobuf::libprotobuf).
+# Reuse the same 3.19.x pinning logic as the main project before importing
+# AutonomyTargets.cmake so imported targets resolve correctly.
+include(EnsureProtobuf319)
+
+# Dependencies exported by every Autonomy installation profile.
+find_dependency(Eigen3 ${QUIET_OR_REQUIRED_OPTION})
+find_dependency(nlohmann_json ${QUIET_OR_REQUIRED_OPTION})
+set(GFLAGS_USE_TARGET_NAMESPACE TRUE)
+find_dependency(gflags ${QUIET_OR_REQUIRED_OPTION} CONFIG)
+if(TARGET gflags::gflags AND NOT TARGET gflags)
+  add_library(gflags INTERFACE IMPORTED)
+  set_property(TARGET gflags PROPERTY
+    INTERFACE_LINK_LIBRARIES gflags::gflags)
+endif()
+find_dependency(Glog ${QUIET_OR_REQUIRED_OPTION})
+find_dependency(yaml-cpp ${QUIET_OR_REQUIRED_OPTION})
+find_dependency(Threads ${QUIET_OR_REQUIRED_OPTION})
+
+if(AUTONOMY_HAS_GRPC)
+  find_dependency(gRPC ${QUIET_OR_REQUIRED_OPTION})
+endif()
+
+find_dependency(PkgConfig ${QUIET_OR_REQUIRED_OPTION})
+if(APPLE AND NOT TARGET PkgConfig::EPOLL_SHIM)
+  pkg_check_modules(EPOLL_SHIM ${QUIET_OR_REQUIRED_OPTION}
+    IMPORTED_TARGET epoll-shim)
+endif()
+
+if(AUTONOMY_PACKAGE_HAS_COMMON_MATH)
+  find_package(Ceres ${QUIET_OR_REQUIRED_OPTION} HINTS ${CERES_DIR_HINTS})
+endif()
+
+if(AUTONOMY_PACKAGE_HAS_COMMON_VISION)
+  find_dependency(OpenCV ${QUIET_OR_REQUIRED_OPTION})
+endif()
+
+# Find BehaviorTree.CPP dependency
+if(AUTONOMY_PACKAGE_HAS_TASK)
+  find_package(behaviortree_cpp ${QUIET_OR_REQUIRED_OPTION})
+endif()
+
+# autolink plugin_manager (INTERFACE dep of autonomy::autonomy)
+if(NOT TARGET TinyXML2::TinyXML2)
+  include("${AUTONOMY_CMAKE_DIR}/modules/FindTinyXML2.cmake")
+endif()
+if(NOT TARGET TinyXML2::TinyXML2)
+  message(FATAL_ERROR "autonomy: failed to import TinyXML2::TinyXML2")
+endif()
+
+# atlas localization dependencies (PUBLIC link interface of autonomy::autonomy)
+if(AUTONOMY_PACKAGE_HAS_LOCALIZATION)
+  find_dependency(Boost ${QUIET_OR_REQUIRED_OPTION} COMPONENTS iostreams)
+  if(NOT TARGET PkgConfig::CAIRO)
+    pkg_check_modules(CAIRO ${QUIET_OR_REQUIRED_OPTION} IMPORTED_TARGET cairo)
+  endif()
+  find_package(FBow ${QUIET_OR_REQUIRED_OPTION})
+  find_package(G2o ${QUIET_OR_REQUIRED_OPTION})
+  find_package(SQLite3 ${QUIET_OR_REQUIRED_OPTION})
+endif()
+
+if(AUTONOMY_PACKAGE_HAS_MAP)
+  find_dependency(PCL ${QUIET_OR_REQUIRED_OPTION} COMPONENTS
+    common features filters io kdtree segmentation surface)
+  find_dependency(TBB ${QUIET_OR_REQUIRED_OPTION})
+endif()
+
+if(AUTONOMY_PACKAGE_HAS_IPOPT)
+  find_package(Ipopt ${QUIET_OR_REQUIRED_OPTION})
+endif()
+
+# PUBLIC link interface extras
+find_dependency(nlohmann_json ${QUIET_OR_REQUIRED_OPTION})
+find_package(foxglove-sdk CONFIG QUIET)
+if(foxglove-sdk_FOUND)
+  find_dependency(ZLIB ${QUIET_OR_REQUIRED_OPTION})
+endif()
+
+# automsgs is exported as a separate package under the same install prefix.
+# AutonomyTargets.cmake requires automsgs::automsgs in the link interface.
+if(NOT TARGET automsgs::automsgs)
+  # autonomy-config.cmake lives in <prefix>/share/autonomy/
+  get_filename_component(_AUTONOMY_PREFIX "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
+  set(_autonomy_automsgs_dir "${_AUTONOMY_PREFIX}/lib/cmake/automsgs")
+  if(EXISTS "${_autonomy_automsgs_dir}/automsgsConfig.cmake")
+    set(automsgs_DIR "${_autonomy_automsgs_dir}")
+  elseif(EXISTS "${_autonomy_automsgs_dir}/automsgs_config.cmake")
+    # Backward compatible with older installs that used underscore naming.
+    include("${_autonomy_automsgs_dir}/automsgs_config.cmake")
+  endif()
+  if(NOT TARGET automsgs::automsgs)
+    find_dependency(automsgs ${QUIET_OR_REQUIRED_OPTION} CONFIG)
+  endif()
+  unset(_autonomy_automsgs_dir)
+  unset(_AUTONOMY_PREFIX)
+endif()
+if(NOT TARGET automsgs::automsgs)
+  set(${CMAKE_FIND_PACKAGE_NAME}_NOT_FOUND_MESSAGE
+    "autonomy requires target automsgs::automsgs, but it was not found")
+  set(${CMAKE_FIND_PACKAGE_NAME}_FOUND FALSE)
+  return()
+endif()
+
+# Include the exported targets
+include("${AUTONOMY_CMAKE_DIR}/AutonomyTargets.cmake")
+
+# Optional COMPONENTS: common, transform, map, control, ...
+# Exported names are autonomy::autonomy_<mod>. Plain autonomy_* names are left
+# free so standalone `cmake -S autonomy/<mod>` can rebuild that module locally.
+if(autonomy_FIND_COMPONENTS)
+  foreach(_comp IN LISTS autonomy_FIND_COMPONENTS)
+    if(TARGET autonomy::autonomy_${_comp}
+        OR (_comp STREQUAL "autonomy" AND TARGET autonomy::autonomy)
+        OR (_comp STREQUAL "proto" AND TARGET autonomy::autonomy_proto))
+      set(autonomy_${_comp}_FOUND TRUE)
+    else()
+      set(autonomy_${_comp}_FOUND FALSE)
+    endif()
+  endforeach()
+  unset(_comp)
+endif()
+check_required_components(autonomy)

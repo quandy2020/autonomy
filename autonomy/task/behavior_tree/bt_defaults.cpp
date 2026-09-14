@@ -4,6 +4,8 @@
 
 #include "autonomy/task/behavior_tree/bt_defaults.hpp"
 
+#include "autonomy/common/conf_loader.hpp"
+
 namespace autonomy {
 namespace task {
 namespace {
@@ -67,31 +69,42 @@ void BtDefaults::Apply(proto::TaskServerOptions* options)
         return;
     }
     if (options->config_directory().empty()) {
-        options->set_config_directory("config");
+        std::string task_conf;
+        if (common::ResolveModuleConfPath("task", "navigator.pb.txt",
+                                          &task_conf)) {
+            const auto slash = task_conf.find_last_of('/');
+            options->set_config_directory(
+                slash == std::string::npos
+                    ? task_conf
+                    : task_conf.substr(0, slash));
+        } else {
+            options->set_config_directory(
+                common::AutonomyWorkRoot() + "/share/autonomy/task/conf");
+        }
     }
 
     auto* bt = options->mutable_behavior_trees();
 
     SetProfile(bt->mutable_navigation(),
-               "task/behavior_tree/navigation/navigate_to_pose.xml",
-               "task/behavior_tree/navigation/navigate_through_poses.xml", 10);
+               "behavior_tree/navigation/navigate_to_pose.xml",
+               "behavior_tree/navigation/navigate_through_poses.xml", 10);
 
     SetProfile(bt->mutable_tracking(),
-               "task/behavior_tree/tracking/follow_target.xml",
-               "task/behavior_tree/tracking/follow_person.xml", 20);
+               "behavior_tree/tracking/follow_target.xml",
+               "behavior_tree/tracking/follow_person.xml", 20);
 
-    SetProfile(bt->mutable_teleop(), "task/behavior_tree/teleop/teleop.xml",
+    SetProfile(bt->mutable_teleop(), "behavior_tree/teleop/teleop.xml",
                nullptr, 50);
 
-    SetProfile(bt->mutable_charging(), "task/behavior_tree/charging/dock.xml",
+    SetProfile(bt->mutable_charging(), "behavior_tree/charging/dock.xml",
                nullptr, 10);
 
     SetProfile(bt->mutable_mapping(),
-               "task/behavior_tree/mapping/map_load.xml",
-               "task/behavior_tree/mapping/map_set_pose.xml", 100);
+               "behavior_tree/mapping/map_load.xml",
+               "behavior_tree/mapping/map_set_pose.xml", 100);
 
     SetProfile(bt->mutable_localization(),
-               "task/behavior_tree/localization/localization.xml", nullptr, 100);
+               "behavior_tree/localization/localization.xml", nullptr, 100);
 }
 
 }  // namespace task

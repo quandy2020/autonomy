@@ -79,73 +79,73 @@ core
 
 ## 5. 目录结构
 
+顶层与 Apollo Dreamview 对齐（`backend` / `frontend` / `proto` / `conf` / `launch` / `main.cc`），用 CMake 替代 Bazel `BUILD`；源文件扩展名统一为 `.cc` / `.h`。
+
 ```text
 autonomy/orbisview/
 ├── CMakeLists.txt
 ├── README.md
-├── LICENSES/
-├── core/
-│   ├── channel/
-│   ├── session/
-│   ├── world/
-│   └── protocol/
+├── main.cc
 ├── backend/
-│   ├── server/
-│   ├── websocket/
-│   ├── streaming/
-│   ├── playback/
-│   └── resource/
+│   ├── CMakeLists.txt
+│   ├── orbisview.cc / orbisview.h     # 对标 dreamview.cc（类名 Orbisview）
+│   ├── common/
+│   │   ├── orbisview_gflags.cc / .h
+│   │   ├── handlers/
+│   │   ├── streaming/
+│   │   ├── plugins/
+│   │   ├── util/                      # placeholder
+│   │   ├── map_service/
+│   │   ├── vehicle_manager/
+│   │   ├── teleop/
+│   │   └── sim_control_manager/
+│   ├── hmi/                           # hmi.cc / hmi.h
+│   ├── simulation_world/              # simulation_world_service.*
+│   ├── point_cloud/                   # placeholder
+│   ├── teleop/
+│   ├── perception_camera_updater/
+│   ├── record_player/                 # 对标 DV+ record_player
+│   ├── adapters/                      # mock / autolink / automsgs（OV 特有）
+│   └── testdata/
 ├── frontend/
-│   ├── app/
-│   ├── panels/
-│   ├── services/
-│   └── stores/
-├── rendering/
-│   ├── scene/
-│   ├── map/
-│   ├── pointcloud/
-│   ├── robot/
-│   └── overlays/
-├── adapters/
-│   ├── autolink/
-│   ├── automsgs/
-│   └── apollo/
-├── plugins/
-│   ├── panels/
-│   ├── sources/
-│   └── tools/
+│   ├── assets/
+│   ├── config/
+│   ├── proto_bundle/
+│   ├── setup.sh / gen_pbjs.sh
+│   └── src/
+│       ├── app.tsx                    # 对标 Dreamview app.js
+│       ├── components/                # Orbisview.tsx + panels
+│       ├── store/                     # zustand + websocket/
+│       ├── renderer/
+│       ├── styles/
+│       ├── utils/
+│       └── fonts/
+├── proto/
+├── conf/
+├── launch/                            # orbisview.launch + dev.sh
 └── thirdparty/
-    ├── dreamview/
-    └── dreamview_plus/
+    └── civetweb/                      # 传输栈（进入构建）
 ```
 
-### 5.1 `core/`
+### 5.1 `proto/`
 
-定义与通信框架和前端技术无关的领域模型，包括通道描述、机器人状态、坐标系、地图、轨迹、障碍物、传感器流、会话状态和内部数据协议。
+仅存放 `.proto` 定义（对标 Dreamview `proto/`）：`stream_envelope`、`render`、`plugin_config`、`record`、`point_cloud`。C++ 运行时 envelope / schema 常量在 `backend/common/`（`stream_envelope.*`、`render_schemas.h`）；当前 WS 仍以 JSON 传输，proto 为契约与后续 codegen 来源。
 
 ### 5.2 `backend/`
 
-提供 HTTP/WebSocket 服务、客户端连接管理、订阅生命周期、数据节流、资源管理、录制回放和运行状态接口。后端不得在 Autolink 回调线程中执行阻塞式网络发送。
+提供 HTTP/WebSocket 服务、HMI、仿真世界聚合、适配器、节流、录制回放与插件宿主。子目录命名对齐 Dreamview（`common` / `hmi` / `simulation_world`）。后端不得在 Autolink 回调线程中执行阻塞式网络发送。
 
 ### 5.3 `frontend/`
 
-以 Dreamview Plus 为主要迁移来源，迁移面板系统、布局管理、状态管理和工程交互界面。传统 Dreamview 不形成第二套正式前端。
+以 Dreamview Plus 为主要能力参考，原生实现面板系统、布局管理、状态管理和工程交互界面。地图 / 点云 / 机器人等渲染在前端实现。
 
-### 5.4 `rendering/`
+### 5.4 `conf/` / `launch/`
 
-承载地图、点云、机器人模型、轨迹、障碍物、传感器视锥和其他二维或三维覆盖层。渲染层只依赖 OrbisView 稳定协议，不直接依赖 Autolink API。
+`conf/` 存放 gflags 与软 HMI 模式描述；`launch/` 存放一键启动脚本（对标 Dreamview `launch/`，不使用 Cyber）。
 
-### 5.5 `adapters/`
+### 5.5 `thirdparty/`
 
-负责 Autolink RT、`automsgs` 与 OrbisView 内部协议之间的转换。Apollo 适配器仅用于迁移期兼容和对照，不成为核心协议的基础。
-
-### 5.6 `plugins/`
-
-定义面板、数据源和交互工具的注册边界。单个插件加载失败不得阻止基础应用启动。
-
-### 5.7 `thirdparty/`
-
-保存 Apollo 上游参考源码、来源信息、许可证和修改记录。该目录默认不进入顶层 CMake 构建，也不得提交构建产物、缓存、`node_modules` 或其他可重新生成内容。
+`civetweb/` 进入 OrbisView 构建。Apollo Dreamview / Dreamview Plus **不**在本树 vendoring；需要对照时查上游 Apollo 仓库。
 
 ## 6. 与现有可视化模块的关系
 
@@ -157,16 +157,12 @@ autonomy/orbisview/
 
 三个模块可以共享 Autolink RT 和 `automsgs`，但不存在包含关系。OrbisView 不复制已有 Foxglove 转换器或 AutoViz 显示插件；需要共享的通用能力应通过稳定接口复用，而不是跨目录引用实现细节。
 
-## 7. 上游迁移策略
+## 7. 上游参考策略
 
-- Dreamview Plus 是正式前端及主要功能来源；
-- Dreamview 仅作为行为、协议和兼容性参考；
-- Apollo 原始版权头必须保留；
-- 修改过的上游文件必须记录修改事实；
-- `LICENSES/` 记录 Apache License 2.0、上游地址、提交版本和第三方前端依赖；
-- 上游快照与 OrbisView 原生实现分离，避免来源边界不清；
-- 不直接复制 Apollo 构建产物、缓存和安装依赖；
-- 前端依赖由包管理清单重新解析。
+- Dreamview / Dreamview Plus 的目录与能力作为外部参考，**不** vendoring 源码；
+- OrbisView 原生实现保持独立协议（CivetWeb + JSON envelope）；
+- CivetWeb 许可证见 `thirdparty/civetweb/LICENSE.md`；
+- 前端依赖由 `frontend/package.json` 解析，安装产物不得提交。
 
 ## 8. 首期功能范围
 
@@ -295,14 +291,23 @@ Frontend Store
 - 插件注册机制；
 - 自主探索、导航和建图专用面板。
 
+### 阶段五–八：DV+ 能力对等（OrbisView 原生）
+
+- WorldModel / Chassis / Obstacles + Dashboard；Autolink `cmd_vel` 发布钩子；
+- react-mosaic 可拖拽布局与地面车 preset；
+- RoutePath / VectorMap / 软 HMI 模式与 Components（无 cyber_launch）；
+- Prediction / Charts / PlanningDebug 深 PNC；mock + Autolink converter 双轨。
+
+详见 `autonomy/orbisview/README.md` 阶段表。
+
 ## 13. 验证策略
 
-- `core/`：协议序列化、时间戳、坐标系和会话状态单元测试；
-- `adapters/`：每类 `automsgs` 消息转换测试；
+- `backend/common/`：envelope / schema 常量与节流等单元测试；
+- `proto/`：`.proto` 契约（stream / render / record / plugin）；
+- `backend/adapters/`：每类 `automsgs` 消息转换测试；
 - `backend/`：连接、订阅、节流、断线重连和慢客户端测试；
-- `rendering/`：地图、点云、轨迹与坐标变换测试；
 - `frontend/`：面板注册、布局恢复和数据状态测试；
-- `plugins/`：注册冲突、加载失败及接口版本测试；
+- `backend/common/plugins/`：注册冲突、加载失败及接口版本测试；
 - 集成测试：Autolink 发布模拟数据，浏览器验证接收与渲染状态；
 - 许可证检查：确认上游文件和前端资源的授权信息完整。
 
@@ -331,13 +336,13 @@ Frontend Store
 
 | 风险 | 控制措施 |
 |---|---|
-| Apollo 与 autonomy 运行时不兼容 | 用 `adapters/` 隔离，禁止核心层依赖 Cyber RT |
+| Apollo 与 autonomy 运行时不兼容 | 用 `backend/adapters/` 隔离，禁止核心层依赖 Cyber RT |
 | 两代 Dreamview 重复代码过多 | Dreamview Plus 作为主线，Dreamview 仅作参考 |
 | 上游快照显著增加仓库体积 | 排除构建产物和依赖缓存，记录精确来源版本 |
 | 前端协议与 `automsgs` 强耦合 | 使用 `StreamEnvelope` 和稳定渲染协议 |
 | 高频点云或图像阻塞通信线程 | 有界队列、节流和最新帧优先 |
 | 缺失 TF 导致错误空间显示 | 拒绝更新并显式报告坐标变换缺失 |
-| 许可证来源不清 | 独立 `LICENSES/`、版权头和修改记录 |
+| 许可证来源不清 | 版权头 + `thirdparty/civetweb/LICENSE.md` / ORIGIN |
 | 与现有可视化功能重叠 | 保持模块边界，禁止首期重构现有模块 |
 
 ## 16. 源码分析边界

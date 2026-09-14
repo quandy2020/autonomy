@@ -1,0 +1,5 @@
+# Sensor extrinsics for autosim_2d.lua.
+# Empty on purpose: turtlebot3 URDF mounts are published by autosim on /tf
+# (base_footprint→base_link→imu_link / base_scan→laser_link).
+
+static_transforms: []

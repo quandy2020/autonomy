@@ -6,10 +6,11 @@
 |------|------|------|------|
 | `format.py` | 开发 | ✅ | [§3](03_dev_scripts.md) |
 | `install_deps` | 开发 | ✅ | [§3](03_dev_scripts.md) |
-| `autonomy_nav_test` | 测试 | ⚠️ CMake 接入待确认 | [§4](04_nav_test.md) |
-| `MonitorRegistry` | 运维 | ✅ | [§5](05_monitor.md) |
-| Autolink CLI | 调试 | ⚠️ 嵌入构建默认关闭 | [§6](06_autolink_tools.md) |
-| `run_autonomy.py` | Docker | ✅ | [§7](07_docker_scripts.md) |
+| `autolink_launch` | 运行 | ✅ | [04 Running](../04_Running/02_quickstart.md) |
+| `MonitorRegistry` | 运维 | ✅ | [§4](05_monitor.md) |
+| Autolink CLI | 调试 | ⚠️ 嵌入构建默认可能关闭 | [§5](06_autolink_tools.md) |
+| `run_autonomy.py` | Docker | ✅ | [§6](07_docker_scripts.md) |
+| `autonomy_nav_test` | 测试 | ❌ 已移除 | — |
 | `autonomy_planning_test` | 测试 | ❌ 未实现 | — |
 | `autonomy_controller_test` | 测试 | ❌ 未实现 | — |
 
@@ -19,7 +20,7 @@
 |------|----------|
 | 首次搭建环境 | `install_deps` + `run_autonomy.py` |
 | 提交前检查格式 | `format.py --check` |
-| 端到端导航验证 | `autonomy_nav_test` |
+| 端到端导航验证 | `autolink_launch autonomy.launch` + Bridge / Action |
 | 通道/话题调试 | Autolink CLI（独立构建） |
 | 生产监控 | `MonitorRegistry` + Prometheus |
 

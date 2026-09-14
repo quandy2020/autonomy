@@ -16,12 +16,22 @@
 
 #include "autonomy/map/utils/data_loader_utils.hpp"
 
+#include "autonomy/common/conf_loader.hpp"
+
 namespace autonomy {
 namespace map {
 namespace utils {
 
 std::string GetMapDataFilesDirectory() {
-    return std::string(common::kConfigurationFilesDirectory) + "/map/";
+    std::string path;
+    // Prefer resolved module conf dir (…/map/conf/).
+    if (common::ResolveModuleConfPath("map", "map.pb.txt", &path)) {
+        const auto slash = path.find_last_of('/');
+        if (slash != std::string::npos) {
+            return path.substr(0, slash + 1);
+        }
+    }
+    return common::AutonomyWorkRoot() + "/share/autonomy/map/conf/";
 }
 
 }  // namespace utils

@@ -93,8 +93,9 @@ sudo ninja install    # 若项目定义了 install 规则
 # 检查核心库
 file lib/libautonomy.so
 
-# 导航离线测试（若已编译）
-./bin/nav_test --help
+# 多进程入口（若已编译）
+./bin/autolink_launch --help
+ls bin/autonomy.planning bin/autonomy.control bin/autonomy.task
 ```
 
 ### 6.9 与旧版 colcon 说明

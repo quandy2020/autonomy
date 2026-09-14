@@ -1,6 +1,5 @@
 import { registerPanel } from './registry';
-import { Map2DPanel } from './Map2D/Map2DPanel';
-import { View3DPanel } from './View3D/View3DPanel';
+import { MapPanel } from './Map/MapPanel';
 import { ImagePanel } from './Image/ImagePanel';
 import { ChannelLogPanel } from './ChannelLog/ChannelLogPanel';
 import { InspectorPanel } from './Inspector/InspectorPanel';
@@ -18,6 +17,7 @@ import { RobotStatusPanel } from './RobotStatus/RobotStatusPanel';
 import { TfTreePanel } from './RobotStatus/TfTreePanel';
 import { WaypointsPanel } from './Waypoints/WaypointsPanel';
 import { TeleopPanel } from './Teleop/TeleopPanel';
+import { OpsPanel } from './Ops/OpsPanel';
 import { DashboardPanel } from './Dashboard/DashboardPanel';
 import { ComponentsPanel, HmiPanel } from './Hmi/HmiPanels';
 import { ChartsPanel } from './Charts/ChartsPanel';
@@ -30,11 +30,16 @@ import {
 
 export function registerBuiltinPanels(): void {
   // 可视化
-  registerPanel({ id: 'map2d', title: 'Map 2D', category: 'viz', component: Map2DPanel });
-  registerPanel({ id: 'view3d', title: 'View 3D', category: 'viz', component: View3DPanel });
+  registerPanel({ id: 'map', title: 'Map', category: 'viz', component: MapPanel });
 
   // 传感器
-  registerPanel({ id: 'image', title: 'Image', category: 'sensor', component: ImagePanel });
+  registerPanel({
+    id: 'image',
+    title: 'Image',
+    category: 'sensor',
+    allowMultiple: true,
+    component: ImagePanel,
+  });
   registerPanel({ id: 'log', title: 'Channels', category: 'sensor', component: ChannelLogPanel });
 
   // 机器人
@@ -112,6 +117,7 @@ export function registerBuiltinPanels(): void {
     component: ResourceManagerPanel,
   });
   registerPanel({ id: 'recorder', title: 'Recorder', category: 'system', component: RecorderPanel });
+  registerPanel({ id: 'ops', title: 'Ops', category: 'system', component: OpsPanel });
   registerPanel({ id: 'plugins', title: 'Plugins', category: 'system', component: PluginsPanel });
   registerPanel({
     id: 'components',

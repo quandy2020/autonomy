@@ -58,7 +58,7 @@ bool Generator::Generate(const FileDescriptor* file,
     io::Printer scope_printer(scope_out, '$');
     for (int i = 0; i < file->message_type_count(); ++i) {
       const Descriptor* desc = file->message_type(i);
-      const std::string& name = desc->name();
+      const std::string name(desc->name());
       scope_printer.PrintRaw("typedef std::unique_ptr<" + name + "> " + name + "UniquePtr;\n");
       scope_printer.PrintRaw("typedef std::unique_ptr<const " + name + "> Const" + name + "UniquePtr;\n");
       scope_printer.PrintRaw("typedef std::shared_ptr<" + name + "> " + name + "SharedPtr;\n");

@@ -12,4 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_subdirectory(tools)
+# autonomy/planning — global / local planners
+
+include(autonomy_module)
+autonomy_module(planning)
+
+# Library sources: GLOB *.cpp under this dir; drop *main.cpp / *_test.cpp.
+autonomy_glob_srcs(_PLANNING_SRCS)
+autonomy_library(
+  DEPENDENCIES autonomy_common autonomy_transform autonomy_map
+  SRCS ${_PLANNING_SRCS}
+)
+unset(_PLANNING_SRCS)
+
+# Process entrypoint: autonomy.planning
+autonomy_binary(autonomy.planning SRCS planning_main.cpp)
+
+# Optional planning tools (if present).
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/CMakeLists.txt")
+  add_subdirectory(tools)
+endif()
+
+# Runtime assets → share/autonomy/planning/ (launch / conf / dag)
+install(
+  DIRECTORY conf/
+  DESTINATION share/autonomy/planning/conf)
+install(
+  DIRECTORY dag/
+  DESTINATION share/autonomy/planning/dag
+  FILES_MATCHING PATTERN "*.dag")
+install(
+  DIRECTORY launch/
+  DESTINATION share/autonomy/planning/launch
+  USE_SOURCE_PERMISSIONS
+  FILES_MATCHING PATTERN "*.launch")

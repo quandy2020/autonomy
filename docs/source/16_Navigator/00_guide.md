@@ -30,48 +30,29 @@
 
 ## 0.2 快速开始
 
-1. `config/navigator/navigator.lua` — 帧、容差、BT XML、插件列表
-2. `config/autonomy.lua` — `navigator = include("navigator/navigator.lua").navigator`
-3. 启动 `system::Autonomy` 并调用 `NavigateToPose()`
+1. `autonomy/task/conf/navigator.pb.txt` — 帧、容差、BT XML、插件列表
+2. BT XML：`autonomy/task/conf/behavior_tree/`
+3. 启动多进程栈：`autolink_launch autonomy.launch`，经 Bridge / Action 发令
 
-`config/common.lua` 与 planner / controller / navigator **三处必须一致**：
+规划 / 控制 / navigator 的 **global_frame / robot_base_frame / 默认 planner·controller id** 须一致（共享 `AutonomyOptions` 或各模块 conf）。
 
-```lua
-AUTONOMY_COMMON = {
-    global_frame = "map",
-    robot_base_frame = "base_link",
-    default_planner_id = "navfn_planner",
-    default_controller_id = "FollowPath",
-    default_goal_checker_id = "goal_checker",
-    default_smoother_id = "simple_smoother",
-    goal_reached_tolerance = 0.25,
-}
-```
-
-**直驱模式（当前默认）**：`Autonomy::Configure()` 设置 `use_bt_navigation_ = false`，`NavigateToPose()` 仅调用 `GetPlan` 并 `NotifyPath`，不执行 `FollowPath`。
-
-```cpp
-autonomy::system::RuntimeOptions runtime;
-runtime.config_directory = "config";
-runtime.use_bt_navigation = false;
-autonomy->Configure(runtime);
-autonomy->NavigateToPose(goal, cancel, keep_alive, 300.0);
-```
-
-**BT 模式（目标）**：
+**推荐联调**：
 
 ```bash
-export AUTONOMY_BT_PLUGIN_PATH=/path/to/install/lib
-bazel run //autonomy/system/tools:nav_test -- --config_directory=config --use_bt=true
+export PATH="$PWD/build/bin:$PATH"
+export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/system/launch"
+export AUTONOMY_BT_PLUGIN_PATH="$PWD/build/lib"
+autolink_launch autonomy.launch
+# Bridge / Action Client 下发 NavigateToPose
 ```
 
 | 模式 | 配置 | 行为 |
 |------|------|------|
-| 直驱规划 | `use_bt_navigation = false` | 单次 `GetPlan`，不 FollowPath |
-| BT 单点 | `use_bt_navigation = true` | `navigate_to_pose.xml` 完整流水线 |
-| BT 多点 | `NavigateThroughPoses()` | `navigate_through_poses.xml` |
+| BT 单点 | TaskServer + navigate_to_pose.xml | 完整流水线（演进中） |
+| BT 多点 | navigate_through_poses.xml | 多航点 |
+| 模块调试 | 单独起 planning / control | 服务 / Action 级验证 |
 
-> **当前阶段**：配置、接口骨架、BT XML 已就绪；`BtEngine` + 52 插件 + `BtNavigator` 待迁回。详见 [§1.2 实现状态](01_architecture.md#12-实现状态)。
+> **当前阶段**：配置、接口骨架、BT XML 已就绪；BT 引擎与插件持续演进。详见 [§1.2 实现状态](01_architecture.md#12-实现状态)。
 
 ---
 
@@ -145,16 +126,13 @@ $$
 | `plugin_lib_names` | BT 插件 `.so` 列表 | 52 个 |
 | `navigate_to_pose.behavior_tree_file` | 单点 BT XML | `navigate_to_pose.xml` |
 
-**`system::Autonomy`**
+**`TaskServer` / Action**
 
-| API | 用途 |
-|-----|------|
-| `Configure(RuntimeOptions)` | 加载 navigator 配置 |
-| `NavigateToPose(goal, …)` | 单点导航 |
-| `NavigateThroughPoses(goals, …)` | 多点巡航 |
-| `ReplanToGoal(goal)` | 触发重规划 |
-| `GetLastPath()` | 最近规划路径 |
-| `RequestCancelNavigation()` | 取消当前导航 |
+| 入口 | 用途 |
+|------|------|
+| `autolink_launch autonomy.launch` | 拉起 task / planning / control |
+| Bridge / Action Client | 单点 / 多点导航发令 |
+| `NavigatorOptions` conf | BT XML、帧、容差、插件列表 |
 
 顶层 Action：`NavigateToPoseAction`、`NavigateThroughPosesAction`；子 Action 含 `ComputePathToPose`、`FollowPath`、`Spin` / `BackUp` 等。分层与时序见 [§1.3–§1.4](01_architecture.md#13-分层架构)。
 

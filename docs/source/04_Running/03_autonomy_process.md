@@ -1,59 +1,44 @@
-# 3. Autonomy 进程
+# 3. 多进程栈
 
-`system::Autonomy` 是顶层运行时，负责构造 Map / Planner / Controller / TF 等子系统并完成生命周期管理。
+Autonomy 以 **独立进程 + autolink IPC** 运行，不再提供进程内 `CreateAutonomy` 聚合入口。
 
-### 3.1 生命周期
+### 3.1 推荐入口
 
-```
-CreateAutonomy(options)
-    → Start()        # 启动 MapServer、PlannerServer、ControllerServer…
-    → Configure(runtime)   # 加载 navigator 配置、附着 BT（若启用）
-    → [运行循环]     # NavigateToPose / 外部发令
-    → Shutdown()     # 释放资源
-```
-
-### 3.2 主程序入口
-
-源码：`autonomy/system/main.cpp`
+源码 launch：`autonomy/system/launch/autonomy.launch`
 
 ```bash
-# 典型 gflags（见 autonomy/common/gflags.hpp）
-./build/bin/<autonomy_main> \
-  --configuration_directory=config \
-  --configuration_basename=autonomy.lua
+export PATH="$PWD/build/bin:$PATH"
+export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/system/launch"
+autolink_launch autonomy.launch
 ```
 
-主程序行为：
+### 3.2 进程一览
 
-1. `autolink::Init`
-2. `CreateOptions` 加载 `autonomy.lua`
-3. `CreateAutonomy` → `Start()` → `Configure(runtime)`
-4. 信号处理 `SIGINT`/`SIGTERM` 后 `Shutdown`
+| 二进制 | 配置 | 职责 |
+|--------|------|------|
+| `autonomy.monitor` | `--conf=monitor.pb.txt` | 健康监控 |
+| `autonomy.planning` | `--conf=autonomy.pb.txt` | PlannerServer |
+| `autonomy.control` | `--conf=autonomy.pb.txt` | ControllerServer |
+| `autonomy.task` | gflags（BT 根目录等） | TaskServer / BT |
+| `autonomy.perception` | `--conf=autonomy.pb.txt` | PerceptionServer |
+| `autonomy.bridge` | `--conf=bridge.pb.txt` | 外部桥接 |
+| `autonomy.foxglove_bridge` | host/port gflags | 可视化 |
 
-> **注意**：主程序默认**不自动下发导航目标**，仅保持进程运行。发令测试请用 [§4 nav_test](04_nav_test.md) 或上层 Bridge / Action Client。
+各 `*_main.cpp` 自行 `CreateOptions`（或模块本地 conf）→ 构造对应 Server → `autolink::WaitForShutdown`。
 
-### 3.3 RuntimeOptions
+### 3.3 共享配置快照
 
-| 字段 | 说明 | 默认 |
-|------|------|------|
-| `use_bt_navigation` | 是否 BT 导航 | `true`（main）；nav_test 可覆盖 |
-| `enable_bt_tasks` | 启用 BT 任务引擎 | `true` |
-| `config_directory` | 配置根目录 | gflags |
-| `planner_id` / `controller_id` | 覆盖默认插件 | 来自 `navigator.lua` |
-| `global_frame` / `robot_base_frame` | 坐标系 | `map` / `base_link` |
-| `goal_tolerance` | 目标容差 | `navigator.lua` |
+`system::CreateOptions("autonomy.pb.txt")` 加载 [`AutonomyOptions`](../../autonomy/system/proto/autonomy_options.proto) 文本。planning / control / perception 只取各自子字段；**不是**进程内组装整栈。
 
-### 3.4 对外 API（节选）
+模块本地参数见 `autonomy/<mod>/conf/`。
 
-```cpp
-autonomy->Start();
-autonomy->Configure(runtime);
+### 3.4 发令
 
-bool ok = autonomy->NavigateToPose(goal, cancel_checker, keep_alive, timeout_sec);
+主栈启动后**不会**自动下发导航目标。请通过：
 
-autonomy->ReplanToGoal(goal);
-autonomy->Shutdown();
-```
+- Bridge（gRPC / 外部接口）
+- autolink Action / Service Client
+- 上层业务进程
 
 ### 3.5 日志
 
@@ -66,5 +51,6 @@ export GLOG_minloglevel=0
 
 ### 3.6 相关文档
 
-- [§4 离线导航测试](04_nav_test.md)
-- [16 Navigator](../16_Navigator/00_guide.md)
+- [§2 快速运行](02_quickstart.md)
+- [17 Tasks](../17_Tasks/00_guide.md)
+- [15 Bridge](../15_Bridge/00_guide.md)
