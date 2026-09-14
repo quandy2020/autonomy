@@ -195,6 +195,7 @@ export const useLayoutStore = create<LayoutState>()(
 
 export type LayerKey =
   | 'grid'
+  | 'basemap'
   | 'map'
   | 'costmap'
   | 'vectormap'
@@ -219,6 +220,7 @@ export const useLayerStore = create<LayerState>()(
   persist(
     (set) => ({
       grid: true,
+      basemap: true,
       map: true,
       costmap: true,
       vectormap: true,
@@ -236,6 +238,16 @@ export const useLayerStore = create<LayerState>()(
       setLayer: (key, value) => set({ [key]: value }),
       setFollowRobot: (v) => set({ followRobot: v }),
     }),
-    { name: 'orbisview-layers-v5' },
+    {
+      name: 'orbisview-layers-v6',
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<LayerState>;
+        return {
+          ...current,
+          ...p,
+          basemap: p.basemap ?? true,
+        };
+      },
+    },
   ),
 );

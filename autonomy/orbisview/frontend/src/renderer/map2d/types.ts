@@ -31,6 +31,7 @@ export interface ChassisJson {
 
 export interface LayerFlags {
   grid: boolean;
+  basemap?: boolean;
   map: boolean;
   costmap: boolean;
   vectormap: boolean;
