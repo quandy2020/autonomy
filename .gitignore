@@ -87,6 +87,7 @@ CATKIN_IGNORE
 ansible/.vault_pass
 ansible/*.retry
 dist/
+*.egg-info/
 
 # bag_convert runtime protobuf generation
 autonomy/tools/bag_convert/.proto_gen/
@@ -104,3 +105,11 @@ autonomy/orbisview/**/node_modules/
 autonomy/orbisview/thirdparty/**/node_modules/
 autonomy/orbisview/thirdparty/**/dist/
 
+# Large local inference artifacts (copy into place; do not commit).
+config/perception/base/*.engine
+config/perception/base/*.plan
+config/perception/base/*.onnx
+config/perception/base/moge_ckpt/
+config/perception/fathom/*.engine
+config/perception/fathom/*.plan
+config/perception/fathom/*.onnx
