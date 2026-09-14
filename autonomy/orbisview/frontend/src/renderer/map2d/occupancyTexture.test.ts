@@ -106,6 +106,23 @@ describe('fillOccupancyRgba', () => {
     expect(Array.from(out.slice(0, 4))).toEqual([255, 255, 255, 255]);
     expect(Array.from(out.slice(4, 8))).toEqual([0, 0, 0, 255]);
   });
+
+  it('places grid row 0 at image bottom like Autoviz MapDisplay', () => {
+    // data: row0=[free, free], row1=[occ, occ] — row0 is low world Y
+    const grid: OccupancyGridJson = {
+      resolution: 1,
+      width: 2,
+      height: 2,
+      origin: { x: 0, y: 0 },
+      data: [0, 0, 100, 100],
+    };
+    const out = new Uint8ClampedArray(2 * 2 * 4);
+    fillOccupancyRgba(out, grid, 'map', 2, 2, 1);
+    // Image top (row 0) = high grid Y = occupied (black)
+    expect(Array.from(out.slice(0, 4))).toEqual([0, 0, 0, 255]);
+    // Image bottom (row 1) = low grid Y = free (white)
+    expect(Array.from(out.slice(2 * 2 * 4 - 4))).toEqual([255, 255, 255, 255]);
+  });
 });
 
 describe('occupancyCacheKey', () => {
