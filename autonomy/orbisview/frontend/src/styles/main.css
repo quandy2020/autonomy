@@ -1291,6 +1291,81 @@ body { margin: 0; }
   color: #cfd8dc;
   pointer-events: auto;
 }
+.map-floor-bar {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.45rem;
+  border-radius: 8px;
+  border: 1px solid rgba(42, 58, 76, 0.9);
+  background: rgba(12, 18, 26, 0.9);
+  backdrop-filter: blur(6px);
+  color: #e0e6eb;
+  font-size: 0.78rem;
+}
+.map-floor-btn {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 6px;
+  border: 1px solid #2a3a4c;
+  background: #1a2430;
+  color: #e0e6eb;
+  cursor: pointer;
+  line-height: 1;
+}
+.map-floor-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.map-floor-name {
+  min-width: 2.5rem;
+  text-align: center;
+  font-weight: 600;
+}
+.indoor-map-panel h4 {
+  margin: 0.75rem 0 0.35rem;
+  font-size: 0.85rem;
+}
+.indoor-floor-list,
+.indoor-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.indoor-floor-list button {
+  width: 100%;
+  text-align: left;
+  margin-bottom: 0.25rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #2a3a4c;
+  background: #0b1016;
+  color: #cfd8dc;
+  cursor: pointer;
+}
+.indoor-floor-list button.active {
+  border-color: #4fc3f7;
+  background: #152030;
+}
+.indoor-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  margin: 0.2rem 0;
+}
+.indoor-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
 .map-mapping-hud-mode {
   font-weight: 600;
   color: #90caf9;

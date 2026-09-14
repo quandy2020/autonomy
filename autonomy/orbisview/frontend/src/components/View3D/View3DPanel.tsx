@@ -39,6 +39,7 @@ import {
 } from '@/components/Channels/sensorDisplay';
 import { useDisplayStore } from '@/store/displayStore';
 import { useStaticSlamStore } from '@/store/staticSlamStore';
+import { useIndoorMapStore } from '@/store/indoorMapStore';
 import {
   sharedStaticSlamCanvasCache,
   type StaticSlamCanvasHandle,
@@ -85,6 +86,7 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
   const followRobot = useLayerStore((s) => s.followRobot);
   const setFollowRobot = useLayerStore((s) => s.setFollowRobot);
   const staticBasemap = useStaticSlamStore((s) => s.basemap);
+  const semanticZones = useIndoorMapStore((s) => s.zones);
   const [basemapHandle, setBasemapHandle] = useState<StaticSlamCanvasHandle | null>(null);
   const cloudColor = useView3DStore((s) => s.cloudColor);
   const laserHeight = useView3DStore((s) => s.laserHeight);
@@ -577,12 +579,14 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
       map,
       costmap,
       basemap: basemapHandle,
+      semanticZones,
       footprint,
       laser,
       cloud: cloudOverlay?.points ?? null,
       layers: {
         grid: paintLayers.grid,
         basemap: paintLayers.basemap,
+        semantic: paintLayers.semantic,
         map: paintLayers.map,
         costmap: paintLayers.costmap,
         path: paintLayers.path,
@@ -616,6 +620,7 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
     selectedId,
     goal,
     basemapHandle,
+    semanticZones,
   ]);
   inputRef.current = input;
 

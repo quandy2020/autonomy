@@ -96,6 +96,8 @@ export const SCHEMAS = {
   Exploration: 'orbisview.render.Exploration',
   Navigation: 'orbisview.render.Navigation',
   Mapping: 'orbisview.render.Mapping',
+  SemanticZoneArray: 'orbisview.render.SemanticZoneArray',
+  FloorInfoArray: 'orbisview.render.FloorInfoArray',
   Twist2D: 'orbisview.render.Twist2D',
   ChassisState: 'orbisview.render.ChassisState',
   ObstacleArray: 'orbisview.render.ObstacleArray',

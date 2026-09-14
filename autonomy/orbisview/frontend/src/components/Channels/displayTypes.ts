@@ -247,6 +247,26 @@ export const DISPLAY_TYPE_DEFS: DisplayTypeDef[] = [
       { key: 'lineWidth', label: 'Line Width', kind: 'number', group: 'Style', defaultValue: 1.5, min: 0.5, max: 8, step: 0.5 },
     ]),
   },
+  {
+    typeId: 'strata_msgs/SemanticZoneArray',
+    package: 'strata_msgs',
+    message: 'SemanticZoneArray',
+    label: 'Semantic Zones',
+    matchSchemas: [
+      SCHEMAS.SemanticZoneArray,
+      'strata_msgs/SemanticZoneArray',
+      'SemanticZoneArray',
+    ],
+    props: withCommon([]),
+  },
+  {
+    typeId: 'strata_msgs/FloorInfoArray',
+    package: 'strata_msgs',
+    message: 'FloorInfoArray',
+    label: 'Floors',
+    matchSchemas: [SCHEMAS.FloorInfoArray, 'strata_msgs/FloorInfoArray', 'FloorInfoArray'],
+    props: withCommon([]),
+  },
 ];
 
 export const MSG_CATALOG = catalogJson as MsgCatalogEntry[];

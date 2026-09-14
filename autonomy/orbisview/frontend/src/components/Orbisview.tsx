@@ -30,6 +30,7 @@ import { defaultWsUrl } from '@/config/parameters';
 import { Icon, IconLabel, panelIcon, type IconName } from '@/components/icons';
 import { usePanelOptsStore } from '@/store/panelOptsStore';
 import { MappingVizEffects } from '@/components/MappingVizEffects';
+import { IndoorMapEffects } from '@/components/IndoorMapEffects';
 
 const SIDEBAR_NAV: { id: SidebarTab; label: string; icon: IconName }[] = [
   { id: 'panels', label: 'Panels', icon: 'panels' },
@@ -51,6 +52,8 @@ const DEFAULT_CHANNELS = [
   '/orbisview/mock/exploration',
   '/orbisview/mock/navigation',
   '/orbisview/mock/mapping',
+  '/orbisview/mock/semantic_zones',
+  '/orbisview/mock/floors',
   '/orbisview/mock/twist',
   '/orbisview/mock/chassis',
   '/orbisview/mock/obstacles',
@@ -308,6 +311,7 @@ export function Orbisview() {
   return (
     <div className="app ops-shell">
       <MappingVizEffects />
+      <IndoorMapEffects />
       <header className="topbar">
         <div className="topbar-cluster topbar-brand-cluster">
           <strong className="brand">
