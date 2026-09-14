@@ -140,7 +140,10 @@ async function rasterToCanvas(
   raster: { data: Uint8ClampedArray; width: number; height: number },
   maxEdge: number,
 ): Promise<HTMLCanvasElement> {
-  const scale = Math.min(1, maxEdge / Math.max(raster.width, raster.height));
+  const scale =
+    !Number.isFinite(maxEdge) || maxEdge <= 0
+      ? 1
+      : Math.min(1, maxEdge / Math.max(raster.width, raster.height));
   const tw = Math.max(1, Math.round(raster.width * scale));
   const th = Math.max(1, Math.round(raster.height * scale));
   const canvas = document.createElement('canvas');
@@ -169,7 +172,7 @@ async function rasterToCanvas(
 
 export async function loadStaticSlamCanvas(
   basemap: StaticSlamBasemap,
-  maxEdge = 1024,
+  maxEdge = Number.POSITIVE_INFINITY,
 ): Promise<StaticSlamCanvasHandle> {
   const { worldW, worldH } = staticSlamWorldSize(basemap);
   let canvas: HTMLCanvasElement;
@@ -193,7 +196,10 @@ export async function loadStaticSlamCanvas(
         el.onerror = () => reject(new Error(`Failed to load image: ${blobUrl}`));
         el.src = blobUrl;
       });
-      const scale = Math.min(1, maxEdge / Math.max(img.naturalWidth, img.naturalHeight));
+      const scale =
+        !Number.isFinite(maxEdge) || maxEdge <= 0
+          ? 1
+          : Math.min(1, maxEdge / Math.max(img.naturalWidth, img.naturalHeight));
       const tw = Math.max(1, Math.round(img.naturalWidth * scale));
       const th = Math.max(1, Math.round(img.naturalHeight * scale));
       canvas = document.createElement('canvas');

@@ -8,8 +8,8 @@
 
 DEFINE_string(host, "0.0.0.0", "Bind address (0.0.0.0 = all interfaces / LAN)");
 DEFINE_uint32(port, 8766, "CivetWeb listening port");
-DEFINE_bool(mock, true, "Enable mock visualization channels");
-DEFINE_bool(autolink, false, "Enable Autolink channel discovery/subscribe");
+DEFINE_bool(mock, false, "Enable mock visualization channels");
+DEFINE_bool(autolink, true, "Enable Autolink channel discovery/subscribe");
 DEFINE_string(document_root, "",
               "Optional static file root (e.g. frontend/dist)");
 DEFINE_string(plugin_dir, "",

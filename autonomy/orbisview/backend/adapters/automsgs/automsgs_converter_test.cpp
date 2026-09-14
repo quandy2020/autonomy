@@ -12,6 +12,7 @@
 #include <automsgs/msgs/geometry_msgs/polygon_stamped.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/image.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_field.pb.h>
 
@@ -171,4 +172,74 @@ TEST(AutomsgsConverterTest, PolygonTooFewPointsFails) {
   StreamEnvelope env;
   EXPECT_FALSE(ConvertAutomsgsRaw(
       "/footprint", "automsgs.msgs.geometry_msgs.Polygon", bytes, 1, &env));
+}
+
+TEST(AutomsgsConverterTest, Depth32FC1DecodesFloatMetres) {
+  automsgs::msgs::sensor_msgs::Image image;
+  image.set_width(2);
+  image.set_height(1);
+  image.set_encoding("32FC1");
+  image.set_step(8);
+  image.set_is_bigendian(false);
+  const float depths[2] = {0.25f, 6.0f};
+  image.mutable_data()->assign(reinterpret_cast<const char*>(depths),
+                               reinterpret_cast<const char*>(depths) + 8);
+
+  std::string bytes;
+  ASSERT_TRUE(image.SerializeToString(&bytes));
+  StreamEnvelope env;
+  ASSERT_TRUE(ConvertAutomsgsRaw(
+      "/camera/depth/image_raw", "automsgs.msgs.sensor_msgs.Image", bytes, 1,
+      &env));
+  EXPECT_EQ(env.schema, autonomy::orbisview::rendering::kSchemaDepthImage);
+  const std::string json(env.payload.begin(), env.payload.end());
+  // Near / far map to ~0 and ~255 (not raw float bytes).
+  EXPECT_NE(json.find("\"data_b64\""), std::string::npos) << json;
+  // 0 and 255 as raw mono bytes → base64 "AP8="
+  EXPECT_NE(json.find("AP8="), std::string::npos) << json;
+}
+
+TEST(AutomsgsConverterTest, Rgb8KeepsColorChannels) {
+  automsgs::msgs::sensor_msgs::Image image;
+  image.set_width(1);
+  image.set_height(1);
+  image.set_encoding("rgb8");
+  image.set_step(3);
+  image.mutable_data()->assign("\x10\x20\x30", 3);
+
+  std::string bytes;
+  ASSERT_TRUE(image.SerializeToString(&bytes));
+  StreamEnvelope env;
+  ASSERT_TRUE(ConvertAutomsgsRaw(
+      "/camera/rgb/image_raw", "automsgs.msgs.sensor_msgs.Image", bytes, 1,
+      &env));
+  EXPECT_EQ(env.schema, autonomy::orbisview::rendering::kSchemaImage);
+  const std::string json(env.payload.begin(), env.payload.end());
+  EXPECT_NE(json.find("\"encoding\":\"rgb8\""), std::string::npos) << json;
+  EXPECT_NE(json.find("\"data_b64\""), std::string::npos) << json;
+  // 0x10,0x20,0x30 → base64 "ECAw"
+  EXPECT_NE(json.find("ECAw"), std::string::npos) << json;
+}
+
+TEST(AutomsgsConverterTest, Rgb8LabeledButRgbaStepStillSamplesRgb) {
+  // Mis-labeled Habitat-style frame: encoding=rgb8, step=width*4, RGBA bytes.
+  automsgs::msgs::sensor_msgs::Image image;
+  image.set_width(2);
+  image.set_height(1);
+  image.set_encoding("rgb8");
+  image.set_step(8);
+  // px0=RGB(1,2,3)A255, px1=RGB(4,5,6)A255
+  image.mutable_data()->assign("\x01\x02\x03\xff\x04\x05\x06\xff", 8);
+
+  std::string bytes;
+  ASSERT_TRUE(image.SerializeToString(&bytes));
+  StreamEnvelope env;
+  ASSERT_TRUE(ConvertAutomsgsRaw(
+      "/camera/rgb/image_raw", "automsgs.msgs.sensor_msgs.Image", bytes, 1,
+      &env));
+  const std::string json(env.payload.begin(), env.payload.end());
+  EXPECT_NE(json.find("\"encoding\":\"rgb8\""), std::string::npos) << json;
+  EXPECT_NE(json.find("\"data_b64\""), std::string::npos) << json;
+  // RGB bytes 1,2,3,4,5,6 → "AQIDBAUG"
+  EXPECT_NE(json.find("AQIDBAUG"), std::string::npos) << json;
 }

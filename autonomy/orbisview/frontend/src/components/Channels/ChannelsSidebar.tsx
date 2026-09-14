@@ -87,11 +87,12 @@ function PropEditor({
         className="ch-select ch-topic-select"
         value={String(value || '')}
         onChange={(e) => onChange(e.target.value)}
+        title={String(value || '')}
       >
-        <option value="">— topic —</option>
+        <option value="">— channel —</option>
         {topicOptions.map((t) => (
           <option key={t.name} value={t.name} title={t.name}>
-            {t.name.split('/').pop() || t.name}
+            {t.name}
           </option>
         ))}
       </select>
@@ -131,13 +132,13 @@ function TypePropertyTree({
     const map = new Map<string, DisplayPropDef[]>();
     for (const p of def.props) {
       if (p.key === 'enabled') continue; // header checkbox already covers this
-      if (meta && p.group !== 'Status' && p.group !== 'Topic') continue;
+      if (meta && p.group !== 'Status' && p.group !== 'Channel' && p.group !== 'Topic') continue;
       const arr = map.get(p.group) ?? [];
       arr.push(p);
       map.set(p.group, arr);
     }
-    // Prefer Topic / Style first for scanning.
-    const order = ['Topic', 'Style', 'Status', 'Image', 'Frames', 'History', 'Filter'];
+    // Prefer Channel / Style first for scanning.
+    const order = ['Channel', 'Topic', 'Style', 'Status', 'Image', 'Frames', 'History', 'Filter'];
     return [...map.entries()].sort(
       (a, b) => (order.indexOf(a[0]) + 1 || 99) - (order.indexOf(b[0]) + 1 || 99),
     );
@@ -566,7 +567,7 @@ export function ChannelsSidebar() {
             type="button"
             className="ch-toolbar-side"
             disabled={!connected}
-            title="Refresh topics"
+            title="Refresh channels"
             onClick={() => {
               wsClient.listChannels();
               wsClient.send({ op: 'channel_stats' });
@@ -638,9 +639,9 @@ export function ChannelsSidebar() {
                     {title}
                     {meta ? <span className="ch-json-badge">json</span> : null}
                   </span>
-                  <span className="ch-leaf-type muted">
+                  <span className="ch-leaf-type muted" title={d.channel || undefined}>
                     {def.typeId}
-                    {d.channel ? ` · ${d.channel.split('/').pop()}` : ''}
+                    {d.channel ? ` · ${d.channel}` : ''}
                   </span>
                 </button>
                 <span className={`ch-hz ${d.enabled && d.channel ? 'on' : 'off'}`}>

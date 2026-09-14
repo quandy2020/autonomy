@@ -2,7 +2,7 @@
 
 CivetWeb HTTP/WS 可视化 HMI（companion，与 Foxglove / autoviz 并存）。
 
-构建依赖 **Autolink** + **automsgs**；默认 mock 数据，可选接 live 通道。
+构建依赖 **Autolink** + **automsgs**；默认接 **live Autolink**（autosim 等），可用 `--mock=true` 离线演示。
 
 ## 布局
 
@@ -12,7 +12,7 @@ orbisview/
 ├── frontend/         # Vite + React（CMakeLists.txt + npm）
 ├── script/           # install_npm / run_backend / run_frontend
 ├── conf/             # gflags（orbisview.conf）
-├── launch/           # orbisview.launch（autolink binary）
+├── launch/           # orbisview.launch（autosim + orbisview）
 ├── proto/            # schema 文档（*.proto，不做 C++ codegen）
 ├── thirdparty/       # civetweb
 └── main.cpp
@@ -41,34 +41,37 @@ cmake --install build/autonomy
 ## 运行
 
 ```bash
-# 前后端一体（autolink launch；需已 build frontend/dist）
+# 推荐：autosim + orbisview（live channels；需 habitat-sim + frontend/dist）
 export PATH=$PWD/build/autonomy/bin:$PATH
 export LD_LIBRARY_PATH=$PWD/build/autonomy/lib:${LD_LIBRARY_PATH:-}
 autolink launch start src/autonomy/autonomy/orbisview/launch/orbisview.launch
 # 浏览器: http://127.0.0.1:8766/  WS: ws://127.0.0.1:8766/ws
 
-# 等价直接跑二进制
+# 仅 orbisview（autosim 已在跑）
 ./build/autonomy/bin/autonomy.orbisview \
   --flagfile=src/autonomy/autonomy/orbisview/conf/orbisview.conf \
   --document_root=src/autonomy/autonomy/orbisview/frontend/dist
 
-# live Autolink
-./build/autonomy/bin/autonomy.orbisview --mock=false --autolink=true --port=8766 \
+# 离线 mock（不启 autosim）
+./build/autonomy/bin/autonomy.orbisview --mock=true --autolink=false --port=8766 \
   --document_root=src/autonomy/autonomy/orbisview/frontend/dist
 
 # 开发：Vite 热更新（可选）
 bash src/autonomy/autonomy/orbisview/script/run_frontend.sh
 ```
 
+Live 模式下 UI 自动订阅 autosim 通道（`/odom` `/scan` `/map` `/tf` `/camera/*` 等）。
+
 ## 常用 flags
 
 | flag | 说明 |
 |------|------|
-| `--host` / `--port` | 默认 `127.0.0.1:8766` |
-| `--mock` | 默认 `true` |
-| `--autolink` | live 通道发现与订阅 |
+| `--host` / `--port` | 默认 `0.0.0.0:8766`（conf） |
+| `--mock` | 默认 `false`（live）；离线 UI 设 `true` |
+| `--autolink` | 默认 `true`；订阅 Autolink 拓扑上的通道 |
 | `--document_root` | 静态前端根目录（`frontend/dist` 或 `share/.../www`） |
 | `--plugin_dir` | 可选 native 插件目录 |
+| `--cmd_vel_channel` | 遥控发布通道，默认 `/cmd_vel` |
 
 ## 测试
 

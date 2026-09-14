@@ -1,39 +1,38 @@
 <!--
   Copyright 2026 The Openbot Authors
 
-  Starts autonomy.orbisview (CivetWeb HTTP/WS + optional static UI).
+  OrbisView HMI (live Autolink; no mock).
+
+  Starts orbisview only. Start autosim separately for Habitat channels:
+    autolink launch start src/autonomy/autosim/launch/autosim.launch
 
   Binary: build/autonomy/bin/autonomy.orbisview  (requires -DBUILD_ORBISVIEW=ON)
-  Config: conf/orbisview.conf via gflags --flagfile
-  Static: frontend/dist (CMake target orbisview_frontend) via --document_root
+  Config: conf/orbisview.conf (--mock=false --autolink=true)
+  Static: frontend/dist via --document_root
 
   UI:  http://127.0.0.1:8766/
   WS:  ws://127.0.0.1:8766/ws
 
   Prerequisites:
     - Frontend built (orbisview_frontend / npm run build → frontend/dist)
-    - PATH / LD_LIBRARY_PATH include build/autonomy/{bin,lib} (or install prefix)
-    - Autolink + automsgs at build time; live channels need Autolink nodes
+    - PATH / LD_LIBRARY_PATH include build/autonomy/{bin,lib}
+    - Run from workspace root (/workspace/autonomy) so relative paths resolve
 
   Dev (repo root):
     export PATH=$PWD/build/autonomy/bin:$PATH
     export LD_LIBRARY_PATH=$PWD/build/autonomy/lib:${LD_LIBRARY_PATH:-}
-    export AUTOLINK_LAUNCH_PATH=$PWD/src/autonomy/autonomy/orbisview/launch
-    autolink launch start orbisview.launch
-    # or: autolink launch start src/autonomy/autonomy/orbisview/launch/orbisview.launch
+    autolink launch start src/autonomy/autosim/launch/autosim.launch   # terminal 1
+    autolink launch start src/autonomy/autonomy/orbisview/launch/orbisview.launch  # terminal 2
 
-  Install:
-    autolink launch start share/autonomy/orbisview/launch/orbisview.launch
-    # adjust --flagfile / --document_root to installed conf + www if needed
-
-  Vite HMR (optional, not via launch):
-    bash src/autonomy/autonomy/orbisview/script/run_frontend.sh
+  Mock / offline UI (no autosim):
+    autonomy.orbisview --mock=true --autolink=false --port=8766 \
+      --document_root=src/autonomy/autonomy/orbisview/frontend/dist
 -->
 <autolink>
   <module>
     <name>orbisview</name>
     <type>binary</type>
-    <process_name>autonomy.orbisview --flagfile=src/autonomy/autonomy/orbisview/conf/orbisview.conf --document_root=src/autonomy/autonomy/orbisview/frontend/dist</process_name>
+    <process_name>autonomy.orbisview --flagfile=src/autonomy/autonomy/orbisview/conf/orbisview.conf --mock=false --autolink=true --document_root=src/autonomy/autonomy/orbisview/frontend/dist</process_name>
     <exception_handler>exit</exception_handler>
   </module>
 </autolink>

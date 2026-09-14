@@ -40,6 +40,9 @@ struct StreamEnvelope {
 /** Escape and quote a UTF-8 string for JSON. */
 std::string JsonEscape(const std::string& s);
 
+/** Base64-encode bytes (no newlines). */
+std::string Base64Encode(const std::vector<uint8_t>& data);
+
 /** Serialize envelope as a JSON object (payload as base64 when non-UTF8/json). */
 std::string StreamEnvelopeToJson(const StreamEnvelope& env);
 

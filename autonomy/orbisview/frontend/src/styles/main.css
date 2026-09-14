@@ -375,14 +375,25 @@ body { margin: 0; }
 .panel { background: #121820; border: 1px solid #243040; border-radius: 8px; padding: 0.5rem; }
 .image-panel { display: flex; flex-direction: column; gap: 0.5rem; min-height: 0; }
 .image-panel-toolbar {
-  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: nowrap;
+  min-width: 0; width: 100%;
 }
 .image-channel-label {
   display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem;
+  flex: 1; min-width: 0; width: 100%;
 }
+.image-channel-k { flex-shrink: 0; }
 .image-channel-select {
+  flex: 1; min-width: 0; width: 100%; max-width: none;
   background: #1a2430; color: #e8eef5; border: 1px solid #2a3a4c;
-  border-radius: 6px; padding: 0.25rem 0.45rem; max-width: 220px;
+  border-radius: 6px; padding: 0.25rem 0.45rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+}
+.image-channel-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.68rem; color: #8a9aab; line-height: 1.25;
+  word-break: break-all; user-select: text;
 }
 .log-panel pre {
   background: #0a0e12; color: #b6f5c6; padding: 0.75rem; height: 280px;
@@ -675,6 +686,7 @@ body { margin: 0; }
   font-size: 0.58rem; max-width: 100%; line-height: 1.2;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   grid-column: 2; color: #6b7f93;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 .ch-hz {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -755,8 +767,14 @@ body { margin: 0; }
 .ch-text-input, .ch-select {
   width: 100%; max-width: 100%; height: 1.25rem; border-radius: 4px; border: 1px solid #2a3a4c;
   background: #0f1419; color: #e8eef5; padding: 0 0.28rem; font-size: 0.64rem;
+  box-sizing: border-box; min-width: 0;
 }
-.ch-topic-select { font-size: 0.6rem; }
+.ch-topic-select {
+  font-size: 0.58rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  height: auto;
+  min-height: 1.25rem;
+}
 .ch-top-actions { justify-content: space-between; }
 .ch-add-btn {
   display: inline-flex; align-items: center; gap: 0.3rem; height: 28px;

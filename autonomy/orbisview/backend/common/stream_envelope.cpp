@@ -15,7 +15,15 @@ namespace {
 constexpr char kB64[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-std::string Base64Encode(const std::vector<uint8_t>& data) {
+bool LooksLikeUtf8Json(const std::vector<uint8_t>& data) {
+  if (data.empty()) {
+    return false;
+  }
+  const char c = static_cast<char>(data[0]);
+  return c == '{' || c == '[';
+}
+
+std::string Base64EncodeImpl(const std::vector<uint8_t>& data) {
   std::string out;
   out.reserve(((data.size() + 2) / 3) * 4);
   size_t i = 0;
@@ -47,15 +55,11 @@ std::string Base64Encode(const std::vector<uint8_t>& data) {
   return out;
 }
 
-bool LooksLikeUtf8Json(const std::vector<uint8_t>& data) {
-  if (data.empty()) {
-    return false;
-  }
-  const char c = static_cast<char>(data[0]);
-  return c == '{' || c == '[';
-}
-
 }  // namespace
+
+std::string Base64Encode(const std::vector<uint8_t>& data) {
+  return Base64EncodeImpl(data);
+}
 
 std::string JsonEscape(const std::string& s) {
   std::string out;

@@ -37,7 +37,8 @@ IMAGE_REGISTRY: dict[str, dict[str, Any]] = {
 }
 
 DEFAULT_CONTAINER_NAME = 'SpaceHero'
-DEFAULT_PORTS = ['8765:8765']
+# Foxglove bridge, OrbisView HMI, Vite frontend (used when not --net=host)
+DEFAULT_PORTS = ['8765:8765', '8766:8766', '5173:5173']
 DEFAULT_ENV = {
     'QT_X11_NO_MITSHM': '1',
     'AUTONOMY_DEV_DIR': '/workspace/autonomy',

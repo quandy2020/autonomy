@@ -9,11 +9,14 @@ import type { PanelProps } from '@/components/registry';
 
 const IMAGE_SCHEMAS: ReadonlySet<string> = new Set([SCHEMAS.Image, SCHEMAS.DepthImage]);
 
+/** Near = warm, far = cool; v==0 → void (black), not colormap blue. */
 function depthToRgb(v: number): [number, number, number] {
+  if (!(v > 0)) return [0, 0, 0];
   const t = Math.max(0, Math.min(1, v / 255));
-  const r = Math.round(255 * Math.min(1, t * 2));
+  // Invert prior map: near(0)→red, mid→white, far(1)→blue.
+  const r = Math.round(255 * Math.min(1, (1 - t) * 2));
   const g = Math.round(255 * (1 - Math.abs(t - 0.5) * 2));
-  const b = Math.round(255 * Math.min(1, (1 - t) * 2));
+  const b = Math.round(255 * Math.min(1, t * 2));
   return [r, g, b];
 }
 
@@ -21,7 +24,7 @@ function drawMono(
   canvas: HTMLCanvasElement,
   width: number,
   height: number,
-  data: number[],
+  data: ArrayLike<number>,
   mode: 'gray' | 'depth',
 ) {
   const ctx = canvas.getContext('2d');
@@ -29,7 +32,8 @@ function drawMono(
   canvas.width = width;
   canvas.height = height;
   const img = ctx.createImageData(width, height);
-  for (let i = 0; i < width * height; i++) {
+  const n = width * height;
+  for (let i = 0; i < n; i++) {
     const v = data[i] ?? 0;
     if (mode === 'depth') {
       const [r, g, b] = depthToRgb(v);
@@ -46,9 +50,74 @@ function drawMono(
   ctx.putImageData(img, 0, 0);
 }
 
-function shortName(channel: string): string {
-  const parts = channel.split('/');
-  return parts[parts.length - 1] || channel;
+function drawRgb(
+  canvas: HTMLCanvasElement,
+  width: number,
+  height: number,
+  data: ArrayLike<number>,
+) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  canvas.width = width;
+  canvas.height = height;
+  const img = ctx.createImageData(width, height);
+  const n = width * height;
+  for (let i = 0; i < n; i++) {
+    const o = i * 3;
+    img.data[i * 4] = data[o] ?? 0;
+    img.data[i * 4 + 1] = data[o + 1] ?? 0;
+    img.data[i * 4 + 2] = data[o + 2] ?? 0;
+    img.data[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function decodeImagePixels(payload: {
+  data?: number[];
+  data_b64?: string;
+}): ArrayLike<number> | null {
+  if (typeof payload.data_b64 === 'string' && payload.data_b64.length > 0) {
+    try {
+      const bin = atob(payload.data_b64);
+      const out = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return out;
+    } catch {
+      return null;
+    }
+  }
+  if (Array.isArray(payload.data) && payload.data.length > 0) return payload.data;
+  return null;
+}
+
+function isDepthChannel(name: string, schema?: string): boolean {
+  if (schema === SCHEMAS.DepthImage) return true;
+  return /depth|disparity/i.test(name);
+}
+
+function isRgbChannel(name: string): boolean {
+  return /\/rgb\/|\/color\/|\/camera_color/i.test(name) && !isDepthChannel(name);
+}
+
+function channelOptionLabel(
+  name: string,
+  schema: string,
+  inDisplay: boolean,
+): string {
+  const tags: string[] = [];
+  if (inDisplay) tags.push('display');
+  if (isDepthChannel(name, schema)) tags.push('depth');
+  if (isRgbChannel(name)) tags.push('rgb');
+  return tags.length ? `${name}  (${tags.join(', ')})` : name;
+}
+
+function imageRank(name: string, schema: string, inDisplay: boolean): number {
+  // Lower sorts first. Prefer enabled display + RGB camera over depth.
+  let rank = inDisplay ? 0 : 100;
+  if (isRgbChannel(name)) rank += 0;
+  else if (isDepthChannel(name, schema)) rank += 20;
+  else rank += 10;
+  return rank;
 }
 
 /** Single-channel image / depth viewer; channel chosen per mosaic instance. */
@@ -91,14 +160,13 @@ export function ImagePanel({ panelId }: PanelProps) {
       seen.add(name);
     }
     return fromList.sort((a, b) => {
-      const ap = displayImageChannels.includes(a.name) ? 0 : 1;
-      const bp = displayImageChannels.includes(b.name) ? 0 : 1;
-      if (ap !== bp) return ap - bp;
+      const ar = imageRank(a.name, a.schema, displayImageChannels.includes(a.name));
+      const br = imageRank(b.name, b.schema, displayImageChannels.includes(b.name));
+      if (ar !== br) return ar - br;
       return a.name.localeCompare(b.name);
     });
   }, [channels, envelopes, displayImageChannels]);
 
-  // Prefer this panel's bound channel (set when opening from Channels).
   const active =
     (channel && (candidates.some((c) => c.name === channel) || !!envelopes[channel])
       ? channel
@@ -118,36 +186,62 @@ export function ImagePanel({ panelId }: PanelProps) {
 
   const env = active ? envelopes[active] : undefined;
   const mode: 'gray' | 'depth' =
-    env?.schema === SCHEMAS.DepthImage ? 'depth' : 'gray';
+    env?.schema === SCHEMAS.DepthImage || isDepthChannel(active ?? '')
+      ? 'depth'
+      : 'gray';
 
   useEffect(() => {
     const payload = env?.payload as
-      | { width: number; height: number; data: number[] }
+      | { width: number; height: number; encoding?: string; data?: number[]; data_b64?: string }
       | undefined;
-    if (canvasRef.current && payload) {
-      drawMono(canvasRef.current, payload.width, payload.height, payload.data, mode);
+    if (!canvasRef.current || !payload?.width || !payload?.height) {
+      return;
     }
+    const data = decodeImagePixels(payload);
+    if (!data) return;
+    const { width, height } = payload;
+    const enc = (payload.encoding ?? '').toLowerCase();
+    const n = width * height;
+    if (enc === 'rgb8' || enc === 'bgr8' || enc === 'rgba8' || enc === 'bgra8') {
+      if (data.length < n * 3) return;
+      drawRgb(canvasRef.current, width, height, data);
+      return;
+    }
+    const asRgb =
+      enc !== 'mono8' && data.length >= n * 3 && data.length !== n;
+    if (asRgb && data.length >= n * 3) {
+      drawRgb(canvasRef.current, width, height, data);
+      return;
+    }
+    // Guard against truncated / mismatched payloads.
+    if (data.length < n) {
+      return;
+    }
+    drawMono(canvasRef.current, width, height, data, mode);
   }, [env, mode]);
 
   return (
     <div className="panel image-panel">
       <div className="image-panel-toolbar">
         <label className="image-channel-label">
-          <span className="muted">channel</span>
+          <span className="muted image-channel-k">channel</span>
           <select
             className="image-channel-select"
             value={active ?? ''}
             disabled={candidates.length === 0}
             onChange={(e) => setImageChannel(panelId, e.target.value || null)}
+            title={active ?? undefined}
           >
             {candidates.length === 0 ? (
               <option value="">no image channels</option>
             ) : (
               candidates.map((c) => (
                 <option key={c.name} value={c.name}>
-                  {shortName(c.name)}
-                  {displayImageChannels.includes(c.name) ? ' · display' : ''}
-                  {c.schema === SCHEMAS.DepthImage ? ' · depth' : ''}
+                  {channelOptionLabel(
+                    c.name,
+                    c.schema,
+                    displayImageChannels.includes(c.name),
+                  )}
                 </option>
               ))
             )}
@@ -155,11 +249,16 @@ export function ImagePanel({ panelId }: PanelProps) {
         </label>
         {env?.stale ? <span className="stale-badge">stale</span> : null}
       </div>
+      {active ? (
+        <div className="image-channel-path" title={active}>
+          {active}
+        </div>
+      ) : null}
       {active && env?.payload ? (
         <canvas
           ref={canvasRef}
           className="image-canvas"
-          style={{ width: '100%', maxWidth: 720, height: 'auto', imageRendering: 'pixelated' }}
+          style={{ width: '100%', maxWidth: 960, height: 'auto', imageRendering: 'auto' }}
         />
       ) : (
         <p className="muted">

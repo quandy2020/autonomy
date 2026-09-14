@@ -317,15 +317,22 @@ def remove_container_if_exists(name: str, *, timeout_s: float = 120.0) -> bool:
 
 
 def resolve_publish_ports() -> list[str]:
-    """Resolve port mappings from ``AUTONOMY_PORTS`` (comma- or space-separated)."""
-    env_value = os.environ.get("AUTONOMY_PORTS", "8765:8765").strip()
-    if not env_value:
-        return []
-    return [part for part in env_value.replace(",", " ").split() if part.strip()]
+    """Resolve port mappings from ``AUTONOMY_PORTS``.
+
+    Specs are ``HOST:CONTAINER`` or ``HOST:CONTAINER/proto`` (comma/space
+    separated). Empty ``AUTONOMY_PORTS`` means no env ports. Unset env
+    defaults to foxglove / orbisview / vite.
+    """
+    if "AUTONOMY_PORTS" in os.environ:
+        env_value = os.environ.get("AUTONOMY_PORTS", "").strip()
+        if not env_value:
+            return []
+        return [part for part in env_value.replace(",", " ").split() if part.strip()]
+    return ["8765:8765", "8766:8766", "5173:5173"]
 
 
 def resolve_network_mode() -> str:
-    """Resolve Docker network mode from ``AUTONOMY_NETWORK``."""
+    """Resolve Docker network mode from ``AUTONOMY_NETWORK`` (default host)."""
     return os.environ.get("AUTONOMY_NETWORK", "host").strip() or "host"
 
 

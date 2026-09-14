@@ -228,6 +228,9 @@ bool Orbisview::Start() {
 #if defined(ORBISVIEW_WITH_AUTOLINK)
   if (options_.enable_autolink) {
     node_ = autolink::CreateNode("orbisview");
+    // Register /cmd_vel as TwistStamped immediately so discovery matches
+    // autosim/autodriver (avoids a late Twist2D join from a stale process).
+    PublishCmdVelAutolink(0.0, 0.0);
     RefreshAutolinkChannels();
   }
 #else
@@ -253,6 +256,9 @@ void Orbisview::Stop() {
   subs_.clear();
 #if defined(ORBISVIEW_WITH_AUTOLINK)
   readers_.clear();
+#if defined(ORBISVIEW_WITH_AUTOMSGS)
+  cmd_vel_writer_.reset();
+#endif
   node_.reset();
 #endif
 }
@@ -674,6 +680,12 @@ bool Orbisview::RefreshAutolinkChannelsChanged() {
 
 void Orbisview::EnsureAutolinkSubscribe(const std::string& channel) {
   if (!node_ || readers_.count(channel)) return;
+  // Frontend may still request legacy mock names; do not create Autolink
+  // readers for them when mock source is disabled.
+  if (!options_.enable_mock &&
+      channel.find("/orbisview/mock/") != std::string::npos) {
+    return;
+  }
 
   auto reader = node_->CreateReader<autolink::message::RawMessage>(
       channel,
