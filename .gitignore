@@ -61,8 +61,10 @@ devel_isolated/
 # qcreator stuff
 CMakeLists.txt.user
 
-# Generated at configure/build time (see cmake/generate_version_definitions.cmake)
+# Generated at configure/build time (see cmake/autonomy_version.cmake)
 autonomy/common/version.cpp
+# Generated into the build tree; never commit a source-tree copy.
+autonomy/common/config.hpp
 
 srv/_*.py
 *.pcd
@@ -94,3 +96,11 @@ data/
 
 # Local feature worktrees
 .worktrees/
+
+# OrbisView frontend install / build artifacts (never commit)
+autonomy/orbisview/frontend/node_modules/
+autonomy/orbisview/frontend/dist/
+autonomy/orbisview/**/node_modules/
+autonomy/orbisview/thirdparty/**/node_modules/
+autonomy/orbisview/thirdparty/**/dist/
+
