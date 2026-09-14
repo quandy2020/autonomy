@@ -5,6 +5,7 @@
 #include "autonomy/orbisview/backend/adapters/automsgs/automsgs_converter.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstring>
 #include <sstream>
@@ -153,9 +154,7 @@ bool ConvertLaserScan(const std::string& bytes, core::StreamEnvelope* out) {
   oss << "{\"angle_min\":" << msg.angle_min()
       << ",\"angle_increment\":" << msg.angle_increment()
       << ",\"range_max\":" << msg.range_max() << ",\"ranges\":[";
-  constexpr int kMax = 360;
-  const int n = std::min(msg.ranges_size(), kMax);
-  for (int i = 0; i < n; ++i) {
+  for (int i = 0; i < msg.ranges_size(); ++i) {
     if (i) oss << ',';
     oss << msg.ranges(i);
   }
@@ -280,14 +279,11 @@ bool ConvertPointCloud2(const std::string& bytes, core::StreamEnvelope* out) {
   const uint32_t point_step = msg.point_step();
   const uint32_t n_points = msg.height() * msg.width();
   if (point_step == 0 || n_points == 0) return false;
-  constexpr uint32_t kMaxPoints = 500;
-  const uint32_t stride =
-      n_points > kMaxPoints ? (n_points + kMaxPoints - 1) / kMaxPoints : 1;
   std::ostringstream oss;
   oss << "{\"points\":[";
   bool first = true;
   const std::string& data = msg.data();
-  for (uint32_t i = 0; i < n_points; i += stride) {
+  for (uint32_t i = 0; i < n_points; ++i) {
     const size_t base = static_cast<size_t>(i) * point_step;
     if (base + point_step > data.size()) break;
     if (!first) oss << ',';
@@ -309,62 +305,166 @@ bool ConvertImageLike(const std::string& bytes, core::StreamEnvelope* out,
   if (!msg.ParseFromString(bytes)) return false;
   out->frame_id = msg.header().frame_id();
   const std::string enc = msg.encoding();
+  std::string enc_l = enc;
+  std::transform(enc_l.begin(), enc_l.end(), enc_l.begin(),
+                 [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
   const bool is_depth =
-      prefer_depth || enc.find("16UC") != std::string::npos ||
-      enc.find("32FC") != std::string::npos || enc == "mono16" ||
-      enc.find("depth") != std::string::npos;
+      prefer_depth || enc_l.find("16uc") != std::string::npos ||
+      enc_l.find("32fc") != std::string::npos || enc_l == "mono16" ||
+      enc_l.find("depth") != std::string::npos;
+  bool is_bgr = (enc_l == "bgr8" || enc_l == "bgra8");
+  bool is_rgb = (enc_l == "rgb8" || enc_l == "bgr8" || enc_l == "8uc3" ||
+                 enc_l == "rgba8" || enc_l == "bgra8" || enc_l == "8uc4");
 
-  constexpr uint32_t kMaxW = 64;
-  constexpr uint32_t kMaxH = 48;
+  // Full-resolution wire preview (no spatial downsampling).
   const uint32_t w = msg.width();
   const uint32_t h = msg.height();
   if (w == 0 || h == 0) return false;
-  const uint32_t step_x = std::max(1u, (w + kMaxW - 1) / kMaxW);
-  const uint32_t step_y = std::max(1u, (h + kMaxH - 1) / kMaxH);
-  const uint32_t out_w = (w + step_x - 1) / step_x;
-  const uint32_t out_h = (h + step_y - 1) / step_y;
 
-  std::ostringstream oss;
-  oss << "{\"width\":" << out_w << ",\"height\":" << out_h
-      << ",\"encoding\":\"mono8\",\"data\":[";
-  bool first = true;
-  const std::string& data = msg.data();
-  const uint32_t row_step = msg.step() ? msg.step() : w;
-  for (uint32_t y = 0; y < h; y += step_y) {
-    for (uint32_t x = 0; x < w; x += step_x) {
-      if (!first) oss << ',';
-      first = false;
-      int v = 0;
-      if (enc == "mono8" || enc == "8UC1") {
-        const size_t idx = static_cast<size_t>(y) * row_step + x;
-        if (idx < data.size()) v = static_cast<uint8_t>(data[idx]);
-      } else if (enc == "rgb8" || enc == "bgr8") {
-        const size_t idx = static_cast<size_t>(y) * row_step + x * 3;
-        if (idx + 2 < data.size()) {
-          v = (static_cast<uint8_t>(data[idx]) +
-               static_cast<uint8_t>(data[idx + 1]) +
-               static_cast<uint8_t>(data[idx + 2])) /
-              3;
-        }
-      } else if (enc == "16UC1" || enc == "mono16") {
-        const size_t idx = static_cast<size_t>(y) * row_step + x * 2;
-        if (idx + 1 < data.size()) {
-          const uint16_t d = static_cast<uint8_t>(data[idx]) |
-                             (static_cast<uint16_t>(
-                                  static_cast<uint8_t>(data[idx + 1]))
-                              << 8);
-          v = static_cast<int>(std::min<uint16_t>(d / 32, 255));
-        }
-      } else {
-        const size_t idx = static_cast<size_t>(y) * row_step + x;
-        if (idx < data.size()) v = static_cast<uint8_t>(data[idx]);
-      }
-      oss << v;
-    }
+  uint32_t bpp = 1;
+  if (enc_l == "rgb8" || enc_l == "bgr8" || enc_l == "8uc3") {
+    bpp = 3;
+  } else if (enc_l == "rgba8" || enc_l == "bgra8" || enc_l == "8uc4") {
+    bpp = 4;
+  } else if (enc_l == "16uc1" || enc_l == "mono16") {
+    bpp = 2;
+  } else if (enc_l.find("32fc") != std::string::npos) {
+    bpp = 4;
   }
-  oss << "]}";
-  out->schema =
-      is_depth ? rendering::kSchemaDepthImage : rendering::kSchemaImage;
+  const uint32_t row_step =
+      msg.step() > 0 ? msg.step() : w * bpp;
+  // Habitat often ships RGBA bytes while still labeling encoding=rgb8.
+  if ((enc_l == "rgb8" || enc_l == "bgr8" || enc_l == "8uc3") &&
+      row_step >= w * 4U && (row_step % w) == 0 && (row_step / w) == 4U) {
+    bpp = 4;
+    is_rgb = true;
+    is_bgr = (enc_l == "bgr8");
+  }
+
+  const std::string& data = msg.data();
+  std::ostringstream oss;
+  if (is_rgb && !is_depth) {
+    std::vector<uint8_t> rgb;
+    rgb.reserve(static_cast<size_t>(w) * h * 3U);
+    for (uint32_t y = 0; y < h; ++y) {
+      for (uint32_t x = 0; x < w; ++x) {
+        const size_t idx =
+            static_cast<size_t>(y) * row_step + static_cast<size_t>(x) * bpp;
+        uint8_t r = 0;
+        uint8_t g = 0;
+        uint8_t b = 0;
+        if (idx + 2 < data.size()) {
+          if (is_bgr) {
+            b = static_cast<uint8_t>(data[idx]);
+            g = static_cast<uint8_t>(data[idx + 1]);
+            r = static_cast<uint8_t>(data[idx + 2]);
+          } else {
+            r = static_cast<uint8_t>(data[idx]);
+            g = static_cast<uint8_t>(data[idx + 1]);
+            b = static_cast<uint8_t>(data[idx + 2]);
+          }
+        }
+        rgb.push_back(r);
+        rgb.push_back(g);
+        rgb.push_back(b);
+      }
+    }
+    oss << "{\"width\":" << w << ",\"height\":" << h
+        << ",\"encoding\":\"rgb8\",\"data_b64\":"
+        << core::JsonEscape(core::Base64Encode(rgb)) << '}';
+    out->schema = rendering::kSchemaImage;
+  } else if (is_depth && enc_l.find("32fc") != std::string::npos) {
+    std::vector<float> depth_m;
+    depth_m.reserve(static_cast<size_t>(w) * h);
+    for (uint32_t y = 0; y < h; ++y) {
+      for (uint32_t x = 0; x < w; ++x) {
+        const size_t idx =
+            static_cast<size_t>(y) * row_step + static_cast<size_t>(x) * 4U;
+        const float f = ReadFloatLE(data, idx);
+        if (std::isfinite(f) && f > 1e-3f && f < 20.0f) {
+          depth_m.push_back(f);
+        } else {
+          depth_m.push_back(0.f);
+        }
+      }
+    }
+    float near_m = 0.25f;
+    float far_m = 6.0f;
+    std::vector<float> valid;
+    valid.reserve(depth_m.size());
+    for (float f : depth_m) {
+      if (f > 1e-3f) valid.push_back(f);
+    }
+    if (valid.size() >= 16) {
+      std::nth_element(valid.begin(), valid.begin() + valid.size() / 20,
+                       valid.end());
+      std::nth_element(valid.begin(), valid.begin() + (valid.size() * 19) / 20,
+                       valid.end());
+      near_m = std::max(0.05f, valid[valid.size() / 20]);
+      far_m = std::max(near_m + 0.5f, valid[(valid.size() * 19) / 20]);
+    }
+    const float span = std::max(1e-3f, far_m - near_m);
+    std::vector<uint8_t> mono;
+    mono.reserve(depth_m.size());
+    for (float f : depth_m) {
+      if (!(f > 1e-3f)) {
+        mono.push_back(0);
+        continue;
+      }
+      const float t = std::clamp((f - near_m) / span, 0.0f, 1.0f);
+      mono.push_back(static_cast<uint8_t>(std::lround(t * 255.0f)));
+    }
+    oss << "{\"width\":" << w << ",\"height\":" << h
+        << ",\"encoding\":\"mono8\",\"data_b64\":"
+        << core::JsonEscape(core::Base64Encode(mono)) << '}';
+    out->schema = rendering::kSchemaDepthImage;
+  } else {
+    std::vector<uint8_t> mono;
+    mono.reserve(static_cast<size_t>(w) * h);
+    for (uint32_t y = 0; y < h; ++y) {
+      for (uint32_t x = 0; x < w; ++x) {
+        int v = 0;
+        if (enc_l == "mono8" || enc_l == "8uc1") {
+          const size_t idx = static_cast<size_t>(y) * row_step + x;
+          if (idx < data.size()) v = static_cast<uint8_t>(data[idx]);
+        } else if (enc_l == "rgb8" || enc_l == "bgr8" || enc_l == "8uc3" ||
+                   enc_l == "rgba8" || enc_l == "bgra8" || enc_l == "8uc4") {
+          uint32_t px = 3;
+          if (enc_l == "rgba8" || enc_l == "bgra8" || enc_l == "8uc4" ||
+              (row_step >= w * 4U && (row_step / w) == 4U)) {
+            px = 4;
+          }
+          const size_t idx =
+              static_cast<size_t>(y) * row_step + static_cast<size_t>(x) * px;
+          if (idx + 2 < data.size()) {
+            v = (static_cast<uint8_t>(data[idx]) +
+                 static_cast<uint8_t>(data[idx + 1]) +
+                 static_cast<uint8_t>(data[idx + 2])) /
+                3;
+          }
+        } else if (enc_l == "16uc1" || enc_l == "mono16") {
+          const size_t idx =
+              static_cast<size_t>(y) * row_step + static_cast<size_t>(x) * 2U;
+          if (idx + 1 < data.size()) {
+            const uint16_t d =
+                static_cast<uint8_t>(data[idx]) |
+                (static_cast<uint16_t>(static_cast<uint8_t>(data[idx + 1]))
+                 << 8);
+            v = static_cast<int>(std::min<uint16_t>(d / 32, 255));
+          }
+        } else {
+          const size_t idx = static_cast<size_t>(y) * row_step + x;
+          if (idx < data.size()) v = static_cast<uint8_t>(data[idx]);
+        }
+        mono.push_back(static_cast<uint8_t>(v));
+      }
+    }
+    oss << "{\"width\":" << w << ",\"height\":" << h
+        << ",\"encoding\":\"mono8\",\"data_b64\":"
+        << core::JsonEscape(core::Base64Encode(mono)) << '}';
+    out->schema =
+        is_depth ? rendering::kSchemaDepthImage : rendering::kSchemaImage;
+  }
   SetJsonPayload(out, oss.str());
   return true;
 }

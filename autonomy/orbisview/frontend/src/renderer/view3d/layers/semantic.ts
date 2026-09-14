@@ -2,8 +2,6 @@ import * as THREE from 'three';
 import type { SemanticZoneNorm } from '../../map2d/semanticZones';
 import { toThree } from '../coords';
 
-const MAX_ZONES = 200;
-
 function parseRgba(css: string): { r: number; g: number; b: number; a: number } {
   const m = css.match(
     /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/i,
@@ -19,7 +17,6 @@ function parseRgba(css: string): { r: number; g: number; b: number; a: number } 
 
 function zoneKey(zones: SemanticZoneNorm[]): string {
   return zones
-    .slice(0, MAX_ZONES)
     .map((z) => `${z.id}:${z.polygon.length}:${z.fill}`)
     .join('|');
 }
@@ -43,7 +40,7 @@ export function updateSemanticZones(
   lastKey = key;
   clearGroup(group);
 
-  for (const z of zones.slice(0, MAX_ZONES)) {
+  for (const z of zones) {
     if (z.polygon.length < 3) continue;
     // Shape XY → after rotation.x=-π/2 matches toThree(mapX, mapY)
     const shape = new THREE.Shape();

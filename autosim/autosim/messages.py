@@ -177,7 +177,7 @@ class Messages:
         depth: np.ndarray,
         camera_matrix: Sequence[float],
         *,
-        stride: int = 4,
+        stride: int = 1,
         min_depth: float = 0.1,
         max_depth: float = 4.0,
     ) -> np.ndarray:
@@ -316,17 +316,28 @@ class Messages:
         """
         message = Image()
         cls.set_header(message.header, stamp, frame_id)
-        if image.ndim == 2:
-            height, width = image.shape
+        array = np.asarray(image)
+        # Habitat color sensors are often HxWx4 RGBA while callers request rgb8.
+        # Publishing RGBA bytes with encoding=rgb8 breaks viewers that stride by 3.
+        if (
+            array.ndim == 3
+            and array.shape[2] == 4
+            and encoding in ("rgb8", "bgr8", "8UC3")
+        ):
+            array = np.ascontiguousarray(array[:, :, :3])
+        if array.ndim == 3 and array.shape[2] == 1:
+            array = np.ascontiguousarray(array[:, :, 0])
+        if array.ndim == 2:
+            height, width = array.shape
             channels = 1
         else:
-            height, width, channels = image.shape
+            height, width, channels = array.shape
         message.height = int(height)
         message.width = int(width)
         message.encoding = encoding
         message.is_bigendian = False
-        message.step = int(width * channels * image.dtype.itemsize)
-        message.data = np.ascontiguousarray(image).tobytes()
+        message.step = int(width * channels * array.dtype.itemsize)
+        message.data = np.ascontiguousarray(array).tobytes()
         return message
 
     @classmethod

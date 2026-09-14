@@ -516,7 +516,7 @@ class Runner:
             self.camera.get("depth_points_channel") or ""
         ).strip()
         if depth_points_channel and "depth_points" in self.bridge.writers:
-            stride = int(self.camera.get("depth_points_stride", 4))
+            stride = int(self.camera.get("depth_points_stride", 1))
             points = Messages.project_depth_to_points(
                 np.asarray(depth, dtype=np.float32),
                 camera_matrix,

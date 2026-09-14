@@ -60,6 +60,10 @@ Examples:
     python3 run_autonomy.py --data-volume /mnt/data4t
     python3 run_autonomy.py --data-volume /mnt/data4t:/mnt/data4t:rw
 
+    # 端口映射（任意 HOST:CONTAINER；默认含 8765/8766/5173；--net=host 时 Docker 忽略 -p）：
+    python3 run_autonomy.py --network bridge --publish 8766:8766 --publish 5173:5173
+    AUTONOMY_NETWORK=bridge AUTONOMY_PORTS=8765:8765,8766:8766 python3 run_autonomy.py
+
     # 使用 YAML 平台配置（config/ 目录）：
     python3 run_autonomy.py --list-configs
     python3 run_autonomy.py --platform nvidia --profile webrtc
@@ -629,9 +633,14 @@ class AutonomyRunner:
         )
         if '49100' in service_ports or any('49100' in p for p in self.publish_ports):
             print_info(
-                "WebRTC：宿主机安装 Isaac Sim Streaming Client，连接 127.0.0.1:49100 "
+                "WebRTC：请确认防火墙放行 UDP/TCP 49100；"
+                "宿主机安装 Isaac Sim Streaming Client，连接 127.0.0.1:49100 "
                 "(LIVESTREAM=2 局域网模式)。"
             )
+        print_info(
+            "若需 Docker -p 映射，请用 --network bridge --force-recreate "
+            "并 -P HOST:CONTAINER。"
+        )
 
     def container_exist(self):
         """Backward-compatible alias for GPU retry cleanup."""
@@ -800,6 +809,10 @@ Examples:
   \033[92mpython3 %(prog)s --data-volume /mnt/data4t\033[0m
   \033[92mpython3 %(prog)s --data-volume /mnt/data4t:/mnt/data4t:rw\033[0m
 
+  \033[91m# 端口映射（任意端口；默认 bridge 才生效，host 网络下服务直接在宿主机听）\033[0m
+  \033[92mpython3 %(prog)s --network bridge -P 8766:8766 -P 5173:5173\033[0m
+  \033[93mAUTONOMY_NETWORK=bridge AUTONOMY_PORTS=8765:8765,8766:8766 python3 %(prog)s\033[0m
+
   \033[91m# YAML 平台配置（config/ 目录）\033[0m
   \033[92mpython3 %(prog)s --list-configs\033[0m
   \033[92mpython3 %(prog)s --platform nvidia --profile webrtc\033[0m
@@ -874,6 +887,26 @@ Examples:
         help=(
             "宿主机数据卷，格式 HOST、HOST:CONTAINER 或 HOST:CONTAINER:MODE（可重复）。"
             "指定后优先于环境变量 AUTONOMY_DATA_VOLUMES。"
+        ),
+    )
+    parser.add_argument(
+        "-P", "--publish",
+        action="append",
+        dest="publish_ports",
+        metavar="SPEC",
+        help=(
+            "映射任意端口 HOST:CONTAINER 或 HOST:CONTAINER/udp（可重复）。\n"
+            "默认已含 8765(foxglove) / 8766(orbisview) / 5173(vite)。\n"
+            "环境变量 AUTONOMY_PORTS=8766:8766,9000:9000（逗号/空格分隔）。\n"
+            "注意：--network=host 时 Docker 忽略 -p，服务需在宿主机直接监听。"
+        ),
+    )
+    parser.add_argument(
+        "--network",
+        metavar="MODE",
+        help=(
+            "Docker 网络模式（默认 host，见 AUTONOMY_NETWORK）。\n"
+            "要用 -P/--publish 映射时请设 bridge（或其它非 host 模式）。"
         ),
     )
     return parser.parse_known_args()
@@ -960,6 +993,12 @@ def main():
     except (FileNotFoundError, KeyError, ValueError) as exc:
         print_error(str(exc))
         sys.exit(1)
+
+    if args.network and args.network.strip():
+        runner.network_mode = args.network.strip()
+    for spec in args.publish_ports or []:
+        if spec not in runner.publish_ports:
+            runner.publish_ports.append(spec)
 
     runner.run()
 

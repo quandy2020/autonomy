@@ -56,11 +56,13 @@ install_nodesource_apt() {
   need_cmd curl
   need_cmd apt-get
   echo "== Installing Node.js ${NODE_MAJOR}.x via NodeSource =="
+  export DEBIAN_FRONTEND=noninteractive
   run_root apt-get update -qq
   run_root apt-get install -y -qq ca-certificates curl gnupg
   curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" \
     | run_root bash -
-  run_root apt-get install -y -qq nodejs
+  # Avoid hanging quiet installs on large apt indexes — show progress.
+  run_root apt-get install -y nodejs
 }
 
 install_official_tarball() {

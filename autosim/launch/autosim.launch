@@ -1,0 +1,22 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Autosim Habitat bridge (sensors + TF + optional GT /map).
+
+  Binary path: bash wrapper sets PYTHONPATH / habitat venv.
+
+  From workspace root (/workspace/autonomy):
+    export PATH=$PWD/build/autonomy/bin:$PATH
+    export LD_LIBRARY_PATH=$PWD/build/autonomy/lib:${LD_LIBRARY_PATH:-}
+    autolink launch start src/autonomy/autosim/launch/autosim.launch
+
+  Config: CONFIG=... overrides default.yaml (see scripts/run.sh).
+-->
+<autolink>
+  <module>
+    <name>autosim</name>
+    <type>binary</type>
+    <process_name>bash src/autonomy/autosim/scripts/run.sh sim</process_name>
+    <exception_handler>exit</exception_handler>
+  </module>
+</autolink>

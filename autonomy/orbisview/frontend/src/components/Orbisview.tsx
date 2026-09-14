@@ -38,7 +38,8 @@ const SIDEBAR_NAV: { id: SidebarTab; label: string; icon: IconName }[] = [
   { id: 'task', label: 'Task', icon: 'task' },
   { id: 'setting', label: 'Setting', icon: 'setting' },
 ];
-const DEFAULT_CHANNELS = [
+/** Offline mock channels (when backend --mock=true). */
+const MOCK_CHANNELS = [
   '/orbisview/mock/pose',
   '/orbisview/mock/path',
   '/orbisview/mock/map',
@@ -66,12 +67,44 @@ const DEFAULT_CHANNELS = [
   '/orbisview/mock/components',
 ];
 
+/** Autosim / stack channels preferred when --autolink=true. */
+const AUTOSIM_CHANNELS = [
+  '/odom',
+  '/scan',
+  '/map',
+  '/tf',
+  '/tf_static',
+  '/footprint',
+  '/overall/map',
+  '/camera/rgb/image_raw',
+  '/camera/depth/image_raw',
+  '/camera/depth/points',
+  '/camera/semantic/image_raw',
+  '/points',
+  '/imu',
+];
+
 function resubscribeTracked(): void {
   wsClient.listChannels();
-  const { subscribed, markSubscribed } = useDataStore.getState();
+  const { subscribed, markSubscribed, channels } = useDataStore.getState();
   const targets = { ...subscribed };
-  for (const ch of DEFAULT_CHANNELS) {
+  const discovered = channels.map((c) => c.name);
+  const preferLive = discovered.some((n) => !n.startsWith('/orbisview/mock/'));
+  // Empty discovery must NOT fall back to mock — that creates Autolink readers
+  // for /orbisview/mock/* while waiting for autosim.
+  const seed = preferLive
+    ? [...AUTOSIM_CHANNELS, ...discovered.filter((n) => !n.startsWith('/orbisview/mock/'))]
+    : discovered.length > 0
+      ? MOCK_CHANNELS
+      : AUTOSIM_CHANNELS;
+  for (const ch of seed) {
     if (targets[ch] == null) targets[ch] = 20;
+  }
+  // Drop stale mock subscriptions when live channels exist.
+  if (preferLive) {
+    for (const ch of Object.keys(targets)) {
+      if (ch.startsWith('/orbisview/mock/')) delete targets[ch];
+    }
   }
   Object.entries(targets).forEach(([ch, hz]) => {
     wsClient.subscribe(ch, hz);
@@ -177,8 +210,12 @@ export function Orbisview() {
         setChannels(msg.channels);
         pushLog(`channels=${msg.channels.length}`);
         const { subscribed } = useDataStore.getState();
+        const preferLive = msg.channels.some(
+          (c) => !c.name.startsWith('/orbisview/mock/'),
+        );
         for (const ch of msg.channels) {
-          if (!DEFAULT_CHANNELS.includes(ch.name)) continue;
+          if (preferLive && ch.name.startsWith('/orbisview/mock/')) continue;
+          if (!preferLive && !MOCK_CHANNELS.includes(ch.name)) continue;
           if (subscribed[ch.name] != null) continue;
           wsClient.subscribe(ch.name, 20);
           markSubscribed(ch.name, 20);

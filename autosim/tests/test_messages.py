@@ -48,6 +48,20 @@ def test_encode_image_rgb8():
     assert message.data[0:3] == bytes([1, 2, 3])
 
 
+def test_encode_image_rgb8_strips_habitat_rgba():
+    """Habitat color obs is HxWx4; rgb8 wire must be tightly packed RGB."""
+    image = np.zeros((2, 2, 4), dtype=np.uint8)
+    image[0, 0] = [10, 20, 30, 255]
+    image[0, 1] = [40, 50, 60, 255]
+    message = Messages.encode_image(
+        image, stamp=(0, 0), frame_id="camera_link", encoding="rgb8"
+    )
+    assert message.encoding == "rgb8"
+    assert message.step == 6
+    assert len(message.data) == 12
+    assert message.data[0:6] == bytes([10, 20, 30, 40, 50, 60])
+
+
 def test_rgb_and_depth_images_share_identical_stamp():
     """RGB-D pair must carry the same header.stamp for Atlas sync."""
     stamp = (42, 123456789)

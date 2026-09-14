@@ -1,14 +1,12 @@
 import type { SemanticZoneNorm } from './semanticZones';
 
-const MAX_ZONES = 200;
-
 export function drawSemanticZones(
   ctx: CanvasRenderingContext2D,
   zones: SemanticZoneNorm[],
   toScreen: (x: number, y: number) => readonly [number, number] | [number, number],
   scale: number,
 ): void {
-  const list = zones.slice(0, MAX_ZONES);
+  const list = zones;
   const showLabel = list.length <= 40 && scale >= 8;
 
   for (const z of list) {

@@ -35,8 +35,9 @@ export interface DisplayTypeDef {
 const COMMON_PROPS: DisplayPropDef[] = [
   { key: 'name', label: 'Name', kind: 'string', group: 'Status', defaultValue: '' },
   { key: 'enabled', label: 'Enabled', kind: 'boolean', group: 'Status', defaultValue: true },
-  { key: 'topic', label: 'Topic', kind: 'topic', group: 'Topic', defaultValue: '' },
-  { key: 'maxHz', label: 'Max Hz', kind: 'number', group: 'Topic', defaultValue: 20, min: 1, max: 100, step: 1 },
+  // key stays "topic" for persisted display props; UI wording is Channel (Autolink).
+  { key: 'topic', label: 'Channel', kind: 'topic', group: 'Channel', defaultValue: '' },
+  { key: 'maxHz', label: 'Max Hz', kind: 'number', group: 'Channel', defaultValue: 20, min: 1, max: 100, step: 1 },
 ];
 
 function withCommon(extra: DisplayPropDef[]): DisplayPropDef[] {
@@ -284,7 +285,7 @@ export function getDisplayTypeDef(typeId: string): DisplayTypeDef | undefined {
   return DEF_BY_TYPE.get(typeId);
 }
 
-/** Prefer curated display defs; fall back to generic topic props for any catalog msg. */
+/** Prefer curated display defs; fall back to generic channel props for any catalog msg. */
 export function resolveDisplayType(packageName: string, message: string): DisplayTypeDef {
   const typeId = `${packageName}/${message}`;
   const known = DEF_BY_TYPE.get(typeId);

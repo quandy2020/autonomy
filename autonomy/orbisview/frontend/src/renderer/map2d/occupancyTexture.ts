@@ -5,7 +5,8 @@ import type { OccupancyGridJson } from './types';
  * (`rviz_default_plugins/.../map/palette_builder.cpp`).
  */
 export type OccupancyPaintMode = 'map' | 'costmap' | 'raw';
-export const OCCUPANCY_MAX_EDGE = 1024;
+/** No spatial downsampling — texture size equals grid width/height. */
+export const OCCUPANCY_MAX_EDGE = Number.POSITIVE_INFINITY;
 
 /** RViz unknown (-1 as uint8 255): teal-gray. */
 const RVIZ_UNKNOWN: [number, number, number, number] = [0x70, 0x89, 0x86, 255];
@@ -136,6 +137,9 @@ export function computeTextureSize(
   maxEdge = OCCUPANCY_MAX_EDGE,
 ): { tw: number; th: number; scale: number } {
   if (width <= 0 || height <= 0) return { tw: 1, th: 1, scale: 1 };
+  if (!Number.isFinite(maxEdge) || maxEdge <= 0) {
+    return { tw: width, th: height, scale: 1 };
+  }
   const scale = Math.min(1, maxEdge / Math.max(width, height));
   return {
     tw: Math.max(1, Math.round(width * scale)),

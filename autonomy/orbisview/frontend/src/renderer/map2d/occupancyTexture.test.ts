@@ -5,7 +5,6 @@ import {
   occupancyCacheKey,
   occupancyCellRgba,
   occupancyToUint8,
-  OCCUPANCY_MAX_EDGE,
 } from './occupancyTexture';
 import type { OccupancyGridJson } from './types';
 
@@ -78,9 +77,17 @@ describe('computeTextureSize', () => {
     expect(computeTextureSize(10, 20)).toEqual({ tw: 10, th: 20, scale: 1 });
   });
 
-  it('downsamples when over max edge', () => {
-    const { tw, th, scale } = computeTextureSize(2048, 1024, OCCUPANCY_MAX_EDGE);
-    expect(Math.max(tw, th)).toBeLessThanOrEqual(OCCUPANCY_MAX_EDGE);
+  it('keeps large grids 1:1 by default (no downsampling)', () => {
+    expect(computeTextureSize(2048, 1024)).toEqual({
+      tw: 2048,
+      th: 1024,
+      scale: 1,
+    });
+  });
+
+  it('honors an explicit finite maxEdge', () => {
+    const { tw, th, scale } = computeTextureSize(2048, 1024, 1024);
+    expect(Math.max(tw, th)).toBeLessThanOrEqual(1024);
     expect(scale).toBeLessThan(1);
   });
 });
