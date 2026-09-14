@@ -26,11 +26,13 @@ export function syncView3DScene(ctx: View3DContext, input: View3DSceneInput): vo
     opacity: opts.mapOpacity,
     yLift: 0.01,
     visible: layers.map,
+    mode: 'map',
   });
   updateOccupancyPlane(ctx.costmapPlane, input.costmap, {
     opacity: opts.mapOpacity * 0.85,
     yLift: 0.02,
     visible: layers.costmap,
+    mode: 'costmap',
   });
   updateLaser(ctx, input.pose, input.laser, opts.laserHeight, layers.laser, {
     color: opts.laserColor,
