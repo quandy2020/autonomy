@@ -18,3 +18,4 @@ alwaysApply: false
 - 遵循面向对象设计原则（SOLID）
 - 使用异常处理保证程序健壮性
 - 使用 `dataclasses` 或 `pydantic` 模型表示数据
+- 函数命名不要下划线前缀
