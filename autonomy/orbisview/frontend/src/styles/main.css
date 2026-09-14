@@ -1273,6 +1273,114 @@ body { margin: 0; }
   text-overflow: ellipsis;
   pointer-events: none;
 }
+.map-mapping-hud {
+  position: absolute;
+  left: 10px;
+  bottom: 44px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: calc(100% - 72px);
+  padding: 0.3rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(42, 58, 76, 0.9);
+  background: rgba(12, 18, 26, 0.88);
+  backdrop-filter: blur(6px);
+  font-size: 0.72rem;
+  color: #cfd8dc;
+  pointer-events: auto;
+}
+.map-mapping-hud-mode {
+  font-weight: 600;
+  color: #90caf9;
+  flex-shrink: 0;
+}
+.map-mapping-hud-body {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.map-mapping-hud-btn {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid #2a3a4c;
+  background: #1a2430;
+  color: #e0e6eb;
+  cursor: pointer;
+}
+.mapping-panel .mapping-mode-row {
+  display: flex;
+  gap: 0.35rem;
+  margin: 0.5rem 0;
+}
+.mapping-panel .mapping-mode-row button {
+  flex: 1;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #2a3a4c;
+  background: #0b1016;
+  color: #cfd8dc;
+  cursor: pointer;
+}
+.mapping-panel .mapping-mode-row button.active {
+  border-color: #4fc3f7;
+  background: #152030;
+  color: #e3f2fd;
+}
+.mapping-panel .mapping-field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  margin: 0.4rem 0;
+  font-size: 0.78rem;
+}
+.mapping-panel .mapping-field-row input[type='number'] {
+  width: 5rem;
+  background: #0b1016;
+  border: 1px solid #2a3a4c;
+  color: #e0e6eb;
+  border-radius: 4px;
+  padding: 0.2rem 0.35rem;
+}
+.mapping-panel .mapping-url-json {
+  width: 100%;
+  margin: 0.35rem 0;
+  background: #0b1016;
+  border: 1px solid #2a3a4c;
+  color: #e0e6eb;
+  border-radius: 6px;
+  padding: 0.35rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.72rem;
+}
+.mapping-panel .mapping-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  margin: 0.5rem 0;
+}
+.mapping-panel .mapping-json {
+  margin-top: 0.5rem;
+  max-height: 240px;
+  overflow: auto;
+  font-size: 0.72rem;
+}
+.mapping-panel .mapping-progress {
+  font-size: 0.8rem;
+  margin: 0.35rem 0 0.15rem;
+}
+.mapping-panel input[type='range'] {
+  width: 100%;
+}
+.mapping-panel .error {
+  color: #ef9a9a;
+  font-size: 0.78rem;
+}
 .map-basemap-anchor {
   position: absolute;
   top: 10px;
