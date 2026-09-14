@@ -8,6 +8,12 @@ export interface TfXform {
   yaw?: number;
 }
 
+export interface TfSe2 {
+  x: number;
+  y: number;
+  yaw: number;
+}
+
 export interface TfWorldFrame {
   frame: string;
   x: number;
@@ -23,7 +29,7 @@ function compose(
   lx: number,
   ly: number,
   lyaw: number,
-): { x: number; y: number; yaw: number } {
+): TfSe2 {
   const c = Math.cos(pyaw);
   const s = Math.sin(pyaw);
   return {
@@ -31,6 +37,116 @@ function compose(
     y: py + s * lx + c * ly,
     yaw: pyaw + lyaw,
   };
+}
+
+/** Invert parent←child SE(2): child→parent becomes parent→child. */
+export function invertSe2(t: TfSe2): TfSe2 {
+  const c = Math.cos(t.yaw);
+  const s = Math.sin(t.yaw);
+  return {
+    x: -(c * t.x + s * t.y),
+    y: -(-s * t.x + c * t.y),
+    yaw: -t.yaw,
+  };
+}
+
+export function composeSe2(a: TfSe2, b: TfSe2): TfSe2 {
+  return compose(a.x, a.y, a.yaw, b.x, b.y, b.yaw);
+}
+
+/** Apply SE(2) to a point in the source frame → target frame. */
+export function transformPointSe2(tf: TfSe2, lx: number, ly: number): { x: number; y: number } {
+  const c = Math.cos(tf.yaw);
+  const s = Math.sin(tf.yaw);
+  return { x: tf.x + c * lx - s * ly, y: tf.y + s * lx + c * ly };
+}
+
+function edgeSe2(t: TfXform): TfSe2 {
+  return { x: t.x, y: t.y, yaw: t.yaw ?? 0 };
+}
+
+function buildChildMap(transforms: TfXform[]): Map<string, TfXform> {
+  const byChild = new Map<string, TfXform>();
+  for (const t of transforms) {
+    if (!t?.parent || !t?.child || t.parent === t.child) continue;
+    byChild.set(t.child, t);
+  }
+  return byChild;
+}
+
+/**
+ * Like tf2 Buffer::lookupTransform(target, source): pose of `source` in `target`.
+ * Returns null when frames are disconnected (same rule as Autoviz: do not guess).
+ */
+export function lookupTransform(
+  transforms: TfXform[],
+  target: string,
+  source: string,
+): TfSe2 | null {
+  const norm = (id: string) => id.replace(/^\/+/, '');
+  target = norm(target);
+  source = norm(source);
+  if (!target || !source) return null;
+  if (target === source) return { x: 0, y: 0, yaw: 0 };
+
+  const byChild = buildChildMap(
+    transforms.map((t) => ({
+      ...t,
+      parent: norm(t.parent),
+      child: norm(t.child),
+    })),
+  );
+
+  function ancestors(frame: string): string[] {
+    const chain: string[] = [frame];
+    const seen = new Set<string>([frame]);
+    let cur = frame;
+    while (byChild.has(cur)) {
+      const parent = byChild.get(cur)!.parent;
+      if (seen.has(parent)) break;
+      chain.push(parent);
+      seen.add(parent);
+      cur = parent;
+    }
+    return chain;
+  }
+
+  /** Pose of `frame` expressed in `ancestor` (walking parent edges upward). */
+  function poseInAncestor(frame: string, ancestor: string): TfSe2 | null {
+    if (frame === ancestor) return { x: 0, y: 0, yaw: 0 };
+    let pose: TfSe2 = { x: 0, y: 0, yaw: 0 };
+    let cur = frame;
+    const guard = new Set<string>();
+    while (cur !== ancestor) {
+      if (guard.has(cur)) return null;
+      guard.add(cur);
+      const edge = byChild.get(cur);
+      if (!edge) return null;
+      // edge: parent→child; we have child and need child-in-parent composed upward:
+      // child_in_ancestor = parent_in_ancestor ⊕ child_in_parent
+      pose = composeSe2(edgeSe2(edge), pose);
+      cur = edge.parent;
+    }
+    return pose;
+  }
+
+  const sourceChain = ancestors(source);
+  const targetSet = new Set(ancestors(target));
+  const common = sourceChain.find((f) => targetSet.has(f));
+  if (!common) return null;
+
+  const sourceInCommon = poseInAncestor(source, common);
+  const targetInCommon = poseInAncestor(target, common);
+  if (!sourceInCommon || !targetInCommon) return null;
+
+  // source_in_target = inv(target_in_common) ⊕ source_in_common
+  return composeSe2(invertSe2(targetInCommon), sourceInCommon);
+}
+
+/** Fixed frame for map overlay (Autoviz default: map). */
+export function resolveFixedFrame(mapFrameId?: string | null): string {
+  const id = mapFrameId?.trim().replace(/^\/+/, '');
+  return id || 'map';
 }
 
 const ROOT_PREF = ['map', 'odom', 'world', 'base_link'];
@@ -41,6 +157,26 @@ export function frameByName(
 ): TfWorldFrame | undefined {
   if (!name) return undefined;
   return frames.find((f) => f.frame === name);
+}
+
+/**
+ * Pose of a named frame in `fixedFrame` via lookupTransform.
+ * When `requireTf` is true (map overlay), never fall back to raw odom pose.
+ */
+export function lookupFramePose(
+  transforms: TfXform[],
+  fixedFrame: string,
+  prefer: string[],
+  fallback?: { x: number; y: number; yaw?: number } | null,
+  requireTf = false,
+): TfSe2 | null {
+  for (const name of prefer) {
+    if (!name) continue;
+    const tf = lookupTransform(transforms, fixedFrame, name);
+    if (tf) return tf;
+  }
+  if (requireTf || !fallback) return null;
+  return { x: fallback.x, y: fallback.y, yaw: fallback.yaw ?? 0 };
 }
 
 /** Prefer map-rooted base / laser poses for overlay alignment with OccupancyGrid. */

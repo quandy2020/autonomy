@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Pose2D } from '../../map2d/types';
+import { transformPointSe2 } from '../../map2d/tfCompose';
 import type { View3DContext } from '../createScene';
 import { toThree } from '../coords';
 import type { View3DLaserScan } from '../types';
@@ -19,15 +20,15 @@ export function updateLaser(
   if (opts?.color != null) mat.color.setHex(opts.color);
   if (opts?.size != null) mat.size = opts.size;
 
-  const yaw0 = pose.yaw ?? 0;
+  const tf = { x: pose.x, y: pose.y, yaw: pose.yaw ?? 0 };
   const pts: number[] = [];
   for (let i = 0; i < scan.ranges.length; i++) {
     const r = scan.ranges[i];
     if (!Number.isFinite(r) || r <= 0) continue;
-    const a = scan.angle_min + i * scan.angle_increment + yaw0;
-    const wx = pose.x + r * Math.cos(a);
-    const wy = pose.y + r * Math.sin(a);
-    const t = toThree(wx, wy, height);
+    const a = scan.angle_min + i * scan.angle_increment;
+    // Autoviz: point in laser frame, then TF into fixed frame.
+    const world = transformPointSe2(tf, r * Math.cos(a), r * Math.sin(a));
+    const t = toThree(world.x, world.y, height);
     pts.push(t.x, t.y, t.z);
   }
   const positions = new Float32Array(pts);

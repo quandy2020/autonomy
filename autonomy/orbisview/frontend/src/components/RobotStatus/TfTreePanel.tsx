@@ -3,6 +3,7 @@ import { useDataStore } from '@/store/dataStore';
 import { wsClient } from '@/store/websocket/client';
 import { SCHEMAS } from '@/store/websocket/types';
 import { mergeTfTransforms } from '@/renderer/map2d/tfCompose';
+import { useTfBufferStore } from '@/store/tfBufferStore';
 
 interface TfXform {
   parent: string;
@@ -309,11 +310,10 @@ export function TfTreePanel() {
   const connected = useDataStore((s) => s.connected);
   const [tfHz, setTfHz] = useState<number | null>(null);
 
-  const tfEnv = useMemo(() => {
-    return Object.values(envelopes).find((x) => x.schema === SCHEMAS.TfTree);
-  }, [envelopes]);
-
+  const tfByChild = useTfBufferStore((s) => s.byChild);
   const tf = useMemo(() => {
+    const buffered = Object.values(tfByChild);
+    if (buffered.length) return { transforms: buffered };
     const lists = Object.values(envelopes)
       .filter((x) => x.schema === SCHEMAS.TfTree)
       .sort((a, b) => {
@@ -323,8 +323,8 @@ export function TfTreePanel() {
       })
       .map((e) => asPayload<TfTree>(e)?.transforms);
     const transforms = mergeTfTransforms(lists);
-    return transforms.length ? { transforms } : asPayload<TfTree>(tfEnv);
-  }, [envelopes, tfEnv]);
+    return transforms.length ? { transforms } : null;
+  }, [tfByChild, envelopes]);
   const list = tf?.transforms ?? [];
   const { roots, cycles, orphans } = useMemo(() => buildTfForest(list), [list]);
 

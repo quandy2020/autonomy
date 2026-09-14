@@ -22,6 +22,7 @@ import { useLayerStore, useLayoutStore } from '@/store/layoutStore';
 import { useView3DStore } from '@/store/view3dStore';
 import { useWaypointStore, waypointColor } from '@/store/waypointStore';
 import { useMapViewStore } from '@/store/mapViewStore';
+import { useTfBufferStore } from '@/store/tfBufferStore';
 import { SCHEMAS } from '@/store/websocket/types';
 import { wsClient } from '@/store/websocket/client';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -37,6 +38,11 @@ import {
   resolveLaserOverlays,
   resolvePathStyle,
 } from '@/components/Channels/sensorDisplay';
+import {
+  lookupFramePose,
+  lookupTransform,
+  resolveFixedFrame,
+} from '@/renderer/map2d/tfCompose';
 import { useDisplayStore } from '@/store/displayStore';
 import { useStaticSlamStore } from '@/store/staticSlamStore';
 import { useIndoorMapStore } from '@/store/indoorMapStore';
@@ -84,6 +90,7 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const envelopes = useDataStore((s) => s.envelopes);
   const displays = useDisplayStore((s) => s.displays);
+  const tfByChild = useTfBufferStore((s) => s.byChild);
   const layers = useLayerStore();
   const followRobot = useLayerStore((s) => s.followRobot);
   const setFollowRobot = useLayerStore((s) => s.setFollowRobot);
@@ -618,15 +625,26 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
       : null);
 
   const input = useMemo((): View3DSceneInput => {
-    const pose = asPayload<Pose2D>(pickDisplayEnvelope(envelopes, displays, 'pose'));
-    const pathPayload = asPayload<{ poses: Pose2D[] }>(
-      pickDisplayEnvelope(envelopes, displays, 'path'),
-    );
-    const map = asPayload<OccupancyGridJson>(
-      pickDisplayEnvelope(envelopes, displays, 'map'),
-    );
+    const rawPose = asPayload<Pose2D>(pickDisplayEnvelope(envelopes, displays, 'pose'));
+    const transforms = Object.values(tfByChild);
+    const mapEnv = pickDisplayEnvelope(envelopes, displays, 'map');
+    const map = asPayload<OccupancyGridJson>(mapEnv);
     const costmap = asPayload<OccupancyGridJson>(
       pickDisplayEnvelope(envelopes, displays, 'costmap'),
+    );
+    const paintLayers = effectiveMapLayers(layers, displays);
+    const fixedFrame = resolveFixedFrame(mapEnv?.frame_id);
+    const hasMapOverlay =
+      !!(paintLayers.map && map) || !!(paintLayers.basemap && basemapHandle);
+    const pose = lookupFramePose(
+      transforms,
+      fixedFrame,
+      ['base_link', 'base_footprint'],
+      rawPose,
+      hasMapOverlay,
+    );
+    const pathPayload = asPayload<{ poses: Pose2D[] }>(
+      pickDisplayEnvelope(envelopes, displays, 'path'),
     );
     const footprint = asPayload<RobotFootprintJson>(
       pickDisplayEnvelope(envelopes, displays, 'footprint'),
@@ -635,9 +653,17 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
     const laser =
       laserOverlays[0]?.scan ??
       asPayload<View3DLaserScan>(pickDisplayEnvelope(envelopes, displays, 'laser'));
+    const laserFrame = laser?.frame_id || 'laser_link';
+    let laserOrigin = lookupTransform(transforms, fixedFrame, laserFrame);
+    if (!laserOrigin && !hasMapOverlay) {
+      laserOrigin = lookupTransform(transforms, 'odom', laserFrame);
+    }
+    if (!laserOrigin && !hasMapOverlay) {
+      const fb = pose ?? rawPose;
+      if (fb) laserOrigin = { x: fb.x, y: fb.y, yaw: fb.yaw ?? 0 };
+    }
     const cloudOverlay = resolveCloudOverlay(envelopes, displays);
     const pathStyle = resolvePathStyle(displays);
-    const paintLayers = effectiveMapLayers(layers, displays);
     const laserStyle = laserOverlays[0]?.style;
     const cloudStyle = cloudOverlay?.style;
     const cloudMode =
@@ -645,6 +671,7 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
 
     return {
       pose,
+      laserOrigin,
       path: pathPayload?.poses ?? null,
       goal: goal ? { x: goal.x, y: goal.y } : null,
       waypoints: waypoints.map((w, i) => ({
@@ -699,6 +726,7 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
   }, [
     envelopes,
     displays,
+    tfByChild,
     layers,
     cloudColor,
     laserHeight,
