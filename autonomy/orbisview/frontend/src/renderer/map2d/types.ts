@@ -36,6 +36,8 @@ export interface LayerFlags {
   costmap: boolean;
   semantic?: boolean;
   vectormap: boolean;
+  poi?: boolean;
+  draw?: boolean;
   path: boolean;
   robot: boolean;
   footprint: boolean;

@@ -25,6 +25,8 @@ const TOOL_META: Record<MapTool, { icon: IconName; label: string }> = {
   measure: { icon: 'measure', label: '测距' },
   nav: { icon: 'nav', label: '导航' },
   pick: { icon: 'pick', label: '取点' },
+  poi: { icon: 'waypoint', label: 'POI' },
+  draw: { icon: 'layers', label: '绘制' },
 };
 
 function RailBtn({

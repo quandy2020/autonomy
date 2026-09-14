@@ -70,9 +70,10 @@ describe('panel registry', () => {
 describe('layout persist keys', () => {
   it('uses versioned localStorage names', () => {
     expect('orbisview-layout-v11').toMatch(/^orbisview-layout-v\d+$/);
-    expect('orbisview-layers-v7').toMatch(/^orbisview-layers-v\d+$/);
+    expect('orbisview-layers-v8').toMatch(/^orbisview-layers-v\d+$/);
     expect('orbisview-static-slam-v1').toMatch(/^orbisview-static-slam-v\d+$/);
     expect('orbisview-indoor-map-v1').toMatch(/^orbisview-indoor-map-v\d+$/);
+    expect('orbisview-annotations-v1').toMatch(/^orbisview-annotations-v\d+$/);
   });
 
   it('uses versioned view3d opts key', () => {

@@ -40,6 +40,8 @@ import {
 import { useDisplayStore } from '@/store/displayStore';
 import { useStaticSlamStore } from '@/store/staticSlamStore';
 import { useIndoorMapStore } from '@/store/indoorMapStore';
+import { useAnnotationStore } from '@/store/annotationStore';
+import { hitTestPoi } from '@/renderer/map2d/annotations';
 import {
   sharedStaticSlamCanvasCache,
   type StaticSlamCanvasHandle,
@@ -87,6 +89,10 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
   const setFollowRobot = useLayerStore((s) => s.setFollowRobot);
   const staticBasemap = useStaticSlamStore((s) => s.basemap);
   const semanticZones = useIndoorMapStore((s) => s.zones);
+  const annPois = useAnnotationStore((s) => s.pois);
+  const annShapes = useAnnotationStore((s) => s.shapes);
+  const annDraft = useAnnotationStore((s) => s.draft);
+  const annSelectedId = useAnnotationStore((s) => s.selectedId);
   const [basemapHandle, setBasemapHandle] = useState<StaticSlamCanvasHandle | null>(null);
   const cloudColor = useView3DStore((s) => s.cloudColor);
   const laserHeight = useView3DStore((s) => s.laserHeight);
@@ -114,6 +120,14 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
   const activeRef = useRef(active);
   activeRef.current = active;
   const inputRef = useRef<View3DSceneInput | null>(null);
+
+  useEffect(() => {
+    setSketchPts([]);
+    setMeasurePreview(null);
+    poseDragRef.current = null;
+    wpDragRef.current = null;
+    if (mapTool !== 'draw') useAnnotationStore.getState().cancelDraft();
+  }, [mapTool]);
 
   useEffect(() => {
     let cancelled = false;
@@ -234,14 +248,14 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
     const onPointerDown = (e: PointerEvent) => {
       const tool = useMapViewStore.getState().tool;
 
-      // Measure: RMB places end — do not orbit / suppress browser menu.
-      if (tool === 'measure' && e.button === 2) {
+      // Measure / draw: RMB finishes — do not orbit.
+      if ((tool === 'measure' || tool === 'draw') && e.button === 2) {
         e.preventDefault();
         return;
       }
 
       // Pan / orbit tool: always drive the camera (Shift = pan target).
-      if (tool === 'pan' || e.button === 1 || e.button === 2) {
+      if (tool === 'pan' || e.button === 1 || (e.button === 2 && tool !== 'draw')) {
         e.preventDefault();
         setFollowRobot(false);
         cam.onPointerDown(e);
@@ -255,7 +269,7 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
       }
 
       const id = hitWaypoint(e);
-      if (id && tool !== 'measure' && tool !== 'pick') {
+      if (id && tool !== 'measure' && tool !== 'pick' && tool !== 'poi' && tool !== 'draw') {
         useWaypointStore.getState().select(id);
         wpDragRef.current = { id };
         setFollowRobot(false);
@@ -266,6 +280,32 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
       const g = groundHit(e);
       if (!g) {
         cam.onPointerDown(e);
+        return;
+      }
+
+      if (tool === 'poi') {
+        setFollowRobot(false);
+        const hit = hitTestPoi(useAnnotationStore.getState().pois, g.x, g.y, 0.4);
+        if (hit) {
+          useAnnotationStore.getState().setSelected(hit.id);
+          wpDragRef.current = { id: `poi:${hit.id}` };
+          setStatusMsg(`3D 拖移 POI ${hit.label ?? hit.kind}`);
+          return;
+        }
+        useAnnotationStore.getState().addPoi({
+          x: g.x,
+          y: g.y,
+          kind: useAnnotationStore.getState().poiDefaultKind,
+        });
+        setStatusMsg(`已添加 POI (${g.x.toFixed(2)}, ${g.y.toFixed(2)})`);
+        return;
+      }
+
+      if (tool === 'draw') {
+        setFollowRobot(false);
+        useAnnotationStore.getState().appendDraftPoint(g.x, g.y);
+        const n = useAnnotationStore.getState().draft?.points.length ?? 0;
+        setStatusMsg(`3D 绘制点 ${n} · 双击/右击结束`);
         return;
       }
 
@@ -301,6 +341,12 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
       cam.onPointerDown(e);
     };
     const onDoubleClick = (e: MouseEvent) => {
+      if (useMapViewStore.getState().tool === 'draw') {
+        e.preventDefault();
+        const ok = useAnnotationStore.getState().commitDraft();
+        setStatusMsg(ok ? '已完成绘制' : '点数不足，继续加点或 Esc 取消');
+        return;
+      }
       const id = hitWaypoint(e);
       if (!id) return;
       e.preventDefault();
@@ -315,10 +361,21 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
       if (wpDrag) {
         const g = groundHit(e);
         if (g) {
-          useWaypointStore.getState().update(wpDrag.id, { x: g.x, y: g.y });
-          setStatusMsg(`3D 移动 (${g.x.toFixed(2)}, ${g.y.toFixed(2)})`);
+          if (wpDrag.id.startsWith('poi:')) {
+            const poiId = wpDrag.id.slice(4);
+            useAnnotationStore.getState().updatePoi(poiId, { x: g.x, y: g.y });
+            setStatusMsg(`3D POI (${g.x.toFixed(2)}, ${g.y.toFixed(2)})`);
+          } else {
+            useWaypointStore.getState().update(wpDrag.id, { x: g.x, y: g.y });
+            setStatusMsg(`3D 移动 (${g.x.toFixed(2)}, ${g.y.toFixed(2)})`);
+          }
         }
         return;
+      }
+
+      if (useMapViewStore.getState().tool === 'draw' && useAnnotationStore.getState().draft) {
+        const g = groundHit(e);
+        if (g) useAnnotationStore.getState().setDraftPreview(g);
       }
 
       const poseDrag = poseDragRef.current;
@@ -368,7 +425,12 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
       const tool = useMapViewStore.getState().tool;
       el.style.cursor = tool === 'pan' ? 'grab' : 'crosshair';
 
-      if (tool === 'measure' && e.button === 2) {
+      if ((tool === 'measure' || tool === 'draw') && e.button === 2) {
+        if (tool === 'draw') {
+          const ok = useAnnotationStore.getState().commitDraft();
+          setStatusMsg(ok ? '已完成绘制' : '点数不足，继续加点或 Esc 取消');
+          return;
+        }
         const end = measurePreviewRef.current ?? groundHit(e);
         finishMeasureAt(end);
         return;
@@ -377,6 +439,10 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
       if (wpDragRef.current) {
         const id = wpDragRef.current.id;
         wpDragRef.current = null;
+        if (id.startsWith('poi:')) {
+          setStatusMsg(useMapViewStore.getState().statusMsg);
+          return;
+        }
         const wp = useWaypointStore.getState().waypoints.find((w) => w.id === id);
         if (wp) {
           const list = useWaypointStore.getState().waypoints;
@@ -458,6 +524,11 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
     const onContextMenu = (e: MouseEvent) => {
       e.preventDefault();
       const tool = useMapViewStore.getState().tool;
+      if (tool === 'draw') {
+        const ok = useAnnotationStore.getState().commitDraft();
+        setStatusMsg(ok ? '已完成绘制' : '点数不足，继续加点或 Esc 取消');
+        return;
+      }
       if (poseDragRef.current) {
         poseDragRef.current = null;
         setSketchPts([]);
@@ -580,6 +651,12 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
       costmap,
       basemap: basemapHandle,
       semanticZones,
+      annotations: {
+        pois: annPois,
+        shapes: annShapes,
+        draft: annDraft,
+        selectedId: annSelectedId,
+      },
       footprint,
       laser,
       cloud: cloudOverlay?.points ?? null,
@@ -587,6 +664,8 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
         grid: paintLayers.grid,
         basemap: paintLayers.basemap,
         semantic: paintLayers.semantic,
+        poi: paintLayers.poi,
+        draw: paintLayers.draw,
         map: paintLayers.map,
         costmap: paintLayers.costmap,
         path: paintLayers.path,
@@ -621,6 +700,10 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
     goal,
     basemapHandle,
     semanticZones,
+    annPois,
+    annShapes,
+    annDraft,
+    annSelectedId,
   ]);
   inputRef.current = input;
 

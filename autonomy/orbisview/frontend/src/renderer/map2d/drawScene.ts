@@ -2,7 +2,10 @@ import { makeWorldToScreen } from './coords';
 import { drawOccupancyGrid } from './drawOccupancy';
 import { drawFootprint, resolveFootprintPoints } from './drawFootprint';
 import { drawSemanticZones } from './drawSemantic';
+import { drawAnnotations } from './drawAnnotations';
 import type { SemanticZoneNorm } from './semanticZones';
+import type { MapDrawShape, MapPoi } from './annotations';
+import type { AnnotationDraft } from '@/store/annotationStore';
 import type {
   DefaultFootprint,
   LayerFlags,
@@ -67,6 +70,13 @@ export interface Map2DSceneInput {
     keepouts?: { id: string; polygon: number[][] }[];
   } | null;
   semanticZones?: SemanticZoneNorm[] | null;
+  annotations?: {
+    pois: MapPoi[];
+    shapes: MapDrawShape[];
+    draft: AnnotationDraft | null;
+    draftPreview: { x: number; y: number } | null;
+    selectedId: string | null;
+  } | null;
   prediction: {
     obstacles?: { id: number; trajectory?: { x: number; y: number }[] }[];
   } | null;
@@ -215,6 +225,7 @@ export function paintMap2DScene(
     obstacles,
     vectorMap,
     semanticZones = null,
+    annotations = null,
     prediction,
     goal,
     footprint,
@@ -305,6 +316,20 @@ export function paintMap2DScene(
       ctx.closePath();
       ctx.stroke();
     }
+  }
+
+  if (annotations && ((layers.draw ?? true) || (layers.poi ?? true))) {
+    drawAnnotations(ctx, {
+      pois: annotations.pois,
+      shapes: annotations.shapes,
+      draft: annotations.draft,
+      draftPreview: annotations.draftPreview,
+      selectedId: annotations.selectedId,
+      showPoi: layers.poi ?? true,
+      showDraw: layers.draw ?? true,
+      toScreen,
+      scale,
+    });
   }
 
   if (layers.obstacles && obstacles?.obstacles) {
