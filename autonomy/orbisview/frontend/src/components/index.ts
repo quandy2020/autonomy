@@ -83,13 +83,13 @@ export function registerBuiltinPanels(): void {
   registerPanel({ id: 'mapping', title: 'Mapping', category: 'planning', component: MappingPanel });
   registerPanel({
     id: 'indoor_map',
-    title: 'Indoor Map',
+    title: '室内地图',
     category: 'planning',
     component: IndoorMapPanel,
   });
   registerPanel({
     id: 'annotations',
-    title: 'Annotations',
+    title: 'POI管理',
     category: 'planning',
     component: AnnotationsPanel,
   });
