@@ -14,6 +14,7 @@ import { SCHEMAS } from '@/store/websocket/types';
 import { wsClient } from '@/store/websocket/client';
 import { MapFloatToolbar } from '@/components/Map/MapFloatToolbar';
 import { MapInstrumentCluster } from '@/components/Map/MapInstrumentCluster';
+import { MapMappingHud } from '@/components/Map/MapMappingHud';
 import { useStaticSlamStore } from '@/store/staticSlamStore';
 import {
   sharedStaticSlamCanvasCache,
@@ -856,6 +857,7 @@ export function Map2DPanel() {
     <div className="map-viewport map-primary" ref={hostRef}>
       {anyStale ? <div className="stale-badge map-float-badge">map data stale</div> : null}
       <MapInstrumentCluster />
+      <MapMappingHud />
       <MapFloatToolbar
         measureActive={mapTool === 'measure' && sketchPts.length > 0}
         onClearMeasure={() => {

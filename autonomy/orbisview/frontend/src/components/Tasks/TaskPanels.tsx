@@ -69,6 +69,4 @@ export function NavigationPanel() {
   );
 }
 
-export function MappingPanel() {
-  return <TaskPanel schema={SCHEMAS.Mapping} title="Mapping" />;
-}
+export { MappingPanel } from './MappingPanel';

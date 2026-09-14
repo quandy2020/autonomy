@@ -6,6 +6,7 @@ import { useLayerStore } from '@/store/layoutStore';
 import { useWaypointStore } from '@/store/waypointStore';
 import { useDataStore } from '@/store/dataStore';
 import { useStaticSlamStore } from '@/store/staticSlamStore';
+import { useMappingVizStore } from '@/store/mappingVizStore';
 import { wsClient } from '@/store/websocket/client';
 import { useState } from 'react';
 
@@ -74,6 +75,7 @@ export function MapFloatToolbar({
   const followRobot = useLayerStore((s) => s.followRobot);
   const setFollowRobot = useLayerStore((s) => s.setFollowRobot);
   const hasBasemap = !!useStaticSlamStore((s) => s.basemap);
+  const demoPlaying = useMappingVizStore((s) => s.demo.playing);
   const waypoints = useWaypointStore((s) => s.waypoints);
   const clearWaypoints = useWaypointStore((s) => s.clear);
   const connected = useDataStore((s) => s.connected);
@@ -160,10 +162,18 @@ export function MapFloatToolbar({
             onClick={() => setFollowRobot(!followRobot)}
           />
           <RailBtn
-            title="静态底图"
+            title={
+              demoPlaying
+                ? '建图演示播放中 — 请先暂停'
+                : '静态底图'
+            }
             icon="mapping"
             active={basemapOpen || hasBasemap}
-            onClick={() => setBasemapOpen((v) => !v)}
+            disabled={demoPlaying}
+            onClick={() => {
+              if (demoPlaying) return;
+              setBasemapOpen((v) => !v);
+            }}
           />
         </div>
       </div>

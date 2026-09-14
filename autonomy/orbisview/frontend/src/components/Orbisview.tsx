@@ -29,6 +29,7 @@ import { SCHEMAS } from '@/store/websocket/types';
 import { defaultWsUrl } from '@/config/parameters';
 import { Icon, IconLabel, panelIcon, type IconName } from '@/components/icons';
 import { usePanelOptsStore } from '@/store/panelOptsStore';
+import { MappingVizEffects } from '@/components/MappingVizEffects';
 
 const SIDEBAR_NAV: { id: SidebarTab; label: string; icon: IconName }[] = [
   { id: 'panels', label: 'Panels', icon: 'panels' },
@@ -306,6 +307,7 @@ export function Orbisview() {
 
   return (
     <div className="app ops-shell">
+      <MappingVizEffects />
       <header className="topbar">
         <div className="topbar-cluster topbar-brand-cluster">
           <strong className="brand">

@@ -3,10 +3,12 @@ import { persist } from 'zustand/middleware';
 import type { StaticSlamBasemap } from '@/renderer/map2d/staticSlam';
 import { sharedStaticSlamCanvasCache } from '@/renderer/map2d/staticSlam';
 
+export type SetBasemapOpts = { revokePrevious?: boolean };
+
 interface StaticSlamState {
   basemap: StaticSlamBasemap | null;
   formDraft: { originX: number; originY: number; resolution: number };
-  setBasemap: (b: StaticSlamBasemap | null) => void;
+  setBasemap: (b: StaticSlamBasemap | null, opts?: SetBasemapOpts) => void;
   setFormDraft: (p: Partial<StaticSlamState['formDraft']>) => void;
   clearBasemap: () => void;
 }
@@ -26,9 +28,16 @@ export const useStaticSlamStore = create<StaticSlamState>()(
     (set, get) => ({
       basemap: null,
       formDraft: { originX: -10, originY: -10, resolution: 0.05 },
-      setBasemap: (b) => {
+      setBasemap: (b, opts) => {
         const prev = get().basemap;
-        if (prev && prev.imageSrc !== b?.imageSrc) revokeIfBlob(prev.imageSrc);
+        const revokePrevious = opts?.revokePrevious !== false;
+        if (
+          revokePrevious &&
+          prev &&
+          prev.imageSrc !== b?.imageSrc
+        ) {
+          revokeIfBlob(prev.imageSrc);
+        }
         sharedStaticSlamCanvasCache.clear();
         set({
           basemap: b,
