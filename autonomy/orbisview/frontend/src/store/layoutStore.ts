@@ -93,6 +93,41 @@ export function sanitizeMosaic(
   return migrated;
 }
 
+function equalSplitPercents(n: number): number[] {
+  if (n <= 0) return [];
+  const base = Math.floor((10000 / n)) / 100;
+  const out = Array.from({ length: n }, () => base);
+  const sum = out.reduce((a, b) => a + b, 0);
+  out[out.length - 1] = Math.round((out[out.length - 1] + (100 - sum)) * 100) / 100;
+  return out;
+}
+
+/**
+ * Insert a leaf into the mosaic for tiling: prefer appending into an existing
+ * same-direction split (n-ary grid); otherwise create a balanced 50/50 split.
+ */
+export function insertMosaicLeaf(
+  cur: MosaicNode<string> | null,
+  id: string,
+  direction: 'row' | 'column' = 'row',
+): MosaicNode<string> {
+  if (!cur) return id;
+  if (typeof cur !== 'string' && cur.type === 'split' && cur.direction === direction) {
+    const children = [...cur.children, id];
+    return {
+      ...cur,
+      children,
+      splitPercentages: equalSplitPercents(children.length),
+    };
+  }
+  return {
+    type: 'split',
+    direction,
+    children: [cur, id],
+    splitPercentages: [50, 50],
+  };
+}
+
 export interface LayoutState {
   mosaic: MosaicNode<string> | null;
   catalogOpen: boolean;
@@ -153,18 +188,7 @@ export const useLayoutStore = create<LayoutState>()(
         const cur = get().mosaic;
         const existing = collectMosaicIds(cur);
         if (existing.some((leaf) => leaf === id || leaf.startsWith(`${id}#`))) return;
-        if (!cur) {
-          set({ mosaic: id });
-          return;
-        }
-        set({
-          mosaic: sanitizeMosaic({
-            type: 'split',
-            direction: 'row',
-            children: [cur, id],
-            splitPercentages: [72, 28],
-          }),
-        });
+        set({ mosaic: sanitizeMosaic(insertMosaicLeaf(cur, id, 'row')) });
       },
     }),
     {

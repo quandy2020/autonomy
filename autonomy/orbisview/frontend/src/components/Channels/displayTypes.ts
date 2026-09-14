@@ -37,7 +37,7 @@ const COMMON_PROPS: DisplayPropDef[] = [
   { key: 'enabled', label: 'Enabled', kind: 'boolean', group: 'Status', defaultValue: true },
   // key stays "topic" for persisted display props; UI wording is Channel (Autolink).
   { key: 'topic', label: 'Channel', kind: 'topic', group: 'Channel', defaultValue: '' },
-  { key: 'maxHz', label: 'Max Hz', kind: 'number', group: 'Channel', defaultValue: 20, min: 1, max: 100, step: 1 },
+  { key: 'maxHz', label: 'Max Hz (0=realtime)', kind: 'number', group: 'Channel', defaultValue: 0, min: 0, max: 120, step: 1 },
 ];
 
 function withCommon(extra: DisplayPropDef[]): DisplayPropDef[] {

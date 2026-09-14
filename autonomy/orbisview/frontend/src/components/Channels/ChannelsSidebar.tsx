@@ -520,7 +520,7 @@ export function ChannelsSidebar() {
     const want = new Map<string, number>();
     for (const d of displays) {
       if (!d.enabled || !d.channel) continue;
-      want.set(d.channel, d.maxHz || 20);
+      want.set(d.channel, d.maxHz ?? 0);
     }
     const { subscribed } = useDataStore.getState();
     for (const [ch, hz] of want) {
@@ -542,8 +542,8 @@ export function ChannelsSidebar() {
     setEnabled(id, enabled);
     if (!d?.channel || !connected) return;
     if (enabled) {
-      wsClient.subscribe(d.channel, d.maxHz || 20);
-      markSubscribed(d.channel, d.maxHz || 20);
+      wsClient.subscribe(d.channel, d.maxHz ?? 0);
+      markSubscribed(d.channel, d.maxHz ?? 0);
     } else {
       const stillNeeded = displays.some(
         (x) => x.id !== id && x.enabled && x.channel === d.channel,
@@ -674,8 +674,8 @@ export function ChannelsSidebar() {
                     if (key === 'topic' && typeof value === 'string') {
                       setChannel(d.id, value);
                       if (d.enabled && value && connected) {
-                        wsClient.subscribe(value, d.maxHz || 20);
-                        markSubscribed(value, d.maxHz || 20);
+                        wsClient.subscribe(value, d.maxHz ?? 0);
+                        markSubscribed(value, d.maxHz ?? 0);
                       }
                       if (isImageDisplayType(d.typeId)) {
                         openImagePanel(value || null);
@@ -707,8 +707,8 @@ export function ChannelsSidebar() {
           const id = addDisplay(packageName, message, channel);
           setExpanded((s) => ({ ...s, [id]: true }));
           if (channel && connected) {
-            wsClient.subscribe(channel, 20);
-            markSubscribed(channel, 20);
+            wsClient.subscribe(channel, 0);
+            markSubscribed(channel, 0);
           }
           const typeId = `${packageName}/${message}`;
           if (isImageDisplayType(typeId)) {
@@ -721,8 +721,8 @@ export function ChannelsSidebar() {
             const id = addDisplay(it.packageName, it.message, it.channel);
             nextExpanded[id] = true;
             if (it.channel && connected) {
-              wsClient.subscribe(it.channel, 20);
-              markSubscribed(it.channel, 20);
+              wsClient.subscribe(it.channel, 0);
+              markSubscribed(it.channel, 0);
             }
             const typeId = `${it.packageName}/${it.message}`;
             if (isImageDisplayType(typeId)) {

@@ -44,7 +44,7 @@ export const useDisplayStore = create<DisplayState>()(
           typeId: def.typeId,
           enabled: true,
           channel,
-          maxHz: 20,
+          maxHz: 0,
           props,
         };
         set({ displays: [...get().displays, item], selectedId: id });

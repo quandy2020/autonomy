@@ -3,6 +3,7 @@ import { drawOccupancyGrid } from './drawOccupancy';
 import { drawFootprint, resolveFootprintPoints } from './drawFootprint';
 import { drawSemanticZones } from './drawSemantic';
 import { drawAnnotations } from './drawAnnotations';
+import { resolveTfWorldFrames, resolveDrawPose, resolveLaserDrawPose } from './tfCompose';
 import type { SemanticZoneNorm } from './semanticZones';
 import type { MapDrawShape, MapPoi } from './annotations';
 import type { AnnotationDraft } from '@/store/annotationStore';
@@ -36,7 +37,14 @@ export interface Map2DSceneInput {
   /** @deprecated prefer lasers[] */
   laser: { angle_min: number; angle_increment: number; ranges: number[] } | null;
   lasers?: {
-    scan: { angle_min: number; angle_increment: number; ranges: number[]; range_min?: number; range_max?: number };
+    scan: {
+      angle_min: number;
+      angle_increment: number;
+      ranges: number[];
+      range_min?: number;
+      range_max?: number;
+      frame_id?: string;
+    };
     color: string;
     size: number;
     alpha: number;
@@ -395,7 +403,10 @@ export function paintMap2DScene(
     ctx.stroke();
   }
 
-  if (layers.laser && pose) {
+  const tfFrames = tf?.transforms?.length ? resolveTfWorldFrames(tf.transforms) : [];
+  const drawPose = resolveDrawPose(tfFrames, pose);
+
+  if (layers.laser && (drawPose || pose)) {
     const laserList =
       lasers && lasers.length
         ? lasers
@@ -403,6 +414,11 @@ export function paintMap2DScene(
           ? [{ scan: { ...laser, range_min: undefined, range_max: undefined }, color: '#ffeb3b', size: 0.05, alpha: 1 }]
           : [];
     for (const item of laserList) {
+      const origin =
+        resolveLaserDrawPose(tfFrames, item.scan.frame_id, drawPose ?? pose) ??
+        drawPose ??
+        pose;
+      if (!origin) continue;
       const { scan, color, size, alpha } = item;
       const px = Math.max(1, size * scale * 0.35);
       ctx.fillStyle = color.includes('rgba')
@@ -421,18 +437,20 @@ export function paintMap2DScene(
         const a =
           (scan.angle_min ?? 0) +
           i * (scan.angle_increment ?? 0) +
-          (pose.yaw ?? 0);
+          (origin.yaw ?? 0);
         const [sx, sy] = toScreen(
-          pose.x + r * Math.cos(a),
-          pose.y + r * Math.sin(a),
+          origin.x + r * Math.cos(a),
+          origin.y + r * Math.sin(a),
         );
         ctx.fillRect(sx - px / 2, sy - px / 2, px, px);
       });
     }
 
     if (rangeOverlays?.length) {
+      const origin = drawPose ?? pose;
+      if (origin) {
       for (const item of rangeOverlays) {
-        const yaw = pose.yaw ?? 0;
+        const yaw = origin.yaw ?? 0;
         const fov = item.field_of_view || 0.2;
         const r = item.range;
         ctx.strokeStyle = item.color.includes('rgba')
@@ -446,13 +464,13 @@ export function paintMap2DScene(
             })();
         ctx.fillStyle = ctx.strokeStyle;
         ctx.lineWidth = 1.5;
-        const [ox, oy] = toScreen(pose.x, pose.y);
+        const [ox, oy] = toScreen(origin.x, origin.y);
         ctx.beginPath();
         ctx.moveTo(ox, oy);
         const steps = 12;
         for (let i = 0; i <= steps; i++) {
           const a = yaw - fov / 2 + (fov * i) / steps;
-          const [sx, sy] = toScreen(pose.x + r * Math.cos(a), pose.y + r * Math.sin(a));
+          const [sx, sy] = toScreen(origin.x + r * Math.cos(a), origin.y + r * Math.sin(a));
           ctx.lineTo(sx, sy);
         }
         ctx.closePath();
@@ -460,6 +478,7 @@ export function paintMap2DScene(
         ctx.fill();
         ctx.globalAlpha = 1;
         ctx.stroke();
+      }
       }
     }
   }
@@ -488,16 +507,31 @@ export function paintMap2DScene(
     }
   }
 
-  if (layers.tf && tf?.transforms?.length) {
-    ctx.strokeStyle = '#ce93d8';
-    ctx.fillStyle = '#ce93d8';
-    ctx.lineWidth = 1.5;
-    for (const t of tf.transforms) {
-      const [sx, sy] = toScreen(t.x, t.y);
-      const yaw = t.yaw ?? 0;
+  if (layers.tf && tfFrames.length) {
+    const byFrame = new Map(tfFrames.map((f) => [f.frame, f]));
+    ctx.lineWidth = 1.25;
+    for (const f of tfFrames) {
+      if (!f.parent) continue;
+      const p = byFrame.get(f.parent);
+      if (!p) continue;
+      const [sx, sy] = toScreen(f.x, f.y);
+      const [px, py] = toScreen(p.x, p.y);
+      ctx.strokeStyle = 'rgba(206,147,216,0.45)';
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(sx, sy);
+      ctx.stroke();
+    }
+    for (const f of tfFrames) {
+      // Skip identity roots at origin unless they are the only frame.
+      if (!f.parent && tfFrames.length > 1 && Math.hypot(f.x, f.y) < 1e-9) continue;
+      const [sx, sy] = toScreen(f.x, f.y);
+      const yaw = f.yaw;
       const len = 14;
       const ex = sx + Math.cos(yaw) * len;
       const ey = sy - Math.sin(yaw) * len;
+      ctx.strokeStyle = '#ce93d8';
+      ctx.fillStyle = '#ce93d8';
       ctx.beginPath();
       ctx.moveTo(sx, sy);
       ctx.lineTo(ex, ey);
@@ -506,7 +540,7 @@ export function paintMap2DScene(
       ctx.arc(sx, sy, 2.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.font = '10px sans-serif';
-      ctx.fillText(t.child, sx + 4, sy - 4);
+      ctx.fillText(f.frame, sx + 4, sy - 4);
     }
   }
 
@@ -524,7 +558,8 @@ export function paintMap2DScene(
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 4]);
       ctx.beginPath();
-      const [rx, ry] = toScreen(pose.x, pose.y);
+      const robot = drawPose ?? pose;
+      const [rx, ry] = toScreen(robot.x, robot.y);
       ctx.moveTo(rx, ry);
       ctx.lineTo(sx, sy);
       ctx.stroke();
@@ -532,18 +567,18 @@ export function paintMap2DScene(
     }
   }
 
-  if (layers.footprint && pose) {
+  if (layers.footprint && drawPose) {
     const pts = resolveFootprintPoints(footprint, defaultFootprint);
-    drawFootprint(ctx, pose, pts, toScreen);
+    drawFootprint(ctx, drawPose, pts, toScreen);
   }
 
-  if (layers.robot && pose) {
-    const [sx, sy] = toScreen(pose.x, pose.y);
+  if (layers.robot && drawPose) {
+    const [sx, sy] = toScreen(drawPose.x, drawPose.y);
     ctx.fillStyle = '#69f0ae';
     ctx.beginPath();
     ctx.arc(sx, sy, 6, 0, Math.PI * 2);
     ctx.fill();
-    const yaw = pose.yaw ?? 0;
+    const yaw = drawPose.yaw ?? 0;
     ctx.strokeStyle = '#69f0ae';
     ctx.beginPath();
     ctx.moveTo(sx, sy);

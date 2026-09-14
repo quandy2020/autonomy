@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 
+export type CameraDragMode = 'auto' | 'pan' | 'orbit';
+
 export interface CameraController {
   yaw: number;
   pitch: number;
@@ -7,7 +9,7 @@ export interface CameraController {
   target: THREE.Vector3;
   setFollow: (v: boolean) => void;
   setTarget: (x: number, y: number, z: number) => void;
-  onPointerDown: (e: PointerEvent) => void;
+  onPointerDown: (e: PointerEvent, mode?: CameraDragMode) => void;
   onPointerMove: (e: PointerEvent) => void;
   onPointerUp: () => void;
   onWheel: (e: WheelEvent) => void;
@@ -41,9 +43,16 @@ export function createCameraController(camera: THREE.PerspectiveCamera): CameraC
     setTarget(x, y, z) {
       ctrl.target.set(x, y, z);
     },
-    onPointerDown(e) {
+    onPointerDown(e, mode = 'auto') {
       dragging = true;
-      panning = e.shiftKey || e.button === 1 || e.button === 2;
+      if (mode === 'pan') {
+        panning = true;
+      } else if (mode === 'orbit') {
+        panning = false;
+      } else {
+        // auto: Shift / middle / right = pan; left = orbit
+        panning = e.shiftKey || e.button === 1 || e.button === 2;
+      }
       lastX = e.clientX;
       lastY = e.clientY;
     },
@@ -63,17 +72,25 @@ export function createCameraController(camera: THREE.PerspectiveCamera): CameraC
         const forward = new THREE.Vector3();
         camera.getWorldDirection(forward);
         forward.y = 0;
-        forward.normalize();
-        right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+        if (forward.lengthSq() < 1e-8) {
+          // Looking straight down — pan in XZ using camera axes.
+          right.set(1, 0, 0).applyQuaternion(camera.quaternion);
+          right.y = 0;
+          right.normalize();
+          forward.crossVectors(new THREE.Vector3(0, 1, 0), right).normalize();
+        } else {
+          forward.normalize();
+          right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+        }
         ctrl.target.addScaledVector(right, -dx * panScale);
         ctrl.target.addScaledVector(forward, dy * panScale);
       } else {
         ctrl.yaw -= dx * 0.01;
-        ctrl.pitch = Math.max(0.1, Math.min(1.4, ctrl.pitch + dy * 0.01));
+        ctrl.pitch = Math.max(0.05, Math.min(1.55, ctrl.pitch + dy * 0.01));
       }
       ctrl.update();
     },
-  onWheel(e) {
+    onWheel(e) {
       e.preventDefault();
       ctrl.zoomBy(e.deltaY * 0.01);
     },

@@ -8,8 +8,11 @@
 
 #include <chrono>
 #include <fstream>
+#include <iterator>
 #include <sstream>
 #include <unordered_set>
+#include <utility>
+#include <vector>
 
 #if !defined(_WIN32)
 #include <dirent.h>
@@ -29,8 +32,6 @@
 #endif
 #endif
 
-#include <utility>
-#include <vector>
 namespace autonomy {
 namespace orbisview {
 namespace backend {
@@ -248,6 +249,7 @@ void Orbisview::Stop() {
   mock_.Stop();
   recorder_.StopPlayback();
   recorder_.StopRecording();
+  outbound_.Wake();
   if (pump_thread_.joinable()) pump_thread_.join();
   plugin_host_.reset();
   server_.reset();
@@ -620,25 +622,36 @@ void Orbisview::PumpLoop() {
       }
     }
 #endif
-    auto env = outbound_.Pop();
-    if (!env) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
-      continue;
-    }
-    const std::string json = core::StreamEnvelopeToJson(*env);
+    // Block briefly for the first frame, then drain every pending channel so
+    // the WS path never sleeps on a backlog (latest-wins already in queue).
+    auto first = outbound_.WaitPopFor(std::chrono::milliseconds(50));
+    if (!running_.load()) break;
+    if (!first) continue;
+
+    std::vector<core::StreamEnvelope> batch;
+    batch.push_back(std::move(*first));
+    auto rest = outbound_.PopAll();
+    batch.insert(batch.end(), std::make_move_iterator(rest.begin()),
+                 std::make_move_iterator(rest.end()));
+
     std::vector<int> clients;
     {
       std::lock_guard<std::mutex> lock(mutex_);
       for (const auto& kv : subs_) clients.push_back(kv.first);
     }
-    for (int id : clients) {
-      core::SubscriptionState state;
-      bool ok = false;
-      {
-        std::lock_guard<std::mutex> lock(mutex_);
-        ok = ShouldForward(id, env->channel, &state);
+    if (clients.empty()) continue;
+
+    for (auto& env : batch) {
+      const std::string json = core::StreamEnvelopeToJson(env);
+      for (int id : clients) {
+        core::SubscriptionState state;
+        bool ok = false;
+        {
+          std::lock_guard<std::mutex> lock(mutex_);
+          ok = ShouldForward(id, env.channel, &state);
+        }
+        if (ok) websocket_->SendText(id, json);
       }
-      if (ok) websocket_->SendText(id, json);
     }
   }
 }

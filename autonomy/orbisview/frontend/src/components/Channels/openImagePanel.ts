@@ -1,5 +1,9 @@
-import { allocPanelInstanceId } from '@/components/panelId';
-import { collectMosaicIds, useLayoutStore } from '@/store/layoutStore';
+import { allocPanelInstanceId, panelBaseId } from '@/components/panelId';
+import {
+  collectMosaicIds,
+  insertMosaicLeaf,
+  useLayoutStore,
+} from '@/store/layoutStore';
 import { usePanelOptsStore } from '@/store/panelOptsStore';
 
 const IMAGE_TYPE_IDS = new Set([
@@ -14,6 +18,7 @@ export function isImageDisplayType(typeId: string): boolean {
 /**
  * Open (or focus) an Image mosaic panel for a channel.
  * Multiple Image panels are allowed; reuses one already bound to the same channel.
+ * New panels tile into a balanced mosaic grid (row/column alternation).
  */
 export function openImagePanel(channel?: string | null): string {
   const layout = useLayoutStore.getState();
@@ -30,16 +35,10 @@ export function openImagePanel(channel?: string | null): string {
   }
 
   const id = allocPanelInstanceId('image', existing);
-  if (!cur) {
-    layout.setMosaic(id);
-  } else {
-    layout.setMosaic({
-      type: 'split',
-      direction: 'column',
-      children: [cur, id],
-      splitPercentages: [72, 28],
-    });
-  }
+  const imageCount = existing.filter((x) => panelBaseId(x) === 'image').length;
+  // 1st extra → row (side-by-side); 2nd → column nest; then alternate.
+  const direction: 'row' | 'column' = imageCount % 2 === 0 ? 'row' : 'column';
+  layout.setMosaic(insertMosaicLeaf(cur, id, direction));
   usePanelOptsStore.getState().setImageChannel(id, channel ?? null);
   return id;
 }

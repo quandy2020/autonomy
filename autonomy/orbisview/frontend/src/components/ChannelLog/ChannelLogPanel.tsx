@@ -39,8 +39,8 @@ export function ChannelLogPanel() {
       wsClient.unsubscribe(name);
       markUnsubscribed(name);
     } else {
-      wsClient.subscribe(name, 20);
-      markSubscribed(name, 20);
+      wsClient.subscribe(name, 0);
+      markSubscribed(name, 0);
     }
   };
 
@@ -48,8 +48,8 @@ export function ChannelLogPanel() {
     if (!connected) return;
     channels.forEach((c) => {
       if (subscribed[c.name] != null) return;
-      wsClient.subscribe(c.name, 20);
-      markSubscribed(c.name, 20);
+      wsClient.subscribe(c.name, 0);
+      markSubscribed(c.name, 0);
     });
   };
 

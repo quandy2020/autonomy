@@ -153,7 +153,10 @@ bool ConvertLaserScan(const std::string& bytes, core::StreamEnvelope* out) {
   std::ostringstream oss;
   oss << "{\"angle_min\":" << msg.angle_min()
       << ",\"angle_increment\":" << msg.angle_increment()
-      << ",\"range_max\":" << msg.range_max() << ",\"ranges\":[";
+      << ",\"range_min\":" << msg.range_min()
+      << ",\"range_max\":" << msg.range_max()
+      << ",\"frame_id\":" << core::JsonEscape(msg.header().frame_id())
+      << ",\"ranges\":[";
   for (int i = 0; i < msg.ranges_size(); ++i) {
     if (i) oss << ',';
     oss << msg.ranges(i);
