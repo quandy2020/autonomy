@@ -41,7 +41,11 @@ import {
 import { useDisplayStore } from '@/store/displayStore';
 import { useTfBufferStore } from '@/store/tfBufferStore';
 import { formatPickPose, pickPoseStatus } from '@/utils/poseMath';
-import { mergeTfTransforms } from '@/renderer/map2d/tfCompose';
+import {
+  mergeTfTransforms,
+  lookupFramePose,
+  resolveFixedFrame,
+} from '@/renderer/map2d/tfCompose';
 
 interface Path2D {
   poses: Pose2D[];
@@ -209,9 +213,13 @@ export function Map2DPanel() {
     return asPayload<Path2D>(pickDisplayEnvelope(envelopes, displays, 'path'));
   }, [envelopes, displays]);
 
+  const mapEnv = useMemo(
+    () => pickDisplayEnvelope(envelopes, displays, 'map'),
+    [envelopes, displays],
+  );
   const map = useMemo(() => {
-    return asPayload<OccupancyGridJson>(pickDisplayEnvelope(envelopes, displays, 'map'));
-  }, [envelopes, displays]);
+    return asPayload<OccupancyGridJson>(mapEnv);
+  }, [mapEnv]);
 
   const costmap = useMemo(() => {
     return asPayload<OccupancyGridJson>(pickDisplayEnvelope(envelopes, displays, 'costmap'));
@@ -324,10 +332,18 @@ export function Map2DPanel() {
 
   useEffect(() => {
     // Do not fight an in-progress free pan.
-    if (followRobot && pose && !viewPanRef.current) {
-      setViewOffset({ x: pose.x, y: pose.y });
-    }
-  }, [followRobot, pose]);
+    if (!followRobot || viewPanRef.current) return;
+    const transforms = tf?.transforms ?? [];
+    const fixed = resolveFixedFrame(mapEnv?.frame_id);
+    const p = lookupFramePose(
+      transforms,
+      fixed,
+      ['base_link', 'base_footprint'],
+      pose,
+      !!map,
+    );
+    if (p) setViewOffset({ x: p.x, y: p.y });
+  }, [followRobot, pose, tf, map, mapEnv?.frame_id]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -392,6 +408,7 @@ export function Map2DPanel() {
       path,
       pathStyle,
       map,
+      mapFrameId: mapEnv?.frame_id || null,
       costmap,
       laser,
       lasers: laserOverlays.map((o) => ({

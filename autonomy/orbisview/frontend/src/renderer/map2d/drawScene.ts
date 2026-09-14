@@ -3,7 +3,13 @@ import { drawOccupancyGrid } from './drawOccupancy';
 import { drawFootprint, resolveFootprintPoints } from './drawFootprint';
 import { drawSemanticZones } from './drawSemantic';
 import { drawAnnotations } from './drawAnnotations';
-import { resolveTfWorldFrames, resolveDrawPose, resolveLaserDrawPose } from './tfCompose';
+import {
+  resolveTfWorldFrames,
+  lookupFramePose,
+  lookupTransform,
+  transformPointSe2,
+  resolveFixedFrame,
+} from './tfCompose';
 import type { SemanticZoneNorm } from './semanticZones';
 import type { MapDrawShape, MapPoi } from './annotations';
 import type { AnnotationDraft } from '@/store/annotationStore';
@@ -33,6 +39,8 @@ export interface Map2DSceneInput {
   path: { poses: Pose2D[] } | null;
   pathStyle?: { color: string; lineWidth: number; alpha: number };
   map: OccupancyGridJson | null;
+  /** OccupancyGrid header.frame_id (fixed frame for TF lookup). */
+  mapFrameId?: string | null;
   costmap: OccupancyGridJson | null;
   /** @deprecated prefer lasers[] */
   laser: { angle_min: number; angle_increment: number; ranges: number[] } | null;
@@ -403,10 +411,21 @@ export function paintMap2DScene(
     ctx.stroke();
   }
 
-  const tfFrames = tf?.transforms?.length ? resolveTfWorldFrames(tf.transforms) : [];
-  const drawPose = resolveDrawPose(tfFrames, pose);
+  const transforms = tf?.transforms ?? [];
+  const tfFrames = transforms.length ? resolveTfWorldFrames(transforms) : [];
+  const hasMapOverlay =
+    !!(layers.map && map) || !!(layers.basemap && basemap);
+  const fixedFrame = resolveFixedFrame(input.mapFrameId);
+  // Autoviz: when overlaying a map, require TF into fixed_frame (no odom pose guess).
+  const drawPose = lookupFramePose(
+    transforms,
+    fixedFrame,
+    ['base_link', 'base_footprint'],
+    pose,
+    hasMapOverlay,
+  );
 
-  if (layers.laser && (drawPose || pose)) {
+  if (layers.laser) {
     const laserList =
       lasers && lasers.length
         ? lasers
@@ -414,11 +433,28 @@ export function paintMap2DScene(
           ? [{ scan: { ...laser, range_min: undefined, range_max: undefined }, color: '#ffeb3b', size: 0.05, alpha: 1 }]
           : [];
     for (const item of laserList) {
-      const origin =
-        resolveLaserDrawPose(tfFrames, item.scan.frame_id, drawPose ?? pose) ??
-        drawPose ??
-        pose;
-      if (!origin) continue;
+      const laserFrames = [
+        item.scan.frame_id,
+        'laser_link',
+        'base_scan',
+      ].filter((x): x is string => !!x);
+      // Autoviz: local (r·cos θ, r·sin θ) then lookupTransform(fixed, laser).
+      let laserTf = null as ReturnType<typeof lookupTransform>;
+      for (const lf of laserFrames) {
+        laserTf = lookupTransform(transforms, fixedFrame, lf);
+        if (laserTf) break;
+      }
+      if (!laserTf && !hasMapOverlay) {
+        for (const lf of laserFrames) {
+          laserTf = lookupTransform(transforms, 'odom', lf);
+          if (laserTf) break;
+        }
+      }
+      if (!laserTf && !hasMapOverlay && (drawPose || pose)) {
+        const fb = drawPose ?? pose!;
+        laserTf = { x: fb.x, y: fb.y, yaw: fb.yaw ?? 0 };
+      }
+      if (!laserTf) continue;
       const { scan, color, size, alpha } = item;
       const px = Math.max(1, size * scale * 0.35);
       ctx.fillStyle = color.includes('rgba')
@@ -434,20 +470,15 @@ export function paintMap2DScene(
       const rMax = scan.range_max ?? Infinity;
       scan.ranges.forEach((r, i) => {
         if (!Number.isFinite(r) || r < rMin || r > rMax) return;
-        const a =
-          (scan.angle_min ?? 0) +
-          i * (scan.angle_increment ?? 0) +
-          (origin.yaw ?? 0);
-        const [sx, sy] = toScreen(
-          origin.x + r * Math.cos(a),
-          origin.y + r * Math.sin(a),
-        );
+        const a = (scan.angle_min ?? 0) + i * (scan.angle_increment ?? 0);
+        const world = transformPointSe2(laserTf!, r * Math.cos(a), r * Math.sin(a));
+        const [sx, sy] = toScreen(world.x, world.y);
         ctx.fillRect(sx - px / 2, sy - px / 2, px, px);
       });
     }
 
     if (rangeOverlays?.length) {
-      const origin = drawPose ?? pose;
+      const origin = drawPose ?? (!hasMapOverlay ? pose : null);
       if (origin) {
       for (const item of rangeOverlays) {
         const yaw = origin.yaw ?? 0;
