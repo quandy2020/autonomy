@@ -180,8 +180,8 @@ export function ImagePanel({ panelId }: PanelProps) {
 
   useEffect(() => {
     if (!active) return;
-    wsClient.subscribe(active, 10);
-    markSubscribed(active, 10);
+    wsClient.subscribe(active, 0);
+    markSubscribed(active, 0);
   }, [active, markSubscribed]);
 
   const env = active ? envelopes[active] : undefined;
@@ -189,6 +189,7 @@ export function ImagePanel({ panelId }: PanelProps) {
     env?.schema === SCHEMAS.DepthImage || isDepthChannel(active ?? '')
       ? 'depth'
       : 'gray';
+  const drawGenRef = useRef(0);
 
   useEffect(() => {
     const payload = env?.payload as
@@ -197,27 +198,32 @@ export function ImagePanel({ panelId }: PanelProps) {
     if (!canvasRef.current || !payload?.width || !payload?.height) {
       return;
     }
-    const data = decodeImagePixels(payload);
-    if (!data) return;
-    const { width, height } = payload;
-    const enc = (payload.encoding ?? '').toLowerCase();
-    const n = width * height;
-    if (enc === 'rgb8' || enc === 'bgr8' || enc === 'rgba8' || enc === 'bgra8') {
-      if (data.length < n * 3) return;
-      drawRgb(canvasRef.current, width, height, data);
-      return;
-    }
-    const asRgb =
-      enc !== 'mono8' && data.length >= n * 3 && data.length !== n;
-    if (asRgb && data.length >= n * 3) {
-      drawRgb(canvasRef.current, width, height, data);
-      return;
-    }
-    // Guard against truncated / mismatched payloads.
-    if (data.length < n) {
-      return;
-    }
-    drawMono(canvasRef.current, width, height, data, mode);
+    // Drop intermediate frames: only paint the newest envelope after layout.
+    const gen = ++drawGenRef.current;
+    const canvas = canvasRef.current;
+    const paintMode = mode;
+    const raf = window.requestAnimationFrame(() => {
+      if (gen !== drawGenRef.current || !canvas) return;
+      const data = decodeImagePixels(payload);
+      if (!data) return;
+      const { width, height } = payload;
+      const enc = (payload.encoding ?? '').toLowerCase();
+      const n = width * height;
+      if (enc === 'rgb8' || enc === 'bgr8' || enc === 'rgba8' || enc === 'bgra8') {
+        if (data.length < n * 3) return;
+        drawRgb(canvas, width, height, data);
+        return;
+      }
+      const asRgb =
+        enc !== 'mono8' && data.length >= n * 3 && data.length !== n;
+      if (asRgb && data.length >= n * 3) {
+        drawRgb(canvas, width, height, data);
+        return;
+      }
+      if (data.length < n) return;
+      drawMono(canvas, width, height, data, paintMode);
+    });
+    return () => window.cancelAnimationFrame(raf);
   }, [env, mode]);
 
   return (

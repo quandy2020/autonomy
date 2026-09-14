@@ -4,6 +4,9 @@ import {
   MosaicWindow,
   ExpandButton,
   RemoveButton,
+  SplitButton,
+  ReplaceButton,
+  AddTabButton,
   type MosaicNode,
 } from 'react-mosaic-component';
 import 'react-mosaic-component/react-mosaic-component.css';
@@ -12,6 +15,7 @@ import { useDataStore } from '@/store/dataStore';
 import {
   useLayoutStore,
   collectMosaicIds,
+  insertMosaicLeaf,
   LAYOUT_PRESETS,
   type LayoutPresetId,
   type SidebarTab,
@@ -29,6 +33,7 @@ import { SCHEMAS } from '@/store/websocket/types';
 import { defaultWsUrl } from '@/config/parameters';
 import { Icon, IconLabel, panelIcon, type IconName } from '@/components/icons';
 import { usePanelOptsStore } from '@/store/panelOptsStore';
+import { useTfBufferStore } from '@/store/tfBufferStore';
 import { MappingVizEffects } from '@/components/MappingVizEffects';
 import { IndoorMapEffects } from '@/components/IndoorMapEffects';
 
@@ -217,11 +222,15 @@ export function Orbisview() {
           if (preferLive && ch.name.startsWith('/orbisview/mock/')) continue;
           if (!preferLive && !MOCK_CHANNELS.includes(ch.name)) continue;
           if (subscribed[ch.name] != null) continue;
-          wsClient.subscribe(ch.name, 20);
-          markSubscribed(ch.name, 20);
+          wsClient.subscribe(ch.name, 0);
+          markSubscribed(ch.name, 0);
         }
       } else if (msg.op === 'envelope') {
         upsertEnvelope(msg);
+        if (msg.schema === SCHEMAS.TfTree) {
+          const payload = msg.payload as { transforms?: { parent: string; child: string; x: number; y: number; yaw?: number }[] } | undefined;
+          useTfBufferStore.getState().ingest(payload?.transforms);
+        }
       } else if (msg.op === 'subscribed') {
         markSubscribed(msg.channel, msg.max_hz);
       } else if (msg.op === 'error') {
@@ -236,7 +245,10 @@ export function Orbisview() {
         resubscribeTracked();
         pushLog('ws online');
       } else if (state === 'reconnecting') {
+        useTfBufferStore.getState().clear();
         pushLog('ws reconnecting…');
+      } else if (state === 'offline') {
+        useTfBufferStore.getState().clear();
       }
     });
     const staleTimer = window.setInterval(() => refreshStale(), 500);
@@ -291,23 +303,48 @@ export function Orbisview() {
         ? 'statusWarn'
         : 'statusOffline';
 
+  const createMosaicNode = useCallback((): string => {
+    const existing = collectMosaicIds(useLayoutStore.getState().mosaic);
+    return allocPanelInstanceId('image', existing);
+  }, []);
+
   const renderTile = useCallback(
     (id: string, path: unknown) => {
       const meta = getPanel(id);
       const title = meta?.title ?? panelBaseId(id);
       const suffix = id.includes('#') ? ` · ${id.slice(id.indexOf('#') + 1)}` : '';
       const label = `${title}${suffix}`;
+      const createNode = () => {
+        const existing = collectMosaicIds(useLayoutStore.getState().mosaic);
+        const base = panelBaseId(id);
+        const panelMeta = getPanel(base);
+        if (panelMeta?.allowMultiple) {
+          const next = allocPanelInstanceId(base, existing);
+          if (base === 'image') {
+            usePanelOptsStore.getState().setImageChannel(next, null);
+          }
+          return next;
+        }
+        const next = allocPanelInstanceId('image', existing);
+        usePanelOptsStore.getState().setImageChannel(next, null);
+        return next;
+      };
       return (
         <MosaicWindow<string>
           path={path as never}
           title={label}
+          createNode={createNode}
+          draggable
           renderToolbar={() => (
             <div className="mosaic-toolbar-row">
-              <div className="mosaic-window-title ov-icon-label" title={label}>
+              <div className="mosaic-window-title ov-icon-label" title={`${label} · drag to rearrange`}>
                 <Icon name={panelIcon(panelBaseId(id))} size={13} />
                 <span className="mosaic-window-title-text">{label}</span>
               </div>
               <div className="mosaic-window-controls ov-mosaic-controls">
+                <ReplaceButton />
+                <SplitButton />
+                <AddTabButton />
                 <ExpandButton />
                 <RemoveButton />
               </div>
@@ -333,16 +370,13 @@ export function Orbisview() {
         ? allocPanelInstanceId(meta.id, existing)
         : meta.id;
     if (!meta.allowMultiple && existing.includes(id)) return;
-    if (!cur) {
-      setMosaic(id);
-      return;
+    if (meta.id === 'image') {
+      usePanelOptsStore.getState().setImageChannel(id, null);
     }
-    setMosaic({
-      type: 'split',
-      direction: 'row',
-      children: [cur, id],
-      splitPercentages: [70, 30],
-    });
+    const imageCount = existing.filter((x) => panelBaseId(x) === 'image').length;
+    const direction: 'row' | 'column' =
+      meta.id === 'image' && imageCount % 2 === 1 ? 'column' : 'row';
+    setMosaic(insertMosaicLeaf(cur, id, direction));
   };
 
   return (
@@ -593,6 +627,8 @@ export function Orbisview() {
             renderTile={renderTile}
             value={mosaic}
             onChange={(node: MosaicNode<string> | null) => setMosaic(node)}
+            createNode={createMosaicNode}
+            resize={{ minimumPaneSizePercentage: 8 }}
             className="mosaic-blueprint-theme mosaic-host"
             zeroStateView={<div className="panel">Add a panel from Sidebar → Panels</div>}
           />

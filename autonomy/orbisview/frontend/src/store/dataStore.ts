@@ -28,6 +28,31 @@ function isStale(env: StreamEnvelope, nowMs: number): boolean {
   return ageMs > STALE_THRESHOLD_MS;
 }
 
+/** Coalesce high-rate envelopes to one React store write per animation frame. */
+const pendingEnvelopes = new Map<string, StreamEnvelope>();
+let flushRaf: number | null = null;
+let logTick = 0;
+
+function flushPendingEnvelopes(
+  apply: (envs: Record<string, StreamEnvelope>, logLine: string | null) => void,
+): void {
+  flushRaf = null;
+  if (pendingEnvelopes.size === 0) return;
+  const batch = new Map(pendingEnvelopes);
+  pendingEnvelopes.clear();
+  const now = Date.now();
+  const merged: Record<string, StreamEnvelope> = {};
+  let logLine: string | null = null;
+  for (const [ch, env] of batch) {
+    merged[ch] = { ...env, stale: isStale(env, now) || !!env.stale };
+    // Log at most ~2 lines/sec worth of channels, never every image frame.
+    if (++logTick % 8 === 0) {
+      logLine = `${env.channel} seq=${env.sequence}${env.unsupported ? ' [unsupported]' : ''}`;
+    }
+  }
+  apply(merged, logLine);
+}
+
 export const useDataStore = create<DataState>((set, get) => ({
   connectionState: 'offline',
   connected: false,
@@ -47,7 +72,7 @@ export const useDataStore = create<DataState>((set, get) => ({
           : 'offline',
     }),
   setChannels: (channels) => set({ channels }),
-  markSubscribed: (channel, maxHz = 20) =>
+  markSubscribed: (channel, maxHz = 0) =>
     set((s) => ({ subscribed: { ...s.subscribed, [channel]: maxHz } })),
   markUnsubscribed: (channel) =>
     set((s) => {
@@ -57,15 +82,16 @@ export const useDataStore = create<DataState>((set, get) => ({
     }),
   clearSubscriptions: () => set({ subscribed: {} }),
   upsertEnvelope: (env) => {
-    const now = Date.now();
-    const withStale = { ...env, stale: isStale(env, now) || !!env.stale };
-    set((s) => ({
-      envelopes: { ...s.envelopes, [env.channel]: withStale },
-      log: [
-        `${env.channel} seq=${env.sequence}${env.unsupported ? ' [unsupported]' : ''}`,
-        ...s.log,
-      ].slice(0, 200),
-    }));
+    pendingEnvelopes.set(env.channel, env);
+    if (flushRaf != null) return;
+    flushRaf = window.requestAnimationFrame(() => {
+      flushPendingEnvelopes((merged, logLine) => {
+        set((s) => ({
+          envelopes: { ...s.envelopes, ...merged },
+          log: logLine ? [logLine, ...s.log].slice(0, 80) : s.log,
+        }));
+      });
+    });
   },
   refreshStale: () => {
     const now = Date.now();
@@ -80,5 +106,5 @@ export const useDataStore = create<DataState>((set, get) => ({
       return changed ? { envelopes: next } : {};
     });
   },
-  pushLog: (line) => set((s) => ({ log: [line, ...s.log].slice(0, 200) })),
+  pushLog: (line) => set((s) => ({ log: [line, ...s.log].slice(0, 80) })),
 }));

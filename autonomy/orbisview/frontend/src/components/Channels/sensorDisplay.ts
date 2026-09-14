@@ -13,6 +13,8 @@ export interface LaserScanPayload {
   ranges: number[];
   range_min?: number;
   range_max?: number;
+  /** LaserScan header.frame_id (e.g. laser_link). */
+  frame_id?: string;
 }
 
 export interface CloudPoint {
@@ -105,7 +107,10 @@ export function resolveLaserOverlays(
       const scan = asPayload<LaserScanPayload>(env);
       if (!scan?.ranges?.length) return null;
       return {
-        scan,
+        scan: {
+          ...scan,
+          frame_id: scan.frame_id || env.frame_id || undefined,
+        },
         style: styleFromDisplay(d, DEFAULT_LASER),
         channel: env.channel,
       };

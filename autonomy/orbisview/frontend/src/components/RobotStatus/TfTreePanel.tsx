@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDataStore } from '@/store/dataStore';
 import { wsClient } from '@/store/websocket/client';
 import { SCHEMAS } from '@/store/websocket/types';
+import { mergeTfTransforms } from '@/renderer/map2d/tfCompose';
 
 interface TfXform {
   parent: string;
@@ -312,7 +313,18 @@ export function TfTreePanel() {
     return Object.values(envelopes).find((x) => x.schema === SCHEMAS.TfTree);
   }, [envelopes]);
 
-  const tf = asPayload<TfTree>(tfEnv);
+  const tf = useMemo(() => {
+    const lists = Object.values(envelopes)
+      .filter((x) => x.schema === SCHEMAS.TfTree)
+      .sort((a, b) => {
+        const rank = (ch: string) =>
+          /tf_static/i.test(ch) ? 0 : /\/tf$/i.test(ch) ? 2 : 1;
+        return rank(a.channel) - rank(b.channel);
+      })
+      .map((e) => asPayload<TfTree>(e)?.transforms);
+    const transforms = mergeTfTransforms(lists);
+    return transforms.length ? { transforms } : asPayload<TfTree>(tfEnv);
+  }, [envelopes, tfEnv]);
   const list = tf?.transforms ?? [];
   const { roots, cycles, orphans } = useMemo(() => buildTfForest(list), [list]);
 

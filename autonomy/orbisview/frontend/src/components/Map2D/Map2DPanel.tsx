@@ -29,6 +29,7 @@ import {
   asPayload,
   effectiveMapLayers,
   pickDisplayEnvelope,
+  pickDisplayEnvelopes,
 } from '@/components/Channels/mapDisplayBinding';
 import {
   hexToRgba,
@@ -38,7 +39,9 @@ import {
   resolveRangeOverlays,
 } from '@/components/Channels/sensorDisplay';
 import { useDisplayStore } from '@/store/displayStore';
+import { useTfBufferStore } from '@/store/tfBufferStore';
 import { formatPickPose, pickPoseStatus } from '@/utils/poseMath';
+import { mergeTfTransforms } from '@/renderer/map2d/tfCompose';
 
 interface Path2D {
   poses: Pose2D[];
@@ -139,6 +142,7 @@ export function Map2DPanel() {
   const wpEditRef = useRef<WpEditDrag | null>(null);
   const viewPanRef = useRef<{ lastX: number; lastY: number } | null>(null);
   const poiDragRef = useRef<{ id: string } | null>(null);
+  const spaceHeldRef = useRef(false);
 
   useEffect(() => {
     setSketchPts([]);
@@ -152,13 +156,23 @@ export function Map2DPanel() {
     }
     if (mapTool === 'pan') {
       useLayerStore.getState().setFollowRobot(false);
-      setStatusMsg('拖动视图：左键平移，滚轮缩放');
+      setStatusMsg('拖动视图：左键任意方向平移，中键/右键/空格+左键亦可，滚轮缩放');
     }
   }, [mapTool, setStatusMsg]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    const isTypingTarget = (t: EventTarget | null) =>
+      t instanceof HTMLInputElement ||
+      t instanceof HTMLTextAreaElement ||
+      (t instanceof HTMLElement && t.isContentEditable);
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isTypingTarget(e.target)) return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        spaceHeldRef.current = true;
+        return;
+      }
       if (e.key === 'Escape') {
         useAnnotationStore.getState().cancelDraft();
         return;
@@ -176,8 +190,16 @@ export function Map2DPanel() {
         }
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') spaceHeldRef.current = false;
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      spaceHeldRef.current = false;
+    };
   }, [mapTool]);
   const pose = useMemo(() => {
     return asPayload<Pose2D>(pickDisplayEnvelope(envelopes, displays, 'pose'));
@@ -226,9 +248,26 @@ export function Map2DPanel() {
     );
   }, [envelopes, displays]);
 
+  const tfBuffer = useTfBufferStore((s) => s.byChild);
   const tf = useMemo(() => {
-    return asPayload<TfTree>(pickDisplayEnvelope(envelopes, displays, 'tf'));
-  }, [envelopes, displays]);
+    const buffered = Object.values(tfBuffer);
+    if (buffered.length) return { transforms: buffered };
+    const envs = pickDisplayEnvelopes(envelopes, displays, 'tf');
+    const extras = Object.values(envelopes).filter(
+      (e) =>
+        e.schema === SCHEMAS.TfTree &&
+        !envs.some((x) => x.channel === e.channel),
+    );
+    const ordered = [...extras, ...envs].sort((a, b) => {
+      const rank = (ch: string) =>
+        /tf_static/i.test(ch) ? 0 : /\/tf$/i.test(ch) ? 2 : 1;
+      return rank(a.channel) - rank(b.channel);
+    });
+    const transforms = mergeTfTransforms(
+      ordered.map((e) => asPayload<TfTree>(e)?.transforms),
+    );
+    return transforms.length ? { transforms } : null;
+  }, [tfBuffer, envelopes, displays]);
 
   const obstacles = useMemo(() => {
     return asPayload<{
@@ -284,7 +323,8 @@ export function Map2DPanel() {
     (nav?.has_goal !== false && nav?.goal ? nav.goal : null);
 
   useEffect(() => {
-    if (followRobot && pose) {
+    // Do not fight an in-progress free pan.
+    if (followRobot && pose && !viewPanRef.current) {
       setViewOffset({ x: pose.x, y: pose.y });
     }
   }, [followRobot, pose]);
@@ -540,16 +580,20 @@ export function Map2DPanel() {
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    // Measure: RMB finishes — suppress menu, do not pan.
-    if (mapTool === 'measure' && e.button === 2) {
+    // Measure / draw: RMB finishes — suppress menu, do not pan.
+    if ((mapTool === 'measure' || mapTool === 'draw') && e.button === 2) {
       e.preventDefault();
       return;
     }
-    // Pan view: hand tool, middle button, or Space+left (not under poi/draw)
+    // Free pan in any direction: pan tool, middle, right, Shift/Space+left.
     const wantPan =
-      (mapTool === 'pan' || e.button === 1 || (e.button === 0 && e.shiftKey)) &&
-      mapTool !== 'poi' &&
-      mapTool !== 'draw';
+      mapTool === 'pan' ||
+      e.button === 1 ||
+      (e.button === 2 && mapTool !== 'poi') ||
+      (e.button === 0 &&
+        (e.shiftKey || spaceHeldRef.current) &&
+        mapTool !== 'poi' &&
+        mapTool !== 'draw');
     if (wantPan) {
       e.preventDefault();
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -1013,7 +1057,8 @@ export function Map2DPanel() {
         }}
         onWheel={onWheel}
         style={{
-          cursor: mapTool === 'pan' ? 'grab' : 'crosshair',
+          cursor:
+            mapTool === 'pan' || spaceHeldRef.current ? 'grab' : 'crosshair',
           touchAction: 'none',
         }}
       />

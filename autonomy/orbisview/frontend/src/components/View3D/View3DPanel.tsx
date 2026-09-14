@@ -160,7 +160,7 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
     pickDownRef.current = null;
     if (mapTool === 'pan') {
       setFollowRobot(false);
-      setStatusMsg('拖动视图：左键旋转，Shift+左键平移，滚轮缩放');
+      setStatusMsg('拖动视图：左键平移，右键旋转，滚轮缩放');
     }
   }, [mapTool, setFollowRobot, setStatusMsg]);
 
@@ -254,17 +254,26 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
         return;
       }
 
-      // Pan / orbit tool: always drive the camera (Shift = pan target).
-      if (tool === 'pan' || e.button === 1 || (e.button === 2 && tool !== 'draw')) {
+      // Pan tool: left/middle = translate freely; right = orbit.
+      if (tool === 'pan') {
         e.preventDefault();
         setFollowRobot(false);
-        cam.onPointerDown(e);
+        cam.onPointerDown(e, e.button === 2 ? 'orbit' : 'pan');
+        el.style.cursor = 'grabbing';
+        return;
+      }
+
+      // Other tools: middle / right still move the view (right = pan).
+      if (e.button === 1 || (e.button === 2 && tool !== 'draw' && tool !== 'measure')) {
+        e.preventDefault();
+        setFollowRobot(false);
+        cam.onPointerDown(e, e.button === 1 || e.shiftKey ? 'pan' : 'auto');
         el.style.cursor = 'grabbing';
         return;
       }
 
       if (e.button !== 0) {
-        cam.onPointerDown(e);
+        cam.onPointerDown(e, 'auto');
         return;
       }
 
@@ -712,7 +721,8 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
     const cam = camRef.current;
     if (!sceneReady || !ctx || !cam) return;
     cam.setFollow(followRobot);
-    if (input.pose) {
+    // Only lock camera target to robot while follow is on — otherwise free pan/orbit.
+    if (followRobot && input.pose) {
       const t = toThree(input.pose.x, input.pose.y, 0);
       cam.setTarget(t.x, t.y, t.z);
     }
@@ -734,7 +744,7 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
       const latest = inputRef.current;
       if (latest) {
         cam.setFollow(latest.followRobot);
-        if (latest.pose) {
+        if (latest.followRobot && latest.pose) {
           const t = toThree(latest.pose.x, latest.pose.y, 0);
           cam.setTarget(t.x, t.y, t.z);
         }

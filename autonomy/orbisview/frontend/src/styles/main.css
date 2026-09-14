@@ -506,6 +506,13 @@ body { margin: 0; }
   display: flex !important;
   align-items: stretch;
 }
+.mosaic-window-toolbar.draggable .mosaic-toolbar-row,
+.mosaic-window-toolbar.draggable .mosaic-window-title {
+  cursor: grab;
+}
+.mosaic-window-toolbar.draggable:active .mosaic-window-title {
+  cursor: grabbing;
+}
 .mosaic-toolbar-row {
   display: flex;
   align-items: center;
@@ -562,6 +569,9 @@ body { margin: 0; }
 }
 .mosaic-default-control.expand-button::before { content: '⛶'; font-size: 13px; }
 .mosaic-default-control.close-button::before { content: '×'; font-size: 18px; font-weight: 600; }
+.mosaic-default-control.split-button::before { content: '⧉'; font-size: 14px; }
+.mosaic-default-control.replace-button::before { content: '⇄'; font-size: 13px; }
+.mosaic-default-control.add-tab-button::before { content: '+'; font-size: 16px; font-weight: 600; }
 .catalog-item { display: block; margin: 0.2rem 0; text-align: left; width: 100%; }
 .catalog-groups { display: flex; flex-direction: column; gap: 0.65rem; }
 .catalog-group {

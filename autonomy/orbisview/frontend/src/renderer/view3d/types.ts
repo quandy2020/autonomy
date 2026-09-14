@@ -44,6 +44,7 @@ export interface View3DLaserScan {
   angle_min: number;
   angle_increment: number;
   ranges: number[];
+  frame_id?: string;
 }
 
 export interface View3DNavGoal {
@@ -63,6 +64,8 @@ export interface View3DWaypoint {
 
 export interface View3DSceneInput {
   pose: Pose2D | null;
+  /** LaserScan origin in map frame (TF laser_link); falls back to pose. */
+  laserOrigin?: Pose2D | null;
   path: Pose2D[] | null;
   goal: View3DNavGoal | null;
   waypoints: View3DWaypoint[];

@@ -126,7 +126,7 @@ export class OrbisWsClient {
     this.send({ op: 'list_channels' });
   }
 
-  subscribe(channel: string, maxHz = 20): void {
+  subscribe(channel: string, maxHz = 0): void {
     this.send({ op: 'subscribe', channel, max_hz: maxHz });
   }
 

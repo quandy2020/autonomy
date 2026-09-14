@@ -4,6 +4,7 @@ import {
   migrateMapLeaves,
   sanitizeMosaic,
   collectMosaicIds,
+  insertMosaicLeaf,
 } from '@/store/layoutStore';
 
 describe('migrateMapLeaves', () => {
@@ -31,5 +32,31 @@ describe('migrateMapLeaves', () => {
       splitPercentages: [50, 50],
     });
     expect(node).toEqual(GROUND_ROBOT_LAYOUT);
+  });
+});
+
+describe('insertMosaicLeaf', () => {
+  it('returns leaf when mosaic empty', () => {
+    expect(insertMosaicLeaf(null, 'image')).toBe('image');
+  });
+
+  it('creates balanced split from a leaf', () => {
+    expect(insertMosaicLeaf('map', 'image', 'row')).toEqual({
+      type: 'split',
+      direction: 'row',
+      children: ['map', 'image'],
+      splitPercentages: [50, 50],
+    });
+  });
+
+  it('appends into same-direction n-ary split', () => {
+    const cur = insertMosaicLeaf('image', 'image#2', 'row');
+    const next = insertMosaicLeaf(cur, 'image#3', 'row');
+    expect(next).toMatchObject({
+      type: 'split',
+      direction: 'row',
+      children: ['image', 'image#2', 'image#3'],
+    });
+    expect(collectMosaicIds(next)).toEqual(['image', 'image#2', 'image#3']);
   });
 });

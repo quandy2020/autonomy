@@ -47,7 +47,7 @@ export function syncView3DScene(ctx: View3DContext, input: View3DSceneInput): vo
     showPoi: layers.poi ?? true,
     showDraw: layers.draw ?? true,
   });
-  updateLaser(ctx, input.pose, input.laser, opts.laserHeight, layers.laser, {
+  updateLaser(ctx, input.laserOrigin ?? input.pose, input.laser, opts.laserHeight, layers.laser, {
     color: opts.laserColor,
     size: opts.laserSize,
   });
