@@ -9,8 +9,8 @@ const TASKS: {
   id: string;
   panelId: string;
   title: string;
-  icon: 'nav' | 'explore' | 'mapping';
-  schema: string;
+  icon: 'nav' | 'explore' | 'mapping' | 'waypoint' | 'layers';
+  schema?: string;
   hint: string;
 }[] = [
   {
@@ -37,6 +37,20 @@ const TASKS: {
     schema: SCHEMAS.Mapping,
     hint: '建图进度与质量',
   },
+  {
+    id: 'indoor_map',
+    panelId: 'indoor_map',
+    title: '室内地图',
+    icon: 'layers',
+    hint: '语义区 / 多楼层',
+  },
+  {
+    id: 'annotations',
+    panelId: 'annotations',
+    title: 'POI管理',
+    icon: 'waypoint',
+    hint: 'POI / 绘制 · 导入导出',
+  },
 ];
 
 /** Compact task launcher for the left sidebar. */
@@ -48,6 +62,10 @@ export function SidebarTask() {
   const status = useMemo(() => {
     const out: Record<string, string> = {};
     for (const t of TASKS) {
+      if (!t.schema) {
+        out[t.id] = 'local';
+        continue;
+      }
       const e = Object.values(envelopes).find((x) => x.schema === t.schema);
       if (!e?.payload || typeof e.payload !== 'object') {
         out[t.id] = 'idle';

@@ -2,7 +2,7 @@ import { Icon, type IconName } from '@/components/icons';
 import { MapViewModeToggle } from '@/components/Map/MapViewModeToggle';
 import { StaticSlamLoadPop } from '@/components/Map/StaticSlamLoadPop';
 import { useMapViewStore, type MapTool } from '@/store/mapViewStore';
-import { useLayerStore } from '@/store/layoutStore';
+import { useLayerStore, useLayoutStore } from '@/store/layoutStore';
 import { useWaypointStore } from '@/store/waypointStore';
 import { useDataStore } from '@/store/dataStore';
 import { useStaticSlamStore } from '@/store/staticSlamStore';
@@ -81,6 +81,7 @@ export function MapFloatToolbar({
   const waypoints = useWaypointStore((s) => s.waypoints);
   const clearWaypoints = useWaypointStore((s) => s.clear);
   const connected = useDataStore((s) => s.connected);
+  const ensurePanel = useLayoutStore((s) => s.ensurePanel);
 
   const sendNav = () => {
     if (!connected || !waypoints.length) return;
@@ -176,6 +177,11 @@ export function MapFloatToolbar({
               if (demoPlaying) return;
               setBasemapOpen((v) => !v);
             }}
+          />
+          <RailBtn
+            title="POI管理"
+            icon="panels"
+            onClick={() => ensurePanel('annotations')}
           />
         </div>
       </div>

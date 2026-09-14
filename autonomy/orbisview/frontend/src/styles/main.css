@@ -1327,45 +1327,697 @@ body { margin: 0; }
   text-align: center;
   font-weight: 600;
 }
-.indoor-map-panel h4 {
-  margin: 0.75rem 0 0.35rem;
-  font-size: 0.85rem;
+/* —— Indoor Map —— */
+.indoor-map-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
-.indoor-floor-list,
-.indoor-legend {
+.indoor-map-panel .im-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #243447;
+  background: linear-gradient(135deg, #121a24 0%, #0d141c 100%);
+}
+.indoor-map-panel .im-badge {
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+  padding: 0.08rem 0.38rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+.indoor-map-panel .im-badge-none {
+  color: #90a4ae;
+  background: rgba(144, 164, 174, 0.12);
+  border-color: rgba(144, 164, 174, 0.3);
+}
+.indoor-map-panel .im-badge-static {
+  color: #ffe082;
+  background: rgba(255, 193, 7, 0.12);
+  border-color: rgba(255, 193, 7, 0.35);
+}
+.indoor-map-panel .im-badge-live {
+  color: #b3e5fc;
+  background: rgba(79, 195, 247, 0.14);
+  border-color: rgba(79, 195, 247, 0.35);
+}
+.indoor-map-panel .im-banner-text {
+  margin: 0;
+  line-height: 1.35;
+  font-size: 0.7rem;
+}
+.indoor-map-panel .im-banner-text strong {
+  color: #e3f2fd;
+  font-weight: 600;
+}
+.indoor-map-panel .im-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+}
+.indoor-map-panel .im-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.4rem 0.25rem;
+  border-radius: 8px;
+  border: 1px solid #243447;
+  background: #0b1016;
+}
+.indoor-map-panel .im-stat-val {
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #e3f2fd;
+  line-height: 1.1;
+}
+.indoor-map-panel .im-stat-label {
+  font-size: 0.62rem;
+  color: #78909c;
+}
+.indoor-map-panel .im-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.indoor-map-panel .im-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.48rem;
+  border-radius: 999px;
+  border: 1px solid #2a3a4c;
+  background: #0b1016;
+  color: #90a4ae;
+  font-size: 0.7rem;
+  cursor: pointer;
+  user-select: none;
+}
+.indoor-map-panel .im-chip input {
+  margin: 0;
+  accent-color: #4fc3f7;
+}
+.indoor-map-panel .im-chip.on {
+  color: #e0f7fa;
+  border-color: rgba(79, 195, 247, 0.45);
+  background: rgba(79, 195, 247, 0.08);
+}
+.indoor-map-panel .im-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.indoor-map-panel .im-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+.indoor-map-panel .im-section-head h4 {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #b0bec5;
+}
+.indoor-map-panel .im-section-meta {
+  min-width: 1.2rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+  background: #1a2430;
+  color: #90caf9;
+  text-align: center;
+}
+.indoor-map-panel .im-empty {
+  margin: 0;
+  padding: 0.85rem 0.65rem;
+  text-align: center;
+  font-size: 0.72rem;
+  color: #78909c;
+  border: 1px dashed #2a3a4c;
+  border-radius: 8px;
+  background: #0b1016;
+}
+.indoor-map-panel .im-floor-list {
   list-style: none;
   margin: 0;
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-height: min(28vh, 220px);
+  overflow: auto;
 }
-.indoor-floor-list button {
-  width: 100%;
-  text-align: left;
-  margin-bottom: 0.25rem;
-  padding: 0.35rem 0.5rem;
-  border-radius: 6px;
-  border: 1px solid #2a3a4c;
-  background: #0b1016;
-  color: #cfd8dc;
-  cursor: pointer;
-}
-.indoor-floor-list button.active {
-  border-color: #4fc3f7;
-  background: #152030;
-}
-.indoor-legend li {
+.indoor-map-panel .im-floor-btn {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.78rem;
-  margin: 0.2rem 0;
+  gap: 0.5rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.45rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #243447;
+  background: #0b1016;
+  color: #cfd8dc;
+  text-align: left;
+  cursor: pointer;
 }
-.indoor-swatch {
+.indoor-map-panel .im-floor-btn:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.indoor-map-panel .im-floor-btn.active {
+  border-color: rgba(79, 195, 247, 0.55);
+  background: #101820;
+  box-shadow: 0 0 0 1px rgba(79, 195, 247, 0.12);
+}
+.indoor-map-panel .im-floor-level {
+  flex-shrink: 0;
+  min-width: 2rem;
+  padding: 0.15rem 0.3rem;
+  border-radius: 6px;
+  background: #152030;
+  color: #90caf9;
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.indoor-map-panel .im-floor-btn.active .im-floor-level {
+  background: rgba(79, 195, 247, 0.2);
+  color: #e1f5fe;
+}
+.indoor-map-panel .im-floor-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  min-width: 0;
+  flex: 1;
+}
+.indoor-map-panel .im-floor-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #eceff1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.indoor-map-panel .im-floor-id {
+  font-size: 0.62rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #78909c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.indoor-map-panel .im-floor-active-tag {
+  flex-shrink: 0;
+  padding: 0.08rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: #b3e5fc;
+  background: rgba(79, 195, 247, 0.14);
+  border: 1px solid rgba(79, 195, 247, 0.35);
+}
+.indoor-map-panel .im-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: min(22vh, 160px);
+  overflow: auto;
+}
+.indoor-map-panel .im-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.32rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid #1e2a38;
+  background: #0b1016;
+  font-size: 0.74rem;
+  color: #cfd8dc;
+}
+.indoor-map-panel .im-swatch {
   width: 12px;
   height: 12px;
   border-radius: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   flex-shrink: 0;
 }
+.indoor-map-panel .im-legend-type {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.indoor-map-panel .im-legend-count {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.68rem;
+  color: #90a4ae;
+}
+.indoor-map-panel .im-io {
+  border-top: 1px solid #1e2a38;
+  padding-top: 0.2rem;
+}
+.indoor-map-panel .im-io-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.32rem 0.1rem;
+  border: none;
+  background: transparent;
+  color: #b0bec5;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.indoor-map-panel .im-io-toggle:hover {
+  color: #e3f2fd;
+}
+.indoor-map-panel .im-io-chevron {
+  color: #78909c;
+  font-size: 0.7rem;
+}
+.indoor-map-panel .im-io-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.1rem 0 0.35rem;
+}
+.indoor-map-panel .im-io-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.indoor-map-panel .im-io-actions button {
+  border: 1px solid #2a3a4c;
+  background: #121a24;
+  color: #cfd8dc;
+  border-radius: 6px;
+  padding: 0.28rem 0.5rem;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+.indoor-map-panel .im-io-actions button:hover:not(:disabled) {
+  border-color: #3d5166;
+  background: #182230;
+}
+.indoor-map-panel .im-io-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.indoor-map-panel .im-danger {
+  border-color: rgba(239, 154, 154, 0.35) !important;
+  background: rgba(183, 28, 28, 0.18) !important;
+  color: #ffcdd2 !important;
+}
+.indoor-map-panel .im-danger:hover:not(:disabled) {
+  background: rgba(183, 28, 28, 0.32) !important;
+}
+.indoor-map-panel .im-paste {
+  width: 100%;
+  margin: 0;
+  background: #0a0f14;
+  border: 1px solid #2a3a4c;
+  color: #b0bec5;
+  border-radius: 6px;
+  padding: 0.4rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.68rem;
+  resize: vertical;
+  min-height: 3.2rem;
+}
+.indoor-map-panel .im-paste-btn {
+  align-self: flex-start;
+  border: 1px solid #2a3a4c;
+  background: #121a24;
+  color: #cfd8dc;
+  border-radius: 6px;
+  padding: 0.28rem 0.5rem;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+.indoor-map-panel .im-paste-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.indoor-map-panel .im-error {
+  margin: 0;
+  color: #ef9a9a;
+  font-size: 0.72rem;
+}
+
+/* —— Annotations / POI管理 —— */
+.annotations-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.annotations-panel .ann-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #243447;
+  background: linear-gradient(135deg, #121a24 0%, #0d141c 100%);
+}
+.annotations-panel .ann-badge {
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+  padding: 0.08rem 0.38rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #b3e5fc;
+  background: rgba(79, 195, 247, 0.14);
+  border: 1px solid rgba(79, 195, 247, 0.35);
+}
+.annotations-panel .ann-banner-text {
+  margin: 0;
+  line-height: 1.35;
+  font-size: 0.7rem;
+}
+.annotations-panel .ann-banner-text strong {
+  color: #e3f2fd;
+  font-weight: 600;
+}
+.annotations-panel .ann-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+  padding: 0.18rem;
+  border-radius: 8px;
+  background: #0a0f14;
+  border: 1px solid #1e2a38;
+}
+.annotations-panel .ann-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.38rem 0.45rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #90a4ae;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.annotations-panel .ann-tabs button:hover {
+  color: #cfd8dc;
+  background: rgba(255, 255, 255, 0.03);
+}
+.annotations-panel .ann-tabs button.active {
+  color: #e3f2fd;
+  background: #152030;
+  box-shadow: inset 0 0 0 1px rgba(79, 195, 247, 0.45);
+}
+.annotations-panel .ann-count {
+  min-width: 1.25rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  background: #1a2430;
+  color: #90caf9;
+}
+.annotations-panel .ann-tabs button.active .ann-count {
+  background: rgba(79, 195, 247, 0.2);
+  color: #e1f5fe;
+}
+.annotations-panel .ann-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+.annotations-panel .ann-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.48rem;
+  border-radius: 999px;
+  border: 1px solid #2a3a4c;
+  background: #0b1016;
+  color: #90a4ae;
+  font-size: 0.7rem;
+  cursor: pointer;
+  user-select: none;
+}
+.annotations-panel .ann-chip input {
+  margin: 0;
+  accent-color: #4fc3f7;
+}
+.annotations-panel .ann-chip.on {
+  color: #e0f7fa;
+  border-color: rgba(79, 195, 247, 0.45);
+  background: rgba(79, 195, 247, 0.08);
+}
+.annotations-panel .ann-default {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: #78909c;
+}
+.annotations-panel .ann-default select {
+  background: #0b1016;
+  border: 1px solid #2a3a4c;
+  color: #e0e6eb;
+  border-radius: 6px;
+  padding: 0.18rem 0.32rem;
+  font-size: 0.7rem;
+}
+.annotations-panel .ann-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.05rem 0.05rem 0.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: min(48vh, 380px);
+  overflow: auto;
+}
+.annotations-panel .ann-empty {
+  padding: 1.25rem 0.75rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #78909c;
+  border: 1px dashed #2a3a4c;
+  border-radius: 8px;
+  background: #0b1016;
+}
+.annotations-panel .ann-item {
+  border-radius: 8px;
+  border: 1px solid #243447;
+  background: #0b1016;
+  overflow: hidden;
+}
+.annotations-panel .ann-item.selected {
+  border-color: rgba(79, 195, 247, 0.55);
+  background: #101820;
+  box-shadow: 0 0 0 1px rgba(79, 195, 247, 0.12);
+}
+.annotations-panel .ann-item-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.48rem 0.55rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.annotations-panel .ann-item-head:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.annotations-panel .ann-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
+}
+.annotations-panel .ann-swatch-polygon {
+  border-radius: 2px;
+  background: rgba(255, 167, 38, 0.85);
+}
+.annotations-panel .ann-swatch-polyline {
+  border-radius: 2px;
+  height: 3px;
+  width: 14px;
+  background: rgba(129, 212, 250, 0.9);
+}
+.annotations-panel .ann-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  flex: 1;
+}
+.annotations-panel .ann-item-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #eceff1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.annotations-panel .ann-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-size: 0.66rem;
+  color: #78909c;
+}
+.annotations-panel .ann-coord {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #90a4ae;
+}
+.annotations-panel .ann-item-edit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: end;
+  padding: 0.45rem 0.55rem 0.5rem;
+  border-top: 1px solid #1e2a38;
+  background: rgba(0, 0, 0, 0.18);
+}
+.annotations-panel .ann-item-edit label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  flex: 1 1 5.5rem;
+  font-size: 0.62rem;
+  color: #78909c;
+}
+.annotations-panel .ann-item-edit input,
+.annotations-panel .ann-item-edit select {
+  width: 100%;
+  background: #0a0f14;
+  border: 1px solid #2a3a4c;
+  color: #e0e6eb;
+  border-radius: 6px;
+  padding: 0.28rem 0.38rem;
+  font-size: 0.74rem;
+}
+.annotations-panel .ann-danger {
+  border: 1px solid rgba(239, 154, 154, 0.35) !important;
+  background: rgba(183, 28, 28, 0.18) !important;
+  color: #ffcdd2 !important;
+  border-radius: 6px;
+  padding: 0.28rem 0.5rem;
+  font-size: 0.7rem;
+  cursor: pointer;
+  white-space: nowrap;
+  height: 1.85rem;
+}
+.annotations-panel .ann-danger:hover {
+  background: rgba(183, 28, 28, 0.32) !important;
+}
+.annotations-panel .ann-io {
+  border-top: 1px solid #1e2a38;
+  padding-top: 0.2rem;
+}
+.annotations-panel .ann-io-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.32rem 0.1rem;
+  border: none;
+  background: transparent;
+  color: #b0bec5;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.annotations-panel .ann-io-toggle:hover {
+  color: #e3f2fd;
+}
+.annotations-panel .ann-io-chevron {
+  color: #78909c;
+  font-size: 0.7rem;
+}
+.annotations-panel .ann-io-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.1rem 0 0.35rem;
+}
+.annotations-panel .ann-io-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.annotations-panel .ann-io-actions button {
+  border: 1px solid #2a3a4c;
+  background: #121a24;
+  color: #cfd8dc;
+  border-radius: 6px;
+  padding: 0.28rem 0.5rem;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+.annotations-panel .ann-io-actions button:hover {
+  border-color: #3d5166;
+  background: #182230;
+}
+.annotations-panel .ann-paste {
+  width: 100%;
+  margin: 0;
+  background: #0a0f14;
+  border: 1px solid #2a3a4c;
+  color: #b0bec5;
+  border-radius: 6px;
+  padding: 0.4rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.68rem;
+  resize: vertical;
+  min-height: 3rem;
+}
+.annotations-panel .ann-paste-btn {
+  align-self: flex-start;
+  border: 1px solid #2a3a4c;
+  background: #121a24;
+  color: #cfd8dc;
+  border-radius: 6px;
+  padding: 0.28rem 0.5rem;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+.annotations-panel .ann-paste-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.annotations-panel .ann-error {
+  margin: 0;
+  color: #ef9a9a;
+  font-size: 0.72rem;
+}
+
 .map-mapping-hud-mode {
   font-weight: 600;
   color: #90caf9;
