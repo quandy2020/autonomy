@@ -370,6 +370,20 @@ body { margin: 0; }
   border-radius: 6px; padding: 0.35rem 0.7rem; cursor: pointer;
 }
 .tab.active, .link.active { background: #2b6cb0; border-color: #2b6cb0; }
+button.btn-primary {
+  background: #4fc3f7;
+  border-color: #4fc3f7;
+  color: #0b0f14;
+  font-weight: 600;
+}
+button.btn-primary:hover:not(:disabled) {
+  background: #6fd0f9;
+  border-color: #6fd0f9;
+}
+button.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 .link { background: transparent; border: none; padding: 0; }
 .panel-host { padding: 0.75rem; overflow: auto; }
 .panel { background: #121820; border: 1px solid #243040; border-radius: 8px; padding: 0.5rem; }
@@ -2078,6 +2092,30 @@ body { margin: 0; }
 .map-rail-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+.map-rail-btn--go {
+  color: #0b0f14;
+  background: rgba(79, 195, 247, 0.92);
+  border-color: rgba(79, 195, 247, 0.95);
+}
+.map-rail-btn--go:hover:not(:disabled) {
+  color: #0b0f14;
+  background: #6fd0f9;
+  border-color: #6fd0f9;
+}
+.map-rail-btn--go:disabled {
+  color: #0b0f14;
+  background: rgba(79, 195, 247, 0.28);
+  border-color: transparent;
+  opacity: 1;
+}
+.map-rail-btn--stop {
+  color: #ffcdd2;
+}
+.map-rail-btn--stop:hover:not(:disabled) {
+  color: #fff;
+  background: rgba(229, 57, 53, 0.28);
+  border-color: rgba(229, 57, 53, 0.55);
 }
 .map-rail-btn-label {
   font-size: 0.62rem;

@@ -204,6 +204,17 @@ void TaskServer::Bind() {
                     if (!msg || !msg->data()) {
                         return;
                     }
+                    // Drop stale cancel when a newer /goal_pose is already
+                    // queued — otherwise Cancel runs after Start and kills the
+                    // preempted navigation (looks like "cannot preempt / dead").
+                    {
+                        std::lock_guard<std::mutex> lock(goal_pose_mutex_);
+                        if (pending_goal_pose_) {
+                            AINFO << "TaskServer: ignore /cancel_navigation "
+                                     "(goal_pose pending)";
+                            return;
+                        }
+                    }
                     proto::NavigationGoal goal;
                     goal.set_command(proto::NAV_CMD_CANCEL);
                     goal.set_mode(proto::NAV_MODE_UNSPECIFIED);

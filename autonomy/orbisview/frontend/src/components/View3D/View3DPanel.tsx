@@ -24,7 +24,7 @@ import { useWaypointStore, waypointColor } from '@/store/waypointStore';
 import { useMapViewStore } from '@/store/mapViewStore';
 import { useTfBufferStore } from '@/store/tfBufferStore';
 import { SCHEMAS } from '@/store/websocket/types';
-import { wsClient } from '@/store/websocket/client';
+import { goNavigation, stopNavigation } from '@/store/navActions';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import {
@@ -173,6 +173,40 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
   }, [mapTool, setFollowRobot, setStatusMsg]);
 
   useEffect(() => {
+    const isTyping = (t: EventTarget | null) =>
+      t instanceof HTMLInputElement ||
+      t instanceof HTMLTextAreaElement ||
+      (t instanceof HTMLElement && t.isContentEditable);
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isTyping(e.target)) return;
+      if (useMapViewStore.getState().tool !== 'nav') return;
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        goNavigation();
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        stopNavigation(true);
+        setLocalGoal(null);
+        setSketchPts([]);
+        return;
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        const sel = useWaypointStore.getState().selectedId;
+        if (!sel) return;
+        e.preventDefault();
+        useWaypointStore.getState().remove(sel);
+        const left = useWaypointStore.getState().waypoints.length;
+        setStatusMsg(left ? `已删除 · 剩余 ${left} 点` : '已清空航点');
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [setStatusMsg]);
+
+  useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
     const ctx = createView3DScene(mount);
@@ -218,17 +252,12 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
       useWaypointStore.getState().add(drag.x, drag.y, yaw, `#${n}`);
       setSketchPts([]);
       const list = useWaypointStore.getState().waypoints;
-      if (list.length === 1) {
-        setLocalGoal({ x: drag.x, y: drag.y, yaw });
-        if (useDataStore.getState().connected) {
-          wsClient.send({ op: 'set_goal', x: drag.x, y: drag.y, yaw });
-        }
-        setStatusMsg(
-          `目标点 (${drag.x.toFixed(2)}, ${drag.y.toFixed(2)}) yaw ${yawDeg(yaw).toFixed(0)}° · 已发送`,
-        );
-        return;
-      }
-      setStatusMsg(`导航点 #${list.length} · 共 ${list.length} 点 · 点发送下发路线`);
+      setLocalGoal({ x: drag.x, y: drag.y, yaw });
+      setStatusMsg(
+        list.length === 1
+          ? `已选目标 (${drag.x.toFixed(1)}, ${drag.y.toFixed(1)}) · 点「出发」或 Enter`
+          : `航点 ${list.length} · 继续加点或「出发」`,
+      );
     };
 
     const finishMeasureAt = (end: { x: number; y: number } | null) => {
@@ -462,18 +491,8 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
         }
         const wp = useWaypointStore.getState().waypoints.find((w) => w.id === id);
         if (wp) {
-          const list = useWaypointStore.getState().waypoints;
-          if (list.length === 1 && useDataStore.getState().connected) {
-            setLocalGoal({ x: wp.x, y: wp.y, yaw: wp.yaw ?? 0 });
-            wsClient.send({ op: 'set_goal', x: wp.x, y: wp.y, yaw: wp.yaw ?? 0 });
-            setStatusMsg(
-              `已更新目标 (${wp.x.toFixed(2)}, ${wp.y.toFixed(2)})`,
-            );
-          } else {
-            setStatusMsg(
-              `3D 已更新 ${wp.label ?? '#'} (${wp.x.toFixed(2)}, ${wp.y.toFixed(2)})`,
-            );
-          }
+          setLocalGoal({ x: wp.x, y: wp.y, yaw: wp.yaw ?? 0 });
+          setStatusMsg(`已调整 (${wp.x.toFixed(1)}, ${wp.y.toFixed(1)}) · 点「出发」下发`);
         }
         return;
       }
@@ -560,7 +579,7 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
       }
       if (tool === 'nav') {
         setSketchPts([]);
-        setStatusMsg('导航：落点设朝向；1 点发目标，多点发路线');
+        setStatusMsg('导航：拖出朝向加点 · 「出发」开始');
       }
     };
 
@@ -830,8 +849,6 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
   const clearGoal = () => {
     setLocalGoal(null);
     setSketchPts([]);
-    wsClient.send({ op: 'clear_goal' });
-    setStatusMsg('已清除目标');
   };
 
   return (

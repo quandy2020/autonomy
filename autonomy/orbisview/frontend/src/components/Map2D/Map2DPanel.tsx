@@ -11,7 +11,7 @@ import { useLayerStore, useLayoutStore } from '@/store/layoutStore';
 import { useWaypointStore, waypointColor } from '@/store/waypointStore';
 import { useMapViewStore } from '@/store/mapViewStore';
 import { SCHEMAS } from '@/store/websocket/types';
-import { wsClient } from '@/store/websocket/client';
+import { goNavigation, stopNavigation } from '@/store/navActions';
 import { MapFloatToolbar } from '@/components/Map/MapFloatToolbar';
 import { MapInstrumentCluster } from '@/components/Map/MapInstrumentCluster';
 import { MapMappingHud } from '@/components/Map/MapMappingHud';
@@ -83,7 +83,6 @@ export function Map2DPanel() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const envelopes = useDataStore((s) => s.envelopes);
-  const connected = useDataStore((s) => s.connected);
   const displays = useDisplayStore((s) => s.displays);
   const layers = useLayerStore();
   const followRobot = useLayerStore((s) => s.followRobot);
@@ -180,6 +179,26 @@ export function Map2DPanel() {
       }
       if (e.key === 'Escape') {
         useAnnotationStore.getState().cancelDraft();
+        if (mapTool === 'nav') {
+          stopNavigation(true);
+        }
+        return;
+      }
+      if (e.key === 'Enter' && mapTool === 'nav') {
+        e.preventDefault();
+        goNavigation();
+        return;
+      }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && mapTool === 'nav') {
+        const sel = useWaypointStore.getState().selectedId;
+        if (sel) {
+          e.preventDefault();
+          useWaypointStore.getState().remove(sel);
+          const left = useWaypointStore.getState().waypoints.length;
+          useMapViewStore
+            .getState()
+            .setStatusMsg(left ? `已删除 · 剩余 ${left} 点` : '已清空航点');
+        }
         return;
       }
       if (e.key === 'Backspace' && mapTool === 'draw') {
@@ -592,18 +611,12 @@ export function Map2DPanel() {
     addWaypoint(drag.x, drag.y, yaw, `#${n}`);
     setSketchPts([]);
     const list = useWaypointStore.getState().waypoints;
-    if (list.length === 1) {
-      setLocalGoal({ x: drag.x, y: drag.y, yaw });
-      if (connected) {
-        wsClient.send({ op: 'set_goal', x: drag.x, y: drag.y, yaw });
-      }
-      setStatusMsg(
-        `目标点 (${drag.x.toFixed(2)}, ${drag.y.toFixed(2)}) yaw ${yawDeg(yaw)}°` +
-          (!connected ? ' · offline' : ' · 已发送'),
-      );
-      return;
-    }
-    setStatusMsg(`导航点 #${list.length} · 共 ${list.length} 点 · 点发送下发路线`);
+    setLocalGoal({ x: drag.x, y: drag.y, yaw });
+    setStatusMsg(
+      list.length === 1
+        ? `已选目标 (${drag.x.toFixed(1)}, ${drag.y.toFixed(1)}) · 点「出发」或 Enter`
+        : `航点 ${list.length} · 继续加点或「出发」`,
+    );
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -839,18 +852,10 @@ export function Map2DPanel() {
       }
       const wp = useWaypointStore.getState().waypoints.find((x) => x.id === edit.id);
       if (wp) {
-        const list = useWaypointStore.getState().waypoints;
-        if (list.length === 1 && connected) {
-          setLocalGoal({ x: wp.x, y: wp.y, yaw: wp.yaw ?? 0 });
-          wsClient.send({ op: 'set_goal', x: wp.x, y: wp.y, yaw: wp.yaw ?? 0 });
-          setStatusMsg(
-            `已更新目标 (${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}) yaw ${yawDeg(wp.yaw ?? 0)}°`,
-          );
-        } else {
-          setStatusMsg(
-            `已更新 ${wp.label ?? '#'} (${wp.x.toFixed(2)}, ${wp.y.toFixed(2)}) yaw ${yawDeg(wp.yaw ?? 0)}°`,
-          );
-        }
+        setLocalGoal({ x: wp.x, y: wp.y, yaw: wp.yaw ?? 0 });
+        setStatusMsg(
+          `已调整 (${wp.x.toFixed(1)}, ${wp.y.toFixed(1)}) · 点「出发」下发`,
+        );
       }
       return;
     }
@@ -962,15 +967,13 @@ export function Map2DPanel() {
     }
     if (mapTool === 'nav') {
       setSketchPts([]);
-      setStatusMsg('导航：落点设朝向；1 点发目标，多点发路线');
+      setStatusMsg('导航：拖出朝向加点 · 「出发」开始');
     }
   };
 
   const clearGoal = () => {
     setLocalGoal(null);
     setSketchPts([]);
-    wsClient.send({ op: 'clear_goal' });
-    setStatusMsg('已清除目标');
   };
 
   const clampScale = (s: number) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, s));
