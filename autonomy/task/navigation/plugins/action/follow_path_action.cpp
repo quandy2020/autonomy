@@ -5,9 +5,11 @@
 #include <cmath>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
 #include <automsgs/actions/nav_actions.pb.h>
 #include "autonomy/common/logging.hpp"
 #include "autonomy/task/navigation/plugins/plugin_utils.hpp"
@@ -69,7 +71,15 @@ protected:
     {
         automsgs::msgs::nav_msgs::Path path;
         std::string controller_id;
+        arrived_without_path_ = false;
         if (!getInput("path", path) || path.poses().empty()) {
+            std::vector<automsgs::msgs::geometry_msgs::PoseStamped> goals;
+            if (config().blackboard &&
+                config().blackboard->get("goals", goals) && goals.empty()) {
+                ClearErrorPorts(*this);
+                arrived_without_path_ = true;
+                return false;
+            }
             AWARN_EVERY(20) << "FollowPath: missing path on blackboard";
             SetErrorPorts(*this, 1, "FollowPath: missing path");
             return false;
@@ -112,7 +122,8 @@ protected:
         Goal goal;
         if (!BuildGoal(goal)) {
             remote_started_ = false;
-            return BT::NodeStatus::FAILURE;
+            return arrived_without_path_ ? BT::NodeStatus::SUCCESS
+                                         : BT::NodeStatus::FAILURE;
         }
 
         auto& session = GetSession(*client);
@@ -163,6 +174,7 @@ protected:
 private:
     uint64_t sent_fingerprint_{0};
     uint64_t pending_fingerprint_{0};
+    bool arrived_without_path_{false};
 };
 
 }  // namespace autonomy::task::plugins::navigation

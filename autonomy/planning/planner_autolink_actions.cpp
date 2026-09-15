@@ -330,7 +330,10 @@ void PlannerServer::ComputePlanThroughPoses()
 
         auto cancel_checker = [&]() { return server->IsCancelRequested(); };
         automsgs::msgs::nav_msgs::Path merged_path;
+        size_t skipped = 0;
 
+        // Skip unplannable / in-obstacle waypoints and stitch remaining
+        // reachable segments in order so partial routes still execute.
         for (size_t i = 0; i < goals.size(); ++i) {
             if (server->IsCancelRequested()) {
                 throw common::PlannerCancelled(
@@ -338,27 +341,71 @@ void PlannerServer::ComputePlanThroughPoses()
             }
 
             automsgs::msgs::geometry_msgs::PoseStamped segment_start =
-                (i == 0) ? curr_start : merged_path.poses(merged_path.poses_size() - 1);
-            if (i > 0) {
+                merged_path.poses().empty()
+                    ? curr_start
+                    : merged_path.poses(merged_path.poses_size() - 1);
+            if (!merged_path.poses().empty()) {
                 *segment_start.mutable_header() = merged_path.header();
             }
 
             auto curr_goal = goals[i];
             if (!TransformPosesToGlobalFrame(segment_start, curr_goal)) {
-                throw common::PlannerTFError(
-                    "Unable to transform poses to global frame");
+                AWARN << "ComputePathThroughPoses: skip waypoint " << i
+                      << " (TF failed) toward ("
+                      << goals[i].pose().position().x() << ", "
+                      << goals[i].pose().position().y() << ")";
+                ++skipped;
+                continue;
             }
 
-            auto segment = GetPlan(segment_start, curr_goal, goal->planner_id(),
-                                   cancel_checker);
-            if (!ValidatePath(curr_goal, segment, goal->planner_id())) {
-                throw common::NoValidPathCouldBeFound(goal->planner_id() + " generated an empty path");
+            try {
+                auto segment = GetPlan(segment_start, curr_goal,
+                                       goal->planner_id(), cancel_checker);
+                if (segment.poses().empty()) {
+                    AWARN << "ComputePathThroughPoses: skip empty path to "
+                             "waypoint "
+                          << i << " toward ("
+                          << curr_goal.pose().position().x() << ", "
+                          << curr_goal.pose().position().y() << ")";
+                    ++skipped;
+                    continue;
+                }
+                // Prefer a planner-found path over a strict post-check. NavFn
+                // already avoids lethal cells; ValidatePath can reject usable
+                // routes that only graze inflated costs and left every
+                // through-poses goal "unplannable" while to-pose still worked.
+                if (!ValidatePath(curr_goal, segment, goal->planner_id())) {
+                    AWARN << "ComputePathThroughPoses: accepting path to "
+                             "waypoint "
+                          << i << " despite costmap check ("
+                          << segment.poses_size() << " poses) toward ("
+                          << curr_goal.pose().position().x() << ", "
+                          << curr_goal.pose().position().y() << ")";
+                }
+                for (const auto& pose : segment.poses()) {
+                    *merged_path.mutable_poses()->Add() = pose;
+                }
+                *merged_path.mutable_header() = segment.header();
+            } catch (const common::PlannerCancelled&) {
+                throw;
+            } catch (const std::exception& ex) {
+                AWARN << "ComputePathThroughPoses: skip waypoint " << i
+                      << " (" << ex.what() << ") toward ("
+                      << curr_goal.pose().position().x() << ", "
+                      << curr_goal.pose().position().y() << ")";
+                ++skipped;
             }
+        }
 
-            for (const auto& pose : segment.poses()) {
-                *merged_path.mutable_poses()->Add() = pose;
-            }
-            *merged_path.mutable_header() = segment.header();
+        if (merged_path.poses().empty()) {
+            throw common::NoValidPathCouldBeFound(
+                goal->planner_id() +
+                " generated no valid path through remaining waypoints");
+        }
+        if (skipped > 0) {
+            AINFO << "ComputePathThroughPoses: stitched path with "
+                  << merged_path.poses_size() << " poses; skipped " << skipped
+                  << "/" << goals.size() << " waypoints";
         }
 
         PublishPlan(merged_path);

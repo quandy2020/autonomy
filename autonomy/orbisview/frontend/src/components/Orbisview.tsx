@@ -28,7 +28,7 @@ import { ChannelsSidebar } from '@/components/Channels/ChannelsSidebar';
 import { SidebarTask } from '@/components/Sidebar/SidebarTask';
 import { SidebarSetting } from '@/components/Sidebar/SidebarSetting';
 import { emergencyStop } from '@/components/Teleop/emergencyStop';
-import { SCHEMAS } from '@/store/websocket/types';
+import { SCHEMAS, isBrowsableChannel } from '@/store/websocket/types';
 import { defaultWsUrl } from '@/config/parameters';
 import { Icon, IconLabel, panelIcon, type IconName } from '@/components/icons';
 import { usePanelOptsStore } from '@/store/panelOptsStore';
@@ -36,6 +36,7 @@ import { useTfBufferStore } from '@/store/tfBufferStore';
 import { MappingVizEffects } from '@/components/MappingVizEffects';
 import { IndoorMapEffects } from '@/components/IndoorMapEffects';
 import { SameTypeSplitButtons } from '@/components/Mosaic/SameTypeSplitButton';
+import { tickNavigationProgress } from '@/store/navActions';
 
 const SIDEBAR_NAV: { id: SidebarTab; label: string; icon: IconName }[] = [
   { id: 'panels', label: 'Panels', icon: 'panels' },
@@ -93,7 +94,9 @@ function resubscribeTracked(): void {
   wsClient.listChannels();
   const { subscribed, markSubscribed, channels } = useDataStore.getState();
   const targets = { ...subscribed };
-  const discovered = channels.map((c) => c.name);
+  const discovered = channels
+    .map((c) => c.name)
+    .filter((n) => isBrowsableChannel(n));
   const preferLive = discovered.some((n) => !n.startsWith('/orbisview/mock/'));
   // Empty discovery must NOT fall back to mock — that creates Autolink readers
   // for /orbisview/mock/* while waiting for autosim.
@@ -103,12 +106,19 @@ function resubscribeTracked(): void {
       ? MOCK_CHANNELS
       : AUTOSIM_CHANNELS;
   for (const ch of seed) {
+    if (!isBrowsableChannel(ch)) continue;
     if (targets[ch] == null) targets[ch] = 20;
   }
   // Drop stale mock subscriptions when live channels exist.
   if (preferLive) {
     for (const ch of Object.keys(targets)) {
-      if (ch.startsWith('/orbisview/mock/')) delete targets[ch];
+      if (ch.startsWith('/orbisview/mock/') || !isBrowsableChannel(ch)) {
+        delete targets[ch];
+      }
+    }
+  } else {
+    for (const ch of Object.keys(targets)) {
+      if (!isBrowsableChannel(ch)) delete targets[ch];
     }
   }
   Object.entries(targets).forEach(([ch, hz]) => {
@@ -216,9 +226,12 @@ export function Orbisview() {
         pushLog(`channels=${msg.channels.length}`);
         const { subscribed } = useDataStore.getState();
         const preferLive = msg.channels.some(
-          (c) => !c.name.startsWith('/orbisview/mock/'),
+          (c) =>
+            isBrowsableChannel(c.name) &&
+            !c.name.startsWith('/orbisview/mock/'),
         );
         for (const ch of msg.channels) {
+          if (!isBrowsableChannel(ch.name)) continue;
           if (preferLive && ch.name.startsWith('/orbisview/mock/')) continue;
           if (!preferLive && !MOCK_CHANNELS.includes(ch.name)) continue;
           if (subscribed[ch.name] != null) continue;
@@ -263,6 +276,11 @@ export function Orbisview() {
     const e = Object.values(envelopes).find((x) => x.schema === SCHEMAS.Pose2D);
     return asPayload<{ x: number; y: number; yaw?: number }>(e);
   }, [envelopes]);
+
+  // Prune reached waypoints; clear draft on success/fail so Go count → 0.
+  useEffect(() => {
+    tickNavigationProgress(pose);
+  }, [pose, envelopes]);
 
   const twist = useMemo(() => {
     const e = Object.values(envelopes).find((x) => x.schema === SCHEMAS.Twist2D);

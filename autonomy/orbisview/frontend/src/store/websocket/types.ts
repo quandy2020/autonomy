@@ -19,6 +19,14 @@ export interface ChannelInfo {
   fields?: string[];
 }
 
+/** Autolink service transport + Action /feedback|/status (not user topics). */
+export function isBrowsableChannel(name: string, msgType?: string): boolean {
+  if (name.includes('_SRV_')) return false;
+  if (name.endsWith('/feedback') || name.endsWith('/status')) return false;
+  if (msgType && /FeedbackMessage|StatusMessage/i.test(msgType)) return false;
+  return true;
+}
+
 export interface StreamEnvelope {
   op: 'envelope';
   channel: string;

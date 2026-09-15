@@ -33,9 +33,16 @@ protected:
         auto client = ResolveClient(*this);
         std::vector<automsgs::msgs::geometry_msgs::PoseStamped> goals;
         std::string planner_id;
-        if (!getInput("goals", goals) || goals.empty()) {
+        if (!getInput("goals", goals)) {
             SetErrorPorts(*this, 1, "ComputePathThroughPoses: missing goals");
             return BT::NodeStatus::FAILURE;
+        }
+        // All waypoints passed / filtered: treat as done so FollowPath can
+        // finish on the last good path instead of thrashing RecoveryNode.
+        if (goals.empty()) {
+            ClearErrorPorts(*this);
+            AINFO_EVERY(10) << "ComputePathThroughPoses: no remaining goals";
+            return BT::NodeStatus::SUCCESS;
         }
         getInput("planner_id", planner_id);
 

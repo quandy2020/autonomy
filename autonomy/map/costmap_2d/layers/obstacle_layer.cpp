@@ -487,8 +487,8 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation,
     unsigned int x0 = 0;
     unsigned int y0 = 0;
     if (!worldToMap(ox, oy, x0, y0)) {
-        AWARN << "ObstacleLayer: sensor origin (" << ox << ", " << oy
-              << ") out of map bounds";
+        AWARN_EVERY(100) << "ObstacleLayer: sensor origin (" << ox << ", " << oy
+                         << ") out of map bounds";
         return;
     }
 

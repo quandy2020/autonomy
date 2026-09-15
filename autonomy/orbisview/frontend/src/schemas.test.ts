@@ -31,6 +31,21 @@ describe('render schemas', () => {
   });
 });
 
+describe('isBrowsableChannel', () => {
+  it('hides service and action protocol channels', async () => {
+    const { isBrowsableChannel } = await import('./store/websocket/types');
+    expect(isBrowsableChannel('/scan')).toBe(true);
+    expect(
+      isBrowsableChannel('/follow_path/send_goal__SRV__REQUEST'),
+    ).toBe(false);
+    expect(isBrowsableChannel('/follow_path/feedback')).toBe(false);
+    expect(isBrowsableChannel('/follow_path/status')).toBe(false);
+    expect(
+      isBrowsableChannel('/custom', 'autolink.proto.FeedbackMessage'),
+    ).toBe(false);
+  });
+});
+
 describe('panel registry', () => {
   it('registers builtin panels including DV+ parity set', () => {
     registerBuiltinPanels();

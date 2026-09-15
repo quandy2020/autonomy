@@ -1,4 +1,5 @@
 import type { ServerMessage } from './types';
+import { isBrowsableChannel } from './types';
 
 export type MessageHandler = (msg: ServerMessage) => void;
 export type ConnState = 'offline' | 'connecting' | 'online' | 'reconnecting';
@@ -127,6 +128,7 @@ export class OrbisWsClient {
   }
 
   subscribe(channel: string, maxHz = 0): void {
+    if (!isBrowsableChannel(channel)) return;
     this.send({ op: 'subscribe', channel, max_hz: maxHz });
   }
 

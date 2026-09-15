@@ -117,17 +117,21 @@ void LayeredCostmap::updateMap(double robot_x, double robot_y,
     }
 
     if (isOutofBounds(robot_x, robot_y)) {
-        // Skip warn until the grid has a real size (pre-map default window is
-        // often [0,W]×[0,H] while the robot already sits in map-frame coords).
-        if (combined_costmap_.getSizeInCellsX() > 0 &&
-            combined_costmap_.getSizeInCellsY() > 0) {
-            LOG(WARNING) << "Robot is out of bounds of the costmap! pose=("
-                         << robot_x << ", " << robot_y << ") origin=("
-                         << combined_costmap_.getOriginX() << ", "
-                         << combined_costmap_.getOriginY() << ") size_m=("
-                         << combined_costmap_.getSizeInMetersX() << ", "
-                         << combined_costmap_.getSizeInMetersY() << ")";
-        }
+        // Pre-map default window is often origin=(0,0) with configured size
+        // while the robot already sits in negative map-frame coords. Throttle
+        // (and soften) until StaticLayer resizes the master grid.
+        const bool awaiting_static_map =
+            !rolling_window_ &&
+            combined_costmap_.getOriginX() == 0.0 &&
+            combined_costmap_.getOriginY() == 0.0;
+        AWARN_EVERY(awaiting_static_map ? 200 : 50)
+            << "Robot is out of bounds of the costmap! pose=(" << robot_x
+            << ", " << robot_y << ") origin=("
+            << combined_costmap_.getOriginX() << ", "
+            << combined_costmap_.getOriginY() << ") size_m=("
+            << combined_costmap_.getSizeInMetersX() << ", "
+            << combined_costmap_.getSizeInMetersY() << ")"
+            << (awaiting_static_map ? " (awaiting static map)" : "");
     }
 
     if (plugins_.size() == 0 && filters_.size() == 0) {

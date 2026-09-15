@@ -252,27 +252,55 @@ bool NavigationClient::ComputePathThroughPoses(
         remote_goal.set_planner_id(planner_id);
     }
 
-    const auto wrapped = compute_through_poses_client_->SendGoalAndWait(
-        remote_goal, {}, std::chrono::seconds(3),
-        std::chrono::milliseconds(400));
-    if (wrapped && wrapped->code == autolink::action::ResultCode::SUCCEEDED &&
-        wrapped->result && !wrapped->result->path().poses().empty()) {
-        path = wrapped->result->path();
+    // Same pattern as ComputePathToPose: accept via /plan (PublishPlan runs
+    // before SucceededCurrent; get_result often stalls on large paths).
+    const auto sent_at = std::chrono::steady_clock::now();
+    auto accept_future =
+        compute_through_poses_client_->AsyncSendGoal(remote_goal);
+    if (accept_future.wait_for(std::chrono::seconds(3)) !=
+        std::future_status::ready) {
+        SetError(error_code, error_message, kErrorRemoteCallFailed,
+                 "compute_path_through_poses accept timeout");
+        return false;
+    }
+    const auto goal_handle = accept_future.get();
+    if (!goal_handle) {
+        SetError(error_code, error_message, kErrorRemoteCallFailed,
+                 "compute_path_through_poses goal rejected");
+        return false;
+    }
+
+    if (WaitForPublishedPlan(goals.back(), sent_at, std::chrono::seconds(12),
+                             path)) {
+        AINFO_EVERY(10) << "ComputePathThroughPoses: using /plan ("
+                        << path.poses_size() << " poses)";
         return true;
     }
 
-    if (!goals.empty() &&
-        WaitForPublishedPlan(goals.back(),
-                             std::chrono::steady_clock::now() -
-                                 std::chrono::milliseconds(500),
-                             std::chrono::seconds(4), path)) {
-        AINFO << "ComputePathThroughPoses: using /plan (" << path.poses_size()
-              << " poses) after action result lag";
-        return true;
+    auto result_future = goal_handle->AsyncGetResult();
+    if (result_future.wait_for(std::chrono::milliseconds(200)) ==
+        std::future_status::ready) {
+        try {
+            const auto wrapped = result_future.get();
+            if (wrapped.code == autolink::action::ResultCode::SUCCEEDED &&
+                wrapped.result && !wrapped.result->path().poses().empty()) {
+                path = wrapped.result->path();
+                return true;
+            }
+            if (wrapped.result && !wrapped.result->error_msg().empty()) {
+                SetError(error_code, error_message, kErrorRemoteCallFailed,
+                         wrapped.result->error_msg());
+                return false;
+            }
+        } catch (const std::exception& ex) {
+            SetError(error_code, error_message, kErrorRemoteCallFailed,
+                     ex.what());
+            return false;
+        }
     }
 
     SetError(error_code, error_message, kErrorRemoteCallFailed,
-             "compute_path_through_poses remote call failed");
+             "compute_path_through_poses produced no /plan");
     return false;
 }
 

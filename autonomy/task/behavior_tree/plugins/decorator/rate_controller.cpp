@@ -5,11 +5,14 @@
  * When skipped, returns SUCCESS so PipelineSequence can continue to FollowPath.
  * After the first successful child tick, later failures are soft (SUCCESS) so a
  * transient replan miss does not abort an active FollowPath.
+ * Before the first success, FAILURE/RUNNING keep the decorator RUNNING so a
+ * cold-start planner miss does not trip RecoveryNode immediately.
  */
 
 #include <chrono>
 #include <string>
 
+#include "autonomy/common/logging.hpp"
 #include "autonomy/task/behavior_tree/plugins/bt_node_base.hpp"
 #include "behaviortree_cpp/decorator_node.h"
 
@@ -31,14 +34,19 @@ public:
         // Keep got_success_ across RecoveryNode retries so a transient replan
         // miss after clear does not immediately FAIL the whole pipeline.
         first_time_ = true;
+        waiting_first_plan_ = false;
         DecoratorNode::halt();
     }
 
 private:
     std::chrono::duration<double> period_{1.0};
     std::chrono::steady_clock::time_point last_time_{};
+    std::chrono::steady_clock::time_point first_wait_start_{};
     bool first_time_{true};
     bool got_success_{false};
+    bool waiting_first_plan_{false};
+
+    static constexpr std::chrono::seconds kFirstPlanTimeout{30};
 
     BT::NodeStatus tick() override
     {
@@ -50,7 +58,10 @@ private:
 
         const auto now = std::chrono::steady_clock::now();
         if (!first_time_ && (now - last_time_) < period_) {
-            return BT::NodeStatus::SUCCESS;
+            // Between replan ticks: pipeline must stay alive so FollowPath
+            // keeps running. If we still have no first plan, stay RUNNING.
+            return got_success_ ? BT::NodeStatus::SUCCESS
+                                : BT::NodeStatus::RUNNING;
         }
 
         first_time_ = false;
@@ -59,14 +70,34 @@ private:
         const BT::NodeStatus child_status = child_node_->executeTick();
         if (child_status == BT::NodeStatus::SUCCESS) {
             got_success_ = true;
+            waiting_first_plan_ = false;
             return BT::NodeStatus::SUCCESS;
         }
-        if (child_status == BT::NodeStatus::FAILURE) {
-            // First plan must succeed; later replans may soft-fail.
-            return got_success_ ? BT::NodeStatus::SUCCESS
-                                : BT::NodeStatus::FAILURE;
+        if (child_status == BT::NodeStatus::RUNNING) {
+            return BT::NodeStatus::RUNNING;
         }
-        return BT::NodeStatus::SUCCESS;
+        if (child_status == BT::NodeStatus::FAILURE) {
+            // Soft-fail replans once we already have a path for FollowPath.
+            if (got_success_) {
+                return BT::NodeStatus::SUCCESS;
+            }
+            if (!waiting_first_plan_) {
+                waiting_first_plan_ = true;
+                first_wait_start_ = now;
+            }
+            if (now - first_wait_start_ >= kFirstPlanTimeout) {
+                AWARN << "RateController '" << name()
+                      << "': first plan timed out after "
+                      << kFirstPlanTimeout.count() << "s";
+                waiting_first_plan_ = false;
+                return BT::NodeStatus::FAILURE;
+            }
+            AWARN_EVERY(25) << "RateController '" << name()
+                            << "': waiting for first successful plan";
+            return BT::NodeStatus::RUNNING;
+        }
+        return got_success_ ? BT::NodeStatus::SUCCESS
+                            : BT::NodeStatus::RUNNING;
     }
 };
 

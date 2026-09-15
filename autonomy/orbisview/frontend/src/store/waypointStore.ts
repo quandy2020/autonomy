@@ -38,6 +38,10 @@ interface WaypointState {
   add: (x: number, y: number, yaw?: number, label?: string) => void;
   update: (id: string, patch: WaypointPatch) => void;
   remove: (id: string) => void;
+  /** Replace the full list (e.g. after filtering blocked goals). */
+  replaceAll: (waypoints: Waypoint[]) => void;
+  /** Drop the first n waypoints (passed along the active route). */
+  removePrefix: (count: number) => void;
   moveUp: (id: string) => void;
   moveDown: (id: string) => void;
   select: (id: string | null) => void;
@@ -64,6 +68,20 @@ export const useWaypointStore = create<WaypointState>()(
       remove: (id) => {
         const waypoints = get().waypoints.filter((w) => w.id !== id);
         const selectedId = get().selectedId === id ? waypoints[0]?.id ?? null : get().selectedId;
+        set({ waypoints, selectedId });
+      },
+      replaceAll: (waypoints) => {
+        const selectedId = waypoints.some((w) => w.id === get().selectedId)
+          ? get().selectedId
+          : waypoints[0]?.id ?? null;
+        set({ waypoints, selectedId });
+      },
+      removePrefix: (count) => {
+        if (count <= 0) return;
+        const waypoints = get().waypoints.slice(count);
+        const selectedId = waypoints.some((w) => w.id === get().selectedId)
+          ? get().selectedId
+          : waypoints[0]?.id ?? null;
         set({ waypoints, selectedId });
       },
       moveUp: (id) => {
