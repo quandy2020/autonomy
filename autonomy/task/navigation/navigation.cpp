@@ -130,13 +130,44 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
 {
     using Command = task_proto::NavigationCommand;
 
-    // CANCEL/STOP bump epoch before taking the mutex so an in-flight START
-    // (holding the lock in its ready-wait) abandons instead of launching a
-    // tree that Cancel would then immediately kill — or worse, Cancel waits
-    // and kills a newer Start that already finished.
+    // CANCEL/STOP: bump epoch first so any in-flight START abandons, then
+    // cleanup without blocking behind START (which would kill a newer goal).
     if (goal.command() == Command::NAV_CMD_STOP ||
         goal.command() == Command::NAV_CMD_CANCEL) {
-        ++goal_epoch_;
+        const uint64_t cancel_epoch = ++goal_epoch_;
+        if (goal_mutex_.try_lock()) {
+            std::lock_guard<std::mutex> adopt(goal_mutex_, std::adopt_lock);
+            if (navigation()) {
+                navigation()->CancelActiveMotion();
+            }
+            StopTree();
+            active_goal_.reset();
+            initial_distance_ = -1.f;
+            SetLifecycle(TaskLifecycle::kCanceled);
+            AINFO << "NavigationTask: canceled (epoch=" << cancel_epoch << ")";
+            return true;
+        }
+        AINFO << "NavigationTask: cancel signaled in-flight start (epoch="
+              << cancel_epoch << "); deferred cleanup";
+        std::thread([this, cancel_epoch]() {
+            std::lock_guard<std::mutex> lock(goal_mutex_);
+            if (goal_epoch_.load() != cancel_epoch) {
+                AINFO << "NavigationTask: deferred cancel skipped; newer goal "
+                         "won (epoch="
+                      << goal_epoch_.load() << ")";
+                return;
+            }
+            if (navigation()) {
+                navigation()->CancelActiveMotion();
+            }
+            StopTree();
+            active_goal_.reset();
+            initial_distance_ = -1.f;
+            SetLifecycle(TaskLifecycle::kCanceled);
+            AINFO << "NavigationTask: deferred cancel applied (epoch="
+                  << cancel_epoch << ")";
+        }).detach();
+        return true;
     }
 
     std::lock_guard<std::mutex> goal_lock(goal_mutex_);
@@ -247,20 +278,6 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
             return false;
         }
         return Pause();
-    case Command::NAV_CMD_STOP:
-    case Command::NAV_CMD_CANCEL: {
-        // epoch already bumped above
-        if (navigation()) {
-            navigation()->CancelActiveMotion();
-        }
-        StopTree();
-        active_goal_.reset();
-        initial_distance_ = -1.f;
-        SetLifecycle(TaskLifecycle::kCanceled);
-        AINFO << "NavigationTask: canceled (epoch=" << goal_epoch_.load()
-              << ")";
-        return true;
-    }
     default:
         return false;
     }
