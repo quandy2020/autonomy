@@ -210,8 +210,12 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
         }
 
         {
+            // Cold start: planning/control often need several seconds after
+            // launch (costmap + StaticLayer map) before action servers appear.
+            // Starting the BT early causes RateController FAILURE and stuck
+            // FollowPath waits.
             const auto deadline = std::chrono::steady_clock::now() +
-                                  std::chrono::milliseconds(600);
+                                  std::chrono::seconds(20);
             while (std::chrono::steady_clock::now() < deadline) {
                 if (epoch != goal_epoch_.load()) {
                     AINFO << "NavigationTask: start superseded while waiting "
@@ -222,15 +226,21 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
                     navigation()->IsControlReady()) {
                     break;
                 }
-                std::this_thread::sleep_for(std::chrono::milliseconds(40));
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
             }
-            if (!navigation() || !navigation()->IsPlanningReady()) {
-                AWARN << "NavigationTask: planner not ready yet; starting "
-                         "BT anyway";
+            if (!navigation()) {
+                AERROR << "NavigationTask: navigation client missing; "
+                          "rejecting goal";
+                return false;
             }
-            if (!navigation()->IsControlReady()) {
-                AWARN << "NavigationTask: follow_path not ready yet; starting "
-                         "BT anyway";
+            const bool plan_ready = navigation()->IsPlanningReady();
+            const bool ctrl_ready = navigation()->IsControlReady();
+            if (!plan_ready || !ctrl_ready) {
+                AERROR << "NavigationTask: servers not ready "
+                          "(planner="
+                       << plan_ready << " follow_path=" << ctrl_ready
+                       << "); rejecting goal";
+                return false;
             }
         }
 

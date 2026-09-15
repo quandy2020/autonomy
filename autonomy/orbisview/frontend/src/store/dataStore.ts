@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { ChannelInfo, StreamEnvelope } from '@/store/websocket/types';
-import { STALE_THRESHOLD_MS } from '@/store/websocket/types';
+import { STALE_THRESHOLD_MS, isBrowsableChannel } from '@/store/websocket/types';
 import type { ConnState } from '@/store/websocket/client';
 
 interface DataState {
@@ -71,9 +71,14 @@ export const useDataStore = create<DataState>((set, get) => ({
           ? 'reconnecting'
           : 'offline',
     }),
-  setChannels: (channels) => set({ channels }),
-  markSubscribed: (channel, maxHz = 0) =>
-    set((s) => ({ subscribed: { ...s.subscribed, [channel]: maxHz } })),
+  setChannels: (channels) =>
+    set({
+      channels: channels.filter((c) => isBrowsableChannel(c.name, c.msg_type)),
+    }),
+  markSubscribed: (channel, maxHz = 0) => {
+    if (!isBrowsableChannel(channel)) return;
+    set((s) => ({ subscribed: { ...s.subscribed, [channel]: maxHz } }));
+  },
   markUnsubscribed: (channel) =>
     set((s) => {
       const next = { ...s.subscribed };

@@ -94,7 +94,7 @@ planner_options {
     }
     enabled: true
     inflation_layer {
-      inflation_radius: 0.4
+      inflation_radius: 0.2
       inflate_unknown: false
       cost_scaling_factor: 3
       enabled: true
@@ -192,7 +192,7 @@ controller_options {
     }
     enabled: true
     inflation_layer {
-      inflation_radius: 0.4
+      inflation_radius: 0.2
       inflate_unknown: false
       cost_scaling_factor: 3
       enabled: true

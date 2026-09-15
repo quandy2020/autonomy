@@ -9,9 +9,12 @@ interface MapViewState {
   mode: MapViewMode;
   tool: MapTool;
   statusMsg: string;
+  /** True while a Go-dispatched route/goal is active (Stop clears). */
+  routeActive: boolean;
   setMode: (mode: MapViewMode) => void;
   setTool: (tool: MapTool) => void;
   setStatusMsg: (msg: string) => void;
+  setRouteActive: (active: boolean) => void;
   /** Select a map tool; keeps current 2D/3D mode. */
   selectTool: (tool: MapTool) => void;
 }
@@ -38,9 +41,11 @@ export const useMapViewStore = create<MapViewState>()(
       mode: '2d',
       tool: 'pan',
       statusMsg: TOOL_HINT.pan,
+      routeActive: false,
       setMode: (mode) => set({ mode }),
       setTool: (tool) => set({ tool, statusMsg: TOOL_HINT[tool] }),
       setStatusMsg: (statusMsg) => set({ statusMsg }),
+      setRouteActive: (routeActive) => set({ routeActive }),
       selectTool: (tool) =>
         set({
           tool,
@@ -57,6 +62,7 @@ export const useMapViewStore = create<MapViewState>()(
           ...current,
           ...p,
           tool,
+          routeActive: false,
           statusMsg: TOOL_HINT[tool],
         };
       },

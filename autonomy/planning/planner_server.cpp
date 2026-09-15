@@ -453,11 +453,11 @@ bool PlannerServer::ValidatePath(
         return false;
     }
 
-    // Reject only lethal / inscribed cells. max_cost=252 incorrectly rejected
-    // MAX_NON_OBSTACLE (still navigable inflation). Treating unknown as
-    // obstacle rejects Cartographer paths whose footprint grazes unexplored
-    // cells — matching BT PathValid defaults (253, false).
-    if (!IsPathValid(path, map::costmap_2d::INSCRIBED_INFLATED_OBSTACLE,
+    // Reject only lethal cells. Inscribed (253) is the circular footprint of
+    // the robot center on the inflation edge — still often traversable after
+    // NavFn plans through it; treating it as blocked made free corridors look
+    // unplannable for through-poses (and some to-pose goals).
+    if (!IsPathValid(path, map::costmap_2d::LETHAL_OBSTACLE,
                      /*consider_unknown_as_obstacle=*/false)) {
         AWARN_EVERY(10) << "Planning algorithm " << planner_id
                         << " path collides with costmap obstacles toward ("
@@ -536,8 +536,7 @@ bool PlannerServer::IsPathValid(const automsgs::msgs::nav_msgs::Path& path,
 
         if (use_radius &&
             (cost >= max_cost ||
-             cost == map::costmap_2d::LETHAL_OBSTACLE ||
-             cost == map::costmap_2d::INSCRIBED_INFLATED_OBSTACLE)) {
+             cost == map::costmap_2d::LETHAL_OBSTACLE)) {
             return false;
         }
         if (!use_radius &&

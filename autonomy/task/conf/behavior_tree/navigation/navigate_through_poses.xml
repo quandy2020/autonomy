@@ -1,5 +1,7 @@
 <!--
-  Multi-waypoint navigation: replan through {goals} at 1 Hz, smooth, follow.
+  Multi-waypoint navigation:
+  - Drop passed + in-collision goals before each replan
+  - Stitch remaining free goals in order; follow at 0.5 Hz replan
 -->
 <root BTCPP_format="4" main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
@@ -18,12 +20,24 @@
           default_smoother="simple_smoother"
           topic_name="smoother_selector"/>
         <RateController hz="0.5">
-          <!-- See navigate_to_pose.xml: skip SmoothPath so FollowPath can run. -->
-          <ComputePathThroughPoses
-            goals="{goals}"
-            path="{path}"
-            planner_id="{selected_planner}"
-            error_code_id="{compute_path_through_poses_error_code}"/>
+          <Sequence name="PruneAndPlanThroughPoses">
+            <RemovePassedGoals
+              input_goals="{goals}"
+              output_goals="{goals}"
+              radius="0.6"
+              global_frame="{global_frame}"
+              robot_base_frame="{robot_base_frame}"/>
+            <RemoveInCollisionGoals
+              input_goals="{goals}"
+              output_goals="{goals}"
+              cost_threshold="253"
+              consider_unknown_as_obstacle="false"/>
+            <ComputePathThroughPoses
+              goals="{goals}"
+              path="{path}"
+              planner_id="{selected_planner}"
+              error_code_id="{compute_path_through_poses_error_code}"/>
+          </Sequence>
         </RateController>
         <FollowPath
           path="{path}"

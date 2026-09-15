@@ -7,6 +7,7 @@
 #include <glog/logging.h>
 
 #include <chrono>
+#include <cstring>
 #include <fstream>
 #include <iterator>
 #include <mutex>
@@ -26,6 +27,7 @@
 
 #if defined(ORBISVIEW_WITH_AUTOLINK)
 #include "autolink/autolink.hpp"
+#include "autolink/common/types.hpp"
 #include "autolink/message/raw_message.hpp"
 #include "autolink/node/writer.hpp"
 #if defined(ORBISVIEW_WITH_AUTOMSGS)
@@ -41,6 +43,38 @@ namespace autonomy {
 namespace orbisview {
 namespace backend {
 namespace {
+
+bool EndsWith(const std::string& value, const std::string& suffix) {
+  return value.size() >= suffix.size() &&
+         value.compare(value.size() - suffix.size(), suffix.size(), suffix) ==
+             0;
+}
+
+/** Hide Autolink service transport + Action /feedback|/status (matches CLI). */
+bool IsServiceOrActionChannel(const std::string& channel,
+                              const std::unordered_set<std::string>& all) {
+  if (channel.find("_SRV_") != std::string::npos) {
+    return true;
+  }
+  static const char* kActionPubSubSuffixes[] = {"/feedback", "/status"};
+  for (const char* suffix : kActionPubSubSuffixes) {
+    if (!EndsWith(channel, suffix)) {
+      continue;
+    }
+#if defined(ORBISVIEW_WITH_AUTOLINK)
+    const std::string base =
+        channel.substr(0, channel.size() - std::strlen(suffix));
+    if (all.count(base + "/send_goal" + ::autolink::SRV_CHANNEL_REQ_SUFFIX) ||
+        all.count(base + "/send_goal" + ::autolink::SRV_CHANNEL_RES_SUFFIX)) {
+      return true;
+    }
+#else
+    (void)all;
+    return true;
+#endif
+  }
+  return false;
+}
 
 std::string ExtractJsonString(const std::string& text, const std::string& key) {
   const std::string needle = "\"" + key + "\"";
@@ -581,6 +615,14 @@ void Orbisview::HandleSubscribe(int client_id, const std::string& channel,
     websocket_->SendText(client_id, "{\"op\":\"error\",\"message\":\"missing channel\"}");
     return;
   }
+  if (channel.find("_SRV_") != std::string::npos ||
+      EndsWith(channel, "/feedback") || EndsWith(channel, "/status")) {
+    websocket_->SendText(
+        client_id,
+        "{\"op\":\"error\",\"message\":\"service/action channels are not "
+        "browsable\"}");
+    return;
+  }
   {
     std::lock_guard<std::mutex> lock(mutex_);
     core::SubscriptionState state;
@@ -710,9 +752,12 @@ bool Orbisview::RefreshAutolinkChannelsChanged() {
   auto cm = topo->channel_manager();
   std::vector<std::string> names;
   cm->GetChannelNames(&names);
+  const std::unordered_set<std::string> all_names(names.begin(), names.end());
   std::vector<core::ChannelInfo> channels;
   std::ostringstream fp;
   for (const auto& name : names) {
+    // Autolink service + action protocol channels — not user data topics.
+    if (IsServiceOrActionChannel(name, all_names)) continue;
     if (!cm->HasWriter(name)) continue;
     std::string msg_type;
     cm->GetMsgType(name, &msg_type);
