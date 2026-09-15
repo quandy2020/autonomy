@@ -53,6 +53,8 @@ struct ChannelInfo {
   std::string msg_type;
   bool has_writer{false};
   bool mock{false};
+  /** Numeric plot paths from protobuf descriptor (Charts). */
+  std::vector<std::string> fields;
 };
 
 std::string ChannelListToJson(const std::vector<ChannelInfo>& channels);

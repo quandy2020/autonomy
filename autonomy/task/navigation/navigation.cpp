@@ -78,6 +78,9 @@ void NavigationTask::PopulateBlackboard(const BT::Blackboard::Ptr& blackboard)
     blackboard->set("default_controller_id", std::string(kDefaultControllerId));
     blackboard->set("default_smoother_id", std::string(kDefaultSmootherId));
     blackboard->set("goal_reached_tol", kDefaultGoalReachedTol);
+    // navigate_to_pose.xml: InitialPoseReceived / TimeExpired defaults
+    blackboard->set("initial_pose_received", true);
+    blackboard->set("local_survival_timeout", 120.0);
 
     if (!active_goal_.has_value()) {
         return;
@@ -166,7 +169,7 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
         {
             const auto deadline =
                 std::chrono::steady_clock::now() +
-                std::chrono::milliseconds(preempting ? 8000 : 5000);
+                std::chrono::milliseconds(preempting ? 12000 : 8000);
             while (std::chrono::steady_clock::now() < deadline) {
                 if (navigation() && navigation()->IsPlanningReady() &&
                     navigation()->IsControlReady()) {
@@ -175,12 +178,10 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
             }
             if (!navigation() || !navigation()->IsPlanningReady()) {
-                AERROR << "NavigationTask: planner not ready; refusing goal";
-                return false;
+                AWARN << "NavigationTask: planner not ready yet; starting "
+                         "BT anyway";
             }
             if (!navigation()->IsControlReady()) {
-                // Still start the BT: ServersReady + Retry will wait for
-                // autonomy.control instead of dropping the user's 2D Goal.
                 AWARN << "NavigationTask: follow_path not ready yet; starting "
                          "BT anyway (is autonomy.control restarting?)";
             }

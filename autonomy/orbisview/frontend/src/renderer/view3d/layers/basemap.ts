@@ -13,6 +13,8 @@ export function updateBasemapPlane(
   const prev = plane.material as THREE.MeshBasicMaterial;
   if (prev.map) prev.map.dispose();
   const texture = new THREE.CanvasTexture(handle.canvas);
+  // Same as occupancy: image/canvas top = high map Y → flipY so it lands on v=1.
+  texture.flipY = true;
   texture.magFilter = THREE.NearestFilter;
   texture.minFilter = THREE.NearestFilter;
   texture.needsUpdate = true;

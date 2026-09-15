@@ -27,16 +27,16 @@ export function syncView3DScene(ctx: View3DContext, input: View3DSceneInput): vo
   updateFootprint(ctx, input.pose, input.footprint, layers.footprint);
   updateBasemapPlane(ctx.basemapPlane, input.basemap ?? null, layers.basemap ?? true);
   updateOccupancyPlane(ctx.mapPlane, input.map, {
-    opacity: opts.mapOpacity,
+    opacity: opts.mapAlpha ?? opts.mapOpacity,
     yLift: 0.01,
     visible: layers.map,
-    mode: 'map',
+    mode: opts.mapColorScheme ?? 'map',
   });
   updateOccupancyPlane(ctx.costmapPlane, input.costmap, {
-    opacity: opts.mapOpacity * 0.85,
+    opacity: opts.costmapAlpha ?? opts.mapOpacity * 0.85,
     yLift: 0.02,
     visible: layers.costmap,
-    mode: 'costmap',
+    mode: opts.costmapColorScheme ?? 'costmap',
   });
   updateSemanticZones(ctx.semanticGroup, input.semanticZones, layers.semantic ?? true);
   updateAnnotations(ctx.annotationGroup, {

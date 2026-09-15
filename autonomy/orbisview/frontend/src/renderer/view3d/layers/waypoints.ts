@@ -97,7 +97,8 @@ export function updateWaypoints(
     if (!marker) return;
     const t = toThree(wp.x, wp.y, 0);
     marker.position.set(t.x, t.y, t.z);
-    marker.rotation.y = -(wp.yaw ?? 0);
+    // ArrowHelper default dir = +X; R_y(yaw) → (cos yaw, 0, -sin yaw) = map forward.
+    marker.rotation.y = wp.yaw ?? 0;
   });
 
   if (waypoints.length > 1) {

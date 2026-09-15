@@ -28,8 +28,9 @@ public:
 
     void halt() override
     {
+        // Keep got_success_ across RecoveryNode retries so a transient replan
+        // miss after clear does not immediately FAIL the whole pipeline.
         first_time_ = true;
-        got_success_ = false;
         DecoratorNode::halt();
     }
 

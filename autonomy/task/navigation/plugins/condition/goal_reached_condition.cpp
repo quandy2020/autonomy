@@ -22,6 +22,8 @@ public:
             BT::InputPort<std::string>("robot_base_frame", "base_link",
                                        "robot frame (unused, TF via client)"),
             BT::InputPort<double>("goal_reached_tol", 0.25, "m"),
+            BT::InputPort<double>("transform_tolerance", 0.1,
+                                  "TF lookup tolerance (s)"),
         };
     }
 

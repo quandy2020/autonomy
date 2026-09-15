@@ -15,3 +15,6 @@ DECLARE_bool(autolink);
 DECLARE_string(document_root);
 DECLARE_string(plugin_dir);
 DECLARE_string(cmd_vel_channel);
+DECLARE_string(goal_pose_channel);
+DECLARE_string(goal_poses_channel);
+DECLARE_string(cancel_navigation_channel);

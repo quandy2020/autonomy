@@ -23,6 +23,8 @@ public:
             BT::InputPort<double>("backup_speed", 0.10, "m/s"),
             BT::InputPort<double>("time_allowance", 10.0, "sec"),
             BT::InputPort<bool>("is_recovery", false, "recovery behavior flag"),
+            BT::InputPort<bool>("disable_collision_checks", false,
+                                "XML compatibility; unused"),
             BT::OutputPort<int>("error_code_id"),
             BT::OutputPort<std::string>("error_msg"),
         };

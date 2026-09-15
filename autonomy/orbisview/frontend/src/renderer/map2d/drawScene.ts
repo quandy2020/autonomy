@@ -41,7 +41,11 @@ export interface Map2DSceneInput {
   map: OccupancyGridJson | null;
   /** OccupancyGrid header.frame_id (fixed frame for TF lookup). */
   mapFrameId?: string | null;
+  /** RViz Color Scheme + Alpha for /map display. */
+  mapStyle?: { colorScheme?: 'map' | 'costmap' | 'raw'; alpha?: number };
   costmap: OccupancyGridJson | null;
+  /** RViz Color Scheme + Alpha for costmap display. */
+  costmapStyle?: { colorScheme?: 'map' | 'costmap' | 'raw'; alpha?: number };
   /** @deprecated prefer lasers[] */
   laser: { angle_min: number; angle_increment: number; ranges: number[] } | null;
   lasers?: {
@@ -233,6 +237,8 @@ export function paintMap2DScene(
     pathStyle,
     map,
     costmap,
+    mapStyle,
+    costmapStyle,
     laser,
     lasers,
     cloud,
@@ -296,10 +302,19 @@ export function paintMap2DScene(
   }
 
   if (layers.map && map) {
-    drawOccupancyGrid(ctx, map, toScreen, scale, 'map');
+    drawOccupancyGrid(ctx, map, toScreen, scale, mapStyle?.colorScheme ?? 'map', {
+      alpha: mapStyle?.alpha,
+    });
   }
   if (layers.costmap && costmap) {
-    drawOccupancyGrid(ctx, costmap, toScreen, scale, 'costmap');
+    drawOccupancyGrid(
+      ctx,
+      costmap,
+      toScreen,
+      scale,
+      costmapStyle?.colorScheme ?? 'costmap',
+      { alpha: costmapStyle?.alpha },
+    );
   }
 
   if ((layers.semantic ?? true) && semanticZones?.length) {

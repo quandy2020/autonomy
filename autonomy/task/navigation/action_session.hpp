@@ -63,8 +63,21 @@ private:
 template <typename ActionT>
 void ActionSession<ActionT>::Begin(Client& client, const Goal& goal)
 {
-    // Drop any prior in-flight accept/result before sending a new goal.
-    Cancel(client);
+    // If a goal is already executing, send the replacement without Cancel.
+    // Autolink SimpleActionServer treats a second send_goal as preempt and
+    // switches to the pending goal (keeps FollowPath motion continuous across
+    // RateController replans). Cancel+resend zeros cmd_vel and spams
+    // "Client requested to cancel".
+    if (phase_ == Phase::kAccepting) {
+        // Previous accept still in flight — drop local wait; server will see
+        // the newer send_goal as preempt/replace.
+        goal_handle_.reset();
+        accept_future_ = {};
+        result_future_ = {};
+    } else if (phase_ == Phase::kRunning) {
+        goal_handle_.reset();
+        result_future_ = {};
+    }
 
     typename Client::SendGoalOptions options;
     options.feedback_callback =
@@ -76,8 +89,6 @@ void ActionSession<ActionT>::Begin(Client& client, const Goal& goal)
             }
         };
     accept_future_ = client.AsyncSendGoal(goal, options);
-    goal_handle_.reset();
-    result_future_ = {};
     has_feedback_ = false;
     phase_ = Phase::kAccepting;
 }

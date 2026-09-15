@@ -9,7 +9,9 @@
 #include <chrono>
 #include <fstream>
 #include <iterator>
+#include <mutex>
 #include <sstream>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -28,7 +30,10 @@
 #include "autolink/node/writer.hpp"
 #if defined(ORBISVIEW_WITH_AUTOMSGS)
 #include "autonomy/orbisview/backend/adapters/automsgs/automsgs_converter.hpp"
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/std_msgs/bool.pb.h>
+#include <cmath>
 #endif
 #endif
 
@@ -260,6 +265,9 @@ void Orbisview::Stop() {
   readers_.clear();
 #if defined(ORBISVIEW_WITH_AUTOMSGS)
   cmd_vel_writer_.reset();
+  goal_pose_writer_.reset();
+  goal_poses_writer_.reset();
+  cancel_navigation_writer_.reset();
 #endif
   node_.reset();
 #endif
@@ -402,13 +410,27 @@ void Orbisview::OnClientMessage(int client_id, const std::string& text) {
     if (options_.enable_mock) {
       mock_.SetNavGoal(x, y, yaw);
     }
+    bool published = false;
+#if defined(ORBISVIEW_WITH_AUTOLINK)
+    if (options_.enable_autolink) {
+      PublishGoalPoseAutolink(x, y, yaw);
+      published = true;
+    }
+#endif
     std::ostringstream ack;
     ack << "{\"op\":\"goal_set\",\"x\":" << x << ",\"y\":" << y
         << ",\"yaw\":" << yaw
-        << ",\"mock\":" << (options_.enable_mock ? "true" : "false") << '}';
+        << ",\"mock\":" << (options_.enable_mock ? "true" : "false")
+        << ",\"published\":" << (published ? "true" : "false")
+        << ",\"channel\":\"" << options_.goal_pose_channel << "\"}";
     websocket_->SendText(client_id, ack.str());
   } else if (op == "clear_goal") {
     if (options_.enable_mock) mock_.ClearNavGoal();
+#if defined(ORBISVIEW_WITH_AUTOLINK)
+    if (options_.enable_autolink) {
+      PublishCancelNavigationAutolink();
+    }
+#endif
     websocket_->SendText(client_id, "{\"op\":\"goal_cleared\"}");
   } else if (op == "cmd_vel") {
     const double vx = ExtractJsonNumber(text, "vx", 0.0);
@@ -430,11 +452,32 @@ void Orbisview::OnClientMessage(int client_id, const std::string& text) {
         mock_.SetNavGoal(last.x, last.y, last.yaw);
       }
     }
+    bool published = false;
+#if defined(ORBISVIEW_WITH_AUTOLINK)
+    if (options_.enable_autolink && !wps.empty()) {
+      if (wps.size() == 1) {
+        PublishGoalPoseAutolink(wps[0].x, wps[0].y, wps[0].yaw);
+      } else {
+        PublishGoalPosesAutolink(wps);
+      }
+      published = true;
+    }
+#endif
     std::ostringstream ack;
-    ack << "{\"op\":\"route_set\",\"count\":" << wps.size() << '}';
+    ack << "{\"op\":\"route_set\",\"count\":" << wps.size()
+        << ",\"published\":" << (published ? "true" : "false")
+        << ",\"channel\":\""
+        << (wps.size() <= 1 ? options_.goal_pose_channel
+                            : options_.goal_poses_channel)
+        << "\"}";
     websocket_->SendText(client_id, ack.str());
   } else if (op == "clear_route") {
     if (options_.enable_mock) mock_.ClearRoute();
+#if defined(ORBISVIEW_WITH_AUTOLINK)
+    if (options_.enable_autolink) {
+      PublishCancelNavigationAutolink();
+    }
+#endif
     websocket_->SendText(client_id, "{\"op\":\"route_cleared\"}");
   } else if (op == "hmi_set_mode") {
     const auto mode = ExtractJsonString(text, "mode");
@@ -680,7 +723,11 @@ bool Orbisview::RefreshAutolinkChannelsChanged() {
 #endif
     const std::string effective_schema =
         schema.empty() ? (msg_type.empty() ? "unsupported" : msg_type) : schema;
-    channels.push_back({name, effective_schema, msg_type, true, false});
+    core::ChannelInfo info{name, effective_schema, msg_type, true, false, {}};
+#if defined(ORBISVIEW_WITH_AUTOMSGS)
+    info.fields = adapters::ListNumericProtoPaths(msg_type);
+#endif
+    channels.push_back(std::move(info));
     fp << name << '|' << msg_type << ';';
   }
   const std::string fingerprint = fp.str();
@@ -713,7 +760,12 @@ void Orbisview::EnsureAutolinkSubscribe(const std::string& channel) {
         core::StreamEnvelope env;
         env.channel = channel;
         env.timestamp_ns = static_cast<int64_t>(message->timestamp);
-        env.sequence = 0;
+        {
+          static std::mutex seq_mu;
+          static std::unordered_map<std::string, uint64_t> seq_by_channel;
+          std::lock_guard<std::mutex> lock(seq_mu);
+          env.sequence = ++seq_by_channel[channel];
+        }
         bool converted = false;
 #if defined(ORBISVIEW_WITH_AUTOMSGS)
         converted = adapters::ConvertAutomsgsRaw(
@@ -764,6 +816,107 @@ void Orbisview::PublishCmdVelAutolink(double vx, double wz) {
   (void)vx;
   (void)wz;
   LOG(WARNING) << "cmd_vel Autolink publish requires ORBISVIEW_WITH_AUTOMSGS";
+#endif
+}
+
+#if defined(ORBISVIEW_WITH_AUTOMSGS)
+namespace {
+
+void StampHeader(automsgs::msgs::std_msgs::Header* header,
+                 const std::string& frame_id) {
+  header->set_frame_id(frame_id);
+  const auto now = std::chrono::system_clock::now().time_since_epoch();
+  const auto sec = std::chrono::duration_cast<std::chrono::seconds>(now);
+  const auto nsec =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(now - sec);
+  auto* stamp = header->mutable_stamp();
+  stamp->set_sec(static_cast<int32_t>(sec.count()));
+  stamp->set_nanosec(static_cast<uint32_t>(nsec.count()));
+}
+
+void SetPoseYaw(automsgs::msgs::geometry_msgs::Pose* pose, double x, double y,
+                double yaw) {
+  pose->mutable_position()->set_x(x);
+  pose->mutable_position()->set_y(y);
+  pose->mutable_position()->set_z(0.0);
+  pose->mutable_orientation()->set_x(0.0);
+  pose->mutable_orientation()->set_y(0.0);
+  pose->mutable_orientation()->set_z(std::sin(yaw * 0.5));
+  pose->mutable_orientation()->set_w(std::cos(yaw * 0.5));
+}
+
+}  // namespace
+#endif
+
+void Orbisview::PublishGoalPoseAutolink(double x, double y, double yaw) {
+  if (!node_ || options_.goal_pose_channel.empty()) return;
+#if defined(ORBISVIEW_WITH_AUTOMSGS)
+  using PoseStamped = automsgs::msgs::geometry_msgs::PoseStamped;
+  if (!goal_pose_writer_) {
+    goal_pose_writer_ =
+        node_->CreateWriter<PoseStamped>(options_.goal_pose_channel);
+  }
+  auto writer =
+      std::static_pointer_cast<autolink::Writer<PoseStamped>>(goal_pose_writer_);
+  if (!writer) return;
+  auto msg = std::make_shared<PoseStamped>();
+  StampHeader(msg->mutable_header(), "map");
+  SetPoseYaw(msg->mutable_pose(), x, y, yaw);
+  writer->Write(msg);
+  LOG(INFO) << "OrbisView published " << options_.goal_pose_channel << " (" << x
+            << ", " << y << ", yaw=" << yaw << ")";
+#else
+  (void)x;
+  (void)y;
+  (void)yaw;
+  LOG(WARNING) << "goal_pose Autolink publish requires ORBISVIEW_WITH_AUTOMSGS";
+#endif
+}
+
+void Orbisview::PublishGoalPosesAutolink(
+    const std::vector<adapters::MockSource::RoutePoint>& waypoints) {
+  if (!node_ || options_.goal_poses_channel.empty() || waypoints.empty()) return;
+#if defined(ORBISVIEW_WITH_AUTOMSGS)
+  using PoseStampedArray = automsgs::msgs::geometry_msgs::PoseStampedArray;
+  if (!goal_poses_writer_) {
+    goal_poses_writer_ =
+        node_->CreateWriter<PoseStampedArray>(options_.goal_poses_channel);
+  }
+  auto writer = std::static_pointer_cast<autolink::Writer<PoseStampedArray>>(
+      goal_poses_writer_);
+  if (!writer) return;
+  auto msg = std::make_shared<PoseStampedArray>();
+  StampHeader(msg->mutable_header(), "map");
+  for (const auto& wp : waypoints) {
+    SetPoseYaw(msg->add_poses(), wp.x, wp.y, wp.yaw);
+  }
+  writer->Write(msg);
+  LOG(INFO) << "OrbisView published " << options_.goal_poses_channel
+            << " count=" << waypoints.size();
+#else
+  (void)waypoints;
+  LOG(WARNING) << "goal_poses Autolink publish requires ORBISVIEW_WITH_AUTOMSGS";
+#endif
+}
+
+void Orbisview::PublishCancelNavigationAutolink() {
+  if (!node_ || options_.cancel_navigation_channel.empty()) return;
+#if defined(ORBISVIEW_WITH_AUTOMSGS)
+  using BoolMsg = automsgs::msgs::std_msgs::Bool;
+  if (!cancel_navigation_writer_) {
+    cancel_navigation_writer_ =
+        node_->CreateWriter<BoolMsg>(options_.cancel_navigation_channel);
+  }
+  auto writer = std::static_pointer_cast<autolink::Writer<BoolMsg>>(
+      cancel_navigation_writer_);
+  if (!writer) return;
+  auto msg = std::make_shared<BoolMsg>();
+  msg->set_data(true);
+  writer->Write(msg);
+  LOG(INFO) << "OrbisView published " << options_.cancel_navigation_channel;
+#else
+  LOG(WARNING)
+      << "cancel_navigation Autolink publish requires ORBISVIEW_WITH_AUTOMSGS";
 #endif
 }
 #endif

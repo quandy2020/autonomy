@@ -89,7 +89,7 @@ export function MapFloatToolbar({
       const wp = waypoints[0];
       wsClient.send({ op: 'set_goal', x: wp.x, y: wp.y, yaw: wp.yaw ?? 0 });
       useMapViewStore.getState().setStatusMsg(
-        `已发送目标 (${wp.x.toFixed(2)}, ${wp.y.toFixed(2)})`,
+        `已下发导航目标 → /goal_pose (${wp.x.toFixed(2)}, ${wp.y.toFixed(2)})`,
       );
       return;
     }
@@ -101,7 +101,9 @@ export function MapFloatToolbar({
         yaw: wp.yaw ?? 0,
       })),
     });
-    useMapViewStore.getState().setStatusMsg(`已发送路线 ${waypoints.length} 点`);
+    useMapViewStore
+      .getState()
+      .setStatusMsg(`已下发多点路线 → /goal_poses (${waypoints.length} 点)`);
   };
 
   const clearNav = () => {
@@ -109,7 +111,7 @@ export function MapFloatToolbar({
     wsClient.send({ op: 'clear_route' });
     wsClient.send({ op: 'clear_goal' });
     onClearGoal?.();
-    useMapViewStore.getState().setStatusMsg('已清空导航点');
+    useMapViewStore.getState().setStatusMsg('已取消导航并清空航点');
   };
 
   const sendTitle =

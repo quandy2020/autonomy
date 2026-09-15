@@ -58,8 +58,11 @@ bool TaskServer::Configure(const proto::TaskServerOptions& options) {
         Shutdown();
     }
     options_ = options;
-    scheduler_ = std::make_shared<TaskScheduler>(options.scheduler());
-    if (!scheduler_->Initialize(options)) {
+    // Callers may pass empty config_directory (e.g. default --flag="");
+    // re-resolve so BT XML paths under task/conf/ are absolute.
+    BtDefaults::Apply(&options_);
+    scheduler_ = std::make_shared<TaskScheduler>(options_.scheduler());
+    if (!scheduler_->Initialize(options_)) {
         scheduler_.reset();
         return false;
     }
@@ -85,10 +88,11 @@ bool TaskServer::Configure(const proto::TaskServerOptions& options) {
         transform_listener_.reset();
     }
 
-    AddApps(options.apps());
+    AddApps(options_.apps());
     Bind();
     configured_ = true;
-    AINFO << "TaskServer configured";
+    AINFO << "TaskServer configured config_directory="
+          << options_.config_directory();
     return true;
 }
 
@@ -164,6 +168,49 @@ void TaskServer::Bind() {
                             }
                         }
                     }).detach();
+                });
+
+        goal_poses_reader_ = node_->CreateReader<
+            ::automsgs::msgs::geometry_msgs::PoseStampedArray>(
+            kGoalPoses,
+            [this](const std::shared_ptr<
+                   ::automsgs::msgs::geometry_msgs::PoseStampedArray>& poses) {
+                if (!poses || poses->poses().empty()) {
+                    return;
+                }
+                proto::NavigationGoal goal;
+                goal.set_command(proto::NAV_CMD_START);
+                goal.set_mode(poses->poses_size() == 1
+                                  ? proto::NAV_MODE_SINGLE_POSE
+                                  : proto::NAV_MODE_THROUGH_POSES);
+                for (const auto& pose : poses->poses()) {
+                    auto* stamped = goal.add_goals();
+                    if (poses->has_header()) {
+                        *stamped->mutable_header() = poses->header();
+                    }
+                    *stamped->mutable_pose() = pose;
+                }
+                AINFO << "TaskServer: /goal_poses count=" << poses->poses_size();
+                if (!Submit(goal)) {
+                    AWARN << "TaskServer: /goal_poses submit failed";
+                }
+            });
+
+        cancel_navigation_reader_ =
+            node_->CreateReader<::automsgs::msgs::std_msgs::Bool>(
+                kCancelNavigation,
+                [this](const std::shared_ptr<::automsgs::msgs::std_msgs::Bool>&
+                           msg) {
+                    if (!msg || !msg->data()) {
+                        return;
+                    }
+                    proto::NavigationGoal goal;
+                    goal.set_command(proto::NAV_CMD_CANCEL);
+                    goal.set_mode(proto::NAV_MODE_UNSPECIFIED);
+                    AINFO << "TaskServer: /cancel_navigation";
+                    if (!Submit(goal)) {
+                        AWARN << "TaskServer: cancel submit failed";
+                    }
                 });
 
         navigator_ = std::make_shared<common::Navigator>();
@@ -351,6 +398,8 @@ void TaskServer::Unbind() {
         navigator_.reset();
     }
     goal_pose_reader_.reset();
+    goal_poses_reader_.reset();
+    cancel_navigation_reader_.reset();
 }
 
 void TaskServer::AddApps(const proto::TaskAppOptions& apps) {

@@ -36,7 +36,10 @@ namespace {
 ::autonomy::task::proto::TaskServerOptions BuildOptions()
 {
     auto options = TaskServer::DefaultOptions();
-    options.set_config_directory(FLAGS_config_directory);
+    // Empty flag must not wipe the path resolved by BtDefaults::Apply.
+    if (!FLAGS_config_directory.empty()) {
+        options.set_config_directory(FLAGS_config_directory);
+    }
     options.mutable_scheduler()->set_feedback_period_ms(FLAGS_feedback_period_ms);
     options.mutable_scheduler()->set_exclusive_navigation_tasks(
         FLAGS_exclusive_navigation_tasks);

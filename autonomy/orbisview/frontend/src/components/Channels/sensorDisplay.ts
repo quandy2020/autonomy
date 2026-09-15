@@ -194,6 +194,40 @@ export function resolvePathStyle(
   };
 }
 
+export type OccupancyColorScheme = 'map' | 'costmap' | 'raw';
+
+export interface OccupancyStyle {
+  colorScheme: OccupancyColorScheme;
+  alpha: number;
+}
+
+function parseColorScheme(v: unknown, fallback: OccupancyColorScheme): OccupancyColorScheme {
+  return v === 'map' || v === 'costmap' || v === 'raw' ? v : fallback;
+}
+
+/** Style for OccupancyGrid displays (RViz Color Scheme + Alpha). */
+export function resolveOccupancyStyle(
+  displays: ChannelDisplay[],
+  role: 'map' | 'costmap',
+): OccupancyStyle {
+  const fallbackScheme: OccupancyColorScheme = role === 'costmap' ? 'costmap' : 'map';
+  const typeIds = ['map_msgs/OccupancyGrid', 'nav_msgs/OccupancyGrid', 'nav_msgs/Costmap'];
+  const roleDisplays = displays.filter(
+    (d) => d.enabled && d.channel && typeIds.includes(d.typeId),
+  );
+  // Prefer channel name for costmap vs map when both OccupancyGrid types exist.
+  const d =
+    roleDisplays.find((x) =>
+      role === 'costmap' ? /costmap/i.test(x.channel) : !/costmap/i.test(x.channel),
+    ) ??
+    roleDisplays[0] ??
+    displays.find((x) => typeIds.includes(x.typeId));
+  return {
+    colorScheme: parseColorScheme(d?.props.colorScheme, fallbackScheme),
+    alpha: num(d?.props.alpha, 0.7),
+  };
+}
+
 export function sensorDisplayLabel(d: ChannelDisplay): string {
   const def =
     getDisplayTypeDef(d.typeId) ??

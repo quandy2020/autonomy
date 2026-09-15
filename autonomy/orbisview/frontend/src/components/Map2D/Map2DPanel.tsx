@@ -35,6 +35,7 @@ import {
   hexToRgba,
   resolveCloudOverlay,
   resolveLaserOverlays,
+  resolveOccupancyStyle,
   resolvePathStyle,
   resolveRangeOverlays,
 } from '@/components/Channels/sensorDisplay';
@@ -245,6 +246,11 @@ export function Map2DPanel() {
   );
 
   const pathStyle = useMemo(() => resolvePathStyle(displays), [displays]);
+  const mapStyle = useMemo(() => resolveOccupancyStyle(displays, 'map'), [displays]);
+  const costmapStyle = useMemo(
+    () => resolveOccupancyStyle(displays, 'costmap'),
+    [displays],
+  );
 
   const nav = useMemo(() => {
     return asPayload<NavPayload>(pickDisplayEnvelope(envelopes, displays, 'navigation'));
@@ -409,7 +415,9 @@ export function Map2DPanel() {
       pathStyle,
       map,
       mapFrameId: mapEnv?.frame_id || null,
+      mapStyle,
       costmap,
+      costmapStyle,
       laser,
       lasers: laserOverlays.map((o) => ({
         scan: o.scan,
@@ -475,6 +483,8 @@ export function Map2DPanel() {
     pathStyle,
     map,
     costmap,
+    mapStyle,
+    costmapStyle,
     laser,
     laserOverlays,
     cloudOverlay,

@@ -367,16 +367,10 @@ void StaticLayer::updateCosts(Costmap2D& master_grid, int min_i, int min_j,
         return;
     }
     if (!map_received_in_update_bounds_) {
-        static int count = 0;
-        // throttle warning down to only 1/10 message rate
-        if (++count == 10) {
-            AWARN << "Can't update static costmap layer, no map received "
-                     "(map_received_="
-                  << map_received_
-                  << ", in_update_bounds=" << map_received_in_update_bounds_
-                  << ")";
-            count = 0;
-        }
+        AWARN_EVERY(50) << "Can't update static costmap layer, no map received "
+                           "(map_received_="
+                        << map_received_ << ", in_update_bounds="
+                        << map_received_in_update_bounds_ << ")";
         return;
     }
 

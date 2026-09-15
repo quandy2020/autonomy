@@ -8,7 +8,7 @@ export interface View3DContext {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   grid: THREE.GridHelper;
-  robot: THREE.Mesh;
+  robot: THREE.Group;
   goal: THREE.Mesh;
   goalLine: THREE.Line;
   path: Line2;
@@ -63,11 +63,22 @@ export function createView3DScene(mount: HTMLElement): View3DContext {
   scene.add(light);
   scene.add(new THREE.AmbientLight(0x6688aa, 0.5));
 
-  const robot = new THREE.Mesh(
-    new THREE.ConeGeometry(0.2, 0.5, 12),
+  const robot = new THREE.Group();
+  const disc = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.16, 0.16, 0.05, 24),
     new THREE.MeshStandardMaterial({ color: 0x69f0ae }),
   );
-  robot.rotation.x = Math.PI / 2;
+  robot.add(disc);
+  robot.add(
+    new THREE.ArrowHelper(
+      new THREE.Vector3(1, 0, 0),
+      new THREE.Vector3(0, 0.04, 0),
+      0.5,
+      0x69f0ae,
+      0.14,
+      0.09,
+    ),
+  );
   scene.add(robot);
 
   const goal = new THREE.Mesh(

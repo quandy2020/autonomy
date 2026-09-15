@@ -4,7 +4,6 @@ import {
   MosaicWindow,
   ExpandButton,
   RemoveButton,
-  SplitButton,
   ReplaceButton,
   AddTabButton,
   type MosaicNode,
@@ -36,6 +35,7 @@ import { usePanelOptsStore } from '@/store/panelOptsStore';
 import { useTfBufferStore } from '@/store/tfBufferStore';
 import { MappingVizEffects } from '@/components/MappingVizEffects';
 import { IndoorMapEffects } from '@/components/IndoorMapEffects';
+import { SameTypeSplitButtons } from '@/components/Mosaic/SameTypeSplitButton';
 
 const SIDEBAR_NAV: { id: SidebarTab; label: string; icon: IconName }[] = [
   { id: 'panels', label: 'Panels', icon: 'panels' },
@@ -308,27 +308,28 @@ export function Orbisview() {
     return allocPanelInstanceId('image', existing);
   }, []);
 
+  const makePanelCreateNode = useCallback((id: string) => {
+    return () => {
+      const existing = collectMosaicIds(useLayoutStore.getState().mosaic);
+      const base = panelBaseId(id);
+      const panelMeta = getPanel(base);
+      // Prefer same type when multi-instance is allowed; otherwise open Image.
+      const nextBase = panelMeta?.allowMultiple ? base : 'image';
+      const next = allocPanelInstanceId(nextBase, existing);
+      if (panelBaseId(next) === 'image') {
+        usePanelOptsStore.getState().setImageChannel(next, null);
+      }
+      return next;
+    };
+  }, []);
+
   const renderTile = useCallback(
     (id: string, path: unknown) => {
       const meta = getPanel(id);
       const title = meta?.title ?? panelBaseId(id);
       const suffix = id.includes('#') ? ` · ${id.slice(id.indexOf('#') + 1)}` : '';
       const label = `${title}${suffix}`;
-      const createNode = () => {
-        const existing = collectMosaicIds(useLayoutStore.getState().mosaic);
-        const base = panelBaseId(id);
-        const panelMeta = getPanel(base);
-        if (panelMeta?.allowMultiple) {
-          const next = allocPanelInstanceId(base, existing);
-          if (base === 'image') {
-            usePanelOptsStore.getState().setImageChannel(next, null);
-          }
-          return next;
-        }
-        const next = allocPanelInstanceId('image', existing);
-        usePanelOptsStore.getState().setImageChannel(next, null);
-        return next;
-      };
+      const createNode = makePanelCreateNode(id);
       return (
         <MosaicWindow<string>
           path={path as never}
@@ -343,7 +344,7 @@ export function Orbisview() {
               </div>
               <div className="mosaic-window-controls ov-mosaic-controls">
                 <ReplaceButton />
-                <SplitButton />
+                <SameTypeSplitButtons createNode={createNode} />
                 <AddTabButton />
                 <ExpandButton />
                 <RemoveButton />
@@ -357,7 +358,7 @@ export function Orbisview() {
         </MosaicWindow>
       );
     },
-    [],
+    [makePanelCreateNode],
   );
 
   const addPanel = (typeId: string) => {

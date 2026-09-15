@@ -206,8 +206,9 @@ void PlannerServer::RegisterAutolinkEndpoints()
 
 void PlannerServer::ComputePlan()
 {
-    std::lock_guard<std::mutex> lock(dynamic_params_mutex_);
-
+    // Do not hold dynamic_params_mutex_ across WaitForCostmap / GetPlan:
+    // SmoothPathAction and ComputePlanThroughPoses share that mutex; a long
+    // hold here deadlocks the sync BT client on the subsequent SmoothPath.
     auto& server = compute_path_to_pose_server_;
     if (!server || !server->IsServerActive() || server->IsCancelRequested()) {
         return;
@@ -280,8 +281,6 @@ void PlannerServer::ComputePlan()
 
 void PlannerServer::ComputePlanThroughPoses()
 {
-    std::lock_guard<std::mutex> lock(dynamic_params_mutex_);
-
     auto& server = compute_path_through_poses_server_;
     if (!server || !server->IsServerActive() || server->IsCancelRequested()) {
         return;
@@ -384,8 +383,6 @@ void PlannerServer::ComputePlanThroughPoses()
 
 void PlannerServer::SmoothPathAction()
 {
-    std::lock_guard<std::mutex> lock(dynamic_params_mutex_);
-
     auto& server = smooth_path_server_;
     if (!server || !server->IsServerActive() || server->IsCancelRequested()) {
         return;

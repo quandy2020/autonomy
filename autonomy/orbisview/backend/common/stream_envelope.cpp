@@ -136,7 +136,16 @@ std::string ChannelListToJson(const std::vector<ChannelInfo>& channels) {
         << ",\"schema\":" << JsonEscape(c.schema)
         << ",\"msg_type\":" << JsonEscape(c.msg_type)
         << ",\"has_writer\":" << (c.has_writer ? "true" : "false")
-        << ",\"mock\":" << (c.mock ? "true" : "false") << '}';
+        << ",\"mock\":" << (c.mock ? "true" : "false");
+    if (!c.fields.empty()) {
+      oss << ",\"fields\":[";
+      for (size_t fi = 0; fi < c.fields.size(); ++fi) {
+        if (fi > 0) oss << ',';
+        oss << JsonEscape(c.fields[fi]);
+      }
+      oss << ']';
+    }
+    oss << '}';
   }
   oss << "]}";
   return oss.str();

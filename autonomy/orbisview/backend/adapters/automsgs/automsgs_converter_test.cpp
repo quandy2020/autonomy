@@ -4,6 +4,7 @@
 
 #include "autonomy/orbisview/backend/adapters/automsgs/automsgs_converter.hpp"
 
+#include <algorithm>
 #include <cstring>
 #include <gtest/gtest.h>
 
@@ -13,6 +14,7 @@
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
 #include <automsgs/msgs/sensor_msgs/image.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_field.pb.h>
 
@@ -242,4 +244,37 @@ TEST(AutomsgsConverterTest, Rgb8LabeledButRgbaStepStillSamplesRgb) {
   EXPECT_NE(json.find("\"data_b64\""), std::string::npos) << json;
   // RGB bytes 1,2,3,4,5,6 → "AQIDBAUG"
   EXPECT_NE(json.find("AQIDBAUG"), std::string::npos) << json;
+}
+
+TEST(AutomsgsConverterTest, ImuToJsonFields) {
+  automsgs::msgs::sensor_msgs::Imu imu;
+  imu.mutable_linear_acceleration()->set_x(0.1);
+  imu.mutable_linear_acceleration()->set_y(0.2);
+  imu.mutable_linear_acceleration()->set_z(9.8);
+  imu.mutable_angular_velocity()->set_z(-0.05);
+  std::string bytes;
+  ASSERT_TRUE(imu.SerializeToString(&bytes));
+
+  StreamEnvelope env;
+  ASSERT_TRUE(ConvertAutomsgsRaw("/imu", "automsgs.msgs.sensor_msgs.Imu", bytes,
+                                 7, &env));
+  EXPECT_EQ(env.encoding, "json");
+  EXPECT_FALSE(env.unsupported);
+  const std::string json(env.payload.begin(), env.payload.end());
+  EXPECT_NE(json.find("linear_acceleration"), std::string::npos) << json;
+  EXPECT_NE(json.find("\"x\":0.1"), std::string::npos) << json;
+  EXPECT_NE(json.find("angular_velocity"), std::string::npos) << json;
+}
+
+TEST(AutomsgsConverterTest, ListImuNumericPaths) {
+  using autonomy::orbisview::adapters::ListNumericProtoPaths;
+  const auto paths = ListNumericProtoPaths("automsgs.msgs.sensor_msgs.Imu");
+  EXPECT_FALSE(paths.empty());
+  auto has = [&](const char* p) {
+    return std::find(paths.begin(), paths.end(), p) != paths.end();
+  };
+  EXPECT_TRUE(has("linear_acceleration.x"));
+  EXPECT_TRUE(has("angular_velocity.z"));
+  EXPECT_TRUE(has("orientation.w"));
+  EXPECT_TRUE(has("angular_velocity_covariance[0]"));
 }
