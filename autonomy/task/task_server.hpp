@@ -208,6 +208,11 @@ private:
     std::shared_ptr<
         autolink::Reader<::automsgs::msgs::geometry_msgs::PoseStamped>>
         goal_pose_reader_;
+    std::shared_ptr<
+        autolink::Reader<::automsgs::msgs::geometry_msgs::PoseStampedArray>>
+        goal_poses_reader_;
+    std::shared_ptr<autolink::Reader<::automsgs::msgs::std_msgs::Bool>>
+        cancel_navigation_reader_;
     std::chrono::steady_clock::time_point last_goal_pose_time_{};
     double last_goal_pose_x_{0.0};
     double last_goal_pose_y_{0.0};

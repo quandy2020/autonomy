@@ -48,4 +48,6 @@ BT_REGISTER_NODES(factory)
 {
     factory.registerNodeType<autonomy::task::plugins::navigation::PathValidCondition>(
         "PathValid");
+    factory.registerNodeType<autonomy::task::plugins::navigation::PathValidCondition>(
+        "IsPathValid");
 }

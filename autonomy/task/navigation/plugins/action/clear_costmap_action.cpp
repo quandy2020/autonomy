@@ -47,4 +47,7 @@ BT_REGISTER_NODES(factory)
 {
     factory.registerNodeType<
         autonomy::task::plugins::navigation::ClearCostmapAction>("ClearCostmap");
+    factory.registerNodeType<
+        autonomy::task::plugins::navigation::ClearCostmapAction>(
+        "ClearEntireCostmap");
 }

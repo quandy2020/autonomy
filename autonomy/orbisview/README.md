@@ -72,6 +72,9 @@ Live 模式下 UI 自动订阅 autosim 通道（`/odom` `/scan` `/map` `/tf` `/c
 | `--document_root` | 静态前端根目录（`frontend/dist` 或 `share/.../www`） |
 | `--plugin_dir` | 可选 native 插件目录 |
 | `--cmd_vel_channel` | 遥控发布通道，默认 `/cmd_vel` |
+| `--goal_pose_channel` | 单点导航目标（`PoseStamped`），默认 `/goal_pose` → TaskServer |
+| `--goal_poses_channel` | 多点路线（`PoseStampedArray`），默认 `/goal_poses` → TaskServer |
+| `--cancel_navigation_channel` | 取消导航（`Bool`），默认 `/cancel_navigation` |
 
 ## 测试
 

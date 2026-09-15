@@ -13,6 +13,11 @@ export interface View3DOpts {
   laserColor?: number;
   laserSize?: number;
   mapOpacity: number;
+  /** Per-layer occupancy paint (RViz Color Scheme). */
+  mapColorScheme?: 'map' | 'costmap' | 'raw';
+  costmapColorScheme?: 'map' | 'costmap' | 'raw';
+  mapAlpha?: number;
+  costmapAlpha?: number;
   pathColor?: number;
   pathOpacity?: number;
   pathLineWidth?: number;

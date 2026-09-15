@@ -33,8 +33,6 @@ planner_options {
   planner_plugins: "navfn_planner"
   planner_plugins: "dijkstra_planner"
   planner_plugins: "theta_star_planner"
-  planner_plugin_libraries {
-  }
   smoother_plugins: "simple_smoother"
   costmap {
     height: 20
@@ -138,8 +136,6 @@ controller_options {
   controller_plugins: "graceful_controller:GracefulController"
   controller_plugins: "mppi_controller:MppiController"
   controller_plugins: "nmpc_controller:NMPCController"
-  controller_plugin_libraries {
-  }
   costmap_2d_options {
     height: 10
     robot_radius: 0.22

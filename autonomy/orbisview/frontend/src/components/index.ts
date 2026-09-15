@@ -103,7 +103,13 @@ export function registerBuiltinPanels(): void {
     component: DiagnosticsPanel,
   });
   registerPanel({ id: 'stats', title: 'Stats', category: 'monitor', component: StatsPanel });
-  registerPanel({ id: 'charts', title: 'Charts', category: 'monitor', component: ChartsPanel });
+  registerPanel({
+    id: 'charts',
+    title: 'Charts',
+    category: 'monitor',
+    allowMultiple: true,
+    component: ChartsPanel,
+  });
   registerPanel({
     id: 'inspector',
     title: 'Inspector',

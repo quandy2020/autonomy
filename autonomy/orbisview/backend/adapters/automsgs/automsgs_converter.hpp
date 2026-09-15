@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "autonomy/orbisview/backend/common/stream_envelope.hpp"
 
@@ -18,6 +19,12 @@ namespace adapters {
 
 /** Suggested render schema for a topology msg_type (empty if unknown). */
 std::string SuggestedRenderSchema(const std::string& msg_type);
+
+/**
+ * List Foxglove-style numeric plot paths for an automsgs protobuf type
+ * (e.g. `linear_acceleration.x`, `angular_velocity_covariance[0]`).
+ */
+std::vector<std::string> ListNumericProtoPaths(const std::string& msg_type);
 
 /**
  * Parse raw protobuf bytes into a render StreamEnvelope.

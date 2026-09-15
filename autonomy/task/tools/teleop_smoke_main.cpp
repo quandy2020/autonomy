@@ -60,7 +60,10 @@ int main(int argc, char** argv) {
 
     auto server = std::make_shared<autonomy::task::TaskServer>();
     auto options = autonomy::task::TaskServer::DefaultOptions();
-    options.set_config_directory(FLAGS_config_directory);
+    // Empty flag must not wipe the path resolved by BtDefaults::Apply.
+    if (!FLAGS_config_directory.empty()) {
+        options.set_config_directory(FLAGS_config_directory);
+    }
     if (!server->Configure(options)) {
         LOG(ERROR) << "TaskServer configure failed";
         return EXIT_FAILURE;

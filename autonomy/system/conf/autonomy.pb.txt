@@ -107,7 +107,7 @@ planner_options {
       inflate_unknown: false
       plugin: "libautonomy_map_layers_inflation_layer.so"
       inflate_around_unknown: false
-      inflation_radius: 0.4
+      inflation_radius: 0.2
     }
     frame_id: "map"
     resolution: 0.05
@@ -127,8 +127,6 @@ planner_options {
   planner_plugins: "navfn_planner"
   planner_plugins: "dijkstra_planner"
   planner_plugins: "theta_star_planner"
-  planner_plugin_libraries {
-  }
   smoother_plugins: "simple_smoother"
 }
 
@@ -140,8 +138,6 @@ controller_options {
   controller_plugins: "graceful_controller:GracefulController"
   controller_plugins: "mppi_controller:MppiController"
   controller_plugins: "nmpc_controller:NMPCController"
-  controller_plugin_libraries {
-  }
   costmap_2d_options {
     robot_radius: 0.22
     footprint {

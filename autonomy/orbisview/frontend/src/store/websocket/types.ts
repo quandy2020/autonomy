@@ -15,6 +15,8 @@ export interface ChannelInfo {
   msg_type: string;
   has_writer: boolean;
   mock: boolean;
+  /** Numeric protobuf field paths for Charts (from descriptor). */
+  fields?: string[];
 }
 
 export interface StreamEnvelope {

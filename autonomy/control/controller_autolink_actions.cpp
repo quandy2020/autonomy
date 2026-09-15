@@ -325,7 +325,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                 result->set_error_msg("FollowPath canceled");
                 server->TerminateCurrent(result);
             } else if (server->IsPreemptRequested()) {
-                AINFO << "FollowPath preempted; switching to pending goal";
+                AINFO_EVERY(5) << "FollowPath preempted; switching to pending goal";
             } else {
                 auto result =
                     std::make_shared<nav_proto::FollowPathAction::Result>();

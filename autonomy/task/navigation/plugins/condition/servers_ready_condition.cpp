@@ -83,6 +83,9 @@ BT_REGISTER_NODES(factory)
         autonomy::task::plugins::navigation::TfAvailableCondition>(
         "TransformValid");
     factory.registerNodeType<
+        autonomy::task::plugins::navigation::TfAvailableCondition>(
+        "TransformAvailable");
+    factory.registerNodeType<
         autonomy::task::plugins::navigation::ServersReadyCondition>(
         "ServersReady");
 }

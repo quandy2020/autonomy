@@ -489,8 +489,8 @@ void ControllerServer::ComputeControl() {
     follow_path_active_ = true;
     controllers_active_ = true;
 
-    AINFO << "FollowPath started: controller=" << current_controller_
-          << " path_poses=" << current_path_.poses_size();
+    AINFO_EVERY(5) << "FollowPath started: controller=" << current_controller_
+                   << " path_poses=" << current_path_.poses_size();
 }
 
 void ControllerServer::ComputeAndPublishVelocity() {

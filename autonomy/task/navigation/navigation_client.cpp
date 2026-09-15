@@ -21,6 +21,9 @@
 #include "behaviortree_cpp/blackboard.h"
 #include "behaviortree_cpp/tree_node.h"
 
+#include <cmath>
+#include <thread>
+
 namespace autonomy {
 namespace task {
 namespace navigation {
@@ -73,6 +76,52 @@ NavigationClient::NavigationClient(std::shared_ptr<autolink::Node> node)
         node_->CreateClient<navigation_services::ClearEntireCostmap_Request,
                             navigation_services::ClearEntireCostmap_Response>(
             kClearGlobalCostmapService);
+
+    plan_reader_ = node_->CreateReader<automsgs::msgs::nav_msgs::Path>(
+        kPlanTopicName,
+        [this](const std::shared_ptr<automsgs::msgs::nav_msgs::Path>& plan) {
+            OnPlan(plan);
+        });
+}
+
+void NavigationClient::OnPlan(
+    const std::shared_ptr<automsgs::msgs::nav_msgs::Path>& plan)
+{
+    if (!plan || plan->poses().empty()) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(plan_mutex_);
+    latest_plan_ = *plan;
+    latest_plan_time_ = std::chrono::steady_clock::now();
+    ++plan_epoch_;
+}
+
+bool NavigationClient::WaitForPublishedPlan(
+    const automsgs::msgs::geometry_msgs::PoseStamped& goal,
+    std::chrono::steady_clock::time_point not_before,
+    std::chrono::milliseconds timeout,
+    automsgs::msgs::nav_msgs::Path& path) const
+{
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    const double gx = goal.pose().position().x();
+    const double gy = goal.pose().position().y();
+    while (std::chrono::steady_clock::now() < deadline) {
+        {
+            std::lock_guard<std::mutex> lock(plan_mutex_);
+            if (latest_plan_time_ >= not_before &&
+                !latest_plan_.poses().empty()) {
+                const auto& end = latest_plan_.poses(
+                    latest_plan_.poses_size() - 1).pose().position();
+                // Accept plans whose endpoint is near the requested goal.
+                if (std::hypot(end.x() - gx, end.y() - gy) < 0.75) {
+                    path = latest_plan_;
+                    return true;
+                }
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    return false;
 }
 
 NavigationClient::Ptr NavigationClient::Create(std::shared_ptr<autolink::Node> node)
@@ -126,26 +175,56 @@ bool NavigationClient::ComputePathToPose(
         remote_goal.set_planner_id(planner_id);
     }
 
-    const auto wrapped = compute_path_client_->SendGoalAndWait(remote_goal);
-    if (!wrapped) {
+    // Fire the planning action, but take the path from /plan. Successful
+    // get_result often never completes (SHM), while PublishPlan always runs
+    // before SucceededCurrent.
+    const auto sent_at = std::chrono::steady_clock::now();
+    auto accept_future = compute_path_client_->AsyncSendGoal(remote_goal);
+    if (accept_future.wait_for(std::chrono::seconds(3)) !=
+        std::future_status::ready) {
         SetError(error_code, error_message, kErrorRemoteCallFailed,
-                 "compute_path_to_pose remote call failed");
+                 "compute_path_to_pose accept timeout");
         return false;
     }
-    if (wrapped->code != autolink::action::ResultCode::SUCCEEDED || !wrapped->result) {
+    const auto goal_handle = accept_future.get();
+    if (!goal_handle) {
         SetError(error_code, error_message, kErrorRemoteCallFailed,
-                 wrapped->result && !wrapped->result->error_msg().empty()
-                     ? wrapped->result->error_msg()
-                     : "compute_path_to_pose failed");
+                 "compute_path_to_pose goal rejected");
         return false;
     }
 
-    path = wrapped->result->path();
-    if (path.poses().empty()) {
-        SetError(error_code, error_message, kErrorEmptyPath, "planner returned empty path");
-        return false;
+    if (WaitForPublishedPlan(goal, sent_at, std::chrono::seconds(10), path)) {
+        AINFO_EVERY(10) << "ComputePathToPose: using /plan (" << path.poses_size()
+                        << " poses)";
+        return true;
     }
-    return true;
+
+    // Last chance: short poll of action result (abort paths are small and OK).
+    auto result_future = goal_handle->AsyncGetResult();
+    if (result_future.wait_for(std::chrono::milliseconds(200)) ==
+        std::future_status::ready) {
+        try {
+            const auto wrapped = result_future.get();
+            if (wrapped.code == autolink::action::ResultCode::SUCCEEDED &&
+                wrapped.result && !wrapped.result->path().poses().empty()) {
+                path = wrapped.result->path();
+                return true;
+            }
+            if (wrapped.result && !wrapped.result->error_msg().empty()) {
+                SetError(error_code, error_message, kErrorRemoteCallFailed,
+                         wrapped.result->error_msg());
+                return false;
+            }
+        } catch (const std::exception& ex) {
+            SetError(error_code, error_message, kErrorRemoteCallFailed,
+                     ex.what());
+            return false;
+        }
+    }
+
+    SetError(error_code, error_message, kErrorRemoteCallFailed,
+             "compute_path_to_pose produced no /plan");
+    return false;
 }
 
 bool NavigationClient::ComputePathThroughPoses(
@@ -173,20 +252,28 @@ bool NavigationClient::ComputePathThroughPoses(
         remote_goal.set_planner_id(planner_id);
     }
 
-    const auto wrapped = compute_through_poses_client_->SendGoalAndWait(remote_goal);
-    if (!wrapped || wrapped->code != autolink::action::ResultCode::SUCCEEDED ||
-        !wrapped->result) {
-        SetError(error_code, error_message, kErrorRemoteCallFailed,
-                 "compute_path_through_poses remote call failed");
-        return false;
+    const auto wrapped = compute_through_poses_client_->SendGoalAndWait(
+        remote_goal, {}, std::chrono::seconds(3),
+        std::chrono::milliseconds(400));
+    if (wrapped && wrapped->code == autolink::action::ResultCode::SUCCEEDED &&
+        wrapped->result && !wrapped->result->path().poses().empty()) {
+        path = wrapped->result->path();
+        return true;
     }
 
-    path = wrapped->result->path();
-    if (path.poses().empty()) {
-        SetError(error_code, error_message, kErrorEmptyPath, "planner returned empty path");
-        return false;
+    if (!goals.empty() &&
+        WaitForPublishedPlan(goals.back(),
+                             std::chrono::steady_clock::now() -
+                                 std::chrono::milliseconds(500),
+                             std::chrono::seconds(4), path)) {
+        AINFO << "ComputePathThroughPoses: using /plan (" << path.poses_size()
+              << " poses) after action result lag";
+        return true;
     }
-    return true;
+
+    SetError(error_code, error_message, kErrorRemoteCallFailed,
+             "compute_path_through_poses remote call failed");
+    return false;
 }
 
 bool NavigationClient::SmoothPath(const automsgs::msgs::nav_msgs::Path& unsmoothed,
@@ -230,7 +317,8 @@ bool NavigationClient::SmoothPath(const automsgs::msgs::nav_msgs::Path& unsmooth
     }
     remote_goal.set_check_for_collisions(check_for_collisions);
 
-    const auto wrapped = smooth_path_client_->SendGoalAndWait(remote_goal);
+    const auto wrapped = smooth_path_client_->SendGoalAndWait(
+        remote_goal, {}, std::chrono::seconds(3), std::chrono::seconds(5));
     if (!wrapped || wrapped->code != autolink::action::ResultCode::SUCCEEDED ||
         !wrapped->result) {
         SetError(error_code, error_message, kErrorRemoteCallFailed,

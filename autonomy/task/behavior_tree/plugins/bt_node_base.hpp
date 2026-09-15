@@ -64,8 +64,13 @@ public:
     BT::NodeStatus onRunning() override
     {
         if (!started_) {
-            started_ = true;
-            return OnFirstTick();
+            const BT::NodeStatus status = OnFirstTick();
+            // Allow OnFirstTick to return RUNNING while still preparing
+            // (e.g. waiting for an action server) without latching.
+            if (status != BT::NodeStatus::RUNNING || LatchAfterFirstTick()) {
+                started_ = true;
+            }
+            return status;
         }
         return OnExecute();
     }
@@ -83,6 +88,9 @@ protected:
     virtual BT::NodeStatus OnExecute() { return BT::NodeStatus::SUCCESS; }
 
     virtual void OnHalted() {}
+
+    /** Override to keep retrying OnFirstTick while returning RUNNING. */
+    virtual bool LatchAfterFirstTick() const { return true; }
 
 private:
     bool started_{false};

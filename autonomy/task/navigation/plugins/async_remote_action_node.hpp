@@ -8,6 +8,7 @@
 
 #include <string>
 
+#include "autonomy/common/logging.hpp"
 #include "autonomy/task/behavior_tree/plugins/bt_node_base.hpp"
 #include "autonomy/task/navigation/action_session.hpp"
 #include "autonomy/task/navigation/plugins/plugin_utils.hpp"
@@ -39,20 +40,26 @@ protected:
     virtual bool BuildGoal(Goal& goal) = 0;
     virtual const char* ServerLabel() const = 0;
 
+    bool LatchAfterFirstTick() const override { return remote_started_; }
+
     BT::NodeStatus OnFirstTick() override
     {
         auto client = ResolveClient(*this);
         if (!GetClient(*client).ActionServerIsReady()) {
-            SetErrorPorts(*this, 1, std::string(ServerLabel()) + " not ready");
-            return BT::NodeStatus::FAILURE;
+            AWARN_EVERY(50) << ServerLabel()
+                            << " action server not ready; waiting";
+            remote_started_ = false;
+            return BT::NodeStatus::RUNNING;
         }
 
         Goal goal;
         if (!BuildGoal(goal)) {
+            remote_started_ = false;
             return BT::NodeStatus::FAILURE;
         }
 
         GetSession(*client).Begin(GetClient(*client), goal);
+        remote_started_ = true;
         return BT::NodeStatus::RUNNING;
     }
 
@@ -74,10 +81,12 @@ protected:
     {
         auto client = ResolveClient(*this);
         GetSession(*client).Cancel(GetClient(*client));
+        remote_started_ = false;
     }
 
 protected:
     ::autonomy::task::navigation::ActionSession<ActionT> local_session_;
+    bool remote_started_{false};
 
 private:
 };

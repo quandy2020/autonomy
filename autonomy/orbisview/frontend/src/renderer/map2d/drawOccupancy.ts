@@ -14,7 +14,7 @@ export function drawOccupancyGrid(
   toScreen: WorldToScreen,
   _scale: number,
   mode: OccupancyPaintMode,
-  cache?: OccupancyTextureCache,
+  opts?: { cache?: OccupancyTextureCache; alpha?: number },
 ): void {
   const expected = grid.width * grid.height;
   const data = grid.data ?? [];
@@ -25,7 +25,8 @@ export function drawOccupancyGrid(
     (globalThis as { __ovGridWarn?: boolean }).__ovGridWarn = true;
   }
 
-  const c = cache ?? (mode === 'costmap' ? defaultCostmapCache : defaultMapCache);
+  const c =
+    opts?.cache ?? (mode === 'costmap' ? defaultCostmapCache : defaultMapCache);
   const tex = c.get(grid, mode);
   if (!tex) return;
 
@@ -41,5 +42,13 @@ export function drawOccupancyGrid(
   const w = Math.abs(sx1 - sx0);
   const h = Math.abs(sy1 - sy0);
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(tex.canvas, left, top, w, h);
+  const alpha = opts?.alpha;
+  if (alpha != null && alpha < 1) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    ctx.drawImage(tex.canvas, left, top, w, h);
+    ctx.restore();
+  } else {
+    ctx.drawImage(tex.canvas, left, top, w, h);
+  }
 }

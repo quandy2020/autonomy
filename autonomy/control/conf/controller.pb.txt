@@ -15,9 +15,6 @@ publish_zero_velocity: true
 controller_plugins: "graceful_controller:GracefulController"
 controller_plugins: "mppi_controller:MppiController"
 controller_plugins: "nmpc_controller:NMPCController"
-controller_plugin_libraries {
-}
-
 # ---------- Local costmap (rolling) ----------
 costmap_2d_options {
   robot_radius: 0.22
@@ -86,8 +83,8 @@ costmap_2d_options {
   }
   frame_id: "map"
   resolution: 0.05
-  width: 10
-  height: 10
+  width: 3
+  height: 3
 }
 
 # ---------- Goal / progress checkers (shared with BT) ----------

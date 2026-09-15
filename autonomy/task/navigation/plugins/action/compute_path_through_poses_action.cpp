@@ -2,6 +2,7 @@
  * Copyright 2026 The Openbot Authors
  */
 
+#include "autonomy/common/logging.hpp"
 #include "autonomy/task/behavior_tree/plugins/bt_node_base.hpp"
 #include "autonomy/task/navigation/plugins/plugin_utils.hpp"
 
@@ -19,7 +20,7 @@ public:
         return {
             BT::InputPort<std::vector<automsgs::msgs::geometry_msgs::PoseStamped>>(
                 "goals"),
-            BT::OutputPort<automsgs::msgs::nav_msgs::Path>("path"),
+            BT::BidirectionalPort<automsgs::msgs::nav_msgs::Path>("path"),
             BT::InputPort<std::string>("planner_id"),
             BT::OutputPort<int>("error_code_id"),
             BT::OutputPort<std::string>("error_msg"),
@@ -43,6 +44,15 @@ protected:
         std::string error_message;
         if (!client->ComputePathThroughPoses(goals, planner_id, path, &error_code,
                                              &error_message)) {
+            automsgs::msgs::nav_msgs::Path existing;
+            if (getInput("path", existing) && !existing.poses().empty()) {
+                AWARN_EVERY(20)
+                    << "ComputePathThroughPoses failed (" << error_message
+                    << "); keeping previous path (" << existing.poses_size()
+                    << " poses)";
+                ClearErrorPorts(*this);
+                return BT::NodeStatus::SUCCESS;
+            }
             SetErrorPorts(*this, error_code, error_message);
             return BT::NodeStatus::FAILURE;
         }
@@ -59,4 +69,7 @@ BT_REGISTER_NODES(factory)
     factory.registerNodeType<
         autonomy::task::plugins::navigation::ComputePathThroughPosesAction>(
         "PlanPoses");
+    factory.registerNodeType<
+        autonomy::task::plugins::navigation::ComputePathThroughPosesAction>(
+        "ComputePathThroughPoses");
 }

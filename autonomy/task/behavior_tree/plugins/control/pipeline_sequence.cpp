@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include "autonomy/common/logging.hpp"
 #include "autonomy/task/behavior_tree/plugins/bt_node_base.hpp"
 #include "behaviortree_cpp/control_node.h"
 
@@ -45,6 +46,9 @@ private:
                 const BT::NodeStatus status = children_nodes_[i]->executeTick();
                 switch (status) {
                 case BT::NodeStatus::FAILURE:
+                    AWARN_EVERY(20) << "PipelineSequence '" << name()
+                                    << "' child[" << i << "]='"
+                                    << children_nodes_[i]->name() << "' FAILURE";
                     haltChildren();
                     current_child_idx_ = 0;
                     return BT::NodeStatus::FAILURE;
@@ -66,7 +70,6 @@ private:
                 }
             }
         }
-
         haltChildren();
         current_child_idx_ = 0;
         return BT::NodeStatus::SUCCESS;

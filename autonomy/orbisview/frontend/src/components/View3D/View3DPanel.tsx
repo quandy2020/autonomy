@@ -36,6 +36,7 @@ import {
   hexToThree,
   resolveCloudOverlay,
   resolveLaserOverlays,
+  resolveOccupancyStyle,
   resolvePathStyle,
 } from '@/components/Channels/sensorDisplay';
 import {
@@ -664,6 +665,8 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
     }
     const cloudOverlay = resolveCloudOverlay(envelopes, displays);
     const pathStyle = resolvePathStyle(displays);
+    const mapOccStyle = resolveOccupancyStyle(displays, 'map');
+    const costmapOccStyle = resolveOccupancyStyle(displays, 'costmap');
     const laserStyle = laserOverlays[0]?.style;
     const cloudStyle = cloudOverlay?.style;
     const cloudMode =
@@ -717,6 +720,10 @@ export function View3DPanel({ active = true }: { active?: boolean }) {
         laserColor: laserStyle ? hexToThree(laserStyle.color) : undefined,
         laserSize: laserStyle?.size,
         mapOpacity,
+        mapColorScheme: mapOccStyle.colorScheme,
+        costmapColorScheme: costmapOccStyle.colorScheme,
+        mapAlpha: mapOccStyle.alpha,
+        costmapAlpha: costmapOccStyle.alpha,
         pathColor: hexToThree(pathStyle.color),
         pathOpacity: pathStyle.alpha,
         pathLineWidth: pathStyle.lineWidth,

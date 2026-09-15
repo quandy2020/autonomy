@@ -48,6 +48,9 @@ int main(int argc, char** argv) {
   options.document_root = FLAGS_document_root;
   options.plugin_dir = FLAGS_plugin_dir;
   options.cmd_vel_channel = FLAGS_cmd_vel_channel;
+  options.goal_pose_channel = FLAGS_goal_pose_channel;
+  options.goal_poses_channel = FLAGS_goal_poses_channel;
+  options.cancel_navigation_channel = FLAGS_cancel_navigation_channel;
   options.hmi_modes_dir = "autonomy/orbisview/conf/hmi_modes";
 
   autonomy::orbisview::backend::Orbisview orbisview;

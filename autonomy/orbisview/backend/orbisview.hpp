@@ -49,6 +49,12 @@ struct ServerOptions {
   std::string document_root;
   std::string plugin_dir;
   std::string cmd_vel_channel{"/cmd_vel"};
+  /** Single-pose nav goal (PoseStamped) → TaskServer /goal_pose. */
+  std::string goal_pose_channel{"/goal_pose"};
+  /** Multi-pose route (PoseStampedArray) → TaskServer /goal_poses. */
+  std::string goal_poses_channel{"/goal_poses"};
+  /** Cancel active navigation (Bool true) → TaskServer /cancel_navigation. */
+  std::string cancel_navigation_channel{"/cancel_navigation"};
   /** Optional conf/hmi_modes directory for extra mode JSON files. */
   std::string hmi_modes_dir;
 };
@@ -114,10 +120,17 @@ class Orbisview {
   void RefreshAutolinkChannels();
   bool RefreshAutolinkChannelsChanged();
   void PublishCmdVelAutolink(double vx, double wz);
+  void PublishGoalPoseAutolink(double x, double y, double yaw);
+  void PublishGoalPosesAutolink(
+      const std::vector<adapters::MockSource::RoutePoint>& waypoints);
+  void PublishCancelNavigationAutolink();
   std::vector<core::ChannelInfo> autolink_channels_;
   std::string autolink_fingerprint_;
 #if defined(ORBISVIEW_WITH_AUTOMSGS)
   std::shared_ptr<void> cmd_vel_writer_;
+  std::shared_ptr<void> goal_pose_writer_;
+  std::shared_ptr<void> goal_poses_writer_;
+  std::shared_ptr<void> cancel_navigation_writer_;
 #endif
 #endif
 };

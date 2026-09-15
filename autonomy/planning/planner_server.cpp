@@ -359,9 +359,9 @@ void PlannerServer::SetPathUpdateCallback(PathUpdateCallback callback) {
 void PlannerServer::PublishPlan(const automsgs::msgs::nav_msgs::Path& path) {
     if (plan_writer_) {
         plan_writer_->Write(path);
-        AINFO << "PlannerServer: published " << path.poses_size()
-              << " poses on " << kPlanTopicName
-              << " frame=" << path.header().frame_id();
+        AINFO_EVERY(25) << "PlannerServer: published " << path.poses_size()
+                        << " poses on " << kPlanTopicName
+                        << " frame=" << path.header().frame_id();
     }
     if (path_update_callback_) {
         path_update_callback_(path);
@@ -373,11 +373,12 @@ automsgs::msgs::nav_msgs::Path PlannerServer::GetPlan(
     const automsgs::msgs::geometry_msgs::PoseStamped& goal,
     const std::string& planner_id, std::function<bool()> cancel_checker) {
     automsgs::msgs::nav_msgs::Path path;
-    AINFO << "Planning algorithm " << planner_id
-          << " is trying to find a path from (" << start.pose().position().x() << ", "
-          << start.pose().position().y() << ")"
-          << " to (" << goal.pose().position().x() << "," << goal.pose().position().y()
-          << ")";
+    AINFO_EVERY(10) << "Planning algorithm " << planner_id
+                    << " is trying to find a path from ("
+                    << start.pose().position().x() << ", "
+                    << start.pose().position().y() << ")"
+                    << " to (" << goal.pose().position().x() << ","
+                    << goal.pose().position().y() << ")";
 
     uint32_t return_code = 0;
     std::string resolved_planner_id = planner_id;
@@ -458,16 +459,17 @@ bool PlannerServer::ValidatePath(
     // cells — matching BT PathValid defaults (253, false).
     if (!IsPathValid(path, map::costmap_2d::INSCRIBED_INFLATED_OBSTACLE,
                      /*consider_unknown_as_obstacle=*/false)) {
-        AWARN << "Planning algorithm " << planner_id
-              << " path collides with costmap obstacles toward ("
-              << curr_goal.pose().position().x() << ", "
-              << curr_goal.pose().position().y() << ")";
+        AWARN_EVERY(10) << "Planning algorithm " << planner_id
+                        << " path collides with costmap obstacles toward ("
+                        << curr_goal.pose().position().x() << ", "
+                        << curr_goal.pose().position().y() << ")";
         return false;
     }
 
-    AINFO << "Found valid path of size " << path.poses_size() << " to ("
-          << curr_goal.pose().position().x() << ", " << curr_goal.pose().position().y()
-          << ")";
+    AINFO_EVERY(10) << "Found valid path of size " << path.poses_size() << " to ("
+                    << curr_goal.pose().position().x() << ", "
+                    << curr_goal.pose().position().y()
+                    << ")";
     return true;
 }
 
@@ -554,7 +556,7 @@ void PlannerServer::ClearEntireCostmap()
         return;
     }
     costmap_wrapper_->resetLayers();
-    AINFO << "PlannerServer: global costmap cleared";
+    AINFO_EVERY(5) << "PlannerServer: global costmap cleared";
 }
 
 }  // namespace planning

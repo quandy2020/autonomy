@@ -55,16 +55,18 @@ export PATH=/workspace/autonomy/build/autonomy/bin:$PATH
 autonomy.task --config_directory=config
 ```
 
-## Autoviz 点目标（A→B 导航）
+## Autoviz / OrbisView 点目标（A→B 导航）
 
 1. 按上文启动 `task.launch`
-2. 打开 Autoviz，**fixed_frame = `map`**
-3. 工具 **2D Goal Pose**（默认 Topic `/goal_pose`）
-4. 地面点击并拖拽朝向 → 发布 `PoseStamped` 到 `/goal_pose`
-5. TaskServer 转为 `NavigationGoal(START, SINGLE_POSE)` → 加载  
-   `config/task/behavior_tree/navigation/navigate_to_pose.xml`
+2. 打开 Autoviz（**fixed_frame = `map`**）或 OrbisView Map「导航」工具
+3. 单点：发布 `PoseStamped` 到 `/goal_pose`（OrbisView 点「发送」）
+4. 多点：发布 `PoseStampedArray` 到 `/goal_poses`
+5. 取消：发布 `Bool(true)` 到 `/cancel_navigation`
+6. TaskServer 转为 `NavigationGoal(START, …)` → 加载  
+   `navigate_to_pose.xml` / `navigate_through_poses.xml`
 
-接口名见 `common/names.hpp`：`kGoalPose`、`navigate_to_pose`、`navigate_through_poses`。
+接口名见 `common/names.hpp`：`kGoalPose`、`kGoalPoses`、`kCancelNavigation`、
+`navigate_to_pose`、`navigate_through_poses`。
 
 ## 相关路径
 

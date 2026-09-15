@@ -13,6 +13,7 @@
 
 #include "autolink/node/node.hpp"
 #include "autolink/node/writer.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/task/behavior_tree/bt_defaults.hpp"
 #include "autonomy/task/behavior_tree/bt_profile.hpp"
 #include "autonomy/task/behavior_tree/bt_runner.hpp"
@@ -179,6 +180,9 @@ protected:
             }
         }
         if (path.empty() || !std::filesystem::exists(path)) {
+            AERROR << "BtTaskApp: behavior tree not found path=" << path
+                   << " config_directory=" << config_directory_
+                   << " requested=" << tree_xml_path;
             return false;
         }
         return runner_.Run(path);

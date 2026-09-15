@@ -33,8 +33,9 @@ export function updateOccupancyPlane(
   const prev = plane.material as THREE.MeshBasicMaterial;
   if (prev.map) prev.map.dispose();
   const texture = new THREE.CanvasTexture(tex.canvas);
-  // Canvas row 0 = high world Y (Autoviz); keep upright on the XY plane after -X rot.
-  texture.flipY = false;
+  // Canvas row 0 = high world Y (Autoviz). PlaneGeometry v=1 is +localY → high
+  // map Y after rotation; flipY=true puts canvas top on v=1 so laser matches map.
+  texture.flipY = true;
   texture.magFilter = THREE.NearestFilter;
   texture.minFilter = THREE.NearestFilter;
   texture.needsUpdate = true;

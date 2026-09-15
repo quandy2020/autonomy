@@ -7,7 +7,9 @@
 
 #pragma once
 
+#include <chrono>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -53,6 +55,7 @@ constexpr char kWaitAction[] = "/wait";
 constexpr char kClearGlobalCostmapService[] =
     "/global_costmap/clear_entirely_global_costmap";
 constexpr char kNavigationClientBlackboardKey[] = "navigation_client";
+constexpr char kPlanTopicName[] = "/plan";
 
 /** Cross-process RPC bundle for navigation BT plugins. */
 class NavigationClient
@@ -161,6 +164,23 @@ private:
         clear_costmap_client_;
 
     ActionSession<navigation_actions::FollowPathAction> follow_session_;
+
+    // PlannerServer publishes the path on /plan *before* action get_result.
+    // Successful get_result often stalls (large Result over SHM), so we take
+    // the path from this topic as soon as it appears after send_goal.
+    std::shared_ptr<autolink::Reader<automsgs::msgs::nav_msgs::Path>>
+        plan_reader_;
+    mutable std::mutex plan_mutex_;
+    automsgs::msgs::nav_msgs::Path latest_plan_;
+    std::chrono::steady_clock::time_point latest_plan_time_{};
+    uint64_t plan_epoch_{0};
+
+    void OnPlan(const std::shared_ptr<automsgs::msgs::nav_msgs::Path>& plan);
+    bool WaitForPublishedPlan(
+        const automsgs::msgs::geometry_msgs::PoseStamped& goal,
+        std::chrono::steady_clock::time_point not_before,
+        std::chrono::milliseconds timeout,
+        automsgs::msgs::nav_msgs::Path& path) const;
 };
 
 }  // namespace navigation
