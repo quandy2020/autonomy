@@ -2,12 +2,12 @@ import { Icon, type IconName } from '@/components/icons';
 import { MapViewModeToggle } from '@/components/Map/MapViewModeToggle';
 import { StaticSlamLoadPop } from '@/components/Map/StaticSlamLoadPop';
 import { useMapViewStore, type MapTool } from '@/store/mapViewStore';
-import { useLayerStore, useLayoutStore } from '@/store/layoutStore';
+import { useLayerStore } from '@/store/layoutStore';
 import { useWaypointStore } from '@/store/waypointStore';
 import { useDataStore } from '@/store/dataStore';
 import { useStaticSlamStore } from '@/store/staticSlamStore';
 import { useMappingVizStore } from '@/store/mappingVizStore';
-import { wsClient } from '@/store/websocket/client';
+import { goNavigation, stopNavigation } from '@/store/navActions';
 import { useState } from 'react';
 
 interface Props {
@@ -20,8 +20,11 @@ interface Props {
   onFit?: () => void;
 }
 
+/** Primary map tools only — annotations live in their own panel. */
+const PRIMARY_TOOLS: MapTool[] = ['pan', 'nav', 'measure'];
+
 const TOOL_META: Record<MapTool, { icon: IconName; label: string }> = {
-  pan: { icon: 'pan', label: '拖动视图' },
+  pan: { icon: 'pan', label: '拖动' },
   measure: { icon: 'measure', label: '测距' },
   nav: { icon: 'nav', label: '导航' },
   pick: { icon: 'pick', label: '取点' },
@@ -36,6 +39,7 @@ function RailBtn({
   onClick,
   icon,
   badge,
+  tone,
 }: {
   title: string;
   active?: boolean;
@@ -43,14 +47,16 @@ function RailBtn({
   onClick: () => void;
   icon: IconName;
   badge?: string | number;
+  tone?: 'go' | 'stop';
 }) {
+  const toneCls = tone === 'go' ? ' map-rail-btn--go' : tone === 'stop' ? ' map-rail-btn--stop' : '';
   return (
     <button
       type="button"
       title={title}
       aria-label={title}
       aria-pressed={active}
-      className={active ? 'map-rail-btn active' : 'map-rail-btn'}
+      className={`map-rail-btn${active ? ' active' : ''}${toneCls}`}
       disabled={disabled}
       onClick={onClick}
     >
@@ -60,7 +66,7 @@ function RailBtn({
   );
 }
 
-/** Right-side vertical floating tool rail for Map 2D / 3D. */
+/** Right-side floating tool rail — nav product chrome. */
 export function MapFloatToolbar({
   onClearMeasure,
   measureActive,
@@ -79,55 +85,31 @@ export function MapFloatToolbar({
   const hasBasemap = !!useStaticSlamStore((s) => s.basemap);
   const demoPlaying = useMappingVizStore((s) => s.demo.playing);
   const waypoints = useWaypointStore((s) => s.waypoints);
-  const clearWaypoints = useWaypointStore((s) => s.clear);
   const connected = useDataStore((s) => s.connected);
-  const ensurePanel = useLayoutStore((s) => s.ensurePanel);
 
-  const sendNav = () => {
-    if (!connected || !waypoints.length) return;
-    if (waypoints.length === 1) {
-      const wp = waypoints[0];
-      wsClient.send({ op: 'set_goal', x: wp.x, y: wp.y, yaw: wp.yaw ?? 0 });
-      useMapViewStore.getState().setStatusMsg(
-        `已下发导航目标 → /goal_pose (${wp.x.toFixed(2)}, ${wp.y.toFixed(2)})`,
-      );
-      return;
-    }
-    wsClient.send({
-      op: 'set_route',
-      waypoints: waypoints.map((wp) => ({
-        x: wp.x,
-        y: wp.y,
-        yaw: wp.yaw ?? 0,
-      })),
-    });
-    useMapViewStore
-      .getState()
-      .setStatusMsg(`已下发多点路线 → /goal_poses (${waypoints.length} 点)`);
+  const n = waypoints.length;
+  const canGo = connected && n > 0;
+  const canStop = n > 0 || !!goalLabel;
+
+  const onGo = () => {
+    goNavigation();
   };
 
-  const clearNav = () => {
-    clearWaypoints();
-    wsClient.send({ op: 'clear_route' });
-    wsClient.send({ op: 'clear_goal' });
+  const onStop = () => {
+    stopNavigation(true);
+    // Local UI only — stopNavigation already published /cancel_navigation.
     onClearGoal?.();
-    useMapViewStore.getState().setStatusMsg('已取消导航并清空航点');
   };
-
-  const sendTitle =
-    waypoints.length <= 1
-      ? `发送目标 (${waypoints.length})`
-      : `发送路线 (${waypoints.length})`;
 
   return (
     <>
-      <div className="map-float-rail" role="toolbar" aria-label="Map tools">
+      <div className="map-float-rail" role="toolbar" aria-label="地图工具">
         <MapViewModeToggle />
 
         <span className="map-rail-sep" />
 
-        <div className="map-rail-group" aria-label="Interaction tools">
-          {(Object.keys(TOOL_META) as MapTool[]).map((id) => (
+        <div className="map-rail-group" aria-label="工具">
+          {PRIMARY_TOOLS.map((id) => (
             <RailBtn
               key={id}
               title={TOOL_META[id].label}
@@ -136,27 +118,34 @@ export function MapFloatToolbar({
               onClick={() => selectTool(id)}
             />
           ))}
-          <RailBtn
-            title={sendTitle}
-            icon="send"
-            disabled={!connected || !waypoints.length}
-            onClick={sendNav}
-            badge={waypoints.length || undefined}
-          />
-          <RailBtn
-            title="一键清除导航点"
-            icon="clear"
-            disabled={!waypoints.length && !goalLabel}
-            onClick={clearNav}
-          />
           {tool === 'measure' && measureActive ? (
-            <RailBtn title="清除测距" icon="stop" onClick={() => onClearMeasure?.()} />
+            <RailBtn title="清除测距" icon="clear" onClick={() => onClearMeasure?.()} />
           ) : null}
         </div>
 
         <span className="map-rail-sep" />
 
-        <div className="map-rail-group" aria-label="View controls">
+        <div className="map-rail-group" aria-label="导航">
+          <RailBtn
+            title={n <= 1 ? `出发${n ? ` (${n}点)` : ''}` : `出发 (${n}点)`}
+            icon="send"
+            tone="go"
+            disabled={!canGo}
+            onClick={onGo}
+            badge={n || undefined}
+          />
+          <RailBtn
+            title="停止并清空"
+            icon="stop"
+            tone="stop"
+            disabled={!canStop}
+            onClick={onStop}
+          />
+        </div>
+
+        <span className="map-rail-sep" />
+
+        <div className="map-rail-group" aria-label="视图">
           <RailBtn title="放大" icon="zoomIn" onClick={() => onZoomIn?.()} disabled={!onZoomIn} />
           <RailBtn title="缩小" icon="zoomOut" onClick={() => onZoomOut?.()} disabled={!onZoomOut} />
           <RailBtn title="自适应" icon="fit" onClick={() => onFit?.()} disabled={!onFit} />
@@ -167,11 +156,7 @@ export function MapFloatToolbar({
             onClick={() => setFollowRobot(!followRobot)}
           />
           <RailBtn
-            title={
-              demoPlaying
-                ? '建图演示播放中 — 请先暂停'
-                : '静态底图'
-            }
+            title={demoPlaying ? '建图演示中' : '静态底图'}
             icon="mapping"
             active={basemapOpen || hasBasemap}
             disabled={demoPlaying}
@@ -179,11 +164,6 @@ export function MapFloatToolbar({
               if (demoPlaying) return;
               setBasemapOpen((v) => !v);
             }}
-          />
-          <RailBtn
-            title="POI管理"
-            icon="panels"
-            onClick={() => ensurePanel('annotations')}
           />
         </div>
       </div>

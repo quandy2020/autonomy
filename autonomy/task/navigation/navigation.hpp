@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -54,8 +55,10 @@ private:
 
     std::optional<::autonomy::task::proto::NavigationGoal> active_goal_;
     float initial_distance_{-1.f};
-    // Serialize Autoviz /goal_pose preempt threads (detached Submit).
+    // Serialize START/CANCEL/preempt — cancel must not race a blocked START.
     mutable std::mutex goal_mutex_;
+    // Bumped on every START/CANCEL so a stalled START can abandon StartTree.
+    std::atomic<uint64_t> goal_epoch_{0};
 };
 
 }  // namespace task

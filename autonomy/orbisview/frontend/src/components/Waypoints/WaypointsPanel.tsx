@@ -1,34 +1,35 @@
 import { useWaypointStore, waypointColor } from '@/store/waypointStore';
-import { wsClient } from '@/store/websocket/client';
+import { goNavigation, stopNavigation } from '@/store/navActions';
 import { useDataStore } from '@/store/dataStore';
 
+/** Compact waypoint list — Map canvas is the primary editor. */
 export function WaypointsPanel() {
   const connected = useDataStore((s) => s.connected);
-  const { waypoints, selectedId, remove, moveUp, moveDown, select, clear, add, update } =
+  const { waypoints, selectedId, remove, moveUp, moveDown, select, update } =
     useWaypointStore();
 
   const selected = waypoints.find((w) => w.id === selectedId) ?? null;
-
-  const sendSelected = () => {
-    if (!selected || !connected) return;
-    wsClient.send({ op: 'set_goal', x: selected.x, y: selected.y, yaw: selected.yaw ?? 0 });
-  };
+  const n = waypoints.length;
 
   return (
     <div className="panel">
-      <h3 style={{ marginTop: 0 }}>Waypoints</h3>
-      <p className="hint">Map 多点工具添加 · 列表 / 2D / 3D 可选中拖拽修改</p>
-      <div className="row" style={{ gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-        <button type="button" disabled={!connected} onClick={() => add(0, 0, 0, 'origin')}>
-          Add (0,0)
+      <h3 style={{ marginTop: 0 }}>航点</h3>
+      <p className="hint">在 Map 选「导航」拖放加点 · 此处可排序 / 微调</p>
+
+      <div className="row" style={{ gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={!connected || !n}
+          onClick={() => goNavigation()}
+        >
+          {n <= 1 ? '出发' : `出发 (${n})`}
         </button>
-        <button type="button" onClick={sendSelected} disabled={!connected || !selected}>
-          set_goal selected
-        </button>
-        <button type="button" onClick={clear} disabled={!waypoints.length}>
-          Clear all
+        <button type="button" disabled={!n} onClick={() => stopNavigation(true)}>
+          停止清空
         </button>
       </div>
+
       <ul className="wp-list">
         {waypoints.map((w, idx) => {
           const color = waypointColor(idx);
@@ -44,16 +45,16 @@ export function WaypointsPanel() {
               onClick={() => select(w.id)}
             >
               <span className="wp-item-main">
-                <span className="wp-swatch" style={{ background: color }} title={color} />
+                <span className="wp-swatch" style={{ background: color }} />
                 <span>
-                  #{idx + 1} ({w.x.toFixed(2)}, {w.y.toFixed(2)},{' '}
-                  {(((w.yaw ?? 0) * 180) / Math.PI).toFixed(0)}°)
-                  {w.label ? ` · ${w.label}` : ''}
+                  {idx + 1}. ({w.x.toFixed(2)}, {w.y.toFixed(2)}){' '}
+                  {(((w.yaw ?? 0) * 180) / Math.PI).toFixed(0)}°
                 </span>
               </span>
               <span className="wp-actions">
                 <button
                   type="button"
+                  title="上移"
                   onClick={(e) => {
                     e.stopPropagation();
                     moveUp(w.id);
@@ -63,6 +64,7 @@ export function WaypointsPanel() {
                 </button>
                 <button
                   type="button"
+                  title="下移"
                   onClick={(e) => {
                     e.stopPropagation();
                     moveDown(w.id);
@@ -72,6 +74,7 @@ export function WaypointsPanel() {
                 </button>
                 <button
                   type="button"
+                  title="删除"
                   onClick={(e) => {
                     e.stopPropagation();
                     remove(w.id);
@@ -84,9 +87,10 @@ export function WaypointsPanel() {
           );
         })}
       </ul>
+
       {selected ? (
         <div className="wp-edit">
-          <div className="wp-edit-title">编辑选中点</div>
+          <div className="wp-edit-title">微调</div>
           <label className="wp-edit-field">
             <span>x</span>
             <input
@@ -106,7 +110,7 @@ export function WaypointsPanel() {
             />
           </label>
           <label className="wp-edit-field">
-            <span>yaw°</span>
+            <span>朝向°</span>
             <input
               type="number"
               step={1}
@@ -118,7 +122,8 @@ export function WaypointsPanel() {
           </label>
         </div>
       ) : null}
-      {!waypoints.length ? <p className="muted">empty</p> : null}
+
+      {!n ? <p className="muted">暂无航点</p> : null}
     </div>
   );
 }

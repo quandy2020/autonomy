@@ -129,12 +129,21 @@ std::string NavigationTask::ResolveTreeForGoal(
 bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
 {
     using Command = task_proto::NavigationCommand;
+
+    // CANCEL/STOP bump epoch before taking the mutex so an in-flight START
+    // (holding the lock in its ready-wait) abandons instead of launching a
+    // tree that Cancel would then immediately kill — or worse, Cancel waits
+    // and kills a newer Start that already finished.
+    if (goal.command() == Command::NAV_CMD_STOP ||
+        goal.command() == Command::NAV_CMD_CANCEL) {
+        ++goal_epoch_;
+    }
+
+    std::lock_guard<std::mutex> goal_lock(goal_mutex_);
+
     switch (goal.command()) {
     case Command::NAV_CMD_START:
     case Command::NAV_CMD_REPLAN: {
-        // One preempt/start at a time — Autoviz can fire many /goal_pose threads.
-        std::lock_guard<std::mutex> goal_lock(goal_mutex_);
-
         if (!EnsureNavigationClient()) {
             AERROR << "NavigationTask: navigation client missing";
             return false;
@@ -152,30 +161,37 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
                      "goal";
         }
 
-        // Tear down prior BT / FollowPath so the new goal owns the stack.
+        const uint64_t epoch = ++goal_epoch_;
+
         if (navigation()) {
             navigation()->CancelActiveMotion();
         }
         StopTree();
-        // Brief settle so control observes cancel/preempt before send_goal.
         std::this_thread::sleep_for(std::chrono::milliseconds(
-            preempting ? 100 : 20));
+            preempting ? 80 : 20));
         if (navigation()) {
             navigation()->CancelActiveMotion();
         }
 
-        // Wait for planner + follow_path. Control may be respawning after a
-        // crash — allow several seconds instead of refusing the click.
+        if (epoch != goal_epoch_.load()) {
+            AINFO << "NavigationTask: start superseded before BT launch";
+            return true;
+        }
+
         {
-            const auto deadline =
-                std::chrono::steady_clock::now() +
-                std::chrono::milliseconds(preempting ? 12000 : 8000);
+            const auto deadline = std::chrono::steady_clock::now() +
+                                  std::chrono::milliseconds(600);
             while (std::chrono::steady_clock::now() < deadline) {
+                if (epoch != goal_epoch_.load()) {
+                    AINFO << "NavigationTask: start superseded while waiting "
+                             "ready";
+                    return true;
+                }
                 if (navigation() && navigation()->IsPlanningReady() &&
                     navigation()->IsControlReady()) {
                     break;
                 }
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                std::this_thread::sleep_for(std::chrono::milliseconds(40));
             }
             if (!navigation() || !navigation()->IsPlanningReady()) {
                 AWARN << "NavigationTask: planner not ready yet; starting "
@@ -183,8 +199,13 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
             }
             if (!navigation()->IsControlReady()) {
                 AWARN << "NavigationTask: follow_path not ready yet; starting "
-                         "BT anyway (is autonomy.control restarting?)";
+                         "BT anyway";
             }
+        }
+
+        if (epoch != goal_epoch_.load()) {
+            AINFO << "NavigationTask: start superseded before StartTree";
+            return true;
         }
 
         active_goal_ = goal;
@@ -199,6 +220,16 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
             AERROR << "NavigationTask: failed to start tree " << tree;
             active_goal_.reset();
             return false;
+        }
+        if (epoch != goal_epoch_.load()) {
+            AINFO << "NavigationTask: start superseded after StartTree; "
+                     "stopping";
+            StopTree();
+            if (navigation()) {
+                navigation()->CancelActiveMotion();
+            }
+            active_goal_.reset();
+            return true;
         }
         SetLifecycle(TaskLifecycle::kRunning);
         SetProgress(0.f, preempting ? "preempted:" + tree : "bt:" + tree);
@@ -217,7 +248,8 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
         }
         return Pause();
     case Command::NAV_CMD_STOP:
-    case Command::NAV_CMD_CANCEL:
+    case Command::NAV_CMD_CANCEL: {
+        // epoch already bumped above
         if (navigation()) {
             navigation()->CancelActiveMotion();
         }
@@ -225,7 +257,10 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
         active_goal_.reset();
         initial_distance_ = -1.f;
         SetLifecycle(TaskLifecycle::kCanceled);
+        AINFO << "NavigationTask: canceled (epoch=" << goal_epoch_.load()
+              << ")";
         return true;
+    }
     default:
         return false;
     }
