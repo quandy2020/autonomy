@@ -1,0 +1,12 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Manipulation process: planning scene + pipeline + trajectory execution.
+-->
+<autolink>
+    <module>
+        <name>manipulation</name>
+        <type>binary</type>
+        <process_name>manipulation --conf=manipulation.pb.txt</process_name>
+    </module>
+</autolink>

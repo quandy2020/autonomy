@@ -14,8 +14,8 @@ include(autonomy_options)
 # @pre Root CMakeLists has already declared product options (BUILD_GRPC, etc.).
 macro(autonomy_superproject_bootstrap_modules)
   set(AUTONOMY_MODULE_ORDER
-    common transform map vehicle prediction control planning perception
-    localization sensor task system audio bridge visualization)
+    common transform map vehicle manipulation prediction control planning
+    perception localization sensor task system audio bridge visualization)
 
   autonomy_declare_module_options()
   autonomy_validate_module_graph()

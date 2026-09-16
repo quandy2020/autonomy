@@ -1,0 +1,14 @@
+// Copyright 2026 The Openbot Authors
+
+syntax = "proto3";
+
+package automsgs.msgs.moveit_msgs;
+
+import "automsgs/msgs/trajectory_msgs/joint_trajectory.proto";
+import "automsgs/msgs/trajectory_msgs/multi_dof_joint_trajectory.proto";
+
+message RobotTrajectory {
+  automsgs.msgs.trajectory_msgs.JointTrajectory joint_trajectory = 1;
+  automsgs.msgs.trajectory_msgs.MultiDOFJointTrajectory
+      multi_dof_joint_trajectory = 2;
+}

@@ -49,6 +49,10 @@ constexpr char kExplorationWaypoint[] = "/exploration/waypoint";
 constexpr char kExplorationWaypointReached[] = "/exploration/waypoint_reached";
 constexpr char kExplorationFinished[] = "/exploration/finished";
 
+constexpr char kManipulationMove[] = "/autonomy/manipulation/move";
+constexpr char kManipulationTrajectory[] =
+    "/arm_controller/joint_trajectory";
+
 }  // namespace task
 }  // namespace autonomy
 

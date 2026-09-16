@@ -132,7 +132,7 @@ function(autonomy_install_package)
   endif()
 
   set(_autonomy_launch_mods "")
-  foreach(_mod IN ITEMS localization planning control task system)
+  foreach(_mod IN ITEMS localization planning control manipulation task system)
     if(_mod IN_LIST AUTONOMY_ENABLED_MODULES)
       list(APPEND _autonomy_launch_mods "${_mod}")
     endif()

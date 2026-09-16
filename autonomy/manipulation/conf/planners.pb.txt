@@ -1,0 +1,5 @@
+# Planner-related overrides (docs). Prefer ManipulationOptions.planner_id / adapters.
+planner_id: "joint_interpolation"
+# Alternatives: cartesian | rrt_connect | pilz_{ptp,lin,circ} | ompl | chomp | stomp | hybrid
+adapters: "time_parameterization"
+adapters: "validate_path"

@@ -1,0 +1,28 @@
+// Copyright 2026 The Openbot Authors
+//
+// Minimal PlanningScene + Diff for autonomy (not full MoveIt parity).
+
+syntax = "proto3";
+
+package automsgs.msgs.moveit_msgs;
+
+import "automsgs/msgs/sensor_msgs/joint_state.proto";
+import "automsgs/msgs/map_msgs/octomap_with_pose.proto";
+import "automsgs/msgs/moveit_msgs/allowed_collision_matrix.proto";
+import "automsgs/msgs/moveit_msgs/attached_collision_object.proto";
+import "automsgs/msgs/moveit_msgs/collision_object.proto";
+
+message PlanningSceneWorld {
+  repeated CollisionObject collision_objects = 1;
+  automsgs.msgs.map_msgs.OctomapWithPose octomap = 2;
+}
+
+message PlanningScene {
+  string name = 1;
+  automsgs.msgs.sensor_msgs.JointState robot_state = 2;
+  string robot_model_name = 3;
+  AllowedCollisionMatrix allowed_collision_matrix = 4;
+  PlanningSceneWorld world = 5;
+  bool is_diff = 6;
+  repeated AttachedCollisionObject attached_collision_objects = 7;
+}

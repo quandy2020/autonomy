@@ -13,6 +13,7 @@
 
 #include "autonomy/task/charging/charging.hpp"
 #include "autonomy/task/localization/localization.hpp"
+#include "autonomy/task/manipulation/manipulation.hpp"
 #include "autonomy/task/mapping/mapping.hpp"
 #include "autonomy/task/navigation/navigation.hpp"
 #include "autonomy/task/teleop/teleop.hpp"
@@ -31,7 +32,8 @@ void RegisterBuiltinTasks(
     const proto::TaskAppOptions& apps, RegisterApp&& register_app,
     NavigationTask::SharedPtr* navigation, TrackerTask::SharedPtr* tracking,
     TeleopTask::SharedPtr* teleop, ChargingTask::SharedPtr* charging,
-    MappingTask::SharedPtr* mapping, LocalizationTask::SharedPtr* localization)
+    MappingTask::SharedPtr* mapping, LocalizationTask::SharedPtr* localization,
+    ManipulationTask::SharedPtr* manipulation = nullptr)
 {
     const auto add = [&](auto* out, bool enable) {
         if (!enable || out == nullptr) {
@@ -49,6 +51,7 @@ void RegisterBuiltinTasks(
     add(charging, apps.enable_charging());
     add(mapping, apps.enable_mapping());
     add(localization, apps.enable_localization());
+    add(manipulation, apps.enable_manipulation());
 }
 
 }  // namespace task

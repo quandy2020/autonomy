@@ -1,0 +1,64 @@
+// Copyright 2026 The Openbot Authors
+//
+// Minimal MotionPlanRequest / Response (MoveIt motion_plan_request subset).
+
+syntax = "proto3";
+
+package automsgs.msgs.moveit_msgs;
+
+import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
+import "automsgs/msgs/moveit_msgs/move_it_error_codes.proto";
+import "automsgs/msgs/moveit_msgs/robot_trajectory.proto";
+import "automsgs/msgs/sensor_msgs/joint_state.proto";
+
+message JointConstraint {
+  string joint_name = 1;
+  double position = 2;
+  double tolerance_above = 3;
+  double tolerance_below = 4;
+  double weight = 5;
+}
+
+message PositionConstraint {
+  string link_name = 1;
+  automsgs.msgs.geometry_msgs.PoseStamped target = 2;
+  double tolerance = 3;
+  double weight = 4;
+}
+
+message OrientationConstraint {
+  string link_name = 1;
+  automsgs.msgs.geometry_msgs.PoseStamped target = 2;
+  double tolerance = 3;  // rad
+  double weight = 4;
+}
+
+message Constraints {
+  string name = 1;
+  repeated JointConstraint joint_constraints = 2;
+  repeated PositionConstraint position_constraints = 3;
+  repeated OrientationConstraint orientation_constraints = 4;
+}
+
+message MotionPlanRequest {
+  string group_name = 1;
+  string planner_id = 2;
+  automsgs.msgs.sensor_msgs.JointState start_state = 3;
+  automsgs.msgs.sensor_msgs.JointState goal_state = 4;
+  automsgs.msgs.geometry_msgs.PoseStamped goal_pose = 5;
+  bool has_goal_pose = 6;
+  repeated automsgs.msgs.geometry_msgs.PoseStamped cartesian_waypoints = 7;
+  double allowed_planning_time = 8;
+  int32 num_planning_attempts = 9;
+  double max_velocity_scaling_factor = 10;
+  double max_acceleration_scaling_factor = 11;
+  Constraints path_constraints = 12;
+}
+
+message MotionPlanResponse {
+  bool success = 1;
+  MoveItErrorCodes error_code = 2;
+  string error = 3;
+  RobotTrajectory trajectory = 4;
+  double planning_time = 5;
+}

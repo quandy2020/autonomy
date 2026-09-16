@@ -43,6 +43,7 @@ class MinimalPresetTest(unittest.TestCase):
             "BUILD_AUTODRIVER",
             "BUILD_AUTOVIZ",
             "BUILD_AUTOSIM",
+            "BUILD_ORBISVIEW",
             "BUILD_ONNXRUNTIME",
             "BUILD_TENSORRT",
             "BUILD_SHERPA_ONNX",

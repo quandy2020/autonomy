@@ -33,6 +33,7 @@
 #include "autonomy/task/common/goal_ingress.hpp"
 #include "autonomy/task/common/navigator.hpp"
 #include "autonomy/task/localization/localization.hpp"
+#include "autonomy/task/manipulation/manipulation.hpp"
 #include "autonomy/task/mapping/mapping.hpp"
 #include "autonomy/task/navigation/navigation.hpp"
 #include "autonomy/task/navigation/navigation_client.hpp"
@@ -81,6 +82,7 @@ public:
     ChargingTask::SharedPtr charging() const { return charging_; }
     MappingTask::SharedPtr mapping() const { return mapping_; }
     LocalizationTask::SharedPtr localization() const { return localization_; }
+    ManipulationTask::SharedPtr manipulation() const { return manipulation_; }
 
     bool Submit(const proto::NavigationGoal& goal);
     bool Submit(const proto::TrackerGoal& goal);
@@ -201,6 +203,7 @@ private:
     ChargingTask::SharedPtr charging_;
     MappingTask::SharedPtr mapping_;
     LocalizationTask::SharedPtr localization_;
+    ManipulationTask::SharedPtr manipulation_;
     std::shared_ptr<autolink::Node> node_;
     navigation::NavigationClient::Ptr navigation_client_;
     proto::TaskServerOptions options_;

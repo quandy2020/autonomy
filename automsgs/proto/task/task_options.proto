@@ -31,6 +31,7 @@ message TaskAppOptions {
   bool enable_mapping = 6;
   bool enable_localization = 7;
   bool enable_exploration_bridge = 8;
+  bool enable_manipulation = 9;
 }
 
 message SchedulerOptions {

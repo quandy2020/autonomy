@@ -56,6 +56,11 @@ autolink launch start src/autonomy/autonomy/orbisview/launch/orbisview.launch
 ./build/autonomy/bin/autonomy.orbisview --mock=true --autolink=false --port=8766 \
   --document_root=src/autonomy/autonomy/orbisview/frontend/dist
 
+# live Autolink（遥操 → /cmd_vel TwistStamped，可驱动 autosim）
+./build/autonomy/bin/autonomy.orbisview --mock=false --autolink=true --port=8766 \
+  --document_root=src/autonomy/autonomy/orbisview/frontend/dist \
+  --cmd_vel_channel=/cmd_vel
+
 # 开发：Vite 热更新（可选）
 bash src/autonomy/autonomy/orbisview/script/run_frontend.sh
 ```
@@ -68,7 +73,7 @@ Live 模式下 UI 自动订阅 autosim 通道（`/odom` `/scan` `/map` `/tf` `/c
 |------|------|
 | `--host` / `--port` | 默认 `0.0.0.0:8766`（conf） |
 | `--mock` | 默认 `false`（live）；离线 UI 设 `true` |
-| `--autolink` | 默认 `true`；订阅 Autolink 拓扑上的通道 |
+| `--autolink` | 默认 `true`；订阅 Autolink；遥操发布 `TwistStamped` 到 `--cmd_vel_channel` |
 | `--document_root` | 静态前端根目录（`frontend/dist` 或 `share/.../www`） |
 | `--plugin_dir` | 可选 native 插件目录 |
 | `--cmd_vel_channel` | 遥控发布通道，默认 `/cmd_vel` |

@@ -1,0 +1,5 @@
+# Kinematics-related overrides (merged manually / docs). Prefer fields on ManipulationOptions.
+# kinematics_solver: stub | kdl | ikfast | cached_kdl
+kinematics_solver: "kdl"
+base_frame: "base_link"
+tip_frame: "tool0"

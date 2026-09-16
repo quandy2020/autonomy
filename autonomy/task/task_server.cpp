@@ -416,7 +416,8 @@ void TaskServer::Unbind() {
 void TaskServer::AddApps(const proto::TaskAppOptions& apps) {
     RegisterBuiltinTasks(
         apps, [this](const auto& task) { Register(task); }, &navigation_,
-        &tracking_, &teleop_, &charging_, &mapping_, &localization_);
+        &tracking_, &teleop_, &charging_, &mapping_, &localization_,
+        &manipulation_);
 }
 
 bool TaskServer::Start() {
@@ -438,6 +439,7 @@ void TaskServer::Shutdown() {
     stop(charging_);
     stop(mapping_);
     stop(localization_);
+    stop(manipulation_);
     if (scheduler_) {
         scheduler_->Shutdown();
         scheduler_.reset();
@@ -449,6 +451,7 @@ void TaskServer::Shutdown() {
     charging_.reset();
     mapping_.reset();
     localization_.reset();
+    manipulation_.reset();
     navigation_client_.reset();
     if (transform_listener_) {
         transform_listener_->Stop();

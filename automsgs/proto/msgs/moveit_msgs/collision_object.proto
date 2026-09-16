@@ -1,0 +1,37 @@
+// Copyright 2026 The Openbot Authors
+//
+// Collision object (MoveIt collision_object analogue). Reuses shape/geometry msgs.
+
+syntax = "proto3";
+
+package automsgs.msgs.moveit_msgs;
+
+import "automsgs/msgs/std_msgs/header.proto";
+import "automsgs/msgs/geometry_msgs/pose.proto";
+import "automsgs/msgs/shape_msgs/solid_primitive.proto";
+import "automsgs/msgs/shape_msgs/mesh.proto";
+import "automsgs/msgs/shape_msgs/plane.proto";
+
+message CollisionObject {
+  enum Operation {
+    ADD = 0;
+    REMOVE = 1;
+    APPEND = 2;
+    MOVE = 3;
+  }
+
+  automsgs.msgs.std_msgs.Header header = 1;
+  string id = 2;
+  Operation operation = 3;
+
+  repeated automsgs.msgs.shape_msgs.SolidPrimitive primitives = 4;
+  repeated automsgs.msgs.geometry_msgs.Pose primitive_poses = 5;
+
+  repeated automsgs.msgs.shape_msgs.Mesh meshes = 6;
+  repeated automsgs.msgs.geometry_msgs.Pose mesh_poses = 7;
+
+  repeated automsgs.msgs.shape_msgs.Plane planes = 8;
+  repeated automsgs.msgs.geometry_msgs.Pose plane_poses = 9;
+
+  automsgs.msgs.geometry_msgs.Pose pose = 10;
+}

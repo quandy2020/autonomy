@@ -1,0 +1,16 @@
+// Copyright 2026 The Openbot Authors
+
+syntax = "proto3";
+
+package automsgs.msgs.moveit_msgs;
+
+message AllowedCollisionEntry {
+  repeated bool enabled = 1;
+}
+
+message AllowedCollisionMatrix {
+  repeated string entry_names = 1;
+  repeated AllowedCollisionEntry entry_values = 2;
+  repeated string default_entry_names = 3;
+  repeated bool default_entry_values = 4;
+}

@@ -1,0 +1,17 @@
+// Copyright 2026 The Openbot Authors
+
+syntax = "proto3";
+
+package automsgs.msgs.moveit_msgs;
+
+import "automsgs/msgs/moveit_msgs/collision_object.proto";
+import "automsgs/msgs/trajectory_msgs/joint_trajectory.proto";
+
+message AttachedCollisionObject {
+  string link_name = 1;
+  CollisionObject object = 2;
+  repeated string touch_links = 3;
+  // Optional detach posture (gripper open etc.)
+  automsgs.msgs.trajectory_msgs.JointTrajectory detach_posture = 4;
+  float weight = 5;
+}
