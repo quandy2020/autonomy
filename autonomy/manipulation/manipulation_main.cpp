@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   FLAGS_alsologtostderr = true;
 
-  autolink::Init(argc, argv);
+  autolink::Init(argv[0]);
 
   autonomy::manipulation::proto::ManipulationOptions options;
   if (!LoadOptions(&options)) {

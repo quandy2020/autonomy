@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 
+#include "autolink/node/node.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/task/common/typed_task.hpp"
 #include <automsgs/task/manipulation.pb.h>
@@ -26,7 +27,11 @@ class ManipulationTask
  public:
   AUTONOMY_SMART_PTR_DEFINITIONS(ManipulationTask)
 
+  static constexpr bool kUsesNavigationClient = false;
+
   ::automsgs::msgs::vehicle_msgs::RobotTaskType GetTaskType() const override;
+
+  void SetNode(std::shared_ptr<autolink::Node> node);
 
  protected:
   bool OnInitialize(

@@ -15,6 +15,8 @@ namespace task {
   return ::automsgs::msgs::vehicle_msgs::ROBOT_TASK_MANIPULATION;
 }
 
+void ManipulationTask::SetNode(std::shared_ptr<autolink::Node> /*node*/) {}
+
 bool ManipulationTask::OnInitialize(
     const ::autonomy::task::proto::TaskServerOptions& /*options*/) {
   AINFO << "ManipulationTask ready; action bridge target="

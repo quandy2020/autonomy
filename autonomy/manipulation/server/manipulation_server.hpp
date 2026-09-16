@@ -37,7 +37,7 @@ class ManipulationActionServer;
 class ManipulationServer {
  public:
   /** @brief Construct an uninitialized server. */
-  ManipulationServer() = default;
+  ManipulationServer();
 
   /** @brief Stop the server and release owned resources. */
   ~ManipulationServer();

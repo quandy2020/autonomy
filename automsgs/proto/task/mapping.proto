@@ -34,6 +34,7 @@ enum MapCommand {
   MAP_CMD_CLEAR_COSTMAP = 4;
   MAP_CMD_ADD_KEEP_OUT_ZONE = 5;
   MAP_CMD_REMOVE_KEEP_OUT_ZONE = 6;
+  MAP_CMD_CANCEL = 7;
 }
 
 enum MapStatus {

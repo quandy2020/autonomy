@@ -80,7 +80,6 @@ automsgs::msgs::moveit_msgs::MotionPlanRequest ToMsg(
   msg.set_planner_id(request.planner_id);
   *msg.mutable_start_state() = scene::ToMsg(request.start_state);
   *msg.mutable_goal_state() = scene::ToMsg(request.goal_state);
-  msg.set_has_goal_pose(request.has_goal_pose);
   if (request.has_goal_pose) {
     auto* pose = msg.mutable_goal_pose()->mutable_pose();
     pose->mutable_position()->set_x(request.goal_pose.x);

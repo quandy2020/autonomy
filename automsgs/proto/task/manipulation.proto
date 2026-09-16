@@ -20,6 +20,7 @@ import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
 import "automsgs/msgs/moveit_msgs/motion_plan.proto";
 import "automsgs/msgs/moveit_msgs/robot_trajectory.proto";
 import "automsgs/task/common.proto";
+import "automsgs/task/task_common.proto";
 
 // manipulation — arm plan / execute (MoveIt move_group goals).
 
@@ -38,6 +39,7 @@ message ManipulationAction {
     automsgs.msgs.moveit_msgs.MotionPlanRequest motion_plan = 10;
     // If true, preempt an in-flight trajectory before executing.
     bool replace_execution = 11;
+    TaskHeader header = 12;
   }
   message Feedback {
     Status status = 1;

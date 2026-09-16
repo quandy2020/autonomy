@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <mutex>
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/manipulation/core/link_fk.hpp"

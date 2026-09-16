@@ -360,12 +360,12 @@ std::vector<double> SmoothKernel(const std::vector<double>& x) {
   std::vector<double> y(x.size(), 0.0);
   for (std::size_t i = 0; i < x.size(); ++i) {
     double acc = 0.0;
-    for (int k = -2; k <= 2; ++k) {
-      const int j = static_cast<int>(i) + k;
+    for (int offset = -2; offset <= 2; ++offset) {
+      const int j = static_cast<int>(i) + offset;
       if (j < 0 || j >= static_cast<int>(x.size())) {
         continue;
       }
-      acc += k[k + 2] * x[static_cast<std::size_t>(j)];
+      acc += k[offset + 2] * x[static_cast<std::size_t>(j)];
     }
     y[i] = acc / ksum;
   }

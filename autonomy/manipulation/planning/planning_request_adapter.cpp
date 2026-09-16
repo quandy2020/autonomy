@@ -89,7 +89,7 @@ bool CheckConstraintsAdapter::Adapt(MotionPlanRequest* request,
   if (!request || !response || !response->success) {
     return true;
   }
-  if (!constraint_samplers::SatisfiesPathConstraints(request,
+  if (!constraint_samplers::SatisfiesPathConstraints(*request,
                                                      response->trajectory)) {
     response->success = false;
     response->error_code = ErrorCode::kGoalViolatesPathConstraints;

@@ -46,7 +46,8 @@ message MotionPlanRequest {
   automsgs.msgs.sensor_msgs.JointState start_state = 3;
   automsgs.msgs.sensor_msgs.JointState goal_state = 4;
   automsgs.msgs.geometry_msgs.PoseStamped goal_pose = 5;
-  bool has_goal_pose = 6;
+  reserved 6;
+  reserved "has_goal_pose";
   repeated automsgs.msgs.geometry_msgs.PoseStamped cartesian_waypoints = 7;
   double allowed_planning_time = 8;
   int32 num_planning_attempts = 9;

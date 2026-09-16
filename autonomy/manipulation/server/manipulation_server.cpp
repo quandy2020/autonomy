@@ -30,6 +30,8 @@
 namespace autonomy {
 namespace manipulation {
 
+ManipulationServer::ManipulationServer() = default;
+
 ManipulationServer::~ManipulationServer() {
   Stop();
 }

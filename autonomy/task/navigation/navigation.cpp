@@ -236,11 +236,11 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
             const bool plan_ready = navigation()->IsPlanningReady();
             const bool ctrl_ready = navigation()->IsControlReady();
             if (!plan_ready || !ctrl_ready) {
-                AERROR << "NavigationTask: servers not ready "
-                          "(planner="
-                       << plan_ready << " follow_path=" << ctrl_ready
-                       << "); rejecting goal";
-                return false;
+                // Discovery can lag; BT action nodes wait on ActionServerIsReady.
+                AWARN << "NavigationTask: servers not fully ready yet "
+                         "(planner="
+                      << plan_ready << " follow_path=" << ctrl_ready
+                      << "); starting BT anyway";
             }
         }
 

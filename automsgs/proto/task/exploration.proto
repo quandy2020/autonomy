@@ -16,27 +16,52 @@ syntax = "proto3";
 
 package autonomy.task.proto;
 
-import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
 import "automsgs/msgs/geometry_msgs/polygon.proto";
-import "automsgs/task/common.proto";
+import "automsgs/task/task_common.proto";
 
-message ExplorationAction {
-  message Goal {
-    string id = 1;
-    Cmd cmd = 2;
-    automsgs.msgs.geometry_msgs.Polygon area = 3;
-    string map = 4;
-    float timeout = 5;  // s
-  }
-  message Feedback {
-    Status status = 1;
-    float progress = 2;
-    int32 frontiers = 3;
-    automsgs.msgs.geometry_msgs.PoseStamped pose = 4;
-  }
-  message Result {
-    Status status = 1;
-    string error = 2;
-    string map = 3;
-  }
+// exploration — aligned with bridge ExplorationCommand.
+
+enum ExplorationCommand {
+  EXPLORATION_CMD_UNSPECIFIED = 0;
+  EXPLORATION_CMD_START = 1;
+  EXPLORATION_CMD_STOP = 2;
+  EXPLORATION_CMD_PAUSE = 3;
+  EXPLORATION_CMD_RESUME = 4;
+  EXPLORATION_CMD_CANCEL = 5;
+  EXPLORATION_CMD_SET_AREA = 6;
+  EXPLORATION_CMD_SAVE_MAP = 7;
+}
+
+enum ExplorationStatus {
+  EXPLORATION_STATUS_UNKNOWN = 0;
+  EXPLORATION_STATUS_IDLE = 1;
+  EXPLORATION_STATUS_PLANNING = 2;
+  EXPLORATION_STATUS_EXPLORING = 3;
+  EXPLORATION_STATUS_PAUSED = 4;
+  EXPLORATION_STATUS_SUCCEEDED = 5;
+  EXPLORATION_STATUS_FAILED = 6;
+  EXPLORATION_STATUS_CANCELED = 7;
+}
+
+message ExplorationGoal {
+  TaskHeader header = 1;
+  ExplorationCommand command = 2;
+  automsgs.msgs.geometry_msgs.Polygon area = 3;
+  string map_name = 4;
+  float coverage_target = 5;
+  bool enable_mapping = 6;
+}
+
+message ExplorationFeedback {
+  ExplorationStatus status = 1;
+  TaskProgress progress = 2;
+  float explored_area = 3;
+  float exploration_progress = 4;
+  string map_name = 5;
+}
+
+message ExplorationResult {
+  TaskResult result = 1;
+  ExplorationStatus final_status = 2;
+  string map_name = 3;
 }

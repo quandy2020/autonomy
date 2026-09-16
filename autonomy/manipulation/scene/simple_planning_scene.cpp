@@ -5,6 +5,7 @@
 #include "autonomy/manipulation/scene/simple_planning_scene.hpp"
 
 #include <cmath>
+#include <mutex>
 #include <unordered_map>
 
 #include "autonomy/manipulation/collision/collision_detector.hpp"
