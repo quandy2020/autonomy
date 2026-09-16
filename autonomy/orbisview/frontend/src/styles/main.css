@@ -1015,6 +1015,27 @@ button.btn-primary:disabled {
 .mosaic-host { height: 100%; width: 100%; }
 .mosaic-panel-body { height: 100%; overflow: auto; padding: 0.45rem; background: #0b0f14; }
 .mosaic-window { background: #121820; border: 1px solid #243040; }
+/* Wider split hit targets so panes are easy to resize. */
+.mosaic-split {
+  z-index: 8 !important;
+}
+.mosaic-split.-row {
+  margin-left: -5px !important;
+  width: 10px !important;
+  cursor: col-resize !important;
+}
+.mosaic-split.-column {
+  margin-top: -5px !important;
+  height: 10px !important;
+  cursor: row-resize !important;
+}
+.mosaic-split:hover {
+  background: rgba(79, 195, 247, 0.12) !important;
+}
+.mosaic-split:hover .mosaic-split-line {
+  background: #4fc3f7;
+  box-shadow: 0 0 0 1px #4fc3f7;
+}
 .mosaic-window-toolbar {
   background: #1a2430 !important;
   height: 34px !important;

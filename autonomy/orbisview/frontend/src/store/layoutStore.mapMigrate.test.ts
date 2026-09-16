@@ -22,6 +22,40 @@ describe('migrateMapLeaves', () => {
       splitPercentages: [70, 30],
     });
     expect(collectMosaicIds(node)).toEqual(['map', 'dashboard']);
+    expect(node).toMatchObject({
+      type: 'split',
+      splitPercentages: [70, 30],
+    });
+  });
+
+  it('sanitize preserves dragged split ratios', () => {
+    const node = sanitizeMosaic({
+      type: 'split',
+      direction: 'row',
+      children: [
+        'map',
+        {
+          type: 'split',
+          direction: 'column',
+          children: ['route', 'dashboard'],
+          splitPercentages: [40, 60],
+        },
+      ],
+      splitPercentages: [72, 28],
+    });
+    expect(node).toMatchObject({
+      type: 'split',
+      splitPercentages: [72, 28],
+      children: [
+        'map',
+        {
+          type: 'split',
+          direction: 'column',
+          children: ['route', 'dashboard'],
+          splitPercentages: [40, 60],
+        },
+      ],
+    });
   });
 
   it('sanitize resets when both map2d and view3d collapse to duplicate map', () => {
