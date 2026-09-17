@@ -1,0 +1,72 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Manipulation 规划—执行工作流",
+    "locale": "zh-CN",
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "happy-path",
+        "label": "成功主路径",
+        "focus": ["goal", "capability", "request", "plan", "validate", "execute", "done"],
+        "note": "从目标到轨迹执行的完整成功路径。"
+      },
+      {
+        "id": "plan-fail",
+        "label": "规划失败",
+        "focus": ["plan", "fail"],
+        "note": "规划器失败返回 ErrorCode。"
+      },
+      {
+        "id": "preempt",
+        "label": "抢占 / 取消",
+        "focus": ["execute", "cancel"],
+        "note": "执行中可被抢占并停止控制器。"
+      }
+    ]
+  },
+  "lanes": [
+    { "id": "entry", "label": "入口" },
+    { "id": "server", "label": "Server / Capability" },
+    { "id": "planning", "label": "规划管线" },
+    { "id": "runtime", "label": "执行与异常", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "intake", "label": "接收目标", "fromCol": 0, "toCol": 1 },
+    { "id": "prepare", "label": "构建请求", "fromCol": 2, "toCol": 2 },
+    { "id": "solve", "label": "规划与校验", "fromCol": 3, "toCol": 4, "variant": "emphasis" },
+    { "id": "run", "label": "执行", "fromCol": 5, "toCol": 5 }
+  ],
+  "groups": [
+    { "id": "pipeline_group", "label": "PlanningPipeline", "lane": "planning", "fromCol": 3, "toCol": 4, "variant": "emphasis" },
+    { "id": "fail_group", "label": "失败与取消", "lane": "runtime", "fromCol": 3, "toCol": 5, "variant": "security" }
+  ],
+  "mainPath": ["goal", "capability", "request", "plan", "validate", "execute", "done"],
+  "nodes": [
+    { "id": "goal", "lane": "entry", "col": 0, "type": "external", "label": "Motion Goal", "sublabel": "关节 / 位姿", "width": 140 },
+    { "id": "done", "lane": "entry", "col": 5, "type": "external", "label": "Succeeded", "sublabel": "Action Result", "width": 130 },
+    { "id": "capability", "lane": "server", "col": 1, "type": "backend", "label": "Capability", "sublabel": "plan_and_execute", "width": 140 },
+    { "id": "request", "lane": "server", "col": 2, "type": "database", "label": "Plan Request", "sublabel": "pb + scene", "width": 140 },
+    { "id": "plan", "lane": "planning", "col": 3, "type": "backend", "label": "Planner::Plan", "sublabel": "Pilz / OMPL / …", "width": 150 },
+    { "id": "validate", "lane": "planning", "col": 4, "type": "backend", "label": "Post Adapters", "sublabel": "time param · validate", "width": 140 },
+    { "id": "execute", "lane": "runtime", "col": 5, "type": "backend", "label": "Execute", "sublabel": "TEM + Controller", "width": 140 },
+    { "id": "fail", "lane": "runtime", "col": 3, "type": "security", "label": "Plan Failed", "sublabel": "ErrorCode", "width": 130 },
+    { "id": "cancel", "lane": "runtime", "col": 4, "type": "security", "label": "Preempt", "sublabel": "停止跟踪", "width": 130 }
+  ],
+  "edges": [
+    { "id": "e1", "from": "goal", "to": "capability", "label": "Action Goal", "variant": "emphasis" },
+    { "id": "e2", "from": "capability", "to": "request", "label": "组装", "variant": "emphasis" },
+    { "id": "e3", "from": "request", "to": "plan", "label": "adapters", "variant": "emphasis" },
+    { "id": "e4", "from": "plan", "to": "validate", "label": "trajectory", "variant": "emphasis" },
+    { "id": "e5", "from": "validate", "to": "execute", "label": "合法轨迹", "variant": "emphasis" },
+    { "id": "e6", "from": "execute", "to": "done", "label": "SUCCESS", "variant": "emphasis" },
+    { "id": "e7", "from": "plan", "to": "fail", "label": "失败", "variant": "security", "role": "error" },
+    { "id": "e8", "from": "execute", "to": "cancel", "label": "抢占", "variant": "security", "role": "branch" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "正常路径", "items": ["Capability 组装 MotionPlanRequest", "Pipeline：Planner → post adapters → Execute"] },
+    { "dot": "rose", "title": "异常路径", "items": ["规划失败携带内部 ErrorCode", "执行可被抢占并停止 JT Controller"] }
+  ]
+}

@@ -1,5 +1,5 @@
 # Controller-related overrides (docs).
 controller_id: "arm_controller"
 trajectory_topic: "/arm_controller/joint_trajectory"
-use_autolink_trajectory: true
+use_joint_trajectory_controller: true
 joint_states_topic: "/joint_states"

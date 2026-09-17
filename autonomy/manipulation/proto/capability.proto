@@ -1,0 +1,22 @@
+// Copyright 2026 The Openbot Authors
+syntax = "proto3";
+
+package autonomy.manipulation.proto;
+
+import "autonomy/manipulation/proto/error_codes.proto";
+
+// Result of a single-state validity query.
+message StateValidationResult {
+  bool valid = 1;
+  ErrorCode error_code = 2;
+  string error = 3;
+  string contact_body_a = 4;
+  string contact_body_b = 5;
+}
+
+// Planner interface descriptor (MoveIt PlannerInterface analogue).
+message PlannerInterfaceInfo {
+  string name = 1;
+  string pipeline_id = 2;
+  string description = 3;
+}

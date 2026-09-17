@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/manipulation/model/urdf_kdl.hpp"
+#include "autonomy/manipulation/model/urdf_kdl_chain.hpp"
 #include "autonomy/manipulation/common/kinematics_interface.hpp"
 
 namespace autonomy {
@@ -19,7 +19,7 @@ namespace kinematics {
 /**
  * @brief Orocos KDL-based FK/IK for a URDF chain (requires AUTONOMY_HAS_KDL).
  */
-class KdlKinematics : public KinematicsBase {
+class KdlKinematics : public KinematicsInterface {
  public:
   /**
    * @brief Store group / frame names; call LoadUrdf before solving.
@@ -44,8 +44,8 @@ class KdlKinematics : public KinematicsBase {
    * @param[out] tip_pose Computed tip pose.
    * @return true on success.
    */
-  bool GetPositionFK(const core::JointState& joints,
-                     Pose* tip_pose) const override;
+  bool GetPositionFK(const automsgs::msgs::sensor_msgs::JointState& joints,
+                     automsgs::msgs::geometry_msgs::Pose* tip_pose) const override;
 
   /**
    * @brief Inverse kinematics via KDL (with retries from @p options).
@@ -53,11 +53,11 @@ class KdlKinematics : public KinematicsBase {
    * @param[in] seed Seed joint state.
    * @param[in] options Timeout / attempts / position-only.
    * @param[out] solution Joint solution on success.
-   * @return ErrorCode::kSuccess or ErrorCode::kNoIkSolution / failure.
+   * @return ErrorCode::SUCCESS or ErrorCode::NO_INVERSE_KINEMATICS_SOLUTION / failure.
    */
-  ErrorCode GetPositionIK(const Pose& tip_pose, const core::JointState& seed,
-                          const IkOptions& options,
-                          core::JointState* solution) const override;
+  ErrorCode GetPositionIK(const automsgs::msgs::geometry_msgs::Pose& tip_pose, const automsgs::msgs::sensor_msgs::JointState& seed,
+                          const InverseKinematicsOptions& options,
+                          automsgs::msgs::sensor_msgs::JointState* solution) const override;
 
   /** @brief Movable joint names of the loaded chain. */
   const std::vector<std::string>& JointNames() const {
@@ -65,14 +65,14 @@ class KdlKinematics : public KinematicsBase {
   }
 
  private:
-  bool MapJoints(const core::JointState& joints, KDL::JntArray* q) const;
-  bool SolveOnce(const Pose& tip_pose, const KDL::JntArray& q_seed,
+  bool MapJoints(const automsgs::msgs::sensor_msgs::JointState& joints, KDL::JntArray* q) const;
+  bool SolveOnce(const automsgs::msgs::geometry_msgs::Pose& tip_pose, const KDL::JntArray& q_seed,
                  bool position_only, KDL::JntArray* q_out) const;
 
   std::string group_;
   std::string base_frame_;
   std::string tip_frame_;
-  core::KdlChainModel model_;
+  model::KdlChainDescription model_;
   bool ready_ = false;
 };
 

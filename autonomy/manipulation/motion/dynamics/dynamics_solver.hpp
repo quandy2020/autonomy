@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "autonomy/common/macros.hpp"
 #include "autonomy/manipulation/model/robot_model.hpp"
 
 namespace autonomy {
@@ -24,6 +25,11 @@ namespace dynamics {
  */
 class DynamicsSolver {
  public:
+  /**
+   * @brief Define DynamicsSolver::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(DynamicsSolver)
+
   virtual ~DynamicsSolver() = default;
 
   virtual bool Init(const std::string& /*group*/) { return true; }

@@ -22,19 +22,19 @@ constexpr char kOctomapTopic[] = "/octomap_binary";
 /** @brief Default servo joint command topic (single-point trajectories). */
 constexpr char kServoJointCommandTopic[] = "/servo_server/delta_joint_cmds";
 
-/** @brief Default Cartesian twist command topic for ServoNode. */
+/** @brief Default Cartesian twist command topic for CartesianServoNode. */
 constexpr char kServoTwistCommandTopic[] = "/servo_server/delta_twist_cmds";
 
-/** @brief Default Cartesian pose command topic for ServoNode. */
+/** @brief Default Cartesian pose command topic for CartesianServoNode. */
 constexpr char kServoPoseCommandTopic[] = "/servo_server/pose_target_cmds";
 
-/** @brief Default joint-jog command topic for ServoNode. */
+/** @brief Default joint-jog command topic for CartesianServoNode. */
 constexpr char kServoJointJogCommandTopic[] = "/servo_server/delta_joint_jog_cmds";
 
-/** @brief Int32 CommandType switch: 0=Twist, 1=JointJog, 2=Pose. */
+/** @brief Int32 CommandType switch: 0=automsgs::msgs::geometry_msgs::Twist, 1=automsgs::msgs::control_msgs::JointJog, 2=automsgs::msgs::geometry_msgs::Pose. */
 constexpr char kServoCommandTypeTopic[] = "/servo_server/command_type";
 
-/** @brief Int32 ServoStatus publish topic. */
+/** @brief Int32 CartesianServoStatus publish topic. */
 constexpr char kServoStatusTopic[] = "/servo_server/status";
 
 /** @brief Float64MultiArray effort feedforward to hardware (Nm). */

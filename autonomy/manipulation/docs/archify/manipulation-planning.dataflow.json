@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Manipulation 规划数据流",
+    "locale": "zh-CN",
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "viewBox": [1080, 620],
+    "views": [
+      {
+        "id": "state-path",
+        "label": "状态输入",
+        "focus": ["joint_states", "model", "scene", "request"],
+        "note": "关节状态与模型进入规划请求。"
+      },
+      {
+        "id": "solve-path",
+        "label": "求解链路",
+        "focus": ["request", "kinematics", "collision", "planner", "trajectory"],
+        "note": "IK / 碰撞约束下由 Planner 产出轨迹。"
+      },
+      {
+        "id": "actuate-path",
+        "label": "执行输出",
+        "focus": ["trajectory", "tem", "topic", "arm"],
+        "note": "轨迹经 TEM 发布到驱动话题。"
+      }
+    ]
+  },
+  "stages": [
+    { "label": "传感 / 模型" },
+    { "label": "场景与请求" },
+    { "label": "求解原语" },
+    { "label": "规划输出" },
+    { "label": "执行通道" }
+  ],
+  "nodes": [
+    { "id": "joint_states", "type": "external", "label": "JointState", "sublabel": "/joint_states", "stage": 0, "row": 0, "tag": "sensor" },
+    { "id": "urdf", "type": "external", "label": "URDF / SRDF", "sublabel": "描述文件", "stage": 0, "row": 2, "tag": "file" },
+    { "id": "scene", "type": "database", "label": "PlanningScene", "sublabel": "world · ACM", "stage": 1, "row": 0, "tag": "scene" },
+    { "id": "request", "type": "backend", "label": "MotionPlanRequest", "sublabel": "start · goal · limits", "stage": 1, "row": 1, "tag": "request" },
+    { "id": "model", "type": "database", "label": "RobotModel", "sublabel": "groups · limits", "stage": 1, "row": 2, "tag": "model" },
+    { "id": "kinematics", "type": "backend", "label": "Kinematics", "sublabel": "FK / IK", "stage": 2, "row": 0, "tag": "solver" },
+    { "id": "planner", "type": "backend", "label": "Planner", "sublabel": "Pilz / OMPL / …", "stage": 2, "row": 1, "tag": "algo" },
+    { "id": "collision", "type": "backend", "label": "Collision", "sublabel": "AABB / FCL", "stage": 2, "row": 2, "tag": "check" },
+    { "id": "trajectory", "type": "messagebus", "label": "JointTrajectory", "sublabel": "waypoints", "stage": 3, "row": 1, "tag": "traj" },
+    { "id": "tem", "type": "backend", "label": "TEM", "sublabel": "跟踪 · 偏差", "stage": 4, "row": 0, "tag": "exec" },
+    { "id": "topic", "type": "messagebus", "label": "trajectory topic", "sublabel": "JT Controller", "stage": 4, "row": 1, "tag": "channel" },
+    { "id": "arm", "type": "external", "label": "Arm Driver", "sublabel": "执行机构", "stage": 4, "row": 2, "tag": "hw" }
+  ],
+  "flows": [
+    { "id": "js-scene", "from": "joint_states", "to": "scene", "label": "state", "classification": "state", "variant": "emphasis", "route": "straight", "labelAt": [205, 120] },
+    { "id": "js-request", "from": "joint_states", "to": "request", "label": "start_state", "classification": "state", "variant": "default", "fromSide": "right", "toSide": "left", "via": [[222, 157], [222, 271]], "labelAt": [240, 210] },
+    { "id": "urdf-model", "from": "urdf", "to": "model", "label": "加载", "classification": "description", "variant": "emphasis", "route": "straight", "labelAt": [205, 398] },
+    { "id": "model-request", "from": "model", "to": "request", "label": "group joints", "classification": "model", "variant": "default", "fromSide": "top", "toSide": "bottom", "route": "straight", "labelAt": [315, 340] },
+    { "id": "scene-request", "from": "scene", "to": "request", "label": "scene ptr", "classification": "context", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "straight", "labelAt": [315, 210] },
+    { "id": "request-planner", "from": "request", "to": "planner", "label": "Plan(req)", "classification": "solve", "variant": "emphasis", "route": "straight", "labelAt": [420, 258] },
+    { "id": "kin-planner", "from": "kinematics", "to": "planner", "label": "IK / FK", "classification": "primitive", "variant": "default", "fromSide": "bottom", "toSide": "top", "route": "straight", "labelAt": [530, 210] },
+    { "id": "col-planner", "from": "collision", "to": "planner", "label": "valid / cost", "classification": "primitive", "variant": "default", "fromSide": "top", "toSide": "bottom", "route": "straight", "labelAt": [530, 340] },
+    { "id": "planner-traj", "from": "planner", "to": "trajectory", "label": "waypoints", "classification": "output", "variant": "emphasis", "route": "straight", "labelAt": [745, 314] },
+    { "id": "traj-tem", "from": "trajectory", "to": "tem", "label": "execute", "classification": "command", "variant": "emphasis", "fromSide": "right", "toSide": "left", "via": [[852, 271], [852, 157]], "labelAt": [870, 210] },
+    { "id": "tem-topic", "from": "tem", "to": "topic", "label": "FollowJT", "classification": "publish", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "straight", "labelAt": [960, 210] },
+    { "id": "topic-arm", "from": "topic", "to": "arm", "label": "joint cmds", "classification": "actuation", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "straight", "labelAt": [960, 340] }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "输入", "items": ["JointState 刷新 PlanningScene 与 start_state", "URDF/SRDF 构建 RobotModel"] },
+    { "dot": "emerald", "title": "求解", "items": ["Kinematics / Collision 作为 Planner 原语", "输出为 JointTrajectory"] },
+    { "dot": "violet", "title": "执行", "items": ["TEM 做跟踪与偏差检测", "JointTrajectoryController 发布到驱动话题"] }
+  ]
+}

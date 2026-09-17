@@ -25,8 +25,8 @@ namespace manipulation {
 namespace kinematics {
 namespace {
 
-Pose FrameToPose(const KDL::Frame& frame) {
-  Pose pose;
+automsgs::msgs::geometry_msgs::Pose FrameToPose(const KDL::Frame& frame) {
+  automsgs::msgs::geometry_msgs::Pose pose;
   double x = 0.0;
   double y = 0.0;
   double z = 0.0;
@@ -36,7 +36,7 @@ Pose FrameToPose(const KDL::Frame& frame) {
   return pose;
 }
 
-KDL::Frame PoseToFrame(const Pose& pose) {
+KDL::Frame PoseToFrame(const automsgs::msgs::geometry_msgs::Pose& pose) {
   return KDL::Frame(
       KDL::Rotation::Quaternion(pose.orientation().x(), pose.orientation().y(),
                                 pose.orientation().z(), pose.orientation().w()),
@@ -62,7 +62,7 @@ bool KdlKinematics::LoadUrdf(const std::string& urdf_path) {
     return false;
   }
   std::string error;
-  if (!core::BuildKdlChainFromUrdf(urdf_path, base_frame_, tip_frame_, &model_,
+  if (!model::BuildKdlChainFromUrdfFile(urdf_path, base_frame_, tip_frame_, &model_,
                                    &error)) {
     AERROR << "KdlKinematics: " << error;
     return false;
@@ -74,7 +74,7 @@ bool KdlKinematics::LoadUrdf(const std::string& urdf_path) {
   return true;
 }
 
-bool KdlKinematics::MapJoints(const core::JointState& joints,
+bool KdlKinematics::MapJoints(const automsgs::msgs::sensor_msgs::JointState& joints,
                               KDL::JntArray* q) const {
   if (!q || !ready_) {
     return false;
@@ -118,8 +118,8 @@ bool KdlKinematics::MapJoints(const core::JointState& joints,
   return true;
 }
 
-bool KdlKinematics::GetPositionFK(const core::JointState& joints,
-                                  Pose* tip_pose) const {
+bool KdlKinematics::GetPositionFK(const automsgs::msgs::sensor_msgs::JointState& joints,
+                                  automsgs::msgs::geometry_msgs::Pose* tip_pose) const {
   if (!tip_pose || !ready_) {
     return false;
   }
@@ -136,7 +136,7 @@ bool KdlKinematics::GetPositionFK(const core::JointState& joints,
   return true;
 }
 
-bool KdlKinematics::SolveOnce(const Pose& tip_pose, const KDL::JntArray& q_seed,
+bool KdlKinematics::SolveOnce(const automsgs::msgs::geometry_msgs::Pose& tip_pose, const KDL::JntArray& q_seed,
                               bool position_only, KDL::JntArray* q_out) const {
   KDL::Frame target = PoseToFrame(tip_pose);
   if (position_only) {
@@ -149,23 +149,23 @@ bool KdlKinematics::SolveOnce(const Pose& tip_pose, const KDL::JntArray& q_seed,
 
   KDL::ChainFkSolverPos_recursive fk(model_.chain);
   KDL::ChainIkSolverVel_pinv vik(model_.chain);
-  KDL::ChainIkSolverPos_NR_JL ik(model_.chain, model_.q_min, model_.q_max, fk,
+  KDL::ChainIkSolverPos_NR_JL ik(model_.chain, model_.position_lower_bounds, model_.position_upper_bounds, fk,
                                  vik, /*maxiter=*/200, /*eps=*/1e-5);
   return ik.CartToJnt(q_seed, target, *q_out) >= 0;
 }
 
-ErrorCode KdlKinematics::GetPositionIK(const Pose& tip_pose,
-                                       const core::JointState& seed,
-                                       const IkOptions& options,
-                                       core::JointState* solution) const {
+ErrorCode KdlKinematics::GetPositionIK(const automsgs::msgs::geometry_msgs::Pose& tip_pose,
+                                       const automsgs::msgs::sensor_msgs::JointState& seed,
+                                       const InverseKinematicsOptions& options,
+                                       automsgs::msgs::sensor_msgs::JointState* solution) const {
   if (!solution || !ready_) {
-    return ErrorCode::kNoIkSolution;
+    return ErrorCode::NO_INVERSE_KINEMATICS_SOLUTION;
   }
 
   const auto deadline =
       std::chrono::steady_clock::now() +
       std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-          std::chrono::duration<double>(options.timeout));
+          std::chrono::duration<double>(options.timeout()));
 
   KDL::JntArray q_seed;
   if (!MapJoints(seed, &q_seed)) {
@@ -175,16 +175,16 @@ ErrorCode KdlKinematics::GetPositionIK(const Pose& tip_pose,
   KDL::JntArray q_out(model_.chain.getNrOfJoints());
   std::mt19937 rng{std::random_device{}()};
 
-  const int attempts = std::max(1, options.max_attempts);
+  const int attempts = std::max(1, options.max_attempts());
   for (int attempt = 0; attempt < attempts; ++attempt) {
     if (std::chrono::steady_clock::now() > deadline) {
-      return ErrorCode::kTimedOut;
+      return ErrorCode::TIMED_OUT;
     }
     KDL::JntArray seed_try = q_seed;
     if (attempt > 0) {
       for (unsigned int i = 0; i < seed_try.rows(); ++i) {
-        std::uniform_real_distribution<double> dist(model_.q_min(i),
-                                                    model_.q_max(i));
+        std::uniform_real_distribution<double> dist(model_.position_lower_bounds(i),
+                                                    model_.position_upper_bounds(i));
         seed_try(i) = dist(rng);
         if (!options.consistency_limits.empty() &&
             i < options.consistency_limits.size()) {
@@ -194,21 +194,21 @@ ErrorCode KdlKinematics::GetPositionIK(const Pose& tip_pose,
         }
       }
     }
-    if (SolveOnce(tip_pose, seed_try, options.position_only, &q_out)) {
+    if (SolveOnce(tip_pose, seed_try, options.position_only(), &q_out)) {
       std::vector<double> positions(model_.joint_names.size());
       for (std::size_t i = 0; i < model_.joint_names.size(); ++i) {
         positions[i] = q_out(static_cast<unsigned int>(i));
       }
       SetJointState(solution, model_.joint_names, positions);
-      return ErrorCode::kSuccess;
+      return ErrorCode::SUCCESS;
     }
   }
   AWARN << "KdlKinematics: IK failed after " << attempts << " attempts";
-  return ErrorCode::kNoIkSolution;
+  return ErrorCode::NO_INVERSE_KINEMATICS_SOLUTION;
 }
 
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(KdlKinematics, KinematicsBase);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(KdlKinematics, KinematicsInterface);
 
 }  // namespace kinematics
 }  // namespace manipulation

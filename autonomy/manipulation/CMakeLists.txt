@@ -23,7 +23,7 @@ set(_MANIPULATION_FEATURES "")
 if(OrocosKDL_FOUND)
   list(APPEND _MANIPULATION_FEATURES kdl)
 else()
-  list(FILTER _MANIPULATION_SRCS EXCLUDE REGEX "/model/urdf_kdl\\.cpp$")
+  list(FILTER _MANIPULATION_SRCS EXCLUDE REGEX "/model/urdf_kdl_chain\\.cpp$")
   list(FILTER _MANIPULATION_SRCS EXCLUDE REGEX "/motion/kinematics/kdl_kinematics\\.cpp$")
 endif()
 
@@ -81,25 +81,20 @@ autonomy_binary(autonomy.manipulation SRCS manipulation_main.cpp)
 autonomy_binary(autonomy.manipulation.setup SRCS setup/setup_main.cpp)
 
 if(BUILD_TEST)
-  autonomy_test(manipulation.joint_interpolation_planner_test
-    planner/joint_interpolation/joint_interpolation_planner_test.cpp
-    autonomy_manipulation)
   autonomy_test(manipulation.urdf_joints_test
     model/urdf_joints_test.cpp autonomy_manipulation)
   autonomy_test(manipulation.plugins_test
     plugins_test.cpp autonomy_manipulation)
   autonomy_test(manipulation.time_parameterization_test
-    planner/pipeline/time_parameterization_test.cpp autonomy_manipulation)
+    pipeline/time_parameterization_test.cpp autonomy_manipulation)
   autonomy_test(manipulation.aabb_collision_detector_test
     motion/collision/aabb_collision_detector_test.cpp autonomy_manipulation)
   autonomy_test(manipulation.link_collision_geometry_test
     motion/collision/link_collision_geometry_test.cpp autonomy_manipulation)
   autonomy_test(manipulation.servo_test
-    motion/servo/servo_test.cpp autonomy_manipulation)
+    motion/servo/cartesian_servo_test.cpp autonomy_manipulation)
   autonomy_test(manipulation.effort_tracking_controller_test
     motion/execution/effort_tracking_controller_test.cpp autonomy_manipulation)
-  autonomy_test(manipulation.plan_benchmark_test
-    benchmarks/plan_benchmark_test.cpp autonomy_manipulation)
   if(OrocosKDL_FOUND)
     autonomy_test(manipulation.kdl_kinematics_test
       motion/kinematics/kdl_kinematics_test.cpp autonomy_manipulation)

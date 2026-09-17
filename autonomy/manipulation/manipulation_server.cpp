@@ -14,17 +14,16 @@
 #include "autonomy/common/conf_loader.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/manipulation/constants.hpp"
-#include "autonomy/manipulation/motion/execution/autolink_trajectory_controller.hpp"
+#include "autonomy/manipulation/motion/execution/joint_trajectory_controller.hpp"
 #include "autonomy/manipulation/motion/execution/effort_tracking_controller.hpp"
-#include "autonomy/manipulation/motion/execution/simple_controller_manager.hpp"
+#include "autonomy/manipulation/motion/execution/logging_trajectory_controller.hpp"
 #include "autonomy/manipulation/common/collision_interface.hpp"
-#include "autonomy/manipulation/common/joint_state_util.hpp"
+#include "autonomy/manipulation/model/joint_state_utilities.hpp"
 #include "autonomy/manipulation/motion/collision/link_collision_geometry.hpp"
-#include "autonomy/manipulation/model/link_fk.hpp"
-#include "autonomy/manipulation/model/metrics.hpp"
+#include "autonomy/manipulation/model/link_forward_kinematics.hpp"
+#include "autonomy/manipulation/model/manipulation_metrics.hpp"
 #include "autonomy/manipulation/motion/kinematics/cached_kinematics.hpp"
-#include "autonomy/manipulation/planner/joint_interpolation/joint_interpolation_planner.hpp"
-#include "autonomy/manipulation/common/plugin_ids.hpp"
+#include "autonomy/manipulation/plugin_ids.hpp"
 #include "autonomy/manipulation/motion/scene/simple_planning_scene.hpp"
 #include "autonomy/manipulation/dispatch/manipulation_action_server.hpp"
 
@@ -78,7 +77,7 @@ bool ManipulationServer::SetupPlugins(const std::string& urdf_path,
   const std::string kin_id = options_.kinematics_solver().empty()
                                  ? "stub"
                                  : options_.kinematics_solver();
-  kinematics_ = CreatePlugin<kinematics::KinematicsBase>(kin_id);
+  kinematics_ = CreatePlugin<common::KinematicsInterface>(kin_id);
   if (!kinematics_) {
     AERROR << "Unknown kinematics_solver=" << kin_id;
     return false;
@@ -106,7 +105,7 @@ bool ManipulationServer::SetupPlugins(const std::string& urdf_path,
   if (auto* cached =
           dynamic_cast<kinematics::CachedKinematics*>(kinematics_.get())) {
     if (!load_kdl(dynamic_cast<kinematics::KdlKinematics*>(
-            cached->Inner().get()))) {
+            cached->GetUnderlyingSolver().get()))) {
       return false;
     }
   }
@@ -118,22 +117,15 @@ bool ManipulationServer::SetupPlugins(const std::string& urdf_path,
   }
 #endif
 
-  const std::string planner_id = options_.planner_id().empty()
-                                     ? "joint_interpolation"
-                                     : options_.planner_id();
-  planner_ = CreatePlugin<planning::PlannerBase>(planner_id);
+  const std::string planner_id =
+      options_.planner_id().empty() ? "pilz_ptp" : options_.planner_id();
+  planner_ = CreatePlugin<common::PlannerInterface>(planner_id);
   if (!planner_) {
     AERROR << "Unknown planner_id=" << planner_id;
     return false;
   }
   if (!planner_->Init(planner_id)) {
     return false;
-  }
-  if (auto* ji =
-          dynamic_cast<planning::JointInterpolationPlanner*>(planner_.get())) {
-    if (options_.interpolation_steps() > 0) {
-      ji->SetNumSteps(static_cast<int>(options_.interpolation_steps()));
-    }
   }
 
   dynamics_ = dynamics::CreateDynamicsSolver(urdf_path);
@@ -144,15 +136,15 @@ bool ManipulationServer::SetupPlugins(const std::string& urdf_path,
   const std::string col_id =
       options_.collision_detector().empty() ? "aabb"
                                             : options_.collision_detector();
-  auto detector = CreatePlugin<collision::CollisionDetector>(col_id);
+  auto detector = CreatePlugin<common::CollisionInterface>(col_id);
   if (!detector) {
-    detector = CreatePlugin<collision::CollisionDetector>("aabb");
+    detector = CreatePlugin<common::CollisionInterface>("aabb");
   }
   if (detector) {
     detector->Init(col_id);
     if (state_) {
       detector->SetLinkTree(
-          std::make_shared<core::LinkFkTree>(state_->LinkTree()));
+          std::make_shared<model::LinkForwardKinematicsTree>(state_->GetLinkForwardKinematicsTree()));
     }
     if (!urdf_path.empty()) {
       auto shapes = std::make_shared<collision::LinkCollisionModel>();
@@ -168,16 +160,16 @@ bool ManipulationServer::SetupPlugins(const std::string& urdf_path,
   }
 
   execution_ = std::make_unique<execution::TrajectoryExecutionManager>();
-  if (options_.execution_timeout_s() > 0) {
-    execution_->SetTimeout(options_.execution_timeout_s());
+  if (options_.execution_timeout_seconds() > 0) {
+    execution_->SetTimeout(options_.execution_timeout_seconds());
   }
 
   const std::string ctrl_id = options_.controller_id().empty()
                                   ? "arm_controller"
                                   : options_.controller_id();
-  std::shared_ptr<execution::ControllerManager> controller;
-  if (options_.use_autolink_trajectory()) {
-    auto c = std::make_shared<execution::AutolinkTrajectoryController>();
+  common::ControllerInterface::SharedPtr controller;
+  if (options_.use_joint_trajectory_controller()) {
+    auto c = std::make_shared<execution::JointTrajectoryController>();
     const std::string traj_topic = options_.trajectory_topic().empty()
                                        ? kJointTrajectoryTopic
                                        : options_.trajectory_topic();
@@ -186,7 +178,7 @@ bool ManipulationServer::SetupPlugins(const std::string& urdf_path,
     c->Init(ctrl_id);
     controller = c;
   } else {
-    controller = CreatePlugin<execution::ControllerManager>("simple");
+    controller = CreatePlugin<common::ControllerInterface>("simple");
     if (controller) {
       controller->Init(ctrl_id);
     }
@@ -196,7 +188,7 @@ bool ManipulationServer::SetupPlugins(const std::string& urdf_path,
     execution_->SetActiveController(ctrl_id);
   }
   if (!options_.gripper_controller_id().empty()) {
-    auto grip = CreatePlugin<execution::ControllerManager>("simple");
+    auto grip = CreatePlugin<common::ControllerInterface>("simple");
     if (grip && grip->Init(options_.gripper_controller_id())) {
       execution_->RegisterController(options_.gripper_controller_id(), grip);
     }
@@ -213,7 +205,7 @@ bool ManipulationServer::Init(const ManipulationOptions& options) {
     return false;
   }
 
-  model_ = std::make_shared<core::SimpleRobotModel>();
+  model_ = std::make_shared<model::SimpleRobotModel>();
   std::string urdf_path = options_.robot_description();
   ResolveUrdfPath(&urdf_path);
   urdf_path_ = urdf_path;
@@ -235,16 +227,16 @@ bool ManipulationServer::Init(const ManipulationOptions& options) {
       model_->SetGroupJoints(group, std::move(joints));
     }
   }
-  model_->SetGroupMeta(group, options_.base_frame(), options_.tip_frame());
+  model_->SetGroupChainFrames(group, options_.base_frame(), options_.tip_frame());
 
-  state_ = std::make_shared<core::SimpleRobotState>(model_);
+  state_ = std::make_shared<model::SimpleRobotState>(model_);
   if (!urdf_path.empty()) {
-    state_->LoadLinkTree(urdf_path);
+    state_->LoadLinkForwardKinematicsTree(urdf_path);
   }
   scene_ = std::make_shared<scene::SimplePlanningScene>();
   if (state_) {
     scene_->SetLinkTree(
-        std::make_shared<core::LinkFkTree>(state_->LinkTree()));
+        std::make_shared<model::LinkForwardKinematicsTree>(state_->GetLinkForwardKinematicsTree()));
   }
   for (const auto& pair : model_->DisabledCollisions()) {
     scene_->SetAllowedCollision(pair.first, pair.second, true);
@@ -262,14 +254,14 @@ bool ManipulationServer::Init(const ManipulationOptions& options) {
     scene_monitor_->SetJointStateSubscriber(joint_states_);
   }
 
-  pipeline_ = std::make_unique<planning::PlanningPipeline>();
+  pipeline_ = std::make_unique<planner::PlanningPipeline>();
   if (!pipeline_->Init(options_)) {
     return false;
   }
   pipeline_->SetPlanner(planner_);
 
   auto add_cap = [this](const std::string& id) {
-    auto cap = CreatePlugin<server::Capability>(id);
+    auto cap = CreatePlugin<dispatch::Capability>(id);
     if (!cap || !cap->Init(this)) {
       return false;
     }
@@ -290,15 +282,15 @@ bool ManipulationServer::Init(const ManipulationOptions& options) {
 
   if (execution_ && joint_states_) {
     execution_->SetStateProvider(
-        [this]() { return joint_states_->Latest(); });
-    if (options_.execution_deviation_tol() > 0) {
-      execution_->SetDeviationTolerance(options_.execution_deviation_tol());
+        [this]() { return joint_states_->GetLatestJointState(); });
+    if (options_.execution_deviation_tolerance() > 0) {
+      execution_->SetDeviationTolerance(options_.execution_deviation_tolerance());
     }
-    if (options_.execution_effort_tol() > 0) {
-      execution_->SetEffortTrackingTolerance(options_.execution_effort_tol());
+    if (options_.execution_effort_tolerance() > 0) {
+      execution_->SetEffortTrackingTolerance(options_.execution_effort_tolerance());
     }
     execution_->SetDeviationHook(
-        [](const core::JointState& desired, const core::JointState& actual) {
+        [](const automsgs::msgs::sensor_msgs::JointState& desired, const automsgs::msgs::sensor_msgs::JointState& actual) {
           AWARN << "TrajectoryExecutionManager deviation desired_dof="
                 << desired.position_size()
                 << " actual_dof=" << actual.position_size()
@@ -306,12 +298,12 @@ bool ManipulationServer::Init(const ManipulationOptions& options) {
                 << " actual_effort=" << actual.effort_size();
         });
     if (scene_) {
-      execution_->SetSceneValidityChecker([this](const core::JointState& q) {
+      execution_->SetSceneValidityChecker([this](const automsgs::msgs::sensor_msgs::JointState& q) {
         return scene_ && scene_->IsStateValid(q);
       });
     }
     execution_->SetEffortFeedforwardHook(
-        [this](const core::JointState& commanded) {
+        [this](const automsgs::msgs::sensor_msgs::JointState& commanded) {
           double l1 = 0.0;
           for (double e : commanded.effort()) {
             l1 += std::abs(e);
@@ -332,10 +324,10 @@ bool ManipulationServer::Init(const ManipulationOptions& options) {
         AINFO << "Effort command Float64MultiArray on " << kEffortCommandTopic;
       }
       effort_tracker_ = std::make_unique<execution::EffortTrackingController>();
-      effort_tracker_->SetKp(options_.effort_tracking_kp());
-      effort_tracker_->SetMaxAbsEffort(options_.effort_command_max());
+      effort_tracker_->SetProportionalGain(options_.effort_tracking_proportional_gain());
+      effort_tracker_->SetMaxAbsEffort(options_.maximum_effort_command());
       effort_tracker_->SetStateProvider(
-          [this]() { return joint_states_->Latest(); });
+          [this]() { return joint_states_->GetLatestJointState(); });
       effort_tracker_->SetCommandPublisher(
           [this](const std::vector<double>& cmd) {
             if (!effort_command_writer_) {
@@ -347,40 +339,40 @@ bool ManipulationServer::Init(const ManipulationOptions& options) {
             }
             effort_command_writer_->Write(msg);
           });
-      AINFO << "EffortTrackingController kp=" << options_.effort_tracking_kp()
-            << " max=" << options_.effort_command_max();
+      AINFO << "EffortTrackingController kp=" << options_.effort_tracking_proportional_gain()
+            << " max=" << options_.maximum_effort_command();
     }
   }
 
   if (options_.enable_servo()) {
-    servo_ = std::make_shared<servo::DampedLeastSquaresServo>();
+    servo_ = std::make_shared<servo::DampedLeastSquaresCartesianServo>();
     servo_->SetKinematics(kinematics_);
     servo_->SetScene(scene_);
     servo_->SetModel(model_);
-    core::JointState zero;
+    automsgs::msgs::sensor_msgs::JointState zero;
     const auto joint_names = model_->GetJointNames(group);
     SetJointState(&zero, joint_names,
                   std::vector<double>(joint_names.size(), 0.0));
     servo_->SetState(zero);
     servo_->Init();
-    servo_node_ = std::make_unique<servo::ServoNode>();
+    servo_node_ = std::make_unique<servo::CartesianServoNode>();
     servo_node_->SetServo(servo_);
     servo_publisher_ =
-        std::make_shared<execution::AutolinkTrajectoryController>();
+        std::make_shared<execution::JointTrajectoryController>();
     servo_publisher_->SetNode(node_);
     servo_publisher_->SetTopic(kServoJointCommandTopic);
     servo_publisher_->Init("servo");
     servo_node_->SetCommandPublisher(
-        [this](const core::JointState& cmd) {
+        [this](const automsgs::msgs::sensor_msgs::JointState& cmd) {
           if (!servo_publisher_) {
             return;
           }
-          core::RobotTrajectory traj;
+          automsgs::msgs::trajectory_msgs::JointTrajectory traj;
           AddTrajectoryPoint(&traj, cmd, 0.01);
           servo_publisher_->Execute(traj);
         });
     if (joint_states_) {
-      joint_states_->SetCallback([this](const core::JointState& s) {
+      joint_states_->SetCallback([this](const automsgs::msgs::sensor_msgs::JointState& s) {
         if (servo_) {
           servo_->SetState(s);
         }
@@ -398,7 +390,7 @@ bool ManipulationServer::Init(const ManipulationOptions& options) {
                 servo_node_->SetCommand(msg->twist());
               });
       if (servo_twist_reader_) {
-        AINFO << "Servo TwistStamped on " << kServoTwistCommandTopic;
+        AINFO << "CartesianServo automsgs::msgs::geometry_msgs::TwistStamped on " << kServoTwistCommandTopic;
       }
 
       servo_pose_reader_ =
@@ -412,7 +404,7 @@ bool ManipulationServer::Init(const ManipulationOptions& options) {
                 servo_node_->SetPose(*msg);
               });
       if (servo_pose_reader_) {
-        AINFO << "Servo PoseStamped on " << kServoPoseCommandTopic;
+        AINFO << "CartesianServo automsgs::msgs::geometry_msgs::PoseStamped on " << kServoPoseCommandTopic;
       }
 
       servo_jog_reader_ =
@@ -423,9 +415,9 @@ bool ManipulationServer::Init(const ManipulationOptions& options) {
                 if (!msg || !servo_node_) {
                   return;
                 }
-                JointJog jog = *msg;
+                automsgs::msgs::control_msgs::JointJog jog = *msg;
                 // Displacements (m/rad) treated as one-shot Δq / dt when
-                // velocities empty (MoveIt JointJog often fills one of them).
+                // velocities empty (MoveIt automsgs::msgs::control_msgs::JointJog often fills one of them).
                 if (jog.velocities_size() == 0 &&
                     jog.displacements_size() > 0) {
                   const double dt =
@@ -438,7 +430,7 @@ bool ManipulationServer::Init(const ManipulationOptions& options) {
                 servo_node_->SetJointJog(jog);
               });
       if (servo_jog_reader_) {
-        AINFO << "Servo JointJog on " << kServoJointJogCommandTopic;
+        AINFO << "CartesianServo automsgs::msgs::control_msgs::JointJog on " << kServoJointJogCommandTopic;
       }
 
       servo_cmd_type_reader_ =
@@ -463,7 +455,7 @@ bool ManipulationServer::Init(const ManipulationOptions& options) {
                 }
               });
       if (servo_cmd_type_reader_) {
-        AINFO << "Servo CommandType Int32 on " << kServoCommandTypeTopic;
+        AINFO << "CartesianServo CommandType Int32 on " << kServoCommandTypeTopic;
       }
 
       servo_status_writer_ =
@@ -471,7 +463,7 @@ bool ManipulationServer::Init(const ManipulationOptions& options) {
               kServoStatusTopic);
       if (servo_status_writer_) {
         servo_node_->SetStatusPublisher(
-            [this](servo::ServoStatus st) {
+            [this](servo::CartesianServoStatus st) {
               if (!servo_status_writer_) {
                 return;
               }
@@ -479,7 +471,7 @@ bool ManipulationServer::Init(const ManipulationOptions& options) {
               msg.set_data(static_cast<int32_t>(st));
               servo_status_writer_->Write(msg);
             });
-        AINFO << "Servo status Int32 on " << kServoStatusTopic;
+        AINFO << "CartesianServo status Int32 on " << kServoStatusTopic;
       }
     }
   }
@@ -495,7 +487,7 @@ bool ManipulationServer::Init(const ManipulationOptions& options) {
     occupancy_monitor_->Start(node_, kPointCloudTopic, kOctomapTopic);
   }
 
-  action_server_ = std::make_unique<ManipulationActionServer>(this);
+  action_server_ = std::make_unique<dispatch::ManipulationActionServer>(this);
   const std::string action_name = options_.action_name().empty()
                                       ? kManipulationAction
                                       : options_.action_name();
@@ -544,131 +536,132 @@ void ManipulationServer::Stop() {
   }
 }
 
-planning::MotionPlanResponse ManipulationServer::Plan(
-    const planning::MotionPlanRequest& request) {
-  metrics::ManipulationMetrics::Instance().OnPlanStart();
-  planning::MotionPlanRequest req = request;
-  if (req.group.empty()) {
-    req.group = options_.planning_group();
+::autonomy::manipulation::proto::MotionPlanResponse ManipulationServer::Plan(
+    const planner::MotionPlanRequest& request) {
+  metrics::ManipulationMetrics::Instance().RecordPlanAttemptStart();
+  planner::MotionPlanRequest req = request;
+  if (req.pb.group().empty()) {
+    req.pb.set_group(options_.planning_group());
   }
-  if (req.planner_id.empty()) {
-    req.planner_id = options_.planner_id();
+  if (req.pb.planner_id().empty()) {
+    req.pb.set_planner_id(options_.planner_id());
   }
-  if (req.planning_time <= 0.0 && options_.planning_time_ms() > 0) {
-    req.planning_time =
-        static_cast<double>(options_.planning_time_ms()) / 1000.0;
+  if (req.pb.planning_time() <= 0.0 && options_.planning_time_milliseconds() > 0) {
+    req.pb.set_planning_time(static_cast<double>(options_.planning_time_milliseconds()) / 1000.0);
   }
-  if (req.max_attempts <= 0 && options_.max_planning_attempts() > 0) {
-    req.max_attempts = static_cast<int>(options_.max_planning_attempts());
+  if (req.pb.max_attempts() <= 0 && options_.max_planning_attempts() > 0) {
+    req.pb.set_max_attempts(static_cast<int>(options_.max_planning_attempts()));
   }
   if (options_.max_velocity() > 0) {
-    req.max_velocity = options_.max_velocity();
+    req.pb.set_max_velocity(options_.max_velocity());
   }
   if (options_.max_acceleration() > 0) {
-    req.max_acceleration = options_.max_acceleration();
+    req.pb.set_max_acceleration(options_.max_acceleration());
   }
   if (options_.goal_joint_tolerance() > 0) {
-    req.goal_joint_tolerance = options_.goal_joint_tolerance();
+    req.pb.set_goal_joint_tolerance(options_.goal_joint_tolerance());
   }
   if (options_.goal_position_tolerance() > 0) {
-    req.goal_position_tolerance = options_.goal_position_tolerance();
+    req.pb.set_goal_position_tolerance(options_.goal_position_tolerance());
   }
-  if (options_.max_trans_vel() > 0 || options_.max_rot_vel() > 0) {
-    req.cartesian_limits.configured = true;
-    if (options_.max_trans_vel() > 0) {
-      req.cartesian_limits.max_trans_vel = options_.max_trans_vel();
+  if (options_.max_translational_velocity() > 0 || options_.max_rotational_velocity() > 0) {
+    req.pb.mutable_cartesian_limits()->set_configured(true);
+    if (options_.max_translational_velocity() > 0) {
+      req.pb.mutable_cartesian_limits()->set_max_translational_velocity(options_.max_translational_velocity());
     }
-    if (options_.max_trans_acc() > 0) {
-      req.cartesian_limits.max_trans_acc = options_.max_trans_acc();
+    if (options_.max_translational_acceleration() > 0) {
+      req.pb.mutable_cartesian_limits()->set_max_translational_acceleration(options_.max_translational_acceleration());
     }
-    if (options_.max_trans_dec() > 0) {
-      req.cartesian_limits.max_trans_dec = options_.max_trans_dec();
-    } else if (options_.max_trans_acc() > 0) {
-      req.cartesian_limits.max_trans_dec = options_.max_trans_acc();
+    if (options_.max_translational_deceleration() > 0) {
+      req.pb.mutable_cartesian_limits()->set_max_translational_deceleration(options_.max_translational_deceleration());
+    } else if (options_.max_translational_acceleration() > 0) {
+      req.pb.mutable_cartesian_limits()->set_max_translational_deceleration(options_.max_translational_acceleration());
     }
-    if (options_.max_rot_vel() > 0) {
-      req.cartesian_limits.max_rot_vel = options_.max_rot_vel();
+    if (options_.max_rotational_velocity() > 0) {
+      req.pb.mutable_cartesian_limits()->set_max_rotational_velocity(options_.max_rotational_velocity());
     }
   }
   req.scene = scene_;
   req.kinematics = kinematics_;
   req.model = model_;
   if (state_) {
-    req.link_tree = std::make_shared<core::LinkFkTree>(state_->LinkTree());
-  } else if (model_ && !model_->LinkTree().LinkNames().empty()) {
-    req.link_tree = std::make_shared<core::LinkFkTree>(model_->LinkTree());
+    req.link_tree = std::make_shared<model::LinkForwardKinematicsTree>(state_->GetLinkForwardKinematicsTree());
+  } else if (model_ && !model_->GetLinkForwardKinematicsTree().LinkNames().empty()) {
+    req.link_tree = std::make_shared<model::LinkForwardKinematicsTree>(model_->GetLinkForwardKinematicsTree());
   }
 
-  if (req.start_state.position_size() == 0 && scene_) {
-    req.start_state = scene_->GetCurrentState();
+  if (req.pb.start_state().position_size() == 0 && scene_) {
+    *req.pb.mutable_start_state() = scene_->GetCurrentState();
   }
-  if (req.start_state.position_size() == 0) {
+  if (req.pb.start_state().position_size() == 0) {
     const auto names =
-        model_ ? model_->GetJointNames(req.group) : std::vector<std::string>{};
+        model_ ? model_->GetJointNames(req.pb.group()) : std::vector<std::string>{};
     if (!names.empty()) {
-      SetJointState(&req.start_state, names,
+      SetJointState(req.pb.mutable_start_state(), names,
                     std::vector<double>(names.size(), 0.0));
     }
   }
 
-  if (req.goal_state.name_size() == 0 && req.goal_state.position_size() > 0 &&
+  if (req.pb.goal_state().name_size() == 0 && req.pb.goal_state().position_size() > 0 &&
       model_) {
-    req.goal_state.clear_name();
-    for (const auto& n : model_->GetJointNames(req.group)) {
-      req.goal_state.add_name(n);
+    req.pb.mutable_goal_state()->clear_name();
+    for (const auto& n : model_->GetJointNames(req.pb.group())) {
+      req.pb.mutable_goal_state()->add_name(n);
     }
   }
 
   // Switch planner if request asks for a different id.
-  if (!req.planner_id.empty() && planner_ &&
-      req.planner_id != options_.planner_id()) {
-    auto alt = CreatePlugin<planning::PlannerBase>(req.planner_id);
-    if (alt && alt->Init(req.planner_id)) {
+  if (!req.pb.planner_id().empty() && planner_ &&
+      req.pb.planner_id() != options_.planner_id()) {
+    auto alt = CreatePlugin<common::PlannerInterface>(req.pb.planner_id());
+    if (alt && alt->Init(req.pb.planner_id())) {
       pipeline_->SetPlanner(alt);
     }
   } else {
     pipeline_->SetPlanner(planner_);
   }
 
-  if (req.has_goal_pose && kinematics_ &&
-      req.planner_id != "cartesian") {
-    core::JointState seed = req.start_state;
-    core::JointState ik;
-    const auto code = kinematics_->GetPositionIK(req.goal_pose, seed, {}, &ik);
-    metrics::ManipulationMetrics::Instance().OnIk(code == ErrorCode::kSuccess);
-    if (code != ErrorCode::kSuccess) {
-      planning::MotionPlanResponse failed;
+  if (req.pb.has_goal_pose() && kinematics_ &&
+      req.pb.planner_id() != "pilz_lin" &&
+      req.pb.planner_id() != "pilz_circ" &&
+      req.pb.planner_id() != "pilz_sequence") {
+    automsgs::msgs::sensor_msgs::JointState seed = req.pb.start_state();
+    automsgs::msgs::sensor_msgs::JointState ik;
+    const auto code = kinematics_->GetPositionIK(req.pb.goal_pose(), seed, {}, &ik);
+    metrics::ManipulationMetrics::Instance().RecordInverseKinematicsAttempt(code == ErrorCode::SUCCESS);
+    if (code != ErrorCode::SUCCESS) {
+      ::autonomy::manipulation::proto::MotionPlanResponse failed;
       failed.error = "IK failed";
       failed.error_code = code;
-      metrics::ManipulationMetrics::Instance().OnPlanEnd(false);
+      metrics::ManipulationMetrics::Instance().RecordPlanAttemptEnd(false);
       return failed;
     }
-    req.goal_state = ik;
-    req.has_goal_pose = false;
+    *req.pb.mutable_goal_state() = ik;
+    req.pb.set_has_goal_pose(false);
   }
 
   if (!pipeline_) {
-    planning::MotionPlanResponse failed;
+    ::autonomy::manipulation::proto::MotionPlanResponse failed;
     failed.error = "no pipeline";
-    failed.error_code = ErrorCode::kFailure;
-    metrics::ManipulationMetrics::Instance().OnPlanEnd(false);
+    failed.error_code = ErrorCode::FAILURE;
+    metrics::ManipulationMetrics::Instance().RecordPlanAttemptEnd(false);
     return failed;
   }
   auto response = pipeline_->Plan(req);
-  if (response.success && scene_ && response.trajectory.points_size() > 0) {
+  if (response.success() && scene_ && response.trajectory().points_size() > 0) {
     scene_->SetCurrentState(MakeJointStateFromPoint(
-        response.trajectory, response.trajectory.points_size() - 1));
+        response.trajectory(), response.trajectory().points_size() - 1));
   }
-  metrics::ManipulationMetrics::Instance().OnPlanEnd(response.success);
+  metrics::ManipulationMetrics::Instance().RecordPlanAttemptEnd(response.success());
   return response;
 }
 
 ErrorCode ManipulationServer::ExecuteTrajectory(
-    const core::RobotTrajectory& trajectory, bool replace) {
+    const automsgs::msgs::trajectory_msgs::JointTrajectory& trajectory, bool replace) {
   if (!execution_) {
-    return ErrorCode::kControlFailed;
+    return ErrorCode::CONTROL_FAILED;
   }
-  core::RobotTrajectory traj = trajectory;
+  automsgs::msgs::trajectory_msgs::JointTrajectory traj = trajectory;
   // Optional inverse-dynamics feedforward into waypoint efforts.
   if (dynamics_ && traj.points_size() > 0) {
     for (int i = 0; i < traj.points_size(); ++i) {
@@ -698,9 +691,9 @@ ErrorCode ManipulationServer::ExecuteTrajectory(
   return execution_->Execute(traj, replace);
 }
 
-bool ManipulationServer::Execute(const core::RobotTrajectory& trajectory,
+bool ManipulationServer::Execute(const automsgs::msgs::trajectory_msgs::JointTrajectory& trajectory,
                                  bool replace) {
-  return ExecuteTrajectory(trajectory, replace) == ErrorCode::kSuccess;
+  return ExecuteTrajectory(trajectory, replace) == ErrorCode::SUCCESS;
 }
 
 void ManipulationServer::CancelExecution() {
@@ -709,7 +702,7 @@ void ManipulationServer::CancelExecution() {
   }
 }
 
-planning::PlanningPipeline* ManipulationServer::pipeline() {
+planner::PlanningPipeline* ManipulationServer::pipeline() {
   return pipeline_.get();
 }
 
@@ -717,11 +710,11 @@ scene::PlanningScene* ManipulationServer::scene() {
   return scene_.get();
 }
 
-core::SimpleRobotModel* ManipulationServer::model() {
+model::SimpleRobotModel* ManipulationServer::model() {
   return model_.get();
 }
 
-kinematics::KinematicsBase* ManipulationServer::kinematics() {
+common::KinematicsInterface* ManipulationServer::kinematics() {
   return kinematics_.get();
 }
 
@@ -738,7 +731,7 @@ ManipulationServer::execution_manager() {
   return execution_.get();
 }
 
-server::Capability* ManipulationServer::GetCapability(
+dispatch::Capability* ManipulationServer::GetCapability(
     const std::string& name) {
   const auto it = capabilities_.find(name);
   return it == capabilities_.end() ? nullptr : it->second.get();
@@ -756,8 +749,8 @@ bool ManipulationServer::SetPlannerParams(
     if (kv.first == "planner_id" && !kv.second.empty()) {
       options_.set_planner_id(kv.second);
       changed = true;
-    } else if (kv.first == "planning_time_ms") {
-      options_.set_planning_time_ms(
+    } else if (kv.first == "planning_time_milliseconds") {
+      options_.set_planning_time_milliseconds(
           static_cast<uint32_t>(std::stoul(kv.second)));
       changed = true;
     } else if (kv.first == "max_velocity") {
@@ -765,10 +758,6 @@ bool ManipulationServer::SetPlannerParams(
       changed = true;
     } else if (kv.first == "max_acceleration") {
       options_.set_max_acceleration(std::stod(kv.second));
-      changed = true;
-    } else if (kv.first == "interpolation_steps") {
-      options_.set_interpolation_steps(
-          static_cast<uint32_t>(std::stoul(kv.second)));
       changed = true;
     } else if (kv.first == "max_attempts") {
       options_.set_max_planning_attempts(

@@ -28,11 +28,11 @@ namespace scene {
  * fields SceneMonitor applies; empty vectors are no-ops for add/remove lists.
  */
 struct SceneDiff {
-  std::vector<CollisionObject> add;
+  std::vector<automsgs::msgs::moveit_msgs::CollisionObject> add;
   std::vector<std::string> remove;
-  std::vector<AttachedCollisionObject> attach;
+  std::vector<automsgs::msgs::moveit_msgs::AttachedCollisionObject> attach;
   std::vector<std::string> detach;
-  core::JointState robot_state;
+  automsgs::msgs::sensor_msgs::JointState robot_state;
   bool has_robot_state = false;
   std::vector<OccupiedPoint> occupied;
   double occupancy_resolution = 0.05;

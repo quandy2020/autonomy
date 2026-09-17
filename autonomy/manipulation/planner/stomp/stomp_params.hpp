@@ -10,7 +10,7 @@
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 
 /** @brief STOMP optimizer knobs. */
 struct StompParams {
@@ -35,6 +35,6 @@ bool LoadStompParamsFile(const std::string& path, StompParams* params,
 
 bool LoadStompParamsFromShare(StompParams* params, std::string* error = nullptr);
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

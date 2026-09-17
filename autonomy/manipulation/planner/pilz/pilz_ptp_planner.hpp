@@ -10,15 +10,15 @@
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 
 /**
  * @brief Pilz PTP: point-to-point joint motion with cosine time law.
  *
- * Respects request.velocity_scale and max_velocity / max_acceleration
+ * Respects request.pb.velocity_scale() and max_velocity / max_acceleration
  * via synchronized ATRAP (Pilz VelocityProfileATrap lite).
  */
-class PilzPtpPlanner : public PlannerBase {
+class PilzPtpPlanner : public PlannerInterface {
  public:
   /**
    * @brief Store the planner id.
@@ -32,7 +32,7 @@ class PilzPtpPlanner : public PlannerBase {
    * @param[in] request Matching DOF start / goal states.
    * @return Timed joint trajectory.
    */
-  MotionPlanResponse Plan(const MotionPlanRequest& request) override;
+  ::autonomy::manipulation::proto::MotionPlanResponse Plan(const MotionPlanRequest& request) override;
 
  private:
   std::string planner_id_;
@@ -41,7 +41,7 @@ class PilzPtpPlanner : public PlannerBase {
 /**
  * @brief Cartesian straight-line (Pilz LIN) via IK samples + cosine time law.
  */
-class PilzLinPlanner : public PlannerBase {
+class PilzLinPlanner : public PlannerInterface {
  public:
   /**
    * @brief Store the planner id.
@@ -55,7 +55,7 @@ class PilzLinPlanner : public PlannerBase {
    * @param[in] request Must provide kinematics and Cartesian goal.
    * @return Joint trajectory or IK failure.
    */
-  MotionPlanResponse Plan(const MotionPlanRequest& request) override;
+  ::autonomy::manipulation::proto::MotionPlanResponse Plan(const MotionPlanRequest& request) override;
 
  private:
   std::string planner_id_;
@@ -64,9 +64,9 @@ class PilzLinPlanner : public PlannerBase {
 /**
  * @brief Circular arc (Pilz CIRC): start → interim → goal define the plane/arc.
  *
- * Uses request.cartesian_waypoints[0] as interim when size ≥ 1, else fails.
+ * Uses request.pb.cartesian_waypoints()[0] as interim when size ≥ 1, else fails.
  */
-class PilzCircPlanner : public PlannerBase {
+class PilzCircPlanner : public PlannerInterface {
  public:
   /**
    * @brief Store the planner id.
@@ -80,7 +80,7 @@ class PilzCircPlanner : public PlannerBase {
    * @param[in] request Requires kinematics and cartesian_waypoints[0].
    * @return Joint trajectory or planning failure.
    */
-  MotionPlanResponse Plan(const MotionPlanRequest& request) override;
+  ::autonomy::manipulation::proto::MotionPlanResponse Plan(const MotionPlanRequest& request) override;
 
  private:
   std::string planner_id_;
@@ -92,15 +92,15 @@ class PilzCircPlanner : public PlannerBase {
  * Uses @c MotionPlanRequest::sequence. Empty sequence with multiple
  * @c cartesian_waypoints falls back to successive LIN segments.
  */
-class PilzSequencePlanner : public PlannerBase {
+class PilzSequencePlanner : public PlannerInterface {
  public:
   bool Init(const std::string& planner_id) override;
-  MotionPlanResponse Plan(const MotionPlanRequest& request) override;
+  ::autonomy::manipulation::proto::MotionPlanResponse Plan(const MotionPlanRequest& request) override;
 
  private:
   std::string planner_id_;
 };
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

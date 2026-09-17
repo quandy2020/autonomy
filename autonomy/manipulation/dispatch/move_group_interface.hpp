@@ -10,12 +10,13 @@
 #include <memory>
 #include <string>
 
+#include "autonomy/common/macros.hpp"
 #include "autonomy/manipulation/common/planner_interface.hpp"
 #include "autonomy/manipulation/manipulation_server.hpp"
 
 namespace autonomy {
 namespace manipulation {
-namespace interface {
+namespace dispatch {
 
 /**
  * @brief In-process MoveIt-style client for ManipulationServer.
@@ -24,6 +25,11 @@ namespace interface {
  */
 class MoveGroupInterface {
  public:
+  /**
+   * @brief Define MoveGroupInterface::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(MoveGroupInterface)
+
   /**
    * @brief Bind to a ManipulationServer (not owned).
    * @param[in] server Runtime server used for plan / execute.
@@ -47,24 +53,24 @@ class MoveGroupInterface {
    * @param[in] goal Desired joint state.
    * @return Motion plan response.
    */
-  planning::MotionPlanResponse PlanToJointTarget(
-      const core::JointState& goal);
+  ::autonomy::manipulation::proto::MotionPlanResponse PlanToJointTarget(
+      const automsgs::msgs::sensor_msgs::JointState& goal);
 
   /**
    * @brief Plan to a Cartesian pose target (IK + pipeline).
    * @param[in] goal Desired end-effector pose.
    * @return Motion plan response.
    */
-  planning::MotionPlanResponse PlanToPoseTarget(
-      const kinematics::Pose& goal);
+  ::autonomy::manipulation::proto::MotionPlanResponse PlanToPoseTarget(
+      const automsgs::msgs::geometry_msgs::Pose& goal);
 
   /**
    * @brief Plan then execute @p request on the bound server.
    * @param[in] request Full motion plan request.
    * @return Motion plan response (includes execution outcome when applicable).
    */
-  planning::MotionPlanResponse PlanAndExecute(
-      const planning::MotionPlanRequest& request);
+  ::autonomy::manipulation::proto::MotionPlanResponse PlanAndExecute(
+      const planner::MotionPlanRequest& request);
 
  private:
   ManipulationServer* server_ = nullptr;
@@ -72,6 +78,6 @@ class MoveGroupInterface {
   std::string group_;
 };
 
-}  // namespace interface
+}  // namespace dispatch
 }  // namespace manipulation
 }  // namespace autonomy

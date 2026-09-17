@@ -22,8 +22,8 @@ bool IkFastKinematics::Init(const std::string& group,
   return true;
 }
 
-bool IkFastKinematics::GetPositionFK(const core::JointState& /*joints*/,
-                                     Pose* tip_pose) const {
+bool IkFastKinematics::GetPositionFK(const automsgs::msgs::sensor_msgs::JointState& /*joints*/,
+                                     automsgs::msgs::geometry_msgs::Pose* tip_pose) const {
   if (!tip_pose) {
     return false;
   }
@@ -31,15 +31,15 @@ bool IkFastKinematics::GetPositionFK(const core::JointState& /*joints*/,
   return false;
 }
 
-ErrorCode IkFastKinematics::GetPositionIK(const Pose& /*tip_pose*/,
-                                          const core::JointState& /*seed*/,
-                                          const IkOptions& /*options*/,
-                                          core::JointState* /*solution*/) const {
-  return ErrorCode::kNoIkSolution;
+ErrorCode IkFastKinematics::GetPositionIK(const automsgs::msgs::geometry_msgs::Pose& /*tip_pose*/,
+                                          const automsgs::msgs::sensor_msgs::JointState& /*seed*/,
+                                          const InverseKinematicsOptions& /*options*/,
+                                          automsgs::msgs::sensor_msgs::JointState* /*solution*/) const {
+  return ErrorCode::NO_INVERSE_KINEMATICS_SOLUTION;
 }
 
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(IkFastKinematics, KinematicsBase);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(IkFastKinematics, KinematicsInterface);
 
 }  // namespace kinematics
 }  // namespace manipulation

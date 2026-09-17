@@ -17,6 +17,7 @@
 
 namespace autonomy {
 namespace manipulation {
+namespace dispatch {
 
 /**
  * @brief Autolink SimpleActionServer adapter for ManipulationAction.
@@ -54,5 +55,6 @@ class ManipulationActionServer {
   std::mutex mutex_;
 };
 
+}  // namespace dispatch
 }  // namespace manipulation
 }  // namespace autonomy

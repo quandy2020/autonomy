@@ -11,7 +11,7 @@
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 
 /** @brief CHOMP optimizer knobs aligned with MoveIt defaults. */
 struct ChompParams {
@@ -59,6 +59,6 @@ bool LoadChompParamsFile(const std::string& path, ChompParams* params,
  */
 bool LoadChompParamsFromShare(ChompParams* params, std::string* error = nullptr);
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

@@ -9,7 +9,7 @@
 #include <unordered_set>
 
 #include "autolink/plugin_manager/plugin_manager.hpp"
-#include "autonomy/manipulation/motion/scene/collision_object_util.hpp"
+#include "autonomy/manipulation/motion/scene/collision_object_helpers.hpp"
 
 #include <automsgs/msgs/shape_msgs/solid_primitive.pb.h>
 
@@ -24,7 +24,7 @@ struct Vec3 {
   double z = 0.0;
 };
 
-Vec3 EstimateEe(const core::JointState& state, double link_length) {
+Vec3 EstimateEndEffectorPosition(const automsgs::msgs::sensor_msgs::JointState& state, double link_length) {
   double x = 0.0;
   double y = 0.0;
   double yaw = 0.0;
@@ -36,9 +36,9 @@ Vec3 EstimateEe(const core::JointState& state, double link_length) {
   return {x, y, 0.0};
 }
 
-bool SphereAabbOverlap(const Vec3& c, double r, const scene::CollisionObject& o) {
+bool SphereAabbOverlap(const Vec3& c, double r, const automsgs::msgs::moveit_msgs::CollisionObject& o) {
   using SP = automsgs::msgs::shape_msgs::SolidPrimitive;
-  const ::autonomy::manipulation::Pose pose = scene::GetObjectPose(o);
+  const automsgs::msgs::geometry_msgs::Pose pose = scene::GetObjectPose(o);
   const double ox = pose.position().x();
   const double oy = pose.position().y();
   const double oz = pose.position().z();
@@ -79,30 +79,30 @@ bool AabbCollisionDetector::Init(const std::string& id) {
   return true;
 }
 
-CollisionResult AabbCollisionDetector::CheckRobotWorld(
-    const core::JointState& state,
+::autonomy::manipulation::proto::CollisionResult AabbCollisionDetector::CheckRobotWorld(
+    const automsgs::msgs::sensor_msgs::JointState& state,
     const scene::PlanningScene& scene) const {
-  CollisionResult result;
-  const Vec3 ee = EstimateEe(state, link_length_);
+  ::autonomy::manipulation::proto::CollisionResult result;
+  const Vec3 ee = EstimateEndEffectorPosition(state, link_length_);
   for (const auto& obj : scene.GetCollisionObjects()) {
-    if (SphereAabbOverlap(ee, ee_radius_, obj)) {
-      result.collision = true;
-      result.contact_body_a = "ee";
-      result.contact_body_b = obj.id();
+    if (SphereAabbOverlap(ee, end_effector_radius_, obj)) {
+      result.set_collision(true);
+      result.set_contact_body_a("ee");
+      result.set_contact_body_b(obj.id());
       return result;
     }
   }
   return result;
 }
 
-CollisionResult AabbCollisionDetector::CheckRobotSelf(
-    const core::JointState& state,
+::autonomy::manipulation::proto::CollisionResult AabbCollisionDetector::CheckRobotSelf(
+    const automsgs::msgs::sensor_msgs::JointState& state,
     const scene::PlanningScene* scene) const {
-  CollisionResult result;
+  ::autonomy::manipulation::proto::CollisionResult result;
   if (!link_tree_) {
     return result;
   }
-  std::unordered_map<std::string, core::Transform> poses;
+  std::unordered_map<std::string, automsgs::msgs::geometry_msgs::Pose> poses;
   if (!link_tree_->Compute(state, &poses) || poses.size() < 2) {
     return result;
   }
@@ -118,7 +118,7 @@ CollisionResult AabbCollisionDetector::CheckRobotSelf(
   for (const auto& kv : poses) {
     names.push_back(kv.first);
   }
-  const double rr = 2.0 * (link_radius_ + padding_);
+  const double rr = 2.0 * (link_radius_ + contact_padding_m_);
   for (std::size_t i = 0; i < names.size(); ++i) {
     for (std::size_t j = i + 1; j < names.size(); ++j) {
       if (adjacent.count(names[i] + "|" + names[j])) {
@@ -133,9 +133,9 @@ CollisionResult AabbCollisionDetector::CheckRobotSelf(
       const double dy = a.y - b.y;
       const double dz = a.z - b.z;
       if (dx * dx + dy * dy + dz * dz <= rr * rr) {
-        result.collision = true;
-        result.contact_body_a = names[i];
-        result.contact_body_b = names[j];
+        result.set_collision(true);
+        result.set_contact_body_a(names[i]);
+        result.set_contact_body_b(names[j]);
         return result;
       }
     }
@@ -143,15 +143,15 @@ CollisionResult AabbCollisionDetector::CheckRobotSelf(
   return result;
 }
 
-DistanceResult AabbCollisionDetector::DistanceRobotWorld(
-    const core::JointState& state,
+::autonomy::manipulation::proto::DistanceResult AabbCollisionDetector::DistanceRobotWorld(
+    const automsgs::msgs::sensor_msgs::JointState& state,
     const scene::PlanningScene& scene) const {
-  DistanceResult best;
-  best.distance = 1e9;
-  const double r = ee_radius_ + padding_;
-  auto dist_to_obj = [&](const Vec3& c, const scene::CollisionObject& o) {
+  ::autonomy::manipulation::proto::DistanceResult best;
+  best.set_distance(1e9);
+  const double r = end_effector_radius_ + contact_padding_m_;
+  auto dist_to_obj = [&](const Vec3& c, const automsgs::msgs::moveit_msgs::CollisionObject& o) {
     using SP = automsgs::msgs::shape_msgs::SolidPrimitive;
-    const ::autonomy::manipulation::Pose pose = scene::GetObjectPose(o);
+    const automsgs::msgs::geometry_msgs::Pose pose = scene::GetObjectPose(o);
     const double ox = pose.position().x();
     const double oy = pose.position().y();
     const double oz = pose.position().z();
@@ -178,7 +178,7 @@ DistanceResult AabbCollisionDetector::DistanceRobotWorld(
   };
 
   if (link_tree_) {
-    std::unordered_map<std::string, core::Transform> poses;
+    std::unordered_map<std::string, automsgs::msgs::geometry_msgs::Pose> poses;
     if (link_tree_->Compute(state, &poses)) {
       for (const auto& kv : poses) {
         const Vec3 c{kv.second.x, kv.second.y, kv.second.z};
@@ -187,36 +187,37 @@ DistanceResult AabbCollisionDetector::DistanceRobotWorld(
             continue;
           }
           const double d = dist_to_obj(c, obj);
-          if (d < best.distance) {
-            best.distance = d;
-            best.nearest_body_a = kv.first;
-            best.nearest_body_b = obj.id();
-            best.nearest_x = c.x;
-            best.nearest_y = c.y;
-            best.nearest_z = c.z;
+          if (d < best.distance()) {
+            best.set_distance(d);
+            best.set_nearest_body_a(kv.first);
+            best.set_nearest_body_b(obj.id());
+            best.set_nearest_point_x(c.x);
+            best.set_nearest_point_y(c.y);
+            best.set_nearest_point_z(c.z);
           }
         }
       }
     }
   } else {
-    const Vec3 ee = EstimateEe(state, link_length_);
+    const Vec3 ee = EstimateEndEffectorPosition(state, link_length_);
     for (const auto& obj : scene.GetCollisionObjects()) {
       const double d = dist_to_obj(ee, obj);
-      if (d < best.distance) {
-        best.distance = d;
-        best.nearest_body_a = "ee";
-        best.nearest_body_b = obj.id();
-        best.nearest_x = ee.x;
-        best.nearest_y = ee.y;
-        best.nearest_z = ee.z;
+      if (d < best.distance()) {
+        best.set_distance(d);
+        best.set_nearest_body_a("ee");
+        best.set_nearest_body_b(obj.id());
+        best.set_nearest_point_x(ee.x);
+        best.set_nearest_point_y(ee.y);
+        best.set_nearest_point_z(ee.z);
       }
     }
   }
-  best.collision = best.distance <= 0.0;
+  best.set_collision(best.distance() <= 0.0);
   return best;
 }
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(AabbCollisionDetector, CollisionDetector);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(AabbCollisionDetector,
+                                        common::CollisionInterface);
 
 }  // namespace collision
 }  // namespace manipulation

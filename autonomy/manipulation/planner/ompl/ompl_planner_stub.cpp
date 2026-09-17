@@ -11,7 +11,7 @@
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 
 #ifndef AUTONOMY_HAS_OMPL
 
@@ -21,21 +21,21 @@ bool OmplPlanner::Init(const std::string& planner_id) {
   return true;
 }
 
-MotionPlanResponse OmplPlanner::Plan(const MotionPlanRequest& /*request*/) {
-  MotionPlanResponse response;
-  response.error_code = ErrorCode::kPlanningFailed;
-  response.error = "ompl backend not linked (AUTONOMY_HAS_OMPL off)";
+::autonomy::manipulation::proto::MotionPlanResponse OmplPlanner::Plan(const MotionPlanRequest& /*request*/) {
+  ::autonomy::manipulation::proto::MotionPlanResponse response;
+  response.set_error_code(ErrorCode::PLANNING_FAILED);
+  response.set_error("ompl backend not linked (AUTONOMY_HAS_OMPL off)");
   return response;
 }
 
-std::shared_ptr<PlannerBase> CreateOmplPlanner() {
+PlannerInterface::SharedPtr CreateOmplPlanner() {
   return std::make_shared<OmplPlanner>();
 }
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(OmplPlanner, PlannerBase);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(OmplPlanner, PlannerInterface);
 
 #endif  // !AUTONOMY_HAS_OMPL
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

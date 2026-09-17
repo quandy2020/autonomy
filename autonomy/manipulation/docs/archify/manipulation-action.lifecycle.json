@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Manipulation Action 生命周期",
+    "locale": "zh-CN",
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "viewBox": [1080, 640],
+    "views": [
+      {
+        "id": "nominal",
+        "label": "名义路径",
+        "focus": ["idle", "accepted", "planning", "executing", "succeeded"],
+        "note": "目标被接受后规划并执行直至成功。"
+      },
+      {
+        "id": "abort",
+        "label": "失败 / 取消",
+        "focus": ["planning", "executing", "aborted", "cancelled"],
+        "note": "规划失败中止，或执行中取消。"
+      }
+    ]
+  },
+  "lanes": [
+    { "id": "main", "label": "Action 主路径" },
+    { "id": "terminal", "label": "终端退出" }
+  ],
+  "states": [
+    { "id": "idle", "type": "start", "label": "Idle", "sublabel": "等待目标", "lane": "main", "col": 0, "step": "01", "tag": "entry" },
+    { "id": "accepted", "type": "active", "label": "Accepted", "sublabel": "Goal 已接收", "lane": "main", "col": 1, "step": "02" },
+    { "id": "planning", "type": "active", "label": "Planning", "sublabel": "Pipeline::Plan", "lane": "main", "col": 2, "step": "03", "tag": "solve" },
+    { "id": "executing", "type": "active", "label": "Executing", "sublabel": "TEM 跟踪", "lane": "main", "col": 3, "step": "04", "tag": "track" },
+    { "id": "succeeded", "type": "success", "label": "Succeeded", "sublabel": "完成", "lane": "main", "col": 4, "step": "05", "tag": "done" },
+    { "id": "aborted", "type": "failure", "label": "Aborted", "sublabel": "ErrorCode", "lane": "terminal", "col": 0, "tag": "terminal" },
+    { "id": "cancelled", "type": "failure", "label": "Cancelled", "sublabel": "PREEMPTED", "lane": "terminal", "col": 1, "tag": "terminal" }
+  ],
+  "transitions": [
+    { "id": "t5", "from": "planning", "to": "aborted", "label": "plan fail", "variant": "security", "fromSide": "bottom", "toSide": "top", "route": "straight", "labelDy": 48 },
+    { "id": "t7", "from": "executing", "to": "cancelled", "label": "preempt", "variant": "security", "fromSide": "bottom", "toSide": "top", "route": "straight", "labelDy": 48 }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "前进", "items": ["Idle → Accepted → Planning → Executing → Succeeded"] },
+    { "dot": "rose", "title": "终止", "items": ["规划失败 → Aborted", "Cancel / Preempt → Cancelled"] }
+  ]
+}

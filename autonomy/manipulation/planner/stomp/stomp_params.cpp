@@ -10,7 +10,7 @@
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 namespace {
 
 bool ApplyKey(const std::string& key, const std::string& val, StompParams* p) {
@@ -101,6 +101,6 @@ bool LoadStompParamsFromShare(StompParams* params, std::string* error) {
   return LoadStompParamsFile(path, params, error);
 }
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

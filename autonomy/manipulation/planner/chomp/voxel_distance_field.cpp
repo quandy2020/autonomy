@@ -11,14 +11,14 @@
 
 #include <automsgs/msgs/shape_msgs/solid_primitive.pb.h>
 
-#include "autonomy/manipulation/motion/scene/collision_object_util.hpp"
+#include "autonomy/manipulation/motion/scene/collision_object_helpers.hpp"
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 namespace {
 
-double PrimitiveSdf(const scene::CollisionObject& o, double x, double y,
+double PrimitiveSdf(const automsgs::msgs::moveit_msgs::CollisionObject& o, double x, double y,
                     double z) {
   using SP = automsgs::msgs::shape_msgs::SolidPrimitive;
   const auto pose = scene::GetObjectPose(o);
@@ -342,6 +342,6 @@ void VoxelDistanceField::Gradient(double x, double y, double z, double* gx,
   *gz = (Distance(x, y, z + h) - Distance(x, y, z - h)) / (2.0 * h);
 }
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

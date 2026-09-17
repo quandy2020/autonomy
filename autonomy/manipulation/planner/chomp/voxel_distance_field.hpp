@@ -14,7 +14,7 @@
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 
 /**
  * @brief Axis-aligned voxel grid storing truncated signed distance.
@@ -66,6 +66,6 @@ class VoxelDistanceField {
   std::vector<float> data_;  // truncated SDF
 };
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

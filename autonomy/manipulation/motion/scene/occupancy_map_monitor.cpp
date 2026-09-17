@@ -16,7 +16,7 @@ namespace autonomy {
 namespace manipulation {
 namespace scene {
 
-void OccupancyMapMonitor::MaybeSelfFilter(
+void OccupancyMapMonitor::ApplySelfFilterIfEnabled(
     std::vector<OccupiedPoint>* points) const {
   if (!points || !model_ || self_filter_padding_ <= 0.0 || !monitor_) {
     return;
@@ -25,9 +25,9 @@ void OccupancyMapMonitor::MaybeSelfFilter(
   if (!scene) {
     return;
   }
-  const core::JointState state = scene->GetCurrentState();
-  std::unordered_map<std::string, core::Transform> poses;
-  if (!model_->LinkTree().Compute(state, &poses) || poses.empty()) {
+  const automsgs::msgs::sensor_msgs::JointState state = scene->GetCurrentState();
+  std::unordered_map<std::string, automsgs::msgs::geometry_msgs::Pose> poses;
+  if (!model_->GetLinkForwardKinematicsTree().ComputeAllLinkPoses(state, &poses) || poses.empty()) {
     return;
   }
   std::vector<OccupiedPoint> origins;
@@ -53,7 +53,7 @@ bool OccupancyMapMonitor::ApplyPointCloud(
                                                  cloud_options_)) {
     return false;
   }
-  MaybeSelfFilter(&points);
+  ApplySelfFilterIfEnabled(&points);
   SceneDiff diff;
   diff.has_occupancy = true;
   diff.occupied = std::move(points);

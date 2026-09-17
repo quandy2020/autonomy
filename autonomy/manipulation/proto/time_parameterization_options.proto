@@ -1,0 +1,18 @@
+// Copyright 2026 The Openbot Authors
+syntax = "proto3";
+
+package autonomy.manipulation.proto;
+
+// Velocity / acceleration limits for Kunz–Stilman / Ruckig time parameterization.
+message TimeParameterizationOptions {
+  double max_velocity = 1;
+  double max_acceleration = 2;
+  // Optional per-joint maximum velocity (empty → use max_velocity).
+  repeated double max_velocity_vector = 3;
+  // Optional per-joint maximum acceleration (empty → use max_acceleration).
+  repeated double max_acceleration_vector = 4;
+  // Max deviation for circular path-segment blends at waypoints.
+  double path_tolerance = 5;
+  // Continuous integration step (path parameter units / step).
+  double integration_time_step = 6;
+}

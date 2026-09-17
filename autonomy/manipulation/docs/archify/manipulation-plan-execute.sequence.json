@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "PlanAndExecute 时序",
+    "locale": "zh-CN",
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "viewBox": [1080, 520],
+    "column_fit": "spread",
+    "views": [
+      {
+        "id": "success",
+        "label": "成功调用",
+        "focus": ["client", "action", "server", "pipeline", "planner", "tem", "ctrl"],
+        "note": "一次成功的规划并执行调用链。"
+      },
+      {
+        "id": "ik-path",
+        "label": "IK 预处理",
+        "focus": ["server", "kin"],
+        "note": "位姿目标可先走 IK。"
+      }
+    ]
+  },
+  "participants": [
+    { "id": "client", "type": "external", "label": "Client", "sublabel": "task" },
+    { "id": "action", "type": "frontend", "label": "Action", "sublabel": "move goal" },
+    { "id": "server", "type": "backend", "label": "ManipServer", "sublabel": "Capability" },
+    { "id": "kin", "type": "backend", "label": "Kinematics", "sublabel": "IK / FK" },
+    { "id": "pipeline", "type": "backend", "label": "Pipeline", "sublabel": "adapters" },
+    { "id": "planner", "type": "backend", "label": "Planner", "sublabel": "Pilz/OMPL" },
+    { "id": "tem", "type": "backend", "label": "TEM", "sublabel": "tracking" },
+    { "id": "ctrl", "type": "messagebus", "label": "JT Ctrl", "sublabel": "topic pub" }
+  ],
+  "segments": [
+    { "from": 150, "to": 265, "label": "Accept + IK" },
+    { "from": 275, "to": 360, "label": "Plan" },
+    { "from": 370, "to": 445, "label": "Execute + Result" }
+  ],
+  "messages": [
+    { "id": "m1", "from": "client", "to": "action", "y": 165, "label": "SendGoal", "variant": "emphasis" },
+    { "id": "m2", "from": "action", "to": "server", "y": 195, "label": "PlanAndExecute", "variant": "emphasis" },
+    { "id": "m3", "from": "server", "to": "kin", "y": 225, "label": "GetPositionIK", "variant": "default" },
+    { "id": "m4", "from": "kin", "to": "server", "y": 255, "label": "JointState", "variant": "return" },
+    { "id": "m5", "from": "server", "to": "pipeline", "y": 295, "label": "Plan(request)", "variant": "emphasis" },
+    { "id": "m6", "from": "pipeline", "to": "planner", "y": 325, "label": "Plan", "variant": "emphasis" },
+    { "id": "m7", "from": "planner", "to": "server", "y": 355, "label": "trajectory", "variant": "return" },
+    { "id": "m8", "from": "server", "to": "tem", "y": 390, "label": "Execute", "variant": "emphasis" },
+    { "id": "m9", "from": "tem", "to": "ctrl", "y": 415, "label": "FollowJT", "variant": "emphasis" },
+    { "id": "m10", "from": "server", "to": "client", "y": 435, "label": "Succeeded", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "action", "from": 160, "to": 210, "type": "frontend" },
+    { "participant": "server", "from": 190, "to": 440, "type": "backend" },
+    { "participant": "kin", "from": 220, "to": 261, "type": "backend" },
+    { "participant": "pipeline", "from": 290, "to": 340, "type": "backend" },
+    { "participant": "planner", "from": 320, "to": 361, "type": "backend" },
+    { "participant": "tem", "from": 385, "to": 425, "type": "backend" },
+    { "participant": "ctrl", "from": 410, "to": 425, "type": "messagebus" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "调用链", "items": ["Action 转发到 ManipServer", "位姿目标可先走 IK，再进入 Pipeline"] },
+    { "dot": "emerald", "title": "执行", "items": ["TEM 调用 JT Controller 发布轨迹", "结果经 Action Result 回到 Client"] }
+  ]
+}

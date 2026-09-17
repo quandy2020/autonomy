@@ -11,7 +11,7 @@
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 
 /** @brief One named OMPL planner configuration (MoveIt PlannerConfiguration). */
 struct OmplPlannerConfig {
@@ -36,6 +36,6 @@ bool LoadOmplPlannerConfigsFile(const std::string& path,
 /** @brief Built-in defaults matching conf/ompl_planning.conf. */
 std::vector<OmplPlannerConfig> DefaultOmplPlannerConfigs();
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

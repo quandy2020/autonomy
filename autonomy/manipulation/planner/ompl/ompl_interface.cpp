@@ -10,7 +10,7 @@
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 
 bool OmplInterface::Init(const std::string& default_planner_id,
                          const std::string& config_path) {
@@ -63,15 +63,15 @@ const OmplPlannerConfig* OmplInterface::LookupConfig(
   return nullptr;
 }
 
-MotionPlanResponse OmplInterface::Plan(const MotionPlanRequest& request) {
+::autonomy::manipulation::proto::MotionPlanResponse OmplInterface::Plan(const MotionPlanRequest& request) {
   OmplPlannerConfig cfg;
   cfg.planner_id = default_id_;
-  if (const auto* found = LookupConfig(request.planner_id)) {
+  if (const auto* found = LookupConfig(request.pb.planner_id())) {
     cfg = *found;
   } else if (!configs_.empty()) {
     // Fall back: match bare type against config.planner_id.
     for (const auto& c : configs_) {
-      if (c.planner_id == request.planner_id || c.name == request.planner_id) {
+      if (c.planner_id == request.pb.planner_id() || c.name == request.pb.planner_id()) {
         cfg = c;
         break;
       }
@@ -86,21 +86,21 @@ bool OmplInterfacePlanner::Init(const std::string& planner_id) {
   return interface_.Init(planner_id_);
 }
 
-MotionPlanResponse OmplInterfacePlanner::Plan(
+::autonomy::manipulation::proto::MotionPlanResponse OmplInterfacePlanner::Plan(
     const MotionPlanRequest& request) {
   MotionPlanRequest req = request;
-  if (req.planner_id.empty()) {
-    req.planner_id = planner_id_;
+  if (req.pb.planner_id().empty()) {
+    req.pb.set_planner_id(planner_id_);
   }
   return interface_.Plan(req);
 }
 
-std::shared_ptr<PlannerBase> CreateOmplInterfacePlanner() {
+PlannerInterface::SharedPtr CreateOmplInterfacePlanner() {
   return std::make_shared<OmplInterfacePlanner>();
 }
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(OmplInterfacePlanner, PlannerBase);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(OmplInterfacePlanner, PlannerInterface);
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

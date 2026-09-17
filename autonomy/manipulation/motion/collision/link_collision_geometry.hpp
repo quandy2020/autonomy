@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/manipulation/model/link_fk.hpp"
+#include "autonomy/manipulation/model/link_forward_kinematics.hpp"
 
 namespace autonomy {
 namespace manipulation {
@@ -45,7 +45,7 @@ enum class LinkShapeKind { kSphere, kBox, kCylinder, kConvex, kMesh };
 struct LinkCollisionShape {
   std::string link_name;
   LinkShapeKind kind = LinkShapeKind::kSphere;
-  core::Transform origin;
+  automsgs::msgs::geometry_msgs::Pose origin;
   double size_x = 0.04;  // sphere r | box lx | cylinder r
   double size_y = 0.04;  // box ly
   double size_z = 0.04;  // box lz | cylinder height
@@ -116,7 +116,7 @@ bool LoadStlMesh(const std::string& path, std::vector<MeshVertex>* verts,
  */
 int LoadConvexPartsSidecar(const std::string& sidecar_path,
                            const std::string& link_name,
-                           const core::Transform& origin,
+                           const automsgs::msgs::geometry_msgs::Pose& origin,
                            std::vector<LinkCollisionShape>* out);
 
 }  // namespace collision

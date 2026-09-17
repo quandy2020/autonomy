@@ -7,7 +7,7 @@
 #include <cmath>
 #include <filesystem>
 
-#include "autonomy/manipulation/model/urdf_kdl.hpp"
+#include "autonomy/manipulation/model/urdf_kdl_chain.hpp"
 #include "autonomy/manipulation/motion/kinematics/kdl_kinematics.hpp"
 
 namespace autonomy {
@@ -21,9 +21,9 @@ std::string TestUrdfPath() {
 }
 
 TEST(UrdfKdlTest, BuildsChain) {
-  core::KdlChainModel model;
+  model::KdlChainDescription model;
   std::string error;
-  ASSERT_TRUE(core::BuildKdlChainFromUrdf(TestUrdfPath(), "base_link", "tool0",
+  ASSERT_TRUE(model::BuildKdlChainFromUrdfFile(TestUrdfPath(), "base_link", "tool0",
                                           &model, &error))
       << error;
   ASSERT_EQ(model.joint_names.size(), 2u);
@@ -35,26 +35,26 @@ TEST(UrdfKdlTest, BuildsChain) {
 TEST(KdlKinematicsTest, FkIkRoundTrip) {
   KdlKinematics kin;
   ASSERT_TRUE(kin.Init("arm", "base_link", "tool0"));
-  ASSERT_TRUE(kin.LoadUrdf(TestUrdfPath()));
+  ASSERT_TRUE(kin.LoadFromUrdfFile(TestUrdfPath()));
 
-  core::JointState joints;
+  automsgs::msgs::sensor_msgs::JointState joints;
   SetJointState(&joints, kin.JointNames(), {0.4, -0.3});
 
-  Pose tip;
+  automsgs::msgs::geometry_msgs::Pose tip;
   ASSERT_TRUE(kin.GetPositionFK(joints, &tip));
   EXPECT_GT(std::hypot(tip.position().x(), tip.position().y(),
                        tip.position().z()),
             0.1);
 
-  core::JointState seed;
+  automsgs::msgs::sensor_msgs::JointState seed;
   SetJointState(&seed, kin.JointNames(), {0.0, 0.0});
-  core::JointState solution;
-  IkOptions opts;
-  opts.max_attempts = 8;
-  ASSERT_EQ(kin.GetPositionIK(tip, seed, opts, &solution), ErrorCode::kSuccess);
+  automsgs::msgs::sensor_msgs::JointState solution;
+  InverseKinematicsOptions opts;
+  opts.set_max_attempts(8);
+  ASSERT_EQ(kin.GetPositionIK(tip, seed, opts, &solution), ErrorCode::SUCCESS);
   ASSERT_EQ(solution.position_size(), 2);
 
-  Pose tip2;
+  automsgs::msgs::geometry_msgs::Pose tip2;
   ASSERT_TRUE(kin.GetPositionFK(solution, &tip2));
   EXPECT_NEAR(tip2.position().x(), tip.position().x(), 1e-3);
   EXPECT_NEAR(tip2.position().y(), tip.position().y(), 1e-3);
@@ -64,22 +64,22 @@ TEST(KdlKinematicsTest, FkIkRoundTrip) {
 TEST(KdlKinematicsTest, PositionOnlyIk) {
   KdlKinematics kin;
   ASSERT_TRUE(kin.Init("arm", "base_link", "tool0"));
-  ASSERT_TRUE(kin.LoadUrdf(TestUrdfPath()));
+  ASSERT_TRUE(kin.LoadFromUrdfFile(TestUrdfPath()));
 
-  core::JointState joints;
+  automsgs::msgs::sensor_msgs::JointState joints;
   SetJointState(&joints, kin.JointNames(), {0.2, 0.1});
-  Pose tip;
+  automsgs::msgs::geometry_msgs::Pose tip;
   ASSERT_TRUE(kin.GetPositionFK(joints, &tip));
 
-  IkOptions opts;
-  opts.position_only = true;
-  opts.max_attempts = 8;
+  InverseKinematicsOptions opts;
+  opts.set_position_only(true);
+  opts.set_max_attempts(8);
   // Seed near the solution so NR_JL converges under position-only.
-  core::JointState seed;
+  automsgs::msgs::sensor_msgs::JointState seed;
   SetJointState(&seed, kin.JointNames(), {0.15, 0.08});
-  core::JointState solution;
-  ASSERT_EQ(kin.GetPositionIK(tip, seed, opts, &solution), ErrorCode::kSuccess);
-  Pose tip2;
+  automsgs::msgs::sensor_msgs::JointState solution;
+  ASSERT_EQ(kin.GetPositionIK(tip, seed, opts, &solution), ErrorCode::SUCCESS);
+  automsgs::msgs::geometry_msgs::Pose tip2;
   ASSERT_TRUE(kin.GetPositionFK(solution, &tip2));
   EXPECT_NEAR(tip2.position().x(), tip.position().x(), 5e-3);
   EXPECT_NEAR(tip2.position().y(), tip.position().y(), 5e-3);

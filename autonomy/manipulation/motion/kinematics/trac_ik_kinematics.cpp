@@ -108,17 +108,17 @@ bool TracIkKinematics::LoadUrdf(const std::string& urdf_path) {
   return true;
 }
 
-bool TracIkKinematics::GetPositionFK(const core::JointState& joints,
-                                     Pose* tip_pose) const {
+bool TracIkKinematics::GetPositionFK(const automsgs::msgs::sensor_msgs::JointState& joints,
+                                     automsgs::msgs::geometry_msgs::Pose* tip_pose) const {
   return inner_ && inner_->GetPositionFK(joints, tip_pose);
 }
 
-ErrorCode TracIkKinematics::GetPositionIK(const Pose& tip_pose,
-                                          const core::JointState& seed,
-                                          const IkOptions& options,
-                                          core::JointState* solution) const {
+ErrorCode TracIkKinematics::GetPositionIK(const automsgs::msgs::geometry_msgs::Pose& tip_pose,
+                                          const automsgs::msgs::sensor_msgs::JointState& seed,
+                                          const InverseKinematicsOptions& options,
+                                          automsgs::msgs::sensor_msgs::JointState* solution) const {
   if (!solution) {
-    return ErrorCode::kFailure;
+    return ErrorCode::FAILURE;
   }
 #if defined(AUTONOMY_HAS_TRAC_IK)
   if (backend_ && backend_->solver && backend_->nq > 0) {
@@ -136,7 +136,7 @@ ErrorCode TracIkKinematics::GetPositionIK(const Pose& tip_pose,
                     tip_pose.position().z()));
     KDL::JntArray q_out(backend_->nq);
     const double timeout =
-        options.timeout > 0.0 ? options.timeout : 0.05;
+        options.timeout() > 0.0 ? options.timeout() : 0.05;
     (void)timeout;
     const int rc = backend_->solver->CartToJnt(q_init, tip, q_out);
     if (rc >= 0) {
@@ -157,36 +157,36 @@ ErrorCode TracIkKinematics::GetPositionIK(const Pose& tip_pose,
         positions[i] = q_out(i);
       }
       SetJointState(solution, names, positions);
-      return ErrorCode::kSuccess;
+      return ErrorCode::SUCCESS;
     }
   }
 #endif
   if (!inner_) {
-    return ErrorCode::kFailure;
+    return ErrorCode::FAILURE;
   }
   if (inner_->GetPositionIK(tip_pose, seed, options, solution) ==
-      ErrorCode::kSuccess) {
-    return ErrorCode::kSuccess;
+      ErrorCode::SUCCESS) {
+    return ErrorCode::SUCCESS;
   }
   std::mt19937 rng(42);
   std::normal_distribution<double> noise(0.0, 0.35);
-  const int extra = std::max(2, options.max_attempts);
+  const int extra = std::max(2, options.max_attempts());
   for (int i = 0; i < extra; ++i) {
-    core::JointState alt = seed;
+    automsgs::msgs::sensor_msgs::JointState alt = seed;
     for (int j = 0; j < alt.position_size(); ++j) {
       alt.set_position(j, alt.position(j) + noise(rng));
     }
-    IkOptions opt = options;
-    opt.max_attempts = std::max(1, options.max_attempts / 2);
+    InverseKinematicsOptions opt = options;
+    opt.max_attempts = std::max(1, options.max_attempts() / 2);
     if (inner_->GetPositionIK(tip_pose, alt, opt, solution) ==
-        ErrorCode::kSuccess) {
-      return ErrorCode::kSuccess;
+        ErrorCode::SUCCESS) {
+      return ErrorCode::SUCCESS;
     }
   }
-  return ErrorCode::kNoIkSolution;
+  return ErrorCode::NO_INVERSE_KINEMATICS_SOLUTION;
 }
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(TracIkKinematics, KinematicsBase);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(TracIkKinematics, KinematicsInterface);
 
 }  // namespace kinematics
 }  // namespace manipulation

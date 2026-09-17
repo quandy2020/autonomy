@@ -28,7 +28,7 @@ int ApproximateConvexDecomposition(
     const std::vector<MeshVertex>& verts,
     const std::vector<int>& triangles, const ConvexDecomposeOptions& options,
     std::vector<LinkCollisionShape>* out, const std::string& link_name,
-    const core::Transform& origin);
+    const automsgs::msgs::geometry_msgs::Pose& origin);
 
 /**
  * @brief Write a `*.convexparts` sidecar listing part STL paths (one per line).
@@ -47,7 +47,7 @@ bool WriteConvexStl(const std::string& path,
  */
 int ResolveMultiConvexForMesh(const std::string& mesh_path,
                               const std::string& link_name,
-                              const core::Transform& origin, bool enable_online,
+                              const automsgs::msgs::geometry_msgs::Pose& origin, bool enable_online,
                               const ConvexDecomposeOptions& options,
                               std::vector<LinkCollisionShape>* out);
 

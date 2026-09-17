@@ -5,9 +5,9 @@
 #include "gtest/gtest.h"
 
 #include "autonomy/manipulation/motion/collision/fcl_collision_detector.hpp"
-#include "autonomy/manipulation/common/joint_state_util.hpp"
-#include "autonomy/manipulation/model/link_fk.hpp"
-#include "autonomy/manipulation/motion/scene/collision_object_util.hpp"
+#include "autonomy/manipulation/model/joint_state_utilities.hpp"
+#include "autonomy/manipulation/model/link_forward_kinematics.hpp"
+#include "autonomy/manipulation/motion/scene/collision_object_helpers.hpp"
 #include "autonomy/manipulation/motion/scene/simple_planning_scene.hpp"
 
 namespace autonomy {
@@ -24,13 +24,13 @@ TEST(FclCollisionDetectorTest, DetectsSphereObstacleEeProxy) {
   scene->AddCollisionObject(
       scene::MakeSphereObject("ball", 0.3, 0.0, 0.0, 0.1));
 
-  core::JointState clear;
+  automsgs::msgs::sensor_msgs::JointState clear;
   SetJointState(&clear, {}, {-1.0});
-  EXPECT_FALSE(detector->CheckRobotWorld(clear, *scene).collision);
+  EXPECT_FALSE(detector->CheckRobotWorld(clear, *scene).collision());
 
-  core::JointState hit;
+  automsgs::msgs::sensor_msgs::JointState hit;
   SetJointState(&hit, {}, {0.0});
-  EXPECT_TRUE(detector->CheckRobotWorld(hit, *scene).collision);
+  EXPECT_TRUE(detector->CheckRobotWorld(hit, *scene).collision());
 }
 
 TEST(FclCollisionDetectorTest, AcmSkipsAllowedPairWithLinkTree) {
@@ -43,9 +43,9 @@ TEST(FclCollisionDetectorTest, AcmSkipsAllowedPairWithLinkTree) {
       scene::MakeBoxObject("wall", 10.0, 0.0, 0.0, 0.2, 0.2, 0.2));
   scene->SetAllowedCollision("link1", "wall", true);
 
-  core::JointState st;
+  automsgs::msgs::sensor_msgs::JointState st;
   SetJointState(&st, {}, {0.0, 0.0});
-  EXPECT_FALSE(detector->CheckRobotWorld(st, *scene).collision);
+  EXPECT_FALSE(detector->CheckRobotWorld(st, *scene).collision());
 }
 
 }  // namespace

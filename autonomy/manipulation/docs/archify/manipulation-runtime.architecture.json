@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Autonomy Manipulation 机械臂运行时架构",
+    "locale": "zh-CN",
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "plan-execute",
+        "label": "规划执行主链路",
+        "focus": ["client", "action", "server", "pipeline", "planner", "execution", "controller", "hw"],
+        "note": "从 Action 目标经规划管线到关节轨迹发布。"
+      },
+      {
+        "id": "world-model",
+        "label": "模型与场景",
+        "focus": ["model", "scene", "kinematics", "pipeline", "planner"],
+        "note": "RobotModel / PlanningScene / 运动学如何支撑规划。"
+      },
+      {
+        "id": "realtime",
+        "label": "实时伺服",
+        "focus": ["server", "servo", "controller", "hw"],
+        "note": "CartesianServo 在线闭环，旁路完整规划管线。"
+      }
+    ]
+  },
+  "components": [
+    { "id": "client", "type": "external", "label": "Client", "sublabel": "MoveGroup / Task", "pos": [40, 300], "size": [120, 60] },
+    { "id": "action", "type": "frontend", "label": "Action Server", "sublabel": "move goal", "pos": [220, 300], "size": [130, 60] },
+    { "id": "server", "type": "backend", "label": "ManipServer", "sublabel": "Capability", "pos": [410, 300], "size": [140, 60] },
+    { "id": "pipeline", "type": "backend", "label": "Pipeline", "sublabel": "Adapters · Plan", "pos": [610, 300], "size": [130, 60] },
+    { "id": "planner", "type": "backend", "label": "Planner", "sublabel": "Pilz / OMPL / …", "pos": [800, 300], "size": [140, 60] },
+    { "id": "model", "type": "database", "label": "Robot Model", "sublabel": "URDF · SRDF", "pos": [410, 120], "size": [130, 60] },
+    { "id": "scene", "type": "database", "label": "Planning Scene", "sublabel": "World · ACM", "pos": [600, 120], "size": [135, 60] },
+    { "id": "kinematics", "type": "backend", "label": "Kinematics", "sublabel": "KDL · IKFast", "pos": [800, 120], "size": [130, 60] },
+    { "id": "execution", "type": "backend", "label": "TEM", "sublabel": "Trajectory Exec", "pos": [990, 300], "size": [120, 60] },
+    { "id": "controller", "type": "messagebus", "label": "JT Controller", "sublabel": "joint trajectory", "pos": [1160, 300], "size": [130, 60] },
+    { "id": "servo", "type": "backend", "label": "Cartesian Servo", "sublabel": "DLS 闭环", "pos": [610, 460], "size": [140, 60] },
+    { "id": "hw", "type": "external", "label": "Arm Hardware", "sublabel": "驱动 · 关节", "pos": [1160, 460], "size": [130, 60] }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Planning Stack",
+      "wraps": ["pipeline", "planner", "scene", "kinematics"]
+    },
+    {
+      "kind": "security-group",
+      "label": "Exec",
+      "wraps": ["execution", "controller"]
+    }
+  ],
+  "connections": [
+    { "id": "goal-in", "from": "client", "to": "action", "label": "goal", "variant": "emphasis", "labelDy": -28 },
+    { "id": "action-server", "from": "action", "to": "server", "label": "Capability", "variant": "emphasis", "labelDy": -28 },
+    { "id": "server-pipeline", "from": "server", "to": "pipeline", "label": "Plan()", "variant": "emphasis", "labelDy": -28 },
+    { "id": "pipeline-planner", "from": "pipeline", "to": "planner", "label": "planner_id", "variant": "emphasis", "labelDy": -28 },
+    { "id": "model-server", "from": "model", "to": "server", "label": "groups", "variant": "default", "fromSide": "bottom", "toSide": "top", "labelDy": 40 },
+    { "id": "scene-pipeline", "from": "scene", "to": "pipeline", "label": "world", "variant": "default", "fromSide": "bottom", "toSide": "top", "labelDy": 40 },
+    { "id": "kin-planner", "from": "kinematics", "to": "planner", "label": "FK/IK", "variant": "default", "fromSide": "bottom", "toSide": "top", "labelDy": 40 },
+    { "id": "pipeline-exec", "from": "planner", "to": "execution", "label": "traj", "variant": "emphasis", "labelAt": [965, 374] },
+    { "id": "exec-ctrl", "from": "execution", "to": "controller", "label": "FollowJT", "variant": "emphasis", "labelDy": -28 },
+    { "id": "ctrl-hw", "from": "controller", "to": "hw", "label": "cmds", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "labelDy": 40 },
+    { "id": "server-servo", "from": "server", "to": "servo", "label": "servo", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelDy": 40 },
+    { "id": "servo-ctrl", "from": "servo", "to": "controller", "label": "delta q", "variant": "dashed", "labelDy": 28 }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "规划主链路", "items": ["Action → ManipServer → Pipeline → Planner", "Planner：Pilz / OMPL / CHOMP / STOMP"] },
+    { "dot": "emerald", "title": "世界模型", "items": ["RobotModel + PlanningScene 提供状态与障碍", "Kinematics 为规划提供 FK / IK"] },
+    { "dot": "violet", "title": "执行与伺服", "items": ["TEM + JT Controller 发布轨迹", "CartesianServo 旁路管线做实时闭环"] }
+  ]
+}

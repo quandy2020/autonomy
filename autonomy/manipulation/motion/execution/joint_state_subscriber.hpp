@@ -25,12 +25,12 @@ namespace execution {
 class JointStateSubscriber {
  public:
   /** @brief Optional listener invoked after each Update. */
-  using Callback = std::function<void(const core::JointState&)>;
+  using Callback = std::function<void(const automsgs::msgs::sensor_msgs::JointState&)>;
 
   /**
    * @brief Create a subscriber on @p topic using @p node.
    * @param[in] node Autolink node that owns the subscription.
-   * @param[in] topic JointState topic name.
+   * @param[in] topic automsgs::msgs::sensor_msgs::JointState topic name.
    * @return true on successful subscription setup.
    */
   bool Init(const std::shared_ptr<autolink::Node>& node,
@@ -44,7 +44,7 @@ class JointStateSubscriber {
 
   /**
    * @brief Register an additional callback after scene update.
-   * @param[in] cb Functor receiving the latest JointState.
+   * @param[in] cb Functor receiving the latest automsgs::msgs::sensor_msgs::JointState.
    */
   void SetCallback(Callback cb);
 
@@ -52,20 +52,20 @@ class JointStateSubscriber {
    * @brief Inject state (tests / when no message type is wired).
    * @param[in] state Joint positions/names to apply.
    */
-  void Update(const core::JointState& state);
+  void Update(const automsgs::msgs::sensor_msgs::JointState& state);
 
   /**
    * @brief Return a copy of the most recently observed joint state.
-   * @return Latest JointState under lock.
+   * @return Latest automsgs::msgs::sensor_msgs::JointState under lock.
    */
-  core::JointState Latest() const;
+  automsgs::msgs::sensor_msgs::JointState GetLatestJointState() const;
 
  private:
   std::shared_ptr<autolink::Node> node_;
   std::shared_ptr<scene::PlanningScene> scene_;
   Callback callback_;
   mutable std::mutex mutex_;
-  core::JointState latest_;
+  automsgs::msgs::sensor_msgs::JointState latest_;
   std::string topic_;
   std::shared_ptr<void> reader_;
 };

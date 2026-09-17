@@ -1,7 +1,7 @@
 /*
  * Copyright 2026 The Openbot Authors
  *
- * Helpers for PlanningScene live in collision_object_util.hpp (header-only).
+ * Helpers for PlanningScene live in collision_object_helpers.hpp (header-only).
  * This translation unit exists for CMake target linkage stability.
  */
 
@@ -12,7 +12,7 @@ namespace manipulation {
 namespace scene {
 
 // Intentionally empty: UpdateMeshAabb / TransformAttached are inline in
-// collision_object_util.hpp.
+// collision_object_helpers.hpp.
 
 }  // namespace scene
 }  // namespace manipulation

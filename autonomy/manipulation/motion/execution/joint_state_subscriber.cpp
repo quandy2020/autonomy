@@ -50,7 +50,7 @@ void JointStateSubscriber::SetCallback(Callback cb) {
   callback_ = std::move(cb);
 }
 
-void JointStateSubscriber::Update(const core::JointState& state) {
+void JointStateSubscriber::Update(const automsgs::msgs::sensor_msgs::JointState& state) {
   std::shared_ptr<scene::PlanningScene> scene;
   Callback cb;
   {
@@ -67,7 +67,7 @@ void JointStateSubscriber::Update(const core::JointState& state) {
   }
 }
 
-core::JointState JointStateSubscriber::Latest() const {
+automsgs::msgs::sensor_msgs::JointState JointStateSubscriber::GetLatestJointState() const {
   std::lock_guard<std::mutex> lock(mutex_);
   return latest_;
 }

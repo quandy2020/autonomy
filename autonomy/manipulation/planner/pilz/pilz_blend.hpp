@@ -12,17 +12,17 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/manipulation/common/joint_state_util.hpp"
+#include "autonomy/manipulation/model/joint_state_utilities.hpp"
 #include "autonomy/manipulation/common/kinematics_interface.hpp"
 #include "autonomy/manipulation/model/error_codes.hpp"
 #include "autonomy/manipulation/model/robot_model.hpp"
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 namespace {
 
-inline double JointDist(const core::JointState& a, const core::JointState& b) {
+inline double JointDist(const automsgs::msgs::sensor_msgs::JointState& a, const automsgs::msgs::sensor_msgs::JointState& b) {
   const int n = std::min(a.position_size(), b.position_size());
   double s = 0.0;
   for (int k = 0; k < n; ++k) {
@@ -40,16 +40,16 @@ inline double QuinticAlpha(double s) {
   return 6.0 * s3 * s2 - 15.0 * s2 * s2 + 10.0 * s3;
 }
 
-inline double TipDist(const kinematics::Pose& a, const kinematics::Pose& b) {
+inline double TipDist(const automsgs::msgs::geometry_msgs::Pose& a, const automsgs::msgs::geometry_msgs::Pose& b) {
   const double dx = a.position().x() - b.position().x();
   const double dy = a.position().y() - b.position().y();
   const double dz = a.position().z() - b.position().z();
   return std::sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-inline kinematics::Pose BlendPose(const kinematics::Pose& a,
-                                  const kinematics::Pose& b, double alpha) {
-  kinematics::Pose p;
+inline automsgs::msgs::geometry_msgs::Pose BlendPose(const automsgs::msgs::geometry_msgs::Pose& a,
+                                  const automsgs::msgs::geometry_msgs::Pose& b, double alpha) {
+  automsgs::msgs::geometry_msgs::Pose p;
   const double s =
       (a.orientation().w() * b.orientation().w() +
        a.orientation().x() * b.orientation().x() +
@@ -77,13 +77,13 @@ inline kinematics::Pose BlendPose(const kinematics::Pose& a,
   return p;
 }
 
-inline void AppendTimedPoint(core::RobotTrajectory* traj,
-                             const core::JointState& js, double t) {
+inline void AppendTimedPoint(automsgs::msgs::trajectory_msgs::JointTrajectory* traj,
+                             const automsgs::msgs::sensor_msgs::JointState& js, double t) {
   AddTrajectoryPoint(traj, js, t);
 }
 
-inline void AppendTimedPointFromTraj(core::RobotTrajectory* dest,
-                                     const core::RobotTrajectory& src,
+inline void AppendTimedPointFromTraj(automsgs::msgs::trajectory_msgs::JointTrajectory* dest,
+                                     const automsgs::msgs::trajectory_msgs::JointTrajectory& src,
                                      int index, double t) {
   AppendTimedPoint(dest, MakeJointStateFromPoint(src, index), t);
 }
@@ -93,7 +93,7 @@ inline void AppendTimedPointFromTraj(core::RobotTrajectory* dest,
 /**
  * @brief Smooth sharp corners in a joint trajectory (Pilz blender lite).
  */
-inline bool BlendJointTrajectory(core::RobotTrajectory* traj,
+inline bool BlendJointTrajectory(automsgs::msgs::trajectory_msgs::JointTrajectory* traj,
                                  double blend_radius) {
   if (!traj || traj->points_size() < 3 || blend_radius <= 1e-9) {
     return true;
@@ -110,7 +110,7 @@ inline bool BlendJointTrajectory(core::RobotTrajectory* traj,
   };
 
   auto lerp = [&](int i, int j, double t) {
-    core::JointState out = MakeJointStateFromPoint(*traj, i);
+    automsgs::msgs::sensor_msgs::JointState out = MakeJointStateFromPoint(*traj, i);
     ResizeJointState(&out, dof);
     for (int k = 0; k < dof; ++k) {
       out.set_position(
@@ -120,7 +120,7 @@ inline bool BlendJointTrajectory(core::RobotTrajectory* traj,
     return out;
   };
 
-  core::RobotTrajectory out;
+  automsgs::msgs::trajectory_msgs::JointTrajectory out;
   AppendTimedPointFromTraj(&out, *traj, 0, 0.0);
 
   for (int i = 1; i + 1 < n; ++i) {
@@ -134,14 +134,14 @@ inline bool BlendJointTrajectory(core::RobotTrajectory* traj,
     }
     const double t_in = 1.0 - r_in / std::max(1e-9, d_in);
     const double t_out = r_out / std::max(1e-9, d_out);
-    const core::JointState p0 = lerp(i - 1, i, t_in);
-    const core::JointState p1 = MakeJointStateFromPoint(*traj, i);
-    const core::JointState p2 = lerp(i, i + 1, t_out);
+    const automsgs::msgs::sensor_msgs::JointState p0 = lerp(i - 1, i, t_in);
+    const automsgs::msgs::sensor_msgs::JointState p1 = MakeJointStateFromPoint(*traj, i);
+    const automsgs::msgs::sensor_msgs::JointState p2 = lerp(i, i + 1, t_out);
     constexpr int kSamples = 5;
     for (int s = 0; s <= kSamples; ++s) {
       const double u = static_cast<double>(s) / static_cast<double>(kSamples);
       const double omu = 1.0 - u;
-      core::JointState b = p0;
+      automsgs::msgs::sensor_msgs::JointState b = p0;
       ResizeJointState(&b, dof);
       for (int k = 0; k < dof; ++k) {
         b.set_position(k, omu * omu * p0.position(k) +
@@ -162,7 +162,7 @@ inline bool BlendJointTrajectory(core::RobotTrajectory* traj,
   }
   const double old_t = traj->points_size() == 0
                            ? total
-                           : std::max(1e-6, GetTrajectoryTime(*traj, traj->points_size() - 1));
+                           : std::max(1e-6, GetTrajectoryPointTimeSeconds(*traj, traj->points_size() - 1));
   if (total > 1e-9) {
     for (int i = 0; i < out.points_size(); ++i) {
       SetDurationSeconds(old_t * (times[static_cast<std::size_t>(i)] / total),
@@ -176,22 +176,22 @@ inline bool BlendJointTrajectory(core::RobotTrajectory* traj,
 /**
  * @brief Blend two timed trajectories at a shared seam (Pilz transition window).
  */
-inline bool BlendTransitionWindow(const core::RobotTrajectory& first,
-                                  const core::RobotTrajectory& second,
+inline bool BlendTransitionWindow(const automsgs::msgs::trajectory_msgs::JointTrajectory& first,
+                                  const automsgs::msgs::trajectory_msgs::JointTrajectory& second,
                                   double blend_radius,
-                                  core::RobotTrajectory* out) {
+                                  automsgs::msgs::trajectory_msgs::JointTrajectory* out) {
   if (!out || first.points_size() < 2 || second.points_size() < 2 ||
       blend_radius <= 1e-9) {
     return false;
   }
-  const core::JointState seam =
+  const automsgs::msgs::sensor_msgs::JointState seam =
       MakeJointStateFromPoint(first, first.points_size() - 1);
   if (JointDist(seam, MakeJointStateFromPoint(second, 0)) > 1e-3) {
     return false;  // seam mismatch
   }
 
-  auto time_at = [](const core::RobotTrajectory& tr, int i) {
-    return GetTrajectoryTime(tr, i);
+  auto time_at = [](const automsgs::msgs::trajectory_msgs::JointTrajectory& tr, int i) {
+    return GetTrajectoryPointTimeSeconds(tr, i);
   };
 
   int i1 = first.points_size() - 1;
@@ -229,21 +229,21 @@ inline bool BlendTransitionWindow(const core::RobotTrajectory& first,
       std::max(1.0, static_cast<double>(n2 - 1));
   const double dt = std::max(1e-3, 0.5 * (dt1 + dt2));
 
-  core::RobotTrajectory merged;
+  automsgs::msgs::trajectory_msgs::JointTrajectory merged;
   for (int i = 0; i <= i1; ++i) {
     AppendTimedPointFromTraj(&merged, first, i, time_at(first, i));
   }
-  double t = GetTrajectoryTime(merged, merged.points_size() - 1);
+  double t = GetTrajectoryPointTimeSeconds(merged, merged.points_size() - 1);
 
-  const int dof = GetJointStateDof(seam);
+  const int dof = GetJointStateDegreesOfFreedom(seam);
   for (int s = 1; s <= n_blend; ++s) {
     const double u = static_cast<double>(s) / static_cast<double>(n_blend);
     const double alpha = QuinticAlpha(u);
     const int ia = std::min(i1 + s, first.points_size() - 1);
     const int ib = std::min(s, i2);
-    const core::JointState qa = MakeJointStateFromPoint(first, ia);
-    const core::JointState qb = MakeJointStateFromPoint(second, ib);
-    core::JointState wp = qa;
+    const automsgs::msgs::sensor_msgs::JointState qa = MakeJointStateFromPoint(first, ia);
+    const automsgs::msgs::sensor_msgs::JointState qb = MakeJointStateFromPoint(second, ib);
+    automsgs::msgs::sensor_msgs::JointState wp = qa;
     ResizeJointState(&wp, dof);
     for (int j = 0; j < dof; ++j) {
       const double a =
@@ -262,8 +262,8 @@ inline bool BlendTransitionWindow(const core::RobotTrajectory& first,
     AppendTimedPointFromTraj(&merged, second, k, t + (tk - t2_at_i2));
   }
   for (int i = 1; i < merged.points_size(); ++i) {
-    const double prev = GetTrajectoryTime(merged, i - 1);
-    const double cur = GetTrajectoryTime(merged, i);
+    const double prev = GetTrajectoryPointTimeSeconds(merged, i - 1);
+    const double cur = GetTrajectoryPointTimeSeconds(merged, i);
     if (cur < prev + 1e-6) {
       SetDurationSeconds(prev + 1e-6,
                          merged.mutable_points(i)->mutable_time_from_start());
@@ -277,9 +277,9 @@ inline bool BlendTransitionWindow(const core::RobotTrajectory& first,
  * @brief Cartesian transition-window blend (MoveIt Pilz blender analogue).
  */
 inline bool BlendTransitionWindowCartesian(
-    const core::RobotTrajectory& first, const core::RobotTrajectory& second,
-    double blend_radius, const kinematics::KinematicsBase* kinematics,
-    core::RobotTrajectory* out) {
+    const automsgs::msgs::trajectory_msgs::JointTrajectory& first, const automsgs::msgs::trajectory_msgs::JointTrajectory& second,
+    double blend_radius, const common::KinematicsInterface* kinematics,
+    automsgs::msgs::trajectory_msgs::JointTrajectory* out) {
   if (!kinematics) {
     return BlendTransitionWindow(first, second, blend_radius, out);
   }
@@ -287,28 +287,28 @@ inline bool BlendTransitionWindowCartesian(
       blend_radius <= 1e-9) {
     return false;
   }
-  const core::JointState seam =
+  const automsgs::msgs::sensor_msgs::JointState seam =
       MakeJointStateFromPoint(first, first.points_size() - 1);
   if (JointDist(seam, MakeJointStateFromPoint(second, 0)) > 1e-3) {
     return false;
   }
-  kinematics::Pose seam_tip;
+  automsgs::msgs::geometry_msgs::Pose seam_tip;
   if (!kinematics->GetPositionFK(seam, &seam_tip)) {
     return BlendTransitionWindow(first, second, blend_radius, out);
   }
 
-  auto tip_of = [&](const core::JointState& js, kinematics::Pose* tip) {
+  auto tip_of = [&](const automsgs::msgs::sensor_msgs::JointState& js, automsgs::msgs::geometry_msgs::Pose* tip) {
     return kinematics->GetPositionFK(js, tip);
   };
 
-  auto time_at = [](const core::RobotTrajectory& tr, int i) {
-    return GetTrajectoryTime(tr, i);
+  auto time_at = [](const automsgs::msgs::trajectory_msgs::JointTrajectory& tr, int i) {
+    return GetTrajectoryPointTimeSeconds(tr, i);
   };
 
   int i1 = first.points_size() - 1;
   bool found1 = false;
   for (int k = first.points_size() - 1; k >= 0; --k) {
-    kinematics::Pose tip;
+    automsgs::msgs::geometry_msgs::Pose tip;
     if (!tip_of(MakeJointStateFromPoint(first, k), &tip)) {
       continue;
     }
@@ -321,7 +321,7 @@ inline bool BlendTransitionWindowCartesian(
   int i2 = 0;
   bool found2 = false;
   for (int k = 0; k < second.points_size(); ++k) {
-    kinematics::Pose tip;
+    automsgs::msgs::geometry_msgs::Pose tip;
     if (!tip_of(MakeJointStateFromPoint(second, k), &tip)) {
       continue;
     }
@@ -346,31 +346,31 @@ inline bool BlendTransitionWindowCartesian(
       std::max(1.0, static_cast<double>(n2 - 1));
   const double dt = std::max(1e-3, 0.5 * (dt1 + dt2));
 
-  core::RobotTrajectory merged;
+  automsgs::msgs::trajectory_msgs::JointTrajectory merged;
   for (int i = 0; i <= i1; ++i) {
     AppendTimedPointFromTraj(&merged, first, i, time_at(first, i));
   }
-  double t = GetTrajectoryTime(merged, merged.points_size() - 1);
-  core::JointState seed = MakeJointStateFromPoint(first, i1);
+  double t = GetTrajectoryPointTimeSeconds(merged, merged.points_size() - 1);
+  automsgs::msgs::sensor_msgs::JointState seed = MakeJointStateFromPoint(first, i1);
 
   for (int s = 1; s <= n_blend; ++s) {
     const double u = static_cast<double>(s) / static_cast<double>(n_blend);
     const double alpha = QuinticAlpha(u);
     const int ia = std::min(i1 + s, first.points_size() - 1);
     const int ib = std::min(s, i2);
-    kinematics::Pose pa;
-    kinematics::Pose pb;
+    automsgs::msgs::geometry_msgs::Pose pa;
+    automsgs::msgs::geometry_msgs::Pose pb;
     if (!tip_of(MakeJointStateFromPoint(first, ia), &pa) ||
         !tip_of(MakeJointStateFromPoint(second, ib), &pb)) {
       return BlendTransitionWindow(first, second, blend_radius, out);
     }
-    const kinematics::Pose target = BlendPose(pa, pb, alpha);
-    core::JointState sol;
-    kinematics::IkOptions opts;
-    opts.max_attempts = 6;
-    opts.timeout = 0.02;
+    const automsgs::msgs::geometry_msgs::Pose target = BlendPose(pa, pb, alpha);
+    automsgs::msgs::sensor_msgs::JointState sol;
+    common::InverseKinematicsOptions opts;
+    opts.set_max_attempts(6);
+    opts.set_timeout(0.02);
     if (kinematics->GetPositionIK(target, seed, opts, &sol) !=
-        ErrorCode::kSuccess) {
+        ErrorCode::SUCCESS) {
       return BlendTransitionWindow(first, second, blend_radius, out);
     }
     seed = sol;
@@ -384,8 +384,8 @@ inline bool BlendTransitionWindowCartesian(
     AppendTimedPointFromTraj(&merged, second, k, t + (tk - t2_at_i2));
   }
   for (int i = 1; i < merged.points_size(); ++i) {
-    const double prev = GetTrajectoryTime(merged, i - 1);
-    const double cur = GetTrajectoryTime(merged, i);
+    const double prev = GetTrajectoryPointTimeSeconds(merged, i - 1);
+    const double cur = GetTrajectoryPointTimeSeconds(merged, i);
     if (cur < prev + 1e-6) {
       SetDurationSeconds(prev + 1e-6,
                          merged.mutable_points(i)->mutable_time_from_start());
@@ -608,6 +608,6 @@ struct AtrapProfile {
   }
 };
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

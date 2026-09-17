@@ -37,15 +37,15 @@
 #include "autolink/plugin_manager/plugin_manager.hpp"
 #include "autonomy/common/conf_loader.hpp"
 #include "autonomy/common/logging.hpp"
-#include "autonomy/manipulation/planner/constraint_samplers/constraint_sampler_manager.hpp"
-#include "autonomy/manipulation/planner/constraint_samplers/constraint_samplers.hpp"
+#include "autonomy/manipulation/constraints/constraint_sampler_manager.hpp"
+#include "autonomy/manipulation/constraints/constraint_samplers.hpp"
 #include "autonomy/manipulation/planner/ompl/ompl_planning_config.hpp"
-#include "autonomy/manipulation/common/joint_state_util.hpp"
+#include "autonomy/manipulation/model/joint_state_utilities.hpp"
 #include "autonomy/manipulation/motion/scene/planning_scene.hpp"
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 namespace {
 
 namespace ob = ompl::base;
@@ -62,7 +62,7 @@ double GetJointLowerBound(const MotionPlanRequest& request, const std::string& n
     }
     for (const auto& jm : request.model->Joints()) {
       if (jm.name == name &&
-          (jm.type == "continuous" || !jm.limits.has_position_limits)) {
+          (jm.type == "continuous" || !jm.limits.has_position_limits())) {
         return -1e6;
       }
     }
@@ -80,7 +80,7 @@ double GetJointUpperBound(const MotionPlanRequest& request, const std::string& n
     }
     for (const auto& jm : request.model->Joints()) {
       if (jm.name == name &&
-          (jm.type == "continuous" || !jm.limits.has_position_limits)) {
+          (jm.type == "continuous" || !jm.limits.has_position_limits())) {
         return 1e6;
       }
     }
@@ -120,7 +120,7 @@ std::string NormalizePlannerType(const std::string& id) {
   return "RRTConnect";
 }
 
-core::JointState StateToJoint(const ob::State* state,
+automsgs::msgs::sensor_msgs::JointState StateToJoint(const ob::State* state,
                               const std::vector<std::string>& names,
                               std::size_t dof, bool constrained = false) {
   const double* vals = nullptr;
@@ -134,32 +134,32 @@ core::JointState StateToJoint(const ob::State* state,
   for (std::size_t i = 0; i < dof; ++i) {
     positions[i] = vals[i];
   }
-  core::JointState js;
+  automsgs::msgs::sensor_msgs::JointState js;
   SetJointState(&js, names, positions);
   return js;
 }
 
-bool StateValid(const MotionPlanRequest& request, const core::JointState& js) {
-  if (!constraint_samplers::SatisfiesJointConstraints(request, js)) {
+bool StateValid(const MotionPlanRequest& request, const automsgs::msgs::sensor_msgs::JointState& js) {
+  if (!constraints::SatisfiesJointConstraints(request, js)) {
     return false;
   }
   if (request.kinematics &&
-      (!request.position_constraints.empty() ||
-       !request.orientation_constraints.empty())) {
-    kinematics::Pose tip;
+      (!(request.pb.position_constraints_size() == 0) ||
+       !(request.pb.orientation_constraints_size() == 0))) {
+    automsgs::msgs::geometry_msgs::Pose tip;
     if (request.kinematics->GetPositionFK(js, &tip)) {
-      for (const auto& c : request.position_constraints) {
-        if (!constraint_samplers::SatisfiesPositionConstraint(c, tip)) {
+      for (const auto& c : request.pb.position_constraints()) {
+        if (!constraints::SatisfiesPositionConstraint(c, tip)) {
           return false;
         }
       }
-      for (const auto& c : request.orientation_constraints) {
-        if (!constraint_samplers::SatisfiesOrientationConstraint(c, tip)) {
+      for (const auto& c : request.pb.orientation_constraints()) {
+        if (!constraints::SatisfiesOrientationConstraint(c, tip)) {
           return false;
         }
       }
-    } else if (!request.position_constraints.empty() ||
-               !request.orientation_constraints.empty()) {
+    } else if (!(request.pb.position_constraints_size() == 0) ||
+               !(request.pb.orientation_constraints_size() == 0)) {
       return false;
     }
   }
@@ -171,15 +171,15 @@ bool StateValid(const MotionPlanRequest& request, const core::JointState& js) {
 
 bool HasCartesianConstraints(const MotionPlanRequest& request) {
   return request.kinematics &&
-         (!request.position_constraints.empty() ||
-          !request.orientation_constraints.empty());
+         (!(request.pb.position_constraints_size() == 0) ||
+          !(request.pb.orientation_constraints_size() == 0));
 }
 
 unsigned ConstraintManifoldDim(const MotionPlanRequest& request) {
   unsigned m = 0;
-  m += 3u * static_cast<unsigned>(request.position_constraints.size());
+  m += 3u * static_cast<unsigned>(request.pb.position_constraints_size());
   // Orientation residual as 3-vector (scaled angle-axis lite).
-  m += 3u * static_cast<unsigned>(request.orientation_constraints.size());
+  m += 3u * static_cast<unsigned>(request.pb.orientation_constraints_size());
   return std::max(1u, m);
 }
 
@@ -205,9 +205,9 @@ class TipPoseConstraint : public ob::Constraint {
     for (unsigned i = 0; i < dof_; ++i) {
       positions[i] = x[static_cast<Eigen::Index>(i)];
     }
-    core::JointState js;
+    automsgs::msgs::sensor_msgs::JointState js;
     SetJointState(&js, *names_, positions);
-    kinematics::Pose tip;
+    automsgs::msgs::geometry_msgs::Pose tip;
     if (!request_->kinematics->GetPositionFK(js, &tip)) {
       out.setConstant(1.0);
       return;
@@ -242,7 +242,7 @@ class TipPoseConstraint : public ob::Constraint {
   unsigned dof_;
 };
 
-void CopyJointsIntoState(ob::State* state, const core::JointState& js,
+void CopyJointsIntoState(ob::State* state, const automsgs::msgs::sensor_msgs::JointState& js,
                          std::size_t dof, bool constrained) {
   double* vals = nullptr;
   if (constrained) {
@@ -304,7 +304,7 @@ class CartesianProjectingSampler : public ob::StateSampler {
     if (!has_cart && !has_joint) {
       return false;
     }
-    core::JointState seed;
+    automsgs::msgs::sensor_msgs::JointState seed;
     SetJointState(&seed, *names_, std::vector<double>(dof_, 0.0));
     if (request_->start_state.position_size() > 0 &&
         static_cast<std::size_t>(request_->start_state.position_size()) ==
@@ -315,15 +315,15 @@ class CartesianProjectingSampler : public ob::StateSampler {
         seed.add_name(n);
       }
     }
-    core::JointState js;
+    automsgs::msgs::sensor_msgs::JointState js;
     if (has_cart) {
-      if (!constraint_samplers::SampleIkConstrainedState(*request_, seed, &js,
+      if (!constraints::SampleIkConstrainedState(*request_, seed, &js,
                                                          &rng_, 8)) {
         return false;
       }
     } else {
       js = seed;
-      if (!constraint_samplers::SampleJointConstrainedState(*request_, &js,
+      if (!constraints::SampleJointConstrainedState(*request_, &js,
                                                             &rng_)) {
         return false;
       }
@@ -338,8 +338,8 @@ class CartesianProjectingSampler : public ob::StateSampler {
     if (!HasCartesianConstraints(*request_)) {
       return;
     }
-    core::JointState js = StateToJoint(state, *names_, dof_, constrained_);
-    if (!constraint_samplers::ProjectOntoCartesianConstraints(*request_,
+    automsgs::msgs::sensor_msgs::JointState js = StateToJoint(state, *names_, dof_, constrained_);
+    if (!constraints::ProjectOntoCartesianConstraints(*request_,
                                                               &js)) {
       return;
     }
@@ -364,7 +364,7 @@ class ConstrainedGoalRegion : public ob::GoalSampleableRegion {
   ConstrainedGoalRegion(const ob::SpaceInformationPtr& si,
                         const MotionPlanRequest* request,
                         const std::vector<std::string>* names, std::size_t dof,
-                        constraint_samplers::ConstraintSamplerManager* mgr,
+                        constraints::ConstraintSamplerManager* mgr,
                         bool constrained)
       : ob::GoalSampleableRegion(si),
         request_(request),
@@ -379,7 +379,7 @@ class ConstrainedGoalRegion : public ob::GoalSampleableRegion {
     if (!request_) {
       return 0.0;
     }
-    const core::JointState js =
+    const automsgs::msgs::sensor_msgs::JointState js =
         StateToJoint(st, *names_, dof_, constrained_);
     if (StateValid(*request_, js)) {
       return 0.0;
@@ -408,7 +408,7 @@ class ConstrainedGoalRegion : public ob::GoalSampleableRegion {
       CopyJointsIntoState(st, request_->goal_state, dof_, constrained_);
       return;
     }
-    core::JointState sampled;
+    automsgs::msgs::sensor_msgs::JointState sampled;
     if (mgr_->Sample(*request_, request_->goal_state, &sampled, 16) &&
         static_cast<std::size_t>(sampled.position_size()) == dof_) {
       CopyJointsIntoState(st, sampled, dof_, constrained_);
@@ -423,7 +423,7 @@ class ConstrainedGoalRegion : public ob::GoalSampleableRegion {
   const MotionPlanRequest* request_;
   const std::vector<std::string>* names_;
   std::size_t dof_;
-  constraint_samplers::ConstraintSamplerManager* mgr_;
+  constraints::ConstraintSamplerManager* mgr_;
   bool constrained_ = false;
 };
 
@@ -454,84 +454,84 @@ bool OmplPlanner::Init(const std::string& planner_id) {
   return true;
 }
 
-MotionPlanResponse OmplPlanner::Plan(const MotionPlanRequest& request_in) {
+::autonomy::manipulation::proto::MotionPlanResponse OmplPlanner::Plan(const MotionPlanRequest& request_in) {
   MotionPlanRequest request = request_in;
-  double goal_tol = request.goal_joint_tolerance > 0.0
-                        ? request.goal_joint_tolerance
+  double goal_tol = request.pb.goal_joint_tolerance() > 0.0
+                        ? request.pb.goal_joint_tolerance()
                         : 1e-3;
   double lvs_frac = 0.01;
-  if (!request.planner_id.empty() && by_name_.count(request.planner_id)) {
-    const auto& c = by_name_.at(request.planner_id);
+  if (!request.pb.planner_id().empty() && by_name_.count(request.pb.planner_id())) {
+    const auto& c = by_name_.at(request.pb.planner_id());
     if (!c.planner_id.empty()) {
       planner_id_ = c.planner_id;
-      request.planner_id = c.planner_id;
+      request.pb.set_planner_id(c.planner_id);
     }
     if (c.planning_time > 0) {
-      request.planning_time = c.planning_time;
+      request.pb.set_planning_time(c.planning_time);
     }
     if (c.max_attempts > 0) {
-      request.max_attempts = c.max_attempts;
+      request.pb.set_max_attempts(c.max_attempts);
     }
     if (c.goal_joint_tolerance > 0.0) {
       goal_tol = c.goal_joint_tolerance;
-      request.goal_joint_tolerance = c.goal_joint_tolerance;
+      request.pb.set_goal_joint_tolerance(c.goal_joint_tolerance);
     }
     if (c.longest_valid_segment_fraction > 0.0) {
       lvs_frac = c.longest_valid_segment_fraction;
     }
   }
-  if ((!request.position_constraints.empty() ||
-       !request.orientation_constraints.empty() ||
-       !request.joint_constraints.empty()) &&
-      request.start_state.position_size() > 0) {
-    core::JointState s = request.start_state;
+  if ((!(request.pb.position_constraints_size() == 0) ||
+       !(request.pb.orientation_constraints_size() == 0) ||
+       !(request.pb.joint_constraints_size() == 0)) &&
+      request.pb.start_state().position_size() > 0) {
+    automsgs::msgs::sensor_msgs::JointState s = request.pb.start_state();
     if (sampler_manager_.Project(request, &s)) {
-      request.start_state = std::move(s);
+      *request.pb.mutable_start_state() = std::move(s);
     }
   }
 
-  MotionPlanResponse response;
-  if (request.start_state.position_size() == 0 ||
-      request.goal_state.position_size() == 0 ||
-      request.start_state.position_size() !=
-          request.goal_state.position_size()) {
-    response.error_code = ErrorCode::kInvalidRobotState;
-    response.error = "OMPL: invalid start/goal";
+  ::autonomy::manipulation::proto::MotionPlanResponse response;
+  if (request.pb.start_state().position_size() == 0 ||
+      request.pb.goal_state().position_size() == 0 ||
+      request.pb.start_state().position_size() !=
+          request.pb.goal_state().position_size()) {
+    response.set_error_code(ErrorCode::INVALID_ROBOT_STATE);
+    response.set_error("OMPL: invalid start/goal");
     return response;
   }
 
   {
     std::string cerr;
     const ErrorCode ccode =
-        constraint_samplers::EvaluateRequestConstraints(request, &cerr);
-    if (ccode != ErrorCode::kSuccess) {
-      response.error_code = ccode;
-      response.error = cerr.empty() ? "OMPL constraint pre-check failed" : cerr;
+        constraints::EvaluateRequestConstraints(request, &cerr);
+    if (ccode != ErrorCode::SUCCESS) {
+      response.set_error_code(ccode);
+      response.set_error(cerr.empty() ? "OMPL constraint pre-check failed" : cerr);
       return response;
     }
   }
 
-  if (!StateValid(request, request.start_state)) {
-    response.error_code = ErrorCode::kStartStateInCollision;
-    response.error = "OMPL: start invalid (collision/constraints)";
+  if (!StateValid(request, request.pb.start_state())) {
+    response.set_error_code(ErrorCode::START_STATE_IN_COLLISION);
+    response.set_error("OMPL: start invalid (collision/constraints)");
     return response;
   }
-  if (!StateValid(request, request.goal_state)) {
-    response.error_code = ErrorCode::kGoalInCollision;
-    response.error = "OMPL: goal invalid (collision/constraints)";
+  if (!StateValid(request, request.pb.goal_state())) {
+    response.set_error_code(ErrorCode::GOAL_IN_COLLISION);
+    response.set_error("OMPL: goal invalid (collision/constraints)");
     return response;
   }
 
   std::vector<std::string> names;
-  if (request.goal_state.name_size() > 0) {
-    names.assign(request.goal_state.name().begin(),
-                 request.goal_state.name().end());
+  if (request.pb.goal_state().name_size() > 0) {
+    names.assign(request.pb.goal_state().name().begin(),
+                 request.pb.goal_state().name().end());
   } else {
-    names.assign(request.start_state.name().begin(),
-                 request.start_state.name().end());
+    names.assign(request.pb.start_state().name().begin(),
+                 request.pb.start_state().name().end());
   }
   const std::size_t dof =
-      static_cast<std::size_t>(request.start_state.position_size());
+      static_cast<std::size_t>(request.pb.start_state().position_size());
   const bool use_css = HasCartesianConstraints(request);
 
   auto ambient =
@@ -557,7 +557,7 @@ MotionPlanResponse OmplPlanner::Plan(const MotionPlanRequest& request_in) {
           << tip_constraint->getCoDimension();
   }
 
-  if (HasCartesianConstraints(request) || !request.joint_constraints.empty()) {
+  if (HasCartesianConstraints(request) || !(request.pb.joint_constraints_size() == 0)) {
     space->setStateSamplerAllocator(
         [&](const ob::StateSpace* ss) -> ob::StateSamplerPtr {
           return std::make_shared<CartesianProjectingSampler>(
@@ -579,19 +579,19 @@ MotionPlanResponse OmplPlanner::Plan(const MotionPlanRequest& request_in) {
 
   ob::ScopedState<> start(space);
   ob::ScopedState<> goal(space);
-  CopyJointsIntoState(start.get(), request.start_state, dof, use_css);
-  CopyJointsIntoState(goal.get(), request.goal_state, dof, use_css);
+  CopyJointsIntoState(start.get(), request.pb.start_state(), dof, use_css);
+  CopyJointsIntoState(goal.get(), request.pb.goal_state(), dof, use_css);
   if (use_css && tip_constraint) {
     Eigen::VectorXd xs(static_cast<Eigen::Index>(dof));
     Eigen::VectorXd xg(static_cast<Eigen::Index>(dof));
     for (std::size_t i = 0; i < dof; ++i) {
-      xs[static_cast<Eigen::Index>(i)] = request.start_state.position(static_cast<int>(i));
-      xg[static_cast<Eigen::Index>(i)] = request.goal_state.position(static_cast<int>(i));
+      xs[static_cast<Eigen::Index>(i)] = request.pb.start_state().position(static_cast<int>(i));
+      xg[static_cast<Eigen::Index>(i)] = request.pb.goal_state().position(static_cast<int>(i));
     }
     tip_constraint->project(xs);
     tip_constraint->project(xg);
     CopyJointsIntoState(start.get(), [&] {
-      core::JointState js = request.start_state;
+      automsgs::msgs::sensor_msgs::JointState js = request.pb.start_state();
       ResizeJointState(&js, static_cast<int>(dof));
       for (std::size_t i = 0; i < dof; ++i) {
         js.set_position(static_cast<int>(i), xs[static_cast<Eigen::Index>(i)]);
@@ -599,7 +599,7 @@ MotionPlanResponse OmplPlanner::Plan(const MotionPlanRequest& request_in) {
       return js;
     }(), dof, use_css);
     CopyJointsIntoState(goal.get(), [&] {
-      core::JointState js = request.goal_state;
+      automsgs::msgs::sensor_msgs::JointState js = request.pb.goal_state();
       ResizeJointState(&js, static_cast<int>(dof));
       for (std::size_t i = 0; i < dof; ++i) {
         js.set_position(static_cast<int>(i), xg[static_cast<Eigen::Index>(i)]);
@@ -610,7 +610,7 @@ MotionPlanResponse OmplPlanner::Plan(const MotionPlanRequest& request_in) {
   setup.setStartAndGoalStates(start, goal);
 
   const bool use_goal_region =
-      HasCartesianConstraints(request) || !request.joint_constraints.empty();
+      HasCartesianConstraints(request) || !(request.pb.joint_constraints_size() == 0);
   ob::GoalPtr goal_ptr;
   if (use_goal_region) {
     auto region = std::make_shared<ConstrainedGoalRegion>(
@@ -655,8 +655,8 @@ MotionPlanResponse OmplPlanner::Plan(const MotionPlanRequest& request_in) {
   };
 
   const double timeout =
-      request.planning_time > 0.0 ? request.planning_time : 1.0;
-  const int attempts = std::max(1, request.max_attempts);
+      request.pb.planning_time() > 0.0 ? request.pb.planning_time() : 1.0;
+  const int attempts = std::max(1, request.pb.max_attempts());
   // ParallelPlan + hybridize when multiple attempts (MoveIt ompl_interface lite).
   const bool use_parallel = attempts > 1 || type == "RRTConnect";
   ob::PlannerStatus status = ob::PlannerStatus::TIMEOUT;
@@ -702,9 +702,9 @@ MotionPlanResponse OmplPlanner::Plan(const MotionPlanRequest& request_in) {
     }
   }
   if (!status) {
-    response.error_code = ErrorCode::kPlanningFailed;
-    response.error = "OMPL " + type + " failed after " +
-                     std::to_string(attempts) + " attempts";
+    response.set_error_code(ErrorCode::PLANNING_FAILED);
+    response.set_error("OMPL " + type + " failed after " +
+                     std::to_string(attempts) + " attempts");
     return response;
   }
 
@@ -714,44 +714,44 @@ MotionPlanResponse OmplPlanner::Plan(const MotionPlanRequest& request_in) {
       2u, static_cast<unsigned int>(std::max(path.getStateCount(), 10u) * 2u));
   path.interpolate(n_interp);
 
-  response.trajectory.Clear();
+  response.mutable_trajectory()->Clear();
   for (std::size_t i = 0; i < path.getStateCount(); ++i) {
-    core::JointState wp =
+    automsgs::msgs::sensor_msgs::JointState wp =
         StateToJoint(path.getState(i), names, dof, use_css);
     if (HasCartesianConstraints(request)) {
-      constraint_samplers::ProjectOntoCartesianConstraints(request, &wp);
+      constraints::ProjectOntoCartesianConstraints(request, &wp);
     }
-    AddTrajectoryPoint(&response.trajectory, wp, 0.05 * static_cast<double>(i));
+    AddTrajectoryPoint(response.mutable_trajectory(), wp, 0.05 * static_cast<double>(i));
   }
 
-  if (!constraint_samplers::SatisfiesPathConstraints(request,
-                                                     response.trajectory)) {
-    response.success = false;
-    response.error_code = ErrorCode::kGoalViolatesPathConstraints;
-    response.error = "OMPL path violates constraints";
-    response.trajectory = {};
+  if (!constraints::SatisfiesPathConstraints(request,
+                                                     response.trajectory())) {
+    response.set_success(false);
+    response.set_error_code(ErrorCode::GOAL_VIOLATES_PATH_CONSTRAINTS);
+    response.set_error("OMPL path violates constraints");
+    *response.mutable_trajectory() = {};
     return response;
   }
   if (request.scene &&
-      !request.scene->IsPathValidDense(response.trajectory, 4)) {
-    response.success = false;
-    response.error_code = ErrorCode::kInvalidMotionPlan;
-    response.error = "OMPL path fails dense collision check";
-    response.trajectory = {};
+      !request.scene->IsPathValidDense(response.trajectory(), 4)) {
+    response.set_success(false);
+    response.set_error_code(ErrorCode::INVALID_MOTION_PLAN);
+    response.set_error("OMPL path fails dense collision check");
+    *response.mutable_trajectory() = {};
     return response;
   }
 
-  response.success = true;
-  response.error_code = ErrorCode::kSuccess;
+  response.set_success(true);
+  response.set_error_code(ErrorCode::SUCCESS);
   return response;
 }
 
-std::shared_ptr<PlannerBase> CreateOmplPlanner() {
+PlannerInterface::SharedPtr CreateOmplPlanner() {
   return std::make_shared<OmplPlanner>();
 }
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(OmplPlanner, PlannerBase);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(OmplPlanner, PlannerInterface);
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

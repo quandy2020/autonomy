@@ -12,7 +12,7 @@
 #include <sstream>
 
 #include "autonomy/common/logging.hpp"
-#include "autonomy/manipulation/motion/collision/vhacd_decomposition.hpp"
+#include "autonomy/manipulation/motion/collision/vhacd_convex_decomposition.hpp"
 
 namespace autonomy {
 namespace manipulation {
@@ -132,7 +132,7 @@ void DecomposeRecursive(const std::vector<MeshVertex>& verts,
                         const ConvexDecomposeOptions& options, int depth,
                         std::vector<LinkCollisionShape>* out,
                         const std::string& link_name,
-                        const core::Transform& origin) {
+                        const automsgs::msgs::geometry_msgs::Pose& origin) {
   if (indices.empty() ||
       static_cast<int>(out->size()) >= options.max_parts) {
     return;
@@ -175,7 +175,7 @@ int ApproximateConvexDecomposition(
     const std::vector<MeshVertex>& verts,
     const std::vector<int>& triangles, const ConvexDecomposeOptions& options,
     std::vector<LinkCollisionShape>* out, const std::string& link_name,
-    const core::Transform& origin) {
+    const automsgs::msgs::geometry_msgs::Pose& origin) {
   if (!out || verts.size() < 4) {
     return 0;
   }
@@ -251,7 +251,7 @@ bool WriteConvexPartsSidecar(const std::string& sidecar_path,
 
 int ResolveMultiConvexForMesh(const std::string& mesh_path,
                               const std::string& link_name,
-                              const core::Transform& origin, bool enable_online,
+                              const automsgs::msgs::geometry_msgs::Pose& origin, bool enable_online,
                               const ConvexDecomposeOptions& options,
                               std::vector<LinkCollisionShape>* out) {
   if (!out) {

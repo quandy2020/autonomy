@@ -14,50 +14,50 @@
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 
 /**
  * @brief Effective translational velocity (m/s) after velocity_scale.
  *
- * Prefer @c request.cartesian_limits when configured; else @c max_velocity.
+ * Prefer @c request.pb.cartesian_limits() when configured; else @c max_velocity.
  */
 inline double EffectiveTransVel(const MotionPlanRequest& request) {
-  const double scale = std::max(1e-3, request.velocity_scale);
-  if (request.cartesian_limits.configured &&
-      request.cartesian_limits.max_trans_vel > 0.0) {
-    return request.cartesian_limits.max_trans_vel * scale;
+  const double scale = std::max(1e-3, request.pb.velocity_scale());
+  if (request.pb.cartesian_limits().configured() &&
+      request.pb.cartesian_limits().max_translational_velocity() > 0.0) {
+    return request.pb.cartesian_limits().max_translational_velocity() * scale;
   }
-  return std::max(1e-6, request.max_velocity * scale);
+  return std::max(1e-6, request.pb.max_velocity() * scale);
 }
 
 /** @brief Effective translational acceleration (m/s²). */
 inline double EffectiveTransAcc(const MotionPlanRequest& request) {
-  const double scale = std::max(1e-3, request.acceleration_scale);
-  if (request.cartesian_limits.configured &&
-      request.cartesian_limits.max_trans_acc > 0.0) {
-    return request.cartesian_limits.max_trans_acc * scale;
+  const double scale = std::max(1e-3, request.pb.acceleration_scale());
+  if (request.pb.cartesian_limits().configured() &&
+      request.pb.cartesian_limits().max_translational_acceleration() > 0.0) {
+    return request.pb.cartesian_limits().max_translational_acceleration() * scale;
   }
-  return std::max(1e-6, request.max_acceleration * scale);
+  return std::max(1e-6, request.pb.max_acceleration() * scale);
 }
 
 /** @brief Effective translational deceleration (m/s²). */
 inline double EffectiveTransDec(const MotionPlanRequest& request) {
-  const double scale = std::max(1e-3, request.acceleration_scale);
-  if (request.cartesian_limits.configured &&
-      request.cartesian_limits.max_trans_dec > 0.0) {
-    return request.cartesian_limits.max_trans_dec * scale;
+  const double scale = std::max(1e-3, request.pb.acceleration_scale());
+  if (request.pb.cartesian_limits().configured() &&
+      request.pb.cartesian_limits().max_translational_deceleration() > 0.0) {
+    return request.pb.cartesian_limits().max_translational_deceleration() * scale;
   }
   return EffectiveTransAcc(request);
 }
 
 /** @brief Effective rotational velocity (rad/s) after velocity_scale. */
 inline double EffectiveRotVel(const MotionPlanRequest& request) {
-  const double scale = std::max(1e-3, request.velocity_scale);
-  if (request.cartesian_limits.configured &&
-      request.cartesian_limits.max_rot_vel > 0.0) {
-    return request.cartesian_limits.max_rot_vel * scale;
+  const double scale = std::max(1e-3, request.pb.velocity_scale());
+  if (request.pb.cartesian_limits().configured() &&
+      request.pb.cartesian_limits().max_rotational_velocity() > 0.0) {
+    return request.pb.cartesian_limits().max_rotational_velocity() * scale;
   }
-  return std::max(1e-6, request.max_velocity * scale);
+  return std::max(1e-6, request.pb.max_velocity() * scale);
 }
 
 /**
@@ -77,6 +77,6 @@ inline double CartesianStrokeDuration(const MotionPlanRequest& request,
   return std::max({0.1, t_trans, t_rot});
 }
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

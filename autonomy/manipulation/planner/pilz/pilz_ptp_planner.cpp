@@ -9,20 +9,20 @@
 #include <vector>
 
 #include "autolink/plugin_manager/plugin_manager.hpp"
-#include "autonomy/manipulation/planner/constraint_samplers/constraint_samplers.hpp"
+#include "autonomy/manipulation/constraints/constraint_samplers.hpp"
 #include "autonomy/manipulation/planner/pilz/pilz_blend.hpp"
-#include "autonomy/manipulation/common/joint_state_util.hpp"
-#include "autonomy/manipulation/motion/kinematics/pose_util.hpp"
+#include "autonomy/manipulation/model/joint_state_utilities.hpp"
+#include "autonomy/manipulation/motion/kinematics/pose_interpolation.hpp"
 #include "autonomy/manipulation/planner/pilz/pilz_limits.hpp"
-#include "autonomy/manipulation/planner/pipeline/time_parameterization.hpp"
+#include "autonomy/manipulation/pipeline/time_parameterization.hpp"
 #include "autonomy/manipulation/motion/scene/planning_scene.hpp"
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 namespace {
 
-using kinematics::Pose;
+using automsgs::msgs::geometry_msgs::Pose;
 using kinematics::InterpolatePose;
 
 constexpr double kPi = 3.141592653589793;
@@ -81,45 +81,45 @@ bool CircCenter(const Vec3& a, const Vec3& b, const Vec3& c, Vec3* center,
 }
 
 void ApplyPilzTiming(const MotionPlanRequest& request,
-                     core::RobotTrajectory* traj) {
+                     automsgs::msgs::trajectory_msgs::JointTrajectory* traj) {
   if (!traj || traj->points_size() < 2) {
     return;
   }
-  trajectory::TimeParamOptions opts;
-  opts.max_velocity =
-      request.max_velocity * std::max(1e-3, request.velocity_scale);
-  opts.max_acceleration = request.max_acceleration;
-  opts.path_tolerance = std::max(1e-3, request.blend_radius);
+  trajectory::TimeParameterizationOptions options;
+  options.set_max_velocity(request.pb.max_velocity() * std::max(1e-3, request.pb.velocity_scale()));
+  options.set_max_acceleration(request.pb.max_acceleration());
+  options.set_path_tolerance(std::max(1e-3, request.pb.blend_radius()));
   if (request.model) {
-    opts.max_velocity_vector.resize(
-        static_cast<std::size_t>(traj->joint_names_size()));
-    opts.max_acceleration_vector.resize(
-        static_cast<std::size_t>(traj->joint_names_size()));
-    for (int i = 0; i < traj->joint_names_size(); ++i) {
+    const int joint_count = traj->joint_names_size();
+    options.mutable_max_velocity_vector()->Clear();
+    options.mutable_max_acceleration_vector()->Clear();
+    options.mutable_max_velocity_vector()->Resize(joint_count, 0.0);
+    options.mutable_max_acceleration_vector()->Resize(joint_count, 0.0);
+    for (int i = 0; i < joint_count; ++i) {
       const auto* lim = request.model->GetJointLimits(traj->joint_names(i));
-      opts.max_velocity_vector[static_cast<std::size_t>(i)] =
-          (lim && lim->max_velocity > 0 ? lim->max_velocity
-                                        : request.max_velocity) *
-          std::max(1e-3, request.velocity_scale);
-      opts.max_acceleration_vector[static_cast<std::size_t>(i)] =
-          lim && lim->max_acceleration > 0 ? lim->max_acceleration
-                                           : request.max_acceleration;
+      options.set_max_velocity_vector(
+          i, (lim && lim->max_velocity > 0 ? lim->max_velocity
+                                           : request.pb.max_velocity()) *
+                 std::max(1e-3, request.pb.velocity_scale()));
+      options.set_max_acceleration_vector(
+          i, lim && lim->max_acceleration > 0 ? lim->max_acceleration
+                                              : request.pb.max_acceleration());
     }
   }
-  trajectory::ApplyTotg(traj, opts);
+  trajectory::ApplyTimeOptimalTrajectoryGeneration(traj, options);
 }
 
-MotionPlanResponse SampleCartesianPath(
-    const MotionPlanRequest& request, const std::vector<Pose>& poses,
+::autonomy::manipulation::proto::MotionPlanResponse SampleCartesianPath(
+    const MotionPlanRequest& request, const std::vector<automsgs::msgs::geometry_msgs::Pose>& poses,
     double duration_hint) {
-  MotionPlanResponse response;
+  ::autonomy::manipulation::proto::MotionPlanResponse response;
   if (!request.kinematics || poses.size() < 2) {
-    response.error_code = ErrorCode::kInvalidGoalConstraints;
-    response.error = "cartesian sample needs kinematics and >=2 poses";
+    response.set_error_code(ErrorCode::INVALID_GOAL_CONSTRAINTS);
+    response.set_error("cartesian sample needs kinematics and >=2 poses");
     return response;
   }
   const int n = std::max(2, static_cast<int>(duration_hint / 0.05) + 1);
-  core::JointState seed = request.start_state;
+  automsgs::msgs::sensor_msgs::JointState seed = request.pb.start_state();
   for (int i = 0; i < n; ++i) {
     const double t = static_cast<double>(i) / static_cast<double>(n - 1);
     const double s = 0.5 * (1.0 - std::cos(kPi * t));
@@ -128,45 +128,45 @@ MotionPlanResponse SampleCartesianPath(
     const int seg = std::min(static_cast<int>(poses.size()) - 2,
                              static_cast<int>(std::floor(u)));
     const double local = u - static_cast<double>(seg);
-    const Pose pose = InterpolatePose(poses[static_cast<std::size_t>(seg)],
+    const automsgs::msgs::geometry_msgs::Pose pose = InterpolatePose(poses[static_cast<std::size_t>(seg)],
                                poses[static_cast<std::size_t>(seg) + 1], local);
-    core::JointState sol;
-    kinematics::IkOptions opts;
-    opts.max_attempts = 6;
+    automsgs::msgs::sensor_msgs::JointState sol;
+    common::InverseKinematicsOptions opts;
+    opts.set_max_attempts(6);
     if (request.kinematics->GetPositionIK(pose, seed, opts, &sol) !=
-        ErrorCode::kSuccess) {
-      response.error_code = ErrorCode::kNoIkSolution;
-      response.error = "Pilz cartesian IK failed";
+        ErrorCode::SUCCESS) {
+      response.set_error_code(ErrorCode::NO_INVERSE_KINEMATICS_SOLUTION);
+      response.set_error("Pilz cartesian IK failed");
       return response;
     }
     if (request.scene && request.scene->CheckCollision(sol)) {
-      response.error_code = ErrorCode::kInvalidMotionPlan;
-      response.error = "Pilz path in collision";
+      response.set_error_code(ErrorCode::INVALID_MOTION_PLAN);
+      response.set_error("Pilz path in collision");
       return response;
     }
     seed = sol;
-    AddTrajectoryPoint(&response.trajectory, sol, duration_hint * t);
+    AddTrajectoryPoint(response.mutable_trajectory(), sol, duration_hint * t);
   }
-  if (response.trajectory.points_size() > 0) {
+  if (response.trajectory().points_size() > 0) {
     // Keep start exact; do not overwrite joint goal for LIN/CIRC tip accuracy.
-    auto* front = response.trajectory.mutable_points(0);
+    auto* front = response.trajectory().mutable_points(0);
     front->clear_positions();
-    for (double q : request.start_state.position()) {
+    for (double q : request.pb.start_state().position()) {
       front->add_positions(q);
     }
   }
-  if (!constraint_samplers::SatisfiesPathConstraints(request,
-                                                    response.trajectory)) {
-    response.error_code = ErrorCode::kInvalidMotionPlan;
-    response.error = "Pilz path violates constraints";
-    response.trajectory = {};
-    response.success = false;
+  if (!constraints::SatisfiesPathConstraints(request,
+                                                    response.trajectory())) {
+    response.set_error_code(ErrorCode::INVALID_MOTION_PLAN);
+    response.set_error("Pilz path violates constraints");
+    *response.mutable_trajectory() = {};
+    response.set_success(false);
     return response;
   }
-  BlendJointTrajectory(&response.trajectory, request.blend_radius);
-  ApplyPilzTiming(request, &response.trajectory);
-  response.success = true;
-  response.error_code = ErrorCode::kSuccess;
+  BlendJointTrajectory(response.mutable_trajectory(), request.pb.blend_radius());
+  ApplyPilzTiming(request, response.mutable_trajectory());
+  response.set_success(true);
+  response.set_error_code(ErrorCode::SUCCESS);
   return response;
 }
 
@@ -177,27 +177,27 @@ bool PilzPtpPlanner::Init(const std::string& planner_id) {
   return true;
 }
 
-MotionPlanResponse PilzPtpPlanner::Plan(const MotionPlanRequest& request) {
-  MotionPlanResponse response;
-  if (request.start_state.position_size() !=
-          request.goal_state.position_size() ||
-      request.start_state.position_size() == 0) {
-    response.error_code = ErrorCode::kInvalidRobotState;
-    response.error = "PTP DOF mismatch";
+::autonomy::manipulation::proto::MotionPlanResponse PilzPtpPlanner::Plan(const MotionPlanRequest& request) {
+  ::autonomy::manipulation::proto::MotionPlanResponse response;
+  if (request.pb.start_state().position_size() !=
+          request.pb.goal_state().position_size() ||
+      request.pb.start_state().position_size() == 0) {
+    response.set_error_code(ErrorCode::INVALID_ROBOT_STATE);
+    response.set_error("PTP DOF mismatch");
     return response;
   }
 
   const std::size_t dof =
-      static_cast<std::size_t>(request.start_state.position_size());
-  const double v_scale = std::max(1e-3, request.velocity_scale);
-  const double a_scale = std::max(1e-3, request.acceleration_scale);
+      static_cast<std::size_t>(request.pb.start_state().position_size());
+  const double v_scale = std::max(1e-3, request.pb.velocity_scale());
+  const double a_scale = std::max(1e-3, request.pb.acceleration_scale());
   std::vector<std::string> names;
-  if (request.goal_state.name_size() > 0) {
-    names.assign(request.goal_state.name().begin(),
-                 request.goal_state.name().end());
+  if (request.pb.goal_state().name_size() > 0) {
+    names.assign(request.pb.goal_state().name().begin(),
+                 request.pb.goal_state().name().end());
   } else {
-    names.assign(request.start_state.name().begin(),
-                 request.start_state.name().end());
+    names.assign(request.pb.start_state().name().begin(),
+                 request.pb.start_state().name().end());
   }
 
   // MoveIt PTP: per-joint fastest ATRAP → leading axis → full sync.
@@ -205,8 +205,8 @@ MotionPlanResponse PilzPtpPlanner::Plan(const MotionPlanRequest& request) {
   std::size_t leading = 0;
   double max_duration = -1.0;
   for (std::size_t i = 0; i < dof; ++i) {
-    double vmax = request.max_velocity * v_scale;
-    double amax = request.max_acceleration * a_scale;
+    double vmax = request.pb.max_velocity() * v_scale;
+    double amax = request.pb.max_acceleration() * a_scale;
     double dmax = amax;
     if (request.model && i < names.size()) {
       const auto* lim = request.model->GetJointLimits(names[i]);
@@ -220,8 +220,8 @@ MotionPlanResponse PilzPtpPlanner::Plan(const MotionPlanRequest& request) {
         }
       }
     }
-    profiles[i].SetProfile(request.start_state.position(static_cast<int>(i)),
-                           request.goal_state.position(static_cast<int>(i)),
+    profiles[i].SetProfile(request.pb.start_state().position(static_cast<int>(i)),
+                           request.pb.goal_state().position(static_cast<int>(i)),
                            vmax, amax, dmax);
     if (profiles[i].Duration() > max_duration) {
       max_duration = profiles[i].Duration();
@@ -230,11 +230,11 @@ MotionPlanResponse PilzPtpPlanner::Plan(const MotionPlanRequest& request) {
   }
   if (max_duration < 1e-9) {
     // Already at goal.
-    response.trajectory.Clear();
-    AddTrajectoryPoint(&response.trajectory, request.start_state, 0.0);
-    AddTrajectoryPoint(&response.trajectory, request.goal_state, 0.05);
-    response.success = true;
-    response.error_code = ErrorCode::kSuccess;
+    response.mutable_trajectory()->Clear();
+    AddTrajectoryPoint(response.mutable_trajectory(), request.pb.start_state(), 0.0);
+    AddTrajectoryPoint(response.mutable_trajectory(), request.pb.goal_state(), 0.05);
+    response.set_success(true);
+    response.set_error_code(ErrorCode::SUCCESS);
     return response;
   }
 
@@ -246,8 +246,8 @@ MotionPlanResponse PilzPtpPlanner::Plan(const MotionPlanRequest& request) {
       continue;
     }
     if (!profiles[i].SetProfileAllDurations(
-            request.start_state.position(static_cast<int>(i)),
-            request.goal_state.position(static_cast<int>(i)), t_acc, t_cru,
+            request.pb.start_state().position(static_cast<int>(i)),
+            request.pb.goal_state().position(static_cast<int>(i)), t_acc, t_cru,
             t_dec)) {
       // Keep fastest profile if sync impossible (limits mismatch).
     }
@@ -264,23 +264,23 @@ MotionPlanResponse PilzPtpPlanner::Plan(const MotionPlanRequest& request) {
     for (std::size_t j = 0; j < dof; ++j) {
       positions[j] = profiles[j].Pos(t);
     }
-    core::JointState wp;
+    automsgs::msgs::sensor_msgs::JointState wp;
     SetJointState(&wp, names, positions);
     for (std::size_t j = 0; j < dof; ++j) {
       wp.add_velocity(0.0);
     }
-    AddTrajectoryPoint(&response.trajectory, wp, t);
+    AddTrajectoryPoint(response.mutable_trajectory(), wp, t);
   }
-  if (response.trajectory.points_size() > 0) {
-    auto* front = response.trajectory.mutable_points(0);
+  if (response.trajectory().points_size() > 0) {
+    auto* front = response.trajectory().mutable_points(0);
     front->clear_positions();
-    for (double q : request.start_state.position()) {
+    for (double q : request.pb.start_state().position()) {
       front->add_positions(q);
     }
     auto* back =
-        response.trajectory.mutable_points(response.trajectory.points_size() - 1);
+        response.trajectory().mutable_points(response.trajectory().points_size() - 1);
     back->clear_positions();
-    for (double q : request.goal_state.position()) {
+    for (double q : request.pb.goal_state().position()) {
       back->add_positions(q);
     }
     // Zero terminal velocity (MoveIt PTP).
@@ -290,22 +290,22 @@ MotionPlanResponse PilzPtpPlanner::Plan(const MotionPlanRequest& request) {
     }
   }
 
-  if (request.scene && !request.scene->IsPathValid(response.trajectory)) {
-    response.error_code = ErrorCode::kInvalidMotionPlan;
-    response.error = "PTP path in collision";
-    response.trajectory = {};
+  if (request.scene && !request.scene->IsPathValid(response.trajectory())) {
+    response.set_error_code(ErrorCode::INVALID_MOTION_PLAN);
+    response.set_error("PTP path in collision");
+    *response.mutable_trajectory() = {};
     return response;
   }
-  if (!constraint_samplers::SatisfiesPathConstraints(request,
-                                                    response.trajectory)) {
-    response.error_code = ErrorCode::kInvalidMotionPlan;
-    response.error = "PTP path violates constraints";
-    response.trajectory = {};
+  if (!constraints::SatisfiesPathConstraints(request,
+                                                    response.trajectory())) {
+    response.set_error_code(ErrorCode::INVALID_MOTION_PLAN);
+    response.set_error("PTP path violates constraints");
+    *response.mutable_trajectory() = {};
     return response;
   }
-  ApplyPilzTiming(request, &response.trajectory);
-  response.success = true;
-  response.error_code = ErrorCode::kSuccess;
+  ApplyPilzTiming(request, response.mutable_trajectory());
+  response.set_success(true);
+  response.set_error_code(ErrorCode::SUCCESS);
   return response;
 }
 
@@ -314,24 +314,24 @@ bool PilzLinPlanner::Init(const std::string& planner_id) {
   return true;
 }
 
-MotionPlanResponse PilzLinPlanner::Plan(const MotionPlanRequest& request) {
-  MotionPlanResponse response;
+::autonomy::manipulation::proto::MotionPlanResponse PilzLinPlanner::Plan(const MotionPlanRequest& request) {
+  ::autonomy::manipulation::proto::MotionPlanResponse response;
   if (!request.kinematics) {
-    response.error = "LIN requires kinematics";
-    response.error_code = ErrorCode::kFailure;
+    response.set_error("LIN requires kinematics");
+    response.set_error_code(ErrorCode::FAILURE);
     return response;
   }
-  Pose start_pose;
-  if (!request.kinematics->GetPositionFK(request.start_state, &start_pose)) {
-    response.error = "LIN FK failed";
-    response.error_code = ErrorCode::kFailure;
+  automsgs::msgs::geometry_msgs::Pose start_pose;
+  if (!request.kinematics->GetPositionFK(request.pb.start_state(), &start_pose)) {
+    response.set_error("LIN FK failed");
+    response.set_error_code(ErrorCode::FAILURE);
     return response;
   }
-  Pose goal = request.goal_pose;
-  if (!request.has_goal_pose) {
-    if (!request.kinematics->GetPositionFK(request.goal_state, &goal)) {
-      response.error = "LIN goal FK failed";
-      response.error_code = ErrorCode::kInvalidGoalConstraints;
+  automsgs::msgs::geometry_msgs::Pose goal = request.pb.goal_pose();
+  if (!request.pb.has_goal_pose()) {
+    if (!request.kinematics->GetPositionFK(request.pb.goal_state(), &goal)) {
+      response.set_error("LIN goal FK failed");
+      response.set_error_code(ErrorCode::INVALID_GOAL_CONSTRAINTS);
       return response;
     }
   }
@@ -354,33 +354,33 @@ bool PilzCircPlanner::Init(const std::string& planner_id) {
   return true;
 }
 
-MotionPlanResponse PilzCircPlanner::Plan(const MotionPlanRequest& request) {
-  MotionPlanResponse response;
+::autonomy::manipulation::proto::MotionPlanResponse PilzCircPlanner::Plan(const MotionPlanRequest& request) {
+  ::autonomy::manipulation::proto::MotionPlanResponse response;
   if (!request.kinematics) {
-    response.error = "CIRC requires kinematics";
-    response.error_code = ErrorCode::kFailure;
+    response.set_error("CIRC requires kinematics");
+    response.set_error_code(ErrorCode::FAILURE);
     return response;
   }
-  Pose start_pose;
-  if (!request.kinematics->GetPositionFK(request.start_state, &start_pose)) {
-    response.error = "CIRC FK failed";
-    response.error_code = ErrorCode::kFailure;
+  automsgs::msgs::geometry_msgs::Pose start_pose;
+  if (!request.kinematics->GetPositionFK(request.pb.start_state(), &start_pose)) {
+    response.set_error("CIRC FK failed");
+    response.set_error_code(ErrorCode::FAILURE);
     return response;
   }
-  Pose goal = request.goal_pose;
-  if (!request.has_goal_pose) {
-    if (!request.kinematics->GetPositionFK(request.goal_state, &goal)) {
-      response.error = "CIRC goal FK failed";
-      response.error_code = ErrorCode::kInvalidGoalConstraints;
+  automsgs::msgs::geometry_msgs::Pose goal = request.pb.goal_pose();
+  if (!request.pb.has_goal_pose()) {
+    if (!request.kinematics->GetPositionFK(request.pb.goal_state(), &goal)) {
+      response.set_error("CIRC goal FK failed");
+      response.set_error_code(ErrorCode::INVALID_GOAL_CONSTRAINTS);
       return response;
     }
   }
-  if (request.cartesian_waypoints.empty()) {
-    response.error = "CIRC needs interim pose in cartesian_waypoints[0]";
-    response.error_code = ErrorCode::kInvalidGoalConstraints;
+  if ((request.pb.cartesian_waypoints_size() == 0)) {
+    response.set_error("CIRC needs interim pose in cartesian_waypoints[0]");
+    response.set_error_code(ErrorCode::INVALID_GOAL_CONSTRAINTS);
     return response;
   }
-  const Pose& interim = request.cartesian_waypoints.front();
+  const automsgs::msgs::geometry_msgs::Pose& interim = request.pb.cartesian_waypoints().front();
   Vec3 a{start_pose.position().x(), start_pose.position().y(),
          start_pose.position().z()};
   Vec3 b{interim.position().x(), interim.position().y(),
@@ -390,8 +390,8 @@ MotionPlanResponse PilzCircPlanner::Plan(const MotionPlanRequest& request) {
   Vec3 normal;
   double radius = 0.0;
   if (!CircCenter(a, b, c, &center, &radius, &normal)) {
-    response.error = "CIRC points are colinear";
-    response.error_code = ErrorCode::kInvalidGoalConstraints;
+    response.set_error("CIRC points are colinear");
+    response.set_error_code(ErrorCode::INVALID_GOAL_CONSTRAINTS);
     return response;
   }
   Vec3 u = Normalize(Sub(a, center));
@@ -411,12 +411,12 @@ MotionPlanResponse PilzCircPlanner::Plan(const MotionPlanRequest& request) {
     a2 += 2.0 * kPi;
   }
   const int n = 24;
-  std::vector<Pose> poses;
+  std::vector<automsgs::msgs::geometry_msgs::Pose> poses;
   poses.reserve(static_cast<std::size_t>(n));
   for (int i = 0; i < n; ++i) {
     const double t = static_cast<double>(i) / static_cast<double>(n - 1);
     const double ang = a0 + t * (a2 - a0);
-    Pose p = InterpolatePose(start_pose, goal, t);
+    automsgs::msgs::geometry_msgs::Pose p = InterpolatePose(start_pose, goal, t);
     p.mutable_position()->set_x(center.x + radius * (std::cos(ang) * u.x + std::sin(ang) * v.x));
     p.mutable_position()->set_y(center.y + radius * (std::cos(ang) * u.y + std::sin(ang) * v.y));
     p.mutable_position()->set_z(center.z + radius * (std::cos(ang) * u.z + std::sin(ang) * v.z));
@@ -438,45 +438,44 @@ bool PilzSequencePlanner::Init(const std::string& planner_id) {
   return true;
 }
 
-MotionPlanResponse PilzSequencePlanner::Plan(const MotionPlanRequest& request) {
-  MotionPlanResponse response;
-  std::vector<SequenceItem> items = request.sequence;
+::autonomy::manipulation::proto::MotionPlanResponse PilzSequencePlanner::Plan(const MotionPlanRequest& request) {
+  ::autonomy::manipulation::proto::MotionPlanResponse response;
+  std::vector<::autonomy::manipulation::proto::SequenceItem> items(request.pb.sequence().begin(), request.pb.sequence().end());
 
   // Fallback: multi-waypoint LIN chain.
-  if (items.empty() && request.cartesian_waypoints.size() >= 1 &&
+  if (items.empty() && request.pb.cartesian_waypoints_size() >= 1 &&
       request.kinematics) {
-    Pose start_pose;
-    if (!request.kinematics->GetPositionFK(request.start_state, &start_pose)) {
-      response.error = "Sequence FK failed";
-      response.error_code = ErrorCode::kFailure;
+    automsgs::msgs::geometry_msgs::Pose start_pose;
+    if (!request.kinematics->GetPositionFK(request.pb.start_state(), &start_pose)) {
+      response.set_error("Sequence FK failed");
+      response.set_error_code(ErrorCode::FAILURE);
       return response;
     }
-    std::vector<Pose> corners;
+    std::vector<automsgs::msgs::geometry_msgs::Pose> corners;
     corners.push_back(start_pose);
-    for (const auto& p : request.cartesian_waypoints) {
+    for (const auto& p : request.pb.cartesian_waypoints()) {
       corners.push_back(p);
     }
-    if (request.has_goal_pose) {
-      corners.push_back(request.goal_pose);
+    if (request.pb.has_goal_pose()) {
+      corners.push_back(request.pb.goal_pose());
     }
     for (std::size_t i = 1; i < corners.size(); ++i) {
-      SequenceItem item;
-      item.type = "LIN";
-      item.goal_pose = corners[i];
-      item.has_goal_pose = true;
-      item.blend_radius =
-          (i + 1 < corners.size()) ? request.blend_radius : 0.0;
-      item.velocity_scale = request.velocity_scale;
+      ::autonomy::manipulation::proto::SequenceItem item;
+      item.set_type("LIN");
+      *item.mutable_goal_pose() = corners[i];
+      item.set_has_goal_pose(true);
+      item.set_blend_radius((i + 1 < corners.size()) ? request.pb.blend_radius() : 0.0);
+      item.set_velocity_scale(request.pb.velocity_scale());
       items.push_back(item);
     }
   }
 
   if (items.empty()) {
     // Single PTP if only joint goal.
-    SequenceItem item;
-    item.type = "PTP";
-    item.goal_state = request.goal_state;
-    item.velocity_scale = request.velocity_scale;
+    ::autonomy::manipulation::proto::SequenceItem item;
+    item.set_type("PTP");
+    *item.mutable_goal_state() = request.pb.goal_state();
+    item.set_velocity_scale(request.pb.velocity_scale());
     items.push_back(item);
   }
 
@@ -487,27 +486,28 @@ MotionPlanResponse PilzSequencePlanner::Plan(const MotionPlanRequest& request) {
   lin.Init("LIN");
   circ.Init("CIRC");
 
-  core::JointState cursor = request.start_state;
-  core::RobotTrajectory merged;
+  automsgs::msgs::sensor_msgs::JointState cursor = request.pb.start_state();
+  automsgs::msgs::trajectory_msgs::JointTrajectory merged;
   double t_offset = 0.0;
 
   for (std::size_t i = 0; i < items.size(); ++i) {
-    const SequenceItem& item = items[i];
+    const ::autonomy::manipulation::proto::SequenceItem& item = items[i];
     MotionPlanRequest sub = request;
-    sub.sequence.clear();
-    sub.start_state = cursor;
-    sub.velocity_scale =
-        item.velocity_scale > 0.0 ? item.velocity_scale : request.velocity_scale;
-    sub.blend_radius = 0.0;  // blend across segment seams below
-    sub.goal_state = item.goal_state;
-    sub.goal_pose = item.goal_pose;
-    sub.has_goal_pose = item.has_goal_pose;
-    sub.cartesian_waypoints.clear();
-    if (item.has_interim) {
-      sub.cartesian_waypoints.push_back(item.interim_pose);
+    sub.pb.clear_sequence();
+    *sub.pb.mutable_start_state() = cursor;
+    sub.pb.set_velocity_scale(
+        item.velocity_scale() > 0.0 ? item.velocity_scale()
+                                   : request.pb.velocity_scale());
+    sub.pb.set_blend_radius(0.0);  // blend across segment seams below
+    *sub.pb.mutable_goal_state() = item.goal_state();
+    *sub.pb.mutable_goal_pose() = item.goal_pose();
+    sub.pb.set_has_goal_pose(item.has_goal_pose());
+    sub.pb.clear_cartesian_waypoints();
+    if (item.has_interim_pose()) {
+      *sub.pb.add_cartesian_waypoints() = item.interim_pose();
     }
 
-    std::string typ = item.type;
+    std::string typ = item.type();
     for (char& c : typ) {
       if (c >= 'a' && c <= 'z') {
         c = static_cast<char>(c - 'a' + 'A');
@@ -517,95 +517,98 @@ MotionPlanResponse PilzSequencePlanner::Plan(const MotionPlanRequest& request) {
       typ = typ.substr(5);
     }
 
-    MotionPlanResponse part;
+    ::autonomy::manipulation::proto::MotionPlanResponse part;
     if (typ == "LIN") {
-      if (!sub.has_goal_pose && sub.goal_state.position_size() > 0 &&
+      if (!sub.pb.has_goal_pose() && sub.pb.goal_state().position_size() > 0 &&
           request.kinematics) {
-        Pose g;
-        if (request.kinematics->GetPositionFK(sub.goal_state, &g)) {
-          sub.goal_pose = g;
-          sub.has_goal_pose = true;
+        automsgs::msgs::geometry_msgs::Pose g;
+        if (request.kinematics->GetPositionFK(sub.pb.goal_state(), &g)) {
+          *sub.pb.mutable_goal_pose() = g;
+          sub.pb.set_has_goal_pose(true);
         }
       }
       part = lin.Plan(sub);
     } else if (typ == "CIRC") {
       part = circ.Plan(sub);
     } else {
-      if (sub.goal_state.position_size() == 0 && sub.has_goal_pose &&
+      if (sub.pb.goal_state().position_size() == 0 && sub.pb.has_goal_pose() &&
           request.kinematics) {
-        core::JointState seed = cursor;
-        if (!request.kinematics->GetPositionIK(sub.goal_pose, seed,
-                                               &sub.goal_state)) {
-          response.error = "Sequence PTP IK failed at item " + std::to_string(i);
-          response.error_code = ErrorCode::kNoIkSolution;
+        automsgs::msgs::sensor_msgs::JointState seed = cursor;
+        if (!request.kinematics->GetPositionIK(sub.pb.goal_pose(), seed,
+                                               sub.pb.mutable_goal_state())) {
+          response.set_error("Sequence PTP IK failed at item " +
+                             std::to_string(i));
+          response.set_error_code(ErrorCode::NO_INVERSE_KINEMATICS_SOLUTION);
           return response;
         }
       }
       part = ptp.Plan(sub);
     }
-    if (!part.success || part.trajectory.points_size() == 0) {
-      response.error = part.error.empty()
-                           ? ("Sequence item " + std::to_string(i) + " failed")
-                           : part.error;
-      response.error_code = part.error_code;
+    if (!part.success() || part.trajectory().points_size() == 0) {
+      response.set_error(part.error().empty()
+                             ? ("Sequence item " + std::to_string(i) + " failed")
+                             : part.error());
+      response.set_error_code(part.error_code());
       return response;
     }
 
     if (merged.points_size() == 0) {
-      merged = std::move(part.trajectory);
-    } else if (i > 0 && items[i - 1].blend_radius > 1e-9) {
+      merged = part.trajectory();
+    } else if (i > 0 && items[i - 1].blend_radius() > 1e-9) {
       // Pilz: blend_radius on item i-1 blends into item i (transition window).
       // Prefer Cartesian sphere + IK when kinematics available.
-      core::RobotTrajectory blended;
+      automsgs::msgs::trajectory_msgs::JointTrajectory blended;
       const bool ok =
           request.kinematics
               ? BlendTransitionWindowCartesian(
-                    merged, part.trajectory, items[i - 1].blend_radius,
+                    merged, part.trajectory(), items[i - 1].blend_radius(),
                     request.kinematics.get(), &blended)
-              : BlendTransitionWindow(merged, part.trajectory,
-                                      items[i - 1].blend_radius, &blended);
+              : BlendTransitionWindow(merged, part.trajectory(),
+                                      items[i - 1].blend_radius(), &blended);
       if (ok) {
         merged = std::move(blended);
       } else {
         // Radius too large / seam mismatch → hard-stop concatenate.
-        for (int k = 1; k < part.trajectory.points_size(); ++k) {
-          AddTrajectoryPoint(&merged, MakeJointStateFromPoint(part.trajectory, k),
-                             t_offset + GetTrajectoryTime(part.trajectory, k));
+        for (int k = 1; k < part.trajectory().points_size(); ++k) {
+          AddTrajectoryPoint(&merged,
+                             MakeJointStateFromPoint(part.trajectory(), k),
+                             t_offset + GetTrajectoryPointTimeSeconds(part.trajectory(), k));
         }
       }
     } else {
-      for (int k = 1; k < part.trajectory.points_size(); ++k) {
-        AddTrajectoryPoint(&merged, MakeJointStateFromPoint(part.trajectory, k),
-                           t_offset + GetTrajectoryTime(part.trajectory, k));
+      for (int k = 1; k < part.trajectory().points_size(); ++k) {
+        AddTrajectoryPoint(&merged,
+                           MakeJointStateFromPoint(part.trajectory(), k),
+                           t_offset + GetTrajectoryPointTimeSeconds(part.trajectory(), k));
       }
     }
     t_offset = merged.points_size() == 0
                    ? t_offset
-                   : GetTrajectoryTime(merged, merged.points_size() - 1);
+                   : GetTrajectoryPointTimeSeconds(merged, merged.points_size() - 1);
     cursor = MakeJointStateFromPoint(merged, merged.points_size() - 1);
   }
 
   if (merged.points_size() < 2) {
-    response.error = "Sequence produced empty trajectory";
-    response.error_code = ErrorCode::kFailure;
+    response.set_error("Sequence produced empty trajectory");
+    response.set_error_code(ErrorCode::FAILURE);
     return response;
   }
   if (request.scene && !request.scene->IsPathValid(merged)) {
-    response.error = "Sequence path in collision";
-    response.error_code = ErrorCode::kInvalidMotionPlan;
+    response.set_error("Sequence path in collision");
+    response.set_error_code(ErrorCode::INVALID_MOTION_PLAN);
     return response;
   }
-  response.success = true;
-  response.error_code = ErrorCode::kSuccess;
-  response.trajectory = std::move(merged);
+  response.set_success(true);
+  response.set_error_code(ErrorCode::SUCCESS);
+  *response.mutable_trajectory() = std::move(merged);
   return response;
 }
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(PilzPtpPlanner, PlannerBase);
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(PilzLinPlanner, PlannerBase);
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(PilzCircPlanner, PlannerBase);
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(PilzSequencePlanner, PlannerBase);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(PilzPtpPlanner, PlannerInterface);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(PilzLinPlanner, PlannerInterface);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(PilzCircPlanner, PlannerInterface);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(PilzSequencePlanner, PlannerInterface);
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

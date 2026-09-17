@@ -15,7 +15,7 @@ namespace kinematics {
 /**
  * @brief IKFast plugin shell; wire robot-specific codegen before production use.
  */
-class IkFastKinematics : public KinematicsBase {
+class IkFastKinematics : public KinematicsInterface {
  public:
   /**
    * @brief Store group / frame names.
@@ -31,16 +31,16 @@ class IkFastKinematics : public KinematicsBase {
    * @brief FK placeholder until generated code is linked.
    * @return false (unimplemented).
    */
-  bool GetPositionFK(const core::JointState& joints,
-                     Pose* tip_pose) const override;
+  bool GetPositionFK(const automsgs::msgs::sensor_msgs::JointState& joints,
+                     automsgs::msgs::geometry_msgs::Pose* tip_pose) const override;
 
   /**
    * @brief IK placeholder until generated code is linked.
-   * @return ErrorCode::kNoIkSolution.
+   * @return ErrorCode::NO_INVERSE_KINEMATICS_SOLUTION.
    */
-  ErrorCode GetPositionIK(const Pose& tip_pose, const core::JointState& seed,
-                          const IkOptions& options,
-                          core::JointState* solution) const override;
+  ErrorCode GetPositionIK(const automsgs::msgs::geometry_msgs::Pose& tip_pose, const automsgs::msgs::sensor_msgs::JointState& seed,
+                          const InverseKinematicsOptions& options,
+                          automsgs::msgs::sensor_msgs::JointState* solution) const override;
 
  private:
   std::string group_;

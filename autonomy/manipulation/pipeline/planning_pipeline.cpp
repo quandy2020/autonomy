@@ -2,15 +2,15 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/manipulation/planner/pipeline/planning_pipeline.hpp"
+#include "autonomy/manipulation/pipeline/planning_pipeline.hpp"
 
 #include "autonomy/common/logging.hpp"
-#include "autonomy/manipulation/planner/constraint_samplers/constraint_samplers.hpp"
-#include "autonomy/manipulation/common/plugin_ids.hpp"
+#include "autonomy/manipulation/constraints/constraint_samplers.hpp"
+#include "autonomy/manipulation/plugin_ids.hpp"
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 namespace {
 
 const char* kDefaultAdapters[] = {
@@ -18,7 +18,7 @@ const char* kDefaultAdapters[] = {
     "dense_sample", "time_parameterization", "validate_path",
     "check_constraints"};
 
-bool IsPrePlanAdapter(const std::string& name) {
+bool IsPrePlanningAdapter(const std::string& name) {
   return name == "fix_start_state_bounds" ||
          name == "FixStartStateBoundsAdapter" ||
          name == "fix_start_state_path_constraints" ||
@@ -56,7 +56,7 @@ bool PlanningPipeline::Init(const proto::ManipulationOptions& options) {
   return true;
 }
 
-void PlanningPipeline::SetPlanner(std::shared_ptr<PlannerBase> planner) {
+void PlanningPipeline::SetPlanner(PlannerInterface::SharedPtr planner) {
   planner_ = std::move(planner);
 }
 
@@ -69,11 +69,11 @@ void PlanningPipeline::ClearAdapters() {
   adapters_.clear();
 }
 
-MotionPlanResponse PlanningPipeline::Plan(const MotionPlanRequest& request) {
-  MotionPlanResponse response;
+::autonomy::manipulation::proto::MotionPlanResponse PlanningPipeline::Plan(const MotionPlanRequest& request) {
+  ::autonomy::manipulation::proto::MotionPlanResponse response;
   if (!planner_) {
-    response.error = "no planner";
-    response.error_code = ErrorCode::kFailure;
+    response.set_error("no planner");
+    response.set_error_code(ErrorCode::FAILURE);
     return response;
   }
 
@@ -81,10 +81,10 @@ MotionPlanResponse PlanningPipeline::Plan(const MotionPlanRequest& request) {
 
   // Pre-adapters that mutate the request run with an empty response before
   // planning; others expect a successful plan.
-  MotionPlanResponse pre;
-  pre.success = true;
+  ::autonomy::manipulation::proto::MotionPlanResponse pre;
+  pre.set_success(true);
   for (const auto& adapter : adapters_) {
-    if (IsPrePlanAdapter(adapter->GetName())) {
+    if (IsPrePlanningAdapter(adapter->GetName())) {
       if (!adapter->Adapt(&req, &pre)) {
         return pre;
       }
@@ -93,20 +93,20 @@ MotionPlanResponse PlanningPipeline::Plan(const MotionPlanRequest& request) {
 
   std::string cerr;
   const ErrorCode ccode =
-      constraint_samplers::EvaluateRequestConstraints(req, &cerr);
-  if (ccode != ErrorCode::kSuccess) {
-    response.error_code = ccode;
-    response.error = cerr;
+      constraints::EvaluateRequestConstraints(req, &cerr);
+  if (ccode != ErrorCode::SUCCESS) {
+    response.set_error_code(ccode);
+    response.set_error(cerr);
     return response;
   }
 
   response = planner_->Plan(req);
-  if (!response.success) {
+  if (!response.success()) {
     return response;
   }
 
   for (const auto& adapter : adapters_) {
-    if (IsPrePlanAdapter(adapter->GetName())) {
+    if (IsPrePlanningAdapter(adapter->GetName())) {
       continue;
     }
     if (!adapter->Adapt(&req, &response)) {
@@ -116,6 +116,6 @@ MotionPlanResponse PlanningPipeline::Plan(const MotionPlanRequest& request) {
   return response;
 }
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

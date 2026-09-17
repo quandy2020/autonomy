@@ -11,7 +11,8 @@
 
 #include "autolink/node/node.hpp"
 #include "autonomy/manipulation/model/simple_robot_model.hpp"
-#include "autonomy/manipulation/motion/scene/perception.hpp"
+#include "autonomy/manipulation/model/simple_robot_state.hpp"
+#include "autonomy/manipulation/motion/scene/point_cloud_occupancy.hpp"
 #include "autonomy/manipulation/motion/scene/scene_monitor.hpp"
 
 namespace autonomy {
@@ -36,7 +37,7 @@ class OccupancyMapMonitor {
   }
 
   /** @brief Optional model for link-origin self-filter. */
-  void SetRobotModel(std::shared_ptr<const core::SimpleRobotModel> model) {
+  void SetRobotModel(std::shared_ptr<const model::SimpleRobotModel> model) {
     model_ = std::move(model);
   }
 
@@ -61,10 +62,10 @@ class OccupancyMapMonitor {
       const automsgs::msgs::sensor_msgs::PointCloud2& cloud);
 
  private:
-  void MaybeSelfFilter(std::vector<OccupiedPoint>* points) const;
+  void ApplySelfFilterIfEnabled(std::vector<OccupiedPoint>* points) const;
 
   std::shared_ptr<SceneMonitor> monitor_;
-  std::shared_ptr<const core::SimpleRobotModel> model_;
+  std::shared_ptr<const model::SimpleRobotModel> model_;
   perception::CloudToOccupancyOptions cloud_options_;
   double self_filter_padding_ = 0.0;
   std::shared_ptr<void> cloud_reader_;

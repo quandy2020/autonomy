@@ -11,64 +11,64 @@
 #include <utility>
 
 #include "autolink/plugin_manager/plugin_manager.hpp"
-#include "autonomy/manipulation/planner/optimize/trajectory_optimize.hpp"
-#include "autonomy/manipulation/common/joint_state_util.hpp"
+#include "autonomy/manipulation/utils/trajectory_optimize.hpp"
+#include "autonomy/manipulation/model/joint_state_utilities.hpp"
 #include "autonomy/manipulation/planner/stomp/stomp_params.hpp"
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 
 bool StompPlanner::Init(const std::string& planner_id) {
   planner_id_ = planner_id;
   return true;
 }
 
-MotionPlanResponse StompPlanner::Plan(const MotionPlanRequest& request) {
-  MotionPlanResponse response;
-  if (GetJointStateDof(request.start_state) !=
-          GetJointStateDof(request.goal_state) ||
-      request.start_state.position_size() == 0) {
-    response.error_code = ErrorCode::kInvalidRobotState;
-    response.error = "STOMP DOF mismatch";
+::autonomy::manipulation::proto::MotionPlanResponse StompPlanner::Plan(const MotionPlanRequest& request) {
+  ::autonomy::manipulation::proto::MotionPlanResponse response;
+  if (GetJointStateDegreesOfFreedom(request.pb.start_state()) !=
+          GetJointStateDegreesOfFreedom(request.pb.goal_state()) ||
+      request.pb.start_state().position_size() == 0) {
+    response.set_error_code(ErrorCode::INVALID_ROBOT_STATE);
+    response.set_error("STOMP DOF mismatch");
     return response;
   }
   StompParams params = DefaultStompParams();
   LoadStompParamsFromShare(&params);
-  if (request.planning_time > 0) {
+  if (request.pb.planning_time() > 0) {
     params.num_iterations =
-        std::max(4, static_cast<int>(request.planning_time * 4));
+        std::max(4, static_cast<int>(request.pb.planning_time() * 4));
     if (params.planning_time_limit <= 0.0) {
-      params.planning_time_limit = request.planning_time;
+      params.planning_time_limit = request.pb.planning_time();
     }
   }
-  core::RobotTrajectory seed =
-      optimize::InterpolateSeedTrajectory(request, params.num_timesteps);
-  auto best = optimize::StompOptimize(request, std::move(seed), params);
+  automsgs::msgs::trajectory_msgs::JointTrajectory seed =
+      trajopt::InterpolateSeedTrajectory(request, params.num_timesteps);
+  auto best = trajopt::StompOptimize(request, std::move(seed), params);
   int recovery = 0;
   while (request.scene && !request.scene->IsPathValid(best) &&
          params.enable_failure_recovery &&
          recovery < params.max_recovery_attempts) {
     ++recovery;
     std::mt19937 rng(91 + recovery * 13);
-    auto retry = optimize::InterpolateSeedTrajectory(request, params.num_timesteps);
-    retry = optimize::PerturbSeed(retry, &rng);
-    optimize::ClampTrajectory(request, &retry);
-    best = optimize::StompOptimize(request, std::move(retry), params);
+    auto retry = trajopt::InterpolateSeedTrajectory(request, params.num_timesteps);
+    retry = trajopt::PerturbSeed(retry, &rng);
+    trajopt::ClampTrajectory(request, &retry);
+    best = trajopt::StompOptimize(request, std::move(retry), params);
   }
   if (request.scene && !request.scene->IsPathValid(best)) {
-    response.error_code = ErrorCode::kPlanningFailed;
-    response.error = "STOMP no collision-free trajectory";
+    response.set_error_code(ErrorCode::PLANNING_FAILED);
+    response.set_error("STOMP no collision-free trajectory");
     return response;
   }
-  response.trajectory = std::move(best);
-  response.success = true;
-  response.error_code = ErrorCode::kSuccess;
+  *response.mutable_trajectory() = std::move(best);
+  response.set_success(true);
+  response.set_error_code(ErrorCode::SUCCESS);
   return response;
 }
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(StompPlanner, PlannerBase);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(StompPlanner, PlannerInterface);
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

@@ -6,9 +6,9 @@
 
 #include <memory>
 
-#include "autonomy/manipulation/common/joint_state_util.hpp"
+#include "autonomy/manipulation/model/joint_state_utilities.hpp"
 #include "autonomy/manipulation/motion/kinematics/cached_kinematics.hpp"
-#include "autonomy/manipulation/motion/kinematics/stub_kinematics.hpp"
+#include "autonomy/manipulation/motion/kinematics/null_kinematics.hpp"
 
 namespace autonomy {
 namespace manipulation {
@@ -16,28 +16,28 @@ namespace kinematics {
 namespace {
 
 TEST(CachedKinematicsTest, LruEvictsOldest) {
-  auto stub = std::make_shared<StubKinematics>();
+  auto stub = std::make_shared<NullKinematics>();
   ASSERT_TRUE(stub->Init("arm", "base", "tool0"));
   CachedKinematics cached(stub, /*cache_size=*/2);
 
-  core::JointState seed;
+  automsgs::msgs::sensor_msgs::JointState seed;
   SetJointState(&seed, {"j1"}, {0.0});
-  core::JointState sol;
+  automsgs::msgs::sensor_msgs::JointState sol;
 
-  Pose a;
+  automsgs::msgs::geometry_msgs::Pose a;
   SetPose(&a, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
-  Pose b;
+  automsgs::msgs::geometry_msgs::Pose b;
   SetPose(&b, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
-  Pose c;
+  automsgs::msgs::geometry_msgs::Pose c;
   SetPose(&c, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
 
-  EXPECT_EQ(cached.GetPositionIK(a, seed, IkOptions{}, &sol),
-            ErrorCode::kSuccess);
-  EXPECT_EQ(cached.GetPositionIK(b, seed, IkOptions{}, &sol),
-            ErrorCode::kSuccess);
+  EXPECT_EQ(cached.GetPositionIK(a, seed, InverseKinematicsOptions{}, &sol),
+            ErrorCode::SUCCESS);
+  EXPECT_EQ(cached.GetPositionIK(b, seed, InverseKinematicsOptions{}, &sol),
+            ErrorCode::SUCCESS);
   EXPECT_EQ(cached.CacheSize(), 2u);
-  EXPECT_EQ(cached.GetPositionIK(c, seed, IkOptions{}, &sol),
-            ErrorCode::kSuccess);
+  EXPECT_EQ(cached.GetPositionIK(c, seed, InverseKinematicsOptions{}, &sol),
+            ErrorCode::SUCCESS);
   EXPECT_EQ(cached.CacheSize(), 2u);
 
   cached.ClearCache();

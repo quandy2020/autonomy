@@ -46,12 +46,12 @@ int main(int argc, char** argv) {
   req.planning_group = FLAGS_group;
   req.base_frame = FLAGS_base;
   req.tip_frame = FLAGS_tip;
-  req.planner_id = FLAGS_planner;
+  req.pb.set_planner_id(FLAGS_planner);
   req.collision_detector = FLAGS_collision;
   req.emit_convexparts_templates = FLAGS_convexparts;
 
   const auto result = autonomy::manipulation::setup::GenerateSetup(req);
-  if (!result.success) {
+  if (!result.success()) {
     AERROR << "setup failed: " << result.error;
     return 2;
   }

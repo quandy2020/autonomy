@@ -10,7 +10,7 @@
 #include <unordered_map>
 
 #include "autonomy/manipulation/common/collision_interface.hpp"
-#include "autonomy/manipulation/common/joint_state_util.hpp"
+#include "autonomy/manipulation/model/joint_state_utilities.hpp"
 
 namespace autonomy {
 namespace manipulation {
@@ -23,7 +23,7 @@ struct Vec3 {
   double z = 0.0;
 };
 
-Vec3 EstimateEe(const core::JointState& state, double link_length = 0.3) {
+Vec3 EstimateEndEffectorPosition(const automsgs::msgs::sensor_msgs::JointState& state, double link_length = 0.3) {
   double x = 0.0;
   double y = 0.0;
   double yaw = 0.0;
@@ -38,28 +38,28 @@ Vec3 EstimateEe(const core::JointState& state, double link_length = 0.3) {
 /** Temporary scene view that overlays attached world poses into GetCollisionObjects. */
 class OverlayScene : public PlanningScene {
  public:
-  OverlayScene(const PlanningScene* base, std::vector<CollisionObject> objects)
+  OverlayScene(const PlanningScene* base, std::vector<automsgs::msgs::moveit_msgs::CollisionObject> objects)
       : base_(base), objects_(std::move(objects)) {}
 
-  void SetCurrentState(const core::JointState& state) override {
+  void SetCurrentState(const automsgs::msgs::sensor_msgs::JointState& state) override {
     (void)state;
   }
-  core::JointState GetCurrentState() const override {
+  automsgs::msgs::sensor_msgs::JointState GetCurrentState() const override {
     return base_->GetCurrentState();
   }
-  void AddCollisionObject(const CollisionObject&) override {}
+  void AddCollisionObject(const automsgs::msgs::moveit_msgs::CollisionObject&) override {}
   void RemoveCollisionObject(const std::string&) override {}
-  void AttachObject(const AttachedCollisionObject&) override {}
+  void AttachObject(const automsgs::msgs::moveit_msgs::AttachedCollisionObject&) override {}
   void DetachObject(const std::string&) override {}
-  std::vector<AttachedCollisionObject> GetAttachedObjects() const override {
+  std::vector<automsgs::msgs::moveit_msgs::AttachedCollisionObject> GetAttachedObjects() const override {
     return {};
   }
-  bool IsStateValid(const core::JointState& state) const override {
+  bool IsStateValid(const automsgs::msgs::sensor_msgs::JointState& state) const override {
     return !CheckCollision(state);
   }
-  bool CheckCollision(const core::JointState&) const override { return false; }
-  bool IsPathValid(const core::RobotTrajectory&) const override { return true; }
-  std::vector<CollisionObject> GetCollisionObjects() const override {
+  bool CheckCollision(const automsgs::msgs::sensor_msgs::JointState&) const override { return false; }
+  bool IsPathValid(const automsgs::msgs::trajectory_msgs::JointTrajectory&) const override { return true; }
+  std::vector<automsgs::msgs::moveit_msgs::CollisionObject> GetCollisionObjects() const override {
     return objects_;
   }
   void SetAllowedCollision(const std::string&, const std::string&,
@@ -68,13 +68,13 @@ class OverlayScene : public PlanningScene {
                           const std::string& b) const override {
     return base_->IsCollisionAllowed(a, b);
   }
-  AllowedCollisionMatrix GetAllowedCollisionMatrix() const override {
+  automsgs::msgs::moveit_msgs::AllowedCollisionMatrix GetAllowedCollisionMatrix() const override {
     return base_->GetAllowedCollisionMatrix();
   }
-  void SetAllowedCollisionMatrix(const AllowedCollisionMatrix&) override {}
+  void SetAllowedCollisionMatrix(const automsgs::msgs::moveit_msgs::AllowedCollisionMatrix&) override {}
   void SetCollisionDetector(
-      std::shared_ptr<collision::CollisionDetector>) override {}
-  void SetLinkTree(std::shared_ptr<const core::LinkFkTree>) override {}
+      std::shared_ptr<common::CollisionInterface>) override {}
+  void SetLinkTree(std::shared_ptr<const model::LinkForwardKinematicsTree>) override {}
   void SetOccupiedPoints(std::vector<OccupiedPoint>, double) override {}
   void ClearOccupiedPoints() override {}
   void ClearWorldObjects() override {}
@@ -88,23 +88,23 @@ class OverlayScene : public PlanningScene {
 
  private:
   const PlanningScene* base_;
-  std::vector<CollisionObject> objects_;
+  std::vector<automsgs::msgs::moveit_msgs::CollisionObject> objects_;
 };
 
 }  // namespace
 
-void SimplePlanningScene::SetCurrentState(const core::JointState& state) {
+void SimplePlanningScene::SetCurrentState(const automsgs::msgs::sensor_msgs::JointState& state) {
   std::unique_lock lock(mutex_);
   current_ = state;
 }
 
-core::JointState SimplePlanningScene::GetCurrentState() const {
+automsgs::msgs::sensor_msgs::JointState SimplePlanningScene::GetCurrentState() const {
   std::shared_lock lock(mutex_);
   return current_;
 }
 
-void SimplePlanningScene::AddCollisionObject(const CollisionObject& object) {
-  CollisionObject copy = object;
+void SimplePlanningScene::AddCollisionObject(const automsgs::msgs::moveit_msgs::CollisionObject& object) {
+  automsgs::msgs::moveit_msgs::CollisionObject copy = object;
   if (HasMesh(copy)) {
     UpdateMeshAabb(&copy);
   }
@@ -119,7 +119,7 @@ void SimplePlanningScene::RemoveCollisionObject(const std::string& id) {
   objects_.erase(id);
 }
 
-void SimplePlanningScene::AttachObject(const AttachedCollisionObject& attached) {
+void SimplePlanningScene::AttachObject(const automsgs::msgs::moveit_msgs::AttachedCollisionObject& attached) {
   std::unique_lock lock(mutex_);
   const std::string& oid = attached.object().id();
   objects_.erase(oid);
@@ -140,16 +140,16 @@ void SimplePlanningScene::DetachObject(const std::string& object_id) {
   if (it == attached_.end()) {
     return;
   }
-  CollisionObject world = it->second.object();
+  automsgs::msgs::moveit_msgs::CollisionObject world = it->second.object();
   // Leave at last known link-relative pose; caller may transform.
   objects_[object_id] = std::move(world);
   attached_.erase(it);
 }
 
-std::vector<AttachedCollisionObject> SimplePlanningScene::GetAttachedObjects()
+std::vector<automsgs::msgs::moveit_msgs::AttachedCollisionObject> SimplePlanningScene::GetAttachedObjects()
     const {
   std::shared_lock lock(mutex_);
-  std::vector<AttachedCollisionObject> out;
+  std::vector<automsgs::msgs::moveit_msgs::AttachedCollisionObject> out;
   out.reserve(attached_.size());
   for (const auto& kv : attached_) {
     out.push_back(kv.second);
@@ -157,24 +157,24 @@ std::vector<AttachedCollisionObject> SimplePlanningScene::GetAttachedObjects()
   return out;
 }
 
-std::vector<CollisionObject> SimplePlanningScene::WorldPlusAttached(
-    const core::JointState& state) const {
-  std::vector<CollisionObject> objects;
+std::vector<automsgs::msgs::moveit_msgs::CollisionObject> SimplePlanningScene::GetWorldAndAttachedObjects(
+    const automsgs::msgs::sensor_msgs::JointState& state) const {
+  std::vector<automsgs::msgs::moveit_msgs::CollisionObject> objects;
   objects.reserve(objects_.size() + attached_.size());
   for (const auto& kv : objects_) {
     objects.push_back(kv.second);
   }
-  std::unordered_map<std::string, core::Transform> poses;
+  std::unordered_map<std::string, automsgs::msgs::geometry_msgs::Pose> poses;
   const bool have_fk = link_tree_ && link_tree_->Compute(state, &poses);
   for (const auto& kv : attached_) {
-    CollisionObject world = kv.second.object();
+    automsgs::msgs::moveit_msgs::CollisionObject world = kv.second.object();
     if (have_fk) {
       const auto pit = poses.find(kv.second.link_name());
       if (pit != poses.end()) {
         world = TransformAttached(kv.second.object(), pit->second);
       }
     } else {
-      const Vec3 ee = EstimateEe(state);
+      const Vec3 ee = EstimateEndEffectorPosition(state);
       TranslateObject(&world, ee.x, ee.y, ee.z);
     }
     world.set_id(kv.second.object().id());
@@ -183,7 +183,7 @@ std::vector<CollisionObject> SimplePlanningScene::WorldPlusAttached(
   return objects;
 }
 
-bool SimplePlanningScene::CheckOccupancy(const core::JointState& state) const {
+bool SimplePlanningScene::CheckOccupancy(const automsgs::msgs::sensor_msgs::JointState& state) const {
   std::vector<OccupiedPoint> occupied;
   double resolution = 0.05;
   {
@@ -194,7 +194,7 @@ bool SimplePlanningScene::CheckOccupancy(const core::JointState& state) const {
     occupied = occupied_;
     resolution = occupancy_resolution_;
   }
-  const Vec3 ee = EstimateEe(state);
+  const Vec3 ee = EstimateEndEffectorPosition(state);
   const double r = std::max(0.02, resolution * 0.75);
   const double rr = r * r;
   for (const auto& p : occupied) {
@@ -208,81 +208,81 @@ bool SimplePlanningScene::CheckOccupancy(const core::JointState& state) const {
   return false;
 }
 
-bool SimplePlanningScene::IsStateValid(const core::JointState& state) const {
+bool SimplePlanningScene::IsStateValid(const automsgs::msgs::sensor_msgs::JointState& state) const {
   return !CheckCollision(state);
 }
 
 PlanningScene::CollisionInfo SimplePlanningScene::CheckCollisionDetailed(
-    const core::JointState& state) const {
+    const automsgs::msgs::sensor_msgs::JointState& state) const {
   CollisionInfo info;
   if (CheckOccupancy(state)) {
-    info.collision = true;
-    info.contact_body_a = "robot";
-    info.contact_body_b = "occupancy";
+    info.set_collision(true);
+    info.set_contact_body_a("robot");
+    info.set_contact_body_b("occupancy");
     return info;
   }
-  std::shared_ptr<collision::CollisionDetector> detector;
-  std::vector<CollisionObject> objects;
+  std::shared_ptr<common::CollisionInterface> detector;
+  std::vector<automsgs::msgs::moveit_msgs::CollisionObject> objects;
   {
     std::shared_lock lock(mutex_);
     detector = detector_;
-    objects = WorldPlusAttached(state);
+    objects = GetWorldAndAttachedObjects(state);
   }
   if (!detector) {
     return info;
   }
   OverlayScene overlay(this, std::move(objects));
   const auto world = detector->CheckRobotWorld(state, overlay);
-  if (world.collision &&
-      !IsCollisionAllowed(world.contact_body_a, world.contact_body_b)) {
-    info.collision = true;
-    info.contact_body_a = world.contact_body_a;
-    info.contact_body_b = world.contact_body_b;
+  if (world.collision() &&
+      !IsCollisionAllowed(world.contact_body_a(), world.contact_body_b())) {
+    info.set_collision(true);
+    info.set_contact_body_a(world.contact_body_a());
+    info.set_contact_body_b(world.contact_body_b());
     return info;
   }
   const auto self = detector->CheckRobotSelf(state, this);
-  if (self.collision &&
-      !IsCollisionAllowed(self.contact_body_a, self.contact_body_b)) {
-    info.collision = true;
-    info.contact_body_a = self.contact_body_a;
-    info.contact_body_b = self.contact_body_b;
+  if (self.collision() &&
+      !IsCollisionAllowed(self.contact_body_a(), self.contact_body_b())) {
+    info.set_collision(true);
+    info.set_contact_body_a(self.contact_body_a());
+    info.set_contact_body_b(self.contact_body_b());
   }
   return info;
 }
 
-bool SimplePlanningScene::CheckCollision(const core::JointState& state) const {
-  return CheckCollisionDetailed(state).collision;
+bool SimplePlanningScene::CheckCollision(const automsgs::msgs::sensor_msgs::JointState& state) const {
+  return CheckCollisionDetailed(state).collision();
 }
 
 PlanningScene::DistanceInfo SimplePlanningScene::DistanceRobotWorld(
-    const core::JointState& state) const {
+    const automsgs::msgs::sensor_msgs::JointState& state) const {
   DistanceInfo info;
-  std::shared_ptr<collision::CollisionDetector> detector;
-  std::vector<CollisionObject> objects;
+  std::shared_ptr<common::CollisionInterface> detector;
+  std::vector<automsgs::msgs::moveit_msgs::CollisionObject> objects;
   {
     std::shared_lock lock(mutex_);
     detector = detector_;
-    objects = WorldPlusAttached(state);
+    objects = GetWorldAndAttachedObjects(state);
   }
   if (!detector) {
-    info.collision = CheckCollision(state);
-    info.distance = info.collision ? 0.0 : 1e3;
+    info.set_collision(CheckCollision(state));
+    info.set_distance(info.collision() ? 0.0 : 1e3);
     return info;
   }
   OverlayScene overlay(this, std::move(objects));
   const auto d = detector->DistanceRobotWorld(state, overlay);
-  info.distance = d.distance;
-  info.collision = d.collision;
-  info.nearest_body_a = d.nearest_body_a;
-  info.nearest_body_b = d.nearest_body_b;
-  info.nearest_x = d.nearest_x;
-  info.nearest_y = d.nearest_y;
-  info.nearest_z = d.nearest_z;
+  info.set_distance(d.distance());
+  info.set_collision(d.collision());
+  info.set_nearest_body_a(d.nearest_body_a());
+  info.set_nearest_body_b(d.nearest_body_b());
+  info.set_nearest_point_x(d.nearest_point_x());
+  info.set_nearest_point_y(d.nearest_point_y());
+  info.set_nearest_point_z(d.nearest_point_z());
   return info;
 }
 
 bool SimplePlanningScene::IsPathValid(
-    const core::RobotTrajectory& trajectory) const {
+    const automsgs::msgs::trajectory_msgs::JointTrajectory& trajectory) const {
   for (int i = 0; i < trajectory.points_size(); ++i) {
     if (!IsStateValid(MakeJointStateFromPoint(trajectory, i))) {
       return false;
@@ -292,18 +292,18 @@ bool SimplePlanningScene::IsPathValid(
 }
 
 bool SimplePlanningScene::IsPathValidDense(
-    const core::RobotTrajectory& trajectory, int segments_per_edge) const {
+    const automsgs::msgs::trajectory_msgs::JointTrajectory& trajectory, int segments_per_edge) const {
   if (!IsPathValid(trajectory)) {
     return false;
   }
   const int segs = std::max(1, segments_per_edge);
   for (int i = 0; i + 1 < trajectory.points_size(); ++i) {
-    const core::JointState a = MakeJointStateFromPoint(trajectory, i);
-    const core::JointState b = MakeJointStateFromPoint(trajectory, i + 1);
+    const automsgs::msgs::sensor_msgs::JointState a = MakeJointStateFromPoint(trajectory, i);
+    const automsgs::msgs::sensor_msgs::JointState b = MakeJointStateFromPoint(trajectory, i + 1);
     const int dof = std::min(a.position_size(), b.position_size());
     for (int s = 1; s < segs; ++s) {
       const double t = static_cast<double>(s) / static_cast<double>(segs);
-      core::JointState mid = a;
+      automsgs::msgs::sensor_msgs::JointState mid = a;
       for (int j = 0; j < dof; ++j) {
         mid.set_position(j, a.position(j) + t * (b.position(j) - a.position(j)));
       }
@@ -315,15 +315,15 @@ bool SimplePlanningScene::IsPathValidDense(
   return true;
 }
 
-std::shared_ptr<const core::LinkFkTree> SimplePlanningScene::GetLinkTree()
+std::shared_ptr<const model::LinkForwardKinematicsTree> SimplePlanningScene::GetLinkTree()
     const {
   std::shared_lock lock(mutex_);
   return link_tree_;
 }
 
-std::vector<CollisionObject> SimplePlanningScene::GetCollisionObjects() const {
+std::vector<automsgs::msgs::moveit_msgs::CollisionObject> SimplePlanningScene::GetCollisionObjects() const {
   std::shared_lock lock(mutex_);
-  std::vector<CollisionObject> out;
+  std::vector<automsgs::msgs::moveit_msgs::CollisionObject> out;
   out.reserve(objects_.size());
   for (const auto& kv : objects_) {
     out.push_back(kv.second);
@@ -358,9 +358,9 @@ bool SimplePlanningScene::IsCollisionAllowed(const std::string& a,
   return it->second.count(b) > 0;
 }
 
-AllowedCollisionMatrix SimplePlanningScene::GetAllowedCollisionMatrix() const {
+automsgs::msgs::moveit_msgs::AllowedCollisionMatrix SimplePlanningScene::GetAllowedCollisionMatrix() const {
   std::shared_lock lock(mutex_);
-  AllowedCollisionMatrix matrix;
+  automsgs::msgs::moveit_msgs::AllowedCollisionMatrix matrix;
   std::vector<std::string> names;
   names.reserve(acm_.size());
   for (const auto& kv : acm_) {
@@ -385,7 +385,7 @@ AllowedCollisionMatrix SimplePlanningScene::GetAllowedCollisionMatrix() const {
 }
 
 void SimplePlanningScene::SetAllowedCollisionMatrix(
-    const AllowedCollisionMatrix& matrix) {
+    const automsgs::msgs::moveit_msgs::AllowedCollisionMatrix& matrix) {
   std::unique_lock lock(mutex_);
   acm_.clear();
   const int n = matrix.entry_names_size();
@@ -422,13 +422,13 @@ void SimplePlanningScene::SetAllowedCollisionMatrix(
 }
 
 void SimplePlanningScene::SetCollisionDetector(
-    std::shared_ptr<collision::CollisionDetector> detector) {
+    std::shared_ptr<common::CollisionInterface> detector) {
   std::unique_lock lock(mutex_);
   detector_ = std::move(detector);
 }
 
 void SimplePlanningScene::SetLinkTree(
-    std::shared_ptr<const core::LinkFkTree> tree) {
+    std::shared_ptr<const model::LinkForwardKinematicsTree> tree) {
   std::unique_lock lock(mutex_);
   link_tree_ = std::move(tree);
 }

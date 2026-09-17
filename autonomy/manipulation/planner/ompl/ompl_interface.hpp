@@ -11,7 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "autonomy/manipulation/planner/constraint_samplers/constraint_sampler_manager.hpp"
+#include "autonomy/manipulation/constraints/constraint_sampler_manager.hpp"
 #include "autonomy/manipulation/planner/ompl/model_based_planning_context.hpp"
 #include "autonomy/manipulation/planner/ompl/ompl_planner.hpp"
 #include "autonomy/manipulation/planner/ompl/ompl_planning_config.hpp"
@@ -19,7 +19,7 @@
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 
 /**
  * @brief Thin ompl_interface: configs + ConstraintSamplerManager + Context + Plan().
@@ -35,7 +35,7 @@ class OmplInterface {
   bool Init(const std::string& default_planner_id = "ompl",
             const std::string& config_path = {});
 
-  constraint_samplers::ConstraintSamplerManager* GetConstraintSamplerManager() {
+  constraints::ConstraintSamplerManager* GetConstraintSamplerManager() {
     return &sampler_manager_;
   }
 
@@ -56,39 +56,39 @@ class OmplInterface {
     return configs_;
   }
 
-  /** @brief Plan using optional named config override on @p request.planner_id. */
-  MotionPlanResponse Plan(const MotionPlanRequest& request);
+  /** @brief Plan using optional named config override on @p request.pb.planner_id(). */
+  ::autonomy::manipulation::proto::MotionPlanResponse Plan(const MotionPlanRequest& request);
 
  private:
   const OmplPlannerConfig* LookupConfig(const std::string& planner_id) const;
 
-  std::shared_ptr<PlannerBase> planner_;
+  PlannerInterface::SharedPtr planner_;
   std::string default_id_ = "ompl";
   std::vector<OmplPlannerConfig> configs_;
   std::unordered_map<std::string, OmplPlannerConfig> by_name_;
-  constraint_samplers::ConstraintSamplerManager sampler_manager_;
+  constraints::ConstraintSamplerManager sampler_manager_;
   ModelBasedPlanningContext context_;
 };
 
 /**
- * @brief PlannerBase plugin that routes through OmplInterface (conf + context).
+ * @brief PlannerInterface plugin that routes through OmplInterface (conf + context).
  *
  * Registered as plugin class OmplInterfacePlanner; alias "ompl_interface".
  * Default "ompl" still maps to OmplPlanner for backward compatibility; server
  * prefers OmplInterface when available via CreateOmplInterfacePlanner().
  */
-class OmplInterfacePlanner : public PlannerBase {
+class OmplInterfacePlanner : public PlannerInterface {
  public:
   bool Init(const std::string& planner_id) override;
-  MotionPlanResponse Plan(const MotionPlanRequest& request) override;
+  ::autonomy::manipulation::proto::MotionPlanResponse Plan(const MotionPlanRequest& request) override;
 
  private:
   OmplInterface interface_;
   std::string planner_id_;
 };
 
-std::shared_ptr<PlannerBase> CreateOmplInterfacePlanner();
+PlannerInterface::SharedPtr CreateOmplInterfacePlanner();
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

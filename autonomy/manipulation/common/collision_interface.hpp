@@ -1,7 +1,17 @@
 /*
  * Copyright 2026 The Openbot Authors
  *
- * Collision detector plugin interface (common).
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #pragma once
@@ -9,128 +19,131 @@
 #include <algorithm>
 #include <memory>
 #include <string>
-#include <vector>
 
+#include <automsgs/msgs/sensor_msgs/joint_state.pb.h>
+
+#include "autonomy/common/macros.hpp"
+#include "autonomy/manipulation/model/link_forward_kinematics.hpp"
 #include "autonomy/manipulation/motion/collision/link_collision_geometry.hpp"
-#include "autonomy/manipulation/model/link_fk.hpp"
-#include "autonomy/manipulation/model/robot_model.hpp"
 #include "autonomy/manipulation/motion/scene/planning_scene.hpp"
+#include "autonomy/manipulation/proto/collision_query.pb.h"
 
 namespace autonomy {
 namespace manipulation {
-namespace collision {
+namespace common {
 
 /**
- * @brief Result of a collision query.
- *
- * When @p collision is true, @p contact_body_a / @p contact_body_b name the
- * first contacting pair when the backend provides them (may be empty).
- */
-struct CollisionResult {
-  bool collision = false;
-  std::string contact_body_a;
-  std::string contact_body_b;
-};
-
-/**
- * @brief Minimum distance query (MoveIt CollisionEnv::distanceRobot analogue).
- *
- * @p distance is signed when the backend supports it (negative = penetration);
- * otherwise ≥0 with collision ⇒ 0.
- */
-struct DistanceResult {
-  double distance = 1e9;
-  bool collision = false;
-  std::string nearest_body_a;
-  std::string nearest_body_b;
-  double nearest_x = 0.0;
-  double nearest_y = 0.0;
-  double nearest_z = 0.0;
-};
-
-/**
+ * @class CollisionInterface
  * @brief Collision-detector plugin interface (robot–world and robot–self).
  *
  * Concrete backends (AABB, FCL, …) are created via the manipulation plugin hub
  * and installed on a PlanningScene.
  */
-class CollisionDetector {
- public:
-  virtual ~CollisionDetector() = default;
+class CollisionInterface
+{
+public:
+  /**
+   * @brief Define CollisionInterface::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(CollisionInterface)
 
   /**
-   * @brief Initialize the detector with plugin / config id @p id.
+   * @brief Destructor for CollisionInterface
+   */
+  virtual ~CollisionInterface() = default;
+
+  /**
+   * @brief Initialize the detector with plugin / config id.
+   * @param plugin_id Registry or config identifier.
    * @return true on success.
    */
-  virtual bool Init(const std::string& id) = 0;
+  virtual bool Init(const std::string& plugin_id) = 0;
 
   /**
-   * @brief Check robot links / EE against world (and attached) objects in @p scene.
-   * @param[in] state Robot configuration to test.
-   * @param[in] scene Source of world / attached geometry and ACM.
-   * @return CollisionResult with collision flag and optional contact names.
+   * @brief Check robot links / EE against world (and attached) objects.
+   * @param joint_state Robot configuration to test.
+   * @param planning_scene Source of world / attached geometry and ACM.
+   * @return Collision result (binary flag and optional contact bodies).
    */
-  virtual CollisionResult CheckRobotWorld(
-      const core::JointState& state,
-      const scene::PlanningScene& scene) const = 0;
+  virtual ::autonomy::manipulation::proto::CollisionResult CheckRobotWorld(
+      const automsgs::msgs::sensor_msgs::JointState& joint_state,
+      const scene::PlanningScene& planning_scene) const = 0;
 
   /**
-   * @brief Check approximate robot self-collision at @p state.
-   * @param[in] state Robot configuration.
-   * @param[in] scene Optional ACM source (SRDF disable_collisions); may be null.
-   * @return CollisionResult with collision flag and optional contact names.
+   * @brief Check approximate robot self-collision.
+   * @param joint_state Robot configuration.
+   * @param planning_scene Optional ACM source (SRDF disable_collisions).
+   * @return Collision result (binary flag and optional contact bodies).
    */
-  virtual CollisionResult CheckRobotSelf(
-      const core::JointState& state,
-      const scene::PlanningScene* scene = nullptr) const = 0;
+  virtual ::autonomy::manipulation::proto::CollisionResult CheckRobotSelf(
+      const automsgs::msgs::sensor_msgs::JointState& joint_state,
+      const scene::PlanningScene* planning_scene = nullptr) const = 0;
 
   /**
-   * @brief Minimum robot–world distance at @p state (optional; default ≈ collision).
-   * FCL backend returns true nearest-pair distance; AABB uses sphere proxies.
+   * @brief Minimum robot–world clearance (optional; default ≈ binary collision).
+   * @param joint_state Robot configuration.
+   * @param planning_scene World / attached geometry source.
+   * @return Distance result with nearest bodies when available.
    */
-  virtual DistanceResult DistanceRobotWorld(
-      const core::JointState& state,
-      const scene::PlanningScene& scene) const {
-    DistanceResult d;
-    const auto c = CheckRobotWorld(state, scene);
-    d.collision = c.collision;
-    d.distance = c.collision ? 0.0 : 1e3;
-    d.nearest_body_a = c.contact_body_a;
-    d.nearest_body_b = c.contact_body_b;
-    return d;
+  virtual ::autonomy::manipulation::proto::DistanceResult DistanceRobotWorld(
+      const automsgs::msgs::sensor_msgs::JointState& joint_state,
+      const scene::PlanningScene& planning_scene) const {
+    ::autonomy::manipulation::proto::DistanceResult distance_result;
+    distance_result.set_distance(1e9);
+    const ::autonomy::manipulation::proto::CollisionResult collision_result =
+        CheckRobotWorld(joint_state, planning_scene);
+    distance_result.set_collision(collision_result.collision());
+    distance_result.set_distance(collision_result.collision() ? 0.0 : 1e3);
+    distance_result.set_nearest_body_a(collision_result.contact_body_a());
+    distance_result.set_nearest_body_b(collision_result.contact_body_b());
+    return distance_result;
   }
 
   /**
    * @brief Optional FK tree for per-link poses (full-chain backends).
-   * @param[in] tree Shared LinkFkTree; may be null to clear.
+   * @param link_fk_tree Shared LinkForwardKinematicsTree; may be null to clear.
    */
-  virtual void SetLinkTree(std::shared_ptr<const core::LinkFkTree> /*tree*/) {}
+  virtual void SetLinkTree(
+      std::shared_ptr<const model::LinkForwardKinematicsTree> /*link_fk_tree*/) {}
 
   /**
-   * @brief Nominal link capsule / sphere radius (meters).
-   * @param[in] r Radius used when URDF collision geometry is absent.
+   * @brief Nominal link capsule / sphere radius when URDF geometry is absent.
+   * @param nominal_link_radius_m Radius in meters.
    */
-  virtual void SetLinkRadius(double /*r*/) {}
+  virtual void SetLinkRadius(double /*nominal_link_radius_m*/) {}
 
   /**
    * @brief Optional per-link URDF collision geometry (primitives / convex hulls).
-   * @param[in] model Shared model; null clears to uniform-radius spheres.
+   * @param link_collision_model Shared model; null clears to uniform spheres.
    */
   virtual void SetLinkCollisionModel(
-      std::shared_ptr<const LinkCollisionModel> /*model*/) {}
+      std::shared_ptr<const collision::LinkCollisionModel>
+          /*link_collision_model*/) {}
 
   /**
-   * @brief Collision padding / contact distance (meters), MoveIt padding analogue.
-   * Inflates primitives and enables FCL contact-distance checks when > 0.
+   * @brief Collision padding / contact distance (MoveIt padding analogue).
+   * @param contact_padding_m Inflates primitives; meters, clamped ≥ 0.
    */
-  virtual void SetPadding(double padding) { padding_ = std::max(0.0, padding); }
+  virtual void SetPadding(double contact_padding_m) {
+    contact_padding_m_ = std::max(0.0, contact_padding_m);
+  }
 
-  double GetPadding() const { return padding_; }
+  /**
+   * @brief Current contact padding in meters.
+   * @return Contact / collision padding applied to robot geometry.
+   */
+  double GetPadding() const { return contact_padding_m_; }
 
- protected:
-  double padding_ = 0.0;
+protected:
+  /**
+   * @brief Default constructor for plugin registration only.
+   */
+  CollisionInterface() = default;
+
+  /** Contact / collision padding applied to robot geometry (meters). */
+  double contact_padding_m_ = 0.0;
 };
 
-}  // namespace collision
+}  // namespace common
 }  // namespace manipulation
 }  // namespace autonomy

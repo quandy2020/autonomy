@@ -68,7 +68,7 @@ bool ParseVec3(const std::string& text, double* x, double* y, double* z) {
   return true;
 }
 
-core::Transform OriginFromTag(const std::string& tag) {
+automsgs::msgs::geometry_msgs::Pose OriginFromTag(const std::string& tag) {
   double x = 0, y = 0, z = 0, roll = 0, pitch = 0, yaw = 0;
   ParseVec3(ExtractAttr(tag, "xyz"), &x, &y, &z);
   ParseVec3(ExtractAttr(tag, "rpy"), &roll, &pitch, &yaw);
@@ -78,14 +78,14 @@ core::Transform OriginFromTag(const std::string& tag) {
   const double sp = std::sin(pitch * 0.5);
   const double cy = std::cos(yaw * 0.5);
   const double sy = std::sin(yaw * 0.5);
-  core::Transform t;
-  t.qw = cr * cp * cy + sr * sp * sy;
-  t.qx = sr * cp * cy - cr * sp * sy;
-  t.qy = cr * sp * cy + sr * cp * sy;
-  t.qz = cr * cp * sy - sr * sp * cy;
-  t.x = x;
-  t.y = y;
-  t.z = z;
+  automsgs::msgs::geometry_msgs::Pose t;
+  t.mutable_orientation()->set_w(cr * cp * cy + sr * sp * sy);
+  t.mutable_orientation()->set_x(sr * cp * cy - cr * sp * sy);
+  t.mutable_orientation()->set_y(cr * sp * cy + sr * cp * sy);
+  t.mutable_orientation()->set_z(cr * cp * sy - sr * sp * cy);
+  t.mutable_position()->set_x(x);
+  t.mutable_position()->set_y(y);
+  t.mutable_position()->set_z(z);
   return t;
 }
 
@@ -467,7 +467,7 @@ bool LoadStlMesh(const std::string& path, std::vector<MeshVertex>* verts,
 
 int LoadConvexPartsSidecar(const std::string& sidecar_path,
                            const std::string& link_name,
-                           const core::Transform& origin,
+                           const automsgs::msgs::geometry_msgs::Pose& origin,
                            std::vector<LinkCollisionShape>* out) {
   if (!out) {
     return 0;
@@ -541,7 +541,7 @@ bool LinkCollisionModel::LoadFromUrdf(const std::string& urdf_path,
       const std::string coll_body = (*cit)[2].str();
       LinkCollisionShape shape;
       shape.link_name = link_name;
-      shape.origin = core::IdentityTransform();
+      shape.origin = model::Identityautomsgs::msgs::geometry_msgs::Pose();
 
       const std::regex origin_re(R"regex(<origin\b([^>]*)/?>)regex");
       std::smatch om;

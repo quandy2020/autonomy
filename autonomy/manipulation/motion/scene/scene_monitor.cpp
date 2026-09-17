@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/manipulation/motion/scene/perception.hpp"
+#include "autonomy/manipulation/motion/scene/point_cloud_occupancy.hpp"
 
 #ifdef AUTONOMY_HAS_OCTOMAP
 #include <octomap/AbstractOcTree.h>

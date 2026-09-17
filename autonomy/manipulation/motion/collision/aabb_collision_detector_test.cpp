@@ -4,10 +4,10 @@
 
 #include "gtest/gtest.h"
 
+#include <automsgs/msgs/trajectory_msgs/joint_trajectory.pb.h>
+
 #include "autonomy/manipulation/motion/collision/aabb_collision_detector.hpp"
-#include "autonomy/manipulation/common/joint_state_util.hpp"
-#include "autonomy/manipulation/planner/joint_interpolation/joint_interpolation_planner.hpp"
-#include "autonomy/manipulation/motion/scene/collision_object_util.hpp"
+#include "autonomy/manipulation/motion/scene/collision_object_helpers.hpp"
 #include "autonomy/manipulation/motion/scene/simple_planning_scene.hpp"
 
 namespace autonomy {
@@ -19,22 +19,18 @@ TEST(CollisionSceneTest, PathInvalidWithObstacle) {
   auto detector = std::make_shared<collision::AabbCollisionDetector>();
   ASSERT_TRUE(detector->Init("aabb"));
   detector->SetLinkLength(0.3);
-  detector->SetEeRadius(0.05);
+  detector->SetEndEffectorRadius(0.05);
   scene->SetCollisionDetector(detector);
 
   scene->AddCollisionObject(
       scene::MakeBoxObject("wall", 0.3, 0.0, 0.0, 0.2, 0.2, 0.2));
 
-  planning::JointInterpolationPlanner planner;
-  ASSERT_TRUE(planner.Init("joint_interpolation"));
-  planner.SetNumSteps(10);
-
-  planning::MotionPlanRequest req;
-  SetJointState(&req.start_state, {}, {0.0});
-  SetJointState(&req.goal_state, {}, {1.57});
-  req.scene = scene;
-  const auto resp = planner.Plan(req);
-  EXPECT_FALSE(resp.success);
+  automsgs::msgs::trajectory_msgs::JointTrajectory traj;
+  for (int i = 0; i <= 10; ++i) {
+    auto* pt = traj.add_points();
+    pt->add_positions(0.157 * i);
+  }
+  EXPECT_FALSE(scene->IsPathValid(traj));
 }
 
 }  // namespace

@@ -11,7 +11,7 @@
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 namespace {
 
 bool ApplyKey(const std::string& key, const std::string& val,
@@ -121,6 +121,6 @@ bool LoadChompParamsFromShare(ChompParams* params, std::string* error) {
   return LoadChompParamsFile(path, params, error);
 }
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

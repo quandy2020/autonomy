@@ -26,7 +26,7 @@ message ManipulationOptions {
   string kinematics_solver = 5;
   string controller_id = 6;
   bool enable_servo = 7;
-  uint32 planning_time_ms = 8;
+  uint32 planning_time_milliseconds = 8;
   float goal_joint_tolerance = 9;
   float goal_position_tolerance = 10;
   float goal_orientation_tolerance = 11;
@@ -34,7 +34,7 @@ message ManipulationOptions {
   string base_frame = 13;
   string tip_frame = 14;
   uint32 interpolation_steps = 15;
-  bool use_autolink_trajectory = 16;
+  bool use_joint_trajectory_controller = 16;
   string trajectory_topic = 17;
   string action_name = 18;
   // PlanningRequestAdapter ids (aliases or class names):
@@ -43,29 +43,29 @@ message ManipulationOptions {
   repeated string adapters = 19;
   string collision_detector = 20;
   string joint_states_topic = 21;
-  double execution_timeout_s = 22;
+  double execution_timeout_seconds = 22;
   double max_velocity = 23;
   double max_acceleration = 24;
   string gripper_controller_id = 25;
   bool enable_scene_monitor = 26;
   // Max |Δq| (rad/m) between desired waypoint and measured state before
   // TrajectoryExecutionManager reports control failure (0 = disabled).
-  double execution_deviation_tol = 27;
+  double execution_deviation_tolerance = 27;
   // Default MotionPlanRequest.max_attempts when request leaves it unset.
   uint32 max_planning_attempts = 28;
   // Pilz Cartesian limits (MoveIt cartesian_limits lite). 0 = unset → use
   // max_velocity / max_acceleration for LIN/CIRC.
-  double max_trans_vel = 29;
-  double max_trans_acc = 30;
-  double max_trans_dec = 31;
-  double max_rot_vel = 32;
+  double max_translational_velocity = 29;
+  double max_translational_acceleration = 30;
+  double max_translational_deceleration = 31;
+  double max_rotational_velocity = 32;
   // Max |cmd_effort−actual_effort| (Nm) when both present (0 = disabled).
-  double execution_effort_tol = 33;
+  double execution_effort_tolerance = 33;
   // Occupancy cloud self-filter sphere radius around link origins (m);
   // 0 disables.
   double occupancy_self_filter_padding = 34;
-  // Software effort P-loop on top of feedforward (0 = pure feedforward).
-  double effort_tracking_kp = 35;
+  // Software effort proportional loop on top of feedforward (0 = pure feedforward).
+  double effort_tracking_proportional_gain = 35;
   // Clamp |effort_command| (Nm); 0 = no clamp.
-  double effort_command_max = 36;
+  double maximum_effort_command = 36;
 }

@@ -9,55 +9,56 @@
 #include <vector>
 
 #include "autonomy/common/logging.hpp"
-#include "autonomy/manipulation/common/joint_state_util.hpp"
+#include "autonomy/manipulation/model/joint_state_utilities.hpp"
 #include "autonomy/manipulation/constants.hpp"
 #include "autonomy/manipulation/model/error_codes.hpp"
-#include "autonomy/manipulation/planner/pipeline/plan_convert.hpp"
-#include "autonomy/manipulation/motion/scene/msg_convert.hpp"
+#include "autonomy/manipulation/pipeline/motion_plan_message_conversion.hpp"
+#include "autonomy/manipulation/motion/scene/scene_message_conversion.hpp"
 
 namespace autonomy {
 namespace manipulation {
+namespace dispatch {
 namespace {
 
-planning::MotionPlanRequest ToRequest(
+planner::MotionPlanRequest ToRequest(
     const ManipulationActionServer::ActionT::Goal& goal) {
   if (goal.has_motion_plan()) {
-    auto request = planning::FromMsg(goal.motion_plan());
-    if (request.group.empty() && !goal.group().empty()) {
-      request.group = goal.group();
+    auto request = planner::FromMessage(goal.motion_plan());
+    if (request.pb.group().empty() && !goal.group().empty()) {
+      request.pb.set_group(goal.group());
     }
-    if (request.planner_id.empty() && !goal.planner().empty()) {
-      request.planner_id = goal.planner();
+    if (request.pb.planner_id().empty() && !goal.planner().empty()) {
+      request.pb.set_planner_id(goal.planner());
     }
     return request;
   }
 
-  planning::MotionPlanRequest request;
-  request.group = goal.group();
-  request.planner_id = goal.planner();
+  planner::MotionPlanRequest request;
+  request.pb.set_group(goal.group());
+  request.pb.set_planner_id(goal.planner());
   SetJointState(
-      &request.goal_state,
+      request.pb.mutable_goal_state(),
       std::vector<std::string>(goal.joint_names().begin(),
                                goal.joint_names().end()),
       std::vector<double>(goal.joint_positions().begin(),
                           goal.joint_positions().end()));
   if (goal.has_pose()) {
-    request.has_goal_pose = true;
+    request.pb.set_has_goal_pose(true);
     const auto& p = goal.pose().pose().position();
     const auto& q = goal.pose().pose().orientation();
-    SetPose(&request.goal_pose, p.x(), p.y(), p.z(), q.x(), q.y(), q.z(),
+    SetPose(request.pb.mutable_goal_pose(), p.x(), p.y(), p.z(), q.x(), q.y(), q.z(),
             q.w());
   }
   return request;
 }
 
 void FillTrajectory(
-    const core::RobotTrajectory& traj,
+    const automsgs::msgs::trajectory_msgs::JointTrajectory& traj,
     ManipulationActionServer::ActionT::Result* result) {
   if (!result || traj.points_size() == 0) {
     return;
   }
-  *result->mutable_trajectory() = scene::ToMsg(traj);
+  *result->mutable_trajectory() = scene::ToMessage(traj);
 }
 
 }  // namespace
@@ -104,18 +105,18 @@ void ManipulationActionServer::ExecuteCallback() {
     server_->CancelExecution();
     auto result = std::make_shared<ActionT::Result>();
     result->set_status(::autonomy::task::proto::CANCELED);
-    result->set_error_code(static_cast<int32_t>(ErrorCode::kPreempted));
+    result->set_error_code(static_cast<int32_t>(ErrorCode::PREEMPTED));
     action_server_->SucceededCurrent(result);
     return;
   }
 
   const auto request = ToRequest(*goal);
   const auto plan = server_->Plan(request);
-  if (!plan.success) {
+  if (!plan.success()) {
     auto result = std::make_shared<ActionT::Result>();
     result->set_status(::autonomy::task::proto::FAILED);
-    result->set_error(plan.error);
-    result->set_error_code(static_cast<int32_t>(plan.error_code));
+    result->set_error(plan.error());
+    result->set_error_code(static_cast<int32_t>(plan.error_code()));
     action_server_->TerminateCurrent(result);
     return;
   }
@@ -125,13 +126,13 @@ void ManipulationActionServer::ExecuteCallback() {
 
   if (goal->execute()) {
     const ErrorCode code =
-        server_->ExecuteTrajectory(plan.trajectory, goal->replace_execution());
-    if (code != ErrorCode::kSuccess) {
+        server_->ExecuteTrajectory(plan.trajectory(), goal->replace_execution());
+    if (code != ErrorCode::SUCCESS) {
       auto result = std::make_shared<ActionT::Result>();
       result->set_status(::autonomy::task::proto::FAILED);
       result->set_error(ErrorCodeName(code));
       result->set_error_code(static_cast<int32_t>(code));
-      FillTrajectory(plan.trajectory, result.get());
+      FillTrajectory(plan.trajectory(), result.get());
       action_server_->TerminateCurrent(result);
       return;
     }
@@ -143,10 +144,11 @@ void ManipulationActionServer::ExecuteCallback() {
 
   auto result = std::make_shared<ActionT::Result>();
   result->set_status(::autonomy::task::proto::SUCCEEDED);
-  result->set_error_code(static_cast<int32_t>(ErrorCode::kSuccess));
-  FillTrajectory(plan.trajectory, result.get());
+  result->set_error_code(static_cast<int32_t>(ErrorCode::SUCCESS));
+  FillTrajectory(plan.trajectory(), result.get());
   action_server_->SucceededCurrent(result);
 }
 
+}  // namespace dispatch
 }  // namespace manipulation
 }  // namespace autonomy

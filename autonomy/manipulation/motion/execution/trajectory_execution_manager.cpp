@@ -10,28 +10,28 @@
 #include <thread>
 
 #include "autonomy/common/logging.hpp"
-#include "autonomy/manipulation/common/joint_state_util.hpp"
+#include "autonomy/manipulation/model/joint_state_utilities.hpp"
 
 namespace autonomy {
 namespace manipulation {
 namespace execution {
 namespace {
 
-double WaypointDt(const core::RobotTrajectory& trajectory, int index) {
+double WaypointDt(const automsgs::msgs::trajectory_msgs::JointTrajectory& trajectory, int index) {
   if (index < 0 || index >= trajectory.points_size()) {
     return 0.02;
   }
-  const double t = GetTrajectoryTime(trajectory, index);
+  const double t = GetTrajectoryPointTimeSeconds(trajectory, index);
   if (index == 0) {
     return std::max(0.0, t);
   }
-  return std::max(0.0, t - GetTrajectoryTime(trajectory, index - 1));
+  return std::max(0.0, t - GetTrajectoryPointTimeSeconds(trajectory, index - 1));
 }
 
 }  // namespace
 
 void TrajectoryExecutionManager::RegisterController(
-    const std::string& id, std::shared_ptr<ControllerManager> controller) {
+    const std::string& id, ControllerInterface::SharedPtr controller) {
   std::lock_guard<std::mutex> lock(mutex_);
   controllers_[id] = std::move(controller);
   if (active_id_.empty()) {
@@ -67,7 +67,7 @@ void TrajectoryExecutionManager::SetSceneValidityChecker(
 }
 
 bool TrajectoryExecutionManager::ExceedsDeviation(
-    const core::JointState& desired, const core::JointState& actual) const {
+    const automsgs::msgs::sensor_msgs::JointState& desired, const automsgs::msgs::sensor_msgs::JointState& actual) const {
   if (deviation_tol_ <= 0.0 || desired.position_size() == 0) {
     return false;
   }
@@ -84,7 +84,7 @@ bool TrajectoryExecutionManager::ExceedsDeviation(
 }
 
 bool TrajectoryExecutionManager::ExceedsEffortDeviation(
-    const core::JointState& desired, const core::JointState& actual) const {
+    const automsgs::msgs::sensor_msgs::JointState& desired, const automsgs::msgs::sensor_msgs::JointState& actual) const {
   if (effort_tol_ <= 0.0 || desired.effort_size() == 0 ||
       actual.effort_size() == 0) {
     return false;
@@ -99,10 +99,10 @@ bool TrajectoryExecutionManager::ExceedsEffortDeviation(
 }
 
 ErrorCode TrajectoryExecutionManager::Execute(
-    const core::RobotTrajectory& trajectory, bool replace) {
+    const automsgs::msgs::trajectory_msgs::JointTrajectory& trajectory, bool replace) {
   if (executing_.load()) {
     if (!replace) {
-      return ErrorCode::kPreempted;
+      return ErrorCode::PREEMPTED;
     }
     Cancel();
     for (int i = 0; i < 20 && executing_.load(); ++i) {
@@ -113,7 +113,7 @@ ErrorCode TrajectoryExecutionManager::Execute(
     }
   }
 
-  std::shared_ptr<ControllerManager> controller;
+  ControllerInterface::SharedPtr controller;
   StateProvider provider;
   DeviationHook hook;
   EffortFeedforwardHook effort_hook;
@@ -122,7 +122,7 @@ ErrorCode TrajectoryExecutionManager::Execute(
     std::lock_guard<std::mutex> lock(mutex_);
     const auto it = controllers_.find(active_id_);
     if (it == controllers_.end() || !it->second) {
-      return ErrorCode::kControlFailed;
+      return ErrorCode::CONTROL_FAILED;
     }
     controller = it->second;
     provider = state_provider_;
@@ -135,24 +135,24 @@ ErrorCode TrajectoryExecutionManager::Execute(
   executing_.store(true);
   const auto start = std::chrono::steady_clock::now();
 
-  auto apply_effort = [&](const core::JointState& desired) {
+  auto apply_effort = [&](const automsgs::msgs::sensor_msgs::JointState& desired) {
     if (effort_hook && desired.effort_size() > 0) {
       effort_hook(desired);
     }
   };
 
-  auto check_scene = [&](const core::JointState& desired) -> bool {
+  auto check_scene = [&](const automsgs::msgs::sensor_msgs::JointState& desired) -> bool {
     if (!scene_checker) {
       return true;
     }
     return scene_checker(desired);
   };
 
-  auto check_dev = [&](const core::JointState& desired) -> bool {
+  auto check_dev = [&](const automsgs::msgs::sensor_msgs::JointState& desired) -> bool {
     if (!provider) {
       return true;
     }
-    const core::JointState actual = provider();
+    const automsgs::msgs::sensor_msgs::JointState actual = provider();
     if (ExceedsDeviation(desired, actual) ||
         ExceedsEffortDeviation(desired, actual)) {
       if (hook) {
@@ -173,20 +173,20 @@ ErrorCode TrajectoryExecutionManager::Execute(
       for (int i = 0; i < trajectory.points_size(); ++i) {
         if (cancel_.load()) {
           executing_.store(false);
-          return ErrorCode::kPreempted;
+          return ErrorCode::PREEMPTED;
         }
-        const core::JointState desired =
+        const automsgs::msgs::sensor_msgs::JointState desired =
             MakeJointStateFromPoint(trajectory, i);
         if (!check_scene(desired)) {
           AWARN << "TrajectoryExecutionManager: scene invalid at waypoint " << i;
           Cancel();
           executing_.store(false);
-          return ErrorCode::kInvalidMotionPlan;
+          return ErrorCode::INVALID_MOTION_PLAN;
         }
         apply_effort(desired);
-        core::RobotTrajectory step;
-        AddTrajectoryPoint(&step, desired, GetTrajectoryTime(trajectory, i));
-        if (!controller->Execute(step)) {
+        automsgs::msgs::trajectory_msgs::JointTrajectory step;
+        AddTrajectoryPoint(&step, desired, GetTrajectoryPointTimeSeconds(trajectory, i));
+        if (!controller->FollowJointTrajectory(step)) {
           ok = false;
           break;
         }
@@ -198,34 +198,34 @@ ErrorCode TrajectoryExecutionManager::Execute(
         if (!check_dev(desired)) {
           Cancel();
           executing_.store(false);
-          return ErrorCode::kControlFailed;
+          return ErrorCode::CONTROL_FAILED;
         }
       }
     } else {
       if (trajectory.points_size() > 0) {
-        const core::JointState front =
+        const automsgs::msgs::sensor_msgs::JointState front =
             MakeJointStateFromPoint(trajectory, 0);
         if (!check_scene(front)) {
           executing_.store(false);
-          return ErrorCode::kInvalidMotionPlan;
+          return ErrorCode::INVALID_MOTION_PLAN;
         }
         apply_effort(front);
         if (!check_dev(front)) {
           executing_.store(false);
-          return ErrorCode::kControlFailed;
+          return ErrorCode::CONTROL_FAILED;
         }
       }
-      ok = controller->Execute(trajectory);
+      ok = controller->FollowJointTrajectory(trajectory);
       if (ok && trajectory.points_size() > 0) {
-        const core::JointState back = MakeJointStateFromPoint(
+        const automsgs::msgs::sensor_msgs::JointState back = MakeJointStateFromPoint(
             trajectory, trajectory.points_size() - 1);
         if (!check_scene(back)) {
           executing_.store(false);
-          return ErrorCode::kInvalidMotionPlan;
+          return ErrorCode::INVALID_MOTION_PLAN;
         }
         if (!check_dev(back)) {
           executing_.store(false);
-          return ErrorCode::kControlFailed;
+          return ErrorCode::CONTROL_FAILED;
         }
       }
     }
@@ -233,26 +233,26 @@ ErrorCode TrajectoryExecutionManager::Execute(
     if (trajectory.points_size() > 0) {
       apply_effort(MakeJointStateFromPoint(trajectory, 0));
     }
-    ok = controller->Execute(trajectory);
+    ok = controller->FollowJointTrajectory(trajectory);
   }
 
   executing_.store(false);
 
   if (cancel_.load()) {
-    return ErrorCode::kPreempted;
+    return ErrorCode::PREEMPTED;
   }
   const double elapsed =
       std::chrono::duration<double>(std::chrono::steady_clock::now() - start)
           .count();
   if (elapsed > timeout_s_) {
     AWARN << "TrajectoryExecutionManager: exceeded timeout";
-    return ErrorCode::kTimedOut;
+    return ErrorCode::TIMED_OUT;
   }
-  return ok ? ErrorCode::kSuccess : ErrorCode::kControlFailed;
+  return ok ? ErrorCode::SUCCESS : ErrorCode::CONTROL_FAILED;
 }
 
 ErrorCode TrajectoryExecutionManager::ReplaceAndExecute(
-    const core::RobotTrajectory& trajectory) {
+    const automsgs::msgs::trajectory_msgs::JointTrajectory& trajectory) {
   return Execute(trajectory, true);
 }
 

@@ -13,16 +13,18 @@
 #include <utility>
 #include <vector>
 
-#include "autonomy/manipulation/model/link_fk.hpp"
+#include "autonomy/common/macros.hpp"
+#include "autonomy/manipulation/model/link_forward_kinematics.hpp"
 #include "autonomy/manipulation/model/robot_model.hpp"
-#include "autonomy/manipulation/motion/scene/collision_object_util.hpp"
+#include "autonomy/manipulation/motion/scene/collision_object_helpers.hpp"
+#include "autonomy/manipulation/proto/collision_query.pb.h"
 
 namespace autonomy {
 namespace manipulation {
 
-namespace collision {
-class CollisionDetector;
-}  // namespace collision
+namespace common {
+class CollisionInterface;
+}  // namespace common
 
 namespace scene {
 
@@ -36,7 +38,7 @@ struct OccupiedPoint {
 /**
  * @brief Fast pairwise allowed-collision lookup (runtime cache).
  *
- * Wire format is @ref AllowedCollisionMatrix (moveit_msgs); use
+ * Wire format is @ref automsgs::msgs::moveit_msgs::AllowedCollisionMatrix (moveit_msgs); use
  * Get/SetAllowedCollisionMatrix for protobuf I/O.
  */
 using AllowedCollisionLookup =
@@ -45,20 +47,25 @@ using AllowedCollisionLookup =
 /**
  * @brief Planning-scene interface: robot state, world objects, ACM, occupancy.
  *
- * World / attached geometry uses moveit_msgs CollisionObject types (no POD proxy).
+ * World / attached geometry uses automsgs::msgs::moveit_msgs::CollisionObject (no POD proxy).
  */
 class PlanningScene {
  public:
+  /**
+   * @brief Define PlanningScene::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(PlanningScene)
+
   virtual ~PlanningScene() = default;
 
   /** @brief Replace the current robot joint state snapshot. */
-  virtual void SetCurrentState(const core::JointState& state) = 0;
+  virtual void SetCurrentState(const automsgs::msgs::sensor_msgs::JointState& state) = 0;
 
   /** @brief @return Copy of the last set robot joint state. */
-  virtual core::JointState GetCurrentState() const = 0;
+  virtual automsgs::msgs::sensor_msgs::JointState GetCurrentState() const = 0;
 
   /** @brief Insert or replace a world collision object by @p object.id(). */
-  virtual void AddCollisionObject(const CollisionObject& object) = 0;
+  virtual void AddCollisionObject(const automsgs::msgs::moveit_msgs::CollisionObject& object) = 0;
 
   /** @brief Remove a world object; no-op if @p id is unknown. */
   virtual void RemoveCollisionObject(const std::string& id) = 0;
@@ -67,43 +74,31 @@ class PlanningScene {
    * @brief Attach @p attached.object() to @p attached.link_name().
    * Removes the same id from the world if present.
    */
-  virtual void AttachObject(const AttachedCollisionObject& attached) = 0;
+  virtual void AttachObject(const automsgs::msgs::moveit_msgs::AttachedCollisionObject& attached) = 0;
 
   /** @brief Detach object @p object_id from the robot (does not re-add to world). */
   virtual void DetachObject(const std::string& object_id) = 0;
 
   /** @brief @return Snapshot of all currently attached objects. */
-  virtual std::vector<AttachedCollisionObject> GetAttachedObjects() const = 0;
+  virtual std::vector<automsgs::msgs::moveit_msgs::AttachedCollisionObject> GetAttachedObjects() const = 0;
 
   /**
    * @brief Whether @p state is considered valid for planning (no collision / occupancy).
    * @return true if valid.
    */
-  virtual bool IsStateValid(const core::JointState& state) const = 0;
+  virtual bool IsStateValid(const automsgs::msgs::sensor_msgs::JointState& state) const = 0;
 
   /**
    * @brief Collision query at @p state (robot–world and/or self per detector).
    * @return true if a collision is detected.
    */
-  virtual bool CheckCollision(const core::JointState& state) const = 0;
+  virtual bool CheckCollision(const automsgs::msgs::sensor_msgs::JointState& state) const = 0;
 
   /** @brief Collision query with optional contact body names. */
-  struct CollisionInfo {
-    bool collision = false;
-    std::string contact_body_a;
-    std::string contact_body_b;
-  };
+  using CollisionInfo = ::autonomy::manipulation::proto::CollisionResult;
 
   /** @brief Robot–world clearance (MoveIt distanceRobot lite). */
-  struct DistanceInfo {
-    double distance = 1e9;
-    bool collision = false;
-    std::string nearest_body_a;
-    std::string nearest_body_b;
-    double nearest_x = 0.0;
-    double nearest_y = 0.0;
-    double nearest_z = 0.0;
-  };
+  using DistanceInfo = ::autonomy::manipulation::proto::DistanceResult;
 
   /**
    * @brief Detailed collision query (contacts when the backend provides them).
@@ -111,19 +106,21 @@ class PlanningScene {
    * @return Collision flag and optional contact pair.
    */
   virtual CollisionInfo CheckCollisionDetailed(
-      const core::JointState& state) const {
+      const automsgs::msgs::sensor_msgs::JointState& state) const {
     CollisionInfo info;
-    info.collision = CheckCollision(state);
+    info.set_collision(CheckCollision(state));
     return info;
   }
 
   /**
-   * @brief Minimum robot–world distance (uses CollisionDetector when available).
+   * @brief Minimum robot–world distance (uses CollisionInterface when available).
    */
-  virtual DistanceInfo DistanceRobotWorld(const core::JointState& state) const {
+  virtual DistanceInfo DistanceRobotWorld(
+      const automsgs::msgs::sensor_msgs::JointState& state) const {
     DistanceInfo d;
-    d.collision = CheckCollision(state);
-    d.distance = d.collision ? 0.0 : 1e3;
+    d.set_distance(1e9);
+    d.set_collision(CheckCollision(state));
+    d.set_distance(d.collision() ? 0.0 : 1e3);
     return d;
   }
 
@@ -131,10 +128,10 @@ class PlanningScene {
    * @brief Whether every waypoint of @p trajectory is collision-free / valid.
    * @return true if the path is valid.
    */
-  virtual bool IsPathValid(const core::RobotTrajectory& trajectory) const = 0;
+  virtual bool IsPathValid(const automsgs::msgs::trajectory_msgs::JointTrajectory& trajectory) const = 0;
 
   /** @brief @return Snapshot of world (non-attached) collision objects. */
-  virtual std::vector<CollisionObject> GetCollisionObjects() const = 0;
+  virtual std::vector<automsgs::msgs::moveit_msgs::CollisionObject> GetCollisionObjects() const = 0;
 
   /**
    * @brief Set whether bodies @p a and @p b may collide without reporting.
@@ -151,22 +148,22 @@ class PlanningScene {
                                   const std::string& b) const = 0;
 
   /** @brief @return Allowed-collision matrix as moveit_msgs. */
-  virtual AllowedCollisionMatrix GetAllowedCollisionMatrix() const = 0;
+  virtual automsgs::msgs::moveit_msgs::AllowedCollisionMatrix GetAllowedCollisionMatrix() const = 0;
 
   /** @brief Replace the allowed-collision matrix from moveit_msgs. */
   virtual void SetAllowedCollisionMatrix(
-      const AllowedCollisionMatrix& matrix) = 0;
+      const automsgs::msgs::moveit_msgs::AllowedCollisionMatrix& matrix) = 0;
 
   /** @brief Install the collision backend used by CheckCollision / IsStateValid. */
   virtual void SetCollisionDetector(
-      std::shared_ptr<collision::CollisionDetector> detector) = 0;
+      std::shared_ptr<common::CollisionInterface> detector) = 0;
 
   /** @brief Optional FK tree for attached-object / link-frame transforms. */
   virtual void SetLinkTree(
-      std::shared_ptr<const core::LinkFkTree> tree) = 0;
+      std::shared_ptr<const model::LinkForwardKinematicsTree> tree) = 0;
 
-  /** @brief @return Shared LinkFkTree if set (may be null). */
-  virtual std::shared_ptr<const core::LinkFkTree> GetLinkTree() const {
+  /** @brief @return Shared LinkForwardKinematicsTree if set (may be null). */
+  virtual std::shared_ptr<const model::LinkForwardKinematicsTree> GetLinkTree() const {
     return nullptr;
   }
 
@@ -197,7 +194,7 @@ class PlanningScene {
    * @brief Dense path check with midpoint samples between waypoints.
    * Default: waypoint-only IsPathValid.
    */
-  virtual bool IsPathValidDense(const core::RobotTrajectory& trajectory,
+  virtual bool IsPathValidDense(const automsgs::msgs::trajectory_msgs::JointTrajectory& trajectory,
                                 int segments_per_edge = 4) const {
     (void)segments_per_edge;
     return IsPathValid(trajectory);

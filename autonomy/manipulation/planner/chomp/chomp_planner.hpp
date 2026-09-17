@@ -12,17 +12,17 @@
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 
-class ChompPlanner : public PlannerBase {
+class ChompPlanner : public PlannerInterface {
  public:
   bool Init(const std::string& planner_id) override;
-  MotionPlanResponse Plan(const MotionPlanRequest& request) override;
+  ::autonomy::manipulation::proto::MotionPlanResponse Plan(const MotionPlanRequest& request) override;
 
  private:
   std::string planner_id_;
 };
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

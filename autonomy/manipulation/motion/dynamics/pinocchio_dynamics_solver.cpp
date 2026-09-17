@@ -4,7 +4,7 @@
  * DynamicsSolver factory: Pinocchio when FEATURE, else zero-torque stub.
  */
 
-#include "autonomy/manipulation/motion/dynamics/dynamics_factory.hpp"
+#include "autonomy/manipulation/motion/dynamics/dynamics_solver_factory.hpp"
 
 #include <algorithm>
 

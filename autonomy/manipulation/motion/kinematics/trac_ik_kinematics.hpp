@@ -18,19 +18,19 @@ namespace kinematics {
 /**
  * @brief TRAC-IK solver: AUTONOMY_HAS_TRAC_IK → library; else multi-seed KDL.
  */
-class TracIkKinematics : public KinematicsBase {
+class TracIkKinematics : public KinematicsInterface {
  public:
   bool Init(const std::string& group, const std::string& base_frame,
             const std::string& tip_frame) override;
 
   bool LoadUrdf(const std::string& urdf_path);
 
-  bool GetPositionFK(const core::JointState& joints,
-                     Pose* tip_pose) const override;
+  bool GetPositionFK(const automsgs::msgs::sensor_msgs::JointState& joints,
+                     automsgs::msgs::geometry_msgs::Pose* tip_pose) const override;
 
-  ErrorCode GetPositionIK(const Pose& tip_pose, const core::JointState& seed,
-                          const IkOptions& options,
-                          core::JointState* solution) const override;
+  ErrorCode GetPositionIK(const automsgs::msgs::geometry_msgs::Pose& tip_pose, const automsgs::msgs::sensor_msgs::JointState& seed,
+                          const InverseKinematicsOptions& options,
+                          automsgs::msgs::sensor_msgs::JointState* solution) const override;
 
   /** @brief true when compiled/linked with AUTONOMY_HAS_TRAC_IK. */
   static bool HasTracIkLibrary();
@@ -40,7 +40,7 @@ class TracIkKinematics : public KinematicsBase {
   std::string base_frame_;
   std::string tip_frame_;
   std::string urdf_path_;
-  std::shared_ptr<KinematicsBase> inner_;  // KDL FK / lite IK fallback
+  KinematicsInterface::SharedPtr inner_;  // KDL FK / lite IK fallback
   struct TracIkBackend;
   std::shared_ptr<TracIkBackend> backend_;
 };

@@ -19,7 +19,8 @@
 #include "autolink/plugin_manager/plugin_manager.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/manipulation/motion/collision/link_collision_geometry.hpp"
-#include "autonomy/manipulation/motion/scene/collision_object_util.hpp"
+#include "autonomy/manipulation/motion/scene/collision_object_helpers.hpp"
+#include "autonomy/manipulation/model/pose_math.hpp"
 
 namespace autonomy {
 namespace manipulation {
@@ -32,7 +33,7 @@ struct Vec3 {
   double z = 0.0;
 };
 
-Vec3 EstimateEe(const core::JointState& state, double link_length) {
+Vec3 EstimateEndEffectorPosition(const automsgs::msgs::sensor_msgs::JointState& state, double link_length) {
   double x = 0.0;
   double y = 0.0;
   double yaw = 0.0;
@@ -44,16 +45,21 @@ Vec3 EstimateEe(const core::JointState& state, double link_length) {
   return {x, y, 0.0};
 }
 
-fcl::Transform3d ToFcl(const core::Transform& t) {
+fcl::Transform3d ToFcl(const automsgs::msgs::geometry_msgs::Pose& t) {
   fcl::Transform3d tf = fcl::Transform3d::Identity();
-  tf.translation() = fcl::Vector3d(t.x, t.y, t.z);
-  tf.linear() = fcl::Quaterniond(t.qw, t.qx, t.qy, t.qz).toRotationMatrix();
+  tf.translation() =
+      fcl::Vector3d(t.position().x(), t.position().y(), t.position().z());
+  tf.linear() =
+      fcl::Quaterniond(t.orientation().w(), t.orientation().x(),
+                       t.orientation().y(), t.orientation().z())
+          .toRotationMatrix();
   return tf;
 }
 
-core::Transform ComposeLocal(const core::Transform& link,
-                             const core::Transform& local) {
-  return core::Compose(link, local);
+automsgs::msgs::geometry_msgs::Pose ComposeLocal(
+    const automsgs::msgs::geometry_msgs::Pose& link,
+    const automsgs::msgs::geometry_msgs::Pose& local) {
+  return model::ComposePoses(link, local);
 }
 
 std::shared_ptr<fcl::CollisionGeometryd> MakeConvexGeom(
@@ -110,7 +116,7 @@ std::shared_ptr<fcl::CollisionGeometryd> MakeBvhGeom(
   return model;
 }
 
-fcl::CollisionObjectd MakeWorldObject(const scene::CollisionObject& obj) {
+fcl::CollisionObjectd MakeWorldObject(const automsgs::msgs::moveit_msgs::CollisionObject& obj) {
   using SP = automsgs::msgs::shape_msgs::SolidPrimitive;
   std::shared_ptr<fcl::CollisionGeometryd> geom;
   const auto pose = scene::GetObjectPose(obj);
@@ -165,8 +171,8 @@ fcl::CollisionObjectd MakeWorldObject(const scene::CollisionObject& obj) {
 }
 
 fcl::CollisionObjectd MakeFromShape(const LinkCollisionShape& shape,
-                                    const core::Transform& link_pose) {
-  const core::Transform pose = ComposeLocal(link_pose, shape.origin);
+                                    const automsgs::msgs::geometry_msgs::Pose& link_pose) {
+  const automsgs::msgs::geometry_msgs::Pose pose = ComposeLocal(link_pose, shape.origin);
   std::shared_ptr<fcl::CollisionGeometryd> geom;
   if (shape.kind == LinkShapeKind::kSphere) {
     geom = std::make_shared<fcl::Sphered>(std::max(1e-4, shape.size_x));
@@ -194,7 +200,7 @@ fcl::CollisionObjectd MakeFromShape(const LinkCollisionShape& shape,
   return fcl::CollisionObjectd(geom, ToFcl(pose));
 }
 
-fcl::CollisionObjectd MakeLinkSphere(const core::Transform& pose, double r) {
+fcl::CollisionObjectd MakeLinkSphere(const automsgs::msgs::geometry_msgs::Pose& pose, double r) {
   auto geom = std::make_shared<fcl::Sphered>(std::max(1e-4, r));
   return fcl::CollisionObjectd(geom, ToFcl(pose));
 }
@@ -205,7 +211,7 @@ bool PairAllowed(const scene::PlanningScene& scene, const std::string& a,
 }
 
 bool CollidePair(const fcl::CollisionObjectd& a, const fcl::CollisionObjectd& b,
-                 CollisionResult* result, const std::string& name_a,
+                 ::autonomy::manipulation::proto::CollisionResult* result, const std::string& name_a,
                  const std::string& name_b, double contact_distance) {
   fcl::CollisionRequestd req;
   req.num_max_contacts = 1;
@@ -236,12 +242,12 @@ bool CollidePair(const fcl::CollisionObjectd& a, const fcl::CollisionObjectd& b,
   return false;
 }
 
-CollisionResult CheckEeProxyWorld(const core::JointState& state,
+::autonomy::manipulation::proto::CollisionResult CheckEndEffectorProxyAgainstWorld(const automsgs::msgs::sensor_msgs::JointState& state,
                                   const scene::PlanningScene& scene,
                                   double link_length, double ee_radius,
                                   double padding) {
-  CollisionResult result;
-  const Vec3 ee = EstimateEe(state, link_length);
+  ::autonomy::manipulation::proto::CollisionResult result;
+  const Vec3 ee = EstimateEndEffectorPosition(state, link_length);
   auto sphere = std::make_shared<fcl::Sphered>(ee_radius + padding);
   fcl::Transform3d ee_tf = fcl::Transform3d::Identity();
   ee_tf.translation() = fcl::Vector3d(ee.x, ee.y, ee.z);
@@ -257,7 +263,7 @@ CollisionResult CheckEeProxyWorld(const core::JointState& state,
 }
 
 std::vector<std::pair<std::string, fcl::CollisionObjectd>> BuildRobotBodies(
-    const std::unordered_map<std::string, core::Transform>& poses,
+    const std::unordered_map<std::string, automsgs::msgs::geometry_msgs::Pose>& poses,
     const LinkCollisionModel* shapes, double link_radius) {
   std::vector<std::pair<std::string, fcl::CollisionObjectd>> bodies;
   if (shapes && !shapes->empty()) {
@@ -289,21 +295,21 @@ bool FclCollisionDetector::Init(const std::string& id) {
   return true;
 }
 
-CollisionResult FclCollisionDetector::CheckRobotWorld(
-    const core::JointState& state,
+::autonomy::manipulation::proto::CollisionResult FclCollisionDetector::CheckRobotWorld(
+    const automsgs::msgs::sensor_msgs::JointState& state,
     const scene::PlanningScene& scene) const {
   if (!link_tree_) {
-    return CheckEeProxyWorld(state, scene, link_length_, ee_radius_, padding_);
+    return CheckEndEffectorProxyAgainstWorld(state, scene, link_length_, end_effector_radius_, contact_padding_m_);
   }
 
-  CollisionResult result;
-  std::unordered_map<std::string, core::Transform> poses;
+  ::autonomy::manipulation::proto::CollisionResult result;
+  std::unordered_map<std::string, automsgs::msgs::geometry_msgs::Pose> poses;
   if (!link_tree_->Compute(state, &poses) || poses.empty()) {
-    return CheckEeProxyWorld(state, scene, link_length_, ee_radius_, padding_);
+    return CheckEndEffectorProxyAgainstWorld(state, scene, link_length_, end_effector_radius_, contact_padding_m_);
   }
 
   const auto bodies =
-      BuildRobotBodies(poses, link_shapes_.get(), link_radius_ + padding_);
+      BuildRobotBodies(poses, link_shapes_.get(), link_radius_ + contact_padding_m_);
   const auto world = scene.GetCollisionObjects();
   for (const auto& body : bodies) {
     for (const auto& obj : world) {
@@ -312,7 +318,7 @@ CollisionResult FclCollisionDetector::CheckRobotWorld(
       }
       fcl::CollisionObjectd world_obj = MakeWorldObject(obj);
       if (CollidePair(body.second, world_obj, &result, body.first, obj.id(),
-                      padding_)) {
+                      contact_padding_m_)) {
         return result;
       }
     }
@@ -324,7 +330,7 @@ CollisionResult FclCollisionDetector::CheckRobotWorld(
       tf.translation() = fcl::Vector3d(p.x, p.y, p.z);
       fcl::CollisionObjectd occ(sph, tf);
       if (CollidePair(body.second, occ, &result, body.first, "occupancy",
-                      padding_)) {
+                      contact_padding_m_)) {
         return result;
       }
     }
@@ -332,14 +338,14 @@ CollisionResult FclCollisionDetector::CheckRobotWorld(
   return result;
 }
 
-CollisionResult FclCollisionDetector::CheckRobotSelf(
-    const core::JointState& state,
+::autonomy::manipulation::proto::CollisionResult FclCollisionDetector::CheckRobotSelf(
+    const automsgs::msgs::sensor_msgs::JointState& state,
     const scene::PlanningScene* scene) const {
-  CollisionResult result;
+  ::autonomy::manipulation::proto::CollisionResult result;
   if (!link_tree_) {
     return result;
   }
-  std::unordered_map<std::string, core::Transform> poses;
+  std::unordered_map<std::string, automsgs::msgs::geometry_msgs::Pose> poses;
   if (!link_tree_->Compute(state, &poses) || poses.size() < 2) {
     return result;
   }
@@ -351,7 +357,7 @@ CollisionResult FclCollisionDetector::CheckRobotSelf(
   }
 
   const auto bodies =
-      BuildRobotBodies(poses, link_shapes_.get(), link_radius_ + padding_);
+      BuildRobotBodies(poses, link_shapes_.get(), link_radius_ + contact_padding_m_);
   for (std::size_t i = 0; i < bodies.size(); ++i) {
     for (std::size_t j = i + 1; j < bodies.size(); ++j) {
       if (bodies[i].first == bodies[j].first) {
@@ -365,7 +371,7 @@ CollisionResult FclCollisionDetector::CheckRobotSelf(
         continue;
       }
       if (CollidePair(bodies[i].second, bodies[j].second, &result,
-                      bodies[i].first, bodies[j].first, padding_)) {
+                      bodies[i].first, bodies[j].first, contact_padding_m_)) {
         return result;
       }
     }
@@ -373,19 +379,19 @@ CollisionResult FclCollisionDetector::CheckRobotSelf(
   return result;
 }
 
-DistanceResult FclCollisionDetector::DistanceRobotWorld(
-    const core::JointState& state,
+::autonomy::manipulation::proto::DistanceResult FclCollisionDetector::DistanceRobotWorld(
+    const automsgs::msgs::sensor_msgs::JointState& state,
     const scene::PlanningScene& scene) const {
-  DistanceResult best;
-  best.distance = 1e9;
-  std::unordered_map<std::string, core::Transform> poses;
+  ::autonomy::manipulation::proto::DistanceResult best;
+  best.set_distance(1e9);
+  std::unordered_map<std::string, automsgs::msgs::geometry_msgs::Pose> poses;
   std::vector<std::pair<std::string, fcl::CollisionObjectd>> bodies;
   if (link_tree_ && link_tree_->Compute(state, &poses) && !poses.empty()) {
     bodies = BuildRobotBodies(poses, link_shapes_.get(),
-                              link_radius_ + padding_);
+                              link_radius_ + contact_padding_m_);
   } else {
-    const Vec3 ee = EstimateEe(state, link_length_);
-    auto sphere = std::make_shared<fcl::Sphered>(ee_radius_ + padding_);
+    const Vec3 ee = EstimateEndEffectorPosition(state, link_length_);
+    auto sphere = std::make_shared<fcl::Sphered>(end_effector_radius_ + contact_padding_m_);
     fcl::Transform3d ee_tf = fcl::Transform3d::Identity();
     ee_tf.translation() = fcl::Vector3d(ee.x, ee.y, ee.z);
     bodies.emplace_back("ee", fcl::CollisionObjectd(sphere, ee_tf));
@@ -401,14 +407,14 @@ DistanceResult FclCollisionDetector::DistanceRobotWorld(
       dreq.enable_nearest_points = true;
       fcl::DistanceResultd dres;
       const double d = fcl::distance(&body.second, &world_obj, dreq, dres);
-      if (d < best.distance) {
-        best.distance = d;
-        best.nearest_body_a = body.first;
-        best.nearest_body_b = obj.id();
+      if (d < best.distance()) {
+        best.set_distance(d);
+        best.set_nearest_body_a(body.first);
+        best.set_nearest_body_b(obj.id());
         if (dres.min_distance < 1e9) {
-          best.nearest_x = dres.nearest_points[0][0];
-          best.nearest_y = dres.nearest_points[0][1];
-          best.nearest_z = dres.nearest_points[0][2];
+          best.set_nearest_point_x(dres.nearest_points[0][0]);
+          best.set_nearest_point_y(dres.nearest_points[0][1]);
+          best.set_nearest_point_z(dres.nearest_points[0][2]);
         }
       }
     }
@@ -423,31 +429,32 @@ DistanceResult FclCollisionDetector::DistanceRobotWorld(
       dreq.enable_nearest_points = true;
       fcl::DistanceResultd dres;
       const double d = fcl::distance(&body.second, &occ, dreq, dres);
-      if (d < best.distance) {
-        best.distance = d;
-        best.nearest_body_a = body.first;
-        best.nearest_body_b = "occupancy";
+      if (d < best.distance()) {
+        best.set_distance(d);
+        best.set_nearest_body_a(body.first);
+        best.set_nearest_body_b("occupancy");
         if (dres.min_distance < 1e9) {
-          best.nearest_x = dres.nearest_points[0][0];
-          best.nearest_y = dres.nearest_points[0][1];
-          best.nearest_z = dres.nearest_points[0][2];
+          best.set_nearest_point_x(dres.nearest_points[0][0]);
+          best.set_nearest_point_y(dres.nearest_points[0][1]);
+          best.set_nearest_point_z(dres.nearest_points[0][2]);
         }
       }
     }
   }
-  best.collision = best.distance <= padding_;
-  if (best.collision && best.distance > 0.0) {
+  best.set_collision(best.distance() <= contact_padding_m_);
+  if (best.collision() && best.distance() > 0.0) {
     // Within padding band → treat as contact for planning.
-    best.distance = 0.0;
+    best.set_distance(0.0);
   }
   return best;
 }
 
-std::shared_ptr<CollisionDetector> CreateFclCollisionDetector() {
+common::CollisionInterface::SharedPtr CreateFclCollisionDetector() {
   return std::make_shared<FclCollisionDetector>();
 }
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(FclCollisionDetector, CollisionDetector);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(FclCollisionDetector,
+                                        common::CollisionInterface);
 
 }  // namespace collision
 }  // namespace manipulation

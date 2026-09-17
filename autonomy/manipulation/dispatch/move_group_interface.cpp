@@ -6,7 +6,7 @@
 
 namespace autonomy {
 namespace manipulation {
-namespace interface {
+namespace dispatch {
 
 MoveGroupInterface::MoveGroupInterface(ManipulationServer* server)
     : server_(server) {}
@@ -19,56 +19,56 @@ void MoveGroupInterface::SetGroup(const std::string& group) {
   group_ = group;
 }
 
-planning::MotionPlanResponse MoveGroupInterface::PlanToJointTarget(
-    const core::JointState& goal) {
-  planning::MotionPlanRequest request;
-  request.planner_id = planner_id_;
-  request.group = group_;
-  request.goal_state = goal;
+::autonomy::manipulation::proto::MotionPlanResponse MoveGroupInterface::PlanToJointTarget(
+    const automsgs::msgs::sensor_msgs::JointState& goal) {
+  planner::MotionPlanRequest request;
+  request.pb.set_planner_id(planner_id_);
+  request.pb.set_group(group_);
+  *request.pb.mutable_goal_state() = goal;
   if (!server_) {
-    planning::MotionPlanResponse response;
-    response.error = "no server";
-    response.error_code = ErrorCode::kFailure;
+    ::autonomy::manipulation::proto::MotionPlanResponse response;
+    response.set_error("no server");
+    response.set_error_code(ErrorCode::FAILURE);
     return response;
   }
   return server_->Plan(request);
 }
 
-planning::MotionPlanResponse MoveGroupInterface::PlanToPoseTarget(
-    const kinematics::Pose& goal) {
-  planning::MotionPlanRequest request;
-  request.planner_id = planner_id_;
-  request.group = group_;
-  request.goal_pose = goal;
-  request.has_goal_pose = true;
+::autonomy::manipulation::proto::MotionPlanResponse MoveGroupInterface::PlanToPoseTarget(
+    const automsgs::msgs::geometry_msgs::Pose& goal) {
+  planner::MotionPlanRequest request;
+  request.pb.set_planner_id(planner_id_);
+  request.pb.set_group(group_);
+  *request.pb.mutable_goal_pose() = goal;
+  request.pb.set_has_goal_pose(true);
   if (!server_) {
-    planning::MotionPlanResponse response;
-    response.error = "no server";
-    response.error_code = ErrorCode::kFailure;
+    ::autonomy::manipulation::proto::MotionPlanResponse response;
+    response.set_error("no server");
+    response.set_error_code(ErrorCode::FAILURE);
     return response;
   }
   return server_->Plan(request);
 }
 
-planning::MotionPlanResponse MoveGroupInterface::PlanAndExecute(
-    const planning::MotionPlanRequest& request) {
+::autonomy::manipulation::proto::MotionPlanResponse MoveGroupInterface::PlanAndExecute(
+    const planner::MotionPlanRequest& request) {
   if (!server_) {
-    planning::MotionPlanResponse response;
-    response.error = "no server";
-    response.error_code = ErrorCode::kFailure;
+    ::autonomy::manipulation::proto::MotionPlanResponse response;
+    response.set_error("no server");
+    response.set_error_code(ErrorCode::FAILURE);
     return response;
   }
-  auto* cap = dynamic_cast<server::PlanAndExecuteCapability*>(
+  auto* cap = dynamic_cast<dispatch::PlanAndExecuteCapability*>(
       server_->GetCapability("plan_and_execute"));
   if (!cap) {
-    planning::MotionPlanResponse response;
-    response.error = "no plan_and_execute capability";
-    response.error_code = ErrorCode::kFailure;
+    ::autonomy::manipulation::proto::MotionPlanResponse response;
+    response.set_error("no plan_and_execute capability");
+    response.set_error_code(ErrorCode::FAILURE);
     return response;
   }
   return cap->Run(request);
 }
 
-}  // namespace interface
+}  // namespace dispatch
 }  // namespace manipulation
 }  // namespace autonomy

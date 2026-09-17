@@ -9,7 +9,7 @@
 
 namespace autonomy {
 namespace manipulation {
-namespace planning {
+namespace planner {
 
 std::vector<OmplPlannerConfig> DefaultOmplPlannerConfigs() {
   return {
@@ -61,6 +61,6 @@ bool LoadOmplPlannerConfigsFile(const std::string& path,
   return !configs->empty();
 }
 
-}  // namespace planning
+}  // namespace planner
 }  // namespace manipulation
 }  // namespace autonomy

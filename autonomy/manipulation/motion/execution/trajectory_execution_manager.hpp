@@ -25,7 +25,7 @@ namespace manipulation {
 namespace execution {
 
 /**
- * @brief Thin MoveIt-style trajectory execution manager over ControllerManager
+ * @brief Thin MoveIt-style trajectory execution manager over ControllerInterface
  *        plugins (active controller, timeout, replace/preempt, deviation).
  */
 class TrajectoryExecutionManager {
@@ -34,29 +34,29 @@ class TrajectoryExecutionManager {
    * @brief Optional hook when desired vs actual joint state diverge.
    */
   using DeviationHook =
-      std::function<void(const core::JointState& desired,
-                         const core::JointState& actual)>;
+      std::function<void(const automsgs::msgs::sensor_msgs::JointState& desired,
+                         const automsgs::msgs::sensor_msgs::JointState& actual)>;
 
   /** @brief Provides the latest measured joint state (e.g. JointStateSubscriber). */
-  using StateProvider = std::function<core::JointState()>;
+  using StateProvider = std::function<automsgs::msgs::sensor_msgs::JointState()>;
 
   /**
    * @brief Optional hook when commanded waypoint includes efforts.
    * Controllers / drivers may apply torque bias before position tracking.
    */
   using EffortFeedforwardHook =
-      std::function<void(const core::JointState& commanded)>;
+      std::function<void(const automsgs::msgs::sensor_msgs::JointState& commanded)>;
 
   /**
    * @brief Optional mid-execution scene validity (MoveIt collision monitor lite).
    *
    * Invoked with the commanded joint state before / during tracking.
-   * Return false to abort Execute with ErrorCode::kInvalidMotionPlan.
+   * Return false to abort Execute with ErrorCode::INVALID_MOTION_PLAN.
    * @param commanded Joint state about to be (or being) tracked.
    * @return true if the scene remains valid for @p commanded.
    */
   using SceneValidityChecker =
-      std::function<bool(const core::JointState& commanded)>;
+      std::function<bool(const automsgs::msgs::sensor_msgs::JointState& commanded)>;
 
   /**
    * @brief Register a controller instance under @p id.
@@ -64,10 +64,10 @@ class TrajectoryExecutionManager {
    * @param[in] controller Non-null controller plugin.
    */
   void RegisterController(const std::string& id,
-                          std::shared_ptr<ControllerManager> controller);
+                          ControllerInterface::SharedPtr controller);
 
   /**
-   * @brief Select which registered controller Execute uses.
+   * @brief Select which registered controller FollowJointTrajectory uses.
    * @param[in] id Previously registered controller id.
    */
   void SetActiveController(const std::string& id);
@@ -80,7 +80,7 @@ class TrajectoryExecutionManager {
 
   /**
    * @brief Install measured-state provider used for deviation checks.
-   * @param[in] provider Returns latest JointState; empty clears monitoring.
+   * @param[in] provider Returns latest automsgs::msgs::sensor_msgs::JointState; empty clears monitoring.
    */
   void SetStateProvider(StateProvider provider);
 
@@ -114,11 +114,11 @@ class TrajectoryExecutionManager {
    * @brief Execute a trajectory on the active controller.
    * @param[in] trajectory Joint-space path.
    * @param[in] replace If true and already executing, cancel then start new.
-   *                    If false and busy, return ErrorCode::kPreempted.
-   * @return ErrorCode::kSuccess on success; control / preempt / timeout codes
+   *                    If false and busy, return ErrorCode::PREEMPTED.
+   * @return ErrorCode::SUCCESS on success; control / preempt / timeout codes
    *         otherwise.
    */
-  ErrorCode Execute(const core::RobotTrajectory& trajectory,
+  ErrorCode Execute(const automsgs::msgs::trajectory_msgs::JointTrajectory& trajectory,
                     bool replace = false);
 
   /**
@@ -126,7 +126,7 @@ class TrajectoryExecutionManager {
    * @param[in] trajectory Joint-space path that preempts the current goal.
    * @return Same codes as Execute.
    */
-  ErrorCode ReplaceAndExecute(const core::RobotTrajectory& trajectory);
+  ErrorCode ReplaceAndExecute(const automsgs::msgs::trajectory_msgs::JointTrajectory& trajectory);
 
   /** @brief Cancel the active controller goal and clear the executing flag. */
   void Cancel();
@@ -135,13 +135,13 @@ class TrajectoryExecutionManager {
   bool IsExecuting() const { return executing_.load(); }
 
  private:
-  bool ExceedsDeviation(const core::JointState& desired,
-                        const core::JointState& actual) const;
+  bool ExceedsDeviation(const automsgs::msgs::sensor_msgs::JointState& desired,
+                        const automsgs::msgs::sensor_msgs::JointState& actual) const;
 
-  bool ExceedsEffortDeviation(const core::JointState& desired,
-                              const core::JointState& actual) const;
+  bool ExceedsEffortDeviation(const automsgs::msgs::sensor_msgs::JointState& desired,
+                              const automsgs::msgs::sensor_msgs::JointState& actual) const;
 
-  std::unordered_map<std::string, std::shared_ptr<ControllerManager>>
+  std::unordered_map<std::string, ControllerInterface::SharedPtr>
       controllers_;
   std::string active_id_;
   DeviationHook deviation_hook_;

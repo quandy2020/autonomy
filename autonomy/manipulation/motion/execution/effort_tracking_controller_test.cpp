@@ -27,16 +27,16 @@ TEST(EffortTrackingTest, PCorrectionAndClamp) {
 
 TEST(EffortTrackingTest, ControllerPublishesCorrected) {
   EffortTrackingController ctl;
-  ctl.SetKp(1.0);
+  ctl.SetProportionalGain(1.0);
   ctl.SetMaxAbsEffort(0.0);
   std::vector<double> published;
   ctl.SetCommandPublisher([&](const std::vector<double>& c) { published = c; });
   ctl.SetStateProvider([]() {
-    core::JointState s;
+    automsgs::msgs::sensor_msgs::JointState s;
     s.add_effort(1.0);
     return s;
   });
-  core::JointState des;
+  automsgs::msgs::sensor_msgs::JointState des;
   des.add_effort(3.0);
   ctl.SetDesired(des);
   ASSERT_TRUE(ctl.Publish());

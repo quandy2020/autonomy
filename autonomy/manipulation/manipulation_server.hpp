@@ -12,14 +12,16 @@
 
 #include "autolink/node/node.hpp"
 #include "autolink/node/writer.hpp"
-#include "autonomy/manipulation/motion/execution/autolink_trajectory_controller.hpp"
+#include "autonomy/common/macros.hpp"
+#include "autonomy/manipulation/motion/execution/joint_trajectory_controller.hpp"
 #include "autonomy/manipulation/motion/execution/effort_tracking_controller.hpp"
 #include "autonomy/manipulation/motion/execution/joint_state_subscriber.hpp"
 #include "autonomy/manipulation/motion/execution/trajectory_execution_manager.hpp"
 #include "autonomy/manipulation/model/simple_robot_model.hpp"
-#include "autonomy/manipulation/motion/dynamics/dynamics_factory.hpp"
+#include "autonomy/manipulation/model/simple_robot_state.hpp"
+#include "autonomy/manipulation/motion/dynamics/dynamics_solver_factory.hpp"
 #include "autonomy/manipulation/common/kinematics_interface.hpp"
-#include "autonomy/manipulation/planner/pipeline/planning_pipeline.hpp"
+#include "autonomy/manipulation/pipeline/planning_pipeline.hpp"
 #include "autonomy/manipulation/common/planner_interface.hpp"
 #include "autonomy/manipulation/proto/manipulation_options.pb.h"
 #include "autonomy/manipulation/motion/scene/occupancy_map_monitor.hpp"
@@ -27,7 +29,7 @@
 #include "autonomy/manipulation/motion/scene/scene_monitor.hpp"
 #include "autonomy/manipulation/dispatch/capability/capability.hpp"
 #include "autonomy/manipulation/manipulation_options.hpp"
-#include "autonomy/manipulation/motion/servo/servo.hpp"
+#include "autonomy/manipulation/motion/servo/cartesian_servo.hpp"
 
 #include <automsgs/msgs/std_msgs/float64_multi_array.pb.h>
 #include <automsgs/msgs/std_msgs/int32.pb.h>
@@ -35,7 +37,10 @@
 namespace autonomy {
 namespace manipulation {
 
+namespace dispatch {
 class ManipulationActionServer;
+class Capability;
+}  // namespace dispatch
 
 /**
  * @brief Runtime manipulation server (MoveIt move_group analogue).
@@ -45,6 +50,11 @@ class ManipulationActionServer;
  */
 class ManipulationServer {
  public:
+  /**
+   * @brief Define ManipulationServer::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(ManipulationServer)
+
   /** @brief Construct an uninitialized server. */
   ManipulationServer();
 
@@ -72,8 +82,8 @@ class ManipulationServer {
    * @param[in] request Motion plan request (group, goals, planner id, …).
    * @return Planner response with trajectory and error code.
    */
-  planning::MotionPlanResponse Plan(
-      const planning::MotionPlanRequest& request);
+  ::autonomy::manipulation::proto::MotionPlanResponse Plan(
+      const planner::MotionPlanRequest& request);
 
   /**
    * @brief Execute a trajectory via TrajectoryExecutionManager.
@@ -81,34 +91,34 @@ class ManipulationServer {
    * @param[in] replace If true, preempt an in-flight goal; otherwise fail if busy.
    * @return Error code from the execution manager.
    */
-  ErrorCode ExecuteTrajectory(const core::RobotTrajectory& trajectory,
+  ErrorCode ExecuteTrajectory(const automsgs::msgs::trajectory_msgs::JointTrajectory& trajectory,
                               bool replace = false);
 
   /**
    * @brief Execute a trajectory; returns success as bool.
    * @param[in] trajectory Joint-space waypoints to follow.
    * @param[in] replace If true, preempt an in-flight goal; otherwise fail if busy.
-   * @return true if execution completed with ErrorCode::kSuccess.
+   * @return true if execution completed with ErrorCode::SUCCESS.
    */
-  bool Execute(const core::RobotTrajectory& trajectory, bool replace = false);
+  bool Execute(const automsgs::msgs::trajectory_msgs::JointTrajectory& trajectory, bool replace = false);
 
   /** @brief Cancel in-flight trajectory execution. */
   void CancelExecution();
 
   /** @brief Planning pipeline, or nullptr if not initialized. */
-  planning::PlanningPipeline* pipeline();
+  planner::PlanningPipeline* pipeline();
 
   /** @brief Planning scene, or nullptr if not initialized. */
   scene::PlanningScene* scene();
 
   /** @brief Robot model, or nullptr if not initialized. */
-  core::SimpleRobotModel* model();
+  model::SimpleRobotModel* model();
 
   /** @brief Active kinematics plugin, or nullptr if not initialized. */
-  kinematics::KinematicsBase* kinematics();
+  common::KinematicsInterface* kinematics();
 
   /** @brief Shared ownership of the kinematics plugin (may be empty). */
-  std::shared_ptr<kinematics::KinematicsBase> SharedKinematics() const {
+  common::KinematicsInterface::SharedPtr SharedKinematics() const {
     return kinematics_;
   }
 
@@ -123,7 +133,7 @@ class ManipulationServer {
    * @param[in] name Capability name (e.g. "plan", "execute").
    * @return Capability pointer, or nullptr if not found.
    */
-  server::Capability* GetCapability(const std::string& name);
+  dispatch::Capability* GetCapability(const std::string& name);
 
   /** @brief Effective ManipulationOptions used at Init. */
   const ManipulationOptions& options() const { return options_; }
@@ -131,7 +141,7 @@ class ManipulationServer {
   /**
    * @brief Update runtime planner-related options (query_planners set params).
    * @param[in] planner_id Optional planner id override.
-   * @param[in] params Key/value map (planner_id, planning_time_ms, …).
+   * @param[in] params Key/value map (planner_id, planning_time_milliseconds, …).
    * @return true if at least one field changed.
    */
   bool SetPlannerParams(
@@ -144,7 +154,7 @@ class ManipulationServer {
   /** @brief Inverse-dynamics solver (Pinocchio FEATURE or stub). */
   dynamics::DynamicsSolver* dynamics_solver();
 
-  std::shared_ptr<dynamics::DynamicsSolver> SharedDynamicsSolver() const {
+  dynamics::DynamicsSolver::SharedPtr SharedDynamicsSolver() const {
     return dynamics_;
   }
 
@@ -155,21 +165,21 @@ class ManipulationServer {
   ManipulationOptions options_;
   std::string urdf_path_;
   std::shared_ptr<autolink::Node> node_;
-  std::shared_ptr<core::SimpleRobotModel> model_;
-  std::shared_ptr<core::SimpleRobotState> state_;
-  std::shared_ptr<scene::PlanningScene> scene_;
+  std::shared_ptr<model::SimpleRobotModel> model_;
+  std::shared_ptr<model::SimpleRobotState> state_;
+  scene::PlanningScene::SharedPtr scene_;
   std::shared_ptr<scene::SceneMonitor> scene_monitor_;
   std::unique_ptr<scene::OccupancyMapMonitor> occupancy_monitor_;
-  std::shared_ptr<kinematics::KinematicsBase> kinematics_;
-  std::shared_ptr<planning::PlannerBase> planner_;
-  std::shared_ptr<dynamics::DynamicsSolver> dynamics_;
-  std::unique_ptr<planning::PlanningPipeline> pipeline_;
+  common::KinematicsInterface::SharedPtr kinematics_;
+  common::PlannerInterface::SharedPtr planner_;
+  dynamics::DynamicsSolver::SharedPtr dynamics_;
+  std::unique_ptr<planner::PlanningPipeline> pipeline_;
   std::unique_ptr<execution::TrajectoryExecutionManager> execution_;
   std::shared_ptr<execution::JointStateSubscriber> joint_states_;
-  std::unique_ptr<ManipulationActionServer> action_server_;
-  std::shared_ptr<servo::DampedLeastSquaresServo> servo_;
-  std::unique_ptr<servo::ServoNode> servo_node_;
-  std::shared_ptr<execution::AutolinkTrajectoryController> servo_publisher_;
+  std::unique_ptr<dispatch::ManipulationActionServer> action_server_;
+  std::shared_ptr<servo::DampedLeastSquaresCartesianServo> servo_;
+  std::unique_ptr<servo::CartesianServoNode> servo_node_;
+  std::shared_ptr<execution::JointTrajectoryController> servo_publisher_;
   std::shared_ptr<void> servo_twist_reader_;
   std::shared_ptr<void> servo_pose_reader_;
   std::shared_ptr<void> servo_jog_reader_;
@@ -180,7 +190,7 @@ class ManipulationServer {
       autolink::Writer<automsgs::msgs::std_msgs::Float64MultiArray>>
       effort_command_writer_;
   std::unique_ptr<execution::EffortTrackingController> effort_tracker_;
-  std::unordered_map<std::string, std::shared_ptr<server::Capability>>
+  std::unordered_map<std::string, dispatch::Capability::SharedPtr>
       capabilities_;
   bool running_ = false;
 };
