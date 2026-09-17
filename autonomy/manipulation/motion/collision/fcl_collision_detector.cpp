@@ -222,9 +222,9 @@ bool CollidePair(const fcl::CollisionObjectd& a, const fcl::CollisionObjectd& b,
   fcl::CollisionResultd res;
   fcl::collide(&a, &b, req, res);
   if (res.isCollision()) {
-    result->collision = true;
-    result->contact_body_a = name_a;
-    result->contact_body_b = name_b;
+    result->set_collision(true);
+    result->set_contact_body_a(name_a);
+    result->set_contact_body_b(name_b);
     return true;
   }
   if (contact_distance > 1e-9) {
@@ -233,9 +233,9 @@ bool CollidePair(const fcl::CollisionObjectd& a, const fcl::CollisionObjectd& b,
     fcl::DistanceResultd dres;
     const double d = fcl::distance(&a, &b, dreq, dres);
     if (d >= 0.0 && d <= contact_distance) {
-      result->collision = true;
-      result->contact_body_a = name_a;
-      result->contact_body_b = name_b;
+      result->set_collision(true);
+      result->set_contact_body_a(name_a);
+      result->set_contact_body_b(name_b);
       return true;
     }
   }
@@ -304,7 +304,7 @@ bool FclCollisionDetector::Init(const std::string& id) {
 
   ::autonomy::manipulation::proto::CollisionResult result;
   std::unordered_map<std::string, automsgs::msgs::geometry_msgs::Pose> poses;
-  if (!link_tree_->Compute(state, &poses) || poses.empty()) {
+  if (!link_tree_->ComputeAllLinkPoses(state, &poses) || poses.empty()) {
     return CheckEndEffectorProxyAgainstWorld(state, scene, link_length_, end_effector_radius_, contact_padding_m_);
   }
 
@@ -346,14 +346,14 @@ bool FclCollisionDetector::Init(const std::string& id) {
     return result;
   }
   std::unordered_map<std::string, automsgs::msgs::geometry_msgs::Pose> poses;
-  if (!link_tree_->Compute(state, &poses) || poses.size() < 2) {
+  if (!link_tree_->ComputeAllLinkPoses(state, &poses) || poses.size() < 2) {
     return result;
   }
 
   std::unordered_set<std::string> adjacent;
   for (const auto& j : link_tree_->Joints()) {
-    adjacent.insert(j.parent + "|" + j.child);
-    adjacent.insert(j.child + "|" + j.parent);
+    adjacent.insert(j.parent_link() + "|" + j.child_link());
+    adjacent.insert(j.child_link() + "|" + j.parent_link());
   }
 
   const auto bodies =
@@ -386,7 +386,7 @@ bool FclCollisionDetector::Init(const std::string& id) {
   best.set_distance(1e9);
   std::unordered_map<std::string, automsgs::msgs::geometry_msgs::Pose> poses;
   std::vector<std::pair<std::string, fcl::CollisionObjectd>> bodies;
-  if (link_tree_ && link_tree_->Compute(state, &poses) && !poses.empty()) {
+  if (link_tree_ && link_tree_->ComputeAllLinkPoses(state, &poses) && !poses.empty()) {
     bodies = BuildRobotBodies(poses, link_shapes_.get(),
                               link_radius_ + contact_padding_m_);
   } else {

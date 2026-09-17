@@ -8,6 +8,7 @@
 
 #include "autolink/plugin_manager/plugin_manager.hpp"
 #include "autonomy/common/logging.hpp"
+#include "autonomy/manipulation/model/error_codes.hpp"
 
 namespace autonomy {
 namespace manipulation {
@@ -28,11 +29,11 @@ bool OmplPlanner::Init(const std::string& planner_id) {
   return response;
 }
 
-PlannerInterface::SharedPtr CreateOmplPlanner() {
+common::PlannerInterface::SharedPtr CreateOmplPlanner() {
   return std::make_shared<OmplPlanner>();
 }
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(OmplPlanner, PlannerInterface);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(OmplPlanner, common::PlannerInterface);
 
 #endif  // !AUTONOMY_HAS_OMPL
 

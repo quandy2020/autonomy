@@ -15,7 +15,7 @@ namespace common {
 
 ErrorCode KinematicsInterface::SearchPositionIK(const automsgs::msgs::geometry_msgs::Pose& tip_pose,
                                            const automsgs::msgs::sensor_msgs::JointState& seed,
-                                           const InverseKinematicsOptions& options,
+                                           const common::InverseKinematicsOptions& options,
                                            automsgs::msgs::sensor_msgs::JointState* solution) const {
   if (!solution) {
     return ErrorCode::NO_INVERSE_KINEMATICS_SOLUTION;

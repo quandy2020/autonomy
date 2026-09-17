@@ -33,7 +33,8 @@ void OccupancyMapMonitor::ApplySelfFilterIfEnabled(
   std::vector<OccupiedPoint> origins;
   origins.reserve(poses.size());
   for (const auto& kv : poses) {
-    origins.push_back({kv.second.x, kv.second.y, kv.second.z});
+    origins.push_back({kv.second.position().x(), kv.second.position().y(),
+                       kv.second.position().z()});
   }
   const std::size_t removed = perception::FilterSelfOccupiedPoints(
       origins, self_filter_padding_, points);

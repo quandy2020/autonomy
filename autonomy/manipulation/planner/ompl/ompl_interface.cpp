@@ -25,7 +25,7 @@ bool OmplInterface::Init(const std::string& default_planner_id,
 
   std::string path = config_path;
   if (path.empty()) {
-    common::ResolveModuleConfPath("manipulation", "ompl_planning.conf", &path);
+    ::autonomy::common::ResolveModuleConfPath("manipulation", "ompl_planning.conf", &path);
   }
   std::string err;
   if (!path.empty() && LoadPlannerConfigs(path, &err)) {
@@ -95,11 +95,11 @@ bool OmplInterfacePlanner::Init(const std::string& planner_id) {
   return interface_.Plan(req);
 }
 
-PlannerInterface::SharedPtr CreateOmplInterfacePlanner() {
+common::PlannerInterface::SharedPtr CreateOmplInterfacePlanner() {
   return std::make_shared<OmplInterfacePlanner>();
 }
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(OmplInterfacePlanner, PlannerInterface);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(OmplInterfacePlanner, common::PlannerInterface);
 
 }  // namespace planner
 }  // namespace manipulation

@@ -6,6 +6,7 @@
 
 #include "autonomy/common/logging.hpp"
 #include "autolink/plugin_manager/plugin_manager.hpp"
+#include "autonomy/manipulation/model/joint_state_utilities.hpp"
 
 namespace autonomy {
 namespace manipulation {
@@ -32,7 +33,7 @@ bool NullKinematics::GetPositionFK(const automsgs::msgs::sensor_msgs::JointState
 
 ErrorCode NullKinematics::GetPositionIK(const automsgs::msgs::geometry_msgs::Pose& /*tip_pose*/,
                                         const automsgs::msgs::sensor_msgs::JointState& seed,
-                                        const InverseKinematicsOptions& /*options*/,
+                                        const common::InverseKinematicsOptions& /*options*/,
                                         automsgs::msgs::sensor_msgs::JointState* solution) const {
   if (!solution || seed.position_size() == 0) {
     return ErrorCode::NO_INVERSE_KINEMATICS_SOLUTION;
@@ -42,7 +43,7 @@ ErrorCode NullKinematics::GetPositionIK(const automsgs::msgs::geometry_msgs::Pos
 }
 
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(NullKinematics, KinematicsInterface);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(NullKinematics, common::KinematicsInterface);
 
 }  // namespace kinematics
 }  // namespace manipulation

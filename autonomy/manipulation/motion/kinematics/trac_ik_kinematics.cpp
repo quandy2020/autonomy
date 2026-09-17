@@ -115,7 +115,7 @@ bool TracIkKinematics::GetPositionFK(const automsgs::msgs::sensor_msgs::JointSta
 
 ErrorCode TracIkKinematics::GetPositionIK(const automsgs::msgs::geometry_msgs::Pose& tip_pose,
                                           const automsgs::msgs::sensor_msgs::JointState& seed,
-                                          const InverseKinematicsOptions& options,
+                                          const common::InverseKinematicsOptions& options,
                                           automsgs::msgs::sensor_msgs::JointState* solution) const {
   if (!solution) {
     return ErrorCode::FAILURE;
@@ -176,8 +176,8 @@ ErrorCode TracIkKinematics::GetPositionIK(const automsgs::msgs::geometry_msgs::P
     for (int j = 0; j < alt.position_size(); ++j) {
       alt.set_position(j, alt.position(j) + noise(rng));
     }
-    InverseKinematicsOptions opt = options;
-    opt.max_attempts = std::max(1, options.max_attempts() / 2);
+    common::InverseKinematicsOptions opt = options;
+    opt.set_max_attempts(std::max(1, options.max_attempts() / 2));
     if (inner_->GetPositionIK(tip_pose, alt, opt, solution) ==
         ErrorCode::SUCCESS) {
       return ErrorCode::SUCCESS;
@@ -186,7 +186,7 @@ ErrorCode TracIkKinematics::GetPositionIK(const automsgs::msgs::geometry_msgs::P
   return ErrorCode::NO_INVERSE_KINEMATICS_SOLUTION;
 }
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(TracIkKinematics, KinematicsInterface);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(TracIkKinematics, common::KinematicsInterface);
 
 }  // namespace kinematics
 }  // namespace manipulation

@@ -50,7 +50,7 @@ bool LoggingTrajectoryController::IsActive() const {
 }
 
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(LoggingTrajectoryController, ControllerInterface);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(LoggingTrajectoryController, common::ControllerInterface);
 
 }  // namespace execution
 }  // namespace manipulation

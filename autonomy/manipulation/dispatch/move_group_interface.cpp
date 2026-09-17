@@ -3,6 +3,7 @@
  */
 
 #include "autonomy/manipulation/dispatch/move_group_interface.hpp"
+#include "autonomy/manipulation/dispatch/capability/plan_and_execute_capability.hpp"
 
 namespace autonomy {
 namespace manipulation {
@@ -40,7 +41,6 @@ void MoveGroupInterface::SetGroup(const std::string& group) {
   request.pb.set_planner_id(planner_id_);
   request.pb.set_group(group_);
   *request.pb.mutable_goal_pose() = goal;
-  request.pb.set_has_goal_pose(true);
   if (!server_) {
     ::autonomy::manipulation::proto::MotionPlanResponse response;
     response.set_error("no server");

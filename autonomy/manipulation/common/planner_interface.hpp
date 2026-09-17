@@ -72,9 +72,5 @@ protected:
 
 }  // namespace common
 
-namespace planner {
-using PlannerInterface = common::PlannerInterface;
-}  // namespace planner
-
 }  // namespace manipulation
 }  // namespace autonomy

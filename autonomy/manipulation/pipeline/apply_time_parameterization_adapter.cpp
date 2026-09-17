@@ -33,14 +33,14 @@ bool ApplyTimeParameterizationAdapter::Adapt(
       const auto* lim = request->model->GetJointLimits(
           response->trajectory().joint_names(i));
       options.set_max_velocity_vector(
-          i, lim && lim->max_velocity > 0
-                 ? lim->max_velocity *
+          i, lim && lim->max_velocity() > 0
+                 ? lim->max_velocity() *
                        std::max(1e-3, request->pb.velocity_scale())
                  : options.max_velocity() *
                        std::max(1e-3, request->pb.velocity_scale()));
       options.set_max_acceleration_vector(
-          i, lim && lim->max_acceleration > 0 ? lim->max_acceleration
-                                              : options.max_acceleration());
+          i, lim && lim->max_acceleration() > 0 ? lim->max_acceleration()
+                                                : options.max_acceleration());
     }
   }
 #ifdef AUTONOMY_HAS_RUCKIG

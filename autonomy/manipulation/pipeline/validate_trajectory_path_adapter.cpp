@@ -6,6 +6,7 @@
 
 #include "autolink/plugin_manager/plugin_manager.hpp"
 #include "autonomy/manipulation/motion/scene/planning_scene.hpp"
+#include "autonomy/manipulation/model/error_codes.hpp"
 
 namespace autonomy {
 namespace manipulation {

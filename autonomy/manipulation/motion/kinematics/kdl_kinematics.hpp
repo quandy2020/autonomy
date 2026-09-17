@@ -19,7 +19,7 @@ namespace kinematics {
 /**
  * @brief Orocos KDL-based FK/IK for a URDF chain (requires AUTONOMY_HAS_KDL).
  */
-class KdlKinematics : public KinematicsInterface {
+class KdlKinematics : public common::KinematicsInterface {
  public:
   /**
    * @brief Store group / frame names; call LoadUrdf before solving.
@@ -56,7 +56,7 @@ class KdlKinematics : public KinematicsInterface {
    * @return ErrorCode::SUCCESS or ErrorCode::NO_INVERSE_KINEMATICS_SOLUTION / failure.
    */
   ErrorCode GetPositionIK(const automsgs::msgs::geometry_msgs::Pose& tip_pose, const automsgs::msgs::sensor_msgs::JointState& seed,
-                          const InverseKinematicsOptions& options,
+                          const common::InverseKinematicsOptions& options,
                           automsgs::msgs::sensor_msgs::JointState* solution) const override;
 
   /** @brief Movable joint names of the loaded chain. */

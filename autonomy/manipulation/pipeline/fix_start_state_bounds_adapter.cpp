@@ -25,12 +25,12 @@ bool FixStartStateBoundsAdapter::Adapt(
         break;
       }
       const auto* lim = request->model->GetJointLimits(start->name(i));
-      if (!lim || !lim->has_position_limits) {
+      if (!lim || !lim->has_position_limits()) {
         continue;
       }
       start->set_position(
-          i, std::clamp(start->position(i), lim->min_position,
-                        lim->max_position));
+          i, std::clamp(start->position(i), lim->min_position(),
+                        lim->max_position()));
     }
   }
   if (request->pb.joint_constraints_size() > 0) {

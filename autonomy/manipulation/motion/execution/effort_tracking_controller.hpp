@@ -17,6 +17,8 @@
 
 #include "autonomy/manipulation/model/robot_model.hpp"
 
+#include <automsgs/msgs/sensor_msgs/joint_state.pb.h>
+
 namespace autonomy {
 namespace manipulation {
 namespace execution {

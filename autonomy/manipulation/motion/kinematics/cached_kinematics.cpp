@@ -28,7 +28,7 @@ CachedKinematics::CachedKinematics()
 {
 }
 
-CachedKinematics::CachedKinematics(KinematicsInterface::SharedPtr inner,
+CachedKinematics::CachedKinematics(common::KinematicsInterface::SharedPtr inner,
                                    std::size_t cache_size)
     : inner_(std::move(inner)), cache_(cache_size > 0 ? cache_size : 1) {}
 
@@ -68,7 +68,7 @@ std::string CachedKinematics::BuildPoseCacheKey(const automsgs::msgs::geometry_m
 
 ErrorCode CachedKinematics::GetPositionIK(const automsgs::msgs::geometry_msgs::Pose& tip_pose,
                                           const automsgs::msgs::sensor_msgs::JointState& seed,
-                                          const InverseKinematicsOptions& options,
+                                          const common::InverseKinematicsOptions& options,
                                           automsgs::msgs::sensor_msgs::JointState* solution) const {
   if (!inner_ || !solution) {
     return ErrorCode::NO_INVERSE_KINEMATICS_SOLUTION;
@@ -90,7 +90,7 @@ ErrorCode CachedKinematics::GetPositionIK(const automsgs::msgs::geometry_msgs::P
   return code;
 }
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(CachedKinematics, KinematicsInterface);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(CachedKinematics, common::KinematicsInterface);
 
 }  // namespace kinematics
 }  // namespace manipulation

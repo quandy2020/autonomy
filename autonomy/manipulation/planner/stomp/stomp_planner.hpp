@@ -14,7 +14,7 @@ namespace autonomy {
 namespace manipulation {
 namespace planner {
 
-class StompPlanner : public PlannerInterface {
+class StompPlanner : public common::PlannerInterface {
  public:
   bool Init(const std::string& planner_id) override;
   ::autonomy::manipulation::proto::MotionPlanResponse Plan(const MotionPlanRequest& request) override;

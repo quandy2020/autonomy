@@ -62,7 +62,7 @@ class OmplInterface {
  private:
   const OmplPlannerConfig* LookupConfig(const std::string& planner_id) const;
 
-  PlannerInterface::SharedPtr planner_;
+  common::PlannerInterface::SharedPtr planner_;
   std::string default_id_ = "ompl";
   std::vector<OmplPlannerConfig> configs_;
   std::unordered_map<std::string, OmplPlannerConfig> by_name_;
@@ -77,7 +77,7 @@ class OmplInterface {
  * Default "ompl" still maps to OmplPlanner for backward compatibility; server
  * prefers OmplInterface when available via CreateOmplInterfacePlanner().
  */
-class OmplInterfacePlanner : public PlannerInterface {
+class OmplInterfacePlanner : public common::PlannerInterface {
  public:
   bool Init(const std::string& planner_id) override;
   ::autonomy::manipulation::proto::MotionPlanResponse Plan(const MotionPlanRequest& request) override;
@@ -87,7 +87,7 @@ class OmplInterfacePlanner : public PlannerInterface {
   std::string planner_id_;
 };
 
-PlannerInterface::SharedPtr CreateOmplInterfacePlanner();
+common::PlannerInterface::SharedPtr CreateOmplInterfacePlanner();
 
 }  // namespace planner
 }  // namespace manipulation

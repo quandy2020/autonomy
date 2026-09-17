@@ -17,7 +17,7 @@ namespace kinematics {
 /**
  * @brief Bring-up FK/IK stub: FK returns identity; IK copies the seed state.
  */
-class NullKinematics : public KinematicsInterface {
+class NullKinematics : public common::KinematicsInterface {
  public:
   /**
    * @brief Store group / frame names (no kinematic model required).
@@ -47,7 +47,7 @@ class NullKinematics : public KinematicsInterface {
    * @return ErrorCode::SUCCESS when @p solution is non-null.
    */
   ErrorCode GetPositionIK(const automsgs::msgs::geometry_msgs::Pose& tip_pose, const automsgs::msgs::sensor_msgs::JointState& seed,
-                          const InverseKinematicsOptions& options,
+                          const common::InverseKinematicsOptions& options,
                           automsgs::msgs::sensor_msgs::JointState* solution) const override;
 
  private:

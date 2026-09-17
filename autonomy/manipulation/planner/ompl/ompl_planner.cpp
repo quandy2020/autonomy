@@ -55,14 +55,14 @@ namespace ot = ompl::tools;
 double GetJointLowerBound(const MotionPlanRequest& request, const std::string& name) {
   if (request.model) {
     if (const auto* lim = request.model->GetJointLimits(name)) {
-      if (!lim->has_position_limits) {
+      if (!lim->has_position_limits()) {
         return -1e6;  // continuous
       }
-      return lim->min_position;
+      return lim->min_position();
     }
     for (const auto& jm : request.model->Joints()) {
-      if (jm.name == name &&
-          (jm.type == "continuous" || !jm.limits.has_position_limits())) {
+      if (jm.name() == name &&
+          (jm.type() == "continuous" || !jm.limits().has_position_limits())) {
         return -1e6;
       }
     }
@@ -73,14 +73,14 @@ double GetJointLowerBound(const MotionPlanRequest& request, const std::string& n
 double GetJointUpperBound(const MotionPlanRequest& request, const std::string& name) {
   if (request.model) {
     if (const auto* lim = request.model->GetJointLimits(name)) {
-      if (!lim->has_position_limits) {
+      if (!lim->has_position_limits()) {
         return 1e6;
       }
-      return lim->max_position;
+      return lim->max_position();
     }
     for (const auto& jm : request.model->Joints()) {
-      if (jm.name == name &&
-          (jm.type == "continuous" || !jm.limits.has_position_limits())) {
+      if (jm.name() == name &&
+          (jm.type() == "continuous" || !jm.limits().has_position_limits())) {
         return 1e6;
       }
     }
@@ -213,14 +213,14 @@ class TipPoseConstraint : public ob::Constraint {
       return;
     }
     Eigen::Index row = 0;
-    for (const auto& c : request_->position_constraints) {
-      const double tol = std::max(1e-6, c.tolerance);
+    for (const auto& c : request_->pb.position_constraints()) {
+      const double tol = std::max(1e-6, c.tolerance());
       out[row++] = (tip.position().x() - c.target().pose().position().x()) / tol;
       out[row++] = (tip.position().y() - c.target().pose().position().y()) / tol;
       out[row++] = (tip.position().z() - c.target().pose().position().z()) / tol;
     }
-    for (const auto& c : request_->orientation_constraints) {
-      const double tol = std::max(1e-6, c.tolerance);
+    for (const auto& c : request_->pb.orientation_constraints()) {
+      const double tol = std::max(1e-6, c.tolerance());
       const double dot =
           std::abs(tip.orientation().w() * c.target().pose().orientation().w() +
                    tip.orientation().x() * c.target().pose().orientation().x() +
@@ -300,16 +300,16 @@ class CartesianProjectingSampler : public ob::StateSampler {
  private:
   bool TryConstrainedSample(ob::State* state) {
     const bool has_cart = HasCartesianConstraints(*request_);
-    const bool has_joint = !request_->joint_constraints.empty();
+    const bool has_joint = !(request_->pb.joint_constraints_size() == 0);
     if (!has_cart && !has_joint) {
       return false;
     }
     automsgs::msgs::sensor_msgs::JointState seed;
     SetJointState(&seed, *names_, std::vector<double>(dof_, 0.0));
-    if (request_->start_state.position_size() > 0 &&
-        static_cast<std::size_t>(request_->start_state.position_size()) ==
+    if (request_->pb.start_state().position_size() > 0 &&
+        static_cast<std::size_t>(request_->pb.start_state().position_size()) ==
             dof_) {
-      seed = request_->start_state;
+      seed = request_->pb.start_state();
       seed.clear_name();
       for (const auto& n : *names_) {
         seed.add_name(n);
@@ -386,10 +386,10 @@ class ConstrainedGoalRegion : public ob::GoalSampleableRegion {
     }
     double s = 0.0;
     for (std::size_t i = 0;
-         i < dof_ && static_cast<int>(i) < request_->goal_state.position_size();
+         i < dof_ && static_cast<int>(i) < request_->pb.goal_state().position_size();
          ++i) {
       const double d = js.position(static_cast<int>(i)) -
-                       request_->goal_state.position(static_cast<int>(i));
+                       request_->pb.goal_state().position(static_cast<int>(i));
       s += d * d;
     }
     return std::sqrt(s);
@@ -405,16 +405,16 @@ class ConstrainedGoalRegion : public ob::GoalSampleableRegion {
 
   void sampleGoal(ob::State* st) const override {
     if (!request_ || !mgr_) {
-      CopyJointsIntoState(st, request_->goal_state, dof_, constrained_);
+      CopyJointsIntoState(st, request_->pb.goal_state(), dof_, constrained_);
       return;
     }
     automsgs::msgs::sensor_msgs::JointState sampled;
-    if (mgr_->Sample(*request_, request_->goal_state, &sampled, 16) &&
+    if (mgr_->Sample(*request_, request_->pb.goal_state(), &sampled, 16) &&
         static_cast<std::size_t>(sampled.position_size()) == dof_) {
       CopyJointsIntoState(st, sampled, dof_, constrained_);
       return;
     }
-    CopyJointsIntoState(st, request_->goal_state, dof_, constrained_);
+    CopyJointsIntoState(st, request_->pb.goal_state(), dof_, constrained_);
   }
 
   unsigned int maxSampleCount() const override { return 64; }
@@ -434,7 +434,7 @@ bool OmplPlanner::Init(const std::string& planner_id) {
   configs_.clear();
   by_name_.clear();
   std::string conf_path;
-  if (common::ResolveModuleConfPath("manipulation", "ompl_planning.conf",
+  if (::autonomy::common::ResolveModuleConfPath("manipulation", "ompl_planning.conf",
                                     &conf_path) &&
       LoadOmplPlannerConfigsFile(conf_path, &configs_)) {
     for (const auto& c : configs_) {
@@ -711,7 +711,9 @@ bool OmplPlanner::Init(const std::string& planner_id) {
   setup.simplifySolution(timeout * 0.25);
   og::PathGeometric path = setup.getSolutionPath();
   const unsigned int n_interp = std::max(
-      2u, static_cast<unsigned int>(std::max(path.getStateCount(), 10u) * 2u));
+      2u, static_cast<unsigned int>(
+              std::max(path.getStateCount(), static_cast<std::size_t>(10)) *
+              2u));
   path.interpolate(n_interp);
 
   response.mutable_trajectory()->Clear();
@@ -746,11 +748,11 @@ bool OmplPlanner::Init(const std::string& planner_id) {
   return response;
 }
 
-PlannerInterface::SharedPtr CreateOmplPlanner() {
+common::PlannerInterface::SharedPtr CreateOmplPlanner() {
   return std::make_shared<OmplPlanner>();
 }
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(OmplPlanner, PlannerInterface);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(OmplPlanner, common::PlannerInterface);
 
 }  // namespace planner
 }  // namespace manipulation

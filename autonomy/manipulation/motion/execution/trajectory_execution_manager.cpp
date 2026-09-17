@@ -31,7 +31,7 @@ double WaypointDt(const automsgs::msgs::trajectory_msgs::JointTrajectory& trajec
 }  // namespace
 
 void TrajectoryExecutionManager::RegisterController(
-    const std::string& id, ControllerInterface::SharedPtr controller) {
+    const std::string& id, common::ControllerInterface::SharedPtr controller) {
   std::lock_guard<std::mutex> lock(mutex_);
   controllers_[id] = std::move(controller);
   if (active_id_.empty()) {
@@ -113,7 +113,7 @@ ErrorCode TrajectoryExecutionManager::Execute(
     }
   }
 
-  ControllerInterface::SharedPtr controller;
+  common::ControllerInterface::SharedPtr controller;
   StateProvider provider;
   DeviationHook hook;
   EffortFeedforwardHook effort_hook;

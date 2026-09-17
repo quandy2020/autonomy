@@ -103,14 +103,14 @@ bool AabbCollisionDetector::Init(const std::string& id) {
     return result;
   }
   std::unordered_map<std::string, automsgs::msgs::geometry_msgs::Pose> poses;
-  if (!link_tree_->Compute(state, &poses) || poses.size() < 2) {
+  if (!link_tree_->ComputeAllLinkPoses(state, &poses) || poses.size() < 2) {
     return result;
   }
 
   std::unordered_set<std::string> adjacent;
   for (const auto& j : link_tree_->Joints()) {
-    adjacent.insert(j.parent + "|" + j.child);
-    adjacent.insert(j.child + "|" + j.parent);
+    adjacent.insert(j.parent_link() + "|" + j.child_link());
+    adjacent.insert(j.child_link() + "|" + j.parent_link());
   }
 
   std::vector<std::string> names;
@@ -129,9 +129,9 @@ bool AabbCollisionDetector::Init(const std::string& id) {
       }
       const auto& a = poses.at(names[i]);
       const auto& b = poses.at(names[j]);
-      const double dx = a.x - b.x;
-      const double dy = a.y - b.y;
-      const double dz = a.z - b.z;
+      const double dx = a.position().x() - b.position().x();
+      const double dy = a.position().y() - b.position().y();
+      const double dz = a.position().z() - b.position().z();
       if (dx * dx + dy * dy + dz * dz <= rr * rr) {
         result.set_collision(true);
         result.set_contact_body_a(names[i]);
@@ -179,9 +179,10 @@ bool AabbCollisionDetector::Init(const std::string& id) {
 
   if (link_tree_) {
     std::unordered_map<std::string, automsgs::msgs::geometry_msgs::Pose> poses;
-    if (link_tree_->Compute(state, &poses)) {
+    if (link_tree_->ComputeAllLinkPoses(state, &poses)) {
       for (const auto& kv : poses) {
-        const Vec3 c{kv.second.x, kv.second.y, kv.second.z};
+        const Vec3 c{kv.second.position().x(), kv.second.position().y(),
+                     kv.second.position().z()};
         for (const auto& obj : scene.GetCollisionObjects()) {
           if (scene.IsCollisionAllowed(kv.first, obj.id())) {
             continue;

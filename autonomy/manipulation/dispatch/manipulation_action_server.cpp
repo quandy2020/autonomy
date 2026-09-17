@@ -43,7 +43,6 @@ planner::MotionPlanRequest ToRequest(
       std::vector<double>(goal.joint_positions().begin(),
                           goal.joint_positions().end()));
   if (goal.has_pose()) {
-    request.pb.set_has_goal_pose(true);
     const auto& p = goal.pose().pose().position();
     const auto& q = goal.pose().pose().orientation();
     SetPose(request.pb.mutable_goal_pose(), p.x(), p.y(), p.z(), q.x(), q.y(), q.z(),

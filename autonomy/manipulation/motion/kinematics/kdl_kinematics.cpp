@@ -19,6 +19,7 @@
 
 #include "autonomy/common/logging.hpp"
 #include "autolink/plugin_manager/plugin_manager.hpp"
+#include "autonomy/manipulation/model/joint_state_utilities.hpp"
 
 namespace autonomy {
 namespace manipulation {
@@ -156,7 +157,7 @@ bool KdlKinematics::SolveOnce(const automsgs::msgs::geometry_msgs::Pose& tip_pos
 
 ErrorCode KdlKinematics::GetPositionIK(const automsgs::msgs::geometry_msgs::Pose& tip_pose,
                                        const automsgs::msgs::sensor_msgs::JointState& seed,
-                                       const InverseKinematicsOptions& options,
+                                       const common::InverseKinematicsOptions& options,
                                        automsgs::msgs::sensor_msgs::JointState* solution) const {
   if (!solution || !ready_) {
     return ErrorCode::NO_INVERSE_KINEMATICS_SOLUTION;
@@ -186,9 +187,9 @@ ErrorCode KdlKinematics::GetPositionIK(const automsgs::msgs::geometry_msgs::Pose
         std::uniform_real_distribution<double> dist(model_.position_lower_bounds(i),
                                                     model_.position_upper_bounds(i));
         seed_try(i) = dist(rng);
-        if (!options.consistency_limits.empty() &&
-            i < options.consistency_limits.size()) {
-          const double lim = options.consistency_limits[i];
+        if (options.consistency_limits_size() > 0 &&
+            static_cast<int>(i) < options.consistency_limits_size()) {
+          const double lim = options.consistency_limits(static_cast<int>(i));
           seed_try(i) =
               std::clamp(seed_try(i), q_seed(i) - lim, q_seed(i) + lim);
         }
@@ -208,7 +209,7 @@ ErrorCode KdlKinematics::GetPositionIK(const automsgs::msgs::geometry_msgs::Pose
 }
 
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(KdlKinematics, KinematicsInterface);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(KdlKinematics, common::KinematicsInterface);
 
 }  // namespace kinematics
 }  // namespace manipulation

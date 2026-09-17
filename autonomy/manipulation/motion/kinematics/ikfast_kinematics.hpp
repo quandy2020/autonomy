@@ -15,7 +15,7 @@ namespace kinematics {
 /**
  * @brief IKFast plugin shell; wire robot-specific codegen before production use.
  */
-class IkFastKinematics : public KinematicsInterface {
+class IkFastKinematics : public common::KinematicsInterface {
  public:
   /**
    * @brief Store group / frame names.
@@ -39,7 +39,7 @@ class IkFastKinematics : public KinematicsInterface {
    * @return ErrorCode::NO_INVERSE_KINEMATICS_SOLUTION.
    */
   ErrorCode GetPositionIK(const automsgs::msgs::geometry_msgs::Pose& tip_pose, const automsgs::msgs::sensor_msgs::JointState& seed,
-                          const InverseKinematicsOptions& options,
+                          const common::InverseKinematicsOptions& options,
                           automsgs::msgs::sensor_msgs::JointState* solution) const override;
 
  private:

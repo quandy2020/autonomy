@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <automsgs/msgs/trajectory_msgs/joint_trajectory.pb.h>
+
 #include "autonomy/manipulation/proto/time_parameterization_options.pb.h"
 
 namespace autonomy {

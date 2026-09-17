@@ -19,6 +19,12 @@
 #include "autonomy/manipulation/motion/scene/collision_object_helpers.hpp"
 #include "autonomy/manipulation/proto/collision_query.pb.h"
 
+#include <automsgs/msgs/moveit_msgs/allowed_collision_matrix.pb.h>
+#include <automsgs/msgs/moveit_msgs/attached_collision_object.pb.h>
+#include <automsgs/msgs/moveit_msgs/collision_object.pb.h>
+#include <automsgs/msgs/sensor_msgs/joint_state.pb.h>
+#include <automsgs/msgs/trajectory_msgs/joint_trajectory.pb.h>
+
 namespace autonomy {
 namespace manipulation {
 

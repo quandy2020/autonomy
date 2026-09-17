@@ -18,7 +18,7 @@ namespace planner {
  * Respects request.pb.velocity_scale() and max_velocity / max_acceleration
  * via synchronized ATRAP (Pilz VelocityProfileATrap lite).
  */
-class PilzPtpPlanner : public PlannerInterface {
+class PilzPtpPlanner : public common::PlannerInterface {
  public:
   /**
    * @brief Store the planner id.
@@ -41,7 +41,7 @@ class PilzPtpPlanner : public PlannerInterface {
 /**
  * @brief Cartesian straight-line (Pilz LIN) via IK samples + cosine time law.
  */
-class PilzLinPlanner : public PlannerInterface {
+class PilzLinPlanner : public common::PlannerInterface {
  public:
   /**
    * @brief Store the planner id.
@@ -66,7 +66,7 @@ class PilzLinPlanner : public PlannerInterface {
  *
  * Uses request.pb.cartesian_waypoints()[0] as interim when size ≥ 1, else fails.
  */
-class PilzCircPlanner : public PlannerInterface {
+class PilzCircPlanner : public common::PlannerInterface {
  public:
   /**
    * @brief Store the planner id.
@@ -92,7 +92,7 @@ class PilzCircPlanner : public PlannerInterface {
  * Uses @c MotionPlanRequest::sequence. Empty sequence with multiple
  * @c cartesian_waypoints falls back to successive LIN segments.
  */
-class PilzSequencePlanner : public PlannerInterface {
+class PilzSequencePlanner : public common::PlannerInterface {
  public:
   bool Init(const std::string& planner_id) override;
   ::autonomy::manipulation::proto::MotionPlanResponse Plan(const MotionPlanRequest& request) override;

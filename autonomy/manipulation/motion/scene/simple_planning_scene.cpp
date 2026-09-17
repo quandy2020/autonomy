@@ -165,7 +165,8 @@ std::vector<automsgs::msgs::moveit_msgs::CollisionObject> SimplePlanningScene::G
     objects.push_back(kv.second);
   }
   std::unordered_map<std::string, automsgs::msgs::geometry_msgs::Pose> poses;
-  const bool have_fk = link_tree_ && link_tree_->Compute(state, &poses);
+  const bool have_fk =
+      link_tree_ && link_tree_->ComputeAllLinkPoses(state, &poses);
   for (const auto& kv : attached_) {
     automsgs::msgs::moveit_msgs::CollisionObject world = kv.second.object();
     if (have_fk) {

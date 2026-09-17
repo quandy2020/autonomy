@@ -14,6 +14,7 @@
 
 #ifdef AUTONOMY_HAS_OCTOMAP
 #include <octomap/AbstractOcTree.h>
+#include <octomap/AbstractOccupancyOcTree.h>
 #include <octomap/OcTree.h>
 #endif
 
@@ -96,7 +97,9 @@ bool OccupiedPointsFromOcTreeBinary(
     if (!om.id().empty() && om.id() != "OcTree") {
       std::unique_ptr<octomap::AbstractOcTree> abs(
           octomap::AbstractOcTree::createTree(om.id(), res));
-      if (!abs || !abs->readBinaryData(ss)) {
+      auto* occ =
+          dynamic_cast<octomap::AbstractOccupancyOcTree*>(abs.get());
+      if (!occ || !occ->readBinaryData(ss)) {
         return false;
       }
       tree.reset(dynamic_cast<octomap::OcTree*>(abs.release()));

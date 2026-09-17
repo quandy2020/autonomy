@@ -23,7 +23,7 @@ namespace kinematics {
  * Uses @ref autonomy::common::LRUCache. Default wraps KdlKinematics when
  * AUTONOMY_HAS_KDL is enabled.
  */
-class CachedKinematics : public KinematicsInterface {
+class CachedKinematics : public common::KinematicsInterface {
  public:
   /** @brief Construct wrapping the default inner solver (KDL when available). */
   CachedKinematics();
@@ -33,7 +33,7 @@ class CachedKinematics : public KinematicsInterface {
    * @param[in] inner Non-null kinematics backend.
    * @param[in] cache_size LRU capacity.
    */
-  explicit CachedKinematics(KinematicsInterface::SharedPtr inner,
+  explicit CachedKinematics(common::KinematicsInterface::SharedPtr inner,
                             std::size_t cache_size = 256);
 
   bool Init(const std::string& group, const std::string& base_frame,
@@ -43,11 +43,11 @@ class CachedKinematics : public KinematicsInterface {
                      automsgs::msgs::geometry_msgs::Pose* tip_pose) const override;
 
   ErrorCode GetPositionIK(const automsgs::msgs::geometry_msgs::Pose& tip_pose, const automsgs::msgs::sensor_msgs::JointState& seed,
-                          const InverseKinematicsOptions& options,
+                          const common::InverseKinematicsOptions& options,
                           automsgs::msgs::sensor_msgs::JointState* solution) const override;
 
   /** @brief Underlying solver used on cache miss. */
-  KinematicsInterface::SharedPtr GetUnderlyingSolver() const { return inner_; }
+  common::KinematicsInterface::SharedPtr GetUnderlyingSolver() const { return inner_; }
 
   /** @brief Drop all cached solutions. */
   void ClearCache() const;
@@ -58,9 +58,9 @@ class CachedKinematics : public KinematicsInterface {
  private:
   static std::string BuildPoseCacheKey(const automsgs::msgs::geometry_msgs::Pose& pose, bool position_only);
 
-  KinematicsInterface::SharedPtr inner_;
+  common::KinematicsInterface::SharedPtr inner_;
   mutable std::mutex mutex_;
-  mutable common::LRUCache<std::string, automsgs::msgs::sensor_msgs::JointState> cache_;
+  mutable ::autonomy::common::LRUCache<std::string, automsgs::msgs::sensor_msgs::JointState> cache_;
 };
 
 }  // namespace kinematics

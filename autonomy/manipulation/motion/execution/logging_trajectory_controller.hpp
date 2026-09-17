@@ -17,7 +17,7 @@ namespace execution {
 /**
  * @brief No-op / log-only controller for tests and bring-up without hardware.
  */
-class LoggingTrajectoryController : public ControllerInterface {
+class LoggingTrajectoryController : public common::ControllerInterface {
  public:
   /**
    * @brief Store the controller id and mark the instance ready.

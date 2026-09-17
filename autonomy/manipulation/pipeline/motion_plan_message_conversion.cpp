@@ -4,6 +4,7 @@
 
 #include "autonomy/manipulation/pipeline/motion_plan_message_conversion.hpp"
 
+#include "autonomy/manipulation/model/error_codes.hpp"
 #include "autonomy/manipulation/model/joint_state_utilities.hpp"
 
 namespace autonomy {
@@ -127,9 +128,10 @@ MotionPlanRequest FromMessage(
   request.pb.set_planner_id(msg.planner_id());
   *request.pb.mutable_start_state() = scene::FromMessage(msg.start_state());
   *request.pb.mutable_goal_state() = scene::FromMessage(msg.goal_state());
-  request.pb.set_has_goal_pose(msg.has_goal_pose());
   if (msg.has_goal_pose()) {
     PoseFromMessage(msg.goal_pose().pose(), request.pb.mutable_goal_pose());
+  } else {
+    request.pb.clear_goal_pose();
   }
   for (const auto& wp : msg.cartesian_waypoints()) {
     automsgs::msgs::geometry_msgs::Pose pose;
@@ -174,7 +176,9 @@ automsgs::msgs::moveit_msgs::MotionPlanResponse ToMessage(
     const automsgs::msgs::moveit_msgs::MotionPlanResponse& msg) {
   ::autonomy::manipulation::proto::MotionPlanResponse response;
   response.set_success(msg.success());
-  response.set_error_code(FromProtoCode(msg.error_code().val()));
+  response.set_error_code(FromProtoCode(
+      static_cast<automsgs::msgs::moveit_msgs::MoveItErrorCodes::Code>(
+          msg.error_code().val())));
   response.set_error(msg.error());
   *response.mutable_trajectory() = scene::FromMessage(msg.trajectory());
   return response;

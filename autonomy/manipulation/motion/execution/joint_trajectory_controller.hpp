@@ -23,7 +23,7 @@ namespace execution {
  * @brief Controller that publishes JointTrajectory on a transport topic
  *        (e.g. arm_controller/joint_trajectory).
  */
-class JointTrajectoryController : public ControllerInterface {
+class JointTrajectoryController : public common::ControllerInterface {
  public:
   /**
    * @brief Bind writer identity; requires SetNode before Execute.

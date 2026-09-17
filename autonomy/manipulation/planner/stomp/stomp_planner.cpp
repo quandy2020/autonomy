@@ -12,8 +12,10 @@
 
 #include "autolink/plugin_manager/plugin_manager.hpp"
 #include "autonomy/manipulation/utils/trajectory_optimize.hpp"
+#include "autonomy/manipulation/model/error_codes.hpp"
 #include "autonomy/manipulation/model/joint_state_utilities.hpp"
 #include "autonomy/manipulation/planner/stomp/stomp_params.hpp"
+#include "autonomy/manipulation/motion/scene/planning_scene.hpp"
 
 namespace autonomy {
 namespace manipulation {
@@ -67,7 +69,7 @@ bool StompPlanner::Init(const std::string& planner_id) {
   return response;
 }
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(StompPlanner, PlannerInterface);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(StompPlanner, common::PlannerInterface);
 
 }  // namespace planner
 }  // namespace manipulation

@@ -44,7 +44,7 @@ int ConstraintSamplerManager::LoadExternalPluginDescriptions(
     const std::string& plugins_list_file) {
   std::string path = plugins_list_file;
   if (path.empty()) {
-    common::ResolveModuleConfPath("manipulation", "constraint_samplers.plugins",
+    ::autonomy::common::ResolveModuleConfPath("manipulation", "constraint_samplers.plugins",
                                   &path);
   }
   if (path.empty()) {

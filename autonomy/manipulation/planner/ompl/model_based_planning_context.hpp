@@ -26,7 +26,7 @@ namespace planner {
  */
 class ModelBasedPlanningContext {
  public:
-  void SetPlanner(PlannerInterface::SharedPtr planner) {
+  void SetPlanner(common::PlannerInterface::SharedPtr planner) {
     planner_ = std::move(planner);
   }
 
@@ -57,7 +57,7 @@ class ModelBasedPlanningContext {
     }
     if (!planner_) {
       ::autonomy::manipulation::proto::MotionPlanResponse r;
-      r.error = "ModelBasedPlanningContext: no planner";
+      r.set_error("ModelBasedPlanningContext: no planner");
       return r;
     }
     const std::string id =
@@ -82,19 +82,19 @@ class ModelBasedPlanningContext {
       return;
     }
     if (!config_.planner_id.empty() &&
-        (req->planner_id.empty() || req->planner_id == config_.name ||
-         req->planner_id.find('[') != std::string::npos)) {
-      req->planner_id = config_.planner_id;
+        (req->pb.planner_id().empty() || req->pb.planner_id() == config_.name ||
+         req->pb.planner_id().find('[') != std::string::npos)) {
+      req->pb.set_planner_id(config_.planner_id);
     }
     if (config_.planning_time > 0) {
-      req->planning_time = config_.planning_time;
+      req->pb.set_planning_time(config_.planning_time);
     }
     if (config_.max_attempts > 0) {
-      req->max_attempts = config_.max_attempts;
+      req->pb.set_max_attempts(config_.max_attempts);
     }
   }
 
-  PlannerInterface::SharedPtr planner_;
+  common::PlannerInterface::SharedPtr planner_;
   constraints::ConstraintSamplerManager* sampler_manager_ = nullptr;
   OmplPlannerConfig config_;
   bool simplify_solution_ = true;

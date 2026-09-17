@@ -54,7 +54,7 @@ bool ManipulationServer::ResolveUrdfPath(std::string* urdf_path) const {
   if (urdf_path->front() == '/' || urdf_path->rfind("file://", 0) == 0) {
     return true;
   }
-  const std::string work = common::AutonomyWorkRoot();
+  const std::string work = ::autonomy::common::AutonomyWorkRoot();
   std::vector<std::string> candidates = {*urdf_path, work + "/" + *urdf_path};
   constexpr char kSharePrefix[] = "share/autonomy/";
   if (urdf_path->rfind(kSharePrefix, 0) == 0) {
@@ -369,7 +369,7 @@ bool ManipulationServer::Init(const ManipulationOptions& options) {
           }
           automsgs::msgs::trajectory_msgs::JointTrajectory traj;
           AddTrajectoryPoint(&traj, cmd, 0.01);
-          servo_publisher_->Execute(traj);
+          servo_publisher_->FollowJointTrajectory(traj);
         });
     if (joint_states_) {
       joint_states_->SetCallback([this](const automsgs::msgs::sensor_msgs::JointState& s) {
@@ -631,19 +631,19 @@ void ManipulationServer::Stop() {
     metrics::ManipulationMetrics::Instance().RecordInverseKinematicsAttempt(code == ErrorCode::SUCCESS);
     if (code != ErrorCode::SUCCESS) {
       ::autonomy::manipulation::proto::MotionPlanResponse failed;
-      failed.error = "IK failed";
-      failed.error_code = code;
+      failed.set_error("IK failed");
+      failed.set_error_code(code);
       metrics::ManipulationMetrics::Instance().RecordPlanAttemptEnd(false);
       return failed;
     }
     *req.pb.mutable_goal_state() = ik;
-    req.pb.set_has_goal_pose(false);
+    req.pb.clear_goal_pose();
   }
 
   if (!pipeline_) {
     ::autonomy::manipulation::proto::MotionPlanResponse failed;
-    failed.error = "no pipeline";
-    failed.error_code = ErrorCode::FAILURE;
+    failed.set_error("no pipeline");
+    failed.set_error_code(ErrorCode::FAILURE);
     metrics::ManipulationMetrics::Instance().RecordPlanAttemptEnd(false);
     return failed;
   }

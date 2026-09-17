@@ -51,10 +51,14 @@ bool LoadJointsFromUrdfPreferUrdfdom(const std::string& path,
     if (j->child_link_name.size()) {
       info.set_child_link(j->child_link_name);
     }
-    if (j->axis) {
-      info.mutable_axis()->set_x(j->axis->x);
-      info.mutable_axis()->set_y(j->axis->y);
-      info.mutable_axis()->set_z(j->axis->z);
+    // urdf::Joint::axis is a value Vector3 (not a pointer).
+    const double ax = j->axis.x;
+    const double ay = j->axis.y;
+    const double az = j->axis.z;
+    if (ax * ax + ay * ay + az * az > 1e-18) {
+      info.mutable_axis()->set_x(ax);
+      info.mutable_axis()->set_y(ay);
+      info.mutable_axis()->set_z(az);
     } else {
       info.mutable_axis()->set_z(1.0);
     }

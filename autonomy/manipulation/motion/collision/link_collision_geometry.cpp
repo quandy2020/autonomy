@@ -18,6 +18,7 @@
 
 #include "autonomy/common/logging.hpp"
 #include "autolink/common/file.hpp"
+#include "autonomy/manipulation/model/pose_math.hpp"
 
 namespace autonomy {
 namespace manipulation {
@@ -541,7 +542,7 @@ bool LinkCollisionModel::LoadFromUrdf(const std::string& urdf_path,
       const std::string coll_body = (*cit)[2].str();
       LinkCollisionShape shape;
       shape.link_name = link_name;
-      shape.origin = model::Identityautomsgs::msgs::geometry_msgs::Pose();
+      shape.origin = model::IdentityPose();
 
       const std::regex origin_re(R"regex(<origin\b([^>]*)/?>)regex");
       std::smatch om;

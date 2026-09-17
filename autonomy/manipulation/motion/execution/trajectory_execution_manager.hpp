@@ -16,6 +16,8 @@
 #include <string>
 #include <unordered_map>
 
+#include <automsgs/msgs/sensor_msgs/joint_state.pb.h>
+
 #include "autonomy/manipulation/model/error_codes.hpp"
 #include "autonomy/manipulation/common/controller_interface.hpp"
 #include "autonomy/manipulation/model/robot_model.hpp"
@@ -64,7 +66,7 @@ class TrajectoryExecutionManager {
    * @param[in] controller Non-null controller plugin.
    */
   void RegisterController(const std::string& id,
-                          ControllerInterface::SharedPtr controller);
+                          common::ControllerInterface::SharedPtr controller);
 
   /**
    * @brief Select which registered controller FollowJointTrajectory uses.
@@ -141,7 +143,7 @@ class TrajectoryExecutionManager {
   bool ExceedsEffortDeviation(const automsgs::msgs::sensor_msgs::JointState& desired,
                               const automsgs::msgs::sensor_msgs::JointState& actual) const;
 
-  std::unordered_map<std::string, ControllerInterface::SharedPtr>
+  std::unordered_map<std::string, common::ControllerInterface::SharedPtr>
       controllers_;
   std::string active_id_;
   DeviationHook deviation_hook_;

@@ -56,7 +56,7 @@ bool PlanningPipeline::Init(const proto::ManipulationOptions& options) {
   return true;
 }
 
-void PlanningPipeline::SetPlanner(PlannerInterface::SharedPtr planner) {
+void PlanningPipeline::SetPlanner(common::PlannerInterface::SharedPtr planner) {
   planner_ = std::move(planner);
 }
 

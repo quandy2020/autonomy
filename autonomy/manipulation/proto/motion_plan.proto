@@ -28,9 +28,10 @@ message SequenceItem {
   string type = 1;
   automsgs.msgs.sensor_msgs.JointState goal_state = 2;
   automsgs.msgs.geometry_msgs.Pose goal_pose = 3;
-  bool has_goal_pose = 4;
+  // Presence via generated has_goal_pose() / has_interim_pose() (do not add bools).
+  reserved 4, 6;
+  reserved "has_goal_pose", "has_interim_pose";
   automsgs.msgs.geometry_msgs.Pose interim_pose = 5;
-  bool has_interim_pose = 6;
   double blend_radius = 7;
   double velocity_scale = 8;
 }
@@ -51,7 +52,8 @@ message MotionPlanRequest {
   automsgs.msgs.sensor_msgs.JointState start_state = 3;
   automsgs.msgs.sensor_msgs.JointState goal_state = 4;
   automsgs.msgs.geometry_msgs.Pose goal_pose = 5;
-  bool has_goal_pose = 6;
+  reserved 6;
+  reserved "has_goal_pose";
   repeated automsgs.msgs.geometry_msgs.Pose cartesian_waypoints = 7;
   double planning_time = 8;  // seconds
   int32 max_attempts = 9;

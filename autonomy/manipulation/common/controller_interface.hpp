@@ -94,9 +94,5 @@ protected:
 
 }  // namespace common
 
-namespace execution {
-using ControllerInterface = common::ControllerInterface;
-}  // namespace execution
-
 }  // namespace manipulation
 }  // namespace autonomy

@@ -14,6 +14,7 @@
 
 #include "autonomy/manipulation/model/error_codes.hpp"
 #include "autonomy/manipulation/model/joint_state_utilities.hpp"
+#include "autonomy/manipulation/common/kinematics_interface.hpp"
 #include "autonomy/manipulation/common/planner_interface.hpp"
 #include "autonomy/manipulation/motion/scene/planning_scene.hpp"
 
@@ -147,9 +148,9 @@ inline bool ClampToJointConstraints(const planner::MotionPlanRequest& req,
         i < state->name_size() ? state->name(i) : std::string();
     if (req.model && !name.empty()) {
       if (const auto* lim = req.model->GetJointLimits(name)) {
-        if (lim->has_position_limits) {
-          lo = lim->min_position;
-          hi = lim->max_position;
+        if (lim->has_position_limits()) {
+          lo = lim->min_position();
+          hi = lim->max_position();
           constrained = true;
         }
       }
@@ -294,9 +295,9 @@ inline bool SampleJointConstrainedState(const planner::MotionPlanRequest& req,
         i < state->name_size() ? state->name(i) : std::string();
     if (req.model && !name.empty()) {
       if (const auto* lim = req.model->GetJointLimits(name)) {
-        if (lim->has_position_limits) {
-          lo = lim->min_position;
-          hi = lim->max_position;
+        if (lim->has_position_limits()) {
+          lo = lim->min_position();
+          hi = lim->max_position();
         } else {
           lo = -1e3;
           hi = 1e3;
@@ -339,7 +340,7 @@ inline bool SampleConstrainedTipPose(const planner::MotionPlanRequest& req,
   }
   *pose = MakeIdentityPose();
   if (!(req.pb.position_constraints_size() == 0)) {
-    const auto& c = req.pb.position_constraints().front();
+    const auto& c = req.pb.position_constraints(0);
     std::uniform_real_distribution<double> u(-1.0, 1.0);
     // Rejection sample in ball of radius tolerance.
     for (int k = 0; k < 32; ++k) {
@@ -360,7 +361,7 @@ inline bool SampleConstrainedTipPose(const planner::MotionPlanRequest& req,
     }
   }
   if (!(req.pb.orientation_constraints_size() == 0)) {
-    const auto& c = req.pb.orientation_constraints().front();
+    const auto& c = req.pb.orientation_constraints(0);
     double qw = c.target().pose().orientation().w();
     double qx = c.target().pose().orientation().x();
     double qy = c.target().pose().orientation().y();

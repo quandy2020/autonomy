@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "autonomy/manipulation/model/link_forward_kinematics.hpp"
+#include "autonomy/manipulation/common/kinematics_interface.hpp"
 #include "autonomy/manipulation/planner/chomp/voxel_distance_field.hpp"
 #include "autonomy/manipulation/motion/scene/collision_object_helpers.hpp"
 #include "autonomy/manipulation/motion/scene/planning_scene.hpp"
@@ -22,6 +23,14 @@
 namespace autonomy {
 namespace manipulation {
 namespace utils {
+
+using planner::MotionPlanRequest;
+using planner::ChompParams;
+using planner::StompParams;
+using planner::DefaultChompParams;
+using planner::LoadChompParamsFromShare;
+using planner::VoxelDistanceField;
+
 namespace {
 
 
@@ -199,13 +208,14 @@ double ObstacleCostWaypoint(const MotionPlanRequest& request,
   }
   if (request.link_tree) {
     std::unordered_map<std::string, automsgs::msgs::geometry_msgs::Pose> poses;
-    if (!request.link_tree->Compute(state, &poses) || poses.empty()) {
+    if (!request.link_tree->ComputeAllLinkPoses(state, &poses) || poses.empty()) {
       return StateCollides(request, state) ? 1.0 : 0.0;
     }
     double cost = 0.0;
     for (const auto& kv : poses) {
       const double d =
-          QuerySdf(request, kv.second.x, kv.second.y, kv.second.z);
+          QuerySdf(request, kv.second.position().x(), kv.second.position().y(),
+                   kv.second.position().z());
       cost += DistancePotential(d);
     }
     return cost;
@@ -256,25 +266,29 @@ std::vector<double> ObstacleGradientJacobian(const MotionPlanRequest& request,
 
   if (request.link_tree) {
     std::unordered_map<std::string, automsgs::msgs::geometry_msgs::Pose> poses0;
-    if (!request.link_tree->Compute(state, &poses0)) {
+    if (!request.link_tree->ComputeAllLinkPoses(state, &poses0)) {
       return g;
     }
     for (const auto& kv : poses0) {
-      add_point(kv.second.x, kv.second.y, kv.second.z,
+      add_point(kv.second.position().x(), kv.second.position().y(),
+                kv.second.position().z(),
                 [&](std::size_t j, double* jx, double* jy, double* jz) {
                   automsgs::msgs::sensor_msgs::JointState plus = state;
                   automsgs::msgs::sensor_msgs::JointState minus = state;
                   plus.set_position(static_cast<int>(j), plus.position(static_cast<int>(j)) + kQ);
                   minus.set_position(static_cast<int>(j), minus.position(static_cast<int>(j)) - kQ);
                   std::unordered_map<std::string, automsgs::msgs::geometry_msgs::Pose> pp, pm;
-                  if (!request.link_tree->Compute(plus, &pp) ||
-                      !request.link_tree->Compute(minus, &pm) ||
+                  if (!request.link_tree->ComputeAllLinkPoses(plus, &pp) ||
+                      !request.link_tree->ComputeAllLinkPoses(minus, &pm) ||
                       !pp.count(kv.first) || !pm.count(kv.first)) {
                     return false;
                   }
-                  *jx = (pp[kv.first].x - pm[kv.first].x) / (2.0 * kQ);
-                  *jy = (pp[kv.first].y - pm[kv.first].y) / (2.0 * kQ);
-                  *jz = (pp[kv.first].z - pm[kv.first].z) / (2.0 * kQ);
+                  *jx = (pp[kv.first].position().x() - pm[kv.first].position().x()) /
+                        (2.0 * kQ);
+                  *jy = (pp[kv.first].position().y() - pm[kv.first].position().y()) /
+                        (2.0 * kQ);
+                  *jz = (pp[kv.first].position().z() - pm[kv.first].position().z()) /
+                        (2.0 * kQ);
                   return true;
                 });
     }
@@ -433,17 +447,17 @@ std::vector<std::vector<double>> MetricInverse(int free_points, double ridge) {
 }
 
 std::vector<double> SmoothKernel(const std::vector<double>& x) {
-  static const double k[5] = {1, 2, 3, 2, 1};
+  static const double kernel[5] = {1, 2, 3, 2, 1};
   static const double ksum = 9.0;
   std::vector<double> y(x.size(), 0.0);
   for (std::size_t i = 0; i < x.size(); ++i) {
     double acc = 0.0;
-    for (int k = -2; k <= 2; ++k) {
-      const int j = static_cast<int>(i) + k;
+    for (int offset = -2; offset <= 2; ++offset) {
+      const int j = static_cast<int>(i) + offset;
       if (j < 0 || j >= static_cast<int>(x.size())) {
         continue;
       }
-      acc += k[k + 2] * x[static_cast<std::size_t>(j)];
+      acc += kernel[offset + 2] * x[static_cast<std::size_t>(j)];
     }
     y[i] = acc / ksum;
   }
@@ -519,11 +533,12 @@ void ClampTrajectory(const MotionPlanRequest& request,
     for (int i = 0; i < pt->positions_size() && i < traj->joint_names_size();
          ++i) {
       const auto* lim = request.model->GetJointLimits(traj->joint_names(i));
-      if (!lim || !lim->has_position_limits) {
+      if (!lim || !lim->has_position_limits()) {
         continue;
       }
       pt->set_positions(
-          i, std::clamp(pt->positions(i), lim->min_position, lim->max_position));
+          i, std::clamp(pt->positions(i), lim->min_position(),
+                        lim->max_position()));
     }
   }
 }

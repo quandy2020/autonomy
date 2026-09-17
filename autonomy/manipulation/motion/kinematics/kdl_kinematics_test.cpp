@@ -49,7 +49,7 @@ TEST(KdlKinematicsTest, FkIkRoundTrip) {
   automsgs::msgs::sensor_msgs::JointState seed;
   SetJointState(&seed, kin.JointNames(), {0.0, 0.0});
   automsgs::msgs::sensor_msgs::JointState solution;
-  InverseKinematicsOptions opts;
+  common::InverseKinematicsOptions opts;
   opts.set_max_attempts(8);
   ASSERT_EQ(kin.GetPositionIK(tip, seed, opts, &solution), ErrorCode::SUCCESS);
   ASSERT_EQ(solution.position_size(), 2);
@@ -71,7 +71,7 @@ TEST(KdlKinematicsTest, PositionOnlyIk) {
   automsgs::msgs::geometry_msgs::Pose tip;
   ASSERT_TRUE(kin.GetPositionFK(joints, &tip));
 
-  InverseKinematicsOptions opts;
+  common::InverseKinematicsOptions opts;
   opts.set_position_only(true);
   opts.set_max_attempts(8);
   // Seed near the solution so NR_JL converges under position-only.

@@ -24,7 +24,7 @@ namespace planner {
  * Selects RRTConnect / RRT / RRTstar / KPIECE / PRM from @p planner_id.
  * Loads `ompl_planning.conf` on Init for named config overrides.
  */
-class OmplPlanner : public PlannerInterface {
+class OmplPlanner : public common::PlannerInterface {
  public:
   bool Init(const std::string& planner_id) override;
   ::autonomy::manipulation::proto::MotionPlanResponse Plan(const MotionPlanRequest& request) override;
@@ -40,7 +40,7 @@ class OmplPlanner : public PlannerInterface {
  * @brief Factory for OmplPlanner (or stub when OMPL is unavailable).
  * @return Shared planner instance.
  */
-PlannerInterface::SharedPtr CreateOmplPlanner();
+common::PlannerInterface::SharedPtr CreateOmplPlanner();
 
 }  // namespace planner
 }  // namespace manipulation

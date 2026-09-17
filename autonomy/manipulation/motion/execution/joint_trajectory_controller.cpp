@@ -74,7 +74,7 @@ bool JointTrajectoryController::IsActive() const {
 }
 
 AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(JointTrajectoryController,
-                                        ControllerInterface);
+                                        common::ControllerInterface);
 
 }  // namespace execution
 }  // namespace manipulation

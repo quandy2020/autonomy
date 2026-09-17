@@ -98,12 +98,12 @@ void ApplyPilzTiming(const MotionPlanRequest& request,
     for (int i = 0; i < joint_count; ++i) {
       const auto* lim = request.model->GetJointLimits(traj->joint_names(i));
       options.set_max_velocity_vector(
-          i, (lim && lim->max_velocity > 0 ? lim->max_velocity
-                                           : request.pb.max_velocity()) *
+          i, (lim && lim->max_velocity() > 0 ? lim->max_velocity()
+                                             : request.pb.max_velocity()) *
                  std::max(1e-3, request.pb.velocity_scale()));
       options.set_max_acceleration_vector(
-          i, lim && lim->max_acceleration > 0 ? lim->max_acceleration
-                                              : request.pb.max_acceleration());
+          i, lim && lim->max_acceleration() > 0 ? lim->max_acceleration()
+                                                : request.pb.max_acceleration());
     }
   }
   trajectory::ApplyTimeOptimalTrajectoryGeneration(traj, options);
@@ -149,7 +149,7 @@ void ApplyPilzTiming(const MotionPlanRequest& request,
   }
   if (response.trajectory().points_size() > 0) {
     // Keep start exact; do not overwrite joint goal for LIN/CIRC tip accuracy.
-    auto* front = response.trajectory().mutable_points(0);
+    auto* front = response.mutable_trajectory()->mutable_points(0);
     front->clear_positions();
     for (double q : request.pb.start_state().position()) {
       front->add_positions(q);
@@ -211,11 +211,11 @@ bool PilzPtpPlanner::Init(const std::string& planner_id) {
     if (request.model && i < names.size()) {
       const auto* lim = request.model->GetJointLimits(names[i]);
       if (lim) {
-        if (lim->max_velocity > 0) {
-          vmax = lim->max_velocity * v_scale;
+        if (lim->max_velocity() > 0) {
+          vmax = lim->max_velocity() * v_scale;
         }
-        if (lim->max_acceleration > 0) {
-          amax = lim->max_acceleration * a_scale;
+        if (lim->max_acceleration() > 0) {
+          amax = lim->max_acceleration() * a_scale;
           dmax = amax;
         }
       }
@@ -272,13 +272,13 @@ bool PilzPtpPlanner::Init(const std::string& planner_id) {
     AddTrajectoryPoint(response.mutable_trajectory(), wp, t);
   }
   if (response.trajectory().points_size() > 0) {
-    auto* front = response.trajectory().mutable_points(0);
+    auto* front = response.mutable_trajectory()->mutable_points(0);
     front->clear_positions();
     for (double q : request.pb.start_state().position()) {
       front->add_positions(q);
     }
-    auto* back =
-        response.trajectory().mutable_points(response.trajectory().points_size() - 1);
+    auto* back = response.mutable_trajectory()->mutable_points(
+        response.trajectory().points_size() - 1);
     back->clear_positions();
     for (double q : request.pb.goal_state().position()) {
       back->add_positions(q);
@@ -380,7 +380,8 @@ bool PilzCircPlanner::Init(const std::string& planner_id) {
     response.set_error_code(ErrorCode::INVALID_GOAL_CONSTRAINTS);
     return response;
   }
-  const automsgs::msgs::geometry_msgs::Pose& interim = request.pb.cartesian_waypoints().front();
+  const automsgs::msgs::geometry_msgs::Pose& interim =
+      request.pb.cartesian_waypoints(0);
   Vec3 a{start_pose.position().x(), start_pose.position().y(),
          start_pose.position().z()};
   Vec3 b{interim.position().x(), interim.position().y(),
@@ -463,7 +464,6 @@ bool PilzSequencePlanner::Init(const std::string& planner_id) {
       ::autonomy::manipulation::proto::SequenceItem item;
       item.set_type("LIN");
       *item.mutable_goal_pose() = corners[i];
-      item.set_has_goal_pose(true);
       item.set_blend_radius((i + 1 < corners.size()) ? request.pb.blend_radius() : 0.0);
       item.set_velocity_scale(request.pb.velocity_scale());
       items.push_back(item);
@@ -500,8 +500,11 @@ bool PilzSequencePlanner::Init(const std::string& planner_id) {
                                    : request.pb.velocity_scale());
     sub.pb.set_blend_radius(0.0);  // blend across segment seams below
     *sub.pb.mutable_goal_state() = item.goal_state();
-    *sub.pb.mutable_goal_pose() = item.goal_pose();
-    sub.pb.set_has_goal_pose(item.has_goal_pose());
+    if (item.has_goal_pose()) {
+      *sub.pb.mutable_goal_pose() = item.goal_pose();
+    } else {
+      sub.pb.clear_goal_pose();
+    }
     sub.pb.clear_cartesian_waypoints();
     if (item.has_interim_pose()) {
       *sub.pb.add_cartesian_waypoints() = item.interim_pose();
@@ -524,7 +527,6 @@ bool PilzSequencePlanner::Init(const std::string& planner_id) {
         automsgs::msgs::geometry_msgs::Pose g;
         if (request.kinematics->GetPositionFK(sub.pb.goal_state(), &g)) {
           *sub.pb.mutable_goal_pose() = g;
-          sub.pb.set_has_goal_pose(true);
         }
       }
       part = lin.Plan(sub);
@@ -604,10 +606,10 @@ bool PilzSequencePlanner::Init(const std::string& planner_id) {
   return response;
 }
 
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(PilzPtpPlanner, PlannerInterface);
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(PilzLinPlanner, PlannerInterface);
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(PilzCircPlanner, PlannerInterface);
-AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(PilzSequencePlanner, PlannerInterface);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(PilzPtpPlanner, common::PlannerInterface);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(PilzLinPlanner, common::PlannerInterface);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(PilzCircPlanner, common::PlannerInterface);
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(PilzSequencePlanner, common::PlannerInterface);
 
 }  // namespace planner
 }  // namespace manipulation

@@ -31,12 +31,12 @@ TEST(CachedKinematicsTest, LruEvictsOldest) {
   automsgs::msgs::geometry_msgs::Pose c;
   SetPose(&c, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
 
-  EXPECT_EQ(cached.GetPositionIK(a, seed, InverseKinematicsOptions{}, &sol),
-            ErrorCode::SUCCESS);
-  EXPECT_EQ(cached.GetPositionIK(b, seed, InverseKinematicsOptions{}, &sol),
-            ErrorCode::SUCCESS);
+  EXPECT_EQ(cached.GetPositionIK(a, seed, common::InverseKinematicsOptions{}, &sol),
+      ErrorCode::SUCCESS);
+  EXPECT_EQ(cached.GetPositionIK(b, seed, common::InverseKinematicsOptions{}, &sol),
+      ErrorCode::SUCCESS);
   EXPECT_EQ(cached.CacheSize(), 2u);
-  EXPECT_EQ(cached.GetPositionIK(c, seed, InverseKinematicsOptions{}, &sol),
+  EXPECT_EQ(cached.GetPositionIK(c, seed, common::InverseKinematicsOptions{}, &sol),
             ErrorCode::SUCCESS);
   EXPECT_EQ(cached.CacheSize(), 2u);
 
