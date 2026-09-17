@@ -19,6 +19,7 @@ use_autolink_trajectory: true
 trajectory_topic: "/arm_controller/joint_trajectory"
 action_name: "/autonomy/manipulation/move"
 adapters: "fix_start_state_bounds"
+adapters: "fix_start_state_path_constraints"
 adapters: "dense_sample"
 adapters: "time_parameterization"
 adapters: "validate_path"
@@ -28,6 +29,14 @@ joint_states_topic: "/joint_states"
 execution_timeout_s: 30
 max_velocity: 1.0
 max_acceleration: 2.0
+max_trans_vel: 0.5
+max_trans_acc: 1.0
+max_trans_dec: 1.0
+max_rot_vel: 1.0
 enable_scene_monitor: true
 execution_deviation_tol: 0.0
+execution_effort_tol: 0.0
+effort_tracking_kp: 0.0
+effort_command_max: 50.0
+occupancy_self_filter_padding: 0.08
 max_planning_attempts: 3

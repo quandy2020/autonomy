@@ -1,64 +1,79 @@
 # Manipulation
 
-机械臂运动规划与执行栈。目录对齐 [MoveIt 2](https://github.com/moveit/moveit2) 能力切分，交付形态为 **A+②**：全模块接口 + 可运行自研后端；OMPL/FCL/Ruckig/urdfdom 可选 FEATURES。
+机械臂运动规划与执行栈。阶段：**固定工位 runtime 可用**（MoveIt 同构主路径 + Setup CLI lite）。
 
-## API 文档
+相对 [MoveIt2](https://github.com/ros-planning/moveit2)：算法与接口高度同构；**非**全量产品等价。
 
-公开头文件使用 Doxygen 注释（`@brief` / `@param` / `@return`）。
+布局对齐 [autonomy/planning](../planning/)：根目录 Server/main；`common/` 接口；`planner/<algo>/` 分桶；`model/` / `motion/` / `dispatch/` 分层；文件尾 `AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN`。
 
-## 布局
+## 类型约定（automsgs）
 
-| 目录 | 职责 |
+运行时状态 / 轨迹 / 位姿 / 场景物体 / 路径约束 **不以平行 POD 定义**，统一使用 automsgs 生成类型（见 `common/msg_types.hpp`）：
+
+| 概念 | 类型 |
 |------|------|
-| `core/` | RobotModel / ErrorCode / metrics |
-| `scene/` | PlanningScene / Monitor / msg_convert |
-| `kinematics/` | FK/IK 插件 |
-| `collision/` | 碰撞检测插件 |
-| `planning/` | Planners / Pipeline / Trajectory / constraint_samplers |
-| `execution/` | Controllers / TrajectoryExecutionManager |
-| `server/` | ManipulationServer / MoveGroupInterface / Capabilities |
-| `servo/` | DLS 伺服 |
-| `plugins.hpp` | Autolink PluginManager 注册与 `CreatePlugin` |
+| 关节状态 | `sensor_msgs/JointState` |
+| 关节轨迹 | `trajectory_msgs/JointTrajectory` |
+| 位姿 | `geometry_msgs/Pose`（`PoseStamped`） |
+| 伺服 | `Twist` / `TwistStamped` / `control_msgs/JointJog` |
+| 场景物体 | `moveit_msgs/CollisionObject` / `AttachedCollisionObject` |
+| 允许碰撞矩阵 | `moveit_msgs/AllowedCollisionMatrix`（场景内另有 O(1) lookup 缓存） |
+| 路径约束 | `moveit_msgs/{Joint,Position,Orientation}Constraint` |
 
-## 成熟度（A+②）
+辅助：`common/joint_state_util.hpp`、`motion/scene/collision_object_util.hpp`（`MakeBoxObject` / `GetObjectPose`）、`motion/kinematics/pose_util.hpp`（`InterpolatePose`）。复用 `autonomy/common`（`LRUCache`、`Clamp`）与 `autolink/common/file.hpp`。
 
-| 能力 | 状态 |
+仍为 C++ 域对象（非 wire POD）：URDF/SRDF 模型、`PlanningScene` 运行时、`MotionPlanRequest` 外壳（内含 pb 字段 + `shared_ptr` 依赖）。
+
+## 目录结构
+
+```
+manipulation/
+├── manipulation_main.cpp / manipulation_server.* / manipulation_options.*
+├── common/          # 类型别名、接口、plugin_ids、util
+├── model/           # 原 core：机器人模型域
+├── planner/         # <algo> + pipeline / constraint_samplers / optimize
+├── motion/          # 原 runtime：场景·碰撞·运动学·动力学·执行·伺服
+├── dispatch/        # capability + move_group_interface + action_server
+├── setup/
+└── conf/ launch/ dag/ proto/ benchmarks/
+```
+
+## 目标边界
+
+| 目标 | 状态 |
 |------|------|
-| Autolink plugins / ErrorCode | 有（planner/kin/collision/adapter/capability） |
-| RobotModel / Group / SRDF | Simple* + URDF limits + LinkFk 树 |
-| Kinematics | stub / KDL / ikfast壳 / cached |
-| Planners | joint_interpolation / cartesian / rrt_connect / pilz_{ptp,lin,circ} / CHOMP·STOMP（工业 lite） / hybrid；ompl 可选 |
-| Collision | AABB（box/sphere/cylinder/meshAABB + self）；FCL 可选；octomap 占用点 |
-| PlanningScene / Monitor | SceneDiff + ACM + Attach + ClearWorld/Octomap + PointCloud 占用 |
-| Proto | moveit_msgs MotionPlan（含 position/orientation constraints） |
-| Mimic | URDF `<mimic>` → LinkFk / RobotState |
-| Adapters | Autolink 插件链：fix_start / TOTG / validate / check_constraints |
-| Constraints | joint + position/orientation（proto 贯通；路径 FK 检查） |
-| ACM | SRDF `disable_collisions` → PlanningScene |
-| Execution | TEM Execute(replace) + DeviationHook（joint_states 偏差门控） |
-| Capabilities | plan/execute/cartesian/fk_ik/scene + state_validation / query_planners / clear_* / validate_trajectory / get_urdf / save_load_geometry |
-| Servo | DLS + 奇异/限速/关节限/碰撞安全门 |
-| Task | Action Goal：`motion_plan` + `replace_execution`；Result 含 trajectory |
+| 产线固定工位 runtime | **完成（本模块）** |
+| Setup GUI / Bullet / warehouse / RViz | **明确不做** |
+| 驱动固件力矩施加 | **模块外**（订阅 `effort_command`） |
+| VHACD / TRAC-IK / Octomap | FEATURE 可选 |
+
+## 对齐进度（相对 MoveIt2）
+
+| 能力 | 对齐度 | 现状 |
+|------|--------|------|
+| Pilz / TOTG / FCL / TEM | ~94% | TEM 场景校验 + EffortTracking |
+| ompl_interface | ~92% | CSS + ParallelPlan + BiTRRT/EST |
+| constraint_samplers | ~93% | Clamp Project + near-seed + 单测 |
+| CHOMP / STOMP / Hybrid | ~90% | 分文件 + trajectory_optimize |
+| kinematics | ~90% | KDL/IKFast/TRAC_IK + common::LRUCache |
+| dynamics | ~90% | Pinocchio 重力/NLE → effort_command |
+| Servo | ~93% | Twist/JointJog/PoseStamped + 接近减速 |
+| Setup / Pipeline | ~90% | path_constraints 起点投影 |
+
+**整体（固定工位）**：~93–95%。
 
 ## FEATURES
 
-| FEATURE | 宏 | 缺省行为 |
-|---------|-----|----------|
-| `kdl` | `AUTONOMY_HAS_KDL` | StubKinematics |
-| `fcl` | `AUTONOMY_HAS_FCL` | AABB detector |
-| `ompl` | `AUTONOMY_HAS_OMPL` | stub planner（头文件探测，避免 omplConfig→Boost；需可用 `libboost_system`） |
-| `ruckig` | `AUTONOMY_HAS_RUCKIG` | TOTG（adapter 优先 Ruckig；Homebrew 无 formula 时保持 no-op） |
-| `urdfdom` | `AUTONOMY_HAS_URDFDOM` | 正则 URDF |
+`fcl` / `ompl` / `ruckig` / `kdl` / `urdfdom` / `pinocchio` / `vhacd` / `trac_ik` / `octomap`
 
-真后端：`OmplPlanner`（RRTConnect）、`FclCollisionDetector`、`ApplyRuckig`、`ChompPlanner`（稠密 \(A^\top A\) 度量逆 + 软障碍势）/ `StompPlanner`、`PilzLin/Circ`、`HybridPlanner`。  
-占位：`ikfast`；octomap binary 需 liboctomap（当前非 binary 索引三元组）。
+## 进程
 
-## 进程 / 通道
+- `autonomy.manipulation` · `/autonomy/manipulation/move`
+- `autonomy.manipulation.setup`
 
-- 二进制：`autonomy.manipulation`
-- Action：`/autonomy/manipulation/move`
-- 轨迹：`/arm_controller/joint_trajectory`
+## 非本模块职责
 
-## 不做
-
-Setup Assistant / warehouse / RViz / 完整 liboctomap binary 解码。
+| 项 | 说明 |
+|----|------|
+| 驱动固件 | 订阅 `/arm_controller/effort_command`，施加力矩 |
+| Setup GUI / Bullet / warehouse / RViz | **不做** |

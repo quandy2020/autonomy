@@ -1,0 +1,53 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.msgs.moveit_msgs;
+
+import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
+import "automsgs/msgs/moveit_msgs/constraints.proto";
+import "automsgs/msgs/moveit_msgs/generic_trajectory.proto";
+import "automsgs/msgs/moveit_msgs/robot_state.proto";
+import "automsgs/msgs/moveit_msgs/trajectory_constraints.proto";
+import "automsgs/msgs/moveit_msgs/workspace_parameters.proto";
+import "automsgs/msgs/sensor_msgs/joint_state.proto";
+
+// Motion plan request.
+// Fields 1-12 keep the existing automsgs layout used by motion_plan_message_conversion;
+// 13+ match ROS MotionPlanRequest extras.
+message MotionPlanRequest {
+  string group_name = 1;
+  string planner_id = 2;
+  automsgs.msgs.sensor_msgs.JointState start_state = 3;
+  automsgs.msgs.sensor_msgs.JointState goal_state = 4;
+  automsgs.msgs.geometry_msgs.PoseStamped goal_pose = 5;
+  reserved 6;
+  reserved "has_goal_pose";
+  repeated automsgs.msgs.geometry_msgs.PoseStamped cartesian_waypoints = 7;
+  double allowed_planning_time = 8;
+  int32 num_planning_attempts = 9;
+  double max_velocity_scaling_factor = 10;
+  double max_acceleration_scaling_factor = 11;
+  Constraints path_constraints = 12;
+  WorkspaceParameters workspace_parameters = 13;
+  RobotState start_robot_state = 14;
+  repeated Constraints goal_constraints = 15;
+  TrajectoryConstraints trajectory_constraints = 16;
+  repeated GenericTrajectory reference_trajectories = 17;
+  string pipeline_id = 18;
+  string cartesian_speed_limited_link = 19;
+  double max_cartesian_speed = 20;
+  double smoothness_level = 21;
+}

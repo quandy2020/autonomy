@@ -13,12 +13,12 @@
 #include "autonomy/common/conf_loader.hpp"
 #include "autonomy/common/gflags.hpp"
 #include "autonomy/common/logging.hpp"
-#include "autonomy/manipulation/proto/manipulation_options.pb.h"
-#include "autonomy/manipulation/server/manipulation_server.hpp"
+#include "autonomy/manipulation/manipulation_options.hpp"
+#include "autonomy/manipulation/manipulation_server.hpp"
 
 namespace {
 
-bool LoadOptions(autonomy::manipulation::proto::ManipulationOptions* options) {
+bool LoadOptions(autonomy::manipulation::ManipulationOptions* options) {
   using autonomy::common::FLAGS_conf;
   const std::string conf =
       FLAGS_conf.empty() ? "manipulation.pb.txt" : FLAGS_conf;
@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
 
   autolink::Init(argv[0]);
 
-  autonomy::manipulation::proto::ManipulationOptions options;
+  autonomy::manipulation::ManipulationOptions options;
   if (!LoadOptions(&options)) {
     AWARN << "manipulation_main: conf load failed; using defaults";
   }

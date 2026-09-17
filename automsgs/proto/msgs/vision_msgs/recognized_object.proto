@@ -1,0 +1,36 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.msgs.vision_msgs;
+
+import "automsgs/msgs/geometry_msgs/point.proto";
+import "automsgs/msgs/geometry_msgs/pose_with_covariance_stamped.proto";
+import "automsgs/msgs/sensor_msgs/point_cloud2.proto";
+import "automsgs/msgs/shape_msgs/mesh.proto";
+import "automsgs/msgs/std_msgs/header.proto";
+import "automsgs/msgs/vision_msgs/object_type.proto";
+
+// A recognized object with type, confidence, optional clusters, and pose
+// (ROS object_recognition_msgs/RecognizedObject).
+message RecognizedObject {
+  automsgs.msgs.std_msgs.Header header = 1;
+  ObjectType type = 2;
+  float confidence = 3;
+  repeated automsgs.msgs.sensor_msgs.PointCloud2 point_clouds = 4;
+  automsgs.msgs.shape_msgs.Mesh bounding_mesh = 5;
+  repeated automsgs.msgs.geometry_msgs.Point bounding_contours = 6;
+  automsgs.msgs.geometry_msgs.PoseWithCovarianceStamped pose = 7;
+}

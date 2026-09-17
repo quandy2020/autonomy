@@ -38,8 +38,8 @@ message ManipulationOptions {
   string trajectory_topic = 17;
   string action_name = 18;
   // PlanningRequestAdapter ids (aliases or class names):
-  // fix_start_state_bounds, time_parameterization, validate_path,
-  // dense_sample, check_constraints
+  // fix_start_state_bounds, fix_start_state_path_constraints,
+  // time_parameterization, validate_path, dense_sample, check_constraints
   repeated string adapters = 19;
   string collision_detector = 20;
   string joint_states_topic = 21;
@@ -53,4 +53,19 @@ message ManipulationOptions {
   double execution_deviation_tol = 27;
   // Default MotionPlanRequest.max_attempts when request leaves it unset.
   uint32 max_planning_attempts = 28;
+  // Pilz Cartesian limits (MoveIt cartesian_limits lite). 0 = unset → use
+  // max_velocity / max_acceleration for LIN/CIRC.
+  double max_trans_vel = 29;
+  double max_trans_acc = 30;
+  double max_trans_dec = 31;
+  double max_rot_vel = 32;
+  // Max |cmd_effort−actual_effort| (Nm) when both present (0 = disabled).
+  double execution_effort_tol = 33;
+  // Occupancy cloud self-filter sphere radius around link origins (m);
+  // 0 disables.
+  double occupancy_self_filter_padding = 34;
+  // Software effort P-loop on top of feedforward (0 = pure feedforward).
+  double effort_tracking_kp = 35;
+  // Clamp |effort_command| (Nm); 0 = no clamp.
+  double effort_command_max = 36;
 }

@@ -4,9 +4,10 @@
 
 #include "gtest/gtest.h"
 
-#include "autonomy/manipulation/planning/joint_interpolation_planner.hpp"
-#include "autonomy/manipulation/planning/rrt_connect_planner.hpp"
-#include "autonomy/manipulation/scene/simple_planning_scene.hpp"
+#include "autonomy/manipulation/common/joint_state_util.hpp"
+#include "autonomy/manipulation/planner/joint_interpolation/joint_interpolation_planner.hpp"
+#include "autonomy/manipulation/planner/rrt_connect/rrt_connect_planner.hpp"
+#include "autonomy/manipulation/motion/scene/simple_planning_scene.hpp"
 
 namespace autonomy {
 namespace manipulation {
@@ -18,8 +19,8 @@ TEST(PlanBenchmarkTest, JointInterpolationSuccessRate) {
   int ok = 0;
   for (int i = 0; i < 20; ++i) {
     planning::MotionPlanRequest req;
-    req.start_state.positions = {0.0, 0.0};
-    req.goal_state.positions = {0.1 * i, -0.05 * i};
+    SetJointState(&req.start_state, {}, {0.0, 0.0});
+    SetJointState(&req.goal_state, {}, {0.1 * i, -0.05 * i});
     if (planner.Plan(req).success) {
       ++ok;
     }
@@ -31,10 +32,8 @@ TEST(PlanBenchmarkTest, RrtConnectWithoutObstacle) {
   planning::RrtConnectPlanner planner;
   ASSERT_TRUE(planner.Init("rrt_connect"));
   planning::MotionPlanRequest req;
-  req.start_state.names = {"j1", "j2"};
-  req.start_state.positions = {0.0, 0.0};
-  req.goal_state.names = {"j1", "j2"};
-  req.goal_state.positions = {0.5, -0.5};
+  SetJointState(&req.start_state, {"j1", "j2"}, {0.0, 0.0});
+  SetJointState(&req.goal_state, {"j1", "j2"}, {0.5, -0.5});
   req.scene = std::make_shared<scene::SimplePlanningScene>();
   EXPECT_TRUE(planner.Plan(req).success);
 }

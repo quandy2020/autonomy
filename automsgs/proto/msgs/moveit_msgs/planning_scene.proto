@@ -1,22 +1,32 @@
 // Copyright 2026 The Openbot Authors
 //
-// Minimal PlanningScene + Diff for autonomy (not full MoveIt parity).
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 syntax = "proto3";
 
 package automsgs.msgs.moveit_msgs;
 
-import "automsgs/msgs/sensor_msgs/joint_state.proto";
-import "automsgs/msgs/map_msgs/octomap_with_pose.proto";
+import "automsgs/msgs/geometry_msgs/transform_stamped.proto";
 import "automsgs/msgs/moveit_msgs/allowed_collision_matrix.proto";
 import "automsgs/msgs/moveit_msgs/attached_collision_object.proto";
-import "automsgs/msgs/moveit_msgs/collision_object.proto";
+import "automsgs/msgs/moveit_msgs/link_padding.proto";
+import "automsgs/msgs/moveit_msgs/link_scale.proto";
+import "automsgs/msgs/moveit_msgs/object_color.proto";
+import "automsgs/msgs/moveit_msgs/planning_scene_world.proto";
+import "automsgs/msgs/moveit_msgs/robot_state.proto";
+import "automsgs/msgs/sensor_msgs/joint_state.proto";
 
-message PlanningSceneWorld {
-  repeated CollisionObject collision_objects = 1;
-  automsgs.msgs.map_msgs.OctomapWithPose octomap = 2;
-}
-
+// Planning scene. Fields 1-7 keep the existing automsgs layout; 8+ match ROS extras.
 message PlanningScene {
   string name = 1;
   automsgs.msgs.sensor_msgs.JointState robot_state = 2;
@@ -25,4 +35,9 @@ message PlanningScene {
   PlanningSceneWorld world = 5;
   bool is_diff = 6;
   repeated AttachedCollisionObject attached_collision_objects = 7;
+  RobotState full_robot_state = 8;
+  repeated automsgs.msgs.geometry_msgs.TransformStamped fixed_frame_transforms = 9;
+  repeated LinkPadding link_padding = 10;
+  repeated LinkScale link_scale = 11;
+  repeated ObjectColor object_colors = 12;
 }

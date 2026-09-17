@@ -1,6 +1,16 @@
 // Copyright 2026 The Openbot Authors
 //
-// Collision object (MoveIt collision_object analogue). Reuses shape/geometry msgs.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 syntax = "proto3";
 
@@ -11,7 +21,9 @@ import "automsgs/msgs/geometry_msgs/pose.proto";
 import "automsgs/msgs/shape_msgs/solid_primitive.proto";
 import "automsgs/msgs/shape_msgs/mesh.proto";
 import "automsgs/msgs/shape_msgs/plane.proto";
+import "automsgs/msgs/vision_msgs/object_type.proto";
 
+// Collision object (MoveIt collision_object analogue). Reuses shape/geometry msgs.
 message CollisionObject {
   enum Operation {
     ADD = 0;
@@ -34,4 +46,7 @@ message CollisionObject {
   repeated automsgs.msgs.geometry_msgs.Pose plane_poses = 9;
 
   automsgs.msgs.geometry_msgs.Pose pose = 10;
+  repeated string subframe_names = 11;
+  repeated automsgs.msgs.geometry_msgs.Pose subframe_poses = 12;
+  automsgs.msgs.vision_msgs.ObjectType type = 13;
 }

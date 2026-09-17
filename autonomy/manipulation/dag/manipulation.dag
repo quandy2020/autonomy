@@ -1,11 +1,6 @@
+# Binary process (planning-style). No Autolink Component — use launch:
+#   autonomy.manipulation --conf=manipulation.pb.txt
+# Installed for share parity with other modules; DAG component path retired.
 module_config {
   module_library : "libautonomy_manipulation.so"
-  components {
-    class_name : "autonomy::manipulation::ManipulationComponent"
-    config : "manipulation.pb.txt"
-    readers {}
-    writers {
-      channel : "/arm_controller/joint_trajectory"
-    }
-  }
 }

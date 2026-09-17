@@ -1,0 +1,5 @@
+# Optional external ConstraintSamplerAllocator plugin descriptions.
+# One path per line (absolute or relative). Lines starting with # are ignored.
+# Example:
+#   /opt/autonomy/share/plugins/my_union_allocator.plugin
+# After load, Manager re-resolves Union/Ik/Joint (+ any newly registered names).

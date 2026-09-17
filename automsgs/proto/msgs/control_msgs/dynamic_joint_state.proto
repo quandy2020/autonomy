@@ -1,0 +1,29 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.msgs.control_msgs;
+
+import "automsgs/msgs/control_msgs/interface_value.proto";
+import "automsgs/msgs/std_msgs/header.proto";
+
+// Per-joint interface names and values (dynamic joint state).
+message DynamicJointState {
+  automsgs.msgs.std_msgs.Header header = 1;
+  // Resource names, e.g. ["arm_joint_1", "arm_joint_2", "gripper_joint"].
+  repeated string joint_names = 2;
+  // Interfaces and values for each joint listed in `joint_names`.
+  repeated InterfaceValue interface_values = 3;
+}
