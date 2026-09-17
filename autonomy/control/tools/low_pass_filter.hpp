@@ -1,0 +1,259 @@
+// Copyright (c) 2023, Stogl Robotics Consulting UG (haftungsbeschränkt)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Ported into autonomy::control::tools
+// ROS geometry_msgs::WrenchStamped specialization removed; use Eigen::Matrix<double,6,1>.
+
+#ifndef AUTONOMY_CONTROL_TOOLS__LOW_PASS_FILTER_HPP_
+#define AUTONOMY_CONTROL_TOOLS__LOW_PASS_FILTER_HPP_
+
+#include <Eigen/Dense>
+
+#include <cassert>
+#include <cmath>
+#include <limits>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <type_traits>
+#include <vector>
+
+namespace autonomy {
+namespace control {
+namespace tools {
+
+/***************************************************/
+/*! \class LowPassFilter
+  \brief A Low-pass filter class.
+
+  This class implements a low-pass filter for
+  various data types based on an Infinite Impulse Response Filter.
+  For vector elements, the filtering is applied separately on
+  each element of the vector.
+
+  In particular, this class implements a simplified version of
+  an IIR filter equation :
+
+  \f$y(n) = b x(n-1) + a y(n-1)\f$
+
+  where: <br>
+  <UL TYPE="none">
+  <LI>  \f$ x(n)\f$ is the input signal
+  <LI>  \f$ y(n)\f$ is the output signal (filtered)
+  <LI>  \f$ b \f$ is the feedforward filter coefficient
+  <LI>  \f$ a \f$ is the feedback filter coefficient
+  </UL>
+
+  and the Low-Pass coefficient equation:
+  <br>
+  <UL TYPE="none">
+  <LI>  \f$ a = e^{\frac{-1}{sf} \frac{2\pi df}{10^{\frac{di}{-10}}}} \f$
+  <LI>  \f$ b = 1 - a \f$
+  </UL>
+
+    where: <br>
+  <UL TYPE="none">
+  <LI>  \f$ sf \f$ is the sampling frequency
+  <LI>  \f$ df \f$ is the damping frequency
+  <LI>  \f$ di \f$ is the damping intensity (amplitude)
+  </UL>
+
+  \section Usage
+
+  For manual instantiation, you should first call configure()
+  (in non-realtime) and then call update() at every update step.
+
+*/
+/***************************************************/
+
+template <typename T>
+class LowPassFilter
+{
+public:
+  // Default constructor
+  LowPassFilter();
+
+  LowPassFilter(double sampling_frequency, double damping_frequency, double damping_intensity)
+  {
+    set_params(sampling_frequency, damping_frequency, damping_intensity);
+  }
+
+  /*!
+   * \brief Destructor of LowPassFilter class.
+   */
+  ~LowPassFilter();
+
+  /*!
+   * \brief Configure the LowPassFilter (access and process params).
+   */
+  bool configure();
+
+  /*!
+   * \brief Applies one iteration of the IIR filter.
+   *
+   * \param data_in input to the filter
+   * \param data_out filtered output
+   *
+   * \returns false if filter is not configured, true otherwise
+   */
+  bool update(const T & data_in, T & data_out);
+
+  bool is_configured() const { return configured_; }
+
+  /*!
+   * \brief Internal computation of the feedforward and feedbackward coefficients
+   * according to the LowPassFilter parameters.
+   */
+  void set_params(double sampling_frequency, double damping_frequency, double damping_intensity)
+  {
+    a1_ = exp(
+      -1.0 / sampling_frequency * (2.0 * M_PI * damping_frequency) /
+      (pow(10.0, damping_intensity / -10.0)));
+    b1_ = 1.0 - a1_;
+  };
+
+private:
+  // Filter parameters
+  double a1_; /** feedbackward coefficient. */
+  double b1_; /** feedforward coefficient. */
+  /** internal data storage of template type. */
+  T filtered_value, filtered_old_value, old_value;
+  /** internal data storage (6-DOF wrench / twist style vectors). */
+  Eigen::Matrix<double, 6, 1> msg_filtered, msg_filtered_old, msg_old;
+  bool configured_ = false;
+};
+
+template <typename T>
+LowPassFilter<T>::LowPassFilter() : a1_(1.0), b1_(0.0)
+{
+}
+
+template <typename T>
+LowPassFilter<T>::~LowPassFilter()
+{
+}
+
+template <typename T>
+bool LowPassFilter<T>::configure()
+{
+  // Initialize storage for arithmetic types (double, float, ...)
+  if constexpr (std::is_arithmetic_v<T>) {
+    filtered_value = filtered_old_value = old_value = std::numeric_limits<T>::quiet_NaN();
+  } else {
+    filtered_value = filtered_old_value = old_value = T{};
+  }
+  for (Eigen::Index i = 0; i < 6; ++i)
+  {
+    msg_filtered[i] = msg_filtered_old[i] = msg_old[i] = std::numeric_limits<double>::quiet_NaN();
+  }
+
+  return configured_ = true;
+}
+
+template <>
+inline bool LowPassFilter<Eigen::Matrix<double, 6, 1>>::update(
+  const Eigen::Matrix<double, 6, 1> & data_in, Eigen::Matrix<double, 6, 1> & data_out)
+{
+  if (!configured_)
+  {
+    throw std::runtime_error("Filter is not configured");
+  }
+  // If this is the first call to update initialize the filter at the current state
+  // so that we dont apply an impulse to the data.
+  if (msg_filtered.hasNaN())
+  {
+    msg_filtered = data_in;
+    msg_filtered_old = msg_filtered;
+    msg_old = msg_filtered;
+  }
+
+  // IIR Filter
+  msg_filtered = b1_ * msg_old + a1_ * msg_filtered_old;
+  msg_filtered_old = msg_filtered;
+  msg_old = data_in;
+  data_out = msg_filtered;
+  return true;
+}
+
+template <>
+inline bool LowPassFilter<std::vector<double>>::update(
+  const std::vector<double> & data_in, std::vector<double> & data_out)
+{
+  if (!configured_)
+  {
+    throw std::runtime_error("Filter is not configured");
+  }
+  // If this is the first call to update initialize the filter at the current state
+  // so that we dont apply an impulse to the data.
+  // This also sets the size of the member variables to match the input data.
+  if (filtered_value.empty())
+  {
+    filtered_value = data_in;
+    filtered_old_value = data_in;
+    old_value = data_in;
+  }
+  else
+  {
+    assert(
+      data_in.size() == filtered_value.size() &&
+      "Internal data and the data_in doesn't hold the same size");
+    assert(data_out.size() == data_in.size() && "data_in and data_out doesn't hold same size");
+  }
+
+  // Filter each value in the vector
+  for (std::size_t i = 0; i < data_in.size(); i++)
+  {
+    data_out[i] = b1_ * old_value[i] + a1_ * filtered_old_value[i];
+    filtered_old_value[i] = data_out[i];
+    if (std::isfinite(data_in[i]))
+    {
+      old_value[i] = data_in[i];
+    }
+  }
+
+  return true;
+}
+
+template <typename T>
+bool LowPassFilter<T>::update(const T & data_in, T & data_out)
+{
+  if (!configured_)
+  {
+    throw std::runtime_error("Filter is not configured");
+  }
+  // If this is the first call to update initialize the filter at the current state
+  // so that we dont apply an impulse to the data.
+  if (std::isnan(filtered_value))
+  {
+    filtered_value = data_in;
+    filtered_old_value = data_in;
+    old_value = data_in;
+  }
+
+  // Filter
+  data_out = b1_ * old_value + a1_ * filtered_old_value;
+  filtered_old_value = data_out;
+  if (std::isfinite(data_in))
+  {
+    old_value = data_in;
+  }
+
+  return true;
+}
+
+}  // namespace tools
+}  // namespace control
+}  // namespace autonomy
+
+#endif  // AUTONOMY_CONTROL_TOOLS__LOW_PASS_FILTER_HPP_

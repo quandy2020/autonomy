@@ -1,0 +1,70 @@
+// Copyright (c) 2022 ros2_control Development Team
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Ported into autonomy::control::tools::controllers
+
+#ifndef AUTONOMY_CONTROL_TOOLS_CONTROLLERS_JOINT_TRAJECTORY__INTERPOLATION_METHODS_HPP_
+#define AUTONOMY_CONTROL_TOOLS_CONTROLLERS_JOINT_TRAJECTORY__INTERPOLATION_METHODS_HPP_
+
+#include <string>
+#include <unordered_map>
+
+namespace autonomy {
+namespace control {
+namespace tools {
+namespace controllers {
+namespace joint_trajectory
+{
+namespace interpolation_methods
+{
+
+enum class InterpolationMethod
+{
+  NONE,
+  VARIABLE_DEGREE_SPLINE
+};
+
+constexpr InterpolationMethod DEFAULT_INTERPOLATION = InterpolationMethod::VARIABLE_DEGREE_SPLINE;
+
+inline const std::unordered_map<InterpolationMethod, std::string> & InterpolationMethodMap()
+{
+  static const std::unordered_map<InterpolationMethod, std::string> kMap = {
+    {InterpolationMethod::NONE, "none"},
+    {InterpolationMethod::VARIABLE_DEGREE_SPLINE, "splines"}};
+  return kMap;
+}
+
+[[nodiscard]] inline InterpolationMethod from_string(const std::string & interpolation_method)
+{
+  if (interpolation_method == InterpolationMethodMap().at(InterpolationMethod::NONE))
+  {
+    return InterpolationMethod::NONE;
+  }
+  if (
+    interpolation_method ==
+    InterpolationMethodMap().at(InterpolationMethod::VARIABLE_DEGREE_SPLINE))
+  {
+    return InterpolationMethod::VARIABLE_DEGREE_SPLINE;
+  }
+  return InterpolationMethod::VARIABLE_DEGREE_SPLINE;
+}
+
+}  // namespace interpolation_methods
+}  // namespace joint_trajectory
+}  // namespace controllers
+}  // namespace tools
+}  // namespace control
+}  // namespace autonomy
+
+#endif  // AUTONOMY_CONTROL_TOOLS_CONTROLLERS_JOINT_TRAJECTORY__INTERPOLATION_METHODS_HPP_
