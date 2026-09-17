@@ -92,8 +92,12 @@ dist/
 # bag_convert runtime protobuf generation
 autonomy/tools/bag_convert/.proto_gen/
 
-# data
-data/
+# Repo-root runtime/data dumps only (not autonomy/**/data source trees)
+/data/
+
+# Large demo/test assets (keep out of git; atlas data/*.cpp sources must remain tracked)
+autonomy/map/grid_map/grid_map_demos/data/
+autonomy/map/grid_map/grid_map_pcl/test_data/
 
 # Local feature worktrees
 .worktrees/
