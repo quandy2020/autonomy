@@ -160,11 +160,6 @@ QStringList AllKnownChannels(common::VisualizationManager* manager) {
       out.push_back(QString::fromStdString(info.channel_name));
     }
   }
-  for (const auto& entry : TutorialChannelMessageTypes()) {
-    if (!out.contains(entry.first, Qt::CaseInsensitive)) {
-      out.push_back(entry.first);
-    }
-  }
   out.sort(Qt::CaseInsensitive);
   out.removeDuplicates();
   return out;

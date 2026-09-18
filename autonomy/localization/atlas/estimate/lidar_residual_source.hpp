@@ -35,17 +35,25 @@ struct PointPlaneResidual {
     uint64_t pose_slot = 0;
 };
 
+//! Point-to-point ICP residual (lightning enable_icp_part).
+struct PointPointResidual {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    Vec3_t point_body = Vec3_t::Zero();
+    Vec3_t point_world_map = Vec3_t::Zero();  // nearest map point
+    double weight = 1.0;
+};
+
 struct LidarFactorBatch {
     std::vector<PointPlaneResidual> point_planes;
-    int num_point_point = 0;
+    std::vector<PointPointResidual> point_points;
 
     [[nodiscard]] bool empty() const {
-        return point_planes.empty() && num_point_point == 0;
+        return point_planes.empty() && point_points.empty();
     }
     [[nodiscard]] LidarResidualBatch summary() const {
         LidarResidualBatch s;
         s.num_point_plane = static_cast<int>(point_planes.size());
-        s.num_point_point = num_point_point;
+        s.num_point_point = static_cast<int>(point_points.size());
         return s;
     }
 };

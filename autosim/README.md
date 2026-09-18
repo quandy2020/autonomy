@@ -50,6 +50,13 @@ src/autonomy/autosim/scripts/run.sh sim
 ./src/autonomy/autosim/scripts/run.sh teleop
 ```
 
+**Atlas LIO 验证**（开 3D 点云 `/points` + `/imu`）：
+
+```bash
+CONFIG=src/autonomy/autosim/config/lio.yaml src/autonomy/autosim/scripts/run.sh sim
+# 另终端：autolink launch start localization_lio.launch
+```
+
 或进入 autosim 目录：
 
 ```bash

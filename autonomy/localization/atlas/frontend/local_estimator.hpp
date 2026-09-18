@@ -37,6 +37,11 @@ public:
 
     void Reset(const Mat44_t& T_wb = Mat44_t::Identity()) { eskf_.Reset(T_wb); }
 
+    //! Lidar / NDT anchor: keep biases, snap T_wb (Lightning-style correction).
+    void SetPose(const Mat44_t& T_wb, bool zero_velocity = true) {
+        eskf_.SetPose(T_wb, zero_velocity);
+    }
+
     void PredictImu(double dt, const Vec3_t& gyro, const Vec3_t& acc) {
         eskf_.PredictImu(dt, gyro, acc);
     }
@@ -59,6 +64,7 @@ public:
     void set_gyro_bias(const Vec3_t& bg) { eskf_.set_gyro_bias(bg); }
     void set_acc_bias(const Vec3_t& ba) { eskf_.set_acc_bias(ba); }
     void set_gravity(const Vec3_t& g) { eskf_.set_gravity(g); }
+    void set_velocity(const Vec3_t& v) { eskf_.mutable_state().v = v; }
     void SetImuInitCovariance() { eskf_.SetImuInitCovariance(); }
 
     [[nodiscard]] Mat44_t T_wb() const { return eskf_.T_wb(); }

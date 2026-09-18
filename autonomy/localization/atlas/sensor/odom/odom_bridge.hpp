@@ -42,6 +42,12 @@ public:
         std::string topic = "/wheel_odom";
         //! Prefer nav_msgs/Odometry; fall back to geometry_msgs/PoseStamped.
         bool prefer_odometry = true;
+        //! First odom pose seeds LocalEstimator (aligns map≈odom, stops TF jump).
+        bool seed_estimator_pose = true;
+        //! Apply relative T_delta via UpdateOdom (WIO / LWIO only).
+        //! LIO must keep this false: continuous wheel odom + lidar IEKF
+        //! double-integrates and walks / flies the pose under teleop.
+        bool apply_relative_odom = true;
     };
 
     OdomBridge(sensor::OdomSensor* odom, Options options,
@@ -74,6 +80,7 @@ private:
     std::shared_ptr<autolink::Node> node_;
     std::atomic<bool> running_{false};
     bool has_last_pose_ = false;
+    bool estimator_seeded_ = false;
     Mat44_t last_T_ = Mat44_t::Identity();
 };
 

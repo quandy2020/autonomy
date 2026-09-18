@@ -67,9 +67,14 @@ std::string FormatColorProperty(const QColor& color) {
          ";" + std::to_string(color.blue());
 }
 
+std::string FormatFloatProperty(double value) {
+  // 'g' drops trailing zeros (0.01 not 0.0100); keep enough precision for edits.
+  return QString::number(value, 'g', 8).toStdString();
+}
+
 std::string FormatVector3Property(const QVector3D& vector) {
-  return std::to_string(vector.x()) + ";" + std::to_string(vector.y()) + ";" +
-         std::to_string(vector.z());
+  return FormatFloatProperty(vector.x()) + ";" + FormatFloatProperty(vector.y()) +
+         ";" + FormatFloatProperty(vector.z());
 }
 
 }  // namespace common

@@ -51,8 +51,8 @@ public:
         double voxel_leaf = 0.5;
         int icp_iters = 8;
         double max_corr_dist = 1.5;
-        double inlier_ratio_thresh = 0.35;
-        double mean_residual_thresh = 0.25;
+        double inlier_ratio_thresh = 0.40;
+        double mean_residual_thresh = 0.08;
 
         //! Prefer PCL multi-resolution NDT (lightning-lm style).
         bool use_ndt = true;
@@ -61,9 +61,14 @@ public:
         double ndt_step_size = 0.7;
         double ndt_trans_eps = 0.05;
         //! Higher getTransformationProbability is better (lightning).
-        double ndt_score_thresh = 1.0;
+        double ndt_score_thresh = 1.5;
         //! Stitch ±radius keyframes as NDT target (0 = single KF cloud).
         int submap_kf_radius = 5;
+        //! ICP-only fallback when NDT fails — false by default (false loops
+        //! corrupt IVox / SetPose; require real NDT score).
+        bool allow_icp_only = false;
+        //! Do not run Detect until this many keyframes exist.
+        int min_keyframes = 40;
     };
 
     struct Keyframe {
@@ -96,6 +101,9 @@ public:
     [[nodiscard]] const Options& options() const { return options_; }
     [[nodiscard]] std::size_t num_keyframes() const {
         return keyframes_.size();
+    }
+    [[nodiscard]] const std::deque<Keyframe>& keyframes() const {
+        return keyframes_;
     }
     [[nodiscard]] std::uint64_t last_keyframe_id() const {
         return last_keyframe_id_;

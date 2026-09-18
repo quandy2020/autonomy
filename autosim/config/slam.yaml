@@ -26,6 +26,9 @@ habitat:
     urdf: urdf/turtlebot3_burger.urdf
     max_linear: 0.5
     max_angular: 1.0
+    max_linear_accel: 0.8
+    max_linear_decel: 1.2
+    max_angular_accel: 2.0
     wheel_separation: 0.55
     map_frame: map
     base_link_height: 0.01
@@ -77,8 +80,7 @@ habitat:
       range_min: 0.1
       range_max: 30.0
       noise: 0.015
-
-    camera:
+      motion_compensate: true
       enabled: true
       width: 640
       height: 480
@@ -102,6 +104,7 @@ habitat:
       channel: /imu
       frame: imu_link
       rate_hz: 200.0
+      gravity: 9.80665
       noise:
         gyro: 0.01
         accel: 0.05

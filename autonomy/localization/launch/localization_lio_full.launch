@@ -1,0 +1,37 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Atlas LIO full-product — same as localization_lio.launch but profile
+  lio_full.yaml (lightning/lio_full.yaml with use_lidar_loop: true).
+
+  Expects:
+    /imu      Imu
+    /points   PointCloud2
+
+  Profile: conf/atlas/profiles/lio_full.yaml
+    - calibration_path → conf/atlas/calibration/default.yaml
+    - lidar_config_path → conf/atlas/lightning/lio_full.yaml
+    - maps.g2p5 → OccupancyGrid on /atlas/g2p5/occupancy
+    - IMU-rate pose via PoseExtrapolator + VizBridge
+
+  Run with autosim (IMU + /points):
+    cd /workspace/autonomy
+    CONFIG=src/autonomy/autosim/config/lio.yaml src/autonomy/autosim/scripts/run.sh sim
+    # then:
+    cd /workspace/autonomy/src/autonomy
+    export PATH=/workspace/autonomy/build/autonomy/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=/workspace/autonomy/src/autonomy/autonomy/localization/launch
+    autolink launch start localization_lio_full.launch
+
+  Stop:
+    autolink launch stop localization_lio_full.launch
+-->
+<autolink>
+  <module>
+    <name>localization_lio_full</name>
+    <type>binary</type>
+    <process_name>autonomy.localization --localization_mode=lio --atlas_runtime_profile=autonomy/localization/conf/atlas/profiles/lio_full.yaml --atlas_imu_topic=/imu --atlas_lidar_topic=/points --atlas_lidar_imu_topic=/imu --atlas_enable_lightning_upstream=true</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

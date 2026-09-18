@@ -42,6 +42,19 @@ public:
         double min_score = 0.0;  // optional; 0 = accept any
         std::size_t min_map_points = 500;
         std::size_t min_scan_points = 50;
+        //! After successful Align, write scan into TiledMap dyn layer.
+        bool update_dynamic_cloud = false;
+        //! Min translation (m) since last dyn update (OR with update_kf_time_s).
+        double update_kf_dis_m = 2.0;
+        //! Min time (s) since last dyn update.
+        double update_kf_time_s = 10.0;
+        //! PCL NDT fitness upper bound (lower=better); update only if score ≤.
+        double update_max_fitness = 2.5;
+        //! Body-frame z band for dyn insert (Lightning pass-through).
+        double dyn_z_min = 0.5;
+        double dyn_z_max = 30.0;
+        //! Dyn retention when enabling layer via update (short|medium|permanent).
+        mapping::DynPolicy dyn_policy = mapping::DynPolicy::kMedium;
     };
 
     LidarLocator() = default;
@@ -63,6 +76,12 @@ public:
                const Mat44_t& T_wb_guess, Mat44_t* T_wb_out,
                double* score_out = nullptr);
 
+    //! Incremental dyn map after successful loc (gated by distance/time/score).
+    //! Returns number of dyn points inserted (0 if skipped).
+    int MaybeUpdateDynamic(double t_sec, const Mat44_t& T_wb,
+                           const std::vector<Vec3_t>& points_body,
+                           double fitness_score);
+
     [[nodiscard]] bool map_ready() const {
         return map_ != nullptr && map_->num_tiles() > 0;
     }
@@ -71,6 +90,9 @@ private:
     Options options_;
     mapping::TiledMap* map_ = nullptr;
     std::unique_ptr<mapping::TiledMap> owned_map_;
+    bool have_last_dyn_upd_ = false;
+    double last_dyn_upd_t_ = -1.0;
+    Vec3_t last_dyn_upd_pos_ = Vec3_t::Zero();
 };
 
 }  // namespace frontend

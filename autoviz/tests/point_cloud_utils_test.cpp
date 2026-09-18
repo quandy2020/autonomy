@@ -50,12 +50,24 @@ TEST(PointCloudUtils, ReadsNamedIntensityChannel) {
 }
 
 TEST(PointCloudUtils, ScalarColorInvertsRainbow) {
-  const QColor low = colorFromScalar(0.f, 0.f, 1.f, true, false, Qt::black, Qt::white);
+  const QColor low =
+      colorFromScalar(0.f, 0.f, 1.f, true, false, Qt::black, Qt::white);
   const QColor high_inverted =
       colorFromScalar(1.f, 0.f, 1.f, true, true, Qt::black, Qt::white);
   EXPECT_EQ(low.red(), high_inverted.red());
   EXPECT_EQ(low.green(), high_inverted.green());
   EXPECT_EQ(low.blue(), high_inverted.blue());
+}
+
+TEST(PointCloudUtils, ParsesRvizColorTransformerNames) {
+  EXPECT_EQ(parsePointCloudColorMode("FlatColor"),
+            PointCloudColorMode::kFlatColor);
+  EXPECT_EQ(parsePointCloudColorMode("Intensity"),
+            PointCloudColorMode::kIntensity);
+  EXPECT_EQ(parsePointCloudColorMode("RGB8"), PointCloudColorMode::kRgb8);
+  EXPECT_EQ(parsePointCloudColorMode("RGBF32"), PointCloudColorMode::kRgbF32);
+  EXPECT_EQ(parsePointCloudColorMode("AxisColor"),
+            PointCloudColorMode::kAxisColor);
 }
 
 }  // namespace

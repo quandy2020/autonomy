@@ -67,6 +67,7 @@ class Bridge:
                 "camera_info",
                 "imu",
                 "odom",
+                "odom_path",
                 "gt_pose",
                 "footprint",
                 "map_cloud",

@@ -16,6 +16,7 @@
 
 #include "autonomy/localization/atlas/viz_bridge.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <set>
@@ -82,6 +83,15 @@ Mat44_t OpencvCamPoseToRosCameraLink(const Mat44_t& T_wc_opencv) {
     // T_link_opt = OpticalToCameraLink()  (p_link = R * p_opt)
     const Mat44_t T_map_optical = OpencvPoseToRosMap(T_wc_opencv);
     return T_map_optical * OpticalToCameraLink().inverse();
+}
+
+//! Single map-frame body pose for TF + trajectory (must stay identical).
+Mat44_t ToRosMapBodyPose(const Mat44_t& T_in, bool body_flu) {
+    if (body_flu) {
+        return T_in;  // already T_map_base (REP-103)
+    }
+    // Vision OpenCV T_wc → ROS camera_link in map (same as TF path).
+    return OpencvCamPoseToRosCameraLink(T_in);
 }
 
 Mat44_t TransformMsgToMat44(
@@ -161,6 +171,12 @@ bool GetPinholeIntrinsics(camera::base* cam, double* fx, double* fy, double* cx,
 
 VizBridge::VizBridge(system* slam, Options options)
     : slam_(slam), options_(std::move(options)) {
+    // LO/LIO (no OpenVSLAM): poses are REP-103 T_wb — never OpenCV-remap them
+    // (that maps +X forward into +Z up → trajectory "flies to the sky").
+    if (slam_ == nullptr) {
+        options_.body_flu_pose = true;
+        options_.trajectory_lidar_rate_only = true;
+    }
     if (options_.trajectory_stride < 1) {
         options_.trajectory_stride = 1;
     }
@@ -276,7 +292,10 @@ bool VizBridge::Start(const std::shared_ptr<autolink::Node>& node) {
           << " trajectory=" << options_.trajectory_topic
           << " frustum=" << options_.current_frustum_topic
           << " map_odom_tf="
-          << (options_.publish_map_odom_tf ? "on" : "off");
+          << (options_.publish_map_odom_tf ? "on" : "off")
+          << " body_flu=" << (options_.body_flu_pose ? "on" : "off")
+          << " traj_lidar_only="
+          << (options_.trajectory_lidar_rate_only ? "on" : "off");
     return true;
 }
 
@@ -328,13 +347,12 @@ void VizBridge::SetHeader(automsgs::msgs::std_msgs::Header* header,
     header->set_frame_id(frame_id);
 }
 
-void VizBridge::Mat44ToPose(const Mat44_t& T_wc,
+void VizBridge::Mat44ToPose(const Mat44_t& T_map,
                             automsgs::msgs::geometry_msgs::Pose* pose) const {
     if (pose == nullptr) {
         return;
     }
-    // T_wc is OpenCV camera→world; convert into ROS map (Z-up) for Autoviz.
-    const Mat44_t T_map = OpencvPoseToRosMap(T_wc);
+    // Caller supplies ROS-map pose already (body_flu T_wb or OpencvPoseToRosMap).
     const Eigen::Matrix3d R = T_map.block<3, 3>(0, 0);
     const Eigen::Quaterniond q(R);
     pose->mutable_position()->set_x(T_map(0, 3));
@@ -486,8 +504,10 @@ void VizBridge::PublishMapOdomTf(double timestamp_sec, const Mat44_t& T_wc) {
         return;
     }
 
-    // SLAM tracks OpenCV optical; autosim camera_link is REP-103 FLU.
-    const Mat44_t T_map_cam = OpencvCamPoseToRosCameraLink(T_wc);
+    // TF and trajectory MUST use the same map-body pose (else green path and
+    // robot axes diverge — previously OpencvPoseToRosMap vs CamPoseToLink).
+    const Mat44_t T_map_cam =
+        ToRosMapBodyPose(T_wc, options_.body_flu_pose);
 
     automsgs::msgs::builtin_interfaces::Time stamp = ToStamp(timestamp_sec);
     // Prefer latest odom→camera if exact stamp is not yet in the buffer.
@@ -520,7 +540,83 @@ void VizBridge::PublishMapOdomTf(double timestamp_sec, const Mat44_t& T_wc) {
         return;
     }
 
-    const Mat44_t T_map_odom = T_map_cam * T_odom_cam.inverse();
+    const Mat44_t T_map_odom_raw = T_map_cam * T_odom_cam.inverse();
+
+    // Pure rotation / standstill: both bodies barely translate, but any yaw
+    // mismatch makes |t_map_odom| = |p - R p| grow with |p|·|Δyaw|. Freeze
+    // translation; only refresh rotation so Autoviz map↔odom does not diverge.
+    bool freeze_map_odom_trans = false;
+    const Vec3_t map_t = T_map_cam.block<3, 1>(0, 3);
+    const Vec3_t odom_t = T_odom_cam.block<3, 1>(0, 3);
+    if (have_last_map_odom_bodies_ &&
+        options_.map_odom_freeze_trans_dp_m > 0.0) {
+        const double dp_map = (map_t - last_map_body_t_).norm();
+        const double dp_odom = (odom_t - last_odom_body_t_).norm();
+        if (dp_map < options_.map_odom_freeze_trans_dp_m &&
+            dp_odom < options_.map_odom_freeze_trans_dp_m) {
+            freeze_map_odom_trans = true;
+        }
+    }
+    last_map_body_t_ = map_t;
+    last_odom_body_t_ = odom_t;
+    have_last_map_odom_bodies_ = true;
+
+    Mat44_t T_map_odom = T_map_odom_raw;
+    const double alpha =
+        std::clamp(options_.map_odom_smooth, 0.0, 0.99);
+    if (!map_odom_smooth_init_) {
+        // First TF: prefer Identity when estimate≈odom (seeded) so Autoviz
+        // does not show odom flying away from map.
+        const double t_raw = T_map_odom_raw.block<3, 1>(0, 3).norm();
+        map_odom_smooth_ =
+            (t_raw < 0.5) ? Mat44_t::Identity() : T_map_odom_raw;
+        map_odom_smooth_init_ = true;
+        T_map_odom = map_odom_smooth_;
+    } else if (alpha > 1e-6) {
+        // Translation lerp + rotation slerp toward raw.
+        const double beta = 1.0 - alpha;
+        Vec3_t t =
+            alpha * map_odom_smooth_.block<3, 1>(0, 3) +
+            beta * T_map_odom_raw.block<3, 1>(0, 3);
+        if (freeze_map_odom_trans) {
+            t = map_odom_smooth_.block<3, 1>(0, 3);
+        }
+        const Quat_t q0(map_odom_smooth_.block<3, 3>(0, 0));
+        const Quat_t q1(T_map_odom_raw.block<3, 3>(0, 0));
+        const Quat_t q = q0.slerp(beta, q1).normalized();
+        Mat44_t blended = Mat44_t::Identity();
+        blended.block<3, 3>(0, 0) = q.toRotationMatrix();
+        blended.block<3, 1>(0, 3) = t;
+        // Clamp step so a bad lidar update cannot teleport odom.
+        if (!freeze_map_odom_trans && options_.map_odom_max_step_m > 0.0) {
+            Vec3_t d = blended.block<3, 1>(0, 3) -
+                       map_odom_smooth_.block<3, 1>(0, 3);
+            const double n = d.norm();
+            if (n > options_.map_odom_max_step_m) {
+                d *= options_.map_odom_max_step_m / n;
+                blended.block<3, 1>(0, 3) =
+                    map_odom_smooth_.block<3, 1>(0, 3) + d;
+            }
+        }
+        map_odom_smooth_ = blended;
+        T_map_odom = map_odom_smooth_;
+    } else {
+        if (freeze_map_odom_trans) {
+            Mat44_t kept = T_map_odom_raw;
+            kept.block<3, 1>(0, 3) = map_odom_smooth_.block<3, 1>(0, 3);
+            map_odom_smooth_ = kept;
+            T_map_odom = kept;
+        } else {
+            map_odom_smooth_ = T_map_odom_raw;
+            T_map_odom = T_map_odom_raw;
+        }
+    }
+
+    if (freeze_map_odom_trans) {
+        AINFO_EVERY(40)
+            << "Atlas VizBridge: freeze map→odom translation (pure rot / "
+               "standstill)";
+    }
 
     automsgs::msgs::geometry_msgs::TransformStamped map_odom;
     *map_odom.mutable_header()->mutable_stamp() = stamp;
@@ -543,11 +639,25 @@ void VizBridge::PublishMapOdomTf(double timestamp_sec, const Mat44_t& T_wc) {
 }
 
 void VizBridge::PublishPoseAndTrajectory(double timestamp_sec,
-                                         const Mat44_t& T_wc) {
+                                         const Mat44_t& T_wc,
+                                         bool append_trajectory) {
+    // Same conversion as PublishMapOdomTf — keeps Path end == robot in map.
+    const Mat44_t T_map = ToRosMapBodyPose(T_wc, options_.body_flu_pose);
     automsgs::msgs::geometry_msgs::Pose pose;
-    Mat44ToPose(T_wc, &pose);
+    Mat44ToPose(T_map, &pose);
 
-    if (camera_pose_writer_) {
+    // Drop sky-drift samples from trajectory (OpenCV remap / ungated gravity).
+    const bool bad_z =
+        options_.body_flu_pose && std::abs(T_map(2, 3)) > 2.0;
+    if (bad_z) {
+        static int z_reject = 0;
+        if (++z_reject == 1 || z_reject % 50 == 0) {
+            AWARN << "Atlas VizBridge: rejecting traj pose |z|=" << T_map(2, 3)
+                  << " (planar LIO expect |z|<2)";
+        }
+    }
+
+    if (camera_pose_writer_ && !bad_z) {
         automsgs::msgs::nav_msgs::Odometry odom;
         SetHeader(odom.mutable_header(), timestamp_sec, options_.map_frame);
         odom.set_child_frame_id(options_.camera_frame);
@@ -559,12 +669,28 @@ void VizBridge::PublishPoseAndTrajectory(double timestamp_sec,
         camera_pose_writer_->Write(odom);
     }
 
-    if (!trajectory_writer_) {
+    if (bad_z || !append_trajectory || !trajectory_writer_) {
         return;
     }
     ++trajectory_frame_counter_;
     if (trajectory_frame_counter_ % options_.trajectory_stride != 0) {
         return;
+    }
+    // Reset path if jump is huge (stale OpenCV frames mixed in).
+    if (trajectory_path_.poses_size() > 0) {
+        const auto& last = trajectory_path_.poses(trajectory_path_.poses_size() - 1)
+                               .pose()
+                               .position();
+        const double dx = pose.position().x() - last.x();
+        const double dy = pose.position().y() - last.y();
+        const double dz = pose.position().z() - last.z();
+        const double step2 = dx * dx + dy * dy + dz * dz;
+        if (step2 > 25.0) {
+            trajectory_path_.clear_poses();
+            AWARN << "Atlas VizBridge: cleared trajectory after >5m jump";
+        }
+        // No reverse-step filter: it was for ZUPT zigzag and silently dropped
+        // legitimate path updates (logs showed skip ~4.8 m → green traj short).
     }
     auto* stamped = trajectory_path_.add_poses();
     SetHeader(stamped->mutable_header(), timestamp_sec, options_.map_frame);
@@ -937,7 +1063,8 @@ void VizBridge::PublishLoopEdges(double timestamp_sec) {
     last_loop_edge_count_ = static_cast<unsigned int>(drawn.size());
 }
 
-void VizBridge::PublishWorldPose(double timestamp_sec, const Mat44_t& T_wc) {
+void VizBridge::PublishWorldPose(double timestamp_sec, const Mat44_t& T_wc,
+                                 bool update_tf) {
     if (!running_) {
         return;
     }
@@ -945,10 +1072,17 @@ void VizBridge::PublishWorldPose(double timestamp_sec, const Mat44_t& T_wc) {
     if (!running_) {
         return;
     }
+    // Trajectory only at lidar/TF rate — IMU high-rate appends make a jagged path.
+    // High-rate still updates /atlas/camera_pose (odometry) when enabled.
     if (options_.publish_camera_pose || options_.publish_trajectory) {
-        PublishPoseAndTrajectory(timestamp_sec, T_wc);
+        const bool append_traj =
+            options_.publish_trajectory &&
+            (update_tf || !options_.trajectory_lidar_rate_only);
+        if (options_.publish_camera_pose || append_traj) {
+            PublishPoseAndTrajectory(timestamp_sec, T_wc, append_traj);
+        }
     }
-    if (options_.publish_map_odom_tf) {
+    if (update_tf && options_.publish_map_odom_tf) {
         PublishMapOdomTf(timestamp_sec, T_wc);
     }
 }
@@ -981,7 +1115,8 @@ void VizBridge::PublishFrame(double timestamp_sec,
 
     if (cam_pose_wc) {
         if (options_.publish_camera_pose || options_.publish_trajectory) {
-            PublishPoseAndTrajectory(timestamp_sec, *cam_pose_wc);
+            PublishPoseAndTrajectory(timestamp_sec, *cam_pose_wc,
+                                     /*append_trajectory=*/true);
         }
         if (options_.publish_map_odom_tf) {
             PublishMapOdomTf(timestamp_sec, *cam_pose_wc);

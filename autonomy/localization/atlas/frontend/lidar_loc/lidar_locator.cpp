@@ -105,13 +105,11 @@ bool LidarLocator::Align(const std::vector<Vec3_t>& points_body,
 
     std::vector<Vec3_t> map_pts;
     map_pts.reserve(50000);
-    for (const auto& kv : map_->tiles()) {
-        const auto& tile = kv.second;
-        if (!tile.loaded) {
-            continue;
-        }
-        map_pts.insert(map_pts.end(), tile.points.begin(), tile.points.end());
-    }
+    // Prefer static layer when dyn enabled; otherwise all points (legacy).
+    const auto layer = map_->options().enable_dyn_layer
+                           ? mapping::TileLayer::kStatic
+                           : mapping::TileLayer::kAll;
+    map_->CollectLoadedPoints(layer, &map_pts);
     if (map_pts.size() < options_.min_map_points) {
         return false;
     }
@@ -148,6 +146,59 @@ bool LidarLocator::Align(const std::vector<Vec3_t>& points_body,
     *T_wb_out = ndt.getFinalTransformation().cast<double>();
     return true;
 #endif
+}
+
+int LidarLocator::MaybeUpdateDynamic(double t_sec, const Mat44_t& T_wb,
+                                     const std::vector<Vec3_t>& points_body,
+                                     double fitness_score) {
+    if (!options_.update_dynamic_cloud || !map_ || points_body.empty()) {
+        return 0;
+    }
+    // PCL fitness: lower is better.
+    if (fitness_score > options_.update_max_fitness) {
+        return 0;
+    }
+    const Vec3_t pos = T_wb.block<3, 1>(0, 3);
+    if (have_last_dyn_upd_) {
+        const double dp = (pos - last_dyn_upd_pos_).norm();
+        const double dt = t_sec - last_dyn_upd_t_;
+        if (dp < options_.update_kf_dis_m &&
+            dt < options_.update_kf_time_s) {
+            return 0;
+        }
+    }
+
+    if (!map_->options().enable_dyn_layer) {
+        map_->options().enable_dyn_layer = true;
+        map_->options().dyn_policy = options_.dyn_policy;
+    }
+
+    const Mat33_t R = T_wb.block<3, 3>(0, 0);
+    const Vec3_t t = T_wb.block<3, 1>(0, 3);
+    std::vector<Vec3_t> world_dyn;
+    world_dyn.reserve(points_body.size() / 4);
+    for (const auto& p : points_body) {
+        if (!p.allFinite()) {
+            continue;
+        }
+        if (p.z() < options_.dyn_z_min || p.z() > options_.dyn_z_max) {
+            continue;
+        }
+        world_dyn.push_back(R * p + t);
+    }
+    if (world_dyn.empty()) {
+        return 0;
+    }
+
+    const int n = map_->UpdateDynamicCloud(world_dyn, t_sec, true);
+    if (n > 0) {
+        have_last_dyn_upd_ = true;
+        last_dyn_upd_t_ = t_sec;
+        last_dyn_upd_pos_ = pos;
+        VLOG(1) << "LidarLocator: dyn map +" << n
+                << " pts fitness=" << fitness_score;
+    }
+    return n;
 }
 
 }  // namespace frontend

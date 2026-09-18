@@ -136,7 +136,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         return FinalizeDisplay(
             std::make_unique<display::LaserScanDisplay>(config.channel), config);
       },
-      [] { return MakeDefault("LaserScan", "Scan", "/fake/scan"); });
+      [] { return MakeDefault("LaserScan", "Scan", ""); });
 
   registerType(
       "Marker",
@@ -144,7 +144,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         return FinalizeDisplay(std::make_unique<display::MarkerDisplay>(config.channel),
                                config);
       },
-      [] { return MakeDefault("Marker", "Marker", "/fake/marker"); });
+      [] { return MakeDefault("Marker", "Marker", ""); });
 
   registerType(
       "MarkerArray",
@@ -152,7 +152,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         return FinalizeDisplay(
             std::make_unique<display::MarkerArrayDisplay>(config.channel), config);
       },
-      [] { return MakeDefault("MarkerArray", "MarkerArray", "/fake/marker_array"); });
+      [] { return MakeDefault("MarkerArray", "MarkerArray", ""); });
 
   registerType(
       "StrataPoi",
@@ -261,7 +261,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         return FinalizeDisplay(std::make_unique<display::PathDisplay>(config.channel),
                                config);
       },
-      [] { return MakeDefault("Path", "Path", "/fake/path"); });
+      [] { return MakeDefault("Path", "Path", ""); });
 
   registerType(
       "Map",
@@ -269,7 +269,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         return FinalizeDisplay(std::make_unique<display::MapDisplay>(config.channel),
                                config);
       },
-      [] { return MakeDefault("Map", "Map", "/fake/occupancy_grid"); });
+      [] { return MakeDefault("Map", "Map", ""); });
 
   registerType(
       "GridMap",
@@ -285,7 +285,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         return FinalizeDisplay(
             std::make_unique<display::OdometryDisplay>(config.channel), config);
       },
-      [] { return MakeDefault("Odometry", "Odometry", "/fake/odom"); });
+      [] { return MakeDefault("Odometry", "Odometry", ""); });
 
   registerType(
       "PointCloud2",
@@ -293,7 +293,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         return FinalizeDisplay(
             std::make_unique<display::PointCloud2Display>(config.channel), config);
       },
-      [] { return MakeDefault("PointCloud2", "PointCloud2", "/fake/point_cloud2"); });
+      [] { return MakeDefault("PointCloud2", "PointCloud2", ""); });
 
   registerType(
       "PointCloud",
@@ -301,7 +301,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         return FinalizeDisplay(
             std::make_unique<display::PointCloud2Display>(config.channel), config);
       },
-      [] { return MakeDefault("PointCloud", "PointCloud", "/fake/point_cloud"); });
+      [] { return MakeDefault("PointCloud", "PointCloud", ""); });
 
   registerType(
       "Pose",
@@ -309,7 +309,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         return FinalizeDisplay(std::make_unique<display::PoseDisplay>(config.channel),
                                config);
       },
-      [] { return MakeDefault("Pose", "Pose", "/fake/pose"); });
+      [] { return MakeDefault("Pose", "Pose", ""); });
 
   registerType(
       "PoseArray",
@@ -317,7 +317,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         return FinalizeDisplay(
             std::make_unique<display::PoseArrayDisplay>(config.channel), config);
       },
-      [] { return MakeDefault("PoseArray", "PoseArray", "/fake/pose_array"); });
+      [] { return MakeDefault("PoseArray", "PoseArray", ""); });
 
   registerType(
       "Image",
@@ -325,7 +325,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         return FinalizeDisplay(std::make_unique<display::ImageDisplay>(config.channel),
                                config);
       },
-      [] { return MakeDefault("Image", "Camera", "/fake/image"); });
+      [] { return MakeDefault("Image", "Camera", ""); });
 
   registerType(
       "RobotModel",
@@ -348,8 +348,8 @@ void DisplayRegistry::registerBuiltinTypes() {
             std::make_unique<display::CameraDisplay>(config.channel), config);
       },
       []() {
-        auto config = MakeDefault("Camera", "Camera", "/fake/image");
-        config.properties["camera_info_channel"] = "/fake/camera_info";
+        auto config = MakeDefault("Camera", "Camera", "");
+        config.properties["camera_info_channel"] = "";
         return config;
       });
 
@@ -362,9 +362,9 @@ void DisplayRegistry::registerBuiltinTypes() {
       },
       []() {
         auto config =
-            MakeDefault("InteractiveMarkers", "InteractiveMarkers", "/fake/update");
-        config.properties["init_channel"] = "/fake/init";
-        config.properties["feedback_channel"] = "/fake/feedback";
+            MakeDefault("InteractiveMarkers", "InteractiveMarkers", "");
+        config.properties["init_channel"] = "";
+        config.properties["feedback_channel"] = "";
         return config;
       });
 
@@ -374,7 +374,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         return FinalizeDisplay(
             std::make_unique<display::WrenchDisplay>(config.channel), config);
       },
-      [] { return MakeDefault("Wrench", "Wrench", "/fake/wrench"); });
+      [] { return MakeDefault("Wrench", "Wrench", ""); });
 
   registerType(
       "Effort",
@@ -396,7 +396,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         return FinalizeDisplay(
             std::make_unique<display::GridCellsDisplay>(config.channel), config);
       },
-      [] { return MakeDefault("GridCells", "GridCells", "/fake/grid_cells"); });
+      [] { return MakeDefault("GridCells", "GridCells", ""); });
 
   registerType(
       "PointStamped",
@@ -405,7 +405,7 @@ void DisplayRegistry::registerBuiltinTypes() {
             std::make_unique<display::PointStampedDisplay>(config.channel),
             config);
       },
-      [] { return MakeDefault("PointStamped", "PointStamped", "/fake/point"); });
+      [] { return MakeDefault("PointStamped", "PointStamped", ""); });
 
   registerType(
       "Polygon",
@@ -413,7 +413,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         return FinalizeDisplay(
             std::make_unique<display::PolygonDisplay>(config.channel), config);
       },
-      [] { return MakeDefault("Polygon", "Polygon", "/fake/polygon"); });
+      [] { return MakeDefault("Polygon", "Polygon", ""); });
 
   registerType(
       "Range",
@@ -421,7 +421,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         return FinalizeDisplay(
             std::make_unique<display::RangeDisplay>(config.channel), config);
       },
-      [] { return MakeDefault("Range", "Range", "/fake/range"); });
+      [] { return MakeDefault("Range", "Range", ""); });
 
   registerType(
       "PoseWithCovariance",
@@ -432,7 +432,7 @@ void DisplayRegistry::registerBuiltinTypes() {
       },
       [] {
         return MakeDefault("PoseWithCovariance", "PoseWithCovariance",
-                           "/fake/pose_with_covariance");
+                           "");
       });
 
   registerType(
@@ -442,7 +442,7 @@ void DisplayRegistry::registerBuiltinTypes() {
             std::make_unique<display::TwistStampedDisplay>(config.channel),
             config);
       },
-      [] { return MakeDefault("TwistStamped", "TwistStamped", "/fake/twist"); });
+      [] { return MakeDefault("TwistStamped", "TwistStamped", ""); });
 
   registerType(
       "CameraInfo",
@@ -451,7 +451,7 @@ void DisplayRegistry::registerBuiltinTypes() {
             std::make_unique<display::CameraInfoDisplay>(config.channel),
             config);
       },
-      [] { return MakeDefault("CameraInfo", "CameraInfo", "/fake/camera_info"); });
+      [] { return MakeDefault("CameraInfo", "CameraInfo", ""); });
 
   registerType(
       "DepthCloud",
@@ -461,8 +461,8 @@ void DisplayRegistry::registerBuiltinTypes() {
             config);
       },
       []() {
-        auto config = MakeDefault("DepthCloud", "DepthCloud", "/fake/depth");
-        config.properties["camera_info_channel"] = "/fake/camera_info";
+        auto config = MakeDefault("DepthCloud", "DepthCloud", "");
+        config.properties["camera_info_channel"] = "";
         return config;
       });
 
@@ -473,7 +473,7 @@ void DisplayRegistry::registerBuiltinTypes() {
             std::make_unique<display::AccelStampedDisplay>(config.channel),
             config);
       },
-      [] { return MakeDefault("AccelStamped", "AccelStamped", "/fake/accel"); });
+      [] { return MakeDefault("AccelStamped", "AccelStamped", ""); });
 
   registerType(
       "Group",
@@ -488,7 +488,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         return FinalizeDisplay(std::make_unique<display::ImuDisplay>(config.channel),
                                config);
       },
-      [] { return MakeDefault("Imu", "Imu", "/fake/imu"); });
+      [] { return MakeDefault("Imu", "Imu", ""); });
 
   registerType(
       "Temperature",
@@ -504,7 +504,7 @@ void DisplayRegistry::registerBuiltinTypes() {
                 "min_value", 0.0, "max_value", 100.0),
             config);
       },
-      [] { return MakeDefault("Temperature", "Temperature", "/fake/temperature"); });
+      [] { return MakeDefault("Temperature", "Temperature", ""); });
 
   registerType(
       "Illuminance",
@@ -520,7 +520,7 @@ void DisplayRegistry::registerBuiltinTypes() {
                 "min_value", 0.0, "max_value", 1000.0),
             config);
       },
-      [] { return MakeDefault("Illuminance", "Illuminance", "/fake/illuminance"); });
+      [] { return MakeDefault("Illuminance", "Illuminance", ""); });
 
   registerType(
       "FluidPressure",
@@ -537,7 +537,7 @@ void DisplayRegistry::registerBuiltinTypes() {
             config);
       },
       [] {
-        return MakeDefault("FluidPressure", "FluidPressure", "/fake/fluid_pressure");
+        return MakeDefault("FluidPressure", "FluidPressure", "");
       });
 
   registerType(
@@ -556,7 +556,7 @@ void DisplayRegistry::registerBuiltinTypes() {
       },
       [] {
         return MakeDefault("RelativeHumidity", "RelativeHumidity",
-                           "/fake/relative_humidity");
+                           "");
       });
 }
 

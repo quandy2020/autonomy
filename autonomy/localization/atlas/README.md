@@ -195,34 +195,53 @@ flowchart TB
 
 | 项 | 状态 | 说明 |
 |----|------|------|
-| **P0.1** MapIncremental owns insert | ✅ | `IntegrateScan`；`FeedWithPose` 只建残差；`LidarBridge::SetMapIncremental` |
+| **P0.1** MapIncremental owns insert | ✅ | IEKF → 选择插入；**sync 失败整帧跳过**；spin/拒更时不写图；no-NN 限流 |
 | **Deskew** IMU 轨迹去畸变 | ✅ | `BuildImuPoses` + `UndistortByImuTrajectory`；无点时均匀 `t_rel` 近似；`<2` poses 回退 constant-ω |
 | **Calib** 相机畸变 + 外参 | ✅ | `util/calibration`：`CalibrationBundle` / `undistort.hpp`；profile `calibration_path` |
-| **IEKF** 解析 H | ✅ | `UpdateLidar` 迭代（`max_iekf_iter=4`）点面 H；信息形式 6×6 + Joseph；`PredictImu` Φ≈I+Fdt |
-| **IMUInit** 重力 + bg | ✅ | `ImuProcess::TryImuInit`（~20 帧均值）；`Eskf::State::gravity`；`LidarBridge` 未就绪前跳过 deskew / UpdateLidar |
-| **ESKF degeneracy** | ✅ | `UpdateLidar` 对 HTH 特征值投影不可观 DOF + `degeneracy_cov_inflation`；`predict_cov_inflation`；可选 **Anderson AA**（`enable_anderson`，默认 off）+ dx clip |
-| **Lidar loop** | ✅ | PCL 多分辨率 NDT + `LidarPoseGraph`；Optimize 后同步 KF `T_wb` → `LocalEstimator::Reset`（统一 State）；LIVO 另写 `map_publisher`；`LoopClosedFn` → DenseMap `RequestRebuild`；**不**并 vision LoopClosing / GlobalBA；`use_lidar_loop` 默认 false |
-| **G2P5** | ✅ | `io/g2p5` 全量对齐（显示/导航侧路）；`LidarBridge::SetG2P5` + 回环 `RedrawGlobalMap`；`maps.g2p5` |
+| **IEKF** 解析 H | ✅ | 点面 + 可选点到点；信息形式 6×6 + Joseph；步长 **0.5 m / 5°**（对齐 lightning） |
+| **IMUInit** 重力 + bg | ✅ | `ImuProcess::TryImuInit`（~20 帧均值）；`Eskf::State::gravity`；未就绪前跳过 deskew / UpdateLidar |
+| **ESKF degeneracy** | ✅ | HTH 特征值投影 + inflation；可选 Anderson AA（默认 off） |
+| **前端门控** | ✅ | 仅 **surf&lt;20** 跳过更新（lightning `obs.valid_`）；无 mean_res/spin 预拒；拒更后仍选插图 |
+| **Lidar loop** | ✅ | NDT + `LidarPoseGraph`；Optimize → **重建 IVox** + `SetPose`；LIO 用 `lio_full.yaml`（`use_lidar_loop: true`） |
+| **G2P5** | ✅ | `io/g2p5` 全量对齐；OccupancyGrid Writer + Shutdown `SaveOccupancy` |
 | **Preprocess** | ✅ | 扁平 `sensor/lidar/preprocess`；`LidarModel` + `t`/`time`/`offset_time`；无时间时可选 `ring` 合成 |
-| **IVox / TiledMap** | ✅ | Morton / **Hilbert** key 可选；面邻域 + capacity stats；`tiled_map` PCD+`index.yaml` Save/Load + `LoadOnPose`；`maps.tiled` |
-| **LidarLocator** | ✅ | `frontend/lidar_loc/` 骨架：先验 TiledMap + PCL NDT；`PoseExtrapolator`；`enable_lidar_loc=false` |
+| **IVox / TiledMap** | ✅ | Nearby6/18/26；**esti_plane_threshold**；线性 / PHC；LRU；`GetClosestPoints` |
+| **LidarLocator** | ✅ | 先验 TiledMap + PCL NDT；主环 `Align`；产品档 `lo_loc.yaml` |
+| **High-rate pose / TF** | ✅ | IMU 只推进外推器本地态；estimator PredictImu 仅 deskew；`body_flu_pose`；map→odom **雷达率** |
+| **ObsModel 上游** | ✅ | `--atlas_enable_lightning_upstream=true` → 点面+ICP 残差进 IEKF |
+| **LIO 轮速** | ✅ | `/odom` **仅 seed**（`apply_relative_odom=false`）；避免与雷达双重积分飞位 |
 
-Deferred（相对 lightning-lm，两边均无 Scan Context）：
-- 产品层：pclomp NDT-OMP 全量 LocSystem、vision GlobalBA 与雷达回环 merge、原生 Livox CustomMsg / RoboSense 驱动包；G2P5 OccupancyGrid 话题 Writer（现有 `ToROS`/`ToCV`）；TiledMap **动静态分层**（现单层 PCD + optional occupancy）
-- 说明：lightning 外参亦为固定；“外参入状态”两边都未做
+### Lightning 全产品对照（诚实）
+
+| Lightning 产品能力 | Atlas LIO | 差距 |
+|--------------------|-----------|------|
+| 前端 LIO（IMUInit / deskew / IEKF / IVox） | ✅ 单系统主链 | — |
+| 高周波姿 + map→odom | ✅ 雷达率 TF + IMU 轨迹 | 高周为本地外推，非 estimator 连续 Predict |
+| 雷达回环 + 位姿图 | ✅ `lio_full` / yaml 开关 | 无 Scan Context（lightning 亦无） |
+| G2P5 栅格 | ✅ 发布 + 落盘 | — |
+| 先验图 NDT 定位 | ✅ `lo_loc` + LidarLocator | 无 pclomp NDT-OMP |
+| TiledMap 动静态 TTL | ✅ DynPolicy API + index.yaml | profile 默认 `maps.tiled=false` |
+| Livox / RoboSense 原生 msg | ❌ preprocess 模型枚举有，无 CustomMsg IO | deferred |
+| GPS / 离在线评测架 | ❌ | deferred |
+| Vision GlobalBA ↔ 雷达回环 merge | ❌（故意：单系统不双 BA） | deferred |
+| 独立 Lightning 进程 / PoseFusion | ❌（产品决策：不合入） | N/A |
+
+Deferred（相对 lightning-lm）：
+- 产品层：pclomp NDT-OMP、vision GlobalBA↔雷达回环 merge、原生 Livox CustomMsg / RoboSense、离在线验证框架、GPS
+- 说明：lightning 外参亦为固定；“外参入状态”两边都未做；用 g2o 替代 miao
 
 ## Lightning-lm `core/` ↔ Atlas
 
 | Lightning | Atlas | 状态 |
 |-----------|-------|------|
-| `core/lio` | `frontend/{eskf,lio}` · `sensor/lidar/{preprocess,obs_model}` · `LocalEstimator` | 主链 partial（AA/clip ✅） |
-| `core/ivox3d` | `mapping/ivox`（Morton/Hilbert）· `MapIncremental` | partial（无完整 PHC 节点） |
-| `core/loop_closing` | `LidarLoopDetector` + `LidarPoseGraph`（统一经 LocalEstimator State + KF pose sync）；视觉 `LoopClosing` | partial（vision GlobalBA merge 仍 deferred） |
-| `core/maps` | `mapping/tiled_map` · `io/{cloud_map,dense_map_builder}` | partial（PCD+index 已接；无 dyn 层） |
+| `core/lio` | `frontend/{eskf,lio}` · `sensor/lidar/{preprocess,obs_model}` · `LocalEstimator` | 主链 ✅（AA/clip ✅；双重 PredictImu 已拆） |
+| `core/ivox3d` | `mapping/ivox`（Nearby + 线性/PHC）· `MapIncremental` | ✅（先 IEKF 再 IntegrateScan） |
+| `core/loop_closing` | `LidarLoopDetector` + `LidarPoseGraph`；视觉 `LoopClosing` | partial（vision GlobalBA merge 仍 deferred） |
+| `core/maps` | `mapping/tiled_map` · `io/{cloud_map,dense_map_builder}` | partial（PCD+index + DynPolicy） |
 | `core/system` | `system` · `pipeline` · `runtime_config` · ThreadPool | done（单系统） |
 | `core/miao` | `optimize/*`（g2o）· `graph_optimizer` · `lidar_pose_graph` | done（不引入 miao） |
-| `core/g2p5` | `io/g2p5` | done（显示/导航侧路；`G2P5` + `G2P5Projector` facade） |
-| `core/localization` | `frontend/lidar_loc`（LidarLocator + PoseExtrapolator 骨架） | skeleton（非第二套 SLAM） |
+| `core/g2p5` | `io/g2p5` | done（OccupancyGrid Writer + `SaveOccupancy`） |
+| `core/localization` | `frontend/lidar_loc`（LidarLocator + PoseExtrapolator） | product path（非第二套 SLAM） |
 
 ## 约定
 
@@ -234,6 +253,6 @@ Deferred（相对 lightning-lm，两边均无 Scan Context）：
 
 ## Runtime profiles
 
-`conf/atlas/profiles/`：`vo` `vio` `lo` `lio` `livo` `wio` `lwio` `lvwio`。
+`conf/atlas/profiles/`：`vo` `vio` `lo` `lio` `lio_full` `livo` `wio` `lwio` `lvwio` · `lo_loc`（先验图定位）。
 
 新代码请 include §2b 路径与 `Tracking` / `LocalMapping` / `LoopClosing` 别名。

@@ -86,6 +86,21 @@ public:
         bool publish_loop_edges = true;
         /** Publish map→odom on /tf (Cartographer-compatible tree). */
         bool publish_map_odom_tf = true;
+        //! LO/LIO: PublishWorldPose argument is T_wb (REP-103 FLU body), not
+        //! OpenCV camera T_wc. Skip optical-axis remapping.
+        bool body_flu_pose = false;
+        //! Append /atlas/trajectory only when PublishWorldPose(..., update_tf=true)
+        //! (lidar rate). IMU high-rate still updates odometry pose if enabled.
+        bool trajectory_lidar_rate_only = true;
+        //! Low-pass map→odom (0=raw each lidar, 1=frozen). Reduces TF jump.
+        double map_odom_smooth = 0.7;
+        //! Max translation change of map→odom per publish (m); 0=disabled.
+        double map_odom_max_step_m = 0.35;
+        //! If both map-body and odom-body |Δp| below this since last TF publish,
+        //! treat as pure rotation / standstill: freeze map→odom translation
+        //! (only update rotation). Stops |p|-lever-arm growth of map↔odom
+        //! when yaw estimates disagree while spinning in place.
+        double map_odom_freeze_trans_dp_m = 0.05;
 
         /** Optical-axis depth of the FOV pyramid (m). */
         double frustum_depth = 0.5;
@@ -113,10 +128,14 @@ public:
                       const std::shared_ptr<Mat44_t>& cam_pose_wc);
 
     /**
-     * Publish world pose + trajectory + map→odom TF (writers guarded).
+     * Publish world pose + trajectory (+ optional map→odom TF).
      * Usable when slam_ is nullptr (LO/LIO LocalEstimator path).
+     * @param update_tf  When true: also append trajectory (if enabled) and
+     *                   publish map→odom TF. When false (IMU high-rate): pose
+     *                   odometry only — no trajectory append (avoids zig-zag).
      */
-    void PublishWorldPose(double timestamp_sec, const Mat44_t& T_wc);
+    void PublishWorldPose(double timestamp_sec, const Mat44_t& T_wc,
+                          bool update_tf = true);
 
 private:
     using TimeMsg = automsgs::msgs::builtin_interfaces::Time;
@@ -124,7 +143,7 @@ private:
     TimeMsg ToStamp(double timestamp_sec) const;
     void SetHeader(automsgs::msgs::std_msgs::Header* header, double timestamp_sec,
                    const std::string& frame_id) const;
-    void Mat44ToPose(const Mat44_t& T_wc,
+    void Mat44ToPose(const Mat44_t& T_map,
                      automsgs::msgs::geometry_msgs::Pose* pose) const;
     bool CvMatToImageMsg(const cv::Mat& bgr, double timestamp_sec,
                          const std::string& frame_id,
@@ -132,7 +151,8 @@ private:
 
     void PublishTrackingImage(double timestamp_sec);
     void PublishFrameMatchImage(double timestamp_sec);
-    void PublishPoseAndTrajectory(double timestamp_sec, const Mat44_t& T_wc);
+    void PublishPoseAndTrajectory(double timestamp_sec, const Mat44_t& T_wc,
+                                  bool append_trajectory = true);
     void PublishMapOdomTf(double timestamp_sec, const Mat44_t& T_wc);
     void PublishCurrentFrustum(double timestamp_sec, const Mat44_t& T_wc);
     void PublishKeyframeFrustums(double timestamp_sec);
@@ -193,6 +213,11 @@ private:
     bool was_loop_ba_running_ = false;
     uint64_t map_odom_warn_count_ = 0;
     uint64_t map_odom_pub_count_ = 0;
+    bool map_odom_smooth_init_ = false;
+    Mat44_t map_odom_smooth_ = Mat44_t::Identity();
+    bool have_last_map_odom_bodies_ = false;
+    Vec3_t last_map_body_t_ = Vec3_t::Zero();
+    Vec3_t last_odom_body_t_ = Vec3_t::Zero();
 };
 
 }  // namespace atlas

@@ -26,8 +26,11 @@ class FakeSim:
     def laser_ranges(self, angle_min, angle_max, num_beams, range_max):
         return np.full((num_beams,), 5.0, dtype=np.float32)
 
-    def lidar_points(self, *args):
-        return np.zeros((0, 3), dtype=np.float32)
+    def lidar_points(self, *args, **kwargs):
+        return (
+            np.zeros((0, 3), dtype=np.float32),
+            np.zeros((0,), dtype=np.float32),
+        )
 
     def color_depth(self):
         color = np.zeros((4, 4, 3), dtype=np.uint8)

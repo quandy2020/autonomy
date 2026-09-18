@@ -16,7 +16,7 @@
 
 #pragma once
 
-//! sensor/lidar/obs_model — point-plane residuals for Atlas Joint BA / ESKF.
+//! sensor/lidar/obs_model — point-plane (+ optional P2P ICP) residuals.
 
 #include "autonomy/localization/atlas/estimate/lidar_residual_source.hpp"
 #include "autonomy/localization/atlas/mapping/ivox/ivox.hpp"
@@ -38,10 +38,21 @@ public:
         int max_residuals = 2000;
         bool enable_ground_prior = false;
         double ground_weight = 0.05;
+        //! lightning enable_icp_part: add point-to-point to IEKF.
+        bool enable_icp_part = true;
+        double plane_weight = 1.0;
+        double icp_weight = 0.1;
+        //! Max |e| for P2P (m); lightning rejects > 0.5.
+        double icp_max_distance = 0.5;
+        //! lightning: keep surf if ||p_body||^2 > 81 * pd2^2.
+        double srange_scale = 81.0;
     };
 
     ObsModel() = default;
     explicit ObsModel(Options options) : options_(std::move(options)) {}
+
+    void set_options(Options options) { options_ = std::move(options); }
+    [[nodiscard]] const Options& options() const { return options_; }
 
     estimate::LidarFactorBatch Build(
         const std::vector<Vec3_t>& points_body,

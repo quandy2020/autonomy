@@ -21,6 +21,8 @@
 #include <cstdlib>
 #include <csignal>
 #include <filesystem>
+#include <string>
+#include <vector>
 
 #include <glog/logging.h>
 
@@ -60,22 +62,39 @@ std::string ResolveWorkspacePath(const std::string& path) {
     }
 
     const fs::path relative(path);
-    if (fs::exists(relative)) {
-        return fs::weakly_canonical(relative).string();
+    // Short profile paths like conf/atlas/... live under autonomy/localization/.
+    std::vector<fs::path> candidates = {relative};
+    if (path.rfind("conf/", 0) == 0) {
+        candidates.emplace_back(fs::path("autonomy/localization") / relative);
+    }
+
+    auto try_exists = [](const fs::path& p) -> std::string {
+        if (fs::exists(p)) {
+            return fs::weakly_canonical(p).string();
+        }
+        return {};
+    };
+
+    for (const auto& cand : candidates) {
+        if (auto hit = try_exists(cand); !hit.empty()) {
+            return hit;
+        }
     }
 
     if (const char* dev_dir = std::getenv("AUTONOMY_DEV_DIR")) {
-        const fs::path candidate = fs::path(dev_dir) / relative;
-        if (fs::exists(candidate)) {
-            return fs::weakly_canonical(candidate).string();
+        for (const auto& cand : candidates) {
+            if (auto hit = try_exists(fs::path(dev_dir) / cand); !hit.empty()) {
+                return hit;
+            }
         }
     }
 
     fs::path cwd = fs::current_path();
     for (int depth = 0; depth < 10; ++depth) {
-        const fs::path candidate = cwd / relative;
-        if (fs::exists(candidate)) {
-            return fs::weakly_canonical(candidate).string();
+        for (const auto& cand : candidates) {
+            if (auto hit = try_exists(cwd / cand); !hit.empty()) {
+                return hit;
+            }
         }
         if (!cwd.has_parent_path() || cwd == cwd.root_path()) {
             break;

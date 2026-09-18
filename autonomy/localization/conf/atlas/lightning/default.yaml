@@ -1,5 +1,6 @@
 # Default lidar preprocess / IVox params for sensor/lidar.
 # Referenced via RuntimeConfig.lidar_config_path or profile lightning_yaml.
+# VO/LIVO: keep use_lidar_loop false. LIO profile uses lightning/lio_full.yaml.
 
 preprocess:
   lidar_type: generic   # generic | velodyne | ouster | livox
@@ -10,9 +11,7 @@ preprocess:
   max_points: 20000
   use_point_time: false
 
-# Geometric lidar loop (LO/LIO LocalEstimator path). Default off.
-# Set true to close loops via NDT + LidarPoseGraph → estimator Reset
-# (and KF T_wb sync). Does not merge into vision LoopClosing / GlobalBA.
+# Geometric lidar loop (LO/LIO LocalEstimator path). Default off for VO/LIVO.
 use_lidar_loop: false
 lidar_loop:
   candidate_radius_m: 15.0
@@ -20,14 +19,42 @@ lidar_loop:
   inlier_ratio_thresh: 0.35
   mean_residual_thresh: 0.25
 
+# LIO global map cloud from IVox (PointCloud2, frame=map).
+publish_global_cloud: true
+global_cloud_topic: /atlas/cloud_map
+global_cloud_frame: map
+global_cloud_max_points: 200000
+global_cloud_period_sec: 0.5
+
+# High-rate pose: blend toward last lidar (reduces standstill TF spin).
+smooth_factor: 0.5
+pose_extrapolator:
+  smooth_factor: 0.5
+  use_imu_predict: true
+  gyro_static_thresh: 0.02
+
 ivox:
   resolution: 0.5
   max_points_per_voxel: 20
+  max_voxels: 200000
   neighbor_search: 1
   min_plane_points: 5
+  nearby_type: nearby6
+  node_kind: linear
+  phc_order: 6
+  knn_max_num: 5
+  knn_max_range: 5.0
+  # lightning ESTI_PLANE_THRESHOLD — reject non-planar neighbors
+  esti_plane_threshold: 0.1
   use_morton_key: false
+  use_hilbert_key: false
 
 obs_model:
   max_distance: 0.5
   max_residuals: 2000
   enable_ground_prior: false
+  enable_icp_part: true
+  plane_weight: 1.0
+  icp_weight: 0.1
+  icp_max_distance: 0.5
+  srange_scale: 81.0

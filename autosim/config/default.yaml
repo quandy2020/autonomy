@@ -34,6 +34,10 @@ habitat:
     urdf: urdf/turtlebot3_burger.urdf   # empty = no URDF; path relative to autosim/
     max_linear: 0.5
     max_angular: 1.0
+    # First-order twist dynamics (m/s², rad/s²). 0 = unlimited (snap).
+    max_linear_accel: 0.8
+    max_linear_decel: 1.2
+    max_angular_accel: 2.0
     wheel_separation: 0.55  # m; used for odom yaw-noise scale
     map_frame: map
     base_link_height: 0.01   # odom→base_link z
@@ -89,6 +93,7 @@ habitat:
       range_min: 0.1
       range_max: 30.0
       noise: 0.015         # Gaussian σ on radial range (m)
+      motion_compensate: true  # deskew spin into scan-end frame
 
     camera:
       enabled: true
@@ -114,9 +119,12 @@ habitat:
       channel: /imu
       frame: imu_link
       rate_hz: 200.0
+      # Habitat has no physics IMU. Gravity is composed into REP-145 specific
+      # force for a level robot (f_z = a_z + g). Set 0 for kinematic-only.
+      gravity: 9.80665
       noise:
         gyro: 0.01         # Gaussian σ on ω_z (rad/s)
-        accel: 0.05        # Gaussian σ on a_x / a_y (m/s²)
+        accel: 0.05        # Gaussian σ on specific-force (m/s²)
         gyro_bias: 0.001   # constant bias draw at start (rad/s)
         accel_bias: 0.01   # constant bias draw at start (m/s²)
 

@@ -16,7 +16,7 @@
 
 #include "autonomy/localization/atlas/sensor/sensor_suite.hpp"
 
-#include "glog/logging.h"
+#include "autolink/common/log.hpp"
 
 namespace autonomy::localization::atlas {
 namespace sensor {
@@ -28,7 +28,7 @@ bool SensorSuite::Start() {
         return true;
     }
 
-    LOG(INFO) << "SensorSuite: modality=" << common::ModalityName(config_.modality)
+    AINFO << "SensorSuite: modality=" << common::ModalityName(config_.modality)
               << " vision=" << config_.flags.use_vision
               << " lidar=" << config_.flags.use_lidar
               << " imu=" << config_.flags.use_imu
@@ -40,7 +40,7 @@ bool SensorSuite::Start() {
         o.topic = config_.topics.imu;
         imu_ = std::make_unique<ImuSensor>(o);
         if (!imu_->Start()) {
-            LOG(ERROR) << "SensorSuite: ImuSensor::Start failed";
+            AERROR << "SensorSuite: ImuSensor::Start failed";
             return false;
         }
     }
@@ -51,7 +51,7 @@ bool SensorSuite::Start() {
         o.depth_topic = config_.topics.depth;
         camera_ = std::make_unique<CameraSensor>(o);
         if (!camera_->Start()) {
-            LOG(ERROR) << "SensorSuite: CameraSensor::Start failed";
+            AERROR << "SensorSuite: CameraSensor::Start failed";
             return false;
         }
     }
@@ -65,7 +65,7 @@ bool SensorSuite::Start() {
         o.enable_ground_prior = false;
         lidar_ = std::make_unique<LidarSensor>(o);
         if (!lidar_->Start()) {
-            LOG(ERROR) << "SensorSuite: LidarSensor::Start failed";
+            AERROR << "SensorSuite: LidarSensor::Start failed";
             return false;
         }
     }
@@ -75,7 +75,7 @@ bool SensorSuite::Start() {
         o.topic = config_.topics.odom;
         odom_ = std::make_unique<OdomSensor>(o);
         if (!odom_->Start()) {
-            LOG(ERROR) << "SensorSuite: OdomSensor::Start failed";
+            AERROR << "SensorSuite: OdomSensor::Start failed";
             return false;
         }
     }
@@ -105,7 +105,7 @@ void SensorSuite::Shutdown() {
         imu_.reset();
     }
     running_ = false;
-    LOG(INFO) << "SensorSuite: shutdown";
+    AINFO << "SensorSuite: shutdown";
 }
 
 }  // namespace sensor

@@ -15,12 +15,14 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QShowEvent>
 #include <QToolButton>
 #include <QVBoxLayout>
 
 #include <string>
 
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/commsgs/message_type_utils.hpp"
 #include "autoviz/display/image_utils.hpp"
 #include "autoviz/ui/panel_settings_styles.hpp"
 
@@ -51,9 +53,12 @@ ImageSettingsWidget::ImageSettingsWidget(common::VisualizationManager* manager,
   auto* general_body = new QWidget(this);
   auto* general_form = new QFormLayout(general_body);
   ApplyCompactForm(general_form);
-  topic_combo_ = new QComboBox(general_body);
-  topic_combo_->setEditable(true);
-  general_form->addRow(tr("Topic"), topic_combo_);
+  channel_combo_ = new QComboBox(general_body);
+  channel_combo_->setEditable(true);
+  channel_combo_->setInsertPolicy(QComboBox::NoInsert);
+  channel_combo_->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+  channel_combo_->setMinimumContentsLength(24);
+  general_form->addRow(tr("channel"), channel_combo_);
   calibration_combo_ = new QComboBox(general_body);
   calibration_combo_->setEditable(true);
   calibration_combo_->addItem(QString(), QString());
@@ -135,7 +140,7 @@ ImageSettingsWidget::ImageSettingsWidget(common::VisualizationManager* manager,
 
   outer->addStretch();
 
-  connect(topic_combo_, &QComboBox::currentTextChanged, this,
+  connect(channel_combo_, &QComboBox::currentTextChanged, this,
           &ImageSettingsWidget::emitConfigChanged);
   connect(calibration_combo_, &QComboBox::currentTextChanged, this,
           &ImageSettingsWidget::emitConfigChanged);
@@ -170,14 +175,26 @@ ImageSettingsWidget::ImageSettingsWidget(common::VisualizationManager* manager,
 
 QStringList ImageSettingsWidget::imageChannels() const {
   QStringList channels;
-  if (manager_ == nullptr) {
-    return channels;
+  if (manager_ != nullptr) {
+    for (const integration::ChannelInfo& info : manager_->channels()) {
+      if (display::isImageMessageType(info.message_type)) {
+        channels.push_back(QString::fromStdString(info.channel_name));
+      }
+    }
   }
-  for (const integration::ChannelInfo& info : manager_->channels()) {
-    if (display::isImageMessageType(info.message_type)) {
+  // Keep the active channel selectable even if discovery type is missing.
+  if (!config_.image_channel.isEmpty() &&
+      channels.indexOf(config_.image_channel) < 0) {
+    channels.push_front(config_.image_channel);
+  }
+  // If type filter matched nothing, list all live channels so the dropdown
+  // still works (non-image types fail at subscribe time).
+  if (channels.isEmpty() && manager_ != nullptr) {
+    for (const integration::ChannelInfo& info : manager_->channels()) {
       channels.push_back(QString::fromStdString(info.channel_name));
     }
   }
+  channels.removeDuplicates();
   channels.sort(Qt::CaseInsensitive);
   return channels;
 }
@@ -188,11 +205,16 @@ QStringList ImageSettingsWidget::calibrationChannels() const {
     return channels;
   }
   for (const integration::ChannelInfo& info : manager_->channels()) {
-    if (info.message_type == "automsgs.msgs.sensor_msgs.CameraInfo" ||
-        info.message_type == "sensor_msgs/CameraInfo") {
+    if (commsgs::MessageTypesCompatible(
+            info.message_type, "automsgs.msgs.sensor_msgs.CameraInfo")) {
       channels.push_back(QString::fromStdString(info.channel_name));
     }
   }
+  if (!config_.calibration_channel.isEmpty() &&
+      channels.indexOf(config_.calibration_channel) < 0) {
+    channels.push_front(config_.calibration_channel);
+  }
+  channels.removeDuplicates();
   channels.sort(Qt::CaseInsensitive);
   return channels;
 }
@@ -228,25 +250,32 @@ QStringList ImageSettingsWidget::markerChannels() const {
 }
 
 void ImageSettingsWidget::refreshChannelLists() {
-  const QString current_topic = topic_combo_->currentText();
+  const QString current_channel = channel_combo_->currentText().trimmed().isEmpty()
+                                      ? config_.image_channel
+                                      : channel_combo_->currentText();
   const QString current_calibration = calibration_combo_->currentText();
-  topic_combo_->blockSignals(true);
+  channel_combo_->blockSignals(true);
   calibration_combo_->blockSignals(true);
-  topic_combo_->clear();
+  channel_combo_->clear();
   calibration_combo_->clear();
   calibration_combo_->addItem(QString(), QString());
   for (const QString& channel : imageChannels()) {
-    topic_combo_->addItem(channel);
+    channel_combo_->addItem(channel);
   }
   for (const QString& channel : calibrationChannels()) {
     calibration_combo_->addItem(channel);
   }
-  topic_combo_->setCurrentText(current_topic);
+  channel_combo_->setCurrentText(current_channel);
   calibration_combo_->setCurrentText(current_calibration);
-  topic_combo_->blockSignals(false);
+  channel_combo_->blockSignals(false);
   calibration_combo_->blockSignals(false);
   rebuildAnnotationSection();
   rebuildMarkerSection();
+}
+
+void ImageSettingsWidget::showEvent(QShowEvent* event) {
+  QWidget::showEvent(event);
+  refreshChannelLists();
 }
 
 void ImageSettingsWidget::rebuildMarkerSection() {
@@ -346,7 +375,7 @@ void ImageSettingsWidget::rebuildAnnotationSection() {
 ImagePanelConfig ImageSettingsWidget::config() const {
   ImagePanelConfig out = config_;
   out.title = title_edit_->text().trimmed();
-  out.image_channel = topic_combo_->currentText().trimmed();
+  out.image_channel = channel_combo_->currentText().trimmed();
   out.calibration_channel = calibration_combo_->currentText().trimmed();
   out.strict_time_sync = strict_sync_check_->isChecked();
   out.enable_undistort = undistort_check_->isChecked();
@@ -407,7 +436,7 @@ ImagePanelConfig ImageSettingsWidget::config() const {
 void ImageSettingsWidget::setConfig(const ImagePanelConfig& config) {
   config_ = config;
   title_edit_->setText(config_.title);
-  topic_combo_->setCurrentText(config_.image_channel);
+  channel_combo_->setCurrentText(config_.image_channel);
   calibration_combo_->setCurrentText(config_.calibration_channel);
   strict_sync_check_->setChecked(config_.strict_time_sync);
   undistort_check_->setChecked(config_.enable_undistort);

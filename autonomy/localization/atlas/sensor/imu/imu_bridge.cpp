@@ -18,8 +18,9 @@
 
 #include "autonomy/localization/atlas/system.hpp"
 #include "autonomy/localization/atlas/type.hpp"
+#include "autonomy/localization/atlas/viz_bridge.hpp"
 
-#include "glog/logging.h"
+#include "autolink/common/log.hpp"
 
 namespace autonomy::localization::atlas {
 namespace {
@@ -45,11 +46,12 @@ ImuBridge::~ImuBridge() { Stop(); }
 
 bool ImuBridge::Start(const std::shared_ptr<autolink::Node>& node) {
     if (!node) {
-        LOG(ERROR) << "ImuBridge: missing node";
+        AERROR << "ImuBridge: missing node";
         return false;
     }
-    if (!imu_ && !estimator_ && !slam_) {
-        LOG(ERROR) << "ImuBridge: no ImuSensor, LocalEstimator, or system";
+    if (!imu_ && !estimator_ && !slam_ && !pose_extrapolator_) {
+        AERROR << "ImuBridge: no ImuSensor, LocalEstimator, PoseExtrapolator, "
+                      "or system";
         return false;
     }
     node_ = node;
@@ -60,7 +62,7 @@ bool ImuBridge::Start(const std::shared_ptr<autolink::Node>& node) {
         [self](const std::shared_ptr<automsgs::msgs::sensor_msgs::Imu>& msg) {
             self->OnImu(msg);
         });
-    LOG(INFO) << "ImuBridge: subscribed Imu " << options_.topic;
+    AINFO << "ImuBridge: subscribed Imu " << options_.topic;
     return true;
 }
 
@@ -90,19 +92,34 @@ void ImuBridge::OnImu(
         imu_->Feed(sample);
     }
 
-    if (estimator_) {
-        if (has_last_imu_t_) {
-            const double dt = t - last_imu_t_;
-            if (dt > 0.0) {
-                estimator_->PredictImu(dt, gyro, acc);
+    if (has_last_imu_t_) {
+        const double dt = t - last_imu_t_;
+        if (dt > 0.0) {
+            Vec3_t g = gyro;
+            if (g.norm() < options_.gyro_static_thresh) {
+                g.setZero();
+            }
+            // High-rate viz only via PoseExtrapolator (local T_pred_).
+            // Estimator PredictImu is owned by lidar BuildImuPoses — do not
+            // call estimator_ here (double integrate + standstill spin).
+            if (pose_extrapolator_ && pose_extrapolator_->initialized()) {
+                pose_extrapolator_->PredictImu(dt, g, acc);
             }
         }
-        last_imu_t_ = t;
-        has_last_imu_t_ = true;
     }
+    last_imu_t_ = t;
+    has_last_imu_t_ = true;
 
     if (slam_ && slam_->imu_is_enabled()) {
         slam_->feed_imu(t, acc, gyro);
+    }
+
+    // High-rate pose stream; map→odom TF stays lidar-rate by default.
+    // body_flu VizBridge expects T_wb (PoseAt), not T_cw.
+    if (viz_ && options_.publish_high_rate_pose && pose_extrapolator_ &&
+        pose_extrapolator_->initialized()) {
+        viz_->PublishWorldPose(t, pose_extrapolator_->PoseAt(t),
+                               options_.publish_high_rate_tf);
     }
 }
 

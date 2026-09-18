@@ -18,13 +18,14 @@
 
 //! mapping/map_incremental — Mapping owns the live IVox; LidarSensor borrows
 //! a non-owning pointer via LidarSensor::set_ivox(&MapIncremental::ivox()).
-//! Insert path: LidarBridge → IntegrateScan (not LidarSensor::FeedWithPose).
+//! Insert path: LidarBridge → UpdateLidar → IntegrateScan (corrected T_wb).
 //! Optional TiledMap* mirrors world points for chunked PCD persistence.
 
 #include "autonomy/localization/atlas/mapping/ivox/ivox.hpp"
 #include "autonomy/localization/atlas/mapping/tiled_map.hpp"
 #include "autonomy/localization/atlas/type.hpp"
 
+#include <cmath>
 #include <vector>
 
 namespace autonomy::localization::atlas {
@@ -32,9 +33,25 @@ namespace mapping {
 
 class MapIncremental {
 public:
+    struct Options {
+        //! lightning MapIncremental mid-point density gate (default on).
+        bool selective_insert = true;
+        //! Neighbors required before density veto (lightning NUM_MATCH_POINTS).
+        int num_match_points = 5;
+        //! Cap points added when no neighbor found (new FOV flood during spin).
+        int max_insert_no_nn = 600;
+        //! Hard cap on inserted points per scan.
+        int max_insert_per_scan = 2500;
+    };
+
     MapIncremental() = default;
     explicit MapIncremental(mapping::IVox::Options opts)
         : ivox_(opts) {}
+    MapIncremental(mapping::IVox::Options opts, Options map_opts)
+        : ivox_(opts), options_(std::move(map_opts)) {}
+
+    void set_options(Options options) { options_ = std::move(options); }
+    [[nodiscard]] const Options& options() const { return options_; }
 
     void set_tiled_map(TiledMap* tiled) { tiled_map_ = tiled; }
     TiledMap* tiled_map() { return tiled_map_; }
@@ -48,24 +65,101 @@ public:
     }
 
     //! Transform body points to world and insert into IVox (+ optional TiledMap).
+    //! When selective_insert: skip points whose voxel is already denser than the
+    //! candidate (lightning LaserMapping::MapIncremental).
     int IntegrateScan(const Mat44_t& T_wb, const std::vector<Vec3_t>& points_body) {
         if (points_body.empty()) {
             return 0;
         }
         const Mat33_t R_wb = T_wb.block<3, 3>(0, 0);
         const Vec3_t t_wb = T_wb.block<3, 1>(0, 3);
+        const double res = std::max(1e-3, ivox_.options().resolution);
+        const int knn = std::max(1, options_.num_match_points);
+
         std::vector<Vec3_t> points_world;
         points_world.reserve(points_body.size());
+        int no_nn = 0;
+        const int max_no_nn = std::max(0, options_.max_insert_no_nn);
+        const int max_scan = std::max(1, options_.max_insert_per_scan);
+
         for (const auto& p : points_body) {
-            if (p.allFinite()) {
-                points_world.push_back(R_wb * p + t_wb);
+            if (static_cast<int>(points_world.size()) >= max_scan) {
+                break;
+            }
+            if (!p.allFinite()) {
+                continue;
+            }
+            const Vec3_t pw = R_wb * p + t_wb;
+            if (!options_.selective_insert || ivox_.num_points() == 0) {
+                points_world.push_back(pw);
+                continue;
+            }
+
+            std::vector<Vec3_t> near;
+            if (!ivox_.GetClosestPoints(pw, &near, knn, 5.0 * res) ||
+                near.empty()) {
+                if (no_nn < max_no_nn) {
+                    points_world.push_back(pw);
+                    ++no_nn;
+                }
+                continue;
+            }
+
+            // Voxel center (lightning mid-point).
+            const Vec3_t center =
+                ((pw.array() / res).floor() + 0.5) * res;
+            const Vec3_t dis = near[0] - center;
+            if (std::fabs(dis.x()) > 0.5 * res &&
+                std::fabs(dis.y()) > 0.5 * res &&
+                std::fabs(dis.z()) > 0.5 * res) {
+                // Nearest is far from center → always add (no downsample).
+                points_world.push_back(pw);
+                continue;
+            }
+
+            bool need_add = true;
+            const double dist = (pw - center).squaredNorm();
+            if (static_cast<int>(near.size()) >= knn) {
+                for (int i = 0; i < knn; ++i) {
+                    if ((near[static_cast<std::size_t>(i)] - center)
+                            .squaredNorm() < dist + 1e-12) {
+                        need_add = false;
+                        break;
+                    }
+                }
+            }
+            if (need_add) {
+                points_world.push_back(pw);
             }
         }
+
         ivox_.InsertWorldPoints(points_world);
         if (tiled_map_) {
             tiled_map_->InsertWorldPoints(points_world);
         }
         return static_cast<int>(points_world.size());
+    }
+
+    //! Clear live map and rebuild from keyframe body clouds at corrected T_wb
+    //! (call after lidar pose-graph Optimize).
+    template <typename KeyframeRange>
+    int RebuildFromKeyframes(const KeyframeRange& keyframes) {
+        Clear();
+        // KF clouds are already downsampled; skip selective so rebuild is dense.
+        const bool prev_sel = options_.selective_insert;
+        const int prev_scan = options_.max_insert_per_scan;
+        const int prev_nn = options_.max_insert_no_nn;
+        options_.selective_insert = false;
+        options_.max_insert_per_scan = 100000;
+        options_.max_insert_no_nn = 100000;
+        int n = 0;
+        for (const auto& kf : keyframes) {
+            n += IntegrateScan(kf.T_wb, kf.cloud_body);
+        }
+        options_.selective_insert = prev_sel;
+        options_.max_insert_per_scan = prev_scan;
+        options_.max_insert_no_nn = prev_nn;
+        return n;
     }
 
     void Clear() {
@@ -81,6 +175,7 @@ public:
 private:
     //! Canonical live local lidar map (owned here, not by LidarSensor).
     mapping::IVox ivox_;
+    Options options_;
     //! Optional chunked map (owned by Pipeline); non-owning.
     TiledMap* tiled_map_ = nullptr;
 };

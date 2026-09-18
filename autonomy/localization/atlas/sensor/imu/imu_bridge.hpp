@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "autonomy/localization/atlas/frontend/lidar_loc/pose_extrapolator.hpp"
 #include "autonomy/localization/atlas/frontend/local_estimator.hpp"
 #include "autonomy/localization/atlas/sensor/imu/imu_sensor.hpp"
 
@@ -29,15 +30,23 @@
 namespace autonomy::localization::atlas {
 
 class system;
+class VizBridge;
 
 /**
  * Autolink sensor_msgs/Imu → ImuSensor (+ optional LocalEstimator PredictImu /
- * system::feed_imu).
+ * PoseExtrapolator / system::feed_imu). Optional VizBridge publish at IMU rate.
  */
 class ImuBridge {
 public:
     struct Options {
         std::string topic = "/imu";
+        //! High-rate pose/trajectory publish (requires PoseExtrapolator init).
+        bool publish_high_rate_pose = true;
+        //! If true, also refresh map→odom TF every IMU (causes standstill spin
+        //! with noisy gyro). Lightning-style: false — TF at lidar rate only.
+        bool publish_high_rate_tf = false;
+        //! |gyro| below this (rad/s) zeroed before PredictImu.
+        double gyro_static_thresh = 0.02;
     };
 
     ImuBridge(sensor::ImuSensor* imu, Options options,
@@ -48,6 +57,11 @@ public:
     ImuBridge(const ImuBridge&) = delete;
     ImuBridge& operator=(const ImuBridge&) = delete;
 
+    void SetVizBridge(VizBridge* viz) { viz_ = viz; }
+    void SetPoseExtrapolator(frontend::PoseExtrapolator* extrapolator) {
+        pose_extrapolator_ = extrapolator;
+    }
+
     bool Start(const std::shared_ptr<autolink::Node>& node);
     void Stop();
 
@@ -56,6 +70,8 @@ private:
 
     sensor::ImuSensor* imu_ = nullptr;
     frontend::LocalEstimator* estimator_ = nullptr;
+    frontend::PoseExtrapolator* pose_extrapolator_ = nullptr;
+    VizBridge* viz_ = nullptr;
     system* slam_ = nullptr;
     Options options_;
     std::shared_ptr<autolink::Node> node_;

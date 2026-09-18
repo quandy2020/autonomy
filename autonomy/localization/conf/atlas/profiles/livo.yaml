@@ -3,7 +3,7 @@
 
 modality: livo
 
-calibration_path: conf/atlas/calibration/default.yaml
+calibration_path: autonomy/localization/conf/atlas/calibration/default.yaml
 
 sensors:
   imu:    { enabled: true,  topic: /imu }

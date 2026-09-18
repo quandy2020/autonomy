@@ -356,6 +356,10 @@ bool LidarLoopDetector::Detect(const Mat44_t& T_wb,
 
     const Vec3_t tw = T_wb.block<3, 1>(0, 3);
     const std::size_t n = keyframes_.size();
+    if (static_cast<int>(n) < options_.min_keyframes) {
+        return false;
+    }
+
     const std::size_t skip =
         static_cast<std::size_t>(std::max(0, options_.skip_recent_n));
     const std::size_t end = (n > skip) ? (n - skip) : 0;
@@ -387,7 +391,15 @@ bool LidarLoopDetector::Detect(const Mat44_t& T_wb,
                 if (AlignNdt(query, tgt_world, T_wb, &T_aligned,
                              &ndt_score) &&
                     ndt_score > options_.ndt_score_thresh) {
-                    accepted = true;
+                    // Always ICP-validate NDT (score alone can be false-positive).
+                    Mat44_t T_icp = T_aligned;
+                    if (AlignPointToPlane(query, tgt_world, T_aligned, &T_icp,
+                                          &inlier_ratio, &mean_res) &&
+                        inlier_ratio >= options_.inlier_ratio_thresh &&
+                        mean_res <= options_.mean_residual_thresh) {
+                        T_aligned = T_icp;
+                        accepted = true;
+                    }
                 }
             } catch (...) {
                 accepted = false;
@@ -395,6 +407,11 @@ bool LidarLoopDetector::Detect(const Mat44_t& T_wb,
         }
 
         if (!accepted) {
+            // ICP-only fallback is off by default: corridor / sim geometry
+            // often yields inlier≥0.4 with a wrong SE3 → SetPose + IVox wipe.
+            if (!options_.allow_icp_only) {
+                continue;
+            }
             if (!AlignPointToPlane(query, tgt_world, T_wb, &T_aligned,
                                    &inlier_ratio, &mean_res)) {
                 continue;

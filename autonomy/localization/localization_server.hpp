@@ -27,10 +27,11 @@
 namespace autonomy {
 namespace localization {
 
-/** Process-level backend family (Cartographer vs Atlas multimodal). */
+/** Process-level backend family (Cartographer vs Atlas vs standalone lightning). */
 enum class LocalizationBackend {
     kCartographer = 0,
     kAtlas = 1,
+    kLightning = 2,
 };
 
 /**
@@ -65,6 +66,12 @@ struct LocalizationOptions {
     bool atlas_enable_lightning_upstream = false;
     //! Optional conf/atlas/profiles/*.yaml — overrides modality + topics.
     std::string atlas_runtime_profile_path;
+
+    // --- Standalone lightning LIO ---
+    std::string lightning_config_path;
+    std::string lightning_imu_topic = "/imu";
+    std::string lightning_lidar_topic = "/points";
+    std::string lightning_map_save_path;
 };
 
 LocalizationBackend ParseLocalizationBackend(const std::string& name);
@@ -80,7 +87,7 @@ atlas::AtlasNodeFlags AtlasFlagsFromOptions(const LocalizationOptions& options);
 
 /**
  * Process-level facade that selects and owns one SLAM backend
- * (Cartographer lidar SLAM or Atlas / OpenVSLAM).
+ * (Cartographer, Atlas / OpenVSLAM, or standalone lightning LIO).
  *
  * Lifecycle (aligned with ControllerServer):
  *   Start()  → initialize selected backend (non-blocking)
@@ -113,6 +120,7 @@ private:
     class Backend;
     class CartographerBackend;
     class AtlasBackend;
+    class LightningBackend;
 
     static std::unique_ptr<Backend> CreateBackend(
         const LocalizationOptions& options);

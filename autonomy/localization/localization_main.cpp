@@ -19,16 +19,16 @@
 #include <string>
 
 #include <gflags/gflags.h>
-#include <glog/logging.h>
 
 #include "autolink/autolink.hpp"
+#include "autolink/common/log.hpp"
 #include "autonomy/common/gflags.hpp"
 #include "autonomy/localization/atlas/util/modality.hpp"
 #include "autonomy/localization/cartographer/node/node_utils.hpp"
 #include "autonomy/localization/localization_server.hpp"
 
 DEFINE_string(localization_mode, "cartographer",
-              "Backend/modality: cartographer | vo|vio|lo|lio|livo|wio|lwio|lvwio|atlas.");
+              "Backend/modality: cartographer | lightning | vo|vio|lo|lio|livo|wio|lwio|lvwio|atlas.");
 
 // Cartographer
 DEFINE_string(load_state_filename, "",
@@ -70,6 +70,17 @@ DEFINE_bool(atlas_enable_lightning_upstream, false,
 DEFINE_string(atlas_runtime_profile, "",
               "Atlas: optional conf/atlas/profiles/*.yaml (modality + sensors).");
 
+// Standalone lightning LIO
+DEFINE_string(lightning_config,
+              "autonomy/localization/conf/lightning/autosim.yaml",
+              "Lightning: LIO YAML (fasterlio / g2p5 / loop_closing).");
+DEFINE_string(lightning_imu_topic, "/imu",
+              "Lightning: IMU topic.");
+DEFINE_string(lightning_lidar_topic, "/points",
+              "Lightning: lidar PointCloud2 topic.");
+DEFINE_string(lightning_map_save, "",
+              "Lightning: save map directory on shutdown.");
+
 namespace autonomy::localization {
 namespace {
 
@@ -109,6 +120,10 @@ LocalizationOptions BuildOptionsFromFlags() {
     options.atlas_enable_lightning_upstream =
         FLAGS_atlas_enable_lightning_upstream;
     options.atlas_runtime_profile_path = FLAGS_atlas_runtime_profile;
+    options.lightning_config_path = FLAGS_lightning_config;
+    options.lightning_imu_topic = FLAGS_lightning_imu_topic;
+    options.lightning_lidar_topic = FLAGS_lightning_lidar_topic;
+    options.lightning_map_save_path = FLAGS_lightning_map_save;
     if (options.backend == LocalizationBackend::kAtlas) {
         options.atlas_modality =
             atlas::common::ParseModality(FLAGS_localization_mode);
@@ -119,7 +134,7 @@ LocalizationOptions BuildOptionsFromFlags() {
 int InitRuntime(int argc, char** argv) {
     google::ParseCommandLineFlags(&argc, &argv, false);
     if (!autolink::Init(argv[0])) {
-        LOG(ERROR) << "autolink::Init failed.";
+        AERROR << "autolink::Init failed.";
         return EXIT_FAILURE;
     }
     RegisterAutolinkShutdownHandlers();
@@ -135,27 +150,32 @@ int main(int argc, char** argv) {
     }
 
     auto options = autonomy::localization::BuildOptionsFromFlags();
-    LOG(INFO) << "localization_main: backend="
+    AINFO << "localization_main: backend="
               << autonomy::localization::LocalizationBackendName(
                      options.backend);
     if (options.backend
         == autonomy::localization::LocalizationBackend::kAtlas) {
-        LOG(INFO) << "localization_main: atlas_modality="
+        AINFO << "localization_main: atlas_modality="
                   << autonomy::localization::atlas::common::ModalityName(
                          options.atlas_modality);
+    }
+    if (options.backend
+        == autonomy::localization::LocalizationBackend::kLightning) {
+        AINFO << "localization_main: lightning_config="
+                  << options.lightning_config_path;
     }
 
     auto server =
         std::make_shared<autonomy::localization::LocalizationServer>(
             std::move(options));
     if (!server->Start()) {
-        LOG(ERROR) << "LocalizationServer::Start failed.";
+        AERROR << "LocalizationServer::Start failed.";
         autolink::Clear();
         google::ShutdownGoogleLogging();
         return EXIT_FAILURE;
     }
 
-    LOG(INFO) << "LocalizationServer running.";
+    AINFO << "LocalizationServer running.";
     autolink::WaitForShutdown();
 
     server->Shutdown();

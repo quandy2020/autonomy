@@ -229,13 +229,8 @@ void ImportRvizDisplayProperties(const std::string& type,
     (*props)["point_size"] = std::to_string(node["Size (Pixels)"].as<float>());
   }
   if (node["Color Transformer"]) {
-    std::string transform = node["Color Transformer"].as<std::string>();
-    if (transform == "FlatColor") {
-      transform = "Flat";
-    } else if (transform == "AxisColor") {
-      transform = "Axis";
-    }
-    (*props)["color_transform"] = transform;
+    // Keep RViz2 transformer names (FlatColor / AxisColor / Intensity / RGB8 / RGBF32).
+    (*props)["color_transform"] = node["Color Transformer"].as<std::string>();
   }
   ImportRvizProperty(node, "Pose Style", "pose_style", props);
   if (node["Buffer Length"]) {

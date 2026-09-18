@@ -14,6 +14,8 @@
 #include <QRgb>
 #include <QtGlobal>
 
+#include "autoviz/commsgs/message_type_utils.hpp"
+
 namespace autoviz {
 namespace display {
 namespace {
@@ -288,12 +290,25 @@ QImage compressedImageFromProto(
 }
 
 bool isImageMessageType(const std::string& message_type) {
-  return message_type == "automsgs.msgs.sensor_msgs.Image" ||
-         message_type == "sensor_msgs/Image" ||
-         message_type == "automsgs.msgs.sensor_msgs.CompressedImage" ||
-         message_type == "sensor_msgs/CompressedImage" ||
-         message_type == "foxglove.CompressedVideo" ||
-         message_type.find("CompressedVideo") != std::string::npos;
+  if (message_type.empty()) {
+    return false;
+  }
+  if (commsgs::MessageTypesCompatible(message_type,
+                                      "automsgs.msgs.sensor_msgs.Image") ||
+      commsgs::MessageTypesCompatible(
+          message_type, "automsgs.msgs.sensor_msgs.CompressedImage") ||
+      commsgs::MessageTypesCompatible(message_type, "foxglove.CompressedVideo")) {
+    return true;
+  }
+  // Discovery strings that miss package remapping still match by token.
+  if (message_type.find("CompressedVideo") != std::string::npos ||
+      message_type.find("CompressedImage") != std::string::npos) {
+    return true;
+  }
+  return message_type.find("sensor_msgs") != std::string::npos &&
+         message_type.find("Image") != std::string::npos &&
+         message_type.find("ImageAnnotation") == std::string::npos &&
+         message_type.find("CameraInfo") == std::string::npos;
 }
 
 }  // namespace display

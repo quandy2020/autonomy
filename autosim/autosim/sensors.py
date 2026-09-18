@@ -102,14 +102,23 @@ class Sensors:
         out[valid] = ranges[valid]
         return out
 
-    def sample_points(self, simulator: object) -> np.ndarray:
+    def sample_points(
+        self,
+        simulator: object,
+        *,
+        linear: float = 0.0,
+        angular: float = 0.0,
+        scan_period: float = 0.0,
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Sample one 3D lidar point cloud in the sensor frame.
 
         Args:
             simulator: Backend implementing ``lidar_points(...)``.
+            linear, angular: Body twist during the scan (for motion deskew).
+            scan_period: Spin duration (s); ``0`` disables deskew.
 
         Returns:
-            ``Nx3 float32`` points; empty if no hits and not mocking.
+            ``(Nx3 float32 points, N float32 ring ids)``; empty if no hits.
         """
         cfg = self.lidar_3d
         horizontal = cfg["horizontal"]
@@ -117,7 +126,8 @@ class Sensors:
         range_min = float(cfg.get("range_min", self.range_min))
         range_max = float(cfg.get("range_max", self.range_max))
         noise = float(cfg.get("noise", 0.0))
-        points = simulator.lidar_points(
+        motion_compensate = bool(cfg.get("motion_compensate", True))
+        sampled = simulator.lidar_points(
             float(horizontal["angle_min"]),
             float(horizontal["angle_max"]),
             int(horizontal["num_beams"]),
@@ -125,9 +135,20 @@ class Sensors:
             float(vertical["angle_max"]),
             int(vertical["num_rings"]),
             range_max,
-        ).astype(np.float32)
+            linear=float(linear),
+            angular=float(angular),
+            scan_period=float(scan_period),
+            motion_compensate=motion_compensate,
+        )
+        if isinstance(sampled, tuple):
+            points, rings = sampled
+        else:
+            points = sampled
+            rings = np.zeros((points.shape[0],), dtype=np.float32)
+        points = np.asarray(points, dtype=np.float32)
+        rings = np.asarray(rings, dtype=np.float32).reshape(-1)
         if points.size == 0:
-            return points.reshape(0, 3)
+            return points.reshape(0, 3), np.zeros((0,), dtype=np.float32)
         if noise > 0.0:
             norms = np.linalg.norm(points, axis=1, keepdims=True)
             norms = np.maximum(norms, 1e-6)
@@ -136,7 +157,7 @@ class Sensors:
             points = points + directions * delta
         distances = np.linalg.norm(points, axis=1)
         mask = (distances >= range_min) & (distances <= range_max)
-        return points[mask]
+        return points[mask], rings[mask]
 
     def sample_camera(
         self, simulator: object, *, with_semantic: bool = False

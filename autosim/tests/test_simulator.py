@@ -29,7 +29,7 @@ def test_fake_laser_ranges_and_points():
     assert ranges.shape == (36,)
     assert np.allclose(ranges, 5.0)
 
-    points = simulator.lidar_points(
+    points, rings = simulator.lidar_points(
         h_min=-np.pi,
         h_max=np.pi,
         h_beams=8,
@@ -40,6 +40,8 @@ def test_fake_laser_ranges_and_points():
     )
     assert points.ndim == 2 and points.shape[1] == 3
     assert points.shape[0] == 16
+    assert rings.shape == (16,)
+    assert set(rings.tolist()) == {0.0, 1.0}
 
     sensors = Sensors(
         angle_min=-np.pi,
@@ -57,8 +59,9 @@ def test_fake_laser_ranges_and_points():
     )
     clipped = sensors.sample_laser(simulator)
     assert clipped.shape == (36,)
-    cloud = sensors.sample_points(simulator)
+    cloud, cloud_rings = sensors.sample_points(simulator)
     assert cloud.shape == (16, 3)
+    assert cloud_rings.shape == (16,)
     color, depth = sensors.sample_camera(simulator)
     assert color.shape[2] == 3
     assert depth.shape == color.shape[:2]

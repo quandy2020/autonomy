@@ -20,6 +20,7 @@
 #include "autonomy/localization/atlas/type.hpp"
 
 #include <memory>
+#include <string>
 
 #include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include <opencv2/core.hpp>
@@ -51,6 +52,10 @@ public:
 
     automsgs::msgs::map_msgs::OccupancyGrid ToROS();
     cv::Mat ToCV();
+
+    //! Write ROS map_server-style `map.pgm` + `map.yaml` under `dir`.
+    //! Origin from GetMinAndMax; resolution from GetGridResolution.
+    bool SaveOccupancy(const std::string& dir);
 
     void ReleaseResources();
 

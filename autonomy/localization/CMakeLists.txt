@@ -23,6 +23,14 @@ list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/(fake_|mock_)")
 list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "test_helpers")
 
 set(_LOCALIZATION_FEATURES slam pcl cairo boost_iostreams lua)
+
+# lightning-lm original include roots (must exist before compiling sources).
+include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/lightning
+  ${CMAKE_CURRENT_SOURCE_DIR}/lightning/thirdparty
+  ${CMAKE_CURRENT_SOURCE_DIR}/lightning/core/miao
+)
+
 autonomy_library(
   DEPENDENCIES autonomy_common autonomy_transform
   FEATURES ${_LOCALIZATION_FEATURES}
@@ -30,6 +38,14 @@ autonomy_library(
 )
 unset(_LOCALIZATION_SRCS)
 unset(_LOCALIZATION_FEATURES)
+
+# lightning-lm: original include layout (common/, core/, Sophus/, miao core/).
+target_include_directories(autonomy_localization PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lightning>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lightning/thirdparty>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lightning/core/miao>
+)
+target_compile_definitions(autonomy_localization PUBLIC PCL_NO_PRECOMPILE)
 
 # Process entrypoint: autonomy.localization
 autonomy_binary(autonomy.localization SRCS localization_main.cpp)

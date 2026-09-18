@@ -58,7 +58,28 @@ void Eskf::Reset(const Mat44_t& T_wb) {
     state_ = State{};
     state_.T_wb = T_wb;
     state_.gravity = g_keep;
+    planar_z_locked_ = false;
+    planar_z_ = T_wb(2, 3);
     ResetCovariance();
+    initialized_ = true;
+}
+
+void Eskf::SetPose(const Mat44_t& T_wb, bool zero_velocity) {
+    state_.T_wb = T_wb;
+    if (options_.planar_motion) {
+        if (!planar_z_locked_) {
+            planar_z_ = T_wb(2, 3);
+            planar_z_locked_ = true;
+        }
+        state_.T_wb(2, 3) = planar_z_;
+        state_.v.z() = 0.0;
+    }
+    if (zero_velocity) {
+        state_.v.setZero();
+        if (options_.planar_motion) {
+            state_.v.z() = 0.0;
+        }
+    }
     initialized_ = true;
 }
 
@@ -109,6 +130,20 @@ void Eskf::PropagateCovariance(double dt, const Vec3_t& omega,
     }
 }
 
+void Eskf::ApplyPlanarLock(Vec3_t* t_io, Vec3_t* v_io) {
+    if (!options_.planar_motion || !t_io) {
+        return;
+    }
+    if (!planar_z_locked_) {
+        planar_z_ = (*t_io).z();
+        planar_z_locked_ = true;
+    }
+    (*t_io).z() = planar_z_;
+    if (v_io) {
+        (*v_io).z() = 0.0;
+    }
+}
+
 void Eskf::PredictImu(double dt, const Vec3_t& gyro, const Vec3_t& acc) {
     if (!initialized_) {
         Reset(Mat44_t::Identity());
@@ -126,16 +161,34 @@ void Eskf::PredictImu(double dt, const Vec3_t& gyro, const Vec3_t& acc) {
     Mat33_t R = state_.T_wb.block<3, 3>(0, 0);
     Vec3_t t = state_.T_wb.block<3, 1>(0, 3);
     R = R * dR;
-    const Vec3_t a_w = R * (acc - state_.ba) + state_.gravity;
+
+    Vec3_t a_w;
+    if (options_.planar_motion && options_.planar_imu_horizontal_only) {
+        // Body horizontal kinematic accel only (autosim level-robot specific force).
+        Vec3_t acc_h = acc - state_.ba;
+        acc_h.z() = 0.0;
+        a_w = R * acc_h;
+        a_w.z() = 0.0;
+    } else {
+        a_w = R * (acc - state_.ba) + state_.gravity;
+    }
+
     t += state_.v * dt + 0.5 * a_w * dt * dt;
     state_.v += a_w * dt;
+    ApplyPlanarLock(&t, &state_.v);
+    if (options_.max_velocity > 0.0) {
+        const double vn = state_.v.norm();
+        if (vn > options_.max_velocity) {
+            state_.v *= options_.max_velocity / vn;
+        }
+    }
     state_.T_wb.block<3, 3>(0, 0) = R;
     state_.T_wb.block<3, 1>(0, 3) = t;
     PropagateCovariance(dt, omega, acc);
 }
 
 int Eskf::UpdateLidar(const estimate::LidarFactorBatch& batch) {
-    if (batch.point_planes.empty()) {
+    if (batch.empty()) {
         return 0;
     }
     if (!initialized_) {
@@ -191,6 +244,21 @@ int Eskf::UpdateLidar(const estimate::LidarFactorBatch& batch) {
                 std::max(1e-6, r.weight) / Rmeas;
             HTH.noalias() += w * j * j.transpose();
             HTr.noalias() += w * j * (-e);
+            ++used;
+        }
+        // Point-to-point ICP (lightning enable_icp_part): e = Rp+t - map_pt.
+        // Atlas error-state order (δθ, δp): J = [-hat(Rp) | I].
+        for (const auto& r : batch.point_points) {
+            const Vec3_t Rp = R * r.point_body;
+            const Vec3_t pw = Rp + t;
+            const Vec3_t e = pw - r.point_world_map;
+            Eigen::Matrix<double, 3, 6> J;
+            J.setZero();
+            J.block<3, 3>(0, 0) = -Skew(Rp);
+            J.block<3, 3>(0, 3) = Mat33_t::Identity();
+            const double w = std::max(1e-6, r.weight) / Rmeas;
+            HTH.noalias() += w * J.transpose() * J;
+            HTr.noalias() += w * (-J.transpose() * e);
             ++used;
         }
         if (used == 0) {
@@ -299,8 +367,25 @@ int Eskf::UpdateLidar(const estimate::LidarFactorBatch& batch) {
         }
     }
 
+    // Total scan update gate vs predict pose (stops multi-iter yaw flips).
+    {
+        const Mat33_t dR = R * R_start.transpose();
+        const double d_ang = Eigen::AngleAxisd(dR).angle();
+        const double max_scan_rot =
+            options_.max_scan_rotation_step_deg * M_PI / 180.0;
+        if (d_ang > max_scan_rot) {
+            R = R_start;
+            t = t_start;
+            P_ = P_start;
+        }
+    }
+
     state_.T_wb.block<3, 3>(0, 0) = R;
     state_.T_wb.block<3, 1>(0, 3) = t;
+    if (options_.planar_motion) {
+        ApplyPlanarLock(&t, &state_.v);
+        state_.T_wb.block<3, 1>(0, 3) = t;
+    }
     return used;
 }
 

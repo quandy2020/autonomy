@@ -16,7 +16,7 @@
 
 #include "autonomy/localization/atlas/sensor/lidar/lidar_sensor.hpp"
 
-#include "glog/logging.h"
+#include "autolink/common/log.hpp"
 
 namespace autonomy::localization::atlas {
 namespace sensor {
@@ -30,19 +30,22 @@ LidarSensor::LidarSensor(Options options)
     obs_opts.max_residuals = 2000;
     obs_opts.enable_ground_prior = options_.enable_ground_prior;
     obs_opts.ground_weight = 0.05;
+    obs_opts.enable_icp_part = true;
+    obs_opts.plane_weight = 1.0;
+    obs_opts.icp_weight = 0.1;
     obs_model_ = ObsModel(obs_opts);
 }
 
 bool LidarSensor::Start() {
     running_ = true;
     if (options_.enable_lightning_algo) {
-        LOG(INFO) << "LidarSensor: ObsModel enabled, topic="
-                  << options_.topic
-                  << " res=" << options_.ivox_resolution
-                  << " (IVox via MapIncremental::set_ivox)";
+        AINFO << "LidarSensor: ObsModel enabled, topic="
+              << options_.topic << " res=" << options_.ivox_resolution
+              << " icp=" << obs_model_.options().enable_icp_part
+              << " (IVox via MapIncremental::set_ivox)";
     } else {
-        LOG(INFO) << "LidarSensor: started (measurement + residual buffer), topic="
-                  << options_.topic;
+        AINFO << "LidarSensor: started (measurement + residual buffer), topic="
+              << options_.topic;
     }
     return true;
 }

@@ -26,6 +26,7 @@ from automsgs.msgs.geometry_msgs.twist_pb2 import Twist
 from automsgs.msgs.geometry_msgs.twist_stamped_pb2 import TwistStamped
 from automsgs.msgs.map_msgs.occupancy_grid_pb2 import OccupancyGrid
 from automsgs.msgs.nav_msgs.odometry_pb2 import Odometry
+from automsgs.msgs.nav_msgs.path_pb2 import Path
 from automsgs.msgs.builtin_interfaces.time_pb2 import Time
 from automsgs.msgs.sensor_msgs.camera_info_pb2 import CameraInfo
 from automsgs.msgs.sensor_msgs.image_pb2 import Image
@@ -228,8 +229,9 @@ class Messages:
         *,
         intensity: np.ndarray | None = None,
         rgb: np.ndarray | None = None,
+        ring: np.ndarray | None = None,
     ) -> PointCloud2:
-        """Build a ``sensor_msgs.PointCloud2`` with optional intensity / rgb fields.
+        """Build a ``sensor_msgs.PointCloud2`` with optional intensity / rgb / ring.
 
         Args:
             points: ``Nx3`` float array in the sensor frame; ``N`` may be 0.
@@ -237,6 +239,7 @@ class Messages:
             frame_id: Point-cloud frame.
             intensity: Optional per-point float32 intensity (length ``N``).
             rgb: Optional ``Nx3`` uint8 RGB or ``(N,)`` packed uint32.
+            ring: Optional per-point float32 vertical ring id (length ``N``).
 
         Returns:
             Populated :class:`PointCloud2` with ``is_dense=False``.
@@ -245,6 +248,7 @@ class Messages:
         count = int(array.shape[0])
         has_intensity = intensity is not None and count > 0
         has_rgb = rgb is not None and count > 0
+        has_ring = ring is not None and count > 0
 
         dtype_fields: list[tuple[str, str]] = [
             ("x", "f4"),
@@ -257,6 +261,8 @@ class Messages:
             # Match autonomy_ros ply.py convention: packed 0x00RRGGBB stored
             # as uint32 in the PointCloud2 data buffer.
             dtype_fields.append(("rgb", "u4"))
+        if has_ring:
+            dtype_fields.append(("ring", "f4"))
 
         structured = np.zeros(count, dtype=np.dtype(dtype_fields))
         if count > 0:
@@ -272,6 +278,8 @@ class Messages:
                 else:
                     packed = rgb_array.reshape(-1).astype(np.uint32)
                 structured["rgb"] = packed
+            if has_ring:
+                structured["ring"] = np.asarray(ring, dtype=np.float32).reshape(-1)
 
         message = PointCloud2()
         cls.set_header(message.header, stamp, frame_id)
@@ -481,6 +489,31 @@ class Messages:
         message.twist.covariance.extend(
             cls.diagonal_covariance([tv, 0.0, 0.0, 0.0, 0.0, tv], 36)
         )
+        return message
+
+    @classmethod
+    def encode_path(
+        cls,
+        poses: Sequence[Tuple[float, float, float, Tuple[int, int]]],
+        stamp: Tuple[int, int],
+        frame_id: str,
+    ) -> Path:
+        """Build ``nav_msgs.Path`` from planar ``(x, y, yaw, stamp)`` samples.
+
+        Args:
+            poses: Trajectory samples in ``frame_id``.
+            stamp: Header stamp (usually latest sample).
+            frame_id: Path frame (typically ``odom``).
+
+        Returns:
+            Populated :class:`Path`.
+        """
+        message = Path()
+        cls.set_header(message.header, stamp, frame_id)
+        for x, y, yaw, pose_stamp in poses:
+            message.poses.append(
+                cls.encode_pose_stamped(x, y, yaw, pose_stamp, frame_id)
+            )
         return message
 
     @classmethod

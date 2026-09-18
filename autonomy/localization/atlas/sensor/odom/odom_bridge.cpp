@@ -21,7 +21,7 @@
 
 #include <Eigen/Geometry>
 
-#include "glog/logging.h"
+#include "autolink/common/log.hpp"
 
 namespace autonomy::localization::atlas {
 namespace {
@@ -65,7 +65,7 @@ OdomBridge::~OdomBridge() { Stop(); }
 
 bool OdomBridge::Start(const std::shared_ptr<autolink::Node>& node) {
     if (!node || !odom_) {
-        LOG(ERROR) << "OdomBridge: missing node or OdomSensor";
+        AERROR << "OdomBridge: missing node or OdomSensor";
         return false;
     }
     node_ = node;
@@ -77,14 +77,18 @@ bool OdomBridge::Start(const std::shared_ptr<autolink::Node>& node) {
             [self](const std::shared_ptr<automsgs::msgs::nav_msgs::Odometry>& msg) {
                 self->OnOdometry(msg);
             });
-        LOG(INFO) << "OdomBridge: subscribed Odometry " << options_.topic;
+        AINFO << "OdomBridge: subscribed Odometry " << options_.topic
+              << " seed=" << options_.seed_estimator_pose
+              << " apply_delta=" << options_.apply_relative_odom;
     } else {
         node_->CreateReader<automsgs::msgs::geometry_msgs::PoseStamped>(
             options_.topic,
             [self](
                 const std::shared_ptr<automsgs::msgs::geometry_msgs::PoseStamped>&
                     msg) { self->OnPoseStamped(msg); });
-        LOG(INFO) << "OdomBridge: subscribed PoseStamped " << options_.topic;
+        AINFO << "OdomBridge: subscribed PoseStamped " << options_.topic
+              << " seed=" << options_.seed_estimator_pose
+              << " apply_delta=" << options_.apply_relative_odom;
     }
     return true;
 }
@@ -96,9 +100,18 @@ void OdomBridge::ApplySample(const sensor::OdomSample& sample) {
     if (!estimator_) {
         return;
     }
+    if (!estimator_seeded_) {
+        return;
+    }
+    // LIO seed-only: never chain wheel deltas into the estimator.
+    if (!options_.apply_relative_odom) {
+        return;
+    }
     estimator_->UpdateOdom(sample.T_delta);
     if (viz_) {
-        viz_->PublishWorldPose(sample.timestamp, estimator_->T_cw());
+        // High-rate odom must NOT refresh map→odom TF / trajectory (lidar owns).
+        viz_->PublishWorldPose(sample.timestamp, estimator_->T_wb(),
+                               /*update_tf=*/false);
     }
 }
 
@@ -130,6 +143,20 @@ void OdomBridge::OnOdometry(
         sample.T_delta = last_T_.inverse() * T;
     } else {
         sample.T_delta = Mat44_t::Identity();
+        last_T_ = T;
+        has_last_pose_ = true;
+        // Seed on first pose before any delta.
+        if (estimator_ && options_.seed_estimator_pose && !estimator_seeded_) {
+            estimator_->SetPose(T, /*zero_velocity=*/true);
+            estimator_seeded_ = true;
+            AINFO << "OdomBridge: seeded LocalEstimator from first odom pose";
+            if (viz_) {
+                viz_->PublishWorldPose(sample.timestamp, estimator_->T_wb(),
+                                       /*update_tf=*/false);
+            }
+            odom_->Feed(sample);
+            return;
+        }
     }
     last_T_ = T;
     has_last_pose_ = true;
@@ -150,6 +177,19 @@ void OdomBridge::OnPoseStamped(
         sample.T_delta = last_T_.inverse() * T;
     } else {
         sample.T_delta = Mat44_t::Identity();
+        last_T_ = T;
+        has_last_pose_ = true;
+        if (estimator_ && options_.seed_estimator_pose && !estimator_seeded_) {
+            estimator_->SetPose(T, /*zero_velocity=*/true);
+            estimator_seeded_ = true;
+            AINFO << "OdomBridge: seeded LocalEstimator from first PoseStamped";
+            if (viz_) {
+                viz_->PublishWorldPose(sample.timestamp, estimator_->T_wb(),
+                                       /*update_tf=*/false);
+            }
+            odom_->Feed(sample);
+            return;
+        }
     }
     last_T_ = T;
     has_last_pose_ = true;

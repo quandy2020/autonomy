@@ -16,52 +16,143 @@
 
 #include "autonomy/localization/atlas/mapping/ivox/ivox.hpp"
 
-#include "autonomy/localization/atlas/mapping/ivox/hilbert.hpp"
-
 #include <Eigen/Eigenvalues>
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <cstdint>
 #include <limits>
-#include <unordered_set>
+#include <utility>
+#include <variant>
 
 namespace autonomy::localization::atlas {
 namespace mapping {
-namespace {
 
-inline std::uint64_t ExpandBits21(std::uint32_t v) {
-    std::uint64_t x = v & 0x1fffffu;
-    x = (x | (x << 32)) & 0x1f00000000ffffull;
-    x = (x | (x << 16)) & 0x1f0000ff0000ffull;
-    x = (x | (x << 8)) & 0x100f00f00f00f00full;
-    x = (x | (x << 4)) & 0x10c30c30c30c30c3ull;
-    x = (x | (x << 2)) & 0x1249249249249249ull;
-    return x;
+std::size_t IVox::Key3Hash::operator()(const Key3& k) const noexcept {
+    // FNV-ish mix of three ints (stable regardless of PackKey mode).
+    std::size_t h = 14695981039346656037ull;
+    auto mix = [&](int v) {
+        h ^= static_cast<std::size_t>(static_cast<std::uint32_t>(v));
+        h *= 1099511628211ull;
+    };
+    mix(k.x);
+    mix(k.y);
+    mix(k.z);
+    return h;
 }
-
-}  // namespace
 
 IVox::IVox() : IVox(Options{}) {}
 
-IVox::IVox(Options options) : options_(std::move(options)) {
+IVox::IVox(Options options) {
+    set_options(std::move(options));
+}
+
+void IVox::set_options(Options options) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    options_ = std::move(options);
     if (options_.resolution < 1e-3) {
         options_.resolution = 1e-3;
+    }
+    inv_resolution_ = 1.0 / options_.resolution;
+    options_.phc_order = std::clamp(options_.phc_order, 1, 8);
+    GenerateNearbyGrids();
+}
+
+void IVox::GenerateNearbyGrids() {
+    nearby_grids_.clear();
+    auto add = [this](int dx, int dy, int dz) {
+        nearby_grids_.push_back(Key3{dx, dy, dz});
+    };
+    switch (options_.nearby_type) {
+        case IVoxNearbyType::kCenter:
+            add(0, 0, 0);
+            break;
+        case IVoxNearbyType::kNearby18:
+            add(0, 0, 0);
+            add(-1, 0, 0);
+            add(1, 0, 0);
+            add(0, 1, 0);
+            add(0, -1, 0);
+            add(0, 0, -1);
+            add(0, 0, 1);
+            add(1, 1, 0);
+            add(-1, 1, 0);
+            add(1, -1, 0);
+            add(-1, -1, 0);
+            add(1, 0, 1);
+            add(-1, 0, 1);
+            add(1, 0, -1);
+            add(-1, 0, -1);
+            add(0, 1, 1);
+            add(0, -1, 1);
+            add(0, 1, -1);
+            add(0, -1, -1);
+            break;
+        case IVoxNearbyType::kNearby26:
+            for (int dx = -1; dx <= 1; ++dx) {
+                for (int dy = -1; dy <= 1; ++dy) {
+                    for (int dz = -1; dz <= 1; ++dz) {
+                        add(dx, dy, dz);
+                    }
+                }
+            }
+            break;
+        case IVoxNearbyType::kNearby6:
+        default:
+            add(0, 0, 0);
+            add(-1, 0, 0);
+            add(1, 0, 0);
+            add(0, 1, 0);
+            add(0, -1, 0);
+            add(0, 0, -1);
+            add(0, 0, 1);
+            break;
     }
 }
 
 void IVox::Clear() {
     std::lock_guard<std::mutex> lock(mtx_);
-    voxels_.clear();
-    insert_order_.clear();
+    grids_.clear();
+    cache_.clear();
     num_points_ = 0;
     stats_ = CapacityStats{};
 }
 
+void IVox::ExportWorldPoints(std::vector<Vec3_t>* out,
+                             std::size_t max_points) const {
+    if (!out) {
+        return;
+    }
+    out->clear();
+    std::lock_guard<std::mutex> lock(mtx_);
+    if (cache_.empty()) {
+        return;
+    }
+    out->reserve(max_points > 0 ? std::min(max_points, num_points_)
+                                : num_points_);
+    for (const auto& entry : cache_) {
+        std::visit([&](const auto& node) { node.CollectAll(out); },
+                   entry.second);
+    }
+    if (max_points > 0 && out->size() > max_points) {
+        // Stride downsample to keep spatial coverage without full shuffle.
+        const std::size_t n = out->size();
+        const double step =
+            static_cast<double>(n) / static_cast<double>(max_points);
+        std::vector<Vec3_t> sampled;
+        sampled.reserve(max_points);
+        for (std::size_t i = 0; i < max_points; ++i) {
+            const std::size_t idx = std::min(
+                n - 1, static_cast<std::size_t>(static_cast<double>(i) * step));
+            sampled.push_back((*out)[idx]);
+        }
+        *out = std::move(sampled);
+    }
+}
+
 std::size_t IVox::num_voxels() const {
     std::lock_guard<std::mutex> lock(mtx_);
-    return voxels_.size();
+    return grids_.size();
 }
 
 std::size_t IVox::num_points() const {
@@ -74,64 +165,62 @@ IVox::CapacityStats IVox::capacity_stats() const {
     return stats_;
 }
 
-IVox::Key IVox::MortonEncode3(int ix, int iy, int iz) {
-    // Offset signed axes into unsigned 21-bit range centered at 2^20.
-    constexpr int kBias = 1 << 20;
-    const auto ux = static_cast<std::uint32_t>(ix + kBias) & 0x1fffffu;
-    const auto uy = static_cast<std::uint32_t>(iy + kBias) & 0x1fffffu;
-    const auto uz = static_cast<std::uint32_t>(iz + kBias) & 0x1fffffu;
-    return static_cast<Key>((ExpandBits21(ux)) | (ExpandBits21(uy) << 1) |
-                            (ExpandBits21(uz) << 2));
+IVox::Key3 IVox::Pos2Grid(const Vec3_t& p) const {
+    // Lightning uses round; keep floor for signed stability at origin.
+    return Key3{static_cast<int>(std::floor(p.x() * inv_resolution_)),
+                static_cast<int>(std::floor(p.y() * inv_resolution_)),
+                static_cast<int>(std::floor(p.z() * inv_resolution_))};
 }
 
-IVox::Key IVox::HilbertEncode3(int ix, int iy, int iz) {
-    // Bias signed indices into uint16 range, then Hilbert PositionToIndex.
-    constexpr int kBias = 1 << 15;
-    auto clamp_u16 = [](int v) -> std::uint16_t {
-        const int c = std::clamp(v, 0, 65535);
-        return static_cast<std::uint16_t>(c);
-    };
-    const std::array<std::uint16_t, 3> apos{
-        clamp_u16(ix + kBias), clamp_u16(iy + kBias), clamp_u16(iz + kBias)};
-    const std::array<std::uint16_t, 3> idx =
-        hilbert::v2::PositionToIndex(apos);
-    return (static_cast<Key>(idx[0]) << 32) |
-           (static_cast<Key>(idx[1]) << 16) | static_cast<Key>(idx[2]);
-}
-
-IVox::Key IVox::ToKey(int ix, int iy, int iz) const {
-    if (options_.use_hilbert_key) {
-        return HilbertEncode3(ix, iy, iz);
+IVox::Node IVox::MakeNode(const Key3& key) const {
+    const Vec3_t center((static_cast<double>(key.x) + 0.5) * options_.resolution,
+                        (static_cast<double>(key.y) + 0.5) * options_.resolution,
+                        (static_cast<double>(key.z) + 0.5) * options_.resolution);
+    if (options_.node_kind == IVoxNodeKind::kPhc) {
+        return IVoxNodePhc(center, options_.resolution, options_.phc_order);
     }
-    if (options_.use_morton_key) {
-        return MortonEncode3(ix, iy, iz);
+    return IVoxNodeLinear(center, options_.resolution,
+                          options_.max_points_per_voxel);
+}
+
+void IVox::TouchLru(CacheIter it) {
+    if (it == cache_.begin()) {
+        return;
     }
-    // Pack signed 21-bit axes into 63 bits.
-    constexpr std::int64_t kMask = (1LL << 21) - 1;
-    const auto ux = static_cast<std::int64_t>(ix) & kMask;
-    const auto uy = static_cast<std::int64_t>(iy) & kMask;
-    const auto uz = static_cast<std::int64_t>(iz) & kMask;
-    return (ux << 42) | (uy << 21) | uz;
+    cache_.splice(cache_.begin(), cache_, it);
+    grids_[it->first] = cache_.begin();
 }
 
-void IVox::IndexOf(const Vec3_t& p, int* ix, int* iy, int* iz) const {
-    *ix = static_cast<int>(std::floor(p.x() / options_.resolution));
-    *iy = static_cast<int>(std::floor(p.y() / options_.resolution));
-    *iz = static_cast<int>(std::floor(p.z() / options_.resolution));
-}
-
-void IVox::EvictOldestLocked() {
-    while (!insert_order_.empty() && voxels_.size() > options_.max_voxels) {
-        const Key old = insert_order_.front();
-        insert_order_.pop_front();
-        const auto it = voxels_.find(old);
-        if (it == voxels_.end()) {
-            continue;
+void IVox::InsertOne(const Vec3_t& p) {
+    const Key3 key = Pos2Grid(p);
+    auto it = grids_.find(key);
+    if (it == grids_.end()) {
+        cache_.push_front({key, MakeNode(key)});
+        grids_[key] = cache_.begin();
+        std::visit([&](auto& node) { node.Insert(p); }, cache_.front().second);
+        ++num_points_;
+        while (grids_.size() > options_.max_voxels && !cache_.empty()) {
+            const Key3 old = cache_.back().first;
+            const std::size_t n = std::visit(
+                [](const auto& node) { return node.Size(); }, cache_.back().second);
+            num_points_ = (n >= num_points_) ? 0 : (num_points_ - n);
+            grids_.erase(old);
+            cache_.pop_back();
+            ++stats_.num_evictions;
         }
-        num_points_ -= it->second.points.size();
-        voxels_.erase(it);
-        ++stats_.num_evictions;
+        return;
     }
+    auto cit = it->second;
+    const std::size_t before =
+        std::visit([](const auto& node) { return node.Size(); }, cit->second);
+    std::visit([&](auto& node) { node.Insert(p); }, cit->second);
+    const std::size_t after =
+        std::visit([](const auto& node) { return node.Size(); }, cit->second);
+    if (after > before) {
+        num_points_ += (after - before);
+    }
+    // Linear ring at capacity: Size unchanged; point replaced in-place.
+    TouchLru(cit);
 }
 
 void IVox::InsertWorldPoints(const std::vector<Vec3_t>& points_world) {
@@ -140,62 +229,65 @@ void IVox::InsertWorldPoints(const std::vector<Vec3_t>& points_world) {
         if (!p.allFinite()) {
             continue;
         }
-        int ix = 0, iy = 0, iz = 0;
-        IndexOf(p, &ix, &iy, &iz);
-        const Key key = ToKey(ix, iy, iz);
-        const bool is_new = (voxels_.find(key) == voxels_.end());
-        auto& voxel = voxels_[key];
-        if (is_new) {
-            insert_order_.push_back(key);
-        }
-        if (voxel.points.size() >= options_.max_points_per_voxel) {
-            EvictOldestLocked();
-            continue;
-        }
-        voxel.points.push_back(p);
-        ++num_points_;
-        EvictOldestLocked();
+        InsertOne(p);
     }
 }
 
-void IVox::CollectNeighbors(int ix, int iy, int iz,
-                            std::vector<Vec3_t>* out,
-                            std::size_t* voxel_hits) const {
-    std::unordered_set<Key> visited;
-    const auto add_voxel = [&](int x, int y, int z) {
-        const Key k = ToKey(x, y, z);
-        if (!visited.insert(k).second) {
-            return;
-        }
-        const auto it = voxels_.find(k);
-        if (it == voxels_.end()) {
-            return;
-        }
-        if (voxel_hits) {
-            ++(*voxel_hits);
-        }
-        out->insert(out->end(), it->second.points.begin(),
-                    it->second.points.end());
+bool IVox::GetClosestPoints(const Vec3_t& query, std::vector<Vec3_t>* closest,
+                            int max_num, double max_range) const {
+    if (!closest || max_num <= 0) {
+        return false;
+    }
+    closest->clear();
+
+    struct Cand {
+        double dist2 = 0.0;
+        Vec3_t p = Vec3_t::Zero();
+        bool operator<(const Cand& o) const { return dist2 < o.dist2; }
     };
+    std::vector<Cand> cands;
 
-    // Face-adjacent (6-neigh) for plane robustness.
-    if (options_.face_adjacent_neighbors) {
-        static const int kFace[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0},
-                                        {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
-        add_voxel(ix, iy, iz);
-        for (const auto& d : kFace) {
-            add_voxel(ix + d[0], iy + d[1], iz + d[2]);
-        }
-    }
-
-    const int r = options_.neighbor_search;
-    for (int dx = -r; dx <= r; ++dx) {
-        for (int dy = -r; dy <= r; ++dy) {
-            for (int dz = -r; dz <= r; ++dz) {
-                add_voxel(ix + dx, iy + dy, iz + dz);
+    {
+        std::lock_guard<std::mutex> lock(mtx_);
+        const Key3 key = Pos2Grid(query);
+        std::size_t voxel_hits = 0;
+        for (const Key3& d : nearby_grids_) {
+            const Key3 nk{key.x + d.x, key.y + d.y, key.z + d.z};
+            const auto it = grids_.find(nk);
+            if (it == grids_.end()) {
+                continue;
             }
+            ++voxel_hits;
+            std::visit(
+                [&](const auto& node) {
+                    using NodeT = std::decay_t<decltype(node)>;
+                    std::vector<typename NodeT::DistPoint> local;
+                    node.KNNByCondition(&local, query, max_num, max_range);
+                    for (const auto& dp : local) {
+                        cands.push_back(Cand{dp.dist2, node.GetPoint(dp.idx)});
+                    }
+                },
+                it->second->second);
         }
+        stats_.last_neighbor_voxels = voxel_hits;
+        stats_.last_neighbor_points = cands.size();
+        stats_.peak_neighbor_points =
+            std::max(stats_.peak_neighbor_points, cands.size());
     }
+
+    if (cands.empty()) {
+        return false;
+    }
+    if (static_cast<int>(cands.size()) > max_num) {
+        std::nth_element(cands.begin(), cands.begin() + max_num - 1, cands.end());
+        cands.resize(static_cast<std::size_t>(max_num));
+    }
+    std::sort(cands.begin(), cands.end());
+    closest->reserve(cands.size());
+    for (const auto& c : cands) {
+        closest->push_back(c.p);
+    }
+    return !closest->empty();
 }
 
 IVox::PlaneHit IVox::EstimatePlane(const Vec3_t& query_world) const {
@@ -204,18 +296,10 @@ IVox::PlaneHit IVox::EstimatePlane(const Vec3_t& query_world) const {
         return hit;
     }
 
+    const int k = std::max(options_.min_plane_points, options_.knn_max_num);
     std::vector<Vec3_t> neighbors;
-    neighbors.reserve(64);
-    std::size_t voxel_hits = 0;
-    {
-        std::lock_guard<std::mutex> lock(mtx_);
-        int ix = 0, iy = 0, iz = 0;
-        IndexOf(query_world, &ix, &iy, &iz);
-        CollectNeighbors(ix, iy, iz, &neighbors, &voxel_hits);
-        stats_.last_neighbor_points = neighbors.size();
-        stats_.last_neighbor_voxels = voxel_hits;
-        stats_.peak_neighbor_points =
-            std::max(stats_.peak_neighbor_points, neighbors.size());
+    if (!GetClosestPoints(query_world, &neighbors, k, options_.knn_max_range)) {
+        return hit;
     }
 
     if (static_cast<int>(neighbors.size()) < options_.min_plane_points) {
@@ -246,6 +330,24 @@ IVox::PlaneHit IVox::EstimatePlane(const Vec3_t& query_world) const {
     hit.normal.normalize();
     hit.d = -hit.normal.dot(mean);
     hit.residual = hit.normal.dot(query_world) + hit.d;
+
+    // Planarity: λ0 << λ1 (flat neighborhood). Reject edges/corners.
+    const Vec3_t evals = solver.eigenvalues();
+    const double e0 = std::max(0.0, evals(0));
+    const double e1 = std::max(1e-12, evals(1));
+    if (e0 / e1 > 0.1) {
+        return PlaneHit{};
+    }
+
+    // Lightning esti_plane: reject if any neighbor is off-plane.
+    if (options_.esti_plane_threshold > 0.0) {
+        for (const auto& p : neighbors) {
+            if (std::abs(hit.normal.dot(p) + hit.d) >
+                options_.esti_plane_threshold) {
+                return PlaneHit{};
+            }
+        }
+    }
     hit.ok = true;
     return hit;
 }

@@ -34,7 +34,7 @@ void DepthCloudDisplay::setChannel(const std::string& channel) {
 }
 
 std::vector<common::DisplayPropertySpec> DepthCloudDisplay::propertySpecs() const {
-  return {{"camera_info_channel", "Camera Info Topic", "/fake/camera_info", {},
+  return {{"camera_info_channel", "Camera Info Topic", "", {},
            common::DisplayPropertyKind::kChannel},
           {"color_channel", "Color Image Topic", "", {},
            common::DisplayPropertyKind::kChannel},
@@ -51,7 +51,7 @@ void DepthCloudDisplay::onEnable() {
     return;
   }
   camera_info_channel_ =
-      propertyValue("camera_info_channel", "/fake/camera_info");
+      propertyValue("camera_info_channel", "");
   color_channel_ = propertyValue("color_channel", "");
   depth_reader_ =
       context_->autolink->node()->CreateReader<autolink::message::RawMessage>(

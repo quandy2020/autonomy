@@ -41,8 +41,11 @@
 #include "autonomy/localization/cartographer/node/cartographer_node.hpp"
 #include "autonomy/localization/cartographer/node/node_options.hpp"
 #include "autonomy/localization/cartographer/node/node_utils.hpp"
+#include "autonomy/localization/lightning/lightning_node.hpp"
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/static_transform_publisher.hpp"
+
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 
 namespace autonomy {
 namespace localization {
@@ -53,6 +56,9 @@ using cartographer::node::ResolveWorkspacePath;
 }  // namespace
 
 LocalizationBackend ParseLocalizationBackend(const std::string& name) {
+    if (name == "lightning" || name == "Lightning") {
+        return LocalizationBackend::kLightning;
+    }
     if (atlas::common::IsAtlasModalityName(name)) {
         return LocalizationBackend::kAtlas;
     }
@@ -67,6 +73,8 @@ std::string LocalizationBackendName(LocalizationBackend backend) {
     switch (backend) {
         case LocalizationBackend::kAtlas:
             return "atlas";
+        case LocalizationBackend::kLightning:
+            return "lightning";
         case LocalizationBackend::kCartographer:
         default:
             return "cartographer";
@@ -287,8 +295,16 @@ public:
             }
         }
 
-        const auto modality_flags =
-            atlas::common::FlagsFor(options_.atlas_modality);
+        const auto modality_flags = atlas_runtime_loaded_
+            ? atlas_runtime_.flags
+            : atlas::common::FlagsFor(options_.atlas_modality);
+
+        // LO/LIO/WIO: gflags default --atlas_config (autosim_mono) must not
+        // spin up OpenVSLAM; LocalEstimator is pose authority.
+        if (!modality_flags.use_vision) {
+            options_.atlas_config_path.clear();
+            options_.atlas_vocab_path.clear();
+        }
 
         atlas::Pipeline::Options pipe_opts;
         pipe_opts.modality = options_.atlas_modality;
@@ -300,6 +316,15 @@ public:
         pipe_opts.imu_topic = options_.atlas_imu_topic;
         pipe_opts.lidar_topic = options_.atlas_lidar_topic;
         pipe_opts.lidar_imu_topic = options_.atlas_lidar_imu_topic;
+        // Prefer CLI path; else profile lidar_config_path / lightning_yaml.
+        if (options_.atlas_lidar_config_path.empty() && atlas_runtime_loaded_ &&
+            !atlas_runtime_.lidar_config_path.empty()) {
+            options_.atlas_lidar_config_path =
+                ResolveWorkspacePath(atlas_runtime_.lidar_config_path);
+        } else if (!options_.atlas_lidar_config_path.empty()) {
+            options_.atlas_lidar_config_path =
+                ResolveWorkspacePath(options_.atlas_lidar_config_path);
+        }
         pipe_opts.lidar_config_path = options_.atlas_lidar_config_path;
         pipe_opts.wheel_topic = options_.atlas_wheel_topic;
         pipe_opts.enable_lightning_upstream =
@@ -337,6 +362,8 @@ public:
             lo.topic = options_.atlas_lidar_topic;
             // Default false; enable via lidar yaml `use_lidar_loop: true` (LO/LIO).
             lo.use_lidar_loop = false;
+            lo.use_lidar_loc =
+                atlas_runtime_loaded_ && atlas_runtime_.enable_lidar_loc;
             if (!options_.atlas_lidar_config_path.empty()) {
                 try {
                     const auto node = YAML::LoadFile(ResolveWorkspacePath(
@@ -349,6 +376,10 @@ public:
                     if (node["use_lidar_loop"]) {
                         lo.use_lidar_loop =
                             node["use_lidar_loop"].as<bool>(false);
+                    }
+                    if (node["use_lidar_loc"]) {
+                        lo.use_lidar_loc =
+                            node["use_lidar_loc"].as<bool>(lo.use_lidar_loc);
                     }
                     if (node["lidar_loop"] && node["lidar_loop"].IsMap()) {
                         const auto& ll = node["lidar_loop"];
@@ -364,6 +395,42 @@ public:
                         lo.lidar_loop.mean_residual_thresh =
                             ll["mean_residual_thresh"].as<double>(
                                 lo.lidar_loop.mean_residual_thresh);
+                        lo.lidar_loop.ndt_score_thresh =
+                            ll["ndt_score_thresh"].as<double>(
+                                lo.lidar_loop.ndt_score_thresh);
+                        lo.lidar_loop.submap_kf_radius =
+                            ll["submap_kf_radius"].as<int>(
+                                lo.lidar_loop.submap_kf_radius);
+                        lo.lidar_loop.allow_icp_only =
+                            ll["allow_icp_only"].as<bool>(
+                                lo.lidar_loop.allow_icp_only);
+                        lo.lidar_loop.min_keyframes =
+                            ll["min_keyframes"].as<int>(
+                                lo.lidar_loop.min_keyframes);
+                    }
+                    if (node["publish_global_cloud"]) {
+                        lo.publish_global_cloud =
+                            node["publish_global_cloud"].as<bool>(true);
+                    }
+                    if (node["global_cloud_topic"]) {
+                        lo.global_cloud_topic =
+                            node["global_cloud_topic"].as<std::string>(
+                                lo.global_cloud_topic);
+                    }
+                    if (node["global_cloud_frame"]) {
+                        lo.global_cloud_frame =
+                            node["global_cloud_frame"].as<std::string>(
+                                lo.global_cloud_frame);
+                    }
+                    if (node["global_cloud_max_points"]) {
+                        lo.global_cloud_max_points =
+                            node["global_cloud_max_points"].as<int>(
+                                lo.global_cloud_max_points);
+                    }
+                    if (node["global_cloud_period_sec"]) {
+                        lo.global_cloud_period_sec =
+                            node["global_cloud_period_sec"].as<double>(
+                                lo.global_cloud_period_sec);
                     }
                 } catch (const std::exception& e) {
                     AWARN << "LocalizationServer: lidar yaml load failed: "
@@ -372,6 +439,46 @@ public:
             }
             lidar_bridge_ = std::make_unique<atlas::LidarBridge>(
                 slam, pipeline_->sensors()->lidar(), lo, est);
+            // imu_filter / filter options (Lightning fasterlio.imu_filter).
+            if (!options_.atlas_lidar_config_path.empty()) {
+                try {
+                    const auto node = YAML::LoadFile(ResolveWorkspacePath(
+                        options_.atlas_lidar_config_path));
+                    bool use_filt = false;
+                    if (node["imu_filter"]) {
+                        use_filt = node["imu_filter"].as<bool>(false);
+                    } else if (node["fasterlio"] &&
+                               node["fasterlio"]["imu_filter"]) {
+                        use_filt =
+                            node["fasterlio"]["imu_filter"].as<bool>(false);
+                    }
+                    lidar_bridge_->imu_process().SetUseImuFilter(use_filt);
+                    if (node["imu_filter_options"] &&
+                        node["imu_filter_options"].IsMap()) {
+                        const auto& fo = node["imu_filter_options"];
+                        atlas::frontend::lio::ImuFilter::Config cfg;
+                        cfg.median_window_size =
+                            fo["median_window_size"].as<int>(
+                                cfg.median_window_size);
+                        cfg.moving_avg_window =
+                            fo["moving_avg_window"].as<int>(
+                                cfg.moving_avg_window);
+                        cfg.rate_limit =
+                            fo["rate_limit"].as<double>(cfg.rate_limit);
+                        cfg.spike_threshold =
+                            fo["spike_threshold"].as<double>(
+                                cfg.spike_threshold);
+                        lidar_bridge_->imu_process().imu_filter().set_config(
+                            cfg);
+                    }
+                    if (use_filt) {
+                        AINFO << "LocalizationServer: IMUFilter enabled";
+                    }
+                } catch (const std::exception& e) {
+                    AWARN << "LocalizationServer: imu_filter yaml: "
+                          << e.what();
+                }
+            }
             lidar_bridge_->SetMapIncremental(
                 pipeline_->active_map_incremental());
             if (pipeline_->sensors()->imu()) {
@@ -401,9 +508,20 @@ public:
                 return;
             }
             atlas::OdomBridge::Options oo;
-            oo.topic = options_.atlas_wheel_topic;
-            // Vision+odom: est=nullptr — residuals feed JointBA via OdomSensor.
-            // !use_vision (WIO/LWIO): est updates pose; viz publishes T_cw.
+            oo.topic = options_.atlas_wheel_topic.empty()
+                           ? pipeline_->sensors()->odom()->options().topic
+                           : options_.atlas_wheel_topic;
+            if (oo.topic.empty()) {
+                oo.topic = "/odom";
+            }
+            oo.seed_estimator_pose = !use_vision;
+            // Continuous UpdateOdom only for wheel-primary modalities.
+            // LIO/LO: seed map≈odom once — wheel deltas + lidar IEKF fly pose.
+            const auto mod = options_.atlas_modality;
+            oo.apply_relative_odom =
+                (mod == atlas::common::Modality::kWio ||
+                 mod == atlas::common::Modality::kLwio ||
+                 mod == atlas::common::Modality::kLvwio);
             odom_bridge_ = std::make_unique<atlas::OdomBridge>(
                 pipeline_->sensors()->odom(), oo, est, viz);
             if (!odom_bridge_->Start(autolink_node_)) {
@@ -454,6 +572,77 @@ public:
                 }
                 lidar_locator_ =
                     std::make_unique<atlas::frontend::LidarLocator>();
+                if (!options_.atlas_lidar_config_path.empty()) {
+                    try {
+                        const auto node = YAML::LoadFile(ResolveWorkspacePath(
+                            options_.atlas_lidar_config_path));
+                        atlas::frontend::LidarLocator::Options lo;
+                        const YAML::Node ll =
+                            node["lidar_loc"] ? node["lidar_loc"] : node;
+                        if (ll["update_dynamic_cloud"]) {
+                            lo.update_dynamic_cloud =
+                                ll["update_dynamic_cloud"].as<bool>(false);
+                        }
+                        if (ll["update_kf_dis"]) {
+                            lo.update_kf_dis_m =
+                                ll["update_kf_dis"].as<double>(
+                                    lo.update_kf_dis_m);
+                        }
+                        if (ll["update_kf_time"]) {
+                            lo.update_kf_time_s =
+                                ll["update_kf_time"].as<double>(
+                                    lo.update_kf_time_s);
+                        }
+                        // Lightning pclomp score (higher=better) vs PCL fitness
+                        // (lower=better): Atlas uses update_max_fitness.
+                        if (ll["update_max_fitness"]) {
+                            lo.update_max_fitness =
+                                ll["update_max_fitness"].as<double>(
+                                    lo.update_max_fitness);
+                        } else if (ll["update_lidar_loc_score"]) {
+                            lo.update_max_fitness =
+                                ll["update_lidar_loc_score"].as<double>(
+                                    lo.update_max_fitness);
+                        }
+                        if (ll["filter_z_min"]) {
+                            lo.dyn_z_min =
+                                ll["filter_z_min"].as<double>(lo.dyn_z_min);
+                        }
+                        if (ll["filter_z_max"]) {
+                            lo.dyn_z_max =
+                                ll["filter_z_max"].as<double>(lo.dyn_z_max);
+                        }
+                        if (ll["dyn_cloud_policy"] || node["maps"]) {
+                            std::string pol;
+                            if (ll["dyn_cloud_policy"]) {
+                                pol = ll["dyn_cloud_policy"].as<std::string>(
+                                    "medium");
+                            } else if (node["maps"] &&
+                                       node["maps"]["dyn_cloud_policy"]) {
+                                pol = node["maps"]["dyn_cloud_policy"]
+                                          .as<std::string>("medium");
+                            }
+                            if (!pol.empty()) {
+                                lo.dyn_policy =
+                                    atlas::mapping::ParseDynPolicy(pol);
+                            }
+                        }
+                        if (ll["ndt_resolution"]) {
+                            lo.ndt_resolution = static_cast<float>(
+                                ll["ndt_resolution"].as<double>(
+                                    lo.ndt_resolution));
+                        }
+                        if (ll["load_radius_m"]) {
+                            lo.load_radius_m =
+                                ll["load_radius_m"].as<double>(
+                                    lo.load_radius_m);
+                        }
+                        lidar_locator_->set_options(lo);
+                    } catch (const std::exception& e) {
+                        AWARN << "LocalizationServer: lidar_loc yaml: "
+                              << e.what();
+                    }
+                }
                 if (pipeline_->tiled_map()) {
                     lidar_locator_->set_tiled_map(pipeline_->tiled_map());
                 }
@@ -468,13 +657,132 @@ public:
                         return;
                     }
                 }
-                pose_extrapolator_ =
-                    std::make_unique<atlas::frontend::PoseExtrapolator>();
-                pose_extrapolator_->set_local_estimator(est);
-                AINFO << "LocalizationServer: LidarLocator skeleton ready "
-                         "(enable_lidar_loc=true, map="
-                      << rt.tiled_map_path << ")";
+                if (lidar_locator_ &&
+                    lidar_locator_->options().update_dynamic_cloud &&
+                    pipeline_->tiled_map()) {
+                    auto& mo = pipeline_->tiled_map()->options();
+                    mo.enable_dyn_layer = true;
+                    mo.dyn_policy = lidar_locator_->options().dyn_policy;
+                }
+                AINFO << "LocalizationServer: LidarLocator ready "
+                         "(enable_lidar_loc=true, update_dynamic_cloud="
+                      << (lidar_locator_->options().update_dynamic_cloud
+                              ? "true"
+                              : "false")
+                      << ", map=" << rt.tiled_map_path << ")";
             };
+
+        //! LO/LIO(/LWIO) high-rate pose: always create PoseExtrapolator.
+        auto ensure_pose_extrapolator =
+            [&](atlas::frontend::LocalEstimator* est) {
+                const auto mod = options_.atlas_modality;
+                const bool lo_like =
+                    mod == atlas::common::Modality::kLo ||
+                    mod == atlas::common::Modality::kLio ||
+                    mod == atlas::common::Modality::kLwio ||
+                    mod == atlas::common::Modality::kWio;
+                if (!lo_like || !est) {
+                    return;
+                }
+                atlas::frontend::PoseExtrapolator::Options opts;
+                if (!options_.atlas_lidar_config_path.empty()) {
+                    try {
+                        const auto node = YAML::LoadFile(ResolveWorkspacePath(
+                            options_.atlas_lidar_config_path));
+                        if (node["smooth_factor"]) {
+                            opts.smooth_factor =
+                                node["smooth_factor"].as<double>(
+                                    opts.smooth_factor);
+                        }
+                        if (node["pose_extrapolator"] &&
+                            node["pose_extrapolator"].IsMap()) {
+                            const auto& pe = node["pose_extrapolator"];
+                            opts.smooth_factor =
+                                pe["smooth_factor"].as<double>(
+                                    opts.smooth_factor);
+                            opts.use_imu_predict =
+                                pe["use_imu_predict"].as<bool>(
+                                    opts.use_imu_predict);
+                            opts.gyro_static_thresh =
+                                pe["gyro_static_thresh"].as<double>(
+                                    opts.gyro_static_thresh);
+                            opts.sync_estimator_on_lidar =
+                                pe["sync_estimator_on_lidar"].as<bool>(
+                                    opts.sync_estimator_on_lidar);
+                        }
+                    } catch (const std::exception& e) {
+                        AWARN << "LocalizationServer: pose extrapolator yaml: "
+                              << e.what();
+                    }
+                }
+                if (!pose_extrapolator_) {
+                    pose_extrapolator_ =
+                        std::make_unique<atlas::frontend::PoseExtrapolator>(
+                            opts);
+                } else {
+                    pose_extrapolator_->set_options(opts);
+                }
+                pose_extrapolator_->set_local_estimator(est);
+                AINFO << "LocalizationServer: PoseExtrapolator ready "
+                         "(smooth_factor="
+                      << opts.smooth_factor << ")";
+            };
+
+        auto wire_lidar_loc_to_bridge = [&]() {
+            if (!lidar_bridge_) {
+                return;
+            }
+            if (lidar_locator_) {
+                lidar_bridge_->SetLidarLocator(lidar_locator_.get());
+                lidar_bridge_->options().use_lidar_loc =
+                    atlas_runtime_loaded_ && atlas_runtime_.enable_lidar_loc;
+            }
+            if (pose_extrapolator_) {
+                lidar_bridge_->SetPoseExtrapolator(pose_extrapolator_.get());
+            }
+        };
+
+        auto wire_imu_high_rate = [&]() {
+            if (!imu_bridge_) {
+                return;
+            }
+            if (pose_extrapolator_) {
+                imu_bridge_->SetPoseExtrapolator(pose_extrapolator_.get());
+            }
+            if (viz_bridge_) {
+                imu_bridge_->SetVizBridge(viz_bridge_.get());
+            }
+        };
+
+        auto maybe_start_g2p5 = [&]() {
+            if (!pipeline_->runtime().maps_g2p5) {
+                return;
+            }
+            g2p5_ = std::make_unique<atlas::map::G2P5>();
+            g2p5_->Init();
+            if (lidar_bridge_) {
+                lidar_bridge_->SetG2P5(g2p5_.get());
+            }
+            const std::string topic =
+                atlas_runtime_loaded_ && !atlas_runtime_.g2p5_topic.empty()
+                    ? atlas_runtime_.g2p5_topic
+                    : pipeline_->runtime().g2p5_topic;
+            if (autolink_node_) {
+                g2p5_occ_writer_ =
+                    autolink_node_
+                        ->CreateWriter<automsgs::msgs::map_msgs::OccupancyGrid>(
+                            topic);
+                g2p5_->SetMapUpdateCallback(
+                    [this](atlas::map::G2P5MapPtr map) {
+                        if (!map || !g2p5_occ_writer_) {
+                            return;
+                        }
+                        g2p5_occ_writer_->Write(map->ToROS());
+                    });
+            }
+            AINFO << "LocalizationServer: G2P5 ready (maps.g2p5=true, topic="
+                  << topic << ")";
+        };
 
         if (!options_.atlas_config_path.empty()) {
             const std::string config_path =
@@ -608,15 +916,9 @@ public:
             start_odom_bridge(use_vision ? nullptr : est, /*viz=*/nullptr);
 
             maybe_start_lidar_loc(est);
+            wire_lidar_loc_to_bridge();
 
-            if (pipeline_->runtime().maps_g2p5) {
-                g2p5_ = std::make_unique<atlas::map::G2P5>();
-                g2p5_->Init();
-                if (lidar_bridge_) {
-                    lidar_bridge_->SetG2P5(g2p5_.get());
-                }
-                AINFO << "LocalizationServer: G2P5 ready (maps.g2p5=true)";
-            }
+            maybe_start_g2p5();
 
             AINFO << "LocalizationServer: Atlas single-system backend started "
                   << "(modality="
@@ -643,6 +945,11 @@ public:
         viz_opts.odom_frame = "odom";
         viz_opts.map_frame = "map";
         viz_opts.publish_map_odom_tf = true;
+        // LO/LIO publish T_wb (REP-103 FLU); skip OpenCV optical remapping.
+        viz_opts.body_flu_pose = true;
+        viz_opts.trajectory_lidar_rate_only = true;
+        viz_opts.map_odom_smooth = 0.7;
+        viz_opts.map_odom_max_step_m = 0.35;
         viz_bridge_ = std::make_unique<atlas::VizBridge>(nullptr, viz_opts);
         if (!viz_bridge_->Start(autolink_node_)) {
             AWARN << "LocalizationServer: Atlas VizBridge (LocalEstimator) "
@@ -658,16 +965,12 @@ public:
         // WIO/LWIO: odom updates LocalEstimator and publishes via VizBridge.
         start_odom_bridge(estimator, viz_bridge_.get());
 
+        ensure_pose_extrapolator(estimator);
         maybe_start_lidar_loc(estimator);
+        wire_lidar_loc_to_bridge();
+        wire_imu_high_rate();
 
-        if (pipeline_->runtime().maps_g2p5) {
-            g2p5_ = std::make_unique<atlas::map::G2P5>();
-            g2p5_->Init();
-            if (lidar_bridge_) {
-                lidar_bridge_->SetG2P5(g2p5_.get());
-            }
-            AINFO << "LocalizationServer: G2P5 ready (maps.g2p5=true)";
-        }
+        maybe_start_g2p5();
 
         AINFO << "LocalizationServer: Atlas single-system backend started "
               << "(modality="
@@ -704,9 +1007,28 @@ public:
             dense_map_.reset();
         }
         if (g2p5_) {
+            const std::string save_path =
+                atlas_runtime_loaded_ ? atlas_runtime_.g2p5_save_path
+                                      : pipeline_ ? pipeline_->runtime().g2p5_save_path
+                                                  : std::string{};
+            if (!save_path.empty()) {
+                if (auto map = g2p5_->GetNewestMap()) {
+                    const std::string resolved = ResolveWorkspacePath(save_path);
+                    if (!map->SaveOccupancy(resolved)) {
+                        AERROR << "LocalizationServer: G2P5 SaveOccupancy failed: "
+                               << resolved;
+                    } else {
+                        AINFO << "LocalizationServer: G2P5 occupancy saved to "
+                              << resolved;
+                    }
+                } else {
+                    AWARN << "LocalizationServer: g2p5_save_path set but map empty";
+                }
+            }
             g2p5_->Quit();
             g2p5_.reset();
         }
+        g2p5_occ_writer_.reset();
         if (viz_bridge_) {
             viz_bridge_->Stop();
             viz_bridge_.reset();
@@ -753,8 +1075,59 @@ private:
     std::unique_ptr<atlas::VizBridge> viz_bridge_;
     std::unique_ptr<atlas::map::DenseMapBuilder> dense_map_;
     std::unique_ptr<atlas::map::G2P5> g2p5_;
+    std::shared_ptr<autolink::Writer<automsgs::msgs::map_msgs::OccupancyGrid>>
+        g2p5_occ_writer_;
     std::unique_ptr<atlas::frontend::LidarLocator> lidar_locator_;
     std::unique_ptr<atlas::frontend::PoseExtrapolator> pose_extrapolator_;
+};
+
+// ---------------------------------------------------------------------------
+// Standalone lightning LIO
+// ---------------------------------------------------------------------------
+
+class LocalizationServer::LightningBackend
+    : public LocalizationServer::Backend {
+public:
+    explicit LightningBackend(LocalizationOptions options)
+        : options_(std::move(options)) {}
+
+    bool Start() override {
+        if (options_.lightning_config_path.empty()) {
+            AERROR << "Lightning requires --lightning_config.";
+            return false;
+        }
+        LightningNode::Options node_opts;
+        node_opts.config_path =
+            ResolveWorkspacePath(options_.lightning_config_path);
+        node_opts.imu_topic = options_.lightning_imu_topic;
+        node_opts.lidar_topic = options_.lightning_lidar_topic;
+        if (!options_.lightning_map_save_path.empty()) {
+            node_opts.map_save_path =
+                ResolveWorkspacePath(options_.lightning_map_save_path);
+        }
+        node_ = std::make_unique<LightningNode>(std::move(node_opts));
+        if (!node_->Start()) {
+            AERROR << "LightningNode::Start failed.";
+            node_.reset();
+            return false;
+        }
+        AINFO << "LocalizationServer: lightning backend started config="
+              << options_.lightning_config_path
+              << " imu=" << options_.lightning_imu_topic
+              << " lidar=" << options_.lightning_lidar_topic;
+        return true;
+    }
+
+    void Shutdown() override {
+        if (node_) {
+            node_->Shutdown();
+            node_.reset();
+        }
+    }
+
+private:
+    LocalizationOptions options_;
+    std::unique_ptr<LightningNode> node_;
 };
 
 // ---------------------------------------------------------------------------
@@ -766,6 +1139,8 @@ std::unique_ptr<LocalizationServer::Backend> LocalizationServer::CreateBackend(
     switch (options.backend) {
         case LocalizationBackend::kAtlas:
             return std::make_unique<AtlasBackend>(options);
+        case LocalizationBackend::kLightning:
+            return std::make_unique<LightningBackend>(options);
         case LocalizationBackend::kCartographer:
         default:
             return std::make_unique<CartographerBackend>(options);

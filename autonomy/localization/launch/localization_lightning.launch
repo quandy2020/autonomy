@@ -1,0 +1,48 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Standalone lightning LIO (not Atlas) for autosim / Habitat.
+
+  Backend: autonomy.localization --localization_mode=lightning
+
+  Expects autosim (config/lightning.yaml):
+    /imu      Imu
+    /points   PointCloud2
+    /odom     Odometry    odom → base_link
+    /tf + /tf_static      URDF mounts (autosim does not publish map→odom)
+
+  Publishes:
+    /lightning/odometry     Odometry       LIO pose in map
+    /lightning/trajectory   Path           trajectory
+    /lightning/cloud_map    PointCloud2    keyframe map (frame=map)
+    /lightning/occupancy    OccupancyGrid  G2P5 2.5D grid
+    /lightning/loop_edges   MarkerArray    loop-closure edges (green)
+    /tf                     map→odom
+
+  Config: conf/lightning/autosim.yaml
+    - lidar_type: 5 (generic PointCloud2)
+    - T_imu_lidar matches turtlebot3 burger URDF (imu_link / laser_link)
+
+  Run with autosim:
+    cd /workspace/autonomy
+    CONFIG=src/autonomy/autosim/config/lightning.yaml src/autonomy/autosim/scripts/run.sh sim
+    # other TTY: src/autonomy/autosim/scripts/run.sh teleop
+    # then:
+    cd /workspace/autonomy/src/autonomy
+    mkdir -p data/maps
+    export PATH=/workspace/autonomy/build/autonomy/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=/workspace/autonomy/src/autonomy/autonomy/localization/launch
+    autolink launch start localization_lightning.launch
+
+  Stop:
+    autolink launch stop localization_lightning.launch
+-->
+<autolink>
+  <module>
+    <name>localization_lightning</name>
+    <type>binary</type>
+    <process_name>autonomy.localization --localization_mode=lightning --lightning_config=autonomy/localization/conf/lightning/autosim.yaml --lightning_imu_topic=/imu --lightning_lidar_topic=/points --lightning_map_save=data/maps/lightning/</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

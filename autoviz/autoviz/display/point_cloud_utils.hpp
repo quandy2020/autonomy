@@ -7,6 +7,7 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <string>
 #include <vector>
 
 #include <QColor>
@@ -20,85 +21,122 @@ struct ParsedPointCloud {
   std::vector<float> xs;
   std::vector<float> ys;
   std::vector<float> zs;
+  /** Scalar channel selected for Intensity transformer. */
   std::vector<float> intensities;
+  /** Packed RGB/RGBA (RGB8). Empty unless cloud has rgb/rgba. */
   std::vector<uint32_t> rgb;
+  bool rgb_is_rgba = false;
+  /** Separate float r/g/b channels (RGBF32). Empty unless all three exist. */
+  std::vector<float> r;
+  std::vector<float> g;
+  std::vector<float> b;
 };
 
 // PointField datatype constants (sensor_msgs/PointField.msg).
-// Matches RViz2 sensor_msgs::msg::PointField values exactly.
 namespace PointFieldType {
-constexpr uint8_t kINT8    = 1;
-constexpr uint8_t kUINT8   = 2;
-constexpr uint8_t kINT16   = 3;
-constexpr uint8_t kUINT16  = 4;
-constexpr uint8_t kINT32   = 5;
-constexpr uint8_t kUINT32  = 6;
+constexpr uint8_t kINT8 = 1;
+constexpr uint8_t kUINT8 = 2;
+constexpr uint8_t kINT16 = 3;
+constexpr uint8_t kUINT16 = 4;
+constexpr uint8_t kINT32 = 5;
+constexpr uint8_t kUINT32 = 6;
 constexpr uint8_t kFLOAT32 = 7;
 constexpr uint8_t kFLOAT64 = 8;
 }  // namespace PointFieldType
 
-/** Per-field metadata extracted from PointCloud2 header. */
 struct PointFieldInfo {
-  uint32_t offset  = 0;
-  uint8_t  datatype = PointFieldType::kFLOAT32;
-  bool     valid   = false;
+  uint32_t offset = 0;
+  uint8_t datatype = PointFieldType::kFLOAT32;
+  bool valid = false;
 };
 
-/** Read a scalar value from a raw point byte pointer, matching all 8 RViz2
- *  PointField datatypes.  Mirrors rviz_default_plugins valueFromCloud<T>(). */
+/** Mirrors rviz_default_plugins::valueFromCloud<T>(). */
 template <typename T>
 inline T valueFromPointData(const uint8_t* point_ptr, const PointFieldInfo& field) {
   const uint8_t* data = point_ptr + field.offset;
   switch (field.datatype) {
-    case PointFieldType::kINT8:    { int8_t   v; std::memcpy(&v, data, 1); return static_cast<T>(v); }
-    case PointFieldType::kUINT8:   { uint8_t  v; std::memcpy(&v, data, 1); return static_cast<T>(v); }
-    case PointFieldType::kINT16:   { int16_t  v; std::memcpy(&v, data, 2); return static_cast<T>(v); }
-    case PointFieldType::kUINT16:  { uint16_t v; std::memcpy(&v, data, 2); return static_cast<T>(v); }
-    case PointFieldType::kINT32:   { int32_t  v; std::memcpy(&v, data, 4); return static_cast<T>(v); }
-    case PointFieldType::kUINT32:  { uint32_t v; std::memcpy(&v, data, 4); return static_cast<T>(v); }
-    case PointFieldType::kFLOAT32: { float    v; std::memcpy(&v, data, 4); return static_cast<T>(v); }
-    case PointFieldType::kFLOAT64: { double   v; std::memcpy(&v, data, 8); return static_cast<T>(v); }
-    default: return T{};
+    case PointFieldType::kINT8: {
+      int8_t v;
+      std::memcpy(&v, data, 1);
+      return static_cast<T>(v);
+    }
+    case PointFieldType::kUINT8: {
+      uint8_t v;
+      std::memcpy(&v, data, 1);
+      return static_cast<T>(v);
+    }
+    case PointFieldType::kINT16: {
+      int16_t v;
+      std::memcpy(&v, data, 2);
+      return static_cast<T>(v);
+    }
+    case PointFieldType::kUINT16: {
+      uint16_t v;
+      std::memcpy(&v, data, 2);
+      return static_cast<T>(v);
+    }
+    case PointFieldType::kINT32: {
+      int32_t v;
+      std::memcpy(&v, data, 4);
+      return static_cast<T>(v);
+    }
+    case PointFieldType::kUINT32: {
+      uint32_t v;
+      std::memcpy(&v, data, 4);
+      return static_cast<T>(v);
+    }
+    case PointFieldType::kFLOAT32: {
+      float v;
+      std::memcpy(&v, data, 4);
+      return static_cast<T>(v);
+    }
+    case PointFieldType::kFLOAT64: {
+      double v;
+      std::memcpy(&v, data, 8);
+      return static_cast<T>(v);
+    }
+    default:
+      return T{};
   }
 }
 
+/** RViz2 Color Transformer plugin names (point_cloud_transformer_factory.cpp). */
 enum class PointCloudColorMode {
-  kFlat,       ///< Uniform color (RViz2 "Flat Color", Foxglove "Flat")
-  kIntensity,  ///< Scalar field → color ramp (RViz2 "Intensity")
-  kRgb8,       ///< Packed RGB/RGBA field (RViz2 "RGB8")
-  kAxisX,      ///< World-X range → color ramp (RViz2 "AxisColor X")
-  kAxisY,      ///< World-Y range → color ramp
-  kAxisZ,      ///< World-Z range → color ramp (most common: height coloring)
+  kFlatColor,   ///< FlatColor
+  kIntensity,   ///< Intensity
+  kRgb8,        ///< RGB8
+  kRgbF32,      ///< RGBF32
+  kAxisColor,   ///< AxisColor (+ Axis X/Y/Z)
 };
 
-/** Color ramp used for Intensity / Axis color transformers. */
-enum class PointCloudColorRamp {
-  kRainbow,    ///< Classic HSV rainbow (RViz2 default)
-  kTurbo,      ///< Google Turbo: perceptually uniform, good for depth
-  kGrayscale,  ///< White → Black
-};
-
-/** Decode commsgs PointCloud2 into xyz arrays with optional intensity/rgb. */
+/** Decode PointCloud2. intensity_channel selects Intensity transformer field
+ *  (falls back to "intensities" when channel is "intensity"). */
 ParsedPointCloud parsePointCloud2(
     const automsgs::msgs::sensor_msgs::PointCloud2& cloud,
-    uint32_t decimation = 1);
+    uint32_t decimation = 1,
+    const std::string& intensity_channel = "intensity");
 
-/** Parse color-transformer UI string (RViz2 / Foxglove naming). */
 PointCloudColorMode parsePointCloudColorMode(const std::string& value);
 
-/** Parse color-ramp UI string. */
-PointCloudColorRamp parsePointCloudColorRamp(const std::string& value);
+/** RViz2 getRainbowColor (point_cloud_helpers.hpp). value in [0,1]. */
+QColor getRainbowColor(float value);
 
-/** Map a normalized scalar t∈[0,1] through the chosen color ramp. */
-QColor colorFromRamp(float t, PointCloudColorRamp ramp);
+/** Intensity / AxisColor coloring matching RViz2 IntensityPCTransformer.
+ *  When use_rainbow: rainbow (optionally inverted). Else interpolate min→max. */
+QColor colorFromScalar(float value, float min_v, float max_v, bool use_rainbow,
+                       bool invert_rainbow, const QColor& min_color,
+                       const QColor& max_color);
 
-QColor colorFromIntensity(float intensity, float min_i, float max_i,
-                          PointCloudColorRamp ramp = PointCloudColorRamp::kRainbow);
-/** 256-entry rainbow table shared with Ogre indexed_8bit palette. */
+QColor colorFromRgbPacked(uint32_t rgb_packed, bool has_alpha = false);
+
+/** 256-entry RViz rainbow table (shared with Ogre indexed palette). */
 const std::array<QColor, 256>& intensityRainbowTable();
 uint8_t intensityToPaletteIndex(float intensity, float min_i, float max_i);
 QColor colorFromIntensityIndex(uint8_t index);
-QColor colorFromRgbPacked(uint32_t rgb_packed);
+
+/** Legacy helpers kept for LaserScan / scalar displays. */
+QColor colorFromIntensity(float intensity, float min_i, float max_i);
+QColor colorFromRamp(float t, int /*unused*/ = 0);
 
 }  // namespace display
 }  // namespace autoviz

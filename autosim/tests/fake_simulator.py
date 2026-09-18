@@ -62,12 +62,13 @@ class FakeSimulator:
     def laser_ranges(self, angle_min, angle_max, num_beams, range_max) -> np.ndarray:
         return np.full((int(num_beams),), 0.5 * float(range_max), dtype=np.float32)
 
-    def lidar_points(self, h_min, h_max, h_beams, v_min, v_max, v_rings, range_max) -> np.ndarray:
+    def lidar_points(self, h_min, h_max, h_beams, v_min, v_max, v_rings, range_max, **_kwargs):
         h = self.linspace_angles(h_min, h_max, h_beams)
         v = self.linspace_angles(v_min, v_max, v_rings)
         radius = 0.5 * float(range_max)
         points = []
-        for pitch in v:
+        rings = []
+        for ring_id, pitch in enumerate(v):
             for yaw in h:
                 points.append(
                     (
@@ -76,7 +77,11 @@ class FakeSimulator:
                         radius * math.sin(pitch),
                     )
                 )
-        return np.asarray(points, dtype=np.float32)
+                rings.append(float(ring_id))
+        return (
+            np.asarray(points, dtype=np.float32),
+            np.asarray(rings, dtype=np.float32),
+        )
 
     def color_depth(self):
         color = np.zeros((self.height, self.width, 3), dtype=np.uint8)

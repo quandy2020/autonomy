@@ -90,6 +90,10 @@ class Config:
         }
         if isinstance(footprint_cfg, Mapping) and footprint_cfg.get("enabled", False):
             channels["footprint"] = footprint_cfg.get("channel", "/footprint")
+        odom_cfg = sensors.get("odom") or {}
+        path_channel = str(odom_cfg.get("path_channel") or "").strip()
+        if path_channel:
+            channels["odom_path"] = path_channel
         camera_cfg = sensors.get("camera") or {}
         if camera_cfg.get("semantic_enabled", False):
             semantic_channel = str(camera_cfg.get("semantic_channel") or "").strip()
@@ -255,6 +259,9 @@ class Config:
             raise ValueError("habitat.sensors.imu.noise must be a mapping")
         cls.require_nonneg(imu_noise.get("gyro", 0.0), "habitat.sensors.imu.noise.gyro")
         cls.require_nonneg(imu_noise.get("accel", 0.0), "habitat.sensors.imu.noise.accel")
+        cls.require_nonneg(
+            sensors["imu"].get("gravity", 0.0), "habitat.sensors.imu.gravity"
+        )
 
         cam_noise = sensors["camera"].get("noise", {})
         if cam_noise is None:
@@ -293,6 +300,17 @@ class Config:
         if not isinstance(truth.get("channel"), str) or not truth["channel"].strip():
             raise ValueError("empty channel name: habitat.robot.truth.channel")
         cls.validate_urdf(robot.get("urdf", ""))
+        cls.require_nonneg(robot.get("max_linear", 0.0), "habitat.robot.max_linear")
+        cls.require_nonneg(robot.get("max_angular", 0.0), "habitat.robot.max_angular")
+        cls.require_nonneg(
+            robot.get("max_linear_accel", 0.0), "habitat.robot.max_linear_accel"
+        )
+        cls.require_nonneg(
+            robot.get("max_linear_decel", 0.0), "habitat.robot.max_linear_decel"
+        )
+        cls.require_nonneg(
+            robot.get("max_angular_accel", 0.0), "habitat.robot.max_angular_accel"
+        )
 
         sensors = habitat.get("sensors")
         if not isinstance(sensors, Mapping):

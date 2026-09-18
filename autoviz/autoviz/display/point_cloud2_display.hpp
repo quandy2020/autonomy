@@ -5,7 +5,6 @@
 #pragma once
 
 #include <chrono>
-#include <limits>
 #include <QColor>
 #include <QVector3D>
 #include <vector>
@@ -49,10 +48,6 @@ class PointCloud2Display
   };
 
   std::vector<PointBatch> batches_;
-
-  /// Per-message intensity range remembered across frames for stable coloring.
-  float intensity_auto_min_ = std::numeric_limits<float>::max();
-  float intensity_auto_max_ = std::numeric_limits<float>::lowest();
 };
 
 }  // namespace display

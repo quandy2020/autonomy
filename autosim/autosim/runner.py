@@ -27,7 +27,7 @@ import queue
 import threading
 import time
 import warnings
-from pathlib import Path
+from pathlib import Path as FilePath
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
@@ -46,6 +46,7 @@ from automsgs.msgs.geometry_msgs.polygon_stamped_pb2 import PolygonStamped
 from automsgs.msgs.geometry_msgs.twist_stamped_pb2 import TwistStamped
 from automsgs.msgs.map_msgs.occupancy_grid_pb2 import OccupancyGrid
 from automsgs.msgs.nav_msgs.odometry_pb2 import Odometry
+from automsgs.msgs.nav_msgs.path_pb2 import Path
 from automsgs.msgs.builtin_interfaces.time_pb2 import Time as TimeMsg
 from automsgs.msgs.sensor_msgs.camera_info_pb2 import CameraInfo
 from automsgs.msgs.sensor_msgs.image_pb2 import Image
@@ -151,6 +152,9 @@ class Runner:
         self.map_elapsed = 0.0
         self.map_published = False
         self.map_builder: Optional[Map] = None
+        # Accumulated /odom poses for optional Path (nav_msgs) trajectory.
+        self.odom_path_poses: list[Tuple[float, float, float, Tuple[int, int]]] = []
+        self.odom_path_last: Optional[Tuple[float, float]] = None
         if self.map_cfg.get("enabled", False):
             self.map_builder = Map(self.map_cfg)
             # Let 2D lidar clip Habitat hits against the published occupancy grid.
@@ -238,7 +242,11 @@ class Runner:
             accel_noise=float(imu_noise.get("accel", 0.0)),
             gyro_bias=float(imu_noise.get("gyro_bias", 0.0)),
             accel_bias=float(imu_noise.get("accel_bias", 0.0)),
+            gravity=float(self.imu.get("gravity", Robot.GRAVITY)),
             wheel_separation=float(self.robot_cfg.get("wheel_separation", 0.5)),
+            max_linear_accel=float(self.robot_cfg.get("max_linear_accel", 0.8)),
+            max_linear_decel=float(self.robot_cfg.get("max_linear_decel", 1.2)),
+            max_angular_accel=float(self.robot_cfg.get("max_angular_accel", 2.0)),
             x=float(self.spawn[0]),
             y=float(self.spawn[1]),
             yaw=float(self.spawn[2]),
@@ -276,6 +284,8 @@ class Runner:
         types: Dict[str, Any] = {"cmd_vel": TwistStamped}
         if self.odom.get("enabled", True):
             types["odom"] = Odometry
+            if str(self.odom.get("path_channel") or "").strip():
+                types["odom_path"] = Path
         if self.lidar_2d["enabled"]:
             types["scan"] = LaserScan
         if self.lidar_3d["enabled"]:
@@ -383,7 +393,9 @@ class Runner:
         # all fire on the next tick and hitch again.
         self.advance_timers(min(dt, 0.05))
         self.emit("odom", self.publish_odometry, x, y, yaw, linear, angular, stamp)
-        self.emit("imu", self.publish_imu, yaw, linear, stamp)
+        # Pass full sim ``dt`` (not the capped timer step) so hitch intervals
+        # still fill /imu at rate_hz — lightning rejects IMU Δt > 0.1 s.
+        self.emit("imu", self.publish_imu, yaw, linear, stamp, dt)
         self.emit("truth", self.publish_truth, stamp)
         self.emit("footprint", self.publish_footprint, stamp)
         self.emit("tf", self.publish_tf, stamp)
@@ -445,16 +457,32 @@ class Runner:
         if not self.cloud_is_due():
             return
         self.points_elapsed = 0.0
-        points = self.sensors.sample_points(self.simulator)
+        linear, angular = self.robot.velocity()
+        scan_period = 1.0 / max(float(self.lidar_3d.get("rate_hz", 10.0)), 1e-3)
+        points = self.sensors.sample_points(
+            self.simulator,
+            linear=linear,
+            angular=angular,
+            scan_period=scan_period,
+        )
         self._sensor_worker.submit(self.encode_publish_cloud, points, stamp)
 
-    def encode_publish_cloud(self, points: Any, stamp: Tuple[int, int]) -> None:
+    def encode_publish_cloud(self, points: Any, stamp: Tuple[int, int],
+                             rings: Any = None) -> None:
         intensity = None
-        if points.size > 0:
-            intensity = np.linalg.norm(points, axis=1).astype(np.float32)
+        ring = None
+        if isinstance(points, tuple):
+            points, rings = points
+        pts = np.asarray(points)
+        if pts.size > 0:
+            intensity = np.linalg.norm(pts.reshape(-1, 3), axis=1).astype(np.float32)
+            if rings is not None:
+                ring = np.asarray(rings, dtype=np.float32).reshape(-1)
         self.bridge.publish(
             "points",
-            Messages.encode_point_cloud2(points, stamp, self.lidar_3d["frame"], intensity=intensity),
+            Messages.encode_point_cloud2(
+                pts, stamp, self.lidar_3d["frame"], intensity=intensity, ring=ring
+            ),
         )
 
     def submit_camera(self, stamp: Tuple[int, int]) -> None:
@@ -760,6 +788,41 @@ class Runner:
                 twist_variance=variance,
             ),
         )
+        self.publish_odom_path(ox, oy, oyaw, stamp)
+
+    def publish_odom_path(
+        self,
+        x: float,
+        y: float,
+        yaw: float,
+        stamp: Tuple[int, int],
+    ) -> None:
+        """Append wheel-odom pose (distance-gated) and always republish Path.
+
+        ``path_min_distance`` only controls sampling density. The full path is
+        re-published every odom tick so late Autoviz subscribers still see data.
+        """
+        if "odom_path" not in self.bridge.writers:
+            return
+        min_dist = float(self.odom.get("path_min_distance", 0.05))
+        append = self.odom_path_last is None
+        if not append:
+            dx = float(x) - self.odom_path_last[0]
+            dy = float(y) - self.odom_path_last[1]
+            append = (dx * dx + dy * dy) >= (min_dist * min_dist)
+        if append:
+            self.odom_path_poses.append((float(x), float(y), float(yaw), stamp))
+            self.odom_path_last = (float(x), float(y))
+            max_poses = max(2, int(self.odom.get("path_max_poses", 10000)))
+            if len(self.odom_path_poses) > max_poses:
+                overflow = len(self.odom_path_poses) - max_poses
+                del self.odom_path_poses[:overflow]
+        if not self.odom_path_poses:
+            return
+        self.bridge.publish(
+            "odom_path",
+            Messages.encode_path(self.odom_path_poses, stamp, self.odom["frame"]),
+        )
 
     def publish_footprint(self, stamp: Tuple[int, int]) -> None:
         """Publish robot footprint as ``geometry_msgs/PolygonStamped``."""
@@ -815,7 +878,14 @@ class Runner:
         if not self.lidar_3d["enabled"] or self.points_elapsed < 1.0 / self.lidar_3d["rate_hz"]:
             return
         self.points_elapsed = 0.0
-        points = self.sensors.sample_points(self.simulator)
+        linear, angular = self.robot.velocity()
+        scan_period = 1.0 / max(float(self.lidar_3d.get("rate_hz", 10.0)), 1e-3)
+        points, rings = self.sensors.sample_points(
+            self.simulator,
+            linear=linear,
+            angular=angular,
+            scan_period=scan_period,
+        )
         intensity = None
         if points.size > 0:
             intensity = np.linalg.norm(points, axis=1).astype(np.float32)
@@ -826,6 +896,7 @@ class Runner:
                 stamp,
                 self.lidar_3d["frame"],
                 intensity=intensity,
+                ring=rings if points.size > 0 else None,
             ),
         )
 
@@ -895,37 +966,69 @@ class Runner:
             color, depth = sampled
             self.encode_publish_camera(color, depth, stamp)
 
-    def publish_imu(self, yaw: float, linear: float, stamp: Tuple[int, int]) -> None:
-        """Publish IMU when enabled and due.
+    def publish_imu(
+        self,
+        yaw: float,
+        linear: float,
+        stamp: Tuple[int, int],
+        dt: float = 0.0,
+    ) -> None:
+        """Publish IMU when enabled.
+
+        Habitat has no physics IMU. Specific force comes from
+        :meth:`Robot.update_inertial`. One control tick may span a large sim
+        ``dt`` when lidar hitches (~0.1 s); lightning aborts IMU predict when
+        successive sample Δt > 0.1 s. Subdivide the interval at ``rate_hz`` so
+        stamped IMU stays dense even if the control loop is slow.
 
         Args:
             yaw: Current heading (rad).
             linear: Current linear speed (m/s).
-            stamp: Message timestamp.
+            stamp: End-of-interval message timestamp.
+            dt: Sim time covered by this control cycle (s).
         """
         if not self.imu.get("enabled", False):
             return
-        if self.inertial_elapsed < 1.0 / self.imu["rate_hz"]:
-            return
-        self.inertial_elapsed = 0.0
-        gyro_z, accel_x, accel_y = self.robot.update_inertial(yaw, linear, self.clock.now())
-        half = 0.5 * yaw
-        orientation = (0.0, 0.0, math.sin(half), math.cos(half))
+        rate = max(1.0, float(self.imu.get("rate_hz", 50.0)))
+        period = 1.0 / rate
+        span = max(float(dt), 0.0)
+        if span <= 0.0:
+            span = period
+        # Samples across [t_end - span, t_end]; cap to avoid flood on huge hitch.
+        n = max(1, int(math.floor(span / period + 1e-9)))
+        n = min(n, 50)
+        sub_dt = span / float(n)
+        t_end = float(stamp[0]) + float(stamp[1]) * 1e-9
+        t_start = t_end - span
+        yaw0 = float(getattr(self, "_imu_yaw", yaw))
+        dyaw = math.atan2(math.sin(float(yaw) - yaw0), math.cos(float(yaw) - yaw0))
         imu_noise = self.imu.get("noise") or {}
         gyro_var = float(imu_noise.get("gyro", 0.0)) ** 2
         accel_var = float(imu_noise.get("accel", 0.0)) ** 2
-        self.bridge.publish(
-            "imu",
-            Messages.encode_inertial(
-                stamp,
-                self.imu["frame"],
-                orientation,
-                (0.0, 0.0, gyro_z),
-                (accel_x, accel_y, 9.81),
-                gyro_variance=gyro_var,
-                accel_variance=accel_var,
-            ),
-        )
+        frame = self.imu["frame"]
+        for i in range(1, n + 1):
+            alpha = float(i) / float(n)
+            yaw_i = yaw0 + alpha * dyaw
+            t_i = t_start + float(i) * sub_dt
+            gyro_z, accel_x, accel_y, accel_z = self.robot.update_inertial(
+                yaw_i, linear, t_i
+            )
+            half = 0.5 * yaw_i
+            orientation = (0.0, 0.0, math.sin(half), math.cos(half))
+            stamp_i = Clock(start_sec=t_i).stamp()
+            self.bridge.publish(
+                "imu",
+                Messages.encode_inertial(
+                    stamp_i,
+                    frame,
+                    orientation,
+                    (0.0, 0.0, gyro_z),
+                    (accel_x, accel_y, accel_z),
+                    gyro_variance=gyro_var,
+                    accel_variance=accel_var,
+                ),
+            )
+        self._imu_yaw = float(yaw)
 
     def publish_tf(self, stamp: Tuple[int, int]) -> None:
         """Publish robot TF for Autoviz / Cartographer / planning.
@@ -1042,8 +1145,8 @@ class Runner:
         parser = argparse.ArgumentParser(prog="autosim")
         parser.add_argument(
             "--config",
-            type=Path,
-            default=Path(__file__).resolve().parents[1] / "config" / "default.yaml",
+            type=FilePath,
+            default=FilePath(__file__).resolve().parents[1] / "config" / "default.yaml",
         )
         args = parser.parse_args(argv)
         Runner(Config.load(args.config)).run()

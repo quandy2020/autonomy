@@ -52,6 +52,7 @@ public:
                  estimate::IOdomResidualSource* odom_src = nullptr)
         : mask_(mask), lidar_src_(lidar_src), odom_src_(odom_src) {
         num_lidar_iter_ = yaml_node["joint_lidar_iter"].as<int>(5);
+        T_c_b_ = imu_cfg.T_c_b();
         if (imu_cfg.enabled && yaml_node["use_inertial"].as<bool>(true) &&
             mask_.imu) {
             inner_ = std::make_unique<optimize::local_bundle_adjuster_inertial>(
@@ -86,7 +87,7 @@ public:
             const auto batch = lidar_src_->Pull(t - 0.5, t + 0.05);
             if (!batch.empty()) {
                 const int n = estimate::ApplyLidarPointPlaneRefine(
-                    curr_keyfrm.get(), batch, num_lidar_iter_);
+                    curr_keyfrm.get(), batch, num_lidar_iter_, T_c_b_);
                 AINFO << "LocalJointBA: lidar edges=" << n;
             }
         }
@@ -119,6 +120,7 @@ private:
     estimate::ILidarResidualSource* lidar_src_ = nullptr;
     estimate::IOdomResidualSource* odom_src_ = nullptr;
     int num_lidar_iter_ = 5;
+    Mat44_t T_c_b_ = Mat44_t::Identity();
     std::unique_ptr<optimize::local_bundle_adjuster> inner_;
 };
 

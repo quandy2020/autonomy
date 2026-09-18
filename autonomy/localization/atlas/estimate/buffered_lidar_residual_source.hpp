@@ -54,7 +54,9 @@ public:
             out.point_planes.insert(out.point_planes.end(),
                                     item.batch.point_planes.begin(),
                                     item.batch.point_planes.end());
-            out.num_point_point += item.batch.num_point_point;
+            out.point_points.insert(out.point_points.end(),
+                                    item.batch.point_points.begin(),
+                                    item.batch.point_points.end());
         }
         return out;
     }

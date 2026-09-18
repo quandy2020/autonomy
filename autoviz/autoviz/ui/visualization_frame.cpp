@@ -1185,6 +1185,7 @@ void VisualizationFrame::bindImageToPropertyInspector(image::ImagePanel* panel) 
   const QString title = panel->config().title.trimmed();
   property_inspector_panel_->setContentWidget(panel->settingsWidgetForInspector(),
                                               title.isEmpty() ? tr("Image") : title);
+  panel->refreshSettingsChannels();
   if (property_inspector_dock_ != nullptr) {
     panel->setSettingsButtonChecked(property_inspector_dock_->isVisible());
   }
@@ -1976,8 +1977,6 @@ void VisualizationFrame::setupUi() {
   image_dock_ = createImagePanelDock(QStringLiteral("ImageDock"));
   image_panel_ = qobject_cast<image::ImagePanel*>(image_dock_->widget());
   addMainPanelDock(image_dock_, Qt::LeftDockWidgetArea);
-  // Visible by default so /fake/image from sensor tutorials shows without
-  // hunting for a hidden dock + empty topic setting.
   image_dock_->show();
   installImageFocusTracking();
   setActiveImagePanel(image_panel_);

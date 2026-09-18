@@ -77,7 +77,7 @@ estimate::LidarFactorBatch ObsModel::Build(
             r.normal_world.normalize();
         }
         r.d = plane_d[i];
-        r.weight = 1.0;
+        r.weight = options_.plane_weight;
         batch.point_planes.push_back(r);
     }
     return batch;
@@ -96,31 +96,61 @@ estimate::LidarFactorBatch ObsModel::BuildAgainstIVox(
     const std::size_t limit =
         static_cast<std::size_t>(std::max(0, options_.max_residuals));
     batch.point_planes.reserve(std::min(points_body.size(), limit));
+    if (options_.enable_icp_part) {
+        batch.point_points.reserve(std::min(points_body.size(), limit));
+    }
 
     for (const auto& p_b : points_body) {
-        if (batch.point_planes.size() >= limit) {
+        if (batch.point_planes.size() >= limit &&
+            (!options_.enable_icp_part ||
+             batch.point_points.size() >= limit)) {
             break;
         }
         if (!p_b.allFinite()) {
             continue;
         }
         const Vec3_t p_w = R_wc * p_b + t_wc;
-        const mapping::IVox::PlaneHit hit = map.EstimatePlane(p_w);
-        if (!hit.ok) {
-            continue;
+        const double range2 = p_b.squaredNorm();
+
+        // Nearest for optional P2P (also used when plane fit fails).
+        std::vector<Vec3_t> nearest;
+        const bool have_nn = map.GetClosestPoints(
+            p_w, &nearest, map.options().knn_max_num,
+            map.options().knn_max_range);
+
+        bool plane_ok = false;
+        if (batch.point_planes.size() < limit) {
+            const mapping::IVox::PlaneHit hit = map.EstimatePlane(p_w);
+            if (hit.ok && std::abs(hit.residual) <= options_.max_distance) {
+                // lightning srange gate: reject large residual at short range.
+                const double pd2 = hit.residual * hit.residual;
+                if (range2 > options_.srange_scale * pd2) {
+                    estimate::PointPlaneResidual r;
+                    r.point_body = p_b;
+                    r.normal_world = hit.normal;
+                    r.d = hit.d;
+                    const double scale =
+                        1.0 /
+                        (1.0 + std::abs(hit.residual) / options_.max_distance);
+                    r.weight = options_.plane_weight * scale;
+                    batch.point_planes.push_back(r);
+                    plane_ok = true;
+                }
+            }
         }
-        if (std::abs(hit.residual) > options_.max_distance) {
-            continue;
+
+        // lightning: ICP only on points that already passed surface selection.
+        if (options_.enable_icp_part && plane_ok && have_nn &&
+            !nearest.empty() && batch.point_points.size() < limit) {
+            const Vec3_t e = p_w - nearest[0];
+            if (e.norm() <= options_.icp_max_distance) {
+                estimate::PointPointResidual r;
+                r.point_body = p_b;
+                r.point_world_map = nearest[0];
+                r.weight = options_.icp_weight;
+                batch.point_points.push_back(r);
+            }
         }
-        estimate::PointPlaneResidual r;
-        r.point_body = p_b;
-        r.normal_world = hit.normal;
-        r.d = hit.d;
-        // Down-weight large residuals.
-        const double scale =
-            1.0 / (1.0 + std::abs(hit.residual) / options_.max_distance);
-        r.weight = scale;
-        batch.point_planes.push_back(r);
     }
     return batch;
 }

@@ -18,7 +18,7 @@
 
 #include <cmath>
 
-#include "glog/logging.h"
+#include "autolink/common/log.hpp"
 
 namespace autonomy::localization::atlas {
 namespace sensor {
@@ -30,7 +30,7 @@ OdomSensor::OdomSensor(Options options)
 
 bool OdomSensor::Start() {
     running_ = true;
-    LOG(INFO) << "OdomSensor: started, topic=" << options_.topic;
+    AINFO << "OdomSensor: started, topic=" << options_.topic;
     return true;
 }
 

@@ -26,6 +26,27 @@ namespace {
 
 constexpr int kColorSwatchSize = 14;
 
+/** Float editor that does not pad trailing zeros (0.01, not 0.0100). */
+class CompactDoubleSpinBox : public QDoubleSpinBox {
+ public:
+  explicit CompactDoubleSpinBox(QWidget* parent = nullptr)
+      : QDoubleSpinBox(parent) {
+    // Allow fine steps while textFromValue strips trailing zeros.
+    setDecimals(8);
+  }
+
+ protected:
+  QString textFromValue(double value) const override {
+    return QString::number(value, 'g', 8);
+  }
+
+  double valueFromText(const QString& text) const override {
+    bool ok = false;
+    const double v = text.toDouble(&ok);
+    return ok ? v : value();
+  }
+};
+
 QColor ColorFromPropertyText(const QString& text) {
   return common::ParseColorProperty(text.toStdString(), QColor(128, 128, 128));
 }
@@ -248,7 +269,7 @@ QWidget* DisplayTreeDelegate::createEditor(QWidget* parent,
   }
 
   if (kind == DisplayTreeItemKind::kGlobalFrameRate) {
-    auto* spin = new QDoubleSpinBox(parent);
+    auto* spin = new CompactDoubleSpinBox(parent);
     spin->setDecimals(0);
     spin->setRange(1, 1000);
     spin->setValue(current.toDouble());
@@ -302,8 +323,7 @@ QWidget* DisplayTreeDelegate::createEditor(QWidget* parent,
     bool ok = false;
     current.toFloat(&ok);
     if (ok) {
-      auto* spin = new QDoubleSpinBox(parent);
-      spin->setDecimals(4);
+      auto* spin = new CompactDoubleSpinBox(parent);
       spin->setRange(-1e6, 1e6);
       spin->setSingleStep(0.1);
       spin->setValue(current.toFloat());
@@ -361,7 +381,7 @@ void DisplayTreeDelegate::setModelData(QWidget* editor, QAbstractItemModel* mode
     if (kind == DisplayTreeItemKind::kGlobalFrameRate) {
       value = QString::number(static_cast<int>(spin->value()));
     } else {
-      value = QString::number(spin->value(), 'g', 8);
+      value = QString::fromStdString(common::FormatFloatProperty(spin->value()));
     }
   } else if (auto* check = qobject_cast<QCheckBox*>(editor)) {
     value = check->isChecked() ? QStringLiteral("true") : QStringLiteral("false");

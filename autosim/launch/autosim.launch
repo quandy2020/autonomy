@@ -11,6 +11,10 @@
     autolink launch start src/autonomy/autosim/launch/autosim.launch
 
   Config: CONFIG=... overrides default.yaml (see scripts/run.sh).
+  LIO / 32-line lidar:
+    CONFIG=src/autonomy/autosim/config/lio.yaml \
+      autolink launch start src/autonomy/autosim/launch/autosim.launch
+    # or: CONFIG=.../lio.yaml bash src/autonomy/autosim/scripts/run.sh sim
 -->
 <autolink>
   <module>

@@ -22,7 +22,7 @@
 #include <fstream>
 #include <stdexcept>
 
-#include "glog/logging.h"
+#include "autolink/common/log.hpp"
 
 namespace autonomy::localization::atlas {
 namespace calibration {
@@ -237,10 +237,10 @@ CalibrationBundle LoadCalibrationBundle(const std::string& yaml_path) {
     try {
         root = YAML::LoadFile(yaml_path);
     } catch (const std::exception& e) {
-        LOG(ERROR) << "LoadCalibrationBundle: " << yaml_path << ": " << e.what();
+        AERROR << "LoadCalibrationBundle: " << yaml_path << ": " << e.what();
         throw;
     }
-    LOG(INFO) << "LoadCalibrationBundle: " << yaml_path;
+    AINFO << "LoadCalibrationBundle: " << yaml_path;
     return LoadCalibrationBundle(root);
 }
 

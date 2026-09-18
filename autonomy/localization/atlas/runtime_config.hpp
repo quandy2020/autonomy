@@ -52,6 +52,11 @@ struct RuntimeConfig {
     bool with_loop_closing = true;
     bool maps_dense_rgbd = true;
     bool maps_g2p5 = false;
+    //! OccupancyGrid topic for G2P5 ToROS publish. YAML `maps.g2p5_topic`.
+    std::string g2p5_topic = "/atlas/g2p5/occupancy";
+    //! On Shutdown, write map.pgm + map.yaml via G2P5Map::SaveOccupancy.
+    //! YAML `maps.g2p5_save_path` (empty = skip).
+    std::string g2p5_save_path;
     //! Chunked lidar map (TiledMap PCD + index.yaml); YAML `maps.tiled`.
     bool maps_tiled = false;
     //! Prior map directory for LidarLocator (`maps.tiled_path`).
@@ -61,6 +66,7 @@ struct RuntimeConfig {
 
     std::string vision_config_path;
     std::string vocab_path;
+    //! Lidar preprocess / loop yaml. YAML `lidar_config_path` or alias `lightning_yaml`.
     std::string lidar_config_path;
 };
 

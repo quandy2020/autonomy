@@ -39,6 +39,7 @@ namespace frontend {
  * Optional Anderson Acceleration + per-iter dx clip (lightning-style).
  * PredictImu: discrete Φ ≈ I + F dt, P ← Φ P Φᵀ + G Q Gᵀ dt.
  * Degeneracy: eigenvalue projector on HTH (lightning-style), optional P inflate.
+ * No ZUPT / spin_zupt (aligned with lightning-lm).
  */
 class Eskf {
 public:
@@ -80,6 +81,16 @@ public:
         //! Reject IEKF iter if |Δt| or |Δθ| exceeds these (lightning clip).
         double max_update_translation_step = 0.5;       // meters
         double max_update_rotation_step_deg = 5.0;      // degrees
+        //! Reject entire UpdateLidar if total |Δθ| from predict exceeds this.
+        double max_scan_rotation_step_deg = 12.0;
+        //! Ground robot: lock z / vz after first pose (stops sky drift in viz).
+        bool planar_motion = false;
+        //! Max |v| after PredictImu (m/s). 0 = disabled. Turtlebot-scale default.
+        double max_velocity = 0.6;
+        //! Planar: integrate only body ax/ay (drop az + world gravity). Autosim
+        //! publishes level-robot REP-145 specific force (fz≈+g); any estimated R
+        //! tilt would otherwise leak ~1g into xy and explode velocity.
+        bool planar_imu_horizontal_only = true;
     };
 
     Eskf() = default;
@@ -91,6 +102,8 @@ public:
     [[nodiscard]] const Options& options() const { return options_; }
 
     void Reset(const Mat44_t& T_wb = Mat44_t::Identity());
+    //! Snap pose (and optionally zero velocity) without wiping ba/bg/gravity.
+    void SetPose(const Mat44_t& T_wb, bool zero_velocity = true);
     void PredictImu(double dt, const Vec3_t& gyro, const Vec3_t& acc);
 
     //! Body-frame relative odom: T_wb ← T_wb * T_delta (WIO / LWIO).
@@ -114,11 +127,14 @@ public:
 private:
     void ResetCovariance();
     void PropagateCovariance(double dt, const Vec3_t& omega, const Vec3_t& acc);
+    void ApplyPlanarLock(Vec3_t* t_io, Vec3_t* v_io);
 
     Options options_;
     State state_;
     MatP_t P_ = MatP_t::Identity();
     bool initialized_ = false;
+    bool planar_z_locked_ = false;
+    double planar_z_ = 0.0;
     AndersonAcceleration<double, 6, 10> aa_;
 };
 

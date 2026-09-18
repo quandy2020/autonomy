@@ -20,7 +20,8 @@
 #include "autonomy/localization/atlas/mapping/local_mapping.hpp"
 #include "autonomy/localization/atlas/system.hpp"
 
-#include "glog/logging.h"
+#include "autolink/common/log.hpp"
+#include "yaml-cpp/yaml.h"
 
 namespace autonomy::localization::atlas {
 
@@ -87,7 +88,7 @@ void Pipeline::WireTiledMap() {
     }
     if (!tiled_map_) {
         tiled_map_ = std::make_unique<mapping::TiledMap>();
-        LOG(INFO) << "Pipeline: TiledMap created (maps.tiled=true)";
+        AINFO << "Pipeline: TiledMap created (maps.tiled=true)";
     }
     if (auto* mi = active_map_incremental()) {
         mi->set_tiled_map(tiled_map_.get());
@@ -101,20 +102,132 @@ void Pipeline::WireLidarIVox() {
     }
     mapping::IVox::Options ivox_opts;
     ivox_opts.resolution = sensors_->lidar()->options().ivox_resolution;
+    if (!runtime_.lidar_config_path.empty()) {
+        try {
+            const auto root = YAML::LoadFile(runtime_.lidar_config_path);
+            if (root["ivox"] && root["ivox"].IsMap()) {
+                const auto& n = root["ivox"];
+                ivox_opts.resolution =
+                    n["resolution"].as<double>(ivox_opts.resolution);
+                ivox_opts.max_points_per_voxel =
+                    n["max_points_per_voxel"].as<std::size_t>(
+                        ivox_opts.max_points_per_voxel);
+                ivox_opts.max_voxels =
+                    n["max_voxels"].as<std::size_t>(ivox_opts.max_voxels);
+                ivox_opts.neighbor_search =
+                    n["neighbor_search"].as<int>(ivox_opts.neighbor_search);
+                ivox_opts.min_plane_points =
+                    n["min_plane_points"].as<int>(ivox_opts.min_plane_points);
+                ivox_opts.use_morton_key =
+                    n["use_morton_key"].as<bool>(ivox_opts.use_morton_key);
+                ivox_opts.use_hilbert_key =
+                    n["use_hilbert_key"].as<bool>(ivox_opts.use_hilbert_key);
+                if (n["nearby_type"]) {
+                    ivox_opts.nearby_type = mapping::ParseIVoxNearbyType(
+                        n["nearby_type"].as<std::string>("nearby6"));
+                }
+                if (n["node_kind"] || n["node_type"]) {
+                    const std::string kind =
+                        n["node_kind"]
+                            ? n["node_kind"].as<std::string>("linear")
+                            : n["node_type"].as<std::string>("linear");
+                    ivox_opts.node_kind = mapping::ParseIVoxNodeKind(kind);
+                }
+                // Legacy: use_hilbert_key ≈ enable PHC nodes.
+                if (n["use_hilbert_key"].as<bool>(false)) {
+                    ivox_opts.node_kind = mapping::IVoxNodeKind::kPhc;
+                    ivox_opts.use_hilbert_key = true;
+                }
+                ivox_opts.phc_order =
+                    n["phc_order"].as<int>(ivox_opts.phc_order);
+                ivox_opts.knn_max_range =
+                    n["knn_max_range"].as<double>(ivox_opts.knn_max_range);
+                ivox_opts.knn_max_num =
+                    n["knn_max_num"].as<int>(ivox_opts.knn_max_num);
+                ivox_opts.esti_plane_threshold =
+                    n["esti_plane_threshold"].as<double>(
+                        ivox_opts.esti_plane_threshold);
+            }
+            // Wire ObsModel (plane + optional P2P ICP) from same lidar yaml.
+            if (root["obs_model"] && root["obs_model"].IsMap() &&
+                sensors_->lidar()) {
+                sensor::ObsModel::Options obs =
+                    sensors_->lidar()->obs_model_options();
+                const auto& o = root["obs_model"];
+                obs.max_distance =
+                    o["max_distance"].as<double>(obs.max_distance);
+                obs.max_residuals =
+                    o["max_residuals"].as<int>(obs.max_residuals);
+                obs.enable_ground_prior =
+                    o["enable_ground_prior"].as<bool>(obs.enable_ground_prior);
+                obs.enable_icp_part =
+                    o["enable_icp_part"].as<bool>(obs.enable_icp_part);
+                obs.plane_weight =
+                    o["plane_weight"].as<double>(obs.plane_weight);
+                obs.icp_weight = o["icp_weight"].as<double>(obs.icp_weight);
+                obs.icp_max_distance =
+                    o["icp_max_distance"].as<double>(obs.icp_max_distance);
+                obs.srange_scale =
+                    o["srange_scale"].as<double>(obs.srange_scale);
+                sensors_->lidar()->set_obs_model_options(obs);
+                AINFO << "Pipeline: ObsModel plane_w=" << obs.plane_weight
+                      << " icp=" << obs.enable_icp_part
+                      << " icp_w=" << obs.icp_weight
+                      << " max_dist=" << obs.max_distance;
+            }
+            if (root["map_incremental"] && root["map_incremental"].IsMap()) {
+                mapping::MapIncremental::Options mo;
+                const auto& m = root["map_incremental"];
+                mo.selective_insert =
+                    m["selective_insert"].as<bool>(mo.selective_insert);
+                mo.max_insert_no_nn =
+                    m["max_insert_no_nn"].as<int>(mo.max_insert_no_nn);
+                mo.max_insert_per_scan =
+                    m["max_insert_per_scan"].as<int>(mo.max_insert_per_scan);
+                map_inc_opts_ = mo;
+                have_map_inc_opts_ = true;
+                AINFO << "Pipeline: MapIncremental max_scan="
+                      << mo.max_insert_per_scan
+                      << " max_no_nn=" << mo.max_insert_no_nn
+                      << " selective=" << mo.selective_insert;
+            }
+        } catch (const std::exception& e) {
+            AWARN << "Pipeline: ivox yaml: " << e.what();
+        }
+    }
     if (vision_ && vision_->get_mapping_module()) {
         auto* mapper = vision_->get_mapping_module();
         mapper->EnsureMapIncremental(ivox_opts);
         if (mapper->map_incremental()) {
+            mapper->map_incremental()->ivox().set_options(ivox_opts);
+            if (have_map_inc_opts_) {
+                mapper->map_incremental()->set_options(map_inc_opts_);
+            }
             sensors_->lidar()->set_ivox(&mapper->map_incremental()->ivox());
             map_incremental_.reset();  // prefer Mapping ownership
-            LOG(INFO) << "Pipeline: MapIncremental IVox owned by LocalMapping";
+            AINFO << "Pipeline: MapIncremental IVox owned by LocalMapping"
+                      << " nearby="
+                      << mapping::IVoxNearbyTypeName(ivox_opts.nearby_type)
+                      << " node="
+                      << mapping::IVoxNodeKindName(ivox_opts.node_kind);
             WireTiledMap();
             return;
         }
     }
     if (!map_incremental_) {
         map_incremental_ = std::make_unique<mapping::MapIncremental>(ivox_opts);
-        LOG(INFO) << "Pipeline: MapIncremental created (no LocalMapping)";
+        if (have_map_inc_opts_) {
+            map_incremental_->set_options(map_inc_opts_);
+        }
+        AINFO << "Pipeline: MapIncremental created (no LocalMapping)"
+                  << " nearby="
+                  << mapping::IVoxNearbyTypeName(ivox_opts.nearby_type)
+                  << " node=" << mapping::IVoxNodeKindName(ivox_opts.node_kind);
+    } else {
+        map_incremental_->ivox().set_options(ivox_opts);
+        if (have_map_inc_opts_) {
+            map_incremental_->set_options(map_inc_opts_);
+        }
     }
     sensors_->lidar()->set_ivox(&map_incremental_->ivox());
     WireTiledMap();
@@ -127,23 +240,38 @@ void Pipeline::AttachSystem(system* slam) {
     }
     if (sensors_->lidar()) {
         vision_->set_lidar_residual_source(sensors_->lidar()->residual_source());
-        LOG(INFO) << "Pipeline: wired LidarSensor residual source into AtlasSystem";
+        AINFO << "Pipeline: wired LidarSensor residual source into AtlasSystem";
     }
     WireLidarIVox();
     if (sensors_->odom()) {
         vision_->set_odom_residual_source(sensors_->odom()->residual_source());
-        LOG(INFO) << "Pipeline: wired OdomSensor residual source into AtlasSystem";
+        AINFO << "Pipeline: wired OdomSensor residual source into AtlasSystem";
     }
     vision_->set_residual_mask(estimate::ResidualMask::FromRuntime(runtime_));
-    LOG(INFO) << "Pipeline: residual mask applied from runtime";
+    AINFO << "Pipeline: residual mask applied from runtime";
 }
 
 frontend::LocalEstimator* Pipeline::EnsureLocalEstimator() {
     if (!local_estimator_) {
-        local_estimator_ = std::make_unique<frontend::LocalEstimator>();
+        frontend::Eskf::Options eskf_opts;
+        // LIO ↔ lightning-lm: planar ground lock only; no ZUPT/spin gates.
+        // ESKF clip = lightning 0.5 m / 5°.
+        if (!runtime_.flags.use_vision && runtime_.flags.use_lidar) {
+            eskf_opts.planar_motion = true;
+            eskf_opts.planar_imu_horizontal_only = true;
+            eskf_opts.max_velocity = 0.6;
+            eskf_opts.max_scan_rotation_step_deg = 12.0;
+            eskf_opts.max_update_translation_step = 0.5;
+            eskf_opts.max_update_rotation_step_deg = 5.0;
+        }
+        local_estimator_ =
+            std::make_unique<frontend::LocalEstimator>(eskf_opts);
         runtime_.calibration.ApplyTo(local_estimator_.get());
-        LOG(INFO) << "Pipeline: LocalEstimator created (lidar pose authority)"
-                  << " T_imu_lidar applied from calibration";
+        AINFO << "Pipeline: LocalEstimator created (lidar pose authority)"
+                  << " T_imu_lidar applied from calibration"
+                  << " planar=" << eskf_opts.planar_motion
+                  << " max_dp=" << eskf_opts.max_update_translation_step
+                  << " max_dR_deg=" << eskf_opts.max_update_rotation_step_deg;
     }
     return local_estimator_.get();
 }
@@ -154,17 +282,17 @@ bool Pipeline::Start() {
     }
     sensors_ = std::make_unique<sensor::SensorSuite>(runtime_);
     if (!sensors_->Start()) {
-        LOG(ERROR) << "Pipeline: SensorSuite::Start failed";
+        AERROR << "Pipeline: SensorSuite::Start failed";
         sensors_.reset();
         return false;
     }
     WireLidarIVox();
     if (runtime_.flags.use_vision && !vision_) {
-        LOG(WARNING) << "Pipeline: vision enabled; attach Atlas system after "
+        AWARN << "Pipeline: vision enabled; attach Atlas system after "
                         "Start via AttachSystem.";
     }
     running_ = true;
-    LOG(INFO) << "Pipeline: single-system sensors up, modality="
+    AINFO << "Pipeline: single-system sensors up, modality="
               << common::ModalityName(runtime_.modality);
     return true;
 }
@@ -188,7 +316,7 @@ void Pipeline::Shutdown() {
     local_estimator_.reset();
     vision_ = nullptr;
     running_ = false;
-    LOG(INFO) << "Pipeline: shutdown";
+    AINFO << "Pipeline: shutdown";
 }
 
 }  // namespace autonomy::localization::atlas

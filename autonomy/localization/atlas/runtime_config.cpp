@@ -20,7 +20,7 @@
 
 #include <stdexcept>
 
-#include "glog/logging.h"
+#include "autolink/common/log.hpp"
 #include "yaml-cpp/yaml.h"
 
 namespace autonomy::localization::atlas {
@@ -68,7 +68,7 @@ RuntimeConfig LoadRuntimeConfig(const std::string& yaml_path) {
     try {
         root = YAML::LoadFile(yaml_path);
     } catch (const std::exception& e) {
-        LOG(ERROR) << "LoadRuntimeConfig: failed to load " << yaml_path << ": "
+        AERROR << "LoadRuntimeConfig: failed to load " << yaml_path << ": "
                    << e.what();
         throw;
     }
@@ -120,6 +120,13 @@ RuntimeConfig LoadRuntimeConfig(const std::string& yaml_path) {
     if (maps) {
         cfg.maps_dense_rgbd = maps["dense_rgbd"].as<bool>(cfg.maps_dense_rgbd);
         cfg.maps_g2p5 = maps["g2p5"].as<bool>(cfg.maps_g2p5);
+        if (maps["g2p5_topic"]) {
+            cfg.g2p5_topic = maps["g2p5_topic"].as<std::string>(cfg.g2p5_topic);
+        }
+        if (maps["g2p5_save_path"]) {
+            cfg.g2p5_save_path =
+                maps["g2p5_save_path"].as<std::string>(cfg.g2p5_save_path);
+        }
         cfg.maps_tiled = maps["tiled"].as<bool>(cfg.maps_tiled);
         if (maps["tiled_path"]) {
             cfg.tiled_map_path = maps["tiled_path"].as<std::string>("");
@@ -133,6 +140,15 @@ RuntimeConfig LoadRuntimeConfig(const std::string& yaml_path) {
         cfg.maps_tiled = true;
     }
 
+    // Lidar preprocess yaml: lidar_config_path or alias lightning_yaml.
+    if (root["lidar_config_path"]) {
+        cfg.lidar_config_path =
+            root["lidar_config_path"].as<std::string>(cfg.lidar_config_path);
+    } else if (root["lightning_yaml"]) {
+        cfg.lidar_config_path =
+            root["lightning_yaml"].as<std::string>(cfg.lidar_config_path);
+    }
+
     // Calibration: inline `calibration:` and/or `calibration_path:`.
     if (root["calibration_path"]) {
         cfg.calibration_path = root["calibration_path"].as<std::string>("");
@@ -142,7 +158,7 @@ RuntimeConfig LoadRuntimeConfig(const std::string& yaml_path) {
             cfg.calibration =
                 calibration::LoadCalibrationBundle(cfg.calibration_path);
         } catch (const std::exception& e) {
-            LOG(WARNING) << "LoadRuntimeConfig: calibration_path='"
+            AWARN << "LoadRuntimeConfig: calibration_path='"
                          << cfg.calibration_path
                          << "' not loaded yet (" << e.what()
                          << "); caller may ResolveWorkspacePath and reload";
@@ -167,7 +183,7 @@ RuntimeConfig LoadRuntimeConfig(const std::string& yaml_path) {
     }
     cfg.extrinsics = cfg.calibration.ToExtrinsics();
 
-    LOG(INFO) << "LoadRuntimeConfig: " << yaml_path
+    AINFO << "LoadRuntimeConfig: " << yaml_path
               << " modality=" << common::ModalityName(cfg.modality)
               << " vision=" << cfg.flags.use_vision
               << " lidar=" << cfg.flags.use_lidar

@@ -50,6 +50,8 @@ bool ParseBoolProperty(const std::string& value, bool fallback);
 QVector3D ParseVector3Property(const std::string& value,
                                const QVector3D& fallback = QVector3D());
 std::string FormatColorProperty(const QColor& color);
+/** Compact float text: 0.01 not 0.0100 / 0.010000. */
+std::string FormatFloatProperty(double value);
 std::string FormatVector3Property(const QVector3D& vector);
 
 }  // namespace common

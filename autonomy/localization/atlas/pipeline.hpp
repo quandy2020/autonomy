@@ -99,6 +99,9 @@ private:
     std::unique_ptr<mapping::MapIncremental> map_incremental_;
     //! Optional chunked PCD map when runtime.maps_tiled.
     std::unique_ptr<mapping::TiledMap> tiled_map_;
+    //! From lidar yaml `map_incremental:` (WireLidarIVox).
+    mapping::MapIncremental::Options map_inc_opts_{};
+    bool have_map_inc_opts_ = false;
     bool running_ = false;
 };
 

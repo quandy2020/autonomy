@@ -33,6 +33,9 @@ class ImageSettingsWidget : public QWidget {
   ImagePanelConfig config() const;
   void refreshChannelLists();
 
+ protected:
+  void showEvent(QShowEvent* event) override;
+
  signals:
   void configChanged();
   void addOverlayRequested();
@@ -55,7 +58,7 @@ class ImageSettingsWidget : public QWidget {
   common::VisualizationManager* manager_ = nullptr;
   ImagePanelConfig config_;
   QLineEdit* title_edit_ = nullptr;
-  QComboBox* topic_combo_ = nullptr;
+  QComboBox* channel_combo_ = nullptr;
   QComboBox* calibration_combo_ = nullptr;
   QCheckBox* strict_sync_check_ = nullptr;
   QCheckBox* undistort_check_ = nullptr;

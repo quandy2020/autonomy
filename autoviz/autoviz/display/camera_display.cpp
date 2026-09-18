@@ -33,7 +33,7 @@ void CameraDisplay::setChannel(const std::string& channel) {
 }
 
 std::vector<common::DisplayPropertySpec> CameraDisplay::propertySpecs() const {
-  return {{"camera_info_channel", "Camera Info Topic", "/fake/camera_info", {},
+  return {{"camera_info_channel", "Camera Info Topic", "", {},
            common::DisplayPropertyKind::kChannel},
           {"near_distance", "Near Clip", "0.2", {}},
           {"far_distance", "Far Clip", "3.0", {}},
@@ -46,7 +46,7 @@ void CameraDisplay::onEnable() {
     return;
   }
   camera_info_channel_ =
-      propertyValue("camera_info_channel", "/fake/camera_info");
+      propertyValue("camera_info_channel", "");
   image_reader_ =
       context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
           image_channel_,

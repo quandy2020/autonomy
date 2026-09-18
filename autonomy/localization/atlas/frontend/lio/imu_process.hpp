@@ -19,6 +19,7 @@
 //! frontend/lio/imu_process — IMU predict + trajectory deskew (lightning UndistortPcl ideas).
 //! Includes static IMUInit (gravity + gyro bias) before deskew.
 
+#include "autonomy/localization/atlas/frontend/lio/imu_filter.hpp"
 #include "autonomy/localization/atlas/frontend/lio/measure_group.hpp"
 #include "autonomy/localization/atlas/frontend/local_estimator.hpp"
 #include "autonomy/localization/atlas/sensor/types.hpp"
@@ -44,9 +45,10 @@ struct ImuPoseSample {
 };
 
 //! Forward-integrate IMU over measure, filling imu_poses; also PredictImu on estimator.
-void BuildImuPoses(LocalEstimator* est,
-                   const MeasureGroup& meas,
-                   std::vector<ImuPoseSample>* imu_poses);
+//! @param acc_scale  Multiply body acc (Lightning acc_scale_factor_; 1.0 or ~g).
+void BuildImuPoses(LocalEstimator* est, const MeasureGroup& meas,
+                   std::vector<ImuPoseSample>* imu_poses,
+                   double acc_scale = 1.0);
 
 //! Backward deskew: interpolate pose at point time vs end pose;
 //! p_end = R_end^T * (R_i * p + t_i - t_end) (with optional T_imu_lidar).
@@ -97,6 +99,14 @@ public:
 
     void ResetImuInit();
 
+    void SetUseImuFilter(bool b) { use_imu_filter_ = b; }
+    [[nodiscard]] bool use_imu_filter() const { return use_imu_filter_; }
+    ImuFilter& imu_filter() { return filter_; }
+    [[nodiscard]] double acc_scale_factor() const { return acc_scale_factor_; }
+
+    //! Gyro filter in-place on measure.imu (Lightning UndistortPcl path).
+    void FilterMeasure(MeasureGroup* meas);
+
     //! Average IMU in measure; when ≥ max_init_count frames done, set gravity
     //! (−mean_acc.normalized()*9.81) and bg≈mean_gyr on estimator. Returns true
     //! when init completes (or already done). False while still accumulating.
@@ -129,10 +139,12 @@ public:
         }
     }
 
-    void BuildImuPoses(LocalEstimator* est,
-                       const MeasureGroup& meas,
-                       std::vector<ImuPoseSample>* imu_poses) const {
-        lio::BuildImuPoses(est, meas, imu_poses);
+    void BuildImuPoses(LocalEstimator* est, MeasureGroup* meas,
+                       std::vector<ImuPoseSample>* imu_poses) {
+        if (meas) {
+            FilterMeasure(meas);
+            lio::BuildImuPoses(est, *meas, imu_poses, acc_scale_factor_);
+        }
     }
 
     [[nodiscard]] std::vector<Vec3_t> UndistortByImuTrajectory(
@@ -193,6 +205,9 @@ private:
     int max_init_count_ = kDefaultMaxInitCount;
     bool b_first_frame_ = true;
     bool imu_need_init_ = true;
+    bool use_imu_filter_ = false;
+    ImuFilter filter_;
+    double acc_scale_factor_ = 1.0;
 };
 
 }  // namespace lio

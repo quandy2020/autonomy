@@ -31,7 +31,8 @@ namespace estimate {
 
 int ApplyLidarPointPlaneRefine(data::keyframe* keyfrm,
                                const LidarFactorBatch& batch,
-                               int iterations) {
+                               int iterations,
+                               const Mat44_t& T_c_b) {
     if (!keyfrm || batch.point_planes.empty() || iterations <= 0) {
         return 0;
     }
@@ -62,6 +63,7 @@ int ApplyLidarPointPlaneRefine(data::keyframe* keyfrm,
         edge->setId(edge_id++);
         edge->setVertex(0, vtx);
         edge->set_point_body(r.point_body);
+        edge->set_extrinsic(T_c_b);
         Vec4_t meas;
         meas << r.normal_world.x(), r.normal_world.y(), r.normal_world.z(), r.d;
         edge->setMeasurement(meas);
@@ -81,6 +83,31 @@ int ApplyLidarPointPlaneRefine(data::keyframe* keyfrm,
     AINFO << "ApplyLidarPointPlaneRefine: edges=" << edge_id
           << " chi2=" << optimizer.activeChi2();
     return edge_id;
+}
+
+int ApplyLidarPointPlaneRefineWindow(
+    const std::vector<data::keyframe*>& keyfrms,
+    estimate::ILidarResidualSource* src,
+    double half_window_sec,
+    int iterations,
+    const Mat44_t& T_c_b) {
+    if (!src || keyfrms.empty() || iterations <= 0) {
+        return 0;
+    }
+    const double hw = std::max(0.05, half_window_sec);
+    int total = 0;
+    for (auto* kf : keyfrms) {
+        if (!kf) {
+            continue;
+        }
+        const double t = kf->timestamp_;
+        const auto batch = src->Pull(t - hw, t + hw);
+        if (batch.point_planes.empty()) {
+            continue;
+        }
+        total += ApplyLidarPointPlaneRefine(kf, batch, iterations, T_c_b);
+    }
+    return total;
 }
 
 }  // namespace estimate

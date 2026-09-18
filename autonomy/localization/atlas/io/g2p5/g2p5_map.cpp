@@ -20,12 +20,18 @@
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <vector>
 
+#include "glog/logging.h"
 #include <opencv2/imgproc.hpp>
 
 namespace autonomy::localization::atlas {
 namespace map {
+namespace {
+namespace fs = std::filesystem;
+}  // namespace
 
 bool G2P5Map::Init(float temp_min_x, float temp_min_y, float temp_max_x,
                    float temp_max_y) {
@@ -396,6 +402,90 @@ cv::Mat G2P5Map::ToCV() {
     cv::Mat image_flip;
     cv::flip(image, image_flip, 1);
     return image_flip;
+}
+
+bool G2P5Map::SaveOccupancy(const std::string& dir) {
+    if (grids_ == nullptr || grid_size_x_ <= 0 || grid_size_y_ <= 0) {
+        LOG(WARNING) << "G2P5Map::SaveOccupancy: empty map, skip " << dir;
+        return false;
+    }
+
+    std::error_code ec;
+    fs::create_directories(dir, ec);
+    if (ec) {
+        LOG(ERROR) << "G2P5Map::SaveOccupancy: cannot create dir " << dir << ": "
+                   << ec.message();
+        return false;
+    }
+
+    const auto occ = ToROS();
+    const int width = static_cast<int>(occ.info().width());
+    const int height = static_cast<int>(occ.info().height());
+    if (width <= 0 || height <= 0 || occ.data_size() < width * height) {
+        LOG(ERROR) << "G2P5Map::SaveOccupancy: invalid grid size";
+        return false;
+    }
+
+    const std::string pgm_path = (fs::path(dir) / "map.pgm").string();
+    const std::string yaml_path = (fs::path(dir) / "map.yaml").string();
+
+    {
+        std::ofstream ofs(pgm_path, std::ios::out | std::ios::binary);
+        if (!ofs) {
+            LOG(ERROR) << "G2P5Map::SaveOccupancy: cannot open " << pgm_path;
+            return false;
+        }
+        ofs << "P5\n# Atlas G2P5 occupancy; " << options_.resolution_
+            << " m/pixel\n"
+            << width << " " << height << "\n255\n";
+        // ROS map_server: image row 0 is map max-y (top of PGM).
+        for (int y = height - 1; y >= 0; --y) {
+            for (int x = 0; x < width; ++x) {
+                const int8_t v = occ.data(MapIdx(width, x, y));
+                unsigned char pix = 205;  // unknown
+                if (v == 0) {
+                    pix = 254;  // free
+                } else if (v == 100) {
+                    pix = 0;  // occupied
+                } else if (v > 0) {
+                    pix = static_cast<unsigned char>(
+                        254 - (254 * static_cast<int>(v)) / 100);
+                }
+                ofs.put(static_cast<char>(pix));
+            }
+        }
+        if (!ofs) {
+            LOG(ERROR) << "G2P5Map::SaveOccupancy: write failed " << pgm_path;
+            return false;
+        }
+    }
+
+    float min_x = 0.f, min_y = 0.f, max_x = 0.f, max_y = 0.f;
+    GetMinAndMax(min_x, min_y, max_x, max_y);
+    (void)max_x;
+    (void)max_y;
+
+    {
+        std::ofstream ofs(yaml_path);
+        if (!ofs) {
+            LOG(ERROR) << "G2P5Map::SaveOccupancy: cannot open " << yaml_path;
+            return false;
+        }
+        ofs << "image: map.pgm\n"
+            << "resolution: " << options_.resolution_ << "\n"
+            << "origin: [" << min_x << ", " << min_y << ", 0.0]\n"
+            << "negate: 0\n"
+            << "occupied_thresh: 0.65\n"
+            << "free_thresh: 0.196\n";
+        if (!ofs) {
+            LOG(ERROR) << "G2P5Map::SaveOccupancy: write failed " << yaml_path;
+            return false;
+        }
+    }
+
+    LOG(INFO) << "G2P5Map::SaveOccupancy: wrote " << pgm_path << " + "
+              << yaml_path;
+    return true;
 }
 
 }  // namespace map

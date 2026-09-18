@@ -1,0 +1,55 @@
+# Prior-map lidar localization (LidarLocator NDT + incremental dyn map).
+# Profile: conf/atlas/profiles/lo_loc.yaml → lidar_config_path here.
+
+preprocess:
+  lidar_type: generic
+  min_range: 0.5
+  max_range: 80.0
+  blind: 0.1
+  voxel_leaf: 0.2
+  max_points: 20000
+  use_point_time: false
+
+use_lidar_loop: false
+use_lidar_loc: true
+
+# Incremental dynamic layer (Lightning lidar_loc.update_dynamic_cloud).
+lidar_loc:
+  update_dynamic_cloud: true
+  update_kf_dis: 2.0
+  update_kf_time: 10.0
+  # PCL NDT fitness upper bound (lower = better match).
+  update_max_fitness: 2.5
+  filter_z_min: 0.5
+  filter_z_max: 30.0
+  dyn_cloud_policy: medium
+  load_radius_m: 80.0
+  ndt_resolution: 1.0
+
+publish_global_cloud: true
+global_cloud_topic: /atlas/cloud_map
+global_cloud_frame: map
+global_cloud_max_points: 200000
+global_cloud_period_sec: 0.5
+
+smooth_factor: 0.5
+pose_extrapolator:
+  smooth_factor: 0.5
+  use_imu_predict: false
+  gyro_static_thresh: 0.02
+
+ivox:
+  resolution: 0.5
+  max_points_per_voxel: 20
+  max_voxels: 200000
+  neighbor_search: 1
+  min_plane_points: 5
+  nearby_type: nearby6
+  node_kind: linear
+  esti_plane_threshold: 0.1
+
+obs_model:
+  max_distance: 0.5
+  max_residuals: 2000
+  enable_ground_prior: false
+  enable_icp_part: false

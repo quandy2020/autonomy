@@ -150,6 +150,17 @@ def test_encode_point_cloud2_intensity_and_rgb():
     assert structured["rgb"][1] == (255 << 8)
 
 
+def test_encode_point_cloud2_ring():
+    points = np.array([[1.0, 0.0, 0.0], [0.0, 2.0, 0.0]], dtype=np.float32)
+    ring = np.array([0.0, 7.0], dtype=np.float32)
+    message = Messages.encode_point_cloud2(points, (0, 0), "laser_link", ring=ring)
+    assert [field.name for field in message.fields] == ["x", "y", "z", "ring"]
+    structured = np.frombuffer(
+        message.data, dtype=[("x", "f4"), ("y", "f4"), ("z", "f4"), ("ring", "f4")]
+    )
+    np.testing.assert_allclose(structured["ring"], ring)
+
+
 def test_pack_rgb_uint32():
     packed = Messages.pack_rgb_uint32(np.array([[1, 2, 3]], dtype=np.uint8))
     assert packed[0] == (1 << 16) | (2 << 8) | 3

@@ -76,6 +76,13 @@ public:
     mapping::IVox* ivox() { return ivox_; }
     const Options& options() const { return options_; }
 
+    void set_obs_model_options(ObsModel::Options opts) {
+        obs_model_ = ObsModel(std::move(opts));
+    }
+    [[nodiscard]] const ObsModel::Options& obs_model_options() const {
+        return obs_model_.options();
+    }
+
 private:
     Options options_;
     bool running_ = false;

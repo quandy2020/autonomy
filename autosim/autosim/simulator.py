@@ -1002,29 +1002,168 @@ class Simulator:
             radius * math.sin(pitch),
         )
 
+    def laser_origin_at(
+        self, x: float, y: float, yaw: float
+    ) -> Tuple[float, float, float]:
+        """Habitat lidar origin for an arbitrary planar pose (Y-up)."""
+        mx = my = mz = 0.0
+        if self.urdf is not None:
+            mx, my, mz = self.urdf.laser_xyz()
+        cos_y = math.cos(yaw)
+        sin_y = math.sin(yaw)
+        return (
+            float(x) + cos_y * mx - sin_y * my,
+            self.floor_y + mz,
+            -(float(y) + sin_y * mx + cos_y * my),
+        )
+
+    def map_laser_origin_at(
+        self, x: float, y: float, yaw: float
+    ) -> Tuple[float, float, float]:
+        """Map-frame lidar origin ``(map_x, map_y, map_z)`` for planar pose."""
+        ox, oy, oz = self.laser_origin_at(x, y, yaw)
+        return (ox, -oz, oy)
+
+    def map_hit_to_sensor(
+        self,
+        hit: Tuple[float, float, float],
+        x: float,
+        y: float,
+        yaw: float,
+    ) -> Tuple[float, float, float]:
+        """Express a map-frame hit in the lidar frame at ``(x, y, yaw)``."""
+        ox, oy, oz = self.map_laser_origin_at(x, y, yaw)
+        dx = float(hit[0]) - ox
+        dy = float(hit[1]) - oy
+        dz = float(hit[2]) - oz
+        cosine = math.cos(yaw)
+        sine = math.sin(yaw)
+        return (
+            cosine * dx + sine * dy,
+            -sine * dx + cosine * dy,
+            dz,
+        )
+
+    @staticmethod
+    def pose_at_scan_fraction(
+        x_end: float,
+        y_end: float,
+        yaw_end: float,
+        linear: float,
+        angular: float,
+        scan_period: float,
+        fraction: float,
+    ) -> Tuple[float, float, float]:
+        """Planar pose at scan fraction ``∈[0,1]`` given end pose and twist.
+
+        Habitat finishes the sweep at ``(x_end, y_end, yaw_end)``. Fraction 0 is
+        scan start; 1 is scan end. Constant body twist is integrated backward.
+        """
+        from autosim.robot import Robot
+
+        age = (1.0 - float(fraction)) * max(0.0, float(scan_period))
+        if age <= 1e-12:
+            return float(x_end), float(y_end), float(yaw_end)
+        return Robot.integrate_unicycle(
+            float(x_end),
+            float(y_end),
+            float(yaw_end),
+            -float(linear),
+            -float(angular),
+            age,
+        )
+
+    def cast_range_at(
+        self,
+        x: float,
+        y: float,
+        yaw: float,
+        yaw_offset: float,
+        pitch: float,
+        range_max: float,
+    ) -> Tuple[float, float, float] | None:
+        """Cast from an arbitrary pose; return map-frame hit or ``None``."""
+        ox, oy, oz = self.laser_origin_at(x, y, yaw)
+        return self.cast_from_origin(
+            ox, oy, oz, float(yaw) + float(yaw_offset), float(pitch), float(range_max)
+        )
+
     def raycast_cloud(
-        self, h_angles: np.ndarray, v_angles: np.ndarray, range_max: float
-    ) -> np.ndarray:
+        self,
+        h_angles: np.ndarray,
+        v_angles: np.ndarray,
+        range_max: float,
+        *,
+        linear: float = 0.0,
+        angular: float = 0.0,
+        scan_period: float = 0.0,
+        motion_compensate: bool = True,
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Multi-ring cloud from Habitat ray casts; misses omitted.
 
+        When ``motion_compensate`` and ``scan_period>0``, each azimuth column is
+        cast at the pose during a spinning sweep and expressed in the **scan-end**
+        lidar frame (deskew). That removes the classic motion-distortion smear
+        without relying on downstream LIO undistort.
+
         Args:
-            h_angles: Horizontal samples (rad).
+            h_angles: Horizontal samples (rad), ordered start→end of spin.
             v_angles: Vertical samples (rad).
             range_max: Cast budget (m).
+            linear, angular: Body twist during the scan (m/s, rad/s).
+            scan_period: Full spin duration (s); ``0`` → instantaneous.
+            motion_compensate: Deskew into end frame when motion is present.
 
         Returns:
-            ``Nx3 float32`` points (possibly empty).
+            ``(Nx3 float32 points, N float32 ring ids)``; empty when no hits.
         """
         points = []
-        for pitch in v_angles:
-            for yaw_offset in h_angles:
-                distance = self.cast_range(float(yaw_offset), float(pitch), float(range_max))
-                if distance is None:
-                    continue
-                points.append(self.spherical_point(distance, float(yaw_offset), float(pitch)))
+        rings = []
+        x_e, y_e, yaw_e = float(self.x), float(self.y), float(self.yaw)
+        n_h = int(len(h_angles))
+        use_motion = (
+            bool(motion_compensate)
+            and float(scan_period) > 1e-6
+            and n_h > 1
+            and (abs(float(linear)) + abs(float(angular))) > 1e-9
+        )
+        for col, yaw_offset in enumerate(h_angles):
+            if use_motion:
+                fraction = float(col) / float(max(n_h - 1, 1))
+                x_i, y_i, yaw_i = self.pose_at_scan_fraction(
+                    x_e, y_e, yaw_e, linear, angular, scan_period, fraction
+                )
+            else:
+                x_i, y_i, yaw_i = x_e, y_e, yaw_e
+            for ring_id, pitch in enumerate(v_angles):
+                if use_motion:
+                    hit = self.cast_range_at(
+                        x_i, y_i, yaw_i, float(yaw_offset), float(pitch), float(range_max)
+                    )
+                    if hit is None:
+                        continue
+                    # Deskew: express capture-time hit in the scan-end lidar frame.
+                    point = self.map_hit_to_sensor(hit, x_e, y_e, yaw_e)
+                else:
+                    distance = self.cast_range(
+                        float(yaw_offset), float(pitch), float(range_max)
+                    )
+                    if distance is None:
+                        continue
+                    point = self.spherical_point(
+                        distance, float(yaw_offset), float(pitch)
+                    )
+                points.append(point)
+                rings.append(float(ring_id))
         if not points:
-            return np.zeros((0, 3), dtype=np.float32)
-        return np.asarray(points, dtype=np.float32)
+            return (
+                np.zeros((0, 3), dtype=np.float32),
+                np.zeros((0,), dtype=np.float32),
+            )
+        return (
+            np.asarray(points, dtype=np.float32),
+            np.asarray(rings, dtype=np.float32),
+        )
 
     def lidar_points(
         self,
@@ -1035,15 +1174,29 @@ class Simulator:
         v_max: float,
         v_rings: int,
         range_max: float,
-    ) -> np.ndarray:
+        *,
+        linear: float = 0.0,
+        angular: float = 0.0,
+        scan_period: float = 0.0,
+        motion_compensate: bool = True,
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Sample a multi-ring lidar cloud.
 
         Returns:
-            ``Nx3 float32`` in the sensor frame.
+            ``(Nx3 float32 points, N float32 ring ids)`` in the sensor frame
+            (scan-end frame when motion-compensated).
         """
         h_angles = self.linspace_angles(h_min, h_max, h_beams)
         v_angles = self.linspace_angles(v_min, v_max, v_rings)
-        return self.raycast_cloud(h_angles, v_angles, range_max)
+        return self.raycast_cloud(
+            h_angles,
+            v_angles,
+            range_max,
+            linear=linear,
+            angular=angular,
+            scan_period=scan_period,
+            motion_compensate=motion_compensate,
+        )
 
     def camera_observations(
         self, *, with_semantic: bool = False

@@ -1,0 +1,156 @@
+# Copyright 2026 The Openbot Authors
+#
+# Standalone lightning LIO 联调：autosim 发 /imu + /points；
+# LocalizationServer --localization_mode=lightning。
+# 话题与 localization_lightning.launch 对齐，无需 remap。
+#
+# 终端 1（工作区根 /workspace/autonomy）：
+#   CONFIG=src/autonomy/autosim/config/lightning.yaml src/autonomy/autosim/scripts/run.sh sim
+#   # 另开 TTY 遥控：
+#   src/autonomy/autosim/scripts/run.sh teleop
+#
+# 终端 2：
+#   cd src/autonomy
+#   export PATH=/workspace/autonomy/build/autonomy/bin:$PATH
+#   export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/localization/launch
+#   mkdir -p data/maps
+#   autolink launch start localization_lightning.launch
+
+habitat:
+  mode: slam
+
+  path: /workspace/autonomy/src/17DRP5sb8fy/17DRP5sb8fy.glb
+  spawn: [0.0, 0.0, 0.0]
+  gpu: 0
+
+  robot:
+    urdf: urdf/turtlebot3_burger.urdf
+    max_linear: 0.5
+    max_angular: 1.0
+    max_linear_accel: 0.8
+    max_linear_decel: 1.2
+    max_angular_accel: 2.0
+    wheel_separation: 0.55
+    map_frame: map
+    base_link_height: 0.01
+    watchdog_sec: 0.5
+    control_hz: 50.0
+    cmd_vel: /cmd_vel
+    truth:
+      enabled: true
+      channel: /gt/pose
+    tf:
+      enabled: true
+      channel: /tf
+      static_channel: /tf_static
+      # LightningNode 发 map→odom；autosim 只发 odom→base_link。
+      publish_map_odom: false
+    clock:
+      enabled: true
+      channel: /clock
+    footprint:
+      enabled: true
+      channel: /footprint
+      frame: base_link
+
+  sensors:
+    lidar_2d:
+      enabled: false
+      channel: /scan
+      frame: laser_link
+      rate_hz: 10.0
+      angle_min: -3.14159
+      angle_max: 3.14159
+      range_min: 0.1
+      range_max: 30.0
+      num_beams: 360
+      noise: 0.0
+
+    lidar_3d:
+      enabled: true
+      channel: /points
+      # Must match URDF (turtlebot3: laser_link / base_scan). There is no lidar_link.
+      frame: laser_link
+      rate_hz: 10.0
+      horizontal:
+        angle_min: -3.14159
+        angle_max: 3.14159
+        # 360 ≈ 1° azimuth (was 180/2° — too coarse for LIO plane residuals).
+        # Cost: Habitat raycasts ≈ 360×16 per scan; sim may slow a bit.
+        num_beams: 360
+      vertical:
+        # 32-line FOV (HDL-32E-like): −30.67° … +10.67°.
+        # Do NOT keep ±15° (VLP-16 FOV) — 32 rings then pack into the same
+        # band and Autoviz still “looks like” ~16 sparse layers.
+        # angle_min/max in rad; num_rings is the vertical line count.
+        angle_min: -0.5353
+        angle_max: 0.1863
+        num_rings: 32
+      # Atlas preprocess min_range=0.5 will drop nearer hits anyway.
+      range_min: 0.1
+      range_max: 30.0
+      noise: 0.015
+      # Deskew spinning sweep into scan-end lidar frame (kills motion smear).
+      motion_compensate: true
+
+    camera:
+      enabled: true
+      width: 640
+      height: 480
+      hfov_deg: 90.0
+      sensor_height: 0.6
+      rgb_channel: /camera/rgb/image_raw
+      depth_channel: /camera/depth/image_raw
+      depth_points_channel: /camera/depth/points
+      depth_points_stride: 1
+      info_channel: /camera/camera_info
+      semantic_enabled: false
+      semantic_channel: /camera/semantic/image_raw
+      semantic_ids_channel: /camera/semantic/instance_ids
+      frame: camera_link
+      rate_hz: 15.0
+      noise:
+        depth: 0.0
+
+    imu:
+      enabled: true
+      channel: /imu
+      frame: imu_link
+      # Cap only: actual Hz ≈ robot.control_hz, further limited by Habitat/lidar
+      # load in the same loop (~40–50Hz with lidar_3d on). Not an independent
+      # 200Hz timer — raising this above control_hz has no effect.
+      rate_hz: 200.0
+      # No Habitat physics IMU: kinematic a + gravity → REP-145 specific force.
+      gravity: 9.80665
+      noise:
+        gyro: 0.01
+        accel: 0.05
+        gyro_bias: 0.001
+        accel_bias: 0.01
+
+    odom:
+      enabled: true
+      channel: /odom
+      frame: odom
+      child_frame: base_link
+      noise: 0.0
+      # Wheel-odom trajectory for Autoviz Path (compare with /lightning/trajectory).
+      # Republished every /odom tick; path_min_distance only thins samples.
+      path_channel: /odom/path
+      path_min_distance: 0.05   # m; append only when moved this far
+      path_max_poses: 10000
+
+  map:
+    enabled: false
+    publish: false
+    frame: map
+    rate_hz: 1.0
+    ply:
+      source: /workspace/autonomy/src/17DRP5sb8fy/17DRP5sb8fy_semantic.ply
+      channel: /overall/map
+      stride: 1
+    grid:
+      channel: /map
+      resolution: 0.05
+      z_min: 0.1
+      z_max: 2.5

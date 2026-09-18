@@ -30,10 +30,11 @@ lidar:
   range_bias: 0.0
 
 extrinsics:
-  # p_imu = R * p_lidar + t
+  # Turtlebot3 burger (autosim): imu_link (0,0,0.068), laser_link (-0.032,0,0.172)
+  # in base_link → p_imu = R p_lidar + t  with t = p_laser - p_imu.
   T_imu_lidar:
     R: [1, 0, 0, 0, 1, 0, 0, 0, 1]
-    t: [0.0, 0.0, 0.0]
+    t: [-0.032, 0.0, 0.104]
   # p_cam = R * p_imu + t
   T_cam_imu:
     R: [1, 0, 0, 0, 1, 0, 0, 0, 1]

@@ -215,24 +215,53 @@ void RefreshPropertyVisibility(QTreeWidgetItem* display_item) {
     if (child == nullptr) continue;
     const QString key =
         child->data(kDisplayTreeColName, kDisplayTreeRolePropertyKey).toString();
-    if (!key.isEmpty()) {
+    if (key.isEmpty()) {
+      continue;
+    }
+    // Bool properties store state in the value-column checkbox, not text.
+    if (child->flags() & Qt::ItemIsUserCheckable) {
+      current_values[key] =
+          child->checkState(kDisplayTreeColValue) == Qt::Checked
+              ? QStringLiteral("true")
+              : QStringLiteral("false");
+    } else {
       current_values[key] = child->text(kDisplayTreeColValue);
     }
   }
-  // Apply visibility rules.
+  // Apply visibility rules. Supports compound AND conditions:
+  //   visible_when_key    = "color_transform&use_rainbow"
+  //   visible_when_values = "Intensity&true|Intensity&false"
   for (int i = 0; i < display_item->childCount(); ++i) {
     QTreeWidgetItem* child = display_item->child(i);
     if (child == nullptr) continue;
     const QString when_key =
         child->data(kDisplayTreeColName, kDisplayTreeRoleVisibleWhenKey).toString();
     if (when_key.isEmpty()) {
-      continue;  // no condition → always visible
+      continue;
     }
     const QString when_values =
-        child->data(kDisplayTreeColName, kDisplayTreeRoleVisibleWhenValues).toString();
-    const QString actual = current_values.value(when_key);
+        child->data(kDisplayTreeColName, kDisplayTreeRoleVisibleWhenValues)
+            .toString();
+    const QStringList keys = when_key.split(QLatin1Char('&'));
     const QStringList allowed = when_values.split(QLatin1Char('|'));
-    const bool visible = allowed.contains(actual);
+    bool visible = false;
+    for (const QString& allowed_combo : allowed) {
+      const QStringList vals = allowed_combo.split(QLatin1Char('&'));
+      if (vals.size() != keys.size()) {
+        continue;
+      }
+      bool match = true;
+      for (int k = 0; k < keys.size(); ++k) {
+        if (current_values.value(keys[k]) != vals[k]) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        visible = true;
+        break;
+      }
+    }
     child->setHidden(!visible);
   }
 }
