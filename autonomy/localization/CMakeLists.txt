@@ -21,8 +21,12 @@ autonomy_module(localization)
 autonomy_glob_srcs(_LOCALIZATION_SRCS)
 list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/(fake_|mock_)")
 list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "test_helpers")
-# Lightning embedded under sensor/lidar/lightning — never glob upstream into vision lib.
+# Lightning algorithms under sensor/lidar — never glob upstream into vision lib.
+list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/atlas/sensor/lidar/upstream/")
 list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/atlas/sensor/lidar/lightning/upstream/")
+# Legacy duplicates superseded by lightning/{obs_model,preprocess}/.
+list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/atlas/sensor/lidar/obs_model\\.cpp$")
+list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/atlas/sensor/lidar/preprocess\\.cpp$")
 list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/atlas/fusion/")  # legacy PoseFusion — not linked
 
 option(BUILD_ATLAS_LIGHTNING "Build Atlas lidar algorithms from lightning sources" OFF)

@@ -43,8 +43,8 @@
 namespace autonomy::localization::atlas {
 
 class config;
-class tracking_module;
-class global_optimization_module;
+class Tracking;
+class LoopClosing;
 
 namespace plp {
 class planar_mapping_module;
@@ -60,14 +60,14 @@ class bow_database;
 class map_database;
 } // namespace data
 
-class mapping_module {
+class LocalMapping {
 public:
     //! Constructor
-    mapping_module(const YAML::Node& yaml_node, data::map_database* map_db, data::bow_database* bow_db,
+    LocalMapping(const YAML::Node& yaml_node, data::map_database* map_db, data::bow_database* bow_db,
                    data::bow_vocabulary* bow_vocab, const imu::config& imu_cfg = imu::config{});
 
     //! Destructor
-    ~mapping_module();
+    ~LocalMapping();
 
     //! Mark inertial initialization complete so VI local BA can run
     void set_inertial_ready(bool ready);
@@ -79,20 +79,20 @@ public:
     void set_odom_residual_source(estimate::IOdomResidualSource* src);
 
     //! Own live IVox (Mapping-side); LidarSensor borrows via set_ivox.
-    void EnsureMapIncremental(const sensor::lightning::IVox::Options& opts);
+    void EnsureMapIncremental(const mapping::IVox::Options& opts);
     mapping::MapIncremental* map_incremental() { return map_incremental_.get(); }
     const mapping::MapIncremental* map_incremental() const {
         return map_incremental_.get();
     }
 
     //! Set the tracking module
-    void set_tracking_module(tracking_module* tracker);
+    void set_tracking_module(Tracking* tracker);
 
     //! Set the global optimization module
-    void set_global_optimization_module(global_optimization_module* global_optimizer);
+    void set_global_optimization_module(LoopClosing* global_optimizer);
 
     //! Optional shared ThreadPool (single AtlasSystem). When pool scheduling is
-    //! enabled, keyframes are drained via Task instead of mapping_module::run().
+    //! enabled, keyframes are drained via Task instead of LocalMapping::run().
     void set_thread_pool(::autonomy::common::ThreadPool* pool);
     void enable_pool_scheduling(bool enable);
     [[nodiscard]] bool pool_scheduling_enabled() const { return use_pool_scheduling_; }
@@ -258,9 +258,9 @@ private:
     // modules
 
     //! tracking module
-    tracking_module* tracker_ = nullptr;
+    Tracking* tracker_ = nullptr;
     //! global optimization module
-    global_optimization_module* global_optimizer_ = nullptr;
+    LoopClosing* global_optimizer_ = nullptr;
 
     //! Shared ThreadPool from AtlasSystem (optional)
     ::autonomy::common::ThreadPool* thread_pool_ = nullptr;
@@ -323,7 +323,7 @@ private:
     //-----------------------------------------
     // configurations
 
-    //! If true, use baseline_dist_thr_ratio_ in mapping_module::create_new_landmarks. Otherwise use baseline_dist_thr_.
+    //! If true, use baseline_dist_thr_ratio_ in LocalMapping::create_new_landmarks. Otherwise use baseline_dist_thr_.
     bool use_baseline_dist_thr_ratio_ = true;
 
     //! Create new landmarks if the baseline distance is greater than the median depth times baseline_dist_thr_ratio_ of the reference keyframe.
@@ -358,7 +358,7 @@ private:
     float residual_rad_thr_ = 0.2 * M_PI / 180.0;
 };
 
-using LocalMapping = mapping_module;
+using mapping_module = LocalMapping;
 
 }  // namespace autonomy::localization::atlas
 

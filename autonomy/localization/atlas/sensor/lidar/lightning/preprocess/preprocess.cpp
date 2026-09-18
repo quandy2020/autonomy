@@ -21,7 +21,6 @@
 
 namespace autonomy::localization::atlas {
 namespace sensor {
-namespace lightning {
 namespace {
 
 struct VoxelKey {
@@ -53,6 +52,7 @@ Preprocess::Options Preprocess::FromYaml(const YAML::Node& node) {
     o.blind = node["blind"].as<double>(o.blind);
     o.voxel_leaf = node["voxel_leaf"].as<double>(o.voxel_leaf);
     o.max_points = node["max_points"].as<int>(o.max_points);
+    o.use_point_time = node["use_point_time"].as<bool>(o.use_point_time);
     return o;
 }
 
@@ -104,6 +104,59 @@ std::vector<Vec3_t> Preprocess::Run(
     return down;
 }
 
-}  // namespace lightning
+std::vector<TimedPoint> Preprocess::RunTimed(
+    const std::vector<Vec3_t>& points_body,
+    const std::vector<double>& point_time_rel) const {
+    const bool have_times = point_time_rel.size() == points_body.size();
+    std::vector<TimedPoint> filtered;
+    filtered.reserve(points_body.size());
+    const double min_r2 = options_.min_range * options_.min_range;
+    const double max_r2 = options_.max_range * options_.max_range;
+    const double blind2 = options_.blind * options_.blind;
+
+    for (std::size_t i = 0; i < points_body.size(); ++i) {
+        const auto& p = points_body[i];
+        if (!p.allFinite()) {
+            continue;
+        }
+        const double r2 = p.squaredNorm();
+        if (r2 < min_r2 || r2 > max_r2 || r2 < blind2) {
+            continue;
+        }
+        TimedPoint tp;
+        tp.p = p;
+        tp.t_rel = have_times ? point_time_rel[i] : 0.0;
+        filtered.push_back(tp);
+    }
+
+    if (options_.voxel_leaf <= 1e-6 || filtered.empty()) {
+        if (static_cast<int>(filtered.size()) > options_.max_points) {
+            filtered.resize(static_cast<std::size_t>(options_.max_points));
+        }
+        return filtered;
+    }
+
+    const double inv = 1.0 / options_.voxel_leaf;
+    std::unordered_set<VoxelKey, VoxelKeyHash> seen;
+    seen.reserve(filtered.size());
+    std::vector<TimedPoint> down;
+    down.reserve(std::min(filtered.size(),
+                           static_cast<std::size_t>(options_.max_points)));
+    for (const auto& tp : filtered) {
+        VoxelKey key;
+        key.x = static_cast<int>(std::floor(tp.p.x() * inv));
+        key.y = static_cast<int>(std::floor(tp.p.y() * inv));
+        key.z = static_cast<int>(std::floor(tp.p.z() * inv));
+        if (!seen.insert(key).second) {
+            continue;
+        }
+        down.push_back(tp);
+        if (static_cast<int>(down.size()) >= options_.max_points) {
+            break;
+        }
+    }
+    return down;
+}
+
 }  // namespace sensor
 }  // namespace autonomy::localization::atlas

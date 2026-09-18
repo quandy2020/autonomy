@@ -18,8 +18,9 @@
 
 //! mapping/map_incremental — Mapping owns the live IVox; LidarSensor borrows
 //! a non-owning pointer via LidarSensor::set_ivox(&MapIncremental::ivox()).
+//! Insert path: LidarBridge → IntegrateScan (not LidarSensor::FeedWithPose).
 
-#include "autonomy/localization/atlas/sensor/lidar/lightning/ivox/ivox.hpp"
+#include "autonomy/localization/atlas/mapping/ivox/ivox.hpp"
 #include "autonomy/localization/atlas/type.hpp"
 
 #include <vector>
@@ -30,21 +31,44 @@ namespace mapping {
 class MapIncremental {
 public:
     MapIncremental() = default;
-    explicit MapIncremental(sensor::lightning::IVox::Options opts)
+    explicit MapIncremental(mapping::IVox::Options opts)
         : ivox_(opts) {}
 
     void InsertWorldPoints(const std::vector<Vec3_t>& pts) {
         ivox_.InsertWorldPoints(pts);
     }
 
+    //! Transform body points to world and insert into IVox. Returns inserted count.
+    int IntegrateScan(const Mat44_t& T_wb, const std::vector<Vec3_t>& points_body) {
+        if (points_body.empty()) {
+            return 0;
+        }
+        const Mat33_t R_wb = T_wb.block<3, 3>(0, 0);
+        const Vec3_t t_wb = T_wb.block<3, 1>(0, 3);
+        std::vector<Vec3_t> points_world;
+        points_world.reserve(points_body.size());
+        for (const auto& p : points_body) {
+            if (p.allFinite()) {
+                points_world.push_back(R_wb * p + t_wb);
+            }
+        }
+        const std::size_t before = ivox_.num_points();
+        ivox_.InsertWorldPoints(points_world);
+        const std::size_t after = ivox_.num_points();
+        // num_points may shrink under voxel capacity / LRU; report attempted insert.
+        (void)before;
+        (void)after;
+        return static_cast<int>(points_world.size());
+    }
+
     void Clear() { ivox_.Clear(); }
 
-    sensor::lightning::IVox& ivox() { return ivox_; }
-    const sensor::lightning::IVox& ivox() const { return ivox_; }
+    mapping::IVox& ivox() { return ivox_; }
+    const mapping::IVox& ivox() const { return ivox_; }
 
 private:
     //! Canonical live local lidar map (owned here, not by LidarSensor).
-    sensor::lightning::IVox ivox_;
+    mapping::IVox ivox_;
 };
 
 }  // namespace mapping

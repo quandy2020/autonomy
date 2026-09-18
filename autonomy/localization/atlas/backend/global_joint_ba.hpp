@@ -26,8 +26,8 @@
 
 namespace autonomy::localization::atlas {
 
-class mapping_module;
-class tracking_module;
+class LocalMapping;
+class Tracking;
 
 namespace data {
 class keyframe;
@@ -56,9 +56,9 @@ public:
     /**
      * Set the mapping module
      */
-    void set_mapping_module(mapping_module* mapper);
+    void set_mapping_module(LocalMapping* mapper);
 
-    void set_tracking_module(tracking_module* tracker);
+    void set_tracking_module(Tracking* tracker);
 
     void set_residual_mask(estimate::ResidualMask mask);
     void set_lidar_residual_source(estimate::ILidarResidualSource* src);
@@ -84,10 +84,10 @@ private:
     data::map_database* map_db_ = nullptr;
 
     //! mapping module
-    mapping_module* mapper_ = nullptr;
+    LocalMapping* mapper_ = nullptr;
 
     //! tracking module (paused during loop BA to avoid map races)
-    tracking_module* tracker_ = nullptr;
+    Tracking* tracker_ = nullptr;
 
     //! Default all-true for backward compat until Pipeline sets runtime mask.
     estimate::ResidualMask mask_{true, true, true, true};

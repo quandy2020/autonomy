@@ -23,7 +23,7 @@
 
 namespace autonomy::localization::atlas {
 
-mapping_module::mapping_module(const YAML::Node& yaml_node, data::map_database* map_db, data::bow_database* bow_db,
+LocalMapping::LocalMapping(const YAML::Node& yaml_node, data::map_database* map_db, data::bow_database* bow_db,
                                data::bow_vocabulary* bow_vocab, const imu::config& imu_cfg)
     : local_map_cleaner_(new module::local_map_cleaner(yaml_node, map_db, bow_db)),
       map_db_(map_db), bow_db_(bow_db), bow_vocab_(bow_vocab),
@@ -37,7 +37,7 @@ mapping_module::mapping_module(const YAML::Node& yaml_node, data::map_database* 
       erase_temporal_keyframes_(yaml_node["erase_temporal_keyframes"].as<bool>(false)),
       num_temporal_keyframes_(yaml_node["num_temporal_keyframes"].as<unsigned int>(15)),
       residual_rad_thr_(yaml_node["residual_deg_thr"].as<float>(0.2) * M_PI / 180.0) {
-    ADEBUG << "CONSTRUCT: mapping_module";
+    ADEBUG << "CONSTRUCT: LocalMapping";
 
     ADEBUG << "load mapping parameters";
 
@@ -57,7 +57,7 @@ mapping_module::mapping_module(const YAML::Node& yaml_node, data::map_database* 
     }
 }
 
-void mapping_module::set_inertial_ready(bool ready) {
+void LocalMapping::set_inertial_ready(bool ready) {
     if (auto* joint = dynamic_cast<mapping::LocalJointBA*>(local_bundle_adjuster_.get())) {
         joint->set_inertial_ready(ready);
         return;
@@ -67,7 +67,7 @@ void mapping_module::set_inertial_ready(bool ready) {
     }
 }
 
-void mapping_module::set_imu_gravity(const Vec3_t& gravity) {
+void LocalMapping::set_imu_gravity(const Vec3_t& gravity) {
     if (auto* joint = dynamic_cast<mapping::LocalJointBA*>(local_bundle_adjuster_.get())) {
         joint->set_gravity(gravity);
         return;
@@ -77,77 +77,77 @@ void mapping_module::set_imu_gravity(const Vec3_t& gravity) {
     }
 }
 
-void mapping_module::set_residual_mask(estimate::ResidualMask mask) {
+void LocalMapping::set_residual_mask(estimate::ResidualMask mask) {
     if (auto* joint = dynamic_cast<mapping::LocalJointBA*>(
             local_bundle_adjuster_.get())) {
         joint->set_residual_mask(mask);
-        AINFO << "mapping_module: residual mask applied "
+        AINFO << "LocalMapping: residual mask applied "
               << "(v=" << mask.vision << " i=" << mask.imu
               << " l=" << mask.lidar << " o=" << mask.odom << ")";
     } else if (mask.any()) {
-        AWARN << "mapping_module: joint BA not active; residual mask ignored";
+        AWARN << "LocalMapping: joint BA not active; residual mask ignored";
     }
 }
 
-void mapping_module::set_lidar_residual_source(estimate::ILidarResidualSource* src) {
+void LocalMapping::set_lidar_residual_source(estimate::ILidarResidualSource* src) {
     if (auto* joint = dynamic_cast<mapping::LocalJointBA*>(
             local_bundle_adjuster_.get())) {
         joint->set_lidar_residual_source(src);
-        AINFO << "mapping_module: lidar residual source attached";
+        AINFO << "LocalMapping: lidar residual source attached";
     } else if (src) {
-        AWARN << "mapping_module: joint BA not active; lidar residual source ignored";
+        AWARN << "LocalMapping: joint BA not active; lidar residual source ignored";
     }
 }
 
-void mapping_module::set_odom_residual_source(estimate::IOdomResidualSource* src) {
+void LocalMapping::set_odom_residual_source(estimate::IOdomResidualSource* src) {
     if (auto* joint = dynamic_cast<mapping::LocalJointBA*>(
             local_bundle_adjuster_.get())) {
         joint->set_odom_residual_source(src);
-        AINFO << "mapping_module: odom residual source attached";
+        AINFO << "LocalMapping: odom residual source attached";
     } else if (src) {
-        AWARN << "mapping_module: joint BA not active; odom residual source ignored";
+        AWARN << "LocalMapping: joint BA not active; odom residual source ignored";
     }
 }
 
-void mapping_module::EnsureMapIncremental(
-    const sensor::lightning::IVox::Options& opts) {
+void LocalMapping::EnsureMapIncremental(
+    const mapping::IVox::Options& opts) {
     if (!map_incremental_) {
         map_incremental_ = std::make_unique<mapping::MapIncremental>(opts);
-        AINFO << "mapping_module: MapIncremental created (live IVox owner)";
+        AINFO << "LocalMapping: MapIncremental created (live IVox owner)";
     }
 }
 
-mapping_module::~mapping_module() {
-    ADEBUG << "DESTRUCT: mapping_module";
+LocalMapping::~LocalMapping() {
+    ADEBUG << "DESTRUCT: LocalMapping";
 }
 
-void mapping_module::set_tracking_module(tracking_module* tracker) {
+void LocalMapping::set_tracking_module(Tracking* tracker) {
     tracker_ = tracker;
 }
 
-void mapping_module::set_global_optimization_module(global_optimization_module* global_optimizer) {
+void LocalMapping::set_global_optimization_module(LoopClosing* global_optimizer) {
     global_optimizer_ = global_optimizer;
 }
 
-void mapping_module::set_thread_pool(::autonomy::common::ThreadPool* pool) {
+void LocalMapping::set_thread_pool(::autonomy::common::ThreadPool* pool) {
     thread_pool_ = pool;
 }
 
-void mapping_module::enable_pool_scheduling(bool enable) {
+void LocalMapping::enable_pool_scheduling(bool enable) {
     use_pool_scheduling_ = enable && thread_pool_ != nullptr;
     if (use_pool_scheduling_) {
         std::lock_guard<std::mutex> lock(mtx_terminate_);
         is_terminated_ = false;
         terminate_is_requested_ = false;
-        AINFO << "mapping_module: ThreadPool scheduling enabled";
+        AINFO << "LocalMapping: ThreadPool scheduling enabled";
     }
 }
 
-void mapping_module::set_planar_mapping_module(plp::planar_mapping_module* planar_mapper) {
+void LocalMapping::set_planar_mapping_module(plp::planar_mapping_module* planar_mapper) {
     planar_mapper_ = planar_mapper;
 }
 
-void mapping_module::run() {
+void LocalMapping::run() {
     AINFO << "start mapping module";
 
     is_terminated_ = false;
@@ -159,7 +159,7 @@ void mapping_module::run() {
         // check if termination is requested
         if (terminate_is_requested()) {
             // terminate and break
-            ADEBUG << "mapping_module: terminate";
+            ADEBUG << "LocalMapping: terminate";
             terminate();
             break;
         }
@@ -173,19 +173,19 @@ void mapping_module::run() {
 
         // check if pause is requested and not prevented
         if (pause_is_requested()) {
-            ADEBUG << "mapping_module: tracker_->is_stopped_keyframe_insertion";
+            ADEBUG << "LocalMapping: tracker_->is_stopped_keyframe_insertion";
             auto future_stop_keyframe_insertion = tracker_->async_stop_keyframe_insertion();
             future_stop_keyframe_insertion.get();
             if (!keyframe_is_queued()) {
                 pause();
-                ADEBUG << "mapping_module: waiting";
+                ADEBUG << "LocalMapping: waiting";
                 // check if termination or reset is requested during pause
                 while (is_paused() && !terminate_is_requested() && !reset_is_requested()) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(3));
                 }
                 auto future_start_keyframe_insertion = tracker_->async_start_keyframe_insertion();
                 future_start_keyframe_insertion.get();
-                ADEBUG << "mapping_module: resume";
+                ADEBUG << "LocalMapping: resume";
             }
         }
 
@@ -205,7 +205,7 @@ void mapping_module::run() {
     AINFO << "terminate mapping module";
 }
 
-std::shared_future<void> mapping_module::async_add_keyframe(const std::shared_ptr<data::keyframe>& keyfrm) {
+std::shared_future<void> LocalMapping::async_add_keyframe(const std::shared_ptr<data::keyframe>& keyfrm) {
     std::shared_future<void> future;
     {
         std::lock_guard<std::mutex> lock(mtx_keyfrm_queue_);
@@ -220,7 +220,7 @@ std::shared_future<void> mapping_module::async_add_keyframe(const std::shared_pt
     return future;
 }
 
-void mapping_module::MaybeScheduleDrain() {
+void LocalMapping::MaybeScheduleDrain() {
     if (!use_pool_scheduling_ || !thread_pool_) {
         return;
     }
@@ -239,7 +239,7 @@ void mapping_module::MaybeScheduleDrain() {
     });
 }
 
-void mapping_module::DrainKeyframesOnce() {
+void LocalMapping::DrainKeyframesOnce() {
     while (!terminate_is_requested() && keyframe_is_queued()) {
         mapping_with_new_keyframe();
         if (global_optimizer_ && cur_keyfrm_
@@ -250,26 +250,26 @@ void mapping_module::DrainKeyframesOnce() {
     }
 }
 
-unsigned int mapping_module::get_num_queued_keyframes() const {
+unsigned int LocalMapping::get_num_queued_keyframes() const {
     std::lock_guard<std::mutex> lock(mtx_keyfrm_queue_);
     return keyfrms_queue_.size();
 }
 
-bool mapping_module::keyframe_is_queued() const {
+bool LocalMapping::keyframe_is_queued() const {
     std::lock_guard<std::mutex> lock(mtx_keyfrm_queue_);
     return !keyfrms_queue_.empty();
 }
 
-bool mapping_module::is_skipping_localBA() const {
+bool LocalMapping::is_skipping_localBA() const {
     auto queued_keyframes = get_num_queued_keyframes();
     return queued_keyframes >= queue_threshold_;
 }
 
-void mapping_module::abort_local_BA() {
+void LocalMapping::abort_local_BA() {
     abort_local_BA_ = true;
 }
 
-void mapping_module::mapping_with_new_keyframe() {
+void LocalMapping::mapping_with_new_keyframe() {
     // dequeue
     {
         std::lock_guard<std::mutex> lock(mtx_keyfrm_queue_);
@@ -278,7 +278,7 @@ void mapping_module::mapping_with_new_keyframe() {
         keyfrms_queue_.pop_front();
     }
 
-    ADEBUG << "mapping_module: current keyframe is " << cur_keyfrm_->id_;
+    ADEBUG << "LocalMapping: current keyframe is " << cur_keyfrm_->id_;
 
     // store the new keyframe to the database
     store_new_keyframe();
@@ -306,7 +306,7 @@ void mapping_module::mapping_with_new_keyframe() {
         }
     }
 
-    ADEBUG << "mapping_module: update_new_keyframe (current keyframe is " << cur_keyfrm_->id_ << ")";
+    ADEBUG << "LocalMapping: update_new_keyframe (current keyframe is " << cur_keyfrm_->id_ << ")";
 
     // detect and resolve the duplication of the landmarks observed in the current frame
     update_new_keyframe();
@@ -326,7 +326,7 @@ void mapping_module::mapping_with_new_keyframe() {
         return;
     }
 
-    ADEBUG << "mapping_module: local bundle adjustment (current keyframe is " << cur_keyfrm_->id_ << ")";
+    ADEBUG << "LocalMapping: local bundle adjustment (current keyframe is " << cur_keyfrm_->id_ << ")";
 
     // local bundle adjustment
     abort_local_BA_ = false;
@@ -384,7 +384,7 @@ void mapping_module::mapping_with_new_keyframe() {
     }
 }
 
-void mapping_module::store_new_keyframe() {
+void LocalMapping::store_new_keyframe() {
     // compute BoW feature vector
     if (bow_vocab_ && !cur_keyfrm_->bow_is_available()) {
         cur_keyfrm_->compute_bow(bow_vocab_);
@@ -421,7 +421,7 @@ void mapping_module::store_new_keyframe() {
     map_db_->add_keyframe(cur_keyfrm_);
 }
 
-void mapping_module::create_new_landmarks(std::atomic<bool>& abort_create_new_landmarks) {
+void LocalMapping::create_new_landmarks(std::atomic<bool>& abort_create_new_landmarks) {
     // get the covisibilities of `cur_keyfrm_`
     // in order to triangulate landmarks between `cur_keyfrm_` and each of the covisibilities
     const auto cur_covisibilities = cur_keyfrm_->graph_node_->get_top_n_covisibilities(num_covisibilities_for_landmark_generation_);
@@ -492,7 +492,7 @@ void mapping_module::create_new_landmarks(std::atomic<bool>& abort_create_new_la
     }
 }
 
-void mapping_module::triangulate_with_two_keyframes(const std::shared_ptr<data::keyframe>& keyfrm_1, const std::shared_ptr<data::keyframe>& keyfrm_2,
+void LocalMapping::triangulate_with_two_keyframes(const std::shared_ptr<data::keyframe>& keyfrm_1, const std::shared_ptr<data::keyframe>& keyfrm_2,
                                                     const std::vector<std::pair<unsigned int, unsigned int>>& matches) {
     std::lock_guard<std::mutex> lock(data::map_database::mtx_database_);
     const module::two_view_triangulator triangulator(keyfrm_1, keyfrm_2, 1.0);
@@ -532,7 +532,7 @@ void mapping_module::triangulate_with_two_keyframes(const std::shared_ptr<data::
     }
 }
 
-void mapping_module::triangulate_line_with_two_keyframes(const std::shared_ptr<data::keyframe>& cur_keyfrm,
+void LocalMapping::triangulate_line_with_two_keyframes(const std::shared_ptr<data::keyframe>& cur_keyfrm,
                                                          const std::shared_ptr<data::keyframe>& ngh_keyfrm) {
     if (cur_keyfrm->line_obs_.empty() || ngh_keyfrm->line_obs_.empty()) {
         return;
@@ -583,7 +583,7 @@ void mapping_module::triangulate_line_with_two_keyframes(const std::shared_ptr<d
     }
 }
 
-void mapping_module::update_new_keyframe() {
+void LocalMapping::update_new_keyframe() {
     std::lock_guard<std::mutex> lock(data::map_database::mtx_database_);
 
     // get the targets to check landmark fusion
@@ -620,7 +620,7 @@ void mapping_module::update_new_keyframe() {
     cur_keyfrm_->graph_node_->update_connections(map_db_->get_min_num_shared_lms());
 }
 
-void mapping_module::fuse_landmark_duplication(const std::vector<std::shared_ptr<data::keyframe>>& fuse_tgt_keyfrms,
+void LocalMapping::fuse_landmark_duplication(const std::vector<std::shared_ptr<data::keyframe>>& fuse_tgt_keyfrms,
                                                nondeterministic::unordered_map<std::shared_ptr<data::landmark>, std::shared_ptr<data::landmark>>& replaced_lms) {
     match::fuse fuse_matcher(0.6);
 
@@ -742,7 +742,7 @@ void mapping_module::fuse_landmark_duplication(const std::vector<std::shared_ptr
     }
 }
 
-void mapping_module::fuse_landmark_line_duplication(const std::vector<std::shared_ptr<data::keyframe>>& fuse_tgt_keyfrms) {
+void LocalMapping::fuse_landmark_line_duplication(const std::vector<std::shared_ptr<data::keyframe>>& fuse_tgt_keyfrms) {
     match::fuse fuse_matcher(0.6);
     constexpr float margin = 3.0f;
 
@@ -767,7 +767,7 @@ void mapping_module::fuse_landmark_line_duplication(const std::vector<std::share
     }
 }
 
-std::shared_future<void> mapping_module::async_reset() {
+std::shared_future<void> LocalMapping::async_reset() {
     std::lock_guard<std::mutex> lock(mtx_reset_);
     reset_is_requested_ = true;
     if (!future_reset_.valid()) {
@@ -776,12 +776,12 @@ std::shared_future<void> mapping_module::async_reset() {
     return future_reset_;
 }
 
-bool mapping_module::reset_is_requested() const {
+bool LocalMapping::reset_is_requested() const {
     std::lock_guard<std::mutex> lock(mtx_reset_);
     return reset_is_requested_;
 }
 
-void mapping_module::reset() {
+void LocalMapping::reset() {
     std::lock_guard<std::mutex> lock(mtx_reset_);
     AINFO << "reset mapping module";
     keyfrms_queue_.clear();
@@ -799,7 +799,7 @@ void mapping_module::reset() {
     future_reset_ = std::shared_future<void>();
 }
 
-std::shared_future<void> mapping_module::async_pause() {
+std::shared_future<void> LocalMapping::async_pause() {
     std::lock_guard<std::mutex> lock_pause(mtx_pause_);
     pause_is_requested_ = true;
     abort_local_BA_ = true;
@@ -808,7 +808,7 @@ std::shared_future<void> mapping_module::async_pause() {
     }
 
     std::lock_guard<std::mutex> lock_terminate(mtx_terminate_);
-    ADEBUG << "mapping_module::async_pause is_terminated_=" << is_terminated_ << " is_paused_=" << is_paused_;
+    ADEBUG << "LocalMapping::async_pause is_terminated_=" << is_terminated_ << " is_paused_=" << is_paused_;
     std::shared_future<void> future_pause = future_pause_;
     if (is_terminated_ || is_paused_) {
         promise_pause_.set_value();
@@ -819,17 +819,17 @@ std::shared_future<void> mapping_module::async_pause() {
     return future_pause;
 }
 
-bool mapping_module::is_paused() const {
+bool LocalMapping::is_paused() const {
     std::lock_guard<std::mutex> lock(mtx_pause_);
     return is_paused_;
 }
 
-bool mapping_module::pause_is_requested() const {
+bool LocalMapping::pause_is_requested() const {
     std::lock_guard<std::mutex> lock(mtx_pause_);
     return pause_is_requested_;
 }
 
-void mapping_module::pause() {
+void LocalMapping::pause() {
     std::lock_guard<std::mutex> lock(mtx_pause_);
     AINFO << "pause mapping module";
     is_paused_ = true;
@@ -838,7 +838,7 @@ void mapping_module::pause() {
     future_pause_ = std::shared_future<void>();
 }
 
-void mapping_module::resume() {
+void LocalMapping::resume() {
     std::lock_guard<std::mutex> lock1(mtx_pause_);
     std::lock_guard<std::mutex> lock2(mtx_terminate_);
 
@@ -855,7 +855,7 @@ void mapping_module::resume() {
     AINFO << "resume mapping module";
 }
 
-std::shared_future<void> mapping_module::async_terminate() {
+std::shared_future<void> LocalMapping::async_terminate() {
     {
         std::lock_guard<std::mutex> lock(mtx_terminate_);
         terminate_is_requested_ = true;
@@ -874,17 +874,17 @@ std::shared_future<void> mapping_module::async_terminate() {
     return future_terminate_;
 }
 
-bool mapping_module::is_terminated() const {
+bool LocalMapping::is_terminated() const {
     std::lock_guard<std::mutex> lock(mtx_terminate_);
     return is_terminated_;
 }
 
-bool mapping_module::terminate_is_requested() const {
+bool LocalMapping::terminate_is_requested() const {
     std::lock_guard<std::mutex> lock(mtx_terminate_);
     return terminate_is_requested_;
 }
 
-void mapping_module::terminate() {
+void LocalMapping::terminate() {
     {
         std::lock_guard<std::mutex> lock_pause(mtx_pause_);
         is_paused_ = true;

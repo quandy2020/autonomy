@@ -48,6 +48,19 @@ bool ImuSensor::PopLatest(ImuSample* out) {
     return true;
 }
 
+void ImuSensor::CopySince(double t_min, std::deque<ImuSample>* out) const {
+    if (!out) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mtx_);
+    out->clear();
+    for (const auto& s : queue_) {
+        if (s.timestamp >= t_min) {
+            out->push_back(s);
+        }
+    }
+}
+
 void ImuSensor::Clear() {
     std::lock_guard<std::mutex> lock(mtx_);
     queue_.clear();

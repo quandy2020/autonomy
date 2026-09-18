@@ -13,9 +13,13 @@
 #include "autonomy/localization/atlas/util/schedule.hpp"
 #include "autolink/common/log.hpp"
 
+// Lidar loop (P2 stub): see backend/lidar_loop_detector.hpp — Detect() always
+// false until lightning-lm NDT loop is ported; vision BoW loop_detector_ remains
+// the active path in LoopClosing.
+
 namespace autonomy::localization::atlas {
 
-global_optimization_module::global_optimization_module(data::map_database* map_db, data::bow_database* bow_db,
+LoopClosing::LoopClosing(data::map_database* map_db, data::bow_database* bow_db,
                                                        data::bow_vocabulary* bow_vocab, const YAML::Node& yaml_node,
                                                        const bool fix_scale)
     : loop_detector_(new module::loop_detector(bow_db, bow_vocab, util::yaml_optional_ref(yaml_node, "LoopDetector"), fix_scale)),
@@ -27,81 +31,81 @@ global_optimization_module::global_optimization_module(data::map_database* map_d
       map_db_(map_db),
       graph_optimizer_(new optimize::graph_optimizer(util::yaml_optional_ref(yaml_node, "GraphOptimizer"), map_db, fix_scale)),
       thr_neighbor_keyframes_(util::yaml_optional_ref(yaml_node, "GlobalOptimizer")["thr_neighbor_keyframes"].as<unsigned int>(15)) {
-    ADEBUG << "CONSTRUCT: global_optimization_module";
+    ADEBUG << "CONSTRUCT: LoopClosing";
 }
 
-global_optimization_module::~global_optimization_module() {
+LoopClosing::~LoopClosing() {
     abort_loop_BA();
     if (thread_for_loop_BA_) {
         thread_for_loop_BA_->join();
     }
-    ADEBUG << "DESTRUCT: global_optimization_module";
+    ADEBUG << "DESTRUCT: LoopClosing";
 }
 
-void global_optimization_module::set_tracking_module(tracking_module* tracker) {
+void LoopClosing::set_tracking_module(Tracking* tracker) {
     tracker_ = tracker;
     if (loop_bundle_adjuster_) {
         loop_bundle_adjuster_->set_tracking_module(tracker);
     }
 }
 
-void global_optimization_module::set_mapping_module(mapping_module* mapper) {
+void LoopClosing::set_mapping_module(LocalMapping* mapper) {
     mapper_ = mapper;
     loop_bundle_adjuster_->set_mapping_module(mapper);
 }
 
-void global_optimization_module::set_residual_mask(estimate::ResidualMask mask) {
+void LoopClosing::set_residual_mask(estimate::ResidualMask mask) {
     if (loop_bundle_adjuster_) {
         loop_bundle_adjuster_->set_residual_mask(mask);
-        AINFO << "global_optimization_module: residual mask applied";
+        AINFO << "LoopClosing: residual mask applied";
     }
 }
 
-void global_optimization_module::set_lidar_residual_source(
+void LoopClosing::set_lidar_residual_source(
     estimate::ILidarResidualSource* src) {
     if (loop_bundle_adjuster_) {
         loop_bundle_adjuster_->set_lidar_residual_source(src);
-        AINFO << "global_optimization_module: lidar residual source attached";
+        AINFO << "LoopClosing: lidar residual source attached";
     }
 }
 
-void global_optimization_module::set_odom_residual_source(
+void LoopClosing::set_odom_residual_source(
     estimate::IOdomResidualSource* src) {
     if (loop_bundle_adjuster_) {
         loop_bundle_adjuster_->set_odom_residual_source(src);
-        AINFO << "global_optimization_module: odom residual source attached";
+        AINFO << "LoopClosing: odom residual source attached";
     }
 }
 
-void global_optimization_module::set_thread_pool(::autonomy::common::ThreadPool* pool) {
+void LoopClosing::set_thread_pool(::autonomy::common::ThreadPool* pool) {
     thread_pool_ = pool;
 }
 
-void global_optimization_module::enable_pool_scheduling(bool enable) {
+void LoopClosing::enable_pool_scheduling(bool enable) {
     use_pool_scheduling_ = enable && thread_pool_ != nullptr;
     if (use_pool_scheduling_) {
         std::lock_guard<std::mutex> lock(mtx_terminate_);
         is_terminated_ = false;
         terminate_is_requested_ = false;
-        AINFO << "global_optimization_module: ThreadPool scheduling enabled";
+        AINFO << "LoopClosing: ThreadPool scheduling enabled";
     }
 }
 
-void global_optimization_module::enable_loop_detector() {
+void LoopClosing::enable_loop_detector() {
     AINFO << "enable loop detector";
     loop_detector_->enable_loop_detector();
 }
 
-void global_optimization_module::disable_loop_detector() {
+void LoopClosing::disable_loop_detector() {
     AINFO << "disable loop detector";
     loop_detector_->disable_loop_detector();
 }
 
-bool global_optimization_module::loop_detector_is_enabled() const {
+bool LoopClosing::loop_detector_is_enabled() const {
     return loop_detector_->is_enabled();
 }
 
-bool global_optimization_module::request_loop_closure(unsigned int keyfrm1_id, unsigned int keyfrm2_id) {
+bool LoopClosing::request_loop_closure(unsigned int keyfrm1_id, unsigned int keyfrm2_id) {
     std::lock_guard<std::mutex> lock(mtx_loop_closure_request_);
     if (loop_closure_is_requested_) {
         AWARN << "Can not process new loop closure request while previous was not finished";
@@ -113,22 +117,22 @@ bool global_optimization_module::request_loop_closure(unsigned int keyfrm1_id, u
     return true;
 }
 
-bool global_optimization_module::loop_closure_is_requested() {
+bool LoopClosing::loop_closure_is_requested() {
     std::lock_guard<std::mutex> lock(mtx_loop_closure_request_);
     return loop_closure_is_requested_;
 }
 
-loop_closure_request& global_optimization_module::get_loop_closure_request() {
+loop_closure_request& LoopClosing::get_loop_closure_request() {
     std::lock_guard<std::mutex> lock(mtx_loop_closure_request_);
     return loop_closure_request_;
 }
 
-void global_optimization_module::finish_loop_closure_request() {
+void LoopClosing::finish_loop_closure_request() {
     std::lock_guard<std::mutex> lock(mtx_loop_closure_request_);
     loop_closure_is_requested_ = false;
 }
 
-bool global_optimization_module::loop_closure(const loop_closure_request& request) {
+bool LoopClosing::loop_closure(const loop_closure_request& request) {
     {
         std::lock_guard<std::mutex> lock(data::map_database::mtx_database_);
         unsigned int curr_keyfrm_id = std::max(request.keyfrm1_id_, request.keyfrm2_id_);
@@ -162,7 +166,7 @@ bool global_optimization_module::loop_closure(const loop_closure_request& reques
     return true;
 }
 
-void global_optimization_module::run() {
+void LoopClosing::run() {
     AINFO << "start global optimization module";
 
     is_terminated_ = false;
@@ -220,7 +224,7 @@ void global_optimization_module::run() {
     AINFO << "terminate global optimization module";
 }
 
-void global_optimization_module::ProcessDequeuedKeyframe() {
+void LoopClosing::ProcessDequeuedKeyframe() {
     // dequeue the keyframe from the queue -> cur_keyfrm_
     {
         std::lock_guard<std::mutex> lock(mtx_keyfrm_queue_);
@@ -254,7 +258,7 @@ void global_optimization_module::ProcessDequeuedKeyframe() {
     correct_loop();
 }
 
-void global_optimization_module::DrainKeyframesOnce() {
+void LoopClosing::DrainKeyframesOnce() {
     while (!terminate_is_requested() && keyframe_is_queued()) {
         if (loop_closure_is_requested()) {
             loop_closure(get_loop_closure_request());
@@ -272,7 +276,7 @@ void global_optimization_module::DrainKeyframesOnce() {
     }
 }
 
-void global_optimization_module::MaybeScheduleDrain() {
+void LoopClosing::MaybeScheduleDrain() {
     if (!use_pool_scheduling_ || !thread_pool_) {
         return;
     }
@@ -292,7 +296,7 @@ void global_optimization_module::MaybeScheduleDrain() {
     });
 }
 
-void global_optimization_module::queue_keyframe(const std::shared_ptr<data::keyframe>& keyfrm) {
+void LoopClosing::queue_keyframe(const std::shared_ptr<data::keyframe>& keyfrm) {
     {
         std::lock_guard<std::mutex> lock(mtx_keyfrm_queue_);
         keyfrms_queue_.push_back(keyfrm);
@@ -302,12 +306,12 @@ void global_optimization_module::queue_keyframe(const std::shared_ptr<data::keyf
     }
 }
 
-bool global_optimization_module::keyframe_is_queued() const {
+bool LoopClosing::keyframe_is_queued() const {
     std::lock_guard<std::mutex> lock(mtx_keyfrm_queue_);
     return !keyfrms_queue_.empty();
 }
 
-void global_optimization_module::correct_loop() {
+void LoopClosing::correct_loop() {
     auto final_candidate_keyfrm = loop_detector_->get_selected_candidate_keyframe();
 
     AINFO << "detect loop: keyframe " << final_candidate_keyfrm->id_ << " - keyframe " << cur_keyfrm_->id_;
@@ -322,11 +326,11 @@ void global_optimization_module::correct_loop() {
     // 0-1. stop the mapping module and the previous loop bundle adjuster
 
     // pause the mapping module
-    ADEBUG << "global_optimization_module: pause the mapping module";
+    ADEBUG << "LoopClosing: pause the mapping module";
     auto future_pause = mapper_->async_pause();
     // abort the previous loop bundle adjuster
     if (thread_for_loop_BA_ || loop_bundle_adjuster_->is_running()) {
-        ADEBUG << "global_optimization_module: abort loop bundle adjustment";
+        ADEBUG << "LoopClosing: abort loop bundle adjustment";
         abort_loop_BA();
     }
     // wait till the mapping module pauses
@@ -336,7 +340,7 @@ void global_optimization_module::correct_loop() {
     //    then, the covisibilities are moved to the corrected positions
     //    finally, landmarks observed in them are also moved to the correct position using the camera poses before and after camera pose correction
 
-    ADEBUG << "global_optimization_module: compute the Sim3 of the covisibilities of the current keyframe whose Sim3 is already estimated by the loop detector";
+    ADEBUG << "LoopClosing: compute the Sim3 of the covisibilities of the current keyframe whose Sim3 is already estimated by the loop detector";
     // acquire the covisibilities of the current keyframe
     std::vector<std::shared_ptr<data::keyframe>> curr_neighbors = cur_keyfrm_->graph_node_->get_covisibilities_over_min_num_shared_lms(thr_neighbor_keyframes_);
     curr_neighbors.push_back(cur_keyfrm_);
@@ -370,18 +374,18 @@ void global_optimization_module::correct_loop() {
 
     // 2. resolve duplications of landmarks caused by loop fusion
 
-    ADEBUG << "global_optimization_module: resolve duplications of landmarks caused by loop fusion";
+    ADEBUG << "LoopClosing: resolve duplications of landmarks caused by loop fusion";
     const auto curr_match_lms_observed_in_cand = loop_detector_->current_matched_landmarks_observed_in_candidate();
     replace_duplicated_landmarks(curr_match_lms_observed_in_cand, Sim3s_nw_after_correction);
 
     // 3. extract the new connections created after loop fusion
 
-    ADEBUG << "global_optimization_module: extract the new connections created after loop fusion";
+    ADEBUG << "LoopClosing: extract the new connections created after loop fusion";
     const auto new_connections = extract_new_connections(curr_neighbors);
 
     // 4. pose graph optimization
 
-    ADEBUG << "global_optimization_module: pose graph optimization";
+    ADEBUG << "LoopClosing: pose graph optimization";
     graph_optimizer_->optimize(final_candidate_keyfrm, cur_keyfrm_, Sim3s_nw_before_correction, Sim3s_nw_after_correction, new_connections, found_lm_to_ref_keyfrm_id);
 
     // add a loop edge
@@ -390,16 +394,16 @@ void global_optimization_module::correct_loop() {
 
     // 5. launch loop BA
 
-    ADEBUG << "global_optimization_module: wait for loop BA";
+    ADEBUG << "LoopClosing: wait for loop BA";
     while (loop_bundle_adjuster_->is_running()) {
         std::this_thread::sleep_for(std::chrono::microseconds(1000));
     }
     if (thread_for_loop_BA_) {
-        ADEBUG << "global_optimization_module: wait for last loop BA";
+        ADEBUG << "LoopClosing: wait for last loop BA";
         thread_for_loop_BA_->join();
         thread_for_loop_BA_.reset(nullptr);
     }
-    ADEBUG << "global_optimization_module: launch loop BA";
+    ADEBUG << "LoopClosing: launch loop BA";
     if (use_pool_scheduling_ && thread_pool_) {
         auto* ba = loop_bundle_adjuster_.get();
         auto keyfrm = cur_keyfrm_;
@@ -426,7 +430,7 @@ void global_optimization_module::correct_loop() {
     loop_detector_->set_loop_correct_keyframe_id(cur_keyfrm_->id_);
 }
 
-module::keyframe_Sim3_pairs_t global_optimization_module::get_Sim3s_before_loop_correction(const std::vector<std::shared_ptr<data::keyframe>>& neighbors) const {
+module::keyframe_Sim3_pairs_t LoopClosing::get_Sim3s_before_loop_correction(const std::vector<std::shared_ptr<data::keyframe>>& neighbors) const {
     module::keyframe_Sim3_pairs_t Sim3s_nw_before_loop_correction;
 
     for (const auto& neighbor : neighbors) {
@@ -442,7 +446,7 @@ module::keyframe_Sim3_pairs_t global_optimization_module::get_Sim3s_before_loop_
     return Sim3s_nw_before_loop_correction;
 }
 
-module::keyframe_Sim3_pairs_t global_optimization_module::get_Sim3s_after_loop_correction(const Mat44_t& cam_pose_wc_before_correction,
+module::keyframe_Sim3_pairs_t LoopClosing::get_Sim3s_after_loop_correction(const Mat44_t& cam_pose_wc_before_correction,
                                                                                           const g2o::Sim3& g2o_Sim3_cw_after_correction,
                                                                                           const std::vector<std::shared_ptr<data::keyframe>>& neighbors) const {
     module::keyframe_Sim3_pairs_t Sim3s_nw_after_loop_correction;
@@ -463,7 +467,7 @@ module::keyframe_Sim3_pairs_t global_optimization_module::get_Sim3s_after_loop_c
     return Sim3s_nw_after_loop_correction;
 }
 
-void global_optimization_module::correct_covisibility_landmarks(const module::keyframe_Sim3_pairs_t& Sim3s_nw_before_correction,
+void LoopClosing::correct_covisibility_landmarks(const module::keyframe_Sim3_pairs_t& Sim3s_nw_before_correction,
                                                                 const module::keyframe_Sim3_pairs_t& Sim3s_nw_after_correction,
                                                                 std::unordered_map<unsigned int, unsigned int>& found_lm_to_ref_keyfrm_id) const {
     for (const auto& t : Sim3s_nw_after_correction) {
@@ -499,7 +503,7 @@ void global_optimization_module::correct_covisibility_landmarks(const module::ke
     }
 }
 
-void global_optimization_module::correct_covisibility_landmarks_line(
+void LoopClosing::correct_covisibility_landmarks_line(
     const module::keyframe_Sim3_pairs_t& Sim3s_nw_before_correction,
     const module::keyframe_Sim3_pairs_t& Sim3s_nw_after_correction) const {
     for (const auto& t : Sim3s_nw_after_correction) {
@@ -544,7 +548,7 @@ void global_optimization_module::correct_covisibility_landmarks_line(
     }
 }
 
-void global_optimization_module::correct_covisibility_keyframes(const module::keyframe_Sim3_pairs_t& Sim3s_nw_after_correction) const {
+void LoopClosing::correct_covisibility_keyframes(const module::keyframe_Sim3_pairs_t& Sim3s_nw_after_correction) const {
     for (const auto& t : Sim3s_nw_after_correction) {
         auto neighbor = t.first;
         const auto Sim3_nw_after_correction = t.second;
@@ -557,7 +561,7 @@ void global_optimization_module::correct_covisibility_keyframes(const module::ke
     }
 }
 
-void global_optimization_module::replace_duplicated_landmarks(const std::vector<std::shared_ptr<data::landmark>>& curr_match_lms_observed_in_cand,
+void LoopClosing::replace_duplicated_landmarks(const std::vector<std::shared_ptr<data::landmark>>& curr_match_lms_observed_in_cand,
                                                               const module::keyframe_Sim3_pairs_t& Sim3s_nw_after_correction) const {
     nondeterministic::unordered_map<std::shared_ptr<data::landmark>, std::shared_ptr<data::landmark>> replaced_lms;
     // resolve duplications of landmarks between the current keyframe and the loop candidate
@@ -650,7 +654,7 @@ void global_optimization_module::replace_duplicated_landmarks(const std::vector<
     tracker_->replace_landmarks_in_last_frm(replaced_lms);
 }
 
-auto global_optimization_module::extract_new_connections(const std::vector<std::shared_ptr<data::keyframe>>& covisibilities) const
+auto LoopClosing::extract_new_connections(const std::vector<std::shared_ptr<data::keyframe>>& covisibilities) const
     -> std::map<std::shared_ptr<data::keyframe>, std::set<std::shared_ptr<data::keyframe>>> {
     std::map<std::shared_ptr<data::keyframe>, std::set<std::shared_ptr<data::keyframe>>> new_connections;
 
@@ -676,7 +680,7 @@ auto global_optimization_module::extract_new_connections(const std::vector<std::
     return new_connections;
 }
 
-std::shared_future<void> global_optimization_module::async_reset() {
+std::shared_future<void> LoopClosing::async_reset() {
     std::lock_guard<std::mutex> lock(mtx_reset_);
     reset_is_requested_ = true;
     if (!future_reset_.valid()) {
@@ -685,12 +689,12 @@ std::shared_future<void> global_optimization_module::async_reset() {
     return future_reset_;
 }
 
-bool global_optimization_module::reset_is_requested() const {
+bool LoopClosing::reset_is_requested() const {
     std::lock_guard<std::mutex> lock(mtx_reset_);
     return reset_is_requested_;
 }
 
-void global_optimization_module::reset() {
+void LoopClosing::reset() {
     std::lock_guard<std::mutex> lock(mtx_reset_);
     AINFO << "reset global optimization module";
     keyfrms_queue_.clear();
@@ -701,7 +705,7 @@ void global_optimization_module::reset() {
     future_reset_ = std::shared_future<void>();
 }
 
-std::shared_future<void> global_optimization_module::async_pause() {
+std::shared_future<void> LoopClosing::async_pause() {
     std::lock_guard<std::mutex> lock1(mtx_pause_);
     pause_is_requested_ = true;
     if (!future_pause_.valid()) {
@@ -710,17 +714,17 @@ std::shared_future<void> global_optimization_module::async_pause() {
     return future_pause_;
 }
 
-bool global_optimization_module::pause_is_requested() const {
+bool LoopClosing::pause_is_requested() const {
     std::lock_guard<std::mutex> lock(mtx_pause_);
     return pause_is_requested_;
 }
 
-bool global_optimization_module::is_paused() const {
+bool LoopClosing::is_paused() const {
     std::lock_guard<std::mutex> lock(mtx_pause_);
     return is_paused_;
 }
 
-void global_optimization_module::pause() {
+void LoopClosing::pause() {
     std::lock_guard<std::mutex> lock(mtx_pause_);
     AINFO << "pause global optimization module";
     is_paused_ = true;
@@ -729,7 +733,7 @@ void global_optimization_module::pause() {
     future_pause_ = std::shared_future<void>();
 }
 
-void global_optimization_module::resume() {
+void LoopClosing::resume() {
     std::lock_guard<std::mutex> lock1(mtx_pause_);
     std::lock_guard<std::mutex> lock2(mtx_terminate_);
 
@@ -744,7 +748,7 @@ void global_optimization_module::resume() {
     AINFO << "resume global optimization module";
 }
 
-std::shared_future<void> global_optimization_module::async_terminate() {
+std::shared_future<void> LoopClosing::async_terminate() {
     {
         std::lock_guard<std::mutex> lock(mtx_terminate_);
         terminate_is_requested_ = true;
@@ -763,17 +767,17 @@ std::shared_future<void> global_optimization_module::async_terminate() {
     return future_terminate_;
 }
 
-bool global_optimization_module::is_terminated() const {
+bool LoopClosing::is_terminated() const {
     std::lock_guard<std::mutex> lock(mtx_terminate_);
     return is_terminated_;
 }
 
-bool global_optimization_module::terminate_is_requested() const {
+bool LoopClosing::terminate_is_requested() const {
     std::lock_guard<std::mutex> lock(mtx_terminate_);
     return terminate_is_requested_;
 }
 
-void global_optimization_module::terminate() {
+void LoopClosing::terminate() {
     std::lock_guard<std::mutex> lock(mtx_terminate_);
     is_terminated_ = true;
     promise_terminate_.set_value();
@@ -781,11 +785,11 @@ void global_optimization_module::terminate() {
     future_terminate_ = std::shared_future<void>();
 }
 
-bool global_optimization_module::loop_BA_is_running() const {
+bool LoopClosing::loop_BA_is_running() const {
     return loop_bundle_adjuster_->is_running();
 }
 
-void global_optimization_module::abort_loop_BA() {
+void LoopClosing::abort_loop_BA() {
     loop_bundle_adjuster_->abort();
 }
 

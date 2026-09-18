@@ -19,18 +19,19 @@
 #include "autonomy/localization/atlas/type.hpp"
 
 #include <cstdint>
+#include <deque>
 #include <mutex>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
 namespace autonomy::localization::atlas {
-namespace sensor {
-namespace lightning {
+namespace mapping {
 
 /**
  * Lightweight incremental voxel hash (IVox-shaped) for lidar map points.
- * Full Faster-LIO IVox lands under upstream/; this grid is enough for
+ * Path: mapping/ivox/; namespace: mapping.
+ * Full Faster-LIO IVox lands under lightning/upstream/; this grid is enough for
  * point-plane correspondence inside the single AtlasSystem.
  */
 class IVox {
@@ -72,13 +73,15 @@ private:
     void IndexOf(const Vec3_t& p, int* ix, int* iy, int* iz) const;
     void CollectNeighbors(int ix, int iy, int iz,
                           std::vector<Vec3_t>* out) const;
+    void EvictOldestLocked();
 
     Options options_;
     mutable std::mutex mtx_;
     std::unordered_map<Key, Voxel> voxels_;
+    //! Insertion-order keys for capacity eviction (LRU-ish: drop oldest).
+    std::deque<Key> insert_order_;
     std::size_t num_points_ = 0;
 };
 
-}  // namespace lightning
-}  // namespace sensor
+}  // namespace mapping
 }  // namespace autonomy::localization::atlas

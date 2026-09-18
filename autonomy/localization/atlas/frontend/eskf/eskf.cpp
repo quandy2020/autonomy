@@ -14,17 +14,26 @@
  * limitations under the License.
  */
 
-#include "autonomy/localization/atlas/sensor/lidar/lightning/eskf/eskf.hpp"
+#include "autonomy/localization/atlas/frontend/eskf/eskf.hpp"
 
 #include <cmath>
 
 namespace autonomy::localization::atlas {
-namespace sensor {
-namespace lightning {
+namespace frontend {
+
+void Eskf::ResetCovariance() {
+    P_.setIdentity();
+    P_.block<3, 3>(0, 0) *= 1e-4;   // rot
+    P_.block<3, 3>(3, 3) *= 1e-2;   // pos
+    P_.block<3, 3>(6, 6) *= 1e-2;   // vel
+    P_.block<3, 3>(9, 9) *= 1e-4;   // ba
+    P_.block<3, 3>(12, 12) *= 1e-4; // bg
+}
 
 void Eskf::Reset(const Mat44_t& T_wb) {
     state_ = State{};
     state_.T_wb = T_wb;
+    ResetCovariance();
     initialized_ = true;
 }
 
@@ -34,6 +43,28 @@ void Eskf::UpdateOdom(const Mat44_t& T_delta) {
     }
     // Right-multiply: T_delta is body_{k-1} → body_k in the body frame.
     state_.T_wb = state_.T_wb * T_delta;
+    // Inflate pose uncertainty slightly (odometry relative noise).
+    P_.block<3, 3>(0, 0) += Mat33_t::Identity() * 1e-6;
+    P_.block<3, 3>(3, 3) += Mat33_t::Identity() * 1e-4;
+}
+
+void Eskf::PropagateCovariance(double dt) {
+    // Simplified continuous noise: P ← P + diag(Q)*dt (no full Φ).
+    VecP_t q = VecP_t::Zero();
+    q.segment<3>(0).setConstant(options_.gyro_noise * options_.gyro_noise);
+    q.segment<3>(3).setConstant(options_.acc_noise * options_.acc_noise);
+    q.segment<3>(6).setConstant(options_.acc_noise * options_.acc_noise);
+    q.segment<3>(9).setConstant(options_.acc_bias_noise *
+                                options_.acc_bias_noise);
+    q.segment<3>(12).setConstant(options_.gyro_bias_noise *
+                                 options_.gyro_bias_noise);
+    P_ += q.asDiagonal() * dt;
+    // Keep PSD-ish floor.
+    for (int i = 0; i < kDim; ++i) {
+        if (P_(i, i) < 1e-12) {
+            P_(i, i) = 1e-12;
+        }
+    }
 }
 
 void Eskf::PredictImu(double dt, const Vec3_t& gyro, const Vec3_t& acc) {
@@ -58,7 +89,33 @@ void Eskf::PredictImu(double dt, const Vec3_t& gyro, const Vec3_t& acc) {
     state_.v += a_w * dt;
     state_.T_wb.block<3, 3>(0, 0) = R;
     state_.T_wb.block<3, 1>(0, 3) = t;
-    (void)options_;
+    PropagateCovariance(dt);
+}
+
+void Eskf::JosephPoseUpdate(double mean_residual) {
+    // Scalar measurement z = mean point-plane residual ≈ 0 on pose.
+    // H picks position (and a light rotation) blocks; Joseph form on that scalar.
+    const double Rmeas =
+        std::max(1e-6, options_.lidar_noise * options_.lidar_noise);
+    // Observation sensitivity on δp_z-like scalar averaged residual.
+    VecP_t H = VecP_t::Zero();
+    H.segment<3>(3).setConstant(1.0 / std::sqrt(3.0));  // position
+    H.segment<3>(0).setConstant(0.1 / std::sqrt(3.0));  // weak rot coupling
+
+    const double S = H.dot(P_ * H) + Rmeas;
+    if (S < 1e-12) {
+        return;
+    }
+    const VecP_t K = (P_ * H) / S;
+    // Innovation pulls residual toward 0; do not rewrite GN pose — only P / bias.
+    (void)mean_residual;
+    // Slow bias pull toward 0 (weak observability without full IEKF).
+    state_.ba *= 0.999;
+    state_.bg *= 0.999;
+
+    const MatP_t I = MatP_t::Identity();
+    const MatP_t A = I - K * H.transpose();
+    P_ = A * P_ * A.transpose() + K * Rmeas * K.transpose();
 }
 
 int Eskf::UpdateLidar(const estimate::LidarFactorBatch& batch) {
@@ -68,15 +125,16 @@ int Eskf::UpdateLidar(const estimate::LidarFactorBatch& batch) {
     if (!initialized_) {
         Reset(Mat44_t::Identity());
     }
-    // Lightweight Gauss-Newton on SE3 using point-plane residuals (same model
-    // as Joint BA). Full 18-state EKF covariance lands with upstream.
+    // Gauss-Newton on SE3 using point-plane residuals (same model as Joint BA).
     Mat33_t R = state_.T_wb.block<3, 3>(0, 0);
     Vec3_t t = state_.T_wb.block<3, 1>(0, 3);
     int used = 0;
+    double mean_e = 0.0;
     for (int iter = 0; iter < 3; ++iter) {
         Vec6_t Htr = Vec6_t::Zero();
         Mat66_t HtH = Mat66_t::Zero();
         used = 0;
+        mean_e = 0.0;
         for (const auto& r : batch.point_planes) {
             const Vec3_t pw = R * r.point_body + t;
             const double e = r.normal_world.dot(pw) + r.d;
@@ -88,16 +146,19 @@ int Eskf::UpdateLidar(const estimate::LidarFactorBatch& batch) {
                              std::max(1e-6, options_.lidar_noise);
             HtH += w * j * j.transpose();
             Htr += w * j * (-e);
+            mean_e += e;
             ++used;
         }
         if (used == 0) {
             break;
         }
+        mean_e /= static_cast<double>(used);
         HtH.diagonal().array() += 1e-4;
         const Vec6_t dx = HtH.ldlt().solve(Htr);
         const double ang = dx.head<3>().norm();
         if (ang > 1e-12) {
-            R = Eigen::AngleAxisd(ang, dx.head<3>().normalized()).toRotationMatrix() *
+            R = Eigen::AngleAxisd(ang, dx.head<3>().normalized())
+                    .toRotationMatrix() *
                 R;
         }
         t += dx.tail<3>();
@@ -107,9 +168,12 @@ int Eskf::UpdateLidar(const estimate::LidarFactorBatch& batch) {
     }
     state_.T_wb.block<3, 3>(0, 0) = R;
     state_.T_wb.block<3, 1>(0, 3) = t;
+
+    if (options_.joseph_lidar_update && used > 0) {
+        JosephPoseUpdate(mean_e);
+    }
     return used;
 }
 
-}  // namespace lightning
-}  // namespace sensor
+}  // namespace frontend
 }  // namespace autonomy::localization::atlas

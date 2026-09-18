@@ -15,7 +15,7 @@ Single ingress for measurements. **Not** a second SLAM.
 |-----|------|
 | `imu/` | Buffer + preintegrator + ImuBridge |
 | `camera/` | Models + CameraSensor + CameraBridge (vision ROS IO) |
-| `lidar/` | Cloud queue + LidarBridge; `lightning/` = embedded LIO algo |
+| `lidar/` | Cloud queue + LidarBridge; `preprocess`/`obs_model` (eskf→`frontend/eskf/`, ivox→`mapping/ivox/`) |
 | `odom/` | Wheel / external odometry + OdomBridge |
 | `sensor_suite.*` | Starts enabled sensors from `RuntimeConfig` |
 

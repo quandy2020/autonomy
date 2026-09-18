@@ -45,11 +45,20 @@ Pipeline::~Pipeline() {
     Shutdown();
 }
 
+mapping::MapIncremental* Pipeline::active_map_incremental() {
+    if (vision_ && vision_->get_mapping_module()) {
+        if (auto* mi = vision_->get_mapping_module()->map_incremental()) {
+            return mi;
+        }
+    }
+    return map_incremental_.get();
+}
+
 void Pipeline::WireLidarIVox() {
     if (!sensors_ || !sensors_->lidar()) {
         return;
     }
-    sensor::lightning::IVox::Options ivox_opts;
+    mapping::IVox::Options ivox_opts;
     ivox_opts.resolution = sensors_->lidar()->options().ivox_resolution;
     if (vision_ && vision_->get_mapping_module()) {
         auto* mapper = vision_->get_mapping_module();
@@ -57,13 +66,13 @@ void Pipeline::WireLidarIVox() {
         if (mapper->map_incremental()) {
             sensors_->lidar()->set_ivox(&mapper->map_incremental()->ivox());
             map_incremental_.reset();  // prefer Mapping ownership
-            LOG(INFO) << "Pipeline: MapIncremental IVox owned by mapping_module";
+            LOG(INFO) << "Pipeline: MapIncremental IVox owned by LocalMapping";
             return;
         }
     }
     if (!map_incremental_) {
         map_incremental_ = std::make_unique<mapping::MapIncremental>(ivox_opts);
-        LOG(INFO) << "Pipeline: MapIncremental created (no mapping_module)";
+        LOG(INFO) << "Pipeline: MapIncremental created (no LocalMapping)";
     }
     sensors_->lidar()->set_ivox(&map_incremental_->ivox());
 }

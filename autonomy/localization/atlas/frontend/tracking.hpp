@@ -39,8 +39,8 @@
 namespace autonomy::localization::atlas {
 
 class system;
-class mapping_module;
-class global_optimization_module;
+class LocalMapping;
+class LoopClosing;
 
 namespace data {
 class map_database;
@@ -67,22 +67,22 @@ struct pose_request {
     Vec3_t normal_vector_;
 };
 
-class tracking_module {
+class Tracking {
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     //! Constructor
-    tracking_module(const std::shared_ptr<config>& cfg, camera::base* camera, data::map_database* map_db,
+    Tracking(const std::shared_ptr<config>& cfg, camera::base* camera, data::map_database* map_db,
                     data::bow_vocabulary* bow_vocab, data::bow_database* bow_db);
 
     //! Destructor
-    ~tracking_module();
+    ~Tracking();
 
     //! Set the mapping module
-    void set_mapping_module(mapping_module* mapper);
+    void set_mapping_module(LocalMapping* mapper);
 
     //! Set the global optimization module
-    void set_global_optimization_module(global_optimization_module* global_optimizer);
+    void set_global_optimization_module(LoopClosing* global_optimizer);
 
     //! Enable PLP line tracking in frame_tracker (call after map_db line flag is set)
     void configure_plp_line_tracking();
@@ -256,9 +256,9 @@ protected:
                                 const unsigned int min_num_obs_thr) const;
 
     //! mapping module
-    mapping_module* mapper_ = nullptr;
+    LocalMapping* mapper_ = nullptr;
     //! global optimization module
-    global_optimization_module* global_optimizer_ = nullptr;
+    LoopClosing* global_optimizer_ = nullptr;
 
     //! map_database
     data::map_database* map_db_ = nullptr;
@@ -366,7 +366,7 @@ protected:
     pose_request relocalize_by_pose_request_;
 };
 
-using Tracking = tracking_module;
+using tracking_module = Tracking;
 
 }  // namespace autonomy::localization::atlas
 

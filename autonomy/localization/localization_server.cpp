@@ -319,7 +319,7 @@ public:
                         options_.atlas_lidar_config_path));
                     if (node["preprocess"]) {
                         lo.preprocess =
-                            atlas::sensor::lightning::Preprocess::FromYaml(
+                            atlas::sensor::Preprocess::FromYaml(
                                 node["preprocess"]);
                     }
                 } catch (const std::exception& e) {
@@ -329,6 +329,11 @@ public:
             }
             lidar_bridge_ = std::make_unique<atlas::LidarBridge>(
                 slam, pipeline_->sensors()->lidar(), lo, est);
+            lidar_bridge_->SetMapIncremental(
+                pipeline_->active_map_incremental());
+            if (pipeline_->sensors()->imu()) {
+                lidar_bridge_->SetImuSensor(pipeline_->sensors()->imu());
+            }
             if (!lidar_bridge_->Start(autolink_node_)) {
                 AWARN << "LocalizationServer: LidarBridge failed to start.";
                 lidar_bridge_.reset();
@@ -605,7 +610,7 @@ public:
                 AINFO << "LocalizationServer: saved Atlas map to " << map_path;
             }
         }
-        // Drop IVox borrow before mapping_module / MapIncremental is destroyed.
+        // Drop IVox borrow before LocalMapping / MapIncremental is destroyed.
         if (pipeline_ && pipeline_->sensors() && pipeline_->sensors()->lidar()) {
             pipeline_->sensors()->lidar()->set_ivox(nullptr);
         }

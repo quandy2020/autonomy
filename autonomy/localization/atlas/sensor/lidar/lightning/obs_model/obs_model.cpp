@@ -16,12 +16,49 @@
 
 #include "autonomy/localization/atlas/sensor/lidar/lightning/obs_model/obs_model.hpp"
 
+#include <Eigen/Eigenvalues>
+
 #include <algorithm>
 #include <cmath>
+#include <numeric>
 
 namespace autonomy::localization::atlas {
 namespace sensor {
-namespace lightning {
+namespace {
+
+bool FitPlanePca(const std::vector<Vec3_t>& pts, Vec3_t* normal, double* d) {
+    if (!normal || !d || pts.size() < 3) {
+        return false;
+    }
+    Vec3_t mean = Vec3_t::Zero();
+    for (const auto& p : pts) {
+        mean += p;
+    }
+    mean /= static_cast<double>(pts.size());
+    Mat33_t cov = Mat33_t::Zero();
+    for (const auto& p : pts) {
+        const Vec3_t e = p - mean;
+        cov += e * e.transpose();
+    }
+    cov /= static_cast<double>(pts.size());
+    Eigen::SelfAdjointEigenSolver<Mat33_t> solver(cov);
+    if (solver.info() != Eigen::Success) {
+        return false;
+    }
+    *normal = solver.eigenvectors().col(0);
+    if (normal->norm() < 1e-9) {
+        return false;
+    }
+    normal->normalize();
+    // Prefer upward normal.
+    if (normal->z() < 0.0) {
+        *normal = -(*normal);
+    }
+    *d = -normal->dot(mean);
+    return true;
+}
+
+}  // namespace
 
 estimate::LidarFactorBatch ObsModel::Build(
     const std::vector<Vec3_t>& points_body,
@@ -49,7 +86,7 @@ estimate::LidarFactorBatch ObsModel::Build(
 estimate::LidarFactorBatch ObsModel::BuildAgainstIVox(
     const Mat44_t& T_wc,
     const std::vector<Vec3_t>& points_body,
-    const IVox& map) const {
+    const mapping::IVox& map) const {
     estimate::LidarFactorBatch batch;
     if (points_body.empty()) {
         return batch;
@@ -68,7 +105,7 @@ estimate::LidarFactorBatch ObsModel::BuildAgainstIVox(
             continue;
         }
         const Vec3_t p_w = R_wc * p_b + t_wc;
-        const IVox::PlaneHit hit = map.EstimatePlane(p_w);
+        const mapping::IVox::PlaneHit hit = map.EstimatePlane(p_w);
         if (!hit.ok) {
             continue;
         }
@@ -94,21 +131,46 @@ estimate::LidarFactorBatch ObsModel::BuildStub(
     if (!options_.enable_ground_prior || points_body.empty()) {
         return batch;
     }
-    const std::size_t n = std::min(
+
+    // Fit ground plane from lowest 20% z points via PCA (body frame ≈ world
+    // for early frames / LO bootstrap). Fallback: Z=0 if PCA fails.
+    std::vector<std::size_t> order(points_body.size());
+    std::iota(order.begin(), order.end(), 0);
+    std::sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) {
+        return points_body[a].z() < points_body[b].z();
+    });
+    const std::size_t n_low = std::max<std::size_t>(
+        3, static_cast<std::size_t>(0.2 * static_cast<double>(order.size())));
+    std::vector<Vec3_t> low_pts;
+    low_pts.reserve(n_low);
+    for (std::size_t i = 0; i < n_low; ++i) {
+        const auto& p = points_body[order[i]];
+        if (p.allFinite()) {
+            low_pts.push_back(p);
+        }
+    }
+
+    Vec3_t n = Vec3_t::UnitZ();
+    double d = 0.0;
+    if (!FitPlanePca(low_pts, &n, &d)) {
+        n = Vec3_t::UnitZ();
+        d = 0.0;
+    }
+
+    const std::size_t n_out = std::min(
         points_body.size(),
         static_cast<std::size_t>(std::max(0, options_.max_residuals)));
-    batch.point_planes.reserve(n);
-    for (std::size_t i = 0; i < n; ++i) {
+    batch.point_planes.reserve(n_out);
+    for (std::size_t i = 0; i < n_out; ++i) {
         estimate::PointPlaneResidual r;
         r.point_body = points_body[i];
-        r.normal_world = Vec3_t::UnitZ();
-        r.d = 0.0;
+        r.normal_world = n;
+        r.d = d;
         r.weight = options_.ground_weight;
         batch.point_planes.push_back(r);
     }
     return batch;
 }
 
-}  // namespace lightning
 }  // namespace sensor
 }  // namespace autonomy::localization::atlas

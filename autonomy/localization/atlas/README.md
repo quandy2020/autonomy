@@ -21,7 +21,7 @@ flowchart TB
     OdomB[OdomBridge]
     Cam[CameraSensor]
     Imu[ImuSensor]
-    Lid["LidarSensor + lightning/"]
+    Lid["LidarSensor + lightning preprocess/obs"]
     Odom[OdomSensor]
     CamB --> Cam
     ImuB --> Imu
@@ -117,12 +117,15 @@ atlas/
 ├── sensor/
 │   ├── imu/          # ImuSensor · ImuBridge · buffer/preintegrator
 │   ├── camera/       # CameraSensor · CameraBridge · 相机模型
-│   ├── lidar/        # LidarSensor · LidarBridge · lightning/{ivox,eskf,obs_model,preprocess}
+│   ├── lidar/        # LidarSensor · LidarBridge · lightning/{preprocess,obs_model}
 │   └── odom/         # OdomSensor · OdomBridge
-├── frontend/         # Tracking · LocalEstimator · initializer/
+├── frontend/         # Tracking · LocalEstimator · initializer/ · eskf/ · lio/
 │   ├── feature/ · match/ · solve/ · plp/ · initialize/
-├── mapping/          # LocalMapping · LocalJointBA · MapIncremental
-├── backend/          # LoopClosing · LoopDetector · GlobalJointBA · graph_optimizer
+│   ├── eskf/         # frontend::Eskf
+│   └── lio/          # MeasureGroup · ImuProcess · LidarImuSync
+├── mapping/          # LocalMapping · LocalJointBA · MapIncremental · ivox/ · lidar_keyframe
+│   └── ivox/         # mapping::IVox
+├── backend/          # LoopClosing · LoopDetector · LidarLoopDetector(stub) · GlobalJointBA
 ├── relocalization/   # Relocalizer
 ├── estimate/         # ResidualMask · residual_{vision,imu,lidar,odom}
 ├── data/             # frame · keyframe · map_database · BoW
@@ -135,8 +138,8 @@ atlas/
 | 路径 | 说明 |
 |------|------|
 | `sensor/` | 统一测量入口；**全部 ROS IO 经 `*Bridge`** |
-| `frontend/` | Tracking + LocalEstimator + feature/match/solve/plp/initialize |
-| `mapping/` | LocalMapping + LocalJointBA + **MapIncremental（live IVox 所有者）** |
+| `frontend/` | Tracking + LocalEstimator + `eskf/` + feature/match/solve/plp/initialize |
+| `mapping/` | LocalMapping + LocalJointBA + **MapIncremental** + `ivox/`（live IVox 所有者） |
 | `backend/` | LoopClosing + GlobalJointBA |
 | `relocalization/` | Relocalizer（BoW **同步**于 Tracking） |
 | `estimate/` | ResidualMask + residual_* |
@@ -147,14 +150,18 @@ atlas/
 
 ## Canonical 类名
 
-| §2b | 类 / 别名 |
+| §2b | 主类名（旧名兼容别名） |
 |-----|-----------|
-| `frontend/tracking.*` | `Tracking`（`tracking_module`） |
-| `mapping/local_mapping.*` | `LocalMapping`（`mapping_module`） |
-| `backend/loop_closing.*` | `LoopClosing`（`global_optimization_module`） |
+| `frontend/tracking.*` | `Tracking`（`using tracking_module = Tracking`） |
+| `mapping/local_mapping.*` | `LocalMapping`（`using mapping_module = LocalMapping`） |
+| `backend/loop_closing.*` | `LoopClosing`（`using global_optimization_module = LoopClosing`） |
+| `frontend/eskf/` | `frontend::Eskf` |
+| `mapping/ivox/` | `mapping::IVox` |
+| `sensor/lidar/.../preprocess` | `sensor::Preprocess` |
+| `sensor/lidar/.../obs_model` | `sensor::ObsModel` |
 | `mapping/local_joint_ba.hpp` | `mapping::LocalJointBA` |
 | `backend/global_joint_ba.*` | `backend::GlobalJointBA` |
-| `mapping/map_incremental.hpp` | `mapping::MapIncremental`（LidarSensor `set_ivox` 借用） |
+| `mapping/map_incremental.hpp` | `mapping::MapIncremental`（`IntegrateScan` 插入；LidarSensor `set_ivox` 只读） |
 | `relocalization/relocalizer.*` | `relocalization::Relocalizer` |
 | `estimate/residual_*.hpp` | 共享残差 + `ResidualMask` |
 
@@ -180,6 +187,18 @@ flowchart TB
 | **lwio** | Lidar+Odom+IMU | LocalEstimator | 三源进同一 ESKF 路径 |
 | **livo** | Cam+Lidar+IMU | Tracking + staged JointBA | mask 驱动 Local/Global |
 | **lvwio** | 全开 | Tracking + JointBA + odom | 同上 + odom residual |
+
+## Lidar P0 / P1 / P2 进度
+
+| 项 | 状态 | 说明 |
+|----|------|------|
+| **P0.1** MapIncremental owns insert | ✅ | `IntegrateScan`；`FeedWithPose` 只建残差；`LidarBridge::SetMapIncremental` |
+| **P0.2** Sync + deskew skeleton | ✅ | `frontend/lio/{measure_group,imu_process,sync}`；无点时则 pass-through |
+| **P0.3** Stronger Eskf | ✅ | 15×15 `P_` + predict/`Joseph` 粗更新；完整 IEKF 仍缺（见 eskf 注释） |
+| **P1** TimedPoint / IVox LRU / keyframe / `T_il` | ✅ | `RunTimed`；`max_voxels` 按插入序淘汰；`LidarKeyframeManager`；`SetT_imu_lidar` |
+| **P2** Loop stub + ground PCA + docs | ✅ | `LidarLoopDetector::Detect→false`；`BuildStub` 最低 20% z PCA |
+
+Deferred（相对 lightning-lm）：完整 IMU 离散 ΦQΦᵀ、IEKF 点面 H、NDT 回环、强度/时间戳驱动解码。
 
 ## 约定
 

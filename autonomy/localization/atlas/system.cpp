@@ -107,7 +107,7 @@ system::system(const std::shared_ptr<config>& cfg, const std::string& vocab_file
     map_database_io_ = io::map_database_io_factory::create(map_format);
 
     // tracking module
-    tracker_ = new tracking_module(cfg_, camera_, map_db_, bow_vocab_, bow_db_);
+    tracker_ = new Tracking(cfg_, camera_, map_db_, bow_vocab_, bow_db_);
 
     // IMU (optional)
     imu_cfg_ = imu::config::from_yaml(util::yaml_optional_ref(cfg->yaml_node_, "IMU"));
@@ -118,14 +118,14 @@ system::system(const std::shared_ptr<config>& cfg, const std::string& vocab_file
     }
 
     // mapping module
-    mapper_ = new mapping_module(util::yaml_optional_ref(cfg->yaml_node_, "Mapping"), map_db_, bow_db_, bow_vocab_,
+    mapper_ = new LocalMapping(util::yaml_optional_ref(cfg->yaml_node_, "Mapping"), map_db_, bow_db_, bow_vocab_,
                                  imu_cfg_);
     if (residual_mask_.any()) {
         mapper_->set_residual_mask(residual_mask_);
     }
     // global optimization module
     if (bow_db_ && bow_vocab_) {
-        global_optimizer_ = new global_optimization_module(map_db_, bow_db_, bow_vocab_, cfg_->yaml_node_, camera_->setup_type_ != camera::setup_type_t::Monocular);
+        global_optimizer_ = new LoopClosing(map_db_, bow_db_, bow_vocab_, cfg_->yaml_node_, camera_->setup_type_ != camera::setup_type_t::Monocular);
         if (residual_mask_.any()) {
             global_optimizer_->set_residual_mask(residual_mask_);
         }
@@ -266,7 +266,7 @@ void system::startup(const bool need_initialize) {
         AINFO << "Atlas mapping: ThreadPool Task scheduling (no dedicated thread)";
     } else {
         mapping_thread_ = std::unique_ptr<std::thread>(
-            new std::thread(&autonomy::localization::atlas::mapping_module::run, mapper_));
+            new std::thread(&autonomy::localization::atlas::LocalMapping::run, mapper_));
     }
     if (global_optimizer_) {
         if (use_pool_backend && thread_pool_) {
@@ -275,7 +275,7 @@ void system::startup(const bool need_initialize) {
         } else {
             global_optimization_thread_ = std::unique_ptr<std::thread>(
                 new std::thread(
-                    &autonomy::localization::atlas::global_optimization_module::run,
+                    &autonomy::localization::atlas::LoopClosing::run,
                     global_optimizer_));
         }
     }

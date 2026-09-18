@@ -25,7 +25,13 @@
 
 namespace autonomy::localization::atlas {
 namespace sensor {
-namespace lightning {
+
+struct TimedPoint {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    Vec3_t p = Vec3_t::Zero();
+    //! Relative time in scan [0,1]; 0 if unknown.
+    double t_rel = 0.0;
+};
 
 //! Lidar preprocess (range / blind / voxel) — measurement only, not a SLAM.
 class Preprocess {
@@ -36,6 +42,8 @@ public:
         double blind = 0.1;
         double voxel_leaf = 0.2;
         int max_points = 20000;
+        //! When true, prefer RunTimed path (needs per-point times from driver).
+        bool use_point_time = false;
     };
 
     Preprocess() = default;
@@ -46,12 +54,18 @@ public:
     [[nodiscard]] std::vector<Vec3_t> Run(
         const std::vector<Vec3_t>& points_body) const;
 
+    //! Same filters as Run, preserving optional relative times.
+    //! If point_time_rel empty or size mismatch, t_rel is left 0 (deskew no-op).
+    //! Intensity-as-time Cloud stub is intentionally skipped (no decode here).
+    [[nodiscard]] std::vector<TimedPoint> RunTimed(
+        const std::vector<Vec3_t>& points_body,
+        const std::vector<double>& point_time_rel) const;
+
     const Options& options() const { return options_; }
 
 private:
     Options options_;
 };
 
-}  // namespace lightning
 }  // namespace sensor
 }  // namespace autonomy::localization::atlas

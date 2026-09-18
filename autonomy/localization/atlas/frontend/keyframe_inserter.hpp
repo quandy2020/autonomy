@@ -25,7 +25,7 @@
 
 namespace autonomy::localization::atlas {
 
-class mapping_module;
+class LocalMapping;
 
 namespace data {
 class map_database;
@@ -49,7 +49,7 @@ public:
 
     virtual ~keyframe_inserter() = default;
 
-    void set_mapping_module(mapping_module* mapper);
+    void set_mapping_module(LocalMapping* mapper);
 
     void reset();
 
@@ -74,7 +74,7 @@ private:
     std::shared_ptr<data::keyframe> create_new_keyframe(data::map_database* map_db, data::frame& curr_frm);
 
     //! mapping module
-    mapping_module* mapper_ = nullptr;
+    LocalMapping* mapper_ = nullptr;
 
     //! max interval to insert keyframe
     const double max_interval_ = 1.0;

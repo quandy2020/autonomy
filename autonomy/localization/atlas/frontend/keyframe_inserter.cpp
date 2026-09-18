@@ -40,7 +40,7 @@ keyframe_inserter::keyframe_inserter(const YAML::Node& yaml_node)
                         yaml_node["wait_for_local_bundle_adjustment"].as<bool>(false),
                         yaml_node["required_keyframes_for_marker_initialization"].as<unsigned int>(3)) {}
 
-void keyframe_inserter::set_mapping_module(mapping_module* mapper) {
+void keyframe_inserter::set_mapping_module(LocalMapping* mapper) {
     mapper_ = mapper;
 }
 

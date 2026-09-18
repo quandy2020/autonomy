@@ -17,14 +17,13 @@
 #pragma once
 
 #include "autonomy/localization/atlas/estimate/lidar_residual_source.hpp"
-#include "autonomy/localization/atlas/sensor/lidar/lightning/ivox/ivox.hpp"
+#include "autonomy/localization/atlas/mapping/ivox/ivox.hpp"
 #include "autonomy/localization/atlas/type.hpp"
 
 #include <vector>
 
 namespace autonomy::localization::atlas {
 namespace sensor {
-namespace lightning {
 
 /**
  * Lightning ObsModel facade (embedded under sensor/lidar).
@@ -51,8 +50,9 @@ public:
     estimate::LidarFactorBatch BuildAgainstIVox(
         const Mat44_t& T_wc,
         const std::vector<Vec3_t>& points_body,
-        const IVox& map) const;
+        const mapping::IVox& map) const;
 
+    //! Ground prior: PCA plane from lowest 20% z (fallback Z=0).
     estimate::LidarFactorBatch BuildStub(
         const std::vector<Vec3_t>& points_body) const;
 
@@ -60,6 +60,5 @@ private:
     Options options_;
 };
 
-}  // namespace lightning
 }  // namespace sensor
 }  // namespace autonomy::localization::atlas

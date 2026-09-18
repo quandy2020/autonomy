@@ -24,7 +24,8 @@
 namespace autonomy::localization::atlas {
 namespace backend {
 
-using LoopClosing = global_optimization_module;
+using LoopClosing = ::autonomy::localization::atlas::LoopClosing;
+using global_optimization_module = LoopClosing;
 // GlobalJointBA is the canonical class in this namespace.
 
 struct BackendModuleTag {};

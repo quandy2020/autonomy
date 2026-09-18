@@ -16,44 +16,37 @@
 
 #pragma once
 
-#include "autonomy/localization/atlas/sensor/types.hpp"
+//! backend/lidar_loop_detector — stub for lidar NDT/scan-context loop (P2).
+//! TODO(atlas-lio): port lightning-lm NDT loop candidate search + geometric
+//! verification; wire into LoopClosing alongside vision BoW detector.
 
-#include <deque>
-#include <mutex>
-#include <string>
+#include "autonomy/localization/atlas/type.hpp"
 
 namespace autonomy::localization::atlas {
-namespace sensor {
+namespace backend {
 
-//! IMU measurement source (buffer only — not a second estimator).
-class ImuSensor {
+class LidarLoopDetector {
 public:
     struct Options {
-        std::string topic = "/imu";
-        std::size_t max_queue = 2000;
+        double candidate_radius_m = 15.0;
+        double ndt_score_thresh = 0.5;
     };
 
-    explicit ImuSensor(Options options);
-    ImuSensor() : ImuSensor(Options{}) {}
+    LidarLoopDetector() = default;
+    explicit LidarLoopDetector(Options options)
+        : options_(std::move(options)) {}
 
-    bool Start();
-    void Stop();
-    [[nodiscard]] bool is_running() const { return running_; }
-
-    void Feed(const ImuSample& sample);
-    bool PopLatest(ImuSample* out);
-    //! Copy samples with timestamp >= t_min (for lidar–IMU sync).
-    void CopySince(double t_min, std::deque<ImuSample>* out) const;
-    void Clear();
+    //! Stub: always false until lightning NDT loop is ported.
+    [[nodiscard]] bool Detect(const Mat44_t& /*T_wb*/) const {
+        (void)options_;
+        return false;
+    }
 
     const Options& options() const { return options_; }
 
 private:
     Options options_;
-    bool running_ = false;
-    mutable std::mutex mtx_;
-    std::deque<ImuSample> queue_;
 };
 
-}  // namespace sensor
+}  // namespace backend
 }  // namespace autonomy::localization::atlas

@@ -38,8 +38,8 @@
 
 namespace autonomy::localization::atlas {
 
-class tracking_module;
-class mapping_module;
+class Tracking;
+class LocalMapping;
 
 namespace data {
 class keyframe;
@@ -56,19 +56,19 @@ struct loop_closure_request {
     unsigned int keyfrm2_id_;
 };
 
-class global_optimization_module {
+class LoopClosing {
 public:
     //! Constructor
-    global_optimization_module(data::map_database* map_db, data::bow_database* bow_db, data::bow_vocabulary* bow_vocab, const YAML::Node& yaml_node, const bool fix_scale);
+    LoopClosing(data::map_database* map_db, data::bow_database* bow_db, data::bow_vocabulary* bow_vocab, const YAML::Node& yaml_node, const bool fix_scale);
 
     //! Destructor
-    ~global_optimization_module();
+    ~LoopClosing();
 
     //! Set the tracking module
-    void set_tracking_module(tracking_module* tracker);
+    void set_tracking_module(Tracking* tracker);
 
     //! Set the mapping module
-    void set_mapping_module(mapping_module* mapper);
+    void set_mapping_module(LocalMapping* mapper);
 
     //! Same residual mask / sources as Local Joint BA (single AtlasSystem).
     void set_residual_mask(estimate::ResidualMask mask);
@@ -274,9 +274,9 @@ private:
     // modules
 
     //! tracking module
-    tracking_module* tracker_ = nullptr;
+    Tracking* tracker_ = nullptr;
     //! mapping module
-    mapping_module* mapper_ = nullptr;
+    LocalMapping* mapper_ = nullptr;
 
     ::autonomy::common::ThreadPool* thread_pool_ = nullptr;
     bool use_pool_scheduling_ = false;
@@ -320,7 +320,7 @@ private:
     unsigned int thr_neighbor_keyframes_ = 15;
 };
 
-using LoopClosing = global_optimization_module;
+using global_optimization_module = LoopClosing;
 
 }  // namespace autonomy::localization::atlas
 

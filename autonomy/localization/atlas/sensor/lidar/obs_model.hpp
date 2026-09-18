@@ -16,19 +16,5 @@
 
 #pragma once
 
-//! Mapping module umbrella (§2b).
-
-#include "autonomy/localization/atlas/mapping/local_joint_ba.hpp"
-#include "autonomy/localization/atlas/mapping/local_mapping.hpp"
-#include "autonomy/localization/atlas/mapping/map_incremental.hpp"
-
-namespace autonomy::localization::atlas {
-namespace mapping {
-
-using LocalMapping = ::autonomy::localization::atlas::LocalMapping;
-using mapping_module = LocalMapping;
-
-struct MappingModuleTag {};
-
-}  // namespace mapping
-}  // namespace autonomy::localization::atlas
+//! Compatibility shim — canonical ObsModel lives under lightning/obs_model/.
+#include "autonomy/localization/atlas/sensor/lidar/lightning/obs_model/obs_model.hpp"

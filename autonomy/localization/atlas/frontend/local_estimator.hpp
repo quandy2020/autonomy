@@ -21,7 +21,7 @@
 
 #include "autonomy/localization/atlas/estimate/lidar_residual_source.hpp"
 #include "autonomy/localization/atlas/estimate/residual_odom.hpp"
-#include "autonomy/localization/atlas/sensor/lidar/lightning/eskf/eskf.hpp"
+#include "autonomy/localization/atlas/frontend/eskf/eskf.hpp"
 #include "autonomy/localization/atlas/type.hpp"
 
 namespace autonomy::localization::atlas {
@@ -42,11 +42,18 @@ public:
         return eskf_.UpdateLidar(batch);
     }
 
+    void SetT_imu_lidar(const Mat44_t& T_il) { T_imu_lidar_ = T_il; }
+    [[nodiscard]] const Mat44_t& T_imu_lidar() const { return T_imu_lidar_; }
+
     [[nodiscard]] Mat44_t T_wb() const { return eskf_.T_wb(); }
     [[nodiscard]] Mat44_t T_cw() const { return eskf_.T_wb().inverse(); }
+    [[nodiscard]] const frontend::Eskf::MatP_t& covariance() const {
+        return eskf_.covariance();
+    }
 
 private:
-    sensor::lightning::Eskf eskf_;
+    frontend::Eskf eskf_;
+    Mat44_t T_imu_lidar_ = Mat44_t::Identity();
 };
 
 }  // namespace frontend

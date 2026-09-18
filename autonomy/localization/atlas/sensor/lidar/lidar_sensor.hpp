@@ -17,8 +17,8 @@
 #pragma once
 
 #include "autonomy/localization/atlas/estimate/buffered_lidar_residual_source.hpp"
-#include "autonomy/localization/atlas/sensor/lidar/lightning/ivox/ivox.hpp"
-#include "autonomy/localization/atlas/sensor/lidar/lightning/obs_model/obs_model.hpp"
+#include "autonomy/localization/atlas/mapping/ivox/ivox.hpp"
+#include "autonomy/localization/atlas/sensor/lidar/obs_model.hpp"
 #include "autonomy/localization/atlas/sensor/types.hpp"
 #include "autonomy/localization/atlas/type.hpp"
 
@@ -31,7 +31,7 @@
 namespace autonomy::localization::atlas {
 namespace sensor {
 
-//! Lidar measurement source. Lightning algorithms live under lidar/lightning/
+//! Lidar measurement source. Lightning preprocess/obs_model live under lidar/
 //! and feed residuals into the single Atlas estimator — not a second SLAM.
 //! Live IVox is owned by mapping::MapIncremental; inject via set_ivox().
 class LidarSensor {
@@ -53,10 +53,11 @@ public:
     [[nodiscard]] bool is_running() const { return running_; }
 
     //! Non-owning live IVox from mapping::MapIncremental (required for lightning).
-    void set_ivox(lightning::IVox* ivox) { ivox_ = ivox; }
+    void set_ivox(mapping::IVox* ivox) { ivox_ = ivox; }
 
     void Feed(const CloudSample& sample);
-    //! Body points + T_wc: update IVox and push ObsModel residuals.
+    //! Body points + T_wc: build ObsModel residuals against ivox_ (read only).
+    //! Map insert is owned by mapping::MapIncremental::IntegrateScan (via LidarBridge).
     void FeedWithPose(double timestamp, const Mat44_t& T_wc,
                       const std::vector<Vec3_t>& points_body);
     void FeedPoints(double timestamp, const std::vector<Vec3_t>& points_body);
@@ -72,7 +73,7 @@ public:
         return residual_source_;
     }
 
-    lightning::IVox* ivox() { return ivox_; }
+    mapping::IVox* ivox() { return ivox_; }
     const Options& options() const { return options_; }
 
 private:
@@ -81,8 +82,8 @@ private:
     mutable std::mutex mtx_;
     std::deque<CloudSample> queue_;
     std::shared_ptr<estimate::BufferedLidarResidualSource> residual_source_;
-    lightning::IVox* ivox_ = nullptr;
-    lightning::ObsModel obs_model_;
+    mapping::IVox* ivox_ = nullptr;
+    ObsModel obs_model_;
 };
 
 }  // namespace sensor

@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-#include "autonomy/localization/atlas/sensor/lidar/lightning/ivox/ivox.hpp"
+#include "autonomy/localization/atlas/mapping/ivox/ivox.hpp"
 
 #include <Eigen/Eigenvalues>
 
 #include <cmath>
+#include <deque>
 #include <limits>
 
 namespace autonomy::localization::atlas {
-namespace sensor {
-namespace lightning {
+namespace mapping {
 
 IVox::IVox() : IVox(Options{}) {}
 
@@ -36,6 +36,7 @@ IVox::IVox(Options options) : options_(std::move(options)) {
 void IVox::Clear() {
     std::lock_guard<std::mutex> lock(mtx_);
     voxels_.clear();
+    insert_order_.clear();
     num_points_ = 0;
 }
 
@@ -64,6 +65,19 @@ void IVox::IndexOf(const Vec3_t& p, int* ix, int* iy, int* iz) const {
     *iz = static_cast<int>(std::floor(p.z() / options_.resolution));
 }
 
+void IVox::EvictOldestLocked() {
+    while (!insert_order_.empty() && voxels_.size() > options_.max_voxels) {
+        const Key old = insert_order_.front();
+        insert_order_.pop_front();
+        const auto it = voxels_.find(old);
+        if (it == voxels_.end()) {
+            continue;
+        }
+        num_points_ -= it->second.points.size();
+        voxels_.erase(it);
+    }
+}
+
 void IVox::InsertWorldPoints(const std::vector<Vec3_t>& points_world) {
     std::lock_guard<std::mutex> lock(mtx_);
     for (const auto& p : points_world) {
@@ -72,18 +86,19 @@ void IVox::InsertWorldPoints(const std::vector<Vec3_t>& points_world) {
         }
         int ix = 0, iy = 0, iz = 0;
         IndexOf(p, &ix, &iy, &iz);
-        auto& voxel = voxels_[ToKey(ix, iy, iz)];
+        const Key key = ToKey(ix, iy, iz);
+        const bool is_new = (voxels_.find(key) == voxels_.end());
+        auto& voxel = voxels_[key];
+        if (is_new) {
+            insert_order_.push_back(key);
+        }
         if (voxel.points.size() >= options_.max_points_per_voxel) {
+            EvictOldestLocked();
             continue;
         }
         voxel.points.push_back(p);
         ++num_points_;
-        if (voxels_.size() > options_.max_voxels) {
-            // Drop an arbitrary bucket to bound memory (FIFO-ish: erase begin).
-            auto it = voxels_.begin();
-            num_points_ -= it->second.points.size();
-            voxels_.erase(it);
-        }
+        EvictOldestLocked();
     }
 }
 
@@ -152,6 +167,5 @@ IVox::PlaneHit IVox::EstimatePlane(const Vec3_t& query_world) const {
     return hit;
 }
 
-}  // namespace lightning
-}  // namespace sensor
+}  // namespace mapping
 }  // namespace autonomy::localization::atlas

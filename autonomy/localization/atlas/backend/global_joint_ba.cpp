@@ -27,11 +27,11 @@ GlobalJointBA::GlobalJointBA(data::map_database* map_db,
       use_huber_kernel_(use_huber_kernel),
       verbose_(verbose) {}
 
-void GlobalJointBA::set_mapping_module(mapping_module* mapper) {
+void GlobalJointBA::set_mapping_module(LocalMapping* mapper) {
     mapper_ = mapper;
 }
 
-void GlobalJointBA::set_tracking_module(tracking_module* tracker) {
+void GlobalJointBA::set_tracking_module(Tracking* tracker) {
     tracker_ = tracker;
 }
 
@@ -69,7 +69,7 @@ void GlobalJointBA::optimize(const std::shared_ptr<data::keyframe>& curr_keyfrm)
     }
 
     struct resume_mapping_guard {
-        mapping_module* mapper = nullptr;
+        LocalMapping* mapper = nullptr;
         bool active = false;
         ~resume_mapping_guard() {
             if (active && mapper != nullptr) {
@@ -81,7 +81,7 @@ void GlobalJointBA::optimize(const std::shared_ptr<data::keyframe>& curr_keyfrm)
     resume_guard.active = (mapper_ != nullptr);
 
     struct resume_tracker_guard {
-        tracking_module* tracker = nullptr;
+        Tracking* tracker = nullptr;
         bool active = false;
         ~resume_tracker_guard() {
             if (active && tracker != nullptr) {
@@ -111,7 +111,7 @@ void GlobalJointBA::optimize(const std::shared_ptr<data::keyframe>& curr_keyfrm)
 
     bool ok = false;
     {
-        // Mapping is paused by global_optimization_module::correct_loop. Hold the map lock
+        // Mapping is paused by LoopClosing::correct_loop. Hold the map lock
         // while reading landmarks/planes for GBA and applying pose/landmark updates.
         std::lock_guard<std::mutex> lock_db(data::map_database::mtx_database_);
 

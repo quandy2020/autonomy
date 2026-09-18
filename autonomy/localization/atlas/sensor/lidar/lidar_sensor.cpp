@@ -25,12 +25,12 @@ LidarSensor::LidarSensor(Options options)
     : options_(std::move(options)),
       residual_source_(
           std::make_shared<estimate::BufferedLidarResidualSource>()) {
-    lightning::ObsModel::Options obs_opts;
+    ObsModel::Options obs_opts;
     obs_opts.max_distance = 0.5;
     obs_opts.max_residuals = 2000;
     obs_opts.enable_ground_prior = options_.enable_ground_prior;
     obs_opts.ground_weight = 0.05;
-    obs_model_ = lightning::ObsModel(obs_opts);
+    obs_model_ = ObsModel(obs_opts);
 }
 
 bool LidarSensor::Start() {
@@ -75,18 +75,8 @@ void LidarSensor::FeedWithPose(double timestamp, const Mat44_t& T_wc,
         return;
     }
 
-    const Mat33_t R_wc = T_wc.block<3, 3>(0, 0);
-    const Vec3_t t_wc = T_wc.block<3, 1>(0, 3);
-    std::vector<Vec3_t> points_world;
-    points_world.reserve(points_body.size());
-    for (const auto& p : points_body) {
-        if (p.allFinite()) {
-            points_world.push_back(R_wc * p + t_wc);
-        }
-    }
-    // Build residuals against *existing* map, then insert current scan.
+    // Residuals against existing map only; MapIncremental::IntegrateScan inserts.
     auto batch = obs_model_.BuildAgainstIVox(T_wc, points_body, *ivox_);
-    ivox_->InsertWorldPoints(points_world);
     if (batch.empty() && options_.enable_ground_prior) {
         batch = obs_model_.BuildStub(points_body);
     }

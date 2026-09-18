@@ -37,9 +37,9 @@
 namespace autonomy::localization::atlas {
 
 class config;
-class tracking_module;
-class mapping_module;
-class global_optimization_module;
+class Tracking;
+class LocalMapping;
+class LoopClosing;
 
 namespace plp {
 class planar_mapping_module;
@@ -159,8 +159,8 @@ public:
     //! Attach lidar residual source (from SensorSuite / Lightning ObsModel).
     void set_lidar_residual_source(estimate::ILidarResidualSource* src);
     void set_odom_residual_source(estimate::IOdomResidualSource* src);
-    mapping_module* get_mapping_module() { return mapper_; }
-    global_optimization_module* get_global_optimization_module() {
+    LocalMapping* get_mapping_module() { return mapper_; }
+    LoopClosing* get_global_optimization_module() {
         return global_optimizer_;
     }
 
@@ -275,10 +275,10 @@ private:
     data::bow_database* bow_db_ = nullptr;
 
     //! tracker
-    tracking_module* tracker_ = nullptr;
+    Tracking* tracker_ = nullptr;
 
     //! mapping module
-    mapping_module* mapper_ = nullptr;
+    LocalMapping* mapper_ = nullptr;
     //! mapping thread
     std::unique_ptr<std::thread> mapping_thread_ = nullptr;
 
@@ -286,7 +286,7 @@ private:
     std::atomic<unsigned int> next_frame_id_{0};
 
     //! global optimization module
-    global_optimization_module* global_optimizer_ = nullptr;
+    LoopClosing* global_optimizer_ = nullptr;
     //! global optimization thread
     std::unique_ptr<std::thread> global_optimization_thread_ = nullptr;
 

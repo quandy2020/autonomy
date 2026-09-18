@@ -32,7 +32,7 @@
 
 namespace autonomy::localization::atlas {
 
-class tracking_module;
+class Tracking;
 
 namespace data {
 class landmark_line;

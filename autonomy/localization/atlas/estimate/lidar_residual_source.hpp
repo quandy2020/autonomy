@@ -57,7 +57,7 @@ public:
     virtual LidarFactorBatch Pull(double t0, double t1) = 0;
 };
 
-//! Stub until Lightning ObsModel is embedded under sensor/lidar/lightning/.
+//! Stub until Lightning ObsModel is wired from sensor/lidar/obs_model.
 class StubLidarResidualSource final : public ILidarResidualSource {
 public:
     LidarFactorBatch Pull(double /*t0*/, double /*t1*/) override {

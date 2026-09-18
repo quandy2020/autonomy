@@ -1,4 +1,4 @@
-# Default lidar preprocess / IVox params for sensor/lidar/lightning.
+# Default lidar preprocess / IVox params for sensor/lidar.
 # Referenced via RuntimeConfig.lidar_config_path or profile lightning_yaml.
 
 preprocess:

@@ -76,6 +76,8 @@ public:
     mapping::MapIncremental* map_incremental() {
         return map_incremental_.get();
     }
+    //! Active live-map owner (LocalMapping preferred, else Pipeline fallback).
+    mapping::MapIncremental* active_map_incremental();
 
 private:
     void WireLidarIVox();
@@ -85,7 +87,7 @@ private:
     system* vision_ = nullptr;
     std::unique_ptr<sensor::SensorSuite> sensors_;
     std::unique_ptr<frontend::LocalEstimator> local_estimator_;
-    //! Fallback live IVox owner when no mapping_module (LO/LIO without vision).
+    //! Fallback live IVox owner when no LocalMapping (LO/LIO without vision).
     std::unique_ptr<mapping::MapIncremental> map_incremental_;
     bool running_ = false;
 };

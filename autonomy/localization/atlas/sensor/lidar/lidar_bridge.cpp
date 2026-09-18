@@ -23,6 +23,8 @@
 
 #include <automsgs/msgs/sensor_msgs/point_cloud2_iterator.hpp>
 
+#include <deque>
+
 #include "glog/logging.h"
 
 namespace autonomy::localization::atlas {
@@ -123,10 +125,60 @@ void LidarBridge::OnCloud(
         pts.emplace_back(*iter_x, *iter_y, *iter_z);
     }
 
-    auto filtered = preprocess_.Run(pts);
+    std::vector<Vec3_t> filtered;
+    std::vector<double> times_rel;
+    if (options_.preprocess.use_point_time) {
+        // Intensity-as-time stub not decoded here; RunTimed no-ops without times.
+        auto timed = preprocess_.RunTimed(pts, /*point_time_rel=*/{});
+        filtered.reserve(timed.size());
+        times_rel.reserve(timed.size());
+        for (const auto& tp : timed) {
+            filtered.push_back(tp.p);
+            times_rel.push_back(tp.t_rel);
+        }
+    } else {
+        filtered = preprocess_.Run(pts);
+    }
+
     const double t = StampSec(*msg);
+    const double t_end = t + options_.default_scan_dt;
+
+    // Optional IMU sync + deskew; empty sync → pass-through filtered cloud.
+    std::vector<Vec3_t> cloud_body = filtered;
+    if (imu_sensor_) {
+        std::deque<sensor::ImuSample> recent;
+        imu_sensor_->CopySince(t - 0.5, &recent);
+        for (const auto& s : recent) {
+            sync_.PushImu(s);
+        }
+        sync_.PushLidar(t, t_end, filtered, times_rel);
+        frontend::lio::MeasureGroup mg;
+        if (sync_.TryPop(&mg)) {
+            if (estimator_) {
+                imu_process_.SetExtrinsic(estimator_->T_imu_lidar());
+                imu_process_.ProcessPredict(estimator_, mg.imu);
+            }
+            Vec3_t omega = Vec3_t::Zero();
+            if (!mg.imu.empty()) {
+                omega = mg.imu.back().gyro;
+                if (estimator_) {
+                    // Prefer bias-corrected rate when available via last sample.
+                    omega = mg.imu.back().gyro;
+                }
+            }
+            const Mat44_t T_begin =
+                estimator_ ? estimator_->T_wb() : CurrentTwc();
+            cloud_body = imu_process_.UndistortScan(
+                mg.points_body, mg.point_time_rel, T_begin, omega);
+        }
+    }
+
     const Mat44_t Twb = estimator_ ? estimator_->T_wb() : CurrentTwc();
-    lidar_->FeedWithPose(t, Twb, filtered);
+    lidar_->FeedWithPose(t, Twb, cloud_body);
+
+    if (map_incremental_) {
+        map_incremental_->IntegrateScan(Twb, cloud_body);
+    }
 
     if (estimator_ && lidar_->residual_source()) {
         auto batch = lidar_->residual_source()->Pull(t - 0.05, t + 0.05);
