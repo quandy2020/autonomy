@@ -21,12 +21,13 @@
 
 #include "autonomy/common/macros.hpp"
 #include "autonomy/localization/atlas/atlas_node_runner.hpp"
+#include "autonomy/localization/atlas/util/modality.hpp"
 #include "autonomy/localization/cartographer/node/cartographer_node_runner.hpp"
 
 namespace autonomy {
 namespace localization {
 
-/** Supported SLAM / localization backends. */
+/** Process-level backend family (Cartographer vs Atlas multimodal). */
 enum class LocalizationBackend {
     kCartographer = 0,
     kAtlas = 1,
@@ -47,7 +48,8 @@ struct LocalizationOptions {
     bool start_trajectory_with_default_topics = true;
     std::string save_state_filename;
 
-    // --- Atlas / OpenVSLAM (visual SLAM) ---
+    // --- Atlas multimodal (vo|vio|lo|lio|livo|wio|lwio|lvwio) ---
+    atlas::common::Modality atlas_modality = atlas::common::Modality::kVio;
     std::string atlas_config_path;
     std::string atlas_vocab_path;
     std::string atlas_map_load_path;
@@ -56,6 +58,13 @@ struct LocalizationOptions {
     std::string atlas_depth_topic = "/camera/depth/image_raw";
     std::string atlas_seg_topic = "";
     std::string atlas_imu_topic = "";
+    std::string atlas_lidar_topic = "/points";
+    std::string atlas_lidar_imu_topic = "/imu";
+    std::string atlas_lidar_config_path = "";
+    std::string atlas_wheel_topic = "/wheel_odom";
+    bool atlas_enable_lightning_upstream = false;
+    //! Optional conf/atlas/profiles/*.yaml — overrides modality + topics.
+    std::string atlas_runtime_profile_path;
 };
 
 LocalizationBackend ParseLocalizationBackend(const std::string& name);

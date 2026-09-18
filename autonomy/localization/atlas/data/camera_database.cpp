@@ -1,8 +1,8 @@
-#include "autonomy/localization/atlas/camera/base.hpp"
-#include "autonomy/localization/atlas/camera/perspective.hpp"
-#include "autonomy/localization/atlas/camera/fisheye.hpp"
-#include "autonomy/localization/atlas/camera/equirectangular.hpp"
-#include "autonomy/localization/atlas/camera/radial_division.hpp"
+#include "autonomy/localization/atlas/sensor/camera/base.hpp"
+#include "autonomy/localization/atlas/sensor/camera/perspective.hpp"
+#include "autonomy/localization/atlas/sensor/camera/fisheye.hpp"
+#include "autonomy/localization/atlas/sensor/camera/equirectangular.hpp"
+#include "autonomy/localization/atlas/sensor/camera/radial_division.hpp"
 #include "autonomy/localization/atlas/data/camera_database.hpp"
 
 #include <nlohmann/json.hpp>

@@ -1,0 +1,26 @@
+# Readiness: production-ish (vision tracking + maps).
+# Requires --atlas_config (OpenVSLAM YAML) + vocab.
+
+modality: vo
+
+sensors:
+  imu:    { enabled: false }
+  camera: { enabled: true,  rgb_topic: /camera/rgb/image_raw, depth_topic: /camera/depth/image_raw }
+  lidar:  { enabled: false }
+  odom:   { enabled: false }
+
+residuals:
+  vision: true
+  imu: false
+  lidar: false
+  odom: false
+
+system:
+  thread_pool_size: 4
+  use_pool_mapping: true
+  use_pool_backend: true
+  with_loop_closing: true
+
+maps:
+  dense_rgbd: true
+  g2p5: false

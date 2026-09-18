@@ -1,9 +1,9 @@
 #include "autonomy/localization/atlas/system.hpp"
 #include "autonomy/localization/atlas/config.hpp"
-#include "autonomy/localization/atlas/tracking_module.hpp"
-#include "autonomy/localization/atlas/mapping_module.hpp"
-#include "autonomy/localization/atlas/global_optimization_module.hpp"
-#include "autonomy/localization/atlas/camera/camera_factory.hpp"
+#include "autonomy/localization/atlas/frontend/tracking.hpp"
+#include "autonomy/localization/atlas/mapping/local_mapping.hpp"
+#include "autonomy/localization/atlas/backend/loop_closing.hpp"
+#include "autonomy/localization/atlas/sensor/camera/camera_factory.hpp"
 #include "autonomy/localization/atlas/data/camera_database.hpp"
 #include "autonomy/localization/atlas/data/common.hpp"
 #include "autonomy/localization/atlas/data/frame_observation.hpp"
@@ -12,23 +12,27 @@
 #include "autonomy/localization/atlas/data/bow_database.hpp"
 #include "autonomy/localization/atlas/data/bow_vocabulary.hpp"
 #include "autonomy/localization/atlas/data/marker2d.hpp"
-#include "autonomy/localization/atlas/match/stereo.hpp"
-#include "autonomy/localization/atlas/feature/orb_extractor.hpp"
-#include "autonomy/localization/atlas/feature/line_extractor.hpp"
-#include "autonomy/localization/atlas/plp/planar_mapping_module.hpp"
+#include "autonomy/localization/atlas/frontend/match/stereo.hpp"
+#include "autonomy/localization/atlas/frontend/feature/orb_extractor.hpp"
+#include "autonomy/localization/atlas/frontend/feature/line_extractor.hpp"
+#include "autonomy/localization/atlas/frontend/plp/planar_mapping_module.hpp"
 #include "autonomy/localization/atlas/io/trajectory_io.hpp"
 #include "autonomy/localization/atlas/io/map_database_io_factory.hpp"
-#include "autonomy/localization/atlas/publish/map_publisher.hpp"
-#include "autonomy/localization/atlas/publish/frame_publisher.hpp"
+#include "autonomy/localization/atlas/util/map_publisher.hpp"
+#include "autonomy/localization/atlas/util/frame_publisher.hpp"
 #include "autonomy/localization/atlas/util/converter.hpp"
 #include "autonomy/localization/atlas/util/image_converter.hpp"
 #include "autonomy/localization/atlas/util/yaml.hpp"
-#include "autonomy/localization/atlas/imu/config.hpp"
-#include "autonomy/localization/atlas/imu/buffer.hpp"
+#include "autonomy/localization/atlas/sensor/imu/config.hpp"
+#include "autonomy/localization/atlas/sensor/imu/buffer.hpp"
 
 #include <thread>
 #include <cmath>
 #include "autolink/common/log.hpp"
+
+namespace {
+constexpr int kDefaultAtlasThreadPoolSize = 4;
+}  // namespace
 
 namespace autonomy::localization::atlas {
 namespace {
@@ -74,6 +78,11 @@ system::system(const std::shared_ptr<config>& cfg, const std::string& vocab_file
     }
 
     const auto system_params = util::yaml_optional_ref(cfg->yaml_node_, "System");
+    const int pool_size =
+        system_params["thread_pool_size"].as<int>(kDefaultAtlasThreadPoolSize);
+    thread_pool_ = std::make_unique<::autonomy::common::ThreadPool>(
+        pool_size > 0 ? pool_size : kDefaultAtlasThreadPoolSize);
+    AINFO << "Atlas system ThreadPool size=" << (pool_size > 0 ? pool_size : kDefaultAtlasThreadPoolSize);
 
     camera_ = camera::camera_factory::create(util::yaml_optional_ref(cfg->yaml_node_, "Camera"));
     orb_params_ = new feature::orb_params(util::yaml_optional_ref(cfg->yaml_node_, "Feature"));
@@ -111,9 +120,15 @@ system::system(const std::shared_ptr<config>& cfg, const std::string& vocab_file
     // mapping module
     mapper_ = new mapping_module(util::yaml_optional_ref(cfg->yaml_node_, "Mapping"), map_db_, bow_db_, bow_vocab_,
                                  imu_cfg_);
+    if (residual_mask_.any()) {
+        mapper_->set_residual_mask(residual_mask_);
+    }
     // global optimization module
     if (bow_db_ && bow_vocab_) {
         global_optimizer_ = new global_optimization_module(map_db_, bow_db_, bow_vocab_, cfg_->yaml_node_, camera_->setup_type_ != camera::setup_type_t::Monocular);
+        if (residual_mask_.any()) {
+            global_optimizer_->set_residual_mask(residual_mask_);
+        }
     }
 
     // preprocessing modules
@@ -198,6 +213,8 @@ system::~system() {
     delete orb_params_db_;
     orb_params_db_ = nullptr;
 
+    thread_pool_.reset();
+
     ADEBUG << "DESTRUCT: system";
 }
 
@@ -231,9 +248,36 @@ void system::startup(const bool need_initialize) {
         tracker_->tracking_state_ = tracker_state_t::Lost;
     }
 
-    mapping_thread_ = std::unique_ptr<std::thread>(new std::thread(&autonomy::localization::atlas::mapping_module::run, mapper_));
+    const auto system_params = util::yaml_optional_ref(cfg_->yaml_node_, "System");
+    const bool use_pool_mapping =
+        system_params["use_pool_mapping"].as<bool>(true);
+    const bool use_pool_backend =
+        system_params["use_pool_backend"].as<bool>(true);
+
+    if (mapper_ && thread_pool_) {
+        mapper_->set_thread_pool(thread_pool_.get());
+    }
+    if (global_optimizer_ && thread_pool_) {
+        global_optimizer_->set_thread_pool(thread_pool_.get());
+    }
+
+    if (use_pool_mapping && mapper_ && thread_pool_) {
+        mapper_->enable_pool_scheduling(true);
+        AINFO << "Atlas mapping: ThreadPool Task scheduling (no dedicated thread)";
+    } else {
+        mapping_thread_ = std::unique_ptr<std::thread>(
+            new std::thread(&autonomy::localization::atlas::mapping_module::run, mapper_));
+    }
     if (global_optimizer_) {
-        global_optimization_thread_ = std::unique_ptr<std::thread>(new std::thread(&autonomy::localization::atlas::global_optimization_module::run, global_optimizer_));
+        if (use_pool_backend && thread_pool_) {
+            global_optimizer_->enable_pool_scheduling(true);
+            AINFO << "Atlas backend: ThreadPool Task scheduling (no dedicated thread)";
+        } else {
+            global_optimization_thread_ = std::unique_ptr<std::thread>(
+                new std::thread(
+                    &autonomy::localization::atlas::global_optimization_module::run,
+                    global_optimizer_));
+        }
     }
 }
 
@@ -257,9 +301,13 @@ void system::shutdown() {
     }
 
     // wait until the threads stop
-    mapping_thread_->join();
+    if (mapping_thread_) {
+        mapping_thread_->join();
+        mapping_thread_.reset();
+    }
     if (global_optimization_thread_) {
         global_optimization_thread_->join();
+        global_optimization_thread_.reset();
     }
 
     AINFO << "shutdown SLAM system";
@@ -311,6 +359,38 @@ const std::shared_ptr<publish::map_publisher> system::get_map_publisher() const 
 
 const std::shared_ptr<publish::frame_publisher> system::get_frame_publisher() const {
     return frame_publisher_;
+}
+
+void system::set_residual_mask(estimate::ResidualMask mask) {
+    residual_mask_ = mask;
+    if (mapper_) {
+        mapper_->set_residual_mask(mask);
+    }
+    if (global_optimizer_) {
+        global_optimizer_->set_residual_mask(mask);
+    }
+}
+
+void system::set_lidar_residual_source(estimate::ILidarResidualSource* src) {
+    if (mapper_) {
+        mapper_->set_lidar_residual_source(src);
+    } else {
+        AWARN << "system: no mapping module; lidar residual for Local ignored";
+    }
+    if (global_optimizer_) {
+        global_optimizer_->set_lidar_residual_source(src);
+    }
+}
+
+void system::set_odom_residual_source(estimate::IOdomResidualSource* src) {
+    if (mapper_) {
+        mapper_->set_odom_residual_source(src);
+    } else if (src) {
+        AWARN << "system: no mapping module; odom residual ignored";
+    }
+    if (global_optimizer_) {
+        global_optimizer_->set_odom_residual_source(src);
+    }
 }
 
 void system::enable_mapping_module() {

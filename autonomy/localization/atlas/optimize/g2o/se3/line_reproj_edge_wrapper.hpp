@@ -1,6 +1,6 @@
 #pragma once
 
-#include "autonomy/localization/atlas/camera/perspective.hpp"
+#include "autonomy/localization/atlas/sensor/camera/perspective.hpp"
 #include "autonomy/localization/atlas/data/keyframe.hpp"
 #include "autonomy/localization/atlas/data/landmark_line.hpp"
 #include "autonomy/localization/atlas/optimize/g2o/landmark_vertex_line3d.hpp"

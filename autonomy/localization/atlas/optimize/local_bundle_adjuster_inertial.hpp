@@ -17,7 +17,7 @@
 #ifndef AUTONOMY_LOCALIZATION_ATLAS_OPTIMIZE_LOCAL_BUNDLE_ADJUSTER_INERTIAL_HPP_
 #define AUTONOMY_LOCALIZATION_ATLAS_OPTIMIZE_LOCAL_BUNDLE_ADJUSTER_INERTIAL_HPP_
 
-#include "autonomy/localization/atlas/imu/config.hpp"
+#include "autonomy/localization/atlas/sensor/imu/config.hpp"
 #include "autonomy/localization/atlas/optimize/local_bundle_adjuster.hpp"
 #include "autonomy/localization/atlas/optimize/local_bundle_adjuster_g2o.hpp"
 

@@ -1,0 +1,26 @@
+# Readiness: LocalEstimator path (critical: odom UpdateOdom + IMU predict).
+# ImuBridge(est) + OdomBridge(est, viz) + VizBridge; NO lidar / NO vision YAML.
+
+modality: wio
+
+sensors:
+  imu:    { enabled: true,  topic: /imu }
+  camera: { enabled: false }
+  lidar:  { enabled: false }
+  odom:   { enabled: true,  topic: /wheel_odom }
+
+residuals:
+  vision: false
+  imu: true
+  lidar: false
+  odom: true
+
+system:
+  thread_pool_size: 2
+  use_pool_mapping: true
+  use_pool_backend: true
+  with_loop_closing: false
+
+maps:
+  dense_rgbd: false
+  g2p5: false

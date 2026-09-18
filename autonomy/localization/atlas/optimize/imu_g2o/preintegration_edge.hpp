@@ -17,7 +17,7 @@
 #ifndef AUTONOMY_LOCALIZATION_ATLAS_OPTIMIZE_IMU_G2O_PREINTEGRATION_EDGE_HPP_
 #define AUTONOMY_LOCALIZATION_ATLAS_OPTIMIZE_IMU_G2O_PREINTEGRATION_EDGE_HPP_
 
-#include "autonomy/localization/atlas/imu/preintegrator.hpp"
+#include "autonomy/localization/atlas/sensor/imu/preintegrator.hpp"
 #include "autonomy/localization/atlas/optimize/imu_g2o/bias_vertex.hpp"
 #include "autonomy/localization/atlas/optimize/imu_g2o/velocity_vertex.hpp"
 #include "autonomy/localization/atlas/optimize/internal/se3/shot_vertex.hpp"

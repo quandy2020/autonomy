@@ -17,10 +17,10 @@
 #ifndef AUTONOMY_LOCALIZATION_ATLAS_OPTIMIZE_INTERNAL_SIM3_MUTUAL_REPROJ_EDGE_WRAPPER_HPP_
 #define AUTONOMY_LOCALIZATION_ATLAS_OPTIMIZE_INTERNAL_SIM3_MUTUAL_REPROJ_EDGE_WRAPPER_HPP_
 
-#include "autonomy/localization/atlas/camera/perspective.hpp"
-#include "autonomy/localization/atlas/camera/fisheye.hpp"
-#include "autonomy/localization/atlas/camera/equirectangular.hpp"
-#include "autonomy/localization/atlas/camera/radial_division.hpp"
+#include "autonomy/localization/atlas/sensor/camera/perspective.hpp"
+#include "autonomy/localization/atlas/sensor/camera/fisheye.hpp"
+#include "autonomy/localization/atlas/sensor/camera/equirectangular.hpp"
+#include "autonomy/localization/atlas/sensor/camera/radial_division.hpp"
 #include "autonomy/localization/atlas/data/landmark.hpp"
 #include "autonomy/localization/atlas/optimize/internal/sim3/forward_reproj_edge.hpp"
 #include "autonomy/localization/atlas/optimize/internal/sim3/backward_reproj_edge.hpp"

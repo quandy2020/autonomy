@@ -1,5 +1,5 @@
 #include "autonomy/localization/atlas/data/orb_params_database.hpp"
-#include "autonomy/localization/atlas/feature/orb_params.hpp"
+#include "autonomy/localization/atlas/frontend/feature/orb_params.hpp"
 
 #include <nlohmann/json.hpp>
 #include "autolink/common/log.hpp"

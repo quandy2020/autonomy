@@ -1,0 +1,95 @@
+# Atlas LIVO vision config (camera + IMU + joint lidar Local BA).
+# CLI: --localization_mode=livo --atlas_config=.../autosim_livo.yaml
+#      --atlas_runtime_profile=.../profiles/livo.yaml
+
+Camera:
+  name: "autosim monocular (LIVO)"
+  setup: "monocular"
+  model: "perspective"
+
+  fx: 320.0
+  fy: 320.0
+  cx: 320.0
+  cy: 240.0
+
+  k1: 0.0
+  k2: 0.0
+  p1: 0.0
+  p2: 0.0
+  k3: 0.0
+
+  fps: 15.0
+  cols: 640
+  rows: 480
+
+  color_order: "RGB"
+
+IMU:
+  enabled: true
+  frequency: 100.0
+  noise_acc: 0.02
+  noise_gyro: 0.0017
+  random_walk_acc: 0.003
+  random_walk_gyro: 0.00017
+  gravity_magnitude: 9.81
+  time_offset: 0.0
+  time_sync_slop: 0.02
+  init_min_keyframes: 10
+  # Placeholder identity cam←body; calibrate per platform.
+  R_c_b: [1.0, 0.0, 0.0,
+          0.0, 1.0, 0.0,
+          0.0, 0.0, 1.0]
+  t_c_b: [0.0, 0.0, 0.0]
+  buffer_capacity: 20000
+
+Preprocessing:
+  min_size: 800
+
+Feature:
+  name: "default ORB feature extraction setting"
+  scale_factor: 1.2
+  num_levels: 8
+  ini_fast_threshold: 20
+  min_fast_threshold: 7
+
+Mapping:
+  backend: "joint"
+  use_joint: true
+  use_inertial: true
+  joint_vision: true
+  joint_imu: true
+  joint_lidar: true
+  joint_odom: false
+  joint_lidar_iter: 5
+  baseline_dist_thr_ratio: 0.02
+  redundant_obs_ratio_thr: 0.9
+  num_covisibilities_for_landmark_generation: 20
+  num_covisibilities_for_landmark_fusion: 20
+  erase_temporal_keyframes: false
+  num_temporal_keyframes: 15
+
+Tracking:
+  backend: "g2o"
+  enable_temporal_keyframe_only_tracking: false
+
+KeyframeInserter:
+  wait_for_local_bundle_adjustment: false
+
+Relocalizer:
+  search_neighbor: true
+
+LoopDetector:
+  backend: "g2o"
+
+System:
+  map_format: "msgpack"
+  num_grid_cols: 47
+  num_grid_rows: 30
+  use_pool_mapping: true
+  use_pool_backend: true
+  thread_pool_size: 4
+
+PLP:
+  enabled: false
+  use_line_tracking: false
+  use_plane_mapping: false

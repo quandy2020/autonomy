@@ -2,7 +2,7 @@
 #include "autonomy/localization/atlas/data/landmark.hpp"
 #include "autonomy/localization/atlas/data/marker.hpp"
 #include "autonomy/localization/atlas/data/map_database.hpp"
-#include "autonomy/localization/atlas/marker_model/base.hpp"
+#include "autonomy/localization/atlas/util/marker_model/base.hpp"
 #include "autonomy/localization/atlas/optimize/local_bundle_adjuster_g2o.hpp"
 #include "autonomy/localization/atlas/optimize/terminate_action.hpp"
 #include "autonomy/localization/atlas/optimize/internal/landmark_vertex_container.hpp"

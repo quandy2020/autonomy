@@ -30,6 +30,9 @@ struct AtlasNodeFlags {
     std::string rgb_topic = "/camera/rgb/image_raw";
     std::string depth_topic = "/camera/depth/image_raw";
     std::string seg_topic = "";
+    std::string imu_topic = "";
+    //! vo|vio|lo|lio|livo|wio|lwio|lvwio (default vio)
+    std::string modality = "vio";
 };
 
 int RunAtlasNode(const AtlasNodeFlags& flags);

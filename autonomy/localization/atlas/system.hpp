@@ -19,10 +19,14 @@
 
 #include "autonomy/localization/atlas/type.hpp"
 #include "autonomy/localization/atlas/data/bow_vocabulary_fwd.hpp"
-#include "autonomy/localization/atlas/imu/buffer.hpp"
-#include "autonomy/localization/atlas/imu/config.hpp"
-#include "autonomy/localization/atlas/plp/plp_options.hpp"
-#include "autonomy/localization/atlas/plp/planar_mapping_module.hpp"
+#include "autonomy/localization/atlas/estimate/lidar_residual_source.hpp"
+#include "autonomy/localization/atlas/estimate/residual_mask.hpp"
+#include "autonomy/localization/atlas/estimate/residual_odom.hpp"
+#include "autonomy/localization/atlas/sensor/imu/buffer.hpp"
+#include "autonomy/localization/atlas/sensor/imu/config.hpp"
+#include "autonomy/localization/atlas/frontend/plp/plp_options.hpp"
+#include "autonomy/localization/atlas/frontend/plp/planar_mapping_module.hpp"
+#include "autonomy/common/thread_pool.hpp"
 #include <thread>
 #include <memory>
 #include <mutex>
@@ -141,6 +145,24 @@ public:
 
     //! Enable temporal mapping
     void enable_temporal_mapping();
+
+    //! Shared worker pool for Mapping / Backend / DenseMap Tasks (single system).
+    ::autonomy::common::ThreadPool* thread_pool() { return thread_pool_.get(); }
+    const ::autonomy::common::ThreadPool* thread_pool() const { return thread_pool_.get(); }
+
+    //! Residual mask for Local / Global Joint BA (from Pipeline runtime).
+    void set_residual_mask(estimate::ResidualMask mask);
+    [[nodiscard]] estimate::ResidualMask residual_mask() const {
+        return residual_mask_;
+    }
+
+    //! Attach lidar residual source (from SensorSuite / Lightning ObsModel).
+    void set_lidar_residual_source(estimate::ILidarResidualSource* src);
+    void set_odom_residual_source(estimate::IOdomResidualSource* src);
+    mapping_module* get_mapping_module() { return mapper_; }
+    global_optimization_module* get_global_optimization_module() {
+        return global_optimizer_;
+    }
 
     //-----------------------------------------
     // data feeding methods
@@ -319,6 +341,12 @@ private:
     //! IMU
     imu::config imu_cfg_{};
     std::unique_ptr<imu::buffer> imu_buffer_;
+
+    //! One ThreadPool for the single AtlasSystem (Task migration incremental).
+    std::unique_ptr<::autonomy::common::ThreadPool> thread_pool_;
+
+    //! Runtime residual family mask (Local/Global Joint BA).
+    estimate::ResidualMask residual_mask_{};
 };
 
 }  // namespace autonomy::localization::atlas

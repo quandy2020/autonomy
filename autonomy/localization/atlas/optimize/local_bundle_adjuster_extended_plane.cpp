@@ -1,6 +1,6 @@
 #include "autonomy/localization/atlas/optimize/local_bundle_adjuster_extended_plane.hpp"
 
-#include "autonomy/localization/atlas/camera/perspective.hpp"
+#include "autonomy/localization/atlas/sensor/camera/perspective.hpp"
 #include "autonomy/localization/atlas/data/keyframe.hpp"
 #include "autonomy/localization/atlas/data/landmark.hpp"
 #include "autonomy/localization/atlas/data/landmark_plane.hpp"

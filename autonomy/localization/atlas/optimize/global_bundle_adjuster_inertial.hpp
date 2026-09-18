@@ -17,7 +17,7 @@
 #ifndef AUTONOMY_LOCALIZATION_ATLAS_OPTIMIZE_GLOBAL_BUNDLE_ADJUSTER_INERTIAL_HPP_
 #define AUTONOMY_LOCALIZATION_ATLAS_OPTIMIZE_GLOBAL_BUNDLE_ADJUSTER_INERTIAL_HPP_
 
-#include "autonomy/localization/atlas/imu/config.hpp"
+#include "autonomy/localization/atlas/sensor/imu/config.hpp"
 #include "autonomy/localization/atlas/type.hpp"
 
 #include <memory>

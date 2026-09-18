@@ -17,7 +17,7 @@
 #ifndef AUTONOMY_LOCALIZATION_ATLAS_UTIL_IMAGE_CONVERTER_HPP_
 #define AUTONOMY_LOCALIZATION_ATLAS_UTIL_IMAGE_CONVERTER_HPP_
 
-#include "autonomy/localization/atlas/camera/base.hpp"
+#include "autonomy/localization/atlas/sensor/camera/base.hpp"
 
 #include <opencv2/core/mat.hpp>
 

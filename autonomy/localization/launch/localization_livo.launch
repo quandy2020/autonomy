@@ -1,0 +1,16 @@
+<!--
+  Atlas LIVO — single AtlasSystem (vision + IMU + lidar residuals).
+  Not a second SLAM; LidarSensor / IVox / ObsModel feed Joint BA.
+
+  Run:
+    autolink launch start localization_livo.launch
+-->
+<autolink>
+  <module>
+    <name>localization_livo</name>
+    <type>binary</type>
+    <process_name>autonomy.localization --localization_mode=livo --atlas_runtime_profile=autonomy/localization/conf/atlas/profiles/livo.yaml --atlas_config=autonomy/localization/conf/atlas/autosim_livo.yaml --atlas_vocab=autonomy/localization/conf/atlas/orb_vocab.fbow --atlas_rgb_topic=/camera/rgb/image_raw --atlas_imu_topic=/imu --atlas_lidar_topic=/points --atlas_lidar_imu_topic=/imu --atlas_lidar_config=autonomy/localization/conf/atlas/lightning/default.yaml</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

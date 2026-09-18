@@ -4,9 +4,9 @@
 #include "autonomy/localization/atlas/data/keyframe.hpp"
 #include "autonomy/localization/atlas/data/landmark.hpp"
 #include "autonomy/localization/atlas/data/landmark_line.hpp"
-#include "autonomy/localization/atlas/feature/orb_extractor.hpp"
-#include "autonomy/localization/atlas/match/stereo.hpp"
-#include "autonomy/localization/atlas/imu/preintegrator.hpp"
+#include "autonomy/localization/atlas/frontend/feature/orb_extractor.hpp"
+#include "autonomy/localization/atlas/frontend/match/stereo.hpp"
+#include "autonomy/localization/atlas/sensor/imu/preintegrator.hpp"
 
 #include <thread>
 #include "autolink/common/log.hpp"

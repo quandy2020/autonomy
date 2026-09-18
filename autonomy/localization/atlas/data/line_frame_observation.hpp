@@ -11,7 +11,7 @@
 #include <opencv2/core/mat.hpp>
 #include <vector>
 
-#include "autonomy/localization/atlas/feature/line_descriptor/line_descriptor_custom.hpp"
+#include "autonomy/localization/atlas/frontend/feature/line_descriptor/line_descriptor_custom.hpp"
 
 namespace autonomy::localization::atlas::data {
 

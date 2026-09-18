@@ -94,6 +94,7 @@ public:
         int map_points_skip = 1;
     };
 
+    //! @param slam  May be nullptr (LO/LIO pose-only publish path).
     VizBridge(system* slam, Options options);
     ~VizBridge();
 
@@ -110,6 +111,12 @@ public:
      */
     void PublishFrame(double timestamp_sec,
                       const std::shared_ptr<Mat44_t>& cam_pose_wc);
+
+    /**
+     * Publish world pose + trajectory + map→odom TF (writers guarded).
+     * Usable when slam_ is nullptr (LO/LIO LocalEstimator path).
+     */
+    void PublishWorldPose(double timestamp_sec, const Mat44_t& T_wc);
 
 private:
     using TimeMsg = automsgs::msgs::builtin_interfaces::Time;

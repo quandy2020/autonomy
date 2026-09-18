@@ -1,0 +1,26 @@
+# Readiness: production-ish (vision + IMU → system::feed_imu).
+# Requires --atlas_config + vocab; ImuBridge owns IMU topic.
+
+modality: vio
+
+sensors:
+  imu:    { enabled: true,  topic: /imu }
+  camera: { enabled: true,  rgb_topic: /camera/rgb/image_raw, depth_topic: /camera/depth/image_raw }
+  lidar:  { enabled: false }
+  odom:   { enabled: false }
+
+residuals:
+  vision: true
+  imu: true
+  lidar: false
+  odom: false
+
+system:
+  thread_pool_size: 4
+  with_loop_closing: true
+  use_pool_mapping: true
+  use_pool_backend: true
+
+maps:
+  dense_rgbd: true
+  g2p5: false

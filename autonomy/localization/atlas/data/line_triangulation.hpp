@@ -1,6 +1,6 @@
 #pragma once
 
-#include "autonomy/localization/atlas/camera/perspective.hpp"
+#include "autonomy/localization/atlas/sensor/camera/perspective.hpp"
 #include "autonomy/localization/atlas/data/line_frame_observation.hpp"
 #include "autonomy/localization/atlas/type.hpp"
 

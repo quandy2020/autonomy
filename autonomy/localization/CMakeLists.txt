@@ -21,12 +21,28 @@ autonomy_module(localization)
 autonomy_glob_srcs(_LOCALIZATION_SRCS)
 list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/(fake_|mock_)")
 list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "test_helpers")
+# Lightning embedded under sensor/lidar/lightning — never glob upstream into vision lib.
+list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/atlas/sensor/lidar/lightning/upstream/")
+list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/atlas/fusion/")  # legacy PoseFusion — not linked
+
+option(BUILD_ATLAS_LIGHTNING "Build Atlas lidar algorithms from lightning sources" OFF)
+option(BUILD_ATLAS_LIDAR "Legacy alias of BUILD_ATLAS_LIGHTNING" OFF)
+
+set(_LOCALIZATION_FEATURES slam pcl cairo boost_iostreams lua)
 autonomy_library(
   DEPENDENCIES autonomy_common autonomy_transform
-  FEATURES slam pcl cairo boost_iostreams lua
+  FEATURES ${_LOCALIZATION_FEATURES}
   SRCS ${_LOCALIZATION_SRCS}
 )
+if(BUILD_ATLAS_LIGHTNING OR BUILD_ATLAS_LIDAR)
+  target_compile_definitions(autonomy_localization PUBLIC AUTONOMY_HAS_ATLAS_LIGHTNING)
+  target_compile_definitions(autonomy_localization PUBLIC AUTONOMY_HAS_ATLAS_LIDAR)
+  message(STATUS "Atlas lightning algorithms: ENABLED")
+else()
+  message(STATUS "Atlas lightning algorithms: stub (BUILD_ATLAS_LIGHTNING=OFF)")
+endif()
 unset(_LOCALIZATION_SRCS)
+unset(_LOCALIZATION_FEATURES)
 
 # Process entrypoint: autonomy.localization
 autonomy_binary(autonomy.localization SRCS localization_main.cpp)

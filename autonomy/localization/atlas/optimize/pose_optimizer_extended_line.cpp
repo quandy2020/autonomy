@@ -7,7 +7,7 @@
 #include "autonomy/localization/atlas/optimize/pose_optimizer_extended_line.hpp"
 #include "autonomy/localization/atlas/optimize/internal/se3/pose_opt_edge_wrapper.hpp"
 #include "autonomy/localization/atlas/optimize/internal/se3/shot_vertex.hpp"
-#include "autonomy/localization/atlas/camera/perspective.hpp"
+#include "autonomy/localization/atlas/sensor/camera/perspective.hpp"
 #include "autonomy/localization/atlas/type.hpp"
 #include "autonomy/localization/atlas/util/converter.hpp"
 

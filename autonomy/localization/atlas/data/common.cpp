@@ -1,10 +1,10 @@
-#include "autonomy/localization/atlas/feature/line_descriptor/line_descriptor_custom.hpp"
+#include "autonomy/localization/atlas/frontend/feature/line_descriptor/line_descriptor_custom.hpp"
 #include "autonomy/localization/atlas/data/common.hpp"
 #include "autonomy/localization/atlas/data/frame_observation.hpp"
-#include "autonomy/localization/atlas/camera/perspective.hpp"
-#include "autonomy/localization/atlas/camera/fisheye.hpp"
-#include "autonomy/localization/atlas/camera/equirectangular.hpp"
-#include "autonomy/localization/atlas/camera/radial_division.hpp"
+#include "autonomy/localization/atlas/sensor/camera/perspective.hpp"
+#include "autonomy/localization/atlas/sensor/camera/fisheye.hpp"
+#include "autonomy/localization/atlas/sensor/camera/equirectangular.hpp"
+#include "autonomy/localization/atlas/sensor/camera/radial_division.hpp"
 
 #include <nlohmann/json.hpp>
 

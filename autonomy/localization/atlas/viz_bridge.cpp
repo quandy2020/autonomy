@@ -24,15 +24,15 @@
 #include <opencv2/imgproc.hpp>
 
 #include "autonomy/common/logging.hpp"
-#include "autonomy/localization/atlas/camera/base.hpp"
-#include "autonomy/localization/atlas/camera/fisheye.hpp"
-#include "autonomy/localization/atlas/camera/perspective.hpp"
+#include "autonomy/localization/atlas/sensor/camera/base.hpp"
+#include "autonomy/localization/atlas/sensor/camera/fisheye.hpp"
+#include "autonomy/localization/atlas/sensor/camera/perspective.hpp"
 #include "autonomy/localization/atlas/data/keyframe.hpp"
 #include "autonomy/localization/atlas/data/landmark.hpp"
 #include "autonomy/localization/atlas/data/landmark_line.hpp"
 #include "autonomy/localization/atlas/data/landmark_plane.hpp"
-#include "autonomy/localization/atlas/publish/frame_publisher.hpp"
-#include "autonomy/localization/atlas/publish/map_publisher.hpp"
+#include "autonomy/localization/atlas/util/frame_publisher.hpp"
+#include "autonomy/localization/atlas/util/map_publisher.hpp"
 #include "autonomy/transform/buffer_utils.hpp"
 
 namespace autonomy {
@@ -178,8 +178,8 @@ VizBridge::VizBridge(system* slam, Options options)
 VizBridge::~VizBridge() { Stop(); }
 
 bool VizBridge::Start(const std::shared_ptr<autolink::Node>& node) {
-    if (!slam_ || !node) {
-        AERROR << "Atlas VizBridge: missing system or autolink node.";
+    if (!node) {
+        AERROR << "Atlas VizBridge: missing autolink node.";
         return false;
     }
     if (running_) {
@@ -187,16 +187,7 @@ bool VizBridge::Start(const std::shared_ptr<autolink::Node>& node) {
     }
     node_ = node;
 
-    if (options_.publish_tracking_image) {
-        tracking_image_writer_ =
-            node_->CreateWriter<automsgs::msgs::sensor_msgs::Image>(
-                options_.tracking_image_topic);
-    }
-    if (options_.publish_frame_match_image) {
-        frame_match_image_writer_ =
-            node_->CreateWriter<automsgs::msgs::sensor_msgs::Image>(
-                options_.frame_match_image_topic);
-    }
+    // Pose / trajectory / TF writers always (LO/LIO may have slam_ == nullptr).
     if (options_.publish_trajectory) {
         trajectory_writer_ =
             node_->CreateWriter<automsgs::msgs::nav_msgs::Path>(
@@ -207,35 +198,49 @@ bool VizBridge::Start(const std::shared_ptr<autolink::Node>& node) {
             node_->CreateWriter<automsgs::msgs::nav_msgs::Odometry>(
                 options_.camera_pose_topic);
     }
-    if (options_.publish_current_frustum) {
-        current_frustum_writer_ =
-            node_->CreateWriter<automsgs::msgs::visualization_msgs::Marker>(
-                options_.current_frustum_topic);
-    }
-    if (options_.publish_keyframe_frustums) {
-        keyframe_frustums_writer_ = node_->CreateWriter<
-            automsgs::msgs::visualization_msgs::MarkerArray>(
-            options_.keyframe_frustums_topic);
-    }
-    if (options_.publish_map_points) {
-        map_points_writer_ =
-            node_->CreateWriter<automsgs::msgs::sensor_msgs::PointCloud2>(
-                options_.map_points_topic);
-    }
-    if (options_.publish_map_planes) {
-        map_planes_writer_ = node_->CreateWriter<
-            automsgs::msgs::visualization_msgs::MarkerArray>(
-            options_.map_planes_topic);
-    }
-    if (options_.publish_map_lines) {
-        map_lines_writer_ = node_->CreateWriter<
-            automsgs::msgs::visualization_msgs::MarkerArray>(
-            options_.map_lines_topic);
-    }
-    if (options_.publish_loop_edges) {
-        loop_edges_writer_ = node_->CreateWriter<
-            automsgs::msgs::visualization_msgs::MarkerArray>(
-            options_.loop_edges_topic);
+
+    // Map / image writers require an Atlas system.
+    if (slam_) {
+        if (options_.publish_tracking_image) {
+            tracking_image_writer_ =
+                node_->CreateWriter<automsgs::msgs::sensor_msgs::Image>(
+                    options_.tracking_image_topic);
+        }
+        if (options_.publish_frame_match_image) {
+            frame_match_image_writer_ =
+                node_->CreateWriter<automsgs::msgs::sensor_msgs::Image>(
+                    options_.frame_match_image_topic);
+        }
+        if (options_.publish_current_frustum) {
+            current_frustum_writer_ =
+                node_->CreateWriter<automsgs::msgs::visualization_msgs::Marker>(
+                    options_.current_frustum_topic);
+        }
+        if (options_.publish_keyframe_frustums) {
+            keyframe_frustums_writer_ = node_->CreateWriter<
+                automsgs::msgs::visualization_msgs::MarkerArray>(
+                options_.keyframe_frustums_topic);
+        }
+        if (options_.publish_map_points) {
+            map_points_writer_ =
+                node_->CreateWriter<automsgs::msgs::sensor_msgs::PointCloud2>(
+                    options_.map_points_topic);
+        }
+        if (options_.publish_map_planes) {
+            map_planes_writer_ = node_->CreateWriter<
+                automsgs::msgs::visualization_msgs::MarkerArray>(
+                options_.map_planes_topic);
+        }
+        if (options_.publish_map_lines) {
+            map_lines_writer_ = node_->CreateWriter<
+                automsgs::msgs::visualization_msgs::MarkerArray>(
+                options_.map_lines_topic);
+        }
+        if (options_.publish_loop_edges) {
+            loop_edges_writer_ = node_->CreateWriter<
+                automsgs::msgs::visualization_msgs::MarkerArray>(
+                options_.loop_edges_topic);
+        }
     }
 
     if (options_.publish_map_odom_tf) {
@@ -930,6 +935,22 @@ void VizBridge::PublishLoopEdges(double timestamp_sec) {
 
     loop_edges_writer_->Write(array);
     last_loop_edge_count_ = static_cast<unsigned int>(drawn.size());
+}
+
+void VizBridge::PublishWorldPose(double timestamp_sec, const Mat44_t& T_wc) {
+    if (!running_) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!running_) {
+        return;
+    }
+    if (options_.publish_camera_pose || options_.publish_trajectory) {
+        PublishPoseAndTrajectory(timestamp_sec, T_wc);
+    }
+    if (options_.publish_map_odom_tf) {
+        PublishMapOdomTf(timestamp_sec, T_wc);
+    }
 }
 
 void VizBridge::PublishFrame(double timestamp_sec,

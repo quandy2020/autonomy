@@ -1,0 +1,14 @@
+# Atlas LVWIO (lidar + vision + wheel + IMU)
+#
+# Atlas LVWIO: single system + SensorSuite (Pipeline), modality mask lvwio.
+
+type: "autonomy.localization"
+process_name: "autonomy.localization"
+args: |
+  --localization_mode=lvwio
+  --atlas_config=autonomy/localization/conf/atlas/autosim_mono.yaml
+  --atlas_vocab=autonomy/localization/conf/atlas/orb_vocab.fbow
+  --atlas_rgb_topic=/camera/rgb/image_raw
+  --atlas_imu_topic=/imu
+  --atlas_lidar_topic=/points
+  --atlas_wheel_topic=/wheel_odom

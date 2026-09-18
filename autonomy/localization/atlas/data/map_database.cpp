@@ -1,4 +1,4 @@
-#include "autonomy/localization/atlas/camera/base.hpp"
+#include "autonomy/localization/atlas/sensor/camera/base.hpp"
 #include "autonomy/localization/atlas/data/common.hpp"
 #include "autonomy/localization/atlas/data/frame.hpp"
 #include "autonomy/localization/atlas/data/keyframe.hpp"

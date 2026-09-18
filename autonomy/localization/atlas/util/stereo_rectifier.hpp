@@ -18,7 +18,7 @@
 #define AUTONOMY_LOCALIZATION_ATLAS_UTIL_STEREO_RECTIFIER_HPP_
 
 #include "autonomy/localization/atlas/config.hpp"
-#include "autonomy/localization/atlas/camera/base.hpp"
+#include "autonomy/localization/atlas/sensor/camera/base.hpp"
 
 #include <memory>
 

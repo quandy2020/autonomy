@@ -17,7 +17,7 @@
 #ifndef AUTONOMY_LOCALIZATION_ATLAS_OPTIMIZE_IMU_G2O_BIAS_VERTEX_HPP_
 #define AUTONOMY_LOCALIZATION_ATLAS_OPTIMIZE_IMU_G2O_BIAS_VERTEX_HPP_
 
-#include "autonomy/localization/atlas/imu/bias.hpp"
+#include "autonomy/localization/atlas/sensor/imu/bias.hpp"
 #include "autonomy/localization/atlas/type.hpp"
 
 #include <g2o/core/base_vertex.h>

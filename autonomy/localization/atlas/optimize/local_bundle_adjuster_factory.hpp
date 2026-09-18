@@ -19,7 +19,9 @@
 
 #include "autonomy/localization/atlas/optimize/local_bundle_adjuster_g2o.hpp"
 #include "autonomy/localization/atlas/optimize/local_bundle_adjuster_inertial.hpp"
-#include "autonomy/localization/atlas/imu/config.hpp"
+#include "autonomy/localization/atlas/mapping/local_joint_ba.hpp"
+#include "autonomy/localization/atlas/estimate/residual_mask.hpp"
+#include "autonomy/localization/atlas/sensor/imu/config.hpp"
 
 #include <memory>
 #include <stdexcept>
@@ -31,11 +33,26 @@ namespace optimize {
 
 class local_bundle_adjuster_factory {
 public:
-    static std::unique_ptr<local_bundle_adjuster> create(const YAML::Node& yaml_node,
-                                                        const imu::config& imu_cfg = imu::config{}) {
+    static std::unique_ptr<local_bundle_adjuster> create(
+        const YAML::Node& yaml_node,
+        const imu::config& imu_cfg = imu::config{},
+        const estimate::ResidualMask* residual_mask = nullptr) {
         const auto& backend = yaml_node["backend"].as<std::string>("g2o");
-        if (backend != "g2o") {
-            throw std::runtime_error("Invalid backend: only g2o is supported");
+        if (backend != "g2o" && backend != "joint") {
+            throw std::runtime_error("Invalid backend: only g2o|joint supported");
+        }
+        if (backend == "joint" || yaml_node["use_joint"].as<bool>(false)) {
+            estimate::ResidualMask mask;
+            if (residual_mask) {
+                mask = *residual_mask;
+            } else {
+                mask.vision = yaml_node["joint_vision"].as<bool>(true);
+                mask.imu = yaml_node["joint_imu"].as<bool>(imu_cfg.enabled);
+                mask.lidar = yaml_node["joint_lidar"].as<bool>(false);
+                mask.odom = yaml_node["joint_odom"].as<bool>(false);
+            }
+            return std::unique_ptr<local_bundle_adjuster>(
+                new mapping::LocalJointBA(yaml_node, imu_cfg, mask, nullptr));
         }
         if (imu_cfg.enabled && yaml_node["use_inertial"].as<bool>(true)) {
             return std::unique_ptr<local_bundle_adjuster>(

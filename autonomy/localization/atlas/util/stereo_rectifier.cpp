@@ -1,5 +1,5 @@
-#include "autonomy/localization/atlas/camera/perspective.hpp"
-#include "autonomy/localization/atlas/camera/fisheye.hpp"
+#include "autonomy/localization/atlas/sensor/camera/perspective.hpp"
+#include "autonomy/localization/atlas/sensor/camera/fisheye.hpp"
 #include "autonomy/localization/atlas/util/stereo_rectifier.hpp"
 #include "autonomy/localization/atlas/util/yaml.hpp"
 

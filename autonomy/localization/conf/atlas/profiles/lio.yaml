@@ -1,0 +1,26 @@
+# Readiness: LocalEstimator path (IMU predict + lidar update).
+# ImuBridge(est) + LidarBridge(est) + VizBridge; no vision YAML.
+
+modality: lio
+
+sensors:
+  imu:    { enabled: true,  topic: /imu }
+  camera: { enabled: false }
+  lidar:  { enabled: true,  topic: /points }
+  odom:   { enabled: false }
+
+residuals:
+  vision: false
+  imu: true
+  lidar: true
+  odom: false
+
+system:
+  thread_pool_size: 4
+  use_pool_mapping: true
+  use_pool_backend: true
+  with_loop_closing: true
+
+maps:
+  dense_rgbd: false
+  g2p5: true

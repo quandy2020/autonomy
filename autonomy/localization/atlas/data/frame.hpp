@@ -18,8 +18,8 @@
 #define AUTONOMY_LOCALIZATION_ATLAS_DATA_FRAME_HPP_
 
 #include "autonomy/localization/atlas/type.hpp"
-#include "autonomy/localization/atlas/camera/base.hpp"
-#include "autonomy/localization/atlas/feature/orb_params.hpp"
+#include "autonomy/localization/atlas/sensor/camera/base.hpp"
+#include "autonomy/localization/atlas/frontend/feature/orb_params.hpp"
 #include "autonomy/localization/atlas/util/converter.hpp"
 #include "autonomy/localization/atlas/data/frame_observation.hpp"
 #include "autonomy/localization/atlas/data/line_frame_observation.hpp"
@@ -27,7 +27,7 @@
 #include "autonomy/localization/atlas/data/bow_vocabulary.hpp"
 #include "autonomy/localization/atlas/data/marker2d.hpp"
 #include "autonomy/localization/atlas/data/bow_vocabulary_fwd.hpp"
-#include "autonomy/localization/atlas/imu/bias.hpp"
+#include "autonomy/localization/atlas/sensor/imu/bias.hpp"
 
 #include <vector>
 #include <atomic>

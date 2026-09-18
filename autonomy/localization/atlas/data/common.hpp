@@ -18,13 +18,13 @@
 #define AUTONOMY_LOCALIZATION_ATLAS_DATA_COMMON_HPP_
 
 #include "autonomy/localization/atlas/type.hpp"
-#include "autonomy/localization/atlas/camera/base.hpp"
+#include "autonomy/localization/atlas/sensor/camera/base.hpp"
 
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/types.hpp>
 #include <nlohmann/json_fwd.hpp>
 
-#include "autonomy/localization/atlas/feature/line_descriptor/line_descriptor_custom.hpp"
+#include "autonomy/localization/atlas/frontend/feature/line_descriptor/line_descriptor_custom.hpp"
 
 namespace autonomy::localization::atlas {
 namespace data {

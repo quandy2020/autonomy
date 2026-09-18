@@ -3,7 +3,7 @@
 #include "autonomy/localization/atlas/data/landmark.hpp"
 #include "autonomy/localization/atlas/data/landmark_plane.hpp"
 #include "autonomy/localization/atlas/data/map_database.hpp"
-#include "autonomy/localization/atlas/match/base.hpp"
+#include "autonomy/localization/atlas/frontend/match/base.hpp"
 
 #include <nlohmann/json.hpp>
 #include "autolink/common/log.hpp"

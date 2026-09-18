@@ -6,7 +6,7 @@
 #include "autonomy/localization/atlas/optimize/g2o/landmark_vertex_container_line3d.hpp"
 #include "autonomy/localization/atlas/optimize/g2o/se3/line_reproj_edge_wrapper.hpp"
 #include "autonomy/localization/atlas/optimize/line_geometry_util.hpp"
-#include "autonomy/localization/atlas/marker_model/base.hpp"
+#include "autonomy/localization/atlas/util/marker_model/base.hpp"
 #include "autonomy/localization/atlas/optimize/global_bundle_adjuster.hpp"
 #include "autonomy/localization/atlas/optimize/terminate_action.hpp"
 #include "autonomy/localization/atlas/optimize/internal/landmark_vertex_container.hpp"

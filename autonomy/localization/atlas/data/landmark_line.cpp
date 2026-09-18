@@ -2,7 +2,7 @@
 
 #include "autonomy/localization/atlas/data/keyframe.hpp"
 #include "autonomy/localization/atlas/data/map_database.hpp"
-#include "autonomy/localization/atlas/match/base.hpp"
+#include "autonomy/localization/atlas/frontend/match/base.hpp"
 
 #include <algorithm>
 #include <cmath>
