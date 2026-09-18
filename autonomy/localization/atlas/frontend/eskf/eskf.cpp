@@ -16,10 +16,22 @@
 
 #include "autonomy/localization/atlas/frontend/eskf/eskf.hpp"
 
+#include "autonomy/localization/atlas/estimate/lidar_residual_source.hpp"
+
+#include <algorithm>
 #include <cmath>
 
 namespace autonomy::localization::atlas {
 namespace frontend {
+namespace {
+
+Mat33_t Skew(const Vec3_t& v) {
+    Mat33_t m;
+    m << 0.0, -v.z(), v.y(), v.z(), 0.0, -v.x(), -v.y(), v.x(), 0.0;
+    return m;
+}
+
+}  // namespace
 
 void Eskf::ResetCovariance() {
     P_.setIdentity();
@@ -41,15 +53,28 @@ void Eskf::UpdateOdom(const Mat44_t& T_delta) {
     if (!initialized_) {
         Reset(Mat44_t::Identity());
     }
-    // Right-multiply: T_delta is body_{k-1} → body_k in the body frame.
     state_.T_wb = state_.T_wb * T_delta;
-    // Inflate pose uncertainty slightly (odometry relative noise).
     P_.block<3, 3>(0, 0) += Mat33_t::Identity() * 1e-6;
     P_.block<3, 3>(3, 3) += Mat33_t::Identity() * 1e-4;
 }
 
-void Eskf::PropagateCovariance(double dt) {
-    // Simplified continuous noise: P ← P + diag(Q)*dt (no full Φ).
+void Eskf::PropagateCovariance(double dt, const Vec3_t& omega,
+                               const Vec3_t& acc) {
+    // Φ ≈ I + F dt  (error-state: δθ, δp, δv, δba, δbg)
+    MatP_t Phi = MatP_t::Identity();
+    const Mat33_t R = state_.T_wb.block<3, 3>(0, 0);
+    const Vec3_t a_body = acc - state_.ba;
+    const Vec3_t a_world = R * a_body;
+
+    Phi.block<3, 3>(0, 0) -= Skew(omega) * dt;           // gyro → rot
+    Phi.block<3, 3>(0, 12) = -Mat33_t::Identity() * dt;  // bg → rot
+    Phi.block<3, 3>(3, 6) = Mat33_t::Identity() * dt;    // vel → pos
+    Phi.block<3, 3>(6, 0) = -Skew(a_world) * dt;         // rot → vel
+    Phi.block<3, 3>(6, 9) = -R * dt;                     // ba → vel
+
+    P_ = Phi * P_ * Phi.transpose();
+
+    // G Q Gᵀ dt — diagonal process noise on gyro/acc/bias channels.
     VecP_t q = VecP_t::Zero();
     q.segment<3>(0).setConstant(options_.gyro_noise * options_.gyro_noise);
     q.segment<3>(3).setConstant(options_.acc_noise * options_.acc_noise);
@@ -59,7 +84,7 @@ void Eskf::PropagateCovariance(double dt) {
     q.segment<3>(12).setConstant(options_.gyro_bias_noise *
                                  options_.gyro_bias_noise);
     P_ += q.asDiagonal() * dt;
-    // Keep PSD-ish floor.
+
     for (int i = 0; i < kDim; ++i) {
         if (P_(i, i) < 1e-12) {
             P_(i, i) = 1e-12;
@@ -89,33 +114,7 @@ void Eskf::PredictImu(double dt, const Vec3_t& gyro, const Vec3_t& acc) {
     state_.v += a_w * dt;
     state_.T_wb.block<3, 3>(0, 0) = R;
     state_.T_wb.block<3, 1>(0, 3) = t;
-    PropagateCovariance(dt);
-}
-
-void Eskf::JosephPoseUpdate(double mean_residual) {
-    // Scalar measurement z = mean point-plane residual ≈ 0 on pose.
-    // H picks position (and a light rotation) blocks; Joseph form on that scalar.
-    const double Rmeas =
-        std::max(1e-6, options_.lidar_noise * options_.lidar_noise);
-    // Observation sensitivity on δp_z-like scalar averaged residual.
-    VecP_t H = VecP_t::Zero();
-    H.segment<3>(3).setConstant(1.0 / std::sqrt(3.0));  // position
-    H.segment<3>(0).setConstant(0.1 / std::sqrt(3.0));  // weak rot coupling
-
-    const double S = H.dot(P_ * H) + Rmeas;
-    if (S < 1e-12) {
-        return;
-    }
-    const VecP_t K = (P_ * H) / S;
-    // Innovation pulls residual toward 0; do not rewrite GN pose — only P / bias.
-    (void)mean_residual;
-    // Slow bias pull toward 0 (weak observability without full IEKF).
-    state_.ba *= 0.999;
-    state_.bg *= 0.999;
-
-    const MatP_t I = MatP_t::Identity();
-    const MatP_t A = I - K * H.transpose();
-    P_ = A * P_ * A.transpose() + K * Rmeas * K.transpose();
+    PropagateCovariance(dt, omega, acc);
 }
 
 int Eskf::UpdateLidar(const estimate::LidarFactorBatch& batch) {
@@ -125,36 +124,50 @@ int Eskf::UpdateLidar(const estimate::LidarFactorBatch& batch) {
     if (!initialized_) {
         Reset(Mat44_t::Identity());
     }
-    // Gauss-Newton on SE3 using point-plane residuals (same model as Joint BA).
+
     Mat33_t R = state_.T_wb.block<3, 3>(0, 0);
     Vec3_t t = state_.T_wb.block<3, 1>(0, 3);
     int used = 0;
-    double mean_e = 0.0;
-    for (int iter = 0; iter < 3; ++iter) {
-        Vec6_t Htr = Vec6_t::Zero();
-        Mat66_t HtH = Mat66_t::Zero();
+    const int max_iter = std::max(1, options_.max_iekf_iter);
+    const double Rmeas =
+        std::max(1e-6, options_.lidar_noise * options_.lidar_noise);
+
+    for (int iter = 0; iter < max_iter; ++iter) {
+        Mat66_t HTH = Mat66_t::Zero();
+        Vec6_t HTr = Vec6_t::Zero();
         used = 0;
-        mean_e = 0.0;
         for (const auto& r : batch.point_planes) {
             const Vec3_t pw = R * r.point_body + t;
             const double e = r.normal_world.dot(pw) + r.d;
+            // Analytic H: J_θ = -n × (R p), J_p = n
             const Vec3_t Rp = R * r.point_body;
             Vec6_t j;
-            j.head<3>() = -Rp.cross(r.normal_world);
+            j.head<3>() = -r.normal_world.cross(Rp);
             j.tail<3>() = r.normal_world;
-            const double w = std::max(1e-6, r.weight) /
-                             std::max(1e-6, options_.lidar_noise);
-            HtH += w * j * j.transpose();
-            Htr += w * j * (-e);
-            mean_e += e;
+            const double w =
+                std::max(1e-6, r.weight) / Rmeas;
+            HTH.noalias() += w * j * j.transpose();
+            HTr.noalias() += w * j * (-e);
             ++used;
         }
         if (used == 0) {
             break;
         }
-        mean_e /= static_cast<double>(used);
-        HtH.diagonal().array() += 1e-4;
-        const Vec6_t dx = HtH.ldlt().solve(Htr);
+
+        // Information form on 6-DoF pose block: dx = (HTH + P_pose^{-1})^{-1} HTr
+        Mat66_t P_pose = P_.block<6, 6>(0, 0);
+        // Symmetrize for numerical stability.
+        P_pose = 0.5 * (P_pose + P_pose.transpose());
+        P_pose.diagonal().array() += 1e-9;
+        HTH.diagonal().array() += 1e-9;
+
+        const Mat66_t Pinv =
+            P_pose.ldlt().solve(Mat66_t::Identity());
+        const Mat66_t Info = HTH + Pinv;
+        const Vec6_t dx = Info.ldlt().solve(HTr);
+        const Mat66_t P_post = Info.ldlt().solve(Mat66_t::Identity());
+
+        // boxplus on R, t
         const double ang = dx.head<3>().norm();
         if (ang > 1e-12) {
             R = Eigen::AngleAxisd(ang, dx.head<3>().normalized())
@@ -162,16 +175,29 @@ int Eskf::UpdateLidar(const estimate::LidarFactorBatch& batch) {
                 R;
         }
         t += dx.tail<3>();
-        if (dx.norm() < 1e-5) {
+
+        // Joseph-style update on pose subspace of full P.
+        if (options_.joseph_lidar_update) {
+            MatP_t G = MatP_t::Identity();
+            // KH ≈ P_post * HTH on pose dims
+            G.block<6, 6>(0, 0) =
+                Mat66_t::Identity() - P_post * HTH;
+            P_ = G * P_ * G.transpose();
+            P_.block<6, 6>(0, 0) = P_post;
+            for (int i = 0; i < kDim; ++i) {
+                if (P_(i, i) < 1e-12) {
+                    P_(i, i) = 1e-12;
+                }
+            }
+        }
+
+        if (dx.norm() < options_.iekf_converge_eps) {
             break;
         }
     }
+
     state_.T_wb.block<3, 3>(0, 0) = R;
     state_.T_wb.block<3, 1>(0, 3) = t;
-
-    if (options_.joseph_lidar_update && used > 0) {
-        JosephPoseUpdate(mean_e);
-    }
     return used;
 }
 

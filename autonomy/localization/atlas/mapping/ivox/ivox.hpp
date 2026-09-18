@@ -31,8 +31,7 @@ namespace mapping {
 /**
  * Lightweight incremental voxel hash (IVox-shaped) for lidar map points.
  * Path: mapping/ivox/; namespace: mapping.
- * Full Faster-LIO IVox lands under lightning/upstream/; this grid is enough for
- * point-plane correspondence inside the single AtlasSystem.
+ * Optional Morton key packing for insert-order eviction locality.
  */
 class IVox {
 public:
@@ -42,6 +41,10 @@ public:
         std::size_t max_voxels = 200000;
         int neighbor_search = 1;  // Chebyshev radius in voxel indices
         int min_plane_points = 5;
+        //! Pack voxel indices with Morton (Z-order) instead of linear pack.
+        bool use_morton_key = false;
+        //! Always include 6 face-adjacent voxels in neighbor gather.
+        bool face_adjacent_neighbors = true;
     };
 
     struct PlaneHit {
@@ -52,6 +55,14 @@ public:
         double residual = 0.0;
     };
 
+    //! Lightweight capacity / neighbor stats (updated on EstimatePlane).
+    struct CapacityStats {
+        std::size_t last_neighbor_points = 0;
+        std::size_t last_neighbor_voxels = 0;
+        std::size_t peak_neighbor_points = 0;
+        std::size_t num_evictions = 0;
+    };
+
     IVox();
     explicit IVox(Options options);
 
@@ -59,6 +70,7 @@ public:
     void InsertWorldPoints(const std::vector<Vec3_t>& points_world);
     [[nodiscard]] std::size_t num_voxels() const;
     [[nodiscard]] std::size_t num_points() const;
+    [[nodiscard]] CapacityStats capacity_stats() const;
 
     //! Estimate local plane around a world query point (PCA of neighbor voxels).
     [[nodiscard]] PlaneHit EstimatePlane(const Vec3_t& query_world) const;
@@ -70,9 +82,11 @@ private:
     };
 
     Key ToKey(int ix, int iy, int iz) const;
+    static Key MortonEncode3(int ix, int iy, int iz);
     void IndexOf(const Vec3_t& p, int* ix, int* iy, int* iz) const;
     void CollectNeighbors(int ix, int iy, int iz,
-                          std::vector<Vec3_t>* out) const;
+                          std::vector<Vec3_t>* out,
+                          std::size_t* voxel_hits = nullptr) const;
     void EvictOldestLocked();
 
     Options options_;
@@ -81,6 +95,7 @@ private:
     //! Insertion-order keys for capacity eviction (LRU-ish: drop oldest).
     std::deque<Key> insert_order_;
     std::size_t num_points_ = 0;
+    mutable CapacityStats stats_;
 };
 
 }  // namespace mapping

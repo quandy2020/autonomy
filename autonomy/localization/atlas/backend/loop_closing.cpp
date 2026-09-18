@@ -13,9 +13,11 @@
 #include "autonomy/localization/atlas/util/schedule.hpp"
 #include "autolink/common/log.hpp"
 
-// Lidar loop (P2 stub): see backend/lidar_loop_detector.hpp — Detect() always
-// false until lightning-lm NDT loop is ported; vision BoW loop_detector_ remains
-// the active path in LoopClosing.
+// Lidar loop (PCL multi-res NDT + SE3 pose graph): see
+// backend/lidar_loop_detector.hpp / lidar_pose_graph.hpp —
+// wired optionally via LidarBridge::Options.use_lidar_loop (default false).
+// Does not merge into vision LoopClosing.
+// Vision BoW loop_detector_ remains the active path in LoopClosing.
 
 namespace autonomy::localization::atlas {
 

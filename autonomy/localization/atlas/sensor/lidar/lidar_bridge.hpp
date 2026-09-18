@@ -16,13 +16,16 @@
 
 #pragma once
 
+#include "autonomy/localization/atlas/backend/lidar_loop_detector.hpp"
+#include "autonomy/localization/atlas/backend/lidar_pose_graph.hpp"
 #include "autonomy/localization/atlas/frontend/lio/imu_process.hpp"
 #include "autonomy/localization/atlas/frontend/lio/sync.hpp"
 #include "autonomy/localization/atlas/frontend/local_estimator.hpp"
+#include "autonomy/localization/atlas/mapping/lidar_keyframe.hpp"
 #include "autonomy/localization/atlas/mapping/map_incremental.hpp"
 #include "autonomy/localization/atlas/sensor/imu/imu_sensor.hpp"
 #include "autonomy/localization/atlas/sensor/lidar/lidar_sensor.hpp"
-#include "autonomy/localization/atlas/sensor/lidar/lightning/preprocess/preprocess.hpp"
+#include "autonomy/localization/atlas/sensor/lidar/preprocess.hpp"
 
 #include <atomic>
 #include <memory>
@@ -50,6 +53,10 @@ public:
         int max_points_decode = 120000;
         //! Assumed scan duration when no per-point times (for sync window only).
         double default_scan_dt = 0.1;
+        //! Geometric lidar loop (default off — does not disturb VO/LIVO).
+        bool use_lidar_loop = false;
+        backend::LidarLoopDetector::Options lidar_loop;
+        mapping::LidarKeyframeManager::Options keyframe;
     };
 
     LidarBridge(system* slam, sensor::LidarSensor* lidar, Options options,
@@ -75,6 +82,8 @@ private:
     void OnCloud(
         const std::shared_ptr<automsgs::msgs::sensor_msgs::PointCloud2>& msg);
     Mat44_t CurrentTwc() const;
+    void MaybeLidarLoop(double t, const Mat44_t& Twb,
+                        const std::vector<Vec3_t>& cloud_body);
 
     system* slam_ = nullptr;
     sensor::LidarSensor* lidar_ = nullptr;
@@ -86,6 +95,9 @@ private:
     sensor::Preprocess preprocess_;
     frontend::lio::LidarImuSync sync_;
     frontend::lio::ImuProcess imu_process_;
+    mapping::LidarKeyframeManager keyframe_mgr_;
+    backend::LidarLoopDetector lidar_loop_;
+    backend::LidarPoseGraph pose_graph_;
     std::shared_ptr<autolink::Node> node_;
     std::atomic<bool> running_{false};
 };

@@ -122,12 +122,47 @@ RuntimeConfig LoadRuntimeConfig(const std::string& yaml_path) {
         cfg.maps_g2p5 = maps["g2p5"].as<bool>(cfg.maps_g2p5);
     }
 
+    // Calibration: inline `calibration:` and/or `calibration_path:`.
+    if (root["calibration_path"]) {
+        cfg.calibration_path = root["calibration_path"].as<std::string>("");
+    }
+    if (!cfg.calibration_path.empty()) {
+        try {
+            cfg.calibration =
+                calibration::LoadCalibrationBundle(cfg.calibration_path);
+        } catch (const std::exception& e) {
+            LOG(WARNING) << "LoadRuntimeConfig: calibration_path='"
+                         << cfg.calibration_path
+                         << "' not loaded yet (" << e.what()
+                         << "); caller may ResolveWorkspacePath and reload";
+        }
+    }
+    if (root["calibration"]) {
+        // Inline overrides / fills on top of file.
+        auto inline_cal = calibration::LoadCalibrationBundle(root);
+        if (!root["calibration_path"]) {
+            cfg.calibration = std::move(inline_cal);
+        } else {
+            // Prefer file as base; re-merge by loading node that has only
+            // calibration key — LoadCalibrationBundle already unwraps it.
+            cfg.calibration = std::move(inline_cal);
+        }
+    }
+    // Legacy extrinsics block (fusion_default style) → calib + Extrinsics.
+    if (root["extrinsics"] && !root["calibration"]) {
+        YAML::Node wrap;
+        wrap["extrinsics"] = root["extrinsics"];
+        cfg.calibration = calibration::LoadCalibrationBundle(wrap);
+    }
+    cfg.extrinsics = cfg.calibration.ToExtrinsics();
+
     LOG(INFO) << "LoadRuntimeConfig: " << yaml_path
               << " modality=" << common::ModalityName(cfg.modality)
               << " vision=" << cfg.flags.use_vision
               << " lidar=" << cfg.flags.use_lidar
               << " imu=" << cfg.flags.use_imu
-              << " odom=" << cfg.flags.use_odom;
+              << " odom=" << cfg.flags.use_odom
+              << " calib_path=" << cfg.calibration_path;
     return cfg;
 }
 

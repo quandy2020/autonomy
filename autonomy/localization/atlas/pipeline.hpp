@@ -70,6 +70,9 @@ public:
     [[nodiscard]] common::ModalityFlags flags() const { return runtime_.flags; }
     [[nodiscard]] const RuntimeConfig& runtime() const { return runtime_; }
 
+    //! Merge profile RuntimeConfig (calibration / flags / topics) before Start.
+    void SetRuntimeConfig(RuntimeConfig cfg);
+
     system* vision_system() { return vision_; }
     sensor::SensorSuite* sensors() { return sensors_.get(); }
     frontend::LocalEstimator* local_estimator() { return local_estimator_.get(); }

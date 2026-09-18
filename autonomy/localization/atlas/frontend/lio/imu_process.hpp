@@ -16,8 +16,9 @@
 
 #pragma once
 
-//! frontend/lio/imu_process — IMU predict + constant-ω deskew skeleton (MVP).
+//! frontend/lio/imu_process — IMU predict + trajectory deskew (lightning UndistortPcl ideas).
 
+#include "autonomy/localization/atlas/frontend/lio/measure_group.hpp"
 #include "autonomy/localization/atlas/frontend/local_estimator.hpp"
 #include "autonomy/localization/atlas/sensor/types.hpp"
 #include "autonomy/localization/atlas/type.hpp"
@@ -29,6 +30,48 @@
 namespace autonomy::localization::atlas {
 namespace frontend {
 namespace lio {
+
+//! One IMU-propagated pose sample along a lidar scan (offset from scan begin).
+struct ImuPoseSample {
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    double offset_t = 0.0;  // sec from scan begin
+    Mat33_t R = Mat33_t::Identity();
+    Vec3_t pos = Vec3_t::Zero();
+    Vec3_t vel = Vec3_t::Zero();
+    Vec3_t angvel = Vec3_t::Zero();
+    Vec3_t acc = Vec3_t::Zero();
+};
+
+//! Forward-integrate IMU over measure, filling imu_poses; also PredictImu on estimator.
+void BuildImuPoses(LocalEstimator* est,
+                   const MeasureGroup& meas,
+                   std::vector<ImuPoseSample>* imu_poses);
+
+//! Backward deskew: interpolate pose at point time vs end pose;
+//! p_end = R_end^T * (R_i * p + t_i - t_end) (with optional T_imu_lidar).
+//! point_time_rel is [0,1] fraction of scan (or absolute offset sec if >1 — clamped).
+std::vector<Vec3_t> UndistortByImuTrajectory(
+    const std::vector<Vec3_t>& points_body,
+    const std::vector<double>& point_time_rel,
+    const std::vector<ImuPoseSample>& imu_poses,
+    const Mat44_t& T_imu_lidar = Mat44_t::Identity());
+
+//! Synthesize uniform t_rel = i/(n-1) when n>1 (approximation when driver has no times).
+inline std::vector<double> SynthesizeUniformTimeRel(std::size_t n) {
+    std::vector<double> t;
+    if (n == 0) {
+        return t;
+    }
+    if (n == 1) {
+        t.push_back(0.0);
+        return t;
+    }
+    t.resize(n);
+    for (std::size_t i = 0; i < n; ++i) {
+        t[i] = static_cast<double>(i) / static_cast<double>(n - 1);
+    }
+    return t;
+}
 
 class ImuProcess {
 public:
@@ -65,7 +108,21 @@ public:
         }
     }
 
-    //! Constant-ω deskew: for each point p at ratio α, R(α)*p.
+    void BuildImuPoses(LocalEstimator* est,
+                       const MeasureGroup& meas,
+                       std::vector<ImuPoseSample>* imu_poses) const {
+        lio::BuildImuPoses(est, meas, imu_poses);
+    }
+
+    [[nodiscard]] std::vector<Vec3_t> UndistortByImuTrajectory(
+        const std::vector<Vec3_t>& points_body,
+        const std::vector<double>& point_time_rel,
+        const std::vector<ImuPoseSample>& imu_poses) const {
+        return lio::UndistortByImuTrajectory(points_body, point_time_rel,
+                                             imu_poses, T_imu_lidar_);
+    }
+
+    //! Constant-ω deskew fallback when imu_poses size < 2.
     //! If point_time_rel empty / size mismatch → no-op copy.
     [[nodiscard]] std::vector<Vec3_t> UndistortScan(
         const std::vector<Vec3_t>& points_body,
@@ -103,7 +160,7 @@ public:
     }
 
 private:
-    //! Lidar←IMU extrinsic (stored for future body-frame transforms).
+    //! Lidar in IMU frame extrinsic (T_imu_lidar: p_imu = R p_lidar + t).
     Mat44_t T_imu_lidar_ = Mat44_t::Identity();
 };
 

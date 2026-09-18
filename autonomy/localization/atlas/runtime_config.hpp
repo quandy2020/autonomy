@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "autonomy/localization/atlas/util/calibration/bundle.hpp"
 #include "autonomy/localization/atlas/util/extrinsics.hpp"
 #include "autonomy/localization/atlas/util/modality.hpp"
 
@@ -28,6 +29,9 @@ struct RuntimeConfig {
     common::Modality modality = common::Modality::kVio;
     common::ModalityFlags flags{};
     common::Extrinsics extrinsics{};
+    //! Full calib (camera distort + IMU/lidar + T_imu_lidar / T_cam_imu …).
+    calibration::CalibrationBundle calibration{};
+    std::string calibration_path;
 
     struct SensorTopics {
         std::string imu = "/imu";

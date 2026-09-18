@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-#include "autonomy/localization/atlas/sensor/lidar/lightning/preprocess/preprocess.hpp"
+#include "autonomy/localization/atlas/sensor/lidar/preprocess.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <unordered_set>
 
@@ -47,12 +48,26 @@ Preprocess::Options Preprocess::FromYaml(const YAML::Node& node) {
     if (!node || !node.IsMap()) {
         return o;
     }
+    if (node["lidar_type"] || node["model"] || node["lidar_model"]) {
+        const std::string s =
+            node["lidar_type"]
+                ? node["lidar_type"].as<std::string>("generic")
+                : (node["model"] ? node["model"].as<std::string>("generic")
+                                 : node["lidar_model"].as<std::string>("generic"));
+        o.model = LidarModelFromString(s);
+    }
     o.min_range = node["min_range"].as<double>(o.min_range);
     o.max_range = node["max_range"].as<double>(o.max_range);
     o.blind = node["blind"].as<double>(o.blind);
     o.voxel_leaf = node["voxel_leaf"].as<double>(o.voxel_leaf);
     o.max_points = node["max_points"].as<int>(o.max_points);
     o.use_point_time = node["use_point_time"].as<bool>(o.use_point_time);
+    // Velodyne / Ouster typically carry per-point time — prefer timed path.
+    if (o.model == LidarModel::kVelodyne || o.model == LidarModel::kOuster) {
+        if (!node["use_point_time"]) {
+            o.use_point_time = true;
+        }
+    }
     return o;
 }
 

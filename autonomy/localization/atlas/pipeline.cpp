@@ -45,6 +45,29 @@ Pipeline::~Pipeline() {
     Shutdown();
 }
 
+void Pipeline::SetRuntimeConfig(RuntimeConfig cfg) {
+    // Keep ctor topic defaults if profile left empties.
+    if (cfg.topics.imu.empty()) {
+        cfg.topics.imu = runtime_.topics.imu;
+    }
+    if (cfg.topics.rgb.empty()) {
+        cfg.topics.rgb = runtime_.topics.rgb;
+    }
+    if (cfg.topics.depth.empty()) {
+        cfg.topics.depth = runtime_.topics.depth;
+    }
+    if (cfg.topics.lidar.empty()) {
+        cfg.topics.lidar = runtime_.topics.lidar;
+    }
+    if (cfg.topics.odom.empty()) {
+        cfg.topics.odom = runtime_.topics.odom;
+    }
+    runtime_ = std::move(cfg);
+    if (local_estimator_) {
+        runtime_.calibration.ApplyTo(local_estimator_.get());
+    }
+}
+
 mapping::MapIncremental* Pipeline::active_map_incremental() {
     if (vision_ && vision_->get_mapping_module()) {
         if (auto* mi = vision_->get_mapping_module()->map_incremental()) {
@@ -98,7 +121,9 @@ void Pipeline::AttachSystem(system* slam) {
 frontend::LocalEstimator* Pipeline::EnsureLocalEstimator() {
     if (!local_estimator_) {
         local_estimator_ = std::make_unique<frontend::LocalEstimator>();
-        LOG(INFO) << "Pipeline: LocalEstimator created (lidar pose authority)";
+        runtime_.calibration.ApplyTo(local_estimator_.get());
+        LOG(INFO) << "Pipeline: LocalEstimator created (lidar pose authority)"
+                  << " T_imu_lidar applied from calibration";
     }
     return local_estimator_.get();
 }

@@ -3,6 +3,9 @@
 
 modality: lio
 
+# Camera / IMU / lidar intrinsics + T_imu_lidar (deskew / ObsModel).
+calibration_path: conf/atlas/calibration/default.yaml
+
 sensors:
   imu:    { enabled: true,  topic: /imu }
   camera: { enabled: false }

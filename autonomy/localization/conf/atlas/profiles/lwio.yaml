@@ -3,6 +3,8 @@
 
 modality: lwio
 
+calibration_path: conf/atlas/calibration/default.yaml
+
 sensors:
   imu:    { enabled: true,  topic: /imu }
   camera: { enabled: false }

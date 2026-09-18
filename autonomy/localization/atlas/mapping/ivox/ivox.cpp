@@ -18,12 +18,26 @@
 
 #include <Eigen/Eigenvalues>
 
+#include <algorithm>
 #include <cmath>
-#include <deque>
 #include <limits>
+#include <unordered_set>
 
 namespace autonomy::localization::atlas {
 namespace mapping {
+namespace {
+
+inline std::uint64_t ExpandBits21(std::uint32_t v) {
+    std::uint64_t x = v & 0x1fffffu;
+    x = (x | (x << 32)) & 0x1f00000000ffffull;
+    x = (x | (x << 16)) & 0x1f0000ff0000ffull;
+    x = (x | (x << 8)) & 0x100f00f00f00f00full;
+    x = (x | (x << 4)) & 0x10c30c30c30c30c3ull;
+    x = (x | (x << 2)) & 0x1249249249249249ull;
+    return x;
+}
+
+}  // namespace
 
 IVox::IVox() : IVox(Options{}) {}
 
@@ -38,6 +52,7 @@ void IVox::Clear() {
     voxels_.clear();
     insert_order_.clear();
     num_points_ = 0;
+    stats_ = CapacityStats{};
 }
 
 std::size_t IVox::num_voxels() const {
@@ -50,7 +65,25 @@ std::size_t IVox::num_points() const {
     return num_points_;
 }
 
+IVox::CapacityStats IVox::capacity_stats() const {
+    std::lock_guard<std::mutex> lock(mtx_);
+    return stats_;
+}
+
+IVox::Key IVox::MortonEncode3(int ix, int iy, int iz) {
+    // Offset signed axes into unsigned 21-bit range centered at 2^20.
+    constexpr int kBias = 1 << 20;
+    const auto ux = static_cast<std::uint32_t>(ix + kBias) & 0x1fffffu;
+    const auto uy = static_cast<std::uint32_t>(iy + kBias) & 0x1fffffu;
+    const auto uz = static_cast<std::uint32_t>(iz + kBias) & 0x1fffffu;
+    return static_cast<Key>((ExpandBits21(ux)) | (ExpandBits21(uy) << 1) |
+                            (ExpandBits21(uz) << 2));
+}
+
 IVox::Key IVox::ToKey(int ix, int iy, int iz) const {
+    if (options_.use_morton_key) {
+        return MortonEncode3(ix, iy, iz);
+    }
     // Pack signed 21-bit axes into 63 bits.
     constexpr std::int64_t kMask = (1LL << 21) - 1;
     const auto ux = static_cast<std::int64_t>(ix) & kMask;
@@ -75,6 +108,7 @@ void IVox::EvictOldestLocked() {
         }
         num_points_ -= it->second.points.size();
         voxels_.erase(it);
+        ++stats_.num_evictions;
     }
 }
 
@@ -103,17 +137,40 @@ void IVox::InsertWorldPoints(const std::vector<Vec3_t>& points_world) {
 }
 
 void IVox::CollectNeighbors(int ix, int iy, int iz,
-                            std::vector<Vec3_t>* out) const {
+                            std::vector<Vec3_t>* out,
+                            std::size_t* voxel_hits) const {
+    std::unordered_set<Key> visited;
+    const auto add_voxel = [&](int x, int y, int z) {
+        const Key k = ToKey(x, y, z);
+        if (!visited.insert(k).second) {
+            return;
+        }
+        const auto it = voxels_.find(k);
+        if (it == voxels_.end()) {
+            return;
+        }
+        if (voxel_hits) {
+            ++(*voxel_hits);
+        }
+        out->insert(out->end(), it->second.points.begin(),
+                    it->second.points.end());
+    };
+
+    // Face-adjacent (6-neigh) for plane robustness.
+    if (options_.face_adjacent_neighbors) {
+        static const int kFace[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0},
+                                        {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+        add_voxel(ix, iy, iz);
+        for (const auto& d : kFace) {
+            add_voxel(ix + d[0], iy + d[1], iz + d[2]);
+        }
+    }
+
     const int r = options_.neighbor_search;
     for (int dx = -r; dx <= r; ++dx) {
         for (int dy = -r; dy <= r; ++dy) {
             for (int dz = -r; dz <= r; ++dz) {
-                const auto it = voxels_.find(ToKey(ix + dx, iy + dy, iz + dz));
-                if (it == voxels_.end()) {
-                    continue;
-                }
-                out->insert(out->end(), it->second.points.begin(),
-                            it->second.points.end());
+                add_voxel(ix + dx, iy + dy, iz + dz);
             }
         }
     }
@@ -127,11 +184,16 @@ IVox::PlaneHit IVox::EstimatePlane(const Vec3_t& query_world) const {
 
     std::vector<Vec3_t> neighbors;
     neighbors.reserve(64);
+    std::size_t voxel_hits = 0;
     {
         std::lock_guard<std::mutex> lock(mtx_);
         int ix = 0, iy = 0, iz = 0;
         IndexOf(query_world, &ix, &iy, &iz);
-        CollectNeighbors(ix, iy, iz, &neighbors);
+        CollectNeighbors(ix, iy, iz, &neighbors, &voxel_hits);
+        stats_.last_neighbor_points = neighbors.size();
+        stats_.last_neighbor_voxels = voxel_hits;
+        stats_.peak_neighbor_points =
+            std::max(stats_.peak_neighbor_points, neighbors.size());
     }
 
     if (static_cast<int>(neighbors.size()) < options_.min_plane_points) {
@@ -155,7 +217,6 @@ IVox::PlaneHit IVox::EstimatePlane(const Vec3_t& query_world) const {
     if (solver.info() != Eigen::Success) {
         return hit;
     }
-    // Smallest eigenvalue → plane normal.
     hit.normal = solver.eigenvectors().col(0);
     if (hit.normal.norm() < 1e-9) {
         return hit;

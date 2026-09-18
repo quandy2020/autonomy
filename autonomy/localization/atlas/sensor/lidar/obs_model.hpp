@@ -16,5 +16,51 @@
 
 #pragma once
 
-//! Compatibility shim — canonical ObsModel lives under lightning/obs_model/.
-#include "autonomy/localization/atlas/sensor/lidar/lightning/obs_model/obs_model.hpp"
+//! sensor/lidar/obs_model — point-plane residuals for Atlas Joint BA / ESKF.
+
+#include "autonomy/localization/atlas/estimate/lidar_residual_source.hpp"
+#include "autonomy/localization/atlas/mapping/ivox/ivox.hpp"
+#include "autonomy/localization/atlas/type.hpp"
+
+#include <vector>
+
+namespace autonomy::localization::atlas {
+namespace sensor {
+
+/**
+ * Point-plane observation model (measurement only — not a second SLAM).
+ * Builds residual material for LocalEstimator IEKF / Joint BA.
+ */
+class ObsModel {
+public:
+    struct Options {
+        double max_distance = 0.5;
+        int max_residuals = 2000;
+        bool enable_ground_prior = false;
+        double ground_weight = 0.05;
+    };
+
+    ObsModel() = default;
+    explicit ObsModel(Options options) : options_(std::move(options)) {}
+
+    estimate::LidarFactorBatch Build(
+        const std::vector<Vec3_t>& points_body,
+        const std::vector<Vec3_t>& normals_world,
+        const std::vector<double>& plane_d) const;
+
+    //! Correspond body points to IVox planes given T_wc (body→world).
+    estimate::LidarFactorBatch BuildAgainstIVox(
+        const Mat44_t& T_wc,
+        const std::vector<Vec3_t>& points_body,
+        const mapping::IVox& map) const;
+
+    //! Ground prior: PCA plane from lowest 20% z (fallback Z=0).
+    estimate::LidarFactorBatch BuildStub(
+        const std::vector<Vec3_t>& points_body) const;
+
+private:
+    Options options_;
+};
+
+}  // namespace sensor
+}  // namespace autonomy::localization::atlas

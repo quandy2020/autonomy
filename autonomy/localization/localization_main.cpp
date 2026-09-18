@@ -65,8 +65,8 @@ DEFINE_string(atlas_lidar_config, "",
 DEFINE_string(atlas_wheel_topic, "/wheel_odom",
               "Atlas: wheel odometry topic (WIO/LWIO/LVWIO).");
 DEFINE_bool(atlas_enable_lightning_upstream, false,
-            "Atlas: compile/link lightning upstream under "
-            "sensor/lidar preprocess/obs_model (requires BUILD_ATLAS_LIGHTNING).");
+            "Enable LidarSensor ObsModel / preprocess residual path "
+            "(runtime; always linked).");
 DEFINE_string(atlas_runtime_profile, "",
               "Atlas: optional conf/atlas/profiles/*.yaml (modality + sensors).");
 

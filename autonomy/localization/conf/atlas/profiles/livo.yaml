@@ -3,6 +3,8 @@
 
 modality: livo
 
+calibration_path: conf/atlas/calibration/default.yaml
+
 sensors:
   imu:    { enabled: true,  topic: /imu }
   camera: { enabled: true,  rgb_topic: /camera/rgb/image_raw, depth_topic: /camera/depth/image_raw }

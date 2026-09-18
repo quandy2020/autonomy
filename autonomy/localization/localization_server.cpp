@@ -258,6 +258,23 @@ public:
                 if (runtime.flags.use_odom) {
                     options_.atlas_wheel_topic = runtime.topics.odom;
                 }
+                atlas_runtime_ = runtime;
+                // Resolve calib file relative to workspace if needed.
+                if (!atlas_runtime_.calibration_path.empty()) {
+                    try {
+                        const std::string cal_path = ResolveWorkspacePath(
+                            atlas_runtime_.calibration_path);
+                        atlas_runtime_.calibration =
+                            atlas::calibration::LoadCalibrationBundle(cal_path);
+                        atlas_runtime_.extrinsics =
+                            atlas_runtime_.calibration.ToExtrinsics();
+                        atlas_runtime_.calibration_path = cal_path;
+                    } catch (const std::exception& e) {
+                        AWARN << "LocalizationServer: calibration reload: "
+                              << e.what();
+                    }
+                }
+                atlas_runtime_loaded_ = true;
                 AINFO << "LocalizationServer: loaded Atlas runtime profile "
                       << profile_path << " modality="
                       << atlas::common::ModalityName(runtime.modality);
@@ -286,6 +303,9 @@ public:
         pipe_opts.enable_lightning_upstream =
             options_.atlas_enable_lightning_upstream;
         pipeline_ = std::make_unique<atlas::Pipeline>(pipe_opts);
+        if (atlas_runtime_loaded_) {
+            pipeline_->SetRuntimeConfig(atlas_runtime_);
+        }
         if (!pipeline_->Start()) {
             AERROR << "LocalizationServer: Pipeline::Start failed.";
             pipeline_.reset();
@@ -313,6 +333,8 @@ public:
             }
             atlas::LidarBridge::Options lo;
             lo.topic = options_.atlas_lidar_topic;
+            // Default false; enable via lidar yaml `use_lidar_loop: true` (LO/LIO).
+            lo.use_lidar_loop = false;
             if (!options_.atlas_lidar_config_path.empty()) {
                 try {
                     const auto node = YAML::LoadFile(ResolveWorkspacePath(
@@ -321,6 +343,25 @@ public:
                         lo.preprocess =
                             atlas::sensor::Preprocess::FromYaml(
                                 node["preprocess"]);
+                    }
+                    if (node["use_lidar_loop"]) {
+                        lo.use_lidar_loop =
+                            node["use_lidar_loop"].as<bool>(false);
+                    }
+                    if (node["lidar_loop"] && node["lidar_loop"].IsMap()) {
+                        const auto& ll = node["lidar_loop"];
+                        lo.lidar_loop.candidate_radius_m =
+                            ll["candidate_radius_m"].as<double>(
+                                lo.lidar_loop.candidate_radius_m);
+                        lo.lidar_loop.skip_recent_n =
+                            ll["skip_recent_n"].as<int>(
+                                lo.lidar_loop.skip_recent_n);
+                        lo.lidar_loop.inlier_ratio_thresh =
+                            ll["inlier_ratio_thresh"].as<double>(
+                                lo.lidar_loop.inlier_ratio_thresh);
+                        lo.lidar_loop.mean_residual_thresh =
+                            ll["mean_residual_thresh"].as<double>(
+                                lo.lidar_loop.mean_residual_thresh);
                     }
                 } catch (const std::exception& e) {
                     AWARN << "LocalizationServer: lidar yaml load failed: "
@@ -631,6 +672,8 @@ public:
 
 private:
     LocalizationOptions options_;
+    atlas::RuntimeConfig atlas_runtime_{};
+    bool atlas_runtime_loaded_ = false;
     std::unique_ptr<atlas::Pipeline> pipeline_;
     std::unique_ptr<atlas::system> system_;
     std::shared_ptr<autolink::Node> autolink_node_;

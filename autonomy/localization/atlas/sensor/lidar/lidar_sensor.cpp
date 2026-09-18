@@ -36,7 +36,7 @@ LidarSensor::LidarSensor(Options options)
 bool LidarSensor::Start() {
     running_ = true;
     if (options_.enable_lightning_algo) {
-        LOG(INFO) << "LidarSensor: lightning ObsModel enabled, topic="
+        LOG(INFO) << "LidarSensor: ObsModel enabled, topic="
                   << options_.topic
                   << " res=" << options_.ivox_resolution
                   << " (IVox via MapIncremental::set_ivox)";

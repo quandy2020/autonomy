@@ -21,7 +21,8 @@
 namespace autonomy::localization::atlas {
 namespace common {
 
-//! Sensor extrinsics / time sync for multimodal fusion (YAML-loadable later).
+//! Lightweight fusion extrinsics (lidar→camera + time offsets).
+//! Full camera/IMU/lidar intrinsics + SE3 live in util/calibration::CalibrationBundle.
 struct Extrinsics {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 

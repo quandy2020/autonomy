@@ -16,10 +16,13 @@
 
 #pragma once
 
-#include "autonomy/localization/atlas/estimate/lidar_residual_source.hpp"
 #include "autonomy/localization/atlas/type.hpp"
 
 namespace autonomy::localization::atlas {
+namespace estimate {
+struct LidarFactorBatch;
+}  // namespace estimate
+
 namespace frontend {
 
 /**
@@ -29,13 +32,12 @@ namespace frontend {
  *
  * State error order (15): δθ(3), δp(3), δv(3), δba(3), δbg(3).
  *
- * Gap vs lightning-lm full ESKF (remaining):
- *  - No IEKF / iterated Kalman update with analytic H from point-plane;
- *    pose still from Gauss-Newton, then a coarse Joseph scalar on pose block.
- *  - No gravity / extrinsic in-state, no 18/24-dim variants, no manifold
- *    boxplus reset of full P after every update.
- *  - Process noise is diagonal continuous Q*dt (not IMU discrete ΦQΦᵀ).
- *  - Bias random-walk only; no online bias observability from lidar alone.
+ * IEKF UpdateLidar: iterated point-plane with analytic H on 6-DoF pose,
+ * information-form solve on pose block + Joseph on pose subspace.
+ * PredictImu: discrete Φ ≈ I + F dt, P ← Φ P Φᵀ + G Q Gᵀ dt.
+ *
+ * Remaining vs lightning-lm: no gravity/extrinsic in-state, no degeneracy
+ * projector, no 18/24-dim variants.
  */
 class Eskf {
 public:
@@ -57,8 +59,11 @@ public:
         double gyro_bias_noise = 1e-5;
         double acc_bias_noise = 1e-4;
         double lidar_noise = 0.1;
-        //! After GN pose update, run a coarse Joseph scalar update on P.
+        //! Max IEKF iterations for UpdateLidar (analytic H).
+        int max_iekf_iter = 4;
+        //! Legacy flag: kept for compat; IEKF always updates P via Joseph.
         bool joseph_lidar_update = true;
+        double iekf_converge_eps = 1e-5;
     };
 
     Eskf() = default;
@@ -66,13 +71,16 @@ public:
         ResetCovariance();
     }
 
+    void set_options(Options options) { options_ = std::move(options); }
+    [[nodiscard]] const Options& options() const { return options_; }
+
     void Reset(const Mat44_t& T_wb = Mat44_t::Identity());
     void PredictImu(double dt, const Vec3_t& gyro, const Vec3_t& acc);
 
     //! Body-frame relative odom: T_wb ← T_wb * T_delta (WIO / LWIO).
     void UpdateOdom(const Mat44_t& T_delta);
 
-    //! Point-plane update using ObsModel residual batch (body points + world planes).
+    //! Iterated EKF point-plane update (analytic H on δθ, δp).
     int UpdateLidar(const estimate::LidarFactorBatch& batch);
 
     [[nodiscard]] const State& state() const { return state_; }
@@ -81,8 +89,7 @@ public:
 
 private:
     void ResetCovariance();
-    void PropagateCovariance(double dt);
-    void JosephPoseUpdate(double mean_residual);
+    void PropagateCovariance(double dt, const Vec3_t& omega, const Vec3_t& acc);
 
     Options options_;
     State state_;

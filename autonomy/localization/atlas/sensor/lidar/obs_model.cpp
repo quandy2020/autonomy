@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "autonomy/localization/atlas/sensor/lidar/lightning/obs_model/obs_model.hpp"
+#include "autonomy/localization/atlas/sensor/lidar/obs_model.hpp"
 
 #include <Eigen/Eigenvalues>
 

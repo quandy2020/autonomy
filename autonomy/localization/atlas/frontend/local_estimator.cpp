@@ -14,22 +14,16 @@
  * limitations under the License.
  */
 
-#pragma once
+#include "autonomy/localization/atlas/frontend/local_estimator.hpp"
 
-//! Mapping module umbrella (§2b).
-
-#include "autonomy/localization/atlas/mapping/local_joint_ba.hpp"
-#include "autonomy/localization/atlas/mapping/local_mapping.hpp"
-#include "autonomy/localization/atlas/mapping/map_incremental.hpp"
-#include "autonomy/localization/atlas/mapping/tiled_map.hpp"
+#include "autonomy/localization/atlas/estimate/lidar_residual_source.hpp"
 
 namespace autonomy::localization::atlas {
-namespace mapping {
+namespace frontend {
 
-using LocalMapping = ::autonomy::localization::atlas::LocalMapping;
-using mapping_module = LocalMapping;
+int LocalEstimator::UpdateLidar(const estimate::LidarFactorBatch& batch) {
+    return eskf_.UpdateLidar(batch);
+}
 
-struct MappingModuleTag {};
-
-}  // namespace mapping
+}  // namespace frontend
 }  // namespace autonomy::localization::atlas

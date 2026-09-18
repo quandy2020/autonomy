@@ -19,16 +19,22 @@
 //! frontend/local_estimator — realtime pose (ESKF for LO/LIO strategy).
 //! Lives in Frontend; writes the same Atlas pose State (not a second SLAM).
 
-#include "autonomy/localization/atlas/estimate/lidar_residual_source.hpp"
-#include "autonomy/localization/atlas/estimate/residual_odom.hpp"
 #include "autonomy/localization/atlas/frontend/eskf/eskf.hpp"
 #include "autonomy/localization/atlas/type.hpp"
 
 namespace autonomy::localization::atlas {
+namespace estimate {
+struct LidarFactorBatch;
+}  // namespace estimate
+
 namespace frontend {
 
 class LocalEstimator {
 public:
+    LocalEstimator() = default;
+    explicit LocalEstimator(frontend::Eskf::Options eskf_opts)
+        : eskf_(std::move(eskf_opts)) {}
+
     void Reset(const Mat44_t& T_wb = Mat44_t::Identity()) { eskf_.Reset(T_wb); }
 
     void PredictImu(double dt, const Vec3_t& gyro, const Vec3_t& acc) {
@@ -38,15 +44,27 @@ public:
     //! Compose body-frame odom delta into world pose (needed for WIO / LWIO).
     void UpdateOdom(const Mat44_t& T_delta) { eskf_.UpdateOdom(T_delta); }
 
-    int UpdateLidar(const estimate::LidarFactorBatch& batch) {
-        return eskf_.UpdateLidar(batch);
-    }
+    int UpdateLidar(const estimate::LidarFactorBatch& batch);
 
     void SetT_imu_lidar(const Mat44_t& T_il) { T_imu_lidar_ = T_il; }
     [[nodiscard]] const Mat44_t& T_imu_lidar() const { return T_imu_lidar_; }
 
+    void set_eskf_options(frontend::Eskf::Options opts) {
+        eskf_.set_options(std::move(opts));
+    }
+    [[nodiscard]] const frontend::Eskf::Options& eskf_options() const {
+        return eskf_.options();
+    }
+
     [[nodiscard]] Mat44_t T_wb() const { return eskf_.T_wb(); }
     [[nodiscard]] Mat44_t T_cw() const { return eskf_.T_wb().inverse(); }
+    [[nodiscard]] Vec3_t velocity() const { return eskf_.state().v; }
+    [[nodiscard]] const frontend::Eskf::State& state() const {
+        return eskf_.state();
+    }
+    [[nodiscard]] const frontend::Eskf::State& nav_state() const {
+        return eskf_.state();
+    }
     [[nodiscard]] const frontend::Eskf::MatP_t& covariance() const {
         return eskf_.covariance();
     }

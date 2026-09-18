@@ -33,7 +33,8 @@ struct MeasureGroup {
     double lidar_begin_time = 0.0;
     double lidar_end_time = 0.0;
     std::vector<Vec3_t> points_body;
-    //! Optional per-point relative time in [0,1] (scan begin→end). Empty → no deskew.
+    //! Optional per-point relative time in [0,1] (scan begin→end).
+    //! Empty → UndistortByImuTrajectory synthesizes uniform times.
     std::vector<double> point_time_rel;
     std::deque<sensor::ImuSample> imu;
 };

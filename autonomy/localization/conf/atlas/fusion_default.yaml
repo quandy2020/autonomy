@@ -1,6 +1,5 @@
-# Default fusion / extrinsics notes for Atlas multimodal modes.
-# Loaded by tools or documented for operators (orchestrator currently uses
-# Extrinsics defaults; YAML load can be added later).
+# Prefer util/calibration CalibrationBundle (see conf/atlas/calibration/default.yaml).
+# This file remains for legacy extrinsics-only notes.
 
 extrinsics:
   # Lidar -> camera

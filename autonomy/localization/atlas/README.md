@@ -117,7 +117,7 @@ atlas/
 ├── sensor/
 │   ├── imu/          # ImuSensor · ImuBridge · buffer/preintegrator
 │   ├── camera/       # CameraSensor · CameraBridge · 相机模型
-│   ├── lidar/        # LidarSensor · LidarBridge · lightning/{preprocess,obs_model}
+│   ├── lidar/        # LidarSensor · LidarBridge · preprocess · obs_model
 │   └── odom/         # OdomSensor · OdomBridge
 ├── frontend/         # Tracking · LocalEstimator · initializer/ · eskf/ · lio/
 │   ├── feature/ · match/ · solve/ · plp/ · initialize/
@@ -125,7 +125,7 @@ atlas/
 │   └── lio/          # MeasureGroup · ImuProcess · LidarImuSync
 ├── mapping/          # LocalMapping · LocalJointBA · MapIncremental · ivox/ · lidar_keyframe
 │   └── ivox/         # mapping::IVox
-├── backend/          # LoopClosing · LoopDetector · LidarLoopDetector(stub) · GlobalJointBA
+├── backend/          # LoopClosing · LoopDetector · LidarLoopDetector · LidarPoseGraph · GlobalJointBA
 ├── relocalization/   # Relocalizer
 ├── estimate/         # ResidualMask · residual_{vision,imu,lidar,odom}
 ├── data/             # frame · keyframe · map_database · BoW
@@ -158,7 +158,7 @@ atlas/
 | `frontend/eskf/` | `frontend::Eskf` |
 | `mapping/ivox/` | `mapping::IVox` |
 | `sensor/lidar/.../preprocess` | `sensor::Preprocess` |
-| `sensor/lidar/.../obs_model` | `sensor::ObsModel` |
+| `sensor/lidar/obs_model` | `sensor::ObsModel` |
 | `mapping/local_joint_ba.hpp` | `mapping::LocalJointBA` |
 | `backend/global_joint_ba.*` | `backend::GlobalJointBA` |
 | `mapping/map_incremental.hpp` | `mapping::MapIncremental`（`IntegrateScan` 插入；LidarSensor `set_ivox` 只读） |
@@ -188,17 +188,22 @@ flowchart TB
 | **livo** | Cam+Lidar+IMU | Tracking + staged JointBA | mask 驱动 Local/Global |
 | **lvwio** | 全开 | Tracking + JointBA + odom | 同上 + odom residual |
 
-## Lidar P0 / P1 / P2 进度
+## Lidar LIO 进度（toward lightning-lm，无第二套 SLAM）
 
 | 项 | 状态 | 说明 |
 |----|------|------|
 | **P0.1** MapIncremental owns insert | ✅ | `IntegrateScan`；`FeedWithPose` 只建残差；`LidarBridge::SetMapIncremental` |
-| **P0.2** Sync + deskew skeleton | ✅ | `frontend/lio/{measure_group,imu_process,sync}`；无点时则 pass-through |
-| **P0.3** Stronger Eskf | ✅ | 15×15 `P_` + predict/`Joseph` 粗更新；完整 IEKF 仍缺（见 eskf 注释） |
-| **P1** TimedPoint / IVox LRU / keyframe / `T_il` | ✅ | `RunTimed`；`max_voxels` 按插入序淘汰；`LidarKeyframeManager`；`SetT_imu_lidar` |
-| **P2** Loop stub + ground PCA + docs | ✅ | `LidarLoopDetector::Detect→false`；`BuildStub` 最低 20% z PCA |
+| **Deskew** IMU 轨迹去畸变 | ✅ | `BuildImuPoses` + `UndistortByImuTrajectory`；无点时均匀 `t_rel` 近似；`<2` poses 回退 constant-ω |
+| **Calib** 相机畸变 + 外参 | ✅ | `util/calibration`：`CalibrationBundle` / `undistort.hpp`；profile `calibration_path` |
+| **IEKF** 解析 H | ✅ | `UpdateLidar` 迭代（`max_iekf_iter=4`）点面 H；信息形式 6×6 + Joseph；`PredictImu` Φ≈I+Fdt |
+| **Lidar loop** | ✅ | PCL 多分辨率 NDT + `LidarPoseGraph`（g2o SE3，lightning-lm 风格）；ICP 回退；**不**并入 vision LoopClosing；`use_lidar_loop` 默认 false |
+| **Preprocess** | ✅ | 扁平 `sensor/lidar/preprocess`；`LidarModel` + `t`/`time` 字段解码 |
+| **IVox / TiledMap** | ✅ | Morton key 可选；面邻域 + capacity stats；`tiled_map.hpp` chunk 路由 |
 
-Deferred（相对 lightning-lm）：完整 IMU 离散 ΦQΦᵀ、IEKF 点面 H、NDT 回环、强度/时间戳驱动解码。
+Deferred（相对 lightning-lm，两边均无 Scan Context）：
+- LIO 侧：`IMUInit` 重力初始化、ESKF 退化投影 / Anderson / 点到点 ICP、IVox **PHC/Hilbert**（现 Morton）、TiledMap **PCD Load/Save** 与动静态层
+- 产品层：`localization/` 纯激光 NDT 定位 + ~100Hz 外推、雷达回环接入 vision 全局 BA（现仅 lidar SE3 图）、Livox CustomMsg / RoboSense 驱动级预处理
+- 说明：lightning 外参亦为固定；“外参入状态”两边都未做；重力 lightning 有 IMUInit，Atlas deskew 仍硬编码 -9.81
 
 ## 约定
 

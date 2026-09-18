@@ -2,17 +2,28 @@
 # Referenced via RuntimeConfig.lidar_config_path or profile lightning_yaml.
 
 preprocess:
+  lidar_type: generic   # generic | velodyne | ouster | livox
   min_range: 0.5
   max_range: 80.0
   blind: 0.1
   voxel_leaf: 0.2
   max_points: 20000
+  use_point_time: false
+
+# Geometric lidar loop (LO/LIO LocalEstimator path). Default off.
+use_lidar_loop: false
+lidar_loop:
+  candidate_radius_m: 15.0
+  skip_recent_n: 30
+  inlier_ratio_thresh: 0.35
+  mean_residual_thresh: 0.25
 
 ivox:
   resolution: 0.5
   max_points_per_voxel: 20
   neighbor_search: 1
   min_plane_points: 5
+  use_morton_key: false
 
 obs_model:
   max_distance: 0.5
