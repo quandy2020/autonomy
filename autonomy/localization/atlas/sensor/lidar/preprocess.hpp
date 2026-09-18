@@ -17,6 +17,13 @@
 #pragma once
 
 //! sensor/lidar/preprocess — canonical lidar cloud filter (range / blind / voxel).
+//!
+//! Per-point time decoding (via LidarBridge::DecodePointTimes):
+//! - Prefer PointCloud2 fields `t` / `time` (Velodyne / Ouster, often float sec).
+//! - Also accept `offset_time` (Livox CustomMsg-style, typically ns as uint32/float).
+//! - If no time field but `ring` exists: synthesize yaw-based relative times
+//!   (Velodyne-style) when Preprocess model is Velodyne/Ouster/Livox.
+//! Absolute Livox CustomMsg / RoboSense native drivers remain deferred.
 
 #include "autonomy/localization/atlas/type.hpp"
 
@@ -67,6 +74,10 @@ public:
         int max_points = 20000;
         //! When true, prefer RunTimed path (needs per-point times from driver).
         bool use_point_time = false;
+        //! Scan rate (Hz) for ring/yaw time synthesis when no time field.
+        double scan_rate_hz = 10.0;
+        //! When true and `ring` present without time: synthesize t_rel.
+        bool synthesize_ring_time = true;
     };
 
     Preprocess() = default;
@@ -82,6 +93,13 @@ public:
     [[nodiscard]] std::vector<TimedPoint> RunTimed(
         const std::vector<Vec3_t>& points_body,
         const std::vector<double>& point_time_rel) const;
+
+    //! Velodyne-style: synthesize [0,1] times from yaw + ring when no stamp.
+    //! `rings` may be empty (treat as single layer). Returns empty on failure.
+    [[nodiscard]] static std::vector<double> SynthesizeRingBasedTime(
+        const std::vector<Vec3_t>& points_body,
+        const std::vector<int>& rings,
+        double scan_rate_hz = 10.0);
 
     const Options& options() const { return options_; }
 

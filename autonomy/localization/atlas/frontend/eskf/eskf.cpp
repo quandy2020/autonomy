@@ -18,6 +18,8 @@
 
 #include "autonomy/localization/atlas/estimate/lidar_residual_source.hpp"
 
+#include <Eigen/Eigenvalues>
+
 #include <algorithm>
 #include <cmath>
 
@@ -42,9 +44,20 @@ void Eskf::ResetCovariance() {
     P_.block<3, 3>(12, 12) *= 1e-4; // bg
 }
 
+void Eskf::SetImuInitCovariance() {
+    P_.setIdentity();
+    P_.block<3, 3>(0, 0) *= 1e-4;
+    P_.block<3, 3>(3, 3) *= 1e-2;
+    P_.block<3, 3>(6, 6) *= 1e-2;
+    P_.block<3, 3>(9, 9) *= 1e-4;
+    P_.block<3, 3>(12, 12) = 1e-4 * Mat33_t::Identity();
+}
+
 void Eskf::Reset(const Mat44_t& T_wb) {
+    const Vec3_t g_keep = state_.gravity;
     state_ = State{};
     state_.T_wb = T_wb;
+    state_.gravity = g_keep;
     ResetCovariance();
     initialized_ = true;
 }
@@ -85,6 +98,10 @@ void Eskf::PropagateCovariance(double dt, const Vec3_t& omega,
                                  options_.gyro_bias_noise);
     P_ += q.asDiagonal() * dt;
 
+    if (options_.predict_cov_inflation > 1.0) {
+        P_ *= options_.predict_cov_inflation;
+    }
+
     for (int i = 0; i < kDim; ++i) {
         if (P_(i, i) < 1e-12) {
             P_(i, i) = 1e-12;
@@ -109,7 +126,7 @@ void Eskf::PredictImu(double dt, const Vec3_t& gyro, const Vec3_t& acc) {
     Mat33_t R = state_.T_wb.block<3, 3>(0, 0);
     Vec3_t t = state_.T_wb.block<3, 1>(0, 3);
     R = R * dR;
-    const Vec3_t a_w = R * (acc - state_.ba) + Vec3_t(0.0, 0.0, -9.81);
+    const Vec3_t a_w = R * (acc - state_.ba) + state_.gravity;
     t += state_.v * dt + 0.5 * a_w * dt * dt;
     state_.v += a_w * dt;
     state_.T_wb.block<3, 3>(0, 0) = R;
@@ -127,10 +144,36 @@ int Eskf::UpdateLidar(const estimate::LidarFactorBatch& batch) {
 
     Mat33_t R = state_.T_wb.block<3, 3>(0, 0);
     Vec3_t t = state_.T_wb.block<3, 1>(0, 3);
+    const Mat33_t R_start = R;
+    const Vec3_t t_start = t;
+    const MatP_t P_start = P_;
     int used = 0;
     const int max_iter = std::max(1, options_.max_iekf_iter);
     const double Rmeas =
         std::max(1e-6, options_.lidar_noise * options_.lidar_noise);
+    const double max_rot_rad =
+        options_.max_update_rotation_step_deg * M_PI / 180.0;
+
+    auto ApplyDx = [](Mat33_t* R_io, Vec3_t* t_io, const Vec6_t& dx) {
+        const double ang = dx.head<3>().norm();
+        if (ang > 1e-12) {
+            *R_io = Eigen::AngleAxisd(ang, dx.head<3>().normalized())
+                        .toRotationMatrix() *
+                    (*R_io);
+        }
+        *t_io += dx.tail<3>();
+    };
+
+    //! SE(3) boxminus: dx such that start ⊕ dx ≈ (R,t)  (δθ, δp).
+    auto PoseMinus = [](const Mat33_t& R0, const Vec3_t& t0, const Mat33_t& R1,
+                        const Vec3_t& t1) -> Vec6_t {
+        Vec6_t dx = Vec6_t::Zero();
+        const Mat33_t dR = R1 * R0.transpose();
+        const Eigen::AngleAxisd aa(dR);
+        dx.head<3>() = aa.angle() * aa.axis();
+        dx.tail<3>() = t1 - t0;
+        return dx;
+    };
 
     for (int iter = 0; iter < max_iter; ++iter) {
         Mat66_t HTH = Mat66_t::Zero();
@@ -154,36 +197,96 @@ int Eskf::UpdateLidar(const estimate::LidarFactorBatch& batch) {
             break;
         }
 
+        Mat66_t HTH_eff = HTH;
+        Vec6_t HTr_eff = HTr;
+        int nullity = 0;
+        if (options_.enable_degeneracy_check) {
+            const Mat66_t HTH_sym = 0.5 * (HTH + HTH.transpose());
+            Eigen::SelfAdjointEigenSolver<Mat66_t> eigen_solver(HTH_sym);
+            if (eigen_solver.info() == Eigen::Success) {
+                const Vec6_t eigen_values = eigen_solver.eigenvalues();
+                const Mat66_t eigen_vectors = eigen_solver.eigenvectors();
+                const double max_ev =
+                    std::max(1e-12, eigen_values.maxCoeff());
+                const double thresh =
+                    max_ev * options_.degeneracy_eigen_thresh;
+                Vec6_t observable_mask = Vec6_t::Zero();
+                for (int k = 0; k < 6; ++k) {
+                    if (eigen_values(k) > thresh) {
+                        observable_mask(k) = 1.0;
+                    } else {
+                        ++nullity;
+                    }
+                }
+                const Mat66_t projector =
+                    eigen_vectors * observable_mask.asDiagonal() *
+                    eigen_vectors.transpose();
+                HTH_eff = projector * HTH_sym * projector;
+                HTr_eff = projector * HTr;
+            }
+        }
+
         // Information form on 6-DoF pose block: dx = (HTH + P_pose^{-1})^{-1} HTr
         Mat66_t P_pose = P_.block<6, 6>(0, 0);
         // Symmetrize for numerical stability.
         P_pose = 0.5 * (P_pose + P_pose.transpose());
         P_pose.diagonal().array() += 1e-9;
-        HTH.diagonal().array() += 1e-9;
+        HTH_eff.diagonal().array() += 1e-9;
 
         const Mat66_t Pinv =
             P_pose.ldlt().solve(Mat66_t::Identity());
-        const Mat66_t Info = HTH + Pinv;
-        const Vec6_t dx = Info.ldlt().solve(HTr);
+        const Mat66_t Info = HTH_eff + Pinv;
+        Vec6_t dx = Info.ldlt().solve(HTr_eff);
         const Mat66_t P_post = Info.ldlt().solve(Mat66_t::Identity());
 
-        // boxplus on R, t
-        const double ang = dx.head<3>().norm();
-        if (ang > 1e-12) {
-            R = Eigen::AngleAxisd(ang, dx.head<3>().normalized())
-                    .toRotationMatrix() *
-                R;
+        // Clip / reject oversized steps (lightning max_update_*_step).
+        const double dx_trans = dx.tail<3>().norm();
+        const double dx_rot = dx.head<3>().norm();
+        if (dx_trans > options_.max_update_translation_step ||
+            dx_rot > max_rot_rad) {
+            R = R_start;
+            t = t_start;
+            P_ = P_start;
+            break;
         }
-        t += dx.tail<3>();
+
+        // Soft per-component clip toward limits (keep direction).
+        if (dx_trans > 1e-12 &&
+            dx_trans > 0.5 * options_.max_update_translation_step) {
+            const double s = std::min(
+                1.0, options_.max_update_translation_step / dx_trans);
+            dx.tail<3>() *= s;
+        }
+        if (dx_rot > 1e-12 && dx_rot > 0.5 * max_rot_rad) {
+            const double s = std::min(1.0, max_rot_rad / dx_rot);
+            dx.head<3>() *= s;
+        }
+
+        ApplyDx(&R, &t, dx);
+
+        if (options_.enable_anderson) {
+            if (iter == 0) {
+                aa_.init(dx);
+            } else {
+                const Vec6_t dx_all = PoseMinus(R_start, t_start, R, t);
+                const Vec6_t dx_aa = aa_.compute(dx_all);
+                R = R_start;
+                t = t_start;
+                ApplyDx(&R, &t, dx_aa);
+            }
+        }
 
         // Joseph-style update on pose subspace of full P.
         if (options_.joseph_lidar_update) {
             MatP_t G = MatP_t::Identity();
             // KH ≈ P_post * HTH on pose dims
             G.block<6, 6>(0, 0) =
-                Mat66_t::Identity() - P_post * HTH;
+                Mat66_t::Identity() - P_post * HTH_eff;
             P_ = G * P_ * G.transpose();
             P_.block<6, 6>(0, 0) = P_post;
+            if (nullity > 0 && options_.degeneracy_cov_inflation > 1.0) {
+                P_.block<6, 6>(0, 0) *= options_.degeneracy_cov_inflation;
+            }
             for (int i = 0; i < kDim; ++i) {
                 if (P_(i, i) < 1e-12) {
                     P_(i, i) = 1e-12;

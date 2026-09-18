@@ -13,7 +13,7 @@
 #include "autonomy/localization/atlas/optimize/pose_optimizer_extended_line.hpp"
 #include "autonomy/localization/atlas/sensor/imu/preintegrator.hpp"
 #include "autonomy/localization/atlas/frontend/initialize/inertial.hpp"
-#include "autonomy/localization/atlas/util/yaml.hpp"
+#include "autonomy/common/param_handler.hpp"
 
 #include <chrono>
 #include <unordered_map>
@@ -24,7 +24,7 @@ namespace autonomy::localization::atlas {
 Tracking::Tracking(const std::shared_ptr<config>& cfg, camera::base* camera, data::map_database* map_db,
                                  data::bow_vocabulary* bow_vocab, data::bow_database* bow_db)
     : camera_(camera),
-      tracking_yaml_(util::yaml_optional_ref(cfg->yaml_node_, "Tracking")),
+      tracking_yaml_(autonomy::common::YamlChild(cfg->yaml_node_, "Tracking")),
       reloc_distance_threshold_(tracking_yaml_["reloc_distance_threshold"].as<double>(0.2)),
       reloc_angle_threshold_(tracking_yaml_["reloc_angle_threshold"].as<double>(0.45)),
       init_retry_threshold_time_(tracking_yaml_["init_retry_threshold_time"].as<double>(5.0)),
@@ -35,11 +35,11 @@ Tracking::Tracking(const std::shared_ptr<config>& cfg, camera::base* camera, dat
       margin_local_map_projection_(tracking_yaml_["margin_local_map_projection"].as<float>(5.0)),
       margin_local_map_projection_unstable_(tracking_yaml_["margin_local_map_projection_unstable"].as<float>(20.0)),
       map_db_(map_db), bow_vocab_(bow_vocab), bow_db_(bow_db),
-      initializer_(map_db, util::yaml_optional_ref(cfg->yaml_node_, "Initializer")),
+      initializer_(map_db, autonomy::common::YamlChild(cfg->yaml_node_, "Initializer")),
       pose_optimizer_(optimize::pose_optimizer_factory::create(tracking_yaml_)),
       frame_tracker_(camera_, pose_optimizer_, 10, initializer_.get_use_fixed_seed(), tracking_yaml_["margin_last_frame_projection"].as<float>(20.0)),
-      relocalizer_(pose_optimizer_, util::yaml_optional_ref(cfg->yaml_node_, "Relocalizer")),
-      keyfrm_inserter_(util::yaml_optional_ref(cfg->yaml_node_, "KeyframeInserter")) {
+      relocalizer_(pose_optimizer_, autonomy::common::YamlChild(cfg->yaml_node_, "Relocalizer")),
+      keyfrm_inserter_(autonomy::common::YamlChild(cfg->yaml_node_, "KeyframeInserter")) {
     ADEBUG << "CONSTRUCT: Tracking";
 }
 

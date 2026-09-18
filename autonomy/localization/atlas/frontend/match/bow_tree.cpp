@@ -3,7 +3,8 @@
 #include "autonomy/localization/atlas/data/keyframe.hpp"
 #include "autonomy/localization/atlas/data/landmark.hpp"
 #include "autonomy/localization/atlas/frontend/match/bow_tree.hpp"
-#include "autonomy/localization/atlas/util/angle.hpp"
+#include "autonomy/common/math/angle.hpp"
+
 
 namespace autonomy::localization::atlas {
 namespace match {
@@ -80,7 +81,7 @@ unsigned int bow_tree::match_for_triangulation(const std::shared_ptr<data::keyfr
                         continue;
                     }
 
-                    if (check_orientation_ && std::abs(util::angle::diff(keypt_1.angle, keyfrm_2->frm_obs_.undist_keypts_.at(idx_2).angle)) > 30.0) {
+                    if (check_orientation_ && std::abs(autonomy::common::math::AngleDiffDegrees(keypt_1.angle, keyfrm_2->frm_obs_.undist_keypts_.at(idx_2).angle)) > 30.0) {
                         continue;
                     }
 
@@ -207,7 +208,7 @@ unsigned int bow_tree::match_frame_and_keyframe(const std::shared_ptr<data::keyf
                         continue;
                     }
 
-                    if (check_orientation_ && std::abs(util::angle::diff(keyfrm->frm_obs_.undist_keypts_.at(keyfrm_idx).angle, frm.frm_obs_.undist_keypts_.at(frm_idx).angle)) > 30.0) {
+                    if (check_orientation_ && std::abs(autonomy::common::math::AngleDiffDegrees(keyfrm->frm_obs_.undist_keypts_.at(keyfrm_idx).angle, frm.frm_obs_.undist_keypts_.at(frm_idx).angle)) > 30.0) {
                         continue;
                     }
 
@@ -312,7 +313,7 @@ unsigned int bow_tree::match_keyframes(const std::shared_ptr<data::keyframe>& ke
                         continue;
                     }
 
-                    if (check_orientation_ && std::abs(util::angle::diff(keyfrm_1->frm_obs_.undist_keypts_.at(idx_1).angle, keyfrm_2->frm_obs_.undist_keypts_.at(idx_2).angle)) > 30.0) {
+                    if (check_orientation_ && std::abs(autonomy::common::math::AngleDiffDegrees(keyfrm_1->frm_obs_.undist_keypts_.at(idx_1).angle, keyfrm_2->frm_obs_.undist_keypts_.at(idx_2).angle)) > 30.0) {
                         continue;
                     }
 

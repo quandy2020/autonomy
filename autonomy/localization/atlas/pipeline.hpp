@@ -19,6 +19,7 @@
 #include "autonomy/localization/atlas/util/modality.hpp"
 #include "autonomy/localization/atlas/frontend/local_estimator.hpp"
 #include "autonomy/localization/atlas/mapping/map_incremental.hpp"
+#include "autonomy/localization/atlas/mapping/tiled_map.hpp"
 #include "autonomy/localization/atlas/runtime_config.hpp"
 #include "autonomy/localization/atlas/sensor/sensor_suite.hpp"
 
@@ -82,8 +83,12 @@ public:
     //! Active live-map owner (LocalMapping preferred, else Pipeline fallback).
     mapping::MapIncremental* active_map_incremental();
 
+    mapping::TiledMap* tiled_map() { return tiled_map_.get(); }
+    const mapping::TiledMap* tiled_map() const { return tiled_map_.get(); }
+
 private:
     void WireLidarIVox();
+    void WireTiledMap();
 
     Options options_;
     RuntimeConfig runtime_;
@@ -92,6 +97,8 @@ private:
     std::unique_ptr<frontend::LocalEstimator> local_estimator_;
     //! Fallback live IVox owner when no LocalMapping (LO/LIO without vision).
     std::unique_ptr<mapping::MapIncremental> map_incremental_;
+    //! Optional chunked PCD map when runtime.maps_tiled.
+    std::unique_ptr<mapping::TiledMap> tiled_map_;
     bool running_ = false;
 };
 

@@ -21,6 +21,7 @@
 #include "autonomy/localization/atlas/frontend/lio/imu_process.hpp"
 #include "autonomy/localization/atlas/frontend/lio/sync.hpp"
 #include "autonomy/localization/atlas/frontend/local_estimator.hpp"
+#include "autonomy/localization/atlas/io/g2p5/g2p5.hpp"
 #include "autonomy/localization/atlas/mapping/lidar_keyframe.hpp"
 #include "autonomy/localization/atlas/mapping/map_incremental.hpp"
 #include "autonomy/localization/atlas/sensor/imu/imu_sensor.hpp"
@@ -28,6 +29,8 @@
 #include "autonomy/localization/atlas/sensor/lidar/preprocess.hpp"
 
 #include <atomic>
+#include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -44,9 +47,18 @@ class VizBridge;
  * Map insert via mapping::MapIncremental::IntegrateScan after FeedWithPose.
  * Sensor-layer bridge only; does not publish a second pose stream.
  * Optional LocalEstimator provides T_wb when no vision system is attached.
+ *
+ * Lidar loop (optional): LidarPoseGraph Optimize → sync KF T_wb → Reset State
+ * (LocalEstimator) and/or map_publisher for LIVO. Not a second SLAM; does not
+ * invent vision LoopClosing edges.
  */
 class LidarBridge {
 public:
+    //! Fired after successful lidar pose-graph Optimize + State apply.
+    using LoopClosedFn = std::function<void(
+        const Mat44_t& T_wb_corrected, std::uint64_t query_id,
+        std::uint64_t cand_id)>;
+
     struct Options {
         std::string topic = "/points";
         sensor::Preprocess::Options preprocess;
@@ -74,6 +86,10 @@ public:
         map_incremental_ = map_inc;
     }
     void SetImuSensor(sensor::ImuSensor* imu) { imu_sensor_ = imu; }
+    void SetG2P5(map::G2P5* g2p5) { g2p5_ = g2p5; }
+    void SetLoopClosedCallback(LoopClosedFn fn) {
+        on_loop_closed_ = std::move(fn);
+    }
 
     bool Start(const std::shared_ptr<autolink::Node>& node);
     void Stop();
@@ -82,7 +98,10 @@ private:
     void OnCloud(
         const std::shared_ptr<automsgs::msgs::sensor_msgs::PointCloud2>& msg);
     Mat44_t CurrentTwc() const;
-    void MaybeLidarLoop(double t, const Mat44_t& Twb,
+    //! Keyframe gate shared by lidar loop + G2P5; returns true if new KF.
+    bool MaybeKeyframe(double t, const Mat44_t& Twb,
+                       const std::vector<Vec3_t>& cloud_body);
+    void MaybeLidarLoop(const Mat44_t& Twb,
                         const std::vector<Vec3_t>& cloud_body);
 
     system* slam_ = nullptr;
@@ -91,6 +110,8 @@ private:
     mapping::MapIncremental* map_incremental_ = nullptr;
     sensor::ImuSensor* imu_sensor_ = nullptr;
     VizBridge* viz_ = nullptr;
+    map::G2P5* g2p5_ = nullptr;
+    LoopClosedFn on_loop_closed_;
     Options options_;
     sensor::Preprocess preprocess_;
     frontend::lio::LidarImuSync sync_;

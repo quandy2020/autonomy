@@ -16,10 +16,14 @@
 
 #include "autonomy/localization/atlas/mapping/ivox/ivox.hpp"
 
+#include "autonomy/localization/atlas/mapping/ivox/hilbert.hpp"
+
 #include <Eigen/Eigenvalues>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <unordered_set>
 
@@ -80,7 +84,25 @@ IVox::Key IVox::MortonEncode3(int ix, int iy, int iz) {
                             (ExpandBits21(uz) << 2));
 }
 
+IVox::Key IVox::HilbertEncode3(int ix, int iy, int iz) {
+    // Bias signed indices into uint16 range, then Hilbert PositionToIndex.
+    constexpr int kBias = 1 << 15;
+    auto clamp_u16 = [](int v) -> std::uint16_t {
+        const int c = std::clamp(v, 0, 65535);
+        return static_cast<std::uint16_t>(c);
+    };
+    const std::array<std::uint16_t, 3> apos{
+        clamp_u16(ix + kBias), clamp_u16(iy + kBias), clamp_u16(iz + kBias)};
+    const std::array<std::uint16_t, 3> idx =
+        hilbert::v2::PositionToIndex(apos);
+    return (static_cast<Key>(idx[0]) << 32) |
+           (static_cast<Key>(idx[1]) << 16) | static_cast<Key>(idx[2]);
+}
+
 IVox::Key IVox::ToKey(int ix, int iy, int iz) const {
+    if (options_.use_hilbert_key) {
+        return HilbertEncode3(ix, iy, iz);
+    }
     if (options_.use_morton_key) {
         return MortonEncode3(ix, iy, iz);
     }

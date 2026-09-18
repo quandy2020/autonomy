@@ -72,6 +72,26 @@ T NormalizeAngleDifference(T difference) {
     return difference;
 }
 
+//! Shortest signed angle difference in degrees, result in (-180, 180].
+template <typename T>
+T NormalizeAngleDifferenceDegrees(T difference) {
+    const T kHalfTurn = T(180);
+    const T kFullTurn = T(360);
+    while (difference > kHalfTurn) {
+        difference -= kFullTurn;
+    }
+    while (difference <= -kHalfTurn) {
+        difference += kFullTurn;
+    }
+    return difference;
+}
+
+//! a1 − a2 in degrees, wrapped to (-180, 180] (e.g. OpenCV keypoint.angle).
+template <typename T>
+T AngleDiffDegrees(T a1, T a2) {
+    return NormalizeAngleDifferenceDegrees(a1 - a2);
+}
+
 template <typename T>
 T atan2(const Eigen::Matrix<T, 2, 1>& vector) {
     return ceres::atan2(vector.y(), vector.x());

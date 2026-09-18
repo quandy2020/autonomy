@@ -22,7 +22,7 @@
 #include "autonomy/localization/atlas/util/frame_publisher.hpp"
 #include "autonomy/localization/atlas/util/converter.hpp"
 #include "autonomy/localization/atlas/util/image_converter.hpp"
-#include "autonomy/localization/atlas/util/yaml.hpp"
+#include "autonomy/common/param_handler.hpp"
 #include "autonomy/localization/atlas/sensor/imu/config.hpp"
 #include "autonomy/localization/atlas/sensor/imu/buffer.hpp"
 
@@ -77,15 +77,15 @@ system::system(const std::shared_ptr<config>& cfg, const std::string& vocab_file
         ADEBUG << "Running without vocabulary";
     }
 
-    const auto system_params = util::yaml_optional_ref(cfg->yaml_node_, "System");
+    const auto system_params = autonomy::common::YamlChild(cfg->yaml_node_, "System");
     const int pool_size =
         system_params["thread_pool_size"].as<int>(kDefaultAtlasThreadPoolSize);
     thread_pool_ = std::make_unique<::autonomy::common::ThreadPool>(
         pool_size > 0 ? pool_size : kDefaultAtlasThreadPoolSize);
     AINFO << "Atlas system ThreadPool size=" << (pool_size > 0 ? pool_size : kDefaultAtlasThreadPoolSize);
 
-    camera_ = camera::camera_factory::create(util::yaml_optional_ref(cfg->yaml_node_, "Camera"));
-    orb_params_ = new feature::orb_params(util::yaml_optional_ref(cfg->yaml_node_, "Feature"));
+    camera_ = camera::camera_factory::create(autonomy::common::YamlChild(cfg->yaml_node_, "Camera"));
+    orb_params_ = new feature::orb_params(autonomy::common::YamlChild(cfg->yaml_node_, "Feature"));
     AINFO << "load orb_params "" << orb_params_->name_ << """;
 
     // database
@@ -110,7 +110,7 @@ system::system(const std::shared_ptr<config>& cfg, const std::string& vocab_file
     tracker_ = new Tracking(cfg_, camera_, map_db_, bow_vocab_, bow_db_);
 
     // IMU (optional)
-    imu_cfg_ = imu::config::from_yaml(util::yaml_optional_ref(cfg->yaml_node_, "IMU"));
+    imu_cfg_ = imu::config::from_yaml(autonomy::common::YamlChild(cfg->yaml_node_, "IMU"));
     if (imu_cfg_.enabled) {
         imu_buffer_ = std::make_unique<imu::buffer>(imu_cfg_.buffer_capacity);
         tracker_->set_imu(imu_cfg_, imu_buffer_.get());
@@ -118,7 +118,7 @@ system::system(const std::shared_ptr<config>& cfg, const std::string& vocab_file
     }
 
     // mapping module
-    mapper_ = new LocalMapping(util::yaml_optional_ref(cfg->yaml_node_, "Mapping"), map_db_, bow_db_, bow_vocab_,
+    mapper_ = new LocalMapping(autonomy::common::YamlChild(cfg->yaml_node_, "Mapping"), map_db_, bow_db_, bow_vocab_,
                                  imu_cfg_);
     if (residual_mask_.any()) {
         mapper_->set_residual_mask(residual_mask_);
@@ -132,14 +132,14 @@ system::system(const std::shared_ptr<config>& cfg, const std::string& vocab_file
     }
 
     // preprocessing modules
-    const auto preprocessing_params = util::yaml_optional_ref(cfg->yaml_node_, "Preprocessing");
+    const auto preprocessing_params = autonomy::common::YamlChild(cfg->yaml_node_, "Preprocessing");
     if (camera_->setup_type_ == camera::setup_type_t::RGBD) {
         depthmap_factor_ = preprocessing_params["depthmap_factor"].as<double>(depthmap_factor_);
         if (depthmap_factor_ < 0.) {
             throw std::runtime_error("depthmap_factor must be greater than 0");
         }
     }
-    auto mask_rectangles = util::get_rectangles(preprocessing_params["mask_rectangles"]);
+    auto mask_rectangles = autonomy::common::ParamHandler::ParseRectangles(preprocessing_params["mask_rectangles"]);
 
     const auto min_size = preprocessing_params["min_size"].as<unsigned int>(800);
     const auto desc_type_str = preprocessing_params["descriptor_type"].as<std::string>("ORB");
@@ -248,7 +248,7 @@ void system::startup(const bool need_initialize) {
         tracker_->tracking_state_ = tracker_state_t::Lost;
     }
 
-    const auto system_params = util::yaml_optional_ref(cfg_->yaml_node_, "System");
+    const auto system_params = autonomy::common::YamlChild(cfg_->yaml_node_, "System");
     const bool use_pool_mapping =
         system_params["use_pool_mapping"].as<bool>(true);
     const bool use_pool_backend =

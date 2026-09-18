@@ -52,6 +52,12 @@ struct RuntimeConfig {
     bool with_loop_closing = true;
     bool maps_dense_rgbd = true;
     bool maps_g2p5 = false;
+    //! Chunked lidar map (TiledMap PCD + index.yaml); YAML `maps.tiled`.
+    bool maps_tiled = false;
+    //! Prior map directory for LidarLocator (`maps.tiled_path`).
+    std::string tiled_map_path;
+    //! Pure-lidar NDT loc against prior map (default off). YAML `enable_lidar_loc`.
+    bool enable_lidar_loc = false;
 
     std::string vision_config_path;
     std::string vocab_path;

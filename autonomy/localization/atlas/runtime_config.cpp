@@ -16,7 +16,7 @@
 
 #include "autonomy/localization/atlas/runtime_config.hpp"
 
-#include "autonomy/localization/atlas/util/yaml.hpp"
+#include "autonomy/common/param_handler.hpp"
 
 #include <stdexcept>
 
@@ -76,7 +76,7 @@ RuntimeConfig LoadRuntimeConfig(const std::string& yaml_path) {
     const std::string modality_name = root["modality"].as<std::string>("vio");
     RuntimeConfig cfg = MakeRuntimeConfig(common::ParseModality(modality_name));
 
-    const auto sensors = util::yaml_optional_ref(root, "sensors");
+    const auto sensors = autonomy::common::YamlChild(root, "sensors");
     bool cam = cfg.flags.use_vision;
     bool imu = cfg.flags.use_imu;
     bool lidar = cfg.flags.use_lidar;
@@ -96,7 +96,7 @@ RuntimeConfig LoadRuntimeConfig(const std::string& yaml_path) {
         (static_cast<int>(cam) + static_cast<int>(lidar) + static_cast<int>(odom) > 1)
         || (lidar && imu) || (odom && imu);
 
-    const auto residuals = util::yaml_optional_ref(root, "residuals");
+    const auto residuals = autonomy::common::YamlChild(root, "residuals");
     if (residuals) {
         cfg.residuals.vision = residuals["vision"].as<bool>(cfg.flags.use_vision);
         cfg.residuals.imu = residuals["imu"].as<bool>(cfg.flags.use_imu);
@@ -109,17 +109,28 @@ RuntimeConfig LoadRuntimeConfig(const std::string& yaml_path) {
         cfg.residuals.odom = cfg.flags.use_odom;
     }
 
-    const auto system = util::yaml_optional_ref(root, "system");
+    const auto system = autonomy::common::YamlChild(root, "system");
     if (system) {
         cfg.thread_pool_size = system["thread_pool_size"].as<int>(cfg.thread_pool_size);
         cfg.with_loop_closing =
             system["with_loop_closing"].as<bool>(cfg.with_loop_closing);
     }
 
-    const auto maps = util::yaml_optional_ref(root, "maps");
+    const auto maps = autonomy::common::YamlChild(root, "maps");
     if (maps) {
         cfg.maps_dense_rgbd = maps["dense_rgbd"].as<bool>(cfg.maps_dense_rgbd);
         cfg.maps_g2p5 = maps["g2p5"].as<bool>(cfg.maps_g2p5);
+        cfg.maps_tiled = maps["tiled"].as<bool>(cfg.maps_tiled);
+        if (maps["tiled_path"]) {
+            cfg.tiled_map_path = maps["tiled_path"].as<std::string>("");
+        } else if (maps["path"]) {
+            cfg.tiled_map_path = maps["path"].as<std::string>("");
+        }
+    }
+    cfg.enable_lidar_loc =
+        root["enable_lidar_loc"].as<bool>(cfg.enable_lidar_loc);
+    if (cfg.enable_lidar_loc && !cfg.maps_tiled) {
+        cfg.maps_tiled = true;
     }
 
     // Calibration: inline `calibration:` and/or `calibration_path:`.

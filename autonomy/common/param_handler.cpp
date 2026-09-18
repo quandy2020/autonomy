@@ -18,6 +18,7 @@
 #include "autonomy/common/param_handler.hpp"
 
 #include <glog/logging.h>
+#include <stdexcept>
 
 namespace autonomy {
 namespace common {
@@ -108,6 +109,31 @@ int ParamHandler::GetNonNegativeInt(const std::string& key) {
     CHECK_GE(value, 0) << "Value for key '" << key
                        << "' must be non-negative, got " << value;
     return value;
+}
+
+YAML::Node ParamHandler::GetChild(const std::string& key) const {
+    if (!config_[key].IsDefined()) {
+        return YAML::Node();
+    }
+    return config_[key];
+}
+
+std::vector<std::vector<float>> ParamHandler::ParseRectangles(
+    const YAML::Node& node) {
+    auto rectangles =
+        node.as<std::vector<std::vector<float>>>(std::vector<std::vector<float>>());
+    for (const auto& v : rectangles) {
+        if (v.size() != 4) {
+            throw std::runtime_error("mask rectangle must contain four parameters");
+        }
+        if (v.at(0) >= v.at(1)) {
+            throw std::runtime_error("x_max must be greater than x_min");
+        }
+        if (v.at(2) >= v.at(3)) {
+            throw std::runtime_error("y_max must be greater than y_min");
+        }
+    }
+    return rectangles;
 }
 
 }  // namespace common

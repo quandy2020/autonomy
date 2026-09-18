@@ -21,19 +21,49 @@
 namespace autonomy::localization::atlas {
 namespace map {
 
+G2P5Projector::G2P5Projector()
+    : G2P5Projector(Options{}) {}
+
+G2P5Projector::G2P5Projector(Options options)
+    : options_(std::move(options)) {
+    options_.g2p5.grid_map_resolution_ = options_.resolution;
+    options_.g2p5.min_th_floor_ = options_.min_z;
+    options_.g2p5.max_th_floor_ = options_.max_z;
+    options_.g2p5.online_mode_ = false;
+    g2p5_ = std::make_shared<G2P5>(options_.g2p5);
+}
+
+G2P5Projector::G2P5Projector(std::shared_ptr<G2P5> g2p5)
+    : g2p5_(std::move(g2p5)) {
+    if (g2p5_) {
+        options_.g2p5 = g2p5_->options();
+        options_.resolution = options_.g2p5.grid_map_resolution_;
+        options_.min_z = options_.g2p5.min_th_floor_;
+        options_.max_z = options_.g2p5.max_th_floor_;
+    }
+}
+
 std::vector<int8_t> G2P5Projector::Project(
     const std::vector<Vec3_t>& points_world) const {
-    const int w = std::max(1, options_.width);
-    const int h = std::max(1, options_.height);
+    return ProjectOnce(points_world, options_);
+}
+
+std::vector<int8_t> G2P5Projector::ProjectOnce(
+    const std::vector<Vec3_t>& points_world, const Options& options) {
+    // Prefer a lightweight fixed-size buffer for callers that only need
+    // a flat occupancy image (LocalizationServer / debug). Full G2P5 ray
+    // casting is available via G2P5::PushKeyframe.
+    const int w = std::max(1, options.width);
+    const int h = std::max(1, options.height);
     std::vector<int8_t> grid(static_cast<std::size_t>(w * h), 0);
-    const double inv = 1.0 / std::max(1e-6, options_.resolution);
+    const double inv = 1.0 / std::max(1e-6, options.resolution);
     const double ox = 0.5 * w;
     const double oy = 0.5 * h;
     for (const auto& p : points_world) {
         if (!p.allFinite()) {
             continue;
         }
-        if (p.z() < options_.min_z || p.z() > options_.max_z) {
+        if (p.z() < options.min_z || p.z() > options.max_z) {
             continue;
         }
         const int ix = static_cast<int>(std::floor(p.x() * inv + ox));

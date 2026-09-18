@@ -31,7 +31,7 @@ namespace mapping {
 /**
  * Lightweight incremental voxel hash (IVox-shaped) for lidar map points.
  * Path: mapping/ivox/; namespace: mapping.
- * Optional Morton key packing for insert-order eviction locality.
+ * Optional Morton / Hilbert key packing for spatial locality on eviction order.
  */
 class IVox {
 public:
@@ -43,6 +43,8 @@ public:
         int min_plane_points = 5;
         //! Pack voxel indices with Morton (Z-order) instead of linear pack.
         bool use_morton_key = false;
+        //! Pack with Hilbert curve index (takes precedence over Morton).
+        bool use_hilbert_key = false;
         //! Always include 6 face-adjacent voxels in neighbor gather.
         bool face_adjacent_neighbors = true;
     };
@@ -83,6 +85,7 @@ private:
 
     Key ToKey(int ix, int iy, int iz) const;
     static Key MortonEncode3(int ix, int iy, int iz);
+    static Key HilbertEncode3(int ix, int iy, int iz);
     void IndexOf(const Vec3_t& p, int* ix, int* iy, int* iz) const;
     void CollectNeighbors(int ix, int iy, int iz,
                           std::vector<Vec3_t>* out,

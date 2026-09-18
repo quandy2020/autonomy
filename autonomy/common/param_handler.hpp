@@ -271,6 +271,11 @@ public:
     int GetInt(const std::string& key);
 
     /**
+     * @brief Get int value (CHECKs key exists and value >= 0)
+     */
+    int GetNonNegativeInt(const std::string& key);
+
+    /**
      * @brief Get bool value (CHECKs if key doesn't exist)
      * @return The bool value
      */
@@ -284,10 +289,17 @@ public:
     std::unique_ptr<ParamHandler> GetDictionary(const std::string& key);
 
     /**
-     * @brief Get int and CHECK that it is non-negative
-     * @return The non-negative int value
+     * @brief Get child node; returns empty Node if key missing (safe for
+     * YAML::Node::as with defaults).
      */
-    int GetNonNegativeInt(const std::string& key);
+    YAML::Node GetChild(const std::string& key) const;
+
+    /**
+     * @brief Parse mask rectangles [[x_min,x_max,y_min,y_max], ...].
+     * @throws std::runtime_error on invalid geometry
+     */
+    static std::vector<std::vector<float>> ParseRectangles(
+        const YAML::Node& node);
 
 protected:
     YAML::Node config_;
@@ -295,6 +307,11 @@ protected:
 private:
     bool fileLoaded = false;
 };
+
+//! Optional child of a YAML node (empty if missing). Prefer over raw node[key].
+inline YAML::Node YamlChild(const YAML::Node& node, const std::string& key) {
+    return ParamHandler(node).GetChild(key);
+}
 
 }  // namespace common
 }  // namespace autonomy

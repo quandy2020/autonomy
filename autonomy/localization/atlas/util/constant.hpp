@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
+ * Copyright 2026 The Openbot Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,23 +14,18 @@
  * limitations under the License.
  */
 
-#ifndef AUTONOMY_LOCALIZATION_ATLAS_UTIL_YAML_HPP_
-#define AUTONOMY_LOCALIZATION_ATLAS_UTIL_YAML_HPP_
+#pragma once
 
-#include <string>
-
-#include "yaml-cpp/yaml.h"
+//! Atlas-only gravity magnitude for ESKF / IMUInit.
+//! Deg/rad → `autonomy::common::DegToRad` / `RadToDeg` (`common/math/math.hpp`).
+//! SO(3) → `autonomy::common::math::{SkewSymmetricMatrix,RotationVectorToRotationMatrix,…}`.
 
 namespace autonomy::localization::atlas {
 namespace util {
+namespace constant {
 
-inline YAML::Node yaml_optional_ref(const YAML::Node& ref_node, const std::string& key) {
-    return ref_node[key] ? ref_node[key] : YAML::Node();
-}
+constexpr double kGRAVITY = 9.80665;
 
-std::vector<std::vector<float>> get_rectangles(const YAML::Node& node);
-
-} // namespace util
+}  // namespace constant
+}  // namespace util
 }  // namespace autonomy::localization::atlas
-
-#endif  // AUTONOMY_LOCALIZATION_ATLAS_UTIL_YAML_HPP_

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
+ * Copyright 2026 The Openbot Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,21 @@
  * limitations under the License.
  */
 
-#ifndef AUTONOMY_LOCALIZATION_ATLAS_UTIL_ANGLE_HPP_
-#define AUTONOMY_LOCALIZATION_ATLAS_UTIL_ANGLE_HPP_
+#pragma once
 
 namespace autonomy::localization::atlas {
-namespace util {
-namespace angle {
+namespace map {
 
-float diff(float angle1, float angle2);
+//! Per-cell stats inside a SubGrid (2.5D occupancy).
+struct GridData {
+    explicit GridData(unsigned int occupy_sum = 0, unsigned int visit_sum = 0)
+        : hit_cnt_(occupy_sum), visit_cnt_(visit_sum) {}
 
-} // namespace angle
-} // namespace util
+    unsigned int hit_cnt_ = 0;
+    unsigned int visit_cnt_ = 0;
+    //! Lowest height relative to floor; passable from above, not from below.
+    float height_ = 10000.f;
+};
+
+}  // namespace map
 }  // namespace autonomy::localization::atlas
-
-#endif  // AUTONOMY_LOCALIZATION_ATLAS_UTIL_ANGLE_HPP_

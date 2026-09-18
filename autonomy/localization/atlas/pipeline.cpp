@@ -77,8 +77,26 @@ mapping::MapIncremental* Pipeline::active_map_incremental() {
     return map_incremental_.get();
 }
 
+void Pipeline::WireTiledMap() {
+    if (!runtime_.maps_tiled) {
+        if (auto* mi = active_map_incremental()) {
+            mi->set_tiled_map(nullptr);
+        }
+        tiled_map_.reset();
+        return;
+    }
+    if (!tiled_map_) {
+        tiled_map_ = std::make_unique<mapping::TiledMap>();
+        LOG(INFO) << "Pipeline: TiledMap created (maps.tiled=true)";
+    }
+    if (auto* mi = active_map_incremental()) {
+        mi->set_tiled_map(tiled_map_.get());
+    }
+}
+
 void Pipeline::WireLidarIVox() {
     if (!sensors_ || !sensors_->lidar()) {
+        WireTiledMap();
         return;
     }
     mapping::IVox::Options ivox_opts;
@@ -90,6 +108,7 @@ void Pipeline::WireLidarIVox() {
             sensors_->lidar()->set_ivox(&mapper->map_incremental()->ivox());
             map_incremental_.reset();  // prefer Mapping ownership
             LOG(INFO) << "Pipeline: MapIncremental IVox owned by LocalMapping";
+            WireTiledMap();
             return;
         }
     }
@@ -98,6 +117,7 @@ void Pipeline::WireLidarIVox() {
         LOG(INFO) << "Pipeline: MapIncremental created (no LocalMapping)";
     }
     sensors_->lidar()->set_ivox(&map_incremental_->ivox());
+    WireTiledMap();
 }
 
 void Pipeline::AttachSystem(system* slam) {
@@ -160,6 +180,10 @@ void Pipeline::Shutdown() {
         sensors_->Shutdown();
         sensors_.reset();
     }
+    if (auto* mi = active_map_incremental()) {
+        mi->set_tiled_map(nullptr);
+    }
+    tiled_map_.reset();
     map_incremental_.reset();
     local_estimator_.reset();
     vision_ = nullptr;

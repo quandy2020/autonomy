@@ -9,14 +9,15 @@
 #include "autonomy/localization/atlas/io/dense_map_builder.hpp"
 #include "autonomy/localization/atlas/optimize/line_geometry_util.hpp"
 #include "autonomy/localization/atlas/util/converter.hpp"
-#include "autonomy/localization/atlas/util/yaml.hpp"
+#include "autonomy/common/param_handler.hpp"
 #include "autonomy/localization/atlas/util/schedule.hpp"
 #include "autolink/common/log.hpp"
 
 // Lidar loop (PCL multi-res NDT + SE3 pose graph): see
 // backend/lidar_loop_detector.hpp / lidar_pose_graph.hpp —
 // wired optionally via LidarBridge::Options.use_lidar_loop (default false).
-// Does not merge into vision LoopClosing.
+// Unified pose path: Optimize → KF T_wb sync → LocalEstimator::Reset /
+// map_publisher (LIVO). Does not invent vision LoopClosing edges or GlobalBA.
 // Vision BoW loop_detector_ remains the active path in LoopClosing.
 
 namespace autonomy::localization::atlas {
@@ -24,15 +25,15 @@ namespace autonomy::localization::atlas {
 LoopClosing::LoopClosing(data::map_database* map_db, data::bow_database* bow_db,
                                                        data::bow_vocabulary* bow_vocab, const YAML::Node& yaml_node,
                                                        const bool fix_scale)
-    : loop_detector_(new module::loop_detector(bow_db, bow_vocab, util::yaml_optional_ref(yaml_node, "LoopDetector"), fix_scale)),
+    : loop_detector_(new module::loop_detector(bow_db, bow_vocab, autonomy::common::YamlChild(yaml_node, "LoopDetector"), fix_scale)),
       loop_bundle_adjuster_(new module::loop_bundle_adjuster(
           map_db,
-          util::yaml_optional_ref(yaml_node, "GlobalOptimizer")["num_iter"].as<unsigned int>(10),
-          util::yaml_optional_ref(yaml_node, "GlobalOptimizer")["use_huber_kernel"].as<bool>(false),
-          util::yaml_optional_ref(yaml_node, "GlobalOptimizer")["verbose"].as<bool>(false))),
+          autonomy::common::YamlChild(yaml_node, "GlobalOptimizer")["num_iter"].as<unsigned int>(10),
+          autonomy::common::YamlChild(yaml_node, "GlobalOptimizer")["use_huber_kernel"].as<bool>(false),
+          autonomy::common::YamlChild(yaml_node, "GlobalOptimizer")["verbose"].as<bool>(false))),
       map_db_(map_db),
-      graph_optimizer_(new optimize::graph_optimizer(util::yaml_optional_ref(yaml_node, "GraphOptimizer"), map_db, fix_scale)),
-      thr_neighbor_keyframes_(util::yaml_optional_ref(yaml_node, "GlobalOptimizer")["thr_neighbor_keyframes"].as<unsigned int>(15)) {
+      graph_optimizer_(new optimize::graph_optimizer(autonomy::common::YamlChild(yaml_node, "GraphOptimizer"), map_db, fix_scale)),
+      thr_neighbor_keyframes_(autonomy::common::YamlChild(yaml_node, "GlobalOptimizer")["thr_neighbor_keyframes"].as<unsigned int>(15)) {
     ADEBUG << "CONSTRUCT: LoopClosing";
 }
 

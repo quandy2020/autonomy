@@ -4,13 +4,13 @@
 
 #include "autonomy/localization/atlas/frontend/plp/plp_options.hpp"
 
-#include "autonomy/localization/atlas/util/yaml.hpp"
+#include "autonomy/common/param_handler.hpp"
 
 namespace autonomy::localization::atlas::plp {
 
 Options Options::FromYaml(const YAML::Node& root) {
     Options o;
-    const auto node = util::yaml_optional_ref(root, "PLP");
+    const auto node = autonomy::common::YamlChild(root, "PLP");
     if (!node || node.IsNull()) {
         return o;
     }

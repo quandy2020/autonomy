@@ -62,8 +62,12 @@ Preprocess::Options Preprocess::FromYaml(const YAML::Node& node) {
     o.voxel_leaf = node["voxel_leaf"].as<double>(o.voxel_leaf);
     o.max_points = node["max_points"].as<int>(o.max_points);
     o.use_point_time = node["use_point_time"].as<bool>(o.use_point_time);
-    // Velodyne / Ouster typically carry per-point time — prefer timed path.
-    if (o.model == LidarModel::kVelodyne || o.model == LidarModel::kOuster) {
+    o.scan_rate_hz = node["scan_rate_hz"].as<double>(o.scan_rate_hz);
+    o.synthesize_ring_time =
+        node["synthesize_ring_time"].as<bool>(o.synthesize_ring_time);
+    // Velodyne / Ouster / Livox typically carry per-point time — prefer timed.
+    if (o.model == LidarModel::kVelodyne || o.model == LidarModel::kOuster ||
+        o.model == LidarModel::kLivox) {
         if (!node["use_point_time"]) {
             o.use_point_time = true;
         }
@@ -171,6 +175,61 @@ std::vector<TimedPoint> Preprocess::RunTimed(
         }
     }
     return down;
+}
+
+std::vector<double> Preprocess::SynthesizeRingBasedTime(
+    const std::vector<Vec3_t>& points_body,
+    const std::vector<int>& rings,
+    double scan_rate_hz) {
+    if (points_body.empty()) {
+        return {};
+    }
+    const double omega =
+        360.0 * std::max(1.0, scan_rate_hz);  // deg/s, full rotation
+    const bool have_rings = rings.size() == points_body.size();
+    // First yaw per ring.
+    constexpr int kMaxRings = 128;
+    std::vector<double> yaw_fp(kMaxRings, 0.0);
+    std::vector<char> yaw_init(kMaxRings, 0);
+    std::vector<double> raw_ms;
+    raw_ms.reserve(points_body.size());
+
+    for (std::size_t i = 0; i < points_body.size(); ++i) {
+        const auto& p = points_body[i];
+        int layer = 0;
+        if (have_rings) {
+            layer = std::clamp(rings[i], 0, kMaxRings - 1);
+        }
+        const double yaw =
+            std::atan2(p.y(), p.x()) * 180.0 / M_PI;  // [-180,180]
+        if (!yaw_init[static_cast<std::size_t>(layer)]) {
+            yaw_fp[static_cast<std::size_t>(layer)] = yaw;
+            yaw_init[static_cast<std::size_t>(layer)] = 1;
+            raw_ms.push_back(0.0);
+            continue;
+        }
+        double t_ms = 0.0;
+        const double yaw0 = yaw_fp[static_cast<std::size_t>(layer)];
+        if (yaw <= yaw0) {
+            t_ms = (yaw0 - yaw) / omega * 1000.0;
+        } else {
+            t_ms = (yaw0 - yaw + 360.0) / omega * 1000.0;
+        }
+        raw_ms.push_back(t_ms);
+    }
+
+    double t_max = 0.0;
+    for (double v : raw_ms) {
+        t_max = std::max(t_max, v);
+    }
+    if (t_max < 1e-6) {
+        return {};
+    }
+    std::vector<double> out(raw_ms.size());
+    for (std::size_t i = 0; i < raw_ms.size(); ++i) {
+        out[i] = std::clamp(raw_ms[i] / t_max, 0.0, 1.0);
+    }
+    return out;
 }
 
 }  // namespace sensor

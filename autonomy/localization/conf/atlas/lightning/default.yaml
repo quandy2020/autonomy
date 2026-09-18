@@ -11,6 +11,8 @@ preprocess:
   use_point_time: false
 
 # Geometric lidar loop (LO/LIO LocalEstimator path). Default off.
+# Set true to close loops via NDT + LidarPoseGraph → estimator Reset
+# (and KF T_wb sync). Does not merge into vision LoopClosing / GlobalBA.
 use_lidar_loop: false
 lidar_loop:
   candidate_radius_m: 15.0

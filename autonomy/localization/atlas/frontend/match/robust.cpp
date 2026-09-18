@@ -6,7 +6,8 @@
 #include "autonomy/localization/atlas/data/landmark.hpp"
 #include "autonomy/localization/atlas/frontend/match/robust.hpp"
 #include "autonomy/localization/atlas/frontend/solve/essential_solver.hpp"
-#include "autonomy/localization/atlas/util/angle.hpp"
+#include "autonomy/common/math/angle.hpp"
+
 
 namespace autonomy::localization::atlas {
 namespace match {
@@ -72,7 +73,7 @@ unsigned int robust::match_for_triangulation(const std::shared_ptr<data::keyfram
                 continue;
             }
 
-            if (check_orientation_ && std::abs(util::angle::diff(keypt_1.angle, keyfrm_2->frm_obs_.undist_keypts_.at(idx_2).angle)) > 30.0) {
+            if (check_orientation_ && std::abs(autonomy::common::math::AngleDiffDegrees(keypt_1.angle, keyfrm_2->frm_obs_.undist_keypts_.at(idx_2).angle)) > 30.0) {
                 continue;
             }
 
@@ -276,7 +277,7 @@ unsigned int robust::brute_force_match(const data::frame_observation& frm_obs,
                 continue;
             }
 
-            if (check_orientation_ && std::abs(util::angle::diff(keypts_1.at(idx_1).angle, keypts_2.at(idx_2).angle)) > 30.0) {
+            if (check_orientation_ && std::abs(autonomy::common::math::AngleDiffDegrees(keypts_1.at(idx_1).angle, keypts_2.at(idx_2).angle)) > 30.0) {
                 continue;
             }
 

@@ -16,8 +16,12 @@
 
 #include "autonomy/localization/atlas/frontend/lio/imu_process.hpp"
 
+#include "autonomy/localization/atlas/util/constant.hpp"
+
 #include <algorithm>
 #include <cmath>
+
+#include "glog/logging.h"
 
 namespace autonomy::localization::atlas {
 namespace frontend {
@@ -60,6 +64,76 @@ void InterpolatePose(const ImuPoseSample& a, const ImuPoseSample& b, double t,
 
 }  // namespace
 
+void ImuProcess::ResetImuInit() {
+    mean_acc_ = Vec3_t(0.0, 0.0, -1.0);
+    mean_gyr_ = Vec3_t::Zero();
+    cov_acc_ = Vec3_t(0.1, 0.1, 0.1);
+    cov_gyr_ = Vec3_t(0.1, 0.1, 0.1);
+    init_iter_num_ = 1;
+    b_first_frame_ = true;
+    imu_need_init_ = true;
+}
+
+bool ImuProcess::TryImuInit(LocalEstimator* est, const MeasureGroup& meas) {
+    if (!imu_need_init_) {
+        return true;
+    }
+    if (!est || meas.imu.empty()) {
+        return false;
+    }
+
+    if (b_first_frame_) {
+        init_iter_num_ = 1;
+        b_first_frame_ = false;
+        mean_acc_ = meas.imu.front().acc;
+        mean_gyr_ = meas.imu.front().gyro;
+    }
+
+    int N = init_iter_num_;
+    for (const auto& imu : meas.imu) {
+        const Vec3_t cur_acc = imu.acc;
+        const Vec3_t cur_gyr = imu.gyro;
+        mean_acc_ += (cur_acc - mean_acc_) / static_cast<double>(N);
+        mean_gyr_ += (cur_gyr - mean_gyr_) / static_cast<double>(N);
+        cov_acc_ = cov_acc_ * (N - 1.0) / N +
+                   (cur_acc - mean_acc_).cwiseProduct(cur_acc - mean_acc_) *
+                       (N - 1.0) / (N * N);
+        cov_gyr_ = cov_gyr_ * (N - 1.0) / N +
+                   (cur_gyr - mean_gyr_).cwiseProduct(cur_gyr - mean_gyr_) *
+                       (N - 1.0) / (N * N);
+        ++N;
+    }
+    init_iter_num_ = N;
+
+    if (init_iter_num_ <= max_init_count_) {
+        VLOG(1) << "Atlas IMUInit waiting ... " << init_iter_num_ << "/"
+                << max_init_count_;
+        return false;
+    }
+
+    const double mean_norm = mean_acc_.norm();
+    if (mean_norm < 1e-6) {
+        LOG(WARNING) << "Atlas IMUInit: mean_acc near zero, keep waiting";
+        return false;
+    }
+
+    // Gravity from −mean_acc normalized * g; bg ≈ mean_gyr (lightning IMUInit).
+    const Vec3_t gravity =
+        -mean_acc_ / mean_norm * util::constant::kGRAVITY;
+    const Mat44_t Twb = est->T_wb();
+    est->Reset(Twb);
+    est->set_gravity(gravity);
+    est->set_gyro_bias(mean_gyr_);
+    est->SetImuInitCovariance();
+
+    imu_need_init_ = false;
+    LOG(INFO) << "Atlas IMUInit done, bg=" << mean_gyr_.transpose()
+              << " grav=" << gravity.transpose()
+              << " mean_acc=" << mean_acc_.transpose()
+              << " N=" << init_iter_num_;
+    return true;
+}
+
 void BuildImuPoses(LocalEstimator* est,
                    const MeasureGroup& meas,
                    std::vector<ImuPoseSample>* imu_poses) {
@@ -71,6 +145,7 @@ void BuildImuPoses(LocalEstimator* est,
         return;
     }
 
+    const Vec3_t gravity = est->gravity();
     const double t_beg = meas.lidar_begin_time;
     const double t_end = (meas.lidar_end_time > t_beg)
                              ? meas.lidar_end_time
@@ -80,8 +155,7 @@ void BuildImuPoses(LocalEstimator* est,
     {
         const auto& front = meas.imu.front();
         const Mat33_t R = est->T_wb().block<3, 3>(0, 0);
-        const Vec3_t acc_w =
-            R * front.acc + Vec3_t(0.0, 0.0, -9.81);
+        const Vec3_t acc_w = R * front.acc + gravity;
         imu_poses->push_back(
             SampleFromEstimator(*est, 0.0, front.gyro, acc_w));
     }
@@ -97,7 +171,7 @@ void BuildImuPoses(LocalEstimator* est,
         const Vec3_t acc = 0.5 * (head.acc + tail.acc);
         est->PredictImu(dt, gyro, acc);
         const Mat33_t R = est->T_wb().block<3, 3>(0, 0);
-        const Vec3_t acc_w = R * acc + Vec3_t(0.0, 0.0, -9.81);
+        const Vec3_t acc_w = R * acc + gravity;
         const double offs = tail.timestamp - t_beg;
         imu_poses->push_back(
             SampleFromEstimator(*est, offs, gyro, acc_w));
@@ -110,8 +184,7 @@ void BuildImuPoses(LocalEstimator* est,
             const auto& last = meas.imu.back();
             est->PredictImu(dt, last.gyro, last.acc);
             const Mat33_t R = est->T_wb().block<3, 3>(0, 0);
-            const Vec3_t acc_w =
-                R * last.acc + Vec3_t(0.0, 0.0, -9.81);
+            const Vec3_t acc_w = R * last.acc + gravity;
             imu_poses->push_back(SampleFromEstimator(
                 *est, t_end - t_beg, last.gyro, acc_w));
         }

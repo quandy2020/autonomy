@@ -18,7 +18,7 @@
 #define AUTONOMY_LOCALIZATION_ATLAS_OPTIMIZE_POSE_OPTIMIZER_FACTORY_HPP_
 
 #include "autonomy/localization/atlas/optimize/pose_optimizer_g2o.hpp"
-#include "autonomy/localization/atlas/util/yaml.hpp"
+#include "autonomy/common/param_handler.hpp"
 
 #include <memory>
 #include <stdexcept>
@@ -35,7 +35,7 @@ public:
         if (backend != "g2o") {
             throw std::runtime_error("Invalid backend: only g2o is supported");
         }
-        YAML::Node g2o_node = util::yaml_optional_ref(yaml_node, "g2o");
+        YAML::Node g2o_node = autonomy::common::YamlChild(yaml_node, "g2o");
         return std::unique_ptr<pose_optimizer>(new pose_optimizer_g2o(
             g2o_node["num_trials_robust"].as<unsigned int>(2),
             g2o_node["num_trials"].as<unsigned int>(2),

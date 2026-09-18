@@ -53,7 +53,8 @@ double StampSec(const automsgs::msgs::sensor_msgs::PointCloud2& msg) {
            1e-9 * static_cast<double>(s.nanosec());
 }
 
-//! Decode optional per-point time field ("t" or "time") into [0,1] relative.
+//! Decode optional per-point time field ("t", "time", or "offset_time") into [0,1].
+//! `offset_time` is Livox CustomMsg-style (often ns); values are min-max normalized.
 bool DecodePointTimes(
     const automsgs::msgs::sensor_msgs::PointCloud2& msg,
     std::size_t n_decoded,
@@ -64,11 +65,11 @@ bool DecodePointTimes(
     times_rel->clear();
     const bool has_t = HasField(msg, "t");
     const bool has_time = HasField(msg, "time");
-    if (!has_t && !has_time) {
+    const bool has_offset = HasField(msg, "offset_time");
+    if (!has_t && !has_time && !has_offset) {
         return false;
     }
     using automsgs::msgs::sensor_msgs::PointCloud2ConstIterator;
-    // Prefer float "t" (Velodyne/Ouster style); fall back to "time".
     std::vector<double> raw;
     raw.reserve(n_decoded);
     const std::size_t n =
@@ -81,11 +82,27 @@ bool DecodePointTimes(
                  ++i, ++it) {
                 raw.push_back(static_cast<double>(*it));
             }
-        } else {
+        } else if (has_time) {
             PointCloud2ConstIterator<float> it(msg, "time");
             for (std::size_t i = 0; i < n && raw.size() < n_decoded;
                  ++i, ++it) {
                 raw.push_back(static_cast<double>(*it));
+            }
+        } else {
+            // Livox-style offset_time: prefer uint32 ns, fall back to float.
+            try {
+                PointCloud2ConstIterator<std::uint32_t> it(msg, "offset_time");
+                for (std::size_t i = 0; i < n && raw.size() < n_decoded;
+                     ++i, ++it) {
+                    raw.push_back(static_cast<double>(*it));
+                }
+            } catch (...) {
+                raw.clear();
+                PointCloud2ConstIterator<float> it(msg, "offset_time");
+                for (std::size_t i = 0; i < n && raw.size() < n_decoded;
+                     ++i, ++it) {
+                    raw.push_back(static_cast<double>(*it));
+                }
             }
         }
     } catch (...) {
@@ -109,7 +126,7 @@ bool DecodePointTimes(
         *times_rel = frontend::lio::SynthesizeUniformTimeRel(n_decoded);
         return !times_rel->empty();
     }
-    // If already in [0,1], keep; if looks like seconds/ms, normalize.
+    // If already in [0,1], keep; if looks like seconds/ms/ns, normalize.
     const bool already_unit =
         t_min >= -1e-3 && t_max <= 1.0 + 1e-3;
     times_rel->resize(raw.size());
@@ -126,6 +143,40 @@ bool DecodePointTimes(
         }
     }
     return true;
+}
+
+bool DecodeRings(
+    const automsgs::msgs::sensor_msgs::PointCloud2& msg,
+    std::size_t n_decoded,
+    std::vector<int>* rings) {
+    if (!rings || !HasField(msg, "ring")) {
+        return false;
+    }
+    rings->clear();
+    rings->reserve(n_decoded);
+    using automsgs::msgs::sensor_msgs::PointCloud2ConstIterator;
+    const std::size_t n =
+        static_cast<std::size_t>(msg.width()) *
+        static_cast<std::size_t>(msg.height());
+    try {
+        try {
+            PointCloud2ConstIterator<std::uint16_t> it(msg, "ring");
+            for (std::size_t i = 0; i < n && rings->size() < n_decoded;
+                 ++i, ++it) {
+                rings->push_back(static_cast<int>(*it));
+            }
+        } catch (...) {
+            rings->clear();
+            PointCloud2ConstIterator<std::uint8_t> it(msg, "ring");
+            for (std::size_t i = 0; i < n && rings->size() < n_decoded;
+                 ++i, ++it) {
+                rings->push_back(static_cast<int>(*it));
+            }
+        }
+    } catch (...) {
+        return false;
+    }
+    return rings->size() == n_decoded;
 }
 
 }  // namespace
@@ -178,12 +229,27 @@ Mat44_t LidarBridge::CurrentTwc() const {
     return T_cw.inverse();
 }
 
-void LidarBridge::MaybeLidarLoop(double t, const Mat44_t& Twb,
-                                 const std::vector<Vec3_t>& cloud_body) {
-    if (!options_.use_lidar_loop || cloud_body.empty()) {
-        return;
+bool LidarBridge::MaybeKeyframe(double t, const Mat44_t& Twb,
+                                const std::vector<Vec3_t>& cloud_body) {
+    if (cloud_body.empty() || (!options_.use_lidar_loop && !g2p5_)) {
+        return false;
     }
     if (!keyframe_mgr_.DecideAndPush(t, Twb, cloud_body)) {
+        return false;
+    }
+    if (g2p5_) {
+        auto kf = std::make_shared<map::G2P5Keyframe>();
+        kf->id = keyframe_mgr_.keyframes().back().id;
+        kf->T_wb = Twb;
+        kf->points_body = cloud_body;
+        g2p5_->PushKeyframe(std::move(kf));
+    }
+    return true;
+}
+
+void LidarBridge::MaybeLidarLoop(const Mat44_t& Twb,
+                                 const std::vector<Vec3_t>& cloud_body) {
+    if (!options_.use_lidar_loop || cloud_body.empty()) {
         return;
     }
     const std::uint64_t kf_id = lidar_loop_.AddKeyframe(Twb, cloud_body);
@@ -210,11 +276,34 @@ void LidarBridge::MaybeLidarLoop(double t, const Mat44_t& Twb,
     if (!pose_graph_.Optimize(/*iters=*/20)) {
         return;
     }
+
+    // Sync optimized SE3 poses back into detector KFs (body clouds unchanged).
+    for (const auto& kv : pose_graph_.poses()) {
+        lidar_loop_.UpdateKeyframePose(kv.first, kv.second);
+    }
+
     const Mat44_t T_corr =
         pose_graph_.GetPoseOr(lr.query_id, Twb * lr.T_delta);
+
+    // Unified Atlas pose path: LocalEstimator State (LO/LIO) and/or LIVO
+    // map_publisher so Tracking sees the correction. No vision loop edges.
     if (estimator_) {
         estimator_->Reset(T_corr);
         LOG(INFO) << "LidarBridge: applied lidar pose-graph Reset to estimator";
+    }
+    if (slam_) {
+        if (const auto pub = slam_->get_map_publisher()) {
+            const Mat44_t T_cw =
+                estimator_ ? estimator_->T_cw() : T_corr.inverse();
+            pub->set_current_cam_pose(T_cw);
+            LOG(INFO) << "LidarBridge: set map_publisher pose after lidar loop";
+        }
+    }
+    if (on_loop_closed_) {
+        on_loop_closed_(T_corr, lr.query_id, lr.candidate_id);
+    }
+    if (g2p5_) {
+        g2p5_->RedrawGlobalMap();
     }
 }
 
@@ -247,15 +336,25 @@ void LidarBridge::OnCloud(
         pts.emplace_back(*iter_x, *iter_y, *iter_z);
     }
 
-    // Decode per-point times for Velodyne/Ouster/generic when fields exist.
+    // Decode per-point times for Velodyne/Ouster/Livox when fields exist.
     std::vector<double> decoded_times;
     const bool want_times =
         options_.preprocess.use_point_time ||
         options_.preprocess.model == sensor::LidarModel::kVelodyne ||
         options_.preprocess.model == sensor::LidarModel::kOuster ||
-        HasField(*msg, "t") || HasField(*msg, "time");
+        options_.preprocess.model == sensor::LidarModel::kLivox ||
+        HasField(*msg, "t") || HasField(*msg, "time") ||
+        HasField(*msg, "offset_time");
     if (want_times) {
-        DecodePointTimes(*msg, pts.size(), &decoded_times);
+        if (!DecodePointTimes(*msg, pts.size(), &decoded_times) &&
+            options_.preprocess.synthesize_ring_time &&
+            HasField(*msg, "ring")) {
+            std::vector<int> rings;
+            if (DecodeRings(*msg, pts.size(), &rings)) {
+                decoded_times = sensor::Preprocess::SynthesizeRingBasedTime(
+                    pts, rings, options_.preprocess.scan_rate_hz);
+            }
+        }
     }
 
     std::vector<Vec3_t> filtered;
@@ -299,24 +398,34 @@ void LidarBridge::OnCloud(
                 mg.point_time_rel = frontend::lio::SynthesizeUniformTimeRel(
                     mg.points_body.size());
             }
-            std::vector<frontend::lio::ImuPoseSample> poses;
-            if (estimator_) {
-                frontend::lio::BuildImuPoses(estimator_, mg, &poses);
+
+            // IMUInit: accumulate static IMU; skip deskew / PredictImu until ready.
+            bool imu_ready = true;
+            if (estimator_ && imu_process_.imu_need_init()) {
+                imu_ready = imu_process_.TryImuInit(estimator_, mg);
             }
-            if (poses.size() >= 2) {
-                cloud_body = frontend::lio::UndistortByImuTrajectory(
-                    mg.points_body, mg.point_time_rel, poses,
-                    estimator_ ? estimator_->T_imu_lidar()
-                               : Mat44_t::Identity());
+            if (!imu_ready) {
+                cloud_body = mg.points_body;
             } else {
-                Vec3_t omega = Vec3_t::Zero();
-                if (!mg.imu.empty()) {
-                    omega = mg.imu.back().gyro;
+                std::vector<frontend::lio::ImuPoseSample> poses;
+                if (estimator_) {
+                    frontend::lio::BuildImuPoses(estimator_, mg, &poses);
                 }
-                const Mat44_t T_begin =
-                    estimator_ ? estimator_->T_wb() : CurrentTwc();
-                cloud_body = imu_process_.UndistortScan(
-                    mg.points_body, mg.point_time_rel, T_begin, omega);
+                if (poses.size() >= 2) {
+                    cloud_body = frontend::lio::UndistortByImuTrajectory(
+                        mg.points_body, mg.point_time_rel, poses,
+                        estimator_ ? estimator_->T_imu_lidar()
+                                   : Mat44_t::Identity());
+                } else {
+                    Vec3_t omega = Vec3_t::Zero();
+                    if (!mg.imu.empty()) {
+                        omega = mg.imu.back().gyro;
+                    }
+                    const Mat44_t T_begin =
+                        estimator_ ? estimator_->T_wb() : CurrentTwc();
+                    cloud_body = imu_process_.UndistortScan(
+                        mg.points_body, mg.point_time_rel, T_begin, omega);
+                }
             }
         }
     }
@@ -328,14 +437,20 @@ void LidarBridge::OnCloud(
         map_incremental_->IntegrateScan(Twb, cloud_body);
     }
 
-    if (estimator_ && lidar_->residual_source()) {
+    // Skip lidar IEKF until IMUInit finishes (gravity / bg not ready).
+    const bool lidar_update_ok =
+        !imu_sensor_ || !estimator_ || imu_process_.IsImuInited();
+    if (lidar_update_ok && estimator_ && lidar_->residual_source()) {
         auto batch = lidar_->residual_source()->Pull(t - 0.05, t + 0.05);
         if (!batch.empty()) {
             estimator_->UpdateLidar(batch);
         }
     }
 
-    MaybeLidarLoop(t, estimator_ ? estimator_->T_wb() : Twb, cloud_body);
+    const Mat44_t Twb_now = estimator_ ? estimator_->T_wb() : Twb;
+    if (MaybeKeyframe(t, Twb_now, cloud_body) && options_.use_lidar_loop) {
+        MaybeLidarLoop(Twb_now, cloud_body);
+    }
 
     if (viz_ && estimator_) {
         viz_->PublishWorldPose(t, estimator_->T_cw());

@@ -17,6 +17,7 @@
 #pragma once
 
 //! frontend/lio/imu_process — IMU predict + trajectory deskew (lightning UndistortPcl ideas).
+//! Includes static IMUInit (gravity + gyro bias) before deskew.
 
 #include "autonomy/localization/atlas/frontend/lio/measure_group.hpp"
 #include "autonomy/localization/atlas/frontend/local_estimator.hpp"
@@ -75,11 +76,31 @@ inline std::vector<double> SynthesizeUniformTimeRel(std::size_t n) {
 
 class ImuProcess {
 public:
+    static constexpr int kDefaultMaxInitCount = 20;
+
     void SetExtrinsic(const Mat44_t& T_il = Mat44_t::Identity()) {
         T_imu_lidar_ = T_il;
     }
 
     [[nodiscard]] const Mat44_t& T_imu_lidar() const { return T_imu_lidar_; }
+
+    void set_max_init_count(int n) {
+        max_init_count_ = (n > 0) ? n : kDefaultMaxInitCount;
+    }
+    [[nodiscard]] int max_init_count() const { return max_init_count_; }
+
+    [[nodiscard]] bool imu_need_init() const { return imu_need_init_; }
+    [[nodiscard]] bool IsImuInited() const { return !imu_need_init_; }
+    [[nodiscard]] const Vec3_t& mean_acc() const { return mean_acc_; }
+    [[nodiscard]] const Vec3_t& mean_gyr() const { return mean_gyr_; }
+    [[nodiscard]] int init_iter_num() const { return init_iter_num_; }
+
+    void ResetImuInit();
+
+    //! Average IMU in measure; when ≥ max_init_count frames done, set gravity
+    //! (−mean_acc.normalized()*9.81) and bg≈mean_gyr on estimator. Returns true
+    //! when init completes (or already done). False while still accumulating.
+    bool TryImuInit(LocalEstimator* est, const MeasureGroup& meas);
 
     //! Propagate LocalEstimator with successive IMU samples (uses sample Δt).
     void ProcessPredict(LocalEstimator* estimator,
@@ -162,6 +183,16 @@ public:
 private:
     //! Lidar in IMU frame extrinsic (T_imu_lidar: p_imu = R p_lidar + t).
     Mat44_t T_imu_lidar_ = Mat44_t::Identity();
+
+    // --- IMUInit (lightning ImuProcess::IMUInit) ---
+    Vec3_t mean_acc_ = Vec3_t(0.0, 0.0, -1.0);
+    Vec3_t mean_gyr_ = Vec3_t::Zero();
+    Vec3_t cov_acc_ = Vec3_t(0.1, 0.1, 0.1);
+    Vec3_t cov_gyr_ = Vec3_t(0.1, 0.1, 0.1);
+    int init_iter_num_ = 1;
+    int max_init_count_ = kDefaultMaxInitCount;
+    bool b_first_frame_ = true;
+    bool imu_need_init_ = true;
 };
 
 }  // namespace lio

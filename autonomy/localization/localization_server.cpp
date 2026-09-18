@@ -27,12 +27,14 @@
 #include "autonomy/localization/atlas/sensor/camera/camera_bridge.hpp"
 #include "autonomy/localization/atlas/backend/loop_closing.hpp"
 #include "autonomy/localization/atlas/io/dense_map_builder.hpp"
-#include "autonomy/localization/atlas/io/g2p5/g2p5_projector.hpp"
+#include "autonomy/localization/atlas/io/g2p5/g2p5.hpp"
 #include "autonomy/localization/atlas/pipeline.hpp"
 #include "autonomy/localization/atlas/runtime_config.hpp"
 #include "autonomy/localization/atlas/sensor/lidar/lidar_bridge.hpp"
 #include "autonomy/localization/atlas/sensor/imu/imu_bridge.hpp"
 #include "autonomy/localization/atlas/sensor/odom/odom_bridge.hpp"
+#include "autonomy/localization/atlas/frontend/lidar_loc/lidar_locator.hpp"
+#include "autonomy/localization/atlas/frontend/lidar_loc/pose_extrapolator.hpp"
 #include "autonomy/localization/atlas/viz_bridge.hpp"
 #include "autonomy/localization/atlas/system.hpp"
 #include "autonomy/localization/cartographer/mapping/map_builder.hpp"
@@ -375,6 +377,17 @@ public:
             if (pipeline_->sensors()->imu()) {
                 lidar_bridge_->SetImuSensor(pipeline_->sensors()->imu());
             }
+            // Side-path maps after lidar loop (not vision LoopClosing edges).
+            lidar_bridge_->SetLoopClosedCallback(
+                [this](const atlas::Mat44_t& /*T_wb*/, std::uint64_t /*q*/,
+                       std::uint64_t /*c*/) {
+                    if (dense_map_) {
+                        dense_map_->RequestRebuild();
+                    }
+                    if (g2p5_) {
+                        g2p5_->RedrawGlobalMap();
+                    }
+                });
             if (!lidar_bridge_->Start(autolink_node_)) {
                 AWARN << "LocalizationServer: LidarBridge failed to start.";
                 lidar_bridge_.reset();
@@ -422,6 +435,46 @@ public:
                 imu_bridge_.reset();
             }
         };
+
+        auto maybe_start_lidar_loc =
+            [&](atlas::frontend::LocalEstimator* est) {
+                const auto& rt = pipeline_->runtime();
+                const auto mod = options_.atlas_modality;
+                const bool lo_like =
+                    mod == atlas::common::Modality::kLo ||
+                    mod == atlas::common::Modality::kLio ||
+                    mod == atlas::common::Modality::kLwio;
+                if (!rt.enable_lidar_loc || !lo_like) {
+                    return;
+                }
+                if (rt.tiled_map_path.empty() && !pipeline_->tiled_map()) {
+                    AWARN << "LocalizationServer: enable_lidar_loc but no "
+                             "maps.tiled_path / TiledMap";
+                    return;
+                }
+                lidar_locator_ =
+                    std::make_unique<atlas::frontend::LidarLocator>();
+                if (pipeline_->tiled_map()) {
+                    lidar_locator_->set_tiled_map(pipeline_->tiled_map());
+                }
+                if (!rt.tiled_map_path.empty()) {
+                    const std::string path =
+                        ResolveWorkspacePath(rt.tiled_map_path);
+                    if (!lidar_locator_->LoadMap(path)) {
+                        AWARN << "LocalizationServer: LidarLocator LoadMap "
+                                 "failed: "
+                              << path;
+                        lidar_locator_.reset();
+                        return;
+                    }
+                }
+                pose_extrapolator_ =
+                    std::make_unique<atlas::frontend::PoseExtrapolator>();
+                pose_extrapolator_->set_local_estimator(est);
+                AINFO << "LocalizationServer: LidarLocator skeleton ready "
+                         "(enable_lidar_loc=true, map="
+                      << rt.tiled_map_path << ")";
+            };
 
         if (!options_.atlas_config_path.empty()) {
             const std::string config_path =
@@ -543,12 +596,6 @@ public:
                 }
             }
 
-            if (pipeline_->runtime().maps_g2p5) {
-                g2p5_ = std::make_unique<atlas::map::G2P5Projector>();
-                AINFO << "LocalizationServer: G2P5Projector ready "
-                         "(maps.g2p5=true)";
-            }
-
             // Vision path: LocalEstimator only if created earlier; odom residuals
             // go to JointBA (do not dual-update pose via estimator).
             atlas::frontend::LocalEstimator* est =
@@ -559,6 +606,17 @@ public:
             // Vision+odom (lvwio): residuals only into JointBA (est=nullptr).
             // Config + !vision: LocalEstimator may own pose (rare).
             start_odom_bridge(use_vision ? nullptr : est, /*viz=*/nullptr);
+
+            maybe_start_lidar_loc(est);
+
+            if (pipeline_->runtime().maps_g2p5) {
+                g2p5_ = std::make_unique<atlas::map::G2P5>();
+                g2p5_->Init();
+                if (lidar_bridge_) {
+                    lidar_bridge_->SetG2P5(g2p5_.get());
+                }
+                AINFO << "LocalizationServer: G2P5 ready (maps.g2p5=true)";
+            }
 
             AINFO << "LocalizationServer: Atlas single-system backend started "
                   << "(modality="
@@ -600,9 +658,15 @@ public:
         // WIO/LWIO: odom updates LocalEstimator and publishes via VizBridge.
         start_odom_bridge(estimator, viz_bridge_.get());
 
+        maybe_start_lidar_loc(estimator);
+
         if (pipeline_->runtime().maps_g2p5) {
-            g2p5_ = std::make_unique<atlas::map::G2P5Projector>();
-            AINFO << "LocalizationServer: G2P5Projector ready (maps.g2p5=true)";
+            g2p5_ = std::make_unique<atlas::map::G2P5>();
+            g2p5_->Init();
+            if (lidar_bridge_) {
+                lidar_bridge_->SetG2P5(g2p5_.get());
+            }
+            AINFO << "LocalizationServer: G2P5 ready (maps.g2p5=true)";
         }
 
         AINFO << "LocalizationServer: Atlas single-system backend started "
@@ -627,6 +691,8 @@ public:
             lidar_bridge_->Stop();
             lidar_bridge_.reset();
         }
+        pose_extrapolator_.reset();
+        lidar_locator_.reset();
         if (image_bridge_) {
             image_bridge_->SetDenseMapBuilder(nullptr);
             image_bridge_->SetVizBridge(nullptr);
@@ -637,7 +703,10 @@ public:
             dense_map_->Stop();
             dense_map_.reset();
         }
-        g2p5_.reset();
+        if (g2p5_) {
+            g2p5_->Quit();
+            g2p5_.reset();
+        }
         if (viz_bridge_) {
             viz_bridge_->Stop();
             viz_bridge_.reset();
@@ -683,7 +752,9 @@ private:
     std::unique_ptr<atlas::ImuBridge> imu_bridge_;
     std::unique_ptr<atlas::VizBridge> viz_bridge_;
     std::unique_ptr<atlas::map::DenseMapBuilder> dense_map_;
-    std::unique_ptr<atlas::map::G2P5Projector> g2p5_;
+    std::unique_ptr<atlas::map::G2P5> g2p5_;
+    std::unique_ptr<atlas::frontend::LidarLocator> lidar_locator_;
+    std::unique_ptr<atlas::frontend::PoseExtrapolator> pose_extrapolator_;
 };
 
 // ---------------------------------------------------------------------------

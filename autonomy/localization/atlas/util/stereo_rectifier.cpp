@@ -1,7 +1,7 @@
 #include "autonomy/localization/atlas/sensor/camera/perspective.hpp"
 #include "autonomy/localization/atlas/sensor/camera/fisheye.hpp"
 #include "autonomy/localization/atlas/util/stereo_rectifier.hpp"
-#include "autonomy/localization/atlas/util/yaml.hpp"
+#include "autonomy/common/param_handler.hpp"
 
 #include <opencv2/imgproc.hpp>
 #include "autolink/common/log.hpp"
@@ -11,7 +11,7 @@ namespace util {
 
 stereo_rectifier::stereo_rectifier(const std::shared_ptr<autonomy::localization::atlas::config>& cfg, camera::base* camera)
     : stereo_rectifier(camera,
-                       autonomy::localization::atlas::util::yaml_optional_ref(cfg->yaml_node_, "StereoRectifier")) {}
+                       autonomy::common::YamlChild(cfg->yaml_node_, "StereoRectifier")) {}
 
 stereo_rectifier::stereo_rectifier(camera::base* camera, const YAML::Node& yaml_node)
     : model_type_(load_model_type(yaml_node)) {

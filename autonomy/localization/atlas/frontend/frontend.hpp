@@ -21,6 +21,8 @@
 
 #include "autonomy/localization/atlas/frontend/local_estimator.hpp"
 #include "autonomy/localization/atlas/frontend/tracking.hpp"
+#include "autonomy/localization/atlas/frontend/lidar_loc/lidar_locator.hpp"
+#include "autonomy/localization/atlas/frontend/lidar_loc/pose_extrapolator.hpp"
 
 namespace autonomy::localization::atlas {
 namespace frontend {

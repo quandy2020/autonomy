@@ -81,6 +81,9 @@ public:
     std::uint64_t AddKeyframe(const Mat44_t& T_wb,
                               const std::vector<Vec3_t>& cloud_body);
 
+    //! After pose-graph Optimize: update T_wb only (body cloud unchanged).
+    void UpdateKeyframePose(std::uint64_t id, const Mat44_t& T_wb);
+
     //! Spatial candidates + NDT (preferred) / point-to-plane ICP. True on accept.
     [[nodiscard]] bool Detect(const Mat44_t& T_wb,
                               const std::vector<Vec3_t>& cloud_query,

@@ -56,9 +56,15 @@ public:
         return eskf_.options();
     }
 
+    void set_gyro_bias(const Vec3_t& bg) { eskf_.set_gyro_bias(bg); }
+    void set_acc_bias(const Vec3_t& ba) { eskf_.set_acc_bias(ba); }
+    void set_gravity(const Vec3_t& g) { eskf_.set_gravity(g); }
+    void SetImuInitCovariance() { eskf_.SetImuInitCovariance(); }
+
     [[nodiscard]] Mat44_t T_wb() const { return eskf_.T_wb(); }
     [[nodiscard]] Mat44_t T_cw() const { return eskf_.T_wb().inverse(); }
     [[nodiscard]] Vec3_t velocity() const { return eskf_.state().v; }
+    [[nodiscard]] Vec3_t gravity() const { return eskf_.state().gravity; }
     [[nodiscard]] const frontend::Eskf::State& state() const {
         return eskf_.state();
     }

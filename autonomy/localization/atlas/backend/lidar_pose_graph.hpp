@@ -57,6 +57,12 @@ public:
     [[nodiscard]] Mat44_t GetPoseOr(std::uint64_t id,
                                     const Mat44_t& fallback) const;
 
+    //! Optimized poses after Optimize (for syncing detector keyframes).
+    [[nodiscard]] const std::unordered_map<std::uint64_t, Mat44_t>& poses()
+        const {
+        return poses_;
+    }
+
     [[nodiscard]] std::size_t num_keyframes() const { return poses_.size(); }
     [[nodiscard]] std::size_t num_loops() const { return loops_.size(); }
 

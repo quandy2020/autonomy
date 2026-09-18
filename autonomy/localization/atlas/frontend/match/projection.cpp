@@ -6,7 +6,8 @@
 #include "autonomy/localization/atlas/data/landmark.hpp"
 #include "autonomy/localization/atlas/data/landmark_line.hpp"
 #include "autonomy/localization/atlas/frontend/match/projection.hpp"
-#include "autonomy/localization/atlas/util/angle.hpp"
+#include "autonomy/common/math/angle.hpp"
+
 
 namespace autonomy::localization::atlas {
 namespace match {
@@ -181,7 +182,7 @@ unsigned int projection::match_current_and_last_frames(data::frame& curr_frm, co
                 }
             }
 
-            if (check_orientation_ && std::abs(util::angle::diff(last_frm.frm_obs_.undist_keypts_.at(idx_last).angle, curr_frm.frm_obs_.undist_keypts_.at(curr_idx).angle)) > 30.0) {
+            if (check_orientation_ && std::abs(autonomy::common::math::AngleDiffDegrees(last_frm.frm_obs_.undist_keypts_.at(idx_last).angle, curr_frm.frm_obs_.undist_keypts_.at(curr_idx).angle)) > 30.0) {
                 continue;
             }
 
@@ -293,7 +294,7 @@ unsigned int projection::match_frame_and_keyframe(const Mat44_t& cam_pose_cw,
                 continue;
             }
 
-            if (check_orientation_ && std::abs(util::angle::diff(keyfrm->frm_obs_.undist_keypts_.at(idx).angle, frm_obs.undist_keypts_.at(curr_idx).angle)) > 30.0) {
+            if (check_orientation_ && std::abs(autonomy::common::math::AngleDiffDegrees(keyfrm->frm_obs_.undist_keypts_.at(idx).angle, frm_obs.undist_keypts_.at(curr_idx).angle)) > 30.0) {
                 continue;
             }
 

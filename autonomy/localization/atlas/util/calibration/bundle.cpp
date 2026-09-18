@@ -17,7 +17,7 @@
 #include "autonomy/localization/atlas/util/calibration/bundle.hpp"
 
 #include "autonomy/localization/atlas/frontend/eskf/eskf.hpp"
-#include "autonomy/localization/atlas/util/yaml.hpp"
+#include "autonomy/common/param_handler.hpp"
 
 #include <fstream>
 #include <stdexcept>
@@ -176,12 +176,12 @@ CalibrationBundle LoadCalibrationBundle(const YAML::Node& root_in) {
         root = root["calibration"];
     }
 
-    LoadCamera(util::yaml_optional_ref(root, "camera"), &b.camera);
-    LoadCamera(util::yaml_optional_ref(root, "camera_right"), &b.camera_right);
-    LoadImu(util::yaml_optional_ref(root, "imu"), &b.imu);
-    LoadLidar(util::yaml_optional_ref(root, "lidar"), &b.lidar);
+    LoadCamera(autonomy::common::YamlChild(root, "camera"), &b.camera);
+    LoadCamera(autonomy::common::YamlChild(root, "camera_right"), &b.camera_right);
+    LoadImu(autonomy::common::YamlChild(root, "imu"), &b.imu);
+    LoadLidar(autonomy::common::YamlChild(root, "lidar"), &b.lidar);
 
-    const auto ext = util::yaml_optional_ref(root, "extrinsics");
+    const auto ext = autonomy::common::YamlChild(root, "extrinsics");
     if (ext) {
         LoadExtrinsic(ext["T_imu_lidar"], &b.T_imu_lidar);
         // Aliases

@@ -146,6 +146,16 @@ std::uint64_t LidarLoopDetector::AddKeyframe(
     return last_keyframe_id_;
 }
 
+void LidarLoopDetector::UpdateKeyframePose(std::uint64_t id,
+                                           const Mat44_t& T_wb) {
+    for (auto& kf : keyframes_) {
+        if (kf.id == id) {
+            kf.T_wb = T_wb;
+            return;
+        }
+    }
+}
+
 std::vector<Vec3_t> LidarLoopDetector::BuildCandidateWorldCloud(
     std::size_t cand_index) const {
     std::vector<Vec3_t> tgt_world;

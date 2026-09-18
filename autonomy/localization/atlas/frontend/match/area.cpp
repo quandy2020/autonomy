@@ -1,6 +1,7 @@
 #include "autonomy/localization/atlas/data/frame.hpp"
 #include "autonomy/localization/atlas/frontend/match/area.hpp"
-#include "autonomy/localization/atlas/util/angle.hpp"
+#include "autonomy/common/math/angle.hpp"
+
 
 namespace autonomy::localization::atlas {
 namespace match {
@@ -37,7 +38,7 @@ unsigned int area::match_in_consistent_area(data::frame& frm_1, data::frame& frm
         int best_idx_2 = -1;
 
         for (const auto idx_2 : indices) {
-            if (check_orientation_ && std::abs(util::angle::diff(frm_1.frm_obs_.undist_keypts_.at(idx_1).angle, frm_2.frm_obs_.undist_keypts_.at(idx_2).angle)) > 30.0) {
+            if (check_orientation_ && std::abs(autonomy::common::math::AngleDiffDegrees(frm_1.frm_obs_.undist_keypts_.at(idx_1).angle, frm_2.frm_obs_.undist_keypts_.at(idx_2).angle)) > 30.0) {
                 continue;
             }
 
