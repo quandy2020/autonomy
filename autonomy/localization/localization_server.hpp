@@ -30,7 +30,6 @@ namespace localization {
 enum class LocalizationBackend {
     kCartographer = 0,
     kAtlas = 1,
-    kLivo = 2,
 };
 
 /**
@@ -56,15 +55,7 @@ struct LocalizationOptions {
     std::string atlas_rgb_topic = "/camera/rgb/image_raw";
     std::string atlas_depth_topic = "/camera/depth/image_raw";
     std::string atlas_seg_topic = "";
-
-    // --- LIVO / FAST-LIVO2 (LiDAR-Visual-IMU) ---
-    std::string livo_config_path =
-        "autonomy/localization/conf/livo/avia.yaml";
-    std::string livo_camera_path =
-        "autonomy/localization/conf/livo/camera_pinhole.yaml";
-    std::string livo_lidar_topic = "/livox/lidar";
-    std::string livo_imu_topic = "/livox/imu";
-    std::string livo_image_topic = "/left_camera/image";
+    std::string atlas_imu_topic = "";
 };
 
 LocalizationBackend ParseLocalizationBackend(const std::string& name);
@@ -80,7 +71,7 @@ atlas::AtlasNodeFlags AtlasFlagsFromOptions(const LocalizationOptions& options);
 
 /**
  * Process-level facade that selects and owns one SLAM backend
- * (Cartographer lidar SLAM, Atlas / OpenVSLAM, or LIVO LiDAR-Visual-IMU).
+ * (Cartographer lidar SLAM or Atlas / OpenVSLAM).
  *
  * Lifecycle (aligned with ControllerServer):
  *   Start()  → initialize selected backend (non-blocking)
@@ -113,7 +104,6 @@ private:
     class Backend;
     class CartographerBackend;
     class AtlasBackend;
-    class LivoBackend;
 
     static std::unique_ptr<Backend> CreateBackend(
         const LocalizationOptions& options);

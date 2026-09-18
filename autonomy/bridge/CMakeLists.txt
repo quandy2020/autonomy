@@ -24,6 +24,13 @@ autonomy_library(
   FEATURES grpc
   SRCS ${_BRIDGE_SRCS}
 )
+# GCC 11 ICE (RTL pass "ree") on heavily-templated action client instantiations.
+# Disable that pass for this TU only.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  set_source_files_properties(
+    "${CMAKE_CURRENT_SOURCE_DIR}/node_client.cpp"
+    PROPERTIES COMPILE_OPTIONS "-fno-ree")
+endif()
 unset(_BRIDGE_SRCS)
 
 # Process entrypoint: autonomy.bridge

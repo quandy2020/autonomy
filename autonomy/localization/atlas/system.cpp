@@ -23,6 +23,8 @@
 #include "autonomy/localization/atlas/util/converter.hpp"
 #include "autonomy/localization/atlas/util/image_converter.hpp"
 #include "autonomy/localization/atlas/util/yaml.hpp"
+#include "autonomy/localization/atlas/imu/config.hpp"
+#include "autonomy/localization/atlas/imu/buffer.hpp"
 
 #include <thread>
 #include <cmath>
@@ -97,8 +99,18 @@ system::system(const std::shared_ptr<config>& cfg, const std::string& vocab_file
 
     // tracking module
     tracker_ = new tracking_module(cfg_, camera_, map_db_, bow_vocab_, bow_db_);
+
+    // IMU (optional)
+    imu_cfg_ = imu::config::from_yaml(util::yaml_optional_ref(cfg->yaml_node_, "IMU"));
+    if (imu_cfg_.enabled) {
+        imu_buffer_ = std::make_unique<imu::buffer>(imu_cfg_.buffer_capacity);
+        tracker_->set_imu(imu_cfg_, imu_buffer_.get());
+        AINFO << "Atlas IMU fusion enabled (freq=" << imu_cfg_.frequency << " Hz)";
+    }
+
     // mapping module
-    mapper_ = new mapping_module(util::yaml_optional_ref(cfg->yaml_node_, "Mapping"), map_db_, bow_db_, bow_vocab_);
+    mapper_ = new mapping_module(util::yaml_optional_ref(cfg->yaml_node_, "Mapping"), map_db_, bow_db_, bow_vocab_,
+                                 imu_cfg_);
     // global optimization module
     if (bow_db_ && bow_vocab_) {
         global_optimizer_ = new global_optimization_module(map_db_, bow_db_, bow_vocab_, cfg_->yaml_node_, camera_->setup_type_ != camera::setup_type_t::Monocular);
@@ -608,6 +620,21 @@ std::shared_ptr<Mat44_t> system::feed_RGBD_frame(const cv::Mat& rgb_img, const c
     const auto end = std::chrono::system_clock::now();
     double extraction_time_elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     return feed_frame(frm, rgb_img, extraction_time_elapsed_ms);
+}
+
+void system::feed_imu(double timestamp, const Vec3_t& acc, const Vec3_t& gyro) {
+    if (!imu_buffer_) {
+        return;
+    }
+    imu_buffer_->push(timestamp + imu_cfg_.time_offset, acc, gyro);
+}
+
+void system::feed_imu(double timestamp, double ax, double ay, double az, double wx, double wy, double wz) {
+    feed_imu(timestamp, Vec3_t(ax, ay, az), Vec3_t(wx, wy, wz));
+}
+
+bool system::imu_is_enabled() const {
+    return imu_cfg_.enabled && imu_buffer_ != nullptr;
 }
 
 std::shared_ptr<Mat44_t> system::feed_frame(const data::frame& frm, const cv::Mat& img, const double extraction_time_elapsed_ms) {

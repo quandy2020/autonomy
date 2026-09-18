@@ -9,6 +9,7 @@
 #include "autonomy/localization/atlas/match/robust.hpp"
 #include "autonomy/localization/atlas/module/two_view_triangulator.hpp"
 #include "autonomy/localization/atlas/optimize/local_bundle_adjuster_factory.hpp"
+#include "autonomy/localization/atlas/optimize/local_bundle_adjuster_inertial.hpp"
 #include "autonomy/localization/atlas/plp/planar_mapping_module.hpp"
 #include "autonomy/localization/atlas/module/two_view_triangulator_line.hpp"
 #include "autonomy/localization/atlas/data/landmark_line.hpp"
@@ -20,10 +21,11 @@
 
 namespace autonomy::localization::atlas {
 
-mapping_module::mapping_module(const YAML::Node& yaml_node, data::map_database* map_db, data::bow_database* bow_db, data::bow_vocabulary* bow_vocab)
+mapping_module::mapping_module(const YAML::Node& yaml_node, data::map_database* map_db, data::bow_database* bow_db,
+                               data::bow_vocabulary* bow_vocab, const imu::config& imu_cfg)
     : local_map_cleaner_(new module::local_map_cleaner(yaml_node, map_db, bow_db)),
       map_db_(map_db), bow_db_(bow_db), bow_vocab_(bow_vocab),
-      local_bundle_adjuster_(optimize::local_bundle_adjuster_factory::create(yaml_node)),
+      local_bundle_adjuster_(optimize::local_bundle_adjuster_factory::create(yaml_node, imu_cfg)),
       local_bundle_adjuster_extended_line_(std::make_unique<optimize::local_bundle_adjuster_extended_line>(yaml_node)),
       local_bundle_adjuster_extended_plane_(std::make_unique<optimize::local_bundle_adjuster_extended_plane>(yaml_node)),
       enable_interruption_of_landmark_generation_(yaml_node["enable_interruption_of_landmark_generation"].as<bool>(true)),
@@ -50,6 +52,18 @@ mapping_module::mapping_module(const YAML::Node& yaml_node, data::map_database* 
         baseline_dist_thr_ratio_ = yaml_node["baseline_dist_thr_ratio"].as<double>(0.02);
         use_baseline_dist_thr_ratio_ = true;
         ADEBUG << "Use baseline_dist_thr_ratio: " << baseline_dist_thr_ratio_;
+    }
+}
+
+void mapping_module::set_inertial_ready(bool ready) {
+    if (auto* inertial = dynamic_cast<optimize::local_bundle_adjuster_inertial*>(local_bundle_adjuster_.get())) {
+        inertial->set_inertial_ready(ready);
+    }
+}
+
+void mapping_module::set_imu_gravity(const Vec3_t& gravity) {
+    if (auto* inertial = dynamic_cast<optimize::local_bundle_adjuster_inertial*>(local_bundle_adjuster_.get())) {
+        inertial->set_gravity(gravity);
     }
 }
 

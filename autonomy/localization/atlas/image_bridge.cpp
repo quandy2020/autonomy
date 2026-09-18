@@ -245,6 +245,17 @@ bool ImageBridge::Start(const std::shared_ptr<autolink::Node>& node) {
         running_ = false;
         return false;
     }
+
+    if (!options_.imu_topic.empty() && slam_->imu_is_enabled()) {
+        node_->CreateReader<automsgs::msgs::sensor_msgs::Imu>(
+            options_.imu_topic,
+            [self](const std::shared_ptr<automsgs::msgs::sensor_msgs::Imu>& msg) {
+                if (msg) {
+                    self->OnImu(msg);
+                }
+            });
+        AINFO << "Atlas ImageBridge: IMU topic=" << options_.imu_topic;
+    }
     return true;
 }
 
@@ -435,6 +446,20 @@ void ImageBridge::OnSeg(
     frame.stamp_ns = StampToNanoseconds(*msg);
     frame.timestamp_sec = StampToSeconds(*msg);
     PushFrame(&pending_seg_, std::move(frame));
+}
+
+void ImageBridge::OnImu(
+    const std::shared_ptr<automsgs::msgs::sensor_msgs::Imu>& msg) {
+    if (!running_ || !slam_ || !slam_->imu_is_enabled()) {
+        return;
+    }
+    const auto& stamp = msg->header().stamp();
+    const double t =
+        static_cast<double>(stamp.sec()) +
+        static_cast<double>(stamp.nanosec()) * 1e-9;
+    const auto& a = msg->linear_acceleration();
+    const auto& w = msg->angular_velocity();
+    slam_->feed_imu(t, a.x(), a.y(), a.z(), w.x(), w.y(), w.z());
 }
 
 void ImageBridge::OnDepth(

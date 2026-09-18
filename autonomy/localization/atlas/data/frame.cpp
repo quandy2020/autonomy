@@ -6,6 +6,7 @@
 #include "autonomy/localization/atlas/data/landmark_line.hpp"
 #include "autonomy/localization/atlas/feature/orb_extractor.hpp"
 #include "autonomy/localization/atlas/match/stereo.hpp"
+#include "autonomy/localization/atlas/imu/preintegrator.hpp"
 
 #include <thread>
 #include "autolink/common/log.hpp"
@@ -215,6 +216,53 @@ Vec3_t frame::triangulate_stereo(const unsigned int idx) const {
 
 Vec6_t frame::triangulate_stereo_for_line(const unsigned int idx) const {
     return triangulate_stereo_for_line_impl(camera_, rot_wc_, trans_wc_, line_obs_, idx);
+}
+
+void frame::set_velocity(const Vec3_t& v_w) {
+    velocity_w_ = v_w;
+    has_inertial_ = true;
+}
+
+Vec3_t frame::get_velocity() const {
+    return velocity_w_;
+}
+
+void frame::set_imu_bias(const imu::bias& b) {
+    imu_bias_ = b;
+    has_inertial_ = true;
+}
+
+imu::bias frame::get_imu_bias() const {
+    return imu_bias_;
+}
+
+void frame::set_imu_preintegrator(const std::shared_ptr<imu::preintegrator>& preint) {
+    imu_preintegrator_ = preint;
+    if (preint) {
+        has_inertial_ = true;
+    }
+}
+
+std::shared_ptr<imu::preintegrator> frame::get_imu_preintegrator() const {
+    return imu_preintegrator_;
+}
+
+void frame::clear_inertial_state() {
+    velocity_w_.setZero();
+    imu_bias_ = imu::bias{};
+    imu_preintegrator_.reset();
+    has_inertial_ = false;
+}
+
+Mat33_t frame::get_imu_rotation_wb(const Mat44_t& T_c_b) const {
+    const Mat44_t pose_bw = T_c_b.inverse() * get_pose_cw();
+    return pose_bw.block<3, 3>(0, 0).transpose();
+}
+
+Vec3_t frame::get_imu_translation_wb(const Mat44_t& T_c_b) const {
+    const Mat44_t pose_bw = T_c_b.inverse() * get_pose_cw();
+    const Mat33_t R_wb = pose_bw.block<3, 3>(0, 0).transpose();
+    return -R_wb * pose_bw.block<3, 1>(0, 3);
 }
 
 } // namespace data

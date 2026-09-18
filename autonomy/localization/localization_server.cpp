@@ -31,8 +31,6 @@
 #include "autonomy/localization/cartographer/node/cartographer_node.hpp"
 #include "autonomy/localization/cartographer/node/node_options.hpp"
 #include "autonomy/localization/cartographer/node/node_utils.hpp"
-#include "autonomy/localization/livo/mapping/map_builder.hpp"
-#include "autonomy/localization/livo/sensor/sensor_bridge.hpp"
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/static_transform_publisher.hpp"
 
@@ -50,7 +48,8 @@ LocalizationBackend ParseLocalizationBackend(const std::string& name) {
     }
     if (name == "livo" || name == "fast_livo" || name == "fast-livo2" ||
         name == "LIVO" || name == "FastLivo2") {
-        return LocalizationBackend::kLivo;
+        LOG(WARNING) << "LIVO backend was removed; falling back to cartographer.";
+        return LocalizationBackend::kCartographer;
     }
     if (name != "cartographer" && name != "Cartographer" && !name.empty()) {
         LOG(WARNING) << "Unknown localization backend '" << name
@@ -63,8 +62,6 @@ std::string LocalizationBackendName(LocalizationBackend backend) {
     switch (backend) {
         case LocalizationBackend::kAtlas:
             return "atlas";
-        case LocalizationBackend::kLivo:
-            return "livo";
         case LocalizationBackend::kCartographer:
         default:
             return "cartographer";
@@ -274,6 +271,7 @@ public:
         bridge_opts.rgb_topic = options_.atlas_rgb_topic;
         bridge_opts.depth_topic = options_.atlas_depth_topic;
         bridge_opts.seg_topic = options_.atlas_seg_topic;
+        bridge_opts.imu_topic = options_.atlas_imu_topic;
         image_bridge_ =
             std::make_unique<atlas::ImageBridge>(system_.get(), bridge_opts);
 
@@ -397,78 +395,6 @@ private:
 };
 
 // ---------------------------------------------------------------------------
-// LIVO (FAST-LIVO2 LiDAR-Visual-IMU)
-// ---------------------------------------------------------------------------
-
-class LocalizationServer::LivoBackend : public LocalizationServer::Backend {
-public:
-    explicit LivoBackend(LocalizationOptions options)
-        : options_(std::move(options)) {}
-
-    bool Start() override {
-        if (options_.livo_config_path.empty()) {
-            AERROR << "LIVO requires livo_config_path (--livo_config).";
-            return false;
-        }
-        livo::MapBuilderOptions mapper_opts;
-        mapper_opts.config_yaml =
-            ResolveWorkspacePath(options_.livo_config_path);
-        mapper_opts.camera_yaml =
-            ResolveWorkspacePath(options_.livo_camera_path);
-        mapper_opts.lid_topic = options_.livo_lidar_topic;
-        mapper_opts.imu_topic = options_.livo_imu_topic;
-        mapper_opts.img_topic = options_.livo_image_topic;
-
-        try {
-            mapper_ = std::make_unique<livo::MapBuilder>(mapper_opts);
-        } catch (const std::exception& e) {
-            AERROR << "LIVO mapper init failed: " << e.what();
-            return false;
-        }
-
-        autolink_node_ = autolink::CreateNode("livo_node");
-        if (!autolink_node_) {
-            AERROR << "LocalizationServer: failed to create livo_node.";
-            mapper_.reset();
-            return false;
-        }
-
-        livo::SensorBridge::Options bridge_opts;
-        bridge_opts.lidar_topic = options_.livo_lidar_topic;
-        bridge_opts.imu_topic = options_.livo_imu_topic;
-        bridge_opts.image_topic = options_.livo_image_topic;
-        bridge_ = std::make_unique<livo::SensorBridge>(mapper_.get(), bridge_opts);
-        if (!bridge_->Start(autolink_node_)) {
-            AERROR << "LocalizationServer: SensorBridge failed to start.";
-            bridge_.reset();
-            mapper_.reset();
-            autolink_node_.reset();
-            return false;
-        }
-
-        AINFO << "LocalizationServer: LIVO backend started (config="
-              << mapper_opts.config_yaml << ").";
-        return true;
-    }
-
-    void Shutdown() override {
-        AINFO << "LocalizationServer: shutting down LIVO backend.";
-        if (bridge_) {
-            bridge_->Stop();
-            bridge_.reset();
-        }
-        mapper_.reset();
-        autolink_node_.reset();
-    }
-
-private:
-    LocalizationOptions options_;
-    std::unique_ptr<livo::MapBuilder> mapper_;
-    std::unique_ptr<livo::SensorBridge> bridge_;
-    std::shared_ptr<autolink::Node> autolink_node_;
-};
-
-// ---------------------------------------------------------------------------
 // LocalizationServer
 // ---------------------------------------------------------------------------
 
@@ -477,8 +403,6 @@ std::unique_ptr<LocalizationServer::Backend> LocalizationServer::CreateBackend(
     switch (options.backend) {
         case LocalizationBackend::kAtlas:
             return std::make_unique<AtlasBackend>(options);
-        case LocalizationBackend::kLivo:
-            return std::make_unique<LivoBackend>(options);
         case LocalizationBackend::kCartographer:
         default:
             return std::make_unique<CartographerBackend>(options);

@@ -19,6 +19,7 @@
 
 #include "autonomy/localization/atlas/config.hpp"
 #include "autonomy/localization/atlas/camera/base.hpp"
+#include "autonomy/localization/atlas/imu/config.hpp"
 #include "autonomy/localization/atlas/module/local_map_cleaner.hpp"
 #include "autonomy/localization/atlas/optimize/local_bundle_adjuster.hpp"
 #include "autonomy/localization/atlas/optimize/local_bundle_adjuster_extended_line.hpp"
@@ -56,10 +57,15 @@ class map_database;
 class mapping_module {
 public:
     //! Constructor
-    mapping_module(const YAML::Node& yaml_node, data::map_database* map_db, data::bow_database* bow_db, data::bow_vocabulary* bow_vocab);
+    mapping_module(const YAML::Node& yaml_node, data::map_database* map_db, data::bow_database* bow_db,
+                   data::bow_vocabulary* bow_vocab, const imu::config& imu_cfg = imu::config{});
 
     //! Destructor
     ~mapping_module();
+
+    //! Mark inertial initialization complete so VI local BA can run
+    void set_inertial_ready(bool ready);
+    void set_imu_gravity(const Vec3_t& gravity);
 
     //! Set the tracking module
     void set_tracking_module(tracking_module* tracker);

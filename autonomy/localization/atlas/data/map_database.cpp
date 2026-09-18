@@ -499,6 +499,21 @@ void map_database::register_keyframe(camera_database* cam_db, orb_params_databas
         keyfrm->init_line_obs_for_map_load(std::move(line_obs));
     }
 
+    // Optional inertial state (msgpack / JSON maps with IMU.enabled)
+    if (json_keyfrm.contains("velocity_w") && json_keyfrm.contains("imu_bias_acc")
+        && json_keyfrm.contains("imu_bias_gyro")) {
+        const auto v = json_keyfrm.at("velocity_w").get<std::vector<double>>();
+        const auto ba = json_keyfrm.at("imu_bias_acc").get<std::vector<double>>();
+        const auto bg = json_keyfrm.at("imu_bias_gyro").get<std::vector<double>>();
+        if (v.size() == 3 && ba.size() == 3 && bg.size() == 3) {
+            keyfrm->set_velocity(Vec3_t(v[0], v[1], v[2]));
+            imu::bias b;
+            b.acc = Vec3_t(ba[0], ba[1], ba[2]);
+            b.gyro = Vec3_t(bg[0], bg[1], bg[2]);
+            keyfrm->set_imu_bias(b);
+        }
+    }
+
     // Append to map database
     assert(!keyframes_.count(id));
     keyframes_[keyfrm->id_] = keyfrm;
@@ -553,6 +568,20 @@ void map_database::register_graph(const unsigned int id, const nlohmann::json& j
     for (const auto loop_edge_id : loop_edge_ids) {
         assert(keyframes_.count(loop_edge_id));
         keyframes_.at(id)->graph_node_->add_loop_edge(keyframes_.at(loop_edge_id + next_keyframe_id_));
+    }
+
+    // Temporal IMU chain (stored as imu_prev_id in to_json)
+    if (json_keyfrm.contains("imu_prev_id")) {
+        const auto imu_prev_id = json_keyfrm.at("imu_prev_id").get<int>();
+        if (imu_prev_id >= 0) {
+            const auto prev_id = static_cast<unsigned int>(imu_prev_id) + next_keyframe_id_;
+            if (keyframes_.count(prev_id)) {
+                auto curr = keyframes_.at(id);
+                auto prev = keyframes_.at(prev_id);
+                curr->set_imu_prev_keyframe(prev);
+                prev->set_imu_next_keyframe(curr);
+            }
+        }
     }
 }
 
@@ -790,15 +819,32 @@ bool map_database::load_keyframes_from_db(sqlite3* db,
         return false;
     }
 
+    std::vector<std::pair<unsigned int, int>> imu_links;
     int ret = SQLITE_ERROR;
     while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
-        auto keyfrm = data::keyframe::from_stmt(stmt, cam_db, orb_params_db, bow_vocab, next_keyframe_id_);
+        int imu_prev_id = -1;
+        auto keyfrm = data::keyframe::from_stmt(stmt, cam_db, orb_params_db, bow_vocab,
+                                                next_keyframe_id_, &imu_prev_id);
         // Append to map database
         assert(!keyframes_.count(keyfrm->id_));
         keyframes_[keyfrm->id_] = keyfrm;
+        if (imu_prev_id >= 0) {
+            imu_links.emplace_back(keyfrm->id_, imu_prev_id);
+        }
+    }
+    sqlite3_finalize(stmt);
+
+    for (const auto& link : imu_links) {
+        const auto prev_id = static_cast<unsigned int>(link.second) + next_keyframe_id_;
+        if (!keyframes_.count(link.first) || !keyframes_.count(prev_id)) {
+            continue;
+        }
+        auto curr = keyframes_.at(link.first);
+        auto prev = keyframes_.at(prev_id);
+        curr->set_imu_prev_keyframe(prev);
+        prev->set_imu_next_keyframe(curr);
     }
 
-    sqlite3_finalize(stmt);
     return ret == SQLITE_DONE;
 }
 

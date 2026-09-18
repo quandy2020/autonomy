@@ -27,6 +27,7 @@
 
 #include "autolink/autolink.hpp"
 #include <automsgs/msgs/sensor_msgs/image.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
 #include "autonomy/localization/atlas/system.hpp"
 #include "autonomy/localization/atlas/viz_bridge.hpp"
 #include "autonomy/localization/atlas/map/dense_map_builder.hpp"
@@ -49,6 +50,8 @@ public:
         std::string depth_topic = "/camera/depth/image_raw";
         /** Semantic / instance segmentation (CV_8UC3 or mono8). Empty = disabled. */
         std::string seg_topic = "";
+        /** IMU topic for VIO (empty = disabled). */
+        std::string imu_topic = "";
         /** Max |rgb_stamp - depth_stamp| for RGBD pairing (seconds). */
         double sync_slop_sec = 0.05;
         /** How many recent frames to keep per stream while waiting for a pair. */
@@ -80,6 +83,7 @@ private:
     void OnRgb(const std::shared_ptr<automsgs::msgs::sensor_msgs::Image>& msg);
     void OnDepth(const std::shared_ptr<automsgs::msgs::sensor_msgs::Image>& msg);
     void OnSeg(const std::shared_ptr<automsgs::msgs::sensor_msgs::Image>& msg);
+    void OnImu(const std::shared_ptr<automsgs::msgs::sensor_msgs::Imu>& msg);
 
     void PushFrame(std::deque<BufferedFrame>* queue, BufferedFrame frame);
     /** Prefer exact stamp_ns equality; else closest pair within sync_slop. */

@@ -27,11 +27,16 @@
 #include "autonomy/localization/atlas/data/bow_vocabulary.hpp"
 #include "autonomy/localization/atlas/data/marker2d.hpp"
 #include "autonomy/localization/atlas/data/bow_vocabulary_fwd.hpp"
+#include "autonomy/localization/atlas/imu/bias.hpp"
 
 #include <vector>
 #include <atomic>
 #include <memory>
 #include <unordered_set>
+
+namespace autonomy::localization::atlas::imu {
+class preintegrator;
+}
 
 #include <Eigen/Core>
 
@@ -238,6 +243,27 @@ public:
 
     //! reference keyframe for tracking
     std::shared_ptr<keyframe> ref_keyfrm_ = nullptr;
+
+    //-----------------------------------------
+    // inertial state (optional; used when IMU.enabled)
+
+    void set_velocity(const Vec3_t& v_w);
+    Vec3_t get_velocity() const;
+    void set_imu_bias(const imu::bias& b);
+    imu::bias get_imu_bias() const;
+    void set_imu_preintegrator(const std::shared_ptr<imu::preintegrator>& preint);
+    std::shared_ptr<imu::preintegrator> get_imu_preintegrator() const;
+    bool has_inertial_state() const { return has_inertial_; }
+    void clear_inertial_state();
+
+    //! IMU body orientation / translation in world from camera pose and T_c_b
+    Mat33_t get_imu_rotation_wb(const Mat44_t& T_c_b) const;
+    Vec3_t get_imu_translation_wb(const Mat44_t& T_c_b) const;
+
+    Vec3_t velocity_w_ = Vec3_t::Zero();
+    imu::bias imu_bias_{};
+    std::shared_ptr<imu::preintegrator> imu_preintegrator_;
+    bool has_inertial_ = false;
 
 private:
     //! landmarks, whose nullptr indicates no-association

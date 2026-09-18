@@ -7,6 +7,7 @@
 #include "autonomy/localization/atlas/module/loop_bundle_adjuster.hpp"
 #include "autonomy/localization/atlas/data/landmark_line.hpp"
 #include "autonomy/localization/atlas/optimize/global_bundle_adjuster.hpp"
+#include "autonomy/localization/atlas/optimize/global_bundle_adjuster_inertial.hpp"
 #include "autonomy/localization/atlas/optimize/line_geometry_util.hpp"
 
 #include <thread>
@@ -271,6 +272,17 @@ void loop_bundle_adjuster::optimize(const std::shared_ptr<data::keyframe>& curr_
             }
 
             AINFO << "updated the map";
+
+            // Inertial consistency after visual loop GBA (temporal IMU chain).
+            if (tracker_ && tracker_->imu_is_enabled() && tracker_->inertial_is_initialized()
+                && !abort_loop_BA_) {
+                optimize::global_bundle_adjuster_inertial inertial_gba(
+                    tracker_->get_imu_config(), num_iter_);
+                inertial_gba.set_gravity(tracker_->get_imu_gravity());
+                if (inertial_gba.optimize(map_db_, &abort_loop_BA_)) {
+                    AINFO << "loop bundle adjustment: inertial global refine done";
+                }
+            }
         }
     }
 

@@ -18,6 +18,8 @@
 #define AUTONOMY_LOCALIZATION_ATLAS_OPTIMIZE_LOCAL_BUNDLE_ADJUSTER_FACTORY_HPP_
 
 #include "autonomy/localization/atlas/optimize/local_bundle_adjuster_g2o.hpp"
+#include "autonomy/localization/atlas/optimize/local_bundle_adjuster_inertial.hpp"
+#include "autonomy/localization/atlas/imu/config.hpp"
 
 #include <memory>
 #include <stdexcept>
@@ -29,10 +31,15 @@ namespace optimize {
 
 class local_bundle_adjuster_factory {
 public:
-    static std::unique_ptr<local_bundle_adjuster> create(const YAML::Node& yaml_node) {
+    static std::unique_ptr<local_bundle_adjuster> create(const YAML::Node& yaml_node,
+                                                        const imu::config& imu_cfg = imu::config{}) {
         const auto& backend = yaml_node["backend"].as<std::string>("g2o");
         if (backend != "g2o") {
             throw std::runtime_error("Invalid backend: only g2o is supported");
+        }
+        if (imu_cfg.enabled && yaml_node["use_inertial"].as<bool>(true)) {
+            return std::unique_ptr<local_bundle_adjuster>(
+                new local_bundle_adjuster_inertial(yaml_node, imu_cfg));
         }
         return std::unique_ptr<local_bundle_adjuster>(new local_bundle_adjuster_g2o(yaml_node));
     }

@@ -12,6 +12,7 @@
 #include "autonomy/localization/atlas/data/bow_vocabulary.hpp"
 #include "autonomy/localization/atlas/feature/orb_params.hpp"
 #include "autonomy/localization/atlas/util/converter.hpp"
+#include "autonomy/localization/atlas/imu/preintegrator.hpp"
 
 #include <nlohmann/json.hpp>
 #include "autolink/common/log.hpp"
@@ -114,7 +115,11 @@ keyframe::keyframe(unsigned int id, const frame& frm)
       bow_vec_(frm.bow_vec_), bow_feat_vec_(frm.bow_feat_vec_),
       markers_2d_(frm.markers_2d_),
       landmarks_(frm.get_landmarks()),
-      landmarks_line_(frm.get_landmarks_line()) {
+      landmarks_line_(frm.get_landmarks_line()),
+      velocity_w_(frm.velocity_w_),
+      imu_bias_(frm.imu_bias_),
+      imu_preintegrator_(frm.imu_preintegrator_),
+      has_inertial_(frm.has_inertial_) {
     if (landmarks_line_.empty() && !line_obs_.empty()) {
         landmarks_line_.assign(line_obs_.size(), nullptr);
     }
@@ -175,7 +180,11 @@ std::shared_ptr<keyframe> keyframe::from_stmt(sqlite3_stmt* stmt,
                                               camera_database* cam_db,
                                               orb_params_database* orb_params_db,
                                               bow_vocabulary* bow_vocab,
-                                              unsigned int next_keyframe_id) {
+                                              unsigned int next_keyframe_id,
+                                              int* imu_prev_id_out) {
+    if (imu_prev_id_out) {
+        *imu_prev_id_out = -1;
+    }
     const char* p;
     int column_id = 0;
     auto id = sqlite3_column_int64(stmt, column_id);
@@ -258,6 +267,35 @@ std::shared_ptr<keyframe> keyframe::from_stmt(sqlite3_stmt* stmt,
         id + next_keyframe_id, timestamp, pose_cw, camera, orb_params,
         frm_obs, bow_vec, bow_feat_vec, markers_2d);
 
+    // Optional inertial columns (newer maps)
+    if (sqlite3_column_count(stmt) > column_id + 3) {
+        const int has_inertial = sqlite3_column_int(stmt, column_id);
+        column_id++;
+        if (has_inertial) {
+            Vec3_t velocity = Vec3_t::Zero();
+            p = reinterpret_cast<const char*>(sqlite3_column_blob(stmt, column_id));
+            if (p && sqlite3_column_bytes(stmt, column_id) == static_cast<int>(3 * sizeof(double))) {
+                std::memcpy(velocity.data(), p, 3 * sizeof(double));
+            }
+            column_id++;
+            imu::bias b;
+            p = reinterpret_cast<const char*>(sqlite3_column_blob(stmt, column_id));
+            if (p && sqlite3_column_bytes(stmt, column_id) == static_cast<int>(6 * sizeof(double))) {
+                double bias_buf[6];
+                std::memcpy(bias_buf, p, 6 * sizeof(double));
+                b.acc = Vec3_t(bias_buf[0], bias_buf[1], bias_buf[2]);
+                b.gyro = Vec3_t(bias_buf[3], bias_buf[4], bias_buf[5]);
+            }
+            column_id++;
+            keyfrm->set_velocity(velocity);
+            keyfrm->set_imu_bias(b);
+            if (imu_prev_id_out) {
+                *imu_prev_id_out = sqlite3_column_int(stmt, column_id);
+            }
+            column_id++;
+        }
+    }
+
     return keyfrm;
 }
 
@@ -317,6 +355,17 @@ nlohmann::json keyframe::to_json() const {
                            {"span_parent", spanning_parent ? spanning_parent->id_ : -1},
                            {"span_children", spanning_child_ids},
                            {"loop_edges", loop_edge_ids}};
+
+    if (has_inertial_state()) {
+        const auto v = get_velocity();
+        const auto b = get_imu_bias();
+        json["velocity_w"] = {v(0), v(1), v(2)};
+        json["imu_bias_acc"] = {b.acc(0), b.acc(1), b.acc(2)};
+        json["imu_bias_gyro"] = {b.gyro(0), b.gyro(1), b.gyro(2)};
+        if (const auto prev = get_imu_prev_keyframe()) {
+            json["imu_prev_id"] = static_cast<int>(prev->id_);
+        }
+    }
 
     if (!line_obs_.empty()) {
         json["n_keylines"] = line_obs_.keylines.size();
@@ -388,6 +437,26 @@ bool keyframe::bind_to_stmt(sqlite3* db, sqlite3_stmt* stmt) const {
         std::vector<double> marker2d_blob = markers2d_to_blob(markers_2d_);
         assert(marker2d_blob.size() == MARKERS2D_BLOB_NUM_DOUBLES * markers_2d_.size());
         ret = sqlite3_bind_blob(stmt, column_id++, marker2d_blob.data(), marker2d_blob.size() * sizeof(double), SQLITE_TRANSIENT);
+    }
+    // Inertial state (optional columns)
+    if (ret == SQLITE_OK) {
+        ret = sqlite3_bind_int64(stmt, column_id++, has_inertial_state() ? 1 : 0);
+    }
+    if (ret == SQLITE_OK) {
+        const Vec3_t v = get_velocity();
+        ret = sqlite3_bind_blob(stmt, column_id++, v.data(), 3 * sizeof(double), SQLITE_TRANSIENT);
+    }
+    if (ret == SQLITE_OK) {
+        const auto b = get_imu_bias();
+        double bias_buf[6] = {b.acc(0), b.acc(1), b.acc(2), b.gyro(0), b.gyro(1), b.gyro(2)};
+        ret = sqlite3_bind_blob(stmt, column_id++, bias_buf, 6 * sizeof(double), SQLITE_TRANSIENT);
+    }
+    if (ret == SQLITE_OK) {
+        int imu_prev = -1;
+        if (const auto prev = get_imu_prev_keyframe()) {
+            imu_prev = static_cast<int>(prev->id_);
+        }
+        ret = sqlite3_bind_int64(stmt, column_id++, imu_prev);
     }
     if (ret != SQLITE_OK) {
         AERROR << "SQLite error (bind): " << sqlite3_errmsg(db);
@@ -777,6 +846,85 @@ void keyframe::prepare_for_erasing(map_database* map_db, bow_database* bow_db) {
 
 bool keyframe::will_be_erased() {
     return will_be_erased_;
+}
+
+void keyframe::set_velocity(const Vec3_t& v_w) {
+    std::lock_guard<std::mutex> lock(mtx_inertial_);
+    velocity_w_ = v_w;
+    has_inertial_ = true;
+}
+
+Vec3_t keyframe::get_velocity() const {
+    std::lock_guard<std::mutex> lock(mtx_inertial_);
+    return velocity_w_;
+}
+
+void keyframe::set_imu_bias(const imu::bias& b) {
+    std::lock_guard<std::mutex> lock(mtx_inertial_);
+    imu_bias_ = b;
+    has_inertial_ = true;
+}
+
+imu::bias keyframe::get_imu_bias() const {
+    std::lock_guard<std::mutex> lock(mtx_inertial_);
+    return imu_bias_;
+}
+
+void keyframe::set_imu_preintegrator(const std::shared_ptr<imu::preintegrator>& preint) {
+    std::lock_guard<std::mutex> lock(mtx_inertial_);
+    imu_preintegrator_ = preint;
+    if (preint) {
+        has_inertial_ = true;
+    }
+}
+
+std::shared_ptr<imu::preintegrator> keyframe::get_imu_preintegrator() const {
+    std::lock_guard<std::mutex> lock(mtx_inertial_);
+    return imu_preintegrator_;
+}
+
+bool keyframe::has_inertial_state() const {
+    std::lock_guard<std::mutex> lock(mtx_inertial_);
+    return has_inertial_;
+}
+
+void keyframe::clear_inertial_state() {
+    std::lock_guard<std::mutex> lock(mtx_inertial_);
+    velocity_w_.setZero();
+    imu_bias_ = imu::bias{};
+    imu_preintegrator_.reset();
+    has_inertial_ = false;
+}
+
+Mat33_t keyframe::get_imu_rotation_wb(const Mat44_t& T_c_b) const {
+    const Mat44_t pose_bw = T_c_b.inverse() * get_pose_cw();
+    return pose_bw.block<3, 3>(0, 0).transpose();
+}
+
+Vec3_t keyframe::get_imu_translation_wb(const Mat44_t& T_c_b) const {
+    const Mat44_t pose_bw = T_c_b.inverse() * get_pose_cw();
+    const Mat33_t R_wb = pose_bw.block<3, 3>(0, 0).transpose();
+    return -R_wb * pose_bw.block<3, 1>(0, 3);
+}
+
+void keyframe::set_imu_prev_keyframe(const std::shared_ptr<keyframe>& prev) {
+    std::lock_guard<std::mutex> lock(mtx_inertial_);
+    imu_prev_keyfrm_ = prev;
+}
+
+void keyframe::set_imu_next_keyframe(const std::shared_ptr<keyframe>& next) {
+    std::lock_guard<std::mutex> lock(mtx_inertial_);
+    imu_next_keyfrm_ = next;
+}
+
+std::shared_ptr<keyframe> keyframe::get_imu_prev_keyframe() const {
+    std::lock_guard<std::mutex> lock(mtx_inertial_);
+    return imu_prev_keyfrm_.lock();
+}
+
+std::shared_ptr<keyframe> keyframe::get_imu_next_keyframe() const {
+    std::lock_guard<std::mutex> lock(mtx_inertial_);
+    return imu_next_keyfrm_.lock();
 }
 
 } // namespace data

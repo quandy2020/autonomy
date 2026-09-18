@@ -31,8 +31,9 @@ unset(_LOCALIZATION_SRCS)
 # Process entrypoint: autonomy.localization
 autonomy_binary(autonomy.localization SRCS localization_main.cpp)
 
-# Standalone LIVO process: autonomy.livo
-add_subdirectory(livo)
+# Offline EuRoC mono-inertial runner (Atlas VIO)
+autonomy_binary(autonomy.localization.euroc_vio
+  SRCS atlas/example/euroc/euroc_inertial_main.cpp)
 
 # Runtime assets → share/autonomy/localization/ (launch / conf / dag)
 install(

@@ -45,7 +45,7 @@ public:
 inline shot_vertex::shot_vertex()
     : g2o::BaseVertex<6, g2o::SE3Quat>() {}
 
-inline bool shot_vertex::shot_vertex::read(std::istream& is) {
+inline bool shot_vertex::read(std::istream& is) {
     Vec7_t estimate;
     for (unsigned int i = 0; i < 7; ++i) {
         is >> estimate(i);
@@ -56,7 +56,7 @@ inline bool shot_vertex::shot_vertex::read(std::istream& is) {
     return true;
 }
 
-inline bool shot_vertex::shot_vertex::write(std::ostream& os) const {
+inline bool shot_vertex::write(std::ostream& os) const {
     g2o::SE3Quat g2o_cam_pose_wc(estimate().inverse());
     for (unsigned int i = 0; i < 7; ++i) {
         os << g2o_cam_pose_wc[i] << " ";

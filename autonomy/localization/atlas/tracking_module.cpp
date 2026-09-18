@@ -11,6 +11,8 @@
 #include "autonomy/localization/atlas/module/local_map_updater.hpp"
 #include "autonomy/localization/atlas/optimize/pose_optimizer_factory.hpp"
 #include "autonomy/localization/atlas/optimize/pose_optimizer_extended_line.hpp"
+#include "autonomy/localization/atlas/imu/preintegrator.hpp"
+#include "autonomy/localization/atlas/initialize/inertial.hpp"
 #include "autonomy/localization/atlas/util/yaml.hpp"
 
 #include <chrono>
@@ -58,6 +60,70 @@ void tracking_module::configure_plp_line_tracking() {
     pose_optimizer_extended_line_ = std::make_shared<optimize::pose_optimizer_extended_line>();
     frame_tracker_.set_line_tracking(map_db_, pose_optimizer_extended_line_);
     relocalizer_.set_line_tracking(pose_optimizer_extended_line_, map_db_->use_line_tracking());
+}
+
+void tracking_module::set_imu(const imu::config& cfg, imu::buffer* buffer) {
+    imu_cfg_ = cfg;
+    imu_buffer_ = buffer;
+    gravity_w_ = Vec3_t(0.0, 0.0, -imu_cfg_.gravity_magnitude);
+    if (imu_cfg_.enabled) {
+        inertial_initializer_ = std::make_unique<initialize::inertial>(imu_cfg_);
+        AINFO << "tracking_module: IMU fusion enabled";
+    } else {
+        inertial_initializer_.reset();
+    }
+}
+
+void tracking_module::set_inertial_initialized(bool ready) {
+    inertial_initialized_ = ready;
+    if (mapper_) {
+        mapper_->set_inertial_ready(ready);
+        mapper_->set_imu_gravity(gravity_w_);
+    }
+}
+
+std::shared_ptr<imu::preintegrator> tracking_module::integrate_imu_between(double t0, double t1) const {
+    if (!imu_is_enabled() || t1 <= t0) {
+        return nullptr;
+    }
+    auto meas = imu_buffer_->select(t0, t1);
+    if (meas.empty()) {
+        return nullptr;
+    }
+    auto preint = std::make_shared<imu::preintegrator>(imu_cfg_, last_frm_.get_imu_bias());
+    if (!preint->integrate_measurements(meas, t0, t1)) {
+        return nullptr;
+    }
+    return preint;
+}
+
+bool tracking_module::update_motion_model_from_imu() {
+    if (!imu_is_enabled() || !last_frm_.pose_is_valid()) {
+        return false;
+    }
+    auto preint = integrate_imu_between(last_frm_.timestamp_, curr_frm_.timestamp_);
+    if (!preint) {
+        return false;
+    }
+
+    Mat44_t pose_cw_pred;
+    Vec3_t v_pred;
+    if (!preint->predict_camera_pose(last_frm_.get_pose_cw(), last_frm_.get_velocity(),
+                                     gravity_w_, pose_cw_pred, v_pred)) {
+        return false;
+    }
+
+    curr_frm_.set_pose_cw(pose_cw_pred);
+    curr_frm_.set_velocity(v_pred);
+    curr_frm_.set_imu_bias(last_frm_.get_imu_bias());
+    curr_frm_.set_imu_preintegrator(preint);
+
+    Mat44_t last_frm_cam_pose_wc = Mat44_t::Identity();
+    last_frm_cam_pose_wc.block<3, 3>(0, 0) = last_frm_.get_rot_wc();
+    last_frm_cam_pose_wc.block<3, 1>(0, 3) = last_frm_.get_trans_wc();
+    twist_ = pose_cw_pred * last_frm_cam_pose_wc;
+    twist_is_valid_ = true;
+    return true;
 }
 
 bool tracking_module::request_relocalize_by_pose(const Mat44_t& pose_cw) {
@@ -126,6 +192,16 @@ void tracking_module::reset() {
     last_reloc_frm_timestamp_ = 0.0;
 
     tracking_state_ = tracker_state_t::Initializing;
+
+    if (inertial_initializer_) {
+        inertial_initializer_->reset();
+    }
+    inertial_initialized_ = false;
+    set_inertial_initialized(false);
+    last_imu_keyfrm_.reset();
+    if (imu_buffer_) {
+        imu_buffer_->clear();
+    }
 }
 
 std::shared_ptr<Mat44_t> tracking_module::feed_frame(data::frame curr_frm) {
@@ -156,6 +232,36 @@ std::shared_ptr<Mat44_t> tracking_module::feed_frame(data::frame curr_frm) {
         // check to insert the new keyframe derived from the current frame
         if (succeeded && !is_stopped_keyframe_insertion_ && new_keyframe_is_needed(num_tracked_lms, num_reliable_lms, min_num_obs_thr)) {
             keyfrm_inserter_.insert_new_keyframe(map_db_, curr_frm_);
+            if (imu_is_enabled() && curr_frm_.ref_keyfrm_) {
+                // Temporal IMU chain + preintegration between consecutive keyframes.
+                auto curr_kf = curr_frm_.ref_keyfrm_;
+                if (auto preint = integrate_imu_between(
+                        last_imu_keyfrm_ ? last_imu_keyfrm_->timestamp_ : last_frm_.timestamp_,
+                        curr_kf->timestamp_)) {
+                    curr_kf->set_imu_preintegrator(preint);
+                    curr_kf->set_imu_bias(curr_frm_.get_imu_bias());
+                    if (curr_frm_.has_inertial_state()) {
+                        curr_kf->set_velocity(curr_frm_.get_velocity());
+                    }
+                }
+                if (last_imu_keyfrm_) {
+                    curr_kf->set_imu_prev_keyframe(last_imu_keyfrm_);
+                    last_imu_keyfrm_->set_imu_next_keyframe(curr_kf);
+                }
+                last_imu_keyfrm_ = curr_kf;
+
+                if (inertial_initializer_ && !inertial_initialized_) {
+                    inertial_initializer_->set_min_keyframes(imu_cfg_.init_min_keyframes);
+                    inertial_initializer_->add_keyframe(curr_kf);
+                    if (inertial_initializer_->try_initialize()) {
+                        gravity_w_ = inertial_initializer_->gravity();
+                        inertial_initializer_->apply_to_map(map_db_);
+                        set_inertial_initialized(true);
+                        AINFO << "visual-inertial initialization succeeded (scale="
+                              << inertial_initializer_->scale() << ")";
+                    }
+                }
+            }
         }
     }
 
@@ -351,8 +457,15 @@ bool tracking_module::initialize() {
 bool tracking_module::track_current_frame() {
     bool succeeded = false;
 
+    // Prefer IMU prediction before visual motion model when inertial is ready.
+    if (imu_is_enabled() && inertial_initialized_) {
+        if (update_motion_model_from_imu()) {
+            succeeded = frame_tracker_.motion_based_track(curr_frm_, last_frm_, twist_);
+        }
+    }
+
     // Tracking mode
-    if (twist_is_valid_) {
+    if (!succeeded && twist_is_valid_) {
         // if the motion model is valid
         succeeded = frame_tracker_.motion_based_track(curr_frm_, last_frm_, twist_);
     }
@@ -417,7 +530,17 @@ std::vector<std::shared_ptr<data::keyframe>> tracking_module::get_close_keyframe
 }
 
 void tracking_module::update_motion_model() {
-    if (last_frm_.pose_is_valid()) {
+    // Attach IMU preintegration on the finished frame for keyframe / BA use.
+    if (imu_is_enabled() && last_frm_.pose_is_valid()) {
+        if (auto preint = integrate_imu_between(last_frm_.timestamp_, curr_frm_.timestamp_)) {
+            curr_frm_.set_imu_preintegrator(preint);
+            if (!curr_frm_.has_inertial_state()) {
+                curr_frm_.set_imu_bias(last_frm_.get_imu_bias());
+            }
+        }
+    }
+
+    if (last_frm_.pose_is_valid() && curr_frm_.pose_is_valid()) {
         Mat44_t last_frm_cam_pose_wc = Mat44_t::Identity();
         last_frm_cam_pose_wc.block<3, 3>(0, 0) = last_frm_.get_rot_wc();
         last_frm_cam_pose_wc.block<3, 1>(0, 3) = last_frm_.get_trans_wc();

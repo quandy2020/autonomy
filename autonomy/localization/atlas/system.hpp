@@ -19,6 +19,8 @@
 
 #include "autonomy/localization/atlas/type.hpp"
 #include "autonomy/localization/atlas/data/bow_vocabulary_fwd.hpp"
+#include "autonomy/localization/atlas/imu/buffer.hpp"
+#include "autonomy/localization/atlas/imu/config.hpp"
 #include "autonomy/localization/atlas/plp/plp_options.hpp"
 #include "autonomy/localization/atlas/plp/planar_mapping_module.hpp"
 #include <thread>
@@ -161,6 +163,13 @@ public:
                                   const cv::Mat& mask = cv::Mat{}, const cv::Mat& seg_mask = cv::Mat{});
     std::shared_ptr<Mat44_t> feed_RGBD_frame(const cv::Mat& rgb_img, const cv::Mat& depthmap, const double timestamp,
                                              const cv::Mat& mask = cv::Mat{}, const cv::Mat& seg_mask = cv::Mat{});
+
+    //! Feed an IMU measurement (acc [m/s^2], gyro [rad/s], timestamp [s])
+    void feed_imu(double timestamp, const Vec3_t& acc, const Vec3_t& gyro);
+    void feed_imu(double timestamp, double ax, double ay, double az, double wx, double wy, double wz);
+
+    //! Whether IMU fusion is configured
+    bool imu_is_enabled() const;
 
     //-----------------------------------------
     // pose initializing/updating
@@ -306,6 +315,10 @@ private:
 
     //! Temporary variables for visualization
     std::vector<cv::KeyPoint> keypts_;
+
+    //! IMU
+    imu::config imu_cfg_{};
+    std::unique_ptr<imu::buffer> imu_buffer_;
 };
 
 }  // namespace autonomy::localization::atlas

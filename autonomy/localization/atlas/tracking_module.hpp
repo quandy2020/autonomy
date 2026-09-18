@@ -19,6 +19,10 @@
 
 #include "autonomy/localization/atlas/type.hpp"
 #include "autonomy/localization/atlas/data/frame.hpp"
+#include "autonomy/localization/atlas/imu/buffer.hpp"
+#include "autonomy/localization/atlas/imu/config.hpp"
+#include "autonomy/localization/atlas/imu/preintegrator.hpp"
+#include "autonomy/localization/atlas/initialize/inertial.hpp"
 #include "autonomy/localization/atlas/module/initializer.hpp"
 #include "autonomy/localization/atlas/module/relocalizer.hpp"
 #include "autonomy/localization/atlas/module/keyframe_inserter.hpp"
@@ -82,6 +86,21 @@ public:
 
     //! Enable PLP line tracking in frame_tracker (call after map_db line flag is set)
     void configure_plp_line_tracking();
+
+    //! Bind shared IMU buffer / config (owned by system)
+    void set_imu(const imu::config& cfg, imu::buffer* buffer);
+
+    //! Whether IMU fusion is enabled
+    bool imu_is_enabled() const { return imu_cfg_.enabled && imu_buffer_ != nullptr; }
+
+    //! Whether visual-inertial initialization has succeeded
+    bool inertial_is_initialized() const { return inertial_initialized_; }
+
+    const imu::config& get_imu_config() const { return imu_cfg_; }
+    Vec3_t get_imu_gravity() const { return gravity_w_; }
+
+    //! Notify tracking that visual-inertial init succeeded
+    void set_inertial_initialized(bool ready);
 
     //-----------------------------------------
     // interfaces for mapping module and global optimization module
@@ -208,6 +227,12 @@ protected:
     //! Update the motion model using the current and last frames
     void update_motion_model();
 
+    //! Prefer IMU preintegration twist when available
+    bool update_motion_model_from_imu();
+
+    //! Build preintegrator between last and current frame timestamps
+    std::shared_ptr<imu::preintegrator> integrate_imu_between(double t0, double t1) const;
+
     //! Update the camera pose of the last frame
     void update_last_frame();
 
@@ -279,6 +304,14 @@ protected:
     Mat44_t twist_;
     //! motion model is valid or not
     bool twist_is_valid_ = false;
+
+    //! IMU fusion
+    imu::config imu_cfg_{};
+    imu::buffer* imu_buffer_ = nullptr;
+    std::unique_ptr<initialize::inertial> inertial_initializer_;
+    bool inertial_initialized_ = false;
+    Vec3_t gravity_w_ = Vec3_t(0.0, 0.0, -9.81);
+    std::shared_ptr<data::keyframe> last_imu_keyfrm_;
 
     //! current camera pose from reference keyframe
     //! (to update last camera pose at the beginning of each tracking)

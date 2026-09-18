@@ -27,11 +27,16 @@
 #include "autonomy/localization/atlas/data/landmark_line.hpp"
 #include "autonomy/localization/atlas/data/marker2d.hpp"
 #include "autonomy/localization/atlas/data/bow_vocabulary_fwd.hpp"
+#include "autonomy/localization/atlas/imu/bias.hpp"
 
 #include <set>
 #include <mutex>
 #include <atomic>
 #include <memory>
+
+namespace autonomy::localization::atlas::imu {
+class preintegrator;
+}
 
 #include <nlohmann/json_fwd.hpp>
 #include <sqlite3.h>
@@ -81,11 +86,6 @@ public:
         const feature::orb_params* orb_params, const frame_observation& frm_obs,
         const bow_vector& bow_vec, const bow_feature_vector& bow_feat_vec,
         std::unordered_map<unsigned int, marker2d> markers_2d = {});
-    static std::shared_ptr<keyframe> from_stmt(sqlite3_stmt* stmt,
-                                               camera_database* cam_db,
-                                               orb_params_database* orb_params_db,
-                                               bow_vocabulary* bow_vocab,
-                                               unsigned int next_keyframe_id);
 
     // operator overrides
     bool operator==(const keyframe& keyfrm) const { return id_ == keyfrm.id_; }
@@ -116,9 +116,25 @@ public:
             {"depths", "BLOB"},
             {"descs", "BLOB"},
             {"n_markers", "INTEGER"},
-            {"markers", "BLOB"}};
+            {"markers", "BLOB"},
+            // optional inertial (appended for backward-compatible loads)
+            {"has_inertial", "INTEGER"},
+            {"velocity_w", "BLOB"},
+            {"imu_bias", "BLOB"},
+            {"imu_prev_id", "INTEGER"}};
     };
     bool bind_to_stmt(sqlite3* db, sqlite3_stmt* stmt) const;
+
+    /**
+     * Load keyframe from statement.
+     * @param imu_prev_id_out Optional: storage id of temporal IMU predecessor (-1 if none).
+     */
+    static std::shared_ptr<keyframe> from_stmt(sqlite3_stmt* stmt,
+                                               camera_database* cam_db,
+                                               orb_params_database* orb_params_db,
+                                               bow_vocabulary* bow_vocab,
+                                               unsigned int next_keyframe_id,
+                                               int* imu_prev_id_out = nullptr);
 
     //-----------------------------------------
     // camera pose
@@ -285,6 +301,27 @@ public:
     bool will_be_erased();
 
     //-----------------------------------------
+    // inertial state (optional; used when IMU.enabled)
+
+    void set_velocity(const Vec3_t& v_w);
+    Vec3_t get_velocity() const;
+    void set_imu_bias(const imu::bias& b);
+    imu::bias get_imu_bias() const;
+    void set_imu_preintegrator(const std::shared_ptr<imu::preintegrator>& preint);
+    std::shared_ptr<imu::preintegrator> get_imu_preintegrator() const;
+    bool has_inertial_state() const;
+    void clear_inertial_state();
+
+    Mat33_t get_imu_rotation_wb(const Mat44_t& T_c_b) const;
+    Vec3_t get_imu_translation_wb(const Mat44_t& T_c_b) const;
+
+    //! Temporal IMU chain (consecutive keyframes in time)
+    void set_imu_prev_keyframe(const std::shared_ptr<keyframe>& prev);
+    void set_imu_next_keyframe(const std::shared_ptr<keyframe>& next);
+    std::shared_ptr<keyframe> get_imu_prev_keyframe() const;
+    std::shared_ptr<keyframe> get_imu_next_keyframe() const;
+
+    //-----------------------------------------
     // meta information
 
     //! keyframe ID
@@ -368,6 +405,17 @@ private:
 
     //! flag which indicates this keyframe will be erased
     std::atomic<bool> will_be_erased_{false};
+
+    //-----------------------------------------
+    // inertial
+
+    mutable std::mutex mtx_inertial_;
+    Vec3_t velocity_w_ = Vec3_t::Zero();
+    imu::bias imu_bias_{};
+    std::shared_ptr<imu::preintegrator> imu_preintegrator_;
+    bool has_inertial_ = false;
+    std::weak_ptr<keyframe> imu_prev_keyfrm_;
+    std::weak_ptr<keyframe> imu_next_keyfrm_;
 
     //-----------------------------------------
     // misc
