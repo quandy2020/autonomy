@@ -31,6 +31,9 @@ unset(_LOCALIZATION_SRCS)
 # Process entrypoint: autonomy.localization
 autonomy_binary(autonomy.localization SRCS localization_main.cpp)
 
+# Standalone LIVO process: autonomy.livo
+add_subdirectory(livo)
+
 # Runtime assets → share/autonomy/localization/ (launch / conf / dag)
 install(
   DIRECTORY conf/

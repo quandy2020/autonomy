@@ -1,0 +1,13 @@
+# LIVO (FAST-LIVO2) LiDAR-Visual-IMU SLAM
+#
+#   autonomy.localization --localization_mode=livo \
+#     --livo_config=autonomy/localization/conf/livo/avia.yaml \
+#     --livo_camera=autonomy/localization/conf/livo/camera_pinhole.yaml
+
+process autonomy.localization
+  localization_mode: livo
+  livo_config: autonomy/localization/conf/livo/avia.yaml
+  livo_camera: autonomy/localization/conf/livo/camera_pinhole.yaml
+  livo_lidar_topic: /livox/lidar
+  livo_imu_topic: /livox/imu
+  livo_image_topic: /left_camera/image
