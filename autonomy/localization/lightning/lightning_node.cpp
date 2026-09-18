@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <set>
 #include <utility>
 #include <vector>
@@ -72,6 +73,17 @@ bool HasField(const automsgs::msgs::sensor_msgs::PointCloud2& pc2,
         }
     }
     return false;
+}
+
+const automsgs::msgs::sensor_msgs::PointField* FindField(
+    const automsgs::msgs::sensor_msgs::PointCloud2& pc2,
+    const std::string& name) {
+    for (const auto& f : pc2.fields()) {
+        if (f.name() == name) {
+            return &f;
+        }
+    }
+    return nullptr;
 }
 
 Eigen::Matrix4d Se3ToMat44(const lightning::SE3& pose) {
@@ -321,6 +333,7 @@ void LightningNode::OnCloud(const std::shared_ptr<CloudMsg>& msg) {
     PublishPose(timestamp, pose);
     PublishMapOdomTf(timestamp, pose);
     PublishGlobalCloud(timestamp);
+    PublishLoopEdges(timestamp);
 }
 
 bool LightningNode::CloudMsgToLightning(const CloudMsg& msg,
@@ -341,19 +354,34 @@ bool LightningNode::CloudMsgToLightning(const CloudMsg& msg,
     cloud->header.stamp = static_cast<std::uint64_t>(stamp * 1e9);
 
     using automsgs::msgs::sensor_msgs::PointCloud2ConstIterator;
+    using automsgs::msgs::sensor_msgs::PointField;
     PointCloud2ConstIterator<float> iter_x(msg, "x");
     PointCloud2ConstIterator<float> iter_y(msg, "y");
     PointCloud2ConstIterator<float> iter_z(msg, "z");
     const bool has_intensity = HasField(msg, "intensity");
-    const bool has_time = HasField(msg, "time");
+    const auto* t_field = FindField(msg, "t");
+    const auto* time_field = FindField(msg, "time");
+    const auto* ts_field = FindField(msg, "timestamp");
     std::unique_ptr<PointCloud2ConstIterator<float>> iter_i;
-    std::unique_ptr<PointCloud2ConstIterator<float>> iter_t;
+    std::unique_ptr<PointCloud2ConstIterator<uint32_t>> iter_t_ns;
+    std::unique_ptr<PointCloud2ConstIterator<float>> iter_time;
+    std::unique_ptr<PointCloud2ConstIterator<double>> iter_timestamp;
     if (has_intensity) {
         iter_i = std::make_unique<PointCloud2ConstIterator<float>>(msg,
                                                                    "intensity");
     }
-    if (has_time) {
-        iter_t = std::make_unique<PointCloud2ConstIterator<float>>(msg, "time");
+    if (t_field != nullptr &&
+        t_field->datatype() == PointField::UINT32) {
+        // Ouster: t is nanoseconds relative to the scan header.
+        iter_t_ns =
+            std::make_unique<PointCloud2ConstIterator<uint32_t>>(msg, "t");
+    } else if (time_field != nullptr) {
+        iter_time =
+            std::make_unique<PointCloud2ConstIterator<float>>(msg, "time");
+    } else if (ts_field != nullptr &&
+               ts_field->datatype() == PointField::FLOAT64) {
+        iter_timestamp =
+            std::make_unique<PointCloud2ConstIterator<double>>(msg, "timestamp");
     }
 
     for (std::size_t i = 0; i < n; ++i, ++iter_x, ++iter_y, ++iter_z) {
@@ -367,10 +395,16 @@ bool LightningNode::CloudMsgToLightning(const CloudMsg& msg,
             pt.intensity = **iter_i;
             ++(*iter_i);
         }
-        if (iter_t) {
-            // lightning undistort uses point.time in milliseconds.
-            pt.time = static_cast<double>(**iter_t) * 1000.0;
-            ++(*iter_t);
+        // lightning undistort uses point.time in milliseconds.
+        if (iter_t_ns) {
+            pt.time = static_cast<double>(**iter_t_ns) / 1e6;
+            ++(*iter_t_ns);
+        } else if (iter_time) {
+            pt.time = static_cast<double>(**iter_time) * 1000.0;
+            ++(*iter_time);
+        } else if (iter_timestamp) {
+            pt.time = (**iter_timestamp - stamp) * 1000.0;
+            ++(*iter_timestamp);
         }
         cloud->push_back(pt);
     }
@@ -431,28 +465,35 @@ void LightningNode::PublishMapOdomTf(double timestamp_sec,
     automsgs::msgs::builtin_interfaces::Time lookup_stamp;
     lookup_stamp.set_sec(0);
     lookup_stamp.set_nanosec(0);
+
+    // timeout=0: VBR/MV records have no wheel-odom TF. A 50ms wait polls
+    // BufferCore every 3ms and floods WARNING logs.
+    Eigen::Matrix4d T_odom_base = Eigen::Matrix4d::Identity();
+    bool have_wheel_odom = false;
     std::string err;
-    if (!tf_buffer_->canTransform(options_.odom_frame, options_.base_frame,
-                                  lookup_stamp, 0.05f, &err)) {
-        AINFO_EVERY(50) << "LightningNode: waiting for TF "
-                        << options_.odom_frame << "→" << options_.base_frame
-                        << " (" << err << ")";
-        return;
+    if (tf_buffer_->canTransform(options_.odom_frame, options_.base_frame,
+                                 lookup_stamp, 0.0f, &err)) {
+        try {
+            const auto stamped = tf_buffer_->lookupTransform(
+                options_.odom_frame, options_.base_frame, lookup_stamp, 0.0f);
+            T_odom_base = TransformMsgToMat44(stamped.transform());
+            have_wheel_odom = true;
+        } catch (const std::exception& ex) {
+            AWARN_EVERY(50) << "LightningNode: TF lookup failed: " << ex.what();
+        }
     }
 
-    Eigen::Matrix4d T_odom_base = Eigen::Matrix4d::Identity();
-    try {
-        const auto stamped = tf_buffer_->lookupTransform(
-            options_.odom_frame, options_.base_frame, lookup_stamp, 0.05f);
-        T_odom_base = TransformMsgToMat44(stamped.transform());
-    } catch (const std::exception& ex) {
-        AWARN_EVERY(50) << "LightningNode: TF lookup failed: " << ex.what();
-        return;
+    if (!have_wheel_odom && !logged_identity_odom_tf_) {
+        AINFO << "LightningNode: no TF " << options_.odom_frame << "→"
+              << options_.base_frame
+              << ", treating odom as identity (LIO / bag playback)";
+        logged_identity_odom_tf_ = true;
     }
 
     const Eigen::Matrix4d T_map_odom =
         Se3ToMat44(T_map_imu) * T_odom_base.inverse();
 
+    TfMsg tf_msg;
     automsgs::msgs::geometry_msgs::TransformStamped map_odom;
     SetStamp(map_odom.mutable_header()->mutable_stamp(), timestamp_sec);
     map_odom.mutable_header()->set_frame_id(options_.map_frame);
@@ -460,9 +501,20 @@ void LightningNode::PublishMapOdomTf(double timestamp_sec,
     Mat44ToTransformMsg(T_map_odom, map_odom.mutable_transform());
     transform::ApplyTransformStampedToBuffer(tf_buffer_, map_odom, "lightning",
                                              false);
-
-    TfMsg tf_msg;
     *tf_msg.add_transforms() = map_odom;
+
+    if (!have_wheel_odom) {
+        automsgs::msgs::geometry_msgs::TransformStamped odom_base;
+        SetStamp(odom_base.mutable_header()->mutable_stamp(), timestamp_sec);
+        odom_base.mutable_header()->set_frame_id(options_.odom_frame);
+        odom_base.set_child_frame_id(options_.base_frame);
+        Mat44ToTransformMsg(Eigen::Matrix4d::Identity(),
+                            odom_base.mutable_transform());
+        transform::ApplyTransformStampedToBuffer(tf_buffer_, odom_base,
+                                                 "lightning", false);
+        *tf_msg.add_transforms() = odom_base;
+    }
+
     tf_writer_->Write(tf_msg);
 }
 
@@ -535,15 +587,21 @@ void LightningNode::PublishGlobalCloud(double timestamp_sec) {
     }
     PublishCloud(timestamp_sec, map);
     last_global_cloud_pub_t_ = timestamp_sec;
-    PublishLoopEdges(timestamp_sec);
 }
 
 void LightningNode::PublishLoopEdges(double timestamp_sec) {
     if (!loop_edges_writer_ || !slam_ || slam_->loop_closing() == nullptr) {
         return;
     }
-    const auto edges = slam_->loop_closing()->GetLoopEdges();
-    if (edges.empty()) {
+    const auto viz = slam_->loop_closing()->GetConstraintViz();
+    if (viz.loops.empty() && viz.odom.empty() && viz.reloc.empty()) {
+        return;
+    }
+    const bool changed =
+        viz.loops.size() != last_loop_edge_count_ ||
+        viz.reloc.size() != last_reloc_edge_count_;
+    if (!changed && last_constraint_pub_t_ >= 0.0 &&
+        timestamp_sec - last_constraint_pub_t_ < 0.5) {
         return;
     }
 
@@ -553,64 +611,85 @@ void LightningNode::PublishLoopEdges(double timestamp_sec) {
     MarkerArray array;
     array.add_markers()->set_action(Marker::DELETEALL);
 
-    Marker* lines = array.add_markers();
-    SetHeader(lines->mutable_header(), timestamp_sec, options_.map_frame);
-    lines->set_ns("loop_edges");
-    lines->set_id(0);
-    lines->set_type(Marker::LINE_LIST);
-    lines->set_action(Marker::ADD);
-    lines->mutable_pose()->mutable_orientation()->set_w(1.0);
-    lines->mutable_scale()->set_x(0.025);
-    lines->mutable_color()->set_r(0.1f);
-    lines->mutable_color()->set_g(1.0f);
-    lines->mutable_color()->set_b(0.2f);
-    lines->mutable_color()->set_a(0.95f);
-
-    Marker* nodes = array.add_markers();
-    SetHeader(nodes->mutable_header(), timestamp_sec, options_.map_frame);
-    nodes->set_ns("loop_nodes");
-    nodes->set_id(1);
-    nodes->set_type(Marker::SPHERE_LIST);
-    nodes->set_action(Marker::ADD);
-    nodes->mutable_pose()->mutable_orientation()->set_w(1.0);
-    nodes->mutable_scale()->set_x(0.12);
-    nodes->mutable_scale()->set_y(0.12);
-    nodes->mutable_scale()->set_z(0.12);
-    nodes->mutable_color()->set_r(0.15f);
-    nodes->mutable_color()->set_g(1.0f);
-    nodes->mutable_color()->set_b(0.35f);
-    nodes->mutable_color()->set_a(0.95f);
-
-    std::set<uint64_t> seen;
-    for (const auto& e : edges) {
-        auto* p0 = lines->add_points();
-        p0->set_x(e.p1.x());
-        p0->set_y(e.p1.y());
-        p0->set_z(e.p1.z());
-        auto* p1 = lines->add_points();
-        p1->set_x(e.p2.x());
-        p1->set_y(e.p2.y());
-        p1->set_z(e.p2.z());
-
-        if (seen.insert(e.id1).second) {
-            auto* n = nodes->add_points();
-            n->set_x(e.p1.x());
-            n->set_y(e.p1.y());
-            n->set_z(e.p1.z());
+    auto make_lines = [&](const char* ns, int id, float r, float g, float b,
+                          float width,
+                          const std::vector<lightning::LoopClosing::LoopEdgeViz>&
+                              segs) -> Marker* {
+        if (segs.empty()) {
+            return nullptr;
         }
-        if (seen.insert(e.id2).second) {
+        Marker* m = array.add_markers();
+        SetHeader(m->mutable_header(), timestamp_sec, options_.map_frame);
+        m->set_ns(ns);
+        m->set_id(id);
+        m->set_type(Marker::LINE_LIST);
+        m->set_action(Marker::ADD);
+        m->mutable_pose()->mutable_orientation()->set_w(1.0);
+        m->mutable_scale()->set_x(width);
+        m->mutable_color()->set_r(r);
+        m->mutable_color()->set_g(g);
+        m->mutable_color()->set_b(b);
+        m->mutable_color()->set_a(0.95f);
+        for (const auto& e : segs) {
+            auto* p0 = m->add_points();
+            p0->set_x(e.p1.x());
+            p0->set_y(e.p1.y());
+            p0->set_z(e.p1.z());
+            auto* p1 = m->add_points();
+            p1->set_x(e.p2.x());
+            p1->set_y(e.p2.y());
+            p1->set_z(e.p2.z());
+        }
+        return m;
+    };
+
+    // Dim green: consecutive lidar keyframes (odom chain).
+    make_lines("lidar_odom_edges", 0, 0.2f, 0.75f, 0.25f, 0.015f, viz.odom);
+    // Cyan: accepted loop closures (query ↔ candidate).
+    make_lines("lidar_loop_edges", 1, 0.1f, 0.95f, 1.0f, 0.04f, viz.loops);
+    // Orange: reloc snaps (LIO prior → NDT aligned).
+    make_lines("lidar_loc_edges", 2, 1.0f, 0.45f, 0.1f, 0.035f, viz.reloc);
+
+    if (!viz.loops.empty() || !viz.reloc.empty()) {
+        Marker* nodes = array.add_markers();
+        SetHeader(nodes->mutable_header(), timestamp_sec, options_.map_frame);
+        nodes->set_ns("lidar_loop_nodes");
+        nodes->set_id(3);
+        nodes->set_type(Marker::SPHERE_LIST);
+        nodes->set_action(Marker::ADD);
+        nodes->mutable_pose()->mutable_orientation()->set_w(1.0);
+        nodes->mutable_scale()->set_x(0.14);
+        nodes->mutable_scale()->set_y(0.14);
+        nodes->mutable_scale()->set_z(0.14);
+        nodes->mutable_color()->set_r(0.1f);
+        nodes->mutable_color()->set_g(1.0f);
+        nodes->mutable_color()->set_b(1.0f);
+        nodes->mutable_color()->set_a(0.95f);
+        auto add_node = [&](const lightning::Vec3d& p) {
             auto* n = nodes->add_points();
-            n->set_x(e.p2.x());
-            n->set_y(e.p2.y());
-            n->set_z(e.p2.z());
+            n->set_x(p.x());
+            n->set_y(p.y());
+            n->set_z(p.z());
+        };
+        for (const auto& e : viz.loops) {
+            add_node(e.p1);
+            add_node(e.p2);
+        }
+        for (const auto& e : viz.reloc) {
+            add_node(e.p1);
+            add_node(e.p2);
         }
     }
 
     loop_edges_writer_->Write(array);
-    if (edges.size() != last_loop_edge_count_) {
-        last_loop_edge_count_ = edges.size();
-        AINFO << "LightningNode: published " << edges.size()
-              << " loop edges on " << options_.loop_edges_topic;
+    last_constraint_pub_t_ = timestamp_sec;
+    if (changed) {
+        last_loop_edge_count_ = viz.loops.size();
+        last_reloc_edge_count_ = viz.reloc.size();
+        AINFO << "LightningNode: constraint viz loops=" << viz.loops.size()
+              << " odom_kf=" << viz.odom.size()
+              << " reloc=" << viz.reloc.size() << " on "
+              << options_.loop_edges_topic;
     }
 }
 

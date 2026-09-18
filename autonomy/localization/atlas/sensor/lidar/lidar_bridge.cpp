@@ -260,7 +260,7 @@ bool LidarBridge::MaybeKeyframe(double t, const Mat44_t& Twb,
     return true;
 }
 
-void LidarBridge::MaybeLidarLoop(const Mat44_t& Twb,
+void LidarBridge::MaybeLidarLoop(double t, const Mat44_t& Twb,
                                  const std::vector<Vec3_t>& cloud_body) {
     if (!options_.use_lidar_loop || cloud_body.empty()) {
         return;
@@ -278,6 +278,7 @@ void LidarBridge::MaybeLidarLoop(const Mat44_t& Twb,
 
     backend::LidarLoopResult lr;
     if (!lidar_loop_.Detect(Twb, cloud_body, &lr) || !lr.found) {
+        PublishConstraintEdges(t);
         return;
     }
     AINFO << "LidarBridge: lidar loop HIT query=" << lr.query_id
@@ -297,6 +298,7 @@ void LidarBridge::MaybeLidarLoop(const Mat44_t& Twb,
     if (lr.ndt_score <= 0.0) {
         AWARN << "LidarBridge: reject ICP-only loop inlier="
               << lr.inlier_ratio << " mean_res=" << lr.mean_residual;
+        PublishConstraintEdges(t);
         return;
     }
     if (!ndt_ok || !icp_ok) {
@@ -305,6 +307,7 @@ void LidarBridge::MaybeLidarLoop(const Mat44_t& Twb,
               << " mean_res=" << lr.mean_residual
               << " (need score>" << lopt.ndt_score_thresh
               << " + ICP residual)";
+        PublishConstraintEdges(t);
         return;
     }
 
@@ -314,6 +317,7 @@ void LidarBridge::MaybeLidarLoop(const Mat44_t& Twb,
                              : std::max(0.1, lr.inlier_ratio);
     pose_graph_.AddLoop(lr.candidate_id, lr.query_id, lr.T_delta, score);
     if (!pose_graph_.Optimize(/*iters=*/20)) {
+        PublishConstraintEdges(t);
         return;
     }
 
@@ -360,6 +364,7 @@ void LidarBridge::MaybeLidarLoop(const Mat44_t& Twb,
     if (g2p5_) {
         g2p5_->RedrawGlobalMap();
     }
+    PublishConstraintEdges(t);
 }
 
 void LidarBridge::MaybeLidarLoc(double t, const std::vector<Vec3_t>& cloud_body,
@@ -376,6 +381,18 @@ void LidarBridge::MaybeLidarLoc(double t, const std::vector<Vec3_t>& cloud_body,
     double score = 0.0;
     if (!lidar_locator_->Align(cloud_body, guess, &T_aligned, &score)) {
         return;
+    }
+    const Vec3_t p0 = guess.block<3, 1>(0, 3);
+    const Vec3_t p1 = T_aligned.block<3, 1>(0, 3);
+    if ((p1 - p0).norm() > 0.02) {
+        loc_edges_.emplace_back(p0, p1);
+        constexpr std::size_t kMaxLocEdges = 200;
+        if (loc_edges_.size() > kMaxLocEdges) {
+            loc_edges_.erase(loc_edges_.begin(),
+                             loc_edges_.begin() +
+                                 static_cast<std::ptrdiff_t>(
+                                     loc_edges_.size() - kMaxLocEdges));
+        }
     }
     *Twb_inout = T_aligned;
     if (pose_extrapolator_) {
@@ -395,6 +412,7 @@ void LidarBridge::MaybeLidarLoc(double t, const std::vector<Vec3_t>& cloud_body,
     if (viz_ && estimator_) {
         viz_->PublishWorldPose(t, estimator_->T_wb());
     }
+    PublishConstraintEdges(t);
 }
 
 void LidarBridge::PublishGlobalCloud(double timestamp_sec) {
@@ -463,6 +481,34 @@ void LidarBridge::PublishGlobalCloud(double timestamp_sec) {
                     << " frame=" << options_.global_cloud_frame;
 }
 
+void LidarBridge::PublishConstraintEdges(double timestamp_sec) {
+    if (!viz_) {
+        return;
+    }
+    // Throttle unless forced (timestamp_sec<=0) or after loop/loc.
+    if (timestamp_sec > 0.0 && last_constraint_pub_t_ >= 0.0 &&
+        timestamp_sec - last_constraint_pub_t_ < 0.5) {
+        return;
+    }
+    std::vector<std::pair<Vec3_t, Vec3_t>> loops;
+    std::vector<std::pair<Vec3_t, Vec3_t>> odom;
+    for (const auto& s : pose_graph_.LoopSegments()) {
+        loops.emplace_back(s.p0, s.p1);
+    }
+    for (const auto& s : pose_graph_.OdomSegments()) {
+        odom.emplace_back(s.p0, s.p1);
+    }
+    const double t_pub =
+        (timestamp_sec > 0.0) ? timestamp_sec
+                              : (last_dbg_t_ > 0.0 ? last_dbg_t_ : 0.0);
+    viz_->PublishLidarConstraintEdges(t_pub, loops, odom, loc_edges_);
+    last_constraint_pub_t_ = t_pub;
+    AINFO_EVERY(40) << "LidarBridge: constraint viz loops=" << loops.size()
+                    << " odom_kf=" << odom.size()
+                    << " loc=" << loc_edges_.size()
+                    << " use_lidar_loop=" << options_.use_lidar_loop;
+}
+
 void LidarBridge::OnCloud(
     const std::shared_ptr<automsgs::msgs::sensor_msgs::PointCloud2>& msg) {
     if (!running_ || !msg || !lidar_) {
@@ -527,13 +573,16 @@ void LidarBridge::OnCloud(
         filtered = preprocess_.Run(pts);
     }
 
-    // Approximation: no point times → uniform t_rel so trajectory deskew still runs.
-    if (times_rel.empty() && filtered.size() > 1) {
+    // Habitat / autosim: no per-point times → instantaneous scan (dt=0).
+    // Only synthesize uniform t_rel when default_scan_dt > 0 (spinning lidar).
+    const double scan_dt = options_.default_scan_dt;
+    if (times_rel.empty() && filtered.size() > 1 && scan_dt > 1e-6) {
         times_rel = frontend::lio::SynthesizeUniformTimeRel(filtered.size());
     }
 
     const double t_msg = StampSec(*msg);
-    const double t_end_msg = t_msg + options_.default_scan_dt;
+    const double t_end_msg =
+        (scan_dt > 1e-6) ? (t_msg + scan_dt) : t_msg;
 
     // Lightning-style hard sync gate: with IMU, do not ObsModel / IEKF / insert
     // until LidarImuSync pops a covered measure. Prevents raw-scan ghost maps
@@ -564,7 +613,9 @@ void LidarBridge::OnCloud(
         if (estimator_) {
             imu_process_.SetExtrinsic(estimator_->T_imu_lidar());
         }
-        if (mg.point_time_rel.empty() && mg.points_body.size() > 1) {
+        // Only invent uniform times when scan window is non-zero.
+        if (mg.point_time_rel.empty() && mg.points_body.size() > 1 &&
+            (mg.lidar_end_time - mg.lidar_begin_time) > 1e-6) {
             mg.point_time_rel = frontend::lio::SynthesizeUniformTimeRel(
                 mg.points_body.size());
         }
@@ -621,69 +672,66 @@ void LidarBridge::OnCloud(
     }
 
     // Residuals against existing map at predict pose (do not insert yet).
-    lidar_->FeedWithPose(t, Twb, cloud_body);
+    // Keep ObsModel / MapIncremental extrinsic in sync with estimator.
+    if (estimator_ && lidar_) {
+        auto obs = lidar_->obs_model_options();
+        obs.T_imu_lidar = estimator_->T_imu_lidar();
+        lidar_->set_obs_model_options(obs);
+    }
+    if (estimator_ && map_incremental_) {
+        auto mo = map_incremental_->options();
+        mo.T_imu_lidar = estimator_->T_imu_lidar();
+        map_incremental_->set_options(mo);
+    }
 
     int n_residuals = 0;
     int n_residuals_p2p = 0;
     int n_updated = 0;
-    bool iekf_rejected = false;
-    bool allow_map_insert = true;
     double mean_abs_res = 0.0;
     const Mat44_t Twb_pre_lidar = estimator_ ? estimator_->T_wb() : Twb;
 
-    if (estimator_ && lidar_->residual_source()) {
-        auto batch = lidar_->residual_source()->Pull(t - 0.05, t + 0.05);
-        n_residuals = static_cast<int>(batch.point_planes.size());
-        n_residuals_p2p = static_cast<int>(batch.point_points.size());
-        if (!batch.point_planes.empty()) {
-            double sum = 0.0;
-            const Mat33_t R0 = Twb_pre_lidar.block<3, 3>(0, 0);
-            const Vec3_t t0 = Twb_pre_lidar.block<3, 1>(0, 3);
-            for (const auto& r : batch.point_planes) {
-                const Vec3_t pw = R0 * r.point_body + t0;
-                sum += std::abs(r.normal_world.dot(pw) + r.d);
-            }
-            mean_abs_res = sum / static_cast<double>(batch.point_planes.size());
-        }
-
-        // Lightning ObsModel: <20 effective surface points → abort update only.
-        constexpr int kMinSurf = 20;
-        constexpr double kMaxMeanRes = 0.075;
-        bool skip_iekf = false;
-        const bool map_ready =
-            map_incremental_ && map_incremental_->ivox().num_points() > 50;
-        if (n_residuals < kMinSurf) {
-            skip_iekf = true;
-            AWARN_EVERY(10)
-                << "LidarBridge: skip IEKF, surf=" << n_residuals
-                << " < " << kMinSurf << " (p2p=" << n_residuals_p2p << ")";
-        } else if (map_ready && mean_abs_res > kMaxMeanRes) {
-            // Bad association: do not UpdateLidar (pulls pose into noise) and
-            // freeze at last good pose — otherwise |v| clamp still coasts away.
-            skip_iekf = true;
-            AWARN_EVERY(5)
-                << "LidarBridge: skip IEKF, mean_res=" << mean_abs_res
-                << " > " << kMaxMeanRes;
-        }
-
-        if (skip_iekf) {
-            iekf_rejected = true;
-            // Bootstrap: empty IVox → still insert first cloud.
-            if (!map_ready) {
-                // keep allow_map_insert
-            } else {
-                allow_map_insert = false;
-                if (estimator_) {
-                    if (have_last_dbg_pose_) {
-                        estimator_->SetPose(last_dbg_Twb_,
-                                            /*zero_velocity=*/true);
-                    } else {
-                        estimator_->set_velocity(Vec3_t::Zero());
-                    }
+    // Lightning IEKF: ObsModel re-associates NN each iteration.
+    // Atlas approximates with a few outer rebuilds of point-plane batch.
+    constexpr int kMinSurf = 20;
+    constexpr int kOuterIters = 3;
+    if (estimator_ && lidar_ && lidar_->ivox()) {
+        for (int outer = 0; outer < kOuterIters; ++outer) {
+            const Mat44_t Twb_cur = estimator_->T_wb();
+            auto batch = lidar_->BuildResiduals(Twb_cur, cloud_body);
+            n_residuals = static_cast<int>(batch.point_planes.size());
+            n_residuals_p2p = static_cast<int>(batch.point_points.size());
+            mean_abs_res = 0.0;
+            if (!batch.point_planes.empty()) {
+                double sum = 0.0;
+                const Mat33_t R0 = Twb_cur.block<3, 3>(0, 0);
+                const Vec3_t t0 = Twb_cur.block<3, 1>(0, 3);
+                for (const auto& r : batch.point_planes) {
+                    const Vec3_t pw = R0 * r.point_body + t0;
+                    sum += std::abs(r.normal_world.dot(pw) + r.d);
                 }
+                mean_abs_res =
+                    sum / static_cast<double>(batch.point_planes.size());
             }
-        } else if (!batch.empty()) {
+            if (n_residuals < kMinSurf) {
+                if (outer == 0) {
+                    AWARN_EVERY(10)
+                        << "LidarBridge: skip IEKF, surf=" << n_residuals
+                        << " < " << kMinSurf << " (p2p=" << n_residuals_p2p
+                        << ")";
+                }
+                break;
+            }
+            if (batch.empty()) {
+                break;
+            }
             n_updated = estimator_->UpdateLidar(batch);
+            if (n_updated == 0) {
+                break;
+            }
+        }
+        // Keep residual buffer in sync for any downstream consumers.
+        lidar_->FeedWithPose(t, estimator_->T_wb(), cloud_body);
+        if (n_updated > 0) {
             const Mat44_t Twb_post = estimator_->T_wb();
             const Vec3_t dp =
                 Twb_post.block<3, 1>(0, 3) - Twb_pre_lidar.block<3, 1>(0, 3);
@@ -692,63 +740,39 @@ void LidarBridge::OnCloud(
             const double dR_deg =
                 Eigen::AngleAxisd(dR).angle() * (180.0 / 3.14159265358979323846);
             if (dp.norm() > 0.5 || dR_deg > 5.0) {
-                iekf_rejected = (n_updated == 0);
                 AWARN_EVERY(5)
                     << "LIO large lidar step after UpdateLidar: |dp|="
                     << dp.norm() << " dR_deg=" << dR_deg
                     << " iekf=" << n_updated << " mean_res=" << mean_abs_res;
             }
-            // Mild velocity pull from lidar FD only when residual is clean and
-            // speed is teleop-scale (avoid injecting clamp-max |v|).
-            if (n_updated > 0 && have_last_dbg_pose_ && last_dbg_t_ > 0.0 &&
-                mean_abs_res > 0.0 && mean_abs_res < 0.04) {
+            // Pose-only IEKF: set |v| from scan FD (lightning couples via
+            // full NavState K).
+            if (have_last_dbg_pose_ && last_dbg_t_ > 0.0) {
                 const double dt_scan = t - last_dbg_t_;
-                if (dt_scan > 0.05 && dt_scan < 1.0) {
+                if (dt_scan > 0.02 && dt_scan < 1.0) {
                     Vec3_t v_lidar =
                         (Twb_post.block<3, 1>(0, 3) -
                          last_dbg_Twb_.block<3, 1>(0, 3)) /
                         dt_scan;
                     v_lidar.z() = 0.0;
-                    if (v_lidar.norm() < 0.6) {
-                        const Vec3_t v0 = estimator_->velocity();
-                        estimator_->set_velocity(0.7 * v0 + 0.3 * v_lidar);
+                    constexpr double kMaxV = 1.0;
+                    if (v_lidar.norm() > kMaxV) {
+                        v_lidar *= kMaxV / v_lidar.norm();
                     }
+                    estimator_->set_velocity(v_lidar);
                 }
             }
         }
+    } else if (estimator_ && lidar_) {
+        lidar_->FeedWithPose(t, Twb, cloud_body);
     }
 
-    // Per-scan fly-away: snap back (turtlebot <0.5 m/scan @ 6 Hz).
-    if (have_last_dbg_pose_) {
-        const Vec3_t dp_scan =
-            (estimator_ ? estimator_->T_wb() : Twb).block<3, 1>(0, 3) -
-            last_dbg_Twb_.block<3, 1>(0, 3);
-        if (dp_scan.norm() > 0.45) {
-            allow_map_insert = false;
-            iekf_rejected = true;
-            if (estimator_) {
-                estimator_->SetPose(last_dbg_Twb_, /*zero_velocity=*/true);
-            }
-            AWARN_EVERY(5) << "LidarBridge: reject scan fly-away dp="
-                           << dp_scan.norm() << " — snap to last pose";
-        }
-    }
-
-    // Lightning MapIncremental runs after Update (even if obs invalid → predict
-    // pose). Soft-skip insert when residual is bad — still update pose, avoid
-    // poisoning IVox (feeds the next-scan IEKF zigzag).
+    // Lightning MapIncremental always after Update (predict pose if skipped).
     const Mat44_t Twb_now = estimator_ ? estimator_->T_wb() : Twb;
-    if (mean_abs_res > 0.075 && n_residuals >= 20) {
-        allow_map_insert = false;
-    }
 
     int n_map_insert = 0;
-    if (allow_map_insert && map_incremental_) {
+    if (map_incremental_) {
         n_map_insert = map_incremental_->IntegrateScan(Twb_now, cloud_body);
-    } else if (!allow_map_insert) {
-        AINFO_EVERY(20) << "LidarBridge: skip map insert (gate)"
-                        << " iekf_rej=" << iekf_rejected
-                        << " mean_res=" << mean_abs_res;
     }
     PublishGlobalCloud(t);
 
@@ -757,7 +781,9 @@ void LidarBridge::OnCloud(
         pose_extrapolator_->SetLidarPose(t, Twb_now);
     }
     if (MaybeKeyframe(t, Twb_now, cloud_body) && options_.use_lidar_loop) {
-        MaybeLidarLoop(Twb_now, cloud_body);
+        MaybeLidarLoop(t, Twb_now, cloud_body);
+    } else {
+        PublishConstraintEdges(t);
     }
 
     // Lidar-rate publish (IMU-rate comes from ImuBridge when wired).
@@ -822,8 +848,7 @@ void LidarBridge::OnCloud(
             << " mean_res=" << mean_abs_res
             << " iekf=" << n_updated
             << " map_ins=" << n_map_insert << " ivox=" << ivox_pts << "/"
-            << ivox_vox << " sync=1"
-            << " map_gate=" << allow_map_insert;
+            << ivox_vox << " sync=1";
 
         if (std::string_view(scan_motion) == "pure_rot" && dp > 0.03) {
             AWARN_EVERY(2)

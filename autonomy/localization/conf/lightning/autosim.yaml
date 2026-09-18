@@ -78,8 +78,11 @@ loop_closing:
   loop_kf_gap: 20
   min_id_interval: 20
   closest_id_th: 50
-  max_range: 15.0
-  ndt_score_th: 1.3
+  max_range: 5.0
+  ndt_score_th: 1.5
+  max_candidates: 1
+  loop_place_radius: 4.0
+  max_reloc_snap: 1.5
   with_height: false
 
 lidar_loc:

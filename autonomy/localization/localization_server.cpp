@@ -373,6 +373,20 @@ public:
                             atlas::sensor::Preprocess::FromYaml(
                                 node["preprocess"]);
                     }
+                    if (node["keyframe"] && node["keyframe"].IsMap()) {
+                        const auto& kf = node["keyframe"];
+                        lo.keyframe.min_distance_m =
+                            kf["min_distance_m"].as<double>(
+                                lo.keyframe.min_distance_m);
+                        lo.keyframe.min_angle_rad =
+                            kf["min_angle_rad"].as<double>(
+                                lo.keyframe.min_angle_rad);
+                        if (kf["max_keyframes"]) {
+                            lo.keyframe.max_keyframes =
+                                kf["max_keyframes"].as<std::size_t>(
+                                    lo.keyframe.max_keyframes);
+                        }
+                    }
                     if (node["use_lidar_loop"]) {
                         lo.use_lidar_loop =
                             node["use_lidar_loop"].as<bool>(false);

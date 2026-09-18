@@ -66,6 +66,15 @@ public:
     [[nodiscard]] std::size_t num_keyframes() const { return poses_.size(); }
     [[nodiscard]] std::size_t num_loops() const { return loops_.size(); }
 
+    //! World-frame line segments for RViz (from current optimized poses_).
+    struct Segment {
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+        Vec3_t p0 = Vec3_t::Zero();
+        Vec3_t p1 = Vec3_t::Zero();
+    };
+    [[nodiscard]] std::vector<Segment> LoopSegments() const;
+    [[nodiscard]] std::vector<Segment> OdomSegments() const;
+
 private:
     struct EdgeRec {
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW

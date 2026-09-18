@@ -85,12 +85,15 @@ public:
         double max_scan_rotation_step_deg = 12.0;
         //! Ground robot: lock z / vz after first pose (stops sky drift in viz).
         bool planar_motion = false;
-        //! Max |v| after PredictImu (m/s). 0 = disabled. Turtlebot-scale default.
-        double max_velocity = 0.6;
-        //! Planar: integrate only body ax/ay (drop az + world gravity). Autosim
-        //! publishes level-robot REP-145 specific force (fz≈+g); any estimated R
-        //! tilt would otherwise leak ~1g into xy and explode velocity.
-        bool planar_imu_horizontal_only = true;
+        //! Max |v| after PredictImu (m/s). 0 = disabled. Matches lightning
+        //! vel_clip_norm_ (1.0).
+        double max_velocity = 1.0;
+        //! When true: integrate only body ax/ay (drop az + world gravity).
+        //! Default false = lightning Predict (R*(acc-ba)+g for covariance).
+        bool planar_imu_horizontal_only = false;
+        //! Lightning NavState::oplus leaves vel_ unchanged (a·dt commented out).
+        //! When false: pos += v·dt only; |v| comes from lidar Update / FD.
+        bool integrate_acc_to_velocity = false;
     };
 
     Eskf() = default;

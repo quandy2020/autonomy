@@ -214,6 +214,13 @@ bool VizBridge::Start(const std::shared_ptr<autolink::Node>& node) {
             node_->CreateWriter<automsgs::msgs::nav_msgs::Odometry>(
                 options_.camera_pose_topic);
     }
+    // Loop / constraint edges: needed for LIO lidar pose-graph viz even
+    // when slam_ is null (vision PublishLoopEdges never runs).
+    if (options_.publish_loop_edges) {
+        loop_edges_writer_ = node_->CreateWriter<
+            automsgs::msgs::visualization_msgs::MarkerArray>(
+            options_.loop_edges_topic);
+    }
 
     // Map / image writers require an Atlas system.
     if (slam_) {
@@ -251,11 +258,6 @@ bool VizBridge::Start(const std::shared_ptr<autolink::Node>& node) {
             map_lines_writer_ = node_->CreateWriter<
                 automsgs::msgs::visualization_msgs::MarkerArray>(
                 options_.map_lines_topic);
-        }
-        if (options_.publish_loop_edges) {
-            loop_edges_writer_ = node_->CreateWriter<
-                automsgs::msgs::visualization_msgs::MarkerArray>(
-                options_.loop_edges_topic);
         }
     }
 
@@ -1004,7 +1006,7 @@ void VizBridge::PublishMapLines(double timestamp_sec) {
 }
 
 void VizBridge::PublishLoopEdges(double timestamp_sec) {
-    if (!loop_edges_writer_) {
+    if (!loop_edges_writer_ || !slam_) {
         return;
     }
     using Marker = automsgs::msgs::visualization_msgs::Marker;
@@ -1061,6 +1063,87 @@ void VizBridge::PublishLoopEdges(double timestamp_sec) {
 
     loop_edges_writer_->Write(array);
     last_loop_edge_count_ = static_cast<unsigned int>(drawn.size());
+}
+
+void VizBridge::PublishLidarConstraintEdges(
+    double timestamp_sec,
+    const std::vector<std::pair<Vec3_t, Vec3_t>>& loops,
+    const std::vector<std::pair<Vec3_t, Vec3_t>>& odom,
+    const std::vector<std::pair<Vec3_t, Vec3_t>>& loc) {
+    if (!loop_edges_writer_) {
+        return;
+    }
+    using Marker = automsgs::msgs::visualization_msgs::Marker;
+    using MarkerArray = automsgs::msgs::visualization_msgs::MarkerArray;
+
+    MarkerArray array;
+    {
+        auto* clear = array.add_markers();
+        clear->set_action(Marker::DELETEALL);
+    }
+
+    auto make_lines = [&](const char* ns, int id, float r, float g, float b,
+                          float width,
+                          const std::vector<std::pair<Vec3_t, Vec3_t>>& segs)
+        -> Marker* {
+        if (segs.empty()) {
+            return nullptr;
+        }
+        Marker* m = array.add_markers();
+        SetHeader(m->mutable_header(), timestamp_sec, options_.map_frame);
+        m->set_ns(ns);
+        m->set_id(id);
+        m->set_type(Marker::LINE_LIST);
+        m->set_action(Marker::ADD);
+        m->mutable_pose()->mutable_orientation()->set_w(1.0);
+        m->mutable_scale()->set_x(width);
+        m->mutable_color()->set_r(r);
+        m->mutable_color()->set_g(g);
+        m->mutable_color()->set_b(b);
+        m->mutable_color()->set_a(0.95f);
+        for (const auto& s : segs) {
+            AddLine(m->mutable_points(), s.first, s.second);
+        }
+        return m;
+    };
+
+    // Dim green: consecutive lidar keyframes (odom chain).
+    make_lines("lidar_odom_edges", 0, 0.2f, 0.75f, 0.25f, 0.015f, odom);
+    // Cyan: accepted loop closures (query ↔ candidate).
+    make_lines("lidar_loop_edges", 1, 0.1f, 0.95f, 1.0f, 0.04f, loops);
+    // Orange: lidar-loc snaps (prior → NDT aligned).
+    make_lines("lidar_loc_edges", 2, 1.0f, 0.45f, 0.1f, 0.035f, loc);
+
+    // Sphere nodes at loop endpoints (lightning-style).
+    if (!loops.empty()) {
+        Marker* nodes = array.add_markers();
+        SetHeader(nodes->mutable_header(), timestamp_sec, options_.map_frame);
+        nodes->set_ns("lidar_loop_nodes");
+        nodes->set_id(3);
+        nodes->set_type(Marker::SPHERE_LIST);
+        nodes->set_action(Marker::ADD);
+        nodes->mutable_pose()->mutable_orientation()->set_w(1.0);
+        nodes->mutable_scale()->set_x(0.14);
+        nodes->mutable_scale()->set_y(0.14);
+        nodes->mutable_scale()->set_z(0.14);
+        nodes->mutable_color()->set_r(0.1f);
+        nodes->mutable_color()->set_g(1.0f);
+        nodes->mutable_color()->set_b(1.0f);
+        nodes->mutable_color()->set_a(0.95f);
+        for (const auto& s : loops) {
+            auto* a = nodes->add_points();
+            a->set_x(s.first.x());
+            a->set_y(s.first.y());
+            a->set_z(s.first.z());
+            auto* b = nodes->add_points();
+            b->set_x(s.second.x());
+            b->set_y(s.second.y());
+            b->set_z(s.second.z());
+        }
+    }
+
+    loop_edges_writer_->Write(array);
+    last_loop_edge_count_ = static_cast<unsigned int>(loops.size());
 }
 
 void VizBridge::PublishWorldPose(double timestamp_sec, const Mat44_t& T_wc,

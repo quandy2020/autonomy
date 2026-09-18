@@ -36,7 +36,7 @@ _HEADER_DEFAULTS = {
 
 
 class RecordWriter:
-    """Write autolink record files consumable by autolink_recorder play."""
+    """Write autolink record files consumable by autolink recorder play."""
 
     def __init__(self) -> None:
         from autolink.proto import record_pb2
@@ -50,6 +50,7 @@ class RecordWriter:
         self._index = record_pb2.Index()
         self._channel_counts: Dict[str, int] = {}
         self._messages: List = []
+        self._chunk_raw = 0
 
     def open_record(self, path: str) -> None:
         if os.path.exists(path):
@@ -83,42 +84,15 @@ class RecordWriter:
             )
         )
         self._channel_counts[channel_name] = self._channel_counts.get(channel_name, 0) + 1
+        self._chunk_raw += len(content)
+        if self._chunk_raw >= int(self._header.chunk_raw_size):
+            self._flush_chunk()
 
     def close_record(self) -> None:
         if self._fd is None:
             return
 
-        if self._messages:
-            self._messages.sort(key=lambda m: m.time)
-            msgs = self._messages
-            chunk_header = self._record_proto.ChunkHeader(
-                begin_time=msgs[0].time,
-                end_time=msgs[-1].time,
-                message_number=len(msgs),
-                raw_size=sum(len(m.content) for m in msgs),
-            )
-            chunk_body = self._record_proto.ChunkBody(messages=msgs)
-            pos = os.lseek(self._fd, 0, os.SEEK_CUR)
-            self._write_section(self._record_proto.SECTION_CHUNK_HEADER, chunk_header)
-            header_idx = self._index.indexes.add()
-            header_idx.type = self._record_proto.SECTION_CHUNK_HEADER
-            header_idx.position = pos
-            header_idx.chunk_header_cache.begin_time = chunk_header.begin_time
-            header_idx.chunk_header_cache.end_time = chunk_header.end_time
-            header_idx.chunk_header_cache.message_number = chunk_header.message_number
-            header_idx.chunk_header_cache.raw_size = chunk_header.raw_size
-
-            pos = os.lseek(self._fd, 0, os.SEEK_CUR)
-            self._write_section(self._record_proto.SECTION_CHUNK_BODY, chunk_body)
-            body_idx = self._index.indexes.add()
-            body_idx.type = self._record_proto.SECTION_CHUNK_BODY
-            body_idx.position = pos
-            body_idx.chunk_body_cache.message_number = len(msgs)
-
-            self._header.chunk_number += 1
-            self._header.message_number += len(msgs)
-            self._header.begin_time = chunk_header.begin_time
-            self._header.end_time = chunk_header.end_time
+        self._flush_chunk()
 
         for idx in self._index.indexes:
             if idx.type == self._record_proto.SECTION_CHANNEL:
@@ -133,6 +107,46 @@ class RecordWriter:
         self._write_section(self._record_proto.SECTION_HEADER, self._header)
         os.close(self._fd)
         self._fd = None
+
+    def _flush_chunk(self) -> None:
+        if self._fd is None or not self._messages:
+            return
+
+        msgs = self._messages
+        msgs.sort(key=lambda m: m.time)
+        chunk_header = self._record_proto.ChunkHeader(
+            begin_time=msgs[0].time,
+            end_time=msgs[-1].time,
+            message_number=len(msgs),
+            raw_size=sum(len(m.content) for m in msgs),
+        )
+        chunk_body = self._record_proto.ChunkBody(messages=msgs)
+        pos = os.lseek(self._fd, 0, os.SEEK_CUR)
+        self._write_section(self._record_proto.SECTION_CHUNK_HEADER, chunk_header)
+        header_idx = self._index.indexes.add()
+        header_idx.type = self._record_proto.SECTION_CHUNK_HEADER
+        header_idx.position = pos
+        header_idx.chunk_header_cache.begin_time = chunk_header.begin_time
+        header_idx.chunk_header_cache.end_time = chunk_header.end_time
+        header_idx.chunk_header_cache.message_number = chunk_header.message_number
+        header_idx.chunk_header_cache.raw_size = chunk_header.raw_size
+
+        pos = os.lseek(self._fd, 0, os.SEEK_CUR)
+        self._write_section(self._record_proto.SECTION_CHUNK_BODY, chunk_body)
+        body_idx = self._index.indexes.add()
+        body_idx.type = self._record_proto.SECTION_CHUNK_BODY
+        body_idx.position = pos
+        body_idx.chunk_body_cache.message_number = len(msgs)
+
+        self._header.chunk_number += 1
+        self._header.message_number += len(msgs)
+        if self._header.begin_time == 0 or chunk_header.begin_time < self._header.begin_time:
+            self._header.begin_time = chunk_header.begin_time
+        if chunk_header.end_time > self._header.end_time:
+            self._header.end_time = chunk_header.end_time
+
+        self._messages = []
+        self._chunk_raw = 0
 
     @staticmethod
     def encode_proto_desc(message: Message) -> bytes:

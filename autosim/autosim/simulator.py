@@ -726,13 +726,39 @@ class Simulator:
                 best = snapped
                 best_dist = dist
         if best is None:
-            return self.pose()
+            # Spawn is off-navmesh (scene origins differ; e.g. MP3D vs skokloster).
+            # Pick the navigable sample closest to the requested planar pose.
+            best = self.nearest_navigable_sample(pathfinder, self.x, -self.y)
+            if best is None:
+                return self.pose()
         # best = (Habitat_X, Habitat_Y, Habitat_Z); store as map coords.
         self.x = best[0]
         self.floor_y = best[1]
         self.y = -best[2]   # map_y = -Habitat_Z
         self.set_pose(self.x, self.y, self.yaw)
         return self.pose()
+
+    def nearest_navigable_sample(
+        self, pathfinder: Any, habitat_x: float, habitat_z: float, trials: int = 32
+    ) -> Tuple[float, float, float] | None:
+        """Return a navigable Habitat ``(x, y, z)`` closest to ``(habitat_x, *, habitat_z)``."""
+        random_nav = getattr(pathfinder, "get_random_navigable_point", None)
+        if not callable(random_nav):
+            return None
+        best: Tuple[float, float, float] | None = None
+        best_dist = float("inf")
+        for _ in range(max(1, int(trials))):
+            try:
+                sample = self.finite_xyz(random_nav())
+            except Exception:
+                continue
+            if sample is None:
+                continue
+            dist = (sample[0] - habitat_x) ** 2 + (sample[2] - habitat_z) ** 2
+            if dist < best_dist:
+                best = sample
+                best_dist = dist
+        return best
 
     def try_snap_point(
         self, pathfinder: Any, x: float, height: float, z: float

@@ -1,14 +1,19 @@
-# Full-product LIO lidar preprocess / IVox (loop enabled).
-# Profile: conf/atlas/profiles/lio.yaml + lio_full.yaml → lidar_config_path here.
-# Frontend params aligned with lightning-lm fasterlio defaults where applicable.
+# Full-product LIO — aligned to lightning/conf/lightning/autosim.yaml (fasterlio).
+# Profile: conf/atlas/profiles/lio_full.yaml → lidar_config_path here.
+#
+# Density / weight notes (Atlas vs Lightning):
+#   voxel_leaf ↔ filter_size_scan/map = 0.10
+#   ivox.resolution ↔ ivox_grid_resolution = 0.20
+#   plane_weight: Atlas UpdateLidar uses w = plane_weight / lidar_noise²
+#                 (default lidar_noise=0.1 → /0.01). plane_weight=3 → ≈300
+#                 (= lightning plane_icp_weight).
 
 preprocess:
   lidar_type: generic   # generic | velodyne | ouster | livox
-  min_range: 0.5
+  min_range: 0.3
   max_range: 80.0
-  blind: 0.1
-  # lightning filter_size_scan default 0.5
-  voxel_leaf: 0.5
+  blind: 0.3
+  voxel_leaf: 0.10
   max_points: 20000
   use_point_time: false
 
@@ -26,19 +31,19 @@ imu_filter_options:
 use_lidar_loop: true
 lidar_loop:
   candidate_radius_m: 15.0
-  # Skip recent KFs (~24m @ 0.8m KF) so Detect cannot hit start while mapping.
-  skip_recent_n: 30
-  min_keyframes: 40
+  # Align with lightning loop_closing.min_id_interval / closest_id_th.
+  skip_recent_n: 20
+  min_keyframes: 25
   allow_icp_only: false
-  inlier_ratio_thresh: 0.50
-  mean_residual_thresh: 0.06
-  ndt_score_thresh: 1.5
+  inlier_ratio_thresh: 0.45
+  mean_residual_thresh: 0.08
+  ndt_score_thresh: 1.3
   submap_kf_radius: 5
 
-# Keyframe gate for loop + G2P5 (meters / rad).
+# Keyframe gate (lightning kf_dis_th=0.35, kf_angle_th=8°).
 keyframe:
-  min_distance_m: 0.8
-  min_angle_rad: 0.15
+  min_distance_m: 0.35
+  min_angle_rad: 0.1396   # 8 deg
 
 publish_global_cloud: true
 global_cloud_topic: /atlas/cloud_map
@@ -55,8 +60,8 @@ pose_extrapolator:
   sync_estimator_on_lidar: false
 
 ivox:
-  # lightning ivox_grid_resolution=0.5, ivox_nearby_type=18
-  resolution: 0.5
+  # lightning autosim: ivox_grid_resolution=0.20, nearby18
+  resolution: 0.20
   max_points_per_voxel: 20
   max_voxels: 200000
   neighbor_search: 1
@@ -72,16 +77,16 @@ ivox:
 
 map_incremental:
   selective_insert: true
-  max_insert_no_nn: 600
-  max_insert_per_scan: 2500
+  max_insert_no_nn: 2000
+  max_insert_per_scan: 8000
 
 obs_model:
   max_distance: 0.5
-  max_residuals: 2000
+  max_residuals: 4000
   enable_ground_prior: false
-  # lightning enable_icp_part default false
   enable_icp_part: false
-  plane_weight: 1.0
+  # ≈ lightning plane_icp_weight 300 when /lidar_noise² (0.01)
+  plane_weight: 3.0
   icp_weight: 0.1
   icp_max_distance: 0.5
   srange_scale: 81.0

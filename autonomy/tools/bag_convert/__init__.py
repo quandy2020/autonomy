@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Convert ROS1 .bag files to autolink .record for autolink_recorder play."""
+"""Convert ROS1 .bag files to autolink .record for autolink recorder play."""
 
 from autonomy.tools.bag_convert.bag_converter import BagConverter
 from autonomy.tools.bag_convert.preset_store import PresetStore
@@ -20,8 +20,12 @@ from autonomy.tools.bag_convert.preset_store import PresetStore
 __all__ = [
     "BACKPACK_2D_TOPIC_REMAP",
     "BACKPACK_2D_TOPICS",
+    "VBR_TOPICS",
     "BagConverter",
     "PresetStore",
 ]
 
-BACKPACK_2D_TOPICS, BACKPACK_2D_TOPIC_REMAP = PresetStore().load_preset("backpack_2d")
+_BACKPACK = PresetStore().load_preset("backpack_2d")
+BACKPACK_2D_TOPICS = _BACKPACK.topics
+BACKPACK_2D_TOPIC_REMAP = _BACKPACK.topic_remap
+VBR_TOPICS = PresetStore().load_preset("vbr").topics

@@ -8,6 +8,9 @@
 #include "utils/pointcloud_utils.hpp"
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdlib>
+#include <yaml-cpp/yaml.h>
 #include <pcl/common/transforms.h>
 #include <pcl/registration/ndt.h>
 
@@ -52,6 +55,17 @@ void LoopClosing::Init(const std::string yaml_path) {
         options_.max_range_ = yaml.GetValue<double>("loop_closing", "max_range");
         options_.ndt_score_th_ = yaml.GetValue<double>("loop_closing", "ndt_score_th");
         options_.with_height_ = yaml.GetValue<bool>("loop_closing", "with_height");
+
+        const auto lc = YAML::LoadFile(yaml_path)["loop_closing"];
+        if (lc["max_candidates"]) {
+            options_.max_candidates_ = std::max(1, lc["max_candidates"].as<int>());
+        }
+        if (lc["loop_place_radius"]) {
+            options_.loop_place_radius_ = lc["loop_place_radius"].as<double>();
+        }
+        if (lc["max_reloc_snap"]) {
+            options_.max_reloc_snap_ = lc["max_reloc_snap"].as<double>();
+        }
     }
 
     if (options_.online_mode_) {
@@ -90,6 +104,7 @@ void LoopClosing::HandleKF(Keyframe::Ptr kf) {
 
     // 位姿图优化
     PoseOptimization();
+    RefreshOdomSegments();
 
     last_kf_ = kf;
 }
@@ -98,7 +113,6 @@ void LoopClosing::DetectLoopCandidates() {
     candidates_.clear();
 
     auto& kfs_mapping = all_keyframes_;
-    Keyframe::Ptr check_first = nullptr;
 
     if (last_loop_kf_ == nullptr) {
         last_loop_kf_ = cur_kf_;
@@ -110,36 +124,42 @@ void LoopClosing::DetectLoopCandidates() {
         return;
     }
 
+    std::vector<LoopCandidate> raw;
     for (auto kf : kfs_mapping) {
-        if (check_first != nullptr && abs(int(kf->GetID() - check_first->GetID())) <= options_.min_id_interval_) {
-            // 同条轨迹内，跳过一定的ID区间
-            continue;
-        }
-
         if (abs(int(kf->GetID() - cur_kf_->GetID())) < options_.closest_id_th_) {
-            /// 在同一条轨迹中，如果间隔太近，就不考虑回环
             break;
         }
 
         Vec3d dt = kf->GetOptPose().translation() - cur_kf_->GetOptPose().translation();
-        double t2d = dt.head<2>().norm();  // x-y distance
-        double range_th = options_.max_range_;
-
-        if (t2d < range_th) {
-            LoopCandidate c(kf->GetID(), cur_kf_->GetID());
-            c.Tij_ = kf->GetLIOPose().inverse() * cur_kf_->GetLIOPose();
-
-            candidates_.emplace_back(c);
-            check_first = kf;
+        double t2d = dt.head<2>().norm();
+        if (t2d >= options_.max_range_) {
+            continue;
         }
+        if (IsRedundantPlace(kf->GetOptPose().translation(), cur_kf_->GetID())) {
+            continue;
+        }
+
+        LoopCandidate c(kf->GetID(), cur_kf_->GetID());
+        c.Tij_ = kf->GetLIOPose().inverse() * cur_kf_->GetLIOPose();
+        c.xy_dist_ = t2d;
+        raw.emplace_back(c);
     }
+
+    std::sort(raw.begin(), raw.end(),
+              [](const LoopCandidate& a, const LoopCandidate& b) { return a.xy_dist_ < b.xy_dist_; });
+    const int n_try = std::max(options_.max_candidates_, 3);
+    if (static_cast<int>(raw.size()) > n_try) {
+        raw.resize(static_cast<std::size_t>(n_try));
+    }
+    candidates_.swap(raw);
 
     if (!candidates_.empty()) {
         last_loop_kf_ = cur_kf_;
     }
 
     if (options_.verbose_ && !candidates_.empty()) {
-        LOG(INFO) << "lc candi: " << candidates_.size();
+        LOG(INFO) << "lc candi: " << candidates_.size()
+                  << " nearest=" << candidates_.front().xy_dist_;
     }
 }
 
@@ -163,7 +183,89 @@ void LoopClosing::ComputeLoopCandidates() {
         LOG(INFO) << "success: " << succ_candidates.size() << "/" << candidates_.size();
     }
 
+    std::sort(succ_candidates.begin(), succ_candidates.end(),
+              [](const LoopCandidate& a, const LoopCandidate& b) {
+                  return a.ndt_score_ > b.ndt_score_;
+              });
+    if (static_cast<int>(succ_candidates.size()) > options_.max_candidates_) {
+        succ_candidates.resize(static_cast<std::size_t>(options_.max_candidates_));
+    }
+
     candidates_.swap(succ_candidates);
+}
+
+bool LoopClosing::IsRedundantPlace(const Vec3d& hist_xy, uint64_t cur_id) const {
+    std::lock_guard<std::mutex> lock(accepted_mutex_);
+    for (const auto& prev : accepted_loops_) {
+        if (!prev.kf1 || !prev.kf2) {
+            continue;
+        }
+        const uint64_t gap1 = cur_id > prev.id1 ? cur_id - prev.id1 : prev.id1 - cur_id;
+        const uint64_t gap2 = cur_id > prev.id2 ? cur_id - prev.id2 : prev.id2 - cur_id;
+        const bool query_is_2 = gap2 <= gap1;
+        const uint64_t prev_query = query_is_2 ? prev.id2 : prev.id1;
+        const Vec3d hist_prev = query_is_2 ? prev.kf1->GetOptPose().translation()
+                                           : prev.kf2->GetOptPose().translation();
+        const uint64_t query_gap =
+            cur_id > prev_query ? cur_id - prev_query : prev_query - cur_id;
+        if (query_gap > static_cast<uint64_t>(options_.closest_id_th_)) {
+            continue;
+        }
+        if ((hist_prev.head<2>() - hist_xy.head<2>()).norm() <
+            options_.loop_place_radius_) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void LoopClosing::StoreRelocSnap(const LoopCandidate& c) {
+    if (c.idx1_ >= all_keyframes_.size() || c.idx2_ >= all_keyframes_.size()) {
+        return;
+    }
+    auto kf1 = all_keyframes_[c.idx1_];
+    auto kf2 = all_keyframes_[c.idx2_];
+    if (!kf1 || !kf2) {
+        return;
+    }
+    const Vec3d p_prior = kf2->GetLIOPose().translation();
+    const Vec3d p_aligned = (kf1->GetOptPose() * c.Tij_).translation();
+    const double snap = (p_aligned - p_prior).norm();
+    if (snap < 0.02 || snap > options_.max_reloc_snap_) {
+        return;
+    }
+    constexpr std::size_t kMaxRelocEdges = 200;
+    LoopEdgeViz e;
+    e.id1 = c.idx2_;
+    e.id2 = c.idx1_;
+    e.p1 = p_prior;
+    e.p2 = p_aligned;
+    reloc_edges_.push_back(e);
+    if (reloc_edges_.size() > kMaxRelocEdges) {
+        reloc_edges_.erase(
+            reloc_edges_.begin(),
+            reloc_edges_.begin() +
+                static_cast<std::ptrdiff_t>(reloc_edges_.size() - kMaxRelocEdges));
+    }
+}
+
+void LoopClosing::RefreshOdomSegments() {
+    std::lock_guard<std::mutex> lock(accepted_mutex_);
+    odom_edges_.clear();
+    odom_edges_.reserve(all_keyframes_.size());
+    for (std::size_t i = 1; i < all_keyframes_.size(); ++i) {
+        auto a = all_keyframes_[i - 1];
+        auto b = all_keyframes_[i];
+        if (!a || !b) {
+            continue;
+        }
+        LoopEdgeViz e;
+        e.id1 = a->GetID();
+        e.id2 = b->GetID();
+        e.p1 = a->GetOptPose().translation();
+        e.p2 = b->GetOptPose().translation();
+        odom_edges_.push_back(e);
+    }
 }
 
 void LoopClosing::ComputeForCandidate(lightning::LoopCandidate& c) {
@@ -368,8 +470,11 @@ void LoopClosing::PoseOptimization() {
             accepted_loops_.push_back(
                 {c.idx1_, c.idx2_, all_keyframes_[c.idx1_],
                  all_keyframes_[c.idx2_]});
+            StoreRelocSnap(c);
         }
     }
+
+    RefreshOdomSegments();
 
     if (loop_cb_) {
         loop_cb_();
@@ -387,9 +492,13 @@ void LoopClosing::PoseOptimization() {
 }
 
 std::vector<LoopClosing::LoopEdgeViz> LoopClosing::GetLoopEdges() const {
+    return GetConstraintViz().loops;
+}
+
+LoopClosing::ConstraintViz LoopClosing::GetConstraintViz() const {
     std::lock_guard<std::mutex> lock(accepted_mutex_);
-    std::vector<LoopEdgeViz> out;
-    out.reserve(accepted_loops_.size());
+    ConstraintViz out;
+    out.loops.reserve(accepted_loops_.size());
     for (const auto& a : accepted_loops_) {
         if (!a.kf1 || !a.kf2) {
             continue;
@@ -399,8 +508,10 @@ std::vector<LoopClosing::LoopEdgeViz> LoopClosing::GetLoopEdges() const {
         e.id2 = a.id2;
         e.p1 = a.kf1->GetOptPose().translation();
         e.p2 = a.kf2->GetOptPose().translation();
-        out.push_back(e);
+        out.loops.push_back(e);
     }
+    out.odom = odom_edges_;
+    out.reloc = reloc_edges_;
     return out;
 }
 

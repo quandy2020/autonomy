@@ -1,0 +1,6 @@
+{
+  "topics": ["/ouster/points", "/imu/data"],
+  "topic_remap": {},
+  "leading_slash": true,
+  "skip_unsupported": true
+}

@@ -93,6 +93,11 @@ estimate::LidarFactorBatch ObsModel::BuildAgainstIVox(
     }
     const Mat33_t R_wc = T_wc.block<3, 3>(0, 0);
     const Vec3_t t_wc = T_wc.block<3, 1>(0, 3);
+    // lightning PointBodyToWorld: p_w = R*(R_il*p + t_il) + t
+    const Mat33_t R_il = options_.T_imu_lidar.block<3, 3>(0, 0);
+    const Vec3_t t_il = options_.T_imu_lidar.block<3, 1>(0, 3);
+    const bool use_ext =
+        !R_il.isIdentity(1e-12) || t_il.norm() > 1e-12;
     const std::size_t limit =
         static_cast<std::size_t>(std::max(0, options_.max_residuals));
     batch.point_planes.reserve(std::min(points_body.size(), limit));
@@ -100,17 +105,20 @@ estimate::LidarFactorBatch ObsModel::BuildAgainstIVox(
         batch.point_points.reserve(std::min(points_body.size(), limit));
     }
 
-    for (const auto& p_b : points_body) {
+    for (const auto& p_lidar : points_body) {
         if (batch.point_planes.size() >= limit &&
             (!options_.enable_icp_part ||
              batch.point_points.size() >= limit)) {
             break;
         }
-        if (!p_b.allFinite()) {
+        if (!p_lidar.allFinite()) {
             continue;
         }
+        // Residual point_body stored in IMU frame so IEKF H matches T_wb.
+        const Vec3_t p_b =
+            use_ext ? Vec3_t(R_il * p_lidar + t_il) : p_lidar;
         const Vec3_t p_w = R_wc * p_b + t_wc;
-        const double range2 = p_b.squaredNorm();
+        const double range2 = p_lidar.squaredNorm();
 
         // Nearest for optional P2P (also used when plane fit fails).
         std::vector<Vec3_t> nearest;

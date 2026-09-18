@@ -13,6 +13,7 @@
 #include "core/types/edge_se3.hpp"
 
 #include <cstdint>
+#include <functional>
 #include <mutex>
 #include <utility>
 #include <vector>
@@ -35,6 +36,9 @@ class LoopClosing {
         int closest_id_th_ = 50;     // 历史关键帧与当前帧的ID间隔
         double max_range_ = 30.0;    // 候选帧的最大距离
         double ndt_score_th_ = 1.0;  // ndt位姿分值
+        int max_candidates_ = 1;     // 每次只保留最近 / 最高分的 K 个
+        double loop_place_radius_ = 4.0;  // 同一地点不重复连回环
+        double max_reloc_snap_ = 2.0;     // 重定位连线最大吸附距离
 
         /// 图优化权重
         double motion_trans_noise_ = 0.1;               // 位移权重
@@ -66,14 +70,20 @@ class LoopClosing {
         }
     }
 
-    /// Accepted inlier loop edges with current optimized translations.
+    /// Pose-graph segments for Autoviz MarkerArray (map frame).
     struct LoopEdgeViz {
         uint64_t id1 = 0;
         uint64_t id2 = 0;
         Vec3d p1 = Vec3d::Zero();
         Vec3d p2 = Vec3d::Zero();
     };
+    struct ConstraintViz {
+        std::vector<LoopEdgeViz> loops;   // accepted PGO inliers
+        std::vector<LoopEdgeViz> odom;    // consecutive keyframes
+        std::vector<LoopEdgeViz> reloc;   // LIO prior → NDT aligned
+    };
     std::vector<LoopEdgeViz> GetLoopEdges() const;
+    ConstraintViz GetConstraintViz() const;
 
    protected:
     void HandleKF(Keyframe::Ptr kf);
@@ -88,6 +98,10 @@ class LoopClosing {
 
     /// 优化位姿
     void PoseOptimization();
+
+    void StoreRelocSnap(const LoopCandidate& c);
+    void RefreshOdomSegments();
+    bool IsRedundantPlace(const Vec3d& hist_xy, uint64_t cur_id) const;
 
     Options options_;
 
@@ -118,6 +132,8 @@ class LoopClosing {
     };
     mutable std::mutex accepted_mutex_;
     std::vector<AcceptedLoop> accepted_loops_;
+    std::vector<LoopEdgeViz> odom_edges_;
+    std::vector<LoopEdgeViz> reloc_edges_;
 };
 
 }  // namespace lightning

@@ -8,6 +8,7 @@
     localization_atlas.launch         — visual SLAM (Atlas / OpenVSLAM)
     localization_lio.launch           — Atlas LIO
     localization_lightning.launch     — standalone lightning LIO
+    localization_lightning_vbr.launch — lightning LIO on VBR/MV .record
 
   Run:
     export PATH=/workspace/autonomy/build/autonomy/bin:$PATH

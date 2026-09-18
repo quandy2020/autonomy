@@ -27,7 +27,7 @@ class BagConvertConfig:
     tool_dir: Path
     repo_root: Path
     proto_gen_dir: Path
-    commsgs_proto_dir: Path
+    automsgs_proto_dir: Path
     autolink_include: Path
     autolink_proto_dir: Path
     requirements_file: Path
@@ -36,6 +36,17 @@ class BagConvertConfig:
     topic_remap_sep: str = ":="
     ros_bag_store: str = "ROS1_NOETIC"
     autolink_record_proto_names: tuple[str, ...] = ("record.proto", "proto_desc.proto")
+    # Generate these automsgs packages when install Python is unavailable.
+    automsgs_compile_packages: tuple[str, ...] = (
+        "builtin_interfaces",
+        "std_msgs",
+        "geometry_msgs",
+        "sensor_msgs",
+        "nav_msgs",
+        "tf2_msgs",
+        "visualization_msgs",
+        "diagnostic_msgs",
+    )
 
     @classmethod
     def create_default(cls) -> BagConvertConfig:
@@ -45,7 +56,7 @@ class BagConvertConfig:
             tool_dir=tool_dir,
             repo_root=repo_root,
             proto_gen_dir=tool_dir / ".proto_gen",
-            commsgs_proto_dir=repo_root / "autonomy/commsgs/proto",
+            automsgs_proto_dir=repo_root / "automsgs/proto",
             autolink_include=repo_root / "autolink",
             autolink_proto_dir=repo_root / "autolink/autolink/proto",
             requirements_file=tool_dir / "requirements.txt",
@@ -69,3 +80,25 @@ class BagConvertConfig:
     @property
     def autolink_record_proto_relpaths(self) -> tuple[str, ...]:
         return tuple(f"autolink/proto/{name}" for name in self.autolink_record_proto_names)
+
+    def discover_automsgs_python_roots(self) -> tuple[Path, ...]:
+        """Colcon install / build Python modules, if present."""
+        candidates = []
+        for ws in (
+            self.repo_root.parent.parent,
+            self.repo_root.parent,
+            self.repo_root,
+        ):
+            candidates.append(ws / "install/autonomy/lib/python")
+            candidates.append(ws / "build/autonomy/automsgs/proto/gen/python")
+        found: list[Path] = []
+        seen: set[Path] = set()
+        for path in candidates:
+            if not (path / "automsgs" / "msgs").is_dir():
+                continue
+            resolved = path.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            found.append(path)
+        return tuple(found)

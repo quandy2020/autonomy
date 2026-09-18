@@ -21,6 +21,7 @@ struct LoopCandidate {
     SE3 Tij_;
 
     double ndt_score_ = 0.0;
+    double xy_dist_ = 0.0;
 };
 
 }  // namespace lightning

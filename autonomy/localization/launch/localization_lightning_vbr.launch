@@ -1,0 +1,36 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Standalone lightning LIO for VBR / MV ROS1 bags converted to .record.
+
+  Convert:
+    cd /workspace/autonomy/src/autonomy
+    python -m autonomy.tools.bag_convert /data/mv/campus_train0_04.bag \
+      -o data/records/vbr --vbr
+
+  Play + localize (from /workspace/autonomy):
+    export PATH=/workspace/autonomy/build/autonomy/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=/workspace/autonomy/src/autonomy/autonomy/localization/launch
+    autolink recorder play -f data/records/vbr/campus_train0_04.record -a
+    autolink launch start localization_lightning_vbr.launch
+
+  Expects record channels:
+    /imu/data        Imu
+    /ouster/points   PointCloud2  (Ouster, field t = ns)
+
+  Publishes:
+    /lightning/odometry     Odometry
+    /lightning/trajectory   Path
+    /lightning/cloud_map    PointCloud2
+    /lightning/occupancy    OccupancyGrid
+    /lightning/loop_edges   MarkerArray
+-->
+<autolink>
+  <module>
+    <name>localization_lightning_vbr</name>
+    <type>binary</type>
+    <process_name>autonomy.localization --localization_mode=lightning --lightning_config=autonomy/localization/conf/lightning/default_vbr.yaml --lightning_imu_topic=/imu/data --lightning_lidar_topic=/ouster/points --lightning_map_save=data/maps/lightning_vbr/</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

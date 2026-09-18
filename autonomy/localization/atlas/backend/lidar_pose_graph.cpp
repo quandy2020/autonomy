@@ -235,5 +235,39 @@ Mat44_t LidarPoseGraph::GetPoseOr(std::uint64_t id,
     return fallback;
 }
 
+std::vector<LidarPoseGraph::Segment> LidarPoseGraph::LoopSegments() const {
+    std::vector<Segment> out;
+    out.reserve(loops_.size());
+    for (const auto& e : loops_) {
+        const auto it0 = poses_.find(e.id_from);
+        const auto it1 = poses_.find(e.id_to);
+        if (it0 == poses_.end() || it1 == poses_.end()) {
+            continue;
+        }
+        Segment s;
+        s.p0 = it0->second.block<3, 1>(0, 3);
+        s.p1 = it1->second.block<3, 1>(0, 3);
+        out.push_back(s);
+    }
+    return out;
+}
+
+std::vector<LidarPoseGraph::Segment> LidarPoseGraph::OdomSegments() const {
+    std::vector<Segment> out;
+    out.reserve(odom_edges_.size());
+    for (const auto& e : odom_edges_) {
+        const auto it0 = poses_.find(e.id_from);
+        const auto it1 = poses_.find(e.id_to);
+        if (it0 == poses_.end() || it1 == poses_.end()) {
+            continue;
+        }
+        Segment s;
+        s.p0 = it0->second.block<3, 1>(0, 3);
+        s.p1 = it1->second.block<3, 1>(0, 3);
+        out.push_back(s);
+    }
+    return out;
+}
+
 }  // namespace backend
 }  // namespace autonomy::localization::atlas

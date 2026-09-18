@@ -106,6 +106,9 @@ private:
     std::atomic<double> last_pub_t_{0.0};
     double last_global_cloud_pub_t_ = -1.0;
     std::size_t last_loop_edge_count_ = 0;
+    std::size_t last_reloc_edge_count_ = 0;
+    double last_constraint_pub_t_ = -1.0;
+    bool logged_identity_odom_tf_ = false;
 };
 
 }  // namespace localization

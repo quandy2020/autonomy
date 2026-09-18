@@ -35,6 +35,8 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "autolink/autolink.hpp"
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
@@ -65,8 +67,10 @@ public:
         std::string topic = "/points";
         sensor::Preprocess::Options preprocess;
         int max_points_decode = 120000;
-        //! Assumed scan duration when no per-point times (for sync window only).
-        double default_scan_dt = 0.1;
+        //! Assumed scan duration when no per-point times (spinning lidar).
+        //! Habitat / autosim instantaneous clouds: keep 0 (lightning SyncPackages
+        //! sets lidar_end = begin when scan_span < 1e-3). Do not invent 0.1s.
+        double default_scan_dt = 0.0;
         //! Geometric lidar loop (default off — does not disturb VO/LIVO).
         bool use_lidar_loop = false;
         //! NDT loc against prior TiledMap (LidarLocator); soft Reset estimator.
@@ -122,12 +126,13 @@ private:
     //! Keyframe gate shared by lidar loop + G2P5; returns true if new KF.
     bool MaybeKeyframe(double t, const Mat44_t& Twb,
                        const std::vector<Vec3_t>& cloud_body);
-    void MaybeLidarLoop(const Mat44_t& Twb,
+    void MaybeLidarLoop(double t, const Mat44_t& Twb,
                         const std::vector<Vec3_t>& cloud_body);
     //! Optional NDT align against prior map; may soft-Reset LocalEstimator.
     void MaybeLidarLoc(double t, const std::vector<Vec3_t>& cloud_body,
                        Mat44_t* Twb_inout);
     void PublishGlobalCloud(double timestamp_sec);
+    void PublishConstraintEdges(double timestamp_sec);
 
     system* slam_ = nullptr;
     sensor::LidarSensor* lidar_ = nullptr;
@@ -146,6 +151,7 @@ private:
     mapping::LidarKeyframeManager keyframe_mgr_;
     backend::LidarLoopDetector lidar_loop_;
     backend::LidarPoseGraph pose_graph_;
+    std::vector<std::pair<Vec3_t, Vec3_t>> loc_edges_;
     std::shared_ptr<autolink::Node> node_;
     std::shared_ptr<autolink::Writer<automsgs::msgs::sensor_msgs::PointCloud2>>
         global_cloud_writer_;
@@ -155,6 +161,7 @@ private:
     Mat44_t last_dbg_Twb_ = Mat44_t::Identity();
     double last_dbg_t_ = -1.0;
     double last_global_cloud_pub_t_ = -1.0;
+    double last_constraint_pub_t_ = -1.0;
 };
 
 }  // namespace autonomy::localization::atlas

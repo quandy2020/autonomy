@@ -21,6 +21,8 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <opencv2/core/mat.hpp>
 
@@ -136,6 +138,18 @@ public:
      */
     void PublishWorldPose(double timestamp_sec, const Mat44_t& T_wc,
                           bool update_tf = true);
+
+    /**
+     * LO/LIO: publish lidar pose-graph constraints on /atlas/loop_edges.
+     * @param loops  Accepted loop closures (query↔candidate), cyan.
+     * @param odom   Consecutive keyframe edges, dim green.
+     * @param loc    LidarLoc snaps (prior→aligned), orange.
+     */
+    void PublishLidarConstraintEdges(
+        double timestamp_sec,
+        const std::vector<std::pair<Vec3_t, Vec3_t>>& loops,
+        const std::vector<std::pair<Vec3_t, Vec3_t>>& odom,
+        const std::vector<std::pair<Vec3_t, Vec3_t>>& loc);
 
 private:
     using TimeMsg = automsgs::msgs::builtin_interfaces::Time;

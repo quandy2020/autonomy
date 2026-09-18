@@ -254,12 +254,13 @@ void Pipeline::AttachSystem(system* slam) {
 frontend::LocalEstimator* Pipeline::EnsureLocalEstimator() {
     if (!local_estimator_) {
         frontend::Eskf::Options eskf_opts;
-        // LIO ↔ lightning-lm: planar ground lock only; no ZUPT/spin gates.
-        // ESKF clip = lightning 0.5 m / 5°.
+        // LIO ↔ lightning-lm: planar z-lock; PredictImu = R*(acc-ba)+g;
+        // |v| capped at lightning vel_clip_norm_ (1.0). Pose clip 0.5 m / 5°.
         if (!runtime_.flags.use_vision && runtime_.flags.use_lidar) {
             eskf_opts.planar_motion = true;
-            eskf_opts.planar_imu_horizontal_only = true;
-            eskf_opts.max_velocity = 0.6;
+            eskf_opts.planar_imu_horizontal_only = false;
+            eskf_opts.integrate_acc_to_velocity = false;  // lightning oplus
+            eskf_opts.max_velocity = 1.0;
             eskf_opts.max_scan_rotation_step_deg = 12.0;
             eskf_opts.max_update_translation_step = 0.5;
             eskf_opts.max_update_rotation_step_deg = 5.0;

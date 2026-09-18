@@ -162,9 +162,10 @@ void Eskf::PredictImu(double dt, const Vec3_t& gyro, const Vec3_t& acc) {
     Vec3_t t = state_.T_wb.block<3, 1>(0, 3);
     R = R * dR;
 
+    // Accel for covariance / optional integration. Lightning get_f still
+    // computes a = R*acce+g, but oplus does NOT apply vel += a·dt.
     Vec3_t a_w;
     if (options_.planar_motion && options_.planar_imu_horizontal_only) {
-        // Body horizontal kinematic accel only (autosim level-robot specific force).
         Vec3_t acc_h = acc - state_.ba;
         acc_h.z() = 0.0;
         a_w = R * acc_h;
@@ -173,8 +174,13 @@ void Eskf::PredictImu(double dt, const Vec3_t& gyro, const Vec3_t& acc) {
         a_w = R * (acc - state_.ba) + state_.gravity;
     }
 
-    t += state_.v * dt + 0.5 * a_w * dt * dt;
-    state_.v += a_w * dt;
+    if (options_.integrate_acc_to_velocity) {
+        t += state_.v * dt + 0.5 * a_w * dt * dt;
+        state_.v += a_w * dt;
+    } else {
+        // lightning NavState::oplus: pos += v·dt; rot; leave vel unchanged.
+        t += state_.v * dt;
+    }
     ApplyPlanarLock(&t, &state_.v);
     if (options_.max_velocity > 0.0) {
         const double vn = state_.v.norm();

@@ -69,8 +69,11 @@ loop_closing:
   loop_kf_gap: 20       # 每隔多少个关键帧检查一次
   min_id_interval: 20   # 被检查的关键帧ID间隔
   closest_id_th: 50     # 历史关键帧与当前帧的ID间隔
-  max_range: 30.0       # 候选帧的最大距离
-  ndt_score_th: 1.0     # ndt位姿分值
+  max_range: 15.0       # 候选帧的最大距离
+  ndt_score_th: 1.3     # ndt位姿分值
+  max_candidates: 1
+  loop_place_radius: 8.0
+  max_reloc_snap: 2.0
   with_height: true
 
 
@@ -125,8 +128,9 @@ pgo:
   rtk_outlier_th: 1.0
   smooth_factor: 0.01
 roi:
-  height_max: 0.5
-  height_min: -2.0
+  # Applied to LIO preprocess as well as loc. Outdoor Ouster needs a wide Z ROI.
+  height_max: 50.0
+  height_min: -5.0
   range_max: 70
   range_min: 3.0
 ui:

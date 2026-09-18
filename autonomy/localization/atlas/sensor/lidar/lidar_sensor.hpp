@@ -60,6 +60,10 @@ public:
     //! Map insert is owned by mapping::MapIncremental::IntegrateScan (via LidarBridge).
     void FeedWithPose(double timestamp, const Mat44_t& T_wc,
                       const std::vector<Vec3_t>& points_body);
+    //! Build point-plane batch at T_wc without pushing the residual buffer
+    //! (used for IEKF outer re-association like lightning ObsModel).
+    [[nodiscard]] estimate::LidarFactorBatch BuildResiduals(
+        const Mat44_t& T_wc, const std::vector<Vec3_t>& points_body) const;
     void FeedPoints(double timestamp, const std::vector<Vec3_t>& points_body);
     bool PopLatest(CloudSample* out);
 

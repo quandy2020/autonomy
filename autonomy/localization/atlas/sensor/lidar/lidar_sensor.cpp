@@ -88,6 +88,18 @@ void LidarSensor::FeedWithPose(double timestamp, const Mat44_t& T_wc,
     }
 }
 
+estimate::LidarFactorBatch LidarSensor::BuildResiduals(
+    const Mat44_t& T_wc, const std::vector<Vec3_t>& points_body) const {
+    if (!ivox_ || points_body.empty()) {
+        return {};
+    }
+    auto batch = obs_model_.BuildAgainstIVox(T_wc, points_body, *ivox_);
+    if (batch.empty() && options_.enable_ground_prior) {
+        batch = obs_model_.BuildStub(points_body);
+    }
+    return batch;
+}
+
 void LidarSensor::FeedPoints(double timestamp,
                              const std::vector<Vec3_t>& points_body) {
     // Without pose: identity T_wc (sensor-frame map growth for unit tests).

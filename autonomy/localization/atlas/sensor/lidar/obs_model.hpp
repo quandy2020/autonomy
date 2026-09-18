@@ -46,6 +46,9 @@ public:
         double icp_max_distance = 0.5;
         //! lightning: keep surf if ||p_body||^2 > 81 * pd2^2.
         double srange_scale = 81.0;
+        //! Lidar→IMU extrinsic (p_imu = R p_lidar + t). Applied in
+        //! BuildAgainstIVox like lightning offset_R/t.
+        Mat44_t T_imu_lidar = Mat44_t::Identity();
     };
 
     ObsModel() = default;

@@ -42,6 +42,8 @@ public:
         int max_insert_no_nn = 600;
         //! Hard cap on inserted points per scan.
         int max_insert_per_scan = 2500;
+        //! Lidar→IMU extrinsic for PointBodyToWorld (lightning offset_*).
+        Mat44_t T_imu_lidar = Mat44_t::Identity();
     };
 
     MapIncremental() = default;
@@ -73,6 +75,10 @@ public:
         }
         const Mat33_t R_wb = T_wb.block<3, 3>(0, 0);
         const Vec3_t t_wb = T_wb.block<3, 1>(0, 3);
+        const Mat33_t R_il = options_.T_imu_lidar.block<3, 3>(0, 0);
+        const Vec3_t t_il = options_.T_imu_lidar.block<3, 1>(0, 3);
+        const bool use_ext =
+            !R_il.isIdentity(1e-12) || t_il.norm() > 1e-12;
         const double res = std::max(1e-3, ivox_.options().resolution);
         const int knn = std::max(1, options_.num_match_points);
 
@@ -89,7 +95,9 @@ public:
             if (!p.allFinite()) {
                 continue;
             }
-            const Vec3_t pw = R_wb * p + t_wb;
+            // lightning: p_w = R*(R_il*p + t_il) + t
+            const Vec3_t p_imu = use_ext ? Vec3_t(R_il * p + t_il) : p;
+            const Vec3_t pw = R_wb * p_imu + t_wb;
             if (!options_.selective_insert || ivox_.num_points() == 0) {
                 points_world.push_back(pw);
                 continue;

@@ -70,8 +70,11 @@ loop_closing:
   loop_kf_gap: 20       # 每隔多少个关键帧检查一次
   min_id_interval: 20   # 被检查的关键帧ID间隔
   closest_id_th: 50     # 历史关键帧与当前帧的ID间隔
-  max_range: 20.0       # 候选帧的最大距离
-  ndt_score_th: 1.3     # ndt位姿分值
+  max_range: 6.0        # 候选帧的最大距离
+  ndt_score_th: 1.5     # ndt位姿分值
+  max_candidates: 1
+  loop_place_radius: 4.0
+  max_reloc_snap: 1.5
   with_height: false
 
 

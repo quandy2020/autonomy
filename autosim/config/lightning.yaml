@@ -19,8 +19,9 @@
 habitat:
   mode: slam
 
-  path: /workspace/autonomy/src/17DRP5sb8fy/17DRP5sb8fy.glb
-  spawn: [0.0, 0.0, 0.0]
+  path: /workspace/autonomy/src/bistro-exterior/bistro-exterior.glb
+  # Outdoor: Amazon Lumberyard Bistro Exterior (ORCA). Planar map_x=Hx, map_y=-Hz.
+  spawn: [-26.2, 25.9, 0.0]
   gpu: 0
 
   robot:
