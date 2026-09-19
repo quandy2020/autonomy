@@ -10,18 +10,32 @@
 | 传感 | `camera/` `lidar/` … | `SensorDriver`，单向采样 |
 | 本体 | [`chassis/`](chassis/README.md) | Capability + Mode + SafetyGate；`RobotState` / `RobotEvent` + Twist；**不依赖** `autonomy/vehicle` |
 
-## 能力
+## 传感器支持范围
 
-| 模态 | backend | 状态 |
-|---|---|---|
-| 相机/点云/板载 IMU | `realsense` `orbbec` | 真；相机可折叠 `streams` |
-| 2D 激光 | `rplidar` | 真 |
-| 3D 激光 | `velodyne` `hesai` `livox` | 真 |
-| IMU/GPS | `serial` `can` | 真 |
-| Radar/Mic/SmarterEye | stub | Create→nullptr |
-| 底盘/本体 | `stub`（差分积分） | 真联调；厂商 SDK 按 Registry 加 |
+下列为当前代码与配置中的**支持范围**（Registry 已注册、可走采集路径或已有 params）。  
+**实际可用性取决于具体硬件型号**，以及本机是否安装对应 SDK、CMake `AUTODRIVER_WITH_*` / `AUTODRIVER_HAVE_*`、权限与网段；未找到 SDK 时 Create 常返回 `nullptr`，不阻碍编译链接。厂商细项与排障见 [`docs/source/sensor/`](docs/source/sensor/index.md)。
 
-配置：[`config/autodriver_hardware.yaml`](config/autodriver_hardware.yaml)。
+| 模态 | YAML | backend | 覆盖型号 / 说明 | 驱动状态 |
+|---|---|---|---|---|
+| 相机 / 点云 / 板载 IMU | `camera`（可折叠 `streams` / `point_clouds` / `imu`） | `realsense` | **Intel RealSense D455** 为主；同机多流共享 device hub；可用 `model` / `serial` / `index` 选设备 | 已实现（需 librealsense2） |
+| | | `orbbec` | **Orbbec Gemini 330** 为主；同机多流共享 hub | 已实现（需 OrbbecSDK） |
+| | | `smartereye` | 占位 | stub（Create 返回 `nullptr`） |
+| 2D 激光 | `lidar_2d` | `rplidar`（别名 `slamtec`） | **Slamtec A1 / A2（含 A2M8）/ A3**；A2M7/M12、A3 常用波特率 256000；`params_file: lidar/slamtec/{a1,a2,a3}.yaml` | 已实现（需 rplidar_sdk） |
+| 3D 激光 | `lidar_3d` | `velodyne`（别名 `udp`） | **Velodyne VLP-16** 为主；UDP 自研栈，校准单位 rad | 已实现 |
+| | | `hesai`（别名 `pandar`） | **Hesai PandarXT / XT32**；包格式未覆盖 XT32M2X 等；校准单位为度 | 已实现 |
+| | | `livox` | **SDK2**：HAP、Mid-360、Mid360s、Avia2；**SDK1**：Mid-40/70、Horizon、Avia、Tele；按 `model`/`sdk` 选型 | 已实现（需对应 Livox SDK） |
+| | | `rslidar` / `lslidar` / `seyond` / `vanjee` 等 | 占位注册 | stub |
+| IMU | `imu` | `serial` | 串口协议（如 WitMotion）；`port` / `baudrate` | 已实现 |
+| | | `can` | SocketCAN 分帧 | 已实现 |
+| | | `realsense` | 板载 IMU（随 RealSense 模组） | 已实现（需 librealsense2） |
+| GPS | `gps` | `serial` | NMEA（`GnssParserRegistry`：`nmea` / `nmea0183`） | 已实现 |
+| | | `can` | CAN 帧 | 已实现 |
+| Radar | `radar` | `conti`（别名 `continental`） | 占位 | stub |
+| 麦克风 | `microphone` | `respeaker` | 占位（Image 承载 PCM） | stub |
+| 测距 | `range` | — | 仅 Attach，无采集驱动 | 仅 Attach |
+| 底盘 / 本体 | `chassis` | `stub`（别名可 `sim`） | 差分积分，无硬件联调 | 可联调；厂商经 `REGISTER_CHASSIS_BACKEND` 扩展 |
+
+配置入口：[`config/autodriver_hardware.yaml`](config/autodriver_hardware.yaml)；厂商 params 在 `config/<模态>/<vendor>/`。
 
 ## 构建与运行
 
