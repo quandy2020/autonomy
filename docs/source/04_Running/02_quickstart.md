@@ -5,10 +5,8 @@
 ### 2.1 启动多进程栈
 
 ```bash
-export PATH="$PWD/build/bin:$PATH"
-export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/system/launch"
-export AUTONOMY_BT_PLUGIN_PATH="$PWD/build/lib"
-export GLOG_logtostderr=1
+source scripts/setup.bash
+# 等价于手动设置 PATH / AUTOLINK_LAUNCH_PATH / AUTONOMY_BT_PLUGIN_PATH / GLOG_*
 
 autolink_launch autonomy.launch
 ```

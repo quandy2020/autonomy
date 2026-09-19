@@ -19,6 +19,10 @@ ninja
 
 # 4. 验证
 ls -la lib/libautonomy.so
+
+# 5. 加载运行环境（任意新终端）
+cd ..   # 回到仓库根
+source scripts/setup.bash
 ```
 
 ### 2.2 仅安装 APT（跳过第三方编译）

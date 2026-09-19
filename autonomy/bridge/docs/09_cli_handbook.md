@@ -27,14 +27,13 @@
 # 将二进制加入 PATH（按本机 build 路径调整）
 export PATH=$PWD/build/bin:$PATH
 
-# 可选：配置查找前缀
-export AUTONOMY_PATH=$PWD   # 或 install 前缀
-
 # 终端别名（下文一律用 BR）
 export BR=autonomy.bridge
-export TGT=127.0.0.1:5005
+export TGT=${BRIDGE:-127.0.0.1:5005}
 alias brc='$BR call --target $TGT'
 ```
+
+（推荐先 `source scripts/setup.bash`，已设置 `PATH`、`AUTONOMY_PATH`、`BRIDGE`。）
 
 **推荐双终端：**
 
