@@ -64,3 +64,7 @@ grpcurl -plaintext 127.0.0.1:5005 describe automsgs.rpcs.system.SystemService
 ## 6. OTel
 
 见 [05_observability_otel.md](05_observability_otel.md)。默认 `NoopTracerProvider`。
+
+## 7. CLI 客户端（`rpc_probe`）
+
+`tools/rpc_probe.*` 由 `autonomy.bridge list|describe|call` 调用。完整参数说明与**全部业务测试用例**见 [09_cli_handbook.md](09_cli_handbook.md)。

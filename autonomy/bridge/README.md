@@ -449,6 +449,10 @@ autonomy.bridge call SystemService/Heartbeat --bearer secret --robot-id robot-1
 
 `call` 支持 unary 与 server-streaming；client/bidi streaming 请用 `grpcurl` 或 `automsgs/tools/cli/rpc-cli.py`。
 
+成功时响应 JSON 在 **stdout**（`status.code` 多为 `"OK"`）；传输/鉴权失败在 **stderr**（`RPC failed: … (code=…)`）。
+
+**完整手册（全 Service / 全 Method 测试用例 + 终端期望）**：[`docs/09_cli_handbook.md`](docs/09_cli_handbook.md)。
+
 平台开关（health / reflection / auth …）写在 conf；见 [`docs/06_configuration.md`](docs/06_configuration.md)。
 
 ### 超工程（仓库根）

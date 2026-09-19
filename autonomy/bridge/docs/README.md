@@ -16,6 +16,7 @@
 | 6 | [06_configuration.md](06_configuration.md) | `GrpcOptions` / `bridge.pb.txt` 逐字段 |
 | 7 | [07_async_grpc_extension.md](07_async_grpc_extension.md) | `async_grpc::Server::Builder` 扩展 |
 | 8 | [08_testing.md](08_testing.md) | 单元 / 功能性测试矩阵与手工探针 |
+| 9 | [09_cli_handbook.md](09_cli_handbook.md) | **CLI 全手册**：serve/call/list/describe + 全业务用例与**终端期望输出** |
 
 ## 源码树对照
 

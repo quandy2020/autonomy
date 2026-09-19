@@ -73,6 +73,8 @@ ctest --test-dir build -R "token_authenticator_test" --output-on-failure
 
 ### 内置客户端（推荐）
 
+完整命令行说明、**全部业务可复制用例**与每条命令的**终端期望输出**见 **[09_cli_handbook.md](09_cli_handbook.md)**（§2.5 读输出约定；§5 各节「终端期望」）。
+
 ```bash
 autonomy.bridge list
 autonomy.bridge describe SystemService/Heartbeat
@@ -83,7 +85,14 @@ autonomy.bridge call SystemService/Heartbeat -d '{}' \
   --bearer <token> --robot-id robot-1
 ```
 
-支持 unary 与 server-streaming；`-d @file.json` 从文件读请求体。
+| 命令 | 终端期望（摘要） |
+|------|------------------|
+| `list` | stdout：各 Service 下 `/…/Method  [unary\|…]`；末行 `# N services, M methods` |
+| `describe …/Heartbeat` | stdout：`rpc …Heartbeat` + `type: unary` + request/response 全名 + 字段列表 |
+| `call …/Heartbeat` 成功 | stdout：含 `"status":{"code":"OK"}`、`sequence`、`robot_time_ns` 的 JSON；退出码 0 |
+| Bearer/robot-id 强制失败 | stderr：`RPC failed: … (code=16\|9)`；退出码 ≠ 0 |
+
+支持 unary 与 server-streaming；`-d @file.json` 从文件读请求体。Velocity（bidi）见 09 手册 §5.5.4。
 
 ### Health
 
@@ -127,4 +136,4 @@ grpcurl -plaintext \
 
 1. `test/**/*_test.cpp` 与上表矩阵一一对应  
 2. `docs/01–08` + `policy/` + `tools/` + `ApplyPlatform` 接线存在  
-3. 手工步骤见 §5（供后续联调）
+3. 手工步骤见 §5；**全业务 CLI 用例**见 [09_cli_handbook.md](09_cli_handbook.md)
