@@ -23,6 +23,7 @@
 #include "autonomy/localization/cartographer/common/lua_parameter_dictionary.hpp"
 #include "gflags/gflags.hpp"
 #include "glog/logging.h"
+#include "autolink/init.hpp"
 
 DEFINE_string(configuration_directories, "",
               "Comma separated list of directories in which configuration files"
@@ -78,7 +79,6 @@ void PrintSubdictionaryById(LuaParameterDictionary* lua_dictionary, const std::s
 }  // namespace cartographer
 
 int main(int argc, char** argv) {
-    google::InitGoogleLogging(argv[0]);
     google::SetUsageMessage(
         "Resolves and compiles a Lua configuration and prints it to stdout.\n"
         "The output can be restricted to a subdictionary using the optional "
@@ -86,6 +86,7 @@ int main(int argc, char** argv) {
         "The logs of the configuration file resolver are written to stderr if "
         "'--logtostderr' is given.");
     google::ParseCommandLineFlags(&argc, &argv, true);
+    autolink::InitLogging(argv[0]);
 
     if (FLAGS_configuration_directories.empty() || FLAGS_configuration_basename.empty()) {
         google::ShowUsageWithFlagsRestrict(argv[0], "print_configuration_main");

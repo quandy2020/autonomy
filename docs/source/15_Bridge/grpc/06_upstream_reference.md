@@ -13,13 +13,13 @@
 |------|------|
 | 仓库 | [github.com/cartographer-project/async_grpc](https://github.com/cartographer-project/async_grpc) |
 | 场景 | [Cartographer Cloud](https://github.com/cartographer-project/cartographer) 传感器流式上传 |
-| Autonomy 扩展 | `BUILD_TRACING`、Bridge `GrpcBridgeServer` |
+| Autonomy 扩展 | `BUILD_TRACING`、Bridge `Server` |
 
 | Cartographer Cloud | Autonomy Bridge |
 |--------------------|-----------------|
 | Client-Stream 传感器上行 | `ReceiveBotStates` / `ReceiveBotEvents`（规划） |
 | Server-Stream 结果 | `SendNavigationCommand` 进度 |
-| `ExecutionContext` 共享 MapBuilder | `GrpcBridgeContextInterface` + Navigator（待接） |
+| `ExecutionContext` 共享 MapBuilder | `Context` + Navigator（待接） |
 
 ## 6.2 设计动机
 
@@ -75,7 +75,7 @@ libgrpc 完成 op → CQ → PushToEventQueue → EQ。`Send()` / `GetWriter()` 
 |------|------|----------|
 | Tracing | 可选 | `BUILD_TRACING=1` |
 | MessageSize | — | Builder 可设 send/receive 上限 |
-| Bridge | — | `GrpcBridgeServer` + `AutonomyService` |
+| Bridge | — | `Server` + `automsgs.rpcs` |
 
 **进一步阅读**：[上游 README](https://github.com/cartographer-project/async_grpc/blob/master/README.md) · [gRPC C++ Async](https://grpc.io/docs/languages/cpp/async/) · [grpc/05 Bridge 集成](05_bridge_integration.md)
 

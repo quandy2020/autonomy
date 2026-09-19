@@ -14,41 +14,38 @@
  * limitations under the License.
  */
 
+/**
+ * @file bridge_server.cpp
+ * @brief Implementation of BridgeServer lifecycle (Start / Wait / Shutdown).
+ */
+
 #include "autonomy/bridge/bridge_server.hpp"
 
 #include <autonomy/common/port.hpp>
 
-#include "autonomy/common/logging.hpp"
+#include "autolink/common/log.hpp"
 #include "autonomy/common/json_util.hpp"
 
 namespace autonomy {
 namespace bridge {
 
 BridgeServer::BridgeServer() {
-    grpc_bridge_ = std::make_unique<grpc::GrpcBridgeServer>(
-        proto::GrpcOptions{});
+    grpc_bridge_ = std::make_unique<grpc::Server>(proto::GrpcOptions{});
 }
 
 BridgeServer::BridgeServer(const proto::BridgeOptions& options)
     : options_{options} {
-    if (options_.use_grpc()) {
-        grpc_bridge_ = std::make_unique<grpc::GrpcBridgeServer>(
-            options_.grpc());
-    }
+    grpc_bridge_ = std::make_unique<grpc::Server>(
+        options_.grpc(), options_.identity(), options_.capabilities());
 }
 
 bool BridgeServer::Start() {
-    if (!options_.use_grpc()) {
-        LOG(INFO) << "gRPC bridge disabled in configuration.";
-        return true;
-    }
-
     if (!grpc_bridge_) {
-        LOG(ERROR) << "BridgeServer: gRPC enabled but grpc bridge missing.";
+        AERROR << "BridgeServer: gRPC bridge missing.";
         return false;
     }
 
-    LOG(INFO) << "Use gRPC as bridge communication.";
+    AINFO << "Use gRPC as bridge communication.";
     return grpc_bridge_->Start();
 }
 

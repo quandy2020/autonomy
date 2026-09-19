@@ -21,9 +21,9 @@
 #include "autonomy/localization/cartographer/io/internal/pbstream_migrate.hpp"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "autolink/init.hpp"
 
 int main(int argc, char** argv) {
-    google::InitGoogleLogging(argv[0]);
 
     FLAGS_logtostderr = true;
     const std::string usage_message =
@@ -32,6 +32,7 @@ int main(int argc, char** argv) {
         "\tinfo    - Prints summary of pbstream.\n"
         "\tmigrate - Migrates pbstream to the new submap format.";
     google::ParseCommandLineFlags(&argc, &argv, true);
+    autolink::InitLogging(argv[0]);
 
     if (argc < 2) {
         google::SetUsageMessage(usage_message);

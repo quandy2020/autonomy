@@ -1,86 +1,33 @@
 (rpc-system-api)=
 # 系统控制 System
 
-全局 Unary RPC，可抢占任意活跃 Command 任务。用于**安全测试**与**异常恢复**。
+源文件：`automsgs/proto/rpcs/system.proto`  
+Handler：`rpc_system_handlers`
 
-## 6.1 方法列表
+全局 Unary，可抢占互斥任务。
+
+## 6.1 方法
 
 | RPC | 请求 | 响应 |
 |-----|------|------|
-| `EmergencyStop` | `EmergencyStopRequest` | `CommandAck` |
-| `CancelAllTasks` | `CancelAllTasksRequest` | `CommandAck` |
+| `EmergencyStop` | `EmergencyStopRequest`（`reason`） | `Status` |
+| `ClearEmergencyStop` | `ClearEmergencyStopRequest` | `Status` |
+| `CancelAllGoals` | `CancelAllGoalsRequest`（可选 `goal_kinds[]`） | `Status` |
 
-Unary 直接返回 `CommandAck`（非 Stream，无 `final` 语义）。
+另见查询类：`Heartbeat` / `GetInfo` / `GetStatus` / `GetHealth` / `GetRobotFullInfo` / `GetActiveGoal` / `GetCapabilities`（[04](04_query_api.md)）。
 
-## 6.2 请求字段
-
-**EmergencyStopRequest**：`header` + `reason`（string）
-
-**CancelAllTasksRequest**：`header` + `task_types[]`（**空数组 = 取消全部**）
-
-## 6.3 grpcurl
-
-JSON 样例 → [01 §1.4](01_connection_guide.md#14-响应-json-参考) · 完整用例 → [13 §13.5](13_integration_tests.md#135-system-测试用例)。
-
-**EmergencyStop**
+## 6.2 grpcurl
 
 ```bash
-# EmergencyStop — 全局急停（System · Unary · 最高优先级）
-export CMD_ID=$(new_cmd_id)
+export PROTO_OPTS="-import-path $REPO -proto automsgs/proto/rpcs/system.proto"
+export SVC=automsgs.rpcs.system.SystemService
 
-grpcurl -plaintext $PROTO_OPTS \
-  -d @- \
-  $BRIDGE \
-  $SVC/EmergencyStop <<EOF
-{
-  "header": {
-    "cmd_id": "${CMD_ID}"
-  },
-  "reason": "operator"
-}
-EOF
+grpcurl -plaintext $PROTO_OPTS -d '{"reason":"operator"}' \
+  "$BRIDGE" "$SVC/EmergencyStop"
+
+grpcurl -plaintext $PROTO_OPTS -d '{}' \
+  "$BRIDGE" "$SVC/ClearEmergencyStop"
+
+grpcurl -plaintext $PROTO_OPTS -d '{}' \
+  "$BRIDGE" "$SVC/CancelAllGoals"
 ```
-
-
-**CancelAllTasks — 全部**
-
-```bash
-# CancelAllTasks — 取消全部活跃任务（task_types 省略 = 全部）
-export CMD_ID=$(new_cmd_id)
-
-grpcurl -plaintext $PROTO_OPTS \
-  -d @- \
-  $BRIDGE \
-  $SVC/CancelAllTasks <<EOF
-{
-  "header": {
-    "cmd_id": "${CMD_ID}"
-  }
-}
-EOF
-```
-
-**CancelAllTasks — 只取消导航(1)和探索(4)**
-
-```bash
-# CancelAllTasks — 按 TaskType 选择性取消（1=导航, 4=探索）
-export CMD_ID=$(new_cmd_id)
-
-grpcurl -plaintext $PROTO_OPTS \
-  -d @- \
-  $BRIDGE \
-  $SVC/CancelAllTasks <<EOF
-{
-  "header": {
-    "cmd_id": "${CMD_ID}"
-  },
-  "task_types": [
-    1,
-    4
-  ]
-}
-EOF
-```
-
-
-MQTT：`cmd/emergency_stop`（`EmergencyStop`）。

@@ -2,21 +2,50 @@
  * Copyright 2026 The Openbot Authors
  */
 
+/**
+ * @file exploration_stub.hpp
+ * @brief ExplorationStub: GoalChannel adapter for ExplorationService → ExplorationTask.
+ *
+ * @details
+ * Maps ExplorationService RPCs onto `/autonomy/task/exploration/{goal,feedback}`
+ * (see @c kExplorationGoal / @c kExplorationFeedback in bridge/constants.hpp).
+ * Legacy waypoint / finished channels (@c kExplorationWaypointChannel,
+ * @c kExplorationFinishedChannel) are not owned by this stub.
+ * Wire messages are `automsgs/task/exploration.pb.h` (`ExplorationGoal` /
+ * `ExplorationFeedback`); Bridge does **not** include `autonomy/task` headers.
+ *
+ * @par Lifecycle
+ * - Explore → HandleExplore → GoalChannelCommandStub::HandleRequest (also
+ * caches last ExploreResponse under snapshot_mutex_)
+ * - SetArea / SaveMap → side-channel WriteGoal (EXPLORATION_CMD_SET_AREA /
+ * SAVE_MAP) without opening a stream
+ * - Pause / Resume / Cancel → EXPLORATION_CMD_* via base WriteCommand
+ *
+ * @par Invariants
+ * - Muxer slot type is TASK_TYPE_EXPLORATION.
+ * - GetSnapshot returns a copy of last_response_ (never a reference).
+ * - Convert* / HandleExplore / SetArea / SaveMap live in exploration_stub.cpp.
+ *
+ * @par Ownership
+ * UniquePtr owned by DomainBundle; CancelRegistry captures non-owning Stub*.
+ *
+ * @par Threading
+ * HandleExplore / SetArea / SaveMap on gRPC threads; feedback
+ * path updates last_response_ under snapshot_mutex_; GetSnapshot takes the
+ * same mutex.
+ *
+ * @see GoalChannelCommandStub
+ * @see rpc_explore_handlers.hpp
+ */
+
 #pragma once
 
-#include <functional>
-#include <memory>
 #include <mutex>
-#include <string>
 
-#include "autolink/node/node.hpp"
-#include "autonomy/bridge/grpc/clients/stream_session.hpp"
-#include "autonomy/bridge/grpc/task_muxer.hpp"
-#include "autonomy/bridge/proto/external_command_service.pb.h"
-#include "autonomy/common/macros.hpp"
-#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
-#include <automsgs/msgs/std_msgs/bool.pb.h>
-#include <automsgs/task/mapping.pb.h>
+#include "autonomy/bridge/grpc/clients/goal_channel_command_stub.hpp"
+#include "autonomy/bridge/constants.hpp"
+#include <automsgs/rpcs/exploration.pb.h>
+#include <automsgs/task/exploration.pb.h>
 
 namespace autonomy {
 namespace bridge {
@@ -24,73 +53,130 @@ namespace grpc {
 namespace clients {
 
 /**
- * @brief Exploration bridge over mapping goal, waypoint, and finished channels.
+ * @brief GoalChannel traits for ExplorationTask (generated + EXPLORATION_CMD_*).
  *
- * Uses @ref StreamSessionState for callback/session bookkeeping. Not a single
- * `GoalChannelStub` because exploration spans multiple topics.
+ * @details
+ * Declares ConvertToGoal / ConvertFromFeedback / MakeResponse /
+ * IsTerminal (implemented in exploration_stub.cpp) and binds Pause/Resume/Cancel
+ * to EXPLORATION_CMD_PAUSE / RESUME / CANCEL. Topics:
+ * - Goal: @c kExplorationGoal (`/autonomy/task/exploration/goal`)
+ * - Feedback: @c kExplorationFeedback (`/autonomy/task/exploration/feedback`)
+ *
+ * @note Request is ExploreRequest; Response is ExploreResponse.
+ * @warning SetArea / SaveMap bypass HandleRequest and do not claim the muxer
+ * via the streaming path; they WriteGoal directly.
  */
-class ExplorationStub
+BRIDGE_CHANNEL_TRAITS(
+    ExplorationTraits,
+    ::autonomy::task::proto::ExplorationGoal,
+    ::autonomy::task::proto::ExplorationFeedback,
+    ::automsgs::rpcs::exploration::ExploreRequest,
+    ::automsgs::rpcs::exploration::ExploreResponse,
+    ::autonomy::bridge::grpc::TASK_TYPE_EXPLORATION,
+    ::autonomy::bridge::kExplorationGoal,
+    ::autonomy::bridge::kExplorationFeedback,
+    ::autonomy::task::proto::EXPLORATION_CMD_PAUSE,
+    ::autonomy::task::proto::EXPLORATION_CMD_RESUME,
+    ::autonomy::task::proto::EXPLORATION_CMD_CANCEL);
+
+/**
+ * @brief ExplorationService Explore / SetArea / SaveMap / GetStatus via GoalChannel.
+ *
+ * @details
+ * Facade over @ref GoalChannelCommandStub<ExplorationTraits> with an
+ * extra snapshot cache for GetStatus (GetSnapshot). Streaming Explore updates
+ * last_response_ on every relayed frame; SetArea / SaveMap publish one-shot
+ * goals without a stream callback.
+ *
+ * @par Threading
+ * snapshot_mutex_ protects last_response_; base GoalChannel state
+ * has its own synchronization. Do not hold snapshot_mutex_ across WriteGoal.
+ *
+ * @par Ownership
+ * UniquePtr owned by DomainBundle; CancelRegistry captures non-owning Stub*.
+ *
+ * @note Convert* / HandleExplore / SetArea / SaveMap live in
+ * exploration_stub.cpp.
+ *
+ * @warning HandleExplore returns false if stream_callback is empty or gated.
+ * @see rpc_explore_handlers.hpp
+ */
+class ExplorationStub : public GoalChannelCommandStub<ExplorationTraits>
 {
 public:
-    using StreamCallback = std::function<void(
-        const proto::ExplorationCommandResponse& response)>;
-
+    /**
+     * @brief Shared / weak / unique pointer aliases.
+     */
     AUTONOMY_SMART_PTR_DEFINITIONS(ExplorationStub)
 
     /**
-     * @brief Construct exploration writers/readers.
-     * @param[in] node Autolink node.
-     * @param[in] muxer Shared task muxer.
+     * @brief Inherit GoalChannelCommandStub constructors (node + muxer).
      */
-    ExplorationStub(std::shared_ptr<autolink::Node> node,
-                    std::shared_ptr<TaskMuxer> muxer);
+    using GoalChannelCommandStub::GoalChannelCommandStub;
 
     /**
-     * @brief Handle an exploration command and stream status updates.
-     * @param[in] request Exploration command request.
-     * @param[in] stream_callback Stream sink.
-     * @return false if rejected immediately.
+     * @brief Accept Explore and stream ExplorationTask feedback.
+     *
+     * Wraps the base HandleRequest sink so each relayed ExploreResponse is
+     * also stored in last_response_ for GetSnapshot.
+     *
+     * @param[in] request         ExploreRequest (area, map_name, options, goal_id).
+     * @param[in] stream_callback Sink for ACK / feedback / terminal frames.
+     * @return                    false if @p stream_callback is empty or rejected before write.
      */
-    bool HandleCommand(const proto::ExplorationCommandRequest& request,
-                       StreamCallback stream_callback);
+    bool HandleExplore(
+        const ::automsgs::rpcs::exploration::ExploreRequest& request,
+        StreamCallback stream_callback);
 
-    /** @brief Cancel the active exploration session. */
-    void CancelActiveSession();
+    /**
+     * @brief Publish a set-area goal (non-streaming helper).
+     *
+     * Builds ExplorationGoal with EXPLORATION_CMD_SET_AREA and WriteGoal on
+     * @c kExplorationGoal. Does not open a gRPC stream or update the snapshot
+     * cache by itself.
+     *
+     * @param[in] request SetAreaRequest (area polygon / goal_id).
+     *
+     * @note AckHandler returns OK regardless of WriteGoal success.
+     */
+    void SetArea(const ::automsgs::rpcs::exploration::SetAreaRequest& request);
 
-    /** @brief Return the latest exploration status snapshot. */
-    proto::ExplorationCommandResponse GetSnapshot() const;
+    /**
+     * @brief Publish a save-map goal (non-streaming helper).
+     *
+     * Builds ExplorationGoal with EXPLORATION_CMD_SAVE_MAP and WriteGoal.
+     *
+     * @param[in] request SaveMapRequest (map_name / goal_id).
+     *
+     * @note AckHandler returns OK regardless of WriteGoal success.
+     */
+    void SaveMap(const ::automsgs::rpcs::exploration::SaveMapRequest& request);
+
+    /**
+     * @brief Copy of the last streamed ExploreResponse.
+     *
+     * @return Snapshot copy under snapshot_mutex_ (default-constructed if never
+     *        updated).
+     *
+     * @note Safe to call from GetStatus handlers on gRPC threads.
+     */
+    ::automsgs::rpcs::exploration::ExploreResponse GetSnapshot() const;
 
 private:
-    using Session =
-        StreamSessionState<proto::ExplorationCommandRequest,
-                           proto::ExplorationCommandResponse>;
+    /**
+     * @brief Protects last_response_ for GetSnapshot / stream updates.
+     *
+     * @warning Do not hold across WriteGoal / HandleRequest.
+     */
+    mutable std::mutex snapshot_mutex_;
 
-    void HandleFinished(
-        const std::shared_ptr<::automsgs::msgs::std_msgs::Bool>& message);
-    void HandleMappingFeedback(
-        const std::shared_ptr<::autonomy::task::proto::MappingFeedback>&
-            feedback);
-    bool PublishMappingGoal(const ::autonomy::task::proto::MappingGoal& goal);
-    proto::ExplorationCommandResponse MakeResponse(
-        const proto::ExplorationCommandRequest& request,
-        proto::ExplorationStatus status, bool success, bool final,
-        const std::string& message = "") const;
-
-    std::shared_ptr<autolink::Node> node_;
-    std::shared_ptr<TaskMuxer> muxer_;
-    std::shared_ptr<autolink::Writer<::autonomy::task::proto::MappingGoal>>
-        mapping_writer_;
-    std::shared_ptr<autolink::Writer<::automsgs::msgs::geometry_msgs::PoseStamped>>
-        waypoint_writer_;
-    std::shared_ptr<autolink::Reader<::automsgs::msgs::std_msgs::Bool>>
-        finished_reader_;
-    std::shared_ptr<autolink::Reader<::autonomy::task::proto::MappingFeedback>>
-        mapping_feedback_reader_;
-
-    Session session_;
-    proto::ExplorationStatus status_{proto::EXPLORATION_STATUS_IDLE};
-    float progress_{0.f};
-    std::string map_name_;
+    /**
+     * @brief Last ExploreResponse relayed on the Explore stream.
+     *
+     * @details Updated by HandleExplore's wrapped sink; GetSnapshot returns
+     * a copy. Default-constructed until the first streamed frame.
+     */
+    ::automsgs::rpcs::exploration::ExploreResponse last_response_;
 };
 
 }  // namespace clients

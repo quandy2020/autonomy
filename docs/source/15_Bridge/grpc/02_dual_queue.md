@@ -66,7 +66,7 @@ Event 线程吞吐 $\mu \approx N_{\text{event}} / T_h$。Bridge 建议 $N_{\tex
 
 ## 2.8 Shutdown
 
-`StopServing` → `server_->Shutdown()` → join CQ → join EQ。`GrpcBridgeServer` 另 join `task_thread_`。
+`StopServing` → `server_->Shutdown()` → join CQ → join EQ。`Server` 另 join `task_thread_`。
 
 ---
 

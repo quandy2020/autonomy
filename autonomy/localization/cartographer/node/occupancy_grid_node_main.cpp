@@ -32,7 +32,6 @@ DEFINE_bool(include_unfrozen_submaps, true,
             "Include unfrozen submaps in the occupancy grid.");
 
 int main(int argc, char** argv) {
-    google::InitGoogleLogging(argv[0]);
     google::ParseCommandLineFlags(&argc, &argv, false);
 
     CHECK(FLAGS_include_frozen_submaps || FLAGS_include_unfrozen_submaps)
@@ -57,6 +56,5 @@ int main(int argc, char** argv) {
 
     autolink::WaitForShutdown();
     autolink::Clear();
-    google::ShutdownGoogleLogging();
     return EXIT_SUCCESS;
 }

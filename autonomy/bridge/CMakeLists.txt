@@ -20,8 +20,8 @@ autonomy_module(bridge)
 # Library sources: GLOB *.cpp under this dir; drop *main.cpp / *_test.cpp.
 autonomy_glob_srcs(_BRIDGE_SRCS)
 autonomy_library(
-  DEPENDENCIES autonomy_common autonomy_system autonomy_task
-  FEATURES grpc
+  DEPENDENCIES autonomy_common autonomy_system
+  FEATURES grpc grpc_reflection otel
   SRCS ${_BRIDGE_SRCS}
 )
 # GCC 11 ICE (RTL pass "ree") on heavily-templated action client instantiations.
@@ -35,6 +35,10 @@ unset(_BRIDGE_SRCS)
 
 # Process entrypoint: autonomy.bridge
 autonomy_binary(autonomy.bridge SRCS bridge_main.cpp)
+
+# CLI11 (header-only, same tree as autolink tools) for options.cpp parsing.
+target_include_directories(autonomy_bridge PRIVATE
+  "${AUTONOMY_WORKSPACE_ROOT}/autolink/thirdparty/CLI11/include")
 
 # Runtime assets → share/autonomy/bridge/ (launch / conf / dag)
 install(

@@ -171,7 +171,6 @@ int main(int argc, char** argv) {
     if (!server->Start()) {
         AERROR << "LocalizationServer::Start failed.";
         autolink::Clear();
-        google::ShutdownGoogleLogging();
         return EXIT_FAILURE;
     }
 
@@ -181,6 +180,5 @@ int main(int argc, char** argv) {
     server->Shutdown();
     server.reset();
     autolink::Clear();
-    google::ShutdownGoogleLogging();
     return EXIT_SUCCESS;
 }

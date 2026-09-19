@@ -2,18 +2,36 @@
  * Copyright 2026 The Openbot Authors
  */
 
+/**
+ * @file follow_stub.hpp
+ * @brief FollowStub: GoalChannel adapter for TrackerTask (human follow).
+ *
+ * @details
+ * Maps FollowService onto `/autonomy/task/tracking/{goal,feedback}`
+ * (`kTrackingGoal` / `kTrackingFeedback`). Wire types:
+ * `automsgs/task/tracker.pb.h` (`TrackerGoal` / `TrackerFeedback`).
+ * Bridge does **not** include `autonomy/task` headers.
+ *
+ * @par Lifecycle
+ * TRACKER_CMD_PAUSE / RESUME / CANCEL.
+ * Muxer slot: TASK_TYPE_FOLLOW.
+ * Convert* / MakeResponse / IsTerminal: follow_stub.cpp.
+ *
+ * @par Ownership
+ * UniquePtr owned by DomainBundle; CancelRegistry captures non-owning Stub*.
+ *
+ * @par Threading
+ * gRPC event thread; no Action wait.
+ *
+ * @see GoalChannelCommandStub
+ * @see rpc_follow_handlers.hpp
+ */
+
 #pragma once
 
-#include <functional>
-#include <memory>
-#include <string>
-
-#include "autolink/node/node.hpp"
-#include "autonomy/bridge/grpc/clients/goal_channel_stub.hpp"
-#include "autonomy/bridge/grpc/task_muxer.hpp"
-#include "autonomy/bridge/proto/external_command_service.pb.h"
-#include "autonomy/common/macros.hpp"
-#include "autonomy/task/common/names.hpp"
+#include "autonomy/bridge/grpc/clients/goal_channel_command_stub.hpp"
+#include "autonomy/bridge/constants.hpp"
+#include <automsgs/rpcs/follow.pb.h>
 #include <automsgs/task/tracker.pb.h>
 
 namespace autonomy {
@@ -22,69 +40,66 @@ namespace grpc {
 namespace clients {
 
 /**
- * @brief Traits for Follow goal/feedback channels.
- * @see GoalChannelStub
+ * @brief GoalChannel traits for TrackerTask.
+ *
+ * @details
+ * Declares ConvertToGoal / ConvertFromFeedback / MakeResponse / IsTerminal
+ * (implemented in follow_stub.cpp) and binds Pause/Resume/Cancel to
+ * TRACKER_CMD_*. Topics: @c kTrackingGoal / @c kTrackingFeedback.
+ *
+ * @note Request is FollowRequest; Response is FollowResponse.
+ * @warning Muxer type TASK_TYPE_FOLLOW must stay aligned with TaskServer.
  */
-struct FollowTraits {
-    using Goal = ::autonomy::task::proto::TrackerGoal;
-    using Feedback = ::autonomy::task::proto::TrackerFeedback;
-    using Request = proto::FollowCommandRequest;
-    using Response = proto::FollowCommandResponse;
-
-    static constexpr proto::TaskType kTaskType = proto::TASK_TYPE_FOLLOW;
-    static constexpr const char* kGoalChannel =
-        ::autonomy::task::kTrackingGoal;
-    static constexpr const char* kFeedbackChannel =
-        ::autonomy::task::kTrackingFeedback;
-
-    /** @brief Convert a bridge follow request into a tracker goal. */
-    static Goal ConvertToGoal(const Request& request);
-
-    /** @brief Convert tracker feedback into a bridge follow response. */
-    static Response ConvertFromFeedback(const Feedback& feedback,
-                                        const Request& last);
-
-    /** @brief Build an immediate ack-style follow response. */
-    static Response MakeResponse(const Request& request, bool success,
-                                 bool final, const std::string& message);
-
-    /** @brief Check whether feedback reports a terminal tracker status. */
-    static bool CheckTerminalStatus(const Feedback& feedback);
-};
+BRIDGE_CHANNEL_TRAITS(
+    FollowTraits,
+    ::autonomy::task::proto::TrackerGoal,
+    ::autonomy::task::proto::TrackerFeedback,
+    ::automsgs::rpcs::follow::FollowRequest,
+    ::automsgs::rpcs::follow::FollowResponse,
+    ::autonomy::bridge::grpc::TASK_TYPE_FOLLOW,
+    ::autonomy::bridge::kTrackingGoal,
+    ::autonomy::bridge::kTrackingFeedback,
+    ::autonomy::task::proto::TRACKER_CMD_PAUSE,
+    ::autonomy::task::proto::TRACKER_CMD_RESUME,
+    ::autonomy::task::proto::TRACKER_CMD_CANCEL);
 
 /**
- * @brief Bridge stub that forwards Follow commands to the tracking task.
+ * @brief Forwards FollowService to TrackerTask via GoalChannel.
+ *
+ * @details
+ * Thin facade: HandleFollow → HandleRequest. Requires a ready goal
+ * writer; returns false when gated (estop / busy / reject).
+ *
+ * @par Ownership
+ * UniquePtr owned by DomainBundle; CancelRegistry captures non-owning Stub*.
+ *
+ * @par Threading
+ * gRPC event thread; no Action wait.
  */
-class FollowStub
+class FollowStub : public GoalChannelCommandStub<FollowTraits>
 {
 public:
-    using StreamCallback =
-        std::function<void(const proto::FollowCommandResponse& response)>;
-
+    /**
+     * @brief Shared / weak / unique pointer aliases.
+     */
     AUTONOMY_SMART_PTR_DEFINITIONS(FollowStub)
 
     /**
-     * @brief Construct the follow channel session.
-     * @param[in] node Autolink node.
-     * @param[in] muxer Shared task muxer.
+     * @brief Inherit GoalChannelCommandStub constructors (node + muxer).
      */
-    FollowStub(std::shared_ptr<autolink::Node> node,
-               std::shared_ptr<TaskMuxer> muxer);
+    using GoalChannelCommandStub::GoalChannelCommandStub;
 
     /**
-     * @brief Handle a follow command and stream status updates.
-     * @param[in] request Follow command request.
-     * @param[in] stream_callback Stream sink.
-     * @return false if rejected immediately.
+     * @brief Accept a Follow start and stream Tracker feedback.
+     *
+     * @param[in] request         FollowRequest (goal_id, target, …).
+     * @param[in] stream_callback Stream sink for ACK / feedback / terminal.
+     * @return                    false if rejected before write (reject already emitted).
      */
-    bool HandleCommand(const proto::FollowCommandRequest& request,
-                       StreamCallback stream_callback);
-
-    /** @brief Cancel the active follow session. */
-    void CancelActiveSession();
-
-private:
-    GoalChannelStub<FollowTraits> channel_;
+    bool HandleFollow(const ::automsgs::rpcs::follow::FollowRequest& request,
+                      StreamCallback stream_callback) {
+        return HandleRequest(request, std::move(stream_callback));
+    }
 };
 
 }  // namespace clients

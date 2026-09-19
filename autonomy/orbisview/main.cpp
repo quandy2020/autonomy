@@ -13,6 +13,7 @@
 
 #include <glog/logging.h>
 
+#include "autolink/init.hpp"
 #include "autonomy/orbisview/backend/common/orbisview_gflags.hpp"
 #include "autonomy/orbisview/backend/orbisview.hpp"
 
@@ -26,8 +27,8 @@ void OnSignal(int) { g_running = false; }
 }  // namespace
 
 int main(int argc, char** argv) {
-  google::InitGoogleLogging(argv[0]);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  autolink::InitLogging(argv[0]);
   std::signal(SIGINT, OnSignal);
   std::signal(SIGTERM, OnSignal);
 

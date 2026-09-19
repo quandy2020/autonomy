@@ -35,6 +35,7 @@
 #include "autonomy/localization/cartographer/transform/transform_interpolation_buffer.hpp"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "autolink/init.hpp"
 
 DEFINE_string(pose_graph_filename, "", "Proto stream file containing the pose graph used to assess quality.");
 DEFINE_string(relations_filename, "", "Relations file containing the ground truth.");
@@ -181,7 +182,6 @@ void Run(const std::string& pose_graph_filename, const std::string& relations_fi
 }  // namespace cartographer
 
 int main(int argc, char** argv) {
-    google::InitGoogleLogging(argv[0]);
     FLAGS_logtostderr = true;
     google::SetUsageMessage(
         "\n\n"
@@ -190,6 +190,7 @@ int main(int argc, char** argv) {
         "C. Stachniss, and A. Kleiner, \"On measuring the accuracy of SLAM\n"
         "algorithms,\" Autonomous Robots, vol. 27, no. 4, pp. 387–407, 2009.");
     google::ParseCommandLineFlags(&argc, &argv, true);
+    autolink::InitLogging(argv[0]);
 
     if (FLAGS_pose_graph_filename.empty() || FLAGS_relations_filename.empty()) {
         google::ShowUsageWithFlagsRestrict(argv[0], "compute_relations_metrics");

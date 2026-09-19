@@ -10,7 +10,7 @@
 | Autonomy 路径 | `autonomy/common/async_grpc/` |
 | 上游 | [cartographer-project/async_grpc](https://github.com/cartographer-project/async_grpc)（Apache-2.0） |
 | 场景 | Cartographer Cloud 流式上传；Bridge 并发 Server Streaming |
-| 消费者 | `autonomy/bridge/grpc`（`AutonomyService`） |
+| 消费者 | `autonomy/bridge/grpc`（`automsgs.rpcs`） |
 
 原生 gRPC 同步 server **每 RPC 一线程**；`async_grpc` 在 `CompletionQueue` 上封装 **Rpc 事件 + Handler 回调**，用固定 CQ/EQ 线程池 Multiplex 连接。相对手写异步 tag 状态机，提供 `RpcHandler` 抽象。
 
@@ -42,7 +42,7 @@
 async_grpc 架构概览（图源 [上游 README](https://github.com/cartographer-project/async_grpc#overview)）。**RpcEvent** 经 **Completion Queue**（libgrpc）进入 **Event Queue**（Handler）。详见 [grpc/02 双队列](02_dual_queue.md)。
 ```
 
-Bridge：`AutonomyService` → `SendNavigationHandler` 等位于 **Rpc → RpcHandler** 链路（[grpc/05 Bridge 集成](05_bridge_integration.md)）。
+Bridge：`NavigationService` → `RpcNavigateHandler` 等位于 **Rpc → RpcHandler** 链路（[grpc/05 Bridge 集成](05_bridge_integration.md)）。
 
 ## 1.4 源码结构
 
@@ -61,7 +61,7 @@ autonomy/common/async_grpc/
 
 ```
 Server::Builder → RegisterHandler<SendNavigationHandler>()
-    → Server (CQ×N + EQ×M + AutonomyService + ExecutionContext)
+    → Server (CQ×N + EQ×M + automsgs.rpcs + ExecutionContext)
         → Rpc → SendNavigationHandler
 ```
 
@@ -73,7 +73,7 @@ Server::Builder → RegisterHandler<SendNavigationHandler>()
 |------|-----|------|
 | `kDefaultMaxMessageSize` | 10 MB | `server.h` |
 | `kPopEventTimeout` | 100 ms | `server.cpp` |
-| Bridge `kMaxMessageSize` | 100 MB | `grpc_bridge.cpp` |
+| Bridge `kMaxMessageSize` | 100 MB | `server.cpp` |
 | 默认凭证 | `InsecureServerCredentials` | `server.cpp` |
 
 ---

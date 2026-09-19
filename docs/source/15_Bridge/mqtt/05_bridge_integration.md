@@ -9,8 +9,8 @@
 
 ```
 BridgeServer
-    ├── GrpcBridgeServer     (use_grpc)  ← 已实现骨架
-    └── MqttBridge           (use_mqtt)  ← 规划中
+    ├── Server     ← 已实现骨架
+    └── MqttBridge           (规划)  ← 规划中
             ├── libmosquitto client
             ├── SUB  autonomy/{id}/cmd/#
             ├── PUB  state / event / ack
@@ -33,17 +33,15 @@ BridgeServer
 // bridge_server.hpp（规划）
 class BridgeServer {
     // ...
-    GrpcBridgeServer::UniquePtr grpc_bridge_{nullptr};
+    Server::UniquePtr grpc_bridge_{nullptr};
     plugins::mqtt::MqttBridge::UniquePtr mqtt_bridge_{nullptr};  // 新增
 };
 
 // bridge_server.cpp（规划）
 BridgeServer::BridgeServer(const proto::BridgeOptions& options)
     : options_{options} {
-    if (options_.use_grpc()) {
-        grpc_bridge_ = std::make_unique<GrpcBridgeServer>(
-            options_.grpc());
-    }
+    grpc_bridge_ = std::make_unique<Server>(
+        options_.grpc(), options_.identity(), options_.capabilities());
     if (options_.use_mqtt()) {
         mqtt_bridge_ = std::make_unique<plugins::mqtt::MqttBridge>(
             options_.mqtt());
@@ -102,8 +100,8 @@ mqtt = {
 
 | 场景 | 行为 |
 |------|------|
-| 仅 gRPC | `use_grpc=true, use_mqtt=false`（当前默认） |
-| 仅 MQTT | 弱网 IoT、仅 Broker 出站 |
+| 仅 gRPC | 当前默认（无 MQTT 插件） |
+| 仅 MQTT | 弱网 IoT、仅 Broker 出站（规划） |
 | 双栈 | 移动端 gRPC + 云平台 MQTT 同时接入；**FSM 需串行化**或按来源分区，避免双通道并发 START |
 
 建议：共享 `NavigatorStub` 与 `BridgeContext`，在 FSM 层互斥或拒绝并发活动会话。

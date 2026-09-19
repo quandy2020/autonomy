@@ -48,6 +48,7 @@ proto::TaskServerOptions TaskServer::DefaultOptions() {
     apps->set_enable_mapping(true);
   apps->set_enable_localization(true);
   apps->set_enable_exploration_bridge(true);
+  apps->set_enable_voice(true);
 
   BtDefaults::Apply(&options);
     return options;
@@ -317,6 +318,19 @@ void TaskServer::Bind() {
     }
 
     BindDomain(
+        options_.apps().enable_navigation(), navigation_, kNavigationGoal,
+        kNavigationFeedback, period, &navigation_ingress_,
+        [](const proto::NavigationFeedback& feedback) {
+            return feedback.status() == proto::NAV_STATUS_FAILED ||
+                   feedback.status() == proto::NAV_STATUS_CANCELED;
+        },
+        []() {
+            proto::NavigationFeedback feedback;
+            feedback.set_status(proto::NAV_STATUS_FAILED);
+            return feedback;
+        });
+
+    BindDomain(
         options_.apps().enable_teleop(), teleop_, kTeleopGoal, kTeleopFeedback,
         period, &teleop_ingress_,
         [](const proto::TeleopFeedback& feedback) {
@@ -389,6 +403,36 @@ void TaskServer::Bind() {
             feedback.set_status(proto::LOCALIZATION_STATUS_FAILED);
             return feedback;
         });
+
+    BindDomain(
+        options_.apps().enable_exploration_bridge(), exploration_,
+        kExplorationGoal, kExplorationFeedback, period, &exploration_ingress_,
+        [](const proto::ExplorationFeedback& feedback) {
+            return feedback.status() == proto::EXPLORATION_STATUS_SUCCEEDED ||
+                   feedback.status() == proto::EXPLORATION_STATUS_FAILED ||
+                   feedback.status() == proto::EXPLORATION_STATUS_CANCELED ||
+                   feedback.status() == proto::EXPLORATION_STATUS_IDLE;
+        },
+        []() {
+            proto::ExplorationFeedback feedback;
+            feedback.set_status(proto::EXPLORATION_STATUS_FAILED);
+            return feedback;
+        });
+
+    BindDomain(
+        options_.apps().enable_voice(), voice_, kVoiceGoal, kVoiceFeedback,
+        period, &voice_ingress_,
+        [](const proto::VoiceFeedback& feedback) {
+            return feedback.status() == proto::VOICE_STATUS_SUCCEEDED ||
+                   feedback.status() == proto::VOICE_STATUS_FAILED ||
+                   feedback.status() == proto::VOICE_STATUS_CANCELED ||
+                   feedback.status() == proto::VOICE_STATUS_IDLE;
+        },
+        []() {
+            proto::VoiceFeedback feedback;
+            feedback.set_status(proto::VOICE_STATUS_FAILED);
+            return feedback;
+        });
 }
 
 void TaskServer::Unbind() {
@@ -404,6 +448,9 @@ void TaskServer::Unbind() {
     charging_ingress_.Stop();
     mapping_ingress_.Stop();
     localization_ingress_.Stop();
+    exploration_ingress_.Stop();
+    voice_ingress_.Stop();
+    navigation_ingress_.Stop();
     if (navigator_) {
         navigator_->Stop();
         navigator_.reset();
@@ -417,7 +464,68 @@ void TaskServer::AddApps(const proto::TaskAppOptions& apps) {
     RegisterBuiltinTasks(
         apps, [this](const auto& task) { Register(task); }, &navigation_,
         &tracking_, &teleop_, &charging_, &mapping_, &localization_,
-        &manipulation_);
+        &manipulation_, &exploration_, &voice_);
+    if (exploration_) {
+        exploration_->SetSubmitNavigation(
+            [this](const proto::NavigationGoal& goal) {
+                return Submit(goal);
+            });
+        exploration_->SetSubmitMapping(
+            [this](const proto::MappingGoal& goal) { return Submit(goal); });
+        exploration_->SetNavigationProbe(
+            [this]() { return navigation_ && navigation_->IsActive(); },
+            [this](proto::NavigationResult* result) {
+                return navigation_ && navigation_->GetResult(result);
+            });
+    }
+    if (localization_) {
+        localization_->SetSubmitMapping(
+            [this](const proto::MappingGoal& goal) { return Submit(goal); });
+    }
+    WireVoiceDispatchers();
+}
+
+void TaskServer::WireVoiceDispatchers() {
+    if (!voice_) {
+        return;
+    }
+    voice_->SetSubmitNavigation(
+        [this](const proto::NavigationGoal& goal) { return Submit(goal); });
+    voice_->SetSubmitTracking(
+        [this](const proto::TrackerGoal& goal) { return Submit(goal); });
+    voice_->SetSubmitCharging(
+        [this](const proto::ChargingGoal& goal) { return Submit(goal); });
+    voice_->SetSubmitExploration(
+        [this](const proto::ExplorationGoal& goal) { return Submit(goal); });
+    voice_->SetCancelDomains([this] { CancelDomainTasks(); });
+}
+
+void TaskServer::CancelDomainTasks() {
+    if (navigation_ && navigation_->IsActive()) {
+        proto::NavigationGoal goal;
+        goal.set_command(proto::NAV_CMD_CANCEL);
+        navigation_->SubmitGoal(goal);
+    }
+    if (tracking_ && tracking_->IsActive()) {
+        proto::TrackerGoal goal;
+        goal.set_command(proto::TRACKER_CMD_CANCEL);
+        tracking_->SubmitGoal(goal);
+    }
+    if (charging_ && charging_->IsActive()) {
+        proto::ChargingGoal goal;
+        goal.set_command(proto::DOCK_CMD_CANCEL);
+        charging_->SubmitGoal(goal);
+    }
+    if (exploration_ && exploration_->IsActive()) {
+        proto::ExplorationGoal goal;
+        goal.set_command(proto::EXPLORATION_CMD_CANCEL);
+        exploration_->SubmitGoal(goal);
+    }
+    if (teleop_ && teleop_->IsActive()) {
+        proto::TeleopGoal goal;
+        goal.set_command(proto::TELEOP_CMD_STOP);
+        teleop_->SubmitGoal(goal);
+    }
 }
 
 bool TaskServer::Start() {
@@ -440,6 +548,8 @@ void TaskServer::Shutdown() {
     stop(mapping_);
     stop(localization_);
     stop(manipulation_);
+    stop(exploration_);
+    stop(voice_);
     if (scheduler_) {
         scheduler_->Shutdown();
         scheduler_.reset();
@@ -452,6 +562,8 @@ void TaskServer::Shutdown() {
     mapping_.reset();
     localization_.reset();
     manipulation_.reset();
+    exploration_.reset();
+    voice_.reset();
     navigation_client_.reset();
     if (transform_listener_) {
         transform_listener_->Stop();
@@ -482,6 +594,14 @@ bool TaskServer::Submit(const proto::MappingGoal& goal) {
 }
 bool TaskServer::Submit(const proto::LocalizationGoal& goal) {
     return Dispatch(localization_, goal);
+}
+
+bool TaskServer::Submit(const proto::ExplorationGoal& goal) {
+    return Dispatch(exploration_, goal);
+}
+
+bool TaskServer::Submit(const proto::VoiceGoal& goal) {
+    return Dispatch(voice_, goal);
 }
 
 std::vector<proto::ActiveTaskSnapshot> TaskServer::GetActiveSnapshots() const {

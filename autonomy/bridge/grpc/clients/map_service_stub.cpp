@@ -5,9 +5,8 @@
 #include "autonomy/bridge/grpc/clients/map_service_stub.hpp"
 
 #include "autonomy/bridge/constants.hpp"
-#include "autonomy/bridge/grpc/rpc_convert.hpp"
-#include "autonomy/bridge/proto/external_command_service.pb.h"
-#include "autonomy/common/logging.hpp"
+#include "autonomy/bridge/grpc/clients/mapping_stub.hpp"
+#include "autonomy/bridge/grpc/rpc_status.hpp"
 #include <automsgs/msgs/status_msgs/status_msgs.pb.h>
 
 namespace autonomy {
@@ -19,32 +18,39 @@ namespace {
 using StatusCode = ::automsgs::msgs::status_msgs::StatusCode;
 namespace mapping_rpc = ::automsgs::rpcs::mapping;
 
+std::string ResolveMapKey(const std::string& map_identifier,
+                          const std::string& map_name,
+                          const std::string& fallback = {}) {
+    if (!map_identifier.empty()) {
+        return map_identifier;
+    }
+    if (!map_name.empty()) {
+        return map_name;
+    }
+    return fallback;
+}
+
 }  // namespace
 
 MapServiceStub::MapServiceStub(std::shared_ptr<autolink::Node> node,
-                               std::shared_ptr<MapStub> map_stub)
-    : map_stub_(std::move(map_stub)) {
-    live_map_cache_.BindReader(node, kMapChannel);
+                               MappingStub* mapping_stub)
+    : mapping_stub_(mapping_stub) {
+    live_map_cache_.BindReader(std::move(node), kMapChannel);
 }
 
 ::automsgs::rpcs::common::Status MapServiceStub::StartMapping(
     const mapping_rpc::StartMappingRequest& request) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (session_state_ == mapping_rpc::MAPPING_STATE_MAPPING) {
-        return MakeRpcStatus(StatusCode::MAPPING_BUSY, "mapping already active");
+        return ErrorStatus(StatusCode::MAPPING_BUSY, "mapping already active");
     }
     session_state_ = mapping_rpc::MAPPING_STATE_MAPPING;
     session_goal_id_ = request.goal_id();
     session_map_name_ = request.map_name();
-    if (map_stub_) {
-        proto::MapCommandRequest bridge;
-        bridge.set_command(proto::MAP_CMD_LOAD);
-        if (!request.map_name().empty()) {
-            bridge.set_map_name(request.map_name());
-        }
-        map_stub_->HandleCommand(bridge, [](const auto&) {});
+    if (mapping_stub_) {
+        mapping_stub_->HandleStart(request);
     }
-    return MakeOkStatus("mapping started");
+    return OkStatus("mapping started");
 }
 
 mapping_rpc::FinishMappingResponse MapServiceStub::FinishMapping(
@@ -53,22 +59,20 @@ mapping_rpc::FinishMappingResponse MapServiceStub::FinishMapping(
     std::lock_guard<std::mutex> lock(mutex_);
     if (session_state_ != mapping_rpc::MAPPING_STATE_MAPPING) {
         *response.mutable_status() =
-            MakeRpcStatus(StatusCode::INVALID_ARGUMENT, "no active mapping");
+            ErrorStatus(StatusCode::INVALID_ARGUMENT, "no active mapping");
         return response;
     }
-    const std::string map_identifier = session_map_name_.empty()
-                               ? (request.goal_id().empty() ? "map"
-                                                            : request.goal_id())
-                               : session_map_name_;
+    const std::string map_identifier = ResolveMapKey(
+        session_map_name_, request.goal_id(), "map");
     if (request.persist()) {
-        if (auto live = live_map_cache_.GetLatest()) {
+        if (auto live = live_map_cache_.GetLatestMessage()) {
             catalog_[map_identifier] = std::move(*live);
             current_map_id_ = map_identifier;
         }
     }
     session_state_ = mapping_rpc::MAPPING_STATE_IDLE;
     response.set_map_identifier(map_identifier);
-    *response.mutable_status() = MakeOkStatus("mapping finished");
+    *response.mutable_status() = OkStatus("mapping finished");
     return response;
 }
 
@@ -76,13 +80,13 @@ mapping_rpc::FinishMappingResponse MapServiceStub::FinishMapping(
     const mapping_rpc::CancelMappingRequest&) {
     std::lock_guard<std::mutex> lock(mutex_);
     session_state_ = mapping_rpc::MAPPING_STATE_IDLE;
-    return MakeOkStatus("mapping cancelled");
+    return OkStatus("mapping cancelled");
 }
 
 mapping_rpc::MappingStatus MapServiceStub::GetMappingStatus() const {
     mapping_rpc::MappingStatus status;
     std::lock_guard<std::mutex> lock(mutex_);
-    *status.mutable_status() = MakeOkStatus();
+    *status.mutable_status() = OkStatus();
     status.set_state(session_state_);
     status.set_goal_id(session_goal_id_);
     status.set_map_name(session_map_name_);
@@ -93,7 +97,7 @@ mapping_rpc::MappingStatus MapServiceStub::GetMappingStatus() const {
 mapping_rpc::ListMapsResponse MapServiceStub::ListMaps() const {
     mapping_rpc::ListMapsResponse response;
     std::lock_guard<std::mutex> lock(mutex_);
-    *response.mutable_status() = MakeOkStatus();
+    *response.mutable_status() = OkStatus();
     for (const auto& entry : catalog_) {
         auto* summary = response.add_maps();
         summary->set_map_identifier(entry.first);
@@ -112,24 +116,23 @@ mapping_rpc::GetMapResponse MapServiceStub::GetMap(
     const mapping_rpc::GetMapRequest& request) const {
     mapping_rpc::GetMapResponse response;
     std::lock_guard<std::mutex> lock(mutex_);
-    const std::string map_key = !request.map_identifier().empty()
-                                ? request.map_identifier()
-                                : request.map_name();
+    const std::string map_key =
+        ResolveMapKey(request.map_identifier(), request.map_name());
     if (!map_key.empty()) {
-        const auto catalog_iterator = catalog_.find(map_key);
-        if (catalog_iterator != catalog_.end()) {
-            *response.mutable_map() = catalog_iterator->second;
-            *response.mutable_status() = MakeOkStatus();
+        const auto it = catalog_.find(map_key);
+        if (it != catalog_.end()) {
+            *response.mutable_map() = it->second;
+            *response.mutable_status() = OkStatus();
             return response;
         }
     }
-    if (auto live = live_map_cache_.GetLatest()) {
+    if (auto live = live_map_cache_.GetLatestMessage()) {
         *response.mutable_map() = *live;
-        *response.mutable_status() = MakeOkStatus("live map");
+        *response.mutable_status() = OkStatus("live map");
         return response;
     }
     *response.mutable_status() =
-        MakeRpcStatus(StatusCode::NOT_FOUND, "map not found");
+        ErrorStatus(StatusCode::NOT_FOUND, "map not found");
     return response;
 }
 
@@ -143,9 +146,8 @@ mapping_rpc::GetMapMetadataResponse MapServiceStub::GetMapMetadata(
     *response.mutable_status() = map_response.status();
     if (map_response.has_map() && map_response.map().has_info()) {
         *response.mutable_metadata() = map_response.map().info();
-        response.set_map_identifier(!request.map_identifier().empty()
-                                        ? request.map_identifier()
-                                        : request.map_name());
+        response.set_map_identifier(
+            ResolveMapKey(request.map_identifier(), request.map_name()));
     }
     return response;
 }
@@ -154,27 +156,24 @@ mapping_rpc::SaveMapResponse MapServiceStub::SaveMap(
     const mapping_rpc::SaveMapRequest& request) {
     mapping_rpc::SaveMapResponse response;
     std::lock_guard<std::mutex> lock(mutex_);
-    const std::string map_identifier = !request.map_identifier().empty()
-                               ? request.map_identifier()
-                               : (request.map_name().empty() ? "saved_map"
-                                                             : request.map_name());
+    const std::string map_identifier = ResolveMapKey(
+        request.map_identifier(), request.map_name(), "saved_map");
     if (request.has_map()) {
         catalog_[map_identifier] = request.map();
-    } else if (auto live = live_map_cache_.GetLatest()) {
+    } else if (auto live = live_map_cache_.GetLatestMessage()) {
         catalog_[map_identifier] = std::move(*live);
     } else {
         *response.mutable_status() =
-            MakeRpcStatus(StatusCode::INVALID_ARGUMENT, "no map buffer");
+            ErrorStatus(StatusCode::INVALID_ARGUMENT, "no map buffer");
         return response;
     }
     current_map_id_ = map_identifier;
     response.set_map_identifier(map_identifier);
-    *response.mutable_status() = MakeOkStatus("saved");
-    if (map_stub_) {
-        proto::MapCommandRequest bridge;
-        bridge.set_command(proto::MAP_CMD_SWITCH);
-        bridge.set_map_name(map_identifier);
-        map_stub_->HandleCommand(bridge, [](const auto&) {});
+    *response.mutable_status() = OkStatus("saved");
+    if (mapping_stub_) {
+        mapping_rpc::StartMappingRequest start;
+        start.set_map_name(map_identifier);
+        mapping_stub_->HandleStart(start);
     }
     return response;
 }
@@ -184,28 +183,27 @@ mapping_rpc::SaveMapResponse MapServiceStub::SaveMap(
     std::lock_guard<std::mutex> lock(mutex_);
     if (request.map_identifier().empty() ||
         catalog_.erase(request.map_identifier()) == 0) {
-        return MakeRpcStatus(StatusCode::NOT_FOUND, "map not found");
+        return ErrorStatus(StatusCode::NOT_FOUND, "map not found");
     }
     if (current_map_id_ == request.map_identifier()) {
         current_map_id_.clear();
     }
-    return MakeOkStatus("deleted");
+    return OkStatus("deleted");
 }
 
 ::automsgs::rpcs::common::Status MapServiceStub::SetCurrentMap(
     const mapping_rpc::SetCurrentMapRequest& request) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (catalog_.find(request.map_identifier()) == catalog_.end()) {
-        return MakeRpcStatus(StatusCode::NOT_FOUND, "map not found");
+        return ErrorStatus(StatusCode::NOT_FOUND, "map not found");
     }
     current_map_id_ = request.map_identifier();
-    if (map_stub_) {
-        proto::MapCommandRequest bridge;
-        bridge.set_command(proto::MAP_CMD_SWITCH);
-        bridge.set_map_name(current_map_id_);
-        map_stub_->HandleCommand(bridge, [](const auto&) {});
+    if (mapping_stub_) {
+        mapping_rpc::StartMappingRequest start;
+        start.set_map_name(current_map_id_);
+        mapping_stub_->HandleStart(start);
     }
-    return MakeOkStatus("current map set");
+    return OkStatus("current map set");
 }
 
 }  // namespace clients

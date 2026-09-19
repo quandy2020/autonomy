@@ -1,58 +1,27 @@
 (rpc-stream-api)=
-# 推送接口 Stream
+# 流式接口 Stream
 
-长连接 Server Stream，周期推送机器人状态与事件。适合**系统测试持续观测**与**算法联调闭环**。
+`automsgs.rpcs` **不再**提供 `ReceiveBotStates` / `ReceiveBotEvents`（已随 AutonomyService 移除）。
 
-## 5.1 方法列表
+状态与事件请用：
 
-| RPC | 响应类型 | 说明 |
-|-----|----------|------|
-| `ReceiveBotStates` | `vehicle_msgs.RobotState` | 周期状态，10～50 Hz |
-| `ReceiveBotEvents` | `vehicle_msgs.RobotEvent` | 事件驱动 |
-
-## 5.2 grpcurl
-
-完整用例 → [13 §13.4](13_integration_tests.md#134-stream-测试用例)。
-
-**ReceiveBotStates**
-
-```bash
-# ReceiveBotStates — 周期状态流（Empty→Stream · Ctrl+C 结束）
-grpcurl -plaintext $PROTO_OPTS \
-  -d '{}' \
-  $BRIDGE \
-  $SVC/ReceiveBotStates
-```
-
-
-**ReceiveBotEvents**
-
-```bash
-# ReceiveBotEvents — 任务/异常事件流（Empty→Stream · Ctrl+C 结束）
-grpcurl -plaintext $PROTO_OPTS \
-  -d '{}' \
-  $BRIDGE \
-  $SVC/ReceiveBotEvents
-```
-
-
-
-## 5.3 vehicle_msgs
-
-定义：`autonomy/commsgs/proto/vehicle_msgs.proto`
-
-**RobotState**（关键字段）
-
-| 字段 | 说明 |
+| 需求 | 推荐 |
 |------|------|
-| `pose` / `twist` | 位姿与速度 |
-| `battery_percent` | 电量 |
-| `active_task_type` / `active_task_status` | 与 Command 对齐 |
-| `active_cmd_id` | 当前命令 ID |
-| `is_docked` / `is_charging` | docking 状态 |
+| 周期粗状态 | `SystemService/GetStatus` 轮询，或订阅机载 `/robot_state` |
+| 完整画像 | `SystemService/GetRobotFullInfo` |
+| 命令进度 | 各域 **Unary→Stream**（`Navigate` / `Follow` / `Return` / …） |
+| 遥操速度 | `TeleopService/Velocity` **Bidi** |
+| 传感器录制 | `SensorService/Record` Stream |
 
-**RobotEvent**：`type` · `severity` · `task_type` · `cmd_id` · `message` · `error_code`
+## 5.1 命令流 vs 推送
 
-`TaskType` 数值见 [03 §3.3](03_common_types.md#33-tasktype-taskstatus)。
+```text
+历史全局推送（已移除）：Empty → stream RobotState
+现 automsgs.rpcs：      按域命令流携带进度；系统状态 Unary 查询
+```
 
-MQTT 对应 Topic 见 [mqtt/04 §4.2](../mqtt/04_topic_protocol.md#42-载荷约定)。
+Bridge 侧 `StateHub` 仅缓存 `/robot_state` 供 System 查询合成，**不**再对外 push fan-out。
+
+## 5.2 示例：导航进度流
+
+见 [07 NavigationService](07_navigation_command.md)。

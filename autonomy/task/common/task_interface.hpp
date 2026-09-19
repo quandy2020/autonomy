@@ -30,6 +30,8 @@
 #include <automsgs/task/task_options.pb.h>
 #include <automsgs/task/teleop.pb.h>
 #include <automsgs/task/tracker.pb.h>
+#include <automsgs/task/voice.pb.h>
+#include <automsgs/task/exploration.pb.h>
 
 namespace autonomy {
 namespace task {
@@ -204,6 +206,18 @@ using LocalizationTaskInterface = TypedTaskInterface<
     ::autonomy::task::proto::LocalizationGoal,
     ::autonomy::task::proto::LocalizationFeedback,
     ::autonomy::task::proto::LocalizationResult>;
+
+// exploration
+using ExplorationTaskInterface = TypedTaskInterface<
+    ::autonomy::task::proto::ExplorationGoal,
+    ::autonomy::task::proto::ExplorationFeedback,
+    ::autonomy::task::proto::ExplorationResult>;
+
+// voice
+using VoiceTaskInterface = TypedTaskInterface<
+    ::autonomy::task::proto::VoiceGoal,
+    ::autonomy::task::proto::VoiceFeedback,
+    ::autonomy::task::proto::VoiceResult>;
 
 }  // namespace task
 }  // namespace autonomy

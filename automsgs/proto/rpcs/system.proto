@@ -17,6 +17,7 @@ syntax = "proto3";
 package automsgs.rpcs.system;
 
 import "automsgs/msgs/sensor_msgs/battery_state.proto";
+import "automsgs/msgs/vehicle_msgs/robot_state.proto";
 import "automsgs/rpcs/common.proto";
 
 // =============================================================================
@@ -35,6 +36,8 @@ service SystemService {
   rpc GetInfo(GetInfoRequest) returns (GetInfoResponse);
   rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
   rpc GetHealth(GetHealthRequest) returns (GetHealthResponse);
+  // Full onboarding / cloud snapshot (no raw perception).
+  rpc GetRobotFullInfo(GetRobotFullInfoRequest) returns (RobotFullInfo);
 
   rpc EmergencyStop(EmergencyStopRequest) returns (automsgs.rpcs.common.Status);
   rpc ClearEmergencyStop(ClearEmergencyStopRequest)
@@ -70,6 +73,45 @@ message GetInfoResponse {
   string hostname = 6;
   // autonomy process / stack version (from autonomy/system runtime).
   string autonomy_version = 7;
+}
+
+// ---------------------------------------------------------------------------
+// Robot full profile (client / cloud Unary; aggregates identity + live state)
+// ---------------------------------------------------------------------------
+
+message RobotIdentity {
+  string robot_id = 1;
+  string model = 2;
+  string serial_number = 3;
+  string hostname = 4;
+  string firmware_version = 5;
+  string software_version = 6;
+  string autonomy_version = 7;
+  string bridge_version = 8;
+  string fleet_id = 9;
+  string site_id = 10;
+}
+
+message GetRobotFullInfoRequest {}
+
+message RobotAlert {
+  string code = 1;
+  string severity = 2;
+  string message = 3;
+  string source = 4;
+}
+
+message RobotFullInfo {
+  automsgs.rpcs.common.Status status = 1;
+  RobotIdentity identity = 2;
+  automsgs.msgs.vehicle_msgs.RobotState state = 3;
+  SystemState system_state = 4;
+  ActiveGoal active_goal = 5;
+  // Includes channel lists for alert summarization; use GetHealth for ops dig.
+  SystemHealth health = 6;
+  Capabilities capabilities = 7;
+  int64 robot_time_ns = 8;
+  repeated RobotAlert alerts = 9;
 }
 
 // ---------------------------------------------------------------------------
@@ -175,6 +217,7 @@ enum GoalKind {
   GOAL_KIND_MAPPING = 5;
   GOAL_KIND_TELEOP = 6;
   GOAL_KIND_EXPLORATION = 7;
+  GOAL_KIND_VOICE = 8;
 }
 
 message CancelAllGoalsRequest {

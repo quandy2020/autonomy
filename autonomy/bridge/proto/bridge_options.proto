@@ -16,21 +16,13 @@ syntax = "proto3";
 
 package autonomy.bridge.proto;
 
+import "autonomy/bridge/proto/capabilities_options.proto";
+import "autonomy/bridge/proto/grpc_options.proto";
+import "autonomy/bridge/proto/robot_identity_options.proto";
 
-message GrpcOptions
-{
-    string host = 1;
-    uint32 port = 2;
-    uint32 num_grpc_threads = 3;
-    uint32 num_event_threads = 4;
-    string uplink_server_address = 5;
-    int32 upload_batch_size = 6;
-    bool enable_ssl_encryption = 7;
-    bool enable_google_auth = 9;
-}
-
-message BridgeOptions
-{
-    bool use_grpc = 1;
-    GrpcOptions grpc = 3;
+// Top-level process config for autonomy.bridge (not an external RPC surface).
+message BridgeOptions {
+  GrpcOptions grpc = 3;
+  RobotIdentityOptions identity = 4;
+  CapabilitiesOptions capabilities = 5;
 }

@@ -3,7 +3,7 @@
 
 > [§4 gRPC 总览](../04_grpc.md) · 本专题 **grpc/05**（H2 **5.x**）。
 
-`autonomy/bridge` 源码链路：**配置 → BridgeServer → GrpcBridgeServer → async_grpc → Handler → Proto**。
+`autonomy/bridge` 源码链路：**配置 → BridgeServer → Server → async_grpc → Handler → Proto**。
 
 ---
 
@@ -11,8 +11,8 @@
 
 ```
 bridge.lua / BridgeOptions
-    → BridgeServer → GrpcBridgeServer
-        → Server::Builder → Server (AutonomyService)
+    → BridgeServer → Server
+        → Server::Builder → Server (automsgs.rpcs)
             → SendNavigationHandler / SendExplorationHandler
 ```
 
@@ -24,14 +24,14 @@ bridge.lua / BridgeOptions
 
 ```cpp
 BridgeServer::BridgeServer() {
-    grpc_bridge_ = std::make_unique<GrpcBridgeServer>();
+    grpc_bridge_ = std::make_unique<Server>();
 }
 void BridgeServer::Start() {
-    grpc_bridge_->Start();  // 当前无论 use_grpc 均启动
+    grpc_bridge_->Start();
 }
 ```
 
-**GrpcBridgeServer** 构造（`grpc_bridge.cpp`）：
+**Server** 构造（`server.cpp`）：
 
 ```cpp
 Server::Builder b;
@@ -74,9 +74,12 @@ Client → CQ(NEW_CONNECTION) → EQ(OnRequest) → [Navigator SendGoal]
 
 当前 `OnRequest` 为空；规划见 [grpc/04 §4.4](04_handler_api.md#44-server-streaming-模板规划)。
 
-## 5.5 ExecutionContext（规划）
+## 5.5 Context（ExecutionContext）
 
-`GrpcBridgeContextInterface` 继承 `ExecutionContext`，规划注入 `NavigatorStub`、TF、FSM。须在 `Build()` 后、`Start()` 前 `SetExecutionContext`。
+`Context` 继承 `async_grpc::ExecutionContext`，持有 Muxer / StateHub / DomainBundle，
+并共享 `WorkScheduler`。须在 `Build()` 后、`Start()` 前 `SetExecutionContext`。
+
+细节与不变量：源码旁 `grpc/DESIGN.md`。
 
 ## 5.6 待实现 RPC
 
@@ -85,7 +88,7 @@ Client → CQ(NEW_CONNECTION) → EQ(OnRequest) → [Navigator SendGoal]
 | 优先级 | RPC | 说明 |
 |--------|-----|------|
 | P0 | `ReceiveBotStates` / `ReceiveBotEvents` | Empty → Stream；`vehicle_msgs` 已定义 |
-| P1 | `GetRobotSnapshot` / `GetActiveTask` / `GetCapabilities` | Unary 查询 |
+| P1 | `GetRobotSnapshot` / `GetRobotFullInfo` / `GetActiveTask` / `GetCapabilities` | Unary 查询 |
 | P1 | `EmergencyStop` / `CancelAllTasks` | 系统命令 |
 | P2 | `SendFollowCommand` / `SendDockCommand` / `SendMapCommand` | 任务 Stream |
 | P3 | `SendTeleopCommand` | **Bidi Stream**，需 async_grpc Bidi Handler |
@@ -105,7 +108,7 @@ Client → CQ(NEW_CONNECTION) → EQ(OnRequest) → [Navigator SendGoal]
 **目标接线**：
 
 ```cpp
-GrpcBridgeServer::GrpcBridgeServer(const proto::GrpcOptions& o) {
+Server::Server(const proto::GrpcOptions& o) {
     Server::Builder b;
     b.SetServerAddress(o.host() + ":" + std::to_string(o.port()));
     b.SetNumGrpcThreads(o.num_grpc_threads());
@@ -117,14 +120,13 @@ GrpcBridgeServer::GrpcBridgeServer(const proto::GrpcOptions& o) {
 
 ## 5.8 开发 checklist
 
-- [ ] Proto 声明 RPC → 生成 `.pb.h`（当前 13 RPC 已定义）
-- [ ] 按 [grpc/07 Handler 规划](../grpc/07_handlers.md#71-handler-对照表) 逐类 `RegisterHandler`
-- [ ] `DEFINE_HANDLER_SIGNATURE` 全名与 proto 一致
-- [ ] Command：`header` 校验 + `CommandAck` 流（`final` 末帧）
-- [ ] Push：`ReceiveBotStates` 填充 [vehicle_msgs](../rpcs/05_stream_api.md#53-vehicle_msgs)
-- [ ] `SetExecutionContext` + FSM / `NavigatorMuxer`
-- [ ] `GrpcOptions` 传入 Builder（P0）
-- [ ] `grpcurl` / Python 客户端验证
+- [x] Proto → `automsgs.rpcs.*` Handler（见 [grpc/07](07_handlers.md)）
+- [x] `Context` = Muxer · Hub · DomainBundle · WorkScheduler
+- [x] Command：ACK 优先 + `TaskMuxer` 互斥；CancelAll 经 Factory
+- [ ] `GrpcOptions` 全量传入 Builder（host/port/threads）
+- [ ] `grpcurl` / `rpc-cli.py` 端到端验证
+
+细节：源码旁 `grpc/DESIGN.md`。
 
 ---
 

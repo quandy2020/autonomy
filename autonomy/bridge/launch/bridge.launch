@@ -1,7 +1,7 @@
 <!--
   Copyright 2026 The Openbot Authors
 
-  Starts autonomy.bridge (gRPC AutonomyService / automsgs.rpcs.*).
+  Starts autonomy.bridge (gRPC automsgs.rpcs.*).
 
   Binary: build/bin/autonomy.bridge  (requires -DBUILD_GRPC=ON)
   Config: config/bridge/bridge_options.lua → include bridge/bridge.lua

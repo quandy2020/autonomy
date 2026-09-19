@@ -16,7 +16,7 @@
 | `system.proto` | `automsgs.rpcs.system` | `SystemService` | Heartbeat、状态、E-Stop/Clear、CancelAll、ActiveGoal、Capabilities |
 | `teleop.proto` | `automsgs.rpcs.teleop` | `TeleopService` | 遥控：Velocity + DriveOnHeading/BackUp/Spin + Pause/Resume |
 | `exploration.proto` | `automsgs.rpcs.exploration` | `ExplorationService` | 自主探索建图：Explore 流式 + Pause/Resume/Cancel/SetArea/SaveMap |
-| `voice.proto` | `automsgs.rpcs.voice` | `VoiceService` | 语音/意图：Execute 流式 → 导航/跟随/回充/探索/停止 |
+| `voice.proto` | `automsgs.rpcs.voice` | `VoiceService` | Execute → VoiceTask 单一入口，task 内再分发 |
 
 ## 包名与引用
 

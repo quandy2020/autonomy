@@ -55,7 +55,7 @@ autonomy_binary(autonomy.planning SRCS planning_main.cpp)
 
 ## FEATURES
 
-`pcl` · `slam` · `bt` · `grpc` · `inference` · `osqp` · `cairo` · `boost_iostreams` · `ipopt` · `foxglove` · `prometheus` · `lua`
+`pcl` · `slam` · `bt` · `grpc` · `grpc_reflection` · `otel` · `inference` · `osqp` · `cairo` · `boost_iostreams` · `ipopt` · `foxglove` · `prometheus` · `lua`
 
 `link_core`: Eigen / Protobuf / Ceres / OpenCV / yaml / glog / autolink / TBB, …
 More specialized deps go through FEATURES.

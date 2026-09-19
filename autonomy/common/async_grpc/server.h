@@ -22,6 +22,7 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "autonomy/common/async_grpc/common/make_unique.h"
 #include "autonomy/common/async_grpc/completion_queue_thread.h"
@@ -30,6 +31,7 @@
 #include "autonomy/common/async_grpc/rpc_handler.h"
 #include "autonomy/common/async_grpc/rpc_service_method_traits.h"
 #include "autonomy/common/async_grpc/service.h"
+#include "grpcpp/support/channel_arguments.h"
 #include "grpc++/grpc++.h"
 
 namespace autonomy {
@@ -63,6 +65,12 @@ protected:
         double tracing_sampler_probability = kDefaultTracingSamplerProbability;
         std::string tracing_task_name;
         std::string tracing_gcp_project_id;
+
+        // Platform extensions (Bridge / tools::ApplyPlatform).
+        std::shared_ptr<::grpc::ServerCredentials> server_credentials;
+        ::grpc::ChannelArguments channel_arguments;
+        bool enable_default_health_check = false;
+        bool enable_proto_reflection = false;
     };
 
 public:
@@ -83,6 +91,33 @@ public:
         void SetTracingSamplerProbability(double tracing_sampler_probability);
         void SetTracingTaskName(const std::string& tracing_task_name);
         void SetTracingGcpProjectId(const std::string& tracing_gcp_project_id);
+
+        /** @brief Merge ChannelArguments into the server options. */
+        void AddChannelArguments(const ::grpc::ChannelArguments& args);
+
+        /** @brief Override listening credentials (default: insecure). */
+        void SetServerCredentials(
+            std::shared_ptr<::grpc::ServerCredentials> credentials);
+
+        /** @brief Enable gRPC default health checking service. */
+        void EnableDefaultHealthCheckService(bool enable);
+
+        /**
+         * @brief Enable proto server reflection (requires grpc++_reflection).
+         *
+         * When the reflection library is not linked, this only logs a warning.
+         */
+        void EnableProtoReflection(bool enable);
+
+        /**
+         * @brief Append a server interceptor factory (experimental gRPC API).
+         *
+         * Factories are moved into the Server at Build() time.
+         */
+        void AddInterceptorFactory(
+            std::unique_ptr<
+                ::grpc::experimental::ServerInterceptorFactoryInterface>
+                factory);
 
         template <typename RpcHandlerType>
         void RegisterHandler() {
@@ -164,6 +199,9 @@ public:
 
         Options options_;
         std::map<std::string, ServiceInfo> rpc_handlers_;
+        std::vector<std::unique_ptr<
+            ::grpc::experimental::ServerInterceptorFactoryInterface>>
+            interceptor_creators_;
     };
     friend class Builder;
     virtual ~Server() = default;
@@ -194,7 +232,10 @@ public:
     }
 
 protected:
-    Server(const Options& options);
+    Server(const Options& options,
+           std::vector<std::unique_ptr<
+               ::grpc::experimental::ServerInterceptorFactoryInterface>>
+               interceptor_creators = {});
     void AddService(
         const std::string& service_name,
         const std::map<std::string, RpcHandlerInfo>& rpc_handler_infos);

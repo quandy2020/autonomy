@@ -16,6 +16,7 @@ syntax = "proto3";
 
 package autonomy.task.proto;
 
+import "automsgs/msgs/geometry_msgs/pose_with_covariance_stamped.proto";
 import "automsgs/task/task_common.proto";
 
 // localization — SLAM / localization backend control.
@@ -34,6 +35,7 @@ enum LocalizationCommand {
   LOCALIZATION_CMD_PAUSE = 3;
   LOCALIZATION_CMD_RESUME = 4;
   LOCALIZATION_CMD_SWITCH_ALGORITHM = 5;
+  LOCALIZATION_CMD_SET_INITIAL_POSE = 6;
 }
 
 enum LocalizationStatus {
@@ -58,6 +60,7 @@ message LocalizationGoal {
   string save_state_filename = 8;
   string atlas_vocab_path = 9;
   string atlas_map_path = 10;
+  automsgs.msgs.geometry_msgs.PoseWithCovarianceStamped initial_pose = 11;
 }
 
 message LocalizationFeedback {

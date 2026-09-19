@@ -1062,7 +1062,6 @@ void PublishDynamicFrame(const FakePublishers& publishers, uint64_t stamp_ns,
 }  // namespace
 
 int main(int argc, char** argv) {
-  google::InitGoogleLogging(argv[0]);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
   if (!autolink::Init(argv[0])) {

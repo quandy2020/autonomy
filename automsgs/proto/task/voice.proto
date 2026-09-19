@@ -1,0 +1,79 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.task.proto;
+
+import "automsgs/task/charging.proto";
+import "automsgs/task/exploration.proto";
+import "automsgs/task/navigation.proto";
+import "automsgs/task/task_common.proto";
+import "automsgs/task/tracker.proto";
+
+// voice — Bridge VoiceService → single GoalChannel → domain tasks.
+
+enum VoiceCommand {
+  VOICE_CMD_UNSPECIFIED = 0;
+  VOICE_CMD_START = 1;
+  VOICE_CMD_CANCEL = 2;
+  VOICE_CMD_STOP_ALL = 3;
+}
+
+enum VoiceIntent {
+  VOICE_INTENT_UNKNOWN = 0;
+  VOICE_INTENT_NAVIGATE = 1;
+  VOICE_INTENT_FOLLOW = 2;
+  VOICE_INTENT_DOCK = 3;
+  VOICE_INTENT_UNDOCK = 4;
+  VOICE_INTENT_EXPLORE = 5;
+  VOICE_INTENT_STOP = 6;
+  VOICE_INTENT_CANCEL_ALL = 7;
+}
+
+enum VoiceStatus {
+  VOICE_STATUS_UNKNOWN = 0;
+  VOICE_STATUS_IDLE = 1;
+  VOICE_STATUS_DISPATCHING = 2;
+  VOICE_STATUS_RUNNING = 3;
+  VOICE_STATUS_SUCCEEDED = 4;
+  VOICE_STATUS_FAILED = 5;
+  VOICE_STATUS_CANCELED = 6;
+}
+
+message VoiceGoal {
+  TaskHeader header = 1;
+  VoiceCommand command = 2;
+  VoiceIntent intent = 3;
+  string transcript = 4;
+  oneof payload {
+    NavigationGoal navigate = 5;
+    TrackerGoal follow = 6;
+    ChargingGoal charge = 7;
+    ExplorationGoal explore = 8;
+  }
+}
+
+message VoiceFeedback {
+  VoiceStatus status = 1;
+  TaskProgress progress = 2;
+  VoiceIntent intent = 3;
+  string detail = 4;
+}
+
+message VoiceResult {
+  TaskResult result = 1;
+  VoiceStatus final_status = 2;
+  VoiceIntent intent = 3;
+}

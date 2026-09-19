@@ -12,12 +12,14 @@
 #include <utility>
 
 #include "autonomy/task/charging/charging.hpp"
+#include "autonomy/task/exploration/exploration.hpp"
 #include "autonomy/task/localization/localization.hpp"
 #include "autonomy/task/manipulation/manipulation.hpp"
 #include "autonomy/task/mapping/mapping.hpp"
 #include "autonomy/task/navigation/navigation.hpp"
 #include "autonomy/task/teleop/teleop.hpp"
 #include "autonomy/task/tracking/tracking.hpp"
+#include "autonomy/task/voice/voice.hpp"
 #include <automsgs/task/task_options.pb.h>
 
 namespace autonomy {
@@ -33,7 +35,9 @@ void RegisterBuiltinTasks(
     NavigationTask::SharedPtr* navigation, TrackerTask::SharedPtr* tracking,
     TeleopTask::SharedPtr* teleop, ChargingTask::SharedPtr* charging,
     MappingTask::SharedPtr* mapping, LocalizationTask::SharedPtr* localization,
-    ManipulationTask::SharedPtr* manipulation = nullptr)
+    ManipulationTask::SharedPtr* manipulation = nullptr,
+    ExplorationTask::SharedPtr* exploration = nullptr,
+    VoiceTask::SharedPtr* voice = nullptr)
 {
     const auto add = [&](auto* out, bool enable) {
         if (!enable || out == nullptr) {
@@ -52,6 +56,8 @@ void RegisterBuiltinTasks(
     add(mapping, apps.enable_mapping());
     add(localization, apps.enable_localization());
     add(manipulation, apps.enable_manipulation());
+    add(exploration, apps.enable_exploration_bridge());
+    add(voice, apps.enable_voice());
 }
 
 }  // namespace task

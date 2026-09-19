@@ -3,86 +3,61 @@
 
 > [§4 gRPC 总览](../04_grpc.md) · **grpc/07** · H2 **7.x**。
 
-**13 RPC Handler 实现状态的单一维护点**（⏳ / ❌）。契约见 [rpcs/02 服务概述](../rpcs/02_service_overview.md) · 接线见 [05 Bridge 集成](05_bridge_integration.md)。
+`automsgs.rpcs.*` Handler 实现状态的单一维护点。契约见 [rpcs/02 服务概述](../rpcs/02_service_overview.md) · 接线见 [05 Bridge 集成](05_bridge_integration.md)。注册入口：`grpc/server.cpp` → `RegisterRpcHandlers`。
 
-## 7.1 Handler 对照表
+## 7.1 域 Handler 对照（摘要）
 
-| RPC | 规划类名 | 流模式 | 状态 |
-|-----|----------|--------|------|
-| `SendNavigationCommand` | `SendNavigationHandler` | Unary→Stream | ✅ NavigatorStub |
-| `SendExplorationCommand` | `SendExplorationHandler` | Unary→Stream | ✅ ExplorationStub |
-| `SendFollowCommand` | `SendFollowHandler` | Unary→Stream | ✅ FollowStub |
-| `SendTeleopCommand` | `SendTeleopHandler` | **Bidi** | ✅ TeleopStub |
-| `SendDockCommand` | `SendDockHandler` | Unary→Stream | ✅ DockStub |
-| `SendMapCommand` | `SendMapHandler` | Unary→Stream | ✅ MapStub |
-| `SendVoiceCommand` | `SendVoiceHandler` | Unary→Stream | ✅ VoiceStub |
-| `ReceiveBotStates` | `ReceiveBotStatesHandler` | Empty→Stream | ✅ StateHub |
-| `ReceiveBotEvents` | `ReceiveBotEventsHandler` | Empty→Stream | ✅ StateHub |
-| `GetRobotSnapshot` | `GetRobotSnapshotHandler` | Unary | ✅ StateHub |
-| `GetActiveTask` | `GetActiveTaskHandler` | Unary | ✅ |
-| `GetCapabilities` | `GetCapabilitiesHandler` | Unary | ✅ |
-| `EmergencyStop` | `EmergencyStopHandler` | Unary | ✅ |
-| `CancelAllTasks` | `CancelAllTasksHandler` | Unary | ✅ |
-
-另注册完整 `automsgs.rpcs.*`（Navigation / Follow / Charge / Teleop 含相对运动 / Exploration / Voice / Map / Localization / System含 **GetHealth** / **SensorService**）。
+| 服务 | Handler 文件 | Stub | 代表 RPC |
+|------|--------------|------|----------|
+| `NavigationService` | `rpc_navigation_handlers` | `NavigatorStub` | `Navigate` · `Pause` · `Resume` · `Replan` · `Cancel` · `GetStatus` |
+| `FollowService` | `rpc_follow_handlers` | `FollowStub` | `Follow` · `Pause` · `Resume` · `Cancel` · `GetStatus` |
+| `TeleopService` | `rpc_teleop_handlers` | `TeleopStub` | `Velocity` · `DriveOnHeading` · `BackUp` · `Spin` · 生命周期 |
+| `ChargeService` | `rpc_charge_handlers` | `ChargeStub` | `Return` · `Leave` · 生命周期 |
+| `MapService` | `rpc_map_handlers` | `MapServiceStub` / `MappingStub` | `StartMapping` · `FinishMapping` · `CancelMapping` · `GetMappingStatus` · `ListMaps` · `GetMap` · `GetMapMetadata` · `SaveMap` · `DeleteMap` · `SetCurrentMap` |
+| `ExplorationService` | `rpc_explore_handlers` | `ExplorationStub` | `Explore` · `SetArea` · `SaveMap` · 生命周期 |
+| `NavigationService` | `rpc_navigation_handlers` | `NavigatorStub` → `NavigationTask` | `Navigate` · lifecycle |
+| `ExplorationService` | `rpc_explore_handlers` | `ExplorationStub` → `ExplorationTask` | `Explore` · lifecycle · SetArea · SaveMap |
+| `LocalizationService` | `rpc_localization_handlers` | `LocalizationStub` | `GetPose` · `GetStatus` · `SetInitialPose` |
+| `SensorService` | `rpc_sensor_handlers` | `SensorStub` | `ListSensors` · `GetSample` · `GetParameters` · `SetParameters` · `SaveParameters` · `LoadParameters` · `Record` · `CancelRecord` · `GetRecordStatus` |
+| `SystemService` | `rpc_system_handlers` | `SystemMonitorStub` / Hub / profile | `Heartbeat` · `GetInfo` · `GetStatus` · `GetHealth` · `GetRobotFullInfo` · `EmergencyStop` · `ClearEmergencyStop` · `CancelAllGoals` · `GetActiveGoal` · `GetCapabilities` |
 
 ## 7.1.1 模板约定
 
 | 层 | 设施 | 用法 |
 |----|------|------|
-| Handler | `handlers/command_handlers.*` · `rpc_<domain>_handlers.*` | **同域多 class 同文件**；`rpc_handlers.hpp` 聚合 include |
-| Handler 工具 | `handlers/handler_util.hpp` | `RequireContext` / `ReplyUnary*` / `RunCommandStream` / `StreamUntil*` |
-| Stub | 设施 | 用法 |
-|------|------|------|
-| Goal 通道 | `goal_channel_stub.hpp` + Traits | Follow / Dock / Map / Teleop |
-| Action | `action_goal_session.hpp` | Navigator `SendActionGoal` |
-| 多通道会话 | `stream_session.hpp` | Exploration |
+| Handler | `rpc_<domain>_handlers.*` | **同域多 class 同文件**；优先 `BRIDGE_STREAM` / `LIFECYCLE` / `UNARY` / `DECL` |
+| Handler 工具 | `handlers/util.hpp` · `handler_templates.hpp` | `RequireContext` / Unary reply / `RelayStream` / `BRIDGE_LIFECYCLE` |
+| Goal 通道 | `goal_channel_stub.hpp` · `goal_channel_command_stub.hpp` · `BRIDGE_CHANNEL_TRAITS` | Follow / Charge / Mapping / TeleopVel |
+| Action | `teleop_stub.hpp`（`teleop::*Traits`） | Teleop 相对运动（Drive / BackUp / Spin；Nav 已迁 GoalChannel） |
+| 命令分发 | `command_dispatch.hpp` | `DispatchCommands` + `function_traits` |
 | 最新消息 | `latest_message_cache.hpp` | Localization / MapService |
-| 传感器 | `sensor_sample_traits.hpp` | `SampleFieldTraits` 特化 + `SubscribeSample` |
-| 公共 | `stub_util.hpp` | `FillCommandAck` / `DispatchCommands` / `MakeCommandRule(s)` / Reject 守卫 |
-| 例外 | Teleop bidi、Sensor Record、Exploration、ReceiveBot* | 仅复用 `RequireContext` 或保持手写 |
+| 传感器 | `sample_cache.hpp` · `proto_pool.hpp` | Sample + Record 帧 `ProtoPool` |
 
-新增 Unary RPC：优先 `ReplyUnaryWithContext` / `ReplyStatusWithContext`。  
-新增带 `ack.final` 的命令流：优先 `RunCommandStream` 或 `StreamMappedUntilAckFinal`。
+设计不变量与失败路径：源码旁 `grpc/DESIGN.md`。
 
-
-(push-handler-signature)=
-## 7.2 Push Handler 签名
+## 7.2 Handler 签名示例
 
 ```cpp
 DEFINE_HANDLER_SIGNATURE(
-    BotStatesSignature,
-    google::protobuf::Empty,
-    autonomy::common::async_grpc::Stream<
-        autonomy::commsgs::proto::vehicle_msgs::RobotState>,
-    "/autonomy.bridge.proto.AutonomyService/ReceiveBotStates")
+    NavigateSignature,
+    ::automsgs::rpcs::navigation::NavigateRequest,
+    async_grpc::Stream<::automsgs::rpcs::navigation::NavigateResponse>,
+    "/automsgs.rpcs.navigation.NavigationService/Navigate")
 ```
 
-## 7.3 FSM 与 Stream 约定
+## 7.3 互斥与 Stream 约定
 
-`CommandFsm` / `NavigatorMuxer` 保证任务互斥；`EmergencyStop` 可抢占任意任务。时序见 [rpcs/03 §3.5](../rpcs/03_common_types.md#35-command-stream-时序)。
+`TaskMuxer` 保证互斥 Command；`EmergencyStop` / `CancelAllGoals` 可抢占。时序见 [rpcs/03](../rpcs/03_common_types.md)。
 
-Command Handler：
+命令流 Handler：
 
-1. 校验 `header`（`cmd_id` 去重、`timestamp` 窗口、`nonce`）
-2. 首帧 `Send()`：`ack.success=true`，`final=false`
-3. 进度帧：同一 `cmd_id`，`final=false`
-4. 末帧：`ack.final=true`，再 `Finish(OK)`
+1. 校验 `goal_id` / 请求字段
+2. 立即 ACK（非终态）后卸荷到 Stub / Session
+3. 进度帧同 `goal_id`
+4. 终态帧后 `Finish`
 
-Teleop Bidi：`OnRequest` 处理速度流；`watchdog_timeout_sec` 超时发 `TELEOP_CMD_STOP`。
+Teleop `Velocity` Bidi：`OnRequest` 处理速度流；看门狗超时停速。
 
 ## 7.4 gRPC 状态码
 
-与 [§4.4](../04_grpc.md#44-状态码与调优) 及 `CommandAck.error_code`（[Commsgs error_code](../../14_Commsgs/08_nav_planning_msgs.md#83-error_code)）一致：
-
-| 码 | 场景 |
-|----|------|
-| `OK` | 正常结束 |
-| `INVALID_ARGUMENT` | 枚举非法、缺少 `goals` / `header` |
-| `FAILED_PRECONDITION` | FSM 不允许、任务互斥 |
-| `NOT_FOUND` | 无活跃会话 |
-| `UNAVAILABLE` | Navigator 未就绪 |
-
----
-
-**导航**：[← 06 上游参考](06_upstream_reference.md) · [§4 gRPC 总览 →](../04_grpc.md)
+与 [§4.4](../04_grpc.md#44-状态码与调优) 及 `automsgs.rpcs.common.Status` 一致。

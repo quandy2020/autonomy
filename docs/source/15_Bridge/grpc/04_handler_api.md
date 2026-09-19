@@ -16,7 +16,7 @@ DEFINE_HANDLER_SIGNATURE(
     SendNavigationSignature,
     proto::NavigationCommandRequest,
     autonomy::common::async_grpc::Stream<proto::NavigationCommandResponse>,
-    "/autonomy.bridge.proto.AutonomyService/SendNavigationCommand")
+    "/automsgs.rpcs/SendNavigationCommand")
 ```
 
 | 写法 | 含义 |
@@ -59,11 +59,11 @@ builder.RegisterHandler<SendNavigationHandler>();
 ## 4.3 ExecutionContext
 
 ```cpp
-server->SetExecutionContext(std::make_unique<GrpcBridgeContextInterface>());
+server->SetExecutionContext(std::make_unique<Context>());
 // Build() 之后、Start() 之前
 
 void OnRequest(const Request& req) {
-    GetContext<GrpcBridgeContextInterface>()->navigator_stub()->SendGoal(...);
+    GetContext<Context>()->navigator_stub()->SendGoal(...);
 }
 ```
 
@@ -80,7 +80,7 @@ void SendNavigationHandler::OnRequest(const Request& request) {
             GetWriter().Write(...);  // Navigator 进度 → ack.final=false
             break;
         case NAV_CMD_CANCEL:
-            GetContext<Ctx>()->navigator_stub()->Cancel();
+            GetContext<Ctx>()->navigator().CancelGoal();
             Finish(Status::OK);
             break;
         default:

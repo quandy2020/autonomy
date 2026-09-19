@@ -1,0 +1,32 @@
+// Copyright 2025 The Openbot Authors （duyongquan）
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.bridge.proto;
+
+// Optional bools: unset → enabled (true); set false to advertise as unsupported.
+message CapabilitiesOptions {
+  optional bool supports_navigation = 1;
+  optional bool supports_follow = 2;
+  optional bool supports_teleop = 3;
+  optional bool supports_exploration = 4;
+  optional bool supports_docking = 5;          // Autonomy Charge/Dock
+  optional bool supports_charge = 6;           // Rpc ChargeService
+  optional bool supports_map_management = 7;   // Autonomy SendMapCommand
+  optional bool supports_mapping = 8;          // Rpc MapService
+  optional bool supports_localization = 9;
+  optional bool supports_sensor_record = 10;
+  optional bool supports_system_monitor = 11;
+}

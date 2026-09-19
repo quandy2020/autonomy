@@ -17,6 +17,10 @@
 #include "autonomy/common/async_grpc/server.h"
 
 #include "glog/logging.h"
+#include <grpcpp/health_check_service_interface.h>
+#if defined(AUTONOMY_HAVE_GRPC_REFLECTION)
+#include <grpcpp/ext/proto_server_reflection_plugin.h>
+#endif
 #if BUILD_TRACING
 #include "opencensus/exporters/trace/stackdriver/stackdriver_exporter.h"
 #include "opencensus/trace/trace_config.h"
@@ -85,6 +89,32 @@ void Server::Builder::SetTracingGcpProjectId(
     options_.tracing_gcp_project_id = tracing_gcp_project_id;
 }
 
+void Server::Builder::AddChannelArguments(
+    const ::grpc::ChannelArguments& args) {
+    options_.channel_arguments = args;
+}
+
+void Server::Builder::SetServerCredentials(
+    std::shared_ptr<::grpc::ServerCredentials> credentials) {
+    options_.server_credentials = std::move(credentials);
+}
+
+void Server::Builder::EnableDefaultHealthCheckService(bool enable) {
+    options_.enable_default_health_check = enable;
+}
+
+void Server::Builder::EnableProtoReflection(bool enable) {
+    options_.enable_proto_reflection = enable;
+}
+
+void Server::Builder::AddInterceptorFactory(
+    std::unique_ptr<::grpc::experimental::ServerInterceptorFactoryInterface>
+        factory) {
+    if (factory) {
+        interceptor_creators_.push_back(std::move(factory));
+    }
+}
+
 std::tuple<std::string, std::string> Server::Builder::ParseMethodFullName(
     const std::string& method_full_name) {
     CHECK(method_full_name.at(0) == '/') << "Invalid method name.";
@@ -98,20 +128,50 @@ std::tuple<std::string, std::string> Server::Builder::ParseMethodFullName(
 }
 
 std::unique_ptr<Server> Server::Builder::Build() {
-    std::unique_ptr<Server> server(new Server(options_));
+    std::unique_ptr<Server> server(
+        new Server(options_, std::move(interceptor_creators_)));
     for (const auto& service_handlers : rpc_handlers_) {
         server->AddService(service_handlers.first, service_handlers.second);
     }
     return server;
 }
 
-Server::Server(const Options& options) : options_(options) {
-    server_builder_.AddListeningPort(options_.server_address,
-                                     ::grpc::InsecureServerCredentials());
+Server::Server(
+    const Options& options,
+    std::vector<std::unique_ptr<
+        ::grpc::experimental::ServerInterceptorFactoryInterface>>
+        interceptor_creators)
+    : options_(options) {
+    auto credentials = options_.server_credentials
+                           ? options_.server_credentials
+                           : ::grpc::InsecureServerCredentials();
+    server_builder_.AddListeningPort(options_.server_address, credentials);
 
     // Set max message sizes.
     server_builder_.SetMaxReceiveMessageSize(options.max_receive_message_size);
     server_builder_.SetMaxSendMessageSize(options.max_send_message_size);
+    server_builder_.AddChannelArgument(
+        GRPC_ARG_MAX_RECEIVE_MESSAGE_LENGTH, options.max_receive_message_size);
+    server_builder_.SetChannelArguments(options_.channel_arguments);
+
+    if (options_.enable_default_health_check) {
+        ::grpc::EnableDefaultHealthCheckService(true);
+    }
+
+    if (options_.enable_proto_reflection) {
+#if defined(AUTONOMY_HAVE_GRPC_REFLECTION)
+        ::grpc::reflection::InitProtoReflectionServerBuilderPlugin();
+#else
+        LOG(WARNING) << "Proto reflection requested but "
+                        "AUTONOMY_HAVE_GRPC_REFLECTION is not defined; "
+                        "skipping InitProtoReflectionServerBuilderPlugin.";
+#endif
+    }
+
+    if (!interceptor_creators.empty()) {
+        server_builder_.experimental().SetInterceptorCreators(
+            std::move(interceptor_creators));
+    }
 
     // Set up event queue threads.
     event_queue_threads_ =

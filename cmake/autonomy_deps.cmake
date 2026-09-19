@@ -7,9 +7,9 @@
 #   - autonomy_link_core() / autonomy_link_feature()
 #
 # @par FEATURES keywords (autonomy_link_feature)
-#   pcl, slam, bt, grpc, inference, osqp, cairo, boost_iostreams,
-#   ipopt, foxglove, prometheus, lua, kdl, fcl, ompl, ruckig, urdfdom,
-#   pinocchio, vhacd, trac_ik
+#   pcl, slam, bt, grpc, grpc_reflection, otel, inference, osqp, cairo,
+#   boost_iostreams, ipopt, foxglove, prometheus, lua, kdl, fcl, ompl, ruckig,
+#   urdfdom, pinocchio, vhacd, trac_ik
 
 include_guard(GLOBAL)
 
@@ -331,6 +331,42 @@ function(autonomy_link_feature target)
     elseif(_feat STREQUAL "grpc")
       if(BUILD_GRPC)
         target_link_libraries(${target} PUBLIC grpc++ grpc)
+      endif()
+    elseif(_feat STREQUAL "grpc_reflection")
+      # Optional: enables InitProtoReflectionServerBuilderPlugin (async_grpc).
+      if(BUILD_GRPC)
+        if(TARGET gRPC::grpc++_reflection)
+          target_link_libraries(${target} PUBLIC gRPC::grpc++_reflection)
+          target_compile_definitions(${target} PUBLIC
+            AUTONOMY_HAVE_GRPC_REFLECTION=1)
+          message(STATUS
+            "FEATURES grpc_reflection: linked gRPC::grpc++_reflection")
+        elseif(GRPC_GRPC++_REFLECTION_LIBRARY)
+          target_link_libraries(${target} PUBLIC
+            ${GRPC_GRPC++_REFLECTION_LIBRARY})
+          target_compile_definitions(${target} PUBLIC
+            AUTONOMY_HAVE_GRPC_REFLECTION=1)
+          message(STATUS
+            "FEATURES grpc_reflection: linked ${GRPC_GRPC++_REFLECTION_LIBRARY}")
+        else()
+          message(STATUS
+            "FEATURES grpc_reflection: library not found; reflection disabled")
+        endif()
+      endif()
+    elseif(_feat STREQUAL "otel")
+      # Optional OpenTelemetry C++ SDK. Phase-1 Bridge uses NoopTracerProvider
+      # when the SDK is absent; define AUTONOMY_HAVE_OTEL only when present.
+      find_package(opentelemetry-cpp CONFIG QUIET)
+      if(opentelemetry-cpp_FOUND)
+        target_compile_definitions(${target} PUBLIC AUTONOMY_HAVE_OTEL=1)
+        if(TARGET opentelemetry-cpp::opentelemetry_trace)
+          target_link_libraries(${target} PUBLIC
+            opentelemetry-cpp::opentelemetry_trace)
+        endif()
+        message(STATUS "FEATURES otel: OpenTelemetry C++ SDK found")
+      else()
+        message(STATUS
+          "FEATURES otel: OpenTelemetry C++ SDK not found; using no-op tracer")
       endif()
     elseif(_feat STREQUAL "inference")
       if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)

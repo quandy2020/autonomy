@@ -29,6 +29,9 @@ constexpr char kCancelNavigation[] = "/cancel_navigation";
 constexpr char kNavigateToPose[] = "/navigate_to_pose";
 constexpr char kNavigateThroughPoses[] = "/navigate_through_poses";
 
+constexpr char kNavigationGoal[] = "/autonomy/task/navigation/goal";
+constexpr char kNavigationFeedback[] = "/autonomy/task/navigation/feedback";
+
 constexpr char kTeleopGoal[] = "/autonomy/task/teleop/goal";
 constexpr char kTeleopFeedback[] = "/autonomy/task/teleop/feedback";    
 
@@ -37,6 +40,9 @@ constexpr char kTrackingFeedback[] = "/autonomy/task/tracking/feedback";
 
 constexpr char kChargingGoal[] = "/autonomy/task/charging/goal";
 constexpr char kChargingFeedback[] = "/autonomy/task/charging/feedback";
+
+constexpr char kVoiceGoal[] = "/autonomy/task/voice/goal";
+constexpr char kVoiceFeedback[] = "/autonomy/task/voice/feedback";
 
 constexpr char kMappingGoal[] = "/autonomy/task/mapping/goal";
 constexpr char kMappingFeedback[] = "/autonomy/task/mapping/feedback";
@@ -48,6 +54,9 @@ constexpr char kLocalizationFeedback[] =
 constexpr char kExplorationWaypoint[] = "/exploration/waypoint";
 constexpr char kExplorationWaypointReached[] = "/exploration/waypoint_reached";
 constexpr char kExplorationFinished[] = "/exploration/finished";
+constexpr char kExplorationGoal[] = "/autonomy/task/exploration/goal";
+constexpr char kExplorationFeedback[] =
+    "/autonomy/task/exploration/feedback";
 
 constexpr char kManipulationMove[] = "/autonomy/manipulation/move";
 constexpr char kManipulationTrajectory[] =

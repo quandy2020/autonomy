@@ -49,7 +49,6 @@ DEFINE_double(robot_tick_hz, 20.0, "RobotEngine tick rate.");
 DEFINE_bool(seed_demo_forbidden_zone, true, "Add central forbidden zone when no semantic zones exist.");
 
 int main(int argc, char** argv) {
-    google::InitGoogleLogging(argv[0]);
     google::ParseCommandLineFlags(&argc, &argv, false);
 
     if (!autolink::Init(argv[0])) {
@@ -95,6 +94,5 @@ int main(int argc, char** argv) {
 
     bridge.SpinUntilShutdown();
     autolink::Clear();
-    google::ShutdownGoogleLogging();
     return EXIT_SUCCESS;
 }

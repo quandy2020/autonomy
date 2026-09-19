@@ -138,7 +138,7 @@ mqtt = {
 }
 ```
 
-> **注意**：MQTT 模式下 Bridge 是 **Client**，主动 `CONNECT` 到 Broker；不存在「Bridge 监听 MQTT 端口」—— 与 gRPC `GrpcBridgeServer` 监听 `host:port` 不同。
+> **注意**：MQTT 模式下 Bridge 是 **Client**，主动 `CONNECT` 到 Broker；不存在「Bridge 监听 MQTT 端口」—— 与 gRPC `Server` 监听 `host:port` 不同。
 
 ## 2.7 联调 Autonomy Topic
 

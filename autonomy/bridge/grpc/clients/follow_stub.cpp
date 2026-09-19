@@ -3,35 +3,20 @@
  */
 
 #include "autonomy/bridge/grpc/clients/follow_stub.hpp"
-
-#include "autonomy/bridge/grpc/clients/stub_util.hpp"
-#include "autonomy/bridge/grpc/rpc_convert.hpp"
+#include "autonomy/bridge/grpc/rpc_status.hpp"
+#include <automsgs/msgs/status_msgs/status_msgs.pb.h>
+#include <automsgs/msgs/vehicle_msgs/robot_task_type.pb.h>
 
 namespace autonomy {
 namespace bridge {
 namespace grpc {
 namespace clients {
+
 namespace {
 
 namespace task_proto = ::autonomy::task::proto;
-
-proto::TaskStatus ResolveFollowTaskStatus(proto::FollowStatus status) {
-    switch (status) {
-        case proto::FOLLOW_STATUS_FOLLOWING:
-        case proto::FOLLOW_STATUS_TARGET_LOST:
-            return proto::TASK_STATUS_RUNNING;
-        case proto::FOLLOW_STATUS_PAUSED:
-            return proto::TASK_STATUS_PAUSED;
-        case proto::FOLLOW_STATUS_SUCCEEDED:
-            return proto::TASK_STATUS_SUCCEEDED;
-        case proto::FOLLOW_STATUS_FAILED:
-            return proto::TASK_STATUS_FAILED;
-        case proto::FOLLOW_STATUS_CANCELED:
-            return proto::TASK_STATUS_CANCELED;
-        default:
-            return proto::TASK_STATUS_IDLE;
-    }
-}
+namespace follow_rpc = ::automsgs::rpcs::follow;
+using StatusCode = ::automsgs::msgs::status_msgs::StatusCode;
 
 bool CheckTrackerTerminalStatus(task_proto::TrackerStatus status) {
     return status == task_proto::TRACKER_STATUS_SUCCEEDED ||
@@ -39,25 +24,82 @@ bool CheckTrackerTerminalStatus(task_proto::TrackerStatus status) {
            status == task_proto::TRACKER_STATUS_CANCELED;
 }
 
+follow_rpc::FollowState ToFollowState(task_proto::TrackerStatus status) {
+    switch (status) {
+        case task_proto::TRACKER_STATUS_IDLE:
+            return follow_rpc::FOLLOW_STATE_IDLE;
+        case task_proto::TRACKER_STATUS_TRACKING:
+            return follow_rpc::FOLLOW_STATE_FOLLOWING;
+        case task_proto::TRACKER_STATUS_PAUSED:
+            return follow_rpc::FOLLOW_STATE_PAUSED;
+        case task_proto::TRACKER_STATUS_TARGET_LOST:
+            return follow_rpc::FOLLOW_STATE_LOST_TARGET;
+        case task_proto::TRACKER_STATUS_FAILED:
+            return follow_rpc::FOLLOW_STATE_FAILED;
+        case task_proto::TRACKER_STATUS_CANCELED:
+            return follow_rpc::FOLLOW_STATE_CANCELLED;
+        case task_proto::TRACKER_STATUS_SUCCEEDED:
+            return follow_rpc::FOLLOW_STATE_IDLE;
+        default:
+            return follow_rpc::FOLLOW_STATE_UNKNOWN;
+    }
+}
+
 }  // namespace
 
 FollowTraits::Goal FollowTraits::ConvertToGoal(const Request& request) {
-    return ToTaskTrackerGoal(request);
+    Goal goal;
+    goal.set_command(task_proto::TRACKER_CMD_START);
+    switch (request.target_type()) {
+        case follow_rpc::FOLLOW_TARGET_TYPE_PERSON:
+            goal.set_mode(task_proto::TRACKER_MODE_PERSON);
+            break;
+        case follow_rpc::FOLLOW_TARGET_TYPE_CUSTOM:
+            goal.set_mode(task_proto::TRACKER_MODE_TARGET_ID);
+            break;
+        default:
+            goal.set_mode(request.target_id().empty()
+                              ? task_proto::TRACKER_MODE_PERSON
+                              : task_proto::TRACKER_MODE_TARGET_ID);
+            break;
+    }
+    if (!request.target_id().empty()) {
+        goal.set_target_id(request.target_id());
+    }
+    if (request.has_hint_pose()) {
+        auto* pose = goal.mutable_target_pose();
+        *pose->mutable_pose() = request.hint_pose();
+        if (request.has_header()) {
+            *pose->mutable_header() = request.header();
+        }
+    }
+    if (request.has_options() && request.options().has_desired_distance_m()) {
+        goal.set_follow_distance(request.options().desired_distance_m());
+    }
+    goal.set_reacquire_on_lost(true);
+    SetTaskHeader(&goal, request.goal_id(),
+                  ::automsgs::msgs::vehicle_msgs::ROBOT_TASK_FOLLOW);
+    return goal;
 }
 
 FollowTraits::Response FollowTraits::ConvertFromFeedback(
     const Feedback& feedback, const Request& last) {
     Response response;
-    response.set_status(static_cast<proto::FollowStatus>(feedback.status()));
-    response.set_distance_to_target(feedback.distance_to_target());
-    if (feedback.has_target_pose()) {
-        *response.mutable_target_pose() = feedback.target_pose();
+    response.set_goal_id(last.goal_id());
+    response.set_target_type(last.target_type());
+    response.set_target_id(last.target_id());
+    response.set_distance_m(feedback.distance_to_target());
+    response.set_state(ToFollowState(feedback.status()));
+    const bool terminal = CheckTrackerTerminalStatus(feedback.status());
+    response.set_active(!terminal);
+    if (feedback.status() == task_proto::TRACKER_STATUS_SUCCEEDED) {
+        response.set_state(follow_rpc::FOLLOW_STATE_IDLE);
     }
-    FillCommandAck(response, kTaskType, last,
-                   !CheckTrackerTerminalStatus(feedback.status()) ||
-                       feedback.status() == task_proto::TRACKER_STATUS_SUCCEEDED,
-                   CheckTrackerTerminalStatus(feedback.status()),
-                   ResolveFollowTaskStatus(response.status()));
+    const bool ok = !terminal ||
+                    feedback.status() == task_proto::TRACKER_STATUS_SUCCEEDED;
+    *response.mutable_status() =
+        ok ? OkStatus()
+           : ErrorStatus(StatusCode::FOLLOW_BUSY, response.message());
     return response;
 }
 
@@ -65,98 +107,26 @@ FollowTraits::Response FollowTraits::MakeResponse(const Request& request,
                                                   bool success, bool final,
                                                   const std::string& message) {
     Response response;
-    response.set_status(success ? (final ? proto::FOLLOW_STATUS_CANCELED
-                                         : proto::FOLLOW_STATUS_FOLLOWING)
-                                : proto::FOLLOW_STATUS_FAILED);
-    FillCommandAck(response, kTaskType, request, success, final,
-                   ResolveFollowTaskStatus(response.status()), message);
+    response.set_goal_id(request.goal_id());
+    response.set_target_type(request.target_type());
+    response.set_target_id(request.target_id());
+    response.set_message(message);
+    if (success) {
+        response.set_state(final ? follow_rpc::FOLLOW_STATE_CANCELLED
+                                 : follow_rpc::FOLLOW_STATE_FOLLOWING);
+        response.set_active(!final);
+        *response.mutable_status() = OkStatus(message);
+    } else {
+        response.set_state(follow_rpc::FOLLOW_STATE_FAILED);
+        response.set_active(false);
+        *response.mutable_status() =
+            ErrorStatus(StatusCode::FOLLOW_BUSY, message);
+    }
     return response;
 }
 
-bool FollowTraits::CheckTerminalStatus(const Feedback& feedback) {
+bool FollowTraits::IsTerminal(const Feedback& feedback) {
     return CheckTrackerTerminalStatus(feedback.status());
-}
-
-FollowStub::FollowStub(std::shared_ptr<autolink::Node> node,
-                       std::shared_ptr<TaskMuxer> muxer)
-    : channel_(std::move(node), std::move(muxer)) {}
-
-void FollowStub::CancelActiveSession() {
-    task_proto::TrackerGoal cancel;
-    cancel.set_command(task_proto::TRACKER_CMD_CANCEL);
-    channel_.WriteGoal(cancel);
-    channel_.ClearSession(true);
-}
-
-bool FollowStub::HandleCommand(const proto::FollowCommandRequest& request,
-                               StreamCallback stream_callback) {
-    if (!stream_callback) {
-        return false;
-    }
-    if (!channel_.CheckWriterReady()) {
-        stream_callback(FollowTraits::MakeResponse(
-            request, false, true, "follow goal writer unavailable"));
-        return false;
-    }
-    if (channel_.CheckEstopActive()) {
-        stream_callback(FollowTraits::MakeResponse(
-            request, false, true, "emergency stop active"));
-        return false;
-    }
-
-    const auto command = request.command();
-    if (command == proto::FOLLOW_CMD_START ||
-        command == proto::FOLLOW_CMD_UPDATE_TARGET) {
-        if (!channel_.TryAcquireTask(request)) {
-            stream_callback(FollowTraits::MakeResponse(
-                request, false, true, "another task is active"));
-            return false;
-        }
-    }
-
-    channel_.BindStream(request, stream_callback);
-
-    if (!channel_.WriteGoal(FollowTraits::ConvertToGoal(request))) {
-        stream_callback(FollowTraits::MakeResponse(
-            request, false, true, "failed to publish follow goal"));
-        channel_.ClearSession(true);
-        return false;
-    }
-
-    const bool handled = DispatchCommands(
-        command,
-        MakeCommandRules(
-            [&] {
-                channel_.SetSessionActive(true);
-                stream_callback(FollowTraits::MakeResponse(
-                    request, true, false, ""));
-                return true;
-            },
-            proto::FOLLOW_CMD_START, proto::FOLLOW_CMD_UPDATE_TARGET,
-            proto::FOLLOW_CMD_RESUME),
-        MakeCommandRule(proto::FOLLOW_CMD_PAUSE, [&] {
-            proto::FollowCommandResponse paused;
-            paused.set_status(proto::FOLLOW_STATUS_PAUSED);
-            FillCommandAck(paused, proto::TASK_TYPE_FOLLOW, request, true,
-                           false, proto::TASK_STATUS_PAUSED);
-            stream_callback(paused);
-            return true;
-        }),
-        MakeCommandRules(
-            [&] {
-                stream_callback(FollowTraits::MakeResponse(
-                    request, true, true, ""));
-                channel_.ClearSession(true);
-                return true;
-            },
-            proto::FOLLOW_CMD_STOP, proto::FOLLOW_CMD_CANCEL));
-
-    if (handled) {
-        return true;
-    }
-    stream_callback(FollowTraits::MakeResponse(request, false, true,
-                                               "unsupported command"));
-    return false;
 }
 
 }  // namespace clients

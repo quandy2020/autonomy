@@ -2,10 +2,36 @@
  * Copyright 2026 The Openbot Authors
  */
 
+/**
+ * @file rpc_charge_handlers.hpp
+ * @brief ChargeService RpcHandlers: Return/Leave streams, lifecycle, GetStatus.
+ *
+ * @details
+ * Thin async_grpc handlers that forward to Context::charge() (ChargeStub).
+ * Stub publishes on @c kChargingGoal / @c kChargingFeedback
+ * (`/autonomy/task/charging/{goal,feedback}`). Handlers never touch Autolink
+ * topics directly and never own session state.
+ *
+ * Generated types (each carries AUTONOMY_SMART_PTR_DEFINITIONS via macros):
+ * - RpcChargeReturnHandler — BRIDGE_STREAM → HandleReturn / IsChargeTerminal
+ * - RpcChargeLeaveHandler — BRIDGE_STREAM → HandleLeave / IsChargeTerminal
+ * - RpcChargeCancelHandler / RpcChargePauseHandler / RpcChargeResumeHandler — BRIDGE_LIFECYCLE
+ * - RpcChargeGetStatusHandler — BRIDGE_BUILD ActiveStatus (RETURNING vs IDLE)
+ *
+ * @par Invariants
+ * - Streams finish on IsChargeTerminal.
+ * - GetStatus uses ActiveStatus (RETURNING vs IDLE).
+ * - Ownership: async_grpc instantiates handlers per RPC; stubs live in Context.
+ * - Threading: OnRequest on the gRPC completion queue; stub may relay feedback
+ *   asynchronously into the stream sink.
+ *
+ * @see ChargeStub
+ * @see handler_templates.hpp
+ */
+
 #pragma once
 
-#include "autonomy/common/async_grpc/rpc_handler.h"
-#include <automsgs/rpcs/common.pb.h>
+#include "autonomy/bridge/grpc/handlers/handler_templates.hpp"
 #include <automsgs/rpcs/charge.pb.h>
 
 namespace autonomy {
@@ -13,80 +39,43 @@ namespace bridge {
 namespace grpc {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(
-    RpcChargeReturnSignature, ::automsgs::rpcs::charge::ReturnRequest,
+/** @brief ChargeService/Return — stream ChargeResponse until terminal. */
+BRIDGE_STREAM(
+    RpcChargeReturnHandler, ::automsgs::rpcs::charge::ReturnRequest,
     autonomy::common::async_grpc::Stream<::automsgs::rpcs::charge::ChargeResponse>,
-    "/automsgs.rpcs.charge.ChargeService/Return")
+    "/automsgs.rpcs.charge.ChargeService/Return", &Context::charge,
+    &clients::ChargeStub::HandleReturn, &IsChargeTerminal);
 
-class RpcChargeReturnHandler
-    : public autonomy::common::async_grpc::RpcHandler<RpcChargeReturnSignature>
-{
-public:
-    void OnRequest(
-        const ::automsgs::rpcs::charge::ReturnRequest& request) override;
-};
-
-DEFINE_HANDLER_SIGNATURE(
-    RpcChargeLeaveSignature, ::automsgs::rpcs::charge::LeaveRequest,
+/** @brief ChargeService/Leave — undock stream until terminal. */
+BRIDGE_STREAM(
+    RpcChargeLeaveHandler, ::automsgs::rpcs::charge::LeaveRequest,
     autonomy::common::async_grpc::Stream<::automsgs::rpcs::charge::ChargeResponse>,
-    "/automsgs.rpcs.charge.ChargeService/Leave")
+    "/automsgs.rpcs.charge.ChargeService/Leave", &Context::charge,
+    &clients::ChargeStub::HandleLeave, &IsChargeTerminal);
 
-class RpcChargeLeaveHandler
-    : public autonomy::common::async_grpc::RpcHandler<RpcChargeLeaveSignature>
-{
-public:
-    void OnRequest(
-        const ::automsgs::rpcs::charge::LeaveRequest& request) override;
-};
+/**
+ * @brief ChargeService Cancel / Pause / Resume on GoalRequest.goal_id.
+ *
+ * Expands to RpcChargeCancelHandler, RpcChargePauseHandler,
+ * RpcChargeResumeHandler (each a GoalHandler typedef).
+ */
+BRIDGE_LIFECYCLE(RpcCharge, ::automsgs::rpcs::charge::GoalRequest,
+                          "/automsgs.rpcs.charge.ChargeService", &Context::charge,
+                          clients::ChargeStub);
 
-DEFINE_HANDLER_SIGNATURE(
-    RpcChargeCancelSignature, ::automsgs::rpcs::charge::GoalRequest,
-    ::automsgs::rpcs::common::Status,
-    "/automsgs.rpcs.charge.ChargeService/Cancel")
-
-class RpcChargeCancelHandler
-    : public autonomy::common::async_grpc::RpcHandler<RpcChargeCancelSignature>
-{
-public:
-    void OnRequest(
-        const ::automsgs::rpcs::charge::GoalRequest& request) override;
-};
-
-DEFINE_HANDLER_SIGNATURE(
-    RpcChargePauseSignature, ::automsgs::rpcs::charge::GoalRequest,
-    ::automsgs::rpcs::common::Status,
-    "/automsgs.rpcs.charge.ChargeService/Pause")
-
-class RpcChargePauseHandler
-    : public autonomy::common::async_grpc::RpcHandler<RpcChargePauseSignature> {
-public:
-    void OnRequest(const ::automsgs::rpcs::charge::GoalRequest& request) override;
-};
-
-DEFINE_HANDLER_SIGNATURE(
-    RpcChargeResumeSignature, ::automsgs::rpcs::charge::GoalRequest,
-    ::automsgs::rpcs::common::Status,
-    "/automsgs.rpcs.charge.ChargeService/Resume")
-
-class RpcChargeResumeHandler
-    : public autonomy::common::async_grpc::RpcHandler<RpcChargeResumeSignature> {
-public:
-    void OnRequest(const ::automsgs::rpcs::charge::GoalRequest& request) override;
-};
-
-DEFINE_HANDLER_SIGNATURE(
-    RpcChargeGetStatusSignature, ::automsgs::rpcs::charge::GetStatusRequest,
+/**
+ * @brief ChargeService/GetStatus — ActiveStatus RETURNING when stub IsActive().
+ */
+BRIDGE_BUILD(
+    RpcChargeGetStatusHandler, ::automsgs::rpcs::charge::GetStatusRequest,
     ::automsgs::rpcs::charge::ChargeResponse,
-    "/automsgs.rpcs.charge.ChargeService/GetStatus")
-
-class RpcChargeGetStatusHandler
-    : public autonomy::common::async_grpc::RpcHandler<RpcChargeGetStatusSignature> {
-public:
-    void OnRequest(const ::automsgs::rpcs::charge::GetStatusRequest& request) override;
-};
+    "/automsgs.rpcs.charge.ChargeService/GetStatus",
+    ActiveStatus<
+        ::automsgs::rpcs::charge::ChargeResponse, &Context::charge,
+        ::automsgs::rpcs::charge::CHARGE_STATE_RETURNING,
+        ::automsgs::rpcs::charge::CHARGE_STATE_IDLE>);
 
 }  // namespace handlers
 }  // namespace grpc
 }  // namespace bridge
 }  // namespace autonomy
-

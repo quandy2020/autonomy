@@ -26,4 +26,5 @@ enum RobotTaskType {
   ROBOT_TASK_DOCK = 5;
   ROBOT_TASK_MAP = 6;
   ROBOT_TASK_MANIPULATION = 7;
+  ROBOT_TASK_VOICE = 8;
 }

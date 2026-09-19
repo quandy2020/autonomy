@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-// Template definitions and explicit instantiations for NodeClient.
-// Navigator action types are instantiated here so bridge handlers can link
-// without pulling template bodies into every translation unit.
+/**
+ * @file node_client.cpp
+ * @brief Template definitions and explicit instantiations for NodeClient.
+ */
 
 #include "autonomy/bridge/node_client.hpp"
 
 #include <thread>
 
 #include "autolink/action/create_client.hpp"
+#include "autolink/common/log.hpp"
 #include "autolink/state.hpp"
-#include "autonomy/common/logging.hpp"
 #include <automsgs/actions/nav_actions.pb.h>
 
 namespace autonomy {
@@ -32,27 +33,26 @@ namespace bridge {
 
 template <typename ActionT>
 NodeClient<ActionT>::NodeClient(std::shared_ptr<autolink::Node> node,
-                                  std::string action_name)
+                                std::string action_name)
     : node_(std::move(node)), action_name_(std::move(action_name)) {
     client_ = autolink::action::CreateClient<ActionT>(node_, action_name_);
 }
 
 template <typename ActionT>
-bool NodeClient<ActionT>::ActionServerIsReady() const {
+bool NodeClient<ActionT>::CheckServerReady() const {
     return client_ && client_->ActionServerIsReady();
 }
 
 template <typename ActionT>
-bool NodeClient<ActionT>::WaitForServer(
+bool NodeClient<ActionT>::WaitServer(
     const std::chrono::milliseconds poll_interval,
     const std::chrono::milliseconds timeout) {
-    // timeout == 0: no upper bound; exit only on readiness or autolink shutdown.
     const auto deadline = timeout.count() > 0
                               ? std::chrono::steady_clock::now() + timeout
                               : std::chrono::steady_clock::time_point::max();
 
     while (autolink::OK()) {
-        if (ActionServerIsReady()) {
+        if (CheckServerReady()) {
             return true;
         }
         if (std::chrono::steady_clock::now() >= deadline) {
@@ -66,36 +66,35 @@ bool NodeClient<ActionT>::WaitForServer(
 
 template <typename ActionT>
 std::shared_future<std::shared_ptr<typename NodeClient<ActionT>::GoalHandle>>
-NodeClient<ActionT>::AsyncSendGoal(const Goal& goal,
-                                   const SendGoalOptions& options) {
+NodeClient<ActionT>::SendGoal(const Goal& goal,
+                              const SendGoalOptions& options) {
     return client_->AsyncSendGoal(goal, options);
 }
 
 template <typename ActionT>
 std::shared_future<typename NodeClient<ActionT>::WrappedResult>
-NodeClient<ActionT>::AsyncGetResult(std::shared_ptr<GoalHandle> goal_handle) {
+NodeClient<ActionT>::GetResult(std::shared_ptr<GoalHandle> goal_handle) {
     return client_->AsyncGetResult(goal_handle);
 }
 
 template <typename ActionT>
-std::shared_future<bool> NodeClient<ActionT>::AsyncCancelGoal(
+std::shared_future<bool> NodeClient<ActionT>::CancelGoal(
     std::shared_ptr<GoalHandle> goal_handle) {
     return client_->AsyncCancelGoal(goal_handle);
 }
 
 template <typename ActionT>
-std::shared_future<bool> NodeClient<ActionT>::AsyncCancelAllGoals() {
+std::shared_future<bool> NodeClient<ActionT>::CancelAllGoals() {
     return client_->AsyncCancelAllGoals();
 }
 
 template <typename ActionT>
 std::optional<typename NodeClient<ActionT>::WrappedResult>
-NodeClient<ActionT>::SendGoalAndWait(
+NodeClient<ActionT>::AwaitGoalResult(
     const Goal& goal, const SendGoalOptions& options,
     const std::chrono::milliseconds accept_timeout,
     const std::chrono::milliseconds result_timeout) {
-    // Phase 1: wait for server to accept or reject the goal.
-    const auto accepted_future = AsyncSendGoal(goal, options);
+    const auto accepted_future = SendGoal(goal, options);
     if (accepted_future.wait_for(accept_timeout) != std::future_status::ready) {
         AERROR << action_name_ << ": timeout waiting for goal acceptance.";
         return std::nullopt;
@@ -107,8 +106,6 @@ NodeClient<ActionT>::SendGoalAndWait(
         return std::nullopt;
     }
 
-    // Phase 2: autolink client already registered result polling in AsyncSendGoal;
-    // reuse the handle's shared future for the terminal WrappedResult.
     auto result_future = goal_handle->AsyncGetResult();
     if (result_future.wait_for(result_timeout) != std::future_status::ready) {
         AERROR << action_name_ << ": timeout waiting for action result.";
@@ -123,7 +120,6 @@ NodeClient<ActionT>::SendGoalAndWait(
     }
 }
 
-// Navigator / teleop action servers (see bridge/constants.hpp for action names).
 template class NodeClient<automsgs::actions::NavigateToPoseAction>;
 template class NodeClient<automsgs::actions::NavigateThroughPosesAction>;
 template class NodeClient<automsgs::actions::DriveOnHeadingAction>;

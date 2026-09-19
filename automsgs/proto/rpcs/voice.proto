@@ -27,8 +27,8 @@ import "automsgs/rpcs/exploration.proto";
 // =============================================================================
 // VoiceService — speech / intent control surface
 //
-// Bridge routes structured intents to Navigation / Follow / Charge /
-// Exploration / Teleop-stop. ASR text is optional metadata.
+// Bridge publishes VoiceGoal; VoiceTask dispatches to Navigation / Follow /
+// Charge / Exploration tasks. ASR text is optional metadata.
 // Busy → TASK_ALREADY_RUNNING (301) or domain busy codes.
 // =============================================================================
 service VoiceService {

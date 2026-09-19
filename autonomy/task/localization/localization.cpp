@@ -24,6 +24,11 @@ void LocalizationTask::SetLocalizationClient(
     localization::LocalizationClient::SetShared(localization_client_);
 }
 
+void LocalizationTask::SetSubmitMapping(SubmitMapping submit)
+{
+    submit_mapping_ = std::move(submit);
+}
+
 bool LocalizationTask::EnsureLocalizationClient()
 {
     if (localization_client_) {
@@ -59,6 +64,15 @@ bool LocalizationTask::OnGoal(const tp::LocalizationGoal& goal)
 {
     using Command = tp::LocalizationCommand;
     switch (goal.command()) {
+    case Command::LOCALIZATION_CMD_SET_INITIAL_POSE: {
+        if (!submit_mapping_ || !goal.has_initial_pose()) {
+            return false;
+        }
+        tp::MappingGoal mapping_goal;
+        mapping_goal.set_command(tp::MAP_CMD_SET_INITIAL_POSE);
+        *mapping_goal.mutable_initial_pose() = goal.initial_pose();
+        return submit_mapping_(mapping_goal);
+    }
     case Command::LOCALIZATION_CMD_START:
     case Command::LOCALIZATION_CMD_SWITCH_ALGORITHM: {
         if (!EnsureLocalizationClient()) {

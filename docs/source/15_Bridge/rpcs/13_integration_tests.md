@@ -1,18 +1,19 @@
 (rpc-integration-tests)=
 # 集成测试参考
 
-面向**系统测试**与**集成开发**的完整 grpcurl 用例库：每条用例含**命令**、**预期响应**与**判定标准**。
+面向**系统测试**与**集成开发**的 grpcurl / Python 用例库。
+
+> **契约**：对外仅 `automsgs.rpcs.*`（见 [02](02_service_overview.md)）。下文部分历史用例仍写旧方法名（如 `SendNavigationCommand`）；执行时请改用对应域服务（如 `NavigationService/Navigate`），或优先用 `rpc-cli.py`。
 
 前置：完成 [01 §1.1](01_connection_guide.md#11-环境配置) 环境变量导出。
 
 ```bash
 export REPO=/path/to/autonomy
 export BRIDGE=127.0.0.1:5005
-export PROTO_OPTS="-import-path $REPO -proto autonomy/bridge/proto/external_command_service.proto"
-export SVC=autonomy.bridge.proto.AutonomyService
-new_cmd_id() { echo "test-$(date +%s)-$RANDOM"; }
+export PROTO_OPTS="-import-path $REPO -proto automsgs/proto/rpcs/system.proto"
+export SVC=automsgs.rpcs.system.SystemService
+new_goal_id() { echo "test-$(date +%s)-$RANDOM"; }
 
-# JSON 请求体：heredoc + -d @-（标准输入，无需转义）
 grpc_call() {
   grpcurl -plaintext $PROTO_OPTS -d @- "$BRIDGE" "$SVC/$1"
 }
@@ -142,6 +143,68 @@ grpcurl -plaintext $PROTO_OPTS \
 ```
 
 **判定**：`activeTaskType` 为 `ROBOT_TASK_NONE` 或整型 `0`；`pose.header.frameId` 通常为 `map`。
+
+</details>
+
+</div>
+</div>
+
+---
+
+(tc-q-002b)=
+### TC-Q-002b GetRobotFullInfo — 全信息聚合
+
+<div class="nav-card">
+
+<div class="nav-demo-grid">
+
+<details class="nav-demo-panel nav-send">
+<summary>发送指令</summary>
+
+```bash
+# TC-Q-002b — GetRobotFullInfo — 身份+状态+任务聚合
+grpcurl -plaintext $PROTO_OPTS \
+  -d '{}' \
+  $BRIDGE \
+  $SVC/GetRobotFullInfo
+```
+
+</details>
+
+<details class="nav-demo-panel nav-recv">
+<summary>收到结果 · 响应</summary>
+
+**预期响应**（字段可部分为空；身份来自 `BridgeOptions.identity`）：
+
+```json
+{
+  "identity": {
+    "robotId": "amr-001",
+    "hostname": "robot-host",
+    "bridgeVersion": "autonomy.bridge",
+    "autonomyVersion": "autonomy"
+  },
+  "state": {
+    "batteryPercent": 85.0,
+    "activeTaskType": "ROBOT_TASK_NONE"
+  },
+  "activeTask": {
+    "type": "TASK_TYPE_NONE",
+    "status": "TASK_STATUS_IDLE"
+  },
+  "estopActive": false,
+  "capabilities": {
+    "supportsNavigation": true
+  },
+  "healthOk": true,
+  "mrmActive": false,
+  "currentMapName": "",
+  "alerts": [],
+  "robotTimeNs": "1710000000000000000"
+}
+```
+
+**判定**：含 `identity` 与 `state`；`estopActive` 为 bool；无活跃任务时 `activeTask.type=NONE`。
 
 </details>
 
@@ -1932,101 +1995,66 @@ EOF
 set -e
 REPO=${REPO:-/path/to/autonomy}
 BRIDGE=${BRIDGE:-127.0.0.1:5005}
-PROTO_OPTS="-import-path $REPO -proto autonomy/bridge/proto/external_command_service.proto"
-SVC=autonomy.bridge.proto.AutonomyService
+PROTO_OPTS="-import-path $REPO -proto automsgs/proto/rpcs/system.proto"
+SVC=automsgs.rpcs.system.SystemService
 
 run() { echo ">>> $1"; shift; "$@" && echo "[OK] $1" || echo "[FAIL] $1"; }
 
 run "list services" grpcurl -plaintext $PROTO_OPTS $BRIDGE list
 run "GetCapabilities" grpcurl -plaintext $PROTO_OPTS -d '{}' $BRIDGE $SVC/GetCapabilities
-run "GetRobotSnapshot" grpcurl -plaintext $PROTO_OPTS -d '{}' $BRIDGE $SVC/GetRobotSnapshot
-run "GetActiveTask" grpcurl -plaintext $PROTO_OPTS -d '{}' $BRIDGE $SVC/GetActiveTask
+run "GetActiveGoal" grpcurl -plaintext $PROTO_OPTS -d '{}' $BRIDGE $SVC/GetActiveGoal
+run "GetRobotFullInfo" grpcurl -plaintext $PROTO_OPTS -d '{}' $BRIDGE $SVC/GetRobotFullInfo
 
 CID="smoke-$(date +%s)"
-run "Nav STOP" grpcurl -plaintext $PROTO_OPTS -d @- $BRIDGE $SVC/SendNavigationCommand <<EOF
-{
-  "header": { "cmd_id": "${CID}-stop" },
-  "command": 2
-}
-EOF
-
 run "EmergencyStop" grpcurl -plaintext $PROTO_OPTS -d @- $BRIDGE $SVC/EmergencyStop <<EOF
 {
-  "header": { "cmd_id": "${CID}-estop" },
   "reason": "smoke"
 }
 EOF
 
-run "CancelAllTasks" grpcurl -plaintext $PROTO_OPTS -d @- $BRIDGE $SVC/CancelAllTasks <<EOF
+run "ClearEmergencyStop" grpcurl -plaintext $PROTO_OPTS -d '{}' $BRIDGE $SVC/ClearEmergencyStop
+
+run "CancelAllGoals" grpcurl -plaintext $PROTO_OPTS -d @- $BRIDGE $SVC/CancelAllGoals <<EOF
 {
-  "header": { "cmd_id": "${CID}-cancel" }
+  "goal_id": "${CID}-cancel"
 }
 EOF
 
-echo "Smoke done. For START nav / Stream subscribe, see sections 13.6 / 13.4."
+echo "Smoke done. Navigation / Stream：见 NavigationService 与 SensorService 相关章节。"
 ```
 
 ---
 
 ## 13.14 Python 集成测试脚本
 
-依赖：`pip install grpcio grpcio-tools`
+依赖：`pip install grpcio grpcio-tools`；假定已生成 `automsgs.rpcs` Python stubs。
 
 ```python
 #!/usr/bin/env python3
-"""AutonomyService 集成测试示例 — 覆盖 Query / Nav STOP / Stream 采样。"""
+"""automsgs.rpcs SystemService 冒烟 — GetCapabilities / GetActiveGoal / EmergencyStop。"""
 import sys
-import time
 import grpc
-from google.protobuf import empty_pb2
 
-# 假设已 protoc 生成到 PYTHONPATH
-from autonomy.bridge.proto import external_command_service_pb2 as pb
-from autonomy.bridge.proto import external_command_service_pb2_grpc as stubs
+from automsgs.rpcs.system import system_pb2 as pb
+from automsgs.rpcs.system import system_pb2_grpc as stubs
 
 BRIDGE = "127.0.0.1:5005"
-CLIENT_ID = "integration-test"
 
 
 def main() -> int:
     ch = grpc.insecure_channel(BRIDGE)
-    stub = stubs.AutonomyServiceStub(ch)
+    stub = stubs.SystemServiceStub(ch)
 
-    # TC-Q-001
-    caps = stub.GetCapabilities(empty_pb2.Empty())
-    print("Capabilities:", caps.bridge_version, "nav=", caps.supports_navigation)
-    assert caps.bridge_version, "bridge_version empty"
+    caps = stub.GetCapabilities(pb.GetCapabilitiesRequest())
+    print("Capabilities:", caps)
+    assert caps is not None
 
-    # TC-Q-003
-    task = stub.GetActiveTask(empty_pb2.Empty())
-    print("ActiveTask:", task.type, task.status)
+    goal = stub.GetActiveGoal(pb.GetActiveGoalRequest())
+    print("ActiveGoal:", goal)
 
-    # TC-NAV-004 STOP
-    cmd_id = f"py-{int(time.time())}"
-    final = None
-    for resp in stub.SendNavigationCommand(pb.NavigationCommandRequest(
-        header=pb.RequestHeader(cmd_id=cmd_id, client_id=CLIENT_ID),
-        command=pb.NAV_CMD_STOP,
-    )):
-        print("Nav STOP ack:", resp.ack.success, resp.ack.final, resp.status)
-        if resp.ack.final:
-            final = resp
-            break
-    assert final and final.ack.final, "missing final frame"
-
-    # TC-S-001 采样 3 帧
-    stream = stub.ReceiveBotStates(empty_pb2.Empty())
-    for i in range(3):
-        state = next(stream)
-        print(f"State[{i}]: bat={state.battery_percent:.0f}% task={state.active_task_type}")
-
-    # TC-SYS-001
-    ack = stub.EmergencyStop(pb.EmergencyStopRequest(
-        header=pb.RequestHeader(cmd_id=f"estop-{cmd_id}", client_id=CLIENT_ID),
-        reason="python integration test",
-    ))
-    print("Estop:", ack.success, ack.message)
-    assert ack.success
+    status = stub.EmergencyStop(pb.EmergencyStopRequest(reason="python smoke"))
+    print("Estop:", status)
+    stub.ClearEmergencyStop(pb.ClearEmergencyStopRequest())
 
     print("ALL PASSED")
     return 0
@@ -2036,43 +2064,7 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-**Teleop Bidi 示例**（TC-TEL-002）：
-
-```python
-from autonomy.commsgs.proto import geometry_msgs_pb2
-
-def teleop_velocity_test(stub, duration_sec=3.0):
-    cmd_id = f"teleop-{int(time.time())}"
-
-    def requests():
-        yield pb.TeleopCommandRequest(
-            header=pb.RequestHeader(cmd_id=cmd_id, client_id=CLIENT_ID),
-            command=pb.TELEOP_CMD_START,
-            watchdog_timeout_sec=1.0,
-            max_linear_speed=0.3,
-        )
-        t0 = time.time()
-        while time.time() - t0 < duration_sec:
-            yield pb.TeleopCommandRequest(
-                header=pb.RequestHeader(cmd_id=cmd_id, client_id=CLIENT_ID),
-                command=pb.TELEOP_CMD_VELOCITY,
-                velocity=geometry_msgs_pb2.TwistStamped(
-                    twist=geometry_msgs_pb2.Twist(
-                        linear=geometry_msgs_pb2.Vector3(x=0.1),
-                    )
-                ),
-            )
-            time.sleep(0.1)
-        yield pb.TeleopCommandRequest(
-            header=pb.RequestHeader(cmd_id=cmd_id, client_id=CLIENT_ID),
-            command=pb.TELEOP_CMD_STOP,
-        )
-
-    for resp in stub.SendTeleopCommand(requests()):
-        if resp.ack.final:
-            assert resp.status == pb.TELEOP_STATUS_IDLE or resp.ack.success
-            break
-```
+Teleop / Navigation 等域服务示例见对应 proto 与 `rpc-cli.py`。
 
 ---
 

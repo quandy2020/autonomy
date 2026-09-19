@@ -27,6 +27,7 @@
 #include "autonomy/localization/cartographer/transform/transform.hpp"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "autolink/init.hpp"
 
 DEFINE_string(pose_graph_filename, "",
               "Proto stream file containing the pose graph used to generate "
@@ -68,7 +69,6 @@ void Run(const std::string& pose_graph_filename, const std::string& output_filen
 }  // namespace cartographer
 
 int main(int argc, char** argv) {
-    google::InitGoogleLogging(argv[0]);
     FLAGS_logtostderr = true;
     google::SetUsageMessage(
         "\n\n"
@@ -84,6 +84,7 @@ int main(int argc, char** argv) {
         "All loop closure constraints separated by long covered distance are\n"
         "included in the output. Outliers are removed.\n");
     google::ParseCommandLineFlags(&argc, &argv, true);
+    autolink::InitLogging(argv[0]);
 
     if (FLAGS_pose_graph_filename.empty() || FLAGS_output_filename.empty()) {
         google::ShowUsageWithFlagsRestrict(argv[0], "autogenerate_ground_truth");

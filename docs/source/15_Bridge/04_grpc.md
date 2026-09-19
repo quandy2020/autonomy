@@ -9,11 +9,14 @@ gRPC 实现位于 `autonomy/bridge/grpc/`，是 Bridge **当前唯一**的传输
 
 | 路径 | 职责 |
 |------|------|
-| `grpc/grpc_bridge.*` | `GrpcBridgeServer` 生命周期、Handler 注册 |
-| `grpc/handlers/*` | AutonomyService + `automsgs.rpcs` Handler |
+| `grpc/DESIGN.md` | 四层 · 不变量 · 失败路径 · 测试清单（**权威短文**） |
+| `grpc/server.*` | `Server` 生命周期、Handler 注册 |
+| `grpc/handlers/*` | `automsgs.rpcs` Handler（`BRIDGE_*` 宏） |
 | `grpc/clients/*` | 域 Stub（导航 / 跟随 / 遥操 / …） |
-| `grpc/grpc_bridge_context.*` | `ExecutionContext` + Stub 聚合 |
-| `grpc/task_muxer.*` / `state_hub.*` | 任务互斥与状态推送 |
+| `grpc/context.*` / `domains.*` | `Context` = infra + `DomainBundle` |
+| `grpc/work_scheduler.*` | `autolink::base::ThreadPool` 后台卸荷 |
+| `grpc/cancel_registry.hpp` | `Factory` 命名 CancelAction |
+| `grpc/task_muxer.*` / `state_hub.*` | 任务互斥与 `/robot_state` 缓存 |
 
 ## 4.2 服务器构建
 

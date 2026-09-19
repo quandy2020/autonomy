@@ -12,7 +12,7 @@
 | 新手 | 本页 [§0.2 快速开始](#02-快速开始) → [§2 架构](02_architecture.md) |
 | **集成 / 调 API** | [rpcs/01 接入](rpcs/01_connection_guide.md) → [rpcs/13 测试用例](rpcs/13_integration_tests.md) |
 | 机载部署 / 改配置 | [§1 参数配置](01_options.md)（[§0.3 配置入口](#03-配置入口)） |
-| gRPC 开发 | [§2](02_architecture.md) → [§4 gRPC](04_grpc.md) → [grpc/](grpc/index.rst) |
+| gRPC 开发 | [§2](02_architecture.md) → 源码旁 `autonomy/bridge/grpc/DESIGN.md` → [§4 gRPC](04_grpc.md) → [grpc/](grpc/index.rst) |
 | 选型 | [§6 综述](06_survey.md) |
 
 侧边栏 **§0–§6** 为模块主干；**§1** 为 `bridge.lua` 详表（不列入 toctree）；`rpcs/`、`grpc/` 为专题。MQTT 已移除，见 [§5](05_mqtt.md)。
@@ -22,11 +22,11 @@
 ## 0.2 快速开始
 
 1. 编辑 `config/bridge/bridge.lua`（[§0.3](#03-配置入口) · [§1](01_options.md)）  
-2. `LoadOptions` → `BridgeServer` → `Start()`  
+2. `CreateOptions` → `BridgeServer` → `Start()`  
 3. 调 API — [rpcs/01 接入与验证](rpcs/01_connection_guide.md)
 
 ```cpp
-auto options = autonomy::bridge::common::LoadOptions(bridge_dict);
+auto options = autonomy::bridge::CreateOptions("bridge.pb.txt");
 auto server = std::make_shared<autonomy::bridge::BridgeServer>(options);
 server->Start();
 server->WaitForShutdown();
@@ -34,18 +34,19 @@ server->WaitForShutdown();
 
 ```lua
 AUTONOMY_BRIDGE = {
-    use_grpc = true,
     grpc = { host = "127.0.0.1", port = 5005, num_grpc_threads = 5 },
 }
 ```
 
 ```bash
-grpcurl -plaintext -d '{"header":{"cmd_id":"demo"},"command":2}' 127.0.0.1:5005 \
-  autonomy.bridge.proto.AutonomyService/SendNavigationCommand
+# 推荐：automsgs/tools/cli/rpc-cli.py；或 grpcurl 指定域 proto
+grpcurl -plaintext -import-path $REPO -proto automsgs/proto/rpcs/system.proto \
+  -d '{}' 127.0.0.1:5005 \
+  automsgs.rpcs.system.SystemService/GetCapabilities
 ```
 
 ```{figure} images/01_running.png
-:alt: grpcurl 探测 AutonomyService
+:alt: grpcurl 探测 automsgs.rpcs
 :align: center
 :width: 85%
 :name: fig-bridge-grpcurl
@@ -55,7 +56,7 @@ grpcurl -plaintext -d '{"header":{"cmd_id":"demo"},"command":2}' 127.0.0.1:5005 
 
 ## 0.3 配置入口
 
-`config/bridge/bridge.lua` → `common::LoadOptions()` → `proto::BridgeOptions`。字段详表 → [§1 参数配置](01_options.md)。
+`config/bridge/bridge.lua` / `conf/bridge.pb.txt` → `CreateOptions()` → `proto::BridgeOptions`。字段详表 → [§1 参数配置](01_options.md)。
 
 | 资产 | 路径 |
 |------|------|

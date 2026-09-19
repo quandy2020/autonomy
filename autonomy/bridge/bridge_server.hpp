@@ -14,58 +14,104 @@
  * limitations under the License.
  */
 
+/**
+ * @file bridge_server.hpp
+ * @brief Top-level bridge process host wrapping the gRPC Server.
+ *
+ * @details
+ * Process / Component entry owns BridgeServer. It constructs a
+ * grpc::Server from BridgeOptions (grpc / identity / capabilities) and
+ * exposes Start / WaitForShutdown / Shutdown for main and signal paths.
+ *
+ * @see grpc::Server
+ * @see CreateOptions
+ */
+
 #pragma once
 
 #include <memory>
 #include <unordered_map>
 
-#include "autonomy/bridge/common/bridge_option.hpp"
-#include "autonomy/bridge/grpc/grpc_bridge.hpp"
+#include "autonomy/bridge/grpc/server.hpp"
+#include "autonomy/bridge/proto/bridge_options.pb.h"
 #include "autonomy/common/macros.hpp"
 
 namespace autonomy {
 namespace bridge {
 
+/**
+ * @brief Top-level bridge process host for the gRPC transport.
+ *
+ * Owns a gRPC Server configured from BridgeOptions. Prefer constructing
+ * with parsed options from CreateOptions(); the default ctor uses empty
+ * GrpcOptions (tests / minimal boot).
+ *
+ * @par Ownership
+ * Sole owner of grpc_bridge_ UniquePtr; destroy after Shutdown().
+ *
+ * @par Threading
+ * Start / WaitForShutdown / Shutdown are control-plane calls from main
+ * or Component Clear; do not invoke from gRPC handler threads.
+ */
 class BridgeServer
 {
 public:
     /**
-     * Define BridgeServer::SharedPtr type
+     * @brief Shared / weak / unique pointer aliases.
      */
     AUTONOMY_SMART_PTR_DEFINITIONS(BridgeServer)
 
     /**
-     * @brief A Contructor for autonomy::bridge::BridgeServer
+     * @brief Construct with default (empty) BridgeOptions.
+     *
+     * Builds a gRPC Server from default-constructed GrpcOptions /
+     * identity / capabilities nested fields.
      */
     explicit BridgeServer();
 
     /**
-     * @brief A constructor for autonomy::bridge::BridgeServer
-     * @param options Additional options to control creation of the node.
+     * @brief Construct from parsed BridgeOptions.
+     *
+     * @param[in] options Bridge-wide options (grpc bind, identity,
+     *                    capabilities).
      */
     explicit BridgeServer(const proto::BridgeOptions& options);
 
     /**
-     * @brief A Destructor for autonomy::bridge::BridgeServer
+     * @brief Destructor; callers should Shutdown() before destroy.
      */
     ~BridgeServer() = default;
 
     /**
-     * @brief Starts server
+     * @brief Start the owned gRPC bridge Server.
+     *
+     * @return true on success; false on setup / bind failure.
      */
     bool Start();
 
     /**
-     * @brief Blocks until gRPC server stops.
+     * @brief Block until the gRPC server stops.
+     *
+     * @warning Blocking; another thread must call Shutdown() or the
+     * process hangs.
      */
     void WaitForShutdown();
 
-    /** @brief Stop gRPC / background threads (Component Clear / signal path). */
+    /**
+     * @brief Stop gRPC / background threads (Component Clear / signal path).
+     */
     void Shutdown();
 
 private:
+    /**
+     * @brief Bridge options copied at construction (grpc / identity / caps).
+     */
     const proto::BridgeOptions options_;
-    grpc::GrpcBridgeServer::UniquePtr grpc_bridge_{nullptr};
+
+    /**
+     * @brief Owned concrete gRPC Server (null until constructed in ctors).
+     */
+    grpc::Server::UniquePtr grpc_bridge_{nullptr};
 };
 
 }  // namespace bridge

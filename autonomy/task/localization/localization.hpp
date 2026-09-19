@@ -10,7 +10,10 @@
 #include "autonomy/task/behavior_tree/bt_task_app.hpp"
 #include "autonomy/task/localization/localization_client.hpp"
 #include <automsgs/task/localization.pb.h>
+#include <automsgs/task/mapping.pb.h>
 #include "behaviortree_cpp/blackboard.h"
+
+#include <functional>
 
 namespace autonomy {
 namespace task {
@@ -26,10 +29,14 @@ public:
     // Localization talks to localization Autolink actions only.
     static constexpr bool kUsesNavigationClient = false;
 
+    using SubmitMapping =
+        std::function<bool(const ::autonomy::task::proto::MappingGoal&)>;
+
     ::automsgs::msgs::vehicle_msgs::RobotTaskType GetTaskType()
         const override;
 
     void SetLocalizationClient(localization::LocalizationClient::Ptr client);
+    void SetSubmitMapping(SubmitMapping submit);
 
 protected:
     bool OnTreeInitialize(
@@ -49,6 +56,7 @@ private:
     bool EnsureLocalizationClient();
 
     localization::LocalizationClient::Ptr localization_client_;
+    SubmitMapping submit_mapping_;
     std::optional<::autonomy::task::proto::LocalizationGoal> active_goal_;
 };
 

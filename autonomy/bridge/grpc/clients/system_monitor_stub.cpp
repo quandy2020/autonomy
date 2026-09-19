@@ -4,8 +4,9 @@
 
 #include "autonomy/bridge/grpc/clients/system_monitor_stub.hpp"
 
-#include "autonomy/common/logging.hpp"
+#include "autolink/common/log.hpp"
 #include "autonomy/system/monitor/monitor_options.hpp"
+#include "autonomy/system/monitor/system_health_snapshot.hpp"
 
 namespace autonomy {
 namespace bridge {
@@ -16,9 +17,10 @@ namespace {
 using ::autonomy::system::monitor::HazardLevel;
 using ::autonomy::system::monitor::LoadMonitorOptions;
 using ::autonomy::system::monitor::MonitorOptions;
+using ::autonomy::system::monitor::SystemHealthSnapshot;
 namespace system_rpc = ::automsgs::rpcs::system;
 
-system_rpc::HazardLevel ConvertHazardLevel(HazardLevel level) {
+system_rpc::HazardLevel ToHazardLevel(HazardLevel level) {
     switch (level) {
         case HazardLevel::kWarn:
             return system_rpc::HAZARD_LEVEL_WARN;
@@ -39,15 +41,13 @@ MonitorOptions BuildBridgeMonitorOptions() {
     return options;
 }
 
-}  // namespace
-
-system_rpc::SystemHealth SystemMonitorTraits::ConvertToHealth(
-    const ::autonomy::system::monitor::SystemHealthSnapshot& snapshot,
-    const TaskMuxer* muxer, bool include_channel_lists) {
+system_rpc::SystemHealth ConvertToHealth(const SystemHealthSnapshot& snapshot,
+                                         const TaskMuxer* muxer,
+                                         bool include_channel_lists) {
     system_rpc::SystemHealth health;
-    health.set_hazard_level(ConvertHazardLevel(snapshot.hazard_level));
+    health.set_hazard_level(ToHazardLevel(snapshot.hazard_level));
     health.set_mrm_active(snapshot.mrm_active);
-    health.set_emergency_stop_latched(muxer && muxer->CheckEstopActive());
+    health.set_emergency_stop_latched(muxer && muxer->IsEstop());
     if (!snapshot.detail.empty()) {
         health.set_detail(snapshot.detail);
     }
@@ -69,27 +69,29 @@ system_rpc::SystemHealth SystemMonitorTraits::ConvertToHealth(
 
     if (include_channel_lists) {
         for (const auto& channel : snapshot.channels) {
-            auto* channel_info = health.add_channels();
-            channel_info->set_channel(channel.channel);
-            channel_info->set_ever_received(channel.ever_received);
-            channel_info->set_healthy(channel.healthy);
-            channel_info->set_age_seconds(static_cast<float>(channel.age_sec));
-            channel_info->set_rate_hz(static_cast<float>(channel.rate_hz));
+            auto* info = health.add_channels();
+            info->set_channel(channel.channel);
+            info->set_ever_received(channel.ever_received);
+            info->set_healthy(channel.healthy);
+            info->set_age_seconds(static_cast<float>(channel.age_sec));
+            info->set_rate_hz(static_cast<float>(channel.rate_hz));
         }
         for (const auto& latency : snapshot.latencies) {
-            auto* latency_info = health.add_latencies();
-            latency_info->set_channel(latency.channel);
-            latency_info->set_ever_received(latency.ever_received);
-            latency_info->set_healthy(latency.healthy);
-            latency_info->set_message_age_seconds(
+            auto* info = health.add_latencies();
+            info->set_channel(latency.channel);
+            info->set_ever_received(latency.ever_received);
+            info->set_healthy(latency.healthy);
+            info->set_message_age_seconds(
                 static_cast<float>(latency.message_age_sec));
         }
     }
     return health;
 }
 
+}  // namespace
+
 SystemMonitorStub::SystemMonitorStub(std::shared_ptr<autolink::Node> node,
-                                     std::shared_ptr<TaskMuxer> muxer)
+                                     TaskMuxer::SharedPtr muxer)
     : node_(std::move(node)), muxer_(std::move(muxer)) {}
 
 SystemMonitorStub::~SystemMonitorStub() {
@@ -100,7 +102,7 @@ SystemMonitorStub::~SystemMonitorStub() {
     }
 }
 
-void SystemMonitorStub::EnsureMonitorStarted() {
+void SystemMonitorStub::StartMonitorIfNeeded() {
     if (started_) {
         return;
     }
@@ -116,20 +118,20 @@ void SystemMonitorStub::EnsureMonitorStarted() {
     AINFO << "SystemMonitorStub: embedded MonitorRegistry started";
 }
 
-system_rpc::SystemHealth SystemMonitorStub::GetHealth(bool include_channel_lists) {
+system_rpc::SystemHealth SystemMonitorStub::GetHealth(
+    bool include_channel_lists) {
     std::lock_guard<std::mutex> lock(mutex_);
-    EnsureMonitorStarted();
+    StartMonitorIfNeeded();
     if (!registry_) {
         system_rpc::SystemHealth health;
         health.set_hazard_level(system_rpc::HAZARD_LEVEL_UNKNOWN);
-        health.set_emergency_stop_latched(muxer_ &&
-                                          muxer_->CheckEstopActive());
+        health.set_emergency_stop_latched(muxer_ && muxer_->IsEstop());
         health.set_detail("monitor unavailable");
         return health;
     }
     registry_->CollectAll();
-    return SystemMonitorTraits::ConvertToHealth(
-        registry_->Snapshot(), muxer_.get(), include_channel_lists);
+    return ConvertToHealth(registry_->Snapshot(), muxer_.get(),
+                           include_channel_lists);
 }
 
 }  // namespace clients

@@ -19,13 +19,6 @@
 namespace autonomy {
 namespace common {
 
-void InitializeGlog(char** argv) {
-#ifndef _MSC_VER  // Broken in MSVC
-    google::InstallFailureSignalHandler();
-#endif
-    google::InitGoogleLogging(argv[0]);
-}
-
 const char* __GetConstFileBaseName(const char* file) {
     const char* base = strrchr(file, '/');
     if (!base) {

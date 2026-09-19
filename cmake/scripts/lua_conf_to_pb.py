@@ -350,7 +350,6 @@ def main():
     write_msg(
         ROOT / "autonomy/bridge/conf/bridge.pb.txt",
         {
-            "use_grpc": True,
             "grpc": {
                 "host": "127.0.0.1",
                 "port": 5005,

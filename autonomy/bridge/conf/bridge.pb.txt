@@ -1,17 +1,62 @@
-# Bridge — external API (gRPC AutonomyService).
+# Bridge — external API (gRPC automsgs.rpcs.*).
 # Proto: autonomy/bridge/proto/bridge_options.proto
+#   (+ grpc_options / robot_identity_options / capabilities_options)
 # Load:  LoadModuleConf("bridge", "bridge.pb.txt")  or  --conf=bridge.pb.txt
+# Docs:  autonomy/bridge/docs/06_configuration.md
 #
 # CLI: autonomy.bridge --conf=bridge.pb.txt
 
-# Prefer gRPC server (MQTT path reserved / unused in default build).
-use_grpc: true
+# Fleet / cloud inventory (GetRobotFullInfo / GetInfo). Empty robot_id → hostname.
+identity {
+  robot_id: ""
+  model: "autonomy"
+  serial_number: ""
+  firmware_version: ""
+  software_version: ""
+  fleet_id: ""
+  site_id: ""
+}
+
+# Optional capability advertise. Unset field → enabled; set false to hide.
+capabilities {
+  # supports_exploration: false
+}
 
 grpc {
-  host: "127.0.0.1"          # bind / advertise address
-  port: 5005                  # gRPC listen port
-  num_grpc_threads: 5         # grpc completion-queue workers
-  num_event_threads: 5        # autolink / event loop threads
+  host: "127.0.0.1"
+  port: 5005
+  num_grpc_threads: 5
+  num_event_threads: 5
+  num_worker_threads: 0
+
+  # Platform (defaults applied in code when unset / false zero-values):
+  enable_health_check: true
+  enable_server_reflection: false
+  enable_metadata_interceptor: true
+  require_robot_id_metadata: false
+  enable_rate_limit: false
+  # rate_limit_qps: 50
+  # rate_limit_burst: 50
+
+  # Transport (0 → implementation default 100 MiB / no keepalive)
+  # max_receive_message_bytes: 104857600
+  # max_send_message_bytes: 104857600
+  # keepalive_time_ms: 30000
+  # keepalive_timeout_ms: 10000
+  # permit_keepalive_without_calls: false
+
   enable_ssl_encryption: false
+  # tls_cert_path: "/etc/autonomy/tls/server.crt"
+  # tls_key_path: "/etc/autonomy/tls/server.key"
+  # tls_ca_path: "/etc/autonomy/tls/ca.crt"
+  # tls_require_client_cert: false
+
+  auth_mode: AUTH_MODE_NONE
+  # bearer_token: ""
+  # bearer_token_file: "/etc/autonomy/bridge_token"
+
   enable_google_auth: false
+  enable_opentelemetry: false
+  # otel_service_name: "autonomy.bridge"
+  # otel_exporter_endpoint: "http://127.0.0.1:4317"
 }

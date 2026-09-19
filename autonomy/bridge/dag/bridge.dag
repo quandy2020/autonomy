@@ -2,7 +2,7 @@
 #
 # This process is a binary module (see launch/bridge.launch), not an autolink
 # Component DSO. Do not pass this file to mainboard (-d). Channel names must
-# stay aligned with autonomy/bridge/constants.hpp and task/common/names.hpp.
+# stay aligned with autonomy/bridge/constants.hpp (wire topics only; no task headers).
 #
 # Runtime config:
 #   --configuration_directory=config
@@ -35,4 +35,4 @@
 #   /robot_event
 #
 # --- External surface ---
-#   gRPC AutonomyService + automsgs.rpcs.*  (default 127.0.0.1:5005)
+#   gRPC automsgs.rpcs.*  (default 127.0.0.1:5005)

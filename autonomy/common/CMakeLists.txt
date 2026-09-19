@@ -34,6 +34,9 @@ endif()
 set(_COMMON_FEATURES inference)
 if(BUILD_GRPC)
   list(APPEND _COMMON_FEATURES grpc)
+  # Reflection is optional; link when the library is discoverable so
+  # async_grpc::Server can call InitProtoReflectionServerBuilderPlugin.
+  list(APPEND _COMMON_FEATURES grpc_reflection)
 endif()
 if(AUTONOMY_BUILD_COMMON_OSQP)
   list(APPEND _COMMON_FEATURES osqp)

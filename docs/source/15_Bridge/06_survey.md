@@ -36,7 +36,7 @@ Onboard  ◄── autolink / commsg ──────────────�
 
 | 能力 | 状态 | 说明 |
 |------|------|------|
-| gRPC + Protobuf 契约 | ✅ | `AutonomyService` **13 RPC** 已定义 |
+| gRPC + Protobuf 契约 | ✅ | `automsgs.rpcs.*` 域服务已定义 |
 | async_grpc 服务端骨架 | ✅ | 2 Handler 已注册（Nav / Expl） |
 | 其余 Command / Query / System | ❌ | Proto 有，未 RegisterHandler |
 | BotStates / BotEvents Stream | ❌ | `vehicle_msgs` 已定义，Handler 未注册 |

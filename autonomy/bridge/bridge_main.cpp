@@ -14,18 +14,22 @@
  * limitations under the License.
  */
 
-#include <glog/logging.h>
+/**
+ * @file bridge_main.cpp
+ * @brief Process entry: CLI11 → serve | call | list | describe.
+ */
+
 #include <signal.h>
 
 #include <atomic>
 #include <cstdlib>
+#include <iostream>
 #include <string>
 
 #include "autolink/autolink.hpp"
+#include "autolink/common/log.hpp"
 #include "autonomy/bridge/bridge_server.hpp"
-#include "autonomy/bridge/common/bridge_interface.hpp"
-#include "autonomy/common/gflags.hpp"
-#include "autonomy/common/version.hpp"
+#include "autonomy/bridge/options.hpp"
 
 namespace autonomy {
 namespace bridge {
@@ -42,24 +46,42 @@ void SigintHandler(int /*sig*/) {
     autolink::AsyncShutdown();
 }
 
-int Run() {
-    autonomy::common::ShowVersion();
-    LOG(INFO) << "Starting autonomy bridge (gRPC / MQTT external API).";
+int RunServe(const CliOptions& cli) {
+    auto options = CreateOptions(cli.conf_file);
+    ApplyCliOverrides(cli, &options);
 
-    const std::string conf = autonomy::common::FLAGS_conf.empty()
-                                 ? std::string("bridge.pb.txt")
-                                 : autonomy::common::FLAGS_conf;
-    const auto options = common::CreateOptions(conf);
+    if (cli.print_config) {
+        std::cout << options.DebugString() << std::flush;
+    }
+
+    AINFO << "Bridge options: " << SummarizeOptions(options);
+
+    if (cli.dry_run) {
+        AINFO << "Dry-run: conf loaded OK; not starting server.";
+        std::cout << SummarizeOptions(options) << '\n';
+        return EXIT_SUCCESS;
+    }
+
+    if (cli.self_test) {
+        std::string detail;
+        if (!RunPlatformSelfTest(options, &detail)) {
+            AERROR << "Self-test failed: " << detail;
+            return EXIT_FAILURE;
+        }
+        AINFO << "Self-test OK: " << detail;
+        std::cout << "self-test: OK\n" << detail << '\n';
+        return EXIT_SUCCESS;
+    }
 
     BridgeServer server(options);
     if (!server.Start()) {
-        LOG(ERROR) << "Failed to start bridge server.";
+        AERROR << "Failed to start bridge server.";
         return EXIT_FAILURE;
     }
-    LOG(INFO) << "Bridge server running. Press Ctrl+C to exit.";
+    AINFO << "Bridge server running. Press Ctrl+C to exit.";
     autolink::WaitForShutdown();
     if (g_shutdown_requested.load(std::memory_order_acquire)) {
-        LOG(INFO) << "Shutdown autonomy bridge.";
+        AINFO << "Shutdown autonomy bridge.";
     }
     server.Shutdown();
     return EXIT_SUCCESS;
@@ -70,32 +92,30 @@ int Run() {
 }  // namespace autonomy
 
 int main(int argc, char** argv) {
-    google::SetUsageMessage(
-        "\n\n"
-        "\033[31m External bridge process (gRPC AutonomyService).\033[0m \n"
-        "Example:\n"
-        "  autonomy.bridge --conf=bridge.pb.txt\n"
-        "  # or AUTONOMY_PATH=/path/to/prefix\n");
-
-    google::InitGoogleLogging(argv[0]);
-    google::ParseCommandLineFlags(&argc, &argv, true);
-
-    if (autonomy::common::FLAGS_verbose) {
-        autonomy::common::ShowVersion();
+    autonomy::bridge::CliOptions cli;
+    const auto status =
+        autonomy::bridge::ParseCommandLine(argc, argv, &cli);
+    if (status == autonomy::bridge::ParseStatus::kExitOk) {
         return EXIT_SUCCESS;
+    }
+    if (status == autonomy::bridge::ParseStatus::kExitError) {
+        return EXIT_FAILURE;
+    }
+
+    // Client modes: no Autolink node required.
+    if (cli.mode != autonomy::bridge::CliMode::kServe) {
+        return autonomy::bridge::RunRpcClientMode(cli);
     }
 
     if (!autolink::Init(argv[0])) {
-        LOG(ERROR) << "autolink::Init failed.";
-        google::ShutdownGoogleLogging();
+        AERROR << "autolink::Init failed.";
         return EXIT_FAILURE;
     }
 
     signal(SIGINT, autonomy::bridge::SigintHandler);
     signal(SIGTERM, autonomy::bridge::SigintHandler);
 
-    const int exit_code = autonomy::bridge::Run();
+    const int exit_code = autonomy::bridge::RunServe(cli);
     autolink::Clear();
-    google::ShutdownGoogleLogging();
     return exit_code;
 }

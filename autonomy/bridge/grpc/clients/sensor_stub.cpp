@@ -6,12 +6,21 @@
 
 #include <algorithm>
 #include <chrono>
-#include <fstream>
 #include <filesystem>
+#include <fstream>
+#include <initializer_list>
+#include <thread>
+#include <unordered_map>
 
-#include "autonomy/bridge/grpc/rpc_convert.hpp"
-#include "autonomy/common/logging.hpp"
+#include "autolink/common/log.hpp"
+#include "autonomy/bridge/grpc/clients/variable_tags.hpp"
+#include "autonomy/bridge/grpc/rpc_status.hpp"
 #include "nlohmann/json.hpp"
+#include <automsgs/msgs/sensor_msgs/compressed_image.pb.h>
+#include <automsgs/msgs/sensor_msgs/image.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 #include <automsgs/msgs/status_msgs/status_msgs.pb.h>
 
 namespace autonomy {
@@ -45,25 +54,38 @@ std::unordered_map<std::string, std::string> DefaultParams() {
             {"range_max", "30"}};
 }
 
+template <typename VariableT>
+bool WriteCachedSample(::autolink::record::RecordWriter* writer,
+                       const std::string& topic,
+                       const SensorSampleCache& cache, uint64_t now_ns,
+                       uint64_t* bytes) {
+    if (!cache.HasSample<VariableT>()) {
+        return false;
+    }
+    const auto& message = cache.GetSample<VariableT>();
+    const bool wrote =
+        writer->WriteMessage(topic, message, static_cast<uint64_t>(now_ns));
+    *bytes += static_cast<uint64_t>(message.ByteSizeLong());
+    return wrote;
+}
+
 }  // namespace
 
-SensorStub::SensorStub(std::shared_ptr<autolink::Node> node)
-    : node_(std::move(node)) {
+SensorStub::SensorStub(std::shared_ptr<autolink::Node> node,
+                       WorkScheduler* scheduler)
+    : node_(std::move(node)), scheduler_(scheduler) {
     InitCatalogue();
     SubscribeSamples();
     record_status_.set_state(sensor::RECORD_STATE_IDLE);
     record_status_.set_active(false);
     record_status_.set_final(false);
-    *record_status_.mutable_status() = MakeOkStatus();
+    *record_status_.mutable_status() = OkStatus();
 }
 
 SensorStub::~SensorStub() {
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        record_cancel_ = true;
-    }
-    if (record_thread_.joinable()) {
-        record_thread_.join();
+    record_cancel_ = true;
+    if (record_future_.valid()) {
+        record_future_.wait();
     }
 }
 
@@ -78,7 +100,8 @@ void SensorStub::InitCatalogue() {
                  sensor::SENSOR_TYPE_CAMERA, "/camera/front/image_raw",
                  {"enabled", "frame_rate_hz", "exposure"}));
     add(MakeInfo("camera_front_compressed", "camera_front_optical",
-                 sensor::SENSOR_TYPE_CAMERA, "/camera/front/image_raw/compressed",
+                 sensor::SENSOR_TYPE_CAMERA,
+                 "/camera/front/image_raw/compressed",
                  {"enabled", "frame_rate_hz"}));
     add(MakeInfo("depth_front", "camera_front_optical",
                  sensor::SENSOR_TYPE_DEPTH_CAMERA,
@@ -112,7 +135,7 @@ void SensorStub::SubscribeSamples() {
                 break;
             case sensor::SENSOR_TYPE_LASER_SCAN:
                 SubscribeSample<::automsgs::msgs::sensor_msgs::LaserScan>(id,
-                                                                          topic);
+                                                                         topic);
                 break;
             case sensor::SENSOR_TYPE_POINT_CLOUD:
                 SubscribeSample<::automsgs::msgs::sensor_msgs::PointCloud2>(
@@ -146,14 +169,10 @@ const SensorStub::SensorEntry* SensorStub::Find(
     return nullptr;
 }
 
-std::string SensorStub::ParamsPath() const {
-    return "/tmp/autonomy_bridge/sensor_params.json";
-}
-
 sensor::ListSensorsResponse SensorStub::ListSensors() const {
     std::lock_guard<std::mutex> lock(mutex_);
     sensor::ListSensorsResponse response;
-    *response.mutable_status() = MakeOkStatus();
+    *response.mutable_status() = OkStatus();
     for (const auto& entry : sensors_) {
         *response.add_sensors() = entry.info;
     }
@@ -167,7 +186,7 @@ sensor::GetSampleResponse SensorStub::GetSample(
     const auto* entry = Find(request.sensor_id());
     if (!entry) {
         *response.mutable_status() =
-            MakeRpcStatus(StatusCode::SENSOR_NOT_FOUND, "unknown sensor_id");
+            ErrorStatus(StatusCode::SENSOR_NOT_FOUND, "unknown sensor_id");
         return response;
     }
     response.set_sensor_id(entry->info.sensor_id());
@@ -175,7 +194,7 @@ sensor::GetSampleResponse SensorStub::GetSample(
     const auto sample_iterator = samples_.find(request.sensor_id());
     if (sample_iterator == samples_.end()) {
         *response.mutable_status() =
-            MakeRpcStatus(StatusCode::SENSOR_UNAVAILABLE, "no sample yet");
+            ErrorStatus(StatusCode::SENSOR_UNAVAILABLE, "no sample yet");
         return response;
     }
     const auto& cache = sample_iterator->second;
@@ -183,32 +202,37 @@ sensor::GetSampleResponse SensorStub::GetSample(
     switch (entry->info.type()) {
         case sensor::SENSOR_TYPE_CAMERA:
         case sensor::SENSOR_TYPE_DEPTH_CAMERA:
-            if (request.prefer_compressed() && cache.has_compressed_image) {
-                *response.mutable_compressed_image() = cache.compressed_image;
+            if (request.prefer_compressed() &&
+                cache.HasSample<variable::CompressedImage>()) {
+                *response.mutable_compressed_image() =
+                    cache.GetSample<variable::CompressedImage>();
                 sample_found = true;
-            } else if (cache.has_image) {
-                *response.mutable_image() = cache.image;
+            } else if (cache.HasSample<variable::Image>()) {
+                *response.mutable_image() = cache.GetSample<variable::Image>();
                 sample_found = true;
-            } else if (cache.has_compressed_image) {
-                *response.mutable_compressed_image() = cache.compressed_image;
+            } else if (cache.HasSample<variable::CompressedImage>()) {
+                *response.mutable_compressed_image() =
+                    cache.GetSample<variable::CompressedImage>();
                 sample_found = true;
             }
             break;
         case sensor::SENSOR_TYPE_LASER_SCAN:
-            if (cache.has_laser_scan) {
-                *response.mutable_laser_scan() = cache.laser_scan;
+            if (cache.HasSample<variable::LaserScan>()) {
+                *response.mutable_laser_scan() =
+                    cache.GetSample<variable::LaserScan>();
                 sample_found = true;
             }
             break;
         case sensor::SENSOR_TYPE_POINT_CLOUD:
-            if (cache.has_point_cloud) {
-                *response.mutable_point_cloud() = cache.point_cloud;
+            if (cache.HasSample<variable::PointCloud>()) {
+                *response.mutable_point_cloud() =
+                    cache.GetSample<variable::PointCloud>();
                 sample_found = true;
             }
             break;
         case sensor::SENSOR_TYPE_IMU:
-            if (cache.has_imu) {
-                *response.mutable_imu() = cache.imu;
+            if (cache.HasSample<variable::Imu>()) {
+                *response.mutable_imu() = cache.GetSample<variable::Imu>();
                 sample_found = true;
             }
             break;
@@ -216,8 +240,9 @@ sensor::GetSampleResponse SensorStub::GetSample(
             break;
     }
     *response.mutable_status() =
-        sample_found ? MakeOkStatus()
-           : MakeRpcStatus(StatusCode::SENSOR_UNAVAILABLE, "no sample yet");
+        sample_found
+            ? OkStatus()
+            : ErrorStatus(StatusCode::SENSOR_UNAVAILABLE, "no sample yet");
     return response;
 }
 
@@ -228,11 +253,11 @@ sensor::GetParametersResponse SensorStub::GetParameters(
     const auto* entry = Find(request.sensor_id());
     if (!entry) {
         *response.mutable_status() =
-            MakeRpcStatus(StatusCode::SENSOR_NOT_FOUND, "unknown sensor_id");
+            ErrorStatus(StatusCode::SENSOR_NOT_FOUND, "unknown sensor_id");
         return response;
     }
     response.set_sensor_id(entry->info.sensor_id());
-    *response.mutable_status() = MakeOkStatus();
+    *response.mutable_status() = OkStatus();
     if (request.names().empty()) {
         for (const auto& [name, value] : entry->parameters) {
             auto* p = response.add_parameters();
@@ -260,14 +285,14 @@ sensor::SetParametersResponse SensorStub::SetParameters(
     auto* entry = FindMutable(request.sensor_id());
     if (!entry) {
         *response.mutable_status() =
-            MakeRpcStatus(StatusCode::SENSOR_NOT_FOUND, "unknown sensor_id");
+            ErrorStatus(StatusCode::SENSOR_NOT_FOUND, "unknown sensor_id");
         return response;
     }
     for (const auto& p : request.parameters()) {
         entry->parameters[p.name()] = p.value();
         *response.add_parameters() = p;
     }
-    *response.mutable_status() = MakeOkStatus("applied");
+    *response.mutable_status() = OkStatus("applied");
     return response;
 }
 
@@ -287,28 +312,28 @@ sensor::SetParametersResponse SensorStub::SetParameters(
         root[entry.info.sensor_id()] = obj;
     }
     if (!request.sensor_id().empty() && !root.contains(request.sensor_id())) {
-        return MakeRpcStatus(StatusCode::SENSOR_NOT_FOUND, "unknown sensor_id");
+        return ErrorStatus(StatusCode::SENSOR_NOT_FOUND, "unknown sensor_id");
     }
     try {
-        const auto path = ParamsPath();
+        const auto path = GetParamsPath();
         filesystem::create_directories(filesystem::path(path).parent_path());
         std::ofstream ofs(path);
         ofs << root.dump(2);
         if (!ofs) {
-            return MakeRpcStatus(StatusCode::SENSOR_SAVE_FAILED, "write failed");
+            return ErrorStatus(StatusCode::SENSOR_SAVE_FAILED, "write failed");
         }
     } catch (const std::exception& e) {
-        return MakeRpcStatus(StatusCode::SENSOR_SAVE_FAILED, e.what());
+        return ErrorStatus(StatusCode::SENSOR_SAVE_FAILED, e.what());
     }
-    return MakeOkStatus("saved");
+    return OkStatus("saved");
 }
 
 ::automsgs::rpcs::common::Status SensorStub::LoadParameters(
     const sensor::LoadParametersRequest& request) {
     std::lock_guard<std::mutex> lock(mutex_);
-    const auto path = ParamsPath();
+    const auto path = GetParamsPath();
     if (!filesystem::exists(path)) {
-        return MakeRpcStatus(StatusCode::SENSOR_NOT_FOUND, "no saved parameters");
+        return ErrorStatus(StatusCode::SENSOR_NOT_FOUND, "no saved parameters");
     }
     try {
         std::ifstream ifs(path);
@@ -332,9 +357,13 @@ sensor::SetParametersResponse SensorStub::SetParameters(
             }
         }
     } catch (const std::exception& e) {
-        return MakeRpcStatus(StatusCode::SENSOR_LOAD_FAILED, e.what());
+        return ErrorStatus(StatusCode::SENSOR_LOAD_FAILED, e.what());
     }
-    return MakeOkStatus("loaded");
+    return OkStatus("loaded");
+}
+
+std::string SensorStub::GetParamsPath() const {
+    return "/tmp/autonomy_bridge/sensor_params.json";
 }
 
 void SensorStub::EmitRecord(const sensor::RecordResponse& response) {
@@ -344,9 +373,12 @@ void SensorStub::EmitRecord(const sensor::RecordResponse& response) {
         record_status_ = response;
         callback = record_callback_;
     }
-    if (callback) {
-        callback(response);
+    if (!callback) {
+        return;
     }
+    auto frame = record_pool_.Acquire();
+    *frame = response;
+    callback(*frame);
 }
 
 void SensorStub::FinishRecord(sensor::RecordState state,
@@ -360,11 +392,11 @@ void SensorStub::FinishRecord(sensor::RecordState state,
         response.set_final(true);
         *response.mutable_status() =
             (state == sensor::RECORD_STATE_SUCCEEDED)
-                ? MakeOkStatus(message)
-                : MakeRpcStatus(state == sensor::RECORD_STATE_CANCELLED
-                                    ? StatusCode::SENSOR_CANCELLED
-                                    : StatusCode::SENSOR_RECORD_FAILED,
-                                message);
+                ? OkStatus(message)
+                : ErrorStatus(state == sensor::RECORD_STATE_CANCELLED
+                                  ? StatusCode::SENSOR_CANCELLED
+                                  : StatusCode::SENSOR_RECORD_FAILED,
+                              message);
         if (record_writer_) {
             record_writer_->Close();
             record_writer_.reset();
@@ -385,14 +417,27 @@ bool SensorStub::StartRecord(const sensor::RecordRequest& request,
             busy.set_final(true);
             busy.set_record_id(request.record_id());
             *busy.mutable_status() =
-                MakeRpcStatus(StatusCode::SENSOR_BUSY, "record busy");
+                ErrorStatus(StatusCode::SENSOR_BUSY, "record busy");
             if (callback) {
                 callback(busy);
             }
             return false;
         }
-        if (record_thread_.joinable()) {
-            record_thread_.join();
+        if (!scheduler_) {
+            sensor::RecordResponse failed;
+            failed.set_state(sensor::RECORD_STATE_FAILED);
+            failed.set_active(false);
+            failed.set_final(true);
+            *failed.mutable_status() =
+                ErrorStatus(StatusCode::UNKNOWN, "work scheduler unavailable");
+            if (callback) {
+                callback(failed);
+            }
+            return false;
+        }
+        if (record_future_.valid()) {
+            record_future_.wait();
+            record_future_ = std::future<void>();
         }
         record_callback_ = std::move(callback);
         record_cancel_ = false;
@@ -405,15 +450,31 @@ bool SensorStub::StartRecord(const sensor::RecordRequest& request,
         record_status_.set_uri(
             request.uri().empty() ? "/tmp/autonomy_bridge/record.record"
                                  : request.uri());
-        *record_status_.mutable_status() = MakeOkStatus("recording");
+        *record_status_.mutable_status() = OkStatus("recording");
     }
     EmitRecord(record_status_);
-    record_thread_ =
-        std::thread([this, request]() { RecordLoop(request); });
+
+    auto done = std::make_shared<std::promise<void>>();
+    record_future_ = done->get_future();
+    scheduler_->Schedule([this, request, done]() mutable {
+        try {
+            RunRecordLoop(request);
+        } catch (const std::exception& ex) {
+            AERROR << "SensorStub::RunRecordLoop threw: " << ex.what();
+            FinishRecord(sensor::RECORD_STATE_FAILED, ex.what());
+        } catch (...) {
+            AERROR << "SensorStub::RunRecordLoop threw unknown";
+            FinishRecord(sensor::RECORD_STATE_FAILED, "unknown error");
+        }
+        try {
+            done->set_value();
+        } catch (...) {
+        }
+    });
     return true;
 }
 
-void SensorStub::RecordLoop(sensor::RecordRequest request) {
+void SensorStub::RunRecordLoop(sensor::RecordRequest request) {
     const std::string uri =
         request.uri().empty() ? "/tmp/autonomy_bridge/record.record"
                               : request.uri();
@@ -451,10 +512,9 @@ void SensorStub::RecordLoop(sensor::RecordRequest request) {
 
     while (!record_cancel_.load()) {
         if (duration_limit > 0.f) {
-            const float elapsed =
-                std::chrono::duration<float>(
-                    std::chrono::steady_clock::now() - start)
-                    .count();
+            const float elapsed = std::chrono::duration<float>(
+                                      std::chrono::steady_clock::now() - start)
+                                      .count();
             if (elapsed >= duration_limit) {
                 break;
             }
@@ -480,55 +540,32 @@ void SensorStub::RecordLoop(sensor::RecordRequest request) {
                     std::chrono::duration_cast<std::chrono::nanoseconds>(
                         std::chrono::system_clock::now().time_since_epoch())
                         .count();
-                bool wrote = false;
                 switch (entry->info.type()) {
                     case sensor::SENSOR_TYPE_CAMERA:
                     case sensor::SENSOR_TYPE_DEPTH_CAMERA:
-                        if (cache.has_compressed_image) {
-                            wrote = record_writer_->WriteMessage(
-                                topic, cache.compressed_image,
-                                static_cast<uint64_t>(now_ns));
-                            bytes +=
-                                static_cast<uint64_t>(cache.compressed_image.ByteSizeLong());
-                        } else if (cache.has_image) {
-                            wrote = record_writer_->WriteMessage(
-                                topic, cache.image,
-                                static_cast<uint64_t>(now_ns));
-                            bytes +=
-                                static_cast<uint64_t>(cache.image.ByteSizeLong());
+                        if (!WriteCachedSample<variable::CompressedImage>(
+                                record_writer_.get(), topic, cache, now_ns,
+                                &bytes)) {
+                            WriteCachedSample<variable::Image>(
+                                record_writer_.get(), topic, cache, now_ns,
+                                &bytes);
                         }
                         break;
                     case sensor::SENSOR_TYPE_LASER_SCAN:
-                        if (cache.has_laser_scan) {
-                            wrote = record_writer_->WriteMessage(
-                                topic, cache.laser_scan,
-                                static_cast<uint64_t>(now_ns));
-                            bytes +=
-                                static_cast<uint64_t>(cache.laser_scan.ByteSizeLong());
-                        }
+                        WriteCachedSample<variable::LaserScan>(
+                            record_writer_.get(), topic, cache, now_ns, &bytes);
                         break;
                     case sensor::SENSOR_TYPE_POINT_CLOUD:
-                        if (cache.has_point_cloud) {
-                            wrote = record_writer_->WriteMessage(
-                                topic, cache.point_cloud,
-                                static_cast<uint64_t>(now_ns));
-                            bytes +=
-                                static_cast<uint64_t>(cache.point_cloud.ByteSizeLong());
-                        }
+                        WriteCachedSample<variable::PointCloud>(
+                            record_writer_.get(), topic, cache, now_ns, &bytes);
                         break;
                     case sensor::SENSOR_TYPE_IMU:
-                        if (cache.has_imu) {
-                            wrote = record_writer_->WriteMessage(
-                                topic, cache.imu,
-                                static_cast<uint64_t>(now_ns));
-                            bytes +=
-                                static_cast<uint64_t>(cache.imu.ByteSizeLong());
-                        }
+                        WriteCachedSample<variable::Imu>(
+                            record_writer_.get(), topic, cache, now_ns, &bytes);
                         break;
                     default:
                         break;
                 }
-                (void)wrote;
             }
         }
 
@@ -546,20 +583,17 @@ void SensorStub::RecordLoop(sensor::RecordRequest request) {
                 std::min(1.f, static_cast<float>(bytes) /
                                   static_cast<float>(bytes_limit)));
         } else if (duration_limit > 0.f) {
-            const float elapsed =
-                std::chrono::duration<float>(
-                    std::chrono::steady_clock::now() - start)
-                    .count();
+            const float elapsed = std::chrono::duration<float>(
+                                      std::chrono::steady_clock::now() - start)
+                                      .count();
             progress.set_progress(std::min(1.f, elapsed / duration_limit));
         }
-        *progress.mutable_status() = MakeOkStatus("recording");
+        *progress.mutable_status() = OkStatus("recording");
         EmitRecord(progress);
 
         ++seq;
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        if (seq > 0 && duration_limit <= 0.f && bytes_limit == 0 &&
-            seq >= 50) {
-            // Safety: ~10s default when no limits set.
+        if (seq > 0 && duration_limit <= 0.f && bytes_limit == 0 && seq >= 50) {
             break;
         }
     }
@@ -575,14 +609,14 @@ void SensorStub::RecordLoop(sensor::RecordRequest request) {
     const sensor::CancelRecordRequest& request) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!record_status_.active()) {
-        return MakeOkStatus("idle");
+        return OkStatus("idle");
     }
     if (!request.record_id().empty() &&
         request.record_id() != record_status_.record_id()) {
-        return MakeRpcStatus(StatusCode::SENSOR_NOT_FOUND, "record_id mismatch");
+        return ErrorStatus(StatusCode::SENSOR_NOT_FOUND, "record_id mismatch");
     }
     record_cancel_ = true;
-    return MakeOkStatus("cancel requested");
+    return OkStatus("cancel requested");
 }
 
 sensor::GetRecordStatusResponse SensorStub::GetRecordStatus() const {

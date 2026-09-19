@@ -32,21 +32,25 @@
 #include "autonomy/task/common/transform_listener.hpp"
 #include "autonomy/task/common/goal_ingress.hpp"
 #include "autonomy/task/common/navigator.hpp"
+#include "autonomy/task/exploration/exploration.hpp"
 #include "autonomy/task/localization/localization.hpp"
 #include "autonomy/task/manipulation/manipulation.hpp"
 #include "autonomy/task/mapping/mapping.hpp"
 #include "autonomy/task/navigation/navigation.hpp"
 #include "autonomy/task/navigation/navigation_client.hpp"
 #include <automsgs/task/charging.pb.h>
+#include <automsgs/task/exploration.pb.h>
 #include <automsgs/task/localization.pb.h>
 #include <automsgs/task/mapping.pb.h>
 #include <automsgs/task/navigation.pb.h>
 #include <automsgs/task/teleop.pb.h>
 #include <automsgs/task/tracker.pb.h>
+#include <automsgs/task/voice.pb.h>
 #include "autonomy/task/register_tasks.hpp"
 #include "autonomy/task/scheduler/scheduler.hpp"
 #include "autonomy/task/teleop/teleop.hpp"
 #include "autonomy/task/tracking/tracking.hpp"
+#include "autonomy/task/voice/voice.hpp"
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
 #include <automsgs/msgs/std_msgs/bool.pb.h>
 
@@ -83,6 +87,8 @@ public:
     MappingTask::SharedPtr mapping() const { return mapping_; }
     LocalizationTask::SharedPtr localization() const { return localization_; }
     ManipulationTask::SharedPtr manipulation() const { return manipulation_; }
+    ExplorationTask::SharedPtr exploration() const { return exploration_; }
+    VoiceTask::SharedPtr voice() const { return voice_; }
 
     bool Submit(const proto::NavigationGoal& goal);
     bool Submit(const proto::TrackerGoal& goal);
@@ -90,6 +96,8 @@ public:
     bool Submit(const proto::ChargingGoal& goal);
     bool Submit(const proto::MappingGoal& goal);
     bool Submit(const proto::LocalizationGoal& goal);
+    bool Submit(const proto::ExplorationGoal& goal);
+    bool Submit(const proto::VoiceGoal& goal);
 
     bool SubmitTeleopGoal(const proto::TeleopGoal& goal) { return Submit(goal); }
     bool SubmitNavigationGoal(const proto::NavigationGoal& goal) {
@@ -123,6 +131,17 @@ private:
         return goal.command() == proto::LOCALIZATION_CMD_START ||
                goal.command() == proto::LOCALIZATION_CMD_SWITCH_ALGORITHM;
     }
+    static bool NeedsSlot(const proto::ExplorationGoal& goal) {
+        return goal.command() == proto::EXPLORATION_CMD_START;
+    }
+    static bool NeedsSlot(const proto::VoiceGoal& goal) {
+        return goal.command() == proto::VOICE_CMD_START &&
+               goal.intent() != proto::VOICE_INTENT_STOP &&
+               goal.intent() != proto::VOICE_INTENT_CANCEL_ALL;
+    }
+
+    void WireVoiceDispatchers();
+    void CancelDomainTasks();
 
     template <typename TaskT, typename GoalT>
     bool Dispatch(const std::shared_ptr<TaskT>& task, const GoalT& goal) {
@@ -130,18 +149,13 @@ private:
             AWARN << "TaskServer::Dispatch: null task or scheduler";
             return false;
         }
-        // Teleop velocity updates must not touch the exclusive scheduler; doing
-        // so can deadlock the goal worker against ReclaimLoop.
         if (!NeedsSlot(goal)) {
             return task->SubmitGoal(goal);
         }
-        // Drop stale exclusive / session state after SUCCEEDED/FAILED so the
-        // next /goal_pose can RequestActivation without fighting a dead hold.
         if (!task->IsActive()) {
             scheduler_->ReleaseActivation(task);
         }
-        const bool needs_activation =
-            !task->IsActive() && NeedsSlot(goal);
+        const bool needs_activation = !task->IsActive() && NeedsSlot(goal);
         if (needs_activation && !scheduler_->RequestActivation(task)) {
             AWARN << "TaskServer: RequestActivation failed for task type "
                   << static_cast<int>(task->GetTaskType());
@@ -204,6 +218,8 @@ private:
     MappingTask::SharedPtr mapping_;
     LocalizationTask::SharedPtr localization_;
     ManipulationTask::SharedPtr manipulation_;
+    ExplorationTask::SharedPtr exploration_;
+    VoiceTask::SharedPtr voice_;
     std::shared_ptr<autolink::Node> node_;
     navigation::NavigationClient::Ptr navigation_client_;
     proto::TaskServerOptions options_;
@@ -240,6 +256,8 @@ private:
     double last_exploration_waypoint_x_{0.0};
     double last_exploration_waypoint_y_{0.0};
 
+    common::GoalIngress<proto::NavigationGoal, proto::NavigationFeedback>
+        navigation_ingress_;
     common::GoalIngress<proto::TeleopGoal, proto::TeleopFeedback>
         teleop_ingress_;
     common::GoalIngress<proto::TrackerGoal, proto::TrackerFeedback>
@@ -250,6 +268,9 @@ private:
         mapping_ingress_;
     common::GoalIngress<proto::LocalizationGoal, proto::LocalizationFeedback>
         localization_ingress_;
+    common::GoalIngress<proto::ExplorationGoal, proto::ExplorationFeedback>
+        exploration_ingress_;
+    common::GoalIngress<proto::VoiceGoal, proto::VoiceFeedback> voice_ingress_;
 
     TransformListener::SharedPtr transform_listener_;
     bool configured_ = false;

@@ -26,6 +26,7 @@
 #include "autonomy/localization/cartographer/io/submap_painter.hpp"
 #include "autonomy/localization/cartographer/mapping/value_conversion_tables.hpp"
 #include "autonomy/localization/cartographer/node/map_io.hpp"
+#include "autolink/init.hpp"
 
 DEFINE_string(pbstream_filename, "",
               "Filename of a pbstream to draw a map from.");
@@ -74,8 +75,8 @@ void Run(const std::string& pbstream_filename, const std::string& map_filestem,
 }  // namespace autonomy
 
 int main(int argc, char** argv) {
-    google::InitGoogleLogging(argv[0]);
     google::ParseCommandLineFlags(&argc, &argv, false);
+    autolink::InitLogging(argv[0]);
 
     CHECK(!FLAGS_pbstream_filename.empty()) << "-pbstream_filename is missing.";
     CHECK(!FLAGS_map_filestem.empty()) << "-map_filestem is missing.";
