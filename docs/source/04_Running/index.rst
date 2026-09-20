@@ -1,7 +1,7 @@
 运行指南
 ========
 
-Autonomy 运行与部署指南：多进程启动、Docker 运行时与可选 ROS 2 集成。按 **§1–§7** 编号排列。
+Autonomy 运行与部署指南：多进程启动、Docker 运行时、板端资源实测与可选 ROS 2 集成。按 **§1–§8** 编号排列。
 
 .. toctree::
    :maxdepth: 2
@@ -14,3 +14,4 @@ Autonomy 运行与部署指南：多进程启动、Docker 运行时与可选 ROS
    5 ROS 2 集成 <06_ros2_integration>
    6 运行验证 <07_verification>
    7 故障排查 <08_troubleshooting>
+   8 板端 task.launch 资源报告 <09_board_task_launch_benchmark>

@@ -195,6 +195,16 @@ cmake --build build --target install
 
 日常开发一般直接使用 `build/lib` + `build/bin`，无需系统级 install。
 
+安装到 `/usr/local` 后推荐：
+
+```bash
+sudo cmake --install build    # 在 build 目录内也可：sudo make install
+source /usr/local/share/autonomy/setup.bash
+autolink launch start task.launch
+```
+
+板端 `task.launch` 的 **CPU / 内存 / 启动时延** 实测见运行指南：[板端 task.launch 资源报告](../04_Running/09_board_task_launch_benchmark.md)。
+
 ---
 
 ### 9.7 切换板子 / 换开发机
