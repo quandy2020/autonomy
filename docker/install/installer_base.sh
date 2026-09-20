@@ -225,6 +225,48 @@ function autonomy_maybe_reexec_as_root()
     return 0
 }
 
+# Run ldconfig with sudo when needed (board users cannot write /etc/ld.so.cache).
+# Never fails the installer: missing cache update is non-fatal if libs are under /usr/local.
+function autonomy_ldconfig()
+{
+    if [[ "$(id -u)" -eq 0 ]]; then
+        ldconfig "$@" || warning "ldconfig returned non-zero"
+        return 0
+    fi
+    if command -v sudo >/dev/null 2>&1; then
+        sudo ldconfig "$@" || warning "sudo ldconfig returned non-zero"
+        return 0
+    fi
+    warning "ldconfig skipped (need root to update /etc/ld.so.cache)"
+    return 0
+}
+
+# make install into system prefix; use sudo when not root.
+function autonomy_make_install()
+{
+    if [[ "$(id -u)" -eq 0 ]]; then
+        make install "$@"
+        return $?
+    fi
+    if command -v sudo >/dev/null 2>&1; then
+        sudo make install "$@"
+        return $?
+    fi
+    make install "$@"
+}
+
+# Mark a path safe for git when owned by another user (e.g. /thirdparty as root).
+function autonomy_git_safe_directory()
+{
+    local path="$1"
+    [[ -n "${path}" ]] || return 0
+    git config --global --add safe.directory "${path}" 2>/dev/null || true
+    # Also allow as root when sudo is used later.
+    if command -v sudo >/dev/null 2>&1; then
+        sudo git config --global --add safe.directory "${path}" 2>/dev/null || true
+    fi
+}
+
 # Clone a git repo with retries (useful when GitHub is flaky).
 git_clone_with_retry()
 {
@@ -233,9 +275,12 @@ git_clone_with_retry()
     local dest="$3"
     local max_attempts="${GIT_CLONE_RETRIES:-5}"
     local attempt=1
+    local dest_abs
 
     while [[ "${attempt}" -le "${max_attempts}" ]]; do
         if git clone --depth 1 -b "${branch}" "${url}" "${dest}"; then
+            dest_abs="$(cd "${dest}" && pwd)"
+            autonomy_git_safe_directory "${dest_abs}"
             return 0
         fi
         warning "git clone ${url} failed (attempt ${attempt}/${max_attempts}), retrying..."

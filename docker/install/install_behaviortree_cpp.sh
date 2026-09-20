@@ -43,12 +43,8 @@ pushd BehaviorTree.CPP >/dev/null
         ..
 
     make -j"${THREAD_NUM}"
-    if [[ "$(id -u)" -eq 0 ]]; then
-        make install
-    else
-        sudo make install
-    fi
+    autonomy_make_install
 popd >/dev/null
 
-sudo ldconfig
+autonomy_ldconfig
 ok "Successfully installed BehaviorTree.CPP"

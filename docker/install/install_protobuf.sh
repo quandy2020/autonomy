@@ -54,16 +54,25 @@ info "Installing protobuf ${PROTOBUF_VERSION} -> ${INSTALL_PREFIX}"
 
 cd "${THIRDPARTY}"
 if [[ -d protobuf/.git ]]; then
+    autonomy_git_safe_directory "$(pwd)/protobuf"
     cd protobuf
-    git fetch --tags origin
-    git checkout "${PROTOBUF_VERSION}"
+    # Root-owned trees from prior sudo installs: prefer wipe+reclone as current user.
+    if ! git status >/dev/null 2>&1; then
+        cd ..
+        rm -rf protobuf
+        git_clone_with_retry "${PROTOBUF_REPO}" "${PROTOBUF_VERSION}" protobuf
+        cd protobuf
+    else
+        git fetch --tags origin
+        git checkout "${PROTOBUF_VERSION}"
+    fi
 else
     rm -rf protobuf
     git_clone_with_retry "${PROTOBUF_REPO}" "${PROTOBUF_VERSION}" protobuf
     cd protobuf
 fi
 
-git submodule update --init --recursive
+git submodule update --init --recursive || true
 
 if [[ ! -f cmake/CMakeLists.txt ]]; then
     error "expected cmake/CMakeLists.txt at protobuf ${PROTOBUF_VERSION}"
@@ -81,9 +90,8 @@ cmake \
     ../cmake
 
 make -j"${THREAD_NUM}"
-make install
-
-ldconfig 2>/dev/null || true
+autonomy_make_install
+autonomy_ldconfig
 
 cd ../.. && rm -rf protobuf/build
 

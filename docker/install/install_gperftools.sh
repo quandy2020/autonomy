@@ -51,10 +51,10 @@ pushd "gperftools-gperftools-${VERSION}" >/dev/null
     ./configure --prefix="${INSTALL_PREFIX}"
     # shared lib only options: --enable-static=no --with-pic=yes
     make -j$(nproc)
-    make install
+    autonomy_make_install
 popd >/dev/null
 
-ldconfig
+autonomy_ldconfig
 
 ok "Successfully installed gperftools-${VERSION} -> ${INSTALL_PREFIX}."
 

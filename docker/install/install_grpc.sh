@@ -71,13 +71,8 @@ cmake \
     ..
 
 make -j"${THREAD_NUM}"
-if [[ "$(id -u)" -eq 0 ]]; then
-    make install
-else
-    sudo make install
-fi
-
-ldconfig 2>/dev/null || true
+autonomy_make_install
+autonomy_ldconfig
 
 cd ../.. && rm -rf grpc/build
 

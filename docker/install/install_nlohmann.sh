@@ -52,7 +52,7 @@ cmake \
     ..
 
 make -j"${THREAD_NUM}"
-make install
-ldconfig
+autonomy_make_install
+autonomy_ldconfig
 
 ok "Successfully installed nlohmann_json -> ${INSTALL_PREFIX}"

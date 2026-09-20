@@ -49,7 +49,7 @@ cmake \
     ..
 
 make -j"${THREAD_NUM}"
-make install
-ldconfig
+autonomy_make_install
+autonomy_ldconfig
 
 ok "Successfully installed OSQP -> ${INSTALL_PREFIX}"

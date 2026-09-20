@@ -53,12 +53,7 @@ cmake \
     ..
 
 make -j"${THREAD_NUM}"
-if [[ "$(id -u)" -eq 0 ]]; then
-    make install
-else
-    sudo make install
-fi
-
-sudo ldconfig 2>/dev/null || ldconfig 2>/dev/null || true
+autonomy_make_install
+autonomy_ldconfig
 
 ok "Successfully installed glog v0.6.0 -> ${INSTALL_PREFIX}"

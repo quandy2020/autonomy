@@ -71,7 +71,7 @@ _APT_DOCKERFILE_BASE: List[str] = [
     "libflann-dev",
     "libqhull-dev",
     "libpcap0.8",
-    "libpcap0.8-dev",
+    "libpcap-dev",
     "libusb-1.0-0",
     "libusb-1.0-0-dev",
     "libmetis-dev",
@@ -109,6 +109,24 @@ APT_PACKAGES_BOARD: List[str] = _APT_DOCKERFILE_BASE + [
     "nfs-common",
     "libgmock-dev",
 ]
+
+# Soft apt packages: skip if unavailable (mirror/DNS flaky boards).
+APT_OPTIONAL_PACKAGES: frozenset[str] = frozenset(
+    {
+        "clang-format",
+        "stow",
+        "sqlite3",  # runtime CLI; libsqlite3-dev is enough for build
+        "libpcap0.8-dev",  # jammy may only expose libpcap-dev / libpcap0.8
+        "libmetis-dev",
+        "libpoco-dev",
+    }
+)
+
+# Prefer these when primary name is missing.
+APT_PACKAGE_FALLBACKS: Dict[str, List[str]] = {
+    "libpcap0.8-dev": ["libpcap-dev", "libpcap0.8"],
+    "libncurses5-dev": ["libncurses-dev"],
+}
 
 # Apt packages that fight docker/install (remove if present before thirdparty).
 APT_CONFLICT_PACKAGES: List[str] = [
@@ -298,10 +316,62 @@ def purge_apt_conflicts(*, dry_run: bool) -> None:
             run_command(["sudo", "rm", "-rf", str(p)], dry_run=False)
 
 
+def _apt_package_available(package: str) -> bool:
+    """True if apt-cache knows a candidate for package (non-zero = missing)."""
+    try:
+        result = subprocess.run(
+            ["apt-cache", "policy", package],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return True  # best-effort; let apt-get decide
+    # "Candidate: (none)" means not installable from current indexes.
+    for line in result.stdout.splitlines():
+        if "Candidate:" in line:
+            return "(none)" not in line
+    return False
+
+
+def _resolve_apt_packages(packages: Sequence[str]) -> List[str]:
+    """Apply fallbacks and drop unavailable optional packages."""
+    resolved: List[str] = []
+    skipped: List[str] = []
+    for pkg in sorted(set(packages)):
+        candidates = [pkg] + APT_PACKAGE_FALLBACKS.get(pkg, [])
+        chosen = None
+        for candidate in candidates:
+            if _apt_package_available(candidate):
+                chosen = candidate
+                break
+        if chosen is None:
+            if pkg in APT_OPTIONAL_PACKAGES or pkg in APT_PACKAGE_FALLBACKS:
+                skipped.append(pkg)
+                continue
+            # Required but unknown to cache (often stale indexes) — still try.
+            chosen = pkg
+        if chosen not in resolved:
+            resolved.append(chosen)
+    if skipped:
+        print(
+            f"==> Skipping unavailable optional apt packages: {', '.join(skipped)}"
+        )
+    return resolved
+
+
 def install_apt_dependencies(
     packages: Sequence[str], *, dry_run: bool
 ) -> None:
-    run_command(["sudo", "apt-get", "update"], dry_run=dry_run)
+    # update may partially fail on flaky DNS; continue with cached indexes.
+    try:
+        run_command(["sudo", "apt-get", "update"], dry_run=dry_run)
+    except subprocess.CalledProcessError as exc:
+        print(
+            f"Warning: apt-get update failed ({exc.returncode}); "
+            "continuing with existing indexes. Fix board DNS/NAT if packages missing.",
+            file=sys.stderr,
+        )
     run_command(
         ["sudo", "apt-get", "-y", "--fix-broken", "install"], dry_run=dry_run
     )
@@ -310,18 +380,49 @@ def install_apt_dependencies(
             ["sudo", "apt-get", "install", "-y", "libunwind-dev"],
             dry_run=dry_run,
         )
-    cmd = ["sudo", "apt-get", "install", "-y"] + sorted(set(packages))
+
+    to_install = (
+        list(sorted(set(packages)))
+        if dry_run
+        else _resolve_apt_packages(packages)
+    )
+    if not to_install:
+        print("==> No apt packages to install")
+        return
+
+    cmd = ["sudo", "apt-get", "install", "-y"] + to_install
     try:
         run_command(cmd, dry_run=dry_run)
     except subprocess.CalledProcessError:
         if dry_run:
             raise
-        print("Retry apt install after dependency repair...", file=sys.stderr)
+        print(
+            "Retry apt install package-by-package after repair...",
+            file=sys.stderr,
+        )
         run_command(
             ["sudo", "apt-get", "-y", "--fix-broken", "install"],
             dry_run=dry_run,
         )
-        run_command(cmd, dry_run=dry_run)
+        failed: List[str] = []
+        for pkg in to_install:
+            try:
+                run_command(
+                    ["sudo", "apt-get", "install", "-y", pkg], dry_run=dry_run
+                )
+            except subprocess.CalledProcessError:
+                if pkg in APT_OPTIONAL_PACKAGES or any(
+                    pkg == f or pkg in fs
+                    for f, fs in APT_PACKAGE_FALLBACKS.items()
+                ):
+                    print(f"[SKIP] optional/unavailable apt: {pkg}")
+                    continue
+                failed.append(pkg)
+        if failed:
+            raise RuntimeError(
+                "Required apt packages failed (check DNS/NAT + apt update): "
+                + ", ".join(failed)
+            ) from None
 
 
 def _can_detect_installed(script_name: str) -> bool:
@@ -352,16 +453,24 @@ def install_thirdparty(
             + ", ".join(scripts)
         )
 
-    # Prefer /thirdparty (dockerfile convention) when writable.
+    # Prefer a user-writable cache. Avoid root-owned /thirdparty on boards
+    # (causes git "dubious ownership" when install scripts run as firefly).
     cache = os.environ.get("AUTONOMY_THIRDPARTY")
     if not cache:
-        for candidate in (
-            Path("/thirdparty"),
+        candidates = [
             Path.home() / ".cache" / "autonomy" / "thirdparty",
-        ):
+            Path("/thirdparty"),
+            Path(f"/tmp/autonomy-thirdparty-{os.getuid()}"),
+        ]
+        for candidate in candidates:
             try:
                 candidate.mkdir(parents=True, exist_ok=True)
                 if os.access(candidate, os.W_OK):
+                    # Skip /thirdparty if not owned by current user.
+                    if candidate == Path("/thirdparty"):
+                        st = candidate.stat()
+                        if st.st_uid != os.getuid() and os.getuid() != 0:
+                            continue
                     os.environ["AUTONOMY_THIRDPARTY"] = str(candidate)
                     break
             except OSError:

@@ -65,7 +65,8 @@ cmake \
     ..
 
 make -j"$(nproc)"
-make install
+autonomy_make_install
+autonomy_ldconfig
 
 cd .. && rm -rf build
 ok "g2o installed to ${INSTALL_PREFIX}"

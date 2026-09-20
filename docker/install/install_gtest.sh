@@ -43,14 +43,10 @@ pushd googletest >/dev/null
         ..
     
     make -j${THREAD_NUM}
-    if [[ "$(id -u)" -eq 0 ]]; then
-        make install
-    else
-        sudo make install
-    fi
+    autonomy_make_install
 popd >/dev/null
 
-ldconfig
+autonomy_ldconfig
 
 ok "Successfully installed googletest v1.17.0"
 

@@ -60,9 +60,8 @@ cmake \
     ..
 
 make -j"${THREAD_NUM}"
-make install
-
-ldconfig 2>/dev/null || true
+autonomy_make_install
+autonomy_ldconfig
 
 cd ../.. && rm -rf ceres-solver/build
 
