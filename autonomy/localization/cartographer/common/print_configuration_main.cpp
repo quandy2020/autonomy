@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
         "The logs of the configuration file resolver are written to stderr if "
         "'--logtostderr' is given.");
     google::ParseCommandLineFlags(&argc, &argv, true);
-    autolink::InitLogging(argv[0]);
+    google::InitGoogleLogging(argv[0]);
 
     if (FLAGS_configuration_directories.empty() || FLAGS_configuration_basename.empty()) {
         google::ShowUsageWithFlagsRestrict(argv[0], "print_configuration_main");

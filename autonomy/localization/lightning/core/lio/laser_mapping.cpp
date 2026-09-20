@@ -749,24 +749,19 @@ CloudPtr LaserMapping::GetGlobalMap(bool use_lio_pose, bool use_voxel, float res
 
     for (auto &kf : all_keyframes_) {
         CloudPtr cloud = kf->GetCloud();
-
-        CloudPtr cloud_filter(new PointCloudType);
-
-        if (use_voxel) {
-            voxel.setInputCloud(cloud);
-            voxel.filter(*cloud_filter);
-
-        } else {
-            cloud_filter = cloud;
+        if (!cloud || cloud->empty()) {
+            continue;
         }
+        // KF clouds are already undistorted/downsampled. Per-KF VoxelGrid here
+        // was ~0.7s at a few hundred KFs and dropped SHM lidar frames.
+        CloudPtr cloud_filter = cloud;
 
         CloudPtr cloud_trans(new PointCloudType);
-
-        if (use_lio_pose) {
-            pcl::transformPointCloud(*cloud_filter, *cloud_trans, kf->GetLIOPose().matrix());
-        } else {
-            pcl::transformPointCloud(*cloud_filter, *cloud_trans, kf->GetOptPose().matrix());
-        }
+        // KF cloud is undistorted lidar-frame; LIO/opt pose is IMU. Match ObsModel.
+        const SE3 T_imu_lidar(offset_R_lidar_fixed_, offset_t_lidar_fixed_);
+        const SE3 T_world_imu = use_lio_pose ? kf->GetLIOPose() : kf->GetOptPose();
+        pcl::transformPointCloud(*cloud_filter, *cloud_trans,
+                                 (T_world_imu * T_imu_lidar).matrix());
 
         *global_map += *cloud_trans;
     }
@@ -786,6 +781,15 @@ CloudPtr LaserMapping::GetGlobalMap(bool use_lio_pose, bool use_voxel, float res
     LOG(INFO) << "global map: " << global_map_filtered->size();
 
     return global_map_filtered;
+}
+
+CloudPtr LaserMapping::GetScanWorld() const {
+    CloudPtr out(new PointCloudType);
+    if (!scan_down_world_ || scan_down_world_->empty()) {
+        return out;
+    }
+    *out = *scan_down_world_;
+    return out;
 }
 
 void LaserMapping::SaveMap() {

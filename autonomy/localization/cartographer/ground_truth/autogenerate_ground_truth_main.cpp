@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
         "All loop closure constraints separated by long covered distance are\n"
         "included in the output. Outliers are removed.\n");
     google::ParseCommandLineFlags(&argc, &argv, true);
-    autolink::InitLogging(argv[0]);
+    google::InitGoogleLogging(argv[0]);
 
     if (FLAGS_pose_graph_filename.empty() || FLAGS_output_filename.empty()) {
         google::ShowUsageWithFlagsRestrict(argv[0], "autogenerate_ground_truth");

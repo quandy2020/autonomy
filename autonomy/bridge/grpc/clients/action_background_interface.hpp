@@ -65,16 +65,6 @@ struct ActionBackgroundHooks {
     AUTONOMY_SMART_PTR_DEFINITIONS(ActionBackgroundHooks<Derived>)
 
     /**
-     * @brief Goal-handle type from Derived::Client.
-     */
-    using GoalHandle = typename Derived::Client::GoalHandle;
-
-    /**
-     * @brief Stream response type from Derived.
-     */
-    using Response = typename Derived::Response;
-
-    /**
      * @brief Optional pre-start reject hook.
      *
      * @details Invoked before session.Start. Return a message to reject, or
@@ -85,10 +75,12 @@ struct ActionBackgroundHooks {
     /**
      * @brief Called under no assumed lock after goal accept.
      *
-     * @details Receives the GoalHandle shared_ptr from SendActionGoal when
-     * status == kAccepted. Typical use: stash the handle for Cancel/Pause.
+     * @details Receives the GoalHandle as type-erased shared_ptr (cast back to
+     * `Derived::Client::GoalHandle` in the callback). Avoids naming
+     * `Derived::Client` at class scope so CRTP leaves stay incomplete while
+     * `ActionBackgroundInterface<Derived>` is instantiated.
      */
-    std::function<void(std::shared_ptr<GoalHandle>)> on_accepted;
+    std::function<void(std::shared_ptr<void>)> on_accepted;
 
     /**
      * @brief When true, skip emitting feedback frames.
@@ -136,28 +128,16 @@ public:
     AUTONOMY_SMART_PTR_DEFINITIONS(ActionBackgroundInterface<Derived>)
 
     /**
-     * @brief Action NodeClient type from Derived.
-     */
-    using Client = typename Derived::Client;
-
-    /**
-     * @brief Rpc request type from Derived.
-     */
-    using Request = typename Derived::Request;
-
-    /**
-     * @brief Stream response type from Derived.
-     */
-    using Response = typename Derived::Response;
-
-    /**
-     * @brief Stream sink for accept / feedback / result / reject frames.
-     */
-    using StreamCallback = std::function<void(const Response&)>;
-
-    /**
      * @brief Gate + immediate Accept ACK + schedule Execute.
      *
+     * @details Client / Request / Response are method template parameters so
+     * this declaration does not require a complete Derived (CRTP
+     * `struct Leaf : Base<Leaf>`). Nested types are only used when the method
+     * is instantiated at the call site.
+     *
+     * @tparam Client    Action NodeClient type (`Derived::Client`).
+     * @tparam Request   Rpc request type (`Derived::Request`).
+     * @tparam Response  Stream response type (`Derived::Response`).
      * @param[in,out] session  Background command session owning the stream.
      * @param[in,out] client   Action NodeClient used for SendGoal.
      * @param[in]     request  Rpc request converted via Derived::ConvertToGoal.
@@ -166,9 +146,14 @@ public:
      *                        on_result_clear hooks.
      * @return false if rejected before schedule (reject already emitted).
      */
-    bool StartAction(BackgroundCommandSession<Response>& session, Client& client,
-               const Request& request, StreamCallback callback,
-               ActionBackgroundHooks<Derived> hooks) const {
+    template <typename Client, typename Request, typename Response>
+    bool StartAction(
+        BackgroundCommandSession<Response>& session, Client& client,
+        const Request& request,
+        std::function<void(const Response&)> callback,
+        ActionBackgroundHooks<Derived> hooks) const {
+        using StreamCallback = std::function<void(const Response&)>;
+
         const Derived& policy = this->impl();
 
         if (!callback) {
@@ -215,7 +200,7 @@ public:
                     return false;
                 }
                 if (hooks.on_accepted) {
-                    hooks.on_accepted(result.handle);
+                    hooks.on_accepted(std::shared_ptr<void>(result.handle));
                 }
                 if constexpr (Derived::kEmitAfterAccept) {
                     emit(policy.MakeAfterAccept(request));

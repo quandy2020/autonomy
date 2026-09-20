@@ -7,7 +7,7 @@ common:
 # fasterlio 参数
 fasterlio:
   lidar_type: 3                # 2 for Velodyne LiDAR, 3 for ouster LiDAR, 4 for robosense, 5 for generic
-  scan_line: 32
+  scan_line: 64
   blind: 0.5                # 盲区，小于盲区距离的不会处理
   time_scale: 1e-3             # 兼容不同数据集的时间单位，仅对Velodyne LiDAR(lidar_type=2)生效
 

@@ -47,16 +47,19 @@ namespace handlers {
  * Expands to `(builder.RegisterHandler<HandlerTs>(), ...)` so every handler
  * type in the pack is registered exactly once at server build time.
  *
- * @tparam BuilderT Server builder with `template <typename H> void RegisterHandler()`.
  * @tparam HandlerTs Handler types accepted by Builder::RegisterHandler
  *         (typically RpcHandler specializations from rpc_*_handlers.hpp).
+ * @tparam BuilderT Server builder with `template <typename H> void RegisterHandler()`.
  * @param[in,out] builder Server builder receiving the registrations.
  *
+ * @note HandlerTs is the explicit template pack; BuilderT is deduced from
+ *       `builder` so calls like `RegisterHandlers<H1, H2>(builder)` do not bind
+ *       H1 to BuilderT.
  * @note Empty HandlerTs packs are a no-op fold.
  * @warning Duplicate HandlerTs in the pack may register twice depending on
  *          Builder semantics — keep the pack unique.
  */
-template <typename BuilderT, typename... HandlerTs>
+template <typename... HandlerTs, typename BuilderT>
 void RegisterHandlers(BuilderT& builder) {
     (builder.template RegisterHandler<HandlerTs>(), ...);
 }

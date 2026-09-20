@@ -198,6 +198,7 @@ bool LightningNode::Start() {
     trajectory_writer_ = node_->CreateWriter<automsgs::msgs::nav_msgs::Path>(
         options_.trajectory_topic);
     cloud_writer_ = node_->CreateWriter<CloudMsg>(options_.cloud_map_topic);
+    scan_writer_ = node_->CreateWriter<CloudMsg>(options_.cloud_scan_topic);
     occ_writer_ =
         node_->CreateWriter<automsgs::msgs::map_msgs::OccupancyGrid>(
             options_.occupancy_topic);
@@ -276,6 +277,7 @@ void LightningNode::Shutdown() {
     odom_writer_.reset();
     trajectory_writer_.reset();
     cloud_writer_.reset();
+    scan_writer_.reset();
     occ_writer_.reset();
     loop_edges_writer_.reset();
     tf_writer_.reset();
@@ -308,10 +310,26 @@ void LightningNode::OnCloud(const std::shared_ptr<CloudMsg>& msg) {
     if (!CloudMsgToLightning(*msg, &cloud) || !cloud || cloud->empty()) {
         return;
     }
+    if (lidar_frame_.empty()) {
+        if (!options_.lidar_frame.empty()) {
+            lidar_frame_ = options_.lidar_frame;
+        } else if (msg->has_header() && !msg->header().frame_id().empty()) {
+            lidar_frame_ = msg->header().frame_id();
+        } else {
+            lidar_frame_ = options_.base_frame;
+        }
+        double t_max_ms = 0.0;
+        for (const auto& p : cloud->points) {
+            t_max_ms = std::max(t_max_ms, p.time);
+        }
+        AINFO << "LightningNode: lidar frame=" << lidar_frame_
+              << " n=" << cloud->size() << " t_span_ms=" << t_max_ms;
+    }
 
     lightning::SE3 pose;
     double timestamp = 0.0;
     bool have_pose = false;
+    lightning::CloudPtr scan_world;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         slam_->ProcessLidarFrontend(cloud);
@@ -320,6 +338,7 @@ void LightningNode::OnCloud(const std::shared_ptr<CloudMsg>& msg) {
             pose = state.GetPose();
             timestamp = state.timestamp_;
             have_pose = true;
+            scan_world = slam_->lio()->GetScanWorld();
         }
     }
     slam_->FlushPendingKeyframe();
@@ -332,6 +351,7 @@ void LightningNode::OnCloud(const std::shared_ptr<CloudMsg>& msg) {
     last_pub_t_.store(timestamp, std::memory_order_relaxed);
     PublishPose(timestamp, pose);
     PublishMapOdomTf(timestamp, pose);
+    PublishRegisteredScan(timestamp, scan_world);
     PublishGlobalCloud(timestamp);
     PublishLoopEdges(timestamp);
 }
@@ -515,12 +535,32 @@ void LightningNode::PublishMapOdomTf(double timestamp_sec,
         *tf_msg.add_transforms() = odom_base;
     }
 
+    if (!lidar_frame_.empty() && lidar_frame_ != options_.base_frame) {
+        automsgs::msgs::geometry_msgs::TransformStamped base_lidar;
+        SetStamp(base_lidar.mutable_header()->mutable_stamp(), timestamp_sec);
+        base_lidar.mutable_header()->set_frame_id(options_.base_frame);
+        base_lidar.set_child_frame_id(lidar_frame_);
+        Mat44ToTransformMsg(Eigen::Matrix4d::Identity(),
+                            base_lidar.mutable_transform());
+        transform::ApplyTransformStampedToBuffer(tf_buffer_, base_lidar,
+                                                 "lightning", false);
+        *tf_msg.add_transforms() = base_lidar;
+        if (!logged_lidar_tf_) {
+            AINFO << "LightningNode: publishing identity TF "
+                  << options_.base_frame << "→" << lidar_frame_
+                  << " so Autoviz can transform " << options_.lidar_topic;
+            logged_lidar_tf_ = true;
+        }
+    }
+
     tf_writer_->Write(tf_msg);
 }
 
 void LightningNode::PublishCloud(double timestamp_sec,
-                                 const lightning::CloudPtr& map) {
-    if (!cloud_writer_ || !map || map->empty()) {
+                                 const lightning::CloudPtr& map,
+                                 bool height_color) {
+    auto* writer = height_color ? cloud_writer_.get() : scan_writer_.get();
+    if (!writer || !map || map->empty()) {
         return;
     }
 
@@ -528,10 +568,12 @@ void LightningNode::PublishCloud(double timestamp_sec,
                                std::max(1, options_.global_cloud_max_points));
     float z_min = map->points.front().z;
     float z_max = z_min;
-    for (int i = 0; i < count; ++i) {
-        const float z = map->points[static_cast<std::size_t>(i)].z;
-        z_min = std::min(z_min, z);
-        z_max = std::max(z_max, z);
+    if (height_color) {
+        for (int i = 0; i < count; ++i) {
+            const float z = map->points[static_cast<std::size_t>(i)].z;
+            z_min = std::min(z_min, z);
+            z_max = std::max(z_max, z);
+        }
     }
     const float z_span = std::max(z_max - z_min, 0.15f);
 
@@ -554,19 +596,23 @@ void LightningNode::PublishCloud(double timestamp_sec,
 
     std::vector<float> data;
     data.reserve(static_cast<std::size_t>(count) * 4);
+    const uint32_t scan_rgb = (0x33u << 16) | (0xE0u << 8) | 0xFFu;
     for (int i = 0; i < count; ++i) {
         const auto& p = map->points[static_cast<std::size_t>(i)];
         data.push_back(p.x);
         data.push_back(p.y);
         data.push_back(p.z);
-        const uint32_t packed = JetRgb((p.z - z_min) / z_span);
+        uint32_t packed = scan_rgb;
+        if (height_color) {
+            packed = JetRgb((p.z - z_min) / z_span);
+        }
         float rgb_as_float = 0.f;
         std::memcpy(&rgb_as_float, &packed, sizeof(float));
         data.push_back(rgb_as_float);
     }
     cloud.set_data(reinterpret_cast<const char*>(data.data()),
                    data.size() * sizeof(float));
-    cloud_writer_->Write(cloud);
+    writer->Write(cloud);
 }
 
 void LightningNode::PublishGlobalCloud(double timestamp_sec) {
@@ -585,8 +631,13 @@ void LightningNode::PublishGlobalCloud(double timestamp_sec) {
     if (!map || map->empty()) {
         return;
     }
-    PublishCloud(timestamp_sec, map);
+    PublishCloud(timestamp_sec, map, true);
     last_global_cloud_pub_t_ = timestamp_sec;
+}
+
+void LightningNode::PublishRegisteredScan(double timestamp_sec,
+                                          const lightning::CloudPtr& scan_world) {
+    PublishCloud(timestamp_sec, scan_world, false);
 }
 
 void LightningNode::PublishLoopEdges(double timestamp_sec) {

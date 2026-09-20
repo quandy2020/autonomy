@@ -580,14 +580,14 @@ struct ActiveStatus {
  * @param IncomingType      Request protobuf type (body unused).
  * @param OutgoingType      Response protobuf type.
  * @param MethodPath        Fully-qualified gRPC method path string.
- * @param ResponseBuilder   Type with `static OutgoingType Build(Context*)`.
+ * @param ...               ResponseBuilder type (`static OutgoingType Build(Context*)`).
+ *                          Variadic so `ActiveStatus<A, B, C, D>` commas are preserved.
  */
-#define BRIDGE_BUILD(HandlerName, IncomingType, OutgoingType, MethodPath,         \
-                     ResponseBuilder)                                             \
+#define BRIDGE_BUILD(HandlerName, IncomingType, OutgoingType, MethodPath, ...)    \
     DEFINE_HANDLER_SIGNATURE(HandlerName##Signature, IncomingType, OutgoingType,  \
                              MethodPath)                                          \
     using HandlerName = ::autonomy::bridge::grpc::handlers::BuildHandler<         \
-        HandlerName##Signature, ResponseBuilder>
+        HandlerName##Signature, __VA_ARGS__>
 
 /**
  * @def BRIDGE_DECL

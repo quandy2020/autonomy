@@ -76,7 +76,7 @@ void Run(const std::string& pbstream_filename, const std::string& map_filestem,
 
 int main(int argc, char** argv) {
     google::ParseCommandLineFlags(&argc, &argv, false);
-    autolink::InitLogging(argv[0]);
+    google::InitGoogleLogging(argv[0]);
 
     CHECK(!FLAGS_pbstream_filename.empty()) << "-pbstream_filename is missing.";
     CHECK(!FLAGS_map_filestem.empty()) << "-map_filestem is missing.";

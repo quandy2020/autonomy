@@ -19,6 +19,7 @@
  * @brief Unit tests for JetAuto IK and RRC motor packet framing.
  */
 
+#include "chassis/backend_registry.hpp"
 #include "chassis/jetauto/driver.hpp"
 #include "chassis/jetauto/kinematics.hpp"
 #include "chassis/jetauto/rrc_protocol.hpp"

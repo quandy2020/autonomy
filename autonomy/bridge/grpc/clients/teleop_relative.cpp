@@ -190,7 +190,10 @@ bool TeleopRelativeBackend::StartRelativeAction(
     };
     hooks.on_accepted =
         [this, mode, handle_slot, goal_id = Traits{}.CmdId(request)](
-            std::shared_ptr<typename Traits::Client::GoalHandle> handle) {
+            std::shared_ptr<void> erased) {
+            auto handle =
+                std::static_pointer_cast<typename Traits::Client::GoalHandle>(
+                    std::move(erased));
             std::lock_guard<std::mutex> lock(mutex_);
             mode_ = mode;
             goal_id_ = goal_id;

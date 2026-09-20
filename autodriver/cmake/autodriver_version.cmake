@@ -38,11 +38,37 @@ function(autodriver_collect_git_version)
   endif()
 
   file(READ "${_version_file}" _json)
-  string(JSON _name GET "${_json}" name)
-  string(JSON _desc GET "${_json}" description)
-  string(JSON _major GET "${_json}" major)
-  string(JSON _minor GET "${_json}" minor)
-  string(JSON _patch GET "${_json}" patch)
+  # Recover from unresolved merge conflicts (<<<<<<< / ======= / >>>>>>>).
+  if(_json MATCHES "<<<<<<<" OR _json MATCHES ">>>>>>>")
+    message(WARNING
+      "autodriver: ${_version_file} has merge conflict markers; "
+      "falling back to defaults (configure will rewrite a clean file)")
+    set(_json "{
+  \"version\": \"0.2.0\",
+  \"major\": 0,
+  \"minor\": 2,
+  \"patch\": 0,
+  \"name\": \"Autodriver\",
+  \"description\": \"Sensor + chassis HAL for vehicle robots\"
+}
+")
+  endif()
+  string(JSON _name ERROR_VARIABLE _json_err GET "${_json}" name)
+  if(_json_err)
+    message(WARNING
+      "autodriver: failed to parse ${_version_file}: ${_json_err}; "
+      "using defaults")
+    set(_name "Autodriver")
+    set(_desc "Sensor + chassis HAL for vehicle robots")
+    set(_major "0")
+    set(_minor "2")
+    set(_patch "0")
+  else()
+    string(JSON _desc GET "${_json}" description)
+    string(JSON _major GET "${_json}" major)
+    string(JSON _minor GET "${_json}" minor)
+    string(JSON _patch GET "${_json}" patch)
+  endif()
 
   set(_git_describe "unknown")
   set(_git_commit "unknown")

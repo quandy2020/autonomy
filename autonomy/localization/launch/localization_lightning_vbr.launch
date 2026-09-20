@@ -19,11 +19,12 @@
     /ouster/points   PointCloud2  (Ouster, field t = ns)
 
   Publishes:
-    /lightning/odometry     Odometry
-    /lightning/trajectory   Path
-    /lightning/cloud_map    PointCloud2
-    /lightning/occupancy    OccupancyGrid
-    /lightning/loop_edges   MarkerArray
+    /lightning/odometry          Odometry
+    /lightning/trajectory        Path
+    /lightning/cloud_map         PointCloud2 (map, height-colored)
+    /lightning/cloud_registered  PointCloud2 (current scan in map; overlay this, not /ouster/points)
+    /lightning/occupancy         OccupancyGrid
+    /lightning/loop_edges        MarkerArray
 -->
 <autolink>
   <module>

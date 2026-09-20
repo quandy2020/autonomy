@@ -199,12 +199,13 @@ struct RelativeActionBase : ActionBackgroundInterface<Derived> {
 
     /**
      * @brief Map wrapped action result to a terminal TeleopResponse.
+     *
+     * @tparam Request        Relative RPC request type with goal_id().
+     * @tparam WrappedResult  Action GoalHandle::WrappedResult (deduced).
      */
-    template <typename Request>
-    Response MakeResult(
-        const Request& request,
-        const typename Derived::Client::GoalHandle::WrappedResult& wrapped)
-        const {
+    template <typename Request, typename WrappedResult>
+    Response MakeResult(const Request& request,
+                        const WrappedResult& wrapped) const {
         const bool ok =
             wrapped.code == autolink::action::ResultCode::SUCCEEDED;
         return detail::MakeTeleopResponse(

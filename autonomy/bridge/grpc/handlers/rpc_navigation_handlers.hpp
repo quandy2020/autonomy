@@ -121,7 +121,7 @@ inline void RpcNavigateHandler::OnRequest(
         ReplyUnary(this, std::move(response));
         return;
     }
-    LogIngress(RpcNavigateSignature::MethodName(), request);
+    LogIngress(RpcNavigateHandlerSignature::MethodName(), request);
     RelayStream(
         this,
         [&](auto* context, auto&& callback) {

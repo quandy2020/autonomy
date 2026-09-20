@@ -45,10 +45,12 @@ public:
         std::string map_frame = "map";
         std::string odom_frame = "odom";
         std::string base_frame = "base_link";
+        std::string lidar_frame;  // empty: use incoming PointCloud2 frame_id
 
         std::string odometry_topic = "/lightning/odometry";
         std::string trajectory_topic = "/lightning/trajectory";
         std::string cloud_map_topic = "/lightning/cloud_map";
+        std::string cloud_scan_topic = "/lightning/cloud_registered";
         std::string occupancy_topic = "/lightning/occupancy";
         std::string loop_edges_topic = "/lightning/loop_edges";
         std::string tf_topic = "/tf";
@@ -79,8 +81,11 @@ private:
     bool CloudMsgToLightning(const CloudMsg& msg, lightning::CloudPtr* out) const;
     void PublishPose(double timestamp_sec, const lightning::SE3& T_map_imu);
     void PublishMapOdomTf(double timestamp_sec, const lightning::SE3& T_map_imu);
-    void PublishCloud(double timestamp_sec, const lightning::CloudPtr& cloud);
+    void PublishCloud(double timestamp_sec, const lightning::CloudPtr& cloud,
+                      bool height_color);
     void PublishGlobalCloud(double timestamp_sec);
+    void PublishRegisteredScan(double timestamp_sec,
+                               const lightning::CloudPtr& scan_world);
     void PublishLoopEdges(double timestamp_sec);
 
     Options options_;
@@ -93,6 +98,7 @@ private:
     std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>>
         trajectory_writer_;
     std::shared_ptr<autolink::Writer<CloudMsg>> cloud_writer_;
+    std::shared_ptr<autolink::Writer<CloudMsg>> scan_writer_;
     std::shared_ptr<autolink::Writer<automsgs::msgs::map_msgs::OccupancyGrid>>
         occ_writer_;
     std::shared_ptr<autolink::Writer<
@@ -109,6 +115,8 @@ private:
     std::size_t last_reloc_edge_count_ = 0;
     double last_constraint_pub_t_ = -1.0;
     bool logged_identity_odom_tf_ = false;
+    bool logged_lidar_tf_ = false;
+    std::string lidar_frame_;
 };
 
 }  // namespace localization

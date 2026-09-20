@@ -150,6 +150,12 @@ void PointCloud2Display::processMessage(
     }
   }
 
+  // RViz-like: a sensor-frame cloud with no TF must not be drawn at the
+  // identity (that puts raw /ouster/points on the map origin as rings).
+  if (frame != context_->fixed_frame && !have_tf) {
+    return;
+  }
+
   const std::string color_transform =
       propertyValue("color_transform", "Intensity");
   const PointCloudColorMode mode = parsePointCloudColorMode(color_transform);

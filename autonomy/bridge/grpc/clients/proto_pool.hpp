@@ -76,11 +76,13 @@ public:
      */
     explicit ProtoPool(std::uint32_t size = 32)
         : pool_(std::make_shared<::autolink::base::ObjectPool<MessageT>>(
-              size, [](MessageT* message) {
-                  if (message) {
-                      message->Clear();
-                  }
-              })) {}
+              size,
+              typename ::autolink::base::ObjectPool<MessageT>::InitFunc(
+                  [](MessageT* message) {
+                      if (message) {
+                          message->Clear();
+                      }
+                  }))) {}
 
     /**
      * @brief Borrow a cleared message; never returns null.

@@ -267,13 +267,27 @@ void ESKF::Update(ESKF::ObsType obs, const double& R) {
         // LOG(INFO) << "iter " << iterations_ << ", dx: " << dx_current.transpose();
         const double dx_translation = dx_current.head<3>().norm();
         const double dx_rotation_deg = dx_current.segment<3>(3).norm() * 180.0 / M_PI;
-        if (dx_translation > options_.max_update_translation_step_ ||
-            dx_rotation_deg > options_.max_update_rotation_step_deg_) {
-            LOG(ERROR) << "Reject ESKF iter update, dtrans: " << dx_translation << ", drot_deg: " << dx_rotation_deg
-                       << ", dvel: " << dx_current.segment<NavState::kBlockDim>(NavState::kVelIdx).norm();
-            x_ = start_x;
-            P_ = P_propagated;
-            return;
+        const double dx_velocity =
+            dx_current.segment<NavState::kBlockDim>(NavState::kVelIdx).norm();
+        // After playback hitch (~0.6s lidar gap) the legitimate lidar
+        // correction is often >0.5m. Rejecting froze pose (delta trans=0)
+        // and the live scan drifted off the map. Clamp instead.
+        if (dx_translation > options_.max_update_translation_step_ &&
+            dx_translation > 1e-6) {
+            dx_current.head<3>() *=
+                options_.max_update_translation_step_ / dx_translation;
+            LOG(WARNING) << "Clamp ESKF dtrans: " << dx_translation;
+        }
+        if (dx_rotation_deg > options_.max_update_rotation_step_deg_ &&
+            dx_rotation_deg > 1e-6) {
+            dx_current.segment<3>(3) *=
+                options_.max_update_rotation_step_deg_ / dx_rotation_deg;
+            LOG(WARNING) << "Clamp ESKF drot_deg: " << dx_rotation_deg;
+        }
+        if (dx_velocity > options_.max_update_velocity_step_ &&
+            dx_velocity > 1e-6) {
+            dx_current.segment<NavState::kBlockDim>(NavState::kVelIdx) *=
+                options_.max_update_velocity_step_ / dx_velocity;
         }
 
         if (!use_aa_) {

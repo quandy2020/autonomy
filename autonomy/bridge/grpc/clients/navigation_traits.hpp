@@ -183,14 +183,15 @@ struct NavigatorActionBase : ActionBackgroundInterface<Derived> {
     /**
      * @brief Map wrapped action result to a terminal NavigateResponse.
      *
+     * @tparam WrappedResult Action GoalHandle::WrappedResult (deduced; avoids
+     * naming incomplete Derived::Client while the CRTP base is instantiated).
      * @param[in] request Source request.
      * @param[in] wrapped Action WrappedResult.
      * @return            Terminal response with arrived / cancelled / failed state.
      */
-    Response MakeResult(
-        const Request& request,
-        const typename Derived::Client::GoalHandle::WrappedResult& wrapped)
-        const {
+    template <typename WrappedResult>
+    Response MakeResult(const Request& request,
+                        const WrappedResult& wrapped) const {
         const auto state = ResolveNavigationState(wrapped.code);
         const bool ok =
             wrapped.code == autolink::action::ResultCode::SUCCEEDED;

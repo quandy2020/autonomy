@@ -212,11 +212,14 @@ private:
      * @brief Dereference a stub UniquePtr with a null log (debug aid).
      *
      * @tparam Stub Domain stub type.
-     * @param[in] ptr Owned UniquePtr; must be non-null after construction.
+     * @param[in] ptr Owned unique_ptr; must be non-null after construction.
      * @return        Reference to `*ptr` (UB if null after the AERROR log).
+     *
+     * @note Takes `std::unique_ptr<Stub>` (not `Stub::UniquePtr`) so Stub can
+     * be deduced; nested UniquePtr is a non-deduced context.
      */
     template <typename Stub>
-    static Stub& Ref(const typename Stub::UniquePtr& ptr) {
+    static Stub& Ref(const std::unique_ptr<Stub>& ptr) {
         if (!ptr) {
             AERROR << "DomainBundle: null stub UniquePtr";
         }

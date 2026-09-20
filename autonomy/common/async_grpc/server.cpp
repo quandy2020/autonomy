@@ -152,7 +152,21 @@ Server::Server(
     server_builder_.SetMaxSendMessageSize(options.max_send_message_size);
     server_builder_.AddChannelArgument(
         GRPC_ARG_MAX_RECEIVE_MESSAGE_LENGTH, options.max_receive_message_size);
-    server_builder_.SetChannelArguments(options_.channel_arguments);
+    // Newer gRPC removed ServerBuilder::SetChannelArguments; apply args
+    // individually via AddChannelArgument.
+    {
+        const grpc_channel_args c_args =
+            options_.channel_arguments.c_channel_args();
+        for (size_t i = 0; i < c_args.num_args; ++i) {
+            const grpc_arg& arg = c_args.args[i];
+            if (arg.type == GRPC_ARG_INTEGER) {
+                server_builder_.AddChannelArgument(arg.key, arg.value.integer);
+            } else if (arg.type == GRPC_ARG_STRING && arg.value.string) {
+                server_builder_.AddChannelArgument(
+                    arg.key, std::string(arg.value.string));
+            }
+        }
+    }
 
     if (options_.enable_default_health_check) {
         ::grpc::EnableDefaultHealthCheckService(true);

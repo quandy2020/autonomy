@@ -84,6 +84,8 @@ class LaserMapping {
     }
 
     CloudPtr GetScanUndist() const { return scan_undistort_; }
+    /// Downsampled current scan in map/world (IMU pose × T_imu_lidar).
+    CloudPtr GetScanWorld() const;
     CloudPtr GetProjCloud();
 
     /// 获取最新的点云

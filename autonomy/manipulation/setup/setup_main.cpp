@@ -16,7 +16,6 @@
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/manipulation/setup/setup_assistant_lite.hpp"
-#include "autolink/init.hpp"
 
 DEFINE_string(urdf, "", "Path to robot URDF");
 DEFINE_string(srdf, "", "Path to robot SRDF (optional)");
@@ -31,7 +30,7 @@ DEFINE_bool(convexparts, true, "Emit empty *.convexparts templates");
 
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
-  autolink::InitLogging(argv[0]);
+  google::InitGoogleLogging(argv[0]);
   FLAGS_alsologtostderr = true;
 
   if (FLAGS_urdf.empty()) {

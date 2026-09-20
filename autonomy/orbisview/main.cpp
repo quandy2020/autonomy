@@ -28,7 +28,7 @@ void OnSignal(int) { g_running = false; }
 
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
-  autolink::InitLogging(argv[0]);
+  google::InitGoogleLogging(argv[0]);
   std::signal(SIGINT, OnSignal);
   std::signal(SIGTERM, OnSignal);
 

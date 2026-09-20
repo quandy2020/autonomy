@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
         "\tinfo    - Prints summary of pbstream.\n"
         "\tmigrate - Migrates pbstream to the new submap format.";
     google::ParseCommandLineFlags(&argc, &argv, true);
-    autolink::InitLogging(argv[0]);
+    google::InitGoogleLogging(argv[0]);
 
     if (argc < 2) {
         google::SetUsageMessage(usage_message);

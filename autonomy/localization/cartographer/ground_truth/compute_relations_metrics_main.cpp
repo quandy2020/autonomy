@@ -190,7 +190,7 @@ int main(int argc, char** argv) {
         "C. Stachniss, and A. Kleiner, \"On measuring the accuracy of SLAM\n"
         "algorithms,\" Autonomous Robots, vol. 27, no. 4, pp. 387–407, 2009.");
     google::ParseCommandLineFlags(&argc, &argv, true);
-    autolink::InitLogging(argv[0]);
+    google::InitGoogleLogging(argv[0]);
 
     if (FLAGS_pose_graph_filename.empty() || FLAGS_relations_filename.empty()) {
         google::ShowUsageWithFlagsRestrict(argv[0], "compute_relations_metrics");
