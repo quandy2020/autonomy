@@ -1,8 +1,16 @@
 # @file FindPinocchio.cmake
 # @brief Optional Pinocchio rigid-body dynamics (manipulation FEATURE pinocchio).
+#
+# Prefer a manual library probe when the installed pinocchioConfig.cmake would
+# FATAL_ERROR on incomplete deps (e.g. missing urdfdom_headers on boards).
 
-find_package(pinocchio QUIET CONFIG
-  PATHS /opt/homebrew /usr/local ${CMAKE_INSTALL_PREFIX})
+# Config export pulls REQUIRED find_dependency(urdfdom_headers); QUIET does not
+# suppress that. Only enter CONFIG when headers package is already present.
+find_package(urdfdom_headers QUIET CONFIG)
+if(urdfdom_headers_FOUND OR urdfdom_headers_DIR)
+  find_package(pinocchio QUIET CONFIG
+    PATHS /opt/homebrew /usr/local ${CMAKE_INSTALL_PREFIX})
+endif()
 
 if(pinocchio_FOUND)
   set(Pinocchio_FOUND TRUE)

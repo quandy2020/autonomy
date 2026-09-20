@@ -136,6 +136,12 @@ class Config:
     def ubuntu_id_token(self) -> str:
         return str(self._settings["platform"]["ubuntu_id_token"])
 
+    @property
+    def debian_id_token(self) -> str:
+        return str(
+            self._settings["platform"].get("debian_id_token", "ID=debian")
+        )
+
     def run_command(
         self,
         command: Iterable[str],

@@ -18,6 +18,7 @@
 |------|------|----------|
 | **宿主机原生** | 日常开发、CI | `install_deps` → `cmake` + `ninja` |
 | **Docker 容器** | 环境隔离、多架构 | `run_autonomy.py` → 容器内同上 |
+| **交叉编译（nvidia）** | 用已有 `autonomy.platform.x86_64.nvidia` + 交叉工具 + 挂载 sysroot | `SYSROOT_DIR=... run_autonomy.py -p nvidia --profile cross --build` |
 
 两种方式均使用 **CMake + Ninja**，**不强制依赖 ROS 2**。
 

@@ -19,21 +19,40 @@
 # Fail on first error.
 set -e
 
-cd /thirdparty
-git clone --single-branch --branch v3.12.0 https://github.com/nlohmann/json.git
-cd json && git submodule init && git submodule update
+cd "$(dirname "${BASH_SOURCE[0]}")"
+. ./installer_base.sh
 
-# cyber
-mkdir build && cd build 
+THIRDPARTY="$(autonomy_thirdparty_dir)"
+INSTALL_PREFIX="$(autonomy_cmake_install_prefix)"
+THREAD_NUM=$(nproc)
+
+if [[ -f "${INSTALL_PREFIX}/include/nlohmann/json.hpp" ]]; then
+    ok "nlohmann_json already installed under ${INSTALL_PREFIX}, skipping"
+    exit 0
+fi
+
+info "Installing nlohmann_json -> ${INSTALL_PREFIX}"
+
+cd "${THIRDPARTY}"
+if [[ ! -d json/.git ]]; then
+    rm -rf json
+    git_clone_with_retry https://github.com/nlohmann/json.git v3.12.0 json
+fi
+cd json
+git submodule init && git submodule update || true
+
+rm -rf build
+mkdir build && cd build
 cmake \
-    -DCMAKE_INSTALL_PREFIX=/usr/local \
-    -DCMAKE_BUILD_TYPE=Release        \
-    -DCMAKE_CXX_STANDARD=17           \
-    -DBUILD_SHARED_LIBS=ON            \
-    ..  
+    -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX}" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_CXX_STANDARD=17 \
+    -DBUILD_SHARED_LIBS=ON \
+    -DJSON_BuildTests=OFF \
+    ..
 
-make -j8
-sudo make install
+make -j"${THREAD_NUM}"
+make install
+ldconfig
 
-# Clean up.
-cd .. && rm -rf build
+ok "Successfully installed nlohmann_json -> ${INSTALL_PREFIX}"

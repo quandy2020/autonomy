@@ -26,12 +26,13 @@ THIRDPARTY="$(autonomy_thirdparty_dir)"
 INSTALL_PREFIX="$(autonomy_cmake_install_prefix)"
 THREAD_NUM=$(nproc)
 
-if [[ -f "${INSTALL_PREFIX}/lib/libgflags.so" ]] \
-    || [[ -f /usr/lib/x86_64-linux-gnu/libgflags.so ]] \
-    || [[ -f /usr/lib/aarch64-linux-gnu/libgflags.so ]]; then
-    ok "gflags already installed, skipping source build"
+# Apt libgflags-dev must not count as installed; only /usr/local CONFIG counts.
+if [[ -f "${INSTALL_PREFIX}/lib/libgflags.so" ]]; then
+    ok "gflags already installed under ${INSTALL_PREFIX}, skipping source build"
     exit 0
 fi
+
+info "Installing gflags -> ${INSTALL_PREFIX}"
 
 cd "${THIRDPARTY}"
 if [[ ! -d gflags ]]; then

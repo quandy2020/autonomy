@@ -66,8 +66,12 @@ class Thirdparty:
             if not script_path.is_file():
                 raise FileNotFoundError(f"Missing dependency installer: {script_path}")
 
+            check = self._config.skip_check(script_name) or {}
+            force = bool(check.get("force"))
+
             if (
                 skip_installed
+                and not force
                 and self._config.can_detect_installed(script_name)
                 and self._detector.is_installed(script_name)
             ):
@@ -77,8 +81,18 @@ class Thirdparty:
                 )
                 continue
 
+            if force:
+                print(
+                    f"[FORCE] {script_name}: always install "
+                    "(ignore --skip-installed)"
+                )
+
+            env = script_env.copy()
+            if force:
+                env["AUTONOMY_FORCE_THIRDPARTY"] = "1"
+
             self._config.run_command(
                 [self._config.shell_interpreter, str(script_path)],
                 dry_run=dry_run,
-                env=script_env,
+                env=env,
             )

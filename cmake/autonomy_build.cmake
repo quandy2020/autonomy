@@ -97,6 +97,31 @@ function(autonomy_collect_proto_sources)
 
   set(PROTOBUF_PROTOC_EXECUTABLE "${Protobuf_PROTOC_EXECUTABLE}")
 
+  # Ubuntu jammy protoc 3.12 needs this for proto3 optional; 3.15+ is fine.
+  set(_AUTONOMY_PROTOC_EXTRA_ARGS "")
+  if(DEFINED _protoc_version)
+    set(_pv "${_protoc_version}")
+  else()
+    execute_process(
+      COMMAND "${PROTOBUF_PROTOC_EXECUTABLE}" --version
+      OUTPUT_VARIABLE _pv
+      ERROR_VARIABLE _pv_err
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_STRIP_TRAILING_WHITESPACE)
+    set(_pv "${_pv}${_pv_err}")
+  endif()
+  if(_pv MATCHES "([0-9]+)\\.([0-9]+)")
+    set(_pmaj "${CMAKE_MATCH_1}")
+    set(_pmin "${CMAKE_MATCH_2}")
+    if(_pmaj EQUAL 3 AND _pmin LESS 15)
+      list(APPEND _AUTONOMY_PROTOC_EXTRA_ARGS
+        --experimental_allow_proto3_optional)
+    elseif(_pmaj LESS 3)
+      list(APPEND _AUTONOMY_PROTOC_EXTRA_ARGS
+        --experimental_allow_proto3_optional)
+    endif()
+  endif()
+
   set(_AUTONOMY_PROTO_INCLUDES -I ${PROJECT_SOURCE_DIR})
   if(DEFINED AUTOMSGS_PROTO_INCLUDE_DIR)
     list(APPEND _AUTONOMY_PROTO_INCLUDES -I ${AUTOMSGS_PROTO_INCLUDE_DIR})
@@ -145,6 +170,7 @@ function(autonomy_collect_proto_sources)
         OUTPUT ${_grpc_cc} ${_grpc_h} ${_pb_cc} ${_pb_h}
         COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
         ARGS
+          ${_AUTONOMY_PROTOC_EXTRA_ARGS}
           --grpc_out=${PROJECT_BINARY_DIR}
           --plugin=protoc-gen-grpc=${GRPC_CPP_PLUGIN}
           --cpp_out=${PROJECT_BINARY_DIR}
@@ -174,7 +200,10 @@ function(autonomy_collect_proto_sources)
     add_custom_command(
       OUTPUT ${_pb_cc} ${_pb_h}
       COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
-      ARGS --cpp_out=${PROJECT_BINARY_DIR} ${_AUTONOMY_PROTO_INCLUDES} ${ABS_FIL}
+      ARGS ${_AUTONOMY_PROTOC_EXTRA_ARGS}
+           --cpp_out=${PROJECT_BINARY_DIR}
+           ${_AUTONOMY_PROTO_INCLUDES}
+           ${ABS_FIL}
       DEPENDS ${ABS_FIL} ${_AUTONOMY_PROTO_DEPS}
       COMMENT "Running protoc on ${REL_FIL}"
       VERBATIM

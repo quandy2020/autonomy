@@ -151,9 +151,12 @@ class App:
             return
 
         content = os_release.read_text(encoding="utf-8", errors="ignore")
-        if self._config.ubuntu_id_token not in content:
+        if (
+            self._config.ubuntu_id_token not in content
+            and self._config.debian_id_token not in content
+        ):
             print(
-                "Warning: this script is designed for Ubuntu-based systems.",
+                "Warning: this script is designed for Ubuntu/Debian-based systems.",
                 file=sys.stderr,
             )
 

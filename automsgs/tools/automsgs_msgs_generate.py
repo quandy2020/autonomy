@@ -19,9 +19,27 @@
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
+
+
+def _protoc_needs_proto3_optional_flag(protoc_exec: str) -> bool:
+    """proto3 optional is stable from 3.15; older protoc needs the experimental flag."""
+    try:
+        out = subprocess.check_output(
+            [protoc_exec, '--version'],
+            text=True,
+            stderr=subprocess.STDOUT,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return True
+    match = re.search(r'(\d+)\.(\d+)', out)
+    if not match:
+        return True
+    major, minor = int(match.group(1)), int(match.group(2))
+    return (major, minor) < (3, 15)
 
 
 def main(argv=sys.argv[1:]):
@@ -51,6 +69,8 @@ def main(argv=sys.argv[1:]):
         sys.exit(1)
 
     cmd = [args.protoc_exec]
+    if _protoc_needs_proto3_optional_flag(args.protoc_exec):
+        cmd.append('--experimental_allow_proto3_optional')
     for p in args.proto_path:
         cmd += [f'--proto_path={p}']
     if args.dependency_proto_descs:

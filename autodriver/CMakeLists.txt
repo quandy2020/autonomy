@@ -32,10 +32,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-option(AUTODRIVER_WITH_REALSENSE "Build Intel RealSense camera/IMU drivers" ON)
-option(AUTODRIVER_WITH_ORBBEC "Build Orbbec camera/pointcloud drivers" ON)
-option(AUTODRIVER_WITH_RPLIDAR "Build Slamtec RPLidar 2D lidar drivers" ON)
-option(AUTODRIVER_WITH_LIVOX "Build Livox 3D lidar drivers (SDK1+SDK2)" ON)
+option(AUTODRIVER_WITH_REALSENSE "Build Intel RealSense camera/IMU drivers" OFF)
+option(AUTODRIVER_WITH_ORBBEC "Build Orbbec camera/pointcloud drivers" OFF)
+option(AUTODRIVER_WITH_RPLIDAR "Build Slamtec RPLidar 2D lidar drivers" OFF)
+option(AUTODRIVER_WITH_LIVOX "Build Livox 3D lidar drivers (SDK1+SDK2)" OFF)
 # Optional: -DRplidarSDK_ROOT=/usr/local or RPLIDAR_SDK_DIR env (see cmake/module/FindRplidarSDK.cmake)
 # Optional: -DLivoxSDK2_ROOT=/usr/local -DLivoxSDK_ROOT=/usr/local
 

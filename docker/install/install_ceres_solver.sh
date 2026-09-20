@@ -26,17 +26,13 @@ THIRDPARTY="$(autonomy_thirdparty_dir)"
 INSTALL_PREFIX="$(autonomy_cmake_install_prefix)"
 THREAD_NUM=$(nproc)
 
-ceres_lib_present() {
-    [[ -f "${INSTALL_PREFIX}/lib/libceres.so" ]] \
-        || [[ -f /usr/local/lib/libceres.so ]] \
-        || [[ -f /usr/lib/x86_64-linux-gnu/libceres.so ]] \
-        || [[ -f /usr/lib/aarch64-linux-gnu/libceres.so ]]
-}
-
-if ceres_lib_present; then
-    ok "Ceres already installed, skipping source build"
+# Apt libceres-dev must not count; only /usr/local CONFIG (built against glog 0.6).
+if [[ -f "${INSTALL_PREFIX}/lib/libceres.so" ]]; then
+    ok "Ceres already installed under ${INSTALL_PREFIX}, skipping source build"
     exit 0
 fi
+
+info "Installing Ceres -> ${INSTALL_PREFIX}"
 
 cd "${THIRDPARTY}"
 if [[ ! -d ceres-solver ]]; then

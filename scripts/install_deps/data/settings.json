@@ -11,7 +11,8 @@
   },
   "platform": {
     "os_release_file": "/etc/os-release",
-    "ubuntu_id_token": "ID=ubuntu"
+    "ubuntu_id_token": "ID=ubuntu",
+    "debian_id_token": "ID=debian"
   },
   "apt": {
     "update_command": ["sudo", "apt-get", "update"],

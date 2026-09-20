@@ -19,13 +19,37 @@
 # Fail on first error.
 set -e
 
+cd "$(dirname "${BASH_SOURCE[0]}")"
+. ./installer_base.sh
 
-cd /thirdparty
-git clone -b release-0.6.3 https://github.com/osqp/osqp.git
-cd osqp && git submodule update --init --recursive
-mkdir build && cd build && cmake ..
-make -j8
+THIRDPARTY="$(autonomy_thirdparty_dir)"
+INSTALL_PREFIX="$(autonomy_cmake_install_prefix)"
+THREAD_NUM=$(nproc)
+
+if [[ -f "${INSTALL_PREFIX}/lib/libosqp.so" ]]; then
+    ok "OSQP already installed under ${INSTALL_PREFIX}, skipping"
+    exit 0
+fi
+
+info "Installing OSQP -> ${INSTALL_PREFIX}"
+
+cd "${THIRDPARTY}"
+if [[ ! -d osqp/.git ]]; then
+    rm -rf osqp
+    git_clone_with_retry https://github.com/osqp/osqp.git release-0.6.3 osqp
+fi
+cd osqp
+git submodule update --init --recursive
+
+rm -rf build
+mkdir build && cd build
+cmake \
+    -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX}" \
+    -DCMAKE_BUILD_TYPE=Release \
+    ..
+
+make -j"${THREAD_NUM}"
 make install
+ldconfig
 
-# Clean up.
-cd .. && rm -rf build
+ok "Successfully installed OSQP -> ${INSTALL_PREFIX}"

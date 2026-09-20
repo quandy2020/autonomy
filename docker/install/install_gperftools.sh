@@ -22,17 +22,15 @@ set -e
 cd "$(dirname "${BASH_SOURCE[0]}")"
 . ./installer_base.sh
 
-gperftools_lib_present() {
-    [[ -f /usr/lib/libtcmalloc.so ]] \
-        || [[ -f /usr/lib/x86_64-linux-gnu/libtcmalloc.so ]] \
-        || [[ -f /usr/lib/aarch64-linux-gnu/libtcmalloc.so ]] \
-        || [[ -f /usr/local/lib/libtcmalloc.so ]]
-}
+THIRDPARTY="$(autonomy_thirdparty_dir)"
+INSTALL_PREFIX="$(autonomy_cmake_install_prefix)"
 
-if gperftools_lib_present; then
-    ok "gperftools already installed, skipping source build"
+if [[ -f "${INSTALL_PREFIX}/lib/libtcmalloc.so" ]]; then
+    ok "gperftools already installed under ${INSTALL_PREFIX}, skipping source build"
     exit 0
 fi
+
+info "Installing gperftools -> ${INSTALL_PREFIX}"
 
 apt_get_update_and_install \
     libunwind8 \
@@ -50,7 +48,7 @@ tar xzf ${PKG_NAME}
 
 pushd "gperftools-gperftools-${VERSION}" >/dev/null
     ./autogen.sh || sleep 1 && ./autogen.sh
-    ./configure --prefix=/usr
+    ./configure --prefix="${INSTALL_PREFIX}"
     # shared lib only options: --enable-static=no --with-pic=yes
     make -j$(nproc)
     make install
@@ -58,7 +56,7 @@ popd >/dev/null
 
 ldconfig
 
-ok "Successfully installed gperftools-${VERSION}."
+ok "Successfully installed gperftools-${VERSION} -> ${INSTALL_PREFIX}."
 
 # Keep libunwind-dev installed: purging it can autoremove glog and other deps.
 rm -rf ${PKG_NAME} "gperftools-gperftools-${VERSION}"

@@ -36,7 +36,12 @@ if pip_needs_break_system_packages "$(python3_bin)"; then
     pip_args+=(--ignore-installed sphinx)
 fi
 
-pip3_install "${pip_args[@]}"
+# System site-packages /usr/local needs root on bare-metal boards.
+if [[ "$(id -u)" -ne 0 ]] && command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+    sudo -E "$(python3_bin)" -m pip install --timeout 30 --no-cache-dir "${pip_args[@]}"
+else
+    pip3_install "${pip_args[@]}"
+fi
 
 if [[ "$(id -u)" -eq 0 ]]; then
     apt-get clean && rm -rf /var/lib/apt/lists/*

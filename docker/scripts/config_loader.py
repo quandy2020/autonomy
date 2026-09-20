@@ -210,6 +210,7 @@ def format_config_catalog() -> str:
         'Examples:',
         '  python3 run_autonomy.py --platform nvidia --profile webrtc',
         '  python3 run_autonomy.py -p x86_64 -n yes --profile navrl',
+        '  SYSROOT_DIR=<rootfs> python3 run_autonomy.py -p nvidia --profile cross --build',
     ])
     return '\n'.join(lines)
 

@@ -26,19 +26,23 @@ THIRDPARTY="$(autonomy_thirdparty_dir)"
 INSTALL_PREFIX="$(autonomy_cmake_install_prefix)"
 THREAD_NUM=$(nproc)
 
-if [[ -f "${INSTALL_PREFIX}/lib/libglog.so" ]] \
-    || [[ -f /usr/lib/x86_64-linux-gnu/libglog.so ]] \
-    || [[ -f /usr/lib/aarch64-linux-gnu/libglog.so ]]; then
-    ok "glog already installed, skipping source build"
+# Apt libgoogle-glog must not count as installed. Skip only when our prefix has it.
+if [[ -f "${INSTALL_PREFIX}/lib/libglog.so" ]]; then
+    ok "glog already installed under ${INSTALL_PREFIX}, skipping source build"
     exit 0
 fi
+
+info "Installing glog v0.6.0 -> ${INSTALL_PREFIX}"
 
 cd "${THIRDPARTY}"
 if [[ ! -d glog ]]; then
     git_clone_with_retry https://github.com/google/glog.git v0.6.0 glog
 fi
-cd glog && git submodule init && git submodule update
+cd glog
+git submodule init
+git submodule update || true
 
+rm -rf builder
 mkdir -p builder && cd builder
 cmake \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX}" \
@@ -55,8 +59,6 @@ else
     sudo make install
 fi
 
-ldconfig 2>/dev/null || true
+sudo ldconfig 2>/dev/null || ldconfig 2>/dev/null || true
 
-cd ../.. && rm -rf glog
-
-ok "Successfully installed glog v0.6.0"
+ok "Successfully installed glog v0.6.0 -> ${INSTALL_PREFIX}"

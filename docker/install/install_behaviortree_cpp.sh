@@ -19,23 +19,36 @@
 # Fail on first error.
 set -e
 
-# update
+cd "$(dirname "${BASH_SOURCE[0]}")"
+. ./installer_base.sh
+
+THREAD_NUM=$(nproc)
+THIRDPARTY="$(autonomy_thirdparty_dir)"
+INSTALL_PREFIX="$(autonomy_cmake_install_prefix)"
+
 sudo ldconfig
 
-cd /thirdparty
-git clone -b 4.7.2 https://github.com/BehaviorTree/BehaviorTree.CPP.git
-cd BehaviorTree.CPP && mkdir build && cd build 
-cmake \
-    -DCMAKE_INSTALL_PREFIX=/usr/local \
-    -DCMAKE_BUILD_TYPE=Release        \
-    -DCMAKE_CXX_STANDARD=17           \
-    -DBUILD_SHARED_LIBS=ON            \
-    ..  
+cd "${THIRDPARTY}"
+if [[ ! -d BehaviorTree.CPP ]]; then
+    git clone -b 4.7.2 https://github.com/BehaviorTree/BehaviorTree.CPP.git
+fi
 
-make -j8
-make install
+pushd BehaviorTree.CPP >/dev/null
+    mkdir -p build && cd build
+    cmake \
+        -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX}" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_CXX_STANDARD=17 \
+        -DBUILD_SHARED_LIBS=ON \
+        ..
 
-# Clean up.
-cd .. && rm -rf build
+    make -j"${THREAD_NUM}"
+    if [[ "$(id -u)" -eq 0 ]]; then
+        make install
+    else
+        sudo make install
+    fi
+popd >/dev/null
 
-
+sudo ldconfig
+ok "Successfully installed BehaviorTree.CPP"

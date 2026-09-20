@@ -37,6 +37,9 @@ Examples:
     # Use aarch64 platform
     python3 run_autonomy.py --platform aarch64
 
+    # aarch64 cross on nvidia image + mounted sysroot
+    SYSROOT_DIR=<rootfs> python3 run_autonomy.py -p nvidia --profile cross --build
+
     # Pass additional arguments to docker run
     python3 run_autonomy.py -- --rm
 
@@ -162,6 +165,9 @@ class AutonomyRunner:
         self.platform_config: PlatformRunConfig | None = None
         self.config_env: dict[str, str] = {}
         self.docker_platform: str | None = None
+        self.run_build = False
+        self.container_cmd: list[str] | None = None
+        self.one_shot_rm = False
 
     def load_platform_config(self, platform_id: str, profile: str = 'default') -> None:
         """Load platform + profile from config/platforms.yaml."""
@@ -516,6 +522,9 @@ class AutonomyRunner:
 
     def configure_shared_volumes(self):
         """Mount configured host data volumes into the container."""
+        if self._is_cross_profile():
+            self._configure_cross_sysroot_mount()
+            self._configure_cross_toolchain_mount()
         if not self.data_volumes:
             return
 
@@ -529,6 +538,57 @@ class AutonomyRunner:
             prepare_host_data_volume(host, container)
             self.docker_args.extend(["-v", f"{host}:{container}:{mode}"])
             print_info(f"Mounting host data volume: {host} -> {container} ({mode})")
+
+    def _is_cross_profile(self) -> bool:
+        if self.profile == "cross":
+            return True
+        if self.config_env.get("AUTONOMY_CROSS", "").strip() in ("1", "true", "yes"):
+            return True
+        return os.environ.get("AUTONOMY_CROSS", "").strip().lower() in (
+            "1", "true", "yes",
+        )
+
+    def _configure_cross_sysroot_mount(self) -> None:
+        """Bind-mount board rootfs for aarch64 cross link."""
+        raw = (
+            os.environ.get("SYSROOT_DIR")
+            or self.config_env.get("SYSROOT_DIR", "")
+            or ""
+        ).strip()
+        if raw in ("/sysroot",):
+            raw = ""
+        if not raw and os.environ.get("JD_ROBOT_ROOT"):
+            raw = str(
+                Path(os.environ["JD_ROBOT_ROOT"])
+                / "prebuild/joy_mini_debian12/rootfs_debian_ros"
+            )
+        if not raw:
+            print_warning(
+                "cross: set SYSROOT_DIR or JD_ROBOT_ROOT to mount board rootfs at /sysroot."
+            )
+            return
+        host = Path(raw).expanduser().resolve()
+        if not host.is_dir():
+            print_warning(f"cross sysroot not found: {host}")
+            return
+        self.docker_args.extend(["-v", f"{host}:/sysroot:ro", "-e", "SYSROOT_DIR=/sysroot"])
+        print_info(f"Cross sysroot mount: {host} -> /sysroot")
+
+    def _configure_cross_toolchain_mount(self) -> None:
+        """Mount docker/cross/toolchain.cmake into the container."""
+        toolchain = self.root / "cross" / "toolchain.cmake"
+        if not toolchain.is_file():
+            print_warning(f"cross toolchain missing: {toolchain}")
+            return
+        self.docker_args.extend(
+            ["-v", f"{toolchain}:/opt/cross/toolchain.cmake:ro"]
+        )
+        ensure = self.root / "cross" / "ensure_cross_tools.sh"
+        if ensure.is_file():
+            self.docker_args.extend(
+                ["-v", f"{ensure}:/opt/cross/ensure_cross_tools.sh:ro"]
+            )
+        print_info("Cross toolchain mounted at /opt/cross/toolchain.cmake")
 
     def configure_network(self):
         """Configure network settings."""
@@ -589,6 +649,10 @@ class AutonomyRunner:
 
     def prepare_container(self) -> None:
         """Reuse, remove, or replace the target container before docker run."""
+        if self.one_shot_rm:
+            remove_container_if_exists(self.container_name)
+            return
+
         state = get_container_state(self.container_name)
         if state is None:
             return
@@ -658,6 +722,8 @@ class AutonomyRunner:
         self.check_requirements()
         ensure_git_submodules(Path(self.autonomy_dev_dir))
         self.build_image_if_needed()
+        if self.run_build:
+            self._prepare_cross_build_cmd()
         self.configure_display()
         self.configure_environment()
         self.configure_container_user()
@@ -683,14 +749,30 @@ class AutonomyRunner:
             print_info("\nDocker run interrupted")
             sys.exit(0)
 
+    def _prepare_cross_build_cmd(self) -> None:
+        """One-shot aarch64 cross build (nvidia + profile cross + SYSROOT_DIR)."""
+        jobs = os.environ.get("AUTONOMY_BUILD_JOBS", str(os.cpu_count() or 4))
+        self.one_shot_rm = True
+        self.container_cmd = [
+            "bash",
+            "-lc",
+            "bash /opt/cross/ensure_cross_tools.sh && "
+            "export SYSROOT_DIR=${SYSROOT_DIR:-/sysroot} "
+            "CMAKE_TOOLCHAIN_FILE=/opt/cross/toolchain.cmake && "
+            f"cmake --preset jdr-board && cmake --build --preset jdr-board -j{jobs}",
+        ]
+        print_info("Cross --build: nvidia image + aarch64-linux-gnu + SYSROOT_DIR")
+
     def _build_docker_run_cmd(self, gpu_args=None):
         """Build the docker run command."""
         use_local_only = check_image_exists(self.base_name)
         cmd = [
-            "docker", "run", "-it" if sys.stdin.isatty() else "-i",
+            "docker", "run", "-it" if sys.stdin.isatty() and not self.container_cmd else "-i",
             "--name", self.container_name,
             *self.docker_args,
         ]
+        if self.one_shot_rm:
+            cmd.append("--rm")
         for port in self._ports_for_docker_run():
             cmd.extend(["-p", port])
         if gpu_args:
@@ -706,14 +788,16 @@ class AutonomyRunner:
 
         use_plain_shell = self._use_plain_shell_for_nvidia_image()
         user_entrypoint = self._user_specified_entrypoint(self.remaining_args)
-        if use_plain_shell and not user_entrypoint:
+        if use_plain_shell and not user_entrypoint and not self.container_cmd:
             print_info(
                 "NVIDIA 镜像：使用 --entrypoint /bin/bash。"
                 "保留 Isaac ENTRYPOINT 请加 --profile isaac-kit 或 --keep-isaac-entrypoint。"
             )
             cmd.extend(["--entrypoint", "/bin/bash"])
         cmd.extend([*self.remaining_args, self.base_name])
-        if not (use_plain_shell and not user_entrypoint):
+        if self.container_cmd:
+            cmd.extend(self.container_cmd)
+        elif not (use_plain_shell and not user_entrypoint):
             cmd.append("/bin/bash")
         return cmd
 
@@ -789,6 +873,9 @@ Examples:
   \033[92mpython3 %(prog)s -p aarch64\033[0m
   \033[92mpython3 %(prog)s --platform aarch64\033[0m
 
+  \033[91m# aarch64 cross on nvidia + mounted sysroot\033[0m
+  \033[92mSYSROOT_DIR=<rootfs> python3 %(prog)s -p nvidia --profile cross --build\033[0m
+
   \033[91m# Mixed short and long form\033[0m
   \033[92mpython3 %(prog)s -p x86_64 --nvidia yes\033[0m
   \033[92mpython3 %(prog)s --platform x86_64 -n yes\033[0m
@@ -823,7 +910,7 @@ Examples:
         "--profile",
         default="default",
         metavar="NAME",
-        help="场景 profile：webrtc | navrl | isaac-kit（见 config/platforms.yaml）",
+        help="场景 profile：webrtc | navrl | isaac-kit | cross（见 config/platforms.yaml）",
     )
     parser.add_argument(
         "--list-configs",
@@ -838,7 +925,16 @@ Examples:
             "  nvidia   — Isaac Lab / GPU（推荐训练）\n"
             "  x86_64   — 标准 x86\n"
             "  aarch64  — ARM64\n"
+            "  rockship — Debian bookworm aarch64（board 镜像）\n"
             "也可写 x86_64 + -n yes/no 组合选择镜像。"
+        ),
+    )
+    parser.add_argument(
+        "--build",
+        action="store_true",
+        help=(
+            "进入容器后执行 cmake --preset jdr-board 并编译（主要用于 rockship）；"
+            "使用 docker run --rm 一次性运行。"
         ),
     )
     parser.add_argument(
@@ -933,7 +1029,7 @@ def resolve_run_as_host_user(cli_as_host_user: bool) -> bool:
 def normalize_platform_arg(value: str) -> str:
     """Normalize CLI platform token to platform id or arch."""
     token = value.strip().lower()
-    if token in ('nvidia', 'x86_64', 'aarch64'):
+    if token in ('nvidia', 'x86_64', 'aarch64', 'rockship'):
         return token
     if token in ('arm64', 'aarch64(arm64)'):
         return 'aarch64'
@@ -948,6 +1044,10 @@ def resolve_runner_platform(runner: AutonomyRunner, platform_arg: str | None) ->
         runner.platform_arch = 'x86_64'
         runner.use_nvidia = 'yes'
         return 'nvidia'
+    if platform_arg == 'rockship':
+        runner.platform_arch = 'aarch64'
+        runner.use_nvidia = 'no'
+        return 'rockship'
     if platform_arg == 'aarch64':
         runner.platform_arch = 'aarch64'
         return 'aarch64'
@@ -984,8 +1084,12 @@ def main():
     runner.data_volumes = resolve_data_volumes(args.data_volumes)
     runner.run_as_host_user = resolve_run_as_host_user(bool(args.as_host_user))
     runner.remaining_args = remaining
+    runner.run_build = bool(args.build)
 
     platform_arg = normalize_platform_arg(args.platform) if args.platform else None
+    if runner.run_build and not platform_arg:
+        # --build alone defaults to rockship (legacy run_jdr_builder behavior)
+        platform_arg = 'rockship'
     try:
         platform_id = resolve_runner_platform(runner, platform_arg)
         runner.load_platform_config(platform_id, runner.profile)

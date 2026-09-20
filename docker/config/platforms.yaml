@@ -4,6 +4,8 @@
 #   python3 run_autonomy.py --list-configs
 #   python3 run_autonomy.py --platform nvidia --profile webrtc
 #   python3 run_autonomy.py -p x86_64 -n yes --profile navrl
+#   # aarch64 cross on nvidia image + host sysroot:
+#   SYSROOT_DIR=<rootfs> python3 run_autonomy.py --platform nvidia --profile cross --build
 #
 # platforms: 选镜像（x86_64 | nvidia | aarch64）
 # profiles:  选场景，只写与默认不同的项
@@ -37,3 +39,11 @@ profiles:
 
   isaac-kit:
     keep_entrypoint: true
+
+  # nvidia image + aarch64-linux-gnu + mounted SYSROOT_DIR (no extra Dockerfile)
+  cross:
+    name: SpaceHero-cross
+    env:
+      CMAKE_TOOLCHAIN_FILE: /opt/cross/toolchain.cmake
+      SYSROOT_DIR: /sysroot
+      AUTONOMY_CROSS: "1"

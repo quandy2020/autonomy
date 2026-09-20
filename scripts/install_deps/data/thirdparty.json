@@ -1,39 +1,53 @@
 {
   "scripts": [
     "install_gtest.sh",
-    "install_gflags.sh",
     "install_glog.sh",
+    "install_gflags.sh",
     "install_protobuf.sh",
     "install_grpc.sh",
     "install_gperftools.sh",
     "install_opencv.sh",
     "install_ceres_solver.sh",
+    "install_g2o.sh",
+    "install_fbow.sh",
+    "install_nlohmann.sh",
+    "install_osqp.sh",
+    "install_behaviortree_cpp.sh",
+    "install_python_modules.sh",
+    "install_adolc.sh",
+    "install_ipopt.sh",
+    "install_taskflow.sh",
+    "install_assimp.sh",
+    "install_ogre.sh"
+  ],
+  "force_scripts": [
+    "install_gtest.sh",
+    "install_glog.sh",
+    "install_gflags.sh",
+    "install_protobuf.sh",
+    "install_grpc.sh",
+    "install_ceres_solver.sh",
     "install_nlohmann.sh",
     "install_osqp.sh",
     "install_g2o.sh",
     "install_fbow.sh",
-    "install_taskflow.sh",
-    "install_behaviortree_cpp.sh",
-    "install_python_modules.sh",
-    "install_assimp.sh",
-    "install_ogre.sh",
-    "install_adolc.sh",
-    "install_ipopt.sh"
+    "install_behaviortree_cpp.sh"
   ],
   "skip_checks": {
     "install_gtest.sh": {
-      "paths": [
-        "/usr/local/lib/libgtest.a",
-        "/usr/lib/x86_64-linux-gnu/libgtest.a"
-      ]
+      "paths": ["/usr/local/lib/libgtest.a"],
+      "force": true
     },
     "install_glog.sh": {
-      "paths": [
-        "/usr/local/lib/libglog.so",
-        "/usr/lib/x86_64-linux-gnu/libglog.so"
-      ]
+      "paths": ["/usr/local/lib/libglog.so"],
+      "force": true
+    },
+    "install_gflags.sh": {
+      "paths": ["/usr/local/lib/libgflags.so"],
+      "force": true
     },
     "install_protobuf.sh": {
+      "force": true,
       "protoc_version": {
         "protoc": "/usr/local/bin/protoc",
         "lib_dir": "/usr/local/lib",
@@ -41,57 +55,51 @@
         "version_contains": "3.19."
       }
     },
-    "install_gflags.sh": {
-      "paths": [
-        "/usr/local/lib/libgflags.so",
-        "/usr/lib/x86_64-linux-gnu/libgflags.so"
-      ]
-    },
     "install_grpc.sh": {
-      "paths": [
-        "/usr/local/lib/libgrpc++.so",
-        "/usr/lib/x86_64-linux-gnu/libgrpc++.so",
-        "/usr/lib/aarch64-linux-gnu/libgrpc++.so"
-      ],
-      "executable": "grpc_cpp_plugin"
+      "paths": ["/usr/local/lib/libgrpc++.so"],
+      "executable": "grpc_cpp_plugin",
+      "force": true
     },
     "install_gperftools.sh": {
       "paths": [
         "/usr/local/lib/libtcmalloc.so",
         "/usr/lib/libtcmalloc.so",
-        "/usr/lib/x86_64-linux-gnu/libtcmalloc.so",
         "/usr/lib/aarch64-linux-gnu/libtcmalloc.so"
       ]
     },
     "install_opencv.sh": {
       "paths": [
         "/usr/local/lib/libopencv_core.so",
+        "/usr/lib/aarch64-linux-gnu/libopencv_core.so",
         "/usr/lib/x86_64-linux-gnu/libopencv_core.so"
       ]
     },
     "install_ceres_solver.sh": {
-      "paths": [
-        "/usr/local/lib/libceres.so",
-        "/usr/lib/x86_64-linux-gnu/libceres.so"
-      ]
+      "paths": ["/usr/local/lib/libceres.so"],
+      "force": true
+    },
+    "install_g2o.sh": {
+      "paths": ["/usr/local/lib/cmake/g2o/g2oConfig.cmake"],
+      "force": true
+    },
+    "install_fbow.sh": {
+      "paths": ["/usr/local/lib/libfbow.so"],
+      "force": true
     },
     "install_nlohmann.sh": {
       "paths": [
         "/usr/local/include/nlohmann/json.hpp",
         "/usr/include/nlohmann/json.hpp"
-      ]
+      ],
+      "force": true
     },
     "install_osqp.sh": {
-      "paths": [
-        "/usr/local/lib/libosqp.so",
-        "/usr/lib/x86_64-linux-gnu/libosqp.so"
-      ]
+      "paths": ["/usr/local/lib/libosqp.so"],
+      "force": true
     },
-    "install_g2o.sh": {
-      "paths": ["/usr/local/lib/cmake/g2o/g2oConfig.cmake"]
-    },
-    "install_fbow.sh": {
-      "paths": ["/usr/local/lib/libfbow.so"]
+    "install_behaviortree_cpp.sh": {
+      "paths": ["/usr/local/lib/libbehaviortree_cpp.so"],
+      "force": true
     },
     "install_taskflow.sh": {
       "paths": [
@@ -99,22 +107,16 @@
         "/usr/local/share/cmake/Taskflow/TaskflowConfig.cmake"
       ]
     },
-    "install_behaviortree_cpp.sh": {
-      "paths": [
-        "/usr/local/lib/libbehaviortree_cpp.so",
-        "/usr/lib/x86_64-linux-gnu/libbehaviortree_cpp.so"
-      ]
-    },
     "install_adolc.sh": {
       "paths": [
-        "/usr/local/lib/libadolc.so",
-        "/usr/lib/x86_64-linux-gnu/libadolc.so"
+        "/usr/include/adolc/adolc.h",
+        "/usr/local/include/adolc/adolc.h"
       ]
     },
     "install_ipopt.sh": {
       "paths": [
-        "/usr/local/lib/libipopt.so",
-        "/usr/lib/x86_64-linux-gnu/libipopt.so"
+        "/usr/include/coin/IpIpoptApplication.hpp",
+        "/usr/include/coin-or/IpIpoptApplication.hpp"
       ]
     },
     "install_assimp.sh": {

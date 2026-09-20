@@ -51,12 +51,40 @@
         "AUTONOMY_BUILD_BRIDGE": "OFF",
         "AUTONOMY_BUILD_VISUALIZATION": "OFF"
       }
+    },
+    {
+      "name": "jdr-board",
+      "displayName": "Autonomy aarch64 cross on nvidia (Release)",
+      "description": "Cross-compile with aarch64-linux-gnu + mounted SYSROOT_DIR. Disables GUI/docs/ONNX.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/jdr-board",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_TOOLCHAIN_FILE": "/opt/cross/toolchain.cmake",
+        "BUILD_TEST": "OFF",
+        "BUILD_DOCS": "OFF",
+        "BUILD_TOOLS": "ON",
+        "BUILD_GRPC": "ON",
+        "BUILD_PROMETHEUS": "OFF",
+        "BUILD_GRID_MAP_DEMOS": "OFF",
+        "BUILD_AUTODRIVER": "ON",
+        "BUILD_AUTOVIZ": "OFF",
+        "BUILD_AUTOSIM": "OFF",
+        "BUILD_ORBISVIEW": "OFF",
+        "BUILD_ONNXRUNTIME": "OFF",
+        "BUILD_TENSORRT": "OFF",
+        "BUILD_SHERPA_ONNX": "OFF"
+      }
     }
   ],
   "buildPresets": [
     {
       "name": "autonomy-minimal",
       "configurePreset": "autonomy-minimal"
+    },
+    {
+      "name": "jdr-board",
+      "configurePreset": "jdr-board"
     }
   ],
   "testPresets": [

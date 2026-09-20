@@ -41,15 +41,11 @@
       "libsqlite3-dev",
       "libzmq3-dev",
       "liburdfdom-dev",
-      "libgflags-dev",
-      "libgoogle-glog-dev",
+      "liburdfdom-headers-dev",
       "libunwind-dev",
-      "libgoogle-perftools-dev",
-      "libceres-dev",
-      "nlohmann-json3-dev",
-      "libgrpc++-dev",
-      "libgrpc-dev",
-      "protobuf-compiler-grpc"
+      "libpcl-dev",
+      "libtbb-dev",
+      "build-essential"
     ],
     "multimedia_gui": [
       "libsdl2-dev",
@@ -74,7 +70,6 @@
       "sqlite3"
     ],
     "testing": [
-      "libgtest-dev",
       "libgmock-dev"
     ]
   }

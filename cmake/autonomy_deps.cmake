@@ -89,9 +89,17 @@ macro(autonomy_find_dependencies)
 
   # PCL → VTK::GUISupportQt pulls Qt5 and claims versionless Qt::Core. Find Qt6
   # first so Qt::* aliases belong to Qt6 (otherwise Qt6CoreVersionlessTargets fails).
+  # Headless / aarch64 boards often lack Qt6: soft-disable autoviz instead of hard fail.
   if("autoviz" IN_LIST _required_groups)
-    find_package(Qt6 REQUIRED COMPONENTS
+    find_package(Qt6 QUIET COMPONENTS
       Core Gui Widgets OpenGLWidgets OpenGL Xml Svg Network)
+    if(NOT Qt6_FOUND)
+      message(WARNING
+        "Qt6 not found; disabling BUILD_AUTOVIZ "
+        "(install Qt6 or pass -DBUILD_AUTOVIZ=OFF).")
+      set(BUILD_AUTOVIZ OFF CACHE BOOL
+        "Build native 3D visualization tool (autoviz)" FORCE)
+    endif()
     list(REMOVE_ITEM _required_groups autoviz)
   endif()
 
@@ -182,17 +190,64 @@ macro(autonomy_find_dependencies)
         message(STATUS "Octomap found (OcTree occupancy decode)")
       endif()
     elseif(_group STREQUAL "task")
-      find_package(behaviortree_cpp REQUIRED)
+      # Prefer a plain CMake install (/usr/local from install_behaviortree_cpp.sh)
+      # over ROS ament packages that pull broken ament_package on some boards.
+      find_package(behaviortree_cpp QUIET
+        PATHS /usr/local
+        NO_DEFAULT_PATH)
+      if(NOT behaviortree_cpp_FOUND)
+        find_package(behaviortree_cpp QUIET)
+      endif()
+      if(NOT behaviortree_cpp_FOUND)
+        message(WARNING
+          "behaviortree_cpp not found; disabling task/system/bridge modules.")
+        set(AUTONOMY_BUILD_TASK OFF CACHE BOOL
+          "Build the autonomy task module" FORCE)
+        set(AUTONOMY_BUILD_SYSTEM OFF CACHE BOOL
+          "Build the autonomy system module" FORCE)
+        set(AUTONOMY_BUILD_BRIDGE OFF CACHE BOOL
+          "Build the autonomy bridge module" FORCE)
+        set(BUILD_GRPC OFF CACHE BOOL "Build autonomy gRPC support" FORCE)
+        list(REMOVE_ITEM AUTONOMY_ENABLED_MODULES task system bridge)
+      endif()
     elseif(_group STREQUAL "localization")
-      find_package(LuaGoogle REQUIRED)
-      find_package(FBow REQUIRED)
-      find_package(G2o REQUIRED)
-      find_package(SQLite3 REQUIRED)
-      find_package(Boost REQUIRED COMPONENTS iostreams)
-      find_package(PkgConfig REQUIRED)
-      pkg_check_modules(CAIRO REQUIRED IMPORTED_TARGET cairo)
+      find_package(LuaGoogle QUIET)
+      find_package(FBow QUIET)
+      find_package(G2o QUIET)
+      if(NOT LuaGoogle_FOUND OR NOT FBow_FOUND OR NOT G2o_FOUND)
+        message(WARNING
+          "localization deps missing (LuaGoogle/FBow/G2O); "
+          "disabling AUTONOMY_BUILD_LOCALIZATION.")
+        set(AUTONOMY_BUILD_LOCALIZATION OFF CACHE BOOL
+          "Build the autonomy localization module" FORCE)
+        list(REMOVE_ITEM AUTONOMY_ENABLED_MODULES localization)
+      else()
+        find_package(SQLite3 REQUIRED)
+        find_package(Boost REQUIRED COMPONENTS iostreams)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(CAIRO REQUIRED IMPORTED_TARGET cairo)
+      endif()
     elseif(_group STREQUAL "grpc")
-      find_package(gRPC REQUIRED)
+      if(BUILD_GRPC AND "bridge" IN_LIST AUTONOMY_ENABLED_MODULES)
+        # Prefer CMake config (source / install_grpc.sh); fall back to
+        # cmake/modules/FindgRPC.cmake for Ubuntu apt libgrpc++-dev.
+        find_package(gRPC CONFIG QUIET)
+        if(NOT gRPC_FOUND)
+          find_package(gRPC MODULE QUIET)
+        endif()
+        if(NOT gRPC_FOUND)
+          message(WARNING
+            "gRPC not found (no gRPCConfig.cmake / FindgRPC); "
+            "disabling BUILD_GRPC and bridge. "
+            "Install libgrpc++-dev or run docker/install/install_grpc.sh.")
+          set(BUILD_GRPC OFF CACHE BOOL "Build autonomy gRPC support" FORCE)
+          set(AUTONOMY_BUILD_BRIDGE OFF CACHE BOOL
+            "Build the autonomy bridge module" FORCE)
+          list(REMOVE_ITEM AUTONOMY_ENABLED_MODULES bridge)
+        endif()
+      else()
+        message(STATUS "Skipping gRPC (bridge/BUILD_GRPC disabled)")
+      endif()
     elseif(_group STREQUAL "prometheus")
       find_package(prometheus-cpp CONFIG REQUIRED)
     elseif(_group STREQUAL "sherpa_onnx")

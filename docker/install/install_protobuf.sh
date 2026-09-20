@@ -50,6 +50,8 @@ if protobuf319_present; then
     exit 0
 fi
 
+info "Installing protobuf ${PROTOBUF_VERSION} -> ${INSTALL_PREFIX}"
+
 cd "${THIRDPARTY}"
 if [[ -d protobuf/.git ]]; then
     cd protobuf

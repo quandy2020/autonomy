@@ -5,7 +5,9 @@
 | 路径 | 用途 |
 |------|------|
 | **`setup.bash`** | **统一环境变量**：`source scripts/setup.bash` |
-| `install_deps/` | `python3 -m install_deps` 依赖安装 |
+| **`install_dependency.py`** | **一键依赖安装**（对齐 `autolink/scripts/install_dependency.py`） |
+| `install_deps/` | 模块化实现（`python3 -m install_deps`）；与上者数据同源 |
+| `nfs_share_autonomy.sh` | NFS 源码共享（开发机 server / 板子 client） |
 | `format.py` | C/C++ 代码格式化 |
 | `package_autonomy_artifact.sh` | Ansible 制品打包 |
 
@@ -13,10 +15,21 @@
 # 工作区环境（PATH / AUTONOMY_* / AUTOLINK_* / GLOG_* …）
 source scripts/setup.bash
 
-cd scripts
-python3 -m install_deps
-python3 -m install_deps --thirdparty-only --skip-installed
-python3 format.py --check
+# 一键依赖（桌面 / CI）
+python3 scripts/install_dependency.py --skip-installed
+
+# 板子 / Firefly（无 Qt/Ogre，含 nfs-common）
+python3 scripts/install_dependency.py --profile board --skip-installed
+
+# 仅 apt / 仅第三方 / 断点续装
+python3 scripts/install_dependency.py --apt-only
+python3 scripts/install_dependency.py --thirdparty-only --resume-from install_osqp.sh
+python3 scripts/install_dependency.py --list --profile board
+
+# 模块化入口（可选）
+cd scripts && python3 -m install_deps --skip-installed
+
+python3 scripts/format.py --check
 ```
 
 依赖数据：`install_deps/data/*.json`；第三方安装脚本：`docker/install/`。

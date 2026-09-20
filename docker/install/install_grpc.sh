@@ -26,17 +26,14 @@ THIRDPARTY="$(autonomy_thirdparty_dir)"
 INSTALL_PREFIX="$(autonomy_cmake_install_prefix)"
 THREAD_NUM=$(nproc)
 
-grpc_lib_present() {
-    [[ -f "${INSTALL_PREFIX}/lib/libgrpc++.so" ]] \
-        || [[ -f /usr/lib/x86_64-linux-gnu/libgrpc++.so ]] \
-        || [[ -f /usr/lib/aarch64-linux-gnu/libgrpc++.so ]] \
-        || compgen -G "/usr/lib/*/libgrpc++*.so*" >/dev/null
-}
-
-if grpc_lib_present && command -v grpc_cpp_plugin >/dev/null 2>&1; then
-    ok "gRPC already installed (system packages), skipping source build"
+# Prefer /usr/local CONFIG over apt libgrpc; never treat apt as installed.
+if [[ -f "${INSTALL_PREFIX}/lib/libgrpc++.so" ]] \
+    && command -v grpc_cpp_plugin >/dev/null 2>&1; then
+    ok "gRPC already installed under ${INSTALL_PREFIX}, skipping source build"
     exit 0
 fi
+
+info "Installing gRPC -> ${INSTALL_PREFIX}"
 
 cd "${THIRDPARTY}"
 rm -rf grpc
