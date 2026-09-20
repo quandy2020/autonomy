@@ -71,6 +71,13 @@ add_subdirectory(chassis)
 add_executable(autodriver_main main.cpp options.cpp)
 set_target_properties(autodriver_main PROPERTIES OUTPUT_NAME autodriver)
 target_link_libraries(autodriver_main PRIVATE autodriver)
+# Pull vendor chassis backends into the process binary.
+if(TARGET autodriver_jetauto)
+  target_link_libraries(autodriver_main PRIVATE autodriver_jetauto)
+endif()
+if(TARGET autodriver_l1w)
+  target_link_libraries(autodriver_main PRIVATE autodriver_l1w)
+endif()
 # CLI11 header-only (same tree as autolink tools).
 if(NOT AUTOLINK_ROOT_DIR)
   set(AUTOLINK_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../autolink")
@@ -84,6 +91,12 @@ target_include_directories(autodriver_main PRIVATE
 if(AUTODRIVER_BUILD_EXAMPLES)
   add_executable(autodriver_demo examples/demo_main.cpp)
   target_link_libraries(autodriver_demo PRIVATE autodriver)
+  if(TARGET autodriver_jetauto)
+    target_link_libraries(autodriver_demo PRIVATE autodriver_jetauto)
+  endif()
+  if(TARGET autodriver_l1w)
+    target_link_libraries(autodriver_demo PRIVATE autodriver_l1w)
+  endif()
   target_include_directories(autodriver_demo PRIVATE
     ${AUTODRIVER_ROOT_DIR}
     ${AUTODRIVER_ROOT_DIR}/autodriver)
@@ -96,6 +109,15 @@ if(AUTODRIVER_BUILD_TEST)
   function(autodriver_add_test NAME SRC)
     add_executable(${NAME} ${SRC})
     target_link_libraries(${NAME} PRIVATE autodriver GTest::gtest_main)
+    target_include_directories(${NAME} PRIVATE
+      ${AUTODRIVER_ROOT_DIR}
+      ${AUTODRIVER_ROOT_DIR}/autodriver)
+    add_test(NAME ${NAME} COMMAND ${NAME})
+  endfunction()
+
+  function(autodriver_add_vendor_chassis_test NAME SRC LIB)
+    add_executable(${NAME} ${SRC})
+    target_link_libraries(${NAME} PRIVATE autodriver ${LIB} GTest::gtest_main)
     target_include_directories(${NAME} PRIVATE
       ${AUTODRIVER_ROOT_DIR}
       ${AUTODRIVER_ROOT_DIR}/autodriver)
@@ -122,6 +144,16 @@ if(AUTODRIVER_BUILD_TEST)
                       test/test_chassis_backend_registry.cpp)
   autodriver_add_test(test_chassis_abstractions
                       test/test_chassis_abstractions.cpp)
+  if(TARGET autodriver_jetauto)
+    autodriver_add_vendor_chassis_test(test_jetauto_kinematics
+                                       test/test_jetauto_kinematics.cpp
+                                       autodriver_jetauto)
+  endif()
+  if(TARGET autodriver_l1w)
+    autodriver_add_vendor_chassis_test(test_l1w_driver
+                                       test/test_l1w_driver.cpp
+                                       autodriver_l1w)
+  endif()
   autodriver_add_test(test_joy_mapper test/test_joy_mapper.cpp)
   autodriver_add_test(test_canbus_skeleton test/test_canbus_skeleton.cpp)
   autodriver_add_test(test_skeleton_modules test/test_skeleton_modules.cpp)

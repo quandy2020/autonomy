@@ -25,12 +25,24 @@ export PATH=$PWD/build/autonomy/bin:$PATH
 
 不要优先使用过期的 `build/lib/libautodriver.so`。可用 `nm -D …/libautodriver.so | c++filt | grep ChassisManager::Start` 确认符号存在。
 
-## launch 找不到 `autodriver.launch`
+## launch 找不到 `autodriver.launch` / DAG
 
 ```bash
 export AUTOLINK_LAUNCH_PATH=$PWD/src/autonomy/autodriver/launch
+export AUTOLINK_DAG_PATH=$PWD/src/autonomy/autodriver/dag
+export AUTOLINK_LIB_PATH=$PWD/build/autonomy/lib
 autolink launch start autodriver.launch
 ```
+
+底盘：**只启用一个** `chassis_l1w` 或 `chassis_jetauto` module。见 [本体](guide/chassis.md)。
+
+## mainboard 加载失败
+
+| 现象 | 处理 |
+|---|---|
+| `no dag conf` | `AUTOLINK_DAG_PATH` 指向含 `chassis_*.dag` 的目录 |
+| 找不到 `.so` | `AUTOLINK_LIB_PATH` / `LD_LIBRARY_PATH` 含构建 `lib/` |
+| L1-W 无 SDK | `-DGenisomL1w_ROOT=` 或 YAML `params.simulate: true` |
 
 ## 无传感器输出
 
@@ -119,7 +131,10 @@ Attach/Detach 结果经 `SampleSink::HandleDiagnostic` → Publisher → `/diagn
 | `imu/` `gps/` | serial/CAN 驱动（CRTP 基类）+ registry |
 | `gps/parser/` | NMEA 工厂 |
 | `bridge/` | Publisher、PoseFeeder |
+| `chassis/` | Manager、stub / jetauto / l1w |
+| `dag/` | `chassis_jetauto.dag` · `chassis_l1w.dag` |
 | `config/` | 硬件 YAML + 厂商 params |
+| `launch/` | `autodriver.launch`（传感 + 底盘二选一） |
 | `scripts/` | SDK / udev |
 
 ## 文档构建

@@ -279,7 +279,8 @@ void ApplyHardwareShorthand(const YAML::Node& hardware,
         return;
     }
     if (backend == "serial" || backend.empty() || backend == "rplidar" ||
-        backend == "slamtec") {
+        backend == "slamtec" || backend == "jetauto" ||
+        backend == "hiwonder") {
         std::string port = ReadString(hardware, "port");
         if (port.empty()) {
             port = ReadString(hardware, "device");

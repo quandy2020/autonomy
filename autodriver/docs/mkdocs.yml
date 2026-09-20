@@ -24,6 +24,7 @@ nav:
       - 快速开始: guide/quickstart.md
       - 使用方式: guide/usage.md
       - 配置: guide/configuration.md
+      - 本体 chassis: guide/chassis.md
       - 生命周期: guide/lifecycle.md
       - 术语: guide/glossary.md
   - 设计:

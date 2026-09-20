@@ -7,11 +7,11 @@
 | 相关 | 链接 |
 |---|---|
 | 架构 / Registry | [架构](architecture.md) |
+| 底盘 / DAG | [本体](chassis.md) |
 | 样本路径 | [数据流](dataflow.md) |
 | YAML | [配置](configuration.md) |
 | Attach / udev | [生命周期](lifecycle.md) |
-| 术语 | [术语](glossary.md) |
-| 系统化问答 | [FAQ](../faq.md) |
+| FAQ | [FAQ](../faq.md) |
 
 ---
 
@@ -26,6 +26,8 @@
 | `PATH` | 须含 `build/bin`（`autodriver`） |
 | `AUTOLINK_PATH` | Autolink 资源根 |
 | `AUTOLINK_LAUNCH_PATH` | launch 目录，通常为 `$AUTODRIVER_PATH/launch` |
+| `AUTOLINK_DAG_PATH` | DAG 目录，通常为 `$AUTODRIVER_PATH/dag` |
+| `AUTOLINK_LIB_PATH` | Component `.so`（`libautodriver_jetauto.so` / `_l1w.so`） |
 | `GLOG_logtostderr` | 设为 `1` 时日志输出至终端 |
 
 `AUTODRIVER_PATH` 解析：`common/environment.hpp` → `WorkRoot()`；配置文件相对该根下的 `config/`。
@@ -80,7 +82,8 @@ LoadConfig
 |---|---|
 | 传感 | 仅启用实际设备（`enable: true`，或旧别名 `attach_on_start`） |
 | 相机 | 推荐折叠 `streams` / `point_clouds` / `imu`（见 [配置 · camera](configuration.md)） |
-| 底盘 | `chassis.enable: true` 并指定 `backend`（联调阶段常用 `stub`） |
+| 底盘（进程内） | `chassis.enable: true` + `backend`（联调常用 `stub`） |
+| 底盘（实机） | 推荐独立 DAG / launch；主 YAML 保持 `chassis.enable: false`。见 [本体](chassis.md) |
 | 运行标志 | 日志含 `autodriver running (Ctrl+C to stop)` |
 
 ### 2.2 SDK 安装（包根 `scripts/`）
@@ -96,10 +99,12 @@ CMake：`AUTODRIVER_WITH_{REALSENSE,ORBBEC,RPLIDAR,LIVOX}`。未找到 SDK 时�
 
 ---
 
-## 3. Launch
+## 3. Launch + 底盘 DAG
 
 ```bash
 export AUTOLINK_LAUNCH_PATH=$AUTODRIVER_PATH/launch
+export AUTOLINK_DAG_PATH=$AUTODRIVER_PATH/dag
+export AUTOLINK_LIB_PATH=$BUILD/lib
 autolink launch start autodriver.launch
 autolink launch list
 autolink launch stop autodriver.launch
@@ -107,15 +112,11 @@ autolink launch stop autodriver.launch
 
 | 项 | 说明 |
 |---|---|
-| 默认 process | `autodriver`（依赖环境中的 `AUTODRIVER_PATH`） |
-| 崩溃策略 | `exception_handler: respawn`，`respawn_limit: 3` |
-| 硬编码路径 | 修改 launch 内 `<process_name>` |
+| 传感 | binary `autodriver`（`exception_handler: respawn`，limit 3） |
+| 底盘 | **二选一**：`chassis_l1w.dag` 或 `chassis_jetauto.dag`（launch 内注释切换） |
+| 单独起底盘 | `mainboard -d $AUTOLINK_DAG_PATH/chassis_l1w.dag` |
 
-```xml
-<process_name>autodriver /path/to/autodriver autodriver_hardware.yaml</process_name>
-```
-
-文件注释见 `launch/autodriver.launch`。
+文件注释见 `launch/autodriver.launch`；通道与厂商见 [本体](chassis.md)。
 
 ---
 

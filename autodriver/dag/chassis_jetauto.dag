@@ -1,0 +1,15 @@
+# mainboard -d dag/chassis_jetauto.dag
+# Requires libautodriver_jetauto.so on AUTOLINK_LIB_PATH (and libautodriver.so).
+# Params: config_file_path → AUTODRIVER_PATH/config/<path>
+
+module_config {
+  module_library : "libautodriver_jetauto.so"
+  timer_components {
+    class_name : "autodriver::chassis::jetauto::JetAutoComponent"
+    config {
+      name : "jetauto"
+      interval : 50
+      config_file_path : "chassis/jetauto.yaml"
+    }
+  }
+}

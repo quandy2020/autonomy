@@ -1,0 +1,27 @@
+# JetAuto differential mode (vy forced to 0; same RRC serial + motor map).
+
+node_name: chassis_jetauto_diff
+
+chassis:
+  enable: true
+  name: base
+  backend: jetauto
+  locomotion: differential
+  cmd_vel_channel: /cmd_vel
+  mode_cmd_channel: /chassis/mode
+  mode_state_channel: /chassis/mode_state
+  capability_channel: /chassis/capability
+  state_channel: /robot_state
+  event_channel: /robot_event
+  odom_channel: /odom
+  watchdog_ms: 200
+  odom_period_ms: 20
+  max_linear_speed: 0.6
+  max_angular_speed: 1.2
+  port: /dev/ttyACM0
+  baud: 1000000
+  params:
+    drive_mode: differential
+    wheelbase: 0.216
+    track_width: 0.195
+    wheel_diameter: 0.097

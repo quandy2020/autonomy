@@ -41,7 +41,10 @@ autonomy <--RobotState / Odom / Event / capability JSON--
 | `ChassisDriver` | 厂商：`ApplyVelocityCommand` / `ApplyLocomotionIntent` / `ApplyToolCommand` / `ReadChassisState` |
 | `ChassisBackendRegistry` | YAML `backend` → `CreateDriver` |
 | `ChassisManager` | Autolink、Capability、Mode、SafetyGate；不链 `libautonomy` |
+| `ChassisComponent` | 通用 `TimerComponent`；DAG 加载任意 backend 的 YAML |
 | `stub/` | 无硬件差分积分；接受 intent / tool 日志 |
+| `jetauto/` | 独立 `libautodriver_jetauto.so`：RRC + IK + `JetAutoComponent` |
+| `l1w/` | 独立 `libautodriver_l1w.so`：钢镚 L1-W 全 HighLevel + `L1wComponent` |
 
 ## YAML
 
@@ -79,3 +82,75 @@ chassis:
 4. YAML：`backend: mybot` + 合适的 `locomotion` / `tools`
 
 厂商只填 `RobotState` 硬件字段；Manager 写入模式名到 `active_cmd_id`。
+
+## JetAuto（幻尔 / Hiwonder）
+
+非 ROS：USB 串口直连 STM32 **ROS Robot Control Board**，主机协议见官方 wiki §3.14（帧 `0xAA 0x55`，`PACKET_FUNC_MOTOR=3`）。运动学对齐官方 `mecanum.py`。
+
+| 项 | 值 |
+|---|---|
+| backend | `jetauto`（别名 `hiwonder`） |
+| 库 | `libautodriver_jetauto.so`（`chassis/jetauto/CMakeLists.txt`） |
+| Component | `autodriver::chassis::jetauto::JetAutoComponent` |
+| 麦轮 | `locomotion: omni` + `params.drive_mode: mecanum` |
+| 差分 | `locomotion: differential` + `params.drive_mode: differential`（`vy=0`） |
+| 示例 | `config/chassis/jetauto.yaml` / `jetauto_differential.yaml` |
+| DAG | `dag/chassis_jetauto.dag` |
+
+```yaml
+chassis:
+  enable: true
+  backend: jetauto
+  locomotion: omni
+  port: /dev/ttyACM0
+  baud: 1000000
+  params:
+    drive_mode: mecanum   # or differential
+    wheelbase: 0.216
+    track_width: 0.195
+    wheel_diameter: 0.097
+```
+
+`params.simulate: true` 可跳过串口（CI / 无硬件）。与 DualSense 共用 `/cmd_vel`。
+
+## 钢镚 L1-W（智身 GENISOM / zsibot）
+
+轮腿机型 **ZSL-1W**；覆盖官方 HighLevel 全部控制/状态面（详见 `chassis/l1w/README.md`）。
+
+| 项 | 值 |
+|---|---|
+| backend | `l1w`（别名 `genisom` / `zsibot` / `zsl-1w` / `l1-w`） |
+| 库 | `libautodriver_l1w.so`（`chassis/l1w/CMakeLists.txt`） |
+| Component | `autodriver::chassis::l1w::L1wComponent` |
+| SDK | `-DGenisomL1w_ROOT=` 或 `GENISOM_L1W_SDK_ROOT`（见 `FindGenisomL1w.cmake`） |
+| 示例 | `config/chassis/l1w.yaml` |
+| DAG | `dag/chassis_l1w.dag` |
+
+| Mode / Tool | HighLevel |
+|---|---|
+| `stand` / tool `stand` | `standUp` |
+| `wheel` + `/cmd_vel` | `move(vx,vy,wz)` |
+| `walk` + `/cmd_vel` | `crawl(vx,vy,wz)` |
+| `estop` / tool `passive` | `passive` |
+| tool `lie` | `lieDown` |
+| tool `cancel_crawl` | `cancelCrawl` |
+| tool `attitude=r,p,y,h` | `attitudeControl` |
+
+```yaml
+chassis:
+  enable: true
+  backend: l1w
+  locomotion: wheel_legged
+  tools: [lie, passive, cancel_crawl, attitude, stand]
+  tool_cmd_channel: /chassis/tool
+  supports_lateral: "true"
+  params:
+    host: 192.168.168.168   # Wi-Fi: 192.168.234.1
+    local_ip: 192.168.168.10
+    auto_stand: true
+    allow_lateral: true
+    default_gait: move
+    max_vx: 1.0
+    max_vy: 0.5
+    max_wz: 1.0
+```

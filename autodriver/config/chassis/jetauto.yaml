@@ -1,0 +1,46 @@
+# JetAuto chassis — Hiwonder RRC USB serial (non-ROS).
+# Component: autodriver::chassis::jetauto::JetAutoComponent
+#   module_library: libautodriver_jetauto.so
+#   DAG: dag/chassis_jetauto.dag
+#
+# Protocol: ROS Robot Control Board host framing (0xAA 0x55 …).
+# IK: official mecanum.py defaults (wheelbase/track/diameter).
+
+node_name: chassis_jetauto
+
+chassis:
+  enable: true
+  name: base
+  backend: jetauto          # alias: hiwonder
+  locomotion: omni          # omni → mecanum; differential → vy=0
+  require_arm: false
+  cmd_vel_channel: /cmd_vel
+  mode_cmd_channel: /chassis/mode
+  mode_state_channel: /chassis/mode_state
+  capability_channel: /chassis/capability
+  state_channel: /robot_state
+  event_channel: /robot_event
+  odom_channel: /odom
+  watchdog_ms: 200
+  odom_period_ms: 20
+  max_linear_speed: 0.8
+  max_angular_speed: 1.5
+  odom_frame_id: odom
+  base_frame_id: base_link
+  # Shorthand → params.device / params.baud
+  port: /dev/ttyACM0
+  baud: 1000000
+  params:
+    drive_mode: mecanum     # mecanum | differential
+    wheelbase: 0.216
+    track_width: 0.195
+    wheel_diameter: 0.097
+    # max_rps: 3.0
+    # simulate: true        # CI / no hardware
+  # Or: params_file: chassis/jetauto_params.yaml
+
+# Optional DualSense teleop sharing /cmd_vel
+joy:
+  enable: false
+  profile: dualsense
+  device: /dev/input/js0

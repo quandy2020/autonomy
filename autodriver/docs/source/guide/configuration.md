@@ -174,6 +174,17 @@ chassis:
   base_frame_id: base_link
 ```
 
+JetAuto / L1-W 字段与 DAG 启动见专页 **[本体 chassis](chassis.md)**。摘要：
+
+| | JetAuto | L1-W |
+|---|---|---|
+| 库 | `libautodriver_jetauto.so` | `libautodriver_l1w.so` |
+| YAML | `config/chassis/jetauto.yaml` | `config/chassis/l1w.yaml` |
+| DAG | `dag/chassis_jetauto.dag` | `dag/chassis_l1w.dag` |
+| 要点 | `params.port` / `drive_mode` | `params.host`（有线 `192.168.168.168`）；tools + `tool_cmd_channel` |
+
+Launch 内底盘 **二选一**，见 `launch/autodriver.launch`。
+
 ---
 
 ## 4.1 手柄遥操（`joy`）— 默认索尼 DualSense（PS5）

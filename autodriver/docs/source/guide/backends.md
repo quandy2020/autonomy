@@ -195,14 +195,22 @@ Channel 对齐 OrbbecSDK_ROS2 Gemini 330：`/camera/color|depth|left_ir|right_ir
 
 ## 7. 本体（chassis）
 
-顶层 `chassis/`；与传感 Registry 同模式；消息为 automsgs vehicle_msgs + TwistStamped。
+顶层 `chassis/`；消息为 automsgs vehicle_msgs + TwistStamped。专页：[本体](chassis.md)。
 
 | backend | 状态 |
 |---|---|
-| `stub`（别名可 `sim`） | 差分积分，无硬件联调 |
+| `stub`（`sim`） | 差分积分，无硬件 |
+| `jetauto`（`hiwonder`） | RRC USB；麦轮/差分；`libautodriver_jetauto.so` + `JetAutoComponent` |
+| `l1w`（`genisom` / `zsibot` / `zsl-1w`） | ZSL-1W 全 HighLevel；`libautodriver_l1w.so` + `L1wComponent`；可选 `GenisomL1w_ROOT` |
 | 厂商名 | `REGISTER_CHASSIS_BACKEND` + `chassis/<vendor>/` |
 
-加厂商：实现 `ChassisDriver` → 宏注册 → YAML `chassis.backend`。详见 [`chassis/README.md`](../../../chassis/README.md) · [配置 · chassis](configuration.md)。
+| 启动 | 路径 |
+|---|---|
+| YAML 进程内 | `chassis.enable` + `backend` |
+| DAG | `dag/chassis_jetauto.dag` · `dag/chassis_l1w.dag`（**二选一**） |
+| Launch | `launch/autodriver.launch` 内切换 module |
+
+加厂商：`ChassisDriver` → 宏注册 → YAML。详见 [`chassis/README.md`](../../../chassis/README.md) · [配置](configuration.md)。
 
 ---
 

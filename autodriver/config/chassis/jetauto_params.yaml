@@ -1,0 +1,9 @@
+# JetAuto vendor params (merged via chassis.params_file).
+# Frame: Hiwonder RRC USB serial — see chassis/jetauto/rrc_protocol.hpp.
+
+device: /dev/ttyACM0
+baud: 1000000
+drive_mode: mecanum
+wheelbase: 0.216
+track_width: 0.195
+wheel_diameter: 0.097

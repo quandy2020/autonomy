@@ -1,57 +1,63 @@
 <!--
   Autodriver hardware driver launch file.
 
-  Starts the autodriver binary which loads sensors from YAML under config/
-  (default autodriver_hardware.yaml, or camera/<vendor>/…), creates Autolink
-  writers and manages sensor lifecycle (hotplug).
+  - Sensors / joy: binary `autodriver` (YAML under config/).
+  - Chassis Component: mainboard + ONE dag from dag/ (jetauto XOR l1w).
 
   Prerequisites:
-    - AUTODRIVER_PATH must point to the autodriver package root
-      (the directory that contains config/)
-    - libautodriver.so (and Autolink deps) must be on LD_LIBRARY_PATH
-      Built-in sensor modules live inside libautodriver; no per-modality
-      plugin .so is required unless YAML sets library=.
+    - AUTODRIVER_PATH → package root (contains config/ dag/ launch/)
+    - AUTOLINK_DAG_PATH → $AUTODRIVER_PATH/dag  (resolves chassis_*.dag)
+    - AUTOLINK_LIB_PATH → build lib dir (libautodriver_jetauto.so / _l1w.so)
+    - LD_LIBRARY_PATH / PATH as usual
 
-  Usage (from the autonomy workspace root):
+  Usage (autonomy workspace root):
     export AUTODRIVER_PATH=$PWD/src/autonomy/autodriver
     export AUTOLINK_LAUNCH_PATH=$AUTODRIVER_PATH/launch
+    export AUTOLINK_DAG_PATH=$AUTODRIVER_PATH/dag
+    export AUTOLINK_LIB_PATH=$PWD/build/autonomy/lib
     export LD_LIBRARY_PATH=$PWD/build/autonomy/lib:$LD_LIBRARY_PATH
     export PATH=$PWD/build/autonomy/bin:$PATH
     autolink launch start autodriver.launch
-    # Or run binary directly with a vendor camera config:
-    #   autodriver $AUTODRIVER_PATH camera/orbbec/gemini_330.yaml
 
-  To stop:
+  Chassis 二选一：下面两个 <module> 只保留一个；另一个保持注释。
+  也可单独：mainboard -d $AUTOLINK_DAG_PATH/chassis_l1w.dag
+
+  Stop:
     autolink launch stop autodriver.launch
 -->
 <autolink>
     <environment>
-        <!--
-          Set AUTODRIVER_PATH to the autodriver package root so that
-          autodriver can find config/ (and config/camera/<vendor>/).
-          Adjust this path to match your deployment layout.
-        -->
         <!-- <AUTODRIVER_PATH>/opt/autodriver</AUTODRIVER_PATH> -->
+        <!-- <AUTOLINK_DAG_PATH>/opt/autodriver/dag</AUTOLINK_DAG_PATH> -->
     </environment>
 
+    <!-- Sensors + optional joy (chassis.enable=false in autodriver_hardware.yaml) -->
     <module>
         <name>autodriver</name>
         <type>binary</type>
-        <!--
-          Arguments: autodriver <config_dir> <config_file>
-
-          When AUTODRIVER_PATH is set in the environment (either exported
-          before calling autolink launch, or via <environment> below),
-          autodriver reads it automatically — no extra arguments needed.
-
-          To hard-code the config location instead, uncomment and edit:
-            <process_name>autodriver /opt/autodriver autodriver_hardware.yaml</process_name>
-        -->
         <process_name>autodriver</process_name>
-        <!--
-          Respawn up to 3 times on unexpected exit so transient hardware
-          errors (e.g. USB disconnect) don't take the whole stack down.
-        -->
+        <exception_handler>respawn</exception_handler>
+        <respawn_limit>3</respawn_limit>
+    </module>
+
+    <!-- ========== Chassis DAG：二选一（只启用其中一个 module） ========== -->
+
+    <!-- A) JetAuto（幻尔 RRC USB） -->
+    <!--
+    <module>
+        <name>chassis_jetauto</name>
+        <dag_conf>chassis_jetauto.dag</dag_conf>
+        <process_name>chassis_jetauto</process_name>
+        <exception_handler>respawn</exception_handler>
+        <respawn_limit>3</respawn_limit>
+    </module>
+    -->
+
+    <!-- B) 钢镚 L1-W（GENISOM / zsibot HighLevel）— 默认启用 -->
+    <module>
+        <name>chassis_l1w</name>
+        <dag_conf>chassis_l1w.dag</dag_conf>
+        <process_name>chassis_l1w</process_name>
         <exception_handler>respawn</exception_handler>
         <respawn_limit>3</respawn_limit>
     </module>

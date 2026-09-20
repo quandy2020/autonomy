@@ -74,6 +74,8 @@ ctest --test-dir build -R 'test_(config|config_loader|manager|hub|lidar|camera|r
 | `test_camera_backend_registry` | `test_camera_backend_registry.cpp` | 相机 Registry |
 | `test_chassis_backend_registry` | `test_chassis_backend_registry.cpp` | 底盘 Registry（stub） |
 | `test_chassis_abstractions` | `test_chassis_abstractions.cpp` | locomotion / mode / safety / tool |
+| `test_jetauto_kinematics` | `test_jetauto_kinematics.cpp` | JetAuto 麦轮/差分 IK（链 `autodriver_jetauto`） |
+| `test_l1w_driver` | `test_l1w_driver.cpp` | L1-W simulate：move/crawl/tools（链 `autodriver_l1w`） |
 | `test_canbus_skeleton` | `test_canbus_skeleton.cpp` | FakeCan / Protocol |
 | `test_skeleton_modules` | `test_skeleton_modules.cpp` | stub Module 可加载 |
 
@@ -100,6 +102,8 @@ ctest --test-dir build -R 'test_(config|config_loader|manager|hub|lidar|camera|r
 | RPLidar | `install_rplidar_sdk.sh` + 可选 udev；`lidar_2d.enable: true` |
 | Livox | 安装 SDK2；修改 `host_ip` / `lidar_ip`；保持同网段 |
 | Velodyne / Hesai | 确保 UDP `data_port` 可达；校准 YAML 可选 |
+| JetAuto | `params.simulate: true` 或接 RRC；`mainboard -d dag/chassis_jetauto.dag` |
+| L1-W | 网线 `192.168.168.168` + `GenisomL1w_ROOT`；或 `simulate: true` |
 
 ---
 

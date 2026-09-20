@@ -263,13 +263,12 @@ LoadConfig
 
 ```text
 autodriver/
-  autodriver/                 # 传感 HAL + bridge
-    config_loader.*  sensor_manager.*  sensor_hub.*  modules.cpp
-    common/                   # Stream、BackendRegistry、Serial/CAN CRTP、named_factory
-    canbus/  bridge/  types/
-    camera/  lidar/  imu/  gps/  radar/  microphone/  smartereye/
-  chassis/                    # 本体：registry、manager、stub/
-  config/  launch/  docs/
+  autodriver/                 # 传感 HAL + joy + bridge
+    config_loader.*  sensor_manager.*  modules.cpp
+    camera/  lidar/  imu/  gps/  radar/  microphone/ …
+  chassis/                    # stub · jetauto · l1w + Manager
+  dag/                        # chassis_jetauto.dag · chassis_l1w.dag
+  config/  launch/  docs/ test/
 ```
 
-产物：共享库 `libautodriver`；进程目标 `autodriver_main` → 二进制 `autodriver`。
+产物：`libautodriver`、`libautodriver_jetauto`、`libautodriver_l1w`；进程 `autodriver`；底盘亦可 `mainboard -d dag/…`。见 [本体](chassis.md)。

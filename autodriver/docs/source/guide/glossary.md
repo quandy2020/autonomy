@@ -19,7 +19,8 @@
 |---|---|---|
 | **模态** | modality / `SensorType` | 传感器类别，对应一个 `*Module`（如 IMU、相机、3D 激光） |
 | **传感** | sensing | `SensorManager` + `SensorDriver`：硬件 → `SensorSample` → Autolink |
-| **本体** | body / chassis | `ChassisManager` + `ChassisDriver`：`/cmd_vel` 与状态 / odom / event；与传感同进程、互不 `#include` 对方 SDK |
+| **本体** | body / chassis | `ChassisManager` + `ChassisDriver`；亦可独立 Component（`libautodriver_jetauto` / `_l1w` + DAG） |
+| **底盘 DAG** | chassis DAG | `dag/chassis_*.dag`；launch 内 JetAuto **XOR** L1-W |
 | **Module** | `SensorModule` | 按模态固定编入 `libautodriver`；查 Registry 建驱动，通常不加新 Module |
 | **Driver** | `SensorDriver` / `ChassisDriver` | 厂商实现；经 Registry 插拔 |
 | **Registry** | `*BackendRegistry` | `backend` 名 → Creator；封装 `NamedProductFactory` / Autolink Factory |

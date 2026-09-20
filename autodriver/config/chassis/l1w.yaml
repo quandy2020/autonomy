@@ -1,0 +1,54 @@
+# GENISOM 钢镚 L1-W (ZSL-1W) — full HighLevel surface.
+# Component: autodriver::chassis::l1w::L1wComponent
+#   module_library: libautodriver_l1w.so
+#   DAG: dag/chassis_l1w.dag
+#
+# Mode: stand | walk(crawl) | wheel(move) | estop(passive)
+# Tool: lie | passive | cancel_crawl | attitude=r,p,y,h | stand
+#
+# Wired (AGX↔RK3588): host=192.168.168.168, local_ip=AGX IP
+# Wi-Fi: host=192.168.234.1
+# SDK: -DGenisomL1w_ROOT=/path/to/genisom_l1_sdk_old
+
+node_name: chassis_l1w
+
+chassis:
+  enable: true
+  name: base
+  backend: l1w
+  locomotion: wheel_legged
+  require_arm: false
+  tools: [lie, passive, cancel_crawl, attitude, stand]
+  cmd_vel_channel: /cmd_vel
+  mode_cmd_channel: /chassis/mode
+  mode_state_channel: /chassis/mode_state
+  capability_channel: /chassis/capability
+  tool_cmd_channel: /chassis/tool
+  state_channel: /robot_state
+  event_channel: /robot_event
+  odom_channel: /odom
+  watchdog_ms: 200
+  odom_period_ms: 20
+  max_linear_speed: 1.0
+  max_angular_speed: 1.5
+  supports_lateral: "true"
+  odom_frame_id: odom
+  base_frame_id: base_link
+  params:
+    # Wired default; switch to 192.168.234.1 for Wi-Fi AP
+    host: 192.168.168.168
+    local_ip: 192.168.168.10
+    local_port: 43988
+    auto_stand: true
+    lie_on_stop: true
+    allow_lateral: true
+    default_gait: move          # move | crawl
+    max_vx: 1.0
+    max_vy: 0.5
+    max_wz: 1.0
+    # simulate: true
+
+joy:
+  enable: false
+  profile: dualsense
+  device: /dev/input/js0

@@ -21,6 +21,9 @@
 
 #include "chassis/chassis_manager.hpp"
 
+#include "chassis/jetauto/driver.hpp"
+#include "chassis/stub/driver.hpp"
+
 #include <chrono>
 
 #include "chassis/backend_registry.hpp"
@@ -113,6 +116,18 @@ bool ChassisManager::Start(autolink::Node* node, const Config& config) {
   }
 
   (void)&CreateStubChassisDriver;
+
+  // Derive jetauto drive_mode from locomotion when params omit it.
+  // Backend itself lives in libautodriver_jetauto.so (link or DAG-load).
+  if ((options_.backend == "jetauto" || options_.backend == "hiwonder") &&
+      options_.params.count("drive_mode") == 0) {
+    if (options_.locomotion == "omni" ||
+        options_.locomotion == "omnidirectional") {
+      options_.params["drive_mode"] = "mecanum";
+    } else {
+      options_.params["drive_mode"] = "differential";
+    }
+  }
 
   capability_ = BuildCapability(options_);
   safety_ = std::make_unique<SafetyGate>(BuildSafetyLimits(options_));

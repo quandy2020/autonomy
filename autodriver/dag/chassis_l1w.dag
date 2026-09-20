@@ -1,0 +1,14 @@
+# mainboard -d dag/chassis_l1w.dag
+# Requires libautodriver_l1w.so on AUTOLINK_LIB_PATH (and libautodriver.so).
+
+module_config {
+  module_library : "libautodriver_l1w.so"
+  timer_components {
+    class_name : "autodriver::chassis::l1w::L1wComponent"
+    config {
+      name : "l1w"
+      interval : 50
+      config_file_path : "chassis/l1w.yaml"
+    }
+  }
+}

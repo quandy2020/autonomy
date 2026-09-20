@@ -14,6 +14,7 @@
 
 # Robot-body HAL sources compile into libautodriver (sibling of autodriver/).
 # Include as: #include "chassis/...."
+# Vendor components (e.g. jetauto) build as separate shared libraries.
 
 if(NOT TARGET autodriver)
   message(FATAL_ERROR "chassis requires target autodriver (add_subdirectory(autodriver) first)")
@@ -21,6 +22,7 @@ endif()
 
 target_sources(autodriver PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/chassis_manager.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/chassis_component.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/locomotion_model.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/capability.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/operational_mode.cpp
@@ -34,3 +36,7 @@ target_include_directories(autodriver
   PUBLIC
     $<BUILD_INTERFACE:${AUTODRIVER_ROOT_DIR}>
 )
+
+# Independent vendor component libraries.
+add_subdirectory(jetauto)
+add_subdirectory(l1w)
