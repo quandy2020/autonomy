@@ -89,10 +89,26 @@ function pip3_install()
 
 function _apt_cmd()
 {
+    # Board SSH / NFS installs have no TTY; keep apt noninteractive and skip
+    # update-notifier MOTD hooks that can hang for minutes after dpkg finishes.
+    local -a apt_env=(
+        DEBIAN_FRONTEND=noninteractive
+        APT_LISTCHANGES_FRONTEND=none
+        NEEDRESTART_MODE=a
+    )
+    local -a apt_opts=()
+    if [[ "$(id -u)" -ne 0 ]]; then
+        apt_opts+=(
+            -o DPkg::Use-Pty=0
+            -o DPkg::Post-Invoke::=
+            -o DPkg::Post-Invoke-Success::=
+            -o APT::Update::Post-Invoke-Success::=
+        )
+    fi
     if [[ "$(id -u)" -eq 0 ]]; then
-        apt-get "$@"
+        env "${apt_env[@]}" apt-get "${apt_opts[@]}" "$@"
     else
-        sudo apt-get "$@"
+        sudo env "${apt_env[@]}" apt-get "${apt_opts[@]}" "$@"
     fi
 }
 

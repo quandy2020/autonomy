@@ -539,6 +539,12 @@ function(autonomy_link_feature target)
     elseif(_feat STREQUAL "pinocchio")
       if(Pinocchio_FOUND)
         target_compile_definitions(${target} PUBLIC AUTONOMY_HAS_PINOCCHIO)
+        # pinocchioTargets sets BOOST_MPL_LIMIT_{VECTOR,LIST}_SIZE=30 but not
+        # BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS. With the default preprocessed
+        # mpl::vector (arity 20), OMPL → Boost.MultiIndex then fails:
+        # "wrong number of template arguments (30, should be at most 20)".
+        target_compile_definitions(${target} PUBLIC
+          BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS)
         if(TARGET pinocchio::pinocchio)
           target_link_libraries(${target} PUBLIC pinocchio::pinocchio)
         else()

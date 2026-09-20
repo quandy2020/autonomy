@@ -17,6 +17,12 @@ if(pinocchio_FOUND)
   if(NOT TARGET pinocchio::pinocchio AND TARGET pinocchio)
     add_library(pinocchio::pinocchio ALIAS pinocchio)
   endif()
+  # Upstream pinocchioTargets sets BOOST_MPL_LIMIT_*_SIZE=30 without
+  # BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS; OMPL/Boost.MultiIndex then breaks.
+  if(TARGET pinocchio::pinocchio)
+    set_property(TARGET pinocchio::pinocchio APPEND PROPERTY
+      INTERFACE_COMPILE_DEFINITIONS BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS)
+  endif()
 else()
   find_path(PINOCCHIO_INCLUDE_DIR
     NAMES pinocchio/pinocchio.hpp pinocchio/multibody/model.hpp
@@ -34,7 +40,9 @@ else()
       add_library(pinocchio::pinocchio UNKNOWN IMPORTED)
       set_target_properties(pinocchio::pinocchio PROPERTIES
         IMPORTED_LOCATION "${PINOCCHIO_LIBRARY}"
-        INTERFACE_INCLUDE_DIRECTORIES "${PINOCCHIO_INCLUDE_DIR}")
+        INTERFACE_INCLUDE_DIRECTORIES "${PINOCCHIO_INCLUDE_DIR}"
+        INTERFACE_COMPILE_DEFINITIONS
+          "BOOST_MPL_CFG_NO_PREPROCESSED_HEADERS;BOOST_MPL_LIMIT_VECTOR_SIZE=30;BOOST_MPL_LIMIT_LIST_SIZE=30")
     endif()
   endif()
   mark_as_advanced(PINOCCHIO_INCLUDE_DIR PINOCCHIO_LIBRARY)

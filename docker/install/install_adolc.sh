@@ -20,12 +20,20 @@
 set -e
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
+. ./installer_base.sh
 
 # Related projects
 # https://github.com/CSCsw/ColPack.git
 # https://github.com/coin-or/ADOL-C
 
-apt-get -y update && \
-    apt-get -y install \
+if [[ -f /usr/include/adolc/adolc.h ]] \
+    || [[ -f /usr/local/include/adolc/adolc.h ]]; then
+    ok "ADOL-C already installed, skipping"
+    exit 0
+fi
+
+apt_get_update_and_install \
     libcolpack-dev \
     libadolc-dev
+
+ok "Successfully installed ADOL-C (apt)"
