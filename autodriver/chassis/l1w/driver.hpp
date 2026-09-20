@@ -18,8 +18,9 @@
  * @file driver.hpp
  * @brief GENISOM 钢镚 L1-W (ZSL-1W) ChassisDriver — full HighLevel surface.
  *
- * Covers documented HighLevel API: stand/lie/passive, move/crawl,
- * attitudeControl, and full state sampling (pose / twist / battery / IMU).
+ * Covers mc_sdk::zsl_1w::HighLevel (autodriver/thirdparty/zsl1w):
+ * stand/lie/passive, move/crawl/climb (+ cancel), shakeHand, rearSquat,
+ * attitudeControl, and state sampling (pose/twist/battery/IMU/joints).
  */
 
 #ifndef AUTODRIVER_CHASSIS_L1W_DRIVER_HPP_
@@ -35,11 +36,12 @@ namespace chassis {
  * @brief Create L1-W ChassisDriver (backend "l1w").
  *
  * Params: host, local_ip, local_port, max_vx / max_vy / max_wz,
- *         allow_lateral, auto_stand, simulate.
+ *         allow_lateral, auto_stand, lie_on_stop, default_gait,
+ *         sample_joints, simulate.
  *
- * Mode intents: stand → standUp; wheel → move(); walk → crawl().
- * Tools (YAML tools + tool_cmd_channel): lie, passive, cancel_crawl,
- * attitude=roll,pitch,yaw,height.
+ * Mode intents (shared): stand → standUp; wheel → move(); walk → crawl().
+ * Climb / specials stay L1-W tools (not shared LocomotionIntent): climb,
+ * cancel_climb, crawl, move, attitude, shake_hand, rear_squat, …
  *
  * Aliases: genisom, zsibot, zsl-1w, l1-w.
  */

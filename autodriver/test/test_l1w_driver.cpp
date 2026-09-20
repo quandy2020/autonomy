@@ -97,6 +97,39 @@ TEST(L1wDriver, WalkUsesCrawlGaitAndTools) {
   driver->Stop();
 }
 
+TEST(L1wDriver, ClimbShakeAndRearSquat) {
+  auto driver = MakeSimDriver();
+  ASSERT_TRUE(driver->Start());
+
+  // Climb is L1-W-only (tool / default_gait), not a shared LocomotionIntent.
+  autodriver::chassis::ToolCommand climb;
+  climb.name = "climb";
+  EXPECT_TRUE(driver->ApplyToolCommand(climb));
+
+  autodriver::chassis::ChassisCommand cmd;
+  cmd.mutable_twist()->mutable_linear()->set_x(0.1);
+  EXPECT_TRUE(driver->ApplyVelocityCommand(cmd));
+
+  autodriver::chassis::ToolCommand cancel_climb;
+  cancel_climb.name = "cancel_climb";
+  EXPECT_TRUE(driver->ApplyToolCommand(cancel_climb));
+
+  autodriver::chassis::ToolCommand shake;
+  shake.name = "shake_hand";
+  EXPECT_TRUE(driver->ApplyToolCommand(shake));
+
+  autodriver::chassis::ToolCommand squat;
+  squat.name = "rear_squat";
+  EXPECT_TRUE(driver->ApplyToolCommand(squat));
+
+  autodriver::chassis::ToolCommand climb_once;
+  climb_once.name = "climb";
+  climb_once.value = "0.05,0,0";
+  EXPECT_TRUE(driver->ApplyToolCommand(climb_once));
+
+  driver->Stop();
+}
+
 TEST(L1wDriver, StandIgnoresNonZeroTwist) {
   auto driver = MakeSimDriver();
   ASSERT_TRUE(driver->Start());

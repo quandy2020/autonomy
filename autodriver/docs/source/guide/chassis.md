@@ -68,9 +68,9 @@ mainboard -d $AUTOLINK_DAG_PATH/chassis_jetauto.dag
 | `wheel` + `/cmd_vel` | `move` |
 | `walk` + `/cmd_vel` | `crawl` |
 | `estop` / tool `passive` | `passive` |
-| tool `lie` / `cancel_crawl` / `attitude=r,p,y,h` | 对应 API |
+| tool `lie` / `cancel_crawl` / `cancel_climb` / `climb` / `attitude` / `shake_hand` / `rear_squat` | 对应 API（均在 `chassis/l1w`） |
 
-有线默认 `host=192.168.168.168`（Wi‑Fi 热点多为 `192.168.234.1`）。SDK：`-DGenisomL1w_ROOT=`。API 与网线联机见 [`chassis/l1w/README.md`](../../../chassis/l1w/README.md)。
+有线默认 `host=192.168.168.168`（Wi‑Fi 热点多为 `192.168.234.1`）。SDK：`autodriver/thirdparty/zsl1w` 或 `-DGenisomL1w_ROOT=`。详见 [`chassis/l1w/README.md`](../../../chassis/l1w/README.md)。
 
 ## 4. 手柄
 

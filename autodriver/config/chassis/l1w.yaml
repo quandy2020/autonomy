@@ -1,14 +1,15 @@
-# GENISOM 钢镚 L1-W (ZSL-1W) — full HighLevel surface.
+# GENISOM 钢镚 L1-W (ZSL-1W) — full HighLevel surface (thirdparty/zsl1w).
 # Component: autodriver::chassis::l1w::L1wComponent
 #   module_library: libautodriver_l1w.so
 #   DAG: dag/chassis_l1w.dag
 #
 # Mode: stand | walk(crawl) | wheel(move) | estop(passive)
-# Tool: lie | passive | cancel_crawl | attitude=r,p,y,h | stand
+# Tool (L1-W only): lie | passive | stand | cancel_crawl | cancel_climb |
+#   climb[=vx,vy,wz] | crawl | move | attitude=r,p,y,h | shake_hand | rear_squat
 #
 # Wired (AGX↔RK3588): host=192.168.168.168, local_ip=AGX IP
 # Wi-Fi: host=192.168.234.1
-# SDK: -DGenisomL1w_ROOT=/path/to/genisom_l1_sdk_old
+# SDK: autodriver/thirdparty/zsl1w  or  -DGenisomL1w_ROOT=/opt/genisom_l1_sdk
 
 node_name: chassis_l1w
 
@@ -18,7 +19,18 @@ chassis:
   backend: l1w
   locomotion: wheel_legged
   require_arm: false
-  tools: [lie, passive, cancel_crawl, attitude, stand]
+  tools:
+    - lie
+    - passive
+    - stand
+    - cancel_crawl
+    - cancel_climb
+    - climb
+    - crawl
+    - move
+    - attitude
+    - shake_hand
+    - rear_squat
   cmd_vel_channel: /cmd_vel
   mode_cmd_channel: /chassis/mode
   mode_state_channel: /chassis/mode_state
@@ -42,7 +54,8 @@ chassis:
     auto_stand: true
     lie_on_stop: true
     allow_lateral: true
-    default_gait: move          # move | crawl
+    default_gait: move          # move | crawl | climb | stand
+    sample_joints: true         # pack joint summary into map_name
     max_vx: 1.0
     max_vy: 0.5
     max_wz: 1.0

@@ -52,8 +52,10 @@ void ApplyL1wDefaults(Config* config) {
     config->chassis.locomotion = "wheel_legged";
   }
   if (config->chassis.tools.empty()) {
-    config->chassis.tools = {"lie", "passive", "cancel_crawl", "attitude",
-                             "stand"};
+    config->chassis.tools = {
+        "lie",         "passive",     "stand",       "cancel_crawl",
+        "cancel_climb", "climb",      "crawl",       "move",
+        "attitude",    "shake_hand",  "rear_squat"};
   }
   if (config->chassis.tool_cmd_channel.empty()) {
     config->chassis.tool_cmd_channel = "/chassis/tool";

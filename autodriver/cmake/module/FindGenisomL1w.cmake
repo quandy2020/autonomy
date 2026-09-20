@@ -4,7 +4,11 @@
 #   https://github.com/zsibot/genisom_l1_sdk_old  (include/zsl-1w/highlevel.h)
 #   or extracted package with the same layout
 #
-# Expects:
+# Bundled tree (autodriver/thirdparty/zsl1w):
+#   ${prefix}/include/zsl-1w/highlevel.h
+#   ${prefix}/lib/<arch>/libmc_sdk_zsl_1w_<arch>.so
+#
+# System install (optional):
 #   ${prefix}/include/zsl-1w/highlevel.h
 #   ${prefix}/lib/zsl-1w/<arch>/libmc_sdk_zsl_1w_<arch>.so
 #
@@ -23,14 +27,19 @@ else()
   set(_GenisomL1w_ARCH "x86_64")
 endif()
 
+get_filename_component(_GenisomL1w_module_dir "${CMAKE_CURRENT_LIST_DIR}" ABSOLUTE)
+get_filename_component(_GenisomL1w_autodriver_root
+  "${_GenisomL1w_module_dir}/../.." ABSOLUTE)
+
 set(_GenisomL1w_hints
   ${GenisomL1w_ROOT}
   $ENV{GENISOM_L1W_SDK_ROOT}
   $ENV{ZSIBOT_L1_SDK}
   $ENV{GENISOM_L1_SDK}
-  /usr/local
+  "${_GenisomL1w_autodriver_root}/thirdparty/zsl1w"
   /opt/genisom_l1_sdk
   /opt/zsibot/genisom_l1_sdk
+  /usr/local
 )
 
 find_path(GenisomL1w_INCLUDE_DIR
@@ -47,12 +56,15 @@ find_library(GenisomL1w_LIBRARY
   PATH_SUFFIXES
     lib/zsl-1w/${_GenisomL1w_ARCH}
     lib/zsl-1w
+    lib/${_GenisomL1w_ARCH}
     lib
     lib64
 )
 
 unset(_GenisomL1w_hints)
 unset(_GenisomL1w_ARCH)
+unset(_GenisomL1w_module_dir)
+unset(_GenisomL1w_autodriver_root)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(GenisomL1w

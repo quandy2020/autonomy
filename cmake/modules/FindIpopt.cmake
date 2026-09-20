@@ -15,6 +15,9 @@
 # @file FindIpopt.cmake
 # @brief Find-module for COIN-OR Ipopt (interior-point NLP; optional for control).
 #
+# Ubuntu coinor-libipopt-dev ships IpSmartPtr.hpp that requires HAVE_CSTDDEF
+# (or HAVE_STDDEF_H) before include; define HAVE_CSTDDEF on the imported target.
+#
 # @var Ipopt_FOUND IPOPT_INCLUDE_DIRS IPOPT_LIBRARIES
 
 find_path(IPOPT_INCLUDE_DIR
@@ -34,6 +37,7 @@ find_library(IPOPT_LIBRARY
     /usr/local/lib
     /usr/lib
     /usr/lib/x86_64-linux-gnu
+    /usr/lib/aarch64-linux-gnu
     ${CMAKE_PREFIX_PATH}/lib
 )
 
@@ -43,7 +47,13 @@ find_package_handle_standard_args(Ipopt DEFAULT_MSG IPOPT_LIBRARY IPOPT_INCLUDE_
 if(IPOPT_FOUND)
   set(IPOPT_LIBRARIES ${IPOPT_LIBRARY})
   set(IPOPT_INCLUDE_DIRS ${IPOPT_INCLUDE_DIR})
+  if(NOT TARGET Ipopt::Ipopt)
+    add_library(Ipopt::Ipopt UNKNOWN IMPORTED)
+    set_target_properties(Ipopt::Ipopt PROPERTIES
+      IMPORTED_LOCATION "${IPOPT_LIBRARY}"
+      INTERFACE_INCLUDE_DIRECTORIES "${IPOPT_INCLUDE_DIR}"
+      INTERFACE_COMPILE_DEFINITIONS "HAVE_CSTDDEF")
+  endif()
 endif()
 
 mark_as_advanced(IPOPT_INCLUDE_DIR IPOPT_LIBRARY)
-

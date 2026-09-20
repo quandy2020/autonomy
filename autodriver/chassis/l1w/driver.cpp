@@ -17,6 +17,10 @@
 /**
  * @file driver.cpp
  * @brief GENISOM L1-W ChassisDriver — full HighLevel API (implementation).
+ *
+ * Maps mc_sdk::zsl_1w::HighLevel (thirdparty/zsl1w) onto ChassisDriver:
+ * standUp/lieDown/passive, move/crawl/climb (+ cancel*), shakeHand,
+ * rearSquat, attitudeControl, and full state sampling.
  */
 
 #include "chassis/l1w/driver.hpp"
@@ -92,10 +96,23 @@ bool ParseAttitudeValue(const std::string& text, float* roll, float* pitch,
   return count > 0;
 }
 
+std::string FormatFloatCsv(const std::vector<float>& values, std::size_t max_n) {
+  std::ostringstream oss;
+  const std::size_t n = std::min(values.size(), max_n);
+  for (std::size_t i = 0; i < n; ++i) {
+    if (i > 0) {
+      oss << ',';
+    }
+    oss << values[i];
+  }
+  return oss.str();
+}
+
 enum class GaitMode {
   kStand = 0,
-  kMove = 1,   ///< HighLevel::move (wheel / normal)
+  kMove = 1,   ///< HighLevel::move
   kCrawl = 2,  ///< HighLevel::crawl
+  kClimb = 3,  ///< HighLevel::climb
 };
 
 class L1wChassisDriver final : public ChassisDriver {
@@ -114,12 +131,21 @@ public:
     allow_lateral_ = hardware::ParseBool(params_, "allow_lateral", true);
     auto_stand_ = hardware::ParseBool(params_, "auto_stand", true);
     lie_on_stop_ = hardware::ParseBool(params_, "lie_on_stop", true);
+    sample_joints_ = hardware::ParseBool(params_, "sample_joints", true);
     simulate_ = hardware::ParseBool(params_, "simulate", false) ||
                 hardware::ParseBool(params_, "dry_run", false);
 
     const std::string default_gait =
         ToLower(hardware::GetString(params_, "default_gait", "move"));
-    gait_ = (default_gait == "crawl") ? GaitMode::kCrawl : GaitMode::kMove;
+    if (default_gait == "crawl" || default_gait == "walk") {
+      gait_ = GaitMode::kCrawl;
+    } else if (default_gait == "climb") {
+      gait_ = GaitMode::kClimb;
+    } else if (default_gait == "stand") {
+      gait_ = GaitMode::kStand;
+    } else {
+      gait_ = GaitMode::kMove;
+    }
 
     state_.set_global_frame("odom");
     state_.set_motion_enabled(true);
@@ -154,7 +180,7 @@ public:
 #else
     if (!simulate_) {
       AERROR << "l1w: built without GenisomL1w SDK; set params.simulate=true "
-                "or install SDK (GenisomL1w_ROOT / GENISOM_L1W_SDK_ROOT)";
+                "or install SDK (GenisomL1w_ROOT / thirdparty/zsl1w)";
       return false;
     }
 #endif
@@ -163,7 +189,9 @@ public:
     state_.set_motion_enabled(true);
     if (simulate_ && auto_stand_) {
       standing_ = true;
-      gait_ = GaitMode::kMove;
+      if (gait_ == GaitMode::kStand) {
+        gait_ = GaitMode::kMove;
+      }
     }
     AINFO << "l1w chassis started id=" << id_ << " host=" << host_
           << " standing=" << (standing_ ? "true" : "false")
@@ -176,7 +204,7 @@ public:
   void Stop() override {
     std::lock_guard<std::mutex> lock(mutex_);
     if (running_) {
-      (void)CancelCrawlLocked();
+      (void)CancelSpecialGaitsLocked();
       (void)SendTwistLocked(0.0, 0.0, 0.0);
 #if defined(AUTODRIVER_HAVE_GENISOM_L1W)
       if (sdk_ && !simulate_ && lie_on_stop_) {
@@ -189,6 +217,7 @@ public:
     running_ = false;
     standing_ = false;
     crawling_ = false;
+    climbing_ = false;
 #if defined(AUTODRIVER_HAVE_GENISOM_L1W)
     sdk_.reset();
 #endif
@@ -230,7 +259,6 @@ public:
       return false;
     }
     if (gait_ == GaitMode::kStand && nonzero) {
-      // Stand intent: hold pose; ignore non-zero twist.
       return SendTwistLocked(0.0, 0.0, 0.0);
     }
     return SendTwistLocked(vx, vy, wz);
@@ -243,15 +271,16 @@ public:
     }
     switch (intent) {
       case LocomotionIntent::kStand:
-        (void)CancelCrawlLocked();
+        (void)CancelSpecialGaitsLocked();
         (void)SendTwistLocked(0.0, 0.0, 0.0);
         gait_ = GaitMode::kStand;
         return CallStandUpLocked();
       case LocomotionIntent::kWheel:
-        (void)CancelCrawlLocked();
+        (void)CancelSpecialGaitsLocked();
         gait_ = GaitMode::kMove;
         return CallStandUpLocked();
       case LocomotionIntent::kWalk:
+        (void)CancelClimbLocked();
         gait_ = GaitMode::kCrawl;
         return CallStandUpLocked();
       case LocomotionIntent::kUnspecified:
@@ -268,7 +297,7 @@ public:
     const std::string name = ToLower(command.name);
     if (name == "lie" || name == "liedown" || name == "lie_down" ||
         name == "sit") {
-      (void)CancelCrawlLocked();
+      (void)CancelSpecialGaitsLocked();
       (void)SendTwistLocked(0.0, 0.0, 0.0);
 #if defined(AUTODRIVER_HAVE_GENISOM_L1W)
       if (sdk_ && !simulate_) {
@@ -285,7 +314,7 @@ public:
       return true;
     }
     if (name == "passive" || name == "damp" || name == "damping") {
-      (void)CancelCrawlLocked();
+      (void)CancelSpecialGaitsLocked();
       (void)SendTwistLocked(0.0, 0.0, 0.0);
 #if defined(AUTODRIVER_HAVE_GENISOM_L1W)
       if (sdk_ && !simulate_) {
@@ -306,6 +335,79 @@ public:
     }
     if (name == "cancel_crawl" || name == "cancelcrawl") {
       return CancelCrawlLocked();
+    }
+    if (name == "cancel_climb" || name == "cancelclimb") {
+      return CancelClimbLocked();
+    }
+    if (name == "climb") {
+      (void)CancelCrawlLocked();
+      gait_ = GaitMode::kClimb;
+      if (!standing_ && !CallStandUpLocked()) {
+        return false;
+      }
+      // Optional one-shot velocity: climb=vx,vy,wz
+      if (!command.value.empty()) {
+        float vx = 0.0f;
+        float vy = 0.0f;
+        float wz = 0.0f;
+        float unused = 0.0f;
+        if (!ParseAttitudeValue(command.value, &vx, &vy, &wz, &unused)) {
+          return false;
+        }
+        return SendTwistLocked(vx, vy, wz);
+      }
+      AINFO << "l1w: gait=climb";
+      return true;
+    }
+    if (name == "crawl") {
+      (void)CancelClimbLocked();
+      gait_ = GaitMode::kCrawl;
+      if (!standing_ && !CallStandUpLocked()) {
+        return false;
+      }
+      AINFO << "l1w: gait=crawl";
+      return true;
+    }
+    if (name == "move" || name == "wheel") {
+      (void)CancelSpecialGaitsLocked();
+      gait_ = GaitMode::kMove;
+      if (!standing_ && !CallStandUpLocked()) {
+        return false;
+      }
+      AINFO << "l1w: gait=move";
+      return true;
+    }
+    if (name == "shake_hand" || name == "shakehand" || name == "handshake") {
+      if (!standing_ && !CallStandUpLocked()) {
+        return false;
+      }
+#if defined(AUTODRIVER_HAVE_GENISOM_L1W)
+      if (sdk_ && !simulate_) {
+        const auto ret = sdk_->shakeHand();
+        if (ret != 0) {
+          AWARN << "l1w: shakeHand ret=" << ret;
+          return false;
+        }
+      }
+#endif
+      AINFO << "l1w: shakeHand";
+      return true;
+    }
+    if (name == "rear_squat" || name == "rearsquat" || name == "squat") {
+      if (!standing_ && !CallStandUpLocked()) {
+        return false;
+      }
+#if defined(AUTODRIVER_HAVE_GENISOM_L1W)
+      if (sdk_ && !simulate_) {
+        const auto ret = sdk_->rearSquat();
+        if (ret != 0) {
+          AWARN << "l1w: rearSquat ret=" << ret;
+          return false;
+        }
+      }
+#endif
+      AINFO << "l1w: rearSquat";
+      return true;
     }
     if (name == "attitude" || name == "attitude_control") {
       float roll = 0.0f;
@@ -350,7 +452,7 @@ public:
     std::lock_guard<std::mutex> lock(mutex_);
     command_.Clear();
     state_.set_motion_enabled(false);
-    (void)CancelCrawlLocked();
+    (void)CancelSpecialGaitsLocked();
     (void)SendTwistLocked(0.0, 0.0, 0.0);
 #if defined(AUTODRIVER_HAVE_GENISOM_L1W)
     if (sdk_ && !simulate_) {
@@ -374,6 +476,8 @@ private:
     switch (gait) {
       case GaitMode::kCrawl:
         return "crawl";
+      case GaitMode::kClimb:
+        return "climb";
       case GaitMode::kStand:
         return "stand";
       case GaitMode::kMove:
@@ -412,6 +516,26 @@ private:
     return true;
   }
 
+  bool CancelClimbLocked() {
+    if (!climbing_) {
+      return true;
+    }
+#if defined(AUTODRIVER_HAVE_GENISOM_L1W)
+    if (sdk_ && !simulate_) {
+      sdk_->cancelClimb();
+    }
+#endif
+    climbing_ = false;
+    AINFO << "l1w: cancelClimb";
+    return true;
+  }
+
+  bool CancelSpecialGaitsLocked() {
+    const bool crawl_ok = CancelCrawlLocked();
+    const bool climb_ok = CancelClimbLocked();
+    return crawl_ok && climb_ok;
+  }
+
   bool SendTwistLocked(double vx, double vy, double wz) {
     last_vx_ = vx;
     last_vy_ = vy;
@@ -420,6 +544,10 @@ private:
       if (gait_ == GaitMode::kCrawl &&
           (std::abs(vx) > 1e-9 || std::abs(vy) > 1e-9 || std::abs(wz) > 1e-9)) {
         crawling_ = true;
+      }
+      if (gait_ == GaitMode::kClimb &&
+          (std::abs(vx) > 1e-9 || std::abs(vy) > 1e-9 || std::abs(wz) > 1e-9)) {
+        climbing_ = true;
       }
       return true;
     }
@@ -432,12 +560,27 @@ private:
     const float fwz = static_cast<float>(wz);
     std::uint32_t ret = 0;
     if (gait_ == GaitMode::kCrawl) {
+      if (climbing_) {
+        sdk_->cancelClimb();
+        climbing_ = false;
+      }
       ret = sdk_->crawl(fvx, fvy, fwz);
       crawling_ = true;
+    } else if (gait_ == GaitMode::kClimb) {
+      if (crawling_) {
+        sdk_->cancelCrawl();
+        crawling_ = false;
+      }
+      ret = sdk_->climb(fvx, fvy, fwz);
+      climbing_ = true;
     } else {
       if (crawling_) {
         sdk_->cancelCrawl();
         crawling_ = false;
+      }
+      if (climbing_) {
+        sdk_->cancelClimb();
+        climbing_ = false;
       }
       ret = sdk_->move(fvx, fvy, fwz);
     }
@@ -455,6 +598,8 @@ private:
   void SampleHardwareLocked() {
 #if defined(AUTODRIVER_HAVE_GENISOM_L1W)
     if (!sdk_ || simulate_) {
+      UpdateMapNameLocked(/*ctrl_mode=*/-1, /*acc=*/{}, /*rpy=*/{},
+                          /*joint_summary=*/"");
       return;
     }
     if (!sdk_->checkConnect()) {
@@ -472,23 +617,24 @@ private:
     const auto power = sdk_->getBatteryPower();
     if (power <= 100) {
       state_.set_battery_percent(static_cast<float>(power));
+      // Heuristic: treat 100% + charging contact unknown → leave flags alone.
     }
 
     const auto quat = sdk_->getQuaternion();
     const auto pos = sdk_->getPosition();
+    const auto rpy = sdk_->getRPY();
     if (pos.size() >= 2) {
       auto* pose = state_.mutable_pose()->mutable_pose();
       pose->mutable_position()->set_x(pos[0]);
       pose->mutable_position()->set_y(pos[1]);
       pose->mutable_position()->set_z(pos.size() > 2 ? pos[2] : 0.0);
       if (quat.size() >= 4) {
-        // Docs: [w, x, y, z]
+        // Docs / vendor: [w, x, y, z]
         pose->mutable_orientation()->set_w(quat[0]);
         pose->mutable_orientation()->set_x(quat[1]);
         pose->mutable_orientation()->set_y(quat[2]);
         pose->mutable_orientation()->set_z(quat[3]);
       } else {
-        const auto rpy = sdk_->getRPY();
         const double yaw =
             rpy.size() >= 3 ? static_cast<double>(rpy[2]) : 0.0;
         const double half = 0.5 * yaw;
@@ -526,23 +672,117 @@ private:
       twist->mutable_angular()->set_z(body_vel[2]);
     }
 
-    // Encode ctrl mode into map_name tag (no schema field for ctrlmode).
-    const auto mode = sdk_->getCurrentCtrlmode();
-    // 0 damp, 1 stand, 3 move — stash as map_name for debug without schema change.
-    if (mode == 0) {
-      state_.set_map_name("ctrl:passive");
-    } else if (mode == 1) {
-      state_.set_map_name("ctrl:stand");
-      standing_ = true;
-    } else if (mode == 3) {
-      state_.set_map_name("ctrl:move");
-      standing_ = true;
-    } else {
-      state_.set_map_name("ctrl:" + std::to_string(mode));
+    const auto acc = sdk_->getBodyAcc();
+    // No dedicated IMU field on RobotState: fold |acc| into localization_quality
+    // as a [0,1] health proxy (1 = near 1g upright), and stash raw XYZ in map_name.
+    if (acc.size() >= 3) {
+      const double mag =
+          std::sqrt(static_cast<double>(acc[0]) * acc[0] +
+                    static_cast<double>(acc[1]) * acc[1] +
+                    static_cast<double>(acc[2]) * acc[2]);
+      const double quality =
+          std::clamp(1.0 - std::abs(mag - 9.81) / 9.81, 0.0, 1.0);
+      state_.set_localization_quality(static_cast<float>(quality));
     }
+
+    std::string joint_summary;
+    if (sample_joints_) {
+      const auto abad = sdk_->getLegAbadJoint();
+      const auto hip = sdk_->getLegHipJoint();
+      const auto knee = sdk_->getLegKneeJoint();
+      const auto foot = sdk_->getLegFootJoint();
+      const auto abad_v = sdk_->getLegAbadJointVel();
+      const auto hip_v = sdk_->getLegHipJointVel();
+      const auto knee_v = sdk_->getLegKneeJointVel();
+      const auto foot_v = sdk_->getLegFootJointVel();
+      const auto abad_t = sdk_->getLegAbadJointTorque();
+      const auto hip_t = sdk_->getLegHipJointTorque();
+      const auto knee_t = sdk_->getLegKneeJointTorque();
+      const auto foot_t = sdk_->getLegFootJointTorque();
+      // Compact: counts + first-leg sample (RobotState has no JointState field).
+      std::ostringstream js;
+      js << "n=" << abad.size() << "/" << hip.size() << "/" << knee.size()
+         << "/" << foot.size();
+      if (!abad.empty()) {
+        js << ";abad0=" << abad[0];
+      }
+      if (!hip.empty()) {
+        js << ";hip0=" << hip[0];
+      }
+      if (!knee.empty()) {
+        js << ";knee0=" << knee[0];
+      }
+      if (!foot.empty()) {
+        js << ";foot0=" << foot[0];
+      }
+      if (!abad_v.empty()) {
+        js << ";abad_v0=" << abad_v[0];
+      }
+      if (!hip_v.empty()) {
+        js << ";hip_v0=" << hip_v[0];
+      }
+      if (!knee_v.empty()) {
+        js << ";knee_v0=" << knee_v[0];
+      }
+      if (!foot_v.empty()) {
+        js << ";foot_v0=" << foot_v[0];
+      }
+      if (!abad_t.empty()) {
+        js << ";abad_t0=" << abad_t[0];
+      }
+      if (!hip_t.empty()) {
+        js << ";hip_t0=" << hip_t[0];
+      }
+      if (!knee_t.empty()) {
+        js << ";knee_t0=" << knee_t[0];
+      }
+      if (!foot_t.empty()) {
+        js << ";foot_t0=" << foot_t[0];
+      }
+      joint_summary = js.str();
+    }
+
+    const auto mode = static_cast<int>(sdk_->getCurrentCtrlmode());
+    if (mode == 1 || mode == 3) {
+      standing_ = true;
+    } else if (mode == 0) {
+      standing_ = false;
+    }
+    UpdateMapNameLocked(mode, acc, rpy, joint_summary);
 #else
-    (void)0;
+    UpdateMapNameLocked(/*ctrl_mode=*/-1, /*acc=*/{}, /*rpy=*/{},
+                        /*joint_summary=*/"");
 #endif
+  }
+
+  void UpdateMapNameLocked(int ctrl_mode, const std::vector<float>& acc,
+                           const std::vector<float>& rpy,
+                           const std::string& joint_summary) {
+    // RobotState has no ctrl/IMU/joint fields; pack debug telemetry into
+    // map_name (active_cmd_id is reserved for operational mode by Manager).
+    std::ostringstream oss;
+    if (ctrl_mode == 0) {
+      oss << "ctrl:passive";
+    } else if (ctrl_mode == 1) {
+      oss << "ctrl:stand";
+    } else if (ctrl_mode == 3) {
+      oss << "ctrl:move";
+    } else if (ctrl_mode >= 0) {
+      oss << "ctrl:" << ctrl_mode;
+    } else {
+      oss << "ctrl:sim";
+    }
+    oss << ";gait:" << GaitName(gait_);
+    if (acc.size() >= 3) {
+      oss << ";acc:" << FormatFloatCsv(acc, 3);
+    }
+    if (rpy.size() >= 3) {
+      oss << ";rpy:" << FormatFloatCsv(rpy, 3);
+    }
+    if (!joint_summary.empty()) {
+      oss << ";j:" << joint_summary;
+    }
+    state_.set_map_name(oss.str());
   }
 
   void IntegrateOdometryLocked(std::uint64_t now_ns) {
@@ -618,12 +858,14 @@ private:
   bool allow_lateral_ = true;
   bool auto_stand_ = true;
   bool lie_on_stop_ = true;
+  bool sample_joints_ = true;
   bool simulate_ = false;
   GaitMode gait_ = GaitMode::kMove;
   mutable std::mutex mutex_;
   bool running_ = false;
   bool standing_ = false;
   bool crawling_ = false;
+  bool climbing_ = false;
   bool skip_integrate_ = false;
   ChassisCommand command_;
   ChassisState state_;

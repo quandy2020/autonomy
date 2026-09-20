@@ -115,33 +115,26 @@ chassis:
 
 ## 钢镚 L1-W（智身 GENISOM / zsibot）
 
-轮腿机型 **ZSL-1W**；覆盖官方 HighLevel 全部控制/状态面（详见 `chassis/l1w/README.md`）。
+轮腿机型 **ZSL-1W**；实现全部在 `chassis/l1w/`（详见该目录 `README.md`），不扩展共享 `LocomotionIntent`。
 
 | 项 | 值 |
 |---|---|
 | backend | `l1w`（别名 `genisom` / `zsibot` / `zsl-1w` / `l1-w`） |
 | 库 | `libautodriver_l1w.so`（`chassis/l1w/CMakeLists.txt`） |
 | Component | `autodriver::chassis::l1w::L1wComponent` |
-| SDK | `-DGenisomL1w_ROOT=` 或 `GENISOM_L1W_SDK_ROOT`（见 `FindGenisomL1w.cmake`） |
+| SDK | `autodriver/thirdparty/zsl1w` 或 `/opt/genisom_l1_sdk` |
 | 示例 | `config/chassis/l1w.yaml` |
 | DAG | `dag/chassis_l1w.dag` |
 
-| Mode / Tool | HighLevel |
-|---|---|
-| `stand` / tool `stand` | `standUp` |
-| `wheel` + `/cmd_vel` | `move(vx,vy,wz)` |
-| `walk` + `/cmd_vel` | `crawl(vx,vy,wz)` |
-| `estop` / tool `passive` | `passive` |
-| tool `lie` | `lieDown` |
-| tool `cancel_crawl` | `cancelCrawl` |
-| tool `attitude=r,p,y,h` | `attitudeControl` |
+共享 mode：`stand` / `wheel`→move / `walk`→crawl。攀爬与特技仅 L1-W tools（`climb`、`shake_hand`、`rear_squat` 等）。
 
 ```yaml
 chassis:
   enable: true
   backend: l1w
   locomotion: wheel_legged
-  tools: [lie, passive, cancel_crawl, attitude, stand]
+  tools: [lie, passive, stand, cancel_crawl, cancel_climb, climb, crawl, move,
+          attitude, shake_hand, rear_squat]
   tool_cmd_channel: /chassis/tool
   supports_lateral: "true"
   params:
@@ -149,7 +142,8 @@ chassis:
     local_ip: 192.168.168.10
     auto_stand: true
     allow_lateral: true
-    default_gait: move
+    default_gait: move       # move | crawl | climb | stand
+    sample_joints: true
     max_vx: 1.0
     max_vy: 0.5
     max_wz: 1.0
