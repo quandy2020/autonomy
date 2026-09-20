@@ -2751,10 +2751,10 @@
     margin-right: auto !important;
 }
 
-/* 板端 benchmark 图九宫格 / 宫格画廊 */
+/* 板端 benchmark 4×4 宫格画廊 */
 .rst-content .bench-gallery {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.75rem 0.85rem;
     margin: 0.75rem 0 1.25rem;
     padding: 0;

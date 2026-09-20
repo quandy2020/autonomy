@@ -1,6 +1,10 @@
 (running-troubleshooting)=
 # 8. 故障排查
 
+常见运行问题对照。完整板端资源与对比图见 [§9 板端 task.launch 资源报告](09_board_task_launch_benchmark.md)。
+
+![运行示意](./images/running.png)
+
 ### 8.1 可执行文件
 
 | 现象 | 原因 | 处理 |
@@ -23,6 +27,8 @@
 
 ### 8.3 Docker
 
+![命令行 / 容器运行](./images/command_line_run.png)
+
 | 现象 | 原因 | 处理 |
 |------|------|------|
 | 容器内找不到代码 | `AUTONOMY_ENV` 错误 | `export AUTONOMY_ENV=/正确路径` |
@@ -31,12 +37,13 @@
 | GPU 不可用 | 缺 NVIDIA Toolkit | 见 [02 Installation](../02_Installation/08_troubleshooting.md) |
 
 ```bash
-# 宿主机验证挂载
 docker exec -it SpaceHero ls /workspace/autonomy
 docker exec -it SpaceHero ls /mnt/data4t
 ```
 
 ### 8.4 ROS 2
+
+![ROS 2 / 仿真](./images/openbot_ros_simulator.png)
 
 | 现象 | 原因 | 处理 |
 |------|------|------|
@@ -57,8 +64,24 @@ ros2 node list
 | `Configuration directory empty` | 未传 gflags | `--configuration_directory=config` |
 | 帧名不一致 | `common.lua` 未同步 | 统一 `global_frame` / `robot_base_frame` |
 
-### 8.6 相关文档
+### 8.6 板端资源异常（对照）
 
+CPU/内存异常偏高时，先对照空闲基线：
+
+![板端资源总览](./images/benchmark_gallery.png)
+
+| 现象 | 对照基线 | 处理 |
+|------|----------|------|
+| 空闲 CPU ≫ 8% 单核 | [§9.1](09_board_task_launch_benchmark.md) 合计 ≈7–8% | 查 map/导航是否在跑；杀残留 `autonomy.*` |
+| RSS ≫ 400 MiB | [§9.1](09_board_task_launch_benchmark.md) 合计 ≈360–370 MiB | 查 costmap/地图尺寸/泄漏 |
+| 启动很慢 | [§9.2](09_board_task_launch_benchmark.md) 亚秒级 fork/exec | 查磁盘/`setup.bash`/残留进程 |
+| 与 Nav2 比异常 | [§9.3](09_board_task_launch_benchmark.md) | 确认工况（空闲 vs 导航中） |
+
+详表与全量宫格：[§9 板端 task.launch 资源报告](09_board_task_launch_benchmark.md)。
+
+### 8.7 相关文档
+
+- [§9 板端资源报告](09_board_task_launch_benchmark.md)
 - [02 Installation · 故障排查](../02_Installation/08_troubleshooting.md)
 - [16 Navigator · 使用指南](../16_Navigator/00_guide.md)
 - [19 FAQs](../19_FAQs/index.rst)
