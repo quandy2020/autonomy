@@ -31,7 +31,8 @@ autonomy/
 ├── cmake/                 # CMake 模块
 ├── docker/                # Docker 镜像与脚本
 ├── docs/                  # Sphinx 文档（本手册）
-├── scripts/               # format.py、install_deps、package_autonomy_artifact.sh
+├── scripts/               # setup / 依赖安装 / NFS
+├── tools/                 # clang_format、制品打包、板端工具、CMake 检查
 ├── images/                # README 用图
 ├── CMakeLists.txt
 └── version.json           # 版本号（当前 0.1.1）
@@ -103,8 +104,8 @@ python3 -m install_deps --list-apt
 ### 5.6 代码风格与格式化
 
 ```bash
-python3 scripts/format.py autonomy/planning
-python3 scripts/format.py autonomy/navigator
+python3 tools/clang_format_sources.py autonomy/planning
+python3 tools/clang_format_sources.py autonomy/navigator
 ```
 
 ### 5.7 相关文档

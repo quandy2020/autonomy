@@ -37,10 +37,10 @@ class Detector:
             return False
 
         if "protoc_version" in check:
-            return self._is_protoc_version_installed(check["protoc_version"])
+            return self.is_protoc_version_installed(check["protoc_version"])
 
         paths = check.get("paths", ())
-        if not self._library_found(tuple(paths)):
+        if not self.library_found(tuple(paths)):
             return False
 
         executable = check.get("executable")
@@ -48,11 +48,11 @@ class Detector:
             return shutil.which(str(executable)) is not None
         return True
 
-    def _extra_lib_dirs(self) -> list[Path]:
+    def extra_lib_dirs(self) -> list[Path]:
         home_local = Path.home() / self._config.user_lib_relative
         return [home_local] if home_local.is_dir() else []
 
-    def _path_or_soname_exists(self, pattern: str) -> bool:
+    def path_or_soname_exists(self, pattern: str) -> bool:
         path = Path(pattern)
         if path.exists():
             return True
@@ -63,9 +63,9 @@ class Detector:
         stem = path.name[: -len(".so")]
         return any(path.parent.glob(f"{stem}*.so*"))
 
-    def _library_found(self, patterns: tuple[str, ...]) -> bool:
+    def library_found(self, patterns: tuple[str, ...]) -> bool:
         for pattern in patterns:
-            if self._path_or_soname_exists(pattern):
+            if self.path_or_soname_exists(pattern):
                 return True
 
         for pattern in patterns:
@@ -73,12 +73,12 @@ class Detector:
             if not path.name.endswith(".so"):
                 continue
             stem = path.name[: -len(".so")]
-            for lib_dir in self._extra_lib_dirs():
+            for lib_dir in self.extra_lib_dirs():
                 if any(lib_dir.glob(f"{stem}*.so*")):
                     return True
         return False
 
-    def _is_protoc_version_installed(self, protoc_config: dict[str, Any]) -> bool:
+    def is_protoc_version_installed(self, protoc_config: dict[str, Any]) -> bool:
         protoc = Path(str(protoc_config["protoc"]))
         if not protoc.is_file():
             return False

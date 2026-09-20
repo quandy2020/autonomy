@@ -2,22 +2,29 @@
 
 ### 7.1 一键加载（推荐）
 
-仓库根目录执行：
+**开发 / NFS 工作区**（仓库内）：
 
 ```bash
-source scripts/setup.bash
+source scripts/setup_environment.bash
 ```
 
-会设置本工程运行/开发常用环境变量（`AUTONOMY_*` / `AUTOLINK_*` / `AUTODRIVER_*` / `GLOG_*` / `PATH` / `LD_LIBRARY_PATH` 等），幂等可重复 `source`。
+**安装后**（`sudo make install` / `cmake --install`）脚本会装到 `$PREFIX/share/autonomy/setup.bash`，用户只需：
+
+```bash
+source /usr/local/share/autonomy/setup.bash
+# 或: source $CMAKE_INSTALL_PREFIX/share/autonomy/setup.bash
+```
+
+会设置运行常用环境变量（`AUTONOMY_*` / `AUTOLINK_*` / `PATH` / `LD_LIBRARY_PATH` 等），并自动识别 source / install 布局；幂等可重复 `source`。
 
 | 覆盖变量（source 前） | 含义 |
 |----------------------|------|
 | `AUTONOMY_BUILD_DIR` | 构建目录，默认 `$ROOT/build` |
-| `AUTONOMY_INSTALL_PREFIX` | 安装前缀；若存在则优先加入 `PATH`/`lib`，并作为 `AUTONOMY_PATH` |
+| `AUTONOMY_INSTALL_PREFIX` | 安装前缀；装机版会自动检测，也可手动覆盖 |
 | `AUTONOMY_SETUP_QUIET=1` | 不打印摘要 |
 | `AUTONOMY_SETUP_ROS=1` | 尝试 `source /opt/ros/*/setup.bash` 与仓库 `install/setup.bash` |
 
-脚本路径：[`scripts/setup.bash`](../../../scripts/setup.bash)。
+源码路径：[`scripts/setup_environment.bash`](../../../scripts/setup_environment.bash)。
 
 ### 7.2 日志（glog）
 
@@ -48,10 +55,10 @@ export GLOG_log_dir=${HOME}/.autonomy/log
 | `AUTONOMY_ENV` | Docker 挂载用仓库根路径 |
 | `BRIDGE` / `AUTONOMY_BRIDGE_TARGET` | Bridge 客户端默认 `host:port` |
 
-Navigator / Task BT 模式（已 `source scripts/setup.bash` 后通常无需再 export）：
+Navigator / Task BT 模式（已 `source scripts/setup_environment.bash` 后通常无需再 export）：
 
 ```bash
-source scripts/setup.bash
+source scripts/setup_environment.bash
 autolink_launch autonomy.launch
 ```
 
@@ -71,7 +78,7 @@ autolink_launch autonomy.launch
 
 ```bash
 export AUTONOMY_SETUP_ROS=1
-source scripts/setup.bash
+source scripts/setup_environment.bash
 # 或手动：
 # source /opt/ros/humble/setup.bash
 # source /path/to/install/setup.bash
@@ -83,7 +90,7 @@ source scripts/setup.bash
 
 ```bash
 ### Autonomy ###
-source /workspace/autonomy/scripts/setup.bash
+source /workspace/autonomy/scripts/setup_environment.bash
 # 可选 ROS 2
 # export AUTONOMY_SETUP_ROS=1
 ```

@@ -1,29 +1,30 @@
-# 3. 开发脚本
+# 3. 开发工具
 
-项目根目录 `scripts/` 提供两类常用脚本。
+- 通用工具：`tools/`（格式化、打包、板端 Swap、CMake 检查）
+- 工作流入口：`scripts/`（`setup.bash`、依赖安装、NFS）
 
-### 3.1 format.py — 代码格式化
+### 3.1 clang_format_sources.py — 代码格式化
 
 按根目录 `.clang-format`（Google 风格、4 空格缩进、80 列）格式化 `autonomy/` 与 `autolink/` 下 C/C++ 文件。
 
 ```bash
 # 格式化全部（默认目录）
-python3 scripts/format.py
+python3 tools/clang_format_sources.py
 
 # 仅检查，不修改（CI 用）
-python3 scripts/format.py --check
+python3 tools/clang_format_sources.py --check
 
 # 预览将格式化的文件
-python3 scripts/format.py --dry-run
+python3 tools/clang_format_sources.py --dry-run
 
 # 指定目录
-python3 scripts/format.py autonomy/navigator
-python3 scripts/format.py autonomy autolink
+python3 tools/clang_format_sources.py autonomy/navigator
+python3 tools/clang_format_sources.py autonomy autolink
 ```
 
 自动查找 `clang-format` / `clang-format-17` … `clang-format-13`，macOS 亦支持 Xcode CLT 路径。
 
-格式化：在仓库根目录运行 `python3 scripts/format.py`（或接入 pre-commit / CI）。
+格式化：在仓库根目录运行 `python3 tools/clang_format_sources.py`（或接入 pre-commit / CI）。
 
 ### 3.2 install_deps — 依赖安装
 

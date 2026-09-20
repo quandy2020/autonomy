@@ -75,7 +75,7 @@ ctest --test-dir build -R 'test_(config|config_loader|manager|hub|lidar|camera|r
 | `test_chassis_backend_registry` | `test_chassis_backend_registry.cpp` | 底盘 Registry（stub） |
 | `test_chassis_abstractions` | `test_chassis_abstractions.cpp` | locomotion / mode / safety / tool |
 | `test_jetauto_kinematics` | `test_jetauto_kinematics.cpp` | JetAuto 麦轮/差分 IK（链 `autodriver_jetauto`） |
-| `test_l1w_driver` | `test_l1w_driver.cpp` | L1-W simulate：move/crawl/tools（链 `autodriver_l1w`） |
+| `test_l1w_driver` | `test_l1w_driver.cpp` | L1-W simulate + 可选真机 SDK（见下） |
 | `test_canbus_skeleton` | `test_canbus_skeleton.cpp` | FakeCan / Protocol |
 | `test_skeleton_modules` | `test_skeleton_modules.cpp` | stub Module 可加载 |
 
@@ -103,7 +103,20 @@ ctest --test-dir build -R 'test_(config|config_loader|manager|hub|lidar|camera|r
 | Livox | 安装 SDK2；修改 `host_ip` / `lidar_ip`；保持同网段 |
 | Velodyne / Hesai | 确保 UDP `data_port` 可达；校准 YAML 可选 |
 | JetAuto | `params.simulate: true` 或接 RRC；`mainboard -d dag/chassis_jetauto.dag` |
-| L1-W | 网线 `192.168.168.168` + `GenisomL1w_ROOT`；或 `simulate: true` |
+| L1-W | 默认 simulate；真机：`AUTODRIVER_L1W_HW_TEST=1` + `HOST`/`LOCAL_IP`（见 `test_l1w_driver.cpp` / `chassis/l1w/README.md`） |
+
+真机 L1-W 冒烟示例：
+
+```bash
+export AUTODRIVER_L1W_HW_TEST=1
+export AUTODRIVER_L1W_HOST=192.168.168.168
+export AUTODRIVER_L1W_LOCAL_IP=192.168.168.10
+# 可选：微小运动 / 特技（注意周围安全）
+# export AUTODRIVER_L1W_HW_MOTION=1
+# export AUTODRIVER_L1W_HW_SPECIAL=1
+./build/bin/test_l1w_driver --gtest_filter='L1wDriverHw*'
+```
+
 
 ---
 

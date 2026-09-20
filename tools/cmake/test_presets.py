@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import json
-import pathlib
 import unittest
 
+from tools.cmake import REPOSITORY_ROOT
 
-REPOSITORY_ROOT = pathlib.Path(__file__).resolve().parents[2]
 PRESETS_PATH = REPOSITORY_ROOT / "CMakePresets.json"
 
 

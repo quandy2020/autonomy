@@ -27,10 +27,10 @@
 
 ```text
 开发机: SSH 免密 +（可选）NAT
-    → nfs_share_autonomy.sh all --board-ip <板IP>
-板子:  install_dependency.py --profile board
+    → share_nfs_workspace.sh all --board-ip <板IP>
+板子:  install_dependencies.py --profile board
     → cmake -S src/autonomy -B ~/autonomy_ws/build …
-    → cmake --build / source setup.bash
+    → cmake --build / source setup_environment.bash
 ```
 
 ---
@@ -43,12 +43,12 @@
 cd /path/to/autonomy
 
 # 按板子 IP（最常用）
-bash scripts/nfs_share_autonomy.sh all --board-ip 192.168.234.1
+bash scripts/share_nfs_workspace.sh all --board-ip 192.168.234.1
 
 # 或使用配置档 scripts/nfs_boards/<name>.env
-bash scripts/nfs_share_autonomy.sh all --board-profile lab-default
+bash scripts/share_nfs_workspace.sh all --board-profile lab-default
 
-bash scripts/nfs_share_autonomy.sh status --board-ip 192.168.234.1
+bash scripts/share_nfs_workspace.sh status --board-ip 192.168.234.1
 ```
 
 #### 参数如何按板子动态加载
@@ -69,13 +69,13 @@ bash scripts/nfs_share_autonomy.sh status --board-ip 192.168.234.1
 示例（另一块板 / 另一网段）：
 
 ```bash
-bash scripts/nfs_share_autonomy.sh all \
+bash scripts/share_nfs_workspace.sh all \
   --board-ip 192.168.234.20 \
   --board-user firefly \
   --host-ip 192.168.234.50
 
 # 非 234 网段
-bash scripts/nfs_share_autonomy.sh all \
+bash scripts/share_nfs_workspace.sh all \
   --board-host firefly@10.0.0.5 \
   --host-ip 10.0.0.1 \
   --client-net 10.0.0.0/24
@@ -86,7 +86,7 @@ bash scripts/nfs_share_autonomy.sh all \
 ```bash
 cp scripts/nfs_boards/lab-default.env scripts/nfs_boards/my-rk3588.env
 # 编辑 BOARD_IP / BOARD_USER …
-bash scripts/nfs_share_autonomy.sh all --board-profile my-rk3588
+bash scripts/share_nfs_workspace.sh all --board-profile my-rk3588
 ```
 
 #### 前置：SSH 与出网（装依赖需要）
@@ -120,7 +120,7 @@ SSH 登录板子后：
 ping -c1 8.8.8.8
 
 cd ~/autonomy    # NFS 源码
-python3 scripts/install_dependency.py --profile board --skip-installed
+python3 scripts/install_dependencies.py --profile board --skip-installed
 ```
 
 | 要点 | 说明 |
@@ -135,7 +135,7 @@ python3 scripts/install_dependency.py --profile board --skip-installed
 查看计划：
 
 ```bash
-python3 scripts/install_dependency.py --list --profile board
+python3 scripts/install_dependencies.py --list --profile board
 ```
 
 ---
@@ -177,7 +177,7 @@ cmake --build build -j$(nproc)
 ```bash
 cd ~/autonomy_ws
 export AUTONOMY_BUILD_DIR=$PWD/build
-source src/autonomy/scripts/setup.bash
+source src/autonomy/scripts/setup_environment.bash
 
 # 验证
 ls build/lib/libautonomy.so build/bin/mainboard 2>/dev/null
@@ -201,8 +201,8 @@ cmake --build build --target install
 
 ```bash
 # 开发机：卸旧板、挂新板
-bash scripts/nfs_share_autonomy.sh down --board-ip 192.168.234.1
-bash scripts/nfs_share_autonomy.sh all  --board-ip 192.168.234.20
+bash scripts/share_nfs_workspace.sh down --board-ip 192.168.234.1
+bash scripts/share_nfs_workspace.sh all  --board-ip 192.168.234.20
 ```
 
 换开发机后，若板子仍挂旧 IP：
@@ -213,7 +213,7 @@ sudo umount ~/autonomy || sudo umount -l ~/autonomy
 sudo sed -i '\#/home/firefly/autonomy#d' /etc/fstab
 ```
 
-然后在新电脑仓库根重新 `nfs_share_autonomy.sh all --board-ip …`。
+然后在新电脑仓库根重新 `share_nfs_workspace.sh all --board-ip …`。
 
 ---
 

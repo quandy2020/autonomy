@@ -1,22 +1,22 @@
 # scripts/
 
-开发与 CI 用工具脚本。
+开发与 CI **工作流入口**（环境 / 依赖 / NFS）。
+
+通用小工具（格式化、打包、板端 Swap、CMake 检查）已迁到 [`tools/`](../tools/)。
 
 | 路径 | 用途 |
 |------|------|
-| **`setup.bash`** | **统一环境变量**：`source scripts/setup.bash` |
-| **`install_dependency.py`** | **一键依赖安装** |
+| **`setup_environment.bash`** | **统一环境变量**；`make install` 后为 `$PREFIX/share/autonomy/setup.bash` |
+| **`install_dependencies.py`** | **一键依赖安装** |
 | `install_deps/` | 模块化实现（`python3 -m install_deps`） |
-| **`nfs_share_autonomy.sh`** | **一键 NFS + 板端源码挂载**（多板 IP 可参数化） |
+| **`share_nfs_workspace.sh`** | **一键 NFS + 板端源码挂载**（多板 IP 可参数化） |
 | `nfs_boards/*.env` | 板子配置档（按名字加载） |
-| `format.py` | C/C++ 代码格式化 |
-| `package_autonomy_artifact.sh` | Ansible 制品打包 |
 
 ```bash
-source scripts/setup.bash
-python3 scripts/install_dependency.py --skip-installed
-python3 scripts/install_dependency.py --profile board --skip-installed
-python3 scripts/format.py --check
+source scripts/setup_environment.bash
+python3 scripts/install_dependencies.py --skip-installed
+python3 scripts/install_dependencies.py --profile board --skip-installed
+python3 tools/clang_format_sources.py --check
 ```
 
 依赖数据：`install_deps/data/*.json`；第三方安装脚本：`docker/install/`。
@@ -25,13 +25,13 @@ python3 scripts/format.py --check
 
 ## 指定某个库 / 包安装
 
-第三方库在 `docker/install/install_*.sh`，由 `install_dependency.py` 按 Dockerfile 顺序调用。  
+第三方库在 `docker/install/install_*.sh`，由 `install_dependencies.py` 按 Dockerfile 顺序调用。  
 **已装到 `/usr/local` 的库，带 `--skip-installed` 时会跳过，不会再 clone。**
 
 ### 查看列表
 
 ```bash
-python3 scripts/install_dependency.py --list --profile board
+python3 scripts/install_dependencies.py --list --profile board
 # 输出 apt 包 + thirdparty 脚本名（如 install_ceres_solver.sh）
 ```
 
@@ -57,7 +57,7 @@ AUTONOMY_MAKE_JOBS=2 bash docker/install/install_ceres_solver.sh
 
 ```bash
 # 从 Ceres 起装到 board 列表末尾（跳过已装）
-python3 scripts/install_dependency.py --profile board \
+python3 scripts/install_dependencies.py --profile board \
   --thirdparty-only --skip-installed \
   --resume-from install_ceres_solver.sh
 ```
@@ -93,7 +93,7 @@ python3 scripts/install_dependency.py --profile board \
 ```bash
 sudo apt-get install -y libeigen3-dev   # 示例
 # 或只跑依赖脚本里的 apt 段：
-python3 scripts/install_dependency.py --profile board --apt-only
+python3 scripts/install_dependencies.py --profile board --apt-only
 ```
 
 ---
@@ -112,24 +112,24 @@ python3 scripts/install_dependency.py --profile board --apt-only
 cd /path/to/autonomy   # 仓库根（含 CMakeLists.txt / scripts/）
 
 # 板子 A（默认实验室）
-bash scripts/nfs_share_autonomy.sh all --board-ip 192.168.234.1
+bash scripts/share_nfs_workspace.sh all --board-ip 192.168.234.1
 
 # 板子 B（另一个 IP）
-bash scripts/nfs_share_autonomy.sh all --board-ip 192.168.234.20
+bash scripts/share_nfs_workspace.sh all --board-ip 192.168.234.20
 
 # 指定用户 + 本机 NFS 地址 + 网段
-bash scripts/nfs_share_autonomy.sh all \
+bash scripts/share_nfs_workspace.sh all \
   --board-ip 10.0.0.5 \
   --board-user firefly \
   --host-ip 10.0.0.1 \
   --client-net 10.0.0.0/24
 
 # 完整 SSH 目标（等价于 user@ip）
-bash scripts/nfs_share_autonomy.sh all --board-host firefly@192.168.234.20
+bash scripts/share_nfs_workspace.sh all --board-host firefly@192.168.234.20
 
 # 只查状态 / 卸载时也要带同一块板的参数
-bash scripts/nfs_share_autonomy.sh status --board-ip 192.168.234.20
-bash scripts/nfs_share_autonomy.sh down   --board-ip 192.168.234.20
+bash scripts/share_nfs_workspace.sh status --board-ip 192.168.234.20
+bash scripts/share_nfs_workspace.sh down   --board-ip 192.168.234.20
 ```
 
 | 参数 | 对应变量 | 含义 |
@@ -160,8 +160,8 @@ export CLIENT_NET=192.168.234.0/24
 export MOUNT_POINT=/home/firefly/autonomy
 export WS_LOCAL=/home/firefly/autonomy_ws
 
-bash scripts/nfs_share_autonomy.sh all
-bash scripts/nfs_share_autonomy.sh status
+bash scripts/share_nfs_workspace.sh all
+bash scripts/share_nfs_workspace.sh status
 ```
 
 #### 方式 C：板子配置档（多板长期使用）
@@ -175,11 +175,11 @@ bash scripts/nfs_share_autonomy.sh status
 
 ```bash
 # 使用配置档
-bash scripts/nfs_share_autonomy.sh all --board-profile lab-default
-bash scripts/nfs_share_autonomy.sh all --board-profile lab-board-b
+bash scripts/share_nfs_workspace.sh all --board-profile lab-default
+bash scripts/share_nfs_workspace.sh all --board-profile lab-board-b
 
 # 配置档 + 命令行覆盖（命令行优先）
-bash scripts/nfs_share_autonomy.sh all \
+bash scripts/share_nfs_workspace.sh all \
   --board-profile lab-default \
   --board-ip 192.168.234.30
 ```
@@ -189,7 +189,7 @@ bash scripts/nfs_share_autonomy.sh all \
 ```bash
 cp scripts/nfs_boards/lab-default.env scripts/nfs_boards/my-rk3588.env
 # 编辑 my-rk3588.env 里的 BOARD_IP / BOARD_USER / CLIENT_NET …
-bash scripts/nfs_share_autonomy.sh all --board-profile my-rk3588
+bash scripts/share_nfs_workspace.sh all --board-profile my-rk3588
 ```
 
 `*.env` 示例内容：
@@ -248,11 +248,11 @@ ssh firefly@192.168.234.20 \
 ```bash
 cd /path/to/autonomy
 
-bash scripts/nfs_share_autonomy.sh all --board-ip 192.168.234.20
+bash scripts/share_nfs_workspace.sh all --board-ip 192.168.234.20
 # 或
-bash scripts/nfs_share_autonomy.sh all --board-profile lab-board-b
+bash scripts/share_nfs_workspace.sh all --board-profile lab-board-b
 
-bash scripts/nfs_share_autonomy.sh status --board-ip 192.168.234.20
+bash scripts/share_nfs_workspace.sh status --board-ip 192.168.234.20
 ```
 
 成功标志：
@@ -268,7 +268,7 @@ ssh firefly@192.168.234.20
 ping -c1 8.8.8.8
 
 cd ~/autonomy   # 已是 NFS 上的源码
-python3 scripts/install_dependency.py --profile board --skip-installed
+python3 scripts/install_dependencies.py --profile board --skip-installed
 ```
 
 说明：`--profile board` 对齐 aarch64 Dockerfile + CMake；glog/protobuf/ceres 等走 `docker/install` → `/usr/local`。
@@ -300,10 +300,10 @@ cmake --build build -j$(nproc)
 
 ```bash
 # 先卸当前板（带上旧 IP）
-bash scripts/nfs_share_autonomy.sh down --board-ip 192.168.234.20
+bash scripts/share_nfs_workspace.sh down --board-ip 192.168.234.20
 
 # 挂新板
-bash scripts/nfs_share_autonomy.sh all --board-ip 192.168.234.30
+bash scripts/share_nfs_workspace.sh all --board-ip 192.168.234.30
 ```
 
 同一开发机可 export 一次，多块板先后 mount；`down` / `status` / `all` 都通过 `--board-ip` 指定操作哪一块。
@@ -321,7 +321,7 @@ bash scripts/nfs_share_autonomy.sh all --board-ip 192.168.234.30
 | `down` | 开发机 | 远端 umount + 本机 unexport |
 
 ```bash
-bash scripts/nfs_share_autonomy.sh --help
+bash scripts/share_nfs_workspace.sh --help
 ```
 
 ---
@@ -349,7 +349,7 @@ sudo sed -i '\#/home/firefly/autonomy#d' /etc/fstab
 | `status` 连错板 | 忘了带 `--board-ip`，仍用默认 `.1` |
 | mount 失败 | `--host-ip` 是否为本机地址；`CLIENT_NET` 是否覆盖板子 |
 | apt 解析失败 | 板子无默认路由；经开发机 NAT（见步骤 0） |
-| glog 链接错误 | 用 `install_dependency.py --profile board`，勿混用 apt glog |
+| glog 链接错误 | 用 `install_dependencies.py --profile board`，勿混用 apt glog |
 | 编译很慢/锁文件 | 确认 `-B ~/autonomy_ws/build`，不是 NFS 上的 `build` |
 
 ---
@@ -363,5 +363,5 @@ sudo sed -i '\#/home/firefly/autonomy#d' /etc/fstab
 ```bash
 export AUTONOMY_BUILD_DIR=$PWD/build/autonomy-minimal
 export AUTONOMY_SETUP_QUIET=1
-source scripts/setup.bash
+source scripts/setup_environment.bash
 ```

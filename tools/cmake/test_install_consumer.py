@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import pathlib
 import subprocess
 import tempfile
 import textwrap
 import unittest
 
+from tools.cmake import REPOSITORY_ROOT
 
-REPOSITORY_ROOT = pathlib.Path(__file__).resolve().parents[2]
 BUILD_DIR = REPOSITORY_ROOT / "build" / "autonomy-minimal"
 
 

@@ -1,24 +1,25 @@
 #!/usr/bin/env bash
 # Copyright 2026 The Openbot Authors
 #
-# Autonomy 工作区环境变量（一次性 source 即可）。
+# Autonomy environment (source once per shell).
 #
-#   source scripts/setup.bash
-#   source /path/to/autonomy/scripts/setup.bash
+# Source-tree / NFS workspace:
+#   source scripts/setup_environment.bash
 #
-# 可选覆盖（source 前 export）：
-#   AUTONOMY_BUILD_DIR          构建目录（默认 $ROOT/build）
-#   AUTONOMY_INSTALL_PREFIX     安装前缀（若存在则优先加入 PATH/lib，并作为 AUTONOMY_PATH）
-#   AUTONOMY_SETUP_QUIET=1      静默（不打印摘要）
-#   AUTONOMY_SETUP_ROS=1        尝试 source /opt/ros/*/setup.bash
-#   AUTOLINK_DOMAIN_ID / AUTOLINK_IP / BRIDGE / GLOG_*  可保留你已设置的值
+# After `cmake --install` / `sudo make install`:
+#   source /usr/local/share/autonomy/setup.bash
+#   # or: source $PREFIX/share/autonomy/setup.bash
 #
-# 说明：本脚本按「当前仓库」重写 AUTONOMY_ROOT / AUTOLINK_PATH 等路径类变量，
-# 避免壳里残留的其它工程 AUTOLINK_PATH 污染本工作区。
-# 幂等：重复 source 不会重复堆叠 PATH 条目。
+# Optional overrides (export before source):
+#   AUTONOMY_BUILD_DIR          build dir (default $ROOT/build when in source tree)
+#   AUTONOMY_INSTALL_PREFIX     install prefix (auto-detected when sourcing installed copy)
+#   AUTONOMY_SETUP_QUIET=1      quiet summary
+#   AUTONOMY_SETUP_ROS=1        try source /opt/ros/*/setup.bash
+#
+# Idempotent: repeated source does not stack PATH entries.
 
 # ---------------------------------------------------------------------------
-# 必须被 source；直接执行只会提示用法
+# Must be sourced
 # ---------------------------------------------------------------------------
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   echo "usage: source ${BASH_SOURCE[0]}" >&2
@@ -29,7 +30,6 @@ fi
 # helpers
 # ---------------------------------------------------------------------------
 _autonomy_path_prepend() {
-  # $1 = dir, $2 = VAR name (default PATH)
   local dir="$1"
   local var="${2:-PATH}"
   [[ -n "${dir}" ]] || return 0
@@ -55,7 +55,6 @@ _autonomy_path_prepend_if_dir() {
 }
 
 _autonomy_join_existing() {
-  # Join existing directories with ':' (skip missing).
   local out="" d
   for d in "$@"; do
     [[ -d "${d}" ]] || continue
@@ -69,19 +68,28 @@ _autonomy_join_existing() {
 }
 
 # ---------------------------------------------------------------------------
-# roots（始终锚定到本脚本所在仓库）
+# Layout: source-tree (scripts/) vs installed ($PREFIX/share/autonomy/)
 # ---------------------------------------------------------------------------
 _AUTONOMY_SETUP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-export AUTONOMY_ROOT="$(cd "${_AUTONOMY_SETUP_DIR}/.." && pwd -P)"
+_AUTONOMY_SETUP_PARENT="$(basename "$(dirname "${_AUTONOMY_SETUP_DIR}")")"
+_AUTONOMY_SETUP_SELF="$(basename "${_AUTONOMY_SETUP_DIR}")"
 
-# Host / Docker mount root (docker/run_autonomy.py)
+if [[ "${_AUTONOMY_SETUP_SELF}" == "autonomy" && "${_AUTONOMY_SETUP_PARENT}" == "share" ]]; then
+  # Installed: $PREFIX/share/autonomy/setup.bash
+  _AUTONOMY_PREFIX="$(cd "${_AUTONOMY_SETUP_DIR}/../.." && pwd -P)"
+  export AUTONOMY_INSTALL_PREFIX="${AUTONOMY_INSTALL_PREFIX:-${_AUTONOMY_PREFIX}}"
+  export AUTONOMY_ROOT="${AUTONOMY_INSTALL_PREFIX}"
+  export AUTONOMY_SETUP_LAYOUT="install"
+else
+  # Source tree: .../scripts/setup_environment.bash
+  export AUTONOMY_ROOT="$(cd "${_AUTONOMY_SETUP_DIR}/.." && pwd -P)"
+  export AUTONOMY_SETUP_LAYOUT="source"
+fi
+
 export AUTONOMY_ENV="${AUTONOMY_ROOT}"
 
-# Build / install layout
 export AUTONOMY_BUILD_DIR="${AUTONOMY_BUILD_DIR:-${AUTONOMY_ROOT}/build}"
-# AUTONOMY_INSTALL_PREFIX: optional; empty means source-tree / build 布局
 
-# Install / source-tree prefix for conf lookup (LoadModuleConf / bridge)
 if [[ -n "${AUTONOMY_INSTALL_PREFIX:-}" ]]; then
   export AUTONOMY_PATH="${AUTONOMY_INSTALL_PREFIX}"
 else
@@ -108,99 +116,126 @@ done
 for _d in "${_AUTONOMY_LIB_CANDIDATES[@]}"; do
   [[ -n "${_d}" ]] || continue
   _autonomy_path_prepend_if_dir "${_d}" LD_LIBRARY_PATH
-  # macOS (DYLD_* may be stripped by SIP for some binaries; still useful in shell)
   _autonomy_path_prepend_if_dir "${_d}" DYLD_LIBRARY_PATH
+done
+
+# ROS 2 shared libs (ament_index_cpp, etc.) when present — even without full setup.bash
+for _ros_lib in /opt/ros/humble/lib /opt/ros/jazzy/lib /opt/ros/iron/lib; do
+  _autonomy_path_prepend_if_dir "${_ros_lib}" LD_LIBRARY_PATH
 done
 
 # ---------------------------------------------------------------------------
 # Autonomy runtime
 # ---------------------------------------------------------------------------
-_AUTONOMY_CONF_JOIN="$(_autonomy_join_existing \
-  "${AUTONOMY_ROOT}/autonomy" \
-  ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/share/autonomy"} \
-  "${AUTONOMY_ROOT}/config")"
+if [[ "${AUTONOMY_SETUP_LAYOUT}" == "install" ]]; then
+  _AUTONOMY_CONF_JOIN="$(_autonomy_join_existing \
+    "${AUTONOMY_INSTALL_PREFIX}/share/autonomy" \
+    "${AUTONOMY_INSTALL_PREFIX}/share/autonomy/config")"
+  export AUTONOMY_CONFIG_DIR="${AUTONOMY_INSTALL_PREFIX}/share/autonomy/config"
+else
+  _AUTONOMY_CONF_JOIN="$(_autonomy_join_existing \
+    "${AUTONOMY_ROOT}/autonomy" \
+    ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/share/autonomy"} \
+    "${AUTONOMY_ROOT}/config")"
+  export AUTONOMY_CONFIG_DIR="${AUTONOMY_ROOT}/config"
+fi
 export AUTONOMY_CONF_PATH="${_AUTONOMY_CONF_JOIN}"
 
-export AUTONOMY_CONFIG_DIR="${AUTONOMY_ROOT}/config"
-
 _AUTONOMY_BT_JOIN="$(_autonomy_join_existing \
+  ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/lib"} \
   "${AUTONOMY_BUILD_DIR}/lib" \
-  "${AUTONOMY_BUILD_DIR}/autonomy/lib" \
-  ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/lib"})"
+  "${AUTONOMY_BUILD_DIR}/autonomy/lib")"
 export AUTONOMY_BT_PLUGIN_PATH="${_AUTONOMY_BT_JOIN}"
 
-# Bridge CLI convenience target
 export AUTONOMY_BRIDGE_TARGET="${AUTONOMY_BRIDGE_TARGET:-127.0.0.1:5005}"
 export BRIDGE="${BRIDGE:-${AUTONOMY_BRIDGE_TARGET}}"
 
 # ---------------------------------------------------------------------------
-# Autolink（绑定本仓库，不继承壳里其它工程的 AUTOLINK_PATH）
+# Autolink
 # ---------------------------------------------------------------------------
-export AUTOLINK_PATH="${AUTONOMY_ROOT}/autolink/autolink"
-export AUTOLINK_DISTRIBUTION_HOME="${AUTONOMY_INSTALL_PREFIX:-/usr/local}"
+if [[ "${AUTONOMY_SETUP_LAYOUT}" == "install" ]]; then
+  export AUTOLINK_PATH="${AUTONOMY_INSTALL_PREFIX}/share/autolink"
+  export AUTOLINK_DISTRIBUTION_HOME="${AUTONOMY_INSTALL_PREFIX}"
+else
+  export AUTOLINK_PATH="${AUTONOMY_ROOT}/autolink/autolink"
+  export AUTOLINK_DISTRIBUTION_HOME="${AUTONOMY_INSTALL_PREFIX:-/usr/local}"
+fi
 export AUTOLINK_BUILD_DIR="${AUTONOMY_BUILD_DIR}"
 export AUTOLINK_PYTHON_DIR="${AUTOLINK_BUILD_DIR}/python"
 
-_AUTOLINK_LAUNCH_JOIN="$(_autonomy_join_existing \
-  "${AUTONOMY_ROOT}/autonomy/system/launch" \
-  "${AUTONOMY_ROOT}/autonomy/task/launch" \
-  "${AUTONOMY_ROOT}/autonomy/perception/launch" \
-  "${AUTONOMY_ROOT}/autonomy/localization/launch" \
-  "${AUTONOMY_ROOT}/autodriver/launch" \
-  "${AUTONOMY_ROOT}/autolink/autolink/launch")"
+if [[ "${AUTONOMY_SETUP_LAYOUT}" == "install" ]]; then
+  _AUTOLINK_LAUNCH_JOIN="$(_autonomy_join_existing \
+    "${AUTONOMY_INSTALL_PREFIX}/share/autonomy/system/launch" \
+    "${AUTONOMY_INSTALL_PREFIX}/share/autonomy/task/launch" \
+    "${AUTONOMY_INSTALL_PREFIX}/share/autonomy/perception/launch" \
+    "${AUTONOMY_INSTALL_PREFIX}/share/autonomy/localization/launch" \
+    "${AUTONOMY_INSTALL_PREFIX}/share/autodriver/launch" \
+    "${AUTONOMY_INSTALL_PREFIX}/share/autolink/launch")"
+  _AUTOLINK_CONF_JOIN="$(_autonomy_join_existing \
+    "${AUTOLINK_PATH}" \
+    "${AUTONOMY_INSTALL_PREFIX}/share/autonomy" \
+    "${AUTONOMY_INSTALL_PREFIX}/share/autonomy/perception" \
+    "${AUTONOMY_INSTALL_PREFIX}/share/autonomy/system" \
+    "${AUTONOMY_INSTALL_PREFIX}/share/autonomy/config")"
+  _AUTOLINK_DAG_JOIN="$(_autonomy_join_existing \
+    "${AUTONOMY_INSTALL_PREFIX}/share/autonomy" \
+    "${AUTOLINK_PATH}" \
+    "${AUTONOMY_INSTALL_PREFIX}/share/autolink/dag")"
+else
+  _AUTOLINK_LAUNCH_JOIN="$(_autonomy_join_existing \
+    "${AUTONOMY_ROOT}/autonomy/system/launch" \
+    "${AUTONOMY_ROOT}/autonomy/task/launch" \
+    "${AUTONOMY_ROOT}/autonomy/perception/launch" \
+    "${AUTONOMY_ROOT}/autonomy/localization/launch" \
+    "${AUTONOMY_ROOT}/autodriver/launch" \
+    "${AUTONOMY_ROOT}/autolink/autolink/launch")"
+  _AUTOLINK_CONF_JOIN="$(_autonomy_join_existing \
+    "${AUTOLINK_PATH}" \
+    "${AUTONOMY_ROOT}/autonomy" \
+    "${AUTONOMY_ROOT}/autonomy/perception" \
+    "${AUTONOMY_ROOT}/autonomy/system" \
+    "${AUTONOMY_ROOT}/config")"
+  _AUTOLINK_DAG_JOIN="$(_autonomy_join_existing \
+    "${AUTONOMY_ROOT}/autonomy" \
+    "${AUTOLINK_PATH}" \
+    "${AUTOLINK_DISTRIBUTION_HOME}/share/autolink/dag")"
+fi
 export AUTOLINK_LAUNCH_PATH="${_AUTOLINK_LAUNCH_JOIN}"
-
-_AUTOLINK_CONF_JOIN="$(_autonomy_join_existing \
-  "${AUTOLINK_PATH}" \
-  "${AUTONOMY_ROOT}/autonomy" \
-  "${AUTONOMY_ROOT}/autonomy/perception" \
-  "${AUTONOMY_ROOT}/autonomy/system" \
-  "${AUTONOMY_ROOT}/config")"
 export AUTOLINK_CONF_PATH="${_AUTOLINK_CONF_JOIN}"
 export AUTOLINK_FLAG_PATH="${AUTOLINK_PATH}"
-
-_AUTOLINK_DAG_JOIN="$(_autonomy_join_existing \
-  "${AUTONOMY_ROOT}/autonomy" \
-  "${AUTOLINK_PATH}" \
-  "${AUTOLINK_DISTRIBUTION_HOME}/share/autolink/dag")"
 export AUTOLINK_DAG_PATH="${_AUTOLINK_DAG_JOIN}"
 
 _AUTOLINK_LIB_JOIN="$(_autonomy_join_existing \
+  ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/lib"} \
   "${AUTONOMY_BUILD_DIR}/lib" \
   "${AUTONOMY_BUILD_DIR}/autonomy/lib" \
-  ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/lib"} \
   "${AUTOLINK_DISTRIBUTION_HOME}/lib")"
 export AUTOLINK_LIB_PATH="${_AUTOLINK_LIB_JOIN}"
 
-# Optional RTPS / FastDDS (cross-host). Local SHM/file discovery needs no change.
 export AUTOLINK_DOMAIN_ID="${AUTOLINK_DOMAIN_ID:-80}"
 export AUTOLINK_IP="${AUTOLINK_IP:-127.0.0.1}"
-# export AUTOLINK_TOPOLOGY_BACKEND=local
-# export AUTOLINK_DISCOVERY_SERVER=192.168.1.10:11811
 
-# SysMo (0=off)
 export sysmo_start="${sysmo_start:-0}"
 
 # ---------------------------------------------------------------------------
 # Autodriver
 # ---------------------------------------------------------------------------
-export AUTODRIVER_PATH="${AUTONOMY_ROOT}/autodriver"
-export AUTODRIVER_DISTRIBUTION_HOME="${AUTONOMY_INSTALL_PREFIX:-/usr/local}"
+if [[ "${AUTONOMY_SETUP_LAYOUT}" == "install" ]]; then
+  export AUTODRIVER_PATH="${AUTONOMY_INSTALL_PREFIX}/share/autodriver"
+  export AUTODRIVER_DISTRIBUTION_HOME="${AUTONOMY_INSTALL_PREFIX}"
+else
+  export AUTODRIVER_PATH="${AUTONOMY_ROOT}/autodriver"
+  export AUTODRIVER_DISTRIBUTION_HOME="${AUTONOMY_INSTALL_PREFIX:-/usr/local}"
+fi
 
 # ---------------------------------------------------------------------------
-# Autoviz / Python（目录存在才 prepend）
+# Autoviz / Python
 # ---------------------------------------------------------------------------
 _autonomy_path_prepend_if_dir "${AUTOLINK_PYTHON_DIR}" PYTHONPATH
 _autonomy_path_prepend_if_dir "${AUTONOMY_BUILD_DIR}/python" PYTHONPATH
 _autonomy_path_prepend_if_dir "${AUTONOMY_ROOT}/autoviz/python" PYTHONPATH
+_autonomy_path_prepend_if_dir "${AUTONOMY_INSTALL_PREFIX}/lib/python" PYTHONPATH
 _autonomy_path_prepend_if_dir "${AUTONOMY_INSTALL_PREFIX}/python" PYTHONPATH
-
-# Ogre / plugin overrides — uncomment when needed:
-# export AUTOVIZ_OGRE_PLUGIN_DIR=/usr/local/lib/OGRE
-# export AUTOVIZ_OGRE_MEDIA_PATH=${AUTONOMY_ROOT}/autoviz/autoviz/resources/ogre_media
-# export AUTOVIZ_PLUGIN_PATH=...
-# export AUTOVIZ_RESOURCE_PATH=...
-# export AUTOVIZ_PYTHON=/usr/bin/python3
 
 # ---------------------------------------------------------------------------
 # glog
@@ -211,7 +246,6 @@ export GLOG_colorlogtostderr="${GLOG_colorlogtostderr:-1}"
 export GLOG_minloglevel="${GLOG_minloglevel:-0}"
 export GLOG_log_dir="${GLOG_log_dir:-${HOME}/.autonomy/log}"
 mkdir -p "${GLOG_log_dir}" 2>/dev/null || true
-# export GLOG_v=4   # verbose DEBUG
 
 # ---------------------------------------------------------------------------
 # Optional ROS 2 overlay
@@ -234,19 +268,20 @@ fi
 # summary
 # ---------------------------------------------------------------------------
 if [[ "${AUTONOMY_SETUP_QUIET:-0}" != "1" ]]; then
-  echo "[autonomy] setup OK"
+  echo "[autonomy] setup OK (${AUTONOMY_SETUP_LAYOUT})"
   echo "  AUTONOMY_ROOT=${AUTONOMY_ROOT}"
   echo "  AUTONOMY_PATH=${AUTONOMY_PATH}"
+  [[ -n "${AUTONOMY_INSTALL_PREFIX:-}" ]] && echo "  AUTONOMY_INSTALL_PREFIX=${AUTONOMY_INSTALL_PREFIX}"
   echo "  AUTONOMY_BUILD_DIR=${AUTONOMY_BUILD_DIR}"
   echo "  AUTOLINK_PATH=${AUTOLINK_PATH}"
   echo "  AUTOLINK_LAUNCH_PATH=${AUTOLINK_LAUNCH_PATH}"
-  echo "  AUTONOMY_BT_PLUGIN_PATH=${AUTONOMY_BT_PLUGIN_PATH:-<build/lib missing>}"
+  echo "  AUTONOMY_BT_PLUGIN_PATH=${AUTONOMY_BT_PLUGIN_PATH:-<lib missing>}"
   echo "  BRIDGE=${BRIDGE}"
   echo "  GLOG_log_dir=${GLOG_log_dir}"
 fi
 
-# cleanup locals
-unset _AUTONOMY_SETUP_DIR _AUTONOMY_BIN_CANDIDATES _AUTONOMY_LIB_CANDIDATES
+unset _AUTONOMY_SETUP_DIR _AUTONOMY_SETUP_PARENT _AUTONOMY_SETUP_SELF _AUTONOMY_PREFIX
+unset _AUTONOMY_BIN_CANDIDATES _AUTONOMY_LIB_CANDIDATES
 unset _AUTONOMY_CONF_JOIN _AUTONOMY_BT_JOIN
 unset _AUTOLINK_LAUNCH_JOIN _AUTOLINK_CONF_JOIN _AUTOLINK_DAG_JOIN _AUTOLINK_LIB_JOIN
 unset _d _ros

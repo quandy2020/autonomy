@@ -27,7 +27,7 @@ from install_deps.config import Config
 from install_deps.detector import Detector
 from install_deps.thirdparty import Thirdparty
 
-_EXIT_USAGE_ERROR = 2
+EXIT_USAGE_ERROR = 2
 
 
 class App:
@@ -41,7 +41,7 @@ class App:
 
     def main(self, argv: list[str] | None = None) -> int:
         """Parses argv and runs installation."""
-        parser = self._build_parser()
+        parser = self.build_parser()
         args = parser.parse_args(argv)
 
         if args.list_apt:
@@ -54,9 +54,9 @@ class App:
                 "Error: --apt-only and --thirdparty-only cannot be used together.",
                 file=sys.stderr,
             )
-            return _EXIT_USAGE_ERROR
+            return EXIT_USAGE_ERROR
 
-        self._warn_platform()
+        self.warn_platform()
 
         try:
             if not args.thirdparty_only:
@@ -83,7 +83,7 @@ class App:
         print("Dependency installation finished.")
         return 0
 
-    def _build_parser(self) -> argparse.ArgumentParser:
+    def build_parser(self) -> argparse.ArgumentParser:
         parser = argparse.ArgumentParser(
             description="Install autonomy dependencies (apt + docker/install scripts).",
             epilog=(
@@ -135,7 +135,7 @@ class App:
         )
         return parser
 
-    def _warn_platform(self) -> None:
+    def warn_platform(self) -> None:
         if os.geteuid() == 0:
             print(
                 "Warning: running as root. 'sudo' commands may be redundant.",

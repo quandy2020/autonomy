@@ -45,6 +45,25 @@ autodriver/thirdparty/zsl1w/
 cmake ... -DGenisomL1w_ROOT=/opt/genisom_l1_sdk   # 可选显式指定
 ```
 
+## 测试
+
+| 模式 | 说明 |
+|------|------|
+| simulate（默认） | `./build/bin/test_l1w_driver` — 不连狗 |
+| 真机 SDK | 见下方环境变量；需已链接 GenisomL1w |
+
+```bash
+# 板端本机（Firefly eth0 == 192.168.168.168；sdk_config.target_ip 同值）
+export AUTODRIVER_L1W_HW_TEST=1
+export AUTODRIVER_L1W_HOST=192.168.168.168
+export AUTODRIVER_L1W_LOCAL_IP=192.168.168.168
+# AGX 遥控时改为 AGX IP，并与狗端 target_ip 一致，例如：
+# export AUTODRIVER_L1W_LOCAL_IP=192.168.168.100
+# export AUTODRIVER_L1W_HW_MOTION=1             # 微小 move/crawl
+# export AUTODRIVER_L1W_HW_SPECIAL=1            # shake / squat / climb
+./build/bin/test_l1w_driver --gtest_filter='L1wDriverHw*'
+```
+
 ## Component
 
 ```text

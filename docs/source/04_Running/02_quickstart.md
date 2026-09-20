@@ -5,7 +5,7 @@
 ### 2.1 启动多进程栈
 
 ```bash
-source scripts/setup.bash
+source scripts/setup_environment.bash
 # 等价于手动设置 PATH / AUTOLINK_LAUNCH_PATH / AUTONOMY_BT_PLUGIN_PATH / GLOG_*
 
 autolink_launch autonomy.launch

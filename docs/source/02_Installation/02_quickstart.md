@@ -22,7 +22,7 @@ ls -la lib/libautonomy.so
 
 # 5. 加载运行环境（任意新终端）
 cd ..   # 回到仓库根
-source scripts/setup.bash
+source scripts/setup_environment.bash
 ```
 
 ### 2.2 仅安装 APT（跳过第三方编译）
@@ -52,10 +52,10 @@ cd /workspace/autonomy/build && cmake -G Ninja .. && ninja
 
 ```bash
 # 开发机
-bash scripts/nfs_share_autonomy.sh all --board-ip 192.168.234.1
+bash scripts/share_nfs_workspace.sh all --board-ip 192.168.234.1
 
 # 板子
-cd ~/autonomy && python3 scripts/install_dependency.py --profile board --skip-installed
+cd ~/autonomy && python3 scripts/install_dependencies.py --profile board --skip-installed
 cd ~/autonomy_ws && cmake -S src/autonomy -B build -DCMAKE_PREFIX_PATH=/usr/local \
   -DBUILD_AUTOVIZ=OFF -DBUILD_ORBISVIEW=OFF -DBUILD_DOCS=OFF && cmake --build build -j$(nproc)
 ```

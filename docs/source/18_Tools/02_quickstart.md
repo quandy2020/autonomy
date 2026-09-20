@@ -10,13 +10,13 @@ python3 -m install_deps
 
 ```bash
 # 预览
-python3 scripts/format.py --dry-run
+python3 tools/clang_format_sources.py --dry-run
 
 # 格式化
-python3 scripts/format.py
+python3 tools/clang_format_sources.py
 
 # CI 检查
-python3 scripts/format.py --check
+python3 tools/clang_format_sources.py --check
 ```
 
 ### 2.3 端到端验证（多进程）

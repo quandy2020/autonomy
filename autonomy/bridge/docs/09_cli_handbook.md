@@ -33,7 +33,7 @@ export TGT=${BRIDGE:-127.0.0.1:5005}
 alias brc='$BR call --target $TGT'
 ```
 
-（推荐先 `source scripts/setup.bash`，已设置 `PATH`、`AUTONOMY_PATH`、`BRIDGE`。）
+（推荐先 `source scripts/setup_environment.bash`，已设置 `PATH`、`AUTONOMY_PATH`、`BRIDGE`。）
 
 **推荐双终端：**
 

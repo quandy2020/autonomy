@@ -11,9 +11,9 @@ ceres/…) are installed ONLY via docker/install/*.sh and are force-run so apt
 stubs cannot win the ABI race (see Firefly glog 0.4 vs 0.6).
 
 Usage:
-  python3 scripts/install_dependency.py --profile board
-  python3 scripts/install_dependency.py --profile full --skip-installed
-  python3 scripts/install_dependency.py --thirdparty-only --resume-from install_ceres_solver.sh
+  python3 scripts/install_dependencies.py --profile board
+  python3 scripts/install_dependencies.py --profile full --skip-installed
+  python3 scripts/install_dependencies.py --thirdparty-only --resume-from install_ceres_solver.sh
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ from typing import Dict, Iterable, List, Sequence
 #   libgoogle-glog-dev, libgflags-dev, libceres-dev,
 #   nlohmann-json3-dev, libgtest-dev (optional),
 #   libgrpc*-dev / protobuf-compiler* (use install_protobuf/grpc.sh → 3.19).
-_APT_DOCKERFILE_BASE: List[str] = [
+APT_DOCKERFILE_BASE: List[str] = [
     "sudo",
     "software-properties-common",
     "pkg-config",
@@ -95,7 +95,7 @@ _APT_DOCKERFILE_BASE: List[str] = [
     "libtbb-dev",
 ]
 
-APT_PACKAGES_FULL: List[str] = _APT_DOCKERFILE_BASE + [
+APT_PACKAGES_FULL: List[str] = APT_DOCKERFILE_BASE + [
     "libcivetweb-dev",
     "libgtk2.0-dev",
     "libfltk1.3-dev",
@@ -105,7 +105,7 @@ APT_PACKAGES_FULL: List[str] = _APT_DOCKERFILE_BASE + [
 ]
 
 # Headless aarch64 / Firefly: no GTK/FLTK/Sphinx; keep NFS client.
-APT_PACKAGES_BOARD: List[str] = _APT_DOCKERFILE_BASE + [
+APT_PACKAGES_BOARD: List[str] = APT_DOCKERFILE_BASE + [
     "nfs-common",
     "libgmock-dev",
 ]
@@ -201,7 +201,7 @@ FORCE_THIRDPARTY_SCRIPTS: frozenset[str] = frozenset(
 )
 
 
-def _usr_local(*rel: str) -> List[str]:
+def usr_local_paths(*rel: str) -> List[str]:
     return [str(Path("/usr/local").joinpath(*rel))]
 
 
@@ -212,10 +212,10 @@ SCRIPT_INSTALL_CHECKS: Dict[str, List[str]] = {
         "/usr/local/lib/libgtest.so",
         "/usr/local/lib/libgtest.a",
     ],
-    "install_gflags.sh": _usr_local("lib", "libgflags.so"),
-    "install_glog.sh": _usr_local("lib", "libglog.so"),
-    "install_protobuf.sh": _usr_local("bin", "protoc"),
-    "install_grpc.sh": _usr_local("lib", "libgrpc++.so"),
+    "install_gflags.sh": usr_local_paths("lib", "libgflags.so"),
+    "install_glog.sh": usr_local_paths("lib", "libglog.so"),
+    "install_protobuf.sh": usr_local_paths("bin", "protoc"),
+    "install_grpc.sh": usr_local_paths("lib", "libgrpc++.so"),
     "install_gperftools.sh": [
         "/usr/local/lib/libtcmalloc.so",
         "/usr/lib/libtcmalloc.so",
@@ -227,16 +227,16 @@ SCRIPT_INSTALL_CHECKS: Dict[str, List[str]] = {
         "/usr/lib/aarch64-linux-gnu/libopencv_core.so",
         "/usr/lib/x86_64-linux-gnu/libopencv_core.so",
     ],
-    "install_ceres_solver.sh": _usr_local("lib", "libceres.so"),
+    "install_ceres_solver.sh": usr_local_paths("lib", "libceres.so"),
     "install_nlohmann.sh": [
         "/usr/local/include/nlohmann/json.hpp",
         "/usr/include/nlohmann/json.hpp",
     ],
-    "install_osqp.sh": _usr_local("lib", "libosqp.so"),
-    "install_g2o.sh": _usr_local("lib", "cmake", "g2o", "g2oConfig.cmake"),
-    "install_fbow.sh": _usr_local("lib", "libfbow.so"),
-    "install_taskflow.sh": _usr_local("include", "taskflow", "taskflow.hpp"),
-    "install_behaviortree_cpp.sh": _usr_local("lib", "libbehaviortree_cpp.so"),
+    "install_osqp.sh": usr_local_paths("lib", "libosqp.so"),
+    "install_g2o.sh": usr_local_paths("lib", "cmake", "g2o", "g2oConfig.cmake"),
+    "install_fbow.sh": usr_local_paths("lib", "libfbow.so"),
+    "install_taskflow.sh": usr_local_paths("include", "taskflow", "taskflow.hpp"),
+    "install_behaviortree_cpp.sh": usr_local_paths("lib", "libbehaviortree_cpp.so"),
     "install_adolc.sh": [
         "/usr/include/adolc/adolc.h",
         "/usr/local/include/adolc/adolc.h",
@@ -246,8 +246,8 @@ SCRIPT_INSTALL_CHECKS: Dict[str, List[str]] = {
         "/usr/include/coin-or/IpIpoptApplication.hpp",
         "/usr/local/include/coin-or/IpIpoptApplication.hpp",
     ],
-    "install_assimp.sh": _usr_local("lib", "libassimp.so"),
-    "install_ogre.sh": _usr_local("lib", "libOgreMain.so"),
+    "install_assimp.sh": usr_local_paths("lib", "libassimp.so"),
+    "install_ogre.sh": usr_local_paths("lib", "libOgreMain.so"),
 }
 
 
@@ -324,7 +324,7 @@ def purge_apt_conflicts(*, dry_run: bool) -> None:
             run_command(["sudo", "rm", "-rf", str(p)], dry_run=False)
 
 
-def _apt_package_available(package: str) -> bool:
+def apt_package_available(package: str) -> bool:
     """True if apt-cache knows a candidate for package (non-zero = missing)."""
     try:
         result = subprocess.run(
@@ -342,7 +342,7 @@ def _apt_package_available(package: str) -> bool:
     return False
 
 
-def _resolve_apt_packages(packages: Sequence[str]) -> List[str]:
+def resolve_apt_packages(packages: Sequence[str]) -> List[str]:
     """Apply fallbacks and drop unavailable optional packages."""
     resolved: List[str] = []
     skipped: List[str] = []
@@ -350,7 +350,7 @@ def _resolve_apt_packages(packages: Sequence[str]) -> List[str]:
         candidates = [pkg] + APT_PACKAGE_FALLBACKS.get(pkg, [])
         chosen = None
         for candidate in candidates:
-            if _apt_package_available(candidate):
+            if apt_package_available(candidate):
                 chosen = candidate
                 break
         if chosen is None:
@@ -392,7 +392,7 @@ def install_apt_dependencies(
     to_install = (
         list(sorted(set(packages)))
         if dry_run
-        else _resolve_apt_packages(packages)
+        else resolve_apt_packages(packages)
     )
     if not to_install:
         print("==> No apt packages to install")
@@ -433,11 +433,11 @@ def install_apt_dependencies(
             ) from None
 
 
-def _can_detect_installed(script_name: str) -> bool:
+def can_detect_installed(script_name: str) -> bool:
     return script_name in SCRIPT_INSTALL_CHECKS
 
 
-def _is_script_dependency_installed(script_name: str) -> bool:
+def is_script_dependency_installed(script_name: str) -> bool:
     check_paths = SCRIPT_INSTALL_CHECKS.get(script_name, [])
     return any(Path(p).exists() for p in check_paths)
 
@@ -512,8 +512,8 @@ def install_thirdparty(
         if (
             skip_installed
             and not force_rebuild
-            and _can_detect_installed(script)
-            and _is_script_dependency_installed(script)
+            and can_detect_installed(script)
+            and is_script_dependency_installed(script)
         ):
             print(f"[SKIP] {script}: dependency already detected under install prefix")
             continue

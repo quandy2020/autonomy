@@ -15,7 +15,7 @@
 |------|------|------|
 | 1 | [01_overview.md](01_overview.md) | 工具全景 |
 | 2 | [02_quickstart.md](02_quickstart.md) | 常用命令速查 |
-| 3 | [03_dev_scripts.md](03_dev_scripts.md) | format.py、install_deps |
+| 3 | [03_dev_scripts.md](03_dev_scripts.md) | clang_format_sources、install_deps |
 | 4 | [05_monitor.md](05_monitor.md) | 系统监控 API |
 | 5 | [06_autolink_tools.md](06_autolink_tools.md) | autolink_channel 等 |
 | 6 | [07_docker_scripts.md](07_docker_scripts.md) | Docker 脚本 |

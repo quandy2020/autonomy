@@ -33,6 +33,7 @@
 #include <mutex>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "chassis/backend_register.hpp"
@@ -164,9 +165,28 @@ public:
     if (!simulate_) {
       sdk_ = std::make_unique<mc_sdk::zsl_1w::HighLevel>();
       sdk_->initRobot(local_ip_, local_port_, host_);
-      if (!sdk_->checkConnect()) {
+      // HighLevel UDP handshake needs a short settle; immediate checkConnect
+      // often returns false even when the robot is reachable (onboard Firefly).
+      const int connect_timeout_ms =
+          hardware::ParseInt(params_, "connect_timeout_ms", 3000);
+      const int connect_poll_ms =
+          hardware::ParseInt(params_, "connect_poll_ms", 200);
+      bool connected = false;
+      const auto deadline =
+          std::chrono::steady_clock::now() +
+          std::chrono::milliseconds(std::max(connect_timeout_ms, 0));
+      while (std::chrono::steady_clock::now() < deadline) {
+        if (sdk_->checkConnect()) {
+          connected = true;
+          break;
+        }
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(std::max(connect_poll_ms, 50)));
+      }
+      if (!connected) {
         AERROR << "l1w: SDK checkConnect failed host=" << host_
-               << " local=" << local_ip_ << ":" << local_port_;
+               << " local=" << local_ip_ << ":" << local_port_
+               << " timeout_ms=" << connect_timeout_ms;
         sdk_.reset();
         return false;
       }
@@ -198,7 +218,12 @@ public:
           << " gait=" << GaitName(gait_)
           << " lateral=" << (allow_lateral_ ? "on" : "off")
           << " simulate=" << (simulate_ ? "true" : "false");
-    return SendTwistLocked(0.0, 0.0, 0.0);
+    // Zero-velocity stop; do not fail Start if the SDK still rejects move
+    // right after standUp (state machine settle race).
+    if (!SendTwistLocked(0.0, 0.0, 0.0)) {
+      AWARN << "l1w: initial zero twist ignored (still standing)";
+    }
+    return true;
   }
 
   void Stop() override {
@@ -494,6 +519,13 @@ private:
         AERROR << "l1w: standUp failed ret=" << ret;
         return false;
       }
+      // HighLevel rejects move() until standUp fully settles.
+      const int stand_settle_ms =
+          hardware::ParseInt(params_, "stand_settle_ms", 2000);
+      if (stand_settle_ms > 0) {
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(stand_settle_ms));
+      }
     }
 #endif
     standing_ = true;
@@ -585,6 +617,13 @@ private:
       ret = sdk_->move(fvx, fvy, fwz);
     }
     if (ret != 0) {
+      // Zero-velocity "stop" is often rejected right after standUp / long move;
+      // treat as soft success so Start()/Stop() still succeed.
+      if (std::abs(vx) <= 1e-9 && std::abs(vy) <= 1e-9 &&
+          std::abs(wz) <= 1e-9) {
+        AWARN << "l1w: zero twist ignored ret=" << ret;
+        return true;
+      }
       AWARN << "l1w: " << GaitName(gait_) << " failed ret=" << ret
             << " v=(" << vx << "," << vy << "," << wz << ")";
       return false;

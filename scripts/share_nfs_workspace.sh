@@ -2,14 +2,14 @@
 # One-click NFS: x86 host exports autonomy → Firefly mounts it.
 #
 # From the x86 host (recommended):
-#   bash scripts/nfs_share_autonomy.sh          # same as: all
-#   bash scripts/nfs_share_autonomy.sh all
-#   bash scripts/nfs_share_autonomy.sh status
-#   bash scripts/nfs_share_autonomy.sh down
+#   bash scripts/share_nfs_workspace.sh          # same as: all
+#   bash scripts/share_nfs_workspace.sh all
+#   bash scripts/share_nfs_workspace.sh status
+#   bash scripts/share_nfs_workspace.sh down
 #
 # Manual split:
-#   sudo bash scripts/nfs_share_autonomy.sh server
-#   bash scripts/nfs_share_autonomy.sh client    # on Firefly
+#   sudo bash scripts/share_nfs_workspace.sh server
+#   bash scripts/share_nfs_workspace.sh client    # on Firefly
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

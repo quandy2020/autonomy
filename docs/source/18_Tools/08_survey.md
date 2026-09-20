@@ -4,7 +4,7 @@
 
 | 工具 | 类型 | 状态 | 文档 |
 |------|------|------|------|
-| `format.py` | 开发 | ✅ | [§3](03_dev_scripts.md) |
+| `clang_format_sources.py` | 开发 | ✅ | [§3](03_dev_scripts.md) |
 | `install_deps` | 开发 | ✅ | [§3](03_dev_scripts.md) |
 | `autolink_launch` | 运行 | ✅ | [04 Running](../04_Running/02_quickstart.md) |
 | `MonitorRegistry` | 运维 | ✅ | [§4](05_monitor.md) |
@@ -19,7 +19,7 @@
 | 场景 | 推荐工具 |
 |------|----------|
 | 首次搭建环境 | `install_deps` + `run_autonomy.py` |
-| 提交前检查格式 | `format.py --check` |
+| 提交前检查格式 | `tools/clang_format_sources.py --check` |
 | 端到端导航验证 | `autolink_launch autonomy.launch` + Bridge / Action |
 | 通道/话题调试 | Autolink CLI（独立构建） |
 | 生产监控 | `MonitorRegistry` + Prometheus |

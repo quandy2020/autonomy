@@ -30,7 +30,7 @@ cd ansible
 
 # 1. ARM 编译机 build + 打包
 ./deploy.sh build robots -l robot01
-../scripts/package_autonomy_artifact.sh --output ../dist/autonomy.tar.gz
+python3 ../tools/package_install_tarball.py --output ../dist/autonomy.tar.gz
 
 # 2. 推到全部机器人
 ./deploy.sh deploy robots \

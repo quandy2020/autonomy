@@ -197,4 +197,10 @@ function(autonomy_install_package)
     DESTINATION share/autonomy/cmake
     FILE AutonomyTargets.cmake
     EXPORT_LINK_INTERFACE_LIBRARIES)
+
+  # Runtime env: source $PREFIX/share/autonomy/setup.bash after install.
+  install(
+    FILES "${PROJECT_SOURCE_DIR}/scripts/setup_environment.bash"
+    DESTINATION share/autonomy
+    RENAME setup.bash)
 endfunction()

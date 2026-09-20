@@ -4,7 +4,8 @@
 
 | 类别 | 位置 | 代表工具 |
 |------|------|----------|
-| 开发脚本 | `scripts/` | `format.py`、`install_deps`、`package_autonomy_artifact.sh` |
+| 开发工具 | `tools/` | `clang_format_sources.py`、`package_install_tarball.py` |
+| 工作流脚本 | `scripts/` | `setup.bash`、`install_dependencies.py`、`share_nfs_workspace.sh` |
 | 系统监控 | `autonomy/system/monitor/` | `MonitorRegistry` / `autonomy.monitor` |
 | Autolink CLI | `autolink/autolink/tools/` | `autolink_channel`、`autolink_recorder`、`autolink_launch` |
 | Docker | `docker/` | `run_autonomy.py` |

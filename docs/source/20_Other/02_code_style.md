@@ -26,16 +26,16 @@ sudo yum install clang-tools-extra
 
 ```bash
 # 格式化全部
-python3 scripts/format.py
+python3 tools/clang_format_sources.py
 
 # 预览
-python3 scripts/format.py --dry-run
+python3 tools/clang_format_sources.py --dry-run
 
 # CI 检查
-python3 scripts/format.py --check
+python3 tools/clang_format_sources.py --check
 
 # 指定目录
-python3 scripts/format.py autonomy/navigator
+python3 tools/clang_format_sources.py autonomy/navigator
 ```
 
 详见 [18 Tools · 开发脚本](../18_Tools/03_dev_scripts.md)。
@@ -58,13 +58,13 @@ python3 scripts/format.py autonomy/navigator
 
 1. 格式化会修改文件，建议先提交或备份
 2. 全量格式化 1700+ 文件可能耗时较长
-3. CI 可使用 `python3 scripts/format.py --check` 门禁
+3. CI 可使用 `python3 tools/clang_format_sources.py --check` 门禁
 4. 脚本自动查找 `clang-format-13` … `clang-format-17`
 
 ### 2.5 示例工作流
 
 ```bash
-python3 scripts/format.py --dry-run
-python3 scripts/format.py
-python3 scripts/format.py --check
+python3 tools/clang_format_sources.py --dry-run
+python3 tools/clang_format_sources.py
+python3 tools/clang_format_sources.py --check
 ```

@@ -160,7 +160,7 @@ Expected: 40 of 40 tests pass with unchanged names.
 - [ ] **Step 3: Run contract and consumer tests**
 
 ```bash
-python3 -m unittest cmake.tests.test_autonomy_options cmake.tests.test_autonomy_dependencies cmake.tests.test_find_modules cmake.tests.test_minimal_target_boundaries scripts.cmake.test_presets scripts.cmake.test_install_consumer -v
+python3 -m unittest cmake.tests.test_autonomy_options cmake.tests.test_autonomy_dependencies cmake.tests.test_find_modules cmake.tests.test_minimal_target_boundaries tools.cmake.test_presets tools.cmake.test_install_consumer -v
 ```
 
 Expected: all tests pass.

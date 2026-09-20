@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-代码格式化脚本
-根据 .clang-format 配置文件格式化 autonomy 和 autolink 目录下的 C/C++ 代码
+clang_format_sources.py — format C/C++ sources with the repo .clang-format.
+
+Default roots: autonomy/ and autolink/. Run from the autonomy repository root.
 """
 
 import argparse
@@ -13,10 +14,8 @@ from pathlib import Path
 
 
 def get_project_root():
-    """获取项目根目录"""
-    script_dir = Path(__file__).parent.absolute()
-    # scripts 目录的父目录是项目根目录
-    return script_dir.parent
+    """Return the autonomy repository root (parent of tools/)."""
+    return Path(__file__).resolve().parent.parent
 
 
 def find_clang_format():
@@ -169,17 +168,17 @@ def main():
         epilog="""
 Examples:
   # Format all files in autonomy and autolink directories
-  python3 scripts/format.py
+  python3 tools/clang_format_sources.py
 
   # List files that would be formatted (dry run)
-  python3 scripts/format.py --dry-run
+  python3 tools/clang_format_sources.py --dry-run
 
   # Check if files are properly formatted
-  python3 scripts/format.py --check
+  python3 tools/clang_format_sources.py --check
 
   # Format only specific directories
-  python3 scripts/format.py autonomy
-  python3 scripts/format.py autonomy autolink
+  python3 tools/clang_format_sources.py autonomy
+  python3 tools/clang_format_sources.py autonomy autolink
         """
     )
     

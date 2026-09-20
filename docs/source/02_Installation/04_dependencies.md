@@ -85,7 +85,7 @@ CMake 通过 `CMAKE_PREFIX_PATH` 或默认搜索路径找到上述库。
 aarch64 板（Firefly 等）请使用：
 
 ```bash
-python3 scripts/install_dependency.py --profile board --skip-installed
+python3 scripts/install_dependencies.py --profile board --skip-installed
 ```
 
 对齐 `docker/dockerfile/autonomy.aarch64.dockerfile`：不装 GUI/Sphinx；glog/protobuf/ceres/grpc 等强制 `docker/install` → `/usr/local`。  

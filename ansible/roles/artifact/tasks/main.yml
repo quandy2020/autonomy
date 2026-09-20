@@ -6,7 +6,7 @@
       - autonomy_artifact_path is file
     fail_msg: >-
       Set autonomy_artifact_path to a local .tar.gz produced by
-      scripts/package_autonomy_artifact.sh on the control machine.
+      tools/package_install_tarball.py on the control machine.
   run_once: true
   delegate_to: localhost
   become: false

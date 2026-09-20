@@ -47,7 +47,7 @@ Autonomy 借鉴并受益于开源社区诸多项目，包括但不限于：
 ## 8.6 参与贡献
 
 1. Fork 仓库并创建特性分支
-2. 遵循现有代码风格（`scripts/format.py`）
+2. 遵循现有代码风格（`tools/clang_format_sources.py`）
 3. 提交 Pull Request 并附测试说明
 4. 重大变更请同步更新对应模块文档
 

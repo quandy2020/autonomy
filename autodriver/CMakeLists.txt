@@ -24,7 +24,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(AUTODRIVER_BUILD_TEST "Build unit tests" OFF)
+option(AUTODRIVER_BUILD_TEST "Build unit tests" ON)
 option(AUTODRIVER_BUILD_EXAMPLES "Build example binaries" OFF)
 option(AUTODRIVER_BUILD_DOCS "Build autodriver docs" OFF)
 

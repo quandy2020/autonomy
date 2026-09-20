@@ -24,7 +24,7 @@ autonomy_cmake_jobs: "{{ ansible_facts.processor_vcpus | default(4) }}"
 autonomy_use_ccache: true
 autonomy_ccache_dir: /var/cache/autonomy/ccache
 
-# artifact 制品内是否捆绑 config/（package_autonomy_artifact.sh 默认开启）
+# artifact 制品内是否捆绑 config/（package_install_tarball.py 默认开启）
 autonomy_config_bundle_in_artifact: true
 autonomy_config_from_artifact: "{{ autonomy_config_bundle_in_artifact }}"
 

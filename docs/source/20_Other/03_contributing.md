@@ -11,7 +11,7 @@
 ```bash
 git checkout -b feature/your-topic
 # 修改代码
-python3 scripts/format.py
+python3 tools/clang_format_sources.py
 cmake -G Ninja -B build && ninja -C build
 # 运行相关测试
 git commit -m "feat: your change"
@@ -42,7 +42,7 @@ git push origin feature/your-topic
 
 1. 描述变更动机与测试方式
 2. 关联相关 Issue（若有）
-3. 确保 `format.py --check` 通过
+3. 确保 `tools/clang_format_sources.py --check` 通过
 4. 文档与代码同步更新
 
 ### 3.6 许可证
