@@ -14,6 +14,12 @@
 # chassis:
 #   enable: true
 #   backend: stub   # or vendor name after REGISTER_CHASSIS_BACKEND
+#
+# Joystick teleop (Linux /dev/input/js*) → /joy + /cmd_vel (hold enable):
+# joy:
+#   enable: true
+#   device: /dev/input/js0
+#   enable_button: 4
 
 chassis:
   enable: false
@@ -38,6 +44,20 @@ chassis:
   max_angular_speed: 1.5
   odom_frame_id: odom
   base_frame_id: base_link
+
+# Joystick teleop — Sony DualSense (PS5) by default. Hold L1 to move.
+joy:
+  enable: false
+  profile: dualsense            # dualsense | ps5 | generic
+  device: /dev/input/js0        # jstest /dev/input/js0
+  joy_channel: /joy
+  # cmd_vel_channel: /cmd_vel   # empty → chassis.cmd_vel_channel
+  # Left stick arcade + L1 enable (see config/joy/dualsense.yaml)
+  publish_hz: 50
+  max_linear: 0.5
+  max_angular: 1.0
+  require_enable: true
+  # enable_button / axes filled by profile=dualsense unless overridden
 
 sensors:
   lidar_2d:

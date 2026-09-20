@@ -9,6 +9,7 @@
 |---|---|---|
 | 传感 | `camera/` `lidar/` … | `SensorDriver`，单向采样 |
 | 本体 | [`chassis/`](chassis/README.md) | Capability + Mode + SafetyGate；`RobotState` / `RobotEvent` + Twist；**不依赖** `autonomy/vehicle` |
+| 手柄 | `autodriver/joy/` | `/dev/input/js*` → `/joy` + `/cmd_vel`（按住使能） |
 
 ## 传感器支持范围
 
@@ -34,6 +35,7 @@
 | 麦克风 | `microphone` | `respeaker` | 占位（Image 承载 PCM） | stub |
 | 测距 | `range` | — | 仅 Attach，无采集驱动 | 仅 Attach |
 | 底盘 / 本体 | `chassis` | `stub`（别名可 `sim`） | 差分积分，无硬件联调 | 可联调；厂商经 `REGISTER_CHASSIS_BACKEND` 扩展 |
+| 手柄遥操 | `joy` | — | **默认索尼 DualSense（PS5）**：左摇杆差速 + **按住 L1** 使能 → `/cmd_vel`；并发布 `/joy`。预设 `config/joy/dualsense.yaml` | 已实现（Linux；无设备时告警并空转） |
 
 配置入口：[`config/autodriver_hardware.yaml`](config/autodriver_hardware.yaml)；厂商 params 在 `config/<模态>/<vendor>/`。
 
@@ -108,6 +110,14 @@ lidar_2d:
 lidar_3d:
   - {name: mid360, enable: true, backend: livox,
      channel: /lidar/mid360/points, params_file: lidar/livox/mid360.yaml}
+
+# 手柄遥操（DualSense：按住 L1，左摇杆控制底盘）
+joy:
+  enable: true
+  profile: dualsense
+  device: /dev/input/js0
+  max_linear: 0.5
+  max_angular: 1.0
 ```
 
 RealSense 折叠见主配置 `camera.realsense_d455`。

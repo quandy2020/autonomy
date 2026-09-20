@@ -176,6 +176,52 @@ chassis:
 
 ---
 
+## 4.1 手柄遥操（`joy`）— 默认索尼 DualSense（PS5）
+
+根级块；Linux `/dev/input/js*` → `sensor_msgs/Joy` + 差速 `TwistStamped`（`linear.x` / `angular.z`）。  
+与 `ChassisManager` 共享 `cmd_vel`，用于遥控底盘。
+
+**默认 profile：`dualsense`**（别名 `ps5`）。预设见 `config/joy/dualsense.yaml`。
+
+| YAML 键 | 默认 | 说明 |
+|---|---|---|
+| `enable` | `false` | `false` 时 JoyTeleop 为 no-op |
+| `profile` | `dualsense` | `dualsense`/`ps5` 应用轴键预设；`generic` 不改轴键 |
+| `device` | `/dev/input/js0` | 设备节点（`jstest` 可确认） |
+| `joy_channel` | `/joy` | Joy 消息 |
+| `cmd_vel_channel` | 空 | 空则使用 `chassis.cmd_vel_channel` |
+| `publish_hz` | `50` | 发布频率 |
+| `max_linear` / `max_angular` | `0.5` / `1.0` | 满杆 m/s、rad/s |
+| `require_enable` | `true` | 须按住使能键 |
+| `enable_button` 等 | 由 profile 填充 | 显式写出可覆盖 profile |
+
+### DualSense 操作
+
+| 操作 | 映射 |
+|---|---|
+| 按住 **L1** | 使能（否则速度为 0） |
+| 左摇杆上下 | 前进 / 后退 |
+| 左摇杆左右 | 原地转向 |
+| 松开 L1 / 断连 | 零速（配合底盘 watchdog） |
+
+用户通常需加入 `input` 组。USB 或蓝牙配对后确认 `/dev/input/js*`。若 `jstest` 轴序与预设不符，在 YAML 中覆盖 `linear_axis` / `angular_axis` / `enable_button`。
+
+```yaml
+chassis:
+  enable: true
+  backend: stub          # 或真实底盘 backend
+  cmd_vel_channel: /cmd_vel
+
+joy:
+  enable: true
+  profile: dualsense
+  device: /dev/input/js0
+  max_linear: 0.5
+  max_angular: 1.0
+```
+
+---
+
 ## 5. 传感：类型键一览
 
 | YAML 键 | Module | Registry | YAML 默认 backend | id 前缀 | 状态 |

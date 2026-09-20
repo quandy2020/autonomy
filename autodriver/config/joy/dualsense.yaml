@@ -1,0 +1,37 @@
+# Sony DualSense (PS5) — differential chassis teleop preset
+# Include via main YAML:
+#   joy:
+#     enable: true
+#     profile: dualsense
+#     # optional overrides below / or merge this file manually
+#
+# Linux: USB or Bluetooth. Pair BT, then check:
+#   ls /dev/input/js*
+#   jstest /dev/input/js0
+# User typically needs membership in group `input`.
+#
+# Controls (hid-playstation / common js layout):
+#   Hold L1 (button 4)          — enable motion
+#   Left stick Y (axis 1)       — linear.x (stick up = forward)
+#   Left stick X (axis 0)       — angular.z
+#   Release L1 / disconnect     — zero cmd_vel
+#
+# Button indices (typical):
+#   0 Cross  1 Circle  2 Square  3 Triangle
+#   4 L1     5 R1      6 L2      7 R2
+#   8 Create 9 Options 10 PS     11 Touchpad
+
+profile: dualsense
+device: /dev/input/js0
+joy_channel: /joy
+frame_id: dualsense
+publish_hz: 50
+linear_axis: 1
+angular_axis: 0
+invert_linear: true
+invert_angular: false
+deadzone: 0.08
+max_linear: 0.5
+max_angular: 1.0
+require_enable: true
+enable_button: 4

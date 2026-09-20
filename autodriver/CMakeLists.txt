@@ -122,6 +122,7 @@ if(AUTODRIVER_BUILD_TEST)
                       test/test_chassis_backend_registry.cpp)
   autodriver_add_test(test_chassis_abstractions
                       test/test_chassis_abstractions.cpp)
+  autodriver_add_test(test_joy_mapper test/test_joy_mapper.cpp)
   autodriver_add_test(test_canbus_skeleton test/test_canbus_skeleton.cpp)
   autodriver_add_test(test_skeleton_modules test/test_skeleton_modules.cpp)
 endif()

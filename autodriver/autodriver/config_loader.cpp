@@ -32,6 +32,7 @@
 #include "autodriver/common/environment.hpp"
 #include "autodriver/conf/conf.hpp"
 #include "autodriver/driver_params.hpp"
+#include "autodriver/joy/dualsense_profile.hpp"
 #include "autolink/common/file.hpp"
 #include "autolink/common/log.hpp"
 #include "autolink/time/duration.hpp"
@@ -1007,6 +1008,81 @@ Config FromYaml(const YAML::Node& root) {
         config.chassis.params.erase("params_file");
         ApplyHardwareShorthand(ch, config.chassis.backend,
                                &config.chassis.params);
+    }
+
+    if (root["joy"]) {
+        const YAML::Node jy = root["joy"];
+        config.joy.enable = ReadBool(jy, "enable", config.joy.enable);
+        const std::string profile = ReadString(jy, "profile");
+        if (!profile.empty()) {
+            config.joy.profile = profile;
+        }
+        // Profile first, then explicit keys override (DualSense / generic / …).
+        (void)autodriver::joy::ApplyJoyProfile(config.joy.profile,
+                                               &config.joy);
+        const std::string device = ReadString(jy, "device");
+        if (!device.empty()) {
+            config.joy.device = device;
+        }
+        const std::string joy_ch = ReadString(jy, "joy_channel");
+        if (!joy_ch.empty()) {
+            config.joy.joy_channel = joy_ch;
+        }
+        if (jy["cmd_vel_channel"]) {
+            config.joy.cmd_vel_channel = ReadString(jy, "cmd_vel_channel");
+        }
+        const std::string frame = ReadString(jy, "frame_id");
+        if (!frame.empty()) {
+            config.joy.frame_id = frame;
+        }
+        if (jy["publish_hz"] && jy["publish_hz"].IsScalar()) {
+            try {
+                config.joy.publish_hz = jy["publish_hz"].as<double>();
+            } catch (const YAML::Exception&) {
+            }
+        }
+        if (jy["linear_axis"]) {
+            config.joy.linear_axis =
+                ReadInt(jy, "linear_axis", config.joy.linear_axis);
+        }
+        if (jy["angular_axis"]) {
+            config.joy.angular_axis =
+                ReadInt(jy, "angular_axis", config.joy.angular_axis);
+        }
+        if (jy["invert_linear"]) {
+            config.joy.invert_linear =
+                ReadBool(jy, "invert_linear", config.joy.invert_linear);
+        }
+        if (jy["invert_angular"]) {
+            config.joy.invert_angular =
+                ReadBool(jy, "invert_angular", config.joy.invert_angular);
+        }
+        if (jy["deadzone"] && jy["deadzone"].IsScalar()) {
+            try {
+                config.joy.deadzone = jy["deadzone"].as<float>();
+            } catch (const YAML::Exception&) {
+            }
+        }
+        if (jy["max_linear"] && jy["max_linear"].IsScalar()) {
+            try {
+                config.joy.max_linear = jy["max_linear"].as<double>();
+            } catch (const YAML::Exception&) {
+            }
+        }
+        if (jy["max_angular"] && jy["max_angular"].IsScalar()) {
+            try {
+                config.joy.max_angular = jy["max_angular"].as<double>();
+            } catch (const YAML::Exception&) {
+            }
+        }
+        if (jy["require_enable"]) {
+            config.joy.require_enable =
+                ReadBool(jy, "require_enable", config.joy.require_enable);
+        }
+        if (jy["enable_button"]) {
+            config.joy.enable_button =
+                ReadInt(jy, "enable_button", config.joy.enable_button);
+        }
     }
 
     const YAML::Node sensors_node = root["sensors"];

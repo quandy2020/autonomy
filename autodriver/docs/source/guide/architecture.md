@@ -248,8 +248,9 @@ LoadConfig
   → SensorManager::{SetSampleSink, Initialize, Start}
   → PoseFeeder::Start              // compensator.pose_channel 空 → no-op
   → ChassisManager::Start(node)    // chassis.enable=false → no-op
+  → JoyTeleop::Start(node)         // joy.enable=false → no-op；无 js 设备则告警空转
   → 等待信号
-  → Stop：Chassis → PoseFeeder → SensorManager   // 与启动逆序
+  → Stop：JoyTeleop → Chassis → PoseFeeder → SensorManager
 ```
 
 `PoseFeeder`：订 Odometry → `SensorManager::PushLidarPose` → 驱动侧 `MotionPoseSink`。见 [数据流 · 运动补偿](dataflow.md#5-运动补偿3d-激光可选)。

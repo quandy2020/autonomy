@@ -217,6 +217,52 @@ struct Config {
         hardware::DriverParams params;
     };
 
+    /**
+     * @brief Joystick teleop (Linux /dev/input/js*) → /joy + /cmd_vel.
+     *
+     * Default profile is Sony DualSense (PS5): left-stick arcade + L1 enable.
+     * Differential only: linear.x + angular.z.
+     */
+    struct Joy {
+        /** @brief When false, JoyTeleop::Start is a no-op. */
+        bool enable = false;
+        /**
+         * @brief Controller profile: dualsense / ps5 / generic.
+         * Applied as axis/button defaults; explicit YAML keys still override.
+         */
+        std::string profile = "dualsense";
+        /** @brief Device path, e.g. /dev/input/js0. */
+        std::string device = "/dev/input/js0";
+        /** @brief sensor_msgs/Joy channel. */
+        std::string joy_channel = "/joy";
+        /**
+         * @brief TwistStamped channel; empty → use chassis.cmd_vel_channel.
+         */
+        std::string cmd_vel_channel;
+        /** @brief Header frame_id for published messages. */
+        std::string frame_id = "dualsense";
+        /** @brief Publish rate (Hz). */
+        double publish_hz = 50.0;
+        /** @brief Axis index for linear.x (DualSense left stick Y). */
+        int linear_axis = 1;
+        /** @brief Axis index for angular.z (DualSense left stick X). */
+        int angular_axis = 0;
+        /** @brief Negate linear axis (DualSense: stick up → forward). */
+        bool invert_linear = true;
+        /** @brief Negate angular axis. */
+        bool invert_angular = false;
+        /** @brief Axis deadzone in [0, 1); DualSense default slightly higher. */
+        float deadzone = 0.08f;
+        /** @brief Scale for linear.x (m/s at full stick). */
+        double max_linear = 0.5;
+        /** @brief Scale for angular.z (rad/s at full stick). */
+        double max_angular = 1.0;
+        /** @brief Require enable button held to publish non-zero twist. */
+        bool require_enable = true;
+        /** @brief Enable button (DualSense L1 = 4). */
+        int enable_button = 4;
+    };
+
     // Autolink node name for bridge publishing.
     std::string node_name = "autodriver";
 
@@ -234,6 +280,9 @@ struct Config {
 
     // Robot body / chassis hardware (optional).
     Chassis chassis;
+
+    // Joystick teleop (optional).
+    Joy joy;
 
     // All configured sensor instances.
     std::vector<Sensor> sensors;

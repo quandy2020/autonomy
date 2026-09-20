@@ -17,7 +17,7 @@
 /**
  * @file main.cpp
  * @brief Process entry: CLI → LoadConfig → Publisher → SensorManager →
- *        PoseFeeder → ChassisManager.
+ *        PoseFeeder → ChassisManager → JoyTeleop.
  *
  * Usage: autodriver [options] [configuration_directory] [configuration_file]
  * See: autodriver --help
@@ -32,6 +32,7 @@
 #include "autodriver/bridge/pose_feeder.hpp"
 #include "autodriver/bridge/publisher.hpp"
 #include "autodriver/config_loader.hpp"
+#include "autodriver/joy/joy_teleop.hpp"
 #include "autodriver/sensor_manager.hpp"
 #include "chassis/chassis_manager.hpp"
 #include "autolink/common/log.hpp"
@@ -73,6 +74,7 @@ int Run(const autodriver::Options& opts) {
         AINFO << "dry-run: node_name=" << config.node_name
               << " sensors=" << config.sensors.size()
               << " chassis.enable=" << config.chassis.enable
+              << " joy.enable=" << config.joy.enable
               << " (not starting hardware)";
         return 0;
     }
@@ -101,11 +103,20 @@ int Run(const autodriver::Options& opts) {
         manager.Stop();
         return 1;
     }
+    autodriver::joy::JoyTeleop joy_teleop;
+    if (!joy_teleop.Start(publisher.GetNode(), config)) {
+        AERROR << "JoyTeleop failed";
+        chassis.Stop();
+        pose_feeder.Stop();
+        manager.Stop();
+        return 1;
+    }
     AINFO << "autodriver running (Ctrl+C to stop)";
     while (g_running.load()) {
         autolink::Duration(100'000'000).Sleep();
     }
     AINFO << "autodriver shutting down";
+    joy_teleop.Stop();
     chassis.Stop();
     pose_feeder.Stop();
     manager.Stop();

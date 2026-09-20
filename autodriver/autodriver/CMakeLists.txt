@@ -61,6 +61,8 @@ set(AUTODRIVER_SOURCES
   lidar/vendor_stubs.cpp
   bridge/publisher.cpp
   bridge/pose_feeder.cpp
+  joy/linux_joystick.cpp
+  joy/joy_teleop.cpp
 )
 
 find_package(Threads REQUIRED)
