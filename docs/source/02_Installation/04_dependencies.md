@@ -80,7 +80,18 @@ CMake 通过 `CMAKE_PREFIX_PATH` 或默认搜索路径找到上述库。
 | Habitat 仿真 | `install_habitat.sh` | 仿真模块 |
 | ROS 2 Humble | `install_ros2.sh` | Docker 镜像内可选 |
 
-### 4.6 验证依赖
+### 4.6 板端依赖（`--profile board`）
+
+aarch64 板（Firefly 等）请使用：
+
+```bash
+python3 scripts/install_dependency.py --profile board --skip-installed
+```
+
+对齐 `docker/dockerfile/autonomy.aarch64.dockerfile`：不装 GUI/Sphinx；glog/protobuf/ceres/grpc 等强制 `docker/install` → `/usr/local`。  
+NFS 同步源码 + 板端编译完整流程见 [§9 嵌入式板端](09_embedded_board.md)。
+
+### 4.7 验证依赖
 
 ```bash
 # Ceres
@@ -89,11 +100,12 @@ ls /usr/local/lib/libceres.so 2>/dev/null || ls /usr/lib/x86_64-linux-gnu/libcer
 # BehaviorTree.CPP
 ls /usr/local/lib/libbehaviortree_cpp.so
 
-# Protobuf
-protoc --version
+# Protobuf（板端应为 3.19.x）
+/usr/local/bin/protoc --version 2>/dev/null || protoc --version
 ```
 
-### 4.7 相关文档
+### 4.8 相关文档
 
 - [§6 编译构建](06_build.md)
 - [§8 故障排查 · 依赖](08_troubleshooting.md)
+- [§9 嵌入式板端](09_embedded_board.md)

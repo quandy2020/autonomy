@@ -55,7 +55,18 @@ cd build && rm -rf * && cmake -G Ninja .. && ninja
 | autoviz `Could not initialize GLX` | Docker 无 GPU / 缺 Mesa / 未重编译 | 容器内：`bash src/autonomy/docker/install/install_mesa_gl.sh`；重编：`cmake --build build --target autoviz`；用 `scripts/run_autoviz.sh` 启动；宿主机执行 `xhost +local:docker` |
 | TF / 帧名错误 | `common.lua` 不一致 | 统一 `global_frame` / `robot_base_frame` |
 
-### 8.6 Habitat-Sim（可选）
+### 8.7 嵌入式板 / NFS
+
+| 现象 | 可能原因 | 处理 |
+|------|----------|------|
+| apt `Temporary failure resolving` | 板子无默认路由 | 经开发机 NAT；`ip route replace default via <HOST_IP>` |
+| `ldconfig` Permission denied | 非 root 写 `/etc/ld.so.cache` | 使用带 `autonomy_ldconfig` 的 `docker/install` |
+| glog 链接 undefined reference | apt 0.4 与 `/usr/local` 0.6 混用 | `--profile board` 并 purge apt glog |
+| 编译在 NFS 上极慢 | `build` 目录在挂载点内 | 使用 `~/autonomy_ws/build` |
+
+完整步骤：[§9 嵌入式板端](09_embedded_board.md)。
+
+### 8.8 Habitat-Sim（可选）
 
 仅在使用仿真相关功能时需要：
 
@@ -75,7 +86,7 @@ python3 -c "import habitat_sim; print('OK')"
 
 内存不足时限制并行：`python3 setup.py build_ext --parallel 1 install --headless --no-update-submodules`
 
-### 8.7 获取帮助
+### 8.9 获取帮助
 
 | 渠道 | 说明 |
 |------|------|
@@ -83,8 +94,9 @@ python3 -c "import habitat_sim; print('OK')"
 | 文档 | [01 Instructions](../01_Instructions/00_guide.md) |
 | FAQ | [19 FAQs](../19_FAQs/index.rst) |
 
-### 8.8 相关文档
+### 8.10 相关文档
 
 - [§4 依赖安装](04_dependencies.md)
 - [§5 Docker 环境](05_docker.md)
 - [§6 编译构建](06_build.md)
+- [§9 嵌入式板端](09_embedded_board.md)

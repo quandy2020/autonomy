@@ -26,7 +26,20 @@ THIRDPARTY="$(autonomy_thirdparty_dir)"
 INSTALL_PREFIX="$(autonomy_cmake_install_prefix)"
 THREAD_NUM=$(nproc)
 
-# Apt libceres-dev must not count; only /usr/local CONFIG (built against glog 0.6).
+# Board OOM: Ceres generates huge template TUs; cap parallel jobs.
+if [[ -n "${AUTONOMY_MAKE_JOBS:-}" ]]; then
+    THREAD_NUM="${AUTONOMY_MAKE_JOBS}"
+elif [[ "$(uname -m)" == "aarch64" ]]; then
+    mem_kb="$(awk '/MemAvailable:/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
+    if [[ "${mem_kb}" -gt 0 && "${mem_kb}" -lt 6000000 ]]; then
+        THREAD_NUM=2
+    elif [[ "${THREAD_NUM}" -gt 4 ]]; then
+        THREAD_NUM=4
+    fi
+fi
+info "Ceres build jobs: ${THREAD_NUM}"
+
+# Already under /usr/local — do not re-clone.
 if [[ -f "${INSTALL_PREFIX}/lib/libceres.so" ]]; then
     ok "Ceres already installed under ${INSTALL_PREFIX}, skipping source build"
     exit 0

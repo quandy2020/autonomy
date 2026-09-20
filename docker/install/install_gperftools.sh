@@ -32,6 +32,14 @@ fi
 
 info "Installing gperftools -> ${INSTALL_PREFIX}"
 
+# Also accept apt / system tcmalloc (board jammy often has it).
+if [[ -f /usr/lib/libtcmalloc.so ]] \
+    || [[ -f /usr/lib/aarch64-linux-gnu/libtcmalloc.so ]] \
+    || [[ -f /usr/lib/x86_64-linux-gnu/libtcmalloc.so ]]; then
+    ok "gperftools already present on system, skipping source build"
+    exit 0
+fi
+
 apt_get_update_and_install \
     libunwind8 \
     libunwind-dev \
@@ -42,9 +50,11 @@ PKG_NAME="gperftools-${VERSION}.tar.gz"
 CHECKSUM="b09193adedcc679df2387042324d0d54b93d35d062ea9bff0340f342a709e860"
 DOWNLOAD_LINK="https://github.com/gperftools/gperftools/archive/${PKG_NAME}"
 
+cd "${THIRDPARTY}"
 download_if_not_cached "${PKG_NAME}" "${CHECKSUM}" "${DOWNLOAD_LINK}"
 
-tar xzf ${PKG_NAME}
+rm -rf "gperftools-gperftools-${VERSION}"
+autonomy_tar_extract "${PKG_NAME}"
 
 pushd "gperftools-gperftools-${VERSION}" >/dev/null
     ./autogen.sh || sleep 1 && ./autogen.sh
@@ -59,4 +69,4 @@ autonomy_ldconfig
 ok "Successfully installed gperftools-${VERSION} -> ${INSTALL_PREFIX}."
 
 # Keep libunwind-dev installed: purging it can autoremove glog and other deps.
-rm -rf ${PKG_NAME} "gperftools-gperftools-${VERSION}"
+rm -rf "${PKG_NAME}" "gperftools-gperftools-${VERSION}"

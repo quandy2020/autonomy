@@ -102,7 +102,13 @@ ls bin/autonomy.planning bin/autonomy.control bin/autonomy.task
 
 历史文档中的 `colcon build --symlink-install` 针对 **autonomy_ros** 工作空间。当前 **`libautonomy` 主路径为 CMake + Ninja**，不依赖 colcon。若需 ROS 2 叠加层，见 [04 Running](../04_Running/06_ros2_integration.md)。
 
-### 6.10 相关文档
+### 6.10 嵌入式板端编译
+
+Firefly 等 aarch64 板：源码 NFS、构建目录用 `~/autonomy_ws/build`，依赖用 `--profile board`。  
+完整步骤与多板 IP 参数见 **[§9 嵌入式板端](09_embedded_board.md)**。
+
+### 6.11 相关文档
 
 - [§4 依赖安装](04_dependencies.md)
 - [§7 环境配置](07_environment.md)
+- [§9 嵌入式板端](09_embedded_board.md)

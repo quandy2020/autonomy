@@ -87,13 +87,25 @@ function pip3_install()
     "${py_bin}" -m pip install "${pip_args[@]}" "$@"
 }
 
-function apt_get_update() 
+function _apt_cmd()
+{
+    if [[ "$(id -u)" -eq 0 ]]; then
+        apt-get "$@"
+    else
+        sudo apt-get "$@"
+    fi
+}
+
+function apt_get_update()
 {
     local max_attempts="${APT_UPDATE_RETRIES:-3}"
     local attempt=1
     while [ "$attempt" -le "$max_attempts" ]; do
-        rm -rf /var/lib/apt/lists/*
-        if apt-get -y \
+        # Only wipe lists as root (docker); board users must not touch apt lists.
+        if [[ "$(id -u)" -eq 0 ]]; then
+            rm -rf /var/lib/apt/lists/*
+        fi
+        if _apt_cmd -y \
             -o Acquire::Retries=3 \
             -o Acquire::http::Pipeline-Depth=0 \
             update "$@"; then
@@ -107,15 +119,15 @@ function apt_get_update()
     return 1
 }
 
-function apt_get_update_and_install() 
+function apt_get_update_and_install()
 {
     apt_get_update && \
-        apt-get -y install --no-install-recommends "$@"
+        _apt_cmd -y install --no-install-recommends "$@"
 }
 
-function apt_get_remove() 
+function apt_get_remove()
 {
-    apt-get -y purge --autoremove "$@"
+    _apt_cmd -y purge --autoremove "$@"
 }
 
 function source_date_epoch_setup() 
@@ -253,6 +265,26 @@ function autonomy_make_install()
         return $?
     fi
     make install "$@"
+}
+
+# Extract archives as non-root without restoring uid/gid from the tarball
+# (NFS root_squash / unprivileged users otherwise fail with
+# "Cannot change ownership to uid 0, gid 0").
+function autonomy_tar_extract()
+{
+    local archive="$1"
+    shift
+    local -a extra=("$@")
+    local -a opts=(-x)
+    case "${archive}" in
+        *.tar.gz|*.tgz) opts+=(-z) ;;
+        *.tar.bz2|*.tbz2) opts+=(-j) ;;
+        *.tar.xz|*.txz) opts+=(-J) ;;
+    esac
+    if [[ "$(id -u)" -ne 0 ]]; then
+        opts+=(--no-same-owner --no-same-permissions)
+    fi
+    tar "${opts[@]}" -f "${archive}" "${extra[@]}"
 }
 
 # Mark a path safe for git when owned by another user (e.g. /thirdparty as root).

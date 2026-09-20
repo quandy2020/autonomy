@@ -22,15 +22,20 @@ set -e
 cd "$(dirname "${BASH_SOURCE[0]}")"
 . ./installer_base.sh
 
-ARCH=$(uname -m)
-THREAD_NUM=$(nproc)
-
 THIRDPARTY="$(autonomy_thirdparty_dir)"
 INSTALL_PREFIX="$(autonomy_cmake_install_prefix)"
+THREAD_NUM=$(nproc)
+
+# Already under /usr/local — do not re-clone (works offline / bad DNS).
+if [[ -f "${INSTALL_PREFIX}/lib/libgtest.so" ]] \
+    || [[ -f "${INSTALL_PREFIX}/lib/libgtest.a" ]]; then
+    ok "gtest already installed under ${INSTALL_PREFIX}, skipping source build"
+    exit 0
+fi
 
 cd "${THIRDPARTY}"
 if [[ ! -d googletest ]]; then
-    git clone -b v1.17.0 https://github.com/google/googletest.git
+    git_clone_with_retry https://github.com/google/googletest.git v1.17.0 googletest
 fi
 
 pushd googletest >/dev/null
@@ -50,6 +55,6 @@ autonomy_ldconfig
 
 ok "Successfully installed googletest v1.17.0"
 
-# Clean up.
+# Clean up sources only (keep /usr/local install).
 rm -rf googletest
 

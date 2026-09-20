@@ -208,12 +208,20 @@ def _usr_local(*rel: str) -> List[str]:
 # Detection paths for --skip-installed (non-forced only). Forced scripts
 # never skip; checks below are /usr/local-only for documentation / list.
 SCRIPT_INSTALL_CHECKS: Dict[str, List[str]] = {
-    "install_gtest.sh": _usr_local("lib", "libgtest.a"),
+    "install_gtest.sh": [
+        "/usr/local/lib/libgtest.so",
+        "/usr/local/lib/libgtest.a",
+    ],
     "install_gflags.sh": _usr_local("lib", "libgflags.so"),
     "install_glog.sh": _usr_local("lib", "libglog.so"),
     "install_protobuf.sh": _usr_local("bin", "protoc"),
     "install_grpc.sh": _usr_local("lib", "libgrpc++.so"),
-    "install_gperftools.sh": _usr_local("lib", "libtcmalloc.so"),
+    "install_gperftools.sh": [
+        "/usr/local/lib/libtcmalloc.so",
+        "/usr/lib/libtcmalloc.so",
+        "/usr/lib/aarch64-linux-gnu/libtcmalloc.so",
+        "/usr/lib/x86_64-linux-gnu/libtcmalloc.so",
+    ],
     "install_opencv.sh": [
         "/usr/local/lib/libopencv_core.so",
         "/usr/lib/aarch64-linux-gnu/libopencv_core.so",
@@ -499,21 +507,22 @@ def install_thirdparty(
                 f"Missing dependency installer: {script_path}"
             )
 
-        force = force_all or script in FORCE_THIRDPARTY_SCRIPTS
+        force_rebuild = force_all  # only --force-thirdparty rebuilds everything
+        prefer_local = script in FORCE_THIRDPARTY_SCRIPTS
         if (
             skip_installed
-            and not force
+            and not force_rebuild
             and _can_detect_installed(script)
             and _is_script_dependency_installed(script)
         ):
-            print(f"[SKIP] {script}: dependency already detected")
+            print(f"[SKIP] {script}: dependency already detected under install prefix")
             continue
 
-        if force:
-            print(f"[FORCE] {script}: docker/install (CMAKE /usr/local)")
+        if prefer_local or force_rebuild:
+            print(f"[FORCE] {script}: docker/install → /usr/local (ignore apt stubs)")
 
         env = os.environ.copy()
-        if force:
+        if prefer_local or force_rebuild:
             env["AUTONOMY_FORCE_THIRDPARTY"] = "1"
         run_command(["bash", str(script_path)], dry_run=dry_run, env=env)
 
@@ -578,14 +587,14 @@ def parse_args() -> argparse.Namespace:
         "--skip-installed",
         action="store_true",
         help=(
-            "Skip non-forced third-party installers when /usr/local already "
-            "has the artifact. Forced dockerfile scripts always re-run."
+            "Skip third-party installers when the artifact is already under "
+            "/usr/local (or known system path). Use --force-thirdparty to rebuild."
         ),
     )
     parser.add_argument(
         "--force-thirdparty",
         action="store_true",
-        help="Force every third-party script in the profile (set AUTONOMY_FORCE_THIRDPARTY).",
+        help="Rebuild every third-party script (ignore --skip-installed).",
     )
     parser.add_argument(
         "--no-purge-conflicts",

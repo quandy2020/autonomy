@@ -23,6 +23,81 @@ python3 scripts/format.py --check
 
 ---
 
+## 指定某个库 / 包安装
+
+第三方库在 `docker/install/install_*.sh`，由 `install_dependency.py` 按 Dockerfile 顺序调用。  
+**已装到 `/usr/local` 的库，带 `--skip-installed` 时会跳过，不会再 clone。**
+
+### 查看列表
+
+```bash
+python3 scripts/install_dependency.py --list --profile board
+# 输出 apt 包 + thirdparty 脚本名（如 install_ceres_solver.sh）
+```
+
+### 只装某一个第三方库（推荐）
+
+直接跑对应脚本（最快，不跑整条依赖链）：
+
+```bash
+cd /path/to/autonomy   # 或板子上 ~/autonomy
+
+# 示例：只装 Ceres / glog / protobuf
+bash docker/install/install_ceres_solver.sh
+bash docker/install/install_glog.sh
+bash docker/install/install_protobuf.sh
+
+# 板子内存紧时限制并行（Ceres 易 OOM）
+AUTONOMY_MAKE_JOBS=2 bash docker/install/install_ceres_solver.sh
+```
+
+脚本若检测到 `/usr/local` 已有产物会直接 `[OK] … skipping`。
+
+### 从某个库开始续装（后面的也会装）
+
+```bash
+# 从 Ceres 起装到 board 列表末尾（跳过已装）
+python3 scripts/install_dependency.py --profile board \
+  --thirdparty-only --skip-installed \
+  --resume-from install_ceres_solver.sh
+```
+
+| 参数 | 作用 |
+|------|------|
+| `--thirdparty-only` | 不跑 apt |
+| `--resume-from install_XXX.sh` | 从该脚本起往后装 |
+| `--skip-installed` | `/usr/local`（等）已有则跳过，**不 clone** |
+| `--force-thirdparty` | 强制全部重编（忽略 skip） |
+
+### 脚本名 ↔ 库
+
+| 脚本 | 库 |
+|------|-----|
+| `install_gtest.sh` | GoogleTest |
+| `install_glog.sh` | glog 0.6 |
+| `install_gflags.sh` | gflags |
+| `install_protobuf.sh` | Protobuf 3.19 |
+| `install_grpc.sh` | gRPC |
+| `install_ceres_solver.sh` | Ceres |
+| `install_opencv.sh` | OpenCV（板端可跳过，用 apt） |
+| `install_osqp.sh` | OSQP |
+| `install_g2o.sh` | g2o |
+| `install_fbow.sh` | FBoW |
+| `install_nlohmann.sh` | nlohmann/json |
+| `install_behaviortree_cpp.sh` | BehaviorTree.CPP |
+| `install_gperftools.sh` | tcmalloc（系统有则可跳过） |
+| `install_adolc.sh` / `install_ipopt.sh` | ADOL-C / Ipopt（多为 apt） |
+
+### 只要某个 apt 包
+
+```bash
+sudo apt-get install -y libeigen3-dev   # 示例
+# 或只跑依赖脚本里的 apt 段：
+python3 scripts/install_dependency.py --profile board --apt-only
+```
+
+---
+
 ## 一键 NFS + 板端 Build（完整流程）
 
 目标：开发机改代码 → NFS 实时同步到板子 → 板子本地盘编译（`autonomy_ws/build`）。

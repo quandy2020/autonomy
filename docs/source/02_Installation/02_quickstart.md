@@ -46,10 +46,25 @@ cd /workspace/autonomy/build && cmake -G Ninja .. && ninja
 
 详见 [§5 Docker](05_docker.md)。
 
-### 2.4 安装后下一步
+### 2.4 嵌入式板快速入口
+
+开发机一键 NFS + 板端依赖与编译，见 **[§9 嵌入式板端](09_embedded_board.md)**：
+
+```bash
+# 开发机
+bash scripts/nfs_share_autonomy.sh all --board-ip 192.168.234.1
+
+# 板子
+cd ~/autonomy && python3 scripts/install_dependency.py --profile board --skip-installed
+cd ~/autonomy_ws && cmake -S src/autonomy -B build -DCMAKE_PREFIX_PATH=/usr/local \
+  -DBUILD_AUTOVIZ=OFF -DBUILD_ORBISVIEW=OFF -DBUILD_DOCS=OFF && cmake --build build -j$(nproc)
+```
+
+### 2.5 安装后下一步
 
 | 目标 | 文档 |
 |------|------|
 | 配置环境变量 | [§7 环境配置](07_environment.md) |
 | 运行导航测试 | [04 Running](../04_Running/00_guide.md) |
 | 构建文档 | [§6 编译构建](06_build.md) |
+| 板端 / NFS | [§9 嵌入式板端](09_embedded_board.md) |

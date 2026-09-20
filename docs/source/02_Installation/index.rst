@@ -1,7 +1,7 @@
 安装与构建
 ============
 
-Autonomy 安装与构建指南：系统要求、依赖安装、Docker 环境与 CMake 编译。按 **§1–§8** 编号排列。
+Autonomy 安装与构建指南：系统要求、依赖安装、Docker、CMake 编译与嵌入式板端流程。按 **§1–§9** 编号排列。
 
 .. toctree::
    :maxdepth: 2
@@ -15,3 +15,4 @@ Autonomy 安装与构建指南：系统要求、依赖安装、Docker 环境与 
    6 编译构建 <06_build>
    7 环境配置 <07_environment>
    8 故障排查 <08_troubleshooting>
+   9 嵌入式板端 <09_embedded_board>

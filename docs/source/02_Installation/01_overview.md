@@ -12,15 +12,18 @@
 | BT 插件 | `build/lib/autonomy_behavior_tree_*.so` | 行为树节点（若启用） |
 | 文档（可选） | `docs/build/` | Sphinx HTML |
 
-### 1.2 两种安装路径
+### 1.2 三种安装路径
 
 | 路径 | 适用 | 步骤概要 |
 |------|------|----------|
 | **宿主机原生** | 日常开发、CI | `install_deps` → `cmake` + `ninja` |
 | **Docker 容器** | 环境隔离、多架构 | `run_autonomy.py` → 容器内同上 |
-| **交叉编译（nvidia）** | 用已有 `autonomy.platform.x86_64.nvidia` + 交叉工具 + 挂载 sysroot | `SYSROOT_DIR=... run_autonomy.py -p nvidia --profile cross --build` |
+| **嵌入式板（NFS）** | Firefly / RK3588 等 aarch64 | 开发机 NFS → 板端 `--profile board` → 本地 `autonomy_ws/build` |
+| **交叉编译（nvidia）** | 用已有镜像 + sysroot | `SYSROOT_DIR=... run_autonomy.py -p nvidia --profile cross --build` |
 
-两种方式均使用 **CMake + Ninja**，**不强制依赖 ROS 2**。
+板端完整步骤见 [§9 嵌入式板端](09_embedded_board.md)。
+
+宿主机与 Docker 均使用 **CMake + Ninja**，**不强制依赖 ROS 2**。
 
 ### 1.3 依赖层次
 
@@ -52,4 +55,5 @@ ROS 2 集成运行见 [04 Running](../04_Running/00_guide.md)。
 ### 1.5 相关文档
 
 - [§2 快速安装](02_quickstart.md)
+- [§9 嵌入式板端](09_embedded_board.md)
 - [01 Instructions · 快速上手](../01_Instructions/02_quickstart.md)
