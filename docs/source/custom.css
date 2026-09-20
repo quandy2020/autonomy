@@ -2750,3 +2750,47 @@
     margin-left: auto !important;
     margin-right: auto !important;
 }
+
+/* 板端 benchmark 图九宫格 / 宫格画廊 */
+.rst-content .bench-gallery {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem 0.85rem;
+    margin: 0.75rem 0 1.25rem;
+    padding: 0;
+    list-style: none;
+}
+
+.rst-content .bench-gallery > li {
+    margin: 0;
+    padding: 0.45rem 0.45rem 0.55rem;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+.rst-content .bench-gallery > li img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 160px;
+    object-fit: contain;
+    margin: 0 auto 0.35rem;
+}
+
+.rst-content .bench-gallery > li span {
+    display: block;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: #666;
+}
+
+@media (max-width: 720px) {
+    .rst-content .bench-gallery {
+        grid-template-columns: 1fr;
+    }
+    .rst-content .bench-gallery > li img {
+        max-height: 220px;
+    }
+}
