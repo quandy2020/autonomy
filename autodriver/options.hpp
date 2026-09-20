@@ -16,7 +16,7 @@
 
 /**
  * @file options.hpp
- * @brief Process CLI (CLI11): help, version, config paths, dry-run.
+ * @brief Process CLI (CLI11): help, version, config paths, dry-run, pair-joy.
  *
  * Short flags follow Google CLI conventions (-h help, -n dry-run). Runtime
  * knobs (node_name, plugin_dir, pose_channel) stay in YAML / env.
@@ -45,6 +45,18 @@ struct Options {
     bool dry_run = false;
     /** @brief When true, force hotplug.udev = false after LoadConfig. */
     bool disable_udev = false;
+    /**
+     * @brief When true, run DualSense pair/wait then exit (no hardware managers).
+     *
+     * Mode is selected by @c pair_mode: bluetooth (default) or usb/driver.
+     */
+    bool pair_joy = false;
+    /**
+     * @brief --pair-mode: bluetooth|bt | usb|wired|driver (default bluetooth).
+     */
+    std::string pair_mode = "bluetooth";
+    /** @brief Scan / wait ceiling in seconds for --pair-joy (default 45). */
+    int pair_timeout_sec = 45;
 };
 
 /**

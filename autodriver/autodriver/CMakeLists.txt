@@ -63,6 +63,7 @@ set(AUTODRIVER_SOURCES
   bridge/pose_feeder.cpp
   joy/linux_joystick.cpp
   joy/joy_teleop.cpp
+  joy/joy_pair.cpp
 )
 
 find_package(Threads REQUIRED)

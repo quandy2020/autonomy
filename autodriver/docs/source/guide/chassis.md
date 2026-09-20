@@ -74,7 +74,15 @@ mainboard -d $AUTOLINK_DAG_PATH/chassis_jetauto.dag
 
 ## 4. 手柄
 
-根级 `joy:`（默认 DualSense）：按住 **L1** + 左摇杆 → `/cmd_vel`，与底盘共用通道。见 [配置 · joy](configuration.md)。
+根级 `joy:`（默认 DualSense）：按住 **L1** + 左摇杆 → `/cmd_vel`，与底盘共用通道。
+
+| 步骤 | 命令 / 配置 |
+|---|---|
+| 蓝牙重新配对 | `autodriver --pair-joy`（或 `--pair-mode bluetooth`） |
+| USB / 驱动挂载 | `autodriver --pair-joy --pair-mode usb`（别名 `driver` / `wired`） |
+| 遥操 | YAML `joy.enable: true`，`device: /dev/input/js0`（以实际节点为准） |
+
+完整字段、轴键映射与配对说明见 [配置 · joy](configuration.md#41-手柄遥操joy默认索尼-dualsenseps5)；CLI 见 [使用 · --pair-joy](usage.md#21-dualsense-pair-joy)。
 
 ## 5. 相关
 

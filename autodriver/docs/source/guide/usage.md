@@ -50,6 +50,11 @@ autodriver /path/to/autodriver                      # 指定配置根
 autodriver -c /path/to/autodriver --config-file autodriver_hardware.yaml
 autodriver -n                                       # dry-run：只加载配置
 autodriver --no-udev
+# DualSense 配对 / 等待 js*（不启传感与底盘，跑完即退出）
+autodriver --pair-joy                               # 默认蓝牙
+autodriver --pair-joy --pair-mode bluetooth --pair-timeout 60
+autodriver --pair-joy --pair-mode usb               # USB / hid-playstation
+autodriver --pair-joy --pair-mode driver            # usb 别名
 ```
 
 短选项遵循 Google CLI 约定（`-h` help、`-n` dry-run；**不用** `-f`/`-n` 表示配置文件或节点名）。
@@ -61,12 +66,31 @@ autodriver --no-udev
 | `-V` / `--version` | 版本（来自 `version.json` → `conf/conf.hpp`） |
 | `-n` / `--dry-run` | 加载配置后退出，不启硬件 |
 | `--no-udev` | 关闭 udev 热插拔 |
+| `--pair-joy` | DualSense 配对/等待后退出（见 `--pair-mode`） |
+| `--pair-mode` | `bluetooth`/`bt`（默认）或 `usb`/`wired`/`driver` |
+| `--pair-timeout` | `--pair-joy` 扫描/等待秒数（默认 45） |
 | `-c` / `--config-dir` / 位置参数 | 配置根（含 `config/`）；亦读 `AUTODRIVER_PATH` |
 | `--config-file` / 位置参数 | basename；默认 `autodriver_hardware.yaml`（**无**短选项 `-f`） |
 
-### 2.1 启动 / 停止
+### 2.1 DualSense `--pair-joy`
 
-与 `main.cpp` 一致：
+一次性模式：在 `autolink::Init` 之后、`Run()` 之前执行，**不** `LoadConfig`、不启 Publisher / Chassis / JoyTeleop。
+
+| 模式 | 别名 | 行为 |
+|---|---|---|
+| `bluetooth`（默认） | `bt` | `bluetoothctl`：移除旧 DualSense 绑定 → 扫描 → pair / trust / connect |
+| `usb` | `wired`、`driver` | 提示插 USB 线；`modprobe hid_playstation`；等待 `/dev/input/js*` |
+
+操作提示：
+
+- **蓝牙**：手柄 **Create + PS** 直至灯条闪烁进入配对；需本机 `bluetoothctl`（bluez）与适配器权限。
+- **USB**：用数据线连接；依赖内核 `hid-playstation`；用户宜加入 `input` 组。
+
+成功后确认节点（如 `/dev/input/js0`），在 YAML `joy.device` 中写上路径，并将 `joy.enable: true`。字段与映射见 [配置 · joy](configuration.md#41-手柄遥操joy默认索尼-dualsenseps5)。
+
+### 2.2 启动 / 停止
+
+与 `main.cpp` 一致（`--pair-joy` 走独立路径，不经下列序列）：
 
 ```text
 LoadConfig
@@ -74,8 +98,9 @@ LoadConfig
   → SensorManager::{SetSampleSink, Initialize, Start}
   → PoseFeeder::Start              // compensator.pose_channel 空 → no-op 成功
   → ChassisManager::Start(node)    // chassis.enable=false → no-op 成功
+  → JoyTeleop::Start(node)         // joy.enable=false → no-op；无 js 则告警空转
   → 等待 SIGINT / SIGTERM
-  → Stop：Chassis → PoseFeeder → SensorManager
+  → Stop：JoyTeleop → Chassis → PoseFeeder → SensorManager
 ```
 
 | 要点 | 说明 |
@@ -84,9 +109,10 @@ LoadConfig
 | 相机 | 推荐折叠 `streams` / `point_clouds` / `imu`（见 [配置 · camera](configuration.md)） |
 | 底盘（进程内） | `chassis.enable: true` + `backend`（联调常用 `stub`） |
 | 底盘（实机） | 推荐独立 DAG / launch；主 YAML 保持 `chassis.enable: false`。见 [本体](chassis.md) |
+| 手柄 | `joy.enable: true` + DualSense；配对见 §2.1 |
 | 运行标志 | 日志含 `autodriver running (Ctrl+C to stop)` |
 
-### 2.2 SDK 安装（包根 `scripts/`）
+### 2.3 SDK 安装（包根 `scripts/`）
 
 | 脚本 | 用途 |
 |---|---|
@@ -221,5 +247,8 @@ manager.Stop();
 | 无点云 / 无图像 | 检查 UDP 端口与网段、USB3、防火墙；折叠子项是否 enable |
 | RPLidar A3 | 使用 `params_file: lidar/slamtec/a3.yaml`（波特率 256000） |
 | 底盘无响应 | 确认 `chassis.enable`、`cmd_vel_channel`；检查看门狗是否将速度清零 |
+| 手柄无 `/dev/input/js*` | 先 `autodriver --pair-joy`（蓝牙）或 `--pair-mode usb`；用户加入 `input` 组 |
+| `pair-joy: bluetoothctl not found` | 安装 bluez（提供 `bluetoothctl`） |
+| `pair-joy` USB 超时 | 检查线缆、`lsusb \| grep Sony`、`modprobe hid_playstation`（可能需 root） |
 
 系统化问答见 [FAQ](../faq.md)。验证见 [测试](testing.md)。

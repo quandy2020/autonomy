@@ -253,6 +253,8 @@ LoadConfig
   → Stop：JoyTeleop → Chassis → PoseFeeder → SensorManager
 ```
 
+CLI 一次性手柄配对（`--pair-joy`，蓝牙或 USB）在 `Run()` 之前分支，不经上述序列。见 [使用 · --pair-joy](usage.md#21-dualsense-pair-joy)。
+
 `PoseFeeder`：订 Odometry → `SensorManager::PushLidarPose` → 驱动侧 `MotionPoseSink`。见 [数据流 · 运动补偿](dataflow.md#5-运动补偿3d-激光可选)。
 
 库嵌入（自建 Node / Sink）见 [使用方式](usage.md)。

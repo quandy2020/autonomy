@@ -32,6 +32,7 @@
 #include "autodriver/bridge/pose_feeder.hpp"
 #include "autodriver/bridge/publisher.hpp"
 #include "autodriver/config_loader.hpp"
+#include "autodriver/joy/joy_pair.hpp"
 #include "autodriver/joy/joy_teleop.hpp"
 #include "autodriver/sensor_manager.hpp"
 #include "chassis/chassis_manager.hpp"
@@ -144,6 +145,22 @@ int main(int argc, char** argv) {
 
     autolink::Init(argv[0]);
     AINFO << autodriver::VersionString();
+
+    if (opts.pair_joy) {
+        autodriver::joy::JoyPairMode mode =
+            autodriver::joy::JoyPairMode::kBluetooth;
+        if (!autodriver::joy::ParseJoyPairMode(opts.pair_mode, &mode)) {
+            AERROR << "invalid --pair-mode '" << opts.pair_mode
+                   << "' (use bluetooth|bt | usb|wired|driver)";
+            autolink::Clear();
+            return 1;
+        }
+        AINFO << "pair-joy mode=" << autodriver::joy::JoyPairModeName(mode);
+        const bool ok =
+            autodriver::joy::PairDualSense(mode, opts.pair_timeout_sec);
+        autolink::Clear();
+        return ok ? 0 : 1;
+    }
 
     std::signal(SIGINT, HandleSignal);
     std::signal(SIGTERM, HandleSignal);

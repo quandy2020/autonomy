@@ -83,6 +83,18 @@ autolink launch start autodriver.launch
 
 用户须加入 `dialout` 组。RPLidar 可选用 `create_udev_rules.sh` 生成 `/dev/rplidar`。CAN：`ip link set can0 up type can bitrate …`。
 
+## DualSense / 手柄
+
+| 现象 | 处理 |
+|---|---|
+| 无 `/dev/input/js*` | 蓝牙：`autodriver --pair-joy`；USB：`--pair-mode usb`；用户加入 `input` 组 |
+| `bluetoothctl not found` | 安装 bluez |
+| 蓝牙扫不到手柄 | Create+PS 进入配对；适配器 `power on`；适当加大 `--pair-timeout` |
+| USB 超时 | 检查线缆、`lsusb \| grep Sony`、`modprobe hid_playstation`（可能需 root） |
+| 有 js 但底盘不动 | YAML `joy.enable: true`；按住 **L1**；确认 `cmd_vel_channel` 与底盘一致 |
+
+详见 [使用 · --pair-joy](guide/usage.md#21-dualsense-pair-joy) · [配置 · joy](guide/configuration.md#41-手柄遥操joy默认索尼-dualsenseps5)。
+
 ## Autolink
 
 采集在 autodriver 进程内完成；发布经 `Publisher`。若 `Publisher::Initialize` 失败，检查 Autolink 运行时与 `AUTOLINK_PATH`；确保 `LD_LIBRARY_PATH` 包含 `build/lib`。
@@ -131,6 +143,7 @@ Attach/Detach 结果经 `SampleSink::HandleDiagnostic` → Publisher → `/diagn
 | `imu/` `gps/` | serial/CAN 驱动（CRTP 基类）+ registry |
 | `gps/parser/` | NMEA 工厂 |
 | `bridge/` | Publisher、PoseFeeder |
+| `joy/` | LinuxJoystick、JoyTeleop、`--pair-joy`（`joy_pair`） |
 | `chassis/` | Manager、stub / jetauto / l1w |
 | `dag/` | `chassis_jetauto.dag` · `chassis_l1w.dag` |
 | `config/` | 硬件 YAML + 厂商 params |

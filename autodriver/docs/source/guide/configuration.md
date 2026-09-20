@@ -194,11 +194,13 @@ Launch 内底盘 **二选一**，见 `launch/autodriver.launch`。
 
 **默认 profile：`dualsense`**（别名 `ps5`）。预设见 `config/joy/dualsense.yaml`。
 
+> **蓝牙与 USB 共用同一套 `joy:` YAML。** 连接方式只决定如何出现 `/dev/input/js*`（CLI `--pair-joy`），遥操进程只认 `device` 节点，没有 `bluetooth: true` 之类字段。
+
 | YAML 键 | 默认 | 说明 |
 |---|---|---|
 | `enable` | `false` | `false` 时 JoyTeleop 为 no-op |
 | `profile` | `dualsense` | `dualsense`/`ps5` 应用轴键预设；`generic` 不改轴键 |
-| `device` | `/dev/input/js0` | 设备节点（`jstest` 可确认） |
+| `device` | `/dev/input/js0` | 蓝牙或 USB 连接后的 `js` 节点（以 `ls /dev/input/js*` / 配对日志为准） |
 | `joy_channel` | `/joy` | Joy 消息 |
 | `cmd_vel_channel` | 空 | 空则使用 `chassis.cmd_vel_channel` |
 | `publish_hz` | `50` | 发布频率 |
@@ -215,7 +217,26 @@ Launch 内底盘 **二选一**，见 `launch/autodriver.launch`。
 | 左摇杆左右 | 原地转向 |
 | 松开 L1 / 断连 | 零速（配合底盘 watchdog） |
 
-用户通常需加入 `input` 组。USB 或蓝牙配对后确认 `/dev/input/js*`。若 `jstest` 轴序与预设不符，在 YAML 中覆盖 `linear_axis` / `angular_axis` / `enable_button`。
+### 蓝牙模式怎么配
+
+1. **配对（一次性，不改 YAML）**
+
+```bash
+autodriver --pair-joy
+# 或显式：
+autodriver --pair-joy --pair-mode bluetooth --pair-timeout 60
+```
+
+手柄按 **Create + PS** 直至灯条闪烁。成功日志会打印 `joystick node ready: /dev/input/jsN`。
+
+2. **确认节点**
+
+```bash
+ls /dev/input/js*
+jstest /dev/input/js0    # 或配对日志里的路径
+```
+
+3. **YAML（与 USB 相同；把 `device` 写成实际节点）**
 
 ```yaml
 chassis:
@@ -223,6 +244,31 @@ chassis:
   backend: stub          # 或真实底盘 backend
   cmd_vel_channel: /cmd_vel
 
+joy:
+  enable: true
+  profile: dualsense
+  device: /dev/input/js0   # 蓝牙连接后出现的节点；多手柄时改成 ls 看到的 jsN
+  max_linear: 0.5
+  max_angular: 1.0
+```
+
+4. **正常启动遥操**：`autodriver`（需 `joy.enable: true`）。断连后再连，一般仍是同一 `jsN`；若序号变了，改 `device` 或再跑一次 `--pair-joy`。
+
+用户通常需加入 `input` 组。蓝牙断连时 JoyTeleop 会发零速（配合底盘 watchdog）。
+
+### USB / 驱动模式配对
+
+```bash
+autodriver --pair-joy --pair-mode usb
+# 别名：driver / wired
+```
+
+插上 USB 线后同样把出现的 `/dev/input/jsN` 写入 `joy.device`；YAML 字段与蓝牙一致。
+
+CLI 总览与排障见 [使用 · --pair-joy](usage.md#21-dualsense-pair-joy)。若 `jstest` 轴序与预设不符，在 YAML 中覆盖 `linear_axis` / `angular_axis` / `enable_button`。
+
+```yaml
+# USB 示例（字段同蓝牙）
 joy:
   enable: true
   profile: dualsense

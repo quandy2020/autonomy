@@ -140,7 +140,18 @@ Stop：Chassis → PoseFeeder → SensorManager
 
 正常运行时可看到类似 `autodriver running (Ctrl+C to stop)` 的日志；`Ctrl+C` 优雅退出。
 
-### 4.1 Launch + 底盘 DAG（二选一）
+### 4.1 DualSense 配对（可选）
+
+首次蓝牙或换机、以及 USB 插线确认 `js*` 时，可先跑一次性配对（不启传感/底盘）：
+
+```bash
+autodriver --pair-joy                              # 蓝牙（默认）
+autodriver --pair-joy --pair-mode usb              # USB / 驱动
+```
+
+详见 [使用 · --pair-joy](usage.md#21-dualsense-pair-joy) 与 [配置 · joy](configuration.md#41-手柄遥操joy默认索尼-dualsenseps5)。
+
+### 4.2 Launch + 底盘 DAG（二选一）
 
 ```bash
 export AUTOLINK_LAUNCH_PATH=$AUTODRIVER_PATH/launch
@@ -186,6 +197,7 @@ ctest --test-dir build -R 'test_' --output-on-failure
 | RPLidar A3 无数据 | 使用 `params_file: lidar/slamtec/a3.yaml`（波特率 256000） |
 | mainboard 找不到 `.dag` / `.so` | 设 `AUTOLINK_DAG_PATH`、`AUTOLINK_LIB_PATH` |
 | L1-W 无 SDK | `-DGenisomL1w_ROOT=` 或 YAML `simulate: true` |
+| 手柄无 `js*` / 需重新配对 | `autodriver --pair-joy` 或 `--pair-mode usb`；见 [使用](usage.md#21-dualsense-pair-joy) |
 
 更多见 [FAQ](../faq.md)。
 

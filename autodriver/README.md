@@ -59,6 +59,9 @@ export AUTOLINK_LIB_PATH=$PWD/build/autonomy/lib
 | 仅传感进程 | `autodriver` | 读 `config/autodriver_hardware.yaml`（默认 `chassis.enable: false`） |
 | Launch | `autolink launch start autodriver.launch` | 传感 + **一个**底盘 DAG |
 | 仅底盘 | `mainboard -d $AUTOLINK_DAG_PATH/chassis_l1w.dag` | JetAuto 换 `chassis_jetauto.dag` |
+| DualSense 配对 | `autodriver --pair-joy` / `--pair-mode usb` | 蓝牙或 USB；跑完即退出，不启硬件 |
+
+手柄细节：[`docs` · 使用](docs/source/guide/usage.md#21-dualsense-pair-joy) · [配置 · joy](docs/source/guide/configuration.md#41-手柄遥操joy默认索尼-dualsenseps5)。
 
 **底盘二选一**：编辑 [`launch/autodriver.launch`](launch/autodriver.launch)，只启用 `chassis_l1w` 或 `chassis_jetauto` 其中一个 `<module>`。
 

@@ -148,6 +148,12 @@ public:
                           {"-n, --dry-run",
                            "Load config and exit (do not start hardware)"},
                           {"    --no-udev", "Disable udev hotplug"},
+                          {"    --pair-joy",
+                           "Pair DualSense then exit (see --pair-mode)"},
+                          {"    --pair-mode <MODE>",
+                           "bluetooth|bt | usb|wired|driver  [default: bluetooth]"},
+                          {"    --pair-timeout <SEC>",
+                           "Scan/wait for --pair-joy  [default: 45]"},
                       },
                       kLeft);
 
@@ -172,6 +178,10 @@ public:
                "--config-file autodriver_hardware.yaml\n"
                "  autodriver -n\n"
                "  autodriver --no-udev\n"
+               "  autodriver --pair-joy\n"
+               "  autodriver --pair-joy --pair-mode bluetooth\n"
+               "  autodriver --pair-joy --pair-mode usb\n"
+               "  autodriver --pair-joy --pair-timeout 60\n"
             << c_.reset;
 
         out << '\n' << c_.bold << c_.cyan << "ENVIRONMENT" << c_.reset << '\n';
@@ -247,6 +257,14 @@ ParseStatus ParseCommandLine(int argc, char** argv, Options* out) {
         ->capture_default_str();
     app.add_flag("-n,--dry-run", opts.dry_run, "Dry run");
     app.add_flag("--no-udev", opts.disable_udev, "Disable udev");
+    app.add_flag("--pair-joy", opts.pair_joy, "Pair DualSense then exit");
+    app.add_option("--pair-mode", opts.pair_mode,
+                   "bluetooth|bt | usb|wired|driver")
+        ->capture_default_str();
+    app.add_option("--pair-timeout", opts.pair_timeout_sec,
+                   "Scan wait seconds for --pair-joy")
+        ->capture_default_str()
+        ->check(CLI::PositiveNumber);
 
     try {
         app.parse(argc, argv);

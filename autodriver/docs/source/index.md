@@ -39,7 +39,11 @@ export AUTOLINK_DAG_PATH=$AUTODRIVER_PATH/dag
 export AUTOLINK_LIB_PATH=$PWD/build/lib
 export LD_LIBRARY_PATH=$PWD/build/lib:$LD_LIBRARY_PATH
 ./build/bin/autodriver
+./build/bin/autodriver --pair-joy                    # DualSense 蓝牙配对
+./build/bin/autodriver --pair-joy --pair-mode usb    # USB / 驱动
 autolink launch start autodriver.launch   # 需 AUTOLINK_LAUNCH_PATH
 ```
+
+手柄配对与遥操：[使用 · --pair-joy](guide/usage.md#21-dualsense-pair-joy) · [配置 · joy](guide/configuration.md#41-手柄遥操joy默认索尼-dualsenseps5)。
 
 包 README：[README.md](../../README.md)。

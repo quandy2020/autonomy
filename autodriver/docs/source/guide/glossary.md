@@ -66,6 +66,7 @@
 | **看门狗** | watchdog | 底盘 `watchdog_ms` 内无新 `cmd_vel` 则下发零速（soft stop）；`0` 关闭 |
 | **DeviceMatch** | `match` | udev 匹配规则（subsystem / device / vendor / product / serial） |
 | **手柄遥操** | joy teleop | `JoyTeleop`：默认 **DualSense（PS5）** 左摇杆差速 + L1 使能 → `/joy` + `/cmd_vel` |
+| **手柄配对** | `--pair-joy` | 一次性 CLI：`bluetooth`（`bluetoothctl`）或 `usb`/`driver`（`hid-playstation` + 等待 `js*`）；不启传感/底盘 |
 
 ---
 
