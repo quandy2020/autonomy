@@ -39,7 +39,7 @@
   <module>
     <name>perception</name>
     <type>binary</type>
-    <process_name>autonomy.perception --conf=exploration.pb.txt</process_name>
+    <process_name>autonomy.perception --conf=perception_exploration.pb.txt</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>

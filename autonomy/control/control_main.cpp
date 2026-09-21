@@ -2,46 +2,49 @@
  * Copyright 2026 The Openbot Authors
  *
  * Standalone control process: local costmap + controller plugins.
+ * Loads module-local ControllerOptions (does not require AUTONOMY_BUILD_SYSTEM).
  */
 
 #include <cstdlib>
 #include <memory>
+#include <string>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include "autolink/autolink.hpp"
+#include "autonomy/common/conf_loader.hpp"
 #include "autonomy/common/gflags.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/control/controller_server.hpp"
-#include "autonomy/system/options.hpp"
-#include "autonomy/system/proto/autonomy_options.pb.h"
+#include "autonomy/control/proto/controller_options.pb.h"
 #include "autonomy/transform/autolink_tf_listener.hpp"
 #include "autonomy/transform/buffer.hpp"
+#include "autonomy/transform/common/transform_interface.hpp"
 #include "autonomy/transform/geometry_msgs/transform_stamped.h"
+#include "autonomy/transform/proto/transform_options.pb.h"
 #include "autonomy/transform/transform_server.hpp"
 
 namespace autonomy {
 namespace control {
 namespace {
 
-using AutonomyOptions = ::autonomy::system::proto::AutonomyOptions;
+using ControllerOptions = ::autonomy::control::proto::ControllerOptions;
+using TransformOptions = ::autonomy::transform::proto::TransformOptions;
 
 std::unique_ptr<transform::TransformServer> InitTransformStack(
-    const AutonomyOptions& options)
+    const TransformOptions& options)
 {
     auto* tf_buffer = transform::Buffer::Instance();
     if (tf_buffer->Init() != 0) {
         AWARN << "control_main: transform::Buffer::Init returned non-zero";
     }
 
-    if (!options.has_transform_options() ||
-        options.transform_options().extrinsic_file().empty()) {
+    if (options.extrinsic_file().empty()) {
         return nullptr;
     }
 
-    auto transform_server = std::make_unique<transform::TransformServer>(
-        options.transform_options());
+    auto transform_server = std::make_unique<transform::TransformServer>(options);
     const auto& static_transforms =
         transform_server->GetTransformStampedsData();
     for (const auto& trans : static_transforms.transforms()) {
@@ -63,6 +66,16 @@ std::unique_ptr<transform::TransformServer> InitTransformStack(
     return transform_server;
 }
 
+std::string ResolveControllerConfFile()
+{
+    const std::string& conf = common::FLAGS_conf;
+    if (conf.empty() || conf == "autonomy.pb.txt" ||
+        conf == "exploration.pb.txt") {
+        return "controller.pb.txt";
+    }
+    return conf;
+}
+
 }  // namespace
 }  // namespace control
 }  // namespace autonomy
@@ -76,15 +89,19 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    const auto options = autonomy::system::CreateOptions(
-        autonomy::common::FLAGS_conf);
-    if (!options.has_controller_options()) {
-        LOG(ERROR) << "control_main: missing controller options in config";
+    const std::string conf_file =
+        autonomy::control::ResolveControllerConfFile();
+    autonomy::control::proto::ControllerOptions controller_options;
+    if (!autonomy::common::LoadModuleConf("control", conf_file,
+                                          &controller_options)) {
+        LOG(ERROR) << "control_main: failed to load control conf: " << conf_file;
         return EXIT_FAILURE;
     }
 
+    const auto transform_options =
+        autonomy::transform::common::CreateOptions();
     auto static_tf =
-        autonomy::control::InitTransformStack(options);
+        autonomy::control::InitTransformStack(transform_options);
 
     auto tf_node = autolink::CreateNode("control_tf");
     auto tf_listener =
@@ -97,7 +114,7 @@ int main(int argc, char** argv)
     }
 
     auto controller = std::make_shared<autonomy::control::ControllerServer>(
-        options.controller_options());
+        controller_options);
     controller->Start();
 
     LOG(INFO) << "control_main running (ControllerServer)";
