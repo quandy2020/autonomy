@@ -118,6 +118,8 @@ LoadConfig
 |---|---|
 | `install_rplidar_sdk.sh` | Slamtec SDK → 默认 `/usr/local` |
 | `install_livox_sdk2.sh` / `install_livox_sdk.sh` | Livox SDK2 / SDK1 |
+| `install_realsense_sdk.sh` | librealsense2（apt / source） |
+| `install_orbbec_sdk.sh` | OrbbecSDK v2（.deb / source） |
 | `create_udev_rules.sh` / `delete_udev_rules.sh` | `/dev/rplidar` |
 | `verify_realsense_d455.sh` | D455 冒烟（若有） |
 

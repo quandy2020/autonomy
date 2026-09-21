@@ -11,6 +11,19 @@ Gemini 330 为主。基于 OrbbecSDK；同机多路共享 device hub。
 | 示例折叠 | `config/examples/orbbec_gemini_330.yaml` |
 | CMake | `AUTODRIVER_WITH_ORBBEC` + OrbbecSDK |
 
+## 安装 SDK
+
+```bash
+# 一键：按架构下载官方 OrbbecSDK_v2_*.deb 并 dpkg 安装
+./scripts/install_orbbec_sdk.sh
+
+# 指定版本 / 源码编译
+ORBBEC_SDK_VERSION=v2.9.3 ./scripts/install_orbbec_sdk.sh
+ORBBEC_SDK_METHOD=source ./scripts/install_orbbec_sdk.sh
+```
+
+然后重新 cmake（`-DAUTODRIVER_WITH_ORBBEC=ON`），确认 STATUS 出现 `OrbbecSDK enabled`。
+
 ## 配置
 
 折叠语法与 RealSense 相同。通道命名对齐 OrbbecSDK_ROS2：  

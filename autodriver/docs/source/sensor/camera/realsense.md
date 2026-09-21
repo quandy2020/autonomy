@@ -10,6 +10,18 @@ D455 为主。基于 librealsense2；同机多路共享 `device_hub`。
 | params | `config/camera/realsense/d455.yaml` |
 | CMake | `AUTODRIVER_WITH_REALSENSE` + `find_package(realsense2)` |
 
+## 安装 SDK
+
+```bash
+# 一键：Intel apt（librealsense2 + -dev + -utils）
+./scripts/install_realsense_sdk.sh
+
+# 板端 / apt 仓库不可用时：源码编译（FORCE_RSUSB_BACKEND）
+REALSENSE_SDK_METHOD=source ./scripts/install_realsense_sdk.sh
+```
+
+然后重新 cmake（`-DAUTODRIVER_WITH_REALSENSE=ON`），确认 STATUS 出现 `librealsense2 … enabled`。冒烟：`./scripts/verify_realsense_d455.sh`。
+
 ## 折叠配置（推荐）
 
 展开 id：`camera/<name>_<stream>`、`camera/<name>_points`、`imu/<name>_imu`。

@@ -59,6 +59,9 @@ autolink launch start autodriver.launch
 
 构建 STATUS 须出现 `librealsense2 … enabled` / `OrbbecSDK enabled`；否则 Create 返回 `nullptr`。多设备时使用 `params.serial` 或 `index` 与 `model`；同机多流共享 device hub（折叠配置）。
 
+RealSense 一键安装：`./scripts/install_realsense_sdk.sh`（默认 apt；`REALSENSE_SDK_METHOD=source` 可源码编译）。  
+Orbbec 一键安装：`./scripts/install_orbbec_sdk.sh`（官方 `.deb`；`ORBBEC_SDK_METHOD=source` 可源码编译）。
+
 若日志出现 `module Start failed: camera/realsense_*`，先看紧随其后的  
 `RealSense camera start failed: …`（例如 `Device or resource busy`）：
 

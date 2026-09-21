@@ -87,6 +87,7 @@ python3 scripts/install_dependencies.py --profile board \
 | `install_behaviortree_cpp.sh` | BehaviorTree.CPP |
 | `install_gperftools.sh` | tcmalloc（系统有则可跳过） |
 | `install_adolc.sh` / `install_ipopt.sh` | ADOL-C / Ipopt（多为 apt） |
+| `install_fastdds.sh` | Fast DDS **v3.6.2**（可选跨机 RTPS，SECURITY=ON） |
 
 ### 只要某个 apt 包
 

@@ -10,6 +10,15 @@
 
 ## 14.1 编译启用
 
+系统预装（推荐，与 FetchContent 同 pin）：
+
+```bash
+bash docker/install/install_fastdds.sh
+# 或: python3 -m install_deps --resume-from install_fastdds.sh
+```
+
+然后启用 Autolink RTPS：
+
 ```bash
 cmake -S autolink -B autolink/build-fastdds \
   -DAUTOLINK_BUILD_TEST=ON \
@@ -19,7 +28,7 @@ cmake --build autolink/build-fastdds -j
 ```
 
 - CMake option：`AUTOLINK_ENABLE_FASTDDS`（默认 **OFF**）。
-- 基线 **Fast DDS 3.x**（FetchContent `GIT_TAG` **v3.6.2**）。优先 `find_package(fastdds 3)`，链接目标 **`fastdds`**（+ `fastcdr`）；未安装则 FetchContent 钉 v3.6.2，并强制 `SECURITY=ON`（需 **OpenSSL**）。
+- 基线 **Fast DDS 3.x**（`install_fastdds.sh` / FetchContent `GIT_TAG` **v3.6.2**）。优先 `find_package(fastdds 3)`，链接目标 **`fastdds`**（+ `fastcdr`）；未安装则 FetchContent 钉 v3.6.2，并强制 `SECURITY=ON`（需 **OpenSSL**）。
 - **不支持 2.14**：前缀路径上仅有 Fast DDS major&lt;3 时 CMake **FATAL_ERROR**，不会静默回退或混用 2.x。
 - 打开后库目标定义 `AUTOLINK_ENABLE_FASTDDS=1`，编译 `transport/rtps/` 与 Hybrid/Transport 的 RTPS 分支；API 已跟迁 3.x（`eprosima::fastdds::*`）。
 

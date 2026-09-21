@@ -56,7 +56,7 @@ python3 -m install_deps --dry-run
 | 8 | `install_nlohmann.sh` | nlohmann/json |
 | 9 | `install_osqp.sh` | OSQP |
 | 10 | `install_behaviortree_cpp.sh` | **BehaviorTree.CPP 4.x**（Navigator 必需） |
-| 11+ | `install_python_modules.sh`, `install_assimp.sh`, `install_ogre.sh`, `install_adolc.sh`, `install_ipopt.sh` | 可选组件依赖 |
+| 11+ | `install_python_modules.sh`, `install_assimp.sh`, `install_ogre.sh`, `install_adolc.sh`, `install_ipopt.sh`, `install_fastdds.sh` | 可选组件依赖 |
 
 > **注意**：BehaviorTree.CPP 为行为树导航所必需；若跳过，Navigator BT 模式将无法加载插件。
 
@@ -76,6 +76,7 @@ CMake 通过 `CMAKE_PREFIX_PATH` 或默认搜索路径找到上述库。
 | 组件 | 安装方式 | CMake 选项 |
 |------|----------|------------|
 | gRPC Bridge | `install_grpc.sh` | `BUILD_GRPC=ON`（默认） |
+| Fast DDS（跨机 RTPS） | `install_fastdds.sh`（钉 **v3.6.2**，SECURITY=ON） | Autolink `-DAUTOLINK_ENABLE_FASTDDS=ON`；配置 `diff_host: RTPS` |
 | ONNX Runtime | `install_onnixruntime.sh` | `BUILD_ONNXRUNTIME=ON` |
 | Habitat 仿真 | `install_habitat.sh` | 仿真模块 |
 | ROS 2 Humble | `install_ros2.sh` | Docker 镜像内可选 |

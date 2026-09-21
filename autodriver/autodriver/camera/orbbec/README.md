@@ -5,6 +5,12 @@
 Requires OrbbecSDK (v2) at build time (`AUTODRIVER_WITH_ORBBEC=ON` +
 `find_package(OrbbecSDK)`). Without the SDK, factories return `nullptr`.
 
+Install (from autodriver root):
+
+```bash
+./scripts/install_orbbec_sdk.sh
+```
+
 | File | Role |
 |---|---|
 | `device_hub.*` | Shared pipeline (color / depth / IR / point cloud) |

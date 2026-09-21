@@ -16,6 +16,7 @@
     "install_python_modules.sh",
     "install_adolc.sh",
     "install_ipopt.sh",
+    "install_fastdds.sh",
     "install_taskflow.sh",
     "install_assimp.sh",
     "install_ogre.sh"
@@ -120,6 +121,14 @@
       "paths": [
         "/usr/include/coin/IpIpoptApplication.hpp",
         "/usr/include/coin-or/IpIpoptApplication.hpp"
+      ]
+    },
+    "install_fastdds.sh": {
+      "paths": [
+        "/usr/local/lib/libfastdds.so",
+        "/usr/local/lib64/libfastdds.so",
+        "/usr/local/lib/libfastrtps.so",
+        "/usr/local/lib64/libfastrtps.so"
       ]
     },
     "install_assimp.sh": {

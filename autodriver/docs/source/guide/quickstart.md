@@ -85,6 +85,8 @@ cd "$AUTODRIVER_PATH"
 ./scripts/install_rplidar_sdk.sh
 ./scripts/install_livox_sdk2.sh    # Mid-360 / HAP …
 ./scripts/install_livox_sdk.sh     # Mid-40 / Horizon …
+./scripts/install_realsense_sdk.sh # D455 / librealsense2（apt 一键）
+./scripts/install_orbbec_sdk.sh    # Gemini 330 / OrbbecSDK v2（.deb 一键）
 ./scripts/create_udev_rules.sh     # 可选：/dev/rplidar
 ```
 
