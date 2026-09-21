@@ -90,4 +90,4 @@ ros2 launch autonomy_ros autonomy.launch.py
 ### 7.8 相关文档
 
 - [04 Running · 运行验证](../04_Running/07_verification.md)
-- [01 Instructions · 生态](../01_Instructions/06_ecosystem.md)
+- [01 Instructions · 仓库与生态](../01_Instructions/04_repository.md)

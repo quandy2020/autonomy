@@ -17,7 +17,7 @@
 |------|--------|------|
 | 格式化脚本用法 | [18 Tools · 开发脚本](../18_Tools/03_dev_scripts.md) | 风格规则详解 |
 | 安装排错 | [19 FAQs](../19_FAQs/index.rst) | — |
-| 文档结构 | [01 Instructions · 文档导读](../01_Instructions/07_documentation_guide.md) | — |
+| 文档结构 | [01 Instructions · 概览](../01_Instructions/01_overview.md) | — |
 
 ### 1.3 相关文档
 

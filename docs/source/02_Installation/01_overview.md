@@ -1,59 +1,42 @@
 (installation-overview)=
 # 1. 安装概览
 
-### 1.1 安装目标
+## 1.1 装完你应有什么
 
-完成安装后，您应获得：
+| 产物 | 典型位置 | 说明 |
+|------|----------|------|
+| 域库 | `build/lib/libautonomy_*.so` | 如 `libautonomy_common.so`、`libautonomy_planning.so` |
+| 通信库 | `build/lib/libautolink.so`、`libautomsgs.so` | 始终参与构建 |
+| 可执行文件 | `build/bin/` | `autolink`、`autonomy.planning`、`autonomy.task` 等 |
+| BT 插件 | `build/lib/autonomy_behavior_tree_*.so` | 启用 task/navigator 时 |
+| 可选 install | `/usr/local` | `cmake --install` 后用系统前缀运行 |
 
-| 产物 | 路径 | 说明 |
-|------|------|------|
-| 核心库 | `build/lib/libautonomy.so` | 链接所有已启用模块 |
-| 可执行文件 | `build/bin/` | 测试与工具 |
-| BT 插件 | `build/lib/autonomy_behavior_tree_*.so` | 行为树节点（若启用） |
-| 文档（可选） | `docs/build/` | Sphinx HTML |
+> 工程已模块化，**没有**单一的 `libautonomy.so` 总库。
 
-### 1.2 三种安装路径
+## 1.2 三条安装路径
 
-| 路径 | 适用 | 步骤概要 |
-|------|------|----------|
-| **宿主机原生** | 日常开发、CI | `install_deps` → `cmake` + `ninja` |
-| **Docker 容器** | 环境隔离、多架构 | `run_autonomy.py` → 容器内同上 |
-| **嵌入式板（NFS）** | Firefly / RK3588 等 aarch64 | 开发机 NFS → 板端 `--profile board` → 本地 `autonomy_ws/build` |
-| **交叉编译（nvidia）** | 用已有镜像 + sysroot | `SYSROOT_DIR=... run_autonomy.py -p nvidia --profile cross --build` |
-
-板端完整步骤见 [§9 嵌入式板端](09_embedded_board.md)。
-
-宿主机与 Docker 均使用 **CMake + Ninja**，**不强制依赖 ROS 2**。
-
-### 1.3 依赖层次
-
-```
-系统 (Ubuntu 22.04)
-  ├── APT 包（cmake, eigen, protobuf, lua…）
-  └── 第三方脚本 docker/install/*.sh
-        ├── glog / gflags / Ceres / OpenCV
-        ├── OSQP / BehaviorTree.CPP
-        └── gRPC（BUILD_GRPC=ON 时）
-              │
-              ▼
-        CMake 配置 + Ninja 编译
-              │
-              ▼
-        libautonomy.so
+```text
+本机 Ubuntu ──► install_dependencies.py ──► cmake + ninja ──► setup_environment.bash
+Docker 容器 ──►（镜像多已预装依赖）──► 同上 cmake
+嵌入式板 ────► NFS 源码 + 板端 --profile board ──► 本地盘 build/
 ```
 
-### 1.4 与 ROS 2 的关系
+交叉编译（x86 容器 + aarch64 sysroot）属进阶，见 `CMakePresets.json` 的 `jdr-board` 与 `run_autonomy.py --help`。
 
-| 方式 | 说明 |
-|------|------|
-| **推荐（当前）** | 纯 CMake 构建 `libautonomy`，无 ROS 2 运行时依赖 |
-| **可选** | Docker 镜像内可预装 ROS 2 Humble，用于可视化或与 ROS 栈共存 |
-| **不推荐作为主路径** | 旧版 `colcon build` 文档已过时，以本章 CMake 流程为准 |
+## 1.3 依赖与构建关系
 
-ROS 2 集成运行见 [04 Running](../04_Running/00_guide.md)。
+```text
+APT + docker/install/*.sh  →  /usr/local
+         │
+         ▼
+  CMake（AUTONOMY_BUILD_* / BUILD_*）
+         │
+         ▼
+  build/lib + build/bin
+```
 
-### 1.5 相关文档
+## 1.4 与 ROS 2
 
-- [§2 快速安装](02_quickstart.md)
-- [§9 嵌入式板端](09_embedded_board.md)
-- [01 Instructions · 快速上手](../01_Instructions/02_quickstart.md)
+当前主路径是纯 CMake，**不依赖 ROS 2 运行时**。Docker 镜像可预装 Humble 供可视化或共存；ROS 集成见 [04 Running · ROS 2](../04_Running/06_ros2_integration.md)。
+
+下一步：[§2 快速安装](02_quickstart.md)。

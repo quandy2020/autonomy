@@ -1,123 +1,113 @@
 # 4. 依赖安装
 
-Autonomy 依赖通过 **`scripts/install_deps` (`python3 -m install_deps`)** 统一安装，与 `docker/dockerfile/autonomy.x86_64.dockerfile` 保持同步。
-
-### 4.1 脚本用法
+**唯一推荐入口**（与 Dockerfile / CMake 预期对齐）：
 
 ```bash
-# 完整安装（APT + 第三方）
-python3 -m install_deps
-
-# 仅 APT
-python3 -m install_deps --apt-only
-
-# 仅第三方（需已装 APT）
-python3 -m install_deps --thirdparty-only
-
-# 列出 APT 包名
-python3 -m install_deps --list-apt
-
-# 从某脚本续装（中断后恢复）
-python3 -m install_deps --resume-from install_opencv.sh
-
-# 跳过已检测到的库
-python3 -m install_deps --skip-installed
-
-# 预览命令不执行
-python3 -m install_deps --dry-run
+# 在源码根执行
+python3 scripts/install_dependencies.py --skip-installed
 ```
 
-### 4.2 APT 包分类
+| Profile | 适用 | 说明 |
+|---------|------|------|
+| `full`（默认） | 桌面 / CI | APT + Dockerfile 第三方 + Assimp/Ogre 等 |
+| `board` | aarch64 车端 | 无 GUI/Sphinx；强制关键库进 `/usr/local` |
 
-| 类别 | 示例包 | 用途 |
-|------|--------|------|
-| 构建工具 | `cmake`, `ninja-build`, `git`, `pkg-config` | 编译基础设施 |
-| Python | `python3-pip`, `python3-dev`, `sphinx` | 脚本与文档 |
-| CMake 库 | `libeigen3-dev`, `liblua5.3-dev`, `libprotobuf-dev`, `libyaml-cpp-dev` | `find_package` |
-| 数值/稀疏 | `libsuitesparse-dev`, `libblas-dev`, `liblapack-dev` | Ceres 等 |
-| 测试 | `libgtest-dev`, `libgmock-dev` | 单元测试 |
-| 多媒体/GUI | `libopencv` 相关 dev 包（部分由脚本编译） | 视觉 / 仿真 |
+实现目录 `scripts/install_deps/` 也可：`cd scripts && python3 -m install_deps …`（无 `--profile`）。日常请用上面的 `install_dependencies.py`。
 
-完整列表以脚本内 `APT_PACKAGES` 为准（约 50+ 项）。
+---
 
-### 4.3 第三方安装脚本
+### 4.1 常用命令
 
-按顺序执行 `docker/install/` 下脚本，默认安装到 **`/usr/local`**：
+```bash
+# 完整（跳过已检测到的库）
+python3 scripts/install_dependencies.py --skip-installed
+
+# 仅 APT / 仅第三方
+python3 scripts/install_dependencies.py --apt-only
+python3 scripts/install_dependencies.py --thirdparty-only --skip-installed
+
+# 查看本 profile 将装什么
+python3 scripts/install_dependencies.py --list --profile full
+python3 scripts/install_dependencies.py --list --profile board
+
+# 从某脚本续装
+python3 scripts/install_dependencies.py --resume-from install_ceres_solver.sh --skip-installed
+
+# 板端
+python3 scripts/install_dependencies.py --profile board --skip-installed
+
+# 预览
+python3 scripts/install_dependencies.py --dry-run --profile board
+```
+
+单库也可直接跑脚本（最快）：
+
+```bash
+bash docker/install/install_osqp.sh
+bash docker/install/install_glog.sh
+AUTONOMY_MAKE_JOBS=2 bash docker/install/install_ceres_solver.sh   # 内存紧
+```
+
+---
+
+### 4.2 第三方脚本顺序（`full` / `board` 共用核心）
+
+默认安装到 **`/usr/local`**：
 
 | 顺序 | 脚本 | 库 |
 |------|------|-----|
 | 1 | `install_gtest.sh` | Google Test |
-| 2 | `install_glog.sh` | glog |
+| 2 | `install_glog.sh` | glog 0.6 |
 | 3 | `install_gflags.sh` | gflags |
-| 4 | `install_grpc.sh` | gRPC |
-| 5 | `install_gperftools.sh` | tcmalloc |
-| 6 | `install_opencv.sh` | OpenCV |
-| 7 | `install_ceres_solver.sh` | Ceres |
-| 8 | `install_nlohmann.sh` | nlohmann/json |
-| 9 | `install_osqp.sh` | OSQP |
-| 10 | `install_behaviortree_cpp.sh` | **BehaviorTree.CPP 4.x**（Navigator 必需） |
-| 11+ | `install_python_modules.sh`, `install_assimp.sh`, `install_ogre.sh`, `install_adolc.sh`, `install_ipopt.sh`, `install_fastdds.sh` | 可选组件依赖 |
+| 4 | `install_protobuf.sh` | **Protobuf 3.19** |
+| 5 | `install_grpc.sh` | gRPC |
+| 6 | `install_gperftools.sh` | tcmalloc |
+| 7 | `install_opencv.sh` | OpenCV |
+| 8 | `install_ceres_solver.sh` | Ceres |
+| 9 | `install_g2o.sh` / `install_fbow.sh` | 定位相关 |
+| 10 | `install_nlohmann.sh` | nlohmann/json |
+| 11 | `install_osqp.sh` | OSQP（common MPC） |
+| 12 | `install_behaviortree_cpp.sh` | BehaviorTree.CPP 4.x |
+| … | `install_adolc.sh` / `install_ipopt.sh` 等 | 可选 |
+| full 额外 | `install_assimp.sh` / `install_ogre.sh` 等 | 可视化 |
 
-> **注意**：BehaviorTree.CPP 为行为树导航所必需；若跳过，Navigator BT 模式将无法加载插件。
+> BehaviorTree.CPP 为 Navigator BT 模式所需。板端会 purge 冲突的 apt 版 glog/protobuf/grpc，避免 ABI 混用。
 
-### 4.4 安装路径约定
+---
 
+### 4.3 安装路径
+
+```text
+/usr/local/include/
+/usr/local/lib/
+/usr/local/bin/   # 如 protoc
 ```
-/usr/local/
-├── include/     # 头文件
-├── lib/         # .so / .a
-└── bin/         # 可执行工具
-```
 
-CMake 通过 `CMAKE_PREFIX_PATH` 或默认搜索路径找到上述库。
+CMake：`-DCMAKE_PREFIX_PATH=/usr/local`。不要把 gRPC/protobuf 装在 `~/grpc` 却让 Autonomy 链 `/usr/local` 的另一套 protobuf。
 
-### 4.5 可选依赖
+---
 
-| 组件 | 安装方式 | CMake 选项 |
-|------|----------|------------|
-| gRPC Bridge | `install_grpc.sh` | `BUILD_GRPC=ON`（默认） |
-| Fast DDS（跨机 RTPS） | `install_fastdds.sh`（钉 **v3.6.2**，SECURITY=ON） | Autolink `-DAUTOLINK_ENABLE_FASTDDS=ON`；配置 `diff_host: RTPS` |
-| ONNX Runtime | `install_onnixruntime.sh` | `BUILD_ONNXRUNTIME=ON` |
-| Habitat 仿真 | `install_habitat.sh` | 仿真模块 |
-| ROS 2 Humble | `install_ros2.sh` | Docker 镜像内可选 |
+### 4.4 可选能力
 
-### 4.6 板端依赖（`--profile board`）
+| 组件 | 安装 | CMake |
+|------|------|-------|
+| gRPC Bridge | `install_grpc.sh`（依赖脚本已含） | `BUILD_GRPC=ON`（默认） |
+| Fast DDS | `install_fastdds.sh`（钉 v3.6.2） | Autolink `AUTOLINK_ENABLE_FASTDDS` |
+| ONNX | 见 docker/install 中 ONNX 脚本 | `BUILD_ONNXRUNTIME=ON` |
+| ROS 2 Humble | Docker 镜像内可选 | 非构建硬依赖 |
 
-aarch64 板（Firefly 等）请使用：
+---
+
+### 4.5 验证
 
 ```bash
-python3 scripts/install_dependencies.py --profile board --skip-installed
-```
-
-对齐 `docker/dockerfile/autonomy.aarch64.dockerfile`：不装 GUI/Sphinx；glog/protobuf/ceres/grpc 等强制 `docker/install` → `/usr/local`。  
-NFS 同步源码 + 板端编译完整流程见 [§9 嵌入式板端](09_embedded_board.md)。
-
-### 4.7 验证依赖
-
-```bash
-# Ceres
-ls /usr/local/lib/libceres.so 2>/dev/null || ls /usr/lib/x86_64-linux-gnu/libceres.so
-
-# OSQP（common MPC 默认依赖；缺则 cmake 报 Could NOT find OSQP）
+ls /usr/local/lib/libceres.so
 ls /usr/local/lib/libosqp.so /usr/local/include/osqp/osqp.h
-# 若装到用户前缀：$HOME/.local/lib/libosqp.so
-
-# BehaviorTree.CPP
 ls /usr/local/lib/libbehaviortree_cpp.so
-
-# Protobuf（板端应为 3.19.x）
-/usr/local/bin/protoc --version 2>/dev/null || protoc --version
+ls /usr/local/lib/libglog.so
+/usr/local/bin/protoc --version    # 板端期望 3.19.x
 ```
 
-> **OSQP 未找到**：先执行 `bash docker/install/install_osqp.sh`（或
-> `python3 -m install_deps --resume-from install_osqp.sh`），再保证
-> `CMAKE_PREFIX_PATH` 覆盖安装前缀（`/usr/local` 或 `$HOME/.local`）。
-> `FindOSQP.cmake` 会搜索这两处；仅 `-DCMAKE_PREFIX_PATH=/usr/local` 时
-> 若库只在 `~/.local` 仍可能失败，请重装到 `/usr/local` 或把
-> `$HOME/.local` 一并加入 `CMAKE_PREFIX_PATH`。
+OSQP 找不到：先 `bash docker/install/install_osqp.sh`，保证前缀是 `/usr/local`（不要只在 `~/.local`）。
 
-### 4.8 相关文档
-
-- [§6 编译构建](06_build.md)
-- [§8 故障排查 · 依赖](08_troubleshooting.md)
-- [§9 嵌入式板端](09_embedded_board.md)
+板端完整流程：[§9](09_embedded_board.md)。排错：[§8](08_troubleshooting.md)。

@@ -1,104 +1,77 @@
 (installation-troubleshooting)=
 # 8. 故障排查
 
+按现象对照；板端专项亦见 [§9.8](09_embedded_board.md)。
+
 ### 8.1 依赖安装
 
-| 现象 | 可能原因 | 处理 |
-|------|----------|------|
-| `apt-get install` 失败 | 包冲突 / 源不可用 | `sudo apt-get -y --fix-broken install` 后重试 |
-| `install_opencv.sh` 中断 | 网络 / 内存不足 | `--resume-from install_opencv.sh` |
-| `libceres.so not found` | 第三方未装全 | `python3 -m install_deps --thirdparty-only` |
-| `behaviortree_cpp` 找不到 | BT 库未安装 | 确认 `install_behaviortree_cpp.sh` 成功 |
-| 非 Ubuntu 警告 | 脚本面向 Ubuntu | 手动对照 `APT_PACKAGES` 安装等效包 |
+| 现象 | 处理 |
+|------|------|
+| `apt-get` 失败 | `sudo apt-get -y --fix-broken install` 后重试 |
+| `install_opencv.sh` 中断 | `--resume-from install_opencv.sh --skip-installed` |
+| 找不到 Ceres / OSQP / BT | 对应 `bash docker/install/install_*.sh`，确认在 `/usr/local` |
+| OSQP 只在 `~/.local` | 重装到 `/usr/local`，或把 `$HOME/.local` 加入 `CMAKE_PREFIX_PATH` |
+| 非 Ubuntu 警告 | 对照脚本 APT 列表自行装等效包 |
 
 ### 8.2 CMake 配置
 
-| 现象 | 可能原因 | 处理 |
-|------|----------|------|
-| `Could NOT find Protobuf` | 缺少 dev 包 | `sudo apt install libprotobuf-dev protobuf-compiler` |
-| `Could NOT find Ceres` | `/usr/local` 无 Ceres | 运行 `install_ceres_solver.sh` |
-| `Could NOT find OSQP` | 未装 OSQP，或只在 `~/.local` 而 `CMAKE_PREFIX_PATH` 仅 `/usr/local` | `bash docker/install/install_osqp.sh`；或把 `$HOME/.local` 加入 `CMAKE_PREFIX_PATH`；也可 `-DAUTONOMY_BUILD_COMMON_OSQP=OFF` 跳过 MPC |
-| `#error "don't have header file for stddef"`（Ipopt） | 未定义 `HAVE_CSTDDEF` | 已由 `FindIpopt` + `Ipopt::Ipopt` 注入；重配 cmake 后重编；或确认链到 `Ipopt::Ipopt` |
-| `Could NOT find Lua` | 缺少 lua5.3 | `sudo apt install liblua5.3-dev` |
-| gRPC 相关错误 | `BUILD_GRPC=ON` 但缺 gRPC | 安装 gRPC 或 `-DBUILD_GRPC=OFF` |
-
-清理后重配：
+| 现象 | 处理 |
+|------|------|
+| `Could NOT find Protobuf` | `/usr/local` 装 `install_protobuf.sh`；板端勿混 apt protobuf |
+| `Could NOT find Ceres` / `OSQP` / `Lua` | 装对应库；Lua：`sudo apt install liblua5.3-dev` |
+| gRPC 报错 | `install_grpc.sh` 或 `-DBUILD_GRPC=OFF` |
+| 域依赖 FATAL | 按报错打开缺失的 `AUTONOMY_BUILD_*` |
+| Ipopt `stddef` 错误 | 重配 cmake，链接 `Ipopt::Ipopt` |
 
 ```bash
-cd build && rm -rf * && cmake -G Ninja .. && ninja
+rm -rf build && mkdir build && cd build
+cmake -G Ninja .. -DCMAKE_PREFIX_PATH=/usr/local && ninja -j$(nproc)
 ```
 
-### 8.3 编译错误
+### 8.3 编译
 
-| 现象 | 可能原因 | 处理 |
-|------|----------|------|
-| C++17 相关错误 | 编译器过旧 | 升级 GCC 至 11+ |
-| OOM / 编译器被 kill | 内存不足 | `ninja -j2` 限制并行 |
-| protoc / protobuf 版本冲突 | Docker 中 PyTorch 污染 `CMAKE_PREFIX_PATH` | 清理 build 重配；确认 `Protobuf_INCLUDE_DIR=/usr/local/include` |
-| submodule 缺失 | 未初始化 submodule | `git submodule update --init --recursive` |
+| 现象 | 处理 |
+|------|------|
+| C++17 / 编译器过旧 | GCC 11+ |
+| OOM / 被 kill | `ninja -j2`；板端勿在 NFS 上 build |
+| protobuf / protoc 版本冲突 | 统一 `/usr/local`；清 build 重配；勿用 `~/grpc` 的 3.14 混 3.19 |
+| submodule 缺失 | `git submodule update --init --recursive` |
 
 ### 8.4 Docker
 
-| 现象 | 可能原因 | 处理 |
-|------|----------|------|
-| 无法启动容器 | Docker 未运行 | `sudo systemctl start docker` |
-| GPU 不可用 | 未装 NVIDIA Toolkit | `install_nvidia_container_toolkit.sh` |
-| 挂载目录为空 | `AUTONOMY_ENV` 未设置 | `export AUTONOMY_ENV=/正确/路径` |
-| 权限 denied | root 创建的文件 | `run_autonomy.py --as-host-user` |
-| Isaac 镜像自动启动 Kit | ENTRYPOINT 行为 | 默认已覆盖为 bash；勿加 `--keep-isaac-entrypoint` 除非需要 |
+| 现象 | 处理 |
+|------|------|
+| 容器起不来 | `sudo systemctl start docker` |
+| 挂载为空 | `export AUTONOMY_ENV=/正确/源码根` |
+| 权限 denied | `run_autonomy.py --as-host-user` |
+| GPU 不可用 | 装 NVIDIA Container Toolkit |
+| Isaac 镜像自动起 Kit | 不要加 `--keep-isaac-entrypoint`（默认已覆盖 entrypoint） |
 
 ### 8.5 运行时
 
-| 现象 | 可能原因 | 处理 |
-|------|----------|------|
-| `libautonomy.so: cannot open` | 未设置 rpath | 从 `build/bin` 运行或 `export LD_LIBRARY_PATH=build/lib` |
-| `Autonomy not ready` | BT 插件路径错误 | 设置 `AUTONOMY_BT_PLUGIN_PATH` |
-| 配置加载失败 | `config_directory` 错误 | 确认 `config/autonomy.lua` 存在 |
-| autoviz `Could not initialize GLX` | Docker 无 GPU / 缺 Mesa / 未重编译 | 容器内：`bash src/autonomy/docker/install/install_mesa_gl.sh`；重编：`cmake --build build --target autoviz`；用 `scripts/run_autoviz.sh` 启动；宿主机执行 `xhost +local:docker` |
-| TF / 帧名错误 | `common.lua` 不一致 | 统一 `global_frame` / `robot_base_frame` |
-
-### 8.7 嵌入式板 / NFS
-
-| 现象 | 可能原因 | 处理 |
-|------|----------|------|
-| apt `Temporary failure resolving` | 板子无默认路由 | 经开发机 NAT；`ip route replace default via <HOST_IP>` |
-| `ldconfig` Permission denied | 非 root 写 `/etc/ld.so.cache` | 使用带 `autonomy_ldconfig` 的 `docker/install` |
-| glog 链接 undefined reference | apt 0.4 与 `/usr/local` 0.6 混用 | `--profile board` 并 purge apt glog |
-| 编译在 NFS 上极慢 | `build` 目录在挂载点内 | 使用 `~/autonomy_ws/build` |
-
-完整步骤：[§9 嵌入式板端](09_embedded_board.md)。
-
-### 8.8 Habitat-Sim（可选）
-
-仅在使用仿真相关功能时需要：
-
-```bash
-git clone --branch stable https://github.com/facebookresearch/habitat-sim.git
-cd habitat-sim
-pip3 install -r requirements.txt
-git config --global --add safe.directory '*'
-python3 setup.py install --headless --no-update-submodules
-```
-
-验证：
-
-```bash
-python3 -c "import habitat_sim; print('OK')"
-```
-
-内存不足时限制并行：`python3 setup.py build_ext --parallel 1 install --headless --no-update-submodules`
-
-### 8.9 获取帮助
-
-| 渠道 | 说明 |
+| 现象 | 处理 |
 |------|------|
-| GitHub Issues | https://github.com/quandy2020/autonomy/issues |
-| 文档 | [01 Instructions](../01_Instructions/00_guide.md) |
+| `.so: cannot open` | `source setup`；或 `LD_LIBRARY_PATH` 含 `build/lib` 与 `/usr/local/lib` |
+| `task.launch` / launch 找不到 | 用新版 `autolink`；`AUTOLINK_LAUNCH_PATH` 为冒号分隔多路径；确认未用过期 `build/bin/autolink` 盖住 install |
+| BT 插件加载失败 | 检查 `AUTONOMY_BT_PLUGIN_PATH` |
+| 配置加载失败 | 确认 `config/autonomy.lua` 与 `AUTONOMY_CONFIG_DIR` |
+| autoviz GLX | 容器 Mesa / `xhost +local:docker`；见 Running 文档 |
+
+### 8.6 嵌入式板 / NFS
+
+| 现象 | 处理 |
+|------|------|
+| apt 解析失败 | 板子无默认路由 → 开发机 NAT + `ip route replace default via <HOST_IP>` |
+| `ldconfig` Permission denied | 用当前 `docker/install`（带 sudo/`autonomy_ldconfig`） |
+| glog 符号 / 版本混乱 | `--profile board`，purge apt glog，只用 `/usr/local` 0.6 |
+| NFS 上编译极慢 | `-B` 必须在本地盘（如 `~/autonomy_ws/build`） |
+
+### 8.7 获取帮助
+
+| 渠道 | 链接 |
+|------|------|
+| Issues | https://github.com/quandy2020/autonomy/issues |
+| 文档入口 | [01 Instructions](../01_Instructions/01_overview.md) |
 | FAQ | [19 FAQs](../19_FAQs/index.rst) |
 
-### 8.10 相关文档
-
-- [§4 依赖安装](04_dependencies.md)
-- [§5 Docker 环境](05_docker.md)
-- [§6 编译构建](06_build.md)
-- [§9 嵌入式板端](09_embedded_board.md)
+相关：[§4](04_dependencies.md) · [§5](05_docker.md) · [§6](06_build.md) · [§9](09_embedded_board.md)

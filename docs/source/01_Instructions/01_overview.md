@@ -1,66 +1,80 @@
 (instructions-overview)=
-# 1. 项目概览
+# 1. 概览
+
+面向移动 / 操作机器人的 **CMake + C++17 整机软件系统**：驱动、SLAM、感知、导航、机械臂、任务编排与机上管理；可选 gRPC / ROS 2。可不依赖 ROS 2 独立运行；移动导航语义对齐 Navigation2。
 
 ![Autonomy 系统分层架构](./images/autonomy_architecture.png)
 
-### 1.1 是什么
+## 1.1 阅读路径
 
-**Autonomy**（`libautonomy`）是一套**自主移动机器人软件框架**，核心用 **CMake + C++17** 构建，提供：
-
-- 2D 导航栈：代价地图、全局规划、局部控制、行为树编排
-- 定位与建图：视觉 SLAM（Atlas）、地图服务
-- 通信运行时：Autolink（Node / Channel / Service / Action）
-- 可选桥接：gRPC、ROS 2 兼容消息（`commsgs`）
-
-设计目标：**可独立运行**（不强制依赖 ROS 2），同时保持与 Navigation2 等生态的语义对齐，降低迁移与集成成本。
-
-### 1.2 设计原则
-
-| 原则 | 说明 |
+| 目标 | 入口 |
 |------|------|
-| 模块化 | 各子系统以独立库形式组织，通过接口与配置解耦 |
-| 插件化 | 规划器、控制器、BT 节点等以插件动态加载 |
-| 配置驱动 | Lua → Protobuf 统一配置管线 |
-| Nav2 对齐 | 接口语义、BT 结构、代价地图用法对标 Navigation2 |
-| 跨平台 | x86-64 / ARM64；推荐 Ubuntu 22.04 |
+| 跑起来 | [§2 快速上手](02_quickstart.md) → [Installation](../02_Installation/00_guide.md) → [Running](../04_Running/00_guide.md) |
+| 懂结构 | [§3 架构](03_system_architecture.md) |
+| 找代码 / 对接 | [§4 仓库与生态](04_repository.md) |
 
-### 1.3 与 ROS 2 的关系
+## 1.2 约定
 
-| 维度 | Autonomy | ROS 2 |
-|------|----------|-------|
-| 运行时 | Autolink（可进程内/共享内存/RTPS） | rclcpp / DDS |
-| 是否必须 ROS | **否**，核心可独立运行 | 是 |
-| 消息类型 | `commsgs`（与 ROS 消息结构兼容） | 标准 `*_msgs` |
-| 导航栈对标 | planning / control / navigator | nav2_* |
-| 可视化 | Bridge / 外部工具 | RViz2、Foxglove 等 |
-
-Autonomy **不是 ROS 2 的替代品**，而是可独立部署、并按需与 ROS 2 工具链互操作的框架。详见 [§6 生态集成](06_ecosystem.md)。
-
-### 1.4 核心能力一览
-
-| 领域 | 模块 | 状态 |
-|------|------|------|
-| 通信 | `autolink` | ✅ 运行时完整 |
-| 定位 | `localization`（Atlas VSLAM） | ✅ Atlas 已实现 |
-| 地图 | `map`（costmap_2d / grid_map） | ✅ |
-| 规划 | `planning`（NavFn / Dijkstra / Theta\*） | ✅ |
-| 控制 | `control` | ⏳ 骨架 + Checker，主循环待完成 |
-| 编排 | `navigator`（行为树） | ⏳ 配置/XML 就绪，BT 栈待恢复 |
-| 桥接 | `bridge`（gRPC） | ⏳ 部分实现 |
-| 系统 | 多进程 `autolink_launch` | ✅ 推荐入口 |
-
-### 1.5 适用场景
-
-- 室内/结构化环境的移动机器人导航研发
-- 需要脱离 ROS 2 运行时的嵌入式或车载部署
-- 基于 Navigation2 经验、希望迁移到统一 C++ 框架的团队
-- 视觉 SLAM + 2D 导航的复合系统原型
-
-### 1.6 相关链接
-
-| 资源 | 地址 |
+| 约定 | 含义 |
 |------|------|
-| GitHub | https://github.com/quandy2020/autonomy |
-| Gitee | https://gitee.com/quanduyong/autonomy |
-| 在线文档 | https://autonomy.readthedocs.io |
-| 许可证 | Apache 2.0 |
+| 源码根 | 含顶层 `CMakeLists.txt` 的目录 |
+| 编排 | `autonomy/task`（文档章名 Navigator） |
+| 管理面 | `autonomy/system` |
+| 消息 | `automsgs/` |
+| 驱动 | `autodriver/` |
+| 启动 | `source scripts/setup_environment.bash` → `autolink_launch autonomy.launch` |
+
+## 1.3 能力域
+
+| 能力域 | 落点 |
+|--------|------|
+| 驱动 / 底盘 | `autodriver` · `vehicle` · `sensor` |
+| SLAM / 定位 | `localization`（如 Atlas） |
+| 感知 / 预测 | `perception` · `prediction` |
+| 地图 / 导航 | `map` · `planning` · `control` |
+| 机械臂 / 操作 | `manipulation` |
+| 语音等 | `audio` |
+| 任务编排 | `task`（BT：导航 / 跟踪 / 建图 / 遥操 / 回充…） |
+| 管理面 | `system`（monitor / 安全 / OTA / launch） |
+| 通信 · 消息 · 对外 | `autolink` · `automsgs` · `bridge`（gRPC） |
+
+原则：`AUTONOMY_BUILD_*` 按域裁剪，`BUILD_*` 管产品子工程；插件化；conf + launch；x86-64 / aarch64，推荐 Ubuntu 22.04。
+
+## 1.4 文档地图
+
+![文档结构](./images/docs.png)
+
+顺序：**入门 → 安装/运行 → 通信 → 各能力域 → 工具/FAQ**。模块入口多为 `00_guide.md`。
+
+| 章 | 内容 |
+|----|------|
+| 01–02 | 入门 · 安装 |
+| 03–04 | 通信 · 运行 |
+| 05–09 | 框架 · 定位/SLAM · 地图 · 规划 · 控制 |
+| 10–13 | 感知 · 预测 · 仿真 · 可视化 |
+| 14–16 | 消息 · Bridge · 任务编排（task） |
+| 17–20 | Tasks · Tools · FAQ · Other |
+
+| 角色 | 建议路径 |
+|------|----------|
+| 整机应用 | §2 → Installation → Running → 16 Navigator → 按需 08/09/10 |
+| 导航 | §3 → 08 · 09 · 07 · 16 |
+| SLAM / 感知 | 06 · 10 · autodriver |
+| 中间件 | 03 Communication → 14 → 15 |
+
+本地构建文档：`cd docs && pip install -r requirements.txt && sphinx-build -b html source build` · [在线](https://autonomy.readthedocs.io/en/latest/index.html)
+
+## 1.5 版本
+
+| | |
+|--|--|
+| 版本 | **0.2.0**（`version.json`） |
+| 栈 | C++17 · CMake ≥ 3.20 · Apache 2.0 |
+| 较成熟 | 通信 · 地图 · 规划 · 控制 · 任务 · 定位 · 管理面 · Bridge · 驱动骨架 |
+| 深化中 | 感知 · 预测 · 机械臂 · 语音 |
+
+变更见 [`CHANGELOG.rst`](https://github.com/quandy2020/autonomy/blob/main/CHANGELOG.rst)。贡献：`tools/clang_format_sources.py` → PR 附测试。
+
+[GitHub](https://github.com/quandy2020/autonomy) · [Gitee](https://gitee.com/quanduyong/autonomy) · Apache 2.0
+
+→ [§2 快速上手](02_quickstart.md)

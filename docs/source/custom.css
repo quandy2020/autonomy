@@ -1497,6 +1497,21 @@
     background: var(--color-core);
 }
 
+/* 任务编排层（Instructions §3.2 L4）— 与 Tasks 色系一致 */
+.rst-content .plan-arch-orch {
+    background: var(--color-tasks-bg);
+    border-color: #d4a8b0;
+}
+.rst-content .plan-arch-orch .plan-arch-badge {
+    background: var(--color-tasks);
+}
+.rst-content .plan-arch-orch .nav-body-label {
+    color: var(--color-tasks);
+}
+.rst-content .plan-arch-body-cols--2 {
+    grid-template-columns: 1fr 1fr;
+}
+
 .rst-content .plan-arch-plugin {
     background: var(--color-app-bg);
     border-color: #9dd4d5;

@@ -4,39 +4,33 @@
 
 ```bash
 sudo apt-get -y --fix-broken install
-python3 -m install_deps --apt-only
+python3 scripts/install_dependencies.py --apt-only
 ```
 
 详见 [02 Installation · 依赖](../02_Installation/04_dependencies.md)。
 
 ### Q: `install_opencv.sh` 等第三方脚本中断？
 
-使用 `--resume-from` 从中断处继续：
-
 ```bash
-python3 -m install_deps --resume-from install_opencv.sh
+python3 scripts/install_dependencies.py --resume-from install_opencv.sh --skip-installed
 ```
 
-### Q: `libceres.so not found`？
-
-第三方库未装全：
+### Q: `libceres.so` / OSQP / BehaviorTree 找不到？
 
 ```bash
-python3 -m install_deps --thirdparty-only
+python3 scripts/install_dependencies.py --thirdparty-only --skip-installed
+# 或单库：
+bash docker/install/install_ceres_solver.sh
+bash docker/install/install_osqp.sh
+bash docker/install/install_behaviortree_cpp.sh
 ```
 
-### Q: `behaviortree_cpp` 找不到？
+确认产物在 `/usr/local`。
 
-确认 `docker/install/install_behaviortree_cpp.sh` 执行成功。
+### Q: 非 Ubuntu 能用依赖脚本吗？
 
-### Q: 非 Ubuntu 系统能用 install_deps 吗？
+脚本面向 Ubuntu 22.04。其他发行版需对照 APT 列表与 `docker/install/` 自行安装。
 
-脚本面向 Ubuntu 22.04。其他发行版需手动对照 `APT_PACKAGES` 与 `docker/install/` 脚本安装等效包。
+### Q: 板端 apt 无法解析 / 编译极慢？
 
-### Q: Habitat-Sim 安装内存不足？
-
-```bash
-python3 setup.py build_ext --parallel 1 install --headless --no-update-submodules
-```
-
-详见 [02 Installation · 故障排查 §8.6](../02_Installation/08_troubleshooting.md#86-habitat-sim可选)。
+见 [§9 嵌入式板端](../02_Installation/09_embedded_board.md) 与 [§8 故障排查](../02_Installation/08_troubleshooting.md)。

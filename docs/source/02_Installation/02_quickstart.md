@@ -1,70 +1,94 @@
-# 2. 快速安装
+# 2. 快速安装（本机 Ubuntu）
 
-> 约 15–45 分钟（视网络与是否已缓存第三方库而定）。
+面向 **Ubuntu 22.04 x86-64 / aarch64 宿主机**。Docker / 板端请分别走 [§5](05_docker.md) / [§9](09_embedded_board.md)。
 
-### 2.1 一键流程（Ubuntu 22.04 宿主机）
+下面每一步在前一步成功后再继续。
+
+---
+
+### Step 1 — 克隆源码
 
 ```bash
-# 1. 克隆
 git clone --recurse-submodules https://github.com/quandy2020/autonomy.git
+# 国内可选：https://gitee.com/quanduyong/autonomy.git
 cd autonomy
+git submodule update --init --recursive
+```
 
-# 2. 安装依赖（APT + 第三方库，需 sudo）
-python3 -m install_deps
+确认你在 **源码根**（能看到顶层 `CMakeLists.txt`、`scripts/`、`docker/`）。
 
-# 3. 编译
+若仓库在更大 monorepo 里，进入含上述文件的子目录，例如：
+
+```bash
+cd /path/to/workspace/src/autonomy
+```
+
+---
+
+### Step 2 — 安装依赖
+
+需 `sudo`。首次会编译 OpenCV / Ceres 等，耗时长、吃内存。
+
+```bash
+python3 scripts/install_dependencies.py --skip-installed
+```
+
+| 场景 | 命令 |
+|------|------|
+| 只要 APT，第三方已就绪 | `python3 scripts/install_dependencies.py --apt-only` |
+| 中断后续装 | `python3 scripts/install_dependencies.py --resume-from install_opencv.sh --skip-installed` |
+| 板端精简集 | 见 [§9](09_embedded_board.md)，用 `--profile board` |
+
+默认 profile 为 `full`（桌面/CI，含 Assimp/Ogre 等）。细节与验证见 [§4](04_dependencies.md)。
+
+---
+
+### Step 3 — 配置并编译
+
+```bash
 mkdir -p build && cd build
-cmake -G Ninja ..
-ninja
+cmake -G Ninja .. \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH=/usr/local \
+  -DCMAKE_INSTALL_PREFIX=/usr/local
+ninja -j$(nproc)
+cd ..
+```
 
-# 4. 验证
-ls -la lib/libautonomy.so
+未装 Ninja 时把 `-G Ninja` 去掉，并用 `cmake --build build -j$(nproc)`。
 
-# 5. 加载运行环境（任意新终端）
-cd ..   # 回到仓库根
+内存不足：`ninja -j2` 或 `ninja -j4`。
+
+只要部分模块：见 [§6.2 模块化编译](06_build.md)。
+
+---
+
+### Step 4 — 加载环境并验证
+
+```bash
 source scripts/setup_environment.bash
+
+ls build/lib/libautonomy_common.so
+ls build/lib/libautolink.so
+which autolink
+autolink --help | head
 ```
 
-### 2.2 仅安装 APT（跳过第三方编译）
-
-适合已手动安装 `/usr/local` 第三方库的环境：
+可选安装到系统前缀（新终端用 install 版 setup）：
 
 ```bash
-python3 -m install_deps --apt-only
+sudo cmake --install build --prefix /usr/local
+source /usr/local/share/autonomy/setup.bash
 ```
 
-### 2.3 Docker 快速路径
+---
 
-```bash
-export AUTONOMY_ENV=/path/to/autonomy
-python3 docker/run_autonomy.py -p x86_64
-
-# 另开终端进入容器
-docker exec -it <container_name> /bin/bash
-cd /workspace/autonomy/build && cmake -G Ninja .. && ninja
-```
-
-详见 [§5 Docker](05_docker.md)。
-
-### 2.4 嵌入式板快速入口
-
-开发机一键 NFS + 板端依赖与编译，见 **[§9 嵌入式板端](09_embedded_board.md)**：
-
-```bash
-# 开发机
-bash scripts/share_nfs_workspace.sh all --board-ip 192.168.234.1
-
-# 板子
-cd ~/autonomy && python3 scripts/install_dependencies.py --profile board --skip-installed
-cd ~/autonomy_ws && cmake -S src/autonomy -B build -DCMAKE_PREFIX_PATH=/usr/local \
-  -DBUILD_AUTOVIZ=OFF -DBUILD_ORBISVIEW=OFF -DBUILD_DOCS=OFF && cmake --build build -j$(nproc)
-```
-
-### 2.5 安装后下一步
+### Step 5 — 下一步
 
 | 目标 | 文档 |
 |------|------|
-| 配置环境变量 | [§7 环境配置](07_environment.md) |
-| 运行导航测试 | [04 Running](../04_Running/00_guide.md) |
-| 构建文档 | [§6 编译构建](06_build.md) |
-| 板端 / NFS | [§9 嵌入式板端](09_embedded_board.md) |
+| 每个新终端如何配环境 | [§7 环境配置](07_environment.md) |
+| 启动导航 / task | [04 Running](../04_Running/00_guide.md) |
+| Docker | [§5](05_docker.md) |
+| 嵌入式板 | [§9](09_embedded_board.md) |
+| 编译失败 | [§8](08_troubleshooting.md) |
