@@ -24,6 +24,7 @@ message Landmark {
   automsgs.msgs.geometry_msgs.Point position = 2;
   // Latest observation in image plane (pixels); (0,0) if unset.
   automsgs.msgs.geometry_msgs.Point uv = 3;
-  bool has_uv = 4;
+  // Explicit presence (do not name has_uv: conflicts with generated has_uv()).
+  bool uv_valid = 4;
   double inv_depth = 5;
 }

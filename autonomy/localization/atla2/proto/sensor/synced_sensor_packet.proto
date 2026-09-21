@@ -41,11 +41,13 @@ message SyncedSensorPacket {
   OpticalFlowSample optical_flow = 9;
   ExtrinsicSet extrinsics = 10;
 
-  bool has_image = 11;
-  bool has_image_right = 12;
-  bool has_lidar = 13;
-  bool has_imu = 14;
-  bool has_gps = 15;
-  bool has_baro = 16;
-  bool has_optical_flow = 17;
+  // Explicit presence flags. Names must not be has_<field>: singular message
+  // fields already generate has_<field>() in C++.
+  bool image_valid = 11;
+  bool image_right_valid = 12;
+  bool lidar_valid = 13;
+  bool imu_valid = 14;
+  bool gps_valid = 15;
+  bool baro_valid = 16;
+  bool optical_flow_valid = 17;
 }

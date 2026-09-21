@@ -27,6 +27,8 @@ message KeyframeFrame {
   automsgs.msgs.sensor_msgs.Image image = 2;
   automsgs.msgs.sensor_msgs.PointCloud2 cloud = 3;
   repeated Landmark landmarks = 4;
-  bool has_image = 5;
-  bool has_cloud = 6;
+  // Explicit presence (do not name has_image/has_cloud: conflict with generated
+  // has_image()/has_cloud() for the message fields above).
+  bool image_valid = 5;
+  bool cloud_valid = 6;
 }

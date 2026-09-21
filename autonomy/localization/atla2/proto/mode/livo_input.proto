@@ -43,8 +43,8 @@ message LivoInput {
   BarometerSample barometer = 10;
   OpticalFlowSample optical_flow = 11;
 
-  bool has_image_right = 12;
-  bool has_gps = 13;
-  bool has_baro = 14;
-  bool has_optical_flow = 15;
+  bool image_right_valid = 12;
+  bool gps_valid = 13;
+  bool baro_valid = 14;
+  bool optical_flow_valid = 15;
 }

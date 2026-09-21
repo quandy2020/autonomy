@@ -28,5 +28,5 @@ message VoInput {
   automsgs.msgs.sensor_msgs.CompressedImage image_compressed = 3;
   automsgs.msgs.sensor_msgs.Image image_right = 4;
   automsgs.msgs.sensor_msgs.CameraInfo camera_info = 5;
-  bool has_image_right = 6;
+  bool image_right_valid = 6;
 }
