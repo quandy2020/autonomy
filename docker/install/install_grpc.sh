@@ -19,21 +19,45 @@
 # Fail on first error.
 set -e
 
-cd "$(dirname "${BASH_SOURCE[0]}")"
+# Absolute path before any cd: sudo re-exec with relative $0 breaks after cd.
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_SCRIPT_PATH="${_SCRIPT_DIR}/$(basename "${BASH_SOURCE[0]}")"
+cd "${_SCRIPT_DIR}"
 . ./installer_base.sh
 
+# Must share the same prefix as protobuf 3.19.x (/usr/local). Homedir
+# builds (e.g. ~/grpc with protobuf 3.14) cause FatalException at runtime.
 THIRDPARTY="$(autonomy_thirdparty_dir)"
-INSTALL_PREFIX="$(autonomy_cmake_install_prefix)"
+INSTALL_PREFIX="${AUTONOMY_INSTALL_PREFIX:-/usr/local}"
 THREAD_NUM=$(nproc)
 
-# Prefer /usr/local CONFIG over apt libgrpc; never treat apt as installed.
+if [[ ! -w "${INSTALL_PREFIX}" ]]; then
+    if [[ "$(id -u)" -eq 0 ]]; then
+        mkdir -p "${INSTALL_PREFIX}"
+    elif command -v sudo >/dev/null 2>&1; then
+        info "Elevating to install gRPC under ${INSTALL_PREFIX}..."
+        exec sudo -E bash "${_SCRIPT_PATH}" "$@"
+    else
+        error "gRPC must be installed under ${INSTALL_PREFIX} (not writable; no sudo)"
+        exit 1
+    fi
+fi
+
+# Require matching protobuf 3.19 on the same prefix first.
+if [[ ! -x "${INSTALL_PREFIX}/bin/protoc" ]] \
+    || ! "${INSTALL_PREFIX}/bin/protoc" --version 2>&1 | grep -q '3\.19\.'; then
+    error "Need protobuf 3.19.x under ${INSTALL_PREFIX} first (bash docker/install/install_protobuf.sh)"
+    exit 1
+fi
+
+# Prefer /usr/local CONFIG over apt / ~/grpc; never treat apt or homedir as OK.
 if [[ -f "${INSTALL_PREFIX}/lib/libgrpc++.so" ]] \
-    && command -v grpc_cpp_plugin >/dev/null 2>&1; then
+    && [[ -x "${INSTALL_PREFIX}/bin/grpc_cpp_plugin" ]]; then
     ok "gRPC already installed under ${INSTALL_PREFIX}, skipping source build"
     exit 0
 fi
 
-info "Installing gRPC -> ${INSTALL_PREFIX}"
+info "Installing gRPC v1.48.0 -> ${INSTALL_PREFIX} (protobuf from package)"
 
 cd "${THIRDPARTY}"
 rm -rf grpc
@@ -59,6 +83,7 @@ fi
 mkdir -p build && cd build
 cmake \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX}" \
+    -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_CXX_STANDARD=17 \
     -DgRPC_INSTALL=ON \
@@ -76,4 +101,4 @@ autonomy_ldconfig
 
 cd ../.. && rm -rf grpc/build
 
-ok "Successfully installed gRPC v1.48.0"
+ok "Successfully installed gRPC v1.48.0 -> ${INSTALL_PREFIX}"
