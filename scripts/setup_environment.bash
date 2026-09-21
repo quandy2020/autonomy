@@ -88,7 +88,14 @@ fi
 
 export AUTONOMY_ENV="${AUTONOMY_ROOT}"
 
-export AUTONOMY_BUILD_DIR="${AUTONOMY_BUILD_DIR:-${AUTONOMY_ROOT}/build}"
+if [[ "${AUTONOMY_SETUP_LAYOUT}" == "install" ]]; then
+  # Ignore any leftover AUTONOMY_BUILD_DIR from a prior source-tree setup
+  # in the same shell (it would put build/bin ahead of /usr/local/bin).
+  unset AUTONOMY_BUILD_DIR
+  export AUTONOMY_BUILD_DIR=""
+else
+  export AUTONOMY_BUILD_DIR="${AUTONOMY_BUILD_DIR:-${AUTONOMY_ROOT}/build}"
+fi
 
 if [[ -n "${AUTONOMY_INSTALL_PREFIX:-}" ]]; then
   export AUTONOMY_PATH="${AUTONOMY_INSTALL_PREFIX}"
@@ -98,13 +105,13 @@ fi
 export AUTONOMY_PREFIX="${AUTONOMY_PATH}"
 
 _AUTONOMY_BIN_CANDIDATES=(
-  "${AUTONOMY_BUILD_DIR}/bin"
-  "${AUTONOMY_BUILD_DIR}/autonomy/bin"
+  ${AUTONOMY_BUILD_DIR:+"${AUTONOMY_BUILD_DIR}/bin"}
+  ${AUTONOMY_BUILD_DIR:+"${AUTONOMY_BUILD_DIR}/autonomy/bin"}
   ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/bin"}
 )
 _AUTONOMY_LIB_CANDIDATES=(
-  "${AUTONOMY_BUILD_DIR}/lib"
-  "${AUTONOMY_BUILD_DIR}/autonomy/lib"
+  ${AUTONOMY_BUILD_DIR:+"${AUTONOMY_BUILD_DIR}/lib"}
+  ${AUTONOMY_BUILD_DIR:+"${AUTONOMY_BUILD_DIR}/autonomy/lib"}
   ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/lib"}
 )
 
@@ -116,6 +123,23 @@ if [[ "${AUTONOMY_SETUP_LAYOUT}" == "install" ]]; then
   _AUTONOMY_LIB_CANDIDATES=(
     ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/lib"}
   )
+  # Drop stale build/bin entries left in PATH by an earlier source setup.
+  if [[ -n "${PATH:-}" ]]; then
+    _AUTONOMY_PATH_SCRUB=""
+    IFS=':' read -r -a _AUTONOMY_PATH_PARTS <<< "${PATH}"
+    for _p in "${_AUTONOMY_PATH_PARTS[@]}"; do
+      case "${_p}" in
+        */build/bin|*/build/autonomy/bin) continue ;;
+      esac
+      if [[ -z "${_AUTONOMY_PATH_SCRUB}" ]]; then
+        _AUTONOMY_PATH_SCRUB="${_p}"
+      else
+        _AUTONOMY_PATH_SCRUB="${_AUTONOMY_PATH_SCRUB}:${_p}"
+      fi
+    done
+    export PATH="${_AUTONOMY_PATH_SCRUB}"
+    unset _AUTONOMY_PATH_SCRUB _AUTONOMY_PATH_PARTS _p
+  fi
 fi
 
 for _d in "${_AUTONOMY_BIN_CANDIDATES[@]}"; do
@@ -129,10 +153,23 @@ for _d in "${_AUTONOMY_LIB_CANDIDATES[@]}"; do
   _autonomy_path_prepend_if_dir "${_d}" DYLD_LIBRARY_PATH
 done
 
+# Always search /usr/local/lib for third-party deps (glog 0.6 → libglog.so.1).
+_autonomy_path_prepend_if_dir "/usr/local/lib" LD_LIBRARY_PATH
+_autonomy_path_prepend_if_dir "/usr/local/lib" DYLD_LIBRARY_PATH
+
 # ROS 2 shared libs (ament_index_cpp, etc.) when present — even without full setup.bash
 for _ros_lib in /opt/ros/humble/lib /opt/ros/jazzy/lib /opt/ros/iron/lib; do
   _autonomy_path_prepend_if_dir "${_ros_lib}" LD_LIBRARY_PATH
 done
+
+# Soft check: installed binaries need glog 0.6 (libglog.so.1), not apt .so.0.
+if [[ "${AUTONOMY_SETUP_LAYOUT}" == "install" && "${AUTONOMY_SETUP_QUIET:-0}" != "1" ]]; then
+  if [[ ! -e /usr/local/lib/libglog.so.1 && ! -e "${AUTONOMY_INSTALL_PREFIX}/lib/libglog.so.1" ]]; then
+    echo "[autonomy] WARNING: libglog.so.1 not found under ${AUTONOMY_INSTALL_PREFIX}/lib" >&2
+    echo "  Install glog 0.6 (not apt libgoogle-glog), then: sudo ldconfig" >&2
+    echo "  e.g. bash docker/install/install_glog.sh" >&2
+  fi
+fi
 
 # ---------------------------------------------------------------------------
 # Autonomy runtime

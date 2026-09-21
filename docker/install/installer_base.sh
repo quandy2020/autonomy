@@ -218,21 +218,38 @@ function autonomy_thirdparty_dir()
     return 1
 }
 
-# System prefix during image build; user prefix when running as non-root in a container.
+# System prefix during image build; prefer /usr/local so it matches
+# `cmake --install --prefix=/usr/local` binaries (libglog.so.1, etc.).
+# Falls back to ~/.local only when /usr/local is unreachable and sudo is absent.
 function autonomy_cmake_install_prefix()
 {
-    local candidate
-    for candidate in \
-        "${AUTONOMY_INSTALL_PREFIX:-}" \
-        "/usr/local" \
-        "${HOME}/.local"; do
-        [[ -n "${candidate}" ]] || continue
-        mkdir -p "${candidate}" 2>/dev/null || continue
-        if [[ -w "${candidate}" ]]; then
-            echo "${candidate}"
-            return 0
-        fi
-    done
+    if [[ -n "${AUTONOMY_INSTALL_PREFIX:-}" ]]; then
+        echo "${AUTONOMY_INSTALL_PREFIX}"
+        return 0
+    fi
+
+    if [[ "$(id -u)" -eq 0 ]]; then
+        mkdir -p /usr/local
+        echo "/usr/local"
+        return 0
+    fi
+
+    if [[ -w /usr/local ]]; then
+        echo "/usr/local"
+        return 0
+    fi
+
+    # Non-root board/dev: still target /usr/local; autonomy_make_install uses sudo.
+    if command -v sudo >/dev/null 2>&1; then
+        echo "/usr/local"
+        return 0
+    fi
+
+    if mkdir -p "${HOME}/.local" 2>/dev/null && [[ -w "${HOME}/.local" ]]; then
+        echo "${HOME}/.local"
+        return 0
+    fi
+
     error "No writable CMAKE_INSTALL_PREFIX (tried /usr/local and ${HOME}/.local)"
     return 1
 }

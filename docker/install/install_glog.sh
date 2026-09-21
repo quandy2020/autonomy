@@ -19,15 +19,32 @@
 # Fail on first error.
 set -e
 
-cd "$(dirname "${BASH_SOURCE[0]}")"
+# Absolute path before any cd: sudo re-exec with relative $0 breaks after cd.
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_SCRIPT_PATH="${_SCRIPT_DIR}/$(basename "${BASH_SOURCE[0]}")"
+cd "${_SCRIPT_DIR}"
 . ./installer_base.sh
 
+# Autonomy binaries under /usr/local need libglog.so.1 on the same prefix.
+# Do NOT fall back to ~/.local — that leaves /usr/local/bin/autolink broken.
 THIRDPARTY="$(autonomy_thirdparty_dir)"
-INSTALL_PREFIX="$(autonomy_cmake_install_prefix)"
+INSTALL_PREFIX="${AUTONOMY_INSTALL_PREFIX:-/usr/local}"
 THREAD_NUM=$(nproc)
 
-# Apt libgoogle-glog must not count as installed. Skip only when our prefix has it.
-if [[ -f "${INSTALL_PREFIX}/lib/libglog.so" ]]; then
+if [[ ! -w "${INSTALL_PREFIX}" ]]; then
+    if [[ "$(id -u)" -eq 0 ]]; then
+        mkdir -p "${INSTALL_PREFIX}"
+    elif command -v sudo >/dev/null 2>&1; then
+        info "Elevating to install glog under ${INSTALL_PREFIX}..."
+        exec sudo -E bash "${_SCRIPT_PATH}" "$@"
+    else
+        error "glog must be installed under ${INSTALL_PREFIX} (not writable; no sudo)"
+        exit 1
+    fi
+fi
+
+# Apt libgoogle-glog (.so.0) must not count. Need glog 0.6 soname .so.1.
+if [[ -f "${INSTALL_PREFIX}/lib/libglog.so.1" || -f "${INSTALL_PREFIX}/lib/libglog.so" ]]; then
     ok "glog already installed under ${INSTALL_PREFIX}, skipping source build"
     exit 0
 fi
