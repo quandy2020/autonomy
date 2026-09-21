@@ -19,7 +19,11 @@
 # Fail on first error.
 set -e
 
-cd "$(dirname "${BASH_SOURCE[0]}")"
+# Absolute path before any cd: sudo re-exec with relative $0 breaks after
+# `cd "$(dirname ...)"` (looks for docker/install/docker/install/...).
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_SCRIPT_PATH="${_SCRIPT_DIR}/$(basename "${BASH_SOURCE[0]}")"
+cd "${_SCRIPT_DIR}"
 . ./installer_base.sh
 
 PROTOBUF_VERSION="v3.19.4"
@@ -32,7 +36,7 @@ if [[ ! -w "${INSTALL_PREFIX}" ]]; then
     if [[ "$(id -u)" -eq 0 ]]; then
         mkdir -p "${INSTALL_PREFIX}"
     elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
-        exec sudo -E bash "$0" "$@"
+        exec sudo -E bash "${_SCRIPT_PATH}" "$@"
     else
         error "protobuf 3.19.x must be installed under ${INSTALL_PREFIX} (not writable)"
         exit 1
