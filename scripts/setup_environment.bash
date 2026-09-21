@@ -98,15 +98,25 @@ fi
 export AUTONOMY_PREFIX="${AUTONOMY_PATH}"
 
 _AUTONOMY_BIN_CANDIDATES=(
-  ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/bin"}
   "${AUTONOMY_BUILD_DIR}/bin"
   "${AUTONOMY_BUILD_DIR}/autonomy/bin"
+  ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/bin"}
 )
 _AUTONOMY_LIB_CANDIDATES=(
-  ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/lib"}
   "${AUTONOMY_BUILD_DIR}/lib"
   "${AUTONOMY_BUILD_DIR}/autonomy/lib"
+  ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/lib"}
 )
+
+# install 布局：只用前缀 bin/lib，避免 build/bin 盖住 /usr/local/bin。
+if [[ "${AUTONOMY_SETUP_LAYOUT}" == "install" ]]; then
+  _AUTONOMY_BIN_CANDIDATES=(
+    ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/bin"}
+  )
+  _AUTONOMY_LIB_CANDIDATES=(
+    ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/lib"}
+  )
+fi
 
 for _d in "${_AUTONOMY_BIN_CANDIDATES[@]}"; do
   [[ -n "${_d}" ]] || continue
@@ -145,6 +155,10 @@ _AUTONOMY_BT_JOIN="$(_autonomy_join_existing \
   ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/lib"} \
   "${AUTONOMY_BUILD_DIR}/lib" \
   "${AUTONOMY_BUILD_DIR}/autonomy/lib")"
+if [[ "${AUTONOMY_SETUP_LAYOUT}" == "install" ]]; then
+  _AUTONOMY_BT_JOIN="$(_autonomy_join_existing \
+    ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/lib"})"
+fi
 export AUTONOMY_BT_PLUGIN_PATH="${_AUTONOMY_BT_JOIN}"
 
 export AUTONOMY_BRIDGE_TARGET="${AUTONOMY_BRIDGE_TARGET:-127.0.0.1:5005}"
@@ -210,6 +224,11 @@ _AUTOLINK_LIB_JOIN="$(_autonomy_join_existing \
   "${AUTONOMY_BUILD_DIR}/lib" \
   "${AUTONOMY_BUILD_DIR}/autonomy/lib" \
   "${AUTOLINK_DISTRIBUTION_HOME}/lib")"
+if [[ "${AUTONOMY_SETUP_LAYOUT}" == "install" ]]; then
+  _AUTOLINK_LIB_JOIN="$(_autonomy_join_existing \
+    ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/lib"} \
+    "${AUTOLINK_DISTRIBUTION_HOME}/lib")"
+fi
 export AUTOLINK_LIB_PATH="${_AUTOLINK_LIB_JOIN}"
 
 export AUTOLINK_DOMAIN_ID="${AUTOLINK_DOMAIN_ID:-80}"
