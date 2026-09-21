@@ -4,8 +4,9 @@
   Recommended Autonomy entry: multi-process stack via autolink_launch.
 
   Processes:
-    autonomy.monitor, planning, control, task, perception (disabled by default),
-    autonomy.bridge (BUILD_GRPC=ON),
+    autonomy.monitor (same as system/launch/monitor.launch),
+    planning, control, task, perception (disabled by default),
+    autonomy.bridge (same as bridge/launch/bridge.launch; needs -DBUILD_GRPC=ON),
     autonomy.foxglove_bridge
 
   Not started here (one-off):
@@ -14,19 +15,29 @@
   Prerequisites:
     - system/conf/autonomy.pb.txt, task/conf/*, system/conf/monitor.pb.txt
     - localization/conf/cartographer/* when running localization launch separately
-    - bridge/conf/bridge.pb.txt when using bridge
+    - bridge/conf/bridge.pb.txt (+ config/bridge/*.lua) when using bridge
     - PATH: build/bin; optional AUTONOMY_BT_PLUGIN_PATH=build/lib
 
   Dev (repo root):
     export PATH=$PWD/build/bin:$PATH
     export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/system/launch
     autolink_launch autonomy.launch
+
+  Bridge alone:
+    export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/bridge/launch
+    autolink_launch bridge.launch
+
+  Monitor alone:
+    autolink_launch monitor.launch
 -->
 <autolink>
+  <!-- Same process as autonomy/system/launch/monitor.launch -->
   <module>
     <name>monitor</name>
     <type>binary</type>
     <process_name>autonomy.monitor --conf=monitor.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
   </module>
   <module>
     <name>planning</name>
@@ -49,10 +60,13 @@
     <!-- perception conf often has enabled=false; use exploration.launch for closed-loop -->
     <process_name>autonomy.perception --conf=autonomy.pb.txt</process_name>
   </module>
+  <!-- Same process as autonomy/bridge/launch/bridge.launch -->
   <module>
     <name>bridge</name>
     <type>binary</type>
     <process_name>autonomy.bridge --conf=bridge.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
   </module>
   <module>
     <name>foxglove</name>

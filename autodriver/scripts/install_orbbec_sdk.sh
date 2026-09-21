@@ -119,7 +119,8 @@ download_deb() {
   tag="$(resolve_release_tag)"
   arch="$(detect_deb_arch)"
   mkdir -p "${CACHE_DIR}"
-  echo "== Resolving OrbbecSDK ${tag} (${arch}.deb) =="
+  # Logs must go to stderr: caller captures stdout as the .deb path.
+  echo "== Resolving OrbbecSDK ${tag} (${arch}.deb) ==" >&2
   json="$(curl -fsSL -A 'autodriver-install-orbbec' "${REPO_API}/tags/${tag}")"
   pair="$(printf '%s' "${json}" | python3 -c '
 import json, sys
@@ -140,18 +141,22 @@ print(cands[0][0] + "\t" + cands[0][1])
   url="${pair#*$'\t'}"
   out="${CACHE_DIR}/${asset}"
   if [[ ! -f "${out}" ]]; then
-    echo "== Downloading ${url} =="
+    echo "== Downloading ${url} ==" >&2
     curl -fL --retry 3 -o "${out}.partial" "${url}"
     mv "${out}.partial" "${out}"
   else
-    echo "== Using cached ${out} =="
+    echo "== Using cached ${out} ==" >&2
   fi
-  echo "${out}"
+  ORBBEC_DEB_PATH="${out}"
 }
 
 install_deb() {
   local deb="$1"
   need_cmd dpkg
+  if [[ ! -f "${deb}" ]]; then
+    echo "deb not found: ${deb}" >&2
+    exit 1
+  fi
   echo "== Installing ${deb} (may need sudo) =="
   run_priv dpkg -i "${deb}" || {
     echo "dpkg reported issues; attempting apt-get -f install" >&2
@@ -170,19 +175,19 @@ download_source() {
   tag="$(resolve_release_tag)"
   ref="${tag}"
   if [[ -d "${CACHE_DIR}/OrbbecSDK_v2/.git" ]]; then
-    echo "== Updating ${CACHE_DIR}/OrbbecSDK_v2 (${ref}) =="
+    echo "== Updating ${CACHE_DIR}/OrbbecSDK_v2 (${ref}) ==" >&2
     git -C "${CACHE_DIR}/OrbbecSDK_v2" fetch --depth 1 origin "refs/tags/${ref}:refs/tags/${ref}" \
       || git -C "${CACHE_DIR}/OrbbecSDK_v2" fetch --depth 1 origin "${ref}" || true
     git -C "${CACHE_DIR}/OrbbecSDK_v2" checkout -q "${ref}"
   else
-    echo "== Cloning ${REPO_URL} (${ref}) =="
+    echo "== Cloning ${REPO_URL} (${ref}) ==" >&2
     rm -rf "${CACHE_DIR}/OrbbecSDK_v2"
     mkdir -p "${CACHE_DIR}"
     git clone --depth 1 --branch "${ref}" "${REPO_URL}" "${CACHE_DIR}/OrbbecSDK_v2" \
       || git clone --depth 1 "${REPO_URL}" "${CACHE_DIR}/OrbbecSDK_v2"
     git -C "${CACHE_DIR}/OrbbecSDK_v2" checkout -q "${ref}" || true
   fi
-  echo "${CACHE_DIR}/OrbbecSDK_v2"
+  ORBBEC_SRC_PATH="${CACHE_DIR}/OrbbecSDK_v2"
 }
 
 install_from_source() {
@@ -246,16 +251,18 @@ fi
 
 case "${METHOD}" in
   deb)
-    DEB="$(download_deb)"
-    install_deb "${DEB}"
+    ORBBEC_DEB_PATH=""
+    download_deb
+    install_deb "${ORBBEC_DEB_PATH}"
     # Official .deb usually ships udev; still try if source tree was cached.
     if [[ "${ORBBEC_SKIP_UDEV:-0}" != "1" && -d "${CACHE_DIR}/OrbbecSDK_v2" ]]; then
       install_udev_from_tree "${CACHE_DIR}/OrbbecSDK_v2" || true
     fi
     ;;
   source)
-    SRC="$(download_source)"
-    install_from_source "${SRC}"
+    ORBBEC_SRC_PATH=""
+    download_source
+    install_from_source "${ORBBEC_SRC_PATH}"
     ;;
   *)
     echo "unknown ORBBEC_SDK_METHOD=${METHOD} (use deb|source)" >&2

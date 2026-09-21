@@ -172,13 +172,13 @@ download_source() {
   ref="$(resolve_release_tag)"
   mkdir -p "$(dirname "${CACHE_DIR}")"
   if [[ -d "${CACHE_DIR}/.git" ]]; then
-    echo "== Updating ${CACHE_DIR} (${ref}) =="
+    echo "== Updating ${CACHE_DIR} (${ref}) ==" >&2
     git -C "${CACHE_DIR}" fetch --depth 1 origin "refs/tags/${ref}:refs/tags/${ref}" \
       || git -C "${CACHE_DIR}" fetch --depth 1 origin "${ref}" || true
     git -C "${CACHE_DIR}" checkout -q "${ref}" || \
       git -C "${CACHE_DIR}" checkout -q "FETCH_HEAD"
   else
-    echo "== Cloning ${REPO_URL} (${ref}) -> ${CACHE_DIR} =="
+    echo "== Cloning ${REPO_URL} (${ref}) -> ${CACHE_DIR} ==" >&2
     rm -rf "${CACHE_DIR}"
     if ! git clone --depth 1 --branch "${ref}" "${REPO_URL}" "${CACHE_DIR}"; then
       git clone --depth 1 "${REPO_URL}" "${CACHE_DIR}"
@@ -186,7 +186,7 @@ download_source() {
       git -C "${CACHE_DIR}" checkout -q "${ref}" || true
     fi
   fi
-  echo "${CACHE_DIR}"
+  printf '%s\n' "${CACHE_DIR}"
 }
 
 install_from_source() {
