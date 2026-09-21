@@ -80,6 +80,10 @@ if(ATLA2_GENERATE_PROTO)
 
   add_library(atla2_proto ${_ATLA2_PROTO_SRCS})
   add_library(autonomy::atla2_proto ALIAS atla2_proto)
+  set_target_properties(atla2_proto PROPERTIES
+    OUTPUT_NAME "autonomy_atla2_proto"
+    BUILD_RPATH_USE_ORIGIN TRUE
+    INSTALL_RPATH "\$ORIGIN:${CMAKE_INSTALL_PREFIX}/lib")
   target_include_directories(atla2_proto PUBLIC
     $<BUILD_INTERFACE:${_ATLA2_PROTO_GEN}>
     $<INSTALL_INTERFACE:include>)
@@ -91,10 +95,18 @@ if(ATLA2_GENERATE_PROTO)
     target_link_libraries(atla2_proto PUBLIC automsgs)
   endif()
 
+  # Required by autonomy_localization's PUBLIC link → must be in AutonomyExport.
+  set_property(GLOBAL APPEND PROPERTY AUTONOMY_MODULE_TARGETS atla2_proto)
+
   if(TARGET autonomy_localization)
     target_link_libraries(autonomy_localization PUBLIC atla2_proto)
     target_compile_definitions(autonomy_localization PUBLIC ATLA2_HAS_PROTO=1)
   endif()
+
+  install(
+    DIRECTORY ${_ATLA2_PROTO_GEN}/
+    DESTINATION include
+    FILES_MATCHING PATTERN "*.pb.h")
 
   message(STATUS "atla2: protobuf codegen ENABLED -> ${_ATLA2_PROTO_GEN}")
 else()
