@@ -69,7 +69,7 @@ std::unique_ptr<transform::TransformServer> InitTransformStack(
 /** Resolve --conf to a perception/*.pb.txt basename. */
 std::string ResolvePerceptionConfFile()
 {
-    const std::string& conf = common::FLAGS_conf;
+    const std::string& conf = ::autonomy::common::FLAGS_conf;
     if (conf.empty() || conf == "autonomy.pb.txt") {
         return "perception.pb.txt";
     }

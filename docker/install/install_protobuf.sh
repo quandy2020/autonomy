@@ -29,7 +29,7 @@ cd "${_SCRIPT_DIR}"
 PROTOBUF_VERSION="v3.19.4"
 PROTOBUF_REPO="https://github.com/protocolbuffers/protobuf.git"
 THIRDPARTY="$(autonomy_thirdparty_dir)"
-INSTALL_PREFIX="/usr/local"
+INSTALL_PREFIX="${AUTONOMY_INSTALL_PREFIX:-/usr/local}"
 THREAD_NUM=$(nproc)
 
 if [[ ! -w "${INSTALL_PREFIX}" ]]; then

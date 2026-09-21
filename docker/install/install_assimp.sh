@@ -19,22 +19,27 @@
 # Fail on first error.
 set -e
 
-cd /thirdparty
-git clone -b v6.0.0 https://github.com/assimp/assimp.git
-cd assimp && git submodule init && git submodule update
+CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "${CURR_DIR}/installer_base.sh"
 
-# assimp
-mkdir build && cd build 
+THIRDPARTY="$(autonomy_thirdparty_dir)"
+INSTALL_PREFIX="$(autonomy_cmake_install_prefix)"
+
+cd "${THIRDPARTY}"
+if [[ ! -d assimp/.git ]]; then
+  git clone -b v6.0.0 https://github.com/assimp/assimp.git
+fi
+cd assimp && git submodule update --init --recursive
+
+mkdir -p build && cd build
 cmake \
-    -DCMAKE_INSTALL_PREFIX=/usr/local \
-    -DCMAKE_BUILD_TYPE=Release        \
-    -DCMAKE_CXX_STANDARD=17           \
-    -DBUILD_SHARED_LIBS=ON            \
-    ..  
+    -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX}" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_CXX_STANDARD=17 \
+    -DBUILD_SHARED_LIBS=ON \
+    ..
 
-# build
-make -j8
-sudo make install
+make -j"$(nproc)"
+autonomy_make_install
 
-# Clean up.
-cd .. && rm -rf build
+ok "Successfully installed assimp -> ${INSTALL_PREFIX}"

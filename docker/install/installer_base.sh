@@ -220,7 +220,8 @@ function autonomy_thirdparty_dir()
 
 # System prefix during image build; prefer /usr/local so it matches
 # `cmake --install --prefix=/usr/local` binaries (libglog.so.1, etc.).
-# Falls back to ~/.local only when /usr/local is unreachable and sudo is absent.
+# Do NOT fall back to ~/.local — mixing prefixes breaks RPATH / ABI.
+# Override with AUTONOMY_INSTALL_PREFIX or scripts/install_dependencies.py --prefix.
 function autonomy_cmake_install_prefix()
 {
     if [[ -n "${AUTONOMY_INSTALL_PREFIX:-}" ]]; then
@@ -245,12 +246,9 @@ function autonomy_cmake_install_prefix()
         return 0
     fi
 
-    if mkdir -p "${HOME}/.local" 2>/dev/null && [[ -w "${HOME}/.local" ]]; then
-        echo "${HOME}/.local"
-        return 0
-    fi
-
-    error "No writable CMAKE_INSTALL_PREFIX (tried /usr/local and ${HOME}/.local)"
+    error "No writable install prefix. Use sudo for /usr/local, or set:"
+    error "  export AUTONOMY_INSTALL_PREFIX=/path/to/prefix"
+    error "  # or: python3 scripts/install_dependencies.py --prefix /path/to/prefix"
     return 1
 }
 

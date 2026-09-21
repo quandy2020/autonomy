@@ -68,7 +68,7 @@ std::unique_ptr<transform::TransformServer> InitTransformStack(
 
 std::string ResolvePlannerConfFile()
 {
-    const std::string& conf = common::FLAGS_conf;
+    const std::string& conf = ::autonomy::common::FLAGS_conf;
     if (conf.empty() || conf == "autonomy.pb.txt" ||
         conf == "exploration.pb.txt") {
         return "planner.pb.txt";

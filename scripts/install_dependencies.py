@@ -6,13 +6,15 @@ Sources of truth:
   - docker/dockerfile/autonomy.aarch64.dockerfile  (apt + docker/install order)
   - cmake/autonomy_deps.cmake / CMakeLists.txt     (required find_package)
 
-Packages that CMake expects as CONFIG under /usr/local (glog/gflags/protobuf/
-ceres/…) are installed ONLY via docker/install/*.sh and are force-run so apt
-stubs cannot win the ABI race (see Firefly glog 0.4 vs 0.6).
+Packages that CMake expects as CONFIG under a single prefix (default
+/usr/local: glog/gflags/protobuf/ceres/…) are installed ONLY via
+docker/install/*.sh and are force-run so apt stubs cannot win the ABI race
+(see Firefly glog 0.4 vs 0.6). Do not mix ~/.local with /usr/local.
 
 Usage:
   python3 scripts/install_dependencies.py --profile board
   python3 scripts/install_dependencies.py --profile full --skip-installed
+  python3 scripts/install_dependencies.py --prefix /opt/autonomy --skip-installed
   python3 scripts/install_dependencies.py --thirdparty-only --resume-from install_ceres_solver.sh
 """
 
@@ -172,7 +174,6 @@ THIRDPARTY_SCRIPTS_DOCKERFILE: List[str] = [
 ]
 
 THIRDPARTY_SCRIPTS_FULL: List[str] = list(THIRDPARTY_SCRIPTS_DOCKERFILE) + [
-    "install_taskflow.sh",
     "install_assimp.sh",
     "install_ogre.sh",
 ]
@@ -201,54 +202,61 @@ FORCE_THIRDPARTY_SCRIPTS: frozenset[str] = frozenset(
 )
 
 
-def usr_local_paths(*rel: str) -> List[str]:
-    return [str(Path("/usr/local").joinpath(*rel))]
+DEFAULT_INSTALL_PREFIX = "/usr/local"
 
 
-# Detection paths for --skip-installed (non-forced only). Forced scripts
-# never skip; checks below are /usr/local-only for documentation / list.
-SCRIPT_INSTALL_CHECKS: Dict[str, List[str]] = {
-    "install_gtest.sh": [
-        "/usr/local/lib/libgtest.so",
-        "/usr/local/lib/libgtest.a",
+# Relative artifact paths for --skip-installed (joined with install prefix).
+# Extra system paths (apt OpenCV etc.) are appended per-script where useful.
+SCRIPT_INSTALL_RELS: Dict[str, List[tuple[str, ...]]] = {
+    "install_gtest.sh": [("lib", "libgtest.so"), ("lib", "libgtest.a")],
+    "install_gflags.sh": [("lib", "libgflags.so")],
+    "install_glog.sh": [("lib", "libglog.so")],
+    "install_protobuf.sh": [("bin", "protoc")],
+    "install_grpc.sh": [("lib", "libgrpc++.so")],
+    "install_gperftools.sh": [("lib", "libtcmalloc.so")],
+    "install_opencv.sh": [("lib", "libopencv_core.so")],
+    "install_ceres_solver.sh": [("lib", "libceres.so")],
+    "install_nlohmann.sh": [("include", "nlohmann", "json.hpp")],
+    "install_osqp.sh": [("lib", "libosqp.so")],
+    "install_g2o.sh": [("lib", "cmake", "g2o", "g2oConfig.cmake")],
+    "install_fbow.sh": [("lib", "libfbow.so")],
+    "install_behaviortree_cpp.sh": [("lib", "libbehaviortree_cpp.so")],
+    "install_adolc.sh": [("include", "adolc", "adolc.h")],
+    "install_ipopt.sh": [
+        ("include", "coin-or", "IpIpoptApplication.hpp"),
+        ("include", "coin", "IpIpoptApplication.hpp"),
     ],
-    "install_gflags.sh": usr_local_paths("lib", "libgflags.so"),
-    "install_glog.sh": usr_local_paths("lib", "libglog.so"),
-    "install_protobuf.sh": usr_local_paths("bin", "protoc"),
-    "install_grpc.sh": usr_local_paths("lib", "libgrpc++.so"),
+    "install_assimp.sh": [("lib", "libassimp.so")],
+    "install_ogre.sh": [("lib", "libOgreMain.so")],
+}
+
+# Optional fallbacks outside the install prefix (apt / distro packages).
+SCRIPT_INSTALL_SYSTEM_FALLBACKS: Dict[str, List[str]] = {
     "install_gperftools.sh": [
-        "/usr/local/lib/libtcmalloc.so",
         "/usr/lib/libtcmalloc.so",
         "/usr/lib/aarch64-linux-gnu/libtcmalloc.so",
         "/usr/lib/x86_64-linux-gnu/libtcmalloc.so",
     ],
     "install_opencv.sh": [
-        "/usr/local/lib/libopencv_core.so",
         "/usr/lib/aarch64-linux-gnu/libopencv_core.so",
         "/usr/lib/x86_64-linux-gnu/libopencv_core.so",
     ],
-    "install_ceres_solver.sh": usr_local_paths("lib", "libceres.so"),
-    "install_nlohmann.sh": [
-        "/usr/local/include/nlohmann/json.hpp",
-        "/usr/include/nlohmann/json.hpp",
-    ],
-    "install_osqp.sh": usr_local_paths("lib", "libosqp.so"),
-    "install_g2o.sh": usr_local_paths("lib", "cmake", "g2o", "g2oConfig.cmake"),
-    "install_fbow.sh": usr_local_paths("lib", "libfbow.so"),
-    "install_taskflow.sh": usr_local_paths("include", "taskflow", "taskflow.hpp"),
-    "install_behaviortree_cpp.sh": usr_local_paths("lib", "libbehaviortree_cpp.so"),
-    "install_adolc.sh": [
-        "/usr/include/adolc/adolc.h",
-        "/usr/local/include/adolc/adolc.h",
-    ],
+    "install_nlohmann.sh": ["/usr/include/nlohmann/json.hpp"],
+    "install_adolc.sh": ["/usr/include/adolc/adolc.h"],
     "install_ipopt.sh": [
         "/usr/include/coin/IpIpoptApplication.hpp",
         "/usr/include/coin-or/IpIpoptApplication.hpp",
-        "/usr/local/include/coin-or/IpIpoptApplication.hpp",
     ],
-    "install_assimp.sh": usr_local_paths("lib", "libassimp.so"),
-    "install_ogre.sh": usr_local_paths("lib", "libOgreMain.so"),
 }
+
+
+def script_install_check_paths(script_name: str, prefix: str) -> List[str]:
+    paths = [
+        str(Path(prefix).joinpath(*rel))
+        for rel in SCRIPT_INSTALL_RELS.get(script_name, [])
+    ]
+    paths.extend(SCRIPT_INSTALL_SYSTEM_FALLBACKS.get(script_name, []))
+    return paths
 
 
 def run_command(
@@ -434,12 +442,15 @@ def install_apt_dependencies(
 
 
 def can_detect_installed(script_name: str) -> bool:
-    return script_name in SCRIPT_INSTALL_CHECKS
+    return (
+        script_name in SCRIPT_INSTALL_RELS
+        or script_name in SCRIPT_INSTALL_SYSTEM_FALLBACKS
+    )
 
 
-def is_script_dependency_installed(script_name: str) -> bool:
-    check_paths = SCRIPT_INSTALL_CHECKS.get(script_name, [])
-    return any(Path(p).exists() for p in check_paths)
+def is_script_dependency_installed(script_name: str, prefix: str) -> bool:
+    check_paths = script_install_check_paths(script_name, prefix)
+    return any(Path(path).exists() for path in check_paths)
 
 
 def install_thirdparty(
@@ -450,6 +461,7 @@ def install_thirdparty(
     resume_from: str | None,
     skip_installed: bool,
     force_all: bool,
+    prefix: str,
 ) -> None:
     install_dir = repo_root / "docker" / "install"
     if not install_dir.exists():
@@ -488,10 +500,9 @@ def install_thirdparty(
             cache_path.mkdir(parents=True, exist_ok=True)
             os.environ["AUTONOMY_THIRDPARTY"] = str(cache_path)
 
-    # docker/install scripts expect writable /usr/local (or sudo).
-    print(
-        f"==> AUTONOMY_THIRDPARTY={os.environ.get('AUTONOMY_THIRDPARTY')}"
-    )
+    os.environ["AUTONOMY_INSTALL_PREFIX"] = prefix
+    print(f"==> AUTONOMY_THIRDPARTY={os.environ.get('AUTONOMY_THIRDPARTY')}")
+    print(f"==> AUTONOMY_INSTALL_PREFIX={prefix}")
 
     start = resume_from is None
     for script in scripts:
@@ -513,15 +524,20 @@ def install_thirdparty(
             skip_installed
             and not force_rebuild
             and can_detect_installed(script)
-            and is_script_dependency_installed(script)
+            and is_script_dependency_installed(script, prefix)
         ):
-            print(f"[SKIP] {script}: dependency already detected under install prefix")
+            print(
+                f"[SKIP] {script}: dependency already detected under {prefix}"
+            )
             continue
 
         if prefer_local or force_rebuild:
-            print(f"[FORCE] {script}: docker/install → /usr/local (ignore apt stubs)")
+            print(
+                f"[FORCE] {script}: docker/install → {prefix} (ignore apt stubs)"
+            )
 
         env = os.environ.copy()
+        env["AUTONOMY_INSTALL_PREFIX"] = prefix
         if prefer_local or force_rebuild:
             env["AUTONOMY_FORCE_THIRDPARTY"] = "1"
         run_command(["bash", str(script_path)], dry_run=dry_run, env=env)
@@ -584,11 +600,22 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--prefix",
+        type=str,
+        default=DEFAULT_INSTALL_PREFIX,
+        help=(
+            "Single install prefix for docker/install/*.sh "
+            f"(default: {DEFAULT_INSTALL_PREFIX}). "
+            "Exported as AUTONOMY_INSTALL_PREFIX; do not mix with ~/.local."
+        ),
+    )
+    parser.add_argument(
         "--skip-installed",
         action="store_true",
         help=(
             "Skip third-party installers when the artifact is already under "
-            "/usr/local (or known system path). Use --force-thirdparty to rebuild."
+            "--prefix (or a known system fallback). "
+            "Use --force-thirdparty to rebuild."
         ),
     )
     parser.add_argument(
@@ -604,9 +631,34 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def ensure_prefix_ldconfig(prefix: str, *, dry_run: bool) -> None:
+    """Register ${prefix}/lib with the dynamic linker when possible."""
+    lib_dir = Path(prefix) / "lib"
+    if not lib_dir.is_dir():
+        return
+    conf_name = "autonomy-prefix.conf"
+    if prefix == DEFAULT_INSTALL_PREFIX:
+        conf_name = "usr-local.conf"
+    conf_path = f"/etc/ld.so.conf.d/{conf_name}"
+    cmd = (
+        f'echo "{lib_dir}" > {shlex.quote(conf_path)} && ldconfig'
+    )
+    if dry_run:
+        print(f"[DRY] sudo bash -c {shlex.quote(cmd)}")
+        return
+    try:
+        subprocess.run(
+            ["sudo", "bash", "-c", cmd],
+            check=False,
+        )
+    except Exception as exc:  # pylint: disable=broad-except
+        print(f"Warning: ldconfig setup: {exc}", file=sys.stderr)
+
+
 def main() -> int:
     args = parse_args()
     repo_root = args.repo_root.resolve()
+    prefix = str(Path(args.prefix).expanduser().resolve())
 
     if args.apt_only and args.thirdparty_only:
         print(
@@ -623,6 +675,7 @@ def main() -> int:
 
     if args.list:
         print(f"# profile={args.profile}")
+        print(f"# prefix={prefix}")
         print("# apt (system; no glog/gflags/ceres/protobuf/grpc)")
         for pkg in sorted(set(apt_packages)):
             print(pkg)
@@ -648,6 +701,7 @@ def main() -> int:
     check_ubuntu()
     print(f"==> profile={args.profile} arch={platform.machine()}")
     print(f"==> repo_root={repo_root}")
+    print(f"==> install_prefix={prefix}")
     print(
         "==> source: autonomy.aarch64.dockerfile + cmake/autonomy_deps.cmake"
     )
@@ -662,7 +716,7 @@ def main() -> int:
                 purge_apt_conflicts(dry_run=args.dry_run)
             print(
                 f"==> Installing {len(thirdparty_scripts)} third-party scripts "
-                "(docker/install → /usr/local)"
+                f"(docker/install → {prefix})"
             )
             install_thirdparty(
                 repo_root=repo_root,
@@ -671,21 +725,9 @@ def main() -> int:
                 resume_from=args.resume_from,
                 skip_installed=args.skip_installed,
                 force_all=args.force_thirdparty,
+                prefix=prefix,
             )
-            # Ensure dynamic linker finds /usr/local
-            if not args.dry_run:
-                try:
-                    subprocess.run(
-                        [
-                            "sudo",
-                            "bash",
-                            "-c",
-                            "echo /usr/local/lib > /etc/ld.so.conf.d/usr-local.conf && ldconfig",
-                        ],
-                        check=False,
-                    )
-                except Exception as exc:  # pylint: disable=broad-except
-                    print(f"Warning: ldconfig setup: {exc}", file=sys.stderr)
+            ensure_prefix_ldconfig(prefix, dry_run=args.dry_run)
     except subprocess.CalledProcessError as exc:
         print(
             f"Command failed with exit code {exc.returncode}", file=sys.stderr
@@ -697,9 +739,9 @@ def main() -> int:
 
     print("Dependency installation finished.")
     print(
-        "CMake tip: prefer /usr/local\n"
-        "  cmake -S $PWD -B ${HOME}/autonomy_ws/build "
-        "-DCMAKE_PREFIX_PATH=/usr/local "
+        f"CMake tip: keep a single prefix ({prefix})\n"
+        f"  cmake -S $PWD -B ${{HOME}}/autonomy_ws/build "
+        f"-DCMAKE_PREFIX_PATH={prefix} "
         "-DCMAKE_BUILD_TYPE=Release"
     )
     if args.profile == "board":

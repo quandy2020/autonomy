@@ -36,6 +36,9 @@ python3 scripts/install_dependencies.py --resume-from install_ceres_solver.sh --
 # 板端
 python3 scripts/install_dependencies.py --profile board --skip-installed
 
+# 自定义统一前缀（勿与 ~/.local 混用）
+python3 scripts/install_dependencies.py --prefix /opt/autonomy --skip-installed
+
 # 预览
 python3 scripts/install_dependencies.py --dry-run --profile board
 ```
@@ -46,14 +49,16 @@ python3 scripts/install_dependencies.py --dry-run --profile board
 bash docker/install/install_osqp.sh
 bash docker/install/install_glog.sh
 AUTONOMY_MAKE_JOBS=2 bash docker/install/install_ceres_solver.sh   # 内存紧
+
+# 与 --prefix 等价：单库也走同一前缀
+AUTONOMY_INSTALL_PREFIX=/opt/autonomy bash docker/install/install_osqp.sh
 ```
 
 ---
 
 ### 4.2 第三方脚本顺序（`full` / `board` 共用核心）
 
-默认安装到 **`/usr/local`**：
-
+默认安装到 **`/usr/local`**（可用 `--prefix` / `AUTONOMY_INSTALL_PREFIX` 覆盖，全程只用一个前缀）：
 | 顺序 | 脚本 | 库 |
 |------|------|-----|
 | 1 | `install_gtest.sh` | Google Test |
@@ -77,14 +82,17 @@ AUTONOMY_MAKE_JOBS=2 bash docker/install/install_ceres_solver.sh   # 内存紧
 
 ### 4.3 安装路径
 
+默认：
+
 ```text
 /usr/local/include/
 /usr/local/lib/
 /usr/local/bin/   # 如 protoc
 ```
 
-CMake：`-DCMAKE_PREFIX_PATH=/usr/local`。不要把 gRPC/protobuf 装在 `~/grpc` 却让 Autonomy 链 `/usr/local` 的另一套 protobuf。
+或 `--prefix /opt/autonomy` 时对应 `${prefix}/{include,lib,bin}`。
 
+CMake：`-DCMAKE_PREFIX_PATH=<同一前缀>`。不要把 gRPC/protobuf 装在 `~/grpc` / `~/.local`，却让 Autonomy 链另一套前缀的库——**混前缀会坏 RPATH / ABI**。
 ---
 
 ### 4.4 可选能力
@@ -108,6 +116,5 @@ ls /usr/local/lib/libglog.so
 /usr/local/bin/protoc --version    # 板端期望 3.19.x
 ```
 
-OSQP 找不到：先 `bash docker/install/install_osqp.sh`，保证前缀是 `/usr/local`（不要只在 `~/.local`）。
-
+OSQP 找不到：先 `bash docker/install/install_osqp.sh`，保证与 CMake 用同一前缀（默认 `/usr/local`，不要只装到 `~/.local`）。
 板端完整流程：[§9](09_embedded_board.md)。排错：[§8](08_troubleshooting.md)。

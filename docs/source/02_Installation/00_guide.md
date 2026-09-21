@@ -16,7 +16,7 @@
 | 约定 | 含义 |
 |------|------|
 | **源码根** | 含顶层 `CMakeLists.txt` 的目录（独立克隆即仓库根；monorepo 中多为 `src/autonomy`） |
-| **依赖前缀** | 第三方库装到 **`/usr/local`**；CMake 用 `-DCMAKE_PREFIX_PATH=/usr/local` |
+| **依赖前缀** | 第三方库装到 **`/usr/local`**（可用 `--prefix`）；CMake 用同一 `CMAKE_PREFIX_PATH`，勿混 `~/.local` |
 | **依赖入口** | `python3 scripts/install_dependencies.py`（板端加 `--profile board`） |
 | **运行环境** | `source scripts/setup_environment.bash`（安装后用 `/usr/local/share/autonomy/setup.bash`） |
 | **构建方式** | **CMake + Ninja**；不以 `colcon` 为主路径 |

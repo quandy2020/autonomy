@@ -18,23 +18,29 @@
 
 # Fail on first error.
 set -e
-cd /thirdparty
-git clone --single-branch --branch v14.4.0 https://github.com/OGRECave/ogre.git
-cd ogre && git submodule init && git submodule update
 
-# update
-sudo ldconfig
+CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "${CURR_DIR}/installer_base.sh"
 
-# cyber
-mkdir build && cd build 
+THIRDPARTY="$(autonomy_thirdparty_dir)"
+INSTALL_PREFIX="$(autonomy_cmake_install_prefix)"
+
+cd "${THIRDPARTY}"
+if [[ ! -d ogre/.git ]]; then
+  git clone --single-branch --branch v14.4.0 https://github.com/OGRECave/ogre.git
+fi
+cd ogre && git submodule update --init --recursive
+
+autonomy_ldconfig
+
+mkdir -p build && cd build
 cmake \
-    -DCMAKE_INSTALL_PREFIX=/usr/local \
-    -DCMAKE_BUILD_TYPE=Release        \
-    -DBUILD_SHARED_LIBS=ON            \
-    ..  
+    -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX}" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_SHARED_LIBS=ON \
+    ..
 
-make -j8
-sudo make install
+make -j"$(nproc)"
+autonomy_make_install
 
-# Clean up.
-cd .. && rm -rf build
+ok "Successfully installed Ogre -> ${INSTALL_PREFIX}"

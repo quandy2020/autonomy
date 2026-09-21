@@ -16,9 +16,10 @@
 source scripts/setup_environment.bash
 python3 scripts/install_dependencies.py --skip-installed
 python3 scripts/install_dependencies.py --profile board --skip-installed
+# 可选：统一前缀（默认 /usr/local；勿与 ~/.local 混用）
+python3 scripts/install_dependencies.py --prefix /opt/autonomy --skip-installed
 python3 tools/clang_format_sources.py --check
 ```
-
 依赖数据：`install_deps/data/*.json`；第三方安装脚本：`docker/install/`。
 
 ---
@@ -26,8 +27,7 @@ python3 tools/clang_format_sources.py --check
 ## 指定某个库 / 包安装
 
 第三方库在 `docker/install/install_*.sh`，由 `install_dependencies.py` 按 Dockerfile 顺序调用。  
-**已装到 `/usr/local` 的库，带 `--skip-installed` 时会跳过，不会再 clone。**
-
+**已装到安装前缀（默认 `/usr/local`，可用 `--prefix`）的库，带 `--skip-installed` 时会跳过，不会再 clone。**
 ### 查看列表
 
 ```bash
@@ -51,8 +51,7 @@ bash docker/install/install_protobuf.sh
 AUTONOMY_MAKE_JOBS=2 bash docker/install/install_ceres_solver.sh
 ```
 
-脚本若检测到 `/usr/local` 已有产物会直接 `[OK] … skipping`。
-
+脚本若检测到安装前缀已有产物会直接 `[OK] … skipping`。单库改前缀：`AUTONOMY_INSTALL_PREFIX=/opt/autonomy bash docker/install/install_XXX.sh`。
 ### 从某个库开始续装（后面的也会装）
 
 ```bash
@@ -64,9 +63,10 @@ python3 scripts/install_dependencies.py --profile board \
 
 | 参数 | 作用 |
 |------|------|
+| `--prefix PATH` | 第三方统一安装前缀（默认 `/usr/local`；导出 `AUTONOMY_INSTALL_PREFIX`） |
 | `--thirdparty-only` | 不跑 apt |
 | `--resume-from install_XXX.sh` | 从该脚本起往后装 |
-| `--skip-installed` | `/usr/local`（等）已有则跳过，**不 clone** |
+| `--skip-installed` | 前缀（等）已有则跳过，**不 clone** |
 | `--force-thirdparty` | 强制全部重编（忽略 skip） |
 
 ### 脚本名 ↔ 库

@@ -10,7 +10,7 @@
 | `apt-get` 失败 | `sudo apt-get -y --fix-broken install` 后重试 |
 | `install_opencv.sh` 中断 | `--resume-from install_opencv.sh --skip-installed` |
 | 找不到 Ceres / OSQP / BT | 对应 `bash docker/install/install_*.sh`，确认在 `/usr/local` |
-| OSQP 只在 `~/.local` | 重装到 `/usr/local`，或把 `$HOME/.local` 加入 `CMAKE_PREFIX_PATH` |
+| OSQP 只在 `~/.local` | 用 `--prefix /usr/local`（或同一自定义前缀）重装；**不要**混 `~/.local` 与 `/usr/local` |
 | 非 Ubuntu 警告 | 对照脚本 APT 列表自行装等效包 |
 
 ### 8.2 CMake 配置
