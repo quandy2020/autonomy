@@ -463,11 +463,18 @@ function(autonomy_link_feature target)
       target_link_libraries(${target} PUBLIC Boost::iostreams)
     elseif(_feat STREQUAL "ipopt")
       if(Ipopt_FOUND)
-        if(IPOPT_INCLUDE_DIRS)
-          target_include_directories(${target} SYSTEM PUBLIC
-            ${IPOPT_INCLUDE_DIRS})
+        # Prefer the imported target: Ubuntu coinor-libipopt-dev headers
+        # require HAVE_CSTDDEF (see FindIpopt.cmake / IpSmartPtr.hpp).
+        if(TARGET Ipopt::Ipopt)
+          target_link_libraries(${target} PUBLIC Ipopt::Ipopt)
+        else()
+          if(IPOPT_INCLUDE_DIRS)
+            target_include_directories(${target} SYSTEM PUBLIC
+              ${IPOPT_INCLUDE_DIRS})
+          endif()
+          target_compile_definitions(${target} PUBLIC HAVE_CSTDDEF)
+          target_link_libraries(${target} PUBLIC ${IPOPT_LIBRARIES})
         endif()
-        target_link_libraries(${target} PUBLIC ${IPOPT_LIBRARIES})
       endif()
     elseif(_feat STREQUAL "kdl")
       if(OrocosKDL_FOUND)

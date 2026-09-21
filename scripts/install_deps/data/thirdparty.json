@@ -94,7 +94,10 @@
       "force": true
     },
     "install_osqp.sh": {
-      "paths": ["/usr/local/lib/libosqp.so"],
+      "paths": [
+        "/usr/local/lib/libosqp.so",
+        "/usr/local/lib64/libosqp.so"
+      ],
       "force": true
     },
     "install_behaviortree_cpp.sh": {

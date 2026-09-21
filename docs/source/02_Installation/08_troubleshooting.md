@@ -17,6 +17,8 @@
 |------|----------|------|
 | `Could NOT find Protobuf` | 缺少 dev 包 | `sudo apt install libprotobuf-dev protobuf-compiler` |
 | `Could NOT find Ceres` | `/usr/local` 无 Ceres | 运行 `install_ceres_solver.sh` |
+| `Could NOT find OSQP` | 未装 OSQP，或只在 `~/.local` 而 `CMAKE_PREFIX_PATH` 仅 `/usr/local` | `bash docker/install/install_osqp.sh`；或把 `$HOME/.local` 加入 `CMAKE_PREFIX_PATH`；也可 `-DAUTONOMY_BUILD_COMMON_OSQP=OFF` 跳过 MPC |
+| `#error "don't have header file for stddef"`（Ipopt） | 未定义 `HAVE_CSTDDEF` | 已由 `FindIpopt` + `Ipopt::Ipopt` 注入；重配 cmake 后重编；或确认链到 `Ipopt::Ipopt` |
 | `Could NOT find Lua` | 缺少 lua5.3 | `sudo apt install liblua5.3-dev` |
 | gRPC 相关错误 | `BUILD_GRPC=ON` 但缺 gRPC | 安装 gRPC 或 `-DBUILD_GRPC=OFF` |
 

@@ -16,6 +16,11 @@
 
 #pragma once
 
+// Ubuntu coinor-libipopt-dev: IpSmartPtr.hpp requires HAVE_CSTDDEF / HAVE_STDDEF_H.
+#ifndef HAVE_CSTDDEF
+#define HAVE_CSTDDEF
+#endif
+
 #include <coin/IpIpoptApplication.hpp>
 #include <coin/IpSolveStatistics.hpp>
 #include <coin/IpTNLP.hpp>

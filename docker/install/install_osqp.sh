@@ -26,7 +26,8 @@ THIRDPARTY="$(autonomy_thirdparty_dir)"
 INSTALL_PREFIX="$(autonomy_cmake_install_prefix)"
 THREAD_NUM=$(nproc)
 
-if [[ -f "${INSTALL_PREFIX}/lib/libosqp.so" ]]; then
+if [[ -f "${INSTALL_PREFIX}/lib/libosqp.so" ]] || \
+   [[ -f "${INSTALL_PREFIX}/lib64/libosqp.so" ]]; then
     ok "OSQP already installed under ${INSTALL_PREFIX}, skipping"
     exit 0
 fi

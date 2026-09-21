@@ -97,12 +97,23 @@ NFS 同步源码 + 板端编译完整流程见 [§9 嵌入式板端](09_embedded
 # Ceres
 ls /usr/local/lib/libceres.so 2>/dev/null || ls /usr/lib/x86_64-linux-gnu/libceres.so
 
+# OSQP（common MPC 默认依赖；缺则 cmake 报 Could NOT find OSQP）
+ls /usr/local/lib/libosqp.so /usr/local/include/osqp/osqp.h
+# 若装到用户前缀：$HOME/.local/lib/libosqp.so
+
 # BehaviorTree.CPP
 ls /usr/local/lib/libbehaviortree_cpp.so
 
 # Protobuf（板端应为 3.19.x）
 /usr/local/bin/protoc --version 2>/dev/null || protoc --version
 ```
+
+> **OSQP 未找到**：先执行 `bash docker/install/install_osqp.sh`（或
+> `python3 -m install_deps --resume-from install_osqp.sh`），再保证
+> `CMAKE_PREFIX_PATH` 覆盖安装前缀（`/usr/local` 或 `$HOME/.local`）。
+> `FindOSQP.cmake` 会搜索这两处；仅 `-DCMAKE_PREFIX_PATH=/usr/local` 时
+> 若库只在 `~/.local` 仍可能失败，请重装到 `/usr/local` 或把
+> `$HOME/.local` 一并加入 `CMAKE_PREFIX_PATH`。
 
 ### 4.8 相关文档
 
