@@ -1,0 +1,20 @@
+# Shared map defaults (platforms may override)
+max_local_map_points: 50000
+voxel_size: 0.2
+keyframe:
+  min_translation_m: 0.3
+  min_rotation_deg: 10.0
+landmark:
+  max_count: 20000
+  min_obs: 2
+elevation:
+  enabled: false
+  resolution_m: 0.5
+occupancy:
+  enabled: false
+  resolution_m: 0.2
+point_cloud:
+  local_radius_m: 50.0
+  global_downsample: 0.2
+  voxel_map: true
+  map_merge: false

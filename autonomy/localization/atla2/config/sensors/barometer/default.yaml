@@ -1,0 +1,12 @@
+# Barometric altitude
+name: default
+enabled: false
+rate_hz: 20.0
+# Relative to takeoff pressure
+reference:
+  pressure_hpa: 1013.25
+  temperature_c: 15.0
+extrinsic:
+  translation: [0.0, 0.0, 0.0]
+noise:
+  altitude_sigma_m: 0.5

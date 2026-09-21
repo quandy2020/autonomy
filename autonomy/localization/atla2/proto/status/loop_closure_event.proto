@@ -1,0 +1,32 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.localization.atla2.proto;
+
+import "automsgs/msgs/geometry_msgs/pose_with_covariance.proto";
+import "automsgs/msgs/std_msgs/header.proto";
+import "common/frontend_mode.proto";
+
+// Loop-closure detection / acceptance event.
+message LoopClosureEvent {
+  automsgs.msgs.std_msgs.Header header = 1;
+  FrontendMode source_mode = 2;  // visual vs lidar loop
+  int32 query_keyframe_id = 3;
+  int32 match_keyframe_id = 4;
+  automsgs.msgs.geometry_msgs.PoseWithCovariance relative_pose = 5;
+  double score = 6;
+  bool accepted = 7;
+}

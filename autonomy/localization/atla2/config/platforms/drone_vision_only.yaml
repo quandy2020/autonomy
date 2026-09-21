@@ -1,0 +1,33 @@
+# Atla2 platform: vision-inertial only
+frontend:
+  mode: vio
+  fusion: loose
+  vio:
+    enabled: true
+    camera: front
+  lio:
+    enabled: false
+  imu: default
+
+sensor:
+  gps:
+    enabled: false
+
+backend:
+  type: ceres
+  window_size: 10
+  max_iterations: 15
+  pose_weight: 10.0
+  imu_weight: 1.0
+  visual_weight: 1.0
+  camera:
+    fx: 320.0
+    fy: 320.0
+    cx: 320.0
+    cy: 240.0
+
+map:
+  max_local_map_points: 20000
+  voxel_size: 0.2
+
+sync_tol_ms: 20.0

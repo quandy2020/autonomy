@@ -1,0 +1,16 @@
+# KITTI odometry — stereo / lidar sequences
+dataset: kitti
+format: kitti
+sequences:
+  - "00"
+  - "05"
+  - "07"
+platform_config: ../../../config/platforms/drone_lidar_imu.yaml
+frontend:
+  mode: lio
+backend:
+  type: iekf
+metrics:
+  - accuracy
+  - efficiency
+output_dir: ../reports/kitti

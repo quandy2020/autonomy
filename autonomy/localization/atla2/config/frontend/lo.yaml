@@ -1,0 +1,9 @@
+# Atla2 frontend: lidar odometry (no IMU)
+frontend:
+  mode: lo
+backend:
+  type: iekf
+map:
+  max_local_map_points: 80000
+  voxel_size: 0.2
+sync_tol_ms: 20.0

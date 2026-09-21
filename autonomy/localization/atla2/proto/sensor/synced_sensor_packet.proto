@@ -1,0 +1,51 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.localization.atla2.proto;
+
+import "automsgs/msgs/sensor_msgs/compressed_image.proto";
+import "automsgs/msgs/sensor_msgs/image.proto";
+import "automsgs/msgs/sensor_msgs/imu.proto";
+import "automsgs/msgs/std_msgs/header.proto";
+import "common/extrinsic_set.proto";
+import "sensor/barometer_sample.proto";
+import "sensor/gps_sample.proto";
+import "sensor/lidar_scan.proto";
+import "sensor/optical_flow_sample.proto";
+
+// Soft-synced multi-sensor packet for one SlamSystem::Step (mirrors SensorData).
+message SyncedSensorPacket {
+  // Sync reference time / primary frame.
+  automsgs.msgs.std_msgs.Header header = 1;
+
+  repeated automsgs.msgs.sensor_msgs.Imu imu = 2;
+  automsgs.msgs.sensor_msgs.Image image = 3;
+  automsgs.msgs.sensor_msgs.Image image_right = 4;
+  automsgs.msgs.sensor_msgs.CompressedImage image_compressed = 5;
+  LidarScan lidar = 6;
+  GpsSample gps = 7;
+  BarometerSample barometer = 8;
+  OpticalFlowSample optical_flow = 9;
+  ExtrinsicSet extrinsics = 10;
+
+  bool has_image = 11;
+  bool has_image_right = 12;
+  bool has_lidar = 13;
+  bool has_imu = 14;
+  bool has_gps = 15;
+  bool has_baro = 16;
+  bool has_optical_flow = 17;
+}

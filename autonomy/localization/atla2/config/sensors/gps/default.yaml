@@ -1,0 +1,16 @@
+# GNSS / GPS (local ENU after datum fix)
+name: default
+enabled: false
+rate_hz: 5.0
+datum:
+  lat_deg: 0.0
+  lon_deg: 0.0
+  alt_m: 0.0
+# T_body_gps antenna
+extrinsic:
+  translation: [0.0, 0.0, 0.15]
+  rotation_xyzw: [0.0, 0.0, 0.0, 1.0]
+noise:
+  horizontal_sigma_m: 1.5
+  vertical_sigma_m: 3.0
+  use_rtk: false

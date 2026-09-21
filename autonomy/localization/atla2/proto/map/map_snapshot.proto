@@ -1,0 +1,43 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.localization.atla2.proto;
+
+import "automsgs/msgs/std_msgs/header.proto";
+import "common/frontend_mode.proto";
+import "map/elevation_map.proto";
+import "map/global_map_cloud.proto";
+import "map/keyframe_frame.proto";
+import "map/landmark_map.proto";
+import "map/local_map_cloud.proto";
+import "map/occupancy_map.proto";
+import "map/trajectory.proto";
+import "map/voxel_map_meta.proto";
+
+// Aggregate map export for save / viz / merge.
+message MapSnapshot {
+  automsgs.msgs.std_msgs.Header header = 1;
+  FrontendMode mode = 2;
+  string map_name = 3;
+  LandmarkMap landmarks = 4;
+  LocalMapCloud local_cloud = 5;
+  GlobalMapCloud global_cloud = 6;
+  OccupancyMap occupancy = 7;
+  ElevationMap elevation = 8;
+  Trajectory trajectory = 9;
+  VoxelMapMeta voxel_meta = 10;
+  repeated KeyframeFrame keyframes = 11;
+}

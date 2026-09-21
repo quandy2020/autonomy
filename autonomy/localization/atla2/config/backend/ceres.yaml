@@ -1,0 +1,12 @@
+# Ceres sliding-window VIO backend
+type: ceres
+window_size: 10
+max_iterations: 15
+pose_weight: 10.0
+imu_weight: 1.0
+visual_weight: 1.0
+camera:
+  fx: 320.0
+  fy: 320.0
+  cx: 320.0
+  cy: 240.0

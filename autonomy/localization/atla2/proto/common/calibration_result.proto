@@ -1,0 +1,47 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.localization.atla2.proto;
+
+import "automsgs/msgs/sensor_msgs/camera_info.proto";
+import "automsgs/msgs/std_msgs/header.proto";
+import "common/extrinsic_set.proto";
+import "common/sensor_kind.proto";
+
+// Output of calibration_tool CLIs.
+message CalibrationResult {
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    KIND_CAMERA_INTRINSIC = 1;
+    KIND_CAMERA_IMU = 2;
+    KIND_LIDAR_IMU = 3;
+    KIND_CAMERA_LIDAR = 4;
+    KIND_JOINT = 5;
+  }
+
+  automsgs.msgs.std_msgs.Header header = 1;
+  Kind kind = 2;
+  repeated SensorKind sensors = 3;
+  ExtrinsicSet extrinsics = 4;
+  automsgs.msgs.sensor_msgs.CameraInfo camera_info = 5;
+  // Camera–IMU / lidar–IMU time offset [s].
+  double time_offset_s = 6;
+  double reprojection_rmse_px = 7;
+  double fitness_score = 8;
+  bool success = 9;
+  string message = 10;
+  string output_yaml = 11;
+}

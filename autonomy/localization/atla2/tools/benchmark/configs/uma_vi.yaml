@@ -1,0 +1,16 @@
+# UMA-VI — handheld visual-inertial
+dataset: uma_vi
+format: tum
+sequences:
+  - indoor_1
+  - outdoor_1
+platform_config: ../../../config/platforms/drone_vision_only.yaml
+frontend:
+  mode: vio
+backend:
+  type: ceres
+metrics:
+  - accuracy
+  - efficiency
+  - robustness
+output_dir: ../reports/uma_vi

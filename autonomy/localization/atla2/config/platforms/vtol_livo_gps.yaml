@@ -1,0 +1,35 @@
+# Atla2 platform: VTOL with LIVO + GPS (+ optional baro)
+frontend:
+  mode: livo
+  fusion: loose
+  vio:
+    enabled: true
+    camera: front
+  lio:
+    enabled: true
+    lidar: mid360
+  imu: default
+
+sensor:
+  camera: sensors/camera/front.yaml
+  imu: sensors/imu/default.yaml
+  lidar: sensors/lidar/mid360.yaml
+  gps:
+    enabled: true
+    config: sensors/gps/default.yaml
+  barometer:
+    enabled: true
+    config: sensors/barometer/default.yaml
+  optical_flow:
+    enabled: false
+    config: sensors/optical_flow/default.yaml
+
+backend:
+  type: iekf
+
+map:
+  max_local_map_points: 100000
+  voxel_size: 0.25
+
+sync_tol_ms: 25.0
+platform_name: vtol_livo_gps

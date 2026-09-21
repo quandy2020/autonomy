@@ -1,0 +1,59 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.localization.atla2.proto;
+
+import "common/backend_type.proto";
+import "common/extrinsic_set.proto";
+import "common/frontend_mode.proto";
+import "common/fusion_style.proto";
+
+// Serializable runtime config subset (parity with Atla2Config core fields).
+message Atla2ConfigMsg {
+  FrontendMode mode = 1;
+  FusionStyle fusion = 2;
+  BackendType backend = 3;
+
+  bool vo_enabled = 4;
+  bool vio_enabled = 5;
+  bool lio_enabled = 6;
+  bool gps_enabled = 7;
+
+  double imu_acc_noise = 8;
+  double imu_gyr_noise = 9;
+  double imu_acc_bias_rw = 10;
+  double imu_gyr_bias_rw = 11;
+
+  double sync_tol_ms = 12;
+  int32 max_local_map_points = 13;
+  double voxel_size = 14;
+
+  int32 window_size = 15;
+  int32 ceres_max_iterations = 16;
+  double ceres_pose_weight = 17;
+  double ceres_imu_weight = 18;
+  double ceres_visual_weight = 19;
+
+  double cam_fx = 20;
+  double cam_fy = 21;
+  double cam_cx = 22;
+  double cam_cy = 23;
+
+  string platform_name = 24;
+  string config_path = 25;
+  ExtrinsicSet extrinsics = 26;
+  bool enable_mode_hot_switch = 27;
+}

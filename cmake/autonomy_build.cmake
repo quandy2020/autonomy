@@ -138,7 +138,10 @@ function(autonomy_collect_proto_sources)
     list(APPEND ALL_PROTOS ${_module_protos})
   endforeach()
   # orbisview/*.proto are FE/schema docs (JSON + render_schemas.h); not C++ codegen.
+  # atla2/proto uses local imports (common/...) and its own atla2_proto target.
   list(FILTER ALL_PROTOS EXCLUDE REGEX ".*/commsgs/proto/.*")
+  list(FILTER ALL_PROTOS EXCLUDE REGEX ".*/orbisview/proto/.*")
+  list(FILTER ALL_PROTOS EXCLUDE REGEX ".*/localization/atla2/proto/.*")
   set(ALL_GRPC_SERVICES ${ALL_PROTOS})
   list(FILTER ALL_GRPC_SERVICES INCLUDE REGEX "_service\\.proto$")
 

@@ -1,0 +1,8 @@
+frontend:
+  mode: vio
+backend:
+  type: iekf
+map:
+  max_local_map_points: 20000
+  voxel_size: 0.2
+sync_tol_ms: 20.0
