@@ -8,6 +8,7 @@
 |------|---------|
 | `clang_format_sources.py` | 按仓库 `.clang-format` 格式化 C/C++ |
 | `package_install_tarball.py` | 构建并打包 install-tree（Ansible 制品） |
+| `make_ota_delta.py` | 两版 install-tree → 文件级 OTA delta 包 |
 | `enable_board_swap.py` | 板端创建/启用 swapfile（`CONFIG_SWAP=n` 时退出） |
 | `cmake/` | CMake preset / install-consumer 检查包 |
 
@@ -15,6 +16,9 @@
 # From autonomy repo root (PYTHONPATH=. or just run as scripts)
 python3 tools/clang_format_sources.py --check
 python3 tools/package_install_tarball.py --output dist/autonomy.tar.gz
+python3 tools/make_ota_delta.py --base /opt/autonomy-slots/slot_a \
+  --target /tmp/new_tree --output dist/ota-delta \
+  --base-version v1 --target-version v2
 python3 tools/enable_board_swap.py
 
 # CMake checks

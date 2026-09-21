@@ -1,0 +1,26 @@
+# Data / record / replay policy.
+
+record_root: "/data/records"
+max_total_gb: 50
+max_file_gb: 8
+retain_days: 14
+
+# full_stack_min channel whitelist (autolink recorder -c ...)
+# Driver vs stack naming: prefer remaps.yaml in DataPackage.
+channels: "/tf"
+channels: "/tf_static"
+channels: "/odom"
+channels: "/scan"
+channels: "/imu"
+channels: "/map"
+channels: "/cmd_vel"
+channels: "/autonomy/task/teleop/goal"
+channels: "/autonomy/task/teleop/feedback"
+channels: "/autonomy/task/navigation/goal"
+channels: "/plan"
+
+blacklist_channels: "/autonomy/task/teleop/free_path_markers"
+
+# Localization backend for manifest: cartographer | lightning | atlas | none
+localization_backend: "none"
+default_replay_profile: "mid_stack"

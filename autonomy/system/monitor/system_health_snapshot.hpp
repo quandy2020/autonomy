@@ -30,9 +30,12 @@
  * | ChannelHealth              | ChannelHealth {channel, healthy, age, rate}    |
  * | LatencyHealth              | LatencyHealth {channel, message_age_seconds}   |
  * | CPU/Mem/HDD/NTP gauges     | HostResourceSnapshot                           |
+ * | ProcessHealth              | ProcessHealth {name, alive, pid, …}            |
+ * | SafetyLatch / muxer estop  | emergency_stop_latched                         |
  *
  * SystemService.GetStatus embeds a compact SystemHealth;
  * SystemService.GetHealth returns the full snapshot for diagnostics.
+ * Bridge MUST read the published snapshot (HealthSnapshotStore), not re-collect.
  */
 
 #include "autonomy/system/monitor/ops_types.hpp"
@@ -53,6 +56,7 @@ struct SystemHealthSnapshot {
     float ntp_offset_seconds{0.f};
     std::vector<ChannelHealth> channels;
     std::vector<LatencyHealth> latencies;
+    std::vector<ProcessHealth> processes;
     std::string detail;
 };
 

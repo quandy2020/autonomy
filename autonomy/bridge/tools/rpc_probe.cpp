@@ -500,10 +500,10 @@ RpcProbeResult CallRpc(const std::string& method_raw,
         return Ok();
     }
 
-    // Server-streaming (sync ClientReader)
+    // Server-streaming (sync ClientReader). Use 2-arg RpcMethod for
+    // compatibility with older grpc++ (no suffix_for_stats overload).
     const ::grpc::internal::RpcMethod rpc(
-        path.c_str(), /*suffix_for_stats=*/nullptr,
-        ::grpc::internal::RpcMethod::SERVER_STREAMING);
+        path.c_str(), ::grpc::internal::RpcMethod::SERVER_STREAMING);
     std::unique_ptr<::grpc::ClientReader<::grpc::ByteBuffer>> reader(
         ::grpc::internal::ClientReaderFactory<::grpc::ByteBuffer>::Create(
             channel.get(), rpc, &ctx, request_buf));

@@ -19,9 +19,9 @@
 #include "autonomy/common/conf_loader.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/system/monitor/ops_types.hpp"
-#include "autonomy/system/monitor/proto/monitor_options.pb.h"
-#include "autonomy/task/teleop/constants.hpp"
+#include "autonomy/system/proto/monitor_options.pb.h"
 #include "autonomy/task/common/names.hpp"
+#include "autonomy/task/teleop/constants.hpp"
 
 namespace autonomy {
 namespace system {
@@ -44,7 +44,22 @@ void ApplyDefaultWatches(MonitorOptions* opts) {
     }
 }
 
-MonitorOptions FromProto(const proto::MonitorOptions& p) {
+void ApplyDefaultCriticalProcesses(MonitorOptions* opts) {
+    if (opts == nullptr || !opts->critical_processes.empty()) {
+        return;
+    }
+    opts->critical_processes.push_back(
+        {"monitor", "autonomy.monitor", "respawn"});
+    opts->critical_processes.push_back(
+        {"planning", "autonomy.planning", "respawn"});
+    opts->critical_processes.push_back(
+        {"control", "autonomy.control", "respawn"});
+    opts->critical_processes.push_back({"task", "autonomy.task", "respawn"});
+    opts->critical_processes.push_back(
+        {"bridge", "autonomy.bridge", "respawn"});
+}
+
+MonitorOptions FromProto(const ::autonomy::system::proto::MonitorOptions& p) {
     MonitorOptions opts = MonitorOptions::Default();
     opts.enable_cpu_monitor = p.enable_cpu_monitor();
     opts.enable_gpu_monitor = p.enable_gpu_monitor();
@@ -94,7 +109,28 @@ MonitorOptions FromProto(const proto::MonitorOptions& p) {
         }
         opts.mrm.emergency_stop_on_error = p.mrm().emergency_stop_on_error();
     }
+    opts.critical_processes.clear();
+    for (const auto& cp : p.critical_processes()) {
+        if (cp.name().empty()) {
+            continue;
+        }
+        CriticalProcessOptions o;
+        o.name = cp.name();
+        o.match = cp.match().empty() ? cp.name() : cp.match();
+        o.restart_hint =
+            cp.restart_hint().empty() ? "respawn" : cp.restart_hint();
+        opts.critical_processes.push_back(std::move(o));
+    }
+    // health_snapshot_path "-" disables publish; otherwise publish (default on).
+    if (p.health_snapshot_path() == "-") {
+        opts.publish_health_snapshot = false;
+        opts.health_snapshot_path.clear();
+    } else {
+        opts.publish_health_snapshot = true;
+        opts.health_snapshot_path = p.health_snapshot_path();
+    }
     ApplyDefaultWatches(&opts);
+    ApplyDefaultCriticalProcesses(&opts);
     return opts;
 }
 
@@ -104,16 +140,19 @@ MonitorOptions MonitorOptions::Default() {
     MonitorOptions opts;
     opts.enable_cpu_monitor = true;
     opts.enable_mem_monitor = true;
+    opts.enable_process_monitor = true;
     opts.enable_prometheus = true;
     opts.prometheus_bind_address = "0.0.0.0:9090";
     opts.prometheus_metrics_prefix = "autonomy_system";
     opts.collect_interval_sec = 1.0;
+    opts.publish_health_snapshot = true;
     ApplyDefaultWatches(&opts);
+    ApplyDefaultCriticalProcesses(&opts);
     return opts;
 }
 
 MonitorOptions LoadMonitorOptions(const std::string& conf_file) {
-    proto::MonitorOptions pb;
+    ::autonomy::system::proto::MonitorOptions pb;
     const std::string file =
         conf_file.empty() ? std::string("monitor.pb.txt") : conf_file;
     if (!common::LoadModuleConf("system", file, &pb)) {

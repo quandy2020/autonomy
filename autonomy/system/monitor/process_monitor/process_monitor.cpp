@@ -22,6 +22,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS
 #include <prometheus/gauge.h>
@@ -64,13 +65,31 @@ bool ReadProcessRssKb(const std::string& pid, uint64_t* rss_kb, std::string* com
     return *rss_kb > 0;
 }
 
+std::string ReadCmdline(const std::string& pid) {
+    std::ifstream in("/proc/" + pid + "/cmdline", std::ios::binary);
+    if (!in) {
+        return {};
+    }
+    std::string raw((std::istreambuf_iterator<char>(in)),
+                    std::istreambuf_iterator<char>());
+    for (char& c : raw) {
+        if (c == '\0') {
+            c = ' ';
+        }
+    }
+    return raw;
+}
+
 }  // namespace
 
 void ProcessMonitor::Collect() {
     process_count_ = 0;
     total_rss_kb_ = 0;
     top_rss_comm_.clear();
+    critical_health_.clear();
     uint64_t top_rss = 0;
+
+    std::vector<std::pair<std::string, std::string>> pid_cmdlines;
 
     DIR* dir = opendir("/proc");
     if (dir == nullptr)
@@ -90,8 +109,29 @@ void ProcessMonitor::Collect() {
                 top_rss_comm_ = comm;
             }
         }
+        if (!critical_specs_.empty()) {
+            pid_cmdlines.emplace_back(ent->d_name, ReadCmdline(ent->d_name));
+        }
     }
     closedir(dir);
+
+    for (size_t i = 0; i < critical_specs_.size(); ++i) {
+        const auto& spec = critical_specs_[i];
+        ProcessHealth health;
+        health.name = spec.name;
+        health.match = spec.match.empty() ? spec.name : spec.match;
+        if (i < restart_hints_.size()) {
+            health.restart_hint = restart_hints_[i];
+        }
+        for (const auto& [pid, cmdline] : pid_cmdlines) {
+            if (cmdline.find(health.match) != std::string::npos) {
+                health.alive = true;
+                health.pid = std::stoi(pid);
+                break;
+            }
+        }
+        critical_health_.push_back(std::move(health));
+    }
 
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS
     if (count_gauge_)

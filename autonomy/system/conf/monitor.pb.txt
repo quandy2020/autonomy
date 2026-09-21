@@ -1,5 +1,5 @@
 # System monitor — host metrics + autolink channel/latency/hazard/MRM.
-# Proto: autonomy/system/monitor/proto/monitor_options.proto
+# Proto: autonomy/system/proto/monitor_options.proto
 # Load:  LoadModuleConf("system", "monitor.pb.txt")
 # CLI:   autonomy.monitor --conf=monitor.pb.txt
 
@@ -12,6 +12,33 @@ enable_net_monitor: true
 enable_ntp_monitor: false
 enable_process_monitor: true
 enable_voltage_monitor: false
+
+# Critical process list → SystemHealth.processes / Snapshot
+critical_processes {
+  name: "monitor"
+  match: "autonomy.monitor"
+  restart_hint: "respawn"
+}
+critical_processes {
+  name: "planning"
+  match: "autonomy.planning"
+  restart_hint: "respawn"
+}
+critical_processes {
+  name: "control"
+  match: "autonomy.control"
+  restart_hint: "respawn"
+}
+critical_processes {
+  name: "task"
+  match: "autonomy.task"
+  restart_hint: "respawn"
+}
+critical_processes {
+  name: "bridge"
+  match: "autonomy.bridge"
+  restart_hint: "respawn"
+}
 
 # ---------- Autolink ops (channel / latency / hazard / MRM) ----------
 enable_channel_monitor: true
@@ -51,6 +78,10 @@ enable_prometheus: true
 prometheus_bind_address: "0.0.0.0:9090"
 prometheus_metrics_prefix: "autonomy_system"
 collect_interval_sec: 1.0
+
+# Publish snapshot for Bridge GetHealth (path "-" disables)
+# health_snapshot_path: ""
+publish_health_snapshot: true
 
 # ---------- Optional gperftools (off by default) ----------
 enable_cpu_profile: false

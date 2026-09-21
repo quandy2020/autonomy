@@ -29,4 +29,7 @@ message CapabilitiesOptions {
   optional bool supports_localization = 9;
   optional bool supports_sensor_record = 10;
   optional bool supports_system_monitor = 11;
+  optional bool supports_mrm = 12;
+  optional bool supports_ota = 13;
+  optional bool supports_event_bundle = 14;
 }

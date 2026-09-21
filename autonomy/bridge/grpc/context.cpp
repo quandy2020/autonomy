@@ -10,6 +10,7 @@
 #include "autonomy/bridge/grpc/context.hpp"
 
 #include "autolink/common/log.hpp"
+#include "autonomy/system/safety/safety_latch.hpp"
 
 namespace autonomy {
 namespace bridge {
@@ -39,6 +40,8 @@ void Context::CancelAllTasks() {
 
 void Context::EmergencyStop(const bool engage) {
     muxer_->SetEstop(engage);
+    ::autonomy::system::safety::SafetyLatch latch;
+    latch.SetLatched(engage, engage ? "bridge_emergency_stop" : "");
     if (engage) {
         CancelAllTasks();
         muxer_->SetEstop(true);

@@ -59,6 +59,20 @@ struct LatencyHealth {
     double message_age_sec{0.0};
 };
 
+/// Critical process watch (name ↔ /proc cmdline substring match).
+struct CriticalProcessSpec {
+    std::string name;
+    std::string match;  // substring of /proc/<pid>/cmdline (nulls → spaces)
+};
+
+struct ProcessHealth {
+    std::string name;
+    std::string match;
+    bool alive{false};
+    int32_t pid{-1};
+    std::string restart_hint;  // e.g. "respawn" / "alert_only"
+};
+
 }  // namespace monitor
 }  // namespace system
 }  // namespace autonomy

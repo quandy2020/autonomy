@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <sstream>
 
 #include "autolink/autolink.hpp"
 #include "autonomy/system/monitor/channel_monitor/channel_monitor.hpp"
@@ -32,6 +33,8 @@
 #include "autonomy/system/monitor/ntp_monitor/ntp_monitor.hpp"
 #include "autonomy/system/monitor/process_monitor/process_monitor.hpp"
 #include "autonomy/system/monitor/voltage_monitor/voltage_monitor.hpp"
+#include "autonomy/system/monitor/health_snapshot_store.hpp"
+#include "autonomy/system/safety/safety_latch.hpp"
 
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS
 #include <prometheus/exposer.h>
@@ -103,6 +106,10 @@ void MonitorRegistry::CollectAll() {
 SystemHealthSnapshot MonitorRegistry::Snapshot() const {
     SystemHealthSnapshot snap;
     using namespace cpu_monitor;
+    safety::SafetyLatch latch;
+    snap.emergency_stop_latched = latch.IsLatched();
+    std::ostringstream detail;
+
     for (const auto& m : monitors_) {
         if (!m || !m->enabled()) {
             continue;
@@ -138,8 +145,37 @@ SystemHealthSnapshot MonitorRegistry::Snapshot() const {
             snap.hazard_level = haz->level();
         } else if (const auto* mrm = dynamic_cast<const MrmHandler*>(m.get())) {
             snap.mrm_active = mrm->active();
+            if (mrm->active()) {
+                snap.emergency_stop_latched = true;
+            }
+        } else if (const auto* proc =
+                       dynamic_cast<const ProcessMonitor*>(m.get())) {
+            snap.processes = proc->critical_health();
         }
     }
+
+    if (snap.emergency_stop_latched) {
+        const auto reason = latch.Reason();
+        detail << "estop";
+        if (!reason.empty()) {
+            detail << "=" << reason;
+        }
+    }
+    if (snap.mrm_active) {
+        if (!detail.str().empty()) {
+            detail << "; ";
+        }
+        detail << "mrm_active";
+    }
+    for (const auto& p : snap.processes) {
+        if (!p.alive) {
+            if (!detail.str().empty()) {
+                detail << "; ";
+            }
+            detail << "down:" << p.name;
+        }
+    }
+    snap.detail = detail.str();
     return snap;
 }
 
@@ -209,6 +245,14 @@ void MonitorRegistry::BuildMonitorsFromOptions() {
     if (options_.enable_process_monitor) {
         auto proc = CreateProcessMonitor();
         proc->set_enabled(true);
+        std::vector<CriticalProcessSpec> specs;
+        std::vector<std::string> hints;
+        for (const auto& cp : options_.critical_processes) {
+            specs.push_back({cp.name, cp.match.empty() ? cp.name : cp.match});
+            hints.push_back(cp.restart_hint);
+        }
+        proc->set_critical_specs(std::move(specs));
+        proc->set_restart_hints(std::move(hints));
         monitors_.push_back(std::move(proc));
     }
     if (options_.enable_voltage_monitor) {
@@ -253,6 +297,16 @@ void MonitorRegistry::BuildMonitorsFromOptions() {
             monitors_.push_back(std::move(mrm));
         }
     }
+}
+
+void MonitorRegistry::PublishSnapshotIfConfigured() const {
+    if (!options_.publish_health_snapshot) {
+        return;
+    }
+    HealthSnapshotStore store(options_.health_snapshot_path.empty()
+                                  ? HealthSnapshotStore::DefaultPath()
+                                  : options_.health_snapshot_path);
+    store.Write(Snapshot());
 }
 
 void MonitorRegistry::StartGperfIfRequested() {

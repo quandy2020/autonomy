@@ -176,6 +176,13 @@ void FillRpcCapabilities(const proto::CapabilitiesOptions& options,
     caps->set_supports_system_monitor(
         CapEnabled(options.has_supports_system_monitor(),
                    options.supports_system_monitor()));
+    caps->set_supports_mrm(
+        CapEnabled(options.has_supports_mrm(), options.supports_mrm()));
+    caps->set_supports_ota(
+        CapEnabled(options.has_supports_ota(), options.supports_ota()));
+    caps->set_supports_event_bundle(
+        CapEnabled(options.has_supports_event_bundle(),
+                   options.supports_event_bundle()));
     caps->set_bridge_version(kBridgeVersion);
     caps->set_autonomy_version(kAutonomyVersion);
 }

@@ -288,7 +288,7 @@ private:
     clients::SensorStub::UniquePtr sensor_{nullptr};
 
     /**
-     * @brief Owned SystemMonitorStub (health snapshot via MonitorRegistry).
+     * @brief Owned SystemMonitorStub (read-only HealthSnapshotStore).
      */
     clients::SystemMonitorStub::UniquePtr system_monitor_{nullptr};
 

@@ -12,7 +12,13 @@
 #include "autonomy/bridge/grpc/profile.hpp"
 #include "autonomy/bridge/grpc/rpc_status.hpp"
 #include "autonomy/bridge/grpc/task_types.hpp"
+#include "autonomy/system/logging/event_bundler.hpp"
+#include "autonomy/system/ota/ota_agent.hpp"
+#include <automsgs/msgs/status_msgs/status_msgs.pb.h>
 #include <chrono>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
 
 namespace autonomy {
 namespace bridge {
@@ -145,6 +151,130 @@ void RpcSystemGetActiveGoalHandler::OnRequest(
         response.set_goal_id(snapshot.cmd_id);
         return response;
     });
+}
+
+void RpcSystemRestartModuleHandler::OnRequest(
+    const ::automsgs::rpcs::system::RestartModuleRequest& request) {
+    ::automsgs::rpcs::system::RestartModuleResponse response;
+    if (request.module_name().empty()) {
+        *response.mutable_status() = ErrorStatus(
+            ::automsgs::msgs::status_msgs::INVALID_ARGUMENT,
+            "module_name required");
+        ReplyUnary(this, std::move(response));
+        return;
+    }
+    namespace fs = std::filesystem;
+    const char* xdg = std::getenv("XDG_RUNTIME_DIR");
+    fs::path dir =
+        xdg && xdg[0] ? fs::path(xdg) / "autonomy" : fs::path("/tmp/autonomy");
+    std::error_code ec;
+    fs::create_directories(dir, ec);
+    std::ofstream out(dir / "restart_module.request");
+    out << request.module_name() << "\n" << request.reason() << "\n";
+    *response.mutable_status() = OkStatus("restart requested");
+    response.set_detail((dir / "restart_module.request").string());
+    ReplyUnary(this, std::move(response));
+}
+
+void RpcSystemGetProcessStatusHandler::OnRequest(
+    const ::automsgs::rpcs::system::GetProcessStatusRequest&) {
+    ReplyUnaryWithContext(this, [](auto* context) {
+        ::automsgs::rpcs::system::GetProcessStatusResponse response;
+        *response.mutable_status() = OkStatus();
+        const auto health = context->system_monitor().GetHealth(true);
+        for (const auto& p : health.processes()) {
+            *response.add_processes() = p;
+        }
+        return response;
+    });
+}
+
+void RpcSystemGetEventBundleHandler::OnRequest(
+    const ::automsgs::rpcs::system::GetEventBundleRequest& request) {
+    ::automsgs::rpcs::system::GetEventBundleResponse response;
+    autonomy::system::logging::EventBundler bundler;
+    std::string path;
+    if (request.event_id().empty()) {
+        path = bundler.LatestEventPath();
+    } else {
+        path = bundler.ResolveEventPath(request.event_id());
+    }
+    if (path.empty() || !std::filesystem::exists(path)) {
+        *response.mutable_status() = ErrorStatus(
+            ::automsgs::msgs::status_msgs::NOT_FOUND, "no event bundle");
+        ReplyUnary(this, std::move(response));
+        return;
+    }
+    *response.mutable_status() = OkStatus();
+    response.set_event_id(std::filesystem::path(path).filename().string());
+    response.set_path(path);
+    ReplyUnary(this, std::move(response));
+}
+
+void RpcSystemStartOtaHandler::OnRequest(
+    const ::automsgs::rpcs::system::StartOtaRequest& request) {
+    ReplyUnary(this,
+               autonomy::system::ota::OtaAgent::Shared().Start(request));
+}
+
+void RpcSystemGetOtaStatusHandler::OnRequest(
+    const ::automsgs::rpcs::system::GetOtaStatusRequest&) {
+    ReplyUnary(this, autonomy::system::ota::OtaAgent::Shared().Status());
+}
+
+void RpcSystemAbortOtaHandler::OnRequest(
+    const ::automsgs::rpcs::system::AbortOtaRequest& request) {
+    ReplyUnary(this,
+               autonomy::system::ota::OtaAgent::Shared().Abort(request.reason()));
+}
+
+void RpcSystemApplyConfigPackageHandler::OnRequest(
+    const ::automsgs::rpcs::system::ApplyConfigPackageRequest& request) {
+    ::automsgs::rpcs::system::ApplyConfigPackageResponse response;
+    if (request.package_uri().empty()) {
+        *response.mutable_status() = ErrorStatus(
+            ::automsgs::msgs::status_msgs::INVALID_ARGUMENT,
+            "package_uri required");
+        ReplyUnary(this, std::move(response));
+        return;
+    }
+    if (request.dry_run()) {
+        *response.mutable_status() = OkStatus("dry_run ok");
+        response.set_detail(request.package_uri());
+        ReplyUnary(this, std::move(response));
+        return;
+    }
+    namespace fs = std::filesystem;
+    const fs::path src(request.package_uri());
+    if (!fs::exists(src)) {
+        *response.mutable_status() = ErrorStatus(
+            ::automsgs::msgs::status_msgs::NOT_FOUND, "package missing");
+        ReplyUnary(this, std::move(response));
+        return;
+    }
+    const char* home = std::getenv("HOME");
+    fs::path dest = home && home[0] ? fs::path(home) / ".autonomy/config_drop"
+                                    : fs::path("/tmp/autonomy/config_drop");
+    std::error_code ec;
+    fs::create_directories(dest, ec);
+    if (fs::is_directory(src)) {
+        fs::copy(src, dest / src.filename(),
+                 fs::copy_options::recursive |
+                     fs::copy_options::overwrite_existing,
+                 ec);
+    } else {
+        fs::copy_file(src, dest / src.filename(),
+                      fs::copy_options::overwrite_existing, ec);
+    }
+    if (ec) {
+        *response.mutable_status() =
+            ErrorStatus(::automsgs::msgs::status_msgs::INTERNAL, ec.message());
+        ReplyUnary(this, std::move(response));
+        return;
+    }
+    *response.mutable_status() = OkStatus("staged");
+    response.set_detail(dest.string());
+    ReplyUnary(this, std::move(response));
 }
 
 }  // namespace handlers

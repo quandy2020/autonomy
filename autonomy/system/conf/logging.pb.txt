@@ -1,0 +1,12 @@
+# Logging / evidence policy (system management plane).
+# Consumed by docs + EventBundler defaults; optional AUTONOMY_LOG_ROOT override.
+
+log_root: ""   # empty → $HOME/.autonomy/log
+retain_days: 14
+max_total_gb: 10
+event_window_before_s: 60
+event_window_after_s: 30
+event_cooldown_s: 60
+# Triggers: hazard_error | emergency_stop | mrm_active | critical_process_down
+blackbox_enable: false
+blackbox_minutes: 15

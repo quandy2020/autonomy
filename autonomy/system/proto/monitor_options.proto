@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 
-package autonomy.system.monitor.proto;
+package autonomy.system.proto;
 
 message ChannelWatchOptions {
   string channel = 1;
@@ -30,6 +30,12 @@ message LatencyWatchOptions {
 message MrmHandlerOptions {
   string cmd_vel_channel = 1;
   bool emergency_stop_on_error = 2;
+}
+
+message CriticalProcessOptions {
+  string name = 1;
+  string match = 2;          // /proc cmdline substring; empty → use name
+  string restart_hint = 3;   // "respawn" | "alert_only"
 }
 
 message MonitorOptions {
@@ -60,4 +66,7 @@ message MonitorOptions {
   string heap_profile_filename = 22;
 
   double collect_interval_sec = 23;
+  repeated CriticalProcessOptions critical_processes = 24;
+  string health_snapshot_path = 25;
+  bool publish_health_snapshot = 26;
 }

@@ -9,29 +9,20 @@
     autonomy.bridge (same as bridge/launch/bridge.launch; needs -DBUILD_GRPC=ON),
     autonomy.foxglove_bridge
 
-  Not started here (one-off):
-    task_teleop_smoke, cartographer_pbstream_to_map, autonomy_foxglove_fakedata
+  Not started here (intentional — use dedicated launches):
+    localization_*, autodriver / chassis, replay / sim_fullstack
 
   Prerequisites:
     - system/conf/autonomy.pb.txt, task/conf/*, system/conf/monitor.pb.txt
-    - localization/conf/cartographer/* when running localization launch separately
-    - bridge/conf/bridge.pb.txt (+ config/bridge/*.lua) when using bridge
-    - PATH: build/bin; optional AUTONOMY_BT_PLUGIN_PATH=build/lib
+    - bridge/conf/bridge.pb.txt when using bridge
+    - PATH: build/bin
 
   Dev (repo root):
     export PATH=$PWD/build/bin:$PATH
     export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/system/launch
     autolink_launch autonomy.launch
-
-  Bridge alone:
-    export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/bridge/launch
-    autolink_launch bridge.launch
-
-  Monitor alone:
-    autolink_launch monitor.launch
 -->
 <autolink>
-  <!-- Same process as autonomy/system/launch/monitor.launch -->
   <module>
     <name>monitor</name>
     <type>binary</type>
@@ -43,24 +34,30 @@
     <name>planning</name>
     <type>binary</type>
     <process_name>autonomy.planning --conf=autonomy.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
   </module>
   <module>
     <name>control</name>
     <type>binary</type>
     <process_name>autonomy.control --conf=autonomy.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
   </module>
   <module>
     <name>task</name>
     <type>binary</type>
     <process_name>autonomy.task</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
   </module>
   <module>
     <name>perception</name>
     <type>binary</type>
-    <!-- perception conf often has enabled=false; use exploration.launch for closed-loop -->
     <process_name>autonomy.perception --conf=autonomy.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
   </module>
-  <!-- Same process as autonomy/bridge/launch/bridge.launch -->
   <module>
     <name>bridge</name>
     <type>binary</type>

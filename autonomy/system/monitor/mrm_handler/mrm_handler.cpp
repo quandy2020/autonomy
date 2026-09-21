@@ -18,6 +18,7 @@
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/system/monitor/hazard_monitor/hazard_monitor.hpp"
+#include "autonomy/system/safety/safety_latch.hpp"
 
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS
 #include <prometheus/gauge.h>
@@ -76,6 +77,8 @@ void MrmHandler::Collect() {
     if (hazard_->level() == HazardLevel::kError) {
         active_ = true;
         PublishStop();
+        safety::SafetyLatch latch;
+        latch.SetLatched(true, "mrm_hazard_error");
     }
 
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS

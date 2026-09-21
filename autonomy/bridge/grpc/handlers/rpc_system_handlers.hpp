@@ -115,6 +115,41 @@ BRIDGE_DECL(RpcSystemGetActiveGoalHandler,
                 ::automsgs::rpcs::system::ActiveGoal,
                 "/automsgs.rpcs.system.SystemService/GetActiveGoal");
 
+BRIDGE_DECL(RpcSystemRestartModuleHandler,
+                ::automsgs::rpcs::system::RestartModuleRequest,
+                ::automsgs::rpcs::system::RestartModuleResponse,
+                "/automsgs.rpcs.system.SystemService/RestartModule");
+
+BRIDGE_DECL(RpcSystemGetProcessStatusHandler,
+                ::automsgs::rpcs::system::GetProcessStatusRequest,
+                ::automsgs::rpcs::system::GetProcessStatusResponse,
+                "/automsgs.rpcs.system.SystemService/GetProcessStatus");
+
+BRIDGE_DECL(RpcSystemGetEventBundleHandler,
+                ::automsgs::rpcs::system::GetEventBundleRequest,
+                ::automsgs::rpcs::system::GetEventBundleResponse,
+                "/automsgs.rpcs.system.SystemService/GetEventBundle");
+
+BRIDGE_DECL(RpcSystemStartOtaHandler,
+                ::automsgs::rpcs::system::StartOtaRequest,
+                ::automsgs::rpcs::system::StartOtaResponse,
+                "/automsgs.rpcs.system.SystemService/StartOta");
+
+BRIDGE_DECL(RpcSystemGetOtaStatusHandler,
+                ::automsgs::rpcs::system::GetOtaStatusRequest,
+                ::automsgs::rpcs::system::GetOtaStatusResponse,
+                "/automsgs.rpcs.system.SystemService/GetOtaStatus");
+
+BRIDGE_DECL(RpcSystemAbortOtaHandler,
+                ::automsgs::rpcs::system::AbortOtaRequest,
+                ::automsgs::rpcs::system::AbortOtaResponse,
+                "/automsgs.rpcs.system.SystemService/AbortOta");
+
+BRIDGE_DECL(RpcSystemApplyConfigPackageHandler,
+                ::automsgs::rpcs::system::ApplyConfigPackageRequest,
+                ::automsgs::rpcs::system::ApplyConfigPackageResponse,
+                "/automsgs.rpcs.system.SystemService/ApplyConfigPackage");
+
 }  // namespace handlers
 }  // namespace grpc
 }  // namespace bridge

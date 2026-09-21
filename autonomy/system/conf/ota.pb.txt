@@ -1,0 +1,12 @@
+# OTA policy (system management plane). Ansible remains install/rescue only.
+# Proto: autonomy/system/proto/ota_options.proto
+# Load:  LoadModuleConf("system", "ota.pb.txt")
+
+slots_root: "/opt/autonomy-slots"
+current_link: "/opt/autonomy"
+staging_dir: "/var/lib/autonomy/ota/staging"
+state_path: "/var/lib/autonomy/ota/state.json"
+health_gate_sec: 45
+delta_fallback_to_full: true
+allow_start_when_hazard: false
+require_signature: false

@@ -20,6 +20,9 @@ identity {
 # Optional capability advertise. Unset field → enabled; set false to hide.
 capabilities {
   # supports_exploration: false
+  # supports_ota: false
+  # supports_event_bundle: false
+  # supports_mrm: false
 }
 
 grpc {

@@ -25,8 +25,11 @@
 
 #include "autolink/autolink.hpp"
 #include "autonomy/common/gflags.hpp"
+#include "autonomy/system/logging/event_bundler.hpp"
 #include "autonomy/system/monitor/monitor_options.hpp"
 #include "autonomy/system/monitor/monitor_registry.hpp"
+#include "autonomy/system/monitor/restart_request_watcher.hpp"
+#include "autonomy/system/safety/safety_latch.hpp"
 
 namespace autonomy::system::monitor {
 namespace {
@@ -65,11 +68,32 @@ int main(int argc, char** argv) {
     registry->Start();
 
     std::atomic<bool> collecting{true};
+    autonomy::system::logging::EventBundler bundler;
     std::thread collector([&]() {
         const auto interval =
             autonomy::system::monitor::CollectInterval(registry->options());
         while (collecting.load()) {
             registry->CollectAll();
+            registry->PublishSnapshotIfConfigured();
+            autonomy::system::monitor::PollRestartModuleRequest();
+            const auto snap = registry->Snapshot();
+            if (snap.emergency_stop_latched ||
+                autonomy::system::safety::SafetyLatch{}.IsLatched()) {
+                bundler.MaybeBundle("emergency_stop", snap);
+            }
+            if (snap.mrm_active) {
+                bundler.MaybeBundle("mrm_active", snap);
+            }
+            if (snap.hazard_level ==
+                autonomy::system::monitor::HazardLevel::kError) {
+                bundler.MaybeBundle("hazard_error", snap);
+            }
+            for (const auto& p : snap.processes) {
+                if (!p.alive) {
+                    bundler.MaybeBundle("critical_process_down", snap);
+                    break;
+                }
+            }
             std::this_thread::sleep_for(interval);
         }
     });
@@ -77,7 +101,8 @@ int main(int argc, char** argv) {
     LOG(INFO) << "monitor_main running"
               << (opts.enable_prometheus
                       ? (" prometheus=" + opts.prometheus_bind_address)
-                      : "");
+                      : "")
+              << " (health snapshot is the sole GetHealth source for Bridge)";
 
     autolink::WaitForShutdown();
 

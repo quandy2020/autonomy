@@ -46,6 +46,16 @@ service SystemService {
   rpc CancelAllGoals(CancelAllGoalsRequest) returns (automsgs.rpcs.common.Status);
   rpc GetActiveGoal(GetActiveGoalRequest) returns (ActiveGoal);
   rpc GetCapabilities(GetCapabilitiesRequest) returns (Capabilities);
+
+  // Process / evidence / OTA (system management plane).
+  rpc RestartModule(RestartModuleRequest) returns (RestartModuleResponse);
+  rpc GetProcessStatus(GetProcessStatusRequest) returns (GetProcessStatusResponse);
+  rpc GetEventBundle(GetEventBundleRequest) returns (GetEventBundleResponse);
+  rpc StartOta(StartOtaRequest) returns (StartOtaResponse);
+  rpc GetOtaStatus(GetOtaStatusRequest) returns (GetOtaStatusResponse);
+  rpc AbortOta(AbortOtaRequest) returns (AbortOtaResponse);
+  rpc ApplyConfigPackage(ApplyConfigPackageRequest)
+      returns (ApplyConfigPackageResponse);
 }
 
 // ---------------------------------------------------------------------------
@@ -160,6 +170,15 @@ message LatencyHealth {
   float message_age_seconds = 4;
 }
 
+// Matches autonomy::system::monitor::ProcessHealth (critical process list).
+message ProcessHealth {
+  string name = 1;
+  string match = 2;
+  bool alive = 3;
+  int32 pid = 4;
+  string restart_hint = 5;
+}
+
 // Aggregate health from autonomy/system/monitor registry.
 message SystemHealth {
   HazardLevel hazard_level = 1;
@@ -171,6 +190,7 @@ message SystemHealth {
   repeated ChannelHealth channels = 5;
   repeated LatencyHealth latencies = 6;
   string detail = 7;
+  repeated ProcessHealth processes = 8;
 }
 
 message GetStatusRequest {}
@@ -255,4 +275,97 @@ message Capabilities {
   string bridge_version = 11;
   string autonomy_version = 12;
   bool supports_exploration = 13;
+  bool supports_ota = 14;
+  bool supports_event_bundle = 15;
+}
+
+// ---------------------------------------------------------------------------
+// Process control / evidence / OTA / config package
+// ---------------------------------------------------------------------------
+
+message RestartModuleRequest {
+  string module_name = 1;  // launch module name, e.g. "planning"
+  string reason = 2;
+}
+
+message RestartModuleResponse {
+  automsgs.rpcs.common.Status status = 1;
+  string detail = 2;
+}
+
+message GetProcessStatusRequest {}
+
+message GetProcessStatusResponse {
+  automsgs.rpcs.common.Status status = 1;
+  repeated ProcessHealth processes = 2;
+}
+
+message GetEventBundleRequest {
+  // Empty = latest event under events/
+  string event_id = 1;
+}
+
+message GetEventBundleResponse {
+  automsgs.rpcs.common.Status status = 1;
+  string event_id = 2;
+  string path = 3;
+  string detail = 4;
+}
+
+enum OtaState {
+  OTA_STATE_UNKNOWN = 0;
+  OTA_STATE_IDLE = 1;
+  OTA_STATE_DOWNLOADING = 2;
+  OTA_STATE_VERIFYING = 3;
+  OTA_STATE_APPLYING = 4;
+  OTA_STATE_SWITCHING = 5;
+  OTA_STATE_RESTARTING = 6;
+  OTA_STATE_HEALTH_GATING = 7;
+  OTA_STATE_COMMITTED = 8;
+  OTA_STATE_ROLLING_BACK = 9;
+  OTA_STATE_FAILED = 10;
+}
+
+message StartOtaRequest {
+  // Local path or http(s) URI to full/delta package directory or archive.
+  string package_uri = 1;
+  // Optional: "full" | "delta" | empty = auto
+  string package_type = 2;
+  bool prefer_delta = 3;
+}
+
+message StartOtaResponse {
+  automsgs.rpcs.common.Status status = 1;
+  OtaState state = 2;
+  string detail = 3;
+}
+
+message GetOtaStatusRequest {}
+
+message GetOtaStatusResponse {
+  automsgs.rpcs.common.Status status = 1;
+  OtaState state = 2;
+  string current_version = 3;
+  string target_version = 4;
+  float progress = 5;  // 0..1 if known
+  string detail = 6;
+}
+
+message AbortOtaRequest {
+  string reason = 1;
+}
+
+message AbortOtaResponse {
+  automsgs.rpcs.common.Status status = 1;
+  OtaState state = 2;
+}
+
+message ApplyConfigPackageRequest {
+  string package_uri = 1;
+  bool dry_run = 2;
+}
+
+message ApplyConfigPackageResponse {
+  automsgs.rpcs.common.Status status = 1;
+  string detail = 2;
 }

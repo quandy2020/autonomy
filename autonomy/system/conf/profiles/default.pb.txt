@@ -1,0 +1,14 @@
+# Default machine × site profile (identity + pointers).
+# Authoritative robot_id for GetInfo / GetRobotFullInfo should align with bridge conf.
+
+robot_id: "robot-default"
+model: "amr"
+site_id: ""
+fleet_id: ""
+software_version: ""
+profile_name: "default"
+
+# Suggested monitor / data / logging conf basenames under system/conf/
+monitor_conf: "monitor.pb.txt"
+data_conf: "data.pb.txt"
+logging_conf: "logging.pb.txt"

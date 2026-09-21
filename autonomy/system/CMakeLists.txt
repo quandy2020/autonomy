@@ -33,6 +33,10 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/monitor/monitor_main.cpp")
   autonomy_binary(autonomy.monitor SRCS monitor/monitor_main.cpp)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ota/ota_main.cpp")
+  autonomy_binary(autonomy.ota SRCS ota/ota_main.cpp)
+endif()
+
 # Runtime assets → share/autonomy/system/ (launch / conf / dag)
 install(
   DIRECTORY conf/
@@ -46,3 +50,10 @@ install(
   DESTINATION share/autonomy/system/launch
   USE_SOURCE_PERMISSIONS
   FILES_MATCHING PATTERN "*.launch")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/scripts")
+  install(
+    DIRECTORY scripts/
+    DESTINATION share/autonomy/system/scripts
+    USE_SOURCE_PERMISSIONS
+    FILES_MATCHING PATTERN "*.sh")
+endif()

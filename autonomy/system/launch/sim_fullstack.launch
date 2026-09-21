@@ -1,0 +1,51 @@
+<!--
+  Simulation fullstack (Mode B): autosim as L0 + algorithm stack.
+  Mutually exclusive with replay.launch (do not run both).
+
+  From workspace root:
+    export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/system/launch:$PWD/autosim/launch
+    # or start autosim separately then this file without autosim module.
+
+  Control MAY run (cmd_vel → autosim, not real chassis).
+-->
+<autolink>
+  <module>
+    <name>autosim</name>
+    <type>binary</type>
+    <process_name>bash src/autonomy/autosim/scripts/run.sh sim</process_name>
+    <exception_handler>exit</exception_handler>
+  </module>
+  <module>
+    <name>monitor</name>
+    <type>binary</type>
+    <process_name>autonomy.monitor --conf=monitor.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>planning</name>
+    <type>binary</type>
+    <process_name>autonomy.planning --conf=autonomy.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>control</name>
+    <type>binary</type>
+    <process_name>autonomy.control --conf=autonomy.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>task</name>
+    <type>binary</type>
+    <process_name>autonomy.task</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>foxglove</name>
+    <type>binary</type>
+    <process_name>autonomy.foxglove_bridge --foxglove_host=0.0.0.0 --foxglove_port=8765</process_name>
+  </module>
+</autolink>

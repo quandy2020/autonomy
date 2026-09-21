@@ -65,6 +65,9 @@ public:
     /// Call CollectAll() first for fresh gauges.
     SystemHealthSnapshot Snapshot() const;
 
+    /// Write Snapshot to HealthSnapshotStore when publish_health_snapshot.
+    void PublishSnapshotIfConfigured() const;
+
     /// 手动添加外部 monitor（可选）
     void AddMonitor(std::unique_ptr<MonitorBase> monitor);
 

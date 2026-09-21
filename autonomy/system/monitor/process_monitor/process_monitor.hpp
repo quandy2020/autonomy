@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 The Openbot Authors (duyongquan)
+ * Copyright 2026 The Openbot Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,10 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "autonomy/system/monitor/monitor_base.hpp"
+#include "autonomy/system/monitor/ops_types.hpp"
 
 namespace autonomy {
 namespace system {
@@ -35,6 +37,13 @@ public:
     void Collect() override;
     void RegisterWithPrometheus(void* registry) override;
 
+    void set_critical_specs(std::vector<CriticalProcessSpec> specs) {
+        critical_specs_ = std::move(specs);
+    }
+    void set_restart_hints(std::vector<std::string> hints) {
+        restart_hints_ = std::move(hints);
+    }
+
     uint32_t process_count() const {
         return process_count_;
     }
@@ -43,6 +52,9 @@ public:
     }
     const std::string& top_rss_comm() const {
         return top_rss_comm_;
+    }
+    const std::vector<ProcessHealth>& critical_health() const {
+        return critical_health_;
     }
 
     static std::unique_ptr<ProcessMonitor> Create() {
@@ -53,6 +65,9 @@ private:
     uint32_t process_count_{0};
     uint64_t total_rss_kb_{0};
     std::string top_rss_comm_;
+    std::vector<CriticalProcessSpec> critical_specs_;
+    std::vector<std::string> restart_hints_;
+    std::vector<ProcessHealth> critical_health_;
 
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS
     void* count_gauge_{nullptr};

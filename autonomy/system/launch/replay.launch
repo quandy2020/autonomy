@@ -1,0 +1,39 @@
+<!--
+  Offline replay (Mode A). No autodriver / chassis / control.
+  export PACKAGE_DIR=... or RECORD_FILE=...
+  export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/system/launch
+-->
+<autolink>
+  <module>
+    <name>player</name>
+    <type>binary</type>
+    <process_name>bash autonomy/system/scripts/replay_play.sh</process_name>
+    <exception_handler>exit</exception_handler>
+  </module>
+  <module>
+    <name>monitor</name>
+    <type>binary</type>
+    <process_name>autonomy.monitor --conf=monitor.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>planning</name>
+    <type>binary</type>
+    <process_name>autonomy.planning --conf=autonomy.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>task</name>
+    <type>binary</type>
+    <process_name>autonomy.task</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>foxglove</name>
+    <type>binary</type>
+    <process_name>autonomy.foxglove_bridge --foxglove_host=0.0.0.0 --foxglove_port=8765</process_name>
+  </module>
+</autolink>

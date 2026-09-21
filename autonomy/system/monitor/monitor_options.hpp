@@ -30,6 +30,12 @@ struct MrmHandlerOptions {
     bool emergency_stop_on_error{true};
 };
 
+struct CriticalProcessOptions {
+    std::string name;
+    std::string match;
+    std::string restart_hint{"respawn"};
+};
+
 /**
  * 可选的监控项与 Prometheus/gperf 参数选定。
  * 用于控制启用哪些 monitor 以及可视化/分析相关配置。
@@ -53,6 +59,7 @@ struct MonitorOptions {
     std::vector<ChannelWatchOptions> channel_watches;
     std::vector<LatencyWatchOptions> latency_watches;
     MrmHandlerOptions mrm;
+    std::vector<CriticalProcessOptions> critical_processes;
 
     // ---------- Prometheus 可视化 ----------
     bool enable_prometheus{true};
@@ -67,6 +74,10 @@ struct MonitorOptions {
 
     // ---------- 采集间隔（秒） ----------
     double collect_interval_sec{1.0};
+
+    // ---------- 健康单一真相：写盘供 Bridge 只读 ----------
+    bool publish_health_snapshot{true};
+    std::string health_snapshot_path{};  // empty → HealthSnapshotStore::DefaultPath()
 
     static MonitorOptions Default();
 };
