@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package messages;
+
+import "proto/note.proto";
+
+message Greeting {
+  string text = 1;
+  int32 value = 2;
+  Note note = 3;
+}

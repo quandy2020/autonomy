@@ -1,0 +1,13 @@
+# Installed package config for autocmake itself.
+# find_package(autocmake) loads Autocmake.cmake beside this file.
+
+cmake_minimum_required(VERSION 3.20)
+
+@PACKAGE_INIT@
+
+set(AUTOCMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}")
+if(NOT AUTOCMAKE_DIR IN_LIST CMAKE_MODULE_PATH)
+  list(APPEND CMAKE_MODULE_PATH "${AUTOCMAKE_DIR}")
+endif()
+include("${AUTOCMAKE_DIR}/Autocmake.cmake")
+set(AUTOCMAKE_VERSION "@PROJECT_VERSION@")

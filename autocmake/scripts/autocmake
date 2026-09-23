@@ -1,0 +1,289 @@
+#!/usr/bin/env python3
+# Copyright 2026 The Openbot Authors (duyongquan)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+
+"""Build, test, and list autocmake packages in dependency order.
+
+This is the workspace tool. autocmake's CMake macros build one package;
+this command orders a workspace the way colcon orders an ament workspace.
+"""
+
+import argparse
+import os
+import subprocess
+import sys
+
+SKIP_DIRS = {
+    "build",
+    "install",
+    "log",
+    "Testing",
+    "CMakeFiles",
+    ".git",
+}
+BUILDTOOLS = {"autocmake"}
+
+
+def script_directories():
+    here = os.path.dirname(os.path.abspath(__file__))
+    candidates = [os.path.join(here, "..", "cmake")]
+    env_dir = os.environ.get("AUTOCMAKE_DIR")
+    if env_dir:
+        candidates.insert(0, os.path.join(env_dir, "cmake"))
+        candidates.insert(0, env_dir)
+    for libname in ("lib", "lib64"):
+        root = os.path.abspath(os.path.join(here, "..", libname))
+        candidates.append(os.path.join(root, "cmake", "autocmake", "cmake"))
+        if not os.path.isdir(root):
+            continue
+        for entry in sorted(os.listdir(root)):
+            candidates.append(os.path.join(root, entry, "cmake", "autocmake", "cmake"))
+    found = []
+    for candidate in candidates:
+        path = os.path.abspath(candidate)
+        if os.path.exists(os.path.join(path, "package_xml.py")) and path not in found:
+            found.append(path)
+    return found
+
+
+def load_parser():
+    for directory in script_directories():
+        if directory not in sys.path:
+            sys.path.insert(0, directory)
+        try:
+            from package_xml import parse_package_xml
+            return parse_package_xml
+        except ImportError:
+            continue
+    sys.exit("autocmake: cannot find package_xml.py next to the autocmake modules")
+
+
+def discover_packages(base_paths, parse_package_xml):
+    packages = []
+    for base in base_paths:
+        base = os.path.abspath(base)
+        if not os.path.isdir(base):
+            sys.exit(f"autocmake: base path does not exist: {base}")
+        for dirpath, dirnames, filenames in os.walk(base):
+            dirnames[:] = [name for name in dirnames if name not in SKIP_DIRS and not name.startswith(".")]
+            if "AUTOCMAKE_IGNORE" in filenames or "COLCON_IGNORE" in filenames:
+                dirnames[:] = []
+                continue
+            if "package.xml" not in filenames:
+                continue
+            try:
+                package = parse_package_xml(os.path.join(dirpath, "package.xml"))
+            except ValueError as exc:
+                sys.exit(f"autocmake: {exc}")
+            package.directory = dirpath
+            packages.append(package)
+            dirnames[:] = []
+    by_name = {}
+    for package in packages:
+        if package.name in by_name:
+            sys.exit(
+                "autocmake: duplicate package '{0}'\n  {1}\n  {2}".format(
+                    package.name, by_name[package.name].directory, package.directory))
+        by_name[package.name] = package
+    return packages, by_name
+
+
+def workspace_dependencies(package, by_name):
+    names = []
+    for name in package.buildtool_depends + package.build_depends:
+        if name in BUILDTOOLS or name not in by_name or name in names:
+            continue
+        names.append(name)
+    return names
+
+
+def topological_order(packages, by_name):
+    indegree = {package.name: 0 for package in packages}
+    dependents = {package.name: [] for package in packages}
+    for package in packages:
+        for dep in workspace_dependencies(package, by_name):
+            dependents[dep].append(package.name)
+            indegree[package.name] += 1
+    ready = sorted(name for name, degree in indegree.items() if degree == 0)
+    ordered = []
+    while ready:
+        name = ready.pop(0)
+        ordered.append(by_name[name])
+        for dependent in dependents[name]:
+            indegree[dependent] -= 1
+            if indegree[dependent] == 0:
+                ready.append(dependent)
+        ready.sort()
+    if len(ordered) != len(packages):
+        left = [name for name, degree in indegree.items() if degree > 0]
+        sys.exit("autocmake: dependency cycle involving: " + ", ".join(sorted(left)))
+    return ordered
+
+
+def ancestor_packages(names, by_name):
+    selected = set()
+    stack = list(names)
+    while stack:
+        name = stack.pop()
+        if name in selected:
+            continue
+        if name not in by_name:
+            sys.exit(f"autocmake: package '{name}' is not in this workspace")
+        selected.add(name)
+        stack.extend(workspace_dependencies(by_name[name], by_name))
+    return selected
+
+
+def select_packages(ordered, by_name, selected, up_to):
+    if selected and up_to:
+        sys.exit("autocmake: pass only one of --packages-select and --packages-up-to")
+    if up_to:
+        keep = ancestor_packages(up_to, by_name)
+        return [package for package in ordered if package.name in keep]
+    if not selected:
+        return ordered
+    missing = [name for name in selected if name not in by_name]
+    if missing:
+        sys.exit("autocmake: package not in this workspace: " + ", ".join(missing))
+    chosen = []
+    for package in ordered:
+        if package.name not in selected:
+            continue
+        for dep in workspace_dependencies(package, by_name):
+            if dep not in selected:
+                sys.exit(
+                    f"autocmake: '{package.name}' depends on workspace package '{dep}'. "
+                    f"Add it to --packages-select, or use --packages-up-to {package.name}")
+        chosen.append(package)
+    return chosen
+
+
+def prefix_path(install_base, cmake_args):
+    extras = []
+    kept = []
+    for arg in cmake_args:
+        if arg.startswith("-DCMAKE_PREFIX_PATH="):
+            extras.append(arg.split("=", 1)[1])
+        elif arg.startswith("-DCMAKE_INSTALL_PREFIX="):
+            continue
+        else:
+            kept.append(arg)
+    parts = [install_base]
+    env_prefix = os.environ.get("CMAKE_PREFIX_PATH", "")
+    if env_prefix:
+        parts.extend(item for item in env_prefix.split(os.pathsep) if item)
+    for extra in extras:
+        parts.extend(item for item in extra.split(os.pathsep) if item)
+    deduped = []
+    for part in parts:
+        if part not in deduped:
+            deduped.append(part)
+    return os.pathsep.join(deduped), kept
+
+
+def run_command(cmd):
+    print("+", " ".join(cmd))
+    subprocess.check_call(cmd)
+
+
+def build_packages(args, ordered):
+    prefix, cmake_args = prefix_path(os.path.abspath(args.install_base), args.cmake_args)
+    for package in ordered:
+        build_dir = os.path.join(os.path.abspath(args.build_base), package.name)
+        print(f"autocmake: building {package.name} ({package.version})")
+        cmd = [
+            "cmake",
+            "-S", package.directory,
+            "-B", build_dir,
+            f"-DCMAKE_INSTALL_PREFIX={os.path.abspath(args.install_base)}",
+            f"-DCMAKE_PREFIX_PATH={prefix}",
+            "-DCMAKE_BUILD_TYPE=Release",
+        ]
+        if args.generator:
+            cmd[1:1] = ["-G", args.generator]
+        cmd.extend(cmake_args)
+        run_command(cmd)
+        run_command(["cmake", "--build", build_dir, "--config", "Release", "--parallel"])
+        run_command(["cmake", "--install", build_dir, "--prefix", os.path.abspath(args.install_base), "--config", "Release"])
+
+
+def test_packages(args, ordered):
+    for package in ordered:
+        build_dir = os.path.join(os.path.abspath(args.build_base), package.name)
+        if not os.path.isdir(build_dir):
+            sys.exit(f"autocmake: {package.name} is not built; run 'autocmake build' first")
+        print(f"autocmake: testing {package.name}")
+        run_command(["ctest", "--test-dir", build_dir, "--build-config", "Release", "--output-on-failure"])
+
+
+def list_index(prefix):
+    root = os.path.join(os.path.abspath(prefix), "share", "autocmake_index", "resource_index", "packages")
+    if not os.path.isdir(root):
+        sys.exit(f"autocmake: no package index at {root}")
+    names = sorted(os.listdir(root))
+    for name in names:
+        print(name)
+    if not names:
+        sys.exit(f"autocmake: package index is empty: {root}")
+
+
+def main(argv):
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--base-path", action="append", help="Workspace root. Default: current directory")
+    scope = argparse.ArgumentParser(add_help=False)
+    scope.add_argument("--build-base", default="build")
+    scope.add_argument("--install-base", default="install")
+    scope.add_argument("--packages-select", nargs="+", default=[])
+    scope.add_argument("--packages-up-to", nargs="+", default=[])
+
+    parser = argparse.ArgumentParser(prog="autocmake", description="Build an autocmake workspace in dependency order")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    build = sub.add_parser("build", parents=[common, scope], help="Configure, build, and install packages")
+    build.add_argument("--generator", default=os.environ.get("CMAKE_GENERATOR", ""))
+    build.add_argument("--cmake-args", nargs=argparse.REMAINDER, default=[])
+
+    sub.add_parser("test", parents=[common, scope], help="Run CTest for packages already built")
+    sub.add_parser("list", parents=[common], help="Print packages in build order")
+    index = sub.add_parser("index", help="List packages registered in an install prefix")
+    index.add_argument("--prefix", required=True)
+
+    args = parser.parse_args(argv)
+    if args.command == "index":
+        list_index(args.prefix)
+        return 0
+
+    base_paths = args.base_path or ["."]
+    parse_package_xml = load_parser()
+    packages, by_name = discover_packages(base_paths, parse_package_xml)
+    if not packages:
+        sys.exit("autocmake: no package.xml found")
+    ordered = topological_order(packages, by_name)
+    if args.command != "list":
+        ordered = select_packages(ordered, by_name, args.packages_select, args.packages_up_to)
+
+    if args.command == "list":
+        for package in ordered:
+            print(package.name)
+        return 0
+    if args.command == "build":
+        if args.cmake_args[:1] == ["--"]:
+            args.cmake_args = args.cmake_args[1:]
+        build_packages(args, ordered)
+        return 0
+    if args.command == "test":
+        test_packages(args, ordered)
+        return 0
+    sys.exit(f"autocmake: unknown command {args.command}")
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except subprocess.CalledProcessError as exc:
+        sys.exit(exc.returncode)

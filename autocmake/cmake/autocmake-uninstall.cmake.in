@@ -1,0 +1,14 @@
+if(NOT EXISTS "@CMAKE_BINARY_DIR@/install_manifest.txt")
+  message(FATAL_ERROR
+    "Cannot find install manifest: @CMAKE_BINARY_DIR@/install_manifest.txt")
+endif()
+
+file(READ "@CMAKE_BINARY_DIR@/install_manifest.txt" _autocmake_files)
+string(REGEX REPLACE "\n" ";" _autocmake_files "${_autocmake_files}")
+foreach(_autocmake_file ${_autocmake_files})
+  set(_autocmake_path "$ENV{DESTDIR}${_autocmake_file}")
+  if(IS_SYMLINK "${_autocmake_path}" OR EXISTS "${_autocmake_path}")
+    message(STATUS "Uninstalling ${_autocmake_path}")
+    file(REMOVE "${_autocmake_path}")
+  endif()
+endforeach()
