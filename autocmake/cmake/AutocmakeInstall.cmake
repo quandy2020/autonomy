@@ -14,8 +14,12 @@
 
 include_guard(GLOBAL)
 
-set(_AUTOCMAKE_EXPORT_CONFIG_IN "${CMAKE_CURRENT_LIST_DIR}/autocmake-export-config.cmake.in")
-set(_AUTOCMAKE_UNINSTALL_IN "${CMAKE_CURRENT_LIST_DIR}/autocmake-uninstall.cmake.in")
+set(_AUTOCMAKE_EXPORT_CONFIG_IN
+  "${CMAKE_CURRENT_LIST_DIR}/autocmake-export-config.cmake.in"
+  CACHE INTERNAL "autocmake package config template")
+set(_AUTOCMAKE_UNINSTALL_IN
+  "${CMAKE_CURRENT_LIST_DIR}/autocmake-uninstall.cmake.in"
+  CACHE INTERNAL "autocmake uninstall script template")
 
 # @brief Install extra config snippets beside the package file.
 macro(_autocmake_install_config_blocks)

@@ -109,21 +109,52 @@ function(_autocmake_proto_one target proto layout_root imports protoc_arguments)
   set(_source "${CMAKE_CURRENT_BINARY_DIR}/${_relative_source}")
   set(_header "${CMAKE_CURRENT_BINARY_DIR}/${_relative_header}")
   set(_python "${CMAKE_CURRENT_BINARY_DIR}/${_relative_stem}_pb2.py")
-  set(_proto_paths "--proto_path=${layout_root}")
+  # The longest search path that contains this file decides its protobuf
+  # name. import "qos_profile.proto" then matches the descriptor emitted
+  # for autolink/proto/qos_profile.proto. cpp_out is shifted so the file
+  # is still written at the layout-root relative path above.
+  set(_name_root "${layout_root}")
   foreach(_import IN LISTS imports)
-    if(NOT _import STREQUAL layout_root)
+    if(_import STREQUAL _name_root)
+      continue()
+    endif()
+    cmake_path(IS_PREFIX _import "${proto}" NORMALIZE _covers_proto)
+    if(_covers_proto)
+      string(LENGTH "${_import}" _import_length)
+      string(LENGTH "${_name_root}" _name_root_length)
+      if(_import_length GREATER _name_root_length)
+        set(_name_root "${_import}")
+      endif()
+    endif()
+  endforeach()
+  cmake_path(RELATIVE_PATH proto BASE_DIRECTORY "${_name_root}" OUTPUT_VARIABLE _canonical)
+  string(LENGTH "${_relative}" _layout_length)
+  string(LENGTH "${_canonical}" _canonical_length)
+  math(EXPR _prefix_length "${_layout_length} - ${_canonical_length}")
+  if(_prefix_length GREATER 0)
+    math(EXPR _prefix_length "${_prefix_length} - 1")
+    string(SUBSTRING "${_relative}" 0 ${_prefix_length} _output_prefix)
+    set(_protoc_out "${CMAKE_CURRENT_BINARY_DIR}/${_output_prefix}")
+  else()
+    set(_protoc_out "${CMAKE_CURRENT_BINARY_DIR}")
+  endif()
+  set(_proto_paths "--proto_path=${_name_root}")
+  foreach(_import IN LISTS imports)
+    if(NOT _import STREQUAL _name_root)
       list(APPEND _proto_paths "--proto_path=${_import}")
     endif()
   endforeach()
   add_custom_command(
     OUTPUT "${_source}" "${_header}" "${_python}"
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "${_protoc_out}"
     COMMAND "${Protobuf_PROTOC_EXECUTABLE}"
       ${protoc_arguments}
-      "--cpp_out=${CMAKE_CURRENT_BINARY_DIR}"
-      "--python_out=${CMAKE_CURRENT_BINARY_DIR}"
+      "--cpp_out=${_protoc_out}"
+      "--python_out=${_protoc_out}"
       ${_proto_paths}
-      "${proto}"
+      "${_canonical}"
     DEPENDS "${proto}"
+    WORKING_DIRECTORY "${_name_root}"
     COMMENT "autocmake protobuf ${_relative}"
     VERBATIM)
   set_source_files_properties("${_source}" "${_header}" "${_python}" PROPERTIES GENERATED TRUE)
@@ -183,6 +214,9 @@ endfunction()
 # root becomes ${CMAKE_CURRENT_BINARY_DIR}/proto/a.pb.h, included as
 # "proto/a.pb.h". Later IMPORTS entries are extra protoc search paths, used
 # for import "sibling.proto" and for another package's installed protos.
+# A search path that contains the source file supplies the protobuf file
+# name, so import "sibling.proto" and the generated descriptor agree.
+# The written path stays relative to the layout root.
 #
 # Generated headers install under include/. The .proto files keep their path
 # relative to the layout root, under share/${PROJECT_NAME}/. Downstream

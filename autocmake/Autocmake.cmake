@@ -20,7 +20,11 @@ include_guard(GLOBAL)
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 
-set(_AUTOCMAKE_ROOT "${CMAKE_CURRENT_LIST_DIR}")
+# Visible to every package in one superbuild. include_guard skips this
+# file after the first package, and a normal variable would stay in
+# that package's directory scope.
+set(_AUTOCMAKE_ROOT "${CMAKE_CURRENT_LIST_DIR}" CACHE INTERNAL
+  "Directory containing Autocmake.cmake")
 
 include("${_AUTOCMAKE_ROOT}/cmake/AutocmakeUtils.cmake")
 include("${_AUTOCMAKE_ROOT}/cmake/AutocmakeOptions.cmake")
