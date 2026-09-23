@@ -4,12 +4,12 @@ on:
   push:
     paths:
       - "ansible/**"
-      - "scripts/package_autonomy_artifact.sh"
+      - "tools/package_install_tarball.py"
       - ".github/workflows/ansible.yml"
   pull_request:
     paths:
       - "ansible/**"
-      - "scripts/package_autonomy_artifact.sh"
+      - "tools/package_install_tarball.py"
       - ".github/workflows/ansible.yml"
 
 jobs:
