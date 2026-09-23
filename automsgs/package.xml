@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>automsgs</name>
+  <version>1.0.0</version>
+  <description>Message definitions and runtime for autonomy.</description>
+  <maintainer email="quandy2020@126.com">duyongquan</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>autocmake</buildtool_depend>
+  <depend>Protobuf</depend>
+
+  <export>
+    <build_type>autocmake</build_type>
+  </export>
+</package>

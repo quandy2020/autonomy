@@ -17,32 +17,10 @@
 #
 # 提供 automsgs_protoc()，用于对单个 .proto 文件调用 protoc + Python 生成脚本，
 # 生成 C++/Python 代码以及可选的索引文件。
-# 该实现参考 gz-msgs 的 gz_msgs_protoc.cmake，去掉了对 gz-cmake 的依赖，
-# 并适配 automsgs 前缀和目录结构。
 # =============================================================================
 
 include(CMakeParseArguments)
-
-# 将 proto 包名转换为路径：automsgs.msgs -> automsgs/msgs
-function(_automsgs_proto_pkg_to_path PROTO_PACKAGE PROTO_PACKAGE_PATH)
-  if (PROTO_PACKAGE)
-    string(REPLACE "." "/" PACKAGE_PATH ${PROTO_PACKAGE})
-  else()
-    set(PACKAGE_PATH ".")
-  endif()
-  set(${PROTO_PACKAGE_PATH} ${PACKAGE_PATH} PARENT_SCOPE)
-endfunction()
-
-# 将 proto 包名与文件组合成唯一字符串：automsgs.msgs.foo -> automsgs_msgs_foo
-function(_automsgs_proto_to_unique PROTO_FILE PROTO_PACKAGE UNIQUE_NAME)
-  get_filename_component(FIL_WE ${PROTO_FILE} NAME_WE)
-  if (PROTO_PACKAGE)
-    string(REPLACE "." "_" PACKAGE_STRING ${PROTO_PACKAGE})
-    set(${UNIQUE_NAME} "${PACKAGE_STRING}_${FIL_WE}" PARENT_SCOPE)
-  else()
-    set(${UNIQUE_NAME} "${FIL_WE}" PARENT_SCOPE)
-  endif()
-endfunction()
+include("${CMAKE_CURRENT_LIST_DIR}/msgs_string_utils.cmake")
 
 # -----------------------------------------------------------------------------
 # automsgs_protoc
@@ -55,7 +33,7 @@ endfunction()
 #   MSGS_GEN_SCRIPT     - Python 消息生成脚本
 #   PROTO_PACKAGE       - proto 包名（如 automsgs.msgs）
 #   PROTOC_EXEC         - protoc target 或可执行
-#   GZ_PROTOC_PLUGIN    - 自定义 protoc 插件可执行（名称沿用，便于共用脚本）
+#   PROTOC_PLUGIN       - 自定义 protoc 插件可执行
 #   DLLEXPORT_DECL      - C++ 代码中的导出宏（可选）
 #   INPUT_PROTO         - 输入 .proto 文件（源路径，用于 DEPENDS）
 #   INPUT_PATH_REL      - 可选，传给脚本的 --input-path（相对 PROTO_PATH，用于 copy 布局）
@@ -77,7 +55,7 @@ function(automsgs_protoc)
     MSGS_GEN_SCRIPT
     PROTO_PACKAGE
     PROTOC_EXEC
-    GZ_PROTOC_PLUGIN
+    PROTOC_PLUGIN
     DLLEXPORT_DECL
     INPUT_PROTO
     INPUT_PATH_REL
@@ -159,7 +137,7 @@ function(automsgs_protoc)
   endif()
   set(GENERATE_ARGS
     --protoc-exec       "${AM_PROTOC_PROTOC_EXEC_FILE}"
-    --generator-bin     "${AM_PROTOC_GZ_PROTOC_PLUGIN}"
+    --generator-bin     "${AM_PROTOC_PROTOC_PLUGIN}"
     --proto-path        "${AM_PROTOC_PROTO_PATH}"
     --input-path        "${SCRIPT_INPUT_PATH}"
   )

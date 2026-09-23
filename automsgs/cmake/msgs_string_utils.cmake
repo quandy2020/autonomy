@@ -12,13 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# =============================================================================
-# msgs_string_utils.cmake
-#
-# 参考 gz-msgs 的 gz_msgs_string_utils.cmake，实现 automsgs 自己的
-# proto 包名与路径/字符串工具函数，供 msgs_protoc.cmake、msgs_generate.cmake、
-# msgs_factory.cmake 复用。
-# =============================================================================
+# Proto package name helpers shared by msgs_protoc.cmake and msgs_generate.cmake.
+include_guard(GLOBAL)
 
 # -----------------------------------------------------------------------------
 # _automsgs_proto_pkg_to_path

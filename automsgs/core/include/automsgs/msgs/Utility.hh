@@ -17,7 +17,5 @@
 #ifndef AUTOMSGS_MSGS_UTILITY_HH_
 #define AUTOMSGS_MSGS_UTILITY_HH_
 
-// Placeholder for gz-msgs-style Utility.hh.
-// automsgs does not provide gz-math conversion helpers (convert/*);
-// use protobuf messages directly.
+// Message helpers live on the protobuf types themselves.
 #endif  // AUTOMSGS_MSGS_UTILITY_HH_

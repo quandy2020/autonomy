@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Install generate script (same pattern as gz-msgs: PROJECT_NAME_generate.py)
+# Install the message generation script as automsgs_generate.py.
 install(PROGRAMS automsgs_msgs_generate.py
   RENAME automsgs_generate.py
   DESTINATION ${CMAKE_INSTALL_BINDIR})

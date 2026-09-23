@@ -1,4 +1,4 @@
-# Copyright 2025 The Openbot Authors （duyongquan）
+# Copyright 2025 The Openbot Authors (duyongquan)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,58 +12,72 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.22.1 FATAL_ERROR)
+# Message package. proto/ generates code and libautomsgs.
+# The generator is the Python protoc wrapper, not autocmake_protobuf:
+# it also writes detail headers and the import layout "automsgs/...".
 
-#============================================================================
-# Initialize the project
-#============================================================================
-project(automsgs VERSION 1.0.0)
+cmake_minimum_required(VERSION 3.20)
 
-#============================================================================
-# Configure the project
-#============================================================================
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+project(automsgs VERSION 1.0.0 LANGUAGES CXX)
+
+find_package(autocmake CONFIG QUIET)
+if(NOT autocmake_FOUND)
+  set(AUTOCMAKE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../autocmake")
+  include("${AUTOCMAKE_DIR}/Autocmake.cmake")
+endif()
 
 option(AUTOMSGS_BUILD_TOOLS "Build automsgs command-line tools" ON)
 option(AUTOMSGS_BUILD_PYTHON "Build automsgs Python bindings" ON)
-option(AUTOMSGS_BUILD_EXAMPLES "Build automsgs examples" ON)
-option(AUTOMSGS_BUILD_TESTS "Build automsgs tests" ON)
+option(AUTOMSGS_BUILD_EXAMPLES "Build automsgs examples" OFF)
+option(AUTOMSGS_BUILD_TESTS "Build automsgs tests" OFF)
 
-include(GNUInstallDirs)
-include(CMakePackageConfigHelpers)
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/modules")
+if(DEFINED AUTOMSGS_BUILD_TESTS AND NOT AUTOMSGS_BUILD_TESTS)
+  set(BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
+endif()
+
+# Pin Protobuf 3.19 before package.xml resolves it.
+list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/modules")
 include(EnsureProtobuf319)
-autonomy_require_protobuf()
+
+autocmake_project()
+autocmake_build(QUIT)
+
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
-
 if(NOT DEFINED AUTOMSGS_PYTHON_INSTALL_PATH)
-  set(AUTOMSGS_PYTHON_INSTALL_PATH "${CMAKE_INSTALL_LIBDIR}/python" CACHE PATH "Install path for Python modules")
+  set(AUTOMSGS_PYTHON_INSTALL_PATH "${CMAKE_INSTALL_LIBDIR}/python"
+    CACHE PATH "Install path for Python modules")
 endif()
 
-enable_testing()
+set(AUTOMSGS_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
-#============================================================================
-# Subdirectories
-#============================================================================
-
-# Install and manage .proto message definitions
 add_subdirectory(proto)
-# Re-export proto include/gen dirs so parent (autonomy) protoc can -I them.
-if(DEFINED AUTOMSGS_PROTO_INCLUDE_DIR)
-  set(AUTOMSGS_PROTO_INCLUDE_DIR "${AUTOMSGS_PROTO_INCLUDE_DIR}" PARENT_SCOPE)
+get_directory_property(_automsgs_parent PARENT_DIRECTORY)
+if(_automsgs_parent)
+  foreach(_var IN ITEMS AUTOMSGS_PROTO_INCLUDE_DIR AUTOMSGS_PROTO_GEN_DIR)
+    if(DEFINED ${_var})
+      set(${_var} "${${_var}}" PARENT_SCOPE)
+    endif()
+  endforeach()
 endif()
-if(DEFINED AUTOMSGS_PROTO_GEN_DIR)
-  set(AUTOMSGS_PROTO_GEN_DIR "${AUTOMSGS_PROTO_GEN_DIR}" PARENT_SCOPE)
+
+add_subdirectory(core)
+
+# Exported autonomy modules link this library. It can sit in AutonomyExport
+# as well as the autocmake export.
+if(CMAKE_PROJECT_NAME STREQUAL "autonomy")
+  install(TARGETS automsgs
+    EXPORT AutonomyExport
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
+add_subdirectory(conf)
 if(AUTOMSGS_BUILD_TOOLS)
   add_subdirectory(tools)
 endif()
-add_subdirectory(conf)
 if(AUTOMSGS_BUILD_PYTHON)
   add_subdirectory(python)
 endif()
-add_subdirectory(core)
 if(AUTOMSGS_BUILD_EXAMPLES)
   add_subdirectory(examples)
 endif()
@@ -71,35 +85,4 @@ if(AUTOMSGS_BUILD_TESTS)
   add_subdirectory(test)
 endif()
 
-#============================================================================
-# CMake package export (find_package support for third-party projects)
-#============================================================================
-set(AUTOMSGS_INSTALL_CMAKEDIR
-    "${CMAKE_INSTALL_LIBDIR}/cmake/automsgs"
-    CACHE PATH "Install path for automsgs CMake package files")
-
-if(TARGET automsgs)
-  install(EXPORT automsgsTargets
-    FILE automsgsTargets.cmake
-    NAMESPACE automsgs::
-    DESTINATION "${AUTOMSGS_INSTALL_CMAKEDIR}")
-
-  export(EXPORT automsgsTargets
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/automsgsTargets.cmake"
-    NAMESPACE automsgs::)
-endif()
-
-configure_package_config_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/automsgs_config.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/automsgsConfig.cmake"
-  INSTALL_DESTINATION "${AUTOMSGS_INSTALL_CMAKEDIR}")
-
-write_basic_package_version_file(
-  "${CMAKE_CURRENT_BINARY_DIR}/automsgsConfigVersion.cmake"
-  VERSION "${PROJECT_VERSION}"
-  COMPATIBILITY SameMajorVersion)
-
-install(FILES
-  "${CMAKE_CURRENT_BINARY_DIR}/automsgsConfig.cmake"
-  "${CMAKE_CURRENT_BINARY_DIR}/automsgsConfigVersion.cmake"
-  DESTINATION "${AUTOMSGS_INSTALL_CMAKEDIR}")
+autocmake_package()

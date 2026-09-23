@@ -60,7 +60,7 @@ Field numbers must be unique within the message and follow [protobuf rules](http
    For each `.proto` file, the build runs:
    - **protoc** – generates `.pb.h`, `.pb.cc`, and Python `_pb2.py`.
    - **automsgs_msgs_generate.py** – runs protoc and then:
-     - Copies the generated `.pb.h` into a `details/` subdirectory (for a gz-msgs–style layout).
+     - Copies the generated `.pb.h` into a `details/` subdirectory.
      - Writes a `.pb_index` file (message type name) for tooling.
 
 3. **Library**  

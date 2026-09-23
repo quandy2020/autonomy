@@ -12,22 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lite protoc plugin: injects #include <memory> and ptr typedefs into
-# protoc-generated .pb.h via OpenForInsert (no separate wrapper file).
-autonomy_require_protobuf()
-
-set(AUTOMSGS_PROTOC_PLUGIN_LITE automsgs_protoc_plugin_lite)
-add_executable(${AUTOMSGS_PROTOC_PLUGIN_LITE}
-  Generator.cc
-  generator_main.cc)
-target_link_libraries(${AUTOMSGS_PROTOC_PLUGIN_LITE} PRIVATE
-  protobuf::libprotoc
-  protobuf::libprotobuf)
-target_include_directories(${AUTOMSGS_PROTOC_PLUGIN_LITE} PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR})
+autocmake_binary(automsgs_protoc_plugin_lite
+  SOURCES Generator.cc generator_main.cc
+  DEPENDENCIES protobuf::libprotoc protobuf::libprotobuf)
+target_include_directories(automsgs_protoc_plugin_lite PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 if(UNIX)
-  target_link_libraries(${AUTOMSGS_PROTOC_PLUGIN_LITE} PRIVATE pthread)
+  target_link_libraries(automsgs_protoc_plugin_lite PRIVATE pthread)
 endif()
-
-include(GNUInstallDirs)
-install(TARGETS ${AUTOMSGS_PROTOC_PLUGIN_LITE} DESTINATION ${CMAKE_INSTALL_BINDIR})

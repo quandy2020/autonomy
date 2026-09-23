@@ -13,31 +13,18 @@
 # limitations under the License.
 
 set(msgs_executable_output_name "automsgs-msgs")
-set(msgs_executable "automsgs-msgs-exe")
-add_executable(${msgs_executable} msgs_main.cc)
-set_target_properties(${msgs_executable} PROPERTIES OUTPUT_NAME ${msgs_executable_output_name})
-target_link_libraries(${msgs_executable} PRIVATE automsgs_core)
+autocmake_binary(automsgs-msgs-exe SOURCES msgs_main.cc DEPENDENCIES automsgs)
+set_target_properties(automsgs-msgs-exe PROPERTIES OUTPUT_NAME "${msgs_executable_output_name}")
 
-include(GNUInstallDirs)
-set(EXE_INSTALL_DIR ${CMAKE_INSTALL_BINDIR})
-install(TARGETS ${msgs_executable} DESTINATION ${EXE_INSTALL_DIR})
-
-# Ruby wrapper: path to exe relative to install dir of this script (lib/ruby/automsgs)
+set(EXE_INSTALL_DIR "${CMAKE_INSTALL_BINDIR}")
+set(executable_location "../../${EXE_INSTALL_DIR}/${msgs_executable_output_name}")
 set(cmd_script_generated "${CMAKE_CURRENT_BINARY_DIR}/cmdautomsgs${PROJECT_VERSION_MAJOR}.rb")
 set(cmd_script_configured "${cmd_script_generated}.configured")
-set(executable_location "../../${EXE_INSTALL_DIR}/${msgs_executable_output_name}")
-configure_file(
-  "cmdautomsgs.rb.in"
-  "${cmd_script_configured}"
-  @ONLY)
+configure_file(cmdautomsgs.rb.in "${cmd_script_configured}" @ONLY)
 file(GENERATE OUTPUT "${cmd_script_generated}" INPUT "${cmd_script_configured}")
-install(FILES ${cmd_script_generated} DESTINATION ${CMAKE_INSTALL_LIBDIR}/ruby/automsgs)
+install(FILES "${cmd_script_generated}" DESTINATION "${CMAKE_INSTALL_LIBDIR}/ruby/automsgs")
 
-# Bash completion
-configure_file(
-  "msgs.bash_completion.sh"
-  "${CMAKE_CURRENT_BINARY_DIR}/msgs${PROJECT_VERSION_MAJOR}.bash_completion.sh"
-  @ONLY)
-install(
-  FILES ${CMAKE_CURRENT_BINARY_DIR}/msgs${PROJECT_VERSION_MAJOR}.bash_completion.sh
-  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/automsgs/completion.d)
+configure_file(msgs.bash_completion.sh
+  "${CMAKE_CURRENT_BINARY_DIR}/msgs${PROJECT_VERSION_MAJOR}.bash_completion.sh" @ONLY)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/msgs${PROJECT_VERSION_MAJOR}.bash_completion.sh"
+  DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/automsgs/completion.d")

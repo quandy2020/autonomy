@@ -12,15 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.22.1 FATAL_ERROR)
-
-project(generating_custom_msgs VERSION 1.0.0)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/modules")
-include(EnsureProtobuf319)
-autonomy_require_protobuf()
-
-# Proto include from main automsgs build (set by proto/CMakeLists.txt)
+# Proto include from the package build (set by proto/CMakeLists.txt).
 if(NOT DEFINED AUTOMSGS_PROTO_INCLUDE_DIR)
   message(FATAL_ERROR "AUTOMSGS_PROTO_INCLUDE_DIR not set. Build from automsgs root with add_subdirectory(examples).")
 endif()
@@ -66,20 +58,14 @@ endforeach()
 
 add_custom_target(generating_custom_msgs_proto_copy ALL DEPENDS ${CUSTOM_PROTO_STAMP})
 
-add_library(${PROJECT_NAME}-msgs SHARED ${CUSTOM_GEN_SOURCES})
-target_include_directories(${PROJECT_NAME}-msgs PUBLIC
-  ${CUSTOM_GEN_DIR}
-  ${AUTOMSGS_PROTO_GEN_DIR}
-)
-target_link_libraries(${PROJECT_NAME}-msgs PUBLIC protobuf::libprotobuf)
-add_dependencies(${PROJECT_NAME}-msgs generating_custom_msgs_proto_copy automsgs_proto)
-set_target_properties(${PROJECT_NAME}-msgs PROPERTIES POSITION_INDEPENDENT_CODE ON)
+autocmake_library(generating_custom_msgs-msgs SHARED
+  SOURCES ${CUSTOM_GEN_SOURCES}
+  DEPENDENCIES protobuf::libprotobuf)
+target_include_directories(generating_custom_msgs-msgs PUBLIC
+  "${CUSTOM_GEN_DIR}"
+  "${AUTOMSGS_PROTO_GEN_DIR}")
+add_dependencies(generating_custom_msgs-msgs generating_custom_msgs_proto_copy automsgs)
 
-add_executable(${PROJECT_NAME} main.cc)
-target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}-msgs automsgs_proto)
-
-install(TARGETS ${PROJECT_NAME}
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-  RUNTIME DESTINATION bin
-)
+autocmake_binary(generating_custom_msgs
+  SOURCES main.cc
+  DEPENDENCIES generating_custom_msgs-msgs automsgs)

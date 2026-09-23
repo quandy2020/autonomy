@@ -12,32 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Designation for this component (used in output filename: msgs<MAJOR>.yaml)
-set(AUTOMSGS_DESIGNATION "msgs")
+# msgs<major>.yaml. The installed copy points at the install prefix.
+# The build-tree copy points at a per-config test directory, so it goes
+# through file(GENERATE).
+set(_yaml "msgs${PROJECT_VERSION_MAJOR}.yaml")
 
-# Path to Ruby cmd scripts for internal testing (build tree)
-set(automsgs_library_path "${CMAKE_BINARY_DIR}/test/lib/$<CONFIG>/ruby/automsgs")
-
-# Generate configuration file for internal testing.
-# Output: msgs1.yaml (version major in name)
-configure_file(
-  "${AUTOMSGS_DESIGNATION}.yaml.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/${AUTOMSGS_DESIGNATION}${PROJECT_VERSION_MAJOR}.yaml.configured"
-  @ONLY)
-
-file(GENERATE
-  OUTPUT "${CMAKE_BINARY_DIR}/test/conf/$<CONFIG>/${AUTOMSGS_DESIGNATION}${PROJECT_VERSION_MAJOR}.yaml"
-  INPUT "${CMAKE_CURRENT_BINARY_DIR}/${AUTOMSGS_DESIGNATION}${PROJECT_VERSION_MAJOR}.yaml.configured")
-
-# Path for installed version
 set(automsgs_library_path "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/ruby/automsgs")
+configure_file(msgs.yaml.in "${CMAKE_CURRENT_BINARY_DIR}/${_yaml}" @ONLY)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${_yaml}"
+  DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/automsgs")
 
-# Generate the configuration file that is installed.
-configure_file(
-  "${AUTOMSGS_DESIGNATION}.yaml.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/${AUTOMSGS_DESIGNATION}${PROJECT_VERSION_MAJOR}.yaml"
-  @ONLY)
-
-# Install the yaml configuration files
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${AUTOMSGS_DESIGNATION}${PROJECT_VERSION_MAJOR}.yaml"
-  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/automsgs)
+set(automsgs_library_path "${CMAKE_BINARY_DIR}/test/lib/$<CONFIG>/ruby/automsgs")
+configure_file(msgs.yaml.in "${CMAKE_CURRENT_BINARY_DIR}/${_yaml}.configured" @ONLY)
+file(GENERATE
+  OUTPUT "${CMAKE_BINARY_DIR}/test/conf/$<CONFIG>/${_yaml}"
+  INPUT "${CMAKE_CURRENT_BINARY_DIR}/${_yaml}.configured")

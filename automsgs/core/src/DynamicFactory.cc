@@ -84,7 +84,7 @@ void DynamicFactory::LoadDescriptors(const std::string& paths) {
     if (std::filesystem::is_directory(p)) {
       for (const auto& entry : std::filesystem::directory_iterator(p)) {
         std::string path_str = entry.path().string();
-        if (!hasExtension(path_str, ".desc") && !hasExtension(path_str, ".gz_desc") &&
+        if (!hasExtension(path_str, ".desc") &&
             !hasExtension(path_str, ".proto") && !hasExtension(path_str, ".proto.bin"))
           continue;
         std::ifstream ifs(path_str);
@@ -100,7 +100,7 @@ void DynamicFactory::LoadDescriptors(const std::string& paths) {
       }
     } else {
       std::string path_str = p.string();
-      if (!hasExtension(path_str, ".desc") && !hasExtension(path_str, ".gz_desc") &&
+      if (!hasExtension(path_str, ".desc") &&
           !hasExtension(path_str, ".proto") && !hasExtension(path_str, ".proto.bin"))
         continue;
       std::ifstream ifs(path_str);

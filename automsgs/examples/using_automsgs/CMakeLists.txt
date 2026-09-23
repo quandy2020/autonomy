@@ -12,15 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.22.1 FATAL_ERROR)
-
-project(using_automsgs VERSION 1.0.0)
-
-add_executable(${PROJECT_NAME} main.cc)
-target_link_libraries(${PROJECT_NAME} PRIVATE automsgs_proto)
-
-install(TARGETS ${PROJECT_NAME}
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-  RUNTIME DESTINATION bin
-)
+autocmake_binary(using_automsgs SOURCES main.cc DEPENDENCIES automsgs)

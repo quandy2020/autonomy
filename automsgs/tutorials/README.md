@@ -13,4 +13,4 @@ The in-tree **examples** are also useful:
 - `examples/using_automsgs` – link to `automsgs_proto` and use `Pose` / `String`.
 - `examples/generating_custom_msgs` – define custom `.proto` messages that depend on automsgs and build a library and executable.
 
-These tutorials mirror the structure of the [gz-msgs tutorials](https://github.com/gazebosim/gz-msgs/tree/main/tutorials); automsgs does not provide a Factory or CLI tools, so runtime message registration and descriptor paths are not covered.
+Runtime message registration and descriptor paths are covered by `DynamicFactory`.

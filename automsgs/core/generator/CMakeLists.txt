@@ -12,23 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-autonomy_require_protobuf()
-
-# Protoc plugin: generates .pb_index and wrapper .am.h (UniquePtr/SharedPtr typedefs)
-set(AUTOMSGS_PROTOC_PLUGIN automsgs_protoc_plugin)
-add_executable(${AUTOMSGS_PROTOC_PLUGIN}
-  Generator.cc
-  generator_main.cc)
-target_link_libraries(${AUTOMSGS_PROTOC_PLUGIN} PRIVATE
-  protobuf::libprotoc
-  protobuf::libprotobuf)
-target_include_directories(${AUTOMSGS_PROTOC_PLUGIN} PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_SOURCE_DIR}/core/include  # for generated code that includes automsgs/msgs/Export.hh
-)
+autocmake_binary(automsgs_protoc_plugin
+  SOURCES Generator.cc generator_main.cc
+  DEPENDENCIES protobuf::libprotoc protobuf::libprotobuf)
+target_include_directories(automsgs_protoc_plugin PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}"
+  "${AUTOMSGS_ROOT_DIR}/core/include")
 if(UNIX)
-  target_link_libraries(${AUTOMSGS_PROTOC_PLUGIN} PRIVATE pthread)
+  target_link_libraries(automsgs_protoc_plugin PRIVATE pthread)
 endif()
-
-include(GNUInstallDirs)
-install(TARGETS ${AUTOMSGS_PROTOC_PLUGIN} DESTINATION ${CMAKE_INSTALL_BINDIR})

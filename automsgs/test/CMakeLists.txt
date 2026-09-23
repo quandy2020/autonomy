@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-configure_file(test_config.hh.in ${PROJECT_BINARY_DIR}/include/test_config.hh @ONLY)
-include_directories(${PROJECT_BINARY_DIR}/include)
+configure_file(test_config.hh.in "${PROJECT_BINARY_DIR}/include/test_config.hh" @ONLY)
 
-if(BUILD_TESTING)
-  find_package(GTest QUIET)
-  if(GTest_FOUND)
-    add_subdirectory(integration)
-    add_subdirectory(performance)
-    add_subdirectory(regression)
-  else()
-    message(STATUS "GTest not found; C++ tests disabled")
+foreach(_src IN ITEMS
+    integration/headers_TEST.cc
+    integration/message_TEST.cc
+    integration/status_code_map_TEST.cc)
+  cmake_path(GET _src STEM _name)
+  autocmake_test("INTEGRATION_${_name}" SOURCES "${_src}" DEPENDENCIES automsgs)
+  if(TARGET "INTEGRATION_${_name}")
+    target_include_directories("INTEGRATION_${_name}" PRIVATE "${PROJECT_BINARY_DIR}/include")
+    set_tests_properties("INTEGRATION_${_name}" PROPERTIES
+      ENVIRONMENT "AUTOMSGS_TEST_PATH=${AUTOMSGS_ROOT_DIR}/test")
   endif()
-endif()
+endforeach()

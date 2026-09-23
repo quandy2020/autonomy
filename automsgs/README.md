@@ -1,6 +1,6 @@
 # automsgs
 
-Protocol Buffer message and service definitions for the autonomy stack, with C++/Python code generation and tooling. The layout and build pipeline are inspired by [gz-msgs](https://github.com/gazebosim/gz-msgs).
+Protocol Buffer message and service definitions for the autonomy stack, with C++/Python code generation and tooling.
 
 ## Features
 

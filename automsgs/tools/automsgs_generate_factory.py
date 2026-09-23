@@ -14,9 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Generate MessageTypes.hh from .pb_index files (one header that includes all
-# generated message headers). Compatible with gz-msgs tools layout; automsgs
-# does not provide a Factory, so no register.cc is generated.
+# Generate MessageTypes.hh from .pb_index files. The header includes every
+# generated message header. No register.cc is written.
 
 import argparse
 import glob

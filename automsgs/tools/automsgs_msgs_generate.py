@@ -95,7 +95,7 @@ def main(argv=sys.argv[1:]):
         print(f'protoc failed: {e}', file=sys.stderr)
         sys.exit(1)
 
-    # Place .pb.h into details/ and write .pb_index (for gz-msgs-style layout/factory)
+    # Place .pb.h into details/ and write .pb_index for the factory header.
     if args.generate_cpp and args.output_cpp_path:
         # input_path like automsgs/msgs/geometry_msgs/Pose.proto -> rel_dir = automsgs/msgs/geometry_msgs
         rel = args.input_path.replace('\\', '/')
