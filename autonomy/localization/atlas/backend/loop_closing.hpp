@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
+ * Copyright 2026 The Openbot Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,314 +14,321 @@
  * limitations under the License.
  */
 
-#ifndef AUTONOMY_LOCALIZATION_ATLAS_GLOBAL_OPTIMIZATION_MODULE_HPP_
-#define AUTONOMY_LOCALIZATION_ATLAS_GLOBAL_OPTIMIZATION_MODULE_HPP_
+/**
+ * @file loop_closing.hpp
+ * @brief Loop detection/correction and map merge (ORB-SLAM3 LoopClosing;
+ *        queue + thread-pool worker).
+ *
+ * Flow: `InsertKeyFrame` → worker `Run` → `NewDetectCommonRegions`
+ * (BoW + coincidence count) → `CorrectLoop` / `MergeLocal` → optional async GBA.
+ */
 
-#include "autonomy/localization/atlas/type.hpp"
-#include "autonomy/localization/atlas/data/bow_vocabulary.hpp"
-#include "autonomy/localization/atlas/estimate/lidar_residual_source.hpp"
-#include "autonomy/localization/atlas/estimate/residual_mask.hpp"
-#include "autonomy/localization/atlas/estimate/residual_odom.hpp"
-#include "autonomy/localization/atlas/backend/type.hpp"
-#include "autonomy/localization/atlas/backend/loop_detector.hpp"
-#include "autonomy/localization/atlas/backend/global_joint_ba.hpp"
-#include "autonomy/localization/atlas/backend/graph_optimizer.hpp"
+#ifndef AUTONOMY_LOCALIZATION_ATLAS_BACKEND_LOOP_CLOSING_HPP_
+#define AUTONOMY_LOCALIZATION_ATLAS_BACKEND_LOOP_CLOSING_HPP_
 
-#include "autonomy/common/thread_pool.hpp"
-
-#include <list>
-#include <mutex>
-#include <thread>
-#include <memory>
-#include <future>
 #include <atomic>
+#include <future>
+#include <memory>
+#include <vector>
 
-namespace autonomy::localization::atlas {
+#include "autolink/base/thread_safe_queue.hpp"
 
-class Tracking;
+#include "autonomy/localization/atlas/backend/sim3.hpp"
+#include "autonomy/localization/atlas/map/keyframe.hpp"
+#include "autonomy/localization/atlas/map/keyframe_database.hpp"
+#include "autonomy/localization/atlas/map/map.hpp"
+#include "autonomy/localization/atlas/map/map_point.hpp"
+#include "autonomy/localization/atlas/map/multi_map.hpp"
+
+namespace autonomy {
+namespace localization {
+namespace atlas {
+
+class SlamScheduler;
 class LocalMapping;
 
-namespace data {
-class keyframe;
-class bow_database;
-class map_database;
-} // namespace data
+namespace backend {
 
-namespace map {
-class DenseMapBuilder;
-}
-
-struct loop_closure_request {
-    unsigned int keyfrm1_id_;
-    unsigned int keyfrm2_id_;
-};
-
+/**
+ * @class autonomy::localization::atlas::backend::LoopClosing
+ * @brief Place recognition + Sim3 loop correction / cross-map merge.
+ *
+ * **Threading**: `Start(scheduler)` runs `Run` on the ThreadPool, blocking on
+ * `keyframe_queue_` for keyframes; exits after `RequestFinish`.
+ *
+ * **With LocalMapping**: `PauseLocalMapping` before correction,
+ * `ResumeLocalMapping` after; optional async `LaunchGlobalBA`.
+ */
 class LoopClosing {
 public:
-    //! Constructor
-    LoopClosing(data::map_database* map_db, data::bow_database* bow_db, data::bow_vocabulary* bow_vocab, const YAML::Node& yaml_node, const bool fix_scale);
+    /**
+     * @brief Construct the loop-closing module.
+     * @param map Current active map (non-owning).
+     * @param keyframe_database BoW database (non-owning).
+     * @param multi_map Multi-map container; needed for merge path, may be null.
+     */
+    LoopClosing(Map* map, KeyFrameDatabase* keyframe_database,
+                 MultiMap* multi_map = nullptr);
 
-    //! Destructor
-    ~LoopClosing();
+    /**
+     * @brief Enqueue a new keyframe (called by LocalMapping).
+     * @param keyframe New keyframe.
+     */
+    void InsertKeyFrame(const std::shared_ptr<KeyFrame>& keyframe);
 
-    //! Set the tracking module
-    void set_tracking_module(Tracking* tracker);
+    /**
+     * @brief Detect loop candidates (public / test entry).
+     * @param[out] candidates Candidate keyframe list.
+     * @return true if candidates were found.
+     */
+    bool DetectLoop(std::vector<std::shared_ptr<KeyFrame>>* candidates);
 
-    //! Set the mapping module
-    void set_mapping_module(LocalMapping* mapper);
+    /**
+     * @brief Correct against a given loop keyframe (Sim3 + Essential Graph + fuse).
+     * @param loop_keyframe Loop-matched keyframe.
+     * @return true if correction succeeded.
+     */
+    bool CorrectLoop(const std::shared_ptr<KeyFrame>& loop_keyframe);
 
-    //! Same residual mask / sources as Local Joint BA (single AtlasSystem).
-    void set_residual_mask(estimate::ResidualMask mask);
-    void set_lidar_residual_source(estimate::ILidarResidualSource* src);
-    void set_odom_residual_source(estimate::IOdomResidualSource* src);
+    /**
+     * @brief Merge the map of `merge_keyframe` into the current map via Sim3.
+     * @param merge_keyframe Merge-side keyframe.
+     * @param sim3_current_from_merge Similarity current ← merge side.
+     * @return true if merge succeeded.
+     */
+    bool MergeLocal(const std::shared_ptr<KeyFrame>& merge_keyframe,
+                    const Sim3& sim3_current_from_merge);
 
-    //! Optional shared ThreadPool (single AtlasSystem).
-    void set_thread_pool(::autonomy::common::ThreadPool* pool);
-    void enable_pool_scheduling(bool enable);
-    [[nodiscard]] bool pool_scheduling_enabled() const { return use_pool_scheduling_; }
+    /**
+     * @brief Inertial map merge (ORB `MergeLocal2`).
+     *
+     * Scales the current map into the merge frame, rewires the spanning tree,
+     * then runs welding inertial BA.
+     * @param merge_keyframe Merge-side keyframe.
+     * @param sim3_current_from_merge Similarity current-camera ← merge world.
+     * @return false when the scale check rejects the merge.
+     */
+    bool MergeLocal2(const std::shared_ptr<KeyFrame>& merge_keyframe,
+                     const Sim3& sim3_current_from_merge);
 
-    //! After GlobalJointBA, ScheduleAfter → DenseMapBuilder::RequestRebuild.
-    void set_dense_map_builder(map::DenseMapBuilder* dense) { dense_map_ = dense; }
+    /**
+     * @brief Write a finished global BA through the spanning tree.
+     * @param map Active map.
+     * @param gba_id Epoch passed into `GlobalBundleAdjustment` / `FullInertialBA`.
+     */
+    void PropagateGlobalBA(Map* map, uint64_t gba_id);
 
-    //-----------------------------------------
-    // interfaces to ON/OFF loop detector
+    /**
+     * @brief Start the worker on a scheduler.
+     * @param scheduler Non-null ThreadPool scheduler.
+     */
+    void Start(SlamScheduler* scheduler);
 
-    //! Enable the loop detector
-    void enable_loop_detector();
+    /** @brief Request the worker loop to finish. */
+    void RequestFinish();
 
-    //! Disable the loop detector
-    void disable_loop_detector();
+    /**
+     * @brief Whether the worker has fully exited.
+     * @return true if finished.
+     */
+    bool isFinished() const { return finished_.load(); }
 
-    //! The loop detector is enabled or not
-    bool loop_detector_is_enabled() const;
+    /**
+     * @brief Whether running as an async worker.
+     * @return true if Started and not yet finished.
+     */
+    bool isAsync() const { return async_.load(); }
 
-    //-----------------------------------------
-    // main process
+    /**
+     * @brief Set whether Sim3 scale is fixed.
+     * @param fix_scale Should be true for stereo/RGB-D.
+     */
+    void set_fix_scale(bool fix_scale) { fix_scale_ = fix_scale; }
 
-    //! Run main loop of the global optimization module
-    void run();
+    /**
+     * @brief Bind MultiMap (for merge).
+     * @param multi_map Multi-map pointer.
+     */
+    void SetMultiMap(MultiMap* multi_map) { multi_map_ = multi_map; }
 
-    //! Queue a keyframe to the BoW database
-    void queue_keyframe(const std::shared_ptr<data::keyframe>& keyfrm);
+    /**
+     * @brief Bind LocalMapping (pause/resume).
+     * @param local_mapping Local mapping pointer.
+     */
+    void SetLocalMapper(LocalMapping* local_mapping) {
+        local_mapping_ = local_mapping;
+    }
 
-    //! Drain queued keyframes via ThreadPool Task (serialized).
-    void MaybeScheduleDrain();
-    void DrainKeyframesOnce();
-    //! Process one dequeued keyframe (loop detect + correct).
-    void ProcessDequeuedKeyframe();
-
-    //-----------------------------------------
-    // management for reset process
-
-    //! Request to reset the global optimization module
-    std::shared_future<void> async_reset();
-
-    //-----------------------------------------
-    // management for pause process
-
-    //! Request to pause the global optimization module
-    std::shared_future<void> async_pause();
-
-    //! Check if the global optimization module is requested to be paused or not
-    bool pause_is_requested() const;
-
-    //! Check if the global optimization module is paused or not
-    bool is_paused() const;
-
-    //! Resume the global optimization module
-    void resume();
-
-    //-----------------------------------------
-    // management for terminate process
-
-    //! Request to terminate the global optimization module
-    std::shared_future<void> async_terminate();
-
-    //! Check if the global optimization module is terminated or not
-    bool is_terminated() const;
-
-    //-----------------------------------------
-    // management for loop BA
-
-    //! Check if loop BA is running or not
-    bool loop_BA_is_running() const;
-
-    //! Abort the loop BA externally
-    //! (NOTE: this function does not wait for abort)
-    void abort_loop_BA();
-
-    //-----------------------------------------
-    // management for loop closure request
-
-    bool request_loop_closure(unsigned int keyfrm1_id, unsigned int keyfrm2_id);
+    /**
+     * @brief Most recently successfully estimated Sim3.
+     * @return Copied Sim3.
+     */
+    Sim3 last_sim3() const { return last_sim3_; }
 
 private:
-    //-----------------------------------------
-    // main process
+    /** @brief Worker main loop: dequeue → ProcessKeyFrame. */
+    void Run();
+    /**
+     * @brief Process one keyframe: detect common region → loop or merge.
+     * @param keyframe Current keyframe.
+     * @return true if this frame triggered correction/merge.
+     */
+    bool ProcessKeyFrame(const std::shared_ptr<KeyFrame>& keyframe);
 
-    //! Perform loop closing
-    void correct_loop();
+    /** @brief Pause LocalMapping, drain its queue, wait until stopped (ORB CorrectLoop prelude). */
+    void PauseLocalMapping();
+    /** @brief Resume LocalMapping. */
+    void ResumeLocalMapping();
 
-    //! Compute Sim3s (world to covisibility) which are prior to loop correction
-    module::keyframe_Sim3_pairs_t get_Sim3s_before_loop_correction(const std::vector<std::shared_ptr<data::keyframe>>& neighbors) const;
+    /**
+     * @brief Async global BA after loop/merge (ORB RunGlobalBundleAdjustment).
+     * @param active_map Active map.
+     * @param iterations GBA iteration count.
+     */
+    void LaunchGlobalBA(Map* active_map, int iterations = 10);
 
-    //! Compute Sim3s (world to covisibility) which are corrected using the estimated Sim3 of the current keyframe
-    module::keyframe_Sim3_pairs_t get_Sim3s_after_loop_correction(const Mat44_t& cam_pose_wc_before_correction, const g2o::Sim3& g2o_Sim3_cw_after_correction,
-                                                                  const std::vector<std::shared_ptr<data::keyframe>>& neighbors) const;
+    /**
+     * @brief ORB NewDetectCommonRegions: coincidence count + BoW.
+     * @param[out] matched_out Matched keyframe.
+     * @param[out] sim3_out Estimated Sim3 (\(S_{cw}\) semantics in the implementation).
+     * @param[out] is_merge true for a cross-map merge candidate.
+     * @param[out] matched_mps_out Optional matched map points.
+     * @return true if a common region was confirmed.
+     */
+    bool NewDetectCommonRegions(std::shared_ptr<KeyFrame>* matched_out,
+                                Sim3* sim3_out, bool* is_merge,
+                                std::vector<std::shared_ptr<MapPoint>>*
+                                    matched_mps_out = nullptr);
 
-    //! Correct the positions of the landmarks which are seen in covisibilities
-    void correct_covisibility_landmarks(const module::keyframe_Sim3_pairs_t& Sim3s_nw_before_correction,
-                                        const module::keyframe_Sim3_pairs_t& Sim3s_nw_after_correction,
-                                        std::unordered_map<unsigned int, unsigned int>& found_lm_to_ref_keyfrm_id) const;
+    /**
+     * @brief Detect and refine covisibility / Sim3 from BoW candidates.
+     * @param bow_candidates BoW retrieval candidates.
+     * @param[out] matched_out Best matched keyframe.
+     * @param[out] Scw_out World←matched-camera Sim3 or implementation form.
+     * @param[out] num_coincidences Coincidence count.
+     * @param[out] matched_mps_out Matched points.
+     * @return true on success.
+     */
+    bool DetectCommonRegionsFromBoW(
+        const std::vector<std::shared_ptr<KeyFrame>>& bow_candidates,
+        std::shared_ptr<KeyFrame>* matched_out, Sim3* Scw_out,
+        int* num_coincidences,
+        std::vector<std::shared_ptr<MapPoint>>* matched_mps_out = nullptr);
 
-    //! Correct 3D line landmarks in covisibilities (loop fusion propagation)
-    void correct_covisibility_landmarks_line(const module::keyframe_Sim3_pairs_t& Sim3s_nw_before_correction,
-                                             const module::keyframe_Sim3_pairs_t& Sim3s_nw_after_correction) const;
+    /**
+     * @brief Project relative to the last matched keyframe and refine Sim3.
+     * @param current Current keyframe.
+     * @param matched Last matched keyframe.
+     * @param[in,out] Scw Sim3.
+     * @param[out] num_proj_matches Projection match count.
+     * @param[out] matched_mps Matched map points.
+     * @return true if refinement succeeded.
+     */
+    bool DetectAndRefineSim3FromLastKF(
+        const std::shared_ptr<KeyFrame>& current,
+        const std::shared_ptr<KeyFrame>& matched, Sim3* Scw,
+        int* num_proj_matches,
+        std::vector<std::shared_ptr<MapPoint>>* matched_mps);
 
-    //! Correct the camera poses of the covisibilities
-    void correct_covisibility_keyframes(const module::keyframe_Sim3_pairs_t& Sim3s_nw_after_correction) const;
+    /**
+     * @brief Search matches by projection under a given Sim3.
+     * @param current / matched Keyframe pair.
+     * @param Scw Similarity transform.
+     * @param[in,out] map_points Map points participating in the search.
+     * @param[out] matched_mps Match results.
+     * @return Match count.
+     */
+    int FindMatchesByProjection(
+        const std::shared_ptr<KeyFrame>& current,
+        const std::shared_ptr<KeyFrame>& matched, const Sim3& Scw,
+        std::vector<std::shared_ptr<MapPoint>>* map_points,
+        std::vector<std::shared_ptr<MapPoint>>* matched_mps);
 
-    //! Detect and replace duplicated landmarks
-    void replace_duplicated_landmarks(const std::vector<std::shared_ptr<data::landmark>>& curr_match_lms_observed_in_cand,
-                                      const module::keyframe_Sim3_pairs_t& Sim3s_nw_after_correction) const;
+    /**
+     * @brief Estimate relative Sim3 via RANSAC + OptimizeSim3.
+     * @param matched_keyframe Matched keyframe.
+     * @param[out] sim3_out Result.
+     * @return true on success.
+     */
+    bool EstimateSim3(const std::shared_ptr<KeyFrame>& matched_keyframe,
+                      Sim3* sim3_out);
 
-    //! Extract the new connections which will be created AFTER loop correction
-    std::map<std::shared_ptr<data::keyframe>, std::set<std::shared_ptr<data::keyframe>>> extract_new_connections(const std::vector<std::shared_ptr<data::keyframe>>& covisibilities) const;
+    /**
+     * @brief Apply loop: pose propagation, point fuse, Essential Graph.
+     * @param loop_keyframe Loop keyframe.
+     * @param sim3 Current ← loop Sim3.
+     * @param matched_mps Matched map points (for fuse).
+     * @return true on success.
+     */
+    bool ApplyLoopCorrection(
+        const std::shared_ptr<KeyFrame>& loop_keyframe, const Sim3& sim3,
+        const std::vector<std::shared_ptr<MapPoint>>& matched_mps = {});
 
-    //-----------------------------------------
-    // management for reset process
+    /**
+     * @brief Project-fuse map points on connected keyframes (ORB SearchAndFuse).
+     * @param connected Connected keyframes.
+     * @param map_points Points to fuse.
+     */
+    void SearchAndFuse(
+        const std::vector<std::shared_ptr<KeyFrame>>& connected,
+        const std::vector<std::shared_ptr<MapPoint>>& map_points);
 
-    //! mutex for access to reset procedure
-    mutable std::mutex mtx_reset_;
+    /** @brief Reset loop coincidence state machine. */
+    void ResetLoopState();
+    /** @brief Reset merge coincidence state machine. */
+    void ResetMergeState();
 
-    //! promise for reset
-    std::promise<void> promise_reset_;
+    /**
+     * @brief From \(S_{cw}\) and matched KF pose, get "current ← matched" Sim3.
+     * @param Scw World-related Sim3.
+     * @param matched Matched keyframe.
+     * @return Relative Sim3.
+     */
+    Sim3 Sim3CurrentFromMatched(const Sim3& Scw,
+                                              const std::shared_ptr<KeyFrame>& matched)
+        const;
 
-    //! future for reset
-    std::shared_future<void> future_reset_;
+    Map* map_ = nullptr;                          ///< Active map
+    MultiMap* multi_map_ = nullptr;               ///< Multi-map
+    KeyFrameDatabase* keyframe_database_ = nullptr;  ///< BoW database
+    LocalMapping* local_mapping_ = nullptr;       ///< Local mapping
+    SlamScheduler* scheduler_ = nullptr;          ///< Scheduler
+    std::shared_ptr<KeyFrame> current_keyframe_;  ///< Keyframe being processed
+    Sim3 last_sim3_;                              ///< Latest Sim3
+    float min_score_ = 0.05f;                     ///< BoW minimum score
+    bool fix_scale_ = true;                       ///< Fix Sim3 scale
 
-    //! Check and execute reset
-    bool reset_is_requested() const;
+    std::atomic<bool> running_gba_{false};        ///< Whether GBA is running
+    std::atomic<uint64_t> gba_epoch_{0};          ///< GBA generation id
+    std::shared_ptr<bool> stop_gba_flag_;         ///< GBA stop flag
+    std::future<void> gba_future_;                ///< GBA future
 
-    //! Reset the global optimization module
-    void reset();
+    // ORB-SLAM3 loop coincidence state
+    int loop_num_coincidences_ = 0;               ///< Consecutive coincidence count
+    int loop_num_not_found_ = 0;                  ///< Consecutive not-found count
+    std::shared_ptr<KeyFrame> loop_matched_kf_;   ///< Loop matched KF
+    std::shared_ptr<KeyFrame> loop_last_current_kf_;  ///< Previous current KF
+    Sim3 loop_sim3_slw_;                          ///< Loop Sim3 state
+    std::vector<std::shared_ptr<MapPoint>> loop_map_points_;  ///< Candidate points
+    std::vector<std::shared_ptr<MapPoint>> loop_matched_mps_;  ///< Matched points
 
-    //! flag which indicates whether reset is requested or not
-    bool reset_is_requested_ = false;
+    // ORB-SLAM3 merge coincidence state
+    int merge_num_coincidences_ = 0;
+    int merge_num_not_found_ = 0;
+    std::shared_ptr<KeyFrame> merge_matched_kf_;
+    std::shared_ptr<KeyFrame> merge_last_current_kf_;
+    Sim3 merge_sim3_slw_;
 
-    //-----------------------------------------
-    // management for pause process
-
-    //! mutex for access to pause procedure
-    mutable std::mutex mtx_pause_;
-
-    //! promise for pause
-    std::promise<void> promise_pause_;
-
-    //! future for pause
-    std::shared_future<void> future_pause_;
-
-    //! Pause the global optimizer
-    void pause();
-
-    //! flag which indicates termination is requested or not
-    bool pause_is_requested_ = false;
-    //! flag which indicates whether the main loop is paused or not
-    bool is_paused_ = false;
-
-    //-----------------------------------------
-    // management for terminate process
-
-    //! mutex for access to terminate procedure
-    mutable std::mutex mtx_terminate_;
-
-    //! promise for terminate
-    std::promise<void> promise_terminate_;
-
-    //! future for terminate
-    std::shared_future<void> future_terminate_;
-
-    //! Check if termination is requested or not
-    bool terminate_is_requested() const;
-
-    //! Raise the flag which indicates the main loop has been already terminated
-    void terminate();
-
-    //! flag which indicates termination is requested or not
-    bool terminate_is_requested_ = false;
-    //! flag which indicates whether the main loop is terminated or not
-    bool is_terminated_ = true;
-
-    //-----------------------------------------
-    // management for loop closure request
-
-    //! Mutex for loop closure request
-    mutable std::mutex mtx_loop_closure_request_;
-    //! Loop closure is requested or not
-    bool loop_closure_is_requested();
-    //! Get loop closure request
-    loop_closure_request& get_loop_closure_request();
-    //! Finish loop closure request
-    void finish_loop_closure_request();
-    //! Process loop closure request
-    bool loop_closure(const loop_closure_request& request);
-    //! Indicator of loop closure request
-    bool loop_closure_is_requested_ = false;
-    //! Request
-    loop_closure_request loop_closure_request_;
-
-    //-----------------------------------------
-    // modules
-
-    //! tracking module
-    Tracking* tracker_ = nullptr;
-    //! mapping module
-    LocalMapping* mapper_ = nullptr;
-
-    ::autonomy::common::ThreadPool* thread_pool_ = nullptr;
-    bool use_pool_scheduling_ = false;
-    std::atomic<bool> drain_scheduled_{false};
-    map::DenseMapBuilder* dense_map_ = nullptr;
-
-    //! loop detector
-    std::unique_ptr<module::loop_detector> loop_detector_ = nullptr;
-    //! loop bundle adjuster
-    std::unique_ptr<module::loop_bundle_adjuster> loop_bundle_adjuster_ = nullptr;
-
-    //! map database
-    data::map_database* map_db_ = nullptr;
-
-    //-----------------------------------------
-    // keyframe queue
-
-    //! mutex for access to keyframe queue
-    mutable std::mutex mtx_keyfrm_queue_;
-
-    //! Check if keyframe is queued
-    bool keyframe_is_queued() const;
-
-    //! queue for keyframes
-    std::list<std::shared_ptr<data::keyframe>> keyfrms_queue_;
-
-    std::shared_ptr<data::keyframe> cur_keyfrm_ = nullptr;
-
-    //-----------------------------------------
-    // optimizer
-
-    //! graph optimizer
-    std::unique_ptr<optimize::graph_optimizer> graph_optimizer_ = nullptr;
-
-    //-----------------------------------------
-    // variables for loop BA
-
-    //! thread for running loop BA
-    std::unique_ptr<std::thread> thread_for_loop_BA_ = nullptr;
-
-    unsigned int thr_neighbor_keyframes_ = 15;
+    ::autolink::base::ThreadSafeQueue<std::shared_ptr<KeyFrame>> keyframe_queue_;  ///< Enqueued keyframes
+    std::atomic<bool> finish_requested_{false};  ///< Finish request
+    std::atomic<bool> finished_{false};          ///< Finished
+    std::atomic<bool> async_{false};             ///< In async worker
+    std::future<void> worker_future_;            ///< Worker future
 };
 
-using global_optimization_module = LoopClosing;
+}  // namespace backend
+}  // namespace atlas
+}  // namespace localization
+}  // namespace autonomy
 
-}  // namespace autonomy::localization::atlas
-
-#endif  // AUTONOMY_LOCALIZATION_ATLAS_GLOBAL_OPTIMIZATION_MODULE_HPP_
+#endif  // AUTONOMY_LOCALIZATION_ATLAS_BACKEND_LOOP_CLOSING_HPP_

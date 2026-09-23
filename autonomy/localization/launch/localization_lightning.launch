@@ -1,7 +1,7 @@
 <!--
   Copyright 2026 The Openbot Authors
 
-  Standalone lightning LIO (not Atlas) for autosim / Habitat.
+  Standalone lightning LIO for autosim / Habitat.
 
   Backend: autonomy.localization --localization_mode=lightning
 

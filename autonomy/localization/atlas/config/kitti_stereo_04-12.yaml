@@ -1,0 +1,25 @@
+platform_name: kitti_stereo_04-12
+
+frontend:
+  mode: vo
+  fusion: loose
+  vo:
+    enabled: true
+  vio:
+    enabled: false
+
+camera:
+  sensor: stereo
+  fx: 707.0912
+  fy: 707.0912
+  cx: 601.8873
+  cy: 183.1104
+  baseline: 0.53715
+  depth_threshold: 35.0
+
+vocabulary: autonomy/localization/conf/atlas/orb_vocab.fbow
+
+backend:
+  type: ceres
+  window_size: 10
+  max_iterations: 15

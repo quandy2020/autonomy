@@ -62,7 +62,7 @@ std::string ResolveWorkspacePath(const std::string& path) {
     }
 
     const fs::path relative(path);
-    // Short profile paths like conf/atlas/... live under autonomy/localization/.
+    // Short profile paths like conf/cartographer/... live under autonomy/localization/.
     std::vector<fs::path> candidates = {relative};
     if (path.rfind("conf/", 0) == 0) {
         candidates.emplace_back(fs::path("autonomy/localization") / relative);

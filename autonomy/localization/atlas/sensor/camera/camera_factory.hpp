@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
+ * Copyright 2026 The Openbot Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,66 +14,112 @@
  * limitations under the License.
  */
 
-#ifndef AUTONOMY_LOCALIZATION_ATLAS_CAMERA_CAMERA_FACTORY_HPP_
-#define AUTONOMY_LOCALIZATION_ATLAS_CAMERA_CAMERA_FACTORY_HPP_
+/**
+ * @file
+ * @brief Factory to build `GeometricCamera` from model name + intrinsics / YAML.
+ *
+ * Matches Kalibr / ORB camera-type strings; unknown models may make `Create` throw
+ * or fall back per implementation (see `.cpp`).
+ */
 
-#include "autonomy/localization/atlas/sensor/camera/base.hpp"
-#include "autonomy/localization/atlas/sensor/camera/perspective.hpp"
-#include "autonomy/localization/atlas/sensor/camera/fisheye.hpp"
-#include "autonomy/localization/atlas/sensor/camera/equirectangular.hpp"
-#include "autonomy/localization/atlas/sensor/camera/radial_division.hpp"
-#include "autolink/common/log.hpp"
+#ifndef AUTONOMY_LOCALIZATION_ATLAS_SENSOR_CAMERA_CAMERA_FACTORY_HPP_
+#define AUTONOMY_LOCALIZATION_ATLAS_SENSOR_CAMERA_CAMERA_FACTORY_HPP_
 
-namespace autonomy::localization::atlas {
+#include <memory>
+#include <string>
 
+#include "autonomy/localization/atlas/sensor/geometric_camera.hpp"
+
+namespace YAML {
+class Node;
+}  // namespace YAML
+
+namespace autonomy {
+namespace localization {
+namespace atlas {
+namespace sensor {
 namespace camera {
 
-class camera_factory {
+/**
+ * @class autonomy::localization::atlas::sensor::camera::CameraFactory
+ * @brief Build a concrete `GeometricCamera` from model name and intrinsics.
+ *
+ * Recognized model names (aliases in parentheses):
+ * - `pinhole`
+ * - `radtan`(opencv, brown, perspective)
+ * - `kannala_brandt`(kannala, fisheye, equi, kb8)
+ * - `fov`
+ * - `ucm`(mei, omni)
+ * - `eucm`
+ * - `double_sphere`(ds)
+ * - `equirectangular`(equirect, panorama)
+ * - `radial_division`(division)
+ *
+ * @code{.cpp}
+ * CameraFactory::Intrinsics i;
+ * i.model = "radtan";
+ * i.fx = 500; i.fy = 500; i.cx = 320; i.cy = 240;
+ * i.k1 = -0.1; i.k2 = 0.01; i.p1 = 0; i.p2 = 0;
+ * auto cam = CameraFactory::Create(i);
+ * @endcode
+ */
+class CameraFactory {
 public:
-    static camera::base* create(const YAML::Node& node) {
-        const auto camera_model_type = camera::base::load_model_type(node);
+    /**
+     * @struct Intrinsics
+     * @brief Unified intrinsics / distortion bag; unused fields may stay 0.
+     */
+    struct Intrinsics {
+        std::string model = "pinhole";  ///< Model name (case-insensitive; see alias table).
+        double fx = 1.0;  ///< Focal length fx.
+        double fy = 1.0;  ///< Focal length fy.
+        double cx = 0.0;  ///< Principal point cx.
+        double cy = 0.0;  ///< Principal point cy.
+        // Distortion / model-specific (unused slots ignored).
+        double k1 = 0.0;  ///< Radial / KB / division-model k1.
+        double k2 = 0.0;  ///< k2.
+        double k3 = 0.0;  ///< k3(radtan / KB).
+        double k4 = 0.0;  ///< k4(KB).
+        double p1 = 0.0;  ///< Tangential distortion p1.
+        double p2 = 0.0;  ///< Tangential distortion p2.
+        double w = 0.0;      ///< FOV distortion parameter w (radians).
+        double xi = 0.0;     ///< ξ for UCM / DoubleSphere.
+        double alpha = 0.5;  ///< α for EUCM / DoubleSphere.
+        double beta = 1.0;   ///< β for EUCM.
+        double k = 0.0;      ///< k for RadialDivision.
+        int width = 0;   ///< Image width; 0=unknown.
+        int height = 0;  ///< Image height; 0=unknown.
+    };
 
-        camera::base* camera = nullptr;
-        try {
-            switch (camera_model_type) {
-                case camera::model_type_t::Perspective: {
-                    camera = new camera::perspective(node);
-                    break;
-                }
-                case camera::model_type_t::Fisheye: {
-                    camera = new camera::fisheye(node);
-                    break;
-                }
-                case camera::model_type_t::Equirectangular: {
-                    camera = new camera::equirectangular(node);
-                    break;
-                }
-                case camera::model_type_t::RadialDivision: {
-                    camera = new camera::radial_division(node);
-                    break;
-                }
-            }
-        }
-        catch (const std::exception& e) {
-            ADEBUG << "failed in loading camera model parameters: " << e.what();
-            if (camera) {
-                delete camera;
-                camera = nullptr;
-            }
-            throw;
-        }
+    /**
+     * @brief Create a camera instance from `Intrinsics`.
+     * @param intrinsics Model name and parameters.
+     * @return Owned camera; impl may throw `std::invalid_argument` on failure.
+     */
+    static std::unique_ptr<GeometricCamera> Create(
+        const Intrinsics& intrinsics);
 
-        assert(camera != nullptr);
-        if (camera->setup_type_ == camera::setup_type_t::Stereo || camera->setup_type_ == camera::setup_type_t::RGBD) {
-            if (camera->model_type_ == camera::model_type_t::Equirectangular) {
-                throw std::runtime_error("Not implemented: Stereo or RGBD of equirectangular camera model");
-            }
-        }
-        return camera;
-    }
+    /**
+     * @brief Create camera from a YAML node (reads model / fx / fy / …).
+     * @param node YAML node with camera fields.
+     * @return Owned camera; missing keys use defaults; invalid model may throw.
+     */
+    static std::unique_ptr<GeometricCamera> CreateFromYaml(
+        const YAML::Node& node);
+
+    /**
+     * @brief Parse model name string to enum.
+     * @param name Model name or alias (case-insensitive).
+     * @return Matching `GeometricCamera::Type`; usually falls back to `kPinhole` if unknown.
+     */
+    static GeometricCamera::Type ParseModelType(
+        const std::string& name);
 };
 
-} // namespace camera
-}  // namespace autonomy::localization::atlas
+}  // namespace camera
+}  // namespace sensor
+}  // namespace atlas
+}  // namespace localization
+}  // namespace autonomy
 
-#endif  // AUTONOMY_LOCALIZATION_ATLAS_CAMERA_CAMERA_FACTORY_HPP_
+#endif  // AUTONOMY_LOCALIZATION_ATLAS_SENSOR_CAMERA_CAMERA_FACTORY_HPP_

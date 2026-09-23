@@ -1,0 +1,24 @@
+platform_name: kitti_mono_00-02
+
+frontend:
+  mode: vo
+  fusion: loose
+  vo:
+    enabled: true
+  vio:
+    enabled: false
+
+camera:
+  sensor: mono
+  fx: 718.856
+  fy: 718.856
+  cx: 607.1928
+  cy: 185.2157
+  baseline: 0.0
+
+vocabulary: autonomy/localization/conf/atlas/orb_vocab.fbow
+
+backend:
+  type: ceres
+  window_size: 10
+  max_iterations: 15

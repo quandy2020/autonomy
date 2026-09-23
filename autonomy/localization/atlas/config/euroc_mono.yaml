@@ -1,0 +1,37 @@
+platform_name: euroc_mono
+
+frontend:
+  mode: vo
+  fusion: loose
+  vo:
+    enabled: true
+  vio:
+    enabled: false
+
+camera:
+  sensor: mono
+  type: PinHole
+  fx: 458.654
+  fy: 457.296
+  cx: 367.215
+  cy: 248.375
+  baseline: 0.0
+  width: 752
+  height: 480
+  fps: 20.0
+  rgb: true
+  distortion: [-0.28340811, 0.07395907, 0.00019359, 1.76187114e-05]
+
+orb:
+  n_features: 1000
+  scale_factor: 1.2
+  n_levels: 8
+  ini_th_fast: 20
+  min_th_fast: 7
+
+vocabulary: autonomy/localization/conf/atlas/orb_vocab.fbow
+
+backend:
+  type: ceres
+  window_size: 10
+  max_iterations: 15

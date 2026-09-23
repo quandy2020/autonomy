@@ -1,0 +1,24 @@
+platform_name: drone_vio
+
+frontend:
+  mode: vio
+  fusion: loose
+  vo:
+    enabled: false
+  vio:
+    enabled: true
+
+camera:
+  sensor: rgbd
+  fx: 320.0
+  fy: 320.0
+  cx: 320.0
+  cy: 240.0
+  baseline: 0.12
+
+# FBoW ORB vocabulary (share/autonomy/localization/conf/atlas/orb_vocab.fbow)
+vocabulary: autonomy/localization/conf/atlas/orb_vocab.fbow
+
+backend:
+  type: iekf
+  window_size: 10

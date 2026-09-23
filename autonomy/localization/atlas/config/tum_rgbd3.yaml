@@ -1,0 +1,27 @@
+platform_name: tum_rgbd3
+
+frontend:
+  mode: vo
+  fusion: loose
+  vo:
+    enabled: true
+  vio:
+    enabled: false
+
+# TUM Freiburg3
+camera:
+  sensor: rgbd
+  fx: 535.4
+  fy: 539.2
+  cx: 320.1
+  cy: 247.6
+  baseline: 0.07732
+  depth_threshold: 40.0
+  depth_map_factor: 5000.0
+
+vocabulary: autonomy/localization/conf/atlas/orb_vocab.fbow
+
+backend:
+  type: ceres
+  window_size: 10
+  max_iterations: 15

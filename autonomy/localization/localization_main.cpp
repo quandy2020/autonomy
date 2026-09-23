@@ -23,12 +23,11 @@
 #include "autolink/autolink.hpp"
 #include "autolink/common/log.hpp"
 #include "autonomy/common/gflags.hpp"
-#include "autonomy/localization/atlas/util/modality.hpp"
 #include "autonomy/localization/cartographer/node/node_utils.hpp"
 #include "autonomy/localization/localization_server.hpp"
 
 DEFINE_string(localization_mode, "cartographer",
-              "Backend/modality: cartographer | lightning | vo|vio|lo|lio|livo|wio|lwio|lvwio|atlas.");
+              "Backend: cartographer | lightning.");
 
 // Cartographer
 DEFINE_string(load_state_filename, "",
@@ -39,36 +38,6 @@ DEFINE_bool(start_trajectory_with_default_topics, true,
             "Cartographer: start the first trajectory with default topics.");
 DEFINE_string(save_state_filename, "",
               "Cartographer: serialize state to this file on shutdown.");
-
-// Atlas (OpenVSLAM multimodal)
-DEFINE_string(atlas_config,
-              "autonomy/localization/conf/atlas/autosim_mono.yaml",
-              "Atlas: camera/system YAML config.");
-DEFINE_string(atlas_vocab, "autonomy/localization/conf/atlas/orb_vocab.fbow",
-              "Atlas: ORB vocabulary file (e.g. orb_vocab.fbow).");
-DEFINE_string(atlas_map_load, "", "Atlas: load map database on startup.");
-DEFINE_string(atlas_map_save, "", "Atlas: save map database on shutdown.");
-DEFINE_string(atlas_rgb_topic, "/camera/rgb/image_raw",
-              "Atlas: RGB Image topic for feed_*_frame.");
-DEFINE_string(atlas_depth_topic, "/camera/depth/image_raw",
-              "Atlas: Depth Image topic (RGBD setup only).");
-DEFINE_string(atlas_seg_topic, "",
-              "Atlas: segmentation Image topic (CV_8UC3 or mono8) for PLP plane mapping.");
-DEFINE_string(atlas_imu_topic, "",
-              "Atlas: IMU topic for visual-inertial fusion (requires IMU.enabled in YAML).");
-DEFINE_string(atlas_lidar_topic, "/points",
-              "Atlas: Lidar PointCloud2 topic (LO/LIO/LIVO/LWIO/LVWIO).");
-DEFINE_string(atlas_lidar_imu_topic, "/imu",
-              "Atlas: IMU topic for lidar subsystem.");
-DEFINE_string(atlas_lidar_config, "",
-              "Atlas: Lightning-LM / lidar YAML (optional).");
-DEFINE_string(atlas_wheel_topic, "/wheel_odom",
-              "Atlas: wheel odometry topic (WIO/LWIO/LVWIO).");
-DEFINE_bool(atlas_enable_lightning_upstream, false,
-            "Enable LidarSensor ObsModel / preprocess residual path "
-            "(runtime; always linked).");
-DEFINE_string(atlas_runtime_profile, "",
-              "Atlas: optional conf/atlas/profiles/*.yaml (modality + sensors).");
 
 // Standalone lightning LIO
 DEFINE_string(lightning_config,
@@ -105,29 +74,10 @@ LocalizationOptions BuildOptionsFromFlags() {
         FLAGS_start_trajectory_with_default_topics;
     options.save_state_filename = FLAGS_save_state_filename;
 
-    options.atlas_config_path = FLAGS_atlas_config;
-    options.atlas_vocab_path = FLAGS_atlas_vocab;
-    options.atlas_map_load_path = FLAGS_atlas_map_load;
-    options.atlas_map_save_path = FLAGS_atlas_map_save;
-    options.atlas_rgb_topic = FLAGS_atlas_rgb_topic;
-    options.atlas_depth_topic = FLAGS_atlas_depth_topic;
-    options.atlas_seg_topic = FLAGS_atlas_seg_topic;
-    options.atlas_imu_topic = FLAGS_atlas_imu_topic;
-    options.atlas_lidar_topic = FLAGS_atlas_lidar_topic;
-    options.atlas_lidar_imu_topic = FLAGS_atlas_lidar_imu_topic;
-    options.atlas_lidar_config_path = FLAGS_atlas_lidar_config;
-    options.atlas_wheel_topic = FLAGS_atlas_wheel_topic;
-    options.atlas_enable_lightning_upstream =
-        FLAGS_atlas_enable_lightning_upstream;
-    options.atlas_runtime_profile_path = FLAGS_atlas_runtime_profile;
     options.lightning_config_path = FLAGS_lightning_config;
     options.lightning_imu_topic = FLAGS_lightning_imu_topic;
     options.lightning_lidar_topic = FLAGS_lightning_lidar_topic;
     options.lightning_map_save_path = FLAGS_lightning_map_save;
-    if (options.backend == LocalizationBackend::kAtlas) {
-        options.atlas_modality =
-            atlas::common::ParseModality(FLAGS_localization_mode);
-    }
     return options;
 }
 
@@ -153,12 +103,6 @@ int main(int argc, char** argv) {
     AINFO << "localization_main: backend="
               << autonomy::localization::LocalizationBackendName(
                      options.backend);
-    if (options.backend
-        == autonomy::localization::LocalizationBackend::kAtlas) {
-        AINFO << "localization_main: atlas_modality="
-                  << autonomy::localization::atlas::common::ModalityName(
-                         options.atlas_modality);
-    }
     if (options.backend
         == autonomy::localization::LocalizationBackend::kLightning) {
         AINFO << "localization_main: lightning_config="

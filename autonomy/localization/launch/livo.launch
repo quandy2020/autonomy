@@ -1,7 +1,0 @@
-# Legacy FAST-LIVO2-style flags (superseded).
-# Use localization_livo.launch + Atlas single-system LIVO instead:
-#
-#   autonomy.localization --localization_mode=livo \
-#     --atlas_runtime_profile=autonomy/localization/conf/atlas/profiles/livo.yaml \
-#     --atlas_config=autonomy/localization/conf/atlas/autosim_livo.yaml \
-#     --atlas_vocab=autonomy/localization/conf/atlas/orb_vocab.fbow

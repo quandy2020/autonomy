@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# autonomy/localization — SLAM / pose estimation (Atlas, Cartographer, …)
+# autonomy/localization — SLAM / pose estimation (atlas, Cartographer, lightning, …)
 
 include(autonomy_module)
 autonomy_module(localization)
@@ -21,10 +21,8 @@ autonomy_module(localization)
 autonomy_glob_srcs(_LOCALIZATION_SRCS)
 list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/(fake_|mock_)")
 list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "test_helpers")
-# Atla2: never compile vendored thirdparty / tools scripts into the lib.
-list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/atla2/thirdparty/")
-list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/atla2/tools/")
-list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/atla2/scripts/")
+# Atlas: do not compile vendored / tool trees into the library.
+list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/atlas/thirdparty/")
 
 set(_LOCALIZATION_FEATURES slam pcl cairo boost_iostreams lua)
 
@@ -54,12 +52,8 @@ target_compile_definitions(autonomy_localization PUBLIC PCL_NO_PRECOMPILE)
 # Process entrypoint: autonomy.localization
 autonomy_binary(autonomy.localization SRCS localization_main.cpp)
 
-# Offline EuRoC mono-inertial runner (Atlas VIO)
-autonomy_binary(autonomy.localization.euroc_vio
-  SRCS atlas/example/euroc/euroc_inertial_main.cpp)
-
-# Atla2: apps binaries + config install (sources still in autonomy_glob_srcs)
-add_subdirectory(atla2)
+# Atlas: cli / node binaries + config install
+add_subdirectory(atlas)
 
 # Runtime assets → share/autonomy/localization/ (launch / conf / dag)
 install(

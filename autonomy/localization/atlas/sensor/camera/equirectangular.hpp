@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
+ * Copyright 2026 The Openbot Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,47 +14,106 @@
  * limitations under the License.
  */
 
-#ifndef AUTONOMY_LOCALIZATION_ATLAS_CAMERA_EQUIRECTANGULAR_HPP_
-#define AUTONOMY_LOCALIZATION_ATLAS_CAMERA_EQUIRECTANGULAR_HPP_
+/**
+ * @file
+ * @brief Full-sphere equirectangular (panoramic) projection model.
+ *
+ * Linearly maps azimuth and elevation to pixels, covering the full 360°×180° sphere.
+ */
 
-#include "autonomy/localization/atlas/sensor/camera/base.hpp"
+#ifndef AUTONOMY_LOCALIZATION_ATLAS_SENSOR_CAMERA_EQUIRECTANGULAR_HPP_
+#define AUTONOMY_LOCALIZATION_ATLAS_SENSOR_CAMERA_EQUIRECTANGULAR_HPP_
 
-namespace autonomy::localization::atlas {
+#include "autonomy/localization/atlas/sensor/geometric_camera.hpp"
+
+namespace autonomy {
+namespace localization {
+namespace atlas {
+namespace sensor {
 namespace camera {
 
-class equirectangular final : public base {
+/**
+ * @class autonomy::localization::atlas::sensor::camera::Equirectangular
+ * @brief Equirectangular projection: @f$ u=f_x\arctan2(x,z)+c_x @f$,
+ *        @f$ v=f_y\arcsin(y/\lVert p\rVert)+c_y @f$.
+ *
+ * Factory names `equirectangular` / `equirect` / `panorama`.
+ * Convention: @f$ f_x\approx W/(2\pi),\ f_y\approx H/\pi,\ c_x\approx W/2,\ c_y\approx H/2 @f$.
+ * Optional image size is written to base `width_`/`height_`; assigns a global `id` on construction.
+ *
+ * @code{.cpp}
+ * camera::Equirectangular cam(W/(2*M_PI), H/M_PI, W/2.0, H/2.0, W, H);
+ * Vec2 uv = cam.Project(point_c);
+ * @endcode
+ */
+class Equirectangular : public GeometricCamera {
 public:
-    equirectangular(const std::string& name, const color_order_t& color_order,
-                    const unsigned int cols, const unsigned int rows, const double fps);
+    /**
+     * @brief Default intrinsics and assign `id`.
+     */
+    Equirectangular() { id = next_id++; }
 
-    equirectangular(const YAML::Node& yaml_node);
+    /**
+     * @brief Specify angle-to-pixel scales and optional image size.
+     * @param fx Azimuth-to-pixel scale (usually ≈ width/(2π)).
+     * @param fy Elevation-to-pixel scale (usually ≈ height/π).
+     * @param cx Principal point cx (usually ≈ width/2).
+     * @param cy Principal point cy (usually ≈ height/2).
+     * @param width Image width; 0 means unknown.
+     * @param height Image height; 0 means unknown.
+     */
+    Equirectangular(double fx, double fy, double cx, double cy, int width = 0,
+                    int height = 0)
+        : fx_(fx), fy_(fy), cx_(cx), cy_(cy) {
+        width_ = width;
+        height_ = height;
+        id = next_id++;
+    }
 
-    ~equirectangular() override;
+    /**
+     * @brief Project a spherical direction to equirectangular pixels.
+     * @param point_camera Camera-frame 3D point (any non-zero direction).
+     * @return Pixel (u, v).
+     */
+    Vec2 Project(const Vec3& point_camera) const override;
 
-    void show_parameters() const override final;
+    /**
+     * @brief Recover spherical direction from pixel and scale to depth.
+     * @param pixel Pixel.
+     * @param depth Depth along ray (meters), default 1.0.
+     * @return Camera-frame point.
+     */
+    Vec3 Unproject(const Vec2& pixel,
+                                 double depth = 1.0) const override;
 
-    image_bounds compute_image_bounds() const override final;
+    /**
+     * @brief Return `Type::kEquirectangular`.
+     */
+    Type type() const override { return Type::kEquirectangular; }
 
-    cv::Point2f undistort_point(const cv::Point2f& dist_pt) const override final;
+    /**
+     * @brief Return `"equirectangular"`.
+     */
+    const char* type_name() const override {
+        return "equirectangular";
+    }
 
-    Vec3_t convert_point_to_bearing(const cv::Point2f& undist_pt) const override final;
+    double fx() const override { return fx_; }
+    double fy() const override { return fy_; }
+    double cx() const override { return cx_; }
+    double cy() const override { return cy_; }
 
-    cv::Point2f convert_bearing_to_point(const Vec3_t& bearing) const override final;
-
-    bool reproject_to_image(const Mat33_t& rot_cw, const Vec3_t& trans_cw, const Vec3_t& pos_w, Vec2_t& reproj, float& x_right) const override final;
-
-    bool reproject_to_bearing(const Mat33_t& rot_cw, const Vec3_t& trans_cw, const Vec3_t& pos_w, Vec3_t& reproj) const override final;
-
-    nlohmann::json to_json() const override final;
-
-    //! Override for optimization
-    void undistort_points(const std::vector<cv::Point2f>& dist_pts, std::vector<cv::Point2f>& undist_pts) const override final;
-    void undistort_keypoints(const std::vector<cv::KeyPoint>& dist_keypts, std::vector<cv::KeyPoint>& undist_keypts) const override final;
+private:
+    double fx_ = 1.0;  ///< Azimuth focal length (pixels/radian).
+    double fy_ = 1.0;  ///< Elevation focal length (pixels/radian).
+    double cx_ = 0.0;  ///< Principal point cx.
+    double cy_ = 0.0;  ///< Principal point cy.
 };
 
-std::ostream& operator<<(std::ostream& os, const equirectangular& params);
+}  // namespace camera
+}  // namespace sensor
+}  // namespace atlas
+}  // namespace localization
+}  // namespace autonomy
 
-} // namespace camera
-}  // namespace autonomy::localization::atlas
-
-#endif  // AUTONOMY_LOCALIZATION_ATLAS_CAMERA_EQUIRECTANGULAR_HPP_
+#endif  // AUTONOMY_LOCALIZATION_ATLAS_SENSOR_CAMERA_EQUIRECTANGULAR_HPP_

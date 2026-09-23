@@ -1,799 +1,1190 @@
+/*
+ * Copyright 2026 The Openbot Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file loop_closing.cpp
+ * @brief LoopClosing implementation: covisibility checks, Sim3 correction, map merge, async GBA.
+ */
+
 #include "autonomy/localization/atlas/backend/loop_closing.hpp"
-#include "autonomy/localization/atlas/mapping/local_mapping.hpp"
-#include "autonomy/localization/atlas/frontend/tracking.hpp"
-#include "autonomy/localization/atlas/data/keyframe.hpp"
-#include "autonomy/localization/atlas/data/landmark.hpp"
-#include "autonomy/localization/atlas/data/landmark_line.hpp"
-#include "autonomy/localization/atlas/data/map_database.hpp"
-#include "autonomy/localization/atlas/frontend/match/fuse.hpp"
-#include "autonomy/localization/atlas/io/dense_map_builder.hpp"
-#include "autonomy/localization/atlas/optimize/line_geometry_util.hpp"
-#include "autonomy/localization/atlas/util/converter.hpp"
-#include "autonomy/common/param_handler.hpp"
-#include "autonomy/localization/atlas/util/schedule.hpp"
-#include "autolink/common/log.hpp"
 
-// Lidar loop (PCL multi-res NDT + SE3 pose graph): see
-// backend/lidar_loop_detector.hpp / lidar_pose_graph.hpp —
-// wired optionally via LidarBridge::Options.use_lidar_loop (default false).
-// Unified pose path: Optimize → KF T_wb sync → LocalEstimator::Reset /
-// map_publisher (LIVO). Does not invent vision LoopClosing edges or GlobalBA.
-// Vision BoW loop_detector_ remains the active path in LoopClosing.
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <set>
+#include <thread>
+#include <unordered_map>
+#include <unordered_set>
 
-namespace autonomy::localization::atlas {
+#include "autonomy/localization/atlas/backend/optimizer.hpp"
+#include "autonomy/localization/atlas/backend/sim3_solver.hpp"
+#include "autonomy/localization/atlas/frontend/match/orb_matcher.hpp"
+#include "autonomy/localization/atlas/map/local_mapping.hpp"
+#include "autonomy/localization/atlas/system/slam_scheduler.hpp"
 
-LoopClosing::LoopClosing(data::map_database* map_db, data::bow_database* bow_db,
-                                                       data::bow_vocabulary* bow_vocab, const YAML::Node& yaml_node,
-                                                       const bool fix_scale)
-    : loop_detector_(new module::loop_detector(bow_db, bow_vocab, autonomy::common::YamlChild(yaml_node, "LoopDetector"), fix_scale)),
-      loop_bundle_adjuster_(new module::loop_bundle_adjuster(
-          map_db,
-          autonomy::common::YamlChild(yaml_node, "GlobalOptimizer")["num_iter"].as<unsigned int>(10),
-          autonomy::common::YamlChild(yaml_node, "GlobalOptimizer")["use_huber_kernel"].as<bool>(false),
-          autonomy::common::YamlChild(yaml_node, "GlobalOptimizer")["verbose"].as<bool>(false))),
-      map_db_(map_db),
-      graph_optimizer_(new optimize::graph_optimizer(autonomy::common::YamlChild(yaml_node, "GraphOptimizer"), map_db, fix_scale)),
-      thr_neighbor_keyframes_(autonomy::common::YamlChild(yaml_node, "GlobalOptimizer")["thr_neighbor_keyframes"].as<unsigned int>(15)) {
-    ADEBUG << "CONSTRUCT: LoopClosing";
+namespace autonomy {
+namespace localization {
+namespace atlas {
+namespace backend {
+namespace {
+
+constexpr int kMinMapKeyFrames = 12;
+constexpr int kBoWMatches = 20;
+constexpr int kBoWInliers = 15;
+constexpr int kSim3Inliers = 20;
+constexpr int kProjMatches = 50;
+constexpr int kProjOptMatches = 80;
+constexpr int kRefineProjMatches = 30;
+constexpr int kRefineOptMatches = 50;
+constexpr int kRefineProjMatchesRep = 100;
+constexpr int kCoincidenceThresh = 3;
+constexpr int kNumCovisibles = 10;
+
+SE3 Sim3ToSe3(const Sim3& sim3) {
+    SE3 pose = SE3Identity();
+    pose.linear() = sim3.rotation;
+    pose.translation() = sim3.translation;
+    return pose;
 }
 
-LoopClosing::~LoopClosing() {
-    abort_loop_BA();
-    if (thread_for_loop_BA_) {
-        thread_for_loop_BA_->join();
+/** Map current-world geometry by \(S_{yw}\) (ORB `Map::ApplyScaledRotation`). */
+void ApplySim3ToMap(Map* map, const Sim3& transform, bool scale_velocity) {
+    if (!map) {
+        return;
     }
-    ADEBUG << "DESTRUCT: LoopClosing";
-}
-
-void LoopClosing::set_tracking_module(Tracking* tracker) {
-    tracker_ = tracker;
-    if (loop_bundle_adjuster_) {
-        loop_bundle_adjuster_->set_tracking_module(tracker);
-    }
-}
-
-void LoopClosing::set_mapping_module(LocalMapping* mapper) {
-    mapper_ = mapper;
-    loop_bundle_adjuster_->set_mapping_module(mapper);
-}
-
-void LoopClosing::set_residual_mask(estimate::ResidualMask mask) {
-    if (loop_bundle_adjuster_) {
-        loop_bundle_adjuster_->set_residual_mask(mask);
-        AINFO << "LoopClosing: residual mask applied";
-    }
-}
-
-void LoopClosing::set_lidar_residual_source(
-    estimate::ILidarResidualSource* src) {
-    if (loop_bundle_adjuster_) {
-        loop_bundle_adjuster_->set_lidar_residual_source(src);
-        AINFO << "LoopClosing: lidar residual source attached";
-    }
-}
-
-void LoopClosing::set_odom_residual_source(
-    estimate::IOdomResidualSource* src) {
-    if (loop_bundle_adjuster_) {
-        loop_bundle_adjuster_->set_odom_residual_source(src);
-        AINFO << "LoopClosing: odom residual source attached";
-    }
-}
-
-void LoopClosing::set_thread_pool(::autonomy::common::ThreadPool* pool) {
-    thread_pool_ = pool;
-}
-
-void LoopClosing::enable_pool_scheduling(bool enable) {
-    use_pool_scheduling_ = enable && thread_pool_ != nullptr;
-    if (use_pool_scheduling_) {
-        std::lock_guard<std::mutex> lock(mtx_terminate_);
-        is_terminated_ = false;
-        terminate_is_requested_ = false;
-        AINFO << "LoopClosing: ThreadPool scheduling enabled";
-    }
-}
-
-void LoopClosing::enable_loop_detector() {
-    AINFO << "enable loop detector";
-    loop_detector_->enable_loop_detector();
-}
-
-void LoopClosing::disable_loop_detector() {
-    AINFO << "disable loop detector";
-    loop_detector_->disable_loop_detector();
-}
-
-bool LoopClosing::loop_detector_is_enabled() const {
-    return loop_detector_->is_enabled();
-}
-
-bool LoopClosing::request_loop_closure(unsigned int keyfrm1_id, unsigned int keyfrm2_id) {
-    std::lock_guard<std::mutex> lock(mtx_loop_closure_request_);
-    if (loop_closure_is_requested_) {
-        AWARN << "Can not process new loop closure request while previous was not finished";
-        return false;
-    }
-    loop_closure_is_requested_ = true;
-    loop_closure_request_.keyfrm1_id_ = keyfrm1_id;
-    loop_closure_request_.keyfrm2_id_ = keyfrm2_id;
-    return true;
-}
-
-bool LoopClosing::loop_closure_is_requested() {
-    std::lock_guard<std::mutex> lock(mtx_loop_closure_request_);
-    return loop_closure_is_requested_;
-}
-
-loop_closure_request& LoopClosing::get_loop_closure_request() {
-    std::lock_guard<std::mutex> lock(mtx_loop_closure_request_);
-    return loop_closure_request_;
-}
-
-void LoopClosing::finish_loop_closure_request() {
-    std::lock_guard<std::mutex> lock(mtx_loop_closure_request_);
-    loop_closure_is_requested_ = false;
-}
-
-bool LoopClosing::loop_closure(const loop_closure_request& request) {
-    {
-        std::lock_guard<std::mutex> lock(data::map_database::mtx_database_);
-        unsigned int curr_keyfrm_id = std::max(request.keyfrm1_id_, request.keyfrm2_id_);
-        unsigned int candidate_keyfrm_id = std::min(request.keyfrm1_id_, request.keyfrm2_id_);
-        // not to be removed during loop detection and correction
-        cur_keyfrm_ = map_db_->get_keyframe(curr_keyfrm_id);
-        if (cur_keyfrm_ == nullptr) {
-            AINFO << "keyframe " << curr_keyfrm_id << " not found";
-            return false;
+    for (const auto& keyframe : map->GetAllKeyFrames()) {
+        if (!keyframe) {
+            continue;
         }
-        cur_keyfrm_->set_not_to_be_erased();
-        loop_detector_->set_current_keyframe(cur_keyfrm_);
-        auto candidate_keyfrm = map_db_->get_keyframe(candidate_keyfrm_id);
-        if (candidate_keyfrm == nullptr) {
-            AINFO << "candidate keyframe " << candidate_keyfrm_id << " not found";
-            return false;
-        }
-        loop_detector_->add_loop_candidate(candidate_keyfrm);
-
-        // validate candidates and select ONE candidate from them
-        if (!loop_detector_->validate_candidates()) {
-            // could not find
-            // allow the removal of the current keyframe
-            cur_keyfrm_->set_to_be_erased();
-            return false;
-        }
-    }
-
-    correct_loop();
-    finish_loop_closure_request();
-    return true;
-}
-
-void LoopClosing::run() {
-    AINFO << "start global optimization module";
-
-    is_terminated_ = false;
-
-    while (true) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-
-        // check if termination is requested
-        if (terminate_is_requested()) {
-            // terminate and break
-            terminate();
-            break;
-        }
-
-        // check if loop closure is requested
-        if (loop_closure_is_requested()) {
-            loop_closure(get_loop_closure_request());
-        }
-
-        // check if pause is requested
-        if (pause_is_requested()) {
-            // pause and wait
-            pause();
-            // check if termination or reset is requested during pause
-            while (is_paused() && !terminate_is_requested() && !reset_is_requested()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(3));
+        const SE3 Twc = keyframe->GetPose().inverse();
+        SE3 transformed = SE3Identity();
+        transformed.linear() = transform.rotation * Twc.rotation();
+        transformed.translation() =
+            transform.rotation * (transform.scale * Twc.translation()) +
+            transform.translation();
+        keyframe->SetPose(transformed.inverse());
+        if (keyframe->has_velocity) {
+            keyframe->velocity_world =
+                transform.rotation * keyframe->velocity_world;
+            if (scale_velocity) {
+                keyframe->velocity_world *= transform.scale;
             }
         }
-
-        // check if reset is requested
-        if (reset_is_requested()) {
-            // reset and continue
-            reset();
+    }
+    for (const auto& map_point : map->GetAllMapPoints()) {
+        if (!map_point || map_point->isBad()) {
             continue;
         }
+        map_point->SetWorldPos(transform.Map(map_point->GetWorldPos()));
+        map_point->UpdateNormalAndDepth();
+    }
+}
 
-        // if the queue is empty, the following process is not needed
-        if (!keyframe_is_queued()) {
+}  // namespace
+
+LoopClosing::LoopClosing(Map* map, KeyFrameDatabase* keyframe_database,
+                         MultiMap* multi_map)
+    : map_(map),
+      multi_map_(multi_map),
+      keyframe_database_(keyframe_database) {}
+
+void LoopClosing::InsertKeyFrame(const std::shared_ptr<KeyFrame>& keyframe) {
+    if (!keyframe || keyframe->isBad() || finish_requested_.load()) {
+        return;
+    }
+    keyframe_queue_.Enqueue(keyframe);
+}
+
+void LoopClosing::Start(SlamScheduler* scheduler) {
+    if (scheduler == nullptr || async_.load()) {
+        return;
+    }
+    scheduler_ = scheduler;
+    finish_requested_.store(false);
+    finished_.store(false);
+    async_.store(true);
+    worker_future_ = scheduler->Enqueue([this] { Run(); });
+}
+
+void LoopClosing::Run() {
+    while (!finish_requested_.load()) {
+        std::shared_ptr<KeyFrame> keyframe;
+        if (!keyframe_queue_.WaitDequeue(&keyframe)) {
+            break;
+        }
+        if (!keyframe || finish_requested_.load()) {
             continue;
         }
+        ProcessKeyFrame(keyframe);
+    }
+    finished_.store(true);
+    async_.store(false);
+}
 
-        while (loop_bundle_adjuster_->is_running()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            if (terminate_is_requested()) {
+void LoopClosing::ResetLoopState() {
+    loop_num_coincidences_ = 0;
+    loop_num_not_found_ = 0;
+    loop_matched_kf_.reset();
+    loop_last_current_kf_.reset();
+    loop_sim3_slw_ = Sim3::Identity();
+    loop_map_points_.clear();
+    loop_matched_mps_.clear();
+}
+
+void LoopClosing::ResetMergeState() {
+    merge_num_coincidences_ = 0;
+    merge_num_not_found_ = 0;
+    merge_matched_kf_.reset();
+    merge_last_current_kf_.reset();
+    merge_sim3_slw_ = Sim3::Identity();
+}
+
+Sim3 LoopClosing::Sim3CurrentFromMatched(
+    const Sim3& Scw, const std::shared_ptr<KeyFrame>& matched) const {
+    // Scw = Scm ∘ Smw  ⇒  Scm = Scw ∘ Smw⁻¹, Smw = Tcw_matched.
+    const Sim3 Smw = Sim3::FromSe3(matched->GetPose());
+    return Scw.Compose(Smw.Inverse());
+}
+
+void LoopClosing::PauseLocalMapping() {
+    if (!local_mapping_) {
+        return;
+    }
+    local_mapping_->RequestPause();
+    local_mapping_->EmptyQueue();
+    while (!local_mapping_->isStopped() && !finish_requested_.load()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+}
+
+void LoopClosing::ResumeLocalMapping() {
+    if (local_mapping_) {
+        local_mapping_->Release();
+    }
+}
+
+void LoopClosing::LaunchGlobalBA(Map* active_map, int iterations) {
+    if (!active_map) {
+        return;
+    }
+    if (running_gba_.exchange(true)) {
+        if (stop_gba_flag_) {
+            *stop_gba_flag_ = true;
+        }
+        return;
+    }
+    auto stop = std::make_shared<bool>(false);
+    stop_gba_flag_ = stop;
+    const bool imu = active_map->isImuInitialized();
+    const uint64_t epoch = ++gba_epoch_;
+    auto run = [this, active_map, iterations, imu, stop, epoch]() {
+        if (imu) {
+            Optimizer::FullInertialBA(active_map, 7, false, stop.get(), true,
+                                      1e2f, 1e6f, epoch);
+        } else {
+            Optimizer::GlobalBundleAdjustment(active_map, iterations,
+                                              stop.get(), epoch);
+        }
+        if (!*stop && !finish_requested_.load()) {
+            PauseLocalMapping();
+            PropagateGlobalBA(active_map, epoch);
+            ResumeLocalMapping();
+        }
+        running_gba_.store(false);
+    };
+    if (scheduler_ != nullptr) {
+        gba_future_ = scheduler_->Enqueue(std::move(run));
+    } else {
+        run();
+    }
+}
+
+bool LoopClosing::ProcessKeyFrame(const std::shared_ptr<KeyFrame>& keyframe) {
+    current_keyframe_ = keyframe;
+    std::shared_ptr<KeyFrame> matched;
+    Sim3 sim3;
+    bool is_merge = false;
+    std::vector<std::shared_ptr<MapPoint>> matched_mps;
+    if (!NewDetectCommonRegions(&matched, &sim3, &is_merge, &matched_mps) ||
+        !matched) {
+        return false;
+    }
+    last_sim3_ = sim3;
+    PauseLocalMapping();
+    bool ok = false;
+    Map* gba_map = map_;
+    if (is_merge) {
+        const bool inertial =
+            current_keyframe_ && current_keyframe_->imu_preintegrated;
+        ok = inertial ? MergeLocal2(matched, sim3) : MergeLocal(matched, sim3);
+        if (ok && current_keyframe_) {
+            gba_map = current_keyframe_->GetMap();
+        }
+    } else {
+        ok = ApplyLoopCorrection(matched, sim3, matched_mps);
+    }
+    ResumeLocalMapping();
+    if (ok) {
+        LaunchGlobalBA(gba_map, is_merge ? 5 : 10);
+    }
+    return ok;
+}
+
+bool LoopClosing::NewDetectCommonRegions(std::shared_ptr<KeyFrame>* matched_out,
+                                         Sim3* sim3_out, bool* is_merge,
+                                         std::vector<std::shared_ptr<MapPoint>>*
+                                             matched_mps_out) {
+    if (matched_out == nullptr || sim3_out == nullptr || is_merge == nullptr ||
+        !current_keyframe_ || !keyframe_database_) {
+        return false;
+    }
+    *is_merge = false;
+    if (matched_mps_out != nullptr) {
+        matched_mps_out->clear();
+    }
+
+    Map* cur_map = current_keyframe_->GetMap();
+    if (cur_map != nullptr) {
+        if (cur_map->isImuInitialized() && !cur_map->GetInertialBA2()) {
+            return false;
+        }
+        if (cur_map->KeyFramesInMap() < kMinMapKeyFrames) {
+            return false;
+        }
+    }
+
+    bool loop_detected_in_kf = false;
+    if (loop_num_coincidences_ > 0 && loop_matched_kf_ &&
+        loop_last_current_kf_) {
+        const SE3 Tcl = current_keyframe_->GetPose() *
+                        loop_last_current_kf_->GetPoseInverse();
+        Sim3 gScw = Sim3::FromSe3(Tcl).Compose(loop_sim3_slw_);
+        int num_proj = 0;
+        std::vector<std::shared_ptr<MapPoint>> matched_mps;
+        if (DetectAndRefineSim3FromLastKF(current_keyframe_, loop_matched_kf_,
+                                          &gScw, &num_proj, &matched_mps)) {
+            loop_detected_in_kf = true;
+            ++loop_num_coincidences_;
+            loop_last_current_kf_ = current_keyframe_;
+            loop_sim3_slw_ = gScw;
+            loop_matched_mps_ = matched_mps;
+            if (loop_num_coincidences_ >= kCoincidenceThresh) {
+                *matched_out = loop_matched_kf_;
+                *sim3_out =
+                    Sim3CurrentFromMatched(gScw, loop_matched_kf_);
+                *is_merge = false;
+                if (matched_mps_out != nullptr) {
+                    *matched_mps_out = matched_mps;
+                }
+                ResetLoopState();
+                return true;
+            }
+            loop_num_not_found_ = 0;
+        } else {
+            ++loop_num_not_found_;
+            if (loop_num_not_found_ >= 2) {
+                ResetLoopState();
+            }
+        }
+    }
+
+    bool merge_detected_in_kf = false;
+    if (merge_num_coincidences_ > 0 && merge_matched_kf_ &&
+        merge_last_current_kf_) {
+        const SE3 Tcl = current_keyframe_->GetPose() *
+                        merge_last_current_kf_->GetPoseInverse();
+        Sim3 gScw = Sim3::FromSe3(Tcl).Compose(merge_sim3_slw_);
+        int num_proj = 0;
+        std::vector<std::shared_ptr<MapPoint>> matched_mps;
+        if (DetectAndRefineSim3FromLastKF(current_keyframe_, merge_matched_kf_,
+                                          &gScw, &num_proj, &matched_mps)) {
+            merge_detected_in_kf = true;
+            ++merge_num_coincidences_;
+            merge_last_current_kf_ = current_keyframe_;
+            merge_sim3_slw_ = gScw;
+            if (merge_num_coincidences_ >= kCoincidenceThresh) {
+                *matched_out = merge_matched_kf_;
+                *sim3_out =
+                    Sim3CurrentFromMatched(gScw, merge_matched_kf_);
+                *is_merge = true;
+                ResetMergeState();
+                return true;
+            }
+            merge_num_not_found_ = 0;
+        } else {
+            ++merge_num_not_found_;
+            if (merge_num_not_found_ >= 2) {
+                ResetMergeState();
+            }
+        }
+    }
+
+    if (loop_detected_in_kf || merge_detected_in_kf) {
+        return false;
+    }
+
+    if (current_keyframe_->id < 10 || !current_keyframe_->HasBoW() ||
+        !keyframe_database_) {
+        return false;
+    }
+
+    std::vector<std::shared_ptr<KeyFrame>> loop_cands;
+    std::vector<std::shared_ptr<KeyFrame>> merge_cands;
+    keyframe_database_->DetectNBestCandidates(current_keyframe_, &loop_cands,
+                                              &merge_cands, 3);
+
+    if (!loop_detected_in_kf && !loop_cands.empty()) {
+        Sim3 Scw;
+        int coincidences = 0;
+        std::shared_ptr<KeyFrame> matched;
+        std::vector<std::shared_ptr<MapPoint>> bow_matched_mps;
+        const bool detected = DetectCommonRegionsFromBoW(
+            loop_cands, &matched, &Scw, &coincidences, &bow_matched_mps);
+        if (matched) {
+            loop_matched_kf_ = matched;
+            loop_last_current_kf_ = current_keyframe_;
+            loop_sim3_slw_ = Scw;
+            loop_matched_mps_ = bow_matched_mps;
+            loop_num_coincidences_ = std::max(coincidences, 1);
+            loop_num_not_found_ = 0;
+            if (detected) {
+                *matched_out = matched;
+                *sim3_out = Sim3CurrentFromMatched(Scw, matched);
+                *is_merge = false;
+                if (matched_mps_out != nullptr) {
+                    *matched_mps_out = bow_matched_mps;
+                }
+                ResetLoopState();
+                return true;
+            }
+        }
+    }
+
+    if (!merge_detected_in_kf && !merge_cands.empty()) {
+        Sim3 Scw;
+        int coincidences = 0;
+        std::shared_ptr<KeyFrame> matched;
+        const bool detected = DetectCommonRegionsFromBoW(
+            merge_cands, &matched, &Scw, &coincidences);
+        if (matched) {
+            merge_matched_kf_ = matched;
+            merge_last_current_kf_ = current_keyframe_;
+            merge_sim3_slw_ = Scw;
+            merge_num_coincidences_ = std::max(coincidences, 1);
+            merge_num_not_found_ = 0;
+            if (detected) {
+                *matched_out = matched;
+                *sim3_out = Sim3CurrentFromMatched(Scw, matched);
+                *is_merge = true;
+                ResetMergeState();
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool LoopClosing::DetectLoop(
+    std::vector<std::shared_ptr<KeyFrame>>* candidates) {
+    if (candidates == nullptr || !current_keyframe_ || !keyframe_database_) {
+        return false;
+    }
+    candidates->clear();
+    if (finish_requested_.load()) {
+        finished_.store(true);
+        return false;
+    }
+    if (current_keyframe_->id < 10 || !current_keyframe_->HasBoW()) {
+        return false;
+    }
+    *candidates = keyframe_database_->DetectLoopCandidates(current_keyframe_,
+                                                           min_score_);
+    return !candidates->empty();
+}
+
+int LoopClosing::FindMatchesByProjection(
+    const std::shared_ptr<KeyFrame>& current,
+    const std::shared_ptr<KeyFrame>& matched, const Sim3& Scw,
+    std::vector<std::shared_ptr<MapPoint>>* map_points,
+    std::vector<std::shared_ptr<MapPoint>>* matched_mps) {
+    if (!current || !matched || map_points == nullptr ||
+        matched_mps == nullptr) {
+        return 0;
+    }
+    auto cov = matched->GetBestCovisibilityKeyFrames(kNumCovisibles);
+    cov.push_back(matched);
+
+    std::set<std::shared_ptr<MapPoint>> unique;
+    map_points->clear();
+    for (const auto& kf : cov) {
+        if (!kf || kf->isBad()) {
+            continue;
+        }
+        for (const auto& mp : kf->GetMapPointMatches()) {
+            if (!mp || mp->isBad() || unique.count(mp) > 0) {
+                continue;
+            }
+            unique.insert(mp);
+            map_points->push_back(mp);
+        }
+    }
+
+    feature::OrbMatcher matcher(0.9f, true);
+    matched_mps->assign(current->GetKeyPoints().size(), nullptr);
+    return matcher.SearchByProjection(current, Scw, *map_points, matched_mps, 3.f,
+                                      1.5f);
+}
+
+bool LoopClosing::DetectAndRefineSim3FromLastKF(
+    const std::shared_ptr<KeyFrame>& current,
+    const std::shared_ptr<KeyFrame>& matched, Sim3* Scw, int* num_proj_matches,
+    std::vector<std::shared_ptr<MapPoint>>* matched_mps) {
+    if (!current || !matched || Scw == nullptr || num_proj_matches == nullptr ||
+        matched_mps == nullptr) {
+        return false;
+    }
+    std::vector<std::shared_ptr<MapPoint>> map_points;
+    *num_proj_matches =
+        FindMatchesByProjection(current, matched, *Scw, &map_points, matched_mps);
+    if (*num_proj_matches < kRefineProjMatches) {
+        return false;
+    }
+
+    // Scm = Scw ∘ Twc_matched = Scw ∘ Smw⁻¹... use PoseInverse as Twc.
+    const Sim3 Swm = Sim3::FromSe3(matched->GetPoseInverse());
+    Sim3 Scm = Scw->Compose(Swm);
+    bool fixed = fix_scale_;
+    if (current->GetMap() && current->GetMap()->isImuInitialized() &&
+        !current->GetMap()->GetInertialBA2()) {
+        fixed = false;
+    }
+    const int num_opt = Optimizer::OptimizeSim3(current, matched, *matched_mps,
+                                                &Scm, 10.f, fixed, true);
+    if (num_opt <= kRefineOptMatches) {
+        return false;
+    }
+
+    // Update Scw from refined Scm: Scw = Scm ∘ Smw, Smw = Tcw.
+    *Scw = Scm.Compose(Sim3::FromSe3(matched->GetPose()));
+
+    std::vector<std::shared_ptr<MapPoint>> matched_rep;
+    const int n_rep =
+        FindMatchesByProjection(current, matched, *Scw, &map_points, &matched_rep);
+    *num_proj_matches = n_rep;
+    if (n_rep < kRefineProjMatchesRep) {
+        return false;
+    }
+    *matched_mps = matched_rep;
+    return true;
+}
+
+bool LoopClosing::DetectCommonRegionsFromBoW(
+    const std::vector<std::shared_ptr<KeyFrame>>& bow_candidates,
+    std::shared_ptr<KeyFrame>* matched_out, Sim3* Scw_out,
+    int* num_coincidences,
+    std::vector<std::shared_ptr<MapPoint>>* matched_mps_out) {
+    if (matched_out == nullptr || Scw_out == nullptr ||
+        num_coincidences == nullptr || !current_keyframe_) {
+        return false;
+    }
+    *matched_out = nullptr;
+    *num_coincidences = 0;
+    if (matched_mps_out != nullptr) {
+        matched_mps_out->clear();
+    }
+
+    const auto connected = current_keyframe_->GetConnectedKeyFrames();
+    std::unordered_set<KeyFrame*> connected_set;
+    for (const auto& [weak, weight] : connected) {
+        if (auto kf = weak.lock()) {
+            connected_set.insert(kf.get());
+        }
+    }
+
+    feature::OrbMatcher matcher_bow(0.9f, true);
+    feature::OrbMatcher matcher(0.75f, true);
+
+    std::shared_ptr<KeyFrame> best_matched;
+    int best_proj = 0;
+    int best_coincidences = 0;
+    Sim3 best_Scw = Sim3::Identity();
+    std::vector<std::shared_ptr<MapPoint>> best_matched_mps;
+
+    for (const auto& candidate : bow_candidates) {
+        if (!candidate || candidate->isBad()) {
+            continue;
+        }
+        auto cov = candidate->GetBestCovisibilityKeyFrames(kNumCovisibles);
+        if (cov.empty()) {
+            cov.push_back(candidate);
+        } else {
+            cov.insert(cov.begin(), candidate);
+        }
+
+        bool near = false;
+        for (const auto& kf : cov) {
+            if (kf && connected_set.count(kf.get()) > 0) {
+                near = true;
                 break;
             }
         }
-        if (terminate_is_requested()) {
-            break;
+        if (near) {
+            continue;
         }
 
-        ProcessDequeuedKeyframe();
-    }
+        std::vector<std::shared_ptr<MapPoint>> vp_matched(
+            current_keyframe_->GetKeyPoints().size(), nullptr);
+        std::set<std::shared_ptr<MapPoint>> seen;
+        int num_bow = 0;
+        std::shared_ptr<KeyFrame> most_bow_kf = candidate;
+        int most_bow_n = 0;
 
-    AINFO << "terminate global optimization module";
-}
-
-void LoopClosing::ProcessDequeuedKeyframe() {
-    // dequeue the keyframe from the queue -> cur_keyfrm_
-    {
-        std::lock_guard<std::mutex> lock(mtx_keyfrm_queue_);
-        if (keyfrms_queue_.empty()) {
-            return;
-        }
-        cur_keyfrm_ = keyfrms_queue_.front();
-        keyfrms_queue_.pop_front();
-    }
-
-    {
-        std::lock_guard<std::mutex> lock(data::map_database::mtx_database_);
-        // not to be removed during loop detection and correction
-        cur_keyfrm_->set_not_to_be_erased();
-
-        // pass the current keyframe to the loop detector
-        loop_detector_->set_current_keyframe(cur_keyfrm_);
-
-        // detect some loop candidate with BoW
-        if (!loop_detector_->detect_loop_candidates()) {
-            cur_keyfrm_->set_to_be_erased();
-            return;
-        }
-
-        if (!loop_detector_->validate_candidates()) {
-            cur_keyfrm_->set_to_be_erased();
-            return;
-        }
-    }
-
-    correct_loop();
-}
-
-void LoopClosing::DrainKeyframesOnce() {
-    while (!terminate_is_requested() && keyframe_is_queued()) {
-        if (loop_closure_is_requested()) {
-            loop_closure(get_loop_closure_request());
-        }
-        while (loop_bundle_adjuster_->is_running()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            if (terminate_is_requested()) {
-                return;
+        for (const auto& kf : cov) {
+            if (!kf || kf->isBad()) {
+                continue;
+            }
+            std::vector<std::shared_ptr<MapPoint>> matches12;
+            const int n = matcher_bow.SearchByBoW(current_keyframe_, kf, &matches12);
+            if (n > most_bow_n) {
+                most_bow_n = n;
+                most_bow_kf = kf;
+            }
+            for (size_t k = 0; k < matches12.size(); ++k) {
+                const auto& mp = matches12[k];
+                if (!mp || mp->isBad() || seen.count(mp) > 0) {
+                    continue;
+                }
+                seen.insert(mp);
+                if (k < vp_matched.size()) {
+                    vp_matched[k] = mp;
+                }
+                ++num_bow;
             }
         }
-        if (terminate_is_requested()) {
+        if (num_bow < kBoWMatches || !most_bow_kf) {
+            continue;
+        }
+
+        bool fixed = fix_scale_;
+        if (current_keyframe_->GetMap() &&
+            current_keyframe_->GetMap()->isImuInitialized() &&
+            !current_keyframe_->GetMap()->GetInertialBA2()) {
+            fixed = false;
+        }
+        Sim3Solver solver(current_keyframe_, most_bow_kf, vp_matched, fixed);
+        solver.SetRansacParameters(0.99, kBoWInliers, 300);
+        std::vector<bool> inliers;
+        int num_inliers = 0;
+        Sim3 Scm = solver.Find(&inliers, &num_inliers);
+        if (num_inliers < kBoWInliers) {
+            continue;
+        }
+
+        // Collect covisible map points of most_bow_kf for projection.
+        auto cov2 = most_bow_kf->GetBestCovisibilityKeyFrames(kNumCovisibles);
+        cov2.push_back(most_bow_kf);
+        std::vector<std::shared_ptr<MapPoint>> vp_map_points;
+        std::set<std::shared_ptr<MapPoint>> sp_mps;
+        for (const auto& kf : cov2) {
+            if (!kf) {
+                continue;
+            }
+            for (const auto& mp : kf->GetMapPointMatches()) {
+                if (!mp || mp->isBad() || sp_mps.count(mp) > 0) {
+                    continue;
+                }
+                sp_mps.insert(mp);
+                vp_map_points.push_back(mp);
+            }
+        }
+
+        const Sim3 Smw = Sim3::FromSe3(most_bow_kf->GetPose());
+        Sim3 Scw = Scm.Compose(Smw);
+
+        std::vector<std::shared_ptr<MapPoint>> vp_matched_mp(
+            current_keyframe_->GetKeyPoints().size(), nullptr);
+        const int num_proj = matcher.SearchByProjection(
+            current_keyframe_, Scw, vp_map_points, &vp_matched_mp, 8.f, 1.5f);
+        if (num_proj < kProjMatches) {
+            continue;
+        }
+
+        const int num_opt = Optimizer::OptimizeSim3(
+            current_keyframe_, most_bow_kf, vp_matched_mp, &Scm, 10.f, fixed,
+            true);
+        if (num_opt < kSim3Inliers) {
+            continue;
+        }
+        Scw = Scm.Compose(Smw);
+
+        vp_matched_mp.assign(current_keyframe_->GetKeyPoints().size(), nullptr);
+        const int num_proj_opt = matcher.SearchByProjection(
+            current_keyframe_, Scw, vp_map_points, &vp_matched_mp, 5.f, 1.0f);
+        if (num_proj_opt < kProjOptMatches) {
+            continue;
+        }
+
+        // Coincidence: validate Sim3 on current covisible keyframes.
+        int n_valid = 0;
+        const auto current_cov =
+            current_keyframe_->GetBestCovisibilityKeyFrames(kNumCovisibles);
+        for (const auto& kf_j : current_cov) {
+            if (!kf_j || kf_j->isBad() || n_valid >= kCoincidenceThresh) {
+                break;
+            }
+            const SE3 Tjc =
+                kf_j->GetPose() * current_keyframe_->GetPoseInverse();
+            Sim3 Sjw = Sim3::FromSe3(Tjc).Compose(Scw);
+            int n_proj_j = 0;
+            std::vector<std::shared_ptr<MapPoint>> matched_j;
+            std::vector<std::shared_ptr<MapPoint>> mps_j;
+            n_proj_j =
+                FindMatchesByProjection(kf_j, most_bow_kf, Sjw, &mps_j, &matched_j);
+            if (n_proj_j >= kRefineProjMatches) {
+                ++n_valid;
+            }
+        }
+
+        if (num_proj_opt > best_proj) {
+            best_proj = num_proj_opt;
+            best_coincidences = n_valid;
+            best_matched = most_bow_kf;
+            best_Scw = Scw;
+            best_matched_mps = std::move(vp_matched_mp);
+        }
+    }
+
+    if (best_proj <= 0 || !best_matched) {
+        return false;
+    }
+    *matched_out = best_matched;
+    *Scw_out = best_Scw;
+    *num_coincidences = best_coincidences;
+    if (matched_mps_out != nullptr) {
+        *matched_mps_out = best_matched_mps;
+    }
+    // Immediate accept when ≥3 covisible KFs validate; else keep state for
+    // subsequent keyframes (ORB-SLAM3 DetectCommonRegionsFromBoW).
+    return best_coincidences >= kCoincidenceThresh;
+}
+
+bool LoopClosing::EstimateSim3(const std::shared_ptr<KeyFrame>& matched,
+                               Sim3* sim3_out) {
+    if (!matched || !current_keyframe_ || sim3_out == nullptr) {
+        return false;
+    }
+    feature::OrbMatcher matcher(0.75f, true);
+    std::vector<std::shared_ptr<MapPoint>> matches12;
+    const int nmatches =
+        matcher.SearchByBoW(current_keyframe_, matched, &matches12);
+    if (nmatches < 20) {
+        return false;
+    }
+    Sim3Solver solver(current_keyframe_, matched, matches12, fix_scale_);
+    solver.SetRansacParameters(0.99, 20, 300);
+    std::vector<bool> inliers;
+    int num_inliers = 0;
+    Sim3 sim3 = solver.Find(&inliers, &num_inliers);
+    if (num_inliers < 20) {
+        return false;
+    }
+    for (size_t i = 0; i < matches12.size() && i < inliers.size(); ++i) {
+        if (!inliers[i]) {
+            matches12[i].reset();
+        }
+    }
+    // Guided matching under estimated Sim3 (ORB-SLAM2 ComputeSim3 pattern).
+    matcher.SearchBySim3(current_keyframe_, matched, &matches12, sim3, 7.5f);
+    const int refined = Optimizer::OptimizeSim3(
+        current_keyframe_, matched, matches12, &sim3, 10.f, fix_scale_);
+    if (refined < 20) {
+        return false;
+    }
+    *sim3_out = sim3;
+    return true;
+}
+
+void LoopClosing::SearchAndFuse(
+    const std::vector<std::shared_ptr<KeyFrame>>& connected,
+    const std::vector<std::shared_ptr<MapPoint>>& map_points) {
+    feature::OrbMatcher matcher(0.8f, true);
+    for (const auto& keyframe : connected) {
+        if (!keyframe || keyframe->isBad()) {
+            continue;
+        }
+        // Scw from corrected KF pose (ORB SearchAndFuse connected-KF overload).
+        const Sim3 Scw = Sim3::FromSe3(keyframe->GetPose());
+        std::vector<std::shared_ptr<MapPoint>> replace_points(map_points.size(),
+                                                              nullptr);
+        matcher.Fuse(keyframe, Scw, map_points, 4.f, &replace_points);
+        for (size_t i = 0; i < map_points.size(); ++i) {
+            if (replace_points[i] && map_points[i] && !map_points[i]->isBad()) {
+                // Existing KF point is replaced by the loop/merge candidate.
+                replace_points[i]->Replace(map_points[i]);
+            }
+        }
+        if (keyframe->HasDualCameraIndex()) {
+            matcher.Fuse(keyframe, map_points, 4.f, true);
+        }
+    }
+}
+
+bool LoopClosing::CorrectLoop(const std::shared_ptr<KeyFrame>& loop_keyframe) {
+    Sim3 sim3;
+    if (!EstimateSim3(loop_keyframe, &sim3)) {
+        return false;
+    }
+    last_sim3_ = sim3;
+    PauseLocalMapping();
+    const bool ok = ApplyLoopCorrection(loop_keyframe, sim3);
+    ResumeLocalMapping();
+    if (ok) {
+        LaunchGlobalBA(map_, 10);
+    }
+    return ok;
+}
+
+bool LoopClosing::ApplyLoopCorrection(
+    const std::shared_ptr<KeyFrame>& loop_keyframe, const Sim3& sim3,
+    const std::vector<std::shared_ptr<MapPoint>>& matched_mps) {
+    if (!loop_keyframe || !current_keyframe_ || !map_) {
+        return false;
+    }
+
+    // sim3 is Scm (current←matched). Corrected Scw = Scm ∘ Smw (ORB mg2oLoopScw).
+    const Sim3 Scw = sim3.Compose(Sim3::FromSe3(loop_keyframe->GetPose()));
+
+    current_keyframe_->UpdateConnections();
+    std::vector<std::shared_ptr<KeyFrame>> connected =
+        current_keyframe_->GetBestCovisibilityKeyFrames(20);
+    connected.push_back(current_keyframe_);
+
+    // Propagate corrected Sim3 to connected KFs and align MapPoints (ORB CorrectLoop).
+    std::unordered_map<KeyFrame*, Sim3> corrected;
+    std::unordered_map<KeyFrame*, Sim3> non_corrected;
+    corrected[current_keyframe_.get()] = Scw;
+    non_corrected[current_keyframe_.get()] =
+        Sim3::FromSe3(current_keyframe_->GetPose());
+
+    {
+        SE3 Tcw_corr = SE3Identity();
+        Tcw_corr.linear() = Scw.rotation;
+        const double inv_s =
+            (std::abs(Scw.scale) > 1e-12) ? (1.0 / Scw.scale) : 1.0;
+        Tcw_corr.translation() = Scw.translation * inv_s;
+        current_keyframe_->SetPose(Tcw_corr);
+    }
+
+    const SE3 Twc_se3 = [&]() {
+        const Sim3& Sn = non_corrected[current_keyframe_.get()];
+        SE3 Twc = SE3Identity();
+        Twc.linear() = Sn.rotation.transpose();
+        Twc.translation() = -Sn.rotation.transpose() * Sn.translation;
+        return Twc;
+    }();
+
+    for (const auto& kf : connected) {
+        if (!kf || kf->isBad() || kf.get() == current_keyframe_.get()) {
+            continue;
+        }
+        const SE3 Tiw = kf->GetPose();
+        const SE3 Tic = Tiw * Twc_se3;
+        Sim3 Sic = Sim3::FromSe3(Tic);
+        const Sim3 Siw_corr = Sic.Compose(Scw);
+        corrected[kf.get()] = Siw_corr;
+        non_corrected[kf.get()] = Sim3::FromSe3(Tiw);
+
+        SE3 Tiw_corr = SE3Identity();
+        Tiw_corr.linear() = Siw_corr.rotation;
+        const double inv_s =
+            (std::abs(Siw_corr.scale) > 1e-12) ? (1.0 / Siw_corr.scale) : 1.0;
+        Tiw_corr.translation() = Siw_corr.translation * inv_s;
+        kf->SetPose(Tiw_corr);
+    }
+
+    const bool imu_init = map_->isImuInitialized();
+    std::unordered_set<MapPoint*> corrected_mps;
+    for (const auto& kf : connected) {
+        if (!kf || corrected.count(kf.get()) == 0) {
+            continue;
+        }
+        const Sim3& Siw_corr = corrected[kf.get()];
+        const Sim3& Siw = non_corrected[kf.get()];
+        const Sim3 Swi_corr = Siw_corr.Inverse();
+
+        for (const auto& mp : kf->GetMapPointMatches()) {
+            if (!mp || mp->isBad() || corrected_mps.count(mp.get()) > 0) {
+                continue;
+            }
+            const Vec3 Pw = mp->GetWorldPos();
+            mp->SetWorldPos(Swi_corr.Map(Siw.Map(Pw)));
+            mp->UpdateNormalAndDepth();
+            corrected_mps.insert(mp.get());
+        }
+
+        if (imu_init && kf->has_velocity) {
+            const Mat33 Rcor =
+                Siw_corr.rotation.transpose() * Siw.rotation;
+            kf->velocity_world = Rcor * kf->velocity_world;
+        }
+        kf->UpdateConnections();
+    }
+
+    // Fuse already-matched loop MapPoints into current KF (ORB CorrectLoop).
+    for (size_t i = 0; i < matched_mps.size(); ++i) {
+        const auto& loop_mp = matched_mps[i];
+        if (!loop_mp || loop_mp->isBad()) {
+            continue;
+        }
+        auto cur_mp = current_keyframe_->GetMapPoint(static_cast<int>(i));
+        if (cur_mp && !cur_mp->isBad()) {
+            cur_mp->Replace(loop_mp);
+        } else {
+            current_keyframe_->AddMapPoint(loop_mp, static_cast<int>(i));
+            loop_mp->AddObservation(current_keyframe_, static_cast<int>(i));
+            loop_mp->ComputeDistinctiveDescriptors();
+        }
+    }
+
+    current_keyframe_->AddLoopEdge(loop_keyframe);
+    loop_keyframe->AddLoopEdge(current_keyframe_);
+
+    // Project loop-side MapPoints into corrected local window and fuse.
+    std::unordered_set<MapPoint*> loop_point_set;
+    std::vector<std::shared_ptr<MapPoint>> loop_points;
+    auto add_loop_mps = [&](const std::shared_ptr<KeyFrame>& kf) {
+        if (!kf) {
             return;
         }
-        ProcessDequeuedKeyframe();
-    }
-}
-
-void LoopClosing::MaybeScheduleDrain() {
-    if (!use_pool_scheduling_ || !thread_pool_) {
-        return;
-    }
-    bool expected = false;
-    if (!drain_scheduled_.compare_exchange_strong(expected, true)) {
-        return;
-    }
-    common_sched::Schedule(thread_pool_, [this]() {
-        DrainKeyframesOnce();
-        drain_scheduled_.store(false);
-        if ((keyframe_is_queued() || loop_closure_is_requested())
-            && !terminate_is_requested()) {
-            MaybeScheduleDrain();
-        } else if (terminate_is_requested() && !is_terminated()) {
-            terminate();
+        for (const auto& mp : kf->GetMapPoints()) {
+            if (mp && !mp->isBad() && loop_point_set.insert(mp.get()).second) {
+                loop_points.push_back(mp);
+            }
         }
-    });
+    };
+    add_loop_mps(loop_keyframe);
+    for (const auto& neigh : loop_keyframe->GetBestCovisibilityKeyFrames(10)) {
+        add_loop_mps(neigh);
+    }
+    SearchAndFuse(connected, loop_points);
+
+    SE3 loop_relative = SE3Identity();
+    loop_relative.linear() = sim3.rotation;
+    loop_relative.translation() = sim3.translation;
+    std::unordered_map<KeyFrame*, SE3> pose_before;
+    for (const auto& [kf, sim_before] : non_corrected) {
+        pose_before[kf] = Sim3ToSe3(sim_before);
+    }
+    if (imu_init) {
+        Optimizer::OptimizeEssentialGraph4DoF(map_, loop_keyframe,
+                                              current_keyframe_, loop_relative,
+                                              &pose_before);
+    } else {
+        Optimizer::OptimizeEssentialGraph(map_, loop_keyframe, current_keyframe_,
+                                          loop_relative, &pose_before);
+    }
+
+    if (map_) {
+        map_->IncreaseChangeIndex();
+    }
+    return true;
 }
 
-void LoopClosing::queue_keyframe(const std::shared_ptr<data::keyframe>& keyfrm) {
-    {
-        std::lock_guard<std::mutex> lock(mtx_keyfrm_queue_);
-        keyfrms_queue_.push_back(keyfrm);
+bool LoopClosing::MergeLocal(const std::shared_ptr<KeyFrame>& merge_keyframe,
+                             const Sim3& sim3_current_from_merge) {
+    if (!merge_keyframe || !current_keyframe_ || !multi_map_) {
+        return false;
     }
-    if (use_pool_scheduling_) {
-        MaybeScheduleDrain();
-    }
-}
-
-bool LoopClosing::keyframe_is_queued() const {
-    std::lock_guard<std::mutex> lock(mtx_keyfrm_queue_);
-    return !keyfrms_queue_.empty();
-}
-
-void LoopClosing::correct_loop() {
-    auto final_candidate_keyfrm = loop_detector_->get_selected_candidate_keyframe();
-
-    AINFO << "detect loop: keyframe " << final_candidate_keyfrm->id_ << " - keyframe " << cur_keyfrm_->id_;
-
-    if (cur_keyfrm_->graph_node_->get_spanning_root() != final_candidate_keyfrm->graph_node_->get_spanning_root()) {
-        AWARN << "The feature to merge two spanning trees has not yet been implemented.";
-        return;
-    }
-
-    // 0. pre-processing
-
-    // 0-1. stop the mapping module and the previous loop bundle adjuster
-
-    // pause the mapping module
-    ADEBUG << "LoopClosing: pause the mapping module";
-    auto future_pause = mapper_->async_pause();
-    // abort the previous loop bundle adjuster
-    if (thread_for_loop_BA_ || loop_bundle_adjuster_->is_running()) {
-        ADEBUG << "LoopClosing: abort loop bundle adjustment";
-        abort_loop_BA();
-    }
-    // wait till the mapping module pauses
-    future_pause.get();
-
-    // 1. compute the Sim3 of the covisibilities of the current keyframe whose Sim3 is already estimated by the loop detector
-    //    then, the covisibilities are moved to the corrected positions
-    //    finally, landmarks observed in them are also moved to the correct position using the camera poses before and after camera pose correction
-
-    ADEBUG << "LoopClosing: compute the Sim3 of the covisibilities of the current keyframe whose Sim3 is already estimated by the loop detector";
-    // acquire the covisibilities of the current keyframe
-    std::vector<std::shared_ptr<data::keyframe>> curr_neighbors = cur_keyfrm_->graph_node_->get_covisibilities_over_min_num_shared_lms(thr_neighbor_keyframes_);
-    curr_neighbors.push_back(cur_keyfrm_);
-
-    // Sim3 camera poses BEFORE loop correction
-    module::keyframe_Sim3_pairs_t Sim3s_nw_before_correction;
-    // Sim3 camera poses AFTER loop correction
-    module::keyframe_Sim3_pairs_t Sim3s_nw_after_correction;
-
-    std::unordered_map<unsigned int, unsigned int> found_lm_to_ref_keyfrm_id;
-    const auto g2o_Sim3_cw_after_correction = loop_detector_->get_Sim3_world_to_current();
-    {
-        std::lock_guard<std::mutex> lock(data::map_database::mtx_database_);
-
-        // camera pose of the current keyframe BEFORE loop correction
-        const Mat44_t cam_pose_wc_before_correction = cur_keyfrm_->get_pose_wc();
-
-        // compute Sim3s BEFORE loop correction
-        Sim3s_nw_before_correction = get_Sim3s_before_loop_correction(curr_neighbors);
-        // compute Sim3s AFTER loop correction
-        Sim3s_nw_after_correction = get_Sim3s_after_loop_correction(cam_pose_wc_before_correction, g2o_Sim3_cw_after_correction, curr_neighbors);
-
-        // correct covibisibility landmark positions
-        correct_covisibility_landmarks(Sim3s_nw_before_correction, Sim3s_nw_after_correction, found_lm_to_ref_keyfrm_id);
-        if (map_db_->use_line_tracking()) {
-            correct_covisibility_landmarks_line(Sim3s_nw_before_correction, Sim3s_nw_after_correction);
+    Map* merge_map = merge_keyframe->GetMap();
+    Map* current_map = current_keyframe_->GetMap();
+    if (!merge_map || !current_map || merge_map == current_map) {
+        // Same map: treat as loop (caller already paused LocalMapping).
+        Sim3 sim3;
+        if (!EstimateSim3(merge_keyframe, &sim3)) {
+            return false;
         }
-        // correct covisibility keyframe camera poses
-        correct_covisibility_keyframes(Sim3s_nw_after_correction);
+        last_sim3_ = sim3;
+        return ApplyLoopCorrection(merge_keyframe, sim3);
     }
 
-    // 2. resolve duplications of landmarks caused by loop fusion
-
-    ADEBUG << "LoopClosing: resolve duplications of landmarks caused by loop fusion";
-    const auto curr_match_lms_observed_in_cand = loop_detector_->current_matched_landmarks_observed_in_candidate();
-    replace_duplicated_landmarks(curr_match_lms_observed_in_cand, Sim3s_nw_after_correction);
-
-    // 3. extract the new connections created after loop fusion
-
-    ADEBUG << "LoopClosing: extract the new connections created after loop fusion";
-    const auto new_connections = extract_new_connections(curr_neighbors);
-
-    // 4. pose graph optimization
-
-    ADEBUG << "LoopClosing: pose graph optimization";
-    graph_optimizer_->optimize(final_candidate_keyfrm, cur_keyfrm_, Sim3s_nw_before_correction, Sim3s_nw_after_correction, new_connections, found_lm_to_ref_keyfrm_id);
-
-    // add a loop edge
-    final_candidate_keyfrm->graph_node_->add_loop_edge(cur_keyfrm_);
-    cur_keyfrm_->graph_node_->add_loop_edge(final_candidate_keyfrm);
-
-    // 5. launch loop BA
-
-    ADEBUG << "LoopClosing: wait for loop BA";
-    while (loop_bundle_adjuster_->is_running()) {
-        std::this_thread::sleep_for(std::chrono::microseconds(1000));
+    // Transform merge-map elements into current map frame.
+    const auto merge_keyframes = merge_map->GetAllKeyFrames();
+    const auto merge_points = merge_map->GetAllMapPoints();
+    for (const auto& kf : merge_keyframes) {
+        if (!kf) {
+            continue;
+        }
+        // Tcw_c = S_cm * Tcw_m  (camera of merge expressed in current world via Sim3).
+        const SE3 Twc_m = kf->GetPose().inverse();
+        const Vec3 twc = sim3_current_from_merge.Map(Twc_m.translation());
+        SE3 Twc = SE3Identity();
+        Twc.linear() =
+            sim3_current_from_merge.rotation * Twc_m.rotation();
+        Twc.translation() = twc;
+        kf->SetPose(Twc.inverse());
+        kf->UpdateMap(current_map);
+        current_map->AddKeyFrame(kf);
+        merge_map->EraseKeyFrame(kf);
     }
-    if (thread_for_loop_BA_) {
-        ADEBUG << "LoopClosing: wait for last loop BA";
-        thread_for_loop_BA_->join();
-        thread_for_loop_BA_.reset(nullptr);
+    for (const auto& mp : merge_points) {
+        if (!mp || mp->isBad()) {
+            continue;
+        }
+        mp->SetWorldPos(sim3_current_from_merge.Map(mp->GetWorldPos()));
+        mp->UpdateMap(current_map);
+        current_map->AddMapPoint(mp);
+        merge_map->EraseMapPoint(mp);
+        mp->UpdateNormalAndDepth();
     }
-    ADEBUG << "LoopClosing: launch loop BA";
-    if (use_pool_scheduling_ && thread_pool_) {
-        auto* ba = loop_bundle_adjuster_.get();
-        auto keyfrm = cur_keyfrm_;
-        auto ba_task = common_sched::Schedule(thread_pool_, [ba, keyfrm]() {
-            ba->optimize(keyfrm);
-        });
-        if (dense_map_) {
-            auto* dense = dense_map_;
-            common_sched::ScheduleAfter(thread_pool_, ba_task, [dense]() {
-                dense->RequestRebuild();
-            });
+
+    current_keyframe_->AddMergeEdge(merge_keyframe);
+    merge_keyframe->AddMergeEdge(current_keyframe_);
+
+    if (current_map->isImuInitialized()) {
+        Optimizer::MergeInertialBA(current_keyframe_, merge_keyframe,
+                                   current_map);
+        if (!current_map->GetInertialBA2()) {
+            Vec3 bg = Vec3::Zero();
+            Vec3 ba = Vec3::Zero();
+            Optimizer::InertialOptimization(current_map, &bg, &ba);
+            current_map->SetInertialBA1(true);
+            current_map->SetInertialBA2(true);
+            current_map->SetImuInitialized(true);
         }
     } else {
-        thread_for_loop_BA_ = std::unique_ptr<std::thread>(
-            new std::thread(&module::loop_bundle_adjuster::optimize,
-                            loop_bundle_adjuster_.get(), cur_keyfrm_));
-        // Non-pool: pose-drift FullUpdateNeededLocked refreshes dense map after BA.
+        Optimizer::WeldingBundleAdjustment(current_keyframe_, merge_keyframe,
+                                           current_map);
     }
 
-    // 6. post-processing
-    // Mapping stays paused until loop_bundle_adjuster finishes and calls resume().
+    std::vector<std::shared_ptr<KeyFrame>> window =
+        current_keyframe_->GetBestCovisibilityKeyFrames(15);
+    window.push_back(current_keyframe_);
+    SearchAndFuse(window, merge_points);
 
-    // set the loop fusion information to the loop detector
-    loop_detector_->set_loop_correct_keyframe_id(cur_keyfrm_->id_);
-}
-
-module::keyframe_Sim3_pairs_t LoopClosing::get_Sim3s_before_loop_correction(const std::vector<std::shared_ptr<data::keyframe>>& neighbors) const {
-    module::keyframe_Sim3_pairs_t Sim3s_nw_before_loop_correction;
-
-    for (const auto& neighbor : neighbors) {
-        // camera pose of `neighbor` BEFORE loop correction
-        const Mat44_t cam_pose_nw = neighbor->get_pose_cw();
-        // create Sim3 from SE3
-        const Mat33_t& rot_nw = cam_pose_nw.block<3, 3>(0, 0);
-        const Vec3_t& trans_nw = cam_pose_nw.block<3, 1>(0, 3);
-        const g2o::Sim3 Sim3_nw_before_correction(rot_nw, trans_nw, 1.0);
-        Sim3s_nw_before_loop_correction[neighbor] = Sim3_nw_before_correction;
-    }
-
-    return Sim3s_nw_before_loop_correction;
-}
-
-module::keyframe_Sim3_pairs_t LoopClosing::get_Sim3s_after_loop_correction(const Mat44_t& cam_pose_wc_before_correction,
-                                                                                          const g2o::Sim3& g2o_Sim3_cw_after_correction,
-                                                                                          const std::vector<std::shared_ptr<data::keyframe>>& neighbors) const {
-    module::keyframe_Sim3_pairs_t Sim3s_nw_after_loop_correction;
-
-    for (auto neighbor : neighbors) {
-        // camera pose of `neighbor` BEFORE loop correction
-        const Mat44_t cam_pose_nw_before_correction = neighbor->get_pose_cw();
-        // create the relative Sim3 from the current to `neighbor`
-        const Mat44_t cam_pose_nc = cam_pose_nw_before_correction * cam_pose_wc_before_correction;
-        const Mat33_t& rot_nc = cam_pose_nc.block<3, 3>(0, 0);
-        const Vec3_t& trans_nc = cam_pose_nc.block<3, 1>(0, 3);
-        const g2o::Sim3 Sim3_nc(rot_nc, trans_nc, 1.0);
-        // compute the camera poses AFTER loop correction of the neighbors
-        const g2o::Sim3 Sim3_nw_after_correction = Sim3_nc * g2o_Sim3_cw_after_correction;
-        Sim3s_nw_after_loop_correction[neighbor] = Sim3_nw_after_correction;
-    }
-
-    return Sim3s_nw_after_loop_correction;
-}
-
-void LoopClosing::correct_covisibility_landmarks(const module::keyframe_Sim3_pairs_t& Sim3s_nw_before_correction,
-                                                                const module::keyframe_Sim3_pairs_t& Sim3s_nw_after_correction,
-                                                                std::unordered_map<unsigned int, unsigned int>& found_lm_to_ref_keyfrm_id) const {
-    for (const auto& t : Sim3s_nw_after_correction) {
-        auto neighbor = t.first;
-        // neighbor->world AFTER loop correction
-        const auto Sim3_wn_after_correction = t.second.inverse();
-        // world->neighbor BEFORE loop correction
-        const auto& Sim3_nw_before_correction = Sim3s_nw_before_correction.at(neighbor);
-
-        const auto ngh_landmarks = neighbor->get_landmarks();
-        for (const auto& lm : ngh_landmarks) {
-            if (!lm) {
-                continue;
-            }
-            if (lm->will_be_erased()) {
-                continue;
-            }
-
-            // avoid duplication
-            if (found_lm_to_ref_keyfrm_id.count(lm->id_)) {
-                continue;
-            }
-            // record the reference keyframe used in loop fusion of landmarks
-            found_lm_to_ref_keyfrm_id[lm->id_] = neighbor->id_;
-
-            // correct position of `lm`
-            const Vec3_t pos_w_before_correction = lm->get_pos_in_world();
-            const Vec3_t pos_w_after_correction = Sim3_wn_after_correction.map(Sim3_nw_before_correction.map(pos_w_before_correction));
-            lm->set_pos_in_world(pos_w_after_correction);
-            // update geometry
-            lm->update_mean_normal_and_obs_scale_variance();
+    // Mark merge map bad and switch to current.
+    for (const auto& m : multi_map_->GetAllMaps()) {
+        if (m.get() == merge_map) {
+            multi_map_->SetMapBad(m);
+            break;
         }
     }
+    multi_map_->RemoveBadMaps();
+    multi_map_->ChangeMap(
+        std::shared_ptr<Map>(current_map, [](Map*) {}));
+
+    current_map->IncreaseChangeIndex();
+    return true;
 }
 
-void LoopClosing::correct_covisibility_landmarks_line(
-    const module::keyframe_Sim3_pairs_t& Sim3s_nw_before_correction,
-    const module::keyframe_Sim3_pairs_t& Sim3s_nw_after_correction) const {
-    for (const auto& t : Sim3s_nw_after_correction) {
-        const auto& neighbor = t.first;
-        const auto Sim3_wn_after_correction = t.second.inverse();
-        const auto& Sim3_nw_before_correction = Sim3s_nw_before_correction.at(neighbor);
+bool LoopClosing::MergeLocal2(const std::shared_ptr<KeyFrame>& merge_keyframe,
+                              const Sim3& sim3_current_from_merge) {
+    if (!merge_keyframe || !current_keyframe_ || !multi_map_) {
+        return false;
+    }
+    Map* merge_map = merge_keyframe->GetMap();
+    Map* current_map = current_keyframe_->GetMap();
+    if (!merge_map || !current_map || merge_map == current_map) {
+        return MergeLocal(merge_keyframe, sim3_current_from_merge);
+    }
+    if (stop_gba_flag_) {
+        *stop_gba_flag_ = true;
+    }
 
-        const double scale_nw_before = Sim3_nw_before_correction.scale();
-        const Mat33_t rot_nw_before = Sim3_nw_before_correction.rotation().toRotationMatrix();
-        const Vec3_t trans_nw_before = Sim3_nw_before_correction.translation();
+    const Sim3 Scw_merge = sim3_current_from_merge.Compose(
+        Sim3::FromSe3(merge_keyframe->GetPose()));
+    Sim3 transform_current_to_merge =
+        Scw_merge.Inverse().Compose(Sim3::FromSe3(current_keyframe_->GetPose()));
+    const bool both_inertial = current_map->isImuInitialized() &&
+                               (merge_map->isImuInitialized() ||
+                                merge_keyframe->imu_preintegrated);
+    if (both_inertial && (transform_current_to_merge.scale < 0.90 ||
+                          transform_current_to_merge.scale > 1.1)) {
+        return false;
+    }
+    if (both_inertial && current_map->GetInertialBA1()) {
+        Eigen::AngleAxisd angle_axis(transform_current_to_merge.rotation);
+        Vec3 phi = angle_axis.angle() * angle_axis.axis();
+        phi.x() = 0.0;
+        phi.y() = 0.0;
+        if (phi.norm() < 1e-12) {
+            transform_current_to_merge.rotation = Mat33::Identity();
+        } else {
+            transform_current_to_merge.rotation =
+                Eigen::AngleAxisd(phi.norm(), phi.normalized())
+                    .toRotationMatrix();
+        }
+        transform_current_to_merge.scale = 1.0;
+    }
 
-        const double scale_wn_after = Sim3_wn_after_correction.scale();
-        const Mat33_t rot_wn_after = Sim3_wn_after_correction.rotation().toRotationMatrix();
-        const Vec3_t trans_wn_after = Sim3_wn_after_correction.translation();
+    const bool scale_velocity = std::abs(transform_current_to_merge.scale - 1.0) > 1e-6;
+    ApplySim3ToMap(current_map, transform_current_to_merge, scale_velocity);
 
-        for (const auto& lm_line : neighbor->get_landmarks_line()) {
-            if (!lm_line || lm_line->will_be_erased()) {
-                continue;
-            }
+    if (current_map->isImuInitialized() && !current_map->GetInertialBA2()) {
+        Vec3 bg = Vec3::Zero();
+        Vec3 ba = Vec3::Zero();
+        Optimizer::InertialOptimization(current_map, &bg, &ba);
+        current_map->SetInertialBA1(true);
+        current_map->SetInertialBA2(true);
+        current_map->SetImuInitialized(true);
+    }
 
-            if (lm_line->loop_fusion_identifier_ == cur_keyfrm_->id_) {
-                continue;
-            }
-            lm_line->loop_fusion_identifier_ = cur_keyfrm_->id_;
+    const auto merge_keyframes = merge_map->GetAllKeyFrames();
+    const auto merge_points = merge_map->GetAllMapPoints();
+    for (const auto& kf : merge_keyframes) {
+        if (!kf) {
+            continue;
+        }
+        kf->UpdateMap(current_map);
+        current_map->AddKeyFrame(kf);
+        merge_map->EraseKeyFrame(kf);
+    }
+    for (const auto& mp : merge_points) {
+        if (!mp || mp->isBad()) {
+            continue;
+        }
+        mp->UpdateMap(current_map);
+        current_map->AddMapPoint(mp);
+        merge_map->EraseMapPoint(mp);
+    }
 
-            const Vec6_t pos_w_before = lm_line->get_pluecker_coord();
-            const Vec6_t step1 = optimize::transform_pluecker_with_sim3(pos_w_before, rot_nw_before, trans_nw_before,
-                                                                        scale_nw_before);
-            const Vec6_t pos_w_after =
-                optimize::transform_pluecker_with_sim3(step1, rot_wn_after, trans_wn_after, scale_wn_after);
-            lm_line->set_pluecker_coord_without_update_endpoints(pos_w_after);
+    auto child = merge_keyframe->GetParent();
+    auto parent = merge_keyframe;
+    merge_keyframe->ChangeParent(current_keyframe_);
+    while (child) {
+        child->EraseChild(parent);
+        auto old_parent = child->GetParent();
+        child->ChangeParent(parent);
+        parent = child;
+        child = old_parent;
+    }
 
-            Vec6_t updated_pose_w;
-            if (optimize::line_endpoint_trimming(lm_line, pos_w_after, updated_pose_w)) {
-                lm_line->set_pos_in_world_without_update_pluecker(updated_pose_w);
-                lm_line->update_information();
-                lm_line->ref_keyfrm_id_in_loop_fusion_ = neighbor->id_;
-            } else {
-                lm_line->prepare_for_erasing(map_db_);
-            }
+    current_keyframe_->AddMergeEdge(merge_keyframe);
+    merge_keyframe->AddMergeEdge(current_keyframe_);
+    Optimizer::MergeInertialBA(current_keyframe_, merge_keyframe, current_map);
+
+    std::vector<std::shared_ptr<KeyFrame>> window =
+        current_keyframe_->GetBestCovisibilityKeyFrames(5);
+    window.push_back(current_keyframe_);
+    if (window.size() > 6) {
+        window.resize(6);
+    }
+    SearchAndFuse(window, merge_points);
+
+    for (const auto& m : multi_map_->GetAllMaps()) {
+        if (m.get() == merge_map) {
+            multi_map_->SetMapBad(m);
+            break;
         }
     }
+    multi_map_->RemoveBadMaps();
+    multi_map_->ChangeMap(std::shared_ptr<Map>(current_map, [](Map*) {}));
+    current_map->IncreaseChangeIndex();
+    return true;
 }
 
-void LoopClosing::correct_covisibility_keyframes(const module::keyframe_Sim3_pairs_t& Sim3s_nw_after_correction) const {
-    for (const auto& t : Sim3s_nw_after_correction) {
-        auto neighbor = t.first;
-        const auto Sim3_nw_after_correction = t.second;
-
-        const auto s_nw = Sim3_nw_after_correction.scale();
-        const Mat33_t rot_nw = Sim3_nw_after_correction.rotation().toRotationMatrix();
-        const Vec3_t trans_nw = Sim3_nw_after_correction.translation() / s_nw;
-        const Mat44_t cam_pose_nw = util::converter::to_eigen_pose(rot_nw, trans_nw);
-        neighbor->set_pose_cw(cam_pose_nw);
-    }
-}
-
-void LoopClosing::replace_duplicated_landmarks(const std::vector<std::shared_ptr<data::landmark>>& curr_match_lms_observed_in_cand,
-                                                              const module::keyframe_Sim3_pairs_t& Sim3s_nw_after_correction) const {
-    nondeterministic::unordered_map<std::shared_ptr<data::landmark>, std::shared_ptr<data::landmark>> replaced_lms;
-    // resolve duplications of landmarks between the current keyframe and the loop candidate
-    {
-        std::lock_guard<std::mutex> lock(data::map_database::mtx_database_);
-
-        for (unsigned int idx = 0; idx < cur_keyfrm_->frm_obs_.undist_keypts_.size(); ++idx) {
-            auto curr_match_lm_in_cand = curr_match_lms_observed_in_cand.at(idx);
-            if (!curr_match_lm_in_cand) {
-                continue;
-            }
-            if (curr_match_lm_in_cand->will_be_erased()) {
-                continue;
-            }
-
-            if (curr_match_lm_in_cand->is_observed_in_keyframe(cur_keyfrm_)) {
-                cur_keyfrm_->erase_landmark(curr_match_lm_in_cand);
-                curr_match_lm_in_cand->erase_observation(map_db_, cur_keyfrm_);
-            }
-
-            const auto& lm_in_curr = cur_keyfrm_->get_landmark(idx);
-            if (lm_in_curr) {
-                // if the landmark corresponding `idx` exists,
-                // replace it with `curr_match_lm_in_cand` (observed in the candidate)
-                if (lm_in_curr->id_ != curr_match_lm_in_cand->id_) {
-                    replaced_lms[lm_in_curr] = curr_match_lm_in_cand;
-                    lm_in_curr->replace(curr_match_lm_in_cand, map_db_);
-                    if (!curr_match_lm_in_cand->has_representative_descriptor()) {
-                        curr_match_lm_in_cand->compute_descriptor();
-                    }
-                    if (!curr_match_lm_in_cand->has_valid_prediction_parameters()) {
-                        curr_match_lm_in_cand->update_mean_normal_and_obs_scale_variance();
-                    }
-                }
-            }
-            else {
-                // if landmark corresponding `idx` does not exists,
-                // add association between the current keyframe and `curr_match_lm_in_cand`
-                curr_match_lm_in_cand->connect_to_keyframe(cur_keyfrm_, idx);
-                curr_match_lm_in_cand->update_mean_normal_and_obs_scale_variance();
-                curr_match_lm_in_cand->compute_descriptor();
-            }
-        }
-    }
-
-    // resolve duplications of landmarks between the current keyframe and the candidates of the loop candidate
-    auto curr_match_lms_observed_in_cand_covis = loop_detector_->current_matched_landmarks_observed_in_candidate_covisibilities();
-    match::fuse fuse_matcher(0.8);
-    for (const auto& t : Sim3s_nw_after_correction) {
-        auto neighbor = t.first;
-        const Mat44_t Sim3_nw_after_correction = util::converter::to_eigen_mat(t.second);
-
-        // reproject the landmarks observed in the current keyframe to the neighbor,
-        // then search duplication of the landmarks
-        std::unordered_map<std::shared_ptr<data::landmark>, std::shared_ptr<data::landmark>> duplicated_lms_in_keyfrm;
-        std::unordered_map<unsigned int, std::shared_ptr<data::landmark>> new_connections;
-        // Convert Sim3 into SE3
-        const Mat33_t s_rot_cw = Sim3_nw_after_correction.block<3, 3>(0, 0);
-        const auto s_cw = std::sqrt(s_rot_cw.block<1, 3>(0, 0).dot(s_rot_cw.block<1, 3>(0, 0)));
-        const Mat33_t rot_cw = s_rot_cw / s_cw;
-        const Vec3_t trans_cw = Sim3_nw_after_correction.block<3, 1>(0, 3) / s_cw;
-        fuse_matcher.detect_duplication(neighbor, rot_cw, trans_cw, curr_match_lms_observed_in_cand_covis, 4.0, duplicated_lms_in_keyfrm, new_connections);
-
-        std::lock_guard<std::mutex> lock(data::map_database::mtx_database_);
-
-        for (const auto& best_idx_lm : new_connections) {
-            const auto& best_idx = best_idx_lm.first;
-            const auto& lm = best_idx_lm.second;
-            lm->connect_to_keyframe(neighbor, best_idx);
-            lm->update_mean_normal_and_obs_scale_variance();
-            lm->compute_descriptor();
-        }
-
-        // if any landmark duplication is found, replace it
-        for (const auto& lms_pair : duplicated_lms_in_keyfrm) {
-            const auto& lm_to_replace = lms_pair.first;
-            const auto& lm_in_neighbor = lms_pair.second;
-            if (lm_to_replace->id_ != lm_in_neighbor->id_) {
-                replaced_lms[lm_to_replace] = lm_in_neighbor;
-                lm_to_replace->replace(lm_in_neighbor, map_db_);
-                if (!lm_in_neighbor->has_representative_descriptor()) {
-                    lm_in_neighbor->compute_descriptor();
-                }
-                if (!lm_in_neighbor->has_valid_prediction_parameters()) {
-                    lm_in_neighbor->update_mean_normal_and_obs_scale_variance();
-                }
-            }
-        }
-    }
-    tracker_->replace_landmarks_in_last_frm(replaced_lms);
-}
-
-auto LoopClosing::extract_new_connections(const std::vector<std::shared_ptr<data::keyframe>>& covisibilities) const
-    -> std::map<std::shared_ptr<data::keyframe>, std::set<std::shared_ptr<data::keyframe>>> {
-    std::map<std::shared_ptr<data::keyframe>, std::set<std::shared_ptr<data::keyframe>>> new_connections;
-
-    for (auto covisibility : covisibilities) {
-        // acquire neighbors BEFORE loop fusion (because update_connections() is not called yet)
-        const auto neighbors_before_update = covisibility->graph_node_->get_covisibilities();
-
-        // call update_connections()
-        covisibility->graph_node_->update_connections(map_db_->get_min_num_shared_lms());
-        // acquire neighbors AFTER loop fusion
-        new_connections[covisibility] = covisibility->graph_node_->get_connected_keyframes();
-
-        // remove covisibilities
-        for (const auto& keyfrm_to_erase : covisibilities) {
-            new_connections.at(covisibility).erase(keyfrm_to_erase);
-        }
-        // remove nighbors before loop fusion
-        for (const auto& keyfrm_to_erase : neighbors_before_update) {
-            new_connections.at(covisibility).erase(keyfrm_to_erase);
-        }
-    }
-
-    return new_connections;
-}
-
-std::shared_future<void> LoopClosing::async_reset() {
-    std::lock_guard<std::mutex> lock(mtx_reset_);
-    reset_is_requested_ = true;
-    if (!future_reset_.valid()) {
-        future_reset_ = promise_reset_.get_future().share();
-    }
-    return future_reset_;
-}
-
-bool LoopClosing::reset_is_requested() const {
-    std::lock_guard<std::mutex> lock(mtx_reset_);
-    return reset_is_requested_;
-}
-
-void LoopClosing::reset() {
-    std::lock_guard<std::mutex> lock(mtx_reset_);
-    AINFO << "reset global optimization module";
-    keyfrms_queue_.clear();
-    loop_detector_->set_loop_correct_keyframe_id(0);
-    reset_is_requested_ = false;
-    promise_reset_.set_value();
-    promise_reset_ = std::promise<void>();
-    future_reset_ = std::shared_future<void>();
-}
-
-std::shared_future<void> LoopClosing::async_pause() {
-    std::lock_guard<std::mutex> lock1(mtx_pause_);
-    pause_is_requested_ = true;
-    if (!future_pause_.valid()) {
-        future_pause_ = promise_pause_.get_future().share();
-    }
-    return future_pause_;
-}
-
-bool LoopClosing::pause_is_requested() const {
-    std::lock_guard<std::mutex> lock(mtx_pause_);
-    return pause_is_requested_;
-}
-
-bool LoopClosing::is_paused() const {
-    std::lock_guard<std::mutex> lock(mtx_pause_);
-    return is_paused_;
-}
-
-void LoopClosing::pause() {
-    std::lock_guard<std::mutex> lock(mtx_pause_);
-    AINFO << "pause global optimization module";
-    is_paused_ = true;
-    promise_pause_.set_value();
-    promise_pause_ = std::promise<void>();
-    future_pause_ = std::shared_future<void>();
-}
-
-void LoopClosing::resume() {
-    std::lock_guard<std::mutex> lock1(mtx_pause_);
-    std::lock_guard<std::mutex> lock2(mtx_terminate_);
-
-    // if it has been already terminated, cannot resume
-    if (is_terminated_) {
+void LoopClosing::PropagateGlobalBA(Map* map, uint64_t gba_id) {
+    if (!map || gba_id == 0) {
         return;
     }
-
-    is_paused_ = false;
-    pause_is_requested_ = false;
-
-    AINFO << "resume global optimization module";
-}
-
-std::shared_future<void> LoopClosing::async_terminate() {
-    {
-        std::lock_guard<std::mutex> lock(mtx_terminate_);
-        terminate_is_requested_ = true;
-        if (!future_terminate_.valid()) {
-            future_terminate_ = promise_terminate_.get_future().share();
+    std::vector<std::shared_ptr<KeyFrame>> queue = map->keyframe_origins;
+    if (queue.empty()) {
+        for (const auto& keyframe : map->GetAllKeyFrames()) {
+            if (keyframe && keyframe->gba_for_kf == gba_id) {
+                queue.push_back(keyframe);
+            }
         }
     }
-    if (use_pool_scheduling_) {
-        if (!drain_scheduled_.load()) {
-            terminate();
-        } else {
-            MaybeScheduleDrain();
+    std::unordered_set<KeyFrame*> seen;
+    for (size_t head = 0; head < queue.size(); ++head) {
+        const auto keyframe = queue[head];
+        if (!keyframe || !seen.insert(keyframe.get()).second) {
+            continue;
         }
+        for (const auto& child : keyframe->GetChildren()) {
+            if (!child || child->isBad()) {
+                continue;
+            }
+            if (child->gba_for_kf != gba_id && keyframe->gba_for_kf == gba_id) {
+                const SE3 T_child_parent =
+                    child->GetPose() * keyframe->GetPoseInverse();
+                child->pose_gba = T_child_parent * keyframe->pose_gba;
+                if (child->has_velocity) {
+                    const Mat33 correction = child->pose_gba.rotation().transpose() *
+                                             child->GetPose().rotation();
+                    child->velocity_gba = correction * child->velocity_world;
+                }
+                child->bias_gba = child->imu_bias;
+                child->gba_for_kf = gba_id;
+            }
+            queue.push_back(child);
+        }
+        if (keyframe->gba_for_kf != gba_id) {
+            continue;
+        }
+        keyframe->pose_before_gba = keyframe->GetPose();
+        if (keyframe->has_velocity) {
+            keyframe->velocity_world = keyframe->velocity_gba;
+        }
+        if (map->isImuInitialized()) {
+            keyframe->imu_bias = keyframe->bias_gba;
+            if (keyframe->imu_preintegrated) {
+                keyframe->imu_preintegrated->SetNewBias(keyframe->imu_bias);
+            }
+        }
+        keyframe->SetPose(keyframe->pose_gba);
     }
-    std::lock_guard<std::mutex> lock(mtx_terminate_);
-    return future_terminate_;
+
+    for (const auto& map_point : map->GetAllMapPoints()) {
+        if (!map_point || map_point->isBad()) {
+            continue;
+        }
+        if (map_point->gba_for_kf == gba_id) {
+            map_point->SetWorldPos(map_point->position_gba);
+            map_point->UpdateNormalAndDepth();
+            continue;
+        }
+        const auto reference = map_point->GetReferenceKeyFrame();
+        if (!reference || reference->gba_for_kf != gba_id) {
+            continue;
+        }
+        const Vec3 camera_point =
+            reference->pose_before_gba * map_point->GetWorldPos();
+        map_point->SetWorldPos(reference->GetPoseInverse() * camera_point);
+        map_point->UpdateNormalAndDepth();
+    }
+    map->IncreaseChangeIndex();
 }
 
-bool LoopClosing::is_terminated() const {
-    std::lock_guard<std::mutex> lock(mtx_terminate_);
-    return is_terminated_;
+void LoopClosing::RequestFinish() {
+    finish_requested_.store(true);
+    if (stop_gba_flag_) {
+        *stop_gba_flag_ = true;
+    }
+    keyframe_queue_.BreakAllWait();
+    if (gba_future_.valid()) {
+        gba_future_.wait();
+    }
+    if (worker_future_.valid()) {
+        worker_future_.wait();
+    }
+    finished_.store(true);
+    async_.store(false);
 }
 
-bool LoopClosing::terminate_is_requested() const {
-    std::lock_guard<std::mutex> lock(mtx_terminate_);
-    return terminate_is_requested_;
-}
-
-void LoopClosing::terminate() {
-    std::lock_guard<std::mutex> lock(mtx_terminate_);
-    is_terminated_ = true;
-    promise_terminate_.set_value();
-    promise_terminate_ = std::promise<void>();
-    future_terminate_ = std::shared_future<void>();
-}
-
-bool LoopClosing::loop_BA_is_running() const {
-    return loop_bundle_adjuster_->is_running();
-}
-
-void LoopClosing::abort_loop_BA() {
-    loop_bundle_adjuster_->abort();
-}
-
-}  // namespace autonomy::localization::atlas
+}  // namespace backend
+}  // namespace atlas
+}  // namespace localization
+}  // namespace autonomy

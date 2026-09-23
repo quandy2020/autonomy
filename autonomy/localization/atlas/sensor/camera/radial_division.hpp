@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
+ * Copyright 2026 The Openbot Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,72 +14,107 @@
  * limitations under the License.
  */
 
-#ifndef AUTONOMY_LOCALIZATION_ATLAS_CAMERA_RADIAL_DIVISION_HPP_
-#define AUTONOMY_LOCALIZATION_ATLAS_CAMERA_RADIAL_DIVISION_HPP_
+/**
+ * @file
+ * @brief Fitzgibbon radial division distortion (OpenVSLAM RadialDivision).
+ *
+ * Approximates wide-angle radial distortion with scalar @f$ k @f$ division; more compact than polynomial radtan.
+ */
 
-#include "autonomy/localization/atlas/sensor/camera/base.hpp"
+#ifndef AUTONOMY_LOCALIZATION_ATLAS_SENSOR_CAMERA_RADIAL_DIVISION_HPP_
+#define AUTONOMY_LOCALIZATION_ATLAS_SENSOR_CAMERA_RADIAL_DIVISION_HPP_
 
-#include <opencv2/core/mat.hpp>
+#include "autonomy/localization/atlas/sensor/geometric_camera.hpp"
 
-namespace autonomy::localization::atlas {
+namespace autonomy {
+namespace localization {
+namespace atlas {
+namespace sensor {
 namespace camera {
 
-// This class implements the camera model presented in:
-//
-//   "Simultaneous linear estimation of multiple view geometry and lens
-//   distortion" by Andrew Fitzgibbon, CVPR 2001.
-//
-// The model is easy to implement and fast to evaluate.
-// It is well suited for wide angle lenses like used in action cameras
-// implemented by Steffen Urban, March 2020 (urbste@googlemail.com)
-class radial_division final : public base {
+/**
+ * @class autonomy::localization::atlas::sensor::camera::RadialDivision
+ * @brief Division model: normalized plane @f$ x'=x/(1+k r^2),\ y'=y/(1+k r^2) @f$.
+ *
+ * Factory names `radial_division` / `division`. Pinhole-normalize, then divide by radius-squared,
+ * then multiply by focal length; `Unproject` solves undistorted coords analytically or iteratively. @f$ k=0 @f$ degenerates to
+ * pinhole. Assigns a global `id` on construction.
+ *
+ * @code{.cpp}
+ * camera::RadialDivision cam(fx, fy, cx, cy, -0.1);  // k
+ * Vec2 uv = cam.Project(point_c);
+ * @endcode
+ */
+class RadialDivision : public GeometricCamera {
 public:
-    radial_division(const std::string& name, const setup_type_t& setup_type, const color_order_t& color_order,
-                    const unsigned int cols, const unsigned int rows, const double fps,
-                    const double fx, const double fy, const double cx, const double cy,
-                    const double distortion, const double focal_x_baseline = 0.0, const double depth_thr = 0.0);
+    /**
+     * @brief Default intrinsics (unit focal, k=0) and assign `id`.
+     */
+    RadialDivision() { id = next_id++; }
 
-    radial_division(const YAML::Node& yaml_node);
+    /**
+     * @brief Specify pinhole intrinsics and division distortion.
+     * @param fx Focal length fx (pixels).
+     * @param fy Focal length fy (pixels).
+     * @param cx Principal point cx.
+     * @param cy Principal point cy.
+     * @param k Division distortion coeff; negative often barrel.
+     */
+    RadialDivision(double fx, double fy, double cx, double cy, double k)
+        : fx_(fx), fy_(fy), cx_(cx), cy_(cy), k_(k) {
+        id = next_id++;
+    }
 
-    ~radial_division() override;
+    /**
+     * @brief Division-model project to pixels.
+     * @param point_camera Camera-frame 3D point.
+     * @return Pixel (u, v).
+     */
+    Vec2 Project(const Vec3& point_camera) const override;
 
-    void show_parameters() const override final;
+    /**
+     * @brief Undistort-unproject to a camera-frame point at depth.
+     * @param pixel Pixel.
+     * @param depth Depth scale (meters), default 1.0.
+     * @return Camera-frame point.
+     */
+    Vec3 Unproject(const Vec2& pixel,
+                                 double depth = 1.0) const override;
 
-    image_bounds compute_image_bounds() const override final;
+    /**
+     * @brief Return `Type::kRadialDivision`.
+     */
+    Type type() const override { return Type::kRadialDivision; }
 
-    cv::Point2f undistort_point(const cv::Point2f& dist_pt) const override final;
+    /**
+     * @brief Return `"radial_division"`.
+     */
+    const char* type_name() const override {
+        return "radial_division";
+    }
 
-    Vec3_t convert_point_to_bearing(const cv::Point2f& undist_pt) const override final;
+    double fx() const override { return fx_; }
+    double fy() const override { return fy_; }
+    double cx() const override { return cx_; }
+    double cy() const override { return cy_; }
 
-    cv::Point2f convert_bearing_to_point(const Vec3_t& bearing) const override final;
+    /**
+     * @brief Division distortion coefficient @f$ k @f$.
+     */
+    double k() const { return k_; }
 
-    bool reproject_to_image(const Mat33_t& rot_cw, const Vec3_t& trans_cw, const Vec3_t& pos_w, Vec2_t& reproj, float& x_right) const override final;
-
-    bool reproject_to_bearing(const Mat33_t& rot_cw, const Vec3_t& trans_cw, const Vec3_t& pos_w, Vec3_t& reproj) const override final;
-
-    nlohmann::json to_json() const override final;
-
-    //-------------------------
-    // Parameters specific to this model
-
-    //! pinhole params
-    const double fx_;
-    const double fy_;
-    const double cx_;
-    const double cy_;
-    const double fx_inv_;
-    const double fy_inv_;
-
-    //! distortion params
-    const double distortion_;
-
-    //! camera matrix in OpenCV format
-    cv::Mat cv_cam_matrix_;
-    //! camera matrix in Eigen format
-    Mat33_t eigen_cam_matrix_;
+private:
+    double fx_ = 1.0;  ///< Focal length fx.
+    double fy_ = 1.0;  ///< Focal length fy.
+    double cx_ = 0.0;  ///< Principal point cx.
+    double cy_ = 0.0;  ///< Principal point cy.
+    double k_ = 0.0;   ///< Division distortion coefficient k.
 };
 
-} // namespace camera
-}  // namespace autonomy::localization::atlas
+}  // namespace camera
+}  // namespace sensor
+}  // namespace atlas
+}  // namespace localization
+}  // namespace autonomy
 
-#endif  // AUTONOMY_LOCALIZATION_ATLAS_CAMERA_RADIAL_DIVISION_HPP_
+#endif  // AUTONOMY_LOCALIZATION_ATLAS_SENSOR_CAMERA_RADIAL_DIVISION_HPP_

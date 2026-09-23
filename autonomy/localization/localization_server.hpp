@@ -20,23 +20,20 @@
 #include <string>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/localization/atlas/atlas_node_runner.hpp"
-#include "autonomy/localization/atlas/util/modality.hpp"
 #include "autonomy/localization/cartographer/node/cartographer_node_runner.hpp"
 
 namespace autonomy {
 namespace localization {
 
-/** Process-level backend family (Cartographer vs Atlas vs standalone lightning). */
+/** Process-level backend family (Cartographer vs standalone lightning). */
 enum class LocalizationBackend {
     kCartographer = 0,
-    kAtlas = 1,
-    kLightning = 2,
+    kLightning = 1,
 };
 
 /**
  * Unified options for LocalizationServer.
- * Cartographer fields map to CartographerNodeFlags; Atlas to AtlasNodeFlags.
+ * Cartographer fields map to CartographerNodeFlags.
  */
 struct LocalizationOptions {
     LocalizationBackend backend = LocalizationBackend::kCartographer;
@@ -48,24 +45,6 @@ struct LocalizationOptions {
     bool load_frozen_state = true;
     bool start_trajectory_with_default_topics = true;
     std::string save_state_filename;
-
-    // --- Atlas multimodal (vo|vio|lo|lio|livo|wio|lwio|lvwio) ---
-    atlas::common::Modality atlas_modality = atlas::common::Modality::kVio;
-    std::string atlas_config_path;
-    std::string atlas_vocab_path;
-    std::string atlas_map_load_path;
-    std::string atlas_map_save_path;
-    std::string atlas_rgb_topic = "/camera/rgb/image_raw";
-    std::string atlas_depth_topic = "/camera/depth/image_raw";
-    std::string atlas_seg_topic = "";
-    std::string atlas_imu_topic = "";
-    std::string atlas_lidar_topic = "/points";
-    std::string atlas_lidar_imu_topic = "/imu";
-    std::string atlas_lidar_config_path = "";
-    std::string atlas_wheel_topic = "/wheel_odom";
-    bool atlas_enable_lightning_upstream = false;
-    //! Optional conf/atlas/profiles/*.yaml — overrides modality + topics.
-    std::string atlas_runtime_profile_path;
 
     // --- Standalone lightning LIO ---
     std::string lightning_config_path;
@@ -79,15 +58,13 @@ std::string LocalizationBackendName(LocalizationBackend backend);
 
 LocalizationOptions OptionsFromCartographerFlags(
     const cartographer::node::CartographerNodeFlags& flags);
-LocalizationOptions OptionsFromAtlasFlags(const atlas::AtlasNodeFlags& flags);
 
 cartographer::node::CartographerNodeFlags CartographerFlagsFromOptions(
     const LocalizationOptions& options);
-atlas::AtlasNodeFlags AtlasFlagsFromOptions(const LocalizationOptions& options);
 
 /**
  * Process-level facade that selects and owns one SLAM backend
- * (Cartographer, Atlas / OpenVSLAM, or standalone lightning LIO).
+ * (Cartographer or standalone lightning LIO).
  *
  * Lifecycle (aligned with ControllerServer):
  *   Start()  → initialize selected backend (non-blocking)
@@ -119,7 +96,6 @@ public:
 private:
     class Backend;
     class CartographerBackend;
-    class AtlasBackend;
     class LightningBackend;
 
     static std::unique_ptr<Backend> CreateBackend(
