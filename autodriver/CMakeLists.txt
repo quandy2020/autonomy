@@ -12,39 +12,48 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Sensor driver package. This file builds libautodriver from autodriver/
+# and the autodriver process. Chassis sources and vendor libraries are
+# added from chassis/. A missing optional SDK does not fail configuration;
+# those drivers stay compiled as stubs.
+
 cmake_minimum_required(VERSION 3.20)
 
-project(autodriver LANGUAGES CXX)
+project(autodriver VERSION 0.2.0 LANGUAGES CXX)
 
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+# Installed autocmake, or the sibling source tree.
+find_package(autocmake CONFIG QUIET)
+if(NOT autocmake_FOUND)
+  set(AUTOCMAKE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../autocmake")
+  include("${AUTOCMAKE_DIR}/Autocmake.cmake")
 endif()
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(AUTODRIVER_BUILD_TEST "Build unit tests" ON)
 option(AUTODRIVER_BUILD_EXAMPLES "Build example binaries" OFF)
 option(AUTODRIVER_BUILD_DOCS "Build autodriver docs" OFF)
-
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-
 option(AUTODRIVER_WITH_REALSENSE "Build Intel RealSense camera/IMU drivers" OFF)
 option(AUTODRIVER_WITH_ORBBEC "Build Orbbec camera/pointcloud drivers" OFF)
 option(AUTODRIVER_WITH_RPLIDAR "Build Slamtec RPLidar 2D lidar drivers" OFF)
 option(AUTODRIVER_WITH_LIVOX "Build Livox 3D lidar drivers (SDK1+SDK2)" OFF)
-# Optional: -DRplidarSDK_ROOT=/usr/local or RPLIDAR_SDK_DIR env (see cmake/module/FindRplidarSDK.cmake)
-# Optional: -DLivoxSDK2_ROOT=/usr/local -DLivoxSDK_ROOT=/usr/local
+option(AUTODRIVER_WITH_GENISOM_L1W
+  "Link official GENISOM ZSL-1W HighLevel SDK when found" ON)
+
+# autocmake_test follows BUILD_TESTING. autocmake_build() enables it,
+# so turn it off here when unit tests are disabled.
+if(DEFINED AUTODRIVER_BUILD_TEST AND NOT AUTODRIVER_BUILD_TEST)
+  set(BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
+endif()
+
+autocmake_project()
+autocmake_build(QUIT)
+
+# Read by cmake/autodriver_version.cmake.
+set(AUTODRIVER_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(AUTODRIVER_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/autodriver")
 
 list(PREPEND CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake"
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/module")
-
-set(AUTODRIVER_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(AUTODRIVER_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/autodriver")
 
 include(${AUTODRIVER_ROOT_DIR}/cmake/autodriver_version.cmake)
 autodriver_collect_git_version()
@@ -54,114 +63,146 @@ file(MAKE_DIRECTORY "${AUTODRIVER_GENERATED_DIR}/conf")
 configure_file(
   "${AUTODRIVER_ROOT_DIR}/config/conf.hpp.in"
   "${AUTODRIVER_GENERATED_DIR}/conf/conf.hpp"
-  @ONLY
-)
+  @ONLY)
 
-# Align CMake project() version with resolved semver (re-set after collect).
-set(PROJECT_VERSION "${AUTODRIVER_VERSION}")
-set(PROJECT_VERSION_MAJOR "${AUTODRIVER_VERSION_MAJOR}")
-set(PROJECT_VERSION_MINOR "${AUTODRIVER_VERSION_MINOR}")
-set(PROJECT_VERSION_PATCH "${AUTODRIVER_VERSION_PATCH}")
+# Find autolink. 
+if(NOT TARGET autolink)
+  find_package(autolink REQUIRED)
+endif()
 
-add_subdirectory(autodriver)
+# Find automsgs. 
+if(NOT TARGET automsgs)
+  find_package(automsgs REQUIRED)
+endif()
+
+# RealSense imu/camera/pointcloud drivers are added below when the SDK
+# is found. device_hub and camera_info stay in this list.
+file(GLOB_RECURSE AUTODRIVER_SOURCES CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/autodriver/*.cpp")
+list(FILTER AUTODRIVER_SOURCES EXCLUDE REGEX
+  "/camera/realsense/(imu_driver|camera_driver|pointcloud_driver)\\.cpp$")
+
+# Build the shared library.
+autocmake_library(autodriver SHARED
+  SOURCES ${AUTODRIVER_SOURCES}
+  DEPENDENCIES 
+    Threads::Threads 
+    Eigen3::Eigen 
+    yaml-cpp 
+    autolink 
+    automsgs)
+set_target_properties(autodriver PROPERTIES SOVERSION "${AUTODRIVER_SOVERSION}")
+target_include_directories(autodriver PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+  $<INSTALL_INTERFACE:include>)
+
+# Hotplug. Leave AUTODRIVER_HAVE_UDEV undefined when libudev is absent.
+find_library(UDEV_LIBRARY udev)
+if(UDEV_LIBRARY)
+  target_link_libraries(autodriver PRIVATE ${UDEV_LIBRARY})
+  target_compile_definitions(autodriver PRIVATE AUTODRIVER_HAVE_UDEV)
+endif()
+
+# Orbbec SDK
+if(AUTODRIVER_WITH_ORBBEC)
+  autocmake_find(OrbbecSDK)
+  if(OrbbecSDK_FOUND OR TARGET OrbbecSDK::OrbbecSDK)
+    # Some Orbbec packages set the singular OrbbecSDK_LIBRARY only.
+    if(NOT OrbbecSDK_LIBRARIES AND OrbbecSDK_LIBRARY)
+      set(OrbbecSDK_LIBRARIES "${OrbbecSDK_LIBRARY}")
+    endif()
+    autocmake_link(autodriver OrbbecSDK)
+    target_compile_definitions(autodriver PUBLIC AUTODRIVER_HAVE_ORBBEC)
+  endif()
+endif()
+
+# RealSense SDK 
+if(AUTODRIVER_WITH_REALSENSE)
+  autocmake_find(realsense2)
+  if(realsense2_FOUND)
+    target_sources(autodriver PRIVATE
+      autodriver/camera/realsense/imu_driver.cpp
+      autodriver/camera/realsense/camera_driver.cpp
+      autodriver/camera/realsense/pointcloud_driver.cpp)
+    autocmake_link(autodriver realsense2)
+    target_compile_definitions(autodriver PUBLIC AUTODRIVER_HAVE_REALSENSE)
+  endif()
+endif()
+
+# RPLidar SDK
+if(AUTODRIVER_WITH_RPLIDAR)
+  autocmake_find(RplidarSDK PRIVATE)
+  if(RplidarSDK_FOUND)
+    autocmake_link(autodriver PRIVATE RplidarSDK)
+    target_compile_definitions(autodriver PUBLIC AUTODRIVER_HAVE_RPLIDAR)
+  endif()
+endif()
+
+# Livox SDK
+if(AUTODRIVER_WITH_LIVOX)
+  autocmake_find(LivoxSDK2 PRIVATE)
+  if(LivoxSDK2_FOUND)
+    autocmake_link(autodriver PRIVATE LivoxSDK2)
+    target_compile_definitions(autodriver PUBLIC AUTODRIVER_HAVE_LIVOX_SDK2)
+  endif()
+  autocmake_find(LivoxSDK PRIVATE)
+  if(LivoxSDK_FOUND)
+    autocmake_link(autodriver PRIVATE LivoxSDK)
+    target_compile_definitions(autodriver PUBLIC AUTODRIVER_HAVE_LIVOX_SDK1)
+  endif()
+endif()
+
+# Chassis drivers
 add_subdirectory(chassis)
 
-# Library target: autodriver → libautodriver.so
-# Process binary: autodriver (CMake target autodriver_main; cannot share lib name).
-add_executable(autodriver_main main.cpp options.cpp)
+# Build the autodriver process.
+autocmake_binary(autodriver_main
+  SOURCES main.cpp options.cpp
+  DEPENDENCIES autodriver)
 set_target_properties(autodriver_main PROPERTIES OUTPUT_NAME autodriver)
-target_link_libraries(autodriver_main PRIVATE autodriver)
-# Pull vendor chassis backends into the process binary.
-if(TARGET autodriver_jetauto)
-  target_link_libraries(autodriver_main PRIVATE autodriver_jetauto)
-endif()
-if(TARGET autodriver_l1w)
-  target_link_libraries(autodriver_main PRIVATE autodriver_l1w)
-endif()
-# CLI11 header-only (same tree as autolink tools).
-if(NOT AUTOLINK_ROOT_DIR)
-  set(AUTOLINK_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../autolink")
-endif()
 target_include_directories(autodriver_main PRIVATE
-  ${AUTODRIVER_ROOT_DIR}
-  ${AUTODRIVER_ROOT_DIR}/autodriver
-  ${CMAKE_CURRENT_BINARY_DIR}  # autodriver/conf/conf.hpp (from version.json)
-  ${AUTOLINK_ROOT_DIR}/thirdparty/CLI11/include)
+  ${CMAKE_CURRENT_SOURCE_DIR}/../autolink/thirdparty/CLI11/include)
 
+# Build examples.
 if(AUTODRIVER_BUILD_EXAMPLES)
-  add_executable(autodriver_demo examples/demo_main.cpp)
-  target_link_libraries(autodriver_demo PRIVATE autodriver)
-  if(TARGET autodriver_jetauto)
-    target_link_libraries(autodriver_demo PRIVATE autodriver_jetauto)
-  endif()
-  if(TARGET autodriver_l1w)
-    target_link_libraries(autodriver_demo PRIVATE autodriver_l1w)
-  endif()
-  target_include_directories(autodriver_demo PRIVATE
-    ${AUTODRIVER_ROOT_DIR}
-    ${AUTODRIVER_ROOT_DIR}/autodriver)
+  autocmake_binary(autodriver_demo
+    SOURCES examples/demo_main.cpp
+    DEPENDENCIES autodriver)
 endif()
 
+# Build unit tests.
 if(AUTODRIVER_BUILD_TEST)
-  enable_testing()
-  find_package(GTest REQUIRED)
-
-  function(autodriver_add_test NAME SRC)
-    add_executable(${NAME} ${SRC})
-    target_link_libraries(${NAME} PRIVATE autodriver GTest::gtest_main)
-    target_include_directories(${NAME} PRIVATE
-      ${AUTODRIVER_ROOT_DIR}
-      ${AUTODRIVER_ROOT_DIR}/autodriver)
-    add_test(NAME ${NAME} COMMAND ${NAME})
-  endfunction()
-
-  function(autodriver_add_vendor_chassis_test NAME SRC LIB)
-    add_executable(${NAME} ${SRC})
-    target_link_libraries(${NAME} PRIVATE autodriver ${LIB} GTest::gtest_main)
-    target_include_directories(${NAME} PRIVATE
-      ${AUTODRIVER_ROOT_DIR}
-      ${AUTODRIVER_ROOT_DIR}/autodriver)
-    add_test(NAME ${NAME} COMMAND ${NAME})
-  endfunction()
-
-  autodriver_add_test(test_time_sync test/test_time_sync.cpp)
-  autodriver_add_test(test_hub test/test_hub.cpp)
-  autodriver_add_test(test_nmea0183 test/test_nmea0183.cpp)
-  autodriver_add_test(test_wit_motion test/test_wit_motion.cpp)
-  autodriver_add_test(test_realsense test/test_realsense.cpp)
-  autodriver_add_test(test_config test/test_config.cpp)
-  autodriver_add_test(test_config_loader test/test_config_loader.cpp)
-  autodriver_add_test(test_manager test/test_manager.cpp)
-  autodriver_add_test(test_stream_lidar_base test/test_stream_lidar_base.cpp)
-  autodriver_add_test(test_pose_feeder test/test_pose_feeder.cpp)
-  autodriver_add_test(test_compensator_calibration
-                      test/test_compensator_calibration.cpp)
-  autodriver_add_test(test_lidar_backend_registry
-                      test/test_lidar_backend_registry.cpp)
-  autodriver_add_test(test_camera_backend_registry
-                      test/test_camera_backend_registry.cpp)
-  autodriver_add_test(test_chassis_backend_registry
-                      test/test_chassis_backend_registry.cpp)
-  autodriver_add_test(test_chassis_abstractions
-                      test/test_chassis_abstractions.cpp)
-  if(TARGET autodriver_jetauto)
-    autodriver_add_vendor_chassis_test(test_jetauto_kinematics
-                                       test/test_jetauto_kinematics.cpp
-                                       autodriver_jetauto)
-  endif()
-  if(TARGET autodriver_l1w)
-    autodriver_add_vendor_chassis_test(test_l1w_driver
-                                       test/test_l1w_driver.cpp
-                                       autodriver_l1w)
-  endif()
-  autodriver_add_test(test_joy_mapper test/test_joy_mapper.cpp)
-  autodriver_add_test(test_canbus_skeleton test/test_canbus_skeleton.cpp)
-  autodriver_add_test(test_skeleton_modules test/test_skeleton_modules.cpp)
+  autocmake_test(test_time_sync SOURCES test/test_time_sync.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_hub SOURCES test/test_hub.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_nmea0183 SOURCES test/test_nmea0183.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_wit_motion SOURCES test/test_wit_motion.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_realsense SOURCES test/test_realsense.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_config SOURCES test/test_config.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_config_loader SOURCES test/test_config_loader.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_manager SOURCES test/test_manager.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_stream_lidar_base SOURCES test/test_stream_lidar_base.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_pose_feeder SOURCES test/test_pose_feeder.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_compensator_calibration SOURCES test/test_compensator_calibration.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_lidar_backend_registry SOURCES test/test_lidar_backend_registry.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_camera_backend_registry SOURCES test/test_camera_backend_registry.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_chassis_backend_registry SOURCES test/test_chassis_backend_registry.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_chassis_abstractions SOURCES test/test_chassis_abstractions.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_jetauto_kinematics SOURCES test/test_jetauto_kinematics.cpp DEPENDENCIES autodriver autodriver_jetauto)
+  autocmake_test(test_l1w_driver SOURCES test/test_l1w_driver.cpp DEPENDENCIES autodriver autodriver_l1w)
+  autocmake_test(test_joy_mapper SOURCES test/test_joy_mapper.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_canbus_skeleton SOURCES test/test_canbus_skeleton.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_skeleton_modules SOURCES test/test_skeleton_modules.cpp DEPENDENCIES autodriver)
 endif()
 
 if(AUTODRIVER_BUILD_DOCS)
   add_subdirectory(docs)
 endif()
 
-include(GNUInstallDirs)
-include(${AUTODRIVER_ROOT_DIR}/cmake/autodriver_install.cmake)
+# Each directory installs its own headers or data files.
+add_subdirectory(autodriver)
+add_subdirectory(config)
+add_subdirectory(dag)
+add_subdirectory(launch)
+
+autocmake_package()

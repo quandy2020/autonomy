@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>autodriver</name>
+  <version>0.2.0</version>
+  <description>Sensor and chassis HAL for vehicle robots.</description>
+  <maintainer email="quandy2020@126.com">duyongquan</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>autocmake</buildtool_depend>
+  <build_depend>Eigen3</build_depend>
+  <build_depend>Threads</build_depend>
+  <build_depend>yaml-cpp</build_depend>
+
+  <export>
+    <build_type>autocmake</build_type>
+  </export>
+</package>
