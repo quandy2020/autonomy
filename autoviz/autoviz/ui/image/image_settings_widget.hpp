@@ -50,6 +50,7 @@ class ImageSettingsWidget : public QWidget {
   void rebuildOverlaySection();
   void rebuildAnnotationSection();
   void rebuildMarkerSection();
+  void refreshImageChannelItems();
   QStringList imageChannels() const;
   QStringList calibrationChannels() const;
   QStringList annotationChannels() const;

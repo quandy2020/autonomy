@@ -78,11 +78,22 @@ class Messages:
         return cov
 
     @staticmethod
-    def camera_intrinsics(width: int, height: int, hfov_deg: float) -> list:
-        """Pinhole ``K`` from horizontal FOV (degrees)."""
+    def camera_intrinsics(
+        width: int, height: int, hfov_deg: float, vfov_deg: float | None = None
+    ) -> list:
+        """Pinhole ``K`` from horizontal and vertical FOV (degrees).
+
+        ``fx`` comes from ``hfov_deg`` and ``width``. ``fy`` comes from
+        ``vfov_deg`` and ``height``. Omitting ``vfov_deg`` keeps square pixels
+        (``fy == fx``).
+        """
         hfov = math.radians(float(hfov_deg))
         fx = 0.5 * float(width) / max(math.tan(0.5 * hfov), 1e-6)
-        fy = fx
+        if vfov_deg is None:
+            fy = fx
+        else:
+            vfov = math.radians(float(vfov_deg))
+            fy = 0.5 * float(height) / max(math.tan(0.5 * vfov), 1e-6)
         cx = 0.5 * float(width)
         cy = 0.5 * float(height)
         return [fx, 0.0, cx, 0.0, fy, cy, 0.0, 0.0, 1.0]

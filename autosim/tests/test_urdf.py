@@ -14,6 +14,7 @@
 
 """Tests for URDF path resolve and sensor mounts."""
 
+import math
 from pathlib import Path
 
 import pytest
@@ -156,6 +157,18 @@ def test_turtlebot3_derives_offset_footprint_from_urdf():
     assert abs(footprint[0][1] - 0.07) < 1e-6
     assert abs(footprint[2][0] + 0.102) < 1e-6
     assert abs(footprint[2][1] + 0.07) < 1e-6
+
+
+def test_bev_urdf_six_camera_poses():
+    model = UrdfModel.load("urdf/turtlebot3_burger_bev.urdf")
+    assert model is not None
+    x, y, z, yaw = model.link_pose("cam_front")
+    assert abs(x - 0.40) < 1e-6 and abs(y) < 1e-6 and abs(z - 1.20) < 1e-6
+    assert abs(yaw) < 1e-9
+    x, y, z, yaw = model.link_pose("cam_front_left")
+    assert abs(x - 0.20) < 1e-6
+    assert abs(yaw - math.radians(60.0)) < 1e-6
+    assert "cam_rear_right" in model.parents
 
 
 def test_load_empty_urdf():

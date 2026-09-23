@@ -4,6 +4,7 @@
 
 #include "autoviz/ui/image/image_settings_widget.hpp"
 
+#include <QAbstractItemView>
 #include <QCheckBox>
 #include <QColorDialog>
 #include <QComboBox>
@@ -13,11 +14,15 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMouseEvent>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QShowEvent>
 #include <QToolButton>
 #include <QVBoxLayout>
+
+#include <algorithm>
+#include <functional>
 
 #include <string>
 
@@ -29,6 +34,57 @@
 namespace autoviz {
 namespace image {
 namespace {
+
+/** Click anywhere on the field to open the channel list.
+ *  The app theme draws QComboBox like a line edit and only the (invisible)
+ *  arrow hit-target calls showPopup, so a normal click appears to do nothing.
+ */
+class ChannelPickCombo : public QComboBox {
+ public:
+  explicit ChannelPickCombo(QWidget* parent) : QComboBox(parent) {
+    setEditable(false);
+    setFocusPolicy(Qt::StrongFocus);
+    setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+    setMinimumContentsLength(12);
+    setMaxVisibleItems(24);
+    setStyleSheet(QStringLiteral(
+        "QComboBox { padding: 4px 28px 4px 8px; }"
+        "QComboBox::drop-down {"
+        "  subcontrol-origin: padding;"
+        "  subcontrol-position: center right;"
+        "  width: 24px; border: none;"
+        "}"
+        "QComboBox::down-arrow {"
+        "  width: 0px; height: 0px;"
+        "  border-left: 5px solid transparent;"
+        "  border-right: 5px solid transparent;"
+        "  border-top: 6px solid #64748b;"
+        "}"));
+  }
+
+  std::function<void()> before_popup;
+
+  void mousePressEvent(QMouseEvent* event) override {
+    if (event->button() == Qt::LeftButton) {
+      if (before_popup) {
+        before_popup();
+      }
+      QComboBox::showPopup();
+      if (view() != nullptr) {
+        view()->setMinimumWidth(std::max(width(), 280));
+      }
+      event->accept();
+      return;
+    }
+    QComboBox::mousePressEvent(event);
+  }
+
+  void mouseReleaseEvent(QMouseEvent* event) override {
+    // Default release hides a popup that was opened on press, so the list
+    // never stays on screen.
+    event->accept();
+  }
+};
 
 }  // namespace
 
@@ -53,11 +109,9 @@ ImageSettingsWidget::ImageSettingsWidget(common::VisualizationManager* manager,
   auto* general_body = new QWidget(this);
   auto* general_form = new QFormLayout(general_body);
   ApplyCompactForm(general_form);
-  channel_combo_ = new QComboBox(general_body);
-  channel_combo_->setEditable(true);
-  channel_combo_->setInsertPolicy(QComboBox::NoInsert);
-  channel_combo_->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
-  channel_combo_->setMinimumContentsLength(24);
+  auto* channel_pick = new ChannelPickCombo(general_body);
+  channel_pick->before_popup = [this]() { refreshImageChannelItems(); };
+  channel_combo_ = channel_pick;
   general_form->addRow(tr("channel"), channel_combo_);
   calibration_combo_ = new QComboBox(general_body);
   calibration_combo_->setEditable(true);
@@ -177,7 +231,9 @@ QStringList ImageSettingsWidget::imageChannels() const {
   QStringList channels;
   if (manager_ != nullptr) {
     for (const integration::ChannelInfo& info : manager_->channels()) {
-      if (display::isImageMessageType(info.message_type)) {
+      if (display::isImageMessageType(info.message_type) ||
+          info.channel_name.find("image") != std::string::npos ||
+          info.channel_name.find("Image") != std::string::npos) {
         channels.push_back(QString::fromStdString(info.channel_name));
       }
     }
@@ -249,25 +305,45 @@ QStringList ImageSettingsWidget::markerChannels() const {
   return channels;
 }
 
-void ImageSettingsWidget::refreshChannelLists() {
-  const QString current_channel = channel_combo_->currentText().trimmed().isEmpty()
-                                      ? config_.image_channel
-                                      : channel_combo_->currentText();
-  const QString current_calibration = calibration_combo_->currentText();
+void ImageSettingsWidget::refreshImageChannelItems() {
+  if (channel_combo_ == nullptr) {
+    return;
+  }
+  if (manager_ != nullptr) {
+    manager_->refreshChannelList();
+  }
+  const QString current = channel_combo_->currentText().trimmed().isEmpty()
+                              ? config_.image_channel
+                              : channel_combo_->currentText();
   channel_combo_->blockSignals(true);
-  calibration_combo_->blockSignals(true);
   channel_combo_->clear();
+  const QStringList channels = imageChannels();
+  if (channels.isEmpty()) {
+    channel_combo_->addItem(tr("(no image channel)"));
+    channel_combo_->setItemData(0, QString(), Qt::UserRole);
+  } else {
+    channel_combo_->addItems(channels);
+  }
+  const int index = channel_combo_->findText(current);
+  if (index >= 0) {
+    channel_combo_->setCurrentIndex(index);
+  } else if (!current.isEmpty()) {
+    channel_combo_->insertItem(0, current);
+    channel_combo_->setCurrentIndex(0);
+  }
+  channel_combo_->blockSignals(false);
+}
+
+void ImageSettingsWidget::refreshChannelLists() {
+  refreshImageChannelItems();
+  const QString current_calibration = calibration_combo_->currentText();
+  calibration_combo_->blockSignals(true);
   calibration_combo_->clear();
   calibration_combo_->addItem(QString(), QString());
-  for (const QString& channel : imageChannels()) {
-    channel_combo_->addItem(channel);
-  }
   for (const QString& channel : calibrationChannels()) {
     calibration_combo_->addItem(channel);
   }
-  channel_combo_->setCurrentText(current_channel);
   calibration_combo_->setCurrentText(current_calibration);
-  channel_combo_->blockSignals(false);
   calibration_combo_->blockSignals(false);
   rebuildAnnotationSection();
   rebuildMarkerSection();
@@ -275,7 +351,7 @@ void ImageSettingsWidget::refreshChannelLists() {
 
 void ImageSettingsWidget::showEvent(QShowEvent* event) {
   QWidget::showEvent(event);
-  refreshChannelLists();
+  refreshImageChannelItems();
 }
 
 void ImageSettingsWidget::rebuildMarkerSection() {
@@ -375,7 +451,11 @@ void ImageSettingsWidget::rebuildAnnotationSection() {
 ImagePanelConfig ImageSettingsWidget::config() const {
   ImagePanelConfig out = config_;
   out.title = title_edit_->text().trimmed();
-  out.image_channel = channel_combo_->currentText().trimmed();
+  {
+    const QString channel = channel_combo_->currentText().trimmed();
+    out.image_channel =
+        channel.startsWith(QLatin1Char('(')) ? QString() : channel;
+  }
   out.calibration_channel = calibration_combo_->currentText().trimmed();
   out.strict_time_sync = strict_sync_check_->isChecked();
   out.enable_undistort = undistort_check_->isChecked();
@@ -436,7 +516,13 @@ ImagePanelConfig ImageSettingsWidget::config() const {
 void ImageSettingsWidget::setConfig(const ImagePanelConfig& config) {
   config_ = config;
   title_edit_->setText(config_.title);
-  channel_combo_->setCurrentText(config_.image_channel);
+  refreshImageChannelItems();
+  {
+    const int index = channel_combo_->findText(config_.image_channel);
+    if (index >= 0) {
+      channel_combo_->setCurrentIndex(index);
+    }
+  }
   calibration_combo_->setCurrentText(config_.calibration_channel);
   strict_sync_check_->setChecked(config_.strict_time_sync);
   undistort_check_->setChecked(config_.enable_undistort);

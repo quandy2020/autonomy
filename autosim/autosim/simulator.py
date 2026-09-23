@@ -28,6 +28,13 @@ from typing import Any, Mapping, Tuple
 
 import numpy as np
 
+from autosim.cameras import (
+    SurroundCamera,
+    camera_rig,
+    projection_height,
+    resolve_surround,
+    ros_to_habitat_mount,
+)
 from autosim.urdf import UrdfModel
 
 
@@ -424,20 +431,98 @@ class Simulator:
                 spec.near = 0.05
             if hasattr(spec, "far"):
                 spec.far = 100.0
-        sensor_specs = [color_sensor, depth_sensor]
-        if camera_cfg.get("semantic_enabled", False):
-            semantic_sensor = habitat_sim.CameraSensorSpec()
-            semantic_sensor.uuid = "semantic"
-            semantic_sensor.sensor_type = habitat_sim.SensorType.SEMANTIC
-            semantic_sensor.resolution = [self.height, self.width]
-            semantic_sensor.hfov = hfov_deg
-            if hasattr(habitat_sim, "SensorSubType"):
-                semantic_sensor.sensor_subtype = habitat_sim.SensorSubType.PINHOLE
-            semantic_sensor.position = [offset[0], offset[1], offset[2]]
-            semantic_sensor.orientation = [0.0, 0.0, 0.0]
-            sensor_specs.append(semantic_sensor)
+        sensor_specs = []
+        if camera_cfg.get("enabled", True):
+            sensor_specs.extend([color_sensor, depth_sensor])
+            if camera_cfg.get("semantic_enabled", False):
+                semantic_sensor = habitat_sim.CameraSensorSpec()
+                semantic_sensor.uuid = "semantic"
+                semantic_sensor.sensor_type = habitat_sim.SensorType.SEMANTIC
+                semantic_sensor.resolution = [self.height, self.width]
+                semantic_sensor.hfov = hfov_deg
+                if hasattr(habitat_sim, "SensorSubType"):
+                    semantic_sensor.sensor_subtype = habitat_sim.SensorSubType.PINHOLE
+                semantic_sensor.position = [offset[0], offset[1], offset[2]]
+                semantic_sensor.orientation = [0.0, 0.0, 0.0]
+                sensor_specs.append(semantic_sensor)
+        surround = camera_rig(self.settings.get("habitat", {}).get("sensors"))
+        for camera in resolve_surround(surround, urdf=self.urdf):
+            sensor_specs.append(self.surround_color_spec(habitat_sim, camera))
         agent_configuration.sensor_specifications = sensor_specs
         return agent_configuration
+
+    @staticmethod
+    def surround_color_spec(habitat_sim: Any, camera: SurroundCamera) -> Any:
+        """Pinhole color spec aimed at ``camera.yaw`` in the agent frame.
+
+        Habitat ``orientation`` is Euler radians; Y is yaw about the up axis.
+        Positive Y matches ROS yaw (left).
+        """
+        spec = habitat_sim.CameraSensorSpec()
+        spec.uuid = camera.uuid
+        spec.sensor_type = habitat_sim.SensorType.COLOR
+        render_h = projection_height(
+            camera.width, camera.height, camera.hfov_deg, camera.vfov_deg
+        )
+        spec.resolution = [int(render_h), int(camera.width)]
+        spec.hfov = float(camera.hfov_deg)
+        if hasattr(habitat_sim, "SensorSubType"):
+            subtypes = {
+                "pinhole": habitat_sim.SensorSubType.PINHOLE,
+                "fisheye": habitat_sim.SensorSubType.FISHEYE,
+                "equirectangular": habitat_sim.SensorSubType.EQUIRECTANGULAR,
+            }
+            spec.sensor_subtype = subtypes[camera.model]
+        ax, ay, az = ros_to_habitat_mount(camera.x, camera.y, camera.z)
+        spec.position = [ax, ay, az]
+        spec.orientation = [0.0, float(camera.yaw), 0.0]
+        if hasattr(spec, "near"):
+            spec.near = 0.05
+        if hasattr(spec, "far"):
+            spec.far = 100.0
+        return spec
+
+    @staticmethod
+    def scale_image(image: np.ndarray, height: int, width: int) -> np.ndarray:
+        """Scale ``image`` to ``height``×``width``. Same shape is returned as-is."""
+        array = np.asarray(image)
+        src_h, src_w = array.shape[:2]
+        if src_h == height and src_w == width:
+            return array
+        rows = np.linspace(0, src_h - 1, int(height)).round().astype(np.int64)
+        cols = np.linspace(0, src_w - 1, int(width)).round().astype(np.int64)
+        return array[rows][:, cols]
+
+    def render_surround(self) -> dict[str, np.ndarray]:
+        """Render every surround color camera in one Habitat observation.
+
+        Returns:
+            ``uuid → HxWx3 uint8`` RGB.
+
+        Raises:
+            RuntimeError: Session closed or a configured uuid is missing.
+        """
+        cameras = resolve_surround(
+            camera_rig(self.settings.get("habitat", {}).get("sensors")),
+            urdf=self.urdf,
+        )
+        if not cameras:
+            return {}
+        if self.session is None:
+            raise RuntimeError("Habitat session is not open")
+        observations = self.session.get_sensor_observations()
+        images: dict[str, np.ndarray] = {}
+        for camera in cameras:
+            if camera.uuid not in observations:
+                raise RuntimeError(
+                    f"Habitat observations missing {camera.uuid!r}; "
+                    f"got {list(observations)!r}"
+                )
+            image = self.align_camera_image(
+                self.rgb_to_uint8(observations[camera.uuid])
+            )
+            images[camera.uuid] = self.scale_image(image, camera.height, camera.width)
+        return images
 
     def camera_local_offset(self) -> Tuple[float, float, float]:
         """Habitat agent-local RGB-D mount (``autonomy_ros`` ``sim._sensors``).

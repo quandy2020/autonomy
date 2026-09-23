@@ -1,0 +1,118 @@
+# Copyright 2026 The Openbot Authors
+#
+# 4/6 路环视，给 Fast-BEV / FlashOcc 做 BEV（Occ）联调。
+# 每路都是市面常见的车载广角针孔：水平 FOV 120°。
+# 方位均布，相邻视场重叠，合起来盖住 360°。
+# 只发布这些相机；外参在 /tf_static（base_link → cam_*）。
+#
+# cameras 写 6 路或 4 路。每路 enabled 开关，type 可选 pinhole、fisheye、equirectangular。
+# hfov_deg 是水平视场，vfov_deg 是垂直视场，单位度，彼此独立。
+# 相对 base_link 的位姿在 urdf/turtlebot3_burger_bev.urdf（cam_* 关节），不写在这里。
+#   6 路：front, front_left, rear_left, rear, rear_right, front_right
+#   4 路：front, left, rear, right
+#
+# 终端（工作区根）：
+#   CONFIG=src/autonomy/autosim/config/bev.yaml src/autonomy/autosim/scripts/run.sh sim
+
+habitat:
+  mode: nav
+
+  path: /workspace/autonomy/src/17DRP5sb8fy/17DRP5sb8fy.glb
+  # MP3D origin (0,0) often yields a flat semantic field; autosim also auto-relocates on start.
+  spawn: [0.0, 0.18, 0.0]  # x, y, yaw — valid semantic mesh pose for this scene
+  gpu: 0
+
+  robot:
+    urdf: urdf/turtlebot3_burger_bev.urdf
+    max_linear: 0.5
+    max_angular: 1.0
+    max_linear_accel: 0.8
+    max_linear_decel: 1.2
+    max_angular_accel: 2.0
+    wheel_separation: 0.55
+    map_frame: map
+    base_link_height: 0.01
+    watchdog_sec: 0.5
+    control_hz: 30.0
+    cmd_vel: /cmd_vel
+    tf:
+      enabled: true
+      channel: /tf
+      static_channel: /tf_static
+      publish_map_odom: true
+
+  sensors:
+    cameras:
+      front:
+        enabled: true
+        type: pinhole
+        hfov_deg: 120.0
+        vfov_deg: 88.53
+        width: 960
+        height: 540
+        rate_hz: 10.0
+        frame: cam_front
+        rgb_channel: /surround/front/image_raw
+        info_channel: /surround/front/camera_info
+      front_left:
+        enabled: true
+        type: pinhole
+        hfov_deg: 120.0
+        vfov_deg: 88.53
+        width: 960
+        height: 540
+        rate_hz: 10.0
+        frame: cam_front_left
+        rgb_channel: /surround/front_left/image_raw
+        info_channel: /surround/front_left/camera_info
+      rear_left:
+        enabled: true
+        type: pinhole
+        hfov_deg: 120.0
+        vfov_deg: 88.53
+        width: 960
+        height: 540
+        rate_hz: 10.0
+        frame: cam_rear_left
+        rgb_channel: /surround/rear_left/image_raw
+        info_channel: /surround/rear_left/camera_info
+      rear:
+        enabled: true
+        type: pinhole
+        hfov_deg: 120.0
+        vfov_deg: 88.53
+        width: 960
+        height: 540
+        rate_hz: 10.0
+        frame: cam_rear
+        rgb_channel: /surround/rear/image_raw
+        info_channel: /surround/rear/camera_info
+      rear_right:
+        enabled: true
+        type: pinhole
+        hfov_deg: 120.0
+        vfov_deg: 88.53
+        width: 960
+        height: 540
+        rate_hz: 10.0
+        frame: cam_rear_right
+        rgb_channel: /surround/rear_right/image_raw
+        info_channel: /surround/rear_right/camera_info
+      front_right:
+        enabled: true
+        type: pinhole
+        hfov_deg: 120.0
+        vfov_deg: 88.53
+        width: 960
+        height: 540
+        rate_hz: 10.0
+        frame: cam_front_right
+        rgb_channel: /surround/front_right/image_raw
+        info_channel: /surround/front_right/camera_info
+    # 六路针孔按朝向投到同一柱面。画面正中是车头，左边是车左侧，接缝在车尾。
+    panorama:
+      enabled: true
+      channel: /surround/panorama
+      frame: base_link
+      width: 1920
+      height: 472

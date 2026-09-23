@@ -21,6 +21,8 @@ from typing import Any, Dict, Mapping, MutableMapping, Union
 
 import yaml
 
+from autosim.cameras import camera_rig, covers_full_circle, resolve_surround
+from autosim.stitch import panorama_spec
 from autosim.urdf import UrdfModel
 
 
@@ -105,6 +107,12 @@ class Config:
         depth_points_channel = str(camera_cfg.get("depth_points_channel") or "").strip()
         if depth_points_channel:
             channels["depth_points"] = depth_points_channel
+        for camera in resolve_surround(camera_rig(sensors)):
+            channels[camera.rgb_key] = camera.rgb_channel
+            channels[camera.info_key] = camera.info_channel
+        pano = panorama_spec(sensors)
+        if pano is not None:
+            channels["surround_panorama"] = pano["channel"]
         ply_channel = str(ply.get("channel") or "").strip()
         if ply_channel:
             channels["map_cloud"] = ply_channel
@@ -135,8 +143,82 @@ class Config:
 
         if not isinstance(data, dict):
             raise ValueError("config root must be a mapping")
+        cls.fill_omitted_sensors(data)
         cls.validate(data)
         return cls(data)
+
+    @classmethod
+    def fill_omitted_sensors(cls, data: MutableMapping[str, Any]) -> None:
+        """Insert disabled stubs for sensor blocks left out of a camera-only config.
+
+        ``bev.yaml`` only lists the surround rig. The runner still indexes
+        lidar / imu / odom, so missing blocks become ``enabled: false``.
+        """
+        habitat = data.get("habitat")
+        if not isinstance(habitat, dict):
+            return
+        robot = habitat.get("robot")
+        if isinstance(robot, dict) and "truth" not in robot:
+            robot["truth"] = {"enabled": False, "channel": "/gt/pose"}
+        sensors = habitat.get("sensors")
+        if not isinstance(sensors, dict):
+            return
+        stubs: Dict[str, Dict[str, Any]] = {
+            "lidar_2d": {
+                "enabled": False,
+                "channel": "/scan",
+                "frame": "laser_link",
+                "angle_min": -3.14159,
+                "angle_max": 3.14159,
+                "range_min": 0.1,
+                "range_max": 30.0,
+                "num_beams": 1,
+                "noise": 0.0,
+            },
+            "lidar_3d": {
+                "enabled": False,
+                "channel": "/points",
+                "frame": "laser_link",
+                "horizontal": {
+                    "angle_min": -3.14159,
+                    "angle_max": 3.14159,
+                    "num_beams": 1,
+                },
+                "vertical": {"angle_min": -0.1, "angle_max": 0.1, "num_rings": 1},
+                "range_min": 0.1,
+                "range_max": 30.0,
+                "noise": 0.0,
+            },
+            "camera": {
+                "enabled": False,
+                "width": 640,
+                "height": 480,
+                "hfov_deg": 90.0,
+                "rgb_channel": "/camera/rgb/image_raw",
+                "depth_channel": "/camera/depth/image_raw",
+                "info_channel": "/camera/camera_info",
+                "frame": "camera_link",
+                "rate_hz": 10.0,
+                "noise": {"depth": 0.0},
+            },
+            "imu": {
+                "enabled": False,
+                "channel": "/imu",
+                "frame": "imu_link",
+                "rate_hz": 50.0,
+                "noise": {"gyro": 0.0, "accel": 0.0},
+            },
+            "odom": {
+                "enabled": False,
+                "channel": "/odom",
+                "frame": "odom",
+                "child_frame": "base_link",
+                "noise": 0.0,
+            },
+        }
+        for key, stub in stubs.items():
+            if key not in sensors:
+                sensors[key] = stub
 
     @classmethod
     def validate_urdf(cls, urdf: Any) -> None:
@@ -271,6 +353,37 @@ class Config:
         cls.require_nonneg(cam_noise.get("depth", 0.0), "habitat.sensors.camera.noise.depth")
 
     @classmethod
+    def validate_surround(cls, block: Any, urdf: str = "") -> None:
+        """Validate optional 4/6-camera BEV rig.
+
+        Args:
+            block: Camera table, legacy surround block, or ``None``.
+            urdf: Robot URDF path. Camera frames are read from it.
+
+        Raises:
+            ValueError: Count, FOV, frame, or size cannot cover 360°.
+        """
+        if block is None:
+            return
+        if not isinstance(block, Mapping):
+            raise ValueError("habitat.sensors.cameras must be a mapping")
+        model = UrdfModel.load(str(urdf or "")) if str(urdf or "").strip() else None
+        cameras = resolve_surround(block, urdf=model)
+        if len(cameras) not in (4, 6):
+            raise ValueError("habitat.sensors.surround must enable 4 or 6 cameras")
+        for camera in cameras:
+            if camera.hfov_deg <= 0.0 or camera.hfov_deg >= 180.0:
+                raise ValueError(f"surround camera {camera.name} hfov_deg must be in (0, 180)")
+            if camera.vfov_deg <= 0.0 or camera.vfov_deg >= 180.0:
+                raise ValueError(f"surround camera {camera.name} vfov_deg must be in (0, 180)")
+            if camera.width < 1 or camera.height < 1:
+                raise ValueError(f"surround camera {camera.name} width/height must be >= 1")
+            if camera.rate_hz <= 0.0:
+                raise ValueError(f"surround camera {camera.name} rate_hz must be > 0")
+        if not covers_full_circle(cameras):
+            raise ValueError("surround rig does not cover 360°")
+
+    @classmethod
     def validate(cls, data: Mapping[str, Any]) -> None:
         """Validate habitat robot and sensor channel settings.
 
@@ -322,6 +435,7 @@ class Config:
         cls.validate_lidar_2d(sensors["lidar_2d"])
         cls.validate_lidar_3d(sensors["lidar_3d"])
         cls.validate_noise_fields(sensors)
+        cls.validate_surround(camera_rig(sensors), robot.get("urdf", ""))
         cls.validate_footprint(robot.get("footprint"), robot.get("urdf", ""))
         cls.validate_map(habitat.get("map"))
 

@@ -33,6 +33,7 @@ class UrdfModel:
         parents: Mapping[str, Tuple[str, Tuple[float, float, float]]],
         root: str,
         footprint: Optional[Tuple[Tuple[float, float, float], ...]] = None,
+        joint_yaw: Optional[Mapping[str, float]] = None,
     ) -> None:
         """Store path and mounts.
 
@@ -43,6 +44,7 @@ class UrdfModel:
         self.path = path
         self.mounts = dict(mounts)
         self.parents = dict(parents)
+        self.joint_yaw = dict(joint_yaw or {})
         self.root = root
         self.footprint = tuple(footprint or ())
 
@@ -91,7 +93,7 @@ class UrdfModel:
         if not path.is_file():
             raise FileNotFoundError(f"urdf not found: {path}")
         tree = ET.parse(path)
-        parents = cls.joint_parents(tree.getroot())
+        parents, joint_yaw = cls.joint_parents(tree.getroot())
         if not parents:
             raise ValueError(f"urdf has no joints: {path}")
         root = cls.root_link(parents)
@@ -101,19 +103,32 @@ class UrdfModel:
                 mounts[link] = cls.link_xyz(link, parents, root)
         body = "base_link" if ("base_link" in parents or root == "base_link") else root
         footprint = cls.link_footprint(tree.getroot(), body, parents, root)
-        return cls(path=path, mounts=mounts, parents=parents, root=root, footprint=footprint)
+        return cls(
+            path=path,
+            mounts=mounts,
+            parents=parents,
+            root=root,
+            footprint=footprint,
+            joint_yaw=joint_yaw,
+        )
 
     @staticmethod
-    def joint_parents(root: ET.Element) -> Dict[str, Tuple[str, Tuple[float, float, float]]]:
-        """Map child link → ``(parent, xyz)`` from fixed/continuous joints.
+    def joint_parents(
+        root: ET.Element,
+    ) -> Tuple[
+        Dict[str, Tuple[str, Tuple[float, float, float]]],
+        Dict[str, float],
+    ]:
+        """Map child link → ``(parent, xyz)`` and child → joint yaw.
 
         Args:
             root: ``<robot>`` element.
 
         Returns:
-            Child → parent and origin translation.
+            Parents, and yaw (radians) of each joint origin about +Z.
         """
         parents: Dict[str, Tuple[str, Tuple[float, float, float]]] = {}
+        joint_yaw: Dict[str, float] = {}
         for joint in root.findall("joint"):
             parent_el = joint.find("parent")
             child_el = joint.find("child")
@@ -123,8 +138,10 @@ class UrdfModel:
             child = child_el.get("link")
             if not parent or not child:
                 continue
-            parents[child] = (parent, UrdfModel.origin_xyz(joint.find("origin")))
-        return parents
+            origin = joint.find("origin")
+            parents[child] = (parent, UrdfModel.origin_xyz(origin))
+            joint_yaw[child] = UrdfModel.origin_yaw(origin)
+        return parents, joint_yaw
 
     @staticmethod
     def origin_xyz(origin: Optional[ET.Element]) -> Tuple[float, float, float]:
@@ -135,6 +152,16 @@ class UrdfModel:
         if len(parts) != 3:
             return (0.0, 0.0, 0.0)
         return (float(parts[0]), float(parts[1]), float(parts[2]))
+
+    @staticmethod
+    def origin_yaw(origin: Optional[ET.Element]) -> float:
+        """Yaw (radians) from an ``<origin rpy="roll pitch yaw">`` element."""
+        if origin is None:
+            return 0.0
+        parts = str(origin.get("rpy", "0 0 0")).split()
+        if len(parts) != 3:
+            return 0.0
+        return float(parts[2])
 
     @staticmethod
     def link_footprint(
@@ -242,6 +269,29 @@ class UrdfModel:
             z += dz
             current = next_parent
         raise ValueError(f"cycle while resolving link {child!r}")
+
+    def link_yaw_from(self, parent: str, child: str) -> float:
+        """Sum joint yaw from ``parent`` down to ``child`` (radians, about +Z)."""
+        import math
+
+        if parent == child:
+            return 0.0
+        yaw = 0.0
+        current = child
+        for _ in range(len(self.parents) + 1):
+            if current == parent:
+                return math.atan2(math.sin(yaw), math.cos(yaw))
+            if current not in self.parents:
+                raise ValueError(f"link {child!r} not connected to parent {parent!r}")
+            yaw += float(self.joint_yaw.get(current, 0.0))
+            current = self.parents[current][0]
+        raise ValueError(f"cycle while resolving link {child!r}")
+
+    def link_pose(self, link: str, body: str | None = None) -> Tuple[float, float, float, float]:
+        """``link`` origin in ``body`` (default ``base_link``): x, y, z, yaw."""
+        frame = body or self.body_frame()
+        x, y, z = self.link_xyz_from(frame, link)
+        return (x, y, z, self.link_yaw_from(frame, link))
 
     def odom_child_frame(self, fallback: str = "base_link") -> str:
         """Preferred dynamic child frame for ``odom``."""

@@ -33,6 +33,9 @@ from typing import Any, Dict, Optional, Tuple
 import numpy as np
 
 from autosim.bridge import Bridge
+from autosim.cameras import camera_rig, resolve_surround
+from autosim.stitch import panorama_spec, stitch_cylindrical
+from autosim.urdf import UrdfModel
 from autosim.clock import Clock
 from autosim.config import Config
 from autosim.map import Map
@@ -148,6 +151,7 @@ class Runner:
         self.scan_elapsed = 0.0
         self.points_elapsed = 0.0
         self.camera_elapsed = 0.0
+        self.surround_elapsed = {camera.name: 0.0 for camera in self.surround}
         self.inertial_elapsed = 0.0
         self.map_elapsed = 0.0
         self.map_published = False
@@ -202,6 +206,12 @@ class Runner:
         self.lidar_2d = sensors["lidar_2d"]
         self.lidar_3d = sensors["lidar_3d"]
         self.camera = sensors["camera"]
+        try:
+            camera_urdf = UrdfModel.load(str(self.robot_cfg.get("urdf") or ""))
+        except (FileNotFoundError, ValueError):
+            camera_urdf = None
+        self.surround = resolve_surround(camera_rig(sensors), urdf=camera_urdf)
+        self.panorama = panorama_spec(sensors)
         self.imu = sensors["imu"]
         self.odom = sensors["odom"]
         self.spawn = settings["habitat"]["spawn"]
@@ -305,6 +315,11 @@ class Runner:
                 types["semantic"] = Image
             if str(self.camera.get("semantic_ids_channel") or "").strip():
                 types["semantic_ids"] = Image
+        for camera in self.surround:
+            types[camera.rgb_key] = Image
+            types[camera.info_key] = CameraInfo
+        if self.panorama is not None:
+            types["surround_panorama"] = Image
         if self.imu.get("enabled", False):
             types["imu"] = Imu
         if self.robot_cfg["truth"]["enabled"]:
@@ -408,6 +423,7 @@ class Runner:
             self.emit("points", self.submit_cloud, stamp)
         else:
             self.emit("camera", self.submit_camera, stamp)
+        self.emit("surround", self.submit_surround, stamp)
 
     def scan_is_due(self) -> bool:
         """True when 2D lidar should sample this period."""
@@ -510,6 +526,45 @@ class Runner:
         else:
             color, depth = sampled
             self.encode_publish_camera(color, depth, stamp)
+
+    def submit_surround(self, stamp: Tuple[int, int]) -> None:
+        """Publish each surround camera (RGB + CameraInfo) at its own ``rate_hz``."""
+        due = [
+            camera
+            for camera in self.surround
+            if self.surround_elapsed.get(camera.name, 0.0) >= 1.0 / max(camera.rate_hz, 1e-3)
+        ]
+        if not due:
+            return
+        images = self.simulator.render_surround()
+        for camera in due:
+            self.surround_elapsed[camera.name] = 0.0
+            color = images[camera.uuid]
+            rgb_msg = Messages.encode_image(color, stamp, camera.frame, "rgb8")
+            matrix = Messages.camera_intrinsics(
+                camera.width, camera.height, camera.hfov_deg, camera.vfov_deg
+            )
+            info = Messages.encode_camera_info(
+                stamp, camera.frame, camera.width, camera.height, matrix
+            )
+            info.header.stamp.sec = int(rgb_msg.header.stamp.sec)
+            info.header.stamp.nanosec = int(rgb_msg.header.stamp.nanosec)
+            self.bridge.publish(camera.rgb_key, rgb_msg)
+            self.bridge.publish(camera.info_key, info)
+        self.publish_panorama(images, stamp)
+
+    def publish_panorama(self, images: Dict[str, Any], stamp: Tuple[int, int]) -> None:
+        """Publish the cylindrical 360° stitch of the surround rig."""
+        if self.panorama is None or not images:
+            return
+        color = stitch_cylindrical(
+            images,
+            self.surround,
+            int(self.panorama["width"]),
+            int(self.panorama["height"]),
+        )
+        msg = Messages.encode_image(color, stamp, self.panorama["frame"], "rgb8")
+        self.bridge.publish("surround_panorama", msg)
 
     def encode_publish_camera(
         self,
@@ -718,6 +773,8 @@ class Runner:
         self.scan_elapsed += dt
         self.points_elapsed += dt
         self.camera_elapsed += dt
+        for name in self.surround_elapsed:
+            self.surround_elapsed[name] += dt
         self.inertial_elapsed += dt
         self.map_elapsed += dt
         self.tf_static_elapsed += dt
@@ -1075,7 +1132,7 @@ class Runner:
                         parent,
                         child,
                         xyz,
-                        0.0,
+                        float(urdf.joint_yaw.get(child, 0.0)),
                     )
                 )
             # odom→base_link skips URDF base_footprint→base_link; publish the
@@ -1102,6 +1159,19 @@ class Runner:
                     body_frame,
                     self.lidar_2d.get("frame", "laser_link"),
                     (0.0, 0.0, 0.2),
+                )
+            )
+        urdf_links = set(urdf.parents) if urdf is not None else set()
+        for camera in self.surround:
+            if camera.frame in urdf_links:
+                continue
+            mounts.append(
+                Messages.encode_transform(
+                    stamp,
+                    body_frame,
+                    camera.frame,
+                    (camera.x, camera.y, camera.z),
+                    camera.yaw,
                 )
             )
         # One TFMessage, one stamp: every link is a single rigid snapshot.

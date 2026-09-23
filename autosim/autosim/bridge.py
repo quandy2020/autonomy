@@ -56,27 +56,8 @@ class Bridge:
         self.channels = channels
         self.writers = {
             key: node.create_writer(channels[key], types[key], qos_depth=10)
-            for key in (
-                "scan",
-                "points",
-                "rgb",
-                "depth",
-                "depth_points",
-                "semantic",
-                "semantic_ids",
-                "camera_info",
-                "imu",
-                "odom",
-                "odom_path",
-                "gt_pose",
-                "footprint",
-                "map_cloud",
-                "map_grid",
-                "tf",
-                "tf_static",
-                "clock",
-            )
-            if key in types and key in channels
+            for key in types
+            if key in channels and key != "cmd_vel"
         }
         self.command_reader = _CommandReader(
             node, channels["cmd_vel"], types["cmd_vel"]
