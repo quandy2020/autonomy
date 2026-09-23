@@ -18,7 +18,7 @@
 
 /**
  * @file tracker.cpp
- * @brief Tracker implementation: GrabImage*/Track, local map, keyframes, IMU preintegration.
+ * @brief Tracker implementation: GrabImage, Track, local map, keyframes, IMU preintegration.
  *
  * @note Main path should run on the Tracking thread; GrabImuData may enqueue from others.
  */

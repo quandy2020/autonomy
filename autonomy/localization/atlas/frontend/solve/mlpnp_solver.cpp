@@ -52,6 +52,19 @@ using Rotation = Eigen::Matrix3d;
 using Translation = Eigen::Vector3d;
 using Rodrigues = Eigen::Vector3d;
 
+Eigen::Matrix3d Rodrigues2Rot(const Eigen::Vector3d& omega);
+Eigen::Vector3d Rot2Rodrigues(const Eigen::Matrix3d& R);
+void MlpnpJacs(const Point3& pt, const Eigen::Vector3d& nullspace_r,
+               const Eigen::Vector3d& nullspace_s, const Rodrigues& w,
+               const Translation& t, Eigen::MatrixXd& jacs);
+void MlpnpResidualsAndJacs(const Eigen::VectorXd& x, const Points3& pts,
+                           const std::vector<Eigen::MatrixXd>& nullspaces,
+                           Eigen::VectorXd& r, Eigen::MatrixXd& fjac,
+                           bool getJacs);
+void MlpnpGn(Eigen::VectorXd& x, const Points3& pts,
+             const std::vector<Eigen::MatrixXd>& nullspaces,
+             const Eigen::SparseMatrix<double> Kll, bool use_cov);
+
 void ComputePose(const Bearings &f, const Points3 &p, const Cov3Mats &covMats,
                                   const std::vector<int> &indices, Transform34 &result) {
         size_t numberCorrespondences = indices.size();
@@ -837,8 +850,8 @@ bool MlpnpSolver::Find(SE3* Tcw, std::vector<bool>* inliers, int* num_inliers) {
         return false;
     }
 
-    Bearings f = bearings_;
-    Points3 p = points_world_;
+    Bearings f(bearings_.begin(), bearings_.end());
+    Points3 p(points_world_.begin(), points_world_.end());
     Cov3Mats covs(1);  // unused covariance path
 
     std::mt19937 rng(42);

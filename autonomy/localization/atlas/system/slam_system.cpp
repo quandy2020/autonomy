@@ -232,7 +232,7 @@ void SlamSystem::ApplyModeChange() {
         reset_active_map_ = false;
         last_map_change_idx_ = 0;
     }
-    mapping = tracker_.mutable_local_mapping();
+    LocalMapping* mapping = tracker_.mutable_local_mapping();
     if (activate_localization_) {
         if (mapping != nullptr) {
             mapping->RequestPause();

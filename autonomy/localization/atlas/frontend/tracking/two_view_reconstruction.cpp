@@ -64,9 +64,10 @@ bool TwoViewReconstruction::Reconstruct(
          K_(1, 1), K_(1, 2), K_(2, 0), K_(2, 1), K_(2, 2));
     cv::Mat E;
     cv::Mat inliers;
+    // OpenCV 5: maxIters comes before the inlier mask.
     E = cv::findEssentialMat(pts1, pts2, K, cv::RANSAC, 0.999,
-                             static_cast<double>(sigma_), inliers,
-                             iterations_);
+                             static_cast<double>(sigma_), iterations_,
+                             inliers);
     if (E.empty()) {
         return false;
     }

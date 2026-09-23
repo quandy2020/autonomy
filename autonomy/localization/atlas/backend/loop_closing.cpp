@@ -74,7 +74,7 @@ void ApplySim3ToMap(Map* map, const Sim3& transform, bool scale_velocity) {
         transformed.linear() = transform.rotation * Twc.rotation();
         transformed.translation() =
             transform.rotation * (transform.scale * Twc.translation()) +
-            transform.translation();
+            transform.translation;
         keyframe->SetPose(transformed.inverse());
         if (keyframe->has_velocity) {
             keyframe->velocity_world =

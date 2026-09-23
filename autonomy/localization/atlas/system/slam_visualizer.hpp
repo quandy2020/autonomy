@@ -85,8 +85,9 @@ public:
      * @param node Autolink node; null keeps visualizer disabled.
      * @param options Publish options.
      */
+    void Configure(const std::shared_ptr<autolink::Node>& node);
     void Configure(const std::shared_ptr<autolink::Node>& node,
-                   const Options& options = Options{});
+                   const Options& options);
 
     /**
      * @brief Whether Configure succeeded.

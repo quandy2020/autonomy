@@ -287,31 +287,33 @@ int OrbMatcher::SearchByProjection(tracking::Frame& current,
             continue;
         }
 
-        const int last_octave = LastFrameOctave(last, i);
-        float radius = th;
-        if (last_octave >= 0 &&
-            last_octave < static_cast<int>(current.scale_factors.size())) {
-            radius *=
-                current.scale_factors[static_cast<size_t>(last_octave)];
+        const int last_octave_right = LastFrameOctave(last, i);
+        float radius_right = th;
+        if (last_octave_right >= 0 &&
+            last_octave_right <
+                static_cast<int>(current.scale_factors.size())) {
+            radius_right *=
+                current.scale_factors[static_cast<size_t>(last_octave_right)];
         }
 
         std::vector<size_t> indices_r;
         if (forward) {
-            indices_r = current.GetFeaturesInArea(ur, vr, radius, last_octave,
-                                                  -1, true);
+            indices_r = current.GetFeaturesInArea(
+                ur, vr, radius_right, last_octave_right, -1, true);
         } else if (backward) {
-            indices_r = current.GetFeaturesInArea(ur, vr, radius, 0,
-                                                  last_octave, true);
+            indices_r = current.GetFeaturesInArea(ur, vr, radius_right, 0,
+                                                  last_octave_right, true);
         } else {
             indices_r = current.GetFeaturesInArea(
-                ur, vr, radius, last_octave - 1, last_octave + 1, true);
+                ur, vr, radius_right, last_octave_right - 1,
+                last_octave_right + 1, true);
         }
         if (indices_r.empty()) {
             continue;
         }
 
-        const cv::Mat dMP = map_point->GetDescriptor();
-        if (dMP.empty() || current.descriptors.empty()) {
+        const cv::Mat descriptor_right = map_point->GetDescriptor();
+        if (descriptor_right.empty() || current.descriptors.empty()) {
             continue;
         }
 
@@ -331,8 +333,8 @@ int OrbMatcher::SearchByProjection(tracking::Frame& current,
             if (global >= current.descriptors.rows) {
                 continue;
             }
-            const int dist =
-                DescriptorDistance(dMP, current.descriptors.row(global));
+            const int dist = DescriptorDistance(
+                descriptor_right, current.descriptors.row(global));
             if (dist < best_dist) {
                 best_dist = dist;
                 best_idx = static_cast<int>(i2);
@@ -1688,13 +1690,16 @@ int OrbMatcher::SearchForTriangulation(
         Trr = Tr1w * Twr2;
     }
     const Mat33 Rll = Tll.rotation();
-    const Mat33 Rlr = dual ? Tlr.rotation() : Mat33::Identity();
-    const Mat33 Rrl = dual ? Trl.rotation() : Mat33::Identity();
-    const Mat33 Rrr = dual ? Trr.rotation() : Mat33::Identity();
+    const Mat33 Rlr =
+        dual ? Mat33(Tlr.rotation()) : Mat33(Mat33::Identity());
+    const Mat33 Rrl =
+        dual ? Mat33(Trl.rotation()) : Mat33(Mat33::Identity());
+    const Mat33 Rrr =
+        dual ? Mat33(Trr.rotation()) : Mat33(Mat33::Identity());
     const Vec3 tll = Tll.translation();
-    const Vec3 tlr = dual ? Tlr.translation() : Vec3::Zero();
-    const Vec3 trl = dual ? Trl.translation() : Vec3::Zero();
-    const Vec3 trr = dual ? Trr.translation() : Vec3::Zero();
+    const Vec3 tlr = dual ? Vec3(Tlr.translation()) : Vec3(Vec3::Zero());
+    const Vec3 trl = dual ? Vec3(Trl.translation()) : Vec3(Vec3::Zero());
+    const Vec3 trr = dual ? Vec3(Trr.translation()) : Vec3(Vec3::Zero());
 
     const auto& right_u1 = keyframe1->GetRightCoordinates();
     const auto& right_u2 = keyframe2->GetRightCoordinates();

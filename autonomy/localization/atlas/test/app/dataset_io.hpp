@@ -20,7 +20,7 @@
  * @file dataset_io.hpp
  * @brief Dataset I/O helpers for Atlas offline evaluation (EuRoC / TUM / KITTI).
  *
- * Used by `test/app/*_main.cpp` to load IMU, mono, stereo, and RGB-D sequences, and to
+ * Used by test/app dataset mains to load IMU, mono, stereo, and RGB-D sequences, and to
  * fill IMU calibration from YAML; trajectories are written as TUM text for evo / ORB scripts.
  *
  * @par Typical usage
@@ -143,7 +143,7 @@ inline bool LoadEurocImuCsv(const std::string& path,
 }
 
 /**
- * @brief Load EuRoC `cam*/data.csv` and build image paths.
+ * @brief Load EuRoC cam0/cam1 data.csv and build image paths.
  * @param[in] csv_path Timestamp–filename CSV.
  * @param[in] img_dir Image directory (usually `…/cam0/data`).
  * @param[out] out Output frame list.

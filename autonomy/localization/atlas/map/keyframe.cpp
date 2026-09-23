@@ -395,7 +395,13 @@ std::shared_ptr<KeyFrame> KeyFrame::GetParent() const {
 
 std::set<std::shared_ptr<KeyFrame>> KeyFrame::GetChildren() const {
     std::lock_guard<std::mutex> lock(mutex_connections_);
-    return children_;
+    std::set<std::shared_ptr<KeyFrame>> children;
+    for (const auto& child : children_) {
+        if (auto locked = child.lock()) {
+            children.insert(std::move(locked));
+        }
+    }
+    return children;
 }
 
 void KeyFrame::SetBadFlag() {

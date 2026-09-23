@@ -231,7 +231,7 @@ struct MonoPoseOnlyFromTwbCostFunctor {
         const Eigen::Matrix<T, 3, 3> Rcw = Rcb * Rbw;
         const Eigen::Matrix<T, 3, 1> tbw(dx, dy, dz);
         const Eigen::Matrix<T, 3, 1> tcw = Rcb * tbw + tcb;
-        const Eigen::Matrix<T, 3, 1> pw(T(xw_), T(yw_), T(zw_));
+        const Eigen::Matrix<T, 3, 1> pw((T(xw_)), (T(yw_)), (T(zw_)));
         const Eigen::Matrix<T, 3, 1> pc = Rcw * pw + tcw;
         T point_camera[3] = {pc[0], pc[1], pc[2]};
         T predicted_u;
@@ -516,7 +516,7 @@ struct MonoPoseOnlyToBodyFromTwbCostFunctor {
         const Eigen::Matrix<T, 3, 3> Rcw = Rcb * Rbw;
         const Eigen::Matrix<T, 3, 1> tbw(dx, dy, dz);
         const Eigen::Matrix<T, 3, 1> tcw = Rcb * tbw + tcb;
-        const Eigen::Matrix<T, 3, 1> pw(T(xw_), T(yw_), T(zw_));
+        const Eigen::Matrix<T, 3, 1> pw((T(xw_)), (T(yw_)), (T(zw_)));
         const Eigen::Matrix<T, 3, 1> pc_left = Rcw * pw + tcw;
         const Eigen::Matrix<T, 3, 3> Rrl = R_rl_.cast<T>();
         const Eigen::Matrix<T, 3, 1> trl = t_rl_.cast<T>();

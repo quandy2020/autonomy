@@ -64,6 +64,10 @@ void FillStamp(automsgs::msgs::builtin_interfaces::Time* stamp,
 
 }  // namespace
 
+void SlamVisualizer::Configure(const std::shared_ptr<autolink::Node>& node) {
+    Configure(node, Options{});
+}
+
 void SlamVisualizer::Configure(const std::shared_ptr<autolink::Node>& node,
                                const Options& options) {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -328,7 +332,7 @@ void SlamVisualizer::PublishOdometry(const SE3& Twb, double timestamp_sec) {
     automsgs::msgs::nav_msgs::Odometry odom;
     SetStamp(odom.mutable_header(), timestamp_sec, options_.map_frame);
     odom.set_child_frame_id(options_.body_frame);
-    Se3ToPose(Twb, odom.mutable_pose()->mutable_pose());
+    Se3ToPose(Twb, odom.mutable_pose()->mutable_pose()->mutable_pose());
     odometry_writer_->Write(odom);
 }
 

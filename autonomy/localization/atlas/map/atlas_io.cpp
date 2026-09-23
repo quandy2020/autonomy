@@ -205,7 +205,10 @@ std::vector<int> IntVecFromJson(const nlohmann::json& j) {
 nlohmann::json BowToJson(const fbow::BoWVector& bow) {
     nlohmann::json arr = nlohmann::json::array();
     for (const auto& kv : bow) {
-        arr.push_back({{"id", kv.first}, {"w", kv.second}});
+        nlohmann::json item;
+        item["id"] = kv.first;
+        item["w"] = static_cast<float>(kv.second);
+        arr.push_back(std::move(item));
     }
     return arr;
 }
@@ -216,7 +219,9 @@ fbow::BoWVector BowFromJson(const nlohmann::json& j) {
         return bow;
     }
     for (const auto& e : j) {
-        bow[e.value("id", 0u)] = e.value("w", 0.0);
+        // fbow::_float::operator= takes a non-const float&.
+        float weight = static_cast<float>(e.value("w", 0.0));
+        bow[e.value("id", 0u)] = weight;
     }
     return bow;
 }

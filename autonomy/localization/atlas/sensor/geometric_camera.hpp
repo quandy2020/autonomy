@@ -21,7 +21,7 @@
  * @brief Abstract geometric camera projection interface `GeometricCamera`.
  *
  * Covers common Kalibr / OpenCV / Basalt / ORB-SLAM3 models; concrete types live
- * in `sensor/camera/*.hpp` and are built by name via `camera::CameraFactory`.
+ * in sensor/camera headers and are built by name via camera::CameraFactory.
  */
 
 #ifndef AUTONOMY_LOCALIZATION_ATLAS_SENSOR_GEOMETRIC_CAMERA_HPP_

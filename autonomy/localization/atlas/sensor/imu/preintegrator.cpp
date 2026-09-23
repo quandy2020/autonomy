@@ -25,6 +25,8 @@
 
 #include <cmath>
 
+#include <Eigen/Eigenvalues>
+
 namespace autonomy {
 namespace localization {
 namespace atlas {

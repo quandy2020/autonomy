@@ -264,8 +264,6 @@ public:
     bool only_tracking() const { return only_tracking_; }
     /** @brief Inliers of the latest successful tracking step. */
     int matches_inliers() const { return matches_inliers_; }
-    /** @brief Current tracking state. */
-    State state() const { return state_; }
 
     /**
      * @brief One tracked frame stored relative to its reference keyframe.

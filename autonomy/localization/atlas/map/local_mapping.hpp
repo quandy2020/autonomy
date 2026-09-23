@@ -65,7 +65,7 @@ class SlamScheduler;
  *
  * @note Async start
  * @code{.cpp}
- * LocalMapping mapping(map, /*monocular=*/false);
+ * LocalMapping mapping(map, false);
  * mapping.SetLoopCloser(loop);
  * mapping.SetTracker(tracker);
  * mapping.Start(scheduler);

@@ -857,8 +857,10 @@ int Optimizer::OptimizeSim3(
     double sim3[7] = {0, 0, 0, 0, 0, 0, 0};
     {
         const Eigen::AngleAxisd aa(sim3_12->rotation);
-        Eigen::Map<Eigen::Vector3d>(sim3) = aa.axis() * aa.angle();
-        Eigen::Map<Eigen::Vector3d>(sim3 + 3) = sim3_12->translation;
+        Eigen::Map<Eigen::Vector3d> rotation(sim3);
+        rotation = aa.axis() * aa.angle();
+        Eigen::Map<Eigen::Vector3d> translation(sim3 + 3);
+        translation = sim3_12->translation;
         sim3[6] = std::log(std::max(1e-9, sim3_12->scale));
     }
 
