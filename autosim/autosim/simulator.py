@@ -35,6 +35,7 @@ from autosim.cameras import (
     resolve_surround,
     ros_to_habitat_mount,
 )
+from autosim.stitch import PANORAMA_UUID, panorama_spec
 from autosim.urdf import UrdfModel
 
 
@@ -445,9 +446,13 @@ class Simulator:
                 semantic_sensor.position = [offset[0], offset[1], offset[2]]
                 semantic_sensor.orientation = [0.0, 0.0, 0.0]
                 sensor_specs.append(semantic_sensor)
-        surround = camera_rig(self.settings.get("habitat", {}).get("sensors"))
+        sensors = self.settings.get("habitat", {}).get("sensors")
+        surround = camera_rig(sensors)
         for camera in resolve_surround(surround, urdf=self.urdf):
             sensor_specs.append(self.surround_color_spec(habitat_sim, camera))
+        pano = panorama_spec(sensors)
+        if pano is not None:
+            sensor_specs.append(self.panorama_color_spec(habitat_sim, pano))
         agent_configuration.sensor_specifications = sensor_specs
         return agent_configuration
 
@@ -483,6 +488,26 @@ class Simulator:
         return spec
 
     @staticmethod
+    def panorama_color_spec(habitat_sim: Any, pano: Mapping[str, Any]) -> Any:
+        """Equirectangular color camera. The image is a full 360°×180° sphere.
+
+        Resolution is ``[height, width]``. A 2:1 image is the usual panorama.
+        The center column looks along the same forward axis as ``cam_front``.
+        """
+        spec = habitat_sim.EquirectangularSensorSpec()
+        spec.uuid = PANORAMA_UUID
+        spec.sensor_type = habitat_sim.SensorType.COLOR
+        spec.resolution = [int(pano["height"]), int(pano["width"])]
+        ax, ay, az = ros_to_habitat_mount(*pano["xyz"])
+        spec.position = [ax, ay, az]
+        spec.orientation = [0.0, 0.0, 0.0]
+        if hasattr(spec, "near"):
+            spec.near = 0.05
+        if hasattr(spec, "far"):
+            spec.far = 100.0
+        return spec
+
+    @staticmethod
     def scale_image(image: np.ndarray, height: int, width: int) -> np.ndarray:
         """Scale ``image`` to ``height``×``width``. Same shape is returned as-is."""
         array = np.asarray(image)
@@ -502,11 +527,10 @@ class Simulator:
         Raises:
             RuntimeError: Session closed or a configured uuid is missing.
         """
-        cameras = resolve_surround(
-            camera_rig(self.settings.get("habitat", {}).get("sensors")),
-            urdf=self.urdf,
-        )
-        if not cameras:
+        sensors = self.settings.get("habitat", {}).get("sensors")
+        cameras = resolve_surround(camera_rig(sensors), urdf=self.urdf)
+        pano = panorama_spec(sensors)
+        if not cameras and pano is None:
             return {}
         if self.session is None:
             raise RuntimeError("Habitat session is not open")
@@ -522,6 +546,18 @@ class Simulator:
                 self.rgb_to_uint8(observations[camera.uuid])
             )
             images[camera.uuid] = self.scale_image(image, camera.height, camera.width)
+        if pano is not None:
+            if PANORAMA_UUID not in observations:
+                raise RuntimeError(
+                    f"Habitat observations missing {PANORAMA_UUID!r}; "
+                    f"got {list(observations)!r}"
+                )
+            image = self.align_camera_image(
+                self.rgb_to_uint8(observations[PANORAMA_UUID])
+            )
+            images[PANORAMA_UUID] = self.scale_image(
+                image, int(pano["height"]), int(pano["width"])
+            )
         return images
 
     def camera_local_offset(self) -> Tuple[float, float, float]:

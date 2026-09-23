@@ -34,7 +34,7 @@ import numpy as np
 
 from autosim.bridge import Bridge
 from autosim.cameras import camera_rig, resolve_surround
-from autosim.stitch import panorama_spec, stitch_cylindrical
+from autosim.stitch import PANORAMA_UUID, panorama_spec
 from autosim.urdf import UrdfModel
 from autosim.clock import Clock
 from autosim.config import Config
@@ -554,15 +554,12 @@ class Runner:
         self.publish_panorama(images, stamp)
 
     def publish_panorama(self, images: Dict[str, Any], stamp: Tuple[int, int]) -> None:
-        """Publish the cylindrical 360° stitch of the surround rig."""
-        if self.panorama is None or not images:
+        """Publish the equirectangular 360°×180° panorama."""
+        if self.panorama is None:
             return
-        color = stitch_cylindrical(
-            images,
-            self.surround,
-            int(self.panorama["width"]),
-            int(self.panorama["height"]),
-        )
+        color = images.get(PANORAMA_UUID)
+        if color is None:
+            return
         msg = Messages.encode_image(color, stamp, self.panorama["frame"], "rgb8")
         self.bridge.publish("surround_panorama", msg)
 

@@ -109,10 +109,11 @@ habitat:
         frame: cam_front_right
         rgb_channel: /surround/front_right/image_raw
         info_channel: /surround/front_right/camera_info
-    # 六路针孔按朝向投到同一柱面。画面正中是车头，左边是车左侧，接缝在车尾。
+    # Habitat 等距圆柱全景，一张图覆盖水平 360°、垂直 180°。正中是车头，左边是车左侧。
     panorama:
       enabled: true
       channel: /surround/panorama
       frame: base_link
       width: 1920
-      height: 472
+      height: 960
+      xyz: [0.0, 0.0, 1.2]
