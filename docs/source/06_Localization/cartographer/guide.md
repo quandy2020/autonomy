@@ -146,7 +146,7 @@ TRAJECTORY_BUILDER.pure_localization_trimmer = {
 
 | 参数 | 默认 | 说明 |
 |------|------|------|
-| `--localization_mode` | `cartographer` | `cartographer` \| `atlas` |
+| `--localization_mode` | `cartographer` | `cartographer` \| `lightning` |
 
 ### 4.2 Cartographer 专用
 
@@ -159,21 +159,7 @@ TRAJECTORY_BUILDER.pure_localization_trimmer = {
 | `--start_trajectory_with_default_topics` | `true` | 自动订阅默认话题 |
 | `--save_state_filename` | `""` | 退出时序列化状态 |
 
-### 4.3 Atlas 模式（切换后端时）
-
-| 参数 | 说明 |
-|------|------|
-| `--atlas_config` | Atlas YAML 配置 |
-| `--atlas_vocab` | ORB 词袋路径 |
-| `--atlas_map_load` / `--atlas_map_save` | 地图加载/保存 |
-
-示例：切换到 Atlas
-
-```bash
-localization --localization_mode=atlas \
-  --atlas_config=autonomy/localization/atlas/example/tum_vi/TUM_VI_mono.yaml \
-  --atlas_vocab=/path/to/orb_vocab.fbow
-```
+Lightning 见 [§4 使用指南](../04_usage.md)。
 
 ---
 

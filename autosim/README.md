@@ -50,7 +50,7 @@ src/autonomy/autosim/scripts/run.sh sim
 ./src/autonomy/autosim/scripts/run.sh teleop
 ```
 
-**Atlas LIO 验证**（开 3D 点云 `/points` + `/imu`）：
+**Lightning LIO 验证**（开 3D 点云 `/points` + `/imu`）：
 
 ```bash
 CONFIG=src/autonomy/autosim/config/lio.yaml src/autonomy/autosim/scripts/run.sh sim

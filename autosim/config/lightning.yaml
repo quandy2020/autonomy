@@ -87,7 +87,7 @@ habitat:
         angle_min: -0.5353
         angle_max: 0.1863
         num_rings: 32
-      # Atlas preprocess min_range=0.5 will drop nearer hits anyway.
+      # Downstream LIO preprocess min_range=0.5 will drop nearer hits anyway.
       range_min: 0.1
       range_max: 30.0
       noise: 0.015

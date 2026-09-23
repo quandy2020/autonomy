@@ -2,7 +2,7 @@
 
 本文从**学术发展史、算法体系、工程实践、Autonomy 定位**四个维度，系统综述移动机器人定位（Localization）领域，并明确 `autonomy/localization` 的能力边界与选型依据。
 
-> 公式推导见 [§3 数学原理](03_math.md)；实现细节见 [§5 架构](05_architecture.md)、[§6 Atlas](06_atlas.md)。
+> 公式推导见 [§3 数学原理](03_math.md)；实现细节见 [§5 架构](05_architecture.md)。
 
 ---
 
@@ -11,18 +11,18 @@
 | 子问题 | 典型方法 | Autonomy 模块 | 频率 |
 |--------|----------|---------------|------|
 | 全局定位（已知地图） | AMCL / ICP | AMCL（配置就绪） | 5–20 Hz |
-| 视觉 SLAM | ORB-SLAM / VINS | **Atlas** | 15–30 Hz |
+| 视觉 SLAM | ORB-SLAM / VINS | （未集成） | — |
 | 激光 SLAM | Cartographer / Gmapping | **Cartographer** | 5–10 Hz |
 | 融合定位 | EKF / UKF / 因子图 | 规划中 | — |
 
 <div class="nav-costmap-banner">
   <strong>Autonomy 定位管线</strong>
-  <span class="nav-costmap-detail">传感器 → Atlas/AMCL → TF(map↔odom↔base) → Map / Planning / Control</span>
-  <span class="nav-costmap-arrow">Atlas 建图 → MapServer → AMCL →</span>
+  <span class="nav-costmap-detail">传感器 → Cartographer/Lightning → TF(map↔odom↔base) → Map / Planning / Control</span>
+  <span class="nav-costmap-arrow">建图 → MapServer → AMCL →</span>
 </div>
 
 ```
-相机 ──→ Atlas (VSLAM) ──→ T_cw / 稀疏地图 ──┐
+相机 ──→ 视觉 SLAM（未集成） ──→ 位姿 / 稀疏地图 ──┐
                                            ├──→ TF ──→ Planning / Control
 激光 + 地图 ──→ AMCL (待集成) ──→ map→odom ─┘
 激光 ──→ Cartographer ──→ 子图 + 位姿图 + /map
@@ -83,9 +83,9 @@ $$
 
 ### 8.3.2 视觉方法
 
-**特征点 SLAM（Atlas 所属）**
+**特征点 SLAM**
 
-| 阶段 | 方法 | Atlas 实现 |
+| 阶段 | 方法 | 典型实现 |
 |------|------|------------|
 | 前端 | ORB + 匹配 | `feature/orb_extractor` |
 | 初始化 | 5pt/8pt + 三角化 | `solve/essential_solver` |
@@ -95,11 +95,11 @@ $$
 
 **直接法 / 半直接法**
 
-最小化光度误差，无需描述子。代表：DSO、SVO。Atlas 未采用，因 ORB 在纹理变化下更鲁棒且便于回环。
+最小化光度误差，无需描述子。代表：DSO、SVO。本路线未采用，因 ORB 在纹理变化下更鲁棒且便于回环。
 
 **视觉-惯性（VI-SLAM）**
 
-预积分 IMU 约束 + 视觉重投影。代表：VINS-Mono、ORB-SLAM3 VI。Atlas 当前未融合 IMU。
+预积分 IMU 约束 + 视觉重投影。代表：VINS-Mono、ORB-SLAM3 VI。VIO 需融合 IMU 预积分。
 
 ### 8.3.3 激光方法
 
@@ -127,7 +127,7 @@ $$
 \mathbf{x}^* = \arg\min \sum_k \| \mathbf{r}_k(\mathbf{x}) \|_{\mathbf{\Omega}_k}^2
 $$
 
-| 因子类型 | 约束 | Atlas |
+| 因子类型 | 约束 | 典型 |
 |----------|------|-------|
 | 重投影 | 2D ↔ 3D | g2o reproj edge |
 | 里程计 | 相对位姿 | spanning tree |
@@ -141,9 +141,9 @@ $$
 
 | 传感器组合 | 推荐算法 | Autonomy 状态 |
 |------------|----------|---------------|
-| 单目相机 | 特征 SLAM | Atlas ✓ |
-| 双目相机 | 特征 SLAM / VI | Atlas ✓ |
-| RGB-D | 特征 SLAM / ICP | Atlas ✓ |
+| 单目相机 | 特征 SLAM | 常见开源 |
+| 双目相机 | 特征 SLAM / VI | 常见开源 |
+| RGB-D | 特征 SLAM / ICP | 常见开源 |
 | 2D 激光 + 地图 | AMCL | 配置 ✓ |
 | 2D 激光 SLAM | Cartographer | **已实现** |
 | 3D 激光 | Cartographer 3D | 配置 ✓，3D 前端可选 |
@@ -156,7 +156,7 @@ $$
 
 | 系统 | 传感器 | 后端 | 回环 | 许可证 |
 |------|--------|------|------|--------|
-| **Atlas** | 单/双/RGB-D | g2o | BoW | Apache 2.0 |
+| （本仓库） | — | — | — | — |
 | ORB-SLAM3 | + IMU | g2o | DBoW2 | GPL-3.0 |
 | stella_vslam | 单/双/RGB-D | g2o | BoW | MIT |
 | nav2_amcl | 2D 激光 | 粒子滤波 | — | Apache 2.0 |
@@ -164,7 +164,7 @@ $$
 | LIO-SAM | 激光+IMU | GTSAM | — | BSD |
 | VINS-Mono | 单目+IMU | Ceres | 4-DOF | GPL-3.0 |
 
-Autonomy 选择 Atlas  lineage 的原因：Apache 2.0 许可、成熟 ORB 管线、g2o 生态、与 stella_vslam 架构兼容。
+本仓库当前进程定位后端为 Cartographer 与 Lightning；视觉 SLAM 目录已移除。
 
 ---
 
@@ -196,7 +196,7 @@ Autonomy 选择 Atlas  lineage 的原因：Apache 2.0 许可、成熟 ORB 管线
 需要 3D / 视觉？
 ├── 是 → 有 IMU？
 │       ├── 是 → [待扩展] VI-SLAM
-│       └── 否 → Atlas (单/双/RGB-D)
+│       └── 否 → 视觉 SLAM（未集成）
 └── 否 → 有先验 2D 地图？
         ├── 是 → AMCL (激光 + 里程计)
         └── 否 → Cartographer (激光 SLAM)
@@ -206,7 +206,7 @@ Autonomy 选择 Atlas  lineage 的原因：Apache 2.0 许可、成熟 ORB 管线
 
 ## 8.8 Autonomy 定位能力矩阵
 
-| 能力 | Atlas | AMCL | Cartographer |
+| 能力 | 视觉 SLAM | AMCL | Cartographer |
 |------|-------|------|--------------|
 | 代码实现 | ✓ | 配置 | **✓** |
 | 实时跟踪 | ✓ | 预期 ✓ | ✓ |
@@ -223,7 +223,7 @@ Autonomy 选择 Atlas  lineage 的原因：Apache 2.0 许可、成熟 ORB 管线
 | 方向 | 说明 | Autonomy 路线 |
 |------|------|---------------|
 | 多传感器融合 | 视觉+激光+IMU 因子图 | 统一 LocalizationInterface |
-| 语义 SLAM | 物体级路标 | Atlas marker 已有基础 |
+| 语义 SLAM | 物体级路标 | 规划中 |
 | 终身 SLAM | 地图更新与遗忘 | local_map_cleaner |
 | 学习特征 | SuperPoint / NetVLAD | 可替换 ORB 前端 |
 | 云定位 | 全局地图匹配 | 远期 |
@@ -246,7 +246,7 @@ Autonomy 选择 Atlas  lineage 的原因：Apache 2.0 许可、成熟 ORB 管线
 
 | 主题 | Autonomy 文档 |
 |------|---------------|
-| Atlas 实现 | [atlas/guide.md](atlas/guide.md) |
+| 定位使用 | [04_usage.md](04_usage.md) |
 | 数学公式 | [03_math.md](03_math.md) |
 | Cartographer 实现 | [cartographer/guide.md](cartographer/guide.md) |
 | AMCL 配置 | [07_amcl.md](07_amcl.md) |

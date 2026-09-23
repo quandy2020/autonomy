@@ -1,7 +1,7 @@
 (localization-math)=
 # 3. 数学原理
 
-> 完整算法对比与工程背景见 [09_survey.md](09_survey.md)；Atlas 实现细节见 [06_atlas.md](06_atlas.md)、[05_architecture.md](05_architecture.md)。
+> 完整算法对比与工程背景见 [09_survey.md](09_survey.md)；模块架构见 [05_architecture.md](05_architecture.md)。
 
 ### 3.1 问题形式化
 
@@ -13,7 +13,7 @@ $$
 
 其中 $z_t$ 为传感器观测（图像特征、激光扫描等），$u_t$ 为控制/里程计输入。
 
-**Atlas（视觉 SLAM）** 同时维护：
+**视觉 SLAM** 同时维护：
 
 - 相机位姿序列 $\{T_{cw}^{(i)}\}$（关键帧）
 - 稀疏 3D 路标集 $\mathcal{L} = \{\mathbf{X}_j \in \mathbb{R}^3\}$
@@ -58,9 +58,9 @@ $$
 
 像素坐标：$u = f_x x_d + c_x$，$v = f_y y_d + c_y$。
 
-#### 3.2.3 Bearing Vector（Atlas 内部表示）
+#### 3.2.3 Bearing Vector（特征点 SLAM 内部表示）
 
-Atlas 将特征点转为**单位 bearing vector** $\mathbf{b} \in S^2$：
+特征点 SLAM 将特征点转为**单位 bearing vector** $\mathbf{b} \in S^2$：
 
 $$
 \mathbf{b} = \frac{\mathbf{K}^{-1} \tilde{\mathbf{p}}}{\|\mathbf{K}^{-1} \tilde{\mathbf{p}}\|}, \quad \tilde{\mathbf{p}} = (u, v, 1)^\top
@@ -77,7 +77,7 @@ $$
 = \mathbf{T}_{cw} \begin{bmatrix} \mathbf{X}_w \\ 1 \end{bmatrix}
 $$
 
-其中 $\mathbf{T}_{cw} = \begin{bmatrix} \mathbf{R}_{cw} & \mathbf{t}_{cw} \\ \mathbf{0}^\top & 1 \end{bmatrix}$ 为 Atlas 存储的 `pose_cw`。
+其中 $\mathbf{T}_{cw} = \begin{bmatrix} \mathbf{R}_{cw} & \mathbf{t}_{cw} \\ \mathbf{0}^\top & 1 \end{bmatrix}$ 为系统存储的 `pose_cw`。
 
 ---
 
@@ -214,7 +214,7 @@ $$
 
 ### 3.6 位姿图优化（g2o）
 
-Atlas 后端统一使用 **g2o**，优化目标为 **非线性最小二乘**：
+典型视觉 SLAM 后端统一使用 **g2o**，优化目标为 **非线性最小二乘**：
 
 $$
 \mathbf{T}^*, \mathbf{X}^* = \arg\min_{\mathbf{T}, \mathbf{X}} \sum_k \rho\left( \| \mathbf{r}_k(\mathbf{T}, \mathbf{X}) \|_{\mathbf{\Omega}_k}^2 \right)
@@ -412,7 +412,7 @@ $$
 \mathrm{Globally\ Consistent\ Map}
 $$
 
-| 阶段 | 核心公式 | Atlas 模块 |
+| 阶段 | 核心公式 | 典型模块 |
 |------|----------|------------|
 | 特征 | FAST + rBRIEF | `feature/orb_extractor` |
 | 初始化 | $\mathbf{E}, \mathbf{H}$ + 三角化 | `initialize/` |

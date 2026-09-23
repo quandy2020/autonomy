@@ -1,6 +1,6 @@
 # Copyright 2026 The Openbot Authors
 #
-# Atlas LIO 联调：autosim 发 /imu + /points；Atlas LocalizationServer 做 LIO。
+# LIO 联调：autosim 发 /imu + /points；Lightning LocalizationServer 做 LIO。
 # 话题与 localization_lio.launch 对齐，无需 remap。
 #
 # 终端 1（工作区根 /workspace/autonomy）：
@@ -84,7 +84,7 @@ habitat:
         angle_min: -0.5353
         angle_max: 0.1863
         num_rings: 32
-      # Atlas preprocess min_range=0.5 will drop nearer hits anyway.
+      # Downstream LIO preprocess min_range=0.5 will drop nearer hits anyway.
       range_min: 0.1
       range_max: 30.0
       noise: 0.015
@@ -132,7 +132,7 @@ habitat:
       frame: odom
       child_frame: base_link
       noise: 0.0
-      # Wheel-odom trajectory for Autoviz Path (compare with /atlas/trajectory).
+      # Wheel-odom trajectory for Autoviz Path (compare with LIO trajectory).
       # Republished every /odom tick; path_min_distance only thins samples.
       path_channel: /odom/path
       path_min_distance: 0.05   # m; append only when moved this far

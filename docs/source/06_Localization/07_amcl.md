@@ -145,7 +145,7 @@ always_reset_initial_pose = false,
 | 已知 2D 地图室内导航 | ★★★★★ | 标准用法 |
 | 动态环境 | ★★★☆☆ | LikelihoodFieldProb + beam skipping |
 | 大场景 | ★★★☆☆ | 增大 max_particles |
-| 无激光 / 纯视觉 | ✗ | 使用 Atlas |
+| 无激光 / 纯视觉 | ✗ | 需视觉 SLAM（当前未集成） |
 | 3D 地形 | ✗ | 使用 Cartographer 3D |
 
 ---
@@ -163,16 +163,9 @@ always_reset_initial_pose = false,
 
 ---
 
-## 7.6 与 Atlas 的关系
+## 7.6 与其他定位方案的关系
 
-| 维度 | AMCL | Atlas |
-|------|------|-------|
-| 地图类型 | 2D 占据栅格 | 稀疏 3D 路标 |
-| 传感器 | 2D 激光 | 相机 |
-| 输出维度 | SE(2) | SE(3) |
-| 先验地图 | 必须 | 可选（可 SLAM 建图） |
-
-二者可互补：Atlas 建图 → 导出 2D 占据栅格 → MapServer → AMCL 定位。
+AMCL 依赖先验 2D 占据栅格；可与 Cartographer / Lightning 建图结果衔接：建图 → MapServer → AMCL 定位。
 
 ---
 
@@ -193,4 +186,4 @@ include "localization/localization.lua"
 AUTONOMY = { localization = AUTONOMY_LOCALIZATION }
 ```
 
-集成完成前，请使用 [Atlas](06_atlas.md) 作为定位方案。
+集成完成前，请使用 Cartographer / Lightning。

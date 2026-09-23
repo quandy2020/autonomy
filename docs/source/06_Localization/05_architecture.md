@@ -1,12 +1,12 @@
 # 5. Localization 模块架构设计
 
-本文描述 `autonomy/localization` 的逻辑架构、Atlas 三线程数据流与核心组件关系。
+本文描述 `autonomy/localization` 的逻辑架构与核心组件关系。
 
 ## 5.1 设计目标
 
 Localization 模块遵循以下设计原则：
 
-1. **多算法可扩展**：Atlas（视觉 SLAM）已实现；AMCL、Cartographer 配置预留，便于插件化接入
+1. **多算法可扩展**：Cartographer / Lightning 已接入进程后端；AMCL 配置预留
 2. **经典 SLAM 架构**：Tracking / Mapping / Global Optimization 三线程解耦，跟踪低延迟
 3. **多传感器支持**：单目、双目、RGB-D 统一 `system::feed_*` 接口
 4. **g2o 统一后端**：位姿优化、LBA、GBA、Sim3 均基于 g2o 图优化
@@ -39,7 +39,7 @@ Localization 模块遵循以下设计原则：
   <div class="plan-arch-layer plan-arch-server">
     <div class="plan-arch-header">
       <span class="plan-arch-badge">系统层</span>
-      <span class="plan-arch-title">atlas::system</span>
+      <span class="plan-arch-title">Frontend / SlamSystem（历史示意图）</span>
       <span class="plan-arch-sub">SLAM 系统唯一入口 · 生命周期与 I/O 管理</span>
     </div>
     <div class="plan-arch-body plan-arch-body-cols">
@@ -175,7 +175,7 @@ Localization 模块遵循以下设计原则：
 
 ---
 
-## 5.3 Atlas 三线程架构
+## 5.3 经典视觉 SLAM 三线程架构（参考）
 
 ### 5.3.1 线程模型
 
@@ -405,7 +405,7 @@ config/localization/localization.lua
         │
         ├── default_algorithm = "amcl"         → [待实现] AmclServer
         ├── localization --localization_mode=cartographer  → 已实现
-        └── localization --localization_mode=atlas         → 已实现
+        └── localization --localization_mode=lightning     → 已实现
 ```
 
 建议统一 `LocalizationInterface`（`Start` / `Stop` / `GetPose` / `FeedScan` / `FeedImage`），与 `MapInterface` 风格对齐。
