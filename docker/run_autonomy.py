@@ -780,6 +780,7 @@ class AutonomyRunner:
         cmd.extend([
             "-v", f"{self.autonomy_dev_dir}:/workspace/autonomy",
             "-v", "/dev:/dev", "-v", "/etc/localtime:/etc/localtime:ro",
+            "-v", "/run/dbus:/run/dbus",
             "--workdir", "/workspace/autonomy",
             "--privileged",
         ])

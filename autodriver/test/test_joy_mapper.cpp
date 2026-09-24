@@ -56,18 +56,36 @@ TEST(JoyMapper, EnableAllowsForward) {
   EXPECT_DOUBLE_EQ(twist.angular_z, 0.0);
 }
 
-TEST(DualSenseProfile, AppliesLeftStickArcadeAndL1) {
+TEST(DualSenseProfile, AppliesLeftForwardRightYaw) {
   autodriver::Config::Joy options;
   options.profile = "dualsense";
   options.frame_id = "keep_me_if_not_applied";
   ASSERT_TRUE(autodriver::joy::ApplyJoyProfile("dualsense", &options));
   EXPECT_EQ(options.linear_axis, 1);
-  EXPECT_EQ(options.angular_axis, 0);
+  EXPECT_EQ(options.angular_axis, 3);
   EXPECT_TRUE(options.invert_linear);
   EXPECT_EQ(options.enable_button, 4);
-  EXPECT_TRUE(options.require_enable);
+  EXPECT_FALSE(options.require_enable);
+  EXPECT_TRUE(options.bluetooth_connect);
   EXPECT_EQ(options.frame_id, "dualsense");
-  EXPECT_NEAR(options.deadzone, 0.08f, 1e-5);
+  EXPECT_NEAR(options.deadzone, 0.05f, 1e-5);
+  EXPECT_NEAR(options.max_linear, 1.5, 1e-6);
+  EXPECT_NEAR(options.max_angular, 1.5, 1e-6);
+  EXPECT_NEAR(options.max_linear_acc, 0.0, 1e-6);
+  EXPECT_NEAR(options.max_angular_acc, 0.0, 1e-6);
+}
+
+TEST(CommandRamp, LimitsFirstStep) {
+  autodriver::joy::CommandRamp ramp;
+  ramp.Configure(-1.5, 1.5, 1.5, 0.1);
+  const double first = ramp.Update(1.5);
+  EXPECT_GT(first, 0.0);
+  EXPECT_LT(first, 1.5);
+  double last = first;
+  for (int i = 0; i < 40; ++i) {
+    last = ramp.Update(1.5);
+  }
+  EXPECT_NEAR(last, 1.5, 1e-3);
 }
 
 TEST(DualSenseProfile, Ps5Alias) {

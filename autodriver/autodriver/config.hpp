@@ -220,8 +220,9 @@ struct Config {
     /**
      * @brief Joystick teleop (Linux /dev/input/js*) → /joy + /cmd_vel.
      *
-     * Default profile is Sony DualSense (PS5): left-stick arcade + L1 enable.
-     * Differential only: linear.x + angular.z.
+     * Default profile is Sony DualSense (PS5) over USB or Bluetooth.
+     * Left stick Y is linear.x, right stick X is angular.z. Both are
+     * acceleration-limited before publish.
      */
     struct Joy {
         /** @brief When false, JoyTeleop::Start is a no-op. */
@@ -245,22 +246,32 @@ struct Config {
         double publish_hz = 50.0;
         /** @brief Axis index for linear.x (DualSense left stick Y). */
         int linear_axis = 1;
-        /** @brief Axis index for angular.z (DualSense left stick X). */
-        int angular_axis = 0;
+        /** @brief Axis index for angular.z (DualSense right stick X). */
+        int angular_axis = 3;
         /** @brief Negate linear axis (DualSense: stick up → forward). */
         bool invert_linear = true;
         /** @brief Negate angular axis. */
-        bool invert_angular = false;
-        /** @brief Axis deadzone in [0, 1); DualSense default slightly higher. */
-        float deadzone = 0.08f;
+        bool invert_angular = true;
+        /** @brief Axis deadzone in [0, 1). */
+        float deadzone = 0.05f;
         /** @brief Scale for linear.x (m/s at full stick). */
-        double max_linear = 0.5;
+        double max_linear = 1.5;
         /** @brief Scale for angular.z (rad/s at full stick). */
-        double max_angular = 1.0;
+        double max_angular = 1.5;
+        /** @brief Linear accel limit (m/s^2). 0 publishes the stick command at once. */
+        double max_linear_acc = 0.0;
+        /** @brief Angular accel limit (rad/s^2). 0 disables the ramp. */
+        double max_angular_acc = 0.0;
         /** @brief Require enable button held to publish non-zero twist. */
-        bool require_enable = true;
-        /** @brief Enable button (DualSense L1 = 4). */
+        bool require_enable = false;
+        /** @brief Enable button (DualSense L1 = 4), used when require_enable. */
         int enable_button = 4;
+        /**
+         * @brief If the js node is missing, connect a DualSense with bluetoothctl.
+         */
+        bool bluetooth_connect = false;
+        /** @brief Seconds to scan when no DualSense is already known. */
+        int bluetooth_timeout_sec = 15;
     };
 
     // Autolink node name for bridge publishing.

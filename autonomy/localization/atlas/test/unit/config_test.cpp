@@ -108,6 +108,37 @@ TEST(AtlasConfigTest, LoadOrbFlatSchema) {
     std::remove(path.c_str());
 }
 
+TEST(AtlasConfigTest, SensorsResolveLivoAndCeres) {
+    const std::string path = TempPath("fusion_livo");
+    {
+        std::ofstream ofs(path);
+        ofs << "frontend:\n"
+            << "  mode: vio\n"
+            << "backend:\n"
+            << "  type: iekf\n"
+            << "sensors:\n"
+            << "  camera: true\n"
+            << "  imu: true\n"
+            << "  lidar: true\n"
+            << "mission: localization\n";
+    }
+    AtlasConfig cfg;
+    ASSERT_TRUE(LoadConfig(path, &cfg));
+    EXPECT_EQ(cfg.mode, FrontendMode::kLivo);
+    EXPECT_EQ(cfg.mission, Mission::kLocalization);
+    EXPECT_EQ(cfg.backend, BackendType::kCeres);
+    EXPECT_EQ(cfg.fusion, FusionStyle::kLoose);
+    EXPECT_TRUE(cfg.livo_enabled);
+    EXPECT_TRUE(cfg.lio_enabled);
+    std::remove(path.c_str());
+}
+
+TEST(AtlasConfigTest, LidarImuResolvesLio) {
+    EXPECT_EQ(ResolveFrontendMode(false, true, true), FrontendMode::kLio);
+    EXPECT_EQ(ResolveFrontendMode(true, false, false), FrontendMode::kVo);
+    EXPECT_EQ(ResolveFrontendMode(false, false, true), FrontendMode::kLo);
+}
+
 TEST(AtlasConfigTest, DumpContainsSections) {
     AtlasConfig cfg;
     cfg.platform_name = "dump";

@@ -30,6 +30,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "autonomy/localization/atlas/backend/cost_functions/lidar_cost_function.hpp"
 #include "autonomy/localization/atlas/backend/sim3.hpp"
 #include "autonomy/localization/atlas/frontend/tracking/frame.hpp"
 #include "autonomy/localization/atlas/map/keyframe.hpp"
@@ -242,6 +243,23 @@ public:
      * @param[in,out] scale Scale.
      */
     static void ScaleRefinement(Map* map, Mat33* Rwg, double* scale);
+
+    /**
+     * @brief Optimize one body pose against point-to-plane factors.
+     *
+     * Optional absolute prior is a loose constraint (visual pose in LIVO).
+     * Two rounds: solve, drop residuals larger than 0.2 m, solve again.
+     * @param[in,out] T_wb Body pose in the world frame.
+     * @param factors Plane correspondences. Fewer than 5 returns 0.
+     * @param pose_prior Optional measured \(T_{wb}\). Null skips the prior.
+     * @param prior_sqrt_info Square-root information of the prior.
+     * @param max_iterations Ceres iteration cap per round.
+     * @return Inlier count after the second round.
+     */
+    static int OptimizeLidarPose(SE3* T_wb,
+                                 const std::vector<LidarPlaneFactor>& factors,
+                                 const SE3* pose_prior, double prior_sqrt_info,
+                                 int max_iterations);
 };
 
 }  // namespace backend

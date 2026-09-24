@@ -3,23 +3,22 @@
 #   joy:
 #     enable: true
 #     profile: dualsense
-#     # optional overrides below / or merge this file manually
 #
-# Linux: USB or Bluetooth. Pair BT, then check:
-#   ls /dev/input/js*
-#   jstest /dev/input/js0
-# User typically needs membership in group `input`.
+# USB: plug in, then ls /dev/input/js*
+# Bluetooth: hold Create + PS until the light bar flashes. With
+# bluetooth_connect the process pairs, trusts, and connects, then publishes
+# TwistStamped on the chassis cmd_vel channel.
 #
-# Controls (hid-playstation / common js layout):
-#   Hold L1 (button 4)          — enable motion
-#   Left stick Y (axis 1)       — linear.x (stick up = forward)
-#   Left stick X (axis 0)       — angular.z
-#   Release L1 / disconnect     — zero cmd_vel
+# Controls (hid-playstation):
+#   Left stick Y (axis 1)   — linear.x, stick up = forward, full stick 1.5 m/s
+#   Right stick X (axis 3)  — angular.z, full stick 1.5 rad/s
+#   Axis 2 is L2 and sits at -1 when released.
+#   Release sticks          — speed returns to zero (max_*_acc 0 follows the stick)
 #
-# Button indices (typical):
-#   0 Cross  1 Circle  2 Square  3 Triangle
-#   4 L1     5 R1      6 L2      7 R2
-#   8 Create 9 Options 10 PS     11 Touchpad
+# Button indices (hid-playstation / ps5.hpp):
+#   0 Square  1 Cross  2 Circle  3 Triangle
+#   4 L1      5 R1     6 L2      7 R2
+#   8 Create  9 Options 10 PS    11 Touchpad
 
 profile: dualsense
 device: /dev/input/js0
@@ -27,11 +26,15 @@ joy_channel: /joy
 frame_id: dualsense
 publish_hz: 50
 linear_axis: 1
-angular_axis: 0
+angular_axis: 3
 invert_linear: true
-invert_angular: false
-deadzone: 0.08
-max_linear: 0.5
-max_angular: 1.0
-require_enable: true
+invert_angular: true
+deadzone: 0.05
+max_linear: 1.5
+max_angular: 1.5
+max_linear_acc: 0
+max_angular_acc: 0
+require_enable: false
 enable_button: 4
+bluetooth_connect: true
+bluetooth_timeout_sec: 15

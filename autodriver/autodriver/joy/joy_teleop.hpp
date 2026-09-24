@@ -27,6 +27,7 @@
 #include <thread>
 
 #include "autodriver/config.hpp"
+#include "autodriver/joy/joy_mapper.hpp"
 #include "autodriver/joy/linux_joystick.hpp"
 #include "autolink/common/macros.hpp"
 #include "autolink/node/node.hpp"
@@ -41,9 +42,9 @@ namespace joy {
  * @class autodriver::joy::JoyTeleop
  * @brief Reads a Linux joystick and publishes Joy + TwistStamped.
  *
- * Safety: when require_enable is set, motion is published only while the
- * enable button is held; otherwise zero twist is published so ChassisManager
- * watchdog can soft-stop if this publisher stops.
+ * If the js node is missing and bluetooth_connect is set, a DualSense is
+ * connected with bluetoothctl before the poll loop starts, and again if the
+ * node disappears. Velocity is deadzoned then ramped by CommandRamp.
  */
 class JoyTeleop {
  public:
@@ -70,6 +71,8 @@ class JoyTeleop {
  private:
   void RunLoop();
   void PublishZeroTwist();
+  bool OpenDevice();
+  bool ConnectBluetooth();
 
   Config::Joy options_;
   LinuxJoystick device_;
@@ -79,6 +82,8 @@ class JoyTeleop {
   std::shared_ptr<
       autolink::Writer<automsgs::msgs::geometry_msgs::TwistStamped>>
       cmd_writer_;
+  CommandRamp linear_ramp_;
+  CommandRamp angular_ramp_;
   std::atomic<bool> running_{false};
   std::thread thread_;
 };

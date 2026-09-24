@@ -41,6 +41,92 @@ struct DiffTwist {
 };
 
 /**
+ * @brief Bell-shaped ramp from the current command to a new target.
+ *
+ * Each Update() emits one step. With acc_limit <= 0 the target is returned
+ * unchanged. Range is inclusive.
+ */
+class CommandRamp {
+ public:
+  void Configure(double min_cmd, double max_cmd, double acc_limit, double dt) {
+    min_cmd_ = min_cmd;
+    max_cmd_ = max_cmd;
+    acc_limit_ = acc_limit;
+    dt_ = dt > 1e-4 ? dt : 0.02;
+    last_target_ = 0.0;
+    const int horizon = std::max(2, static_cast<int>(1.0 / dt_));
+    preview_.assign(static_cast<std::size_t>(horizon), 0.0);
+  }
+
+  double Update(double cmd) {
+    cmd = std::clamp(cmd, min_cmd_, max_cmd_);
+    if (acc_limit_ <= 0.0) {
+      return cmd;
+    }
+    if (std::fabs(cmd - last_target_) > 1e-8) {
+      Rebuild(cmd);
+    }
+    last_target_ = cmd;
+    if (preview_.empty()) {
+      return 0.0;
+    }
+    double out = preview_.front();
+    preview_.erase(preview_.begin());
+    preview_.push_back(preview_.empty() ? out : preview_.back());
+    if (std::fabs(out) < 1e-3) {
+      out = 0.0;
+    }
+    return out;
+  }
+
+ private:
+  void Rebuild(double target) {
+    const double current = preview_.empty() ? 0.0 : preview_.front();
+    const double delta = target - current;
+    const double abs_delta = std::fabs(delta);
+    int steps = 2;
+    if (abs_delta >= 1e-8) {
+      steps = static_cast<int>(std::ceil(abs_delta / (acc_limit_ * dt_)));
+      if (steps < 2) {
+        steps = 2;
+      }
+    }
+    double bell_sum = 0.0;
+    std::vector<double> bell(static_cast<std::size_t>(steps));
+    for (int i = 0; i < steps; ++i) {
+      const double t =
+          steps == 1 ? 0.0 : static_cast<double>(i) / static_cast<double>(steps - 1);
+      bell[static_cast<std::size_t>(i)] = 0.5 * (1.0 - std::cos(kPi * t));
+      bell_sum += bell[static_cast<std::size_t>(i)];
+    }
+    std::vector<double> next;
+    next.reserve(static_cast<std::size_t>(steps));
+    double value = current;
+    for (int i = 0; i < steps; ++i) {
+      const double share = bell_sum > 0.0 ? bell[static_cast<std::size_t>(i)] / bell_sum : 0.0;
+      value = std::clamp(value + share * delta, min_cmd_, max_cmd_);
+      if (std::fabs(value) < 1e-3) {
+        value = 0.0;
+      }
+      next.push_back(value);
+    }
+    const int horizon = std::max(steps, static_cast<int>(1.0 / dt_));
+    while (static_cast<int>(next.size()) < horizon) {
+      next.push_back(std::clamp(target, min_cmd_, max_cmd_));
+    }
+    preview_ = std::move(next);
+  }
+
+  static constexpr double kPi = 3.14159265358979323846;
+  double min_cmd_ = -1.0;
+  double max_cmd_ = 1.0;
+  double acc_limit_ = 0.0;
+  double dt_ = 0.02;
+  double last_target_ = 0.0;
+  std::vector<double> preview_;
+};
+
+/**
  * @brief Apply symmetric deadzone then rescale remaining range to [-1, 1].
  * @param[in] value Raw axis in [-1, 1].
  * @param[in] deadzone Deadzone magnitude in [0, 1).

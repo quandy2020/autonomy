@@ -26,6 +26,7 @@
 #include "autonomy/localization/cartographer/node/cartographer_node.hpp"
 #include "autonomy/localization/cartographer/node/node_options.hpp"
 #include "autonomy/localization/cartographer/node/node_utils.hpp"
+#include "autonomy/localization/atlas/system/atlas_node.hpp"
 #include "autonomy/localization/lightning/lightning_node.hpp"
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/static_transform_publisher.hpp"
@@ -42,6 +43,9 @@ LocalizationBackend ParseLocalizationBackend(const std::string& name) {
     if (name == "lightning" || name == "Lightning") {
         return LocalizationBackend::kLightning;
     }
+    if (name == "atlas" || name == "Atlas") {
+        return LocalizationBackend::kAtlas;
+    }
     if (name != "cartographer" && name != "Cartographer" && !name.empty()) {
         LOG(WARNING) << "Unknown localization backend '" << name
                      << "', defaulting to cartographer.";
@@ -53,6 +57,8 @@ std::string LocalizationBackendName(LocalizationBackend backend) {
     switch (backend) {
         case LocalizationBackend::kLightning:
             return "lightning";
+        case LocalizationBackend::kAtlas:
+            return "atlas";
         case LocalizationBackend::kCartographer:
         default:
             return "cartographer";
@@ -237,6 +243,48 @@ private:
 };
 
 // ---------------------------------------------------------------------------
+// Atlas (Ceres VO / VIO / LIO / LIVO)
+// ---------------------------------------------------------------------------
+
+class LocalizationServer::AtlasBackend : public LocalizationServer::Backend {
+public:
+    explicit AtlasBackend(LocalizationOptions options)
+        : options_(std::move(options)) {}
+
+    bool Start() override {
+        if (options_.atlas_config_path.empty()) {
+            AERROR << "Atlas requires --atlas_config.";
+            return false;
+        }
+        atlas::AtlasNode::Options node_opts;
+        node_opts.config_path = ResolveWorkspacePath(options_.atlas_config_path);
+        node_opts.imu_topic = options_.atlas_imu_topic;
+        node_opts.lidar_topic = options_.atlas_lidar_topic;
+        node_opts.image_topic = options_.atlas_image_topic;
+        node_ = std::make_unique<atlas::AtlasNode>(std::move(node_opts));
+        if (!node_->Start()) {
+            AERROR << "AtlasNode::Start failed.";
+            node_.reset();
+            return false;
+        }
+        AINFO << "LocalizationServer: atlas backend started config="
+              << options_.atlas_config_path;
+        return true;
+    }
+
+    void Shutdown() override {
+        if (node_) {
+            node_->Shutdown();
+            node_.reset();
+        }
+    }
+
+private:
+    LocalizationOptions options_;
+    std::unique_ptr<atlas::AtlasNode> node_;
+};
+
+// ---------------------------------------------------------------------------
 // LocalizationServer
 // ---------------------------------------------------------------------------
 
@@ -245,6 +293,8 @@ std::unique_ptr<LocalizationServer::Backend> LocalizationServer::CreateBackend(
     switch (options.backend) {
         case LocalizationBackend::kLightning:
             return std::make_unique<LightningBackend>(options);
+        case LocalizationBackend::kAtlas:
+            return std::make_unique<AtlasBackend>(options);
         case LocalizationBackend::kCartographer:
         default:
             return std::make_unique<CartographerBackend>(options);

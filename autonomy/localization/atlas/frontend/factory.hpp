@@ -50,7 +50,7 @@ FrontendFactory& FrontendRegistry();
 
 /**
  * @brief Ensure VO / VIO frontends are registered in FrontendRegistry (idempotent).
- * @note First call registers `"vo"` → VisualOdometry, `"vio"` → VisualInertial.
+ * @note First call registers `"vo"` / `"vio"` and `"lo"` / `"lio"` / `"livo"`.
  */
 void EnsureFrontendsRegistered();
 

@@ -24,7 +24,7 @@
 #include <algorithm>
 #include <chrono>
 
-#include "autodriver/joy/joy_mapper.hpp"
+#include "autodriver/joy/joy_pair.hpp"
 #include "autolink/common/log.hpp"
 #include "autolink/time/duration.hpp"
 #include "autolink/time/time.hpp"
@@ -91,14 +91,23 @@ bool JoyTeleop::Start(autolink::Node* node, const Config& config) {
     return false;
   }
 
-  if (!device_.Open(options_.device)) {
-    AWARN << "JoyTeleop: device unavailable path=" << options_.device
-          << " — teleop idle until restart with a joystick";
-    // Soft-fail: keep process up; no publish thread.
-    joy_writer_.reset();
-    cmd_writer_.reset();
-    node_ = nullptr;
-    return true;
+  const double dt = 1.0 / options_.publish_hz;
+  linear_ramp_.Configure(-options_.max_linear, options_.max_linear,
+                         options_.max_linear_acc, dt);
+  angular_ramp_.Configure(-options_.max_angular, options_.max_angular,
+                          options_.max_angular_acc, dt);
+
+  if (!OpenDevice()) {
+    if (!options_.bluetooth_connect) {
+      AWARN << "JoyTeleop: no joystick at " << options_.device
+            << " — teleop idle until restart";
+      joy_writer_.reset();
+      cmd_writer_.reset();
+      node_ = nullptr;
+      return true;
+    }
+    AWARN << "JoyTeleop: joystick not open yet; Bluetooth retry stays in the "
+             "publish loop";
   }
 
   running_ = true;
@@ -111,6 +120,9 @@ bool JoyTeleop::Start(autolink::Node* node, const Config& config) {
         << " ang_axis=" << options_.angular_axis
         << " enable_button=" << options_.enable_button
         << " require_enable=" << (options_.require_enable ? "true" : "false")
+        << " bluetooth=" << (options_.bluetooth_connect ? "true" : "false")
+        << " lin_acc=" << options_.max_linear_acc
+        << " ang_acc=" << options_.max_angular_acc
         << " hz=" << options_.publish_hz;
   return true;
 }
@@ -127,6 +139,30 @@ void JoyTeleop::Stop() {
   joy_writer_.reset();
   cmd_writer_.reset();
   node_ = nullptr;
+}
+
+bool JoyTeleop::ConnectBluetooth() {
+  if (!options_.bluetooth_connect) {
+    return false;
+  }
+  std::string path;
+  if (!ConnectDualSenseBluetooth(options_.bluetooth_timeout_sec, &path)) {
+    return false;
+  }
+  if (!path.empty()) {
+    options_.device = path;
+  }
+  return true;
+}
+
+bool JoyTeleop::OpenDevice() {
+  if (device_.Open(options_.device)) {
+    return true;
+  }
+  if (!ConnectBluetooth()) {
+    return false;
+  }
+  return device_.Open(options_.device);
 }
 
 void JoyTeleop::PublishZeroTwist() {
@@ -147,9 +183,16 @@ void JoyTeleop::RunLoop() {
   while (running_.load()) {
     const auto t0 = std::chrono::steady_clock::now();
     if (!device_.IsOpen()) {
-      AWARN << "JoyTeleop: device closed; publishing zero and exiting loop";
       PublishZeroTwist();
-      break;
+      if (!options_.bluetooth_connect) {
+        AWARN << "JoyTeleop: device closed; publishing zero and exiting loop";
+        break;
+      }
+      AWARN << "JoyTeleop: joystick closed, trying Bluetooth reconnect";
+      if (!OpenDevice()) {
+        autolink::Duration(1.0).Sleep();
+        continue;
+      }
     }
     device_.Poll();
 
@@ -174,8 +217,10 @@ void JoyTeleop::RunLoop() {
 
     auto cmd = std::make_shared<TwistStamped>();
     StampHeader(cmd->mutable_header(), options_.frame_id);
-    cmd->mutable_twist()->mutable_linear()->set_x(twist.linear_x);
-    cmd->mutable_twist()->mutable_angular()->set_z(twist.angular_z);
+    cmd->mutable_twist()->mutable_linear()->set_x(
+        linear_ramp_.Update(twist.linear_x));
+    cmd->mutable_twist()->mutable_angular()->set_z(
+        angular_ramp_.Update(twist.angular_z));
     cmd_writer_->Write(cmd);
 
     const auto elapsed = std::chrono::steady_clock::now() - t0;

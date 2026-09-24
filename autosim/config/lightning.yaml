@@ -19,7 +19,7 @@
 habitat:
   mode: slam
 
-  path: /workspace/autonomy/src/bistro-textured/bistro.gltf
+  path: /workspace/autonomy/src/2azQ1b91cZZ/2azQ1b91cZZ.glb
   # Outdoor Bistro with PNG textures. Planar map_x=Hx, map_y=-Hz.
   spawn: [5.92, -22.86, 0.0]
   gpu: 0

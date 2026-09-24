@@ -58,6 +58,18 @@ const char* JoyPairModeName(JoyPairMode mode);
 bool PairDualSenseBluetooth(int timeout_sec);
 
 /**
+ * @brief Connect a DualSense that is already known, or scan/pair/trust/connect.
+ *
+ * Removes only a half-paired record (Paired without Bonded). On success
+ * @p device_path is a js node when one appears, otherwise left unchanged.
+ *
+ * @param[in] timeout_sec Scan budget when no controller is listed yet.
+ * @param[out] device_path Optional /dev/input/js* discovered after connect.
+ * @return true when bluetoothctl reports Connected: yes.
+ */
+bool ConnectDualSenseBluetooth(int timeout_sec, std::string* device_path);
+
+/**
  * @brief USB / kernel-driver mode: ensure hid-playstation and wait for js*.
  *
  * @param[in] timeout_sec Maximum seconds to wait for a joystick node.

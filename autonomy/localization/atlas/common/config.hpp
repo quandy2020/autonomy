@@ -80,11 +80,20 @@ struct AtlasConfig {
     FrontendMode mode = FrontendMode::kVio;  ///< Frontend modality.
     CameraSensor camera_sensor = CameraSensor::kRgbd;  ///< Rig: mono / stereo / RGB-D.
     FusionStyle fusion = FusionStyle::kLoose;  ///< Loose vs tight fusion.
-    BackendType backend = BackendType::kIekf;  ///< Backend type.
+    BackendType backend = BackendType::kCeres;  ///< Backend type. Fusion uses Ceres only.
 
     bool vo_enabled = false;  ///< Enable pure visual path.
     bool vio_enabled = true;  ///< Enable VIO.
     bool lio_enabled = false;  ///< Enable LIO.
+    bool livo_enabled = false;  ///< Enable LIVO (lidar + IMU + vision).
+
+    //! Task axis. Orthogonal to `mode`.
+    Mission mission = Mission::kMapping;
+    //! Set when YAML contains a `sensors` block. Mode is then resolved from it.
+    bool sensors_specified = false;
+    bool camera_enabled = true;  ///< `sensors.camera`.
+    bool imu_enabled = false;    ///< `sensors.imu`.
+    bool lidar_enabled = false;  ///< `sensors.lidar`.
 
     // --- Camera1 (ORB Camera1.*) ---
     CameraModelType camera_type = CameraModelType::kPinhole;  ///< Camera1 model.
@@ -148,6 +157,19 @@ struct AtlasConfig {
     double sync_tolerance_ms = 20.0;  ///< Multi-sensor time sync tolerance (ms).
     int max_local_map_points = 50000;  ///< Cap on local map points.
     double voxel_size = 0.2;  ///< Point-cloud voxel size (m).
+    double occupancy_resolution = 0.1;  ///< 2D grid cell size (m).
+    double occupancy_min_z = 0.2;       ///< Body-frame obstacle band, low (m).
+    double occupancy_max_z = 1.5;       ///< Body-frame obstacle band, high (m).
+    double occupancy_max_range = 40.0;  ///< Ray length cap (m).
+    //! Directory of XY point tiles plus `occupancy.pb`. Empty skips IO.
+    std::string lidar_map_directory;
+    double lidar_chunk_size = 20.0;  ///< Tile edge length (m).
+    double lidar_blind = 0.5;        ///< Drop points closer than this (m).
+    int lidar_point_stride = 1;      ///< Keep one point out of N.
+    double lidar_height_min = -100.0;  ///< Body-frame clip. Inactive while max <= min.
+    double lidar_height_max = 100.0;
+    double reloc_xy_radius = 4.0;    ///< Global search half-width (m).
+    double reloc_xy_step = 2.0;      ///< Global search spacing (m).
     int window_size = 10;  ///< Sliding-window keyframe count.
     int ceres_max_iterations = 15;  ///< Ceres max iterations.
     double ceres_pose_weight = 10.0;  ///< Ceres pose residual weight.

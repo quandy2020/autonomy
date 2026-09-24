@@ -144,6 +144,16 @@ enum class FusionStyle {
 };
 
 /**
+ * @enum autonomy::localization::atlas::Mission
+ * @brief Task, independent of the sensor mode.
+ */
+enum class Mission {
+    kMapping = 0,      ///< Build and extend the map
+    kLocalization,     ///< Track on a loaded map
+    kRelocalization,   ///< Global initialization, then track
+};
+
+/**
  * @enum autonomy::localization::atlas::SlamState
  * @brief System-level SLAM state machine (external; may map from Tracker::State).
  */
@@ -195,6 +205,64 @@ inline FrontendMode ParseFrontendMode(const std::string& mode) {
         return FrontendMode::kLivo;
     }
     return FrontendMode::kVio;
+}
+
+/**
+ * @brief Convert a mission to a config string.
+ * @param[in] mission Enum value.
+ * @return `"mapping"` / `"localization"` / `"relocalization"`.
+ */
+inline std::string ToString(Mission mission) {
+    switch (mission) {
+        case Mission::kMapping:
+            return "mapping";
+        case Mission::kLocalization:
+            return "localization";
+        case Mission::kRelocalization:
+            return "relocalization";
+    }
+    return "mapping";
+}
+
+/**
+ * @brief Parse a mission string.
+ * @param[in] mission Config token.
+ * @return Matching enum; defaults to mapping.
+ */
+inline Mission ParseMission(const std::string& mission) {
+    if (mission == "localization" || mission == "localize") {
+        return Mission::kLocalization;
+    }
+    if (mission == "relocalization" || mission == "relocalize") {
+        return Mission::kRelocalization;
+    }
+    return Mission::kMapping;
+}
+
+/**
+ * @brief Pick VO / VIO / LO / LIO / LIVO from which sensors are present.
+ * @param camera Camera is configured.
+ * @param imu IMU is configured.
+ * @param lidar LiDAR is configured.
+ * @return Frontend mode. LiDAR without IMU is scan matching (`kLo`).
+ */
+inline FrontendMode ResolveFrontendMode(bool camera, bool imu, bool lidar) {
+    if (lidar && camera) {
+        return FrontendMode::kLivo;
+    }
+    if (lidar && imu) {
+        return FrontendMode::kLio;
+    }
+    if (lidar) {
+        return FrontendMode::kLo;
+    }
+    if (camera && imu) {
+        return FrontendMode::kVio;
+    }
+    if (camera) {
+        return FrontendMode::kVo;
+    }
+    return FrontendMode::kVo;
 }
 
 /**

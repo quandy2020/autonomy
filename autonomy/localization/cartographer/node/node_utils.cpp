@@ -37,7 +37,17 @@ namespace {
 
 namespace fs = std::filesystem;
 
-void SigintHandler(int /*sig*/) { autolink::AsyncShutdown(); }
+void SigintHandler(int sig) {
+    // AsyncShutdown() raises SIGINT again and never sets the autolink state,
+    // so WaitForShutdown() would not return. A second signal forces exit if
+    // teardown is stuck in a worker join.
+    static volatile sig_atomic_t raised = 0;
+    if (raised != 0) {
+        _Exit(128 + sig);
+    }
+    raised = 1;
+    autolink::OnShutdown(sig);
+}
 
 std::string StaticTransformYamlPath(const std::string& configuration_directory,
                                     const std::string& configuration_basename) {

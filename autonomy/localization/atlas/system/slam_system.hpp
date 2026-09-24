@@ -26,6 +26,7 @@
 #ifndef AUTONOMY_LOCALIZATION_ATLAS_SYSTEM_SLAM_SYSTEM_HPP_
 #define AUTONOMY_LOCALIZATION_ATLAS_SYSTEM_SLAM_SYSTEM_HPP_
 
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -34,7 +35,12 @@
 #include "autonomy/localization/atlas/backend/loop_closing.hpp"
 #include "autonomy/localization/atlas/common/config.hpp"
 #include "autonomy/localization/atlas/common/types.hpp"
+#include "autonomy/localization/atlas/frontend/lidar/faster_lio_stack.hpp"
+#include "autonomy/localization/atlas/frontend/lidar/lidar_odometry.hpp"
 #include "autonomy/localization/atlas/frontend/tracking/tracker.hpp"
+#include "autonomy/localization/atlas/sensor/types.hpp"
+
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include "autonomy/localization/atlas/map/local_mapping.hpp"
 #include "autonomy/localization/atlas/map/map.hpp"
 #include "autonomy/localization/atlas/map/map_manager.hpp"
@@ -120,6 +126,72 @@ public:
      * @param measurement Accel + gyro + timestamp.
      */
     void GrabImuData(const sensor::imu::Measurement& measurement);
+
+    /**
+     * @brief One lidar scan. Active for LO / LIO / LIVO.
+     * @param data Packet with `sensor_msgs/PointCloud2` and optional IMU.
+     * @return Body pose \(T_{wb}\). Identity when the scan is rejected.
+     */
+    SE3 TrackLidar(const SensorData& data);
+
+    /**
+     * @brief Lidar step that reports whether the pose is valid.
+     * @param data Scan packet.
+     * @param[out] T_wb Body pose in the map frame.
+     * @return false when the scan is rejected. `T_wb` is unchanged.
+     */
+    bool TryTrackLidar(const SensorData& data, SE3* T_wb);
+
+    /**
+     * @brief Load a world-frame cloud for localization or relocalization.
+     * @param cloud Map points.
+     */
+    void LoadLidarMap(const PointCloud& cloud);
+
+    /**
+     * @brief Write lidar tiles and the occupancy grid.
+     * @param directory Map directory.
+     * @return false when lidar is inactive or the map is empty.
+     */
+    bool SaveLidarMap(const std::string& directory) const;
+
+    /**
+     * @brief Load lidar tiles and the occupancy grid.
+     * @param directory Map directory.
+     * @return false when the directory has no tiles.
+     */
+    bool LoadLidarMapDirectory(const std::string& directory);
+
+    /**
+     * @brief Dense lidar map as `sensor_msgs/PointCloud2`.
+     * @param[out] cloud Map-frame cloud.
+     * @return false when no lidar map is available.
+     */
+    bool FillDenseCloud(PointCloud2* cloud) const;
+
+    /**
+     * @brief Latest deskewed scan in the map frame, including the loop correction.
+     * @return false when the ESKF has not produced a scan yet.
+     */
+    bool FillRegisteredCloud(PointCloud2* cloud) const;
+
+    /**
+     * @brief 2D occupancy built from lidar rays.
+     * @param[out] grid `map_msgs/OccupancyGrid`.
+     * @return false when the grid is empty.
+     */
+    bool FillOccupancyGrid(automsgs::msgs::map_msgs::OccupancyGrid* grid) const;
+
+    /// Forwarded to G2P5. The callback runs on the grid render thread.
+    void SetOccupancyCallback(
+        std::function<void(const automsgs::msgs::map_msgs::OccupancyGrid&)>
+            callback);
+
+    /**
+     * @brief Odometry chain, accepted loops, and NDT reloc segments in the map frame.
+     * @return false when the frontend has no pose-graph segments yet.
+     */
+    bool FillLidarConstraints(LidarConstraintGraph* graph) const;
 
     /**
      * @brief Set IMU↔camera extrinsics and noise (forwards to Tracker).
@@ -299,8 +371,12 @@ private:
     void PublishVisualization(double timestamp_sec);
     /** @brief Apply a pending localization-mode request before tracking. */
     void ApplyModeChange();
+    /** @brief Hand the visual \(T_{wb}\) to the lidar frontend (loose LIVO). */
+    void PushVisualPrior();
 
-    tracking::Tracker tracker_;                          ///< Frontend tracking
+    tracking::Tracker tracker_;                          ///< Visual tracking
+    std::unique_ptr<LidarOdometry> lidar_;              ///< Ceres lidar frontend
+    std::unique_ptr<FasterLioStack> faster_lio_;        ///< ESKF / ivox / NDT / G2P5
     MapManager map_manager_;                             ///< System-side KF/landmark cache
     std::shared_ptr<MultiMap> multi_map_;                ///< Multi-map
     std::unique_ptr<SlamScheduler> scheduler_;           ///< Backend thread pool

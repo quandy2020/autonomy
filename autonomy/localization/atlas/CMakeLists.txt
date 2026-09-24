@@ -52,6 +52,26 @@ if(BUILD_TEST)
     autonomy_test(localization.atlas.config_test
       test/unit/config_test.cpp autonomy_localization)
   endif()
+
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/unit/lidar_pose_test.cpp")
+    autonomy_test(localization.atlas.lidar_pose_test
+      test/unit/lidar_pose_test.cpp autonomy_localization)
+  endif()
+
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/unit/occupancy_test.cpp")
+    autonomy_test(localization.atlas.occupancy_test
+      test/unit/occupancy_test.cpp autonomy_localization)
+  endif()
+
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/unit/lidar_reloc_test.cpp")
+    autonomy_test(localization.atlas.lidar_reloc_test
+      test/unit/lidar_reloc_test.cpp autonomy_localization)
+  endif()
+
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/unit/scan_filter_test.cpp")
+    autonomy_test(localization.atlas.scan_filter_test
+      test/unit/scan_filter_test.cpp autonomy_localization)
+  endif()
 endif()
 
 # ---------------------------------------------------------------------------

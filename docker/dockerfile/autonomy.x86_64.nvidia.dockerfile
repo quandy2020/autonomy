@@ -75,6 +75,7 @@ RUN apt-get update && apt-get --no-install-recommends install -y \
     libpcap0.8-dev \
     libusb-1.0-0 \
     libusb-1.0-0-dev \
+    bluez \
     libmetis-dev \
     libyaml-cpp-dev \
     libfltk1.3-dev \

@@ -1,0 +1,514 @@
+//
+// Created by xiang on 25-4-21.
+//
+
+#include "autonomy/localization/atlas/port/core/loop_closing/loop_closing.hpp"
+#include "autonomy/localization/atlas/port/common/keyframe.hpp"
+#include "autonomy/localization/atlas/port/common/loop_candidate.hpp"
+#include "autonomy/localization/atlas/port/utils/pointcloud_utils.hpp"
+
+#include <algorithm>
+#include <cstddef>
+#include <cstdlib>
+#include <yaml-cpp/yaml.h>
+#include <pcl/common/transforms.h>
+#include <pcl/registration/ndt.h>
+
+#include "autonomy/localization/atlas/port/ceres_graph/optimizer.hpp"
+#include "autonomy/localization/atlas/port/io/yaml_io.hpp"
+
+namespace atlas_lio {
+
+LoopClosing::~LoopClosing() {
+    if (options_.online_mode_) {
+        kf_thread_.Quit();
+    }
+}
+
+void LoopClosing::Init(const std::string yaml_path) {
+    /// setup miao
+    miao::OptimizerConfig config(miao::AlgorithmType::LEVENBERG_MARQUARDT,
+                                 miao::LinearSolverType::LINEAR_SOLVER_SPARSE_EIGEN, false);
+    config.incremental_mode_ = true;
+    optimizer_ = miao::SetupOptimizer<6, 3>(config);
+
+    info_motion_.setIdentity();
+    info_motion_.block<3, 3>(0, 0) =
+        Mat3d::Identity() * 1.0 / (options_.motion_trans_noise_ * options_.motion_trans_noise_);
+    info_motion_.block<3, 3>(3, 3) =
+        Mat3d::Identity() * 1.0 / (options_.motion_rot_noise_ * options_.motion_rot_noise_);
+
+    info_loops_.setIdentity();
+    info_loops_.block<3, 3>(0, 0) = Mat3d::Identity() * 1.0 / (options_.loop_trans_noise_ * options_.loop_trans_noise_);
+    info_loops_.block<3, 3>(3, 3) = Mat3d::Identity() * 1.0 / (options_.loop_rot_noise_ * options_.loop_rot_noise_);
+
+    if (!yaml_path.empty()) {
+        YAML_IO yaml(yaml_path);
+
+        options_.loop_kf_gap_ = yaml.GetValue<int>("loop_closing", "loop_kf_gap");
+        options_.min_id_interval_ = yaml.GetValue<int>("loop_closing", "min_id_interval");
+        options_.closest_id_th_ = yaml.GetValue<int>("loop_closing", "closest_id_th");
+        options_.max_range_ = yaml.GetValue<double>("loop_closing", "max_range");
+        options_.ndt_score_th_ = yaml.GetValue<double>("loop_closing", "ndt_score_th");
+        options_.with_height_ = yaml.GetValue<bool>("loop_closing", "with_height");
+
+        const auto lc = YAML::LoadFile(yaml_path)["loop_closing"];
+        if (lc["max_candidates"]) {
+            options_.max_candidates_ = std::max(1, lc["max_candidates"].as<int>());
+        }
+        if (lc["loop_place_radius"]) {
+            options_.loop_place_radius_ = lc["loop_place_radius"].as<double>();
+        }
+        if (lc["max_reloc_snap"]) {
+            options_.max_reloc_snap_ = lc["max_reloc_snap"].as<double>();
+        }
+    }
+
+    if (options_.online_mode_) {
+        LOG(INFO) << "loop closing module is running in online mode";
+        kf_thread_.SetProcFunc([this](Keyframe::Ptr kf) { HandleKF(kf); });
+        kf_thread_.SetName("handle loop closure");
+        kf_thread_.Start();
+    }
+}
+
+void LoopClosing::AddKF(Keyframe::Ptr kf) {
+    if (options_.online_mode_) {
+        kf_thread_.AddMessage(kf);
+    } else {
+        HandleKF(kf);
+    }
+}
+
+void LoopClosing::HandleKF(Keyframe::Ptr kf) {
+    if (kf == last_kf_) {
+        return;
+    }
+
+    cur_kf_ = kf;
+    all_keyframes_.emplace_back(kf);
+
+    // 检测回环候选
+    DetectLoopCandidates();
+
+    if (options_.verbose_) {
+        LOG(INFO) << "lc: get kf " << cur_kf_->GetID() << " candi: " << candidates_.size();
+    }
+
+    // 计算回环位姿
+    ComputeLoopCandidates();
+
+    // 位姿图优化
+    PoseOptimization();
+    RefreshOdomSegments();
+
+    last_kf_ = kf;
+}
+
+void LoopClosing::DetectLoopCandidates() {
+    candidates_.clear();
+
+    auto& kfs_mapping = all_keyframes_;
+
+    if (last_loop_kf_ == nullptr) {
+        last_loop_kf_ = cur_kf_;
+        return;
+    }
+
+    if (last_loop_kf_ && (cur_kf_->GetID() - last_loop_kf_->GetID()) <= options_.loop_kf_gap_) {
+        LOG(INFO) << "skip because last loop kf: " << last_loop_kf_->GetID();
+        return;
+    }
+
+    std::vector<LoopCandidate> raw;
+    for (auto kf : kfs_mapping) {
+        if (abs(int(kf->GetID() - cur_kf_->GetID())) < options_.closest_id_th_) {
+            break;
+        }
+
+        Vec3d dt = kf->GetOptPose().translation() - cur_kf_->GetOptPose().translation();
+        double t2d = dt.head<2>().norm();
+        if (t2d >= options_.max_range_) {
+            continue;
+        }
+        if (IsRedundantPlace(kf->GetOptPose().translation(), cur_kf_->GetID())) {
+            continue;
+        }
+
+        LoopCandidate c(kf->GetID(), cur_kf_->GetID());
+        c.Tij_ = kf->GetLIOPose().inverse() * cur_kf_->GetLIOPose();
+        c.xy_dist_ = t2d;
+        raw.emplace_back(c);
+    }
+
+    std::sort(raw.begin(), raw.end(),
+              [](const LoopCandidate& a, const LoopCandidate& b) { return a.xy_dist_ < b.xy_dist_; });
+    const int n_try = std::max(options_.max_candidates_, 3);
+    if (static_cast<int>(raw.size()) > n_try) {
+        raw.resize(static_cast<std::size_t>(n_try));
+    }
+    candidates_.swap(raw);
+
+    if (!candidates_.empty()) {
+        last_loop_kf_ = cur_kf_;
+    }
+
+    if (options_.verbose_ && !candidates_.empty()) {
+        LOG(INFO) << "lc candi: " << candidates_.size()
+                  << " nearest=" << candidates_.front().xy_dist_;
+    }
+}
+
+void LoopClosing::ComputeLoopCandidates() {
+    if (candidates_.empty()) {
+        return;
+    }
+
+    // 执行计算
+    std::for_each(candidates_.begin(), candidates_.end(), [this](LoopCandidate& c) { ComputeForCandidate(c); });
+    // 保存成功的候选
+    std::vector<LoopCandidate> succ_candidates;
+    for (const auto& lc : candidates_) {
+        // LOG(INFO) << "candi " << lc.idx1_ << ", " << lc.idx2_ << " s: " << lc.ndt_score_;
+        if (lc.ndt_score_ > options_.ndt_score_th_) {
+            succ_candidates.emplace_back(lc);
+        }
+    }
+
+    if (options_.verbose_) {
+        LOG(INFO) << "success: " << succ_candidates.size() << "/" << candidates_.size();
+    }
+
+    std::sort(succ_candidates.begin(), succ_candidates.end(),
+              [](const LoopCandidate& a, const LoopCandidate& b) {
+                  return a.ndt_score_ > b.ndt_score_;
+              });
+    if (static_cast<int>(succ_candidates.size()) > options_.max_candidates_) {
+        succ_candidates.resize(static_cast<std::size_t>(options_.max_candidates_));
+    }
+
+    candidates_.swap(succ_candidates);
+}
+
+bool LoopClosing::IsRedundantPlace(const Vec3d& hist_xy, uint64_t cur_id) const {
+    std::lock_guard<std::mutex> lock(accepted_mutex_);
+    for (const auto& prev : accepted_loops_) {
+        if (!prev.kf1 || !prev.kf2) {
+            continue;
+        }
+        const uint64_t gap1 = cur_id > prev.id1 ? cur_id - prev.id1 : prev.id1 - cur_id;
+        const uint64_t gap2 = cur_id > prev.id2 ? cur_id - prev.id2 : prev.id2 - cur_id;
+        const bool query_is_2 = gap2 <= gap1;
+        const uint64_t prev_query = query_is_2 ? prev.id2 : prev.id1;
+        const Vec3d hist_prev = query_is_2 ? prev.kf1->GetOptPose().translation()
+                                           : prev.kf2->GetOptPose().translation();
+        const uint64_t query_gap =
+            cur_id > prev_query ? cur_id - prev_query : prev_query - cur_id;
+        if (query_gap > static_cast<uint64_t>(options_.closest_id_th_)) {
+            continue;
+        }
+        if ((hist_prev.head<2>() - hist_xy.head<2>()).norm() <
+            options_.loop_place_radius_) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void LoopClosing::StoreRelocSnap(const LoopCandidate& c) {
+    if (c.idx1_ >= all_keyframes_.size() || c.idx2_ >= all_keyframes_.size()) {
+        return;
+    }
+    auto kf1 = all_keyframes_[c.idx1_];
+    auto kf2 = all_keyframes_[c.idx2_];
+    if (!kf1 || !kf2) {
+        return;
+    }
+    const Vec3d p_prior = kf2->GetLIOPose().translation();
+    const Vec3d p_aligned = (kf1->GetOptPose() * c.Tij_).translation();
+    const double snap = (p_aligned - p_prior).norm();
+    if (snap < 0.02 || snap > options_.max_reloc_snap_) {
+        return;
+    }
+    constexpr std::size_t kMaxRelocEdges = 200;
+    LoopEdgeViz e;
+    e.id1 = c.idx2_;
+    e.id2 = c.idx1_;
+    e.p1 = p_prior;
+    e.p2 = p_aligned;
+    reloc_edges_.push_back(e);
+    if (reloc_edges_.size() > kMaxRelocEdges) {
+        reloc_edges_.erase(
+            reloc_edges_.begin(),
+            reloc_edges_.begin() +
+                static_cast<std::ptrdiff_t>(reloc_edges_.size() - kMaxRelocEdges));
+    }
+}
+
+void LoopClosing::RefreshOdomSegments() {
+    std::lock_guard<std::mutex> lock(accepted_mutex_);
+    odom_edges_.clear();
+    odom_edges_.reserve(all_keyframes_.size());
+    for (std::size_t i = 1; i < all_keyframes_.size(); ++i) {
+        auto a = all_keyframes_[i - 1];
+        auto b = all_keyframes_[i];
+        if (!a || !b) {
+            continue;
+        }
+        LoopEdgeViz e;
+        e.id1 = a->GetID();
+        e.id2 = b->GetID();
+        e.p1 = a->GetOptPose().translation();
+        e.p2 = b->GetOptPose().translation();
+        odom_edges_.push_back(e);
+    }
+}
+
+void LoopClosing::ComputeForCandidate(atlas_lio::LoopCandidate& c) {
+    // LOG(INFO) << "aligning " << c.idx1_ << " with " << c.idx2_;
+    const int submap_idx_range = 40;
+    auto kf1 = all_keyframes_.at(c.idx1_), kf2 = all_keyframes_.at(c.idx2_);
+
+    auto build_submap = [this](int given_id, bool build_in_world) -> CloudPtr {
+        CloudPtr submap(new PointCloudType);
+        for (int idx = -submap_idx_range; idx < submap_idx_range; idx += 4) {
+            int id = idx + given_id;
+            if (id < 0 || id >= all_keyframes_.size()) {
+                continue;
+            }
+
+            auto kf = all_keyframes_[id];
+            CloudPtr cloud = kf->GetCloud();
+
+            // RemoveGround(cloud, 0.1);
+
+            if (cloud->empty()) {
+                continue;
+            }
+
+            // 转到世界系下
+            SE3 Twb = kf->GetOptPose();
+
+            if (!build_in_world) {
+                Twb = all_keyframes_.at(given_id)->GetOptPose().inverse() * Twb;
+            }
+
+            CloudPtr cloud_trans(new PointCloudType);
+            pcl::transformPointCloud(*cloud, *cloud_trans, Twb.matrix());
+
+            *submap += *cloud_trans;
+        }
+        return submap;
+    };
+
+    auto submap_kf1 = build_submap(kf1->GetID(), true);
+
+    CloudPtr submap_kf2 = kf2->GetCloud();
+
+    if (submap_kf1->empty() || submap_kf2->empty()) {
+        c.ndt_score_ = 0;
+        return;
+    }
+
+    Mat4f Tw2 = kf2->GetOptPose().matrix().cast<float>();
+
+    /// 不同分辨率下的匹配
+    CloudPtr output(new PointCloudType);
+    std::vector<double> res{10.0, 5.0, 2.0, 1.0};
+
+    CloudPtr rough_map1, rough_map2;
+
+    for (auto& r : res) {
+        pcl::NormalDistributionsTransform<PointType, PointType> ndt;
+        ndt.setTransformationEpsilon(0.05);
+        ndt.setStepSize(0.7);
+        ndt.setMaximumIterations(40);
+
+        ndt.setResolution(r);
+        rough_map1 = VoxelGrid(submap_kf1, r * 0.1);
+        rough_map2 = VoxelGrid(submap_kf2, r * 0.1);
+        ndt.setInputTarget(rough_map1);
+        ndt.setInputSource(rough_map2);
+
+        ndt.align(*output, Tw2);
+        Tw2 = ndt.getFinalTransformation();
+
+        c.ndt_score_ = ndt.getTransformationProbability();
+    }
+
+    Mat4d T = Tw2.cast<double>();
+    Quatd q(T.block<3, 3>(0, 0));
+    q.normalize();
+    Vec3d t = T.block<3, 1>(0, 3);
+
+    c.Tij_ = kf1->GetOptPose().inverse() * SE3(q, t);
+
+    // pcl::io::savePCDFileBinaryCompressed(
+    //     "./data/lc_" + std::to_string(c.idx1_) + "_" + std::to_string(c.idx2_) + "_out.pcd", *output);
+    // pcl::io::savePCDFileBinaryCompressed(
+    //     "./data/lc_" + std::to_string(c.idx1_) + "_" + std::to_string(c.idx2_) + "_tgt.pcd", *rough_map1);
+}
+
+void LoopClosing::PoseOptimization() {
+    auto v = std::make_shared<miao::VertexSE3>();
+    v->SetId(cur_kf_->GetID());
+    v->SetEstimate(cur_kf_->GetOptPose());
+
+    optimizer_->AddVertex(v);
+    kf_vert_.emplace_back(v);
+
+    /// 上一个关键帧的运动约束
+    for (int i = 1; i < 3; i++) {
+        int id = cur_kf_->GetID() - i;
+        if (id >= 0) {
+            auto last_kf = all_keyframes_[id];
+            auto e = std::make_shared<miao::EdgeSE3>();
+            e->SetVertex(0, optimizer_->GetVertex(last_kf->GetID()));
+            e->SetVertex(1, v);
+
+            SE3 motion = last_kf->GetLIOPose().inverse() * cur_kf_->GetLIOPose();
+            e->SetMeasurement(motion);
+            e->SetInformation(info_motion_);
+            optimizer_->AddEdge(e);
+        }
+    }
+
+    if (options_.with_height_) {
+        /// 高度约束
+        auto e = std::make_shared<miao::EdgeHeightPrior>();
+        e->SetVertex(0, v);
+        e->SetMeasurement(0);
+        e->SetInformation(Mat1d::Identity() * 1.0 / (options_.height_noise_ * options_.height_noise_));
+        optimizer_->AddEdge(e);
+    }
+
+    /// 回环的约束
+    for (auto& c : candidates_) {
+        auto e = std::make_shared<miao::EdgeSE3>();
+        e->SetVertex(0, optimizer_->GetVertex(c.idx1_));
+        e->SetVertex(1, optimizer_->GetVertex(c.idx2_));
+        e->SetMeasurement(c.Tij_);
+        e->SetInformation(info_loops_);
+
+        auto rk = std::make_shared<miao::RobustKernelCauchy>();
+        rk->SetDelta(options_.rk_loop_th_);
+        e->SetRobustKernel(rk);
+
+        optimizer_->AddEdge(e);
+        edge_loops_.emplace_back(e);
+    }
+
+    if (optimizer_->GetEdges().empty()) {
+        return;
+    }
+
+    if (candidates_.empty()) {
+        return;
+    }
+
+    optimizer_->InitializeOptimization();
+    optimizer_->SetVerbose(false);
+
+    optimizer_->Optimize(20);
+
+    /// remove outliers
+    int cnt_outliers = 0;
+    for (auto& e : edge_loops_) {
+        if (e->GetRobustKernel() == nullptr) {
+            continue;
+        }
+
+        if (e->Chi2() > e->GetRobustKernel()->Delta()) {
+            e->SetLevel(1);
+            cnt_outliers++;
+        } else {
+            e->SetRobustKernel(nullptr);
+        }
+    }
+
+    if (options_.verbose_) {
+        LOG(INFO) << "loop outliers: " << cnt_outliers << "/" << edge_loops_.size();
+    }
+
+    /// get results
+    for (auto& vert : kf_vert_) {
+        SE3 pose = vert->Estimate();
+        all_keyframes_[vert->GetId()]->SetOptPose(pose);
+    }
+
+    if (!candidates_.empty() && edge_loops_.size() >= candidates_.size()) {
+        const std::size_t n_new = candidates_.size();
+        const std::size_t n_all = edge_loops_.size();
+        std::lock_guard<std::mutex> lock(accepted_mutex_);
+        for (std::size_t i = 0; i < n_new; ++i) {
+            const auto& e = edge_loops_[n_all - n_new + i];
+            if (!e || e->Level() != 0) {
+                continue;
+            }
+            const auto& c = candidates_[i];
+            if (c.idx1_ >= all_keyframes_.size() ||
+                c.idx2_ >= all_keyframes_.size()) {
+                continue;
+            }
+            const uint64_t a = std::min(c.idx1_, c.idx2_);
+            const uint64_t b = std::max(c.idx1_, c.idx2_);
+            bool dup = false;
+            for (const auto& prev : accepted_loops_) {
+                if (std::min(prev.id1, prev.id2) == a &&
+                    std::max(prev.id1, prev.id2) == b) {
+                    dup = true;
+                    break;
+                }
+            }
+            if (dup) {
+                continue;
+            }
+            accepted_loops_.push_back(
+                {c.idx1_, c.idx2_, all_keyframes_[c.idx1_],
+                 all_keyframes_[c.idx2_]});
+            StoreRelocSnap(c);
+        }
+    }
+
+    RefreshOdomSegments();
+
+    if (loop_cb_) {
+        loop_cb_();
+    }
+    for (const auto& cb : extra_loop_cbs_) {
+        if (cb) {
+            cb();
+        }
+    }
+
+    LOG(INFO) << "optimize finished, loops: " << edge_loops_.size();
+
+    // LOG(INFO) << "lc: cur kf " << cur_kf_->GetID() << ", opt: " << cur_kf_->GetOptPose().translation().transpose()
+    //           << ", lio: " << cur_kf_->GetLIOPose().translation().transpose();
+}
+
+std::vector<LoopClosing::LoopEdgeViz> LoopClosing::GetLoopEdges() const {
+    return GetConstraintViz().loops;
+}
+
+LoopClosing::ConstraintViz LoopClosing::GetConstraintViz() const {
+    std::lock_guard<std::mutex> lock(accepted_mutex_);
+    ConstraintViz out;
+    out.loops.reserve(accepted_loops_.size());
+    for (const auto& a : accepted_loops_) {
+        if (!a.kf1 || !a.kf2) {
+            continue;
+        }
+        LoopEdgeViz e;
+        e.id1 = a.id1;
+        e.id2 = a.id2;
+        e.p1 = a.kf1->GetOptPose().translation();
+        e.p2 = a.kf2->GetOptPose().translation();
+        out.loops.push_back(e);
+    }
+    out.odom = odom_edges_;
+    out.reloc = reloc_edges_;
+    return out;
+}
+
+}  // namespace atlas_lio

@@ -26,8 +26,10 @@ list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/atlas/thirdparty/")
 
 set(_LOCALIZATION_FEATURES slam pcl cairo boost_iostreams lua)
 
-# lightning-lm original include roots (must exist before compiling sources).
+# Atlas LIO vendors Sophus. That path is listed first so atlas sources do not
+# resolve Sophus from lightning/thirdparty.
 include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/atlas/port/thirdparty
   ${CMAKE_CURRENT_SOURCE_DIR}/lightning
   ${CMAKE_CURRENT_SOURCE_DIR}/lightning/thirdparty
   ${CMAKE_CURRENT_SOURCE_DIR}/lightning/core/miao
@@ -43,6 +45,7 @@ unset(_LOCALIZATION_FEATURES)
 
 # lightning-lm: original include layout (common/, core/, Sophus/, miao core/).
 target_include_directories(autonomy_localization PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/atlas/port/thirdparty>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lightning>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lightning/thirdparty>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lightning/core/miao>

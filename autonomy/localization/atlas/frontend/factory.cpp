@@ -21,6 +21,7 @@
 
 #include "autonomy/localization/atlas/frontend/factory.hpp"
 
+#include "autonomy/localization/atlas/frontend/lidar/lidar_odometry.hpp"
 #include "autonomy/localization/atlas/frontend/tracking/visual_inertial.hpp"
 #include "autonomy/localization/atlas/frontend/tracking/visual_odometry.hpp"
 
@@ -32,6 +33,8 @@ namespace {
 FrontendBase* CreateVisualOdometry() { return new VisualOdometry(); }
 
 FrontendBase* CreateVisualInertial() { return new VisualInertial(); }
+
+FrontendBase* CreateLidarOdometry() { return new LidarOdometry(); }
 
 }  // namespace
 
@@ -47,6 +50,9 @@ void EnsureFrontendsRegistered() {
     }
     FrontendRegistry().Register("vo", &CreateVisualOdometry);
     FrontendRegistry().Register("vio", &CreateVisualInertial);
+    FrontendRegistry().Register("lo", &CreateLidarOdometry);
+    FrontendRegistry().Register("lio", &CreateLidarOdometry);
+    FrontendRegistry().Register("livo", &CreateLidarOdometry);
     registered = true;
 }
 

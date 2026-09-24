@@ -1,0 +1,30 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Atlas LIO / LIVO. Same sensor topics as the lightning launch, Atlas outputs.
+
+  Backend: autonomy.localization --localization_mode=atlas
+
+  Expects:
+    /imu      Imu
+    /points   PointCloud2
+    /tf + /tf_static
+
+  Publishes:
+    /atlas/odometry          Odometry
+    /atlas/trajectory        Path
+    /atlas/cloud_map         PointCloud2  xyz + height rgb
+    /atlas/cloud_registered  PointCloud2
+    /atlas/occupancy         OccupancyGrid
+    /atlas/loop_edges        MarkerArray
+    /tf                      map→odom, and odom→base_link when no wheel TF
+-->
+<autolink>
+  <module>
+    <name>localization_atlas</name>
+    <type>binary</type>
+    <process_name>autonomy.localization --localization_mode=atlas --atlas_config=autonomy/localization/conf/atlas/fusion_livo.yaml --atlas_imu_topic=/imu --atlas_lidar_topic=/points</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

@@ -18,10 +18,11 @@
  * @file dualsense_profile.hpp
  * @brief Sony DualSense (PS5) axis/button presets for differential chassis teleop.
  *
- * Mapping assumes Linux hid-playstation / standard joystick interface:
- *   axes[0]  left stick X   → angular.z
+ * Mapping assumes Linux hid-playstation + joydev (USB or Bluetooth):
  *   axes[1]  left stick Y   → linear.x (inverted: up = forward)
- *   buttons[4] L1           → enable (hold to move)
+ *   axes[2]  L2             — rests at -1, not a stick
+ *   axes[3]  right stick X  → angular.z
+ *   max_linear_acc / max_angular_acc of 0 follow the stick with no ramp
  *
  * If jstest shows different indices (USB vs BT / kernel version), override in YAML.
  */
@@ -42,9 +43,8 @@ namespace joy {
  * @param[in,out] options Joy config to update (axis/button/deadzone/frame).
  * @return true if a known profile was applied; false if unknown/empty/generic.
  *
- * Does not change enable, device, channels, scales, or require_enable so that
- * YAML can set those independently. Call before applying explicit axis overrides
- * if you want YAML fields to win; JoyTeleop calls this then keeps YAML values.
+ * Does not change enable, device, or channel names. YAML keys written after
+ * the profile still override these defaults.
  */
 inline bool ApplyJoyProfile(const std::string& profile, Config::Joy* options) {
   if (options == nullptr || profile.empty()) {
@@ -60,15 +60,20 @@ inline bool ApplyJoyProfile(const std::string& profile, Config::Joy* options) {
     return false;
   }
   if (name == "dualsense" || name == "ps5" || name == "sony_dualsense") {
-    // Left-stick arcade: Y forward, X yaw. L1 = enable.
+    // Left stick Y forward, right stick X yaw. Bluetooth connect if js* is absent.
     options->frame_id = "dualsense";
     options->linear_axis = 1;
-    options->angular_axis = 0;
+    options->angular_axis = 3;
     options->invert_linear = true;
-    options->invert_angular = false;
-    options->deadzone = 0.08f;
-    options->enable_button = 4;  // L1
-    options->require_enable = true;
+    options->invert_angular = true;
+    options->deadzone = 0.05f;
+    options->max_linear = 1.5;
+    options->max_angular = 1.5;
+    options->max_linear_acc = 0.0;
+    options->max_angular_acc = 0.0;
+    options->enable_button = 4;  // L1, unused unless require_enable
+    options->require_enable = false;
+    options->bluetooth_connect = true;
     return true;
   }
   return false;

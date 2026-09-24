@@ -27,7 +27,7 @@
 #include "autonomy/localization/localization_server.hpp"
 
 DEFINE_string(localization_mode, "cartographer",
-              "Backend: cartographer | lightning.");
+              "Backend: cartographer | lightning | atlas.");
 
 // Cartographer
 DEFINE_string(load_state_filename, "",
@@ -49,6 +49,14 @@ DEFINE_string(lightning_lidar_topic, "/points",
               "Lightning: lidar PointCloud2 topic.");
 DEFINE_string(lightning_map_save, "",
               "Lightning: save map directory on shutdown.");
+
+// Atlas (Ceres fusion)
+DEFINE_string(atlas_config,
+              "autonomy/localization/conf/atlas/fusion_livo.yaml",
+              "Atlas: sensor / mission YAML.");
+DEFINE_string(atlas_imu_topic, "/imu", "Atlas: IMU topic.");
+DEFINE_string(atlas_lidar_topic, "/points", "Atlas: lidar PointCloud2 topic.");
+DEFINE_string(atlas_image_topic, "/image", "Atlas: camera Image topic.");
 
 namespace autonomy::localization {
 namespace {
@@ -78,6 +86,10 @@ LocalizationOptions BuildOptionsFromFlags() {
     options.lightning_imu_topic = FLAGS_lightning_imu_topic;
     options.lightning_lidar_topic = FLAGS_lightning_lidar_topic;
     options.lightning_map_save_path = FLAGS_lightning_map_save;
+    options.atlas_config_path = FLAGS_atlas_config;
+    options.atlas_imu_topic = FLAGS_atlas_imu_topic;
+    options.atlas_lidar_topic = FLAGS_atlas_lidar_topic;
+    options.atlas_image_topic = FLAGS_atlas_image_topic;
     return options;
 }
 
@@ -107,6 +119,9 @@ int main(int argc, char** argv) {
         == autonomy::localization::LocalizationBackend::kLightning) {
         AINFO << "localization_main: lightning_config="
                   << options.lightning_config_path;
+    }
+    if (options.backend == autonomy::localization::LocalizationBackend::kAtlas) {
+        AINFO << "localization_main: atlas_config=" << options.atlas_config_path;
     }
 
     auto server =

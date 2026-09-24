@@ -143,6 +143,49 @@ void LoadAtlasNested(const YAML::Node& root, AtlasConfig* out) {
         if (frontend["lio"] && frontend["lio"]["enabled"]) {
             out->lio_enabled = frontend["lio"]["enabled"].as<bool>();
         }
+        if (frontend["livo"] && frontend["livo"]["enabled"]) {
+            out->livo_enabled = frontend["livo"]["enabled"].as<bool>();
+        }
+    }
+
+    if (root["sensors"]) {
+        const auto& sensors = root["sensors"];
+        out->sensors_specified = true;
+        if (sensors["camera"]) {
+            out->camera_enabled = sensors["camera"].as<bool>();
+        }
+        if (sensors["imu"]) {
+            out->imu_enabled = sensors["imu"].as<bool>();
+        }
+        if (sensors["lidar"]) {
+            out->lidar_enabled = sensors["lidar"].as<bool>();
+        }
+    }
+    if (root["mission"]) {
+        out->mission = ParseMission(root["mission"].as<std::string>());
+    }
+    if (root["occupancy"]) {
+        const auto& grid = root["occupancy"];
+        ReadOpt(grid, "resolution", &out->occupancy_resolution);
+        ReadOpt(grid, "min_z", &out->occupancy_min_z);
+        ReadOpt(grid, "max_z", &out->occupancy_max_z);
+        ReadOpt(grid, "max_range", &out->occupancy_max_range);
+    }
+    if (root["lidar_map"]) {
+        const auto& lidar_map = root["lidar_map"];
+        if (lidar_map["directory"]) {
+            out->lidar_map_directory = lidar_map["directory"].as<std::string>();
+        }
+        ReadOpt(lidar_map, "chunk_size", &out->lidar_chunk_size);
+        ReadOpt(lidar_map, "blind", &out->lidar_blind);
+        ReadOpt(lidar_map, "stride", &out->lidar_point_stride);
+        ReadOpt(lidar_map, "height_min", &out->lidar_height_min);
+        ReadOpt(lidar_map, "height_max", &out->lidar_height_max);
+    }
+    if (root["reloc"]) {
+        const auto& reloc = root["reloc"];
+        ReadOpt(reloc, "xy_radius", &out->reloc_xy_radius);
+        ReadOpt(reloc, "xy_step", &out->reloc_xy_step);
     }
 
     if (root["backend"]) {
@@ -498,6 +541,30 @@ void LoadOrbFlat(const YAML::Node& root, AtlasConfig* out) {
     }
 }
 
+void ApplyFusionPolicy(AtlasConfig* cfg) {
+    // Graph optimization stays on Ceres. miao is not a fusion backend.
+    cfg->backend = BackendType::kCeres;
+    if (!cfg->sensors_specified) {
+        cfg->livo_enabled = cfg->mode == FrontendMode::kLivo;
+        cfg->lio_enabled = cfg->lio_enabled || cfg->mode == FrontendMode::kLio ||
+                           cfg->mode == FrontendMode::kLo ||
+                           cfg->mode == FrontendMode::kLivo;
+        return;
+    }
+    cfg->mode = ResolveFrontendMode(cfg->camera_enabled, cfg->imu_enabled,
+                                    cfg->lidar_enabled);
+    cfg->vo_enabled = cfg->mode == FrontendMode::kVo;
+    cfg->vio_enabled = cfg->mode == FrontendMode::kVio ||
+                       cfg->mode == FrontendMode::kLivo;
+    cfg->lio_enabled = cfg->mode == FrontendMode::kLo ||
+                       cfg->mode == FrontendMode::kLio ||
+                       cfg->mode == FrontendMode::kLivo;
+    cfg->livo_enabled = cfg->mode == FrontendMode::kLivo;
+    if (cfg->mode == FrontendMode::kLivo) {
+        cfg->fusion = FusionStyle::kLoose;
+    }
+}
+
 void EmitSeq(YAML::Emitter& out, const std::vector<double>& d) {
     out << YAML::Flow << YAML::BeginSeq;
     for (double v : d) {
@@ -518,6 +585,7 @@ bool LoadConfig(const std::string& path, AtlasConfig* out) {
         out->schema = "atlas";
         LoadAtlasNested(root, out);
         LoadOrbFlat(root, out);
+        ApplyFusionPolicy(out);
         return true;
     } catch (const std::exception&) {
         return false;
@@ -545,7 +613,19 @@ bool SaveConfig(const std::string& path, const AtlasConfig& cfg) {
         out << YAML::Key << "lio" << YAML::Value << YAML::BeginMap
             << YAML::Key << "enabled" << YAML::Value << cfg.lio_enabled
             << YAML::EndMap;
+        out << YAML::Key << "livo" << YAML::Value << YAML::BeginMap
+            << YAML::Key << "enabled" << YAML::Value << cfg.livo_enabled
+            << YAML::EndMap;
         out << YAML::EndMap;
+
+        out << YAML::Key << "mission" << YAML::Value << ToString(cfg.mission);
+        if (cfg.sensors_specified) {
+            out << YAML::Key << "sensors" << YAML::Value << YAML::BeginMap;
+            out << YAML::Key << "camera" << YAML::Value << cfg.camera_enabled;
+            out << YAML::Key << "imu" << YAML::Value << cfg.imu_enabled;
+            out << YAML::Key << "lidar" << YAML::Value << cfg.lidar_enabled;
+            out << YAML::EndMap;
+        }
 
         out << YAML::Key << "camera" << YAML::Value << YAML::BeginMap;
         out << YAML::Key << "sensor" << YAML::Value
@@ -650,6 +730,30 @@ bool SaveConfig(const std::string& path, const AtlasConfig& cfg) {
 
         out << YAML::Key << "vocabulary" << YAML::Value << cfg.vocabulary_path;
 
+        out << YAML::Key << "occupancy" << YAML::Value << YAML::BeginMap;
+        out << YAML::Key << "resolution" << YAML::Value
+            << cfg.occupancy_resolution;
+        out << YAML::Key << "min_z" << YAML::Value << cfg.occupancy_min_z;
+        out << YAML::Key << "max_z" << YAML::Value << cfg.occupancy_max_z;
+        out << YAML::Key << "max_range" << YAML::Value
+            << cfg.occupancy_max_range;
+        out << YAML::EndMap;
+
+        if (!cfg.lidar_map_directory.empty()) {
+            out << YAML::Key << "lidar_map" << YAML::Value << YAML::BeginMap;
+            out << YAML::Key << "directory" << YAML::Value
+                << cfg.lidar_map_directory;
+            out << YAML::Key << "chunk_size" << YAML::Value
+                << cfg.lidar_chunk_size;
+            out << YAML::Key << "blind" << YAML::Value << cfg.lidar_blind;
+            out << YAML::Key << "stride" << YAML::Value << cfg.lidar_point_stride;
+            out << YAML::EndMap;
+        }
+        out << YAML::Key << "reloc" << YAML::Value << YAML::BeginMap;
+        out << YAML::Key << "xy_radius" << YAML::Value << cfg.reloc_xy_radius;
+        out << YAML::Key << "xy_step" << YAML::Value << cfg.reloc_xy_step;
+        out << YAML::EndMap;
+
         out << YAML::Key << "backend" << YAML::Value << YAML::BeginMap;
         out << YAML::Key << "type" << YAML::Value
             << (cfg.backend == BackendType::kCeres ? "ceres" : "iekf");
@@ -690,7 +794,11 @@ bool SaveConfig(const std::string& path, const AtlasConfig& cfg) {
 
 void DumpConfig(std::ostream& os, const AtlasConfig& cfg) {
     os << "AtlasConfig [" << cfg.platform_name << "] schema=" << cfg.schema
-       << "\n";
+       << " mode=" << ToString(cfg.mode)
+       << " mission=" << ToString(cfg.mission) << "\n";
+    os << "  Sensors: camera=" << cfg.camera_enabled
+       << " imu=" << cfg.imu_enabled << " lidar=" << cfg.lidar_enabled
+       << " specified=" << cfg.sensors_specified << "\n";
     os << "  Camera: type=" << CameraTypeName(cfg.camera_type)
        << " fx=" << cfg.camera_fx << " fy=" << cfg.camera_fy
        << " cx=" << cfg.camera_cx << " cy=" << cfg.camera_cy

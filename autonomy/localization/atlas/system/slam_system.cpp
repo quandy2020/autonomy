@@ -30,6 +30,8 @@
 
 #include "Eigen/Geometry"
 
+#include <glog/logging.h>
+
 #include "autonomy/localization/atlas/map/atlas_io.hpp"
 #include "autonomy/localization/atlas/sensor/imu/pose.hpp"
 #include "autonomy/localization/atlas/system/constants.hpp"
@@ -152,6 +154,21 @@ bool SlamSystem::Init(const AtlasConfig& config, Sensor sensor) {
     }
     if (!map_manager_.Init(config)) {
         return false;
+    }
+    if (config.mode == FrontendMode::kLo || config.mode == FrontendMode::kLio ||
+        config.mode == FrontendMode::kLivo) {
+        lidar_ = std::make_unique<LidarOdometry>();
+        if (!lidar_->Init(config)) {
+            return false;
+        }
+        faster_lio_ = std::make_unique<FasterLioStack>();
+        if (!faster_lio_->Init(config)) {
+            LOG(ERROR) << "Faster-LIO init failed; lidar mode will not fall back "
+                          "to the point-to-plane matcher";
+            faster_lio_.reset();
+            lidar_.reset();
+            return false;
+        }
     }
 
     // ≥2 workers: LocalMapping + LoopClosing long-lived Run loops.
@@ -560,6 +577,7 @@ SE3 SlamSystem::TrackStereo(const cv::Mat& left, const cv::Mat& right,
     const SE3 pose = tracker_.GrabImageStereo(left, right, timestamp);
     FlushPendingKeyframes();
     PublishVisualization(timestamp);
+    PushVisualPrior();
     return pose;
 }
 
@@ -569,6 +587,7 @@ SE3 SlamSystem::TrackRgbd(const cv::Mat& rgb, const cv::Mat& depth,
     const SE3 pose = tracker_.GrabImageRgbd(rgb, depth, timestamp);
     FlushPendingKeyframes();
     PublishVisualization(timestamp);
+    PushVisualPrior();
     return pose;
 }
 
@@ -577,11 +596,119 @@ SE3 SlamSystem::TrackMonocular(const cv::Mat& image, double timestamp) {
     const SE3 pose = tracker_.GrabImageMonocular(image, timestamp);
     FlushPendingKeyframes();
     PublishVisualization(timestamp);
+    PushVisualPrior();
     return pose;
 }
 
 void SlamSystem::GrabImuData(const sensor::imu::Measurement& measurement) {
     tracker_.GrabImuData(measurement);
+    if (faster_lio_ && faster_lio_->active()) {
+        faster_lio_->ProcessImu(measurement);
+    }
+}
+
+SE3 SlamSystem::TrackLidar(const SensorData& data) {
+    SE3 pose = SE3Identity();
+    if (!TryTrackLidar(data, &pose)) {
+        return SE3Identity();
+    }
+    return pose;
+}
+
+bool SlamSystem::TryTrackLidar(const SensorData& data, SE3* T_wb) {
+    ApplyModeChange();
+    if (T_wb == nullptr) {
+        return false;
+    }
+    if (faster_lio_ && faster_lio_->active()) {
+        return faster_lio_->ProcessCloud(data, T_wb);
+    }
+    if (!lidar_ || !lidar_->Process(data)) {
+        return false;
+    }
+    OdometryResult result;
+    if (!lidar_->GetResult(&result) || !result.valid) {
+        return false;
+    }
+    FlushPendingKeyframes();
+    *T_wb = result.pose_world_body;
+    if (MapChanged()) {
+        lidar_->RebuildOccupancy();
+    }
+    return true;
+}
+
+void SlamSystem::LoadLidarMap(const PointCloud& cloud) {
+    if (lidar_) {
+        lidar_->LoadMap(cloud);
+    }
+}
+
+bool SlamSystem::SaveLidarMap(const std::string& directory) const {
+    if (faster_lio_ && faster_lio_->active() &&
+        faster_lio_->SaveMap(directory)) {
+        return true;
+    }
+    return lidar_ && lidar_->SaveMap(directory);
+}
+
+bool SlamSystem::LoadLidarMapDirectory(const std::string& directory) {
+    if (faster_lio_ && faster_lio_->active() && faster_lio_->localizing()) {
+        return !directory.empty();
+    }
+    return lidar_ && lidar_->LoadMapDirectory(directory);
+}
+
+bool SlamSystem::FillRegisteredCloud(PointCloud2* cloud) const {
+    return faster_lio_ && faster_lio_->active() &&
+           faster_lio_->FillRegisteredCloud(cloud);
+}
+
+bool SlamSystem::FillDenseCloud(PointCloud2* cloud) const {
+    if (faster_lio_ && faster_lio_->active() &&
+        faster_lio_->FillDenseCloud(cloud)) {
+        return true;
+    }
+    return lidar_ && lidar_->FillDenseCloud(cloud);
+}
+
+bool SlamSystem::FillOccupancyGrid(
+    automsgs::msgs::map_msgs::OccupancyGrid* grid) const {
+    if (faster_lio_ && faster_lio_->active() &&
+        faster_lio_->FillOccupancyGrid(grid)) {
+        return true;
+    }
+    return lidar_ && lidar_->FillOccupancyGrid(grid);
+}
+
+void SlamSystem::SetOccupancyCallback(
+    std::function<void(const automsgs::msgs::map_msgs::OccupancyGrid&)>
+        callback) {
+    if (faster_lio_ && faster_lio_->active()) {
+        faster_lio_->SetOccupancyCallback(std::move(callback));
+    }
+}
+
+bool SlamSystem::FillLidarConstraints(LidarConstraintGraph* graph) const {
+    return faster_lio_ && faster_lio_->active() &&
+           faster_lio_->FillLidarConstraints(graph);
+}
+
+void SlamSystem::PushVisualPrior() {
+    if (config_.mode != FrontendMode::kLivo) {
+        return;
+    }
+    OdometryResult visual;
+    if (!tracker_.GetResult(&visual) || !visual.valid) {
+        return;
+    }
+    if (faster_lio_ && faster_lio_->active()) {
+        faster_lio_->SetVisualPrior(visual.pose_world_body,
+                                    config_.ceres_visual_weight);
+    }
+    if (lidar_) {
+        lidar_->SetPosePrior(visual.pose_world_body, config_.ceres_visual_weight);
+    }
 }
 
 void SlamSystem::SetImuCalib(const sensor::imu::Calib& calib) {
@@ -610,6 +737,11 @@ void SlamSystem::FlushPendingKeyframes() {
     Keyframe keyframe;
     while (tracker_.ConsumePendingKeyframe(&keyframe)) {
         map_manager_.AddKeyframe(keyframe);
+    }
+    if (lidar_) {
+        while (lidar_->ConsumePendingKeyframe(&keyframe)) {
+            map_manager_.AddKeyframe(keyframe);
+        }
     }
     // LoopClosing is fed by LocalMapping after each processed keyframe.
 }

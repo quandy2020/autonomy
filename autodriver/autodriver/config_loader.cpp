@@ -1084,6 +1084,26 @@ Config FromYaml(const YAML::Node& root) {
             config.joy.enable_button =
                 ReadInt(jy, "enable_button", config.joy.enable_button);
         }
+        if (jy["max_linear_acc"] && jy["max_linear_acc"].IsScalar()) {
+            try {
+                config.joy.max_linear_acc = jy["max_linear_acc"].as<double>();
+            } catch (const YAML::Exception&) {
+            }
+        }
+        if (jy["max_angular_acc"] && jy["max_angular_acc"].IsScalar()) {
+            try {
+                config.joy.max_angular_acc = jy["max_angular_acc"].as<double>();
+            } catch (const YAML::Exception&) {
+            }
+        }
+        if (jy["bluetooth_connect"]) {
+            config.joy.bluetooth_connect = ReadBool(
+                jy, "bluetooth_connect", config.joy.bluetooth_connect);
+        }
+        if (jy["bluetooth_timeout_sec"]) {
+            config.joy.bluetooth_timeout_sec = ReadInt(
+                jy, "bluetooth_timeout_sec", config.joy.bluetooth_timeout_sec);
+        }
     }
 
     const YAML::Node sensors_node = root["sensors"];

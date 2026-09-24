@@ -35,6 +35,7 @@
 
 #include "autonomy/localization/atlas/backend/cost_functions/cost_helpers.hpp"
 #include "autonomy/localization/atlas/backend/cost_functions/imu_cost_function.hpp"
+#include "autonomy/localization/atlas/backend/cost_functions/pose_prior_cost_function.hpp"
 #include "autonomy/localization/atlas/backend/cost_functions/relative_pose_cost_function.hpp"
 #include "autonomy/localization/atlas/backend/cost_functions/reprojection_cost_function.hpp"
 #include "autonomy/localization/atlas/backend/cost_functions/sim3_cost_function.hpp"
@@ -2491,6 +2492,63 @@ void Optimizer::OptimizeEssentialGraph4DoF(
         map_point->SetWorldPos(ref->GetPoseInverse() * Pc);
         map_point->UpdateNormalAndDepth();
     }
+}
+
+int Optimizer::OptimizeLidarPose(SE3* T_wb,
+                                 const std::vector<LidarPlaneFactor>& factors,
+                                 const SE3* pose_prior, double prior_sqrt_info,
+                                 int max_iterations) {
+    if (T_wb == nullptr || factors.size() < 5) {
+        return 0;
+    }
+
+    double pose6[6];
+    Se3ToAngleAxisTranslation(*T_wb, pose6);
+    std::vector<char> inlier(factors.size(), 1);
+
+    for (int round = 0; round < 2; ++round) {
+        ceres::Problem problem;
+        problem.AddParameterBlock(pose6, 6);
+        if (pose_prior != nullptr && prior_sqrt_info > 0.0) {
+            problem.AddResidualBlock(
+                PosePriorCostFunctor::Create(*pose_prior, prior_sqrt_info),
+                nullptr, pose6);
+        }
+        int used = 0;
+        for (std::size_t i = 0; i < factors.size(); ++i) {
+            if (!inlier[i]) {
+                continue;
+            }
+            problem.AddResidualBlock(
+                LidarPointToPlaneCostFunctor::Create(factors[i]),
+                new ceres::HuberLoss(0.1), pose6);
+            ++used;
+        }
+        if (used < 5) {
+            break;
+        }
+        ceres::Solver::Options options;
+        options.linear_solver_type = ceres::DENSE_QR;
+        options.max_num_iterations = max_iterations > 0 ? max_iterations : 10;
+        options.minimizer_progress_to_stdout = false;
+        ceres::Solver::Summary summary;
+        ceres::Solve(options, &problem, &summary);
+
+        const SE3 pose = AngleAxisTranslationToSe3(pose6);
+        for (std::size_t i = 0; i < factors.size(); ++i) {
+            const Vec3 pw = pose * factors[i].point_body;
+            const double residual =
+                factors[i].plane_normal.dot(pw - factors[i].plane_point);
+            inlier[i] = std::fabs(residual) < 0.2 ? 1 : 0;
+        }
+    }
+
+    *T_wb = AngleAxisTranslationToSe3(pose6);
+    int inliers = 0;
+    for (char flag : inlier) {
+        inliers += flag ? 1 : 0;
+    }
+    return inliers;
 }
 
 }  // namespace backend
