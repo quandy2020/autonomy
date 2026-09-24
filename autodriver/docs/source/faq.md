@@ -90,13 +90,17 @@ Orbbec 一键安装：`./scripts/install_orbbec_sdk.sh`（官方 `.deb`；`ORBBE
 
 | 现象 | 处理 |
 |---|---|
-| 无 `/dev/input/js*` | 蓝牙：`autodriver --pair-joy`；USB：`--pair-mode usb`；用户加入 `input` 组 |
+| 无 `/dev/input/js*` | Create + PS 至灯条快闪后启动；或 `autodriver --pair-joy` / `--pair-mode usb`。宿主机 `modprobe hid_playstation`，用户加入 `input` 组 |
 | `bluetoothctl not found` | 安装 bluez |
-| 蓝牙扫不到手柄 | Create+PS 进入配对；适配器 `power on`；适当加大 `--pair-timeout` |
-| USB 超时 | 检查线缆、`lsusb \| grep Sony`、`modprobe hid_playstation`（可能需 root） |
-| 有 js 但底盘不动 | YAML `joy.enable: true`；按住 **L1**；确认 `cmd_vel_channel` 与底盘一致 |
+| 容器里蓝牙命令起不来 | 挂载宿主机 `/run/dbus` |
+| 蓝牙扫不到手柄 | Create + PS 进入配对；适配器 `power on`；加大 `bluetooth_timeout_sec` 或 `--pair-timeout` |
+| 已 `Bonded` 但 `Host is down` | 短按 PS 唤醒；不要再按 Create + PS |
+| USB 超时 | 检查线缆、`lsusb \| grep Sony`、宿主机 `modprobe hid_playstation` |
+| 有 js 但底盘不动 | `joy.enable: true`；默认不用按 L1；确认 `cmd_vel_channel` 与底盘一致 |
+| 松开仍在转 | `angular_axis` 应为 3（axis 2 是 L2） |
+| 发迟、转向反了 | `max_*_acc: 0`；`invert_angular: true` 时杆向右为右转 |
 
-详见 [使用 · --pair-joy](guide/usage.md#21-dualsense-pair-joy) · [配置 · joy](guide/configuration.md#41-手柄遥操joy默认索尼-dualsenseps5)。
+详见 [使用 · DualSense](guide/usage.md#21-dualsense-遥操) · [配置 · joy](guide/configuration.md#41-手柄遥操joy默认索尼-dualsenseps5)。
 
 ## Autolink
 

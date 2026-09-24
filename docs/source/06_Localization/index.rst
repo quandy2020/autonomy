@@ -1,7 +1,7 @@
 Localization 定位模块
 ======================
 
-``autonomy/localization`` 是 Autonomy 的**定位与 SLAM** 子系统。当前进程后端为 **Cartographer**（默认）与 **Lightning**。**AMCL** 配置已预留。文档按编号排列。
+``autonomy/localization`` 是 Autonomy 的**定位与 SLAM** 子系统。当前进程后端为 **Cartographer**（默认）、**Lightning** 与 **Atlas**。**AMCL** 配置已预留。文档按编号排列。
 
 .. toctree::
    :maxdepth: 2
@@ -14,4 +14,5 @@ Localization 定位模块
    5 模块架构设计 <05_architecture>
    7 AMCL 粒子滤波定位 <07_amcl>
    8 Cartographer 激光 SLAM <cartographer/index>
+   Atlas 多传感器 SLAM <atlas/index>
    9 定位算法综述 <09_survey>

@@ -51,7 +51,21 @@ autonomy.localization \
 
 ---
 
-### 2.3 AMCL 配置预览（待集成）
+### 2.3 Atlas LIO（autosim）
+
+```bash
+autonomy.localization \
+  --localization_mode=atlas \
+  --atlas_config=src/autonomy/autonomy/localization/atlas/config/autosim_lio.yaml \
+  --atlas_imu_topic=/imu \
+  --atlas_lidar_topic=/points
+```
+
+仿真与话题检查见 [Atlas 使用指南](atlas/guide.md)。该负载下约占 **0.37 个核**、常驻内存 **1.15 GiB**，详见 [§4.7](04_usage.md)。
+
+---
+
+### 2.4 AMCL 配置预览（待集成）
 
 ```lua
 -- config/localization/localization.lua

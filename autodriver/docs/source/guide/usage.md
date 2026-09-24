@@ -72,21 +72,38 @@ autodriver --pair-joy --pair-mode driver            # usb 别名
 | `-c` / `--config-dir` / 位置参数 | 配置根（含 `config/`）；亦读 `AUTODRIVER_PATH` |
 | `--config-file` / 位置参数 | basename；默认 `autodriver_hardware.yaml`（**无**短选项 `-f`） |
 
-### 2.1 DualSense `--pair-joy`
+### 2.1 DualSense 遥操
 
-一次性模式：在 `autolink::Init` 之后、`Run()` 之前执行，**不** `LoadConfig`、不启 Publisher / Chassis / JoyTeleop。
+`joy.enable: true` 且 `profile: dualsense` 时，进程读 `/dev/input/js*`，以 `publish_hz`（默认 50 Hz）发布 `sensor_msgs/Joy` 和差速 `TwistStamped`（`linear.x`、`angular.z`）。摇杆回中也继续发零速。通道默认跟底盘 `cmd_vel_channel`（通常 `/cmd_vel`）。
+
+日常连接不必先跑 `--pair-joy`。`bluetooth_connect: true`（该 profile 的默认）时，若 `device` 打不开，进程用 `bluetoothctl` 自己完成扫描、配对、信任和连接，然后打开出现的 `js` 节点。已经 `Bonded` 的手柄只重连，不删绑定。断连发零速并重试。
+
+| 操作 | 轴 | 速度 |
+|---|---|---|
+| 左摇杆前推 / 后拉 | axis 1（上为负，已取反） | `linear.x` 正 / 负，满杆 `1.5` m/s |
+| 右摇杆向右 / 向左 | axis 3（右为正，已取反） | `angular.z` 负 / 正，满杆 `1.5` rad/s |
+| 松开摇杆 | — | 立即回零（`max_linear_acc` / `max_angular_acc` 为 `0`） |
+
+默认 `require_enable: false`，不必按住 L1。`enable_button` 仍是 L1（button 4），只有把 `require_enable` 改成 `true` 才要按住才有速度。
+
+axis 2 是 L2 扳机，松开时停在 `-1`。把它当成转向轴时，`angular.z` 会一直是 `-1.5`。hid-playstation 的轴序是：0 左 X、1 左 Y、2 L2、3 右 X、4 右 Y、5 R2。
+
+蓝牙步骤：
+
+1. 宿主机加载 `hid_playstation`（`modprobe hid_playstation`）。容器里没有这份模块文件，在宿主机加载即可；`/dev/input` 与宿主机共用。
+2. 进程能调用 `bluetoothctl`（安装 bluez），并能看到本机适配器。容器需要挂载宿主机 D-Bus（`/run/dbus`）。
+3. 按住 **Create + PS**，直到灯条快闪，再启动 `autodriver`。
+4. 日志出现 `DualSense joystick ready` 和 `LinuxJoystick opened` 后即可推杆。
+5. 配对成功后灯条熄灭、连接报 `Host is down`：短按一下 **PS** 唤醒。这时不要再按 Create + PS，那会重新进入配对。
+
+`--pair-joy` 是一次性命令：在 `Run()` 之前执行，不加载传感配置、不启底盘和 JoyTeleop，做完就退出。它会**删掉**已配对的 DualSense 再重新配对。已经能连上时用正常启动即可。
 
 | 模式 | 别名 | 行为 |
 |---|---|---|
-| `bluetooth`（默认） | `bt` | `bluetoothctl`：移除旧 DualSense 绑定 → 扫描 → pair / trust / connect |
+| `bluetooth`（默认） | `bt` | 移除旧 DualSense 绑定 → 扫描 → pair / trust / connect |
 | `usb` | `wired`、`driver` | 提示插 USB 线；`modprobe hid_playstation`；等待 `/dev/input/js*` |
 
-操作提示：
-
-- **蓝牙**：手柄 **Create + PS** 直至灯条闪烁进入配对；需本机 `bluetoothctl`（bluez）与适配器权限。
-- **USB**：用数据线连接；依赖内核 `hid-playstation`；用户宜加入 `input` 组。
-
-成功后确认节点（如 `/dev/input/js0`），在 YAML `joy.device` 中写上路径，并将 `joy.enable: true`。字段与映射见 [配置 · joy](configuration.md#41-手柄遥操joy默认索尼-dualsenseps5)。
+USB 插上后把出现的节点写入 `joy.device`，并设 `bluetooth_connect: false`。用户宜在 `input` 组。字段见 [配置 · joy](configuration.md#41-手柄遥操joy默认索尼-dualsenseps5)。
 
 ### 2.2 启动 / 停止
 
@@ -98,7 +115,7 @@ LoadConfig
   → SensorManager::{SetSampleSink, Initialize, Start}
   → PoseFeeder::Start              // compensator.pose_channel 空 → no-op 成功
   → ChassisManager::Start(node)    // chassis.enable=false → no-op 成功
-  → JoyTeleop::Start(node)         // joy.enable=false → no-op；无 js 则告警空转
+  → JoyTeleop::Start(node)         // joy.enable=false → no-op；无 js 且 bluetooth_connect 时在发布循环里重连
   → 等待 SIGINT / SIGTERM
   → Stop：JoyTeleop → Chassis → PoseFeeder → SensorManager
 ```
@@ -109,7 +126,7 @@ LoadConfig
 | 相机 | 推荐折叠 `streams` / `point_clouds` / `imu`（见 [配置 · camera](configuration.md)） |
 | 底盘（进程内） | `chassis.enable: true` + `backend`（联调常用 `stub`） |
 | 底盘（实机） | 推荐独立 DAG / launch；主 YAML 保持 `chassis.enable: false`。见 [本体](chassis.md) |
-| 手柄 | `joy.enable: true` + DualSense；配对见 §2.1 |
+| 手柄 | `joy.enable: true` + DualSense；蓝牙由 `bluetooth_connect` 在启动时完成，见 §2.1 |
 | 运行标志 | 日志含 `autodriver running (Ctrl+C to stop)` |
 
 ### 2.3 SDK 安装（包根 `scripts/`）
@@ -249,8 +266,13 @@ manager.Stop();
 | 无点云 / 无图像 | 检查 UDP 端口与网段、USB3、防火墙；折叠子项是否 enable |
 | RPLidar A3 | 使用 `params_file: lidar/slamtec/a3.yaml`（波特率 256000） |
 | 底盘无响应 | 确认 `chassis.enable`、`cmd_vel_channel`；检查看门狗是否将速度清零 |
-| 手柄无 `/dev/input/js*` | 先 `autodriver --pair-joy`（蓝牙）或 `--pair-mode usb`；用户加入 `input` 组 |
-| `pair-joy: bluetoothctl not found` | 安装 bluez（提供 `bluetoothctl`） |
-| `pair-joy` USB 超时 | 检查线缆、`lsusb \| grep Sony`、`modprobe hid_playstation`（可能需 root） |
+| 手柄无 `/dev/input/js*` | Create + PS 至灯条快闪后再启动；或 `autodriver --pair-joy` / `--pair-mode usb`。宿主机 `modprobe hid_playstation`，用户加入 `input` 组 |
+| `bluetoothctl not found` | 安装 bluez |
+| 容器里 `bluetoothctl` 起不来 | 把宿主机 `/run/dbus` 挂进容器 |
+| 已配对但 `Host is down`、仍无 `js*` | 短按 PS 唤醒后再连；不要按 Create + PS |
+| `angular.z` 松开仍是 `-1.5` | 转向轴误用了 L2（axis 2）。设 `angular_axis: 3` |
+| 推杆发迟、不跟手 | `max_linear_acc` 与 `max_angular_acc` 设为 `0` |
+| 左右转反了 | `invert_angular: true`（杆向右为负 `angular.z`） |
+| USB 超时 | 检查线缆、`lsusb \| grep Sony`、宿主机 `modprobe hid_playstation` |
 
 系统化问答见 [FAQ](../faq.md)。验证见 [测试](testing.md)。

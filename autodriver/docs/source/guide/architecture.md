@@ -248,12 +248,12 @@ LoadConfig
   → SensorManager::{SetSampleSink, Initialize, Start}
   → PoseFeeder::Start              // compensator.pose_channel 空 → no-op
   → ChassisManager::Start(node)    // chassis.enable=false → no-op
-  → JoyTeleop::Start(node)         // joy.enable=false → no-op；无 js 设备则告警空转
+  → JoyTeleop::Start(node)         // joy.enable=false → no-op；无 js 且 bluetooth_connect 时在发布循环里重连
   → 等待信号
   → Stop：JoyTeleop → Chassis → PoseFeeder → SensorManager
 ```
 
-CLI 一次性手柄配对（`--pair-joy`，蓝牙或 USB）在 `Run()` 之前分支，不经上述序列。见 [使用 · --pair-joy](usage.md#21-dualsense-pair-joy)。
+CLI 一次性手柄配对（`--pair-joy`，蓝牙或 USB）在 `Run()` 之前分支，不经上述序列。见 [使用 · DualSense](usage.md#21-dualsense-遥操)。
 
 `PoseFeeder`：订 Odometry → `SensorManager::PushLidarPose` → 驱动侧 `MotionPoseSink`。见 [数据流 · 运动补偿](dataflow.md#5-运动补偿3d-激光可选)。
 

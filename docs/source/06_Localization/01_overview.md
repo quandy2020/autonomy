@@ -17,9 +17,12 @@
 |--------|-----------|--------|----------|----------|
 | **Cartographer** 激光 SLAM | `cartographer/` | 激光 + IMU | 2D/3D 建图与定位 | **已实现**（`localization` 默认） |
 | **Lightning** LIO | `lightning/` | 激光 + IMU | 独立 LIO | **已实现** |
+| **Atlas** | `atlas/` | 相机 / IMU / 激光 | VO、VIO、LIO、LIVO | **已实现** |
 | **AMCL** 粒子滤波 | `config/localization/amcl/` | 激光 + 里程计 + 先验地图 | 2D 室内定位 | 配置就绪，C++ 待集成 |
 
-`localization` 二进制：`--localization_mode=cartographer`（默认）或 `lightning`。
+`localization` 二进制：`--localization_mode=cartographer`（默认）、`lightning` 或 `atlas`。
+
+Atlas LIO 在 autosim 上的资源占用见 [§4.7](04_usage.md) 与 [Atlas 文档](atlas/guide.md)。
 
 ### 1.3 Cartographer 双进程架构（可选）
 
@@ -43,10 +46,11 @@
 
 ```
 autonomy/localization/
-├── localization_main.cpp           # 统一入口：cartographer | lightning
+├── localization_main.cpp           # 统一入口：cartographer | lightning | atlas
 ├── localization_server.*           # 后端门面
 ├── launch/                         # autolink launch
 ├── conf/{cartographer,lightning}/
+├── atlas/                          # VO / VIO / LIO / LIVO
 ├── cartographer/                   # 激光 SLAM
 └── lightning/                      # 独立 LIO
 ```

@@ -215,10 +215,12 @@ Launch 内底盘 **二选一**，见 `launch/autodriver.launch`。
 
 | 操作 | 映射 |
 |---|---|
-| 左摇杆上下（axis 1） | 前进 / 后退，`linear.x` |
-| 右摇杆左右（axis 3） | 原地转向，`angular.z` |
-| 松开摇杆 | 速度回到零；`max_*_acc` 大于 0 时按加速度限制回零 |
+| 左摇杆前推（axis 1，已 `invert_linear`） | 前进，`linear.x` 为正 |
+| 右摇杆向右（axis 3，已 `invert_angular`） | 右转，`angular.z` 为负 |
+| 松开摇杆 | 立即回零；`max_*_acc` 大于 0 时按加速度限制回零 |
 | 断连 | 零速，并在 `bluetooth_connect` 时重连 |
+
+`linear_axis` / `angular_axis` / `invert_linear` / `invert_angular` 写在 profile 之后，YAML 显式键覆盖预设。axis 2 是 L2，松开为 `-1`，不要用作 `angular_axis`。
 
 ### 蓝牙怎么开
 
@@ -235,7 +237,7 @@ joy:
   bluetooth_connect: true
 ```
 
-启动 `autodriver`。需要 `bluetoothctl`（bluez），用户一般要在 `input` 组。也可以先跑 `autodriver --pair-joy` 做一次强制重新配对。
+启动 `autodriver`。需要 `bluetoothctl`（bluez），宿主机加载 `hid_playstation`，用户一般要在 `input` 组。配对成功后若灯条熄灭且连接失败，短按 **PS** 唤醒。`autodriver --pair-joy` 会删掉已有绑定再配对，只在要强制重配时使用。步骤见 [使用 · DualSense](usage.md#21-dualsense-遥操)。
 
 ### USB / 驱动模式配对
 
@@ -246,7 +248,7 @@ autodriver --pair-joy --pair-mode usb
 
 插上 USB 线后同样把出现的 `/dev/input/jsN` 写入 `joy.device`；YAML 字段与蓝牙一致。
 
-CLI 总览与排障见 [使用 · --pair-joy](usage.md#21-dualsense-pair-joy)。若 `jstest` 轴序与预设不符，在 YAML 中覆盖 `linear_axis` / `angular_axis` / `enable_button`。
+CLI 总览与排障见 [使用 · DualSense](usage.md#21-dualsense-遥操)。若 `jstest` 轴序与预设不符，在 YAML 中覆盖 `linear_axis` / `angular_axis` / `invert_angular` / `enable_button`。
 
 ```yaml
 # USB 示例：插上后直接读 js 节点，不必开蓝牙
