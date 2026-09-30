@@ -23,9 +23,16 @@ include_guard(GLOBAL)
 # @param DIRECTORY Directory to glob for sources, relative to the caller.
 # @param SOURCES Source files. Required when DIRECTORY and INTERFACE are not set.
 # @param DEPENDENCIES Targets linked PUBLIC.
+# @param PRIVATE_DEPENDENCIES Targets linked PRIVATE.
+# @param INCLUDES Extra include roots (BUILD_INTERFACE only).
 # @param STATIC SHARED INTERFACE Library type. Default follows BUILD_SHARED_LIBS.
+# @param NO_EXPORT Install the target without joining the CMake export set.
 function(autocmake_library target)
-  _autocmake_parse(_arg "STATIC;SHARED;INTERFACE" "DIRECTORY" "SOURCES;DEPENDENCIES" ${ARGN})
+  _autocmake_parse(_arg
+    "STATIC;SHARED;INTERFACE;NO_EXPORT"
+    "DIRECTORY"
+    "SOURCES;DEPENDENCIES;PRIVATE_DEPENDENCIES;INCLUDES"
+    ${ARGN})
 
   set(_sources ${_arg_SOURCES})
   if(_arg_DIRECTORY)
@@ -68,11 +75,27 @@ function(autocmake_library target)
       $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
   endif()
 
+  foreach(_inc IN LISTS _arg_INCLUDES)
+    target_include_directories(${target} ${_scope}
+      $<BUILD_INTERFACE:${_inc}>)
+  endforeach()
+
   if(_arg_DEPENDENCIES)
     target_link_libraries(${target} ${_scope} ${_arg_DEPENDENCIES})
   endif()
+  if(_arg_PRIVATE_DEPENDENCIES)
+    if(_arg_INTERFACE)
+      message(FATAL_ERROR
+        "autocmake_library(${target}): PRIVATE_DEPENDENCIES is invalid for INTERFACE")
+    endif()
+    target_link_libraries(${target} PRIVATE ${_arg_PRIVATE_DEPENDENCIES})
+  endif()
 
-  _autocmake_install_target(${target})
+  if(_arg_NO_EXPORT)
+    _autocmake_install_target(${target} NO_EXPORT)
+  else()
+    _autocmake_install_target(${target})
+  endif()
   _autocmake_add_alias(${PROJECT_NAME}::${target} ${target})
   if(target STREQUAL PROJECT_NAME)
     _autocmake_add_alias(${PROJECT_NAME}::core ${target})
@@ -84,8 +107,10 @@ endfunction()
 # @param name Target name.
 # @param SOURCES Sources.
 # @param DEPENDENCIES Targets linked PRIVATE.
+# @param OUTPUT_NAME Binary file name (defaults to <name>).
+# @param NO_EXPORT Install without joining the CMake export set.
 function(autocmake_binary name)
-  _autocmake_parse(_arg "" "" "SOURCES;DEPENDENCIES" ${ARGN})
+  _autocmake_parse(_arg "NO_EXPORT" "OUTPUT_NAME" "SOURCES;DEPENDENCIES" ${ARGN})
   if(NOT _arg_SOURCES)
     message(FATAL_ERROR "autocmake_binary(${name}): SOURCES is required")
   endif()
@@ -93,5 +118,12 @@ function(autocmake_binary name)
   if(_arg_DEPENDENCIES)
     target_link_libraries(${name} PRIVATE ${_arg_DEPENDENCIES})
   endif()
-  _autocmake_install_target(${name})
+  if(_arg_OUTPUT_NAME)
+    set_target_properties(${name} PROPERTIES OUTPUT_NAME "${_arg_OUTPUT_NAME}")
+  endif()
+  if(_arg_NO_EXPORT)
+    _autocmake_install_target(${name} NO_EXPORT)
+  else()
+    _autocmake_install_target(${name})
+  endif()
 endfunction()

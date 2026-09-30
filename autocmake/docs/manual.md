@@ -263,15 +263,18 @@ autocmake_link(hello PRIVATE Eigen3)
 | `SOURCES <文件>...` | 源文件 |
 | `DIRECTORY <目录>` | 递归收集该目录下的 C/C++ 源文件 |
 | `DEPENDENCIES <目标>...` | `PUBLIC` 链接 |
+| `PRIVATE_DEPENDENCIES <目标>...` | `PRIVATE` 链接 |
+| `INCLUDES <目录>...` | 额外头文件根，仅 `$<BUILD_INTERFACE:...>` |
 | `STATIC` / `SHARED` / `INTERFACE` | 库类型。都不写时跟随 `BUILD_SHARED_LIBS` |
+| `NO_EXPORT` | 安装目标但不加入 `install(EXPORT)`（用于链接了 `add_subdirectory` 内嵌、未导出的依赖） |
 
 `SOURCES` 与 `DIRECTORY` 至少要有一个，除非是 `INTERFACE`。非接口库的 `VERSION` 是项目版本，`SOVERSION` 是主版本号。
 
-**`autocmake_binary(<目标> SOURCES <文件>... [DEPENDENCIES <目标>...])`**
+**`autocmake_binary(<目标> SOURCES <文件>... [DEPENDENCIES <目标>...] [OUTPUT_NAME <名>] [NO_EXPORT])`**
 
-可执行文件。`DEPENDENCIES` 以 `PRIVATE` 链接，并安装到 `bin/`。
+可执行文件。`DEPENDENCIES` 以 `PRIVATE` 链接，并安装到 `bin/`。`OUTPUT_NAME` 改写磁盘上的文件名。`NO_EXPORT` 同库：安装但不进 CMake export set。
 
-共享库和可执行文件会设置 `INSTALL_RPATH`。可执行文件指向安装后的库目录，默认是 `@loader_path/../lib`（其他平台是 `$ORIGIN/../lib`）。`CMAKE_INSTALL_LIBDIR` 不是 `lib` 时，用同样的相对路径。共享库的 RPATH 是 `@loader_path` 或 `$ORIGIN`，用来找同一目录里的库。
+共享库和可执行文件会设置 `INSTALL_RPATH` 与 `BUILD_RPATH`。可执行文件指向安装后的库目录，默认是 `@loader_path/../lib`（其他平台是 `$ORIGIN/../lib`）。`CMAKE_INSTALL_LIBDIR` 不是 `lib` 时，用同样的相对路径。共享库的 RPATH 是 `@loader_path` 或 `$ORIGIN`，用来找同一目录里的库。
 
 **`autocmake_protobuf(<目标> SOURCES <文件>... [IMPORTS <目录>...] [DEPENDENCIES <目标>...])`**
 

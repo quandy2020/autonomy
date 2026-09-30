@@ -54,25 +54,41 @@ function(_autocmake_runtime_path name)
   set(_autocmake_runtime_path "${_path}" PARENT_SCOPE)
 endfunction()
 
-# @brief Install a compiled or interface target into the project export set.
+# @brief Install a compiled or interface target.
+#
+# By default the target joins the project export set. Pass NO_EXPORT when the
+# target links in-tree / non-exported dependencies (e.g. add_subdirectory embeds)
+# that must not appear in install(EXPORT).
 function(_autocmake_install_target name)
+  _autocmake_parse(_inst "NO_EXPORT" "" "" ${ARGN})
   if(NOT AUTOCMAKE_EXPORT_NAME)
     message(FATAL_ERROR
       "_autocmake_install_target: call autocmake_project() before adding targets")
   endif()
   _autocmake_runtime_path(${name})
   if(_autocmake_runtime_path)
-    set_target_properties(${name} PROPERTIES INSTALL_RPATH "${_autocmake_runtime_path}")
+    set_target_properties(${name} PROPERTIES
+      INSTALL_RPATH "${_autocmake_runtime_path}"
+      BUILD_RPATH "${_autocmake_runtime_path};${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
   endif()
-  set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    APPEND PROPERTY AUTOCMAKE_EXPORTED_TARGETS "${name}")
-  install(
-    TARGETS ${name}
-    EXPORT ${AUTOCMAKE_EXPORT_NAME}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+  if(_inst_NO_EXPORT)
+    install(
+      TARGETS ${name}
+      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+      INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+  else()
+    set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+      APPEND PROPERTY AUTOCMAKE_EXPORTED_TARGETS "${name}")
+    install(
+      TARGETS ${name}
+      EXPORT ${AUTOCMAKE_EXPORT_NAME}
+      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+      INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+  endif()
 endfunction()
 
 # @brief Add a namespaced alias when it does not already exist.
