@@ -8,10 +8,8 @@
 #include "autoviz/common/selection_handler.hpp"
 #include "autoviz/rendering/scene_overlay.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
 #include "autoviz/rendering/ogre_indexed_palette.hpp"
 #include "autoviz/rendering/ogre_scene_host.hpp"
-#endif
 
 namespace autoviz {
 namespace display {
@@ -27,7 +25,6 @@ bool drawColoredPointsOgreOrGl(common::DisplayContext* context,
     return false;
   }
 
-#ifdef AUTOVIZ_USE_OGRE
   if (context != nullptr && context->ogre_scene_host != nullptr) {
     rendering::OgreIndexedPalette::ensureRainbowPalette();
     std::vector<QVector3D> positions;
@@ -59,7 +56,6 @@ bool drawColoredPointsOgreOrGl(common::DisplayContext* context,
     }
     return true;
   }
-#endif
 
   scene.setPointSize(point_size);
   scene.setPickSource(&display_name, &display_type);

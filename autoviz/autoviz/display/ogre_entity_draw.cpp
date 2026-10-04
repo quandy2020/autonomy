@@ -7,10 +7,8 @@
 #include "autoviz/common/display_context.hpp"
 #include "autoviz/rendering/scene_overlay.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
 #include "autoviz/rendering/ogre_mesh_loader.hpp"
 #include "autoviz/rendering/ogre_scene_host.hpp"
-#endif
 
 namespace autoviz {
 namespace display {
@@ -18,13 +16,11 @@ namespace {
 
 void syncOgreDisplayVisibility(common::DisplayContext* context,
                                const std::string& display_name) {
-#ifdef AUTOVIZ_USE_OGRE
   if (context != nullptr && context->ogre_scene_host != nullptr &&
       context->active_display_visibility_bits != nullptr) {
     context->ogre_scene_host->setDisplayVisibilityBits(
         display_name, *context->active_display_visibility_bits);
   }
-#endif
 }
 
 }  // namespace
@@ -33,7 +29,6 @@ bool drawEntityMeshesOgreOrGl(common::DisplayContext* context,
                               rendering::SceneOverlay& scene,
                               const std::string& display_name,
                               const std::vector<ColoredMeshInstance>& meshes) {
-#ifdef AUTOVIZ_USE_OGRE
   if (context != nullptr && context->ogre_scene_host != nullptr) {
     std::vector<rendering::OgreEntityInstance> entities;
     std::vector<ColoredMeshInstance> wireframe_fallback;
@@ -59,7 +54,6 @@ bool drawEntityMeshesOgreOrGl(common::DisplayContext* context,
     }
     return true;
   }
-#endif
   return drawMeshesOgreOrGl(context, scene, display_name, meshes);
 }
 

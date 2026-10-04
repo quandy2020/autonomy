@@ -4,9 +4,7 @@
 
 #include "autoviz/display/display.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
 #include "autoviz/rendering/ogre_scene_host.hpp"
-#endif
 
 namespace autoviz {
 namespace display {
@@ -37,20 +35,16 @@ void Display::setPropertyValue(const std::string& key,
 
 void Display::setVisibilityBits(uint32_t bits) {
   visibility_bits_ |= bits;
-#ifdef AUTOVIZ_USE_OGRE
   if (context_ != nullptr && context_->ogre_scene_host != nullptr) {
     context_->ogre_scene_host->setDisplayVisibilityBits(name(), visibility_bits_);
   }
-#endif
 }
 
 void Display::unsetVisibilityBits(uint32_t bits) {
   visibility_bits_ &= ~bits;
-#ifdef AUTOVIZ_USE_OGRE
   if (context_ != nullptr && context_->ogre_scene_host != nullptr) {
     context_->ogre_scene_host->setDisplayVisibilityBits(name(), visibility_bits_);
   }
-#endif
 }
 
 void Display::setEnabled(bool enabled) {
@@ -67,11 +61,9 @@ void Display::setEnabled(bool enabled) {
   } else if (subscribed_) {
     onDisable();
     subscribed_ = false;
-#ifdef AUTOVIZ_USE_OGRE
     if (context_ != nullptr && context_->ogre_scene_host != nullptr) {
       context_->ogre_scene_host->removeDisplaysWithPrefix(name());
     }
-#endif
   }
   if (!enabled_) {
     setStatusOk();

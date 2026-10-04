@@ -1,23 +1,25 @@
 # ogre_media
 
-Ogre 材质、GLSL 1.20 着色器与字体资源，源自 [rviz_rendering/ogre_media](https://github.com/ros2/rviz/tree/rolling/rviz_rendering/ogre_media)（BSD-3-Clause）。
+Ogre 材质、GLSL 着色器与字体资源。资源命名空间为 **`aviz/`**（资源组 `aviz_rendering`）。
+内容改编自 [rviz_rendering/ogre_media](https://github.com/ros2/rviz/tree/rolling/rviz_rendering/ogre_media)（BSD-3-Clause），并含 Autoviz 自有 PBR / overlay shader。
 
-Autoviz `RenderSystem` 以资源组名 `rviz_rendering` 加载，与 rviz 材质脚本（如 `rviz/PointCloudSquare`、`rviz/DefaultPickAndDepth`）兼容。
+Autoviz `RenderSystem` 加载本目录后，可使用例如 `aviz/PointCloudSquare`、`aviz/DefaultPickAndDepth`、`AvizPBR` 等材质。
 
 ## 视觉模式
 
 | Ogre 版本 | 行为 |
 |-----------|------|
-| **1.12.x** | 加载 `materials/scripts120/*.material` + GLSL → 与 rviz 一致 |
-| **14.x（默认）** | 不解析脚本（会崩溃）；使用 C++ stub 材质 → 功能可用、外观简化 |
+| **1.12.x** | 加载 `materials/scripts120/*.material` + GLSL → 完整点云 / pick / depth |
+| **非 1.12** | 使用 C++ stub 材质 → 功能可用、外观简化 |
 
-详见 [docs/OGRE_VISUAL_ALIGNMENT.md](../../docs/OGRE_VISUAL_ALIGNMENT.md)。
+详见 [docs/rendering/ogre.md](../../docs/rendering/ogre.md)。
 
-**与 rviz 点云视觉对齐**：构建时加 `-DAUTOVIZ_OGRE_VENDOR=ON`（内建 Ogre 1.12.10）。
+**启用完整材质脚本**：构建时加 `-DAUTOVIZ_OGRE_VENDOR=ON`（内建 Ogre 1.12.10），或系统 Ogre 为 1.12.x。
 
-## 点云材质一览
+## 目录一览
 
 - `materials/scripts120/point_cloud_*.material` — Square / FlatSquare / Sphere / Box
-- `materials/scripts/point_cloud_point.material` — 单像素点
-- `materials/scripts/point_cloud_tile.material` — 瓦片
-- `materials/glsl120/` — billboard、smooth_square、pick、depth shader
+- `materials/scripts/` — 单像素点、瓦片、pick/depth、`AvizPBR*`
+- `materials/glsl120/` — Ogre GLSL 1.20（点云 billboard、pick、depth、PBR）
+- `materials/glsl330/` — Qt OpenGL 3.3（`SceneOverlay` / `GridRenderer`）
+- `models/aviz_*.mesh` — cube / sphere / cylinder / cone 基础网格

@@ -13,9 +13,7 @@
 #include "autoviz/rendering/scene_overlay.hpp"
 #include "autoviz/rendering/view_controller.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
 #include "autoviz/rendering/ogre_scene_host.hpp"
-#endif
 
 namespace autoviz {
 namespace tools {
@@ -57,17 +55,14 @@ void GoalPoseTool::activate(common::ToolContext* context) {
 }
 
 void GoalPoseTool::clearOgreOverlay() const {
-#ifdef AUTOVIZ_USE_OGRE
   if (context() == nullptr || context()->display_context == nullptr ||
       context()->display_context->ogre_scene_host == nullptr) {
     return;
   }
   context()->display_context->ogre_scene_host->clearToolOverlay(toolId());
-#endif
 }
 
 void GoalPoseTool::hideArrowVisual() const {
-#ifdef AUTOVIZ_USE_OGRE
   if (context() != nullptr && context()->sync_ogre_host) {
     context()->sync_ogre_host();
   }
@@ -78,7 +73,6 @@ void GoalPoseTool::hideArrowVisual() const {
     display_context->ogre_scene_host->setToolPoseArrow(
         toolId(), QVector3D(), 0.f, arrowColor(), false);
   }
-#endif
 }
 
 void GoalPoseTool::drawArrowVisual(rendering::SceneOverlay* scene) const {
@@ -122,7 +116,6 @@ void GoalPoseTool::drawArrowVisual(rendering::SceneOverlay* scene) const {
     return;
   }
 
-#ifdef AUTOVIZ_USE_OGRE
   common::DisplayContext* display_context =
       context() != nullptr ? context()->display_context : nullptr;
   if (display_context != nullptr &&
@@ -130,7 +123,6 @@ void GoalPoseTool::drawArrowVisual(rendering::SceneOverlay* scene) const {
     display_context->ogre_scene_host->setToolPoseArrow(toolId(), lifted, yaw,
                                                        color, true);
   }
-#endif
 }
 
 void GoalPoseTool::refreshArrowVisual() const {

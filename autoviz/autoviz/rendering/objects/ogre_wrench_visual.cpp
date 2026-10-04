@@ -4,8 +4,6 @@
 
 #include "autoviz/rendering/objects/ogre_wrench_visual.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -80,7 +78,7 @@ void OgreWrenchVisual::updateTorque() const {
 Ogre::Quaternion OgreWrenchVisual::getDirectionOfRotationRelativeToTorque(
     const Ogre::Vector3& torque, const Ogre::Vector3& axis_z) const {
   Ogre::Quaternion orientation = axis_z.getRotationTo(torque);
-  if (std::isnan(orientation.x()) || std::isnan(orientation.y()) || std::isnan(orientation.z())) {
+  if (std::isnan(orientation.x) || std::isnan(orientation.y) || std::isnan(orientation.z)) {
     orientation = Ogre::Quaternion::IDENTITY;
   }
   return orientation;
@@ -151,4 +149,3 @@ void OgreWrenchVisual::setVisible(bool visible) { frame_node_->setVisible(visibl
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

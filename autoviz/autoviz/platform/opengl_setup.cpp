@@ -7,11 +7,6 @@
 #include <QCoreApplication>
 #include <QSurfaceFormat>
 
-#ifdef AUTOVIZ_USE_QML_DRONE
-#include <QQuickWindow>
-#include <QSGRendererInterface>
-#endif
-
 #include <unistd.h>
 
 #include <cstdio>
@@ -98,7 +93,7 @@ QSurfaceFormat buildSurfaceFormat(bool software) {
   format.setSamples(software ? 0 : 4);
   format.setSwapBehavior(QSurfaceFormat::DoubleBuffer);
   format.setVersion(3, 3);
-  // llvmpipe + Qt Quick3D are more reliable with compatibility profile.
+  // Software GL (llvmpipe) is more reliable with compatibility profile.
   format.setProfile(software ? QSurfaceFormat::CompatibilityProfile
                              : QSurfaceFormat::CoreProfile);
   return format;
@@ -131,9 +126,6 @@ void configureOpenGLDefaults() {
   // QOpenGLWidget creates a native child window. Without this, sibling docks
   // (Image / Plot) can stop receiving paint events once the 3D view has focus.
   QCoreApplication::setAttribute(Qt::AA_DontCreateNativeWidgetSiblings);
-#ifdef AUTOVIZ_USE_QML_DRONE
-  QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
-#endif
   const QSurfaceFormat format = buildSurfaceFormat(software);
   QSurfaceFormat::setDefaultFormat(format);
   if (envEnabled("AUTOVIZ_DEBUG_GL")) {

@@ -4,8 +4,6 @@
 
 #include "autoviz/rendering/ogre_axes.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <OgreManualObject.h>
 #include <OgreSceneManager.h>
 #include <OgreSceneNode.h>
@@ -91,4 +89,3 @@ void OgreAxes::rebuild() {
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

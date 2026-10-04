@@ -4,8 +4,6 @@
 
 #include "autoviz/rendering/objects/ogre_shape.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <Ogre.h>
 
 #include "autoviz/rendering/ogre_material_manager.hpp"
@@ -16,27 +14,27 @@ namespace rendering {
 
 Ogre::Entity* OgreShape::createEntity(const std::string& name, Type shape_type,
                                       Ogre::SceneManager* scene_manager) {
-  ensureRvizPrimitiveMeshes();
+  ensureAvizPrimitiveMeshes();
   std::string mesh_name;
   switch (shape_type) {
     case kCone:
-      mesh_name = "rviz_cone.mesh";
+      mesh_name = "aviz_cone.mesh";
       break;
     case kCube:
-      mesh_name = "rviz_cube.mesh";
+      mesh_name = "aviz_cube.mesh";
       break;
     case kCylinder:
-      mesh_name = "rviz_cylinder.mesh";
+      mesh_name = "aviz_cylinder.mesh";
       break;
     case kSphere:
-      mesh_name = "rviz_sphere.mesh";
+      mesh_name = "aviz_sphere.mesh";
       break;
     case kCapsule:
-      mesh_name = "rviz_capsule.mesh";
+      mesh_name = "aviz_capsule.mesh";
       break;
   }
   return scene_manager->createEntity(
-      name, mesh_name, "rviz_rendering");
+      name, mesh_name, "aviz_rendering");
 }
 
 OgreShape::OgreShape(Type shape_type, Ogre::SceneManager* scene_manager,
@@ -56,7 +54,7 @@ OgreShape::OgreShape(Type shape_type, Ogre::SceneManager* scene_manager,
   material_name_ = entity_name + "Material";
   material_ = OgreMaterialManager::createMaterialWithLighting(material_name_);
   material_->getTechnique(0)->setAmbient(0.5, 0.5, 0.5);
-  entity_->setMaterialName(material_name_, "AvizOgre");
+  entity_->setMaterialName(material_name_, OgreMaterialManager::resourceGroup());
 }
 
 OgreShape::~OgreShape() {
@@ -71,7 +69,7 @@ OgreShape::~OgreShape() {
   }
   if (material_) {
     material_->unload();
-    Ogre::MaterialManager::getSingleton().remove(material_name_, "AvizOgre");
+    Ogre::MaterialManager::getSingleton().remove(material_name_, OgreMaterialManager::resourceGroup());
   }
 }
 
@@ -118,4 +116,3 @@ void OgreShape::setUserData(const Ogre::Any& data) {
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

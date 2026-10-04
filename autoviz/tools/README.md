@@ -8,8 +8,10 @@ Development scripts for [Aviz](../) — structured like
 From `src/autonomy/autoviz`:
 
 ```bash
-python3 tools/configure.py --ogre --qml   # CMake configure (BUILD_AUTOVIZ=ON)
-python3 tools/build.py                    # Build autoviz target
+python3 tools/configure.py          # CMake configure (Ogre viewport always ON)
+python3 tools/configure.py --release
+# --ogre is a deprecated no-op
+python3 tools/build.py              # Build autoviz target
 python3 tools/translations/autoviz_lupdate.py
 ```
 
@@ -23,38 +25,32 @@ tools/
 ├── common/                   # Shared Python helpers (paths, logging, proc)
 ├── translations/             # Qt Linguist / lupdate (QGC-style)
 │   └── autoviz_lupdate.py
-├── setup/                    # One-time asset / environment setup
-│   └── copy_qgc_drone_meshes.sh
+└── setup/                    # One-time asset / environment setup
 ```
 
-Runtime helpers installed with the package live under [`../scripts/`](../scripts/)
-(`mcap_to_record.py`, `publish_test_sensors.py`, BICMap examples, desktop install).
-
-Example catalog, verification, and headless tests: [`../examples/`](../examples/).
+Runtime helpers for packaging live under [`../deploy/`](../deploy/).
 
 ## Common tasks
 
 | Task | Command |
 |------|---------|
-| Configure Debug + Ogre + QML | `python3 tools/configure.py --ogre --qml` |
-| Release build | `python3 tools/configure.py --release --ogre --qml && python3 tools/build.py` |
+| Configure Debug | `python3 tools/configure.py` |
+| Release build | `python3 tools/configure.py --release && python3 tools/build.py` |
 | Update translations | `python3 tools/translations/autoviz_lupdate.py` |
-| Copy QGC F450 meshes | `tools/setup/copy_qgc_drone_meshes.sh [QGC_ROOT]` |
-| Publish test sensor data | `python3 ../scripts/publish_test_sensors.py` |
 | Clean build tree | `python3 tools/clean.py` |
-| Verify BICMap example catalog | `python3 examples/verify_catalog.py` |
-| Run example headless tests | `examples/run_all_tests.sh` (needs `--tests` configure) |
 
 ## Translations
 
 See [`translations/README.md`](translations/README.md) and [`../translations/README.md`](../translations/README.md).
 
-Catalog files live in `../translations/`; update them with `tools/translations/autoviz_lupdate.py`.
-Matching English strings are merged from QGC `qgc_source_*.ts` when available.
+Catalog files live in `../translations/` (`autoviz.ts` English source +
+`autoviz_zh_CN.ts`). Update with `tools/translations/autoviz_lupdate.py`.
+Optional: merge matching English strings from QGC `qgc_source_zh_CN.ts`.
+
 
 ## Python environment
 
-Optional local venv (for future `tools/tests/`):
+Optional local venv:
 
 ```bash
 python3 -m venv .venv

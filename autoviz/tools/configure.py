@@ -4,7 +4,7 @@
 Usage:
     ./tools/configure.py
     ./tools/configure.py --release
-    ./tools/configure.py --ogre --qml
+    ./tools/configure.py --ogre   # no-op; Ogre is always required
 """
 
 from __future__ import annotations
@@ -25,9 +25,11 @@ from common import autoviz_build_dir, find_autoviz_root, log_ok, log_step
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--release", action="store_true", help="Release build type")
-    parser.add_argument("--ogre", action="store_true", help="Enable AUTOVIZ_USE_OGRE")
-    parser.add_argument("--qml", action="store_true", help="Enable AUTOVIZ_USE_QML_VEHICLE")
-    parser.add_argument("--tests", action="store_true", help="Enable BUILD_AUTOVIZ_TESTS")
+    parser.add_argument(
+        "--ogre",
+        action="store_true",
+        help="Deprecated no-op: Ogre 1.x viewport is always enabled",
+    )
     parser.add_argument(
         "-G",
         "--generator",
@@ -79,11 +81,7 @@ def main() -> int:
         cmake_args.append(f"-DCMAKE_PREFIX_PATH={qt_prefix}")
         log_step(f"macOS: CMAKE_PREFIX_PATH={qt_prefix}")
     if args.ogre:
-        cmake_args.append("-DAUTOVIZ_USE_OGRE=ON")
-    if args.qml:
-        cmake_args.append("-DAUTOVIZ_USE_QML_VEHICLE=ON")
-    if args.tests:
-        cmake_args.append("-DBUILD_AUTOVIZ_TESTS=ON")
+        log_step("note: --ogre is deprecated (Ogre viewport is always ON)")
     cmake_args.extend(args.extra)
 
     log_step(f"Configure {build_dir}")

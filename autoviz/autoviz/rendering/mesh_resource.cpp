@@ -4,8 +4,6 @@
 
 #include "autoviz/rendering/mesh_resource.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
@@ -119,4 +117,3 @@ std::shared_ptr<MeshResource> MeshResourceResolver::fetch(
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

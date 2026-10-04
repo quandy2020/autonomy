@@ -1,0 +1,39 @@
+vertex_program aviz/glsl120/pbr.vert glsl
+{
+  source pbr.vert
+  default_params
+  {
+    param_named_auto worldviewproj_matrix worldviewproj_matrix
+  }
+}
+
+fragment_program aviz/glsl120/pbr.frag glsl
+{
+  source pbr.frag
+  default_params
+  {
+    param_named uAmbient float3 0.18 0.18 0.2
+    param_named uLightDir float3 0.3 -0.85 -0.45
+    param_named_auto uCameraPos camera_position
+  }
+}
+
+vertex_program aviz/glsl120/pbr_textured.vert glsl
+{
+  source pbr_textured.vert
+  default_params
+  {
+    param_named_auto worldviewproj_matrix worldviewproj_matrix
+  }
+}
+
+fragment_program aviz/glsl120/pbr_textured.frag glsl
+{
+  source pbr_textured.frag
+  default_params
+  {
+    param_named uAmbient float3 0.18 0.18 0.2
+    param_named uLightDir float3 0.3 -0.85 -0.45
+    param_named_auto uCameraPos camera_position
+  }
+}

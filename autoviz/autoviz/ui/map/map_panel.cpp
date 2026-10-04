@@ -4,36 +4,40 @@
 
 #include "autoviz/ui/map/map_panel.hpp"
 
+#include <QAction>
+#include <QApplication>
+#include <QClipboard>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QFocusEvent>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMenu>
 #include <QMimeData>
 #include <QScrollArea>
 #include <QSet>
 #include <QToolButton>
+#include <QUrl>
 #include <QVBoxLayout>
 
 #include <chrono>
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/integration/channel_reader_registry.hpp"
-#include "autoviz/ui/icon_loader.hpp"
+#include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/map/map_message_ingest.hpp"
 #include "autoviz/ui/map/map_settings_widget.hpp"
 #include "autoviz/ui/map/map_viewport_widget.hpp"
-#include "autoviz/ui/panel_context_menu.hpp"
-#include "autoviz/ui/panel_dock_widget.hpp"
-#include "autoviz/ui/panel_settings_styles.hpp"
-#include "autoviz/ui/panel_title_tools.hpp"
+#include "autoviz/ui/panel/context_menu.hpp"
+#include "autoviz/ui/panel/dock.hpp"
+#include "autoviz/ui/panel/title_tools.hpp"
 #include "autoviz/ui/plot/plot_drag_mime.hpp"
+#include "autoviz/ui/theme/panel.hpp"
 
 namespace autoviz {
 namespace map {
 namespace {
-
 
 }  // namespace
 
@@ -52,6 +56,7 @@ MapPanel::MapPanel(common::VisualizationManager* manager, QWidget* parent)
   auto* settings_layout = new QVBoxLayout(settings_container_);
   settings_layout->setContentsMargins(0, 0, 0, 0);
   settings_scroll_ = new QScrollArea(settings_container_);
+  settings_scroll_->setObjectName(QString::fromLatin1(AppThemeIds::kSettingsScroll));
   settings_scroll_->setWidgetResizable(true);
   settings_scroll_->setFrameShape(QFrame::NoFrame);
   settings_scroll_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -59,18 +64,44 @@ MapPanel::MapPanel(common::VisualizationManager* manager, QWidget* parent)
   settings_scroll_->setWidget(settings_widget_);
   settings_layout->addWidget(settings_scroll_);
 
-  auto* toolbar = new QFrame(this);
-  ApplyPanelToolbarChrome(toolbar);
-  auto* toolbar_layout = new QHBoxLayout(toolbar);
-  toolbar_layout->setContentsMargins(6, 4, 6, 4);
-  status_label_ = new QLabel(toolbar);
-  status_label_->setStyleSheet(PanelStatusLabelStyle());
-  status_label_->setTextInteractionFlags(Qt::TextSelectableByMouse);
-  toolbar_layout->addWidget(status_label_, 1);
-  root->addWidget(toolbar);
-
   view_ = new MapViewportWidget(this);
   root->addWidget(view_, 1);
+  QLabel* status = nullptr;
+  auto* footer = MakePanelFooter(this, &status);
+  status_label_ = status;
+  root->addWidget(footer);
+  connect(view_, &MapViewportWidget::geoJsonSourcesChanged, this, [this]() {
+    if (view_ == nullptr) {
+      return;
+    }
+    config_.geojson_sources = view_->geoJsonSources();
+    syncSettingsWidgetFromConfig();
+    updateStatusBar();
+    emit configChanged();
+  });
+  connect(view_, &MapViewportWidget::mapStatusChanged, this,
+          [this](const QString& text) {
+            map_status_extra_ = text;
+            updateStatusBar();
+          });
+  connect(view_, &MapViewportWidget::cursorGeoChanged, this,
+          [this](double latitude, double longitude) {
+            cursor_latitude_ = latitude;
+            cursor_longitude_ = longitude;
+            updateStatusBar();
+          });
+  connect(view_, &MapViewportWidget::hideTopicLayerRequested, this,
+          [this](const QString& channel) {
+            for (MapTopicLayerConfig& layer : config_.topic_layers) {
+              if (layer.channel == channel) {
+                layer.enabled = false;
+              }
+            }
+            syncSettingsWidgetFromConfig();
+            refreshViewport();
+            updateStatusBar();
+            emit configChanged();
+          });
 
   follow_timer_.setInterval(100);
   connect(&follow_timer_, &QTimer::timeout, this, &MapPanel::onFollowTick);
@@ -82,6 +113,39 @@ MapPanel::MapPanel(common::VisualizationManager* manager, QWidget* parent)
     emit configChanged();
   });
   connect(view_, &MapViewportWidget::viewChanged, this, &MapPanel::onViewChanged);
+  connect(view_, &MapViewportWidget::selectionChanged, settings_widget_,
+          &MapSettingsWidget::setSelection);
+  connect(settings_widget_, &MapSettingsWidget::planVertexEdited, this,
+          [this](int kind, int index, double latitude, double longitude) {
+            if (view_ != nullptr) {
+              view_->setPlanVertex(kind, index, latitude, longitude);
+            }
+          });
+  connect(settings_widget_, &MapSettingsWidget::planVertexRemoved, this,
+          [this](int kind, int index) {
+            if (view_ != nullptr) {
+              view_->removePlanVertex(kind, index);
+            }
+          });
+  connect(view_, &MapViewportWidget::planChanged, this, [this]() {
+    if (view_ == nullptr) {
+      return;
+    }
+    const MapPanelConfig view_config = view_->config();
+    config_.waypoints = view_config.waypoints;
+    config_.geofence = view_config.geofence;
+    config_.rally_points = view_config.rally_points;
+    config_.edit_tool = view_config.edit_tool;
+    syncSettingsWidgetFromConfig();
+    updateStatusBar();
+    emit configChanged();
+  });
+  connect(settings_widget_, &MapSettingsWidget::offlineDownloadRequested, this,
+          [this](int min_zoom, int max_zoom) {
+            if (view_ != nullptr) {
+              view_->downloadVisibleTiles(min_zoom, max_zoom);
+            }
+          });
 
   applyConfigToUi();
   syncSettingsWidgetFromConfig();
@@ -108,13 +172,19 @@ void MapPanel::installTitleBarTools(PanelDockWidget* dock) {
   callbacks.remove = [this]() { emit panelRemoveRequested(); };
 
   PanelTitleBarOptions options;
+  options.show_reset = true;
+  options.on_reset = [this]() {
+    if (view_ != nullptr) {
+      view_->recenter();
+    }
+  };
   options.show_settings = true;
   options.settings_checked = settingsVisible();
   options.on_settings_toggled = [this](bool visible) { onToggleSettings(visible); };
   options.on_expand = [this]() { emit panelExpandRequested(); };
 
   const PanelTitleBarTools tools =
-      CreateRvizPanelTitleBarTools(dock, callbacks, options);
+      CreatePanelTitleBarTools(dock, callbacks, options);
   settings_button_ = tools.settings_button;
   expand_button_ = tools.expand_button;
   dock->setTitleBarTools(tools.widget);
@@ -192,19 +262,33 @@ void MapPanel::focusInEvent(QFocusEvent* event) {
 }
 
 void MapPanel::dragEnterEvent(QDragEnterEvent* event) {
-  if (event != nullptr && readDropPayload(event->mimeData(), nullptr)) {
+  if (event == nullptr) {
+    return;
+  }
+  if (readDropPayload(event->mimeData(), nullptr) ||
+      geoJsonPathFromMime(event->mimeData()).isEmpty() == false) {
     event->acceptProposedAction();
   }
 }
 
 void MapPanel::dragMoveEvent(QDragMoveEvent* event) {
-  if (event != nullptr && readDropPayload(event->mimeData(), nullptr)) {
+  if (event == nullptr) {
+    return;
+  }
+  if (readDropPayload(event->mimeData(), nullptr) ||
+      geoJsonPathFromMime(event->mimeData()).isEmpty() == false) {
     event->acceptProposedAction();
   }
 }
 
 void MapPanel::dropEvent(QDropEvent* event) {
   if (event == nullptr) {
+    return;
+  }
+  const QString geojson_path = geoJsonPathFromMime(event->mimeData());
+  if (!geojson_path.isEmpty() && view_ != nullptr) {
+    view_->loadGeoJsonFile(geojson_path);
+    event->acceptProposedAction();
     return;
   }
   QString channel;
@@ -226,12 +310,16 @@ void MapPanel::onViewChanged(double latitude, double longitude, double zoom) {
   config_.center_latitude = latitude;
   config_.center_longitude = longitude;
   config_.zoom = zoom;
-  if (settings_widget_ != nullptr) {
+  updateStatusBar();
+  const bool panning = view_ != nullptr && view_->isPanning();
+  if (settings_widget_ != nullptr && !panning) {
     settings_widget_->blockSignals(true);
     settings_widget_->setConfig(config_);
     settings_widget_->blockSignals(false);
   }
-  emit configChanged();
+  if (!panning) {
+    emit configChanged();
+  }
 }
 
 QString MapPanel::messageTypeForChannel(const QString& channel) const {
@@ -336,6 +424,8 @@ void MapPanel::refreshViewport() {
   view_->setLayers(layer_store_.snapshot(nowNanoseconds()));
   view_->setFollowTarget(
       layer_store_.followTarget(config_.follow_channel, nowNanoseconds()));
+  view_->setGcsTarget(
+      layer_store_.followTarget(config_.gcs_channel, nowNanoseconds()));
 }
 
 void MapPanel::applyConfigToUi() {
@@ -363,11 +453,46 @@ void MapPanel::updateStatusBar() {
       ++enabled_layers;
     }
   }
-  if (enabled_layers == 0) {
-    status_label_->setText(tr("Drop a geo channel from Channels"));
-    return;
+  QString text;
+  if (qIsFinite(cursor_latitude_) && qIsFinite(cursor_longitude_)) {
+    text = tr("%1°, %2°  ·  z %3")
+               .arg(cursor_latitude_, 0, 'f', 5)
+               .arg(cursor_longitude_, 0, 'f', 5)
+               .arg(config_.zoom, 0, 'f', 1);
+  } else {
+    text = tr("%1°, %2°  ·  z %3")
+               .arg(config_.center_latitude, 0, 'f', 5)
+               .arg(config_.center_longitude, 0, 'f', 5)
+               .arg(config_.zoom, 0, 'f', 1);
   }
-  status_label_->setText(tr("%1 topic layer(s)").arg(enabled_layers));
+  if (enabled_layers > 0) {
+    text += tr("  ·  %1 layer(s)").arg(enabled_layers);
+  }
+  if (!config_.waypoints.isEmpty() || !config_.geofence.isEmpty() ||
+      !config_.rally_points.isEmpty()) {
+    text += tr("  ·  plan %1w/%2f/%3r")
+                .arg(config_.waypoints.size())
+                .arg(config_.geofence.size())
+                .arg(config_.rally_points.size());
+  }
+  if (!map_status_extra_.isEmpty()) {
+    text += QStringLiteral("  ·  ") + map_status_extra_;
+  }
+  status_label_->setText(text);
+}
+
+QString MapPanel::geoJsonPathFromMime(const QMimeData* mime) const {
+  if (mime == nullptr || !mime->hasUrls()) {
+    return {};
+  }
+  for (const QUrl& url : mime->urls()) {
+    const QString path = url.toLocalFile();
+    if (path.endsWith(QStringLiteral(".geojson"), Qt::CaseInsensitive) ||
+        path.endsWith(QStringLiteral(".json"), Qt::CaseInsensitive)) {
+      return path;
+    }
+  }
+  return {};
 }
 
 bool MapPanel::readDropPayload(const QMimeData* mime, QString* channel) const {

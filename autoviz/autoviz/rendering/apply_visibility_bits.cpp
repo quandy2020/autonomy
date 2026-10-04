@@ -4,8 +4,6 @@
 
 #include "autoviz/rendering/apply_visibility_bits.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <Ogre.h>
 
 namespace autoviz {
@@ -28,4 +26,3 @@ void applyVisibilityBits(uint32_t bits, Ogre::SceneNode* node) {
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

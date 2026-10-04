@@ -10,16 +10,14 @@
 #include <OgreRay.h>
 #include <OgreVector3.h>
 
-#ifdef AUTOVIZ_USE_OGRE
 #include <OgreViewport.h>
-#endif
 
 namespace autoviz {
 namespace rendering {
 namespace {
 
 QVector3D toQVector3(const Ogre::Vector3& v) {
-  return QVector3D(v.x(), v.y(), v.z());
+  return QVector3D(v.x, v.y, v.z);
 }
 
 bool intersectPlane(const QVector3D& origin, const QVector3D& direction,
@@ -52,17 +50,23 @@ std::pair<bool, QVector3D> ViewportProjectionFinder::projectOnGroundPlane(
       (2.f * static_cast<float>(pixel_x) / static_cast<float>(viewport_width)) - 1.f;
   const float ndc_y =
       1.f - (2.f * static_cast<float>(pixel_y) / static_cast<float>(viewport_height));
-  const QVector3D far_point = inverse.map(QVector3D(ndc_x, ndc_y, 1.f));
-  const QVector3D origin = inverse.map(QVector3D(0.f, 0.f, 0.f));
-  const QVector3D direction = (far_point - origin).normalized();
+  const QVector4D near_h = inverse * QVector4D(ndc_x, ndc_y, -1.f, 1.f);
+  const QVector4D far_h = inverse * QVector4D(ndc_x, ndc_y, 1.f, 1.f);
+  const QVector3D origin =
+      QVector3D(near_h.x(), near_h.y(), near_h.z()) / std::max(near_h.w(), 1e-6f);
+  const QVector3D far_point =
+      QVector3D(far_h.x(), far_h.y(), far_h.z()) / std::max(far_h.w(), 1e-6f);
+  const QVector3D direction = (far_point - origin);
+  if (direction.lengthSquared() < 1e-12f) {
+    return {false, {}};
+  }
   QVector3D hit;
-  if (!intersectPlane(origin, direction, QVector3D(0.f, 0.f, 1.f), 0.f, &hit)) {
+  if (!intersectPlane(origin, direction.normalized(), QVector3D(0.f, 0.f, 1.f),
+                      0.f, &hit)) {
     return {false, {}};
   }
   return {true, hit};
 }
-
-#ifdef AUTOVIZ_USE_OGRE
 
 std::pair<bool, QVector3D> ViewportProjectionFinder::projectOgreViewportOnGroundPlane(
     Ogre::Viewport* viewport, int pixel_x, int pixel_y) {
@@ -89,8 +93,6 @@ std::pair<bool, QVector3D> ViewportProjectionFinder::projectOgreViewportOnPlane(
   }
   return {true, toQVector3(mouse_ray.getPoint(intersection.second))};
 }
-
-#endif
 
 }  // namespace rendering
 }  // namespace autoviz

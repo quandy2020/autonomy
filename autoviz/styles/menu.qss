@@ -1,0 +1,17 @@
+/* app/panels_menu — Panels dropdown */
+
+{{root}} {
+  background: {{bg}};
+  color: {{text}};
+  border: 1px solid {{border}};
+  border-radius: 8px;
+  padding: 6px 6px;
+  min-width: 280px;
+  font-family: 'Inter', 'Segoe UI', 'Roboto', 'Noto Sans', sans-serif;
+  font-size: 14px;
+}
+{{root}}::separator {
+  height: 1px;
+  background: {{sep}};
+  margin: 8px 16px;
+}

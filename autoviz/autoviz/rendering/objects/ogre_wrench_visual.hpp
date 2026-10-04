@@ -2,9 +2,19 @@
  * Copyright 2019, Martin Idel · Adapted for Autoviz (BSD-3-Clause).
  *****************************************************************************/
 
-#pragma once
+/**
+ * @file ogre_wrench_visual.hpp
+ * @brief Force/torque wrench visualization (rviz_rendering::WrenchVisual).
+ *
+ * Draws a force arrow plus a torque circle with direction arrow at a frame
+ * pose. Driven by @ref OgreSceneHost::setDisplayWrench().
+ *
+ * @see OgreArrow
+ * @see OgreBillboardLine
+ * @see OgreScrewVisual
+ */
 
-#ifdef AUTOVIZ_USE_OGRE
+#pragma once
 
 #include <memory>
 
@@ -22,20 +32,77 @@ namespace rendering {
 class OgreArrow;
 class OgreBillboardLine;
 
-/** rviz_rendering::WrenchVisual — force/torque arrow visualization. */
+/**
+ * @class OgreWrenchVisual
+ * @brief rviz_rendering::WrenchVisual — force/torque arrow visualization.
+ *
+ * Call @ref setWrench() then frame pose / scale / color setters. Visibility
+ * hides the entire frame node.
+ */
 class OgreWrenchVisual {
  public:
+  /**
+   * @brief Creates force/torque children under @p parent_node.
+   *
+   * @param scene_manager Non-null scene manager.
+   * @param parent_node Parent scene node.
+   */
   OgreWrenchVisual(Ogre::SceneManager* scene_manager, Ogre::SceneNode* parent_node);
+
+  /** @brief Destroys arrows, circle, and frame nodes. */
   ~OgreWrenchVisual();
 
+  /**
+   * @brief Sets force and torque vectors (frame-local).
+   * @param force Force vector.
+   * @param torque Torque vector.
+   */
   void setWrench(const Ogre::Vector3& force, const Ogre::Vector3& torque);
+
+  /**
+   * @brief Sets the frame origin position.
+   * @param position World/parent position.
+   */
   void setFramePosition(const Ogre::Vector3& position);
+
+  /**
+   * @brief Sets the frame orientation.
+   * @param orientation Frame rotation.
+   */
   void setFrameOrientation(const Ogre::Quaternion& orientation);
+
+  /**
+   * @brief Sets force arrow RGBA.
+   */
   void setForceColor(float r, float g, float b, float a);
+
+  /**
+   * @brief Sets torque circle / arrow RGBA.
+   */
   void setTorqueColor(float r, float g, float b, float a);
+
+  /**
+   * @brief Scales the force arrow length.
+   * @param scale Force scale factor.
+   */
   void setForceScale(float scale);
+
+  /**
+   * @brief Scales the torque visualization.
+   * @param scale Torque scale factor.
+   */
   void setTorqueScale(float scale);
+
+  /**
+   * @brief Sets arrow / circle line width.
+   * @param width Width in meters.
+   */
   void setWidth(float width);
+
+  /**
+   * @brief Shows or hides the whole visual.
+   * @param visible Visibility flag.
+   */
   void setVisible(bool visible);
 
  private:
@@ -64,4 +131,3 @@ class OgreWrenchVisual {
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

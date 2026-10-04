@@ -3,6 +3,7 @@
  *****************************************************************************/
 
 #include "autoviz/ui/channel_graph/channel_graph_view.hpp"
+#include "autoviz/ui/theme/style.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -12,6 +13,7 @@
 #include <vector>
 
 #include <QBrush>
+#include <QContextMenuEvent>
 #include <QFont>
 #include <QFontMetricsF>
 #include <QGraphicsObject>
@@ -40,13 +42,19 @@ namespace {
 
 constexpr double kMinZoom = 0.15;
 constexpr double kMaxZoom = 4.0;
-constexpr double kNodeDiameterMin = 76.0;
-constexpr double kNodeDiameterMax = 108.0;
+/** Node: light surface card. Service: soft filled card. */
+constexpr double kNodeWidthMin = 132.0;
+constexpr double kNodeWidthMax = 210.0;
+constexpr double kNodeHeight = 44.0;
+constexpr double kNodeAvatar = 22.0;
 constexpr double kChannelWidthMin = 280.0;
 constexpr double kChannelWidthMax = 420.0;
 constexpr double kChannelHeight = 46.0;
-constexpr double kServiceWidth = 168.0;
-constexpr double kServiceHeight = 148.0;
+constexpr double kServiceWidthMin = 132.0;
+constexpr double kServiceWidthMax = 210.0;
+constexpr double kServiceHeight = 44.0;
+constexpr double kCardRadius = 12.0;
+constexpr double kNodeRadius = 14.0;
 constexpr double kTextPadding = 10.0;
 constexpr double kArrowLength = 11.0;
 constexpr double kArrowWidth = 5.5;
@@ -166,7 +174,7 @@ ChannelGraphLayoutOptions ComputeAdaptiveLayoutOptions(
   }
 
   options.channel_row_gap = kChannelHeight + 32.0;
-  options.node_row_gap = kNodeDiameterMax + 48.0;
+  options.node_row_gap = kNodeHeight + 36.0;
   options.section_gap = 260.0;
 
   const double channel_half =
@@ -194,8 +202,8 @@ ChannelGraphLayoutOptions ComputeAdaptiveLayoutOptions(
   const double channel_band_height =
       std::max(0, options.channel_rows - 1) * options.channel_row_gap;
   options.service_origin_y = channel_band_height + options.section_gap;
-  options.service_col_gap = kServiceWidth + 56.0;
-  options.service_row_gap = kServiceHeight + 48.0;
+  options.service_col_gap = kServiceWidthMax + 48.0;
+  options.service_row_gap = kServiceHeight + 36.0;
 
   if (service_mode == VertexArrangeMode::kColumn || services <= 1) {
     options.service_columns = 1;
@@ -235,14 +243,52 @@ QPointF ServiceGridPosition(const ChannelGraphLayoutOptions& layout, int index) 
                  layout.service_origin_y + row * layout.service_row_gap);
 }
 
+/** Shared accents — keep in sync with channel_graph_panel toolbar glyphs. */
+constexpr QRgb kNodeAccentRgb = 0xff0891b2;     // cyan
+constexpr QRgb kChannelAccentRgb = 0xff7c3aed;  // violet
+constexpr QRgb kServiceAccentRgb = 0xffef4444;  // red
+
+/** Channel traffic bands for probe / stats coloring. */
+enum class ActivityBand { kUnknown, kSilent, kLow, kHealthy };
+
+constexpr double kSilentHzThreshold = 0.05;
+constexpr double kLowHzThreshold = 2.0;
+
+ActivityBand BandForHz(double hz, bool initialized) {
+  if (!initialized) {
+    return ActivityBand::kUnknown;
+  }
+  if (hz <= kSilentHzThreshold) {
+    return ActivityBand::kSilent;
+  }
+  if (hz < kLowHzThreshold) {
+    return ActivityBand::kLow;
+  }
+  return ActivityBand::kHealthy;
+}
+
+QColor ColorForActivityBand(ActivityBand band) {
+  switch (band) {
+    case ActivityBand::kUnknown:
+      return QColor(0x94, 0xa3, 0xb8);  // slate-400
+    case ActivityBand::kSilent:
+      return QColor(0x64, 0x74, 0x8b);  // slate-500
+    case ActivityBand::kLow:
+      return QColor(0xd9, 0x77, 0x06);  // amber-600
+    case ActivityBand::kHealthy:
+      return QColor(0x05, 0x96, 0x69);  // emerald-600
+  }
+  return QColor(0x94, 0xa3, 0xb8);
+}
+
 QColor ColorForKind(integration::GraphVertexKind kind) {
   switch (kind) {
     case integration::GraphVertexKind::kNode:
-      return QColor(66, 133, 244);
+      return QColor::fromRgba(kNodeAccentRgb);
     case integration::GraphVertexKind::kChannel:
-      return QColor(156, 39, 176);
+      return QColor::fromRgba(kChannelAccentRgb);
     case integration::GraphVertexKind::kService:
-      return QColor(229, 57, 53);
+      return QColor::fromRgba(kServiceAccentRgb);
   }
   return QColor(120, 120, 120);
 }
@@ -250,15 +296,15 @@ QColor ColorForKind(integration::GraphVertexKind kind) {
 QColor ColorForEdge(integration::GraphEdgeKind kind) {
   switch (kind) {
     case integration::GraphEdgeKind::kPublish:
-      return QColor(66, 133, 244, 210);
+      return QColor(0x08, 0x91, 0xB2, 210);
     case integration::GraphEdgeKind::kSubscribe:
-      return QColor(156, 39, 176, 210);
+      return QColor(0x7c, 0x3a, 0xed, 210);
     case integration::GraphEdgeKind::kRelay:
       return QColor(96, 125, 139, 190);
     case integration::GraphEdgeKind::kServiceServer:
-      return QColor(229, 57, 53, 220);
+      return QColor(0xef, 0x44, 0x44, 220);
     case integration::GraphEdgeKind::kServiceClient:
-      return QColor(255, 112, 67, 220);
+      return QColor(0xf9, 0x73, 0x16, 220);
   }
   return QColor(120, 120, 120, 180);
 }
@@ -293,11 +339,11 @@ QString EdgeKindLabel(integration::GraphEdgeKind kind) {
 QString KindBadge(integration::GraphVertexKind kind) {
   switch (kind) {
     case integration::GraphVertexKind::kNode:
-      return QStringLiteral("Node");
+      return QStringLiteral("NODE");
     case integration::GraphVertexKind::kChannel:
-      return QStringLiteral("Channel");
+      return QStringLiteral("CH");
     case integration::GraphVertexKind::kService:
-      return QStringLiteral("Service");
+      return QStringLiteral("SRV");
   }
   return QString();
 }
@@ -361,24 +407,20 @@ QPainterPath CapsulePath(const QRectF& rect) {
   return path;
 }
 
-QPainterPath CirclePath(const QRectF& rect) {
+QPainterPath RoundedCardPath(const QRectF& rect, double radius = kCardRadius) {
   QPainterPath path;
-  path.addEllipse(rect);
+  path.addRoundedRect(rect, radius, radius);
   return path;
 }
 
-QPainterPath HexagonPath(const QRectF& rect) {
-  const QPointF center = rect.center();
-  const double rx = rect.width() * 0.5;
-  const double ry = rect.height() * 0.5;
-  QPolygonF hex;
-  for (int i = 0; i < 6; ++i) {
-    const double angle = M_PI / 3.0 * static_cast<double>(i) - M_PI / 6.0;
-    hex << center + QPointF(std::cos(angle) * rx, std::sin(angle) * ry);
+void DrawCardShadow(QPainter* painter, const QPainterPath& path) {
+  painter->save();
+  painter->setPen(Qt::NoPen);
+  for (int i = 3; i >= 1; --i) {
+    painter->setBrush(QColor(15, 23, 42, 6 + i * 7));
+    painter->drawPath(path.translated(0.0, static_cast<double>(i) * 0.9));
   }
-  QPainterPath path;
-  path.addPolygon(hex);
-  return path;
+  painter->restore();
 }
 
 QPointF CubicBezierPoint(const QPointF& p0, const QPointF& p1, const QPointF& p2,
@@ -462,6 +504,10 @@ class GraphVertexItem : public QGraphicsObject {
   }
 
   double activityHz() const { return activity_hz_; }
+  bool activityInitialized() const { return activity_initialized_; }
+  ActivityBand activityBand() const {
+    return BandForHz(activity_hz_, activity_initialized_);
+  }
 
   QRectF boundingRect() const override {
     return content_rect_.adjusted(-6.0, -6.0, 6.0, 6.0);
@@ -472,9 +518,9 @@ class GraphVertexItem : public QGraphicsObject {
       return CapsulePath(shape_rect_);
     }
     if (kind_ == integration::GraphVertexKind::kNode) {
-      return CirclePath(shape_rect_);
+      return RoundedCardPath(shape_rect_, kNodeRadius);
     }
-    return HexagonPath(shape_rect_);
+    return RoundedCardPath(shape_rect_);
   }
 
   void paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
@@ -492,79 +538,20 @@ class GraphVertexItem : public QGraphicsObject {
     const bool selected = option != nullptr && (option->state & QStyle::State_Selected);
     const bool hovered = option != nullptr && (option->state & QStyle::State_MouseOver);
     const bool emphasized = visual_mode_ == GraphVisualMode::kEmphasized;
-    const double pen_width = selected || emphasized ? 2.4 : 1.5;
-    QPen outline(fill.darker(selected ? 145 : 128), pen_width);
 
     if (kind_ == integration::GraphVertexKind::kNode) {
-      QRadialGradient gradient(shape_rect_.center(), shape_rect_.width() * 0.55);
-      gradient.setColorAt(0.0, fill.lighter(hovered ? 130 : 118));
-      gradient.setColorAt(1.0, fill.darker(hovered ? 108 : 120));
-      painter->setPen(outline);
-      painter->setBrush(gradient);
-      painter->drawPath(CirclePath(shape_rect_));
-      painter->setPen(QColor(255, 255, 255, 230));
-      painter->setFont(kind_font_);
-      painter->drawText(kind_badge_rect_, Qt::AlignCenter, KindBadge(kind_));
-      // Labels sit outside the filled circle — use dark text on light canvas.
-      painter->setPen(QColor(0x1e, 0x29, 0x3b));
-      painter->setFont(title_font_);
-      painter->drawText(title_rect_, Qt::AlignHCenter | Qt::AlignTop, title_text_);
-      if (!detail_text_.isEmpty()) {
-        painter->setPen(QColor(0x64, 0x74, 0x8b));
-        painter->setFont(detail_font_);
-        painter->drawText(detail_rect_, Qt::AlignHCenter | Qt::AlignTop, detail_text_);
-      }
-    } else if (kind_ == integration::GraphVertexKind::kChannel) {
-      QColor fill_color = fill;
-      if (activity_initialized_ && activity_hz_ <= 0.0) {
-        fill_color = fill_color.darker(130);
-      } else if (activity_hz_ > 0.0) {
-        fill_color = fill_color.lighter(108);
-      }
-      QLinearGradient gradient(shape_rect_.topLeft(), shape_rect_.bottomLeft());
-      gradient.setColorAt(0.0, fill_color.lighter(hovered ? 122 : 110));
-      gradient.setColorAt(1.0, fill_color.darker(hovered ? 108 : 118));
-      painter->setPen(outline);
-      painter->setBrush(gradient);
-      painter->drawPath(CapsulePath(shape_rect_));
-      const double cy = shape_rect_.center().y();
-      painter->setBrush(QColor(255, 255, 255, 220));
-      painter->setPen(Qt::NoPen);
-      painter->drawEllipse(QPointF(shape_rect_.left() + 9.0, cy), 4.0, 4.0);
-      painter->drawEllipse(QPointF(shape_rect_.right() - 9.0, cy), 4.0, 4.0);
-      painter->setPen(Qt::white);
-      painter->setFont(title_font_);
-      painter->drawText(title_rect_, Qt::AlignVCenter | Qt::AlignLeft, title_text_);
-      if (!detail_text_.isEmpty()) {
-        painter->setPen(activity_hz_ > 0.0 ? QColor(200, 255, 210, 230)
-                                           : QColor(255, 255, 255, 205));
-        painter->setFont(detail_font_);
-        painter->drawText(detail_rect_, Qt::AlignVCenter | Qt::AlignRight, detail_text_);
-      }
+      paintNodeCard(painter, fill, selected, hovered, emphasized);
+    } else if (kind_ == integration::GraphVertexKind::kService) {
+      paintServiceCard(painter, fill, selected, hovered, emphasized);
     } else {
-      QLinearGradient gradient(shape_rect_.topLeft(), shape_rect_.bottomRight());
-      gradient.setColorAt(0.0, fill.lighter(hovered ? 120 : 108));
-      gradient.setColorAt(1.0, fill.darker(hovered ? 110 : 122));
-      painter->setPen(outline);
-      painter->setBrush(gradient);
-      painter->drawPath(HexagonPath(shape_rect_));
-      painter->setPen(QColor(255, 255, 255, 225));
-      painter->setFont(kind_font_);
-      painter->drawText(kind_badge_rect_, Qt::AlignCenter, KindBadge(kind_));
-      painter->setFont(title_font_);
-      painter->drawText(title_rect_, Qt::AlignCenter, title_text_);
-      if (!detail_text_.isEmpty()) {
-        painter->setPen(QColor(255, 255, 255, 205));
-        painter->setFont(detail_font_);
-        painter->drawText(detail_rect_, Qt::AlignCenter, detail_text_);
-      }
+      paintChannelCapsule(painter, fill, selected, hovered, emphasized);
     }
 
     if (selected || emphasized) {
-      QPen highlight(QColor(255, 214, 90), emphasized ? 2.4 : 2.0);
+      QPen highlight(QColor(0x08, 0x91, 0xB2), emphasized ? 2.4 : 2.0);
       painter->setPen(highlight);
       painter->setBrush(Qt::NoBrush);
-      painter->drawPath(shape().translated(0, 0));
+      painter->drawPath(shape());
     }
   }
 
@@ -580,6 +567,163 @@ class GraphVertexItem : public QGraphicsObject {
   friend class GraphEdgeItem;
 
   void registerEdge(GraphEdgeItem* edge) { edges_.push_back(edge); }
+
+  QString nodeInitial() const {
+    const QString tail = ShortPathTail(full_label_);
+    for (const QChar ch : tail) {
+      if (ch.isLetterOrNumber()) {
+        return QString(ch).toUpper();
+      }
+    }
+    for (const QChar ch : full_label_) {
+      if (ch.isLetterOrNumber()) {
+        return QString(ch).toUpper();
+      }
+    }
+    return QStringLiteral("N");
+  }
+
+  void paintNodeCard(QPainter* painter, const QColor& accent, bool selected,
+                     bool hovered, bool emphasized) {
+    const QPainterPath card = RoundedCardPath(shape_rect_, kNodeRadius);
+    DrawCardShadow(painter, card);
+
+    // One cyan family: surface / border / avatar all from Autoviz accent.
+    const QColor surface_top =
+        (hovered || selected || emphasized) ? QColor(0xec, 0xfe, 0xff)
+                                            : QColor(0xff, 0xff, 0xff);
+    const QColor surface_bot =
+        (hovered || selected || emphasized) ? QColor(0xcf, 0xfa, 0xfe)
+                                            : QColor(0xf0, 0xf9, 0xff);
+    QLinearGradient surface(shape_rect_.topLeft(), shape_rect_.bottomLeft());
+    surface.setColorAt(0.0, surface_top);
+    surface.setColorAt(1.0, surface_bot);
+
+    const QColor border_color =
+        selected || emphasized ? accent : QColor(0x67, 0xe8, 0xf9);
+    painter->setPen(QPen(border_color, selected || emphasized ? 1.8 : 1.3));
+    painter->setBrush(surface);
+    painter->drawPath(card);
+
+    const QPointF avatar_c(shape_rect_.left() + 10.0 + kNodeAvatar * 0.5,
+                           shape_rect_.center().y());
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(accent);
+    painter->drawEllipse(avatar_c, kNodeAvatar * 0.5, kNodeAvatar * 0.5);
+    painter->setPen(QColor(255, 255, 255));
+    painter->setFont(kind_font_);
+    painter->drawText(
+        QRectF(avatar_c.x() - kNodeAvatar * 0.5, avatar_c.y() - kNodeAvatar * 0.5,
+               kNodeAvatar, kNodeAvatar),
+        Qt::AlignCenter, nodeInitial());
+
+    painter->setPen(QColor(0x1e, 0x29, 0x3b));
+    painter->setFont(title_font_);
+    painter->drawText(title_rect_, Qt::AlignVCenter | Qt::AlignLeft, title_text_);
+    if (!detail_text_.isEmpty()) {
+      painter->setPen(QColor(0x64, 0x74, 0x8b));
+      painter->setFont(detail_font_);
+      painter->drawText(detail_rect_, Qt::AlignVCenter | Qt::AlignLeft, detail_text_);
+    }
+  }
+
+  void paintServiceCard(QPainter* painter, const QColor& accent, bool selected,
+                        bool hovered, bool emphasized) {
+    const QPainterPath card = RoundedCardPath(shape_rect_, kNodeRadius);
+    DrawCardShadow(painter, card);
+
+    // Light rose card — same language as node / channel.
+    const bool hot = hovered || selected || emphasized;
+    QLinearGradient surface(shape_rect_.topLeft(), shape_rect_.bottomLeft());
+    if (hot) {
+      surface.setColorAt(0.0, QColor(0xff, 0xe4, 0xe6));  // rose-100
+      surface.setColorAt(1.0, QColor(0xfe, 0xcd, 0xd3));  // rose-200
+    } else {
+      surface.setColorAt(0.0, QColor(0xff, 0xf1, 0xf2));  // rose-50
+      surface.setColorAt(1.0, QColor(0xff, 0xe4, 0xe6));  // rose-100
+    }
+    const QColor border =
+        selected || emphasized ? accent : QColor(0xfe, 0xa3, 0xb4);  // rose-300
+    painter->setPen(QPen(border, selected || emphasized ? 1.8 : 1.3));
+    painter->setBrush(surface);
+    painter->drawPath(card);
+
+    const QPointF avatar_c(shape_rect_.left() + 10.0 + kNodeAvatar * 0.5,
+                           shape_rect_.center().y());
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(accent);
+    painter->drawEllipse(avatar_c, kNodeAvatar * 0.5, kNodeAvatar * 0.5);
+    painter->setPen(QColor(255, 255, 255));
+    painter->setFont(kind_font_);
+    painter->drawText(
+        QRectF(avatar_c.x() - kNodeAvatar * 0.5, avatar_c.y() - kNodeAvatar * 0.5,
+               kNodeAvatar, kNodeAvatar),
+        Qt::AlignCenter, QStringLiteral("S"));
+
+    painter->setPen(QColor(0x1e, 0x29, 0x3b));
+    painter->setFont(title_font_);
+    painter->drawText(title_rect_, Qt::AlignVCenter | Qt::AlignLeft, title_text_);
+    if (!detail_text_.isEmpty()) {
+      painter->setPen(QColor(0x64, 0x74, 0x8b));
+      painter->setFont(detail_font_);
+      painter->drawText(detail_rect_, Qt::AlignVCenter | Qt::AlignLeft, detail_text_);
+    }
+  }
+
+  void paintChannelCapsule(QPainter* painter, const QColor& accent, bool selected,
+                           bool hovered, bool emphasized) {
+    const QPainterPath capsule = CapsulePath(shape_rect_);
+    DrawCardShadow(painter, capsule);
+
+    const ActivityBand band = activityBand();
+    const QColor activity = ColorForActivityBand(band);
+    const bool hot = hovered || selected || emphasized;
+    QLinearGradient surface(shape_rect_.topLeft(), shape_rect_.bottomLeft());
+    if (band == ActivityBand::kHealthy && !hot) {
+      surface.setColorAt(0.0, QColor(0xec, 0xfd, 0xf5));  // emerald-50
+      surface.setColorAt(1.0, QColor(0xd1, 0xfa, 0xe5));  // emerald-100
+    } else if (band == ActivityBand::kLow && !hot) {
+      surface.setColorAt(0.0, QColor(0xff, 0xfb, 0xeb));  // amber-50
+      surface.setColorAt(1.0, QColor(0xfe, 0xf3, 0xc7));  // amber-100
+    } else if (band == ActivityBand::kSilent && !hot) {
+      surface.setColorAt(0.0, QColor(0xf8, 0xfa, 0xfc));  // slate-50
+      surface.setColorAt(1.0, QColor(0xf1, 0xf5, 0xf9));  // slate-100
+    } else if (hot) {
+      surface.setColorAt(0.0, QColor(0xf3, 0xe8, 0xff));  // violet-100
+      surface.setColorAt(1.0, QColor(0xe9, 0xd5, 0xff));  // violet-200
+    } else {
+      surface.setColorAt(0.0, QColor(0xfa, 0xf5, 0xff));  // violet-50
+      surface.setColorAt(1.0, QColor(0xf3, 0xe8, 0xff));  // violet-100
+    }
+
+    QColor border = accent;
+    if (selected || emphasized) {
+      border = accent;
+    } else if (activity_initialized_) {
+      border = activity;
+    } else {
+      border = QColor(0xd8, 0xb4, 0xfe);  // violet-300
+    }
+    painter->setPen(QPen(border, selected || emphasized ? 1.8 : 1.3));
+    painter->setBrush(surface);
+    painter->drawPath(capsule);
+
+    const double cy = shape_rect_.center().y();
+    const QColor port = activity_initialized_ ? activity : QColor(0xc4, 0xb5, 0xfd);
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(port);
+    painter->drawEllipse(QPointF(shape_rect_.left() + 9.0, cy), 3.6, 3.6);
+    painter->drawEllipse(QPointF(shape_rect_.right() - 9.0, cy), 3.6, 3.6);
+
+    painter->setPen(QColor(0x1e, 0x29, 0x3b));
+    painter->setFont(title_font_);
+    painter->drawText(title_rect_, Qt::AlignVCenter | Qt::AlignLeft, title_text_);
+    if (!detail_text_.isEmpty()) {
+      painter->setPen(activity_initialized_ ? activity : QColor(0x64, 0x74, 0x8b));
+      painter->setFont(detail_font_);
+      painter->drawText(detail_rect_, Qt::AlignVCenter | Qt::AlignRight, detail_text_);
+    }
+  }
 
   void layoutLabel() {
     const QFontMetricsF title_metrics(title_font_);
@@ -613,46 +757,78 @@ class GraphVertexItem : public QGraphicsObject {
     }
 
     if (kind_ == integration::GraphVertexKind::kNode) {
-      title_text_ = title_metrics.elidedText(full_label_, Qt::ElideMiddle, 180);
-      detail_text_ = detail_metrics.elidedText(ShortTypeName(full_detail_), Qt::ElideMiddle,
-                                               180);
-      const double diameter = std::clamp(
-          std::max(kNodeDiameterMin,
-                   std::max(title_metrics.height() + 28.0,
-                            detail_text_.isEmpty() ? kNodeDiameterMin
-                                                   : detail_metrics.height() + 16.0)),
-          kNodeDiameterMin, kNodeDiameterMax);
-      shape_rect_ = QRectF(-diameter * 0.5, -diameter * 0.5, diameter, diameter);
-      kind_badge_rect_ = QRectF(shape_rect_.left() + 8.0, shape_rect_.top() + 8.0,
-                                shape_rect_.width() - 16.0, 12.0);
-      const double label_top = shape_rect_.bottom() + 6.0;
-      title_rect_ =
-          QRectF(-90.0, label_top, 180.0, title_metrics.height() + 2.0);
-      detail_rect_ = detail_text_.isEmpty()
-                         ? QRectF()
-                         : QRectF(-90.0, title_rect_.bottom() + 2.0, 180.0,
-                                  detail_metrics.height() + 2.0);
-      content_rect_ = shape_rect_.united(title_rect_);
-      if (!detail_rect_.isEmpty()) {
-        content_rect_ = content_rect_.united(detail_rect_);
+      const QString raw_detail = ShortTypeName(full_detail_);
+      const bool has_detail = !raw_detail.isEmpty();
+      const double height = has_detail ? kNodeHeight + 10.0 : kNodeHeight;
+      constexpr double kLeftPad = 10.0 + kNodeAvatar + 10.0;
+      constexpr double kRightPad = 14.0;
+      const double text_w = title_metrics.horizontalAdvance(full_label_) +
+                            (has_detail ? detail_metrics.horizontalAdvance(raw_detail)
+                                        : 0.0);
+      const double width = std::clamp(kLeftPad + text_w + kRightPad, kNodeWidthMin,
+                                      kNodeWidthMax);
+      shape_rect_ = QRectF(-width * 0.5, -height * 0.5, width, height);
+      const double inner_w = width - kLeftPad - kRightPad;
+      title_text_ = title_metrics.elidedText(full_label_, Qt::ElideMiddle,
+                                             static_cast<int>(inner_w));
+      detail_text_ =
+          has_detail ? detail_metrics.elidedText(raw_detail, Qt::ElideMiddle,
+                                                 static_cast<int>(inner_w))
+                     : QString();
+      if (has_detail) {
+        const double block_h =
+            title_metrics.height() + 2.0 + detail_metrics.height();
+        const double top = shape_rect_.center().y() - block_h * 0.5;
+        title_rect_ = QRectF(shape_rect_.left() + kLeftPad, top, inner_w,
+                             title_metrics.height() + 1.0);
+        detail_rect_ = QRectF(shape_rect_.left() + kLeftPad, title_rect_.bottom(),
+                              inner_w, detail_metrics.height() + 1.0);
+      } else {
+        title_rect_ =
+            QRectF(shape_rect_.left() + kLeftPad, shape_rect_.top(), inner_w, height);
+        detail_rect_ = QRectF();
       }
+      kind_badge_rect_ = QRectF();
+      content_rect_ = shape_rect_.adjusted(-3.0, -3.0, 3.0, 5.0);
       return;
     }
 
-    title_text_ = title_metrics.elidedText(ShortPathTail(full_label_), Qt::ElideMiddle,
-                                           static_cast<int>(kServiceWidth - 20.0));
-    detail_text_ = detail_metrics.elidedText(ShortTypeName(full_detail_), Qt::ElideMiddle,
-                                             static_cast<int>(kServiceWidth - 20.0));
-    shape_rect_ = QRectF(-kServiceWidth * 0.5, -kServiceHeight * 0.5, kServiceWidth,
-                         kServiceHeight);
-    kind_badge_rect_ = QRectF(-40.0, shape_rect_.top() + 18.0, 80.0, 12.0);
-    title_rect_ = QRectF(shape_rect_.left() + 10.0, shape_rect_.center().y() - 8.0,
-                         shape_rect_.width() - 20.0, title_metrics.height() + 2.0);
-    detail_rect_ = detail_text_.isEmpty()
-                       ? QRectF()
-                       : QRectF(shape_rect_.left() + 10.0, title_rect_.bottom() + 2.0,
-                                shape_rect_.width() - 20.0, detail_metrics.height() + 2.0);
-    content_rect_ = shape_rect_;
+    if (kind_ == integration::GraphVertexKind::kService) {
+      const QString raw_title = ShortPathTail(full_label_);
+      const QString raw_detail = ShortTypeName(full_detail_);
+      const bool has_detail = !raw_detail.isEmpty();
+      const double height = has_detail ? kServiceHeight + 10.0 : kServiceHeight;
+      constexpr double kLeftPad = 10.0 + kNodeAvatar + 10.0;
+      constexpr double kRightPad = 14.0;
+      const double text_w =
+          title_metrics.horizontalAdvance(raw_title) +
+          (has_detail ? detail_metrics.horizontalAdvance(raw_detail) : 0.0);
+      const double width = std::clamp(kLeftPad + text_w + kRightPad, kServiceWidthMin,
+                                      kServiceWidthMax);
+      shape_rect_ = QRectF(-width * 0.5, -height * 0.5, width, height);
+      const double inner_w = width - kLeftPad - kRightPad;
+      title_text_ = title_metrics.elidedText(raw_title, Qt::ElideMiddle,
+                                             static_cast<int>(inner_w));
+      detail_text_ =
+          has_detail ? detail_metrics.elidedText(raw_detail, Qt::ElideMiddle,
+                                                 static_cast<int>(inner_w))
+                     : QString();
+      if (has_detail) {
+        const double block_h =
+            title_metrics.height() + 2.0 + detail_metrics.height();
+        const double top = shape_rect_.center().y() - block_h * 0.5;
+        title_rect_ = QRectF(shape_rect_.left() + kLeftPad, top, inner_w,
+                             title_metrics.height() + 1.0);
+        detail_rect_ = QRectF(shape_rect_.left() + kLeftPad, title_rect_.bottom(),
+                              inner_w, detail_metrics.height() + 1.0);
+      } else {
+        title_rect_ =
+            QRectF(shape_rect_.left() + kLeftPad, shape_rect_.top(), inner_w, height);
+        detail_rect_ = QRectF();
+      }
+      kind_badge_rect_ = QRectF();
+      content_rect_ = shape_rect_.adjusted(-3.0, -3.0, 3.0, 5.0);
+    }
   }
 
   int edgeBundleIndex(const GraphVertexItem* peer, const GraphEdgeItem* via_edge,
@@ -721,6 +897,14 @@ class GraphEdgeItem : public QGraphicsObject {
   GraphVertexItem* toVertex() const { return to_; }
   integration::GraphEdgeKind edgeKind() const { return kind_; }
 
+  void setActivityBand(ActivityBand band) {
+    if (activity_band_ == band) {
+      return;
+    }
+    activity_band_ = band;
+    update();
+  }
+
   void setVisualMode(GraphVisualMode mode) {
     if (visual_mode_ == mode) {
       return;
@@ -769,6 +953,15 @@ class GraphEdgeItem : public QGraphicsObject {
 
     painter->setRenderHint(QPainter::Antialiasing, true);
     QColor color = ColorForEdge(kind_);
+    if (kind_ == integration::GraphEdgeKind::kPublish ||
+        kind_ == integration::GraphEdgeKind::kSubscribe) {
+      if (activity_band_ != ActivityBand::kUnknown) {
+        const QColor activity = ColorForActivityBand(activity_band_);
+        color = QColor((color.red() * 2 + activity.red()) / 3,
+                       (color.green() * 2 + activity.green()) / 3,
+                       (color.blue() * 2 + activity.blue()) / 3, color.alpha());
+      }
+    }
     double width = kind_ == integration::GraphEdgeKind::kRelay ? 1.4 : 1.8;
     if (visual_mode_ == GraphVisualMode::kDimmed) {
       color.setAlpha(28);
@@ -834,7 +1027,7 @@ class GraphEdgeItem : public QGraphicsObject {
         metrics.boundingRect(label).adjusted(-4.0, -2.0, 4.0, 2.0);
     const QRectF bg_rect = text_rect.translated(label_pos - text_rect.center());
 
-    painter->setPen(QPen(QColor(0xcb, 0xd5, 0xe1), 1.0));
+    painter->setPen(QPen(QColor(0xc7, 0xe0, 0xf0), 1.0));
     painter->setBrush(QColor(255, 255, 255, 240));
     painter->drawRoundedRect(bg_rect, 3.0, 3.0);
     painter->setPen(color.darker(115));
@@ -893,6 +1086,7 @@ class GraphEdgeItem : public QGraphicsObject {
   QPointF c1_;
   QPointF c2_;
   GraphVisualMode visual_mode_ = GraphVisualMode::kNormal;
+  ActivityBand activity_band_ = ActivityBand::kUnknown;
   double flow_phase_ = 0.0;
   bool show_label_always_ = false;
   bool hovered_ = false;
@@ -943,19 +1137,10 @@ QPointF GraphVertexItem::connectionPoint(const GraphVertexItem* other,
     return QPointF(to_right ? rect.right() : rect.left(), center.y() + spread_offset);
   }
 
-  if (kind_ == integration::GraphVertexKind::kNode) {
-    const double radius = rect.width() * 0.5;
-    if (std::abs(delta.x()) >= std::abs(delta.y()) * 0.65) {
-      return QPointF(center.x() + (delta.x() >= 0.0 ? radius : -radius),
-                     center.y() + spread_offset);
-    }
-    const double y = center.y() + (delta.y() >= 0.0 ? radius : -radius);
-    return QPointF(center.x() + spread_offset, y);
-  }
-
+  // Node / Service cards: attach to the nearer side of the rounded rect.
   const double rx = rect.width() * 0.5;
   const double ry = rect.height() * 0.5;
-  if (std::abs(delta.x()) >= std::abs(delta.y())) {
+  if (std::abs(delta.x()) >= std::abs(delta.y()) * 0.55) {
     return QPointF(center.x() + (delta.x() >= 0.0 ? rx : -rx),
                    center.y() + spread_offset);
   }
@@ -990,7 +1175,9 @@ ChannelGraphView::ChannelGraphView(QWidget* parent) : QGraphicsView(parent) {
   setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
   setResizeAnchor(QGraphicsView::AnchorViewCenter);
   setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
-  setBackgroundBrush(QColor(0xf8, 0xf9, 0xfb));
+  setFrameShape(QFrame::NoFrame);
+  setBackgroundBrush(QColor(0xe0, 0xf2, 0xfe));
+  setStyleSheet(style::sheet(QStringLiteral("channel_graph")));
 
   flow_timer_ = new QTimer(this);
   flow_timer_->setInterval(33);
@@ -1157,19 +1344,30 @@ void ChannelGraphView::showEvent(QShowEvent* event) {
   zoomToFit();
 }
 
+namespace {
+
+GraphVertexItem* VertexItemFromSceneItem(QGraphicsItem* item) {
+  while (item != nullptr) {
+    if (auto* vertex = dynamic_cast<GraphVertexItem*>(item)) {
+      return vertex;
+    }
+    item = item->parentItem();
+  }
+  return nullptr;
+}
+
+}  // namespace
+
 void ChannelGraphView::mousePressEvent(QMouseEvent* event) {
   if (event->button() == Qt::LeftButton) {
     QGraphicsItem* item = itemAt(event->pos());
-    auto* vertex = dynamic_cast<GraphVertexItem*>(item);
-    if (vertex == nullptr && item != nullptr) {
-      vertex = dynamic_cast<GraphVertexItem*>(item->topLevelItem());
-    }
+    GraphVertexItem* vertex = VertexItemFromSceneItem(item);
     if (vertex != nullptr) {
       scene_->clearSelection();
       vertex->setSelected(true);
       applyFocusHighlight(vertex->vertexId());
-      event->accept();
-      // Still allow the base class to begin a potential pan if the user drags.
+      // ScrollHandDrag steals left-button moves; disable so ItemIsMovable works.
+      setDragMode(QGraphicsView::NoDrag);
       QGraphicsView::mousePressEvent(event);
       return;
     }
@@ -1178,16 +1376,18 @@ void ChannelGraphView::mousePressEvent(QMouseEvent* event) {
       clearFocusHighlight();
     }
   }
+  setDragMode(QGraphicsView::ScrollHandDrag);
   QGraphicsView::mousePressEvent(event);
+}
+
+void ChannelGraphView::mouseReleaseEvent(QMouseEvent* event) {
+  QGraphicsView::mouseReleaseEvent(event);
+  setDragMode(QGraphicsView::ScrollHandDrag);
 }
 
 void ChannelGraphView::mouseDoubleClickEvent(QMouseEvent* event) {
   if (event->button() == Qt::LeftButton) {
-    QGraphicsItem* item = itemAt(event->pos());
-    auto* vertex = dynamic_cast<GraphVertexItem*>(item);
-    if (vertex == nullptr && item != nullptr) {
-      vertex = dynamic_cast<GraphVertexItem*>(item->topLevelItem());
-    }
+    GraphVertexItem* vertex = VertexItemFromSceneItem(itemAt(event->pos()));
     if (vertex != nullptr) {
       scene_->clearSelection();
       vertex->setSelected(true);
@@ -1199,6 +1399,38 @@ void ChannelGraphView::mouseDoubleClickEvent(QMouseEvent* event) {
     }
   }
   QGraphicsView::mouseDoubleClickEvent(event);
+}
+
+void ChannelGraphView::contextMenuEvent(QContextMenuEvent* event) {
+  GraphVertexItem* vertex = VertexItemFromSceneItem(itemAt(event->pos()));
+  if (vertex != nullptr) {
+    scene_->clearSelection();
+    vertex->setSelected(true);
+    applyFocusHighlight(vertex->vertexId());
+    emit vertexContextMenuRequested(vertex->vertexId(), vertex->vertexKind(),
+                                    vertex->fullLabel(), vertex->fullDetail(),
+                                    event->globalPos());
+    event->accept();
+    return;
+  }
+  QGraphicsView::contextMenuEvent(event);
+}
+
+std::vector<std::pair<QString, QString>> ChannelGraphView::channelVertices()
+    const {
+  std::vector<std::pair<QString, QString>> out;
+  if (scene_ == nullptr) {
+    return out;
+  }
+  for (QGraphicsItem* item : scene_->items()) {
+    auto* vertex = dynamic_cast<GraphVertexItem*>(item);
+    if (vertex == nullptr ||
+        vertex->vertexKind() != integration::GraphVertexKind::kChannel) {
+      continue;
+    }
+    out.emplace_back(vertex->fullLabel(), vertex->fullDetail());
+  }
+  return out;
 }
 
 void ChannelGraphView::onVertexMoved() {
@@ -1218,11 +1450,16 @@ void ChannelGraphView::onSelectionChanged() {
     auto* vertex = dynamic_cast<GraphVertexItem*>(item);
     if (vertex != nullptr) {
       applyFocusHighlight(vertex->vertexId());
+      emit vertexSelectionChanged(true, vertex->vertexId(), vertex->vertexKind(),
+                                  vertex->fullLabel(), vertex->fullDetail());
       return;
     }
   }
   if (selected.isEmpty()) {
     clearFocusHighlight();
+    emit vertexSelectionChanged(false, QString(),
+                                integration::GraphVertexKind::kNode, QString(),
+                                QString());
   }
 }
 
@@ -1254,6 +1491,27 @@ void ChannelGraphView::onActivityTick() {
         integration::ChannelStatsRegistry::instance().stats(
             vertex->fullLabel().toStdString());
     vertex->setActivityHz(stats.frequency_hz);
+  }
+  for (QGraphicsItem* item : scene_->items()) {
+    auto* edge = dynamic_cast<GraphEdgeItem*>(item);
+    if (edge == nullptr) {
+      continue;
+    }
+    GraphVertexItem* channel = nullptr;
+    if (edge->fromVertex() != nullptr &&
+        edge->fromVertex()->vertexKind() ==
+            integration::GraphVertexKind::kChannel) {
+      channel = edge->fromVertex();
+    } else if (edge->toVertex() != nullptr &&
+               edge->toVertex()->vertexKind() ==
+                   integration::GraphVertexKind::kChannel) {
+      channel = edge->toVertex();
+    }
+    if (channel == nullptr) {
+      edge->setActivityBand(ActivityBand::kUnknown);
+      continue;
+    }
+    edge->setActivityBand(channel->activityBand());
   }
 }
 
@@ -1537,7 +1795,7 @@ void ChannelGraphView::applyAutoLayout(const integration::TopologyGraph& graph) 
 
   int orphan_index = 0;
   const double orphan_x =
-      layout_.service_origin_x - kServiceWidth * 0.5 - kNodeDiameterMax - 80.0;
+      layout_.service_origin_x - kServiceWidthMax * 0.5 - kNodeWidthMax - 72.0;
   for (const integration::GraphVertex& vertex : graph.vertices) {
     if (vertex.kind != integration::GraphVertexKind::kNode) {
       continue;

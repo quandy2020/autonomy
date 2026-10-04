@@ -7,11 +7,11 @@
 | 路径 | 用途 |
 |------|------|
 | [`docker/`](docker/) | 开发/CI 构建镜像与 `run-docker.sh` |
-| [`linux/`](linux/) | `.desktop`、AppStream metainfo、AppRun、图标 |
-| [`macos/`](macos/) | macOS（Intel / Apple Silicon）Homebrew 构建与运行 |
-| [`windows/`](windows/) | Windows 安装说明（见 [`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md)） |
+| [`linux/`](linux/) | Ubuntu：依赖安装、构建、AppDir / `.deb` |
+| [`macos/`](macos/) | macOS：Homebrew 构建、`Autoviz.app` / DMG 打包脚本 |
+| [`windows/`](windows/) | Windows 安装说明（见 [`docs/guide/deployment.md`](../docs/guide/deployment.md)） |
 
-完整运行时依赖、环境变量与安装布局见 [`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md)。
+完整运行时依赖、环境变量与安装布局见 [`docs/guide/deployment.md`](../docs/guide/deployment.md)。
 
 ## 快速开始（Docker）
 
@@ -21,15 +21,15 @@
 # 从 autoviz 包根目录
 ./deploy/docker/run-docker.sh ubuntu Release
 
-# 启用 QML Vehicle 3D + Ogre
-AUTOVIZ_EXTRA_CONFIGURE="--qml --ogre" ./deploy/docker/run-docker.sh ubuntu
+# 启用 Ogre（已默认；可省略）
+./deploy/docker/run-docker.sh ubuntu Release
 ```
 
 等价于容器内执行：
 
 ```bash
 cd /project/source/autoviz
-python3 tools/configure.py --release --qml
+python3 tools/configure.py --release
 python3 tools/build.py
 ```
 
@@ -46,29 +46,22 @@ docker run --rm -it \
   -v /path/to/src/autonomy:/project/source \
   -w /project/source/autoviz \
   spacehero \
-  bash -lc 'python3 tools/configure.py --release --qml && python3 tools/build.py'
+  bash -lc 'python3 tools/configure.py --release && python3 tools/build.py'
 ```
 
-GUI 运行需挂载 X11/Wayland 与 GPU（`-e DISPLAY -v /tmp/.X11-unix` 等），见 [`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md)。
+GUI 运行需挂载 X11/Wayland 与 GPU（`-e DISPLAY -v /tmp/.X11-unix` 等），见 [`docs/guide/deployment.md`](../docs/guide/deployment.md)。
 
-## Linux 桌面集成
+## Linux / Ubuntu
 
-安装后（`cmake --install autoviz/build --prefix /opt/autonomy`）可手动安装桌面文件：
-
-```bash
-cmake -S . -B build
-cmake --build build --target autoviz
-cmake --install build --prefix /opt/autoviz
-```
-
-或从模板生成：
+推荐 **Ubuntu 24.04**（系统 Qt 6.4，含 `OpenGLWidgets`）。步骤见 [`linux/README.md`](linux/README.md)。
 
 ```bash
-sed -e 's/@AUTOVIZ_APP_NAME@/autoviz/g' \
-    deploy/linux/org.autonomy.autoviz.desktop.in > org.autonomy.autoviz.desktop
+./deploy/linux/install_deps.sh
+./deploy/linux/build.sh --release --deb
+sudo apt install ./dist/linux/autoviz_*.deb
 ```
 
 ## 与主仓库 Docker 的关系
 
 - **`src/autonomy/docker/`**：完整 Autonomy 栈（Ceres、OpenCV、gRPC 等 thirdparty 安装），SpaceHero 等开发环境。
-- **`autoviz/deploy/docker/`**：Autoviz 专用 entrypoint（调用 `tools/configure.py` / `tools/build.py`）与 **Qt6/QML 运行时包**；默认 `ubuntu:22.04` 基础镜像**不含** Autonomy thirdparty，完整 configure 请在 SpaceHero 或 `AUTONOMY_BASE_IMAGE` 指向的镜像内运行。
+- **`autoviz/deploy/docker/`**：Autoviz 专用 entrypoint（调用 `tools/configure.py` / `tools/build.py`）。默认基础镜像是 `ubuntu:22.04`（系统 Qt 6.2，没有 `OpenGLWidgets`）；本机部署请用 [`linux/`](linux/) 的 Ubuntu 24.04 流程。完整 configure 请在 SpaceHero 或 `AUTONOMY_BASE_IMAGE` 指向的镜像内运行。

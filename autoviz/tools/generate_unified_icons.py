@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Sync Autoviz icons directly from a local ROS 2 RViz checkout (no frames/wrappers)."""
+"""Sync Autoviz icons from a local ROS 2 RViz checkout, storing SVG only."""
 
 from __future__ import annotations
 
+import base64
 import os
 import shutil
 from pathlib import Path
@@ -24,82 +25,92 @@ RVIZ_ICON_ROOTS = [
 ]
 
 # Autoviz-only resource path -> RViz source filename (under icons/ or icons/classes/)
+# Destinations are always .svg (PNG sources are converted on copy).
 FALLBACK_BY_DEST: dict[str, str] = {
-    # panels (Foxglove) -> closest RViz display
-    "icons/panels/panel_3d.png": "classes/RobotModel.png",
-    "icons/panels/panel_image.png": "classes/Image.png",
-    "icons/panels/panel_map.png": "classes/Map.png",
-    "icons/panels/panel_plot.png": "classes/Path.png",
-    "icons/panels/panel_raw_messages.png": "classes/FlatColor.svg",
-    "icons/panels/panel_transform_tree.png": "classes/TF.png",
-    "icons/panels/panel_data_source.png": "classes/Time.png",
-    "icons/panels/panel_parameters.png": "options.png",
-    "icons/panels/panel_publish.png": "classes/PublishPoint.svg",
-    "icons/panels/panel_table.png": "classes/GridCells.png",
-    "icons/panels/panel_teleop.png": "classes/Interact.png",
-    "icons/panels/panel_gauge.png": "classes/Effort.png",
-    "icons/panels/panel_indicator.png": "classes/Illuminance.png",
-    "icons/panels/panel_state.png": "classes/PoseArray.png",
-    "icons/panels/panel_service.png": "classes/Wrench.png",
-    "icons/panels/panel_log.png": "classes/Help.svg",
-    "icons/panels/panel_channel_graph.png": "classes/TF.png",
-    "icons/panels/panel_markdown.png": "classes/Help.svg",
-    "icons/panels/panel_stack.png": "classes/Group.png",
-    "icons/panels/panel_tab.png": "classes/Displays.svg",
-    "icons/panels/panel_audio.png": "default_class_icon.png",
-    # plot toolbar — RViz2 semantics (not Foxglove plot chrome)
-    "icons/plot/plot_reset_view.svg": "rotate.svg",
-    "icons/plot/plot_legend.png": "classes/Displays.svg",
-    # chrome / sidebars
-    "icons/add_panel.png": "plus.png",
-    "icons/sidebar_left.png": "left_dock.svg",
-    "icons/sidebar_right.png": "right_dock.svg",
-    "icons/global_status.png": "ok.png",
-    "icons/aviz.png": "default_package_icon.png",
-    # menus
-    "icons/menu/open_config.png": "package.png",
-    "icons/menu/save_config.png": "package.png",
-    "icons/menu/save_as.png": "package.png",
-    "icons/menu/recent.png": "rotate.svg",
-    "icons/menu/file.png": "package.png",
-    "icons/menu/config_file.png": "package.png",
-    "icons/menu/layout.png": "left_dock.svg",
-    "icons/menu/reset_layout.png": "rotate.svg",
-    "icons/menu/add_panel.png": "plus.png",
-    "icons/menu/camera.png": "classes/Camera.png",
-    "icons/menu/backend.png": "default_package_icon.png",
-    "icons/menu/orbit.png": "rotate_cam.svg",
-    "icons/menu/xy_orbit.png": "rotate.svg",
-    "icons/menu/top_down.png": "classes/Grid.png",
-    "icons/menu/top_down_ortho.png": "classes/GridCells.png",
-    "icons/menu/third_person.png": "classes/RobotModel.png",
-    "icons/menu/fps.png": "move2d.svg",
-    "icons/menu/opengl.png": "classes/DepthCloud.png",
-    "icons/menu/ogre.png": "classes/RobotModel.png",
-    "icons/menu/help.png": "classes/Help.svg",
-    "icons/menu/about.png": "classes/Help.svg",
-    "icons/menu/settings.png": "options.png",
-    "icons/menu/view.png": "classes/Views.svg",
-    "icons/menu/app.png": "default_package_icon.png",
-    "icons/menu/screenshot.png": "classes/Camera.png",
-    "icons/menu/quit.png": "close.png",
-    # autoviz class aliases
-    "icons/classes/CameraInfo.png": "classes/Camera.png",
-    "icons/classes/Imu.png": "classes/Effort.png",
+    "icons/panels/3d.svg": "classes/RobotModel.png",
+    "icons/panels/image.svg": "classes/Image.png",
+    "icons/panels/map.svg": "classes/Map.png",
+    "icons/panels/plot.svg": "classes/Path.png",
+    "icons/panels/raw_messages.svg": "classes/FlatColor.svg",
+    "icons/panels/transform_tree.svg": "classes/TF.png",
+    "icons/panels/data_source.svg": "classes/Time.png",
+    "icons/panels/publish.svg": "classes/PublishPoint.svg",
+    "icons/panels/teleop.svg": "classes/Interact.png",
+    "icons/panels/service.svg": "classes/Wrench.png",
+    "icons/panels/channel_graph.svg": "classes/TF.png",
+    "icons/panels/stack.svg": "classes/Group.png",
+    "icons/panels/tab.svg": "classes/Displays.svg",
+    "icons/plot/reset_view.svg": "rotate.svg",
+    "icons/plot/legend.svg": "classes/Displays.svg",
+    "icons/tool/add_panel.svg": "plus.png",
+    "icons/dock/sidebar_left.svg": "left_dock.svg",
+    "icons/dock/sidebar_right.svg": "right_dock.svg",
+    "icons/status/global.svg": "ok.png",
+    "icons/aviz.svg": "default_package_icon.png",
+    "icons/menu/open_config.svg": "package.png",
+    "icons/menu/save_config.svg": "package.png",
+    "icons/menu/save_as.svg": "package.png",
+    "icons/menu/recent.svg": "rotate.svg",
+    "icons/menu/file.svg": "package.png",
+    "icons/menu/config_file.svg": "package.png",
+    "icons/menu/layout.svg": "left_dock.svg",
+    "icons/menu/reset_layout.svg": "rotate.svg",
+    "icons/menu/add_panel.svg": "plus.png",
+    "icons/menu/camera.svg": "classes/Camera.png",
+    "icons/menu/backend.svg": "default_package_icon.png",
+    "icons/menu/orbit.svg": "rotate_cam.svg",
+    "icons/menu/xy_orbit.svg": "rotate.svg",
+    "icons/menu/top_down.svg": "classes/Grid.png",
+    "icons/menu/top_down_ortho.svg": "classes/GridCells.png",
+    "icons/menu/third_person.svg": "classes/RobotModel.png",
+    "icons/menu/fps.svg": "move2d.svg",
+    "icons/menu/opengl.svg": "classes/DepthCloud.png",
+    "icons/menu/ogre.svg": "classes/RobotModel.png",
+    "icons/menu/help.svg": "classes/Help.svg",
+    "icons/menu/about.svg": "classes/Help.svg",
+    "icons/menu/settings.svg": "options.png",
+    "icons/menu/view.svg": "classes/Views.svg",
+    "icons/menu/app.svg": "default_package_icon.png",
+    "icons/menu/screenshot.svg": "classes/Camera.png",
+    "icons/menu/quit.svg": "close.png",
+    "icons/classes/CameraInfo.svg": "classes/Camera.png",
+    "icons/classes/Imu.svg": "classes/Effort.png",
     "icons/classes/Wrench.svg": "classes/Wrench.png",
-    "icons/classes/Selection.png": "classes/Selection.png",
-    # strata -> default
-    "icons/classes/StrataBuilding.png": "default_class_icon.png",
-    "icons/classes/StrataCanvasLabel.png": "default_class_icon.png",
-    "icons/classes/StrataFov.png": "classes/FocusCamera.svg",
-    "icons/classes/StrataIotBubble.png": "default_class_icon.png",
-    "icons/classes/StrataLabelBubble.png": "default_class_icon.png",
-    "icons/classes/StrataPoi.png": "classes/Marker.png",
-    "icons/classes/StrataRoadGraph.png": "classes/Path.png",
-    "icons/classes/StrataRobot.png": "classes/RobotModel.png",
-    "icons/classes/StrataRobot3D.png": "classes/RobotModel.png",
-    "icons/classes/StrataSemanticZone.png": "classes/Polygon.png",
+    "icons/classes/Selection.svg": "classes/Selection.png",
 }
+
+
+def png_to_embedded_svg(png_path: Path, svg_path: Path) -> None:
+    from PIL import Image
+
+    with Image.open(png_path) as im:
+        w, h = im.size
+    data = base64.b64encode(png_path.read_bytes()).decode("ascii")
+    svg_path.write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        f'<svg xmlns="http://www.w3.org/2000/svg" '
+        f'xmlns:xlink="http://www.w3.org/1999/xlink" '
+        f'width="{w}" height="{h}" viewBox="0 0 {w} {h}">\n'
+        f'  <image width="{w}" height="{h}" '
+        f'xlink:href="data:image/png;base64,{data}"/>\n'
+        f"</svg>\n",
+        encoding="utf-8",
+    )
+
+
+def convert_png_file_to_svg(png_path: Path, svg_path: Path) -> None:
+    """Wrap PNG as SVG with embedded raster — preserves icon fidelity."""
+    png_to_embedded_svg(png_path, svg_path)
+
+
+def ensure_svg(path: Path) -> Path:
+    """If path is PNG, convert beside it to SVG and remove PNG."""
+    if path.suffix.lower() != ".png":
+        return path
+    svg_path = path.with_suffix(".svg")
+    convert_png_file_to_svg(path, svg_path)
+    path.unlink(missing_ok=True)
+    return svg_path
 
 
 def build_rviz_index() -> dict[str, Path]:
@@ -132,10 +143,9 @@ def resolve_source(index: dict[str, Path], spec: str) -> Path | None:
 
 
 def copy_icon(src: Path, dest: Path) -> Path:
-    """Copy icon; keep source extension so SVG is never stored as .png."""
+    """Copy icon keeping original format (PNG stays PNG, SVG stays SVG)."""
+    dest = dest.with_suffix(src.suffix.lower())
     dest.parent.mkdir(parents=True, exist_ok=True)
-    if src.suffix.lower() != dest.suffix.lower():
-        dest = dest.with_suffix(src.suffix)
     shutil.copy2(src, dest)
     return dest
 
@@ -149,9 +159,11 @@ def sync_all_rviz_classes(index: dict[str, Path], copied: set[str]) -> int:
             continue
         if rel_key.count("/") > 1:
             continue
-        name = src.name
-        dest = ICONS / "classes" / name
-        rel_dest = f"icons/classes/{name}"
+        name = src.stem
+        if name == "Tool Properties":
+            name = "ToolProperties"
+        dest = ICONS / "classes" / (name + src.suffix.lower())
+        rel_dest = f"icons/classes/{dest.name}"
         if rel_dest in copied:
             continue
         copy_icon(src, dest)
@@ -162,7 +174,6 @@ def sync_all_rviz_classes(index: dict[str, Path], copied: set[str]) -> int:
 
 def sync_rviz_root_icons(index: dict[str, Path], copied: set[str]) -> int:
     n = 0
-    skip = {"classes"}
     for base in RVIZ_ICON_ROOTS:
         if not base.is_dir():
             continue
@@ -171,8 +182,8 @@ def sync_rviz_root_icons(index: dict[str, Path], copied: set[str]) -> int:
                 continue
             if path.suffix.lower() not in {".png", ".svg"}:
                 continue
-            dest = ICONS / path.name
-            rel_dest = f"icons/{path.name}"
+            dest = ICONS / (path.stem + path.suffix.lower())
+            rel_dest = f"icons/{dest.name}"
             if rel_dest in copied:
                 continue
             copy_icon(path, dest)
@@ -188,7 +199,8 @@ def sync_fallbacks(index: dict[str, Path], copied: set[str]) -> int:
         if src is None:
             print(f"WARN fallback source missing: {src_spec} -> {dest_rel}")
             continue
-        dest = ROOT / dest_rel
+        # Keep source extension under the destination stem.
+        dest = (ROOT / dest_rel).with_suffix(src.suffix.lower())
         actual = copy_icon(src, dest)
         copied.add(f"icons/{actual.relative_to(ICONS).as_posix()}")
         n += 1
@@ -213,7 +225,7 @@ def write_qrc() -> None:
         if not folder.is_dir():
             continue
         for path in sorted(folder.rglob("*")):
-            if path.is_file() and path.suffix.lower() in {".png", ".svg"}:
+            if path.is_file() and path.suffix.lower() in {".png", ".svg", ".json"}:
                 files.append(f"{prefix}/{path.relative_to(folder).as_posix()}")
 
     lines = [

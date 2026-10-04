@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#000000">
+  <!-- Reset layout: 2x2 tiles -->
+  <path d="M4.5 4.5h6.2v6.2H4.5V4.5zm8.8 0H19.5v6.2h-6.2V4.5zM4.5 13.3h6.2V19.5H4.5v-6.2zm10.4 1.4v1.7h-1.7v1.5h1.7v1.7h1.5v-1.7h1.7v-1.5h-1.7v-1.7h-1.5z"/>
+</svg>

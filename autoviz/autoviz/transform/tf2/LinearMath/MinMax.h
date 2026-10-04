@@ -17,6 +17,14 @@ misrepresented as being the original software.
 3. This notice may not be removed or altered from any source distribution.
 */
 
+/**
+ * @file MinMax.h
+ * @brief TF2 / Bullet min/max/clamp helpers for scalar and vector types.
+ *
+ * @see Scalar.h
+ * @see Vector3
+ */
+
 #ifndef GEN_MINMAX_H
 #define GEN_MINMAX_H
 
@@ -26,22 +34,50 @@ namespace autoviz {
 namespace transform {
 namespace tf2 {
 
+/**
+ * @brief Returns the lesser of @p a and @p b.
+ * @tparam T Comparable type.
+ * @param a Left value.
+ * @param b Right value.
+ * @return Const reference to the minimum.
+ */
 template <class T>
 TF2SIMD_FORCE_INLINE const T& tf2Min(const T& a, const T& b) {
     return a < b ? a : b;
 }
 
+/**
+ * @brief Returns the greater of @p a and @p b.
+ * @tparam T Comparable type.
+ * @param a Left value.
+ * @param b Right value.
+ * @return Const reference to the maximum.
+ */
 template <class T>
 TF2SIMD_FORCE_INLINE const T& tf2Max(const T& a, const T& b) {
     return a > b ? a : b;
 }
 
+/**
+ * @brief Clamps @p a into [@p lb, @p ub].
+ * @tparam T Comparable type.
+ * @param a Value to clamp.
+ * @param lb Lower bound.
+ * @param ub Upper bound.
+ * @return Clamped value.
+ */
 template <class T>
 TF2SIMD_FORCE_INLINE const T& GEN_clamped(const T& a, const T& lb,
                                           const T& ub) {
     return a < lb ? lb : (ub < a ? ub : a);
 }
 
+/**
+ * @brief Sets @p a to @c min(a, b).
+ * @tparam T Comparable type.
+ * @param[in,out] a Value updated if @p b is smaller.
+ * @param b Candidate minimum.
+ */
 template <class T>
 TF2SIMD_FORCE_INLINE void tf2SetMin(T& a, const T& b) {
     if (b < a) {
@@ -49,6 +85,12 @@ TF2SIMD_FORCE_INLINE void tf2SetMin(T& a, const T& b) {
     }
 }
 
+/**
+ * @brief Sets @p a to @c max(a, b).
+ * @tparam T Comparable type.
+ * @param[in,out] a Value updated if @p b is larger.
+ * @param b Candidate maximum.
+ */
 template <class T>
 TF2SIMD_FORCE_INLINE void tf2SetMax(T& a, const T& b) {
     if (a < b) {

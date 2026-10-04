@@ -27,6 +27,16 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * @file tf2_error.h
+ * @brief Numeric TF2 error codes mirroring @c tf2_msgs/TF2Error.
+ *
+ * Used by BufferCore / canTransform paths that report status without throwing.
+ *
+ * @see TransformException
+ * @see BufferCore
+ */
+
 #ifndef TF2_MSGS_TF2_ERROR_H
 #define TF2_MSGS_TF2_ERROR_H
 
@@ -35,13 +45,23 @@ namespace transform {
 namespace tf2 {
 
 namespace tf2_msgs {
+/**
+ * @brief Error code constants for TF2 lookup / wait results.
+ */
 namespace TF2Error {
+/** @brief Success / no error. */
 const uint8_t NO_ERROR = 0;
+/** @brief Frame lookup failed (@ref LookupException). */
 const uint8_t LOOKUP_ERROR = 1;
+/** @brief Frames not connected (@ref ConnectivityException). */
 const uint8_t CONNECTIVITY_ERROR = 2;
+/** @brief Time outside buffer (@ref ExtrapolationException). */
 const uint8_t EXTRAPOLATION_ERROR = 3;
+/** @brief Invalid argument (@ref InvalidArgumentException). */
 const uint8_t INVALID_ARGUMENT_ERROR = 4;
+/** @brief Wait timed out (@ref TimeoutException). */
 const uint8_t TIMEOUT_ERROR = 5;
+/** @brief Generic transform failure. */
 const uint8_t TRANSFORM_ERROR = 6;
 }  // namespace TF2Error
 }  // namespace tf2_msgs

@@ -20,6 +20,11 @@ common::PlotSeriesPersistConfig ToPersistSeries(const PlotSeriesConfig& series) 
   persist.color = series.color.name().toStdString();
   persist.line_size = series.line_size.toStdString();
   persist.show_line = series.show_line;
+  persist.use_right_y = series.use_right_y;
+  persist.binary_op = static_cast<int>(series.binary_op);
+  persist.secondary_channel = series.secondary_channel.toStdString();
+  persist.secondary_field_path = series.secondary_field_path.toStdString();
+  persist.binary_max_dt_sec = series.binary_max_dt_sec;
   persist.timestamp_mode = static_cast<int>(series.timestamp_mode);
   persist.enabled = series.enabled;
   return persist;
@@ -36,6 +41,12 @@ PlotSeriesConfig FromPersistSeries(const common::PlotSeriesPersistConfig& persis
   series.color = QColor(QString::fromStdString(persist.color));
   series.line_size = QString::fromStdString(persist.line_size);
   series.show_line = persist.show_line;
+  series.use_right_y = persist.use_right_y;
+  series.binary_op = static_cast<PlotBinaryOp>(persist.binary_op);
+  series.secondary_channel = QString::fromStdString(persist.secondary_channel);
+  series.secondary_field_path =
+      QString::fromStdString(persist.secondary_field_path);
+  series.binary_max_dt_sec = persist.binary_max_dt_sec;
   series.timestamp_mode =
       static_cast<PlotTimestampMode>(persist.timestamp_mode);
   series.enabled = persist.enabled;
@@ -56,6 +67,15 @@ common::PlotPanelPersistConfig ToPersistConfig(const QString& object_name,
   persist.settings_visible = config.settings_visible;
   persist.settings_width = config.settings_width;
   persist.lock_axis_scales = config.lock_axis_scales;
+  persist.y_auto_scale = config.y_auto_scale;
+  persist.y_min = config.y_min;
+  persist.y_max = config.y_max;
+  persist.y_auto_scale_right = config.y_auto_scale_right;
+  persist.y_min_right = config.y_min_right;
+  persist.y_max_right = config.y_max_right;
+  persist.show_grid = config.show_grid;
+  persist.show_reference_y = config.show_reference_y;
+  persist.reference_y = config.reference_y;
   persist.x_window_sec = config.x_window_sec;
   persist.series.reserve(config.series.size());
   for (const PlotSeriesConfig& series : config.series) {
@@ -75,6 +95,15 @@ PlotPanelConfig FromPersistConfig(const common::PlotPanelPersistConfig& persist)
   config.settings_visible = persist.settings_visible;
   config.settings_width = persist.settings_width > 0 ? persist.settings_width : 300;
   config.lock_axis_scales = persist.lock_axis_scales;
+  config.y_auto_scale = persist.y_auto_scale;
+  config.y_min = persist.y_min;
+  config.y_max = persist.y_max;
+  config.y_auto_scale_right = persist.y_auto_scale_right;
+  config.y_min_right = persist.y_min_right;
+  config.y_max_right = persist.y_max_right;
+  config.show_grid = persist.show_grid;
+  config.show_reference_y = persist.show_reference_y;
+  config.reference_y = persist.reference_y;
   config.x_window_sec = persist.x_window_sec;
   config.series.reserve(static_cast<int>(persist.series.size()));
   for (const common::PlotSeriesPersistConfig& series : persist.series) {

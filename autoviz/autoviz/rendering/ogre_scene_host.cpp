@@ -4,8 +4,6 @@
 
 #include "autoviz/rendering/ogre_scene_host.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <algorithm>
 #include <unordered_map>
 
@@ -293,7 +291,7 @@ void OgreSceneHost::uploadLines(
   }
   object->clear();
   object->begin("Autoviz/LineNoLighting", Ogre::RenderOperation::OT_LINE_LIST,
-                "AvizOgre");
+                OgreMaterialManager::resourceGroup());
   for (const OgreColoredLineSegment& segment : segments) {
     object->position(segment.a.x(), segment.a.y(), segment.a.z());
     const Ogre::ColourValue color = ToOgreColor(segment.color);
@@ -315,7 +313,7 @@ void OgreSceneHost::uploadMeshes(
   for (const OgreColoredMeshInstance& instance : meshes) {
     if (instance.wireframe) {
       object->begin("Autoviz/LineNoLighting", Ogre::RenderOperation::OT_LINE_LIST,
-                "AvizOgre");
+                OgreMaterialManager::resourceGroup());
       const Ogre::ColourValue color = ToOgreColor(instance.color);
       for (const auto& triangle : instance.mesh.triangles) {
         if (triangle[0] < 0 ||
@@ -722,7 +720,7 @@ void OgreSceneHost::setDisplayEntities(
     slot.node = entry.node->createChildSceneNode(entity_name + "Node");
     ApplyMatrixToNode(slot.node, instance.transform);
     slot.entity = scene_manager_->createEntity(
-        entity_name, instance.mesh_name, "rviz_rendering");
+        entity_name, instance.mesh_name, "aviz_rendering");
     slot.material_name = entity_name + "Mat";
     Ogre::MaterialPtr material =
         OgreMaterialManager::createMaterialWithLighting(slot.material_name);
@@ -1096,4 +1094,3 @@ void OgreSceneHost::clear() {
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

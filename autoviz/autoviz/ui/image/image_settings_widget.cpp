@@ -5,35 +5,59 @@
 #include "autoviz/ui/image/image_settings_widget.hpp"
 
 #include <QAbstractItemView>
+#include <QAbstractSpinBox>
 #include <QCheckBox>
 #include <QColorDialog>
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QFormLayout>
-#include <QGroupBox>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMouseEvent>
 #include <QPushButton>
-#include <QScrollArea>
 #include <QShowEvent>
-#include <QToolButton>
+#include <QSignalBlocker>
+#include <QHash>
 #include <QVBoxLayout>
 
 #include <algorithm>
 #include <functional>
-
 #include <string>
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/commsgs/message_type_utils.hpp"
 #include "autoviz/display/image_utils.hpp"
-#include "autoviz/ui/panel_settings_styles.hpp"
+#include "autoviz/ui/theme/panel.hpp"
+#include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
 namespace image {
 namespace {
+
+QLabel* MakeFormLabel(const QString& text, QWidget* parent) {
+  return MakeSettingsFormLabel(text, parent);
+}
+
+void StylePlainSpin(QDoubleSpinBox* spin) {
+  if (spin == nullptr) {
+    return;
+  }
+  spin->setButtonSymbols(QAbstractSpinBox::NoButtons);
+  spin->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+  StyleCompactSettingsField(spin);
+}
+
+void StyleSettingsCombo(QComboBox* combo) {
+  StyleCompactSettingsField(combo);
+}
+
+QString SoftCardStyle(const QString& object_name) {
+  QHash<QString, QString> tokens = style::tokens();
+  tokens.insert(QStringLiteral("{{name}}"), object_name);
+  return style::sheet(QStringLiteral("image/overlay_card"), tokens);
+}
 
 /** Click anywhere on the field to open the channel list.
  *  The app theme draws QComboBox like a line edit and only the (invisible)
@@ -47,19 +71,7 @@ class ChannelPickCombo : public QComboBox {
     setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
     setMinimumContentsLength(12);
     setMaxVisibleItems(24);
-    setStyleSheet(QStringLiteral(
-        "QComboBox { padding: 4px 28px 4px 8px; }"
-        "QComboBox::drop-down {"
-        "  subcontrol-origin: padding;"
-        "  subcontrol-position: center right;"
-        "  width: 24px; border: none;"
-        "}"
-        "QComboBox::down-arrow {"
-        "  width: 0px; height: 0px;"
-        "  border-left: 5px solid transparent;"
-        "  border-right: 5px solid transparent;"
-        "  border-top: 6px solid #64748b;"
-        "}"));
+    StyleCompactSettingsField(this);
   }
 
   std::function<void()> before_popup;
@@ -90,110 +102,203 @@ class ChannelPickCombo : public QComboBox {
 
 ImageSettingsWidget::ImageSettingsWidget(common::VisualizationManager* manager,
                                          QWidget* parent)
-    : manager_(manager), QWidget(parent) {
+    : QWidget(parent), manager_(manager), config_() {
   ApplyCompactSettingsShell(this);
   auto* outer = new QVBoxLayout(this);
-  outer->setContentsMargins(PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
-                            PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
-  outer->setSpacing(PanelSettingsLayout::kOuterSpacing);
+  outer->setContentsMargins(4, 4, 4, 4);
+  outer->setSpacing(4);
   outer->setAlignment(Qt::AlignTop);
 
-  auto* title_form = new QFormLayout();
-  ApplyCompactForm(title_form);
-  title_edit_ = new QLineEdit(config_.title, this);
-  title_form->addRow(tr("Title"), title_edit_);
-  outer->addLayout(title_form);
-  connect(title_edit_, &QLineEdit::textChanged, this,
-          &ImageSettingsWidget::emitConfigChanged);
-
+  // —— General (includes title) ——
   auto* general_body = new QWidget(this);
   auto* general_form = new QFormLayout(general_body);
   ApplyCompactForm(general_form);
+
+  title_edit_ = new QLineEdit(config_.title, general_body);
+  title_edit_->setPlaceholderText(tr("Image"));
+  StyleCompactSettingsField(title_edit_);
+  general_form->addRow(MakeFormLabel(tr("Title"), general_body), title_edit_);
+
   auto* channel_pick = new ChannelPickCombo(general_body);
   channel_pick->before_popup = [this]() { refreshImageChannelItems(); };
   channel_combo_ = channel_pick;
-  general_form->addRow(tr("channel"), channel_combo_);
+  general_form->addRow(MakeFormLabel(tr("Channel"), general_body),
+                       channel_combo_);
+
   calibration_combo_ = new QComboBox(general_body);
   calibration_combo_->setEditable(true);
+  calibration_combo_->setPlaceholderText(tr("Optional"));
   calibration_combo_->addItem(QString(), QString());
-  general_form->addRow(tr("Calibration"), calibration_combo_);
-  strict_sync_check_ = new QCheckBox(tr("Strict time sync"), general_body);
-  general_form->addRow(QString(), strict_sync_check_);
-  undistort_check_ = new QCheckBox(tr("Undistort image"), general_body);
-  general_form->addRow(QString(), undistort_check_);
-  flip_h_check_ = new QCheckBox(tr("Flip horizontal"), general_body);
-  flip_v_check_ = new QCheckBox(tr("Flip vertical"), general_body);
-  general_form->addRow(QString(), flip_h_check_);
-  general_form->addRow(QString(), flip_v_check_);
+  StyleSettingsCombo(calibration_combo_);
+  general_form->addRow(MakeFormLabel(tr("Calibration"), general_body),
+                       calibration_combo_);
+
+  auto make_toggle = [general_body](const QString& tip) {
+    auto* check = new QCheckBox(general_body);
+    check->setStyleSheet(
+        style::sheet(QStringLiteral("image/settings_check")));
+    check->setToolTip(tip);
+    check->setCursor(Qt::PointingHandCursor);
+    return check;
+  };
+
+  strict_sync_check_ = make_toggle(tr("Require matching timestamps with calibration"));
+  general_form->addRow(MakeFormLabel(tr("Strict time sync"), general_body),
+                       strict_sync_check_);
+
+  undistort_check_ = make_toggle(tr("Undistort using camera calibration"));
+  general_form->addRow(MakeFormLabel(tr("Undistort image"), general_body),
+                       undistort_check_);
+
+  flip_h_check_ = make_toggle(tr("Flip image horizontally"));
+  general_form->addRow(MakeFormLabel(tr("Flip horizontal"), general_body),
+                       flip_h_check_);
+
+  flip_v_check_ = make_toggle(tr("Flip image vertically"));
+  general_form->addRow(MakeFormLabel(tr("Flip vertical"), general_body),
+                       flip_v_check_);
+
   rotation_combo_ = new QComboBox(general_body);
   rotation_combo_->addItem(tr("0°"), static_cast<int>(ImageRotation::k0));
   rotation_combo_->addItem(tr("90°"), static_cast<int>(ImageRotation::k90));
   rotation_combo_->addItem(tr("180°"), static_cast<int>(ImageRotation::k180));
   rotation_combo_->addItem(tr("270°"), static_cast<int>(ImageRotation::k270));
-  general_form->addRow(tr("Rotation"), rotation_combo_);
+  StyleSettingsCombo(rotation_combo_);
+  general_form->addRow(MakeFormLabel(tr("Rotation"), general_body),
+                       rotation_combo_);
+
   color_mode_combo_ = new QComboBox(general_body);
   color_mode_combo_->addItem(tr("Off"), static_cast<int>(ImageColorMode::kOff));
-  color_mode_combo_->addItem(tr("Turbo"), static_cast<int>(ImageColorMode::kTurbo));
-  color_mode_combo_->addItem(tr("Rainbow"), static_cast<int>(ImageColorMode::kRainbow));
+  color_mode_combo_->addItem(tr("Turbo"),
+                             static_cast<int>(ImageColorMode::kTurbo));
+  color_mode_combo_->addItem(tr("Rainbow"),
+                             static_cast<int>(ImageColorMode::kRainbow));
   color_mode_combo_->addItem(tr("Grayscale"),
                              static_cast<int>(ImageColorMode::kGrayscale));
-  general_form->addRow(tr("Color mode"), color_mode_combo_);
+  StyleSettingsCombo(color_mode_combo_);
+  general_form->addRow(MakeFormLabel(tr("Color mode"), general_body),
+                       color_mode_combo_);
+
   color_min_spin_ = new QDoubleSpinBox(general_body);
   color_min_spin_->setRange(-1e9, 1e9);
+  color_min_spin_->setDecimals(3);
   color_min_spin_->setValue(config_.color_min);
+  StylePlainSpin(color_min_spin_);
+  general_form->addRow(MakeFormLabel(tr("Value min"), general_body),
+                       color_min_spin_);
+
   color_max_spin_ = new QDoubleSpinBox(general_body);
   color_max_spin_->setRange(-1e9, 1e9);
+  color_max_spin_->setDecimals(3);
   color_max_spin_->setValue(config_.color_max);
-  general_form->addRow(tr("Value min"), color_min_spin_);
-  general_form->addRow(tr("Value max"), color_max_spin_);
-  outer->addWidget(MakeCollapsibleSection(this, tr("General"), general_body, true));
+  StylePlainSpin(color_max_spin_);
+  general_form->addRow(MakeFormLabel(tr("Value max"), general_body),
+                       color_max_spin_);
 
+  outer->addWidget(
+      MakeCollapsibleSection(this, tr("General"), general_body, true));
+
+  // —— Image overlays ——
   auto* overlay_body = new QWidget(this);
   auto* overlay_layout = new QVBoxLayout(overlay_body);
+  overlay_layout->setContentsMargins(0, 0, 0, 0);
+  overlay_layout->setSpacing(4);
   overlay_list_layout_ = new QVBoxLayout();
+  overlay_list_layout_->setSpacing(4);
   overlay_layout->addLayout(overlay_list_layout_);
-  add_overlay_button_ = new QPushButton(tr("Add image overlay"), overlay_body);
+  add_overlay_button_ =
+      MakeFlatActionButton(tr("Add image overlay"), overlay_body);
+  add_overlay_button_->setMinimumHeight(26);
   overlay_layout->addWidget(add_overlay_button_);
   connect(add_overlay_button_, &QPushButton::clicked, this,
           &ImageSettingsWidget::addOverlayRequested);
   outer->addWidget(
-      MakeCollapsibleSection(this, tr("Image overlays"), overlay_body, true));
+      MakeCollapsibleSection(this, tr("Image overlays"), overlay_body, false));
 
+  // —— Annotations / markers ——
   auto* annotation_body = new QWidget(this);
   annotation_list_layout_ = new QVBoxLayout(annotation_body);
-  outer->addWidget(
-      MakeCollapsibleSection(this, tr("Image annotations"), annotation_body, true));
+  annotation_list_layout_->setContentsMargins(0, 0, 0, 0);
+  annotation_list_layout_->setSpacing(2);
+  outer->addWidget(MakeCollapsibleSection(this, tr("Image annotations"),
+                                          annotation_body, false));
 
   auto* marker_body = new QWidget(this);
   marker_list_layout_ = new QVBoxLayout(marker_body);
+  marker_list_layout_->setContentsMargins(0, 0, 0, 0);
+  marker_list_layout_->setSpacing(2);
   outer->addWidget(
       MakeCollapsibleSection(this, tr("3D markers"), marker_body, false));
 
+  auto* cloud_body = new QWidget(this);
+  point_cloud_list_layout_ = new QVBoxLayout(cloud_body);
+  point_cloud_list_layout_->setContentsMargins(0, 0, 0, 0);
+  point_cloud_list_layout_->setSpacing(2);
+  outer->addWidget(
+      MakeCollapsibleSection(this, tr("Point clouds"), cloud_body, false));
+
+  // —— Scene ——
   auto* scene_body = new QWidget(this);
   auto* scene_form = new QFormLayout(scene_body);
   ApplyCompactForm(scene_form);
   label_scale_spin_ = new QDoubleSpinBox(scene_body);
   label_scale_spin_->setRange(0.1, 8.0);
   label_scale_spin_->setSingleStep(0.1);
+  label_scale_spin_->setDecimals(2);
   label_scale_spin_->setValue(config_.label_scale);
-  scene_form->addRow(tr("Label scale"), label_scale_spin_);
-  background_edit_ = new QLineEdit(config_.background_color.name(), scene_body);
-  scene_form->addRow(tr("Background"), background_edit_);
+  StylePlainSpin(label_scale_spin_);
+  scene_form->addRow(MakeFormLabel(tr("Label scale"), scene_body),
+                     label_scale_spin_);
+
+  auto* bg_row = new QWidget(scene_body);
+  auto* bg_layout = new QHBoxLayout(bg_row);
+  bg_layout->setContentsMargins(0, 0, 0, 0);
+  bg_layout->setSpacing(6);
+  background_edit_ = new QLineEdit(config_.background_color.name(), bg_row);
+  background_edit_->setPlaceholderText(QStringLiteral("#000000"));
+  StyleCompactSettingsField(background_edit_);
+  auto* bg_pick = new QPushButton(tr("Pick"), bg_row);
+  bg_pick->setCursor(Qt::PointingHandCursor);
+  bg_pick->setFixedSize(40, 20);
+  bg_pick->setStyleSheet(
+      style::sheet(QStringLiteral("image/compact_pick_button")));
+  bg_layout->addWidget(background_edit_, 1);
+  bg_layout->addWidget(bg_pick, 0, Qt::AlignVCenter);
+  scene_form->addRow(MakeFormLabel(tr("Background"), scene_body), bg_row);
+  connect(bg_pick, &QPushButton::clicked, this, [this]() {
+    const QColor current = QColor(background_edit_->text().trimmed());
+    const QColor chosen = QColorDialog::getColor(
+        current.isValid() ? current : Qt::black, this, tr("Background color"));
+    if (!chosen.isValid()) {
+      return;
+    }
+    background_edit_->setText(chosen.name(QColor::HexRgb));
+  });
   outer->addWidget(MakeCollapsibleSection(this, tr("Scene"), scene_body, false));
 
+  // —— Publish ——
   auto* publish_body = new QWidget(this);
   auto* publish_form = new QFormLayout(publish_body);
   ApplyCompactForm(publish_form);
   click_topic_edit_ = new QLineEdit(publish_body);
-  click_topic_edit_->setPlaceholderText(QStringLiteral("/foxglove/cursor/click"));
+  click_topic_edit_->setPlaceholderText(
+      QStringLiteral("/foxglove/cursor/click"));
+  StyleCompactSettingsField(click_topic_edit_);
   hover_topic_edit_ = new QLineEdit(publish_body);
-  hover_topic_edit_->setPlaceholderText(QStringLiteral("/foxglove/cursor/hover"));
-  publish_form->addRow(tr("Click topic"), click_topic_edit_);
-  publish_form->addRow(tr("Hover topic"), hover_topic_edit_);
-  outer->addWidget(MakeCollapsibleSection(this, tr("Publish"), publish_body, false));
+  hover_topic_edit_->setPlaceholderText(
+      QStringLiteral("/foxglove/cursor/hover"));
+  StyleCompactSettingsField(hover_topic_edit_);
+  publish_form->addRow(MakeFormLabel(tr("Click topic"), publish_body),
+                       click_topic_edit_);
+  publish_form->addRow(MakeFormLabel(tr("Hover topic"), publish_body),
+                       hover_topic_edit_);
+  outer->addWidget(
+      MakeCollapsibleSection(this, tr("Publish"), publish_body, false));
 
-  outer->addStretch();
+  outer->addStretch(1);
 
+  connect(title_edit_, &QLineEdit::textChanged, this,
+          &ImageSettingsWidget::emitConfigChanged);
   connect(channel_combo_, &QComboBox::currentTextChanged, this,
           &ImageSettingsWidget::emitConfigChanged);
   connect(calibration_combo_, &QComboBox::currentTextChanged, this,
@@ -206,15 +311,17 @@ ImageSettingsWidget::ImageSettingsWidget(common::VisualizationManager* manager,
           &ImageSettingsWidget::emitConfigChanged);
   connect(flip_v_check_, &QCheckBox::toggled, this,
           &ImageSettingsWidget::emitConfigChanged);
-  connect(rotation_combo_, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+  connect(rotation_combo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, &ImageSettingsWidget::emitConfigChanged);
+  connect(color_mode_combo_,
+          QOverload<int>::of(&QComboBox::currentIndexChanged), this,
           &ImageSettingsWidget::emitConfigChanged);
-  connect(color_mode_combo_, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-          &ImageSettingsWidget::emitConfigChanged);
-  connect(color_min_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &ImageSettingsWidget::emitConfigChanged);
-  connect(color_max_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &ImageSettingsWidget::emitConfigChanged);
-  connect(label_scale_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
+  connect(color_min_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+          this, &ImageSettingsWidget::emitConfigChanged);
+  connect(color_max_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+          this, &ImageSettingsWidget::emitConfigChanged);
+  connect(label_scale_spin_,
+          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
           &ImageSettingsWidget::emitConfigChanged);
   connect(background_edit_, &QLineEdit::textChanged, this,
           &ImageSettingsWidget::emitConfigChanged);
@@ -305,6 +412,47 @@ QStringList ImageSettingsWidget::markerChannels() const {
   return channels;
 }
 
+QStringList ImageSettingsWidget::pointCloudChannels() const {
+  QStringList channels;
+  if (manager_ == nullptr) {
+    return channels;
+  }
+  for (const integration::ChannelInfo& info : manager_->channels()) {
+    if (commsgs::MessageTypesCompatible(
+            info.message_type, "automsgs.msgs.sensor_msgs.PointCloud2") ||
+        info.message_type.find("PointCloud2") != std::string::npos) {
+      channels.push_back(QString::fromStdString(info.channel_name));
+    }
+  }
+  channels.sort(Qt::CaseInsensitive);
+  return channels;
+}
+
+void ImageSettingsWidget::rebuildPointCloudSection() {
+  while (QLayoutItem* item = point_cloud_list_layout_->takeAt(0)) {
+    if (item->widget() != nullptr) {
+      item->widget()->deleteLater();
+    }
+    delete item;
+  }
+  const QStringList available = pointCloudChannels();
+  for (const QString& channel : available) {
+    auto* check = new QCheckBox(channel, this);
+    check->setChecked(config_.point_cloud_channels.contains(channel));
+    check->setStyleSheet(
+        style::sheet(QStringLiteral("image/settings_check")));
+    point_cloud_list_layout_->addWidget(check);
+    connect(check, &QCheckBox::toggled, this,
+            &ImageSettingsWidget::emitConfigChanged);
+  }
+  if (available.isEmpty()) {
+    auto* hint = new QLabel(tr("No PointCloud2 topics available"), this);
+    hint->setStyleSheet(
+        style::type(style::Role::Muted, 11, 400, true));
+    point_cloud_list_layout_->addWidget(hint);
+  }
+}
+
 void ImageSettingsWidget::refreshImageChannelItems() {
   if (channel_combo_ == nullptr) {
     return;
@@ -347,6 +495,7 @@ void ImageSettingsWidget::refreshChannelLists() {
   calibration_combo_->blockSignals(false);
   rebuildAnnotationSection();
   rebuildMarkerSection();
+  rebuildPointCloudSection();
 }
 
 void ImageSettingsWidget::showEvent(QShowEvent* event) {
@@ -365,12 +514,17 @@ void ImageSettingsWidget::rebuildMarkerSection() {
   for (const QString& channel : available) {
     auto* check = new QCheckBox(channel, this);
     check->setChecked(config_.marker_channels.contains(channel));
+    check->setStyleSheet(
+        style::sheet(QStringLiteral("image/settings_check")));
     marker_list_layout_->addWidget(check);
-    connect(check, &QCheckBox::toggled, this, &ImageSettingsWidget::emitConfigChanged);
+    connect(check, &QCheckBox::toggled, this,
+            &ImageSettingsWidget::emitConfigChanged);
   }
   if (available.isEmpty()) {
-    marker_list_layout_->addWidget(
-        new QLabel(tr("No marker topics available"), this));
+    auto* hint = new QLabel(tr("No marker topics available"), this);
+    hint->setStyleSheet(
+        style::type(style::Role::Muted, 11, 400, true));
+    marker_list_layout_->addWidget(hint);
   }
 }
 
@@ -383,35 +537,57 @@ void ImageSettingsWidget::rebuildOverlaySection() {
   }
   for (int i = 0; i < config_.overlays.size(); ++i) {
     const ImageOverlayConfig& overlay = config_.overlays.at(i);
-    auto* row = new QWidget(this);
+    auto* row = new QFrame(this);
+    row->setObjectName(QStringLiteral("ImageOverlayCard"));
+    row->setStyleSheet(SoftCardStyle(QStringLiteral("ImageOverlayCard")));
     auto* layout = new QFormLayout(row);
+    ApplyCompactForm(layout);
+    layout->setContentsMargins(6, 4, 6, 4);
+
     auto* topic = new QComboBox(row);
     topic->setEditable(true);
     for (const QString& channel : imageChannels()) {
       topic->addItem(channel);
     }
     topic->setCurrentText(overlay.channel);
-    layout->addRow(tr("Topic"), topic);
+    layout->addRow(MakeFormLabel(tr("Topic"), row), topic);
+
     auto* opacity = new QDoubleSpinBox(row);
     opacity->setRange(0.0, 1.0);
     opacity->setSingleStep(0.05);
+    opacity->setDecimals(2);
     opacity->setValue(overlay.opacity);
-    layout->addRow(tr("Opacity"), opacity);
+    StylePlainSpin(opacity);
+    layout->addRow(MakeFormLabel(tr("Opacity"), row), opacity);
+
     auto* blend = new QComboBox(row);
     blend->addItem(tr("Alpha"), static_cast<int>(ImageBlendMode::kAlpha));
     blend->addItem(tr("Add"), static_cast<int>(ImageBlendMode::kAdd));
     blend->setCurrentIndex(overlay.blend_mode == ImageBlendMode::kAdd ? 1 : 0);
-    layout->addRow(tr("Blend mode"), blend);
+    layout->addRow(MakeFormLabel(tr("Blend"), row), blend);
+
     auto* pixel_alpha = new QComboBox(row);
     pixel_alpha->addItem(tr("None"), static_cast<int>(ImagePixelAlpha::kNone));
     pixel_alpha->addItem(tr("White transparent"),
                          static_cast<int>(ImagePixelAlpha::kWhiteTransparent));
-    pixel_alpha->setCurrentIndex(overlay.pixel_alpha == ImagePixelAlpha::kWhiteTransparent
-                                     ? 1
-                                     : 0);
-    layout->addRow(tr("Pixel alpha"), pixel_alpha);
-    auto* remove = new QPushButton(tr("Remove overlay"), row);
-    layout->addRow(QString(), remove);
+    pixel_alpha->setCurrentIndex(
+        overlay.pixel_alpha == ImagePixelAlpha::kWhiteTransparent ? 1 : 0);
+    layout->addRow(MakeFormLabel(tr("Pixel alpha"), row), pixel_alpha);
+
+    auto* actions = new QWidget(row);
+    auto* actions_layout = new QHBoxLayout(actions);
+    actions_layout->setContentsMargins(0, 0, 0, 0);
+    actions_layout->setSpacing(4);
+    auto* move_up = MakeFlatActionButton(tr("Up"), actions);
+    auto* move_down = MakeFlatActionButton(tr("Down"), actions);
+    auto* remove = MakeDestructiveFlatActionButton(tr("Remove"), actions);
+    move_up->setEnabled(i > 0);
+    move_down->setEnabled(i + 1 < config_.overlays.size());
+    actions_layout->addWidget(move_up);
+    actions_layout->addWidget(move_down);
+    actions_layout->addWidget(remove);
+    actions_layout->addStretch(1);
+    layout->addRow(QString(), actions);
     overlay_list_layout_->addWidget(row);
 
     connect(topic, &QComboBox::currentTextChanged, this,
@@ -420,10 +596,16 @@ void ImageSettingsWidget::rebuildOverlaySection() {
             &ImageSettingsWidget::emitConfigChanged);
     connect(blend, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             &ImageSettingsWidget::emitConfigChanged);
-    connect(pixel_alpha, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-            &ImageSettingsWidget::emitConfigChanged);
+    connect(pixel_alpha, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &ImageSettingsWidget::emitConfigChanged);
     connect(remove, &QPushButton::clicked, this, [this, i]() {
       emit removeOverlayRequested(i);
+    });
+    connect(move_up, &QPushButton::clicked, this, [this, i]() {
+      emit moveOverlayRequested(i, -1);
+    });
+    connect(move_down, &QPushButton::clicked, this, [this, i]() {
+      emit moveOverlayRequested(i, 1);
     });
   }
 }
@@ -439,12 +621,17 @@ void ImageSettingsWidget::rebuildAnnotationSection() {
   for (const QString& channel : available) {
     auto* check = new QCheckBox(channel, this);
     check->setChecked(config_.annotation_channels.contains(channel));
+    check->setStyleSheet(
+        style::sheet(QStringLiteral("image/settings_check")));
     annotation_list_layout_->addWidget(check);
-    connect(check, &QCheckBox::toggled, this, &ImageSettingsWidget::emitConfigChanged);
+    connect(check, &QCheckBox::toggled, this,
+            &ImageSettingsWidget::emitConfigChanged);
   }
   if (available.isEmpty()) {
-    annotation_list_layout_->addWidget(
-        new QLabel(tr("No annotation topics available"), this));
+    auto* hint = new QLabel(tr("No annotation topics available"), this);
+    hint->setStyleSheet(
+        style::type(style::Role::Muted, 11, 400, true));
+    annotation_list_layout_->addWidget(hint);
   }
 }
 
@@ -461,8 +648,10 @@ ImagePanelConfig ImageSettingsWidget::config() const {
   out.enable_undistort = undistort_check_->isChecked();
   out.flip_horizontal = flip_h_check_->isChecked();
   out.flip_vertical = flip_v_check_->isChecked();
-  out.rotation = static_cast<ImageRotation>(rotation_combo_->currentData().toInt());
-  out.color_mode = static_cast<ImageColorMode>(color_mode_combo_->currentData().toInt());
+  out.rotation =
+      static_cast<ImageRotation>(rotation_combo_->currentData().toInt());
+  out.color_mode =
+      static_cast<ImageColorMode>(color_mode_combo_->currentData().toInt());
   out.color_min = color_min_spin_->value();
   out.color_max = color_max_spin_->value();
   out.label_scale = label_scale_spin_->value();
@@ -497,7 +686,8 @@ ImagePanelConfig ImageSettingsWidget::config() const {
 
   out.annotation_channels.clear();
   for (int i = 0; i < annotation_list_layout_->count(); ++i) {
-    auto* check = qobject_cast<QCheckBox*>(annotation_list_layout_->itemAt(i)->widget());
+    auto* check =
+        qobject_cast<QCheckBox*>(annotation_list_layout_->itemAt(i)->widget());
     if (check != nullptr && check->isChecked()) {
       out.annotation_channels.push_back(check->text());
     }
@@ -505,9 +695,18 @@ ImagePanelConfig ImageSettingsWidget::config() const {
 
   out.marker_channels.clear();
   for (int i = 0; i < marker_list_layout_->count(); ++i) {
-    auto* check = qobject_cast<QCheckBox*>(marker_list_layout_->itemAt(i)->widget());
+    auto* check =
+        qobject_cast<QCheckBox*>(marker_list_layout_->itemAt(i)->widget());
     if (check != nullptr && check->isChecked()) {
       out.marker_channels.push_back(check->text());
+    }
+  }
+  out.point_cloud_channels.clear();
+  for (int i = 0; i < point_cloud_list_layout_->count(); ++i) {
+    auto* check =
+        qobject_cast<QCheckBox*>(point_cloud_list_layout_->itemAt(i)->widget());
+    if (check != nullptr && check->isChecked()) {
+      out.point_cloud_channels.push_back(check->text());
     }
   }
   return out;
@@ -515,6 +714,22 @@ ImagePanelConfig ImageSettingsWidget::config() const {
 
 void ImageSettingsWidget::setConfig(const ImagePanelConfig& config) {
   config_ = config;
+  const QSignalBlocker b1(title_edit_);
+  const QSignalBlocker b2(channel_combo_);
+  const QSignalBlocker b3(calibration_combo_);
+  const QSignalBlocker b4(strict_sync_check_);
+  const QSignalBlocker b5(undistort_check_);
+  const QSignalBlocker b6(flip_h_check_);
+  const QSignalBlocker b7(flip_v_check_);
+  const QSignalBlocker b8(rotation_combo_);
+  const QSignalBlocker b9(color_mode_combo_);
+  const QSignalBlocker b10(color_min_spin_);
+  const QSignalBlocker b11(color_max_spin_);
+  const QSignalBlocker b12(label_scale_spin_);
+  const QSignalBlocker b13(background_edit_);
+  const QSignalBlocker b14(click_topic_edit_);
+  const QSignalBlocker b15(hover_topic_edit_);
+
   title_edit_->setText(config_.title);
   refreshImageChannelItems();
   {
@@ -541,6 +756,7 @@ void ImageSettingsWidget::setConfig(const ImagePanelConfig& config) {
   rebuildOverlaySection();
   rebuildAnnotationSection();
   rebuildMarkerSection();
+  rebuildPointCloudSection();
 }
 
 void ImageSettingsWidget::emitConfigChanged() {

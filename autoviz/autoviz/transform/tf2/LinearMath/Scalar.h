@@ -16,6 +16,17 @@ misrepresented as being the original software.
 3. This notice may not be removed or altered from any source distribution.
 */
 
+/**
+ * @file Scalar.h
+ * @brief TF2 / Bullet scalar typedefs, SIMD macros, and math helpers.
+ *
+ * Defines @c tf2Scalar, alignment attributes, and platform force-inline macros
+ * used by LinearMath types.
+ *
+ * @see MinMax.h
+ * @see Vector3
+ */
+
 #pragma once
 
 #ifdef TF2_MANAGED_CODE

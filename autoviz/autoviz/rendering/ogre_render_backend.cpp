@@ -4,8 +4,6 @@
 
 #include "autoviz/rendering/ogre_render_backend.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <algorithm>
 
 #include <Ogre.h>
@@ -19,11 +17,13 @@
 #include "autoviz/rendering/ogre_material_manager.hpp"
 #include "autoviz/rendering/ogre_grid.hpp"
 #include "autoviz/rendering/ogre_axes.hpp"
+#include "autoviz/rendering/orthographic.hpp"
 #include "autoviz/rendering/gpu_capabilities.hpp"
 #include "autoviz/rendering/gpu_depth_pick.hpp"
 #include "autoviz/rendering/ogre_scene_host.hpp"
 #include "autoviz/rendering/ogre_pick_renderer.hpp"
 #include "autoviz/rendering/render_system.hpp"
+#include "autoviz/rendering/view_controller.hpp"
 
 namespace autoviz {
 namespace rendering {
@@ -39,7 +39,7 @@ void UploadLines(Ogre::ManualObject* object,
     return;
   }
   object->begin("Autoviz/OverlayLine", Ogre::RenderOperation::OT_LINE_LIST,
-                "AvizOgre");
+                OgreMaterialManager::resourceGroup());
   for (const auto& line_vertex : lines) {
     object->position(ToOgre(line_vertex.position));
     object->colour(line_vertex.color.x(), line_vertex.color.y(),
@@ -196,7 +196,7 @@ void UploadTexturedBatches(
 namespace {
 
 void UpdatePbrLighting(Ogre::Pass* pass, const Ogre::Vector3& light_dir_world) {
-  if (pass == nullptr) {
+  if (pass == nullptr || !pass->hasFragmentProgram()) {
     return;
   }
   Ogre::GpuProgramParametersSharedPtr fp_params =
@@ -204,7 +204,11 @@ void UpdatePbrLighting(Ogre::Pass* pass, const Ogre::Vector3& light_dir_world) {
   if (!fp_params) {
     return;
   }
-  fp_params->setNamedConstant("uLightDir", light_dir_world);
+  try {
+    fp_params->setNamedConstant("uLightDir", light_dir_world);
+  } catch (const Ogre::Exception&) {
+    // Shader unsupported / constant missing — ignore.
+  }
 }
 
 void UploadPbrTexturedBatches(
@@ -390,19 +394,42 @@ void OgreRenderBackend::render(bool show_grid,
 
   const QMatrix4x4 view = view_controller.viewMatrix();
   const QMatrix4x4 projection = view_controller.projectionMatrix(aspect_ratio);
-  const QMatrix4x4 view_proj = projection * view;
-  const QMatrix4x4 inv = view_proj.inverted();
 
-  const QVector3D cam_pos = inv.map(QVector3D(0.f, 0.f, 0.f));
-  const QVector3D look_at = inv.map(QVector3D(0.f, 0.f, -1.f));
+  // Derive eye / look from the view matrix (camera space origin → -Z), not from
+  // inverse(proj*view)*(0,0,0) which is a mid-frustum point and breaks
+  // TopDownOrtho (lookAt ends up inverted / off-axis).
+  const QMatrix4x4 inv_view = view.inverted();
+  const QVector3D cam_pos = inv_view.map(QVector3D(0.f, 0.f, 0.f));
+  const QVector3D look_target = inv_view.map(QVector3D(0.f, 0.f, -1.f));
 
+  // Looking straight down the Z axis is singular for FixedYawAxis(UNIT_Z).
+  // RViz FixedOrientationOrtho disables fixed yaw for the same reason.
+  const bool ortho_2d =
+      view_controller.type() == ViewControllerType::kTopDownOrtho;
+  impl_->camera_node->setFixedYawAxis(!ortho_2d, Ogre::Vector3::UNIT_Z);
   impl_->camera_node->setPosition(ToOgre(cam_pos));
-  impl_->camera_node->lookAt(ToOgre(look_at), Ogre::Node::TS_WORLD,
+  impl_->camera_node->lookAt(ToOgre(look_target), Ogre::Node::TS_WORLD,
                              Ogre::Vector3::NEGATIVE_UNIT_Z);
-  impl_->camera->setAutoAspectRatio(true);
   impl_->camera->setNearClipDistance(
       std::max(0.001f, view_controller.nearClipDistance()));
   impl_->camera->setFarClipDistance(500.f);
+
+  if (ortho_2d) {
+    // Match ViewController::projectionMatrix TopDownOrtho: equal world metres
+    // per pixel on X/Y so Grid cells stay square (not stretched by FOV/aspect).
+    const float half_height = std::max(0.001f, view_controller.state().distance) * 0.5f;
+    const float safe_aspect = aspect_ratio > 1e-6f ? aspect_ratio : 1.f;
+    const float half_width = half_height * safe_aspect;
+    const Ogre::Matrix4 ortho = buildScaledOrthoMatrix(
+        -half_width, half_width, -half_height, half_height,
+        impl_->camera->getNearClipDistance(),
+        impl_->camera->getFarClipDistance());
+    impl_->camera->setCustomProjectionMatrix(true, ortho);
+  } else {
+    impl_->camera->setCustomProjectionMatrix(false, Ogre::Matrix4::IDENTITY);
+    impl_->camera->setFOVy(Ogre::Degree(45.f));
+    impl_->camera->setAutoAspectRatio(true);
+  }
 
   if (impl_->reference_grid != nullptr) {
     impl_->reference_grid->setSettings(grid_settings);
@@ -581,33 +608,3 @@ const OgreSceneHost* OgreRenderBackend::ogreSceneHost() const {
 }  // namespace rendering
 }  // namespace autoviz
 
-#else
-
-namespace autoviz {
-namespace rendering {
-
-struct OgreRenderBackend::Impl {};
-
-OgreRenderBackend::OgreRenderBackend(QWidget* host) : host_(host) {}
-OgreRenderBackend::~OgreRenderBackend() = default;
-bool OgreRenderBackend::initialize() { return false; }
-void OgreRenderBackend::resize(int, int) {}
-void OgreRenderBackend::render(bool, const ReferenceGridSettings&, SceneOverlay*,
-                               const ViewController&, float) {}
-void OgreRenderBackend::setBackgroundColor(const QColor& /*color*/) {}
-bool OgreRenderBackend::pickDepthAt(int, int, int, int, const QMatrix4x4&,
-                                   const QMatrix4x4&, QVector3D*) const {
-  return false;
-}
-common::PickHandle OgreRenderBackend::pickHandleAt(int, int, int, int,
-                                                   common::PickRegistry*) const {
-  return common::kInvalidPickHandle;
-}
-OgreSceneHost* OgreRenderBackend::ogreSceneHost() { return nullptr; }
-const OgreSceneHost* OgreRenderBackend::ogreSceneHost() const { return nullptr; }
-void OgreRenderBackend::shutdown() {}
-
-}  // namespace rendering
-}  // namespace autoviz
-
-#endif

@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>autoviz</name>
+  <version>0.1.0</version>
+  <description>Autolink-native 3D robot visualizer (Qt + OpenGL).</description>
+  <maintainer email="quandy2020@126.com">duyongquan</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>autocmake</buildtool_depend>
+  <depend>autolink</depend>
+  <depend>automsgs</depend>
+  <build_depend>yaml-cpp</build_depend>
+  <build_depend>Glog</build_depend>
+  <build_depend>Protobuf</build_depend>
+
+  <export>
+    <build_type>autocmake</build_type>
+  </export>
+</package>

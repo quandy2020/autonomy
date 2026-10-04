@@ -6,8 +6,6 @@
 
 #include "autoviz/rendering/orthographic.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 namespace autoviz {
 namespace rendering {
 
@@ -31,4 +29,3 @@ Ogre::Matrix4 buildScaledOrthoMatrix(float left, float right, float bottom, floa
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

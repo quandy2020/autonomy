@@ -27,7 +27,16 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-/** \author Tully Foote */
+/**
+ * @file transform_storage.h
+ * @brief Internal storage record for one stamped transform in a TimeCache.
+ *
+ * Holds rotation, translation, stamp, and compact parent/child frame ids used
+ * by @ref TimeCache / @ref StaticCache inside @ref BufferCore.
+ *
+ * @see TimeCache
+ * @see CompactFrameID
+ */
 
 #ifndef TF2_TRANSFORM_STORAGE_H
 #define TF2_TRANSFORM_STORAGE_H
@@ -42,20 +51,44 @@ namespace autoviz {
 namespace transform {
 namespace tf2 {
 
+/**
+ * @brief Compact integer frame id used inside BufferCore (not a string name).
+ */
 typedef uint32_t CompactFrameID;
 
-/** \brief Storage for transforms and their parent */
+/**
+ * @class TransformStorage
+ * @brief One buffered transform sample (pose + stamp + compact frame ids).
+ */
 class TransformStorage
 {
 public:
+    /** @brief Default-constructs an empty / zero storage record. */
     TransformStorage();
+
+    /**
+     * @brief Constructs from a geometry_msgs stamped transform and frame ids.
+     *
+     * @param data Stamped transform (translation + rotation + stamp).
+     * @param frame_id Compact parent frame id.
+     * @param child_frame_id Compact child frame id.
+     */
     TransformStorage(const geometry_msgs::TransformStamped& data,
                      CompactFrameID frame_id, CompactFrameID child_frame_id);
 
+    /**
+     * @brief Copy constructor.
+     * @param rhs Source storage.
+     */
     TransformStorage(const TransformStorage& rhs) {
         *this = rhs;
     }
 
+    /**
+     * @brief Copy assignment.
+     * @param rhs Source storage.
+     * @return @c *this.
+     */
     TransformStorage& operator=(const TransformStorage& rhs) {
 #if 01
         rotation_ = rhs.rotation_;
@@ -67,10 +100,15 @@ public:
         return *this;
     }
 
+    /** Rotation component (tf2 quaternion). */
     tf2::Quaternion rotation_;
+    /** Translation component (tf2 vector). */
     tf2::Vector3 translation_;
+    /** Sample timestamp (nanoseconds). */
     Time stamp_{0};
+    /** Compact parent frame id. */
     CompactFrameID frame_id_{0};
+    /** Compact child frame id. */
     CompactFrameID child_frame_id_{0};
 };
 

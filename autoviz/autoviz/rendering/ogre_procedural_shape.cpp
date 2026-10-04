@@ -4,8 +4,6 @@
 
 #include "autoviz/rendering/ogre_procedural_shape.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <Ogre.h>
 
 #include "autoviz/display/primitive_mesh.hpp"
@@ -14,7 +12,7 @@ namespace autoviz {
 namespace rendering {
 namespace {
 
-constexpr char kRvizMeshGroup[] = "rviz_rendering";
+constexpr char kAvizMeshGroup[] = "aviz_rendering";
 
 void UploadObjMesh(Ogre::MeshPtr mesh, const display::ObjMesh& obj) {
   mesh->sharedVertexData = new Ogre::VertexData();
@@ -73,23 +71,22 @@ void registerObjMesh(const std::string& mesh_name, const display::ObjMesh& obj) 
   if (obj.vertices.empty() || obj.triangles.empty()) {
     return;
   }
-  if (Ogre::MeshManager::getSingleton().resourceExists(mesh_name, kRvizMeshGroup)) {
+  if (Ogre::MeshManager::getSingleton().resourceExists(mesh_name, kAvizMeshGroup)) {
     return;
   }
   Ogre::MeshPtr mesh =
-      Ogre::MeshManager::getSingleton().createManual(mesh_name, kRvizMeshGroup);
+      Ogre::MeshManager::getSingleton().createManual(mesh_name, kAvizMeshGroup);
   UploadObjMesh(mesh, obj);
 }
 
-void ensureRvizPrimitiveMeshes() {
-  registerObjMesh("rviz_capsule.mesh", display::buildCapsuleMesh(0.5f, 1.f));
-  registerObjMesh("rviz_cylinder.mesh", display::buildCylinderMesh(0.5f, 1.f));
-  registerObjMesh("rviz_cone.mesh", display::buildConeMesh(0.5f, 1.f));
-  registerObjMesh("rviz_sphere.mesh", display::buildSphereMesh(0.5f));
-  registerObjMesh("rviz_cube.mesh", display::buildCubeMesh());
+void ensureAvizPrimitiveMeshes() {
+  registerObjMesh("aviz_capsule.mesh", display::buildCapsuleMesh(0.5f, 1.f));
+  registerObjMesh("aviz_cylinder.mesh", display::buildCylinderMesh(0.5f, 1.f));
+  registerObjMesh("aviz_cone.mesh", display::buildConeMesh(0.5f, 1.f));
+  registerObjMesh("aviz_sphere.mesh", display::buildSphereMesh(0.5f));
+  registerObjMesh("aviz_cube.mesh", display::buildCubeMesh());
 }
 
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

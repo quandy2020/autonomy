@@ -3,9 +3,19 @@
  * Adapted for Autoviz (BSD-3-Clause).
  *****************************************************************************/
 
-#pragma once
+/**
+ * @file ogre_billboard_line.hpp
+ * @brief Camera-facing line strip via Ogre BillboardChain.
+ *
+ * rviz_rendering::BillboardLine — thick polylines for Path displays, effort
+ * circles, torque rings, and tool overlays.
+ *
+ * @see OgreSceneHost::setDisplayBillboardStrip()
+ * @see OgreWrenchVisual
+ * @see OgreEffortVisual
+ */
 
-#ifdef AUTOVIZ_USE_OGRE
+#pragma once
 
 #include <cstdint>
 #include <functional>
@@ -25,21 +35,68 @@ class SceneNode;
 namespace autoviz {
 namespace rendering {
 
-/** rviz_rendering::BillboardLine — camera-facing line strip (Path, thick polylines). */
+/**
+ * @class OgreBillboardLine
+ * @brief rviz_rendering::BillboardLine — camera-facing line strip.
+ *
+ * Internally manages one or more @c Ogre::BillboardChain containers when the
+ * point count exceeds per-chain limits.
+ */
 class OgreBillboardLine {
  public:
+  /**
+   * @brief Creates an empty billboard line under @p parent_node.
+   *
+   * @param scene_manager Non-null scene manager.
+   * @param parent_node Parent scene node.
+   */
   OgreBillboardLine(Ogre::SceneManager* scene_manager, Ogre::SceneNode* parent_node);
+
+  /** @brief Destroys chains, material, and scene node. */
   ~OgreBillboardLine();
 
+  /**
+   * @brief Removes all points / chain elements.
+   */
   void clear();
+
+  /**
+   * @brief Appends a point to the current line using the current color/width.
+   * @param point World/parent-space position.
+   */
   void addPoint(const Ogre::Vector3& point);
+
+  /**
+   * @brief Sets the billboard strip width.
+   * @param width Width in meters.
+   */
   void setLineWidth(float width);
+
+  /**
+   * @brief Sets the strip colour (applied to existing elements).
+   * @param color RGBA colour.
+   */
   void setColor(const Ogre::ColourValue& color);
+
+  /**
+   * @brief Sets the strip colour from components.
+   */
   void setColor(float r, float g, float b, float a);
-  /** Replace contents with a single polyline (num_lines = 1). */
+
+  /**
+   * @brief Replace contents with a single polyline (@c num_lines = 1).
+   *
+   * @param points Ordered polyline vertices.
+   * @param color Strip colour.
+   * @param width Strip width.
+   */
   void setPolyline(const std::vector<Ogre::Vector3>& points,
                    const Ogre::ColourValue& color, float width);
 
+  /**
+   * @brief Returns the owned scene node.
+   * @return Scene node pointer.
+   */
   Ogre::SceneNode* sceneNode() const { return scene_node_; }
 
  private:
@@ -70,4 +127,3 @@ class OgreBillboardLine {
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

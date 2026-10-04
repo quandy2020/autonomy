@@ -26,47 +26,13 @@ DisplayTypeInfo MakeInfo(const char* type, const char* package,
   return info;
 }
 
-const std::vector<DisplayTypeInfo>& StrataCatalog() {
-  static const std::vector<DisplayTypeInfo> kCatalog = {
-      MakeInfo("StrataPoi", "autoviz", "Strata POI markers.",
-               {"automsgs.msgs.strata_msgs.PoiMarkerArray",
-                "automsgs.msgs.strata_msgs.PoiMarkerArray"}),
-      MakeInfo("StrataRobot", "autoviz", "Strata robot markers.",
-               {"automsgs.msgs.strata_msgs.RobotMarkerArray",
-                "automsgs.msgs.strata_msgs.RobotMarkerArray"}),
-      MakeInfo("StrataSemanticZone", "autoviz", "Strata semantic zones.",
-               {"automsgs.msgs.strata_msgs.SemanticZoneArray",
-                "automsgs.msgs.strata_msgs.SemanticZoneArray"}),
-      MakeInfo("StrataRoadGraph", "autoviz", "Strata road graph.",
-               {"automsgs.msgs.strata_msgs.RoadGraph",
-                "automsgs.msgs.strata_msgs.RoadGraph"}),
-      MakeInfo("StrataCanvasLabel", "autoviz", "Strata canvas labels.",
-               {"automsgs.msgs.strata_msgs.CanvasLabelArray",
-                "automsgs.msgs.strata_msgs.CanvasLabelArray"}),
-      MakeInfo("StrataLabelBubble", "autoviz", "Strata label bubbles.",
-               {"automsgs.msgs.strata_msgs.LabelBubbleArray",
-                "automsgs.msgs.strata_msgs.LabelBubbleArray"}),
-      MakeInfo("StrataIotBubble", "autoviz", "Strata IoT bubbles.",
-               {"automsgs.msgs.strata_msgs.IotBubbleArray",
-                "automsgs.msgs.strata_msgs.IotBubbleArray"}),
-      MakeInfo("StrataRobot3D", "autoviz", "Strata robot 3D layers.",
-               {"automsgs.msgs.strata_msgs.Robot3DLayerArray",
-                "automsgs.msgs.strata_msgs.Robot3DLayerArray"}),
-      MakeInfo("StrataFov", "autoviz", "Strata robot field-of-view.",
-               {"automsgs.msgs.visualization_msgs.MarkerArray",
-                "automsgs.msgs.visualization_msgs.MarkerArray"}),
-      MakeInfo("StrataBuilding", "autoviz", "Strata building extrusions.",
-               {"automsgs.msgs.visualization_msgs.MarkerArray",
-                "automsgs.msgs.visualization_msgs.MarkerArray"}),
-  };
-  return kCatalog;
-}
-
 const std::vector<DisplayTypeInfo>& BuiltinCatalog() {
   static const std::vector<DisplayTypeInfo> kCatalog = {
       MakeInfo("Grid", "autoviz", "A planar grid in the XY plane."),
       MakeInfo("Axes", "autoviz", "Displays the origin of the target frame as axes."),
-      MakeInfo("TF", "autoviz", "Shows the TF transform tree.",
+      MakeInfo("TF", "autoviz",
+               "Shows the TF transform tree from the shared buffer "
+               "(/tf and /tf_static).",
                {"automsgs.msgs.tf2_msgs.TFMessage", "tf2_msgs.TFMessage"}),
       MakeInfo("LaserScan", "autoviz", "Shows a sensor_msgs/LaserScan message.",
                {"automsgs.msgs.sensor_msgs.LaserScan", "sensor_msgs.LaserScan"}),
@@ -176,9 +142,6 @@ bool MessageTypeMatches(const std::string& channel_type,
 
 std::vector<DisplayTypeInfo> DisplayCatalog::allTypes() {
   std::vector<DisplayTypeInfo> types = BuiltinCatalog();
-  for (const DisplayTypeInfo& info : StrataCatalog()) {
-    types.push_back(info);
-  }
   const auto registered = DisplayFactory::supportedTypes();
   for (const std::string& type : registered) {
     if (std::any_of(types.begin(), types.end(),
@@ -201,11 +164,6 @@ std::vector<DisplayTypeInfo> DisplayCatalog::allTypes() {
 
 DisplayTypeInfo DisplayCatalog::infoForType(const std::string& type) {
   for (const auto& info : BuiltinCatalog()) {
-    if (info.type == type) {
-      return info;
-    }
-  }
-  for (const auto& info : StrataCatalog()) {
     if (info.type == type) {
       return info;
     }
@@ -233,6 +191,26 @@ std::vector<std::string> DisplayCatalog::typesForMessageType(
   }
   std::sort(matches.begin(), matches.end());
   matches.erase(std::unique(matches.begin(), matches.end()), matches.end());
+  return matches;
+}
+
+bool DisplayCatalog::isStaticTfChannel(const std::string& channel) {
+  std::string name = channel;
+  while (!name.empty() && name.front() == '/') {
+    name.erase(name.begin());
+  }
+  // ROS uses /tf_static; some stacks publish /static_tf.
+  return name == "tf_static" || name == "static_tf";
+}
+
+std::vector<std::string> DisplayCatalog::typesForChannel(
+    const std::string& channel_name, const std::string& message_type) {
+  std::vector<std::string> matches = typesForMessageType(message_type);
+  if (!isStaticTfChannel(channel_name)) {
+    return matches;
+  }
+  matches.erase(std::remove(matches.begin(), matches.end(), std::string("TF")),
+                matches.end());
   return matches;
 }
 

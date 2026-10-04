@@ -14,9 +14,7 @@
 #include "autoviz/display/ogre_mesh_draw.hpp"
 #include "autoviz/rendering/scene_overlay.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
 #include "autoviz/rendering/ogre_scene_host.hpp"
-#endif
 
 namespace autoviz {
 namespace display {
@@ -24,13 +22,11 @@ namespace {
 
 void syncOgreDisplayVisibility(common::DisplayContext* context,
                                const std::string& display_name) {
-#ifdef AUTOVIZ_USE_OGRE
   if (context != nullptr && context->ogre_scene_host != nullptr &&
       context->active_display_visibility_bits != nullptr) {
     context->ogre_scene_host->setDisplayVisibilityBits(
         display_name, *context->active_display_visibility_bits);
   }
-#endif
 }
 
 }  // namespace
@@ -39,7 +35,6 @@ bool drawLineSegmentsOgreOrGl(common::DisplayContext* context,
                               rendering::SceneOverlay& scene,
                               const std::string& display_name,
                               const std::vector<LineSegment3D>& segments) {
-#ifdef AUTOVIZ_USE_OGRE
   if (context != nullptr && context->ogre_scene_host != nullptr) {
     std::vector<rendering::OgreColoredLineSegment> ogre_segments;
     ogre_segments.reserve(segments.size());
@@ -50,7 +45,6 @@ bool drawLineSegmentsOgreOrGl(common::DisplayContext* context,
     context->ogre_scene_host->setDisplayLines(display_name, ogre_segments);
     return true;
   }
-#endif
 
   for (const auto& segment : segments) {
     scene.addLine(segment.a, segment.b, segment.color);
@@ -64,7 +58,6 @@ bool drawArrowOgreOrGl(common::DisplayContext* context,
                        const QVector3D& end, const QColor& color,
                        float head_fraction, float shaft_diameter,
                        float head_diameter) {
-#ifdef AUTOVIZ_USE_OGRE
   if (context != nullptr && context->ogre_scene_host != nullptr) {
     std::vector<ColoredMeshInstance> meshes;
     appendSolidArrowMeshes(&meshes, start, end, color, head_fraction,
@@ -72,7 +65,6 @@ bool drawArrowOgreOrGl(common::DisplayContext* context,
     drawMeshesOgreOrGl(context, scene, display_name, meshes);
     return true;
   }
-#endif
 
   // GL fallback: render the same solid cylinder-shaft + cone-head meshes
   // used by the Ogre path so the arrow looks identical to RViz2 in all backends.
@@ -90,7 +82,6 @@ bool drawBillboardStripOgreOrGl(common::DisplayContext* context,
                                 const std::string& display_name,
                                 const std::vector<QVector3D>& points,
                                 const QColor& color, float line_width) {
-#ifdef AUTOVIZ_USE_OGRE
   if (context != nullptr && context->ogre_scene_host != nullptr &&
       line_width > 0.f) {
     syncOgreDisplayVisibility(context, display_name);
@@ -98,10 +89,6 @@ bool drawBillboardStripOgreOrGl(common::DisplayContext* context,
                                                        color, line_width);
     return true;
   }
-#else
-  (void)context;
-  (void)display_name;
-#endif
 
   if (points.size() < 2) {
     return false;
@@ -141,7 +128,6 @@ bool drawWrenchOgreOrGl(common::DisplayContext* context,
                         const QVector3D& force, const QVector3D& torque,
                         const QColor& force_color, const QColor& torque_color,
                         float force_scale, float torque_scale, float width) {
-#ifdef AUTOVIZ_USE_OGRE
   if (context != nullptr && context->ogre_scene_host != nullptr) {
     syncOgreDisplayVisibility(context, display_name);
     context->ogre_scene_host->setDisplayWrench(
@@ -149,9 +135,6 @@ bool drawWrenchOgreOrGl(common::DisplayContext* context,
         force_scale, torque_scale, width);
     return true;
   }
-#else
-  (void)width;
-#endif
 
   drawVectorArrowOgreOrGl(context, scene, display_name + "/force", origin, force,
                           force_color, 0.f, force_scale);
@@ -167,7 +150,6 @@ bool drawScrewOgreOrGl(common::DisplayContext* context,
                        const QColor& linear_color, const QColor& angular_color,
                        float linear_scale, float angular_scale, float width,
                        bool hide_small_values) {
-#ifdef AUTOVIZ_USE_OGRE
   if (context != nullptr && context->ogre_scene_host != nullptr) {
     syncOgreDisplayVisibility(context, display_name);
     context->ogre_scene_host->setDisplayScrew(
@@ -175,10 +157,6 @@ bool drawScrewOgreOrGl(common::DisplayContext* context,
         linear_scale, angular_scale, width, hide_small_values);
     return true;
   }
-#else
-  (void)width;
-  (void)hide_small_values;
-#endif
 
   drawVectorArrowOgreOrGl(context, scene, display_name + "/linear", origin,
                           linear, linear_color, 0.f, linear_scale);
@@ -194,7 +172,6 @@ bool drawCovarianceOgreOrGl(
     const std::array<double, 36>& covariance, const QColor& position_color,
     float position_scale, float orientation_scale, float orientation_offset,
     bool visible) {
-#ifdef AUTOVIZ_USE_OGRE
   if (context != nullptr && context->ogre_scene_host != nullptr) {
     syncOgreDisplayVisibility(context, display_name);
     context->ogre_scene_host->setDisplayCovariance(
@@ -203,14 +180,6 @@ bool drawCovarianceOgreOrGl(
         visible);
     return true;
   }
-#else
-  (void)pose_orientation;
-  (void)frame_orientation;
-  (void)covariance;
-  (void)orientation_scale;
-  (void)orientation_offset;
-  (void)visible;
-#endif
 
   if (!visible) {
     return false;

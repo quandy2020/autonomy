@@ -62,6 +62,10 @@ common::ImagePanelPersistConfig ToPersistConfig(const QString& object_name,
   for (const QString& channel : config.marker_channels) {
     persist.marker_channels.push_back(channel.toStdString());
   }
+  persist.point_cloud_channels.reserve(config.point_cloud_channels.size());
+  for (const QString& channel : config.point_cloud_channels) {
+    persist.point_cloud_channels.push_back(channel.toStdString());
+  }
   return persist;
 }
 
@@ -95,6 +99,9 @@ ImagePanelConfig FromPersistConfig(const common::ImagePanelPersistConfig& persis
   }
   for (const std::string& channel : persist.marker_channels) {
     config.marker_channels.push_back(QString::fromStdString(channel));
+  }
+  for (const std::string& channel : persist.point_cloud_channels) {
+    config.point_cloud_channels.push_back(QString::fromStdString(channel));
   }
   return config;
 }

@@ -28,6 +28,19 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
+/**
+ * @file config.hpp
+ * @brief Format-independent hierarchical configuration tree (RViz Config port).
+ *
+ * Stores configuration as a tree of Map / List / Value / Empty nodes with
+ * reference-counted internal @c Node objects. Used with
+ * @ref YamlConfigReader and @ref YamlConfigWriter for @c .autoviz / @c .rviz
+ * files, and with @ref SessionConfigToConfig / @ref SessionConfigFromConfig.
+ *
+ * @see YamlConfigReader
+ * @see YamlConfigWriter
+ * @see config_session.hpp
+ */
 
 #ifndef AUTOVIZ_COMMON__CONFIG_HPP_
 #define AUTOVIZ_COMMON__CONFIG_HPP_
@@ -45,83 +58,52 @@ namespace autoviz {
 namespace common
 {
 
-/// Configuration data storage class.
 /**
- * The purpose of the Config class is to provide a flexible place to
- * store configuration data during saving and loading which is
- * independent of the particular storage format (like YAML or XML or
- * INI).
- * The data is stored in a tree structure, supporting both
- * named and numerically-indexed children.
- * Leaves in the tree store QVariants, with convenience functions for int,
- * float, QString, and bool types.
+ * @class Config
+ * @brief Flexible hierarchical configuration data store.
  *
- * Config instances are references to an internal "Node" class which
- * actually stores the data and the tree structure.
- * Nodes are reference-counted and deletion is handled automatically.
- * This makes it safe to hold a reference to a portion of a Config tree to
- * use later, because the internal Nodes beneath the saved reference
- * will not be destroyed when the root of the tree goes out of scope.
+ * The purpose of the Config class is to provide a flexible place to store
+ * configuration data during saving and loading which is independent of the
+ * particular storage format (like YAML or XML or INI). The data is stored in
+ * a tree structure, supporting both named and numerically-indexed children.
+ * Leaves store @c QVariant values, with convenience functions for int, float,
+ * @c QString, and bool.
  *
- * Config objects can be used on their own for generic hierarchical
- * data storage, but they are intended to be used with reader and
- * writer classes.
- * Currently there is just YAML support, as that is all that RViz supports
- * right now.
- * Those classes are YamlConfigReader and YamlConfigWriter.
+ * Config instances are references to an internal @c Node class which actually
+ * stores the data and the tree structure. Nodes are reference-counted and
+ * deletion is handled automatically. This makes it safe to hold a reference
+ * to a portion of a Config tree to use later, because the internal Nodes
+ * beneath the saved reference will not be destroyed when the root of the tree
+ * goes out of scope.
  *
- * Typical use for reading looks like this:
+ * ## Typical reading
  *
- *   YamlConfigReader reader;
- *   Config config;
- *   reader.readFile(config, "my_file.yaml");
- *   if(!reader.error()) {
- *     int height, width;
- *     if(
- *       config.mapGetString("Height", &height) &&
- *       config.mapGetString("Width", &width))
- *     {
- *       resize(width, height);
- *     }
+ * @code
+ * YamlConfigReader reader;
+ * Config config;
+ * reader.readFile(config, "my_file.yaml");
+ * if (!reader.error()) {
+ *   int height = 0, width = 0;
+ *   // …
+ * }
+ * @endcode
  *
- *     Config file_list_config = config.mapGetChild("Files");
- *     filenames_.clear();
- *     int num_files = file_list_config.listLength();
- *     for(size_t i = 0; i < num_files; i++) {
- *       filenames_.push_back(
- *         file_list_config.listChildAt(i).getValue().toString());
- *     }
- *   } else {
- *     printf("%s", qPrintable(reader.errorMessage()));
- *   }
+ * ## Typical writing
  *
- * For writing, the same program might use this:
+ * @code
+ * Config config;
+ * config.mapSetValue("Height", height());
+ * YamlConfigWriter writer;
+ * writer.writeFile(config, "my_file.yaml");
+ * @endcode
  *
- *   Config config;
- *   config.mapSetValue("Height", height());
- *   config.mapSetValue("Width", width());
- *   Config file_list_config = config.mapMakeChild("Files");
- *   for(int i = 0; i < filenames_.size(); i++) {
- *     file_list_config.listAppendNew().setValue(filenames_[i]);
- *   }
+ * @note @ref setType() can change a node's type; mutating helpers
+ *       (@ref mapSetValue, @ref mapMakeChild, @ref setValue, @ref listAppendNew)
+ *       call it internally as needed. Changing type destroys incompatible data
+ *       (except child nodes still referenced elsewhere).
  *
- *   YamlConfigWriter writer;
- *   writer.writeFile(config, "my_file.yaml");
- *
- *   if(writer.error()) {
- *     printf("%s", qPrintable(writer.errorMessage()));
- *   }
- *
- * setType() can be used to set the type of a given node (Map, List,
- * Value, or Empty), but it is often unnecessary.
- * All functions which add or change data (mapSetValue(), mapMakeChild(),
- * setValue(), and listAppendNew()) internally call setType() to ensure the
- * node has the right type for the operation.
- * If setType() is called with the same type that the node already has,
- * nothing happens.
- * If it needs to change the type of the node, any data stored in the node is
- * destroyed (except for child nodes which are referenced by other existing
- * Config objects).
+ * @see YamlConfigReader
+ * @see YamlConfigWriter
  */
 class  Config
 {
@@ -130,225 +112,269 @@ private:
   typedef std::shared_ptr<Node> NodePtr;
 
 public:
-  /// The default constructor creates an empty config object.
+  /**
+   * @brief Default constructor; creates an empty (Empty-type) config object.
+   */
   Config();
 
-  /// The copy constructor copies only the reference to the data, not the data itself.
+  /**
+   * @brief Copy constructor; copies only the reference to the data, not the data itself.
+   * @param source Source config (shares the same internal Node).
+   */
   Config(const Config & source);
 
-  /// The converting constructor, makes a Value type Config object with the given value.
+  /**
+   * @brief Converting constructor; makes a Value-type Config with the given value.
+   * @param value Initial leaf value.
+   */
   explicit Config(QVariant value);
 
+  /**
+   * @brief Assignment; shares the source's Node reference.
+   * @param source Source config.
+   * @return @c *this.
+   */
   Config &
   operator=(const Config & source);
 
-  /// Make this object a deep copy of the source.
+  /**
+   * @brief Makes this object a deep copy of @p source.
+   * @param source Config tree to duplicate.
+   */
   void
   copy(const Config & source);
 
-  /// Possible types a Config Node can have are Map, List, Value, and Empty.
   /**
-   * Invalid means the Config object does not point to a Node at all.
+   * @enum Type
+   * @brief Possible types a Config Node can have.
    *
-   * Invalid Config objects are returned by data access functions when
-   * the data does not exist, like listChildAt(7) on a list of length
-   * 3, or mapGetChild("foo") on a Value Node.
+   * @c Invalid means the Config object does not point to a Node at all.
+   * Invalid Config objects are returned by data access functions when the
+   * data does not exist (e.g. @ref listChildAt(7) on a list of length 3).
    */
-  enum Type {Map, List, Value, Empty, Invalid};
+  enum Type {
+    Map,      /**< Named children (string keys). */
+    List,     /**< Numerically indexed children. */
+    Value,    /**< Leaf holding a @c QVariant. */
+    Empty,    /**< Valid but empty node. */
+    Invalid   /**< No Node referenced. */
+  };
 
-  /// Return the Type of the referenced Node, or Invalid if no Node is referenced.
+  /**
+   * @brief Returns the Type of the referenced Node, or Invalid if none.
+   * @return Current @ref Type.
+   */
   Type
   getType() const;
 
-  /// Set the type of this Config Node.
   /**
-   * If new_type is Invalid, this de-references the node and makes
-   * the Config object invalid.
-   * If the new type is different from the old type, this deletes the existing
-   * data in the Node and changes the Node's type to new_type.
-   * If this does not change the type of the Node, no data is deleted and
-   * nothing is changed.
+   * @brief Sets the type of this Config Node.
    *
-   * If this Config is currently invalid and new_type is not Invalid, this will
-   * create a new Node and reference it.
+   * If @p new_type is Invalid, this de-references the node and makes the
+   * Config object invalid. If the new type differs from the old type, existing
+   * data in the Node is deleted and the type changes. Same-type calls are
+   * no-ops. If currently invalid and @p new_type is not Invalid, a new Node
+   * is created and referenced.
+   *
+   * @param new_type Desired type.
    */
   void
   setType(Type new_type);
 
-  /// Returns true if the internal Node reference is valid, false if not.
   /**
-   * Same as (getType() != Invalid).
+   * @brief Returns whether the internal Node reference is valid.
+   *
+   * Same as (@ref getType() != Invalid).
+   *
+   * @return @c true if a Node is referenced.
    */
   bool
   isValid() const;
 
-  /// Set a named child to the given value.
   /**
-   * Since QVariant has constructors for int, float, bool, QString,
-   * and other supported types, you can call mapSetValue() directly
-   * with your data in most cases:
+   * @brief Sets a named child to the given value (forces Map type).
    *
-   *   config.mapSetValue("Size", 13);
-   *   config.mapSetValue("Name", "Humphrey");
+   * Since @c QVariant has constructors for int, float, bool, @c QString, and
+   * other supported types, you can call this directly with your data in most
+   * cases. Equivalent to @c mapMakeChild(key).setValue(value).
    *
-   * mapSetValue(key, value) is the same as mapMakeChild(key).setValue(value).
-   *
-   * This forces the referenced Node to have type Map.
+   * @param key Child key.
+   * @param value Value to store.
    */
   void
   mapSetValue(const QString & key, QVariant value);
 
-  /// Create a child node stored with the given key, and return the child.
   /**
-   * This forces the referenced Node to have type Map.
+   * @brief Creates a child node under @p key and returns it (forces Map type).
+   *
+   * @param key Child key.
+   * @return Config referencing the new child.
    */
   Config
   mapMakeChild(const QString & key);
 
-  /// Return a reference to the child if the Node is a Map which contains the given key.
   /**
-   * If the reference is invalid or the Node has a different Type, return an
-   * invalid Config.
+   * @brief Returns a reference to the child if this Node is a Map containing @p key.
+   *
+   * @param key Child key.
+   * @return Child Config, or Invalid if missing / wrong type.
    */
   Config
   mapGetChild(const QString & key) const;
 
-  /// Convenience function for looking up a named value.
   /**
-   * If a Value Node with the given key is a child of this Node, set
-   * value_out to the given value and return true.
+   * @brief Looks up a named value child.
    *
-   * If the Config is Invalid or the Node is not a Map, this returns an
-   * Invalid Config.
+   * @param key Child key.
+   * @param[out] value_out Receives the value on success (non-null).
+   * @return @c true if a Value child with @p key exists.
    */
   bool
   mapGetValue(const QString & key, QVariant * value_out) const;
 
-  /// Convenience function for looking up a named integer.
   /**
-   * If a Value Node with the given key is a child of this Node, and
-   * the Value is either an int or a string-ified int, set value_out
-   * to the integer and return true.
+   * @brief Looks up a named integer (int or string-ified int).
    *
-   * If the Config is invalid or the Node is not a Map, returns an
-   * Invalid Config.
+   * @param key Child key.
+   * @param[out] value_out Receives the integer on success.
+   * @return @c true on success.
    */
   bool
   mapGetInt(const QString & key, int * value_out) const;
 
-  /// Convenience function for looking up a named float.
   /**
-   * If a Value Node with the given key is a child of this Node, and
-   * the Value is either a float, a double or a string-ified float or
-   * double, set value_out to the float and return true.
+   * @brief Looks up a named float (float, double, or string-ified).
    *
-   * If the Config is invalid or the Node is not a Map, returns an
-   * Invalid Config.
+   * @param key Child key.
+   * @param[out] value_out Receives the float on success.
+   * @return @c true on success.
    */
   bool
   mapGetFloat(const QString & key, float * value_out) const;
 
-  /// Convenience function for looking up a named boolean.
   /**
-   * If a Value Node with the given key is a child of this Node, and
-   * the Value is either a bool or a string-ified bool, set value_out
-   * to the bool and return true.
+   * @brief Looks up a named boolean (bool or string-ified bool).
    *
-   * If the Config is invalid or the Node is not a Map, returns an
-   * Invalid Config.
+   * @param key Child key.
+   * @param[out] value_out Receives the bool on success.
+   * @return @c true on success.
    */
   bool
   mapGetBool(const QString & key, bool * value_out) const;
 
-  /// Convenience function for looking up a named string.
   /**
-   * If a Value Node with the given key is a child of this Node, and
-   * the Value is a string, set value_out to the string and return
-   * true.
+   * @brief Looks up a named string value.
    *
-   * If the Config is invalid or the Node is not a Map, returns an
-   * Invalid Config.
+   * @param key Child key.
+   * @param[out] value_out Receives the string on success.
+   * @return @c true on success.
    */
   bool
   mapGetString(const QString & key, QString * value_out) const;
 
-  /// Ensure this is a valid Config object, set the type to Value, then set the value.
-  /// Set the value and the type to Value, if the Config object is valid.
+  /**
+   * @brief Ensures this is a valid Value-type node and sets its value.
+   * @param value New leaf value.
+   */
   void
   setValue(const QVariant & value);
 
-  /// Return the value, if this Config object is valid and is a Value type.
   /**
-   * Otherwise it returns an invalid QVariant.
+   * @brief Returns the leaf value if this is a valid Value-type node.
+   * @return Value, or an invalid @c QVariant otherwise.
    */
   QVariant
   getValue() const;
 
-  /// Return the length of the List in this Node, or 0 if this Node does not have type List.
+  /**
+   * @brief Returns the list length, or 0 if not a List.
+   * @return Number of list children.
+   */
   int
   listLength() const;
 
-  /// Return the i'th child in the list, if the referenced Node has type List.
   /**
-   * Returns an Invalid Config if the type is not List or if i is not a valid
-   * index into it.
+   * @brief Returns the i'th child if this Node has type List.
+   *
+   * @param i Zero-based index.
+   * @return Child Config, or Invalid if out of range / wrong type.
    */
   Config
   listChildAt(int i) const;
 
-  /// Append a new empty Node to the list and return a reference, unless the Node is not a List.
+  /**
+   * @brief Appends a new empty Node to the list and returns a reference.
+   *
+   * Forces List type when needed. Returns Invalid if the operation fails.
+   *
+   * @return Config referencing the new list child.
+   */
   Config
   listAppendNew();
 
-  /// Iterator class for looping over all entries in a Map type Config Node.
   /**
+   * @class MapIterator
+   * @brief Iterator for looping over all entries in a Map-type Config Node.
+   *
    * Typical usage:
+   * @code
+   * for (Config::MapIterator iter = config.mapIterator(); iter.isValid();
+   *      iter.advance()) {
+   *   QString key = iter.currentKey();
+   *   Config child = iter.currentChild();
+   * }
+   * @endcode
    *
-   *   Config config;
-   *   display->save(config);  // Write display's data into config.
-   *   for(Config::MapIterator iter = config.mapIterator(); iter.isValid(); iter.advance()) {
-   *     QString key = iter.currentKey();
-   *     Config child = iter.currentChild();
-   *     printf(
-   *       "key %s has value %s.\n",
-   *       qPrintable(ke ), qPrintable(child.getValue().toString()));
-   *   }
-   *
-   * Maps are stored in alphabetical order of their keys, and MapIterator uses
-   * this same order.
+   * Maps are stored in alphabetical order of their keys; MapIterator uses
+   * the same order.
    */
   class  MapIterator
   {
     // *INDENT-OFF*
   public:
     // *INDENT-ON*
-    /// Advance iterator to next entry.
+    /**
+     * @brief Advances the iterator to the next entry.
+     */
     void
     advance();
 
-    /// Return true if the iterator currently points to a valid entry, false if not.
     /**
+     * @brief Returns whether the iterator currently points to a valid entry.
+     *
      * This is how you tell if your loop over entries is at the end.
+     *
+     * @return @c true if current entry is valid.
      */
     bool
     isValid();
 
-    /// Reset the iterator to the start of the map.
+    /**
+     * @brief Resets the iterator to the start of the map.
+     */
     void
     start();
 
-    /// Return the name of the current map entry.
+    /**
+     * @brief Returns the name of the current map entry.
+     * @return Key string.
+     */
     QString
     currentKey();
 
-    /// Return a Config reference to the current map entry.
+    /**
+     * @brief Returns a Config reference to the current map entry.
+     * @return Child config.
+     */
     Config
     currentChild();
 
     // *INDENT-OFF*
   private:
     // *INDENT-ON*
-    /// Private constructor enforces that MapIterators are only made by the Config class.
+    /**
+     * @brief Private constructor; only @ref Config may create MapIterators.
+     */
     MapIterator();
 
     Config::NodePtr node_;
@@ -357,28 +383,40 @@ public:
     friend class Config;
   };
 
-  /// Return a new iterator for looping over key/value pairs.
   /**
-   * The returned MapIterator is initialized to point at the start of the map.
+   * @brief Returns a new iterator for looping over key/value pairs.
    *
-   * If this Config is Invalid or if its Node is not a Map, this returns a
-   * MapIterator for which isValid() always returns false.
+   * The returned MapIterator is initialized to point at the start of the map.
+   * If this Config is Invalid or its Node is not a Map, returns an iterator
+   * for which @ref MapIterator::isValid always returns @c false.
+   *
+   * @return Map iterator positioned at the first entry (if any).
    */
   MapIterator
   mapIterator() const;
 
 private:
+  /**
+   * @brief Internal constructor wrapping an existing Node.
+   * @param node Shared node pointer.
+   */
   explicit Config(NodePtr node);
 
+  /**
+   * @brief Returns a Config with no Node (Invalid).
+   * @return Invalid config sentinel.
+   */
   static
   Config
   invalidConfig();
 
-  /// If the node pointer is nullptr, this sets it to a new empty node.
+  /**
+   * @brief If the node pointer is nullptr, sets it to a new empty node.
+   */
   void
   makeValid();
 
-  NodePtr node_;
+  NodePtr node_; /**< Shared reference to the internal tree node. */
 
   friend class MapIterator;
 };

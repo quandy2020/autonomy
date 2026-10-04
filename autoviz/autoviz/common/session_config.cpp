@@ -15,7 +15,7 @@
 #include "autoviz/common/config_session.hpp"
 #include "autoviz/common/yaml_config_reader.hpp"
 #include "autoviz/common/yaml_config_writer.hpp"
-#include "autoviz/ui/panel_rviz_map.hpp"
+#include "autoviz/ui/panel/name_map.hpp"
 
 namespace autoviz {
 namespace common {
@@ -102,11 +102,11 @@ std::string MapRvizViewType(const std::string& rviz_class) {
 }
 
 std::string MapRvizPanelObjectName(const std::string& rviz_panel_title) {
-  return MapRvizPanelToObjectName(rviz_panel_title);
+  return MapPanelClassToObjectName(rviz_panel_title);
 }
 
 std::string MapRvizPanelClass(const std::string& rviz_class) {
-  return MapRvizPanelToObjectName(rviz_class);
+  return MapPanelClassToObjectName(rviz_class);
 }
 
 void ImportRvizViewNode(const YAML::Node& view, SessionConfig* config,
@@ -304,8 +304,7 @@ void ImportRvizDisplayProperties(const std::string& type,
 }
 
 void ImportRvizDisplayNode(const YAML::Node& node,
-                          std::vector<DisplayConfig>* out,
-                          SessionConfig* config = nullptr) {
+                          std::vector<DisplayConfig>* out) {
   if (!node || !node.IsMap() || out == nullptr) {
     return;
   }
@@ -362,10 +361,7 @@ void ImportRvizDisplayNode(const YAML::Node& node,
     entry.properties["color_channel"] =
         node["Color Image Topic"].as<std::string>();
   }
-  if (type == "Grid" && entry.enabled && config != nullptr) {
-    config->show_grid = true;
-  }
-
+  // RViz2: Grid is a Display only.
   out->push_back(std::move(entry));
 }
 
@@ -461,7 +457,7 @@ bool LoadFromRvizYaml(const YAML::Node& root, SessionConfig* config) {
   config->displays.clear();
   if (manager["Displays"]) {
     for (const auto& display_node : manager["Displays"]) {
-      ImportRvizDisplayNode(display_node, &config->displays, config);
+      ImportRvizDisplayNode(display_node, &config->displays);
     }
   }
 
@@ -623,11 +619,11 @@ void WriteViewFields(YAML::Emitter* out, const SavedViewConfig& view) {
 SessionConfig SessionConfigIO::defaultConfig() {
   SessionConfig config;
   config.fixed_frame = "map";
-  config.show_grid = true;
+  // Grid visibility is controlled by the Grid Display (RViz2 parity).
   config.background_color = "48;48;48";
   config.frame_rate = 30;
   config.view_controller = "Orbit";
-  config.render_backend = "OpenGL";
+  config.render_backend = "Ogre";
   config.displays = {
       {"Grid", "Grid", "", true},
   };

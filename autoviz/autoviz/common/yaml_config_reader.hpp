@@ -28,6 +28,17 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
+/**
+ * @file yaml_config_reader.hpp
+ * @brief Reads YAML into a hierarchical @ref Config tree (RViz YamlConfigReader).
+ *
+ * Supports file, string, and stream sources. After each read, check
+ * @ref error() / @ref errorMessage() before using the filled @ref Config.
+ *
+ * @see Config
+ * @see YamlConfigWriter
+ * @see SessionConfigFromConfig
+ */
 
 #ifndef AUTOVIZ_COMMON__YAML_CONFIG_READER_HPP_
 #define AUTOVIZ_COMMON__YAML_CONFIG_READER_HPP_
@@ -44,47 +55,77 @@ namespace autoviz {
 namespace common
 {
 
+/**
+ * @class YamlConfigReader
+ * @brief Parses YAML documents into @ref Config trees.
+ *
+ * Object begins in a no-error state. Each read call may update @ref error()
+ * and @ref errorMessage(). The @p filename arguments are used only for
+ * diagnostics in error messages (logical source name).
+ */
 class  YamlConfigReader
 {
 public:
-  /// Constructor.
   /**
-   * Object begins in a no-error state.
+   * @brief Constructs a reader in a no-error state.
    */
   YamlConfigReader();
 
-  /// Read config data from a file.
   /**
-   * This potentially changes the return value sof error(), statusMessage(),
-   * and config().
+   * @brief Reads config data from a file into @p config.
+   *
+   * Potentially changes the return values of @ref error() and
+   * @ref errorMessage().
+   *
+   * @param[out] config Destination config tree (overwritten on success).
+   * @param filename Filesystem path to open.
    */
   void readFile(Config & config, const QString & filename);
 
-  /// Read config data from a string.
   /**
-   * This potentially changes the return value sof error(), statusMessage(),
-   * and config().
+   * @brief Reads config data from a YAML string into @p config.
+   *
+   * @param[out] config Destination config tree.
+   * @param data YAML document text.
+   * @param filename Logical name for error messages (default
+   *        @c "data string").
    */
   void readString(Config & config, const QString & data, const QString & filename = "data string");
 
-  /// Read config data from a std::istream.
   /**
-   * This potentially changes the return value sof error(), statusMessage(),
-   * and config().
+   * @brief Reads config data from a @c std::istream into @p config.
+   *
+   * @param[out] config Destination config tree.
+   * @param in Input stream positioned at the YAML document.
+   * @param filename Logical name for error messages (default
+   *        @c "data stream").
    */
   void readStream(Config & config, std::istream & in, const QString & filename = "data stream");
 
-  /// Return true if the latest readFile() or readString() call had an error.
+  /**
+   * @brief Returns whether the latest read call had an error.
+   * @return @c true if the last @ref readFile / @ref readString /
+   *         @ref readStream failed.
+   */
   bool error();
 
-  /// Return an error message if the latest read call had an error, or the empty string if not.
+  /**
+   * @brief Returns an error message if the latest read had an error.
+   * @return Error text, or the empty string if none.
+   */
   QString errorMessage();
 
 private:
+  /**
+   * @brief Recursively converts a yaml-cpp node into a @ref Config subtree.
+   *
+   * @param[out] config Destination config node.
+   * @param yaml_node Source YAML node.
+   */
   void readYamlNode(Config & config, const YAML::Node & yaml_node);
 
-  QString message_;
-  bool error_;
+  QString message_; /**< Last error message (empty if ok). */
+  bool error_;      /**< Last operation error flag. */
 };
 
 }  // namespace common

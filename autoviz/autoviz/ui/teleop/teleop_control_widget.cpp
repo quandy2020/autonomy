@@ -18,98 +18,102 @@
 #include <QKeyEvent>
 #include <QLabel>
 #include <QPushButton>
+#include <QSizePolicy>
 #include <QToolButton>
 #include <QVBoxLayout>
 
+#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/style.hpp"
 #include "autoviz/ui/teleop/teleop_joystick_widget.hpp"
 
 namespace autoviz {
 namespace teleop {
 namespace {
 
-constexpr char kBg[] = "#f8f9fb";
-constexpr char kSurface[] = "#ffffff";
-constexpr char kBorder[] = "#cbd5e1";
-constexpr char kText[] = "#1e293b";
-constexpr char kTextMuted[] = "#64748b";
-constexpr char kAccent[] = "#0891b2";
-constexpr char kDanger[] = "#dc2626";
+QString HexAccent() { return glass::ShellCssAccent(); }
+QString HexText() { return glass::ShellCssText(); }
+QString HexMuted() { return glass::ShellCssMuted(); }
+QString HexBorder() { return glass::ShellCssBorder(); }
+QString HexBg() { return glass::ShellCssBg(); }
 
-QString ModeToggleStyle() {
-  return QStringLiteral(
-      "QToolButton {"
-      "  background: %1; color: %2;"
-      "  border: 1px solid %3; border-radius: 8px;"
-      "  padding: 7px 14px; font-weight: 600; font-size: 12px;"
-      "}"
-      "QToolButton:checked {"
-      "  background: %4; color: white; border-color: %4;"
-      "}"
-      "QToolButton:hover:!checked {"
-      "  background: rgba(8,145,178,0.10); color: %4; border-color: %4;"
-      "}")
-      .arg(QLatin1String(kBg), QLatin1String(kText), QLatin1String(kBorder),
-           QLatin1String(kAccent));
-}
+constexpr char kDanger[] = "#E11D48";
+constexpr char kDangerHover[] = "#BE123C";
+constexpr char kDangerPress[] = "#9F1239";
 
-/** Compact stepper: [−] value [+] — clearer than native spin arrows. */
-QWidget* MakeSpeedStepper(const QString& caption, QDoubleSpinBox** spin_out,
-                          double value, const QString& suffix, QWidget* parent) {
-  auto* wrap = new QWidget(parent);
-  auto* layout = new QHBoxLayout(wrap);
-  layout->setContentsMargins(0, 0, 0, 0);
-  layout->setSpacing(6);
+/** Refined instrument readout — quiet chrome, crisp value hierarchy. */
+QWidget* MakeSpeedChip(const QString& title, const QString& tip,
+                       QDoubleSpinBox** spin_out, double value,
+                       const QString& unit, QWidget* parent) {
+  auto* card = new QFrame(parent);
+  card->setObjectName(QStringLiteral("TeleopSpeedCard"));
+  card->setToolTip(tip);
+  card->setStyleSheet(
+      style::sheet(QStringLiteral("teleop/speed_card")));
 
-  auto* caption_label = new QLabel(caption, wrap);
-  caption_label->setStyleSheet(
-      QStringLiteral("color: %1; font-size: 11px; font-weight: 700;")
-          .arg(QLatin1String(kTextMuted)));
-  layout->addWidget(caption_label);
+  auto* root = new QVBoxLayout(card);
+  root->setContentsMargins(12, 10, 12, 10);
+  root->setSpacing(0);
 
-  auto* minus = new QToolButton(wrap);
-  minus->setText(QStringLiteral("−"));
-  minus->setCursor(Qt::PointingHandCursor);
-  minus->setFixedSize(30, 30);
-  minus->setStyleSheet(QStringLiteral(
-      "QToolButton {"
-      "  background: #f1f5f9; color: %1;"
-      "  border: 1px solid %2; border-radius: 8px;"
-      "  font-size: 16px; font-weight: 700;"
-      "}"
-      "QToolButton:hover { background: rgba(8,145,178,0.14); color: %3; "
-      "border-color: %3; }"
-      "QToolButton:pressed { background: rgba(8,145,178,0.24); }")
-                           .arg(QLatin1String(kText), QLatin1String(kBorder),
-                                QLatin1String(kAccent)));
-  layout->addWidget(minus);
+  auto* title_label = new QLabel(title, card);
+  title_label->setAlignment(Qt::AlignHCenter);
+  title_label->setStyleSheet(
+      style::sheet(QStringLiteral("teleop/speed_caption")));
+  root->addWidget(title_label);
+  root->addSpacing(6);
 
-  auto* spin = new QDoubleSpinBox(wrap);
+  auto* spin = new QDoubleSpinBox(card);
   spin->setRange(0.01, 10.0);
   spin->setSingleStep(0.05);
   spin->setDecimals(2);
-  spin->setSuffix(suffix);
   spin->setValue(value);
+  spin->setToolTip(tip);
   spin->setButtonSymbols(QAbstractSpinBox::NoButtons);
-  spin->setAlignment(Qt::AlignCenter);
-  spin->setMinimumWidth(108);
-  spin->setFixedHeight(30);
-  spin->setStyleSheet(QStringLiteral(
-      "QDoubleSpinBox {"
-      "  background: %1; color: %2;"
-      "  border: 1px solid %3; border-radius: 8px;"
-      "  padding: 2px 8px; font-weight: 700; font-size: 13px;"
-      "}"
-      "QDoubleSpinBox:focus { border-color: %4; }")
-                          .arg(QLatin1String(kSurface), QLatin1String(kText),
-                               QLatin1String(kBorder), QLatin1String(kAccent)));
-  layout->addWidget(spin);
+  spin->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+  spin->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  spin->setFixedHeight(28);
+  spin->setStyleSheet(
+      style::sheet(QStringLiteral("teleop/speed_spin")));
+  root->addWidget(spin);
 
-  auto* plus = new QToolButton(wrap);
+  auto* unit_label = new QLabel(unit.trimmed(), card);
+  unit_label->setAlignment(Qt::AlignHCenter);
+  unit_label->setStyleSheet(
+      style::sheet(QStringLiteral("teleop/speed_unit")));
+  root->addWidget(unit_label);
+  root->addSpacing(8);
+
+  auto* rule = new QFrame(card);
+  rule->setFixedHeight(1);
+  rule->setStyleSheet(
+      style::sheet(QStringLiteral("teleop/speed_rule")));
+  root->addWidget(rule);
+  root->addSpacing(8);
+
+  auto* steppers = new QHBoxLayout();
+  steppers->setContentsMargins(0, 0, 0, 0);
+  steppers->setSpacing(10);
+  steppers->addStretch(1);
+
+  const QString step_style =
+      style::sheet(QStringLiteral("teleop/step_button"));
+
+  auto* minus = new QToolButton(card);
+  minus->setText(QStringLiteral("−"));
+  minus->setToolTip(tip);
+  minus->setCursor(Qt::PointingHandCursor);
+  minus->setFixedSize(28, 28);
+  minus->setStyleSheet(step_style);
+  steppers->addWidget(minus);
+
+  auto* plus = new QToolButton(card);
   plus->setText(QStringLiteral("+"));
+  plus->setToolTip(tip);
   plus->setCursor(Qt::PointingHandCursor);
-  plus->setFixedSize(30, 30);
-  plus->setStyleSheet(minus->styleSheet());
-  layout->addWidget(plus);
+  plus->setFixedSize(28, 28);
+  plus->setStyleSheet(step_style);
+  steppers->addWidget(plus);
+  steppers->addStretch(1);
+  root->addLayout(steppers);
 
   QObject::connect(minus, &QToolButton::clicked, spin, [spin]() {
     spin->setValue(spin->value() - spin->singleStep());
@@ -119,7 +123,7 @@ QWidget* MakeSpeedStepper(const QString& caption, QDoubleSpinBox** spin_out,
   });
 
   *spin_out = spin;
-  return wrap;
+  return card;
 }
 
 }  // namespace
@@ -128,182 +132,154 @@ TeleopControlWidget::TeleopControlWidget(QWidget* parent) : QWidget(parent) {
   setObjectName(QStringLiteral("TeleopControlContent"));
   setAttribute(Qt::WA_StyledBackground, true);
   setFocusPolicy(Qt::StrongFocus);
-  setStyleSheet(QStringLiteral(
-      "QWidget#TeleopControlContent {"
-      "  background: %1; color: %2;"
-      "}")
-                    .arg(QLatin1String(kBg), QLatin1String(kText)));
+  setMinimumWidth(220);
+  setStyleSheet(
+      style::sheet(QStringLiteral("teleop/control_root")));
 
   auto* root = new QVBoxLayout(this);
-  root->setContentsMargins(12, 12, 12, 12);
+  root->setContentsMargins(10, 10, 10, 10);
   root->setSpacing(10);
 
-  auto* toolbar = new QFrame(this);
-  toolbar->setObjectName(QStringLiteral("TeleopModeBar"));
-  toolbar->setStyleSheet(QStringLiteral(
-      "QFrame#TeleopModeBar {"
-      "  background: %1;"
-      "  border: 1px solid %2;"
-      "  border-radius: 14px;"
-      "}")
-                             .arg(QLatin1String(kSurface),
-                                  QLatin1String(kBorder)));
-  auto* toolbar_layout = new QVBoxLayout(toolbar);
-  toolbar_layout->setContentsMargins(12, 10, 12, 10);
-  toolbar_layout->setSpacing(8);
+  // —— Header glass strip ——
+  auto* header = new QFrame(this);
+  header->setObjectName(QStringLiteral("TeleopHeader"));
+  header->setStyleSheet(
+      style::sheet(QStringLiteral("teleop/header")));
+  auto* header_layout = new QVBoxLayout(header);
+  header_layout->setContentsMargins(8, 8, 8, 8);
+  header_layout->setSpacing(8);
 
-  auto* mode_row = new QHBoxLayout();
-  mode_row->setSpacing(8);
-  auto* mode_caption = new QLabel(tr("MODE"), toolbar);
-  mode_caption->setStyleSheet(
-      QStringLiteral("color: %1; font-size: 11px; font-weight: 700;")
-          .arg(QLatin1String(kTextMuted)));
-  mode_row->addWidget(mode_caption);
+  auto* top_row = new QHBoxLayout();
+  top_row->setSpacing(8);
+  top_row->setContentsMargins(0, 0, 0, 0);
+
+  auto* mode_shell = new QFrame(header);
+  mode_shell->setObjectName(QStringLiteral("TeleopModeSegment"));
+  mode_shell->setStyleSheet(
+      style::sheet(QStringLiteral("teleop/mode_segment")));
+  auto* mode_row = new QHBoxLayout(mode_shell);
+  mode_row->setContentsMargins(3, 3, 3, 3);
+  mode_row->setSpacing(2);
   mode_group_ = new QButtonGroup(this);
   mode_group_->setExclusive(true);
-  dual_mode_button_ = new QToolButton(toolbar);
-  dual_mode_button_->setText(tr("Dual sticks"));
+  dual_mode_button_ = new QToolButton(mode_shell);
+  dual_mode_button_->setText(tr("Dual"));
+  dual_mode_button_->setToolTip(tr("Left: Move · Right: Turn"));
   dual_mode_button_->setCheckable(true);
   dual_mode_button_->setChecked(true);
   dual_mode_button_->setCursor(Qt::PointingHandCursor);
-  dual_mode_button_->setStyleSheet(ModeToggleStyle());
-  arcade_mode_button_ = new QToolButton(toolbar);
+  dual_mode_button_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  dual_mode_button_->setStyleSheet(
+      style::sheet(QStringLiteral("teleop/mode_toggle")));
+  arcade_mode_button_ = new QToolButton(mode_shell);
   arcade_mode_button_->setText(tr("Arcade"));
+  arcade_mode_button_->setToolTip(tr("WASD / arrows to drive · Space: E-Stop"));
   arcade_mode_button_->setCheckable(true);
   arcade_mode_button_->setCursor(Qt::PointingHandCursor);
-  arcade_mode_button_->setStyleSheet(ModeToggleStyle());
+  arcade_mode_button_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  arcade_mode_button_->setStyleSheet(
+      style::sheet(QStringLiteral("teleop/mode_toggle")));
   mode_group_->addButton(dual_mode_button_,
                          static_cast<int>(TeleopStickMode::kDual));
   mode_group_->addButton(arcade_mode_button_,
                          static_cast<int>(TeleopStickMode::kArcade));
   mode_row->addWidget(dual_mode_button_);
   mode_row->addWidget(arcade_mode_button_);
-  mode_row->addStretch(1);
-  toolbar_layout->addLayout(mode_row);
+  top_row->addWidget(mode_shell, 1);
+
+  smart_teleop_check_ = new QCheckBox(tr("Smart"), header);
+  smart_teleop_check_->setCursor(Qt::PointingHandCursor);
+  smart_teleop_check_->setStyleSheet(
+      style::sheet(QStringLiteral("teleop/smart_check")));
+  smart_teleop_check_->setToolTip(
+      tr("Send velocity via autonomy task teleop (MPPI assist), not /cmd_vel"));
+  top_row->addWidget(smart_teleop_check_, 0, Qt::AlignVCenter);
+  header_layout->addLayout(top_row);
 
   auto* speed_row = new QHBoxLayout();
-  speed_row->setSpacing(16);
-  speed_row->addWidget(MakeSpeedStepper(
-      tr("MAX LINEAR"), &max_linear_spin_, max_linear_speed_,
-      QStringLiteral(" m/s"), toolbar));
-  max_linear_spin_->setToolTip(tr("Maximum linear speed"));
-  speed_row->addWidget(MakeSpeedStepper(
-      tr("MAX ANGULAR"), &max_angular_spin_, max_angular_speed_,
-      QStringLiteral(" rad/s"), toolbar));
-  max_angular_spin_->setToolTip(tr("Maximum angular speed"));
-  speed_row->addStretch(1);
-  toolbar_layout->addLayout(speed_row);
+  speed_row->setSpacing(8);
+  speed_row->addWidget(
+      MakeSpeedChip(tr("LINEAR"), tr("Max linear speed"), &max_linear_spin_,
+                    max_linear_speed_, QStringLiteral("m/s"), header),
+      1);
+  speed_row->addWidget(
+      MakeSpeedChip(tr("ANGULAR"), tr("Max angular speed"), &max_angular_spin_,
+                    max_angular_speed_, QStringLiteral("rad/s"), header),
+      1);
+  header_layout->addLayout(speed_row);
+  root->addWidget(header);
 
-  auto* smart_row = new QHBoxLayout();
-  smart_row->setSpacing(8);
-  smart_teleop_check_ = new QCheckBox(tr("智能摇操"), toolbar);
-  smart_teleop_check_->setCursor(Qt::PointingHandCursor);
-  smart_teleop_check_->setStyleSheet(QStringLiteral(
-      "QCheckBox {"
-      "  color: %1; font-size: 12px; font-weight: 700;"
-      "  spacing: 8px;"
-      "}"
-      "QCheckBox::indicator {"
-      "  width: 16px; height: 16px; border-radius: 4px;"
-      "  border: 1px solid %2; background: %3;"
-      "}"
-      "QCheckBox::indicator:checked {"
-      "  background: %4; border-color: %4;"
-      "}"
-      "QCheckBox:disabled { color: %5; }")
-                                         .arg(QLatin1String(kText),
-                                              QLatin1String(kBorder),
-                                              QLatin1String(kSurface),
-                                              QLatin1String(kAccent),
-                                              QLatin1String(kTextMuted)));
-  smart_teleop_check_->setToolTip(
-      tr("通过 autonomy task teleop 发送速度（MPPI 避障 assist），"
-         "不再直接发布 /cmd_vel"));
-  smart_row->addWidget(smart_teleop_check_);
-  smart_row->addStretch(1);
-  toolbar_layout->addLayout(smart_row);
-
-  hint_label_ = new QLabel(toolbar);
-  hint_label_->setWordWrap(true);
-  hint_label_->setStyleSheet(QStringLiteral(
-      "color: %1; background: rgba(8,145,178,0.08);"
-      "border: 1px solid rgba(8,145,178,0.22); border-radius: 8px;"
-      "padding: 6px 10px; font-size: 12px; font-weight: 600;")
-                                 .arg(QLatin1String(kAccent)));
-  toolbar_layout->addWidget(hint_label_);
-  root->addWidget(toolbar);
-
+  // —— Drive surface (soft glass, pads breathe) ——
   dual_frame_ = new QFrame(this);
   dual_frame_->setObjectName(QStringLiteral("TeleopSticksCard"));
-  dual_frame_->setMinimumHeight(240);
-  dual_frame_->setStyleSheet(QStringLiteral(
-      "QFrame#TeleopSticksCard {"
-      "  background: %1;"
-      "  border: 1px solid %2;"
-      "  border-radius: 16px;"
-      "}")
-                                 .arg(QLatin1String(kSurface),
-                                      QLatin1String(kBorder)));
+  dual_frame_->setMinimumHeight(180);
+  dual_frame_->setStyleSheet(
+      style::sheet(QStringLiteral("teleop/sticks_card")));
   auto* dual_layout = new QVBoxLayout(dual_frame_);
-  dual_layout->setContentsMargins(20, 18, 20, 14);
-  dual_layout->setSpacing(4);
+  dual_layout->setContentsMargins(14, 16, 14, 14);
+  dual_layout->setSpacing(0);
   auto* dual_row = new QHBoxLayout();
-  dual_row->setSpacing(28);
-  move_joystick_ = new TeleopJoystickWidget(tr("Move"), dual_frame_);
-  turn_joystick_ = new TeleopJoystickWidget(tr("Turn"), dual_frame_);
-  dual_row->addStretch(1);
-  dual_row->addWidget(move_joystick_, 3);
-  dual_row->addWidget(turn_joystick_, 3);
-  dual_row->addStretch(1);
+  dual_row->setSpacing(18);
+
+  auto make_pad_column = [&](TeleopJoystickWidget** stick_out, TeleopStickAxes axes,
+                             const QString& caption, const QString& tip) {
+    auto* col = new QWidget(dual_frame_);
+    auto* col_layout = new QVBoxLayout(col);
+    col_layout->setContentsMargins(0, 0, 0, 0);
+    col_layout->setSpacing(6);
+    auto* stick = new TeleopJoystickWidget(tr("OK"), col);
+    stick->setAxes(axes);
+    stick->setToolTip(tip);
+    *stick_out = stick;
+    col_layout->addWidget(stick, 1);
+    auto* cap = new QLabel(caption, col);
+    cap->setAlignment(Qt::AlignHCenter);
+    cap->setStyleSheet(
+        style::sheet(QStringLiteral("teleop/pad_caption")));
+    col_layout->addWidget(cap);
+    return col;
+  };
+
+  dual_row->addWidget(
+      make_pad_column(&move_joystick_, TeleopStickAxes::kOmni, tr("Move"),
+                      tr("Move — drag the ring")),
+      1);
+  dual_row->addWidget(
+      make_pad_column(&turn_joystick_, TeleopStickAxes::kYaw, tr("Turn"),
+                      tr("Turn — drag left / right on the ring")),
+      1);
   dual_layout->addLayout(dual_row, 1);
   root->addWidget(dual_frame_, 1);
 
   arcade_frame_ = new QFrame(this);
   arcade_frame_->setObjectName(QStringLiteral("TeleopArcadeCard"));
-  arcade_frame_->setMinimumHeight(240);
-  arcade_frame_->setStyleSheet(QStringLiteral(
-      "QFrame#TeleopArcadeCard {"
-      "  background: %1;"
-      "  border: 1px solid %2;"
-      "  border-radius: 16px;"
-      "}")
-                                   .arg(QLatin1String(kSurface),
-                                        QLatin1String(kBorder)));
+  arcade_frame_->setMinimumHeight(180);
+  arcade_frame_->setStyleSheet(
+      style::sheet(QStringLiteral("teleop/arcade_card")));
   auto* arcade_layout = new QVBoxLayout(arcade_frame_);
-  arcade_layout->setContentsMargins(20, 18, 20, 14);
-  arcade_layout->setSpacing(4);
-  auto* arcade_row = new QHBoxLayout();
-  arcade_joystick_ = new TeleopJoystickWidget(tr("Drive"), arcade_frame_);
-  arcade_row->addStretch(1);
-  arcade_row->addWidget(arcade_joystick_, 4);
-  arcade_row->addStretch(1);
-  arcade_layout->addLayout(arcade_row, 1);
+  arcade_layout->setContentsMargins(20, 18, 20, 18);
+  arcade_layout->setSpacing(0);
+  arcade_joystick_ = new TeleopJoystickWidget(tr("OK"), arcade_frame_);
+  arcade_joystick_->setAxes(TeleopStickAxes::kOmni);
+  arcade_joystick_->setToolTip(tr("Drive — drag the ring · WASD / arrows"));
+  arcade_layout->addWidget(arcade_joystick_, 1);
   root->addWidget(arcade_frame_, 1);
 
-  auto* stop_row = new QHBoxLayout();
-  stop_row->addStretch(1);
-  auto* stop_button = new QPushButton(tr("STOP"), this);
-  stop_button->setToolTip(tr("Emergency stop"));
-  stop_button->setMinimumSize(150, 44);
-  stop_button->setMaximumWidth(200);
+  hint_label_ = new QLabel(this);
+  hint_label_->setWordWrap(true);
+  hint_label_->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+  hint_label_->setStyleSheet(
+      style::sheet(QStringLiteral("teleop/hint")));
+  root->addWidget(hint_label_);
+
+  auto* stop_button = new QPushButton(tr("E-STOP"), this);
+  stop_button->setToolTip(tr("Emergency stop (Space)"));
+  stop_button->setMinimumHeight(40);
   stop_button->setCursor(Qt::PointingHandCursor);
-  stop_button->setStyleSheet(QStringLiteral(
-      "QPushButton {"
-      "  background: %1;"
-      "  border: 1px solid %1;"
-      "  border-radius: 22px;"
-      "  color: white;"
-      "  font-weight: 800;"
-      "  font-size: 14px;"
-      "  letter-spacing: 1px;"
-      "  padding: 8px 28px;"
-      "}"
-      "QPushButton:hover { background: #b91c1c; border-color: #b91c1c; }"
-      "QPushButton:pressed { background: #991b1b; border-color: #991b1b; }")
-                                 .arg(QLatin1String(kDanger)));
-  stop_row->addWidget(stop_button);
-  stop_row->addStretch(1);
-  root->addLayout(stop_row);
+  stop_button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  stop_button->setStyleSheet(
+      style::sheet(QStringLiteral("teleop/estop")));
+  root->addWidget(stop_button);
 
   connect(mode_group_, &QButtonGroup::idClicked, this, [this](int id) {
     setStickMode(static_cast<TeleopStickMode>(id));
@@ -377,11 +353,10 @@ void TeleopControlWidget::setSmartTeleopAvailable(bool available) {
   smart_teleop_check_->setEnabled(available);
   if (!available) {
     smart_teleop_check_->setToolTip(
-        tr("需要与 autonomy 一同构建（task teleop proto）"));
+        tr("Requires building with autonomy (task teleop proto)"));
   } else {
     smart_teleop_check_->setToolTip(
-        tr("通过 autonomy task teleop 发送速度（MPPI 避障 assist），"
-           "不再直接发布 /cmd_vel"));
+        tr("Send velocity via autonomy task teleop (MPPI assist), not /cmd_vel"));
   }
 }
 
@@ -394,20 +369,20 @@ void TeleopControlWidget::updateSmartTeleopHint() {
   if (hint_label_ == nullptr) {
     return;
   }
-  QString mode_hint;
+  QString tip;
   if (stick_mode_ == TeleopStickMode::kArcade) {
-    mode_hint = tr("Arcade · 前后控速度，左右控转向 · WASD / 方向键 / Space 急停");
+    tip = tr("WASD / arrows · Space: E-Stop");
   } else {
-    mode_hint = tr("Dual · 左盘移动（前后/平移），右盘转向");
+    tip = tr("Left: Move · Right: Turn");
   }
   if (smart_teleop_enabled_) {
-    mode_hint += tr(" · 智能摇操 → %1")
-                    .arg(QString::fromUtf8(integration::kTeleopGoalChannel));
+    tip += tr(" · Smart %1")
+               .arg(QString::fromUtf8(integration::kTeleopGoalChannel));
     if (!smart_teleop_status_text_.isEmpty()) {
-      mode_hint += tr(" · %1").arg(smart_teleop_status_text_);
+      tip += tr(" · %1").arg(smart_teleop_status_text_);
     }
   }
-  hint_label_->setText(mode_hint);
+  hint_label_->setText(tip);
 }
 
 void TeleopControlWidget::resetJoysticks() {
@@ -482,8 +457,6 @@ void TeleopControlWidget::applyModeUi() {
 }
 
 void TeleopControlWidget::emitArcadeFromStick(double x, double y, bool released) {
-  // Stick Y: forward is negative (screen up). Stick X: left is negative on screen;
-  // negate for ROS angular.z (CCW positive).
   emit linearChanged(0.0, y);
   emit angularChanged(-x);
   if (released) {
@@ -506,7 +479,6 @@ void TeleopControlWidget::updateArcadeFromKeyboard() {
   }
   double x = 0.0;
   double y = 0.0;
-  // Match stick axes: left = negative X, right = positive X (see emitArcadeFromStick).
   if (key_left_) {
     x -= 1.0;
   }

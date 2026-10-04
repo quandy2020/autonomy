@@ -12,9 +12,7 @@
 #include "autoviz/rendering/scene_overlay.hpp"
 #include "autoviz/rendering/text_raster_utils.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
 #include "autoviz/rendering/ogre_scene_host.hpp"
-#endif
 
 namespace autoviz {
 namespace display {
@@ -22,13 +20,11 @@ namespace {
 
 void syncOgreDisplayVisibility(common::DisplayContext* context,
                                const std::string& display_name) {
-#ifdef AUTOVIZ_USE_OGRE
   if (context != nullptr && context->ogre_scene_host != nullptr &&
       context->active_display_visibility_bits != nullptr) {
     context->ogre_scene_host->setDisplayVisibilityBits(
         display_name, *context->active_display_visibility_bits);
   }
-#endif
 }
 
 void drawLabelsGlFallback(rendering::SceneOverlay& scene,
@@ -63,7 +59,6 @@ bool drawLabelsOgreOrGl(common::DisplayContext* context,
                         rendering::SceneOverlay& scene,
                         const std::string& display_name,
                         const std::vector<TextLabelInstance>& labels) {
-#ifdef AUTOVIZ_USE_OGRE
   if (context != nullptr && context->ogre_scene_host != nullptr) {
     std::vector<rendering::OgreTextLabel> ogre_labels;
     ogre_labels.reserve(labels.size());
@@ -75,7 +70,6 @@ bool drawLabelsOgreOrGl(common::DisplayContext* context,
     context->ogre_scene_host->setDisplayLabels(display_name, ogre_labels);
     return true;
   }
-#endif
   drawLabelsGlFallback(scene, labels);
   return !labels.empty();
 }

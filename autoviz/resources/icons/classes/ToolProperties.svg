@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="#000000">
+  <!-- Properties sheet: named fields with value boxes -->
+  <path fill-rule="evenodd" d="M3.2 1.2h9.6A2 2 0 0 1 14.8 3.2v9.6a2 2 0 0 1-2 2H3.2a2 2 0 0 1-2-2V3.2a2 2 0 0 1 2-2zm0 1.35c-.36 0-.65.29-.65.65v9.6c0 .36.29.65.65.65h9.6c.36 0 .65-.29.65-.65V3.2c0-.36-.29-.65-.65-.65H3.2z"/>
+  <!-- name · value rows -->
+  <rect x="3.1" y="3.55" width="2.6" height="1.35" rx="0.35"/>
+  <rect x="6.6" y="3.4" width="6.1" height="1.65" rx="0.55" opacity="0.35"/>
+  <rect x="3.1" y="7.15" width="2.6" height="1.35" rx="0.35"/>
+  <rect x="6.6" y="7" width="6.1" height="1.65" rx="0.55" opacity="0.35"/>
+  <rect x="3.1" y="10.75" width="2.6" height="1.35" rx="0.35"/>
+  <rect x="6.6" y="10.6" width="6.1" height="1.65" rx="0.55" opacity="0.35"/>
+</svg>

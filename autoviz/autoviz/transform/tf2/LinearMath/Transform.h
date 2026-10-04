@@ -17,6 +17,15 @@ misrepresented as being the original software.
 3. This notice may not be removed or altered from any source distribution.
 */
 
+/**
+ * @file Transform.h
+ * @brief TF2 / Bullet rigid @c Transform (rotation + translation, no scale).
+ *
+ * @see Matrix3x3
+ * @see Vector3
+ * @see Quaternion
+ */
+
 #ifndef tf2_Transform_H
 #define tf2_Transform_H
 
@@ -28,9 +37,14 @@ namespace tf2 {
 
 #define TransformData TransformDoubleData
 
-/**@brief The Transform class supports rigid transforms with only translation
- *and rotation and no scaling/shear. It can be used in combination with Vector3,
- *Quaternion and Matrix3x3 linear algebra classes. */
+/**
+ * @class Transform
+ * @brief Rigid transform (rotation + translation; no scale/shear).
+ *
+ * @see Matrix3x3
+ * @see Vector3
+ * @see Quaternion
+ */
 class Transform
 {
     /// Storage for the rotation
@@ -39,9 +53,9 @@ class Transform
     Vector3 m_origin;
 
 public:
-    /**@brief No initialization constructor */
+    /** @brief No initialization constructor */
     Transform() {}
-    /**@brief Constructor from Quaternion (optional Vector3 )
+    /** @brief Constructor from Quaternion (optional Vector3 )
      * @param q Rotation from quaternion
      * @param c Translation from Vector (default 0,0,0) */
     explicit TF2SIMD_FORCE_INLINE Transform(
@@ -49,24 +63,24 @@ public:
         const Vector3& c = Vector3(tf2Scalar(0), tf2Scalar(0), tf2Scalar(0)))
         : m_basis(q), m_origin(c) {}
 
-    /**@brief Constructor from Matrix3x3 (optional Vector3)
+    /** @brief Constructor from Matrix3x3 (optional Vector3)
      * @param b Rotation from Matrix
      * @param c Translation from Vector default (0,0,0)*/
     explicit TF2SIMD_FORCE_INLINE Transform(
         const Matrix3x3& b,
         const Vector3& c = Vector3(tf2Scalar(0), tf2Scalar(0), tf2Scalar(0)))
         : m_basis(b), m_origin(c) {}
-    /**@brief Copy constructor */
+    /** @brief Copy constructor */
     TF2SIMD_FORCE_INLINE Transform(const Transform& other)
         : m_basis(other.m_basis), m_origin(other.m_origin) {}
-    /**@brief Assignment Operator */
+    /** @brief Assignment Operator */
     TF2SIMD_FORCE_INLINE Transform& operator=(const Transform& other) {
         m_basis = other.m_basis;
         m_origin = other.m_origin;
         return *this;
     }
 
-    /**@brief Set the current transform as the value of the product of two
+    /** @brief Set the current transform as the value of the product of two
      * transforms
      * @param t1 Transform 1
      * @param t2 Transform 2
@@ -83,49 +97,49 @@ public:
                     }
                     */
 
-    /**@brief Return the transform of the vector */
+    /** @brief Return the transform of the vector */
     TF2SIMD_FORCE_INLINE Vector3 operator()(const Vector3& x) const {
         return Vector3(m_basis[0].dot(x) + m_origin.x(),
                        m_basis[1].dot(x) + m_origin.y(),
                        m_basis[2].dot(x) + m_origin.z());
     }
 
-    /**@brief Return the transform of the vector */
+    /** @brief Return the transform of the vector */
     TF2SIMD_FORCE_INLINE Vector3 operator*(const Vector3& x) const {
         return (*this)(x);
     }
 
-    /**@brief Return the transform of the Quaternion */
+    /** @brief Return the transform of the Quaternion */
     TF2SIMD_FORCE_INLINE Quaternion operator*(const Quaternion& q) const {
         return getRotation() * q;
     }
 
-    /**@brief Return the basis matrix for the rotation */
+    /** @brief Return the basis matrix for the rotation */
     TF2SIMD_FORCE_INLINE Matrix3x3& getBasis() {
         return m_basis;
     }
-    /**@brief Return the basis matrix for the rotation */
+    /** @brief Return the basis matrix for the rotation */
     TF2SIMD_FORCE_INLINE const Matrix3x3& getBasis() const {
         return m_basis;
     }
 
-    /**@brief Return the origin vector translation */
+    /** @brief Return the origin vector translation */
     TF2SIMD_FORCE_INLINE Vector3& getOrigin() {
         return m_origin;
     }
-    /**@brief Return the origin vector translation */
+    /** @brief Return the origin vector translation */
     TF2SIMD_FORCE_INLINE const Vector3& getOrigin() const {
         return m_origin;
     }
 
-    /**@brief Return a quaternion representing the rotation */
+    /** @brief Return a quaternion representing the rotation */
     Quaternion getRotation() const {
         Quaternion q;
         m_basis.getRotation(q);
         return q;
     }
 
-    /**@brief Set from an array
+    /** @brief Set from an array
      * @param m A pointer to a 15 element array (12 rotation(row major padded on
      * the right by 1), and 3 translation */
     void setFromOpenGLMatrix(const tf2Scalar* m) {
@@ -133,7 +147,7 @@ public:
         m_origin.setValue(m[12], m[13], m[14]);
     }
 
-    /**@brief Fill an array representation
+    /** @brief Fill an array representation
      * @param m A pointer to a 15 element array (12 rotation(row major padded on
      * the right by 1), and 3 translation */
     void getOpenGLMatrix(tf2Scalar* m) const {
@@ -144,7 +158,7 @@ public:
         m[15] = tf2Scalar(1.0);
     }
 
-    /**@brief Set the translational element
+    /** @brief Set the translational element
      * @param origin The vector to set the translation to */
     TF2SIMD_FORCE_INLINE void setOrigin(const Vector3& origin) {
         m_origin = origin;
@@ -152,23 +166,23 @@ public:
 
     TF2SIMD_FORCE_INLINE Vector3 invXform(const Vector3& inVec) const;
 
-    /**@brief Set the rotational element by Matrix3x3 */
+    /** @brief Set the rotational element by Matrix3x3 */
     TF2SIMD_FORCE_INLINE void setBasis(const Matrix3x3& basis) {
         m_basis = basis;
     }
 
-    /**@brief Set the rotational element by Quaternion */
+    /** @brief Set the rotational element by Quaternion */
     TF2SIMD_FORCE_INLINE void setRotation(const Quaternion& q) {
         m_basis.setRotation(q);
     }
 
-    /**@brief Set this transformation to the identity */
+    /** @brief Set this transformation to the identity */
     void setIdentity() {
         m_basis.setIdentity();
         m_origin.setValue(tf2Scalar(0.0), tf2Scalar(0.0), tf2Scalar(0.0));
     }
 
-    /**@brief Multiply this Transform by another(this = this * another)
+    /** @brief Multiply this Transform by another(this = this * another)
      * @param t The other transform */
     Transform& operator*=(const Transform& t) {
         m_origin += m_basis * t.m_origin;
@@ -176,21 +190,21 @@ public:
         return *this;
     }
 
-    /**@brief Return the inverse of this transform */
+    /** @brief Return the inverse of this transform */
     Transform inverse() const {
         Matrix3x3 inv = m_basis.transpose();
         return Transform(inv, inv * -m_origin);
     }
 
-    /**@brief Return the inverse of this transform times the other transform
+    /** @brief Return the inverse of this transform times the other transform
      * @param t The other transform
      * return this.inverse() * the other */
     Transform inverseTimes(const Transform& t) const;
 
-    /**@brief Return the product of this transform and the other */
+    /** @brief Return the product of this transform and the other */
     Transform operator*(const Transform& t) const;
 
-    /**@brief Return an identity transform */
+    /** @brief Return an identity transform */
     static const Transform& getIdentity() {
         static const Transform identityTransform(Matrix3x3::getIdentity());
         return identityTransform;
@@ -222,7 +236,7 @@ TF2SIMD_FORCE_INLINE Transform Transform::operator*(const Transform& t) const {
     return Transform(m_basis * t.m_basis, (*this)(t.m_origin));
 }
 
-/**@brief Test if two transforms have all elements equal */
+/** @brief Test if two transforms have all elements equal */
 TF2SIMD_FORCE_INLINE bool operator==(const Transform& t1, const Transform& t2) {
     return (t1.getBasis() == t2.getBasis() && t1.getOrigin() == t2.getOrigin());
 }

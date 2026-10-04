@@ -5,8 +5,6 @@
 
 #include "autoviz/rendering/objects/ogre_effort_visual.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -97,7 +95,7 @@ void OgreEffortVisual::setEffort(const std::string& joint_name, double effort,
         static_cast<float>((0.05f + effort_value * scale_ * 0.5f) * cos(i * 2.0f * M_PI / 32.0f)),
         0.f);
     if (effort < 0) {
-      point.set_x(-point.x());
+      point.x = -point.x;
     }
     effort_circle_[joint_name]->addPoint(orientation_[joint_name] * point + position_[joint_name]);
   }
@@ -127,4 +125,3 @@ void OgreEffortVisual::setScale(float scale) { scale_ = scale; }
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

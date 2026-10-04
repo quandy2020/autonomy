@@ -7,9 +7,7 @@
 #include "autoviz/common/display_context.hpp"
 #include "autoviz/rendering/scene_overlay.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
 #include "autoviz/rendering/ogre_scene_host.hpp"
-#endif
 
 namespace autoviz {
 namespace display {
@@ -17,13 +15,11 @@ namespace {
 
 void syncOgreDisplayVisibility(common::DisplayContext* context,
                                const std::string& display_name) {
-#ifdef AUTOVIZ_USE_OGRE
   if (context != nullptr && context->ogre_scene_host != nullptr &&
       context->active_display_visibility_bits != nullptr) {
     context->ogre_scene_host->setDisplayVisibilityBits(
         display_name, *context->active_display_visibility_bits);
   }
-#endif
 }
 
 }  // namespace
@@ -32,7 +28,6 @@ bool drawPbrMeshesOgreOrGl(common::DisplayContext* context,
                            rendering::SceneOverlay& scene,
                            const std::string& display_name,
                            const std::vector<PbrMeshInstance>& meshes) {
-#ifdef AUTOVIZ_USE_OGRE
   if (context != nullptr && context->ogre_scene_host != nullptr) {
     std::vector<rendering::OgrePbrMeshInstance> ogre_meshes;
     ogre_meshes.reserve(meshes.size());
@@ -44,7 +39,6 @@ bool drawPbrMeshesOgreOrGl(common::DisplayContext* context,
     context->ogre_scene_host->setDisplayPbrMeshes(display_name, ogre_meshes);
     return true;
   }
-#endif
 
   for (const PbrMeshInstance& instance : meshes) {
     scene.addTriangleMeshSolidPbr(instance.mesh, instance.transform, instance.color,
@@ -57,7 +51,6 @@ bool drawPbrTexturedMeshesOgreOrGl(
     common::DisplayContext* context, rendering::SceneOverlay& scene,
     const std::string& display_name,
     const std::vector<PbrTexturedMeshInstance>& meshes) {
-#ifdef AUTOVIZ_USE_OGRE
   if (context != nullptr && context->ogre_scene_host != nullptr) {
     std::vector<rendering::OgrePbrTexturedMeshInstance> ogre_meshes;
     ogre_meshes.reserve(meshes.size());
@@ -70,7 +63,6 @@ bool drawPbrTexturedMeshesOgreOrGl(
                                                           ogre_meshes);
     return true;
   }
-#endif
 
   for (const PbrTexturedMeshInstance& instance : meshes) {
     scene.addTriangleMeshTexturedPbr(instance.mesh, instance.transform,

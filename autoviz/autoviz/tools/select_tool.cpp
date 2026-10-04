@@ -133,9 +133,8 @@ void SelectTool::onDraw(rendering::SceneOverlay& scene) {
 QString SelectTool::statusText() const {
   const auto& selected = selections();
   if (selected.empty()) {
-    return QStringLiteral(
-        "Select: click geometry (Ctrl+add) · empty drag orbits · "
-        "Middle/Shift+Left pan");
+    // rviz_default_plugins::SelectionTool::activate()
+    return QStringLiteral("Click and drag to select objects on the screen.");
   }
   if (selected.size() == 1) {
     const auto& entry = selected.front();
@@ -153,8 +152,7 @@ QString SelectTool::statusText() const {
         .arg(p.y(), 0, 'f', 3)
         .arg(p.z(), 0, 'f', 3);
   }
-  return QStringLiteral("Selected %1 points (Ctrl+click to add more)")
-      .arg(selected.size());
+  return QStringLiteral("Selected %1 objects").arg(selected.size());
 }
 
 }  // namespace tools

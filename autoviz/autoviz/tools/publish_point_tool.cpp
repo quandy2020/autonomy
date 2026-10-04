@@ -12,7 +12,7 @@
 #include "autoviz/rendering/scene_overlay.hpp"
 #include "autoviz/rendering/view_controller.hpp"
 #include "autoviz/tools/publish_tool_utils.hpp"
-#include "autoviz/ui/icon_loader.hpp"
+#include "autoviz/ui/app/icon_loader.hpp"
 
 namespace autoviz {
 namespace tools {
@@ -145,17 +145,17 @@ void PublishPointTool::onDraw(rendering::SceneOverlay& scene) {
 }
 
 QString PublishPointTool::statusText() const {
+  // rviz_default_plugins::PointTool status strings
   const std::optional<QVector3D>& point =
       hover_point_.has_value() ? hover_point_ : last_point_;
   if (point.has_value()) {
-    return QStringLiteral("Publish Point: (%1, %2, %3) → %4")
+    return QStringLiteral(
+               "<b>Left-Click:</b> Select this point. [%1, %2, %3]")
         .arg(point->x(), 0, 'f', 3)
         .arg(point->y(), 0, 'f', 3)
-        .arg(point->z(), 0, 'f', 3)
-        .arg(QString::fromStdString(publishChannel()));
+        .arg(point->z(), 0, 'f', 3);
   }
-  return QStringLiteral("Publish Point: click to publish → %1")
-      .arg(QString::fromStdString(publishChannel()));
+  return QStringLiteral("Move over an object to select the target point.");
 }
 
 }  // namespace tools

@@ -4,15 +4,33 @@
 
 #include "autoviz/ui/image/image_panel.hpp"
 
+#include <algorithm>
+#include <map>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
+
+#include <QAbstractSpinBox>
+#include <QButtonGroup>
+#include <QDateTime>
 #include <QDragEnterEvent>
+#include <QDoubleSpinBox>
 #include <QDropEvent>
+#include <QFileDialog>
 #include <QFocusEvent>
 #include <QFrame>
+#include <QGridLayout>
+#include <QHBoxLayout>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QLabel>
+#include <QMessageBox>
 #include <QMimeData>
+#include <QPainter>
+#include <QPainterPath>
 #include <QQuaternion>
 #include <QScrollArea>
 #include <QTimer>
@@ -24,6 +42,7 @@
 #include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
 #include <automsgs/msgs/sensor_msgs/compressed_image.pb.h>
 #include <automsgs/msgs/sensor_msgs/image.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 #include <automsgs/msgs/visualization_msgs/marker.pb.h>
 #include <automsgs/msgs/visualization_msgs/marker_array.pb.h>
 
@@ -34,29 +53,117 @@
 #include "autoviz/integration/channel_payload.hpp"
 #include "autoviz/integration/channel_reader_registry.hpp"
 #include "autoviz/integration/message_queue.hpp"
-#include "autoviz/ui/icon_loader.hpp"
+#include "autoviz/ui/app/icon_loader.hpp"
+#include "autoviz/ui/image/image_analysis.hpp"
 #include "autoviz/ui/image/image_annotation_parser.hpp"
 #include "autoviz/ui/image/image_calibration_utils.hpp"
+#include "autoviz/ui/image/image_histogram_widget.hpp"
 #include "autoviz/ui/image/image_marker_projection.hpp"
+#include "autoviz/ui/image/image_point_cloud_projection.hpp"
 #include "autoviz/ui/image/image_processing.hpp"
+#include "autoviz/ui/image/image_profile_widget.hpp"
 #include "autoviz/ui/image/image_settings_widget.hpp"
 #include "autoviz/ui/image/image_video_decoder.hpp"
 #include "autoviz/ui/image/image_view_widget.hpp"
-#include "autoviz/ui/panel_context_menu.hpp"
-#include "autoviz/ui/panel_dock_widget.hpp"
-#include "autoviz/ui/panel_settings_styles.hpp"
-#include "autoviz/ui/panel_title_tools.hpp"
+#include "autoviz/ui/panel/context_menu.hpp"
+#include "autoviz/ui/panel/dock.hpp"
+#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/panel.hpp"
+#include "autoviz/ui/theme/style.hpp"
+#include "autoviz/ui/panel/title_tools.hpp"
 #include "autoviz/ui/plot/plot_drag_mime.hpp"
 
 namespace autoviz {
 namespace image {
 namespace {
 
-
 qint64 HeaderTimestampNs(const automsgs::msgs::std_msgs::Header& header) {
   return static_cast<qint64>(header.stamp().sec()) * 1000000000LL +
          static_cast<qint64>(header.stamp().nanosec());
 }
+
+/** Translucent cyan-white glass card floating over the image. */
+class ImageFloatingChrome : public QFrame {
+ public:
+  explicit ImageFloatingChrome(QWidget* parent = nullptr) : QFrame(parent) {
+    setObjectName(QStringLiteral("ImageFloatingChrome"));
+    setAttribute(Qt::WA_TranslucentBackground, true);
+    setAutoFillBackground(false);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+  }
+
+ protected:
+  void paintEvent(QPaintEvent* /*event*/) override {
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    const glass::ShellTokens t = glass::Shell();
+    const QRectF card = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
+    QPainterPath path;
+    path.addRoundedRect(card, 14.0, 14.0);
+
+    // See-through milky glass (image shows through).
+    painter.fillPath(path, QColor(255, 255, 255, 72));
+    QLinearGradient body(card.topLeft(), card.bottomLeft());
+    body.setColorAt(0.0, QColor(240, 253, 250, 90));
+    body.setColorAt(0.55, QColor(255, 255, 255, 48));
+    body.setColorAt(1.0, QColor(204, 251, 241, 36));
+    painter.fillPath(path, body);
+
+    QColor sheen_end = t.glass_sheen;
+    sheen_end.setAlpha(0);
+    QLinearGradient sheen(card.topLeft(),
+                          QPointF(card.left(), card.top() + 26.0));
+    sheen.setColorAt(0.0, QColor(255, 255, 255, 110));
+    sheen.setColorAt(1.0, sheen_end);
+    painter.fillPath(path, sheen);
+
+    painter.setPen(QPen(QColor(8, 145, 178, 70), 1.0));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawPath(path);
+  }
+};
+
+/** iOS-style translucent glass pill for restoring the analysis bar. */
+class ImageFloatingRevealButton : public QToolButton {
+ public:
+  explicit ImageFloatingRevealButton(QWidget* parent = nullptr)
+      : QToolButton(parent) {
+    setObjectName(QStringLiteral("ImageFloatingReveal"));
+    setAttribute(Qt::WA_TranslucentBackground, true);
+    setAutoFillBackground(false);
+    setCursor(Qt::PointingHandCursor);
+  }
+
+ protected:
+  void paintEvent(QPaintEvent* /*event*/) override {
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    const QRectF card = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
+    QPainterPath path;
+    path.addRoundedRect(card, 14.0, 14.0);
+
+    const bool hover = underMouse();
+    // iOS material: light frosted glass over content.
+    painter.fillPath(path, QColor(255, 255, 255, hover ? 92 : 58));
+    painter.fillPath(path, QColor(199, 244, 246, hover ? 55 : 32));
+    QLinearGradient sheen(card.topLeft(),
+                          QPointF(card.left(), card.top() + card.height() * 0.55));
+    sheen.setColorAt(0.0, QColor(255, 255, 255, hover ? 130 : 95));
+    sheen.setColorAt(1.0, QColor(255, 255, 255, 0));
+    painter.fillPath(path, sheen);
+
+    painter.setPen(QPen(QColor(255, 255, 255, hover ? 170 : 130), 1.0));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawPath(path);
+
+    QFont font = this->font();
+    font.setPixelSize(11);
+    font.setWeight(QFont::DemiBold);
+    painter.setFont(font);
+    painter.setPen(hover ? QColor(8, 145, 178, 230) : QColor(30, 41, 59, 210));
+    painter.drawText(rect(), Qt::AlignCenter, text());
+  }
+};
 
 QMatrix4x4 TransformToMatrix(
     const automsgs::msgs::geometry_msgs::Transform& transform) {
@@ -127,8 +234,160 @@ ImagePanel::ImagePanel(common::VisualizationManager* manager, QWidget* parent)
   settings_scroll_->setWidget(settings_widget_);
   settings_layout->addWidget(settings_scroll_);
 
-  view_ = new ImageViewWidget(this);
-  root->addWidget(view_, 1);
+  image_host_ = new QWidget(this);
+  auto* host_layout = new QGridLayout(image_host_);
+  host_layout->setContentsMargins(0, 0, 0, 0);
+  host_layout->setSpacing(0);
+
+  view_ = new ImageViewWidget(image_host_);
+  host_layout->addWidget(view_, 0, 0);
+
+  overlay_wrap_ = new QWidget(image_host_);
+  overlay_wrap_->setAttribute(Qt::WA_TranslucentBackground, true);
+  overlay_wrap_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+  auto* wrap_layout = new QVBoxLayout(overlay_wrap_);
+  wrap_layout->setContentsMargins(10, 0, 10, 8);
+  wrap_layout->setSpacing(6);
+
+  overlay_chrome_ = new ImageFloatingChrome(overlay_wrap_);
+  overlay_chrome_->setStyleSheet(
+      style::sheet(QStringLiteral("image/floating_chrome")));
+  auto* chrome_layout = new QVBoxLayout(overlay_chrome_);
+  chrome_layout->setContentsMargins(10, 8, 10, 8);
+  chrome_layout->setSpacing(6);
+
+  tool_bar_ = new QWidget(overlay_chrome_);
+  tool_bar_->setAttribute(Qt::WA_TranslucentBackground, true);
+  auto* tool_layout = new QHBoxLayout(tool_bar_);
+  tool_layout->setContentsMargins(0, 0, 0, 0);
+  tool_layout->setSpacing(3);
+  tool_group_ = new QButtonGroup(this);
+  tool_group_->setExclusive(true);
+
+  auto make_tool = [&](const QString& text, const QString& tip,
+                       ImageViewTool tool) -> QToolButton* {
+    auto* button = new QToolButton(tool_bar_);
+    button->setText(text);
+    button->setToolTip(tip);
+    button->setCheckable(true);
+    button->setAutoRaise(true);
+    button->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    tool_group_->addButton(button, static_cast<int>(tool));
+    tool_layout->addWidget(button);
+    return button;
+  };
+  make_tool(tr("Probe"), tr("Pixel probe (default)"), ImageViewTool::kProbe)
+      ->setChecked(true);
+  make_tool(tr("Measure"), tr("Click two points to measure distance"),
+            ImageViewTool::kMeasure);
+  make_tool(tr("ROI"), tr("Drag a rectangle for region statistics"),
+            ImageViewTool::kRoi);
+  make_tool(tr("Profile"), tr("Click two points for a luminance profile"),
+            ImageViewTool::kProfile);
+
+  auto* hist_toggle = new QToolButton(tool_bar_);
+  hist_toggle->setText(tr("Histogram"));
+  hist_toggle->setToolTip(tr("Show / hide luminance histogram"));
+  hist_toggle->setCheckable(true);
+  hist_toggle->setChecked(false);
+  hist_toggle->setAutoRaise(true);
+  tool_layout->addWidget(hist_toggle);
+
+  measure_depth_label_ = new QLabel(tr("Depth"), tool_bar_);
+  tool_layout->addWidget(measure_depth_label_);
+  measure_depth_spin_ = new QDoubleSpinBox(tool_bar_);
+  measure_depth_spin_->setRange(0.05, 500.0);
+  measure_depth_spin_->setDecimals(2);
+  measure_depth_spin_->setSuffix(tr(" m"));
+  measure_depth_spin_->setValue(1.0);
+  measure_depth_spin_->setButtonSymbols(QAbstractSpinBox::NoButtons);
+  measure_depth_spin_->setAlignment(Qt::AlignCenter);
+  measure_depth_spin_->setToolTip(
+      tr("Assumed optical-plane depth for metric Measure"));
+  measure_depth_spin_->setMaximumWidth(84);
+  tool_layout->addWidget(measure_depth_spin_);
+  measure_depth_label_->hide();
+  measure_depth_spin_->hide();
+  tool_layout->addStretch(1);
+
+  analysis_label_ = new QLabel(tool_bar_);
+  analysis_label_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  analysis_label_->setMinimumWidth(80);
+  tool_layout->addWidget(analysis_label_, 1);
+
+  overlay_hide_button_ = new QToolButton(tool_bar_);
+  overlay_hide_button_->setText(tr("Hide"));
+  overlay_hide_button_->setToolTip(tr("Hide analysis bar"));
+  overlay_hide_button_->setAutoRaise(true);
+  tool_layout->addWidget(overlay_hide_button_);
+  chrome_layout->addWidget(tool_bar_);
+
+  analysis_strip_ = new QWidget(overlay_chrome_);
+  analysis_strip_->setAttribute(Qt::WA_TranslucentBackground, true);
+  analysis_strip_->hide();
+  auto* analysis_layout = new QVBoxLayout(analysis_strip_);
+  analysis_layout->setContentsMargins(0, 0, 0, 0);
+  analysis_layout->setSpacing(4);
+  histogram_widget_ = new ImageHistogramWidget(analysis_strip_);
+  histogram_widget_->setMaximumHeight(48);
+  histogram_widget_->hide();
+  analysis_layout->addWidget(histogram_widget_);
+  profile_widget_ = new ImageProfileWidget(analysis_strip_);
+  profile_widget_->setMaximumHeight(48);
+  profile_widget_->hide();
+  analysis_layout->addWidget(profile_widget_);
+  chrome_layout->addWidget(analysis_strip_);
+  wrap_layout->addWidget(overlay_chrome_);
+
+  overlay_reveal_button_ = new ImageFloatingRevealButton(overlay_wrap_);
+  overlay_reveal_button_->setText(tr("Tools"));
+  overlay_reveal_button_->setToolTip(tr("Show analysis tools"));
+  overlay_reveal_button_->setAutoRaise(true);
+  overlay_reveal_button_->setStyleSheet(
+      style::sheet(QStringLiteral("image/floating_reveal")));
+  overlay_reveal_button_->hide();
+  wrap_layout->addWidget(overlay_reveal_button_, 0, Qt::AlignHCenter);
+
+  host_layout->addWidget(overlay_wrap_, 0, 0, Qt::AlignBottom);
+  overlay_wrap_->raise();
+  root->addWidget(image_host_, 1);
+  setFloatingChromeVisible(false);
+
+  connect(tool_group_, &QButtonGroup::idClicked, this, [this](int id) {
+    setActiveTool(static_cast<ImageViewTool>(id));
+  });
+  connect(hist_toggle, &QToolButton::toggled, this, [this](bool on) {
+    histogram_visible_ = on;
+    updateAnalysisStripVisibility();
+    if (on) {
+      refreshAnalysisPanel();
+    }
+  });
+  connect(overlay_hide_button_, &QToolButton::clicked, this,
+          [this]() { setFloatingChromeVisible(false); });
+  connect(overlay_reveal_button_, &QToolButton::clicked, this,
+          [this]() { setFloatingChromeVisible(true); });
+  connect(measure_depth_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+          this, [this](double depth) {
+            if (view_ != nullptr) {
+              view_->setMeasureCalibration(camera_intrinsics_, depth);
+            }
+          });
+  connect(histogram_widget_, &ImageHistogramWidget::rangeChanged, this,
+          [this](double min_v, double max_v) {
+            if (std::abs(config_.color_min - min_v) < 1e-6 &&
+                std::abs(config_.color_max - max_v) < 1e-6) {
+              return;
+            }
+            config_.color_min = min_v;
+            config_.color_max = max_v;
+            if (config_.color_mode == ImageColorMode::kOff) {
+              config_.color_mode = ImageColorMode::kTurbo;
+            }
+            syncSettingsWidgetFromConfig();
+            updateRenderedFrame();
+            emit configChanged();
+          });
 
   connect(settings_widget_, &ImageSettingsWidget::configChanged, this, [this]() {
     applySettings(settings_widget_->config());
@@ -150,11 +409,75 @@ ImagePanel::ImagePanel(common::VisualizationManager* manager, QWidget* parent)
               emit configChanged();
             }
           });
+  connect(settings_widget_, &ImageSettingsWidget::moveOverlayRequested, this,
+          [this](int index, int delta) {
+            ImagePanelConfig updated = config_;
+            const int target = index + delta;
+            if (index < 0 || index >= updated.overlays.size() || target < 0 ||
+                target >= updated.overlays.size()) {
+              return;
+            }
+            updated.overlays.swapItemsAt(index, target);
+            setConfig(updated);
+            emit configChanged();
+          });
 
   connect(view_, &ImageViewWidget::pixelClicked, this,
           [this](int x, int y) { publishPixel(config_.click_publish_channel, x, y); });
   connect(view_, &ImageViewWidget::pixelHovered, this,
           [this](int x, int y) { publishPixel(config_.hover_publish_channel, x, y); });
+  connect(view_, &ImageViewWidget::exportPngRequested, this,
+          &ImagePanel::exportImageAsPng);
+  connect(view_, &ImageViewWidget::measureCompleted, this,
+          [this](QPoint, QPoint, double pixels, double meters) {
+            const auto opt = meters >= 0.0 ? std::optional<double>(meters)
+                                           : std::nullopt;
+            const QString text = formatMeasureReadout(pixels, opt);
+            if (analysis_label_ != nullptr) {
+              analysis_label_->setText(text);
+            }
+            if (view_ != nullptr) {
+              view_->setAnalysisText(text);
+            }
+          });
+  connect(view_, &ImageViewWidget::profileCompleted, this,
+          [this](QPoint a, QPoint b) {
+            if (view_ == nullptr || profile_widget_ == nullptr) {
+              return;
+            }
+            updateAnalysisStripVisibility();
+            const QVector<double> samples =
+                sampleLineProfile(view_->frame(), a, b);
+            profile_widget_->setSamples(samples);
+            const QString text =
+                QStringLiteral("Profile: %1 samples  %2 px")
+                    .arg(samples.size())
+                    .arg(pixelDistance(a, b), 0, 'f', 1);
+            if (analysis_label_ != nullptr) {
+              analysis_label_->setText(text);
+            }
+            view_->setAnalysisText(text);
+          });
+  connect(view_, &ImageViewWidget::roiChanged, this, [this](QRect roi) {
+    refreshAnalysisPanel();
+    if (view_ == nullptr || view_->frame().isNull()) {
+      return;
+    }
+    if (!roi.isValid() || roi.isEmpty()) {
+      if (analysis_label_ != nullptr) {
+        analysis_label_->clear();
+      }
+      return;
+    }
+    const ImageRoiStats stats = computeRoiStats(view_->frame(), roi);
+    const QString text = formatRoiStats(stats);
+    if (analysis_label_ != nullptr) {
+      analysis_label_->setText(text);
+    }
+    if (view_ != nullptr) {
+      view_->setAnalysisText(text);
+    }
+  });
 
   frame_timer_ = new QTimer(this);
   frame_timer_->setTimerType(Qt::PreciseTimer);
@@ -174,6 +497,7 @@ ImagePanel::~ImagePanel() {
   unsubscribeAnnotations();
   unsubscribeCalibration();
   unsubscribeMarkers();
+  unsubscribePointClouds();
 }
 
 void ImagePanel::installTitleBarTools(PanelDockWidget* dock) {
@@ -199,8 +523,10 @@ void ImagePanel::installTitleBarTools(PanelDockWidget* dock) {
   options.on_settings_toggled = [this](bool visible) { onToggleSettings(visible); };
   options.on_expand = [this]() { emit panelExpandRequested(); };
 
+  callbacks.download_image_png = [this]() { exportImageAsPng(false); };
+
   const PanelTitleBarTools tools =
-      CreateRvizPanelTitleBarTools(dock, callbacks, options);
+      CreatePanelTitleBarTools(dock, callbacks, options);
   settings_button_ = tools.settings_button;
   expand_button_ = tools.expand_button;
   dock->setTitleBarTools(tools.widget);
@@ -213,7 +539,33 @@ void ImagePanel::setFrameFromDisplay(const QImage& image) {
     return;
   }
   base_image_ = image;
+  noteFrameArrival();
   updateRenderedFrame();
+}
+
+void ImagePanel::exportImageAsPng(bool with_annotations) {
+  if (view_ == nullptr) {
+    return;
+  }
+  const QImage image = view_->renderExportImage(with_annotations);
+  if (image.isNull()) {
+    QMessageBox::information(this, tr("Export"),
+                             tr("No image frame to export."));
+    return;
+  }
+  const QString default_name =
+      config_.title.isEmpty() ? tr("image.png")
+                              : config_.title + QStringLiteral(".png");
+  const QString path = QFileDialog::getSaveFileName(
+      this, tr("Download image as PNG"), default_name,
+      tr("PNG images (*.png)"));
+  if (path.isEmpty()) {
+    return;
+  }
+  if (!image.save(path, "PNG")) {
+    QMessageBox::warning(this, tr("Export failed"),
+                         tr("Could not write to %1").arg(path));
+  }
 }
 
 void ImagePanel::setConfig(const ImagePanelConfig& config) {
@@ -461,6 +813,7 @@ void ImagePanel::handleMainPayload(const std::string& payload) {
     }
   }
   base_image_ = image_q;
+  noteFrameArrival();
   updateRenderedFrame();
 }
 
@@ -586,9 +939,28 @@ void ImagePanel::handleAnnotationPayload(int index, const std::string& payload) 
   }
   AnnotationRuntime& runtime = annotation_runtime_[index];
   const std::string message_type = messageTypeForChannel(runtime.channel.toStdString());
+  runtime.message_type = message_type;
+  runtime.last_payload = payload;
   runtime.layer = ImageAnnotationParser::fromPayload(message_type, payload);
   runtime.timestamp_ns = runtime.layer.timestamp_ns;
   updateRenderedFrame();
+}
+
+void ImagePanel::refreshAnalysisPanel() {
+  if (histogram_widget_ == nullptr || view_ == nullptr) {
+    return;
+  }
+  const QImage frame = view_->frame();
+  if (frame.isNull()) {
+    histogram_widget_->setHistogram({});
+    return;
+  }
+  if (!histogram_visible_) {
+    return;
+  }
+  const QRect roi = view_->analysisRoi();
+  histogram_widget_->setHistogram(computeLumaHistogram(frame, roi));
+  histogram_widget_->setRange(config_.color_min, config_.color_max);
 }
 
 void ImagePanel::updateRenderedFrame() {
@@ -597,9 +969,13 @@ void ImagePanel::updateRenderedFrame() {
   }
   QImage frame = base_image_;
   if (frame.isNull()) {
-    view_->setStatusText(config_.image_channel.isEmpty()
-                             ? tr("Select an image topic in Settings")
-                             : config_.image_channel);
+    display_fps_ = 0.0;
+    frame_arrival_ms_.clear();
+    ImageViewHud hud;
+    hud.title = config_.image_channel.isEmpty()
+                    ? tr("Select an image topic in Settings")
+                    : config_.image_channel;
+    view_->setHud(hud);
     view_->setFrame({});
     return;
   }
@@ -612,6 +988,7 @@ void ImagePanel::updateRenderedFrame() {
   frame = applyDisplayTransform(frame, config_.flip_horizontal,
                                 config_.flip_vertical, config_.rotation);
 
+  QStringList overlay_warnings;
   for (const OverlayRuntime& runtime : overlay_runtime_) {
     if (!runtime.config.enabled || runtime.image.isNull()) {
       continue;
@@ -620,18 +997,39 @@ void ImagePanel::updateRenderedFrame() {
         base_timestamp_ns_ != 0 && runtime.timestamp_ns != base_timestamp_ns_) {
       continue;
     }
+    if (!base_image_.isNull() &&
+        (runtime.image.width() != base_image_.width() ||
+         runtime.image.height() != base_image_.height())) {
+      overlay_warnings << tr("%1 size %2×%3 ≠ %4×%5")
+                              .arg(runtime.config.channel)
+                              .arg(runtime.image.width())
+                              .arg(runtime.image.height())
+                              .arg(base_image_.width())
+                              .arg(base_image_.height());
+    }
     QImage overlay = applyDisplayTransform(
         runtime.image, config_.flip_horizontal, config_.flip_vertical,
         config_.rotation);
     frame = compositeOverlay(frame, overlay, runtime.config);
   }
 
-  view_->setStatusText(config_.image_channel);
   view_->setFrame(frame);
+  if (view_ != nullptr) {
+    const double depth =
+        measure_depth_spin_ != nullptr ? measure_depth_spin_->value() : 1.0;
+    view_->setMeasureCalibration(camera_intrinsics_, depth);
+  }
+  updateViewHud();
+  refreshAnalysisPanel();
+  if (analysis_label_ != nullptr && !overlay_warnings.isEmpty()) {
+    analysis_label_->setText(tr("Overlay mismatch: %1")
+                                 .arg(overlay_warnings.join(QStringLiteral("; "))));
+  }
 
   QVector<ImageAnnotationLayer> layers;
   layers.reserve(static_cast<int>(annotation_runtime_.size() +
-                                  marker_runtime_.size()));
+                                  marker_runtime_.size() +
+                                  point_cloud_runtime_.size()));
   for (const AnnotationRuntime& runtime : annotation_runtime_) {
     if (config_.strict_time_sync && runtime.timestamp_ns != 0 &&
         base_timestamp_ns_ != 0 && runtime.timestamp_ns != base_timestamp_ns_) {
@@ -646,7 +1044,109 @@ void ImagePanel::updateRenderedFrame() {
     }
     layers.push_back(runtime.layer);
   }
+  for (const PointCloudRuntime& runtime : point_cloud_runtime_) {
+    if (config_.strict_time_sync && runtime.timestamp_ns != 0 &&
+        base_timestamp_ns_ != 0 && runtime.timestamp_ns != base_timestamp_ns_) {
+      continue;
+    }
+    layers.push_back(runtime.layer);
+  }
   view_->setAnnotationLayers(layers);
+}
+
+void ImagePanel::noteFrameArrival() {
+  const qint64 now_ms = QDateTime::currentMSecsSinceEpoch();
+  frame_arrival_ms_.push_back(now_ms);
+  constexpr qint64 kWindowMs = 2000;
+  while (!frame_arrival_ms_.isEmpty() &&
+         now_ms - frame_arrival_ms_.front() > kWindowMs) {
+    frame_arrival_ms_.removeFirst();
+  }
+  if (frame_arrival_ms_.size() >= 2) {
+    const qint64 span_ms =
+        frame_arrival_ms_.back() - frame_arrival_ms_.front();
+    if (span_ms > 0) {
+      display_fps_ = (frame_arrival_ms_.size() - 1) * 1000.0 /
+                     static_cast<double>(span_ms);
+    }
+  }
+}
+
+void ImagePanel::updateViewHud() {
+  if (view_ == nullptr) {
+    return;
+  }
+  ImageViewHud hud;
+  hud.title = config_.image_channel.isEmpty() ? config_.title
+                                              : config_.image_channel;
+
+  QStringList meta_parts;
+  if (!base_image_.isNull()) {
+    meta_parts << QStringLiteral("%1×%2")
+                      .arg(base_image_.width())
+                      .arg(base_image_.height());
+  }
+  if (display_fps_ > 0.05) {
+    meta_parts << tr("%1 fps").arg(display_fps_, 0, 'f', 1);
+  }
+  if (have_camera_info_) {
+    meta_parts << tr("calib");
+  }
+  if (config_.enable_undistort && have_camera_info_) {
+    meta_parts << tr("undistort");
+  } else if (config_.enable_undistort && !have_camera_info_) {
+    meta_parts << tr("undistort (no calib)");
+  }
+  if (config_.strict_time_sync) {
+    meta_parts << tr("sync");
+  }
+  hud.meta = meta_parts.join(QStringLiteral(" · "));
+  view_->setHud(hud);
+}
+
+void ImagePanel::setActiveTool(ImageViewTool tool) {
+  if (view_ != nullptr) {
+    view_->setTool(tool);
+  }
+  const bool measure = tool == ImageViewTool::kMeasure;
+  if (measure_depth_label_ != nullptr) {
+    measure_depth_label_->setVisible(measure);
+  }
+  if (measure_depth_spin_ != nullptr) {
+    measure_depth_spin_->setVisible(measure);
+  }
+  if (analysis_label_ != nullptr && tool == ImageViewTool::kProbe) {
+    analysis_label_->clear();
+  }
+  updateAnalysisStripVisibility();
+}
+
+void ImagePanel::updateAnalysisStripVisibility() {
+  const bool show_profile =
+      view_ != nullptr && view_->tool() == ImageViewTool::kProfile;
+  if (histogram_widget_ != nullptr) {
+    histogram_widget_->setVisible(histogram_visible_);
+  }
+  if (profile_widget_ != nullptr) {
+    profile_widget_->setVisible(show_profile);
+  }
+  if (analysis_strip_ != nullptr) {
+    analysis_strip_->setVisible(histogram_visible_ || show_profile);
+  }
+}
+
+void ImagePanel::setFloatingChromeVisible(bool visible) {
+  floating_chrome_visible_ = visible;
+  if (overlay_chrome_ != nullptr) {
+    overlay_chrome_->setVisible(visible);
+  }
+  if (overlay_reveal_button_ != nullptr) {
+    overlay_reveal_button_->setVisible(!visible);
+  }
+  if (overlay_wrap_ != nullptr) {
+    overlay_wrap_->raise();
+    overlay_wrap_->updateGeometry();
+  }
 }
 
 void ImagePanel::publishPixel(const QString& channel, int x, int y) const {
@@ -775,6 +1275,7 @@ void ImagePanel::resubscribeAll() {
   subscribeAnnotations();
   subscribeCalibration();
   subscribeMarkers();
+  subscribePointClouds();
   syncSettingsWidgetFromConfig();
 }
 
@@ -836,6 +1337,59 @@ void ImagePanel::subscribeMarkers() {
   }
 }
 
+void ImagePanel::unsubscribePointClouds() {
+  for (PointCloudRuntime& runtime : point_cloud_runtime_) {
+    if (runtime.subscription_id != 0) {
+      integration::ChannelReaderRegistry::instance().unsubscribe(
+          runtime.subscription_id);
+      runtime.subscription_id = 0;
+    }
+  }
+  point_cloud_runtime_.clear();
+}
+
+void ImagePanel::subscribePointClouds() {
+  unsubscribePointClouds();
+  point_cloud_runtime_.reserve(
+      static_cast<std::size_t>(config_.point_cloud_channels.size()));
+  for (int i = 0; i < config_.point_cloud_channels.size(); ++i) {
+    PointCloudRuntime runtime;
+    runtime.channel = config_.point_cloud_channels.at(i);
+    point_cloud_runtime_.push_back(std::move(runtime));
+    const std::string channel =
+        point_cloud_runtime_.back().channel.toStdString();
+    if (channel.empty()) {
+      continue;
+    }
+    point_cloud_runtime_.back().subscription_id =
+        integration::ChannelReaderRegistry::instance().subscribe(
+            channel, [this, i](const std::string& payload) {
+              if (i >= 0 &&
+                  static_cast<std::size_t>(i) < point_cloud_runtime_.size()) {
+                point_cloud_runtime_[static_cast<std::size_t>(i)].queue.push(
+                    payload);
+              }
+            });
+  }
+}
+
+void ImagePanel::handlePointCloudPayload(int index, const std::string& payload) {
+  if (index < 0 || index >= static_cast<int>(point_cloud_runtime_.size()) ||
+      !have_camera_info_ || !have_fixed_to_optical_ || manager_ == nullptr) {
+    return;
+  }
+  PointCloudRuntime& runtime = point_cloud_runtime_[static_cast<std::size_t>(index)];
+  automsgs::msgs::sensor_msgs::PointCloud2 cloud;
+  if (!cloud.ParseFromString(payload)) {
+    return;
+  }
+  runtime.layer = projectPointCloudToLayer(
+      cloud, camera_intrinsics_, fixed_to_optical_, manager_->fixedFrame(),
+      manager_->tfBuffer());
+  runtime.timestamp_ns = runtime.layer.timestamp_ns;
+  updateRenderedFrame();
+}
+
 void ImagePanel::drainIncomingQueues() {
   if (auto payload = main_queue_.takeLatest()) {
     handleMainPayload(*payload);
@@ -856,6 +1410,11 @@ void ImagePanel::drainIncomingQueues() {
   for (std::size_t i = 0; i < marker_runtime_.size(); ++i) {
     if (auto payload = marker_runtime_[i].queue.takeLatest()) {
       handleMarkerPayload(static_cast<int>(i), *payload);
+    }
+  }
+  for (std::size_t i = 0; i < point_cloud_runtime_.size(); ++i) {
+    if (auto payload = point_cloud_runtime_[i].queue.takeLatest()) {
+      handlePointCloudPayload(static_cast<int>(i), *payload);
     }
   }
 }

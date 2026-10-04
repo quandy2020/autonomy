@@ -14,6 +14,7 @@
 #include <QString>
 
 #include "autoviz/common/display_property.hpp"
+#include "autoviz/common/display_catalog.hpp"
 #include "autoviz/display/arrow_mesh_utils.hpp"
 #include "autoviz/display/primitive_mesh.hpp"
 #include "autoviz/commsgs/time_utils.hpp"
@@ -301,13 +302,14 @@ void TfDisplay::processMessage(
     return;
   }
   ensureTransformsListener();
-  // `/tf` and `/tf_static` are already ingested by transform::Listener.
-  // Re-inserting them here as dynamic duplicates cache entries and can
-  // promote static URDF joints onto a TimeCache, which desynchronizes
-  // rigid links during yaw.
+  // `/tf` and `/tf_static` are already ingested by transform::Listener into the
+  // shared buffer. TfDisplay visualizes that buffer (RViz2-style). Re-inserting
+  // here as dynamic duplicates cache entries and can promote static URDF joints
+  // onto a TimeCache, which desynchronizes rigid links during yaw.
   const std::string& ch = channel();
-  const bool already_in_buffer = (ch == "/tf" || ch == "tf" ||
-                                  ch == "/tf_static" || ch == "tf_static");
+  const bool already_in_buffer =
+      ch.empty() || ch == "/tf" || ch == "tf" ||
+      common::DisplayCatalog::isStaticTfChannel(ch);
   if (!already_in_buffer) {
     autoviz::transform::ApplyTfMessageToBuffer(context_->tf_buffer, message,
                                                 "autoviz");

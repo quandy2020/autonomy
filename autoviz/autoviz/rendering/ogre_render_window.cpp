@@ -20,15 +20,23 @@ namespace rendering {
 
 OgreRenderWindow::OgreRenderWindow(QWidget* parent)
     : QWidget(parent), ogre_backend_(this) {
-  setMinimumSize(640, 480);
+  // Keep min size small so center-host splitters can resize beside other panels.
+  setMinimumSize(80, 60);
   setFocusPolicy(Qt::StrongFocus);
   setMouseTracking(true);
   setAttribute(Qt::WA_NativeWindow);
   setAttribute(Qt::WA_PaintOnScreen);
+  setAttribute(Qt::WA_NoSystemBackground);
   setAttribute(Qt::WA_OpaquePaintEvent);
 }
 
 OgreRenderWindow::~OgreRenderWindow() { ogre_backend_.shutdown(); }
+
+QPaintEngine* OgreRenderWindow::paintEngine() const {
+  // Required with WA_PaintOnScreen: otherwise Qt logs
+  // "QWidget::paintEngine: Should no longer be called" every frame.
+  return nullptr;
+}
 
 void OgreRenderWindow::tick(float delta_seconds) {
   view_controller_.tick(delta_seconds);
@@ -50,7 +58,7 @@ void OgreRenderWindow::resizeEvent(QResizeEvent* event) {
 void OgreRenderWindow::paintEvent(QPaintEvent* /*event*/) {
   const float aspect =
       static_cast<float>(width()) / static_cast<float>(std::max(1, height()));
-  ogre_backend_.render(grid_renderer_.visible(), reference_grid_settings_,
+  ogre_backend_.render(/*show_grid=*/false, ReferenceGridSettings{},
                        scene_overlay_, view_controller_, aspect);
 }
 

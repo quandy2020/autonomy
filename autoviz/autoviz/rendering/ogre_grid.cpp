@@ -4,8 +4,6 @@
 
 #include "autoviz/rendering/ogre_grid.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <algorithm>
 
 #include <OgreManualObject.h>
@@ -112,4 +110,3 @@ void OgreGrid::rebuild() {
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

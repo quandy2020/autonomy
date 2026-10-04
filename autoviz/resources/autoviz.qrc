@@ -1,8 +1,13 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
   <qresource prefix="/autoviz">
-    <file>icons/add_panel.png</file>
     <file>icons/aviz.png</file>
+    <file>icons/aviz_32.png</file>
+    <file>icons/aviz_64.png</file>
+    <file>icons/aviz_128.png</file>
+    <file>icons/aviz_256.png</file>
+    <file>icons/aviz_1024.png</file>
+    <file>icons/aviz.icns</file>
     <file>icons/classes/AccelStamped.png</file>
     <file>icons/classes/Axes.png</file>
     <file>icons/classes/Camera.png</file>
@@ -44,30 +49,21 @@
     <file>icons/classes/Selection.png</file>
     <file>icons/classes/SetGoal.png</file>
     <file>icons/classes/SetInitialPose.png</file>
-    <file>icons/classes/StrataBuilding.png</file>
-    <file>icons/classes/StrataCanvasLabel.png</file>
-    <file>icons/classes/StrataFov.svg</file>
-    <file>icons/classes/StrataIotBubble.png</file>
-    <file>icons/classes/StrataLabelBubble.png</file>
-    <file>icons/classes/StrataPoi.png</file>
-    <file>icons/classes/StrataRoadGraph.png</file>
-    <file>icons/classes/StrataRobot.png</file>
-    <file>icons/classes/StrataRobot3D.png</file>
-    <file>icons/classes/StrataSemanticZone.png</file>
     <file>icons/classes/TF.png</file>
     <file>icons/classes/Temperature.png</file>
     <file>icons/classes/Time.png</file>
-    <file>icons/classes/Tool Properties.png</file>
+    <file>icons/classes/ToolProperties.svg</file>
     <file>icons/classes/Transformation.png</file>
     <file>icons/classes/TwistStamped.png</file>
     <file>icons/classes/Views.svg</file>
     <file>icons/classes/Wrench.png</file>
-    <file>icons/crosshair.svg</file>
-    <file>icons/cursor.svg</file>
-    <file>icons/default_class_icon.png</file>
-    <file>icons/default_package_icon.png</file>
-    <file>icons/global_status.png</file>
-    <file>icons/left_dock.svg</file>
+    <file>icons/default/class.png</file>
+    <file>icons/default/package.png</file>
+    <file>icons/dock/left.svg</file>
+    <file>icons/dock/right.svg</file>
+    <file>icons/dock/down.svg</file>
+    <file>icons/dock/sidebar_left.svg</file>
+    <file>icons/dock/sidebar_right.svg</file>
     <file>icons/menu/about.svg</file>
     <file>icons/menu/add_panel.png</file>
     <file>icons/menu/app.png</file>
@@ -75,6 +71,16 @@
     <file>icons/menu/camera.png</file>
     <file>icons/menu/config_file.png</file>
     <file>icons/menu/file.png</file>
+    <file>icons/menu/file_about.svg</file>
+    <file>icons/menu/file_image.svg</file>
+    <file>icons/menu/file_open.svg</file>
+    <file>icons/menu/file_open_record.svg</file>
+    <file>icons/menu/file_quit.svg</file>
+    <file>icons/menu/file_recent.svg</file>
+    <file>icons/menu/file_reset.svg</file>
+    <file>icons/menu/file_save.svg</file>
+    <file>icons/menu/file_save_as.svg</file>
+    <file>icons/menu/file_settings.svg</file>
     <file>icons/menu/fps.svg</file>
     <file>icons/menu/help.svg</file>
     <file>icons/menu/layout.svg</file>
@@ -94,117 +100,57 @@
     <file>icons/menu/top_down_ortho.png</file>
     <file>icons/menu/view.svg</file>
     <file>icons/menu/xy_orbit.svg</file>
-    <file>icons/menu.svg</file>
-    <file>icons/panel/panel_expand.svg</file>
-    <file>icons/panel/panel_close.svg</file>
-    <file>icons/panel/panel_collapse.svg</file>
-    <file>icons/panel/panel_inspect.svg</file>
-    <file>icons/panel/panel_more.svg</file>
-    <file>icons/panel/panel_recenter.svg</file>
-    <file>icons/panel/panel_settings.svg</file>
-    <file>icons/menu_check_white.svg</file>
-    <file>icons/minus.png</file>
-    <file>icons/move2d.svg</file>
-    <file>icons/options.png</file>
-    <file>icons/panels/panel_3d.svg</file>
-    <file>icons/panels/panel_audio.svg</file>
-    <file>icons/panels/panel_channel_graph.svg</file>
-    <file>icons/panels/panel_behavior_tree.svg</file>
-    <file>icons/panels/panel_channels.svg</file>
-    <file>icons/panels/panel_data_source.svg</file>
-    <file>icons/panels/panel_gauge.svg</file>
-    <file>icons/panels/panel_image.svg</file>
-    <file>icons/panels/panel_indicator.svg</file>
-    <file>icons/panels/panel_log.svg</file>
-    <file>icons/panels/panel_map.svg</file>
-    <file>icons/panels/panel_markdown.svg</file>
-    <file>icons/panels/panel_parameters.svg</file>
-    <file>icons/panels/panel_plot.svg</file>
-    <file>icons/panels/panel_problems.svg</file>
-    <file>icons/panels/panel_publish.svg</file>
-    <file>icons/panels/panel_raw_messages.svg</file>
-    <file>icons/panels/panel_service.svg</file>
-    <file>icons/panels/panel_stack.svg</file>
-    <file>icons/panels/panel_state.svg</file>
-    <file>icons/panels/panel_tab.svg</file>
-    <file>icons/panels/panel_table.svg</file>
-    <file>icons/panels/panel_teleop.svg</file>
-    <file>icons/panels/panel_transform_tree.svg</file>
-    <file>icons/panels/panel_variable_slider.svg</file>
-    <file>icons/panels/panel_variables.svg</file>
-    <file>icons/plot/plot_legend.svg</file>
-    <file>icons/plot/plot_reset_view.svg</file>
-    <file>icons/plus.png</file>
-    <file>icons/right_dock.svg</file>
-    <file>icons/rotate.svg</file>
-    <file>icons/sidebar_left.svg</file>
-    <file>icons/sidebar_right.svg</file>
-    <file>icons/status_disabled.svg</file>
-    <file>icons/status_error.svg</file>
-    <file>icons/status_ok.svg</file>
-    <file>icons/status_warn.svg</file>
-    <file>icons/zoom.svg</file>
-    <file>icons/behavior_tree/groot/NodesStyle.json</file>
-<file>icons/behavior_tree/groot/BT-edit.png</file>
-    <file>icons/behavior_tree/groot/BT-horizontal.png</file>
-    <file>icons/behavior_tree/groot/BT-log.png</file>
-    <file>icons/behavior_tree/groot/BT-monitor.png</file>
-    <file>icons/behavior_tree/groot/BT-vertical.png</file>
-    <file>icons/behavior_tree/groot/BT.png</file>
-    <file>icons/behavior_tree/groot/close_x.png</file>
-    <file>icons/behavior_tree/groot/green-circle.png</file>
-    <file>icons/behavior_tree/groot/green_star.png</file>
-    <file>icons/behavior_tree/groot/play.png</file>
-    <file>icons/behavior_tree/groot/red-circle.png</file>
-    <file>icons/behavior_tree/groot/svg/arrow_right.svg</file>
-    <file>icons/behavior_tree/groot/svg/asterix.svg</file>
-    <file>icons/behavior_tree/groot/svg/connect.svg</file>
-    <file>icons/behavior_tree/groot/svg/download.svg</file>
-    <file>icons/behavior_tree/groot/svg/edit_list.svg</file>
-    <file>icons/behavior_tree/groot/svg/exclaimation_mark.svg</file>
-    <file>icons/behavior_tree/groot/svg/fallback.svg</file>
-    <file>icons/behavior_tree/groot/svg/fallback_reactive.svg</file>
-    <file>icons/behavior_tree/groot/svg/fallback_star.svg</file>
-    <file>icons/behavior_tree/groot/svg/files.svg</file>
-    <file>icons/behavior_tree/groot/svg/folder.svg</file>
-    <file>icons/behavior_tree/groot/svg/gears.svg</file>
-    <file>icons/behavior_tree/groot/svg/goto_map.svg</file>
-    <file>icons/behavior_tree/groot/svg/letter_A.svg</file>
-    <file>icons/behavior_tree/groot/svg/letter_C.svg</file>
-    <file>icons/behavior_tree/groot/svg/letter_i.svg</file>
-    <file>icons/behavior_tree/groot/svg/letter_o.svg</file>
-    <file>icons/behavior_tree/groot/svg/list_add.svg</file>
-    <file>icons/behavior_tree/groot/svg/lock.svg</file>
-    <file>icons/behavior_tree/groot/svg/lock_open.svg</file>
-    <file>icons/behavior_tree/groot/svg/logo_splashscreen.svg</file>
-    <file>icons/behavior_tree/groot/svg/low_battery.svg</file>
-    <file>icons/behavior_tree/groot/svg/magic-wand.svg</file>
-    <file>icons/behavior_tree/groot/svg/manipulator.svg</file>
-    <file>icons/behavior_tree/groot/svg/maze_path.svg</file>
-    <file>icons/behavior_tree/groot/svg/mobile_manipulator.svg</file>
-    <file>icons/behavior_tree/groot/svg/nodes_tree.svg</file>
-    <file>icons/behavior_tree/groot/svg/not_equal.svg</file>
-    <file>icons/behavior_tree/groot/svg/question_mark.svg</file>
-    <file>icons/behavior_tree/groot/svg/repeat.svg</file>
-    <file>icons/behavior_tree/groot/svg/retry.svg</file>
-    <file>icons/behavior_tree/groot/svg/robot.svg</file>
-    <file>icons/behavior_tree/groot/svg/robot_talk.svg</file>
-    <file>icons/behavior_tree/groot/svg/save_dark.svg</file>
-    <file>icons/behavior_tree/groot/svg/save_white.svg</file>
-    <file>icons/behavior_tree/groot/svg/sequence.svg</file>
-    <file>icons/behavior_tree/groot/svg/sequence_reactive.svg</file>
-    <file>icons/behavior_tree/groot/svg/sequence_star.svg</file>
-    <file>icons/behavior_tree/groot/svg/server_download.svg</file>
-    <file>icons/behavior_tree/groot/svg/settings.svg</file>
-    <file>icons/behavior_tree/groot/svg/star.svg</file>
-    <file>icons/behavior_tree/groot/svg/subtree.svg</file>
-    <file>icons/behavior_tree/groot/svg/target_radar.svg</file>
-    <file>icons/behavior_tree/groot/svg/timeout.svg</file>
-    <file>icons/behavior_tree/groot/svg/tree.svg</file>
-    <file>icons/behavior_tree/groot/svg/upload.svg</file>
-    <file>icons/behavior_tree/groot/svg/zoom_home.svg</file>
+    <file>icons/panel/close.svg</file>
+    <file>icons/panel/collapse.svg</file>
+    <file>icons/panel/expand.svg</file>
+    <file>icons/panel/gauge.svg</file>
+    <file>icons/panel/inspect.svg</file>
+    <file>icons/panel/more.svg</file>
+    <file>icons/panel/recenter.svg</file>
+    <file>icons/panel/settings.svg</file>
+    <file>icons/panels/3d.svg</file>
+    <file>icons/panels/channel_graph.svg</file>
+    <file>icons/panels/channels.svg</file>
+    <file>icons/panels/data_source.svg</file>
+    <file>icons/panels/image.svg</file>
+    <file>icons/panels/map.svg</file>
+    <file>icons/panels/plot.svg</file>
+    <file>icons/panels/table.svg</file>
+    <file>icons/panels/publish.svg</file>
+    <file>icons/panels/raw_messages.svg</file>
+    <file>icons/panels/service.svg</file>
+    <file>icons/panels/stack.svg</file>
+    <file>icons/panels/tab.svg</file>
+    <file>icons/panels/teleop.svg</file>
+    <file>icons/panels/transform_tree.svg</file>
+    <file>icons/plot/brush.svg</file>
+    <file>icons/plot/legend.svg</file>
+    <file>icons/plot/pan.svg</file>
+    <file>icons/plot/reset_view.svg</file>
+    <file>icons/plot/select.svg</file>
+    <file>icons/plot/zoom.svg</file>
+    <file>icons/status/disabled.svg</file>
+    <file>icons/status/error.svg</file>
+    <file>icons/status/global.png</file>
+    <file>icons/status/ok.svg</file>
+    <file>icons/status/warn.svg</file>
+    <file>icons/tool/add_panel.png</file>
+    <file>icons/tool/crosshair.svg</file>
+    <file>icons/tool/cursor.svg</file>
+    <file>icons/tool/menu.svg</file>
+    <file>icons/tool/menu_check_white.svg</file>
+    <file>icons/tool/minus.png</file>
+    <file>icons/tool/move2d.svg</file>
+    <file>icons/tool/options.png</file>
+    <file>icons/tool/plus.png</file>
+    <file>icons/tool/rotate.svg</file>
+    <file>icons/tool/zoom.svg</file>
+    <file>icons/viewport/camera.svg</file>
+    <file>icons/viewport/gauge.svg</file>
+    <file>icons/viewport/inspect.svg</file>
+    <file>icons/viewport/measure.svg</file>
+    <file>icons/viewport/recenter.svg</file>
     <file>images/splash.png</file>
     <file>images/splash_overlay.png</file>
-    <file>images/splash_rviz_ref.png</file>
   </qresource>
 </RCC>

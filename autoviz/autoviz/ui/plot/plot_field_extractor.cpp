@@ -259,6 +259,40 @@ std::optional<double> PlotFieldExtractor::extractNumeric(
   return value;
 }
 
+std::optional<std::vector<double>> PlotFieldExtractor::extractNumericAll(
+    const std::string& message_type, const std::string& payload,
+    const std::string& field_path) const {
+  DynamicFactory::MessagePtr message;
+  if (ParseMessage(message_type, payload, &message) == nullptr) {
+    return std::nullopt;
+  }
+  std::vector<double> values;
+  if (ExtractAllNumericsByMessagePath(*message, field_path, &values) &&
+      !values.empty()) {
+    return values;
+  }
+  double single = 0.0;
+  if (ExtractNumericByMessagePath(*message, field_path, &single) ||
+      ExtractNumericByPath(*message, field_path, &single)) {
+    return std::vector<double>{single};
+  }
+  return std::nullopt;
+}
+
+std::optional<double> PlotFieldExtractor::extractVectorNorm(
+    const std::string& message_type, const std::string& payload,
+    const std::string& field_path) const {
+  DynamicFactory::MessagePtr message;
+  if (ParseMessage(message_type, payload, &message) == nullptr) {
+    return std::nullopt;
+  }
+  double value = 0.0;
+  if (!ExtractVectorNormByMessagePath(*message, field_path, &value)) {
+    return std::nullopt;
+  }
+  return value;
+}
+
 std::optional<double> PlotFieldExtractor::extractTimestamp(
     const std::string& message_type, const std::string& payload,
     const std::string& timestamp_path, double fallback_timestamp_sec) const {

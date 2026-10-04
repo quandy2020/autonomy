@@ -1,68 +1,49 @@
 # Copyright 2026 The Openbot Authors (duyongquan)
 #
-# Autoviz — standalone Qt visualizer; depends on sibling autolink + automsgs only
-# (does not link libautonomy; task schemas come from automsgs/proto/task/).
+# Autoviz — standalone Qt visualizer; depends on sibling autolink + automsgs only.
 #
-# Standalone:
-#   cmake -B build && cmake --build build --target autoviz
-# Super-project (src/autonomy):
-#   cmake -B build -DBUILD_AUTOVIZ=ON && cmake --build build --target autoviz
-#
-# cmake/ modules:
-#   Config.cmake        — options, toolchain, Qt AUTOMOC
-#   Dependencies.cmake  — embed autolink/automsgs, find Qt
-#   Sources.cmake       — source glob and Ogre conditional sources
-#   App.cmake           — autoviz executable and sample tools
-#   OgreBackend.cmake   — optional Ogre render backend
-#   Tests.cmake         — optional gtests (off by default)
-#   Install.cmake       — install rules and Linux desktop integration
+#   cmake -B build && cmake --build build --target autoviz_app
+#   libautoviz (autoviz::core) + thin bin/autoviz (target autoviz_app)
 
 cmake_minimum_required(VERSION 3.20)
+project(autoviz VERSION 0.1.0 LANGUAGES CXX C)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-
-# ---------------------------------------------------------------------------
-# Configure mode: standalone project vs Autonomy super-project subdirectory
-# ---------------------------------------------------------------------------
-if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-  project(autoviz LANGUAGES CXX C)
-  set(AUTOVIZ_STANDALONE ON)
-elseif(_AUTOVIZ_BUILDING_AS_SUBDIRECTORY)
-  set(AUTOVIZ_STANDALONE OFF)
-else()
-  message(FATAL_ERROR
-    "Configure from the autoviz directory (standalone), "
-    "or enable -DBUILD_AUTOVIZ=ON from the Autonomy root.")
+find_package(autocmake CONFIG QUIET)
+if(NOT autocmake_FOUND)
+  set(AUTOCMAKE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../autocmake")
+  include("${AUTOCMAKE_DIR}/Autocmake.cmake")
 endif()
 
-# Path conventions (used throughout):
-#   AUTOVIZ_ROOT      — package root (resources/, autoviz/ source tree)
-#   AUTOVIZ_DEPS_ROOT — sibling deps (autolink/, automsgs/, cmake/modules/)
-#   AUTOVIZ_SRC_ROOT  — C++ sources (autoviz/autoviz/)
-set(AUTOVIZ_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
-get_filename_component(AUTOVIZ_DEPS_ROOT "${AUTOVIZ_ROOT}/.." ABSOLUTE)
-set(AUTOVIZ_SRC_ROOT "${AUTOVIZ_ROOT}/autoviz")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/Functions.cmake")
+autoviz_setup()
+autoviz_embed_siblings()
 
-include(Config)
-include(Dependencies)
-include(Sources)
-include(App)
+autocmake_project()
+autocmake_find(Qt6 REQUIRED PRIVATE
+  COMPONENTS Core Gui Widgets OpenGLWidgets OpenGL Xml Svg Network)
+autocmake_build(QUIT)
 
-if(BUILD_AUTOVIZ_TESTS)
-  include(Tests)
-endif()
+autoviz_collect_sources()
+autocmake_library(autoviz SHARED
+  NO_EXPORT
+  SOURCES
+    ${AUTOVIZ_SOURCES}
+    ${AUTOVIZ_HEADERS}
+    ${AUTOVIZ_RECORDER_SOURCES}
+    ${AUTOVIZ_ROOT}/resources/autoviz.qrc
+    ${AUTOVIZ_ROOT}/styles/styles.qrc
+  INCLUDES ${AUTOVIZ_ROOT}
+  DEPENDENCIES automsgs autolink)
+autoviz_finalize_library(autoviz)
 
-add_subdirectory(examples)
+autocmake_binary(autoviz_app
+  NO_EXPORT
+  OUTPUT_NAME autoviz
+  SOURCES ${AUTOVIZ_SRC_ROOT}/main.cpp
+  DEPENDENCIES autoviz)
+target_link_libraries(autoviz_app PRIVATE
+  Qt6::Core Qt6::Gui Qt6::Widgets glog::glog)
 
-include(Install)
-
-# Configure summary
-if(AUTOVIZ_STANDALONE)
-  set(_autoviz_mode "standalone")
-else()
-  set(_autoviz_mode "super-project")
-endif()
-message(STATUS "")
-message(STATUS "Autoviz ${AUTOVIZ_VERSION} (${_autoviz_mode}): "
-        "QML=${AUTOVIZ_USE_QML_VEHICLE} Ogre=${AUTOVIZ_USE_OGRE} tests=${BUILD_AUTOVIZ_TESTS}")
-message(STATUS "")
+autoviz_install_desktop_assets()
+autocmake_package()
+autoviz_print_summary()

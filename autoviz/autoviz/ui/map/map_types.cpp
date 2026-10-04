@@ -25,8 +25,44 @@ QString BaseLayerTileUrlTemplate(MapBaseLayer layer, const QString& custom_url) 
       return QStringLiteral("https://tile.opentopomap.org/{z}/{x}/{y}.png");
     case MapBaseLayer::kCustom:
       return custom_url.trimmed();
+    case MapBaseLayer::kEsriStreet:
+      return QStringLiteral(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/"
+          "MapServer/tile/{z}/{y}/{x}");
+    case MapBaseLayer::kEsriTerrain:
+      return QStringLiteral(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/"
+          "MapServer/tile/{z}/{y}/{x}");
+    case MapBaseLayer::kCartoVoyager:
+      return QStringLiteral(
+          "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png");
+    case MapBaseLayer::kJapanStandard:
+      return QStringLiteral(
+          "https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png");
   }
   return {};
+}
+
+int BaseLayerMaxNativeZoom(MapBaseLayer layer) {
+  switch (layer) {
+    case MapBaseLayer::kStreet:
+      return 19;
+    case MapBaseLayer::kSatellite:
+      return 22;
+    case MapBaseLayer::kShadedRelief:
+      return 17;
+    case MapBaseLayer::kCustom:
+      return 22;
+    case MapBaseLayer::kEsriStreet:
+      return 19;
+    case MapBaseLayer::kEsriTerrain:
+      return 13;
+    case MapBaseLayer::kCartoVoyager:
+      return 20;
+    case MapBaseLayer::kJapanStandard:
+      return 18;
+  }
+  return 19;
 }
 
 QString BaseLayerLabel(MapBaseLayer layer) {
@@ -39,6 +75,14 @@ QString BaseLayerLabel(MapBaseLayer layer) {
       return QStringLiteral("Shaded relief");
     case MapBaseLayer::kCustom:
       return QStringLiteral("Custom URL");
+    case MapBaseLayer::kEsriStreet:
+      return QStringLiteral("Esri Street");
+    case MapBaseLayer::kEsriTerrain:
+      return QStringLiteral("Esri Terrain");
+    case MapBaseLayer::kCartoVoyager:
+      return QStringLiteral("CARTO Voyager");
+    case MapBaseLayer::kJapanStandard:
+      return QStringLiteral("Japan GSI");
   }
   return {};
 }
@@ -67,6 +111,51 @@ QString TimeRangeLabel(MapTimeRange range) {
       return QStringLiteral("Last N seconds");
     case MapTimeRange::kAll:
       return QStringLiteral("All history");
+  }
+  return {};
+}
+
+QString DistanceUnitLabel(MapDistanceUnit unit) {
+  switch (unit) {
+    case MapDistanceUnit::kMeters:
+      return QStringLiteral("Meters");
+    case MapDistanceUnit::kFeet:
+      return QStringLiteral("Feet");
+  }
+  return {};
+}
+
+QString BaseLayerAttribution(MapBaseLayer layer) {
+  switch (layer) {
+    case MapBaseLayer::kStreet:
+      return QStringLiteral("© OpenStreetMap");
+    case MapBaseLayer::kSatellite:
+      return QStringLiteral("© Esri");
+    case MapBaseLayer::kShadedRelief:
+      return QStringLiteral("© OpenTopoMap");
+    case MapBaseLayer::kCustom:
+      return {};
+    case MapBaseLayer::kEsriStreet:
+    case MapBaseLayer::kEsriTerrain:
+      return QStringLiteral("© Esri");
+    case MapBaseLayer::kCartoVoyager:
+      return QStringLiteral("© CARTO © OpenStreetMap");
+    case MapBaseLayer::kJapanStandard:
+      return QStringLiteral("© GSI Japan");
+  }
+  return {};
+}
+
+QString EditToolLabel(MapEditTool tool) {
+  switch (tool) {
+    case MapEditTool::kPan:
+      return QStringLiteral("Pan");
+    case MapEditTool::kWaypoint:
+      return QStringLiteral("Waypoint");
+    case MapEditTool::kGeofence:
+      return QStringLiteral("Geofence");
+    case MapEditTool::kRally:
+      return QStringLiteral("Rally");
   }
   return {};
 }

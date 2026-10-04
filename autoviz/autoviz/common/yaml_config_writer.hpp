@@ -28,6 +28,17 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
+/**
+ * @file yaml_config_writer.hpp
+ * @brief Writes a hierarchical @ref Config tree as YAML (RViz YamlConfigWriter).
+ *
+ * Supports file, string, and stream destinations. After each write, check
+ * @ref error() / @ref errorMessage().
+ *
+ * @see Config
+ * @see YamlConfigReader
+ * @see SessionConfigToConfig
+ */
 
 #ifndef AUTOVIZ_COMMON__YAML_CONFIG_WRITER_HPP_
 #define AUTOVIZ_COMMON__YAML_CONFIG_WRITER_HPP_
@@ -44,50 +55,81 @@ class Emitter;
 }
 
 namespace autoviz {
-namespace common
-{
+namespace common {
 
+/**
+ * @class YamlConfigWriter
+ * @brief Serializes @ref Config trees to YAML.
+ *
+ * Writer starts in a non-error state. Each write call may update
+ * @ref error() and @ref errorMessage(). The optional @p filename arguments
+ * are used only for diagnostics in error messages.
+ */
 class  YamlConfigWriter
 {
 public:
-  /// Constructor.
   /**
-   * Writer starts in a non-error state.
+   * @brief Constructs a writer in a non-error state.
    */
   YamlConfigWriter();
 
-  /// Write config data to a file.
   /**
-   * This potentially changes the return values of error() and statusMessage().
+   * @brief Writes config data to a file.
+   *
+   * Potentially changes the return values of @ref error() and
+   * @ref errorMessage().
+   *
+   * @param config Source config tree.
+   * @param filename Filesystem path to create/overwrite.
    */
   void writeFile(const Config & config, const QString & filename);
 
-  /// Write config data to a string, and return it.
   /**
-   * This potentially changes the return values of error() and statusMessage().
+   * @brief Writes config data to a string and returns it.
+   *
+   * @param config Source config tree.
+   * @param filename Logical name for error messages (default
+   *        @c "data string").
+   * @return YAML text (empty or partial on error; check @ref error()).
    */
   QString writeString(const Config & config, const QString & filename = "data string");
 
-  /// Write config data to a std::ostream.
   /**
-   * This potentially changes the return values of error() and statusMessage().
+   * @brief Writes config data to a @c std::ostream.
+   *
+   * @param config Source config tree.
+   * @param out Output stream.
+   * @param filename Logical name for error messages (default
+   *        @c "data stream").
    */
   void writeStream(
     const Config & config,
     std::ostream & out,
     const QString & filename = "data stream");
 
-  /// Return true if the latest write operation had an error.
+  /**
+   * @brief Returns whether the latest write operation had an error.
+   * @return @c true if the last write failed.
+   */
   bool error();
 
-  /// Return an error message if the latest write call had an error, else the empty string.
+  /**
+   * @brief Returns an error message if the latest write had an error.
+   * @return Error text, or the empty string if none.
+   */
   QString errorMessage();
 
 private:
+  /**
+   * @brief Recursively emits a @ref Config subtree into a YAML emitter.
+   *
+   * @param config Source config node.
+   * @param emitter Destination yaml-cpp emitter.
+   */
   void writeConfigNode(const Config & config, YAML::Emitter & emitter);
 
-  QString message_;
-  bool error_;
+  QString message_; /**< Last error message (empty if ok). */
+  bool error_;      /**< Last operation error flag. */
 };
 
 }  // namespace common

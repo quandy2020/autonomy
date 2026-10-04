@@ -35,19 +35,20 @@
 #include "autoviz/integration/channel_payload.hpp"
 #include "autoviz/integration/channel_reader_registry.hpp"
 #include "autoviz/integration/channel_writer_registry.hpp"
-#include "autoviz/ui/panel_settings_styles.hpp"
+#include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/plot/plot_path_utils.hpp"
 #include "autoviz/ui/publish/publish_field_tree.hpp"
 #include "autoviz/ui/publish/publish_message_codec.hpp"
+#include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
 namespace publish_panel {
 namespace {
 
 /** Light tokens aligned with Transform Tree. */
-constexpr char kBg[] = "#f8f9fb";
-constexpr char kSurface[] = "#ffffff";
-constexpr char kBorder[] = "#cbd5e1";
+constexpr char kBg[] = "rgba(255,255,255,128)";
+constexpr char kSurface[] = "rgba(240,249,255,155)";
+constexpr char kBorder[] = "rgba(186,230,253,140)";
 constexpr char kText[] = "#1e293b";
 constexpr char kTextMuted[] = "#64748b";
 constexpr char kAccent[] = "#0891b2";
@@ -64,8 +65,7 @@ QString ShortTypeLabel(const std::string& type) {
 QLabel* MakeFieldLabel(const QString& text, QWidget* parent) {
   auto* label = new QLabel(text, parent);
   label->setStyleSheet(
-      QStringLiteral("color: %1; font-size: 12px; font-weight: 600;")
-          .arg(QLatin1String(kTextMuted)));
+      style::sheet(QStringLiteral("publish"), style::Tone::Frost));
   return label;
 }
 
@@ -73,37 +73,16 @@ void StyleToolbarCombo(QComboBox* combo) {
   if (combo == nullptr) {
     return;
   }
-  combo->setStyleSheet(QStringLiteral(
-      "QComboBox {"
-      "  background: %1; color: %2;"
-      "  border: 1px solid %3; border-radius: 8px;"
-      "  padding: 5px 10px; min-height: 26px;"
-      "}"
-      "QComboBox:hover { border-color: %4; }"
-      "QComboBox:focus { border-color: %4; }"
-      "QComboBox::drop-down { border: none; width: 22px; }"
-      "QComboBox QAbstractItemView {"
-      "  background: %1; color: %2;"
-      "  border: 1px solid %3; selection-background-color: rgba(8,145,178,0.16);"
-      "  selection-color: %2;"
-      "}")
-                           .arg(QLatin1String(kSurface), QLatin1String(kText),
-                                QLatin1String(kBorder), QLatin1String(kAccent)));
+  combo->setStyleSheet(
+      style::sheet(QStringLiteral("publish"), style::Tone::Frost));
 }
 
 void StyleToolbarSpin(QDoubleSpinBox* spin) {
   if (spin == nullptr) {
     return;
   }
-  spin->setStyleSheet(QStringLiteral(
-      "QDoubleSpinBox {"
-      "  background: %1; color: %2;"
-      "  border: 1px solid %3; border-radius: 8px;"
-      "  padding: 4px 8px; min-height: 26px;"
-      "}"
-      "QDoubleSpinBox:focus { border-color: %4; }")
-                          .arg(QLatin1String(kSurface), QLatin1String(kText),
-                               QLatin1String(kBorder), QLatin1String(kAccent)));
+  spin->setStyleSheet(
+      style::sheet(QStringLiteral("publish"), style::Tone::Frost));
 }
 
 void StyleIconChipButton(QPushButton* button) {
@@ -113,19 +92,8 @@ void StyleIconChipButton(QPushButton* button) {
   button->setFlat(false);
   button->setCursor(Qt::PointingHandCursor);
   button->setFixedSize(32, 32);
-  button->setStyleSheet(QStringLiteral(
-      "QPushButton {"
-      "  background: rgba(8,145,178,0.08); color: %1;"
-      "  border: 1px solid rgba(8,145,178,0.28); border-radius: 8px;"
-      "  font-size: 15px; font-weight: 600; padding: 0;"
-      "}"
-      "QPushButton:hover { background: rgba(8,145,178,0.16); }"
-      "QPushButton:pressed { background: rgba(8,145,178,0.24); }"
-      "QPushButton:disabled {"
-      "  color: %2; background: %3; border-color: %4;"
-      "}")
-                            .arg(QLatin1String(kAccent), QLatin1String(kTextMuted),
-                                 QLatin1String(kBg), QLatin1String(kBorder)));
+  button->setStyleSheet(
+      style::sheet(QStringLiteral("publish"), style::Tone::Frost));
 }
 
 void StyleGhostButton(QPushButton* button) {
@@ -134,15 +102,8 @@ void StyleGhostButton(QPushButton* button) {
   }
   button->setFlat(true);
   button->setCursor(Qt::PointingHandCursor);
-  button->setStyleSheet(QStringLiteral(
-      "QPushButton {"
-      "  color: %1; background: transparent; border: none;"
-      "  border-radius: 6px; padding: 4px 10px; font-weight: 600;"
-      "}"
-      "QPushButton:hover { background: rgba(8,145,178,0.10); color: %2; }"
-      "QPushButton:disabled { color: %3; }")
-                            .arg(QLatin1String(kAccent), QLatin1String(kText),
-                                 QLatin1String(kTextMuted)));
+  button->setStyleSheet(
+      style::sheet(QStringLiteral("publish"), style::Tone::Frost));
 }
 
 int FindPresetIndex(const QVector<PublishPreset>& presets, const QString& name) {
@@ -231,14 +192,13 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   top_layout->addWidget(publish_rate_spin_);
   auto* hz_label = MakeFieldLabel(tr("Hz"), top_frame);
   hz_label->setStyleSheet(
-      QStringLiteral("color: %1; font-size: 12px;").arg(QLatin1String(kTextMuted)));
+      style::type(style::Role::PanelMuted, 12));
   top_layout->addWidget(hz_label);
   editing_mode_check_ = new QCheckBox(tr("Advanced"), top_frame);
   editing_mode_check_->setChecked(config_.editing_mode);
   editing_mode_check_->setToolTip(tr("Show JSON editor and collection"));
   editing_mode_check_->setStyleSheet(
-      QStringLiteral("QCheckBox { color: %1; spacing: 6px; }")
-          .arg(QLatin1String(kText)));
+      style::sheet(QStringLiteral("publish/advanced_check"), style::Tone::Frost));
   top_layout->addWidget(editing_mode_check_);
 
   add_publisher_button_ = new QPushButton(QStringLiteral("+"), top_frame);
@@ -254,8 +214,7 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   auto* action_separator = new QFrame(top_frame);
   action_separator->setFrameShape(QFrame::NoFrame);
   action_separator->setFixedWidth(1);
-  action_separator->setStyleSheet(
-      QStringLiteral("background: %1;").arg(QLatin1String(kBorder)));
+  action_separator->setStyleSheet(style::sheet(QStringLiteral("publish"), style::Tone::Frost));
   action_separator->setMinimumHeight(22);
 
   publish_once_button_ = new QPushButton(tr("Publish"), top_frame);
@@ -313,8 +272,7 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   payload_splitter_->setChildrenCollapsible(false);
   payload_splitter_->setHandleWidth(1);
   payload_splitter_->setStyleSheet(
-      QStringLiteral("QSplitter::handle { background: %1; }")
-          .arg(QLatin1String(kBorder)));
+      style::sheet(QStringLiteral("tf_tree"), style::Tone::Frost));
 
   request_group_ = new QGroupBox(tr("Message"), editor_body_);
   auto* request_layout = new QVBoxLayout(request_group_);
@@ -448,69 +406,17 @@ QPlainTextEdit* PublishEditorWidget::makeJsonEditor(QWidget* parent,
   mono.setFamily(QStringLiteral("Monospace"));
   mono.setPointSizeF(std::max(9.0, mono.pointSizeF() - 1.0));
   editor->setFont(mono);
-  editor->setStyleSheet(QStringLiteral(
-      "QPlainTextEdit {"
-      "  background: %1; color: %2;"
-      "  border: 1px solid %3; border-radius: 8px;"
-      "  padding: 8px;"
-      "  selection-background-color: rgba(8,145,178,0.22);"
-      "}")
-                            .arg(read_only ? QLatin1String(kBg) : QLatin1String(kSurface),
-                                 QLatin1String(kText), QLatin1String(kBorder)));
+  QHash<QString, QString> tokens = style::tokens(style::Tone::Frost);
+  tokens.insert(QStringLiteral("{{editor-bg}}"),
+                read_only ? QLatin1String(kBg) : QLatin1String(kSurface));
+  editor->setStyleSheet(
+      style::sheet(QStringLiteral("publish"), tokens));
   return editor;
 }
 
 void PublishEditorWidget::applyChromeStyles() {
-  setStyleSheet(QStringLiteral(
-      "QWidget#PublishEditorContent {"
-      "  background: %1; color: %2;"
-      "}"
-      "QFrame#PublishToolbar, QFrame#PublishCollectionBar {"
-      "  background: %3;"
-      "  border: 1px solid %4;"
-      "  border-radius: 12px;"
-      "}"
-      "QFrame#PublishTreeCard {"
-      "  background: %3;"
-      "  border: 1px solid %4;"
-      "  border-radius: 12px;"
-      "}"
-      "QGroupBox {"
-      "  background: %3;"
-      "  border: 1px solid %4;"
-      "  border-radius: 12px;"
-      "  margin-top: 12px;"
-      "  padding: 16px 10px 10px 10px;"
-      "  font-weight: 600;"
-      "  color: %2;"
-      "}"
-      "QGroupBox::title {"
-      "  subcontrol-origin: margin;"
-      "  left: 12px;"
-      "  padding: 0 6px;"
-      "  color: %5;"
-      "}"
-      "QTabWidget::pane {"
-      "  border: 1px solid %4;"
-      "  border-radius: 8px;"
-      "  background: %3;"
-      "  top: -1px;"
-      "}"
-      "QTabBar::tab {"
-      "  background: transparent;"
-      "  color: %5;"
-      "  padding: 7px 14px;"
-      "  margin-right: 2px;"
-      "  border-bottom: 2px solid transparent;"
-      "}"
-      "QTabBar::tab:selected {"
-      "  color: %6;"
-      "  border-bottom: 2px solid %6;"
-      "}"
-      "QTabBar::tab:hover { color: %2; }")
-                    .arg(QLatin1String(kBg), QLatin1String(kText),
-                         QLatin1String(kSurface), QLatin1String(kBorder),
-                         QLatin1String(kTextMuted), QLatin1String(kAccent)));
+  setStyleSheet(
+      style::sheet(QStringLiteral("publish"), style::Tone::Frost));
 }
 
 void PublishEditorWidget::refreshPublishButtonAppearance() {
@@ -532,21 +438,11 @@ void PublishEditorWidget::refreshPublishButtonAppearance() {
     accent = config_.button_color;
   }
   const QString hover = accent.lighter(112).name();
-  publish_once_button_->setStyleSheet(QStringLiteral(
-      "QPushButton {"
-      "  background: %1; color: white;"
-      "  border: 1px solid %1; border-radius: 9px;"
-      "  padding: 6px 18px; font-weight: 700;"
-      "}"
-      "QPushButton:hover { background: %2; border-color: %2; }"
-      "QPushButton:pressed { background: %1; }"
-      "QPushButton:disabled {"
-      "  background: %3; color: %4; border-color: %5;"
-      "}")
-                                          .arg(accent.name(), hover,
-                                               QLatin1String(kBg),
-                                               QLatin1String(kTextMuted),
-                                               QLatin1String(kBorder)));
+  QHash<QString, QString> tokens = style::tokens(style::Tone::Frost);
+  tokens.insert(QStringLiteral("{{btn-bg}}"), accent.name());
+  tokens.insert(QStringLiteral("{{btn-hover}}"), hover);
+  publish_once_button_->setStyleSheet(
+      style::sheet(QStringLiteral("publish"), tokens));
 }
 
 void PublishEditorWidget::keyPressEvent(QKeyEvent* event) {
@@ -899,8 +795,8 @@ void PublishEditorWidget::showResult(bool success, const QString& summary,
                                      const QString& details) {
   result_status_label_->setText(summary);
   result_status_label_->setStyleSheet(
-      success ? QStringLiteral("color: #059669; font-weight: 700;")
-              : QStringLiteral("color: #dc2626; font-weight: 700;"));
+      success ? style::type(style::Role::Ok, 12, 700)
+              : style::type(style::Role::Danger, 12, 700));
   if (!details.isEmpty()) {
     result_edit_->setPlainText(details);
   }

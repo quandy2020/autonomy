@@ -259,11 +259,7 @@ void drawStoredMarkers(
   std::vector<ColoredPoint3D> ogre_points;
   std::vector<ColoredMeshInstance> ogre_meshes;
   std::vector<TextLabelInstance> ogre_labels;
-#ifdef AUTOVIZ_USE_OGRE
   const bool use_ogre = context != nullptr && context->ogre_scene_host != nullptr;
-#else
-  const bool use_ogre = false;
-#endif
 
   auto appendArrowLines = [&ogre_lines](const QVector3D& start, const QVector3D& end,
                                         const QColor& color) {

@@ -3,9 +3,20 @@
  * Adapted for Autoviz (BSD-3-Clause).
  *****************************************************************************/
 
-#pragma once
+/**
+ * @file ogre_point_cloud.hpp
+ * @brief Persistent GPU point cloud using rviz ogre_media shaders.
+ *
+ * rviz_rendering::PointCloud — supports Points/Squares/Spheres/Tiles/Boxes
+ * render modes, per-point color, pick colour, and color-by-index for the
+ * Pick1 scheme. Uploaded via @ref OgreSceneHost::setDisplayPoints().
+ *
+ * @see OgrePointCloudRenderable
+ * @see PointCloudStyle
+ * @see OgreSceneHost
+ */
 
-#ifdef AUTOVIZ_USE_OGRE
+#pragma once
 
 #include <cstdint>
 #include <deque>
@@ -39,47 +50,154 @@ class SceneNode;
 namespace autoviz {
 namespace rendering {
 
-/** rviz_rendering::PointCloud — persistent GPU point cloud using ogre_media shaders. */
+/**
+ * @class OgrePointCloud
+ * @brief rviz_rendering::PointCloud — GPU point cloud MovableObject.
+ *
+ * ## Data flow
+ *
+ * Call @ref clear() / @ref addPoints() / @ref popPoints() to mutate CPU
+ * points, then the cloud regenerates @ref OgrePointCloudRenderable chunks as
+ * needed. Attach to a scene node via the usual Ogre MovableObject API (done
+ * by @ref OgreSceneHost).
+ */
 class OgrePointCloud : public Ogre::MovableObject {
  public:
+  /**
+   * @enum RenderMode
+   * @brief Draw style (maps from @ref PointCloudStyle).
+   */
   enum RenderMode {
-    kPoints,
-    kSquares,
-    kFlatSquares,
-    kSpheres,
-    kTiles,
-    kBoxes,
+    kPoints,      /**< GL points. */
+    kSquares,     /**< Camera-facing squares. */
+    kFlatSquares, /**< Flat squares. */
+    kSpheres,     /**< Sphere impostors. */
+    kTiles,       /**< Tiles with up vector. */
+    kBoxes,       /**< Box geometry. */
   };
 
+  /**
+   * @struct Point
+   * @brief CPU-side point sample (position + colour).
+   */
   struct Point {
+    /**
+     * @brief Sets RGBA colour components.
+     * @param r Red.
+     * @param g Green.
+     * @param b Blue.
+     * @param a Alpha (default 1).
+     */
     void setColor(float r, float g, float b, float a = 1.0f) {
       color = Ogre::ColourValue(r, g, b, a);
     }
-    Ogre::Vector3 position;
-    Ogre::ColourValue color;
+    Ogre::Vector3 position;   /**< World/parent position. */
+    Ogre::ColourValue color;  /**< Point colour. */
   };
 
+  /** @brief Constructs an empty cloud with default sphere mode. */
   OgrePointCloud();
+
+  /** @brief Clears renderables and detaches from the scene. */
   ~OgrePointCloud() override;
 
+  /**
+   * @brief Clears points but may keep renderable pool capacity.
+   */
   void clear();
+
+  /**
+   * @brief Clears points and destroys all renderable chunks.
+   */
   void clearAndRemoveAllPoints();
+
+  /**
+   * @brief Appends a range of points and updates GPU buffers.
+   * @param start Inclusive iterator start.
+   * @param end Exclusive iterator end.
+   */
   void addPoints(std::vector<Point>::iterator start,
                  std::vector<Point>::iterator end);
+
+  /**
+   * @brief Removes @p num_points from the front of the CPU buffer.
+   * @param num_points Count to pop.
+   */
   void popPoints(uint32_t num_points);
+
+  /**
+   * @brief Returns a copy of the current CPU points.
+   * @return Point vector.
+   */
   std::vector<Point> getPoints();
 
+  /**
+   * @brief Sets the render mode and regenerates materials/geometry as needed.
+   * @param mode New @ref RenderMode.
+   */
   void setRenderMode(RenderMode mode);
+
+  /**
+   * @brief Sets point dimensions (width/height/depth custom parameters).
+   * @param width Size X.
+   * @param height Size Y.
+   * @param depth Size Z.
+   */
   void setDimensions(float width, float height, float depth);
+
+  /**
+   * @brief Enables distance-based auto sizing (shader custom param).
+   * @param auto_size Enable flag.
+   */
   void setAutoSize(bool auto_size);
+
+  /**
+   * @brief Sets the common facing direction (tiles / flat squares).
+   * @param vec Direction vector.
+   */
   void setCommonDirection(const Ogre::Vector3& vec);
+
+  /**
+   * @brief Sets the common up vector (tiles).
+   * @param vec Up vector.
+   */
   void setCommonUpVector(const Ogre::Vector3& vec);
+
+  /**
+   * @brief Sets global alpha and optionally enables per-point alpha.
+   * @param alpha Opacity.
+   * @param per_point_alpha When @c true, use alpha from each point colour.
+   */
   void setAlpha(float alpha, bool per_point_alpha = false);
+
+  /**
+   * @brief Sets a uniform colour override.
+   * @param color Colour value.
+   */
   void setColor(const Ogre::ColourValue& color);
+
+  /**
+   * @brief Sets the GPU pick-pass colour (custom parameter).
+   * @param color Encoded pick colour.
+   */
   void setPickColor(const Ogre::ColourValue& color);
+
+  /**
+   * @brief Enables color-by-index mode for Pick1 point identification.
+   * @param set Enable flag.
+   */
   void setColorByIndex(bool set);
+
+  /**
+   * @brief Sets selection highlight tint.
+   * @param r Red.
+   * @param g Green.
+   * @param b Blue.
+   */
   void setHighlightColor(float r, float g, float b);
 
+  /** @name Ogre::MovableObject overrides */
+  ///@{
   const Ogre::String& getMovableType() const override;
   const Ogre::AxisAlignedBox& getBoundingBox() const override;
   float getBoundingRadius() const override;
@@ -90,8 +208,24 @@ class OgrePointCloud : public Ogre::MovableObject {
   void _notifyAttached(Ogre::Node* parent, bool is_tag_point = false) override;
   void visitRenderables(Ogre::Renderable::Visitor* visitor,
                         bool debug_renderables) override;
+  ///@}
+
+  /**
+   * @brief Sets the MovableObject name.
+   * @param name Object name.
+   */
   void setName(const std::string& name);
+
+  /**
+   * @brief Returns the current renderable queue (shared ptrs).
+   * @return Copy of the renderable deque.
+   */
   OgrePointCloudRenderableQueue getRenderables();
+
+  /**
+   * @brief Vertices emitted per logical point for the current mode.
+   * @return Vertex count per point (1 for points, more for expanded modes).
+   */
   uint32_t getVerticesPerPoint();
 
  private:
@@ -151,4 +285,3 @@ class OgrePointCloud : public Ogre::MovableObject {
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

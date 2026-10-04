@@ -17,6 +17,15 @@ misrepresented as being the original software.
 3. This notice may not be removed or altered from any source distribution.
 */
 
+/**
+ * @file Matrix3x3.h
+ * @brief TF2 / Bullet @c Matrix3x3 — orthogonal 3×3 rotation matrix.
+ *
+ * @see Quaternion
+ * @see Vector3
+ * @see Transform
+ */
+
 #ifndef TF2_MATRIX3x3_H
 #define TF2_MATRIX3x3_H
 
@@ -29,9 +38,14 @@ namespace tf2 {
 
 #define Matrix3x3Data Matrix3x3DoubleData
 
-/**@brief The Matrix3x3 class implements a 3x3 rotation matrix, to perform
- * linear algebra in combination with Quaternion, Transform and Vector3. Make
- * sure to only include a pure orthogonal matrix without scaling. */
+/**
+ * @class Matrix3x3
+ * @brief Orthogonal 3×3 rotation matrix (no scaling/shear).
+ *
+ * @see Quaternion
+ * @see Transform
+ * @see Vector3
+ */
 class Matrix3x3
 {
     /// Data storage for the matrix, each vector is a row of the matrix
@@ -44,7 +58,7 @@ public:
     //		explicit Matrix3x3(const tf2Scalar *m) {
     // setFromOpenGLSubMatrix(m); }
 
-    /**@brief Constructor from Quaternion */
+    /** @brief Constructor from Quaternion */
     explicit Matrix3x3(const Quaternion& q) {
         setRotation(q);
     }
@@ -196,7 +210,7 @@ public:
         setEulerYPR(yaw, pitch, roll);
     }
 
-    /**@brief Set the matrix to the identity */
+    /** @brief Set the matrix to the identity */
     void setIdentity() {
         setValue(tf2Scalar(1.0), tf2Scalar(0.0), tf2Scalar(0.0), tf2Scalar(0.0),
                  tf2Scalar(1.0), tf2Scalar(0.0), tf2Scalar(0.0), tf2Scalar(0.0),
@@ -211,7 +225,7 @@ public:
         return identityMatrix;
     }
 
-    /**@brief Fill the values of the matrix into a 9 element array
+    /** @brief Fill the values of the matrix into a 9 element array
      * @param m The array to be filled */
     void getOpenGLSubMatrix(tf2Scalar* m) const {
         m[0] = tf2Scalar(m_el[0].x());
@@ -228,7 +242,7 @@ public:
         m[11] = tf2Scalar(0.0);
     }
 
-    /**@brief Get the matrix represented as a quaternion
+    /** @brief Get the matrix represented as a quaternion
      * @param q The quaternion which will be set */
     void getRotation(Quaternion& q) const {
         tf2Scalar trace = m_el[0].x() + m_el[1].y() + m_el[2].z();
@@ -261,7 +275,7 @@ public:
         q.setValue(temp[0], temp[1], temp[2], temp[3]);
     }
 
-    /**@brief Get the matrix represented as euler angles around ZYX
+    /** @brief Get the matrix represented as euler angles around ZYX
      * @param yaw Yaw around Z axis
      * @param pitch Pitch around Y axis
      * @param roll around X axis
@@ -273,7 +287,7 @@ public:
         getEulerYPR(yaw, pitch, roll, solution_number);
     };
 
-    /**@brief Get the matrix represented as euler angles around YXZ, roundtrip
+    /** @brief Get the matrix represented as euler angles around YXZ, roundtrip
      * with setEulerYPR
      * @param yaw Yaw around Z axis
      * @param pitch Pitch around Y axis
@@ -337,7 +351,7 @@ public:
         }
     }
 
-    /**@brief Get the matrix represented as roll pitch and yaw about fixed axes
+    /** @brief Get the matrix represented as roll pitch and yaw about fixed axes
      * XYZ
      * @param roll around X axis
      * @param pitch Pitch around Y axis
@@ -349,7 +363,7 @@ public:
         getEulerYPR(yaw, pitch, roll, solution_number);
     }
 
-    /**@brief Create a scaled copy of the matrix
+    /** @brief Create a scaled copy of the matrix
      * @param s Scaling vector The elements of the vector will scale each column
      */
 
@@ -360,15 +374,15 @@ public:
             m_el[2].x() * s.x(), m_el[2].y() * s.y(), m_el[2].z() * s.z());
     }
 
-    /**@brief Return the determinant of the matrix */
+    /** @brief Return the determinant of the matrix */
     tf2Scalar determinant() const;
-    /**@brief Return the adjoint of the matrix */
+    /** @brief Return the adjoint of the matrix */
     Matrix3x3 adjoint() const;
-    /**@brief Return the matrix with all values non negative */
+    /** @brief Return the matrix with all values non negative */
     Matrix3x3 absolute() const;
-    /**@brief Return the transpose of the matrix */
+    /** @brief Return the transpose of the matrix */
     Matrix3x3 transpose() const;
-    /**@brief Return the inverse of the matrix */
+    /** @brief Return the inverse of the matrix */
     Matrix3x3 inverse() const;
 
     Matrix3x3 transposeTimes(const Matrix3x3& m) const;
@@ -384,7 +398,7 @@ public:
         return m_el[0].z() * v.x() + m_el[1].z() * v.y() + m_el[2].z() * v.z();
     }
 
-    /**@brief diagonalizes this matrix by the Jacobi method.
+    /** @brief diagonalizes this matrix by the Jacobi method.
      * @param rot stores the rotation from the coordinate system in which the
      * matrix is diagonal to the original coordinate system, i.e., old_this =
      * rot
@@ -468,7 +482,7 @@ public:
         }
     }
 
-    /**@brief Calculate the matrix cofactor
+    /** @brief Calculate the matrix cofactor
      * @param r1 The first row to use for calculating the cofactor
      * @param c1 The first column to use for calculating the cofactor
      * @param r1 The second row to use for calculating the cofactor
@@ -580,7 +594,7 @@ m1[0][2] * m2[0][2] + m1[1][2] * m2[1][2] + m1[2][2] * m2[2][2]);
 }
 */
 
-/**@brief Equality operator between two matrices
+/** @brief Equality operator between two matrices
  * It will test all elements are equal.  */
 TF2SIMD_FORCE_INLINE bool operator==(const Matrix3x3& m1, const Matrix3x3& m2) {
     return (

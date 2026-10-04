@@ -4,8 +4,6 @@
 
 #include "autoviz/rendering/ogre_mesh_loader.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <functional>
 
 #include <QFileInfo>
@@ -28,7 +26,7 @@ namespace autoviz {
 namespace rendering {
 namespace {
 
-constexpr char kMeshGroup[] = "rviz_rendering";
+constexpr char kMeshGroup[] = "aviz_rendering";
 
 std::size_t HashMesh(const display::ObjMesh& mesh) {
   std::size_t hash = mesh.vertices.size();
@@ -66,7 +64,7 @@ bool MeshesEqual(const display::ObjMesh& a, const display::ObjMesh& b) {
 
 }  // namespace
 
-void OgreMeshLoader::ensurePrimitiveMeshes() { ensureRvizPrimitiveMeshes(); }
+void OgreMeshLoader::ensurePrimitiveMeshes() { ensureAvizPrimitiveMeshes(); }
 
 std::string OgreMeshLoader::primitiveMeshName(const display::ObjMesh& mesh) {
   ensurePrimitiveMeshes();
@@ -75,16 +73,16 @@ std::string OgreMeshLoader::primitiveMeshName(const display::ObjMesh& mesh) {
   static const display::ObjMesh kCylinder = display::buildCylinderMesh(0.5f, 1.f);
   static const display::ObjMesh kCone = display::buildConeMesh(0.5f, 1.f);
   if (MeshesEqual(mesh, kCube)) {
-    return "rviz_cube.mesh";
+    return "aviz_cube.mesh";
   }
   if (MeshesEqual(mesh, kSphere)) {
-    return "rviz_sphere.mesh";
+    return "aviz_sphere.mesh";
   }
   if (MeshesEqual(mesh, kCylinder)) {
-    return "rviz_cylinder.mesh";
+    return "aviz_cylinder.mesh";
   }
   if (MeshesEqual(mesh, kCone)) {
-    return "rviz_cone.mesh";
+    return "aviz_cone.mesh";
   }
   return {};
 }
@@ -166,4 +164,3 @@ Ogre::MeshPtr OgreMeshLoader::loadMeshFromResource(
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

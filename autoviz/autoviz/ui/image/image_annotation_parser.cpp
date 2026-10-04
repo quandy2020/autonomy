@@ -9,6 +9,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QStringList>
 
 #include <automsgs/msgs/vision_msgs/bounding_box2d.pb.h>
 #include <automsgs/msgs/vision_msgs/bounding_box2d_array.pb.h>
@@ -59,9 +60,42 @@ ImageAnnotationPolyline PolylineFromPoints(const QVector<QPointF>& points,
   return polyline;
 }
 
+QString FormatMetadata(const QJsonObject& object) {
+  const QJsonValue metadata_value = object.value(QStringLiteral("metadata"));
+  QStringList lines;
+  if (metadata_value.isArray()) {
+    for (const QJsonValue& entry : metadata_value.toArray()) {
+      const QJsonObject pair = entry.toObject();
+      const QString key = pair.value(QStringLiteral("key")).toString();
+      const QString value = pair.value(QStringLiteral("value")).toString();
+      if (key.isEmpty() && value.isEmpty()) {
+        continue;
+      }
+      lines << (key.isEmpty() ? value : QStringLiteral("%1: %2").arg(key, value));
+    }
+  } else if (metadata_value.isObject()) {
+    const QJsonObject meta = metadata_value.toObject();
+    for (auto it = meta.begin(); it != meta.end(); ++it) {
+      lines << QStringLiteral("%1: %2").arg(it.key(), it.value().toVariant().toString());
+    }
+  }
+  return lines.join(QLatin1Char('\n'));
+}
+
+QString MergeTooltips(const QString& root_tip, const QString& local_tip) {
+  if (root_tip.isEmpty()) {
+    return local_tip;
+  }
+  if (local_tip.isEmpty()) {
+    return root_tip;
+  }
+  return root_tip + QLatin1Char('\n') + local_tip;
+}
+
 ImageAnnotationLayer FromFoxgloveJsonObject(const QJsonObject& root) {
   ImageAnnotationLayer layer;
   layer.timestamp_ns = TimestampNsFromJson(root);
+  const QString root_tip = FormatMetadata(root);
 
   for (const QJsonValue& value : root.value(QStringLiteral("circles")).toArray()) {
     const QJsonObject circle = value.toObject();
@@ -83,7 +117,10 @@ ImageAnnotationLayer FromFoxgloveJsonObject(const QJsonObject& root) {
       const double theta = (2.0 * M_PI * i) / kSegments;
       ring.push_back(center + QPointF(std::cos(theta) * radius, std::sin(theta) * radius));
     }
-    layer.polylines.push_back(PolylineFromPoints(ring, color, thickness, true));
+    ImageAnnotationPolyline polyline =
+        PolylineFromPoints(ring, color, thickness, true);
+    polyline.tooltip = MergeTooltips(root_tip, FormatMetadata(circle));
+    layer.polylines.push_back(std::move(polyline));
   }
 
   for (const QJsonValue& value : root.value(QStringLiteral("points")).toArray()) {
@@ -98,6 +135,8 @@ ImageAnnotationLayer FromFoxgloveJsonObject(const QJsonObject& root) {
     const float thickness = static_cast<float>(
         points_annotation.value(QStringLiteral("thickness")).toDouble(2.0));
     const int type = points_annotation.value(QStringLiteral("type")).toInt(0);
+    const QString tip =
+        MergeTooltips(root_tip, FormatMetadata(points_annotation));
     QVector<QPointF> polyline_points;
     polyline_points.reserve(points.size());
     for (const QJsonValue& point_value : points) {
@@ -109,13 +148,16 @@ ImageAnnotationLayer FromFoxgloveJsonObject(const QJsonObject& root) {
         annotation_point.position = point;
         annotation_point.color = color;
         annotation_point.size = std::max(thickness, 4.0f);
+        annotation_point.tooltip = tip;
         layer.points.push_back(annotation_point);
       }
       continue;
     }
     const bool closed = type == 3;
-    layer.polylines.push_back(
-        PolylineFromPoints(polyline_points, color, thickness, closed));
+    ImageAnnotationPolyline polyline =
+        PolylineFromPoints(polyline_points, color, thickness, closed);
+    polyline.tooltip = tip;
+    layer.polylines.push_back(std::move(polyline));
   }
 
   for (const QJsonValue& value : root.value(QStringLiteral("texts")).toArray()) {
@@ -126,6 +168,7 @@ ImageAnnotationLayer FromFoxgloveJsonObject(const QJsonObject& root) {
     annotation_text.color = ColorFromJson(
         text.value(QStringLiteral("text_color")).toObject(), Qt::white);
     annotation_text.font_size = text.value(QStringLiteral("font_size")).toDouble(12.0);
+    annotation_text.tooltip = MergeTooltips(root_tip, FormatMetadata(text));
     if (!annotation_text.text.isEmpty()) {
       layer.texts.push_back(annotation_text);
     }
@@ -164,6 +207,45 @@ ImageAnnotationPolyline BoxPolyline(const automsgs::msgs::vision_msgs::BoundingB
   polyline.points = {corner(-hx, -hy), corner(hx, -hy), corner(hx, hy),
                      corner(-hx, hy)};
   return polyline;
+}
+
+void AppendDetection2D(ImageAnnotationLayer& layer,
+                       const automsgs::msgs::vision_msgs::Detection2D& det) {
+  QStringList tip_parts;
+  if (!det.id().empty()) {
+    tip_parts << QString::fromStdString(det.id());
+  }
+  QString top_class;
+  double top_score = 0.0;
+  for (int i = 0; i < det.results_size(); ++i) {
+    const auto& hyp = det.results(i).hypothesis();
+    const QString cid = QString::fromStdString(hyp.class_id());
+    tip_parts << QStringLiteral("%1:%2").arg(cid).arg(hyp.score(), 0, 'f', 2);
+    if (i == 0 || hyp.score() > top_score) {
+      top_score = hyp.score();
+      top_class = cid;
+    }
+  }
+  ImageAnnotationPolyline poly =
+      BoxPolyline(det.bbox(), DefaultAnnotationColor());
+  poly.tooltip = tip_parts.join(QStringLiteral(" | "));
+  layer.polylines.push_back(poly);
+
+  if (!top_class.isEmpty() || !det.id().empty()) {
+    ImageAnnotationText text;
+    text.position = QPointF(det.bbox().center().position().x(),
+                            det.bbox().center().position().y() -
+                                det.bbox().size_y() * 0.5 - 4.0);
+    if (!top_class.isEmpty()) {
+      text.text = QStringLiteral("%1 %.2f").arg(top_class).arg(top_score);
+    } else {
+      text.text = QString::fromStdString(det.id());
+    }
+    text.color = QColor(QStringLiteral("#e2e8f0"));
+    text.font_size = 11.0;
+    text.tooltip = poly.tooltip;
+    layer.texts.push_back(text);
+  }
 }
 
 qint64 HeaderTimestampNs(const automsgs::msgs::std_msgs::Header& header) {
@@ -209,8 +291,7 @@ ImageAnnotationLayer ImageAnnotationParser::fromPayload(
     }
     layer.timestamp_ns = HeaderTimestampNs(message.header());
     for (int i = 0; i < message.detections_size(); ++i) {
-      layer.polylines.push_back(
-          BoxPolyline(message.detections(i).bbox(), DefaultAnnotationColor()));
+      AppendDetection2D(layer, message.detections(i));
     }
     return layer;
   }
@@ -222,7 +303,7 @@ ImageAnnotationLayer ImageAnnotationParser::fromPayload(
       return layer;
     }
     layer.timestamp_ns = HeaderTimestampNs(message.header());
-    layer.polylines.push_back(BoxPolyline(message.bbox(), DefaultAnnotationColor()));
+    AppendDetection2D(layer, message);
     return layer;
   }
 

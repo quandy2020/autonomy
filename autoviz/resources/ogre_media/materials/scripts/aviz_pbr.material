@@ -1,0 +1,30 @@
+material AvizPBR
+{
+  technique
+  {
+    pass
+    {
+      lighting off
+      cull_hardware none
+      vertex_program_ref aviz/glsl120/pbr.vert {}
+      fragment_program_ref aviz/glsl120/pbr.frag {}
+    }
+  }
+}
+
+material AvizPBRTextured
+{
+  technique
+  {
+    pass
+    {
+      lighting off
+      scene_blend alpha_blend
+      depth_write off
+      cull_hardware none
+      // Texture unit is cloned/created at runtime per batch.
+      vertex_program_ref aviz/glsl120/pbr_textured.vert {}
+      fragment_program_ref aviz/glsl120/pbr_textured.frag {}
+    }
+  }
+}

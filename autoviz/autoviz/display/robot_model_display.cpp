@@ -434,11 +434,7 @@ void RobotModelDisplay::onDraw(rendering::SceneOverlay& scene) {
   QColor collision_color(255, 140, 40);
   collision_color.setAlphaF(collision_alpha);
 
-#ifdef AUTOVIZ_USE_OGRE
   const bool use_ogre = context_->ogre_scene_host != nullptr;
-#else
-  const bool use_ogre = false;
-#endif
 
   std::vector<ColoredMeshInstance> ogre_visual;
   std::vector<PbrMeshInstance> ogre_pbr_visual;

@@ -4,8 +4,6 @@
 
 #include "autoviz/rendering/ogre_logging.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <cstdio>
 #include <mutex>
 
@@ -160,4 +158,3 @@ void OgreOgreLogging::configureLogging() {
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

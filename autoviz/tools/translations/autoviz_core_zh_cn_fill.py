@@ -114,9 +114,9 @@ AUTOVIZ_CORE_ZH_CN: dict[str, str] = {
     "Legacy Bag (*.bag);;All Files (*)": "Legacy Bag (*.bag);;所有文件 (*)",
     "Loop": "循环",
     "MCAP conversion failed.\n%1": "MCAP 转换失败。\n%1",
-    "MCAP converter script or python3 not found.\n\nConvert offline with Autolink tools, then open the .record file:\n  mcap_to_record.py %1 %2": (
-        "未找到 MCAP 转换脚本或 python3。\n\n"
-        "请用 Autolink 工具离线转换后打开 .record：\n  mcap_to_record.py %1 %2"
+    "Could not find `mcap_to_record` in PATH.\n\nInstall Autolink developer tools, then run:\n  mcap_to_record %1 %2": (
+        "未在 PATH 中找到 `mcap_to_record`。\n\n"
+        "请安装 Autolink 开发者工具后运行：\n  mcap_to_record %1 %2"
     ),
     "MCAP converter timed out.": "MCAP 转换器超时。",
     "MCAP (*.mcap);;All Files (*)": "MCAP (*.mcap);;所有文件 (*)",
@@ -159,9 +159,6 @@ AUTOVIZ_CORE_ZH_CN: dict[str, str] = {
     "&Save Config": "保存配置(&S)",
     "Save Config &As": "配置另存为(&A)",
     "Save &Image": "保存图像(&I)",
-    "See share/autonomy/autoviz/scripts/mcap_to_record.py.": (
-        "参见 share/autonomy/autoviz/scripts/mcap_to_record.py。"
-    ),
     "Select an output .record path.": "请选择输出 .record 路径。",
     "Select a source file.": "请选择源文件。",
     "Selected Points": "选中点",

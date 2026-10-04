@@ -1,6 +1,6 @@
 # Windows 部署
 
-Autoviz 可在 Windows（MSVC + Qt 6）上构建与运行，步骤见 [`docs/DEPLOYMENT.md`](../../docs/DEPLOYMENT.md)。
+Autoviz 可在 Windows（MSVC + Qt 6）上构建与运行，步骤见 [`docs/guide/deployment.md`](../../docs/guide/deployment.md)。
 
 ## 构建概要
 

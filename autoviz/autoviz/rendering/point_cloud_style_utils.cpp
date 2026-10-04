@@ -40,8 +40,6 @@ PointCloudStyle parsePointCloudStyle(const std::string& value) {
   return PointCloudStyle::kSquares;
 }
 
-#ifdef AUTOVIZ_USE_OGRE
-
 OgrePointCloud::RenderMode toOgrePointCloudRenderMode(PointCloudStyle style) {
   switch (style) {
     case PointCloudStyle::kPoints:
@@ -59,8 +57,6 @@ OgrePointCloud::RenderMode toOgrePointCloudRenderMode(PointCloudStyle style) {
       return OgrePointCloud::kSquares;
   }
 }
-
-#endif
 
 }  // namespace rendering
 }  // namespace autoviz

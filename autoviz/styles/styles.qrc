@@ -1,0 +1,10 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+  <qresource prefix="/autoviz/styles">
+    <file alias="chrome.qss">chrome.qss</file>
+    <file alias="menu.qss">menu.qss</file>
+    <file alias="panel.qss">panel.qss</file>
+    <file alias="theme.qss">theme.qss</file>
+    <file alias="widget.qss">widget.qss</file>
+  </qresource>
+</RCC>

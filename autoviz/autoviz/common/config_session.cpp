@@ -178,6 +178,18 @@ void ReadPlotSeriesFromConfig(const Config& node,
     series->line_size = value.toStdString();
   }
   node.mapGetBool("ShowLine", &series->show_line);
+  node.mapGetBool("UseRightY", &series->use_right_y);
+  node.mapGetInt("BinaryOp", &series->binary_op);
+  if (node.mapGetString("SecondaryChannel", &value)) {
+    series->secondary_channel = value.toStdString();
+  }
+  if (node.mapGetString("SecondaryFieldPath", &value)) {
+    series->secondary_field_path = value.toStdString();
+  }
+  float binary_max_dt = static_cast<float>(series->binary_max_dt_sec);
+  if (node.mapGetFloat("BinaryMaxDtSec", &binary_max_dt)) {
+    series->binary_max_dt_sec = binary_max_dt;
+  }
   node.mapGetInt("TimestampMode", &series->timestamp_mode);
   node.mapGetBool("Enabled", &series->enabled);
 }
@@ -196,6 +208,13 @@ void WritePlotSeriesToConfig(const PlotSeriesPersistConfig& series,
   node->mapSetValue("Color", QString::fromStdString(series.color));
   node->mapSetValue("LineSize", QString::fromStdString(series.line_size));
   node->mapSetValue("ShowLine", series.show_line);
+  node->mapSetValue("UseRightY", series.use_right_y);
+  node->mapSetValue("BinaryOp", series.binary_op);
+  node->mapSetValue("SecondaryChannel",
+                    QString::fromStdString(series.secondary_channel));
+  node->mapSetValue("SecondaryFieldPath",
+                    QString::fromStdString(series.secondary_field_path));
+  node->mapSetValue("BinaryMaxDtSec", series.binary_max_dt_sec);
   node->mapSetValue("TimestampMode", series.timestamp_mode);
   node->mapSetValue("Enabled", series.enabled);
 }
@@ -219,6 +238,30 @@ void ReadPlotPanelFromConfig(const Config& node,
   node.mapGetBool("SettingsVisible", &panel->settings_visible);
   node.mapGetInt("SettingsWidth", &panel->settings_width);
   node.mapGetBool("LockAxisScales", &panel->lock_axis_scales);
+  node.mapGetBool("YAutoScale", &panel->y_auto_scale);
+  float y_min = static_cast<float>(panel->y_min);
+  if (node.mapGetFloat("YMin", &y_min)) {
+    panel->y_min = y_min;
+  }
+  float y_max = static_cast<float>(panel->y_max);
+  if (node.mapGetFloat("YMax", &y_max)) {
+    panel->y_max = y_max;
+  }
+  node.mapGetBool("YAutoScaleRight", &panel->y_auto_scale_right);
+  float y_min_right = static_cast<float>(panel->y_min_right);
+  if (node.mapGetFloat("YMinRight", &y_min_right)) {
+    panel->y_min_right = y_min_right;
+  }
+  float y_max_right = static_cast<float>(panel->y_max_right);
+  if (node.mapGetFloat("YMaxRight", &y_max_right)) {
+    panel->y_max_right = y_max_right;
+  }
+  node.mapGetBool("ShowGrid", &panel->show_grid);
+  node.mapGetBool("ShowReferenceY", &panel->show_reference_y);
+  float reference_y = static_cast<float>(panel->reference_y);
+  if (node.mapGetFloat("ReferenceY", &reference_y)) {
+    panel->reference_y = reference_y;
+  }
   float x_window_sec = static_cast<float>(panel->x_window_sec);
   if (node.mapGetFloat("XWindowSec", &x_window_sec)) {
     panel->x_window_sec = x_window_sec;
@@ -257,97 +300,81 @@ void WriteVariableToConfig(const VariablePersistConfig& variable, Config* node) 
   node->mapSetValue("Value", QString::fromStdString(variable.value));
 }
 
-void ReadStateTransitionMappingFromConfig(
-    const Config& node, StateTransitionMappingPersistConfig* mapping) {
-  if (mapping == nullptr || !node.isValid()) {
+void ReadChannelsBrowserFromConfig(const Config& node,
+                                   ChannelsBrowserPersistConfig* browser) {
+  if (browser == nullptr || !node.isValid()) {
     return;
   }
   QString value;
-  node.mapGetInt("Kind", &mapping->kind);
-  if (node.mapGetString("MatchValue", &value)) {
-    mapping->match_value = value.toStdString();
+  if (node.mapGetString("FilterText", &value)) {
+    browser->filter_text = value.toStdString();
   }
-  float range_min = static_cast<float>(mapping->range_min);
-  float range_max = static_cast<float>(mapping->range_max);
-  if (node.mapGetFloat("RangeMin", &range_min)) {
-    mapping->range_min = range_min;
+  int type_filter = 0;
+  if (node.mapGetInt("TypeFilter", &type_filter)) {
+    browser->type_filter = type_filter;
   }
-  if (node.mapGetFloat("RangeMax", &range_max)) {
-    mapping->range_max = range_max;
+  bool probe_enabled = true;
+  if (node.mapGetBool("ProbeEnabled", &probe_enabled)) {
+    browser->probe_enabled = probe_enabled;
   }
-  if (node.mapGetString("Label", &value)) {
-    mapping->label = value.toStdString();
-  }
-  if (node.mapGetString("Color", &value)) {
-    mapping->color = value.toStdString();
+  browser->expanded_channels.clear();
+  Config expanded = node.mapGetChild("ExpandedChannels");
+  for (int i = 0; i < expanded.listLength(); ++i) {
+    browser->expanded_channels.push_back(
+        expanded.listChildAt(i).getValue().toString().toStdString());
   }
 }
 
-void WriteStateTransitionMappingToConfig(
-    const StateTransitionMappingPersistConfig& mapping, Config* node) {
+void WriteChannelsBrowserToConfig(const ChannelsBrowserPersistConfig& browser,
+                                  Config* node) {
   if (node == nullptr) {
     return;
   }
-  node->mapSetValue("Kind", mapping.kind);
-  node->mapSetValue("MatchValue", QString::fromStdString(mapping.match_value));
-  node->mapSetValue("RangeMin", mapping.range_min);
-  node->mapSetValue("RangeMax", mapping.range_max);
-  node->mapSetValue("Label", QString::fromStdString(mapping.label));
-  node->mapSetValue("Color", QString::fromStdString(mapping.color));
-}
-
-void ReadStateTransitionSeriesFromConfig(
-    const Config& node, StateTransitionSeriesPersistConfig* series) {
-  if (series == nullptr || !node.isValid()) {
-    return;
-  }
-  QString value;
-  if (node.mapGetString("Channel", &value)) {
-    series->channel = value.toStdString();
-  }
-  if (node.mapGetString("FieldPath", &value)) {
-    series->field_path = value.toStdString();
-  }
-  if (node.mapGetString("CustomTimestampPath", &value)) {
-    series->custom_timestamp_path = value.toStdString();
-  }
-  if (node.mapGetString("Label", &value)) {
-    series->label = value.toStdString();
-  }
-  node.mapGetInt("TimestampMode", &series->timestamp_mode);
-  node.mapGetBool("Enabled", &series->enabled);
-  series->mappings.clear();
-  Config mappings = node.mapGetChild("Mappings");
-  for (int i = 0; i < mappings.listLength(); ++i) {
-    StateTransitionMappingPersistConfig mapping;
-    ReadStateTransitionMappingFromConfig(mappings.listChildAt(i), &mapping);
-    series->mappings.push_back(std::move(mapping));
-  }
-}
-
-void WriteStateTransitionSeriesToConfig(
-    const StateTransitionSeriesPersistConfig& series, Config* node) {
-  if (node == nullptr) {
-    return;
-  }
-  node->mapSetValue("Channel", QString::fromStdString(series.channel));
-  node->mapSetValue("FieldPath", QString::fromStdString(series.field_path));
-  node->mapSetValue("CustomTimestampPath",
-                    QString::fromStdString(series.custom_timestamp_path));
-  node->mapSetValue("Label", QString::fromStdString(series.label));
-  node->mapSetValue("TimestampMode", series.timestamp_mode);
-  node->mapSetValue("Enabled", series.enabled);
-  if (!series.mappings.empty()) {
-    Config mappings = node->mapMakeChild("Mappings");
-    for (const auto& mapping : series.mappings) {
-      Config mapping_node = mappings.listAppendNew();
-      WriteStateTransitionMappingToConfig(mapping, &mapping_node);
+  node->mapSetValue("FilterText", QString::fromStdString(browser.filter_text));
+  node->mapSetValue("TypeFilter", browser.type_filter);
+  node->mapSetValue("ProbeEnabled", browser.probe_enabled);
+  if (!browser.expanded_channels.empty()) {
+    Config expanded = node->mapMakeChild("ExpandedChannels");
+    for (const std::string& channel : browser.expanded_channels) {
+      expanded.listAppendNew().setValue(QString::fromStdString(channel));
     }
   }
 }
 
-void ReadStateTransitionPanelFromConfig(
-    const Config& node, StateTransitionPanelPersistConfig* panel) {
+void ReadRawMessagesFromConfig(const Config& node,
+                               RawMessagesPersistConfig* panel) {
+  if (panel == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  if (node.mapGetString("Channel", &value)) {
+    panel->channel = value.toStdString();
+  }
+  if (node.mapGetString("MessagePath", &value)) {
+    panel->message_path = value.toStdString();
+  }
+  bool flag = false;
+  if (node.mapGetBool("Freeze", &flag)) {
+    panel->freeze = flag;
+  }
+  if (node.mapGetBool("DiffHighlight", &flag)) {
+    panel->diff_highlight = flag;
+  }
+}
+
+void WriteRawMessagesToConfig(const RawMessagesPersistConfig& panel,
+                              Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("Channel", QString::fromStdString(panel.channel));
+  node->mapSetValue("MessagePath", QString::fromStdString(panel.message_path));
+  node->mapSetValue("Freeze", panel.freeze);
+  node->mapSetValue("DiffHighlight", panel.diff_highlight);
+}
+
+void ReadTablePanelFromConfig(const Config& node,
+                              TablePanelPersistConfig* panel) {
   if (panel == nullptr || !node.isValid()) {
     return;
   }
@@ -358,48 +385,138 @@ void ReadStateTransitionPanelFromConfig(
   if (node.mapGetString("Title", &value)) {
     panel->title = value.toStdString();
   }
-  node.mapGetInt("XAxisMode", &panel->x_axis_mode);
-  float x_window_sec = static_cast<float>(panel->x_window_sec);
-  if (node.mapGetFloat("XWindowSec", &x_window_sec)) {
-    panel->x_window_sec = x_window_sec;
+  if (node.mapGetString("Channel", &value)) {
+    panel->channel = value.toStdString();
   }
-  float fixed_min = static_cast<float>(panel->fixed_min_time);
-  float fixed_max = static_cast<float>(panel->fixed_max_time);
-  if (node.mapGetFloat("FixedMinTime", &fixed_min)) {
-    panel->fixed_min_time = fixed_min;
+  if (node.mapGetString("FieldPath", &value)) {
+    panel->field_path = value.toStdString();
   }
-  if (node.mapGetFloat("FixedMaxTime", &fixed_max)) {
-    panel->fixed_max_time = fixed_max;
-  }
-  node.mapGetBool("SettingsVisible", &panel->settings_visible);
-  panel->series.clear();
-  Config series_list = node.mapGetChild("Series");
-  for (int i = 0; i < series_list.listLength(); ++i) {
-    StateTransitionSeriesPersistConfig series;
-    ReadStateTransitionSeriesFromConfig(series_list.listChildAt(i), &series);
-    panel->series.push_back(std::move(series));
+  if (node.mapGetString("RowFilter", &value)) {
+    panel->row_filter = value.toStdString();
   }
 }
 
-void WriteStateTransitionPanelToConfig(
-    const StateTransitionPanelPersistConfig& panel, Config* node) {
+void WriteTablePanelToConfig(const TablePanelPersistConfig& panel,
+                             Config* node) {
   if (node == nullptr) {
     return;
   }
   node->mapSetValue("ObjectName", QString::fromStdString(panel.object_name));
   node->mapSetValue("Title", QString::fromStdString(panel.title));
-  node->mapSetValue("XAxisMode", panel.x_axis_mode);
-  node->mapSetValue("XWindowSec", panel.x_window_sec);
-  node->mapSetValue("FixedMinTime", panel.fixed_min_time);
-  node->mapSetValue("FixedMaxTime", panel.fixed_max_time);
-  node->mapSetValue("SettingsVisible", panel.settings_visible);
-  if (!panel.series.empty()) {
-    Config series_list = node->mapMakeChild("Series");
-    for (const auto& series : panel.series) {
-      Config series_node = series_list.listAppendNew();
-      WriteStateTransitionSeriesToConfig(series, &series_node);
-    }
+  node->mapSetValue("Channel", QString::fromStdString(panel.channel));
+  node->mapSetValue("FieldPath", QString::fromStdString(panel.field_path));
+  node->mapSetValue("RowFilter", QString::fromStdString(panel.row_filter));
+}
+
+void ReadChannelGraphPanelFromConfig(const Config& node,
+                                     ChannelGraphPanelPersistConfig* panel) {
+  if (panel == nullptr || !node.isValid()) {
+    return;
   }
+  QString value;
+  if (node.mapGetString("ObjectName", &value)) {
+    panel->object_name = value.toStdString();
+  }
+  bool flag = false;
+  if (node.mapGetBool("ShowServices", &flag)) {
+    panel->show_services = flag;
+  }
+  if (node.mapGetBool("ShowChannels", &flag)) {
+    panel->show_channels = flag;
+  }
+  if (node.mapGetBool("AutoRefresh", &flag)) {
+    panel->auto_refresh = flag;
+  }
+  if (node.mapGetBool("NeighborhoodMode", &flag)) {
+    panel->neighborhood_mode = flag;
+  }
+  if (node.mapGetBool("ShowEdgeLabels", &flag)) {
+    panel->show_edge_labels = flag;
+  }
+  if (node.mapGetBool("QuietMode", &flag)) {
+    panel->quiet_mode = flag;
+  }
+  if (node.mapGetBool("HideLeafChannels", &flag)) {
+    panel->hide_leaf_channels = flag;
+  }
+  if (node.mapGetBool("HideDeadEndChannels", &flag)) {
+    panel->hide_dead_end_channels = flag;
+  }
+  if (node.mapGetBool("ProbeEnabled", &flag)) {
+    panel->probe_enabled = flag;
+  }
+  int arrange = 1;
+  if (node.mapGetInt("ChannelArrange", &arrange)) {
+    panel->channel_arrange = arrange;
+  }
+  if (node.mapGetInt("ServiceArrange", &arrange)) {
+    panel->service_arrange = arrange;
+  }
+  if (node.mapGetString("Filter", &value)) {
+    panel->filter = value.toStdString();
+  }
+  if (node.mapGetString("PrefixFilter", &value)) {
+    panel->prefix_filter = value.toStdString();
+  }
+}
+
+void WriteChannelGraphPanelToConfig(const ChannelGraphPanelPersistConfig& panel,
+                                    Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("ObjectName", QString::fromStdString(panel.object_name));
+  node->mapSetValue("ShowServices", panel.show_services);
+  node->mapSetValue("ShowChannels", panel.show_channels);
+  node->mapSetValue("AutoRefresh", panel.auto_refresh);
+  node->mapSetValue("NeighborhoodMode", panel.neighborhood_mode);
+  node->mapSetValue("ShowEdgeLabels", panel.show_edge_labels);
+  node->mapSetValue("QuietMode", panel.quiet_mode);
+  node->mapSetValue("HideLeafChannels", panel.hide_leaf_channels);
+  node->mapSetValue("HideDeadEndChannels", panel.hide_dead_end_channels);
+  node->mapSetValue("ProbeEnabled", panel.probe_enabled);
+  node->mapSetValue("ChannelArrange", panel.channel_arrange);
+  node->mapSetValue("ServiceArrange", panel.service_arrange);
+  node->mapSetValue("Filter", QString::fromStdString(panel.filter));
+  node->mapSetValue("PrefixFilter", QString::fromStdString(panel.prefix_filter));
+}
+
+void ReadTfTreePanelFromConfig(const Config& node,
+                               TfTreePanelPersistConfig* panel) {
+  if (panel == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  if (node.mapGetString("ObjectName", &value)) {
+    panel->object_name = value.toStdString();
+  }
+  if (node.mapGetString("Filter", &value)) {
+    panel->filter = value.toStdString();
+  }
+  int tab_index = 0;
+  if (node.mapGetInt("TabIndex", &tab_index)) {
+    panel->tab_index = tab_index;
+  }
+  bool flag = false;
+  if (node.mapGetBool("StaleOnly", &flag)) {
+    panel->stale_only = flag;
+  }
+  float max_age = 1.0f;
+  if (node.mapGetFloat("MaxAgeSec", &max_age)) {
+    panel->max_age_sec = static_cast<double>(max_age);
+  }
+}
+
+void WriteTfTreePanelToConfig(const TfTreePanelPersistConfig& panel,
+                              Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("ObjectName", QString::fromStdString(panel.object_name));
+  node->mapSetValue("Filter", QString::fromStdString(panel.filter));
+  node->mapSetValue("TabIndex", panel.tab_index);
+  node->mapSetValue("StaleOnly", panel.stale_only);
+  node->mapSetValue("MaxAgeSec", static_cast<float>(panel.max_age_sec));
 }
 
 void ReadPublishPresetFromConfig(const Config& node,
@@ -557,6 +674,432 @@ void ReadPublishPanelFromConfig(const Config& node,
   }
 }
 
+void ReadServicePanelFromConfig(const Config& node,
+                                ServicePanelPersistConfig* panel) {
+  if (panel == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  if (node.mapGetString("ObjectName", &value)) {
+    panel->object_name = value.toStdString();
+  }
+  if (node.mapGetString("Title", &value)) {
+    panel->title = value.toStdString();
+  }
+  if (node.mapGetString("ServiceName", &value)) {
+    panel->service_name = value.toStdString();
+  }
+  if (node.mapGetString("RequestType", &value)) {
+    panel->request_type = value.toStdString();
+  }
+  if (node.mapGetString("ResponseType", &value)) {
+    panel->response_type = value.toStdString();
+  }
+  if (node.mapGetString("RequestJson", &value)) {
+    panel->request_json = value.toStdString();
+  }
+  node.mapGetBool("EditingMode", &panel->editing_mode);
+  node.mapGetBool("VerticalLayout", &panel->vertical_layout);
+  int timeout = panel->timeout_sec;
+  if (node.mapGetInt("TimeoutSec", &timeout)) {
+    panel->timeout_sec = timeout;
+  }
+  if (node.mapGetString("ButtonLabel", &value)) {
+    panel->button_label = value.toStdString();
+  }
+  if (node.mapGetString("ButtonTooltip", &value)) {
+    panel->button_tooltip = value.toStdString();
+  }
+  if (node.mapGetString("ButtonColor", &value)) {
+    panel->button_color = value.toStdString();
+  }
+  node.mapGetBool("SettingsVisible", &panel->settings_visible);
+}
+
+void WriteServicePanelToConfig(const ServicePanelPersistConfig& panel,
+                               Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("ObjectName", QString::fromStdString(panel.object_name));
+  node->mapSetValue("Title", QString::fromStdString(panel.title));
+  node->mapSetValue("ServiceName", QString::fromStdString(panel.service_name));
+  node->mapSetValue("RequestType", QString::fromStdString(panel.request_type));
+  node->mapSetValue("ResponseType",
+                    QString::fromStdString(panel.response_type));
+  node->mapSetValue("RequestJson", QString::fromStdString(panel.request_json));
+  node->mapSetValue("EditingMode", panel.editing_mode);
+  node->mapSetValue("VerticalLayout", panel.vertical_layout);
+  node->mapSetValue("TimeoutSec", panel.timeout_sec);
+  node->mapSetValue("ButtonLabel", QString::fromStdString(panel.button_label));
+  node->mapSetValue("ButtonTooltip",
+                    QString::fromStdString(panel.button_tooltip));
+  node->mapSetValue("ButtonColor", QString::fromStdString(panel.button_color));
+  node->mapSetValue("SettingsVisible", panel.settings_visible);
+}
+
+void ReadTeleopButtonFromConfig(const Config& node,
+                                TeleopButtonPersistConfig* button) {
+  if (button == nullptr || !node.isValid()) {
+    return;
+  }
+  int field = button->field;
+  if (node.mapGetInt("Field", &field)) {
+    button->field = field;
+  }
+  float value = static_cast<float>(button->value);
+  if (node.mapGetFloat("Value", &value)) {
+    button->value = static_cast<double>(value);
+  }
+}
+
+void WriteTeleopButtonToConfig(const TeleopButtonPersistConfig& button,
+                               Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("Field", button.field);
+  node->mapSetValue("Value", static_cast<float>(button.value));
+}
+
+void ReadTeleopPanelFromConfig(const Config& node,
+                               TeleopPanelPersistConfig* panel) {
+  if (panel == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  if (node.mapGetString("ObjectName", &value)) {
+    panel->object_name = value.toStdString();
+  }
+  if (node.mapGetString("Title", &value)) {
+    panel->title = value.toStdString();
+  }
+  if (node.mapGetString("Topic", &value)) {
+    panel->topic = value.toStdString();
+  }
+  float rate = static_cast<float>(panel->publish_rate_hz);
+  if (node.mapGetFloat("PublishRateHz", &rate)) {
+    panel->publish_rate_hz = static_cast<double>(rate);
+  }
+  node.mapGetBool("StopOnRelease", &panel->stop_on_release);
+  node.mapGetBool("SmartTeleop", &panel->smart_teleop_enabled);
+  int stick_mode = panel->stick_mode;
+  if (node.mapGetInt("StickMode", &stick_mode)) {
+    panel->stick_mode = stick_mode;
+  }
+  float linear = static_cast<float>(panel->max_linear_speed);
+  if (node.mapGetFloat("MaxLinearSpeed", &linear)) {
+    panel->max_linear_speed = static_cast<double>(linear);
+  }
+  float angular = static_cast<float>(panel->max_angular_speed);
+  if (node.mapGetFloat("MaxAngularSpeed", &angular)) {
+    panel->max_angular_speed = static_cast<double>(angular);
+  }
+  ReadTeleopButtonFromConfig(node.mapGetChild("Up"), &panel->up);
+  ReadTeleopButtonFromConfig(node.mapGetChild("Down"), &panel->down);
+  ReadTeleopButtonFromConfig(node.mapGetChild("Left"), &panel->left);
+  ReadTeleopButtonFromConfig(node.mapGetChild("Right"), &panel->right);
+  ReadTeleopButtonFromConfig(node.mapGetChild("Stop"), &panel->stop);
+  node.mapGetBool("SettingsVisible", &panel->settings_visible);
+}
+
+void WriteTeleopPanelToConfig(const TeleopPanelPersistConfig& panel,
+                              Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("ObjectName", QString::fromStdString(panel.object_name));
+  node->mapSetValue("Title", QString::fromStdString(panel.title));
+  node->mapSetValue("Topic", QString::fromStdString(panel.topic));
+  node->mapSetValue("PublishRateHz", static_cast<float>(panel.publish_rate_hz));
+  node->mapSetValue("StopOnRelease", panel.stop_on_release);
+  node->mapSetValue("SmartTeleop", panel.smart_teleop_enabled);
+  node->mapSetValue("StickMode", panel.stick_mode);
+  node->mapSetValue("MaxLinearSpeed", static_cast<float>(panel.max_linear_speed));
+  node->mapSetValue("MaxAngularSpeed",
+                    static_cast<float>(panel.max_angular_speed));
+  Config up = node->mapMakeChild("Up");
+  WriteTeleopButtonToConfig(panel.up, &up);
+  Config down = node->mapMakeChild("Down");
+  WriteTeleopButtonToConfig(panel.down, &down);
+  Config left = node->mapMakeChild("Left");
+  WriteTeleopButtonToConfig(panel.left, &left);
+  Config right = node->mapMakeChild("Right");
+  WriteTeleopButtonToConfig(panel.right, &right);
+  Config stop = node->mapMakeChild("Stop");
+  WriteTeleopButtonToConfig(panel.stop, &stop);
+  node->mapSetValue("SettingsVisible", panel.settings_visible);
+}
+
+bool ReadConfigDouble(const Config& node, const QString& key, double* out) {
+  if (out == nullptr) {
+    return false;
+  }
+  QString text;
+  if (node.mapGetString(key, &text)) {
+    bool ok = false;
+    const double value = text.toDouble(&ok);
+    if (ok) {
+      *out = value;
+      return true;
+    }
+  }
+  float as_float = 0.0f;
+  if (node.mapGetFloat(key, &as_float)) {
+    *out = static_cast<double>(as_float);
+    return true;
+  }
+  return false;
+}
+
+void WriteConfigDouble(Config* node, const QString& key, double value) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue(key, QString::number(value, 'g', 12));
+}
+
+void ReadMapOverlayFromConfig(const Config& node, MapOverlayPersistConfig* layer) {
+  if (layer == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  if (node.mapGetString("Name", &value)) {
+    layer->name = value.toStdString();
+  }
+  if (node.mapGetString("TileUrl", &value)) {
+    layer->tile_url_template = value.toStdString();
+  }
+  ReadConfigDouble(node, QStringLiteral("Opacity"), &layer->opacity);
+  node.mapGetBool("Enabled", &layer->enabled);
+}
+
+void WriteMapOverlayToConfig(const MapOverlayPersistConfig& layer, Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("Name", QString::fromStdString(layer.name));
+  node->mapSetValue("TileUrl", QString::fromStdString(layer.tile_url_template));
+  WriteConfigDouble(node, QStringLiteral("Opacity"), layer.opacity);
+  node->mapSetValue("Enabled", layer.enabled);
+}
+
+void ReadMapGeoJsonFromConfig(const Config& node, MapGeoJsonPersistConfig* layer) {
+  if (layer == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  if (node.mapGetString("Path", &value)) {
+    layer->path = value.toStdString();
+  }
+  node.mapGetBool("Visible", &layer->visible);
+}
+
+void WriteMapGeoJsonToConfig(const MapGeoJsonPersistConfig& layer, Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("Path", QString::fromStdString(layer.path));
+  node->mapSetValue("Visible", layer.visible);
+}
+
+void ReadMapPlanPoints(const Config& node, std::vector<MapPlanPointPersistConfig>* points) {
+  if (points == nullptr || !node.isValid()) {
+    return;
+  }
+  points->clear();
+  for (int i = 0; i < node.listLength(); ++i) {
+    const Config child = node.listChildAt(i);
+    MapPlanPointPersistConfig point;
+    ReadConfigDouble(child, QStringLiteral("Latitude"), &point.latitude);
+    ReadConfigDouble(child, QStringLiteral("Longitude"), &point.longitude);
+    points->push_back(point);
+  }
+}
+
+void WriteMapPlanPoints(const std::vector<MapPlanPointPersistConfig>& points, Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  for (const MapPlanPointPersistConfig& point : points) {
+    Config child = node->listAppendNew();
+    WriteConfigDouble(&child, QStringLiteral("Latitude"), point.latitude);
+    WriteConfigDouble(&child, QStringLiteral("Longitude"), point.longitude);
+  }
+}
+
+void ReadMapTopicLayerFromConfig(const Config& node,
+                                 MapTopicLayerPersistConfig* layer) {
+  if (layer == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  if (node.mapGetString("Channel", &value)) {
+    layer->channel = value.toStdString();
+  }
+  int style = layer->point_style;
+  if (node.mapGetInt("PointStyle", &style)) {
+    layer->point_style = style;
+  }
+  node.mapGetBool("ShowHeading", &layer->show_heading);
+  node.mapGetBool("ShowVelocity", &layer->show_velocity);
+  ReadConfigDouble(node, QStringLiteral("PointSize"), &layer->point_size);
+  int time_range = layer->time_range;
+  if (node.mapGetInt("TimeRange", &time_range)) {
+    layer->time_range = time_range;
+  }
+  ReadConfigDouble(node, QStringLiteral("TimeRangeSeconds"),
+                   &layer->time_range_seconds);
+  ReadConfigDouble(node, QStringLiteral("Opacity"), &layer->layer_opacity);
+  if (node.mapGetString("Color", &value)) {
+    layer->color = value.toStdString();
+  }
+  node.mapGetBool("Enabled", &layer->enabled);
+}
+
+void WriteMapTopicLayerToConfig(const MapTopicLayerPersistConfig& layer,
+                                Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("Channel", QString::fromStdString(layer.channel));
+  node->mapSetValue("PointStyle", layer.point_style);
+  node->mapSetValue("ShowHeading", layer.show_heading);
+  node->mapSetValue("ShowVelocity", layer.show_velocity);
+  WriteConfigDouble(node, QStringLiteral("PointSize"), layer.point_size);
+  node->mapSetValue("TimeRange", layer.time_range);
+  WriteConfigDouble(node, QStringLiteral("TimeRangeSeconds"),
+                    layer.time_range_seconds);
+  WriteConfigDouble(node, QStringLiteral("Opacity"), layer.layer_opacity);
+  node->mapSetValue("Color", QString::fromStdString(layer.color));
+  node->mapSetValue("Enabled", layer.enabled);
+}
+
+void ReadMapPanelFromConfig(const Config& node, MapPanelPersistConfig* panel) {
+  if (panel == nullptr || !node.isValid()) {
+    return;
+  }
+  QString value;
+  if (node.mapGetString("ObjectName", &value)) {
+    panel->object_name = value.toStdString();
+  }
+  if (node.mapGetString("Title", &value)) {
+    panel->title = value.toStdString();
+  }
+  int base_layer = panel->base_layer;
+  if (node.mapGetInt("BaseLayer", &base_layer)) {
+    panel->base_layer = base_layer;
+  }
+  if (node.mapGetString("CustomTileUrl", &value)) {
+    panel->custom_tile_url = value.toStdString();
+  }
+  if (node.mapGetString("FollowChannel", &value)) {
+    panel->follow_channel = value.toStdString();
+  }
+  if (node.mapGetString("GcsChannel", &value)) {
+    panel->gcs_channel = value.toStdString();
+  }
+  int distance_unit = panel->distance_unit;
+  if (node.mapGetInt("DistanceUnit", &distance_unit)) {
+    panel->distance_unit = distance_unit;
+  }
+  ReadConfigDouble(node, QStringLiteral("CenterLatitude"),
+                   &panel->center_latitude);
+  ReadConfigDouble(node, QStringLiteral("CenterLongitude"),
+                   &panel->center_longitude);
+  ReadConfigDouble(node, QStringLiteral("Zoom"), &panel->zoom);
+  panel->overlay_layers.clear();
+  Config overlays = node.mapGetChild("OverlayLayers");
+  for (int i = 0; i < overlays.listLength(); ++i) {
+    MapOverlayPersistConfig layer;
+    ReadMapOverlayFromConfig(overlays.listChildAt(i), &layer);
+    panel->overlay_layers.push_back(std::move(layer));
+  }
+  panel->topic_layers.clear();
+  Config topics = node.mapGetChild("TopicLayers");
+  for (int i = 0; i < topics.listLength(); ++i) {
+    MapTopicLayerPersistConfig layer;
+    ReadMapTopicLayerFromConfig(topics.listChildAt(i), &layer);
+    panel->topic_layers.push_back(std::move(layer));
+  }
+  panel->geojson_sources.clear();
+  Config geojson = node.mapGetChild("GeoJsonLayers");
+  for (int i = 0; i < geojson.listLength(); ++i) {
+    MapGeoJsonPersistConfig layer;
+    ReadMapGeoJsonFromConfig(geojson.listChildAt(i), &layer);
+    panel->geojson_sources.push_back(std::move(layer));
+  }
+  ReadMapPlanPoints(node.mapGetChild("Waypoints"), &panel->waypoints);
+  ReadMapPlanPoints(node.mapGetChild("Geofence"), &panel->geofence);
+  ReadMapPlanPoints(node.mapGetChild("RallyPoints"), &panel->rally_points);
+  int edit_tool = panel->edit_tool;
+  if (node.mapGetInt("EditTool", &edit_tool)) {
+    panel->edit_tool = edit_tool;
+  }
+  ReadConfigDouble(node, QStringLiteral("SurveySpacingM"), &panel->survey_spacing_m);
+  ReadConfigDouble(node, QStringLiteral("CorridorWidthM"), &panel->corridor_width_m);
+  ReadConfigDouble(node, QStringLiteral("StructureRadiusM"), &panel->structure_radius_m);
+  node.mapGetBool("SettingsVisible", &panel->settings_visible);
+}
+
+void WriteMapPanelToConfig(const MapPanelPersistConfig& panel, Config* node) {
+  if (node == nullptr) {
+    return;
+  }
+  node->mapSetValue("ObjectName", QString::fromStdString(panel.object_name));
+  node->mapSetValue("Title", QString::fromStdString(panel.title));
+  node->mapSetValue("BaseLayer", panel.base_layer);
+  node->mapSetValue("CustomTileUrl",
+                    QString::fromStdString(panel.custom_tile_url));
+  node->mapSetValue("FollowChannel",
+                    QString::fromStdString(panel.follow_channel));
+  node->mapSetValue("GcsChannel", QString::fromStdString(panel.gcs_channel));
+  node->mapSetValue("DistanceUnit", panel.distance_unit);
+  WriteConfigDouble(node, QStringLiteral("CenterLatitude"),
+                    panel.center_latitude);
+  WriteConfigDouble(node, QStringLiteral("CenterLongitude"),
+                    panel.center_longitude);
+  WriteConfigDouble(node, QStringLiteral("Zoom"), panel.zoom);
+  if (!panel.overlay_layers.empty()) {
+    Config overlays = node->mapMakeChild("OverlayLayers");
+    for (const MapOverlayPersistConfig& layer : panel.overlay_layers) {
+      Config child = overlays.listAppendNew();
+      WriteMapOverlayToConfig(layer, &child);
+    }
+  }
+  if (!panel.topic_layers.empty()) {
+    Config topics = node->mapMakeChild("TopicLayers");
+    for (const MapTopicLayerPersistConfig& layer : panel.topic_layers) {
+      Config child = topics.listAppendNew();
+      WriteMapTopicLayerToConfig(layer, &child);
+    }
+  }
+  if (!panel.geojson_sources.empty()) {
+    Config geojson = node->mapMakeChild("GeoJsonLayers");
+    for (const MapGeoJsonPersistConfig& layer : panel.geojson_sources) {
+      Config child = geojson.listAppendNew();
+      WriteMapGeoJsonToConfig(layer, &child);
+    }
+  }
+  if (!panel.waypoints.empty()) {
+    Config points = node->mapMakeChild("Waypoints");
+    WriteMapPlanPoints(panel.waypoints, &points);
+  }
+  if (!panel.geofence.empty()) {
+    Config points = node->mapMakeChild("Geofence");
+    WriteMapPlanPoints(panel.geofence, &points);
+  }
+  if (!panel.rally_points.empty()) {
+    Config points = node->mapMakeChild("RallyPoints");
+    WriteMapPlanPoints(panel.rally_points, &points);
+  }
+  node->mapSetValue("EditTool", panel.edit_tool);
+  WriteConfigDouble(node, QStringLiteral("SurveySpacingM"), panel.survey_spacing_m);
+  WriteConfigDouble(node, QStringLiteral("CorridorWidthM"), panel.corridor_width_m);
+  WriteConfigDouble(node, QStringLiteral("StructureRadiusM"), panel.structure_radius_m);
+  node->mapSetValue("SettingsVisible", panel.settings_visible);
+}
+
 void WritePublishPanelToConfig(const PublishPanelPersistConfig& panel,
                                Config* node) {
   if (node == nullptr) {
@@ -613,6 +1156,15 @@ void WritePlotPanelToConfig(const PlotPanelPersistConfig& panel, Config* node) {
   node->mapSetValue("SettingsVisible", panel.settings_visible);
   node->mapSetValue("SettingsWidth", panel.settings_width);
   node->mapSetValue("LockAxisScales", panel.lock_axis_scales);
+  node->mapSetValue("YAutoScale", panel.y_auto_scale);
+  node->mapSetValue("YMin", panel.y_min);
+  node->mapSetValue("YMax", panel.y_max);
+  node->mapSetValue("YAutoScaleRight", panel.y_auto_scale_right);
+  node->mapSetValue("YMinRight", panel.y_min_right);
+  node->mapSetValue("YMaxRight", panel.y_max_right);
+  node->mapSetValue("ShowGrid", panel.show_grid);
+  node->mapSetValue("ShowReferenceY", panel.show_reference_y);
+  node->mapSetValue("ReferenceY", panel.reference_y);
   node->mapSetValue("XWindowSec", panel.x_window_sec);
   if (!panel.series.empty()) {
     Config series_list = node->mapMakeChild("Series");
@@ -718,6 +1270,12 @@ void ReadImagePanelFromConfig(const Config& node,
     panel->marker_channels.push_back(
         markers.listChildAt(i).getValue().toString().toStdString());
   }
+  panel->point_cloud_channels.clear();
+  Config clouds = node.mapGetChild("PointCloudChannels");
+  for (int i = 0; i < clouds.listLength(); ++i) {
+    panel->point_cloud_channels.push_back(
+        clouds.listChildAt(i).getValue().toString().toStdString());
+  }
 }
 
 void WriteImagePanelToConfig(const ImagePanelPersistConfig& panel, Config* node) {
@@ -764,6 +1322,12 @@ void WriteImagePanelToConfig(const ImagePanelPersistConfig& panel, Config* node)
       markers.listAppendNew().setValue(QString::fromStdString(channel));
     }
   }
+  if (!panel.point_cloud_channels.empty()) {
+    Config clouds = node->mapMakeChild("PointCloudChannels");
+    for (const std::string& channel : panel.point_cloud_channels) {
+      clouds.listAppendNew().setValue(QString::fromStdString(channel));
+    }
+  }
 }
 
 bool SessionConfigFromNativeConfig(const Config& root, SessionConfig* config) {
@@ -776,8 +1340,14 @@ bool SessionConfigFromNativeConfig(const Config& root, SessionConfig* config) {
     if (global.mapGetString("FixedFrame", &value)) {
       config->fixed_frame = value.toStdString();
     }
-    global.mapGetBool("ShowGrid", &config->show_grid);
     global.mapGetInt("FrameRate", &config->frame_rate);
+    int time_sync_mode = config->time_sync_mode;
+    if (global.mapGetInt("TimeSyncMode", &time_sync_mode)) {
+      config->time_sync_mode = time_sync_mode;
+    }
+    if (global.mapGetString("TimeSyncSource", &value)) {
+      config->time_sync_source = value.toStdString();
+    }
     if (global.mapGetString("BackgroundColor", &value)) {
       config->background_color = value.toStdString();
     }
@@ -785,7 +1355,8 @@ bool SessionConfigFromNativeConfig(const Config& root, SessionConfig* config) {
       config->view_controller = value.toStdString();
     }
     if (global.mapGetString("RenderBackend", &value)) {
-      config->render_backend = value.toStdString();
+      // Legacy OpenGL sessions are coerced; viewport is Ogre-only.
+      config->render_backend = "Ogre";
     }
     if (global.mapGetString("ActiveTool", &value)) {
       config->active_tool = value.toStdString();
@@ -906,20 +1477,72 @@ bool SessionConfigFromNativeConfig(const Config& root, SessionConfig* config) {
     config->image_panels.push_back(std::move(panel));
   }
 
-  config->state_transition_panels.clear();
-  Config state_panels = root.mapGetChild("StateTransitionPanels");
-  for (int i = 0; i < state_panels.listLength(); ++i) {
-    StateTransitionPanelPersistConfig panel;
-    ReadStateTransitionPanelFromConfig(state_panels.listChildAt(i), &panel);
-    config->state_transition_panels.push_back(std::move(panel));
-  }
-
   config->publish_panels.clear();
   Config publish_panels = root.mapGetChild("PublishPanels");
   for (int i = 0; i < publish_panels.listLength(); ++i) {
     PublishPanelPersistConfig panel;
     ReadPublishPanelFromConfig(publish_panels.listChildAt(i), &panel);
     config->publish_panels.push_back(std::move(panel));
+  }
+
+  config->service_panels.clear();
+  Config service_panels = root.mapGetChild("ServicePanels");
+  for (int i = 0; i < service_panels.listLength(); ++i) {
+    ServicePanelPersistConfig panel;
+    ReadServicePanelFromConfig(service_panels.listChildAt(i), &panel);
+    config->service_panels.push_back(std::move(panel));
+  }
+
+  config->teleop_panels.clear();
+  Config teleop_panels = root.mapGetChild("TeleopPanels");
+  for (int i = 0; i < teleop_panels.listLength(); ++i) {
+    TeleopPanelPersistConfig panel;
+    ReadTeleopPanelFromConfig(teleop_panels.listChildAt(i), &panel);
+    config->teleop_panels.push_back(std::move(panel));
+  }
+
+  config->map_panels.clear();
+  Config map_panels = root.mapGetChild("MapPanels");
+  for (int i = 0; i < map_panels.listLength(); ++i) {
+    MapPanelPersistConfig panel;
+    ReadMapPanelFromConfig(map_panels.listChildAt(i), &panel);
+    config->map_panels.push_back(std::move(panel));
+  }
+
+  config->channels_browser = ChannelsBrowserPersistConfig{};
+  Config channels_browser = root.mapGetChild("ChannelsBrowser");
+  if (channels_browser.isValid()) {
+    ReadChannelsBrowserFromConfig(channels_browser, &config->channels_browser);
+  }
+
+  config->raw_messages = RawMessagesPersistConfig{};
+  Config raw_messages = root.mapGetChild("RawMessages");
+  if (raw_messages.isValid()) {
+    ReadRawMessagesFromConfig(raw_messages, &config->raw_messages);
+  }
+
+  config->table_panels.clear();
+  Config table_panels = root.mapGetChild("TablePanels");
+  for (int i = 0; i < table_panels.listLength(); ++i) {
+    TablePanelPersistConfig panel;
+    ReadTablePanelFromConfig(table_panels.listChildAt(i), &panel);
+    config->table_panels.push_back(std::move(panel));
+  }
+
+  config->channel_graph_panels.clear();
+  Config channel_graph_panels = root.mapGetChild("ChannelGraphPanels");
+  for (int i = 0; i < channel_graph_panels.listLength(); ++i) {
+    ChannelGraphPanelPersistConfig panel;
+    ReadChannelGraphPanelFromConfig(channel_graph_panels.listChildAt(i), &panel);
+    config->channel_graph_panels.push_back(std::move(panel));
+  }
+
+  config->tf_tree_panels.clear();
+  Config tf_tree_panels = root.mapGetChild("TfTreePanels");
+  for (int i = 0; i < tf_tree_panels.listLength(); ++i) {
+    TfTreePanelPersistConfig panel;
+    ReadTfTreePanelFromConfig(tf_tree_panels.listChildAt(i), &panel);
+    config->tf_tree_panels.push_back(std::move(panel));
   }
   return true;
 }
@@ -983,8 +1606,10 @@ void SessionConfigToConfig(const SessionConfig& session, Config* root) {
 
   Config global = root->mapMakeChild("Global");
   global.mapSetValue("FixedFrame", QString::fromStdString(session.fixed_frame));
-  global.mapSetValue("ShowGrid", session.show_grid);
   global.mapSetValue("FrameRate", session.frame_rate);
+  global.mapSetValue("TimeSyncMode", session.time_sync_mode);
+  global.mapSetValue("TimeSyncSource",
+                     QString::fromStdString(session.time_sync_source));
   global.mapSetValue("BackgroundColor",
                      QString::fromStdString(session.background_color));
   global.mapSetValue("ViewController",
@@ -1096,18 +1721,62 @@ void SessionConfigToConfig(const SessionConfig& session, Config* root) {
       WriteVariableToConfig(variable, &node);
     }
   }
-  if (!session.state_transition_panels.empty()) {
-    Config state_panels = root->mapMakeChild("StateTransitionPanels");
-    for (const auto& panel : session.state_transition_panels) {
-      Config node = state_panels.listAppendNew();
-      WriteStateTransitionPanelToConfig(panel, &node);
-    }
-  }
   if (!session.publish_panels.empty()) {
     Config publish_panels = root->mapMakeChild("PublishPanels");
     for (const auto& panel : session.publish_panels) {
       Config node = publish_panels.listAppendNew();
       WritePublishPanelToConfig(panel, &node);
+    }
+  }
+  if (!session.service_panels.empty()) {
+    Config service_panels = root->mapMakeChild("ServicePanels");
+    for (const auto& panel : session.service_panels) {
+      Config node = service_panels.listAppendNew();
+      WriteServicePanelToConfig(panel, &node);
+    }
+  }
+  if (!session.teleop_panels.empty()) {
+    Config teleop_panels = root->mapMakeChild("TeleopPanels");
+    for (const auto& panel : session.teleop_panels) {
+      Config node = teleop_panels.listAppendNew();
+      WriteTeleopPanelToConfig(panel, &node);
+    }
+  }
+  if (!session.map_panels.empty()) {
+    Config map_panels = root->mapMakeChild("MapPanels");
+    for (const auto& panel : session.map_panels) {
+      Config node = map_panels.listAppendNew();
+      WriteMapPanelToConfig(panel, &node);
+    }
+  }
+
+  {
+    Config channels_browser = root->mapMakeChild("ChannelsBrowser");
+    WriteChannelsBrowserToConfig(session.channels_browser, &channels_browser);
+  }
+  {
+    Config raw_messages = root->mapMakeChild("RawMessages");
+    WriteRawMessagesToConfig(session.raw_messages, &raw_messages);
+  }
+  if (!session.table_panels.empty()) {
+    Config table_panels = root->mapMakeChild("TablePanels");
+    for (const auto& panel : session.table_panels) {
+      Config node = table_panels.listAppendNew();
+      WriteTablePanelToConfig(panel, &node);
+    }
+  }
+  if (!session.channel_graph_panels.empty()) {
+    Config channel_graph_panels = root->mapMakeChild("ChannelGraphPanels");
+    for (const auto& panel : session.channel_graph_panels) {
+      Config node = channel_graph_panels.listAppendNew();
+      WriteChannelGraphPanelToConfig(panel, &node);
+    }
+  }
+  if (!session.tf_tree_panels.empty()) {
+    Config tf_tree_panels = root->mapMakeChild("TfTreePanels");
+    for (const auto& panel : session.tf_tree_panels) {
+      Config node = tf_tree_panels.listAppendNew();
+      WriteTfTreePanelToConfig(panel, &node);
     }
   }
 }

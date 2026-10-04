@@ -2,6 +2,17 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
+/**
+ * @file channel_payload.hpp
+ * @brief Decodes Autolink framed channel payloads (MessageHeader + content).
+ *
+ * Autolink wire format may prepend a @c MessageHeader with magic @c BDACBDAC.
+ * Displays and TF ingest call @ref DecodeChannelPayload before protobuf parse.
+ *
+ * @see ChannelReaderRegistry
+ * @see transform::Listener::applyPayload
+ */
+
 #pragma once
 
 #include <cstring>
@@ -12,6 +23,16 @@
 namespace autoviz {
 namespace integration {
 
+/**
+ * @brief Strips an Autolink @c MessageHeader when present; otherwise returns @p raw.
+ *
+ * If @p raw is too short, magic mismatches, or content size is inconsistent,
+ * the original @p raw string is returned unchanged (passthrough for already-
+ * decoded or non-framed payloads).
+ *
+ * @param raw Bytes received from an Autolink reader callback.
+ * @return Protobuf (or other) content bytes without the framing header.
+ */
 inline std::string DecodeChannelPayload(const std::string& raw) {
   using autolink::message::MessageHeader;
   if (raw.size() < sizeof(MessageHeader)) {

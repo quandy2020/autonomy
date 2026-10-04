@@ -4,12 +4,13 @@
 
 #include "autoviz/rendering/ogre_resource_config.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
+#include <QByteArray>
 #include <QCoreApplication>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QProcessEnvironment>
+#include <QString>
 
 namespace autoviz {
 namespace rendering {
@@ -72,9 +73,15 @@ QString DefaultPluginDirectory() {
   }
 #endif
 
+  const QString app_dir = QCoreApplication::applicationDirPath();
   const QStringList candidates = {
+      // Build-tree / bundle layouts next to the binary.
+      app_dir + QStringLiteral("/../lib/macosx"),
+      app_dir + QStringLiteral("/../lib/OGRE"),
+      app_dir + QStringLiteral("/../lib"),
       QStringLiteral("/usr/local/lib/OGRE"),
       QStringLiteral("/usr/lib/x86_64-linux-gnu/OGRE"),
+      QStringLiteral("/usr/lib/aarch64-linux-gnu/OGRE"),
       QStringLiteral("/usr/lib/OGRE"),
   };
   return FirstExistingDir(candidates);
@@ -104,7 +111,20 @@ void setOgrePluginDirectory(const std::string& path) {
   g_plugin_directory = path;
 }
 
+std::string loadOgreMediaText(const std::string& relative_path) {
+  const QString root = QString::fromStdString(ogreResourceDirectory());
+  if (root.isEmpty() || relative_path.empty()) {
+    return {};
+  }
+  const QString path =
+      QDir(root).filePath(QString::fromStdString(relative_path));
+  QFile file(path);
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    return {};
+  }
+  return QString::fromUtf8(file.readAll()).toStdString();
+}
+
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

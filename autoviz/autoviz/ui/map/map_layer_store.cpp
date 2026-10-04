@@ -174,6 +174,7 @@ MapFollowTarget MapLayerStore::followTarget(const QString& follow_channel,
   const MapGeoPoint& latest = points.back();
   target.latitude = latest.latitude;
   target.longitude = latest.longitude;
+  target.heading_deg = latest.heading_deg;
   target.valid = true;
   return target;
 }

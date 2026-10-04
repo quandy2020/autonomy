@@ -13,7 +13,7 @@
 #include <QSpinBox>
 #include <QVBoxLayout>
 
-#include "autoviz/ui/panel_settings_styles.hpp"
+#include "autoviz/ui/theme/panel.hpp"
 
 namespace autoviz {
 namespace service_panel {
@@ -49,7 +49,11 @@ ServiceSettingsWidget::ServiceSettingsWidget(QWidget* parent)
   ApplyCompactForm(form);
   button_label_edit_ = new QLineEdit(config_.button_label, button_group);
   button_tooltip_edit_ = new QLineEdit(config_.button_tooltip, button_group);
-  button_color_button_ = MakeFlatActionButton(tr("Choose color"), button_group);
+  button_color_button_ = new QPushButton(button_group);
+  button_color_button_->setCursor(Qt::PointingHandCursor);
+  UpdateColorButton(button_color_button_,
+                    config_.button_color.isValid() ? config_.button_color
+                                                   : QColor(70, 120, 200));
   form->addRow(tr("Label"), button_label_edit_);
   form->addRow(tr("Tooltip"), button_tooltip_edit_);
   form->addRow(tr("Color"), button_color_button_);
@@ -92,11 +96,9 @@ void ServiceSettingsWidget::setConfig(const ServiceCallPanelConfig& config) {
   }
   button_label_edit_->setText(config_.button_label);
   button_tooltip_edit_->setText(config_.button_tooltip);
-  if (config_.button_color.isValid()) {
-    UpdateColorButton(button_color_button_, config_.button_color);
-  } else {
-    UpdateColorButton(button_color_button_, QColor());
-  }
+  UpdateColorButton(button_color_button_,
+                    config_.button_color.isValid() ? config_.button_color
+                                                   : QColor(70, 120, 200));
 }
 
 void ServiceSettingsWidget::pickButtonColor() {

@@ -36,9 +36,17 @@ def main() -> int:
         print("Build directory missing; run tools/configure.py first.", file=sys.stderr)
         return 1
 
-    log_step(f"Building autoviz ({args.jobs} jobs)")
+    log_step(f"Building autoviz_app + libautoviz ({args.jobs} jobs)")
     subprocess.run(
-        ["cmake", "--build", str(build_dir), "--target", "autoviz", "-j", str(args.jobs)],
+        [
+            "cmake",
+            "--build",
+            str(build_dir),
+            "--target",
+            "autoviz_app",
+            "-j",
+            str(args.jobs),
+        ],
         check=True,
     )
     log_ok("Build complete")

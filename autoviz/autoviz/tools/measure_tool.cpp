@@ -12,9 +12,7 @@
 #include "autoviz/rendering/scene_overlay.hpp"
 #include "autoviz/rendering/view_controller.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
 #include "autoviz/rendering/ogre_scene_host.hpp"
-#endif
 
 namespace autoviz {
 namespace tools {
@@ -62,22 +60,17 @@ void MeasureTool::clearViewportSession(const std::string& viewport_key) {
 }
 
 void MeasureTool::clearOgreOverlay(const std::string& key) const {
-#ifdef AUTOVIZ_USE_OGRE
   if (context() == nullptr || context()->display_context == nullptr ||
       context()->display_context->ogre_scene_host == nullptr) {
     return;
   }
   context()->display_context->ogre_scene_host->clearToolOverlay(
       OgreOverlayId(key));
-#else
-  (void)key;
-#endif
 }
 
 void MeasureTool::updateOgreLineVisual(const std::string& key,
                                        const QVector3D& start,
                                        const QVector3D& end) const {
-#ifdef AUTOVIZ_USE_OGRE
   if (context() != nullptr && context()->sync_ogre_host) {
     context()->sync_ogre_host();
   }
@@ -91,11 +84,6 @@ void MeasureTool::updateOgreLineVisual(const std::string& key,
   const QVector3D draw_end = liftAboveGrid(end);
   display_context->ogre_scene_host->setToolLineSegment(
       OgreOverlayId(key), draw_start, draw_end, kLineColor);
-#else
-  (void)key;
-  (void)start;
-  (void)end;
-#endif
 }
 
 void MeasureTool::resetMeasurement(const std::string& key) {
@@ -270,31 +258,18 @@ void MeasureTool::onDraw(rendering::SceneOverlay& scene) {
 }
 
 QString MeasureTool::statusText() const {
+  // rviz_default_plugins::MeasureTool::setStatusMessage()
   const std::string key = currentViewportKey();
   const Session* session = findSession(key);
-  QString status;
+  QString prefix;
   if (session != nullptr) {
     const float length = currentLength(*session);
     if (length >= 0.f) {
-      status = QStringLiteral("Length: %1 m").arg(length, 0, 'f', 3);
+      prefix = QStringLiteral("[Length: %1m] ").arg(length, 0, 'f', 3);
     }
   }
-
-  QString hint;
-  if (session == nullptr || !session->start_point.has_value()) {
-    hint = QStringLiteral(
-        "Click on two points to measure their distance. Right-click to reset.");
-  } else if (session->line_started) {
-    hint = QStringLiteral("Click second point. Right-click to reset.");
-  } else {
-    hint = QStringLiteral(
-        "Click to start a new measurement. Right-click to reset.");
-  }
-
-  if (status.isEmpty()) {
-    return QStringLiteral("Measure: %1").arg(hint);
-  }
-  return QStringLiteral("Measure: %1 | %2").arg(status, hint);
+  return prefix + QStringLiteral(
+      "Click on two points to measure their distance. Right-click to reset.");
 }
 
 }  // namespace tools

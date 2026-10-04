@@ -48,14 +48,12 @@ ViewControllerRegistry& ViewControllerRegistry::instance() {
 ViewControllerRegistry::ViewControllerRegistry() = default;
 
 void ViewControllerRegistry::registerBuiltinTypes() {
+  // RViz2 default_plugins view controllers only.
   registerBuiltin("Orbit", [](rendering::ViewController* vc) {
     ApplyBuiltinType(rendering::ViewControllerType::kOrbit, vc);
   });
   registerBuiltin("XYOrbit", [](rendering::ViewController* vc) {
     ApplyBuiltinType(rendering::ViewControllerType::kXyOrbit, vc);
-  });
-  registerBuiltin("TopDown", [](rendering::ViewController* vc) {
-    ApplyBuiltinType(rendering::ViewControllerType::kTopDown, vc);
   });
   registerBuiltin("TopDownOrtho", [](rendering::ViewController* vc) {
     ApplyBuiltinType(rendering::ViewControllerType::kTopDownOrtho, vc);
@@ -63,12 +61,16 @@ void ViewControllerRegistry::registerBuiltinTypes() {
   registerBuiltin("FPS", [](rendering::ViewController* vc) {
     ApplyBuiltinType(rendering::ViewControllerType::kFps, vc);
   });
-  registerBuiltin("FPSMotion", [](rendering::ViewController* vc) {
-    ApplyBuiltinType(rendering::ViewControllerType::kFpsMotion, vc);
-  });
   registerBuiltin("ThirdPersonFollow", [](rendering::ViewController* vc) {
     ApplyBuiltinType(rendering::ViewControllerType::kThirdPersonFollow, vc);
   });
+  // Legacy aliases (not shown in Views Type selector).
+  appliers_["TopDown"] = [](rendering::ViewController* vc) {
+    ApplyBuiltinType(rendering::ViewControllerType::kTopDownOrtho, vc);
+  };
+  appliers_["FPSMotion"] = [](rendering::ViewController* vc) {
+    ApplyBuiltinType(rendering::ViewControllerType::kFps, vc);
+  };
 }
 
 void ViewControllerRegistry::registerBuiltin(
@@ -110,16 +112,12 @@ std::string ViewControllerRegistry::mapRvizClass(
     return "XYOrbit";
   }
   if (short_name.find("TopDownOrtho") != std::string::npos ||
-      short_name.find("FixedOrientationOrtho") != std::string::npos) {
+      short_name.find("FixedOrientationOrtho") != std::string::npos ||
+      short_name.find("TopDown") != std::string::npos) {
     return "TopDownOrtho";
   }
-  if (short_name.find("TopDown") != std::string::npos) {
-    return "TopDown";
-  }
-  if (short_name.find("FPSMotion") != std::string::npos) {
-    return "FPSMotion";
-  }
-  if (short_name.find("FPS") != std::string::npos ||
+  if (short_name.find("FPSMotion") != std::string::npos ||
+      short_name.find("FPS") != std::string::npos ||
       short_name.find("FrameAligned") != std::string::npos) {
     return "FPS";
   }

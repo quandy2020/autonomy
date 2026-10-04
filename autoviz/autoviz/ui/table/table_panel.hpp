@@ -2,102 +2,119 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
+/**
+ * @file table_panel.hpp
+ * @brief Foxglove-style Table panel — show a repeated protobuf field as rows.
+ *
+ * Subscribes to one channel, resolves @c field_path to a repeated field, and
+ * renders each element as a table row (scalar leaves become columns).
+ *
+ * @see ChannelsPanel
+ * @see plot::ResolveRepeatedFieldPath
+ */
+
 #pragma once
 
 #include <QWidget>
 
-#include <QPointer>
+#include <cstdint>
+#include <string>
 
-#include "autoviz/integration/channel_reader_registry.hpp"
+#include "autoviz/integration/message_queue.hpp"
 #include "autoviz/ui/table/table_types.hpp"
 
-class QLabel;
 class QDragEnterEvent;
 class QDragMoveEvent;
 class QDropEvent;
-class QMimeData;
-class QScrollArea;
+class QLabel;
+class QLineEdit;
+class QPoint;
+class QTableWidget;
+class QTimer;
 class QToolButton;
 
 namespace autoviz {
-
-class PanelDockWidget;
 namespace common {
 class VisualizationManager;
 }
-namespace table {
+class PanelDockWidget;
 
-class TableSettingsWidget;
-class TableViewWidget;
+namespace table_panel {
 
+/**
+ * @class TablePanel
+ * @brief Live table for one channel + repeated-field path.
+ *
+ * Drop a Channels array path (or type @c /channel.field) to bind. Values update
+ * as new messages arrive.
+ */
 class TablePanel : public QWidget {
   Q_OBJECT
 
  public:
-  explicit TablePanel(common::VisualizationManager* manager, QWidget* parent = nullptr);
+  explicit TablePanel(common::VisualizationManager* manager,
+                      QWidget* parent = nullptr);
   ~TablePanel() override;
-
-  void installTitleBarTools(PanelDockWidget* dock);
 
   TablePanelConfig config() const;
   void setConfig(const TablePanelConfig& config);
   void cloneConfigFrom(const TablePanelConfig& config);
-  void setSettingsVisible(bool visible);
-  bool settingsVisible() const;
-  void setSettingsButtonChecked(bool checked);
-  void setExpandButtonChecked(bool checked);
-  QWidget* settingsWidgetForInspector();
-  void recallSettingsWidget();
-  void refreshSettingsChannels();
-  void refreshFromVariables();
 
-  void handleTableDrop(const QString& channel, const QString& array_path);
+  /**
+   * @brief Bind channel + array field path (from drag or editor).
+   */
+  void setSource(const QString& channel, const QString& field_path);
+
+  void installTitleBarTools(PanelDockWidget* dock);
+  void setExpandButtonChecked(bool checked);
 
  signals:
-  void configChanged();
   void activated();
-  void settingsToggled(bool visible);
-  void panelSplitRequested(Qt::Orientation orientation);
-  void panelExpandRequested();
+  void configChanged();
   void panelRemoveRequested();
+  void panelExpandRequested();
+  void panelSplitRequested(Qt::Orientation orientation);
   void panelChangeRequested(const QString& object_name);
 
  protected:
-  void focusInEvent(QFocusEvent* event) override;
   void dragEnterEvent(QDragEnterEvent* event) override;
   void dragMoveEvent(QDragMoveEvent* event) override;
   void dropEvent(QDropEvent* event) override;
+  void focusInEvent(QFocusEvent* event) override;
 
  private slots:
-  void onToggleSettings(bool visible);
-  void onChannelPayload(const std::string& payload);
+  void onTick();
+  void onPathEdited();
+  void onRowFilterEdited(const QString& text);
+  void onTableContextMenu(const QPoint& pos);
 
  private:
-  void resubscribeChannel();
-  void unsubscribeChannel();
-  void applyConfigToUi();
-  void syncSettingsWidgetFromConfig();
-  void syncSettingsToolState();
-  void updateStatusBar();
-  void ingestPayload(const std::string& payload);
-  QString messageTypeForChannel(const QString& channel) const;
-  bool readDropPayload(const QMimeData* mime, QString* channel,
-                       QString* array_path) const;
+  void applyChromeStyles();
+  void resubscribe();
+  void unsubscribe();
+  void renderPayload(const std::string& payload);
+  void clearTable(const QString& status_hint);
+  void updateStatus(const QString& text);
+  void applyRowFilter();
+  void emitConfigChanged();
+
+  std::string messageTypeForChannel(const QString& channel) const;
 
   common::VisualizationManager* manager_ = nullptr;
   TablePanelConfig config_;
-  TableViewWidget* view_ = nullptr;
-  int last_row_count_ = 0;
+
+  QLineEdit* path_edit_ = nullptr;
+  QLineEdit* row_filter_edit_ = nullptr;
   QLabel* status_label_ = nullptr;
-  TableSettingsWidget* settings_widget_ = nullptr;
-  QScrollArea* settings_scroll_ = nullptr;
-  QWidget* settings_container_ = nullptr;
-  QPointer<QToolButton> settings_button_;
-  QPointer<QToolButton> expand_button_;
-  integration::ChannelReaderRegistry::SubscriptionId subscription_id_ = 0;
-  std::string subscribed_message_type_;
-  std::string last_payload_;
+  QTableWidget* table_ = nullptr;
+  QTimer* tick_timer_ = nullptr;
+  QToolButton* expand_button_ = nullptr;
+
+  integration::MessageQueue payload_queue_;
+  std::uint64_t subscription_id_ = 0;
+  std::string active_channel_;
+  std::string active_message_type_;
 };
 
-}  // namespace table
+}  // namespace table_panel
 }  // namespace autoviz

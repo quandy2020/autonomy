@@ -4,9 +4,14 @@
 
 #include "autoviz/ui/map/map_tile_cache.hpp"
 
+#include <QCryptographicHash>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QStandardPaths>
 
 #include <algorithm>
 
@@ -32,6 +37,10 @@ QImage MapTileCache::cachedTile(const MapTileCoord& coord) const {
   return cache_.value(coord);
 }
 
+bool MapTileCache::isUnavailable(const MapTileCoord& coord) const {
+  return unavailable_.contains(coord);
+}
+
 QString MapTileCache::buildTileUrl(const QString& url_template,
                                    const MapTileCoord& coord) const {
   QString url = url_template;
@@ -47,7 +56,14 @@ void MapTileCache::requestTiles(const QString& url_template,
     return;
   }
   for (const MapTileCoord& coord : coords) {
-    if (cache_.contains(coord) || pending_.contains(coord)) {
+    if (cache_.contains(coord) || pending_.contains(coord) ||
+        unavailable_.contains(coord)) {
+      continue;
+    }
+    QImage disk_image;
+    if (loadDiskTile(url_template, coord, &disk_image)) {
+      insertCacheEntry(coord, disk_image);
+      emit tileReady(coord);
       continue;
     }
     pending_.insert(coord);
@@ -58,22 +74,30 @@ void MapTileCache::requestTiles(const QString& url_template,
       request.setHeader(QNetworkRequest::UserAgentHeader, user_agent_);
     }
     QNetworkReply* reply = network_->get(request);
+    reply->setProperty("tileUrlTemplate", url_template);
     active_replies_.insert(reply, coord);
     connect(reply, &QNetworkReply::finished, this, &MapTileCache::onTileFinished);
   }
 }
 
 void MapTileCache::clear() {
-  for (auto it = active_replies_.cbegin(); it != active_replies_.cend(); ++it) {
-    if (it.key() != nullptr) {
-      it.key()->abort();
-      it.key()->deleteLater();
-    }
-  }
+  // Copy keys first: abort() can emit finished synchronously, and that slot
+  // mutates active_replies_. Disconnect before abort so onTileFinished does not
+  // double-delete the same reply.
+  const QList<QNetworkReply*> replies = active_replies_.keys();
   active_replies_.clear();
   pending_.clear();
+  unavailable_.clear();
   cache_.clear();
   lru_order_.clear();
+  for (QNetworkReply* reply : replies) {
+    if (reply == nullptr) {
+      continue;
+    }
+    QObject::disconnect(reply, nullptr, this, nullptr);
+    reply->abort();
+    reply->deleteLater();
+  }
 }
 
 void MapTileCache::insertCacheEntry(const MapTileCoord& coord, QImage image) {
@@ -100,11 +124,21 @@ void MapTileCache::onTileFinished() {
   if (reply == nullptr) {
     return;
   }
+  if (!active_replies_.contains(reply)) {
+    reply->deleteLater();
+    return;
+  }
   const MapTileCoord coord = active_replies_.take(reply);
   pending_.remove(coord);
   reply->deleteLater();
 
   if (reply->error() != QNetworkReply::NoError) {
+    const int status =
+        reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    if (status == 404 || status == 204) {
+      unavailable_.insert(coord);
+      emit tileUnavailable(coord);
+    }
     return;
   }
   QImage image;
@@ -112,7 +146,46 @@ void MapTileCache::onTileFinished() {
     return;
   }
   insertCacheEntry(coord, image);
+  const QString url_template = reply->property("tileUrlTemplate").toString();
+  saveDiskTile(url_template, coord, image);
   emit tileReady(coord);
+}
+
+QString MapTileCache::diskPath(const QString& url_template,
+                               const MapTileCoord& coord) const {
+  const QByteArray hash = QCryptographicHash::hash(url_template.toUtf8(),
+                                                   QCryptographicHash::Sha1)
+                              .toHex();
+  const QString root =
+      QStandardPaths::writableLocation(QStandardPaths::CacheLocation) +
+      QStringLiteral("/autoviz/map-tiles/") + QString::fromLatin1(hash);
+  return root + QStringLiteral("/%1/%2/%3.png")
+                    .arg(coord.z)
+                    .arg(coord.x)
+                    .arg(coord.y);
+}
+
+bool MapTileCache::loadDiskTile(const QString& url_template,
+                                const MapTileCoord& coord, QImage* image) const {
+  if (image == nullptr || url_template.isEmpty()) {
+    return false;
+  }
+  const QString path = diskPath(url_template, coord);
+  if (!QFile::exists(path)) {
+    return false;
+  }
+  return image->load(path);
+}
+
+void MapTileCache::saveDiskTile(const QString& url_template,
+                                const MapTileCoord& coord,
+                                const QImage& image) const {
+  if (url_template.isEmpty() || image.isNull()) {
+    return;
+  }
+  const QString path = diskPath(url_template, coord);
+  QDir().mkpath(QFileInfo(path).absolutePath());
+  image.save(path, "PNG");
 }
 
 }  // namespace map

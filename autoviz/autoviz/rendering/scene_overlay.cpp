@@ -12,224 +12,14 @@
 #include "autoviz/common/pick_handle.hpp"
 #include "autoviz/common/pick_registry.hpp"
 #include "autoviz/common/selection_handler.hpp"
+#include "autoviz/rendering/ogre_resource_config.hpp"
 
 #include <cmath>
+#include <string>
 
 namespace autoviz {
 namespace rendering {
 namespace {
-
-constexpr char kVertexShader[] = R"(#version 330 core
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec4 aColor;
-uniform mat4 uMvp;
-out vec4 vColor;
-void main() {
-  gl_Position = uMvp * vec4(aPos, 1.0);
-  vColor = aColor;
-}
-)";
-
-constexpr char kFragmentShader[] = R"(#version 330 core
-in vec4 vColor;
-out vec4 fragColor;
-void main() { fragColor = vColor; }
-)";
-
-constexpr char kPointVertexShader[] = R"(#version 330 core
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec4 aColor;
-uniform mat4 uMvp;
-uniform float uPointSize;
-out vec4 vColor;
-void main() {
-  gl_Position = uMvp * vec4(aPos, 1.0);
-  gl_PointSize = uPointSize;
-  vColor = aColor;
-}
-)";
-
-constexpr char kTexturedVertexShader[] = R"(#version 330 core
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec2 aUv;
-layout(location = 2) in vec4 aColor;
-uniform mat4 uMvp;
-out vec2 vUv;
-out vec4 vColor;
-void main() {
-  gl_Position = uMvp * vec4(aPos, 1.0);
-  vUv = aUv;
-  vColor = aColor;
-}
-)";
-
-constexpr char kTexturedFragmentShader[] = R"(#version 330 core
-in vec2 vUv;
-in vec4 vColor;
-uniform sampler2D uTexture;
-out vec4 fragColor;
-void main() {
-  fragColor = texture(uTexture, vUv) * vColor;
-}
-)";
-
-constexpr char kPbrVertexShader[] = R"(#version 330 core
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec3 aNormal;
-layout(location = 2) in vec4 aAlbedo;
-layout(location = 3) in vec2 aMaterial;
-uniform mat4 uMvp;
-out vec3 vWorldPos;
-out vec3 vNormal;
-out vec4 vAlbedo;
-out vec2 vMaterial;
-void main() {
-  vWorldPos = aPos;
-  vNormal = aNormal;
-  vAlbedo = aAlbedo;
-  vMaterial = aMaterial;
-  gl_Position = uMvp * vec4(aPos, 1.0);
-}
-)";
-
-constexpr char kPbrFragmentShader[] = R"(#version 330 core
-in vec3 vWorldPos;
-in vec3 vNormal;
-in vec4 vAlbedo;
-in vec2 vMaterial;
-uniform vec3 uLightDir;
-uniform vec3 uCameraPos;
-uniform vec3 uAmbient;
-out vec4 fragColor;
-
-float DistributionGGX(vec3 N, vec3 H, float roughness) {
-  float a = roughness * roughness;
-  float a2 = a * a;
-  float NdotH = max(dot(N, H), 0.0);
-  float denom = NdotH * NdotH * (a2 - 1.0) + 1.0;
-  return a2 / max(3.14159265 * denom * denom, 1e-4);
-}
-
-float GeometrySchlickGGX(float NdotV, float roughness) {
-  float r = roughness + 1.0;
-  float k = (r * r) / 8.0;
-  return NdotV / max(NdotV * (1.0 - k) + k, 1e-4);
-}
-
-float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
-  float NdotV = max(dot(N, V), 0.0);
-  float NdotL = max(dot(N, L), 0.0);
-  return GeometrySchlickGGX(NdotV, roughness) *
-         GeometrySchlickGGX(NdotL, roughness);
-}
-
-vec3 FresnelSchlick(float cosTheta, vec3 F0) {
-  return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-}
-
-void main() {
-  vec3 N = normalize(vNormal);
-  vec3 V = normalize(uCameraPos - vWorldPos);
-  vec3 L = normalize(-uLightDir);
-  vec3 H = normalize(V + L);
-  vec3 albedo = vAlbedo.rgb;
-  float alpha = vAlbedo.a;
-  float metallic = vMaterial.x();
-  float roughness = vMaterial.y();
-  vec3 F0 = mix(vec3(0.04), albedo, metallic);
-  float NDF = DistributionGGX(N, H, roughness);
-  float G = GeometrySmith(N, V, L, roughness);
-  vec3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
-  vec3 specular = (NDF * G * F) /
-                  max(4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0), 1e-4);
-  vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);
-  vec3 diffuse = kD * albedo / 3.14159265;
-  vec3 color = (diffuse + specular) * max(dot(N, L), 0.0) + uAmbient * albedo;
-  fragColor = vec4(color, alpha);
-}
-)";
-
-constexpr char kPbrTexturedVertexShader[] = R"(#version 330 core
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec3 aNormal;
-layout(location = 2) in vec2 aUv;
-layout(location = 3) in vec4 aTint;
-layout(location = 4) in vec2 aMaterial;
-uniform mat4 uMvp;
-out vec3 vWorldPos;
-out vec3 vNormal;
-out vec2 vUv;
-out vec4 vTint;
-out vec2 vMaterial;
-void main() {
-  vWorldPos = aPos;
-  vNormal = aNormal;
-  vUv = aUv;
-  vTint = aTint;
-  vMaterial = aMaterial;
-  gl_Position = uMvp * vec4(aPos, 1.0);
-}
-)";
-
-constexpr char kPbrTexturedFragmentShader[] = R"(#version 330 core
-in vec3 vWorldPos;
-in vec3 vNormal;
-in vec2 vUv;
-in vec4 vTint;
-in vec2 vMaterial;
-uniform sampler2D uAlbedoMap;
-uniform vec3 uLightDir;
-uniform vec3 uCameraPos;
-uniform vec3 uAmbient;
-out vec4 fragColor;
-
-float DistributionGGX(vec3 N, vec3 H, float roughness) {
-  float a = roughness * roughness;
-  float a2 = a * a;
-  float NdotH = max(dot(N, H), 0.0);
-  float denom = NdotH * NdotH * (a2 - 1.0) + 1.0;
-  return a2 / max(3.14159265 * denom * denom, 1e-4);
-}
-
-float GeometrySchlickGGX(float NdotV, float roughness) {
-  float r = roughness + 1.0;
-  float k = (r * r) / 8.0;
-  return NdotV / max(NdotV * (1.0 - k) + k, 1e-4);
-}
-
-float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
-  float NdotV = max(dot(N, V), 0.0);
-  float NdotL = max(dot(N, L), 0.0);
-  return GeometrySchlickGGX(NdotV, roughness) *
-         GeometrySchlickGGX(NdotL, roughness);
-}
-
-vec3 FresnelSchlick(float cosTheta, vec3 F0) {
-  return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-}
-
-void main() {
-  vec3 N = normalize(vNormal);
-  vec3 V = normalize(uCameraPos - vWorldPos);
-  vec3 L = normalize(-uLightDir);
-  vec3 H = normalize(V + L);
-  vec4 sampled = texture(uAlbedoMap, vUv);
-  vec3 albedo = sampled.rgb * vTint.rgb;
-  float alpha = sampled.a * vTint.a;
-  float metallic = vMaterial.x();
-  float roughness = vMaterial.y();
-  vec3 F0 = mix(vec3(0.04), albedo, metallic);
-  float NDF = DistributionGGX(N, H, roughness);
-  float G = GeometrySmith(N, V, L, roughness);
-  vec3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
-  vec3 specular = (NDF * G * F) /
-                  max(4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0), 1e-4);
-  vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);
-  vec3 diffuse = kD * albedo / 3.14159265;
-  vec3 color = (diffuse + specular) * max(dot(N, L), 0.0) + uAmbient * albedo;
-  fragColor = vec4(color, alpha);
-}
-)";
 
 unsigned CompileShader(unsigned type, const char* source) {
   QOpenGLFunctions* gl = QOpenGLContext::currentContext()->functions();
@@ -239,10 +29,13 @@ unsigned CompileShader(unsigned type, const char* source) {
   return shader;
 }
 
-unsigned LinkProgram(const char* vs, const char* fs) {
+unsigned LinkProgram(const std::string& vs, const std::string& fs) {
+  if (vs.empty() || fs.empty()) {
+    return 0;
+  }
   QOpenGLFunctions* gl = QOpenGLContext::currentContext()->functions();
-  const unsigned v_shader = CompileShader(0x8B31, vs);
-  const unsigned f_shader = CompileShader(0x8B30, fs);
+  const unsigned v_shader = CompileShader(0x8B31, vs.c_str());
+  const unsigned f_shader = CompileShader(0x8B30, fs.c_str());
   const unsigned program = gl->glCreateProgram();
   gl->glAttachShader(program, v_shader);
   gl->glAttachShader(program, f_shader);
@@ -250,6 +43,10 @@ unsigned LinkProgram(const char* vs, const char* fs) {
   gl->glDeleteShader(v_shader);
   gl->glDeleteShader(f_shader);
   return program;
+}
+
+unsigned LinkMediaProgram(const char* vs_rel, const char* fs_rel) {
+  return LinkProgram(loadOgreMediaText(vs_rel), loadOgreMediaText(fs_rel));
 }
 
 QVector4D ToVec4(const QColor& color) {
@@ -278,36 +75,6 @@ void UploadVertices(unsigned vao, unsigned vbo,
   gl->glBindVertexArray(0);
   *dirty_flag = false;
 }
-
-constexpr char kPickVertexShader[] = R"(#version 330 core
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec3 aPickColor;
-uniform mat4 uMvp;
-uniform float uPointSize;
-out vec3 vPickColor;
-void main() {
-  gl_Position = uMvp * vec4(aPos, 1.0);
-  gl_PointSize = uPointSize;
-  vPickColor = aPickColor;
-}
-)";
-
-constexpr char kPickFragmentShader[] = R"(#version 330 core
-in vec3 vPickColor;
-out vec4 fragColor;
-void main() { fragColor = vec4(vPickColor, 1.0); }
-)";
-
-constexpr char kPickFlatVertexShader[] = R"(#version 330 core
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec3 aPickColor;
-uniform mat4 uMvp;
-out vec3 vPickColor;
-void main() {
-  gl_Position = uMvp * vec4(aPos, 1.0);
-  vPickColor = aPickColor;
-}
-)";
 
 QVector3D HandleToVec3(uint32_t handle) {
   const common::PickColor color = common::handleToPickColor(handle);
@@ -1108,14 +875,21 @@ void SceneOverlay::initialize() {
   if (initialized_) {
     return;
   }
-  line_program_ = LinkProgram(kVertexShader, kFragmentShader);
-  point_program_ = LinkProgram(kPointVertexShader, kFragmentShader);
-  triangle_program_ = LinkProgram(kVertexShader, kFragmentShader);
-  textured_program_ = LinkProgram(kTexturedVertexShader, kTexturedFragmentShader);
-  pbr_program_ = LinkProgram(kPbrVertexShader, kPbrFragmentShader);
+  line_program_ = LinkMediaProgram("materials/glsl330/colored.vert",
+                                   "materials/glsl330/colored.frag");
+  point_program_ = LinkMediaProgram("materials/glsl330/point.vert",
+                                    "materials/glsl330/colored.frag");
+  triangle_program_ = LinkMediaProgram("materials/glsl330/colored.vert",
+                                       "materials/glsl330/colored.frag");
+  textured_program_ = LinkMediaProgram("materials/glsl330/textured.vert",
+                                       "materials/glsl330/textured.frag");
+  pbr_program_ = LinkMediaProgram("materials/glsl330/pbr.vert",
+                                  "materials/glsl330/pbr.frag");
   pbr_textured_program_ =
-      LinkProgram(kPbrTexturedVertexShader, kPbrTexturedFragmentShader);
-  pick_program_ = LinkProgram(kPickFlatVertexShader, kPickFragmentShader);
+      LinkMediaProgram("materials/glsl330/pbr_textured.vert",
+                       "materials/glsl330/pbr_textured.frag");
+  pick_program_ = LinkMediaProgram("materials/glsl330/pick_flat.vert",
+                                   "materials/glsl330/pick.frag");
   QOpenGLExtraFunctions* gl =
       QOpenGLContext::currentContext()->extraFunctions();
   gl->glGenVertexArrays(1, reinterpret_cast<unsigned*>(&line_vao_));

@@ -288,9 +288,7 @@ bool InteractTool::mouseReleaseEvent(QMouseEvent* event) {
 
 QString InteractTool::statusText() const {
   if (!active_pick_.has_value()) {
-    return QStringLiteral(
-        "Interact: Left rotate · Middle/Shift+Left pan · Right/Wheel zoom · "
-        "marker drag/menu when hit");
+    return {};
   }
   QString mode;
   switch (active_pick_->interaction_mode) {
@@ -320,11 +318,11 @@ QString InteractTool::statusText() const {
       break;
   }
   if (!dragging_) {
-    return QStringLiteral("Interact: %1 on %2")
+    return QStringLiteral("%1 · %2")
         .arg(mode)
         .arg(QString::fromStdString(active_pick_->marker_name));
   }
-  return QStringLiteral("Interact: dragging %1 (%2)")
+  return QStringLiteral("dragging %1 (%2)")
       .arg(QString::fromStdString(active_pick_->marker_name))
       .arg(mode);
 }

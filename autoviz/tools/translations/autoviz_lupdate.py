@@ -28,33 +28,11 @@ ensure_tools_dir(__file__)
 from common import default_qgc_translations_dir, find_autoviz_root, log_info, log_ok, translations_dir
 from autoviz_core_zh_cn_fill import apply_autoviz_core_zh_cn
 
-LOCALES = (
-    "az_AZ",
-    "bg_BG",
-    "de_DE",
-    "el_GR",
-    "eo",
-    "es_ES",
-    "fi_FI",
-    "fr_FR",
-    "he_IL",
-    "it_IT",
-    "ja_JP",
-    "ko_KR",
-    "nb_NO",
-    "nl_NL",
-    "no_NO",
-    "pl_PL",
-    "pt_PT",
-    "ru_RU",
-    "sv_SE",
-    "tr_TR",
-    "uk_UA",
-    "zh_CN",
-    "zh_TW",
-)
+# English source strings live in autoviz.ts (no runtime .qm).
+# Supported runtime locale catalogs:
+LOCALES = ("zh_CN",)
 
-LUPDATE_SOURCES = ("autoviz", "qml")
+LUPDATE_SOURCES = ("autoviz",)
 
 
 def resolve_lupdate() -> Path:
@@ -148,16 +126,6 @@ def merge_qgc_into_aviz(autoviz_path: Path, qgc_map: dict[str, str]) -> int:
 
 def apply_autoviz_zh_cn_overrides(path: Path) -> None:
     overrides = {
-        "Vehicle 3D": "三维载具",
-        "Ground (diff-drive)": "地面（差速驱动）",
-        "Ground (Ackermann)": "地面（阿克曼）",
-        "Drone (simple)": "无人机（简易）",
-        "Drone (F450 mesh)": "无人机（F450 模型）",
-        "Model:": "模型：",
-        "TF frame:": "TF 坐标系：",
-        "Follow": "跟随",
-        "Origin": "重置原点",
-        "No TF": "无 TF",
         "Autolink Channels": "Autolink 通道",
         "Tool Properties": "工具属性",
         "TF Tree": "TF 树",

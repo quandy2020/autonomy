@@ -109,6 +109,10 @@ autonomy/orbisview/**/node_modules/
 autonomy/orbisview/thirdparty/**/node_modules/
 autonomy/orbisview/thirdparty/**/dist/
 
+# Vendored Ogre tarball is ~120 MB, over GitHub's 100 MB limit.
+# CMake downloads v1.12.10 when this file is absent.
+autoviz/thirdparty/*.tar.gz
+
 # Large local inference artifacts (copy into place; do not commit).
 config/perception/base/*.engine
 config/perception/base/*.plan

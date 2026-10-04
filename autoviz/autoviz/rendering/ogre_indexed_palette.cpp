@@ -4,8 +4,6 @@
 
 #include "autoviz/rendering/ogre_indexed_palette.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include "autoviz/display/point_cloud_utils.hpp"
 
 #include <Ogre.h>
@@ -15,7 +13,7 @@ namespace rendering {
 namespace {
 
 constexpr char kPaletteTexture[] = "AvizRainbowPalette";
-constexpr char kRvizResourceGroup[] = "rviz_rendering";
+constexpr char kAvizResourceGroup[] = "aviz_rendering";
 
 }  // namespace
 
@@ -39,7 +37,7 @@ void OgreIndexedPalette::ensureRainbowPalette() {
   Ogre::HardwarePixelBufferSharedPtr buffer = texture->getBuffer();
   const Ogre::PixelBox& box =
       buffer->lock(Ogre::Box(0, 0, 256, 1, 1, 1), Ogre::HardwareBuffer::HBL_DISCARD);
-  auto* pixels = static_cast<Ogre::uint8*>(box.data());
+  auto* pixels = static_cast<Ogre::uint8*>(box.data);
   for (int i = 0; i < 256; ++i) {
     const QColor color = rainbowTable()[static_cast<std::size_t>(i)];
     pixels[i * 4 + 0] = static_cast<Ogre::uint8>(color.red());
@@ -49,11 +47,11 @@ void OgreIndexedPalette::ensureRainbowPalette() {
   }
   buffer->unlock();
 
-  if (Ogre::MaterialManager::getSingleton().resourceExists("rviz/Indexed8BitImage",
-                                                           kRvizResourceGroup)) {
+  if (Ogre::MaterialManager::getSingleton().resourceExists("aviz/Indexed8BitImage",
+                                                           kAvizResourceGroup)) {
     Ogre::MaterialPtr material =
-        Ogre::MaterialManager::getSingleton().getByName("rviz/Indexed8BitImage",
-                                                        kRvizResourceGroup);
+        Ogre::MaterialManager::getSingleton().getByName("aviz/Indexed8BitImage",
+                                                        kAvizResourceGroup);
     if (material && material->getNumTechniques() > 0) {
       Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
       if (pass->getNumTextureUnitStates() >= 2) {
@@ -75,4 +73,3 @@ QColor OgreIndexedPalette::colorFromIndex(uint8_t index) {
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

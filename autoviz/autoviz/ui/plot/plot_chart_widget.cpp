@@ -4,14 +4,25 @@
 
 #include "autoviz/ui/plot/plot_chart_widget.hpp"
 
-#include <QPainter>
-#include <QPainterPath>
+#include <algorithm>
+#include <cmath>
+#include <deque>
+#include <vector>
+
+#include <QAction>
+#include <QApplication>
+#include <QClipboard>
+#include <QEnterEvent>
 #include <QKeyEvent>
 #include <QLineF>
+#include <QMenu>
 #include <QMouseEvent>
+#include <QPainter>
+#include <QPainterPath>
 #include <QWheelEvent>
-#include <QEnterEvent>
 #include <QtMath>
+
+#include "autoviz/ui/plot/plot_path_utils.hpp"
 
 namespace autoviz {
 namespace plot {
@@ -20,10 +31,91 @@ namespace {
 constexpr int kAxisLeft = 56;
 constexpr int kAxisTop = 16;
 constexpr int kAxisRight = 16;
+constexpr int kAxisRightWide = 56;
 constexpr int kAxisBottom = 48;
 constexpr double kExactSampleEpsilon = 1e-6;
 constexpr double kInspectPickRadiusPx = 10.0;
 constexpr int kPanDragThresholdPx = 4;
+constexpr qreal kDefaultLineWidth = 2.0;
+constexpr int kMaxDrawPoints = 1500;
+
+qreal ResolveLineWidth(const QString& line_size) {
+  const QString trimmed = line_size.trimmed();
+  if (trimmed.isEmpty() ||
+      trimmed.compare(QStringLiteral("auto"), Qt::CaseInsensitive) == 0) {
+    return kDefaultLineWidth;
+  }
+  bool ok = false;
+  const double value = trimmed.toDouble(&ok);
+  if (!ok || value <= 0.0) {
+    return kDefaultLineWidth;
+  }
+  return static_cast<qreal>(value);
+}
+
+/**
+ * Largest-Triangle-Three-Buckets downsampling for draw-time paths.
+ * Keeps first/last points; @p threshold is the target point count.
+ */
+std::vector<PlotPoint> DownsampleLttb(const std::deque<PlotPoint>& points,
+                                     int threshold) {
+  const int n = static_cast<int>(points.size());
+  if (threshold <= 2 || n <= threshold) {
+    return std::vector<PlotPoint>(points.begin(), points.end());
+  }
+
+  std::vector<PlotPoint> sampled;
+  sampled.reserve(static_cast<std::size_t>(threshold));
+  sampled.push_back(points.front());
+
+  const double bucket_size =
+      static_cast<double>(n - 2) / static_cast<double>(threshold - 2);
+  int a = 0;
+  for (int i = 0; i < threshold - 2; ++i) {
+    const int range_start =
+        static_cast<int>(std::floor((i + 1) * bucket_size)) + 1;
+    int range_end =
+        static_cast<int>(std::floor((i + 2) * bucket_size)) + 1;
+    range_end = std::min(range_end, n);
+
+    const int next_start =
+        static_cast<int>(std::floor((i + 2) * bucket_size)) + 1;
+    int next_end =
+        static_cast<int>(std::floor((i + 3) * bucket_size)) + 1;
+    next_end = std::min(next_end, n);
+    if (next_start >= n) {
+      break;
+    }
+
+    double avg_x = 0.0;
+    double avg_y = 0.0;
+    const int next_count = std::max(1, next_end - next_start);
+    for (int j = next_start; j < next_end; ++j) {
+      avg_x += points[static_cast<std::size_t>(j)].x;
+      avg_y += points[static_cast<std::size_t>(j)].y;
+    }
+    avg_x /= next_count;
+    avg_y /= next_count;
+
+    const PlotPoint& point_a = points[static_cast<std::size_t>(a)];
+    double max_area = -1.0;
+    int max_index = range_start;
+    for (int j = range_start; j < range_end; ++j) {
+      const PlotPoint& p = points[static_cast<std::size_t>(j)];
+      const double area = std::abs((point_a.x - avg_x) * (p.y - point_a.y) -
+                                   (point_a.x - p.x) * (avg_y - point_a.y)) *
+                          0.5;
+      if (area > max_area) {
+        max_area = area;
+        max_index = j;
+      }
+    }
+    sampled.push_back(points[static_cast<std::size_t>(max_index)]);
+    a = max_index;
+  }
+  sampled.push_back(points.back());
+  return sampled;
+}
 
 }  // namespace
 
@@ -39,6 +131,9 @@ PlotChartWidget::PlotChartWidget(QWidget* parent) : QWidget(parent) {
 
 void PlotChartWidget::setSeries(const std::vector<const PlotSeriesRuntime*>& series) {
   series_ = series;
+  if (brush_active_) {
+    recomputeBrushStats();
+  }
   if (hover_active_) {
     tooltip_rows_ = buildTooltipRows(hover_x_);
   }
@@ -60,6 +155,61 @@ void PlotChartWidget::setLockAxisScales(bool locked) {
   update();
 }
 
+void PlotChartWidget::setYAutoScale(bool enabled) {
+  if (y_auto_scale_ == enabled) {
+    return;
+  }
+  y_auto_scale_ = enabled;
+  update();
+}
+
+void PlotChartWidget::setYRange(double min_y, double max_y) {
+  if (max_y <= min_y) {
+    max_y = min_y + 1.0;
+  }
+  y_min_ = min_y;
+  y_max_ = max_y;
+  update();
+}
+
+void PlotChartWidget::setYAutoScaleRight(bool enabled) {
+  if (y_auto_scale_right_ == enabled) {
+    return;
+  }
+  y_auto_scale_right_ = enabled;
+  update();
+}
+
+void PlotChartWidget::setYRangeRight(double min_y, double max_y) {
+  if (max_y <= min_y) {
+    max_y = min_y + 1.0;
+  }
+  y_min_right_ = min_y;
+  y_max_right_ = max_y;
+  update();
+}
+
+void PlotChartWidget::setShowGrid(bool visible) {
+  if (show_grid_ == visible) {
+    return;
+  }
+  show_grid_ = visible;
+  update();
+}
+
+void PlotChartWidget::setShowReferenceY(bool visible) {
+  if (show_reference_y_ == visible) {
+    return;
+  }
+  show_reference_y_ = visible;
+  update();
+}
+
+void PlotChartWidget::setReferenceY(double y) {
+  reference_y_ = y;
+  update();
+}
+
 void PlotChartWidget::setReferenceTimeSec(double time_sec) {
   reference_time_sec_ = time_sec;
   update();
@@ -69,6 +219,7 @@ void PlotChartWidget::setInteractionMode(PlotInteractionMode mode) {
   interaction_mode_ = mode;
   dragging_ = false;
   pan_pending_ = false;
+  brush_dragging_ = false;
   zoom_rect_ = QRect();
   switch (mode) {
     case PlotInteractionMode::kPan:
@@ -80,6 +231,9 @@ void PlotChartWidget::setInteractionMode(PlotInteractionMode mode) {
     case PlotInteractionMode::kInspect:
       setCursor(Qt::PointingHandCursor);
       break;
+    case PlotInteractionMode::kBrush:
+      setCursor(Qt::IBeamCursor);
+      break;
     case PlotInteractionMode::kSelect:
     default:
       setCursor(hover_active_ ? Qt::CrossCursor : Qt::ArrowCursor);
@@ -87,6 +241,9 @@ void PlotChartWidget::setInteractionMode(PlotInteractionMode mode) {
   }
   if (mode != PlotInteractionMode::kInspect) {
     clearInspection();
+  }
+  if (mode != PlotInteractionMode::kBrush) {
+    clearBrush();
   }
   update();
 }
@@ -103,6 +260,13 @@ void PlotChartWidget::applySyncedXRange(double min_x, double max_x) {
 void PlotChartWidget::clearInspection() {
   inspect_a_ = PlotInspectPoint{};
   inspect_b_ = PlotInspectPoint{};
+  update();
+}
+
+void PlotChartWidget::clearBrush() {
+  brush_active_ = false;
+  brush_dragging_ = false;
+  brush_stats_.clear();
   update();
 }
 
@@ -177,7 +341,13 @@ void PlotChartWidget::finishPanGesture(bool emit_sync) {
 }
 
 QRect PlotChartWidget::chartRect() const {
-  return QRect(kAxisLeft, kAxisTop, width() - kAxisLeft - kAxisRight,
+  const bool wide_right = std::any_of(
+      series_.begin(), series_.end(), [](const PlotSeriesRuntime* runtime) {
+        return runtime != nullptr && runtime->config.enabled &&
+               runtime->config.use_right_y;
+      });
+  const int right = wide_right ? kAxisRightWide : kAxisRight;
+  return QRect(kAxisLeft, kAxisTop, width() - kAxisLeft - right,
                height() - kAxisTop - kAxisBottom);
 }
 
@@ -191,6 +361,35 @@ QRect PlotChartWidget::legendAnchorRect() const {
   return QRect(button.left(), button.bottom() + 8, 180, 120);
 }
 
+namespace {
+
+void FitYSpan(double* min_y, double* max_y, bool auto_scale, double fixed_min,
+              double fixed_max, bool has_points) {
+  if (!auto_scale) {
+    *min_y = fixed_min;
+    *max_y = fixed_max;
+    if (*max_y <= *min_y) {
+      *max_y = *min_y + 1.0;
+    }
+    return;
+  }
+  if (!has_points) {
+    *min_y = 0.0;
+    *max_y = 1.0;
+    return;
+  }
+  if (qFuzzyCompare(*min_y, *max_y)) {
+    *min_y -= 0.5;
+    *max_y += 0.5;
+  } else {
+    const double padding = (*max_y - *min_y) * 0.1;
+    *min_y -= padding;
+    *max_y += padding;
+  }
+}
+
+}  // namespace
+
 PlotChartWidget::AxisRange PlotChartWidget::baseAxisRange() const {
   AxisRange range;
   range.max_x = x_axis_mode_ == PlotXAxisMode::kTimestamp ? reference_time_sec_
@@ -200,55 +399,69 @@ PlotChartWidget::AxisRange PlotChartWidget::baseAxisRange() const {
                     : 0.0;
   range.min_y = 0.0;
   range.max_y = 1.0;
+  range.min_y_right = 0.0;
+  range.max_y_right = 1.0;
+  range.has_right_y = false;
 
-  bool has_points = false;
+  bool has_left = false;
+  bool has_right = false;
+  bool has_x = false;
   for (const PlotSeriesRuntime* runtime_ptr : series_) {
-    if (runtime_ptr == nullptr) {
+    if (runtime_ptr == nullptr || !runtime_ptr->config.enabled) {
       continue;
     }
-    const PlotSeriesRuntime& runtime = *runtime_ptr;
-    if (!runtime.config.enabled || !runtime.config.show_line) {
-      continue;
+    const bool right = runtime_ptr->config.use_right_y;
+    if (right) {
+      range.has_right_y = true;
     }
-    for (const PlotPoint& point : runtime.points) {
-      if (!has_points) {
+    for (const PlotPoint& point : runtime_ptr->points) {
+      if (!has_x) {
         range.min_x = point.x;
         range.max_x = point.x;
-        range.min_y = point.y;
-        range.max_y = point.y;
-        has_points = true;
+        has_x = true;
       } else {
         range.min_x = std::min(range.min_x, point.x);
         range.max_x = std::max(range.max_x, point.x);
-        range.min_y = std::min(range.min_y, point.y);
-        range.max_y = std::max(range.max_y, point.y);
+      }
+      if (right) {
+        if (!has_right) {
+          range.min_y_right = point.y;
+          range.max_y_right = point.y;
+          has_right = true;
+        } else {
+          range.min_y_right = std::min(range.min_y_right, point.y);
+          range.max_y_right = std::max(range.max_y_right, point.y);
+        }
+      } else {
+        if (!has_left) {
+          range.min_y = point.y;
+          range.max_y = point.y;
+          has_left = true;
+        } else {
+          range.min_y = std::min(range.min_y, point.y);
+          range.max_y = std::max(range.max_y, point.y);
+        }
       }
     }
   }
 
-  if (!has_points) {
-    return range;
-  }
-
-  if (x_axis_mode_ == PlotXAxisMode::kTimestamp && !view_override_active_) {
+  if (x_axis_mode_ == PlotXAxisMode::kTimestamp && !view_override_active_ &&
+      has_x) {
     range.max_x = reference_time_sec_;
     range.min_x = reference_time_sec_ - x_window_sec_;
   }
 
-  if (qFuzzyCompare(range.min_y, range.max_y)) {
-    range.min_y -= 0.5;
-    range.max_y += 0.5;
-  } else {
-    const double padding = (range.max_y - range.min_y) * 0.1;
-    range.min_y -= padding;
-    range.max_y += padding;
+  FitYSpan(&range.min_y, &range.max_y, y_auto_scale_, y_min_, y_max_, has_left);
+  if (range.has_right_y) {
+    FitYSpan(&range.min_y_right, &range.max_y_right, y_auto_scale_right_,
+             y_min_right_, y_max_right_, has_right);
   }
   return applyLockedAxisScales(range);
 }
 
 PlotChartWidget::AxisRange PlotChartWidget::applyLockedAxisScales(
     const AxisRange& range) const {
-  if (!lock_axis_scales_) {
+  if (!lock_axis_scales_ || range.has_right_y) {
     return range;
   }
   const QRect chart = chartRect();
@@ -275,7 +488,7 @@ PlotChartWidget::AxisRange PlotChartWidget::applyLockedAxisScales(
 
 PlotChartWidget::AxisRange PlotChartWidget::effectiveAxisRange() const {
   if (view_override_active_) {
-    AxisRange range;
+    AxisRange range = baseAxisRange();
     range.min_x = view_min_x_;
     range.max_x = view_max_x_;
     range.min_y = view_min_y_;
@@ -285,13 +498,15 @@ PlotChartWidget::AxisRange PlotChartWidget::effectiveAxisRange() const {
   return baseAxisRange();
 }
 
-QPointF PlotChartWidget::mapToChart(double x, double y,
-                                    const AxisRange& range) const {
+QPointF PlotChartWidget::mapToChart(double x, double y, const AxisRange& range,
+                                    bool use_right_y) const {
   const QRect chart = chartRect();
   const double dx = range.max_x - range.min_x;
-  const double dy = range.max_y - range.min_y;
+  const double min_y = use_right_y ? range.min_y_right : range.min_y;
+  const double max_y = use_right_y ? range.max_y_right : range.max_y;
+  const double dy = max_y - min_y;
   const double nx = dx <= 0.0 ? 0.0 : (x - range.min_x) / dx;
-  const double ny = dy <= 0.0 ? 0.0 : (y - range.min_y) / dy;
+  const double ny = dy <= 0.0 ? 0.0 : (y - min_y) / dy;
   return QPointF(chart.left() + nx * chart.width(),
                  chart.bottom() - ny * chart.height());
 }
@@ -346,7 +561,11 @@ std::optional<PlotChartWidget::HoverSample> PlotChartWidget::sampleAtX(
 
 QString PlotChartWidget::formatXAxisValue(double x) const {
   if (x_axis_mode_ == PlotXAxisMode::kTimestamp) {
-    const double rel = x - reference_time_sec_;
+    // Elapsed seconds from the left edge of the visible window (0 → forward).
+    const double origin = view_override_active_
+                              ? view_min_x_
+                              : (reference_time_sec_ - x_window_sec_);
+    const double rel = x - origin;
     return QString::number(rel, 'f', 1);
   }
   if (x_axis_mode_ == PlotXAxisMode::kIndex) {
@@ -357,7 +576,10 @@ QString PlotChartWidget::formatXAxisValue(double x) const {
 
 QString PlotChartWidget::formatTooltipXValue(double x) const {
   if (x_axis_mode_ == PlotXAxisMode::kTimestamp) {
-    const double rel = x - reference_time_sec_;
+    const double origin = view_override_active_
+                              ? view_min_x_
+                              : (reference_time_sec_ - x_window_sec_);
+    const double rel = x - origin;
     return tr("Time: %1 s").arg(QString::number(rel, 'f', 3));
   }
   if (x_axis_mode_ == PlotXAxisMode::kIndex) {
@@ -415,7 +637,8 @@ std::optional<PlotInspectPoint> PlotChartWidget::pickInspectPoint(
     }
     const PlotSeriesRuntime& runtime = *runtime_ptr;
     for (const PlotPoint& point : runtime.points) {
-      const QPointF mapped = mapToChart(point.x, point.y, range);
+      const QPointF mapped =
+          mapToChart(point.x, point.y, range, runtime.config.use_right_y);
       const double dist = QLineF(mapped, pos).length();
       if (dist < best_dist) {
         best_dist = dist;
@@ -423,8 +646,9 @@ std::optional<PlotInspectPoint> PlotChartWidget::pickInspectPoint(
         best.x = point.x;
         best.y = point.y;
         best.color = runtime.config.color;
-        best.series_label = runtime.config.label.isEmpty() ? runtime.config.field_path
-                                                           : runtime.config.label;
+        best.series_label = runtime.config.label.isEmpty()
+                                ? runtime.config.field_path
+                                : runtime.config.label;
       }
     }
   }
@@ -519,20 +743,34 @@ void PlotChartWidget::drawGrid(QPainter& painter, const AxisRange& range,
 
   for (int i = 0; i <= 10; ++i) {
     const double y = range.min_y + (range.max_y - range.min_y) * i / 10.0;
-    const QPointF p = mapToChart(range.min_x, y, range);
-    painter.setPen(QColor(235, 235, 235));
-    painter.drawLine(QPointF(chart.left(), p.y()), QPointF(chart.right(), p.y()));
+    const QPointF p = mapToChart(range.min_x, y, range, false);
+    if (show_grid_) {
+      painter.setPen(QColor(235, 235, 235));
+      painter.drawLine(QPointF(chart.left(), p.y()), QPointF(chart.right(), p.y()));
+    }
     painter.setPen(QColor(120, 120, 120));
     painter.drawText(QRect(4, static_cast<int>(p.y()) - 8, 48, 16),
                      Qt::AlignRight | Qt::AlignVCenter,
                      QString::number(y, 'f', 2));
+    if (range.has_right_y) {
+      const double y_r =
+          range.min_y_right +
+          (range.max_y_right - range.min_y_right) * i / 10.0;
+      painter.setPen(QColor(150, 110, 70));
+      painter.drawText(QRect(chart.right() + 4, static_cast<int>(p.y()) - 8, 48,
+                             16),
+                       Qt::AlignLeft | Qt::AlignVCenter,
+                       QString::number(y_r, 'f', 2));
+    }
   }
 
   for (int i = 0; i <= 6; ++i) {
     const double x = range.min_x + (range.max_x - range.min_x) * i / 6.0;
-    const QPointF p = mapToChart(x, range.min_y, range);
-    painter.setPen(QColor(235, 235, 235));
-    painter.drawLine(QPointF(p.x(), chart.top()), QPointF(p.x(), chart.bottom()));
+    const QPointF p = mapToChart(x, range.min_y, range, false);
+    if (show_grid_) {
+      painter.setPen(QColor(235, 235, 235));
+      painter.drawLine(QPointF(p.x(), chart.top()), QPointF(p.x(), chart.bottom()));
+    }
     painter.setPen(QColor(120, 120, 120));
     painter.drawText(QRect(static_cast<int>(p.x()) - 24, chart.bottom() + 4, 48,
                            16),
@@ -562,42 +800,73 @@ void PlotChartWidget::drawSeries(QPainter& painter, const AxisRange& range,
       continue;
     }
     const PlotSeriesRuntime& runtime = *runtime_ptr;
-    if (!runtime.config.enabled || !runtime.config.show_line ||
-        runtime.points.size() < 2) {
+    if (!runtime.config.enabled || runtime.points.empty()) {
       continue;
     }
+
+    std::deque<PlotPoint> visible;
+    for (const PlotPoint& point : runtime.points) {
+      if (point.x < range.min_x - x_margin || point.x > range.max_x + x_margin) {
+        continue;
+      }
+      visible.push_back(point);
+    }
+    if (visible.empty()) {
+      continue;
+    }
+
+    const std::vector<PlotPoint> draw_points =
+        DownsampleLttb(visible, kMaxDrawPoints);
+    const bool draw_line =
+        runtime.config.show_line && draw_points.size() >= 2;
+    const bool use_right = runtime.config.use_right_y;
+    const qreal line_width = ResolveLineWidth(runtime.config.line_size);
+    const qreal marker_r = std::max(2.0, line_width * 1.5);
 
     QPainterPath path;
     bool started = false;
-    for (const PlotPoint& point : runtime.points) {
-      if (point.x < range.min_x - x_margin || point.x > range.max_x + x_margin) {
-        started = false;
-        continue;
-      }
-      const QPointF mapped = mapToChart(point.x, point.y, range);
-      if (!started) {
-        path.moveTo(mapped);
-        started = true;
-      } else {
-        path.lineTo(mapped);
-      }
-    }
-    if (path.isEmpty()) {
-      continue;
+    QVector<QPointF> marker_pts;
+    if (!draw_line) {
+      marker_pts.reserve(static_cast<int>(draw_points.size()));
     }
 
-    QPen pen(runtime.config.color, 2.0);
-    pen.setCosmetic(true);
-    painter.setPen(pen);
-    painter.setBrush(Qt::NoBrush);
-    painter.drawPath(path);
+    for (const PlotPoint& point : draw_points) {
+      const QPointF mapped = mapToChart(point.x, point.y, range, use_right);
+      if (draw_line) {
+        if (!started) {
+          path.moveTo(mapped);
+          started = true;
+        } else {
+          path.lineTo(mapped);
+        }
+      } else {
+        marker_pts.push_back(mapped);
+      }
+    }
+
+    if (draw_line && !path.isEmpty()) {
+      QPen pen(runtime.config.color, line_width);
+      pen.setCosmetic(true);
+      painter.setPen(pen);
+      painter.setBrush(Qt::NoBrush);
+      painter.drawPath(path);
+    }
+
+    if (!marker_pts.isEmpty()) {
+      painter.setPen(Qt::NoPen);
+      painter.setBrush(runtime.config.color);
+      for (const QPointF& pt : marker_pts) {
+        painter.drawEllipse(pt, marker_r, marker_r);
+      }
+    }
 
     if (hover_active_ && interaction_mode_ == PlotInteractionMode::kSelect) {
       const std::optional<HoverSample> sample = sampleAtX(runtime, hover_x_);
       if (sample.has_value()) {
-        hover_markers.push_back(
-            HoverMarker{mapToChart(sample->sample_x, sample->y, range),
-                        runtime.config.color});
+        hover_markers.push_back(HoverMarker{
+            mapToChart(sample->sample_x, sample->y, range,
+                       runtime.config.use_right_y),
+            runtime.config.color});
       }
     }
   }
@@ -658,8 +927,8 @@ void PlotChartWidget::drawHoverCrosshair(QPainter& painter,
       if (!sample.has_value()) {
         continue;
       }
-      const QPointF hit =
-          mapToChart(sample->sample_x, sample->y, range);
+      const QPointF hit = mapToChart(sample->sample_x, sample->y, range,
+                                     runtime_ptr->config.use_right_y);
       QPen hpen(runtime_ptr->config.color, 1, Qt::DotLine);
       hpen.setCosmetic(true);
       painter.setPen(hpen);
@@ -731,6 +1000,173 @@ void PlotChartWidget::drawInspection(QPainter& painter, const AxisRange& range,
   }
 }
 
+void PlotChartWidget::recomputeBrushStats() {
+  brush_stats_.clear();
+  if (!brush_active_ || brush_max_x_ <= brush_min_x_) {
+    return;
+  }
+  for (const PlotSeriesRuntime* runtime_ptr : series_) {
+    if (runtime_ptr == nullptr || !runtime_ptr->config.enabled) {
+      continue;
+    }
+    BrushSeriesStats stats;
+    stats.label = runtime_ptr->config.label.isEmpty()
+                      ? runtime_ptr->config.field_path
+                      : runtime_ptr->config.label;
+    stats.color = runtime_ptr->config.color;
+    double sum = 0.0;
+    double sum_sq = 0.0;
+    for (const PlotPoint& point : runtime_ptr->points) {
+      if (point.x < brush_min_x_ || point.x > brush_max_x_) {
+        continue;
+      }
+      if (stats.count == 0) {
+        stats.min_y = point.y;
+        stats.max_y = point.y;
+        stats.min_x = point.x;
+        stats.max_x = point.x;
+      } else {
+        stats.min_y = std::min(stats.min_y, point.y);
+        stats.max_y = std::max(stats.max_y, point.y);
+        stats.min_x = std::min(stats.min_x, point.x);
+        stats.max_x = std::max(stats.max_x, point.x);
+      }
+      sum += point.y;
+      sum_sq += point.y * point.y;
+      ++stats.count;
+    }
+    if (stats.count <= 0) {
+      continue;
+    }
+    stats.mean = sum / static_cast<double>(stats.count);
+    stats.rms = std::sqrt(sum_sq / static_cast<double>(stats.count));
+    double var = 0.0;
+    for (const PlotPoint& point : runtime_ptr->points) {
+      if (point.x < brush_min_x_ || point.x > brush_max_x_) {
+        continue;
+      }
+      const double d = point.y - stats.mean;
+      var += d * d;
+    }
+    stats.stddev =
+        std::sqrt(var / static_cast<double>(std::max(1, stats.count)));
+    brush_stats_.push_back(stats);
+  }
+}
+
+void PlotChartWidget::applyBrushSpan(int pixel_a, int pixel_b,
+                                     const AxisRange& range,
+                                     const QRect& chart) {
+  const int left = std::min(pixel_a, pixel_b);
+  const int right = std::max(pixel_a, pixel_b);
+  if (right - left < 2) {
+    clearBrush();
+    return;
+  }
+  const std::optional<double> min_x = mapFromChartX(left, range);
+  const std::optional<double> max_x = mapFromChartX(right, range);
+  if (!min_x.has_value() || !max_x.has_value()) {
+    clearBrush();
+    return;
+  }
+  brush_min_x_ = std::min(*min_x, *max_x);
+  brush_max_x_ = std::max(*min_x, *max_x);
+  brush_active_ = true;
+  recomputeBrushStats();
+  Q_UNUSED(chart);
+  update();
+}
+
+void PlotChartWidget::drawReferenceY(QPainter& painter, const AxisRange& range,
+                                     const QRect& chart) const {
+  if (!show_reference_y_) {
+    return;
+  }
+  if (reference_y_ < range.min_y || reference_y_ > range.max_y) {
+    return;
+  }
+  const QPointF left = mapToChart(range.min_x, reference_y_, range);
+  const QPointF right = mapToChart(range.max_x, reference_y_, range);
+  QPen pen(QColor(220, 80, 80), 1.5, Qt::DashLine);
+  pen.setCosmetic(true);
+  painter.setPen(pen);
+  painter.drawLine(QPointF(chart.left(), left.y()),
+                   QPointF(chart.right(), right.y()));
+  painter.setPen(QColor(180, 60, 60));
+  painter.drawText(QRect(chart.right() - 72, static_cast<int>(left.y()) - 14, 68,
+                         14),
+                   Qt::AlignRight | Qt::AlignVCenter,
+                   QString::number(reference_y_, 'g', 4));
+}
+
+void PlotChartWidget::drawBrush(QPainter& painter, const AxisRange& range,
+                                const QRect& chart) const {
+  const bool show =
+      brush_dragging_ ||
+      (brush_active_ && interaction_mode_ == PlotInteractionMode::kBrush);
+  if (!show) {
+    return;
+  }
+
+  int left_px = 0;
+  int right_px = 0;
+  if (brush_dragging_) {
+    left_px = std::min(drag_start_.x(), brush_drag_x_);
+    right_px = std::max(drag_start_.x(), brush_drag_x_);
+  } else {
+    const QPointF a = mapToChart(brush_min_x_, range.min_y, range);
+    const QPointF b = mapToChart(brush_max_x_, range.min_y, range);
+    left_px = static_cast<int>(std::min(a.x(), b.x()));
+    right_px = static_cast<int>(std::max(a.x(), b.x()));
+  }
+  left_px = std::max(left_px, chart.left());
+  right_px = std::min(right_px, chart.right());
+  if (right_px <= left_px) {
+    return;
+  }
+
+  const QRect band(left_px, chart.top(), right_px - left_px, chart.height());
+  painter.setPen(QPen(QColor(120, 90, 200), 1, Qt::DashLine));
+  painter.setBrush(QColor(120, 90, 200, 45));
+  painter.drawRect(band);
+
+  if (!brush_active_ || brush_stats_.isEmpty() || brush_dragging_) {
+    return;
+  }
+
+  QStringList lines;
+  lines << tr("Δt: %1").arg(formatDeltaXValue(brush_max_x_ - brush_min_x_));
+  for (const BrushSeriesStats& stats : brush_stats_) {
+    lines << QStringLiteral("%1  n=%2  min=%3  max=%4  μ=%5  σ=%6  rms=%7")
+                 .arg(stats.label)
+                 .arg(stats.count)
+                 .arg(stats.min_y, 0, 'g', 4)
+                 .arg(stats.max_y, 0, 'g', 4)
+                 .arg(stats.mean, 0, 'g', 4)
+                 .arg(stats.stddev, 0, 'g', 4)
+                 .arg(stats.rms, 0, 'g', 4);
+  }
+
+  QFontMetrics fm(font());
+  int max_w = 0;
+  for (const QString& line : lines) {
+    max_w = std::max(max_w, fm.horizontalAdvance(line));
+  }
+  const int box_w = std::min(max_w + 20, chart.width() - 16);
+  const int box_h = lines.size() * (fm.height() + 4) + 12;
+  const QRect box(chart.left() + 8, chart.top() + 8, box_w, box_h);
+  painter.setPen(QColor(180, 180, 180));
+  painter.setBrush(QColor(255, 255, 255, 245));
+  painter.drawRoundedRect(box, 4, 4);
+  int y = box.top() + 8;
+  painter.setPen(QColor(40, 40, 40));
+  for (const QString& line : lines) {
+    painter.drawText(QRect(box.left() + 10, y, box.width() - 20, fm.height() + 4),
+                     Qt::AlignLeft | Qt::AlignVCenter, line);
+    y += fm.height() + 4;
+  }
+}
+
 void PlotChartWidget::drawTooltip(QPainter& painter) const {
   if (interaction_mode_ == PlotInteractionMode::kInspect) {
     return;
@@ -795,9 +1231,11 @@ void PlotChartWidget::paintEvent(QPaintEvent* /*event*/) {
   painter.fillRect(rect(), palette().color(QPalette::Window));
   drawGrid(painter, range, chart);
   drawSeries(painter, range, chart);
+  drawReferenceY(painter, range, chart);
   drawPlaybackLine(painter, range, chart);
   drawHoverCrosshair(painter, range, chart);
   drawInspection(painter, range, chart);
+  drawBrush(painter, range, chart);
 
   if (interaction_mode_ == PlotInteractionMode::kZoom && !zoom_rect_.isNull()) {
     painter.setPen(QPen(QColor(78, 152, 226), 1, Qt::DashLine));
@@ -873,17 +1311,88 @@ void PlotChartWidget::mousePressEvent(QMouseEvent* event) {
       event->accept();
       return;
     }
+    if (interaction_mode_ == PlotInteractionMode::kBrush) {
+      dragging_ = true;
+      brush_dragging_ = true;
+      pan_pending_ = false;
+      drag_start_ = event->pos();
+      brush_drag_x_ = drag_start_.x();
+      event->accept();
+      return;
+    }
   }
   QWidget::mousePressEvent(event);
+}
+
+void PlotChartWidget::contextMenuEvent(QContextMenuEvent* event) {
+  updateHoverFromMouse(event->pos());
+
+  const PlotSeriesRuntime* nearest = nullptr;
+  if (chartRect().contains(event->pos())) {
+    const AxisRange range = effectiveAxisRange();
+    double best_dist = kInspectPickRadiusPx;
+    for (const PlotSeriesRuntime* runtime_ptr : series_) {
+      if (runtime_ptr == nullptr || !runtime_ptr->config.enabled) {
+        continue;
+      }
+      for (const PlotPoint& point : runtime_ptr->points) {
+        const QPointF mapped = mapToChart(point.x, point.y, range,
+                                          runtime_ptr->config.use_right_y);
+        const double dist = QLineF(mapped, event->pos()).length();
+        if (dist < best_dist) {
+          best_dist = dist;
+          nearest = runtime_ptr;
+        }
+      }
+    }
+  }
+
+  QMenu menu(this);
+  QAction* copy_values = nullptr;
+  if (hover_active_ && tooltip_rows_.size() > 1) {
+    copy_values = menu.addAction(tr("Copy values"));
+  }
+  QAction* copy_path = nullptr;
+  if (nearest != nullptr && !nearest->config.field_path.isEmpty()) {
+    copy_path = menu.addAction(tr("Copy series path"));
+  }
+  if (menu.isEmpty()) {
+    event->ignore();
+    return;
+  }
+
+  QAction* chosen = menu.exec(event->globalPos());
+  QClipboard* clipboard = QApplication::clipboard();
+  if (chosen == nullptr || clipboard == nullptr) {
+    event->accept();
+    return;
+  }
+  if (chosen == copy_values) {
+    QStringList lines;
+    for (int i = 0; i < tooltip_rows_.size(); ++i) {
+      const TooltipRow& row = tooltip_rows_.at(i);
+      if (i == 0) {
+        lines.push_back(row.label);
+        continue;
+      }
+      lines.push_back(row.label + QLatin1Char('\t') + row.value_text);
+    }
+    clipboard->setText(lines.join(QLatin1Char('\n')));
+  } else if (chosen == copy_path) {
+    clipboard->setText(
+        CombinedPlotValuePath(nearest->config.channel, nearest->config.field_path));
+  }
+  event->accept();
 }
 
 void PlotChartWidget::mouseMoveEvent(QMouseEvent* event) {
   const QRect chart = chartRect();
   if (chart.contains(event->pos()) &&
-      interaction_mode_ != PlotInteractionMode::kZoom && !dragging_ &&
+      interaction_mode_ != PlotInteractionMode::kZoom &&
+      interaction_mode_ != PlotInteractionMode::kBrush && !dragging_ &&
       !pan_pending_) {
     updateHoverFromMouse(event->pos());
-  } else if (!dragging_ && !pan_pending_) {
+  } else if (!dragging_ && !pan_pending_ && !brush_dragging_) {
     clearHover();
   }
 
@@ -903,6 +1412,11 @@ void PlotChartWidget::mouseMoveEvent(QMouseEvent* event) {
 
   if (interaction_mode_ == PlotInteractionMode::kZoom) {
     zoom_rect_ = QRect(drag_start_, event->pos()).normalized();
+    update();
+    return;
+  }
+  if (interaction_mode_ == PlotInteractionMode::kBrush && brush_dragging_) {
+    brush_drag_x_ = event->pos().x();
     update();
   }
 }
@@ -948,6 +1462,15 @@ void PlotChartWidget::mouseReleaseEvent(QMouseEvent* event) {
       emitViewRangeIfNeeded();
     }
     update();
+    event->accept();
+    return;
+  }
+  if (interaction_mode_ == PlotInteractionMode::kBrush) {
+    const QRect chart = chartRect();
+    brush_dragging_ = false;
+    applyBrushSpan(drag_start_.x(), brush_drag_x_, effectiveAxisRange(), chart);
+    event->accept();
+    return;
   }
 }
 
@@ -1107,7 +1630,17 @@ void PlotChartWidget::keyPressEvent(QKeyEvent* event) {
       event->accept();
       return;
     }
+    if (interaction_mode_ == PlotInteractionMode::kBrush) {
+      if (brush_active_ || brush_dragging_) {
+        clearBrush();
+      } else {
+        emit inspectEscapeRequested();
+      }
+      event->accept();
+      return;
+    }
     dragging_ = false;
+    brush_dragging_ = false;
     zoom_rect_ = QRect();
     update();
     event->accept();

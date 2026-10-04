@@ -25,10 +25,18 @@ QVector3D UnprojectPixel(const QMatrix4x4& inverse_mvp, float ndc_x,
   const QVector4D near_point = inverse_mvp * QVector4D(ndc_x, ndc_y, -1.f, 1.f);
   const QVector4D far_point = inverse_mvp * QVector4D(ndc_x, ndc_y, 1.f, 1.f);
   const QVector3D near_w =
-      QVector3D(near_point.x(), near_point.y(), near_point.z()) / near_point.w();
+      QVector3D(near_point.x(), near_point.y(), near_point.z()) /
+      std::max(near_point.w(), 1e-6f);
   const QVector3D far_w =
-      QVector3D(far_point.x(), far_point.y(), far_point.z()) / far_point.w();
+      QVector3D(far_point.x(), far_point.y(), far_point.z()) /
+      std::max(far_point.w(), 1e-6f);
   return far_w - near_w;
+}
+
+QVector3D UnprojectPoint(const QMatrix4x4& inverse_mvp, float ndc_x, float ndc_y,
+                         float ndc_z) {
+  const QVector4D clip = inverse_mvp * QVector4D(ndc_x, ndc_y, ndc_z, 1.f);
+  return QVector3D(clip.x(), clip.y(), clip.z()) / std::max(clip.w(), 1e-6f);
 }
 
 bool IntersectGroundPlane(const QVector3D& origin, const QVector3D& direction,
@@ -217,6 +225,21 @@ QMatrix4x4 ViewController::topDownViewMatrix() const {
   return view;
 }
 
+QMatrix4x4 ViewController::topDownOrthoViewMatrix() const {
+  // RViz FixedOrientationOrtho / TopDownOrtho: camera sits directly above the
+  // focal point on +Z and looks straight down. An XY eye offset (legacy
+  // topDownViewMatrix) foreshortens the ground plane so Grid cells stretch.
+  const float height = std::max(distance_, 1.f);
+  const QVector3D eye(target_.x(), target_.y(), target_.z() + height);
+  const float c = qCos(yaw_);
+  const float s = qSin(yaw_);
+  // yaw = 0 → up = +Y (RViz Angle default).
+  const QVector3D up(-s, c, 0.f);
+  QMatrix4x4 view;
+  view.lookAt(eye, target_, up);
+  return view;
+}
+
 QMatrix4x4 ViewController::thirdPersonViewMatrix() const {
   const float x = distance_ * qCos(yaw_);
   const float y = distance_ * qSin(yaw_);
@@ -251,8 +274,9 @@ QMatrix4x4 ViewController::viewMatrix() const {
 QMatrix4x4 ViewController::localViewMatrix() const {
   switch (type_) {
     case ViewControllerType::kTopDown:
-    case ViewControllerType::kTopDownOrtho:
       return topDownViewMatrix();
+    case ViewControllerType::kTopDownOrtho:
+      return topDownOrthoViewMatrix();
     case ViewControllerType::kXyOrbit:
       return orbitViewMatrix();
     case ViewControllerType::kThirdPersonFollow:
@@ -598,9 +622,14 @@ bool ViewController::pickGroundPoint(int pixel_x, int pixel_y, int viewport_widt
   const float ndc_y =
       1.f -
       (2.f * static_cast<float>(pixel_y) / static_cast<float>(viewport_height));
-  const QVector3D direction = UnprojectPixel(inverse, ndc_x, ndc_y).normalized();
-  const QVector3D origin = inverse.map(QVector3D(0.f, 0.f, 0.f));
-  return IntersectGroundPlane(origin, direction, hit);
+  // Per-pixel near/far (required for ortho: rays are parallel, so using the
+  // frustum-center origin maps every pixel to the same ground hit).
+  const QVector3D origin = UnprojectPoint(inverse, ndc_x, ndc_y, -1.f);
+  const QVector3D direction = UnprojectPixel(inverse, ndc_x, ndc_y);
+  if (direction.lengthSquared() < 1e-12f) {
+    return false;
+  }
+  return IntersectGroundPlane(origin, direction.normalized(), hit);
 }
 
 void ViewController::appendFocalShape(SceneOverlay* overlay) const {

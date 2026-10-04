@@ -4,17 +4,22 @@
 
 #include "autoviz/ui/service/service_editor_widget.hpp"
 
+#include <QAction>
+#include <QApplication>
 #include <QCheckBox>
+#include <QClipboard>
 #include <QComboBox>
 #include <QCompleter>
 #include <QFont>
 #include <QFormLayout>
 #include <QFrame>
 #include <QGroupBox>
+#include <QHash>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QTreeWidgetItem>
 #include <QLabel>
+#include <QMenu>
 #include <QMetaObject>
 #include <QPlainTextEdit>
 #include <QPushButton>
@@ -28,7 +33,8 @@
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/integration/service_client_registry.hpp"
 #include "autoviz/integration/service_discovery.hpp"
-#include "autoviz/ui/panel_settings_styles.hpp"
+#include "autoviz/ui/theme/panel.hpp"
+#include "autoviz/ui/theme/style.hpp"
 #include "autoviz/ui/publish/publish_field_tree.hpp"
 #include "autoviz/ui/service/service_message_codec.hpp"
 
@@ -94,7 +100,7 @@ ServiceEditorWidget::ServiceEditorWidget(common::VisualizationManager* manager,
   call_button_->setMinimumSize(88, 32);
   call_button_->setDefault(true);
   call_button_->setStyleSheet(
-      QStringLiteral("QPushButton { font-weight: 600; padding: 4px 16px; }"));
+      style::sheet(QStringLiteral("service")));
   top_layout->addWidget(call_button_);
   root->addWidget(rqt_top_bar_);
 
@@ -243,8 +249,25 @@ QPlainTextEdit* ServiceEditorWidget::makeJsonEditor(QWidget* parent,
   mono.setFamily(QStringLiteral("Monospace"));
   mono.setPointSizeF(std::max(9.0, mono.pointSizeF() - 1.0));
   editor->setFont(mono);
+  editor->setContextMenuPolicy(Qt::CustomContextMenu);
+  const QString copy_label =
+      read_only ? tr("Copy response JSON") : tr("Copy request JSON");
+  connect(editor, &QPlainTextEdit::customContextMenuRequested, editor,
+          [editor, copy_label](const QPoint& pos) {
+            QMenu* menu = editor->createStandardContextMenu();
+            menu->addSeparator();
+            QAction* copy_all = menu->addAction(copy_label);
+            QAction* chosen = menu->exec(editor->mapToGlobal(pos));
+            if (chosen == copy_all) {
+              if (QClipboard* clipboard = QApplication::clipboard()) {
+                clipboard->setText(editor->toPlainText());
+              }
+            }
+            delete menu;
+          });
   if (read_only) {
-    editor->setStyleSheet(QStringLiteral("QPlainTextEdit { background: palette(alternate-base); }"));
+    editor->setStyleSheet(
+        style::sheet(QStringLiteral("service")));
   }
   return editor;
 }
@@ -336,20 +359,15 @@ void ServiceEditorWidget::applyEditingModeUi() {
 
 void ServiceEditorWidget::applyButtonStyle() {
   if (config_.button_color.isValid()) {
+    QHash<QString, QString> tokens;
+    tokens.insert(QStringLiteral("{{btn-bg}}"), config_.button_color.name());
+    tokens.insert(QStringLiteral("{{btn-hover}}"),
+                  config_.button_color.lighter(110).name());
     call_button_->setStyleSheet(
-        QStringLiteral(
-            "QPushButton { background: %1; color: palette(button-text); border: none;"
-            " border-radius: 4px; padding: 6px 12px; font-weight: 600; }"
-            "QPushButton:hover { background: %2; }"
-            "QPushButton:disabled { background: palette(mid); color: palette(midlight); }")
-            .arg(config_.button_color.name(), config_.button_color.lighter(110).name()));
+        style::sheet(QStringLiteral("service"), tokens));
   } else {
     call_button_->setStyleSheet(
-        QStringLiteral(
-            "QPushButton { background: palette(highlight); color: palette(highlighted-text);"
-            " border: none; border-radius: 4px; padding: 6px 12px; font-weight: 600; }"
-            "QPushButton:hover { background: palette(highlight); }"
-            "QPushButton:disabled { background: palette(mid); color: palette(midlight); }"));
+        style::sheet(QStringLiteral("service")));
   }
 }
 

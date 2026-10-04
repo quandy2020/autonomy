@@ -15,7 +15,6 @@
 #include "autoviz/integration/service_client_registry.hpp"
 #include "autoviz/integration/channel_writer_registry.hpp"
 #include "autoviz/integration/message_queue.hpp"
-#include "autoviz/ui/log/log_hub.hpp"
 #include "autoviz/display/display.hpp"
 #include "autoviz/display/display_group.hpp"
 #include "autoviz/display/interactive_marker_display.hpp"
@@ -60,23 +59,25 @@ bool VisualizationManager::initialize(const char* binary_name) {
   channel_manager_ = std::make_unique<integration::ChannelManager>(
       topology->channel_manager());
 
-  // Apply defaults with displays disabled. Creating live readers here would race
-  // loadConfig() (which tears them down) and can stall for a long time in
-  // RemoveCRoutine when a publisher is already flooding those channels.
+  // Apply defaults. Channel-backed displays start disabled to avoid racing
+  // loadConfig() (teardown can stall in RemoveCRoutine under publisher flood).
+  // Channel-less displays (e.g. Grid) stay enabled so the default scene shows
+  // a reference grid, matching RViz2.
   SessionConfig startup_config = SessionConfigIO::defaultConfig();
-  std::function<void(std::vector<DisplayConfig>&)> disable_displays =
+  std::function<void(std::vector<DisplayConfig>&)> disable_channel_displays =
       [&](std::vector<DisplayConfig>& displays) {
         for (auto& display : displays) {
-          display.enabled = false;
-          disable_displays(display.children);
+          if (!display.channel.empty()) {
+            display.enabled = false;
+          }
+          disable_channel_displays(display.children);
         }
       };
-  disable_displays(startup_config.displays);
+  disable_channel_displays(startup_config.displays);
   applySession(startup_config);
   refreshChannelList();
   wall_start_ = std::chrono::steady_clock::now();
   sim_origin_sec_ = simTimeSec();
-  autoviz::log_panel::LogHub::instance().installGlogCapture();
   initialized_ = true;
   return true;
 }
@@ -96,7 +97,6 @@ void VisualizationManager::shutdown() {
   display_views_.clear();
   interactive_marker_registry_ = display::InteractiveMarkerRegistry{};
   channel_manager_.reset();
-  autoviz::log_panel::LogHub::instance().uninstallGlogCapture();
   tf_listener_.stop();
   integration::ChannelReaderRegistry::instance().setNode(nullptr);
   integration::ChannelWriterRegistry::instance().setNode(nullptr);
@@ -146,11 +146,14 @@ void VisualizationManager::applySession(const SessionConfig& config) {
   interactive_marker_registry_ = display::InteractiveMarkerRegistry{};
 
   fixed_frame_ = config.fixed_frame;
-  show_grid_ = config.show_grid;
   target_frame_rate_ = std::clamp(config.frame_rate, 1, 120);
+  time_sync_mode_ = static_cast<TimeSyncMode>(
+      std::clamp(config.time_sync_mode, 0, 2));
+  time_sync_source_ = config.time_sync_source;
   background_color_ = config.background_color;
   view_controller_name_ = config.view_controller;
-  render_backend_name_ = config.render_backend;
+  render_backend_name_ =
+      (config.render_backend == "Ogre") ? config.render_backend : "Ogre";
   window_state_b64_ = config.window_state_b64;
   main_panel_state_b64_ = config.main_panel_state_b64;
   window_geometry_b64_ = config.window_geometry_b64;
@@ -160,9 +163,16 @@ void VisualizationManager::applySession(const SessionConfig& config) {
   visible_panels_ = config.visible_panels;
   plot_panels_ = config.plot_panels;
   image_panels_ = config.image_panels;
-  state_transition_panels_ = config.state_transition_panels;
   publish_panels_ = config.publish_panels;
-  variable_store_.loadFromSession(config.variables);
+  service_panels_ = config.service_panels;
+  teleop_panels_ = config.teleop_panels;
+  map_panels_ = config.map_panels;
+  channels_browser_ = config.channels_browser;
+  raw_messages_ = config.raw_messages;
+  table_panels_ = config.table_panels;
+  channel_graph_panels_ = config.channel_graph_panels;
+  tf_tree_panels_ = config.tf_tree_panels;
+  session_variables_ = config.variables;
   plot_settings_visible_ = config.plot_settings_visible;
   window_x_ = config.window_x;
   window_y_ = config.window_y;
@@ -178,9 +188,6 @@ void VisualizationManager::applySession(const SessionConfig& config) {
     tool_manager_.setActiveTool(config.active_tool);
   }
   syncDisplayContext();
-  if (grid_visibility_callback_) {
-    grid_visibility_callback_(show_grid_);
-  }
   if (background_color_callback_) {
     background_color_callback_(background_color_);
   }
@@ -315,8 +322,9 @@ display::Display* ResolveDisplay(display::Display* display, int child_index) {
 SessionConfig VisualizationManager::currentSession() const {
   SessionConfig config;
   config.fixed_frame = fixed_frame_;
-  config.show_grid = show_grid_;
   config.frame_rate = target_frame_rate_;
+  config.time_sync_mode = static_cast<int>(time_sync_mode_);
+  config.time_sync_source = time_sync_source_;
   config.background_color = background_color_;
   config.view_controller = view_controller_name_;
   config.render_backend = render_backend_name_;
@@ -329,9 +337,16 @@ SessionConfig VisualizationManager::currentSession() const {
   config.visible_panels = visible_panels_;
   config.plot_panels = plot_panels_;
   config.image_panels = image_panels_;
-  config.state_transition_panels = state_transition_panels_;
   config.publish_panels = publish_panels_;
-  config.variables = variable_store_.saveToSession();
+  config.service_panels = service_panels_;
+  config.teleop_panels = teleop_panels_;
+  config.map_panels = map_panels_;
+  config.channels_browser = channels_browser_;
+  config.raw_messages = raw_messages_;
+  config.table_panels = table_panels_;
+  config.channel_graph_panels = channel_graph_panels_;
+  config.tf_tree_panels = tf_tree_panels_;
+  config.variables = session_variables_;
   config.plot_settings_visible = plot_settings_visible_;
   config.window_x = window_x_;
   config.window_y = window_y_;
@@ -427,7 +442,6 @@ void VisualizationManager::update() {
   for (auto& display : displays_) {
     display->update();
   }
-  syncReferenceGridFromDisplays();
   scene_overlay_.clear();
   for (auto& display : displays_) {
     display->draw(scene_overlay_);
@@ -436,48 +450,6 @@ void VisualizationManager::update() {
   tool_manager_.onDraw(scene_overlay_);
   display_context_.incrementFrameCount();
   updating_ = false;
-}
-
-void VisualizationManager::syncReferenceGridFromDisplays() {
-  bool found = false;
-  std::function<bool(const display::Display*)> visit =
-      [&](const display::Display* display) -> bool {
-    if (display == nullptr) {
-      return false;
-    }
-    if (display->enabled() && display->typeId() == "Grid") {
-      rendering::ReferenceGridSettings settings;
-      settings.plane_cell_count = static_cast<int>(common::ParseFloatProperty(
-          display->propertyValue("cell_count", "10"), 10.f));
-      settings.cell_length = common::ParseFloatProperty(
-          display->propertyValue("cell_size", "1.0"), 1.f);
-      settings.color = common::ParseColorProperty(
-          display->propertyValue("color", "80;80;80"), QColor(80, 80, 80));
-      settings.alpha = common::ParseFloatProperty(
-          display->propertyValue("alpha", "1.0"), 1.f);
-      settings.show_axes = true;
-      settings.axis_length = settings.cell_length;
-      reference_grid_settings_ = settings;
-      return true;
-    }
-    if (const auto* group =
-            dynamic_cast<const display::DisplayGroup*>(display)) {
-      for (std::size_t i = 0; i < group->children().size(); ++i) {
-        if (visit(group->child(i))) {
-          return true;
-        }
-      }
-    }
-    return false;
-  };
-
-  for (const auto* display : display_views_) {
-    if (visit(display)) {
-      found = true;
-      break;
-    }
-  }
-  (void)found;
 }
 
 void VisualizationManager::refreshChannelList() {
@@ -492,13 +464,6 @@ void VisualizationManager::setFixedFrame(const std::string& frame) {
   fixed_frame_ = frame;
   frame_manager_.setFixedFrame(frame);
   syncDisplayContext();
-}
-
-void VisualizationManager::setShowGrid(bool show) {
-  show_grid_ = show;
-  if (grid_visibility_callback_) {
-    grid_visibility_callback_(show_grid_);
-  }
 }
 
 void VisualizationManager::setBackgroundColor(const std::string& color) {
@@ -542,14 +507,6 @@ std::vector<std::string> VisualizationManager::channelNames() const {
     names.push_back(channel.channel_name);
   }
   return names;
-}
-
-void VisualizationManager::setGridVisibilityCallback(
-    std::function<void(bool)> callback) {
-  grid_visibility_callback_ = std::move(callback);
-  if (grid_visibility_callback_) {
-    grid_visibility_callback_(show_grid_);
-  }
 }
 
 bool VisualizationManager::addDisplay(const DisplayConfig& config) {
@@ -763,14 +720,48 @@ void VisualizationManager::setImagePanels(
   image_panels_ = panels;
 }
 
-void VisualizationManager::setStateTransitionPanels(
-    const std::vector<StateTransitionPanelPersistConfig>& panels) {
-  state_transition_panels_ = panels;
-}
-
 void VisualizationManager::setPublishPanels(
     const std::vector<PublishPanelPersistConfig>& panels) {
   publish_panels_ = panels;
+}
+
+void VisualizationManager::setServicePanels(
+    const std::vector<ServicePanelPersistConfig>& panels) {
+  service_panels_ = panels;
+}
+
+void VisualizationManager::setTeleopPanels(
+    const std::vector<TeleopPanelPersistConfig>& panels) {
+  teleop_panels_ = panels;
+}
+
+void VisualizationManager::setMapPanels(
+    const std::vector<MapPanelPersistConfig>& panels) {
+  map_panels_ = panels;
+}
+
+void VisualizationManager::setChannelsBrowser(
+    const ChannelsBrowserPersistConfig& config) {
+  channels_browser_ = config;
+}
+
+void VisualizationManager::setRawMessages(const RawMessagesPersistConfig& config) {
+  raw_messages_ = config;
+}
+
+void VisualizationManager::setTablePanels(
+    const std::vector<TablePanelPersistConfig>& panels) {
+  table_panels_ = panels;
+}
+
+void VisualizationManager::setChannelGraphPanels(
+    const std::vector<ChannelGraphPanelPersistConfig>& panels) {
+  channel_graph_panels_ = panels;
+}
+
+void VisualizationManager::setTfTreePanels(
+    const std::vector<TfTreePanelPersistConfig>& panels) {
+  tf_tree_panels_ = panels;
 }
 
 void VisualizationManager::setPlotSettingsVisible(bool visible) {
@@ -800,7 +791,8 @@ void VisualizationManager::setViewControllerCallback(
 }
 
 void VisualizationManager::setRenderBackendName(const std::string& name) {
-  render_backend_name_ = name;
+  // Viewport is Ogre-only; ignore legacy "OpenGL" session values.
+  render_backend_name_ = (name == "Ogre") ? name : "Ogre";
   if (render_backend_callback_) {
     render_backend_callback_(render_backend_name_);
   }

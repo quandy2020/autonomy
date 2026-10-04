@@ -4,8 +4,6 @@
 
 #include "autoviz/rendering/objects/ogre_arrow.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <OgreSceneManager.h>
 #include <OgreSceneNode.h>
 
@@ -104,4 +102,3 @@ void OgreArrow::setUserData(const Ogre::Any& data) {
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

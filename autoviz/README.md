@@ -2,7 +2,7 @@
 
 Autonomy 原生 3D 机器人可视化工具，**零 ROS 依赖**，直接接入 **Autolink** 通信层，**跨平台**：Linux / **macOS** / Windows 独立部署。
 
-> 架构：[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · 部署：[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) · macOS：[deploy/macos/README.md](deploy/macos/README.md)
+> 文档索引：[docs/README.md](docs/README.md) · 架构：[docs/architecture/overview.md](docs/architecture/overview.md) · 部署：[docs/guide/deployment.md](docs/guide/deployment.md) · macOS：[deploy/macos/README.md](deploy/macos/README.md)
 
 ## 定位
 
@@ -15,30 +15,24 @@ Autonomy 原生 3D 机器人可视化工具，**零 ROS 依赖**，直接接入 
 
 ## 目录结构
 
-独立 CMake 工程，参考 QGC 的分层思路，保持 **7 个 cmake 模块 + 1 个根 CMakeLists**：
+独立 CMake 工程，基于 [autocmake](../autocmake/)：
 
 ```text
 autoviz/
-├── CMakeLists.txt       # 引导：模式检测 → include 模块 → 摘要
-├── CMakePresets.json    # debug / release 预设
+├── CMakeLists.txt       # autocmake_project / binary / package
+├── package.xml          # 依赖清单（autolink、automsgs、…）
 ├── cmake/
-│   ├── Config.cmake     # 选项、工具链、Qt AUTOMOC
-│   ├── Dependencies.cmake
-│   ├── Sources.cmake
-│   ├── App.cmake        # autoviz + bicmap 示例工具
-│   ├── OgreBackend.cmake
-│   ├── Tests.cmake      # 可选，-DBUILD_AUTOVIZ_TESTS=ON
-│   └── Install.cmake
+│   ├── Functions.cmake        # 源码收集 / Ogre / 桌面安装
+│   └── apply_ogre_patches.sh
 ├── autoviz/             # C++ 源码
-├── qml/                 # Qt Quick 3D 车辆预览
 └── resources/
 ```
 
 ## 构建
 
-依赖：Qt 6、OpenGL 3.3+、**automsgs**、**autolink**、yaml-cpp。**不链接** ROS / rviz / `libautonomy`。
+依赖：Qt 6、**Ogre 1.x**（默认 auto-vendor 1.12.10）、**automsgs**、**autolink**、yaml-cpp。**不链接** ROS / rviz / `libautonomy`。视口为 Ogre，不使用纯 OpenGL 后端。
 
-### colcon（推荐）
+### colcon / autocmake 工作空间
 
 在 workspace 根目录（含 `src/autonomy/autoviz/package.xml`）：
 
@@ -48,7 +42,13 @@ source install/setup.bash
 autoviz   # 或 ./install/autoviz/bin/autoviz
 ```
 
-仅编译 `autonomy` 主包时默认**不再**内嵌 autoviz；若仍需超项目内嵌：
+或：
+
+```bash
+../autocmake/scripts/autocmake build --base-path . --packages-select autoviz
+```
+
+仅编译 `autonomy` 主包时若仍需超项目内嵌：
 
 ```bash
 colcon build --packages-select autonomy --cmake-args -DBUILD_AUTOVIZ=ON
@@ -56,29 +56,28 @@ colcon build --packages-select autonomy --cmake-args -DBUILD_AUTOVIZ=ON
 
 | 平台 | 依赖安装 | 构建要点 |
 |------|----------|----------|
-| **Linux** | `qt6-base-dev` `libqt6svg6-dev` … | `cmake -B build && cmake --build build --target autoviz` |
+| **Linux** | `qt6-base-dev` `libqt6svg6-dev` … | `cmake -B build && cmake --build build --target autoviz_app` |
 | **macOS** | `brew install qt@6 cmake ninja …` | `-DCMAKE_PREFIX_PATH="$(brew --prefix qt@6)"`，详见 [deploy/macos](deploy/macos/README.md) |
 | **Windows** | MSVC + Qt6 安装器 | `-DCMAKE_PREFIX_PATH=C:\Qt\6.x\msvc2019_64`，见 [deploy/windows](deploy/windows/README.md) |
 
 ```bash
 cd src/autonomy/autoviz   # 或本仓库 autoviz/
 cmake -B build
-cmake --build build --target autoviz
-./build/bin/autoviz
+cmake --build build --target autoviz_app
+./build/bin/autoviz          # 链接 build/lib/libautoviz.*
 ```
 
 macOS 示例：
 
 ```bash
 cmake -B build -DCMAKE_PREFIX_PATH="$(brew --prefix qt@6)"
-cmake --build build --target autoviz
+cmake --build build --target autoviz_app
 ./build/bin/autoviz
 ```
 
-或使用预设 / 工具脚本：
+或使用工具脚本：
 
 ```bash
-cmake --preset release && cmake --build build --target autoviz
 python3 tools/configure.py && python3 tools/build.py
 ```
 
@@ -96,6 +95,8 @@ python3 tools/configure.py && python3 tools/build.py
 
 ## 相关文档
 
-- [架构设计](docs/ARCHITECTURE.md)
-- [跨平台部署](docs/DEPLOYMENT.md)
+- [文档索引](docs/README.md)
+- [架构总览](docs/architecture/overview.md)
+- [构建与部署](docs/guide/build.md) · [docs/guide/deployment.md](docs/guide/deployment.md)
+- [RViz2 对齐](docs/parity/README.md)
 - [Foxglove Bridge](../autonomy/visualization/README.md)

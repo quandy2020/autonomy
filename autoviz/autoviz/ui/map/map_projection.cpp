@@ -65,19 +65,24 @@ MapTileCoord MapProjection::LatLonToTile(double latitude, double longitude,
 
 QPointF MapProjection::LatLonToWorldPixel(double latitude, double longitude,
                                           int zoom) {
-  const double scale = static_cast<double>(kTilePixelSize) *
-                       static_cast<double>(TileCount(zoom)) / (2.0 * kOriginShift);
-  const double world_x = LongitudeToWorldX(longitude);
-  const double world_y = LatitudeToWorldY(latitude);
-  return QPointF(world_x * scale, world_y * scale);
+  const double map_size = static_cast<double>(kTilePixelSize) *
+                          static_cast<double>(TileCount(zoom));
+  const double lat_rad = DegToRad(ClampLatitude(latitude));
+  const double x = (longitude + 180.0) / 360.0 * map_size;
+  const double y =
+      (1.0 - std::log(std::tan(lat_rad) + 1.0 / std::cos(lat_rad)) / kPi) /
+      2.0 * map_size;
+  return QPointF(x, y);
 }
 
 QPointF MapProjection::WorldPixelToLatLon(const QPointF& world_pixel, int zoom) {
-  const double scale = static_cast<double>(kTilePixelSize) *
-                       static_cast<double>(TileCount(zoom)) / (2.0 * kOriginShift);
-  const double world_x = world_pixel.x() / scale;
-  const double world_y = world_pixel.y() / scale;
-  return QPointF(WorldYToLatitude(world_y), WorldXToLongitude(world_x));
+  const double map_size = static_cast<double>(kTilePixelSize) *
+                          static_cast<double>(TileCount(zoom));
+  const double longitude = world_pixel.x() / map_size * 360.0 - 180.0;
+  const double mercator =
+      kPi - 2.0 * kPi * world_pixel.y() / std::max(map_size, 1.0);
+  const double latitude = RadToDeg(std::atan(std::sinh(mercator)));
+  return QPointF(ClampLatitude(latitude), longitude);
 }
 
 int MapProjection::TileCount(int zoom) {

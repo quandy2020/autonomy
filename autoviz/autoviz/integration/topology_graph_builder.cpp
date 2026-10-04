@@ -58,12 +58,61 @@ std::string ToLowerAscii(std::string value) {
   return value;
 }
 
-bool MatchesFilter(const std::string& haystack, const std::string& needle_lower) {
-  if (needle_lower.empty()) {
-    return true;
+/**
+ * @brief Comma-separated include/exclude filter (rqt-lite).
+ *
+ * Examples:
+ * - @c "perception,camera" — match if any include term hits
+ * - @c "-/tf,-parameter" — match unless any exclude term hits
+ * - @c "sensing,-/tf" — include sensing, exclude /tf
+ */
+struct TokenFilter {
+  std::vector<std::string> includes;
+  std::vector<std::string> excludes;
+
+  static TokenFilter Parse(const std::string& filter_text) {
+    TokenFilter out;
+    std::string token;
+    auto flush = [&]() {
+      std::size_t begin = 0;
+      while (begin < token.size() &&
+             std::isspace(static_cast<unsigned char>(token[begin]))) {
+        ++begin;
+      }
+      std::size_t end = token.size();
+      while (end > begin &&
+             std::isspace(static_cast<unsigned char>(token[end - 1]))) {
+        --end;
+      }
+      if (begin >= end) {
+        token.clear();
+        return;
+      }
+      std::string part = ToLowerAscii(token.substr(begin, end - begin));
+      token.clear();
+      if (part.empty()) {
+        return;
+      }
+      if (part.front() == '-') {
+        part.erase(part.begin());
+        if (!part.empty()) {
+          out.excludes.push_back(std::move(part));
+        }
+      } else {
+        out.includes.push_back(std::move(part));
+      }
+    };
+    for (char ch : filter_text) {
+      if (ch == ',') {
+        flush();
+      } else {
+        token.push_back(ch);
+      }
+    }
+    flush();
+    return out;
   }
-  return ToLowerAscii(haystack).find(needle_lower) != std::string::npos;
-}
+};
 
 std::string ExtractFirstPrefix(const std::string& channel_name) {
   if (channel_name.empty() || channel_name.front() != '/') {
@@ -91,6 +140,28 @@ bool MatchesPrefixFilter(const std::string& channel_name,
          channel_name == prefix_filter;
 }
 
+bool IsQuietChannel(const std::string& channel_name) {
+  const std::string lower = ToLowerAscii(channel_name);
+  if (lower == "/tf" || lower == "/tf_static") {
+    return true;
+  }
+  if (lower.size() >= 3 &&
+      (lower.compare(lower.size() - 3, 3, "/tf") == 0 ||
+       (lower.size() >= 10 &&
+        lower.compare(lower.size() - 10, 10, "/tf_static") == 0))) {
+    return true;
+  }
+  if (lower.find("parameter_events") != std::string::npos ||
+      lower.find("parameter_updates") != std::string::npos ||
+      lower.find("parameter_descriptions") != std::string::npos) {
+    return true;
+  }
+  if (lower.find("/rosout") != std::string::npos) {
+    return true;
+  }
+  return false;
+}
+
 void AppendHash(std::ostringstream* stream, const std::string& value) {
   if (stream == nullptr) {
     return;
@@ -107,7 +178,7 @@ TopologyGraph BuildTopologyGraph(const TopologyGraphBuildOptions& options) {
     return graph;
   }
 
-  const std::string filter_lower = ToLowerAscii(options.filter_text);
+  const TokenFilter filter = TokenFilter::Parse(options.filter_text);
   std::unordered_map<std::string, GraphVertex> vertex_map;
   std::vector<GraphEdge> edges;
   std::ostringstream hash_stream;
@@ -158,6 +229,32 @@ TopologyGraph BuildTopologyGraph(const TopologyGraphBuildOptions& options) {
     return it->first;
   };
 
+  auto name_excluded = [&](const std::string& name) -> bool {
+    if (filter.excludes.empty()) {
+      return false;
+    }
+    const std::string lower = ToLowerAscii(name);
+    for (const std::string& exclude : filter.excludes) {
+      if (lower.find(exclude) != std::string::npos) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  auto name_included = [&](const std::string& name) -> bool {
+    if (filter.includes.empty()) {
+      return true;
+    }
+    const std::string lower = ToLowerAscii(name);
+    for (const std::string& include : filter.includes) {
+      if (lower.find(include) != std::string::npos) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   auto channel_visible = [&](const std::string& channel_name) -> bool {
     if (IsInternalServiceChannel(channel_name)) {
       return false;
@@ -165,7 +262,11 @@ TopologyGraph BuildTopologyGraph(const TopologyGraphBuildOptions& options) {
     if (!MatchesPrefixFilter(channel_name, options.prefix_filter)) {
       return false;
     }
-    return MatchesFilter(channel_name, filter_lower);
+    // Exclude applies to the channel name itself.
+    if (name_excluded(channel_name)) {
+      return false;
+    }
+    return true;
   };
 
   if (topology->channel_manager() != nullptr) {
@@ -217,10 +318,10 @@ TopologyGraph BuildTopologyGraph(const TopologyGraphBuildOptions& options) {
       }
 
       const ChannelEndpoints& entry = it->second;
-      bool endpoint_matches = MatchesFilter(channel_name, filter_lower);
+      bool endpoint_matches = name_included(channel_name);
       if (!endpoint_matches) {
         for (const std::string& node_name : entry.writer_nodes) {
-          if (MatchesFilter(node_name, filter_lower)) {
+          if (name_included(node_name)) {
             endpoint_matches = true;
             break;
           }
@@ -228,7 +329,7 @@ TopologyGraph BuildTopologyGraph(const TopologyGraphBuildOptions& options) {
       }
       if (!endpoint_matches) {
         for (const std::string& node_name : entry.reader_nodes) {
-          if (MatchesFilter(node_name, filter_lower)) {
+          if (name_included(node_name)) {
             endpoint_matches = true;
             break;
           }
@@ -242,6 +343,18 @@ TopologyGraph BuildTopologyGraph(const TopologyGraphBuildOptions& options) {
                                                    entry.writer_nodes.end());
       std::unordered_set<std::string> reader_nodes(entry.reader_nodes.begin(),
                                                    entry.reader_nodes.end());
+
+      if (options.quiet_mode && IsQuietChannel(channel_name)) {
+        continue;
+      }
+      if (options.hide_dead_end_channels && reader_nodes.empty() &&
+          !writer_nodes.empty()) {
+        continue;
+      }
+      if (options.hide_leaf_channels &&
+          (writer_nodes.size() + reader_nodes.size()) < 2) {
+        continue;
+      }
 
       if (options.show_channels) {
         const std::string& channel_id =
@@ -286,20 +399,25 @@ TopologyGraph BuildTopologyGraph(const TopologyGraphBuildOptions& options) {
       if (service_name.empty()) {
         continue;
       }
-      if (!MatchesFilter(service_name, filter_lower) &&
-          !MatchesFilter(server.node_name(), filter_lower)) {
-        std::vector<autolink::proto::RoleAttributes> clients;
-        service_manager->GetClients(service_name, &clients);
-        bool client_matches = false;
+      if (name_excluded(service_name)) {
+        continue;
+      }
+
+      std::vector<autolink::proto::RoleAttributes> clients;
+      service_manager->GetClients(service_name, &clients);
+
+      bool endpoint_matches =
+          name_included(service_name) || name_included(server.node_name());
+      if (!endpoint_matches) {
         for (const autolink::proto::RoleAttributes& client : clients) {
-          if (MatchesFilter(client.node_name(), filter_lower)) {
-            client_matches = true;
+          if (name_included(client.node_name())) {
+            endpoint_matches = true;
             break;
           }
         }
-        if (!client_matches) {
-          continue;
-        }
+      }
+      if (!endpoint_matches) {
+        continue;
       }
 
       const std::string& service_id =
@@ -312,8 +430,6 @@ TopologyGraph BuildTopologyGraph(const TopologyGraphBuildOptions& options) {
         AppendHash(&hash_stream, node_id + "srv>" + service_id);
       }
 
-      std::vector<autolink::proto::RoleAttributes> clients;
-      service_manager->GetClients(service_name, &clients);
       std::unordered_set<std::string> client_nodes;
       for (const autolink::proto::RoleAttributes& client : clients) {
         if (client.node_name().empty()) {
@@ -336,7 +452,7 @@ TopologyGraph BuildTopologyGraph(const TopologyGraphBuildOptions& options) {
       if (node.node_name().empty()) {
         continue;
       }
-      if (!MatchesFilter(node.node_name(), filter_lower)) {
+      if (name_excluded(node.node_name()) || !name_included(node.node_name())) {
         continue;
       }
       ensure_node(node.node_name());
@@ -358,7 +474,6 @@ TopologyGraph BuildTopologyGraph(const TopologyGraphBuildOptions& options) {
   graph.topology_hash = hash_stream.str();
   return graph;
 }
-
 std::vector<std::string> ListChannelPrefixGroups() {
   auto* topology = autolink::service_discovery::TopologyManager::Instance();
   if (topology == nullptr || topology->channel_manager() == nullptr) {

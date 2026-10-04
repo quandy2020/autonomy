@@ -21,6 +21,7 @@
 #include "autoviz/commsgs/message_type_utils.hpp"
 #include "autoviz/ui/plot/message_path_navigation.hpp"
 #include "autoviz/ui/publish/publish_message_codec.hpp"
+#include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
 namespace publish_panel {
@@ -717,37 +718,7 @@ PublishFieldTreeWidget::PublishFieldTreeWidget(QWidget* parent)
   setAnimated(true);
   setFrameShape(QFrame::NoFrame);
   setContextMenuPolicy(Qt::CustomContextMenu);
-  setStyleSheet(QStringLiteral(
-      "QTreeWidget {"
-      "  background: #ffffff;"
-      "  alternate-background-color: #f8fafc;"
-      "  color: #1e293b;"
-      "  border: none;"
-      "  outline: none;"
-      "}"
-      "QTreeWidget::item {"
-      "  padding: 4px 6px;"
-      "  min-height: 22px;"
-      "  border-radius: 4px;"
-      "}"
-      "QTreeWidget::item:hover {"
-      "  background: rgba(15, 23, 42, 0.04);"
-      "}"
-      "QTreeWidget::item:selected {"
-      "  background: rgba(8, 145, 178, 0.14);"
-      "  color: #1e293b;"
-      "}"
-      "QHeaderView::section {"
-      "  background: #f1f5f9;"
-      "  color: #64748b;"
-      "  border: none;"
-      "  border-bottom: 1px solid #cbd5e1;"
-      "  border-right: 1px solid #e2e8f0;"
-      "  padding: 7px 10px;"
-      "  font-size: 11px;"
-      "  font-weight: 700;"
-      "  text-transform: uppercase;"
-      "}"));
+  setStyleSheet(style::sheet(QStringLiteral("publish")));
   if (header() != nullptr) {
     header()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     header()->setHighlightSections(false);

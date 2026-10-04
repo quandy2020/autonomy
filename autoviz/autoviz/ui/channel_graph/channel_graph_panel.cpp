@@ -5,18 +5,25 @@
 #include "autoviz/ui/channel_graph/channel_graph_panel.hpp"
 
 #include <algorithm>
+#include <cmath>
+#include <functional>
 #include <utility>
 
 #include <QAbstractItemView>
-#include <QCheckBox>
+#include <QApplication>
+#include <QClipboard>
 #include <QColor>
-#include <QComboBox>
 #include <QDialog>
 #include <QFocusEvent>
 #include <QFrame>
+#include <QHash>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMenu>
+#include <QPainter>
+#include <QPixmap>
+#include <QPolygonF>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QShowEvent>
@@ -28,14 +35,17 @@
 #include "autolink/proto/role_attributes.pb.h"
 #include "autolink/service_discovery/topology_manager.hpp"
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/integration/channel_reader_registry.hpp"
 #include "autoviz/integration/channel_stats_registry.hpp"
 #include "autoviz/integration/topology_graph_builder.hpp"
 #include "autoviz/ui/channel_graph/channel_graph_view.hpp"
-#include "autoviz/ui/icon_loader.hpp"
-#include "autoviz/ui/panel_settings_styles.hpp"
-#include "autoviz/ui/panel_context_menu.hpp"
-#include "autoviz/ui/panel_dock_widget.hpp"
-#include "autoviz/ui/panel_title_tools.hpp"
+#include "autoviz/ui/app/icon_loader.hpp"
+#include "autoviz/ui/theme/panel.hpp"
+#include "autoviz/ui/panel/context_menu.hpp"
+#include "autoviz/ui/panel/dock.hpp"
+#include "autoviz/ui/panel/title_tools.hpp"
+#include "autoviz/ui/plot/message_field_tree.hpp"
+#include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
 namespace channel_graph {
@@ -44,13 +54,98 @@ namespace {
 constexpr int kAutoRefreshMs = 2000;
 constexpr int kFilterDebounceMs = 250;
 
-/** Light tokens shared with Log / Channels / TF Tree. */
-constexpr char kBg[] = "#f8f9fb";
-constexpr char kSurface[] = "#ffffff";
-constexpr char kBorder[] = "#cbd5e1";
-constexpr char kText[] = "#1e293b";
-constexpr char kTextMuted[] = "#64748b";
-constexpr char kAccent[] = "#0891b2";
+constexpr char kNodeColor[] = "#0891b2";
+constexpr char kChannelColor[] = "#7c3aed";
+constexpr char kServiceColor[] = "#ef4444";
+
+QIcon MakeGlyphIcon(std::function<void(QPainter&, const QRectF&)> paint,
+                    int size = 18) {
+  QPixmap pixmap(size, size);
+  pixmap.fill(Qt::transparent);
+  QPainter painter(&pixmap);
+  painter.setRenderHint(QPainter::Antialiasing, true);
+  painter.setRenderHint(QPainter::TextAntialiasing, true);
+  paint(painter, QRectF(0, 0, size, size));
+  return QIcon(pixmap);
+}
+
+QIcon MakeChannelGlyphIcon() {
+  return MakeGlyphIcon([](QPainter& p, const QRectF& r) {
+    const QRectF pill(r.left() + 1.5, r.center().y() - 4.5, r.width() - 3, 9);
+    p.setPen(QPen(QColor(0xd8, 0xb4, 0xfe), 1.2));
+    p.setBrush(QColor(0xfa, 0xf5, 0xff));
+    p.drawRoundedRect(pill, 4.5, 4.5);
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(QLatin1String(kChannelColor)));
+    p.drawEllipse(QPointF(pill.left() + 4.0, pill.center().y()), 2.4, 2.4);
+    p.drawEllipse(QPointF(pill.right() - 4.0, pill.center().y()), 2.4, 2.4);
+  });
+}
+
+QIcon MakeServiceGlyphIcon() {
+  return MakeGlyphIcon([](QPainter& p, const QRectF& r) {
+    const QRectF card(r.left() + 1.5, r.top() + 3.5, r.width() - 3, r.height() - 7);
+    p.setPen(QPen(QColor(0xfe, 0xa3, 0xb4), 1.2));
+    p.setBrush(QColor(0xff, 0xf1, 0xf2));
+    p.drawRoundedRect(card, 3.5, 3.5);
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(QLatin1String(kServiceColor)));
+    p.drawEllipse(QPointF(card.left() + 5.5, card.center().y()), 3.2, 3.2);
+  });
+}
+
+QIcon MakeRefreshGlyphIcon() {
+  return MakeGlyphIcon([](QPainter& p, const QRectF& r) {
+    const QColor ink(0x1e, 0x29, 0x3b);
+    const QPointF center = r.center();
+    constexpr qreal kRadius = 5.2;
+    const QRectF arc(center.x() - kRadius, center.y() - kRadius, kRadius * 2.0,
+                     kRadius * 2.0);
+    p.setPen(QPen(ink, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    p.setBrush(Qt::NoBrush);
+    p.drawArc(arc, 40 * 16, -300 * 16);
+
+    const qreal end = (40.0 - 300.0) * 3.141592653589793 / 180.0;
+    const QPointF tip(center.x() + kRadius * std::cos(end),
+                      center.y() - kRadius * std::sin(end));
+    const QPointF forward(std::sin(end), std::cos(end));
+    const QPointF side(-forward.y(), forward.x());
+    QPolygonF head;
+    head << tip << tip - forward * 3.6 + side * 2.2
+         << tip - forward * 3.6 - side * 2.2;
+    p.setPen(Qt::NoPen);
+    p.setBrush(ink);
+    p.drawPolygon(head);
+  });
+}
+
+QIcon MakeHopGlyphIcon() {
+  return MakeGlyphIcon([](QPainter& p, const QRectF& r) {
+    const QPointF center = r.center();
+    p.setPen(QPen(QColor(QStringLiteral("#0891b2")), 1.6));
+    p.setBrush(Qt::NoBrush);
+    p.drawEllipse(center, 6.5, 6.5);
+    p.setBrush(QColor(QStringLiteral("#0891b2")));
+    p.setPen(Qt::NoPen);
+    p.drawEllipse(center, 2.2, 2.2);
+  });
+}
+
+QToolButton* MakeIconToolButton(QWidget* parent, const QIcon& icon,
+                                const QString& tooltip, bool checkable = false) {
+  auto* button = new QToolButton(parent);
+  button->setObjectName(QStringLiteral("AutovizLightToolbarIcon"));
+  button->setIcon(icon);
+  button->setIconSize(QSize(16, 16));
+  button->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  button->setAutoRaise(true);
+  button->setCursor(Qt::PointingHandCursor);
+  button->setToolTip(tooltip);
+  button->setCheckable(checkable);
+  button->setFixedSize(24, 22);
+  button->setFocusPolicy(Qt::NoFocus);
+  return button;
+}
 
 QString FormatHzText(double hz) {
   if (hz <= 0.0) {
@@ -80,11 +175,11 @@ QString KindTitle(integration::GraphVertexKind kind) {
 QColor KindAccent(integration::GraphVertexKind kind) {
   switch (kind) {
     case integration::GraphVertexKind::kNode:
-      return QColor(66, 133, 244);
+      return QColor(QLatin1String(kNodeColor));
     case integration::GraphVertexKind::kChannel:
-      return QColor(156, 39, 176);
+      return QColor(QLatin1String(kChannelColor));
     case integration::GraphVertexKind::kService:
-      return QColor(229, 57, 53);
+      return QColor(QLatin1String(kServiceColor));
   }
   return QColor(120, 120, 120);
 }
@@ -92,11 +187,11 @@ QColor KindAccent(integration::GraphVertexKind kind) {
 QString KindGlyph(integration::GraphVertexKind kind) {
   switch (kind) {
     case integration::GraphVertexKind::kNode:
-      return QStringLiteral("●");
+      return QStringLiteral("▢");
     case integration::GraphVertexKind::kChannel:
       return QStringLiteral("▬");
     case integration::GraphVertexKind::kService:
-      return QStringLiteral("⬡");
+      return QStringLiteral("▣");
   }
   return QStringLiteral("•");
 }
@@ -351,14 +446,8 @@ QWidget* MakeMetricChip(const QString& label, const QString& value,
                         const QColor& accent, QWidget* parent) {
   auto* chip = new QFrame(parent);
   chip->setObjectName(QStringLiteral("PropertyMetricChip"));
-  chip->setStyleSheet(QStringLiteral(
-      "QFrame#PropertyMetricChip {"
-      "  background: %1;"
-      "  border: 1px solid %2;"
-      "  border-radius: 10px;"
-      "  padding: 2px;"
-      "}")
-                          .arg(QLatin1String(kSurface), QLatin1String(kBorder)));
+  chip->setStyleSheet(
+      style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
   auto* layout = new QVBoxLayout(chip);
   layout->setContentsMargins(12, 8, 12, 8);
   layout->setSpacing(2);
@@ -369,14 +458,15 @@ QWidget* MakeMetricChip(const QString& label, const QString& value,
   value_font.setPointSize(13);
   value_font.setBold(true);
   value_label->setFont(value_font);
+  QHash<QString, QString> value_tokens = style::tokens(style::Tone::Frost);
+  value_tokens.insert(QStringLiteral("{{accent-color}}"), accent.name());
   value_label->setStyleSheet(
-      QStringLiteral("color: %1;").arg(accent.name()));
+      style::sheet(QStringLiteral("channel_graph"), value_tokens));
 
   auto* key_label = new QLabel(label, chip);
   key_label->setAlignment(Qt::AlignCenter);
   key_label->setStyleSheet(
-      QStringLiteral("color: %1; font-size: 11px;")
-          .arg(QLatin1String(kTextMuted)));
+      style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
 
   layout->addWidget(value_label);
   layout->addWidget(key_label);
@@ -386,13 +476,8 @@ QWidget* MakeMetricChip(const QString& label, const QString& value,
 QWidget* MakeSectionCard(const PropertySectionData& section, QWidget* parent) {
   auto* card = new QFrame(parent);
   card->setObjectName(QStringLiteral("PropertySectionCard"));
-  card->setStyleSheet(QStringLiteral(
-      "QFrame#PropertySectionCard {"
-      "  background: %1;"
-      "  border: 1px solid %2;"
-      "  border-radius: 12px;"
-      "}")
-                          .arg(QLatin1String(kSurface), QLatin1String(kBorder)));
+  card->setStyleSheet(
+      style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
   auto* layout = new QVBoxLayout(card);
   layout->setContentsMargins(14, 12, 14, 12);
   layout->setSpacing(8);
@@ -405,14 +490,10 @@ QWidget* MakeSectionCard(const PropertySectionData& section, QWidget* parent) {
   title_font.setBold(true);
   title->setFont(title_font);
   title->setStyleSheet(
-      QStringLiteral("color: %1;").arg(QLatin1String(kText)));
+      style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
   auto* count = new QLabel(QString::number(section.entries.size()), card);
-  count->setStyleSheet(QStringLiteral(
-      "color: %1; background: %2;"
-      "border: 1px solid %3; border-radius: 8px;"
-      "padding: 2px 8px; font-size: 11px;")
-                           .arg(QLatin1String(kTextMuted), QLatin1String(kBg),
-                                QLatin1String(kBorder)));
+  count->setStyleSheet(
+      style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
   // Don't count the placeholder "None" as a real entry count for empty lists.
   if (section.entries.size() == 1 &&
       section.entries.front().title == QObject::tr("None")) {
@@ -426,13 +507,10 @@ QWidget* MakeSectionCard(const PropertySectionData& section, QWidget* parent) {
   for (int i = 0; i < section.entries.size(); ++i) {
     const PropertyEntry& entry = section.entries[i];
     auto* row = new QFrame(card);
-    row->setStyleSheet(QStringLiteral(
-        "QFrame { background: transparent; border: none;"
-        "border-top: %1; }")
-                           .arg(i == 0
-                                    ? QStringLiteral("none")
-                                    : QStringLiteral("1px solid %1").arg(
-                                          QLatin1String(kBorder))));
+    row->setStyleSheet(style::sheet(
+        i == 0 ? QStringLiteral("channel_graph/entry_row_top")
+               : QStringLiteral("channel_graph/entry_row_divider"),
+        style::Tone::Frost));
     auto* row_layout = new QVBoxLayout(row);
     row_layout->setContentsMargins(0, 8, 0, 4);
     row_layout->setSpacing(2);
@@ -441,8 +519,7 @@ QWidget* MakeSectionCard(const PropertySectionData& section, QWidget* parent) {
     name->setWordWrap(true);
     name->setTextInteractionFlags(Qt::TextSelectableByMouse);
     name->setStyleSheet(
-        QStringLiteral("color: %1; font-size: 12px;")
-            .arg(QLatin1String(kText)));
+        style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
     row_layout->addWidget(name);
 
     if (!entry.subtitle.isEmpty()) {
@@ -450,8 +527,7 @@ QWidget* MakeSectionCard(const PropertySectionData& section, QWidget* parent) {
       meta->setWordWrap(true);
       meta->setTextInteractionFlags(Qt::TextSelectableByMouse);
       meta->setStyleSheet(
-          QStringLiteral("color: %1; font-size: 11px;")
-              .arg(QLatin1String(kTextMuted)));
+          style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
       row_layout->addWidget(meta);
     }
     layout->addWidget(row);
@@ -466,38 +542,20 @@ QDialog* CreatePropertyDialog(QWidget* parent, const PropertyPage& page) {
   dialog->setWindowTitle(
       QObject::tr("%1 properties").arg(KindTitle(page.kind)));
   dialog->resize(520, 560);
-  dialog->setStyleSheet(QStringLiteral(
-      "QDialog {"
-      "  background: %1;"
-      "  color: %2;"
-      "}"
-      "QScrollArea { border: none; background: transparent; }"
-      "QScrollBar:vertical {"
-      "  background: transparent; width: 10px; margin: 4px 2px;"
-      "}"
-      "QScrollBar::handle:vertical {"
-      "  background: %3; border-radius: 4px; min-height: 24px;"
-      "}"
-      "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {"
-      "  height: 0;"
-      "}")
-                            .arg(QLatin1String(kBg), QLatin1String(kText),
-                                 QLatin1String(kBorder)));
+  dialog->setStyleSheet(
+      style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
 
   auto* root = new QVBoxLayout(dialog);
   root->setContentsMargins(0, 0, 0, 0);
   root->setSpacing(0);
 
   auto* header = new QFrame(dialog);
-  header->setStyleSheet(QStringLiteral(
-      "QFrame {"
-      "  background: qlineargradient(x1:0,y1:0,x2:1,y2:1,"
-      "    stop:0 %1, stop:1 %2);"
-      "  border-bottom: 1px solid %3;"
-      "}")
-                            .arg(QColor(accent.red(), accent.green(), accent.blue(), 36)
-                                     .name(QColor::HexArgb),
-                                 QLatin1String(kSurface), QLatin1String(kBorder)));
+  QHash<QString, QString> header_tokens = style::tokens(style::Tone::Frost);
+  header_tokens.insert(
+      QStringLiteral("{{header-start}}"),
+      QColor(accent.red(), accent.green(), accent.blue(), 36).name(QColor::HexArgb));
+  header->setStyleSheet(
+      style::sheet(QStringLiteral("channel_graph"), header_tokens));
   auto* header_layout = new QVBoxLayout(header);
   header_layout->setContentsMargins(18, 16, 18, 16);
   header_layout->setSpacing(10);
@@ -506,28 +564,17 @@ QDialog* CreatePropertyDialog(QWidget* parent, const PropertyPage& page) {
   auto* badge = new QLabel(
       QStringLiteral("%1  %2").arg(KindGlyph(page.kind), KindTitle(page.kind)),
       header);
-  badge->setStyleSheet(QStringLiteral(
-      "color: white; background: %1; border-radius: 11px;"
-      "padding: 4px 10px; font-size: 11px; font-weight: 600;")
-                           .arg(accent.name()));
+  QHash<QString, QString> badge_tokens = style::tokens(style::Tone::Frost);
+  badge_tokens.insert(QStringLiteral("{{accent-color}}"), accent.name());
+  badge->setStyleSheet(
+      style::sheet(QStringLiteral("channel_graph"), badge_tokens));
   top_row->addWidget(badge, 0, Qt::AlignLeft | Qt::AlignVCenter);
   top_row->addStretch(1);
 
   auto* close_button = new QPushButton(QObject::tr("Close"), header);
   close_button->setCursor(Qt::PointingHandCursor);
-  close_button->setStyleSheet(QStringLiteral(
-      "QPushButton {"
-      "  color: %1; background: %2;"
-      "  border: 1px solid %3; border-radius: 8px;"
-      "  padding: 6px 14px;"
-      "}"
-      "QPushButton:hover {"
-      "  color: %4; background: rgba(8,145,178,0.10);"
-      "  border-color: %4;"
-      "}")
-                                  .arg(QLatin1String(kText), QLatin1String(kSurface),
-                                       QLatin1String(kBorder),
-                                       QLatin1String(kAccent)));
+  close_button->setStyleSheet(
+      style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
   QObject::connect(close_button, &QPushButton::clicked, dialog, &QDialog::accept);
   top_row->addWidget(close_button, 0, Qt::AlignRight);
   header_layout->addLayout(top_row);
@@ -540,16 +587,14 @@ QDialog* CreatePropertyDialog(QWidget* parent, const PropertyPage& page) {
   name_font.setBold(true);
   name->setFont(name_font);
   name->setStyleSheet(
-      QStringLiteral("color: %1;").arg(QLatin1String(kText)));
+      style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
   header_layout->addWidget(name);
 
   if (!page.subtitle.isEmpty()) {
     auto* subtitle = new QLabel(page.subtitle, header);
     subtitle->setWordWrap(true);
     subtitle->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    subtitle->setStyleSheet(
-        QStringLiteral("color: %1; font-size: 12px;")
-            .arg(QLatin1String(kTextMuted)));
+    subtitle->setStyleSheet(style::type(style::Role::PanelMuted, 12));
     header_layout->addWidget(subtitle);
   }
 
@@ -568,8 +613,7 @@ QDialog* CreatePropertyDialog(QWidget* parent, const PropertyPage& page) {
   scroll->setWidgetResizable(true);
   scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   auto* body = new QWidget(scroll);
-  body->setStyleSheet(
-      QStringLiteral("background: %1;").arg(QLatin1String(kBg)));
+  body->setStyleSheet(style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
   auto* body_layout = new QVBoxLayout(body);
   body_layout->setContentsMargins(16, 16, 16, 16);
   body_layout->setSpacing(12);
@@ -592,6 +636,10 @@ ChannelGraphPanelConfig DefaultChannelGraphPanelConfig() {
   config.auto_refresh = true;
   config.neighborhood_mode = true;
   config.show_edge_labels = false;
+  config.quiet_mode = false;
+  config.hide_leaf_channels = false;
+  config.hide_dead_end_channels = false;
+  config.probe_enabled = false;
   config.channel_arrange = VertexArrangeMode::kGrid;
   config.service_arrange = VertexArrangeMode::kGrid;
   return config;
@@ -608,6 +656,8 @@ ChannelGraphPanel::ChannelGraphPanel(common::VisualizationManager* manager,
   refreshGraph();
 }
 
+ChannelGraphPanel::~ChannelGraphPanel() { clearStatsProbes(); }
+
 void ChannelGraphPanel::setupUi() {
   ApplyPanelShell(this);
 
@@ -615,96 +665,51 @@ void ChannelGraphPanel::setupUi() {
   root->setContentsMargins(0, 0, 0, 0);
   root->setSpacing(0);
 
-  auto* toolbar = new QFrame(this);
-  ApplyPanelToolbarChrome(toolbar);
-  auto* toolbar_layout = new QHBoxLayout(toolbar);
-  ApplyPanelToolbarLayout(toolbar_layout);
+  graph_tools_ = new QWidget(this);
+  auto* row = new QHBoxLayout(graph_tools_);
+  row->setContentsMargins(0, 0, 0, 0);
+  row->setSpacing(0);
 
-  auto* zoom_fit_button = new QToolButton(toolbar);
-  zoom_fit_button->setToolTip(tr("Zoom to fit"));
-  zoom_fit_button->setIcon(
-      IconLoader::panelTitleIcon(QStringLiteral("plot.reset_view")));
-  toolbar_layout->addWidget(zoom_fit_button);
+  auto* zoom_fit_button = MakeIconToolButton(
+      graph_tools_, IconLoader::panelTitleIcon(QStringLiteral("plot.reset_view")),
+      tr("Zoom to fit"));
+  row->addWidget(zoom_fit_button);
 
-  auto* refresh_button = new QToolButton(toolbar);
-  refresh_button->setToolTip(tr("Refresh graph"));
-  refresh_button->setIcon(IconLoader::menuIcon(QStringLiteral("file.recent")));
-  toolbar_layout->addWidget(refresh_button);
+  auto* refresh_button = MakeIconToolButton(
+      graph_tools_, MakeRefreshGlyphIcon(), tr("Refresh"));
+  row->addWidget(refresh_button);
 
-  show_channels_check_ = new QCheckBox(tr("Channels"), toolbar);
-  show_channels_check_->setChecked(true);
-  show_channels_check_->setToolTip(tr("Show channel vertices in the graph"));
-  toolbar_layout->addWidget(show_channels_check_);
+  show_channels_button_ = MakeIconToolButton(
+      graph_tools_, MakeChannelGlyphIcon(), tr("Show channels"), true);
+  show_channels_button_->setChecked(true);
+  row->addWidget(show_channels_button_);
 
-  show_services_check_ = new QCheckBox(tr("Services"), toolbar);
-  show_services_check_->setChecked(true);
-  show_services_check_->setToolTip(tr("Show service vertices in the graph"));
-  toolbar_layout->addWidget(show_services_check_);
+  show_services_button_ = MakeIconToolButton(
+      graph_tools_, MakeServiceGlyphIcon(), tr("Show services"), true);
+  show_services_button_->setChecked(true);
+  row->addWidget(show_services_button_);
 
-  neighborhood_check_ = new QCheckBox(tr("1-hop"), toolbar);
-  neighborhood_check_->setChecked(true);
-  neighborhood_check_->setToolTip(
-      tr("When a vertex is selected, hide unrelated vertices and edges"));
-  toolbar_layout->addWidget(neighborhood_check_);
+  neighborhood_button_ = MakeIconToolButton(
+      graph_tools_, MakeHopGlyphIcon(),
+      tr("Focus neighbors of the selection"), true);
+  neighborhood_button_->setChecked(true);
+  row->addWidget(neighborhood_button_);
 
-  edge_labels_check_ = new QCheckBox(tr("Labels"), toolbar);
-  edge_labels_check_->setChecked(false);
-  edge_labels_check_->setToolTip(
-      tr("Always show edge labels (otherwise only on focus / hover)"));
-  toolbar_layout->addWidget(edge_labels_check_);
-
-  toolbar_layout->addWidget(new QLabel(tr("Ch"), toolbar));
-  channel_arrange_combo_ = new QComboBox(toolbar);
-  channel_arrange_combo_->addItem(tr("Column"),
-                                  static_cast<int>(VertexArrangeMode::kColumn));
-  channel_arrange_combo_->addItem(tr("Grid"),
-                                  static_cast<int>(VertexArrangeMode::kGrid));
-  channel_arrange_combo_->setCurrentIndex(1);
-  channel_arrange_combo_->setToolTip(
-      tr("Channel arrange mode: single column or multi-column grid"));
-  toolbar_layout->addWidget(channel_arrange_combo_);
-
-  toolbar_layout->addWidget(new QLabel(tr("Svc"), toolbar));
-  service_arrange_combo_ = new QComboBox(toolbar);
-  service_arrange_combo_->addItem(tr("Column"),
-                                  static_cast<int>(VertexArrangeMode::kColumn));
-  service_arrange_combo_->addItem(tr("Grid"),
-                                  static_cast<int>(VertexArrangeMode::kGrid));
-  service_arrange_combo_->setCurrentIndex(1);
-  service_arrange_combo_->setToolTip(
-      tr("Service arrange mode: single column or multi-column grid"));
-  toolbar_layout->addWidget(service_arrange_combo_);
-
-  toolbar_layout->addWidget(new QLabel(tr("Group"), toolbar));
-  prefix_combo_ = new QComboBox(toolbar);
-  prefix_combo_->setMinimumWidth(120);
-  prefix_combo_->setToolTip(tr("Filter channels by namespace prefix"));
-  toolbar_layout->addWidget(prefix_combo_);
-
-  filter_edit_ = new QLineEdit(toolbar);
-  filter_edit_->setPlaceholderText(tr("Filter nodes, channels, services…"));
+  filter_edit_ = new QLineEdit(graph_tools_);
+  filter_edit_->setObjectName(QStringLiteral("AutovizCompactFilter"));
+  filter_edit_->setPlaceholderText(tr("Filter"));
+  filter_edit_->setToolTip(
+      tr("Comma-separated terms. Prefix with - to exclude "
+         "(e.g. sensing,-/tf,-parameter)."));
   filter_edit_->setClearButtonEnabled(true);
-  filter_edit_->setMinimumWidth(160);
-  StyleFilterLineEdit(filter_edit_);
-  toolbar_layout->addWidget(filter_edit_, 1);
-
-  auto_refresh_check_ = new QCheckBox(tr("Auto"), toolbar);
-  auto_refresh_check_->setChecked(true);
-  auto_refresh_check_->setToolTip(tr("Automatically refresh topology"));
-  toolbar_layout->addWidget(auto_refresh_check_);
-
-  root->addWidget(toolbar);
-
-  auto* legend = new QLabel(
-      tr("● Node  ▬ Channel (right: Hz)  ⬡ Service. "
-         "Click to focus (1-hop hides others). Double-click to open properties. "
-         "Edge labels appear on focus/hover unless Labels is on."),
-      this);
-  legend->setWordWrap(true);
-  legend->setContentsMargins(PanelChromeLayout::kToolbarMarginH, 4,
-                             PanelChromeLayout::kToolbarMarginH, 4);
-  StyleHintLabel(legend);
-  root->addWidget(legend);
+  filter_edit_->setFixedWidth(140);
+  filter_edit_->setFixedHeight(22);
+  filter_edit_->setStyleSheet(QStringLiteral(
+      "QLineEdit { background: transparent; border: none;"
+      " border-bottom: 1px solid palette(mid); padding: 0 4px;"
+      " font-size: 12px; }"
+      "QLineEdit:focus { border-bottom: 1px solid palette(highlight); }"));
+  row->addWidget(filter_edit_);
 
   graph_view_ = new ChannelGraphView(this);
   graph_view_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -733,22 +738,12 @@ void ChannelGraphPanel::setupUi() {
           &ChannelGraphPanel::onZoomFitClicked);
   connect(refresh_button, &QToolButton::clicked, this,
           &ChannelGraphPanel::onRefreshClicked);
-  connect(show_services_check_, &QCheckBox::toggled, this,
+  connect(show_services_button_, &QToolButton::toggled, this,
           &ChannelGraphPanel::onShowServicesToggled);
-  connect(show_channels_check_, &QCheckBox::toggled, this,
+  connect(show_channels_button_, &QToolButton::toggled, this,
           &ChannelGraphPanel::onShowChannelsToggled);
-  connect(neighborhood_check_, &QCheckBox::toggled, this,
+  connect(neighborhood_button_, &QToolButton::toggled, this,
           &ChannelGraphPanel::onNeighborhoodToggled);
-  connect(edge_labels_check_, &QCheckBox::toggled, this,
-          &ChannelGraphPanel::onShowEdgeLabelsToggled);
-  connect(channel_arrange_combo_, qOverload<int>(&QComboBox::currentIndexChanged),
-          this, &ChannelGraphPanel::onChannelArrangeChanged);
-  connect(service_arrange_combo_, qOverload<int>(&QComboBox::currentIndexChanged),
-          this, &ChannelGraphPanel::onServiceArrangeChanged);
-  connect(auto_refresh_check_, &QCheckBox::toggled, this,
-          &ChannelGraphPanel::onAutoRefreshToggled);
-  connect(prefix_combo_, qOverload<int>(&QComboBox::currentIndexChanged), this,
-          &ChannelGraphPanel::onPrefixChanged);
   connect(filter_edit_, &QLineEdit::textChanged, this,
           &ChannelGraphPanel::onFilterChanged);
   connect(filter_timer_, &QTimer::timeout, this, &ChannelGraphPanel::refreshGraph);
@@ -757,6 +752,10 @@ void ChannelGraphPanel::setupUi() {
           &ChannelGraphPanel::onGraphRendered);
   connect(graph_view_, &ChannelGraphView::vertexDoubleClicked, this,
           &ChannelGraphPanel::onVertexDoubleClicked);
+  connect(graph_view_, &ChannelGraphView::vertexContextMenuRequested, this,
+          &ChannelGraphPanel::onVertexContextMenuRequested);
+  connect(graph_view_, &ChannelGraphView::vertexSelectionChanged, this,
+          &ChannelGraphPanel::onVertexSelectionChanged);
 }
 
 void ChannelGraphPanel::installTitleBarTools(PanelDockWidget* dock) {
@@ -778,8 +777,15 @@ void ChannelGraphPanel::installTitleBarTools(PanelDockWidget* dock) {
   options.on_expand = [this]() { emit panelExpandRequested(); };
 
   const PanelTitleBarTools tools =
-      CreateRvizPanelTitleBarTools(dock, callbacks, options);
+      CreatePanelTitleBarTools(dock, callbacks, options);
   expand_button_ = tools.expand_button;
+  if (graph_tools_ != nullptr) {
+    if (auto* layout = qobject_cast<QHBoxLayout*>(tools.widget->layout())) {
+      graph_tools_->setParent(tools.widget);
+      layout->insertWidget(0, CreateTitleSeparator(tools.widget));
+      layout->insertWidget(0, graph_tools_);
+    }
+  }
   dock->setTitleBarTools(tools.widget);
 }
 
@@ -797,6 +803,10 @@ ChannelGraphPanelConfig ChannelGraphPanel::config() const { return config_; }
 void ChannelGraphPanel::setConfig(const ChannelGraphPanelConfig& config) {
   config_ = config;
   applyConfigToUi();
+  rebuildPrefixCombo();
+  if (!config_.probe_enabled) {
+    clearStatsProbes();
+  }
   refreshGraph();
 }
 
@@ -808,6 +818,9 @@ void ChannelGraphPanel::refreshGraph() {
   integration::TopologyGraphBuildOptions options;
   options.show_services = config_.show_services;
   options.show_channels = config_.show_channels;
+  options.quiet_mode = config_.quiet_mode;
+  options.hide_leaf_channels = config_.hide_leaf_channels;
+  options.hide_dead_end_channels = config_.hide_dead_end_channels;
   options.filter_text = config_.filter.toStdString();
   options.prefix_filter = config_.prefix_filter.toStdString();
 
@@ -821,8 +834,13 @@ void ChannelGraphPanel::refreshGraph() {
     last_topology_hash_ = QString::fromStdString(graph.topology_hash);
   }
   graph_view_->setGraph(graph, topology_unchanged);
+  syncStatsProbes();
   if (graph.vertices.empty()) {
     updateStatusText(tr("No matching topology"));
+  } else if (!selected_vertex_id_.isEmpty()) {
+    updateStatusText(formatSelectionSummary(selected_vertex_kind_,
+                                            selected_vertex_label_,
+                                            selected_vertex_detail_));
   }
 }
 
@@ -850,11 +868,11 @@ void ChannelGraphPanel::onFilterChanged(const QString& text) {
   filter_timer_->start();
 }
 
-void ChannelGraphPanel::onPrefixChanged(int index) {
-  if (index < 0) {
+void ChannelGraphPanel::onPrefixChanged(const QString& prefix) {
+  if (config_.prefix_filter == prefix) {
     return;
   }
-  config_.prefix_filter = prefix_combo_->itemData(index).toString();
+  config_.prefix_filter = prefix;
   emit configChanged();
   refreshGraph();
 }
@@ -884,12 +902,42 @@ void ChannelGraphPanel::onShowEdgeLabelsToggled(bool enabled) {
   applyViewOptions();
 }
 
-void ChannelGraphPanel::onChannelArrangeChanged(int index) {
-  if (index < 0 || channel_arrange_combo_ == nullptr) {
+void ChannelGraphPanel::onQuietModeToggled(bool enabled) {
+  config_.quiet_mode = enabled;
+  emit configChanged();
+  last_topology_hash_.clear();
+  refreshGraph();
+}
+
+void ChannelGraphPanel::onHideLeafToggled(bool enabled) {
+  config_.hide_leaf_channels = enabled;
+  emit configChanged();
+  last_topology_hash_.clear();
+  refreshGraph();
+}
+
+void ChannelGraphPanel::onHideDeadEndToggled(bool enabled) {
+  config_.hide_dead_end_channels = enabled;
+  emit configChanged();
+  last_topology_hash_.clear();
+  refreshGraph();
+}
+
+void ChannelGraphPanel::onProbeToggled(bool enabled) {
+  config_.probe_enabled = enabled;
+  emit configChanged();
+  if (!config_.probe_enabled) {
+    clearStatsProbes();
+  } else {
+    syncStatsProbes();
+  }
+}
+
+void ChannelGraphPanel::onChannelArrangeChanged(VertexArrangeMode mode) {
+  if (config_.channel_arrange == mode) {
     return;
   }
-  config_.channel_arrange = static_cast<VertexArrangeMode>(
-      channel_arrange_combo_->itemData(index).toInt());
+  config_.channel_arrange = mode;
   emit configChanged();
   last_topology_hash_.clear();
   graph_view_->resetSavedPositions();
@@ -897,12 +945,11 @@ void ChannelGraphPanel::onChannelArrangeChanged(int index) {
   graph_view_->zoomToFit();
 }
 
-void ChannelGraphPanel::onServiceArrangeChanged(int index) {
-  if (index < 0 || service_arrange_combo_ == nullptr) {
+void ChannelGraphPanel::onServiceArrangeChanged(VertexArrangeMode mode) {
+  if (config_.service_arrange == mode) {
     return;
   }
-  config_.service_arrange = static_cast<VertexArrangeMode>(
-      service_arrange_combo_->itemData(index).toInt());
+  config_.service_arrange = mode;
   emit configChanged();
   last_topology_hash_.clear();
   graph_view_->resetSavedPositions();
@@ -930,7 +977,17 @@ void ChannelGraphPanel::onRefreshClicked() {
 void ChannelGraphPanel::onZoomFitClicked() { graph_view_->zoomToFit(); }
 
 void ChannelGraphPanel::onGraphRendered(int vertex_count, int edge_count) {
-  updateStatusText(tr("%1 vertices, %2 connections").arg(vertex_count).arg(edge_count));
+  idle_status_text_ =
+      tr("%1 vertices · %2 connections · click to focus · double-click for details")
+          .arg(vertex_count)
+          .arg(edge_count);
+  if (!selected_vertex_id_.isEmpty()) {
+    updateStatusText(formatSelectionSummary(selected_vertex_kind_,
+                                            selected_vertex_label_,
+                                            selected_vertex_detail_));
+  } else {
+    updateStatusText(idle_status_text_);
+  }
 }
 
 void ChannelGraphPanel::onVertexDoubleClicked(
@@ -938,6 +995,81 @@ void ChannelGraphPanel::onVertexDoubleClicked(
     const QString& label, const QString& detail) {
   Q_UNUSED(vertex_id);
   showVertexProperties(kind, label, detail);
+}
+
+void ChannelGraphPanel::onVertexSelectionChanged(
+    bool has_selection, const QString& vertex_id,
+    integration::GraphVertexKind kind, const QString& label,
+    const QString& detail) {
+  if (!has_selection) {
+    selected_vertex_id_.clear();
+    selected_vertex_label_.clear();
+    selected_vertex_detail_.clear();
+    updateStatusText(idle_status_text_.isEmpty()
+                         ? tr("Click a vertex for details")
+                         : idle_status_text_);
+    return;
+  }
+  selected_vertex_id_ = vertex_id;
+  selected_vertex_kind_ = kind;
+  selected_vertex_label_ = label;
+  selected_vertex_detail_ = detail;
+  updateStatusText(formatSelectionSummary(kind, label, detail));
+}
+
+void ChannelGraphPanel::onVertexContextMenuRequested(
+    const QString& vertex_id, integration::GraphVertexKind kind,
+    const QString& label, const QString& detail, const QPoint& global_pos) {
+  Q_UNUSED(vertex_id);
+  QMenu menu(this);
+  QAction* copy_action = menu.addAction(
+      kind == integration::GraphVertexKind::kChannel ? tr("Copy channel path")
+                                                     : tr("Copy name"));
+  QAction* open_raw_action = nullptr;
+  QAction* add_plot_action = nullptr;
+  QAction* open_table_action = nullptr;
+  QString plot_field;
+  QString table_field;
+
+  if (kind == integration::GraphVertexKind::kChannel && !label.isEmpty()) {
+    open_raw_action = menu.addAction(tr("Open in Raw Messages"));
+    const QStringList numeric =
+        plot::NumericFieldPathsForMessageType(detail.toStdString());
+    if (!numeric.isEmpty()) {
+      plot_field = numeric.first();
+      add_plot_action =
+          menu.addAction(tr("Add to Plot (%1)").arg(plot_field));
+    }
+    const QStringList arrays =
+        plot::TableArrayFieldPathsForMessageType(detail.toStdString());
+    if (!arrays.isEmpty()) {
+      table_field = arrays.first();
+      open_table_action =
+          menu.addAction(tr("Open in Table (%1)").arg(table_field));
+    }
+  }
+
+  QAction* chosen = menu.exec(global_pos);
+  if (chosen == nullptr) {
+    return;
+  }
+  if (chosen == copy_action) {
+    if (QClipboard* clipboard = QApplication::clipboard()) {
+      clipboard->setText(label);
+    }
+    return;
+  }
+  if (chosen == open_raw_action) {
+    emit openInRawMessagesRequested(label);
+    return;
+  }
+  if (chosen == add_plot_action && !plot_field.isEmpty()) {
+    emit addToPlotRequested(label, plot_field);
+    return;
+  }
+  if (chosen == open_table_action && !table_field.isEmpty()) {
+    emit openInTableRequested(label, table_field);
+  }
 }
 
 void ChannelGraphPanel::showVertexProperties(integration::GraphVertexKind kind,
@@ -962,29 +1094,116 @@ void ChannelGraphPanel::showVertexProperties(integration::GraphVertexKind kind,
   dialog->activateWindow();
 }
 
-void ChannelGraphPanel::applyConfigToUi() {
-  show_services_check_->setChecked(config_.show_services);
-  show_channels_check_->setChecked(config_.show_channels);
-  if (neighborhood_check_ != nullptr) {
-    neighborhood_check_->setChecked(config_.neighborhood_mode);
+QString ChannelGraphPanel::formatSelectionSummary(
+    integration::GraphVertexKind kind, const QString& label,
+    const QString& detail) const {
+  auto* topology = autolink::service_discovery::TopologyManager::Instance();
+  switch (kind) {
+    case integration::GraphVertexKind::kChannel: {
+      const integration::ChannelStats stats =
+          integration::ChannelStatsRegistry::instance().stats(
+              label.toStdString());
+      int writers = 0;
+      int readers = 0;
+      if (topology != nullptr && topology->channel_manager() != nullptr) {
+        std::vector<autolink::proto::RoleAttributes> writer_attrs;
+        std::vector<autolink::proto::RoleAttributes> reader_attrs;
+        topology->channel_manager()->GetWritersOfChannel(label.toStdString(),
+                                                         &writer_attrs);
+        topology->channel_manager()->GetReadersOfChannel(label.toStdString(),
+                                                         &reader_attrs);
+        writers = static_cast<int>(writer_attrs.size());
+        readers = static_cast<int>(reader_attrs.size());
+      }
+      const QString type =
+          detail.isEmpty() ? tr("unknown type") : detail;
+      return tr("Channel · %1 · %2 · %3 Hz · %4 writers / %5 readers")
+          .arg(label, type, FormatHzText(stats.frequency_hz))
+          .arg(writers)
+          .arg(readers);
+    }
+    case integration::GraphVertexKind::kNode: {
+      int pubs = 0;
+      int subs = 0;
+      int servers = 0;
+      int clients = 0;
+      if (topology != nullptr) {
+        if (topology->channel_manager() != nullptr) {
+          std::vector<autolink::proto::RoleAttributes> writers;
+          std::vector<autolink::proto::RoleAttributes> readers;
+          topology->channel_manager()->GetWritersOfNode(label.toStdString(),
+                                                        &writers);
+          topology->channel_manager()->GetReadersOfNode(label.toStdString(),
+                                                        &readers);
+          pubs = static_cast<int>(writers.size());
+          subs = static_cast<int>(readers.size());
+        }
+        if (topology->service_manager() != nullptr) {
+          std::vector<autolink::proto::RoleAttributes> all_servers;
+          topology->service_manager()->GetServers(&all_servers);
+          for (const auto& server : all_servers) {
+            if (server.node_name() == label.toStdString()) {
+              ++servers;
+            }
+            std::vector<autolink::proto::RoleAttributes> srv_clients;
+            topology->service_manager()->GetClients(server.service_name(),
+                                                    &srv_clients);
+            for (const auto& client : srv_clients) {
+              if (client.node_name() == label.toStdString()) {
+                ++clients;
+              }
+            }
+          }
+        }
+      }
+      return tr("Node · %1 · %2 pub / %3 sub · %4 srv / %5 cli")
+          .arg(label)
+          .arg(pubs)
+          .arg(subs)
+          .arg(servers)
+          .arg(clients);
+    }
+    case integration::GraphVertexKind::kService: {
+      int server_count = 0;
+      int client_count = 0;
+      if (topology != nullptr && topology->service_manager() != nullptr) {
+        std::vector<autolink::proto::RoleAttributes> servers;
+        topology->service_manager()->GetServers(&servers);
+        for (const auto& server : servers) {
+          if (server.service_name() == label.toStdString()) {
+            ++server_count;
+          }
+        }
+        std::vector<autolink::proto::RoleAttributes> clients;
+        topology->service_manager()->GetClients(label.toStdString(), &clients);
+        client_count = static_cast<int>(clients.size());
+      }
+      const QString type =
+          detail.isEmpty() ? tr("service") : detail;
+      return tr("Service · %1 · %2 · %3 servers / %4 clients")
+          .arg(label, type)
+          .arg(server_count)
+          .arg(client_count);
+    }
   }
-  if (edge_labels_check_ != nullptr) {
-    edge_labels_check_->setChecked(config_.show_edge_labels);
-  }
-  auto_refresh_check_->setChecked(config_.auto_refresh);
-  filter_edit_->setText(config_.filter);
+  return label;
+}
 
-  auto set_arrange_combo = [](QComboBox* combo, VertexArrangeMode mode) {
-    if (combo == nullptr) {
+void ChannelGraphPanel::applyConfigToUi() {
+  const auto set_toggle = [](QToolButton* button, bool checked) {
+    if (button == nullptr) {
       return;
     }
-    combo->blockSignals(true);
-    const int index = combo->findData(static_cast<int>(mode));
-    combo->setCurrentIndex(index >= 0 ? index : 0);
-    combo->blockSignals(false);
+    button->blockSignals(true);
+    button->setChecked(checked);
+    button->blockSignals(false);
   };
-  set_arrange_combo(channel_arrange_combo_, config_.channel_arrange);
-  set_arrange_combo(service_arrange_combo_, config_.service_arrange);
+  set_toggle(show_services_button_, config_.show_services);
+  set_toggle(show_channels_button_, config_.show_channels);
+  set_toggle(neighborhood_button_, config_.neighborhood_mode);
+  if (filter_edit_ != nullptr) {
+    filter_edit_->setText(config_.filter);
+  }
   applyViewOptions();
 }
 
@@ -997,25 +1216,56 @@ void ChannelGraphPanel::applyViewOptions() {
   graph_view_->setShowEdgeLabels(config_.show_edge_labels);
 }
 
-void ChannelGraphPanel::rebuildPrefixCombo() {
-  const QString current = config_.prefix_filter;
-  prefix_combo_->blockSignals(true);
-  prefix_combo_->clear();
-  prefix_combo_->addItem(tr("All"), QString());
-  for (const std::string& prefix : integration::ListChannelPrefixGroups()) {
-    const QString value = QString::fromStdString(prefix);
-    prefix_combo_->addItem(value, value);
-  }
-  const int index = prefix_combo_->findData(current);
-  prefix_combo_->setCurrentIndex(index >= 0 ? index : 0);
-  prefix_combo_->blockSignals(false);
-  if (index < 0) {
-    config_.prefix_filter.clear();
-  }
-}
+void ChannelGraphPanel::rebuildPrefixCombo() {}
 
 void ChannelGraphPanel::updateStatusText(const QString& text) {
   status_label_->setText(text);
+}
+
+void ChannelGraphPanel::clearStatsProbes() {
+  for (const auto& entry : probe_subscriptions_) {
+    integration::ChannelReaderRegistry::instance().unsubscribe(entry.second);
+  }
+  probe_subscriptions_.clear();
+}
+
+void ChannelGraphPanel::syncStatsProbes() {
+  if (!config_.probe_enabled || graph_view_ == nullptr) {
+    clearStatsProbes();
+    return;
+  }
+
+  constexpr int kMaxProbeChannels = 48;
+  std::unordered_map<std::string, std::string> wanted;
+  for (const auto& entry : graph_view_->channelVertices()) {
+    if (entry.first.isEmpty()) {
+      continue;
+    }
+    if (static_cast<int>(wanted.size()) >= kMaxProbeChannels) {
+      break;
+    }
+    wanted.emplace(entry.first.toStdString(), entry.second.toStdString());
+  }
+
+  for (auto it = probe_subscriptions_.begin(); it != probe_subscriptions_.end();) {
+    if (wanted.find(it->first) == wanted.end()) {
+      integration::ChannelReaderRegistry::instance().unsubscribe(it->second);
+      it = probe_subscriptions_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+
+  for (const auto& entry : wanted) {
+    if (probe_subscriptions_.count(entry.first) > 0) {
+      continue;
+    }
+    const auto id = integration::ChannelReaderRegistry::instance().subscribe(
+        entry.first, [](const std::string& /*payload*/) {});
+    if (id != 0) {
+      probe_subscriptions_.emplace(entry.first, id);
+    }
+  }
 }
 
 }  // namespace channel_graph

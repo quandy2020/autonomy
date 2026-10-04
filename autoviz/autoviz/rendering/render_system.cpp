@@ -4,15 +4,13 @@
 
 #include "autoviz/rendering/render_system.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 #include <Ogre.h>
-#include <Overlay/OgreOverlaySystem.h>
+#include <OgreOverlaySystem.h>
 
 #include <QOpenGLContext>
 
@@ -28,7 +26,7 @@ namespace autoviz {
 namespace rendering {
 namespace {
 
-constexpr char kResourceGroup[] = "rviz_rendering";
+constexpr char kResourceGroup[] = "aviz_rendering";
 
 void AddResourceLocation(const std::string& path) {
   if (!std::filesystem::exists(path)) {
@@ -104,8 +102,14 @@ bool RenderSystem::ensureInitialized() {
     return false;
   }
 
-  const std::string plugins_cfg =
-      (std::filesystem::path(resource_dir) / "plugins.cfg").string();
+  // Prefer manual plugin load via AUTOVIZ_OGRE_PLUGIN_DIR; only use plugins.cfg
+  // when present so a missing media copy does not spam Ogre errors.
+  std::string plugins_cfg;
+  const std::filesystem::path plugins_cfg_path =
+      std::filesystem::path(resource_dir) / "plugins.cfg";
+  if (std::filesystem::exists(plugins_cfg_path)) {
+    plugins_cfg = plugins_cfg_path.string();
+  }
   OgreOgreLogging::instance()->noLog();
   OgreOgreLogging::instance()->configureLogging();
   ogre_root_ = new Ogre::Root(plugins_cfg);
@@ -121,7 +125,7 @@ bool RenderSystem::ensureInitialized() {
   setupResources();
 
   try {
-#ifdef AUTOVIZ_OGRE_RVIZ_MEDIA
+#ifdef AUTOVIZ_OGRE_AVIZ_MEDIA
     Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
 #else
     Ogre::ResourceGroupManager::getSingleton().initialiseResourceGroup(
@@ -134,16 +138,16 @@ bool RenderSystem::ensureInitialized() {
   }
 
   OgreMaterialManager::ensureDefaultMaterials();
-#ifdef AUTOVIZ_OGRE_RVIZ_MEDIA
-  OgreMaterialManager::ensureRvizMediaMaterials();
+#ifdef AUTOVIZ_OGRE_AVIZ_MEDIA
+  OgreMaterialManager::ensureAvizMediaMaterials();
 #else
-  OgreMaterialManager::ensureStubRvizMaterials();
+  OgreMaterialManager::ensureStubAvizMaterials();
 #endif
-  ensureRvizPrimitiveMeshes();
+  ensureAvizPrimitiveMeshes();
   initialized_ = true;
   const char* visual_mode =
-#ifdef AUTOVIZ_OGRE_RVIZ_MEDIA
-      "rviz_glsl";
+#ifdef AUTOVIZ_OGRE_AVIZ_MEDIA
+      "aviz_glsl";
 #else
       "stub";
 #endif
@@ -198,50 +202,81 @@ void RenderSystem::loadOgrePlugins() {
     LOG(WARNING) << "Ogre plugin directory unknown; relying on linked RenderSystem.";
     return;
   }
+
+  auto try_load = [this](const std::filesystem::path& prefix,
+                         const char* name) {
+    const std::filesystem::path candidates[] = {
+        prefix / (std::string(name) + ".dylib"),
+        prefix / (std::string(name) + ".so"),
+        prefix / name,
+    };
+    for (const std::filesystem::path& candidate : candidates) {
+      if (!std::filesystem::exists(candidate)) {
+        continue;
+      }
+      try {
+        ogre_root_->loadPlugin(candidate.string());
+        LOG(INFO) << "Loaded Ogre plugin: " << candidate;
+        return true;
+      } catch (const Ogre::Exception& ex) {
+        LOG(WARNING) << "Failed to load Ogre plugin " << candidate << ": "
+                     << ex.getFullDescription();
+      }
+    }
+    return false;
+  };
+
   const char* render_plugins[] = {
-      "RenderSystem_GL3Plus", "RenderSystem_GL", "RenderSystem_GLES2"};
+      // Classic GL (compatibility) is required for rviz ogre_media GLSL 1.20
+      // (gl_Vertex / gl_Color / fixed-function Autoviz materials). GL3+ core
+      // rejects those shaders and FixedFunction techniques.
+      "RenderSystem_GL", "RenderSystem_GL3Plus", "RenderSystem_GLES2"};
+  bool loaded_rs = false;
   for (const char* plugin_name : render_plugins) {
-    const std::filesystem::path plugin_path = plugin_prefix / plugin_name;
-    const std::filesystem::path plugin_so =
-        plugin_prefix / (std::string(plugin_name) + ".so");
-    if (std::filesystem::exists(plugin_so)) {
-      ogre_root_->loadPlugin(plugin_so.string());
-    } else if (std::filesystem::exists(plugin_path)) {
-      ogre_root_->loadPlugin(plugin_path.string());
+    if (try_load(plugin_prefix, plugin_name)) {
+      loaded_rs = true;
+      break;
     }
   }
-  const std::filesystem::path stbi_plugin = plugin_prefix / "Codec_STBI.so";
-  if (std::filesystem::exists(stbi_plugin)) {
-    ogre_root_->loadPlugin(stbi_plugin.string());
-  } else {
-    const std::filesystem::path stbi = plugin_prefix / "Codec_STBI";
-    if (std::filesystem::exists(stbi)) {
-      ogre_root_->loadPlugin(stbi.string());
-    }
+  if (!loaded_rs) {
+    LOG(ERROR) << "No Ogre RenderSystem plugin found under " << plugin_prefix;
   }
+  try_load(plugin_prefix, "Codec_STBI");
 }
 
 void RenderSystem::setupRenderSystem() {
   Ogre::RenderSystem* render_system = nullptr;
-  const std::vector<std::string> preferred = {"OpenGL 3+", "OpenGL 3 Plus",
-                                              "OpenGL", "OpenGL ES"};
-  for (const std::string& token : preferred) {
-    for (Ogre::RenderSystem* candidate : ogre_root_->getAvailableRenderers()) {
-      if (candidate->getName().find(token) != std::string::npos) {
-        render_system = candidate;
-        break;
-      }
+  Ogre::RenderSystem* gl3plus_fallback = nullptr;
+  for (Ogre::RenderSystem* candidate : ogre_root_->getAvailableRenderers()) {
+    const Ogre::String& name = candidate->getName();
+    if (name.find("OpenGL 3+") != Ogre::String::npos ||
+        name.find("OpenGL 3 Plus") != Ogre::String::npos) {
+      gl3plus_fallback = candidate;
+      continue;
     }
-    if (render_system != nullptr) {
+    if (name.find("OpenGL") != Ogre::String::npos) {
+      render_system = candidate;
       break;
     }
+    if (name.find("OpenGL ES") != Ogre::String::npos &&
+        render_system == nullptr) {
+      render_system = candidate;
+    }
+  }
+  if (render_system == nullptr) {
+    render_system = gl3plus_fallback;
   }
   if (render_system == nullptr) {
     throw std::runtime_error("Could not find Ogre OpenGL render system.");
   }
+  LOG(INFO) << "Using Ogre render system: " << render_system->getName();
   render_system->setConfigOption("Full Screen", "No");
   if (use_anti_aliasing_) {
-    render_system->setConfigOption("FSAA", "4");
+    try {
+      render_system->setConfigOption("FSAA", "4");
+    } catch (const Ogre::Exception&) {
+      // Some drivers omit FSAA; ignore.
+    }
   }
   ogre_root_->setRenderSystem(render_system);
   GpuCapabilities::instance().probeFromRendererString(render_system->getName());
@@ -298,7 +333,7 @@ void RenderSystem::setupResources() {
   AddResourceLocation(base, "fonts");
   AddResourceLocation(base, "fonts/liberation-sans");
   AddResourceLocation(base, "models");
-#ifdef AUTOVIZ_OGRE_RVIZ_MEDIA
+#ifdef AUTOVIZ_OGRE_AVIZ_MEDIA
   AddResourceLocation(base, "materials");
   AddResourceLocation(base, "materials/scripts");
   AddResourceLocation(base, "materials/glsl120");
@@ -370,4 +405,3 @@ Ogre::RenderWindow* RenderSystem::makeRenderWindow(WindowHandle window_id,
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

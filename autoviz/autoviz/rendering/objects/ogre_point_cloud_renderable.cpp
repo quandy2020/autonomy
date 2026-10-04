@@ -5,8 +5,6 @@
 
 #include "autoviz/rendering/objects/ogre_point_cloud_renderable.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <algorithm>
 
 #include <OgreCamera.h>
@@ -94,4 +92,3 @@ void OgrePointCloudRenderable::createAndBindBuffer(int num_points) {
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

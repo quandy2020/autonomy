@@ -85,12 +85,35 @@ void AppendDescriptorFields(QTreeWidgetItem* parent,
   }
   for (int i = 0; i < desc->field_count(); ++i) {
     const google::protobuf::FieldDescriptor* field = desc->field(i);
-    if (field == nullptr || field->is_repeated()) {
+    if (field == nullptr) {
       continue;
     }
     const QString segment = ProtobufToQString(field->name());
     const QString path =
         path_prefix.isEmpty() ? segment : path_prefix + QLatin1Char('.') + segment;
+    if (field->is_repeated()) {
+      // Plot-aligned small set: expose first element as path[0] / path[0].child.
+      const QString indexed_path = path + QStringLiteral("[0]");
+      const QString indexed_label = segment + QStringLiteral("[0]");
+      if (IsNumericField(field)) {
+        auto* item = new QTreeWidgetItem(parent, {indexed_label});
+        item->setData(0, kTopicFieldPathRole, indexed_path);
+        item->setData(0, kTopicDraggableRole, true);
+        item->setData(0, kTopicTableDraggableRole, false);
+        item->setFlags(item->flags() | Qt::ItemIsDragEnabled);
+        item->setToolTip(0, indexed_path);
+      } else if (field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
+        auto* item = new QTreeWidgetItem(parent, {indexed_label});
+        item->setData(0, kTopicFieldPathRole, indexed_path);
+        item->setData(0, kTopicDraggableRole, false);
+        item->setData(0, kTopicTableDraggableRole, false);
+        AppendDescriptorFields(item, field->message_type(), indexed_path);
+        if (item->childCount() == 0) {
+          delete item;
+        }
+      }
+      continue;
+    }
     if (field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
       auto* item = new QTreeWidgetItem(parent, {segment});
       item->setData(0, kTopicFieldPathRole, path);
@@ -154,12 +177,21 @@ void CollectNumericFieldPaths(const google::protobuf::Descriptor* desc,
   }
   for (int i = 0; i < desc->field_count(); ++i) {
     const google::protobuf::FieldDescriptor* field = desc->field(i);
-    if (field == nullptr || field->is_repeated()) {
+    if (field == nullptr) {
       continue;
     }
     const QString segment = ProtobufToQString(field->name());
     const QString path =
         path_prefix.isEmpty() ? segment : path_prefix + QLatin1Char('.') + segment;
+    if (field->is_repeated()) {
+      const QString indexed = path + QStringLiteral("[0]");
+      if (IsNumericField(field)) {
+        out->push_back(indexed);
+      } else if (field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
+        CollectNumericFieldPaths(field->message_type(), indexed, out);
+      }
+      continue;
+    }
     if (field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
       CollectNumericFieldPaths(field->message_type(), path, out);
     } else if (IsNumericField(field)) {
@@ -279,9 +311,39 @@ QStringList PlotNextLevelFieldPaths(const std::string& message_type,
   return out;
 }
 
+void CollectTableArrayFieldPaths(const google::protobuf::Descriptor* desc,
+                                 const QString& path_prefix, QStringList* out) {
+  if (desc == nullptr || out == nullptr) {
+    return;
+  }
+  for (int i = 0; i < desc->field_count(); ++i) {
+    const google::protobuf::FieldDescriptor* field = desc->field(i);
+    if (field == nullptr) {
+      continue;
+    }
+    const QString segment = ProtobufToQString(field->name());
+    const QString path =
+        path_prefix.isEmpty() ? segment : path_prefix + QLatin1Char('.') + segment;
+    if (field->is_repeated()) {
+      out->push_back(path);
+      continue;
+    }
+    if (field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
+      CollectTableArrayFieldPaths(field->message_type(), path, out);
+    }
+  }
+}
+
 QStringList NumericFieldPathsForMessageType(const std::string& message_type) {
   QStringList paths;
   CollectNumericFieldPaths(ResolveDescriptor(message_type), QString(), &paths);
+  paths.sort(Qt::CaseInsensitive);
+  return paths;
+}
+
+QStringList TableArrayFieldPathsForMessageType(const std::string& message_type) {
+  QStringList paths;
+  CollectTableArrayFieldPaths(ResolveDescriptor(message_type), QString(), &paths);
   paths.sort(Qt::CaseInsensitive);
   return paths;
 }

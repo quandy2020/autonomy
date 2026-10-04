@@ -4,8 +4,6 @@
 
 #include "autoviz/rendering/ogre_pick_renderer.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -25,7 +23,7 @@ namespace autoviz {
 namespace rendering {
 namespace {
 
-constexpr char kRvizResourceGroup[] = "rviz_rendering";
+constexpr char kAvizResourceGroup[] = "aviz_rendering";
 
 int clampInt(int value, int min_value, int max_value) {
   return std::max(min_value, std::min(value, max_value));
@@ -35,7 +33,7 @@ common::PickHandle handleFromPixelBox(const Ogre::PixelBox& box) {
   if (box.data == nullptr || box.getWidth() == 0 || box.getHeight() == 0) {
     return common::kInvalidPickHandle;
   }
-  const auto* bytes = static_cast<const uint8_t*>(box.data());
+  const auto* bytes = static_cast<const uint8_t*>(box.data);
   if (box.format == Ogre::PF_R8G8B8A8) {
     return common::pickColorToHandle(bytes[0], bytes[1], bytes[2]);
   }
@@ -58,7 +56,7 @@ void OgrePickRenderer::initialize(Ogre::SceneManager* scene_manager) {
   scene_manager_ = scene_manager;
 
   fallback_pick_material_ = Ogre::MaterialManager::getSingleton().getByName(
-      "rviz/DefaultPickAndDepth", kRvizResourceGroup);
+      "aviz/DefaultPickAndDepth", kAvizResourceGroup);
   if (fallback_pick_material_) {
     fallback_pick_material_->load();
     fallback_pick_cull_technique_ =
@@ -70,22 +68,28 @@ void OgrePickRenderer::initialize(Ogre::SceneManager* scene_manager) {
   }
 
   static int camera_count = 0;
+  const int instance_id = camera_count++;
   const Ogre::String camera_name =
-      "AvizPickCamera" + Ogre::StringConverter::toString(camera_count++);
+      "AvizPickCamera" + Ogre::StringConverter::toString(instance_id);
   pick_camera_ = scene_manager_->createCamera(camera_name);
   pick_camera_node_ =
       scene_manager_->getRootSceneNode()->createChildSceneNode(camera_name + "Node");
   pick_camera_node_->attachObject(pick_camera_);
 
   auto createPickTexture = [](const Ogre::String& name) {
-    return Ogre::TextureManager::getSingleton().createManual(
+    auto& textures = Ogre::TextureManager::getSingleton();
+    if (textures.resourceExists(name)) {
+      textures.remove(name);
+    }
+    return textures.createManual(
         name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
         Ogre::TEX_TYPE_2D, 1, 1, 0, Ogre::PF_R8G8B8A8,
         Ogre::TU_STATIC | Ogre::TU_RENDERTARGET);
   };
 
-  pick_texture_ = createPickTexture("AvizPickTexture0");
-  pick1_texture_ = createPickTexture("AvizPickTexture1");
+  const Ogre::String id = Ogre::StringConverter::toString(instance_id);
+  pick_texture_ = createPickTexture("AvizPickTexture0_" + id);
+  pick1_texture_ = createPickTexture("AvizPickTexture1_" + id);
   pick_texture_->getBuffer()->getRenderTarget()->setAutoUpdated(false);
   pick1_texture_->getBuffer()->getRenderTarget()->setAutoUpdated(false);
 }
@@ -198,7 +202,7 @@ common::PickHandle OgrePickRenderer::renderSchemeAndRead(
   pixel_buffer->blitToMemory(dst_box);
 
   const common::PickHandle handle = handleFromPixelBox(dst_box);
-  delete[] static_cast<uint8_t*>(dst_box.data());
+  delete[] static_cast<uint8_t*>(dst_box.data);
   return handle;
 }
 
@@ -299,4 +303,3 @@ Ogre::Technique* OgrePickRenderer::handleSchemeNotFound(
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

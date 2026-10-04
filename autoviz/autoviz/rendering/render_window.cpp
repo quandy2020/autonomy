@@ -24,7 +24,8 @@ namespace autoviz {
 namespace rendering {
 
 RenderWindow::RenderWindow(QWidget* parent) : QOpenGLWidget(parent) {
-  setMinimumSize(640, 480);
+  // Keep min size small so center-host splitters can resize beside other panels.
+  setMinimumSize(80, 60);
   setFocusPolicy(Qt::StrongFocus);
   setMouseTracking(true);
   setFormat(platform::defaultSurfaceFormat());

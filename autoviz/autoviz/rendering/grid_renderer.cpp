@@ -7,8 +7,10 @@
 #include <QOpenGLExtraFunctions>
 #include <QOpenGLFunctions>
 #include <QtMath>
+#include <string>
 #include <vector>
 
+#include "autoviz/rendering/ogre_resource_config.hpp"
 #include "autoviz/rendering/render_settings.hpp"
 
 namespace autoviz {
@@ -32,35 +34,6 @@ QMatrix4x4 CameraState::projectionMatrix(float aspect_ratio) const {
 
 namespace {
 
-constexpr char kGridVertexShader[] = R"(#version 330 core
-layout(location = 0) in vec3 aPos;
-uniform mat4 uMvp;
-void main() { gl_Position = uMvp * vec4(aPos, 1.0); }
-)";
-
-constexpr char kGridFragmentShader[] = R"(#version 330 core
-uniform vec3 uColor;
-out vec4 fragColor;
-void main() { fragColor = vec4(uColor, 1.0); }
-)";
-
-constexpr char kColorVertexShader[] = R"(#version 330 core
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec3 aColor;
-uniform mat4 uMvp;
-out vec3 vColor;
-void main() {
-  gl_Position = uMvp * vec4(aPos, 1.0);
-  vColor = aColor;
-}
-)";
-
-constexpr char kColorFragmentShader[] = R"(#version 330 core
-in vec3 vColor;
-out vec4 fragColor;
-void main() { fragColor = vec4(vColor, 1.0); }
-)";
-
 unsigned CompileShader(unsigned type, const char* source) {
   QOpenGLFunctions* gl = QOpenGLContext::currentContext()->functions();
   const unsigned shader = gl->glCreateShader(type);
@@ -69,10 +42,13 @@ unsigned CompileShader(unsigned type, const char* source) {
   return shader;
 }
 
-unsigned LinkProgram(const char* vs, const char* fs) {
+unsigned LinkProgram(const std::string& vs, const std::string& fs) {
+  if (vs.empty() || fs.empty()) {
+    return 0;
+  }
   QOpenGLFunctions* gl = QOpenGLContext::currentContext()->functions();
-  const unsigned v_shader = CompileShader(0x8B31, vs);
-  const unsigned f_shader = CompileShader(0x8B30, fs);
+  const unsigned v_shader = CompileShader(0x8B31, vs.c_str());
+  const unsigned f_shader = CompileShader(0x8B30, fs.c_str());
   const unsigned program = gl->glCreateProgram();
   gl->glAttachShader(program, v_shader);
   gl->glAttachShader(program, f_shader);
@@ -82,14 +58,20 @@ unsigned LinkProgram(const char* vs, const char* fs) {
   return program;
 }
 
+unsigned LinkMediaProgram(const char* vs_rel, const char* fs_rel) {
+  return LinkProgram(loadOgreMediaText(vs_rel), loadOgreMediaText(fs_rel));
+}
+
 }  // namespace
 
 void GridRenderer::ensureProgram() {
   if (grid_program_ != 0) {
     return;
   }
-  grid_program_ = LinkProgram(kGridVertexShader, kGridFragmentShader);
-  axis_program_ = LinkProgram(kColorVertexShader, kColorFragmentShader);
+  grid_program_ = LinkMediaProgram("materials/glsl330/grid.vert",
+                                   "materials/glsl330/grid.frag");
+  axis_program_ = LinkMediaProgram("materials/glsl330/axis.vert",
+                                   "materials/glsl330/axis.frag");
 }
 
 void GridRenderer::setReferenceGridSettings(

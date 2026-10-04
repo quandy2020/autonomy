@@ -27,6 +27,17 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * @file time.h
+ * @brief TF2 time / duration typedefs (nanoseconds since epoch).
+ *
+ * Autoviz vendored tf2 uses @c uint64_t nanosecond stamps instead of ROS time
+ * types. @c Time(0) typically means “latest available” in BufferCore lookups.
+ *
+ * @see BufferCore
+ * @see time_to_sec
+ */
+
 #ifndef TF2_TIME_H
 #define TF2_TIME_H
 
@@ -38,10 +49,29 @@ namespace autoviz {
 namespace transform {
 namespace tf2 {
 
+/**
+ * @brief Absolute timestamp in nanoseconds.
+ * @see Duration
+ */
 typedef uint64_t Time;
+
+/**
+ * @brief Relative duration in nanoseconds.
+ * @see Time
+ */
 typedef uint64_t Duration;
 
+/**
+ * @brief Maximum representable @ref Time value.
+ */
 const uint64_t TIME_MAX = std::numeric_limits<uint64_t>::max();
+
+/**
+ * @brief Converts a nanosecond @ref Time to floating-point seconds.
+ *
+ * @param t Timestamp in nanoseconds.
+ * @return @p t / 1e9 as @c double.
+ */
 double time_to_sec(Time t);
 
 }  // namespace tf2

@@ -27,6 +27,19 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * @file convert.h
+ * @brief Internal @c Converter specializations for @ref tf2::convert.
+ *
+ * Dispatches message↔non-message conversions via @c toMsg / @c fromMsg based
+ * on compile-time @c IS_MESSAGE_A / @c IS_MESSAGE_B flags.
+ *
+ * @note Both-message specialization is intentionally omitted (ROS prefers a
+ *       single message type). Same-type convert uses the one-argument overload.
+ *
+ * @see convert.h
+ */
+
 #ifndef TF2_IMPL_CONVERT_H
 #define TF2_IMPL_CONVERT_H
 
@@ -35,10 +48,25 @@ namespace transform {
 namespace tf2 {
 namespace impl {
 
+/**
+ * @class Converter
+ * @brief Compile-time dispatcher for tf2 type conversion.
+ *
+ * @tparam IS_MESSAGE_A Whether @c A is a ROS-style message type.
+ * @tparam IS_MESSAGE_B Whether @c B is a ROS-style message type.
+ */
 template <bool IS_MESSAGE_A, bool IS_MESSAGE_B>
 class Converter
 {
 public:
+    /**
+     * @brief Converts @p a into @p b (primary template; specialized below).
+     *
+     * @tparam A Source type.
+     * @tparam B Destination type.
+     * @param a Source value.
+     * @param[out] b Destination value.
+     */
     template <typename A, typename B>
     static void convert(const A& a, B& b);
 };
@@ -55,18 +83,27 @@ public:
 // template <typename A, typename B>
 // inline void Converter<true, true>::convert(const A& a, B& b);
 
+/**
+ * @brief Message → non-message: @c fromMsg(a, b).
+ */
 template <>
 template <typename A, typename B>
 inline void Converter<true, false>::convert(const A& a, B& b) {
     fromMsg(a, b);
 }
 
+/**
+ * @brief Non-message → message: @c b = toMsg(a).
+ */
 template <>
 template <typename A, typename B>
 inline void Converter<false, true>::convert(const A& a, B& b) {
     b = toMsg(a);
 }
 
+/**
+ * @brief Non-message → non-message: @c fromMsg(toMsg(a), b).
+ */
 template <>
 template <typename A, typename B>
 inline void Converter<false, false>::convert(const A& a, B& b) {

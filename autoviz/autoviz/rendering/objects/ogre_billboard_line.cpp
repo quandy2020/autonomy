@@ -5,8 +5,6 @@
 
 #include "autoviz/rendering/objects/ogre_billboard_line.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -59,7 +57,7 @@ OgreBillboardLine::~OgreBillboardLine() {
   }
   if (!material_.isNull()) {
     material_->unload();
-    Ogre::MaterialManager::getSingleton().remove(material_->getName(), "AvizOgre");
+    Ogre::MaterialManager::getSingleton().remove(material_->getName(), OgreMaterialManager::resourceGroup());
   }
 }
 
@@ -77,7 +75,7 @@ Ogre::BillboardChain* OgreBillboardLine::createChain() {
   static int count = 0;
   ss << "AvizBillboardLineChain" << count++;
   Ogre::BillboardChain* chain = scene_manager_->createBillboardChain(ss.str());
-  chain->setMaterialName(material_->getName(), "AvizOgre");
+  chain->setMaterialName(material_->getName(), OgreMaterialManager::resourceGroup());
   scene_node_->attachObject(chain);
   chain_containers_.push_back(chain);
   return chain;
@@ -206,4 +204,3 @@ void OgreBillboardLine::setPolyline(const std::vector<Ogre::Vector3>& points,
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

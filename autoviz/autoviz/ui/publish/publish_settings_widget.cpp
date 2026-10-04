@@ -12,7 +12,7 @@
 #include <QSignalBlocker>
 #include <QVBoxLayout>
 
-#include "autoviz/ui/panel_settings_styles.hpp"
+#include "autoviz/ui/theme/panel.hpp"
 
 namespace autoviz {
 namespace publish_panel {

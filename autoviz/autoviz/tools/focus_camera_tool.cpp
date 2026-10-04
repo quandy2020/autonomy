@@ -51,7 +51,8 @@ bool FocusCameraTool::mousePressEvent(QMouseEvent* event) {
 }
 
 QString FocusCameraTool::statusText() const {
-  return QStringLiteral("Focus Camera: click to move orbit target");
+  // Idle hint; hover updates via set_status with coordinates (RViz FocusTool).
+  return QStringLiteral("<b>Left-Click:</b> Look in this direction.");
 }
 
 }  // namespace tools

@@ -7,10 +7,14 @@
 #include <algorithm>
 #include <cmath>
 
+#include <QAction>
+#include <QApplication>
+#include <QClipboard>
 #include <QElapsedTimer>
 #include <QFocusEvent>
 #include <QFrame>
 #include <QHBoxLayout>
+#include <QMenu>
 #include <QMetaObject>
 #include <QScrollArea>
 #include <QTimer>
@@ -26,11 +30,13 @@
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/integration/teleop_channels.hpp"
-#include "autoviz/ui/icon_loader.hpp"
-#include "autoviz/ui/panel_context_menu.hpp"
-#include "autoviz/ui/panel_dock_widget.hpp"
-#include "autoviz/ui/panel_settings_styles.hpp"
-#include "autoviz/ui/panel_title_tools.hpp"
+#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/style.hpp"
+#include "autoviz/ui/app/icon_loader.hpp"
+#include "autoviz/ui/panel/context_menu.hpp"
+#include "autoviz/ui/panel/dock.hpp"
+#include "autoviz/ui/theme/panel.hpp"
+#include "autoviz/ui/panel/title_tools.hpp"
 #include "autoviz/ui/teleop/teleop_control_widget.hpp"
 #include "autoviz/ui/teleop/teleop_settings_widget.hpp"
 #include "autoviz/ui/teleop/teleop_twist_utils.hpp"
@@ -46,15 +52,15 @@ namespace tp = ::autonomy::task::proto;
 QString TeleopStatusLabel(tp::TeleopStatus status) {
   switch (status) {
     case tp::TELEOP_STATUS_ACTIVE:
-      return QObject::tr("运行中");
+      return QObject::tr("Active");
     case tp::TELEOP_STATUS_TIMEOUT:
-      return QObject::tr("超时");
+      return QObject::tr("Timeout");
     case tp::TELEOP_STATUS_REJECTED:
-      return QObject::tr("被拒绝");
+      return QObject::tr("Rejected");
     case tp::TELEOP_STATUS_IDLE:
-      return QObject::tr("空闲");
+      return QObject::tr("Idle");
     default:
-      return QObject::tr("未知");
+      return QObject::tr("Unknown");
   }
 }
 
@@ -90,10 +96,9 @@ TeleopPanel::TeleopPanel(common::VisualizationManager* manager, QWidget* parent)
   setFocusPolicy(Qt::StrongFocus);
   ApplyPanelShell(this);
   setObjectName(QStringLiteral("TeleopPanelContent"));
-  setStyleSheet(QStringLiteral(
-      "TeleopPanel, QWidget#TeleopPanelContent {"
-      "  background: #f8f9fb; color: #1e293b;"
-      "}"));
+  setMinimumWidth(240);
+  setStyleSheet(
+      style::sheet(QStringLiteral("teleop/panel_root")));
 
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);
@@ -113,6 +118,25 @@ TeleopPanel::TeleopPanel(common::VisualizationManager* manager, QWidget* parent)
 
   control_ = new TeleopControlWidget(this);
   root->addWidget(control_, 1);
+
+  setContextMenuPolicy(Qt::CustomContextMenu);
+  control_->setContextMenuPolicy(Qt::CustomContextMenu);
+  auto copy_topic = [this](const QPoint& pos) {
+    QMenu menu(this);
+    QAction* copy = menu.addAction(tr("Copy topic"));
+    QWidget* source = qobject_cast<QWidget*>(sender());
+    if (source == nullptr) {
+      source = this;
+    }
+    if (menu.exec(source->mapToGlobal(pos)) != copy) {
+      return;
+    }
+    if (QClipboard* clipboard = QApplication::clipboard()) {
+      clipboard->setText(config_.topic);
+    }
+  };
+  connect(this, &QWidget::customContextMenuRequested, this, copy_topic);
+  connect(control_, &QWidget::customContextMenuRequested, this, copy_topic);
 
   publish_timer_ = new QTimer(this);
   publish_timer_->setTimerType(Qt::PreciseTimer);
@@ -210,7 +234,7 @@ void TeleopPanel::installTitleBarTools(PanelDockWidget* dock) {
   options.show_expand = false;
 
   const PanelTitleBarTools tools =
-      CreateRvizPanelTitleBarTools(dock, callbacks, options);
+      CreatePanelTitleBarTools(dock, callbacks, options);
   settings_button_ = tools.settings_button;
   dock->setTitleBarTools(tools.widget);
 }
@@ -379,7 +403,7 @@ void TeleopPanel::publishTeleopSessionStart() {
       LOG(WARNING) << "TeleopPanel: failed to write TELEOP_CMD_START "
                       "(waiting for autonomy.task)";
     }
-    smart_teleop_status_text_ = tr("等待 task 连接…");
+    smart_teleop_status_text_ = tr("Waiting for task…");
     QMetaObject::invokeMethod(
         this, [this]() { updateSmartTeleopUiStatus(); }, Qt::QueuedConnection);
   } else {
@@ -573,13 +597,13 @@ void TeleopPanel::updateSmartTeleopUiStatus() {
   }
   QString status;
   if (!teleop_goal_writer_) {
-    status = tr("通道未就绪");
+    status = tr("Channel not ready");
   } else if (goal_write_fail_streak_ > 0 && !smart_teleop_session_active_) {
-    status = tr("等待 task 连接…");
+    status = tr("Waiting for task…");
   } else if (!smart_teleop_status_text_.isEmpty()) {
     status = smart_teleop_status_text_;
   } else {
-    status = tr("已连接，拖动摇杆发送");
+    status = tr("Connected — drag stick to drive");
   }
   control_->setSmartTeleopStatusText(status);
 }

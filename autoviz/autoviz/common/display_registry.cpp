@@ -35,16 +35,6 @@
 #include "autoviz/display/pose_array_display.hpp"
 #include "autoviz/display/pose_display.hpp"
 #include "autoviz/display/robot_model_display.hpp"
-#include "autoviz/display/strata_fov_display.hpp"
-#include "autoviz/display/strata_building_display.hpp"
-#include "autoviz/display/strata_canvas_label_display.hpp"
-#include "autoviz/display/strata_iot_bubble_display.hpp"
-#include "autoviz/display/strata_label_bubble_display.hpp"
-#include "autoviz/display/strata_robot3d_display.hpp"
-#include "autoviz/display/strata_poi_display.hpp"
-#include "autoviz/display/strata_robot_display.hpp"
-#include "autoviz/display/strata_road_graph_display.hpp"
-#include "autoviz/display/strata_semantic_zone_display.hpp"
 #include "autoviz/display/effort_display.hpp"
 #include "autoviz/display/grid_cells_display.hpp"
 #include "autoviz/display/grid_map_display.hpp"
@@ -125,10 +115,14 @@ void DisplayRegistry::registerBuiltinTypes() {
   registerType(
       "TF",
       [](const DisplayConfig& config) {
-        return FinalizeDisplay(std::make_unique<display::TfDisplay>(config.channel),
-                               config);
+        // Always buffer-backed: Listener already covers /tf + /tf_static.
+        // Clear legacy Channel bindings so old configs match RViz2.
+        DisplayConfig normalized = config;
+        normalized.channel.clear();
+        return FinalizeDisplay(std::make_unique<display::TfDisplay>(""),
+                               normalized);
       },
-      [] { return MakeDefault("TF", "TF", "/tf"); });
+      [] { return MakeDefault("TF", "TF", ""); });
 
   registerType(
       "LaserScan",
@@ -153,107 +147,6 @@ void DisplayRegistry::registerBuiltinTypes() {
             std::make_unique<display::MarkerArrayDisplay>(config.channel), config);
       },
       [] { return MakeDefault("MarkerArray", "MarkerArray", ""); });
-
-  registerType(
-      "StrataPoi",
-      [](const DisplayConfig& config) {
-        return FinalizeDisplay(
-            std::make_unique<display::StrataPoiDisplay>(config.channel), config);
-      },
-      [] { return MakeDefault("StrataPoi", "Strata POI", "/strata/poi_markers"); });
-
-  registerType(
-      "StrataRobot",
-      [](const DisplayConfig& config) {
-        return FinalizeDisplay(
-            std::make_unique<display::StrataRobotDisplay>(config.channel), config);
-      },
-      [] {
-        return MakeDefault("StrataRobot", "Strata Robot", "/strata/robot_markers");
-      });
-
-  registerType(
-      "StrataSemanticZone",
-      [](const DisplayConfig& config) {
-        return FinalizeDisplay(
-            std::make_unique<display::StrataSemanticZoneDisplay>(config.channel),
-            config);
-      },
-      [] {
-        return MakeDefault("StrataSemanticZone", "Strata Semantic Zones",
-                           "/strata/semantic_zones");
-      });
-
-  registerType(
-      "StrataRoadGraph",
-      [](const DisplayConfig& config) {
-        return FinalizeDisplay(
-            std::make_unique<display::StrataRoadGraphDisplay>(config.channel), config);
-      },
-      [] {
-        return MakeDefault("StrataRoadGraph", "Strata Road Graph", "/strata/road_graph");
-      });
-
-  registerType(
-      "StrataFov",
-      [](const DisplayConfig& config) {
-        return FinalizeDisplay(
-            std::make_unique<display::StrataFovDisplay>(config.channel), config);
-      },
-      [] { return MakeDefault("StrataFov", "Strata Robot FOV", "/strata/markers"); });
-
-  registerType(
-      "StrataCanvasLabel",
-      [](const DisplayConfig& config) {
-        return FinalizeDisplay(
-            std::make_unique<display::StrataCanvasLabelDisplay>(config.channel), config);
-      },
-      [] {
-        return MakeDefault("StrataCanvasLabel", "Strata Canvas Labels",
-                           "/strata/canvas_labels");
-      });
-
-  registerType(
-      "StrataLabelBubble",
-      [](const DisplayConfig& config) {
-        return FinalizeDisplay(
-            std::make_unique<display::StrataLabelBubbleDisplay>(config.channel), config);
-      },
-      [] {
-        return MakeDefault("StrataLabelBubble", "Strata Label Bubbles",
-                           "/strata/label_bubbles");
-      });
-
-  registerType(
-      "StrataIotBubble",
-      [](const DisplayConfig& config) {
-        return FinalizeDisplay(
-            std::make_unique<display::StrataIotBubbleDisplay>(config.channel), config);
-      },
-      [] {
-        return MakeDefault("StrataIotBubble", "Strata IoT Bubbles", "/strata/iot_bubbles");
-      });
-
-  registerType(
-      "StrataRobot3D",
-      [](const DisplayConfig& config) {
-        return FinalizeDisplay(
-            std::make_unique<display::StrataRobot3DDisplay>(config.channel), config);
-      },
-      [] {
-        return MakeDefault("StrataRobot3D", "Strata Robot 3D Layers",
-                           "/strata/robot_3d_layers");
-      });
-
-  registerType(
-      "StrataBuilding",
-      [](const DisplayConfig& config) {
-        return FinalizeDisplay(
-            std::make_unique<display::StrataBuildingDisplay>(config.channel), config);
-      },
-      [] {
-        return MakeDefault("StrataBuilding", "Strata Buildings", "/strata/markers");
-      });
 
   registerType(
       "Path",

@@ -179,6 +179,32 @@ bool ExtractNumericLeaf(const google::protobuf::Message& message,
   return std::isfinite(*value);
 }
 
+double ReadRepeatedNumericField(const google::protobuf::Message& message,
+                                const google::protobuf::FieldDescriptor* field,
+                                int index) {
+  const google::protobuf::Reflection* reflection = message.GetReflection();
+  switch (field->cpp_type()) {
+    case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
+      return reflection->GetRepeatedDouble(message, field, index);
+    case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
+      return reflection->GetRepeatedFloat(message, field, index);
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
+      return reflection->GetRepeatedInt32(message, field, index);
+    case google::protobuf::FieldDescriptor::CPPTYPE_INT64:
+      return static_cast<double>(
+          reflection->GetRepeatedInt64(message, field, index));
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT32:
+      return reflection->GetRepeatedUInt32(message, field, index);
+    case google::protobuf::FieldDescriptor::CPPTYPE_UINT64:
+      return static_cast<double>(
+          reflection->GetRepeatedUInt64(message, field, index));
+    case google::protobuf::FieldDescriptor::CPPTYPE_BOOL:
+      return reflection->GetRepeatedBool(message, field, index) ? 1.0 : 0.0;
+    default:
+      return 0.0;
+  }
+}
+
 bool NavigateRepeated(const google::protobuf::Message& parent,
                       const google::protobuf::FieldDescriptor* field,
                       const MessagePathSegment& segment,
@@ -215,6 +241,139 @@ bool NavigateRepeated(const google::protobuf::Message& parent,
 
   *selected = &reflection->GetRepeatedMessage(parent, field, 0);
   return true;
+}
+
+bool ExtractAllNumericsFromSegments(
+    const google::protobuf::Message& message,
+    const std::vector<MessagePathSegment>& segments, std::size_t index,
+    std::vector<double>* values) {
+  if (values == nullptr || index >= segments.size()) {
+    return false;
+  }
+  const MessagePathSegment& segment = segments[index];
+  const google::protobuf::Descriptor* desc = message.GetDescriptor();
+  const google::protobuf::FieldDescriptor* field =
+      desc->FindFieldByName(segment.field);
+  if (field == nullptr) {
+    return false;
+  }
+
+  const bool is_last = index + 1 >= segments.size();
+  const google::protobuf::Reflection* reflection = message.GetReflection();
+
+  if (field->is_repeated()) {
+    const int count = reflection->FieldSize(message, field);
+    if (count <= 0) {
+      return false;
+    }
+
+    const bool expand =
+        segment.all_elements || (segment.has_bracket && !segment.filter);
+    if (expand && segment.all_elements) {
+      bool any = false;
+      if (field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
+        if (is_last) {
+          return false;
+        }
+        for (int i = 0; i < count; ++i) {
+          const google::protobuf::Message& child =
+              reflection->GetRepeatedMessage(message, field, i);
+          if (segment.filter.has_value() &&
+              !MatchesFilter(child, *segment.filter)) {
+            continue;
+          }
+          if (ExtractAllNumericsFromSegments(child, segments, index + 1,
+                                             values)) {
+            any = true;
+          }
+        }
+      } else {
+        if (!is_last) {
+          return false;
+        }
+        for (int i = 0; i < count; ++i) {
+          const double v = ReadRepeatedNumericField(message, field, i);
+          if (std::isfinite(v)) {
+            values->push_back(v);
+            any = true;
+          }
+        }
+      }
+      return any;
+    }
+
+    const google::protobuf::Message* selected = nullptr;
+    if (!NavigateRepeated(message, field, segment, &selected) ||
+        selected == nullptr) {
+      // Repeated numeric with a single index.
+      if (field->type() != google::protobuf::FieldDescriptor::TYPE_MESSAGE &&
+          is_last && segment.has_bracket && !segment.all_elements) {
+        if (segment.index < 0 || segment.index >= count) {
+          return false;
+        }
+        const double v =
+            ReadRepeatedNumericField(message, field, segment.index);
+        if (!std::isfinite(v)) {
+          return false;
+        }
+        values->push_back(v);
+        return true;
+      }
+      return false;
+    }
+    if (is_last) {
+      return false;
+    }
+    return ExtractAllNumericsFromSegments(*selected, segments, index + 1,
+                                          values);
+  }
+
+  if (field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
+    const google::protobuf::Message& child =
+        reflection->GetMessage(message, field);
+    if (is_last) {
+      return false;
+    }
+    return ExtractAllNumericsFromSegments(child, segments, index + 1, values);
+  }
+
+  if (!is_last) {
+    return false;
+  }
+  double value = 0.0;
+  if (!ExtractNumericLeaf(message, field, &value)) {
+    return false;
+  }
+  values->push_back(value);
+  return true;
+}
+
+bool ExtractVectorNormFromMessage(const google::protobuf::Message& message,
+                                  double* value) {
+  if (value == nullptr) {
+    return false;
+  }
+  const google::protobuf::Descriptor* desc = message.GetDescriptor();
+  double sum_sq = 0.0;
+  bool any = false;
+  for (const char* name : {"x", "y", "z"}) {
+    const google::protobuf::FieldDescriptor* field = desc->FindFieldByName(name);
+    if (field == nullptr || field->is_repeated() ||
+        field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
+      continue;
+    }
+    const double component = ReadNumericField(message, field);
+    if (!std::isfinite(component)) {
+      continue;
+    }
+    sum_sq += component * component;
+    any = true;
+  }
+  if (!any) {
+    return false;
+  }
+  *value = std::sqrt(sum_sq);
+  return std::isfinite(*value);
 }
 
 bool ExtractNumericFromSegments(const google::protobuf::Message& message,
@@ -309,6 +468,10 @@ bool ResolveLeafFromSegments(
 
 }  // namespace
 
+bool NavigateToChildMessage(const google::protobuf::Message& message,
+                            const MessagePathSegment& segment,
+                            const google::protobuf::Message** child);
+
 std::vector<MessagePathSegment> ParseMessagePath(const std::string& path) {
   std::vector<MessagePathSegment> segments;
   if (path.empty()) {
@@ -335,6 +498,47 @@ bool ExtractNumericByMessagePath(const google::protobuf::Message& message,
     return false;
   }
   return ExtractNumericFromSegments(message, segments, 0, value);
+}
+
+bool ExtractAllNumericsByMessagePath(const google::protobuf::Message& message,
+                                     const std::string& field_path,
+                                     std::vector<double>* values) {
+  if (field_path.empty() || values == nullptr) {
+    return false;
+  }
+  const std::vector<MessagePathSegment> segments = ParseMessagePath(field_path);
+  if (segments.empty()) {
+    return false;
+  }
+  const std::size_t before = values->size();
+  if (!ExtractAllNumericsFromSegments(message, segments, 0, values)) {
+    return false;
+  }
+  return values->size() > before;
+}
+
+bool ExtractVectorNormByMessagePath(const google::protobuf::Message& message,
+                                    const std::string& field_path,
+                                    double* value) {
+  if (value == nullptr) {
+    return false;
+  }
+  if (field_path.empty()) {
+    return ExtractVectorNormFromMessage(message, value);
+  }
+  const std::vector<MessagePathSegment> segments = ParseMessagePath(field_path);
+  if (segments.empty()) {
+    return false;
+  }
+  const google::protobuf::Message* current = &message;
+  for (const MessagePathSegment& segment : segments) {
+    const google::protobuf::Message* next = nullptr;
+    if (!NavigateToChildMessage(*current, segment, &next) || next == nullptr) {
+      return false;
+    }
+    current = next;
+  }
+  return ExtractVectorNormFromMessage(*current, value);
 }
 
 bool ResolveLeafFieldByMessagePath(

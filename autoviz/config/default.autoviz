@@ -20,7 +20,7 @@ CurrentView:
   Yaw: 0.785398006439209
 Displays:
   - Channel: ""
-    Enabled: false
+    Enabled: true
     Name: Grid
     Properties:
       alpha: 0.5
@@ -40,7 +40,6 @@ Global:
   FixedFrame: map
   FrameRate: 30
   RenderBackend: OpenGL
-  ShowGrid: true
   Transformer: autoviz/AutolinkTf
   ViewController: Orbit
 ImagePanels:
@@ -124,25 +123,14 @@ Window:
   Panels:
     - Name: ViewportDock
     - Name: DisplaysDock
-    - Name: StrataFloorDock
     - Name: SelectionDock
     - Name: ToolPropertiesDock
     - Name: ViewsDock
-    - Name: TimeDock
-    - Name: PlaybackDock
     - Name: ChannelsDock
     - Name: ChannelBrowserDock
-    - Name: ProblemsDock
-    - Name: VariablesDock
-    - Name: PropertyInspectorDock
-    - Name: TransformationDock
     - Name: TfTreeDock
     - Name: ImageDock
     - Name: PlotDock
-    - Name: Drone3DDock
-    - Name: HelpDock
-    - Name: LogDock
-    - Name: VariableSliderDock
     - Name: PublishDock
   PlotSettingsVisible: false
   State: AAAA/wAAAAD9AAAAAwAAAAAAAAE+AAAFBvwCAAAABfwAAAAA/////wAAAAAA////+gAAAAACAAAAAvsAAAAYAEMAaABhAG4AbgBlAGwAcwBEAG8AYwBrAQAAAAD/////AAAAAAAAAAD7AAAAJABDAGgAYQBuAG4AZQBsAEIAcgBvAHcAcwBlAHIARABvAGMAawEAAAAA/////wAAAAAAAAAA+wAAABgAUAByAG8AYgBsAGUAbQBzAEQAbwBjAGsBAAAAAP////8AAAAAAAAAAPsAAAAYAEQAaQBzAHAAbABhAHkAcwBEAG8AYwBrAQAAAD8AAAUGAAAArQD////7AAAAHgBTAHQAcgBhAHQAYQBGAGwAbwBvAHIARABvAGMAawEAAAAA/////wAAAAAAAAAA+wAAACoAUAByAG8AcABlAHIAdAB5AEkAbgBzAHAAZQBjAHQAbwByAEQAbwBjAGsAAAAEXQAAAOgAAABZAP///wAAAAEAAAFeAAAFBvwCAAAABvsAAAASAFYAaQBlAHcAcwBEAG8AYwBrAQAAAD8AAAUGAAAAsAD////7AAAAJABUAG8AbwBsAFAAcgBvAHAAZQByAHQAaQBlAHMARABvAGMAawEAAAAA/////wAAAAAAAAAA+wAAABoAUwBlAGwAZQBjAHQAaQBvAG4ARABvAGMAawEAAAAA/////wAAAAAAAAAA+wAAABoAVgBhAHIAaQBhAGIAbABlAHMARABvAGMAawAAAAAA/////wAAAAAAAAAA+wAAACQAVAByAGEAbgBzAGYAbwByAG0AYQB0AGkAbwBuAEQAbwBjAGsBAAAAAP////8AAAAAAAAAAPsAAAAQAEgAZQBsAHAARABvAGMAawAAAAAA/////wAAAAAAAAAAAAAAAwAACb4AAABt/AEAAAAB+wAAABAAVABpAG0AZQBEAG8AYwBrAAAAAAAAAAm+AAACogD///8AAAcWAAAFBgAAAAEAAAACAAAACAAAAAj8AAAAAQAAAAIAAAABAAAACgBUAG8AbwBsAHMBAAAAAP////8AAAAAAAAAAA==

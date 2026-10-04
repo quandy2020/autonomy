@@ -8,9 +8,7 @@ namespace autoviz {
 namespace tools {
 
 QString MoveCameraTool::statusText() const {
-  return QStringLiteral(
-      "Move Camera: Left-Click rotate · Middle-Click / Shift+Left move X/Y · "
-      "Right-Click / Wheel zoom · Shift+Right / Shift+Wheel move Z");
+  return {};
 }
 
 }  // namespace tools

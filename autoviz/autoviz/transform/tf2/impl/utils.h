@@ -12,6 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/**
+ * @file utils.h
+ * @brief Internal quaternion / Euler helpers used by @ref tf2::getEulerYPR.
+ *
+ * Provides @c toQuaternion overloads and yaw/pitch/roll extraction from
+ * @c tf2::Quaternion (and Automsgs quaternion messages).
+ *
+ * @see utils.h
+ * @see Quaternion
+ */
+
 #ifndef TF2_IMPL_UTILS_H
 #define TF2_IMPL_UTILS_H
 
@@ -27,17 +38,20 @@ namespace autoviz {
 namespace transform {
 namespace tf2 {
 namespace impl {
-/** Function needed for the generalization of toQuaternion
- * \param q a tf2::Quaternion
- * \return a copy of the same quaternion
+
+/**
+ * @brief Identity overload: returns @p q unchanged.
+ * @param q TF2 quaternion.
+ * @return Copy of @p q.
  */
 inline tf2::Quaternion toQuaternion(const tf2::Quaternion& q) {
     return q;
 }
 
-/** Function needed for the generalization of toQuaternion
- * \param q a geometry_msgs::Quaternion
- * \return a copy of the same quaternion as a tf2::Quaternion
+/**
+ * @brief Converts an Automsgs quaternion message to @c tf2::Quaternion.
+ * @param q Automsgs @c geometry_msgs::Quaternion.
+ * @return Equivalent TF2 quaternion.
  */
 inline tf2::Quaternion toQuaternion(
     const automsgs::msgs::geometry_msgs::Quaternion& q) {
@@ -46,9 +60,10 @@ inline tf2::Quaternion toQuaternion(
     return res;
 }
 
-/** Function needed for the generalization of toQuaternion
- * \param q a geometry_msgs::QuaternionStamped
- * \return a copy of the same quaternion as a tf2::Quaternion
+/**
+ * @brief Converts an Automsgs QuaternionStamped to @c tf2::Quaternion.
+ * @param q Automsgs stamped quaternion (uses @c q.quaternion).
+ * @return Equivalent TF2 quaternion.
  */
 inline tf2::Quaternion toQuaternion(
     const automsgs::msgs::geometry_msgs::QuaternionStamped& q) {
@@ -57,9 +72,11 @@ inline tf2::Quaternion toQuaternion(
     return res;
 }
 
-/** Function needed for the generalization of toQuaternion
- * \param t some tf2::Stamped object
- * \return a copy of the same quaternion as a tf2::Quaternion
+/**
+ * @brief Converts a @ref Stamped object to a TF2 quaternion via @c toMsg.
+ * @tparam T Underlying stamped payload.
+ * @param t Stamped value convertible to QuaternionStamped.
+ * @return Equivalent TF2 quaternion.
  */
 template <typename T>
 tf2::Quaternion toQuaternion(const tf2::Stamped<T>& t) {
@@ -67,10 +84,11 @@ tf2::Quaternion toQuaternion(const tf2::Stamped<T>& t) {
     return toQuaternion(q);
 }
 
-/** Generic version of toQuaternion. It tries to convert the argument
- * to a geometry_msgs::Quaternion
- * \param t some object
- * \return a copy of the same quaternion as a tf2::Quaternion
+/**
+ * @brief Generic path: @c toMsg(@p t) as Quaternion, then to TF2.
+ * @tparam T Arbitrary type with a Quaternion @c toMsg.
+ * @param t Source object.
+ * @return Equivalent TF2 quaternion.
  */
 template <typename T>
 tf2::Quaternion toQuaternion(const T& t) {
@@ -78,14 +96,16 @@ tf2::Quaternion toQuaternion(const T& t) {
     return toQuaternion(q);
 }
 
-/** The code below is blantantly copied from urdfdom_headers
- * only the normalization has been added.
- * It computes the Euler roll, pitch yaw from a tf2::Quaternion
- * It is equivalent to tf2::Matrix3x3(q).getEulerYPR(yaw, pitch, roll);
- * \param q a tf2::Quaternion
- * \param yaw the computed yaw
- * \param pitch the computed pitch
- * \param roll the computed roll
+/**
+ * @brief Computes Euler yaw/pitch/roll from a TF2 quaternion.
+ *
+ * Equivalent to @c Matrix3x3(q).getEulerYPR; includes urdfdom-style
+ * normalization for near-gimbal cases.
+ *
+ * @param q Source quaternion.
+ * @param[out] yaw Yaw about Z (radians).
+ * @param[out] pitch Pitch about Y (radians).
+ * @param[out] roll Roll about X (radians).
  */
 inline void getEulerYPR(const tf2::Quaternion& q, double& yaw, double& pitch,
                         double& roll) {
@@ -119,11 +139,10 @@ inline void getEulerYPR(const tf2::Quaternion& q, double& yaw, double& pitch,
     }
 }
 
-/** The code below is a simplified version of getEulerRPY that only
- * returns the yaw. It is mostly useful in navigation where only yaw
- * matters
- * \param q a tf2::Quaternion
- * \return the computed yaw
+/**
+ * @brief Returns only yaw from a TF2 quaternion (navigation helper).
+ * @param q Source quaternion.
+ * @return Yaw about Z in radians.
  */
 inline double getYaw(const tf2::Quaternion& q) {
     double yaw;
@@ -153,6 +172,11 @@ inline double getYaw(const tf2::Quaternion& q) {
     return yaw;
 }
 
+/**
+ * @brief Yaw from an Automsgs quaternion message.
+ * @param q Automsgs @c geometry_msgs::Quaternion.
+ * @return Yaw about Z in radians.
+ */
 inline double getYaw(const automsgs::msgs::geometry_msgs::Quaternion& q) {
     tf2::Quaternion quat(q.x(), q.y(), q.z(), q.w());
     return getYaw(quat);

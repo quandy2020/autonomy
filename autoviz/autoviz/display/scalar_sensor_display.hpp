@@ -2,6 +2,32 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
+/**
+ * @file scalar_sensor_display.hpp
+ * @brief Template channel display for single-valued sensors at the frame origin.
+ *
+ * RViz-style scalar sensor: extracts a @c double via @ref ValueFn, TF-looks up
+ * the message frame origin, and draws a colored crosshair point scaled by
+ * @ref colorFromScalar (from @ref scalar_sensor_utils.hpp).
+ *
+ * Typical instantiations wrap FluidPressure, Illuminance, RelativeHumidity,
+ * Temperature, etc.
+ *
+ * ## Properties
+ *
+ * - @c min_value / @c max_value — coloring range (defaults from ctor)
+ * - @c point_size — crosshair half-extent in meters
+ *
+ * @note This is a header-only template; coloring uses
+ *       @c display::colorFromScalar(double, double, double), not the
+ *       PointCloud2 overload in @ref point_cloud_utils.hpp.
+ *
+ * @see ScalarSensorDisplay
+ * @see scalar_sensor_utils.hpp
+ * @see ChannelDisplay
+ * @see transformPoint()
+ */
+
 #pragma once
 
 #include <functional>
@@ -18,12 +44,38 @@
 namespace autoviz {
 namespace display {
 
-/** rviz-style scalar sensor: single colored point at sensor origin. */
+/**
+ * @class ScalarSensorDisplay
+ * @brief Generic “colored point at sensor origin” display for scalar messages.
+ *
+ * @tparam MessageT Protobuf message type with @c header().frame_id().
+ *
+ * ## Data flow
+ *
+ * - **In:** @ref processMessage() evaluates @c value_fn_, looks up TF to the
+ *   fixed frame, and stores origin + value.
+ * - **Out:** @ref onDraw() colors by min/max and draws a point + crosshair.
+ */
 template <typename MessageT>
 class ScalarSensorDisplay : public ChannelDisplay<MessageT> {
  public:
+  /**
+   * @brief Functor extracting the scalar from @tparam MessageT.
+   */
   using ValueFn = std::function<double(const MessageT&)>;
 
+  /**
+   * @brief Constructs a scalar sensor display.
+   *
+   * @param type_id Catalog type id (e.g. @c "Temperature").
+   * @param channel Autolink / topic name.
+   * @param message_type Wire type string for the channel registry.
+   * @param value_fn Extracts the scalar from each message.
+   * @param min_key Reserved property key name (historical; UI uses fixed keys).
+   * @param default_min Default Min Value.
+   * @param max_key Reserved property key name (historical).
+   * @param default_max Default Max Value.
+   */
   ScalarSensorDisplay(std::string type_id, std::string channel,
                       std::string message_type, ValueFn value_fn,
                       std::string min_key, double default_min,
@@ -38,6 +90,10 @@ class ScalarSensorDisplay : public ChannelDisplay<MessageT> {
     this->setProperties({});
   }
 
+  /**
+   * @brief Declares min/max value and point-size properties.
+   * @return Property specification list for the Displays tree.
+   */
   std::vector<common::DisplayPropertySpec> propertySpecs() const override {
     return {{"min_value", "Min Value", std::to_string(default_min_)},
             {"max_value", "Max Value", std::to_string(default_max_)},
@@ -45,6 +101,11 @@ class ScalarSensorDisplay : public ChannelDisplay<MessageT> {
   }
 
  protected:
+  /**
+   * @brief Evaluates the scalar, looks up TF origin, and caches the sample.
+   *
+   * @param message Incoming sensor message.
+   */
   void processMessage(const MessageT& message) override {
     if (this->context_ == nullptr || !value_fn_) {
       return;
@@ -67,8 +128,16 @@ class ScalarSensorDisplay : public ChannelDisplay<MessageT> {
     }
   }
 
+  /**
+   * @brief Clears @c have_sample_ (Time-panel Reset).
+   */
   void clearReceivedData() override { have_sample_ = false; }
 
+  /**
+   * @brief Draws a colored point and axis-aligned crosshair at the origin.
+   *
+   * @param scene Scene overlay for the current frame.
+   */
   void onDraw(rendering::SceneOverlay& scene) override {
     if (!have_sample_) {
       return;
@@ -90,14 +159,14 @@ class ScalarSensorDisplay : public ChannelDisplay<MessageT> {
   }
 
  private:
-  ValueFn value_fn_;
-  std::string min_key_;
-  double default_min_;
-  std::string max_key_;
-  double default_max_;
-  bool have_sample_ = false;
-  double value_ = 0.0;
-  QVector3D position_;
+  ValueFn value_fn_;          /**< Scalar extractor. */
+  std::string min_key_;       /**< Historical min property key (unused in draw). */
+  double default_min_;        /**< Default Min Value. */
+  std::string max_key_;       /**< Historical max property key (unused in draw). */
+  double default_max_;        /**< Default Max Value. */
+  bool have_sample_ = false;  /**< Whether @c value_ / @c position_ are valid. */
+  double value_ = 0.0;        /**< Latest scalar. */
+  QVector3D position_;        /**< Sensor origin in fixed frame. */
 };
 
 }  // namespace display

@@ -17,6 +17,15 @@ misrepresented as being the original software.
 3. This notice may not be removed or altered from any source distribution.
 */
 
+/**
+ * @file QuadWord.h
+ * @brief TF2 / Bullet @c QuadWord — 4-scalar base for Vector3 and Quaternion.
+ *
+ * @see Vector3
+ * @see Quaternion
+ * @see Scalar.h
+ */
+
 #ifndef TF2SIMD_QUADWORD_H
 #define TF2SIMD_QUADWORD_H
 
@@ -31,9 +40,11 @@ namespace autoviz {
 namespace transform {
 namespace tf2 {
 
-/**@brief The QuadWord class is base class for Vector3 and Quaternion.
- * Some issues under PS3 Linux with IBM 2.1 SDK, gcc compiler prevent from using
- * aligned quadword.
+/**
+ * @class QuadWord
+ * @brief Four-scalar base class for @ref Vector3 and @ref Quaternion.
+ *
+ * @note Historical PS3 alignment caveats retained from Bullet.
  */
 #ifndef USE_LIBSPE2
 ATTRIBUTE_ALIGNED16(class)
@@ -60,47 +71,47 @@ protected:
 #endif  //__CELLOS_LV2__ __SPU__
 
 public:
-    /**@brief Return the x value */
+    /** @brief Return the x value */
     TF2SIMD_FORCE_INLINE const tf2Scalar& getX() const {
         return m_floats[0];
     }
-    /**@brief Return the y value */
+    /** @brief Return the y value */
     TF2SIMD_FORCE_INLINE const tf2Scalar& getY() const {
         return m_floats[1];
     }
-    /**@brief Return the z value */
+    /** @brief Return the z value */
     TF2SIMD_FORCE_INLINE const tf2Scalar& getZ() const {
         return m_floats[2];
     }
-    /**@brief Set the x value */
+    /** @brief Set the x value */
     TF2SIMD_FORCE_INLINE void setX(tf2Scalar x) {
         m_floats[0] = x;
     };
-    /**@brief Set the y value */
+    /** @brief Set the y value */
     TF2SIMD_FORCE_INLINE void setY(tf2Scalar y) {
         m_floats[1] = y;
     };
-    /**@brief Set the z value */
+    /** @brief Set the z value */
     TF2SIMD_FORCE_INLINE void setZ(tf2Scalar z) {
         m_floats[2] = z;
     };
-    /**@brief Set the w value */
+    /** @brief Set the w value */
     TF2SIMD_FORCE_INLINE void setW(tf2Scalar w) {
         m_floats[3] = w;
     };
-    /**@brief Return the x value */
+    /** @brief Return the x value */
     TF2SIMD_FORCE_INLINE const tf2Scalar& x() const {
         return m_floats[0];
     }
-    /**@brief Return the y value */
+    /** @brief Return the y value */
     TF2SIMD_FORCE_INLINE const tf2Scalar& y() const {
         return m_floats[1];
     }
-    /**@brief Return the z value */
+    /** @brief Return the z value */
     TF2SIMD_FORCE_INLINE const tf2Scalar& z() const {
         return m_floats[2];
     }
-    /**@brief Return the w value */
+    /** @brief Return the w value */
     TF2SIMD_FORCE_INLINE const tf2Scalar& w() const {
         return m_floats[3];
     }
@@ -128,7 +139,7 @@ public:
         return !(*this == other);
     }
 
-    /**@brief Set x,y,z and zero w
+    /** @brief Set x,y,z and zero w
      * @param x Value of x
      * @param y Value of y
      * @param z Value of z
@@ -148,7 +159,7 @@ public:
                             m[2] = m_floats[2];
                     }
     */
-    /**@brief Set the values
+    /** @brief Set the values
      * @param x Value of x
      * @param y Value of y
      * @param z Value of z
@@ -161,12 +172,12 @@ public:
         m_floats[2] = z;
         m_floats[3] = w;
     }
-    /**@brief No initialization constructor */
+    /** @brief No initialization constructor */
     TF2SIMD_FORCE_INLINE QuadWord()
     //	:m_floats[0](tf2Scalar(0.)),m_floats[1](tf2Scalar(0.)),m_floats[2](tf2Scalar(0.)),m_floats[3](tf2Scalar(0.))
     {}
 
-    /**@brief Three argument constructor (zeros w)
+    /** @brief Three argument constructor (zeros w)
      * @param x Value of x
      * @param y Value of y
      * @param z Value of z
@@ -176,7 +187,7 @@ public:
         m_floats[0] = x, m_floats[1] = y, m_floats[2] = z, m_floats[3] = 0.0f;
     }
 
-    /**@brief Initializing constructor
+    /** @brief Initializing constructor
      * @param x Value of x
      * @param y Value of y
      * @param z Value of z
@@ -187,7 +198,7 @@ public:
         m_floats[0] = x, m_floats[1] = y, m_floats[2] = z, m_floats[3] = w;
     }
 
-    /**@brief Set each element to the max of the current values and the values
+    /** @brief Set each element to the max of the current values and the values
      * of another QuadWord
      * @param other The other QuadWord to compare with
      */
@@ -197,7 +208,7 @@ public:
         tf2SetMax(m_floats[2], other.m_floats[2]);
         tf2SetMax(m_floats[3], other.m_floats[3]);
     }
-    /**@brief Set each element to the min of the current values and the values
+    /** @brief Set each element to the min of the current values and the values
      * of another QuadWord
      * @param other The other QuadWord to compare with
      */

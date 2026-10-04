@@ -2,9 +2,22 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
-#pragma once
+/**
+ * @file ogre_scene_host.hpp
+ * @brief Per-display persistent Ogre MovableObject attachments.
+ *
+ * Displays upload points, lines, meshes, labels, wrench/screw/covariance
+ * visuals, and tool overlays into named entries. Unlike @ref SceneOverlay
+ * (rebuilt each frame on the CPU path), this host keeps GPU objects across
+ * frames and only updates when setters are called.
+ *
+ * @see OgreRenderBackend
+ * @see OgrePointCloud
+ * @see OgreBillboardLine
+ * @see SceneOverlay
+ */
 
-#ifdef AUTOVIZ_USE_OGRE
+#pragma once
 
 #include <array>
 #include <memory>
@@ -44,141 +57,303 @@ class OgreCovarianceVisual;
 
 class OgrePointCloud;
 
+/**
+ * @struct OgreColoredLineSegment
+ * @brief Colored line segment for @ref OgreSceneHost::setDisplayLines().
+ */
 struct OgreColoredLineSegment {
-  QVector3D a;
-  QVector3D b;
-  QColor color;
+  QVector3D a; /**< Start point. */
+  QVector3D b; /**< End point. */
+  QColor color; /**< Segment color. */
 };
 
+/**
+ * @struct OgreColoredMeshInstance
+ * @brief Transformed ObjMesh instance (solid or wireframe ManualObject path).
+ */
 struct OgreColoredMeshInstance {
-  display::ObjMesh mesh;
-  QMatrix4x4 transform;
-  QColor color;
-  bool wireframe = false;
-  common::PickHandle pick_handle = common::kInvalidPickHandle;
+  display::ObjMesh mesh; /**< Triangle mesh. */
+  QMatrix4x4 transform;  /**< World transform. */
+  QColor color;          /**< Tint color. */
+  bool wireframe = false; /**< Draw edges instead of filled triangles. */
+  common::PickHandle pick_handle = common::kInvalidPickHandle; /**< Optional pick. */
 };
 
-/** Entity path: mesh registered in MeshManager + per-instance material. */
+/**
+ * @struct OgreEntityInstance
+ * @brief Entity path: mesh registered in MeshManager + per-instance material.
+ */
 struct OgreEntityInstance {
-  std::string mesh_name;
-  QMatrix4x4 transform;
-  QColor color;
-  common::PickHandle pick_handle = common::kInvalidPickHandle;
+  std::string mesh_name; /**< MeshManager resource name. */
+  QMatrix4x4 transform;  /**< World transform. */
+  QColor color;          /**< Instance color. */
+  common::PickHandle pick_handle = common::kInvalidPickHandle; /**< Optional pick. */
 };
 
+/**
+ * @struct OgrePbrMeshInstance
+ * @brief Untextured PBR ObjMesh instance.
+ */
 struct OgrePbrMeshInstance {
-  display::ObjMesh mesh;
-  QMatrix4x4 transform;
-  QColor color;
-  float metallic = 0.08f;
-  float roughness = 0.52f;
+  display::ObjMesh mesh; /**< Triangle mesh. */
+  QMatrix4x4 transform;  /**< World transform. */
+  QColor color;          /**< Albedo tint. */
+  float metallic = 0.08f; /**< Metallic factor. */
+  float roughness = 0.52f; /**< Roughness factor. */
 };
 
+/**
+ * @struct OgrePbrTexturedMeshInstance
+ * @brief Textured PBR ObjMesh instance.
+ */
 struct OgrePbrTexturedMeshInstance {
-  display::ObjMesh mesh;
-  QMatrix4x4 transform;
-  QImage texture;
-  QColor tint;
-  float metallic = 0.08f;
-  float roughness = 0.52f;
+  display::ObjMesh mesh; /**< Triangle mesh. */
+  QMatrix4x4 transform;  /**< World transform. */
+  QImage texture;        /**< Albedo texture. */
+  QColor tint;           /**< Color tint. */
+  float metallic = 0.08f; /**< Metallic factor. */
+  float roughness = 0.52f; /**< Roughness factor. */
 };
 
+/**
+ * @struct OgreTextLabel
+ * @brief 3D text label parameters for MovableText slots.
+ */
 struct OgreTextLabel {
-  std::string text;
-  QVector3D position;
-  QColor color;
-  float char_height = 0.2f;
-  float space_width = 0.f;
+  std::string text;          /**< Label contents. */
+  QVector3D position;        /**< World position. */
+  QColor color;              /**< Text color. */
+  float char_height = 0.2f;  /**< Character height in meters. */
+  float space_width = 0.f;   /**< Optional space width override (0 = default). */
 };
 
-/** Per-display Ogre scene attachment for persistent MovableObjects. */
+/**
+ * @class OgreSceneHost
+ * @brief Per-display Ogre scene attachment for persistent MovableObjects.
+ *
+ * ## Keys
+ *
+ * Display geometry is keyed by @p display_name. Tool overlays use @p tool_id
+ * and are intended to remain outside the Display draw cycle.
+ *
+ * ## Visibility
+ *
+ * @ref setDisplayVisibilityBits() applies Ogre visibility masks via
+ * @ref applyVisibilityBits().
+ */
 class OgreSceneHost {
  public:
+  /**
+   * @brief Creates an empty host bound to @p scene_manager.
+   * @param scene_manager Non-null Ogre scene manager.
+   */
   explicit OgreSceneHost(Ogre::SceneManager* scene_manager);
+
+  /** @brief Destroys all display entries and owned Ogre objects. */
   ~OgreSceneHost();
 
+  /**
+   * @brief Returns the bound scene manager.
+   * @return Non-owning scene manager pointer.
+   */
   Ogre::SceneManager* sceneManager() const { return scene_manager_; }
 
-  /** Upload colored points (rviz PointCloud shaders). */
+  /**
+   * @brief Uploads colored points (rviz PointCloud shaders).
+   *
+   * @param display_name Entry key.
+   * @param point_size Point / billboard size.
+   * @param style Draw style (@ref PointCloudStyle).
+   * @param positions Point positions.
+   * @param colors Per-point colors (size should match positions).
+   */
   void setDisplayPoints(const std::string& display_name, float point_size,
                         PointCloudStyle style,
                         const std::vector<QVector3D>& positions,
                         const std::vector<QColor>& colors);
 
-  /** Camera-facing polyline strip (rviz BillboardLine). */
+  /**
+   * @brief Camera-facing polyline strip (rviz BillboardLine).
+   *
+   * @param display_name Entry key.
+   * @param points Polyline vertices.
+   * @param color Strip color.
+   * @param line_width Width in meters.
+   */
   void setDisplayBillboardStrip(const std::string& display_name,
                                 const std::vector<QVector3D>& points,
                                 const QColor& color, float line_width);
 
-  /** Cloud-level pick handle for Ogre Pick pass 0 (rviz SelectionHandler handle). */
+  /**
+   * @brief Cloud-level pick handle for Ogre Pick pass 0.
+   *
+   * @param display_name Entry key.
+   * @param handle Handle assigned to the whole cloud (rviz SelectionHandler).
+   */
   void setCloudPickHandle(const std::string& display_name,
                           common::PickHandle handle);
+
+  /**
+   * @brief Whether @p handle is registered as a cloud-level pick handle.
+   * @param handle Candidate handle.
+   * @return @c true if mapped to a display name.
+   */
   bool isCloudPickHandle(common::PickHandle handle) const;
+
+  /**
+   * @brief Looks up the display name for a cloud pick handle.
+   * @param handle Cloud-level handle.
+   * @return Pointer to stored name, or @c nullptr if unknown.
+   */
   const std::string* displayForCloudPickHandle(common::PickHandle handle) const;
+
+  /**
+   * @brief Enables color-by-index mode on all point clouds.
+   * @param enabled When @c true, points encode index in color for Pick1.
+   */
   void setColorByIndexForAll(bool enabled);
 
+  /**
+   * @brief Replaces line ManualObject geometry for a display.
+   */
   void setDisplayLines(const std::string& display_name,
                        const std::vector<OgreColoredLineSegment>& segments);
+
+  /**
+   * @brief Places a single arrow from @p start to @p end.
+   */
   void setDisplayArrow(const std::string& display_name, const QVector3D& start,
                        const QVector3D& end, const QColor& color,
                        float head_fraction = 0.2f);
+
+  /**
+   * @brief Uploads colored / wireframe ObjMesh instances via ManualObject.
+   */
   void setDisplayMeshes(const std::string& display_name,
                         const std::vector<OgreColoredMeshInstance>& meshes);
-  /** rviz Shape-style Entity instances (MeshManager + SceneNode). */
+
+  /**
+   * @brief rviz Shape-style Entity instances (MeshManager + SceneNode).
+   */
   void setDisplayEntities(const std::string& display_name,
                           const std::vector<OgreEntityInstance>& entities);
+
+  /**
+   * @brief Uploads untextured PBR meshes.
+   */
   void setDisplayPbrMeshes(const std::string& display_name,
                            const std::vector<OgrePbrMeshInstance>& meshes);
+
+  /**
+   * @brief Uploads textured PBR meshes.
+   */
   void setDisplayPbrTexturedMeshes(
       const std::string& display_name,
       const std::vector<OgrePbrTexturedMeshInstance>& meshes);
+
+  /**
+   * @brief Updates text label slots for a display.
+   */
   void setDisplayLabels(const std::string& display_name,
                         const std::vector<OgreTextLabel>& labels);
-  /** rviz WrenchVisual — force arrow + torque circle. */
+
+  /**
+   * @brief rviz WrenchVisual — force arrow + torque circle.
+   */
   void setDisplayWrench(const std::string& display_name, const QVector3D& origin,
                         const QVector3D& force, const QVector3D& torque,
                         const QColor& force_color, const QColor& torque_color,
                         float force_scale, float torque_scale, float width);
-  /** rviz ScrewVisual — linear/angular screw. */
+
+  /**
+   * @brief rviz ScrewVisual — linear/angular screw.
+   */
   void setDisplayScrew(const std::string& display_name, const QVector3D& origin,
                        const QVector3D& linear, const QVector3D& angular,
                        const QColor& linear_color, const QColor& angular_color,
                        float linear_scale, float angular_scale, float width,
                        bool hide_small_values);
-  /** rviz CovarianceVisual — position/orientation ellipsoids. */
+
+  /**
+   * @brief rviz CovarianceVisual — position/orientation ellipsoids.
+   */
   void setDisplayCovariance(
       const std::string& display_name, const QVector3D& position,
       const QQuaternion& pose_orientation, const QQuaternion& frame_orientation,
       const std::array<double, 36>& covariance, const QColor& position_color,
       float position_scale, float orientation_scale, float orientation_offset,
       bool visible);
+
+  /**
+   * @brief Sets Ogre visibility bits for all movables under a display entry.
+   * @param display_name Entry key.
+   * @param bits Visibility mask.
+   * @see applyVisibilityBits()
+   */
   void setDisplayVisibilityBits(const std::string& display_name, uint32_t bits);
 
-  /** Tool overlays (Measure, etc.): always visible, outside Display draw cycle. */
+  /**
+   * @brief Tool overlays (Measure, etc.): always visible, outside Display cycle.
+   */
   void setToolBillboardStrip(const std::string& tool_id,
                              const std::vector<QVector3D>& points,
                              const QColor& color, float line_width);
-  /** RViz MeasureTool-style wire segment (persistent OgreLine). */
+
+  /**
+   * @brief RViz MeasureTool-style wire segment (persistent @ref OgreLine).
+   */
   void setToolLineSegment(const std::string& tool_id, const QVector3D& start,
                           const QVector3D& end, const QColor& color);
+
+  /**
+   * @brief Tool arrow overlay.
+   */
   void setToolArrow(const std::string& tool_id, const QVector3D& start,
                     const QVector3D& end, const QColor& color,
                     float head_fraction = 0.2f);
-  /** RViz PoseTool-style fixed arrow at position + yaw (REP-103 XY ground). */
+
+  /**
+   * @brief RViz PoseTool-style fixed arrow at position + yaw (REP-103 XY ground).
+   */
   void setToolPoseArrow(const std::string& tool_id, const QVector3D& position,
                         float yaw, const QColor& color, bool visible);
+
+  /**
+   * @brief Tool point cloud overlay.
+   */
   void setToolPoints(const std::string& tool_id, float point_size,
                      rendering::PointCloudStyle style,
                      const std::vector<QVector3D>& positions,
                      const std::vector<QColor>& colors);
+
+  /**
+   * @brief Removes all geometry for a tool overlay key.
+   * @param tool_id Tool entry key.
+   */
   void clearToolOverlay(const std::string& tool_id);
 
+  /**
+   * @brief Removes a single display entry and destroys its Ogre objects.
+   * @param display_name Entry key.
+   */
   void removeDisplay(const std::string& display_name);
-  /** Remove all entries whose key equals prefix or starts with prefix + '/'. */
+
+  /**
+   * @brief Remove all entries whose key equals prefix or starts with prefix + '/'.
+   * @param prefix Display name prefix.
+   */
   void removeDisplaysWithPrefix(const std::string& prefix);
+
+  /**
+   * @brief Clears every display and tool entry.
+   */
   void clear();
 
  private:
+  /**
+   * @struct DisplayEntry
+   * @brief Owned Ogre objects for one display or tool key.
+   */
   struct DisplayEntry {
     Ogre::SceneNode* node = nullptr;
     std::unique_ptr<OgrePointCloud> cloud;
@@ -239,4 +414,3 @@ class OgreSceneHost {
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

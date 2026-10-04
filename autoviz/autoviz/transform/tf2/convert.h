@@ -27,7 +27,16 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-/** \author Tully Foote */
+/**
+ * @file convert.h
+ * @brief TF2 type conversion and transform-application templates.
+ *
+ * Client libraries specialize @ref doTransform, @ref toMsg, and @ref fromMsg
+ * for their datatypes. @ref convert dispatches via @ref impl::Converter.
+ *
+ * @see impl/convert.h
+ * @see Stamped
+ */
 
 #ifndef TF2_CONVERT_H
 #define TF2_CONVERT_H
@@ -43,73 +52,96 @@ namespace autoviz {
 namespace transform {
 namespace tf2 {
 
-/**\brief The templated function expected to be able to do a transform
+/**
+ * @brief Applies @p transform to @p data_in, writing the result to @p data_out.
  *
- * This is the method which tf2 will use to try to apply a transform for any
- * given datatype.
- * \param data_in The data to be transformed.
- * \param data_out A reference to the output data.  Note this can point to data
- * in and the method should be mutation safe.
- * \param transform The transform to apply to data_in to fill data_out.
+ * Must be specialized by client datatype libraries. May alias in/out.
  *
- * This method needs to be implemented by client library developers
+ * @tparam T Datatype being transformed.
+ * @param data_in Input value.
+ * @param[out] data_out Transformed value (may reference @p data_in).
+ * @param transform Stamped transform to apply.
  */
 template <class T>
 void doTransform(const T& data_in, T& data_out,
                  const geometry_msgs::TransformStamped& transform);
 
-/**\brief Get the timestamp from data
- * \param t The data input.
- * \return The timestamp associated with the data. The lifetime of the returned
- * reference is bound to the lifetime of the argument.
+/**
+ * @brief Returns the timestamp associated with @p t.
+ *
+ * @tparam T Datatype providing a stamp (specialized for @ref Stamped).
+ * @param t Input data.
+ * @return Const reference to the timestamp (lifetime bound to @p t).
  */
 template <class T>
 const Time& getTimestamp(const T& t);
 
-/**\brief Get the frame_id from data
- * \param t The data input.
- * \return The frame_id associated with the data. The lifetime of the returned
- * reference is bound to the lifetime of the argument.
+/**
+ * @brief Returns the frame_id associated with @p t.
+ *
+ * @tparam T Datatype providing a frame id (specialized for @ref Stamped).
+ * @param t Input data.
+ * @return Const reference to the frame id (lifetime bound to @p t).
  */
 template <class T>
 const std::string& getFrameId(const T& t);
 
-/* An implementation for Stamped<P> datatypes */
+/**
+ * @brief @ref Stamped specialization of @ref getTimestamp.
+ * @tparam P Underlying stamped payload type.
+ * @param t Stamped value.
+ * @return Reference to @c t.stamp_.
+ */
 template <class P>
 const Time& getTimestamp(const tf2::Stamped<P>& t) {
     return t.stamp_;
 }
 
-/* An implementation for Stamped<P> datatypes */
+/**
+ * @brief @ref Stamped specialization of @ref getFrameId.
+ * @tparam P Underlying stamped payload type.
+ * @param t Stamped value.
+ * @return Reference to @c t.frame_id_.
+ */
 template <class P>
 const std::string& getFrameId(const tf2::Stamped<P>& t) {
     return t.frame_id_;
 }
 
-/** Function that converts from one type to a ROS message type. It has to be
- * implemented by each data type in tf2_* (except ROS messages) as it is
- * used in the "convert" function.
- * \param a an object of whatever type
- * \return the conversion as a ROS message
+/**
+ * @brief Converts @p a to a message-like type @c B.
+ *
+ * Implemented per datatype in tf2_* packages (except pure message types).
+ *
+ * @tparam A Source type.
+ * @tparam B Destination message type.
+ * @param a Source object.
+ * @return Converted message of type @c B.
  */
 template <typename A, typename B>
 B toMsg(const A& a);
 
-/** Function that converts from a ROS message type to another type. It has to be
- * implemented by each data type in tf2_* (except ROS messages) as it is used
- * in the "convert" function.
- * \param a a ROS message to convert from
- * \param b the object to convert to
+/**
+ * @brief Converts message-like @p a into non-message type @p b.
+ *
+ * @tparam A Source message type.
+ * @tparam B Destination type.
+ * @param a Source message (unnamed in declaration; see specializations).
+ * @param[out] b Destination object.
  */
 template <typename A, typename B>
 void fromMsg(const A&, B& b);
 
-/** Function that converts any type to any type (messages or not).
- * Matching toMsg and from Msg conversion functions need to exist.
- * If they don't exist or do not apply (for example, if your two
- * classes are ROS messages), just write a specialization of the function.
- * \param a an object to convert from
- * \param b the object to convert to
+/**
+ * @brief Converts any type @c A to any type @c B when toMsg/fromMsg exist.
+ *
+ * Specialize when both types are messages or when the default path does not
+ * apply. The generic body is intentionally empty in this Autoviz fork.
+ *
+ * @tparam A Source type.
+ * @tparam B Destination type.
+ * @param a Source object.
+ * @param[out] b Destination object.
  */
 template <class A, class B>
 void convert(const A& a, B& b) {
@@ -118,6 +150,13 @@ void convert(const A& a, B& b) {
     //  ros::message_traits::IsMessage<B>::value>::convert(a, b);
 }
 
+/**
+ * @brief Same-type convert: assigns @p a1 to @p a2 unless they alias.
+ *
+ * @tparam A Value type.
+ * @param a1 Source.
+ * @param[out] a2 Destination (unchanged if @c &a1 == &a2).
+ */
 template <class A>
 void convert(const A& a1, A& a2) {
     // printf("In single type convert\n");

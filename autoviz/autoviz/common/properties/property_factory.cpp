@@ -30,6 +30,7 @@ std::unique_ptr<Property> CreatePropertyFromSpec(const DisplayPropertySpec& spec
       return std::make_unique<ColorProperty>(spec.key, spec.label, value);
     case DisplayPropertyKind::kPath:
     case DisplayPropertyKind::kChannel:
+    case DisplayPropertyKind::kInt:
       return std::make_unique<StringProperty>(spec.key, spec.label, value);
     case DisplayPropertyKind::kAuto:
     default:

@@ -27,7 +27,16 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-/** \author Tully Foote */
+/**
+ * @file exceptions.h
+ * @brief TF2 exception hierarchy thrown by @ref BufferCore lookups.
+ *
+ * Vendored ROS tf2 exceptions under @c autoviz::transform::tf2. Used when
+ * frames are missing, disconnected, extrapolated, or arguments are invalid.
+ *
+ * @see BufferCore
+ * @see transform::Buffer
+ */
 
 #ifndef TF2_EXCEPTIONS_H
 #define TF2_EXCEPTIONS_H
@@ -39,84 +48,102 @@ namespace autoviz {
 namespace transform {
 namespace tf2 {
 
-/** \brief A base class for all tf2 exceptions
- * This inherits from ros::exception
- * which inherits from std::runtime_exception
+/**
+ * @class TransformException
+ * @brief Base class for all tf2 transform errors (@c std::runtime_error).
  */
 class TransformException : public std::runtime_error
 {
 public:
+    /**
+     * @brief Constructs with a human-readable description.
+     * @param errorDescription Error message stored in @c what().
+     */
     TransformException(const std::string errorDescription)
         : std::runtime_error(errorDescription) {
         ;
     };
 };
 
-/** \brief An exception class to notify of no connection
- *
- * This is an exception class to be thrown in the case
- * that the Reference Frame tree is not connected between
- * the frames requested. */
+/**
+ * @class ConnectivityException
+ * @brief Frames exist but the TF tree does not connect them.
+ */
 class ConnectivityException : public TransformException
 {
 public:
+    /**
+     * @brief Constructs with a connectivity failure description.
+     * @param errorDescription Error message for @c what().
+     */
     ConnectivityException(const std::string errorDescription)
         : tf2::TransformException(errorDescription) {
         ;
     };
 };
 
-/** \brief An exception class to notify of bad frame number
- *
- * This is an exception class to be thrown in the case that
- * a frame not in the graph has been attempted to be accessed.
- * The most common reason for this is that the frame is not
- * being published, or a parent frame was not set correctly
- * causing the tree to be broken.
+/**
+ * @class LookupException
+ * @brief A requested frame id is not in the graph (unpublished / broken tree).
  */
 class LookupException : public TransformException
 {
 public:
+    /**
+     * @brief Constructs with a lookup failure description.
+     * @param errorDescription Error message for @c what().
+     */
     LookupException(const std::string errorDescription)
         : tf2::TransformException(errorDescription) {
         ;
     };
 };
 
-/** \brief An exception class to notify that the requested value would have
- * required extrapolation beyond current limits.
- *
+/**
+ * @class ExtrapolationException
+ * @brief Requested time is outside the buffered history (would extrapolate).
  */
 class ExtrapolationException : public TransformException
 {
 public:
+    /**
+     * @brief Constructs with an extrapolation failure description.
+     * @param errorDescription Error message for @c what().
+     */
     ExtrapolationException(const std::string errorDescription)
         : tf2::TransformException(errorDescription) {
         ;
     };
 };
 
-/** \brief An exception class to notify that one of the arguments is invalid
- *
- * usually it's an uninitalized Quaternion (0,0,0,0)
- *
+/**
+ * @class InvalidArgumentException
+ * @brief One or more arguments are invalid (e.g. zero quaternion).
  */
 class InvalidArgumentException : public TransformException
 {
 public:
+    /**
+     * @brief Constructs with an invalid-argument description.
+     * @param errorDescription Error message for @c what().
+     */
     InvalidArgumentException(const std::string errorDescription)
         : tf2::TransformException(errorDescription) {
         ;
     };
 };
 
-/** \brief An exception class to notify that a timeout has occured
- *
- *
+/**
+ * @class TimeoutException
+ * @brief A timed lookup / wait exceeded its timeout.
  */
 class TimeoutException : public TransformException
 {
 public:
+    /**
+     * @brief Constructs with a timeout description.
+     * @param errorDescription Error message for @c what().
+     */
     TimeoutException(const std::string errorDescription)
         : tf2::TransformException(errorDescription) {
         ;

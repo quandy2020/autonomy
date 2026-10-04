@@ -5,8 +5,6 @@
 
 #include "autoviz/rendering/objects/ogre_mesh_shape.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <OgreEntity.h>
 #include <OgreMaterialManager.h>
 #include <OgreMesh.h>
@@ -45,7 +43,7 @@ OgreMeshShape::~OgreMeshShape() {
   }
   if (material_) {
     material_->unload();
-    Ogre::MaterialManager::getSingleton().remove(material_name_, "AvizOgre");
+    Ogre::MaterialManager::getSingleton().remove(material_name_, OgreMaterialManager::resourceGroup());
   }
 }
 
@@ -63,7 +61,7 @@ void OgreMeshShape::beginTriangles() {
   if (!started_) {
     started_ = true;
     manual_object_->begin(material_name_, Ogre::RenderOperation::OT_TRIANGLE_LIST,
-                          "AvizOgre");
+                          OgreMaterialManager::resourceGroup());
   }
 }
 
@@ -134,4 +132,3 @@ void OgreMeshShape::clear() {
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

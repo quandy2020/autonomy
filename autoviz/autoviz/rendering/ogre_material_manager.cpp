@@ -4,10 +4,9 @@
 
 #include "autoviz/rendering/ogre_material_manager.hpp"
 
-#ifdef AUTOVIZ_USE_OGRE
-
 #include <OgreMaterialManager.h>
 #include <OgrePass.h>
+#include <OgreResourceGroupManager.h>
 #include <OgreTechnique.h>
 
 #include <memory>
@@ -16,11 +15,10 @@ namespace autoviz {
 namespace rendering {
 namespace {
 
-constexpr char kAvizResourceGroup[] = "AvizOgre";
-constexpr char kRvizResourceGroup[] = "rviz_rendering";
+constexpr char kAvizResourceGroup[] = "aviz_rendering";
 
 Ogre::MaterialPtr CreateBaseMaterial(const std::string& name, bool lighting,
-                                    const char* resource_group) {
+                                    const Ogre::String& resource_group) {
   if (Ogre::MaterialManager::getSingleton().resourceExists(name, resource_group)) {
     return Ogre::MaterialManager::getSingleton().getByName(name, resource_group);
   }
@@ -38,10 +36,14 @@ Ogre::MaterialPtr CreateBaseMaterial(const std::string& name, bool lighting,
 }
 
 Ogre::MaterialPtr CreateBaseMaterial(const std::string& name, bool lighting) {
-  return CreateBaseMaterial(name, lighting, kAvizResourceGroup);
+  return CreateBaseMaterial(name, lighting, OgreMaterialManager::resourceGroup());
 }
 
 }  // namespace
+
+const Ogre::String& OgreMaterialManager::resourceGroup() {
+  return Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME;
+}
 
 Ogre::MaterialPtr OgreMaterialManager::createMaterialWithNoLighting(
     const std::string& name) {
@@ -80,27 +82,26 @@ void OgreMaterialManager::ensureDefaultMaterials() {
   }
 }
 
-void OgreMaterialManager::ensureRvizMediaMaterials() {
+void OgreMaterialManager::ensureAvizMediaMaterials() {
   auto retrieve = Ogre::MaterialManager::getSingleton().createOrRetrieve(
-      "BaseWhiteNoLighting", kRvizResourceGroup);
+      "BaseWhiteNoLighting", kAvizResourceGroup);
   if (auto material = std::dynamic_pointer_cast<Ogre::Material>(retrieve.first)) {
     material->setLightingEnabled(false);
   }
 }
 
-void OgreMaterialManager::ensureStubRvizMaterials() {
-  CreateBaseMaterial("BaseWhiteNoLighting", false, kRvizResourceGroup);
+void OgreMaterialManager::ensureStubAvizMaterials() {
+  CreateBaseMaterial("BaseWhiteNoLighting", false, kAvizResourceGroup);
   const char* point_cloud_materials[] = {
-      "rviz/PointCloudPoint",     "rviz/PointCloudSquare",
-      "rviz/PointCloudFlatSquare", "rviz/PointCloudSphere",
-      "rviz/PointCloudTile",      "rviz/PointCloudBox",
+      "aviz/PointCloudPoint",     "aviz/PointCloudSquare",
+      "aviz/PointCloudFlatSquare", "aviz/PointCloudSphere",
+      "aviz/PointCloudTile",      "aviz/PointCloudBox",
   };
   for (const char* name : point_cloud_materials) {
-    CreateBaseMaterial(name, false, kRvizResourceGroup);
+    CreateBaseMaterial(name, false, Ogre::String(kAvizResourceGroup));
   }
 }
 
 }  // namespace rendering
 }  // namespace autoviz
 
-#endif

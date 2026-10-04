@@ -11,18 +11,18 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 
-#include "autoviz/ui/icon_loader.hpp"
-#include "autoviz/ui/panel_context_menu.hpp"
-#include "autoviz/ui/panel_dock_widget.hpp"
-#include "autoviz/ui/panel_settings_styles.hpp"
-#include "autoviz/ui/panel_title_tools.hpp"
+#include "autoviz/ui/app/icon_loader.hpp"
+#include "autoviz/ui/panel/context_menu.hpp"
+#include "autoviz/ui/panel/dock.hpp"
+#include "autoviz/ui/theme/panel.hpp"
+#include "autoviz/ui/panel/title_tools.hpp"
 #include "autoviz/ui/publish/publish_editor_widget.hpp"
 #include "autoviz/ui/publish/publish_settings_widget.hpp"
+#include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
 namespace publish_panel {
 namespace {
-
 
 PublishPanelConfig MergeConfig(const PublishPanelConfig& base,
                                const PublishPanelConfig& editor,
@@ -44,10 +44,7 @@ PublishPanel::PublishPanel(common::VisualizationManager* manager, QWidget* paren
   setFocusPolicy(Qt::StrongFocus);
   ApplyPanelShell(this);
   setObjectName(QStringLiteral("PublishPanelContent"));
-  setStyleSheet(QStringLiteral(
-      "PublishPanel, QWidget#PublishPanelContent {"
-      "  background: #f8f9fb; color: #1e293b;"
-      "}"));
+  setStyleSheet(style::sheet(QStringLiteral("publish")));
 
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);
@@ -101,7 +98,7 @@ void PublishPanel::installTitleBarTools(PanelDockWidget* dock) {
   options.on_expand = [this]() { emit panelExpandRequested(); };
 
   const PanelTitleBarTools tools =
-      CreateRvizPanelTitleBarTools(dock, callbacks, options);
+      CreatePanelTitleBarTools(dock, callbacks, options);
   settings_button_ = tools.settings_button;
   expand_button_ = tools.expand_button;
   dock->setTitleBarTools(tools.widget);

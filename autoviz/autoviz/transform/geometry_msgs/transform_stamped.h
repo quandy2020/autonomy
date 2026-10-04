@@ -27,6 +27,18 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * @file transform_stamped.h
+ * @brief Minimal geometry_msgs-compatible structs for Autoviz tf2 internals.
+ *
+ * Lightweight stand-ins for ROS geometry_msgs used by BufferCore /
+ * TransformStorage without depending on full ROS message headers. Autoviz
+ * public APIs prefer Automsgs protobuf types via @ref transform::Buffer.
+ *
+ * @see TransformStorage
+ * @see BufferCore
+ */
+
 #pragma once
 
 #include <stdint.h>
@@ -35,42 +47,72 @@
 
 namespace geometry_msgs {
 
+/**
+ * @struct Header
+ * @brief Minimal stamped-message header (seq, stamp, frame_id).
+ */
 struct Header {
+    /** Sequence number (often unused in Autoviz). */
     uint32_t seq;
+    /** Timestamp in nanoseconds (tf2 @ref Time compatible). */
     uint64_t stamp;
+    /** Frame id string. */
     std::string frame_id;
+    /** @brief Zero-initializes seq/stamp and empty frame_id. */
     Header() : seq(0), stamp(0), frame_id("") {}
 };
 
+/**
+ * @struct Vector3
+ * @brief 3D vector (x, y, z).
+ */
 struct Vector3 {
-    double x;
-    double y;
-    double z;
+    double x;  /**< X component. */
+    double y;  /**< Y component. */
+    double z;  /**< Z component. */
+    /** @brief Constructs a zero vector. */
     Vector3() : x(0.0), y(0.0), z(0.0) {}
 };
 
+/**
+ * @struct Quaternion
+ * @brief Unit quaternion (x, y, z, w).
+ */
 struct Quaternion {
-    double x;
-    double y;
-    double z;
-    double w;
+    double x;  /**< Imaginary i / x. */
+    double y;  /**< Imaginary j / y. */
+    double z;  /**< Imaginary k / z. */
+    double w;  /**< Real / w component. */
+    /** @brief Constructs a zero quaternion (invalid until set). */
     Quaternion() : x(0.0), y(0.0), z(0.0), w(0.0) {}
 };
 
+/**
+ * @struct QuaternionStamped
+ * @brief Quaternion with a @ref Header.
+ */
 struct QuaternionStamped {
-    Header header;
-    Quaternion quaternion;
+    Header header;          /**< Stamp and frame of the quaternion. */
+    Quaternion quaternion;  /**< Orientation. */
 };
 
+/**
+ * @struct Transform
+ * @brief Rigid transform: translation + rotation.
+ */
 struct Transform {
-    Vector3 translation;
-    Quaternion rotation;
+    Vector3 translation;  /**< Translation component. */
+    Quaternion rotation;  /**< Rotation component. */
 };
 
+/**
+ * @struct TransformStamped
+ * @brief Stamped transform from @c child_frame_id into @c header.frame_id.
+ */
 struct TransformStamped {
-    Header header;
-    std::string child_frame_id;
-    Transform transform;
+    Header header;              /**< Parent frame and stamp. */
+    std::string child_frame_id; /**< Child frame id. */
+    Transform transform;        /**< Rigid transform child → parent. */
 };
 
 }  // namespace geometry_msgs

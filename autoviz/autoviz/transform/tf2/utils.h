@@ -12,6 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/**
+ * @file utils.h
+ * @brief TF2 convenience helpers: Euler YPR, yaw, and identity transforms.
+ *
+ * Templated over any type convertible to @c tf2::Quaternion / Transform via
+ * @ref impl::toQuaternion and @c convert.
+ *
+ * @see impl/utils.h
+ * @see convert.h
+ */
+
 #ifndef TF2_UTILS_H
 #define TF2_UTILS_H
 
@@ -23,13 +34,16 @@ namespace autoviz {
 namespace transform {
 namespace tf2 {
 
-/** Return the yaw, pitch, roll of anything that can be converted to a
- * tf2::Quaternion The conventions are the usual ROS ones defined in
- * tf2/LineMath/Matrix3x3.h
- * \param a the object to get data from (it represents a rotation/quaternion)
- * \param yaw yaw
- * \param pitch pitch
- * \param roll roll
+/**
+ * @brief Extracts yaw, pitch, roll from anything convertible to a quaternion.
+ *
+ * Conventions match ROS / @c Matrix3x3::getEulerYPR.
+ *
+ * @tparam A Rotation / quaternion-like type.
+ * @param a Source rotation.
+ * @param[out] yaw Yaw about Z (radians).
+ * @param[out] pitch Pitch about Y (radians).
+ * @param[out] roll Roll about X (radians).
  */
 template <class A>
 void getEulerYPR(const A& a, double& yaw, double& pitch, double& roll) {
@@ -37,12 +51,14 @@ void getEulerYPR(const A& a, double& yaw, double& pitch, double& roll) {
     impl::getEulerYPR(q, yaw, pitch, roll);
 }
 
-/** Return the yaw of anything that can be converted to a tf2::Quaternion
- * The conventions are the usual ROS ones defined in tf2/LineMath/Matrix3x3.h
- * This function is a specialization of getEulerYPR and is useful for its
- * wide-spread use in navigation
- * \param a the object to get data from (it represents a rotation/quaternion)
- * \param yaw yaw
+/**
+ * @brief Returns only the yaw of anything convertible to a quaternion.
+ *
+ * Specialization of @ref getEulerYPR useful for planar navigation.
+ *
+ * @tparam A Rotation / quaternion-like type.
+ * @param a Source rotation.
+ * @return Yaw about Z in radians.
  */
 template <class A>
 double getYaw(const A& a) {
@@ -50,8 +66,11 @@ double getYaw(const A& a) {
     return impl::getYaw(q);
 }
 
-/** Return the identity for any type that can be converted to a tf2::Transform
- * \return an object of class A that is an identity transform
+/**
+ * @brief Returns an identity transform converted to type @c A.
+ *
+ * @tparam A Type supporting @c convert from @c tf2::Transform.
+ * @return Identity transform as @c A.
  */
 template <class A>
 A getTransformIdentity() {

@@ -8,21 +8,32 @@
 #include <QColorDialog>
 #include <QComboBox>
 #include <QDoubleSpinBox>
+#include <QFile>
+#include <QFileDialog>
+#include <QFileInfo>
+#include <QFile>
+#include <QFileDialog>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
+#include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QSignalBlocker>
+#include <QSpinBox>
+#include <QTableWidget>
 #include <QVBoxLayout>
 
 #include <algorithm>
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/ui/map/map_message_ingest.hpp"
-#include "autoviz/ui/panel_settings_styles.hpp"
+#include "autoviz/ui/map/map_plan.hpp"
+#include "autoviz/ui/map/map_types.hpp"
+#include "autoviz/ui/theme/panel.hpp"
 
 namespace autoviz {
 namespace map {
@@ -46,6 +57,52 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
   root->setSpacing(PanelSettingsLayout::kOuterSpacing);
   root->setAlignment(Qt::AlignTop);
 
+  attribute_group_ = new QGroupBox(tr("Attributes"), this);
+  StyleSettingsGroupBox(attribute_group_);
+  auto* attribute_layout = new QVBoxLayout(attribute_group_);
+  ApplyCompactVBox(attribute_layout);
+  attribute_hint_ = new QLabel(
+      tr("Select a feature or plan vertex on the map."), attribute_group_);
+  attribute_hint_->setWordWrap(true);
+  attribute_hint_->setStyleSheet(PropertyInspectorHintStyle());
+  attribute_layout->addWidget(attribute_hint_);
+  attribute_body_ = new QWidget(attribute_group_);
+  auto* attribute_form = new QFormLayout(attribute_body_);
+  ApplyCompactForm(attribute_form);
+  attribute_kind_label_ = new QLabel(attribute_body_);
+  attribute_layer_label_ = new QLabel(attribute_body_);
+  attribute_kind_label_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  attribute_layer_label_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  attribute_lat_spin_ = new QDoubleSpinBox(attribute_body_);
+  attribute_lat_spin_->setRange(-85.0, 85.0);
+  attribute_lat_spin_->setDecimals(7);
+  attribute_lon_spin_ = new QDoubleSpinBox(attribute_body_);
+  attribute_lon_spin_->setRange(-180.0, 180.0);
+  attribute_lon_spin_->setDecimals(7);
+  attribute_form->addRow(tr("Type"), attribute_kind_label_);
+  attribute_form->addRow(tr("Layer"), attribute_layer_label_);
+  attribute_form->addRow(tr("Latitude"), attribute_lat_spin_);
+  attribute_form->addRow(tr("Longitude"), attribute_lon_spin_);
+  attribute_table_ = new QTableWidget(0, 2, attribute_body_);
+  attribute_table_->setHorizontalHeaderLabels({tr("Property"), tr("Value")});
+  attribute_table_->verticalHeader()->hide();
+  attribute_table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+  attribute_table_->setSelectionMode(QAbstractItemView::NoSelection);
+  attribute_table_->setFocusPolicy(Qt::NoFocus);
+  attribute_table_->setShowGrid(false);
+  attribute_table_->setWordWrap(true);
+  attribute_table_->horizontalHeader()->setSectionResizeMode(
+      0, QHeaderView::ResizeToContents);
+  attribute_table_->horizontalHeader()->setStretchLastSection(true);
+  attribute_table_->setMaximumHeight(220);
+  attribute_form->addRow(attribute_table_);
+  attribute_remove_button_ =
+      MakeDestructiveFlatActionButton(tr("Remove vertex"), attribute_body_);
+  attribute_form->addRow(QString(), attribute_remove_button_);
+  attribute_body_->hide();
+  attribute_layout->addWidget(attribute_body_);
+  root->addWidget(attribute_group_);
+
   auto* general = new QGroupBox(tr("General"), this);
   StyleSettingsGroupBox(general);
   auto* general_form = new QFormLayout(general);
@@ -62,6 +119,14 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
                              static_cast<int>(MapBaseLayer::kShadedRelief));
   base_layer_combo_->addItem(BaseLayerLabel(MapBaseLayer::kCustom),
                              static_cast<int>(MapBaseLayer::kCustom));
+  base_layer_combo_->addItem(BaseLayerLabel(MapBaseLayer::kEsriStreet),
+                             static_cast<int>(MapBaseLayer::kEsriStreet));
+  base_layer_combo_->addItem(BaseLayerLabel(MapBaseLayer::kEsriTerrain),
+                             static_cast<int>(MapBaseLayer::kEsriTerrain));
+  base_layer_combo_->addItem(BaseLayerLabel(MapBaseLayer::kCartoVoyager),
+                             static_cast<int>(MapBaseLayer::kCartoVoyager));
+  base_layer_combo_->addItem(BaseLayerLabel(MapBaseLayer::kJapanStandard),
+                             static_cast<int>(MapBaseLayer::kJapanStandard));
   general_form->addRow(tr("Base layer"), base_layer_combo_);
 
   custom_tile_url_edit_ = new QLineEdit(general);
@@ -71,6 +136,17 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
   follow_channel_combo_ = new QComboBox(general);
   follow_channel_combo_->setEditable(false);
   general_form->addRow(tr("Follow channel"), follow_channel_combo_);
+
+  gcs_channel_combo_ = new QComboBox(general);
+  gcs_channel_combo_->setEditable(false);
+  general_form->addRow(tr("GCS channel"), gcs_channel_combo_);
+
+  distance_unit_combo_ = MakeEnumCombo(general);
+  distance_unit_combo_->addItem(DistanceUnitLabel(MapDistanceUnit::kMeters),
+                                static_cast<int>(MapDistanceUnit::kMeters));
+  distance_unit_combo_->addItem(DistanceUnitLabel(MapDistanceUnit::kFeet),
+                                static_cast<int>(MapDistanceUnit::kFeet));
+  general_form->addRow(tr("Distance units"), distance_unit_combo_);
 
   center_lat_spin_ = new QDoubleSpinBox(general);
   center_lat_spin_->setRange(-85.0, 85.0);
@@ -175,6 +251,78 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
   overlay_form->addRow(QString(), overlay_enabled_check_);
   overlay_layout->addWidget(overlay_editor_);
   root->addWidget(overlay_group);
+
+  auto* geojson_group = new QGroupBox(tr("GeoJSON"), this);
+  StyleSettingsGroupBox(geojson_group);
+  auto* geojson_layout = new QVBoxLayout(geojson_group);
+  ApplyCompactVBox(geojson_layout);
+  auto* geojson_buttons = new QHBoxLayout();
+  auto* remove_geojson = MakeDestructiveFlatActionButton(tr("Remove"), geojson_group);
+  geojson_buttons->addWidget(remove_geojson);
+  geojson_buttons->addStretch(1);
+  geojson_layout->addLayout(geojson_buttons);
+  geojson_list_ = new QListWidget(geojson_group);
+  geojson_layout->addWidget(geojson_list_);
+  root->addWidget(geojson_group);
+
+  auto* plan_group = new QGroupBox(tr("Plan"), this);
+  StyleSettingsGroupBox(plan_group);
+  auto* plan_form = new QFormLayout(plan_group);
+  ApplyCompactForm(plan_form);
+  edit_tool_combo_ = MakeEnumCombo(plan_group);
+  edit_tool_combo_->addItem(EditToolLabel(MapEditTool::kPan),
+                            static_cast<int>(MapEditTool::kPan));
+  edit_tool_combo_->addItem(EditToolLabel(MapEditTool::kWaypoint),
+                            static_cast<int>(MapEditTool::kWaypoint));
+  edit_tool_combo_->addItem(EditToolLabel(MapEditTool::kGeofence),
+                            static_cast<int>(MapEditTool::kGeofence));
+  edit_tool_combo_->addItem(EditToolLabel(MapEditTool::kRally),
+                            static_cast<int>(MapEditTool::kRally));
+  edit_tool_combo_->setToolTip(tr("1 Pan · 2 Waypoint · 3 Geofence · 4 Rally · M Measure · Esc Cancel · Del Undo · F Fit"));
+  plan_form->addRow(tr("Click tool"), edit_tool_combo_);
+  survey_spacing_spin_ = new QDoubleSpinBox(plan_group);
+  survey_spacing_spin_->setRange(5.0, 500.0);
+  survey_spacing_spin_->setSuffix(tr(" m"));
+  plan_form->addRow(tr("Survey spacing"), survey_spacing_spin_);
+  corridor_width_spin_ = new QDoubleSpinBox(plan_group);
+  corridor_width_spin_->setRange(5.0, 500.0);
+  corridor_width_spin_->setSuffix(tr(" m"));
+  plan_form->addRow(tr("Corridor width"), corridor_width_spin_);
+  structure_radius_spin_ = new QDoubleSpinBox(plan_group);
+  structure_radius_spin_->setRange(5.0, 2000.0);
+  structure_radius_spin_->setSuffix(tr(" m"));
+  plan_form->addRow(tr("Structure radius"), structure_radius_spin_);
+  auto* plan_buttons = new QHBoxLayout();
+  auto* survey_button = MakePrimaryActionButton(tr("Survey"), plan_group);
+  auto* corridor_button = MakeFlatActionButton(tr("Corridor"), plan_group);
+  auto* structure_button = MakeFlatActionButton(tr("Structure"), plan_group);
+  plan_buttons->addWidget(survey_button);
+  plan_buttons->addWidget(corridor_button);
+  plan_buttons->addWidget(structure_button);
+  plan_form->addRow(QString(), plan_buttons);
+  auto* file_buttons = new QHBoxLayout();
+  auto* export_plan = MakeFlatActionButton(tr("Export"), plan_group);
+  auto* import_plan = MakeFlatActionButton(tr("Import"), plan_group);
+  file_buttons->addWidget(export_plan);
+  file_buttons->addWidget(import_plan);
+  plan_form->addRow(tr("Plan file"), file_buttons);
+  root->addWidget(plan_group);
+
+  auto* offline_group = new QGroupBox(tr("Offline tiles"), this);
+  StyleSettingsGroupBox(offline_group);
+  auto* offline_form = new QFormLayout(offline_group);
+  ApplyCompactForm(offline_form);
+  offline_min_zoom_spin_ = new QSpinBox(offline_group);
+  offline_min_zoom_spin_->setRange(2, 18);
+  offline_max_zoom_spin_ = new QSpinBox(offline_group);
+  offline_max_zoom_spin_->setRange(2, 18);
+  offline_min_zoom_spin_->setValue(14);
+  offline_max_zoom_spin_->setValue(16);
+  offline_form->addRow(tr("Min zoom"), offline_min_zoom_spin_);
+  offline_form->addRow(tr("Max zoom"), offline_max_zoom_spin_);
+  auto* download_button = MakePrimaryActionButton(tr("Download view"), offline_group);
+  offline_form->addRow(QString(), download_button);
+  root->addWidget(offline_group);
   root->addStretch(1);
 
   connect(add_topic, &QPushButton::clicked, this, &MapSettingsWidget::onAddTopicLayer);
@@ -186,6 +334,84 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
           &MapSettingsWidget::onRemoveOverlayLayer);
   connect(overlay_list_, &QListWidget::currentRowChanged, this,
           &MapSettingsWidget::onOverlaySelectionChanged);
+  connect(remove_geojson, &QPushButton::clicked, this, [this]() {
+    const int row = geojson_list_->currentRow();
+    if (row < 0) {
+      return;
+    }
+    delete geojson_list_->takeItem(row);
+    emitConfigChanged();
+  });
+  connect(geojson_list_, &QListWidget::itemChanged, this, [this]() { emitConfigChanged(); });
+  connect(survey_button, &QPushButton::clicked, this, [this]() {
+    if (config_.geofence.size() < 3) {
+      return;
+    }
+    config_.waypoints = SurveyLawnmower(config_.geofence, survey_spacing_spin_->value());
+    emitConfigChanged();
+  });
+  connect(corridor_button, &QPushButton::clicked, this, [this]() {
+    if (config_.waypoints.size() < 2) {
+      return;
+    }
+    config_.waypoints = CorridorScan(config_.waypoints, corridor_width_spin_->value());
+    emitConfigChanged();
+  });
+  connect(structure_button, &QPushButton::clicked, this, [this]() {
+    config_.waypoints = StructureScan(config_.center_latitude, config_.center_longitude,
+                                      structure_radius_spin_->value(), 12);
+    emitConfigChanged();
+  });
+  connect(export_plan, &QPushButton::clicked, this, [this]() {
+    const QString path = QFileDialog::getSaveFileName(
+        this, tr("Export plan"), QString(), tr("GeoJSON (*.geojson *.json)"));
+    if (path.isEmpty()) {
+      return;
+    }
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly)) {
+      return;
+    }
+    file.write(ExportPlanGeoJson(config_.waypoints, config_.geofence, config_.rally_points));
+  });
+  connect(import_plan, &QPushButton::clicked, this, [this]() {
+    const QString path = QFileDialog::getOpenFileName(
+        this, tr("Import plan"), QString(), tr("GeoJSON (*.geojson *.json)"));
+    if (path.isEmpty()) {
+      return;
+    }
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+      return;
+    }
+    QString error;
+    if (!ImportPlanGeoJson(file.readAll(), &config_.waypoints, &config_.geofence,
+                           &config_.rally_points, &error)) {
+      return;
+    }
+    emitConfigChanged();
+  });
+  connect(download_button, &QPushButton::clicked, this, [this]() {
+    emit offlineDownloadRequested(offline_min_zoom_spin_->value(),
+                                  offline_max_zoom_spin_->value());
+  });
+  const auto edit_plan_vertex = [this]() {
+    if (selection_.plan_kind < 0 || attribute_lat_spin_->isReadOnly()) {
+      return;
+    }
+    emit planVertexEdited(selection_.plan_kind, selection_.plan_index,
+                          attribute_lat_spin_->value(), attribute_lon_spin_->value());
+  };
+  connect(attribute_lat_spin_, qOverload<double>(&QDoubleSpinBox::valueChanged), this,
+          edit_plan_vertex);
+  connect(attribute_lon_spin_, qOverload<double>(&QDoubleSpinBox::valueChanged), this,
+          edit_plan_vertex);
+  connect(attribute_remove_button_, &QPushButton::clicked, this, [this]() {
+    if (selection_.plan_kind < 0) {
+      return;
+    }
+    emit planVertexRemoved(selection_.plan_kind, selection_.plan_index);
+  });
 
   const auto wire_change = [this]() { emitConfigChanged(); };
   connect(title_edit_, &QLineEdit::textEdited, this, wire_change);
@@ -193,6 +419,18 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
           wire_change);
   connect(custom_tile_url_edit_, &QLineEdit::textEdited, this, wire_change);
   connect(follow_channel_combo_, qOverload<int>(&QComboBox::currentIndexChanged), this,
+          wire_change);
+  connect(gcs_channel_combo_, qOverload<int>(&QComboBox::currentIndexChanged), this,
+          wire_change);
+  connect(distance_unit_combo_, qOverload<int>(&QComboBox::currentIndexChanged), this,
+          wire_change);
+  connect(edit_tool_combo_, qOverload<int>(&QComboBox::currentIndexChanged), this,
+          wire_change);
+  connect(survey_spacing_spin_, qOverload<double>(&QDoubleSpinBox::valueChanged), this,
+          wire_change);
+  connect(corridor_width_spin_, qOverload<double>(&QDoubleSpinBox::valueChanged), this,
+          wire_change);
+  connect(structure_radius_spin_, qOverload<double>(&QDoubleSpinBox::valueChanged), this,
           wire_change);
   connect(center_lat_spin_, qOverload<double>(&QDoubleSpinBox::valueChanged), this,
           wire_change);
@@ -245,29 +483,123 @@ MapPanelConfig MapSettingsWidget::config() {
       static_cast<MapBaseLayer>(base_layer_combo_->currentData().toInt());
   result.custom_tile_url = custom_tile_url_edit_->text().trimmed();
   result.follow_channel = follow_channel_combo_->currentData().toString();
+  result.gcs_channel = gcs_channel_combo_->currentData().toString();
+  result.distance_unit = static_cast<MapDistanceUnit>(
+      distance_unit_combo_->currentData().toInt());
+  result.edit_tool =
+      static_cast<MapEditTool>(edit_tool_combo_->currentData().toInt());
+  result.survey_spacing_m = survey_spacing_spin_->value();
+  result.corridor_width_m = corridor_width_spin_->value();
+  result.structure_radius_m = structure_radius_spin_->value();
   result.center_latitude = center_lat_spin_->value();
   result.center_longitude = center_lon_spin_->value();
   result.zoom = zoom_spin_->value();
+  result.geojson_sources.clear();
+  for (int i = 0; i < geojson_list_->count(); ++i) {
+    const QListWidgetItem* item = geojson_list_->item(i);
+    MapGeoJsonSource source;
+    source.path = item->data(Qt::UserRole).toString();
+    source.visible = item->checkState() == Qt::Checked;
+    if (!source.path.isEmpty()) {
+      result.geojson_sources.push_back(source);
+    }
+  }
   saveCurrentTopicEditor();
   saveCurrentOverlayEditor();
   return result;
 }
 
+void MapSettingsWidget::setSelection(const MapSelectionInfo& info) {
+  bool same_rows = selection_.attributes.size() == info.attributes.size();
+  if (same_rows) {
+    for (int i = 0; i < info.attributes.size(); ++i) {
+      if (selection_.attributes.at(i).key != info.attributes.at(i).key ||
+          selection_.attributes.at(i).value != info.attributes.at(i).value) {
+        same_rows = false;
+        break;
+      }
+    }
+  }
+  selection_ = info;
+  const bool show = info.valid;
+  attribute_body_->setVisible(show);
+  attribute_hint_->setVisible(!show);
+  attribute_group_->setTitle(show && !info.title.isEmpty() ? info.title
+                                                           : tr("Attributes"));
+  if (!show) {
+    attribute_table_->setRowCount(0);
+    return;
+  }
+  attribute_kind_label_->setText(info.kind);
+  attribute_layer_label_->setText(info.layer);
+  const bool editable = info.plan_kind >= 0;
+  {
+    const QSignalBlocker block_lat(attribute_lat_spin_);
+    const QSignalBlocker block_lon(attribute_lon_spin_);
+    attribute_lat_spin_->setValue(info.latitude);
+    attribute_lon_spin_->setValue(info.longitude);
+  }
+  attribute_lat_spin_->setReadOnly(!editable);
+  attribute_lon_spin_->setReadOnly(!editable);
+  attribute_lat_spin_->setButtonSymbols(editable ? QAbstractSpinBox::UpDownArrows
+                                                : QAbstractSpinBox::NoButtons);
+  attribute_lon_spin_->setButtonSymbols(editable ? QAbstractSpinBox::UpDownArrows
+                                                : QAbstractSpinBox::NoButtons);
+  attribute_remove_button_->setVisible(editable);
+  attribute_table_->setVisible(!info.attributes.isEmpty());
+  if (same_rows) {
+    return;
+  }
+  attribute_table_->setRowCount(info.attributes.size());
+  for (int row = 0; row < info.attributes.size(); ++row) {
+    auto* key = new QTableWidgetItem(info.attributes.at(row).key);
+    auto* value = new QTableWidgetItem(info.attributes.at(row).value);
+    key->setFlags(Qt::ItemIsEnabled);
+    value->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+    attribute_table_->setItem(row, 0, key);
+    attribute_table_->setItem(row, 1, value);
+  }
+  attribute_table_->resizeRowsToContents();
+}
+
 void MapSettingsWidget::setConfig(const MapPanelConfig& config) {
+  const QSignalBlocker block_base(base_layer_combo_);
+  const QSignalBlocker block_follow(follow_channel_combo_);
+  const QSignalBlocker block_gcs(gcs_channel_combo_);
+  const QSignalBlocker block_units(distance_unit_combo_);
+  const QSignalBlocker block_tool(edit_tool_combo_);
+  const QSignalBlocker block_spacing(survey_spacing_spin_);
+  const QSignalBlocker block_corridor(corridor_width_spin_);
+  const QSignalBlocker block_radius(structure_radius_spin_);
+  const QSignalBlocker block_lat(center_lat_spin_);
+  const QSignalBlocker block_lon(center_lon_spin_);
+  const QSignalBlocker block_zoom(zoom_spin_);
+  const QSignalBlocker block_topics(topic_list_);
+  const QSignalBlocker block_overlays(overlay_list_);
+  const QSignalBlocker block_topic(topic_channel_combo_);
   config_ = config;
-  title_edit_->setText(config_.title);
+  rebuildGeoJsonList();
+  title_edit_->setText(config.title);
   base_layer_combo_->setCurrentIndex(
-      base_layer_combo_->findData(static_cast<int>(config_.base_layer)));
-  custom_tile_url_edit_->setText(config_.custom_tile_url);
-  center_lat_spin_->setValue(config_.center_latitude);
-  center_lon_spin_->setValue(config_.center_longitude);
-  zoom_spin_->setValue(config_.zoom);
+      base_layer_combo_->findData(static_cast<int>(config.base_layer)));
+  custom_tile_url_edit_->setText(config.custom_tile_url);
+  center_lat_spin_->setValue(config.center_latitude);
+  center_lon_spin_->setValue(config.center_longitude);
+  zoom_spin_->setValue(config.zoom);
   rebuildTopicList();
   rebuildOverlayList();
   refreshChannels();
-  const int follow_index =
-      follow_channel_combo_->findData(config_.follow_channel);
+  const int follow_index = follow_channel_combo_->findData(config.follow_channel);
   follow_channel_combo_->setCurrentIndex(follow_index >= 0 ? follow_index : 0);
+  const int gcs_index = gcs_channel_combo_->findData(config.gcs_channel);
+  gcs_channel_combo_->setCurrentIndex(gcs_index >= 0 ? gcs_index : 0);
+  distance_unit_combo_->setCurrentIndex(
+      distance_unit_combo_->findData(static_cast<int>(config.distance_unit)));
+  edit_tool_combo_->setCurrentIndex(
+      edit_tool_combo_->findData(static_cast<int>(config.edit_tool)));
+  survey_spacing_spin_->setValue(config.survey_spacing_m);
+  corridor_width_spin_->setValue(config.corridor_width_m);
+  structure_radius_spin_->setValue(config.structure_radius_m);
 }
 
 void MapSettingsWidget::refreshChannels() {
@@ -275,9 +607,12 @@ void MapSettingsWidget::refreshChannels() {
     return;
   }
   const QString previous_follow = follow_channel_combo_->currentData().toString();
+  const QString previous_gcs = gcs_channel_combo_->currentData().toString();
   const QString previous_topic = topic_channel_combo_->currentText();
   follow_channel_combo_->clear();
+  gcs_channel_combo_->clear();
   follow_channel_combo_->addItem(tr("(None)"), QString());
+  gcs_channel_combo_->addItem(tr("(None)"), QString());
   topic_channel_combo_->clear();
   for (const integration::ChannelInfo& info : manager_->channels()) {
     const QString channel = QString::fromStdString(info.channel_name);
@@ -287,11 +622,14 @@ void MapSettingsWidget::refreshChannels() {
     if (MapMessageIngest::SupportsMessageType(
             QString::fromStdString(info.message_type))) {
       follow_channel_combo_->addItem(channel, channel);
+      gcs_channel_combo_->addItem(channel, channel);
       topic_channel_combo_->addItem(channel);
     }
   }
   const int follow_index = follow_channel_combo_->findData(previous_follow);
   follow_channel_combo_->setCurrentIndex(follow_index >= 0 ? follow_index : 0);
+  const int gcs_index = gcs_channel_combo_->findData(previous_gcs);
+  gcs_channel_combo_->setCurrentIndex(gcs_index >= 0 ? gcs_index : 0);
   const int topic_index = topic_channel_combo_->findText(previous_topic);
   if (topic_index >= 0) {
     topic_channel_combo_->setCurrentIndex(topic_index);
@@ -314,6 +652,24 @@ void MapSettingsWidget::rebuildTopicList() {
   topic_list_->setCurrentRow(selected_topic_index_);
   loadTopicEditor(config_.topic_layers.at(selected_topic_index_));
   topic_editor_->setEnabled(true);
+}
+
+void MapSettingsWidget::rebuildGeoJsonList() {
+  if (geojson_list_ == nullptr) {
+    return;
+  }
+  geojson_list_->blockSignals(true);
+  geojson_list_->clear();
+  for (const MapGeoJsonSource& source : config_.geojson_sources) {
+    const QString name = QFileInfo(source.path).fileName();
+    auto* item = new QListWidgetItem(name.isEmpty() ? source.path : name);
+    item->setToolTip(source.path);
+    item->setData(Qt::UserRole, source.path);
+    item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+    item->setCheckState(source.visible ? Qt::Checked : Qt::Unchecked);
+    geojson_list_->addItem(item);
+  }
+  geojson_list_->blockSignals(false);
 }
 
 void MapSettingsWidget::rebuildOverlayList() {
