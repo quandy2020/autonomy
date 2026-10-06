@@ -1,0 +1,133 @@
+// Copyright 2025 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.control.proto;
+
+import "automsgs/msgs/geometry_msgs/vector3.proto";
+import "automsgs/msgs/moveit_msgs/cartesian_point.proto";
+
+// Ground-plane SANDO (HGP heat search, ellipsoid corridor, polynomial replan).
+// No ROS and no quadrotor altitude channel. The tracker writes a body twist.
+//
+// motion_model:
+//   diff_drive     — non-holonomic (vx, wz); vy forced to 0
+//   quadruped      — holonomic body velocity (vx, vy, wz)
+//   humanoid       — holonomic body velocity
+//   wheeled_leg    — holonomic body velocity
+message SandoControllerOptions {
+  string motion_model = 1;
+
+  double lookahead_dist = 2;
+  double max_linear_vel = 3;
+  double min_linear_vel = 4;
+  double max_lateral_vel = 5;
+  double max_angular_vel = 6;
+  double max_linear_accel = 7;
+  double max_angular_accel = 8;
+
+  double goal_dist_tol = 9;
+  double goal_yaw_tol = 10;
+
+  double safe_goal_search_step = 11;
+  double safe_goal_search_radius = 12;
+  optional bool stop_when_occupied = 13;
+
+  double k_linear = 14;
+  double k_angular = 15;
+  double rotate_in_place_yaw = 16;
+
+  double horizon = 17;
+  double j_max = 18;
+  double goal_seen_radius = 19;
+  int32 num_segments = 20;
+  int32 num_polytopes = 21;
+  double inflation = 22;
+  double robot_radius = 23;
+  double dc = 24;
+  double factor_initial = 25;
+  double factor_final = 26;
+  double factor_step = 27;
+  double jerk_weight = 28;
+  double w_max_yawing = 29;
+  double alpha_filter_dyaw = 30;
+  int32 default_k = 31;
+  double k_value_factor = 32;
+  double heuristic_weight = 33;
+  double heat_weight = 34;
+  double static_heat_alpha = 35;
+  double static_heat_rmax = 36;
+  double obst_max_vel = 37;
+  double traj_lifetime = 38;
+  double prediction_horizon = 39;
+  double max_dist_vertexes = 40;
+  double sfc_bbox = 41;
+  double hover_d_trigger = 42;
+  double hover_evasion = 43;
+  int32 max_expansions = 44;
+  double w_unknown = 45;
+  double obstacle_soft_cost = 46;
+  optional bool dynamic_heat = 47;
+  optional bool hover_avoidance = 48;
+  optional bool skip_initial_yawing = 49;
+  optional bool inflate_unknown = 50;
+  optional bool use_soft_cost = 51;
+
+  // astar_heat | sastar | sjps. sjps falls back to astar_heat when the
+  // jump-point path crosses dynamic heat.
+  string global_planner = 52;
+  double w_align = 53;
+  double decay_len_cells = 54;
+  double w_side = 55;
+  int32 los_cells = 56;
+  double min_len = 57;
+  double min_turn_deg = 58;
+  double map_buffer = 59;
+  int32 hgp_timeout_ms = 60;
+  // Linf | L1 | L2, applied to velocity, acceleration, and jerk control points.
+  string dynamic_constraint = 61;
+  int32 yaw_spinning_threshold = 62;
+  double yaw_spinning_dyaw = 63;
+  optional bool dynamic_as_occupied_current = 64;
+  optional bool dynamic_as_occupied_future = 65;
+  int32 min_cluster_cells = 66;
+  int32 max_cluster_cells = 67;
+  double accel_threshold = 68;
+  double kf_alpha = 69;
+  double comm_delay = 70;
+  double velocity_threshold = 71;
+  // static | dynamic | dynamic_worst_case
+  string environment_assumption = 72;
+  double hover_lookahead = 73;
+}
+
+// Closed half-plane. The interior is normal.x * x + normal.y * y <= offset.
+// normal.z is unused on the ground plane.
+message HalfPlane {
+  automsgs.msgs.geometry_msgs.Vector3 normal = 1;
+  double offset = 2;
+}
+
+// Tracked mover. motion.pose is the center. motion.velocity and
+// motion.acceleration are the constant-acceleration model in the world frame.
+// half_extent is the axis-aligned box before the speed margin is added.
+message DynamicObstacle {
+  int32 identifier = 1;
+  automsgs.msgs.moveit_msgs.CartesianPoint motion = 2;
+  double radius = 3;
+  automsgs.msgs.geometry_msgs.Vector3 half_extent = 4;
+  double last_seen = 5;
+  bool external = 6;
+}

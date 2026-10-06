@@ -19,12 +19,24 @@ autonomy_module(control)
 
 # Library sources: GLOB *.cpp under this dir; drop *main.cpp / *_test.cpp.
 autonomy_glob_srcs(_CONTROL_SRCS)
+# DAQP (MIT) is C. The Eigen wrapper in miqp/solver.cpp is picked up by the glob.
+file(GLOB _DAQP_SRCS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/controller/sando_controller/miqp/daqp/src/*.c")
+set(_DAQP_INCLUDE
+  "${CMAKE_CURRENT_SOURCE_DIR}/controller/sando_controller/miqp/daqp/include")
+set_source_files_properties(${_DAQP_SRCS} PROPERTIES
+  COMPILE_DEFINITIONS "PROFILING"
+  INCLUDE_DIRECTORIES "${_DAQP_INCLUDE}")
+list(APPEND _CONTROL_SRCS ${_DAQP_SRCS})
 autonomy_library(
   DEPENDENCIES autonomy_common autonomy_transform autonomy_map
   FEATURES ipopt
   SRCS ${_CONTROL_SRCS}
 )
+target_include_directories(autonomy_control PRIVATE "${_DAQP_INCLUDE}")
 unset(_CONTROL_SRCS)
+unset(_DAQP_SRCS)
+unset(_DAQP_INCLUDE)
 
 # Process entrypoint: autonomy.control
 autonomy_binary(autonomy.control SRCS control_main.cpp)

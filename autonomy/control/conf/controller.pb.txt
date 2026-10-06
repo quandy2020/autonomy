@@ -15,6 +15,7 @@ publish_zero_velocity: true
 controller_plugins: "graceful_controller:GracefulController"
 controller_plugins: "mppi_controller:MppiController"
 controller_plugins: "nmpc_controller:NMPCController"
+controller_plugins: "sando_controller:SandoController"
 # ---------- Local costmap (rolling) ----------
 costmap_2d_options {
   robot_radius: 0.22
@@ -295,6 +296,63 @@ graceful_controller_options {
 }
 
 # ---------- NMPC (DDP) ----------
+sando_controller_options {
+  motion_model: "diff_drive"
+  horizon: 8
+  max_linear_vel: 0.8
+  max_lateral_vel: 0.5
+  max_angular_vel: 1.0
+  max_linear_accel: 1.5
+  j_max: 5
+  goal_dist_tol: 0.25
+  goal_seen_radius: 1.5
+  goal_yaw_tol: 0.25
+  num_segments: 4
+  num_polytopes: 3
+  inflation: 0.25
+  robot_radius: 0.22
+  dc: 0.05
+  factor_initial: 1
+  factor_final: 2.5
+  factor_step: 0.1
+  jerk_weight: 10
+  w_max_yawing: 0.6
+  default_k: 50
+  heat_weight: 10
+  heuristic_weight: 2
+  obst_max_vel: 0.8
+  prediction_horizon: 1
+  traj_lifetime: 2
+  sfc_bbox: 3
+  stop_when_occupied: true
+  dynamic_heat: true
+  hover_avoidance: false
+  skip_initial_yawing: false
+  inflate_unknown: true
+  global_planner: "astar_heat"
+  w_align: 0
+  decay_len_cells: 100
+  w_side: 0
+  los_cells: 0
+  min_len: 0.5
+  min_turn_deg: 0
+  map_buffer: 4
+  hgp_timeout_ms: 300
+  dynamic_constraint: "Linf"
+  yaw_spinning_threshold: 10000
+  yaw_spinning_dyaw: 0.8
+  dynamic_as_occupied_current: true
+  dynamic_as_occupied_future: false
+  min_cluster_cells: 3
+  max_cluster_cells: 400
+  accel_threshold: 1.5
+  kf_alpha: 0.9
+  comm_delay: 0
+  velocity_threshold: 0.2
+  environment_assumption: "dynamic"
+  hover_lookahead: 15
+}
+
 nmpc_controller_options {
   max_plan_search_dist: 5
   cgmres_horizon_divisions: 25
