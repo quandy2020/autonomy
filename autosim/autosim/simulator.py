@@ -74,6 +74,7 @@ class Simulator:
         self.session = None
         self.articulated = None
         self.urdf = self.load_urdf_model()
+        self.traffic = None
 
         if open_session:
             self.open_habitat()
@@ -186,6 +187,10 @@ class Simulator:
 
         # Legacy: direct GLB path (no semantic mesh).
         if not scene_path:
+            stage = self.install_scenario(hab_cfg)
+            if stage is not None:
+                configuration.scene_id = stage
+                return configuration
             if hasattr(habitat_sim, "STAGE_EMPTY_SCENE"):
                 configuration.scene_id = habitat_sim.STAGE_EMPTY_SCENE
             else:
@@ -209,6 +214,25 @@ class Simulator:
 
         configuration.scene_id = scene_path
         return configuration
+
+    def install_scenario(self, hab_cfg: Mapping[str, Any]) -> str | None:
+        """Build a mockamap stage when ``habitat.path`` is empty and scenario is on.
+
+        Args:
+            hab_cfg: ``habitat`` mapping.
+
+        Returns:
+            OBJ path for Habitat ``scene_id``, or ``None`` when scenario is off.
+        """
+        block = hab_cfg.get("scenario")
+        if not isinstance(block, Mapping) or not block.get("enabled", False):
+            return None
+        from autosim.scenario import Scenario
+
+        world = Scenario(block).build()
+        self.scenario_points = world.points
+        self.scenario_grid = world.grid
+        return str(world.mesh)
 
     @classmethod
     def resolve_scene_dataset(cls, hab_cfg: Mapping[str, Any]) -> Tuple[str, str] | None:
@@ -1068,13 +1092,65 @@ class Simulator:
         # Single-height ray for 2D SLAM: a vertical min-fan pulls ranges onto
         # furniture tops/edges and paints fuzzy / double walls in Cartographer.
         hit = self.cast_from_origin(ox, oy, oz, self.yaw + yaw_offset, pitch, range_max)
+        # hit is map frame; laser_origin is Habitat → map: (ox, -oz, oy)
+        return self.closer_actor(
+            self.hit_distance(hit, ox, oy, oz),
+            (ox, -oz, oy),
+            self.yaw + yaw_offset,
+            pitch,
+            range_max,
+        )
+
+    @staticmethod
+    def hit_distance(
+        hit: Tuple[float, float, float] | None, ox: float, oy: float, oz: float
+    ) -> float | None:
+        """Map-frame distance from a Habitat origin ``(ox, oy, oz)`` to ``hit``."""
         if hit is None:
             return None
-        # hit is map frame; laser_origin is Habitat → map: (ox, -oz, oy)
         dx = hit[0] - ox
         dy = hit[1] - (-oz)
         dz = hit[2] - oy
         return float(math.sqrt(dx * dx + dy * dy + dz * dz))
+
+    @staticmethod
+    def ray_direction(yaw: float, pitch: float) -> tuple[float, float, float]:
+        """Unit map-frame direction for yaw (rad) and pitch (rad)."""
+        horizontal = math.cos(float(pitch))
+        return (
+            math.cos(float(yaw)) * horizontal,
+            math.sin(float(yaw)) * horizontal,
+            math.sin(float(pitch)),
+        )
+
+    def actor_distance(
+        self,
+        origin: tuple[float, float, float],
+        yaw: float,
+        pitch: float,
+        range_max: float,
+    ) -> float | None:
+        """Distance to the nearest dynamic body, or ``None`` when traffic is idle."""
+        traffic = self.traffic
+        if traffic is None:
+            return None
+        return traffic.nearest(origin, self.ray_direction(yaw, pitch), float(range_max))
+
+    def closer_actor(
+        self,
+        distance: float | None,
+        origin: tuple[float, float, float],
+        yaw: float,
+        pitch: float,
+        range_max: float,
+    ) -> float | None:
+        """Keep the nearer of the static hit and a dynamic body."""
+        actor = self.actor_distance(origin, yaw, pitch, range_max)
+        if actor is None:
+            return distance
+        if distance is None or actor < distance:
+            return actor
+        return distance
 
     def laser_ranges(
         self,
@@ -1231,9 +1307,20 @@ class Simulator:
     ) -> Tuple[float, float, float] | None:
         """Cast from an arbitrary pose; return map-frame hit or ``None``."""
         ox, oy, oz = self.laser_origin_at(x, y, yaw)
-        return self.cast_from_origin(
-            ox, oy, oz, float(yaw) + float(yaw_offset), float(pitch), float(range_max)
-        )
+        heading = float(yaw) + float(yaw_offset)
+        elevation = float(pitch)
+        hit = self.cast_from_origin(ox, oy, oz, heading, elevation, float(range_max))
+        origin = (ox, -oz, oy)
+        habitat = self.hit_distance(hit, ox, oy, oz)
+        actor = self.actor_distance(origin, heading, elevation, range_max)
+        if actor is not None and (habitat is None or actor < habitat):
+            direction = self.ray_direction(heading, elevation)
+            return (
+                origin[0] + actor * direction[0],
+                origin[1] + actor * direction[1],
+                origin[2] + actor * direction[2],
+            )
+        return hit
 
     def raycast_cloud(
         self,

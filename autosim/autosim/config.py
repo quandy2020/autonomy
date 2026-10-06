@@ -437,7 +437,8 @@ class Config:
         cls.validate_noise_fields(sensors)
         cls.validate_surround(camera_rig(sensors), robot.get("urdf", ""))
         cls.validate_footprint(robot.get("footprint"), robot.get("urdf", ""))
-        cls.validate_map(habitat.get("map"))
+        scenario_on = cls.validate_scenario(habitat.get("scenario"))
+        cls.validate_map(habitat.get("map"), procedural=scenario_on)
 
         names = [
             robot["cmd_vel"],
@@ -525,7 +526,95 @@ class Config:
                 ) from exc
 
     @classmethod
-    def validate_map(cls, block: Any) -> None:
+    def validate_scenario(cls, block: Any) -> bool:
+        """Validate optional ``habitat.scenario`` (mockamap world without a GLB).
+
+        Returns:
+            True when the block is enabled.
+        """
+        if block is None:
+            return False
+        if not isinstance(block, Mapping):
+            raise ValueError("habitat.scenario must be a mapping")
+        if "enabled" in block and not isinstance(block["enabled"], bool):
+            raise ValueError("habitat.scenario.enabled must be a bool")
+        cls.validate_agents(block.get("obstacle"), "habitat.scenario.obstacle")
+        cls.validate_agents(block.get("pedestrian"), "habitat.scenario.pedestrian")
+        if not block.get("enabled", False):
+            return False
+        from autosim.scenario import Scenario
+
+        Scenario.kind_name(block.get("type", "perlin"))
+        cls.require_positive(block.get("resolution", 0.1), "habitat.scenario.resolution")
+        if "fill" in block:
+            cls.require_between(block["fill"], "habitat.scenario.fill", 0.0, 1.0, closed=False)
+        if "connectivity" in block:
+            cls.require_between(
+                block["connectivity"], "habitat.scenario.connectivity", 0.0, 1.0, closed=True
+            )
+        for key in ("x_length", "y_length", "z_length"):
+            if key in block:
+                cls.require_positive(block[key], f"habitat.scenario.{key}")
+        return True
+
+    @classmethod
+    def validate_agents(cls, block: Any, path: str) -> None:
+        """Validate optional dynamic ``obstacle`` or ``pedestrian`` blocks."""
+        if block is None:
+            return
+        if not isinstance(block, Mapping):
+            raise ValueError(f"{path} must be a mapping")
+        if "enabled" in block and not isinstance(block["enabled"], bool):
+            raise ValueError(f"{path}.enabled must be a bool")
+        if not block.get("enabled", False):
+            return
+        if int(block.get("count", 0)) < 0:
+            raise ValueError(f"{path}.count must be >= 0")
+        cls.require_positive(block.get("radius", 0.3), f"{path}.radius")
+        if "height" in block:
+            cls.require_positive(block["height"], f"{path}.height")
+        if "speed" in block:
+            cls.require_positive(block["speed"], f"{path}.speed")
+        if "speed_min" in block and "speed_max" in block:
+            cls.require_speed_order(block, path)
+
+    @classmethod
+    def require_between(
+        cls, value: Any, path: str, low: float, high: float, closed: bool
+    ) -> None:
+        """Require ``value`` inside ``(low, high)`` or ``[low, high]``."""
+        try:
+            number = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{path} must be numeric") from exc
+        inside = low <= number <= high if closed else low < number < high
+        if not inside:
+            span = f"[{low}, {high}]" if closed else f"({low}, {high})"
+            raise ValueError(f"{path} must be in {span}")
+
+    @classmethod
+    def require_speed_order(cls, block: Mapping[str, Any], path: str) -> None:
+        """Require ``speed_min <= speed_max`` when both are set."""
+        try:
+            low = float(block["speed_min"])
+            high = float(block["speed_max"])
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{path}.speed_min and speed_max must be numeric") from exc
+        if low > high:
+            raise ValueError(f"{path}.speed_min must be <= speed_max")
+
+    @classmethod
+    def require_positive(cls, value: Any, path: str) -> None:
+        """Require a numeric value strictly greater than zero."""
+        try:
+            number = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{path} must be > 0") from exc
+        if number <= 0.0:
+            raise ValueError(f"{path} must be > 0")
+
+    @classmethod
+    def validate_map(cls, block: Any, procedural: bool = False) -> None:
         """Validate optional ``habitat.map`` panoramic GT block."""
         if block is None:
             return
@@ -549,7 +638,7 @@ class Config:
         source_path = str(ply.get("source") or "").strip()
         channel = str(ply.get("channel") or "").strip()
         publish = bool(block.get("publish", True))
-        if publish and not file_path and not source_path and not channel:
+        if publish and not file_path and not source_path and not channel and not procedural:
             raise ValueError("habitat.map.ply requires file, source, and/or channel")
         if publish and (
             not isinstance(grid.get("channel"), str) or not str(grid["channel"]).strip()
@@ -558,7 +647,7 @@ class Config:
         # horizontal/vertical/range_max are only required for Habitat ray-cast mode.
         # When ply.source is set the cloud is loaded from an external file and these
         # fields are not needed.
-        if not source_path:
+        if not source_path and not procedural:
             horizontal = ply.get("horizontal")
             vertical = ply.get("vertical")
             if not isinstance(horizontal, Mapping) or not isinstance(vertical, Mapping):

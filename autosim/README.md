@@ -13,6 +13,15 @@ Habitat-Sim **传感器–执行器桥**：经 autolink 发布传感、订阅 `/
 | `sensors.py` | `Sensors` | 2D/3D lidar and camera sampling |
 | `simulator.py` | `Simulator` | Habitat scene + cast_ray（无 Mock） |
 | `map.py` | `Map` | PLY 环视点云 + 2D OccupancyGrid（自由空间雕刻） |
+| `scenario/map/scenario.py` | `Scenario` | 按类型生成占据体并写出 Habitat 网格 |
+| `scenario/map/volume.py` | `Volume` | 体素占据、出生点挖空、二维栅格 |
+| `scenario/map/stage.py` | `Stage` | 占据体 → Habitat Y-up OBJ |
+| `scenario/arena.py` | `Arena` | 障碍与行人共用的平面活动范围 |
+| `scenario/field.py` | `Field` | 二维占据：反弹、滑动、出生重采样 |
+| `scenario/cast.py` | `Cast` | 射线与圆柱 / 胶囊的最近命中 |
+| `scenario/traffic.py` | `Traffic` | 每拍推进动态体，并供激光取更近命中 |
+| `scenario/obstacle/obstacle.py` | `Obstacle` | 边界与墙面反弹的动态圆柱障碍 |
+| `scenario/pedestrian/pedestrian.py` | `Pedestrian` | 朝目标行走、沿墙滑动并相互避让的行人 |
 | `urdf.py` | `UrdfModel` | URDF path + sensor mounts |
 | `messages.py` | `Messages` | automsgs encode/decode |
 | `bridge.py` | `Bridge` | autolink channels |
@@ -67,7 +76,7 @@ cd src/autonomy/autosim
 
 键盘遥控与 `autonomy_teleop` 相同：`w`/`x` 增减线速度，`a`/`d` 增减角速度，`space`/`s` 停车；速度会保持直到下一次按键。需在交互式 TTY 中运行（`docker exec -it SpaceHero /bin/bash`），并点击该终端窗口取得焦点。
 
-`habitat.path` 为空时使用 Habitat 空舞台（仍需 `habitat-sim`）。默认 `habitat.mode: slam`：仅发 `odom→base_link`（并令轮式里程计贴合真值，避免 `/scan` 相对地图旋转）；Cartographer 负责 `map→odom`/`/map`。导航演示用 `mode: nav`（漂移修正的 `map→odom→base_link` + GT `/map`）。
+`habitat.path` 为空且 `habitat.scenario.enabled: true` 时，按 [SensorSimulator](https://github.com/TJU-Aerial-Robotics/SensorSimulator) RandomScene 生成占据点云、二维栅格和 Habitat OBJ：`perlin` / `perlin2d`、`posts`、`maze`（random maze）、`maze3d`、`random_forest`、`random_room`，以及需要 `scenario.ply` 的实景 `forest` / `building`。不编译、不启动该 ROS/CUDA 包。`obstacle` / `pedestrian` 不写入这块静态网格：控制周期调用 `step`，激光取圆柱或胶囊与静态命中的更近距离；未写尺寸时继承场景的 `x_length` / `y_length` / `spawn_radius`。未启用 scenario 时仍是 Habitat 空舞台（仍需 `habitat-sim`）。默认 `habitat.mode: nav`：漂移修正的 `map→odom→base_link` + GT `/map`。`slam` 仅发 `odom→base_link`（Cartographer 负责 `map→odom`/`/map`）。
 测试需要已安装的 `automsgs` Python 绑定（仓库内不再附带 `stubs/`）。
 
 ## 配置要点

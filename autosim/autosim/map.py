@@ -169,6 +169,13 @@ class Map:
             grid, resolution, ox, oy, width, height = self.cached_grid
             return self.cached_cloud, grid, resolution, ox, oy, width, height
 
+        procedural = self.sample_scenario(simulator)
+        if procedural is not None:
+            cloud, grid, resolution, ox, oy, width, height = procedural
+            self.cached_cloud = cloud
+            self.cached_grid = (grid, resolution, ox, oy, width, height)
+            return cloud, grid, resolution, ox, oy, width, height
+
         ply_cfg = self.settings.get("ply") or {}
         source_path = str(ply_cfg.get("source") or "").strip()
         self.cloud_rgb: Optional[np.ndarray] = None
@@ -241,6 +248,21 @@ class Map:
         self.cached_cloud = cloud
         self.cached_grid = (grid, resolution, ox, oy, width, height)
         return cloud, grid, resolution, ox, oy, width, height
+
+    @staticmethod
+    def sample_scenario(
+        simulator: Any,
+    ) -> Optional[Tuple[np.ndarray, np.ndarray, float, float, float, int, int]]:
+        """Use the procedural cloud and grid when the simulator built a scenario."""
+        points = getattr(simulator, "scenario_points", None)
+        grid = getattr(simulator, "scenario_grid", None)
+        if points is None or grid is None:
+            return None
+        cloud = np.asarray(points, dtype=np.float32).reshape(-1, 3)
+        if cloud.size == 0:
+            return None
+        cells, resolution, ox, oy, width, height = grid
+        return cloud, cells, float(resolution), float(ox), float(oy), int(width), int(height)
 
     def project_grid_from_navmesh(
         self,

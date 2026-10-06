@@ -26,6 +26,40 @@ habitat:
   #
   # Mode 2 (default): direct .glb — auto-installs dataset config in the scene parent.
   path: /workspace/autonomy/src/17DRP5sb8fy/17DRP5sb8fy.glb
+  # No GLB: set path to "" and scenario.enabled: true.
+  # Types follow SensorSimulator RandomScene (no ROS/CUDA build):
+  # perlin | perlin2d | posts | maze | maze3d | random_forest | random_room
+  # forest | building need scenario.ply (real point cloud).
+  scenario:
+    enabled: false
+    type: maze          # see comment above; 1–6 match SensorSimulator maze_type
+    seed: 510
+    resolution: 0.2
+    x_length: 20
+    y_length: 20
+    z_length: 2
+    road_width: 0.5
+    add_wall_x: 1
+    add_wall_y: 1
+    tree_dist: 8
+    # tree_file: ""     # random_forest; empty uses a procedural tree
+    # ply: ""           # forest / building
+    room_number: 4
+    max_windows: 2
+    obstacle:
+      enabled: false
+      # x_length, y_length, spawn_radius inherit the scenario map when omitted.
+      count: 5
+      radius: 0.4
+      height: 1.0
+      speed_min: 0.2
+      speed_max: 0.8
+    pedestrian:
+      enabled: false
+      count: 8
+      radius: 0.3
+      height: 1.7
+      speed: 1.2
   # MP3D origin (0,0) often yields a flat semantic field; autosim also auto-relocates on start.
   spawn: [-4.0, 0.18, 0.0]  # x, y, yaw — valid semantic mesh pose for this scene
   gpu: 0

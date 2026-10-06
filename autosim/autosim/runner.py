@@ -41,6 +41,7 @@ from autosim.config import Config
 from autosim.map import Map
 from autosim.messages import Messages
 from autosim.robot import Robot
+from autosim.scenario.traffic import Traffic
 from autosim.sensors import Sensors
 from autosim.simulator import Simulator
 
@@ -284,6 +285,11 @@ class Runner:
             lidar_3d=self.lidar_3d,
         )
         self.robot.reset_inertial(yaw=self.robot.pose()[2], t=0.0)
+        self.traffic = Traffic.from_block(
+            self.settings["habitat"].get("scenario"),
+            getattr(self.simulator, "scenario_grid", None),
+        )
+        self.simulator.traffic = self.traffic
 
     def message_types(self) -> Dict[str, Any]:
         """Build logical-key → protobuf type map for enabled streams.
@@ -401,6 +407,7 @@ class Runner:
             self.robot.odometry_yaw = float(yaw)
         self.simulator.set_pose(x, y, yaw)
         self.simulator.step()
+        self.traffic.step(dt)
         self.clock.tick(dt)
         stamp = self.clock.stamp()
         linear, angular = self.robot.velocity()
