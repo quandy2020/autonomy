@@ -394,3 +394,126 @@ def test_lidar_keeps_the_nearer_dynamic_hit():
     traffic.pedestrian.position[:] = [[0.0, 0.0]]
     cap = traffic.nearest((0.0, 0.0, 3.0), (0.0, 0.0, -1.0), 10.0)
     assert cap is not None and abs(cap - (3.0 - 1.7)) < 1e-6
+
+
+def test_pedestrian_follows_the_free_direction():
+    from autosim.scenario import Pedestrian
+
+    agent = Pedestrian(
+        {
+            "enabled": True,
+            "count": 1,
+            "radius": 0.2,
+            "speed": 1.0,
+            "x_length": 10.0,
+            "y_length": 10.0,
+            "spawn_radius": 0.0,
+            "goal_tolerance": 0.05,
+            "seed": 0,
+        }
+    )
+    grid = np.zeros((8, 8), dtype=np.int8)
+    grid[:, 4:] = 100
+    agent.bind_field(Field(grid, 0.5, -2.0, -2.0))
+    agent.position[:] = [-0.25, 0.0]
+    agent.goal[:] = [2.0, 0.0]
+    agent.step(0.2)
+    assert agent.position[0, 1] > 0.0
+    assert agent.position[0, 0] < 0.0
+
+
+def test_pedestrian_replaces_a_goal_when_stuck():
+    from autosim.scenario import Pedestrian
+
+    agent = Pedestrian(
+        {
+            "enabled": True,
+            "count": 1,
+            "radius": 0.2,
+            "speed": 1.0,
+            "x_length": 10.0,
+            "y_length": 10.0,
+            "spawn_radius": 0.0,
+            "goal_tolerance": 0.05,
+            "stuck_steps": 2,
+            "seed": 0,
+        }
+    )
+    grid = np.full((8, 8), 100, dtype=np.int8)
+    grid[4, 4] = 0
+    agent.bind_field(Field(grid, 0.5, -2.0, -2.0))
+    agent.position[:] = [0.25, 0.25]
+    agent.goal[:] = [4.0, 4.0]
+    previous = agent.goal.copy()
+    agent.step(0.3)
+    agent.step(0.3)
+    assert not np.allclose(agent.goal, previous)
+
+
+def test_refreshed_goal_stays_off_walls():
+    from autosim.scenario import Pedestrian
+
+    agent = Pedestrian(
+        {
+            "enabled": True,
+            "count": 1,
+            "radius": 0.2,
+            "speed": 1.0,
+            "x_length": 8.0,
+            "y_length": 8.0,
+            "spawn_radius": 0.0,
+            "goal_tolerance": 0.4,
+            "seed": 2,
+        }
+    )
+    grid = np.zeros((8, 8), dtype=np.int8)
+    grid[2:6, 2:6] = 100
+    agent.bind_field(Field(grid, 1.0, -4.0, -4.0))
+    agent.position[:] = [-3.2, -3.2]
+    agent.goal[:] = [-3.2, -3.2]
+    agent.step(0.05)
+    assert not agent.field.blocked(agent.goal, 0.2)
+
+
+def test_pedestrian_stays_outside_the_robot_disk():
+    from autosim.scenario import Pedestrian
+
+    agent = Pedestrian(
+        {
+            "enabled": True,
+            "count": 1,
+            "radius": 0.2,
+            "speed": 1.0,
+            "x_length": 10.0,
+            "y_length": 10.0,
+            "spawn_radius": 1.0,
+            "goal_tolerance": 0.05,
+            "seed": 0,
+        }
+    )
+    agent.position[:] = [0.2, 0.0]
+    agent.goal[:] = [0.0, 0.0]
+    agent.step(0.2)
+    assert np.linalg.norm(agent.position[0]) >= 1.2 - 1e-6
+
+
+def test_pedestrian_does_not_enter_an_obstacle():
+    from autosim.scenario import Pedestrian
+
+    agent = Pedestrian(
+        {
+            "enabled": True,
+            "count": 1,
+            "radius": 0.2,
+            "speed": 1.0,
+            "x_length": 10.0,
+            "y_length": 10.0,
+            "spawn_radius": 0.0,
+            "goal_tolerance": 0.05,
+            "seed": 0,
+        }
+    )
+    agent.position[:] = [0.0, 0.0]
+    agent.goal[:] = [0.0, 3.0]
+    agent.step(0.1, bodies=np.array([[0.25, 0.0]]), body_radius=0.2)
+    assert agent.position[0, 0] < 0.0

@@ -57,7 +57,7 @@ habitat:
     pedestrian:
       enabled: false
       count: 8
-      radius: 0.3
+      radius: 0.2
       height: 1.7
       speed: 1.2
   # MP3D origin (0,0) often yields a flat semantic field; autosim also auto-relocates on start.

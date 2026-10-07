@@ -78,9 +78,13 @@ class Traffic:
         return child
 
     def step(self, dt: float) -> None:
-        """Advance both populations by ``dt`` seconds."""
+        """Advance obstacles, then walkers that stay clear of those cylinders."""
         self.obstacle.step(dt)
-        self.pedestrian.step(dt)
+        self.pedestrian.step(
+            dt,
+            bodies=self.obstacle.position,
+            body_radius=float(self.obstacle.settings["radius"]),
+        )
 
     def nearest(
         self,
