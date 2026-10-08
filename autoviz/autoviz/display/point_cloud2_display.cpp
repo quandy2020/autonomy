@@ -349,8 +349,10 @@ void PointCloud2Display::onDraw(rendering::SceneOverlay& scene) {
       colored.push_back({pt.position, pt.color});
     }
   }
+  const bool selectable =
+      common::ParseBoolProperty(propertyValue("selectable", "true"), true);
   drawColoredPointsOgreOrGl(context_, scene, name(), typeId(), point_size, style,
-                            colored, true);
+                            colored, selectable);
 }
 
 }  // namespace display

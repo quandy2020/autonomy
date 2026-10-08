@@ -98,8 +98,8 @@ int main(int argc, char** argv) {
       }
       splash->show();
       splash->raise();
-      splash->activateWindow();
-      // Force an immediate paint before heavy init (Qt docs).
+      // Force an immediate paint before heavy init (Qt docs). Do not call
+      // activateWindow() — splash is intentionally non-activating on X11.
       splash->repaint();
       splash->showStatusFor(QStringLiteral("Initializing"));
     } else {

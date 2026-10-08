@@ -20,7 +20,7 @@ bool drawColoredPointsOgreOrGl(common::DisplayContext* context,
                                const std::string& display_type, float point_size,
                                rendering::PointCloudStyle style,
                                const std::vector<ColoredPoint3D>& points,
-                               bool per_point_pick) {
+                               bool selectable) {
   if (points.empty()) {
     return false;
   }
@@ -41,35 +41,36 @@ bool drawColoredPointsOgreOrGl(common::DisplayContext* context,
       context->ogre_scene_host->setDisplayVisibilityBits(
           display_name, *context->active_display_visibility_bits);
     }
-    if (per_point_pick) {
+    // One cloud-level pick handle only (RViz Pick1 / color-by-index). Never
+    // allocate per-point SelectionHandlers — dense depth/lidar clouds would
+    // create hundreds of thousands of heap objects per frame and corrupt the
+    // allocator ("corrupted size vs. prev_size").
+    if (selectable) {
       scene.setPickSource(&display_name, &display_type);
+      auto handler =
+          common::CreateSelectionHandler<common::PointCloudSelectionHandler>();
+      handler->setDisplayInfo(display_name, display_type);
+      handler->setPointIndex(-1);
       const common::PickHandle cloud_handle =
-          scene.registerPickEntry(QVector3D(), -1, nullptr);
+          scene.registerPickEntry(QVector3D(), -1, handler);
       context->ogre_scene_host->setCloudPickHandle(display_name, cloud_handle);
-      for (std::size_t i = 0; i < points.size(); ++i) {
-        auto handler =
-            common::CreateSelectionHandler<common::PointCloudSelectionHandler>();
-        handler->setDisplayInfo(display_name, display_type);
-        handler->setPointIndex(static_cast<int>(i));
-        scene.registerPickEntry(points[i].position, static_cast<int>(i), handler);
-      }
     }
     return true;
   }
 
   scene.setPointSize(point_size);
-  scene.setPickSource(&display_name, &display_type);
-  for (std::size_t i = 0; i < points.size(); ++i) {
-    auto handler = per_point_pick
-                       ? common::CreateSelectionHandler<
-                             common::PointCloudSelectionHandler>()
-                       : nullptr;
-    if (handler != nullptr) {
-      handler->setDisplayInfo(display_name, display_type);
-      handler->setPointIndex(static_cast<int>(i));
-    }
-    scene.addPickPoint(points[i].position, points[i].color, static_cast<int>(i),
-                       handler);
+  if (selectable) {
+    scene.setPickSource(&display_name, &display_type);
+    auto handler =
+        common::CreateSelectionHandler<common::PointCloudSelectionHandler>();
+    handler->setDisplayInfo(display_name, display_type);
+    handler->setPointIndex(-1);
+    scene.registerPickEntry(QVector3D(), -1, handler);
+  }
+  // Clear pick source so addPickPoint does not allocate a handler per vertex.
+  scene.setPickSource(nullptr, nullptr);
+  for (const auto& pt : points) {
+    scene.addPickPoint(pt.position, pt.color, -1, nullptr);
   }
   return false;
 }

@@ -331,6 +331,8 @@ class Runner:
         self.sensors = None
         self.traffic = Traffic.from_block(self.scenario_cfg, None)
         self.fake_sensor = FakeSensor(self.camera)
+        # URDF mounts for TF + footprint (same as Habitat path).
+        self._urdf_for_footprint = self._footprint_urdf()
 
     def _warmup_fake_map(self) -> None:
         """Build scenario occupancy and cache points for local RGBD sampling."""
@@ -1014,14 +1016,18 @@ class Runner:
         return urdf.body_frame()
 
     def footprint_points(self) -> Tuple[Tuple[float, float, float], ...]:
-        """Footprint vertices, preferring URDF-derived geometry over YAML points."""
+        """Footprint vertices in the published footprint frame (``base_link``).
+
+        URDF polygons are authored in the URDF root (usually ``base_footprint``);
+        they are transformed into ``base_link`` when that link sits above the root.
+        """
         urdf = getattr(self.simulator, "urdf", None) if self.simulator is not None else None
         if urdf is None:
             urdf = self._footprint_urdf()
         if urdf is not None:
             polygon = tuple(urdf.footprint_polygon())
             if polygon:
-                return polygon
+                return self._footprint_in_base_link(urdf, polygon)
         points = self.footprint.get("points") or []
         polygon = []
         for point in points:
@@ -1030,6 +1036,23 @@ class Runner:
             else:
                 polygon.append((float(point[0]), float(point[1]), float(point[2])))
         return tuple(polygon)
+
+    @staticmethod
+    def _footprint_in_base_link(
+        urdf: UrdfModel,
+        polygon: Tuple[Tuple[float, float, float], ...],
+    ) -> Tuple[Tuple[float, float, float], ...]:
+        """Map URDF-root polygon into ``base_link`` when the root is ``base_footprint``."""
+        if urdf.root != "base_footprint" or "base_link" not in urdf.parents:
+            return polygon
+        parent, (px, py, pz) = urdf.parents["base_link"]
+        if parent != "base_footprint":
+            return polygon
+        # parents stores translation of child in parent frame; invert for base_link.
+        return tuple(
+            (float(x) - float(px), float(y) - float(py), float(z) - float(pz))
+            for x, y, z in polygon
+        )
 
     def _footprint_urdf(self) -> Optional[UrdfModel]:
         """Load / cache URDF for footprint when Habitat simulator is absent (fake)."""
@@ -1364,7 +1387,9 @@ class Runner:
         # map→odom is dynamic (tracks odom drift); never latch it on /tf_static.
         mounts = []
         urdf = getattr(self.simulator, "urdf", None) if self.simulator is not None else None
-        if self.backend == "fake":
+        if urdf is None:
+            urdf = self._footprint_urdf()
+        if self.backend == "fake" and urdf is None:
             eye = float(self.camera.get("sensor_height", 0.6))
             frame = str(self.camera.get("frame") or "camera_link")
             mounts.append(
@@ -1402,6 +1427,16 @@ class Runner:
                         0.0,
                     )
                 )
+            if self.backend == "fake":
+                # Prefer URDF camera_link; else place optics at sensor_height.
+                cam_frame = str(self.camera.get("frame") or "camera_link")
+                if cam_frame not in urdf.parents and cam_frame != urdf.root:
+                    eye = float(self.camera.get("sensor_height", 0.6))
+                    mounts.append(
+                        Messages.encode_transform(
+                            stamp, body_frame, cam_frame, (0.0, 0.0, eye), 0.0
+                        )
+                    )
         else:
             mounts.append(
                 Messages.encode_transform(

@@ -78,7 +78,7 @@ SelectionHandler* HandlerManager::lookup(PickHandle handle) const {
   if (it == handlers_.end()) {
     return nullptr;
   }
-  return it->second.lock().get();
+  return it->second.get();
 }
 
 void HandlerManager::notifySelected(PickHandle handle) {

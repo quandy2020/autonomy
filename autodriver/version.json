@@ -5,14 +5,14 @@
   "patch": 0,
   "name": "Autodriver",
   "description": "Sensor + chassis HAL for vehicle robots",
-  "full_version": "0.2.0+g91694257",
-  "git_describe": "91694257",
-  "git_commit": "91694257",
+  "full_version": "0.2.0+g1cf25eec-dirty",
+  "git_describe": "1cf25eec-dirty",
+  "git_commit": "1cf25eec",
   "git_branch": "feature/library",
-  "git_commit_date": "2026-10-08 12:31:44",
+  "git_commit_date": "2026-10-08 14:58:37",
   "git_author": "quandy2020",
   "git_email": "quandy2020@126.com",
-  "git_dirty": false,
+  "git_dirty": true,
   "build_date": "2026-10-08",
-  "build_time": "2026-10-08 04:43:48.838"
+  "build_time": "2026-10-08 15:00:35.412"
 }

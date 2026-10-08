@@ -276,6 +276,13 @@ void OgrePointCloud::setRenderMode(RenderMode mode) {
     current_material_->load();
   }
   if (changingGeometrySupportIsNecessary(current_material_)) {
+    // Detach before destroying so the parent SceneNode never keeps dangling
+    // MovableObject pointers across regenerateAll().
+    if (getParentSceneNode()) {
+      for (const auto& renderable : renderables_) {
+        getParentSceneNode()->detachObject(renderable.get());
+      }
+    }
     renderables_.clear();
   }
   for (auto& renderable : renderables_) {
@@ -439,9 +446,14 @@ void OgrePointCloud::addPoints(std::vector<Point>::iterator start,
   const auto num_points = static_cast<uint32_t>(std::distance(start, end));
   points_.insert(points_.cend(), start, end);
 
+  const uint32_t vertices_per_point = getVerticesPerPoint();
   RenderableInternals internals = createNewRenderable(num_points);
   for (auto current_point = start; current_point < end; ++current_point) {
-    if (internals.bufferIsFull()) {
+    // Require room for a full logical point (not just one vertex) so we never
+    // write past the locked hardware buffer when capacity is not a multiple
+    // of vertices_per_point.
+    if (internals.current_vertex_count + vertices_per_point >
+        internals.buffer_size) {
       finishRenderable(internals, internals.current_vertex_count);
       internals = createNewRenderable(
           static_cast<uint32_t>(end - current_point));

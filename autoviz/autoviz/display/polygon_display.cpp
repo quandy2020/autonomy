@@ -20,9 +20,10 @@ PolygonDisplay::PolygonDisplay(std::string channel)
 }
 
 std::vector<common::DisplayPropertySpec> PolygonDisplay::propertySpecs() const {
+  // line_width is world-space meters (same as Path / BillboardLine).
   return {{"color", "Color", "80;200;255"},
-          {"alpha", "Alpha", "0.6"},
-          {"line_width", "Line Width", "3.0"}};
+          {"alpha", "Alpha", "0.9"},
+          {"line_width", "Line Width", "0.03"}};
 }
 
 void PolygonDisplay::processMessage(
@@ -45,14 +46,14 @@ void PolygonDisplay::processMessage(
     for (const auto& point : message.polygon().points()) {
       const QVector3D local(static_cast<float>(point.x()),
                             static_cast<float>(point.y()),
-                            static_cast<float>(point.z()) + 0.01f);
+                            static_cast<float>(point.z()) + 0.02f);
       points_.push_back(transformPoint(tf, local));
     }
   } catch (...) {
     for (const auto& point : message.polygon().points()) {
       points_.push_back(QVector3D(static_cast<float>(point.x()),
                                   static_cast<float>(point.y()),
-                                  static_cast<float>(point.z()) + 0.01f));
+                                  static_cast<float>(point.z()) + 0.02f));
     }
   }
   if (context_->request_redraw) {
@@ -71,19 +72,16 @@ void PolygonDisplay::onDraw(rendering::SceneOverlay& scene) {
   QColor color =
       common::ParseColorProperty(propertyValue("color", "80;200;255"));
   const float alpha =
-      common::ParseFloatProperty(propertyValue("alpha", "0.6"), 0.6f);
+      common::ParseFloatProperty(propertyValue("alpha", "0.9"), 0.9f);
   const float line_width =
-      common::ParseFloatProperty(propertyValue("line_width", "3.0"), 3.0f);
+      common::ParseFloatProperty(propertyValue("line_width", "0.03"), 0.03f);
   color.setAlphaF(alpha);
 
-  if (line_width > 0.f) {
-    scene.addLineLoop(points_, color, line_width);
-    return;
-  }
-  for (size_t i = 0; i + 1 < points_.size(); ++i) {
-    scene.addLine(points_[i], points_[i + 1], color);
-  }
-  scene.addLine(points_.back(), points_.front(), color);
+  // Close the loop for BillboardLine / polyline strip.
+  std::vector<QVector3D> loop = points_;
+  loop.push_back(loop.front());
+  drawBillboardStripOgreOrGl(context_, scene, name() + "/outline", loop, color,
+                             line_width);
 }
 
 }  // namespace display

@@ -30,7 +30,7 @@ habitat:
     y_length: 20
     z_length: 3
     # posts
-    obstacle_number: 80
+    obstacle_number: 100
     width_min: 0.6
     width_max: 1.5
     # perlin / perlin2d
@@ -56,7 +56,7 @@ habitat:
     max_windows: 2
     # Moving cylinders (independent of static map type)
     obstacle:
-      enabled: false
+      enabled: true
       count: 20
       radius: 0.4
       height: 1.0

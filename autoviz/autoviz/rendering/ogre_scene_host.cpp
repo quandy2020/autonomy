@@ -227,18 +227,19 @@ void OgreSceneHost::destroyPbr(DisplayEntry& entry) {
     }
   }
   entry.pbr_textured_objects.clear();
-  for (const std::string& name : entry.pbr_texture_names) {
-    if (Ogre::TextureManager::getSingleton().resourceExists(name)) {
-      Ogre::TextureManager::getSingleton().remove(name);
-    }
-  }
-  entry.pbr_texture_names.clear();
+  // Materials first so TextureUnitState releases keep texture names free.
   for (const std::string& name : entry.pbr_material_names) {
     if (Ogre::MaterialManager::getSingleton().resourceExists(name)) {
       Ogre::MaterialManager::getSingleton().remove(name);
     }
   }
   entry.pbr_material_names.clear();
+  for (const std::string& name : entry.pbr_texture_names) {
+    if (Ogre::TextureManager::getSingleton().resourceExists(name)) {
+      Ogre::TextureManager::getSingleton().remove(name);
+    }
+  }
+  entry.pbr_texture_names.clear();
 }
 
 void OgreSceneHost::destroyLabels(DisplayEntry& entry) {
@@ -462,6 +463,9 @@ void OgreSceneHost::uploadPbrTexturedMeshes(
     const Ogre::String base_name =
         display_name + "/PbrTex" + Ogre::StringConverter::toString(index++);
     const Ogre::String tex_name = base_name + "Tex";
+    if (Ogre::TextureManager::getSingleton().resourceExists(tex_name)) {
+      Ogre::TextureManager::getSingleton().remove(tex_name);
+    }
     Ogre::TexturePtr texture =
         Ogre::TextureManager::getSingleton().createManual(
             tex_name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
@@ -474,6 +478,9 @@ void OgreSceneHost::uploadPbrTexturedMeshes(
     texture->getBuffer()->blitFromMemory(pixel_box);
 
     const Ogre::String mat_name = base_name + "Mat";
+    if (Ogre::MaterialManager::getSingleton().resourceExists(mat_name)) {
+      Ogre::MaterialManager::getSingleton().remove(mat_name);
+    }
     Ogre::MaterialPtr material =
         Ogre::MaterialManager::getSingleton()
             .getByName("AvizPBRTextured")

@@ -195,7 +195,8 @@ class MarkerSelectionHandler : public SelectionHandler {
  * @class HandlerManager
  * @brief Maps pick handles to @ref SelectionHandler instances for the frame.
  *
- * Stores weak pointers so handlers owned by displays can expire safely.
+ * Owns handlers for the current frame via shared_ptr. Cleared each
+ * @c VisualizationManager::update() before displays re-register.
  */
 class HandlerManager {
  public:
@@ -208,7 +209,7 @@ class HandlerManager {
    * @brief Registers a handler under a pick handle.
    *
    * @param handle Pick handle for this frame.
-   * @param handler Shared ownership of the handler (stored as weak_ptr).
+   * @param handler Shared ownership kept until @ref clear().
    */
   void registerHandler(PickHandle handle,
                        const std::shared_ptr<SelectionHandler>& handler);
@@ -217,7 +218,7 @@ class HandlerManager {
    * @brief Looks up a live handler by handle.
    *
    * @param handle Pick handle.
-   * @return Raw pointer if still alive, else @c nullptr.
+   * @return Raw pointer if registered, else @c nullptr.
    */
   SelectionHandler* lookup(PickHandle handle) const;
 
@@ -234,8 +235,8 @@ class HandlerManager {
   void notifyDeselected(PickHandle handle);
 
  private:
-  /** Handle → weak handler map (cleared / rebuilt each frame typically). */
-  std::unordered_map<PickHandle, std::weak_ptr<SelectionHandler>> handlers_;
+  /** Handle → handler map (cleared / rebuilt each frame). */
+  std::unordered_map<PickHandle, std::shared_ptr<SelectionHandler>> handlers_;
 };
 
 /**

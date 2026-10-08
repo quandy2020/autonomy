@@ -121,9 +121,11 @@ SplashScreen::SplashScreen(const QPixmap& pixmap)
 #endif
       ) {
 #if defined(Q_OS_LINUX)
+  // Avoid stealing keyboard focus from the main window; do not combine with
+  // Qt::WindowDoesNotAcceptFocus + activateWindow() (Qt warns and can leave
+  // the splash in a bad activation state during Ogre startup).
   setAttribute(Qt::WA_X11DoNotAcceptFocus);
 #endif
-  setWindowFlag(Qt::WindowDoesNotAcceptFocus, true);
 }
 
 void SplashScreen::ensureVisibleTimerStarted() {

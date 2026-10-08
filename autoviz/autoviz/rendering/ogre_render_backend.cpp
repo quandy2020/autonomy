@@ -106,6 +106,20 @@ void UploadPointBillboards(Ogre::SceneManager* scene,
   scene->getRootSceneNode()->attachObject(*billboards);
 }
 
+void RemoveTextureIfExists(const Ogre::String& name) {
+  auto& textures = Ogre::TextureManager::getSingleton();
+  if (textures.resourceExists(name)) {
+    textures.remove(name);
+  }
+}
+
+void RemoveMaterialIfExists(const Ogre::String& name) {
+  auto& materials = Ogre::MaterialManager::getSingleton();
+  if (materials.resourceExists(name)) {
+    materials.remove(name);
+  }
+}
+
 void ClearDynamicTexturedResources(
     Ogre::SceneManager* scene, std::vector<Ogre::ManualObject*>* objects,
     std::vector<Ogre::String>* texture_names,
@@ -120,14 +134,32 @@ void ClearDynamicTexturedResources(
     }
   }
   objects->clear();
-  for (const Ogre::String& name : *texture_names) {
-    Ogre::TextureManager::getSingleton().remove(name);
-  }
-  texture_names->clear();
+  // Drop materials before textures so TextureUnitState releases hold the name
+  // slot; otherwise the next createManual(AvizDynTexNTex) throws
+  // ItemIdentityException.
   for (const Ogre::String& name : *material_names) {
-    Ogre::MaterialManager::getSingleton().remove(name);
+    RemoveMaterialIfExists(name);
   }
   material_names->clear();
+  for (const Ogre::String& name : *texture_names) {
+    RemoveTextureIfExists(name);
+  }
+  texture_names->clear();
+}
+
+Ogre::TexturePtr CreateDynamicTexture(const Ogre::String& tex_name,
+                                      const QImage& rgba) {
+  RemoveTextureIfExists(tex_name);
+  Ogre::TexturePtr texture = Ogre::TextureManager::getSingleton().createManual(
+      tex_name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+      Ogre::TEX_TYPE_2D, rgba.width(), rgba.height(), 0, Ogre::PF_R8G8B8A8,
+      Ogre::TU_DYNAMIC);
+  Ogre::PixelBox pixel_box(
+      static_cast<Ogre::uint32>(rgba.width()),
+      static_cast<Ogre::uint32>(rgba.height()), 1, Ogre::PF_R8G8B8A8,
+      const_cast<uchar*>(rgba.constBits()));
+  texture->getBuffer()->blitFromMemory(pixel_box);
+  return texture;
 }
 
 void UploadTexturedBatches(
@@ -140,7 +172,9 @@ void UploadTexturedBatches(
       material_names == nullptr) {
     return;
   }
-  int index = 0;
+  // Process-wide counter: multiple viewports share TextureManager and must not
+  // both mint AvizDynTex0Tex in the same frame.
+  static int dyn_tex_serial = 0;
   for (const auto& batch : batches) {
     if (batch.vertices.empty() || batch.image.isNull()) {
       continue;
@@ -150,20 +184,12 @@ void UploadTexturedBatches(
             ? batch.image
             : batch.image.convertToFormat(QImage::Format_RGBA8888);
     const Ogre::String base_name =
-        "AvizDynTex" + Ogre::StringConverter::toString(index++);
+        "AvizDynTex" + Ogre::StringConverter::toString(dyn_tex_serial++);
     const Ogre::String tex_name = base_name + "Tex";
-    Ogre::TexturePtr texture =
-        Ogre::TextureManager::getSingleton().createManual(
-            tex_name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-            Ogre::TEX_TYPE_2D, rgba.width(), rgba.height(), 0,
-            Ogre::PF_R8G8B8A8, Ogre::TU_DYNAMIC);
-    Ogre::PixelBox pixel_box(
-        static_cast<Ogre::uint32>(rgba.width()),
-        static_cast<Ogre::uint32>(rgba.height()), 1, Ogre::PF_R8G8B8A8,
-        const_cast<uchar*>(rgba.constBits()));
-    texture->getBuffer()->blitFromMemory(pixel_box);
+    CreateDynamicTexture(tex_name, rgba);
 
     const Ogre::String mat_name = base_name + "Mat";
+    RemoveMaterialIfExists(mat_name);
     Ogre::MaterialPtr material =
         Ogre::MaterialManager::getSingleton().create(
             mat_name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
@@ -235,7 +261,7 @@ void UploadPbrTexturedBatches(
       !Ogre::MaterialManager::getSingleton().resourceExists("AvizPBRTextured")) {
     return;
   }
-  int index = 0;
+  static int dyn_pbr_tex_serial = 0;
   for (const auto& batch : batches) {
     if (batch.vertices.empty() || batch.image.isNull()) {
       continue;
@@ -245,20 +271,13 @@ void UploadPbrTexturedBatches(
             ? batch.image
             : batch.image.convertToFormat(QImage::Format_RGBA8888);
     const Ogre::String base_name =
-        "AvizDynPbrTex" + Ogre::StringConverter::toString(index++);
+        "AvizDynPbrTex" +
+        Ogre::StringConverter::toString(dyn_pbr_tex_serial++);
     const Ogre::String tex_name = base_name + "Tex";
-    Ogre::TexturePtr texture =
-        Ogre::TextureManager::getSingleton().createManual(
-            tex_name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-            Ogre::TEX_TYPE_2D, rgba.width(), rgba.height(), 0,
-            Ogre::PF_R8G8B8A8, Ogre::TU_DYNAMIC);
-    Ogre::PixelBox pixel_box(
-        static_cast<Ogre::uint32>(rgba.width()),
-        static_cast<Ogre::uint32>(rgba.height()), 1, Ogre::PF_R8G8B8A8,
-        const_cast<uchar*>(rgba.constBits()));
-    texture->getBuffer()->blitFromMemory(pixel_box);
+    CreateDynamicTexture(tex_name, rgba);
 
     const Ogre::String mat_name = base_name + "Mat";
+    RemoveMaterialIfExists(mat_name);
     Ogre::MaterialPtr material =
         Ogre::MaterialManager::getSingleton()
             .getByName("AvizPBRTextured")

@@ -60,7 +60,9 @@ struct ColoredPoint3D {
  * @param point_size Pixel or world size depending on @p style.
  * @param style Point cloud render style (@c Points, @c FlatSquares, …).
  * @param points Colored points to draw (may be empty → no-op success).
- * @param per_point_pick When @c true, registers pick handles for selection.
+ * @param selectable When @c true, registers a single cloud-level pick handle
+ *        (not one handle per point — that OOMs / corrupts the heap on dense
+ *        clouds).
  * @return @c true if the chosen backend accepted the draw.
  *
  * @note Prefer calling from @c Display::onDraw on the render thread.
@@ -72,7 +74,7 @@ bool drawColoredPointsOgreOrGl(common::DisplayContext* context,
                                const std::string& display_type, float point_size,
                                rendering::PointCloudStyle style,
                                const std::vector<ColoredPoint3D>& points,
-                               bool per_point_pick = true);
+                               bool selectable = true);
 
 }  // namespace display
 }  // namespace autoviz
