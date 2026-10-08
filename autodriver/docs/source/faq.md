@@ -91,8 +91,9 @@ Orbbec 一键安装：`./scripts/install_orbbec_sdk.sh`（官方 `.deb`；`ORBBE
 | 现象 | 处理 |
 |---|---|
 | 无 `/dev/input/js*` | Create + PS 至灯条快闪后启动；或 `autodriver --pair-joy` / `--pair-mode usb`。宿主机 `modprobe hid_playstation`，用户加入 `input` 组 |
-| `bluetoothctl not found` | 安装 bluez |
-| 容器里蓝牙命令起不来 | 挂载宿主机 `/run/dbus` |
+| `bluetoothctl not found` | 容器内 `apt-get install -y bluez`。镜像按含 `bluez` 的 Dockerfile 重建后不必再装 |
+| 容器里蓝牙命令起不来 | `run_autonomy.py` 挂载宿主机 `/run/dbus` |
+| 容器 `modprobe hid_playstation` 失败 | 宿主机 `sudo modprobe hid_playstation`（机器重启后重做） |
 | 蓝牙扫不到手柄 | Create + PS 进入配对；适配器 `power on`；加大 `bluetooth_timeout_sec` 或 `--pair-timeout` |
 | 已 `Bonded` 但 `Host is down` | 短按 PS 唤醒；不要再按 Create + PS |
 | USB 超时 | 检查线缆、`lsusb \| grep Sony`、宿主机 `modprobe hid_playstation` |

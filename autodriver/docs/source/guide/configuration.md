@@ -237,7 +237,7 @@ joy:
   bluetooth_connect: true
 ```
 
-启动 `autodriver`。需要 `bluetoothctl`（bluez），宿主机加载 `hid_playstation`，用户一般要在 `input` 组。配对成功后若灯条熄灭且连接失败，短按 **PS** 唤醒。`autodriver --pair-joy` 会删掉已有绑定再配对，只在要强制重配时使用。步骤见 [使用 · DualSense](usage.md#21-dualsense-遥操)。
+启动 `autodriver`。需要 `bluetoothctl`（bluez），宿主机加载 `hid_playstation`，用户一般要在 `input` 组。容器重建后的安装命令、D-Bus 挂载和唤醒步骤见 [使用 · 容器重启后](usage.md#容器重启后)。配对成功后若灯条熄灭且连接失败，短按 **PS** 唤醒。`autodriver --pair-joy` 会删掉已有绑定再配对，只在要强制重配时使用。
 
 ### USB / 驱动模式配对
 

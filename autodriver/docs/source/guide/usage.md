@@ -96,6 +96,29 @@ axis 2 是 L2 扳机，松开时停在 `-1`。把它当成转向轴时，`angula
 4. 日志出现 `DualSense joystick ready` 和 `LinuxJoystick opened` 后即可推杆。
 5. 配对成功后灯条熄灭、连接报 `Host is down`：短按一下 **PS** 唤醒。这时不要再按 Create + PS，那会重新进入配对。
 
+#### 容器重启后
+
+`python3 docker/run_autonomy.py` 会把宿主机 `/run/dbus` 挂进容器，`bluetoothctl` 因此能看到本机适配器。当前镜像还没装 bluez；容器重建后，上次在容器里 `apt` 装的包会消失，日志会每秒刷 `bluetoothctl not found (install bluez)`。
+
+在**容器里**安装并确认适配器：
+
+```bash
+apt-get update && apt-get install -y bluez
+bluetoothctl show
+```
+
+`docker/dockerfile/autonomy.*.dockerfile` 已列入 `bluez`。按该文件重建镜像后，不必每次重建容器再装一遍。
+
+在**宿主机**加载手柄驱动（需要 root）。容器里执行 `modprobe` 会报 `Module hid_playstation not found`，因为容器没有宿主机的 `/lib/modules`：
+
+```bash
+sudo modprobe hid_playstation
+```
+
+模块装在宿主机内核里，机器重启后要再加载一次。`/dev/input` 与容器共享，加载成功后才会出现 `/dev/input/js*`。正在运行的 `autodriver` 会自己重试连接，不必为了这个模块重启进程。
+
+灯条是灭的就短按 **PS**。只有要重新配对时才按住 Create + PS 直到快闪。
+
 `--pair-joy` 是一次性命令：在 `Run()` 之前执行，不加载传感配置、不启底盘和 JoyTeleop，做完就退出。它会**删掉**已配对的 DualSense 再重新配对。已经能连上时用正常启动即可。
 
 | 模式 | 别名 | 行为 |
@@ -267,8 +290,9 @@ manager.Stop();
 | RPLidar A3 | 使用 `params_file: lidar/slamtec/a3.yaml`（波特率 256000） |
 | 底盘无响应 | 确认 `chassis.enable`、`cmd_vel_channel`；检查看门狗是否将速度清零 |
 | 手柄无 `/dev/input/js*` | Create + PS 至灯条快闪后再启动；或 `autodriver --pair-joy` / `--pair-mode usb`。宿主机 `modprobe hid_playstation`，用户加入 `input` 组 |
-| `bluetoothctl not found` | 安装 bluez |
-| 容器里 `bluetoothctl` 起不来 | 把宿主机 `/run/dbus` 挂进容器 |
+| `bluetoothctl not found` | 容器内 `apt-get install -y bluez`；重建镜像后由 Dockerfile 自带。见 §2.1 |
+| 容器里 `bluetoothctl` 起不来 | `run_autonomy.py` 需挂载宿主机 `/run/dbus` |
+| 容器 `modprobe hid_playstation` 失败 | 在宿主机执行 `sudo modprobe hid_playstation` |
 | 已配对但 `Host is down`、仍无 `js*` | 短按 PS 唤醒后再连；不要按 Create + PS |
 | `angular.z` 松开仍是 `-1.5` | 转向轴误用了 L2（axis 2）。设 `angular_axis: 3` |
 | 推杆发迟、不跟手 | `max_linear_acc` 与 `max_angular_acc` 设为 `0` |
