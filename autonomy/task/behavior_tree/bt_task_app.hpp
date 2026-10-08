@@ -37,7 +37,8 @@ namespace task {
  *   OnTreeInitialize, PopulateBlackboard, OnTreeTick, OnGoal, Fill*.
  */
 template <typename GoalType, typename FeedbackType, typename ResultType>
-class BtTaskApp : public TypedTaskAppBase<GoalType, FeedbackType, ResultType>
+class BtTaskApp : public TypedTaskAppBase<GoalType, FeedbackType, ResultType>,
+                  private BtRunnerHooks
 {
 public:
     // When false, TaskServer skips injecting the shared NavigationClient.
@@ -80,16 +81,9 @@ protected:
         if (!runner_.Configure(profile_)) {
             return false;
         }
-        runner_.SetBlackboardSetup(
-            [this](const BT::Blackboard::Ptr& blackboard) {
-                PopulateBlackboard(blackboard);
-            });
-        runner_.SetTickCallback([this]() { OnTreeTick(); });
+        // Virtual hooks instead of std::function+lambda (GCC 11 -O3 ICE).
+        runner_.SetHooks(this);
         EnsureBehaviorTreeLogWriter();
-        runner_.SetStatusLogCallback(
-            [this](const std::vector<BtStatusEvent>& events) {
-                PublishBehaviorTreeLog(events);
-            });
         return OnTreeInitialize(options);
     }
 
@@ -101,6 +95,16 @@ protected:
     virtual void PopulateBlackboard(const BT::Blackboard::Ptr& /*blackboard*/) {}
 
     virtual void OnTreeTick() {}
+
+    void SetupBlackboard(const BT::Blackboard::Ptr& blackboard) override {
+        PopulateBlackboard(blackboard);
+    }
+
+    void OnTick() override { OnTreeTick(); }
+
+    void OnStatusLog(const std::vector<BtStatusEvent>& events) override {
+        PublishBehaviorTreeLog(events);
+    }
 
     void EnsureBehaviorTreeLogWriter() {
         if (bt_log_writer_ || !node_) {

@@ -480,10 +480,6 @@ void VisualizationFrame::onToggleFullscreen() {
   session_->onToggleFullscreen();
 }
 
-void VisualizationFrame::onBackendOpenGl() {
-  session_->onBackendOpenGl();
-}
-
 void VisualizationFrame::onBackendOgre() {
   session_->onBackendOgre();
 }

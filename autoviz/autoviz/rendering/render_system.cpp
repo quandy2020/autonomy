@@ -4,6 +4,7 @@
 
 #include "autoviz/rendering/render_system.hpp"
 
+#include <algorithm>
 #include <filesystem>
 #include <stdexcept>
 #include <string>
@@ -197,19 +198,45 @@ Ogre::Root* RenderSystem::ogreRoot() { return ogre_root_; }
 Ogre::OverlaySystem* RenderSystem::overlaySystem() { return overlay_system_; }
 
 void RenderSystem::loadOgrePlugins() {
-  const std::filesystem::path plugin_prefix(ogrePluginDirectory());
-  if (plugin_prefix.empty()) {
-    LOG(WARNING) << "Ogre plugin directory unknown; relying on linked RenderSystem.";
-    return;
+  std::vector<std::filesystem::path> prefixes;
+  const std::filesystem::path primary(ogrePluginDirectory());
+  if (!primary.empty()) {
+    prefixes.push_back(primary);
   }
+#ifdef AUTOVIZ_OGRE_PLUGIN_DIR
+  {
+    const std::filesystem::path baked(AUTOVIZ_OGRE_PLUGIN_DIR);
+    if (!baked.empty() &&
+        std::find(prefixes.begin(), prefixes.end(), baked) == prefixes.end()) {
+      prefixes.push_back(baked);
+    }
+  }
+#endif
 
   auto try_load = [this](const std::filesystem::path& prefix,
                          const char* name) {
-    const std::filesystem::path candidates[] = {
+    if (prefix.empty() || !std::filesystem::is_directory(prefix)) {
+      return false;
+    }
+    std::vector<std::filesystem::path> candidates = {
         prefix / (std::string(name) + ".dylib"),
         prefix / (std::string(name) + ".so"),
         prefix / name,
     };
+    // Ogre may install versioned sonames (RenderSystem_GL.so.1.12.10).
+    try {
+      for (const auto& entry : std::filesystem::directory_iterator(prefix)) {
+        if (!entry.is_regular_file() && !entry.is_symlink()) {
+          continue;
+        }
+        const std::string filename = entry.path().filename().string();
+        if (filename == name || filename.rfind(std::string(name) + ".", 0) == 0) {
+          candidates.push_back(entry.path());
+        }
+      }
+    } catch (const std::filesystem::filesystem_error&) {
+      // Directory vanished between is_directory and iterate; ignore.
+    }
     for (const std::filesystem::path& candidate : candidates) {
       if (!std::filesystem::exists(candidate)) {
         continue;
@@ -227,21 +254,31 @@ void RenderSystem::loadOgrePlugins() {
   };
 
   const char* render_plugins[] = {
-      // Classic GL (compatibility) is required for rviz ogre_media GLSL 1.20
-      // (gl_Vertex / gl_Color / fixed-function Autoviz materials). GL3+ core
-      // rejects those shaders and FixedFunction techniques.
+      // Classic GL RenderSystem is required for rviz ogre_media GLSL 1.20.
+      // This is Ogre's GPU driver plugin — not Autoviz's retired QOpenGLWidget
+      // viewport.
       "RenderSystem_GL", "RenderSystem_GL3Plus", "RenderSystem_GLES2"};
   bool loaded_rs = false;
-  for (const char* plugin_name : render_plugins) {
-    if (try_load(plugin_prefix, plugin_name)) {
-      loaded_rs = true;
+  for (const std::filesystem::path& plugin_prefix : prefixes) {
+    for (const char* plugin_name : render_plugins) {
+      if (try_load(plugin_prefix, plugin_name)) {
+        loaded_rs = true;
+        break;
+      }
+    }
+    if (loaded_rs) {
+      try_load(plugin_prefix, "Codec_STBI");
       break;
     }
   }
   if (!loaded_rs) {
-    LOG(ERROR) << "No Ogre RenderSystem plugin found under " << plugin_prefix;
+    LOG(ERROR) << "No Ogre RenderSystem plugin found. Searched:";
+    for (const std::filesystem::path& plugin_prefix : prefixes) {
+      LOG(ERROR) << "  " << plugin_prefix;
+    }
+    LOG(ERROR) << "Set AUTOVIZ_OGRE_PLUGIN_DIR to the directory that contains "
+                  "RenderSystem_GL.so (built with Autoviz's Ogre 1.12).";
   }
-  try_load(plugin_prefix, "Codec_STBI");
 }
 
 void RenderSystem::setupRenderSystem() {
@@ -267,7 +304,8 @@ void RenderSystem::setupRenderSystem() {
     render_system = gl3plus_fallback;
   }
   if (render_system == nullptr) {
-    throw std::runtime_error("Could not find Ogre OpenGL render system.");
+    throw std::runtime_error(
+        "Could not find an Ogre RenderSystem plugin (need RenderSystem_GL).");
   }
   LOG(INFO) << "Using Ogre render system: " << render_system->getName();
   render_system->setConfigOption("Full Screen", "No");

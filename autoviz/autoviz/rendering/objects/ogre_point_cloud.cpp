@@ -482,7 +482,7 @@ size_t OgrePointCloud::removePointsFromRenderables(uint32_t number_of_points,
     Ogre::RenderOperation* op = rend->getRenderOperation();
     const size_t popped_in_renderable = std::min(
         static_cast<size_t>(number_of_points * vertices_per_point - popped_count),
-        op->vertexData->vertexCount);
+        static_cast<size_t>(op->vertexData->vertexCount));
     op->vertexData->vertexStart += popped_in_renderable;
     op->vertexData->vertexCount -= popped_in_renderable;
     popped_count += popped_in_renderable;

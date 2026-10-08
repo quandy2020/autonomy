@@ -57,7 +57,6 @@
 #include "autoviz/integration/message_queue.hpp"
 #include "autoviz/rendering/ogre_render_window.hpp"
 #include "autoviz/rendering/ogre_scene_host.hpp"
-#include "autoviz/rendering/render_window.hpp"
 #include "autoviz/rendering/gpu_capabilities.hpp"
 #include "autoviz/rendering/view_controller.hpp"
 #include "autoviz/common/view_state_io.hpp"
@@ -802,9 +801,6 @@ void FrameSession::resizeEvent(QResizeEvent* event) {
 
 void FrameSession::applyBackgroundColor(const QColor& color) {
   frame_->viewport_->forEachViewportPanel([color](ViewportPanelEntry& entry) {
-    if (entry.gl_viewport != nullptr) {
-      entry.gl_viewport->setBackgroundColor(color);
-    }
     if (entry.ogre_viewport != nullptr) {
       entry.ogre_viewport->setBackgroundColor(color);
     }
@@ -979,11 +975,6 @@ void FrameSession::onToggleFullscreen() {
   setFullScreen(!frame_->windowState().testFlag(Qt::WindowFullScreen));
 }
 
-void FrameSession::onBackendOpenGl() {
-  // OpenGL viewport removed; keep menu hook for old shortcuts / UI stubs.
-  onBackendOgre();
-}
-
 void FrameSession::onBackendOgre() {
   frame_->manager_->setRenderBackendName("Ogre");
   frame_->viewport_->applyRenderBackend(QStringLiteral("Ogre"));
@@ -992,12 +983,6 @@ void FrameSession::onBackendOgre() {
 }
 
 void FrameSession::syncRenderBackendMenu(const QString& /*name*/) {
-  if (frame_->chrome_->backend_opengl_action_ != nullptr) {
-    frame_->chrome_->backend_opengl_action_->setChecked(false);
-    frame_->chrome_->backend_opengl_action_->setEnabled(false);
-    frame_->chrome_->backend_opengl_action_->setToolTip(
-        frame_->tr("OpenGL viewport removed; Autoviz uses Ogre 1.x only."));
-  }
   if (frame_->chrome_->backend_ogre_action_ != nullptr) {
     frame_->chrome_->backend_ogre_action_->setChecked(true);
     frame_->chrome_->backend_ogre_action_->setEnabled(true);

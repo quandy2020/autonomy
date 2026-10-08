@@ -27,7 +27,6 @@
 #include "autoviz/common/pick_handle.hpp"
 #include "autoviz/common/pick_registry.hpp"
 #include "autoviz/rendering/gl_pick_framebuffer.hpp"
-#include "autoviz/rendering/grid_renderer.hpp"
 #include "autoviz/rendering/render_settings.hpp"
 #include "autoviz/rendering/scene_overlay.hpp"
 #include "autoviz/rendering/view_controller.hpp"
@@ -95,6 +94,17 @@ class OgreRenderBackend {
    * @param color Background color.
    */
   void setBackgroundColor(const QColor& color);
+
+  /**
+   * @brief Shows or hides the native Ogre @c RenderWindow.
+   *
+   * Must be called when the host Qt widget is hidden (e.g. Change panel away
+   * from 3D View). Otherwise the external GL surface stays on top of the
+   * replacement panel and blocks display / mouse input.
+   *
+   * @param visible @c true to show and refresh geometry; @c false to hide.
+   */
+  void setWindowVisible(bool visible);
 
   /**
    * @brief Tears down Ogre objects owned by this backend.

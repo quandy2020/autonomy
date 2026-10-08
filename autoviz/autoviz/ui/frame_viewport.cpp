@@ -56,7 +56,6 @@
 #include "autoviz/common/tool_manager.hpp"
 #include "autoviz/integration/message_queue.hpp"
 #include "autoviz/rendering/ogre_render_window.hpp"
-#include "autoviz/rendering/render_window.hpp"
 #include "autoviz/rendering/gpu_capabilities.hpp"
 #include "autoviz/rendering/view_controller.hpp"
 #include "autoviz/common/view_state_io.hpp"
@@ -164,7 +163,6 @@ void FrameViewport::destroyRenderWindowInEntry(ViewportPanelEntry& entry) {
     entry.widget->hide();
     entry.widget->deleteLater();
     entry.widget = nullptr;
-    entry.gl_viewport = nullptr;
     entry.ogre_viewport = nullptr;
   }
 }
@@ -212,16 +210,6 @@ void FrameViewport::applyViewportEntryRenderSettings(
   const auto activate = [this, dock]() {
     setActiveViewportDock(dock);
   };
-  if (entry.gl_viewport != nullptr) {
-    entry.gl_viewport->setBackgroundColor(
-        common::ParseColorProperty(frame_->manager_->backgroundColor(),
-                                   QColor(48, 48, 48)));
-    entry.gl_viewport->viewController().setFrameManager(&frame_->manager_->frameManager());
-    entry.gl_viewport->setToolManager(&frame_->manager_->tools());
-    entry.gl_viewport->setViewportToolId(entry.local_tool_id);
-    entry.gl_viewport->setViewportKey(viewport_key);
-    entry.gl_viewport->setViewportActivationCallback(activate);
-  }
   if (entry.ogre_viewport != nullptr) {
     entry.ogre_viewport->setBackgroundColor(
         common::ParseColorProperty(frame_->manager_->backgroundColor(),
@@ -240,12 +228,6 @@ void FrameViewport::connectViewportInteractionsForEntry(
       frame_->panels_->views_panel_->refreshFromController();
     }
   };
-  if (entry.gl_viewport != nullptr) {
-    QObject::connect(entry.gl_viewport, &rendering::RenderWindow::viewDragUpdated, frame_,
-            sync_views);
-    QObject::connect(entry.gl_viewport, &rendering::RenderWindow::viewDragEnded, frame_,
-            sync_views);
-  }
   if (entry.ogre_viewport != nullptr) {
     QObject::connect(entry.ogre_viewport, &rendering::OgreRenderWindow::viewDragUpdated, frame_, sync_views);
     QObject::connect(entry.ogre_viewport, &rendering::OgreRenderWindow::viewDragEnded, frame_,
@@ -444,12 +426,16 @@ void FrameViewport::requestViewportUpdate() {
 void FrameViewport::viewportTick(float delta_seconds) {
   syncToolContext();
   forEachViewportPanel([delta_seconds](ViewportPanelEntry& entry) {
-    if (entry.gl_viewport != nullptr) {
-      entry.gl_viewport->tick(delta_seconds);
+    if (entry.ogre_viewport == nullptr) {
+      return;
     }
-    if (entry.ogre_viewport != nullptr) {
-      entry.ogre_viewport->tick(delta_seconds);
+    // Hidden 3D docks must not keep painting their native Ogre surface —
+    // otherwise Change panel leaves a GL window covering the replacement.
+    if (entry.dock != nullptr && !entry.dock->isVisible()) {
+      entry.ogre_viewport->hideNativeSurface();
+      return;
     }
+    entry.ogre_viewport->tick(delta_seconds);
   });
 }
 
@@ -492,26 +478,7 @@ void FrameViewport::syncToolContext() {
   context.gpu_picking_enabled =
       rendering::GpuCapabilities::instance().hasHardwareGpu();
   if (context.gpu_picking_enabled && active_entry != nullptr) {
-    if (active_entry->gl_viewport != nullptr) {
-      rendering::RenderWindow* viewport = active_entry->gl_viewport;
-      context.gpu_depth_pick = [viewport](int x, int y, QVector3D* world) {
-        if (viewport == nullptr || world == nullptr) {
-          return false;
-        }
-        return viewport->readDepthPick(
-            x, y, viewport->viewController().viewMatrix(),
-            viewport->viewController().projectionMatrix(
-                static_cast<float>(viewport->width()) /
-                static_cast<float>(std::max(1, viewport->height()))),
-            world);
-      };
-      context.gpu_pick_id_read = [viewport](int x, int y) {
-        if (viewport == nullptr) {
-          return common::kInvalidPickHandle;
-        }
-        return viewport->readPickHandleAt(x, y);
-      };
-    } else if (active_entry->ogre_viewport != nullptr) {
+    if (active_entry->ogre_viewport != nullptr) {
       rendering::OgreRenderWindow* viewport = active_entry->ogre_viewport;
       context.gpu_depth_pick = [viewport](int x, int y, QVector3D* world) {
         if (viewport == nullptr || world == nullptr) {
@@ -561,9 +528,6 @@ void FrameViewport::syncToolContext() {
   };
   frame_->manager_->tools().setContext(std::move(context));
   forEachViewportPanel([this](ViewportPanelEntry& entry) {
-    if (entry.gl_viewport != nullptr) {
-      entry.gl_viewport->setToolManager(&frame_->manager_->tools());
-    }
     if (entry.ogre_viewport != nullptr) {
       entry.ogre_viewport->setToolManager(&frame_->manager_->tools());
     }
@@ -581,9 +545,6 @@ void FrameViewport::updateViewportCursor() {
         tool != nullptr ? tool->cursor() : IconLoader::defaultCursor();
     if (entry.host != nullptr) {
       entry.host->setCursor(cursor);
-    }
-    if (entry.gl_viewport != nullptr) {
-      entry.gl_viewport->setToolCursor(cursor);
     }
     if (entry.ogre_viewport != nullptr) {
       entry.ogre_viewport->setToolCursor(cursor);
@@ -619,20 +580,16 @@ void FrameViewport::applyViewController(const QString& name) {
 
 void FrameViewport::applyRenderBackend(const QString& /*name*/) {
   rendering::GpuCapabilities::instance().ensureProbed();
-  // OpenGL viewport path removed; coerce any legacy session value to Ogre.
   if (frame_->manager_->renderBackendName() != "Ogre") {
     frame_->manager_->setRenderBackendName("Ogre");
   }
   if (!rendering::GpuCapabilities::instance().hasHardwareGpu() &&
       frame_->chrome_->status_label_ != nullptr) {
     frame_->chrome_->status_label_->setText(
-        frame_->tr("No hardware GPU detected; Ogre may use a software GL path."));
+        frame_->tr("No hardware GPU detected; Ogre may use a software path."));
   }
   createViewport(QStringLiteral("Ogre"));
   forEachViewportPanel([this](ViewportPanelEntry& entry) {
-    if (entry.gl_viewport != nullptr) {
-      entry.gl_viewport->setToolManager(&frame_->manager_->tools());
-    }
     if (entry.ogre_viewport != nullptr) {
       entry.ogre_viewport->setToolManager(&frame_->manager_->tools());
     }
@@ -691,10 +648,6 @@ void FrameViewport::pushViewportLocalTool(ViewportPanelEntry& entry) {
   const std::string viewport_key =
       entry.dock != nullptr ? entry.dock->objectName().toStdString()
                             : std::string();
-  if (entry.gl_viewport != nullptr) {
-    entry.gl_viewport->setViewportToolId(entry.local_tool_id);
-    entry.gl_viewport->setViewportKey(viewport_key);
-  }
   if (entry.ogre_viewport != nullptr) {
     entry.ogre_viewport->setViewportToolId(entry.local_tool_id);
   }
@@ -703,9 +656,6 @@ void FrameViewport::pushViewportLocalTool(ViewportPanelEntry& entry) {
     tool->setCursor(IconLoader::toolCursor(
         QString::fromStdString(entry.local_tool_id)));
     const QCursor cursor = tool->cursor();
-    if (entry.gl_viewport != nullptr) {
-      entry.gl_viewport->setToolCursor(cursor);
-    }
     if (entry.ogre_viewport != nullptr) {
       entry.ogre_viewport->setToolCursor(cursor);
     }

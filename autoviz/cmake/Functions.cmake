@@ -165,6 +165,11 @@ function(autoviz_collect_sources)
   endforeach()
 
   list(REMOVE_ITEM _sources "${AUTOVIZ_SRC_ROOT}/main.cpp")
+  # Viewport is Ogre 1.x only — do not compile the retired QOpenGLWidget path.
+  list(REMOVE_ITEM _sources
+    "${AUTOVIZ_SRC_ROOT}/rendering/render_window.cpp")
+  list(REMOVE_ITEM _headers
+    "${AUTOVIZ_SRC_ROOT}/rendering/render_window.hpp")
 
   set(_recorder
     ${AUTOVIZ_DEPS_ROOT}/autolink/autolink/tools/recorder/player/player.cpp
@@ -273,18 +278,30 @@ function(autoviz_apply_ogre_backend _target)
     if(EXISTS "${autoviz_ogre_BINARY_DIR}/include")
       list(APPEND _ogre_includes "${autoviz_ogre_BINARY_DIR}/include")
     endif()
-    # Ogre puts plugins next to OgreMain (lib/macosx on Apple, lib elsewhere).
+    # Stage plugins next to the autonomy binary tree so runtime always finds
+    # them (FetchContent's lib/ may be empty until Ogre finishes linking).
+    set(_ogre_plugin_stage "${CMAKE_BINARY_DIR}/lib")
     if(APPLE)
-      set(_ogre_plugins "${autoviz_ogre_BINARY_DIR}/lib/macosx")
+      set(_ogre_plugin_build "${autoviz_ogre_BINARY_DIR}/lib/macosx")
     else()
-      set(_ogre_plugins "${autoviz_ogre_BINARY_DIR}/lib")
+      set(_ogre_plugin_build "${autoviz_ogre_BINARY_DIR}/lib")
     endif()
+    set(_ogre_plugins "${_ogre_plugin_stage}")
     # OgreMain alone is not enough — RenderSystem_* must be built and loadable.
     foreach(_plug IN ITEMS RenderSystem_GL RenderSystem_GL3Plus Codec_STBI)
       if(TARGET ${_plug})
         add_dependencies(${_target} ${_plug})
+        add_custom_command(TARGET ${_target} POST_BUILD
+          COMMAND ${CMAKE_COMMAND} -E make_directory "${_ogre_plugin_stage}"
+          COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:${_plug}>" "${_ogre_plugin_stage}/"
+          COMMENT "Stage Ogre plugin ${_plug} -> ${_ogre_plugin_stage}")
       endif()
     endforeach()
+    # Also keep the build-tree plugin dir as a runtime fallback via env docs.
+    if(NOT _ogre_plugin_build STREQUAL _ogre_plugin_stage)
+      set(_ogre_plugins "${_ogre_plugin_stage}")
+    endif()
     set(_rviz_media ON)
   elseif(AUTOVIZ_OGRE_ROOT)
     find_path(_inc OGRE/Ogre.h HINTS "${AUTOVIZ_OGRE_ROOT}/include" "${AUTOVIZ_OGRE_ROOT}/include/OGRE")
@@ -446,10 +463,30 @@ function(autoviz_finalize_library _target)
 
   autoviz_apply_ogre_backend(${_target})
 
-  find_package(Qt6 REQUIRED COMPONENTS LinguistTools)
-  qt_add_translations(${_target}
-    TS_FILES ${AUTOVIZ_ROOT}/translations/autoviz_zh_CN.ts
-    RESOURCE_PREFIX "/i18n")
+  # Ubuntu splits LinguistTools: qt6-tools-dev ships CMake targets that
+  # require qt6-l10n-tools + qt6-tools-dev-tools binaries. Probe the
+  # binaries first — find_package aborts hard if any IMPORTED path is gone.
+  set(_autoviz_qt_bin "")
+  foreach(_prefix
+      "${Qt6_DIR}/../../../lib/qt6/bin"
+      "/usr/lib/qt6/bin")
+    if(EXISTS "${_prefix}/lconvert" AND EXISTS "${_prefix}/lrelease")
+      set(_autoviz_qt_bin "${_prefix}")
+      break()
+    endif()
+  endforeach()
+  if(_autoviz_qt_bin AND EXISTS "/usr/lib/qt6/libexec/lprodump")
+    find_package(Qt6 QUIET COMPONENTS LinguistTools)
+  endif()
+  if(Qt6LinguistTools_FOUND)
+    qt_add_translations(${_target}
+      TS_FILES ${AUTOVIZ_ROOT}/translations/autoviz_zh_CN.ts
+      RESOURCE_PREFIX "/i18n")
+  else()
+    message(WARNING
+      "Autoviz: Qt6 lrelease/lconvert incomplete; translations skipped "
+      "(install qt6-l10n-tools qt6-tools-dev-tools)")
+  endif()
 endfunction()
 
 function(autoviz_print_summary)

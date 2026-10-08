@@ -4,6 +4,7 @@
 
 #include "autoviz/ui/panel/context_menu.hpp"
 
+#include <QApplication>
 #include <QCoreApplication>
 #include <QMenu>
 #include <QTimer>
@@ -38,7 +39,9 @@ QMenu* CreatePanelContextMenu(QWidget* parent,
           return;
         }
         const auto change = callbacks.change_panel;
-        QTimer::singleShot(0, change_menu, [change, object_name]() {
+        // Keep the deferred swap alive even if the popup menu is destroyed
+        // with the source dock's title tools.
+        QTimer::singleShot(0, qApp, [change, object_name]() {
           change(object_name);
         });
       });

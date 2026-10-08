@@ -39,20 +39,7 @@ bool BtRunner::Configure(const BtProfile& profile)
     return true;
 }
 
-void BtRunner::SetBlackboardSetup(BlackboardSetupCallback callback)
-{
-    blackboard_setup_ = std::move(callback);
-}
-
-void BtRunner::SetTickCallback(TickCallback callback)
-{
-    tick_callback_ = std::move(callback);
-}
-
-void BtRunner::SetStatusLogCallback(BtStatusLogCallback callback)
-{
-    status_log_callback_ = std::move(callback);
-}
+void BtRunner::SetHooks(BtRunnerHooks* hooks) { hooks_ = hooks; }
 
 bool BtRunner::Run(const std::string& tree_xml_path)
 {
@@ -103,8 +90,8 @@ bool BtRunner::Resume()
 void BtRunner::WorkerLoop()
 {
     auto blackboard = BT::Blackboard::create();
-    if (blackboard_setup_) {
-        blackboard_setup_(blackboard);
+    if (hooks_ != nullptr) {
+        hooks_->SetupBlackboard(blackboard);
     }
 
     BT::Tree tree;
@@ -119,21 +106,19 @@ void BtRunner::WorkerLoop()
     }
 
     std::unique_ptr<BtStatusLogger> status_logger;
-    if (status_log_callback_ && tree.rootNode() != nullptr) {
+    if (hooks_ != nullptr && tree.rootNode() != nullptr) {
         status_logger = std::make_unique<BtStatusLogger>(tree.rootNode());
-        status_logger->setFlushCallback(status_log_callback_);
+        status_logger->setFlushCallback(
+            [hooks = hooks_](const std::vector<BtStatusEvent>& events) {
+                if (hooks != nullptr) {
+                    hooks->OnStatusLog(events);
+                }
+            });
     }
 
     const auto loop_period =
         std::chrono::milliseconds(profile_.loop_period_ms);
-    state_.store(RunTree(
-        &tree,
-        [this]() {
-            if (tick_callback_) {
-                tick_callback_();
-            }
-        },
-        loop_period, status_logger.get()));
+    state_.store(RunTree(&tree, hooks_, loop_period, status_logger.get()));
     if (status_logger) {
         status_logger->flush();
     }
@@ -164,8 +149,7 @@ BT::Tree BtRunner::CreateTreeFromFile(const std::string& file_path,
     return factory_->createTreeFromFile(file_path, blackboard);
 }
 
-BtRunState BtRunner::RunTree(BT::Tree* tree,
-                             const std::function<void()>& on_tick,
+BtRunState BtRunner::RunTree(BT::Tree* tree, BtRunnerHooks* hooks,
                              std::chrono::milliseconds loop_period,
                              BtStatusLogger* status_logger)
 {
@@ -187,8 +171,8 @@ BtRunState BtRunner::RunTree(BT::Tree* tree,
             if (status_logger != nullptr) {
                 status_logger->flush();
             }
-            if (on_tick) {
-                on_tick();
+            if (hooks != nullptr) {
+                hooks->OnTick();
             }
             std::this_thread::sleep_for(loop_period);
         }

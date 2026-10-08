@@ -59,7 +59,6 @@
 #include "autoviz/common/tool_manager.hpp"
 #include "autoviz/integration/message_queue.hpp"
 #include "autoviz/rendering/ogre_render_window.hpp"
-#include "autoviz/rendering/render_window.hpp"
 #include "autoviz/rendering/gpu_capabilities.hpp"
 #include "autoviz/rendering/view_controller.hpp"
 #include "autoviz/common/view_state_io.hpp"

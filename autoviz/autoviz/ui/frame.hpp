@@ -391,13 +391,7 @@ class VisualizationFrame : public QMainWindow {
   void onToggleFullscreen();
 
   /**
-   * @brief Render backend menu: select OpenGL (@c QOpenGLWidget) path.
-   */
-  void onBackendOpenGl();
-
-  /**
-   * @brief Render backend menu: select Ogre path (when built with
-   *        Ogre).
+   * @brief Render backend menu: select the Ogre 1.x viewport.
    */
   void onBackendOgre();
 

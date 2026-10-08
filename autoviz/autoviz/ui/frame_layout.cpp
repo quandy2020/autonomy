@@ -56,7 +56,6 @@
 #include "autoviz/common/tool_manager.hpp"
 #include "autoviz/integration/message_queue.hpp"
 #include "autoviz/rendering/ogre_render_window.hpp"
-#include "autoviz/rendering/render_window.hpp"
 #include "autoviz/rendering/gpu_capabilities.hpp"
 #include "autoviz/rendering/view_controller.hpp"
 #include "autoviz/common/view_state_io.hpp"
@@ -753,6 +752,15 @@ void FrameLayout::changePanelInDock(PanelDockWidget* source,
     source_host->removeDockWidget(source);
   }
   source->hide();
+  // Drop the Ogre native window immediately when leaving a 3D View. Waiting
+  // for the next tick leaves the GL surface covering the new panel.
+  if (frame_->panels_->panelTypeId(source) == QLatin1String("ViewportDock")) {
+    if (ViewportPanelEntry* entry = frame_->viewport_->viewportEntryForDock(source)) {
+      if (entry->ogre_viewport != nullptr) {
+        entry->ogre_viewport->hideNativeSurface();
+      }
+    }
+  }
 
   // Detach target from wherever it currently lives.
   if (main_panel_host_ != nullptr && main_panel_host_->hostsPanel(target)) {
@@ -803,7 +811,15 @@ void FrameLayout::changePanelInDock(PanelDockWidget* source,
 
   target->show();
   target->raise();
+  if (QWidget* content = target->widget()) {
+    content->show();
+    content->raise();
+  }
   last_active_dock_ = target;
+  if (frame_->panels_->panelTypeId(target) == QLatin1String("ViewportDock")) {
+    frame_->viewport_->ensureViewportPanelReady(target);
+    frame_->viewport_->setActiveViewportDock(target);
+  }
   frame_->panels_->activatePanelDock(target);
   scheduleTileCenterPanels();
   frame_->panels_->syncDeletePanelMenu();

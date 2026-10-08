@@ -8,10 +8,10 @@
 
 #include <atomic>
 #include <chrono>
-#include <functional>
 #include <memory>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "autonomy/task/behavior_tree/bt_profile.hpp"
 #include "autonomy/task/behavior_tree/bt_status_logger.hpp"
@@ -30,14 +30,22 @@ enum class BtRunState {
     kCanceled,
 };
 
+/**
+ * Non-template hooks for BtRunner. Prefer this over std::function+lambda in
+ * template hosts (GCC 11 ICE at -O3 on std::_Function_handler).
+ */
+class BtRunnerHooks {
+public:
+    virtual ~BtRunnerHooks() = default;
+    virtual void SetupBlackboard(const BT::Blackboard::Ptr& /*blackboard*/) {}
+    virtual void OnTick() {}
+    virtual void OnStatusLog(const std::vector<BtStatusEvent>& /*events*/) {}
+};
+
 /** Builds trees and runs tick loops on a worker thread. */
 class BtRunner
 {
 public:
-    using TickCallback = std::function<void()>;
-    using BlackboardSetupCallback =
-        std::function<void(const BT::Blackboard::Ptr&)>;
-
     BtRunner() = default;
     ~BtRunner();
 
@@ -45,9 +53,8 @@ public:
     BtRunner& operator=(const BtRunner&) = delete;
 
     bool Configure(const BtProfile& profile);
-    void SetBlackboardSetup(BlackboardSetupCallback callback);
-    void SetTickCallback(TickCallback callback);
-    void SetStatusLogCallback(BtStatusLogCallback callback);
+    /** Non-owning. Valid for the lifetime of this runner's callbacks. */
+    void SetHooks(BtRunnerHooks* hooks);
 
     bool Run(const std::string& tree_xml_path);
     bool Cancel();
@@ -65,15 +72,13 @@ private:
     void StopWorker();
     BT::Tree CreateTreeFromFile(const std::string& file_path,
                                 BT::Blackboard::Ptr blackboard);
-    BtRunState RunTree(BT::Tree* tree, const std::function<void()>& on_tick,
+    BtRunState RunTree(BT::Tree* tree, BtRunnerHooks* hooks,
                        std::chrono::milliseconds loop_period,
                        BtStatusLogger* status_logger);
 
     BtProfile profile_;
     std::unique_ptr<BT::BehaviorTreeFactory> factory_;
-    BlackboardSetupCallback blackboard_setup_;
-    TickCallback tick_callback_;
-    BtStatusLogCallback status_log_callback_;
+    BtRunnerHooks* hooks_ = nullptr;
     std::string active_tree_;
     std::atomic<BtRunState> state_{BtRunState::kIdle};
     std::atomic<bool> running_{false};

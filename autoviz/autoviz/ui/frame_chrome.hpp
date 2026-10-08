@@ -83,7 +83,7 @@ namespace publish_panel { class PublishPanel; }
 namespace map { class MapPanel; }
 namespace service_panel { class ServicePanel; }
 namespace channel_graph { class ChannelGraphPanel; }
-namespace rendering { class ViewController; class RenderWindow; class OgreRenderWindow; }
+namespace rendering { class ViewController; class OgreRenderWindow; }
 
 /**
  * @class FrameChrome
@@ -356,10 +356,7 @@ class FrameChrome {
   /** View → FPS camera. */
   QAction* view_fps_action_ = nullptr;
 
-  /** View → Backend → OpenGL. */
-  QAction* backend_opengl_action_ = nullptr;
-
-  /** View → Backend → Ogre (when enabled at build time). */
+  /** View → Backend → Ogre (only supported viewport). */
   QAction* backend_ogre_action_ = nullptr;
 
   /** Whether the toolbar is currently shown (fullscreen may hide it). */

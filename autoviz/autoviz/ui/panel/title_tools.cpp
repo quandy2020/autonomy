@@ -4,6 +4,7 @@
 
 #include "autoviz/ui/panel/title_tools.hpp"
 
+#include <QApplication>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QMenu>
@@ -51,7 +52,10 @@ void AddChangePanelButton(QWidget* tools, QHBoxLayout* layout,
                        return;
                      }
                      const auto change = callbacks.change_panel;
-                     QTimer::singleShot(0, change_menu, [change, object_name]() {
+                     // Use qApp as context: change_menu can be torn down with
+                     // the source dock before the timer fires, which would
+                     // cancel the panel swap.
+                     QTimer::singleShot(0, qApp, [change, object_name]() {
                        change(object_name);
                      });
                    });

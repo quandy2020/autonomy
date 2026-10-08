@@ -81,7 +81,7 @@ namespace map { class MapPanel; }
 namespace service_panel { class ServicePanel; }
 namespace channel_graph { class ChannelGraphPanel; }
 namespace table_panel { class TablePanel; }
-namespace rendering { class ViewController; class RenderWindow; class OgreRenderWindow; }
+namespace rendering { class ViewController; class OgreRenderWindow; }
 
 /**
  * @class FramePanels

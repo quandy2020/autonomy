@@ -388,9 +388,14 @@ void OgreRenderBackend::render(bool show_grid,
                                SceneOverlay* overlay,
                                const ViewController& view_controller,
                                float aspect_ratio) {
+  if (host_ != nullptr && !host_->isVisible()) {
+    setWindowVisible(false);
+    return;
+  }
   if (!initialize()) {
     return;
   }
+  setWindowVisible(true);
 
   const QMatrix4x4 view = view_controller.viewMatrix();
   const QMatrix4x4 projection = view_controller.projectionMatrix(aspect_ratio);
@@ -511,6 +516,19 @@ void OgreRenderBackend::render(bool show_grid,
 void OgreRenderBackend::setBackgroundColor(const QColor& color) {
   impl_->background_color =
       Ogre::ColourValue(color.redF(), color.greenF(), color.blueF(), 1.f);
+}
+
+void OgreRenderBackend::setWindowVisible(bool visible) {
+  if (impl_ == nullptr || impl_->render_window == nullptr) {
+    return;
+  }
+  impl_->render_window->setVisible(visible);
+  if (visible && host_ != nullptr) {
+    impl_->render_window->resize(
+        static_cast<unsigned>(std::max(1, host_->width())),
+        static_cast<unsigned>(std::max(1, host_->height())));
+    impl_->render_window->windowMovedOrResized();
+  }
 }
 
 bool OgreRenderBackend::pickDepthAt(int pixel_x, int pixel_y, int viewport_width,

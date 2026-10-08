@@ -6,10 +6,12 @@
 #include "autoviz/rendering/ogre_render_window.hpp"
 
 #include <QEnterEvent>
+#include <QHideEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPaintEvent>
 #include <QResizeEvent>
+#include <QShowEvent>
 #include <QWheelEvent>
 
 #include "autoviz/common/tool_manager.hpp"
@@ -39,6 +41,10 @@ QPaintEngine* OgreRenderWindow::paintEngine() const {
 }
 
 void OgreRenderWindow::tick(float delta_seconds) {
+  if (!isVisible()) {
+    ogre_backend_.setWindowVisible(false);
+    return;
+  }
   view_controller_.tick(delta_seconds);
   update();
 }
@@ -56,10 +62,24 @@ void OgreRenderWindow::resizeEvent(QResizeEvent* event) {
 }
 
 void OgreRenderWindow::paintEvent(QPaintEvent* /*event*/) {
+  if (!isVisible()) {
+    ogre_backend_.setWindowVisible(false);
+    return;
+  }
   const float aspect =
       static_cast<float>(width()) / static_cast<float>(std::max(1, height()));
   ogre_backend_.render(/*show_grid=*/false, ReferenceGridSettings{},
                        scene_overlay_, view_controller_, aspect);
+}
+
+void OgreRenderWindow::showEvent(QShowEvent* event) {
+  QWidget::showEvent(event);
+  ogre_backend_.setWindowVisible(true);
+}
+
+void OgreRenderWindow::hideEvent(QHideEvent* event) {
+  ogre_backend_.setWindowVisible(false);
+  QWidget::hideEvent(event);
 }
 
 bool OgreRenderWindow::readDepthPick(int pixel_x, int pixel_y,

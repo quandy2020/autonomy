@@ -31,6 +31,7 @@
 #include "autolink/common/log.hpp"
 #include "autonomy/control/proto/controller_options.pb.h"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
+#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/transform/tf2/utils.h"
 
 namespace autonomy {

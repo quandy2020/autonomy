@@ -61,7 +61,6 @@
 #include "autoviz/common/tool_manager.hpp"
 #include "autoviz/integration/message_queue.hpp"
 #include "autoviz/rendering/ogre_render_window.hpp"
-#include "autoviz/rendering/render_window.hpp"
 #include "autoviz/rendering/gpu_capabilities.hpp"
 #include "autoviz/rendering/view_controller.hpp"
 #include "autoviz/common/view_state_io.hpp"
@@ -370,18 +369,11 @@ void FrameChrome::setupMenu() {
 
   auto* backend_group = new QActionGroup(frame_);
   backend_group->setExclusive(true);
-  backend_opengl_action_ = new QAction(frame_->tr("&OpenGL"), frame_);
-  backend_opengl_action_->setCheckable(true);
-  backend_opengl_action_->setEnabled(false);
-  backend_opengl_action_->setToolTip(
-      frame_->tr("OpenGL viewport removed; Autoviz uses Ogre 1.x only."));
-  backend_group->addAction(backend_opengl_action_);
-  QObject::connect(backend_opengl_action_, &QAction::triggered, frame_,
-                   &VisualizationFrame::onBackendOpenGl);
-
   backend_ogre_action_ = new QAction(frame_->tr("&Ogre"), frame_);
   backend_ogre_action_->setCheckable(true);
   backend_ogre_action_->setChecked(true);
+  backend_ogre_action_->setToolTip(
+      frame_->tr("Autoviz 3D viewport uses Ogre 1.x only."));
   backend_group->addAction(backend_ogre_action_);
   QObject::connect(backend_ogre_action_, &QAction::triggered, frame_,
                    &VisualizationFrame::onBackendOgre);

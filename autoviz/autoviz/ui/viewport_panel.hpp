@@ -13,7 +13,6 @@
  * @see FrameViewport
  * @see ViewportFloatingToolbar
  * @see ViewportHudOverlay
- * @see rendering::RenderWindow
  * @see rendering::OgreRenderWindow
  */
 
@@ -38,16 +37,15 @@ class ViewportHudOverlay;
 
 namespace rendering {
 class OgreRenderWindow;
-class RenderWindow;
 }
 
 /**
  * @struct ViewportPanelEntry
- * @brief One 3D/2D viewport dock and its render window + overlays.
+ * @brief One 3D/2D viewport dock and its Ogre render window + overlays.
  *
- * Exactly one of @c gl_viewport / @c ogre_viewport is non-null after
- * @ref FrameViewport::createRenderWindowInEntry() (depending on backend).
- * @ref viewController() returns the controller from the active backend.
+ * @c ogre_viewport is non-null after
+ * @ref FrameViewport::createRenderWindowInEntry().
+ * @ref viewController() returns the controller from that window.
  *
  * ## Local tools
  *
@@ -62,8 +60,7 @@ struct ViewportPanelEntry {
   QWidget* host = nullptr;          /**< Content host inside the dock. */
   QGridLayout* layout = nullptr;    /**< Layout stacking GL + overlays. */
   QWidget* widget = nullptr;        /**< Render window's QWidget surface. */
-  rendering::RenderWindow* gl_viewport = nullptr;       /**< OpenGL backend. */
-  rendering::OgreRenderWindow* ogre_viewport = nullptr; /**< Ogre backend. */
+  rendering::OgreRenderWindow* ogre_viewport = nullptr; /**< Ogre viewport. */
   ViewportFloatingToolbar* floating_toolbar = nullptr;  /**< Right-edge tools. */
   ViewportHudOverlay* hud_overlay = nullptr;            /**< Top-left HUD. */
   QToolButton* expand_button = nullptr;   /**< Title-bar expand toggle. */

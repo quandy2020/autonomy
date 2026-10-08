@@ -200,7 +200,7 @@ Result Solver::Solve(const Problem& problem, const Options& options) const {
   result.iterations = raw.iter;
   result.nodes = raw.nodes;
   result.objective = raw.fval;
-  if (result.ok()) {
+  if (result.IsOptimal()) {
     result.x = Eigen::Map<Eigen::VectorXd>(primal.data(), n);
   }
   return result;

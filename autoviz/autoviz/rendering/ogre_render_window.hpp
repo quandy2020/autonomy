@@ -25,13 +25,15 @@
 #include <QCursor>
 #include <QWidget>
 
+class QHideEvent;
 class QPaintEngine;
+class QShowEvent;
 
-#include "autoviz/rendering/grid_renderer.hpp"
 #include "autoviz/rendering/ogre_render_backend.hpp"
 #include "autoviz/rendering/render_settings.hpp"
 #include "autoviz/rendering/scene_overlay.hpp"
 #include "autoviz/rendering/view_controller.hpp"
+#include "autoviz/common/pick_handle.hpp"
 
 namespace autoviz {
 namespace common {
@@ -42,14 +44,10 @@ namespace rendering {
 
 /**
  * @class OgreRenderWindow
- * @brief QWidget viewport backed by Ogre.
+ * @brief QWidget viewport backed by Ogre 1.x (the only Autoviz 3D path).
  *
  * Painting is driven by Qt @c paintEvent, which delegates to
- * @ref OgreRenderBackend::render(). Mouse/keyboard handling mirrors
- * @ref RenderWindow.
- *
- * @note @ref GridRenderer is retained for background color / optional grid
- *       settings passed into the Ogre backend.
+ * @ref OgreRenderBackend::render().
  */
 class OgreRenderWindow : public QWidget {
   Q_OBJECT
@@ -71,13 +69,19 @@ class OgreRenderWindow : public QWidget {
   void setSceneOverlay(SceneOverlay* overlay) { scene_overlay_ = overlay; }
 
   /**
-   * @brief Sets background color on both grid helper and Ogre backend.
+   * @brief Sets the Ogre clear / background color.
    * @param color Clear color.
    */
   void setBackgroundColor(const QColor& color) {
-    grid_renderer_.setBackgroundColor(color);
     ogre_backend_.setBackgroundColor(color);
   }
+
+  /**
+   * @brief Hides the native Ogre surface without waiting for a Qt hide event.
+   *
+   * Used by Change panel so the GL window cannot cover the replacement dock.
+   */
+  void hideNativeSurface() { ogre_backend_.setWindowVisible(false); }
 
   /**
    * @brief Returns the owned camera controller.
@@ -199,6 +203,8 @@ class OgreRenderWindow : public QWidget {
  protected:
   void resizeEvent(QResizeEvent* event) override;
   void paintEvent(QPaintEvent* event) override;
+  void showEvent(QShowEvent* event) override;
+  void hideEvent(QHideEvent* event) override;
   /** Native Ogre GL surface — Qt must not use a software paint engine. */
   QPaintEngine* paintEngine() const override;
   void mousePressEvent(QMouseEvent* event) override;
@@ -210,7 +216,6 @@ class OgreRenderWindow : public QWidget {
   void enterEvent(QEnterEvent* event) override;
 
  private:
-  GridRenderer grid_renderer_;
   SceneOverlay* scene_overlay_ = nullptr;
   ViewController view_controller_;
   common::ToolManager* tool_manager_ = nullptr;

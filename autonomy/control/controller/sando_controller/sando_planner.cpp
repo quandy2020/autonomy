@@ -373,11 +373,11 @@ bool SandoPlanner::ReplanTrajectory(const State& robot, double now) {
   const std::string planner = options_.global_planner();
   if (planner == "sjps") {
     SearchWeights plain = weights;
-    plain.heat = 0.0;
+    plain.heat_weight = 0.0;
     found = path_searcher_.Jump(grid_, start.pose().position().x(), start.pose().position().y(), goal_x, goal_y, plain, &raw) && !crosses_heat(raw);
   } else if (planner == "sastar") {
     SearchWeights plain = weights;
-    plain.heat = 0.0;
+    plain.heat_weight = 0.0;
     found = path_searcher_.Search(grid_, start.pose().position().x(), start.pose().position().y(), goal_x, goal_y, plain, &raw);
   }
   if (!found) {
