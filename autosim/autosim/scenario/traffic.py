@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+import numpy as np
+
 from autosim.scenario.cast import Cast
 from autosim.scenario.field import Field
 from autosim.scenario.obstacle.obstacle import Obstacle
@@ -94,3 +96,32 @@ class Traffic:
     ) -> float | None:
         """Closer dynamic hit along one map-frame ray, or ``None``."""
         return Cast.nearest(origin, direction, self.obstacle, self.pedestrian, t_max)
+
+    def nearest_batch(
+        self,
+        origin: tuple[float, float, float] | np.ndarray,
+        directions: np.ndarray,
+        t_max: float,
+    ) -> np.ndarray:
+        """Closer dynamic hit per ray (shared origin). Misses are ``nan``."""
+        return Cast.nearest_batch(
+            origin, directions, self.obstacle, self.pedestrian, t_max
+        )
+
+    def cloud(self, resolution: float = 0.15) -> np.ndarray:
+        """Surface points of moving obstacles and pedestrians for ``/overall/map``.
+
+        Args:
+            resolution: Approximate spacing of surface samples (meters).
+
+        Returns:
+            ``(M, 3)`` float32 map-frame XYZ. Empty when both populations are idle.
+        """
+        parts = [
+            self.obstacle.surface_points(resolution),
+            self.pedestrian.surface_points(resolution),
+        ]
+        nonempty = [part for part in parts if part.shape[0] > 0]
+        if not nonempty:
+            return np.zeros((0, 3), dtype=np.float32)
+        return np.concatenate(nonempty, axis=0)

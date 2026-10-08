@@ -112,12 +112,20 @@ SplashScreen::SplashScreen(const QPixmap& pixmap)
           buildSplashPixmap(pixmap),
           // macOS (Ventura+): Qt::SplashScreen is invisible when launched from
           // Terminal until the app activates; Dialog+Frameless works instead.
+          // Linux: keep Qt::SplashScreen so the WM does not treat the splash as
+          // a second dock / taskbar application next to the main window.
 #if defined(Q_OS_MACOS) || defined(Q_OS_MAC)
           Qt::Dialog | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint
 #else
-          Qt::WindowStaysOnTopHint
+          Qt::SplashScreen | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint
 #endif
-      ) {}
+      ) {
+#if defined(Q_OS_LINUX)
+  setAttribute(Qt::WA_X11DoNotAcceptFocus);
+#endif
+  setWindowFlag(Qt::WindowDoesNotAcceptFocus, true);
+}
+
 void SplashScreen::ensureVisibleTimerStarted() {
   if (!visible_timer_started_) {
     visible_timer_.start();

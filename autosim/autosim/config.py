@@ -107,6 +107,9 @@ class Config:
         depth_points_channel = str(camera_cfg.get("depth_points_channel") or "").strip()
         if depth_points_channel:
             channels["depth_points"] = depth_points_channel
+        fov_marker_channel = str(camera_cfg.get("fov_marker_channel") or "").strip()
+        if fov_marker_channel:
+            channels["fov_marker"] = fov_marker_channel
         for camera in resolve_surround(camera_rig(sensors)):
             channels[camera.rgb_key] = camera.rgb_channel
             channels[camera.info_key] = camera.info_channel
@@ -402,6 +405,10 @@ class Config:
             if not isinstance(mode, str) or str(mode).strip().lower() not in ("slam", "nav"):
                 raise ValueError("habitat.mode must be 'slam' or 'nav'")
 
+        backend = str(habitat.get("backend", "habitat")).strip().lower()
+        if backend not in ("fake", "habitat"):
+            raise ValueError("habitat.backend must be 'fake' or 'habitat'")
+
         robot = habitat.get("robot")
         if not isinstance(robot, Mapping):
             raise ValueError("habitat.robot must be a mapping")
@@ -438,6 +445,8 @@ class Config:
         cls.validate_surround(camera_rig(sensors), robot.get("urdf", ""))
         cls.validate_footprint(robot.get("footprint"), robot.get("urdf", ""))
         scenario_on = cls.validate_scenario(habitat.get("scenario"))
+        if backend == "fake" and not scenario_on:
+            raise ValueError("habitat.backend=fake requires habitat.scenario.enabled")
         cls.validate_map(habitat.get("map"), procedural=scenario_on)
 
         names = [
@@ -451,11 +460,13 @@ class Config:
             sensors["odom"]["channel"],
             truth["channel"],
         ]
-        depth_points_channel = str(
-            (sensors.get("camera") or {}).get("depth_points_channel") or ""
-        ).strip()
+        camera_cfg = sensors.get("camera") or {}
+        depth_points_channel = str(camera_cfg.get("depth_points_channel") or "").strip()
         if depth_points_channel:
             names.append(depth_points_channel)
+        fov_marker_channel = str(camera_cfg.get("fov_marker_channel") or "").strip()
+        if fov_marker_channel:
+            names.append(fov_marker_channel)
         mapping = habitat.get("map")
         slam = str(habitat.get("mode", "nav")).strip().lower() == "slam"
         map_publish = (

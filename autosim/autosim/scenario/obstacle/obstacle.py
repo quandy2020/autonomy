@@ -108,6 +108,63 @@ class Obstacle:
         height = np.full((self.position.shape[0], 1), 0.5 * float(self.settings["height"]))
         return np.concatenate((self.position, height), axis=1)
 
+    def surface_points(self, resolution: float = 0.15) -> np.ndarray:
+        """Surface samples of every upright cylinder (side + caps) for map cloud.
+
+        Args:
+            resolution: Approximate point spacing in meters.
+
+        Returns:
+            ``(M, 3)`` float32 map-frame points. Empty when disabled.
+        """
+        if self.position.shape[0] == 0:
+            return np.zeros((0, 3), dtype=np.float32)
+        radius = float(self.settings["radius"])
+        height = float(self.settings["height"])
+        step = max(1e-3, float(resolution))
+        chunks = [
+            Obstacle.cylinder_surface(float(x), float(y), radius, height, step)
+            for x, y in self.position
+        ]
+        return np.concatenate(chunks, axis=0).astype(np.float32)
+
+    @staticmethod
+    def cylinder_surface(
+        cx: float, cy: float, radius: float, height: float, resolution: float
+    ) -> np.ndarray:
+        """Point samples on one vertical cylinder (wall + flat caps)."""
+        n_theta = max(8, int(np.ceil(2.0 * np.pi * radius / resolution)))
+        n_z = max(2, int(np.ceil(height / resolution)) + 1)
+        theta = np.linspace(0.0, 2.0 * np.pi, n_theta, endpoint=False)
+        zs = np.linspace(0.0, height, n_z)
+        cos_t = np.cos(theta)
+        sin_t = np.sin(theta)
+        # Side wall.
+        side = np.column_stack(
+            [
+                np.tile(cx + radius * cos_t, n_z),
+                np.tile(cy + radius * sin_t, n_z),
+                np.repeat(zs, n_theta),
+            ]
+        )
+        # Disk caps at z=0 and z=height.
+        n_ring = max(1, int(np.ceil(radius / resolution)))
+        disks: list[np.ndarray] = []
+        for z in (0.0, height):
+            for ring in range(n_ring + 1):
+                r = radius * (ring / n_ring) if n_ring > 0 else 0.0
+                if r < 1e-9:
+                    disks.append(np.array([[cx, cy, z]], dtype=np.float64))
+                    continue
+                n = max(6, int(np.ceil(2.0 * np.pi * r / resolution)))
+                ang = np.linspace(0.0, 2.0 * np.pi, n, endpoint=False)
+                disks.append(
+                    np.column_stack(
+                        (cx + r * np.cos(ang), cy + r * np.sin(ang), np.full(n, z))
+                    )
+                )
+        return np.concatenate([side, *disks], axis=0)
+
     def bind_field(self, field: Field) -> None:
         """Keep later steps out of occupied cells, and resample anyone already inside."""
         self.field = field

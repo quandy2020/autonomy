@@ -162,7 +162,7 @@ void DisplayRegistry::registerBuiltinTypes() {
         return FinalizeDisplay(std::make_unique<display::MapDisplay>(config.channel),
                                config);
       },
-      [] { return MakeDefault("Map", "Map", ""); });
+      [] { return MakeDefault("Map", "Map", "/map"); });
 
   registerType(
       "GridMap",

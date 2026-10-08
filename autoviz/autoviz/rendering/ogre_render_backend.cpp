@@ -167,14 +167,27 @@ void UploadTexturedBatches(
     Ogre::MaterialPtr material =
         Ogre::MaterialManager::getSingleton().create(
             mat_name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-    material->getTechnique(0)->getPass(0)->createTextureUnitState(tex_name);
-    material->getTechnique(0)->getPass(0)->setLightingEnabled(false);
-    material->getTechnique(0)->getPass(0)->setSceneBlending(
-        Ogre::SBT_TRANSPARENT_ALPHA);
-    material->getTechnique(0)->getPass(0)->setVertexColourTracking(
-        Ogre::TVC_DIFFUSE);
+    Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
+    pass->createTextureUnitState(tex_name);
+    pass->setLightingEnabled(false);
+    // Map / camera image quads lie in XY; Autoviz cameras look down -Z. Default
+    // clockwise cull then drops the whole OccupancyGrid when viewing top-down.
+    pass->setCullingMode(Ogre::CULL_NONE);
+    pass->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
+    pass->setDepthWriteEnabled(false);
+    pass->setDepthCheckEnabled(true);
+    pass->setVertexColourTracking(Ogre::TVC_DIFFUSE);
+    if (pass->getNumTextureUnitStates() > 0) {
+      Ogre::TextureUnitState* unit = pass->getTextureUnitState(0);
+      const Ogre::FilterOptions filter =
+          batch.filter_mode == SceneOverlay::TextureFilterMode::kNearest
+              ? Ogre::FO_POINT
+              : Ogre::FO_LINEAR;
+      unit->setTextureFiltering(filter, filter, Ogre::FO_NONE);
+    }
 
     Ogre::ManualObject* object = scene->createManualObject(base_name + "MO");
+    object->setCastShadows(false);
     object->begin(mat_name, Ogre::RenderOperation::OT_TRIANGLE_LIST);
     for (const auto& vertex : batch.vertices) {
       object->position(vertex.position.x(), vertex.position.y(),

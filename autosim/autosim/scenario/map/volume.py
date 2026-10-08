@@ -99,6 +99,208 @@ class Volume:
         return (origin + index.astype(np.float64) * resolution).astype(np.float32)
 
     @staticmethod
+    def cast_hits(
+        occupied: np.ndarray,
+        origin: np.ndarray,
+        resolution: float,
+        ray_origin: np.ndarray,
+        ray_dirs: np.ndarray,
+        t_min: float,
+        t_max: float,
+        *,
+        ground_z: float = 0.0,
+    ) -> np.ndarray:
+        """First hit distance along each map-frame ray (voxels + ground plane).
+
+        Uses Amanatides–Woo DDA so thin shells (e.g. ``posts``) cannot be
+        skipped. Occluded surfaces behind the first hit are never returned.
+        Also intersects the infinite ground plane at ``ground_z``. Misses are
+        ``nan``.
+
+        Args:
+            occupied: Boolean volume ``(nx, ny, nz)``.
+            origin: Map-frame minimum corner of voxel ``(0,0,0)``.
+            resolution: Voxel edge length (meters).
+            ray_origin: Shared ray start ``(3,)`` in the map frame.
+            ray_dirs: Unit directions ``(N, 3)`` in the map frame.
+            t_min: Ignore hits closer than this (meters).
+            t_max: Ignore hits farther than this (meters).
+            ground_z: Ground plane height (map z-up).
+
+        Returns:
+            ``(N,)`` float64 distances; ``nan`` when nothing is hit in range.
+        """
+        dirs = np.asarray(ray_dirs, dtype=np.float64).reshape(-1, 3)
+        count = dirs.shape[0]
+        hits = np.full(count, np.nan, dtype=np.float64)
+        if count == 0 or resolution <= 0.0 or t_max <= t_min:
+            return hits
+
+        vol = np.asarray(occupied, dtype=bool)
+        low = np.asarray(origin, dtype=np.float64).reshape(3)
+        start = np.asarray(ray_origin, dtype=np.float64).reshape(3)
+        nx, ny, nz = vol.shape
+        res = float(resolution)
+
+        # Ground plane (z = ground_z), closed form.
+        dz = dirs[:, 2]
+        toward = dz < -1e-12
+        if np.any(toward):
+            ground_t = (float(ground_z) - start[2]) / dz
+            ok = toward & (ground_t >= t_min) & (ground_t <= t_max)
+            hits[ok] = ground_t[ok]
+
+        for index in range(count):
+            voxel_t = Volume._dda_hit(
+                vol, low, res, start, dirs[index], t_min, t_max, nx, ny, nz
+            )
+            if voxel_t is None:
+                continue
+            current = hits[index]
+            if np.isnan(current) or voxel_t < current:
+                hits[index] = voxel_t
+        return hits
+
+    @staticmethod
+    def _dda_hit(
+        vol: np.ndarray,
+        low: np.ndarray,
+        res: float,
+        start: np.ndarray,
+        direction: np.ndarray,
+        t_min: float,
+        t_max: float,
+        nx: int,
+        ny: int,
+        nz: int,
+    ) -> float | None:
+        """First occupied voxel distance along one unit ray (Amanatides–Woo)."""
+        dx, dy, dz = (float(direction[0]), float(direction[1]), float(direction[2]))
+        # Enter the grid at t_min so near-plane clipping is honored.
+        ox = float(start[0]) + t_min * dx
+        oy = float(start[1]) + t_min * dy
+        oz = float(start[2]) + t_min * dz
+        t = float(t_min)
+
+        inv = [
+            (1.0 / dx) if abs(dx) > 1e-12 else float("inf"),
+            (1.0 / dy) if abs(dy) > 1e-12 else float("inf"),
+            (1.0 / dz) if abs(dz) > 1e-12 else float("inf"),
+        ]
+        step = [1 if d > 0.0 else -1 for d in (dx, dy, dz)]
+
+        # If still outside the AABB, advance to the first intersection.
+        high = low + np.array([nx, ny, nz], dtype=np.float64) * res
+        if not (
+            low[0] <= ox < high[0]
+            and low[1] <= oy < high[1]
+            and low[2] <= oz < high[2]
+        ):
+            t_enter = Volume._aabb_enter(ox, oy, oz, dx, dy, dz, low, high)
+            if t_enter is None or t + t_enter > t_max:
+                return None
+            t += t_enter
+            ox = float(start[0]) + t * dx
+            oy = float(start[1]) + t * dy
+            oz = float(start[2]) + t * dz
+
+        ix = int(np.floor((ox - low[0]) / res))
+        iy = int(np.floor((oy - low[1]) / res))
+        iz = int(np.floor((oz - low[2]) / res))
+        ix = int(np.clip(ix, 0, nx - 1))
+        iy = int(np.clip(iy, 0, ny - 1))
+        iz = int(np.clip(iz, 0, nz - 1))
+
+        sx = float(start[0])
+        sy = float(start[1])
+        sz = float(start[2])
+        if step[0] > 0:
+            t_max_x = ((ix + 1) * res + low[0] - sx) * inv[0]
+        elif step[0] < 0 and np.isfinite(inv[0]):
+            t_max_x = (ix * res + low[0] - sx) * inv[0]
+        else:
+            t_max_x = float("inf")
+        if step[1] > 0:
+            t_max_y = ((iy + 1) * res + low[1] - sy) * inv[1]
+        elif step[1] < 0 and np.isfinite(inv[1]):
+            t_max_y = (iy * res + low[1] - sy) * inv[1]
+        else:
+            t_max_y = float("inf")
+        if step[2] > 0:
+            t_max_z = ((iz + 1) * res + low[2] - sz) * inv[2]
+        elif step[2] < 0 and np.isfinite(inv[2]):
+            t_max_z = (iz * res + low[2] - sz) * inv[2]
+        else:
+            t_max_z = float("inf")
+
+        t_delta_x = res * abs(inv[0]) if np.isfinite(inv[0]) else float("inf")
+        t_delta_y = res * abs(inv[1]) if np.isfinite(inv[1]) else float("inf")
+        t_delta_z = res * abs(inv[2]) if np.isfinite(inv[2]) else float("inf")
+
+        max_steps = (nx + ny + nz) * 3 + 2
+        for _ in range(max_steps):
+            if t > t_max + 1e-9:
+                return None
+            if vol[ix, iy, iz]:
+                return float(max(t, t_min))
+            if t_max_x < t_max_y:
+                if t_max_x < t_max_z:
+                    ix += step[0]
+                    t = t_max_x
+                    t_max_x += t_delta_x
+                else:
+                    iz += step[2]
+                    t = t_max_z
+                    t_max_z += t_delta_z
+            else:
+                if t_max_y < t_max_z:
+                    iy += step[1]
+                    t = t_max_y
+                    t_max_y += t_delta_y
+                else:
+                    iz += step[2]
+                    t = t_max_z
+                    t_max_z += t_delta_z
+            if ix < 0 or iy < 0 or iz < 0 or ix >= nx or iy >= ny or iz >= nz:
+                return None
+        return None
+    @staticmethod
+    def _aabb_enter(
+        ox: float,
+        oy: float,
+        oz: float,
+        dx: float,
+        dy: float,
+        dz: float,
+        low: np.ndarray,
+        high: np.ndarray,
+    ) -> float | None:
+        """Ray–AABB entry distance from ``(ox,oy,oz)``, or ``None`` if missed."""
+        t0 = -1e30
+        t1 = 1e30
+        for origin_i, d, lo, hi in (
+            (ox, dx, float(low[0]), float(high[0])),
+            (oy, dy, float(low[1]), float(high[1])),
+            (oz, dz, float(low[2]), float(high[2])),
+        ):
+            if abs(d) < 1e-12:
+                if origin_i < lo or origin_i > hi:
+                    return None
+                continue
+            inv = 1.0 / d
+            a = (lo - origin_i) * inv
+            b = (hi - origin_i) * inv
+            if a > b:
+                a, b = b, a
+            t0 = max(t0, a)
+            t1 = min(t1, b)
+            if t0 > t1:
+                return None
+        if t1 < 0.0:
+            return None
+        return float(max(t0, 0.0))
+
+    @staticmethod
     def planar(
         occupied: np.ndarray,
         origin: np.ndarray,

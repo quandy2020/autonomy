@@ -59,6 +59,12 @@ src/autonomy/autosim/scripts/run.sh sim
 ./src/autonomy/autosim/scripts/run.sh teleop
 ```
 
+`habitat.backend`：`habitat`（`config/default.yaml`，仅 Habitat-Sim + GLB/MP3D 场景资源）或 `fake`（`config/fake.yaml`，无 Habitat：差速 + RGBD 针孔 raycast `/camera/depth/points` + 过程 scenario 地图）。
+
+```bash
+CONFIG=src/autonomy/autosim/config/fake.yaml src/autonomy/autosim/scripts/run.sh sim
+```
+
 **Lightning LIO 验证**（开 3D 点云 `/points` + `/imu`）：
 
 ```bash

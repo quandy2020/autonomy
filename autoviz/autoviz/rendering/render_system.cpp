@@ -180,17 +180,24 @@ void RenderSystem::ensureHeadlessRenderWindow() {
   }
   static int window_counter = 0;
   Ogre::NameValuePairList params;
+  // Bootstrap GL context only. Without hidden=true Ogre creates a top-level
+  // X11/Win32 window that shows up as a second application next to Aviz.
+  params["hidden"] = "true";
+  params["border"] = "none";
   if (test_window_handle_ != 0) {
     params["currentGLContext"] = "False";
-    params["externalWindowHandle"] =
+    params["parentWindowHandle"] =
         Ogre::StringConverter::toString(static_cast<size_t>(test_window_handle_));
-    params["parentWindowHandle"] = params["externalWindowHandle"];
   } else {
     params["currentGLContext"] = "False";
   }
   headless_window_ = ogre_root_->createRenderWindow(
       "AvizHeadless" + Ogre::StringConverter::toString(window_counter++), 1, 1,
       false, &params);
+  if (headless_window_ != nullptr) {
+    headless_window_->setVisible(false);
+    headless_window_->setAutoUpdated(false);
+  }
 }
 
 Ogre::Root* RenderSystem::ogreRoot() { return ogre_root_; }
@@ -399,11 +406,14 @@ Ogre::RenderWindow* RenderSystem::makeRenderWindow(WindowHandle window_id,
   static int window_counter = 0;
   Ogre::NameValuePairList params;
   params["currentGLContext"] = "False";
-  params["externalWindowHandle"] =
+  // parentWindowHandle embeds into the Qt widget. Do not also set
+  // externalWindowHandle — with both set, Ogre takes the parent path and can
+  // still leave a stray top-level drawable on some GLX builds.
+  params["parentWindowHandle"] =
       Ogre::StringConverter::toString(static_cast<size_t>(window_id));
-  params["parentWindowHandle"] = params["externalWindowHandle"];
   params["left"] = "0";
   params["top"] = "0";
+  params["border"] = "none";
   params["contentScalingFactor"] = Ogre::StringConverter::toString(pixel_ratio);
 #if defined(__APPLE__)
   params["macAPI"] = "cocoa";

@@ -525,13 +525,15 @@ void SceneOverlay::addTexturedQuad(const QVector3D& top_left,
   TexturedBatch batch;
   batch.image = image.convertToFormat(QImage::Format_RGBA8888);
   batch.filter_mode = filter_mode;
+  // CCW when viewed from +Z so top-down cameras (looking toward -Z) see the
+  // front face. Matches REP-103 map plane (XY, Z up).
   batch.vertices = {
       {top_left, QVector2D(0.f, 0.f)},
-      {top_right, QVector2D(1.f, 0.f)},
+      {bottom_left, QVector2D(0.f, 1.f)},
       {bottom_right, QVector2D(1.f, 1.f)},
       {top_left, QVector2D(0.f, 0.f)},
       {bottom_right, QVector2D(1.f, 1.f)},
-      {bottom_left, QVector2D(0.f, 1.f)},
+      {top_right, QVector2D(1.f, 0.f)},
   };
   textured_batches_.push_back(std::move(batch));
   textured_dirty_ = true;

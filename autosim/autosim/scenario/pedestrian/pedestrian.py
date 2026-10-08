@@ -116,6 +116,86 @@ class Pedestrian:
             return np.zeros((0, 3), dtype=np.float64)
         return np.column_stack((self.position, self.yaw))
 
+    def surface_points(self, resolution: float = 0.15) -> np.ndarray:
+        """Surface samples of every upright capsule for the global map cloud.
+
+        Args:
+            resolution: Approximate point spacing in meters.
+
+        Returns:
+            ``(M, 3)`` float32 map-frame points. Empty when disabled.
+        """
+        if self.position.shape[0] == 0:
+            return np.zeros((0, 3), dtype=np.float32)
+        radius = float(self.settings["radius"])
+        height = float(self.settings["height"])
+        step = max(1e-3, float(resolution))
+        chunks = [
+            Pedestrian.capsule_surface(float(x), float(y), radius, height, step)
+            for x, y in self.position
+        ]
+        return np.concatenate(chunks, axis=0).astype(np.float32)
+
+    @staticmethod
+    def capsule_surface(
+        cx: float, cy: float, radius: float, height: float, resolution: float
+    ) -> np.ndarray:
+        """Vertical capsule: cylinder wall + hemispherical caps (sphere if short)."""
+        if height <= 2.0 * radius:
+            return Pedestrian.sphere_surface(
+                cx, cy, 0.5 * height, min(radius, 0.5 * height), resolution
+            )
+        z0 = radius
+        z1 = height - radius
+        n_theta = max(8, int(np.ceil(2.0 * np.pi * radius / resolution)))
+        n_z = max(2, int(np.ceil((z1 - z0) / resolution)) + 1)
+        n_phi = max(4, int(np.ceil(0.5 * np.pi * radius / resolution)))
+        theta = np.linspace(0.0, 2.0 * np.pi, n_theta, endpoint=False)
+        zs = np.linspace(z0, z1, n_z)
+        cos_t = np.cos(theta)
+        sin_t = np.sin(theta)
+        wall = np.column_stack(
+            [
+                np.tile(cx + radius * cos_t, n_z),
+                np.tile(cy + radius * sin_t, n_z),
+                np.repeat(zs, n_theta),
+            ]
+        )
+        caps = []
+        for z_c, phis in (
+            (z1, np.linspace(0.0, 0.5 * np.pi, n_phi)),
+            (z0, np.linspace(-0.5 * np.pi, 0.0, n_phi)),
+        ):
+            tt, pp = np.meshgrid(theta, phis, indexing="xy")
+            caps.append(
+                np.column_stack(
+                    (
+                        cx + radius * np.cos(pp.ravel()) * np.cos(tt.ravel()),
+                        cy + radius * np.cos(pp.ravel()) * np.sin(tt.ravel()),
+                        z_c + radius * np.sin(pp.ravel()),
+                    )
+                )
+            )
+        return np.concatenate([wall, *caps], axis=0)
+    @staticmethod
+    def sphere_surface(
+        cx: float, cy: float, cz: float, radius: float, resolution: float
+    ) -> np.ndarray:
+        """Latitude–longitude samples on a sphere."""
+        n_theta = max(8, int(np.ceil(2.0 * np.pi * radius / resolution)))
+        n_phi = max(6, int(np.ceil(np.pi * radius / resolution)))
+        theta = np.linspace(0.0, 2.0 * np.pi, n_theta, endpoint=False)
+        phi = np.linspace(-0.5 * np.pi, 0.5 * np.pi, n_phi)
+        
+        tt, pp = np.meshgrid(theta, phi, indexing="xy")
+        return np.column_stack(
+            (
+                cx + radius * np.cos(pp.ravel()) * np.cos(tt.ravel()),
+                cy + radius * np.cos(pp.ravel()) * np.sin(tt.ravel()),
+                cz + radius * np.sin(pp.ravel()),
+            )
+        )
+
     def desired_velocity(self) -> np.ndarray:
         """Preferred velocity of length ``speed`` toward each goal."""
         delta = self.goal - self.position

@@ -102,35 +102,41 @@ def minimal_config(**overrides):
 
 def test_load_default_yaml():
     settings = Config.load(ROOT / "config" / "default.yaml")
+    assert settings["habitat"]["backend"] == "habitat"
     assert settings.channel_map()["cmd_vel"] == "/cmd_vel"
     assert settings.channel_map()["scan"] == "/scan"
     assert settings.channel_map()["points"] == "/points"
-    assert "lidar" not in settings["habitat"]["sensors"]
     assert settings["habitat"]["robot"]["truth"]["enabled"] is False
+    # Habitat default: GLB scene resource, no procedural scenario.
     assert str(settings["habitat"]["path"]).endswith(".glb")
+    assert settings["habitat"]["scenario"]["enabled"] is False
     assert settings["habitat"]["sensors"]["lidar_2d"]["enabled"] is True
     assert settings["habitat"]["sensors"]["lidar_3d"]["enabled"] is False
-    assert settings["habitat"]["sensors"]["lidar_3d"]["vertical"]["num_rings"] == 16
-    assert settings["habitat"]["sensors"]["camera"]["width"] == 640
-    assert settings["habitat"]["sensors"]["lidar_2d"]["noise"] == 0.0
-    assert settings["habitat"]["sensors"]["lidar_3d"]["noise"] == 0.015
-    assert settings["habitat"]["sensors"]["odom"]["noise"] == 0.0
-    assert settings["habitat"]["sensors"]["imu"]["noise"]["gyro"] == 0.01
-    assert settings["habitat"]["sensors"]["imu"]["noise"]["accel"] == 0.05
-    assert settings["habitat"]["sensors"]["camera"]["noise"]["depth"] == 0.0
-    assert settings["habitat"]["map"]["enabled"] is False
-    assert settings["habitat"]["map"]["publish"] is False
-    assert settings["habitat"]["mode"] == "slam"
+    assert settings["habitat"]["sensors"]["camera"]["enabled"] is True
+    assert settings["habitat"]["sensors"]["imu"]["enabled"] is True
+    assert settings["habitat"]["sensors"]["odom"]["enabled"] is True
+    assert settings["habitat"]["map"]["enabled"] is True
+    assert settings["habitat"]["map"]["publish"] is True
+    assert settings["habitat"]["mode"] == "nav"
     assert settings["habitat"]["map"]["ply"]["channel"] == "/overall/map"
     assert settings["habitat"]["map"]["grid"]["channel"] == "/map"
     assert settings["habitat"]["robot"]["tf"]["enabled"] is True
-    assert settings["habitat"]["robot"]["tf"]["publish_map_odom"] is False
     assert settings.channel_map()["tf"] == "/tf"
     assert settings.channel_map()["clock"] == "/clock"
-    assert settings.channel_map()["footprint"] == "/footprint"
+    assert settings.channel_map()["map_cloud"] == "/overall/map"
     assert settings["habitat"]["sensors"]["odom"]["child_frame"] == "base_link"
-    assert settings["habitat"]["sensors"]["odom"]["noise"] == 0.0
-    assert settings["habitat"]["robot"]["footprint"]["frame"] == "base_link"
+
+
+def test_load_fake_yaml():
+    settings = Config.load(ROOT / "config" / "fake.yaml")
+    assert settings["habitat"]["backend"] == "fake"
+    assert settings["habitat"]["scenario"]["enabled"] is True
+    assert int(settings["habitat"]["scenario"]["obstacle_number"]) > 0
+    assert settings["habitat"]["robot"]["footprint"]["enabled"] is True
+    assert settings.channel_map()["map_cloud"] == "/overall/map"
+    assert settings.channel_map()["depth_points"] == "/camera/depth/points"
+    assert settings.channel_map()["fov_marker"] == "/camera/depth/fov"
+    assert settings.channel_map()["footprint"] == "/footprint"
 
 
 def test_map_ply_channel_and_stride():

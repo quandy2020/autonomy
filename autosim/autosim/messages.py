@@ -35,6 +35,7 @@ from automsgs.msgs.sensor_msgs.laser_scan_pb2 import LaserScan
 from automsgs.msgs.sensor_msgs.point_cloud2_pb2 import PointCloud2
 from automsgs.msgs.sensor_msgs.point_field_pb2 import PointField
 from automsgs.msgs.tf2_msgs.tf_message_pb2 import TFMessage
+from automsgs.msgs.visualization_msgs.marker_pb2 import Marker
 
 
 class Messages:
@@ -610,6 +611,71 @@ class Messages:
         message.pose.orientation.y = qy
         message.pose.orientation.z = qz
         message.pose.orientation.w = qw
+        return message
+
+    @classmethod
+    def encode_camera_fov_marker(
+        cls,
+        stamp: Tuple[int, int],
+        frame_id: str,
+        hfov_deg: float,
+        vfov_deg: float,
+        range_min: float,
+        range_max: float,
+        *,
+        ns: str = "camera_fov",
+        marker_id: int = 0,
+        rgba: Sequence[float] = (0.1, 0.85, 1.0, 0.85),
+        line_width: float = 0.02,
+    ) -> Marker:
+        """Wireframe pinhole frustum in REP-103 ``camera_link`` (x forward).
+
+        Near/far rectangles plus the four radial edges. Matches the RGBD FoV
+        used for ``/camera/depth/points``.
+        """
+        near = max(1e-3, float(range_min))
+        far = max(near + 1e-3, float(range_max))
+        half_h = math.tan(0.5 * math.radians(float(hfov_deg)))
+        half_v = math.tan(0.5 * math.radians(float(vfov_deg)))
+
+        def corners(depth: float) -> list[tuple[float, float, float]]:
+            # camera_link: x forward, y left, z up.
+            y = depth * half_h
+            z = depth * half_v
+            return [
+                (depth, y, z),
+                (depth, -y, z),
+                (depth, -y, -z),
+                (depth, y, -z),
+            ]
+
+        near_c = corners(near)
+        far_c = corners(far)
+        # LINE_LIST pairs: near rect, far rect, then near→far spokes.
+        edges: list[tuple[tuple[float, float, float], tuple[float, float, float]]] = []
+        for ring in (near_c, far_c):
+            for i in range(4):
+                edges.append((ring[i], ring[(i + 1) % 4]))
+        for i in range(4):
+            edges.append((near_c[i], far_c[i]))
+
+        message = Marker()
+        cls.set_header(message.header, stamp, frame_id)
+        message.ns = str(ns)
+        message.id = int(marker_id)
+        message.type = Marker.LINE_LIST
+        message.action = Marker.ADD
+        message.pose.orientation.w = 1.0
+        message.scale.x = float(line_width)
+        message.color.r = float(rgba[0])
+        message.color.g = float(rgba[1])
+        message.color.b = float(rgba[2])
+        message.color.a = float(rgba[3]) if len(rgba) > 3 else 1.0
+        message.frame_locked = True
+        for start, end in edges:
+            for xyz in (start, end):
+                point = message.points.add()
+                point.x, point.y, point.z = (float(xyz[0]), float(xyz[1]), float(xyz[2]))
         return message
 
     @classmethod

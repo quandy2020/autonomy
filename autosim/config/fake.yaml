@@ -1,0 +1,189 @@
+# Copyright 2026 The Openbot Authors (duyongquan)
+#
+# Fake backend: no Habitat. Differential-drive robot, RGBD pinhole raycast cloud,
+# and scenario global map (/overall/map, /map) + TF/clock/odom.
+#
+#   CONFIG=src/autonomy/autosim/config/fake.yaml src/autonomy/autosim/scripts/run.sh sim
+
+habitat:
+  backend: fake
+  mode: nav
+
+  path: ""
+  # Types: perlin | perlin2d | posts | maze | maze3d | random_forest | random_room
+  # forest | building need scenario.ply (real point cloud).
+  #
+  # Static map density / count (pick the knobs for the active type):
+  #   posts:          obstacle_number, width_min, width_max
+  #   perlin/perlin2d: fill (0–1 occupancy fraction)
+  #   random_forest:  tree_dist (m; smaller → denser trees)
+  #   random_room:    room_number, max_windows
+  #   maze:           road_width, add_wall_x, add_wall_y, maze_type
+  #   maze3d:         road_width→via road_radius/num_nodes/connectivity
+  # Dynamic moving bodies (all types): scenario.obstacle / pedestrian.count
+  scenario:
+    enabled: true
+    type: posts
+    seed: 510
+    resolution: 0.2
+    x_length: 20
+    y_length: 20
+    z_length: 3
+    # posts
+    obstacle_number: 80
+    width_min: 0.6
+    width_max: 1.5
+    # perlin / perlin2d
+    fill: 0.3
+    complexity: 0.03
+    fractal: 1
+    attenuation: 0.1
+    # maze
+    road_width: 0.5
+    add_wall_x: 1
+    add_wall_y: 1
+    maze_type: 1
+    # maze3d
+    num_nodes: 40
+    connectivity: 0.8
+    road_radius: 10
+    # random_forest
+    tree_dist: 8
+    # tree_file: ""
+    # ply: ""
+    # random_room
+    room_number: 4
+    max_windows: 2
+    # Moving cylinders (independent of static map type)
+    obstacle:
+      enabled: false
+      count: 20
+      radius: 0.4
+      height: 1.0
+      speed_min: 0.2
+      speed_max: 0.8
+    pedestrian:
+      enabled: false
+      count: 8
+      radius: 0.2
+      height: 1.7
+      speed: 1.2
+  spawn: [-4.0, 0.18, 0.0]
+  gpu: 0
+
+  robot:
+    urdf: urdf/turtlebot3_burger.urdf
+    max_linear: 0.5
+    max_angular: 1.0
+    max_linear_accel: 0.8
+    max_linear_decel: 1.2
+    max_angular_accel: 2.0
+    wheel_separation: 0.55
+    map_frame: map
+    base_link_height: 0.01
+    watchdog_sec: 0.5
+    control_hz: 50.0
+    cmd_vel: /cmd_vel
+    truth:
+      enabled: false
+      channel: /gt/pose
+    tf:
+      enabled: true
+      channel: /tf
+      static_channel: /tf_static
+      publish_map_odom: true
+    clock:
+      enabled: true
+      channel: /clock
+    footprint:
+      enabled: true
+      channel: /footprint
+      frame: base_link
+
+  sensors:
+    lidar_2d:
+      enabled: false
+      channel: /scan
+      frame: laser_link
+      rate_hz: 10.0
+      angle_min: -3.14159
+      angle_max: 3.14159
+      range_min: 0.1
+      range_max: 30.0
+      num_beams: 360
+      noise: 0.0
+
+    lidar_3d:
+      enabled: false
+      channel: /points
+      frame: lidar_link
+      rate_hz: 10.0
+      horizontal:
+        angle_min: -3.14159
+        angle_max: 3.14159
+        num_beams: 360
+      vertical:
+        angle_min: -0.26
+        angle_max: 0.26
+        num_rings: 16
+      range_min: 0.1
+      range_max: 30.0
+      noise: 0.0
+
+    camera:
+      # Optics for RGBD pinhole raycast → /camera/depth/points (images not published).
+      enabled: false
+      width: 640
+      height: 480
+      hfov_deg: 90.0
+      vfov_deg: 73.74
+      sensor_height: 0.6
+      rgb_channel: /camera/rgb/image_raw
+      depth_channel: /camera/depth/image_raw
+      depth_points_channel: /camera/depth/points
+      # Stride >1 speeds up CPU raycast (640×480 stride=1 ≈ 3s/frame).
+      depth_points_stride: 4
+      # LINE_LIST frustum (camera_link). Length uses fov_marker_range, not range_max.
+      fov_marker_channel: /camera/depth/fov
+      fov_marker_range: 0.5
+      info_channel: /camera/camera_info
+      semantic_enabled: false
+      semantic_channel: /camera/semantic/image_raw
+      semantic_ids_channel: /camera/semantic/instance_ids
+      frame: camera_link
+      rate_hz: 10.0
+      range_min: 0.1
+      range_max: 30.0
+      noise:
+        depth: 0.0
+
+    imu:
+      enabled: false
+      channel: /imu
+      frame: imu_link
+      rate_hz: 200.0
+      gravity: 9.80665
+      noise:
+        gyro: 0.0
+        accel: 0.0
+
+    odom:
+      enabled: true
+      channel: /odom
+      frame: odom
+      child_frame: base_link
+      noise: 0.0
+
+  map:
+    enabled: true
+    publish: true
+    frame: map
+    rate_hz: 1.0
+    ply:
+      channel: /overall/map
+      stride: 1
+    grid:
+      channel: /map
+      resolution: 0.05
+      z_min: 0.1
+      z_max: 2.5

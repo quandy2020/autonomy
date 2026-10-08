@@ -89,7 +89,8 @@ enum class TeleopStickMode {
 struct TeleopPanelConfig {
   QString title = QStringLiteral("Teleop"); /**< Panel / dock title. */
   QString topic = QStringLiteral("/cmd_vel"); /**< Twist publish topic. */
-  double publish_rate_hz = 1.0; /**< Periodic publish rate while sticks are held. */
+  /** Keep ≥ ~2× plant watchdog (autosim default 0.5 s → need ≳4 Hz). */
+  double publish_rate_hz = 20.0; /**< Periodic publish rate while sticks are held. */
   bool stop_on_release = true;  /**< Publish zero Twist when sticks are released. */
   /** Route commands through task teleop goal channel instead of /cmd_vel. */
   bool smart_teleop_enabled = false;

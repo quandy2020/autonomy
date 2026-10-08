@@ -117,6 +117,9 @@ class Scenario:
         self.kind = self.kind_name(merged.get("type", "perlin"))
         self.points = np.zeros((0, 3), dtype=np.float32)
         self.grid: tuple[np.ndarray, float, float, float, int, int] | None = None
+        self.occupied: np.ndarray | None = None
+        self.origin = np.zeros(3, dtype=np.float64)
+        self.resolution = 0.0
         self.mesh: Path | None = None
 
     @classmethod
@@ -135,11 +138,15 @@ class Scenario:
                 "forest, building, random_forest, random_room, or 1–6"
             ) from exc
 
-    def build(self) -> "Scenario":
-        """Fill occupancy, carve a spawn pocket, and write the stage mesh.
+    def build(self, *, write_mesh: bool = True) -> "Scenario":
+        """Fill occupancy, carve a spawn pocket, and optionally write the stage mesh.
+
+        Args:
+            write_mesh: When False (fake backend), skip Habitat OBJ export.
 
         Returns:
-            This object, with ``points``, ``grid``, and ``mesh`` set.
+            This object, with ``points``, ``grid``, ``occupied``, and optionally
+            ``mesh`` set.
         """
         occupied, origin, resolution = self.make_occupancy()
         Volume.clear_spawn(
@@ -149,11 +156,17 @@ class Scenario:
             float(self.settings["spawn_radius"]),
             float(self.settings["spawn_height"]),
         )
+        self.occupied = occupied
+        self.origin = np.asarray(origin, dtype=np.float64).reshape(3)
+        self.resolution = float(resolution)
         self.points = Volume.corners(occupied, origin, resolution)
         self.grid = Volume.planar(
             occupied, origin, resolution, z_max=float(self.settings["spawn_height"])
         )
-        self.mesh = Stage().write(occupied, origin, resolution, self.mesh_file())
+        if write_mesh:
+            self.mesh = Stage().write(occupied, origin, resolution, self.mesh_file())
+        else:
+            self.mesh = None
         return self
 
     def make_occupancy(self) -> tuple[np.ndarray, np.ndarray, float]:

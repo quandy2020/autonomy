@@ -93,6 +93,7 @@ def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
 
     root = Path(__file__).resolve().parents[1]
     settings = Config.load(root / "config" / "default.yaml")
+    settings.data["habitat"]["backend"] = "habitat"
     sensors = settings.data["habitat"]["sensors"]
     sensors["lidar_2d"]["enabled"] = True
     sensors["lidar_2d"]["num_beams"] = 16
@@ -207,6 +208,7 @@ def test_runner_skips_odom_when_disabled(monkeypatch):
 
     root = Path(__file__).resolve().parents[1]
     settings = Config.load(root / "config" / "default.yaml")
+    settings.data["habitat"]["backend"] = "habitat"
     sensors = settings.data["habitat"]["sensors"]
     sensors["lidar_2d"]["enabled"] = False
     sensors["lidar_3d"]["enabled"] = False
@@ -232,6 +234,7 @@ def test_runner_camera_rgb_depth_share_stamp(monkeypatch):
 
     root = Path(__file__).resolve().parents[1]
     settings = Config.load(root / "config" / "default.yaml")
+    settings.data["habitat"]["backend"] = "habitat"
     settings.data["habitat"]["mode"] = "slam"
     settings.data["habitat"]["map"]["enabled"] = False
     sensors = settings.data["habitat"]["sensors"]
@@ -272,6 +275,7 @@ def test_map_grid_published_when_sensor_worker_drops(monkeypatch):
 
     root = Path(__file__).resolve().parents[1]
     settings = Config.load(root / "config" / "default.yaml")
+    settings.data["habitat"]["backend"] = "habitat"
     sensors = settings.data["habitat"]["sensors"]
     sensors["lidar_2d"]["enabled"] = True
     sensors["lidar_2d"]["num_beams"] = 8
@@ -317,6 +321,7 @@ def test_runner_slam_skips_map_and_map_odom(monkeypatch):
 
     root = Path(__file__).resolve().parents[1]
     settings = Config.load(root / "config" / "default.yaml")
+    settings.data["habitat"]["backend"] = "habitat"
     settings.data["habitat"]["mode"] = "slam"
     sensors = settings.data["habitat"]["sensors"]
     sensors["lidar_2d"]["enabled"] = True
@@ -373,6 +378,7 @@ def test_runner_slam_glues_odom_to_ground_truth(monkeypatch):
 
     root = Path(__file__).resolve().parents[1]
     settings = Config.load(root / "config" / "default.yaml")
+    settings.data["habitat"]["backend"] = "habitat"
     settings.data["habitat"]["mode"] = "slam"
     settings.data["habitat"]["map"]["enabled"] = False
     sensors = settings.data["habitat"]["sensors"]
