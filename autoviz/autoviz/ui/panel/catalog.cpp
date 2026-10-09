@@ -19,6 +19,8 @@ const PanelCatalogEntry kPanelCatalog[] = {
      "Browse repeated message fields as a live table"},
     {"PublishDock", "PanelPublish", "Publish",
      "Publish protobuf JSON messages to Autolink channels"},
+    {"RecordDock", "PanelRecord", "Record",
+     "Play .record / .bag / .mcap (Foxglove + rqt_bag style transport)"},
     {"ChannelsDock", "PanelRawMessages", "Messages",
      "Inspect Autolink channel traffic"},
     {"ChannelBrowserDock", "PanelChannels", "Channels",

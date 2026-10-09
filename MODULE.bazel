@@ -1,0 +1,16 @@
+"""Bazel module for the autonomy workspace (src/autonomy)."""
+
+module(
+    name = "autonomy",
+    version = "0.2.0",
+    compatibility_level = 1,
+)
+
+bazel_dep(name = "rules_cc", version = "0.1.1")
+bazel_dep(name = "platforms", version = "0.0.11")
+bazel_dep(name = "googletest", version = "1.15.2")
+
+# Local CMake install / build tree (libautolink, libautomsgs, generated headers).
+# Override with: bazel build --repo_env=AUTONOMY_PREFIX=/path/to/prefix ...
+autonomy_deps = use_extension("//tools:autonomy_deps.bzl", "autonomy_deps")
+use_repo(autonomy_deps, "autonomy_prefix", "system_eigen")

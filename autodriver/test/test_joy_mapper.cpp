@@ -78,10 +78,13 @@ TEST(DualSenseProfile, AppliesLeftForwardRightYaw) {
 TEST(CommandRamp, LimitsFirstStep) {
   autodriver::joy::CommandRamp ramp;
   ramp.Configure(-1.5, 1.5, 1.5, 0.1);
+  // Bell curve starts at 0 for the first sample, then rises.
   const double first = ramp.Update(1.5);
-  EXPECT_GT(first, 0.0);
+  EXPECT_GE(first, 0.0);
   EXPECT_LT(first, 1.5);
-  double last = first;
+  const double second = ramp.Update(1.5);
+  EXPECT_GT(second, first);
+  double last = second;
   for (int i = 0; i < 40; ++i) {
     last = ramp.Update(1.5);
   }

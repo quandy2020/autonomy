@@ -21,6 +21,7 @@
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/app/preferences.hpp"
 #include "autoviz/ui/channels/channels_panel.hpp"
+#include "autoviz/ui/record/record_panel.hpp"
 #include "autoviz/ui/displays/panel.hpp"
 #include "autoviz/ui/image/image_panel.hpp"
 #include "autoviz/ui/inspector/property_panel.hpp"
@@ -319,6 +320,12 @@ void VisualizationFrame::setupUi() {
   layout_->addSidebarDock(panels_->views_dock_, Qt::RightDockWidgetArea);
   connect(panels_->views_dock_, &QDockWidget::visibilityChanged, this,
           [this](bool /*visible*/) { viewport_->syncViewportTitleBarTools(); });
+
+  panels_->record_dock_ =
+      panels_->createRecordPanelDock(QStringLiteral("RecordDock"));
+  layout_->addSidebarDock(panels_->record_dock_, Qt::RightDockWidgetArea);
+  tabifyDockWidget(panels_->views_dock_, panels_->record_dock_);
+  panels_->views_dock_->raise();
 
   panels_->tool_props_dock_ = new PanelDockWidget(tr("Tool Properties"), this);
   panels_->tool_props_dock_->setObjectName(QStringLiteral("ToolPropertiesDock"));

@@ -42,6 +42,7 @@ std::string MapPanelClassToObjectName(const std::string& class_or_name) {
       {"Tool Properties", "ToolPropertiesDock"},
       {"Views", "ViewsDock"},
       {"Time", "TimeDock"},
+      {"Record", "RecordDock"},
   };
   const std::string short_name = PanelClassShortName(class_or_name);
   for (const auto& entry : kMap) {

@@ -57,6 +57,21 @@ autodriver --pair-joy --pair-mode usb               # USB / hid-playstation
 autodriver --pair-joy --pair-mode driver            # usb 别名
 ```
 
+### Bazel 构建
+
+`autodriver/` 自带完整 Bazel 工程（`MODULE.bazel`）。`autolink` / `automsgs` 仍由 CMake 产出，Bazel 通过 `AUTONOMY_PREFIX`（默认仓库根 `install/autonomy` 或 `build/autonomy`）链接预编译库。
+
+```bash
+cd src/autonomy/autodriver
+export AUTONOMY_PREFIX=$PWD/../../../install/autonomy
+export LD_LIBRARY_PATH=$AUTONOMY_PREFIX/lib:${LD_LIBRARY_PATH:-}
+
+bazel build //:autodriver //:autodriver_bin //:autodriver_jetauto //:autodriver_l1w
+bazel test //:test_joy_mapper
+```
+
+可选传感 SDK（RealSense / Orbbec / Livox / RPLidar）默认关闭，与 CMake 未找到 SDK 时行为一致。
+
 短选项遵循 Google CLI 约定（`-h` help、`-n` dry-run；**不用** `-f`/`-n` 表示配置文件或节点名）。
 `node_name` / `plugin_dir` / `compensator.pose_channel` 等运行时差异写在 YAML（或 `AUTODRIVER_PLUGIN_DIR`），不进命令行。
 

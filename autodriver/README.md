@@ -42,6 +42,8 @@
 
 ## 运行
 
+### CMake
+
 ```bash
 # 仓库根构建
 cmake --build build/autonomy -j"$(nproc)" --target autodriver autodriver_main
@@ -53,6 +55,26 @@ export AUTOLINK_LAUNCH_PATH=$AUTODRIVER_PATH/launch
 export AUTOLINK_DAG_PATH=$AUTODRIVER_PATH/dag
 export AUTOLINK_LIB_PATH=$PWD/build/autonomy/lib
 ```
+
+### Bazel
+
+`autodriver/` 是独立 Bazel 工程（自带 `MODULE.bazel`）。需要先用 CMake 装好 `autolink` / `automsgs`（`libautolink.so`、`libautomsgs.so` 与生成头文件）。默认在仓库根 `install/autonomy` 或 `build/autonomy` 查找；也可用 `AUTONOMY_PREFIX` 指定。
+
+```bash
+cd src/autonomy/autodriver
+export AUTONOMY_PREFIX=$PWD/../../../install/autonomy   # 或 ../../../build/autonomy
+export LD_LIBRARY_PATH=$AUTONOMY_PREFIX/lib:${LD_LIBRARY_PATH:-}
+
+bazel build //:autodriver //:autodriver_bin //:autodriver_jetauto //:autodriver_l1w
+bazel test //:test_joy_mapper
+```
+
+| 目标 | 含义 |
+|---|---|
+| `//:autodriver` | `libautodriver`（传感 + chassis 核心） |
+| `//:autodriver_bin` | 进程二进制 |
+| `//:autodriver_jetauto` / `//:autodriver_l1w` | 底盘插件 `.so` |
+| `//:test_*` | 单测 |
 
 | 方式 | 命令 | 说明 |
 |---|---|---|

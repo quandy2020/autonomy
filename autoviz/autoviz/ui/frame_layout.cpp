@@ -255,11 +255,14 @@ Qt::DockWidgetArea FrameLayout::defaultSidebarArea(
   if (dock == nullptr) {
     return Qt::RightDockWidgetArea;
   }
-  if (dock == frame_->panels_->displays_dock_ || dock == frame_->panels_->properties_dock_) {
+  if (dock == frame_->panels_->displays_dock_ ||
+      dock == frame_->panels_->properties_dock_) {
     return Qt::LeftDockWidgetArea;
   }
-  // Teleop defaults to the right sidebar (Views / Selection peers).
-  if (frame_->panels_->panelTypeId(dock) == QLatin1String("TeleopDock")) {
+  // Record / Teleop default to the right sidebar (Views / Selection peers).
+  if (dock == frame_->panels_->record_dock_ ||
+      frame_->panels_->panelTypeId(dock) == QLatin1String("RecordDock") ||
+      frame_->panels_->panelTypeId(dock) == QLatin1String("TeleopDock")) {
     return Qt::RightDockWidgetArea;
   }
   return Qt::RightDockWidgetArea;
@@ -721,6 +724,11 @@ void FrameLayout::changePanelInDock(PanelDockWidget* source,
       target = frame_->panels_->channel_dock_;
     } else if (target_object_name == QLatin1String("ChannelBrowserDock")) {
       target = frame_->panels_->channels_dock_;
+    } else if (target_object_name == QLatin1String("RecordDock")) {
+      target = frame_->panels_->record_dock_ != nullptr
+                   ? frame_->panels_->record_dock_
+                   : frame_->panels_->createRecordPanelDock();
+      frame_->panels_->record_dock_ = target;
     } else if (target_object_name == QLatin1String("ViewportDock")) {
       target = frame_->viewport_->createViewportPanelDock();
     } else if (target_object_name == QLatin1String("PlotDock")) {
@@ -890,7 +898,8 @@ void FrameLayout::applyDefaultDockLayout() {
       continue;
     }
     if (dock == frame_->panels_->displays_dock_ || dock == frame_->panels_->views_dock_ ||
-        dock == frame_->panels_->properties_dock_) {
+        dock == frame_->panels_->properties_dock_ ||
+        dock == frame_->panels_->record_dock_) {
       continue;
     }
     if (frame_->dockWidgetArea(dock) != Qt::NoDockWidgetArea) {
@@ -931,6 +940,20 @@ void FrameLayout::applyDefaultDockLayout() {
     }
     frame_->panels_->views_dock_->show();
     frame_->panels_->views_dock_->raise();
+  }
+
+  if (frame_->panels_->record_dock_ != nullptr) {
+    if (frame_->dockWidgetArea(frame_->panels_->record_dock_) !=
+        Qt::RightDockWidgetArea) {
+      frame_->removeDockWidget(frame_->panels_->record_dock_);
+      addSidebarDock(frame_->panels_->record_dock_, Qt::RightDockWidgetArea);
+    }
+    frame_->panels_->record_dock_->show();
+    if (frame_->panels_->views_dock_ != nullptr) {
+      frame_->tabifyDockWidget(frame_->panels_->views_dock_,
+                               frame_->panels_->record_dock_);
+      frame_->panels_->views_dock_->raise();
+    }
   }
 
   applyMainPanelDefaultLayout();
@@ -1174,6 +1197,17 @@ void FrameLayout::showPanelByObjectName(const QString& object_name) {
   if (dock == nullptr && object_name == QLatin1String("ImageDock")) {
     dock = frame_->panels_->createImagePanelDock(object_name);
     addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr && object_name == QLatin1String("RecordDock")) {
+    dock = frame_->panels_->record_dock_;
+    if (dock == nullptr) {
+      dock = frame_->panels_->createRecordPanelDock(object_name);
+      frame_->panels_->record_dock_ = dock;
+      addSidebarDock(dock, Qt::RightDockWidgetArea);
+      if (frame_->panels_->views_dock_ != nullptr) {
+        frame_->tabifyDockWidget(frame_->panels_->views_dock_, dock);
+      }
+    }
   }
   if (dock == nullptr && object_name == QLatin1String("TeleopDock")) {
     dock = frame_->panels_->teleop_dock_;
@@ -1515,6 +1549,7 @@ void FrameLayout::onSplitActiveDock(PanelDockWidget* source,
 
 QList<PanelDockWidget*> FrameLayout::orderedDockWidgets() const {
   QList<PanelDockWidget*> docks = {frame_->viewport_->viewport_dock_,   frame_->panels_->displays_dock_,
+                                   frame_->panels_->record_dock_,
                                    frame_->panels_->selection_dock_,  frame_->panels_->tool_props_dock_, frame_->panels_->views_dock_,
                                    frame_->panels_->time_dock_,       frame_->panels_->channel_dock_,
                                    frame_->panels_->channels_dock_,

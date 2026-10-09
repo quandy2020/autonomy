@@ -26,6 +26,7 @@
 #include <QDragMoveEvent>
 #include <QDropEvent>
 #include <QEvent>
+#include <QEventLoop>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QListWidget>
@@ -89,6 +90,7 @@
 #include "autoviz/ui/teleop/teleop_panel.hpp"
 #include "autoviz/ui/raw/panel.hpp"
 #include "autoviz/ui/channels/channels_panel.hpp"
+#include "autoviz/ui/record/record_panel.hpp"
 #include "autoviz/ui/inspector/selection_panel.hpp"
 #include "autoviz/ui/inspector/tool_properties_panel.hpp"
 #include "autoviz/ui/tf_tree/panel.hpp"
@@ -739,11 +741,14 @@ bool FrameSession::openRecordFile(const QString& path) {
   if (path.isEmpty() || frame_->manager_ == nullptr) {
     return false;
   }
+  integration::PlaybackController& playback = frame_->manager_->playback();
+  playback.stop();
+
   const RecordSourceKind kind = ClassifyRecordSource(path);
-  OpenRecordResult result = OpenRecordSource(&frame_->manager_->playback(), path);
+  OpenRecordResult result = OpenRecordSource(&playback, path);
   if (!result.ok &&
       (kind == RecordSourceKind::kBag || kind == RecordSourceKind::kMcap)) {
-    ImportRecordDialog dialog(&frame_->manager_->playback(), frame_);
+    ImportRecordDialog dialog(&playback, frame_);
     dialog.setSourcePath(path);
     if (dialog.exec() != QDialog::Accepted || !dialog.recordOpened()) {
       return false;
@@ -755,10 +760,51 @@ bool FrameSession::openRecordFile(const QString& path) {
     return false;
   }
 
-  frame_->manager_->playback().play(1.0, false);
+  // Bind Displays to record channels and let the UI thread create readers
+  // before the player writers start (avoids write-failed storms / races).
+  const int added = frame_->manager_->ensureDisplaysForRecordChannels(
+      playback.channelTypes());
+  if (frame_->panels_ != nullptr &&
+      frame_->panels_->displays_panel_ != nullptr) {
+    frame_->panels_->displays_panel_->refreshStatus();
+  }
+  frame_->manager_->update();
+  QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+
+  playback.seekTo(0.0);
+  QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+  if (!playback.play(1.0, false)) {
+    QMessageBox::warning(
+        frame_, frame_->tr("Open Record"),
+        frame_->tr("Opened %1 but failed to start playback.")
+            .arg(QFileInfo(result.record_path).fileName()));
+    return false;
+  }
+  if (frame_->panels_ != nullptr) {
+    if (frame_->panels_->record_dock_ == nullptr) {
+      frame_->panels_->record_dock_ = frame_->panels_->createRecordPanelDock();
+      frame_->layout_->addSidebarDock(frame_->panels_->record_dock_,
+                                      Qt::RightDockWidgetArea);
+      if (frame_->panels_->views_dock_ != nullptr) {
+        frame_->tabifyDockWidget(frame_->panels_->views_dock_,
+                                 frame_->panels_->record_dock_);
+      }
+    }
+    frame_->layout_->ensureSidebarDockAttached(frame_->panels_->record_dock_);
+    frame_->panels_->record_dock_->show();
+    frame_->panels_->record_dock_->raise();
+    if (frame_->panels_->record_panel_ != nullptr) {
+      frame_->panels_->record_panel_->reloadFromPlayback();
+    }
+  }
   if (frame_->statusBar() != nullptr) {
-    frame_->statusBar()->showMessage(
-        frame_->tr("Playing %1").arg(QFileInfo(path).fileName()), 4000);
+    QString message =
+        frame_->tr("Playing %1").arg(QFileInfo(result.record_path).fileName());
+    if (added > 0) {
+      message +=
+          frame_->tr(" · added %1 display(s)").arg(added);
+    }
+    frame_->statusBar()->showMessage(message, 5000);
   }
   return true;
 }

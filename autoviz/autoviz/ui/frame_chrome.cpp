@@ -143,7 +143,8 @@ PanelMenuGroup PanelMenuGroupForType(const QString& type_id) {
       type_id == QLatin1String("ViewsDock")) {
     return PanelMenuGroup::kCoreViz;
   }
-  if (type_id == QLatin1String("ChannelBrowserDock") ||
+  if (type_id == QLatin1String("RecordDock") ||
+      type_id == QLatin1String("ChannelBrowserDock") ||
       type_id == QLatin1String("PlotDock") ||
       type_id == QLatin1String("TableDock") ||
       type_id == QLatin1String("ChannelsDock") ||
@@ -164,8 +165,9 @@ PanelMenuGroup PanelMenuGroupForType(const QString& type_id) {
 int PanelMenuPreferredOrder(const QString& type_id) {
   static const char* kCore[] = {"ViewportDock", "DisplaysDock", "ImageDock",
                                 "ViewsDock"};
-  static const char* kData[] = {"ChannelBrowserDock", "PlotDock", "TableDock",
-                                "ChannelsDock", "ChannelGraphDock", "TimeDock"};
+  static const char* kData[] = {"RecordDock", "ChannelBrowserDock", "PlotDock",
+                                "TableDock", "ChannelsDock", "ChannelGraphDock",
+                                "TimeDock"};
   static const char* kTools[] = {"SelectionDock", "Tools", "ToolPropertiesDock",
                                  "TfTreeDock", "TeleopDock"};
   const auto find = [&](const char* const* list, int n) {
@@ -180,7 +182,7 @@ int PanelMenuPreferredOrder(const QString& type_id) {
     case PanelMenuGroup::kCoreViz:
       return find(kCore, 4);
     case PanelMenuGroup::kDataObserve:
-      return find(kData, 5);
+      return find(kData, 7);
     case PanelMenuGroup::kToolsFrames:
       return find(kTools, 5);
     case PanelMenuGroup::kOther:
@@ -703,6 +705,9 @@ QString detail::PanelsMenuDisplayTitle(const QString& type_id, const QString& fa
   }
   if (type_id == QLatin1String("ChannelsDock")) {
     return QCoreApplication::translate("autoviz::VisualizationFrame", "Messages");
+  }
+  if (type_id == QLatin1String("RecordDock")) {
+    return QCoreApplication::translate("autoviz::VisualizationFrame", "Record");
   }
   if (type_id == QLatin1String("TimeDock")) {
     return QCoreApplication::translate("autoviz::VisualizationFrame", "Time");

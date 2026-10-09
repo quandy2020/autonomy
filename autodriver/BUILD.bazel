@@ -1,0 +1,211 @@
+"""Standalone Bazel build for autodriver (workspace root = this package)."""
+
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+_CORE_EXCLUDES = [
+    # RealSense stream drivers are optional (need librealsense2).
+    "autodriver/camera/realsense/imu_driver.cpp",
+    "autodriver/camera/realsense/camera_driver.cpp",
+    "autodriver/camera/realsense/pointcloud_driver.cpp",
+    "chassis/jetauto/**",
+    "chassis/l1w/**",
+    "**/test/**",
+    "**/testing/**",
+]
+
+genrule(
+    name = "conf_hpp",
+    srcs = [
+        "config/conf.hpp.in",
+        "version.json",
+    ],
+    outs = ["conf/conf.hpp"],
+    cmd = "python3 $(location //tools:gen_autodriver_conf.py) $(location config/conf.hpp.in) $(location version.json) $@",
+    tools = ["//tools:gen_autodriver_conf.py"],
+)
+
+cc_library(
+    name = "autodriver_conf",
+    hdrs = [":conf_hpp"],
+    include_prefix = "autodriver",
+)
+
+filegroup(
+    name = "config_files",
+    srcs = glob(
+        [
+            "config/**/*.yaml",
+            "config/**/*.yml",
+            "config/**/*.json",
+            "dag/**",
+            "launch/**",
+        ],
+        allow_empty = True,
+    ),
+)
+
+cc_library(
+    name = "autodriver",
+    srcs = glob(
+        [
+            "autodriver/**/*.cpp",
+            "chassis/*.cpp",
+            "chassis/stub/*.cpp",
+        ],
+        exclude = _CORE_EXCLUDES,
+    ),
+    hdrs = glob(
+        [
+            "autodriver/**/*.hpp",
+            "autodriver/**/*.h",
+            "chassis/*.hpp",
+            "chassis/stub/*.hpp",
+            # Headers only — implementations live in :jetauto_lib / :l1w_lib.
+            "chassis/jetauto/*.hpp",
+            "chassis/l1w/*.hpp",
+        ],
+        exclude = ["**/test/**"],
+        allow_empty = True,
+    ),
+    # Workspace-root package: cannot use includes=["."]; Bazel quote-includes
+    # the package root for hdrs (e.g. "autodriver/...", "chassis/...").
+    deps = [
+        ":autodriver_conf",
+        "//tools:eigen",
+        "//tools:glog",
+        "//tools:protobuf",
+        "//tools:pthread",
+        "//tools:udev",
+        "//tools:yaml_cpp",
+        "@autonomy_prefix//:automsgs",
+        "@local_autolink//:autolink",
+    ],
+)
+
+cc_binary(
+    name = "autodriver_bin",
+    srcs = [
+        "main.cpp",
+        "options.cpp",
+        "options.hpp",
+    ],
+    data = [":config_files"],
+    deps = [
+        ":autodriver",
+        "@local_cli11//:cli11",
+    ],
+)
+
+alias(
+    name = "autodriver_main",
+    actual = ":autodriver_bin",
+)
+
+_JETAUTO_SRCS = [
+    "chassis/jetauto/driver.cpp",
+    "chassis/jetauto/jetauto_component.cpp",
+    "chassis/jetauto/kinematics.cpp",
+    "chassis/jetauto/rrc_protocol.cpp",
+]
+
+_L1W_SRCS = [
+    "chassis/l1w/driver.cpp",
+    "chassis/l1w/l1w_component.cpp",
+]
+
+cc_library(
+    name = "jetauto_lib",
+    srcs = _JETAUTO_SRCS,
+    hdrs = glob(["chassis/jetauto/*.hpp"], allow_empty = True),
+    deps = [
+        ":autodriver",
+        "@local_autolink//:autolink",
+    ],
+)
+
+# Plugin .so: own objects + dynamic link libautodriver (matches CMake).
+cc_binary(
+    name = "autodriver_jetauto",
+    srcs = _JETAUTO_SRCS,
+    linkshared = True,
+    linkstatic = False,
+    deps = [
+        ":autodriver",
+        "@local_autolink//:autolink",
+    ],
+)
+
+cc_library(
+    name = "l1w_lib",
+    srcs = _L1W_SRCS,
+    hdrs = glob(["chassis/l1w/*.hpp"], allow_empty = True),
+    deps = [
+        ":autodriver",
+        "@local_autolink//:autolink",
+    ],
+)
+
+cc_binary(
+    name = "autodriver_l1w",
+    srcs = _L1W_SRCS,
+    linkshared = True,
+    linkstatic = False,
+    deps = [
+        ":autodriver",
+        "@local_autolink//:autolink",
+    ],
+)
+
+cc_test(
+    name = "test_joy_mapper",
+    size = "small",
+    srcs = ["test/test_joy_mapper.cpp"],
+    deps = [
+        ":autodriver",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "test_chassis_abstractions",
+    size = "small",
+    srcs = ["test/test_chassis_abstractions.cpp"],
+    deps = [
+        ":autodriver",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "test_chassis_backend_registry",
+    size = "small",
+    srcs = ["test/test_chassis_backend_registry.cpp"],
+    deps = [
+        ":autodriver",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "test_jetauto_kinematics",
+    size = "small",
+    srcs = ["test/test_jetauto_kinematics.cpp"],
+    deps = [
+        ":autodriver",
+        ":jetauto_lib",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "test_l1w_driver",
+    size = "small",
+    srcs = ["test/test_l1w_driver.cpp"],
+    deps = [
+        ":autodriver",
+        ":l1w_lib",
+        "@googletest//:gtest_main",
+    ],
+)

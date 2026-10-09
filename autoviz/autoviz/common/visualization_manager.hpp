@@ -23,6 +23,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <QImage>
@@ -274,6 +275,21 @@ class VisualizationManager {
    * @return Name vector.
    */
   std::vector<std::string> channelNames() const;
+
+  /**
+   * @brief Ensures Displays exist for channels in an opened record.
+   *
+   * Creates TF / PointCloud2 / Imu / Odometry (etc.) displays for record
+   * channels that do not already have a matching enabled display. Used by
+   * Open Record so subscribers exist before playback writers start.
+   *
+   * @param channel_types Channel → message-type map from the record.
+   * @param max_new Cap on newly created displays (default 16).
+   * @return Number of displays added.
+   */
+  int ensureDisplaysForRecordChannels(
+      const std::unordered_map<std::string, std::string>& channel_types,
+      int max_new = 16);
 
   /**
    * @brief Registers a redraw request callback (viewport update).

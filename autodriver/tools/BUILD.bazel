@@ -1,0 +1,45 @@
+load("//tools:system_libs.bzl", "system_library")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "gen_autodriver_conf.py",
+])
+
+alias(
+    name = "eigen",
+    actual = "@system_eigen//:eigen",
+)
+
+# Prefer absolute paths under /usr/local (docker SDKs) over distro libs.
+system_library(
+    name = "yaml_cpp",
+    linkopts = ["/usr/lib/x86_64-linux-gnu/libyaml-cpp.so"],
+)
+
+system_library(
+    name = "glog",
+    linkopts = [
+        "/usr/local/lib/libglog.so",
+        "-Wl,-rpath,/usr/local/lib",
+    ],
+)
+
+system_library(
+    name = "protobuf",
+    linkopts = [
+        "/usr/local/lib/libprotobuf.so",
+        "-Wl,-rpath,/usr/local/lib",
+    ],
+)
+
+system_library(
+    name = "pthread",
+    linkopts = ["-lpthread"],
+)
+
+system_library(
+    name = "udev",
+    linkopts = ["-ludev"],
+    defines = ["AUTODRIVER_HAVE_UDEV"],
+)

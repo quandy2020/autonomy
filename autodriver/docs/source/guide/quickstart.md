@@ -90,7 +90,27 @@ cd "$AUTODRIVER_PATH"
 ./scripts/create_udev_rules.sh     # 可选：/dev/rplidar
 ```
 
-### 2.3 产物
+### 2.3 Bazel（可选）
+
+`autodriver/` 为独立 Bazel 工程。先按上面用 CMake 产出 `autolink` / `automsgs`，再：
+
+```bash
+cd src/autonomy/autodriver
+export AUTONOMY_PREFIX=$PWD/../../../install/autonomy   # 或 ../../../build/autonomy
+export LD_LIBRARY_PATH=$AUTONOMY_PREFIX/lib:${LD_LIBRARY_PATH:-}
+bazel build //:autodriver //:autodriver_bin
+bazel test //:test_joy_mapper
+```
+
+| Bazel 目标 | 对应 CMake |
+|---|---|
+| `//:autodriver` | `libautodriver` |
+| `//:autodriver_bin` | `autodriver` 进程 |
+| `//:autodriver_jetauto` / `//:autodriver_l1w` | 底盘插件 `.so` |
+
+详见 [使用 · Bazel](usage.md#bazel-构建)。
+
+### 2.4 产物
 
 | 产物 | CMake target | 说明 |
 |---|---|---|

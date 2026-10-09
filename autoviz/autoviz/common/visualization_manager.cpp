@@ -6,6 +6,7 @@
 
 #include "autolink/time/time.hpp"
 #include <automsgs/msgs/time_utils.hpp>
+#include "autoviz/common/display_catalog.hpp"
 #include "autoviz/common/display_factory.hpp"
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/common/display_context.hpp"
@@ -22,6 +23,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <unordered_set>
 
 namespace autoviz {
 namespace common {
@@ -518,6 +520,110 @@ std::vector<std::string> VisualizationManager::channelNames() const {
     names.push_back(channel.channel_name);
   }
   return names;
+}
+
+int VisualizationManager::ensureDisplaysForRecordChannels(
+    const std::unordered_map<std::string, std::string>& channel_types,
+    int max_new) {
+  if (channel_types.empty() || max_new <= 0) {
+    return 0;
+  }
+
+  std::unordered_set<std::string> covered_channels;
+  bool has_tf_display = false;
+  std::function<void(display::Display*)> walk;
+  walk = [&](display::Display* display) {
+    if (display == nullptr) {
+      return;
+    }
+    if (display->typeId() == "TF") {
+      has_tf_display = true;
+    }
+    if (!display->channel().empty()) {
+      covered_channels.insert(display->channel());
+    }
+    if (auto* group = dynamic_cast<display::DisplayGroup*>(display)) {
+      for (const auto& child : group->children()) {
+        walk(child.get());
+      }
+    }
+  };
+  for (const auto& display : displays_) {
+    walk(display.get());
+  }
+
+  auto prefer_type = [](const std::vector<std::string>& types) -> std::string {
+    static const char* kPreferred[] = {"PointCloud2", "Imu",         "Odometry",
+                                       "LaserScan",   "Path",        "Marker",
+                                       "MarkerArray", "Image",       "CameraInfo",
+                                       "Pose",        "PoseStamped", "TF"};
+    for (const char* preferred : kPreferred) {
+      if (std::find(types.begin(), types.end(), preferred) != types.end()) {
+        return preferred;
+      }
+    }
+    return types.empty() ? std::string{} : types.front();
+  };
+
+  int added = 0;
+  // TF first: /tf + /tf_static feed the shared listener / TF display.
+  if (!has_tf_display) {
+    for (const auto& entry : channel_types) {
+      const auto matches =
+          DisplayCatalog::typesForChannel(entry.first, entry.second);
+      if (std::find(matches.begin(), matches.end(), "TF") == matches.end() &&
+          entry.first != "/tf" && entry.first != "/tf_static" &&
+          entry.first.find("tf2_msgs") == std::string::npos &&
+          entry.second.find("TFMessage") == std::string::npos) {
+        continue;
+      }
+      DisplayConfig config;
+      config.type = "TF";
+      config.name = "TF";
+      config.channel = "";
+      config.enabled = true;
+      if (addDisplay(config)) {
+        ++added;
+        has_tf_display = true;
+      }
+      break;
+    }
+  }
+
+  for (const auto& entry : channel_types) {
+    if (added >= max_new) {
+      break;
+    }
+    const std::string& channel = entry.first;
+    const std::string& message_type = entry.second;
+    if (channel.empty() || channel.rfind("/autolink/", 0) == 0) {
+      continue;
+    }
+    if (covered_channels.count(channel) > 0) {
+      continue;
+    }
+    if (DisplayCatalog::isStaticTfChannel(channel) || channel == "/tf" ||
+        channel == "/tf_static" || message_type.find("TFMessage") != std::string::npos) {
+      covered_channels.insert(channel);
+      continue;
+    }
+    const auto matches =
+        DisplayCatalog::typesForChannel(channel, message_type);
+    const std::string type = prefer_type(matches);
+    if (type.empty() || type == "TF") {
+      continue;
+    }
+    DisplayConfig config;
+    config.type = type;
+    config.name = channel;
+    config.channel = channel;
+    config.enabled = true;
+    if (addDisplay(config)) {
+      covered_channels.insert(channel);
+      ++added;
+    }
+  }
+  return added;
 }
 
 bool VisualizationManager::addDisplay(const DisplayConfig& config) {

@@ -1,0 +1,7 @@
+# Keep the autodriver workspace focused on buildable sources.
+docs
+thirdparty
+scripts
+examples
+cmake
+launch/Untitled

@@ -1038,11 +1038,18 @@ void ChannelsPanel::syncStatsProbes() {
     }
     const std::string channel = entry.first;
     const std::string message_type = entry.second;
+    // Internal playback / control channels must not be probed — they are owned
+    // by PlaybackController via ChannelReaderRegistry already.
+    if (channel.rfind("/autolink/", 0) == 0) {
+      continue;
+    }
     const auto id = integration::ChannelReaderRegistry::instance().subscribe(
         channel, [this, channel, message_type](const std::string& payload) {
           storeProbePayload(channel, message_type, payload);
         });
-    probe_subscriptions_.emplace(channel, id);
+    if (id != 0) {
+      probe_subscriptions_.emplace(channel, id);
+    }
   }
 }
 

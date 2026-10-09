@@ -274,15 +274,21 @@ autodriver::chassis::ChassisDriver::SharedPtr MakeHwDriver() {
       autodriver::chassis::CreateL1wChassisDriver("chassis/l1w_hw", params));
 }
 
-void SkipUnlessHwReady() {
-  if (!EnvTruthy("AUTODRIVER_L1W_HW_TEST")) {
-    GTEST_SKIP() << "set AUTODRIVER_L1W_HW_TEST=1 for live L1-W SDK tests";
-  }
-#if !defined(AUTODRIVER_HAVE_GENISOM_L1W)
-  GTEST_SKIP() << "autodriver_l1w built without GenisomL1w SDK "
-                  "(install thirdparty/zsl1w or -DGenisomL1w_ROOT=)";
+// GTEST_SKIP must run in the TEST body (return from a helper does not skip).
+#if defined(AUTODRIVER_HAVE_GENISOM_L1W)
+#define SKIP_UNLESS_L1W_HW_READY()                                            \
+  do {                                                                        \
+    if (!EnvTruthy("AUTODRIVER_L1W_HW_TEST")) {                               \
+      GTEST_SKIP() << "set AUTODRIVER_L1W_HW_TEST=1 for live L1-W SDK tests"; \
+    }                                                                         \
+  } while (0)
+#else
+#define SKIP_UNLESS_L1W_HW_READY()                                            \
+  do {                                                                        \
+    GTEST_SKIP() << "autodriver_l1w built without GenisomL1w SDK "            \
+                    "(install thirdparty/zsl1w or -DGenisomL1w_ROOT=)";       \
+  } while (0)
 #endif
-}
 
 TEST(L1wDriver, WheelMoveWithLateral) {
   auto driver = MakeSimDriver();
@@ -492,7 +498,7 @@ TEST(L1wBackendRegistry, Aliases) {
 // ---------------------------------------------------------------------------
 
 TEST(L1wDriverHw, ConnectAndSampleState) {
-  SkipUnlessHwReady();
+  SKIP_UNLESS_L1W_HW_READY();
 
   auto driver = MakeHwDriver();
   ASSERT_TRUE(driver->Start())
@@ -514,7 +520,7 @@ TEST(L1wDriverHw, ConnectAndSampleState) {
 }
 
 TEST(L1wDriverHw, WheelMoveStop) {
-  SkipUnlessHwReady();
+  SKIP_UNLESS_L1W_HW_READY();
   if (!EnvTruthy("AUTODRIVER_L1W_HW_MOTION")) {
     GTEST_SKIP() << "set AUTODRIVER_L1W_HW_MOTION=1 to enable tiny move";
   }
@@ -541,7 +547,7 @@ TEST(L1wDriverHw, WheelMoveStop) {
 }
 
 TEST(L1wDriverHw, VelocityCommandAxes) {
-  SkipUnlessHwReady();
+  SKIP_UNLESS_L1W_HW_READY();
   if (!EnvTruthy("AUTODRIVER_L1W_HW_MOTION")) {
     GTEST_SKIP() << "set AUTODRIVER_L1W_HW_MOTION=1 for live velocity cmds";
   }
@@ -573,7 +579,7 @@ TEST(L1wDriverHw, VelocityCommandAxes) {
 }
 
 TEST(L1wDriverHw, WalkCrawlCancel) {
-  SkipUnlessHwReady();
+  SKIP_UNLESS_L1W_HW_READY();
   if (!EnvTruthy("AUTODRIVER_L1W_HW_MOTION")) {
     GTEST_SKIP() << "set AUTODRIVER_L1W_HW_MOTION=1 to enable crawl";
   }
@@ -602,7 +608,7 @@ TEST(L1wDriverHw, WalkCrawlCancel) {
 }
 
 TEST(L1wDriverHw, SpecialTools) {
-  SkipUnlessHwReady();
+  SKIP_UNLESS_L1W_HW_READY();
   if (!EnvTruthy("AUTODRIVER_L1W_HW_SPECIAL")) {
     GTEST_SKIP() << "set AUTODRIVER_L1W_HW_SPECIAL=1 for shake/squat/climb "
                     "(clear space around the dog)";

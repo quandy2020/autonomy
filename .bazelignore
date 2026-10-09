@@ -1,0 +1,10 @@
+# Sibling Bazel workspaces.
+autodriver
+autolink
+autocmake
+autosim
+autoviz
+docker
+scripts
+docs
+autonomy/docs

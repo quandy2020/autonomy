@@ -71,6 +71,7 @@ class ToolPropertiesPanel;
 class SelectionPanel;
 class RawMessagesPanel;
 class ChannelsPanel;
+class RecordPanel;
 class PropertyInspectorPanel;
 class TfTreePanel;
 namespace plot { class PlotPanel; }
@@ -276,6 +277,13 @@ class FramePanels {
    * @param panel Teleop panel being unbound / destroyed.
    */
   void clearPropertyInspectorForTeleop(teleop::TeleopPanel* panel);
+
+  /**
+   * @brief Creates a Record playback dock (+ panel) and registers it.
+   * @param object_name Optional fixed @c objectName; empty → @c RecordDock.
+   * @return Singleton right-sidebar Record dock.
+   */
+  PanelDockWidget* createRecordPanelDock(const QString& object_name = QString());
 
   /**
    * @brief Creates a Channel Graph dock (+ panel) and registers it.
@@ -629,6 +637,13 @@ class FramePanels {
   void wireTfTreePanel(PanelDockWidget* dock, TfTreePanel* panel);
 
   /**
+   * @brief Connects Record panel signals (open file, title-bar actions).
+   * @param dock Host dock.
+   * @param panel Record content widget.
+   */
+  void wireRecordPanel(PanelDockWidget* dock, RecordPanel* panel);
+
+  /**
    * @brief Add Panel entry point (dialog / catalog → create and place dock).
    */
   void onAddPanel();
@@ -645,6 +660,9 @@ class FramePanels {
 
   /** Displays (visualization tree) dock. */
   PanelDockWidget* displays_dock_ = nullptr;
+
+  /** Record playback dock (right sidebar, rqt_bag-style). */
+  PanelDockWidget* record_dock_ = nullptr;
 
   /** Property Inspector dock. */
   PanelDockWidget* properties_dock_ = nullptr;
@@ -696,6 +714,9 @@ class FramePanels {
 
   /** Channels panel content. */
   ChannelsPanel* channels_panel_ = nullptr;
+
+  /** Record playback panel content. */
+  RecordPanel* record_panel_ = nullptr;
 
   /** Primary Image panel content. */
   image::ImagePanel* image_panel_ = nullptr;

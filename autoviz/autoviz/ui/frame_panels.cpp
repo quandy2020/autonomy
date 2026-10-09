@@ -93,6 +93,7 @@
 #include "autoviz/ui/teleop/teleop_panel.hpp"
 #include "autoviz/ui/raw/panel.hpp"
 #include "autoviz/ui/channels/channels_panel.hpp"
+#include "autoviz/ui/record/record_panel.hpp"
 #include "autoviz/ui/inspector/selection_panel.hpp"
 #include "autoviz/ui/inspector/tool_properties_panel.hpp"
 #include "autoviz/ui/tf_tree/panel.hpp"
@@ -493,13 +494,15 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
         dock == tf_dock_ || dock == channel_graph_dock_ ||
         dock == teleop_dock_ ||
         dock == channel_dock_ || dock == channels_dock_ ||
-        dock == displays_dock_ || dock == properties_dock_ ||
+        dock == displays_dock_ || dock == record_dock_ ||
+        dock == properties_dock_ ||
         dock == views_dock_ ||
         dock == selection_dock_ || dock == tool_props_dock_ ||
         dock == time_dock_ ||
         // Canonical singleton object names (startup primary instances).
         dock->objectName() == QLatin1String("ChannelGraphDock") ||
-        dock->objectName() == QLatin1String("TeleopDock");
+        dock->objectName() == QLatin1String("TeleopDock") ||
+        dock->objectName() == QLatin1String("RecordDock");
     const bool drop_duplicate = frame_->layout_->isMainPanel(dock) && !is_primary;
     if (drop_duplicate) {
       if (frame_->layout_->expanded_main_panel_dock_ == dock) {
@@ -1766,6 +1769,59 @@ PanelDockWidget* FramePanels::createTeleopPanelDock(
   registerPanelDock(dock);
   if (dock_name == QLatin1String("TeleopDock")) {
     teleop_dock_ = dock;
+  }
+  return dock;
+}
+
+void FramePanels::wireRecordPanel(PanelDockWidget* dock, RecordPanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  QObject::connect(panel, &RecordPanel::openRecordRequested, frame_,
+                   &VisualizationFrame::onOpenRecord);
+  QObject::connect(
+      panel, &RecordPanel::openInRawMessagesRequested, frame_,
+      [this](const QString& channel) {
+        if (channel_dock_ != nullptr) {
+          channel_dock_->show();
+          channel_dock_->raise();
+        }
+        if (raw_messages_panel_ != nullptr) {
+          raw_messages_panel_->selectChannel(channel);
+        }
+      });
+  QObject::connect(panel, &RecordPanel::panelRemoveRequested, dock,
+                   &QDockWidget::close);
+  QObject::connect(panel, &RecordPanel::panelExpandRequested, frame_,
+                   [this, dock]() { frame_->layout_->expandPanelDock(dock); });
+  QObject::connect(panel, &RecordPanel::panelChangeRequested, frame_,
+                   [this, dock](const QString& object_name) {
+                     frame_->layout_->changePanelInDock(dock, object_name);
+                   });
+}
+
+PanelDockWidget* FramePanels::createRecordPanelDock(
+    const QString& object_name) {
+  if (record_dock_ != nullptr &&
+      (object_name.isEmpty() ||
+       object_name == QLatin1String("RecordDock"))) {
+    return record_dock_;
+  }
+  const QString dock_name =
+      object_name.isEmpty() ? QStringLiteral("RecordDock") : object_name;
+  auto* dock = new PanelDockWidget(frame_->tr("Record"), frame_);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("RecordDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelRecord")));
+  auto* panel = new RecordPanel(frame_->manager_.get(), dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wireRecordPanel(dock, panel);
+  frame_->layout_->configureSidebarDock(dock, Qt::RightDockWidgetArea);
+  registerPanelDock(dock);
+  if (dock_name == QLatin1String("RecordDock")) {
+    record_dock_ = dock;
+    record_panel_ = panel;
   }
   return dock;
 }

@@ -62,14 +62,12 @@ ChannelReaderRegistry::SubscriptionId ChannelReaderRegistry::subscribe(
         }
       };
 
+  // Never DeleteReader+retry: another owner (e.g. PlaybackController before it
+  // used this registry) may already hold the channel. Stealing it races the
+  // scheduler croutine name and causes Create Task Failed / segfault.
   auto reader =
       node->CreateReader<::autolink::message::RawMessage>(channel,
                                                           reader_callback);
-  if (reader == nullptr) {
-    node->DeleteReader(channel);
-    reader = node->CreateReader<::autolink::message::RawMessage>(
-        channel, reader_callback);
-  }
 
   std::shared_ptr<::autolink::Reader<::autolink::message::RawMessage>> discard;
   {

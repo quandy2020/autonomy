@@ -1,0 +1,8 @@
+"""Parent autonomy workspace (sibling packages are their own Bazel projects)."""
+
+package(default_visibility = ["//visibility:public"])
+
+alias(
+    name = "automsgs",
+    actual = "@autonomy_prefix//:automsgs",
+)

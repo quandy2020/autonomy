@@ -102,6 +102,10 @@ autonomy/map/grid_map/grid_map_pcl/test_data/
 # Local feature worktrees
 .worktrees/
 
+# Bazel workspace outputs (MODULE.bazel.lock is committed for reproducibility)
+**/bazel-*
+user.bazelrc
+
 # OrbisView frontend install / build artifacts (never commit)
 autonomy/orbisview/frontend/node_modules/
 autonomy/orbisview/frontend/dist/
