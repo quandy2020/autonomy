@@ -410,6 +410,9 @@ void PlaybackController::stop() {
 
 void PlaybackController::setLoop(bool loop) {
   std::lock_guard<std::mutex> lock(mutex_);
+  if (loop_ == loop) {
+    return;
+  }
   loop_ = loop;
   if (playing_) {
     const double start = current_time_sec_.load();
@@ -419,7 +422,11 @@ void PlaybackController::setLoop(bool loop) {
 
 void PlaybackController::setPlayRate(double rate) {
   std::lock_guard<std::mutex> lock(mutex_);
-  play_rate_ = std::max(0.05, std::min(rate, 16.0));
+  const double clamped = std::max(0.05, std::min(rate, 16.0));
+  if (play_rate_ == clamped) {
+    return;
+  }
+  play_rate_ = clamped;
   if (playing_ && !paused_) {
     const double start = current_time_sec_.load();
     startPlayerLocked(start);

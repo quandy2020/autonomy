@@ -1,0 +1,129 @@
+"""Standalone Bazel build for Autoviz.
+
+Layout
+------
+  //:autoviz       shared library (Qt + Ogre + Autolink playback)
+  //:autoviz_app   thin binary  (`bin/autoviz`)
+  //tools:*        system / SDK deps, Qt moc|rcc, Ogre prefix discovery
+
+Source modules (see //tools:sources.bzl) are compiled as one `cc_library`
+today — `common ↔ ui` and `rendering ↔ display` still cross-include. Split
+only after those cycles are removed.
+"""
+
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+load("//tools:qt.bzl", "qt_cc_library")
+load("//tools:sources.bzl", "EXCLUDES", "MOC_GLOBS", "QRC_FILES")
+
+package(default_visibility = ["//visibility:public"])
+
+# Package-root include for `#include <autoviz/...>`.
+# Prefer `includes = ["."]` but Bazel 8 rejects that at the workspace root.
+# Prefer the Bazel @autolink tree over a stale /usr/local/include.
+_AVIZ_COPTS = [
+    "-I.",
+    "-Iexternal/autolink+",
+    "-I$(BINDIR)/external/autolink+",
+]
+
+# ---------------------------------------------------------------------------
+# Runtime assets
+# ---------------------------------------------------------------------------
+
+filegroup(
+    name = "runtime_files",
+    srcs = glob(
+        [
+            "config/**",
+            "resources/ogre_media/**",
+            "resources/icons/**",
+            "styles/**",
+            "translations/**",
+        ],
+        allow_empty = True,
+    ),
+)
+
+filegroup(
+    name = "qrc_data",
+    srcs = glob(
+        [
+            "resources/**",
+            "styles/**",
+        ],
+        allow_empty = True,
+    ),
+)
+
+# ---------------------------------------------------------------------------
+# Library  (libautoviz)
+# ---------------------------------------------------------------------------
+
+qt_cc_library(
+    name = "autoviz",
+    srcs = glob(
+        ["autoviz/**/*.cpp"],
+        exclude = EXCLUDES,
+    ),
+    hdrs = glob(
+        [
+            "autoviz/**/*.hpp",
+            "autoviz/**/*.h",
+        ],
+        exclude = EXCLUDES,
+        allow_empty = True,
+    ),
+    moc_hdrs = glob(
+        MOC_GLOBS,
+        exclude = EXCLUDES,
+        allow_empty = True,
+    ),
+    qrcs = QRC_FILES,
+    qrc_data = [":qrc_data"],
+    copts = _AVIZ_COPTS,
+    # Ogre media / plugin dirs are resolved at runtime via
+    # AUTOVIZ_OGRE_MEDIA_PATH and AUTOVIZ_OGRE_PLUGIN_DIR (see .bazelrc).
+    local_defines = [
+        "AUTOVIZ_OGRE_AVIZ_MEDIA",
+    ],
+    deps = [
+        "//tools:assimp",
+        "//tools:dl",
+        "//tools:eigen",
+        "//tools:ffmpeg",
+        "//tools:glog",
+        "//tools:ogre",
+        "//tools:protobuf",
+        "//tools:pthread",
+        "//tools:qt6",
+        "//tools:yaml_cpp",
+        "@autolink//:autolink",
+        "@autolink//:recorder_player",
+        "@automsgs//:automsgs",
+    ],
+)
+
+# ---------------------------------------------------------------------------
+# Binary  (OUTPUT_NAME autoviz)
+# ---------------------------------------------------------------------------
+
+cc_binary(
+    name = "autoviz_app",
+    srcs = ["autoviz/main.cpp"],
+    copts = _AVIZ_COPTS,
+    data = [
+        ":runtime_files",
+        "//tools:ogre_plugins",
+    ],
+    deps = [
+        ":autoviz",
+        "//tools:glog",
+        "//tools:qt6",
+    ],
+)
+
+# Friendly alias matching the installed binary name.
+alias(
+    name = "autoviz_bin",
+    actual = ":autoviz_app",
+)

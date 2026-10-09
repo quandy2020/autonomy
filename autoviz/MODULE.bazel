@@ -1,0 +1,28 @@
+"""Standalone Bazel module for Autoviz (Qt + Ogre visualizer)."""
+
+module(
+    name = "autoviz",
+    version = "0.1.0",
+    compatibility_level = 1,
+)
+
+bazel_dep(name = "rules_cc", version = "0.1.1")
+bazel_dep(name = "platforms", version = "0.0.11")
+
+# Sibling packages — built from source (same style as //autonomy).
+bazel_dep(name = "automsgs", version = "1.0.0")
+bazel_dep(name = "autolink", version = "0.1.0")
+
+local_path_override(
+    module_name = "automsgs",
+    path = "../automsgs",
+)
+
+local_path_override(
+    module_name = "autolink",
+    path = "../autolink",
+)
+
+# System / prebuilt trees: Qt6 headers, Eigen, Ogre 1.12 prefix.
+deps = use_extension("//tools:deps.bzl", "deps")
+use_repo(deps, "eigen", "ogre", "qt6")

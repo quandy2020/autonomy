@@ -1,0 +1,95 @@
+"""Autoviz toolchains: system libraries, BUILD templates, and helpers."""
+
+load("//tools:system_libs.bzl", "system_library")
+
+package(default_visibility = ["//visibility:public"])
+
+# ---------------------------------------------------------------------------
+# Repo BUILD templates (read by //tools:deps.bzl)
+# ---------------------------------------------------------------------------
+
+exports_files([
+    "eigen.BUILD",
+    "ogre.BUILD",
+    "qt6.BUILD",
+    "sources.bzl",
+    "qt.bzl",
+    "system_libs.bzl",
+    "deps.bzl",
+])
+
+# ---------------------------------------------------------------------------
+# Aliases for external repos
+# ---------------------------------------------------------------------------
+
+alias(
+    name = "eigen",
+    actual = "@eigen//:eigen",
+)
+
+alias(
+    name = "qt6",
+    actual = "@qt6//:qt6",
+)
+
+alias(
+    name = "ogre",
+    actual = "@ogre//:ogre",
+)
+
+alias(
+    name = "ogre_plugins",
+    actual = "@ogre//:plugins",
+)
+
+# ---------------------------------------------------------------------------
+# System / SDK libraries  (prefer /usr/local docker SDKs)
+# ---------------------------------------------------------------------------
+
+system_library(
+    name = "glog",
+    linkopts = [
+        "/usr/local/lib/libglog.so",
+        "-Wl,-rpath,/usr/local/lib",
+    ],
+)
+
+system_library(
+    name = "protobuf",
+    linkopts = [
+        "/usr/local/lib/libprotobuf.so",
+        "-Wl,-rpath,/usr/local/lib",
+    ],
+)
+
+system_library(
+    name = "yaml_cpp",
+    linkopts = ["/usr/lib/x86_64-linux-gnu/libyaml-cpp.so"],
+)
+
+system_library(
+    name = "pthread",
+    linkopts = ["-lpthread"],
+)
+
+system_library(
+    name = "dl",
+    linkopts = ["-ldl"],
+)
+
+system_library(
+    name = "assimp",
+    linkopts = ["/usr/lib/x86_64-linux-gnu/libassimp.so"],
+    defines = ["AUTOVIZ_USE_ASSIMP"],
+)
+
+system_library(
+    name = "ffmpeg",
+    linkopts = [
+        "-lavcodec",
+        "-lavformat",
+        "-lavutil",
+        "-lswscale",
+    ],
+    defines = ["AUTOVIZ_USE_FFMPEG"],
+)

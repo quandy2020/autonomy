@@ -1080,7 +1080,7 @@ void RecordPanel::applyChromeStyles() {
       "  padding: 2px 8px; color: #3d4a57;"
       "}"
       "QLabel#RecordTimeLabel {"
-      "  color: #3d4a57; font-variant-numeric: tabular-nums;"
+      "  color: #3d4a57;"
       "  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;"
       "  font-size: 11px;"
       "}"

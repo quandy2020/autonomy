@@ -771,8 +771,8 @@ bool FrameSession::openRecordFile(const QString& path) {
   frame_->manager_->update();
   QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 
-  playback.seekTo(0.0);
-  QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+  // Skip seekTo/preview before first play: previewAtLocked creates ephemeral
+  // Writers then destroys them, racing topology callbacks into freed Writer*.
   if (!playback.play(1.0, false)) {
     QMessageBox::warning(
         frame_, frame_->tr("Open Record"),
