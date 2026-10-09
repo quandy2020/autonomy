@@ -1,4 +1,4 @@
-# Standalone autodriver Bazel workspace.
+# Standalone autodriver workspace.
 
 common --enable_bzlmod
 
@@ -7,12 +7,11 @@ build --host_cxxopt=-std=c++17
 build --copt=-Wall
 build --copt=-Wno-unused-parameter
 
-# CMake install/build tree that provides libautolink.so + libautomsgs.so.
+# Inherit AUTONOMY_PREFIX / LD_LIBRARY_PATH from the environment.
 build --repo_env=AUTONOMY_PREFIX
 test --repo_env=AUTONOMY_PREFIX
-
-test --test_env=LD_LIBRARY_PATH
 build --action_env=LD_LIBRARY_PATH
+test --test_env=LD_LIBRARY_PATH
 
 build --incompatible_strict_action_env=false
 

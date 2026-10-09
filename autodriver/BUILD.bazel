@@ -1,39 +1,33 @@
-"""Standalone Bazel build for autodriver (workspace root = this package)."""
+"""Standalone Bazel build for autodriver."""
 
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+load("//tools:chassis.bzl", "chassis_plugin")
 
 package(default_visibility = ["//visibility:public"])
 
-_CORE_EXCLUDES = [
-    # RealSense stream drivers are optional (need librealsense2).
-    "autodriver/camera/realsense/imu_driver.cpp",
-    "autodriver/camera/realsense/camera_driver.cpp",
-    "autodriver/camera/realsense/pointcloud_driver.cpp",
-    "chassis/jetauto/**",
-    "chassis/l1w/**",
-    "**/test/**",
-    "**/testing/**",
-]
+# ---------------------------------------------------------------------------
+# Generated conf.hpp  (#include "autodriver/conf/conf.hpp")
+# ---------------------------------------------------------------------------
 
 genrule(
-    name = "conf_hpp",
+    name = "generate_conf",
     srcs = [
         "config/conf.hpp.in",
         "version.json",
     ],
     outs = ["conf/conf.hpp"],
-    cmd = "python3 $(location //tools:gen_autodriver_conf.py) $(location config/conf.hpp.in) $(location version.json) $@",
-    tools = ["//tools:gen_autodriver_conf.py"],
+    cmd = "python3 $(location //tools:gen_conf.py) $(location config/conf.hpp.in) $(location version.json) $@",
+    tools = ["//tools:gen_conf.py"],
 )
 
 cc_library(
-    name = "autodriver_conf",
-    hdrs = [":conf_hpp"],
+    name = "conf",
+    hdrs = [":generate_conf"],
     include_prefix = "autodriver",
 )
 
 filegroup(
-    name = "config_files",
+    name = "runtime_files",
     srcs = glob(
         [
             "config/**/*.yaml",
@@ -46,6 +40,22 @@ filegroup(
     ),
 )
 
+# ---------------------------------------------------------------------------
+# Core library
+# ---------------------------------------------------------------------------
+
+CORE_EXCLUDES = [
+    # Optional RealSense stream drivers (need librealsense2).
+    "autodriver/camera/realsense/imu_driver.cpp",
+    "autodriver/camera/realsense/camera_driver.cpp",
+    "autodriver/camera/realsense/pointcloud_driver.cpp",
+    # Chassis plugins are separate shared objects.
+    "chassis/jetauto/**",
+    "chassis/l1w/**",
+    "**/test/**",
+    "**/testing/**",
+]
+
 cc_library(
     name = "autodriver",
     srcs = glob(
@@ -54,7 +64,7 @@ cc_library(
             "chassis/*.cpp",
             "chassis/stub/*.cpp",
         ],
-        exclude = _CORE_EXCLUDES,
+        exclude = CORE_EXCLUDES,
     ),
     hdrs = glob(
         [
@@ -62,27 +72,28 @@ cc_library(
             "autodriver/**/*.h",
             "chassis/*.hpp",
             "chassis/stub/*.hpp",
-            # Headers only — implementations live in :jetauto_lib / :l1w_lib.
             "chassis/jetauto/*.hpp",
             "chassis/l1w/*.hpp",
         ],
         exclude = ["**/test/**"],
         allow_empty = True,
     ),
-    # Workspace-root package: cannot use includes=["."]; Bazel quote-includes
-    # the package root for hdrs (e.g. "autodriver/...", "chassis/...").
     deps = [
-        ":autodriver_conf",
+        ":conf",
         "//tools:eigen",
         "//tools:glog",
         "//tools:protobuf",
         "//tools:pthread",
         "//tools:udev",
         "//tools:yaml_cpp",
-        "@autonomy_prefix//:automsgs",
-        "@local_autolink//:autolink",
+        "@autolink//:autolink",
+        "@prefix//:automsgs",
     ],
 )
+
+# ---------------------------------------------------------------------------
+# Binary
+# ---------------------------------------------------------------------------
 
 cc_binary(
     name = "autodriver_bin",
@@ -91,72 +102,46 @@ cc_binary(
         "options.cpp",
         "options.hpp",
     ],
-    data = [":config_files"],
+    data = [":runtime_files"],
     deps = [
         ":autodriver",
-        "@local_cli11//:cli11",
+        "@cli11//:cli11",
     ],
 )
 
+# CMake OUTPUT_NAME is "autodriver"; keep a friendly alias.
 alias(
     name = "autodriver_main",
     actual = ":autodriver_bin",
 )
 
-_JETAUTO_SRCS = [
-    "chassis/jetauto/driver.cpp",
-    "chassis/jetauto/jetauto_component.cpp",
-    "chassis/jetauto/kinematics.cpp",
-    "chassis/jetauto/rrc_protocol.cpp",
-]
+# ---------------------------------------------------------------------------
+# Chassis plugins  (libautodriver_{jetauto,l1w}.so)
+# ---------------------------------------------------------------------------
 
-_L1W_SRCS = [
-    "chassis/l1w/driver.cpp",
-    "chassis/l1w/l1w_component.cpp",
-]
-
-cc_library(
-    name = "jetauto_lib",
-    srcs = _JETAUTO_SRCS,
+chassis_plugin(
+    name = "jetauto",
+    srcs = [
+        "chassis/jetauto/driver.cpp",
+        "chassis/jetauto/jetauto_component.cpp",
+        "chassis/jetauto/kinematics.cpp",
+        "chassis/jetauto/rrc_protocol.cpp",
+    ],
     hdrs = glob(["chassis/jetauto/*.hpp"], allow_empty = True),
-    deps = [
-        ":autodriver",
-        "@local_autolink//:autolink",
-    ],
 )
 
-# Plugin .so: own objects + dynamic link libautodriver (matches CMake).
-cc_binary(
-    name = "autodriver_jetauto",
-    srcs = _JETAUTO_SRCS,
-    linkshared = True,
-    linkstatic = False,
-    deps = [
-        ":autodriver",
-        "@local_autolink//:autolink",
+chassis_plugin(
+    name = "l1w",
+    srcs = [
+        "chassis/l1w/driver.cpp",
+        "chassis/l1w/l1w_component.cpp",
     ],
-)
-
-cc_library(
-    name = "l1w_lib",
-    srcs = _L1W_SRCS,
     hdrs = glob(["chassis/l1w/*.hpp"], allow_empty = True),
-    deps = [
-        ":autodriver",
-        "@local_autolink//:autolink",
-    ],
 )
 
-cc_binary(
-    name = "autodriver_l1w",
-    srcs = _L1W_SRCS,
-    linkshared = True,
-    linkstatic = False,
-    deps = [
-        ":autodriver",
-        "@local_autolink//:autolink",
-    ],
-)
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
 
 cc_test(
     name = "test_joy_mapper",

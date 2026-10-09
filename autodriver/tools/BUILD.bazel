@@ -2,21 +2,28 @@ load("//tools:system_libs.bzl", "system_library")
 
 package(default_visibility = ["//visibility:public"])
 
+# ---------------------------------------------------------------------------
+# Scripts + repo BUILD templates (read by //tools:deps.bzl)
+# ---------------------------------------------------------------------------
+
 exports_files([
-    "gen_autodriver_conf.py",
+    "gen_conf.py",
+    "prefix.BUILD",
+    "autolink.BUILD",
+    "cli11.BUILD",
+    "eigen.BUILD",
 ])
+
+# ---------------------------------------------------------------------------
+# System / external libraries
+# ---------------------------------------------------------------------------
 
 alias(
     name = "eigen",
-    actual = "@system_eigen//:eigen",
+    actual = "@eigen//:eigen",
 )
 
-# Prefer absolute paths under /usr/local (docker SDKs) over distro libs.
-system_library(
-    name = "yaml_cpp",
-    linkopts = ["/usr/lib/x86_64-linux-gnu/libyaml-cpp.so"],
-)
-
+# Prefer /usr/local (docker SDKs) over older distro libraries.
 system_library(
     name = "glog",
     linkopts = [
@@ -31,6 +38,11 @@ system_library(
         "/usr/local/lib/libprotobuf.so",
         "-Wl,-rpath,/usr/local/lib",
     ],
+)
+
+system_library(
+    name = "yaml_cpp",
+    linkopts = ["/usr/lib/x86_64-linux-gnu/libyaml-cpp.so"],
 )
 
 system_library(

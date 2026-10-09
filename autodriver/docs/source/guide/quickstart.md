@@ -96,10 +96,9 @@ cd "$AUTODRIVER_PATH"
 
 ```bash
 cd src/autonomy/autodriver
-export AUTONOMY_PREFIX=$PWD/../../../install/autonomy   # 或 ../../../build/autonomy
-export LD_LIBRARY_PATH=$AUTONOMY_PREFIX/lib:${LD_LIBRARY_PATH:-}
-bazel build //:autodriver //:autodriver_bin
-bazel test //:test_joy_mapper
+export AUTONOMY_PREFIX=$PWD/../../../install/autonomy   # 可省略：脚本会自动探测
+./autodriver.sh build
+./autodriver.sh test
 ```
 
 | Bazel 目标 | 对应 CMake |

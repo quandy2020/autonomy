@@ -10,13 +10,6 @@ bazel_dep(name = "rules_cc", version = "0.1.1")
 bazel_dep(name = "platforms", version = "0.0.11")
 bazel_dep(name = "googletest", version = "1.15.2")
 
-# Sibling autolink headers + CMake prefix (.so / generated automsgs) + Eigen.
-# Override prefix: bazel build --repo_env=AUTONOMY_PREFIX=/path/to/prefix ...
-autodriver_deps = use_extension("//tools:autodriver_deps.bzl", "autodriver_deps")
-use_repo(
-    autodriver_deps,
-    "autonomy_prefix",
-    "local_autolink",
-    "local_cli11",
-    "system_eigen",
-)
+# Local CMake prefix + sibling headers. Override with AUTONOMY_PREFIX.
+deps = use_extension("//tools:deps.bzl", "deps")
+use_repo(deps, "prefix", "autolink", "cli11", "eigen")

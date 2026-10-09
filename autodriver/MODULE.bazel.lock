@@ -147,28 +147,28 @@
   },
   "selectedYankedVersions": {},
   "moduleExtensions": {
-    "//tools:autodriver_deps.bzl%autodriver_deps": {
+    "//tools:deps.bzl%deps": {
       "general": {
-        "bzlTransitiveDigest": "m/aF6f97x3YEMR2xsGFQQIwVUePMQMddrz6HoDW9uig=",
-        "usagesDigest": "O8Trk3cGTOe82pYnpPOWSsWXdWvSn+t4BAGWYn36qRc=",
+        "bzlTransitiveDigest": "mlEyOU7+7BjkyFsxJ62nB42GD3UJQrLvwtOsVI8624E=",
+        "usagesDigest": "nyKJ/9WWplZzvoRnGkGGqjuI4PHj1RyuQ3vVYHtgiPM=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
         "generatedRepoSpecs": {
-          "autonomy_prefix": {
-            "repoRuleId": "@@//tools:autodriver_deps.bzl%autonomy_prefix",
+          "prefix": {
+            "repoRuleId": "@@//tools:deps.bzl%_prefix",
             "attributes": {}
           },
-          "local_autolink": {
-            "repoRuleId": "@@//tools:autodriver_deps.bzl%local_autolink",
+          "autolink": {
+            "repoRuleId": "@@//tools:deps.bzl%_autolink",
             "attributes": {}
           },
-          "local_cli11": {
-            "repoRuleId": "@@//tools:autodriver_deps.bzl%local_cli11",
+          "cli11": {
+            "repoRuleId": "@@//tools:deps.bzl%_cli11",
             "attributes": {}
           },
-          "system_eigen": {
-            "repoRuleId": "@@//tools:autodriver_deps.bzl%system_eigen",
+          "eigen": {
+            "repoRuleId": "@@//tools:deps.bzl%_eigen",
             "attributes": {}
           }
         },

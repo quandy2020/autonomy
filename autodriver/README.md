@@ -58,21 +58,27 @@ export AUTOLINK_LIB_PATH=$PWD/build/autonomy/lib
 
 ### Bazel
 
-`autodriver/` 是独立 Bazel 工程（自带 `MODULE.bazel`）。需要先用 CMake 装好 `autolink` / `automsgs`（`libautolink.so`、`libautomsgs.so` 与生成头文件）。默认在仓库根 `install/autonomy` 或 `build/autonomy` 查找；也可用 `AUTONOMY_PREFIX` 指定。
+`autodriver/` 是独立 Bazel 工程。需要先用 CMake 装好 `autolink` / `automsgs`。推荐用包装脚本：
 
 ```bash
 cd src/autonomy/autodriver
-export AUTONOMY_PREFIX=$PWD/../../../install/autonomy   # 或 ../../../build/autonomy
-export LD_LIBRARY_PATH=$AUTONOMY_PREFIX/lib:${LD_LIBRARY_PATH:-}
+export AUTONOMY_PREFIX=$PWD/../../../install/autonomy   # 可省略：脚本会自动探测
+./autodriver.sh build
+./autodriver.sh test
+./autodriver.sh install --prefix ./install
+```
 
+等价的裸 bazel 命令：
+
+```bash
 bazel build //:autodriver //:autodriver_bin //:autodriver_jetauto //:autodriver_l1w
-bazel test //:test_joy_mapper
+bazel test //...
 ```
 
 | 目标 | 含义 |
 |---|---|
 | `//:autodriver` | `libautodriver`（传感 + chassis 核心） |
-| `//:autodriver_bin` | 进程二进制 |
+| `//:autodriver_bin` | 进程二进制（安装名为 `autodriver`） |
 | `//:autodriver_jetauto` / `//:autodriver_l1w` | 底盘插件 `.so` |
 | `//:test_*` | 单测 |
 

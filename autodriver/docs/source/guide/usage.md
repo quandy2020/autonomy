@@ -59,15 +59,14 @@ autodriver --pair-joy --pair-mode driver            # usb 别名
 
 ### Bazel 构建
 
-`autodriver/` 自带完整 Bazel 工程（`MODULE.bazel`）。`autolink` / `automsgs` 仍由 CMake 产出，Bazel 通过 `AUTONOMY_PREFIX`（默认仓库根 `install/autonomy` 或 `build/autonomy`）链接预编译库。
+`autodriver/` 自带完整 Bazel 工程。`autolink` / `automsgs` 仍由 CMake 产出；通过 `AUTONOMY_PREFIX`（或 `./autodriver.sh` 自动探测）链接预编译库。
 
 ```bash
 cd src/autonomy/autodriver
-export AUTONOMY_PREFIX=$PWD/../../../install/autonomy
-export LD_LIBRARY_PATH=$AUTONOMY_PREFIX/lib:${LD_LIBRARY_PATH:-}
-
-bazel build //:autodriver //:autodriver_bin //:autodriver_jetauto //:autodriver_l1w
-bazel test //:test_joy_mapper
+export AUTONOMY_PREFIX=$PWD/../../../install/autonomy   # 可省略
+./autodriver.sh build
+./autodriver.sh test
+# 或: bazel build //:autodriver //:autodriver_bin //:autodriver_jetauto //:autodriver_l1w
 ```
 
 可选传感 SDK（RealSense / Orbbec / Livox / RPLidar）默认关闭，与 CMake 未找到 SDK 时行为一致。
