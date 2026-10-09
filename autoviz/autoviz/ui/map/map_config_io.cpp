@@ -135,7 +135,7 @@ MapPanelConfig FromPersistConfig(const common::MapPanelPersistConfig& persist) {
   MapPanelConfig config = DefaultMapPanelConfig();
   config.title = QString::fromStdString(persist.title);
   config.base_layer = static_cast<MapBaseLayer>(
-      ClampEnum(persist.base_layer, static_cast<int>(MapBaseLayer::kJapanStandard)));
+      ClampEnum(persist.base_layer, static_cast<int>(MapBaseLayer::kBingAerial)));
   config.custom_tile_url = QString::fromStdString(persist.custom_tile_url);
   config.follow_channel = QString::fromStdString(persist.follow_channel);
   config.gcs_channel = QString::fromStdString(persist.gcs_channel);

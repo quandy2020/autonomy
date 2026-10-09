@@ -17,8 +17,12 @@
 
 #pragma once
 
+#include <functional>
+
+#include <QByteArray>
 #include <QList>
 #include <QMainWindow>
+#include <QString>
 
 class QDockWidget;
 class QResizeEvent;
@@ -127,6 +131,28 @@ class MainPanelHost : public QMainWindow {
   void syncHorizontalDockLayout();
 
   /**
+   * @brief Serializes the center mosaic (splitter tree + leaf dock names).
+   *
+   * Format: @c mosaic:v1: + compact JSON. Replaces legacy
+   * @c QMainWindow::saveState() blobs which do not capture splitter layout.
+   *
+   * @return Encoded layout bytes (may be empty when there are no leaves).
+   */
+  QByteArray saveMosaicLayout() const;
+
+  /**
+   * @brief Rebuilds the splitter tree from @ref saveMosaicLayout() output.
+   *
+   * @param encoded Bytes from @ref saveMosaicLayout() (or legacy ignored).
+   * @param resolve Maps dock @c objectName → existing @c QDockWidget
+   *        (must not create widgets; return null to skip a leaf).
+   * @return @c true when a mosaic:v1 payload was applied successfully.
+   */
+  bool restoreMosaicLayout(
+      const QByteArray& encoded,
+      const std::function<QDockWidget*(const QString& object_name)>& resolve);
+
+  /**
    * @brief Nested host must not push large minimums into VisualizationFrame.
    * @return Compact minimum size.
    */
@@ -162,8 +188,22 @@ class MainPanelHost : public QMainWindow {
    */
   QList<QDockWidget*> hostedPanels() const;
 
+  /**
+   * @brief Parks a dock under @ref parking_ (never as a QMainWindow child).
+   *
+   * @c QDockWidget::setParent(QMainWindow*) engages Qt dock machinery and can
+   * corrupt the widget heap when the dock uses @c NoDockWidgetArea.
+   */
+  void parkDock(QDockWidget* dock);
+
   /** Root of the nested splitter tree (central widget). */
   QSplitter* root_splitter_ = nullptr;
+
+  /**
+   * Hidden plain @c QWidget used to hold docks detached from the mosaic.
+   * Must not be a @c QMainWindow — see @ref parkDock().
+   */
+  QWidget* parking_ = nullptr;
 
   /** Re-entrancy guard while @ref tilePanels() rebuilds the tree. */
   bool tiling_ = false;

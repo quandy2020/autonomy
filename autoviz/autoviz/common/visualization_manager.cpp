@@ -82,16 +82,28 @@ bool VisualizationManager::initialize(const char* binary_name) {
   return true;
 }
 
+void VisualizationManager::detachDisplaysFromScene() {
+  // Suppress sync redraw while tearing down GPU-backed display state.
+  redraw_callback_ = nullptr;
+  display_context_.request_redraw = nullptr;
+  for (auto& display : displays_) {
+    if (display != nullptr) {
+      display->setEnabled(false);
+    }
+  }
+}
+
 void VisualizationManager::shutdown() {
   if (!initialized_) {
     return;
   }
   // Suppress sync redraw while destroying displays (see applySession).
-  auto saved_redraw = std::move(redraw_callback_);
   redraw_callback_ = nullptr;
   display_context_.request_redraw = nullptr;
   for (auto& display : displays_) {
-    display->setEnabled(false);
+    if (display != nullptr) {
+      display->setEnabled(false);
+    }
   }
   displays_.clear();
   display_views_.clear();
@@ -104,7 +116,6 @@ void VisualizationManager::shutdown() {
   autolink_.shutdown();
   cached_channels_.clear();
   initialized_ = false;
-  redraw_callback_ = std::move(saved_redraw);
 }
 
 bool VisualizationManager::ok() const { return autolink_.ok(); }

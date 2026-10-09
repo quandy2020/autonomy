@@ -13,9 +13,11 @@
 #include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/common/selection_handler.hpp"
+#include "autoviz/common/display_context.hpp"
 #include "autoviz/display/ogre_colored_points_draw.hpp"
 #include "autoviz/display/point_cloud_utils.hpp"
 #include "autoviz/display/transform_utils.hpp"
+#include "autoviz/rendering/ogre_scene_host.hpp"
 #include "autoviz/rendering/point_cloud_style_utils.hpp"
 
 namespace autoviz {
@@ -320,6 +322,14 @@ void PointCloud2Display::processMessage(
 
 void PointCloud2Display::clearReceivedData() {
   batches_.clear();
+}
+
+void PointCloud2Display::onDisable() {
+  ChannelDisplay<automsgs::msgs::sensor_msgs::PointCloud2>::onDisable();
+  batches_.clear();
+  if (context_ != nullptr && context_->ogre_scene_host != nullptr) {
+    context_->ogre_scene_host->removeDisplay(name());
+  }
 }
 
 void PointCloud2Display::onDraw(rendering::SceneOverlay& scene) {

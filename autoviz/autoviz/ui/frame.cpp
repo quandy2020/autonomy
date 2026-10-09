@@ -15,6 +15,8 @@
 
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/common/selection.hpp"
+#include "autoviz/rendering/ogre_render_window.hpp"
+#include "autoviz/rendering/ogre_scene_host.hpp"
 #include "autoviz/rendering/view_controller.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/app/preferences.hpp"
@@ -167,6 +169,18 @@ VisualizationFrame::VisualizationFrame(
 VisualizationFrame::~VisualizationFrame() {
   session_->render_timer_.stop();
   session_->refresh_timer_.stop();
+  // PointCloud2 / Map / etc. hold Ogre objects that must be released while
+  // render windows still exist. manager_->shutdown() runs after ~Frame.
+  if (manager_ != nullptr) {
+    manager_->detachDisplaysFromScene();
+  }
+  viewport_->forEachViewportPanel([](ViewportPanelEntry& entry) {
+    if (entry.ogre_viewport != nullptr) {
+      if (auto* host = entry.ogre_viewport->ogreSceneHost()) {
+        host->clear();
+      }
+    }
+  });
   if (qApp != nullptr) {
     QObject::disconnect(qApp, &QApplication::aboutToQuit, this,
                         &VisualizationFrame::onAboutToQuit);

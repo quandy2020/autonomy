@@ -10,19 +10,28 @@ namespace map {
 MapPanelConfig DefaultMapPanelConfig() {
   MapPanelConfig config;
   config.title = QString();
+  // Prefer CARTO over openstreetmap.org — OSM tile TLS is often reset/blocked
+  // in CN and some corporate networks, leaving the Map panel blank.
+  config.base_layer = MapBaseLayer::kCartoVoyager;
   return config;
 }
 
 QString BaseLayerTileUrlTemplate(MapBaseLayer layer, const QString& custom_url) {
   switch (layer) {
     case MapBaseLayer::kStreet:
-      return QStringLiteral("https://tile.openstreetmap.org/{z}/{x}/{y}.png");
+      // OSM-sourced street tiles via CARTO (openstreetmap.org TLS often fails).
+      return QStringLiteral(
+          "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png");
     case MapBaseLayer::kSatellite:
       return QStringLiteral(
           "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/"
           "MapServer/tile/{z}/{y}/{x}");
     case MapBaseLayer::kShadedRelief:
-      return QStringLiteral("https://tile.opentopomap.org/{z}/{x}/{y}.png");
+      // OpenTopoMap is frequently unreachable; Esri terrain is a stable relief
+      // basemap with the same UX role.
+      return QStringLiteral(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/"
+          "World_Terrain_Base/MapServer/tile/{z}/{y}/{x}");
     case MapBaseLayer::kCustom:
       return custom_url.trimmed();
     case MapBaseLayer::kEsriStreet:
@@ -39,6 +48,23 @@ QString BaseLayerTileUrlTemplate(MapBaseLayer layer, const QString& custom_url) 
     case MapBaseLayer::kJapanStandard:
       return QStringLiteral(
           "https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png");
+    case MapBaseLayer::kAmapStreet:
+      // {s} → 1..4. Tiles are GCJ-02; WGS-84 overlays may show China offset.
+      return QStringLiteral(
+          "https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&"
+          "scale=1&style=8&x={x}&y={y}&z={z}");
+    case MapBaseLayer::kAmapSatellite:
+      return QStringLiteral(
+          "https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&"
+          "z={z}");
+    case MapBaseLayer::kBingRoad:
+      return QStringLiteral(
+          "https://t{s}.ssl.ak.dynamic.tiles.virtualearth.net/comp/ch/"
+          "{quadkey}?mkt=zh-CN&it=G,L&n=z");
+    case MapBaseLayer::kBingAerial:
+      return QStringLiteral(
+          "https://t{s}.ssl.ak.dynamic.tiles.virtualearth.net/comp/ch/"
+          "{quadkey}?mkt=en-US&it=A&n=z");
   }
   return {};
 }
@@ -61,6 +87,14 @@ int BaseLayerMaxNativeZoom(MapBaseLayer layer) {
       return 20;
     case MapBaseLayer::kJapanStandard:
       return 18;
+    case MapBaseLayer::kAmapStreet:
+      return 18;
+    case MapBaseLayer::kAmapSatellite:
+      return 18;
+    case MapBaseLayer::kBingRoad:
+      return 19;
+    case MapBaseLayer::kBingAerial:
+      return 19;
   }
   return 19;
 }
@@ -83,6 +117,14 @@ QString BaseLayerLabel(MapBaseLayer layer) {
       return QStringLiteral("CARTO Voyager");
     case MapBaseLayer::kJapanStandard:
       return QStringLiteral("Japan GSI");
+    case MapBaseLayer::kAmapStreet:
+      return QStringLiteral("Amap Street");
+    case MapBaseLayer::kAmapSatellite:
+      return QStringLiteral("Amap Satellite");
+    case MapBaseLayer::kBingRoad:
+      return QStringLiteral("Bing Road");
+    case MapBaseLayer::kBingAerial:
+      return QStringLiteral("Bing Aerial");
   }
   return {};
 }
@@ -132,7 +174,7 @@ QString BaseLayerAttribution(MapBaseLayer layer) {
     case MapBaseLayer::kSatellite:
       return QStringLiteral("© Esri");
     case MapBaseLayer::kShadedRelief:
-      return QStringLiteral("© OpenTopoMap");
+      return QStringLiteral("© Esri");
     case MapBaseLayer::kCustom:
       return {};
     case MapBaseLayer::kEsriStreet:
@@ -142,6 +184,12 @@ QString BaseLayerAttribution(MapBaseLayer layer) {
       return QStringLiteral("© CARTO © OpenStreetMap");
     case MapBaseLayer::kJapanStandard:
       return QStringLiteral("© GSI Japan");
+    case MapBaseLayer::kAmapStreet:
+    case MapBaseLayer::kAmapSatellite:
+      return QStringLiteral("© Amap");
+    case MapBaseLayer::kBingRoad:
+    case MapBaseLayer::kBingAerial:
+      return QStringLiteral("© Microsoft Bing");
   }
   return {};
 }

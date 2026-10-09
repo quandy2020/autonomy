@@ -466,14 +466,15 @@ void OgreSceneHost::uploadPbrTexturedMeshes(
     if (Ogre::TextureManager::getSingleton().resourceExists(tex_name)) {
       Ogre::TextureManager::getSingleton().remove(tex_name);
     }
+    // Match QImage RGBA8888 memory order (see CreateDynamicTexture).
     Ogre::TexturePtr texture =
         Ogre::TextureManager::getSingleton().createManual(
             tex_name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
             Ogre::TEX_TYPE_2D, rgba.width(), rgba.height(), 0,
-            Ogre::PF_R8G8B8A8, Ogre::TU_DYNAMIC);
+            Ogre::PF_BYTE_RGBA, Ogre::TU_DYNAMIC);
     Ogre::PixelBox pixel_box(
         static_cast<Ogre::uint32>(rgba.width()),
-        static_cast<Ogre::uint32>(rgba.height()), 1, Ogre::PF_R8G8B8A8,
+        static_cast<Ogre::uint32>(rgba.height()), 1, Ogre::PF_BYTE_RGBA,
         const_cast<uchar*>(rgba.constBits()));
     texture->getBuffer()->blitFromMemory(pixel_box);
 
@@ -1051,6 +1052,9 @@ void OgreSceneHost::removeDisplay(const std::string& display_name) {
   if (entry.cloud != nullptr && entry.node != nullptr) {
     entry.node->detachObject(entry.cloud.get());
   }
+  // Destroy the cloud while the SceneNode still exists (OgrePointCloud::clear
+  // may touch the parent node / hardware buffers).
+  entry.cloud.reset();
   destroyLines(entry);
   destroyMeshes(entry);
   destroyEntities(entry);
@@ -1064,6 +1068,7 @@ void OgreSceneHost::removeDisplay(const std::string& display_name) {
   destroyCovariance(entry);
   if (entry.node != nullptr) {
     scene_manager_->destroySceneNode(entry.node);
+    entry.node = nullptr;
   }
   cloud_pick_handles_.erase(display_name);
   displays_.erase(it);
@@ -1080,6 +1085,7 @@ void OgreSceneHost::clear() {
     if (entry.cloud != nullptr && entry.node != nullptr) {
       entry.node->detachObject(entry.cloud.get());
     }
+    entry.cloud.reset();
     destroyLines(entry);
     destroyMeshes(entry);
     destroyEntities(entry);
@@ -1092,6 +1098,7 @@ void OgreSceneHost::clear() {
     destroyCovariance(entry);
     if (entry.node != nullptr) {
       scene_manager_->destroySceneNode(entry.node);
+      entry.node = nullptr;
     }
   }
   displays_.clear();

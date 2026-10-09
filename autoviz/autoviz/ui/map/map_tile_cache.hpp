@@ -93,7 +93,8 @@ class MapTileCache : public QObject {
   /**
    * @brief Requests any missing tiles in @p coords from @p url_template.
    *
-   * @param url_template Template containing @c {z}, @c {x}, @c {y} placeholders.
+   * @param url_template Template with @c {z}/@c {x}/@c {y}; optional @c {s}
+   *        subdomain and Bing @c {quadkey}.
    * @param coords Set of tiles needed for the current viewport.
    */
   void requestTiles(const QString& url_template, const QSet<MapTileCoord>& coords);

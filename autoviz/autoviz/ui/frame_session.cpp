@@ -50,6 +50,10 @@
 #include <QToolBar>
 #include <QToolButton>
 #include <QGridLayout>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonValue>
 #include <QQuaternion>
 #include <QVBoxLayout>
 #include "autoviz/common/display_property.hpp"
@@ -238,10 +242,16 @@ bool FrameSession::loadConfig(const QString& path) {
   frame_->panels_->displays_panel_->refresh();
   frame_->panels_->syncImageDisplayWindows();
   syncViewsFromManager();
-  frame_->viewport_->applyRenderBackend(QString::fromStdString(frame_->manager_->renderBackendName()));
-  applyCurrentView();
+  // Do not call applyRenderBackend() here: Frame ctor already created the
+  // Ogre window, and recreating it before mosaic restore (destroy + reparent)
+  // SIGSEGVs. GL is torn down in restoreWindowLayout and recreated in
+  // activateRestoredViewportAndView() after docks are in final panes.
+  if (frame_->manager_->renderBackendName() != "Ogre") {
+    frame_->manager_->setRenderBackendName("Ogre");
+  }
   frame_->chrome_->rebuildToolbar();
-  restoreWindowLayout();
+  // Create / reconfigure panel docks BEFORE restoreWindowLayout so
+  // QMainWindow::restoreState and the center mosaic can find objectNames.
   frame_->panels_->restorePlotPanelConfigs();
   frame_->panels_->restoreTablePanelConfigs();
   frame_->panels_->restoreChannelGraphPanelConfigs();
@@ -251,6 +261,10 @@ bool FrameSession::loadConfig(const QString& path) {
   frame_->panels_->restoreServicePanelConfigs();
   frame_->panels_->restoreTeleopPanelConfigs();
   frame_->panels_->restoreMapPanelConfigs();
+  // Recreate split 3D Views (ViewportDock_2, …) before mosaic restore.
+  ensureSessionMainPanels();
+  restoreWindowLayout();
+  activateRestoredViewportAndView();
   if (frame_->panels_->channels_panel_ != nullptr) {
     frame_->panels_->channels_panel_->setConfig(
         frame_->manager_->channelsBrowser());
@@ -321,8 +335,12 @@ void FrameSession::applyCurrentView() {
     frame_->viewport_->applyViewController(QString::fromStdString(frame_->manager_->viewControllerName()));
     return;
   }
+  const common::SavedViewConfig& view = frame_->manager_->currentView();
+  if (!view.type.empty()) {
+    frame_->viewport_->applyViewController(QString::fromStdString(view.type));
+  }
   if (rendering::ViewController* controller = frame_->viewport_->activeViewController()) {
-    controller->setState(common::ToViewState(frame_->manager_->currentView()));
+    controller->setState(common::ToViewState(view));
     if (frame_->panels_->views_panel_ != nullptr) {
       frame_->panels_->views_panel_->refreshFromController();
     }
@@ -330,14 +348,124 @@ void FrameSession::applyCurrentView() {
   }
 }
 
+namespace {
+
+void CollectMosaicLeafNames(const QJsonObject& node, QSet<QString>* names) {
+  if (names == nullptr || node.isEmpty()) {
+    return;
+  }
+  const QString type = node.value(QStringLiteral("type")).toString();
+  if (type == QLatin1String("leaf")) {
+    const QString name = node.value(QStringLiteral("name")).toString();
+    if (!name.isEmpty()) {
+      names->insert(name);
+    }
+    return;
+  }
+  if (type != QLatin1String("split")) {
+    return;
+  }
+  const QJsonArray children = node.value(QStringLiteral("children")).toArray();
+  for (const QJsonValue& child : children) {
+    if (child.isObject()) {
+      CollectMosaicLeafNames(child.toObject(), names);
+    }
+  }
+}
+
+bool IsViewportDockObjectName(const QString& object_name) {
+  return object_name == QLatin1String("ViewportDock") ||
+         object_name.startsWith(QLatin1String("ViewportDock_"));
+}
+
+}  // namespace
+
+void FrameSession::ensureSessionMainPanels() {
+  QSet<QString> needed;
+  for (const std::string& panel : frame_->manager_->visiblePanels()) {
+    const QString name =
+        QString::fromStdString(NormalizePanelObjectName(panel));
+    if (!name.isEmpty()) {
+      needed.insert(name);
+    }
+  }
+  for (const auto& entry : frame_->manager_->panelLayouts()) {
+    const QString name =
+        QString::fromStdString(NormalizePanelObjectName(entry.object_name));
+    if (!name.isEmpty()) {
+      needed.insert(name);
+    }
+  }
+  const QByteArray mosaic = QByteArray::fromBase64(
+      QByteArray::fromStdString(frame_->manager_->mainPanelStateBase64()));
+  static constexpr char kMosaicPrefix[] = "mosaic:v1:";
+  if (mosaic.startsWith(kMosaicPrefix)) {
+    const QByteArray json =
+        mosaic.mid(static_cast<int>(sizeof(kMosaicPrefix) - 1));
+    const QJsonDocument document = QJsonDocument::fromJson(json);
+    if (document.isObject()) {
+      CollectMosaicLeafNames(
+          document.object().value(QStringLiteral("root")).toObject(), &needed);
+    }
+  }
+
+  for (const QString& name : needed) {
+    if (name.isEmpty() ||
+        frame_->findChild<PanelDockWidget*>(name) != nullptr) {
+      continue;
+    }
+    if (IsViewportDockObjectName(name)) {
+      // Defer Ogre/native window until after mosaic restore + show.
+      PanelDockWidget* dock = frame_->viewport_->createViewportPanelDock(
+          name, /*create_render_window=*/false);
+      if (dock != nullptr) {
+        dock->hide();
+      }
+    }
+  }
+}
+
+void FrameSession::activateRestoredViewportAndView() {
+  PanelDockWidget* visible_viewport = nullptr;
+  for (PanelDockWidget* dock : frame_->layout_->orderedDockWidgets()) {
+    if (dock == nullptr || !dock->isVisible() ||
+        frame_->panels_->panelTypeId(dock) != QLatin1String("ViewportDock")) {
+      continue;
+    }
+    visible_viewport = dock;
+    break;
+  }
+  if (visible_viewport == nullptr) {
+    // Mosaic / VisiblePanels may have omitted the primary dock; keep a 3D View.
+    if (frame_->viewport_->viewport_dock_ != nullptr) {
+      visible_viewport = frame_->viewport_->viewport_dock_;
+      frame_->layout_->ensureMainPanelDockAttached(visible_viewport);
+      visible_viewport->show();
+      if (frame_->layout_->main_panel_host_ != nullptr &&
+          !frame_->layout_->main_panel_host_->hostsPanel(visible_viewport)) {
+        frame_->layout_->main_panel_host_->addPanel(visible_viewport);
+      }
+    }
+  }
+  if (visible_viewport != nullptr) {
+    frame_->viewport_->ensureViewportPanelReady(visible_viewport);
+    frame_->viewport_->setActiveViewportDock(visible_viewport);
+  }
+  applyCurrentView();
+}
+
 void FrameSession::captureWindowLayout() {
   frame_->chrome_->rebuildToolbar();
-  frame_->manager_->setWindowLayout(
-      frame_->saveState().toBase64().constData(),
-      frame_->saveGeometry().toBase64().constData());
+  const QByteArray window_state = frame_->saveState().toBase64();
+  const QByteArray window_geometry = frame_->saveGeometry().toBase64();
+  frame_->manager_->setWindowLayout(window_state.toStdString(),
+                                    window_geometry.toStdString());
   if (frame_->layout_->main_panel_host_ != nullptr) {
-    frame_->manager_->setMainPanelLayout(
-        frame_->layout_->main_panel_host_->saveState().toBase64().constData());
+    // Persist the QSplitter mosaic (not QMainWindow::saveState — center panels
+    // are not QDockWidget children of the host).
+    const QByteArray mosaic =
+        frame_->layout_->main_panel_host_->saveMosaicLayout().toBase64();
+    frame_->manager_->setMainPanelLayout(mosaic.toStdString());
   }
   const bool hide_left =
       frame_->chrome_->toolbar_toggle_left_dock_action_ != nullptr
@@ -495,7 +623,7 @@ void FrameSession::restoreWindowLayout() {
   if (frame_->panels_->teleop_dock_ != nullptr) {
     frame_->layout_->ensureSidebarDockAttached(frame_->panels_->teleop_dock_);
   }
-  // Center column uses dynamic grid tiling — ignore legacy MainPanelState docks.
+  // Ensure main-column docks are owned by the center host before mosaic restore.
   for (PanelDockWidget* dock : frame_->layout_->orderedDockWidgets()) {
     if (dock == nullptr || !frame_->layout_->isMainPanel(dock)) {
       continue;
@@ -504,10 +632,48 @@ void FrameSession::restoreWindowLayout() {
   }
   frame_->chrome_->syncToolbarToActiveTool();
   frame_->viewport_->syncViewportTitleBarTools();
+
+  const QByteArray mosaic = QByteArray::fromBase64(
+      QByteArray::fromStdString(frame_->manager_->mainPanelStateBase64()));
+  const bool have_mosaic = mosaic.startsWith("mosaic:v1:");
+  // Mark manual BEFORE applyPanelVisibility so its scheduleTileCenterPanels
+  // is a no-op; otherwise a queued tile destroys the mosaic and can SIGSEGV
+  // while reparenting docks that host QListView title menus.
+  if (have_mosaic) {
+    frame_->layout_->center_manual_layout_ = true;
+    ++frame_->layout_->center_tile_epoch_;
+    frame_->layout_->center_tile_pending_ = false;
+  }
+
   restorePanelLayouts();
   applyPanelVisibility();
   frame_->layout_->restoreDockHideState();
-  frame_->layout_->scheduleTileCenterPanels();
+
+  ++frame_->layout_->center_tile_epoch_;
+  frame_->layout_->center_tile_pending_ = false;
+
+  bool restored_mosaic = false;
+  if (have_mosaic && frame_->layout_->main_panel_host_ != nullptr) {
+    frame_->layout_->center_manual_layout_ = true;
+    // Park native Ogre widgets off the docks before mosaic reparent — do not
+    // destroy/recreate (that races with NVIDIA GL teardown and PointCloud GPU).
+    frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
+      frame_->viewport_->parkRenderWindowInEntry(entry);
+    });
+    restored_mosaic = frame_->layout_->main_panel_host_->restoreMosaicLayout(
+        mosaic, [this](const QString& object_name) -> QDockWidget* {
+          return frame_->findChild<PanelDockWidget*>(object_name);
+        });
+    frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
+      frame_->viewport_->reinstallRenderWindowInEntry(entry);
+    });
+  }
+  if (restored_mosaic) {
+    frame_->layout_->syncCenterLayout();
+  } else {
+    frame_->layout_->center_manual_layout_ = false;
+    frame_->layout_->scheduleTileCenterPanels();
+  }
 }
 
 void FrameSession::restorePanelLayouts() {
@@ -750,13 +916,21 @@ void FrameSession::onRefreshTick() {
 }
 
 void FrameSession::onAboutToQuit() {
-  // Stop timers / playback only. Do NOT frame_->manager_->shutdown() here: Qt has not
-  // destroyed docks/GL widgets yet, and they still touch displays / Autolink.
+  // Stop timers / playback, then release display GPU objects while Ogre
+  // windows still exist. Do NOT manager_->shutdown() here (Autolink/docks).
   render_timer_.stop();
   refresh_timer_.stop();
   if (frame_->manager_ != nullptr) {
     frame_->manager_->playback().stop();
+    frame_->manager_->detachDisplaysFromScene();
   }
+  frame_->viewport_->forEachViewportPanel([](ViewportPanelEntry& entry) {
+    if (entry.ogre_viewport != nullptr) {
+      if (auto* host = entry.ogre_viewport->ogreSceneHost()) {
+        host->clear();
+      }
+    }
+  });
 
   QSettings settings;
   settings.setValue(QStringLiteral("recent_configs"), recent_configs_);

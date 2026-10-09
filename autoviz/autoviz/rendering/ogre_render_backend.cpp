@@ -150,13 +150,16 @@ void ClearDynamicTexturedResources(
 Ogre::TexturePtr CreateDynamicTexture(const Ogre::String& tex_name,
                                       const QImage& rgba) {
   RemoveTextureIfExists(tex_name);
+  // QImage::Format_RGBA8888 is byte-order R,G,B,A. On little-endian hosts
+  // PF_R8G8B8A8 is native-endian and swaps channels vs Qt; PF_BYTE_RGBA is the
+  // endian-aware alias that matches memory order (same as RViz uploads).
   Ogre::TexturePtr texture = Ogre::TextureManager::getSingleton().createManual(
       tex_name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-      Ogre::TEX_TYPE_2D, rgba.width(), rgba.height(), 0, Ogre::PF_R8G8B8A8,
+      Ogre::TEX_TYPE_2D, rgba.width(), rgba.height(), 0, Ogre::PF_BYTE_RGBA,
       Ogre::TU_DYNAMIC);
   Ogre::PixelBox pixel_box(
       static_cast<Ogre::uint32>(rgba.width()),
-      static_cast<Ogre::uint32>(rgba.height()), 1, Ogre::PF_R8G8B8A8,
+      static_cast<Ogre::uint32>(rgba.height()), 1, Ogre::PF_BYTE_RGBA,
       const_cast<uchar*>(rgba.constBits()));
   texture->getBuffer()->blitFromMemory(pixel_box);
   return texture;

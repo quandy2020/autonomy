@@ -8,6 +8,7 @@
 #include <QQuaternion>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>
@@ -20,15 +21,87 @@ namespace autoviz {
 namespace display {
 namespace {
 
-// RViz Map display palettes (rviz_default_plugins/displays/map/palette_builder.cpp).
-// Occupancy values follow nav_msgs int8 convention; proto stores them as int32.
+// RViz Map palettes (rviz_default_plugins/.../palette_builder.cpp).
+// RViz uploads OccupancyGrid int8 cells as uint8 indices into a 256-entry
+// palette (swatch.cpp → PF_L8 + Indexed8BitImage). Mirror that exactly.
 
-int32_t NormalizeOccupancy(int32_t value) {
-  // Some bridges publish unknown as unsigned 255 instead of signed -1.
-  if (value == 255) {
-    return -1;
+using Palette = std::array<QColor, 256>;
+
+void SetPaletteColor(Palette* palette, unsigned char index, unsigned char r,
+                     unsigned char g, unsigned char b, unsigned char a) {
+  (*palette)[index] = QColor(r, g, b, a);
+}
+
+void FillIllegalPositive(Palette* palette) {
+  for (unsigned char i = 101; i <= 127; ++i) {
+    SetPaletteColor(palette, i, 0, 255, 0, 255);
   }
-  return value;
+}
+
+void FillIllegalNegative(Palette* palette) {
+  for (unsigned char i = 128; i <= 254; ++i) {
+    const unsigned char green =
+        static_cast<unsigned char>((255 * (i - 128)) / (254 - 128));
+    SetPaletteColor(palette, i, 255, green, 0, 255);
+  }
+}
+
+const Palette& MapPalette() {
+  static const Palette kPalette = [] {
+    Palette palette{};
+    for (unsigned char i = 0; i <= 100; ++i) {
+      const unsigned char v =
+          static_cast<unsigned char>(255 - (255 * i) / 100);
+      SetPaletteColor(&palette, i, v, v, v, 255);
+    }
+    FillIllegalPositive(&palette);
+    FillIllegalNegative(&palette);
+    // Legal unknown (-1 as uint8 255): blueish/greenish gray.
+    SetPaletteColor(&palette, 255, 0x70, 0x89, 0x86, 255);
+    return palette;
+  }();
+  return kPalette;
+}
+
+const Palette& CostmapPalette() {
+  static const Palette kPalette = [] {
+    Palette palette{};
+    SetPaletteColor(&palette, 0, 0, 0, 0, 0);
+    for (unsigned char i = 1; i <= 98; ++i) {
+      const unsigned char v = static_cast<unsigned char>((255 * i) / 100);
+      SetPaletteColor(&palette, i, v, 0, static_cast<unsigned char>(255 - v),
+                      255);
+    }
+    SetPaletteColor(&palette, 99, 0, 255, 255, 255);    // cyan
+    SetPaletteColor(&palette, 100, 255, 0, 255, 255);  // purple / lethal
+    FillIllegalPositive(&palette);
+    FillIllegalNegative(&palette);
+    SetPaletteColor(&palette, 255, 0x70, 0x89, 0x86, 255);
+    return palette;
+  }();
+  return kPalette;
+}
+
+const Palette& RawPalette() {
+  static const Palette kPalette = [] {
+    Palette palette{};
+    for (int i = 0; i < 256; ++i) {
+      const unsigned char v = static_cast<unsigned char>(i);
+      SetPaletteColor(&palette, v, v, v, v, 255);
+    }
+    return palette;
+  }();
+  return kPalette;
+}
+
+uint8_t OccupancyPaletteIndex(int32_t value) {
+  // nav_msgs int8 bit-pattern. Bridges that widen unknown -1 to 255 keep index
+  // 255 (same palette slot as signed -1).
+  if (value == 255) {
+    return 255;
+  }
+  return static_cast<uint8_t>(
+      static_cast<int8_t>(std::clamp(value, -128, 127)));
 }
 
 QColor ApplyDisplayAlpha(QColor palette_color, float display_alpha) {
@@ -37,75 +110,11 @@ QColor ApplyDisplayAlpha(QColor palette_color, float display_alpha) {
   return palette_color;
 }
 
-QColor RvizIllegalNegativeColor(int32_t value) {
-  // RViz indexes the 256-entry palette with the uint8 bit-pattern of int8.
-  const uint8_t index = static_cast<uint8_t>(static_cast<int8_t>(
-      std::clamp(value, -128, -2)));
-  const int green = (255 * (static_cast<int>(index) - 128)) / (254 - 128);
-  return QColor(255, green, 0, 255);
-}
-
-QColor RvizUnknownColor() { return QColor(0x70, 0x89, 0x86, 255); }
-
-QColor RvizIllegalPositiveColor() { return QColor(0, 255, 0, 255); }
-
-QColor MapPaletteColor(int32_t value) {
-  value = NormalizeOccupancy(value);
-  if (value == -1) {
-    return RvizUnknownColor();
-  }
-  if (value < -1) {
-    return RvizIllegalNegativeColor(value);
-  }
-  if (value > 100) {
-    return RvizIllegalPositiveColor();
-  }
-  // Standard gray map: free=white, occupied=black (integer math as in RViz).
-  const int shade = 255 - (255 * value) / 100;
-  return QColor(shade, shade, shade, 255);
-}
-
-QColor CostmapPaletteColor(int32_t value) {
-  value = NormalizeOccupancy(value);
-  if (value == -1) {
-    return RvizUnknownColor();
-  }
-  if (value < -1) {
-    return RvizIllegalNegativeColor(value);
-  }
-  if (value > 100) {
-    return RvizIllegalPositiveColor();
-  }
-  // Free cells are fully transparent so the underlying map/grid shows through.
-  if (value == 0) {
-    return QColor(0, 0, 0, 0);
-  }
-  if (value == 99) {
-    return QColor(0, 255, 255, 255);  // inscribed / near-obstacle: cyan
-  }
-  if (value == 100) {
-    return QColor(255, 0, 255, 255);  // lethal: magenta
-  }
-  // Inflation costs 1..98: blue → red ramp.
-  const int v = (255 * value) / 100;
-  return QColor(v, 0, 255 - v, 255);
-}
-
-QColor RawPaletteColor(int32_t value) {
-  const uint8_t raw = static_cast<uint8_t>(value & 0xFF);
-  return QColor(raw, raw, raw, 255);
-}
-
 QColor ColorForScheme(const std::string& scheme, int32_t value, float alpha) {
-  QColor palette;
-  if (scheme == "costmap") {
-    palette = CostmapPaletteColor(value);
-  } else if (scheme == "raw") {
-    palette = RawPaletteColor(value);
-  } else {
-    palette = MapPaletteColor(value);
-  }
-  return ApplyDisplayAlpha(palette, alpha);
+  const Palette& palette = (scheme == "costmap") ? CostmapPalette()
+                         : (scheme == "raw")     ? RawPalette()
+                                                 : MapPalette();
+  return ApplyDisplayAlpha(palette[OccupancyPaletteIndex(value)], alpha);
 }
 
 int32_t AggregateBlock(const automsgs::msgs::map_msgs::OccupancyGrid& message,
@@ -181,6 +190,11 @@ void MapDisplay::onUpdate() {
       applyUpdate(update);
       rebuildGeometry();
     }
+  }
+  // Latched /map often arrives before TF is ready; rebuildGeometry() then
+  // clears corners and never retries because no new OccupancyGrid is queued.
+  if (!has_geometry_) {
+    rebuildGeometry();
   }
 }
 

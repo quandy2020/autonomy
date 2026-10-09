@@ -189,16 +189,32 @@ class FrameViewport {
    * @brief Creates an additional 3D View panel dock.
    *
    * @param object_name Optional fixed @c objectName; empty → unique name.
+   * @param create_render_window When @c false, skips Ogre/native window setup
+   *        (session restore); call @ref ensureViewportPanelReady after layout.
    * @return New viewport panel dock.
    */
   PanelDockWidget* createViewportPanelDock(
-      const QString& object_name = QString());
+      const QString& object_name = QString(),
+      bool create_render_window = true);
 
   /**
    * @brief Destroys the render window (GL or Ogre) held by @p entry.
    * @param entry Entry whose render window is torn down.
    */
   void destroyRenderWindowInEntry(ViewportPanelEntry& entry);
+
+  /**
+   * @brief Detaches the native Ogre widget from its dock for mosaic reparent.
+   *
+   * Keeps the same GL context/scene alive (no destroy/recreate). Call
+   * @ref reinstallRenderWindowInEntry after the dock is in its final pane.
+   */
+  void parkRenderWindowInEntry(ViewportPanelEntry& entry);
+
+  /**
+   * @brief Puts a parked Ogre widget back into @p entry's dock layout.
+   */
+  void reinstallRenderWindowInEntry(ViewportPanelEntry& entry);
 
   /**
    * @brief Lazily creates host layout / overlays when a viewport dock is shown.

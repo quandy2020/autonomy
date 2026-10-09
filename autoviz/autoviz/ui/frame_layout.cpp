@@ -322,7 +322,9 @@ void FrameLayout::syncCenterLayout() {
 }
 
 void FrameLayout::scheduleTileCenterPanels() {
-  if (main_panel_host_ == nullptr || isCenterDockInteractionBlocked()) {
+  // Session mosaic / directed Split own the splitter tree — never overwrite.
+  if (main_panel_host_ == nullptr || isCenterDockInteractionBlocked() ||
+      center_manual_layout_) {
     return;
   }
   center_tile_pending_ = true;
@@ -330,7 +332,8 @@ void FrameLayout::scheduleTileCenterPanels() {
   QTimer::singleShot(0, frame_, [this, epoch]() {
     center_tile_pending_ = false;
     if (epoch != center_tile_epoch_ || center_tiling_ ||
-        suppress_center_tile_ || center_dock_drag_count_ > 0) {
+        suppress_center_tile_ || center_dock_drag_count_ > 0 ||
+        center_manual_layout_) {
       return;
     }
     tileCenterPanels();
@@ -381,7 +384,23 @@ void FrameLayout::tileCenterPanels() {
       dock->blockSignals(true);
     }
   }
+  // Park Ogre/GL surfaces before splitter reparent (avoids GLX UAF without
+  // destroying the scene — destroy/recreate races with NVIDIA teardown).
+  frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
+    frame_->viewport_->parkRenderWindowInEntry(entry);
+  });
   main_panel_host_->tilePanels(visible, hidden);
+  for (QDockWidget* dock : visible) {
+    auto* panel_dock = qobject_cast<PanelDockWidget*>(dock);
+    if (panel_dock != nullptr &&
+        frame_->panels_->panelTypeId(panel_dock) ==
+            QLatin1String("ViewportDock")) {
+      frame_->viewport_->ensureViewportPanelReady(panel_dock);
+    }
+  }
+  frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
+    frame_->viewport_->reinstallRenderWindowInEntry(entry);
+  });
   for (QDockWidget* dock : visible + hidden) {
     if (dock != nullptr) {
       dock->blockSignals(false);
@@ -419,9 +438,29 @@ bool FrameLayout::isPropertyInspectorVisible() const {
 
 void FrameLayout::raiseLeftSidebarDisplays() {
   left_sidebar_shows_properties_ = false;
-  if (frame_->panels_->displays_dock_ != nullptr && !displays_closed_by_user_) {
+  // Activating 3D View reopens Displays even after the user closed it or hid
+  // the left sidebar (toolbar Hide Left / collapsed docks).
+  displays_closed_by_user_ = false;
+  if (frame_->panels_->displays_dock_ != nullptr) {
+    if (frame_->manager_ != nullptr && frame_->manager_->hideLeftDock()) {
+      hideLeftDock(false);
+    }
+    if (frame_->chrome_->toolbar_toggle_left_dock_action_ != nullptr &&
+        !frame_->chrome_->toolbar_toggle_left_dock_action_->isChecked()) {
+      frame_->chrome_->toolbar_toggle_left_dock_action_->blockSignals(true);
+      frame_->chrome_->toolbar_toggle_left_dock_action_->setChecked(true);
+      frame_->chrome_->toolbar_toggle_left_dock_action_->blockSignals(false);
+    }
+    ensureSidebarDockAttached(frame_->panels_->displays_dock_);
+    frame_->panels_->displays_dock_->setCollapsed(false);
     frame_->panels_->displays_dock_->show();
     frame_->panels_->displays_dock_->raise();
+    if (QAction* toggle = frame_->panels_->displays_dock_->toggleViewAction()) {
+      toggle->blockSignals(true);
+      toggle->setChecked(true);
+      toggle->blockSignals(false);
+    }
+    frame_->chrome_->syncToolbarLayoutControls();
   }
   if (frame_->panels_->active_plot_panel_ != nullptr) {
     frame_->panels_->active_plot_panel_->setSettingsButtonChecked(false);

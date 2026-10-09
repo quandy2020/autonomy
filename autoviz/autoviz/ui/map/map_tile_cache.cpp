@@ -41,9 +41,48 @@ bool MapTileCache::isUnavailable(const MapTileCoord& coord) const {
   return unavailable_.contains(coord);
 }
 
+namespace {
+
+QString BingQuadKey(int x, int y, int z) {
+  QString key;
+  key.reserve(std::max(0, z));
+  for (int i = z; i > 0; --i) {
+    char digit = '0';
+    const int mask = 1 << (i - 1);
+    if ((x & mask) != 0) {
+      digit = static_cast<char>(digit + 1);
+    }
+    if ((y & mask) != 0) {
+      digit = static_cast<char>(digit + 2);
+    }
+    key.append(QLatin1Char(digit));
+  }
+  return key;
+}
+
+}  // namespace
+
 QString MapTileCache::buildTileUrl(const QString& url_template,
                                    const MapTileCoord& coord) const {
   QString url = url_template;
+  if (url.contains(QLatin1String("{quadkey}"))) {
+    url.replace(QStringLiteral("{quadkey}"),
+                BingQuadKey(coord.x, coord.y, coord.z));
+  }
+  // Amap uses 1..4; Bing uses 0..3. Digit templates win; letter {s} → a..d.
+  if (url.contains(QLatin1String("{s}"))) {
+    if (url.contains(QLatin1String("autonavi.com"))) {
+      const int subdomain = (coord.x + coord.y) % 4 + 1;
+      url.replace(QStringLiteral("{s}"), QString::number(subdomain));
+    } else if (url.contains(QLatin1String("virtualearth.net"))) {
+      const int subdomain = (coord.x + coord.y) % 4;
+      url.replace(QStringLiteral("{s}"), QString::number(subdomain));
+    } else {
+      const char letter =
+          static_cast<char>('a' + ((coord.x + coord.y) % 4));
+      url.replace(QStringLiteral("{s}"), QString(QLatin1Char(letter)));
+    }
+  }
   url.replace(QStringLiteral("{z}"), QString::number(coord.z));
   url.replace(QStringLiteral("{x}"), QString::number(coord.x));
   url.replace(QStringLiteral("{y}"), QString::number(coord.y));
@@ -72,6 +111,10 @@ void MapTileCache::requestTiles(const QString& url_template,
                          QNetworkRequest::PreferCache);
     if (!user_agent_.isEmpty()) {
       request.setHeader(QNetworkRequest::UserAgentHeader, user_agent_);
+    }
+    // Amap CDN often rejects requests without a browser-like Referer.
+    if (url_template.contains(QLatin1String("autonavi.com"))) {
+      request.setRawHeader("Referer", "https://www.amap.com/");
     }
     QNetworkReply* reply = network_->get(request);
     reply->setProperty("tileUrlTemplate", url_template);

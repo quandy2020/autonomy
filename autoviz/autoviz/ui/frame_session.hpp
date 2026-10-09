@@ -448,6 +448,20 @@ class FrameSession {
   void syncViewsToManager();
 
  private:
+  /**
+   * @brief Creates missing main panels referenced by VisiblePanels / mosaic.
+   *
+   * Split 3D Views (@c ViewportDock_2, …) are not in ImagePanels/PlotPanels;
+   * they must exist before @ref restoreWindowLayout applies the mosaic.
+   */
+  void ensureSessionMainPanels();
+
+  /**
+   * @brief Activates a visible 3D View after layout restore, then reapplies
+   *        @c CurrentView onto that controller.
+   */
+  void activateRestoredViewportAndView();
+
   /** Non-owning back-pointer to the main window. */
   VisualizationFrame* frame_ = nullptr;
 

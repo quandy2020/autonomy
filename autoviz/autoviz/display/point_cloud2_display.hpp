@@ -93,6 +93,11 @@ class PointCloud2Display
    */
   void clearReceivedData() override;
 
+  /**
+   * @brief Unsubscribes and removes Ogre point-cloud geometry for this display.
+   */
+  void onDisable() override;
+
  private:
   /**
    * @struct CloudPoint

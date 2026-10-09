@@ -161,9 +161,45 @@ void FrameViewport::destroyRenderWindowInEntry(ViewportPanelEntry& entry) {
       entry.layout->removeWidget(entry.widget);
     }
     entry.widget->hide();
+    // Reparent off the dock before deleteLater so mosaic restore never
+    // moves a live GLX surface. Prefer park/reinstall over destroy when
+    // only the splitter tree is changing.
+    entry.widget->setParent(nullptr);
     entry.widget->deleteLater();
     entry.widget = nullptr;
     entry.ogre_viewport = nullptr;
+  }
+}
+
+void FrameViewport::parkRenderWindowInEntry(ViewportPanelEntry& entry) {
+  if (entry.widget == nullptr) {
+    return;
+  }
+  if (entry.layout != nullptr) {
+    entry.layout->removeWidget(entry.widget);
+  }
+  // Park on the frame (not a QMainWindow dock area) so mosaic reparent of
+  // the empty ViewportDock does not touch the native GLX window.
+  entry.widget->setParent(frame_);
+  entry.widget->hide();
+}
+
+void FrameViewport::reinstallRenderWindowInEntry(ViewportPanelEntry& entry) {
+  if (entry.widget == nullptr || entry.layout == nullptr) {
+    return;
+  }
+  entry.layout->addWidget(entry.widget, 0, 0);
+  if (entry.floating_toolbar != nullptr) {
+    entry.layout->addWidget(entry.floating_toolbar, 0, 0,
+                            Qt::AlignRight | Qt::AlignTop);
+    entry.floating_toolbar->raise();
+  }
+  if (entry.hud_overlay != nullptr) {
+    entry.layout->addWidget(entry.hud_overlay, 0, 0,
+                            Qt::AlignLeft | Qt::AlignTop);
+  }
+  if (entry.dock != nullptr && entry.dock->isVisible()) {
+    entry.widget->show();
   }
 }
 
@@ -330,7 +366,7 @@ void FrameViewport::ensureViewportPanelReady(PanelDockWidget* dock) {
 }
 
 PanelDockWidget* FrameViewport::createViewportPanelDock(
-    const QString& object_name) {
+    const QString& object_name, bool create_render_window) {
   const QString dock_name =
       object_name.isEmpty() ? frame_->panels_->uniquePanelObjectName(QStringLiteral("ViewportDock"))
                             : object_name;
@@ -350,10 +386,16 @@ PanelDockWidget* FrameViewport::createViewportPanelDock(
   entry.layout->setSpacing(0);
   dock->setContentWidget(entry.host);
 
-  const QString backend = QString::fromStdString(frame_->manager_->renderBackendName());
-  createRenderWindowInEntry(entry, backend);
-  installViewportFloatingToolbar(entry);
-  installViewportHudOverlay(entry);
+  // Session restore must not create native Ogre windows before the mosaic is
+  // applied — reparenting a live GLX window during loadConfig SIGSEGVs in Qt
+  // style/palette code on the next activate.
+  if (create_render_window) {
+    const QString backend =
+        QString::fromStdString(frame_->manager_->renderBackendName());
+    createRenderWindowInEntry(entry, backend);
+    installViewportFloatingToolbar(entry);
+    installViewportHudOverlay(entry);
+  }
 
   frame_->layout_->configureMainPanelDock(dock);
   frame_->panels_->registerPanelDock(dock);

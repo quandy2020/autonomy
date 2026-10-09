@@ -28,14 +28,18 @@ namespace map {
  * @brief Built-in basemap tile provider presets (or custom URL).
  */
 enum class MapBaseLayer {
-  kStreet = 0,        /**< OpenStreetMap. */
-  kSatellite = 1,     /**< Esri World Imagery. */
-  kShadedRelief = 2,  /**< OpenTopoMap. */
-  kCustom = 3,        /**< Use @ref MapPanelConfig::custom_tile_url. */
-  kEsriStreet = 4,    /**< Esri World Street. */
-  kEsriTerrain = 5,   /**< Esri World Terrain. */
-  kCartoVoyager = 6,  /**< CARTO Voyager. */
-  kJapanStandard = 7, /**< Japan GSI standard map. */
+  kStreet = 0,         /**< Street basemap (CARTO Voyager / OSM data). */
+  kSatellite = 1,      /**< Esri World Imagery. */
+  kShadedRelief = 2,   /**< Terrain / shaded relief (Esri World Terrain). */
+  kCustom = 3,         /**< Use @ref MapPanelConfig::custom_tile_url. */
+  kEsriStreet = 4,     /**< Esri World Street. */
+  kEsriTerrain = 5,    /**< Esri World Terrain. */
+  kCartoVoyager = 6,   /**< CARTO Voyager. */
+  kJapanStandard = 7,  /**< Japan GSI standard map. */
+  kAmapStreet = 8,     /**< Amap / 高德矢量路网. */
+  kAmapSatellite = 9,  /**< Amap / 高德卫星影像. */
+  kBingRoad = 10,      /**< Bing Maps road. */
+  kBingAerial = 11,    /**< Bing Maps aerial. */
 };
 
 /**
@@ -189,7 +193,8 @@ MapPanelConfig DefaultMapPanelConfig();
  *
  * @param layer Basemap enum value.
  * @param custom_url Custom template used when @p layer is @ref MapBaseLayer::kCustom.
- * @return URL template string with @c {z}/{x}/{y} placeholders.
+ * @return URL template with @c {z}/{x}/{y}, optional @c {s} subdomain, and
+ *         optional Bing @c {quadkey}.
  */
 QString BaseLayerTileUrlTemplate(MapBaseLayer layer, const QString& custom_url);
 

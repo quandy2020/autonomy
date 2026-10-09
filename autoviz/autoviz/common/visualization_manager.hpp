@@ -107,6 +107,14 @@ class VisualizationManager {
   void shutdown();
 
   /**
+   * @brief Disables all displays to release GPU/scene objects.
+   *
+   * Must run while Ogre render windows still exist (before
+   * @c VisualizationFrame is destroyed). @ref shutdown() runs too late.
+   */
+  void detachDisplaysFromScene();
+
+  /**
    * @brief Whether the manager is initialized and usable.
    * @return @c true after successful @ref initialize until @ref shutdown.
    */

@@ -127,6 +127,14 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
                              static_cast<int>(MapBaseLayer::kCartoVoyager));
   base_layer_combo_->addItem(BaseLayerLabel(MapBaseLayer::kJapanStandard),
                              static_cast<int>(MapBaseLayer::kJapanStandard));
+  base_layer_combo_->addItem(BaseLayerLabel(MapBaseLayer::kAmapStreet),
+                             static_cast<int>(MapBaseLayer::kAmapStreet));
+  base_layer_combo_->addItem(BaseLayerLabel(MapBaseLayer::kAmapSatellite),
+                             static_cast<int>(MapBaseLayer::kAmapSatellite));
+  base_layer_combo_->addItem(BaseLayerLabel(MapBaseLayer::kBingRoad),
+                             static_cast<int>(MapBaseLayer::kBingRoad));
+  base_layer_combo_->addItem(BaseLayerLabel(MapBaseLayer::kBingAerial),
+                             static_cast<int>(MapBaseLayer::kBingAerial));
   general_form->addRow(tr("Base layer"), base_layer_combo_);
 
   custom_tile_url_edit_ = new QLineEdit(general);

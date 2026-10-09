@@ -6,6 +6,9 @@
 
 #include <QDockWidget>
 #include <QEnterEvent>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QPainter>
 #include <QPaintEvent>
 #include <QResizeEvent>
@@ -103,9 +106,14 @@ QWidget* WrapDockInPane(QDockWidget* dock) {
   if (dock == nullptr) {
     return nullptr;
   }
+  // Always build a fresh pane. Never reuse — clearSplitterTree may have already
+  // destroyed the previous wrapper.
   if (QWidget* parent = dock->parentWidget()) {
     if (parent->property("mainPanelPane").toBool()) {
-      return parent;
+      if (QLayout* layout = parent->layout()) {
+        layout->removeWidget(dock);
+      }
+      // Do not setParent(nullptr): QDockWidget becomes a top-level window.
     }
   }
   auto* pane = new QWidget();
@@ -207,6 +215,102 @@ void PrepareDockForSplitter(QDockWidget* dock) {
   }
 }
 
+constexpr char kMosaicPrefix[] = "mosaic:v1:";
+
+QJsonObject SerializeMosaicNode(QWidget* widget) {
+  QJsonObject node;
+  if (widget == nullptr) {
+    return node;
+  }
+  if (QDockWidget* dock = DockFromPane(widget)) {
+    node.insert(QStringLiteral("type"), QStringLiteral("leaf"));
+    node.insert(QStringLiteral("name"), dock->objectName());
+    return node;
+  }
+  if (auto* splitter = qobject_cast<QSplitter*>(widget)) {
+    node.insert(QStringLiteral("type"), QStringLiteral("split"));
+    node.insert(QStringLiteral("orientation"),
+                splitter->orientation() == Qt::Horizontal
+                    ? QStringLiteral("horizontal")
+                    : QStringLiteral("vertical"));
+    QJsonArray sizes;
+    for (int size : splitter->sizes()) {
+      sizes.push_back(size);
+    }
+    node.insert(QStringLiteral("sizes"), sizes);
+    QJsonArray children;
+    for (int i = 0; i < splitter->count(); ++i) {
+      QJsonObject child = SerializeMosaicNode(splitter->widget(i));
+      if (!child.isEmpty()) {
+        children.push_back(child);
+      }
+    }
+    node.insert(QStringLiteral("children"), children);
+    return node;
+  }
+  return node;
+}
+
+QWidget* BuildMosaicNode(
+    const QJsonObject& node,
+    const std::function<QDockWidget*(const QString&)>& resolve,
+    QList<QDockWidget*>* placed) {
+  if (node.isEmpty() || placed == nullptr) {
+    return nullptr;
+  }
+  const QString type = node.value(QStringLiteral("type")).toString();
+  if (type == QLatin1String("leaf")) {
+    const QString name = node.value(QStringLiteral("name")).toString();
+    QDockWidget* dock = resolve ? resolve(name) : nullptr;
+    if (dock == nullptr) {
+      return nullptr;
+    }
+    PrepareDockForSplitter(dock);
+    placed->push_back(dock);
+    return WrapDockInPane(dock);
+  }
+  if (type != QLatin1String("split")) {
+    return nullptr;
+  }
+  const Qt::Orientation orientation =
+      node.value(QStringLiteral("orientation")).toString() ==
+              QLatin1String("vertical")
+          ? Qt::Vertical
+          : Qt::Horizontal;
+  auto* splitter = new PanelSplitter(orientation);
+  const QJsonArray children = node.value(QStringLiteral("children")).toArray();
+  for (const QJsonValue& child_value : children) {
+    if (!child_value.isObject()) {
+      continue;
+    }
+    if (QWidget* child =
+            BuildMosaicNode(child_value.toObject(), resolve, placed)) {
+      splitter->addWidget(child);
+    }
+  }
+  if (splitter->count() == 0) {
+    splitter->deleteLater();
+    return nullptr;
+  }
+  if (splitter->count() == 1) {
+    // Degenerate split → promote the only child.
+    QWidget* only = splitter->widget(0);
+    only->setParent(nullptr);
+    splitter->deleteLater();
+    return only;
+  }
+  QList<int> sizes;
+  const QJsonArray sizes_json = node.value(QStringLiteral("sizes")).toArray();
+  for (const QJsonValue& size_value : sizes_json) {
+    sizes.push_back(size_value.toInt(80));
+  }
+  if (sizes.size() == splitter->count()) {
+    splitter->setSizes(sizes);
+  }
+  RaiseSplitterHandles(splitter);
+  return splitter;
+}
+
 }  // namespace
 
 MainPanelHost::MainPanelHost(QWidget* parent) : QMainWindow(parent) {
@@ -218,8 +322,25 @@ MainPanelHost::MainPanelHost(QWidget* parent) : QMainWindow(parent) {
   setDockNestingEnabled(false);
   setContentsMargins(0, 0, 0, 0);
 
+  parking_ = new QWidget(this);
+  parking_->setObjectName(QStringLiteral("MainPanelHostParking"));
+  parking_->hide();
+
   root_splitter_ = new PanelSplitter(Qt::Horizontal, this);
   setCentralWidget(root_splitter_);
+}
+
+void MainPanelHost::parkDock(QDockWidget* dock) {
+  if (dock == nullptr) {
+    return;
+  }
+  if (parking_ == nullptr) {
+    parking_ = new QWidget(this);
+    parking_->hide();
+  }
+  const QSignalBlocker blocker(dock);
+  dock->setParent(parking_);
+  dock->hide();
 }
 
 QSize MainPanelHost::minimumSizeHint() const { return QSize(0, 0); }
@@ -278,20 +399,22 @@ void MainPanelHost::clearSplitterTree() {
   }
   const QList<QDockWidget*> docks = hostedPanels();
   for (QDockWidget* dock : docks) {
-    if (dock == nullptr) {
-      continue;
-    }
-    dock->setParent(this);
-    dock->hide();
+    parkDock(dock);
   }
+  // Fully detach then destroy empty panes/splitters synchronously. deleteLater
+  // races with the first activate/paint after loadConfig and corrupts the heap.
+  QList<QWidget*> orphans;
   while (root_splitter_->count() > 0) {
     QWidget* child = root_splitter_->widget(0);
     child->setParent(nullptr);
     if (qobject_cast<QDockWidget*>(child) == nullptr) {
-      child->deleteLater();
+      orphans.push_back(child);
     }
   }
   root_splitter_->setOrientation(Qt::Horizontal);
+  for (QWidget* orphan : orphans) {
+    delete orphan;
+  }
 }
 
 void MainPanelHost::removePanel(QDockWidget* dock) {
@@ -303,11 +426,10 @@ void MainPanelHost::removePanel(QDockWidget* dock) {
   if (pane != nullptr && pane->property("mainPanelPane").toBool()) {
     parent_splitter = qobject_cast<QSplitter*>(pane->parentWidget());
   }
-  dock->setParent(this);
-  dock->hide();
+  parkDock(dock);
   if (pane != nullptr && pane->property("mainPanelPane").toBool()) {
     pane->setParent(nullptr);
-    pane->deleteLater();
+    delete pane;
   }
   CollapseDegenerateSplitter(parent_splitter, root_splitter_);
   RaiseSplitterHandles(root_splitter_);
@@ -440,8 +562,7 @@ void MainPanelHost::tilePanels(const QList<QDockWidget*>& visible,
       removeDockWidget(dock);
     }
     PrepareDockForSplitter(dock);
-    dock->setParent(this);
-    dock->hide();
+    parkDock(dock);
   }
 
   for (QDockWidget* dock : visible) {
@@ -498,7 +619,7 @@ void MainPanelHost::tilePanels(const QList<QDockWidget*>& visible,
         row->setSizes(widths);
         RaiseSplitterHandles(row);
       } else {
-        row->deleteLater();
+        delete row;
       }
     }
   }
@@ -510,6 +631,90 @@ void MainPanelHost::tilePanels(const QList<QDockWidget*>& visible,
 
 void MainPanelHost::syncHorizontalDockLayout() {
   RaiseSplitterHandles(root_splitter_);
+}
+
+QByteArray MainPanelHost::saveMosaicLayout() const {
+  if (root_splitter_ == nullptr) {
+    return {};
+  }
+  QJsonObject document;
+  document.insert(QStringLiteral("root"), SerializeMosaicNode(root_splitter_));
+  const QByteArray json =
+      QJsonDocument(document).toJson(QJsonDocument::Compact);
+  if (json.isEmpty() || json == QByteArrayLiteral("{}")) {
+    return {};
+  }
+  return QByteArray(kMosaicPrefix) + json;
+}
+
+bool MainPanelHost::restoreMosaicLayout(
+    const QByteArray& encoded,
+    const std::function<QDockWidget*(const QString& object_name)>& resolve) {
+  if (root_splitter_ == nullptr || !encoded.startsWith(kMosaicPrefix)) {
+    return false;
+  }
+  const QByteArray json = encoded.mid(static_cast<int>(sizeof(kMosaicPrefix) - 1));
+  const QJsonDocument document = QJsonDocument::fromJson(json);
+  if (!document.isObject()) {
+    return false;
+  }
+  const QJsonObject root_object =
+      document.object().value(QStringLiteral("root")).toObject();
+  if (root_object.isEmpty()) {
+    return false;
+  }
+
+  // Clear BEFORE BuildMosaicNode. WrapDockInPane reuses an existing
+  // mainPanelPane parent; if we build first then clearSplitterTree(), those
+  // panes are deleteLater()'d while still referenced by the new tree — UAF
+  // (often QPalette/QBrush crash on the next activate/paint).
+  QList<QDockWidget*> previously_hosted = hostedPanels();
+  clearSplitterTree();
+  for (QDockWidget* dock : previously_hosted) {
+    if (dock == nullptr) {
+      continue;
+    }
+    PrepareDockForSplitter(dock);
+    parkDock(dock);
+  }
+
+  QList<QDockWidget*> placed;
+  QWidget* built = BuildMosaicNode(root_object, resolve, &placed);
+  if (built == nullptr || placed.isEmpty()) {
+    return false;
+  }
+
+  for (QDockWidget* dock : previously_hosted) {
+    if (dock != nullptr && !placed.contains(dock)) {
+      parkDock(dock);
+    }
+  }
+
+  if (auto* as_splitter = qobject_cast<QSplitter*>(built)) {
+    // Replace root contents with the restored splitter's children / orientation.
+    root_splitter_->setOrientation(as_splitter->orientation());
+    const QList<int> sizes = as_splitter->sizes();
+    while (as_splitter->count() > 0) {
+      // addWidget reparents; avoid setParent(nullptr) (top-level flash / UAF).
+      root_splitter_->addWidget(as_splitter->widget(0));
+    }
+    if (sizes.size() == root_splitter_->count()) {
+      root_splitter_->setSizes(sizes);
+    }
+    delete as_splitter;
+  } else {
+    root_splitter_->setOrientation(Qt::Horizontal);
+    root_splitter_->addWidget(built);
+  }
+
+  for (QDockWidget* dock : placed) {
+    if (dock != nullptr) {
+      dock->show();
+      dock->raise();
+    }
+  }
+  RaiseSplitterHandles(root_splitter_);
+  return true;
 }
 
 void MainPanelHost::resizeEvent(QResizeEvent* event) {

@@ -338,6 +338,9 @@ class FrameLayout {
   /**
    * @brief Raises Displays in the left sidebar (swaps with Properties when
    *        needed).
+   *
+   * Also unhides the left dock area and reopens Displays after the user closed
+   * it or used Hide Left — used when activating a 3D View.
    */
   void raiseLeftSidebarDisplays();
 
@@ -456,8 +459,8 @@ class FrameLayout {
   bool left_sidebar_shows_properties_ = false;
 
   /**
-   * User closed Displays (title-bar close or Panels menu). Viewport activation
-   * must not call show() again until the user reopens it.
+   * User closed Displays (title-bar close or Panels menu). Cleared when
+   * @ref raiseLeftSidebarDisplays() runs (e.g. activating 3D View).
    */
   bool displays_closed_by_user_ = false;
 
