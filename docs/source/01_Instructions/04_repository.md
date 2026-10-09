@@ -62,7 +62,7 @@ autonomy/                         # ← 源码根
 ├── docker/                       # Dockerfile、run_autonomy.py、install/*.sh
 ├── docs/                         # Sphinx 本手册（source/01_Instructions …）
 ├── scripts/                      # setup_environment.bash、install_dependencies.py、NFS
-├── tools/                        # clang_format_sources.py、打包等
+├── tools/                        # package.bzl、repositories.bzl、prefix*.BUILD、python/
 ├── ansible/                      # 装机剧本（可选）
 └── images/                       # README 配图
 ```
@@ -183,8 +183,8 @@ python3 scripts/install_dependencies.py --skip-installed
 python3 scripts/install_dependencies.py --profile board --skip-installed
 
 # 格式化
-python3 tools/clang_format_sources.py autonomy/planning
-python3 tools/clang_format_sources.py autonomy/task
+python3 tools/python/clang_format_sources.py autonomy/planning
+python3 tools/python/clang_format_sources.py autonomy/task
 
 # 增量编某一目标（已 cmake 配置过）
 cmake --build build -j$(nproc) --target autonomy.planning

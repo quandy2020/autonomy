@@ -1,8 +1,60 @@
 """Parent autonomy workspace (sibling packages are their own Bazel projects)."""
 
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//tools:dependencies.bzl", "AUTONOMY_MIDDLEWARE_DEPS", "AUTONOMY_THIRD_PARTY_DEPS")
+load("//tools:package.bzl", "AUTONOMY_DOMAIN_NAMES")
+
 package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "version.json",
+    "MODULE.bazel",
+])
+
+# =============================================================================
+# C++ third-party used by //autonomy/*  (SSOT: tools/dependencies.bzl; versions: MODULE.bazel)
+#
+#   BCR:       @eigen  @com_github_google_glog  @com_google_protobuf
+#   CMake:     //:automsgs  //:autonomy_headers  (+ //:autolink on some domains)
+#   system:    //:pthread
+#   CLI:       ./autonomy.sh deps
+# =============================================================================
 
 alias(
     name = "automsgs",
     actual = "@autonomy_prefix//:automsgs",
+)
+
+alias(
+    name = "autolink",
+    actual = "@autonomy_prefix//:autolink",
+)
+
+alias(
+    name = "autonomy_headers",
+    actual = "@autonomy_prefix//:autonomy_headers",
+)
+
+cc_library(
+    name = "pthread",
+    linkopts = ["-lpthread"],
+    linkstatic = True,
+)
+
+cc_library(
+    name = "cpp_third_party",
+    deps = AUTONOMY_THIRD_PARTY_DEPS + AUTONOMY_MIDDLEWARE_DEPS,
+)
+
+[
+    alias(
+        name = domain,
+        actual = "//autonomy/{0}:autonomy_{0}".format(domain),
+    )
+    for domain in AUTONOMY_DOMAIN_NAMES
+]
+
+filegroup(
+    name = "autonomy",
+    srcs = ["//autonomy/{0}:autonomy_{0}".format(d) for d in AUTONOMY_DOMAIN_NAMES],
 )

@@ -19,7 +19,7 @@
 | 场景 | 推荐工具 |
 |------|----------|
 | 首次搭建环境 | `install_deps` + `run_autonomy.py` |
-| 提交前检查格式 | `tools/clang_format_sources.py --check` |
+| 提交前检查格式 | `tools/python/clang_format_sources.py --check` |
 | 端到端导航验证 | `autolink_launch autonomy.launch` + Bridge / Action |
 | 通道/话题调试 | Autolink CLI（独立构建） |
 | 生产监控 | `MonitorRegistry` + Prometheus |

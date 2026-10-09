@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import unittest
 
-from tools.cmake import REPOSITORY_ROOT
+from tools.python.cmake import REPOSITORY_ROOT
 
 PRESETS_PATH = REPOSITORY_ROOT / "CMakePresets.json"
 

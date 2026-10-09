@@ -1,28 +1,32 @@
 # tools/
 
-全部为 Python 工具（格式化、打包、板端 Swap、CMake 检查）。
+仓库根目录工具（对齐 Apollo `tools/`）：
 
-工作流入口（环境 / 依赖 / NFS）仍在 [`scripts/`](../scripts/)。
+| 路径 | 内容 |
+|------|------|
+| [`package.bzl`](package.bzl) | 域图 + `autonomy_domain_library` / `autonomy_cc_*` |
+| [`dependencies.bzl`](dependencies.bzl) | `AUTONOMY_THIRD_PARTY_DEPS` / `AUTONOMY_MIDDLEWARE_DEPS` |
+| [`repositories.bzl`](repositories.bzl) | `@autonomy_prefix` module extension |
+| [`prefix.BUILD`](prefix.BUILD) / [`prefix_stub.BUILD`](prefix_stub.BUILD) | CMake 前缀 BUILD 模板 |
+| [`common.bzl`](common.bzl) | `clean_dep` |
+| [`bazel.rc`](bazel.rc) | 默认 Bazel 标志 |
+| [`python/`](python/) | 格式化、打包、`generate_version_cpp.py` |
 
-| Path | Purpose |
-|------|---------|
-| `clang_format_sources.py` | 按仓库 `.clang-format` 格式化 C/C++ |
-| `package_install_tarball.py` | 构建并打包 install-tree（Ansible 制品） |
-| `make_ota_delta.py` | 两版 install-tree → 文件级 OTA delta 包 |
-| `enable_board_swap.py` | 板端创建/启用 swapfile（`CONFIG_SWAP=n` 时退出） |
-| `cmake/` | CMake preset / install-consumer 检查包 |
+## 命名约定
+
+| 种类 | 风格 | 例 |
+|------|------|-----|
+| 常量 | `AUTONOMY_<AREA>_…` | `AUTONOMY_DOMAIN_NAMES`、`AUTONOMY_THIRD_PARTY_DEPS` |
+| 宏 / 函数 | `autonomy_<verb>_…` | `autonomy_domain_library`、`autonomy_module_copts` |
+| 文件 | 全词、无冗余前缀 | `dependencies.bzl`、`package.bzl`、`repositories.bzl` |
+
+## 使用
 
 ```bash
-# From autonomy repo root (PYTHONPATH=. or just run as scripts)
-python3 tools/clang_format_sources.py --check
-python3 tools/package_install_tarball.py --output dist/autonomy.tar.gz
-python3 tools/make_ota_delta.py --base /opt/autonomy-slots/slot_a \
-  --target /tmp/new_tree --output dist/ota-delta \
-  --base-version v1 --target-version v2
-python3 tools/enable_board_swap.py
-
-# CMake checks
-python3 -m tools.cmake -v
-# or
-python3 -m unittest tools.cmake.test_presets tools.cmake.test_install_consumer -v
+./autonomy.sh deps                 # 第三方一览
+./autonomy.sh modules
+export AUTONOMY_PREFIX="$PWD/build"
+./autonomy.sh build -m planning,control
 ```
+
+域 `BUILD.bazel` 对齐 Apollo：`autonomy_cc_library` + **显式** `srcs`/`hdrs`/`deps`，进程入口用 `autonomy_cc_binary`（如 `autonomy.planning`），运行时资源用 `filegroup(name = "runtime_data")`。范例见 `autonomy/bridge/BUILD.bazel`。

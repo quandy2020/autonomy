@@ -138,6 +138,7 @@ controller_options {
   controller_plugins: "graceful_controller:GracefulController"
   controller_plugins: "mppi_controller:MppiController"
   controller_plugins: "nmpc_controller:NMPCController"
+  controller_plugins: "sando_controller:SandoController"
   costmap_2d_options {
     robot_radius: 0.2
     footprint {

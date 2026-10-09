@@ -18,7 +18,7 @@
 | 安全 | `safety/safety_latch` + `monitor/mrm_*` |
 | 日志 | `conf/logging.pb.txt` + `logging/` 事件包 |
 | 数据 | `conf/data.pb.txt`、`launch/replay.launch`、DataPackage |
-| OTA | `ota/` + `tools/package_ota_delta.py` |
+| OTA | `ota/` + `tools/python/package_ota_delta.py` |
 | 对外 API | `bridge` + `automsgs` RPC（非本树） |
 
 ## 默认 launch 模块集（`autonomy.launch`）
@@ -47,8 +47,8 @@
 
 ## OTA 包
 
-- **full：** `tools/package_install_tarball.py` → `full.tar.gz` / `autonomy.tar.gz`
-- **delta：** `tools/package_ota_delta.py --base … --target … --base-version … --target-version … --output … [--full-tar …]`
+- **full：** `tools/python/package_install_tarball.py` → `full.tar.gz` / `autonomy.tar.gz`
+- **delta：** `tools/python/package_ota_delta.py --base … --target … --base-version … --target-version … --output … [--full-tar …]`
   - 产出 `package_manifest.json` + `delta/payloads` + `delta/deletes.txt`（可选附带 `full.tar.gz` 供 fallback）
 
 ## 裁决三问（是否进 system）

@@ -2,7 +2,7 @@
 
 开发与 CI **工作流入口**（环境 / 依赖 / NFS）。
 
-通用小工具（格式化、打包、板端 Swap、CMake 检查）已迁到 [`tools/`](../tools/)。
+通用小工具（格式化、打包、板端 Swap、CMake 检查）在 [`tools/python/`](../tools/python/)。
 
 | 路径 | 用途 |
 |------|------|
@@ -18,7 +18,7 @@ python3 scripts/install_dependencies.py --skip-installed
 python3 scripts/install_dependencies.py --profile board --skip-installed
 # 可选：统一前缀（默认 /usr/local；勿与 ~/.local 混用）
 python3 scripts/install_dependencies.py --prefix /opt/autonomy --skip-installed
-python3 tools/clang_format_sources.py --check
+python3 tools/python/clang_format_sources.py --check
 ```
 依赖数据：`install_deps/data/*.json`；第三方安装脚本：`docker/install/`。
 

@@ -1,0 +1,83 @@
+load(
+    "//tools:package.bzl",
+    "autonomy_cc_library",
+)
+
+package(default_visibility = ["//visibility:public"])
+
+autonomy_cc_library(
+    name = "autonomy_transform",
+    srcs = [
+        "autolink_tf_listener.cpp",
+        "buffer.cpp",
+        "buffer_utils.cpp",
+        "common/transform_interface.cpp",
+        "geometry_msgs/pose_stamped.cpp",
+        "static_transform.cpp",
+        "static_transform_publisher.cpp",
+        "tf2/buffer_core.cpp",
+        "tf2/cache.cpp",
+        "tf2/static_cache.cpp",
+        "tf2/time.cpp",
+        "transform_broadcaster.cpp",
+        "transform_server.cpp",
+    ],
+    hdrs = [
+        "autolink_tf_listener.hpp",
+        "buffer.hpp",
+        "buffer_interface.hpp",
+        "buffer_utils.hpp",
+        "common/transform_interface.hpp",
+        "geometry_msgs/pose_stamped.h",
+        "geometry_msgs/transform_stamped.h",
+        "rigid_transform_test_helpers.hpp",
+        "static_transform.hpp",
+        "static_transform_publisher.hpp",
+        "tf2/LinearMath/Matrix3x3.h",
+        "tf2/LinearMath/MinMax.h",
+        "tf2/LinearMath/QuadWord.h",
+        "tf2/LinearMath/Quaternion.h",
+        "tf2/LinearMath/Scalar.h",
+        "tf2/LinearMath/Transform.h",
+        "tf2/LinearMath/Vector3.h",
+        "tf2/buffer_core.h",
+        "tf2/convert.h",
+        "tf2/exceptions.h",
+        "tf2/impl/convert.h",
+        "tf2/impl/utils.h",
+        "tf2/signal.hpp",
+        "tf2/tf2_error.h",
+        "tf2/time.h",
+        "tf2/time_cache.h",
+        "tf2/transform_datatypes.h",
+        "tf2/transform_storage.h",
+        "tf2/utils.h",
+        "transform_broadcaster.hpp",
+        "transform_server.hpp",
+        "transform_topics.hpp",
+    ],
+    copts = ['-DMODULE_NAME=\"transform\"'],
+    include_prefix = "autonomy/transform",
+    deps = [
+        "//autonomy/common:autonomy_common",
+        "//:autolink",
+        "//:automsgs",
+        "//:autonomy_headers",
+        "@eigen//:eigen",
+        "@com_github_google_glog//:glog",
+        "@com_google_protobuf//:protobuf",
+        "//:pthread",
+    ],
+)
+
+filegroup(
+    name = "runtime_data",
+    srcs = glob(
+        [
+            "conf/**",
+            "dag/**",
+            "launch/**",
+        ],
+        allow_empty = True,
+    ),
+)

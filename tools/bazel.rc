@@ -1,0 +1,44 @@
+# Autonomy Bazel flags (Apollo tools/bazel.rc counterpart).
+# Imported from the workspace root .bazelrc.
+
+# +------------------------------------------------------------+
+# | Common                                                     |
+# +------------------------------------------------------------+
+common --color=yes
+common --enable_bzlmod
+
+# +------------------------------------------------------------+
+# | C++                                                        |
+# +------------------------------------------------------------+
+build --cxxopt=-std=c++17
+build --host_cxxopt=-std=c++17
+build --copt=-Wall
+build --copt=-Wno-unused-parameter
+build --cxxopt=-fdiagnostics-color=always
+
+# Quiet obsolete macOS SDK libc++ availability noise on recent Xcode.
+build --macos_minimum_os=11.0
+build --host_macos_minimum_os=11.0
+
+# Default paths for SYSTEM LIBRARIES (Apollo-compatible defines).
+build --define=PREFIX=/usr
+build --define=LIBDIR=$(PREFIX)/lib
+build --define=INCLUDEDIR=$(PREFIX)/include
+
+# +------------------------------------------------------------+
+# | CMake prefix / runtime                                     |
+# +------------------------------------------------------------+
+# automsgs / autolink come from @autonomy_prefix (CMake install or build/).
+build --repo_env=AUTONOMY_PREFIX
+test --repo_env=AUTONOMY_PREFIX
+
+test --test_env=LD_LIBRARY_PATH
+build --action_env=LD_LIBRARY_PATH
+
+build --incompatible_strict_action_env=false
+
+# +------------------------------------------------------------+
+# | Config aliases                                             |
+# +------------------------------------------------------------+
+build:dbg -c dbg
+build:opt -c opt

@@ -1,0 +1,41 @@
+load(
+    "//tools:package.bzl",
+    "autonomy_cc_library",
+)
+
+package(default_visibility = ["//visibility:public"])
+
+autonomy_cc_library(
+    name = "autonomy_prediction",
+    srcs = [
+        "common/prediction_interface.cpp",
+        "prediction_server.cpp",
+    ],
+    hdrs = [
+        "common/prediction_interface.hpp",
+        "prediction_server.hpp",
+    ],
+    copts = ['-DMODULE_NAME=\"prediction\"'],
+    include_prefix = "autonomy/prediction",
+    deps = [
+        "//autonomy/common:autonomy_common",
+        "//:automsgs",
+        "//:autonomy_headers",
+        "@eigen//:eigen",
+        "@com_github_google_glog//:glog",
+        "@com_google_protobuf//:protobuf",
+        "//:pthread",
+    ],
+)
+
+filegroup(
+    name = "runtime_data",
+    srcs = glob(
+        [
+            "conf/**",
+            "dag/**",
+            "launch/**",
+        ],
+        allow_empty = True,
+    ),
+)

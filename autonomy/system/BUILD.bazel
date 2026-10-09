@@ -1,0 +1,110 @@
+load(
+    "//tools:package.bzl",
+    "autonomy_cc_binary",
+    "autonomy_cc_library",
+)
+
+package(default_visibility = ["//visibility:public"])
+
+autonomy_cc_library(
+    name = "autonomy_system",
+    srcs = [
+        "logging/event_bundler.cpp",
+        "monitor/channel_monitor/channel_monitor.cpp",
+        "monitor/cpu_monitor/cpu_monitor_base.cpp",
+        "monitor/cpu_monitor/cpu_usage_statistics.cpp",
+        "monitor/gperf_profiler.cpp",
+        "monitor/gpu_monitor/gpu_monitor.cpp",
+        "monitor/hazard_monitor/hazard_monitor.cpp",
+        "monitor/hdd_monitor/hdd_monitor.cpp",
+        "monitor/health_snapshot_store.cpp",
+        "monitor/latency_monitor/latency_monitor.cpp",
+        "monitor/mem_monitor/mem_monitor.cpp",
+        "monitor/monitor_options.cpp",
+        "monitor/monitor_registry.cpp",
+        "monitor/mrm_handler/mrm_handler.cpp",
+        "monitor/net_monitor/net_monitor.cpp",
+        "monitor/ntp_monitor/ntp_monitor.cpp",
+        "monitor/process_monitor/process_monitor.cpp",
+        "monitor/restart_request_watcher.cpp",
+        "monitor/system_monitor_utility.cpp",
+        "monitor/voltage_monitor/voltage_monitor.cpp",
+        "options.cpp",
+        "ota/ota_agent.cpp",
+        "safety/safety_latch.cpp",
+    ],
+    hdrs = [
+        "logging/event_bundler.hpp",
+        "monitor/channel_monitor/channel_monitor.hpp",
+        "monitor/cpu_monitor/cpu_information.hpp",
+        "monitor/cpu_monitor/cpu_monitor_base.hpp",
+        "monitor/cpu_monitor/cpu_usage_statistics.hpp",
+        "monitor/gperf_profiler.hpp",
+        "monitor/gpu_monitor/gpu_monitor.hpp",
+        "monitor/hazard_monitor/hazard_monitor.hpp",
+        "monitor/hdd_monitor/hdd_monitor.hpp",
+        "monitor/health_snapshot_store.hpp",
+        "monitor/latency_monitor/latency_monitor.hpp",
+        "monitor/mem_monitor/mem_monitor.hpp",
+        "monitor/monitor_base.hpp",
+        "monitor/monitor_options.hpp",
+        "monitor/monitor_registry.hpp",
+        "monitor/mrm_handler/mrm_handler.hpp",
+        "monitor/net_monitor/net_monitor.hpp",
+        "monitor/ntp_monitor/ntp_monitor.hpp",
+        "monitor/ops_types.hpp",
+        "monitor/process_monitor/process_monitor.hpp",
+        "monitor/restart_request_watcher.hpp",
+        "monitor/system_health_snapshot.hpp",
+        "monitor/system_monitor_utility.hpp",
+        "monitor/voltage_monitor/voltage_monitor.hpp",
+        "options.hpp",
+        "ota/ota_agent.hpp",
+        "safety/safety_latch.hpp",
+    ],
+    copts = ['-DMODULE_NAME=\"system\"'],
+    include_prefix = "autonomy/system",
+    deps = [
+        "//autonomy/common:autonomy_common",
+        "//autonomy/task:autonomy_task",
+        "//:autolink",
+        "//:automsgs",
+        "//:autonomy_headers",
+        "@eigen//:eigen",
+        "@com_github_google_glog//:glog",
+        "@com_google_protobuf//:protobuf",
+        "//:pthread",
+    ],
+)
+
+autonomy_cc_binary(
+    name = "autonomy.monitor",
+    srcs = ["monitor/monitor_main.cpp"],
+    deps = [
+        ":autonomy_system",
+        "@com_github_google_glog//:glog",
+        "@com_github_gflags_gflags//:gflags",
+    ],
+)
+
+autonomy_cc_binary(
+    name = "autonomy.ota",
+    srcs = ["ota/ota_main.cpp"],
+    deps = [
+        ":autonomy_system",
+        "@com_github_google_glog//:glog",
+        "@com_github_gflags_gflags//:gflags",
+    ],
+)
+
+filegroup(
+    name = "runtime_data",
+    srcs = glob(
+        [
+            "conf/**",
+            "dag/**",
+            "launch/**",
+        ],
+        allow_empty = True,
+    ),
+)

@@ -73,7 +73,7 @@
 | 较成熟 | 通信 · 地图 · 规划 · 控制 · 任务 · 定位 · 管理面 · Bridge · 驱动骨架 |
 | 深化中 | 感知 · 预测 · 机械臂 · 语音 |
 
-变更见 [`CHANGELOG.rst`](https://github.com/quandy2020/autonomy/blob/main/CHANGELOG.rst)。贡献：`tools/clang_format_sources.py` → PR 附测试。
+变更见 [`CHANGELOG.rst`](https://github.com/quandy2020/autonomy/blob/main/CHANGELOG.rst)。贡献：`tools/python/clang_format_sources.py` → PR 附测试。
 
 [GitHub](https://github.com/quandy2020/autonomy) · [Gitee](https://gitee.com/quanduyong/autonomy) · Apache 2.0
 

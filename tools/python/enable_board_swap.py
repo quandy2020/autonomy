@@ -5,13 +5,13 @@
 # @brief Create and enable a swapfile on low-RAM boards (Firefly, etc.).
 #
 # Usage:
-#   python3 tools/enable_board_swap.py
-#   SWAP_SIZE=8G python3 tools/enable_board_swap.py
+#   python3 tools/python/enable_board_swap.py
+#   SWAP_SIZE=8G python3 tools/python/enable_board_swap.py
 #
 # Many Firefly RT kernels ship with CONFIG_SWAP=n. In that case this script
 # exits non-zero — reduce build parallelism instead: cmake --build build -j1
 
-"""@package tools.enable_board_swap
+"""@package tools.python.enable_board_swap
 @brief Board swapfile helper for low-memory builds.
 """
 

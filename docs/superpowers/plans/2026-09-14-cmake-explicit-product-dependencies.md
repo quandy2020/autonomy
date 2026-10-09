@@ -188,7 +188,7 @@ Expected: pass.
 
 ```bash
 python3 -m unittest discover -s cmake/tests -p 'test_*.py' -v
-python3 -m unittest tools.cmake.test_presets tools.cmake.test_install_consumer -v
+python3 -m unittest tools.python.cmake.test_presets tools.python.cmake.test_install_consumer -v
 ```
 
 Expected: all tests pass; the consumer test may require the build produced below before its final rerun.
@@ -201,7 +201,7 @@ Ensure no concurrent process is deleting or reconfiguring `build/autonomy-minima
 cmake --preset autonomy-minimal
 cmake --build --preset autonomy-minimal -- -j1
 ctest --preset autonomy-minimal --output-on-failure
-python3 -m unittest tools.cmake.test_install_consumer -v
+python3 -m unittest tools.python.cmake.test_install_consumer -v
 ```
 
 Expected: all commands exit zero, with no missing test executables.

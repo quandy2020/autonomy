@@ -1,29 +1,13 @@
-load("//tools:system_libs.bzl", "system_library")
+"""Bazel tools for Autonomy (Apollo tools/ counterpart)."""
 
 package(default_visibility = ["//visibility:public"])
 
-alias(
-    name = "eigen",
-    actual = "@system_eigen//:eigen",
-)
-
-system_library(
-    name = "glog",
-    linkopts = [
-        "/usr/local/lib/libglog.so",
-        "-Wl,-rpath,/usr/local/lib",
-    ],
-)
-
-system_library(
-    name = "protobuf",
-    linkopts = [
-        "/usr/local/lib/libprotobuf.so",
-        "-Wl,-rpath,/usr/local/lib",
-    ],
-)
-
-system_library(
-    name = "pthread",
-    linkopts = ["-lpthread"],
-)
+exports_files([
+    "package.bzl",
+    "common.bzl",
+    "dependencies.bzl",
+    "repositories.bzl",
+    "prefix.BUILD",
+    "prefix_stub.BUILD",
+    "bazel.rc",
+])

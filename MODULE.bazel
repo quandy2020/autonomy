@@ -1,4 +1,31 @@
-"""Bazel module for the autonomy workspace (src/autonomy)."""
+"""Bazel module for the autonomy workspace.
+
+Third-party inventory (glance here first)
+========================================
+BCR (bazel_dep) — fetched/built by Bazel:
+
+  Module          Version              Repo label (in BUILD deps)
+  --------------  -------------------  --------------------------------
+  rules_cc        0.1.1                (rules)
+  platforms       0.0.11               (rules)
+  bazel_skylib    1.7.1                (rules)
+  googletest      1.15.2               @googletest//:gtest[_main]
+  gflags          2.2.2.bcr.1          @com_github_gflags_gflags//:gflags
+  glog            0.7.1.bcr.1          @com_github_google_glog//:glog
+  protobuf        29.3                 @com_google_protobuf//:protobuf
+  eigen           3.4.0.bcr.3          @eigen//:eigen
+  abseil-cpp      20240722.0.bcr.2     @com_google_absl//absl/...
+
+CMake prefix (NOT bazel_dep) — @autonomy_prefix via AUTONOMY_PREFIX:
+
+  //:automsgs            libautomsgs + headers
+  //:autolink            libautolink + headers
+  //:autonomy_headers    installed include/autonomy/** (e.g. *.pb.h)
+
+Also: //:pthread  (system -lpthread)
+
+CLI:  ./autonomy.sh deps
+"""
 
 module(
     name = "autonomy",
@@ -6,11 +33,40 @@ module(
     compatibility_level = 1,
 )
 
+# --- BCR: build rules / platforms ---
 bazel_dep(name = "rules_cc", version = "0.1.1")
 bazel_dep(name = "platforms", version = "0.0.11")
+bazel_dep(name = "bazel_skylib", version = "1.7.1")
+
+# --- BCR: test ---
 bazel_dep(name = "googletest", version = "1.15.2")
 
-# Local CMake install / build tree (libautolink, libautomsgs, generated headers).
-# Override with: bazel build --repo_env=AUTONOMY_PREFIX=/path/to/prefix ...
-autonomy_deps = use_extension("//tools:autonomy_deps.bzl", "autonomy_deps")
-use_repo(autonomy_deps, "autonomy_prefix", "system_eigen")
+# --- BCR: C++ libraries (used by //autonomy/*) ---
+bazel_dep(
+    name = "gflags",
+    version = "2.2.2.bcr.1",
+    repo_name = "com_github_gflags_gflags",
+)
+bazel_dep(
+    name = "glog",
+    version = "0.7.1.bcr.1",
+    repo_name = "com_github_google_glog",
+)
+bazel_dep(
+    name = "protobuf",
+    version = "29.3",
+    repo_name = "com_google_protobuf",
+)
+bazel_dep(name = "eigen", version = "3.4.0.bcr.3")
+bazel_dep(
+    name = "abseil-cpp",
+    version = "20240722.0.bcr.2",
+    repo_name = "com_google_absl",
+)
+
+# --- Local: CMake install/build tree (automsgs / autolink / autonomy headers) ---
+autonomy_repositories = use_extension(
+    "//tools:repositories.bzl",
+    "autonomy_repositories",
+)
+use_repo(autonomy_repositories, "autonomy_prefix")

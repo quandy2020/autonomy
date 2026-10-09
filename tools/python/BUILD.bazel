@@ -1,0 +1,7 @@
+"""Python helpers invoked from Bazel genrules."""
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "generate_version_cpp.py",
+])

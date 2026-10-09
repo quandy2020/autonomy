@@ -1,1 +1,1 @@
-"""Autonomy developer tools (format, package, board helpers, CMake checks)."""
+"""Autonomy repository tools package root (`tools.bazel`, `tools.python`)."""

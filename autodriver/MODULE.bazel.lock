@@ -147,7 +147,7 @@
   },
   "selectedYankedVersions": {},
   "moduleExtensions": {
-    "//tools:deps.bzl%deps": {
+    "//tools:dependencies.bzl%deps": {
       "general": {
         "bzlTransitiveDigest": "mlEyOU7+7BjkyFsxJ62nB42GD3UJQrLvwtOsVI8624E=",
         "usagesDigest": "nyKJ/9WWplZzvoRnGkGGqjuI4PHj1RyuQ3vVYHtgiPM=",
@@ -156,19 +156,19 @@
         "envVariables": {},
         "generatedRepoSpecs": {
           "prefix": {
-            "repoRuleId": "@@//tools:deps.bzl%_prefix",
+            "repoRuleId": "@@//tools:dependencies.bzl%_prefix",
             "attributes": {}
           },
           "autolink": {
-            "repoRuleId": "@@//tools:deps.bzl%_autolink",
+            "repoRuleId": "@@//tools:dependencies.bzl%_autolink",
             "attributes": {}
           },
           "cli11": {
-            "repoRuleId": "@@//tools:deps.bzl%_cli11",
+            "repoRuleId": "@@//tools:dependencies.bzl%_cli11",
             "attributes": {}
           },
           "eigen": {
-            "repoRuleId": "@@//tools:deps.bzl%_eigen",
+            "repoRuleId": "@@//tools:dependencies.bzl%_eigen",
             "attributes": {}
           }
         },

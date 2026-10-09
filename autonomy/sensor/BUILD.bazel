@@ -1,0 +1,58 @@
+load(
+    "//tools:package.bzl",
+    "autonomy_cc_library",
+)
+
+package(default_visibility = ["//visibility:public"])
+
+autonomy_cc_library(
+    name = "autonomy_sensor",
+    srcs = [
+        "imu_data.cpp",
+        "internal/ordered_multi_queue.cpp",
+        "internal/sensor_collator.cpp",
+        "laser_data.cpp",
+        "odometry_data.cpp",
+        "point_cloud.cpp",
+        "range_data.cpp",
+    ],
+    hdrs = [
+        "collator_interface.hpp",
+        "consumer.hpp",
+        "data.hpp",
+        "dispatchable.hpp",
+        "imu_data.hpp",
+        "internal/ordered_multi_queue.hpp",
+        "internal/sensor_collator.hpp",
+        "laser_data.hpp",
+        "odometry_data.hpp",
+        "point_cloud.hpp",
+        "range_data.hpp",
+        "time_util.hpp",
+    ],
+    copts = ['-DMODULE_NAME=\"sensor\"'],
+    include_prefix = "autonomy/sensor",
+    deps = [
+        "//autonomy/common:autonomy_common",
+        "//autonomy/control:autonomy_control",
+        "//:autolink",
+        "//:automsgs",
+        "//:autonomy_headers",
+        "@eigen//:eigen",
+        "@com_github_google_glog//:glog",
+        "@com_google_protobuf//:protobuf",
+        "//:pthread",
+    ],
+)
+
+filegroup(
+    name = "runtime_data",
+    srcs = glob(
+        [
+            "conf/**",
+            "dag/**",
+            "launch/**",
+        ],
+        allow_empty = True,
+    ),
+)

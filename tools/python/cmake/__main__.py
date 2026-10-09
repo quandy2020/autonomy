@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Run all unittest suites under tools.cmake.
+"""Run all unittest suites under tools.python.cmake.
 
 Usage (from autonomy repo root):
-  python3 -m tools.cmake
-  python3 -m tools.cmake -v
+  python3 -m tools.python.cmake
+  python3 -m tools.python.cmake -v
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ def main(argv: list[str] | None = None) -> int:
     suite = unittest.defaultTestLoader.discover(
         start_dir=str(start_dir),
         pattern="test_*.py",
-        top_level_dir=str(start_dir.parents[1]),  # autonomy root for imports
+        top_level_dir=str(start_dir.parents[3]),  # autonomy root for imports
     )
     runner = unittest.TextTestRunner(
         verbosity=2 if "-v" in argv or "--verbose" in argv else 1

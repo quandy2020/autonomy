@@ -4,7 +4,10 @@
 
 | 类别 | 位置 | 代表工具 |
 |------|------|----------|
-| 开发工具 | `tools/` | `clang_format_sources.py`、`package_install_tarball.py` |
+| 开发工具 | `tools/python/` | `clang_format_sources.py`、`package_install_tarball.py` |
+| Bazel 宏 / 域图 | `tools/` | `package.bzl`、`dependencies.bzl`、`bazel.rc` |
+| Bazel 依赖 | `MODULE.bazel` | `bazel_dep`（glog / protobuf / eigen / …） |
+| Bazel 本地仓 | `tools/repositories.bzl` + `prefix*.BUILD` | `@autonomy_prefix` → CMake 的 automsgs / autolink |
 | 工作流脚本 | `scripts/` | `setup.bash`、`install_dependencies.py`、`share_nfs_workspace.sh` |
 | 系统监控 | `autonomy/system/monitor/` | `MonitorRegistry` / `autonomy.monitor` |
 | Autolink CLI | `autolink/autolink/tools/` | `autolink_channel`、`autolink_recorder`、`autolink_launch` |

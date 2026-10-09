@@ -4,9 +4,9 @@
 Used for Ansible artifact deployment.
 
 Usage:
-  python3 tools/package_install_tarball.py
-  python3 tools/package_install_tarball.py --output /tmp/autonomy.tar.gz
-  BUNDLE_CONFIG=OFF python3 tools/package_install_tarball.py
+  python3 tools/python/package_install_tarball.py
+  python3 tools/python/package_install_tarball.py --output /tmp/autonomy.tar.gz
+  BUNDLE_CONFIG=OFF python3 tools/python/package_install_tarball.py
 """
 
 from __future__ import annotations

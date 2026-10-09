@@ -10,13 +10,13 @@ python3 -m install_deps
 
 ```bash
 # 预览
-python3 tools/clang_format_sources.py --dry-run
+python3 tools/python/clang_format_sources.py --dry-run
 
 # 格式化
-python3 tools/clang_format_sources.py
+python3 tools/python/clang_format_sources.py
 
 # CI 检查
-python3 tools/clang_format_sources.py --check
+python3 tools/python/clang_format_sources.py --check
 ```
 
 ### 2.3 端到端验证（多进程）
@@ -38,7 +38,19 @@ python3 docker/run_autonomy.py -p x86_64
 docker exec -it SpaceHero /bin/bash
 ```
 
-### 2.5 下一步
+### 2.5 Bazel 域库（可选）
+
+```bash
+# 先有 CMake 前缀（automsgs / autolink），再编域库
+export AUTONOMY_PREFIX="$PWD/build"   # 或 install 前缀
+
+bazel build //autonomy/planning:autonomy_planning
+./autonomy.sh build -m planning,control
+```
+
+域图与宏：`tools/package.bzl`。
+
+### 2.6 下一步
 
 | 目标 | 文档 |
 |------|------|

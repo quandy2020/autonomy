@@ -9,14 +9,14 @@ Compares two install-tree roots (base → target) and writes:
   full.tar.gz        (optional; for delta_fallback_to_full)
 
 Usage:
-  python3 tools/package_ota_delta.py \\
+  python3 tools/python/package_ota_delta.py \\
     --base /opt/autonomy-slots/a \\
     --target /opt/autonomy-slots/b \\
     --base-version v1 --target-version v2 \\
     --output dist/ota-delta-v1-v2
 
   # Also attach a full tarball for fallback:
-  python3 tools/package_ota_delta.py ... --full-tar dist/autonomy-v2.tar.gz
+  python3 tools/python/package_ota_delta.py ... --full-tar dist/autonomy-v2.tar.gz
 """
 
 from __future__ import annotations

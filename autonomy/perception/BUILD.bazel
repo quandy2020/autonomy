@@ -1,0 +1,86 @@
+load(
+    "//tools:package.bzl",
+    "autonomy_cc_binary",
+    "autonomy_cc_library",
+)
+
+package(default_visibility = ["//visibility:public"])
+
+autonomy_cc_library(
+    name = "autonomy_perception",
+    srcs = [
+        "base/base_component.cpp",
+        "base/engine/model.cpp",
+        "base/options.cpp",
+        "base/tasks/classify/classify.cpp",
+        "base/tasks/depth/depth.cpp",
+        "base/tasks/depth/moge.cpp",
+        "base/tasks/detect/detect.cpp",
+        "base/tasks/obb/obb.cpp",
+        "base/tasks/pose/pose.cpp",
+        "base/tasks/segment/segment.cpp",
+        "base/tasks/track/track.cpp",
+        "common/perception_interface.cpp",
+        "follow/follow_component.cpp",
+        "follow/grid.cpp",
+        "follow/localizer.cpp",
+        "follow/options.cpp",
+        "follow/planner.cpp",
+        "perception_server.cpp",
+    ],
+    hdrs = [
+        "base/base_component.hpp",
+        "base/engine/model.hpp",
+        "base/frame.hpp",
+        "base/options.hpp",
+        "base/tasks/classify/classify.hpp",
+        "base/tasks/depth/depth.hpp",
+        "base/tasks/depth/moge.hpp",
+        "base/tasks/detect/detect.hpp",
+        "base/tasks/obb/obb.hpp",
+        "base/tasks/pose/pose.hpp",
+        "base/tasks/segment/segment.hpp",
+        "base/tasks/task.hpp",
+        "base/tasks/track/track.hpp",
+        "common/perception_interface.hpp",
+        "follow/follow_component.hpp",
+        "follow/grid.hpp",
+        "follow/localizer.hpp",
+        "follow/options.hpp",
+        "follow/planner.hpp",
+        "perception_server.hpp",
+    ],
+    copts = ['-DMODULE_NAME=\"perception\"'],
+    include_prefix = "autonomy/perception",
+    deps = [
+        "//autonomy/common:autonomy_common",
+        "//:automsgs",
+        "//:autonomy_headers",
+        "@eigen//:eigen",
+        "@com_github_google_glog//:glog",
+        "@com_google_protobuf//:protobuf",
+        "//:pthread",
+    ],
+)
+
+autonomy_cc_binary(
+    name = "autonomy.perception",
+    srcs = ["perception_main.cpp"],
+    deps = [
+        ":autonomy_perception",
+        "@com_github_google_glog//:glog",
+        "@com_github_gflags_gflags//:gflags",
+    ],
+)
+
+filegroup(
+    name = "runtime_data",
+    srcs = glob(
+        [
+            "conf/**",
+            "dag/**",
+            "launch/**",
+        ],
+        allow_empty = True,
+    ),
+)

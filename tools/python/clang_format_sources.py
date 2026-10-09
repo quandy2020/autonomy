@@ -168,17 +168,17 @@ def main():
         epilog="""
 Examples:
   # Format all files in autonomy and autolink directories
-  python3 tools/clang_format_sources.py
+  python3 tools/python/clang_format_sources.py
 
   # List files that would be formatted (dry run)
-  python3 tools/clang_format_sources.py --dry-run
+  python3 tools/python/clang_format_sources.py --dry-run
 
   # Check if files are properly formatted
-  python3 tools/clang_format_sources.py --check
+  python3 tools/python/clang_format_sources.py --check
 
   # Format only specific directories
-  python3 tools/clang_format_sources.py autonomy
-  python3 tools/clang_format_sources.py autonomy autolink
+  python3 tools/python/clang_format_sources.py autonomy
+  python3 tools/python/clang_format_sources.py autonomy autolink
         """
     )
     

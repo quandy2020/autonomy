@@ -1,0 +1,80 @@
+load(
+    "//tools:package.bzl",
+    "autonomy_cc_binary",
+    "autonomy_cc_library",
+)
+
+package(default_visibility = ["//visibility:public"])
+
+autonomy_cc_library(
+    name = "autonomy_planning",
+    srcs = [
+        "common/costmap_navfn_planner.cpp",
+        "common/planner_interface.cpp",
+        "common/smoother_interface.cpp",
+        "planner/dijkstra/dijkstra_planner.cpp",
+        "planner/navfn/navfn.cpp",
+        "planner/navfn/navfn_planner.cpp",
+        "planner/theta_star/theta_star_planner.cpp",
+        "planner_autolink_actions.cpp",
+        "planner_options.cpp",
+        "planner_server.cpp",
+        "utils/geometry_utils.cpp",
+        "utils/path_simplifier.cpp",
+        "utils/simple_smoother.cpp",
+    ],
+    hdrs = [
+        "common/costmap_navfn_planner.hpp",
+        "common/planner_exceptions.hpp",
+        "common/planner_interface.hpp",
+        "common/smoother_exceptions.hpp",
+        "common/smoother_interface.hpp",
+        "constants.hpp",
+        "planner/dijkstra/dijkstra_planner.hpp",
+        "planner/navfn/navfn.hpp",
+        "planner/navfn/navfn_planner.hpp",
+        "planner/theta_star/theta_star_planner.hpp",
+        "planner_options.hpp",
+        "planner_server.hpp",
+        "utils/geometry_utils.hpp",
+        "utils/path_simplifier.hpp",
+        "utils/simple_smoother.hpp",
+        "utils/smoother_utils.hpp",
+    ],
+    copts = ['-DMODULE_NAME=\"planning\"'],
+    include_prefix = "autonomy/planning",
+    deps = [
+        "//autonomy/common:autonomy_common",
+        "//autonomy/transform:autonomy_transform",
+        "//autonomy/map:autonomy_map",
+        "//:autolink",
+        "//:automsgs",
+        "//:autonomy_headers",
+        "@eigen//:eigen",
+        "@com_github_google_glog//:glog",
+        "@com_google_protobuf//:protobuf",
+        "//:pthread",
+    ],
+)
+
+autonomy_cc_binary(
+    name = "autonomy.planning",
+    srcs = ["planning_main.cpp"],
+    deps = [
+        ":autonomy_planning",
+        "@com_github_google_glog//:glog",
+        "@com_github_gflags_gflags//:gflags",
+    ],
+)
+
+filegroup(
+    name = "runtime_data",
+    srcs = glob(
+        [
+            "conf/**",
+            "dag/**",
+            "launch/**",
+        ],
+        allow_empty = True,
+    ),
+)

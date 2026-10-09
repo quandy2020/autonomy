@@ -8,7 +8,7 @@ import tempfile
 import textwrap
 import unittest
 
-from tools.cmake import REPOSITORY_ROOT
+from tools.python.cmake import REPOSITORY_ROOT
 
 BUILD_DIR = REPOSITORY_ROOT / "build" / "autonomy-minimal"
 
