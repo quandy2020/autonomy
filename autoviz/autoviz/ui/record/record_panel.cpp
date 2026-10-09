@@ -13,6 +13,7 @@
 #include <QComboBox>
 #include <QDateTime>
 #include <QFileInfo>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QKeyEvent>
@@ -57,6 +58,17 @@ QToolButton* MakeTransportButton(QWidget* parent, const QString& text,
   button->setAutoRaise(true);
   button->setFocusPolicy(Qt::NoFocus);
   return button;
+}
+
+QFrame* MakeTransportSeparator(QWidget* parent) {
+  auto* line = new QFrame(parent);
+  line->setFrameShape(QFrame::VLine);
+  line->setFrameShadow(QFrame::Plain);
+  line->setFixedWidth(1);
+  line->setFixedHeight(18);
+  line->setStyleSheet(QStringLiteral(
+      "QFrame { background-color: #c8ced4; border: none; max-width: 1px; }"));
+  return line;
 }
 
 }  // namespace
@@ -266,12 +278,15 @@ RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
       MakeTransportButton(this, QStringLiteral("▶|"), tr("Seek to range end (End)"));
   stop_button_ =
       MakeTransportButton(this, tr("Stop"), tr("Stop and reset to range start"));
+  // Double-chevron = message step (vs single ◀/▶ = 100 ms time step).
   prev_msg_button_ = MakeTransportButton(
-      this, QStringLiteral("[◀]"),
+      this, QStringLiteral("◀◀"),
       tr("Previous message (Alt+Left); uses selected channel if any"));
   next_msg_button_ = MakeTransportButton(
-      this, QStringLiteral("[▶]"),
+      this, QStringLiteral("▶▶"),
       tr("Next message (Alt+Right); uses selected channel if any"));
+  prev_msg_button_->setMinimumWidth(28);
+  next_msg_button_->setMinimumWidth(28);
 
   loop_check_ = new QCheckBox(tr("Loop"), this);
   loop_check_->setToolTip(tr("Restart at range start when playback ends"));
@@ -284,6 +299,17 @@ RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
   }
   rate_combo_->setCurrentIndex(2);
 
+  auto* msg_step = new QHBoxLayout();
+  msg_step->setContentsMargins(0, 0, 0, 0);
+  msg_step->setSpacing(1);
+  auto* msg_label = new QLabel(tr("Msg"), this);
+  msg_label->setToolTip(
+      tr("Step by message on the selected channel (or any unmuted channel)"));
+  StyleHintLabel(msg_label);
+  msg_step->addWidget(msg_label);
+  msg_step->addWidget(prev_msg_button_);
+  msg_step->addWidget(next_msg_button_);
+
   auto* transport = new QHBoxLayout();
   transport->setContentsMargins(0, 0, 0, 0);
   transport->setSpacing(3);
@@ -294,8 +320,13 @@ RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
   transport->addWidget(step_forward_button_);
   transport->addWidget(seek_end_button_);
   transport->addWidget(stop_button_);
-  transport->addWidget(prev_msg_button_);
-  transport->addWidget(next_msg_button_);
+  transport->addSpacing(2);
+  transport->addWidget(MakeTransportSeparator(this));
+  transport->addSpacing(2);
+  transport->addLayout(msg_step);
+  transport->addSpacing(2);
+  transport->addWidget(MakeTransportSeparator(this));
+  transport->addSpacing(2);
   transport->addWidget(loop_check_);
   transport->addStretch(1);
   transport->addWidget(new QLabel(tr("Rate"), this));
