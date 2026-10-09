@@ -29,12 +29,15 @@ Usage: build.sh [options] [-- extra -D cmake flags]
 
   --release          CMAKE_BUILD_TYPE=Release
   --prefix DIR       cmake --install to DIR after build
-  --bundle           Relocatable AppDir tarball (implies a staging install)
-  --deb              Debian package via dpkg-deb
+  --bundle           Relocatable AppDir tarball
+  --deb              Debian package via create_deb.sh
   --build-dir DIR    CMake build directory (default: ./build)
   --output DIR       dist directory (default: dist/linux)
   -j N               Parallel jobs (default: nproc)
   -h, --help
+
+Environment:
+  AUTOVIZ_BUILD_DIR / AUTONOMY_BUILD_DIR  override binary tree for --deb/--bundle
 EOF
 }
 

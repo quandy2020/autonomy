@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-autoviz">
+    <comment>Autoviz session</comment>
+    <comment xml:lang="zh_CN">Autoviz 会话配置</comment>
+    <glob pattern="*.autoviz"/>
+    <icon name="aviz"/>
+  </mime-type>
+  <mime-type type="application/x-autolink-record">
+    <comment>Autolink record</comment>
+    <comment xml:lang="zh_CN">Autolink 录制文件</comment>
+    <glob pattern="*.record"/>
+    <glob pattern="*.alrec"/>
+    <icon name="aviz"/>
+  </mime-type>
+</mime-info>

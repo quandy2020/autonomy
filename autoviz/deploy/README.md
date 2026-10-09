@@ -61,6 +61,16 @@ GUI 运行需挂载 X11/Wayland 与 GPU（`-e DISPLAY -v /tmp/.X11-unix` 等）�
 sudo apt install ./dist/linux/autoviz_*.deb
 ```
 
+Monorepo（已有 `build/autonomy`）只打包：
+
+```bash
+cd src/autonomy/autoviz
+./deploy/linux/create_deb.sh --build-dir ../../../../build/autonomy
+# 或: AUTONOMY_BUILD_DIR=/path/to/build/autonomy ./deploy/linux/create_deb.sh
+```
+
+详见 [`linux/README.md`](linux/README.md)。
+
 ## 与主仓库 Docker 的关系
 
 - **`src/autonomy/docker/`**：完整 Autonomy 栈（Ceres、OpenCV、gRPC 等 thirdparty 安装），SpaceHero 等开发环境。

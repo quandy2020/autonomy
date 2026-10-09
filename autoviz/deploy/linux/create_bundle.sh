@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Stage a relocatable AppDir and pack it as a .tar.gz.
 #
-# The bundle keeps project libraries under lib/ and uses AppRun to set
-# AUTOVIZ_* paths. Qt and other system libraries stay on the host
-# (install the same Ubuntu release's runtime packages).
+# Project + vendored Ogre libraries live under AppDir/lib/autoviz.
+# System Qt / protobuf / etc. remain on the host (same Ubuntu release).
 #
 # Usage:
 #   ./deploy/linux/create_bundle.sh
@@ -41,31 +40,25 @@ ARCH="$(uname -m)"
 APPDIR="${OUT_DIR}/AppDir"
 ARCHIVE="${OUT_DIR}/autoviz-${VERSION}-${ARCH}.tar.gz"
 
-log "Install into ${APPDIR}"
+log "Stage AppDir → ${APPDIR}"
 rm -rf "${APPDIR}"
 mkdir -p "${APPDIR}"
-cmake --install "${BUILD_DIR}" --prefix "${APPDIR}"
+stage_autoviz_prefix "${APPDIR}" "${BUILD_DIR}" bundle
 
 install -m 0755 "${SCRIPT_DIR}/AppRun" "${APPDIR}/AppRun"
 
-# AppImage-style root entries (also useful for a desktop launcher).
-if [[ -f "${BUILD_DIR}/org.autonomy.autoviz.desktop" ]]; then
-  install -m 0644 "${BUILD_DIR}/org.autonomy.autoviz.desktop" \
+# AppImage-style root desktop + icon (optional convenience).
+if [[ -f "${APPDIR}/share/applications/org.autonomy.autoviz.desktop" ]]; then
+  install -m 0644 "${APPDIR}/share/applications/org.autonomy.autoviz.desktop" \
     "${APPDIR}/autoviz.desktop"
 fi
-ICON_SRC=""
-for candidate in \
-  "${AUTOVIZ_ROOT}/resources/icons/aviz.svg" \
-  "${AUTOVIZ_ROOT}/resources/icons/aviz.png" \
-  "${SCRIPT_DIR}/autoviz.svg"; do
-  if [[ -f "${candidate}" ]]; then
-    ICON_SRC="${candidate}"
-    break
-  fi
-done
-if [[ -n "${ICON_SRC}" ]]; then
-  ext="${ICON_SRC##*.}"
-  install -m 0644 "${ICON_SRC}" "${APPDIR}/autoviz.${ext}"
+# Prefer squirrel PNG (same as macOS); scalable SVG only if present.
+if [[ -f "${APPDIR}/share/icons/hicolor/256x256/apps/aviz.png" ]]; then
+  install -m 0644 "${APPDIR}/share/icons/hicolor/256x256/apps/aviz.png" \
+    "${APPDIR}/aviz.png"
+elif [[ -f "${APPDIR}/share/icons/hicolor/scalable/apps/aviz.svg" ]]; then
+  install -m 0644 "${APPDIR}/share/icons/hicolor/scalable/apps/aviz.svg" \
+    "${APPDIR}/aviz.svg"
 fi
 
 mkdir -p "${OUT_DIR}"

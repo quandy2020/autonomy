@@ -42,6 +42,8 @@ BASE=(
   ninja-build
   pkg-config
   python3
+  dpkg-dev
+  patchelf
   libgl1-mesa-dev
   libglu1-mesa-dev
   libyaml-cpp-dev

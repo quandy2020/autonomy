@@ -384,48 +384,50 @@ function(autoviz_install_desktop_assets)
   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/org.autonomy.autoviz.appdata.xml
     DESTINATION share/metainfo)
 
+  # Same squirrel artwork as macOS (aviz.png / aviz_*.png / aviz.icns).
   set(_icon_png ${AUTOVIZ_ROOT}/resources/icons/aviz.png)
   set(_icon_svg ${AUTOVIZ_ROOT}/resources/icons/aviz.svg)
   if(EXISTS ${_icon_svg})
     install(FILES ${_icon_svg}
       DESTINATION share/icons/hicolor/scalable/apps RENAME aviz.svg)
   endif()
-  find_program(RSVG_CONVERT rsvg-convert)
-  if(EXISTS ${_icon_svg} AND RSVG_CONVERT)
-    set(_png_master ${_icon_svg})
-    set(_use_rsvg TRUE)
-  elseif(EXISTS ${_icon_png})
-    set(_png_master ${_icon_png})
-    set(_use_rsvg FALSE)
-  else()
-    set(_png_master "")
-  endif()
-  if(NOT _png_master)
-    return()
-  endif()
 
+  set(_icon_sizes 32 48 64 128 256 512)
   set(_png_outputs "")
-  foreach(_size 48 64 128 256)
+  foreach(_size IN LISTS _icon_sizes)
     set(_dir ${CMAKE_CURRENT_BINARY_DIR}/icons/hicolor/${_size}x${_size}/apps)
     set(_png ${_dir}/aviz.png)
-    if(_use_rsvg)
-      add_custom_command(OUTPUT ${_png}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${_dir}
-        COMMAND ${RSVG_CONVERT} -w ${_size} -h ${_size} ${_png_master} -o ${_png}
-        DEPENDS ${_png_master} COMMENT "Generate aviz ${_size}x${_size} icon")
-    else()
-      add_custom_command(OUTPUT ${_png}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${_dir}
-        COMMAND ${CMAKE_COMMAND} -E copy ${_png_master} ${_png}
-        DEPENDS ${_png_master} COMMENT "Install aviz ${_size}x${_size} icon")
+    set(_src "")
+    if(EXISTS ${AUTOVIZ_ROOT}/resources/icons/aviz_${_size}.png)
+      set(_src ${AUTOVIZ_ROOT}/resources/icons/aviz_${_size}.png)
+    elseif(EXISTS ${_icon_png})
+      set(_src ${_icon_png})
     endif()
+    if(NOT _src)
+      continue()
+    endif()
+    add_custom_command(OUTPUT ${_png}
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${_dir}
+      COMMAND ${CMAKE_COMMAND} -E copy ${_src} ${_png}
+      DEPENDS ${_src} COMMENT "Install aviz ${_size}x${_size} icon")
     list(APPEND _png_outputs ${_png})
   endforeach()
+  if(EXISTS ${AUTOVIZ_ROOT}/resources/icons/aviz_1024.png)
+    set(_dir ${CMAKE_CURRENT_BINARY_DIR}/icons/hicolor/1024x1024/apps)
+    set(_png ${_dir}/aviz.png)
+    add_custom_command(OUTPUT ${_png}
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${_dir}
+      COMMAND ${CMAKE_COMMAND} -E copy
+        ${AUTOVIZ_ROOT}/resources/icons/aviz_1024.png ${_png}
+      DEPENDS ${AUTOVIZ_ROOT}/resources/icons/aviz_1024.png
+      COMMENT "Install aviz 1024x1024 icon")
+    list(APPEND _png_outputs ${_png})
+  endif()
+  if(NOT _png_outputs)
+    return()
+  endif()
   add_custom_target(autoviz_icons ALL DEPENDS ${_png_outputs})
   install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/icons/hicolor/ DESTINATION share/icons)
-  if(NOT _use_rsvg)
-    install(FILES ${_icon_png} DESTINATION share/icons/hicolor/48x48/apps RENAME aviz.png)
-  endif()
 endfunction()
 
 # ---------------------------------------------------------------------------
