@@ -1,0 +1,61 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+genrule(
+    name = "generate_custom",
+    srcs = glob(["proto/automsgs/custom_msgs/*.proto"]) + ["//:proto_files"],
+    outs = [
+        "automsgs/custom_msgs/bar.pb.cc",
+        "automsgs/custom_msgs/bar.pb.h",
+        "automsgs/custom_msgs/baz.pb.cc",
+        "automsgs/custom_msgs/baz.pb.h",
+        "automsgs/custom_msgs/foo.pb.cc",
+        "automsgs/custom_msgs/foo.pb.h",
+    ],
+    cmd = """
+      set -euo pipefail
+      if [ -x /usr/local/bin/protoc ]; then protoc=/usr/local/bin/protoc
+      else protoc=$$(command -v protoc); fi
+      stage=$$(mktemp -d)
+      trap 'rm -rf "$$stage"' EXIT
+      mkdir -p "$$stage/automsgs/custom_msgs"
+      cp -aL proto/msgs proto/srvs proto/rpcs proto/actions proto/task "$$stage/automsgs/"
+      cp -aL examples/generating_custom_msgs/proto/automsgs/custom_msgs/*.proto \
+        "$$stage/automsgs/custom_msgs/"
+      "$$protoc" --proto_path="$$stage" --cpp_out=$(@D) \
+        "$$stage/automsgs/custom_msgs/foo.proto" \
+        "$$stage/automsgs/custom_msgs/bar.proto" \
+        "$$stage/automsgs/custom_msgs/baz.proto"
+    """,
+)
+
+cc_library(
+    name = "custom_msgs",
+    srcs = [
+        "automsgs/custom_msgs/bar.pb.cc",
+        "automsgs/custom_msgs/baz.pb.cc",
+        "automsgs/custom_msgs/foo.pb.cc",
+    ],
+    hdrs = [
+        "automsgs/custom_msgs/bar.pb.h",
+        "automsgs/custom_msgs/baz.pb.h",
+        "automsgs/custom_msgs/foo.pb.h",
+    ],
+    # Generated headers live under this package; dependents include
+    # <automsgs/custom_msgs/*.pb.h>.
+    includes = ["."],
+    deps = [
+        "//:automsgs",
+        "//tools:protobuf",
+    ],
+)
+
+cc_binary(
+    name = "generating_custom_msgs",
+    srcs = ["main.cc"],
+    deps = [
+        ":custom_msgs",
+        "//:automsgs",
+    ],
+)

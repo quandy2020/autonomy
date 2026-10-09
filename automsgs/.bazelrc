@@ -1,0 +1,16 @@
+# Standalone automsgs workspace.
+
+common --enable_bzlmod
+
+build --cxxopt=-std=c++17
+build --host_cxxopt=-std=c++17
+build --copt=-Wall
+build --copt=-Wno-unused-parameter
+
+# System shared libraries under /usr/local (docker SDK image).
+build --action_env=LD_LIBRARY_PATH
+test --test_env=LD_LIBRARY_PATH
+
+build --incompatible_strict_action_env=false
+
+try-import %workspace%/user.bazelrc

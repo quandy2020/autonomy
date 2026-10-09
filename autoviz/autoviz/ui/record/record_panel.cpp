@@ -21,14 +21,17 @@
 #include <QLineEdit>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPainterPath>
 #include <QPen>
 #include <QSizePolicy>
 #include <QSlider>
 #include <QTimer>
 #include <QToolButton>
+#include <QToolTip>
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
+#include <QWheelEvent>
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/integration/playback_controller.hpp"
@@ -48,7 +51,9 @@ constexpr int kColumnType = 1;
 constexpr int kColumnCount = 2;
 constexpr double kStepSec = 0.1;
 constexpr int kScrubThrottleMs = 40;
-constexpr int kDensityHandleHitPx = 6;
+constexpr int kDensityHandleHitPx = 8;
+constexpr int kTimelineTrackH = 30;
+constexpr int kTimelineThumbR = 7;
 
 QToolButton* MakeTransportButton(QWidget* parent, const QString& text,
                                  const QString& tip) {
@@ -77,14 +82,17 @@ class RecordPanel::DensityBar : public QWidget {
  public:
   using SeekCallback = std::function<void(double /*normalized*/, bool /*final*/)>;
   using RangeCallback = std::function<void(double /*start*/, double /*end*/)>;
+  using TimeFormat = std::function<QString(double /*seconds*/)>;
 
   explicit DensityBar(QWidget* parent = nullptr) : QWidget(parent) {
-    setFixedHeight(22);
+    setFixedHeight(kTimelineTrackH);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     setMouseTracking(true);
     setCursor(Qt::PointingHandCursor);
+    setFocusPolicy(Qt::StrongFocus);
     setToolTip(QObject::tr(
-        "Click to seek · drag to scrub · drag orange handles to set In/Out"));
+        "Click / drag to scrub · wheel ±100 ms (Shift ±1 s) · "
+        "drag amber grips for In/Out"));
   }
 
   void setBins(std::vector<float> bins) {
@@ -106,62 +114,112 @@ class RecordPanel::DensityBar : public QWidget {
     update();
   }
 
+  void setTotalTimeSec(double total) {
+    total_sec_ = std::max(0.0, total);
+  }
+
+  void setTimeFormatter(TimeFormat fmt) { time_fmt_ = std::move(fmt); }
   void setSeekCallback(SeekCallback cb) { seek_cb_ = std::move(cb); }
   void setRangeCallback(RangeCallback cb) { range_cb_ = std::move(cb); }
 
  protected:
   void paintEvent(QPaintEvent* /*event*/) override {
     QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing, false);
-    const QRect r = rect().adjusted(0, 1, 0, -1);
-    painter.fillRect(r, QColor(0xee, 0xf1, 0xf4));
+    painter.setRenderHint(QPainter::Antialiasing, true);
 
-    if (!bins_.empty()) {
+    const QRectF track = QRectF(rect()).adjusted(1.5, 3.0, -1.5, -3.0);
+    const qreal radius = track.height() * 0.45;
+
+    QPainterPath clip;
+    clip.addRoundedRect(track, radius, radius);
+
+    // Track background.
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QColor(0xe8, 0xec, 0xf0));
+    painter.drawRoundedRect(track, radius, radius);
+
+    painter.save();
+    painter.setClipPath(clip);
+
+    // Message density histogram.
+    if (!bins_.empty() && track.width() > 1.0) {
       const int n = static_cast<int>(bins_.size());
+      const qreal bar_h = track.height();
       for (int i = 0; i < n; ++i) {
-        const int x0 = r.left() + (i * r.width()) / n;
-        const int x1 = r.left() + ((i + 1) * r.width()) / n;
-        const int h = static_cast<int>(std::lround(bins_[static_cast<size_t>(i)] *
-                                                   static_cast<float>(r.height())));
-        if (h <= 0) {
+        const qreal x0 = track.left() + (i * track.width()) / n;
+        const qreal x1 = track.left() + ((i + 1) * track.width()) / n;
+        const qreal h =
+            bins_[static_cast<size_t>(i)] * static_cast<float>(bar_h);
+        if (h < 0.5) {
           continue;
         }
-        painter.fillRect(x0, r.bottom() - h + 1, std::max(1, x1 - x0), h,
-                         QColor(0x54, 0xa2, 0xff, 160));
+        painter.fillRect(QRectF(x0, track.bottom() - h, std::max(1.0, x1 - x0), h),
+                         QColor(0x5b, 0xb0, 0xff, 150));
       }
     }
 
-    const int x_in =
-        r.left() + static_cast<int>(std::lround(range_start_ * r.width()));
-    const int x_out =
-        r.left() + static_cast<int>(std::lround(range_end_ * r.width()));
+    // Played region (start → playhead).
+    const qreal x_ph = track.left() + playhead_ * track.width();
+    if (playhead_ > 0.001) {
+      painter.fillRect(
+          QRectF(track.left(), track.top(), x_ph - track.left(), track.height()),
+          QColor(0x0d, 0x94, 0x88, 48));
+    }
+
+    // Dim outside active trim range.
+    const qreal x_in = track.left() + range_start_ * track.width();
+    const qreal x_out = track.left() + range_end_ * track.width();
     if (range_end_ > range_start_ + 1e-6 &&
         (range_start_ > 1e-6 || range_end_ < 1.0 - 1e-6)) {
-      painter.fillRect(r.left(), r.top(), x_in - r.left(), r.height(),
-                       QColor(0, 0, 0, 35));
-      painter.fillRect(x_out, r.top(), r.right() - x_out + 1, r.height(),
-                       QColor(0, 0, 0, 35));
+      painter.fillRect(
+          QRectF(track.left(), track.top(), x_in - track.left(), track.height()),
+          QColor(0x1f, 0x23, 0x28, 55));
+      painter.fillRect(
+          QRectF(x_out, track.top(), track.right() - x_out, track.height()),
+          QColor(0x1f, 0x23, 0x28, 55));
     }
-    painter.setPen(QPen(QColor(0xd4, 0x6b, 0x08), 2));
-    painter.drawLine(x_in, r.top(), x_in, r.bottom());
-    painter.drawLine(x_out, r.top(), x_out, r.bottom());
-    painter.fillRect(x_in - 2, r.top(), 5, 5, QColor(0xd4, 0x6b, 0x08));
-    painter.fillRect(x_out - 2, r.bottom() - 4, 5, 5, QColor(0xd4, 0x6b, 0x08));
 
-    const int x_ph =
-        r.left() + static_cast<int>(std::lround(playhead_ * r.width()));
-    painter.setPen(QPen(QColor(0x1f, 0x23, 0x28), 1));
-    painter.drawLine(x_ph, r.top(), x_ph, r.bottom());
+    // Hover ghost.
+    if (hovering_ && drag_ == Hit::None) {
+      const qreal x_h = track.left() + hover_ * track.width();
+      QPen ghost(QColor(0x0d, 0x94, 0x88, 140), 1.0, Qt::DashLine);
+      painter.setPen(ghost);
+      painter.drawLine(QPointF(x_h, track.top()), QPointF(x_h, track.bottom()));
+    }
+
+    painter.restore();
+
+    // Track rim.
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(QPen(QColor(0xc5, 0xcd, 0xd6), 1.0));
+    painter.drawRoundedRect(track, radius, radius);
+
+    // Trim grips.
+    drawTrimGrip(&painter, x_in, track, /*start=*/true);
+    drawTrimGrip(&painter, x_out, track, /*start=*/false);
+
+    // Playhead + thumb.
+    painter.setPen(QPen(QColor(0x0f, 0x76, 0x6e), 1.5));
+    painter.drawLine(QPointF(x_ph, track.top() - 1.0),
+                     QPointF(x_ph, track.bottom() + 1.0));
+    const QPointF thumb_c(x_ph, track.center().y());
+    painter.setBrush(QColor(0x0d, 0x94, 0x88));
+    painter.setPen(QPen(QColor(0xff, 0xff, 0xff), 1.5));
+    painter.drawEllipse(thumb_c, kTimelineThumbR, kTimelineThumbR);
+    if (drag_ == Hit::Seek) {
+      painter.setBrush(QColor(0x0f, 0x76, 0x6e));
+      painter.setPen(Qt::NoPen);
+      painter.drawEllipse(thumb_c, kTimelineThumbR - 2, kTimelineThumbR - 2);
+    }
   }
 
   void mousePressEvent(QMouseEvent* event) override {
-    if (event->button() != Qt::LeftButton || width() <= 1) {
+    if (!isEnabled() || event->button() != Qt::LeftButton || width() <= 1) {
       QWidget::mousePressEvent(event);
       return;
     }
     const double n = xToNormalized(event->position().x());
-    const Hit hit = hitTest(event->position().x());
-    drag_ = hit;
+    drag_ = hitTest(event->position().x());
     if (drag_ == Hit::RangeStart || drag_ == Hit::RangeEnd) {
       applyRangeDrag(n);
     } else {
@@ -170,20 +228,30 @@ class RecordPanel::DensityBar : public QWidget {
         seek_cb_(n, false);
       }
     }
+    update();
     event->accept();
   }
 
   void mouseMoveEvent(QMouseEvent* event) override {
+    const double n = xToNormalized(event->position().x());
     if (drag_ == Hit::None) {
+      hovering_ = true;
+      hover_ = n;
       const Hit hit = hitTest(event->position().x());
-      setCursor(hit == Hit::RangeStart || hit == Hit::RangeEnd
-                    ? Qt::SizeHorCursor
-                    : Qt::PointingHandCursor);
-      QWidget::mouseMoveEvent(event);
+      if (hit == Hit::RangeStart || hit == Hit::RangeEnd) {
+        setCursor(Qt::SizeHorCursor);
+      } else if (hit == Hit::Seek) {
+        setCursor(Qt::OpenHandCursor);
+      } else {
+        setCursor(Qt::PointingHandCursor);
+      }
+      showHoverTip(event->globalPosition().toPoint(), n);
+      update();
+      event->accept();
       return;
     }
-    const double n = xToNormalized(event->position().x());
     if (drag_ == Hit::Seek) {
+      setCursor(Qt::ClosedHandCursor);
       if (seek_cb_) {
         seek_cb_(n, false);
       }
@@ -202,33 +270,65 @@ class RecordPanel::DensityBar : public QWidget {
         applyRangeDrag(n);
       }
       drag_ = Hit::None;
+      setCursor(Qt::PointingHandCursor);
+      update();
       event->accept();
       return;
     }
     QWidget::mouseReleaseEvent(event);
   }
 
+  void leaveEvent(QEvent* event) override {
+    hovering_ = false;
+    QToolTip::hideText();
+    update();
+    QWidget::leaveEvent(event);
+  }
+
+  void wheelEvent(QWheelEvent* event) override {
+    if (!isEnabled() || total_sec_ <= 0.0 || !seek_cb_) {
+      QWidget::wheelEvent(event);
+      return;
+    }
+    const double step =
+        (event->modifiers() & Qt::ShiftModifier) ? 1.0 : 0.1;
+    const double delta =
+        (event->angleDelta().y() > 0 ? -step : step) / total_sec_;
+    const double next = std::clamp(playhead_ + delta, 0.0, 1.0);
+    seek_cb_(next, true);
+    event->accept();
+  }
+
  private:
   enum class Hit { None, Seek, RangeStart, RangeEnd };
 
+  QRectF trackRect() const {
+    return QRectF(rect()).adjusted(1.5, 3.0, -1.5, -3.0);
+  }
+
   double xToNormalized(double x) const {
-    if (width() <= 1) {
+    const QRectF track = trackRect();
+    if (track.width() <= 1.0) {
       return 0.0;
     }
-    return std::clamp(x / static_cast<double>(width() - 1), 0.0, 1.0);
+    return std::clamp((x - track.left()) / track.width(), 0.0, 1.0);
   }
 
   Hit hitTest(double x) const {
-    const double w = static_cast<double>(std::max(1, width() - 1));
-    const double x_in = range_start_ * w;
-    const double x_out = range_end_ * w;
+    const QRectF track = trackRect();
+    const double x_in = track.left() + range_start_ * track.width();
+    const double x_out = track.left() + range_end_ * track.width();
+    const double x_ph = track.left() + playhead_ * track.width();
     if (std::abs(x - x_in) <= kDensityHandleHitPx) {
       return Hit::RangeStart;
     }
     if (std::abs(x - x_out) <= kDensityHandleHitPx) {
       return Hit::RangeEnd;
     }
-    return Hit::Seek;
+    if (std::abs(x - x_ph) <= kTimelineThumbR + 2) {
+      return Hit::Seek;
+    }
+    return Hit::None;  // click elsewhere → seek
   }
 
   void applyRangeDrag(double n) {
@@ -244,13 +344,37 @@ class RecordPanel::DensityBar : public QWidget {
     }
   }
 
+  void showHoverTip(const QPoint& global_pos, double n) {
+    if (total_sec_ <= 0.0 || !time_fmt_) {
+      return;
+    }
+    const QString tip = time_fmt_(n * total_sec_);
+    QToolTip::showText(global_pos + QPoint(12, 16), tip, this);
+  }
+
+  static void drawTrimGrip(QPainter* painter, qreal x, const QRectF& track,
+                           bool start) {
+    const QColor amber(0xe0, 0x7a, 0x1f);
+    painter->setPen(QPen(amber, 2.0));
+    painter->drawLine(QPointF(x, track.top()), QPointF(x, track.bottom()));
+    const qreal gy = start ? track.top() - 1.0 : track.bottom() - 9.0;
+    const QRectF grip(x - 3.5, gy, 7.0, 10.0);
+    painter->setBrush(amber);
+    painter->setPen(Qt::NoPen);
+    painter->drawRoundedRect(grip, 2.0, 2.0);
+  }
+
   std::vector<float> bins_;
   double range_start_ = 0.0;
   double range_end_ = 1.0;
   double playhead_ = 0.0;
+  double hover_ = 0.0;
+  double total_sec_ = 0.0;
+  bool hovering_ = false;
   Hit drag_ = Hit::None;
   SeekCallback seek_cb_;
   RangeCallback range_cb_;
+  TimeFormat time_fmt_;
 };
 
 RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
@@ -278,65 +402,61 @@ RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
       MakeTransportButton(this, QStringLiteral("▶|"), tr("Seek to range end (End)"));
   stop_button_ =
       MakeTransportButton(this, tr("Stop"), tr("Stop and reset to range start"));
-  // Double-chevron = message step (vs single ◀/▶ = 100 ms time step).
+  // Guillemets = message step (distinct from single ◀/▶ time step).
   prev_msg_button_ = MakeTransportButton(
-      this, QStringLiteral("◀◀"),
+      this, QStringLiteral("«"),
       tr("Previous message (Alt+Left); uses selected channel if any"));
   next_msg_button_ = MakeTransportButton(
-      this, QStringLiteral("▶▶"),
+      this, QStringLiteral("»"),
       tr("Next message (Alt+Right); uses selected channel if any"));
-  prev_msg_button_->setMinimumWidth(28);
-  next_msg_button_->setMinimumWidth(28);
+  for (QToolButton* btn : {prev_msg_button_, next_msg_button_}) {
+    btn->setMinimumWidth(26);
+    btn->setObjectName(QStringLiteral("RecordMsgStep"));
+  }
 
   loop_check_ = new QCheckBox(tr("Loop"), this);
   loop_check_->setToolTip(tr("Restart at range start when playback ends"));
 
   rate_combo_ = new QComboBox(this);
   rate_combo_->setToolTip(tr("Playback speed"));
+  rate_combo_->setFixedWidth(72);
   for (const char* label :
        {"0.25x", "0.5x", "1.0x", "1.5x", "2.0x", "4.0x", "8.0x"}) {
     rate_combo_->addItem(QLatin1String(label));
   }
   rate_combo_->setCurrentIndex(2);
 
-  auto* msg_step = new QHBoxLayout();
-  msg_step->setContentsMargins(0, 0, 0, 0);
-  msg_step->setSpacing(1);
-  auto* msg_label = new QLabel(tr("Msg"), this);
-  msg_label->setToolTip(
-      tr("Step by message on the selected channel (or any unmuted channel)"));
-  StyleHintLabel(msg_label);
-  msg_step->addWidget(msg_label);
-  msg_step->addWidget(prev_msg_button_);
-  msg_step->addWidget(next_msg_button_);
-
-  auto* transport = new QHBoxLayout();
-  transport->setContentsMargins(0, 0, 0, 0);
-  transport->setSpacing(3);
+  QHBoxLayout* transport = nullptr;
+  auto* toolbar = MakePanelToolbar(this, &transport);
   transport->addWidget(open_button_);
+  transport->addWidget(MakeTransportSeparator(toolbar));
   transport->addWidget(seek_start_button_);
   transport->addWidget(step_back_button_);
   transport->addWidget(play_pause_button_);
   transport->addWidget(step_forward_button_);
   transport->addWidget(seek_end_button_);
   transport->addWidget(stop_button_);
-  transport->addSpacing(2);
-  transport->addWidget(MakeTransportSeparator(this));
-  transport->addSpacing(2);
-  transport->addLayout(msg_step);
-  transport->addSpacing(2);
-  transport->addWidget(MakeTransportSeparator(this));
-  transport->addSpacing(2);
+  transport->addWidget(MakeTransportSeparator(toolbar));
+  transport->addWidget(prev_msg_button_);
+  transport->addWidget(next_msg_button_);
+  transport->addWidget(MakeTransportSeparator(toolbar));
   transport->addWidget(loop_check_);
   transport->addStretch(1);
-  transport->addWidget(new QLabel(tr("Rate"), this));
+  auto* rate_label = new QLabel(tr("Rate"), toolbar);
+  StyleHintLabel(rate_label);
+  transport->addWidget(rate_label);
   transport->addWidget(rate_combo_);
 
   file_label_ = new QLabel(tr("No record loaded"), this);
-  file_label_->setWordWrap(true);
+  file_label_->setWordWrap(false);
+  file_label_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  file_label_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
   StyleHintLabel(file_label_);
 
   density_bar_ = new DensityBar(this);
+  density_bar_->setTimeFormatter([](double seconds) {
+    return FormatClock(seconds);
+  });
   density_bar_->setSeekCallback([this](double normalized, bool final) {
     if (manager_ == nullptr || !ensureFileOpen()) {
       return;
@@ -401,21 +521,22 @@ RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
     syncTimelineFromPlayback();
   });
 
+  // Hidden mirror of the scrubber position (keeps existing seek helpers).
   timeline_ = new QSlider(Qt::Horizontal, this);
   timeline_->setRange(0, kTimelineTicks);
   timeline_->setValue(0);
-  timeline_->setEnabled(false);
-  timeline_->setToolTip(tr("Drag to seek"));
+  timeline_->hide();
 
   time_label_ = new QLabel(QStringLiteral("00:00.0 / 00:00.0"), this);
-  time_label_->setMinimumWidth(150);
+  time_label_->setMinimumWidth(148);
   time_label_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+  time_label_->setObjectName(QStringLiteral("RecordTimeLabel"));
 
-  auto* timeline_row = new QHBoxLayout();
-  timeline_row->setContentsMargins(0, 0, 0, 0);
-  timeline_row->setSpacing(8);
-  timeline_row->addWidget(timeline_, 1);
-  timeline_row->addWidget(time_label_);
+  auto* meta_row = new QHBoxLayout();
+  meta_row->setContentsMargins(0, 0, 0, 0);
+  meta_row->setSpacing(10);
+  meta_row->addWidget(file_label_, 1);
+  meta_row->addWidget(time_label_);
 
   range_in_button_ = MakeTransportButton(
       this, tr("In"), tr("Set range start to playhead (Foxglove trim)"));
@@ -423,20 +544,33 @@ RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
       this, tr("Out"), tr("Set range end to playhead (Foxglove trim)"));
   range_clear_button_ =
       MakeTransportButton(this, tr("Clear"), tr("Clear playback range"));
+  for (QToolButton* btn :
+       {range_in_button_, range_out_button_, range_clear_button_}) {
+    btn->setObjectName(QStringLiteral("RecordRangeAction"));
+  }
   range_label_ = new QLabel(tr("Range: full"), this);
   StyleHintLabel(range_label_);
 
   auto* range_row = new QHBoxLayout();
   range_row->setContentsMargins(0, 0, 0, 0);
-  range_row->setSpacing(6);
+  range_row->setSpacing(4);
   range_row->addWidget(range_in_button_);
   range_row->addWidget(range_out_button_);
   range_row->addWidget(range_clear_button_);
+  range_row->addSpacing(8);
   range_row->addWidget(range_label_, 1);
+
+  auto* timeline_block = new QVBoxLayout();
+  timeline_block->setContentsMargins(0, 0, 0, 0);
+  timeline_block->setSpacing(6);
+  timeline_block->addLayout(meta_row);
+  timeline_block->addWidget(density_bar_);
+  timeline_block->addLayout(range_row);
 
   filter_edit_ = new QLineEdit(this);
   filter_edit_->setPlaceholderText(tr("Filter channels…"));
   filter_edit_->setClearButtonEnabled(true);
+  filter_edit_->setMaximumWidth(220);
   StyleFilterLineEdit(filter_edit_);
 
   select_all_button_ =
@@ -444,15 +578,17 @@ RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
   select_none_button_ =
       MakeTransportButton(this, tr("None"), tr("Mute all channels"));
 
-  auto* filter_row = new QHBoxLayout();
-  filter_row->setContentsMargins(0, 0, 0, 0);
-  filter_row->setSpacing(6);
-  filter_row->addWidget(filter_edit_, 1);
-  filter_row->addWidget(select_all_button_);
-  filter_row->addWidget(select_none_button_);
-
   channels_header_ = new QLabel(tr("Channels"), this);
   StyleSectionTitle(channels_header_);
+
+  auto* channels_header_row = new QHBoxLayout();
+  channels_header_row->setContentsMargins(0, 0, 0, 0);
+  channels_header_row->setSpacing(6);
+  channels_header_row->addWidget(channels_header_);
+  channels_header_row->addStretch(1);
+  channels_header_row->addWidget(filter_edit_, 1);
+  channels_header_row->addWidget(select_all_button_);
+  channels_header_row->addWidget(select_none_button_);
 
   channel_tree_ = new QTreeWidget(this);
   channel_tree_->setColumnCount(3);
@@ -461,8 +597,9 @@ RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
   channel_tree_->setUniformRowHeights(true);
   channel_tree_->setAlternatingRowColors(true);
   channel_tree_->setSelectionMode(QAbstractItemView::SingleSelection);
-  channel_tree_->setToolTip(
-      tr("Uncheck to mute. Double-click → Messages. Selection scopes [◀]/[▶]."));
+  channel_tree_->setToolTip(tr(
+      "Uncheck to mute. Double-click opens Messages. "
+      "Selection scopes « / » message step."));
   channel_tree_->header()->setStretchLastSection(false);
   channel_tree_->header()->setSectionResizeMode(kColumnChannel,
                                                 QHeaderView::Stretch);
@@ -472,17 +609,26 @@ RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
                                                 QHeaderView::ResizeToContents);
   StylePanelTree(channel_tree_);
 
+  auto* section_rule = new QFrame(this);
+  section_rule->setFrameShape(QFrame::HLine);
+  section_rule->setFrameShadow(QFrame::Plain);
+  section_rule->setFixedHeight(1);
+  section_rule->setStyleSheet(QStringLiteral(
+      "QFrame { background-color: #e2e6ea; border: none; max-height: 1px; }"));
+
   auto* layout = new QVBoxLayout(this);
-  layout->setContentsMargins(8, 8, 8, 8);
-  layout->setSpacing(6);
-  layout->addLayout(transport);
-  layout->addWidget(file_label_);
-  layout->addWidget(density_bar_);
-  layout->addLayout(timeline_row);
-  layout->addLayout(range_row);
-  layout->addLayout(filter_row);
-  layout->addWidget(channels_header_);
-  layout->addWidget(channel_tree_, 1);
+  layout->setContentsMargins(0, 0, 0, 8);
+  layout->setSpacing(0);
+  layout->addWidget(toolbar);
+  auto* body = new QWidget(this);
+  auto* body_layout = new QVBoxLayout(body);
+  body_layout->setContentsMargins(10, 8, 10, 0);
+  body_layout->setSpacing(10);
+  body_layout->addLayout(timeline_block);
+  body_layout->addWidget(section_rule);
+  body_layout->addLayout(channels_header_row);
+  body_layout->addWidget(channel_tree_, 1);
+  layout->addWidget(body, 1);
 
   connect(open_button_, &QToolButton::clicked, this,
           &RecordPanel::onOpenClicked);
@@ -925,8 +1071,24 @@ void RecordPanel::onTick() {
 
 void RecordPanel::applyChromeStyles() {
   setStyleSheet(QStringLiteral(
-      "QToolButton { padding: 3px 6px; }"
-      "QTreeWidget { border: 1px solid #d0d7de; border-radius: 4px; }"));
+      "QToolButton { padding: 3px 7px; min-height: 22px; }"
+      "QToolButton#RecordMsgStep {"
+      "  font-weight: 600; font-size: 13px; padding: 3px 8px;"
+      "  min-width: 26px;"
+      "}"
+      "QToolButton#RecordRangeAction {"
+      "  padding: 2px 8px; color: #3d4a57;"
+      "}"
+      "QLabel#RecordTimeLabel {"
+      "  color: #3d4a57; font-variant-numeric: tabular-nums;"
+      "  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;"
+      "  font-size: 11px;"
+      "}"
+      "QTreeWidget {"
+      "  border: 1px solid #d0d7de; border-radius: 6px;"
+      "  background: #ffffff;"
+      "}"
+      "QComboBox { min-height: 22px; padding: 1px 6px; }"));
 }
 
 void RecordPanel::syncTransportButtons() {
@@ -1019,6 +1181,8 @@ void RecordPanel::syncDensityBar() {
   const integration::PlaybackController& playback = manager_->playback();
   density_bar_->setBins(playback.densityBins());
   const double total = playback.totalTimeSec();
+  density_bar_->setTotalTimeSec(total);
+  density_bar_->setEnabled(total > 0.0 && !playback.currentFile().empty());
   if (total > 0.0) {
     density_bar_->setRangeNormalized(playback.rangeStartSec() / total,
                                      playback.rangeEndSec() / total);

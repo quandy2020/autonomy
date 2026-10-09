@@ -1,0 +1,177 @@
+"""Standalone Bazel build for automsgs."""
+
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+load("//tools:paths.bzl", "cpp_header", "cpp_source", "detail_header", "python_module")
+
+package(default_visibility = ["//visibility:public"])
+
+# ---------------------------------------------------------------------------
+# Proto sources  (import "automsgs/...")
+# ---------------------------------------------------------------------------
+
+PROTO_FILES = glob([
+    "proto/msgs/**/*.proto",
+    "proto/srvs/**/*.proto",
+    "proto/rpcs/**/*.proto",
+    "proto/actions/**/*.proto",
+    "proto/task/**/*.proto",
+])
+
+CPP_HDRS = [cpp_header(p) for p in PROTO_FILES]
+CPP_SRCS = [cpp_source(p) for p in PROTO_FILES]
+DETAIL_HDRS = [detail_header(p) for p in PROTO_FILES]
+PY_SRCS = [python_module(p) for p in PROTO_FILES]
+
+filegroup(
+    name = "proto_files",
+    srcs = PROTO_FILES,
+)
+
+genrule(
+    name = "generate_messages",
+    srcs = PROTO_FILES,
+    outs = CPP_HDRS + CPP_SRCS + DETAIL_HDRS + PY_SRCS + [
+        "automsgs/msgs/MessageTypes.hh",
+    ],
+    cmd = "$(location //tools:generate_messages.sh) $(location //tools:automsgs_generate_factory.py) $(@D)",
+    tools = [
+        "//tools:generate_messages.sh",
+        "//tools:automsgs_generate_factory.py",
+    ],
+)
+
+filegroup(
+    name = "automsgs_py",
+    srcs = PY_SRCS,
+)
+
+# ---------------------------------------------------------------------------
+# Generated config  (#include <automsgs/msgs/config.hh>)
+# ---------------------------------------------------------------------------
+
+genrule(
+    name = "generate_config",
+    srcs = ["core/include/automsgs/msgs/config.hh.in"],
+    outs = ["automsgs/msgs/config.hh"],
+    cmd = """
+      sed \
+        -e 's|@PROJECT_VERSION_MAJOR@|1|g' \
+        -e 's|@PROJECT_VERSION_MINOR@|0|g' \
+        -e 's|@PROJECT_VERSION_PATCH@|0|g' \
+        -e 's|@PROJECT_VERSION@|1.0.0|g' \
+        $(location core/include/automsgs/msgs/config.hh.in) > $@
+    """,
+)
+
+genrule(
+    name = "generate_install_dirs",
+    srcs = ["core/src/InstallationDirectories.cc.in"],
+    outs = ["InstallationDirectories.cc"],
+    cmd = """
+      sed 's|@CMAKE_INSTALL_PREFIX@|/usr/local|g' \
+        $(location core/src/InstallationDirectories.cc.in) > $@
+    """,
+)
+
+# ---------------------------------------------------------------------------
+# Core library  (CMake target: automsgs / automsgs_core / automsgs_proto)
+# ---------------------------------------------------------------------------
+
+cc_library(
+    name = "automsgs",
+    srcs = [
+        "core/src/DynamicFactory.cc",
+        "core/src/Factory.cc",
+        "core/src/MessageFactory.cc",
+        ":generate_install_dirs",
+    ] + CPP_SRCS,
+    hdrs = glob([
+        "core/include/**/*.hh",
+        "core/include/**/*.hpp",
+    ]) + [
+        ":generate_config",
+        "automsgs/msgs/MessageTypes.hh",
+    ] + CPP_HDRS + DETAIL_HDRS,
+    copts = [
+        "-Wno-switch-default",
+        "-Wno-float-equal",
+    ],
+    defines = ["automsgs_core_EXPORTS"],
+    includes = ["core/include"],
+    deps = [
+        "//tools:protobuf",
+        "//tools:pthread",
+    ],
+)
+
+# ---------------------------------------------------------------------------
+# Tools
+# ---------------------------------------------------------------------------
+
+cc_binary(
+    name = "automsgs_msgs",
+    srcs = ["core/cmd/msgs_main.cc"],
+    deps = [":automsgs"],
+)
+
+cc_binary(
+    name = "automsgs_protoc_plugin",
+    srcs = [
+        "core/generator/Generator.cc",
+        "core/generator/Generator.hh",
+        "core/generator/generator_main.cc",
+    ],
+    deps = [
+        "//tools:protobuf",
+        "//tools:protoc_lib",
+        "//tools:pthread",
+    ],
+)
+
+cc_binary(
+    name = "automsgs_protoc_plugin_lite",
+    srcs = [
+        "core/generator_lite/Generator.cc",
+        "core/generator_lite/Generator.hh",
+        "core/generator_lite/generator_main.cc",
+    ],
+    deps = [
+        "//tools:protobuf",
+        "//tools:protoc_lib",
+        "//tools:pthread",
+    ],
+)
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+cc_test(
+    name = "headers_TEST",
+    size = "small",
+    srcs = ["test/integration/headers_TEST.cc"],
+    deps = [
+        ":automsgs",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "message_TEST",
+    size = "small",
+    srcs = ["test/integration/message_TEST.cc"],
+    deps = [
+        ":automsgs",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "status_code_map_TEST",
+    size = "small",
+    srcs = ["test/integration/status_code_map_TEST.cc"],
+    deps = [
+        ":automsgs",
+        "@googletest//:gtest_main",
+    ],
+)

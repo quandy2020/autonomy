@@ -44,7 +44,7 @@ class PanelDockWidget;
  * @brief Autolink .record / .bag / .mcap player UI.
  *
  * Shortcuts (panel focus): Space play/pause, Left/Right ±100 ms,
- * Alt+Left/Right message step, Home/End start/end of active range.
+ * Alt+Left/Right «/» message step, Home/End start/end of active range.
  */
 class RecordPanel : public QWidget {
   Q_OBJECT

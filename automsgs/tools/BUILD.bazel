@@ -1,0 +1,32 @@
+load("//tools:system_libs.bzl", "system_library")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "generate_messages.sh",
+    "automsgs_generate_factory.py",
+    "automsgs_msgs_generate.py",
+    "cli/rpc-cli.py",
+])
+
+# Prefer /usr/local (docker SDKs) over older distro libraries.
+system_library(
+    name = "protobuf",
+    linkopts = [
+        "/usr/local/lib/libprotobuf.so",
+        "-Wl,-rpath,/usr/local/lib",
+    ],
+)
+
+system_library(
+    name = "protoc_lib",
+    linkopts = [
+        "/usr/local/lib/libprotoc.so",
+        "-Wl,-rpath,/usr/local/lib",
+    ],
+)
+
+system_library(
+    name = "pthread",
+    linkopts = ["-lpthread"],
+)

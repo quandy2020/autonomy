@@ -35,6 +35,34 @@ make -j$(nproc)
 make install
 ```
 
+### Bazel
+
+`automsgs/` is also a standalone Bazel module (bzlmod). It generates C++/Python from `proto/` with `protoc`, then builds `libautomsgs` plus the CLI and protoc plugins. Protobuf is the `/usr/local` SDK (`protoc`, `libprotobuf.so`, `libprotoc.so`), same as the Autolink image.
+
+```bash
+cd src/autonomy/automsgs
+./automsgs.sh build
+./automsgs.sh test
+./automsgs.sh install --prefix ./install
+```
+
+Equivalent bazel commands:
+
+```bash
+bazel build //:automsgs //:automsgs_msgs //:automsgs_protoc_plugin //:automsgs_protoc_plugin_lite
+bazel test //...
+```
+
+| Target | Meaning |
+|---|---|
+| `//:automsgs` | `libautomsgs.so` (generated messages + Factory) |
+| `//:automsgs_py` | generated Python (`*_pb2.py`) |
+| `//:automsgs_msgs` | CLI; installed as `automsgs-msgs` |
+| `//:automsgs_protoc_plugin` / `//:automsgs_protoc_plugin_lite` | protoc plugins |
+| `//:headers_TEST` and the other `//:*_TEST` | C++ integration tests |
+| `//examples/using_automsgs:using_automsgs` | link and use messages |
+| `//examples/generating_custom_msgs:generating_custom_msgs` | custom protos that import automsgs |
+
 ## Directory layout
 
 | Directory    | Description |
