@@ -12,16 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# -----------------------------------------------------------------------------
 # autonomy/vehicle — vehicle model / kinematics
+#
+# Builds
+#   autonomy_vehicle / autonomy::autonomy_vehicle
+#
+# Toggle
+#   AUTONOMY_BUILD_VEHICLE
+# -----------------------------------------------------------------------------
 
-include(autonomy_module)
-autonomy_module(vehicle)
+# --- sources -----------------------------------------------------------------
+file(GLOB_RECURSE AUTONOMY_VEHICLE_SRCS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+list(FILTER AUTONOMY_VEHICLE_SRCS EXCLUDE REGEX "main\\.cpp$")
+list(FILTER AUTONOMY_VEHICLE_SRCS EXCLUDE REGEX "_test\\.cpp$")
 
-# Library sources: GLOB *.cpp under this dir; drop *main.cpp / *_test.cpp.
-autonomy_glob_srcs(_VEHICLE_SRCS)
-autonomy_library(
-  NO_CORE
-  DEPENDENCIES autonomy_common autonomy_proto
-  SRCS ${_VEHICLE_SRCS}
-)
-unset(_VEHICLE_SRCS)
+# --- library -----------------------------------------------------------------
+autocmake_library(autonomy_vehicle
+  SHARED
+  NO_EXPORT
+  SOURCES ${AUTONOMY_VEHICLE_SRCS}
+  INCLUDES
+    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_BINARY_DIR}
+  DEPENDENCIES
+    autonomy_common
+    autonomy_proto)
+add_library(autonomy::vehicle ALIAS autonomy_vehicle)

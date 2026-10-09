@@ -12,20 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# autonomy/prediction — prediction
+# -----------------------------------------------------------------------------
+# autonomy/prediction — trajectory / intent prediction
+#
+# Builds
+#   autonomy_prediction / autonomy::autonomy_prediction
+#
+# Toggle
+#   AUTONOMY_BUILD_PREDICTION
+# -----------------------------------------------------------------------------
 
-include(autonomy_module)
-autonomy_module(prediction)
+# --- sources -----------------------------------------------------------------
+file(GLOB_RECURSE AUTONOMY_PREDICTION_SRCS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+list(FILTER AUTONOMY_PREDICTION_SRCS EXCLUDE REGEX "main\\.cpp$")
+list(FILTER AUTONOMY_PREDICTION_SRCS EXCLUDE REGEX "_test\\.cpp$")
 
-# Library sources: GLOB *.cpp under this dir; drop *main.cpp / *_test.cpp.
-autonomy_glob_srcs(_PREDICTION_SRCS)
-autonomy_library(
-  DEPENDENCIES autonomy_common
-  SRCS ${_PREDICTION_SRCS}
-)
-unset(_PREDICTION_SRCS)
+# --- library -----------------------------------------------------------------
+autocmake_library(autonomy_prediction
+  SHARED
+  NO_EXPORT
+  SOURCES ${AUTONOMY_PREDICTION_SRCS}
+  INCLUDES
+    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_BINARY_DIR}
+  DEPENDENCIES
+    autonomy_common
+    autonomy_proto)
+add_library(autonomy::prediction ALIAS autonomy_prediction)
 
-install(
-  DIRECTORY conf/
-  DESTINATION share/autonomy/prediction/conf
-)
+# --- install -----------------------------------------------------------------
+autocmake_install_share(prediction CONF)

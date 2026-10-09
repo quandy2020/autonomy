@@ -12,115 +12,138 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# autonomy/manipulation — MoveIt2-aligned arm stack (planning-style layout)
+# -----------------------------------------------------------------------------
+# autonomy/manipulation — MoveIt2-aligned arm stack
+#
+# Builds
+#   autonomy_manipulation / autonomy::manipulation
+#   autonomy.manipulation
+#   autonomy.manipulation.setup
+#
+# Toggle
+#   AUTONOMY_BUILD_MANIPULATION
+# -----------------------------------------------------------------------------
 
-include(autonomy_module)
-autonomy_module(manipulation)
+# --- dependencies ------------------------------------------------------------
+foreach(_pkg IN ITEMS OrocosKDL FCL OMPL Ruckig urdfdom Pinocchio VHACD TRAC_IK Octomap)
+  autocmake_find(${_pkg} PRIVATE QUIET)
+endforeach()
+autocmake_find(opentelemetry-cpp PRIVATE QUIET CONFIG)
 
-autonomy_glob_srcs(_MANIPULATION_SRCS)
+# --- sources -----------------------------------------------------------------
+file(GLOB_RECURSE AUTONOMY_MANIPULATION_SRCS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+list(FILTER AUTONOMY_MANIPULATION_SRCS EXCLUDE REGEX "main\\.cpp$")
+list(FILTER AUTONOMY_MANIPULATION_SRCS EXCLUDE REGEX "_test\\.cpp$")
 
-set(_MANIPULATION_FEATURES "")
-if(OrocosKDL_FOUND)
-  list(APPEND _MANIPULATION_FEATURES kdl)
-else()
-  list(FILTER _MANIPULATION_SRCS EXCLUDE REGEX "/model/urdf_kdl_chain\\.cpp$")
-  list(FILTER _MANIPULATION_SRCS EXCLUDE REGEX "/motion/kinematics/kdl_kinematics\\.cpp$")
+# Drop SDK-backed sources when the SDK is absent (stubs stay).
+if(NOT OrocosKDL_FOUND)
+  list(FILTER AUTONOMY_MANIPULATION_SRCS EXCLUDE REGEX "/model/urdf_kdl_chain\\.cpp$")
+  list(FILTER AUTONOMY_MANIPULATION_SRCS EXCLUDE REGEX "/motion/kinematics/kdl_kinematics\\.cpp$")
 endif()
-
-if(FCL_FOUND)
-  list(APPEND _MANIPULATION_FEATURES fcl)
-else()
-  list(FILTER _MANIPULATION_SRCS EXCLUDE REGEX "/motion/collision/fcl_collision_detector\\.cpp$")
+if(NOT FCL_FOUND)
+  list(FILTER AUTONOMY_MANIPULATION_SRCS EXCLUDE REGEX "/motion/collision/fcl_collision_detector\\.cpp$")
 endif()
-
 if(OMPL_FOUND)
-  list(APPEND _MANIPULATION_FEATURES ompl)
-  list(FILTER _MANIPULATION_SRCS EXCLUDE REGEX "/planner/ompl/ompl_planner_stub\\.cpp$")
+  list(FILTER AUTONOMY_MANIPULATION_SRCS EXCLUDE REGEX "/planner/ompl/ompl_planner_stub\\.cpp$")
 else()
-  list(FILTER _MANIPULATION_SRCS EXCLUDE REGEX "/planner/ompl/ompl_planner\\.cpp$")
+  list(FILTER AUTONOMY_MANIPULATION_SRCS EXCLUDE REGEX "/planner/ompl/ompl_planner\\.cpp$")
 endif()
 
-if(Ruckig_FOUND)
-  list(APPEND _MANIPULATION_FEATURES ruckig)
+# --- library -----------------------------------------------------------------
+autocmake_library(autonomy_manipulation
+  SHARED
+  NO_EXPORT
+  SOURCES ${AUTONOMY_MANIPULATION_SRCS}
+  INCLUDES
+    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_BINARY_DIR}
+  DEPENDENCIES
+    autonomy_common
+    autonomy_proto
+    autonomy_transform
+    $<TARGET_NAME_IF_EXISTS:OrocosKDL::orocos-kdl>
+    $<TARGET_NAME_IF_EXISTS:FCL::fcl>
+    $<TARGET_NAME_IF_EXISTS:OMPL::OMPL>
+    $<TARGET_NAME_IF_EXISTS:ruckig::ruckig>
+    $<TARGET_NAME_IF_EXISTS:urdfdom::urdfdom_model>
+    $<TARGET_NAME_IF_EXISTS:pinocchio::pinocchio>
+    $<TARGET_NAME_IF_EXISTS:VHACD::VHACD>
+    $<TARGET_NAME_IF_EXISTS:TRAC_IK::TRAC_IK>
+    $<TARGET_NAME_IF_EXISTS:octomap::octomap>
+    $<TARGET_NAME_IF_EXISTS:OSQP::OSQP>
+    $<TARGET_NAME_IF_EXISTS:opentelemetry-cpp::opentelemetry_trace>)
+add_library(autonomy::manipulation ALIAS autonomy_manipulation)
+
+target_compile_definitions(autonomy_manipulation PUBLIC
+  $<$<TARGET_EXISTS:OrocosKDL::orocos-kdl>:AUTONOMY_HAS_KDL>
+  $<$<TARGET_EXISTS:FCL::fcl>:AUTONOMY_HAS_FCL>
+  $<$<TARGET_EXISTS:OMPL::OMPL>:AUTONOMY_HAS_OMPL>
+  $<$<TARGET_EXISTS:ruckig::ruckig>:AUTONOMY_HAS_RUCKIG>
+  $<$<TARGET_EXISTS:urdfdom::urdfdom_model>:AUTONOMY_HAS_URDFDOM>
+  $<$<TARGET_EXISTS:pinocchio::pinocchio>:AUTONOMY_HAS_PINOCCHIO>
+  $<$<TARGET_EXISTS:VHACD::VHACD>:AUTONOMY_HAS_VHACD>
+  $<$<TARGET_EXISTS:TRAC_IK::TRAC_IK>:AUTONOMY_HAS_TRAC_IK>
+  $<$<TARGET_EXISTS:octomap::octomap>:AUTONOMY_HAS_OCTOMAP>
+  $<$<TARGET_EXISTS:opentelemetry-cpp::opentelemetry_trace>:AUTONOMY_HAVE_OTEL=1>)
+
+if(NOT TARGET OSQP::OSQP AND OSQP_LIBRARIES)
+  target_link_libraries(autonomy_manipulation PUBLIC ${OSQP_LIBRARIES})
 endif()
 
-if(urdfdom_FOUND)
-  list(APPEND _MANIPULATION_FEATURES urdfdom)
-endif()
+# --- binary ------------------------------------------------------------------
+autocmake_binary(autonomy.manipulation
+  NO_EXPORT
+  SOURCES manipulation_main.cpp
+  DEPENDENCIES
+    autonomy
+    glog::glog
+    gflags::gflags)
+autocmake_binary(autonomy.manipulation.setup
+  NO_EXPORT
+  SOURCES setup/setup_main.cpp
+  DEPENDENCIES
+    autonomy
+    glog::glog
+    gflags::gflags)
 
-if(Pinocchio_FOUND)
-  list(APPEND _MANIPULATION_FEATURES pinocchio)
-endif()
-
-if(VHACD_FOUND)
-  list(APPEND _MANIPULATION_FEATURES vhacd)
-endif()
-
-if(TRAC_IK_FOUND)
-  list(APPEND _MANIPULATION_FEATURES trac_ik)
-endif()
-
-if(Octomap_FOUND)
-  list(APPEND _MANIPULATION_FEATURES octomap)
-endif()
-
-autonomy_library(
-  DEPENDENCIES autonomy_common autonomy_transform autonomy_proto
-  FEATURES ${_MANIPULATION_FEATURES}
-  SRCS ${_MANIPULATION_SRCS}
-)
-if(_MANIPULATION_FEATURES)
-  message(STATUS "autonomy_manipulation FEATURES: ${_MANIPULATION_FEATURES}")
-else()
-  message(STATUS "autonomy_manipulation FEATURES: (none — AABB/stub backends)")
-endif()
-unset(_MANIPULATION_SRCS)
-unset(_MANIPULATION_FEATURES)
-
-autonomy_binary(autonomy.manipulation SRCS manipulation_main.cpp)
-autonomy_binary(autonomy.manipulation.setup SRCS setup/setup_main.cpp)
-
-if(BUILD_TEST)
-  autonomy_test(manipulation.urdf_joints_test
-    model/urdf_joints_test.cpp autonomy_manipulation)
-  autonomy_test(manipulation.plugins_test
-    plugins_test.cpp autonomy_manipulation)
-  autonomy_test(manipulation.time_parameterization_test
-    pipeline/time_parameterization_test.cpp autonomy_manipulation)
-  autonomy_test(manipulation.aabb_collision_detector_test
-    motion/collision/aabb_collision_detector_test.cpp autonomy_manipulation)
-  autonomy_test(manipulation.link_collision_geometry_test
-    motion/collision/link_collision_geometry_test.cpp autonomy_manipulation)
-  autonomy_test(manipulation.servo_test
-    motion/servo/cartesian_servo_test.cpp autonomy_manipulation)
-  autonomy_test(manipulation.effort_tracking_controller_test
-    motion/execution/effort_tracking_controller_test.cpp autonomy_manipulation)
+if(BUILD_TEST OR BUILD_TESTING)
+  foreach(_t IN ITEMS
+      urdf_joints_test:model/urdf_joints_test.cpp
+      plugins_test:plugins_test.cpp
+      time_parameterization_test:pipeline/time_parameterization_test.cpp
+      aabb_collision_detector_test:motion/collision/aabb_collision_detector_test.cpp
+      link_collision_geometry_test:motion/collision/link_collision_geometry_test.cpp
+      servo_test:motion/servo/cartesian_servo_test.cpp
+      effort_tracking_controller_test:motion/execution/effort_tracking_controller_test.cpp)
+    string(REPLACE ":" ";" _pair "${_t}")
+    list(GET _pair 0 _name)
+    list(GET _pair 1 _src)
+    autocmake_test(manipulation.${_name}
+      SOURCES ${_src}
+      DEPENDENCIES autonomy_manipulation)
+  endforeach()
   if(OrocosKDL_FOUND)
-    autonomy_test(manipulation.kdl_kinematics_test
-      motion/kinematics/kdl_kinematics_test.cpp autonomy_manipulation)
+    autocmake_test(manipulation.kdl_kinematics_test
+      SOURCES motion/kinematics/kdl_kinematics_test.cpp
+      DEPENDENCIES autonomy_manipulation)
   endif()
   if(OMPL_FOUND)
-    autonomy_test(manipulation.ompl_planner_test
-      planner/ompl/ompl_planner_test.cpp autonomy_manipulation)
+    autocmake_test(manipulation.ompl_planner_test
+      SOURCES planner/ompl/ompl_planner_test.cpp
+      DEPENDENCIES autonomy_manipulation)
   endif()
   if(FCL_FOUND)
-    autonomy_test(manipulation.fcl_collision_detector_test
-      motion/collision/fcl_collision_detector_test.cpp autonomy_manipulation)
+    autocmake_test(manipulation.fcl_collision_detector_test
+      SOURCES motion/collision/fcl_collision_detector_test.cpp
+      DEPENDENCIES autonomy_manipulation)
   endif()
 endif()
 
-install(
-  DIRECTORY conf/
-  DESTINATION share/autonomy/manipulation/conf)
-install(
-  DIRECTORY dag/
-  DESTINATION share/autonomy/manipulation/dag
-  FILES_MATCHING PATTERN "*.dag")
-install(
-  DIRECTORY launch/
-  DESTINATION share/autonomy/manipulation/launch
-  USE_SOURCE_PERMISSIONS
-  FILES_MATCHING PATTERN "*.launch")
-install(
-  DIRECTORY test_data/
+# --- install -----------------------------------------------------------------
+autocmake_install_share(manipulation
+  CONF
+  DAG_PATTERN "*.dag"
+  LAUNCH_PATTERN "*.launch")
+install(DIRECTORY test_data/
   DESTINATION share/autonomy/manipulation/test_data)

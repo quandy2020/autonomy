@@ -12,78 +12,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Atlas — VO / VIO SLAM (ORB-SLAM3-style frontend + Ceres backend).
+# -----------------------------------------------------------------------------
+# autonomy/localization/atlas — VO / VIO SLAM offline runners + tests
 #
-# Library sources (*.cpp under common/ sensor/ frontend/ map/ backend/ system/)
-# are picked up by the parent autonomy/localization via autonomy_glob_srcs().
-# Header-only trees (e.g. backend/cost_functions/) need no listing here.
-#
-# This file registers offline runners, unit tests, and config install.
+# Library sources are GLOB'd by the parent localization CMakeLists.
+# -----------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.16)
+# --- binary ------------------------------------------------------------------
+autocmake_binary(autonomy.localization.atlas_dataset
+  NO_EXPORT
+  SOURCES test/app/atlas_dataset_main.cpp
+  DEPENDENCIES
+    autonomy
+    glog::glog
+    gflags::gflags)
 
-# ---------------------------------------------------------------------------
-# Offline evaluation binaries (test/app)
-# ---------------------------------------------------------------------------
+autocmake_binary(autonomy.localization.atlas_euroc_mi
+  NO_EXPORT
+  SOURCES test/app/euroc_mono_inertial_main.cpp
+  DEPENDENCIES
+    autonomy
+    glog::glog
+    gflags::gflags)
 
-# Unified dataset runner: EuRoC / TUM RGB-D / KITTI · VO / VIO / stereo / RGB-D
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/app/atlas_dataset_main.cpp")
-  autonomy_binary(autonomy.localization.atlas_dataset
-    SRCS test/app/atlas_dataset_main.cpp)
+# --- test --------------------------------------------------------------------
+if(BUILD_TEST OR BUILD_TESTING)
+  foreach(_t IN ITEMS
+      tracking_test
+      config_test
+      lidar_pose_test
+      occupancy_test
+      lidar_reloc_test
+      scan_filter_test)
+    autocmake_test(localization.atlas.${_t}
+      SOURCES test/unit/${_t}.cpp
+      DEPENDENCIES autonomy_localization)
+  endforeach()
 endif()
 
-# Legacy EuRoC mono-inertial entry (kept for existing scripts / flags)
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/app/euroc_mono_inertial_main.cpp")
-  autonomy_binary(autonomy.localization.atlas_euroc_mi
-    SRCS test/app/euroc_mono_inertial_main.cpp)
-endif()
-
-# ---------------------------------------------------------------------------
-# Unit tests (test/unit)
-# ---------------------------------------------------------------------------
-
-if(BUILD_TEST)
-  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/unit/tracking_test.cpp")
-    autonomy_test(localization.atlas.tracking_test
-      test/unit/tracking_test.cpp autonomy_localization)
-  endif()
-
-  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/unit/config_test.cpp")
-    autonomy_test(localization.atlas.config_test
-      test/unit/config_test.cpp autonomy_localization)
-  endif()
-
-  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/unit/lidar_pose_test.cpp")
-    autonomy_test(localization.atlas.lidar_pose_test
-      test/unit/lidar_pose_test.cpp autonomy_localization)
-  endif()
-
-  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/unit/occupancy_test.cpp")
-    autonomy_test(localization.atlas.occupancy_test
-      test/unit/occupancy_test.cpp autonomy_localization)
-  endif()
-
-  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/unit/lidar_reloc_test.cpp")
-    autonomy_test(localization.atlas.lidar_reloc_test
-      test/unit/lidar_reloc_test.cpp autonomy_localization)
-  endif()
-
-  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/unit/scan_filter_test.cpp")
-    autonomy_test(localization.atlas.scan_filter_test
-      test/unit/scan_filter_test.cpp autonomy_localization)
-  endif()
-endif()
-
-# ---------------------------------------------------------------------------
-# Install runtime configs → share/autonomy/localization/conf/atlas/
-# ---------------------------------------------------------------------------
-
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/config")
-  install(
-    DIRECTORY config/
-    DESTINATION share/autonomy/localization/conf/atlas
-  )
-endif()
+# --- install -----------------------------------------------------------------
+install(DIRECTORY config/
+  DESTINATION share/autonomy/localization/conf/atlas)
 
 message(STATUS
   "atlas: offline runners (atlas_dataset, atlas_euroc_mi) + unit tests + "

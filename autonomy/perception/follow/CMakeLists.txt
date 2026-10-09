@@ -12,13 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Follow is a loadable autolink component. It consumes base tracks + depth and
-# publishes target / path / grid for TrackingClient + MPPI GridObstaclesCritic.
-include(autonomy_module)
-autonomy_component(follow_component
+# -----------------------------------------------------------------------------
+# autonomy/perception/follow — person / target follow component
+#
+# Builds
+#   follow_component
+# -----------------------------------------------------------------------------
+
+# --- library -----------------------------------------------------------------
+autocmake_library(follow_component
+  SHARED
+  NO_EXPORT
   SOURCES
     follow_component.cpp
     options.cpp
     localizer.cpp
     grid.cpp
-    planner.cpp)
+    planner.cpp
+  INCLUDES
+    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_BINARY_DIR}
+  PRIVATE_DEPENDENCIES
+    autonomy
+    autolink
+    automsgs)
+set_target_properties(follow_component PROPERTIES OUTPUT_NAME "follow_component")
+

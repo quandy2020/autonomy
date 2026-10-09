@@ -40,20 +40,12 @@ class MinimalPresetTest(unittest.TestCase):
             "BUILD_TOOLS",
             "BUILD_GRPC",
             "BUILD_PROMETHEUS",
-            "BUILD_GRID_MAP_DEMOS",
-            "BUILD_AUTODRIVER",
             "BUILD_AUTOVIZ",
-            "BUILD_AUTOSIM",
-            "BUILD_ORBISVIEW",
-            "BUILD_ONNXRUNTIME",
-            "BUILD_TENSORRT",
-            "BUILD_SHERPA_ONNX",
             "AUTOLINK_BUILD_PYTHON",
             "AUTOMSGS_BUILD_EXAMPLES",
             "AUTOMSGS_BUILD_TOOLS",
             "AUTOMSGS_BUILD_PYTHON",
             "AUTOMSGS_BUILD_TESTS",
-            "AUTONOMY_BUILD_COMMON_OSQP",
             "AUTONOMY_BUILD_MAP",
             "AUTONOMY_BUILD_PREDICTION",
             "AUTONOMY_BUILD_CONTROL",
@@ -65,7 +57,6 @@ class MinimalPresetTest(unittest.TestCase):
             "AUTONOMY_BUILD_SYSTEM",
             "AUTONOMY_BUILD_AUDIO",
             "AUTONOMY_BUILD_BRIDGE",
-            "AUTONOMY_BUILD_VISUALIZATION",
         }
         self.assertEqual(cache["CMAKE_BUILD_TYPE"], "Debug")
         self.assertEqual(cache["FORCE_DEBUG_BUILD"], "ON")

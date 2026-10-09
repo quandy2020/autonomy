@@ -21,6 +21,75 @@ set(_AUTOCMAKE_UNINSTALL_IN
   "${CMAKE_CURRENT_LIST_DIR}/autocmake-uninstall.cmake.in"
   CACHE INTERNAL "autocmake uninstall script template")
 
+# @brief Install one share subdirectory when it exists beside the caller.
+# @param patterns Semicolon list of FILES_MATCHING patterns (empty = all files).
+function(_autocmake_install_share_dir dir dest patterns use_perms)
+  if(NOT IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/${dir}")
+    return()
+  endif()
+  set(_args DIRECTORY "${dir}/" DESTINATION "${dest}/${dir}")
+  if(use_perms)
+    list(APPEND _args USE_SOURCE_PERMISSIONS)
+  endif()
+  if(NOT "${patterns}" STREQUAL "")
+    list(APPEND _args FILES_MATCHING)
+    foreach(_pat IN LISTS patterns)
+      list(APPEND _args PATTERN "${_pat}")
+    endforeach()
+  endif()
+  install(${_args})
+endfunction()
+
+# @brief Install runtime share trees (conf / dag / launch / scripts / script).
+#
+# Destination defaults to share/${PROJECT_NAME}/<name>. Each kind is installed
+# only when the matching source directory exists. Passing *_PATTERN selects
+# that kind and filters files (multiple patterns allowed); passing the bare
+# option (CONF / DAG / …) installs the whole directory.
+#
+# @param name Component folder under the project share prefix (e.g. bridge).
+# @param DESTINATION Override install prefix (default share/${PROJECT_NAME}/<name>).
+# @param CONF / DAG / LAUNCH / SCRIPTS / SCRIPT  Install dir with no filter.
+# @param CONF_PATTERN / DAG_PATTERN / …          One or more FILES_MATCHING globs.
+#
+# Example (autonomy/bridge):
+#   autocmake_install_share(bridge
+#     CONF_PATTERN "*.pb.txt"
+#     DAG_PATTERN "*.dag"
+#     LAUNCH_PATTERN "*.launch")
+function(autocmake_install_share name)
+  _autocmake_parse(_arg
+    "CONF;DAG;LAUNCH;SCRIPTS;SCRIPT"
+    "DESTINATION"
+    "CONF_PATTERN;DAG_PATTERN;LAUNCH_PATTERN;SCRIPTS_PATTERN;SCRIPT_PATTERN"
+    ${ARGN})
+  if(_arg_UNPARSED_ARGUMENTS)
+    message(FATAL_ERROR
+      "autocmake_install_share: unexpected arguments: ${_arg_UNPARSED_ARGUMENTS}")
+  endif()
+
+  set(_dest "${_arg_DESTINATION}")
+  if(NOT _dest)
+    set(_dest "share/${PROJECT_NAME}/${name}")
+  endif()
+
+  if(_arg_CONF OR _arg_CONF_PATTERN)
+    _autocmake_install_share_dir(conf "${_dest}" "${_arg_CONF_PATTERN}" FALSE)
+  endif()
+  if(_arg_DAG OR _arg_DAG_PATTERN)
+    _autocmake_install_share_dir(dag "${_dest}" "${_arg_DAG_PATTERN}" FALSE)
+  endif()
+  if(_arg_LAUNCH OR _arg_LAUNCH_PATTERN)
+    _autocmake_install_share_dir(launch "${_dest}" "${_arg_LAUNCH_PATTERN}" TRUE)
+  endif()
+  if(_arg_SCRIPTS OR _arg_SCRIPTS_PATTERN)
+    _autocmake_install_share_dir(scripts "${_dest}" "${_arg_SCRIPTS_PATTERN}" TRUE)
+  endif()
+  if(_arg_SCRIPT OR _arg_SCRIPT_PATTERN)
+    _autocmake_install_share_dir(script "${_dest}" "${_arg_SCRIPT_PATTERN}" TRUE)
+  endif()
+endfunction()
+
 # @brief Install extra config snippets beside the package file.
 macro(_autocmake_install_config_blocks)
   set(AUTOCMAKE_CONFIG_EXTRAS_BLOCK "")

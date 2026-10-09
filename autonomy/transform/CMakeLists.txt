@@ -12,21 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# -----------------------------------------------------------------------------
 # autonomy/transform — coordinate frames / TF
+#
+# Builds
+#   autonomy_transform / autonomy::autonomy_transform
+#
+# Toggle
+#   AUTONOMY_BUILD_TRANSFORM
+# -----------------------------------------------------------------------------
 
-include(autonomy_module)
-autonomy_module(transform)
+# --- sources -----------------------------------------------------------------
+file(GLOB_RECURSE AUTONOMY_TRANSFORM_SRCS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+list(FILTER AUTONOMY_TRANSFORM_SRCS EXCLUDE REGEX "main\\.cpp$")
+list(FILTER AUTONOMY_TRANSFORM_SRCS EXCLUDE REGEX "_test\\.cpp$")
 
-# Library sources: GLOB *.cpp under this dir; drop *main.cpp / *_test.cpp.
-autonomy_glob_srcs(_TRANSFORM_SRCS)
-autonomy_library(
-  NO_CORE
-  DEPENDENCIES autonomy_common autonomy_proto
-  SRCS ${_TRANSFORM_SRCS}
-)
-unset(_TRANSFORM_SRCS)
+# --- library -----------------------------------------------------------------
+autocmake_library(autonomy_transform
+  SHARED
+  NO_EXPORT
+  SOURCES ${AUTONOMY_TRANSFORM_SRCS}
+  INCLUDES
+    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_BINARY_DIR}
+  DEPENDENCIES
+    autonomy_common
+    autonomy_proto)
+add_library(autonomy::transform ALIAS autonomy_transform)
 
-install(
-  DIRECTORY conf/
-  DESTINATION share/autonomy/transform/conf
-)
+# --- install -----------------------------------------------------------------
+autocmake_install_share(transform CONF)

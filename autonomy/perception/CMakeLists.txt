@@ -12,52 +12,70 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# -----------------------------------------------------------------------------
 # autonomy/perception — perception stack
+#
+# Builds
+#   autonomy_perception / autonomy::autonomy_perception
+#   autonomy.perception
+#   base/ follow/   optional subdirs (base self-guards on infer SDKs)
+#
+# Toggle
+#   AUTONOMY_BUILD_PERCEPTION
+#   BUILD_ONNXRUNTIME / BUILD_TENSORRT  (from common)
+# -----------------------------------------------------------------------------
 
-include(autonomy_module)
-autonomy_module(perception)
+# --- sources -----------------------------------------------------------------
+file(GLOB_RECURSE AUTONOMY_PERCEPTION_SRCS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+list(FILTER AUTONOMY_PERCEPTION_SRCS EXCLUDE REGEX "main\\.cpp$")
+list(FILTER AUTONOMY_PERCEPTION_SRCS EXCLUDE REGEX "_test\\.cpp$")
+list(FILTER AUTONOMY_PERCEPTION_SRCS EXCLUDE REGEX "/(base|follow)/")
 
-# Library sources: GLOB *.cpp; exclude base/ and follow/ (built as components).
-autonomy_glob_srcs(_PERCEPTION_SRCS)
-list(FILTER _PERCEPTION_SRCS EXCLUDE REGEX "/(base|follow)/")
+# --- library -----------------------------------------------------------------
+autocmake_library(autonomy_perception
+  SHARED
+  NO_EXPORT
+  SOURCES ${AUTONOMY_PERCEPTION_SRCS}
+  INCLUDES
+    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_BINARY_DIR}
+  DEPENDENCIES
+    autonomy_common
+    autonomy_proto
+    autonomy_transform
+    autonomy_map
+    $<TARGET_NAME_IF_EXISTS:autonomy_opencv>)
+add_library(autonomy::perception ALIAS autonomy_perception)
 
-autonomy_library(
-  DEPENDENCIES autonomy_common autonomy_transform autonomy_map
-  FEATURES inference
-  SRCS ${_PERCEPTION_SRCS}
-)
-unset(_PERCEPTION_SRCS)
-
-# Process entrypoint: autonomy.perception
-autonomy_binary(autonomy.perception SRCS perception_main.cpp)
-
-# Loadable components (require an inference backend for base/).
-set(_has_infer FALSE)
+# Optional ML backends (discovered by autonomy/common).
 if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
-  set(_has_infer TRUE)
+  target_compile_definitions(autonomy_perception PUBLIC AUTONOMY_HAS_ONNXRUNTIME)
+  target_include_directories(autonomy_perception SYSTEM PUBLIC ${OnnxRuntime_INCLUDE_DIRS})
+  target_link_libraries(autonomy_perception PUBLIC ${OnnxRuntime_LIBRARIES})
 endif()
 if(BUILD_TENSORRT AND TensorRT_FOUND)
-  set(_has_infer TRUE)
+  target_compile_definitions(autonomy_perception PUBLIC AUTONOMY_HAS_TENSORRT)
+  target_include_directories(autonomy_perception SYSTEM PUBLIC ${TensorRT_INCLUDE_DIRS})
+  target_link_libraries(autonomy_perception PUBLIC
+    ${TensorRT_LIBRARIES}
+    $<TARGET_NAME_IF_EXISTS:CUDA::cudart>)
 endif()
-if(_has_infer AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/base/CMakeLists.txt")
-  add_subdirectory(base)
-endif()
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/follow/CMakeLists.txt")
-  add_subdirectory(follow)
-endif()
-unset(_has_infer)
 
-# Runtime assets → share/autonomy/perception/ (launch / conf / dag)
-install(
-  DIRECTORY conf/
-  DESTINATION share/autonomy/perception/conf
-  FILES_MATCHING PATTERN "*.pb.txt")
-install(
-  DIRECTORY dag/
-  DESTINATION share/autonomy/perception/dag
-  FILES_MATCHING PATTERN "*.dag")
-install(
-  DIRECTORY launch/
-  DESTINATION share/autonomy/perception/launch
-  USE_SOURCE_PERMISSIONS
-  FILES_MATCHING PATTERN "*.launch")
+# --- binary ------------------------------------------------------------------
+autocmake_binary(autonomy.perception
+  NO_EXPORT
+  SOURCES perception_main.cpp
+  DEPENDENCIES
+    autonomy
+    glog::glog
+    gflags::gflags)
+
+add_subdirectory(base)
+add_subdirectory(follow)
+
+# --- install -----------------------------------------------------------------
+autocmake_install_share(perception
+  CONF_PATTERN "*.pb.txt"
+  DAG_PATTERN "*.dag"
+  LAUNCH_PATTERN "*.launch")

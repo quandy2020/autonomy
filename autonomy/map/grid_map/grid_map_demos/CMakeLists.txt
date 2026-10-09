@@ -12,19 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# grid_map_demos — ROS-free ports of ANYbotics grid_map_demos.
-#
-# Built when BUILD_GRID_MAP_DEMOS=ON.
+# -----------------------------------------------------------------------------
+# autonomy/map/grid_map/grid_map_demos — ROS-free ANYbotics demo ports
+# -----------------------------------------------------------------------------
 
 set(_GRID_MAP_DEMOS_ROOT
   "${PROJECT_SOURCE_DIR}/autonomy/map/grid_map/grid_map_demos")
 
 function(grid_map_demo NAME)
   cmake_parse_arguments(ARG "" "" "SRCS" ${ARGN})
-  autonomy_binary(${NAME} SRCS ${ARG_SRCS})
+  autocmake_binary(${NAME}
+    NO_EXPORT
+    SOURCES ${ARG_SRCS}
+    DEPENDENCIES
+      autonomy
+      glog::glog
+      gflags::gflags)
   target_include_directories(${NAME} PRIVATE "${_GRID_MAP_DEMOS_ROOT}")
 endfunction()
 
+# --- binary ------------------------------------------------------------------
 grid_map_demo(grid_map_simple_demo
   SRCS ${_GRID_MAP_DEMOS_ROOT}/simple_demo.cpp)
 grid_map_demo(grid_map_tutorial_demo
@@ -52,10 +59,10 @@ grid_map_demo(grid_map_iterator_benchmark
 grid_map_demo(grid_map_interpolation_demo
   SRCS ${_GRID_MAP_DEMOS_ROOT}/interpolation_demo.cpp)
 
+# --- install -----------------------------------------------------------------
 install(DIRECTORY
   ${_GRID_MAP_DEMOS_ROOT}/config
   ${_GRID_MAP_DEMOS_ROOT}/data
-  DESTINATION share/autonomy/map/grid_map/grid_map_demos
-)
+  DESTINATION share/autonomy/map/grid_map/grid_map_demos)
 
 unset(_GRID_MAP_DEMOS_ROOT)

@@ -12,68 +12,76 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# autonomy/common — shared utilities, math, time, optional inference
-# Single shared library: libautonomy_common.so
+# -----------------------------------------------------------------------------
+# autonomy/common — shared utilities
+#
+# Builds
+#   autonomy_common / autonomy::common
+#
+# Toggle
+#   AUTONOMY_BUILD_COMMON
+#   BUILD_ONNXRUNTIME / BUILD_TENSORRT / BUILD_GRPC
+# -----------------------------------------------------------------------------
 
-include(autonomy_module)
-autonomy_module(common)
+# --- dependencies ------------------------------------------------------------
+option(BUILD_ONNXRUNTIME "ONNX Runtime" ON)
+option(BUILD_TENSORRT "TensorRT" OFF)
+autocmake_find(OnnxRuntime PRIVATE QUIET)
+autocmake_find(TensorRT PRIVATE QUIET)
+autocmake_find(CUDAToolkit PRIVATE QUIET)
+autocmake_find(Ipopt PRIVATE QUIET)
+autocmake_find(gRPC PRIVATE QUIET CONFIG)
+if(NOT gRPC_FOUND)
+  autocmake_find(gRPC PRIVATE QUIET)
+endif()
 
-# Library sources: GLOB *.cpp; drop *main.cpp / *_test.cpp.
-autonomy_glob_srcs(_COMMON_SRCS)
+# --- sources -----------------------------------------------------------------
+file(GLOB_RECURSE AUTONOMY_COMMON_SRCS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+list(FILTER AUTONOMY_COMMON_SRCS EXCLUDE REGEX "main\\.cpp$")
+list(FILTER AUTONOMY_COMMON_SRCS EXCLUDE REGEX "_test\\.cpp$")
+list(FILTER AUTONOMY_COMMON_SRCS EXCLUDE REGEX "lua_parameter_dictionary\\.cpp$")
+list(FILTER AUTONOMY_COMMON_SRCS EXCLUDE REGEX "configuration_file_resolver\\.cpp$")
 
-# LuaParameterDictionary lives with localization (Cartographer); keep common Lua-free.
-list(FILTER _COMMON_SRCS EXCLUDE REGEX "lua_parameter_dictionary\\.cpp$")
-list(FILTER _COMMON_SRCS EXCLUDE REGEX "configuration_file_resolver\\.cpp$")
-
-# Optional gRPC helpers (async_grpc/) only when BUILD_GRPC is ON.
 if(NOT BUILD_GRPC)
-  list(FILTER _COMMON_SRCS EXCLUDE REGEX "/async_grpc/")
+  list(FILTER AUTONOMY_COMMON_SRCS EXCLUDE REGEX "/async_grpc/")
 endif()
-
-# Optional OSQP MPC (math/mpc_osqp.cpp) — still one library when enabled.
-set(_COMMON_FEATURES inference)
-if(BUILD_GRPC)
-  list(APPEND _COMMON_FEATURES grpc)
-  # Reflection is optional; link when the library is discoverable so
-  # async_grpc::Server can call InitProtoReflectionServerBuilderPlugin.
-  list(APPEND _COMMON_FEATURES grpc_reflection)
-endif()
-if(AUTONOMY_BUILD_COMMON_OSQP)
-  list(APPEND _COMMON_FEATURES osqp)
-else()
-  list(FILTER _COMMON_SRCS EXCLUDE REGEX "/math/mpc_osqp\\.cpp$")
-endif()
-
-# The Ipopt adapter is available only when a consuming domain discovered Ipopt.
 if(NOT Ipopt_FOUND)
-  list(FILTER _COMMON_SRCS EXCLUDE REGEX "/optimization/ipopt/")
-else()
-  list(APPEND _COMMON_FEATURES ipopt)
+  list(FILTER AUTONOMY_COMMON_SRCS EXCLUDE REGEX "/optimization/ipopt/")
 endif()
 
-# network/: keep tensor.cpp always; add ONNX / TensorRT backends when found.
+# Network backends are opt-in; keep only tensor.cpp by default.
 file(GLOB_RECURSE _net_drop "${CMAKE_CURRENT_SOURCE_DIR}/network/*.cpp")
-if(_net_drop)
-  list(REMOVE_ITEM _COMMON_SRCS ${_net_drop})
-endif()
-list(APPEND _COMMON_SRCS
+list(REMOVE_ITEM AUTONOMY_COMMON_SRCS ${_net_drop})
+list(APPEND AUTONOMY_COMMON_SRCS
   "${CMAKE_CURRENT_SOURCE_DIR}/network/common/tensor.cpp")
 if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
   file(GLOB_RECURSE _onnx
     "${CMAKE_CURRENT_SOURCE_DIR}/network/backend/onnx/*.cpp")
-  list(APPEND _COMMON_SRCS ${_onnx})
+  list(APPEND AUTONOMY_COMMON_SRCS ${_onnx})
 endif()
 if(BUILD_TENSORRT AND TensorRT_FOUND)
   file(GLOB_RECURSE _trt
     "${CMAKE_CURRENT_SOURCE_DIR}/network/backend/tensorrt/*.cpp")
-  list(APPEND _COMMON_SRCS ${_trt})
+  list(APPEND AUTONOMY_COMMON_SRCS ${_trt})
 endif()
-unset(_net_drop)
-unset(_onnx)
-unset(_trt)
 
-autonomy_library(NO_CORE FEATURES ${_COMMON_FEATURES} SRCS ${_COMMON_SRCS})
-unset(_COMMON_FEATURES)
+if(AUTONOMY_VERSION_CPP)
+  list(FILTER AUTONOMY_COMMON_SRCS EXCLUDE REGEX "/version\\.cpp$")
+  list(APPEND AUTONOMY_COMMON_SRCS "${AUTONOMY_VERSION_CPP}")
+  set_source_files_properties("${AUTONOMY_VERSION_CPP}" PROPERTIES GENERATED TRUE)
+endif()
+
+# --- library -----------------------------------------------------------------
+autocmake_library(autonomy_common
+  SHARED
+  NO_EXPORT
+  SOURCES ${AUTONOMY_COMMON_SRCS}
+  INCLUDES
+    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_BINARY_DIR})
+add_library(autonomy::common ALIAS autonomy_common)
+
 target_link_libraries(autonomy_common PUBLIC
   protobuf::libprotobuf
   automsgs
@@ -84,6 +92,31 @@ target_link_libraries(autonomy_common PUBLIC
   gflags::gflags
   autolink
   Threads::Threads
-  nlohmann_json::nlohmann_json)
+  nlohmann_json::nlohmann_json
+  $<TARGET_NAME_IF_EXISTS:OSQP::OSQP>
+  $<TARGET_NAME_IF_EXISTS:Ipopt::Ipopt>
+  $<$<BOOL:${BUILD_GRPC}>:grpc++>
+  $<$<BOOL:${BUILD_GRPC}>:grpc>
+  $<$<AND:$<BOOL:${BUILD_GRPC}>,$<TARGET_EXISTS:gRPC::grpc++_reflection>>:gRPC::grpc++_reflection>
+  $<TARGET_NAME_IF_EXISTS:CUDA::cudart>)
 
-unset(_COMMON_SRCS)
+target_compile_definitions(autonomy_common PUBLIC
+  $<$<AND:$<BOOL:${BUILD_GRPC}>,$<TARGET_EXISTS:gRPC::grpc++_reflection>>:AUTONOMY_HAVE_GRPC_REFLECTION=1>)
+
+if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
+  target_compile_definitions(autonomy_common PUBLIC AUTONOMY_HAS_ONNXRUNTIME)
+  target_include_directories(autonomy_common SYSTEM PUBLIC ${OnnxRuntime_INCLUDE_DIRS})
+  target_link_libraries(autonomy_common PUBLIC ${OnnxRuntime_LIBRARIES})
+endif()
+if(BUILD_TENSORRT AND TensorRT_FOUND)
+  target_compile_definitions(autonomy_common PUBLIC AUTONOMY_HAS_TENSORRT)
+  target_include_directories(autonomy_common SYSTEM PUBLIC ${TensorRT_INCLUDE_DIRS})
+  target_link_libraries(autonomy_common PUBLIC ${TensorRT_LIBRARIES})
+endif()
+
+if(Ipopt_FOUND AND NOT TARGET Ipopt::Ipopt)
+  target_link_libraries(autonomy_common PUBLIC ${IPOPT_LIBRARIES})
+endif()
+if(NOT TARGET OSQP::OSQP AND OSQP_LIBRARIES)
+  target_link_libraries(autonomy_common PUBLIC ${OSQP_LIBRARIES})
+endif()

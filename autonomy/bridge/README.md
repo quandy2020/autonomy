@@ -462,7 +462,7 @@ cmake -B build -DBUILD_GRPC=ON
 cmake --build build --target autonomy.bridge -j
 ```
 
-可选 FEATURE（见 `cmake/README.md`）：`grpc_reflection`、`otel`（缺库降级，不红 CI）。
+可选 FEATURE（见根 `CMakeLists.txt`）：`grpc_reflection`、`otel`（缺库降级，不红 CI）。
 
 ### 单独工程（已安装 autonomy）
 

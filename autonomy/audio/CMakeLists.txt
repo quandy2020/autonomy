@@ -12,44 +12,59 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# -----------------------------------------------------------------------------
 # autonomy/audio — audio / ASR components
+#
+# Builds
+#   autonomy_audio / autonomy::audio
+#   audio_component / autonomy::audio_component
+#
+# Toggle
+#   AUTONOMY_BUILD_AUDIO
+#   BUILD_SHERPA_ONNX
+# -----------------------------------------------------------------------------
 
-include(autonomy_module)
-autonomy_module(audio)
+# --- dependencies ------------------------------------------------------------
+option(BUILD_SHERPA_ONNX "sherpa-onnx ASR" OFF)
+autocmake_find(SherpaOnnx PRIVATE QUIET)
 
-# Placeholder INTERFACE library (sources live on the component DSO).
-autonomy_library(INTERFACE DEPENDENCIES autonomy_common)
+# --- library -----------------------------------------------------------------
+autocmake_library(autonomy_audio
+  INTERFACE
+  NO_EXPORT
+  DEPENDENCIES autonomy_common)
+add_library(autonomy::audio ALIAS autonomy_audio)
 
-# Loadable component: GLOB *.cpp under this dir; drop *main.cpp / *_test.cpp.
-autonomy_glob_srcs(_AUDIO_COMPONENT_SRCS)
-autonomy_component(audio_component
-  SOURCES ${_AUDIO_COMPONENT_SRCS}
-  PRIVATE_LINK_LIBS yaml-cpp)
-unset(_AUDIO_COMPONENT_SRCS)
+file(GLOB_RECURSE AUTONOMY_AUDIO_SRCS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+list(FILTER AUTONOMY_AUDIO_SRCS EXCLUDE REGEX "main\\.cpp$")
+list(FILTER AUTONOMY_AUDIO_SRCS EXCLUDE REGEX "_test\\.cpp$")
 
-# Optional sherpa-onnx ASR; stub engine when unavailable.
-if(TARGET audio_component)
-  if(BUILD_SHERPA_ONNX AND SherpaOnnx_FOUND)
-    target_compile_definitions(audio_component PRIVATE AUTONOMY_HAS_SHERPA_ONNX)
-    target_include_directories(audio_component PRIVATE ${SherpaOnnx_INCLUDE_DIRS})
-    target_link_libraries(audio_component PRIVATE ${SherpaOnnx_LIBRARIES})
-    message(STATUS "audio_component: sherpa-onnx ASR enabled")
-  else()
-    message(STATUS "audio_component: ASR stub (no sherpa-onnx)")
-  endif()
+autocmake_library(audio_component
+  SHARED
+  NO_EXPORT
+  SOURCES ${AUTONOMY_AUDIO_SRCS}
+  INCLUDES
+    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_BINARY_DIR}
+  PRIVATE_DEPENDENCIES
+    autonomy
+    autolink
+    automsgs
+    yaml-cpp)
+set_target_properties(audio_component PROPERTIES OUTPUT_NAME "audio_component")
+
+if(BUILD_SHERPA_ONNX AND SherpaOnnx_FOUND)
+  target_compile_definitions(audio_component PRIVATE AUTONOMY_HAS_SHERPA_ONNX)
+  target_include_directories(audio_component PRIVATE ${SherpaOnnx_INCLUDE_DIRS})
+  target_link_libraries(audio_component PRIVATE ${SherpaOnnx_LIBRARIES})
+  message(STATUS "audio_component: sherpa-onnx ASR enabled")
+else()
+  message(STATUS "audio_component: ASR stub (no sherpa-onnx)")
 endif()
 
-# Runtime assets → share/autonomy/audio/ (launch / conf / dag)
-install(
-  DIRECTORY conf/
-  DESTINATION share/autonomy/audio/conf
-  FILES_MATCHING PATTERN "*.pb.txt" PATTERN "*.yaml")
-install(
-  DIRECTORY dag/
-  DESTINATION share/autonomy/audio/dag
-  FILES_MATCHING PATTERN "*.dag")
-install(
-  DIRECTORY launch/
-  DESTINATION share/autonomy/audio/launch
-  USE_SOURCE_PERMISSIONS
-  FILES_MATCHING PATTERN "*.launch")
+# --- install -----------------------------------------------------------------
+autocmake_install_share(audio
+  CONF_PATTERN "*.pb.txt" "*.yaml"
+  DAG_PATTERN "*.dag"
+  LAUNCH_PATTERN "*.launch")

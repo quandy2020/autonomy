@@ -1,4 +1,4 @@
-autocmake_library(autodriver_jetauto SHARED
+autocmake_library(autodriver_jetauto SHARED ${_AUTODRIVER_NO_EXPORT}
   SOURCES
     rrc_protocol.cpp
     kinematics.cpp

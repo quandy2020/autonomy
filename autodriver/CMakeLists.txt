@@ -82,8 +82,13 @@ file(GLOB_RECURSE AUTODRIVER_SOURCES CONFIGURE_DEPENDS
 list(FILTER AUTODRIVER_SOURCES EXCLUDE REGEX
   "/camera/realsense/(imu_driver|camera_driver|pointcloud_driver)\\.cpp$")
 
+# When embedded under autonomy, skip export sets (siblings are not exported).
+if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  set(_AUTODRIVER_NO_EXPORT NO_EXPORT)
+endif()
+
 # Build the shared library.
-autocmake_library(autodriver SHARED
+autocmake_library(autodriver SHARED ${_AUTODRIVER_NO_EXPORT}
   SOURCES ${AUTODRIVER_SOURCES}
   DEPENDENCIES 
     Threads::Threads 
@@ -205,4 +210,6 @@ add_subdirectory(config)
 add_subdirectory(dag)
 add_subdirectory(launch)
 
-autocmake_package()
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  autocmake_package()
+endif()

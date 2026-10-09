@@ -12,63 +12,145 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# autonomy/localization — SLAM / pose estimation (atlas, Cartographer, lightning, …)
+# -----------------------------------------------------------------------------
+# autonomy/localization — SLAM / pose estimation (atlas, Cartographer, …)
+#
+# Builds
+#   autonomy_localization / autonomy::localization
+#   autonomy.localization
+#   atlas/   subdirectory
+#
+# Toggle
+#   AUTONOMY_BUILD_LOCALIZATION
+# -----------------------------------------------------------------------------
 
-include(autonomy_module)
-autonomy_module(localization)
+# --- dependencies ------------------------------------------------------------
+autocmake_find(OpenCV REQUIRED PRIVATE)
+autocmake_find(PCL REQUIRED PRIVATE
+  COMPONENTS common features filters io kdtree segmentation surface)
+autocmake_find(TBB REQUIRED PRIVATE)
+autocmake_find(OpenMP PRIVATE QUIET)
+autocmake_find(LuaGoogle REQUIRED PRIVATE)
+autocmake_find(FBow REQUIRED PRIVATE)
+autocmake_find(G2o REQUIRED PRIVATE)
+autocmake_find(SQLite3 REQUIRED PRIVATE)
+autocmake_find(Boost REQUIRED PRIVATE COMPONENTS iostreams)
+autocmake_find(PkgConfig REQUIRED PRIVATE)
+pkg_check_modules(CAIRO REQUIRED IMPORTED_TARGET cairo)
+autocmake_find(opentelemetry-cpp PRIVATE QUIET CONFIG)
 
-# Library sources: GLOB *.cpp under this dir; drop *main.cpp / *_test.cpp.
-autonomy_glob_srcs(_LOCALIZATION_SRCS)
-list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/(fake_|mock_)")
-list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "test_helpers")
-# Atlas: do not compile vendored / tool trees into the library.
-list(FILTER _LOCALIZATION_SRCS EXCLUDE REGEX "/atlas/thirdparty/")
+foreach(_pkg IN ITEMS OpenCV PCL TBB LuaGoogle FBow G2o SQLite3 Boost PkgConfig)
+  if(NOT ${_pkg}_FOUND)
+    message(FATAL_ERROR "localization: ${_pkg} is required")
+  endif()
+endforeach()
 
-set(_LOCALIZATION_FEATURES slam pcl cairo boost_iostreams lua)
+if(NOT TARGET autonomy_opencv)
+  add_library(autonomy_opencv INTERFACE)
+  target_include_directories(autonomy_opencv SYSTEM INTERFACE
+    $<BUILD_INTERFACE:${OpenCV_INCLUDE_DIRS}>)
+  target_link_libraries(autonomy_opencv INTERFACE ${OpenCV_LIBS})
+endif()
 
-# Atlas LIO vendors Sophus. That path is listed first so atlas sources do not
-# resolve Sophus from lightning/thirdparty.
-include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}/atlas/port/thirdparty
-  ${CMAKE_CURRENT_SOURCE_DIR}/lightning
-  ${CMAKE_CURRENT_SOURCE_DIR}/lightning/thirdparty
-  ${CMAKE_CURRENT_SOURCE_DIR}/lightning/core/miao
-)
+# --- sources -----------------------------------------------------------------
+file(GLOB_RECURSE AUTONOMY_LOCALIZATION_SRCS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "main\\.cpp$")
+list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "_test\\.cpp$")
+list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "/(fake_|mock_)")
+list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "test_helpers")
+list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "/atlas/thirdparty/")
 
-autonomy_library(
-  DEPENDENCIES autonomy_common autonomy_transform
-  FEATURES ${_LOCALIZATION_FEATURES}
-  SRCS ${_LOCALIZATION_SRCS}
-)
-unset(_LOCALIZATION_SRCS)
-unset(_LOCALIZATION_FEATURES)
+# --- library -----------------------------------------------------------------
+autocmake_library(autonomy_localization
+  SHARED
+  NO_EXPORT
+  SOURCES ${AUTONOMY_LOCALIZATION_SRCS}
+  INCLUDES
+    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_BINARY_DIR}
+  DEPENDENCIES
+    autonomy_common
+    autonomy_proto
+    autonomy_transform
+    autonomy_opencv
+    $<TARGET_NAME_IF_EXISTS:OSQP::OSQP>
+    $<TARGET_NAME_IF_EXISTS:Ipopt::Ipopt>
+    $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
+    $<TARGET_NAME_IF_EXISTS:FBow::fbow>
+    $<TARGET_NAME_IF_EXISTS:PkgConfig::CAIRO>
+    $<TARGET_NAME_IF_EXISTS:Boost::iostreams>
+    $<TARGET_NAME_IF_EXISTS:BT::behaviortree_cpp>
+    $<TARGET_NAME_IF_EXISTS:behaviortree_cpp::behaviortree_cpp>
+    $<TARGET_NAME_IF_EXISTS:opentelemetry-cpp::opentelemetry_trace>
+    $<TARGET_NAME_IF_EXISTS:CUDA::cudart>
+    $<$<BOOL:${BUILD_GRPC}>:grpc++>
+    $<$<BOOL:${BUILD_GRPC}>:grpc>
+    $<TARGET_NAME_IF_EXISTS:gRPC::grpc++_reflection>)
+add_library(autonomy::localization ALIAS autonomy_localization)
 
-# lightning-lm: original include layout (common/, core/, Sophus/, miao core/).
 target_include_directories(autonomy_localization PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/atlas/port/thirdparty>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lightning>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lightning/thirdparty>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lightning/core/miao>
-)
-target_compile_definitions(autonomy_localization PUBLIC PCL_NO_PRECOMPILE)
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lightning/core/miao>)
+target_include_directories(autonomy_localization SYSTEM PUBLIC
+  ${PCL_INCLUDE_DIRS}
+  ${SQLite3_INCLUDE_DIRS}
+  ${LUA_INCLUDE_DIR})
+target_link_libraries(autonomy_localization PUBLIC
+  ${PCL_LIBRARIES}
+  ${SQLite3_LIBRARIES}
+  ${LUA_LIBRARIES}
+  g2o::core g2o::stuff
+  g2o::types_sba g2o::types_sim3 g2o::solver_dense g2o::solver_eigen)
+target_compile_definitions(autonomy_localization PUBLIC
+  PCL_NO_PRECOMPILE
+  ${PCL_DEFINITIONS}
+  $<$<BOOL:${OpenMP_CXX_FOUND}>:GRID_MAP_PCL_OPENMP_FOUND=1>
+  $<$<TARGET_EXISTS:gRPC::grpc++_reflection>:AUTONOMY_HAVE_GRPC_REFLECTION=1>
+  $<$<TARGET_EXISTS:opentelemetry-cpp::opentelemetry_trace>:AUTONOMY_HAVE_OTEL=1>)
 
-# Process entrypoint: autonomy.localization
-autonomy_binary(autonomy.localization SRCS localization_main.cpp)
+# Optional ML backends (found by common).
+if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
+  target_compile_definitions(autonomy_localization PUBLIC AUTONOMY_HAS_ONNXRUNTIME)
+  target_include_directories(autonomy_localization SYSTEM PUBLIC ${OnnxRuntime_INCLUDE_DIRS})
+  target_link_libraries(autonomy_localization PUBLIC ${OnnxRuntime_LIBRARIES})
+endif()
+if(BUILD_TENSORRT AND TensorRT_FOUND)
+  target_compile_definitions(autonomy_localization PUBLIC AUTONOMY_HAS_TENSORRT)
+  target_include_directories(autonomy_localization SYSTEM PUBLIC ${TensorRT_INCLUDE_DIRS})
+  target_link_libraries(autonomy_localization PUBLIC ${TensorRT_LIBRARIES})
+endif()
 
-# Atlas: cli / node binaries + config install
+if(Ipopt_FOUND AND NOT TARGET Ipopt::Ipopt)
+  target_link_libraries(autonomy_localization PUBLIC ${IPOPT_LIBRARIES})
+endif()
+if(NOT TARGET OSQP::OSQP AND OSQP_LIBRARIES)
+  target_link_libraries(autonomy_localization PUBLIC ${OSQP_LIBRARIES})
+endif()
+if(foxglove-sdk_FOUND)
+  target_link_libraries(autonomy_localization PUBLIC
+    foxglove-sdk::foxglove_cpp_shared ZLIB::ZLIB)
+endif()
+if(BUILD_PROMETHEUS)
+  target_compile_definitions(autonomy_localization PRIVATE USE_PROMETHEUS=1)
+  target_link_libraries(autonomy_localization PRIVATE
+    prometheus-cpp-core prometheus-cpp-pull)
+endif()
+
+# --- binary ------------------------------------------------------------------
+autocmake_binary(autonomy.localization
+  NO_EXPORT
+  SOURCES localization_main.cpp
+  DEPENDENCIES
+    autonomy
+    glog::glog
+    gflags::gflags)
 add_subdirectory(atlas)
 
-# Runtime assets → share/autonomy/localization/ (launch / conf / dag)
-install(
-  DIRECTORY conf/
-  DESTINATION share/autonomy/localization/conf
-)
-install(
-  DIRECTORY dag/
-  DESTINATION share/autonomy/localization/dag
-  FILES_MATCHING PATTERN "*.dag")
-install(
-  DIRECTORY launch/
-  DESTINATION share/autonomy/localization/launch
-  USE_SOURCE_PERMISSIONS
-  FILES_MATCHING PATTERN "*.launch")
+# --- install -----------------------------------------------------------------
+autocmake_install_share(localization
+  CONF
+  DAG_PATTERN "*.dag"
+  LAUNCH_PATTERN "*.launch")

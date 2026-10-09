@@ -52,7 +52,7 @@ Autonomy 是超工程：
 2. **业务域**：`autonomy/<域>/`，由 `AUTONOMY_BUILD_<域>` 控制（默认全 ON）  
 3. **产品子工程**：`BUILD_AUTODRIVER` / `BUILD_AUTOVIZ` / `BUILD_GRPC` 等，与域开关正交  
 
-定义见 [`cmake/autonomy_options.cmake`](../../../cmake/autonomy_options.cmake)、顶层 [`CMakeLists.txt`](../../../CMakeLists.txt)。
+定义见顶层 [`CMakeLists.txt`](../../../CMakeLists.txt)（`AUTONOMY_BUILD_*` 选项）。
 
 ### 6.2.1 两层开关（勿混用）
 

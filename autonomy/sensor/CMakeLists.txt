@@ -12,15 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# -----------------------------------------------------------------------------
 # autonomy/sensor — sensor drivers / adapters
+#
+# Builds
+#   autonomy_sensor / autonomy::autonomy_sensor
+#
+# Toggle
+#   AUTONOMY_BUILD_SENSOR
+# -----------------------------------------------------------------------------
 
-include(autonomy_module)
-autonomy_module(sensor)
+# --- sources -----------------------------------------------------------------
+file(GLOB_RECURSE AUTONOMY_SENSOR_SRCS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+list(FILTER AUTONOMY_SENSOR_SRCS EXCLUDE REGEX "main\\.cpp$")
+list(FILTER AUTONOMY_SENSOR_SRCS EXCLUDE REGEX "_test\\.cpp$")
 
-# Library sources: GLOB *.cpp under this dir; drop *main.cpp / *_test.cpp.
-autonomy_glob_srcs(_SENSOR_SRCS)
-autonomy_library(
-  DEPENDENCIES autonomy_common autonomy_control
-  SRCS ${_SENSOR_SRCS}
-)
-unset(_SENSOR_SRCS)
+# --- library -----------------------------------------------------------------
+autocmake_library(autonomy_sensor
+  SHARED
+  NO_EXPORT
+  SOURCES ${AUTONOMY_SENSOR_SRCS}
+  INCLUDES
+    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_BINARY_DIR}
+  DEPENDENCIES
+    autonomy_common
+    autonomy_proto
+    autonomy_control)
+add_library(autonomy::sensor ALIAS autonomy_sensor)

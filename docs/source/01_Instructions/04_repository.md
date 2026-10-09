@@ -58,7 +58,7 @@ autonomy/                         # ← 源码根
 │
 ├── config/                       # 仓库级资产（如 perception、localization）
 ├── data/                         # 数据资产（按需）
-├── cmake/                        # Find*.cmake、域选项 autonomy_options.cmake 等
+├── cmake/                        # Find*.cmake 等 modules（仅 modules/）
 ├── docker/                       # Dockerfile、run_autonomy.py、install/*.sh
 ├── docs/                         # Sphinx 本手册（source/01_Instructions …）
 ├── scripts/                      # setup_environment.bash、install_dependencies.py、NFS

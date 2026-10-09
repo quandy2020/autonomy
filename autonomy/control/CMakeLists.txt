@@ -12,45 +12,70 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# autonomy/control — motion controllers (TEB / MPPI / …); optional Ipopt
+# -----------------------------------------------------------------------------
+# autonomy/control — motion controllers (TEB / MPPI / …)
+#
+# Builds
+#   autonomy_control / autonomy::control
+#   autonomy.control
+#
+# Toggle
+#   AUTONOMY_BUILD_CONTROL
+# -----------------------------------------------------------------------------
 
-include(autonomy_module)
-autonomy_module(control)
+# --- dependencies ------------------------------------------------------------
+autocmake_find(Ipopt PRIVATE QUIET)
 
-# Library sources: GLOB *.cpp under this dir; drop *main.cpp / *_test.cpp.
-autonomy_glob_srcs(_CONTROL_SRCS)
-# DAQP (MIT) is C. The Eigen wrapper in miqp/solver.cpp is picked up by the glob.
-file(GLOB _DAQP_SRCS CONFIGURE_DEPENDS
+# --- sources -----------------------------------------------------------------
+file(GLOB_RECURSE AUTONOMY_CONTROL_SRCS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+list(FILTER AUTONOMY_CONTROL_SRCS EXCLUDE REGEX "main\\.cpp$")
+list(FILTER AUTONOMY_CONTROL_SRCS EXCLUDE REGEX "_test\\.cpp$")
+
+# Vendored DAQP (C) used by sando MIQP.
+file(GLOB AUTONOMY_DAQP_SRCS CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/controller/sando_controller/miqp/daqp/src/*.c")
-set(_DAQP_INCLUDE
+set(AUTONOMY_DAQP_INCLUDE
   "${CMAKE_CURRENT_SOURCE_DIR}/controller/sando_controller/miqp/daqp/include")
-set_source_files_properties(${_DAQP_SRCS} PROPERTIES
+set_source_files_properties(${AUTONOMY_DAQP_SRCS} PROPERTIES
   COMPILE_DEFINITIONS "PROFILING"
-  INCLUDE_DIRECTORIES "${_DAQP_INCLUDE}")
-list(APPEND _CONTROL_SRCS ${_DAQP_SRCS})
-autonomy_library(
-  DEPENDENCIES autonomy_common autonomy_transform autonomy_map
-  FEATURES ipopt
-  SRCS ${_CONTROL_SRCS}
-)
-target_include_directories(autonomy_control PRIVATE "${_DAQP_INCLUDE}")
-unset(_CONTROL_SRCS)
-unset(_DAQP_SRCS)
-unset(_DAQP_INCLUDE)
+  INCLUDE_DIRECTORIES "${AUTONOMY_DAQP_INCLUDE}")
+list(APPEND AUTONOMY_CONTROL_SRCS ${AUTONOMY_DAQP_SRCS})
 
-# Process entrypoint: autonomy.control
-autonomy_binary(autonomy.control SRCS control_main.cpp)
+# --- library -----------------------------------------------------------------
+autocmake_library(autonomy_control
+  SHARED
+  NO_EXPORT
+  SOURCES ${AUTONOMY_CONTROL_SRCS}
+  INCLUDES
+    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_BINARY_DIR}
+  DEPENDENCIES
+    autonomy_common
+    autonomy_proto
+    autonomy_transform
+    autonomy_map
+    $<TARGET_NAME_IF_EXISTS:Ipopt::Ipopt>)
+add_library(autonomy::control ALIAS autonomy_control)
 
-# Runtime assets → share/autonomy/control/ (launch / conf / dag)
-install(
-  DIRECTORY conf/
-  DESTINATION share/autonomy/control/conf)
-install(
-  DIRECTORY dag/
-  DESTINATION share/autonomy/control/dag
-  FILES_MATCHING PATTERN "*.dag")
-install(
-  DIRECTORY launch/
-  DESTINATION share/autonomy/control/launch
-  USE_SOURCE_PERMISSIONS
-  FILES_MATCHING PATTERN "*.launch")
+# Classic Ipopt package vars when no imported target exists.
+if(Ipopt_FOUND AND NOT TARGET Ipopt::Ipopt)
+  target_link_libraries(autonomy_control PUBLIC ${IPOPT_LIBRARIES})
+endif()
+
+target_include_directories(autonomy_control PRIVATE "${AUTONOMY_DAQP_INCLUDE}")
+
+# --- binary ------------------------------------------------------------------
+autocmake_binary(autonomy.control
+  NO_EXPORT
+  SOURCES control_main.cpp
+  DEPENDENCIES
+    autonomy
+    glog::glog
+    gflags::gflags)
+
+# --- install -----------------------------------------------------------------
+autocmake_install_share(control
+  CONF
+  DAG_PATTERN "*.dag"
+  LAUNCH_PATTERN "*.launch")

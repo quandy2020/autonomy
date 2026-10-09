@@ -12,22 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Build Base as a loadable autolink component only when an inference backend
-# and the component runtime are available. Registration stays on this DSO.
-set(_base_backend FALSE)
-if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
-  set(_base_backend TRUE)
-endif()
-if(BUILD_TENSORRT AND TensorRT_FOUND)
-  set(_base_backend TRUE)
-endif()
-if(NOT _base_backend)
+# -----------------------------------------------------------------------------
+# autonomy/perception/base — ONNX / TensorRT inference component
+#
+# Builds
+#   base_component / autonomy::base_component
+#
+# Guard
+#   Requires BUILD_ONNXRUNTIME or BUILD_TENSORRT with a found SDK.
+# -----------------------------------------------------------------------------
+
+# --- guard -------------------------------------------------------------------
+if(NOT ((BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND) OR (BUILD_TENSORRT AND TensorRT_FOUND)))
   return()
 endif()
-unset(_base_backend)
 
-include(autonomy_module)
-autonomy_component(base_component
+# --- library -----------------------------------------------------------------
+autocmake_library(base_component
+  SHARED
+  NO_EXPORT
   SOURCES
     base_component.cpp
     engine/model.cpp
@@ -38,11 +41,18 @@ autonomy_component(base_component
     tasks/obb/obb.cpp
     tasks/track/track.cpp
     tasks/depth/depth.cpp
-    tasks/depth/moge.cpp)
+    tasks/depth/moge.cpp
+  INCLUDES
+    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_BINARY_DIR}
+  PRIVATE_DEPENDENCIES
+    autonomy
+    autolink
+    automsgs)
+set_target_properties(base_component PROPERTIES OUTPUT_NAME "base_component")
 
-if(BUILD_TEST AND TARGET base_component)
-  set(_base_component_test autonomy.perception.base.component_test)
-  autonomy_test(${_base_component_test} base_component_test.cpp base_component)
-  add_dependencies(${_base_component_test} base_component)
-  unset(_base_component_test)
+if(BUILD_TEST OR BUILD_TESTING)
+  autocmake_test(autonomy.perception.base.component_test
+    SOURCES base_component_test.cpp
+    DEPENDENCIES base_component)
 endif()

@@ -12,48 +12,69 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# autonomy/system — shared AutonomyOptions loader + system monitor
+# -----------------------------------------------------------------------------
+# autonomy/system — AutonomyOptions loader + system monitor / OTA
+#
+# Builds
+#   autonomy_system / autonomy::autonomy_system
+#   autonomy.monitor
+#   autonomy.ota
+#
+# Toggle
+#   AUTONOMY_BUILD_SYSTEM
+#   BUILD_PROMETHEUS
+# -----------------------------------------------------------------------------
 
-include(autonomy_module)
-autonomy_module(system)
+# --- sources -----------------------------------------------------------------
+file(GLOB_RECURSE AUTONOMY_SYSTEM_SRCS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+list(FILTER AUTONOMY_SYSTEM_SRCS EXCLUDE REGEX "main\\.cpp$")
+list(FILTER AUTONOMY_SYSTEM_SRCS EXCLUDE REGEX "_test\\.cpp$")
 
-# Library sources: GLOB *.cpp under this dir; drop *main.cpp / *_test.cpp.
-autonomy_glob_srcs(_SYSTEM_SRCS)
-autonomy_library(
+# --- library -----------------------------------------------------------------
+autocmake_library(autonomy_system
+  SHARED
+  NO_EXPORT
+  SOURCES ${AUTONOMY_SYSTEM_SRCS}
+  INCLUDES
+    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_BINARY_DIR}
   DEPENDENCIES
     autonomy_common
-    autonomy_task
-  FEATURES prometheus
-  SRCS ${_SYSTEM_SRCS}
-)
-unset(_SYSTEM_SRCS)
+    autonomy_proto
+    autonomy_task)
+add_library(autonomy::system ALIAS autonomy_system)
 
-# Process entrypoint: autonomy.monitor (multi-process stack via launch).
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/monitor/monitor_main.cpp")
-  autonomy_binary(autonomy.monitor SRCS monitor/monitor_main.cpp)
+if(BUILD_PROMETHEUS)
+  autocmake_find(prometheus-cpp REQUIRED PRIVATE CONFIG)
+  if(NOT prometheus-cpp_FOUND)
+    message(FATAL_ERROR "system: prometheus-cpp required when BUILD_PROMETHEUS=ON")
+  endif()
+  target_compile_definitions(autonomy_system PRIVATE USE_PROMETHEUS=1)
+  target_link_libraries(autonomy_system PRIVATE
+    prometheus-cpp-core prometheus-cpp-pull)
 endif()
 
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ota/ota_main.cpp")
-  autonomy_binary(autonomy.ota SRCS ota/ota_main.cpp)
-endif()
+# --- binary ------------------------------------------------------------------
+autocmake_binary(autonomy.monitor
+  NO_EXPORT
+  SOURCES monitor/monitor_main.cpp
+  DEPENDENCIES
+    autonomy
+    glog::glog
+    gflags::gflags)
 
-# Runtime assets → share/autonomy/system/ (launch / conf / dag)
-install(
-  DIRECTORY conf/
-  DESTINATION share/autonomy/system/conf)
-install(
-  DIRECTORY dag/
-  DESTINATION share/autonomy/system/dag
-  FILES_MATCHING PATTERN "*.dag")
-install(
-  DIRECTORY launch/
-  DESTINATION share/autonomy/system/launch
-  USE_SOURCE_PERMISSIONS
-  FILES_MATCHING PATTERN "*.launch")
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/scripts")
-  install(
-    DIRECTORY scripts/
-    DESTINATION share/autonomy/system/scripts
-    USE_SOURCE_PERMISSIONS
-    FILES_MATCHING PATTERN "*.sh")
-endif()
+autocmake_binary(autonomy.ota
+  NO_EXPORT
+  SOURCES ota/ota_main.cpp
+  DEPENDENCIES
+    autonomy
+    glog::glog
+    gflags::gflags)
+
+# --- install -----------------------------------------------------------------
+autocmake_install_share(system
+  CONF
+  DAG_PATTERN "*.dag"
+  LAUNCH_PATTERN "*.launch"
+  SCRIPTS_PATTERN "*.sh")

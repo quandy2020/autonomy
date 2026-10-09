@@ -1,4 +1,4 @@
-autocmake_library(autodriver_l1w SHARED
+autocmake_library(autodriver_l1w SHARED ${_AUTODRIVER_NO_EXPORT}
   SOURCES
     driver.cpp
     l1w_component.cpp)

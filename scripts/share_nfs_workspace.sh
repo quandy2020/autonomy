@@ -225,7 +225,7 @@ one_click() {
 Build on Firefly:
   cd ${WS_LOCAL}
   cmake -S src/autonomy -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/usr/local \\
-    -DBUILD_AUTOVIZ=OFF -DBUILD_ORBISVIEW=OFF -DBUILD_DOCS=OFF
+    -DBUILD_AUTOVIZ=OFF -DBUILD_DOCS=OFF
 EOF
 }
 

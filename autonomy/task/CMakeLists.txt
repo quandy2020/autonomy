@@ -12,30 +12,58 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# autonomy/task — task / BT navigation
+# -----------------------------------------------------------------------------
+# autonomy/task — task / BehaviorTree navigation
+#
+# Builds
+#   autonomy_task / autonomy::task
+#   autonomy.task
+#
+# Toggle
+#   AUTONOMY_BUILD_TASK
+# -----------------------------------------------------------------------------
 
-include(autonomy_module)
-autonomy_module(task)
+# --- dependencies ------------------------------------------------------------
+autocmake_find(behaviortree_cpp REQUIRED PRIVATE
+  EXTRA_ARGUMENTS PATHS /usr/local NO_DEFAULT_PATH)
+if(NOT behaviortree_cpp_FOUND)
+  message(FATAL_ERROR "task: behaviortree_cpp is required")
+endif()
 
-# Library sources: GLOB *.cpp under this dir; drop *main.cpp / *_test.cpp.
-autonomy_glob_srcs(_TASK_SRCS)
-autonomy_library(
-  DEPENDENCIES autonomy_common autonomy_transform autonomy_map autonomy_control
-  FEATURES bt
-  SRCS ${_TASK_SRCS}
-)
-unset(_TASK_SRCS)
+# --- sources -----------------------------------------------------------------
+file(GLOB_RECURSE AUTONOMY_TASK_SRCS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+list(FILTER AUTONOMY_TASK_SRCS EXCLUDE REGEX "main\\.cpp$")
+list(FILTER AUTONOMY_TASK_SRCS EXCLUDE REGEX "_test\\.cpp$")
 
-# Process entrypoint: autonomy.task
-autonomy_binary(autonomy.task SRCS task_main.cpp)
+# --- library -----------------------------------------------------------------
+autocmake_library(autonomy_task
+  SHARED
+  NO_EXPORT
+  SOURCES ${AUTONOMY_TASK_SRCS}
+  INCLUDES
+    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_BINARY_DIR}
+  DEPENDENCIES
+    autonomy_common
+    autonomy_proto
+    autonomy_transform
+    autonomy_map
+    autonomy_control
+    $<TARGET_NAME_IF_EXISTS:BT::behaviortree_cpp>
+    $<TARGET_NAME_IF_EXISTS:behaviortree_cpp::behaviortree_cpp>)
+add_library(autonomy::task ALIAS autonomy_task)
 
-# Runtime assets → share/autonomy/task/
-install(
-  DIRECTORY conf/
-  DESTINATION share/autonomy/task/conf
-)
-install(
-  DIRECTORY launch/
-  DESTINATION share/autonomy/task/launch
-  USE_SOURCE_PERMISSIONS
-  FILES_MATCHING PATTERN "*.launch")
+# --- binary ------------------------------------------------------------------
+autocmake_binary(autonomy.task
+  NO_EXPORT
+  SOURCES task_main.cpp
+  DEPENDENCIES
+    autonomy
+    glog::glog
+    gflags::gflags)
+
+# --- install -----------------------------------------------------------------
+autocmake_install_share(task
+  CONF
+  LAUNCH_PATTERN "*.launch")

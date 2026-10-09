@@ -13,7 +13,7 @@ Built with modern C++, Autolink RT, and behavior trees. Designed for production-
 **[Installation](docs/source/02_Installation/00_guide.md)** ·
 **[Quick Start](docs/source/04_Running/02_quickstart.md)** ·
 **[Architecture](docs/source/01_Instructions/03_system_architecture.md)** ·
-**[CMake layout](cmake/README.md)**
+**[CMake layout](cmake/README.md)** · **[autocmake](autocmake/README.md)**
 
 ![Autonomy Architecture](images/autonomy_architecture.png)
 
@@ -177,8 +177,14 @@ autonomy/
 ├── ansible/       # Bare-metal and fleet deployment
 ├── docs/          # Sphinx documentation and architecture assets
 ├── scripts/       # Dependency, formatting, and packaging tools
-└── CMakeLists.txt # Super-project: deps + add_subdirectory(autonomy/<mod>)
+├── autocmake/           # Shared CMake macros + workspace build tool
+├── cmake/modules/       # Find* only (EnsureProtobuf319, FindIpopt, …)
+└── CMakeLists.txt       # autocmake package entry (domains under autonomy/<mod>)
 ```
+
+Build modes (full / distributed / incremental):
+[`scripts/build_autonomy_autocmake.sh`](scripts/build_autonomy_autocmake.sh),
+[`cmake/README.md`](cmake/README.md).
 
 ### Component Guides
 
@@ -189,6 +195,7 @@ autonomy/
 - [AutoViz](autoviz/README.md) — native visualization
 - [Ansible](ansible/README.md) — build and fleet deployment
 - [Scripts](scripts/README.md) — development and CI tools
+- [autocmake](autocmake/README.md) — package / workspace build macros
 
 ## Common CMake Options
 

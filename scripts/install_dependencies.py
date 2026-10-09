@@ -4,7 +4,7 @@ Install dependencies for the autonomy workspace.
 
 Sources of truth:
   - docker/dockerfile/autonomy.aarch64.dockerfile  (apt + docker/install order)
-  - cmake/autonomy_deps.cmake / CMakeLists.txt     (required find_package)
+  - CMakeLists.txt / cmake/modules                 (required find_package)
 
 Packages that CMake expects as CONFIG under a single prefix (default
 /usr/local: glog/gflags/protobuf/ceres/…) are installed ONLY via
@@ -552,7 +552,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Install autonomy deps from autonomy.aarch64.dockerfile + "
-            "cmake/autonomy_deps.cmake via apt + docker/install/*.sh."
+            "CMakeLists.txt via apt + docker/install/*.sh."
         ),
     )
     parser.add_argument(
@@ -703,7 +703,7 @@ def main() -> int:
     print(f"==> repo_root={repo_root}")
     print(f"==> install_prefix={prefix}")
     print(
-        "==> source: autonomy.aarch64.dockerfile + cmake/autonomy_deps.cmake"
+        "==> source: autonomy.aarch64.dockerfile + CMakeLists.txt"
     )
 
     try:
@@ -746,7 +746,7 @@ def main() -> int:
     )
     if args.profile == "board":
         print(
-            "Board extras: -DBUILD_AUTOVIZ=OFF -DBUILD_ORBISVIEW=OFF "
+            "Board extras: -DBUILD_AUTOVIZ=OFF "
             "-DBUILD_DOCS=OFF -DBUILD_ONNXRUNTIME=OFF"
         )
     return 0
