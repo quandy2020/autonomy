@@ -131,4 +131,4 @@ const Eigen::Block<const Derived, -1, 1> getGeneralizedCoordinates(const Eigen::
 }  // namespace centroidal_model
 }  // namespace automanip
 
-#include "implementation/AccessHelperFunctionsImpl.h"
+#include "implementation/access_helper_functions_impl.hpp"

@@ -57,6 +57,12 @@ class OgreRenderWindow;
  */
 struct ViewportPanelEntry {
   PanelDockWidget* dock = nullptr;  /**< Host dock widget (non-owning). */
+  /**
+   * Cached @c dock->objectName() at registration. Prefer this over calling
+   * @c objectName() during render ticks — a disposed dock left in
+   * @c viewport_panels_ would otherwise SIGSEGV in @c QObject::objectName.
+   */
+  QString object_name;
   QWidget* host = nullptr;          /**< Content host inside the dock. */
   QGridLayout* layout = nullptr;    /**< Layout stacking GL + overlays. */
   QWidget* widget = nullptr;        /**< Render window's QWidget surface. */

@@ -37,6 +37,35 @@ namespace plot {
 QString CombinedPlotValuePath(const QString& channel, const QString& field_path);
 
 /**
+ * @brief True when @p label is still a generated placeholder (e.g. "Series 2").
+ *
+ * Used so legends prefer @ref CombinedPlotValuePath until the user sets a
+ * custom label.
+ */
+bool IsGenericSeriesLabel(const QString& label);
+
+/**
+ * @brief True when @p label is an auto-derived name rather than a user rename.
+ *
+ * Matches placeholders, bare channel, bare field, leaf segment, or an incomplete
+ * prefix of @ref CombinedPlotValuePath — so legends can show the full Foxglove
+ * style @c /channel.field.path.
+ */
+bool IsAutoSeriesLabel(const QString& label, const QString& channel,
+                       const QString& field_path);
+
+/**
+ * @brief Legend / tooltip label: full @c channel.field (Foxglove), unless renamed.
+ *
+ * @param label User-facing label (may be empty, placeholder, or custom).
+ * @param channel Channel name.
+ * @param field_path Y field path.
+ * @return Display string for legend, tooltip, and inspect UI.
+ */
+QString SeriesLegendLabel(const QString& label, const QString& channel,
+                          const QString& field_path);
+
+/**
  * @brief Split a combined plot path using known channel names (longest match first).
  *
  * @param combined Combined path from the Value editor.

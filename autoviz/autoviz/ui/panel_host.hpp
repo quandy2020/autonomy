@@ -126,7 +126,9 @@ class MainPanelHost : public QMainWindow {
                   Qt::Orientation orientation);
 
   /**
-   * @brief Equalize current splitter sizes (window resize helper).
+   * @brief Scale mosaic splitter sizes to fill the host (window resize helper).
+   *
+   * Preserves relative pane ratios; does not rebuild the mosaic tree.
    */
   void syncHorizontalDockLayout();
 

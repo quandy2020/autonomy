@@ -6,6 +6,7 @@
 
 #include <QAction>
 #include <QApplication>
+#include <QCloseEvent>
 #include <QDockWidget>
 #include <QGridLayout>
 #include <QGuiApplication>
@@ -362,7 +363,9 @@ void VisualizationFrame::setupUi() {
   panels_->image_dock_ = panels_->createImagePanelDock(QStringLiteral("ImageDock"));
   panels_->image_panel_ = qobject_cast<image::ImagePanel*>(panels_->image_dock_->widget());
   layout_->addMainPanelDock(panels_->image_dock_, Qt::LeftDockWidgetArea);
-  panels_->image_dock_->show();
+  // Center column defaults to 3D View only (RViz parity). Image opens via
+  // Panels menu / Add Panel / session restore — not at first paint.
+  panels_->image_dock_->hide();
   panels_->installImageFocusTracking();
   panels_->setActiveImagePanel(panels_->image_panel_);
   // Image Display decodes on the UI thread; forward frames so the panel still
@@ -390,6 +393,7 @@ void VisualizationFrame::setupUi() {
   panels_->plot_panel_ = qobject_cast<plot::PlotPanel*>(panels_->plot_dock_->widget());
   panels_->installPlotFocusTracking();
   layout_->addMainPanelDock(panels_->plot_dock_, Qt::LeftDockWidgetArea);
+  panels_->plot_dock_->hide();
   panels_->setActivePlotPanel(panels_->plot_panel_);
 
   panels_->time_dock_ = new PanelDockWidget(tr("Time"), this);
@@ -610,6 +614,17 @@ bool VisualizationFrame::eventFilter(QObject* watched, QEvent* event) {
     return true;
   }
   return QMainWindow::eventFilter(watched, event);
+}
+
+void VisualizationFrame::closeEvent(QCloseEvent* event) {
+  // Stop timers / release display GPU objects, then leave the event loop
+  // without hideChildren (NVIDIA + WA_PaintOnScreen SIGSEGV on that walk).
+  session_->onAboutToQuit();
+  event->accept();
+  if (qApp != nullptr) {
+    qApp->setQuitOnLastWindowClosed(false);
+    QCoreApplication::exit(0);
+  }
 }
 
 void VisualizationFrame::onAddToolTriggered() {

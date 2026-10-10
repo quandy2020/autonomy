@@ -446,6 +446,54 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
   QObject::connect(dock, &QDockWidget::visibilityChanged, frame_, &VisualizationFrame::onDockPanelVisibilityChange,
 
           Qt::UniqueConnection);
+  // Panels-menu toggleViewAction calls show() while the dock may still be
+  // parked under a hidden parent after close — isVisible() stays false and
+  // visibilityChanged(true) never runs, so the center mosaic never re-attaches
+  // (3D View / Plot / Map look like they refuse to open). Re-attach on toggle.
+  if (frame_->layout_->isMainPanel(dock)) {
+    if (QAction* toggle = dock->toggleViewAction()) {
+      if (!toggle->property("mainPanelReopenWired").toBool()) {
+        toggle->setProperty("mainPanelReopenWired", true);
+        QObject::connect(toggle, &QAction::toggled, frame_, [this, dock](bool checked) {
+          if (!checked || dock == nullptr ||
+              dock->property("panelDisposed").toBool()) {
+            return;
+          }
+          const QPointer<PanelDockWidget> guard(dock);
+          QTimer::singleShot(0, frame_, [this, guard]() {
+            if (!guard) {
+              return;
+            }
+            PanelDockWidget* d = guard.data();
+            if (QAction* action = d->toggleViewAction();
+                action == nullptr || !action->isChecked()) {
+              return;
+            }
+            // Already in the mosaic — do not retile (Ogre park/reinstall flicker).
+            if (frame_->layout_->main_panel_host_ != nullptr &&
+                frame_->layout_->main_panel_host_->hostsPanel(d) &&
+                d->isVisible()) {
+              frame_->layout_->last_active_dock_ = d;
+              return;
+            }
+            frame_->layout_->suppress_center_tile_ = false;
+            frame_->layout_->center_manual_layout_ = false;
+            frame_->layout_->ensureMainPanelDockAttached(d);
+            if (panelTypeId(d) == QLatin1String("ViewportDock")) {
+              frame_->viewport_->ensureViewportPanelReady(d);
+              frame_->viewport_->setActiveViewportDock(d);
+            }
+            if (!d->isVisible()) {
+              d->show();
+            }
+            d->raise();
+            frame_->layout_->last_active_dock_ = d;
+            frame_->layout_->scheduleTileCenterPanels();
+          });
+        });
+      }
+    }
+  }
   QObject::connect(frame_, &VisualizationFrame::fullScreenChange, dock,
           &PanelDockWidget::overrideVisibility, Qt::UniqueConnection);
   QObject::connect(dock, &QDockWidget::dockLocationChanged, frame_, &VisualizationFrame::markConfigModified);
@@ -504,6 +552,12 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
         dock->objectName() == QLatin1String("TeleopDock") ||
         dock->objectName() == QLatin1String("RecordDock");
     const bool drop_duplicate = frame_->layout_->isMainPanel(dock) && !is_primary;
+    // Always drop viewport bookkeeping on close — including primary and
+    // onChildDestroyed→closed paths — so syncToolContext never touches a
+    // dangling PanelDockWidget*.
+    if (panelTypeId(dock) == QLatin1String("ViewportDock")) {
+      frame_->viewport_->removeViewportPanel(dock);
+    }
     if (drop_duplicate) {
       if (frame_->layout_->expanded_main_panel_dock_ == dock) {
         frame_->layout_->expanded_main_panel_dock_ = nullptr;
@@ -519,9 +573,6 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
         frame_->chrome_->panels_menu_toggle_actions_.removeAll(QPointer<QAction>(toggle));
       }
       dock->setProperty("panelDisposed", true);
-      if (panelTypeId(dock) == QLatin1String("ViewportDock")) {
-        frame_->viewport_->removeViewportPanel(dock);
-      }
     }
 
     // Defer host removal / destroy / menu rebuild out of closeEvent.
@@ -551,8 +602,19 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
         dock_guard->deleteLater();
         return;
       }
+      // Primary main panels (e.g. ViewportDock): detach from the mosaic so the
+      // center can go empty / remaining panes can fill. Avoid a full retile —
+      // that parks/reinstalls Ogre on every close and flickers surviving views.
+      if (dock_guard && frame_->layout_->isMainPanel(dock_guard.data()) &&
+          frame_->layout_->main_panel_host_ != nullptr &&
+          frame_->layout_->main_panel_host_->hostsPanel(dock_guard.data())) {
+        frame_->layout_->main_panel_host_->removePanel(dock_guard.data());
+      }
+      if (frame_->layout_->main_panel_host_ != nullptr) {
+        frame_->layout_->main_panel_host_->syncHorizontalDockLayout();
+      }
+      frame_->layout_->center_manual_layout_ = false;
       frame_->chrome_->rebuildPanelsMenuToggles();
-      frame_->layout_->scheduleTileCenterPanels();
       syncDeletePanelMenu();
     });
     frame_->session_->markConfigModified();
@@ -2188,18 +2250,12 @@ PanelDockWidget* FramePanels::duplicatePanelDock(
 
   const QString type = panelTypeId(source);
   if (type == QLatin1String("ViewportDock")) {
-    PanelDockWidget* dock = frame_->viewport_->createViewportPanelDock();
-    if (ViewportPanelEntry* src_entry = frame_->viewport_->viewportEntryForDock(source)) {
-      if (ViewportPanelEntry* dst_entry = frame_->viewport_->viewportEntryForDock(dock)) {
-        if (rendering::ViewController* src_vc = src_entry->viewController()) {
-          if (rendering::ViewController* dst_vc = dst_entry->viewController()) {
-            dst_vc->setState(src_vc->state());
-          }
-        }
-      }
-    }
-    frame_->viewport_->setActiveViewportDock(dock);
-    return dock;
+    // Defer Ogre/GLX until after mosaic split reparent — creating a live native
+    // window here and then moving the dock SIGSEGVs (same as session restore).
+    // Caller (@ref FrameLayout::onSplitActiveDock) parks/reinstalls and calls
+    // ensureViewportPanelReady, then copies the source camera state.
+    return frame_->viewport_->createViewportPanelDock(
+        QString(), /*create_render_window=*/false);
   }
   if (type == QLatin1String("PlotDock")) {
     PanelDockWidget* dock = createPlotPanelDock();

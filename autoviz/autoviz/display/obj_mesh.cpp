@@ -4,6 +4,8 @@
 
 #include "autoviz/display/obj_mesh.hpp"
 
+#include <QColor>
+#include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QStringList>
@@ -37,6 +39,8 @@ bool parseObjText(const std::string& text, ObjMesh* mesh) {
   mesh->vertices.clear();
   mesh->texcoords.clear();
   mesh->triangles.clear();
+  mesh->submeshes.clear();
+  mesh->has_material_groups = false;
 
   std::vector<QVector3D> raw_vertices;
   std::vector<QVector2D> raw_texcoords;
@@ -54,6 +58,20 @@ bool parseObjText(const std::string& text, ObjMesh* mesh) {
     }
   };
   std::unordered_map<CornerKey, int, CornerKeyHash> corner_map;
+  std::string current_material;
+  int span_begin = 0;
+  auto flush_material = [&]() {
+    const int count = static_cast<int>(mesh->triangles.size()) - span_begin;
+    if (count <= 0) {
+      return;
+    }
+    ObjSubmesh span;
+    span.name = current_material;
+    span.triangle_begin = span_begin;
+    span.triangle_count = count;
+    mesh->submeshes.push_back(std::move(span));
+    span_begin = static_cast<int>(mesh->triangles.size());
+  };
 
   auto corner_index = [&](int vi, int ti) {
     const CornerKey key{vi, ti};
@@ -76,7 +94,10 @@ bool parseObjText(const std::string& text, ObjMesh* mesh) {
       QString::fromStdString(text).split('\n', Qt::SkipEmptyParts);
   for (const auto& line : lines) {
     const QString trimmed = line.trimmed();
-    if (trimmed.startsWith(QLatin1String("vt "))) {
+    if (trimmed.startsWith(QLatin1String("usemtl"))) {
+      flush_material();
+      current_material = trimmed.mid(6).trimmed().toStdString();
+    } else if (trimmed.startsWith(QLatin1String("vt "))) {
       const QStringList parts = trimmed.split(' ', Qt::SkipEmptyParts);
       if (parts.size() >= 3) {
         raw_texcoords.emplace_back(parts[1].toFloat(), parts[2].toFloat());
@@ -120,11 +141,57 @@ bool parseObjText(const std::string& text, ObjMesh* mesh) {
       }
     }
   }
+  flush_material();
   if (mesh->texcoords.size() != mesh->vertices.size()) {
     mesh->texcoords.clear();
   }
   return !mesh->vertices.empty();
 }
+
+namespace {
+
+struct MtlMaterial {
+  QColor diffuse{255, 255, 255};
+  QString texture;
+};
+
+std::unordered_map<std::string, MtlMaterial> ParseMtlFile(const QString& path) {
+  std::unordered_map<std::string, MtlMaterial> library;
+  QFile file(path);
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    return library;
+  }
+  const QDir directory = QFileInfo(path).absoluteDir();
+  std::string current;
+  const QStringList lines =
+      QString::fromUtf8(file.readAll()).split('\n', Qt::SkipEmptyParts);
+  for (const QString& line : lines) {
+    const QString trimmed = line.trimmed();
+    if (trimmed.startsWith(QLatin1String("newmtl"))) {
+      current = trimmed.mid(6).trimmed().toStdString();
+      library[current] = MtlMaterial{};
+    } else if (current.empty()) {
+      continue;
+    } else if (trimmed.startsWith(QLatin1String("Kd "))) {
+      const QStringList parts = trimmed.split(' ', Qt::SkipEmptyParts);
+      if (parts.size() >= 4) {
+        library[current].diffuse =
+            QColor::fromRgbF(std::clamp(parts[1].toFloat(), 0.f, 1.f),
+                             std::clamp(parts[2].toFloat(), 0.f, 1.f),
+                             std::clamp(parts[3].toFloat(), 0.f, 1.f));
+      }
+    } else if (trimmed.startsWith(QLatin1String("map_Kd"))) {
+      const QStringList parts = trimmed.split(' ', Qt::SkipEmptyParts);
+      if (parts.size() >= 2) {
+        library[current].texture =
+            directory.filePath(parts.back());
+      }
+    }
+  }
+  return library;
+}
+
+}  // namespace
 
 namespace {
 
@@ -262,7 +329,41 @@ bool loadObjFile(const std::string& path, ObjMesh* mesh) {
   if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
     return false;
   }
-  return parseObjText(file.readAll().toStdString(), mesh);
+  const QByteArray bytes = file.readAll();
+  if (!parseObjText(std::string(bytes.constData(), static_cast<std::size_t>(bytes.size())),
+                    mesh)) {
+    return false;
+  }
+  QString mtllib;
+  const QStringList lines =
+      QString::fromUtf8(bytes).split('\n', Qt::SkipEmptyParts);
+  for (const QString& line : lines) {
+    const QString trimmed = line.trimmed();
+    if (trimmed.startsWith(QLatin1String("mtllib"))) {
+      mtllib = trimmed.mid(6).trimmed();
+      break;
+    }
+  }
+  if (mtllib.isEmpty() || mesh->submeshes.empty()) {
+    mesh->submeshes.clear();
+    return true;
+  }
+  const QString mtl_path = QFileInfo(QString::fromStdString(path)).absoluteDir().filePath(mtllib);
+  const auto library = ParseMtlFile(mtl_path);
+  if (library.empty()) {
+    mesh->submeshes.clear();
+    return true;
+  }
+  for (ObjSubmesh& part : mesh->submeshes) {
+    const auto found = library.find(part.name);
+    if (found == library.end()) {
+      continue;
+    }
+    part.diffuse = found->second.diffuse;
+    part.texture_path = found->second.texture.toStdString();
+  }
+  mesh->has_material_groups = true;
+  return true;
 }
 
 bool loadStlFile(const std::string& path, ObjMesh* mesh) {

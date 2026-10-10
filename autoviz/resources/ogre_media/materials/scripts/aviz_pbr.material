@@ -20,7 +20,7 @@ material AvizPBRTextured
     {
       lighting off
       scene_blend alpha_blend
-      depth_write off
+      depth_write on
       cull_hardware none
       // Texture unit is cloned/created at runtime per batch.
       vertex_program_ref aviz/glsl120/pbr_textured.vert {}

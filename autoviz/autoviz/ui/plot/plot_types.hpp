@@ -146,7 +146,8 @@ struct PlotPanelConfig {
   QString title = QStringLiteral("Plot");  /**< Panel / dock title. */
   PlotXAxisMode x_axis_mode = PlotXAxisMode::kTimestamp;  /**< X-axis mode. */
   PlotMessagePathMode message_path_mode = PlotMessagePathMode::kAccumulated;  /**< Path X mode. */
-  bool sync_with_other_plots = true;  /**< Participate in @ref PlotViewSync. */
+  /** Opt-in X-axis sync with other plots (off by default — zoom/pan stay local). */
+  bool sync_with_other_plots = false;
   bool show_legend_values = true;  /**< Show live values in the legend. */
   bool settings_visible = false;  /**< Settings pane visibility. */
   int settings_width = 300;  /**< Preferred settings width (pixels). */

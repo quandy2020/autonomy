@@ -31,6 +31,7 @@
 #include <string>
 
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/sensor_msgs/joint_state.pb.h>
 #include <automsgs/msgs/tf2_msgs/tf_message.pb.h>
@@ -49,6 +50,7 @@ namespace automanip {
 namespace examples {
 
 using PoseStamped = automsgs::msgs::geometry_msgs::PoseStamped;
+using TwistStampedMsg = automsgs::msgs::geometry_msgs::TwistStamped;
 using MarkerArray = automsgs::msgs::visualization_msgs::MarkerArray;
 using JointStateMsg = automsgs::msgs::sensor_msgs::JointState;
 using PathMsg = automsgs::msgs::nav_msgs::Path;
@@ -96,6 +98,10 @@ using ViewPublisher = std::function<void(const SystemObservation& observation,
 using TargetFromPose = std::function<TargetTrajectories(
     const PoseStamped& pose, const vector_t& previous_target, scalar_t time)>;
 
+/** Fills `/cmd_vel` (`geometry_msgs/TwistStamped`) from the live state. */
+using VelocityPublisher =
+    std::function<void(const SystemObservation& observation, TwistStampedMsg* twist)>;
+
 struct DemoRequest {
   std::string name;
   MPC_BASE* mpc = nullptr;
@@ -112,6 +118,21 @@ struct DemoRequest {
   TargetFromPose on_target;
   /** URDF XML published on `/robot_description` for a RobotModel display. */
   std::string robot_description;
+  /**
+   * Replaces the single-point target built from `initial_target`.
+   * Ballbot uses the official two-point command (current pose, then goal).
+   */
+  TargetTrajectories initial_trajectories;
+  /**
+   * When set, a new pose starts from the live state instead of the last goal.
+   * Ballbot needs this so a Nav Goal click tracks from where the robot is.
+   */
+  bool command_from_state = false;
+  /**
+   * When set, each rollout step publishes this twist on `/cmd_vel`.
+   * Ballbot reports planar speed and yaw rate so autoviz can draw it.
+   */
+  VelocityPublisher velocity;
   /** 0 runs until Ctrl+C. */
   int max_steps = 0;
 };
@@ -119,8 +140,9 @@ struct DemoRequest {
 /**
  * Runs Gauss-Newton MPC and a rollout, and publishes
  * `/joint_states`, `/tf`, `/robot_description`, plus the same streams
- * under `/<name>/`.
- * Subscribes to `/<name>/target_pose`.
+ * under `/<name>/`. When `velocity` is set, also publishes `/cmd_vel`.
+ * Subscribes to `/<name>/target_pose` and `/goal_pose`
+ * (autoviz Nav Goal).
  */
 int RunDemo(const DemoRequest& request);
 

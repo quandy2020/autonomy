@@ -62,6 +62,9 @@ class SwitchedModelReferenceManager : public ReferenceManager {
 
   std::shared_ptr<GaitSchedule> gaitSchedulePtr_;
   std::shared_ptr<SwingTrajectoryPlanner> swingTrajectoryPtr_;
+  // Stance locks every foot. A base target then has no feasible step, and the
+  // rollout diverges. Trot is selected only while the base is away from the goal.
+  bool walking_ = false;
 };
 
 }  // namespace legged_robot

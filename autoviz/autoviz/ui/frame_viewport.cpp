@@ -118,10 +118,17 @@ FrameViewport::viewportEntryForDock(PanelDockWidget* dock) const {
 ViewportPanelEntry*
 FrameViewport::activeViewportEntry() {
   if (active_viewport_dock_ != nullptr) {
-    return viewportEntryForDock(active_viewport_dock_);
+    if (ViewportPanelEntry* entry = viewportEntryForDock(active_viewport_dock_)) {
+      return entry;
+    }
+    // Dock was destroyed without removeViewportPanel — drop the stale key.
+    active_viewport_dock_ = nullptr;
   }
   if (viewport_dock_ != nullptr) {
-    return viewportEntryForDock(viewport_dock_);
+    if (ViewportPanelEntry* entry = viewportEntryForDock(viewport_dock_)) {
+      return entry;
+    }
+    viewport_dock_ = nullptr;
   }
   return viewport_panels_.isEmpty() ? nullptr : &(*viewport_panels_.begin());
 }
@@ -155,17 +162,21 @@ void FrameViewport::forEachViewportPanel(
   }
 }
 
-void FrameViewport::destroyRenderWindowInEntry(ViewportPanelEntry& entry) {
+void FrameViewport::destroyRenderWindowInEntry(ViewportPanelEntry& entry,
+                                               bool synchronous) {
   if (entry.widget != nullptr) {
+    entry.widget->hide();
+    // Reparent off the dock before touching the layout — host may already be
+    // destroying (PanelDockWidget::onChildDestroyed → closed → remove).
+    entry.widget->setParent(nullptr);
     if (entry.layout != nullptr) {
       entry.layout->removeWidget(entry.widget);
     }
-    entry.widget->hide();
-    // Reparent off the dock before deleteLater so mosaic restore never
-    // moves a live GLX surface. Prefer park/reinstall over destroy when
-    // only the splitter tree is changing.
-    entry.widget->setParent(nullptr);
-    entry.widget->deleteLater();
+    if (synchronous) {
+      delete entry.widget;
+    } else {
+      entry.widget->deleteLater();
+    }
     entry.widget = nullptr;
     entry.ogre_viewport = nullptr;
   }
@@ -200,6 +211,19 @@ void FrameViewport::reinstallRenderWindowInEntry(ViewportPanelEntry& entry) {
   }
   if (entry.dock != nullptr && entry.dock->isVisible()) {
     entry.widget->show();
+    entry.widget->raise();
+    if (entry.ogre_viewport != nullptr) {
+      // Undo hideNativeSurface / park so the GLX window paints again.
+      entry.ogre_viewport->showNativeSurface();
+    }
+    if (entry.host != nullptr) {
+      entry.host->updateGeometry();
+    }
+    entry.widget->updateGeometry();
+    // Paint only — do not syncToolContext here. Split/mosaic reinstall runs
+    // while sibling docks may still be mid-reparent; requestViewportUpdate()
+    // would call objectName() on a disposed dock and SIGSEGV.
+    entry.widget->update();
   }
 }
 
@@ -209,8 +233,13 @@ void FrameViewport::createRenderWindowInEntry(ViewportPanelEntry& entry,
   destroyRenderWindowInEntry(entry);
   entry.saved_3d_view_state.reset();
 
-  // Autoviz viewport is Ogre 1.x only (Ogre 1.x viewport).
-  entry.ogre_viewport = new rendering::OgreRenderWindow(frame_);
+  // Parent to the dock host (not the QMainWindow). A visible WA_NativeWindow
+  // child of the frame flashes a blank top-level GLX surface that covers the
+  // Split sibling — the white empty pane after Split Right.
+  QWidget* parent =
+      entry.host != nullptr ? entry.host : static_cast<QWidget*>(frame_);
+  entry.ogre_viewport = new rendering::OgreRenderWindow(parent);
+  entry.ogre_viewport->hide();
   entry.ogre_viewport->setSceneOverlay(&frame_->manager_->sceneOverlay());
   entry.ogre_viewport->setToolManager(&frame_->manager_->tools());
   entry.widget = entry.ogre_viewport;
@@ -236,6 +265,23 @@ void FrameViewport::createRenderWindowInEntry(ViewportPanelEntry& entry,
   }
   applyViewportEntryRenderSettings(entry);
   connectViewportInteractionsForEntry(entry);
+
+  // Split deferred path: dock is already visible — reveal now so winId() and
+  // Ogre initialize() bind to the final host geometry (not a 0×0 placeholder).
+  if (entry.dock != nullptr && entry.dock->requestedVisible() &&
+      entry.widget != nullptr) {
+    entry.widget->show();
+    entry.widget->raise();
+    if (entry.host != nullptr) {
+      entry.host->updateGeometry();
+    }
+    entry.widget->updateGeometry();
+    (void)entry.widget->winId();
+    if (entry.ogre_viewport != nullptr) {
+      entry.ogre_viewport->showNativeSurface();
+    }
+    entry.widget->update();
+  }
 }
 
 void FrameViewport::applyViewportEntryRenderSettings(
@@ -259,17 +305,28 @@ void FrameViewport::applyViewportEntryRenderSettings(
 
 void FrameViewport::connectViewportInteractionsForEntry(
     ViewportPanelEntry& entry) {
-  const auto sync_views = [this]() {
+  // Drag updates must stay cheap: rebuilding the Views type combo / property
+  // visibility on every mouse move makes Orbit/FPS interaction hitch.
+  const auto sync_views_live = [this]() {
+    if (frame_->panels_->views_panel_ != nullptr) {
+      frame_->panels_->views_panel_->syncCameraValuesFromController();
+    }
+  };
+  const auto sync_views_end = [this]() {
     if (frame_->panels_->views_panel_ != nullptr) {
       frame_->panels_->views_panel_->refreshFromController();
     }
   };
   if (entry.ogre_viewport != nullptr) {
-    QObject::connect(entry.ogre_viewport, &rendering::OgreRenderWindow::viewDragUpdated, frame_, sync_views);
-    QObject::connect(entry.ogre_viewport, &rendering::OgreRenderWindow::viewDragEnded, frame_,
-            sync_views);
     QObject::connect(entry.ogre_viewport,
-            &rendering::OgreRenderWindow::toolShortcutTriggered, frame_, [this]() { frame_->chrome_->syncActiveToolUi(); });
+                     &rendering::OgreRenderWindow::viewDragUpdated, frame_,
+                     sync_views_live);
+    QObject::connect(entry.ogre_viewport,
+                     &rendering::OgreRenderWindow::viewDragEnded, frame_,
+                     sync_views_end);
+    QObject::connect(entry.ogre_viewport,
+                     &rendering::OgreRenderWindow::toolShortcutTriggered, frame_,
+                     [this]() { frame_->chrome_->syncActiveToolUi(); });
   }
 }
 
@@ -279,6 +336,7 @@ void FrameViewport::registerPrimaryViewportPanel() {
   }
   ViewportPanelEntry entry;
   entry.dock = viewport_dock_;
+  entry.object_name = viewport_dock_->objectName();
   entry.host = viewport_dock_->widget();
   if (entry.host != nullptr) {
     entry.layout = qobject_cast<QGridLayout*>(entry.host->layout());
@@ -314,7 +372,40 @@ void FrameViewport::wireViewportPanel(ViewportPanelEntry& entry) {
   if (entry.dock == nullptr) {
     return;
   }
-  QObject::connect(entry.dock, &PanelDockWidget::activated, frame_, [this, dock = entry.dock]() { setActiveViewportDock(dock); });
+  if (entry.object_name.isEmpty()) {
+    entry.object_name = entry.dock->objectName();
+  }
+  QObject::connect(entry.dock, &PanelDockWidget::activated, frame_,
+                   [this, dock = entry.dock]() { setActiveViewportDock(dock); });
+  if (entry.dock->property("viewportDestroyedWired").toBool()) {
+    return;
+  }
+  entry.dock->setProperty("viewportDestroyedWired", true);
+  // Safety net: onChildDestroyed / unexpected teardown must not leave a
+  // dangling key in viewport_panels_ for syncToolContext to dereference.
+  QObject::connect(entry.dock, &QObject::destroyed, frame_,
+                   [this, dock = entry.dock]() {
+                     if (!viewport_panels_.contains(dock)) {
+                       return;
+                     }
+                     ViewportPanelEntry taken = viewport_panels_.take(dock);
+                     if (taken.widget != nullptr) {
+                       taken.widget->hide();
+                       taken.widget->setParent(nullptr);
+                       taken.widget->deleteLater();
+                       taken.widget = nullptr;
+                       taken.ogre_viewport = nullptr;
+                     }
+                     if (active_viewport_dock_ == dock) {
+                       active_viewport_dock_ =
+                           viewport_panels_.isEmpty()
+                               ? nullptr
+                               : viewport_panels_.begin().key();
+                     }
+                     if (viewport_dock_ == dock) {
+                       viewport_dock_ = active_viewport_dock_;
+                     }
+                   });
 }
 
 void FrameViewport::ensureViewportPanelReady(PanelDockWidget* dock) {
@@ -325,6 +416,7 @@ void FrameViewport::ensureViewportPanelReady(PanelDockWidget* dock) {
   if (!viewport_panels_.contains(dock)) {
     ViewportPanelEntry entry;
     entry.dock = dock;
+    entry.object_name = dock->objectName();
     entry.host = dock->widget();
     if (entry.host != nullptr) {
       entry.layout = qobject_cast<QGridLayout*>(entry.host->layout());
@@ -340,6 +432,7 @@ void FrameViewport::ensureViewportPanelReady(PanelDockWidget* dock) {
       }
     }
     viewport_panels_.insert(dock, entry);
+    wireViewportPanel(viewport_panels_[dock]);
     installViewportTitleBarToolsForEntry(viewport_panels_[dock]);
     if (active_viewport_dock_ == nullptr) {
       active_viewport_dock_ = dock;
@@ -347,6 +440,12 @@ void FrameViewport::ensureViewportPanelReady(PanelDockWidget* dock) {
   }
 
   ViewportPanelEntry& entry = viewport_panels_[dock];
+  if (entry.host == nullptr) {
+    entry.host = dock->widget();
+  }
+  if (entry.host != nullptr && entry.layout == nullptr) {
+    entry.layout = qobject_cast<QGridLayout*>(entry.host->layout());
+  }
   if (entry.widget == nullptr) {
     const QString backend = QString::fromStdString(frame_->manager_->renderBackendName());
     createRenderWindowInEntry(entry, backend);
@@ -358,6 +457,21 @@ void FrameViewport::ensureViewportPanelReady(PanelDockWidget* dock) {
     }
   } else {
     applyViewportEntryRenderSettings(entry);
+    // Mosaic tile parks the GL surface on the frame. Reopen / attach paths that
+    // skip a full retile must reinstall it or the 3D View stays blank (toolbar
+    // only). Only reinstall when actually parked — transient !isVisible during
+    // drag/resize must not reparent the GLX window (interaction hitch).
+    const bool parked =
+        entry.host != nullptr && entry.widget->parentWidget() != entry.host;
+    if (parked) {
+      reinstallRenderWindowInEntry(entry);
+    } else if (dock->isVisible() && !entry.widget->isVisible() &&
+               entry.widget->parentWidget() == entry.host) {
+      entry.widget->show();
+      if (entry.ogre_viewport != nullptr) {
+        entry.ogre_viewport->showNativeSurface();
+      }
+    }
   }
 
   if (frame_->panels_->views_panel_ != nullptr && active_viewport_dock_ == dock) {
@@ -377,6 +491,7 @@ PanelDockWidget* FrameViewport::createViewportPanelDock(
 
   ViewportPanelEntry entry;
   entry.dock = dock;
+  entry.object_name = dock_name;
   entry.host = new QWidget(dock);
   entry.host->setObjectName(QString::fromLatin1(AppThemeIds::kViewportHost));
   // Keep mins small so repeated Split down (4+ stacked panes) can fit.
@@ -467,7 +582,7 @@ void FrameViewport::requestViewportUpdate() {
 
 void FrameViewport::viewportTick(float delta_seconds) {
   syncToolContext();
-  forEachViewportPanel([delta_seconds](ViewportPanelEntry& entry) {
+  forEachViewportPanel([this, delta_seconds](ViewportPanelEntry& entry) {
     if (entry.ogre_viewport == nullptr) {
       return;
     }
@@ -475,6 +590,10 @@ void FrameViewport::viewportTick(float delta_seconds) {
     // otherwise Change panel leaves a GL window covering the replacement.
     if (entry.dock != nullptr && !entry.dock->isVisible()) {
       entry.ogre_viewport->hideNativeSurface();
+      return;
+    }
+    // Parked on the frame during mosaic/split reparent — never paint GLX there.
+    if (entry.widget != nullptr && entry.widget->parentWidget() == frame_) {
       return;
     }
     entry.ogre_viewport->tick(delta_seconds);
@@ -492,8 +611,15 @@ void FrameViewport::syncToolContext() {
   common::ToolContext context;
   context.view_controller = activeViewController();
   context.scene_overlay = &frame_->manager_->sceneOverlay();
-  if (active_entry != nullptr && active_entry->dock != nullptr) {
-    context.viewport_key = active_entry->dock->objectName().toStdString();
+  if (active_entry != nullptr) {
+    // Never call QObject::objectName on a possibly-disposed dock pointer.
+    if (!active_entry->object_name.isEmpty()) {
+      context.viewport_key = active_entry->object_name.toStdString();
+    } else if (active_entry->dock != nullptr &&
+               viewport_panels_.contains(active_entry->dock)) {
+      active_entry->object_name = active_entry->dock->objectName();
+      context.viewport_key = active_entry->object_name.toStdString();
+    }
   }
   if (active_entry != nullptr && active_entry->widget != nullptr) {
     context.viewport_width = active_entry->widget->width();

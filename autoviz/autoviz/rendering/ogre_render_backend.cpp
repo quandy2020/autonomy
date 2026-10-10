@@ -251,6 +251,14 @@ void UpdatePbrLighting(Ogre::Pass* pass, const Ogre::Vector3& light_dir_world) {
   } catch (const Ogre::Exception&) {
     // Shader unsupported / constant missing — ignore.
   }
+  try {
+    fp_params->setNamedConstant("uAmbient", Ogre::Vector3(0.55f, 0.55f, 0.55f));
+  } catch (const Ogre::Exception&) {
+  }
+  try {
+    fp_params->setNamedConstant("uCameraPos", Ogre::Vector3(2.f, -3.f, 2.f));
+  } catch (const Ogre::Exception&) {
+  }
 }
 
 void UploadPbrTexturedBatches(
@@ -343,6 +351,12 @@ bool OgreRenderBackend::initialize() {
     return impl_->initialized;
   }
 
+  // Split deferred create often runs before the QSplitter assigns a real size.
+  // Binding GLX to a 0×0/1×1 drawable leaves a blank white sibling pane.
+  if (host_->width() < 2 || host_->height() < 2) {
+    return false;
+  }
+
   RenderSystem* render_system = RenderSystem::instance();
   if (!render_system->ensureInitialized()) {
     return false;
@@ -355,6 +369,8 @@ bool OgreRenderBackend::initialize() {
   // Ogre expects logical widget size + contentScalingFactor (DPR), not device
   // pixels twice. See RenderSystem::makeRenderWindow.
   const double dpr = static_cast<double>(host_->devicePixelRatioF());
+  // Ensure the native window exists under the final parent before Ogre binds.
+  (void)host_->winId();
   impl_->render_window = render_system->makeRenderWindow(
       static_cast<RenderSystem::WindowHandle>(host_->winId()),
       static_cast<unsigned>(std::max(1, host_->width())),

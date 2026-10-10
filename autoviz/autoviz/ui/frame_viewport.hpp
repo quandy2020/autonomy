@@ -200,8 +200,11 @@ class FrameViewport {
   /**
    * @brief Destroys the render window (GL or Ogre) held by @p entry.
    * @param entry Entry whose render window is torn down.
+   * @param synchronous When @c true, @c delete the widget immediately (required
+   *        on quit before @c closeAllWindows; @c deleteLater races hideChildren).
    */
-  void destroyRenderWindowInEntry(ViewportPanelEntry& entry);
+  void destroyRenderWindowInEntry(ViewportPanelEntry& entry,
+                                  bool synchronous = false);
 
   /**
    * @brief Detaches the native Ogre widget from its dock for mosaic reparent.

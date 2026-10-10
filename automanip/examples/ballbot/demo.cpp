@@ -19,9 +19,12 @@
  * @brief Ballbot MPC. PoseStamped.x/y is the ground target.
  */
 
+#include <cmath>
 #include <cstddef>
 #include <cstdlib>
+#include <iomanip>
 #include <memory>
+#include <sstream>
 #include <string>
 
 #include <Eigen/Geometry>
@@ -35,31 +38,81 @@
 
 namespace {
 
+/** Official ballbot command: reach XY and yaw, and let pitch/roll stay free. */
+automanip::TargetTrajectories CommandToGoal(const automanip::vector_t& current,
+                                            double x, double y, double yaw,
+                                            automanip::scalar_t time) {
+  automanip::vector_t goal = current;
+  goal(0) = x;
+  goal(1) = y;
+  // Keep the reference yaw continuous with the live heading.
+  const double yaw_error =
+      std::atan2(std::sin(yaw - current(2)), std::cos(yaw - current(2)));
+  goal(2) = current(2) + yaw_error;
+  if (goal.size() > 5) {
+    goal.tail(goal.size() - 5).setZero();
+  }
+  const double distance = (goal - current).head<5>().norm();
+  constexpr double kAverageSpeed = 2.0;
+  const automanip::scalar_t arrival =
+      time + std::max(0.2, distance / kAverageSpeed);
+  const automanip::vector_t input =
+      automanip::vector_t::Zero(automanip::ballbot::INPUT_DIM);
+  return automanip::TargetTrajectories({time, arrival}, {current, goal}, {input, input});
+}
+
 automanip::TargetTrajectories TargetFromPose(
     const automanip::examples::PoseStamped& pose, const automanip::vector_t& previous,
     automanip::scalar_t time) {
-  automanip::vector_t target = previous;
-  target.setZero();
-  target(0) = pose.pose().position().x();
-  target(1) = pose.pose().position().y();
-  return automanip::TargetTrajectories(
-      {time}, {target}, {automanip::vector_t::Zero(automanip::ballbot::INPUT_DIM)});
+  const auto& orientation = pose.pose().orientation();
+  const double yaw = std::atan2(
+      2.0 * (orientation.w() * orientation.z() + orientation.x() * orientation.y()),
+      1.0 - 2.0 * (orientation.y() * orientation.y() + orientation.z() * orientation.z()));
+  return CommandToGoal(previous, pose.pose().position().x(), pose.pose().position().y(), yaw,
+                       time);
+}
+
+std::string MeshPath() {
+  const std::string urdf_path = AUTOMANIP_EXAMPLE_URDF;
+  const auto slash = urdf_path.find_last_of('/');
+  const std::string urdf_dir =
+      slash == std::string::npos ? std::string(".") : urdf_path.substr(0, slash);
+  const auto parent = urdf_dir.find_last_of('/');
+  const std::string example_dir =
+      parent == std::string::npos ? std::string(".") : urdf_dir.substr(0, parent);
+  return example_dir + "/meshes/base.obj";
 }
 
 std::string RobotDescription() {
   std::string xml = automanip::examples::ReadTextFile(AUTOMANIP_EXAMPLE_URDF);
-  const std::string urdf_path = AUTOMANIP_EXAMPLE_URDF;
-  const auto slash = urdf_path.find_last_of('/');
-  const std::string mesh =
-      (slash == std::string::npos ? std::string(".") : urdf_path.substr(0, slash)) +
-      "/../meshes/base.obj";
   const std::string package_uri =
       "package://ocs2_robotic_assets/resources/ballbot/meshes/base.obj";
   const auto pos = xml.find(package_uri);
   if (pos != std::string::npos) {
-    xml.replace(pos, package_uri.size(), mesh);
+    xml.replace(pos, package_uri.size(), MeshPath());
   }
   return xml;
+}
+
+/** Body-frame velocity. The arrow is drawn on the base frame. */
+void PublishVelocity(const automanip::SystemObservation& observation,
+                     automanip::examples::TwistStampedMsg* twist) {
+  const double yaw = observation.state(2);
+  const double vx = observation.state(5);
+  const double vy = observation.state(6);
+  const Eigen::Quaterniond rotation =
+      Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) *
+      Eigen::AngleAxisd(observation.state(3), Eigen::Vector3d::UnitY()) *
+      Eigen::AngleAxisd(observation.state(4), Eigen::Vector3d::UnitX());
+  const Eigen::Vector3d v_body =
+      rotation.conjugate() * Eigen::Vector3d(vx, vy, 0.0);
+  automanip::examples::StampHeader(twist->mutable_header(), "base");
+  twist->mutable_twist()->mutable_linear()->set_x(v_body.x());
+  twist->mutable_twist()->mutable_linear()->set_y(v_body.y());
+  twist->mutable_twist()->mutable_linear()->set_z(v_body.z());
+  twist->mutable_twist()->mutable_angular()->set_x(observation.state(9));
+  twist->mutable_twist()->mutable_angular()->set_y(observation.state(8));
+  twist->mutable_twist()->mutable_angular()->set_z(observation.state(7));
 }
 
 void EulerZyxToQuaternion(double yaw, double pitch, double roll, double* qw, double* qx,
@@ -85,7 +138,6 @@ void Publish(const automanip::SystemObservation& observation,
   if (!command.mpcTargetTrajectories_.stateTrajectory.empty()) {
     target = command.mpcTargetTrajectories_.stateTrajectory.back();
   }
-  (void)markers;
   const double x = observation.state(0);
   const double y = observation.state(1);
   const double yaw = observation.state(2);
@@ -99,20 +151,41 @@ void Publish(const automanip::SystemObservation& observation,
   double qx = 0.0;
   double qy = 0.0;
   double qz = 0.0;
-  // Root frame is map. The official URDF calls this link world; that name is not published.
-  automanip::examples::AddTransform(tf, "map", "world_inertia", 0.0, 0.0, 0.0);
-  automanip::examples::AddTransform(tf, "world_inertia", "dummy_ball1", x, 0.0, 0.125);
-  automanip::examples::AddTransform(tf, "dummy_ball1", "ball", 0.0, y, 0.0);
-  automanip::examples::AxisAngle(yaw, 0.0, 0.0, 1.0, &qw, &qx, &qy, &qz);
-  automanip::examples::AddTransform(tf, "ball", "dummy_base1", 0.0, 0.0, 0.0, qw, qx, qy, qz);
-  automanip::examples::AxisAngle(pitch, 0.0, 1.0, 0.0, &qw, &qx, &qy, &qz);
-  automanip::examples::AddTransform(tf, "dummy_base1", "dummy_base2", 0.0, 0.0, 0.0, qw, qx, qy,
-                                    qz);
-  automanip::examples::AxisAngle(roll, 1.0, 0.0, 0.0, &qw, &qx, &qy, &qz);
-  automanip::examples::AddTransform(tf, "dummy_base2", "base", 0.0, 0.0, 0.0, qw, qx, qy, qz);
+  // Official RViz enables base and command only. The prismatic dummy links
+  // sit meters apart (x, then y), so publishing them draws a broken triangle.
+  EulerZyxToQuaternion(yaw, pitch, roll, &qw, &qx, &qy, &qz);
+  automanip::examples::AddTransform(tf, "map", "base", x, y, 0.125, qw, qx, qy, qz);
   EulerZyxToQuaternion(target(2), target(3), target(4), &qw, &qx, &qy, &qz);
   automanip::examples::AddTransform(tf, "map", "command", target(0), target(1), 0.0, qw, qx, qy,
                                     qz);
+
+  // The ball is a 0.25 m blue sphere centered 0.125 m above the ground.
+  // The body mesh sits on that center; its URDF visual origin yaws by 0.275 rad.
+  using Marker = automsgs::msgs::visualization_msgs::Marker;
+  *markers->add_markers() = automanip::examples::MakeShape(
+      "ball", 0, Marker::SPHERE, x, y, 0.125, 0.25, 0.25, 0.25, 0.0f, 0.0f, 0.8f);
+  const Eigen::Quaterniond body =
+      Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) *
+      Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
+      Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()) *
+      Eigen::AngleAxisd(0.275, Eigen::Vector3d::UnitZ());
+  auto mesh = automanip::examples::MakeShape(
+      "body", 1, Marker::MESH_RESOURCE, x, y, 0.125, 1.0, 1.0, 1.0, 0.5f, 0.5f, 0.5f,
+      body.w(), body.x(), body.y(), body.z());
+  mesh.set_mesh_resource(MeshPath());
+  *markers->add_markers() = std::move(mesh);
+
+  const double body_vx = std::cos(yaw) * observation.state(5) + std::sin(yaw) * observation.state(6);
+  const double body_vy = -std::sin(yaw) * observation.state(5) + std::cos(yaw) * observation.state(6);
+  const double speed = std::hypot(body_vx, body_vy);
+  std::ostringstream label;
+  label << std::fixed << std::setprecision(2) << "v " << speed << " m/s   vx " << body_vx
+        << "  vy " << body_vy << "  wz " << observation.state(7);
+  auto text = automanip::examples::MakeShape(
+      "velocity", 2, Marker::TEXT_VIEW_FACING, x, y, 1.05, 0.0, 0.0, 0.12, 1.0f, 0.9f,
+      0.2f);
+  text.set_text(label.str());
+  *markers->add_markers() = std::move(text);
 
   const auto& trajectory = policy.stateTrajectory_;
   const std::size_t stride = trajectory.size() > 40 ? trajectory.size() / 40 : 1;
@@ -150,8 +223,10 @@ int main(int argc, char** argv) {
   request.thread_priority = thread_priority;
   request.initial_state = interface.getInitialState();
   request.initial_target = interface.getInitialState();
+  request.command_from_state = true;
   request.initial_input = automanip::vector_t::Zero(automanip::ballbot::INPUT_DIM);
   request.publish = Publish;
+  request.velocity = PublishVelocity;
   request.on_target = TargetFromPose;
   request.robot_description = RobotDescription();
   request.max_steps = steps;

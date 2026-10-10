@@ -335,6 +335,11 @@ class VisualizationFrame : public QMainWindow {
    */
   bool eventFilter(QObject* watched, QEvent* event) override;
 
+  /**
+   * @brief Tears down Ogre/GLX surfaces before the window hierarchy is hidden.
+   */
+  void closeEvent(QCloseEvent* event) override;
+
  private slots:
   /**
    * @brief Render timer timeout: advances viewport tick / draw.

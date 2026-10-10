@@ -291,6 +291,13 @@ std::unique_ptr<display::Display> VisualizationManager::takeDisplay(
 
 void VisualizationManager::attachDisplay(
     std::unique_ptr<display::Display> display, bool enabled) {
+  // Factory construction enables the display before it has a context, so
+  // onEnable returns without subscribing and a later setEnabled(true) is a
+  // no-op. Turn it off, attach the context, then enable once.
+  const bool created_enabled = display->enabled();
+  if (created_enabled) {
+    display->setEnabled(false);
+  }
   prepareDisplayTree(display.get());
   display->setEnabled(enabled);
   display_views_.push_back(display.get());
@@ -676,6 +683,11 @@ int VisualizationManager::ensureDisplaysForRecordChannels(
       continue;
     }
     if (covered_channels.count(channel) > 0) {
+      continue;
+    }
+    const std::string base = channel_base(channel);
+    // One RobotModel owns both topics. A second display would lose CreateReader.
+    if (base == "robot_description" || base == "joint_states") {
       continue;
     }
     if (DisplayCatalog::isStaticTfChannel(channel) || channel == "/tf" ||

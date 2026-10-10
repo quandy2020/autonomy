@@ -786,17 +786,44 @@ void FrameChrome::rebuildPanelsMenuToggles() {
     if (dock == nullptr || dock->property("panelDisposed").toBool()) {
       continue;
     }
-    IconLoader::applyDockPanelChrome(dock, frame_->panels_->panelTypeId(dock));
+    const QString type_id = frame_->panels_->panelTypeId(dock);
+    // Hidden Split leftovers (ViewportDock_2, …) after Change/close must not
+    // accumulate as duplicate "3D View" rows. Keep the canonical primary
+    // (objectName == typeId) so the menu can reopen it; skip / destroy other
+    // hidden multi-instance docks that are no longer in the center mosaic.
+    if (frame_->panels_->panelTypeSupportsMultiInstance(type_id) &&
+        !dock->isVisible() && dock->objectName() != type_id) {
+      const bool hosted =
+          frame_->layout_->main_panel_host_ != nullptr &&
+          frame_->layout_->main_panel_host_->hostsPanel(dock);
+      if (!hosted && !dock->isFloating()) {
+        // Orphan from an older Change path — drop it so the menu stays clean.
+        dock->setProperty("panelDisposed", true);
+        if (type_id == QLatin1String("ViewportDock")) {
+          frame_->viewport_->removeViewportPanel(dock);
+        }
+        dock->deleteLater();
+        continue;
+      }
+    }
+    IconLoader::applyDockPanelChrome(dock, type_id);
     QAction* toggle = dock->toggleViewAction();
     toggle->setCheckable(true);
     toggle->blockSignals(true);
     toggle->setChecked(dock->isVisible());
     toggle->blockSignals(false);
-    const QString type_id = frame_->panels_->panelTypeId(dock);
     const QString fallback = dock->windowTitle().trimmed().isEmpty()
                                  ? dock->objectName()
                                  : dock->windowTitle().trimmed();
-    const QString title = detail::PanelsMenuDisplayTitle(type_id, fallback);
+    QString title = detail::PanelsMenuDisplayTitle(type_id, fallback);
+    // Disambiguate multiple visible instances (Split 3D View / Plot / …).
+    if (frame_->panels_->panelTypeSupportsMultiInstance(type_id) &&
+        dock->objectName() != type_id) {
+      const QString suffix = dock->objectName().mid(type_id.size());
+      if (suffix.startsWith(QLatin1Char('_'))) {
+        title = title + QLatin1Char(' ') + suffix.mid(1);
+      }
+    }
     const QIcon icon = IconLoader::panelsMenuDockIcon(type_id);
     if (!icon.isNull()) {
       toggle->setIcon(icon);

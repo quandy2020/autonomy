@@ -843,11 +843,7 @@ void PlotPanel::handleSeriesDrop(const QString& channel,
   PlotSeriesConfig series;
   series.channel = channel;
   series.field_path = field_path;
-  if (field_path.isEmpty()) {
-    series.label = channel.section(QLatin1Char('/'), -1);
-  } else {
-    series.label = field_path.section(QLatin1Char('.'), -1);
-  }
+  series.label = CombinedPlotValuePath(channel, field_path);
   series.color = nextSeriesColor();
   ++color_cursor_;
   config_.series.push_back(series);
@@ -1092,7 +1088,7 @@ void PlotPanel::exportPlotDataAsCsv() {
     }
     const PlotSeriesConfig& series = runtime_ptr->config;
     const QString label =
-        series.label.isEmpty() ? series.field_path : series.label;
+        SeriesLegendLabel(series.label, series.channel, series.field_path);
     out << "# series=" << label << '|' << series.channel << '|'
         << series.field_path << '|' << series.color.name() << '|'
         << (series.use_right_y ? "right" : "left") << '|'
@@ -1106,7 +1102,7 @@ void PlotPanel::exportPlotDataAsCsv() {
     }
     const PlotSeriesConfig& series = runtime_ptr->config;
     const QString label =
-        series.label.isEmpty() ? series.field_path : series.label;
+        SeriesLegendLabel(series.label, series.channel, series.field_path);
     const QString y_axis =
         series.use_right_y ? QStringLiteral("right") : QStringLiteral("left");
     for (const PlotPoint& point : runtime_ptr->points) {

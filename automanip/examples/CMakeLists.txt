@@ -74,4 +74,5 @@ install(FILES
   DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/automanip/urdf")
 install(FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/ballbot/meshes/base.obj"
+  "${CMAKE_CURRENT_SOURCE_DIR}/quadrotor/meshes/quadrotor.obj"
   DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/automanip/meshes")

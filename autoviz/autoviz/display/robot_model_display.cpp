@@ -4,12 +4,14 @@
 
 #include "autoviz/display/robot_model_display.hpp"
 
+#include <algorithm>
+
 #include <QColor>
 #include <QFileInfo>
 #include <QImage>
 #include <QMatrix4x4>
 
-#include "autolink/message/raw_message.hpp"
+#include "autolink/common/log.hpp"
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>
 #include <automsgs/msgs/sensor_msgs/joint_state.pb.h>
 #include <automsgs/msgs/std_msgs/string.pb.h>
@@ -174,13 +176,22 @@ std::vector<common::DisplayPropertySpec> RobotModelDisplay::propertySpecs()
 }
 
 void RobotModelDisplay::onPropertyChanged(const std::string& key) {
-  if (key == "urdf_path" || key == "description_channel") {
-    description_channel_ = propertyValue("description_channel", "/robot_description");
+  if (key == "urdf_path") {
     reloadUrdf();
-    if (enabled()) {
-      onDisable();
-      onEnable();
-    }
+    return;
+  }
+  if (key != "description_channel") {
+    return;
+  }
+  const std::string next =
+      propertyValue("description_channel", "/robot_description");
+  if (next == description_channel_) {
+    return;
+  }
+  description_channel_ = next;
+  if (enabled()) {
+    onDisable();
+    onEnable();
   }
 }
 
@@ -207,6 +218,16 @@ void RobotModelDisplay::cacheGeometryMesh(
         model_.baseDirectory(), geometry.mesh_filename);
     ObjMesh mesh;
     if (loadMeshFile(mesh_path, &mesh)) {
+      // These OBJs were written by Assimp in Y-up. The URDF measures the same
+      // parts in Z-up (thigh length and the foot tube run along link Z, the
+      // shell thickness along Z). Rx(+90°): (x, y, z) -> (x, -z, y).
+      if (mesh_path.find("/legged_robot/meshes/") != std::string::npos) {
+        for (QVector3D& vertex : mesh.vertices) {
+          const float y = vertex.y();
+          vertex.setY(-vertex.z());
+          vertex.setZ(y);
+        }
+      }
       (*cache)[link_name] = std::move(mesh);
     }
   } else if (geometry.type == UrdfGeometry::Type::kCylinder) {
@@ -221,12 +242,44 @@ void RobotModelDisplay::rebuildMeshCache() {
   visual_meshes_.clear();
   collision_meshes_.clear();
   for (const auto& link : model_.links()) {
-    if (link.has_visual) {
+    for (std::size_t i = 0; i < link.visuals.size(); ++i) {
+      cacheGeometryMesh(link.visuals[i], link.name + "#" + std::to_string(i),
+                        &visual_meshes_);
+    }
+    if (link.visuals.empty() && link.has_visual) {
       cacheGeometryMesh(link.visual, link.name, &visual_meshes_);
     }
     if (link.has_collision) {
       cacheGeometryMesh(link.collision, link.name, &collision_meshes_);
     }
+  }
+}
+
+void RobotModelDisplay::subscribeChannels() {
+  if (context_ == nullptr || context_->autolink == nullptr ||
+      context_->autolink->node() == nullptr) {
+    return;
+  }
+  const bool shared_channel =
+      !description_channel_.empty() && description_channel_ == joint_channel_;
+  auto& registry = integration::ChannelReaderRegistry::instance();
+  if (joint_subscription_ == 0 && !joint_channel_.empty()) {
+    joint_subscription_ = registry.subscribe(
+        joint_channel_,
+        [this, shared_channel](const std::string& payload) {
+          if (shared_channel) {
+            description_queue_.push(payload);
+          }
+          joint_queue_.push(payload);
+        });
+  }
+  if (description_subscription_ == 0 && !description_channel_.empty() &&
+      !shared_channel) {
+    description_subscription_ = registry.subscribe(
+        description_channel_,
+        [this](const std::string& payload) {
+          description_queue_.push(payload);
+        });
   }
 }
 
@@ -239,32 +292,22 @@ void RobotModelDisplay::onEnable() {
   reloadUrdf();
   description_channel_ =
       propertyValue("description_channel", "/robot_description");
-
-  joint_reader_ =
-      context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
-          joint_channel_,
-          [this](const std::shared_ptr<autolink::message::RawMessage>& msg) {
-            if (msg != nullptr) {
-              joint_queue_.push(msg->message);
-            }
-          });
-
-  if (!description_channel_.empty()) {
-    description_reader_ =
-        context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
-                description_channel_,
-                [this](
-                    const std::shared_ptr<autolink::message::RawMessage>& msg) {
-                  if (msg != nullptr) {
-                    description_queue_.push(msg->message);
-                  }
-                });
+  subscribeChannels();
+  if (joint_subscription_ == 0 && !joint_channel_.empty()) {
+    setStatusError("Failed to subscribe joint states");
   }
 }
 
 void RobotModelDisplay::onDisable() {
-  joint_reader_.reset();
-  description_reader_.reset();
+  auto& registry = integration::ChannelReaderRegistry::instance();
+  if (joint_subscription_ != 0) {
+    registry.unsubscribe(joint_subscription_);
+    joint_subscription_ = 0;
+  }
+  if (description_subscription_ != 0) {
+    registry.unsubscribe(description_subscription_);
+    description_subscription_ = 0;
+  }
 }
 
 void RobotModelDisplay::reset() {
@@ -278,6 +321,11 @@ void RobotModelDisplay::reset() {
 }
 
 void RobotModelDisplay::onUpdate() {
+  if (joint_subscription_ == 0 ||
+      (description_subscription_ == 0 && !description_channel_.empty() &&
+       description_channel_ != joint_channel_)) {
+    subscribeChannels();
+  }
   while (auto payload = description_queue_.pop()) {
     const std::string decoded = integration::DecodeChannelPayload(*payload);
     automsgs::msgs::std_msgs::String message;
@@ -301,7 +349,17 @@ void RobotModelDisplay::processDescription(const std::string& urdf_text) {
   if (urdf_text.empty() || urdf_text == description_text_) {
     return;
   }
-  if (!model_.loadFromString(urdf_text)) {
+  bool loaded = false;
+  if (urdf_text.find("<robot") == std::string::npos) {
+    const QString path = QString::fromStdString(urdf_text).trimmed();
+    if (QFileInfo::exists(path)) {
+      loaded = model_.loadFromFile(path.toStdString());
+    }
+  } else {
+    loaded = model_.loadFromString(urdf_text);
+  }
+  if (!loaded) {
+    AERROR << "URDF parse failed (" << urdf_text.size() << " bytes)";
     setStatusError("URDF parse failed");
     return;
   }
@@ -309,14 +367,25 @@ void RobotModelDisplay::processDescription(const std::string& urdf_text) {
   rebuildMeshCache();
   bool mesh_missing = false;
   for (const auto& link : model_.links()) {
-    if (link.has_visual && link.visual.type == UrdfGeometry::Type::kMesh &&
-        visual_meshes_.count(link.name) == 0) {
+    if (!link.visuals.empty()) {
+      for (std::size_t i = 0; i < link.visuals.size(); ++i) {
+        if (link.visuals[i].type == UrdfGeometry::Type::kMesh &&
+            visual_meshes_.count(link.name + "#" + std::to_string(i)) == 0) {
+          mesh_missing = true;
+        }
+      }
+    } else if (link.has_visual &&
+               link.visual.type == UrdfGeometry::Type::kMesh &&
+               visual_meshes_.count(link.name) == 0) {
       mesh_missing = true;
     }
   }
   if (mesh_missing) {
+    AWARN << "URDF mesh file was not found, links=" << model_.links().size();
     setStatusWarn("URDF mesh file was not found");
   } else {
+    AINFO << "robot model loaded, links=" << model_.links().size()
+          << " meshes=" << visual_meshes_.size();
     setStatusOk("Model loaded");
   }
   if (context_ != nullptr && context_->request_redraw) {
@@ -385,7 +454,44 @@ void RobotModelDisplay::drawLinkGeometry(
       if (geometry.type == UrdfGeometry::Type::kMesh) {
         mesh_transform.scale(geometry.mesh_scale);
       }
-      if (solid_visual) {
+      if (solid_visual && mesh->has_material_groups) {
+        for (const ObjSubmesh& part : mesh->submeshes) {
+          if (part.triangle_count <= 0) {
+            continue;
+          }
+          const int begin = part.triangle_begin;
+          const int end = begin + part.triangle_count;
+          if (begin < 0 || end > static_cast<int>(mesh->triangles.size())) {
+            continue;
+          }
+          ObjMesh part_mesh;
+          part_mesh.vertices = mesh->vertices;
+          part_mesh.texcoords = mesh->texcoords;
+          part_mesh.triangles.assign(mesh->triangles.begin() + begin,
+                                     mesh->triangles.begin() + end);
+          QImage texture;
+          if (!part.texture_path.empty()) {
+            const auto cached = texture_cache_.find(part.texture_path);
+            if (cached != texture_cache_.end()) {
+              texture = cached->second;
+            } else {
+              texture.load(QString::fromStdString(part.texture_path));
+              texture_cache_[part.texture_path] = texture;
+            }
+          }
+          if (!texture.isNull()) {
+            scene.addTriangleMeshTexturedPbr(part_mesh, mesh_transform, texture,
+                                             color, metallic, roughness);
+          } else {
+            QColor solid = part.diffuse;
+            solid.setRedF(std::clamp(solid.redF() * color.redF(), 0.f, 1.f));
+            solid.setGreenF(std::clamp(solid.greenF() * color.greenF(), 0.f, 1.f));
+            solid.setBlueF(std::clamp(solid.blueF() * color.blueF(), 0.f, 1.f));
+            solid.setAlphaF(color.alphaF());
+            scene.addTriangleMeshSolid(part_mesh, mesh_transform, solid);
+          }
+        }
+      } else if (solid_visual) {
         const QImage texture = use_pbr ? loadMaterialTexture(geometry.material) : QImage();
         if (use_pbr && !texture.isNull()) {
           scene.addTriangleMeshTexturedPbr(*mesh, mesh_transform, texture, color,
@@ -471,64 +577,74 @@ void RobotModelDisplay::onDraw(rendering::SceneOverlay& scene) {
 
   QMatrix4x4 root_world;
   root_world.setToIdentity();
-  const std::string root_link = propertyValue("root_link", model_.rootLink());
+  // Joint states plus one floating-base TF. An empty Root Link property must
+  // still follow the URDF root: looking up only "base" and leaving every other
+  // link at the origin draws the robot in pieces.
+  std::string kinematic_root = propertyValue("root_link", "");
+  if (kinematic_root.empty()) {
+    kinematic_root = model_.rootLink();
+  }
   const bool have_buffer = context_->tf_buffer != nullptr;
   const auto zero_time = autoviz::commsgs::ZeroTime();
-  if (!root_link.empty() && have_buffer) {
+  if (!kinematic_root.empty() && have_buffer) {
     try {
       root_world = transformToMatrix(context_->tf_buffer->lookupTransform(
-          context_->fixed_frame, root_link, zero_time));
+          context_->fixed_frame, kinematic_root, zero_time));
     } catch (...) {
     }
   }
 
   for (const auto& link : model_.links()) {
-    QMatrix4x4 link_transform;
-    bool from_tf = false;
-    if (have_buffer) {
-      try {
-        link_transform = transformToMatrix(context_->tf_buffer->lookupTransform(
-            context_->fixed_frame, link.name, zero_time));
-        from_tf = true;
-      } catch (...) {
-      }
+    const auto tf_it = link_transforms.find(link.name);
+    if (tf_it == link_transforms.end()) {
+      continue;
     }
-    if (!from_tf) {
-      const auto tf_it = link_transforms.find(link.name);
-      if (tf_it == link_transforms.end()) {
-        continue;
-      }
-      link_transform = root_world * tf_it->second;
-    }
+    const QMatrix4x4 link_transform = root_world * tf_it->second;
 
-    if (link.has_visual) {
+    std::vector<UrdfGeometry> fallback_visuals;
+    const std::vector<UrdfGeometry>* visuals = &link.visuals;
+    if (visuals->empty() && link.has_visual) {
+      fallback_visuals.push_back(link.visual);
+      visuals = &fallback_visuals;
+    }
+    for (std::size_t visual_index = 0; visual_index < visuals->size();
+         ++visual_index) {
+      const UrdfGeometry& geometry = (*visuals)[visual_index];
+      const std::string mesh_key =
+          link.visuals.empty() ? link.name
+                               : link.name + "#" + std::to_string(visual_index);
       const ObjMesh* mesh = nullptr;
-      const auto mesh_it = visual_meshes_.find(link.name);
+      const auto mesh_it = visual_meshes_.find(mesh_key);
       if (mesh_it != visual_meshes_.end()) {
         mesh = &mesh_it->second;
       }
       const QColor visual_color =
-          linkColor(link.visual, color, alpha, use_urdf_materials);
-      const bool use_pbr = solid_visual && use_urdf_materials &&
-                           (link.visual.material.valid ||
-                            link.visual.material.has_texture);
+          linkColor(geometry, color, alpha, use_urdf_materials);
+      const bool material_requested = solid_visual && use_urdf_materials &&
+                                     (geometry.material.valid ||
+                                      geometry.material.has_texture);
       const QImage texture =
-          use_pbr ? loadMaterialTexture(link.visual.material) : QImage();
-      const float metallic = link.visual.material.metallic;
-      const float roughness = link.visual.material.roughness;
+          material_requested ? loadMaterialTexture(geometry.material)
+                             : QImage();
+      // Textured meshes use the rviz-style unlit texture path. A material
+      // without a loaded image stays on the flat vertex-color path, which is
+      // the same one markers use.
+      const bool use_pbr = !texture.isNull();
+      const float metallic = geometry.material.metallic;
+      const float roughness = geometry.material.roughness;
       bool ogre_visual_ok = false;
       if (use_ogre && use_pbr) {
         ogre_visual_ok =
             AppendUrdfGeometryPbr(&ogre_pbr_visual, &ogre_pbr_textured,
-                                    link.visual, mesh, link_transform,
+                                    geometry, mesh, link_transform,
                                     visual_color, texture, metallic, roughness);
       } else if (use_ogre) {
         ogre_visual_ok =
-            AppendUrdfGeometryMesh(&ogre_visual, link.visual, mesh, link_transform,
+            AppendUrdfGeometryMesh(&ogre_visual, geometry, mesh, link_transform,
                                    visual_color, !solid_visual);
       }
       if (!ogre_visual_ok) {
-        drawLinkGeometry(scene, link.visual, mesh, link_transform, visual_color,
+        drawLinkGeometry(scene, geometry, mesh, link_transform, visual_color,
                          solid_visual, use_pbr);
       }
     }
@@ -549,11 +665,12 @@ void RobotModelDisplay::onDraw(rendering::SceneOverlay& scene) {
       }
     }
 
-    if (show_axes && link.has_visual) {
+    if (show_axes && visuals != nullptr && !visuals->empty()) {
+      const UrdfGeometry& geometry = visuals->front();
       QMatrix4x4 visual = link_transform;
-      visual.translate(link.visual.origin);
-      visual.rotate(link.visual.rotation);
-      const QVector3D half = VisualHalfExtents(link.visual);
+      visual.translate(geometry.origin);
+      visual.rotate(geometry.rotation);
+      const QVector3D half = VisualHalfExtents(geometry);
       const QVector3D origin = visual.map(QVector3D(0.f, 0.f, 0.f));
       const float axis_len = std::max(half.length(), 0.08f);
       const QColor red(220, 60, 60, static_cast<int>(alpha * 255));

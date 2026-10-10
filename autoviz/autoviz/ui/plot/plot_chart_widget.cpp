@@ -611,8 +611,8 @@ QVector<PlotValueRow> PlotChartWidget::valueRowsAtX(double x) const {
     }
     PlotValueRow row;
     row.color = runtime.config.color;
-    row.label = runtime.config.label.isEmpty() ? runtime.config.field_path
-                                                 : runtime.config.label;
+    row.label = SeriesLegendLabel(runtime.config.label, runtime.config.channel,
+                                  runtime.config.field_path);
     row.latched = !sample->exact;
     if (sample->exact) {
       row.value_text = QString::number(sample->y, 'g', 4);
@@ -646,9 +646,9 @@ std::optional<PlotInspectPoint> PlotChartWidget::pickInspectPoint(
         best.x = point.x;
         best.y = point.y;
         best.color = runtime.config.color;
-        best.series_label = runtime.config.label.isEmpty()
-                                ? runtime.config.field_path
-                                : runtime.config.label;
+        best.series_label =
+            SeriesLegendLabel(runtime.config.label, runtime.config.channel,
+                              runtime.config.field_path);
       }
     }
   }
@@ -681,8 +681,8 @@ QVector<PlotChartWidget::TooltipRow> PlotChartWidget::buildTooltipRows(
 
     TooltipRow row;
     row.color = runtime.config.color;
-    row.label = runtime.config.label.isEmpty() ? runtime.config.field_path
-                                               : runtime.config.label;
+    row.label = SeriesLegendLabel(runtime.config.label, runtime.config.channel,
+                                  runtime.config.field_path);
     row.latched = !sample->exact;
     if (sample->exact) {
       row.value_text = QString::number(sample->y, 'g', 4);
@@ -817,6 +817,7 @@ void PlotChartWidget::drawSeries(QPainter& painter, const AxisRange& range,
 
     const std::vector<PlotPoint> draw_points =
         DownsampleLttb(visible, kMaxDrawPoints);
+    // Foxglove-style: connecting segments plus point markers (not solid-only).
     const bool draw_line =
         runtime.config.show_line && draw_points.size() >= 2;
     const bool use_right = runtime.config.use_right_y;
@@ -826,12 +827,11 @@ void PlotChartWidget::drawSeries(QPainter& painter, const AxisRange& range,
     QPainterPath path;
     bool started = false;
     QVector<QPointF> marker_pts;
-    if (!draw_line) {
-      marker_pts.reserve(static_cast<int>(draw_points.size()));
-    }
+    marker_pts.reserve(static_cast<int>(draw_points.size()));
 
     for (const PlotPoint& point : draw_points) {
       const QPointF mapped = mapToChart(point.x, point.y, range, use_right);
+      marker_pts.push_back(mapped);
       if (draw_line) {
         if (!started) {
           path.moveTo(mapped);
@@ -839,8 +839,6 @@ void PlotChartWidget::drawSeries(QPainter& painter, const AxisRange& range,
         } else {
           path.lineTo(mapped);
         }
-      } else {
-        marker_pts.push_back(mapped);
       }
     }
 
@@ -1010,9 +1008,9 @@ void PlotChartWidget::recomputeBrushStats() {
       continue;
     }
     BrushSeriesStats stats;
-    stats.label = runtime_ptr->config.label.isEmpty()
-                      ? runtime_ptr->config.field_path
-                      : runtime_ptr->config.label;
+    stats.label = SeriesLegendLabel(runtime_ptr->config.label,
+                                    runtime_ptr->config.channel,
+                                    runtime_ptr->config.field_path);
     stats.color = runtime_ptr->config.color;
     double sum = 0.0;
     double sum_sq = 0.0;

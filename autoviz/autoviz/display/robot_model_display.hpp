@@ -21,6 +21,8 @@
  *
  * @note Unlike most channel displays, the primary @ref channel() is the
  *       **joint** topic; description uses a separate property channel.
+ *       Both topics are subscribed through ChannelReaderRegistry so a
+ *       channels-panel probe on the same name still delivers the payload.
  *
  * @see UrdfModel
  * @see proto_wire::ParsedJointState
@@ -41,6 +43,7 @@
 #include "autoviz/display/obj_mesh.hpp"
 #include "autoviz/display/proto_payload_utils.hpp"
 #include "autoviz/display/urdf_model.hpp"
+#include "autoviz/integration/channel_reader_registry.hpp"
 #include "autoviz/integration/message_queue.hpp"
 #include "autoviz/rendering/scene_overlay.hpp"
 
@@ -59,8 +62,8 @@ namespace display {
  * - **Draw:** @ref onDraw() computes link transforms and emits meshes via
  *   PBR / entity / flat mesh helpers.
  *
- * @note Owns Autolink readers for joint + description channels; lifetimes are
- *       tied to @ref onEnable() / @ref onDisable().
+ * @note Joint and description subscriptions go through ChannelReaderRegistry.
+ *       Lifetimes are tied to @ref onEnable() / @ref onDisable().
  */
 class RobotModelDisplay : public Display {
  public:
@@ -101,6 +104,11 @@ class RobotModelDisplay : public Display {
    * @brief Subscribes to joint and description channels.
    */
   void onEnable() override;
+
+  /**
+   * @brief Joins the shared channel readers for joints and description.
+   */
+  void subscribeChannels();
 
   /**
    * @brief Unsubscribes readers and clears queues.
@@ -212,10 +220,10 @@ class RobotModelDisplay : public Display {
   std::unordered_map<std::string, double> joint_positions_; /**< Latest joint values. */
   integration::MessageQueue joint_queue_;        /**< Incoming JointState queue. */
   integration::MessageQueue description_queue_;  /**< Incoming description queue. */
-  std::shared_ptr<autolink::Reader<autolink::message::RawMessage>>
-      joint_reader_; /**< Autolink reader for joints. */
-  std::shared_ptr<autolink::Reader<autolink::message::RawMessage>>
-      description_reader_; /**< Autolink reader for description. */
+  integration::ChannelReaderRegistry::SubscriptionId joint_subscription_ =
+      0; /**< Shared reader for joints. */
+  integration::ChannelReaderRegistry::SubscriptionId description_subscription_ =
+      0; /**< Shared reader for the URDF topic. */
 };
 
 }  // namespace display

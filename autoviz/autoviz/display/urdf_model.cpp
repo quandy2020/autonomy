@@ -288,11 +288,18 @@ bool UrdfModel::parseXml(const std::string& xml) {
        link_node = link_node.nextSiblingElement(QStringLiteral("link"))) {
     UrdfLink link;
     link.name = link_node.attribute(QStringLiteral("name")).toStdString();
-    const QDomElement visual =
-        link_node.firstChildElement(QStringLiteral("visual"));
-    if (!visual.isNull()) {
-      link.visual = ParseLinkGeometry(visual, material_library_);
-      link.has_visual = link.visual.type != UrdfGeometry::Type::kUnknown;
+    for (auto visual = link_node.firstChildElement(QStringLiteral("visual"));
+         !visual.isNull();
+         visual = visual.nextSiblingElement(QStringLiteral("visual"))) {
+      UrdfGeometry geometry = ParseLinkGeometry(visual, material_library_);
+      if (geometry.type == UrdfGeometry::Type::kUnknown) {
+        continue;
+      }
+      link.visuals.push_back(std::move(geometry));
+    }
+    if (!link.visuals.empty()) {
+      link.visual = link.visuals.front();
+      link.has_visual = true;
     }
     const QDomElement collision =
         link_node.firstChildElement(QStringLiteral("collision"));

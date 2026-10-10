@@ -80,7 +80,6 @@ int main(int argc, char** argv) {
   automanip::legged_robot::LeggedRobotInterface interface(
       AUTOMANIP_EXAMPLE_TASK, AUTOMANIP_EXAMPLE_URDF, AUTOMANIP_EXAMPLE_REFERENCE);
   const auto& info = interface.getCentroidalModelInfo();
-  const auto& joint_names = interface.modelSettings().jointNames;
 
   std::unique_ptr<automanip::MPC_BASE> mpc;
   int thread_priority = interface.ddpSettings().threadPriority_;
@@ -103,6 +102,17 @@ int main(int argc, char** argv) {
   }
 
   automanip::PinocchioInterface pinocchio_view(interface.getPinocchioInterface());
+  // modelSettings().jointNames is LF, RF, LH, RH. Pinocchio q, and therefore
+  // getJointAngles, is LF, LH, RF, RH. Publishing the settings list would put
+  // the hind-left angles on the right-front leg.
+  const auto& pinocchio_model = pinocchio_view.getModel();
+  std::vector<std::string> joint_names;
+  joint_names.reserve(static_cast<std::size_t>(info.actuatedDofNum));
+  for (pinocchio::JointIndex joint = 1; joint < pinocchio_model.njoints; ++joint) {
+    if (pinocchio_model.nqs[joint] == 1) {
+      joint_names.push_back(pinocchio_model.names[joint]);
+    }
+  }
   automanip::CentroidalModelPinocchioMapping pinocchio_mapping(info);
   automanip::PinocchioEndEffectorKinematics end_effector_kinematics(
       pinocchio_view, pinocchio_mapping, interface.modelSettings().contactNames3DoF);
@@ -121,15 +131,45 @@ int main(int argc, char** argv) {
   request.robot_description =
       automanip::examples::RobotDescriptionWithAbsoluteMeshes(AUTOMANIP_EXAMPLE_URDF);
   request.max_steps = steps;
+  // A Nav Goal is an absolute base xy/yaw. Track it from the live pose over
+  // the time reference.info allows (0.5 m/s, 0.3 rad/s), with the nominal
+  // height and the default stance. One sample at the current time makes DDP
+  // demand the goal immediately and the rollout diverges.
+  request.command_from_state = true;
   request.on_target = [&](const automanip::examples::PoseStamped& pose,
                           const automanip::vector_t& previous, automanip::scalar_t time) {
-    automanip::vector_t target = previous;
-    target.head(6).setZero();
-    target(6) = pose.pose().position().x();
-    target(7) = pose.pose().position().y();
-    target(9) = Yaw(pose);
-    return automanip::TargetTrajectories({time}, {target},
-                                         {automanip::vector_t::Zero(info.inputDim)});
+    constexpr double kComHeight = 0.575;
+    constexpr double kDisplacementVelocity = 0.5;
+    constexpr double kRotationVelocity = 0.3;
+    const automanip::vector_t& stance = interface.getInitialState();
+    automanip::vector_t current_pose = stance.segment<6>(6);
+    if (previous.size() >= 12) {
+      current_pose = previous.segment<6>(6);
+    }
+    automanip::vector_t target_pose = current_pose;
+    target_pose(0) = pose.pose().position().x();
+    target_pose(1) = pose.pose().position().y();
+    target_pose(2) = kComHeight;
+    const double yaw_error = std::atan2(std::sin(Yaw(pose) - current_pose(3)),
+                                         std::cos(Yaw(pose) - current_pose(3)));
+    target_pose(3) = current_pose(3) + yaw_error;
+    target_pose(4) = 0.0;
+    target_pose(5) = 0.0;
+
+    const double dx = target_pose(0) - current_pose(0);
+    const double dy = target_pose(1) - current_pose(1);
+    const double reaching = std::max(std::abs(yaw_error) / kRotationVelocity,
+                                      std::sqrt(dx * dx + dy * dy) / kDisplacementVelocity);
+    const automanip::scalar_t arrival = time + std::max(0.2, reaching);
+
+    automanip::vector_t start = stance;
+    automanip::vector_t goal = stance;
+    start.head(6).setZero();
+    goal.head(6).setZero();
+    start.segment<6>(6) = current_pose;
+    goal.segment<6>(6) = target_pose;
+    const automanip::vector_t input = automanip::vector_t::Zero(info.inputDim);
+    return automanip::TargetTrajectories({time, arrival}, {start, goal}, {input, input});
   };
   request.publish = [&](const automanip::SystemObservation& observation,
                         const automanip::PrimalSolution& policy,

@@ -53,6 +53,7 @@ void main() {
                   max(4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0), 1e-4);
   vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);
   vec3 diffuse = kD * albedo / 3.14159265;
-  vec3 color = (diffuse + specular) * max(dot(N, L), 0.0) + uAmbient * albedo;
+  vec3 ambient = max(uAmbient, vec3(0.55));
+  vec3 color = (diffuse + specular) * max(dot(N, L), 0.0) + ambient * albedo;
   fragColor = vec4(color, alpha);
 }

@@ -4,8 +4,12 @@
 
 #include "autoviz/ui/plot/plot_legend_widget.hpp"
 
+#include <algorithm>
+
+#include <QFontMetrics>
 #include <QPainter>
 
+#include "autoviz/ui/plot/plot_path_utils.hpp"
 #include "autoviz/ui/plot/plot_types.hpp"
 
 namespace autoviz {
@@ -43,16 +47,30 @@ QSize PlotLegendWidget::preferredSize() const { return sizeHint(); }
 
 QSize PlotLegendWidget::sizeHint() const {
   int visible = 0;
+  int max_label_w = 0;
+  const QFontMetrics fm(font());
   for (const PlotSeriesRuntime* runtime : series_) {
-    if (runtime != nullptr && runtime->config.enabled) {
-      ++visible;
+    if (runtime == nullptr || !runtime->config.enabled) {
+      continue;
+    }
+    ++visible;
+    const QString label = SeriesLegendLabel(
+        runtime->config.label, runtime->config.channel, runtime->config.field_path);
+    max_label_w = std::max(max_label_w, fm.horizontalAdvance(label));
+    for (const PlotValueRow& row : value_rows_) {
+      if (row.label == label && row.color == runtime->config.color) {
+        max_label_w = std::max(max_label_w, fm.horizontalAdvance(row.value_text));
+        break;
+      }
     }
   }
   if (visible == 0) {
     return QSize(120, 28);
   }
   const int row_h = show_values_ ? 34 : 20;
-  return QSize(show_values_ ? 220 : 180, 8 + visible * row_h);
+  // Swatch (8+10) + gap to text (6) + right pad (12).
+  const int width = std::max(180, 8 + 10 + 6 + max_label_w + 12);
+  return QSize(width, 8 + visible * row_h);
 }
 
 void PlotLegendWidget::paintEvent(QPaintEvent* /*event*/) {
@@ -78,7 +96,7 @@ void PlotLegendWidget::paintEvent(QPaintEvent* /*event*/) {
     any = true;
     const PlotSeriesConfig& config = runtime_ptr->config;
     const QString label =
-        config.label.isEmpty() ? config.field_path : config.label;
+        SeriesLegendLabel(config.label, config.channel, config.field_path);
 
     painter.fillRect(QRect(8, y + 4, 10, 10), config.color);
     painter.setPen(QColor(60, 60, 60));

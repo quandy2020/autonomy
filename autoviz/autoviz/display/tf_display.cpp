@@ -15,6 +15,7 @@
 
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/common/display_catalog.hpp"
+#include "autoviz/common/tool_manager.hpp"
 #include "autoviz/display/arrow_mesh_utils.hpp"
 #include "autoviz/display/primitive_mesh.hpp"
 #include "autoviz/commsgs/time_utils.hpp"
@@ -96,7 +97,10 @@ std::vector<common::DisplayPropertySpec> TfDisplay::propertySpecs() const {
   return {
       {"show_names", "Show Names", "false"},
       {"show_axes", "Show Axes", "true"},
-      {"show_arrows", "Show Arrows", "true"},
+      // Off by default: parent→child yellow arrows clutter 2D Goal / Pose
+      // placement (look like connectors from TF frames onto the goal). Users
+      // can re-enable under TF → Show Arrows (RViz has the same property).
+      {"show_arrows", "Show Arrows", "false"},
       {"marker_scale", "Marker Scale", "1.0"},
       {"update_interval", "Update Interval", "0"},
       {"frame_timeout", "Frame Timeout", "15.0"},
@@ -166,7 +170,7 @@ void TfDisplay::refreshCachedProps() {
   props_.show_axes =
       common::ParseBoolProperty(propertyValue("show_axes", "true"), true);
   props_.show_arrows =
-      common::ParseBoolProperty(propertyValue("show_arrows", "true"), true);
+      common::ParseBoolProperty(propertyValue("show_arrows", "false"), false);
   props_.marker_scale = std::max(
       1e-3f,
       common::ParseFloatProperty(propertyValue("marker_scale", "1.0"), 1.f));

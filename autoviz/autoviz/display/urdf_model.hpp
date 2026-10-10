@@ -84,7 +84,8 @@ struct UrdfGeometry {
  */
 struct UrdfLink {
   std::string name;          /**< Link name (unique in the model). */
-  UrdfGeometry visual;       /**< Visual geometry (if @c has_visual). */
+  std::vector<UrdfGeometry> visuals; /**< Every visual geometry on the link. */
+  UrdfGeometry visual;       /**< First visual, kept for callers that draw one. */
   UrdfGeometry collision;    /**< Collision geometry (if @c has_collision). */
   bool has_visual = false;   /**< Whether @c visual was parsed. */
   bool has_collision = false; /**< Whether @c collision was parsed. */

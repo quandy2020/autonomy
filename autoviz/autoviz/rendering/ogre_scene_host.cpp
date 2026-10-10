@@ -32,6 +32,18 @@ namespace autoviz {
 namespace rendering {
 namespace {
 
+float LitShade(const QVector3D& a, const QVector3D& b, const QVector3D& c) {
+  const QVector3D normal = QVector3D::crossProduct(b - a, c - a);
+  const float length = normal.length();
+  if (length < 1e-6f) {
+    return 0.72f;
+  }
+  // Z-up key light. Absolute dot keeps two-sided CAD meshes from going black.
+  const QVector3D light = QVector3D(0.30f, 0.22f, 0.93f).normalized();
+  const float facing = std::abs(QVector3D::dotProduct(normal / length, light));
+  return 0.50f + 0.50f * facing;
+}
+
 Ogre::ColourValue ToOgrePickColor(common::PickHandle handle) {
   const common::PickColor color = common::handleToPickColor(handle);
   return Ogre::ColourValue(color.r / 255.f, color.g / 255.f, color.b / 255.f,
@@ -357,11 +369,17 @@ void OgreSceneHost::uploadMeshes(
           triangle[2] >= static_cast<int>(instance.mesh.vertices.size())) {
         continue;
       }
-      for (int index : triangle) {
-        const QVector3D vertex =
-            instance.transform.map(instance.mesh.vertices[static_cast<std::size_t>(index)]);
+      const QVector3D corners[3] = {
+          instance.transform.map(
+              instance.mesh.vertices[static_cast<std::size_t>(triangle[0])]),
+          instance.transform.map(
+              instance.mesh.vertices[static_cast<std::size_t>(triangle[1])]),
+          instance.transform.map(
+              instance.mesh.vertices[static_cast<std::size_t>(triangle[2])])};
+      const float shade = LitShade(corners[0], corners[1], corners[2]);
+      for (const QVector3D& vertex : corners) {
         object->position(vertex.x(), vertex.y(), vertex.z());
-        object->colour(color.r, color.g, color.b, color.a);
+        object->colour(color.r * shade, color.g * shade, color.b * shade, color.a);
       }
     }
     object->end();
@@ -416,8 +434,13 @@ void OgreSceneHost::uploadPbrMeshes(
 void OgreSceneHost::uploadPbrTexturedMeshes(
     DisplayEntry& entry, const std::string& display_name,
     const std::vector<OgrePbrTexturedMeshInstance>& meshes) {
+  // Same idea as rviz2 RobotLink: an unlit material, vertex color times the
+  // albedo texture, depth write on. The custom PBR program multiplies by a
+  // colour attribute that stays 0 when it is not bound, which makes the mesh
+  // fully transparent while markers (FlatNoLighting) stay visible.
   if (scene_manager_ == nullptr || entry.node == nullptr || meshes.empty() ||
-      !Ogre::MaterialManager::getSingleton().resourceExists("AvizPBRTextured")) {
+      !Ogre::MaterialManager::getSingleton().resourceExists(
+          "Autoviz/FlatNoLighting")) {
     return;
   }
 
@@ -484,9 +507,18 @@ void OgreSceneHost::uploadPbrTexturedMeshes(
     }
     Ogre::MaterialPtr material =
         Ogre::MaterialManager::getSingleton()
-            .getByName("AvizPBRTextured")
+            .getByName("Autoviz/FlatNoLighting")
             ->clone(mat_name);
-    material->getTechnique(0)->getPass(0)->createTextureUnitState(tex_name);
+    Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
+    pass->setLightingEnabled(false);
+    pass->setDepthWriteEnabled(true);
+    pass->setDepthCheckEnabled(true);
+    pass->setSceneBlending(Ogre::SBT_REPLACE);
+    pass->setCullingMode(Ogre::CULL_NONE);
+    pass->setVertexColourTracking(Ogre::TVC_DIFFUSE);
+    Ogre::TextureUnitState* unit = pass->createTextureUnitState(tex_name);
+    unit->setColourOperation(Ogre::LBO_MODULATE);
+    unit->setTextureAddressingMode(Ogre::TextureUnitState::TAM_WRAP);
 
     Ogre::ManualObject* object = scene_manager_->createManualObject(base_name + "MO");
     object->begin(mat_name, Ogre::RenderOperation::OT_TRIANGLE_LIST);
@@ -512,13 +544,7 @@ void OgreSceneHost::uploadPbrTexturedMeshes(
                 mesh_with_uv.vertices[static_cast<std::size_t>(triangle[1])]),
             instance->transform.map(
                 mesh_with_uv.vertices[static_cast<std::size_t>(triangle[2])])};
-        QVector3D normal = QVector3D::crossProduct(corners[1] - corners[0],
-                                                   corners[2] - corners[0]);
-        if (normal.lengthSquared() < 1e-10f) {
-          normal = QVector3D(0.f, 1.f, 0.f);
-        } else {
-          normal.normalize();
-        }
+        const float shade = LitShade(corners[0], corners[1], corners[2]);
         for (int i = 0; i < 3; ++i) {
           const int vi = triangle[i];
           const QVector2D uv =
@@ -526,10 +552,8 @@ void OgreSceneHost::uploadPbrTexturedMeshes(
                   ? mesh_with_uv.texcoords[static_cast<std::size_t>(vi)]
                   : QVector2D(0.5f, 0.5f);
           object->position(corners[i].x(), corners[i].y(), corners[i].z());
-          object->normal(normal.x(), normal.y(), normal.z());
-          object->textureCoord(0, uv.x(), uv.y());
-          object->colour(tint.r, tint.g, tint.b, tint.a);
-          object->textureCoord(1, instance->metallic, instance->roughness);
+          object->textureCoord(uv.x(), 1.f - uv.y());
+          object->colour(tint.r * shade, tint.g * shade, tint.b * shade, tint.a);
         }
       }
     }

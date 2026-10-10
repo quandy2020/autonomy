@@ -25,6 +25,7 @@
 #include "autoviz/display/display.hpp"
 #include "autoviz/display/proto_payload_utils.hpp"
 #include "autoviz/display/urdf_model.hpp"
+#include "autoviz/integration/channel_reader_registry.hpp"
 #include "autoviz/integration/message_queue.hpp"
 #include "autoviz/rendering/scene_overlay.hpp"
 
@@ -160,13 +161,12 @@ class EffortDisplay : public Display {
   /** Incoming JointState payload queue. */
   integration::MessageQueue joint_queue_;
 
-  /** Autolink reader for joint states. */
-  std::shared_ptr<autolink::Reader<autolink::message::RawMessage>>
-      joint_reader_;
+  /** Shared reader for joint states. */
+  integration::ChannelReaderRegistry::SubscriptionId joint_subscription_ = 0;
 
-  /** Autolink reader for robot_description (optional). */
-  std::shared_ptr<autolink::Reader<autolink::message::RawMessage>>
-      description_reader_;
+  /** Shared reader for robot_description (optional). */
+  integration::ChannelReaderRegistry::SubscriptionId description_subscription_ =
+      0;
 };
 
 }  // namespace display

@@ -710,7 +710,8 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
   UpdateValueValidation(manager_, value_combo, series.channel, series.field_path);
   form->addRow(MakeSettingsFormLabel(tr("Value"), card), value_box);
 
-  auto* label_edit = new QLineEdit(series.label, card);
+  auto* label_edit = new QLineEdit(
+      SeriesLegendLabel(series.label, series.channel, series.field_path), card);
   StyleCompactSettingsField(label_edit);
   form->addRow(MakeSettingsFormLabel(tr("Label"), card), label_edit);
 
@@ -821,7 +822,7 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
   };
 
   const auto commit_value_path = [this, index, title_label, value_combo, value_line_edit,
-                                  sync_value_path_display]() {
+                                  label_edit, sync_value_path_display]() {
     if (index >= config_.series.size() || value_line_edit == nullptr) {
       return;
     }
@@ -830,13 +831,28 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
     const QString combined_path = value_line_edit->text().trimmed();
     SplitPlotValuePath(combined_path, knownChannels(), &channel, &field_path);
     sync_value_path_display(channel, field_path);
-    if (config_.series[index].channel == channel &&
-        config_.series[index].field_path == field_path) {
-      return;
-    }
+    bool changed = config_.series[index].channel != channel ||
+                   config_.series[index].field_path != field_path;
     config_.series[index].channel = channel;
     config_.series[index].field_path = field_path;
-    emit configChanged();
+    // Keep auto labels aligned with full channel.field (Foxglove legend path).
+    if (IsAutoSeriesLabel(config_.series[index].label,
+                          config_.series[index].channel,
+                          config_.series[index].field_path) ||
+        IsAutoSeriesLabel(config_.series[index].label, channel, field_path)) {
+      const QString auto_label = CombinedPlotValuePath(channel, field_path);
+      if (!auto_label.isEmpty() && config_.series[index].label != auto_label) {
+        config_.series[index].label = auto_label;
+        if (label_edit != nullptr) {
+          const QSignalBlocker blocker(label_edit);
+          label_edit->setText(auto_label);
+        }
+        changed = true;
+      }
+    }
+    if (changed) {
+      emit configChanged();
+    }
   };
 
   if (value_line_edit != nullptr) {

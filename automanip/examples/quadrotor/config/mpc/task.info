@@ -48,7 +48,8 @@ ddp
 
   preComputeRiccatiTerms        true
 
-  useFeedbackPolicy             false
+  ; Closed-loop gains keep the dummy on the plan between slow solves.
+  useFeedbackPolicy             true
 
   strategy                      LINE_SEARCH
   lineSearch
@@ -74,7 +75,7 @@ rollout
 mpc
 {
   timeHorizon                 2.0     ; [s]
-  solutionTimeWindow          0.5     ; [s]
+  solutionTimeWindow          -1      ; [s] full horizon. 0.5 s expires before the next solve.
   coldStart                   false
 
   debugPrint                  false

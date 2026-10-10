@@ -492,6 +492,9 @@ class FrameSession {
   /** Application is inactive (pause rendering). */
   bool app_inactive_ = false;
 
+  /** Guards @ref onAboutToQuit() so closeEvent + aboutToQuit stay idempotent. */
+  bool quit_teardown_done_ = false;
+
   /** Maximum entries kept in @c recent_configs_. */
   static constexpr int kRecentConfigCount = 10;
 };

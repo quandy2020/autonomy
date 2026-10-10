@@ -5,6 +5,7 @@
 #include "autoviz/ui/panel/dock.hpp"
 
 #include <QApplication>
+#include <QCoreApplication>
 #include <QCloseEvent>
 #include <QEvent>
 #include <QHBoxLayout>
@@ -214,9 +215,11 @@ void PanelDockWidget::applyFixedContentHeight() {
     if (QWidget* content = widget()) {
       content->setMinimumHeight(0);
       content->setMaximumHeight(QWIDGETSIZE_MAX);
-      content->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+      content->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     }
-    setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    // Expanding so center mosaic panes (3D View / Map / …) fill the splitter
+    // instead of leaving a Preferred-sized gap between neighbours.
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     setMinimumHeight(0);
     setMaximumHeight(QWIDGETSIZE_MAX);
     return;
@@ -459,6 +462,18 @@ void PanelDockWidget::closeEvent(QCloseEvent* event) {
   emit closed();
 }
 
-void PanelDockWidget::onChildDestroyed(QObject* /*child*/) { deleteLater(); }
+void PanelDockWidget::onChildDestroyed(QObject* /*child*/) {
+  // Content widget gone. Do not emit closed() here — during app shutdown
+  // hideChildren destroys content while the dock tree is still walking, and
+  // closed()→mosaic detach re-enters Qt and SIGSEGVs. FrameViewport wires
+  // QObject::destroyed to drop viewport_panels_ entries instead.
+  if (!property("panelDisposed").toBool()) {
+    setProperty("panelDisposed", true);
+  }
+  if (QCoreApplication::closingDown()) {
+    return;
+  }
+  deleteLater();
+}
 
 }  // namespace autoviz

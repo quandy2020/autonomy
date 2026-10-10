@@ -11,11 +11,13 @@
 #include <QJsonObject>
 #include <QPainter>
 #include <QPaintEvent>
+#include <QPointer>
 #include <QResizeEvent>
 #include <QSignalBlocker>
 #include <QSizePolicy>
 #include <QSplitter>
 #include <QSplitterHandle>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -27,6 +29,115 @@ namespace {
 
 /** Hit target width — visual line stays 1px so the seam reads as a border. */
 constexpr int kSplitterHit = 7;
+constexpr int kMinPaneSpan = 80;
+
+void ApplyExpandingPolicy(QWidget* widget) {
+  if (widget == nullptr) {
+    return;
+  }
+  const QSizePolicy policy = widget->sizePolicy();
+  if (policy.horizontalPolicy() != QSizePolicy::Expanding ||
+      policy.verticalPolicy() != QSizePolicy::Expanding) {
+    widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+  }
+  if (widget->maximumWidth() < QWIDGETSIZE_MAX ||
+      widget->maximumHeight() < QWIDGETSIZE_MAX) {
+    widget->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+  }
+}
+
+/**
+ * @brief Make @p splitter children fill its current geometry.
+ *
+ * Preserves relative size ratios when possible. Without stretch factors, a
+ * deferred @c setSizes based on a stale/narrow host width leaves large empty
+ * gaps between 3D View / Map (and other) panes.
+ *
+ * No-ops when the splitter is already filled — repeated setSizes on resize
+ * thrash Ogre/GL viewports (constant flicker, no interaction).
+ */
+void FillSplitter(QSplitter* splitter) {
+  if (splitter == nullptr || splitter->count() <= 0) {
+    return;
+  }
+  const int count = splitter->count();
+  for (int i = 0; i < count; ++i) {
+    QWidget* child = splitter->widget(i);
+    ApplyExpandingPolicy(child);
+    splitter->setStretchFactor(i, 1);
+    if (auto* nested = qobject_cast<QSplitter*>(child)) {
+      FillSplitter(nested);
+    }
+  }
+
+  const int handle_space = splitter->handleWidth() * qMax(0, count - 1);
+  const int available =
+      (splitter->orientation() == Qt::Horizontal ? splitter->width()
+                                                 : splitter->height()) -
+      handle_space;
+  if (available < count) {
+    return;
+  }
+
+  QList<int> current = splitter->sizes();
+  qint64 sum = 0;
+  for (int size : current) {
+    sum += qMax(size, 0);
+  }
+  // Already filling the host — avoid setSizes (triggers GL viewport resize).
+  if (current.size() == count && sum > 0 &&
+      qAbs(static_cast<int>(sum) - available) <= 2) {
+    return;
+  }
+
+  QList<int> sizes;
+  sizes.reserve(count);
+  if (current.size() != count || sum <= 0) {
+    const int each = qMax(available / count, kMinPaneSpan);
+    for (int i = 0; i < count; ++i) {
+      sizes.push_back(each);
+    }
+  } else {
+    int allocated = 0;
+    for (int i = 0; i < count; ++i) {
+      int next = 0;
+      if (i + 1 == count) {
+        next = qMax(available - allocated, kMinPaneSpan);
+      } else {
+        next = static_cast<int>((static_cast<qint64>(qMax(current.at(i), 1)) *
+                                 available) /
+                                sum);
+        next = qMax(next, kMinPaneSpan);
+      }
+      sizes.push_back(next);
+      allocated += next;
+    }
+  }
+  splitter->setSizes(sizes);
+}
+
+void EqualizeSplitter(QSplitter* splitter) {
+  if (splitter == nullptr || splitter->count() <= 0) {
+    return;
+  }
+  const int count = splitter->count();
+  for (int i = 0; i < count; ++i) {
+    ApplyExpandingPolicy(splitter->widget(i));
+    splitter->setStretchFactor(i, 1);
+  }
+  const int handle_space = splitter->handleWidth() * qMax(0, count - 1);
+  const int available =
+      (splitter->orientation() == Qt::Horizontal ? qMax(splitter->width(), 1)
+                                                 : qMax(splitter->height(), 1)) -
+      handle_space;
+  const int each = qMax(available / count, kMinPaneSpan);
+  QList<int> sizes;
+  sizes.reserve(count);
+  for (int i = 0; i < count; ++i) {
+    sizes.push_back(each);
+  }
+  splitter->setSizes(sizes);
+}
 
 class PanelSplitterHandle : public QSplitterHandle {
  public:
@@ -120,13 +231,18 @@ QWidget* WrapDockInPane(QDockWidget* dock) {
   pane->setProperty("mainPanelPane", true);
   // Wide enough for dock title tools (settings/split/change/expand/close).
   pane->setMinimumSize(220, 80);
-  pane->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+  ApplyExpandingPolicy(pane);
+  pane->setMinimumSize(220, 80);
   pane->setAttribute(Qt::WA_StyledBackground, true);
   pane->setStyleSheet(style::mark(style::Mark::Clear));
   auto* layout = new QVBoxLayout(pane);
   layout->setContentsMargins(0, 0, 0, 0);
   layout->setSpacing(0);
-  layout->addWidget(dock);
+  ApplyExpandingPolicy(dock);
+  if (QWidget* content = dock->widget()) {
+    ApplyExpandingPolicy(content);
+  }
+  layout->addWidget(dock, /*stretch=*/1);
   return pane;
 }
 
@@ -208,6 +324,10 @@ void PrepareDockForSplitter(QDockWidget* dock) {
   }
   dock->setAllowedAreas(Qt::NoDockWidgetArea);
   dock->setFeatures(QDockWidget::DockWidgetClosable);
+  ApplyExpandingPolicy(dock);
+  if (QWidget* content = dock->widget()) {
+    ApplyExpandingPolicy(content);
+  }
   // Avoid re-entrant visibilityChanged when already docked in the splitter.
   if (dock->isFloating()) {
     const QSignalBlocker blocker(dock);
@@ -432,6 +552,19 @@ void MainPanelHost::removePanel(QDockWidget* dock) {
     delete pane;
   }
   CollapseDegenerateSplitter(parent_splitter, root_splitter_);
+  // Remaining panes must expand into the freed space (closing Map / Plot /
+  // duplicate 3D View used to leave a half-width gap beside the survivor).
+  if (root_splitter_ != nullptr && root_splitter_->count() > 0) {
+    FillSplitter(root_splitter_);
+    const QPointer<MainPanelHost> self(this);
+    QTimer::singleShot(0, this, [self]() {
+      if (self == nullptr || self->root_splitter_ == nullptr) {
+        return;
+      }
+      FillSplitter(self->root_splitter_);
+      RaiseSplitterHandles(self->root_splitter_);
+    });
+  }
   RaiseSplitterHandles(root_splitter_);
 }
 
@@ -441,6 +574,7 @@ void MainPanelHost::addPanel(QDockWidget* dock) {
   }
   if (hostsPanel(dock)) {
     dock->show();
+    FillSplitter(root_splitter_);
     RaiseSplitterHandles(root_splitter_);
     return;
   }
@@ -452,6 +586,16 @@ void MainPanelHost::addPanel(QDockWidget* dock) {
   dock->show();
   equalizeTopLevel();
   RaiseSplitterHandles(root_splitter_);
+  // Layout may still report a stale host width; refill after geometry commits.
+  const QPointer<MainPanelHost> self(this);
+  QTimer::singleShot(0, this, [self]() {
+    if (self == nullptr || self->root_splitter_ == nullptr) {
+      return;
+    }
+    EqualizeSplitter(self->root_splitter_);
+    FillSplitter(self->root_splitter_);
+    RaiseSplitterHandles(self->root_splitter_);
+  });
 }
 
 void MainPanelHost::splitPanel(QDockWidget* first, QDockWidget* second,
@@ -493,10 +637,6 @@ void MainPanelHost::splitPanel(QDockWidget* first, QDockWidget* second,
   }
 
   QList<int> parent_sizes = parent->sizes();
-  const int span =
-      parent_sizes.value(index, orientation == Qt::Horizontal
-                                    ? qMax(first_pane->width(), 160)
-                                    : qMax(first_pane->height(), 120));
 
   // Path [] leaf → become the root split node (no extra nesting wrapper).
   if (parent == root_splitter_ && root_splitter_->count() == 1) {
@@ -505,10 +645,32 @@ void MainPanelHost::splitPanel(QDockWidget* first, QDockWidget* second,
     root_splitter_->addWidget(second_pane);
     first->show();
     second->show();
-    const int half = qMax(span / 2, 80);
-    root_splitter_->setSizes({half, qMax(span - half, 80)});
+    EqualizeSplitter(root_splitter_);
     RaiseSplitterHandles(root_splitter_);
+    const QPointer<MainPanelHost> self(this);
+    QTimer::singleShot(0, this, [self]() {
+      if (self == nullptr || self->root_splitter_ == nullptr) {
+        return;
+      }
+      EqualizeSplitter(self->root_splitter_);
+      FillSplitter(self->root_splitter_);
+      RaiseSplitterHandles(self->root_splitter_);
+    });
     return;
+  }
+
+  // Prefer the parent's allocated span for this leaf; fall back to host geometry
+  // so a not-yet-laid-out pane does not lock in a tiny split (gap in the middle).
+  const int parent_span = parent->orientation() == Qt::Horizontal
+                              ? qMax(parent->width(), width())
+                              : qMax(parent->height(), height());
+  int span = parent_sizes.value(index, 0);
+  if (span < kMinPaneSpan * 2) {
+    span = orientation == Qt::Horizontal
+               ? qMax(qMax(first_pane->width(), parent_span),
+                      qMax(width(), 160))
+               : qMax(qMax(first_pane->height(), parent_span),
+                      qMax(height(), 120));
   }
 
   auto* nested = new PanelSplitter(orientation);
@@ -523,28 +685,36 @@ void MainPanelHost::splitPanel(QDockWidget* first, QDockWidget* second,
   first->show();
   second->show();
 
-  const int half = qMax(span / 2, 80);
-  nested->setSizes({half, qMax(span - half, 80)});
+  const int half = qMax(span / 2, kMinPaneSpan);
+  nested->setSizes({half, qMax(span - half, kMinPaneSpan)});
+  nested->setStretchFactor(0, 1);
+  nested->setStretchFactor(1, 1);
   if (parent_sizes.size() == parent->count()) {
     parent->setSizes(parent_sizes);
   }
+  FillSplitter(root_splitter_);
   RaiseSplitterHandles(root_splitter_);
+  const QPointer<MainPanelHost> self(this);
+  QTimer::singleShot(0, this, [self]() {
+    if (self == nullptr || self->root_splitter_ == nullptr) {
+      return;
+    }
+    FillSplitter(self->root_splitter_);
+    RaiseSplitterHandles(self->root_splitter_);
+  });
 }
 
 void MainPanelHost::equalizeTopLevel() {
   if (root_splitter_ == nullptr || root_splitter_->count() <= 0) {
     return;
   }
-  QList<int> sizes;
-  sizes.reserve(root_splitter_->count());
-  const int total = root_splitter_->orientation() == Qt::Horizontal
-                        ? qMax(width(), 1)
-                        : qMax(height(), 1);
-  const int each = qMax(total / root_splitter_->count(), 80);
-  for (int i = 0; i < root_splitter_->count(); ++i) {
-    sizes.push_back(each);
+  // Use the splitter's own geometry (not the host) and assign stretch so a
+  // later window resize continues to fill without leaving a centre gap.
+  if (root_splitter_->width() < 2 || root_splitter_->height() < 2) {
+    root_splitter_->resize(qMax(width(), 1), qMax(height(), 1));
   }
-  root_splitter_->setSizes(sizes);
+  EqualizeSplitter(root_splitter_);
+  FillSplitter(root_splitter_);
 }
 
 void MainPanelHost::tilePanels(const QList<QDockWidget*>& visible,
@@ -611,12 +781,7 @@ void MainPanelHost::tilePanels(const QList<QDockWidget*>& visible,
       }
       if (row_has_panel) {
         root_splitter_->addWidget(row);
-        QList<int> widths;
-        const int cell = qMax(width() / qMax(row->count(), 1), 80);
-        for (int i = 0; i < row->count(); ++i) {
-          widths.push_back(cell);
-        }
-        row->setSizes(widths);
+        EqualizeSplitter(row);
         RaiseSplitterHandles(row);
       } else {
         delete row;
@@ -630,6 +795,11 @@ void MainPanelHost::tilePanels(const QList<QDockWidget*>& visible,
 }
 
 void MainPanelHost::syncHorizontalDockLayout() {
+  if (root_splitter_ == nullptr) {
+    return;
+  }
+  // Scale existing ratios to the current host size (do not destroy mosaic).
+  FillSplitter(root_splitter_);
   RaiseSplitterHandles(root_splitter_);
 }
 
@@ -713,12 +883,39 @@ bool MainPanelHost::restoreMosaicLayout(
       dock->raise();
     }
   }
+  FillSplitter(root_splitter_);
   RaiseSplitterHandles(root_splitter_);
+  const QPointer<MainPanelHost> self(this);
+  QTimer::singleShot(0, this, [self]() {
+    if (self == nullptr || self->root_splitter_ == nullptr) {
+      return;
+    }
+    FillSplitter(self->root_splitter_);
+    RaiseSplitterHandles(self->root_splitter_);
+  });
   return true;
 }
 
 void MainPanelHost::resizeEvent(QResizeEvent* event) {
   QMainWindow::resizeEvent(event);
+  // Only top up when there is a real gap. Unconditional FillSplitter here
+  // fights Ogre resize and produces perpetual 3D View flicker.
+  if (root_splitter_ != nullptr && !tiling_ && root_splitter_->count() > 0) {
+    const int handle_space =
+        root_splitter_->handleWidth() * qMax(0, root_splitter_->count() - 1);
+    const int available =
+        (root_splitter_->orientation() == Qt::Horizontal
+             ? root_splitter_->width()
+             : root_splitter_->height()) -
+        handle_space;
+    int sum = 0;
+    for (int size : root_splitter_->sizes()) {
+      sum += size;
+    }
+    if (available - sum > 8) {
+      FillSplitter(root_splitter_);
+    }
+  }
   RaiseSplitterHandles(root_splitter_);
 }
 

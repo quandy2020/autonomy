@@ -165,7 +165,9 @@ int main(int argc, char** argv) {
 
     const int smoke_ms = qEnvironmentVariableIntValue("AUTOVIZ_SMOKE_QUIT_MS");
     if (smoke_ms > 0) {
-      QTimer::singleShot(smoke_ms, &app, &QCoreApplication::quit);
+      // Close the main window (runs closeEvent / Ogre teardown) rather than
+      // QCoreApplication::quit → closeAllWindows, which races GLX hideChildren.
+      QTimer::singleShot(smoke_ms, &frame, &QWidget::close);
     }
     code = app.exec();
   }

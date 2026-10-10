@@ -432,24 +432,53 @@ void FrameSession::ensureSessionMainPanels() {
 void FrameSession::activateRestoredViewportAndView() {
   PanelDockWidget* visible_viewport = nullptr;
   for (PanelDockWidget* dock : frame_->layout_->orderedDockWidgets()) {
-    if (dock == nullptr || !dock->isVisible() ||
+    if (dock == nullptr || !dock->requestedVisible() ||
         frame_->panels_->panelTypeId(dock) != QLatin1String("ViewportDock")) {
       continue;
     }
     visible_viewport = dock;
     break;
   }
-  if (visible_viewport == nullptr) {
-    // Mosaic / VisiblePanels may have omitted the primary dock; keep a 3D View.
-    if (frame_->viewport_->viewport_dock_ != nullptr) {
-      visible_viewport = frame_->viewport_->viewport_dock_;
-      frame_->layout_->ensureMainPanelDockAttached(visible_viewport);
-      visible_viewport->show();
-      if (frame_->layout_->main_panel_host_ != nullptr &&
-          !frame_->layout_->main_panel_host_->hostsPanel(visible_viewport)) {
-        frame_->layout_->main_panel_host_->addPanel(visible_viewport);
+
+  const bool host_has_viewport = [&]() {
+    if (frame_->layout_->main_panel_host_ == nullptr) {
+      return false;
+    }
+    for (PanelDockWidget* dock : frame_->layout_->orderedDockWidgets()) {
+      if (dock == nullptr ||
+          frame_->panels_->panelTypeId(dock) !=
+              QLatin1String("ViewportDock")) {
+        continue;
+      }
+      if (frame_->layout_->main_panel_host_->hostsPanel(dock)) {
+        return true;
       }
     }
+    return false;
+  }();
+
+  // Center column must host a 3D View by default. Cover: closed-all, mosaic
+  // that parked ViewportDock, or restore that left only Image/Plot in the host.
+  if ((visible_viewport == nullptr || !host_has_viewport) &&
+      frame_->viewport_->viewport_dock_ != nullptr) {
+    PanelDockWidget* primary = frame_->viewport_->viewport_dock_;
+    frame_->layout_->center_manual_layout_ = false;
+    frame_->layout_->suppress_center_tile_ = false;
+    frame_->layout_->ensureMainPanelDockAttached(primary);
+    primary->show();
+    if (QAction* toggle = primary->toggleViewAction()) {
+      toggle->blockSignals(true);
+      toggle->setChecked(true);
+      toggle->blockSignals(false);
+    }
+    frame_->layout_->last_active_dock_ = primary;
+    if (!host_has_viewport) {
+      // Empty / Image-only center → retile so ViewportDock is in the mosaic.
+      frame_->layout_->tileCenterPanels();
+    } else {
+      frame_->layout_->scheduleTileCenterPanels();
+    }
+    visible_viewport = primary;
   }
   if (visible_viewport != nullptr) {
     frame_->viewport_->ensureViewportPanelReady(visible_viewport);
@@ -571,34 +600,64 @@ void FrameSession::applyStartupWindowState() {
     if (!frame_->isVisible()) {
       frame_->show();
     }
-    return;
-  }
+  } else {
+    frame_->setWindowState(Qt::WindowMaximized);
+    frame_->show();
 
-  frame_->setWindowState(Qt::WindowMaximized);
-  frame_->show();
-
-  const auto ensure_maximized = [this]() {
-    if (!LoadAppUiPreferences().start_maximized) {
-      return;
-    }
-    if (frame_->isMaximized()) {
+    const auto ensure_maximized = [this]() {
+      if (!LoadAppUiPreferences().start_maximized) {
+        return;
+      }
+      if (frame_->isMaximized()) {
+        frame_->raise();
+        frame_->activateWindow();
+        return;
+      }
+      frame_->showMaximized();
       frame_->raise();
       frame_->activateWindow();
-      return;
-    }
-    frame_->showMaximized();
-    frame_->raise();
-    frame_->activateWindow();
-    if (frame_->isMaximized()) {
-      return;
-    }
-    if (QScreen* screen = QGuiApplication::primaryScreen()) {
-      frame_->setGeometry(screen->availableGeometry());
-    }
-  };
+      if (frame_->isMaximized()) {
+        return;
+      }
+      if (QScreen* screen = QGuiApplication::primaryScreen()) {
+        frame_->setGeometry(screen->availableGeometry());
+      }
+    };
 
-  QTimer::singleShot(0, frame_, ensure_maximized);
-  QTimer::singleShot(150, frame_, ensure_maximized);
+    QTimer::singleShot(0, frame_, ensure_maximized);
+    QTimer::singleShot(150, frame_, ensure_maximized);
+  }
+
+  // Fresh start (no loadConfig) never hits activateRestoredViewportAndView.
+  // After the window is shown, ensure the center mosaic hosts 3D View.
+  QTimer::singleShot(0, frame_, [this]() {
+    if (frame_->viewport_->viewport_dock_ == nullptr ||
+        frame_->layout_->main_panel_host_ == nullptr) {
+      return;
+    }
+    const bool host_has_viewport =
+        frame_->layout_->main_panel_host_->hostsPanel(
+            frame_->viewport_->viewport_dock_);
+    if (host_has_viewport &&
+        frame_->viewport_->viewport_dock_->requestedVisible()) {
+      frame_->viewport_->ensureViewportPanelReady(
+          frame_->viewport_->viewport_dock_);
+    } else {
+      frame_->layout_->applyMainPanelDefaultLayout();
+    }
+
+    // Optional CI/smoke: Split Right the active 3D View after layout settles.
+    const int split_ms = qEnvironmentVariableIntValue("AUTOVIZ_SMOKE_SPLIT_MS");
+    if (split_ms > 0 && frame_->viewport_->viewport_dock_ != nullptr) {
+      QTimer::singleShot(split_ms, frame_, [this]() {
+        if (frame_->viewport_->viewport_dock_ == nullptr) {
+          return;
+        }
+        frame_->layout_->onSplitActiveDock(frame_->viewport_->viewport_dock_,
+                                           Qt::Horizontal);
+      });
+    }
+  });
 }
 
 void FrameSession::restoreWindowLayout() {
@@ -982,6 +1041,10 @@ void FrameSession::onRefreshTick() {
 }
 
 void FrameSession::onAboutToQuit() {
+  if (quit_teardown_done_) {
+    return;
+  }
+  quit_teardown_done_ = true;
   // Stop timers / playback, then release display GPU objects while Ogre
   // windows still exist. Do NOT manager_->shutdown() here (Autolink/docks).
   render_timer_.stop();
@@ -992,10 +1055,16 @@ void FrameSession::onAboutToQuit() {
   }
   frame_->viewport_->forEachViewportPanel([](ViewportPanelEntry& entry) {
     if (entry.ogre_viewport != nullptr) {
+      entry.ogre_viewport->hideNativeSurface();
       if (auto* host = entry.ogre_viewport->ogreSceneHost()) {
         host->clear();
       }
     }
+  });
+  // Sync-destroy before ~VisualizationFrame walks dock children — deferred
+  // deleteLater leaves GLX widgets for QObject teardown and SIGSEGVs.
+  frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
+    frame_->viewport_->destroyRenderWindowInEntry(entry, /*synchronous=*/true);
   });
 
   QSettings settings;
@@ -1030,9 +1099,12 @@ void FrameSession::onReset() {
 }
 
 void FrameSession::resizeEvent(QResizeEvent* event) {
-  // Never retile on resize — dock geometry changes would loop forever.
-  // Also never equalize after directed Split: docks are not a regular grid.
-  if (frame_->layout_->main_panel_host_ != nullptr && !frame_->layout_->center_tiling_ && !frame_->layout_->center_manual_layout_ &&
+  Q_UNUSED(event);
+  // Never retile on resize — that would destroy a directed mosaic.
+  // Always scale-fill existing splitter ratios so 3D View + Map stay edge-to
+  // edge when the window grows (manual layout used to skip this and left a gap).
+  if (frame_->layout_->main_panel_host_ != nullptr &&
+      !frame_->layout_->center_tiling_ &&
       !frame_->layout_->suppress_center_tile_) {
     frame_->layout_->main_panel_host_->syncHorizontalDockLayout();
   }

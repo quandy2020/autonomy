@@ -240,10 +240,23 @@ void upsertMarker(
     markers->erase(MarkerKey{marker.ns(), marker.id()});
     return;
   }
+  const MarkerKey key{marker.ns(), marker.id()};
+  auto existing = markers->find(key);
+  const bool same_mesh =
+      existing != markers->end() && existing->second.has_mesh &&
+      existing->second.marker.type() == marker.type() &&
+      existing->second.marker.mesh_resource() == marker.mesh_resource() &&
+      existing->second.marker.mesh_file().data() == marker.mesh_file().data();
   StoredMarker stored;
   stored.marker = marker;
+  if (same_mesh) {
+    stored.mesh = std::move(existing->second.mesh);
+    stored.has_mesh = true;
+    existing->second = std::move(stored);
+    return;
+  }
   stored.has_mesh = parseMarkerMesh(marker, &stored.mesh);
-  (*markers)[MarkerKey{marker.ns(), marker.id()}] = std::move(stored);
+  (*markers)[key] = std::move(stored);
 }
 
 void drawStoredMarkers(

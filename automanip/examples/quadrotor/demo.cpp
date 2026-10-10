@@ -16,30 +16,95 @@
 
 /**
  * @file demo.cpp
- * @brief Quadrotor MPC. PoseStamped position is the xyz target.
+ * @brief Quadrotor MPC. Tracks a 3D position and yaw from autoviz Goal Pose.
  */
 
+#include <cmath>
 #include <cstdlib>
+#include <random>
 #include <string>
+
+#include <Eigen/Geometry>
 
 #include "automanip/ddp/gauss_newton_ddp_mpc.hpp"
 #include "examples/quadrotor/definitions.hpp"
 #include "examples/quadrotor/quadrotor_interface.hpp"
+#include "examples/quadrotor/quadrotor_parameters.hpp"
 #include "examples/runtime/demo_loop.hpp"
 #include "examples/runtime/markers.hpp"
 
 namespace {
 
+std::string MeshPath() {
+  const std::string urdf_path = AUTOMANIP_EXAMPLE_URDF;
+  const auto slash = urdf_path.find_last_of('/');
+  const std::string urdf_dir =
+      slash == std::string::npos ? std::string(".") : urdf_path.substr(0, slash);
+  const auto parent = urdf_dir.find_last_of('/');
+  const std::string example_dir =
+      parent == std::string::npos ? std::string(".") : urdf_dir.substr(0, parent);
+  return example_dir + "/meshes/quadrotor.obj";
+}
+
+std::string RobotDescription() {
+  std::string xml = automanip::examples::ReadTextFile(AUTOMANIP_EXAMPLE_URDF);
+  const std::string package_uri =
+      "package://ocs2_robotic_assets/resources/quadrotor/meshes/quadrotor.obj";
+  const auto pos = xml.find(package_uri);
+  if (pos != std::string::npos) {
+    xml.replace(pos, package_uri.size(), MeshPath());
+  }
+  return xml;
+}
+
+void EulerZyxToQuaternion(double yaw, double pitch, double roll, double* qw, double* qx,
+                          double* qy, double* qz) {
+  const Eigen::Quaterniond rotation =
+      Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) *
+      Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
+      Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX());
+  *qw = rotation.w();
+  *qx = rotation.x();
+  *qy = rotation.y();
+  *qz = rotation.z();
+}
+
+/** Official command: reach a position and yaw. Roll and pitch stay with the robot. */
+automanip::TargetTrajectories CommandToGoal(const automanip::vector_t& current, double x,
+                                            double y, double z, double yaw,
+                                            automanip::scalar_t time) {
+  automanip::vector_t goal = current;
+  goal(0) = x;
+  goal(1) = y;
+  goal(2) = z;
+  const double yaw_error =
+      std::atan2(std::sin(yaw - current(5)), std::cos(yaw - current(5)));
+  goal(5) = current(5) + yaw_error;
+  if (goal.size() > 6) {
+    goal.tail(goal.size() - 6).setZero();
+  }
+  const double distance = (goal - current).head<6>().norm();
+  constexpr double kAverageSpeed = 2.0;
+  const automanip::scalar_t arrival =
+      time + std::max(0.2, distance / kAverageSpeed);
+  const automanip::vector_t input =
+      automanip::vector_t::Zero(automanip::quadrotor::INPUT_DIM);
+  return automanip::TargetTrajectories({time, arrival}, {current, goal}, {input, input});
+}
+
 automanip::TargetTrajectories TargetFromPose(
     const automanip::examples::PoseStamped& pose, const automanip::vector_t& previous,
     automanip::scalar_t time) {
-  automanip::vector_t target = previous;
-  target(0) = pose.pose().position().x();
-  target(1) = pose.pose().position().y();
-  target(2) = pose.pose().position().z();
-  target.tail(automanip::quadrotor::STATE_DIM - 3).setZero();
-  return automanip::TargetTrajectories(
-      {time}, {target}, {automanip::vector_t::Zero(automanip::quadrotor::INPUT_DIM)});
+  const auto& orientation = pose.pose().orientation();
+  const double yaw = std::atan2(
+      2.0 * (orientation.w() * orientation.z() + orientation.x() * orientation.y()),
+      1.0 - 2.0 * (orientation.y() * orientation.y() + orientation.z() * orientation.z()));
+  // Nav Goal is a ground click. Each target picks its own hover height.
+  thread_local std::mt19937 generator{std::random_device{}()};
+  std::uniform_real_distribution<double> altitude(0.5, 3.0);
+  const double z = altitude(generator);
+  return CommandToGoal(previous, pose.pose().position().x(), pose.pose().position().y(), z, yaw,
+                       time);
 }
 
 void Publish(const automanip::SystemObservation& observation,
@@ -53,36 +118,44 @@ void Publish(const automanip::SystemObservation& observation,
   if (!command.mpcTargetTrajectories_.stateTrajectory.empty()) {
     target = command.mpcTargetTrajectories_.stateTrajectory.back();
   }
-  using Marker = automsgs::msgs::visualization_msgs::Marker;
-  *markers->add_markers() = automanip::examples::MakeShape(
-      "target", 0, Marker::SPHERE, target(0), target(1), target(2), 0.1, 0.1, 0.1, 0.1f, 0.8f,
-      0.2f);
-  const double yaw = observation.state(5);
-  const double pitch = observation.state(4);
+  const double x = observation.state(0);
+  const double y = observation.state(1);
+  const double z = observation.state(2);
   const double roll = observation.state(3);
-  automanip::examples::FillJoints(
-      joints, {"x", "y", "z", "yaw", "pitch", "roll"},
-      {observation.state(0), observation.state(1), observation.state(2), yaw, pitch, roll});
+  const double pitch = observation.state(4);
+  const double yaw = observation.state(5);
+  automanip::examples::FillJoints(joints, {}, {});
+
   double qw = 1.0;
   double qx = 0.0;
   double qy = 0.0;
   double qz = 0.0;
-  automanip::examples::AddTransform(tf, "map", "world", 0.0, 0.0, 0.0);
-  automanip::examples::AddTransform(tf, "world", "dx", observation.state(0), 0.0, 0.0);
-  automanip::examples::AddTransform(tf, "dx", "dy", 0.0, observation.state(1), 0.0);
-  automanip::examples::AddTransform(tf, "dy", "dz", 0.0, 0.0, observation.state(2));
-  automanip::examples::AxisAngle(yaw, 0.0, 0.0, 1.0, &qw, &qx, &qy, &qz);
-  automanip::examples::AddTransform(tf, "dz", "yaw_link", 0.0, 0.0, 0.0, qw, qx, qy, qz);
-  automanip::examples::AxisAngle(pitch, 0.0, 1.0, 0.0, &qw, &qx, &qy, &qz);
-  automanip::examples::AddTransform(tf, "yaw_link", "pitch_link", 0.0, 0.0, 0.0, qw, qx, qy, qz);
-  automanip::examples::AxisAngle(roll, 1.0, 0.0, 0.0, &qw, &qx, &qy, &qz);
-  automanip::examples::AddTransform(tf, "pitch_link", "body", 0.0, 0.0, 0.0, qw, qx, qy, qz);
-  automanip::examples::AddTransform(tf, "body", "rotor_fr", 0.18, 0.18, 0.02);
-  automanip::examples::AddTransform(tf, "body", "rotor_fl", 0.18, -0.18, 0.02);
-  automanip::examples::AddTransform(tf, "body", "rotor_rr", -0.18, 0.18, 0.02);
-  automanip::examples::AddTransform(tf, "body", "rotor_rl", -0.18, -0.18, 0.02);
-  for (const auto& state : policy.stateTrajectory_) {
-    automanip::examples::AddPathPose(path, state(0), state(1), state(2));
+  EulerZyxToQuaternion(yaw, pitch, roll, &qw, &qx, &qy, &qz);
+  automanip::examples::AddTransform(tf, "map", "base", x, y, z, qw, qx, qy, qz);
+  EulerZyxToQuaternion(target(5), target(4), target(3), &qw, &qx, &qy, &qz);
+  automanip::examples::AddTransform(tf, "map", "command", target(0), target(1), target(2), qw, qx,
+                                    qy, qz);
+
+  using Marker = automsgs::msgs::visualization_msgs::Marker;
+  EulerZyxToQuaternion(yaw, pitch, roll, &qw, &qx, &qy, &qz);
+  auto mesh = automanip::examples::MakeShape(
+      "body", 0, Marker::MESH_RESOURCE, x, y, z, 0.4, 0.4, 0.4, 0.08f, 0.08f, 0.08f, qw, qx, qy,
+      qz);
+  mesh.set_mesh_resource(MeshPath());
+  *markers->add_markers() = std::move(mesh);
+
+  // The drawn path is the open-loop horizon. Feedback already holds the hover,
+  // so that horizon is not a path still left to fly.
+  const Eigen::Vector3d position = observation.state.head<3>();
+  const Eigen::Vector3d goal = target.head<3>();
+  constexpr double kGoalTolerance = 0.2;
+  if ((position - goal).norm() <= kGoalTolerance) {
+    return;
+  }
+  const auto& trajectory = policy.stateTrajectory_;
+  const std::size_t stride = trajectory.size() > 40 ? trajectory.size() / 40 : 1;
+  for (std::size_t i = 0; i < trajectory.size(); i += stride) {
+    automanip::examples::AddPathPose(path, trajectory[i](0), trajectory[i](1), trajectory[i](2));
   }
 }
 
@@ -95,6 +168,8 @@ int main(int argc, char** argv) {
   automanip::GaussNewtonDDP_MPC mpc(interface.mpcSettings(), interface.ddpSettings(),
                                     interface.getRollout(), interface.getOptimalControlProblem(),
                                     interface.getInitializer());
+  const auto parameters =
+      automanip::quadrotor::loadSettings(AUTOMANIP_EXAMPLE_TASK, "QuadrotorParameters", false);
   automanip::examples::DemoRequest request;
   request.name = "quadrotor";
   request.mpc = &mpc;
@@ -104,10 +179,12 @@ int main(int argc, char** argv) {
   request.thread_priority = interface.ddpSettings().threadPriority_;
   request.initial_state = interface.getInitialState();
   request.initial_target = interface.getInitialState();
+  request.command_from_state = true;
   request.initial_input = automanip::vector_t::Zero(automanip::quadrotor::INPUT_DIM);
+  request.initial_input(0) = parameters.quadrotorMass_ * parameters.gravity_;
   request.publish = Publish;
   request.on_target = TargetFromPose;
-  request.robot_description = automanip::examples::ReadTextFile(AUTOMANIP_EXAMPLE_URDF);
+  request.robot_description = RobotDescription();
   request.max_steps = steps;
   return automanip::examples::RunDemo(request);
 }

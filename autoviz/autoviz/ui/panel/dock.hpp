@@ -120,6 +120,14 @@ class PanelDockWidget : public QDockWidget {
   void overrideVisibility(bool hidden);
 
   /**
+   * @brief User-requested visibility (ignores ancestor @c isVisible() chain).
+   *
+   * Before the main window is shown, @c QWidget::isVisible() is false even
+   * after @c show(). Mosaic tiling must use this flag or the center stays empty.
+   */
+  bool requestedVisible() const { return requested_visibility_; }
+
+  /**
    * @brief @c true while the user is dragging this dock via the title bar.
    */
   bool isTitleDragActive() const { return title_drag_active_; }
@@ -166,8 +174,8 @@ class PanelDockWidget : public QDockWidget {
 
  private slots:
   /**
-   * @brief Clears content pointers when the child is destroyed.
-   * @param child Destroyed child object.
+   * @brief Marks the dock disposed and @c deleteLater() when content is destroyed.
+   * @param child Destroyed content widget (from @ref setContentWidget).
    */
   void onChildDestroyed(QObject* child);
 

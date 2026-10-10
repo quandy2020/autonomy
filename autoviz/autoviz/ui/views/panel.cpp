@@ -359,7 +359,7 @@ void ViewsPanel::populateTree() {
   updating_ = false;
 }
 
-void ViewsPanel::updateCurrentViewValues() {
+void ViewsPanel::updateCurrentViewValues(bool update_visibility) {
   if (view_controller_ == nullptr) {
     return;
   }
@@ -414,7 +414,9 @@ void ViewsPanel::updateCurrentViewValues() {
   if (QTreeWidgetItem* item = findItemByKind(ViewTreeItemKind::kFocalPointZ)) {
     item->setText(kViewTreeColValue, FormatFloat(point.z()));
   }
-  updatePropertyVisibility();
+  if (update_visibility) {
+    updatePropertyVisibility();
+  }
 }
 
 void ViewsPanel::updatePropertyVisibility() {
@@ -474,8 +476,24 @@ void ViewsPanel::updatePropertyVisibility() {
 
 void ViewsPanel::refreshFromController() {
   updating_ = true;
-  populateTypeSelector();
-  updateCurrentViewValues();
+  // Do not rebuild the type combo here — clearing QComboBox on every call
+  // (historically wired to viewDragUpdated) caused Orbit interaction hitch.
+  updateCurrentViewValues(/*update_visibility=*/true);
+  updating_ = false;
+}
+
+void ViewsPanel::syncCameraValuesFromController() {
+  if (updating_ || view_controller_ == nullptr) {
+    return;
+  }
+  // ~30 Hz UI sync is enough; matching the mouse rate floods the tree.
+  if (camera_sync_elapsed_.isValid() &&
+      camera_sync_elapsed_.elapsed() < 33) {
+    return;
+  }
+  camera_sync_elapsed_.restart();
+  updating_ = true;
+  updateCurrentViewValues(/*update_visibility=*/false);
   updating_ = false;
 }
 

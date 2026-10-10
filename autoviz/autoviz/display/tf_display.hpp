@@ -236,7 +236,7 @@ class TfDisplay : public ChannelDisplay<automsgs::msgs::tf2_msgs::TFMessage> {
   struct CachedProps {
     bool show_names = false;       /**< Draw frame name labels. */
     bool show_axes = true;         /**< Draw RGB axes. */
-    bool show_arrows = true;       /**< Draw parent→child arrows. */
+    bool show_arrows = false;      /**< Draw parent→child arrows. */
     float marker_scale = 1.f;      /**< Multiplier on default axis length. */
     float update_interval = 0.f;   /**< Seconds between frame refreshes; 0 = every tick. */
     float frame_timeout = 15.f;    /**< Aging timeout (seconds); ≤0 disables. */

@@ -59,6 +59,9 @@
 #include "autoviz/rendering/gpu_capabilities.hpp"
 #include "autoviz/rendering/view_controller.hpp"
 #include "autoviz/common/view_state_io.hpp"
+#include "autoviz/ui/viewport_panel.hpp"
+
+#include <optional>
 #include "autoviz/ui/panel/add_dialog.hpp"
 #include "autoviz/ui/app/settings_dialog.hpp"
 #include "autoviz/ui/app/preferences.hpp"
@@ -360,26 +363,63 @@ void FrameLayout::tileCenterPanels() {
         dock->property("panelDisposed").toBool() || dock->isFloating()) {
       continue;
     }
-    // Use real widget visibility — toggle isChecked can desync when we
-    // blockSignals during retile / close.
-    if (dock->isVisible()) {
+    // Prefer requestedVisible(): before the frame is shown, isVisible() is
+    // always false and would park every dock → empty white center.
+    if (dock->requestedVisible()) {
       visible.push_back(dock);
     } else {
       hidden.push_back(dock);
     }
   }
 
-  if (visible.isEmpty() && frame_->viewport_->viewport_dock_ != nullptr) {
-    frame_->viewport_->viewport_dock_->blockSignals(true);
-    frame_->viewport_->viewport_dock_->show();
-    frame_->viewport_->viewport_dock_->blockSignals(false);
-    if (QAction* toggle = frame_->viewport_->viewport_dock_->toggleViewAction()) {
-      toggle->blockSignals(true);
-      toggle->setChecked(true);
-      toggle->blockSignals(false);
+  // Allow an empty center column (user may close every 3D View / main panel).
+  // Do not force-show ViewportDock — that made the last 3D View unclosable.
+
+  // Skip destructive retile when the mosaic already hosts exactly the visible
+  // set. Full tile parks/reinstalls Ogre and causes perpetual 3D View flicker.
+  if (!visible.isEmpty()) {
+    bool mosaic_ok = true;
+    for (QDockWidget* dock : visible) {
+      if (!main_panel_host_->hostsPanel(dock)) {
+        mosaic_ok = false;
+        break;
+      }
     }
-    visible.push_back(frame_->viewport_->viewport_dock_);
-    hidden.removeAll(frame_->viewport_->viewport_dock_);
+    if (mosaic_ok) {
+      for (QDockWidget* dock : hidden) {
+        if (dock != nullptr && main_panel_host_->hostsPanel(dock)) {
+          mosaic_ok = false;
+          break;
+        }
+      }
+    }
+    if (mosaic_ok) {
+      main_panel_host_->syncHorizontalDockLayout();
+      // Mosaic already correct — still reinstall any parked Ogre surface so a
+      // 3D View that skipped a full retile is not left blank (toolbar only).
+      for (QDockWidget* dock : visible) {
+        auto* panel_dock = qobject_cast<PanelDockWidget*>(dock);
+        if (panel_dock != nullptr &&
+            frame_->panels_->panelTypeId(panel_dock) ==
+                QLatin1String("ViewportDock")) {
+          frame_->viewport_->ensureViewportPanelReady(panel_dock);
+        }
+      }
+      for (QDockWidget* dock : visible + hidden) {
+        if (dock == nullptr) {
+          continue;
+        }
+        if (QAction* toggle = dock->toggleViewAction()) {
+          auto* panel = qobject_cast<PanelDockWidget*>(dock);
+          toggle->blockSignals(true);
+          toggle->setChecked(panel != nullptr ? panel->requestedVisible()
+                                              : dock->isVisible());
+          toggle->blockSignals(false);
+        }
+      }
+      center_tiling_ = false;
+      return;
+    }
   }
 
   for (QDockWidget* dock : visible + hidden) {
@@ -410,14 +450,16 @@ void FrameLayout::tileCenterPanels() {
     }
   }
 
-  // Keep Panels menu checkboxes aligned with actual dock visibility.
+  // Keep Panels menu checkboxes aligned with requested dock visibility.
   for (QDockWidget* dock : visible + hidden) {
     if (dock == nullptr) {
       continue;
     }
     if (QAction* toggle = dock->toggleViewAction()) {
+      auto* panel = qobject_cast<PanelDockWidget*>(dock);
       toggle->blockSignals(true);
-      toggle->setChecked(dock->isVisible());
+      toggle->setChecked(panel != nullptr ? panel->requestedVisible()
+                                          : dock->isVisible());
       toggle->blockSignals(false);
     }
   }
@@ -550,6 +592,9 @@ void FrameLayout::applyMainPanelDefaultLayout() {
     return;
   }
 
+  suppress_center_tile_ = false;
+  center_manual_layout_ = false;
+
   for (PanelDockWidget* dock : orderedDockWidgets()) {
     if (dock == nullptr || !isMainPanel(dock) || dock == frame_->viewport_->viewport_dock_) {
       continue;
@@ -557,10 +602,18 @@ void FrameLayout::applyMainPanelDefaultLayout() {
     dock->hide();
   }
 
-  frame_->viewport_->viewport_dock_->show();
-  ensureMainPanelDockAttached(frame_->viewport_->viewport_dock_);
-  last_active_dock_ = frame_->viewport_->viewport_dock_;
+  PanelDockWidget* viewport = frame_->viewport_->viewport_dock_;
+  viewport->show();
+  if (QAction* toggle = viewport->toggleViewAction()) {
+    toggle->blockSignals(true);
+    toggle->setChecked(true);
+    toggle->blockSignals(false);
+  }
+  ensureMainPanelDockAttached(viewport);
+  last_active_dock_ = viewport;
   tileCenterPanels();
+  frame_->viewport_->ensureViewportPanelReady(viewport);
+  frame_->viewport_->setActiveViewportDock(viewport);
 }
 
 void FrameLayout::configureFlexibleDock(PanelDockWidget* dock) {
@@ -868,7 +921,48 @@ void FrameLayout::changePanelInDock(PanelDockWidget* source,
     frame_->viewport_->setActiveViewportDock(target);
   }
   frame_->panels_->activatePanelDock(target);
+
+  // Change replaces the leaf — destroy Split duplicates of the old type so the
+  // Panels menu does not keep leftover "3D View" / "Plot" toggles. Keep the
+  // canonical primary (objectName == typeId) hidden for reopen.
+  const QString source_type = frame_->panels_->panelTypeId(source);
+  const bool source_multi =
+      frame_->panels_->panelTypeSupportsMultiInstance(source_type);
+  const bool source_canonical = source->objectName() == source_type;
+  if (source_multi && !source_canonical) {
+    if (expanded_main_panel_dock_ == source) {
+      expanded_main_panel_dock_ = nullptr;
+    }
+    if (last_active_dock_ == source) {
+      last_active_dock_ = target;
+    }
+    if (QAction* toggle = source->toggleViewAction()) {
+      if (frame_->chrome_->panels_menu_ != nullptr) {
+        frame_->chrome_->panels_menu_->removeAction(toggle);
+      }
+      frame_->chrome_->panels_menu_toggle_actions_.removeAll(
+          QPointer<QAction>(toggle));
+    }
+    source->setProperty("panelDisposed", true);
+    if (source_type == QLatin1String("ViewportDock")) {
+      frame_->viewport_->removeViewportPanel(source);
+    }
+    if (main_panel_host_ != nullptr && main_panel_host_->hostsPanel(source)) {
+      main_panel_host_->removePanel(source);
+    }
+    const QPointer<PanelDockWidget> source_guard(source);
+    QObject::connect(source, &QObject::destroyed, frame_, [this]() {
+              frame_->chrome_->rebuildPanelsMenuToggles();
+              frame_->panels_->syncDeletePanelMenu();
+            },
+            static_cast<Qt::ConnectionType>(Qt::QueuedConnection |
+                                            Qt::SingleShotConnection));
+    source->deleteLater();
+    Q_UNUSED(source_guard);
+  }
+
   scheduleTileCenterPanels();
+  frame_->chrome_->rebuildPanelsMenuToggles();
   frame_->panels_->syncDeletePanelMenu();
   frame_->session_->markConfigModified();
 }
@@ -1110,10 +1204,26 @@ void FrameLayout::onDockPanelVisibilityChange(bool visible) {
   }
   if (dock_widget != nullptr && isMainPanel(dock_widget)) {
     if (visible) {
-      ensureMainPanelDockAttached(dock_widget);
-    }
-    // Directed Split owns layout until the next explicit grid tile.
-    if (!center_manual_layout_) {
+      const bool needs_attach =
+          main_panel_host_ == nullptr ||
+          !main_panel_host_->hostsPanel(dock_widget);
+      if (needs_attach) {
+        // Only clear manual layout / retile when the dock is not in the mosaic.
+        // Retiling an already-hosted 3D View parks Ogre every time → flicker.
+        center_manual_layout_ = false;
+        suppress_center_tile_ = false;
+        ensureMainPanelDockAttached(dock_widget);
+        if (!dock_widget->isVisible()) {
+          dock_widget->show();
+        }
+        scheduleTileCenterPanels();
+      }
+    } else if (main_panel_host_ != nullptr &&
+               main_panel_host_->hostsPanel(dock_widget)) {
+      // Hide via Panels menu: detach that leaf only (no full mosaic rebuild).
+      main_panel_host_->removePanel(dock_widget);
+      main_panel_host_->syncHorizontalDockLayout();
+    } else if (!center_manual_layout_) {
       scheduleTileCenterPanels();
     }
   }
@@ -1140,14 +1250,19 @@ void FrameLayout::showPanelByObjectName(const QString& object_name) {
       }
     }
     if (existing_dock != nullptr && !existing_dock->isVisible()) {
+      center_manual_layout_ = false;
+      suppress_center_tile_ = false;
       ensureMainPanelDockAttached(existing_dock);
       if (frame_->panels_->panelTypeId(existing_dock) == QLatin1String("ViewportDock")) {
         frame_->viewport_->ensureViewportPanelReady(existing_dock);
+        frame_->viewport_->setActiveViewportDock(existing_dock);
       }
       existing_dock->show();
       existing_dock->raise();
       last_active_dock_ = existing_dock;
       frame_->panels_->activatePanelDock(existing_dock);
+      scheduleTileCenterPanels();
+      frame_->chrome_->rebuildPanelsMenuToggles();
       frame_->panels_->syncDeletePanelMenu();
       frame_->session_->markConfigModified();
       return;
@@ -1302,6 +1417,17 @@ void FrameLayout::onSplitActiveDock(PanelDockWidget* source,
   const bool is_channel_graph =
       frame_->panels_->panelTypeId(source) == QLatin1String("ChannelGraphDock");
 
+  // Snapshot camera before park — source Ogre is detached across splitPanel.
+  std::optional<rendering::ViewState> split_view_state;
+  if (is_viewport) {
+    if (ViewportPanelEntry* src_entry =
+            frame_->viewport_->viewportEntryForDock(source)) {
+      if (rendering::ViewController* src_vc = src_entry->viewController()) {
+        split_view_state = src_vc->state();
+      }
+    }
+  }
+
   PanelDockWidget* duplicate = frame_->panels_->duplicatePanelDock(source);
   if (duplicate == nullptr) {
     QMessageBox::information(
@@ -1349,6 +1475,13 @@ void FrameLayout::onSplitActiveDock(PanelDockWidget* source,
   }
   duplicate->setFloating(false);
   duplicate->blockSignals(true);
+  // Park live Ogre/GLX before splitter reparent (replaceWidget / WrapDockInPane).
+  // Same hazard as tileCenterPanels / session mosaic restore.
+  if (is_viewport) {
+    frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
+      frame_->viewport_->parkRenderWindowInEntry(entry);
+    });
+  }
   if (isMainPanel(source) && main_panel_host_ != nullptr) {
     main_panel_host_->splitPanel(source, duplicate, orientation);
   } else {
@@ -1364,6 +1497,74 @@ void FrameLayout::onSplitActiveDock(PanelDockWidget* source,
   duplicate->show();
   duplicate->blockSignals(false);
   duplicate->raise();
+
+  if (is_viewport) {
+    // Pause paint while GLX is parked / second window is created — a concurrent
+    // render tick during reparent is another common Split SIGSEGV path.
+    const bool timer_was_active = frame_->session_->render_timer_.isActive();
+    frame_->session_->render_timer_.stop();
+
+    // Defer Ogre create + reinstall until after Qt commits splitter geometry so
+    // winId()/size are valid and we reuse the primary GL context safely.
+    const QPointer<PanelDockWidget> source_gl(source);
+    const QPointer<PanelDockWidget> duplicate_gl(duplicate);
+    const std::optional<rendering::ViewState> view_copy = split_view_state;
+    QTimer::singleShot(0, frame_, [this, source_gl, duplicate_gl, view_copy,
+                                   timer_was_active]() {
+      if (!duplicate_gl) {
+        if (timer_was_active && !frame_->session_->app_inactive_) {
+          frame_->session_->render_timer_.start();
+        }
+        return;
+      }
+      // Reinstall source first so its GLX surface leaves the frame parking
+      // spot before the duplicate creates a second native window.
+      frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
+        frame_->viewport_->reinstallRenderWindowInEntry(entry);
+      });
+      if (source_gl) {
+        frame_->viewport_->ensureViewportPanelReady(source_gl.data());
+      }
+      frame_->viewport_->ensureViewportPanelReady(duplicate_gl.data());
+      if (view_copy.has_value()) {
+        if (ViewportPanelEntry* dst_entry =
+                frame_->viewport_->viewportEntryForDock(duplicate_gl.data())) {
+          if (rendering::ViewController* dst_vc = dst_entry->viewController()) {
+            dst_vc->setState(*view_copy);
+          }
+        }
+      }
+      frame_->viewport_->setActiveViewportDock(duplicate_gl.data());
+      // Splitter sizes often commit one event-loop turn later — without this
+      // the duplicate Ogre window initializes at 1×1 and stays blank white.
+      QTimer::singleShot(0, frame_, [this, duplicate_gl, timer_was_active]() {
+        if (duplicate_gl) {
+          frame_->viewport_->ensureViewportPanelReady(duplicate_gl.data());
+          if (ViewportPanelEntry* entry =
+                  frame_->viewport_->viewportEntryForDock(duplicate_gl.data())) {
+            if (entry->widget != nullptr) {
+              entry->widget->show();
+              entry->widget->raise();
+              if (entry->host != nullptr) {
+                entry->host->updateGeometry();
+              }
+              entry->widget->updateGeometry();
+              (void)entry->widget->winId();
+              if (entry->ogre_viewport != nullptr) {
+                entry->ogre_viewport->showNativeSurface();
+              }
+              entry->widget->update();
+            }
+          }
+          frame_->viewport_->setActiveViewportDock(duplicate_gl.data());
+        }
+        frame_->viewport_->requestViewportUpdate();
+        if (timer_was_active && !frame_->session_->app_inactive_) {
+          frame_->session_->render_timer_.start();
+        }
+      });
+    });
+  }
 
   if (QAction* toggle = duplicate->toggleViewAction()) {
     toggle->blockSignals(true);
@@ -1398,12 +1599,15 @@ void FrameLayout::onSplitActiveDock(PanelDockWidget* source,
         }
       }
 
-      // Center host uses QSplitter — sizes already set in splitPanel/tilePanels.
+      // Center host uses QSplitter — refill after geometry commits so a stale
+      // pane width from splitPanel cannot leave a gap between neighbours.
       const bool center_split =
           host_guard.data() == static_cast<QMainWindow*>(main_panel_host_) ||
           (main_panel_host_ != nullptr &&
            main_panel_host_->hostsPanel(source_guard.data()));
-      if (!center_split && orientation == Qt::Vertical) {
+      if (center_split && main_panel_host_ != nullptr) {
+        main_panel_host_->syncHorizontalDockLayout();
+      } else if (!center_split && orientation == Qt::Vertical) {
         // Equalize the whole column that contains the split (not just the pair),
         // otherwise the 3rd/4th Split down overflows and clips neighbors.
         QList<QDockWidget*> column;

@@ -405,10 +405,14 @@ Ogre::RenderWindow* RenderSystem::makeRenderWindow(WindowHandle window_id,
   }
   static int window_counter = 0;
   Ogre::NameValuePairList params;
-  params["currentGLContext"] = "False";
-  // parentWindowHandle embeds into the Qt widget. Do not also set
-  // externalWindowHandle — with both set, Ogre takes the parent path and can
-  // still leave a stray top-level drawable on some GLX builds.
+  // Match RViz: each embedded window gets its own GL context. Do NOT set
+  // currentGLContext=true for Split panes unless the primary context is made
+  // current first — otherwise GLXWindow::create SIGSEGVs / corrupts heap when
+  // glXGetCurrentContext() is null (common right after Qt reparent).
+  params["currentGLContext"] = Ogre::String("false");
+  // RViz sets both; externalWindowHandle is what OgreBitesQt uses for Qt embeds.
+  params["externalWindowHandle"] =
+      Ogre::StringConverter::toString(static_cast<size_t>(window_id));
   params["parentWindowHandle"] =
       Ogre::StringConverter::toString(static_cast<size_t>(window_id));
   params["left"] = "0";

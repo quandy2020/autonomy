@@ -29,6 +29,7 @@
 #include <string>
 #include <vector>
 
+#include <QColor>
 #include <QVector2D>
 #include <QVector3D>
 
@@ -47,10 +48,27 @@ namespace display {
  * @note Coordinates are in the mesh's local frame; callers apply
  *       @c QMatrix4x4 transforms when drawing.
  */
+/**
+ * @brief One `usemtl` range inside an OBJ.
+ *
+ * Triangles are a slice of @ref ObjMesh::triangles. @c texture_path is empty
+ * when the MTL material has only a diffuse color (no `map_Kd`).
+ */
+struct ObjSubmesh {
+  std::string name;
+  QColor diffuse{255, 255, 255};
+  std::string texture_path;
+  int triangle_begin = 0;
+  int triangle_count = 0;
+};
+
 struct ObjMesh {
   std::vector<QVector3D> vertices;           /**< Vertex positions. */
   std::vector<QVector2D> texcoords;          /**< UV coordinates (may be empty). */
   std::vector<std::array<int, 3>> triangles; /**< Triangle index triples. */
+  /** Filled by @ref loadObjFile when the OBJ references an MTL library. */
+  std::vector<ObjSubmesh> submeshes;
+  bool has_material_groups = false;
 };
 
 /**

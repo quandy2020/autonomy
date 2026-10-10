@@ -177,4 +177,4 @@ Eigen::Matrix<SCALAR_T, 6, 1> getNormalizedCentroidalMomentumRate(const Pinocchi
 
 }  // namespace automanip
 
-#include "implementation/ModelHelperFunctionsImpl.h"
+#include "implementation/model_helper_functions_impl.hpp"

@@ -74,8 +74,8 @@ autolink launch start src/autonomy/automanip/examples/launch/mobile_manipulator.
 |---|---|---|
 | `cartpole_demo` | 小车倒立摆。导轨 `slideBar`，关节 `slider_to_cart`、`cart_to_pole`。固定坐标系用 `slideBar` 时和上游 RViz 一致 | `PoseStamped.x` 是小车位置 |
 | `double_integrator_demo` | 导轨 `slideBar` 上的灰球 `cart` 和红球 `target`。关节 `slider_to_cart`、`slider_to_target`。固定坐标系用 `slideBar` 时和上游 RViz 一致 | `PoseStamped.x` 是位置 |
-| `quadrotor_demo` | 四旋翼。关节 `x y z yaw pitch roll` | `PoseStamped` 的 xyz 是位置 |
-| `ballbot_demo` | 球上平衡。蓝球 `ball`，灰色机体网格 `base`。关节 `jball_x`、`jball_y`、`jbase_z`、`jbase_y`、`jbase_x`。固定坐标系是 `map` | `PoseStamped` 的 xy 是地面位置 |
+| `quadrotor_demo` | 四旋翼。单个连杆 `base`，黑色网格 `quadrotor.obj`。固定坐标系是 `map`。悬停高度 1 m，跟踪三维位置和偏航 | autoviz 的 Nav Goal。xy 和偏航跟点击，高度在 0.5 m 到 3.0 m 之间随机 |
+| `ballbot_demo` | 球上平衡。蓝球 `ball`，灰色机体网格 `base`。关节 `jball_x`、`jball_y`、`jbase_z`、`jbase_y`、`jbase_x`。固定坐标系是 `map`。机体上方有速度文字 | autoviz 的 Nav Goal，或 `PoseStamped` 的 xy 和偏航 |
 | `legged_robot_demo` | ANYmal C。根连杆 `base`，十二条腿关节。视觉网格和贴图与上游 RViz 相同。足端球、绿色接触力、黑色支撑多边形发在标记话题 | `PoseStamped` 的 xy 和偏航改躯干目标，高度保持不变 |
 | `mobile_manipulator_demo` | Franka Panda，根连杆 `root`。视觉网格与上游 RViz 相同 | `PoseStamped` 是末端 `panda_hand_tcp` 的位姿 |
 
@@ -85,10 +85,12 @@ autolink launch start src/autonomy/automanip/examples/launch/mobile_manipulator.
 |---|---|---|
 | `/robot_description` | `std_msgs/String` | URDF，RobotModel 的 Description Topic |
 | `/joint_states` | `sensor_msgs/JointState` | 与 URDF 关节同名 |
-| `/tf` | `tf2_msgs/TFMessage` | `map` → link，RobotModel 用来摆模型 |
+| `/tf` | `tf2_msgs/TFMessage` | Ballbot 只发 `map`→`base` 和 `map`→`command`。其余示例是 `map` 到各个 link |
 | `/<name>/path` | `nav_msgs/Path` | MPC 预测轨迹 |
 | `/<name>/markers` | `visualization_msgs/MarkerArray` | 目标 |
 | `/<name>/target_pose` | `geometry_msgs/PoseStamped` | 订阅。新消息会改目标，未写到的状态分量保持上次的值 |
+| `/goal_pose` | `geometry_msgs/PoseStamped` | 订阅。autoviz 工具栏 Nav Goal 的默认话题，和上面同一套目标 |
+| `/cmd_vel` | `geometry_msgs/TwistStamped` | Ballbot 发布。航向坐标系 `dummy_base1` 下的平面速度和偏航角速度，autoviz 用 TwistStamped 画箭头 |
 
 URDF 在 `examples/<name>/urdf/<name>.urdf`。模型和关节只发全局话题 `/robot_description`、`/joint_states`，不再各发一份 `/<name>/` 副本。一次只跑一个示例，因为这两个话题和 `/tf` 是全局的。
 

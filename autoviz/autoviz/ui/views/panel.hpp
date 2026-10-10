@@ -20,6 +20,7 @@
 
 #include <vector>
 
+#include <QElapsedTimer>
 #include <QWidget>
 
 class QComboBox;
@@ -198,14 +199,25 @@ class ViewsPanel : public QWidget {
   void setViewController(rendering::ViewController* view_controller);
 
   /**
-   * @brief Syncs type combo and Current View values from the controller.
+   * @brief Syncs Current View values from the controller.
    *
-   * Does not rebuild the whole tree (unlike @ref setViewController()). Safe
-   * to call on camera drag updates from the viewport.
+   * Does not rebuild the whole tree (unlike @ref setViewController()). Type
+   * combo is left alone — it is refreshed via @ref setViewController().
    *
+   * @see syncCameraValuesFromController()
    * @see updateCurrentViewValues()
    */
   void refreshFromController();
+
+  /**
+   * @brief Lightweight camera-pose sync for live Orbit/FPS drag.
+   *
+   * Updates numeric Current View cells only; skips type combo rebuild and
+   * property show/hide (those do not change while dragging).
+   *
+   * @see refreshFromController()
+   */
+  void syncCameraValuesFromController();
 
   /**
    * @brief Refresh TF frame list for the Target Frame combo without rebuilding
@@ -340,8 +352,10 @@ class ViewsPanel : public QWidget {
    * @brief Copies ViewController state into Current View value cells.
    *
    * Chooses FPS eye pose vs Orbit focal point based on controller type.
+   *
+   * @param update_visibility When @c true, also runs @ref updatePropertyVisibility().
    */
-  void updateCurrentViewValues();
+  void updateCurrentViewValues(bool update_visibility = true);
 
   /**
    * @brief Shows/hides and relabels properties for Orbit / FPS / Ortho.
@@ -407,6 +421,9 @@ class ViewsPanel : public QWidget {
    * into the controller during @ref populateTree() / refresh.
    */
   bool updating_ = false;
+
+  /** Throttle for @ref syncCameraValuesFromController during Orbit drag. */
+  QElapsedTimer camera_sync_elapsed_;
 };
 
 }  // namespace autoviz

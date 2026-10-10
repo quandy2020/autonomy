@@ -84,6 +84,12 @@ class OgreRenderWindow : public QWidget {
   void hideNativeSurface() { ogre_backend_.setWindowVisible(false); }
 
   /**
+   * @brief Shows the native Ogre surface after park / hide without waiting for
+   *        a Qt show event (reinstall may already mark the QWidget visible).
+   */
+  void showNativeSurface() { ogre_backend_.setWindowVisible(true); }
+
+  /**
    * @brief Returns the owned camera controller.
    * @return Mutable @ref ViewController reference.
    */

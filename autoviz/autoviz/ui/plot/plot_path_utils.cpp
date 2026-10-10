@@ -6,6 +6,8 @@
 
 #include <map>
 
+#include <QRegularExpression>
+
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/integration/channel_manager.hpp"
 #include "autoviz/ui/plot/message_field_tree.hpp"
@@ -81,6 +83,75 @@ QString CombinedPlotValuePath(const QString& channel, const QString& field_path)
     return trimmed_channel;
   }
   return trimmed_channel + QLatin1Char('.') + trimmed_field;
+}
+
+bool IsGenericSeriesLabel(const QString& label) {
+  const QString trimmed = label.trimmed();
+  if (trimmed.isEmpty()) {
+    return true;
+  }
+  // English default from PlotSettingsWidget::defaultSeriesLabel.
+  static const QRegularExpression kSeriesEn(
+      QStringLiteral("^Series\\s+\\d+$"), QRegularExpression::CaseInsensitiveOption);
+  if (kSeriesEn.match(trimmed).hasMatch()) {
+    return true;
+  }
+  // Common localized "系列 N" placeholder.
+  static const QRegularExpression kSeriesZh(QStringLiteral("^系列\\s*\\d+$"));
+  return kSeriesZh.match(trimmed).hasMatch();
+}
+
+bool IsAutoSeriesLabel(const QString& label, const QString& channel,
+                       const QString& field_path) {
+  const QString trimmed = label.trimmed();
+  if (IsGenericSeriesLabel(trimmed)) {
+    return true;
+  }
+  const QString trimmed_channel = channel.trimmed();
+  const QString trimmed_field = field_path.trimmed();
+  const QString combined = CombinedPlotValuePath(trimmed_channel, trimmed_field);
+  if (trimmed == combined) {
+    return true;
+  }
+  if (!trimmed_channel.isEmpty() && trimmed == trimmed_channel) {
+    return true;
+  }
+  if (!trimmed_field.isEmpty() && trimmed == trimmed_field) {
+    return true;
+  }
+  if (!trimmed_field.isEmpty() &&
+      trimmed == trimmed_field.section(QLatin1Char('.'), -1)) {
+    return true;
+  }
+  if (!trimmed_channel.isEmpty() &&
+      trimmed == trimmed_channel.section(QLatin1Char('/'), -1)) {
+    return true;
+  }
+  // Incomplete auto path: "/cmd_vel" while combined is "/cmd_vel.linear.x".
+  if (!combined.isEmpty() && combined.startsWith(trimmed) &&
+      combined.size() > trimmed.size()) {
+    const QChar next = combined.at(trimmed.size());
+    if (next == QLatin1Char('.') || next == QLatin1Char('/')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+QString SeriesLegendLabel(const QString& label, const QString& channel,
+                          const QString& field_path) {
+  const QString combined = CombinedPlotValuePath(channel, field_path);
+  // Foxglove: legend is the full message path unless the user renamed the series.
+  if (!combined.isEmpty() && IsAutoSeriesLabel(label, channel, field_path)) {
+    return combined;
+  }
+  if (!label.trimmed().isEmpty()) {
+    return label.trimmed();
+  }
+  if (!combined.isEmpty()) {
+    return combined;
+  }
+  return field_path.trimmed().isEmpty() ? channel.trimmed() : field_path.trimmed();
 }
 
 bool SplitPlotValuePath(const QString& combined, const QStringList& known_channels,

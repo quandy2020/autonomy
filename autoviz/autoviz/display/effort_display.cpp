@@ -9,8 +9,8 @@
 #include <QMatrix4x4>
 #include <QtMath>
 
-#include "autolink/message/raw_message.hpp"
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include "autoviz/integration/channel_payload.hpp"
 #include "autoviz/commsgs/time_utils.hpp"
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/display/transform_utils.hpp"
@@ -89,39 +89,41 @@ void EffortDisplay::onEnable() {
   }
   reloadUrdf();
 
+  auto& registry = integration::ChannelReaderRegistry::instance();
   const std::string description_channel =
       propertyValue("description_channel", "/robot_description");
-  description_reader_.reset();
-  if (!description_channel.empty()) {
-    description_reader_ =
-        context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
-            description_channel,
-            [this](const std::shared_ptr<autolink::message::RawMessage>& msg) {
-              if (msg == nullptr) {
-                return;
-              }
-              std::string urdf_text;
-              if (proto_wire::UnwrapStdStringPayload(msg->message, &urdf_text) &&
-                  model_.loadFromString(urdf_text) && context_ != nullptr &&
-                  context_->request_redraw) {
-                context_->request_redraw();
-              }
-            });
+  if (description_subscription_ == 0 && !description_channel.empty()) {
+    description_subscription_ = registry.subscribe(
+        description_channel, [this](const std::string& payload) {
+          const std::string decoded = integration::DecodeChannelPayload(payload);
+          std::string urdf_text;
+          if ((proto_wire::UnwrapStdStringPayload(decoded, &urdf_text) ||
+               proto_wire::UnwrapStdStringPayload(payload, &urdf_text)) &&
+              model_.loadFromString(urdf_text) && context_ != nullptr &&
+              context_->request_redraw) {
+            context_->request_redraw();
+          }
+        });
   }
 
-  joint_reader_ =
-      context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
-          joint_channel_,
-          [this](const std::shared_ptr<autolink::message::RawMessage>& msg) {
-            if (msg != nullptr) {
-              joint_queue_.push(msg->message);
-            }
-          });
+  if (joint_subscription_ == 0 && !joint_channel_.empty()) {
+    joint_subscription_ = registry.subscribe(
+        joint_channel_, [this](const std::string& payload) {
+          joint_queue_.push(payload);
+        });
+  }
 }
 
 void EffortDisplay::onDisable() {
-  joint_reader_.reset();
-  description_reader_.reset();
+  auto& registry = integration::ChannelReaderRegistry::instance();
+  if (joint_subscription_ != 0) {
+    registry.unsubscribe(joint_subscription_);
+    joint_subscription_ = 0;
+  }
+  if (description_subscription_ != 0) {
+    registry.unsubscribe(description_subscription_);
+    description_subscription_ = 0;
+  }
 }
 
 void EffortDisplay::reset() {
