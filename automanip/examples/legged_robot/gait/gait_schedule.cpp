@@ -86,11 +86,20 @@ ModeSchedule GaitSchedule::getModeSchedule(scalar_t lowerBoundTime, scalar_t upp
     modeSequence.erase(modeSequence.begin(), modeSequence.begin() + index - 1);
 
     // set the default initial phase
-    modeSequence.front() = ModeNumber::STANCE;
+    if (!modeSequence.empty()) {
+      modeSequence.front() = ModeNumber::STANCE;
+    }
   }
 
-  // Start tiling at time
-  const auto tilingStartTime = eventTimes.empty() ? upperBoundTime : eventTimes.back();
+  // Start tiling at time. An empty schedule has no tail phase to delete;
+  // erasing end()-1 there is undefined and aborts the process.
+  if (eventTimes.empty() || modeSequence.empty()) {
+    eventTimes.clear();
+    modeSequence.clear();
+    tileModeSequenceTemplate(lowerBoundTime, upperBoundTime);
+    return modeSchedule_;
+  }
+  const auto tilingStartTime = eventTimes.back();
 
   // delete the last default stance phase
   eventTimes.erase(eventTimes.end() - 1, eventTimes.end());
@@ -123,14 +132,27 @@ void GaitSchedule::tileModeSequenceTemplate(scalar_t startTime, scalar_t finalTi
   // add a initial time
   eventTimes.push_back(startTime);
 
-  // concatenate from index
-  while (eventTimes.back() < finalTime) {
+  // concatenate from index. A non-positive phase length never reaches finalTime
+  // and the vector grows until the process is killed with std::bad_alloc.
+  while (eventTimes.back() < finalTime && eventTimes.size() < 100000) {
+    bool stop = false;
     for (size_t i = 0; i < templateModeSequence.size(); i++) {
+      if (i + 1 >= templateTimes.size()) {
+        stop = true;
+        break;
+      }
+      const scalar_t deltaTime = templateTimes[i + 1] - templateTimes[i];
+      if (!(deltaTime > 0.0)) {
+        stop = true;
+        break;
+      }
       modeSequence.push_back(templateModeSequence[i]);
-      scalar_t deltaTime = templateTimes[i + 1] - templateTimes[i];
       eventTimes.push_back(eventTimes.back() + deltaTime);
     }  // end of i loop
-  }    // end of while loop
+    if (stop) {
+      break;
+    }
+  }  // end of while loop
 
   // default final phase
   modeSequence.push_back(ModeNumber::STANCE);

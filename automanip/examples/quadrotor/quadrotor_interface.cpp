@@ -35,7 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <automanip/core/cost/quadratic_state_cost.hpp>
 #include <automanip/core/cost/quadratic_state_input_cost.hpp>
-#include <automanip/core/initialization/operating_points.hpp>
+#include <automanip/core/initialization/initializer.hpp>
 #include <automanip/core/misc/load_data.hpp>
 
 // Boost
@@ -44,6 +44,23 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace automanip {
 namespace quadrotor {
+
+// A single operating point snaps every later state back to the initial hover.
+// After a reset away from the origin that jump makes the next ILQR step diverge.
+class HoverInitializer final : public Initializer {
+ public:
+  explicit HoverInitializer(vector_t hover_input) : hover_input_(std::move(hover_input)) {}
+
+  HoverInitializer* clone() const override { return new HoverInitializer(hover_input_); }
+
+  void compute(scalar_t, const vector_t& state, scalar_t, vector_t& input, vector_t& next_state) override {
+    input = hover_input_;
+    next_state = state;
+  }
+
+ private:
+  vector_t hover_input_;
+};
 
 /******************************************************************************************************/
 /******************************************************************************************************/
@@ -102,7 +119,7 @@ QuadrotorInterface::QuadrotorInterface(const std::string& taskFile, const std::s
   // Initialization
   vector_t initialInput = vector_t::Zero(INPUT_DIM);
   initialInput(0) = quadrotorParameters.quadrotorMass_ * quadrotorParameters.gravity_;
-  operatingPointPtr_.reset(new OperatingPoints(initialState_, initialInput));
+  operatingPointPtr_.reset(new HoverInitializer(initialInput));
 }
 
 }  // namespace quadrotor

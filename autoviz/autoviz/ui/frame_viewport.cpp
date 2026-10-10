@@ -210,16 +210,23 @@ void FrameViewport::reinstallRenderWindowInEntry(ViewportPanelEntry& entry) {
                             Qt::AlignLeft | Qt::AlignTop);
   }
   if (entry.dock != nullptr && entry.dock->isVisible()) {
+    if (entry.host != nullptr) {
+      entry.host->updateGeometry();
+      // Pin the WA_NativeWindow to the post-split host rect before mapping.
+      // Otherwise the pre-split full-width GLX surface covers the sibling pane
+      // and the UI looks like "only one 3D View".
+      if (entry.host->width() >= 2 && entry.host->height() >= 2) {
+        entry.widget->setGeometry(entry.host->rect());
+      }
+    }
     entry.widget->show();
     entry.widget->raise();
+    entry.widget->updateGeometry();
+    (void)entry.widget->winId();
     if (entry.ogre_viewport != nullptr) {
       // Undo hideNativeSurface / park so the GLX window paints again.
       entry.ogre_viewport->showNativeSurface();
     }
-    if (entry.host != nullptr) {
-      entry.host->updateGeometry();
-    }
-    entry.widget->updateGeometry();
     // Paint only — do not syncToolContext here. Split/mosaic reinstall runs
     // while sibling docks may still be mid-reparent; requestViewportUpdate()
     // would call objectName() on a disposed dock and SIGSEGV.
@@ -266,15 +273,16 @@ void FrameViewport::createRenderWindowInEntry(ViewportPanelEntry& entry,
   applyViewportEntryRenderSettings(entry);
   connectViewportInteractionsForEntry(entry);
 
-  // Split deferred path: dock is already visible — reveal now so winId() and
-  // Ogre initialize() bind to the final host geometry (not a 0×0 placeholder).
+  // Reveal only when the host has a real size. Split creates the dock before
+  // QSplitter assigns pane geometry — initializing at 0×0 leaves a blank /
+  // missing sibling 3D View.
+  const bool sized = entry.host != nullptr && entry.host->width() >= 2 &&
+                     entry.host->height() >= 2;
   if (entry.dock != nullptr && entry.dock->requestedVisible() &&
-      entry.widget != nullptr) {
+      entry.widget != nullptr && sized) {
+    entry.widget->setGeometry(entry.host->rect());
     entry.widget->show();
     entry.widget->raise();
-    if (entry.host != nullptr) {
-      entry.host->updateGeometry();
-    }
     entry.widget->updateGeometry();
     (void)entry.widget->winId();
     if (entry.ogre_viewport != nullptr) {
@@ -465,11 +473,20 @@ void FrameViewport::ensureViewportPanelReady(PanelDockWidget* dock) {
         entry.host != nullptr && entry.widget->parentWidget() != entry.host;
     if (parked) {
       reinstallRenderWindowInEntry(entry);
-    } else if (dock->isVisible() && !entry.widget->isVisible() &&
-               entry.widget->parentWidget() == entry.host) {
-      entry.widget->show();
-      if (entry.ogre_viewport != nullptr) {
-        entry.ogre_viewport->showNativeSurface();
+    } else if (dock->isVisible() && entry.widget->parentWidget() == entry.host) {
+      const bool sized = entry.host != nullptr && entry.host->width() >= 2 &&
+                         entry.host->height() >= 2;
+      if (sized) {
+        entry.widget->setGeometry(entry.host->rect());
+        if (!entry.widget->isVisible()) {
+          entry.widget->show();
+        }
+        entry.widget->raise();
+        (void)entry.widget->winId();
+        if (entry.ogre_viewport != nullptr) {
+          entry.ogre_viewport->showNativeSurface();
+        }
+        entry.widget->update();
       }
     }
   }

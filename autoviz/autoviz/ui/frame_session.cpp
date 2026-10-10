@@ -29,8 +29,11 @@
 #include <QDropEvent>
 #include <QEvent>
 #include <QEventLoop>
+#include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QIODevice>
+#include <QTextStream>
 #include <QListWidget>
 #include <QMenu>
 #include <QMenuBar>
@@ -655,6 +658,48 @@ void FrameSession::applyStartupWindowState() {
         }
         frame_->layout_->onSplitActiveDock(frame_->viewport_->viewport_dock_,
                                            Qt::Horizontal);
+        // Dump mosaic state after deferred Split finish settles.
+        QTimer::singleShot(250, frame_, [this]() {
+          QFile diag(QStringLiteral("/tmp/autoviz_split_diag.txt"));
+          if (!diag.open(QIODevice::WriteOnly | QIODevice::Truncate |
+                         QIODevice::Text)) {
+            return;
+          }
+          QTextStream out(&diag);
+          int hosted_count = 0;
+          for (PanelDockWidget* dock : frame_->layout_->orderedDockWidgets()) {
+            if (dock == nullptr || frame_->layout_->main_panel_host_ == nullptr ||
+                !frame_->layout_->main_panel_host_->hostsPanel(dock)) {
+              continue;
+            }
+            ++hosted_count;
+            out << "dock name=" << dock->objectName()
+                << " title=" << dock->windowTitle()
+                << " visible=" << (dock->isVisible() ? 1 : 0)
+                << " geo=" << dock->width() << 'x' << dock->height()
+                << " at=" << dock->x() << ',' << dock->y() << '\n';
+          }
+          out << "hosted=" << hosted_count << '\n';
+          int vp_count = 0;
+          frame_->viewport_->forEachViewportPanel(
+              [&](ViewportPanelEntry& entry) {
+                ++vp_count;
+                out << "viewport name=" << entry.object_name
+                    << " widget=" << (entry.widget != nullptr ? 1 : 0)
+                    << " ogre=" << (entry.ogre_viewport != nullptr ? 1 : 0);
+                if (entry.host != nullptr) {
+                  out << " host=" << entry.host->width() << 'x'
+                      << entry.host->height();
+                }
+                if (entry.widget != nullptr) {
+                  out << " gl=" << entry.widget->width() << 'x'
+                      << entry.widget->height()
+                      << " gl_vis=" << (entry.widget->isVisible() ? 1 : 0);
+                }
+                out << '\n';
+              });
+          out << "viewport_entries=" << vp_count << '\n';
+        });
       });
     }
   });

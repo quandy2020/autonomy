@@ -144,19 +144,16 @@ void Publish(const automanip::SystemObservation& observation,
   mesh.set_mesh_resource(MeshPath());
   *markers->add_markers() = std::move(mesh);
 
-  // The drawn path is the open-loop horizon. Feedback already holds the hover,
-  // so that horizon is not a path still left to fly.
+  // The open-loop horizon dives to the ground between solves. Draw the
+  // remaining command instead: current position to the target hover.
   const Eigen::Vector3d position = observation.state.head<3>();
   const Eigen::Vector3d goal = target.head<3>();
   constexpr double kGoalTolerance = 0.2;
   if ((position - goal).norm() <= kGoalTolerance) {
     return;
   }
-  const auto& trajectory = policy.stateTrajectory_;
-  const std::size_t stride = trajectory.size() > 40 ? trajectory.size() / 40 : 1;
-  for (std::size_t i = 0; i < trajectory.size(); i += stride) {
-    automanip::examples::AddPathPose(path, trajectory[i](0), trajectory[i](1), trajectory[i](2));
-  }
+  automanip::examples::AddPathPose(path, position.x(), position.y(), position.z());
+  automanip::examples::AddPathPose(path, goal.x(), goal.y(), goal.z());
 }
 
 }  // namespace

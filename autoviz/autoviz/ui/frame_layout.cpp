@@ -61,6 +61,8 @@
 #include "autoviz/common/view_state_io.hpp"
 #include "autoviz/ui/viewport_panel.hpp"
 
+#include <functional>
+#include <memory>
 #include <optional>
 #include "autoviz/ui/panel/add_dialog.hpp"
 #include "autoviz/ui/app/settings_dialog.hpp"
@@ -1504,21 +1506,49 @@ void FrameLayout::onSplitActiveDock(PanelDockWidget* source,
     const bool timer_was_active = frame_->session_->render_timer_.isActive();
     frame_->session_->render_timer_.stop();
 
-    // Defer Ogre create + reinstall until after Qt commits splitter geometry so
-    // winId()/size are valid and we reuse the primary GL context safely.
+    // Wait for QSplitter pane geometry, then reinstall source (shrunk) and
+    // create the duplicate Ogre window. Too-early create or full-width remap
+    // of the source GLX covers the sibling → "only one 3D View".
     const QPointer<PanelDockWidget> source_gl(source);
     const QPointer<PanelDockWidget> duplicate_gl(duplicate);
     const std::optional<rendering::ViewState> view_copy = split_view_state;
-    QTimer::singleShot(0, frame_, [this, source_gl, duplicate_gl, view_copy,
-                                   timer_was_active]() {
+    auto finish = std::make_shared<std::function<void(int)>>();
+    *finish = [this, source_gl, duplicate_gl, view_copy, timer_was_active,
+               finish](int attempt) {
       if (!duplicate_gl) {
         if (timer_was_active && !frame_->session_->app_inactive_) {
           frame_->session_->render_timer_.start();
         }
         return;
       }
-      // Reinstall source first so its GLX surface leaves the frame parking
-      // spot before the duplicate creates a second native window.
+
+      if (main_panel_host_ != nullptr) {
+        main_panel_host_->syncHorizontalDockLayout();
+      }
+      duplicate_gl->show();
+      duplicate_gl->raise();
+      if (source_gl) {
+        source_gl->show();
+      }
+
+      int host_w = duplicate_gl->width();
+      int host_h = duplicate_gl->height();
+      if (ViewportPanelEntry* dup_entry =
+              frame_->viewport_->viewportEntryForDock(duplicate_gl.data())) {
+        if (dup_entry->host != nullptr) {
+          host_w = qMax(host_w, dup_entry->host->width());
+          host_h = qMax(host_h, dup_entry->host->height());
+        }
+      }
+      if ((host_w < 80 || host_h < 60) && attempt < 12) {
+        QTimer::singleShot(16, frame_, [finish, attempt]() {
+          (*finish)(attempt + 1);
+        });
+        return;
+      }
+
+      // Reinstall source first so its GLX leaves the parking spot and shrinks
+      // to the post-split host before the duplicate binds a second window.
       frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
         frame_->viewport_->reinstallRenderWindowInEntry(entry);
       });
@@ -1535,35 +1565,13 @@ void FrameLayout::onSplitActiveDock(PanelDockWidget* source,
         }
       }
       frame_->viewport_->setActiveViewportDock(duplicate_gl.data());
-      // Splitter sizes often commit one event-loop turn later — without this
-      // the duplicate Ogre window initializes at 1×1 and stays blank white.
-      QTimer::singleShot(0, frame_, [this, duplicate_gl, timer_was_active]() {
-        if (duplicate_gl) {
-          frame_->viewport_->ensureViewportPanelReady(duplicate_gl.data());
-          if (ViewportPanelEntry* entry =
-                  frame_->viewport_->viewportEntryForDock(duplicate_gl.data())) {
-            if (entry->widget != nullptr) {
-              entry->widget->show();
-              entry->widget->raise();
-              if (entry->host != nullptr) {
-                entry->host->updateGeometry();
-              }
-              entry->widget->updateGeometry();
-              (void)entry->widget->winId();
-              if (entry->ogre_viewport != nullptr) {
-                entry->ogre_viewport->showNativeSurface();
-              }
-              entry->widget->update();
-            }
-          }
-          frame_->viewport_->setActiveViewportDock(duplicate_gl.data());
-        }
-        frame_->viewport_->requestViewportUpdate();
-        if (timer_was_active && !frame_->session_->app_inactive_) {
-          frame_->session_->render_timer_.start();
-        }
-      });
-    });
+      frame_->chrome_->rebuildPanelsMenuToggles();
+      frame_->viewport_->requestViewportUpdate();
+      if (timer_was_active && !frame_->session_->app_inactive_) {
+        frame_->session_->render_timer_.start();
+      }
+    };
+    QTimer::singleShot(0, frame_, [finish]() { (*finish)(0); });
   }
 
   if (QAction* toggle = duplicate->toggleViewAction()) {

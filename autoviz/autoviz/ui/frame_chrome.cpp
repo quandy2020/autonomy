@@ -791,8 +791,13 @@ void FrameChrome::rebuildPanelsMenuToggles() {
     // accumulate as duplicate "3D View" rows. Keep the canonical primary
     // (objectName == typeId) so the menu can reopen it; skip / destroy other
     // hidden multi-instance docks that are no longer in the center mosaic.
+    //
+    // Use requestedVisible() — not isVisible(). createViewportPanelDock →
+    // registerPanelMenuToggle rebuilds the menu before Split hosts the new
+    // dock; isVisible() is still false then and deleteLater() wiped the
+    // duplicate, leaving "only one 3D View".
     if (frame_->panels_->panelTypeSupportsMultiInstance(type_id) &&
-        !dock->isVisible() && dock->objectName() != type_id) {
+        !dock->requestedVisible() && dock->objectName() != type_id) {
       const bool hosted =
           frame_->layout_->main_panel_host_ != nullptr &&
           frame_->layout_->main_panel_host_->hostsPanel(dock);

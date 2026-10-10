@@ -77,6 +77,7 @@ contact_flag_t SwitchedModelReferenceManager::getContactFlags(scalar_t time) con
 void SwitchedModelReferenceManager::modifyReferences(scalar_t initTime, scalar_t finalTime, const vector_t& initState,
                                                      TargetTrajectories& targetTrajectories, ModeSchedule& modeSchedule) {
   const auto timeHorizon = finalTime - initTime;
+  bool switch_gait = false;
   if (initState.size() >= 12 && !targetTrajectories.empty()) {
     const vector_t goal = targetTrajectories.getDesiredState(finalTime);
     if (goal.size() >= 12) {
@@ -88,9 +89,8 @@ void SwitchedModelReferenceManager::modifyReferences(scalar_t initTime, scalar_t
                                       : (distance > 0.12 || std::abs(dyaw) > 0.2);
       if (want_walk != walking_) {
         walking_ = want_walk;
+        switch_gait = true;
         std::cerr << "[SwitchedModelReferenceManager] gait " << (walking_ ? "trot" : "stance") << std::endl;
-        gaitSchedulePtr_->insertModeSequenceTemplate(walking_ ? TrotGait() : StanceGait(), initTime,
-                                                     finalTime + timeHorizon);
       }
     }
   }
@@ -98,6 +98,13 @@ void SwitchedModelReferenceManager::modifyReferences(scalar_t initTime, scalar_t
 
   const scalar_t terrainHeight = 0.0;
   swingTrajectoryPtr_->update(modeSchedule, terrainHeight);
+
+  // GaitReceiver inserts the template at finalTime, after this horizon has been
+  // built. Replacing the modes inside [initTime, finalTime] makes trajectory
+  // spreading walk off the mode array (bad_alloc / process abort).
+  if (switch_gait) {
+    gaitSchedulePtr_->insertModeSequenceTemplate(walking_ ? TrotGait() : StanceGait(), finalTime, timeHorizon);
+  }
 }
 
 }  // namespace legged_robot

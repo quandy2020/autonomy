@@ -73,7 +73,7 @@ bool StateNeedsRecovery(const std::string& name, const vector_t& state) {
   }
   // Euler pitch near ±pi/2 makes the quadrotor kinematics singular.
   if (name == "quadrotor" && state.size() >= 12) {
-    if (std::abs(state(3)) > 1.2 || std::abs(state(4)) > 1.2) {
+    if (std::abs(state(3)) > 1.4 || std::abs(state(4)) > 1.4) {
       return true;
     }
     for (Eigen::Index i = 6; i < state.size(); ++i) {
@@ -269,15 +269,35 @@ int RunDemo(const DemoRequest& request) {
   // integrated on top of a diverged pose.
   std::atomic<bool> hold_rollout{false};
   std::atomic<bool> reset_requested{false};
+  // A failed solve used to reset, fly the new policy, and trip the same
+  // guard again a few hundred milliseconds later.
+  std::atomic<int64_t> recovery_not_before_ms{0};
+  const auto now_ms = []() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+               std::chrono::steady_clock::now().time_since_epoch())
+        .count();
+  };
   auto recover_mpc = [&]() {
+    const int64_t now = now_ms();
+    if (now < recovery_not_before_ms.load()) {
+      return;
+    }
+    recovery_not_before_ms.store(now + 1000);
     hold_rollout.store(true);
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
     SystemObservation recovered;
+    vector_t goal_state;
     {
       std::lock_guard<std::mutex> lock(target_mu);
+      goal_state = target_state;
       RecoverState(request.name, &observation.state);
-      RecoverState(request.name, &target_state);
-      observation.input.setZero();
+      if (request.name == "quadrotor" &&
+          request.initial_input.size() == observation.input.size()) {
+        observation.input = request.initial_input;
+      } else {
+        observation.input.setZero();
+        RecoverState(request.name, &target_state);
+      }
       recovered = observation;
     }
     const vector_t input = recovered.input;
@@ -292,12 +312,26 @@ int RunDemo(const DemoRequest& request) {
       }
     }
     try {
+      // Stabilize in place first. The following warm start picks the goal back up.
       mrt.resetMpcNode(hold);
       mrt.getReferenceManager().setTargetTrajectories(hold);
       mrt.setCurrentObservation(recovered);
       mrt.advanceMpc();
       mrt.updatePolicy();
-      {
+      if (request.name == "quadrotor" && goal_state.size() == recovered.state.size()) {
+        goal_state(3) = 0.0;
+        goal_state(4) = 0.0;
+        if (goal_state.size() > 6) {
+          goal_state.tail(goal_state.size() - 6).setZero();
+        }
+        const double distance = (goal_state.head<3>() - recovered.state.head<3>()).norm();
+        const scalar_t arrival = recovered.time + std::max(0.5, distance / 2.0);
+        const TargetTrajectories resumed({recovered.time, arrival}, {recovered.state, goal_state},
+                                         {input, input});
+        mrt.getReferenceManager().setTargetTrajectories(resumed);
+        std::lock_guard<std::mutex> lock(target_mu);
+        target_state = goal_state;
+      } else {
         std::lock_guard<std::mutex> lock(target_mu);
         target_state = recovered.state;
       }
@@ -310,8 +344,14 @@ int RunDemo(const DemoRequest& request) {
 
   std::thread mpc_thread([&]() {
     while (mpc_running.load() && g_running.load()) {
-      if (reset_requested.exchange(false)) {
-        recover_mpc();
+      const bool retry_hold =
+          hold_rollout.load() && now_ms() >= recovery_not_before_ms.load();
+      if (reset_requested.exchange(false) || retry_hold) {
+        if (now_ms() >= recovery_not_before_ms.load()) {
+          recover_mpc();
+        } else {
+          std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
         continue;
       }
       if (hold_rollout.load()) {
@@ -322,6 +362,7 @@ int RunDemo(const DemoRequest& request) {
         executeAndSleep([&]() { mrt.advanceMpc(); }, mpc_hz);
       } catch (const std::exception& ex) {
         AERROR << request.name << " mpc thread: " << ex.what();
+        hold_rollout.store(true);
         recover_mpc();
       }
     }
@@ -341,7 +382,8 @@ int RunDemo(const DemoRequest& request) {
               std::lock_guard<std::mutex> lock(target_mu);
               current = observation;
             }
-            if (StateNeedsRecovery(request.name, current.state)) {
+            if (now_ms() >= recovery_not_before_ms.load() &&
+                StateNeedsRecovery(request.name, current.state)) {
               hold_rollout.store(true);
               reset_requested.store(true);
             }
@@ -374,7 +416,8 @@ int RunDemo(const DemoRequest& request) {
               AINFO << request.name << " waiting for the next policy";
               logged_plan_hold = true;
             }
-            if (StateNeedsRecovery(request.name, next.state)) {
+            if (now_ms() >= recovery_not_before_ms.load() &&
+                StateNeedsRecovery(request.name, next.state)) {
               next = current;
               hold_rollout.store(true);
               reset_requested.store(true);
