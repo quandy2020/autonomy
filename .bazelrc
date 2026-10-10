@@ -2,16 +2,12 @@
 
 common --enable_bzlmod
 
-build --cxxopt=-std=c++17
-build --host_cxxopt=-std=c++17
+build --cxxopt=-std=c++20
+build --host_cxxopt=-std=c++20
 build --copt=-Wall
 build --copt=-Wno-unused-parameter
 
-# Prefer the CMake install tree when present; override with AUTONOMY_PREFIX.
-build --repo_env=AUTONOMY_PREFIX
-test --repo_env=AUTONOMY_PREFIX
-
-# Shared libraries from the CMake prefix must be findable at runtime.
+# Sibling shared libs must be findable at runtime / test time.
 test --test_env=LD_LIBRARY_PATH
 build --action_env=LD_LIBRARY_PATH
 

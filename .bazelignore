@@ -1,10 +1,17 @@
-# Sibling Bazel workspaces.
-autodriver
+# Sibling modules are wired via local_path_override — keep them out of this
+# workspace's package graph. Other trees are non-Bazel or standalone.
+automsgs
 autolink
+autodriver
 autocmake
 autosim
 autoviz
 docker
 scripts
 docs
+ansible
+data
+images
+cmake
+config
 autonomy/docs
