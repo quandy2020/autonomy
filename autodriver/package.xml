@@ -9,7 +9,6 @@
   <buildtool_depend>autocmake</buildtool_depend>
   <build_depend>Eigen3</build_depend>
   <build_depend>Threads</build_depend>
-  <build_depend>yaml-cpp</build_depend>
 
   <export>
     <build_type>autocmake</build_type>

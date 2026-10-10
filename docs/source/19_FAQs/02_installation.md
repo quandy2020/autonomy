@@ -15,13 +15,12 @@ python3 scripts/install_dependencies.py --apt-only
 python3 scripts/install_dependencies.py --resume-from install_opencv.sh --skip-installed
 ```
 
-### Q: `libceres.so` / OSQP / BehaviorTree 找不到？
+### Q: `libceres.so` / BehaviorTree 找不到？
 
 ```bash
 python3 scripts/install_dependencies.py --thirdparty-only --skip-installed
 # 或单库：
 bash docker/install/install_ceres_solver.sh
-bash docker/install/install_osqp.sh
 bash docker/install/install_behaviortree_cpp.sh
 ```
 

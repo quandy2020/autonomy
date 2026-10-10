@@ -107,7 +107,6 @@ RUN bash /tmp/install/install_ceres_solver.sh
 RUN bash /tmp/install/install_g2o.sh
 RUN bash /tmp/install/install_fbow.sh
 RUN bash /tmp/install/install_nlohmann.sh
-RUN bash /tmp/install/install_osqp.sh
 RUN bash /tmp/install/install_behaviortree_cpp.sh
 RUN bash /tmp/install/install_python_modules.sh
 RUN bash /tmp/install/install_assimp.sh

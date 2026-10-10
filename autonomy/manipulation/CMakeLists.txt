@@ -71,7 +71,6 @@ autocmake_library(autonomy_manipulation
     $<TARGET_NAME_IF_EXISTS:VHACD::VHACD>
     $<TARGET_NAME_IF_EXISTS:TRAC_IK::TRAC_IK>
     $<TARGET_NAME_IF_EXISTS:octomap::octomap>
-    $<TARGET_NAME_IF_EXISTS:OSQP::OSQP>
     $<TARGET_NAME_IF_EXISTS:opentelemetry-cpp::opentelemetry_trace>)
 add_library(autonomy::manipulation ALIAS autonomy_manipulation)
 
@@ -86,10 +85,6 @@ target_compile_definitions(autonomy_manipulation PUBLIC
   $<$<TARGET_EXISTS:TRAC_IK::TRAC_IK>:AUTONOMY_HAS_TRAC_IK>
   $<$<TARGET_EXISTS:octomap::octomap>:AUTONOMY_HAS_OCTOMAP>
   $<$<TARGET_EXISTS:opentelemetry-cpp::opentelemetry_trace>:AUTONOMY_HAVE_OTEL=1>)
-
-if(NOT TARGET OSQP::OSQP AND OSQP_LIBRARIES)
-  target_link_libraries(autonomy_manipulation PUBLIC ${OSQP_LIBRARIES})
-endif()
 
 # --- binary ------------------------------------------------------------------
 autocmake_binary(autonomy.manipulation

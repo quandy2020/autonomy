@@ -44,7 +44,7 @@ Expected: failure because the per-module variables do not exist.
 
 - [ ] **Step 3: Implement per-module collection**
 
-Populate and export the four variable families. Apply the existing OSQP, Ipopt, fake-data, and base-component exclusions inside their owning module lists.
+Populate and export the four variable families. Apply the existing Ipopt, fake-data, and base-component exclusions inside their owning module lists.
 
 - [ ] **Step 4: Verify GREEN**
 

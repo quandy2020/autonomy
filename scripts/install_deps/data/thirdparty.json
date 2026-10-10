@@ -11,7 +11,6 @@
     "install_g2o.sh",
     "install_fbow.sh",
     "install_nlohmann.sh",
-    "install_osqp.sh",
     "install_behaviortree_cpp.sh",
     "install_python_modules.sh",
     "install_ipopt.sh",
@@ -27,7 +26,6 @@
     "install_grpc.sh",
     "install_ceres_solver.sh",
     "install_nlohmann.sh",
-    "install_osqp.sh",
     "install_g2o.sh",
     "install_fbow.sh",
     "install_behaviortree_cpp.sh"
@@ -89,13 +87,6 @@
       "paths": [
         "/usr/local/include/nlohmann/json.hpp",
         "/usr/include/nlohmann/json.hpp"
-      ],
-      "force": true
-    },
-    "install_osqp.sh": {
-      "paths": [
-        "/usr/local/lib/libosqp.so",
-        "/usr/local/lib64/libosqp.so"
       ],
       "force": true
     },

@@ -117,12 +117,38 @@ autonomy_embed_siblings()
 autocmake_project()
 autocmake_build(QUIT)
 
-# Distro yaml-cpp / glog often export bare targets; domains link namespaced.
-if(TARGET yaml-cpp AND NOT TARGET yaml-cpp::yaml-cpp)
-  add_library(yaml-cpp::yaml-cpp ALIAS yaml-cpp)
-endif()
+# Distro glog often exports a bare target; domains link namespaced.
 if(TARGET glog AND NOT TARGET glog::glog)
   add_library(glog::glog ALIAS glog)
+endif()
+
+# YAML: yaml-cpp has been replaced by the vendored fkYAML (autolink/thirdparty)
+# behind a yaml-cpp compatible API (autonomy/common/yaml.hpp).
+#   autonomy::fkYAML   header-only fkYAML (from autolink, or include fallback)
+#   autonomy::yaml     fkYAML + include paths for autonomy/common/yaml.hpp and
+#                      the <yaml-cpp/yaml.h> shim. Link this from targets that
+#                      do not already link autonomy_common (autodriver, autoviz).
+if(NOT TARGET autonomy::fkYAML)
+  if(TARGET fkYAML::fkYAML)
+    # fkYAML::fkYAML is itself an ALIAS (CMake cannot alias an alias), so wrap.
+    add_library(autonomy_fkYAML INTERFACE)
+    target_link_libraries(autonomy_fkYAML INTERFACE fkYAML::fkYAML)
+    add_library(autonomy::fkYAML ALIAS autonomy_fkYAML)
+  else()
+    # autolink did not provide the target: header-only fallback.
+    add_library(autonomy_fkYAML INTERFACE)
+    target_include_directories(autonomy_fkYAML SYSTEM INTERFACE
+      "${PROJECT_SOURCE_DIR}/autolink/thirdparty/fkYAML/include")
+    add_library(autonomy::fkYAML ALIAS autonomy_fkYAML)
+  endif()
+endif()
+if(NOT TARGET autonomy::yaml)
+  add_library(autonomy_yaml INTERFACE)
+  target_link_libraries(autonomy_yaml INTERFACE autonomy::fkYAML)
+  target_include_directories(autonomy_yaml INTERFACE
+    "${PROJECT_SOURCE_DIR}"
+    "${PROJECT_SOURCE_DIR}/autonomy/common/yaml_cpp_shim")
+  add_library(autonomy::yaml ALIAS autonomy_yaml)
 endif()
 
 # Vendored CLI11 (autolink/thirdparty) — header-only process CLI.

@@ -88,7 +88,7 @@ class App:
             description="Install autonomy dependencies (apt + docker/install scripts).",
             epilog=(
                 "CMake expects third-party libs under /usr/local from docker/install "
-                "(glog, gflags, Ceres, OpenCV, OSQP, BehaviorTree.CPP, etc.). "
+                "(glog, gflags, Ceres, OpenCV, BehaviorTree.CPP, etc.). "
                 "Ansible roles/dependencies/ calls this entry point; do not duplicate "
                 "install logic in ansible/."
             ),

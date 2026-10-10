@@ -3,6 +3,7 @@
   @prefix   — CMake prefix with libautolink.so / libautomsgs.so
   @autolink — sibling ../autolink source headers (+ link @prefix)
   @cli11    — sibling CLI11 headers
+  @fkYAML   — sibling fkYAML headers (replaces system yaml-cpp)
 
 Eigen comes from BCR: bazel_dep(name = "eigen") → @eigen//:eigen
 
@@ -78,6 +79,21 @@ def _cli11_impl(ctx):
     ctx.symlink(include, "include")
     _write_build(ctx, Label("//tools/bazel:cli11.BUILD"))
 
+def _fkyaml_impl(ctx):
+    # Symlink only include/ — avoid fkYAML's own CMake/Bazel package boundary.
+    include = (
+        _workspace(ctx)
+            .get_child("..")
+            .get_child("autolink")
+            .get_child("thirdparty")
+            .get_child("fkYAML")
+            .get_child("include")
+    )
+    if not include.exists:
+        fail("fkYAML include not found at %s" % include)
+    ctx.symlink(include, "include")
+    _write_build(ctx, Label("//tools/bazel:fkyaml.BUILD"))
+
 _prefix = repository_rule(
     implementation = _prefix_impl,
     environ = ["AUTONOMY_PREFIX"],
@@ -86,10 +102,12 @@ _prefix = repository_rule(
 
 _autolink = repository_rule(implementation = _autolink_impl, local = True)
 _cli11 = repository_rule(implementation = _cli11_impl, local = True)
+_fkyaml = repository_rule(implementation = _fkyaml_impl, local = True)
 
 def _deps_impl(module_ctx):
     _prefix(name = "prefix")
     _autolink(name = "autolink")
     _cli11(name = "cli11")
+    _fkyaml(name = "fkYAML")
 
 deps = module_extension(implementation = _deps_impl)

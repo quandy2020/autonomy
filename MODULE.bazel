@@ -10,7 +10,7 @@ CMake/Docker still install into /usr/local via install_deps.
 Version policy
 --------------
 * Prefer install_* tags when BCR + Bazel 8 accept them.
-* protobuf / grpc / abseil / osqp / lua: install_deps may use older tags;
+* protobuf / grpc / abseil / lua: install_deps may use older tags;
   Bazel pins the BCR-compatible set (marked †).
 
 install_deps (C++)              BCR bazel_dep (this file)             Label
@@ -24,7 +24,6 @@ install_ceres_solver.sh 2.2.0   ceres-solver 2.2.0                    @ceres-sol
 install_nlohmann.sh v3.12.0     nlohmann_json 3.12.0.bcr.2            @nlohmann_json//:json
 install_behaviortree_cpp 4.7.2  behaviortree_cpp 4.7.0.bcr.3          @behaviortree_cpp//:behaviortree_cpp
 install_gperftools.sh 2.8       gperftools 2.18.1 †                   @gperftools//:tcmalloc
-install_osqp.sh 0.6.3           osqp 1.0.0.bcr.3 †                    @osqp//:osqp
 install_assimp.sh               assimp 6.0.5                          @assimp//:assimp
 install_fastdds.sh              fastdds 3.4.2.bcr.1                   @fastdds//:fastdds
 install_opencv.sh 4.10          @autonomy_opencv (system) ‡           //:opencv
@@ -142,9 +141,6 @@ bazel_dep(name = "behaviortree_cpp", version = "4.7.0.bcr.3")
 
 # install_gperftools.sh → 2.8; BCR nearest modern
 bazel_dep(name = "gperftools", version = "2.18.1")
-
-# install_osqp.sh → 0.6.3; BCR only ships 1.x
-bazel_dep(name = "osqp", version = "1.0.0.bcr.3")
 
 # install_assimp.sh (autoviz / mesh)
 bazel_dep(name = "assimp", version = "6.0.5")

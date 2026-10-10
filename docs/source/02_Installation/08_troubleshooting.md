@@ -9,8 +9,7 @@
 |------|------|
 | `apt-get` 失败 | `sudo apt-get -y --fix-broken install` 后重试 |
 | `install_opencv.sh` 中断 | `--resume-from install_opencv.sh --skip-installed` |
-| 找不到 Ceres / OSQP / BT | 对应 `bash docker/install/install_*.sh`，确认在 `/usr/local` |
-| OSQP 只在 `~/.local` | 用 `--prefix /usr/local`（或同一自定义前缀）重装；**不要**混 `~/.local` 与 `/usr/local` |
+| 找不到 Ceres / BT | 对应 `bash docker/install/install_*.sh`，确认在 `/usr/local` |
 | 非 Ubuntu 警告 | 对照脚本 APT 列表自行装等效包 |
 
 ### 8.2 CMake 配置
@@ -18,7 +17,7 @@
 | 现象 | 处理 |
 |------|------|
 | `Could NOT find Protobuf` | `/usr/local` 装 `install_protobuf.sh`；板端勿混 apt protobuf |
-| `Could NOT find Ceres` / `OSQP` / `Lua` | 装对应库；Lua：`sudo apt install liblua5.3-dev` |
+| `Could NOT find Ceres` / `Lua` | 装对应库；Lua：`sudo apt install liblua5.3-dev` |
 | gRPC 报错 | `install_grpc.sh` 或 `-DBUILD_GRPC=OFF` |
 | 域依赖 FATAL | 按报错打开缺失的 `AUTONOMY_BUILD_*` |
 | Ipopt `stddef` 错误 | 重配 cmake，链接 `Ipopt::Ipopt` |

@@ -437,8 +437,17 @@ function(autoviz_finalize_library _target)
   target_include_directories(${_target} PRIVATE ${AUTOVIZ_DEPS_ROOT})
   add_dependencies(${_target} automsgs)
 
+  # yaml-cpp compatible API backed by fkYAML (autonomy/common/yaml.hpp).
+  if(TARGET autonomy::yaml)
+    target_link_libraries(${_target} PRIVATE autonomy::yaml)
+  else()
+    target_link_libraries(${_target} PRIVATE fkYAML::fkYAML)
+    target_include_directories(${_target} PRIVATE
+      ${AUTOVIZ_DEPS_ROOT}
+      ${AUTOVIZ_DEPS_ROOT}/autonomy/common/yaml_cpp_shim)
+  endif()
+
   target_link_libraries(${_target} PRIVATE
-    yaml-cpp
     Qt6::Core Qt6::Gui Qt6::Widgets Qt6::OpenGL Qt6::OpenGLWidgets
     Qt6::Xml Qt6::Svg Qt6::Network
     glog::glog protobuf::libprotobuf)

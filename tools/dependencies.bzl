@@ -60,7 +60,7 @@ AUTONOMY_PCL_DEPS = [
 ]
 
 # Optional / domain-specific (see MODULE.bazel inventory):
-#   @osqp//:osqp  @gperftools//:tcmalloc  @fastdds//:fastdds  @assimp//:assimp
+#   @gperftools//:tcmalloc  @fastdds//:fastdds  @assimp//:assimp
 #   @onetbb//:tbb  @flann//:flann  @lua//:lua  @libzmq//:libzmq
 #   @sqlite3//:sqlite3
 #

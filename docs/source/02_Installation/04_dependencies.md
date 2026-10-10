@@ -46,12 +46,11 @@ python3 scripts/install_dependencies.py --dry-run --profile board
 单库也可直接跑脚本（最快）：
 
 ```bash
-bash docker/install/install_osqp.sh
 bash docker/install/install_glog.sh
 AUTONOMY_MAKE_JOBS=2 bash docker/install/install_ceres_solver.sh   # 内存紧
 
 # 与 --prefix 等价：单库也走同一前缀
-AUTONOMY_INSTALL_PREFIX=/opt/autonomy bash docker/install/install_osqp.sh
+AUTONOMY_INSTALL_PREFIX=/opt/autonomy bash docker/install/install_glog.sh
 ```
 
 ---
@@ -71,8 +70,7 @@ AUTONOMY_INSTALL_PREFIX=/opt/autonomy bash docker/install/install_osqp.sh
 | 8 | `install_ceres_solver.sh` | Ceres |
 | 9 | `install_g2o.sh` / `install_fbow.sh` | 定位相关 |
 | 10 | `install_nlohmann.sh` | nlohmann/json |
-| 11 | `install_osqp.sh` | OSQP（common MPC） |
-| 12 | `install_behaviortree_cpp.sh` | BehaviorTree.CPP 4.x |
+| 11 | `install_behaviortree_cpp.sh` | BehaviorTree.CPP 4.x |
 | … | `install_ipopt.sh` 等 | 可选 |
 | full 额外 | `install_assimp.sh` / `install_ogre.sh` 等 | 可视化 |
 
@@ -110,11 +108,9 @@ CMake：`-DCMAKE_PREFIX_PATH=<同一前缀>`。不要把 gRPC/protobuf 装在 `~
 
 ```bash
 ls /usr/local/lib/libceres.so
-ls /usr/local/lib/libosqp.so /usr/local/include/osqp/osqp.h
 ls /usr/local/lib/libbehaviortree_cpp.so
 ls /usr/local/lib/libglog.so
 /usr/local/bin/protoc --version    # 板端期望 3.19.x
 ```
 
-OSQP 找不到：先 `bash docker/install/install_osqp.sh`，保证与 CMake 用同一前缀（默认 `/usr/local`，不要只装到 `~/.local`）。
 板端完整流程：[§9](09_embedded_board.md)。排错：[§8](08_troubleshooting.md)。

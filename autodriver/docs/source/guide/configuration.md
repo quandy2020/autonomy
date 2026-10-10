@@ -6,7 +6,7 @@
 2. **进程级 / 本体 / 传感条目各写什么**  
 3. **每类传感器的专用键与示例**
 
-默认文件：`config/autodriver_hardware.yaml`。加载实现：`config_loader`（`yaml-cpp`）。
+默认文件：`config/autodriver_hardware.yaml`。加载实现：`config_loader`（内嵌 fkYAML）。
 
 > 字段表以 `config_loader` 与示例 YAML 为准（配置确认）。默认值若与某次构建宏冲突，以加载后的 `Config` 为准。术语见 [术语](glossary.md)。
 

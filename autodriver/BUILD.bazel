@@ -1,7 +1,7 @@
 """Standalone Bazel build for autodriver."""
 
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
-load("//tools:chassis.bzl", "chassis_plugin")
+load("//tools/bazel:chassis.bzl", "chassis_plugin")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -16,8 +16,8 @@ genrule(
         "version.json",
     ],
     outs = ["conf/conf.hpp"],
-    cmd = "python3 $(location //tools:gen_conf.py) $(location config/conf.hpp.in) $(location version.json) $@",
-    tools = ["//tools:gen_conf.py"],
+    cmd = "python3 $(location //tools/bazel:gen_conf.py) $(location config/conf.hpp.in) $(location version.json) $@",
+    tools = ["//tools/bazel:gen_conf.py"],
 )
 
 cc_library(
@@ -80,12 +80,12 @@ cc_library(
     ),
     deps = [
         ":conf",
-        "//tools:eigen",
-        "//tools:glog",
-        "//tools:protobuf",
-        "//tools:pthread",
-        "//tools:udev",
-        "//tools:yaml_cpp",
+        "//tools/bazel:eigen",
+        "//tools/bazel:fkYAML",
+        "//tools/bazel:glog",
+        "//tools/bazel:protobuf",
+        "//tools/bazel:pthread",
+        "//tools/bazel:udev",
         "@autolink//:autolink",
         "@prefix//:automsgs",
     ],

@@ -9,7 +9,6 @@
   <buildtool_depend>autocmake</buildtool_depend>
   <depend>autolink</depend>
   <depend>automsgs</depend>
-  <build_depend>yaml-cpp</build_depend>
   <build_depend>Glog</build_depend>
   <build_depend>Protobuf</build_depend>
 

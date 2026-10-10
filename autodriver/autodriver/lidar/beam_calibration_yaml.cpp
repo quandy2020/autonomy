@@ -22,7 +22,7 @@
 
 #include "autodriver/lidar/beam_calibration_yaml.hpp"
 
-#include <yaml-cpp/yaml.h>
+#include "autodriver/yaml.hpp"
 
 namespace autodriver {
 namespace lidar {

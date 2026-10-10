@@ -87,17 +87,30 @@ if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   set(_AUTODRIVER_NO_EXPORT NO_EXPORT)
 endif()
 
+# Header-only YAML (vendored under autolink/thirdparty/fkYAML).
+if(NOT TARGET fkYAML::fkYAML)
+  set(FK_YAML_INSTALL OFF CACHE BOOL "" FORCE)
+  add_subdirectory(
+    "${CMAKE_CURRENT_SOURCE_DIR}/../autolink/thirdparty/fkYAML"
+    "${CMAKE_CURRENT_BINARY_DIR}/_deps/fkYAML"
+    EXCLUDE_FROM_ALL)
+endif()
+
 # Build the shared library.
 autocmake_library(autodriver SHARED ${_AUTODRIVER_NO_EXPORT}
   SOURCES ${AUTODRIVER_SOURCES}
-  DEPENDENCIES 
-    Threads::Threads 
-    Eigen3::Eigen 
-    yaml-cpp 
-    autolink 
+  DEPENDENCIES
+    Threads::Threads
+    Eigen3::Eigen
+    fkYAML::fkYAML
+    autolink
     automsgs)
 set_target_properties(autodriver PROPERTIES SOVERSION "${AUTODRIVER_SOVERSION}")
+# yaml-cpp compatible API backed by fkYAML lives in the umbrella tree:
+#   <root>/autonomy/common/yaml.hpp  (+ yaml_cpp_shim/yaml-cpp/yaml.h)
 target_include_directories(autodriver PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../autonomy/common/yaml_cpp_shim>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
   $<INSTALL_INTERFACE:include>)

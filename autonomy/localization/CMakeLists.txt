@@ -74,7 +74,6 @@ autocmake_library(autonomy_localization
     autonomy_proto
     autonomy_transform
     autonomy_opencv
-    $<TARGET_NAME_IF_EXISTS:OSQP::OSQP>
     $<TARGET_NAME_IF_EXISTS:Ipopt::Ipopt>
     $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
     $<TARGET_NAME_IF_EXISTS:FBow::fbow>
@@ -125,9 +124,6 @@ endif()
 
 if(Ipopt_FOUND AND NOT TARGET Ipopt::Ipopt)
   target_link_libraries(autonomy_localization PUBLIC ${IPOPT_LIBRARIES})
-endif()
-if(NOT TARGET OSQP::OSQP AND OSQP_LIBRARIES)
-  target_link_libraries(autonomy_localization PUBLIC ${OSQP_LIBRARIES})
 endif()
 if(foxglove-sdk_FOUND)
   target_link_libraries(autonomy_localization PUBLIC

@@ -44,7 +44,7 @@ export GLOG_logtostderr=1
 | `AUTOLINK_LIB_PATH` | 底盘 Component | 含 `libautodriver_*.so` 的 lib 目录 |
 | `GLOG_logtostderr` | 建议 | `1` → 日志到终端 |
 
-**依赖**：CMake ≥ 3.20、C++17、yaml-cpp、Eigen3、Autolink、automsgs；启用测试时需 GTest。厂商 SDK 见 §2；**未找到时对应 Create 返回 `nullptr`，不阻碍编译与链接**。
+**依赖**：CMake ≥ 3.20、C++17、Eigen3、Autolink、automsgs；YAML 使用仓库内嵌 fkYAML（`autolink/thirdparty/fkYAML`）；启用测试时需 GTest。厂商 SDK 见 §2；**未找到时对应 Create 返回 `nullptr`，不阻碍编译与链接**。
 
 ---
 

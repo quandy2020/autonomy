@@ -14,4 +14,4 @@ bazel_dep(name = "eigen", version = "3.4.0.bcr.3")
 
 # Local CMake prefix + sibling headers (not on BCR). Override with AUTONOMY_PREFIX.
 deps = use_extension("//tools/bazel:deps.bzl", "deps")
-use_repo(deps, "prefix", "autolink", "cli11")
+use_repo(deps, "prefix", "autolink", "cli11", "fkYAML")

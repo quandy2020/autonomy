@@ -36,7 +36,7 @@
 #include "autolink/common/file.hpp"
 #include "autolink/common/log.hpp"
 #include "autolink/time/duration.hpp"
-#include <yaml-cpp/yaml.h>
+#include "autodriver/yaml.hpp"
 
 namespace autodriver {
 namespace {

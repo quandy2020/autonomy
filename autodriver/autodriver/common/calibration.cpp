@@ -21,7 +21,7 @@
 
 #include "autodriver/common/calibration.hpp"
 
-#include <yaml-cpp/yaml.h>
+#include "autodriver/yaml.hpp"
 
 namespace autodriver {
 namespace common {

@@ -55,7 +55,6 @@ autonomy_cc_library(
         "math/math.cpp",
         "math/math_utils.cpp",
         "math/matrix_operations.cpp",
-        # mpc_osqp.cpp: OSQP 0.6 API; BCR only ships osqp 1.x — keep CMake-only for now.
         "math/polygon2d.cpp",
         "math/polynomial.cpp",
         "math/random.cpp",
@@ -156,7 +155,6 @@ autonomy_cc_library(
         "math/math_utils.hpp",
         "math/matrix.hpp",
         "math/matrix_operations.hpp",
-        # mpc_osqp.hpp: see mpc_osqp.cpp note above.
         "math/polygon2d.hpp",
         "math/polynomial.hpp",
         "math/qp_solver/qp_solver.hpp",

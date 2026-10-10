@@ -82,18 +82,25 @@ autocmake_library(autonomy_common
     ${PROJECT_BINARY_DIR})
 add_library(autonomy::common ALIAS autonomy_common)
 
+# yaml-cpp compatible API backed by fkYAML (autonomy/common/yaml.hpp).
+# The shim dir keeps legacy `#include <yaml-cpp/yaml.h>` call sites compiling;
+# consumers get it transitively. Targets that use YAML::* without linking
+# autonomy_common should link `autonomy::yaml` (or fkYAML::fkYAML plus the
+# include dirs from that target).
+target_include_directories(autonomy_common PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/yaml_cpp_shim>)
+
 target_link_libraries(autonomy_common PUBLIC
   protobuf::libprotobuf
   automsgs
   Eigen3::Eigen
   Ceres::ceres
-  yaml-cpp::yaml-cpp
+  autonomy::fkYAML
   glog::glog
   autonomy::cli11
   autolink
   Threads::Threads
   nlohmann_json::nlohmann_json
-  $<TARGET_NAME_IF_EXISTS:OSQP::OSQP>
   $<TARGET_NAME_IF_EXISTS:Ipopt::Ipopt>
   $<$<BOOL:${BUILD_GRPC}>:grpc++>
   $<$<BOOL:${BUILD_GRPC}>:grpc>
@@ -116,7 +123,4 @@ endif()
 
 if(Ipopt_FOUND AND NOT TARGET Ipopt::Ipopt)
   target_link_libraries(autonomy_common PUBLIC ${IPOPT_LIBRARIES})
-endif()
-if(NOT TARGET OSQP::OSQP AND OSQP_LIBRARIES)
-  target_link_libraries(autonomy_common PUBLIC ${OSQP_LIBRARIES})
 endif()

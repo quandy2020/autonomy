@@ -51,7 +51,7 @@ autocmake_library(audio_component
     autonomy
     autolink
     automsgs
-    yaml-cpp)
+    autonomy::yaml)
 set_target_properties(audio_component PROPERTIES OUTPUT_NAME "audio_component")
 
 if(BUILD_SHERPA_ONNX AND SherpaOnnx_FOUND)
