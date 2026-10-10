@@ -537,25 +537,21 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
     }
     unregisterDeletePanelAction(dock);
 
-    const bool is_primary =
-        dock == frame_->viewport_->viewport_dock_ || dock == image_dock_ || dock == plot_dock_ ||
-        dock == tf_dock_ || dock == channel_graph_dock_ ||
-        dock == teleop_dock_ ||
-        dock == channel_dock_ || dock == channels_dock_ ||
-        dock == displays_dock_ || dock == record_dock_ ||
-        dock == properties_dock_ ||
-        dock == views_dock_ ||
-        dock == selection_dock_ || dock == tool_props_dock_ ||
-        dock == time_dock_ ||
-        // Canonical singleton object names (startup primary instances).
-        dock->objectName() == QLatin1String("ChannelGraphDock") ||
-        dock->objectName() == QLatin1String("TeleopDock") ||
-        dock->objectName() == QLatin1String("RecordDock");
-    const bool drop_duplicate = frame_->layout_->isMainPanel(dock) && !is_primary;
+    // Split duplicates (ViewportDock_2, PlotDock_2, …) are destroyed on close.
+    // Canonical docks (objectName == typeId) stay alive so Panels menu keeps a
+    // checkbox to reopen — including after every 3D View is closed.
+    // Do NOT use viewport_dock_ pointer equality: removeViewportPanel used to
+    // promote ViewportDock_2 to viewport_dock_, so closing the last Split pane
+    // treated it as "primary" and the menu lost the sole 3D View toggle.
+    const QString type_id = panelTypeId(dock);
+    const bool drop_duplicate =
+        frame_->layout_->isMainPanel(dock) &&
+        panelTypeSupportsMultiInstance(type_id) &&
+        dock->objectName() != type_id;
     // Always drop viewport bookkeeping on close — including primary and
     // onChildDestroyed→closed paths — so syncToolContext never touches a
     // dangling PanelDockWidget*.
-    if (panelTypeId(dock) == QLatin1String("ViewportDock")) {
+    if (type_id == QLatin1String("ViewportDock")) {
       frame_->viewport_->removeViewportPanel(dock);
     }
     if (drop_duplicate) {
@@ -593,6 +589,20 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
         }
         // Rebuild after the dock (and its toggleViewAction) is gone.
         QObject::connect(dock_guard.data(), &QObject::destroyed, frame_, [this]() {
+                  // Split-duplicate teardown must not leave Panels without a
+                  // canonical 3D View checkbox.
+                  if (frame_->findChild<PanelDockWidget*>(
+                          QStringLiteral("ViewportDock")) == nullptr) {
+                    PanelDockWidget* restored =
+                        frame_->viewport_->createViewportPanelDock(
+                            QStringLiteral("ViewportDock"),
+                            /*create_render_window=*/false);
+                    if (restored != nullptr) {
+                      frame_->viewport_->viewport_dock_ = restored;
+                      restored->hide();
+                      frame_->layout_->configureMainPanelDock(restored);
+                    }
+                  }
                   frame_->chrome_->rebuildPanelsMenuToggles();
                   frame_->layout_->scheduleTileCenterPanels();
                   syncDeletePanelMenu();
@@ -616,6 +626,21 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
       frame_->layout_->center_manual_layout_ = false;
       frame_->chrome_->rebuildPanelsMenuToggles();
       syncDeletePanelMenu();
+      // Closing the last 3D View must leave a canonical ViewportDock so Panels
+      // keeps one unchecked "3D View" toggle for reopen.
+      if (frame_->findChild<PanelDockWidget*>(QStringLiteral("ViewportDock")) ==
+          nullptr) {
+        PanelDockWidget* restored =
+            frame_->viewport_->createViewportPanelDock(
+                QStringLiteral("ViewportDock"),
+                /*create_render_window=*/false);
+        if (restored != nullptr) {
+          frame_->viewport_->viewport_dock_ = restored;
+          restored->hide();
+          frame_->layout_->configureMainPanelDock(restored);
+          frame_->chrome_->rebuildPanelsMenuToggles();
+        }
+      }
     });
     frame_->session_->markConfigModified();
   });

@@ -216,6 +216,41 @@ void OgreSceneHost::destroyEntities(DisplayEntry& entry) {
   entry.entities.clear();
 }
 
+void OgreSceneHost::destroyTexturedLinks(DisplayEntry& entry) {
+  if (scene_manager_ == nullptr) {
+    entry.textured_links.clear();
+    entry.textured_link_texture_names.clear();
+    entry.textured_link_material_names.clear();
+    return;
+  }
+  for (DisplayEntry::TexturedLinkSlot& slot : entry.textured_links) {
+    if (slot.object != nullptr) {
+      if (slot.node != nullptr) {
+        slot.node->detachObject(slot.object);
+      }
+      scene_manager_->destroyManualObject(slot.object);
+      slot.object = nullptr;
+    }
+    if (slot.node != nullptr) {
+      scene_manager_->destroySceneNode(slot.node);
+      slot.node = nullptr;
+    }
+  }
+  entry.textured_links.clear();
+  for (const std::string& name : entry.textured_link_texture_names) {
+    if (Ogre::TextureManager::getSingleton().resourceExists(name)) {
+      Ogre::TextureManager::getSingleton().remove(name);
+    }
+  }
+  entry.textured_link_texture_names.clear();
+  for (const std::string& name : entry.textured_link_material_names) {
+    if (Ogre::MaterialManager::getSingleton().resourceExists(name)) {
+      Ogre::MaterialManager::getSingleton().remove(name);
+    }
+  }
+  entry.textured_link_material_names.clear();
+}
+
 void OgreSceneHost::destroyPbr(DisplayEntry& entry) {
   if (scene_manager_ == nullptr) {
     entry.pbr_texture_names.clear();
@@ -806,6 +841,145 @@ void OgreSceneHost::setDisplayPbrTexturedMeshes(
   applyEntryVisibility(entry);
 }
 
+void OgreSceneHost::setDisplayTexturedLinks(
+    const std::string& display_name,
+    const std::vector<OgreTexturedLinkInstance>& links) {
+  if (scene_manager_ == nullptr) {
+    return;
+  }
+  displayNode(display_name);
+  DisplayEntry& entry = displays_[display_name];
+  if (links.empty()) {
+    destroyTexturedLinks(entry);
+    return;
+  }
+  if (!Ogre::MaterialManager::getSingleton().resourceExists(
+          "Autoviz/FlatNoLighting")) {
+    return;
+  }
+
+  bool reusable = entry.textured_links.size() == links.size();
+  if (reusable) {
+    for (std::size_t i = 0; i < links.size(); ++i) {
+      const OgreTexturedLinkInstance& link = links[i];
+      const qint64 texture_key =
+          link.texture != nullptr ? link.texture->cacheKey() : 0;
+      if (entry.textured_links[i].mesh != link.mesh ||
+          entry.textured_links[i].texture_key != texture_key ||
+          link.mesh == nullptr || link.texture == nullptr ||
+          link.texture->isNull()) {
+        reusable = false;
+        break;
+      }
+    }
+  }
+  if (reusable) {
+    for (std::size_t i = 0; i < links.size(); ++i) {
+      ApplyMatrixToNode(entry.textured_links[i].node, links[i].transform);
+    }
+    applyEntryVisibility(entry);
+    return;
+  }
+
+  destroyTexturedLinks(entry);
+  std::unordered_map<qint64, std::string> material_for_texture;
+  int index = 0;
+  for (const OgreTexturedLinkInstance& link : links) {
+    if (link.mesh == nullptr || link.texture == nullptr || link.texture->isNull() ||
+        link.mesh->vertices.empty() || link.mesh->triangles.empty()) {
+      continue;
+    }
+    const qint64 texture_key = link.texture->cacheKey();
+    std::string material_name;
+    const auto existing = material_for_texture.find(texture_key);
+    if (existing != material_for_texture.end()) {
+      material_name = existing->second;
+    } else {
+      const QImage rgba = link.texture->format() == QImage::Format_RGBA8888
+                              ? *link.texture
+                              : link.texture->convertToFormat(QImage::Format_RGBA8888);
+      const std::string base =
+          display_name + "/LinkTex" + std::to_string(index++);
+      const std::string tex_name = base + "Tex";
+      if (Ogre::TextureManager::getSingleton().resourceExists(tex_name)) {
+        Ogre::TextureManager::getSingleton().remove(tex_name);
+      }
+      Ogre::TexturePtr texture = Ogre::TextureManager::getSingleton().createManual(
+          tex_name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+          Ogre::TEX_TYPE_2D, rgba.width(), rgba.height(), 0, Ogre::PF_BYTE_RGBA,
+          Ogre::TU_STATIC);
+      Ogre::PixelBox pixel_box(
+          static_cast<Ogre::uint32>(rgba.width()),
+          static_cast<Ogre::uint32>(rgba.height()), 1, Ogre::PF_BYTE_RGBA,
+          const_cast<uchar*>(rgba.constBits()));
+      texture->getBuffer()->blitFromMemory(pixel_box);
+      material_name = base + "Mat";
+      if (Ogre::MaterialManager::getSingleton().resourceExists(material_name)) {
+        Ogre::MaterialManager::getSingleton().remove(material_name);
+      }
+      Ogre::MaterialPtr material =
+          Ogre::MaterialManager::getSingleton()
+              .getByName("Autoviz/FlatNoLighting")
+              ->clone(material_name);
+      Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
+      pass->setLightingEnabled(false);
+      pass->setDepthWriteEnabled(true);
+      pass->setDepthCheckEnabled(true);
+      pass->setSceneBlending(Ogre::SBT_REPLACE);
+      pass->setCullingMode(Ogre::CULL_NONE);
+      pass->setVertexColourTracking(Ogre::TVC_DIFFUSE);
+      Ogre::TextureUnitState* unit = pass->createTextureUnitState(tex_name);
+      unit->setColourOperation(Ogre::LBO_MODULATE);
+      unit->setTextureAddressingMode(Ogre::TextureUnitState::TAM_WRAP);
+      entry.textured_link_texture_names.push_back(tex_name);
+      entry.textured_link_material_names.push_back(material_name);
+      material_for_texture.emplace(texture_key, material_name);
+    }
+
+    display::ObjMesh local = *link.mesh;
+    if (local.texcoords.size() != local.vertices.size()) {
+      display::ensureMeshTexcoords(&local);
+    }
+    const std::string object_name =
+        display_name + "/Link" + std::to_string(entry.textured_links.size());
+    DisplayEntry::TexturedLinkSlot slot;
+    slot.mesh = link.mesh;
+    slot.texture_key = texture_key;
+    slot.node = entry.node->createChildSceneNode(object_name + "Node");
+    ApplyMatrixToNode(slot.node, link.transform);
+    slot.object = scene_manager_->createManualObject(object_name);
+    slot.object->begin(material_name, Ogre::RenderOperation::OT_TRIANGLE_LIST);
+    const Ogre::ColourValue tint = ToOgreColor(link.tint);
+    for (const auto& triangle : local.triangles) {
+      if (triangle[0] < 0 ||
+          triangle[0] >= static_cast<int>(local.vertices.size()) ||
+          triangle[1] < 0 ||
+          triangle[1] >= static_cast<int>(local.vertices.size()) ||
+          triangle[2] < 0 ||
+          triangle[2] >= static_cast<int>(local.vertices.size())) {
+        continue;
+      }
+      const QVector3D corners[3] = {
+          local.vertices[static_cast<std::size_t>(triangle[0])],
+          local.vertices[static_cast<std::size_t>(triangle[1])],
+          local.vertices[static_cast<std::size_t>(triangle[2])]};
+      const float shade = LitShade(corners[0], corners[1], corners[2]);
+      for (int corner = 0; corner < 3; ++corner) {
+        const int vi = triangle[corner];
+        const QVector2D uv = local.texcoords[static_cast<std::size_t>(vi)];
+        slot.object->position(corners[corner].x(), corners[corner].y(),
+                              corners[corner].z());
+        slot.object->textureCoord(uv.x(), 1.f - uv.y());
+        slot.object->colour(tint.r * shade, tint.g * shade, tint.b * shade, tint.a);
+      }
+    }
+    slot.object->end();
+    slot.node->attachObject(slot.object);
+    entry.textured_links.push_back(slot);
+  }
+  applyEntryVisibility(entry);
+}
+
 void OgreSceneHost::setDisplayLabels(const std::string& display_name,
                                      const std::vector<OgreTextLabel>& labels) {
   if (scene_manager_ == nullptr) {
@@ -1082,6 +1256,7 @@ void OgreSceneHost::removeDisplay(const std::string& display_name) {
   destroyLines(entry);
   destroyMeshes(entry);
   destroyEntities(entry);
+  destroyTexturedLinks(entry);
   destroyPbr(entry);
   destroyLabels(entry);
   destroyToolLine(entry);
@@ -1113,6 +1288,7 @@ void OgreSceneHost::clear() {
     destroyLines(entry);
     destroyMeshes(entry);
     destroyEntities(entry);
+    destroyTexturedLinks(entry);
     destroyPbr(entry);
     destroyLabels(entry);
     destroyToolLine(entry);

@@ -361,18 +361,27 @@ void FrameViewport::removeViewportPanel(PanelDockWidget* dock) {
   destroyRenderWindowInEntry(entry);
 
   if (active_viewport_dock_ == dock) {
-    active_viewport_dock_ = viewport_dock_;
-    if (!viewport_panels_.contains(active_viewport_dock_) &&
-        !viewport_panels_.isEmpty()) {
+    active_viewport_dock_ = nullptr;
+    if (!viewport_panels_.isEmpty()) {
       active_viewport_dock_ = viewport_panels_.begin().key();
+    } else if (viewport_dock_ != nullptr && viewport_dock_ != dock &&
+               viewport_panels_.contains(viewport_dock_)) {
+      active_viewport_dock_ = viewport_dock_;
     }
     if (frame_->panels_->views_panel_ != nullptr) {
       frame_->panels_->views_panel_->setViewController(activeViewController());
     }
   }
-  if (dock == viewport_dock_) {
-    viewport_dock_ = viewport_panels_.isEmpty() ? nullptr
-                                                : viewport_panels_.begin().key();
+  // Keep viewport_dock_ on the canonical ViewportDock even when closed so the
+  // Panels menu can reopen it. Never promote Split duplicates (ViewportDock_2).
+  if (dock == viewport_dock_ &&
+      dock->objectName() != QLatin1String("ViewportDock")) {
+    if (auto* canonical = frame_->findChild<PanelDockWidget*>(
+            QStringLiteral("ViewportDock"))) {
+      viewport_dock_ = canonical;
+    } else {
+      viewport_dock_ = nullptr;
+    }
   }
 }
 
@@ -411,7 +420,12 @@ void FrameViewport::wireViewportPanel(ViewportPanelEntry& entry) {
                                : viewport_panels_.begin().key();
                      }
                      if (viewport_dock_ == dock) {
-                       viewport_dock_ = active_viewport_dock_;
+                       // Prefer the canonical dock over a Split duplicate.
+                       viewport_dock_ = frame_->findChild<PanelDockWidget*>(
+                           QStringLiteral("ViewportDock"));
+                       if (viewport_dock_ == nullptr) {
+                         viewport_dock_ = active_viewport_dock_;
+                       }
                      }
                    });
 }
@@ -445,6 +459,14 @@ void FrameViewport::ensureViewportPanelReady(PanelDockWidget* dock) {
     if (active_viewport_dock_ == nullptr) {
       active_viewport_dock_ = dock;
     }
+  }
+
+  // Reopen after "close all 3D Views" must restore the canonical pointer.
+  if (dock->objectName() == QLatin1String("ViewportDock")) {
+    viewport_dock_ = dock;
+  }
+  if (active_viewport_dock_ == nullptr) {
+    active_viewport_dock_ = dock;
   }
 
   ViewportPanelEntry& entry = viewport_panels_[dock];

@@ -109,6 +109,19 @@ class MainPanelHost : public QMainWindow {
   void removePanel(QDockWidget* dock);
 
   /**
+   * @brief Replace @p old_dock with @p new_dock in the same mosaic leaf.
+   *
+   * Preserves splitter geometry (Foxglove Change Panel). Unlike
+   * @ref removePanel + @ref addPanel, this does not collapse the leaf and
+   * append a new root child — which left an empty middle pane after Split.
+   *
+   * @param old_dock Hosted dock to park/hide.
+   * @param new_dock Dock that takes its pane (must not equal @p old_dock).
+   * @return @c true when the leaf was swapped in place.
+   */
+  bool replacePanel(QDockWidget* old_dock, QDockWidget* new_dock);
+
+  /**
    * @brief Foxglove-style in-place mosaic split of @p first.
    *
    * Replaces the leaf hosting @p first with a binary split node

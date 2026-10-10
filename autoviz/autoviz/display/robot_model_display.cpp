@@ -24,6 +24,7 @@
 #include "autoviz/display/ogre_pbr_mesh_draw.hpp"
 #include "autoviz/display/primitive_mesh.hpp"
 #include "autoviz/display/transform_utils.hpp"
+#include "autoviz/rendering/ogre_scene_host.hpp"
 
 namespace autoviz {
 namespace display {
@@ -570,6 +571,27 @@ void RobotModelDisplay::onDraw(rendering::SceneOverlay& scene) {
   std::vector<ColoredMeshInstance> ogre_visual;
   std::vector<PbrMeshInstance> ogre_pbr_visual;
   std::vector<PbrTexturedMeshInstance> ogre_pbr_textured;
+  std::vector<rendering::OgreTexturedLinkInstance> textured_links;
+  auto textureFor = [this](const UrdfMaterial& material) -> const QImage* {
+    if (!material.has_texture || material.texture_filename.empty()) {
+      return nullptr;
+    }
+    const std::string resolved = UrdfModel::resolveTexturePath(
+        model_.baseDirectory(), material.texture_filename);
+    const auto cached = texture_cache_.find(resolved);
+    if (cached != texture_cache_.end()) {
+      return &cached->second;
+    }
+    QImage image(QString::fromStdString(resolved));
+    if (image.isNull()) {
+      return nullptr;
+    }
+    const auto inserted = texture_cache_.emplace(resolved, std::move(image));
+    return &inserted.first->second;
+  };
+  // Pointers into the cache are held for this frame. Reserve first so an
+  // insert cannot rehash and invalidate them.
+  texture_cache_.reserve(64);
   std::vector<ColoredMeshInstance> ogre_collision;
   std::vector<LineSegment3D> ogre_axes;
 
@@ -623,21 +645,32 @@ void RobotModelDisplay::onDraw(rendering::SceneOverlay& scene) {
       const bool material_requested = solid_visual && use_urdf_materials &&
                                      (geometry.material.valid ||
                                       geometry.material.has_texture);
-      const QImage texture =
-          material_requested ? loadMaterialTexture(geometry.material)
-                             : QImage();
-      // Textured meshes use the rviz-style unlit texture path. A material
-      // without a loaded image stays on the flat vertex-color path, which is
-      // the same one markers use.
-      const bool use_pbr = !texture.isNull();
+      const QImage* texture =
+          material_requested ? textureFor(geometry.material) : nullptr;
+      // Textured meshes stay on the GPU. Rebuilding them every frame reuploads
+      // every 2048² albedo and every vertex, which stalls the viewport.
+      const bool use_pbr = texture != nullptr && !texture->isNull();
       const float metallic = geometry.material.metallic;
       const float roughness = geometry.material.roughness;
       bool ogre_visual_ok = false;
-      if (use_ogre && use_pbr) {
+      if (use_ogre && use_pbr && mesh != nullptr &&
+          (geometry.type == UrdfGeometry::Type::kMesh ||
+           geometry.type == UrdfGeometry::Type::kCylinder ||
+           geometry.type == UrdfGeometry::Type::kSphere)) {
+        QMatrix4x4 geom_transform = link_transform;
+        geom_transform.translate(geometry.origin);
+        geom_transform.rotate(geometry.rotation);
+        if (geometry.type == UrdfGeometry::Type::kMesh) {
+          geom_transform.scale(geometry.mesh_scale);
+        }
+        textured_links.push_back(
+            {mesh, texture, geom_transform, visual_color, metallic, roughness});
+        ogre_visual_ok = true;
+      } else if (use_ogre && use_pbr) {
         ogre_visual_ok =
             AppendUrdfGeometryPbr(&ogre_pbr_visual, &ogre_pbr_textured,
                                     geometry, mesh, link_transform,
-                                    visual_color, texture, metallic, roughness);
+                                    visual_color, *texture, metallic, roughness);
       } else if (use_ogre) {
         ogre_visual_ok =
             AppendUrdfGeometryMesh(&ogre_visual, geometry, mesh, link_transform,
@@ -696,6 +729,10 @@ void RobotModelDisplay::onDraw(rendering::SceneOverlay& scene) {
     drawPbrMeshesOgreOrGl(context_, scene, name() + "/visual/pbr", ogre_pbr_visual);
     drawPbrTexturedMeshesOgreOrGl(context_, scene, name() + "/visual/pbr_tex",
                                   ogre_pbr_textured);
+    if (context_->ogre_scene_host != nullptr) {
+      context_->ogre_scene_host->setDisplayTexturedLinks(name() + "/visual/links",
+                                                         textured_links);
+    }
     if (show_collision) {
       drawEntityMeshesOgreOrGl(context_, scene, name() + "/collision", ogre_collision);
     }

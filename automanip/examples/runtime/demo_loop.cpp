@@ -16,6 +16,7 @@
 
 #include "examples/runtime/demo_loop.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -370,6 +371,9 @@ int RunDemo(const DemoRequest& request) {
   setThreadPriority(request.thread_priority, mpc_thread);
 
   const double dt = 1.0 / mrt_hz;
+  // Joint, marker, and TF traffic at the 400 Hz rollout rate makes Autoviz
+  // rebuild the viewport continuously. The controller still steps at mrt_hz.
+  const int viz_stride = std::max(1, static_cast<int>(mrt_hz / 30.0));
   int steps = 0;
   bool logged_plan_hold = false;
   try {
@@ -427,25 +431,27 @@ int RunDemo(const DemoRequest& request) {
               observation = next;
             }
 
-            MarkerArray markers;
-            JointStateMsg joints;
-            PathMsg path;
-            TfMsg tf;
-            StampHeader(path.mutable_header(), "map");
-            request.publish(next, mrt.getPolicy(), mrt.getCommand(), &markers, &joints,
-                            &path, &tf);
-            joint_states_writer->Write(std::make_shared<JointStateMsg>(joints));
-            // An empty protobuf serializes to 0 bytes. RawMessage rejects that
-            // size, and autoviz then logs a parse failure on every cycle.
-            if (markers.markers_size() > 0) {
-              marker_writer->Write(std::make_shared<MarkerArray>(markers));
-            }
-            path_writer->Write(std::make_shared<PathMsg>(path));
-            tf_writer->Write(std::make_shared<TfMsg>(tf));
-            if (twist_writer) {
-              TwistStampedMsg twist;
-              request.velocity(next, &twist);
-              twist_writer->Write(std::make_shared<TwistStampedMsg>(twist));
+            if (steps % viz_stride == 0) {
+              MarkerArray markers;
+              JointStateMsg joints;
+              PathMsg path;
+              TfMsg tf;
+              StampHeader(path.mutable_header(), "map");
+              request.publish(next, mrt.getPolicy(), mrt.getCommand(), &markers, &joints,
+                              &path, &tf);
+              joint_states_writer->Write(std::make_shared<JointStateMsg>(joints));
+              // An empty protobuf serializes to 0 bytes. RawMessage rejects that
+              // size, and autoviz then logs a parse failure on every cycle.
+              if (markers.markers_size() > 0) {
+                marker_writer->Write(std::make_shared<MarkerArray>(markers));
+              }
+              path_writer->Write(std::make_shared<PathMsg>(path));
+              tf_writer->Write(std::make_shared<TfMsg>(tf));
+              if (twist_writer) {
+                TwistStampedMsg twist;
+                request.velocity(next, &twist);
+                twist_writer->Write(std::make_shared<TwistStampedMsg>(twist));
+              }
             }
             if (steps % 100 == 0) {
               publish_description();

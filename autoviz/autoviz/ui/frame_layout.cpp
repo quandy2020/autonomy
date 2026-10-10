@@ -846,26 +846,21 @@ void FrameLayout::changePanelInDock(PanelDockWidget* source,
     }
   }
 
-  // Detach source from its host.
-  if (source_in_main) {
-    main_panel_host_->removePanel(source);
-  } else if (source_host != nullptr &&
-             source_host->dockWidgetArea(source) != Qt::NoDockWidgetArea) {
-    source_host->removeDockWidget(source);
-  }
-  source->hide();
   // Drop the Ogre native window immediately when leaving a 3D View. Waiting
   // for the next tick leaves the GL surface covering the new panel.
   if (frame_->panels_->panelTypeId(source) == QLatin1String("ViewportDock")) {
-    if (ViewportPanelEntry* entry = frame_->viewport_->viewportEntryForDock(source)) {
+    if (ViewportPanelEntry* entry =
+            frame_->viewport_->viewportEntryForDock(source)) {
       if (entry->ogre_viewport != nullptr) {
         entry->ogre_viewport->hideNativeSurface();
       }
+      frame_->viewport_->parkRenderWindowInEntry(*entry);
     }
   }
 
-  // Detach target from wherever it currently lives.
-  if (main_panel_host_ != nullptr && main_panel_host_->hostsPanel(target)) {
+  // Detach target from wherever it currently lives (not the source leaf yet).
+  if (main_panel_host_ != nullptr && main_panel_host_->hostsPanel(target) &&
+      target != source) {
     main_panel_host_->removePanel(target);
   }
   if (frame_->dockWidgetArea(target) != Qt::NoDockWidgetArea) {
@@ -877,10 +872,24 @@ void FrameLayout::changePanelInDock(PanelDockWidget* source,
   }
 
   if (was_floating) {
+    if (source_in_main) {
+      main_panel_host_->removePanel(source);
+    } else if (source_host != nullptr &&
+               source_host->dockWidgetArea(source) != Qt::NoDockWidgetArea) {
+      source_host->removeDockWidget(source);
+    }
+    source->hide();
     target->setFloating(true);
     target->setGeometry(float_geometry);
   } else if (!isMainPanel(target)) {
     // Sidebar panels (e.g. Teleop): never place in the center host.
+    if (source_in_main) {
+      main_panel_host_->removePanel(source);
+    } else if (source_host != nullptr &&
+               source_host->dockWidgetArea(source) != Qt::NoDockWidgetArea) {
+      source_host->removeDockWidget(source);
+    }
+    source->hide();
     Qt::DockWidgetArea area = defaultSidebarArea(target);
     if (frame_->panels_->panelTypeId(target) == QLatin1String("TeleopDock")) {
       area = Qt::RightDockWidgetArea;
@@ -895,19 +904,42 @@ void FrameLayout::changePanelInDock(PanelDockWidget* source,
       frame_->tabifyDockWidget(tab_anchor, target);
     }
     ensureSidebarDockAttached(target);
-  } else if (source_in_main || isMainPanel(target)) {
-    // Map/Plot/… belong in the center host (AllowedAreas is NoDockWidgetArea).
+  } else if (source_in_main && main_panel_host_ != nullptr) {
+    // Foxglove Change: swap into the same mosaic leaf so Split geometry is
+    // preserved. removePanel+addPanel collapsed the leaf then appended Map at
+    // the root — leaving an empty middle pane between 3D View and Map.
+    configureMainPanelDock(target);
+    wireMainPanelExpandTracking(target);
+    if (!main_panel_host_->replacePanel(source, target)) {
+      main_panel_host_->removePanel(source);
+      source->hide();
+      main_panel_host_->addPanel(target);
+    } else {
+      source->hide();
+    }
+    // Keep the Split mosaic; do not let scheduleTileCenterPanels rebuild a grid.
+    center_manual_layout_ = true;
+    ++center_tile_epoch_;
+  } else if (isMainPanel(target)) {
+    if (source_host != nullptr &&
+        source_host->dockWidgetArea(source) != Qt::NoDockWidgetArea) {
+      source_host->removeDockWidget(source);
+    }
+    source->hide();
     configureMainPanelDock(target);
     wireMainPanelExpandTracking(target);
     if (main_panel_host_ != nullptr) {
       main_panel_host_->addPanel(target);
     }
   } else if (source_host != nullptr && source_area != Qt::NoDockWidgetArea) {
+    source_host->removeDockWidget(source);
+    source->hide();
     source_host->addDockWidget(source_area, target);
     if (tab_anchor != nullptr) {
       source_host->tabifyDockWidget(tab_anchor, target);
     }
   } else {
+    source->hide();
     addMainPanelDock(target, Qt::LeftDockWidgetArea);
   }
 
@@ -963,6 +995,10 @@ void FrameLayout::changePanelInDock(PanelDockWidget* source,
     Q_UNUSED(source_guard);
   }
 
+  if (main_panel_host_ != nullptr) {
+    main_panel_host_->syncHorizontalDockLayout();
+  }
+  // Directed Change after Split owns the mosaic — skip auto grid retile.
   scheduleTileCenterPanels();
   frame_->chrome_->rebuildPanelsMenuToggles();
   frame_->panels_->syncDeletePanelMenu();

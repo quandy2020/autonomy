@@ -568,6 +568,56 @@ void MainPanelHost::removePanel(QDockWidget* dock) {
   RaiseSplitterHandles(root_splitter_);
 }
 
+bool MainPanelHost::replacePanel(QDockWidget* old_dock, QDockWidget* new_dock) {
+  if (old_dock == nullptr || new_dock == nullptr || old_dock == new_dock ||
+      root_splitter_ == nullptr) {
+    return false;
+  }
+  if (!hostsPanel(old_dock)) {
+    return false;
+  }
+
+  // New dock must not remain in another mosaic leaf / QMainWindow area.
+  if (hostsPanel(new_dock)) {
+    removePanel(new_dock);
+  }
+  if (dockWidgetArea(new_dock) != Qt::NoDockWidgetArea) {
+    removeDockWidget(new_dock);
+  }
+
+  QWidget* pane = FindPaneForDock(root_splitter_, old_dock);
+  auto* layout =
+      pane != nullptr ? qobject_cast<QVBoxLayout*>(pane->layout()) : nullptr;
+  if (pane == nullptr || layout == nullptr ||
+      !pane->property("mainPanelPane").toBool()) {
+    return false;
+  }
+
+  PrepareDockForSplitter(new_dock);
+  layout->removeWidget(old_dock);
+  parkDock(old_dock);
+
+  ApplyExpandingPolicy(new_dock);
+  if (QWidget* content = new_dock->widget()) {
+    ApplyExpandingPolicy(content);
+  }
+  layout->addWidget(new_dock, /*stretch=*/1);
+  new_dock->show();
+  new_dock->raise();
+
+  FillSplitter(root_splitter_);
+  RaiseSplitterHandles(root_splitter_);
+  const QPointer<MainPanelHost> self(this);
+  QTimer::singleShot(0, this, [self]() {
+    if (self == nullptr || self->root_splitter_ == nullptr) {
+      return;
+    }
+    FillSplitter(self->root_splitter_);
+    RaiseSplitterHandles(self->root_splitter_);
+  });
+  return true;
+}
+
 void MainPanelHost::addPanel(QDockWidget* dock) {
   if (dock == nullptr || root_splitter_ == nullptr) {
     return;

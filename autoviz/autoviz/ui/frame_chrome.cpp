@@ -815,7 +815,10 @@ void FrameChrome::rebuildPanelsMenuToggles() {
     QAction* toggle = dock->toggleViewAction();
     toggle->setCheckable(true);
     toggle->blockSignals(true);
-    toggle->setChecked(dock->isVisible());
+    // Parked closed docks live under a hidden parking parent — isVisible() is
+    // false even when we only mean "user closed". requestedVisible tracks the
+    // Panels checkbox intent for reopen.
+    toggle->setChecked(dock->requestedVisible());
     toggle->blockSignals(false);
     const QString fallback = dock->windowTitle().trimmed().isEmpty()
                                  ? dock->objectName()

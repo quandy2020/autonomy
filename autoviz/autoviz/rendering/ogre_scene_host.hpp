@@ -116,6 +116,20 @@ struct OgrePbrTexturedMeshInstance {
 };
 
 /**
+ * @struct OgreTexturedLinkInstance
+ * @brief One rigid textured link. Mesh and texture stay on the GPU; only
+ * @c transform is applied on later frames.
+ */
+struct OgreTexturedLinkInstance {
+  const display::ObjMesh* mesh = nullptr; /**< Stable mesh, not copied. */
+  const QImage* texture = nullptr;        /**< Stable albedo image. */
+  QMatrix4x4 transform;                   /**< World transform, including scale. */
+  QColor tint;                            /**< Vertex-color tint. */
+  float metallic = 0.08f;                 /**< Unused by the unlit material. */
+  float roughness = 0.52f;                /**< Unused by the unlit material. */
+};
+
+/**
  * @struct OgreTextLabel
  * @brief 3D text label parameters for MovableText slots.
  */
@@ -252,6 +266,14 @@ class OgreSceneHost {
       const std::vector<OgrePbrTexturedMeshInstance>& meshes);
 
   /**
+   * @brief Draws textured links. Geometry is uploaded once per mesh; later
+   * calls with the same meshes only move the scene nodes.
+   */
+  void setDisplayTexturedLinks(
+      const std::string& display_name,
+      const std::vector<OgreTexturedLinkInstance>& links);
+
+  /**
    * @brief Updates text label slots for a display.
    */
   void setDisplayLabels(const std::string& display_name,
@@ -380,6 +402,15 @@ class OgreSceneHost {
       std::string material_name;
     };
     std::vector<EntitySlot> entities;
+    struct TexturedLinkSlot {
+      Ogre::SceneNode* node = nullptr;
+      Ogre::ManualObject* object = nullptr;
+      const display::ObjMesh* mesh = nullptr;
+      qint64 texture_key = 0;
+    };
+    std::vector<TexturedLinkSlot> textured_links;
+    std::vector<std::string> textured_link_texture_names;
+    std::vector<std::string> textured_link_material_names;
     uint32_t visibility_bits = 0xFFFFFFFFu;
   };
 
@@ -396,6 +427,7 @@ class OgreSceneHost {
   void destroyScrew(DisplayEntry& entry);
   void destroyCovariance(DisplayEntry& entry);
   void destroyEntities(DisplayEntry& entry);
+  void destroyTexturedLinks(DisplayEntry& entry);
   void uploadLines(Ogre::ManualObject* object,
                    const std::vector<OgreColoredLineSegment>& segments);
   void uploadMeshes(Ogre::ManualObject* object,

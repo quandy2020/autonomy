@@ -34,6 +34,7 @@
 #include <pinocchio/algorithm/frames.hpp>
 #include <pinocchio/algorithm/kinematics.hpp>
 
+#include "automanip/core/misc/linear_interpolation.hpp"
 #include "automanip/ddp/gauss_newton_ddp_mpc.hpp"
 #include "automanip/ipm/ipm_mpc.hpp"
 #include "automanip/pinocchio/centroidal/access_helper_functions.hpp"
@@ -131,45 +132,114 @@ int main(int argc, char** argv) {
   request.robot_description =
       automanip::examples::RobotDescriptionWithAbsoluteMeshes(AUTOMANIP_EXAMPLE_URDF);
   request.max_steps = steps;
-  // A Nav Goal is an absolute base xy/yaw. Track it from the live pose over
-  // the time reference.info allows (0.5 m/s, 0.3 rad/s), with the nominal
-  // height and the default stance. One sample at the current time makes DDP
-  // demand the goal immediately and the rollout diverges.
+  // A Nav Goal is an absolute base xy/yaw. One sample at the current time
+  // makes DDP demand the goal immediately and the rollout diverges. Yaw and
+  // xy in the same segment make the base translate while it is still facing
+  // sideways. Turn in place onto the path heading, then walk with that yaw
+  // held, at the speeds in reference.info (0.5 m/s, 0.3 rad/s).
   request.command_from_state = true;
   request.on_target = [&](const automanip::examples::PoseStamped& pose,
                           const automanip::vector_t& previous, automanip::scalar_t time) {
     constexpr double kComHeight = 0.575;
     constexpr double kDisplacementVelocity = 0.5;
     constexpr double kRotationVelocity = 0.3;
+    constexpr double kTurnInPlace = 0.05;
+    constexpr double kMinTravel = 0.05;
+    constexpr double kBearingDistance = 0.15;
+    constexpr double kFinalYaw = 0.2;
+    const auto wrap = [](double angle) {
+      return std::atan2(std::sin(angle), std::cos(angle));
+    };
     const automanip::vector_t& stance = interface.getInitialState();
     automanip::vector_t current_pose = stance.segment<6>(6);
     if (previous.size() >= 12) {
       current_pose = previous.segment<6>(6);
     }
-    automanip::vector_t target_pose = current_pose;
-    target_pose(0) = pose.pose().position().x();
-    target_pose(1) = pose.pose().position().y();
-    target_pose(2) = kComHeight;
-    const double yaw_error = std::atan2(std::sin(Yaw(pose) - current_pose(3)),
-                                         std::cos(Yaw(pose) - current_pose(3)));
-    target_pose(3) = current_pose(3) + yaw_error;
-    target_pose(4) = 0.0;
-    target_pose(5) = 0.0;
+    const double goal_x = pose.pose().position().x();
+    const double goal_y = pose.pose().position().y();
+    const double dx = goal_x - current_pose(0);
+    const double dy = goal_y - current_pose(1);
+    const double distance = std::hypot(dx, dy);
+    const double arrow_yaw = current_pose(3) + wrap(Yaw(pose) - current_pose(3));
 
-    const double dx = target_pose(0) - current_pose(0);
-    const double dy = target_pose(1) - current_pose(1);
-    const double reaching = std::max(std::abs(yaw_error) / kRotationVelocity,
-                                      std::sqrt(dx * dx + dy * dy) / kDisplacementVelocity);
-    const automanip::scalar_t arrival = time + std::max(0.2, reaching);
-
-    automanip::vector_t start = stance;
-    automanip::vector_t goal = stance;
-    start.head(6).setZero();
-    goal.head(6).setZero();
-    start.segment<6>(6) = current_pose;
-    goal.segment<6>(6) = target_pose;
+    automanip::scalar_array_t times;
+    automanip::vector_array_t states;
+    automanip::vector_array_t inputs;
     const automanip::vector_t input = automanip::vector_t::Zero(info.inputDim);
-    return automanip::TargetTrajectories({time, arrival}, {start, goal}, {input, input});
+    automanip::vector_t sample = stance;
+    sample.head(6).setZero();
+    automanip::vector_t base = current_pose;
+    automanip::scalar_t stamp = time;
+    auto push = [&](const automanip::vector_t& base_pose) {
+      if (!times.empty() && !(stamp > times.back())) {
+        stamp = times.back() + 1e-3;
+      }
+      sample.segment<6>(6) = base_pose;
+      times.push_back(stamp);
+      states.push_back(sample);
+      inputs.push_back(input);
+    };
+    auto advance = [&](double delta, double speed) {
+      stamp += std::max(0.2, std::abs(delta) / speed);
+    };
+    push(base);
+
+    if (distance > kBearingDistance) {
+      const double heading = current_pose(3) + wrap(std::atan2(dy, dx) - current_pose(3));
+      const double turn = heading - base(3);
+      if (std::abs(turn) >= kTurnInPlace) {
+        advance(turn, kRotationVelocity);
+        base(2) = kComHeight;
+        base(3) = heading;
+        base(4) = 0.0;
+        base(5) = 0.0;
+        push(base);
+      }
+      advance(distance, kDisplacementVelocity);
+      base(0) = goal_x;
+      base(1) = goal_y;
+      base(2) = kComHeight;
+      base(3) = heading;
+      base(4) = 0.0;
+      base(5) = 0.0;
+      push(base);
+      const double settle = wrap(arrow_yaw - heading);
+      if (std::abs(settle) >= kFinalYaw) {
+        advance(settle, kRotationVelocity);
+        base(3) = heading + settle;
+        push(base);
+      }
+    } else {
+      const double turn = wrap(arrow_yaw - base(3));
+      if (std::abs(turn) >= kTurnInPlace) {
+        advance(turn, kRotationVelocity);
+        base(2) = kComHeight;
+        base(3) += turn;
+        base(4) = 0.0;
+        base(5) = 0.0;
+        push(base);
+      }
+      if (distance >= kMinTravel) {
+        advance(distance, kDisplacementVelocity);
+        base(0) = goal_x;
+        base(1) = goal_y;
+        base(2) = kComHeight;
+        base(4) = 0.0;
+        base(5) = 0.0;
+        push(base);
+      }
+    }
+    if (states.size() < 2) {
+      stamp = time + 0.2;
+      base(0) = goal_x;
+      base(1) = goal_y;
+      base(2) = kComHeight;
+      base(3) = arrow_yaw;
+      base(4) = 0.0;
+      base(5) = 0.0;
+      push(base);
+    }
+    return automanip::TargetTrajectories(std::move(times), std::move(states), std::move(inputs));
   };
   request.publish = [&](const automanip::SystemObservation& observation,
                         const automanip::PrimalSolution& policy,
@@ -220,11 +290,86 @@ int main(int argc, char** argv) {
 
     auto& model = pinocchio_view.getModel();
     auto& data = pinocchio_view.getData();
-    const auto q = automanip::centroidal_model::getGeneralizedCoordinates(state, info);
-    pinocchio::forwardKinematics(model, data, q);
-    pinocchio::updateFramePlacements(model, data);
     end_effector_kinematics.setPinocchioInterface(pinocchio_view);
-    const auto feet = end_effector_kinematics.getPosition(state);
+    auto feetAt = [&](const automanip::vector_t& sample) {
+      const auto sample_q =
+          automanip::centroidal_model::getGeneralizedCoordinates(sample, info);
+      pinocchio::forwardKinematics(model, data, sample_q);
+      pinocchio::updateFramePlacements(model, data);
+      return end_effector_kinematics.getPosition(sample);
+    };
+    constexpr std::size_t kFootCount = 4;
+    if (trajectory.size() >= 2) {
+      std::array<Marker, kFootCount> foot_lines;
+      for (std::size_t foot = 0; foot < kFootCount; ++foot) {
+        foot_lines[foot] = automanip::examples::MakeShape(
+            "EE Trajectories", static_cast<int>(foot), Marker::LINE_STRIP, 0.0, 0.0, 0.0, 0.01,
+            0.01, 0.01, kFootColor[foot][0], kFootColor[foot][1], kFootColor[foot][2]);
+      }
+      const std::size_t foot_stride = trajectory.size() > 60 ? trajectory.size() / 60 : 1;
+      auto append_feet = [&](const automanip::vector_t& sample) {
+        if (sample.size() < info.stateDim) {
+          return;
+        }
+        const auto positions = feetAt(sample);
+        const std::size_t n = std::min(kFootCount, positions.size());
+        for (std::size_t foot = 0; foot < n; ++foot) {
+          AddPoint(&foot_lines[foot], positions[foot]);
+        }
+      };
+      for (std::size_t i = 0; i < trajectory.size(); i += foot_stride) {
+        append_feet(trajectory[i]);
+      }
+      if ((trajectory.size() - 1) % foot_stride != 0) {
+        append_feet(trajectory.back());
+      }
+      for (std::size_t foot = 0; foot < kFootCount; ++foot) {
+        if (foot_lines[foot].points_size() >= 2) {
+          *markers->add_markers() = std::move(foot_lines[foot]);
+        }
+      }
+    }
+
+    const auto& plan_time = policy.timeTrajectory_;
+    const auto& event_times = policy.modeSchedule_.eventTimes;
+    const auto& event_modes = policy.modeSchedule_.modeSequence;
+    if (trajectory.size() >= 2 && plan_time.size() == trajectory.size() &&
+        event_modes.size() == event_times.size() + 1) {
+      std::array<Marker, kFootCount> footholds;
+      for (std::size_t foot = 0; foot < kFootCount; ++foot) {
+        footholds[foot] = automanip::examples::MakeShape(
+            "Future footholds", static_cast<int>(foot), Marker::SPHERE_LIST, 0.0, 0.0, 0.0,
+            0.03, 0.03, 0.03, kFootColor[foot][0], kFootColor[foot][1], kFootColor[foot][2]);
+      }
+      const auto t_start = plan_time.front();
+      const auto t_end = plan_time.back();
+      for (std::size_t event = 0; event < event_times.size(); ++event) {
+        if (!(t_start < event_times[event] && event_times[event] < t_end)) {
+          continue;
+        }
+        const auto before = automanip::legged_robot::modeNumber2StanceLeg(event_modes[event]);
+        const auto after = automanip::legged_robot::modeNumber2StanceLeg(event_modes[event + 1]);
+        const auto landing = automanip::LinearInterpolation::interpolate(event_times[event],
+                                                                         plan_time, trajectory);
+        if (landing.size() < info.stateDim) {
+          continue;
+        }
+        const auto positions = feetAt(landing);
+        const std::size_t n = std::min(kFootCount, positions.size());
+        for (std::size_t foot = 0; foot < n; ++foot) {
+          if (!before[foot] && after[foot]) {
+            AddPoint(&footholds[foot], positions[foot]);
+          }
+        }
+      }
+      for (std::size_t foot = 0; foot < kFootCount; ++foot) {
+        if (footholds[foot].points_size() > 0) {
+          *markers->add_markers() = std::move(footholds[foot]);
+        }
+      }
+    }
+
+    const auto feet = feetAt(state);
     const auto contact = automanip::legged_robot::modeNumber2StanceLeg(observation.mode);
     const auto input = observation.input;
     const std::size_t contacts = std::min(feet.size(), contact.size());
