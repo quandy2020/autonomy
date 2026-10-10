@@ -1,5 +1,6 @@
 load(
     "//tools:package.bzl",
+    "autonomy_module_copts",
     "autonomy_cc_library",
 )
 
@@ -56,7 +57,7 @@ autonomy_cc_library(
         "transform_server.hpp",
         "transform_topics.hpp",
     ],
-    copts = ['-DMODULE_NAME=\"transform\"'],
+    copts = autonomy_module_copts("transform"),
     include_prefix = "autonomy/transform",
     deps = [
         "//autonomy/common:autonomy_common",
@@ -80,4 +81,10 @@ filegroup(
         ],
         allow_empty = True,
     ),
+)
+
+filegroup(
+    name = "protos",
+    srcs = glob(["**/*.proto"]),
+    visibility = ["//visibility:public"],
 )

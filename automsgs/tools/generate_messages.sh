@@ -6,12 +6,15 @@ set -euo pipefail
 factory_py="${1:?factory script}"
 out_dir="${2:?output dir}"
 
-if [[ -x /usr/local/bin/protoc ]]; then
+# Prefer Bazel-provided protoc (PROTOC=) so generated *.pb.h match BCR headers.
+if [[ -n "${PROTOC:-}" && -x "${PROTOC}" ]]; then
+  protoc="${PROTOC}"
+elif [[ -x /usr/local/bin/protoc ]]; then
   protoc=/usr/local/bin/protoc
 elif command -v protoc >/dev/null 2>&1; then
   protoc="$(command -v protoc)"
 else
-  echo "protoc not found (expected /usr/local/bin/protoc)" >&2
+  echo "protoc not found (set PROTOC= or install /usr/local/bin/protoc)" >&2
   exit 1
 fi
 

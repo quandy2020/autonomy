@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <autonomy/map/grid_map/grid_map_core/type_defs.hpp>
+#include "autonomy/map/grid_map/grid_map_core/type_defs.hpp"
 
 // STD
 #include <vector>

@@ -1,5 +1,6 @@
 load(
     "//tools:package.bzl",
+    "autonomy_module_copts",
     "autonomy_cc_binary",
     "autonomy_cc_library",
 )
@@ -136,7 +137,7 @@ autonomy_cc_library(
         "tracking/tracking_client.hpp",
         "voice/voice.hpp",
     ],
-    copts = ['-DMODULE_NAME=\"task\"'],
+    copts = autonomy_module_copts("task"),
     include_prefix = "autonomy/task",
     deps = [
         "//autonomy/common:autonomy_common",
@@ -173,4 +174,10 @@ filegroup(
         ],
         allow_empty = True,
     ),
+)
+
+filegroup(
+    name = "protos",
+    srcs = glob(["**/*.proto"]),
+    visibility = ["//visibility:public"],
 )

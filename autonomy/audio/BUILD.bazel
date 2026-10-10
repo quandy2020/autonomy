@@ -1,5 +1,6 @@
 load(
     "//tools:package.bzl",
+    "autonomy_module_copts",
     "autonomy_cc_library",
 )
 
@@ -27,7 +28,7 @@ autonomy_cc_library(
         "inference/moving_detection.hpp",
         "options.hpp",
     ],
-    copts = ['-DMODULE_NAME=\"audio\"'],
+    copts = autonomy_module_copts("audio"),
     include_prefix = "autonomy/audio",
     deps = [
         "//autonomy/common:autonomy_common",
@@ -50,4 +51,10 @@ filegroup(
         ],
         allow_empty = True,
     ),
+)
+
+filegroup(
+    name = "protos",
+    srcs = glob(["**/*.proto"]),
+    visibility = ["//visibility:public"],
 )

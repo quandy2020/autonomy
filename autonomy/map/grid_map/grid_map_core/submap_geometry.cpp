@@ -6,8 +6,8 @@
  *   Institute: ETH Zurich, ANYbotics
  */
 
-#include <autonomy/map/grid_map/grid_map_core/grid_map_math.hpp>
-#include <autonomy/map/grid_map/grid_map_core/submap_geometry.hpp>
+#include "autonomy/map/grid_map/grid_map_core/grid_map_math.hpp"
+#include "autonomy/map/grid_map/grid_map_core/submap_geometry.hpp"
 
 namespace grid_map {
 

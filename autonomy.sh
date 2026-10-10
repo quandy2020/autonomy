@@ -13,11 +13,14 @@
 #   ./autonomy.sh build autodriver:autodriver_bin    # package:target
 #   ./autonomy.sh build --cmake -m planning          # CMake AUTONOMY_BUILD_*
 #   ./autonomy.sh test
+#   ./autonomy.sh install --prefix ./install
+#   ./autonomy.sh install --cmake --prefix /opt/autonomy
 #   ./autonomy.sh clean
 #   ./autonomy.sh status
 #
-# Root Bazel links CMake-built automsgs/autolink via @autonomy_prefix:
-#   export AUTONOMY_PREFIX=$PWD/build   # or install
+# Root Bazel: //:automsgs from sibling @automsgs (BCR protobuf);
+# //:autolink.so + //:autonomy_headers from @autonomy_prefix (CMake).
+#   export AUTONOMY_PREFIX=$PWD/build   # or install  (still needed for autolink)
 #
 # Naming conventions (this file):
 #   list_* / is_* / require_*     discovery / predicates / guards
@@ -35,10 +38,69 @@ readonly ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 cd "${ROOT}"
 
-BAZEL="${BAZEL:-bazel}"
+# Workspace-local bazelisk (survives docker recreate when ROOT is bind-mounted).
+readonly BAZELISK_CACHE_DIR="${ROOT}/.cache/bin"
+readonly BAZELISK_VERSION="${BAZELISK_VERSION:-v1.25.0}"
+
+# Prefer explicit BAZEL=, else bazel / bazelisk on PATH, else cached / common paths.
+resolve_bazel() {
+  if [[ -n "${BAZEL:-}" && "${BAZEL}" != "bazel" && "${BAZEL}" != "bazelisk" ]]; then
+    printf '%s\n' "${BAZEL}"
+    return
+  fi
+  if [[ -n "${BAZEL:-}" ]] && command -v "${BAZEL}" >/dev/null 2>&1; then
+    command -v "${BAZEL}"
+    return
+  fi
+  local candidate
+  for candidate in \
+      "${BAZELISK_CACHE_DIR}/bazel" \
+      "${BAZELISK_CACHE_DIR}/bazelisk" \
+      bazel bazelisk \
+      /usr/local/bin/bazel /usr/local/bin/bazelisk \
+      /usr/bin/bazel "${HOME}/.local/bin/bazel" "${HOME}/bin/bazel"; do
+    if [[ "${candidate}" == */* ]]; then
+      [[ -x "${candidate}" ]] && { printf '%s\n' "${candidate}"; return; }
+    elif command -v "${candidate}" >/dev/null 2>&1; then
+      command -v "${candidate}"
+      return
+    fi
+  done
+  printf '%s\n' "${BAZELISK_CACHE_DIR}/bazel"
+}
+
+# Download bazelisk into .cache/bin when no bazel is available (needs network once).
+install_bazelisk() {
+  local dest_dir="${BAZELISK_CACHE_DIR}"
+  local dest="${dest_dir}/bazelisk"
+  local arch asset url
+  arch="$(uname -m)"
+  case "${arch}" in
+    x86_64|amd64) asset="bazelisk-linux-amd64" ;;
+    aarch64|arm64) asset="bazelisk-linux-arm64" ;;
+    *) die "unsupported arch for bazelisk: ${arch}" ;;
+  esac
+  url="https://github.com/bazelbuild/bazelisk/releases/download/${BAZELISK_VERSION}/${asset}"
+  mkdir -p "${dest_dir}"
+  info "install bazelisk ${BAZELISK_VERSION} → $(short_path "${dest}")"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL -o "${dest}" "${url}"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO "${dest}" "${url}"
+  else
+    die "need curl or wget to download bazelisk"
+  fi
+  chmod +x "${dest}"
+  ln -sfn "${dest}" "${dest_dir}/bazel"
+  ok "bazelisk installed (${dest_dir}/bazel)"
+}
+
+BAZEL="$(resolve_bazel)"
 JOBS="${JOBS:-$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 8)}"
 PREFIX="${PREFIX:-${ROOT}/install}"
 VERBOSE="${VERBOSE:-0}"
+# auto | always | never  (also: NO_COLOR=1, FORCE_COLOR=1, CLICOLOR_FORCE=1)
+COLOR_MODE="${COLOR_MODE:-auto}"
 
 # Resolve AUTONOMY_PREFIX when unset (install → build → monorepo peers).
 if [[ -z "${AUTONOMY_PREFIX:-}" ]]; then
@@ -56,13 +118,16 @@ if [[ -z "${AUTONOMY_PREFIX:-}" ]]; then
 fi
 export AUTONOMY_PREFIX="${AUTONOMY_PREFIX:-}"
 
-# Default smoke targets (need AUTONOMY_PREFIX for //:automsgs / //:autolink).
-readonly DEFAULT_BUILD_TARGETS=(
+# Middleware / third-party smoke labels (used by --smoke and as deps).
+readonly DEFAULT_SMOKE_TARGETS=(
   //:automsgs
   //:autolink
   //:cpp_third_party
   //autonomy/common:autonomy_common
 )
+
+# Backward-compatible alias (package default when explicitly building "tools").
+readonly DEFAULT_BUILD_TARGETS=("${DEFAULT_SMOKE_TARGETS[@]}")
 
 # Bazel packages with their own MODULE.bazel ("tools" = repo root).
 readonly BAZEL_PACKAGE_NAMES=(tools automsgs autodriver autoviz)
@@ -71,20 +136,167 @@ readonly BAZEL_PACKAGE_NAMES=(tools automsgs autodriver autoviz)
 readonly CMAKE_PACKAGE_NAMES=(autonomy automsgs autolink autodriver autoviz)
 
 # ---------------------------------------------------------------------------
-# Logging
+# Color & layout
 # ---------------------------------------------------------------------------
 
+# Enable / disable ANSI styles from COLOR_MODE + env + TTY.
+setup_color() {
+  local enable=0
+  case "${COLOR_MODE}" in
+    always|on|yes|1) enable=1 ;;
+    never|off|no|0)  enable=0 ;;
+    auto|*)
+      if [[ -n "${NO_COLOR:-}" ]]; then
+        enable=0
+      elif [[ -n "${FORCE_COLOR:-}" || -n "${CLICOLOR_FORCE:-}" ]]; then
+        enable=1
+      elif [[ -t 1 ]]; then
+        enable=1
+      else
+        enable=0
+      fi
+      ;;
+  esac
+
+  if [[ "${enable}" -eq 1 ]]; then
+    C_RESET=$'\033[0m'
+    C_BOLD=$'\033[1m'
+    C_DIM=$'\033[2m'
+    C_RED=$'\033[31m'
+    C_GREEN=$'\033[32m'
+    C_YELLOW=$'\033[33m'
+    C_BLUE=$'\033[34m'
+    C_CYAN=$'\033[36m'
+    USE_COLOR=1
+  else
+    C_RESET= C_BOLD= C_DIM= C_RED= C_GREEN= C_YELLOW= C_BLUE= C_CYAN=
+    USE_COLOR=0
+  fi
+}
+
+setup_color
+
+# Wrap text in a style sequence (no-op when color off).
+paint() {
+  local style="$1"
+  shift
+  printf '%s%s%s' "${style}" "$*" "${C_RESET}"
+}
+
 # Fatal error to stderr, then exit 1.
-die()  { echo "${SCRIPT_NAME}: error: $*" >&2; exit 1; }
+die() {
+  printf '%s: %s%s%s\n' \
+    "${SCRIPT_NAME}" "${C_RED}${C_BOLD}error${C_RESET}: " "$*" >&2
+  exit 1
+}
 
 # High-level progress line.
-info() { echo "==> $*"; }
+info() {
+  printf '%s %s\n' "$(paint "${C_CYAN}${C_BOLD}" "==>")" "$*"
+}
 
 # Success line.
-ok()   { echo "ok  $*"; }
+ok() {
+  printf '%s %s\n' "$(paint "${C_GREEN}${C_BOLD}" " ok")" "$*"
+}
 
 # Indented detail under an info line.
-note() { echo "    $*"; }
+note() {
+  printf '     %s%s%s\n' "${C_DIM}" "$*" "${C_RESET}"
+}
+
+# Section header for inventory-style output (deps / modules / status).
+section() {
+  if [[ "${_SECTION_OPEN:-0}" == "1" ]]; then
+    echo
+  fi
+  _SECTION_OPEN=1
+  printf '%s%s%s\n' "${C_BOLD}${C_CYAN}" "$1" "${C_RESET}"
+  if [[ "${USE_COLOR}" -eq 1 ]]; then
+    printf '%s────────────────────────────────────────%s\n' "${C_DIM}" "${C_RESET}"
+  fi
+}
+
+# Help / usage section title (no underline; tighter).
+heading() {
+  if [[ "${_HELP_OPEN:-0}" == "1" ]]; then
+    echo
+  fi
+  _HELP_OPEN=1
+  printf '%s%s%s\n' "${C_BOLD}${C_CYAN}" "$1" "${C_RESET}"
+}
+
+# Key / value row:  key········ value
+kv() {
+  local key="$1"
+  local value="$2"
+  printf '  %s%-22s%s %s\n' "${C_DIM}" "${key}" "${C_RESET}" "${value}"
+}
+
+# Table column header row (dim + bold).
+th() {
+  printf '  %s' "${C_DIM}${C_BOLD}"
+  # shellcheck disable=SC2059
+  printf "$@"
+  printf '%s\n' "${C_RESET}"
+}
+
+# Dim separator line matching a printf format (e.g. dashes).
+trule() {
+  printf '  %s' "${C_DIM}"
+  # shellcheck disable=SC2059
+  printf "$@"
+  printf '%s\n' "${C_RESET}"
+}
+
+# Colored ok / missing badges for status tables.
+badge() {
+  case "$1" in
+    ok|present|yes)
+      paint "${C_GREEN}" "ok"
+      ;;
+    missing|no|fail)
+      paint "${C_RED}" "missing"
+      ;;
+    warn|partial)
+      paint "${C_YELLOW}" "$1"
+      ;;
+    *)
+      printf '%s' "$1"
+      ;;
+  esac
+}
+
+# Help: command name + description.
+help_cmd() {
+  printf '  %s%-10s%s %s\n' "${C_GREEN}" "$1" "${C_RESET}" "$2"
+}
+
+# Help: option line (flag already padded by caller in $1).
+help_opt() {
+  printf '  %s%-20s%s %s\n' "${C_YELLOW}" "$1" "${C_RESET}" "$2"
+}
+
+# Help: example command line.
+help_ex() {
+  printf '  %s%s%s\n' "${C_BLUE}" "$*" "${C_RESET}"
+}
+
+# Shorten absolute paths under HOME or ROOT for compact help / status.
+short_path() {
+  local path="$1"
+  if [[ -z "${path}" ]]; then
+    printf '\n'
+  elif [[ -n "${ROOT}" && "${path}" == "${ROOT}" ]]; then
+    printf '.\n'
+  elif [[ -n "${ROOT}" && "${path}" == "${ROOT}"/* ]]; then
+    printf '%s\n' "${path#"${ROOT}"/}"
+  elif [[ -n "${HOME:-}" && "${path}" == "${HOME}"/* ]]; then
+    printf '~/%s\n' "${path#"${HOME}"/}"
+  else
+    printf '%s\n' "${path}"
+  fi
+}
 
 # ---------------------------------------------------------------------------
 # Module discovery
@@ -183,151 +395,239 @@ bazel_package_default_targets() {
 
 # Top-level usage summary.
 usage_summary() {
-  cat <<EOF
-Usage: ${SCRIPT_NAME} [global options] <command> [command options]
+  local bazel_short prefix_short autonomy_short
+  bazel_short="$(short_path "${BAZEL}")"
+  prefix_short="$(short_path "${PREFIX}")"
+  autonomy_short="$(short_path "${AUTONOMY_PREFIX:-}")"
+  [[ -n "${autonomy_short}" ]] || autonomy_short="(unset)"
+  _HELP_OPEN=0
 
-Commands:
-  build       Modular build (packages, domains, package:target, // labels)
-  test        Build, then run bazel test
-  clean       Wipe Bazel cache (optionally per package)
-  modules     List packages, domain libs/binaries, cmake peers
-  deps        Third-party deps (BCR + prefix + domain BUILD map)
-  query       Run bazel query (default: //... in root)
-  status      Workspace / toolchain / prefix summary
-  help        Show this help, or help for a command
+  printf '%s %s\n' \
+    "$(paint "${C_BOLD}" "Usage:")" \
+    "${SCRIPT_NAME} [options] <command> [args]"
+  echo
 
-Global options:
-  -j, --jobs N         Bazel parallel jobs          [default: ${JOBS}]
-      --prefix DIR     Local install hint           [default: ${PREFIX}]
-      --bazel PATH     Bazel binary                 [default: ${BAZEL}]
-  -v, --verbose        Print underlying bazel / cmake commands
-  -h, --help           Same as: ${SCRIPT_NAME} help
+  heading "Commands"
+  help_cmd build   "Build packages / domains / labels"
+  help_cmd install "Install build outputs to a prefix"
+  help_cmd test    "Build, then bazel test"
+  help_cmd clean   "bazel clean [--soft] [package…]"
+  help_cmd modules "List packages and domain targets"
+  help_cmd deps    "Third-party inventory (BCR + prefix)"
+  help_cmd query   "bazel query  (default: //…)"
+  help_cmd status  "Workspace / toolchain summary"
+  help_cmd help    "This help, or: help <command>"
 
-Environment:
-  AUTONOMY_PREFIX   CMake prefix with libautomsgs.so   [now: ${AUTONOMY_PREFIX:-'(unset)'}]
-  PREFIX   JOBS   BAZEL   VERBOSE
+  heading "Options"
+  help_opt "-j, --jobs N"     "Parallel jobs                 [${JOBS}]"
+  help_opt "    --prefix DIR" "Install / stage prefix        [${prefix_short}]"
+  help_opt "    --bazel PATH" "Bazel binary                  [${bazel_short}]"
+  help_opt "    --color MODE" "auto | always | never         [${COLOR_MODE}]"
+  help_opt "-v, --verbose"    "Print bazel / cmake commands"
+  help_opt "-h, --help"       "Show help"
 
-Examples:
-  ${SCRIPT_NAME} deps
-  ${SCRIPT_NAME} modules
-  ${SCRIPT_NAME} build
-  ${SCRIPT_NAME} build -m planning,bridge
-  ${SCRIPT_NAME} build //autonomy/planning:autonomy_planning
-  ${SCRIPT_NAME} build //autonomy/bridge:autonomy.bridge
-  ${SCRIPT_NAME} build --cmake -m perception,map
-  ${SCRIPT_NAME} -j 16 test autodriver
-EOF
+  heading "Environment"
+  kv "AUTONOMY_PREFIX" "CMake prefix (libautomsgs.so)  [${autonomy_short}]"
+  kv "COLOR_MODE"      "auto | always | never          [${COLOR_MODE}]"
+  kv "also"            "JOBS  BAZEL  VERBOSE  PREFIX  NO_COLOR  FORCE_COLOR"
+
+  heading "Examples"
+  help_ex "${SCRIPT_NAME} status"
+  help_ex "${SCRIPT_NAME} modules"
+  help_ex "${SCRIPT_NAME} build"
+  help_ex "${SCRIPT_NAME} build planning bridge"
+  help_ex "${SCRIPT_NAME} build -m planning,control"
+  help_ex "${SCRIPT_NAME} build //autonomy/bridge:autonomy.bridge"
+  help_ex "${SCRIPT_NAME} build autodriver:autodriver_bin"
+  help_ex "${SCRIPT_NAME} build --cmake -m perception,map"
+  help_ex "${SCRIPT_NAME} install --prefix ./install"
+  help_ex "${SCRIPT_NAME} -j 16 test autodriver"
+
+  echo
+  printf '%s %s\n' \
+    "$(paint "${C_DIM}" "More:")" \
+    "${SCRIPT_NAME} help build | install | test | …"
 }
 
 # Usage for the build command.
 usage_build() {
-  cat <<EOF
-Usage: ${SCRIPT_NAME} build [options] [module|label ...]
+  _HELP_OPEN=0
+  printf '%s %s\n' \
+    "$(paint "${C_BOLD}" "Usage:")" \
+    "${SCRIPT_NAME} build [options] [target…]"
+  echo
 
-Build modes (mixable):
-  (no args)              Root workspace default targets
-  <bazel-package>        Build that MODULE.bazel package (//...)
-  <package>:<target>     Target inside a bazel package (e.g. autodriver:autodriver)
-  all                    All known bazel packages (tools automsgs autodriver autoviz)
-  domains                All domain libs (+ binaries when declared)
-  //label ...            Root-workspace Bazel labels
-  -m, --module LIST      domains → //autonomy/<d>:autonomy_<d> [+ autonomy.<d>]
-  --cmake                Use autocmake + AUTONOMY_BUILD_* for domains / packages
-  --up-to pkg ...        autocmake --packages-up-to
+  heading "Targets (mixable)"
+  kv "(none)"           "All domains + middleware (full default)"
+  kv "--smoke"          "Quick check: automsgs autolink common only"
+  kv "<domain>"         "//autonomy/<d>:autonomy_<d>  [+ autonomy.<d>]"
+  kv "<package>"        "Entire MODULE workspace (//…)"
+  kv "<package>:<name>" "Target inside a package"
+  kv "//label …"        "Root-workspace Bazel labels"
+  kv "all"              "All bazel packages (tools automsgs …)"
+  kv "domains"          "All domain libs (+ binaries)"
 
-Bazel packages:  ${BAZEL_PACKAGE_NAMES[*]}
-CMake packages:  ${CMAKE_PACKAGE_NAMES[*]}
-Domains:         \$ ${SCRIPT_NAME} modules
+  heading "Options"
+  help_opt "-m, --module LIST" "Comma-separated domains"
+  help_opt "--smoke"           "Only DEFAULT_SMOKE_TARGETS (fast)"
+  help_opt "--cmake"           "Build via autocmake + AUTONOMY_BUILD_*"
+  help_opt "--up-to"           "autocmake --packages-up-to"
 
-Examples:
-  ${SCRIPT_NAME} build
-  ${SCRIPT_NAME} build planning control          # lib + binary (if any)
-  ${SCRIPT_NAME} build -m planning,bridge
-  ${SCRIPT_NAME} build domains
-  ${SCRIPT_NAME} build //autonomy/bridge:autonomy.bridge
-  ${SCRIPT_NAME} build autodriver:autodriver_bin
-  ${SCRIPT_NAME} build --cmake -m planning,control
-EOF
+  heading "Known"
+  kv "Packages" "${BAZEL_PACKAGE_NAMES[*]}"
+  kv "CMake"    "${CMAKE_PACKAGE_NAMES[*]}"
+  kv "Domains"  "${SCRIPT_NAME} modules"
+
+  heading "Examples"
+  help_ex "${SCRIPT_NAME} build"
+  help_ex "${SCRIPT_NAME} build --smoke"
+  help_ex "${SCRIPT_NAME} build planning control"
+  help_ex "${SCRIPT_NAME} build -m planning,bridge"
+  help_ex "${SCRIPT_NAME} build domains"
+  help_ex "${SCRIPT_NAME} build //autonomy/bridge:autonomy.bridge"
+  help_ex "${SCRIPT_NAME} build autodriver:autodriver_bin"
+  help_ex "${SCRIPT_NAME} build --cmake -m planning,control"
+  help_ex "${SCRIPT_NAME} install --prefix ./install   # build ≠ install"
 }
 
 # Usage for the test command.
 usage_test() {
-  cat <<EOF
-Usage: ${SCRIPT_NAME} test [options] [module|label ...]
+  _HELP_OPEN=0
+  printf '%s %s\n' \
+    "$(paint "${C_BOLD}" "Usage:")" \
+    "${SCRIPT_NAME} test [options] [target…]"
+  echo
+  printf '  %s\n' "Runs build resolution (same as build), then bazel test."
 
-1. Build selected modules / labels (same resolution as \`build\`)
-2. bazel test //... (or the labels / package defaults you pass)
+  heading "Options"
+  help_opt "-m, --module LIST" "Domain list (same as build)"
 
-Options:
-  -m, --module LIST   Same as build (CMake domain select; test still runs bazel)
-EOF
+  heading "Examples"
+  help_ex "${SCRIPT_NAME} test"
+  help_ex "${SCRIPT_NAME} test autodriver"
+  help_ex "${SCRIPT_NAME} -j 16 test //autonomy/common/..."
 }
 
 # Usage for the clean command.
 usage_clean() {
-  cat <<EOF
-Usage: ${SCRIPT_NAME} clean [--soft] [package ...]
+  _HELP_OPEN=0
+  printf '%s %s\n' \
+    "$(paint "${C_BOLD}" "Usage:")" \
+    "${SCRIPT_NAME} clean [--soft] [package…]"
 
-Default: bazel clean --expunge in each selected workspace
-  --soft     bazel clean   (keep the repository cache)
-  (no pkg)   root workspace only
-  <package>  clean that bazel package dir (tools|automsgs|autodriver|autoviz)
-  all        clean every known bazel package
-EOF
+  heading "Modes"
+  kv "(none)"    "Root workspace, bazel clean --expunge"
+  kv "--soft"    "Keep repository cache (bazel clean)"
+  kv "<package>" "tools | automsgs | autodriver | autoviz"
+  kv "all"       "Every known bazel package"
+
+  heading "Examples"
+  help_ex "${SCRIPT_NAME} clean"
+  help_ex "${SCRIPT_NAME} clean --soft tools"
+  help_ex "${SCRIPT_NAME} clean all"
 }
 
 # Usage for the modules command.
 usage_modules() {
-  cat <<EOF
-Usage: ${SCRIPT_NAME} modules
-
-Print:
-  - Bazel packages (own MODULE.bazel)
-  - CMake / autocmake packages
-  - Domains: library //autonomy/<d>:autonomy_<d>, binaries autonomy.<name>,
-    and CMake -DAUTONOMY_BUILD_<D>=ON|OFF
-  Domain BUILD style: Apollo-like explicit srcs/hdrs (see autonomy/bridge/BUILD.bazel)
-EOF
+  _HELP_OPEN=0
+  printf '%s %s\n' \
+    "$(paint "${C_BOLD}" "Usage:")" \
+    "${SCRIPT_NAME} modules"
+  echo
+  printf '  %s\n' "• Bazel packages (MODULE.bazel)"
+  printf '  %s\n' "• CMake / autocmake packages"
+  printf '  %s\n' "• Domains → library, binaries, -DAUTONOMY_BUILD_<D>"
+  echo
+  printf '  %s %s\n' "$(paint "${C_DIM}" "Tip:")" "${SCRIPT_NAME} build -m planning"
 }
 
 # Usage for the deps command.
 usage_deps() {
-  cat <<EOF
-Usage: ${SCRIPT_NAME} deps
-
-Print third-party dependencies at a glance (Bzlmod):
-  - BCR bazel_dep from MODULE.bazel (+ committed MODULE.bazel.lock)
-  - CMake @autonomy_prefix targets (automsgs / autolink / autonomy_headers)
-  - System //:pthread
-
-Also see: MODULE.bazel header | tools/bazel.rc | ./autonomy.sh modules
-EOF
+  _HELP_OPEN=0
+  printf '%s %s\n' \
+    "$(paint "${C_BOLD}" "Usage:")" \
+    "${SCRIPT_NAME} deps"
+  echo
+  printf '  %s\n' "• BCR bazel_dep (MODULE.bazel / lock)"
+  printf '  %s\n' "• @automsgs         (source + BCR protobuf)"
+  printf '  %s\n' "• @autonomy_prefix  (autolink.so / autonomy headers)"
+  printf '  %s\n' "• System labels     (//:pthread, //:opencv, …)"
+  echo
+  printf '  %s %s\n' \
+    "$(paint "${C_DIM}" "Refresh:")" \
+    "bazel mod deps --lockfile_mode=update"
 }
 
 # Usage for the query command.
 usage_query() {
-  cat <<EOF
-Usage: ${SCRIPT_NAME} query [expression]
-       ${SCRIPT_NAME} query -p <package> [expression]
+  _HELP_OPEN=0
+  printf '%s %s\n' \
+    "$(paint "${C_BOLD}" "Usage:")" \
+    "${SCRIPT_NAME} query [-p package] [expression]"
 
-Default expression: //...
-  -p, --package NAME   Query inside that bazel package workspace
-EOF
+  heading "Args"
+  kv "(none)"             "//… in root workspace"
+  kv "-p, --package NAME" "Query inside that package workspace"
+
+  heading "Examples"
+  help_ex "${SCRIPT_NAME} query"
+  help_ex "${SCRIPT_NAME} query 'kind(\"cc_library\", //autonomy/...)'"
+  help_ex "${SCRIPT_NAME} query -p autodriver //..."
 }
 
 # Usage for the status command.
 usage_status() {
-  cat <<EOF
-Usage: ${SCRIPT_NAME} status
+  _HELP_OPEN=0
+  printf '%s %s\n' \
+    "$(paint "${C_BOLD}" "Usage:")" \
+    "${SCRIPT_NAME} status"
+  echo
+  printf '  %s\n' "Workspace path, Bazel version, AUTONOMY_PREFIX, jobs, packages, bazel-bin."
+}
 
-Print workspace, Bazel version, AUTONOMY_PREFIX, JOBS, modules, and bazel-bin.
-EOF
+# Usage for the install command.
+usage_install() {
+  _HELP_OPEN=0
+  printf '%s %s\n' \
+    "$(paint "${C_BOLD}" "Usage:")" \
+    "${SCRIPT_NAME} install [options] [DIR] [target…]"
+  echo
+
+  heading "Destination"
+  kv "DIR / --prefix" "Install root (lib/ bin/ include/)  [default: ${PREFIX}]"
+  kv "env PREFIX"     "Same as --prefix when DIR omitted"
+
+  heading "Modes"
+  kv "(default)" "Bazel: build then stage into prefix"
+  kv "--cmake"   "autocmake build+install (AUTONOMY_INSTALL_BASE)"
+
+  heading "Options"
+  help_opt "--prefix DIR"      "Install destination"
+  help_opt "--cmake"           "Install via CMake / autocmake"
+  help_opt "--skip-build"      "Stage only (Bazel; skip rebuild)"
+  help_opt "-m, --module LIST" "Domains to build/install (Bazel)"
+  help_opt "--up-to"           "With --cmake: packages-up-to"
+
+  heading "Layout"
+  kv "lib/"     "libautonomy_*.a/.so  libautomsgs.*"
+  kv "bin/"     "autonomy.* executables"
+  kv "include/" "automsgs/ headers when present in bazel-bin"
+
+  heading "Examples"
+  help_ex "${SCRIPT_NAME} install"
+  help_ex "${SCRIPT_NAME} install --prefix /opt/autonomy"
+  help_ex "${SCRIPT_NAME} --prefix ./install install"
+  help_ex "${SCRIPT_NAME} install /tmp/autonomy-prefix"
+  help_ex "${SCRIPT_NAME} install -m planning,bridge --prefix ./install"
+  help_ex "${SCRIPT_NAME} install --cmake --prefix ./install"
+  help_ex "${SCRIPT_NAME} install --cmake --up-to autonomy --prefix ./install"
 }
 
 # Dispatch help for a named command (or summary when empty).
 usage_command() {
   case "${1:-}" in
     build)   usage_build ;;
+    install) usage_install ;;
     test)    usage_test ;;
     clean)   usage_clean ;;
     modules) usage_modules ;;
@@ -343,10 +643,17 @@ usage_command() {
 # Shared helpers
 # ---------------------------------------------------------------------------
 
-# Abort unless BAZEL is on PATH.
+# Abort unless a Bazel binary is available (auto-install bazelisk into .cache/bin).
 require_bazel() {
-  command -v "${BAZEL}" >/dev/null 2>&1 \
-    || die "'${BAZEL}' not found in PATH (set --bazel or BAZEL=)"
+  if [[ -x "${BAZEL}" ]] || command -v "${BAZEL}" >/dev/null 2>&1; then
+    return 0
+  fi
+  install_bazelisk
+  BAZEL="$(resolve_bazel)"
+  if [[ -x "${BAZEL}" ]] || command -v "${BAZEL}" >/dev/null 2>&1; then
+    return 0
+  fi
+  die "bazel not found (install bazelisk, or set --bazel / BAZEL=)"
 }
 
 # Abort unless ROOT has MODULE.bazel.
@@ -362,19 +669,20 @@ require_prefix() {
 }
 
 # Run bazel in workdir, forwarding AUTONOMY_PREFIX via --repo_env when set.
+# --repo_env is a command option (after build|test|info|...), not a startup flag.
 run_bazel_in() {
   local workdir="$1"
   shift
+  local -a args=("$@")
+  if [[ -n "${AUTONOMY_PREFIX}" && ${#args[@]} -gt 0 ]]; then
+    args=("${args[0]}" "--repo_env=AUTONOMY_PREFIX=${AUTONOMY_PREFIX}" "${args[@]:1}")
+  fi
   if [[ "${VERBOSE}" == "1" ]]; then
-    info "+ (cd ${workdir}) AUTONOMY_PREFIX=${AUTONOMY_PREFIX:-} ${BAZEL} $*"
+    info "+ (cd ${workdir}) ${BAZEL} ${args[*]}"
   fi
   (
     cd "${workdir}"
-    if [[ -n "${AUTONOMY_PREFIX}" ]]; then
-      "${BAZEL}" --repo_env=AUTONOMY_PREFIX="${AUTONOMY_PREFIX}" "$@"
-    else
-      "${BAZEL}" "$@"
-    fi
+    "${BAZEL}" "${args[@]}"
   )
 }
 
@@ -452,7 +760,7 @@ build_bazel_domains() {
     labels+=("${label}")
   done < <(domain_bazel_labels_for "${domains[@]}")
   require_root_module
-  info "bazel domains: ${domains[*]}"
+  info "domains  ${domains[*]}"
   note "${labels[*]}"
   build_bazel_package tools "${labels[@]}"
 }
@@ -479,8 +787,8 @@ build_cmake_domains() {
     cmake_args+=("-D$(domain_cmake_flag "${domain}")=ON")
   done
 
-  info "cmake domains: ${domains[*]}"
-  note "flags: ${cmake_args[*]}"
+  info "cmake    domains  ${domains[*]}"
+  note "${cmake_args[*]}"
   if [[ "${VERBOSE}" == "1" ]]; then
     info "+ ${script} select autonomy -- ${cmake_args[*]}"
   fi
@@ -523,7 +831,7 @@ build_cmake_packages() {
   [[ -f "${script}" ]] || die "missing ${script}"
   [[ ${#packages[@]} -gt 0 ]] || die "cmake: need at least one package"
 
-  info "cmake ${mode}: ${packages[*]}"
+  info "cmake    ${mode}  ${packages[*]}"
   if [[ "${VERBOSE}" == "1" ]]; then
     info "+ ${script} ${mode} ${packages[*]}"
   fi
@@ -553,13 +861,13 @@ build_bazel_package() {
     targets=("${defaults[@]}")
   fi
 
-  info "bazel [${package}] (${JOBS} jobs)  dir=${package_dir}"
+  info "build  ${package}  jobs=${JOBS}  $(short_path "${package_dir}")"
   note "${targets[*]}"
   if bazel_package_needs_prefix "${package}" && [[ -n "${AUTONOMY_PREFIX}" ]]; then
     export LD_LIBRARY_PATH="${AUTONOMY_PREFIX}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
   fi
   run_bazel_in "${package_dir}" build --jobs="${JOBS}" "${targets[@]}"
-  ok "build [${package}] → $(bazel_bin_dir "${package_dir}")"
+  ok "build  ${package}  → $(short_path "$(bazel_bin_dir "${package_dir}")")"
 }
 
 # bazel test inside a package workspace (default //... if none given).
@@ -580,13 +888,13 @@ test_bazel_package() {
     targets=(//...)
   fi
 
-  info "bazel test [${package}] (${JOBS} jobs)"
+  info "test   ${package}  jobs=${JOBS}  $(short_path "${package_dir}")"
   note "${targets[*]}"
   if bazel_package_needs_prefix "${package}" && [[ -n "${AUTONOMY_PREFIX}" ]]; then
     export LD_LIBRARY_PATH="${AUTONOMY_PREFIX}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
   fi
   run_bazel_in "${package_dir}" test --jobs="${JOBS}" "${targets[@]}"
-  ok "test [${package}] finished"
+  ok "test   ${package}"
 }
 
 # ---------------------------------------------------------------------------
@@ -602,9 +910,10 @@ cmd_deps() {
     esac
   done
 
-  echo "=== BCR (bazel_dep in MODULE.bazel) ==="
-  printf '  %-18s %-22s %s\n' "MODULE" "VERSION" "REPO / NOTE"
-  printf '  %-18s %-22s %s\n' "------" "-------" "----------"
+  _SECTION_OPEN=0
+  section "BCR  (bazel_dep · MODULE.bazel)"
+  th '%-18s %-22s %s' "MODULE" "VERSION" "REPO"
+  trule '%-18s %-22s %s' "------" "-------" "----"
   python3 - <<'PY' "${ROOT}/MODULE.bazel"
 import re, sys
 text = open(sys.argv[1], encoding="utf-8").read()
@@ -618,33 +927,28 @@ for m in re.finditer(
     print(f"  {name:<18} {ver:<22} @{repo}")
 PY
 
-  echo
-  echo "=== CMake / system prefix (module extension) ==="
-  printf '  %-22s %s\n' "LABEL" "ARTIFACT"
-  printf '  %-22s %s\n' "-----" "--------"
-  printf '  %-22s %s\n' "//:automsgs" "libautomsgs.so + include/automsgs"
-  printf '  %-22s %s\n' "//:autolink" "libautolink.so + include/autolink"
-  printf '  %-22s %s\n' "//:autonomy_headers" "include/autonomy/** (generated *.pb.h)"
-  printf '  %-22s %s\n' "//:opencv" "@autonomy_opencv (install_opencv / OPENCV_ROOT)"
-  echo "  AUTONOMY_PREFIX=${AUTONOMY_PREFIX:-'(unset)'}"
-  echo "  OPENCV_ROOT=${OPENCV_ROOT:-'(unset — default /usr/local|/usr)'}"
+  section "Middleware"
+  th '%-22s %s' "LABEL" "ARTIFACT"
+  trule '%-22s %s' "-----" "--------"
+  kv "//:automsgs" "@automsgs (Bazel + BCR protobuf 30.2)"
+  kv "//:autolink" "@autonomy_prefix libautolink.so"
+  kv "//:autonomy_headers" "@autonomy_prefix include/autonomy/**"
+  kv "//:opencv" "@autonomy_opencv"
+  kv "AUTONOMY_PREFIX" \
+    "$( [[ -n "${AUTONOMY_PREFIX}" ]] && short_path "${AUTONOMY_PREFIX}" || echo '(unset)' )"
+  kv "OPENCV_ROOT" "${OPENCV_ROOT:-'(unset → /usr/local|/usr)'}"
 
-  echo
-  echo "=== System ==="
-  printf '  %-22s %s\n' "//:pthread" "-lpthread"
+  section "System"
+  kv "//:pthread" "-lpthread"
 
-  echo
-  echo "=== Domain BUILD (Apollo-style) ==="
-  echo "  each autonomy/<d>/BUILD.bazel: autonomy_cc_library + explicit srcs/hdrs"
-  echo "  binaries: autonomy.<name> (e.g. //autonomy/bridge:autonomy.bridge)"
-  echo "  third-party SSOT: tools/dependencies.bzl → AUTONOMY_THIRD_PARTY_DEPS"
-  echo "  domain graph:     tools/package.bzl → AUTONOMY_DOMAIN_*"
-  echo "  aggregate:        //:cpp_third_party"
-  echo
-  echo
-  echo "Bzlmod: MODULE.bazel + MODULE.bazel.lock  (tools/bazel.rc: --enable_bzlmod)"
-  echo "Refresh: bazel mod deps --lockfile_mode=update"
-  echo "Docs:    MODULE.bazel header | BUILD.bazel | autonomy/bridge/BUILD.bazel"
+  section "Domain BUILD"
+  kv "style"     "autonomy_cc_library + explicit srcs/hdrs"
+  kv "binary"    "autonomy.<name>   e.g. //autonomy/bridge:autonomy.bridge"
+  kv "deps map"  "tools/dependencies.bzl → AUTONOMY_THIRD_PARTY_DEPS"
+  kv "graph"     "tools/package.bzl → AUTONOMY_DOMAIN_*"
+  kv "aggregate" "//:cpp_third_party"
+  kv "bzlmod"    "MODULE.bazel + MODULE.bazel.lock"
+  kv "refresh"   "bazel mod deps --lockfile_mode=update"
 }
 
 # List Bazel packages, CMake peers, and domain lib/binary/CMake rows.
@@ -656,39 +960,43 @@ cmd_modules() {
     esac
   done
 
-  echo "Bazel packages (MODULE.bazel):"
+  _SECTION_OPEN=0
+  section "Bazel packages"
   local package package_dir relative_path
   for package in "${BAZEL_PACKAGE_NAMES[@]}"; do
     package_dir="$(bazel_package_dir "${package}")"
     relative_path="."
     [[ "${package_dir}" != "${ROOT}" ]] && relative_path="${package_dir#"${ROOT}"/}"
     if [[ -f "${package_dir}/MODULE.bazel" ]]; then
-      printf '  %-12s %s\n' "${package}" "${relative_path}"
+      printf '  %s%-12s%s %s\n' "${C_GREEN}" "${package}" "${C_RESET}" "${relative_path}"
     else
-      printf '  %-12s %s  (missing MODULE.bazel)\n' "${package}" "${relative_path}"
+      printf '  %s%-12s%s %s  %s\n' \
+        "${C_RED}" "${package}" "${C_RESET}" "${relative_path}" \
+        "$(paint "${C_RED}" "(missing MODULE.bazel)")"
     fi
   done
 
-  echo
-  echo "CMake / autocmake packages:"
+  section "CMake packages"
   for package in "${CMAKE_PACKAGE_NAMES[@]}"; do
     if [[ "${package}" == "autonomy" ]]; then
       if [[ -f "${ROOT}/package.xml" ]]; then
-        printf '  %-12s .\n' "${package}"
+        printf '  %s%-12s%s .\n' "${C_GREEN}" "${package}" "${C_RESET}"
       else
-        printf '  %-12s .  (missing package.xml)\n' "${package}"
+        printf '  %s%-12s%s .  %s\n' \
+          "${C_RED}" "${package}" "${C_RESET}" "$(paint "${C_RED}" "(missing package.xml)")"
       fi
     elif [[ -f "${ROOT}/${package}/package.xml" ]]; then
-      printf '  %-12s %s\n' "${package}" "${package}"
+      printf '  %s%-12s%s %s\n' "${C_GREEN}" "${package}" "${C_RESET}" "${package}"
     else
-      printf '  %-12s %s  (missing package.xml)\n' "${package}" "${package}"
+      printf '  %s%-12s%s %s  %s\n' \
+        "${C_RED}" "${package}" "${C_RESET}" "${package}" \
+        "$(paint "${C_RED}" "(missing package.xml)")"
     fi
   done
 
-  echo
-  echo "Domains (lib / binaries / CMake flag):"
-  printf '  %-14s %-50s %-32s %s\n' "DOMAIN" "LIBRARY" "BINARIES" "CMAKE"
-  printf '  %-14s %-50s %-32s %s\n' "------" "-------" "--------" "-----"
+  section "Domains"
+  th '%-14s %-48s %-36s %s' "DOMAIN" "LIBRARY" "BINARIES" "CMAKE"
+  trule '%-14s %-48s %-36s %s' "------" "-------" "--------" "-----"
   local domain binary_names binary_label
   while IFS= read -r domain; do
     binary_names=""
@@ -701,16 +1009,17 @@ cmd_modules() {
       fi
     done < <(domain_bazel_binaries "${domain}")
     [[ -n "${binary_names}" ]] || binary_names="-"
-    printf '  %-14s %-50s %-32s -D%s=ON|OFF\n' \
-      "${domain}" \
+    printf '  %s%-14s%s %-48s %-36s %s-D%s%s\n' \
+      "${C_BOLD}" "${domain}" "${C_RESET}" \
       "$(domain_bazel_label "${domain}")" \
       "${binary_names}" \
-      "$(domain_cmake_flag "${domain}")"
+      "${C_DIM}" "$(domain_cmake_flag "${domain}")" "${C_RESET}"
   done < <(list_domains)
 
   echo
-  echo "Prefix: AUTONOMY_PREFIX=${AUTONOMY_PREFIX:-'(unset — export to CMake install/build)'}"
-  echo "Tip:    ${SCRIPT_NAME} build -m planning   # builds lib + autonomy.planning"
+  kv "prefix" \
+    "$( [[ -n "${AUTONOMY_PREFIX}" ]] && short_path "${AUTONOMY_PREFIX}" || echo '(unset)' )"
+  kv "tip" "${SCRIPT_NAME} build -m planning"
 }
 
 # Modular build: domains, packages, package:target, or // labels.
@@ -724,6 +1033,7 @@ cmd_build() {
   local force_cmake=0
   local build_all=0
   local build_all_domains=0
+  local smoke_only=0
   local domain
 
   while [[ $# -gt 0 ]]; do
@@ -740,6 +1050,10 @@ cmd_build() {
         while IFS= read -r domain; do
           domains+=("${domain}")
         done < <(split_csv "${1#*=}")
+        shift
+        ;;
+      --smoke)
+        smoke_only=1
         shift
         ;;
       --cmake)
@@ -833,14 +1147,27 @@ cmd_build() {
     done
   fi
 
-  # Default: root tools targets when nothing else was selected.
+  # Default (no args): all domains + middleware. Use --smoke for the old 4-target check.
   if [[ ${#domains[@]} -eq 0 \
      && ${#cmake_packages[@]} -eq 0 \
      && ${#package_targets[@]} -eq 0 \
      && ${#labels[@]} -eq 0 \
      && ${#bazel_packages[@]} -eq 0 ]]; then
     require_root_module
-    build_bazel_package tools
+    if [[ "${smoke_only}" == "1" ]]; then
+      build_bazel_package tools "${DEFAULT_SMOKE_TARGETS[@]}"
+    else
+      local -a all_domains=()
+      while IFS= read -r domain; do
+        all_domains+=("${domain}")
+      done < <(list_domains)
+      [[ ${#all_domains[@]} -gt 0 ]] || die "no autonomy/* domains found"
+      info "build  all domains (${#all_domains[@]}) + middleware"
+      build_bazel_package tools //:automsgs //:autolink //:cpp_third_party
+      build_bazel_domains "${all_domains[@]}"
+    fi
+  elif [[ "${smoke_only}" == "1" ]]; then
+    die "build: --smoke cannot be combined with other targets (omit args or drop --smoke)"
   fi
 }
 
@@ -925,11 +1252,11 @@ cmd_test() {
      && ${#bazel_packages[@]} -eq 0 ]]; then
     require_root_module
     cmd_build
-    info "bazel test //... [tools]"
+    info "test   tools  jobs=${JOBS}  //..."
     require_prefix
     export LD_LIBRARY_PATH="${AUTONOMY_PREFIX}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
     run_bazel test --jobs="${JOBS}" //...
-    ok "test finished"
+    ok "test   tools"
   fi
 }
 
@@ -968,14 +1295,14 @@ cmd_clean() {
     package_dir="$(bazel_package_dir "${package}")"
     [[ -f "${package_dir}/MODULE.bazel" ]] || die "no MODULE.bazel in ${package_dir}"
     if [[ "${soft}" == "1" ]]; then
-      info "bazel clean [${package}]"
+      info "clean  ${package}  --soft  $(short_path "${package_dir}")"
       run_bazel_in "${package_dir}" clean
     else
-      info "bazel clean --expunge [${package}]"
+      info "clean  ${package}  --expunge  $(short_path "${package_dir}")"
       run_bazel_in "${package_dir}" clean --expunge
     fi
   done
-  ok "clean complete"
+  ok "clean"
 }
 
 # Run bazel query in a package workspace (default //... in tools).
@@ -1010,11 +1337,252 @@ cmd_query() {
   local package_dir
   package_dir="$(bazel_package_dir "${package}")"
   require_bazel
-  info "bazel query [${package}] ${expression}"
+  info "query  ${package}  ${expression}"
   (
     cd "${package_dir}"
     "${BAZEL}" query "${expression}"
   )
+}
+
+# Copy one file into DEST/subdir (create dirs; preserve mode for executables).
+install_file_into() {
+  local src="$1"
+  local dest_dir="$2"
+  local mode="${3:-644}"
+  [[ -f "${src}" ]] || return 0
+  mkdir -p "${dest_dir}"
+  install -m "${mode}" "${src}" "${dest_dir}/"
+  if [[ "${VERBOSE}" == "1" ]]; then
+    note "$(short_path "${src}") → $(short_path "${dest_dir}")/"
+  fi
+}
+
+# Stage Bazel outputs under bazel-bin into DEST/{lib,bin,include}.
+install_bazel_stage() {
+  local dest="$1"
+  local bin_dir="$2"
+  local n_lib=0 n_bin=0 n_hdr=0
+  local path
+
+  mkdir -p "${dest}/lib" "${dest}/bin" "${dest}/include"
+
+  # Domain + package libraries.
+  while IFS= read -r path; do
+    [[ -n "${path}" && -f "${path}" ]] || continue
+    install_file_into "${path}" "${dest}/lib" 644
+    n_lib=$((n_lib + 1))
+  done < <(
+    find "${bin_dir}" -type f \( \
+        -name 'libautonomy_*.a' -o -name 'libautonomy_*.so' -o -name 'libautonomy_*.so.*' \
+        -o -name 'libautomsgs.a' -o -name 'libautomsgs.so' -o -name 'libautomsgs.so.*' \
+        -o -name 'libasync_grpc.a' -o -name 'libasync_grpc.so' \
+      \) 2>/dev/null | sort -u
+  )
+
+  # autonomy.* executables (skip runfiles / bazel metadata; keep ELF only).
+  while IFS= read -r path; do
+    [[ -n "${path}" && -f "${path}" && -x "${path}" ]] || continue
+    [[ "${path}" == *.runfiles* || "${path}" == *.repo_mapping || "${path}" == *.params ]] && continue
+    [[ "$(head -c 4 "${path}" 2>/dev/null)" == $'\x7fELF' ]] || continue
+    install_file_into "${path}" "${dest}/bin" 755
+    n_bin=$((n_bin + 1))
+  done < <(
+    find "${bin_dir}/autonomy" -type f -name 'autonomy.*' \
+      ! -path '*/.runfiles/*' ! -name '*.repo_mapping' 2>/dev/null | sort -u
+  )
+
+  # Generated automsgs headers (Bazel @automsgs outs + core/include).
+  local am_gen am_core
+  am_gen="$(find "${bin_dir}" -type d -path '*/external/*/automsgs' 2>/dev/null | head -1 || true)"
+  if [[ -n "${am_gen}" && -d "${am_gen}" ]]; then
+    mkdir -p "${dest}/include/automsgs"
+    cp -a "${am_gen}/." "${dest}/include/automsgs/" 2>/dev/null || true
+    n_hdr=$((n_hdr + 1))
+  fi
+  am_core="$(find "${bin_dir}" -type d -path '*/external/*/core/include/automsgs' 2>/dev/null | head -1 || true)"
+  if [[ -z "${am_core}" ]]; then
+    am_core="$(find "${ROOT}/automsgs/core/include/automsgs" -maxdepth 0 -type d 2>/dev/null | head -1 || true)"
+  fi
+  if [[ -n "${am_core}" && -d "${am_core}" ]]; then
+    mkdir -p "${dest}/include/automsgs"
+    cp -a "${am_core}/." "${dest}/include/automsgs/" 2>/dev/null || true
+    n_hdr=$((n_hdr + 1))
+  fi
+
+  note "staged  lib=${n_lib}  bin=${n_bin}  header_trees=${n_hdr}"
+  [[ "${n_lib}" -gt 0 || "${n_bin}" -gt 0 ]] \
+    || die "install: nothing to stage under $(short_path "${bin_dir}") (build first?)"
+}
+
+# Install via autocmake into DEST (sets AUTONOMY_INSTALL_BASE).
+install_cmake_prefix() {
+  local dest="$1"
+  shift
+  local mode="${1:-select}"
+  shift || true
+  local -a packages=("$@")
+  local script="${ROOT}/scripts/build_autonomy_autocmake.sh"
+  [[ -f "${script}" ]] || die "missing ${script}"
+
+  mkdir -p "${dest}"
+  export AUTONOMY_INSTALL_BASE="${dest}"
+  # Keep build trees under workspace unless the user overrode them.
+  export AUTONOMY_BUILD_BASE="${AUTONOMY_BUILD_BASE:-${ROOT}/build}"
+
+  info "cmake    install  → $(short_path "${dest}")"
+  if [[ ${#packages[@]} -eq 0 ]]; then
+    packages=(automsgs autolink autonomy)
+    mode=select
+  fi
+  if [[ "${VERBOSE}" == "1" ]]; then
+    info "+ AUTONOMY_INSTALL_BASE=${dest} ${script} ${mode} ${packages[*]}"
+  fi
+  "${script}" "${mode}" "${packages[@]}"
+}
+
+# Install build outputs to a prefix directory.
+cmd_install() {
+  local dest="${PREFIX}"
+  local force_cmake=0
+  local skip_build=0
+  local cmake_mode="select"
+  local -a domains=()
+  local -a cmake_packages=()
+  local -a labels=()
+  local -a package_targets=()
+  local dest_set=0
+  local domain
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -h|--help) usage_install; return 0 ;;
+      --prefix)
+        [[ $# -ge 2 ]] || die "--prefix needs a directory"
+        dest="$2"
+        dest_set=1
+        shift 2
+        ;;
+      --prefix=*)
+        dest="${1#--prefix=}"
+        dest_set=1
+        shift
+        ;;
+      --cmake)
+        force_cmake=1
+        shift
+        ;;
+      --skip-build|--no-build)
+        skip_build=1
+        shift
+        ;;
+      --up-to)
+        force_cmake=1
+        cmake_mode="up-to"
+        shift
+        ;;
+      -m|--module|--modules|--domain|--domains)
+        [[ $# -ge 2 ]] || die "$1 needs a comma-separated domain list"
+        while IFS= read -r domain; do
+          domains+=("${domain}")
+        done < <(split_csv "$2")
+        shift 2
+        ;;
+      --module=*|--modules=*|--domain=*|--domains=*)
+        while IFS= read -r domain; do
+          domains+=("${domain}")
+        done < <(split_csv "${1#*=}")
+        shift
+        ;;
+      -*)
+        die "install: unexpected option: $1 (try --help)"
+        ;;
+      //*|@*)
+        labels+=("$1")
+        shift
+        ;;
+      *:*)
+        package_targets+=("$1")
+        shift
+        ;;
+      *)
+        # First bare path-looking arg is the install destination.
+        if [[ "${dest_set}" == "0" ]] && {
+             [[ "$1" == /* || "$1" == ./* || "$1" == ../* || "$1" == ~* ]] \
+             || [[ "$1" == install || "$1" == */install || "$1" == */install/* ]]
+           }; then
+          dest="$1"
+          dest_set=1
+          shift
+        elif is_cmake_package "$1"; then
+          cmake_packages+=("$1")
+          force_cmake=1
+          shift
+        elif is_domain "$1"; then
+          domains+=("$1")
+          shift
+        else
+          die "install: unexpected argument: $1 (try --help)"
+        fi
+        ;;
+    esac
+  done
+
+  [[ -n "${dest}" ]] || die "install: need a destination (--prefix DIR)"
+  # Expand relative dest against CWD (not ROOT) so `install ./out` is intuitive.
+  case "${dest}" in
+    /*) ;;
+    ~*) dest="${dest/#\~/${HOME}}" ;;
+    *) dest="$(pwd)/${dest}" ;;
+  esac
+  PREFIX="${dest}"
+
+  if [[ "${force_cmake}" == "1" ]]; then
+    if [[ ${#cmake_packages[@]} -eq 0 && ${#domains[@]} -eq 0 ]]; then
+      install_cmake_prefix "${dest}" select automsgs autolink autonomy
+    elif [[ ${#domains[@]} -gt 0 ]]; then
+      export AUTONOMY_INSTALL_BASE="${dest}"
+      export AUTONOMY_BUILD_BASE="${AUTONOMY_BUILD_BASE:-${ROOT}/build}"
+      build_cmake_domains "${domains[@]}"
+    else
+      install_cmake_prefix "${dest}" "${cmake_mode}" "${cmake_packages[@]}"
+    fi
+    ok "install  cmake  → $(short_path "${dest}")"
+    note "export AUTONOMY_PREFIX=$(short_path "${dest}")"
+    return 0
+  fi
+
+  require_root_module
+  require_bazel
+
+  if [[ "${skip_build}" != "1" ]]; then
+    if [[ ${#domains[@]} -gt 0 ]]; then
+      build_bazel_domains "${domains[@]}"
+    fi
+    if [[ ${#package_targets[@]} -gt 0 ]]; then
+      local spec
+      for spec in "${package_targets[@]}"; do
+        build_bazel_package_target "${spec}"
+      done
+    fi
+    if [[ ${#labels[@]} -gt 0 ]]; then
+      build_bazel_package tools "${labels[@]}"
+    fi
+    if [[ ${#domains[@]} -eq 0 \
+       && ${#package_targets[@]} -eq 0 \
+       && ${#labels[@]} -eq 0 ]]; then
+      build_bazel_package tools
+    fi
+  fi
+
+  local bin_dir
+  bin_dir="$(bazel_bin_dir "${ROOT}")"
+  [[ -d "${bin_dir}" ]] || die "install: missing bazel-bin (build first)"
+
+  info "install  bazel  → $(short_path "${dest}")"
+  note "from $(short_path "${bin_dir}")"
+  install_bazel_stage "${dest}" "${bin_dir}"
+  ok "install  → $(short_path "${dest}")"
+  note "export AUTONOMY_PREFIX=$(short_path "${dest}")"
 }
 
 # Print workspace / toolchain / prefix / module summary.
@@ -1026,46 +1594,53 @@ cmd_status() {
     esac
   done
 
-  echo "workspace : ${ROOT}"
-  echo "bazel     : ${BAZEL} ($(command -v "${BAZEL}" 2>/dev/null || echo 'not found'))"
-  if command -v "${BAZEL}" >/dev/null 2>&1; then
-    echo "version   : $(${BAZEL} --version 2>/dev/null | head -1 || echo unknown)"
+  local bazel_state version_line
+  if [[ -x "${BAZEL}" ]] || command -v "${BAZEL}" >/dev/null 2>&1; then
+    bazel_state="$(short_path "${BAZEL}")"
+    version_line="$(${BAZEL} --version 2>/dev/null | head -1 || echo unknown)"
+  else
+    bazel_state="$(short_path "${BAZEL}")  $(paint "${C_YELLOW}" "(missing → auto-install on build)")"
+    version_line="—"
   fi
-  echo "jobs      : ${JOBS}"
-  echo "prefix    : ${PREFIX}"
-  echo "autonomy  : ${AUTONOMY_PREFIX:-'(unset)'}"
-  if [[ -n "${AUTONOMY_PREFIX}" ]]; then
-    if [[ -f "${AUTONOMY_PREFIX}/lib/libautomsgs.so" ]]; then
-      echo "  libautomsgs.so : present"
-    else
-      echo "  libautomsgs.so : missing"
-    fi
-    if [[ -f "${AUTONOMY_PREFIX}/lib/libautolink.so" ]]; then
-      echo "  libautolink.so : present"
-    else
-      echo "  libautolink.so : missing"
-    fi
-  fi
-  echo "verbose   : ${VERBOSE}"
-  echo "module    : $( [[ -f "${ROOT}/MODULE.bazel" ]] && echo present || echo missing )"
 
-  echo "packages  :"
+  _SECTION_OPEN=0
+  section "Workspace"
+  kv "root" "$(short_path "${ROOT}")"
+  kv "module" "$( [[ -f "${ROOT}/MODULE.bazel" ]] && badge ok || badge missing )"
+  kv "bazel-bin" \
+    "$( [[ -d "${ROOT}/bazel-bin" ]] && short_path "${ROOT}/bazel-bin" || paint "${C_DIM}" "(not built)" )"
+
+  section "Toolchain"
+  kv "bazel" "${bazel_state}"
+  kv "version" "${version_line}"
+  kv "jobs" "${JOBS}"
+  kv "verbose" "${VERBOSE}"
+  kv "color" "${COLOR_MODE}$( [[ "${USE_COLOR}" -eq 1 ]] && echo " (on)" || echo " (off)" )"
+
+  section "Prefix"
+  kv "PREFIX" "$(short_path "${PREFIX}")"
+  kv "AUTONOMY" \
+    "$( [[ -n "${AUTONOMY_PREFIX}" ]] && short_path "${AUTONOMY_PREFIX}" || paint "${C_YELLOW}" "(unset)" )"
+  if [[ -n "${AUTONOMY_PREFIX}" ]]; then
+    kv "automsgs" \
+      "$( [[ -f "${AUTONOMY_PREFIX}/lib/libautomsgs.so" ]] && badge ok || badge missing )"
+    kv "autolink" \
+      "$( [[ -f "${AUTONOMY_PREFIX}/lib/libautolink.so" ]] && badge ok || badge missing )"
+  fi
+
+  section "Packages"
   local package package_dir
   for package in "${BAZEL_PACKAGE_NAMES[@]}"; do
     package_dir="$(bazel_package_dir "${package}")"
-    printf '  %-12s %s\n' "${package}" \
-      "$( [[ -f "${package_dir}/MODULE.bazel" ]] && echo ok || echo missing )"
+    kv "${package}" \
+      "$( [[ -f "${package_dir}/MODULE.bazel" ]] && badge ok || badge missing )"
   done
 
   local domain_count=0
   while IFS= read -r _; do
     domain_count=$((domain_count + 1))
   done < <(list_domains)
-  echo "domains   : ${domain_count}  (${SCRIPT_NAME} modules)"
-
-  local bazel_bin=""
-  [[ -d "${ROOT}/bazel-bin" ]] && bazel_bin="${ROOT}/bazel-bin"
-  echo "bazel-bin : ${bazel_bin:-'(not built yet)'}"
+  kv "domains" "${domain_count}  ($(paint "${C_DIM}" "${SCRIPT_NAME} modules"))"
 }
 
 # ---------------------------------------------------------------------------
@@ -1121,6 +1696,22 @@ parse_global_flag() {
       VERBOSE=1
       PARSE_SHIFT=1
       ;;
+    --color)
+      [[ $# -ge 2 ]] || die "--color needs auto|always|never"
+      COLOR_MODE="$2"
+      setup_color
+      PARSE_SHIFT=2
+      ;;
+    --color=*)
+      COLOR_MODE="${1#--color=}"
+      setup_color
+      PARSE_SHIFT=1
+      ;;
+    --no-color)
+      COLOR_MODE=never
+      setup_color
+      PARSE_SHIFT=1
+      ;;
     -h|--help)
       PARSE_SHIFT=1
       PARSE_HELP=1
@@ -1136,6 +1727,7 @@ dispatch_command() {
   shift
   case "${command}" in
     build)   cmd_build "$@" ;;
+    install) cmd_install "$@" ;;
     test)    cmd_test "$@" ;;
     clean)   cmd_clean "$@" ;;
     modules) cmd_modules "$@" ;;

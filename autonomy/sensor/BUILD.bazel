@@ -1,5 +1,6 @@
 load(
     "//tools:package.bzl",
+    "autonomy_module_copts",
     "autonomy_cc_library",
 )
 
@@ -30,7 +31,7 @@ autonomy_cc_library(
         "range_data.hpp",
         "time_util.hpp",
     ],
-    copts = ['-DMODULE_NAME=\"sensor\"'],
+    copts = autonomy_module_copts("sensor"),
     include_prefix = "autonomy/sensor",
     deps = [
         "//autonomy/common:autonomy_common",

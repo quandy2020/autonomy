@@ -1,0 +1,15 @@
+# Standalone autoviz workspace.
+
+common --enable_bzlmod
+
+build --cxxopt=-std=c++20
+build --host_cxxopt=-std=c++20
+build --copt=-Wall
+build --copt=-Wno-unused-parameter
+
+build --action_env=LD_LIBRARY_PATH
+test --test_env=LD_LIBRARY_PATH
+
+build --incompatible_strict_action_env=false
+
+try-import %workspace%/user.bazelrc

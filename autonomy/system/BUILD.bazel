@@ -1,5 +1,6 @@
 load(
     "//tools:package.bzl",
+    "autonomy_module_copts",
     "autonomy_cc_binary",
     "autonomy_cc_library",
 )
@@ -62,7 +63,7 @@ autonomy_cc_library(
         "ota/ota_agent.hpp",
         "safety/safety_latch.hpp",
     ],
-    copts = ['-DMODULE_NAME=\"system\"'],
+    copts = autonomy_module_copts("system"),
     include_prefix = "autonomy/system",
     deps = [
         "//autonomy/common:autonomy_common",
@@ -107,4 +108,10 @@ filegroup(
         ],
         allow_empty = True,
     ),
+)
+
+filegroup(
+    name = "protos",
+    srcs = glob(["**/*.proto"]),
+    visibility = ["//visibility:public"],
 )

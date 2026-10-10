@@ -1,0 +1,5 @@
+# Patches applied via MODULE.bazel single_version_override / archive_override.
+
+exports_files([
+    "grpc_170_upb_map_next.patch",
+])

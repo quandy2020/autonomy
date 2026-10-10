@@ -12,4 +12,6 @@ exports_files([
     "opencv.BUILD",
     "opencv_stub.BUILD",
     "bazel.rc",
+    "generate_autonomy_protos.sh",
+    "autonomy_proto_files.bzl",
 ])

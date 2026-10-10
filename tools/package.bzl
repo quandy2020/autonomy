@@ -149,6 +149,10 @@ def autonomy_cc_library(
     )
     if include_prefix != None:
         lib_kwargs["include_prefix"] = include_prefix
+        # Empty strip → virtual includes at include_prefix/<hdr> so
+        # #include <autonomy/...> hits Bazel -I before /usr/local/include.
+        if strip_include_prefix == None:
+            lib_kwargs["strip_include_prefix"] = ""
     if strip_include_prefix != None:
         lib_kwargs["strip_include_prefix"] = strip_include_prefix
     lib_kwargs.update(kwargs)

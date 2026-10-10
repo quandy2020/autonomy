@@ -1,5 +1,6 @@
 load(
     "//tools:package.bzl",
+    "autonomy_module_copts",
     "autonomy_cc_library",
 )
 
@@ -222,7 +223,7 @@ autonomy_cc_library(
         "utils/decompose/seed_decomp.hpp",
         "utils/pgm_converter.hpp",
     ],
-    copts = ['-DMODULE_NAME=\"map\"'],
+    copts = autonomy_module_copts("map"),
     include_prefix = "autonomy/map",
     deps = [
         "//autonomy/common:autonomy_common",
@@ -246,4 +247,10 @@ filegroup(
         ],
         allow_empty = True,
     ),
+)
+
+filegroup(
+    name = "protos",
+    srcs = glob(["**/*.proto"]),
+    visibility = ["//visibility:public"],
 )

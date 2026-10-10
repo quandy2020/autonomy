@@ -1,4 +1,4 @@
-load("//tools:system_libs.bzl", "system_library")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -9,24 +9,19 @@ exports_files([
     "cli/rpc-cli.py",
 ])
 
-# Prefer /usr/local (docker SDKs) over older distro libraries.
-system_library(
+# Prefer BCR protobuf (aligned with root MODULE.bazel) over /usr/local 3.19.
+alias(
     name = "protobuf",
-    linkopts = [
-        "/usr/local/lib/libprotobuf.so",
-        "-Wl,-rpath,/usr/local/lib",
-    ],
+    actual = "@com_google_protobuf//:protobuf",
 )
 
-system_library(
+alias(
     name = "protoc_lib",
-    linkopts = [
-        "/usr/local/lib/libprotoc.so",
-        "-Wl,-rpath,/usr/local/lib",
-    ],
+    actual = "@com_google_protobuf//:protoc_lib",
 )
 
-system_library(
+cc_library(
     name = "pthread",
     linkopts = ["-lpthread"],
+    linkstatic = True,
 )

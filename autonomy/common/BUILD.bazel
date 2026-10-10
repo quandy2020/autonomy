@@ -1,6 +1,7 @@
 load(
     "//tools:package.bzl",
     "autonomy_cc_library",
+    "autonomy_module_copts",
 )
 load(
     "//tools:dependencies.bzl",
@@ -54,7 +55,7 @@ autonomy_cc_library(
         "math/math.cpp",
         "math/math_utils.cpp",
         "math/matrix_operations.cpp",
-        "math/mpc_osqp.cpp",
+        # mpc_osqp.cpp: OSQP 0.6 API; BCR only ships osqp 1.x — keep CMake-only for now.
         "math/polygon2d.cpp",
         "math/polynomial.cpp",
         "math/random.cpp",
@@ -154,7 +155,7 @@ autonomy_cc_library(
         "math/math_utils.hpp",
         "math/matrix.hpp",
         "math/matrix_operations.hpp",
-        "math/mpc_osqp.hpp",
+        # mpc_osqp.hpp: see mpc_osqp.cpp note above.
         "math/polygon2d.hpp",
         "math/polynomial.hpp",
         "math/qp_solver/qp_solver.hpp",
@@ -205,7 +206,8 @@ autonomy_cc_library(
         "version.hpp",
         ":generate_config",
     ],
-    copts = ['-DMODULE_NAME=\"common\"'],
+    # Must be a string literal: bare `common` collides with namespace common.
+    copts = autonomy_module_copts("common"),
     include_prefix = "autonomy/common",
     deps = [
         "//:automsgs",
@@ -257,8 +259,7 @@ autonomy_cc_library(
         "async_grpc/common/port.h",
         "async_grpc/common/time.h",
     ],
-    copts = [
-        '-DMODULE_NAME=\\"common\\"',
+    copts = autonomy_module_copts("common") + [
         "-DAUTONOMY_HAVE_GRPC_REFLECTION=1",
     ],
     include_prefix = "autonomy/common",

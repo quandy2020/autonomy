@@ -1,5 +1,6 @@
 load(
     "//tools:package.bzl",
+    "autonomy_module_copts",
     "autonomy_cc_binary",
     "autonomy_cc_library",
 )
@@ -706,7 +707,7 @@ autonomy_cc_library(
         "lightning/utils/timer.hpp",
         "localization_server.hpp",
     ],
-    copts = ['-DMODULE_NAME=\"localization\"'],
+    copts = autonomy_module_copts("localization"),
     include_prefix = "autonomy/localization",
     deps = [
         "//autonomy/common:autonomy_common",
@@ -741,4 +742,10 @@ filegroup(
         ],
         allow_empty = True,
     ),
+)
+
+filegroup(
+    name = "protos",
+    srcs = glob(["**/*.proto"]),
+    visibility = ["//visibility:public"],
 )

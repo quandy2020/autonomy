@@ -18,9 +18,9 @@ install_deps (C++)              BCR bazel_dep (this file)             Label
 install_gtest.sh v1.17.0        googletest 1.17.0.bcr.2               @googletest//:gtest[_main]
 install_glog.sh v0.6.0          glog 0.6.0                            @com_github_google_glog//:glog
 install_gflags.sh v2.2.2        gflags 2.2.2.bcr.1                    @com_github_gflags_gflags//:gflags
-install_protobuf.sh v3.19.4     protobuf 29.0 †                       @com_google_protobuf//:protobuf
+install_protobuf.sh v3.19.4     protobuf 30.2 †                       @com_google_protobuf//:protobuf
 install_grpc.sh v1.48.0         grpc 1.70.1 †                         @com_github_grpc_grpc//:grpc++
-install_abseil.sh 20220623.0    abseil-cpp 20250512.1 †               @com_google_absl//absl/...
+install_abseil.sh 20220623.0    abseil-cpp 20250814.1 †               @com_google_absl//absl/...
 install_ceres_solver.sh 2.2.0   ceres-solver 2.2.0                    @ceres-solver//:ceres
 install_nlohmann.sh v3.12.0     nlohmann_json 3.12.0.bcr.2            @nlohmann_json//:json
 install_behaviortree_cpp 4.7.2  behaviortree_cpp 4.7.0.bcr.3          @behaviortree_cpp//:behaviortree_cpp
@@ -47,8 +47,11 @@ apt libsqlite3-dev              sqlite3 3.53.4                        @sqlite3//
 Still NOT bazel_dep (no BCR):
   g2o, fbow, taskflow, adolc, ipopt, ogre.
 
-Local module extension — @autonomy_prefix / @autonomy_opencv:
-  //:automsgs  //:autolink  //:autonomy_headers  //:opencv
+Local modules / extensions:
+  //:automsgs          ← @automsgs (source, BCR protobuf) via local_path_override
+  //:autolink          ← @autolink (source, BCR protobuf) via local_path_override
+  //:autonomy_headers  ← generated from autonomy/**/*.proto (BCR protoc)
+  //:opencv            ← @autonomy_opencv
 
 CLI:  ./autonomy.sh deps
 Lock: bazel mod deps --lockfile_mode=update
@@ -60,6 +63,18 @@ module(
     compatibility_level = 1,
 )
 
+# Siblings: build from source with BCR protobuf (not CMake 3.19 prefix *.pb.h).
+bazel_dep(name = "automsgs", version = "1.0.0")
+local_path_override(
+    module_name = "automsgs",
+    path = "automsgs",
+)
+bazel_dep(name = "autolink", version = "0.1.0")
+local_path_override(
+    module_name = "autolink",
+    path = "autolink",
+)
+
 # --- BCR: build rules / platforms ---
 bazel_dep(name = "rules_cc", version = "0.2.18")
 bazel_dep(name = "platforms", version = "1.1.0")
@@ -68,7 +83,6 @@ bazel_dep(name = "bazel_skylib", version = "1.9.0")
 # --- BCR ← scripts/install_deps thirdparty.json (C++) ---
 
 bazel_dep(name = "googletest", version = "1.17.0.bcr.2")
-
 bazel_dep(
     name = "gflags",
     version = "2.2.2.bcr.1",
@@ -82,18 +96,30 @@ bazel_dep(
     repo_name = "com_github_google_glog",
 )
 
-# install_protobuf.sh is v3.19.4 (CMake). Bazel graph needs ≥29 with grpc 1.70.
+# install_protobuf.sh is v3.19.4 (CMake). Use 30.2 for Bazel: protobuf 29.x
+# references absl/utility:if_constexpr (never shipped in abseil BCR releases).
+# Stay below 33.x — that forces eigen 5 and breaks grpc@1.70.
 bazel_dep(
     name = "protobuf",
-    version = "29.0",
+    version = "30.2",
     repo_name = "com_google_protobuf",
 )
 
 # install_grpc.sh is v1.48.0 (CMake). Bazel uses 1.70.1 (BCR + Bazel 8).
+# protobuf@30 changes UPB map `_next` to bool(key,val,iter); 1.70 still expects
+# the old EntryType* iterator — patch backend_metric_parser (grpc#39568).
 bazel_dep(
     name = "grpc",
     version = "1.70.1",
     repo_name = "com_github_grpc_grpc",
+)
+single_version_override(
+    module_name = "grpc",
+    version = "1.70.1",
+    patch_strip = 1,
+    patches = [
+        "//tools/patches:grpc_170_upb_map_next.patch",
+    ],
 )
 
 # Align grpc-java / protoc-gen-validate with grpc@1.70 (avoid 1.66 extension bug).
@@ -104,10 +130,11 @@ bazel_dep(
     repo_name = "com_envoyproxy_protoc_gen_validate",
 )
 
-# install_abseil.sh is 20220623.0 (CMake). Resolved with grpc 1.70 → 20250512.1.
+# install_abseil.sh is 20220623.0 (CMake). protobuf 29 needs absl/utility:if_constexpr
+# (added after 20250512); pin a BCR release that provides that target.
 bazel_dep(
     name = "abseil-cpp",
-    version = "20250512.1",
+    version = "20250814.1",
     repo_name = "com_google_absl",
 )
 
@@ -138,6 +165,7 @@ bazel_dep(name = "eigen", version = "3.4.1.bcr.1")
 bazel_dep(name = "yaml-cpp", version = "0.8.0.bcr.1")
 bazel_dep(name = "tinyxml2", version = "10.0.0")
 bazel_dep(name = "libzmq", version = "4.3.5.bcr.7")
+
 # apt liblua5.3-dev; BCR 5.4.6 is closest maintained pin
 bazel_dep(name = "lua", version = "5.4.6")
 bazel_dep(name = "flann", version = "1.9.2")
@@ -155,4 +183,4 @@ autonomy_repositories = use_extension(
     "//tools:repositories.bzl",
     "autonomy_repositories",
 )
-use_repo(autonomy_repositories, "autonomy_prefix", "autonomy_opencv")
+use_repo(autonomy_repositories, "autonomy_opencv", "autonomy_prefix")

@@ -30,9 +30,9 @@
 /** \author Tully Foote */
 
 #include <assert.h>
-#include <autonomy/transform/tf2/LinearMath/Quaternion.h>
-#include <autonomy/transform/tf2/LinearMath/Transform.h>
-#include <autonomy/transform/tf2/LinearMath/Vector3.h>
+#include "autonomy/transform/tf2/LinearMath/Quaternion.h"
+#include "autonomy/transform/tf2/LinearMath/Transform.h"
+#include "autonomy/transform/tf2/LinearMath/Vector3.h"
 
 #include "autonomy/transform/geometry_msgs/transform_stamped.h"
 #include "autonomy/transform/tf2/exceptions.h"

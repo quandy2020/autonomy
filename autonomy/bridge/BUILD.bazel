@@ -1,5 +1,6 @@
 load(
     "//tools:package.bzl",
+    "autonomy_module_copts",
     "autonomy_cc_binary",
     "autonomy_cc_library",
 )
@@ -124,7 +125,7 @@ autonomy_cc_library(
         "tools/transport/channel_args_builder.hpp",
         "tools/transport/credentials_factory.hpp",
     ],
-    copts = ['-DMODULE_NAME=\"bridge\"'],
+    copts = autonomy_module_copts("bridge"),
     include_prefix = "autonomy/bridge",
     deps = [
         "//autonomy/common:async_grpc",
@@ -160,4 +161,10 @@ filegroup(
         ],
         allow_empty = True,
     ),
+)
+
+filegroup(
+    name = "protos",
+    srcs = glob(["**/*.proto"]),
+    visibility = ["//visibility:public"],
 )

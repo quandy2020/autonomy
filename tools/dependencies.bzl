@@ -14,12 +14,12 @@ AUTONOMY_THIRD_PARTY_DEPS = [
     # BCR ← install_deps / apt
     "@eigen//:eigen",  # apt libeigen3-dev
     "@com_github_google_glog//:glog",  # install_glog.sh
-    "@com_google_protobuf//:protobuf",  # install_protobuf.sh
+    "@com_google_protobuf//:protobuf",  # BCR 30.2 (Bazel); CMake still 3.19
     "@yaml-cpp//:yaml-cpp",  # apt libyaml-cpp-dev
     "@nlohmann_json//:json",  # install_nlohmann.sh
-    # CMake prefix (@autonomy_prefix)
-    "//:automsgs",
-    "//:autonomy_headers",
+    # Middleware headers / libs
+    "//:automsgs",  # @automsgs source (BCR protobuf)
+    "//:autonomy_headers",  # autonomy/**/*.proto via BCR protoc
     # system
     "//:pthread",
 ]

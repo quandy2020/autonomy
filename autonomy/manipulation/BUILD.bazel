@@ -1,0 +1,9 @@
+"""Proto sources for autonomy/manipulation."""
+
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "protos",
+    srcs = glob(["**/*.proto"]),
+    visibility = ["//visibility:public"],
+)

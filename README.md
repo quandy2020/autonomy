@@ -5,7 +5,7 @@
 Built with modern C++, Autolink RT, and behavior trees. Designed for production-grade robotics without a ROS runtime dependency.
 
 [![Version](https://img.shields.io/badge/Version-0.2.0-2563EB?style=for-the-badge)](version.json)
-[![C++](https://img.shields.io/badge/C%2B%2B-17-0F172A?style=for-the-badge&logo=cplusplus&logoColor=white)](CMakeLists.txt)
+[![C++](https://img.shields.io/badge/C%2B%2B-20-0F172A?style=for-the-badge&logo=cplusplus&logoColor=white)](CMakeLists.txt)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20ARM64-334155?style=for-the-badge&logo=linux&logoColor=white)](docs/source/02_Installation/00_guide.md)
 [![License](https://img.shields.io/badge/License-Apache--2.0-0891B2?style=for-the-badge)](LICENSE)
 
@@ -89,7 +89,7 @@ See the [system architecture guide](docs/source/01_Instructions/03_system_archit
 ### Prerequisites
 
 - Recommended: Ubuntu 22.04 Docker development environment
-- Source build: Ubuntu 22.04, CMake 3.20+, GCC 11+ or Clang, and C++17
+- Source build: Ubuntu 22.04, CMake 3.20+, GCC 11+ or Clang, and C++20
 - Build system: Ninja
 
 ### 1. Clone

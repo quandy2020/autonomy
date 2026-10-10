@@ -33,8 +33,21 @@ genrule(
     outs = CPP_HDRS + CPP_SRCS + DETAIL_HDRS + PY_SRCS + [
         "automsgs/msgs/MessageTypes.hh",
     ],
-    cmd = "$(location //tools:generate_messages.sh) $(location //tools:automsgs_generate_factory.py) $(@D)",
+    # Run from the automsgs package root so generate_messages.sh can see proto/.
+    # (As a local_path_override external, cwd is not the package by default.)
+    cmd = """
+      set -euo pipefail
+      PROTOC="$(location @com_google_protobuf//:protoc)"
+      PROTOC="$$(realpath "$${PROTOC}")"
+      FACTORY="$$(realpath "$(location //tools:automsgs_generate_factory.py)")"
+      SCRIPT="$$(realpath "$(location //tools:generate_messages.sh)")"
+      OUT="$$(realpath "$(@D)")"
+      PKG_ROOT="$$(cd "$$(dirname "$(location proto/msgs/builtin_interfaces/time.proto)")/../../.." && pwd)"
+      cd "$${PKG_ROOT}"
+      PROTOC="$${PROTOC}" "$${SCRIPT}" "$${FACTORY}" "$${OUT}"
+    """,
     tools = [
+        "@com_google_protobuf//:protoc",
         "//tools:generate_messages.sh",
         "//tools:automsgs_generate_factory.py",
     ],
@@ -97,7 +110,11 @@ cc_library(
         "-Wno-float-equal",
     ],
     defines = ["automsgs_core_EXPORTS"],
-    includes = ["core/include"],
+    # "." → #include <automsgs/msgs/...pb.h> from generated outs
+    includes = [
+        ".",
+        "core/include",
+    ],
     deps = [
         "//tools:protobuf",
         "//tools:pthread",

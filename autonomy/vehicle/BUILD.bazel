@@ -1,5 +1,6 @@
 load(
     "//tools:package.bzl",
+    "autonomy_module_copts",
     "autonomy_cc_library",
 )
 
@@ -19,7 +20,7 @@ autonomy_cc_library(
         "vehicle.hpp",
         "vehicle_server.hpp",
     ],
-    copts = ['-DMODULE_NAME=\"vehicle\"'],
+    copts = autonomy_module_copts("vehicle"),
     include_prefix = "autonomy/vehicle",
     deps = [
         "//autonomy/common:autonomy_common",
@@ -42,4 +43,10 @@ filegroup(
         ],
         allow_empty = True,
     ),
+)
+
+filegroup(
+    name = "protos",
+    srcs = glob(["**/*.proto"]),
+    visibility = ["//visibility:public"],
 )

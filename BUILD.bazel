@@ -1,6 +1,7 @@
 """Parent autonomy workspace (sibling packages are their own Bazel projects)."""
 
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//tools:autonomy_proto_files.bzl", "AUTONOMY_PROTO_FILES")
 load("//tools:dependencies.bzl", "AUTONOMY_MIDDLEWARE_DEPS", "AUTONOMY_THIRD_PARTY_DEPS")
 load("//tools:package.bzl", "AUTONOMY_DOMAIN_NAMES")
 
@@ -12,25 +13,82 @@ exports_files([
 ])
 
 # =============================================================================
-# C++ third-party used by //autonomy/* 
+# C++ third-party used by //autonomy/*
 #   SSOT labels: tools/dependencies.bzl
 #   Versions:    MODULE.bazel  (aligned with scripts/install_deps)
 #   CLI:         ./autonomy.sh deps
 # =============================================================================
 
+# Built from sibling automsgs/ with BCR protobuf (see MODULE.bazel local_path_override).
 alias(
     name = "automsgs",
-    actual = "@autonomy_prefix//:automsgs",
+    actual = "@automsgs//:automsgs",
 )
 
+# Built from sibling autolink/ with BCR protobuf (see MODULE.bazel local_path_override).
 alias(
     name = "autolink",
-    actual = "@autonomy_prefix//:autolink",
+    actual = "@autolink//:autolink",
 )
 
-alias(
+# Domain *.proto → *.pb.{h,cc} with BCR protoc (not CMake @autonomy_prefix).
+# Outputs live under _pb/ so they stay in the root package (autonomy/* are subpackages).
+_AUTONOMY_PROTO_FILEGROUPS = [
+    "//autonomy/audio:protos",
+    "//autonomy/bridge:protos",
+    "//autonomy/control:protos",
+    "//autonomy/localization:protos",
+    "//autonomy/manipulation:protos",
+    "//autonomy/map:protos",
+    "//autonomy/perception:protos",
+    "//autonomy/planning:protos",
+    "//autonomy/prediction:protos",
+    "//autonomy/system:protos",
+    "//autonomy/task:protos",
+    "//autonomy/transform:protos",
+    "//autonomy/vehicle:protos",
+]
+
+_AUTONOMY_PROTO_HDRS = ["_pb/" + p[:-len(".proto")] + ".pb.h" for p in AUTONOMY_PROTO_FILES]
+
+_AUTONOMY_PROTO_SRCS = ["_pb/" + p[:-len(".proto")] + ".pb.cc" for p in AUTONOMY_PROTO_FILES]
+
+genrule(
+    name = "generate_autonomy_protos",
+    srcs = _AUTONOMY_PROTO_FILEGROUPS + [
+        "@automsgs//:proto_files",
+        "@automsgs//:proto/msgs/builtin_interfaces/time.proto",
+    ],
+    outs = _AUTONOMY_PROTO_HDRS + _AUTONOMY_PROTO_SRCS,
+    cmd = """
+      set -euo pipefail
+      PROTOC="$$(realpath "$(location @com_google_protobuf//:protoc)")"
+      SCRIPT="$$(realpath "$(location //tools:generate_autonomy_protos.sh)")"
+      # Multiple outs → $(@D) is the package genfiles root; outs live under _pb/.
+      OUT="$$(realpath "$(@D)")/_pb"
+      mkdir -p "$${OUT}"
+      AUTOMSGS_ROOT="$$(cd "$$(dirname "$(location @automsgs//:proto/msgs/builtin_interfaces/time.proto)")/../../.." && pwd)"
+      # Genrule cwd is the execroot; main-repo sources are at autonomy/...
+      ROOT="$$(pwd)"
+      test -f "$${ROOT}/autonomy/map/proto/map_options.proto"
+      "$${SCRIPT}" "$${PROTOC}" "$${AUTOMSGS_ROOT}" "$${ROOT}" "$${OUT}"
+    """,
+    tools = [
+        "@com_google_protobuf//:protoc",
+        "//tools:generate_autonomy_protos.sh",
+    ],
+)
+
+cc_library(
     name = "autonomy_headers",
-    actual = "@autonomy_prefix//:autonomy_headers",
+    srcs = _AUTONOMY_PROTO_SRCS,
+    hdrs = _AUTONOMY_PROTO_HDRS,
+    # #include "autonomy/map/proto/map_options.pb.h"
+    includes = ["_pb"],
+    deps = [
+        "//:automsgs",
+        "@com_google_protobuf//:protobuf",
+    ],
 )
 
 alias(
@@ -42,6 +100,12 @@ cc_library(
     name = "pthread",
     linkopts = ["-lpthread"],
     linkstatic = True,
+)
+
+# Empty marker dep (historical). Prefer quoted #include "autonomy/..." so
+# -iquote . wins over gcc builtin /usr/local/include/autonomy.
+cc_library(
+    name = "autonomy_src_includes",
 )
 
 cc_library(

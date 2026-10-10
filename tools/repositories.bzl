@@ -107,16 +107,32 @@ def autonomy_opencv_impl(repository_ctx):
         write_build(repository_ctx, Label("//tools:opencv_stub.BUILD"))
         return
 
-    # Symlink include/ + lib (linkopts use -Lprefix/lib).
+    # Symlink only OpenCV header trees — never the whole include/ (that also
+    # contains installed autonomy/ and breaks #pragma once via path mismatch).
     include = prefix.get_child("include")
+    linked = []
     if include.exists:
-        repository_ctx.symlink(include, "include")
+        repository_ctx.file("include/.keep", "")
+        for name in ("opencv5", "opencv4", "opencv2"):
+            child = include.get_child(name)
+            if child.exists:
+                repository_ctx.symlink(child, "include/%s" % name)
+                linked.append(name)
+    if not linked:
+        repository_ctx.file(
+            "README",
+            "OpenCV prefix %s has no include/opencv{5,4,2}.\n" % prefix,
+        )
+        write_build(repository_ctx, Label("//tools:opencv_stub.BUILD"))
+        return
     repository_ctx.file("prefix/.keep", "")
     lib = prefix.get_child("lib")
     if lib.exists:
         repository_ctx.symlink(lib, "prefix/lib")
     else:
         repository_ctx.file("prefix/lib/.keep", "")
+    # Record which trees were linked so opencv.BUILD includes stay accurate.
+    repository_ctx.file("opencv_include_roots.txt", "\n".join(linked) + "\n")
     write_build(repository_ctx, Label("//tools:opencv.BUILD"))
 
 autonomy_prefix_repository = repository_rule(

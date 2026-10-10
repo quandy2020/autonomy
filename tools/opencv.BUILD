@@ -1,7 +1,10 @@
-# @autonomy_opencv — system OpenCV from install_deps (install_opencv.sh → /usr/local).
+# @autonomy_opencv — system OpenCV from install_deps (install_opencv.sh).
 #
 # BCR opencv 4.13+/5.x forces eigen 5 + protobuf ≥33, which breaks the root
-# grpc@1.70 / protobuf@29 graph. Prefer the CMake-installed tree instead.
+# grpc@1.70 / protobuf graph. Prefer the CMake-installed tree instead.
+#
+# Only opencv{5,4,2} header trees are symlinked (see repositories.bzl) — never
+# the whole $PREFIX/include (that also ships autonomy/ headers).
 
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
@@ -11,13 +14,14 @@ cc_library(
     name = "opencv",
     hdrs = glob(
         [
+            "include/opencv5/**",
             "include/opencv4/**",
             "include/opencv2/**",
         ],
         allow_empty = True,
     ),
     includes = [
-        "include",
+        "include/opencv5",
         "include/opencv4",
     ],
     linkopts = [

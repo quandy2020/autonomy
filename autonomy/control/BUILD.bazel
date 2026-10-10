@@ -1,5 +1,6 @@
 load(
     "//tools:package.bzl",
+    "autonomy_module_copts",
     "autonomy_cc_binary",
     "autonomy_cc_library",
 )
@@ -241,7 +242,7 @@ autonomy_cc_library(
         "utils/odometry_utils.hpp",
         "utils/velocity_smoother.hpp",
     ],
-    copts = ['-DMODULE_NAME=\"control\"'],
+    copts = autonomy_module_copts("control"),
     include_prefix = "autonomy/control",
     deps = [
         "//autonomy/common:autonomy_common",
@@ -277,4 +278,10 @@ filegroup(
         ],
         allow_empty = True,
     ),
+)
+
+filegroup(
+    name = "protos",
+    srcs = glob(["**/*.proto"]),
+    visibility = ["//visibility:public"],
 )
