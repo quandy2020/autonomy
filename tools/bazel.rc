@@ -2,10 +2,13 @@
 # Imported from the workspace root .bazelrc.
 
 # +------------------------------------------------------------+
-# | Common                                                     |
+# | Bzlmod                                                     |
 # +------------------------------------------------------------+
-common --color=yes
+# Pure Bzlmod (Bazel 8+ default). Lockfile is committed (MODULE.bazel.lock).
 common --enable_bzlmod
+common --enable_workspace=false
+common --lockfile_mode=update
+common --color=yes
 
 # +------------------------------------------------------------+
 # | C++                                                        |
@@ -29,8 +32,11 @@ build --define=INCLUDEDIR=$(PREFIX)/include
 # | CMake prefix / runtime                                     |
 # +------------------------------------------------------------+
 # automsgs / autolink come from @autonomy_prefix (CMake install or build/).
+# OpenCV comes from @autonomy_opencv (install_opencv.sh / OPENCV_ROOT).
 build --repo_env=AUTONOMY_PREFIX
 test --repo_env=AUTONOMY_PREFIX
+build --repo_env=OPENCV_ROOT
+test --repo_env=OPENCV_ROOT
 
 test --test_env=LD_LIBRARY_PATH
 build --action_env=LD_LIBRARY_PATH

@@ -38,17 +38,19 @@ python3 docker/run_autonomy.py -p x86_64
 docker exec -it SpaceHero /bin/bash
 ```
 
-### 2.5 Bazel 域库（可选）
+### 2.5 Bazel 域库（可选，Bzlmod）
 
 ```bash
 # 先有 CMake 前缀（automsgs / autolink），再编域库
 export AUTONOMY_PREFIX="$PWD/build"   # 或 install 前缀
 
-bazel build //autonomy/planning:autonomy_planning
+./autonomy.sh deps                    # BCR + prefix 一览
 ./autonomy.sh build -m planning,control
+# 等价: bazel build //autonomy/planning:autonomy_planning //autonomy/planning:autonomy.planning
 ```
 
-域图与宏：`tools/package.bzl`。
+依赖：`MODULE.bazel`（BCR）+ `@autonomy_prefix`（CMake）。域图与宏：`tools/package.bzl`。  
+改依赖后刷新锁：`bazel mod deps --lockfile_mode=update`（提交 `MODULE.bazel.lock`）。
 
 ### 2.6 下一步
 

@@ -11,13 +11,14 @@ exports_files([
     "prefix.BUILD",
     "autolink.BUILD",
     "cli11.BUILD",
-    "eigen.BUILD",
+    "deps.bzl",
 ])
 
 # ---------------------------------------------------------------------------
-# System / external libraries
+# BCR / system libraries
 # ---------------------------------------------------------------------------
 
+# BCR: bazel_dep(name = "eigen") in MODULE.bazel
 alias(
     name = "eigen",
     actual = "@eigen//:eigen",

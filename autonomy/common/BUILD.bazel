@@ -2,6 +2,11 @@ load(
     "//tools:package.bzl",
     "autonomy_cc_library",
 )
+load(
+    "//tools:dependencies.bzl",
+    "AUTONOMY_CERES_DEPS",
+    "AUTONOMY_GRPC_DEPS",
+)
 
 package(default_visibility = ["//visibility:public"])
 
@@ -208,8 +213,63 @@ autonomy_cc_library(
         "@eigen//:eigen",
         "@com_github_google_glog//:glog",
         "@com_google_protobuf//:protobuf",
+        "@nlohmann_json//:json",
+        "@yaml-cpp//:yaml-cpp",
         "//:pthread",
+    ] + AUTONOMY_CERES_DEPS,
+)
+
+# async_grpc runtime (CMake: BUILD_GRPC). Used by //autonomy/bridge.
+autonomy_cc_library(
+    name = "async_grpc",
+    srcs = [
+        "async_grpc/completion_queue_pool.cpp",
+        "async_grpc/completion_queue_thread.cpp",
+        "async_grpc/event_queue_thread.cpp",
+        "async_grpc/opencensus_span.cpp",
+        "async_grpc/retry.cpp",
+        "async_grpc/rpc.cpp",
+        "async_grpc/server.cpp",
+        "async_grpc/service.cpp",
+        "async_grpc/common/time.cpp",
     ],
+    hdrs = [
+        "async_grpc/async_client.h",
+        "async_grpc/client.h",
+        "async_grpc/completion_queue_pool.h",
+        "async_grpc/completion_queue_thread.h",
+        "async_grpc/event_queue_thread.h",
+        "async_grpc/execution_context.h",
+        "async_grpc/opencensus_span.h",
+        "async_grpc/retry.h",
+        "async_grpc/rpc.h",
+        "async_grpc/rpc_handler.h",
+        "async_grpc/rpc_handler_interface.h",
+        "async_grpc/rpc_service_method_traits.h",
+        "async_grpc/server.h",
+        "async_grpc/service.h",
+        "async_grpc/span.h",
+        "async_grpc/type_traits.h",
+        "async_grpc/common/blocking_queue.h",
+        "async_grpc/common/make_unique.h",
+        "async_grpc/common/mutex.h",
+        "async_grpc/common/optional.h",
+        "async_grpc/common/port.h",
+        "async_grpc/common/time.h",
+    ],
+    copts = [
+        '-DMODULE_NAME=\\"common\\"',
+        "-DAUTONOMY_HAVE_GRPC_REFLECTION=1",
+    ],
+    include_prefix = "autonomy/common",
+    deps = [
+        ":autonomy_common",
+        "//:automsgs",
+        "//:autonomy_headers",
+        "//:pthread",
+        "@com_github_google_glog//:glog",
+        "@com_google_protobuf//:protobuf",
+    ] + AUTONOMY_GRPC_DEPS,
 )
 
 filegroup(

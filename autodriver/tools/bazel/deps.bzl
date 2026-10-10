@@ -1,9 +1,10 @@
-"""External repositories for the autodriver workspace.
+"""External repositories for the autodriver workspace (module extension).
 
   @prefix   — CMake prefix with libautolink.so / libautomsgs.so
   @autolink — sibling ../autolink source headers (+ link @prefix)
   @cli11    — sibling CLI11 headers
-  @eigen    — /usr/include/eigen3
+
+Eigen comes from BCR: bazel_dep(name = "eigen") → @eigen//:eigen
 
 Override the CMake prefix:
   export AUTONOMY_PREFIX=/path/to/install/autonomy
@@ -52,7 +53,7 @@ def _prefix_impl(ctx):
             "or place libs under install/autonomy or build/autonomy.",
         )
     ctx.symlink(prefix, "prefix")
-    _write_build(ctx, Label("//tools:prefix.BUILD"))
+    _write_build(ctx, Label("//tools/bazel:prefix.BUILD"))
 
 def _autolink_impl(ctx):
     # Symlink only the header tree — avoid ../autolink/BUILD.bazel package boundary.
@@ -60,7 +61,7 @@ def _autolink_impl(ctx):
     if not headers.exists:
         fail("Sibling autolink headers not found at %s" % headers)
     ctx.symlink(headers, "autolink")
-    _write_build(ctx, Label("//tools:autolink.BUILD"))
+    _write_build(ctx, Label("//tools/bazel:autolink.BUILD"))
 
 def _cli11_impl(ctx):
     # Symlink only include/ — CLI11 root ships its own MODULE.bazel.
@@ -75,14 +76,7 @@ def _cli11_impl(ctx):
     if not include.exists:
         fail("CLI11 include not found at %s" % include)
     ctx.symlink(include, "include")
-    _write_build(ctx, Label("//tools:cli11.BUILD"))
-
-def _eigen_impl(ctx):
-    eigen = ctx.path("/usr/include/eigen3")
-    if not eigen.exists:
-        fail("Eigen3 not found at /usr/include/eigen3 (install libeigen3-dev)")
-    ctx.symlink(eigen, "eigen3")
-    _write_build(ctx, Label("//tools:eigen.BUILD"))
+    _write_build(ctx, Label("//tools/bazel:cli11.BUILD"))
 
 _prefix = repository_rule(
     implementation = _prefix_impl,
@@ -92,12 +86,10 @@ _prefix = repository_rule(
 
 _autolink = repository_rule(implementation = _autolink_impl, local = True)
 _cli11 = repository_rule(implementation = _cli11_impl, local = True)
-_eigen = repository_rule(implementation = _eigen_impl, local = True)
 
 def _deps_impl(module_ctx):
     _prefix(name = "prefix")
     _autolink(name = "autolink")
     _cli11(name = "cli11")
-    _eigen(name = "eigen")
 
 deps = module_extension(implementation = _deps_impl)

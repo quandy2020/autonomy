@@ -295,12 +295,12 @@ usage_deps() {
   cat <<EOF
 Usage: ${SCRIPT_NAME} deps
 
-Print third-party dependencies at a glance:
-  - BCR bazel_dep from MODULE.bazel
+Print third-party dependencies at a glance (Bzlmod):
+  - BCR bazel_dep from MODULE.bazel (+ committed MODULE.bazel.lock)
   - CMake @autonomy_prefix targets (automsgs / autolink / autonomy_headers)
   - System //:pthread
 
-Also see: MODULE.bazel (header inventory)
+Also see: MODULE.bazel header | tools/bazel.rc | ./autonomy.sh modules
 EOF
 }
 
@@ -619,13 +619,15 @@ for m in re.finditer(
 PY
 
   echo
-  echo "=== CMake prefix (@autonomy_prefix → //:*) ==="
+  echo "=== CMake / system prefix (module extension) ==="
   printf '  %-22s %s\n' "LABEL" "ARTIFACT"
   printf '  %-22s %s\n' "-----" "--------"
   printf '  %-22s %s\n' "//:automsgs" "libautomsgs.so + include/automsgs"
   printf '  %-22s %s\n' "//:autolink" "libautolink.so + include/autolink"
   printf '  %-22s %s\n' "//:autonomy_headers" "include/autonomy/** (generated *.pb.h)"
+  printf '  %-22s %s\n' "//:opencv" "@autonomy_opencv (install_opencv / OPENCV_ROOT)"
   echo "  AUTONOMY_PREFIX=${AUTONOMY_PREFIX:-'(unset)'}"
+  echo "  OPENCV_ROOT=${OPENCV_ROOT:-'(unset — default /usr/local|/usr)'}"
 
   echo
   echo "=== System ==="
@@ -639,7 +641,10 @@ PY
   echo "  domain graph:     tools/package.bzl → AUTONOMY_DOMAIN_*"
   echo "  aggregate:        //:cpp_third_party"
   echo
-  echo "Docs: MODULE.bazel header | BUILD.bazel | autonomy/bridge/BUILD.bazel"
+  echo
+  echo "Bzlmod: MODULE.bazel + MODULE.bazel.lock  (tools/bazel.rc: --enable_bzlmod)"
+  echo "Refresh: bazel mod deps --lockfile_mode=update"
+  echo "Docs:    MODULE.bazel header | BUILD.bazel | autonomy/bridge/BUILD.bazel"
 }
 
 # List Bazel packages, CMake peers, and domain lib/binary/CMake rows.

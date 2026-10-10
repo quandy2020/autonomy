@@ -9,5 +9,7 @@ exports_files([
     "repositories.bzl",
     "prefix.BUILD",
     "prefix_stub.BUILD",
+    "opencv.BUILD",
+    "opencv_stub.BUILD",
     "bazel.rc",
 ])

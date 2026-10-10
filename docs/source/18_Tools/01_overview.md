@@ -6,7 +6,7 @@
 |------|------|----------|
 | 开发工具 | `tools/python/` | `clang_format_sources.py`、`package_install_tarball.py` |
 | Bazel 宏 / 域图 | `tools/` | `package.bzl`、`dependencies.bzl`、`bazel.rc` |
-| Bazel 依赖 | `MODULE.bazel` | `bazel_dep`（glog / protobuf / eigen / …） |
+| Bazel 依赖 (Bzlmod) | `MODULE.bazel` + `MODULE.bazel.lock` | BCR `bazel_dep`，库集合对齐 `scripts/install_deps` |
 | Bazel 本地仓 | `tools/repositories.bzl` + `prefix*.BUILD` | `@autonomy_prefix` → CMake 的 automsgs / autolink |
 | 工作流脚本 | `scripts/` | `setup.bash`、`install_dependencies.py`、`share_nfs_workspace.sh` |
 | 系统监控 | `autonomy/system/monitor/` | `MonitorRegistry` / `autonomy.monitor` |

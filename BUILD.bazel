@@ -12,12 +12,10 @@ exports_files([
 ])
 
 # =============================================================================
-# C++ third-party used by //autonomy/*  (SSOT: tools/dependencies.bzl; versions: MODULE.bazel)
-#
-#   BCR:       @eigen  @com_github_google_glog  @com_google_protobuf
-#   CMake:     //:automsgs  //:autonomy_headers  (+ //:autolink on some domains)
-#   system:    //:pthread
-#   CLI:       ./autonomy.sh deps
+# C++ third-party used by //autonomy/* 
+#   SSOT labels: tools/dependencies.bzl
+#   Versions:    MODULE.bazel  (aligned with scripts/install_deps)
+#   CLI:         ./autonomy.sh deps
 # =============================================================================
 
 alias(
@@ -33,6 +31,11 @@ alias(
 alias(
     name = "autonomy_headers",
     actual = "@autonomy_prefix//:autonomy_headers",
+)
+
+alias(
+    name = "opencv",
+    actual = "@autonomy_opencv//:opencv",
 )
 
 cc_library(

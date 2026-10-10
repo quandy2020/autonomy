@@ -1,8 +1,9 @@
-"""External repositories for the Autoviz workspace.
+"""External repositories for the Autoviz workspace (module extension).
 
-  @eigen — /usr/include/eigen3
-  @qt6   — /usr/include/<multiarch>/qt6 (+ system .so via linkopts)
-  @ogre  — prebuilt Ogre 1.12 prefix (install tree, not FetchContent build dir)
+  @qt6  — /usr/include/<multiarch>/qt6 (+ system .so via linkopts)
+  @ogre — prebuilt Ogre 1.12 prefix (install tree, not FetchContent build dir)
+
+Eigen comes from BCR: bazel_dep(name = "eigen") → @eigen//:eigen
 
 Override the Ogre prefix:
   export AUTOVIZ_OGRE_ROOT=/path/to/ogre-1.12
@@ -51,13 +52,6 @@ def _find_ogre(ctx, workspace):
             return path
     return None
 
-def _eigen_impl(ctx):
-    include = ctx.path("/usr/include/eigen3")
-    if not include.exists:
-        fail("Eigen3 headers not found at /usr/include/eigen3")
-    ctx.symlink(include, "eigen3")
-    _write_build(ctx, Label("//tools:eigen.BUILD"))
-
 def _qt6_impl(ctx):
     candidates = [
         ctx.path("/usr/include/x86_64-linux-gnu/qt6"),
@@ -92,7 +86,6 @@ def _ogre_impl(ctx):
     ctx.symlink(prefix, "prefix")
     _write_build(ctx, Label("//tools:ogre.BUILD"))
 
-_eigen = repository_rule(implementation = _eigen_impl, local = True)
 _qt6 = repository_rule(implementation = _qt6_impl, local = True)
 _ogre = repository_rule(
     implementation = _ogre_impl,
@@ -101,7 +94,6 @@ _ogre = repository_rule(
 )
 
 def _deps_impl(ctx):
-    _eigen(name = "eigen")
     _qt6(name = "qt6")
     _ogre(name = "ogre")
 

@@ -9,7 +9,6 @@ package(default_visibility = ["//visibility:public"])
 # ---------------------------------------------------------------------------
 
 exports_files([
-    "eigen.BUILD",
     "ogre.BUILD",
     "qt6.BUILD",
     "sources.bzl",
@@ -22,6 +21,7 @@ exports_files([
 # Aliases for external repos
 # ---------------------------------------------------------------------------
 
+# BCR: bazel_dep(name = "eigen") in MODULE.bazel
 alias(
     name = "eigen",
     actual = "@eigen//:eigen",

@@ -151,24 +151,20 @@
   },
   "selectedYankedVersions": {},
   "moduleExtensions": {
-    "//tools/bazel:deps.bzl%deps": {
+    "//tools:deps.bzl%deps": {
       "general": {
-        "bzlTransitiveDigest": "Q2rKoHOte3IMuwVFOjFP0/Qrigz+y9XB1IgDQmczv5c=",
-        "usagesDigest": "wP2wWJv5F1ZTSJ7AnnGZX/XqzyrgYr8IjtKpzLCSz4c=",
+        "bzlTransitiveDigest": "st2Ch1KrF0OuCDPzK85iwCMGrTAlFMxcBcLI8x2uYkk=",
+        "usagesDigest": "k3Gzn/uz6Ffw0/ssRleTUjwFVXcRyYlHQg0fdvlrGxo=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
         "generatedRepoSpecs": {
-          "prefix": {
-            "repoRuleId": "@@//tools/bazel:deps.bzl%_prefix",
+          "qt6": {
+            "repoRuleId": "@@//tools:deps.bzl%_qt6",
             "attributes": {}
           },
-          "autolink": {
-            "repoRuleId": "@@//tools/bazel:deps.bzl%_autolink",
-            "attributes": {}
-          },
-          "cli11": {
-            "repoRuleId": "@@//tools/bazel:deps.bzl%_cli11",
+          "ogre": {
+            "repoRuleId": "@@//tools:deps.bzl%_ogre",
             "attributes": {}
           }
         },
