@@ -96,16 +96,16 @@ alias(
     actual = "@autonomy_opencv//:opencv",
 )
 
+# Header-only CLI11 from sibling autolink (see autolink/thirdparty/CLI11).
+alias(
+    name = "cli11",
+    actual = "@autolink//:cli11",
+)
+
 cc_library(
     name = "pthread",
     linkopts = ["-lpthread"],
     linkstatic = True,
-)
-
-# Empty marker dep (historical). Prefer quoted #include "autonomy/..." so
-# -iquote . wins over gcc builtin /usr/local/include/autonomy.
-cc_library(
-    name = "autonomy_src_includes",
 )
 
 cc_library(

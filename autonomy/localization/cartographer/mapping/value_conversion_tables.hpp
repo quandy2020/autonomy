@@ -18,6 +18,8 @@
 #define CARTOGRAPHER_MAPPING_VALUE_CONVERSION_TABLES_H_
 
 #include <map>
+#include <memory>
+#include <tuple>
 #include <vector>
 
 #include "autonomy/localization/cartographer/common/port.hpp"

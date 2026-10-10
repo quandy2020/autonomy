@@ -136,6 +136,7 @@ autonomy_cc_library(
         "//:autonomy_headers",
         "@eigen//:eigen",
         "@com_github_google_glog//:glog",
+        "//:cli11",
         "@com_google_protobuf//:protobuf",
         "//:pthread",
     ] + AUTONOMY_GRPC_DEPS,
@@ -147,7 +148,7 @@ autonomy_cc_binary(
     deps = [
         ":autonomy_bridge",
         "@com_github_google_glog//:glog",
-        "@com_github_gflags_gflags//:gflags",
+
     ],
 )
 

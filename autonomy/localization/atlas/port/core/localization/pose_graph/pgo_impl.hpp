@@ -1,6 +1,5 @@
 #pragma once
 
-#include <boost/format.hpp>
 #include <deque>
 #include <functional>
 #include <map>

@@ -98,14 +98,16 @@ autocmake_binary(autonomy.manipulation
   DEPENDENCIES
     autonomy
     glog::glog
-    gflags::gflags)
+    autonomy::cli11
+)
 autocmake_binary(autonomy.manipulation.setup
   NO_EXPORT
   SOURCES setup/setup_main.cpp
   DEPENDENCIES
     autonomy
     glog::glog
-    gflags::gflags)
+    autonomy::cli11
+)
 
 if(BUILD_TEST OR BUILD_TESTING)
   foreach(_t IN ITEMS

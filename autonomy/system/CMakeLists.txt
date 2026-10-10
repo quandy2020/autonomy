@@ -62,7 +62,8 @@ autocmake_binary(autonomy.monitor
   DEPENDENCIES
     autonomy
     glog::glog
-    gflags::gflags)
+    autonomy::cli11
+)
 
 autocmake_binary(autonomy.ota
   NO_EXPORT
@@ -70,7 +71,8 @@ autocmake_binary(autonomy.ota
   DEPENDENCIES
     autonomy
     glog::glog
-    gflags::gflags)
+    autonomy::cli11
+)
 
 # --- install -----------------------------------------------------------------
 autocmake_install_share(system

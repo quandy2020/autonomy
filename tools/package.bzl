@@ -7,8 +7,8 @@ Public API:
   autonomy_module_copts
   AUTONOMY_DOMAIN_NAMES  (also parsed by autonomy.sh)
 
-Domain libraries are named ``autonomy_<domain>``. CMake owns packaging and
-``*.pb.h`` codegen; Bazel links ``@autonomy_prefix`` for automsgs / autolink.
+Domain libraries are named ``autonomy_<domain>``. Domain ``*.pb.h`` come from
+``//:autonomy_headers`` (BCR protoc); middleware from ``@automsgs`` / ``@autolink``.
 """
 
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")

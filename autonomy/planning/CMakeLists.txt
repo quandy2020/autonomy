@@ -50,7 +50,8 @@ autocmake_binary(autonomy.planning
   DEPENDENCIES
     autonomy
     glog::glog
-    gflags::gflags)
+    autonomy::cli11
+)
 
 # --- install -----------------------------------------------------------------
 autocmake_install_share(planning

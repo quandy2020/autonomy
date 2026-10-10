@@ -14,10 +14,8 @@
     "install_osqp.sh",
     "install_behaviortree_cpp.sh",
     "install_python_modules.sh",
-    "install_adolc.sh",
     "install_ipopt.sh",
     "install_fastdds.sh",
-    "install_taskflow.sh",
     "install_assimp.sh",
     "install_ogre.sh"
   ],
@@ -104,18 +102,6 @@
     "install_behaviortree_cpp.sh": {
       "paths": ["/usr/local/lib/libbehaviortree_cpp.so"],
       "force": true
-    },
-    "install_taskflow.sh": {
-      "paths": [
-        "/usr/local/include/taskflow/taskflow.hpp",
-        "/usr/local/share/cmake/Taskflow/TaskflowConfig.cmake"
-      ]
-    },
-    "install_adolc.sh": {
-      "paths": [
-        "/usr/include/adolc/adolc.h",
-        "/usr/local/include/adolc/adolc.h"
-      ]
     },
     "install_ipopt.sh": {
       "paths": [

@@ -34,7 +34,6 @@ RUN apt-get update && apt-get install -y sudo \
     libceres-dev \
     libblas-dev \
     liblapack-dev \
-    libtinyxml2-dev \
     liblua5.3-dev \
     ninja-build \
     sphinx \
@@ -110,7 +109,6 @@ RUN bash /tmp/install/install_nlohmann.sh
 RUN bash /tmp/install/install_osqp.sh
 RUN bash /tmp/install/install_behaviortree_cpp.sh
 RUN bash /tmp/install/install_python_modules.sh
-RUN bash /tmp/install/install_adolc.sh
 RUN bash /tmp/install/install_ipopt.sh
 
 # autonomy workspace

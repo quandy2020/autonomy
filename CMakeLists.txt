@@ -117,15 +117,20 @@ autonomy_embed_siblings()
 autocmake_project()
 autocmake_build(QUIT)
 
-# Distro gflags/yaml-cpp often export bare targets; domains link namespaced.
-if(TARGET gflags AND NOT TARGET gflags::gflags)
-  add_library(gflags::gflags ALIAS gflags)
-endif()
+# Distro yaml-cpp / glog often export bare targets; domains link namespaced.
 if(TARGET yaml-cpp AND NOT TARGET yaml-cpp::yaml-cpp)
   add_library(yaml-cpp::yaml-cpp ALIAS yaml-cpp)
 endif()
 if(TARGET glog AND NOT TARGET glog::glog)
   add_library(glog::glog ALIAS glog)
+endif()
+
+# Vendored CLI11 (autolink/thirdparty) — header-only process CLI.
+if(NOT TARGET autonomy::cli11)
+  add_library(autonomy_cli11 INTERFACE)
+  add_library(autonomy::cli11 ALIAS autonomy_cli11)
+  target_include_directories(autonomy_cli11 INTERFACE
+    "${PROJECT_SOURCE_DIR}/autolink/thirdparty/CLI11/include")
 endif()
 
 # Generate autonomy/common/version.cpp and config.hpp from templates.

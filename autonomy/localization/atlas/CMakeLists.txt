@@ -25,7 +25,8 @@ autocmake_binary(autonomy.localization.atlas_dataset
   DEPENDENCIES
     autonomy
     glog::glog
-    gflags::gflags)
+    autonomy::cli11
+)
 
 autocmake_binary(autonomy.localization.atlas_euroc_mi
   NO_EXPORT
@@ -33,7 +34,8 @@ autocmake_binary(autonomy.localization.atlas_euroc_mi
   DEPENDENCIES
     autonomy
     glog::glog
-    gflags::gflags)
+    autonomy::cli11
+)
 
 # --- test --------------------------------------------------------------------
 if(BUILD_TEST OR BUILD_TESTING)

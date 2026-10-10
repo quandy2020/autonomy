@@ -17,12 +17,19 @@
 #ifndef CARTOGRAPHER_IO_INTERNAL_PBSTREAM_MIGRATE_H_
 #define CARTOGRAPHER_IO_INTERNAL_PBSTREAM_MIGRATE_H_
 
+#include <string>
+
 namespace cartographer {
 namespace io {
 
-// 'pbstream migrate' entry point. Commandline flags are assumed to be already
-// parsed and removed from the remaining arguments.
-int pbstream_migrate(int argc, char** argv);
+struct PbstreamMigrateOptions {
+    std::string input_filename;
+    std::string output_filename;
+    bool include_unfinished_submaps = true;
+};
+
+// 'pbstream migrate' entry point.
+int pbstream_migrate(const PbstreamMigrateOptions& options);
 
 }  // namespace io
 }  // namespace cartographer

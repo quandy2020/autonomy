@@ -52,7 +52,6 @@ RUN apt-get update && apt-get --no-install-recommends install -y \
     libsdl2-dev \
     libblas-dev \
     liblapack-dev \
-    libtinyxml2-dev \
     liblua5.3-dev \
     ninja-build \
     sphinx \
@@ -174,7 +173,6 @@ RUN bash /tmp/install/install_ccache.sh
 RUN bash /tmp/install/install_ros2.sh
 RUN bash /tmp/install/install_assimp.sh
 RUN bash /tmp/install/install_ogre.sh
-RUN bash /tmp/install/install_adolc.sh
 RUN bash /tmp/install/install_ipopt.sh
 RUN bash /tmp/install/install_python_modules.sh
 RUN chmod +x /tmp/install/install_habitat.sh && \

@@ -88,7 +88,7 @@ autocmake_binary(autonomy.bridge
   DEPENDENCIES
     autonomy
     glog::glog
-    gflags::gflags)
+)
 
 # --- install -----------------------------------------------------------------
 # Runtime assets → share/autonomy/bridge/{conf,dag,launch}.

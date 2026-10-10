@@ -17,12 +17,18 @@
 #ifndef CARTOGRAPHER_IO_INTERNAL_PBSTREAM_INFO_H_
 #define CARTOGRAPHER_IO_INTERNAL_PBSTREAM_INFO_H_
 
+#include <string>
+
 namespace cartographer {
 namespace io {
 
-// info subtool for pbstream swiss army knife. The command line arguments are
-// assumed to be parsed and removed from the remaining arguments already.
-int pbstream_info(int argc, char* argv[]);
+struct PbstreamInfoOptions {
+    std::string pbstream_filename;
+    bool all_debug_strings = false;
+};
+
+// info subtool for pbstream swiss army knife.
+int pbstream_info(const PbstreamInfoOptions& options);
 
 }  // namespace io
 }  // namespace cartographer

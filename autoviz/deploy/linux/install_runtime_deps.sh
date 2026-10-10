@@ -33,7 +33,6 @@ RUNTIME=(
   libxkbcommon0
   libxcb-cursor0
   libyaml-cpp0.8
-  libtinyxml2-10
   libavcodec60
   libavutil58
   libswscale7
@@ -51,7 +50,6 @@ OPTIONAL=(
   libyaml-cpp0.7
   libprotobuf23
   libavcodec58
-  libtinyxml2-9
   libassimp5v5
 )
 

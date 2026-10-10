@@ -15,34 +15,35 @@
  */
 
 #include <cstdlib>
+#include <cstdint>
+#include <string>
 
-#include <gflags/gflags.h>
+#include <CLI/CLI.hpp>
 #include <glog/logging.h>
 
 #include "autolink/autolink.hpp"
+#include "autonomy/common/cli_options.hpp"
 #include "autonomy/task/task_server.hpp"
-
-DEFINE_string(config_directory, "",
-              "Task conf root (default: resolve autonomy/task/conf via "
-              "AUTONOMY_PATH). Contains behavior_tree/ XML.");
-DEFINE_uint32(feedback_period_ms, 100,
-              "Scheduler feedback polling period in milliseconds.");
-DEFINE_bool(exclusive_navigation_tasks, true,
-            "Only one navigation-class task at a time.");
 
 namespace autonomy::task {
 namespace {
 
-::autonomy::task::proto::TaskServerOptions BuildOptions()
+struct TaskCli {
+    std::string config_directory;
+    uint32_t feedback_period_ms = 100;
+    bool exclusive_navigation_tasks = true;
+};
+
+::autonomy::task::proto::TaskServerOptions BuildOptions(const TaskCli& cli)
 {
     auto options = TaskServer::DefaultOptions();
     // Empty flag must not wipe the path resolved by BtDefaults::Apply.
-    if (!FLAGS_config_directory.empty()) {
-        options.set_config_directory(FLAGS_config_directory);
+    if (!cli.config_directory.empty()) {
+        options.set_config_directory(cli.config_directory);
     }
-    options.mutable_scheduler()->set_feedback_period_ms(FLAGS_feedback_period_ms);
+    options.mutable_scheduler()->set_feedback_period_ms(cli.feedback_period_ms);
     options.mutable_scheduler()->set_exclusive_navigation_tasks(
-        FLAGS_exclusive_navigation_tasks);
+        cli.exclusive_navigation_tasks);
     return options;
 }
 
@@ -51,7 +52,19 @@ namespace {
 
 int main(int argc, char** argv)
 {
-    google::ParseCommandLineFlags(&argc, &argv, false);
+    CLI::App app{"autonomy.task"};
+    autonomy::task::TaskCli cli;
+    app.add_option("--config_directory", cli.config_directory,
+                   "Task conf root (default: resolve autonomy/task/conf via "
+                   "AUTONOMY_PATH). Contains behavior_tree/ XML.");
+    app.add_option("--feedback_period_ms", cli.feedback_period_ms,
+                   "Scheduler feedback polling period in milliseconds.")
+        ->capture_default_str();
+    app.add_option("--exclusive_navigation_tasks",
+                   cli.exclusive_navigation_tasks,
+                   "Only one navigation-class task at a time.")
+        ->capture_default_str();
+    autonomy::common::ParseOrExit(app, argc, argv);
 
     if (!autolink::Init(argv[0])) {
         LOG(ERROR) << "autolink::Init failed";
@@ -59,7 +72,7 @@ int main(int argc, char** argv)
     }
 
     auto server = std::make_shared<autonomy::task::TaskServer>();
-    if (!server->Configure(autonomy::task::BuildOptions())) {
+    if (!server->Configure(autonomy::task::BuildOptions(cli))) {
         LOG(ERROR) << "TaskServer configure failed";
         return EXIT_FAILURE;
     }

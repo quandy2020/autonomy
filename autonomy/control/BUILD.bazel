@@ -253,6 +253,7 @@ autonomy_cc_library(
         "//:autonomy_headers",
         "@eigen//:eigen",
         "@com_github_google_glog//:glog",
+        "//:cli11",
         "@com_google_protobuf//:protobuf",
         "//:pthread",
     ],
@@ -264,7 +265,7 @@ autonomy_cc_binary(
     deps = [
         ":autonomy_control",
         "@com_github_google_glog//:glog",
-        "@com_github_gflags_gflags//:gflags",
+
     ],
 )
 

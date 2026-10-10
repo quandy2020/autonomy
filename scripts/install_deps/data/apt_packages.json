@@ -37,7 +37,6 @@
       "libmetis-dev",
       "libflann-dev",
       "libqhull-dev",
-      "libtinyxml2-dev",
       "libsqlite3-dev",
       "libzmq3-dev",
       "liburdfdom-dev",

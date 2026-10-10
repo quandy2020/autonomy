@@ -34,12 +34,12 @@ autocmake_find(LuaGoogle REQUIRED PRIVATE)
 autocmake_find(FBow REQUIRED PRIVATE)
 autocmake_find(G2o REQUIRED PRIVATE)
 autocmake_find(SQLite3 REQUIRED PRIVATE)
-autocmake_find(Boost REQUIRED PRIVATE COMPONENTS iostreams)
+autocmake_find(ZLIB REQUIRED PRIVATE)
 autocmake_find(PkgConfig REQUIRED PRIVATE)
 pkg_check_modules(CAIRO REQUIRED IMPORTED_TARGET cairo)
 autocmake_find(opentelemetry-cpp PRIVATE QUIET CONFIG)
 
-foreach(_pkg IN ITEMS OpenCV PCL TBB LuaGoogle FBow G2o SQLite3 Boost PkgConfig)
+foreach(_pkg IN ITEMS OpenCV PCL TBB LuaGoogle FBow G2o SQLite3 ZLIB PkgConfig)
   if(NOT ${_pkg}_FOUND)
     message(FATAL_ERROR "localization: ${_pkg} is required")
   endif()
@@ -79,7 +79,7 @@ autocmake_library(autonomy_localization
     $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
     $<TARGET_NAME_IF_EXISTS:FBow::fbow>
     $<TARGET_NAME_IF_EXISTS:PkgConfig::CAIRO>
-    $<TARGET_NAME_IF_EXISTS:Boost::iostreams>
+    ZLIB::ZLIB
     $<TARGET_NAME_IF_EXISTS:BT::behaviortree_cpp>
     $<TARGET_NAME_IF_EXISTS:behaviortree_cpp::behaviortree_cpp>
     $<TARGET_NAME_IF_EXISTS:opentelemetry-cpp::opentelemetry_trace>
@@ -146,7 +146,8 @@ autocmake_binary(autonomy.localization
   DEPENDENCIES
     autonomy
     glog::glog
-    gflags::gflags)
+    autonomy::cli11
+)
 add_subdirectory(atlas)
 
 # --- install -----------------------------------------------------------------

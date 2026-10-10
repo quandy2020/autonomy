@@ -1,4 +1,8 @@
 load(
+    "//tools:dependencies.bzl",
+    "AUTONOMY_PCL_DEPS",
+)
+load(
     "//tools:package.bzl",
     "autonomy_module_copts",
     "autonomy_cc_library",
@@ -223,18 +227,23 @@ autonomy_cc_library(
         "utils/decompose/seed_decomp.hpp",
         "utils/pgm_converter.hpp",
     ],
-    copts = autonomy_module_copts("map"),
+    copts = autonomy_module_copts("map") + [
+        # grid_map Eigen plugins (see map/CMakeLists.txt).
+        '-DEIGEN_FUNCTORS_PLUGIN=\\"%s\\"' % "autonomy/map/grid_map/grid_map_core/eigen_plugins/functors_plugin.hpp",
+        '-DEIGEN_DENSEBASE_PLUGIN=\\"%s\\"' % "autonomy/map/grid_map/grid_map_core/eigen_plugins/dense_base_plugin.hpp",
+    ],
     include_prefix = "autonomy/map",
     deps = [
         "//autonomy/common:autonomy_common",
         "//autonomy/transform:autonomy_transform",
         "//:automsgs",
         "//:autonomy_headers",
+        "//:opencv",
         "@eigen//:eigen",
         "@com_github_google_glog//:glog",
         "@com_google_protobuf//:protobuf",
         "//:pthread",
-    ],
+    ] + AUTONOMY_PCL_DEPS,
 )
 
 filegroup(

@@ -51,7 +51,6 @@ BASE=(
   libgflags-dev
   libprotobuf-dev
   protobuf-compiler
-  libtinyxml2-dev
   libavcodec-dev
   libavutil-dev
   libswscale-dev

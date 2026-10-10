@@ -31,9 +31,4 @@
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>
-  <module>
-    <name>foxglove</name>
-    <type>binary</type>
-    <process_name>autonomy.foxglove_bridge --foxglove_host=0.0.0.0 --foxglove_port=8765</process_name>
-  </module>
 </autolink>

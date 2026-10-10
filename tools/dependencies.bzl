@@ -53,11 +53,15 @@ AUTONOMY_OPENCV_DEPS = [
 # Point-cloud stack (apt libpcl-dev / BCR). Prefer fine-grained @pcl//:… in BUILD.
 AUTONOMY_PCL_DEPS = [
     "@pcl//:common",
+    "@pcl//:filters",
+    "@pcl//:io",
+    "@pcl//:kdtree",
+    "@pcl//:segmentation",
 ]
 
 # Optional / domain-specific (see MODULE.bazel inventory):
 #   @osqp//:osqp  @gperftools//:tcmalloc  @fastdds//:fastdds  @assimp//:assimp
-#   @onetbb//:tbb  @flann//:flann  @lua//:lua  @tinyxml2//:tinyxml2  @libzmq//:libzmq
+#   @onetbb//:tbb  @flann//:flann  @lua//:lua  @libzmq//:libzmq
 #   @sqlite3//:sqlite3
 #
-# Still not bazel_dep (no BCR): g2o, fbow, taskflow, adolc, ipopt, ogre.
+# Still not bazel_dep (no BCR): g2o, fbow, ipopt, ogre.

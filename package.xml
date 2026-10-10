@@ -32,7 +32,6 @@
        root CMakeLists, same pattern as autodriver finding autolink/automsgs. -->
   <build_depend>Eigen3</build_depend>
   <build_depend>nlohmann_json</build_depend>
-  <build_depend>gflags</build_depend>
   <build_depend>glog</build_depend>
   <build_depend>yaml-cpp</build_depend>
   <build_depend>Threads</build_depend>

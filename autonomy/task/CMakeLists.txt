@@ -61,7 +61,8 @@ autocmake_binary(autonomy.task
   DEPENDENCIES
     autonomy
     glog::glog
-    gflags::gflags)
+    autonomy::cli11
+)
 
 # --- install -----------------------------------------------------------------
 autocmake_install_share(task

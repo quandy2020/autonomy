@@ -23,6 +23,10 @@
 #include <string>
 #include <vector>
 
+#include <CLI/CLI.hpp>
+#include <glog/logging.h>
+
+#include "autonomy/common/cli_options.hpp"
 #include "autonomy/localization/cartographer/common/math.hpp"
 #include "autonomy/localization/cartographer/common/port.hpp"
 #include "autonomy/localization/cartographer/ground_truth/proto/relations.pb.h"
@@ -33,18 +37,6 @@
 #include "autonomy/localization/cartographer/transform/rigid_transform.hpp"
 #include "autonomy/localization/cartographer/transform/transform.hpp"
 #include "autonomy/localization/cartographer/transform/transform_interpolation_buffer.hpp"
-#include "gflags/gflags.h"
-#include "glog/logging.h"
-#include "autolink/init.hpp"
-
-DEFINE_string(pose_graph_filename, "", "Proto stream file containing the pose graph used to assess quality.");
-DEFINE_string(relations_filename, "", "Relations file containing the ground truth.");
-DEFINE_bool(read_text_file_with_unix_timestamps, false,
-            "Enable support for the relations text files as in the paper. "
-            "Default is to read from a GroundTruth proto file.");
-DEFINE_bool(write_relation_metrics, false,
-            "Enable exporting relation metrics as comma-separated values to "
-            "[pose_graph_filename].relation_metrics.csv");
 
 namespace cartographer {
 namespace ground_truth {
@@ -182,21 +174,34 @@ void Run(const std::string& pose_graph_filename, const std::string& relations_fi
 }  // namespace cartographer
 
 int main(int argc, char** argv) {
-    FLAGS_logtostderr = true;
-    google::SetUsageMessage(
-        "\n\n"
-        "This program computes the relation based metric described in:\n"
+    std::string pose_graph_filename;
+    std::string relations_filename;
+    bool read_text_file_with_unix_timestamps = false;
+    bool write_relation_metrics = false;
+
+    CLI::App app{
+        "Computes the relation based metric described in:\n"
         "R. Kuemmerle, B. Steder, C. Dornhege, M. Ruhnke, G. Grisetti,\n"
-        "C. Stachniss, and A. Kleiner, \"On measuring the accuracy of SLAM\n"
-        "algorithms,\" Autonomous Robots, vol. 27, no. 4, pp. 387–407, 2009.");
-    google::ParseCommandLineFlags(&argc, &argv, true);
+        "C. Stachniss, and A. Kleiner, \"On measuring the accuracy of SLAM "
+        "algorithms,\" Autonomous Robots, vol. 27, no. 4, pp. 387–407, 2009."};
+    app.add_option("--pose_graph_filename", pose_graph_filename,
+                   "Proto stream file containing the pose graph used to assess quality.")
+        ->required();
+    app.add_option("--relations_filename", relations_filename,
+                   "Relations file containing the ground truth.")
+        ->required();
+    app.add_flag("--read_text_file_with_unix_timestamps", read_text_file_with_unix_timestamps,
+                 "Enable support for the relations text files as in the paper. "
+                 "Default is to read from a GroundTruth proto file.");
+    app.add_flag("--write_relation_metrics", write_relation_metrics,
+                 "Enable exporting relation metrics as comma-separated values to "
+                 "[pose_graph_filename].relation_metrics.csv");
+
+    autonomy::common::ParseOrExit(app, argc, argv);
+    FLAGS_logtostderr = true;
     google::InitGoogleLogging(argv[0]);
 
-    if (FLAGS_pose_graph_filename.empty() || FLAGS_relations_filename.empty()) {
-        google::ShowUsageWithFlagsRestrict(argv[0], "compute_relations_metrics");
-        return EXIT_FAILURE;
-    }
-
-    ::cartographer::ground_truth::Run(FLAGS_pose_graph_filename, FLAGS_relations_filename,
-                                      FLAGS_read_text_file_with_unix_timestamps, FLAGS_write_relation_metrics);
+    ::cartographer::ground_truth::Run(pose_graph_filename, relations_filename, read_text_file_with_unix_timestamps,
+                                      write_relation_metrics);
+    return EXIT_SUCCESS;
 }

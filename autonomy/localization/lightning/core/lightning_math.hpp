@@ -9,9 +9,8 @@
 
 #include <glog/logging.h>
 #include <pcl/filters/voxel_grid.h>
-#include <boost/array.hpp>
-#include <boost/math/tools/precision.hpp>
 #include <cmath>
+#include <limits>
 #include <numeric>
 
 #include "common/eigen_types.hpp"
@@ -133,19 +132,7 @@ inline Eigen::Matrix<S, 3, 1> VecFromArray(const std::vector<double>& v) {
 }
 
 template <typename S>
-inline Eigen::Matrix<S, 3, 1> VecFromArray(const boost::array<S, 3>& v) {
-    return Eigen::Matrix<S, 3, 1>(v[0], v[1], v[2]);
-}
-
-template <typename S>
 inline Eigen::Matrix<S, 3, 3> MatFromArray(const std::vector<double>& v) {
-    Eigen::Matrix<S, 3, 3> m;
-    m << v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8];
-    return m;
-}
-
-template <typename S>
-inline Eigen::Matrix<S, 3, 3> MatFromArray(const boost::array<S, 9>& v) {
     Eigen::Matrix<S, 3, 3> m;
     m << v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8];
     return m;
@@ -237,7 +224,7 @@ inline std::pair<scalar, scalar> cos_sinc_sqrt(const scalar& x2) {
     using std::cos;
     using std::sin;
     using std::sqrt;
-    static scalar const taylor_0_bound = boost::math::tools::epsilon<scalar>();
+    static scalar const taylor_0_bound = std::numeric_limits<scalar>::epsilon();
     static scalar const taylor_2_bound = sqrt(taylor_0_bound);
     static scalar const taylor_n_bound = sqrt(taylor_2_bound);
 

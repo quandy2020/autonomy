@@ -17,12 +17,11 @@
 #ifndef CARTOGRAPHER_COMMON_PORT_H_
 #define CARTOGRAPHER_COMMON_PORT_H_
 
-#include <boost/iostreams/device/back_inserter.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
 #include <cinttypes>
 #include <cmath>
 #include <string>
+
+#include <zlib.h>
 
 // Thread-safety annotations (no-op unless compiling with clang).
 #if defined(__SUPPORT_TS_ANNOTATION__) || defined(__clang__)
@@ -68,17 +67,51 @@ inline int64 RoundToInt64(const double x) {
 }
 
 inline void FastGzipString(const std::string& uncompressed, std::string* compressed) {
-    boost::iostreams::filtering_ostream out;
-    out.push(boost::iostreams::gzip_compressor(boost::iostreams::zlib::best_speed));
-    out.push(boost::iostreams::back_inserter(*compressed));
-    boost::iostreams::write(out, reinterpret_cast<const char*>(uncompressed.data()), uncompressed.size());
+    compressed->clear();
+    z_stream stream{};
+    if (deflateInit2(&stream, Z_BEST_SPEED, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY) != Z_OK) {
+        return;
+    }
+    stream.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(uncompressed.data()));
+    stream.avail_in = static_cast<uInt>(uncompressed.size());
+    compressed->resize(deflateBound(&stream, static_cast<uLong>(uncompressed.size())));
+    stream.next_out = reinterpret_cast<Bytef*>(compressed->data());
+    stream.avail_out = static_cast<uInt>(compressed->size());
+    const int ret = deflate(&stream, Z_FINISH);
+    if (ret == Z_STREAM_END) {
+        compressed->resize(stream.total_out);
+    } else {
+        compressed->clear();
+    }
+    deflateEnd(&stream);
 }
 
 inline void FastGunzipString(const std::string& compressed, std::string* decompressed) {
-    boost::iostreams::filtering_ostream out;
-    out.push(boost::iostreams::gzip_decompressor());
-    out.push(boost::iostreams::back_inserter(*decompressed));
-    boost::iostreams::write(out, reinterpret_cast<const char*>(compressed.data()), compressed.size());
+    decompressed->clear();
+    if (compressed.empty()) {
+        return;
+    }
+    z_stream stream{};
+    if (inflateInit2(&stream, 15 + 16) != Z_OK) {
+        return;
+    }
+    stream.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(compressed.data()));
+    stream.avail_in = static_cast<uInt>(compressed.size());
+    int ret = Z_OK;
+    while (ret == Z_OK) {
+        if (stream.total_out >= decompressed->size()) {
+            decompressed->resize(decompressed->size() + compressed.size() * 2 + 64);
+        }
+        stream.next_out = reinterpret_cast<Bytef*>(decompressed->data() + stream.total_out);
+        stream.avail_out = static_cast<uInt>(decompressed->size() - stream.total_out);
+        ret = inflate(&stream, Z_NO_FLUSH);
+    }
+    if (ret == Z_STREAM_END) {
+        decompressed->resize(stream.total_out);
+    } else {
+        decompressed->clear();
+    }
+    inflateEnd(&stream);
 }
 
 }  // namespace common

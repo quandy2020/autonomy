@@ -20,11 +20,11 @@
 #include <memory>
 #include <thread>
 
-#include <gflags/gflags.h>
+#include <CLI/CLI.hpp>
 #include <glog/logging.h>
 
 #include "autolink/autolink.hpp"
-#include "autonomy/common/gflags.hpp"
+#include "autonomy/common/cli_options.hpp"
 #include "autonomy/system/logging/event_bundler.hpp"
 #include "autonomy/system/monitor/monitor_options.hpp"
 #include "autonomy/system/monitor/monitor_registry.hpp"
@@ -45,7 +45,9 @@ std::chrono::milliseconds CollectInterval(const MonitorOptions& opts) {
 }  // namespace autonomy::system::monitor
 
 int main(int argc, char** argv) {
-    google::ParseCommandLineFlags(&argc, &argv, false);
+    CLI::App app{"autonomy.monitor"};
+    autonomy::common::BindCommonOptions(app);
+    autonomy::common::ParseOrExit(app, argc, argv);
 
     if (!autolink::Init(argv[0])) {
         LOG(ERROR) << "autolink::Init failed";

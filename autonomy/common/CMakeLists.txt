@@ -89,7 +89,7 @@ target_link_libraries(autonomy_common PUBLIC
   Ceres::ceres
   yaml-cpp::yaml-cpp
   glog::glog
-  gflags::gflags
+  autonomy::cli11
   autolink
   Threads::Threads
   nlohmann_json::nlohmann_json

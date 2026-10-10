@@ -2,10 +2,12 @@
 #include "autonomy/localization/atlas/port/ceres_graph/optimizer.hpp"
 #include "autonomy/localization/atlas/port/core/lightning_math.hpp"
 
-#include <boost/format.hpp>
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <iomanip>
+#include <numeric>
+#include <sstream>
 
 namespace atlas_lio::loc {
 
@@ -31,12 +33,15 @@ std::string print_info(const std::vector<T>& edges, double th = 0) {
 
     std::sort(chi2.begin(), chi2.end());
     double ave_chi2 = std::accumulate(chi2.begin(), chi2.end(), 0.0) / chi2.size();
-    boost::format fmt("数量: %d, 均值: %f, 中位数: %f, 0.1分位: %f, 0.9分位: %f, 最大值: %f, 阈值: %f\n");
     if (!chi2.empty()) {
-        std::string str = (fmt % chi2.size() % ave_chi2 % chi2[chi2.size() / 2] % chi2[int(chi2.size() * 0.1)] %
-                           chi2[int(chi2.size() * 0.9)] % chi2.back() % th)
-                              .str();
-        return str;
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(6)
+            << "数量: " << chi2.size() << ", 均值: " << ave_chi2
+            << ", 中位数: " << chi2[chi2.size() / 2]
+            << ", 0.1分位: " << chi2[static_cast<size_t>(chi2.size() * 0.1)]
+            << ", 0.9分位: " << chi2[static_cast<size_t>(chi2.size() * 0.9)]
+            << ", 最大值: " << chi2.back() << ", 阈值: " << th << '\n';
+        return oss.str();
     }
     return std::string("");
 }

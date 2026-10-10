@@ -31,7 +31,6 @@
 | task | 是 | 是 | |
 | perception | 是 | 是 | conf 常 `enabled=false` |
 | bridge | 是 | 是 | 需 `-DBUILD_GRPC=ON` |
-| foxglove | 是 | 否 | 可视化 |
 | localization / autodriver | **否** | — | 另 launch；全栈回灌/仿真见 `replay.launch` / `sim_fullstack.launch` |
 
 ## 环境变量

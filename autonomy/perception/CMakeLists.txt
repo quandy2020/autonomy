@@ -69,7 +69,8 @@ autocmake_binary(autonomy.perception
   DEPENDENCIES
     autonomy
     glog::glog
-    gflags::gflags)
+    autonomy::cli11
+)
 
 add_subdirectory(base)
 add_subdirectory(follow)

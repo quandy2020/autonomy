@@ -2,10 +2,9 @@
 
 common --enable_bzlmod
 
-build --cxxopt=-std=c++20
-build --host_cxxopt=-std=c++20
-build --copt=-Wall
-build --copt=-Wno-unused-parameter
+# Shared flags (Bzlmod, C++20, AUTONOMY_PREFIX / OPENCV_ROOT).
+# Canonical C++ standard lives in tools/bazel.rc — do not re-declare -std= here.
+try-import %workspace%/tools/bazel.rc
 
 # Sibling shared libs must be findable at runtime / test time.
 test --test_env=LD_LIBRARY_PATH

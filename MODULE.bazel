@@ -17,7 +17,6 @@ install_deps (C++)              BCR bazel_dep (this file)             Label
 ------------------------------  ------------------------------------  --------------------------------
 install_gtest.sh v1.17.0        googletest 1.17.0.bcr.2               @googletest//:gtest[_main]
 install_glog.sh v0.6.0          glog 0.6.0                            @com_github_google_glog//:glog
-install_gflags.sh v2.2.2        gflags 2.2.2.bcr.1                    @com_github_gflags_gflags//:gflags
 install_protobuf.sh v3.19.4     protobuf 30.2 †                       @com_google_protobuf//:protobuf
 install_grpc.sh v1.48.0         grpc 1.70.1 †                         @com_github_grpc_grpc//:grpc++
 install_abseil.sh 20220623.0    abseil-cpp 20250814.1 †               @com_google_absl//absl/...
@@ -31,7 +30,6 @@ install_fastdds.sh              fastdds 3.4.2.bcr.1                   @fastdds//
 install_opencv.sh 4.10          @autonomy_opencv (system) ‡           //:opencv
 apt libeigen3-dev               eigen 3.4.1.bcr.1                     @eigen//:eigen
 apt libyaml-cpp-dev             yaml-cpp 0.8.0.bcr.1                  @yaml-cpp//:yaml-cpp
-apt libtinyxml2-dev             tinyxml2 10.0.0                       @tinyxml2//:tinyxml2
 apt libzmq3-dev                 libzmq 4.3.5.bcr.7                    @libzmq//:libzmq
 apt liblua5.3-dev               lua 5.4.6 †                           @lua//:lua
 apt libflann-dev                flann 1.9.2                           @flann//:flann
@@ -45,7 +43,7 @@ apt libsqlite3-dev              sqlite3 3.53.4                        @sqlite3//
   Use install_deps tree via module extension (@autonomy_opencv).
 
 Still NOT bazel_dep (no BCR):
-  g2o, fbow, taskflow, adolc, ipopt, ogre.
+  g2o, fbow, ipopt, ogre.
 
 Local modules / extensions:
   //:automsgs          ← @automsgs (source, BCR protobuf) via local_path_override
@@ -83,11 +81,6 @@ bazel_dep(name = "bazel_skylib", version = "1.9.0")
 # --- BCR ← scripts/install_deps thirdparty.json (C++) ---
 
 bazel_dep(name = "googletest", version = "1.17.0.bcr.2")
-bazel_dep(
-    name = "gflags",
-    version = "2.2.2.bcr.1",
-    repo_name = "com_github_gflags_gflags",
-)
 
 # install_glog.sh → v0.6.0
 bazel_dep(
@@ -163,7 +156,6 @@ bazel_dep(name = "fastdds", version = "3.4.2.bcr.1")
 # 3.4.1 aligns with pcl; still OK for ceres / the rest of //autonomy.
 bazel_dep(name = "eigen", version = "3.4.1.bcr.1")
 bazel_dep(name = "yaml-cpp", version = "0.8.0.bcr.1")
-bazel_dep(name = "tinyxml2", version = "10.0.0")
 bazel_dep(name = "libzmq", version = "4.3.5.bcr.7")
 
 # apt liblua5.3-dev; BCR 5.4.6 is closest maintained pin

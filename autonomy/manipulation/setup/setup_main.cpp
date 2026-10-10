@@ -11,44 +11,54 @@
 #include <iostream>
 #include <string>
 
-#include <gflags/gflags.h>
+#include <CLI/CLI.hpp>
 #include <glog/logging.h>
 
+#include "autonomy/common/cli_options.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/manipulation/setup/setup_assistant_lite.hpp"
 
-DEFINE_string(urdf, "", "Path to robot URDF");
-DEFINE_string(srdf, "", "Path to robot SRDF (optional)");
-DEFINE_string(out, "share/autonomy/manipulation/conf",
-              "Output directory for manipulation.pb.txt");
-DEFINE_string(group, "arm", "Planning group name");
-DEFINE_string(base, "base_link", "Base frame");
-DEFINE_string(tip, "tool0", "Tip frame");
-DEFINE_string(planner, "pilz_ptp", "Default planner_id");
-DEFINE_string(collision, "fcl", "Collision detector id");
-DEFINE_bool(convexparts, true, "Emit empty *.convexparts templates");
-
 int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  CLI::App app{"autonomy.manipulation.setup"};
+  std::string urdf;
+  std::string srdf;
+  std::string out = "share/autonomy/manipulation/conf";
+  std::string group = "arm";
+  std::string base = "base_link";
+  std::string tip = "tool0";
+  std::string planner = "pilz_ptp";
+  std::string collision = "fcl";
+  bool convexparts = true;
+
+  app.add_option("--urdf", urdf, "Path to robot URDF")->required();
+  app.add_option("--srdf", srdf, "Path to robot SRDF (optional)");
+  app.add_option("--out", out, "Output directory for manipulation.pb.txt")
+      ->capture_default_str();
+  app.add_option("--group", group, "Planning group name")->capture_default_str();
+  app.add_option("--base", base, "Base frame")->capture_default_str();
+  app.add_option("--tip", tip, "Tip frame")->capture_default_str();
+  app.add_option("--planner", planner, "Default planner_id")
+      ->capture_default_str();
+  app.add_option("--collision", collision, "Collision detector id")
+      ->capture_default_str();
+  app.add_option("--convexparts", convexparts,
+                 "Emit empty *.convexparts templates")
+      ->capture_default_str();
+  autonomy::common::ParseOrExit(app, argc, argv);
+
   google::InitGoogleLogging(argv[0]);
   FLAGS_alsologtostderr = true;
 
-  if (FLAGS_urdf.empty()) {
-    std::cerr << "Usage: " << argv[0]
-              << " --urdf=robot.urdf [--srdf=robot.srdf] [--out=conf/]\n";
-    return 1;
-  }
-
   autonomy::manipulation::setup::SetupRequest req;
-  req.urdf_path = FLAGS_urdf;
-  req.srdf_path = FLAGS_srdf;
-  req.output_dir = FLAGS_out;
-  req.planning_group = FLAGS_group;
-  req.base_frame = FLAGS_base;
-  req.tip_frame = FLAGS_tip;
-  req.planner_id = FLAGS_planner;
-  req.collision_detector = FLAGS_collision;
-  req.emit_convexparts_templates = FLAGS_convexparts;
+  req.urdf_path = urdf;
+  req.srdf_path = srdf;
+  req.output_dir = out;
+  req.planning_group = group;
+  req.base_frame = base;
+  req.tip_frame = tip;
+  req.planner_id = planner;
+  req.collision_detector = collision;
+  req.emit_convexparts_templates = convexparts;
 
   const auto result = autonomy::manipulation::setup::GenerateSetup(req);
   if (!result.success) {

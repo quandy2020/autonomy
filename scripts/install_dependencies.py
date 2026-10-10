@@ -56,7 +56,6 @@ APT_DOCKERFILE_BASE: List[str] = [
     "libsdl2-dev",
     "libblas-dev",
     "liblapack-dev",
-    "libtinyxml2-dev",
     "liblua5.3-dev",
     "ninja-build",
     "python3-pip",
@@ -169,7 +168,6 @@ THIRDPARTY_SCRIPTS_DOCKERFILE: List[str] = [
     "install_osqp.sh",
     "install_behaviortree_cpp.sh",
     "install_python_modules.sh",
-    "install_adolc.sh",
     "install_ipopt.sh",
 ]
 
@@ -179,11 +177,11 @@ THIRDPARTY_SCRIPTS_FULL: List[str] = list(THIRDPARTY_SCRIPTS_DOCKERFILE) + [
 ]
 
 # Board: dockerfile set (cmake core + localization + BT + control QUIET deps).
-# Skip Ogre/Assimp/Taskflow (GUI / optional).
+# Skip Ogre/Assimp (GUI / optional).
 THIRDPARTY_SCRIPTS_BOARD: List[str] = list(THIRDPARTY_SCRIPTS_DOCKERFILE)
 
 # Always run via docker/install (ignore --skip-installed and apt stubs).
-# Heavy/optional (opencv/gperftools) and apt wrappers (adolc/ipopt) are not
+# Heavy/optional (opencv/gperftools) and the apt wrapper (ipopt) are not
 # forced so board can reuse jammy packages when present.
 FORCE_THIRDPARTY_SCRIPTS: frozenset[str] = frozenset(
     {
@@ -221,7 +219,6 @@ SCRIPT_INSTALL_RELS: Dict[str, List[tuple[str, ...]]] = {
     "install_g2o.sh": [("lib", "cmake", "g2o", "g2oConfig.cmake")],
     "install_fbow.sh": [("lib", "libfbow.so")],
     "install_behaviortree_cpp.sh": [("lib", "libbehaviortree_cpp.so")],
-    "install_adolc.sh": [("include", "adolc", "adolc.h")],
     "install_ipopt.sh": [
         ("include", "coin-or", "IpIpoptApplication.hpp"),
         ("include", "coin", "IpIpoptApplication.hpp"),
@@ -242,7 +239,6 @@ SCRIPT_INSTALL_SYSTEM_FALLBACKS: Dict[str, List[str]] = {
         "/usr/lib/x86_64-linux-gnu/libopencv_core.so",
     ],
     "install_nlohmann.sh": ["/usr/include/nlohmann/json.hpp"],
-    "install_adolc.sh": ["/usr/include/adolc/adolc.h"],
     "install_ipopt.sh": [
         "/usr/include/coin/IpIpoptApplication.hpp",
         "/usr/include/coin-or/IpIpoptApplication.hpp",

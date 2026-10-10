@@ -17,21 +17,16 @@
 #include <map>
 #include <string>
 
-#include <gflags/gflags.h>
+#include <CLI/CLI.hpp>
 #include <glog/logging.h>
 
+#include "autonomy/common/cli_options.hpp"
 #include "autonomy/localization/cartographer/io/file_writer.hpp"
 #include "autonomy/localization/cartographer/io/proto_stream.hpp"
 #include "autonomy/localization/cartographer/io/proto_stream_deserializer.hpp"
 #include "autonomy/localization/cartographer/io/submap_painter.hpp"
 #include "autonomy/localization/cartographer/mapping/value_conversion_tables.hpp"
 #include "autonomy/localization/cartographer/node/map_io.hpp"
-#include "autolink/init.hpp"
-
-DEFINE_string(pbstream_filename, "",
-              "Filename of a pbstream to draw a map from.");
-DEFINE_string(map_filestem, "map", "Stem of the output files.");
-DEFINE_double(resolution, 0.05, "Resolution of a grid cell in the drawn map.");
 
 namespace autonomy {
 namespace localization {
@@ -75,14 +70,24 @@ void Run(const std::string& pbstream_filename, const std::string& map_filestem,
 }  // namespace autonomy
 
 int main(int argc, char** argv) {
-    google::ParseCommandLineFlags(&argc, &argv, false);
+    std::string pbstream_filename;
+    std::string map_filestem = "map";
+    double resolution = 0.05;
+
+    CLI::App app{"Draw a map (PGM/YAML) from a Cartographer pbstream."};
+    app.add_option("--pbstream_filename", pbstream_filename,
+                   "Filename of a pbstream to draw a map from.")
+        ->required();
+    app.add_option("--map_filestem", map_filestem, "Stem of the output files.")
+        ->capture_default_str();
+    app.add_option("--resolution", resolution, "Resolution of a grid cell in the drawn map.")
+        ->capture_default_str();
+
+    autonomy::common::ParseOrExit(app, argc, argv);
     google::InitGoogleLogging(argv[0]);
 
-    CHECK(!FLAGS_pbstream_filename.empty()) << "-pbstream_filename is missing.";
-    CHECK(!FLAGS_map_filestem.empty()) << "-map_filestem is missing.";
+    CHECK(!map_filestem.empty()) << "--map_filestem is missing.";
 
-    autonomy::localization::cartographer::node::Run(FLAGS_pbstream_filename,
-                                                    FLAGS_map_filestem,
-                                                    FLAGS_resolution);
+    autonomy::localization::cartographer::node::Run(pbstream_filename, map_filestem, resolution);
     return EXIT_SUCCESS;
 }

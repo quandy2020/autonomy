@@ -16,25 +16,36 @@
 
 #include <cstdlib>
 
-#include <gflags/gflags.h>
+#include <CLI/CLI.hpp>
 #include <glog/logging.h>
 
 #include "autolink/autolink.hpp"
+#include "autonomy/common/cli_options.hpp"
 #include "autonomy/localization/cartographer/node/node_utils.hpp"
 #include "autonomy/localization/cartographer/node/occupancy_grid_node.hpp"
 
-DEFINE_double(resolution, 0.05,
-              "Resolution of a grid cell in the published occupancy grid.");
-DEFINE_double(publish_period_sec, 1.0, "OccupancyGrid publishing period.");
-DEFINE_bool(include_frozen_submaps, true,
-            "Include frozen submaps in the occupancy grid.");
-DEFINE_bool(include_unfrozen_submaps, true,
-            "Include unfrozen submaps in the occupancy grid.");
-
 int main(int argc, char** argv) {
-    google::ParseCommandLineFlags(&argc, &argv, false);
+    double resolution = 0.05;
+    double publish_period_sec = 1.0;
+    bool include_frozen_submaps = true;
+    bool include_unfrozen_submaps = true;
 
-    CHECK(FLAGS_include_frozen_submaps || FLAGS_include_unfrozen_submaps)
+    CLI::App app{"Cartographer occupancy grid publisher."};
+    app.add_option("--resolution", resolution,
+                   "Resolution of a grid cell in the published occupancy grid.")
+        ->capture_default_str();
+    app.add_option("--publish_period_sec", publish_period_sec, "OccupancyGrid publishing period.")
+        ->capture_default_str();
+    app.add_option("--include_frozen_submaps", include_frozen_submaps,
+                   "Include frozen submaps in the occupancy grid.")
+        ->default_val(true);
+    app.add_option("--include_unfrozen_submaps", include_unfrozen_submaps,
+                   "Include unfrozen submaps in the occupancy grid.")
+        ->default_val(true);
+
+    autonomy::common::ParseOrExit(app, argc, argv);
+
+    CHECK(include_frozen_submaps || include_unfrozen_submaps)
         << "Ignoring both frozen and unfrozen submaps makes no sense.";
 
     if (!autolink::Init(argv[0])) {
@@ -46,8 +57,7 @@ int main(int argc, char** argv) {
 
     auto node = autolink::CreateNode("cartographer_occupancy_grid_node");
     autonomy::localization::cartographer::node::OccupancyGridNode grid_node(
-        FLAGS_resolution, FLAGS_publish_period_sec, FLAGS_include_frozen_submaps,
-        FLAGS_include_unfrozen_submaps);
+        resolution, publish_period_sec, include_frozen_submaps, include_unfrozen_submaps);
     if (!grid_node.Init(node)) {
         LOG(ERROR) << "Failed to initialize occupancy grid node.";
         autolink::Clear();

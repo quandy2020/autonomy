@@ -6,8 +6,7 @@
   Processes:
     autonomy.monitor (same as system/launch/monitor.launch),
     planning, control, task, perception (disabled by default),
-    autonomy.bridge (same as bridge/launch/bridge.launch; needs -DBUILD_GRPC=ON),
-    autonomy.foxglove_bridge
+    autonomy.bridge (same as bridge/launch/bridge.launch; needs -DBUILD_GRPC=ON)
 
   Not started here (intentional — use dedicated launches):
     localization_*, autodriver / chassis, replay / sim_fullstack
@@ -64,10 +63,5 @@
     <process_name>autonomy.bridge --conf=bridge.pb.txt</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
-  </module>
-  <module>
-    <name>foxglove</name>
-    <type>binary</type>
-    <process_name>autonomy.foxglove_bridge --foxglove_host=0.0.0.0 --foxglove_port=8765</process_name>
   </module>
 </autolink>

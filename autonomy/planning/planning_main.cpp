@@ -9,12 +9,12 @@
 #include <memory>
 #include <string>
 
-#include <gflags/gflags.h>
+#include <CLI/CLI.hpp>
 #include <glog/logging.h>
 
 #include "autolink/autolink.hpp"
+#include "autonomy/common/cli_options.hpp"
 #include "autonomy/common/conf_loader.hpp"
-#include "autonomy/common/gflags.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/planning/planner_server.hpp"
 #include "autonomy/planning/proto/planning_options.pb.h"
@@ -82,7 +82,9 @@ std::string ResolvePlannerConfFile()
 
 int main(int argc, char** argv)
 {
-    google::ParseCommandLineFlags(&argc, &argv, false);
+    CLI::App app{"autonomy.planning"};
+    autonomy::common::BindCommonOptions(app);
+    autonomy::common::ParseOrExit(app, argc, argv);
 
     if (!autolink::Init(argv[0])) {
         LOG(ERROR) << "autolink::Init failed";

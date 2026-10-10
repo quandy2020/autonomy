@@ -73,7 +73,7 @@ AUTONOMY_INSTALL_PREFIX=/opt/autonomy bash docker/install/install_osqp.sh
 | 10 | `install_nlohmann.sh` | nlohmann/json |
 | 11 | `install_osqp.sh` | OSQP（common MPC） |
 | 12 | `install_behaviortree_cpp.sh` | BehaviorTree.CPP 4.x |
-| … | `install_adolc.sh` / `install_ipopt.sh` 等 | 可选 |
+| … | `install_ipopt.sh` 等 | 可选 |
 | full 额外 | `install_assimp.sh` / `install_ogre.sh` 等 | 可视化 |
 
 > BehaviorTree.CPP 为 Navigator BT 模式所需。板端会 purge 冲突的 apt 版 glog/protobuf/grpc，避免 ABI 混用。

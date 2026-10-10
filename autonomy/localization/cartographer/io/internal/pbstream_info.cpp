@@ -16,16 +16,13 @@
 
 #include "autonomy/localization/cartographer/io/internal/pbstream_info.hpp"
 
+#include <cstdlib>
 #include <map>
-#include <sstream>
 #include <string>
 
 #include "autonomy/localization/cartographer/io/proto_stream.hpp"
 #include "autonomy/localization/cartographer/io/proto_stream_deserializer.hpp"
-#include "gflags/gflags.h"
 #include "glog/logging.h"
-
-DEFINE_bool(all_debug_strings, false, "Print debug strings of all serialized data.");
 
 using cartographer::mapping::proto::SerializedData;
 
@@ -33,9 +30,9 @@ namespace cartographer {
 namespace io {
 namespace {
 
-void Run(const std::string& pbstream_filename, bool all_debug_strings) {
-    LOG(INFO) << "Reading pbstream file from '" << pbstream_filename << "'...";
-    io::ProtoStreamReader reader(pbstream_filename);
+void Run(const PbstreamInfoOptions& options) {
+    LOG(INFO) << "Reading pbstream file from '" << options.pbstream_filename << "'...";
+    io::ProtoStreamReader reader(options.pbstream_filename);
     io::ProtoStreamDeserializer deserializer(&reader);
     const auto header = deserializer.header();
     LOG(INFO) << "Header: " << header.DebugString();
@@ -48,7 +45,7 @@ void Run(const std::string& pbstream_filename, bool all_debug_strings) {
         LOG(INFO) << "Trajectory id: " << trajectory.trajectory_id() << " has #nodes " << trajectory.node_size()
                   << " has #submaps " << trajectory.submap_size();
     }
-    if (all_debug_strings) {
+    if (options.all_debug_strings) {
         LOG(INFO) << "Pose graph: " << pose_graph.DebugString();
     }
 
@@ -70,7 +67,7 @@ void Run(const std::string& pbstream_filename, bool all_debug_strings) {
     };
     SerializedData proto;
     while (deserializer.ReadNextSerializedData(&proto)) {
-        if (all_debug_strings) {
+        if (options.all_debug_strings) {
             LOG(INFO) << "Serialized data: " << proto.DebugString();
         }
         auto it = data_case_to_name.find(proto.data_case());
@@ -101,17 +98,12 @@ void Run(const std::string& pbstream_filename, bool all_debug_strings) {
 }
 }  // namespace
 
-int pbstream_info(int argc, char* argv[]) {
-    std::stringstream ss;
-    ss << "\n\n"
-       << "Reads a pbstream file and summarizes its contents.\n\n"
-       << "Usage: " << argv[0] << " " << argv[1] << " <pbstream_filename> [flags]\n";
-    google::SetUsageMessage(ss.str());
-    if (argc < 3) {
-        google::ShowUsageWithFlagsRestrict(argv[0], "pbstream_info");
+int pbstream_info(const PbstreamInfoOptions& options) {
+    if (options.pbstream_filename.empty()) {
+        LOG(ERROR) << "pbstream info requires a pbstream filename.";
         return EXIT_FAILURE;
     }
-    Run(argv[2], FLAGS_all_debug_strings);
+    Run(options);
     return EXIT_SUCCESS;
 }
 

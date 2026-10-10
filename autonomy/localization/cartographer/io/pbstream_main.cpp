@@ -14,38 +14,49 @@
  * limitations under the License.
  */
 
-#include <functional>
+#include <cstdlib>
+#include <string>
 
-#include <unordered_set>
+#include <CLI/CLI.hpp>
+#include <glog/logging.h>
+
+#include "autonomy/common/cli_options.hpp"
 #include "autonomy/localization/cartographer/io/internal/pbstream_info.hpp"
 #include "autonomy/localization/cartographer/io/internal/pbstream_migrate.hpp"
-#include "gflags/gflags.h"
-#include "glog/logging.h"
-#include "autolink/init.hpp"
 
 int main(int argc, char** argv) {
+    CLI::App app{"Swiss Army knife for pbstreams."};
+    app.require_subcommand(1, 1);
 
+    cartographer::io::PbstreamInfoOptions info_options;
+    auto* info_cmd = app.add_subcommand("info", "Prints summary of pbstream.");
+    info_cmd->add_option("pbstream_filename", info_options.pbstream_filename,
+                         "Pbstream file to summarize.")
+        ->required();
+    info_cmd->add_flag("--all_debug_strings", info_options.all_debug_strings,
+                       "Print debug strings of all serialized data.");
+
+    cartographer::io::PbstreamMigrateOptions migrate_options;
+    auto* migrate_cmd =
+        app.add_subcommand("migrate", "Migrates pbstream to the new submap format.");
+    migrate_cmd->add_option("input_filename", migrate_options.input_filename, "Input pbstream.")
+        ->required();
+    migrate_cmd->add_option("output_filename", migrate_options.output_filename, "Output pbstream.")
+        ->required();
+    migrate_cmd->add_option("--include_unfinished_submaps", migrate_options.include_unfinished_submaps,
+                            "Whether to include unfinished submaps in the output.")
+        ->default_val(true);
+
+    autonomy::common::ParseOrExit(app, argc, argv);
     FLAGS_logtostderr = true;
-    const std::string usage_message =
-        "Swiss Army knife for pbstreams.\n\n"
-        "Currently supported subcommands are:\n"
-        "\tinfo    - Prints summary of pbstream.\n"
-        "\tmigrate - Migrates pbstream to the new submap format.";
-    google::ParseCommandLineFlags(&argc, &argv, true);
     google::InitGoogleLogging(argv[0]);
 
-    if (argc < 2) {
-        google::SetUsageMessage(usage_message);
-        google::ShowUsageWithFlagsRestrict(argv[0], "pbstream_main");
-        return EXIT_FAILURE;
-    } else if (std::string(argv[1]) == "info") {
-        return ::cartographer::io::pbstream_info(argc, argv);
-    } else if (std::string(argv[1]) == "migrate") {
-        return ::cartographer::io::pbstream_migrate(argc, argv);
-    } else {
-        LOG(INFO) << "Unknown subtool: \"" << argv[1];
-        google::SetUsageMessage(usage_message);
-        google::ShowUsageWithFlagsRestrict(argv[0], "pbstream_main");
-        return EXIT_FAILURE;
+    if (*info_cmd) {
+        return ::cartographer::io::pbstream_info(info_options);
     }
+    if (*migrate_cmd) {
+        return ::cartographer::io::pbstream_migrate(migrate_options);
+    }
+
+    return EXIT_FAILURE;
 }

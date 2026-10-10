@@ -27,7 +27,8 @@ function(grid_map_demo NAME)
     DEPENDENCIES
       autonomy
       glog::glog
-      gflags::gflags)
+    autonomy::cli11
+)
   target_include_directories(${NAME} PRIVATE "${_GRID_MAP_DEMOS_ROOT}")
 endfunction()
 

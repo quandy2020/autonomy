@@ -1,8 +1,6 @@
 #include "pgo.hpp"
 #include "pgo_impl.hpp"
 
-#include <boost/format.hpp>
-
 #include <glog/logging.h>
 
 #include "common/options.hpp"
@@ -329,7 +327,6 @@ void PGO::LogWindowState() {
     int idx3 = (window.size() - 3) >= 0 ? (window.size() - 3) : -1;
     int idx4 = (window.size() - 2) >= 0 ? (window.size() - 2) : -1;
     int idx5 = (window.size() - 1) >= 0 ? (window.size() - 1) : -1;
-    boost::format fmt("--- %c --- %c --- %c --- %c --- %c ---");
     std::string lidar_info = idx1 >= 0 ? "info" : "empty";
     LOG(INFO) << "Show PGO window state: \n"
               << " ************************************************** \n"

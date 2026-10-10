@@ -16,25 +16,16 @@
 
 #include <algorithm>
 #include <iostream>
+#include <string>
 #include <vector>
 
+#include <CLI/CLI.hpp>
+#include <glog/logging.h>
+
+#include "autonomy/common/cli_options.hpp"
 #include "autonomy/common/string_util.hpp"
 #include "autonomy/localization/cartographer/common/configuration_file_resolver.hpp"
 #include "autonomy/localization/cartographer/common/lua_parameter_dictionary.hpp"
-#include "gflags/gflags.hpp"
-#include "glog/logging.h"
-#include "autolink/init.hpp"
-
-DEFINE_string(configuration_directories, "",
-              "Comma separated list of directories in which configuration files"
-              " are searched, the last is always the Cartographer installation"
-              " to allow including files from there.");
-DEFINE_string(configuration_basename, "",
-              "Basename, i.e. not containing any directory prefix, of the "
-              "configuration file.");
-DEFINE_string(subdictionary, "",
-              "Only print a subdictionary referenced by its Lua ID, e.g.: "
-              "'--subdictionary trajectory_builder.trajectory_builder_3d'");
 
 namespace cartographer {
 namespace common {
@@ -79,28 +70,49 @@ void PrintSubdictionaryById(LuaParameterDictionary* lua_dictionary, const std::s
 }  // namespace cartographer
 
 int main(int argc, char** argv) {
-    google::SetUsageMessage(
+    std::string configuration_directories;
+    std::string configuration_basename;
+    std::string subdictionary;
+
+    CLI::App app{
         "Resolves and compiles a Lua configuration and prints it to stdout.\n"
         "The output can be restricted to a subdictionary using the optional "
         "'--subdictionary' parameter, which can be given in Lua syntax.\n"
-        "The logs of the configuration file resolver are written to stderr if "
-        "'--logtostderr' is given.");
-    google::ParseCommandLineFlags(&argc, &argv, true);
+        "The logs of the configuration file resolver are written to stderr."};
+    app.add_option(
+           "--configuration_directories", configuration_directories,
+           "Comma separated list of directories in which configuration files "
+           "are searched, the last is always the Cartographer installation "
+           "to allow including files from there.")
+        ->required();
+    app.add_option(
+           "--configuration_basename", configuration_basename,
+           "Basename, i.e. not containing any directory prefix, of the "
+           "configuration file.")
+        ->required();
+    app.add_option(
+           "--subdictionary", subdictionary,
+           "Only print a subdictionary referenced by its Lua ID, e.g.: "
+           "'--subdictionary trajectory_builder.trajectory_builder_3d'")
+        ->capture_default_str();
+
+    autonomy::common::ParseOrExit(app, argc, argv);
     google::InitGoogleLogging(argv[0]);
 
-    if (FLAGS_configuration_directories.empty() || FLAGS_configuration_basename.empty()) {
-        google::ShowUsageWithFlagsRestrict(argv[0], "print_configuration_main");
-        return EXIT_FAILURE;
-    }
+    std::vector<std::string> configuration_directories_list =
+        autonomy::common::StringSplit(configuration_directories, ",");
+    configuration_directories_list.erase(
+        std::remove_if(configuration_directories_list.begin(), configuration_directories_list.end(),
+                       [](const std::string& part) { return part.empty(); }),
+        configuration_directories_list.end());
 
-    const std::vector<std::string> configuration_directories = SplitSkipEmpty(FLAGS_configuration_directories, ',');
+    auto lua_dictionary = ::cartographer::common::LoadLuaDictionary(configuration_directories_list,
+                                                                    configuration_basename);
 
-    auto lua_dictionary =
-        ::cartographer::common::LoadLuaDictionary(configuration_directories, FLAGS_configuration_basename);
-
-    if (FLAGS_subdictionary.empty()) {
+    if (subdictionary.empty()) {
         std::cout << "return " << lua_dictionary->ToString() << std::endl;
         return EXIT_SUCCESS;
     }
-    ::cartographer::common::PrintSubdictionaryById(lua_dictionary.get(), FLAGS_subdictionary);
+    ::cartographer::common::PrintSubdictionaryById(lua_dictionary.get(), subdictionary);
+    return EXIT_SUCCESS;
 }

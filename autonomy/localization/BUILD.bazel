@@ -715,8 +715,10 @@ autonomy_cc_library(
         "//:autolink",
         "//:automsgs",
         "//:autonomy_headers",
+        "//:opencv",
         "@eigen//:eigen",
         "@com_github_google_glog//:glog",
+        "//:cli11",
         "@com_google_protobuf//:protobuf",
         "//:pthread",
     ],
@@ -728,7 +730,7 @@ autonomy_cc_binary(
     deps = [
         ":autonomy_localization",
         "@com_github_google_glog//:glog",
-        "@com_github_gflags_gflags//:gflags",
+
     ],
 )
 
