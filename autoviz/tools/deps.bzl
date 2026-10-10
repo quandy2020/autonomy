@@ -71,6 +71,21 @@ def _qt6_impl(ctx):
     ctx.symlink(include, "include")
     _write_build(ctx, Label("//tools:qt6.BUILD"))
 
+def _yaml_facade_impl(ctx):
+    common = (
+        _workspace(ctx)
+            .get_child("..")
+            .get_child("autonomy")
+            .get_child("common")
+    )
+    yaml_hpp = common.get_child("yaml.hpp")
+    shim = common.get_child("yaml_cpp_shim")
+    if not yaml_hpp.exists or not shim.exists:
+        fail("yaml facade not found under %s" % common)
+    ctx.file("autonomy/common/yaml.hpp", ctx.read(yaml_hpp))
+    ctx.symlink(shim, "yaml_cpp_shim")
+    _write_build(ctx, Label("//tools:yaml.BUILD"))
+
 def _ogre_impl(ctx):
     workspace = _workspace(ctx)
     prefix = _find_ogre(ctx, workspace)
@@ -86,6 +101,7 @@ def _ogre_impl(ctx):
     ctx.symlink(prefix, "prefix")
     _write_build(ctx, Label("//tools:ogre.BUILD"))
 
+_yaml_facade = repository_rule(implementation = _yaml_facade_impl, local = True)
 _qt6 = repository_rule(implementation = _qt6_impl, local = True)
 _ogre = repository_rule(
     implementation = _ogre_impl,
@@ -96,5 +112,6 @@ _ogre = repository_rule(
 def _deps_impl(ctx):
     _qt6(name = "qt6")
     _ogre(name = "ogre")
+    _yaml_facade(name = "yaml_facade")
 
 deps = module_extension(implementation = _deps_impl)

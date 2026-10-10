@@ -13,8 +13,6 @@
 # limitations under the License.
 
 # Manipulator HAL. This file builds libautomanip and the automanip process.
-# The osc2 backend is the kinematic MPC ported from OCS2's fixed-base arm
-# model (state = joint position, input = joint velocity).
 
 cmake_minimum_required(VERSION 3.20)
 
@@ -57,9 +55,12 @@ if(NOT TARGET automsgs)
 endif()
 
 file(GLOB_RECURSE AUTOMANIP_SOURCES CONFIGURE_DEPENDS
-  "${CMAKE_CURRENT_SOURCE_DIR}/automanip/*.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/arm/*.cpp")
+  "${CMAKE_CURRENT_SOURCE_DIR}/automanip/*.cpp")
 list(FILTER AUTOMANIP_SOURCES EXCLUDE REGEX "/automanip/main\\.cpp$")
+# Solver sources need CppAD and Boost.Log. They are added below when those
+# headers are present, so a machine without them still builds the arm HAL.
+list(FILTER AUTOMANIP_SOURCES EXCLUDE REGEX
+  "/automanip/(core|oc|mpc|ddp|qp|slp|tools|ipm|mpcnet|sqp|pinocchio|perceptive)/")
 
 if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   set(_AUTOMANIP_NO_EXPORT NO_EXPORT)
@@ -89,6 +90,85 @@ target_include_directories(automanip PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
   $<INSTALL_INTERFACE:include>)
 
+set(_AUTOMANIP_CPPAD_DEFAULT
+  "${CMAKE_CURRENT_SOURCE_DIR}/../../../../ocs2/ocs2_thirdparty/include")
+set(AUTOMANIP_CPPAD_INCLUDE "${_AUTOMANIP_CPPAD_DEFAULT}"
+  CACHE PATH "Directory containing cppad/cg.hpp")
+find_package(Boost QUIET COMPONENTS log log_setup filesystem system)
+find_package(OpenMP QUIET)
+set(AUTOMANIP_WITH_SOLVER OFF)
+if(Boost_FOUND AND OpenMP_FOUND AND EXISTS "${AUTOMANIP_CPPAD_INCLUDE}/cppad/cg.hpp")
+  file(GLOB_RECURSE AUTOMANIP_SOLVER_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/automanip/core/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/automanip/oc/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/automanip/mpc/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/automanip/ddp/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/automanip/qp/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/automanip/slp/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/automanip/ipm/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/automanip/mpcnet/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/automanip/sqp/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/automanip/pinocchio/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/automanip/tools/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/automanip/perceptive/*.cpp")
+  # The ONNX policy controller needs ONNX Runtime.
+  find_path(AUTOMANIP_ONNXRUNTIME_INCLUDE onnxruntime/onnxruntime_cxx_api.h)
+  if(NOT AUTOMANIP_ONNXRUNTIME_INCLUDE)
+    list(FILTER AUTOMANIP_SOLVER_SOURCES EXCLUDE REGEX "/mpcnet_onnx_controller\\.cpp$")
+    message(STATUS "automanip: mpcnet ONNX controller skipped (onnxruntime headers not found)")
+  endif()
+  find_package(PkgConfig QUIET)
+  set(AUTOMANIP_WITH_PINOCCHIO OFF)
+  if(PkgConfig_FOUND)
+    pkg_check_modules(pinocchio QUIET pinocchio)
+    pkg_check_modules(hppfcl QUIET hpp-fcl)
+  endif()
+  if(NOT pinocchio_FOUND)
+    list(FILTER AUTOMANIP_SOLVER_SOURCES EXCLUDE REGEX "/automanip/pinocchio/")
+    message(STATUS "automanip: pinocchio sources skipped (pinocchio not found)")
+  else()
+    set(AUTOMANIP_WITH_PINOCCHIO ON)
+    if(NOT hppfcl_FOUND)
+      list(FILTER AUTOMANIP_SOLVER_SOURCES EXCLUDE REGEX "/pinocchio/(self_collision|sphere)/")
+      message(STATUS "automanip: pinocchio collision and sphere sources skipped (hpp-fcl not found)")
+    endif()
+  endif()
+  target_sources(automanip PRIVATE ${AUTOMANIP_SOLVER_SOURCES})
+  target_compile_definitions(automanip PUBLIC BOOST_ALL_DYN_LINK)
+  target_include_directories(automanip PUBLIC "${AUTOMANIP_CPPAD_INCLUDE}")
+  if(AUTOMANIP_ONNXRUNTIME_INCLUDE)
+    target_include_directories(automanip PUBLIC "${AUTOMANIP_ONNXRUNTIME_INCLUDE}")
+    target_link_libraries(automanip PUBLIC onnxruntime)
+  endif()
+  if(AUTOMANIP_WITH_PINOCCHIO)
+    target_include_directories(automanip PUBLIC ${pinocchio_INCLUDE_DIRS})
+    target_link_directories(automanip PUBLIC ${pinocchio_LIBRARY_DIRS})
+    target_link_libraries(automanip PUBLIC ${pinocchio_LIBRARIES})
+    target_compile_definitions(automanip PUBLIC
+      PINOCCHIO_URDFDOM_TYPEDEF_SHARED_PTR
+      PINOCCHIO_URDFDOM_USE_STD_SHARED_PTR)
+    target_compile_options(automanip PUBLIC
+      ${pinocchio_CFLAGS_OTHER}
+      -Wno-ignored-attributes
+      -Wno-invalid-partial-specialization)
+    if(hppfcl_FOUND)
+      target_include_directories(automanip PUBLIC ${hppfcl_INCLUDE_DIRS})
+      target_link_directories(automanip PUBLIC ${hppfcl_LIBRARY_DIRS})
+      target_link_libraries(automanip PUBLIC ${hppfcl_LIBRARIES})
+    endif()
+  endif()
+  target_link_libraries(automanip PUBLIC
+    Boost::log
+    Boost::log_setup
+    Boost::filesystem
+    Boost::system
+    OpenMP::OpenMP_CXX)
+  set(AUTOMANIP_WITH_SOLVER ON)
+  message(STATUS "automanip: building solver sources from automanip/{core,oc,mpc,ddp,qp,slp,ipm,mpcnet,sqp,pinocchio,tools,perceptive}")
+else()
+  message(STATUS "automanip: solver sources skipped (need Boost log/filesystem, OpenMP, and cppad/cg.hpp)")
+endif()
+
 autocmake_binary(automanip_main
   SOURCES automanip/main.cpp options.cpp
   DEPENDENCIES automanip)
@@ -99,19 +179,13 @@ target_include_directories(automanip_main PRIVATE
   ${CMAKE_CURRENT_BINARY_DIR})
 
 if(AUTOMANIP_BUILD_TEST)
-  autocmake_test(test_osc2
-    SOURCES test/test_osc2.cpp
-    DEPENDENCIES automanip)
-  autocmake_test(test_arm_driver
-    SOURCES test/test_arm_driver.cpp
-    DEPENDENCIES automanip)
   autocmake_test(test_automanip_config
     SOURCES test/test_config_loader.cpp
     DEPENDENCIES automanip)
 endif()
 
 add_subdirectory(automanip)
-add_subdirectory(arm)
+add_subdirectory(examples)
 add_subdirectory(config)
 add_subdirectory(dag)
 add_subdirectory(launch)

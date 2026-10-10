@@ -80,9 +80,7 @@ python3 scripts/install_dependencies.py --profile board \
 | `install_grpc.sh` | gRPC |
 | `install_ceres_solver.sh` | Ceres |
 | `install_opencv.sh` | OpenCV（板端可跳过，用 apt） |
-| `install_g2o.sh` | g2o |
 | `install_fbow.sh` | FBoW |
-| `install_nlohmann.sh` | nlohmann/json |
 | `install_behaviortree_cpp.sh` | BehaviorTree.CPP |
 | `install_gperftools.sh` | tcmalloc（系统有则可跳过） |
 | `install_ipopt.sh` | Ipopt（多为 apt） |

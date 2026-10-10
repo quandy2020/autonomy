@@ -21,20 +21,18 @@ install_protobuf.sh v3.19.4     protobuf 30.2 †                       @com_goo
 install_grpc.sh v1.48.0         grpc 1.70.1 †                         @com_github_grpc_grpc//:grpc++
 install_abseil.sh 20220623.0    abseil-cpp 20250814.1 †               @com_google_absl//absl/...
 install_ceres_solver.sh 2.2.0   ceres-solver 2.2.0                    @ceres-solver//:ceres
-install_nlohmann.sh v3.12.0     nlohmann_json 3.12.0.bcr.2            @nlohmann_json//:json
+vendored thirdparty/json        @autolink//:nlohmann_json             header-only
+vendored thirdparty/fkYAML      @autolink//:fkYAML                    header-only
 install_behaviortree_cpp 4.7.2  behaviortree_cpp 4.7.0.bcr.3          @behaviortree_cpp//:behaviortree_cpp
 install_gperftools.sh 2.8       gperftools 2.18.1 †                   @gperftools//:tcmalloc
 install_assimp.sh               assimp 6.0.5                          @assimp//:assimp
 install_fastdds.sh              fastdds 3.4.2.bcr.1                   @fastdds//:fastdds
 install_opencv.sh 4.10          @autonomy_opencv (system) ‡           //:opencv
 apt libeigen3-dev               eigen 3.4.1.bcr.1                     @eigen//:eigen
-apt libyaml-cpp-dev             yaml-cpp 0.8.0.bcr.1                  @yaml-cpp//:yaml-cpp
-apt libzmq3-dev                 libzmq 4.3.5.bcr.7                    @libzmq//:libzmq
 apt liblua5.3-dev               lua 5.4.6 †                           @lua//:lua
 apt libflann-dev                flann 1.9.2                           @flann//:flann
 apt libtbb-dev                  onetbb 2023.1.0                       @onetbb//:tbb
 apt libpcl-dev                  pcl 1.15.1.bcr.4                      @pcl//:common (+ …)
-apt libsqlite3-dev              sqlite3 3.53.4                        @sqlite3//:sqlite3
 (re2 / grpc-java / pgv)         graph hygiene for Bazel 8             —
 
 † Diverges from install_* — required for a consistent Bazel 8 / BCR graph.
@@ -42,7 +40,7 @@ apt libsqlite3-dev              sqlite3 3.53.4                        @sqlite3//
   Use install_deps tree via module extension (@autonomy_opencv).
 
 Still NOT bazel_dep (no BCR):
-  g2o, fbow, ipopt, ogre.
+  fbow, ipopt, ogre.
 
 Local modules / extensions:
   //:automsgs          ← @automsgs (source, BCR protobuf) via local_path_override
@@ -133,9 +131,6 @@ bazel_dep(
 # install_ceres_solver.sh → 2.2.0
 bazel_dep(name = "ceres-solver", version = "2.2.0")
 
-# install_nlohmann.sh → v3.12.0
-bazel_dep(name = "nlohmann_json", version = "3.12.0.bcr.2")
-
 # install_behaviortree_cpp.sh → 4.7.2; BCR nearest 4.7.0.bcr.3
 bazel_dep(name = "behaviortree_cpp", version = "4.7.0.bcr.3")
 
@@ -151,14 +146,11 @@ bazel_dep(name = "fastdds", version = "3.4.2.bcr.1")
 # --- BCR ← apt cmake_libs (subset with BCR modules) ---
 # 3.4.1 aligns with pcl; still OK for ceres / the rest of //autonomy.
 bazel_dep(name = "eigen", version = "3.4.1.bcr.1")
-bazel_dep(name = "yaml-cpp", version = "0.8.0.bcr.1")
-bazel_dep(name = "libzmq", version = "4.3.5.bcr.7")
 
 # apt liblua5.3-dev; BCR 5.4.6 is closest maintained pin
 bazel_dep(name = "lua", version = "5.4.6")
 bazel_dep(name = "flann", version = "1.9.2")
 bazel_dep(name = "onetbb", version = "2023.1.0")
-bazel_dep(name = "sqlite3", version = "3.53.4")
 
 # apt libpcl-dev — large Boost graph; keep as optional domain dep in BUILD.
 bazel_dep(name = "pcl", version = "1.15.1.bcr.4")

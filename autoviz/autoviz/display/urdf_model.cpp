@@ -26,8 +26,14 @@ QVector3D ParseXyz(const QString& text) {
 }
 
 QQuaternion ParseRpy(const QString& text) {
+  // URDF rpy is radians, fixed-axis R = Rz(yaw) * Ry(pitch) * Rx(roll).
   const QVector3D rpy = ParseXyz(text);
-  return QQuaternion::fromEulerAngles(rpy.x(), rpy.y(), rpy.z());
+  const float roll = qRadiansToDegrees(rpy.x());
+  const float pitch = qRadiansToDegrees(rpy.y());
+  const float yaw = qRadiansToDegrees(rpy.z());
+  return QQuaternion::fromAxisAndAngle(0.f, 0.f, 1.f, yaw) *
+         QQuaternion::fromAxisAndAngle(0.f, 1.f, 0.f, pitch) *
+         QQuaternion::fromAxisAndAngle(1.f, 0.f, 0.f, roll);
 }
 
 QMatrix4x4 JointOriginMatrix(const UrdfJoint& joint) {
@@ -172,17 +178,19 @@ UrdfGeometry ParseLinkGeometry(
     return geometry;
   }
   const QDomElement origin = element.firstChildElement(QStringLiteral("origin"));
+  QVector3D origin_xyz;
+  QQuaternion origin_rpy;
   if (!origin.isNull()) {
-    geometry.origin = ParseXyz(origin.attribute(QStringLiteral("xyz")));
-    geometry.rotation = ParseRpy(origin.attribute(QStringLiteral("rpy")));
+    origin_xyz = ParseXyz(origin.attribute(QStringLiteral("xyz")));
+    origin_rpy = ParseRpy(origin.attribute(QStringLiteral("rpy")));
   }
   const QDomElement geometry_node =
       element.firstChildElement(QStringLiteral("geometry"));
   if (!geometry_node.isNull()) {
     geometry = ParseGeometry(geometry_node);
-    geometry.origin = geometry.origin;
-    geometry.rotation = geometry.rotation;
   }
+  geometry.origin = origin_xyz;
+  geometry.rotation = origin_rpy;
   geometry.material = ParseMaterial(element, material_library);
   return geometry;
 }

@@ -1,6 +1,6 @@
 # 构建
 
-依赖：**Qt 6**、**Ogre 1.x**（默认自动 vendor **1.12.10**）、**automsgs**、**autolink**、**yaml-cpp**。可选 FFmpeg。视口不使用纯 OpenGL 后端。不链接 ROS / `libautonomy`。
+依赖：**Qt 6**、**Ogre 1.x**（默认自动 vendor **1.12.10**）、**automsgs**、**autolink**、内嵌 **fkYAML**。可选 FFmpeg。视口不使用纯 OpenGL 后端。不链接 ROS / `libautonomy`。
 
 构建系统为 [autocmake](../../autocmake/)：共享库目标 `autoviz`（`libautoviz`），可执行文件目标 `autoviz_app`（磁盘名 `bin/autoviz`）。
 

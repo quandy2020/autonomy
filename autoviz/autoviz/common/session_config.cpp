@@ -626,6 +626,8 @@ SessionConfig SessionConfigIO::defaultConfig() {
   config.render_backend = "Ogre";
   config.displays = {
       {"Grid", "Grid", "", true},
+      {"TF", "TF", "", true},
+      {"RobotModel", "RobotModel", "/joint_states", true},
   };
   if (!config.displays.empty()) {
     auto& grid = config.displays.front();
@@ -640,6 +642,16 @@ SessionConfig SessionConfigIO::defaultConfig() {
         {"alpha", "0.5"},
         {"plane", "XY"},
         {"offset", "0;0;0"},
+    };
+  }
+  if (config.displays.size() >= 3) {
+    auto& robot = config.displays[2];
+    robot.properties = {
+        {"description_source", "Topic"},
+        {"description_channel", "/robot_description"},
+        {"urdf_path", ""},
+        {"root_link", ""},
+        {"show_axes", "false"},
     };
   }
   return config;

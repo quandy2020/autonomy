@@ -10,6 +10,7 @@ package(default_visibility = ["//visibility:public"])
 
 exports_files([
     "ogre.BUILD",
+    "yaml.BUILD",
     "qt6.BUILD",
     "sources.bzl",
     "qt.bzl",
@@ -62,9 +63,9 @@ system_library(
     ],
 )
 
-system_library(
+alias(
     name = "yaml_cpp",
-    linkopts = ["/usr/lib/x86_64-linux-gnu/libyaml-cpp.so"],
+    actual = "@yaml_facade//:yaml_cpp",
 )
 
 system_library(

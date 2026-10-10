@@ -37,7 +37,7 @@ from typing import Dict, Iterable, List, Sequence
 # From autonomy.aarch64.dockerfile apt-get install, plus board extras.
 # Intentionally OMIT (installed from source instead):
 #   libgoogle-glog-dev, libgflags-dev, libceres-dev,
-#   nlohmann-json3-dev, libgtest-dev (optional),
+#   nlohmann-json3-dev (purged; JSON is vendored), libgtest-dev (optional),
 #   libgrpc*-dev / protobuf-compiler* (use install_protobuf/grpc.sh → 3.19).
 APT_DOCKERFILE_BASE: List[str] = [
     "sudo",
@@ -53,7 +53,6 @@ APT_DOCKERFILE_BASE: List[str] = [
     "wget",
     "bc",
     "gdb",
-    "libsdl2-dev",
     "libblas-dev",
     "liblapack-dev",
     "liblua5.3-dev",
@@ -64,30 +63,19 @@ APT_DOCKERFILE_BASE: List[str] = [
     "libsuitesparse-dev",
     "lsb-release",
     "libcairo2-dev",
-    "libasio-dev",
     "libncurses5-dev",
     "libavcodec-dev",
     "libswscale-dev",
-    "libpoco-dev",
     "libflann-dev",
     "libqhull-dev",
-    "libpcap0.8",
-    "libpcap-dev",
-    "libusb-1.0-0",
-    "libusb-1.0-0-dev",
     "libmetis-dev",
-    "libyaml-cpp-dev",
     "libtool",
     "libtiff-dev",
     "libcurl4-openssl-dev",
-    "libwebsocketpp-dev",
     "libeigen3-dev",
-    "libsqlite3-dev",
-    "libzmq3-dev",
     "liburdfdom-dev",
     "liburdfdom-headers-dev",
     "clang-format",
-    "sqlite3",
     "stow",
     "build-essential",
     "libunwind-dev",
@@ -97,9 +85,6 @@ APT_DOCKERFILE_BASE: List[str] = [
 ]
 
 APT_PACKAGES_FULL: List[str] = APT_DOCKERFILE_BASE + [
-    "libcivetweb-dev",
-    "libgtk2.0-dev",
-    "libfltk1.3-dev",
     "python3-sphinx",
     "sphinx",
     "libgmock-dev",
@@ -116,16 +101,12 @@ APT_OPTIONAL_PACKAGES: frozenset[str] = frozenset(
     {
         "clang-format",
         "stow",
-        "sqlite3",  # runtime CLI; libsqlite3-dev is enough for build
-        "libpcap0.8-dev",  # jammy may only expose libpcap-dev / libpcap0.8
         "libmetis-dev",
-        "libpoco-dev",
     }
 )
 
 # Prefer these when primary name is missing.
 APT_PACKAGE_FALLBACKS: Dict[str, List[str]] = {
-    "libpcap0.8-dev": ["libpcap-dev", "libpcap0.8"],
     "libncurses5-dev": ["libncurses-dev"],
 }
 
@@ -162,9 +143,7 @@ THIRDPARTY_SCRIPTS_DOCKERFILE: List[str] = [
     "install_gperftools.sh",
     "install_opencv.sh",
     "install_ceres_solver.sh",
-    "install_g2o.sh",
     "install_fbow.sh",
-    "install_nlohmann.sh",
     "install_behaviortree_cpp.sh",
     "install_python_modules.sh",
     "install_ipopt.sh",
@@ -190,8 +169,6 @@ FORCE_THIRDPARTY_SCRIPTS: frozenset[str] = frozenset(
         "install_protobuf.sh",
         "install_grpc.sh",
         "install_ceres_solver.sh",
-        "install_nlohmann.sh",
-        "install_g2o.sh",
         "install_fbow.sh",
         "install_behaviortree_cpp.sh",
     }
@@ -212,8 +189,6 @@ SCRIPT_INSTALL_RELS: Dict[str, List[tuple[str, ...]]] = {
     "install_gperftools.sh": [("lib", "libtcmalloc.so")],
     "install_opencv.sh": [("lib", "libopencv_core.so")],
     "install_ceres_solver.sh": [("lib", "libceres.so")],
-    "install_nlohmann.sh": [("include", "nlohmann", "json.hpp")],
-    "install_g2o.sh": [("lib", "cmake", "g2o", "g2oConfig.cmake")],
     "install_fbow.sh": [("lib", "libfbow.so")],
     "install_behaviortree_cpp.sh": [("lib", "libbehaviortree_cpp.so")],
     "install_ipopt.sh": [
@@ -235,7 +210,6 @@ SCRIPT_INSTALL_SYSTEM_FALLBACKS: Dict[str, List[str]] = {
         "/usr/lib/aarch64-linux-gnu/libopencv_core.so",
         "/usr/lib/x86_64-linux-gnu/libopencv_core.so",
     ],
-    "install_nlohmann.sh": ["/usr/include/nlohmann/json.hpp"],
     "install_ipopt.sh": [
         "/usr/include/coin/IpIpoptApplication.hpp",
         "/usr/include/coin-or/IpIpoptApplication.hpp",

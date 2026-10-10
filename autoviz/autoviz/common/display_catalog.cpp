@@ -206,11 +206,23 @@ bool DisplayCatalog::isStaticTfChannel(const std::string& channel) {
 std::vector<std::string> DisplayCatalog::typesForChannel(
     const std::string& channel_name, const std::string& message_type) {
   std::vector<std::string> matches = typesForMessageType(message_type);
-  if (!isStaticTfChannel(channel_name)) {
-    return matches;
+  if (isStaticTfChannel(channel_name)) {
+    matches.erase(std::remove(matches.begin(), matches.end(), std::string("TF")),
+                  matches.end());
   }
-  matches.erase(std::remove(matches.begin(), matches.end(), std::string("TF")),
-                matches.end());
+  // URDF is a std_msgs/String. Bind it to RobotModel only when the channel
+  // name is robot_description, the same topic RViz2 RobotModel subscribes to.
+  const auto slash = channel_name.find_last_of('/');
+  const std::string base = slash == std::string::npos
+                               ? channel_name
+                               : channel_name.substr(slash + 1);
+  const bool string_payload = message_type.empty() ||
+                              message_type.find("String") != std::string::npos;
+  if (base == "robot_description" && string_payload &&
+      std::find(matches.begin(), matches.end(), std::string("RobotModel")) ==
+          matches.end()) {
+    matches.push_back("RobotModel");
+  }
   return matches;
 }
 

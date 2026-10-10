@@ -17,7 +17,7 @@ Autoviz 在 **Intel / Apple Silicon** 上作为独立 Qt 6 桌面应用构建与
 ## 依赖（Homebrew）
 
 ```bash
-brew install cmake ninja qt@6 yaml-cpp protobuf glog
+brew install cmake ninja qt@6 protobuf glog
 # 可选：ffmpeg（视频解码）、assimp（mesh）
 ```
 

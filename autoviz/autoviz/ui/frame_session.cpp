@@ -7,6 +7,8 @@
 #include <QObject>
 #include "autoviz/common/selection.hpp"
 #include <algorithm>
+#include <unordered_map>
+#include <unordered_set>
 #include <QApplication>
 #include <QFrame>
 #include <QGuiApplication>
@@ -950,6 +952,24 @@ void FrameSession::onRefreshTick() {
     return;
   }
   frame_->manager_->refreshChannelList();
+  // Remember channels already considered so a display the user removed is not
+  // recreated on the next refresh. Kept out of FrameSession so the class
+  // layout stays stable for the rest of the binary.
+  static std::unordered_set<std::string> live_displays_seen;
+  std::unordered_map<std::string, std::string> fresh_channels;
+  for (const auto& channel : frame_->manager_->channels()) {
+    if (channel.message_type.empty() ||
+        live_displays_seen.count(channel.channel_name) != 0) {
+      continue;
+    }
+    fresh_channels.emplace(channel.channel_name, channel.message_type);
+  }
+  if (!fresh_channels.empty()) {
+    frame_->manager_->ensureDisplaysForRecordChannels(fresh_channels);
+    for (const auto& entry : fresh_channels) {
+      live_displays_seen.insert(entry.first);
+    }
+  }
   frame_->panels_->displays_panel_->refreshStatus();
   if (frame_->panels_->views_panel_ != nullptr) {
     frame_->panels_->views_panel_->refreshFrameList();

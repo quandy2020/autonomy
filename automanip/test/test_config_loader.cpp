@@ -16,7 +16,7 @@
 
 /**
  * @file test_config_loader.cpp
- * @brief YAML arm block, including the osc2 alias and default chain.
+ * @brief YAML arm block and the default chain.
  */
 
 #include "automanip/config_loader.hpp"
@@ -40,18 +40,15 @@ std::filesystem::path WriteTree(const std::string& yaml) {
 
 }  // namespace
 
-TEST(AutomanipConfig, ParsesOsc2Arm) {
+TEST(AutomanipConfig, ParsesArm) {
   const auto root = WriteTree(R"(
 node_name: arm_test
 arm:
   enable: true
   id: arm/left
-  backend: ocs2
+  backend: vendor
   initial_mode: home
   watchdog_ms: 250
-  osc2:
-    horizon: 4
-    position_weight: 12.5
   joints:
     - {name: j1, axis: [0, 0, 1], origin: [0, 0, 0.1], lower: -1, upper: 1, velocity: 0.5, home: 0.2}
 )");
@@ -60,11 +57,9 @@ arm:
   EXPECT_EQ(config.node_name, "arm_test");
   EXPECT_TRUE(config.arm.enable);
   EXPECT_EQ(config.arm.id, "arm/left");
-  EXPECT_EQ(config.arm.backend, "ocs2");
+  EXPECT_EQ(config.arm.backend, "vendor");
   EXPECT_EQ(config.arm.initial_mode, "home");
   EXPECT_EQ(config.arm.watchdog_ms, 250);
-  EXPECT_EQ(config.arm.plant.osc2.horizon, 4);
-  EXPECT_DOUBLE_EQ(config.arm.plant.osc2.position_weight, 12.5);
   ASSERT_EQ(config.arm.plant.chain.dof(), 1);
   EXPECT_EQ(config.arm.plant.chain.joints[0].name, "j1");
   EXPECT_DOUBLE_EQ(config.arm.plant.chain.joints[0].home, 0.2);

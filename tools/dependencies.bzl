@@ -15,8 +15,9 @@ AUTONOMY_THIRD_PARTY_DEPS = [
     "@eigen//:eigen",  # apt libeigen3-dev
     "@com_github_google_glog//:glog",  # install_glog.sh
     "@com_google_protobuf//:protobuf",  # BCR 30.2 (Bazel); CMake still 3.19
-    "@yaml-cpp//:yaml-cpp",  # apt libyaml-cpp-dev
-    "@nlohmann_json//:json",  # install_nlohmann.sh
+    "@autolink//:fkYAML",  # vendored header-only
+    "//autonomy/common:yaml_cpp_shim",  # <yaml-cpp/yaml.h> → fkYAML facade
+    "@autolink//:nlohmann_json",  # vendored header-only
     # Middleware headers / libs
     "//:automsgs",  # @automsgs source (BCR protobuf)
     "//:autonomy_headers",  # autonomy/**/*.proto via BCR protoc
@@ -61,7 +62,6 @@ AUTONOMY_PCL_DEPS = [
 
 # Optional / domain-specific (see MODULE.bazel inventory):
 #   @gperftools//:tcmalloc  @fastdds//:fastdds  @assimp//:assimp
-#   @onetbb//:tbb  @flann//:flann  @lua//:lua  @libzmq//:libzmq
-#   @sqlite3//:sqlite3
+#   @onetbb//:tbb  @flann//:flann  @lua//:lua
 #
-# Still not bazel_dep (no BCR): g2o, fbow, ipopt, ogre.
+# Still not bazel_dep (no BCR): fbow, ipopt, ogre.

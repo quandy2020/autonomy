@@ -36,6 +36,25 @@ genrule(
     tools = ["//tools/python:generate_version_cpp.py"],
 )
 
+# yaml-cpp-shaped API (yaml.hpp) backed by vendored fkYAML.
+autonomy_cc_library(
+    name = "yaml_facade",
+    hdrs = ["yaml.hpp"],
+    include_prefix = "autonomy/common",
+    deps = ["@autolink//:fkYAML"],
+)
+
+# Makes `#include <yaml-cpp/yaml.h>` resolve to the facade.
+autonomy_cc_library(
+    name = "yaml_cpp_shim",
+    hdrs = [
+        "yaml_cpp_shim/yaml-cpp/yaml.h",
+        "yaml_cpp_shim/yaml-cpp/emitter.h",
+    ],
+    includes = ["yaml_cpp_shim"],
+    deps = [":yaml_facade"],
+)
+
 autonomy_cc_library(
     name = "autonomy_common",
     srcs = [
@@ -215,8 +234,8 @@ autonomy_cc_library(
         "@eigen//:eigen",
         "@com_github_google_glog//:glog",
         "@com_google_protobuf//:protobuf",
-        "@nlohmann_json//:json",
-        "@yaml-cpp//:yaml-cpp",
+        "@autolink//:nlohmann_json",
+        ":yaml_cpp_shim",
         "//:cli11",
         "//:pthread",
     ] + AUTONOMY_CERES_DEPS,

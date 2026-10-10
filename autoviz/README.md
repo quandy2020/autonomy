@@ -30,7 +30,7 @@ autoviz/
 
 ## 构建
 
-依赖：Qt 6、**Ogre 1.x**（默认 auto-vendor 1.12.10）、**automsgs**、**autolink**、yaml-cpp。**不链接** ROS / rviz / `libautonomy`。视口为 Ogre，不使用纯 OpenGL 后端。
+依赖：Qt 6、**Ogre 1.x**（默认 auto-vendor 1.12.10）、**automsgs**、**autolink**、内嵌 fkYAML。**不链接** ROS / rviz / `libautonomy`。视口为 Ogre，不使用纯 OpenGL 后端。
 
 ### colcon / autocmake 工作空间
 

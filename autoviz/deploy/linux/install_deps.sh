@@ -46,7 +46,6 @@ BASE=(
   patchelf
   libgl1-mesa-dev
   libglu1-mesa-dev
-  libyaml-cpp-dev
   libgoogle-glog-dev
   libgflags-dev
   libprotobuf-dev

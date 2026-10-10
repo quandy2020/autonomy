@@ -29,7 +29,6 @@
     "cmake_libs": [
       "libeigen3-dev",
       "liblua5.3-dev",
-      "libyaml-cpp-dev",
       "libcairo2-dev",
       "libsuitesparse-dev",
       "libblas-dev",
@@ -37,8 +36,6 @@
       "libmetis-dev",
       "libflann-dev",
       "libqhull-dev",
-      "libsqlite3-dev",
-      "libzmq3-dev",
       "liburdfdom-dev",
       "liburdfdom-headers-dev",
       "libunwind-dev",
@@ -47,26 +44,14 @@
       "build-essential"
     ],
     "multimedia_gui": [
-      "libsdl2-dev",
       "libavcodec-dev",
       "libswscale-dev",
-      "libgtk2.0-dev",
-      "libfltk1.3-dev",
       "libtiff-dev"
     ],
     "network_misc": [
-      "libcivetweb-dev",
-      "libasio-dev",
       "libncurses5-dev",
-      "libpoco-dev",
-      "libpcap0.8",
-      "libpcap0.8-dev",
-      "libusb-1.0-0",
-      "libusb-1.0-0-dev",
       "libcurl4-openssl-dev",
-      "libwebsocketpp-dev",
-      "uuid-dev",
-      "sqlite3"
+      "uuid-dev"
     ],
     "testing": [
       "libgmock-dev"

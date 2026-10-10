@@ -1,0 +1,12 @@
+<!--
+  Publishes /robot_description, /joint_states, and /tf. Fixed frame: map.
+-->
+<autolink>
+    <module>
+        <name>quadrotor</name>
+        <type>binary</type>
+        <process_name>quadrotor_demo</process_name>
+        <exception_handler>respawn</exception_handler>
+        <respawn_limit>3</respawn_limit>
+    </module>
+</autolink>

@@ -27,4 +27,4 @@ local_path_override(
 
 # System / prebuilt trees that are not on BCR: Qt6 headers, Ogre 1.12 prefix.
 deps = use_extension("//tools:deps.bzl", "deps")
-use_repo(deps, "ogre", "qt6")
+use_repo(deps, "ogre", "qt6", "yaml_facade")

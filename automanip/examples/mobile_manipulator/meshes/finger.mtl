@@ -1,0 +1,21 @@
+# File produced by Open Asset Import Library (http://www.assimp.sf.net)
+# (assimp v5.3.0)
+
+newmtl Part__Feature001_006
+Kd 0.90196079 0.921568573 0.929411829
+Ka 0 0 0
+Ks 0.5 0.5 0.5
+Ke 0 0 0
+d 1
+Ni 1
+illum 1
+
+newmtl Part__Feature_007
+Kd 0.250980407 0.250980407 0.250980407
+Ka 0 0 0
+Ks 0.5 0.5 0.5
+Ke 0 0 0
+d 1
+Ni 1
+illum 1
+

@@ -24,7 +24,7 @@
 
 #include <string>
 
-#include "arm/plant.hpp"
+#include "automanip/arm/plant.hpp"
 
 namespace automanip {
 
@@ -34,8 +34,8 @@ struct Config {
   struct Arm {
     bool enable = true;
     std::string id = "arm/manipulator";
-    /** @brief ArmBackendRegistry key: stub / osc2 (alias ocs2). */
-    std::string backend = "osc2";
+    /** @brief ArmBackendRegistry key. A vendor driver registers the name. */
+    std::string backend;
     /** @brief hold / home / track, applied after the driver starts. */
     std::string initial_mode = "hold";
     int control_period_ms = 20;

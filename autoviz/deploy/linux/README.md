@@ -82,7 +82,7 @@ sudo apt install ./dist/linux/autoviz_*.deb
 
 **不会**把整个 Autonomy monorepo（感知/规划 launch、OGRE 头文件等）打进 `.deb`。
 
-`Depends` 使用 22.04/24.04 双兼容的 Qt 包名（`libqt6*t64 | libqt6*`）。SONAME 跨 LTS 不兼容的库（`libyaml-cpp` / FFmpeg / `libglog` / `libprotobuf` / `libassimp`）会 vendor 进 `/usr/lib/autoviz`，因此可在 SpaceHero（22.04）打包后安装到本机 24.04。
+`Depends` 使用 22.04/24.04 双兼容的 Qt 包名（`libqt6*t64 | libqt6*`）。SONAME 跨 LTS 不兼容的库（FFmpeg / `libglog` / `libprotobuf` / `libassimp`）会 vendor 进 `/usr/lib/autoviz`，因此可在 SpaceHero（22.04）打包后安装到本机 24.04。YAML 使用仓库内嵌的 fkYAML。
 
 ## 可重定位 AppDir
 

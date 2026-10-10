@@ -68,9 +68,8 @@ AUTONOMY_INSTALL_PREFIX=/opt/autonomy bash docker/install/install_glog.sh
 | 6 | `install_gperftools.sh` | tcmalloc |
 | 7 | `install_opencv.sh` | OpenCV |
 | 8 | `install_ceres_solver.sh` | Ceres |
-| 9 | `install_g2o.sh` / `install_fbow.sh` | 定位相关 |
-| 10 | `install_nlohmann.sh` | nlohmann/json |
-| 11 | `install_behaviortree_cpp.sh` | BehaviorTree.CPP 4.x |
+| 9 | `install_fbow.sh` | 定位词袋 |
+| 10 | `install_behaviortree_cpp.sh` | BehaviorTree.CPP 4.x |
 | … | `install_ipopt.sh` 等 | 可选 |
 | full 额外 | `install_assimp.sh` / `install_ogre.sh` 等 | 可视化 |
 

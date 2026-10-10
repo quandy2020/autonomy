@@ -1,0 +1,109 @@
+<?xml version="1.0"?>
+<robot name="quadrotor">
+  <link name="world"/>
+  <joint name="x" type="prismatic">
+    <parent link="world"/>
+    <child link="dx"/>
+    <axis xyz="1 0 0"/>
+  </joint>
+  <link name="dx"/>
+  <joint name="y" type="prismatic">
+    <parent link="dx"/>
+    <child link="dy"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+  <link name="dy"/>
+  <joint name="z" type="prismatic">
+    <parent link="dy"/>
+    <child link="dz"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <link name="dz"/>
+  <joint name="yaw" type="revolute">
+    <parent link="dz"/>
+    <child link="yaw_link"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <link name="yaw_link"/>
+  <joint name="pitch" type="revolute">
+    <parent link="yaw_link"/>
+    <child link="pitch_link"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+  <link name="pitch_link"/>
+  <joint name="roll" type="revolute">
+    <parent link="pitch_link"/>
+    <child link="body"/>
+    <axis xyz="1 0 0"/>
+  </joint>
+  <link name="body">
+    <visual>
+      <geometry>
+        <box size="0.16 0.16 0.06"/>
+      </geometry>
+      <material name="body">
+        <color rgba="0.2 0.45 0.85 1"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="arm_fr" type="fixed">
+    <parent link="body"/>
+    <child link="rotor_fr"/>
+    <origin xyz="0.18 0.18 0.02" rpy="0 0 0"/>
+  </joint>
+  <link name="rotor_fr">
+    <visual>
+      <geometry>
+        <cylinder radius="0.07" length="0.012"/>
+      </geometry>
+      <material name="rotor">
+        <color rgba="0.15 0.15 0.18 1"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="arm_fl" type="fixed">
+    <parent link="body"/>
+    <child link="rotor_fl"/>
+    <origin xyz="0.18 -0.18 0.02" rpy="0 0 0"/>
+  </joint>
+  <link name="rotor_fl">
+    <visual>
+      <geometry>
+        <cylinder radius="0.07" length="0.012"/>
+      </geometry>
+      <material name="rotor">
+        <color rgba="0.15 0.15 0.18 1"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="arm_rr" type="fixed">
+    <parent link="body"/>
+    <child link="rotor_rr"/>
+    <origin xyz="-0.18 0.18 0.02" rpy="0 0 0"/>
+  </joint>
+  <link name="rotor_rr">
+    <visual>
+      <geometry>
+        <cylinder radius="0.07" length="0.012"/>
+      </geometry>
+      <material name="rotor">
+        <color rgba="0.15 0.15 0.18 1"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="arm_rl" type="fixed">
+    <parent link="body"/>
+    <child link="rotor_rl"/>
+    <origin xyz="-0.18 -0.18 0.02" rpy="0 0 0"/>
+  </joint>
+  <link name="rotor_rl">
+    <visual>
+      <geometry>
+        <cylinder radius="0.07" length="0.012"/>
+      </geometry>
+      <material name="rotor">
+        <color rgba="0.15 0.15 0.18 1"/>
+      </material>
+    </visual>
+  </link>
+</robot>

@@ -1,9 +1,8 @@
 <!--
   Automanip launch file.
 
-  The process binary loads config/automanip.yaml (backend osc2 by default).
-  Alternative: mainboard -d $AUTOLINK_DAG_PATH/arm_osc2.dag
-  Do not run both; they publish the same joint-state channel.
+  The process binary loads config/automanip.yaml. Arm control starts when
+  arm.enable is true and arm.backend names a registered vendor driver.
 
   Prerequisites:
     export AUTOMANIP_PATH=$PWD/src/autonomy/automanip

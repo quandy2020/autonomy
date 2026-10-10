@@ -32,7 +32,6 @@ RUNTIME=(
   libegl1
   libxkbcommon0
   libxcb-cursor0
-  libyaml-cpp0.8
   libavcodec60
   libavutil58
   libswscale7
@@ -47,7 +46,6 @@ RUNTIME=(
 # Soft aliases for older Ubuntu package names.
 OPTIONAL=(
   libgoogle-glog0v5
-  libyaml-cpp0.7
   libprotobuf23
   libavcodec58
   libassimp5v5

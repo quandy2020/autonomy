@@ -8,9 +8,7 @@
     "install_gperftools.sh",
     "install_opencv.sh",
     "install_ceres_solver.sh",
-    "install_g2o.sh",
     "install_fbow.sh",
-    "install_nlohmann.sh",
     "install_behaviortree_cpp.sh",
     "install_python_modules.sh",
     "install_ipopt.sh",
@@ -25,8 +23,6 @@
     "install_protobuf.sh",
     "install_grpc.sh",
     "install_ceres_solver.sh",
-    "install_nlohmann.sh",
-    "install_g2o.sh",
     "install_fbow.sh",
     "install_behaviortree_cpp.sh"
   ],
@@ -75,19 +71,8 @@
       "paths": ["/usr/local/lib/libceres.so"],
       "force": true
     },
-    "install_g2o.sh": {
-      "paths": ["/usr/local/lib/cmake/g2o/g2oConfig.cmake"],
-      "force": true
-    },
     "install_fbow.sh": {
       "paths": ["/usr/local/lib/libfbow.so"],
-      "force": true
-    },
-    "install_nlohmann.sh": {
-      "paths": [
-        "/usr/local/include/nlohmann/json.hpp",
-        "/usr/include/nlohmann/json.hpp"
-      ],
       "force": true
     },
     "install_behaviortree_cpp.sh": {

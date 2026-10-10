@@ -19,6 +19,20 @@ CurrentView:
   Type: Orbit
   Yaw: 0.785398006439209
 Displays:
+  - Channel: /joint_states
+    Enabled: true
+    Name: RobotModel
+    Properties:
+      description_channel: /robot_description
+      description_source: Topic
+      root_link: ""
+      show_axes: "false"
+      urdf_path: ""
+    Type: RobotModel
+  - Channel: ""
+    Enabled: true
+    Name: TF
+    Type: TF
   - Channel: ""
     Enabled: true
     Name: Grid

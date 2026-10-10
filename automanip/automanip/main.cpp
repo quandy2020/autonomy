@@ -27,7 +27,7 @@
 
 #include "options.hpp"
 
-#include "arm/arm_manager.hpp"
+#include "automanip/arm/arm_manager.hpp"
 #include "autolink/autolink.hpp"
 #include "autolink/common/log.hpp"
 #include "autolink/init.hpp"

@@ -31,7 +31,6 @@ RUN apt-get update && apt-get install -y sudo \
     wget \
     bc \
     gdb \
-    libsdl2-dev \
     libblas-dev \
     liblapack-dev \
     liblua5.3-dev \
@@ -41,37 +40,23 @@ RUN apt-get update && apt-get install -y sudo \
     python3-dev \
     python3-sphinx \
     uuid-dev \
-    libcivetweb-dev \
     libsuitesparse-dev \
     lsb-release \
     libcairo2-dev \
-    libasio-dev \
     libncurses5-dev \
     libavcodec-dev \
     libswscale-dev \
-    libpoco-dev \
     libflann-dev \
     libqhull-dev \
-    libpcap0.8 \
-    libpcap0.8-dev \
-    libusb-1.0-0 \
-    libusb-1.0-0-dev \
     bluez \
     libmetis-dev \
-    libyaml-cpp-dev \
-    libfltk1.3-dev \
     libtool \
     libtiff-dev \
     libcurl4-openssl-dev \
-    libwebsocketpp-dev \
     libeigen3-dev \
-    libsqlite3-dev \
-    libzmq3-dev \
     uuid-dev \
     liburdfdom-dev \
-    libgtk2.0-dev \
     clang-format \
-    sqlite3 \
     stow && \
     rm -rf /var/lib/apt/lists/*
 
@@ -104,9 +89,7 @@ RUN bash /tmp/install/install_grpc.sh
 RUN bash /tmp/install/install_gperftools.sh
 RUN bash /tmp/install/install_opencv.sh
 RUN bash /tmp/install/install_ceres_solver.sh
-RUN bash /tmp/install/install_g2o.sh
 RUN bash /tmp/install/install_fbow.sh
-RUN bash /tmp/install/install_nlohmann.sh
 RUN bash /tmp/install/install_behaviortree_cpp.sh
 RUN bash /tmp/install/install_python_modules.sh
 RUN bash /tmp/install/install_assimp.sh

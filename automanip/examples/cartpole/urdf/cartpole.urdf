@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<!--
+  Cartpole model from OCS2 robotic assets (ocs2_cartpole_ros visualize.launch).
+  Fixed frame in the upstream RViz config is slideBar.
+-->
+<robot name="cartpole">
+
+  <link name="world"/>
+
+  <link name="slideBar">
+    <visual>
+      <geometry>
+        <box size="300 0.05 0.05"/>
+      </geometry>
+      <origin xyz="0 0 0"/>
+      <material name="grey">
+        <color rgba="0.75 0.75 0.75 0.8"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="world_to_slideBar" type="fixed">
+    <parent link="world"/>
+    <child link="slideBar"/>
+    <origin xyz="0.0 0.0 2.0"/>
+  </joint>
+
+  <link name="cart">
+    <visual>
+      <geometry>
+        <box size="0.5 0.5 0.2"/>
+      </geometry>
+      <origin xyz="0 0 0"/>
+      <material name="grey">
+        <color rgba="0.75 0.75 0.75 0.8"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="slider_to_cart" type="prismatic">
+    <axis xyz="1 0 0"/>
+    <origin xyz="0.0 0.0 0.0"/>
+    <parent link="slideBar"/>
+    <child link="cart"/>
+    <limit effort="100000.0" lower="-150" upper="150" velocity="50"/>
+  </joint>
+
+  <link name="pole">
+    <visual>
+      <geometry>
+        <box size="0.05 0.05 1.0"/>
+      </geometry>
+      <origin rpy="0 0 0" xyz="0 0 0.5"/>
+      <material name="grey">
+        <color rgba="0.75 0.75 0.75 0.8"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="cart_to_pole" type="continuous">
+    <axis xyz="0 1 0"/>
+    <origin xyz="0.0 0.0 0" rpy="0.0 0.0 0.0"/>
+    <parent link="cart"/>
+    <child link="pole"/>
+  </joint>
+
+</robot>

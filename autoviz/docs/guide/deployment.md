@@ -9,7 +9,7 @@ Autoviz 可在 Linux / macOS / Windows 独立分发，不要求目标机安装 R
 | Qt 6 | Core / Gui / Widgets / OpenGL / Xml / Svg / Network |
 | Ogre 1.x | 唯一视口后端（默认 auto-vendor 1.12.10） |
 | libautolink / libautomsgs | 通信与消息（随包或同前缀安装） |
-| yaml-cpp、glog、protobuf | 配置与日志 |
+| fkYAML、glog、protobuf | 配置与日志 |
 | FFmpeg（可选） | H264/H265/VP9 解码 |
 
 ## 推荐安装布局

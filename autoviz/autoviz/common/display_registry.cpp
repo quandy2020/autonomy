@@ -229,8 +229,10 @@ void DisplayRegistry::registerBuiltinTypes() {
       []() {
         auto config = MakeDefault("RobotModel", "Robot", "/joint_states");
         config.properties["description_channel"] = "/robot_description";
-        config.properties["root_link"] = "base_link";
+        config.properties["description_source"] = "Topic";
+        config.properties["root_link"] = "";
         config.properties["urdf_path"] = "";
+        config.properties["show_axes"] = "false";
         return config;
       });
 

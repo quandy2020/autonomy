@@ -6,9 +6,10 @@
  * @file robot_model_display.hpp
  * @brief Display for URDF robot visuals driven by JointState (+ description).
  *
- * Loads a URDF from topic (@c std_msgs/String) or file, applies joint
- * positions from @c sensor_msgs/JointState, and draws visual / collision
- * geometry with optional URDF materials, textures, and PBR shading.
+ * Loads a URDF from topic (@c std_msgs/String, default @c /robot_description)
+ * or file. Each link is placed with TF from the fixed frame, the same way
+ * RViz2 RobotModel uses @c /tf. Joint positions are the fallback when a link
+ * has no transform yet.
  *
  * ## Properties
  *
@@ -203,6 +204,7 @@ class RobotModelDisplay : public Display {
 
   std::string joint_channel_;       /**< JointState topic / channel. */
   std::string description_channel_; /**< Description topic (when source=Topic). */
+  std::string description_text_;    /**< Last URDF text, so a repeat is not reparsed. */
   UrdfModel model_;                 /**< Parsed URDF model. */
   std::unordered_map<std::string, ObjMesh> visual_meshes_;    /**< Visual cache. */
   std::unordered_map<std::string, ObjMesh> collision_meshes_; /**< Collision cache. */

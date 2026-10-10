@@ -531,6 +531,7 @@ int VisualizationManager::ensureDisplaysForRecordChannels(
 
   std::unordered_set<std::string> covered_channels;
   bool has_tf_display = false;
+  bool has_robot_model = false;
   std::function<void(display::Display*)> walk;
   walk = [&](display::Display* display) {
     if (display == nullptr) {
@@ -538,6 +539,9 @@ int VisualizationManager::ensureDisplaysForRecordChannels(
     }
     if (display->typeId() == "TF") {
       has_tf_display = true;
+    }
+    if (display->typeId() == "RobotModel") {
+      has_robot_model = true;
     }
     if (!display->channel().empty()) {
       covered_channels.insert(display->channel());
@@ -555,8 +559,9 @@ int VisualizationManager::ensureDisplaysForRecordChannels(
   auto prefer_type = [](const std::vector<std::string>& types) -> std::string {
     static const char* kPreferred[] = {"PointCloud2", "Imu",         "Odometry",
                                        "LaserScan",   "Path",        "Marker",
-                                       "MarkerArray", "Image",       "CameraInfo",
-                                       "Pose",        "PoseStamped", "TF"};
+                                       "MarkerArray", "RobotModel",  "Image",
+                                       "CameraInfo",  "Pose",        "PoseStamped",
+                                       "TF"};
     for (const char* preferred : kPreferred) {
       if (std::find(types.begin(), types.end(), preferred) != types.end()) {
         return preferred;
@@ -587,6 +592,77 @@ int VisualizationManager::ensureDisplaysForRecordChannels(
         has_tf_display = true;
       }
       break;
+    }
+  }
+
+  auto channel_base = [](const std::string& channel) {
+    const auto slash = channel.find_last_of('/');
+    return slash == std::string::npos ? channel : channel.substr(slash + 1);
+  };
+  auto cover_robot_channels = [&]() {
+    for (const auto& entry : channel_types) {
+      const std::string base = channel_base(entry.first);
+      if (base == "robot_description" || base == "joint_states") {
+        covered_channels.insert(entry.first);
+      }
+    }
+  };
+  if (has_robot_model) {
+    // The startup RobotModel is created disabled. Turn it on once the
+    // description or joint topic exists, so the model shows without a manual add.
+    std::function<void(display::Display*)> enable_robots;
+    enable_robots = [&](display::Display* display) {
+      if (display == nullptr) {
+        return;
+      }
+      if (display->typeId() == "RobotModel" && !display->enabled()) {
+        display->setEnabled(true);
+      }
+      if (auto* group = dynamic_cast<display::DisplayGroup*>(display)) {
+        for (const auto& child : group->children()) {
+          enable_robots(child.get());
+        }
+      }
+    };
+    for (const auto& display : displays_) {
+      enable_robots(display.get());
+    }
+    cover_robot_channels();
+  } else {
+    std::string description;
+    std::string joints;
+    for (const auto& entry : channel_types) {
+      const std::string base = channel_base(entry.first);
+      if (base == "robot_description" &&
+          (description.empty() || entry.first == "/robot_description")) {
+        description = entry.first;
+      } else if (base == "joint_states" &&
+                 (joints.empty() || entry.first == "/joint_states")) {
+        joints = entry.first;
+      }
+    }
+    if (!description.empty() || !joints.empty()) {
+      if (joints.empty()) {
+        joints = "/joint_states";
+      }
+      if (description.empty()) {
+        description = "/robot_description";
+      }
+      DisplayConfig config;
+      config.type = "RobotModel";
+      config.name = "RobotModel";
+      config.channel = joints;
+      config.enabled = true;
+      config.properties["description_source"] = "Topic";
+      config.properties["description_channel"] = description;
+      config.properties["urdf_path"] = "";
+      config.properties["root_link"] = "";
+      config.properties["show_axes"] = "false";
+      if (added < max_new && addDisplay(config)) {
+        ++added;
+        has_robot_model = true;
+      }
+      cover_robot_channels();
     }
   }
 

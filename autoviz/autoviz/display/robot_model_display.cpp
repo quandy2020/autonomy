@@ -14,6 +14,7 @@
 #include <automsgs/msgs/sensor_msgs/joint_state.pb.h>
 #include <automsgs/msgs/std_msgs/string.pb.h>
 #include "autoviz/commsgs/time_utils.hpp"
+#include "autoviz/integration/channel_payload.hpp"
 #include "autoviz/display/obj_mesh.hpp"
 #include "autoviz/display/ogre_entity_draw.hpp"
 #include "autoviz/display/ogre_mesh_draw.hpp"
@@ -278,24 +279,48 @@ void RobotModelDisplay::reset() {
 
 void RobotModelDisplay::onUpdate() {
   while (auto payload = description_queue_.pop()) {
+    const std::string decoded = integration::DecodeChannelPayload(*payload);
     automsgs::msgs::std_msgs::String message;
-    if (message.ParseFromString(*payload)) {
+    if (message.ParseFromString(decoded) || message.ParseFromString(*payload)) {
       processDescription(message.data());
+    } else {
+      setStatusWarn("Failed to parse robot description");
     }
   }
   while (auto payload = joint_queue_.pop()) {
+    const std::string decoded = integration::DecodeChannelPayload(*payload);
     proto_wire::ParsedJointState parsed;
-    if (ParseJointStatePayload(*payload, &parsed)) {
+    if (ParseJointStatePayload(decoded, &parsed) ||
+        ParseJointStatePayload(*payload, &parsed)) {
       processJointState(parsed);
     }
   }
 }
 
 void RobotModelDisplay::processDescription(const std::string& urdf_text) {
-  if (model_.loadFromString(urdf_text)) {
-    if (context_ != nullptr && context_->request_redraw) {
-      context_->request_redraw();
+  if (urdf_text.empty() || urdf_text == description_text_) {
+    return;
+  }
+  if (!model_.loadFromString(urdf_text)) {
+    setStatusError("URDF parse failed");
+    return;
+  }
+  description_text_ = urdf_text;
+  rebuildMeshCache();
+  bool mesh_missing = false;
+  for (const auto& link : model_.links()) {
+    if (link.has_visual && link.visual.type == UrdfGeometry::Type::kMesh &&
+        visual_meshes_.count(link.name) == 0) {
+      mesh_missing = true;
     }
+  }
+  if (mesh_missing) {
+    setStatusWarn("URDF mesh file was not found");
+  } else {
+    setStatusOk("Model loaded");
+  }
+  if (context_ != nullptr && context_->request_redraw) {
+    context_->request_redraw();
   }
 }
 
@@ -447,23 +472,34 @@ void RobotModelDisplay::onDraw(rendering::SceneOverlay& scene) {
   QMatrix4x4 root_world;
   root_world.setToIdentity();
   const std::string root_link = propertyValue("root_link", model_.rootLink());
-  if (!root_link.empty() && context_->tf_buffer != nullptr) {
-    const auto zero_time = autoviz::commsgs::ZeroTime();
+  const bool have_buffer = context_->tf_buffer != nullptr;
+  const auto zero_time = autoviz::commsgs::ZeroTime();
+  if (!root_link.empty() && have_buffer) {
     try {
-      const auto tf = context_->tf_buffer->lookupTransform(
-          context_->fixed_frame, root_link, zero_time);
-      root_world = transformToMatrix(tf);
+      root_world = transformToMatrix(context_->tf_buffer->lookupTransform(
+          context_->fixed_frame, root_link, zero_time));
     } catch (...) {
     }
   }
 
   for (const auto& link : model_.links()) {
-    const auto tf_it = link_transforms.find(link.name);
-    if (tf_it == link_transforms.end()) {
-      continue;
+    QMatrix4x4 link_transform;
+    bool from_tf = false;
+    if (have_buffer) {
+      try {
+        link_transform = transformToMatrix(context_->tf_buffer->lookupTransform(
+            context_->fixed_frame, link.name, zero_time));
+        from_tf = true;
+      } catch (...) {
+      }
     }
-
-    QMatrix4x4 link_transform = root_world * tf_it->second;
+    if (!from_tf) {
+      const auto tf_it = link_transforms.find(link.name);
+      if (tf_it == link_transforms.end()) {
+        continue;
+      }
+      link_transform = root_world * tf_it->second;
+    }
 
     if (link.has_visual) {
       const ObjMesh* mesh = nullptr;

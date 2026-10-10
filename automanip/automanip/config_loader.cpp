@@ -25,7 +25,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "arm/chain.hpp"
+#include "automanip/arm/chain.hpp"
 #include "autolink/common/log.hpp"
 #include "automanip/environment.hpp"
 #include "automanip/yaml.hpp"
@@ -125,32 +125,6 @@ Eigen::Vector3d ReadVec3(const YAML::Node& node,
                          ReadScalarDouble(node[2], fallback.z()));
 }
 
-void ReadOsc2(const YAML::Node& node, arm::osc2::Osc2Settings* settings) {
-  if (!node || !settings) {
-    return;
-  }
-  settings->horizon = ReadInt(node, "horizon", settings->horizon);
-  settings->mpc_dt = ReadDouble(node, "mpc_dt", settings->mpc_dt);
-  settings->iterations = ReadInt(node, "iterations", settings->iterations);
-  settings->position_weight =
-      ReadDouble(node, "position_weight", settings->position_weight);
-  settings->orientation_weight =
-      ReadDouble(node, "orientation_weight", settings->orientation_weight);
-  settings->input_weight =
-      ReadDouble(node, "input_weight", settings->input_weight);
-  settings->joint_weight =
-      ReadDouble(node, "joint_weight", settings->joint_weight);
-  settings->posture_weight =
-      ReadDouble(node, "posture_weight", settings->posture_weight);
-  settings->terminal_scale =
-      ReadDouble(node, "terminal_scale", settings->terminal_scale);
-  settings->limit_weight =
-      ReadDouble(node, "limit_weight", settings->limit_weight);
-  settings->limit_margin =
-      ReadDouble(node, "limit_margin", settings->limit_margin);
-  settings->damping = ReadDouble(node, "damping", settings->damping);
-}
-
 void ReadChain(const YAML::Node& arm, arm::SerialChain* chain) {
   if (chain == nullptr) {
     return;
@@ -209,7 +183,6 @@ void ReadArm(const YAML::Node& root, Config* config) {
   out.plant.frame_id = ReadString(arm, "frame_id", out.plant.frame_id);
   out.plant.tool_frame_id =
       ReadString(arm, "tool_frame_id", out.plant.tool_frame_id);
-  ReadOsc2(arm["osc2"], &out.plant.osc2);
   ReadChain(arm, &out.plant.chain);
 }
 

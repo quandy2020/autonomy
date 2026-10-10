@@ -9,8 +9,8 @@ Localization 模块遵循以下设计原则：
 1. **多算法可扩展**：Cartographer / Lightning 已接入进程后端；AMCL 配置预留
 2. **经典 SLAM 架构**：Tracking / Mapping / Global Optimization 三线程解耦，跟踪低延迟
 3. **多传感器支持**：单目、双目、RGB-D 统一 `system::feed_*` 接口
-4. **g2o 统一后端**：位姿优化、LBA、GBA、Sim3 均基于 g2o 图优化
-5. **地图持久化**：msgpack / SQLite3 双格式，支持纯定位模式
+4. **Ceres 后端**：位姿优化、LBA、GBA、Sim3 使用 Ceres
+5. **地图持久化**：由各算法自己的序列化格式写出，支持纯定位模式
 
 ## 5.2 模块总览
 
@@ -48,7 +48,7 @@ Localization 模块遵循以下设计原则：
         <ul>
           <li>ORB 特征提取（左/右/初始化三套 extractor）</li>
           <li>三模块线程调度与 pause/reset/terminate</li>
-          <li>地图与轨迹持久化（msgpack / sqlite3）</li>
+          <li>地图与轨迹持久化</li>
           <li>frame_publisher / map_publisher 可视化</li>
         </ul>
       </div>
@@ -248,7 +248,7 @@ flowchart TD
     K -->|否| L["Lost"]
     K -->|是| J
     J --> M["update_local_map"]
-    M --> N["optimize_current_frame (PnP+g2o)"]
+    M --> N["optimize_current_frame (PnP+Ceres)"]
     N --> O{"new_keyframe?"}
     O -->|是| P["async_add_keyframe → mapping"]
     O -->|否| Q["返回 T_cw"]
@@ -275,7 +275,7 @@ flowchart TD
     C --> D["store_new_keyframe"]
     D --> E["create_new_landmarks (三角化)"]
     E --> F["fuse_landmark_duplication"]
-    F --> G["local_bundle_adjuster (g2o LBA)"]
+    F --> G["local_bundle_adjuster (Ceres LBA)"]
     G --> H["local_map_cleaner"]
     H --> I["queue_keyframe → global_opt"]
 ```
@@ -321,7 +321,7 @@ tracking_module
 ├── frame_tracker_             # module::frame_tracker
 ├── relocalizer_               # module::relocalizer
 ├── keyfrm_inserter_           # module::keyframe_inserter
-└── pose_optimizer_            # optimize::pose_optimizer (g2o)
+└── pose_optimizer_            # optimize::pose_optimizer (Ceres)
 
 mapping_module
 ├── local_bundle_adjuster_     # optimize::local_bundle_adjuster
@@ -343,10 +343,10 @@ global_optimization_module
 | `solve/essential_solver` | 5pt / 8pt + RANSAC | 初始化 |
 | `solve/homography_solver` | DLT + RANSAC | 平面初始化 |
 | `solve/fundamental_solver` | 8pt | 基础矩阵 |
-| `optimize/pose_optimizer_g2o` | g2o SE3 | 单帧位姿优化 |
-| `optimize/local_bundle_adjuster_g2o` | g2o BA | 局部窗口优化 |
-| `optimize/global_bundle_adjuster` | g2o BA | 全局优化 |
-| `optimize/transform_optimizer` | g2o Sim3 | 回环 Sim3 估计 |
+| `optimize/pose_optimizer` | Ceres SE3 | 单帧位姿优化 |
+| `optimize/local_bundle_adjuster` | Ceres BA | 局部窗口优化 |
+| `optimize/global_bundle_adjuster` | Ceres BA | 全局优化 |
+| `optimize/transform_optimizer` | Ceres Sim3 | 回环 Sim3 估计 |
 
 ---
 

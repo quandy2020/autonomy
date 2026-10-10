@@ -1,0 +1,13 @@
+<!--
+  Publishes /robot_description, /joint_states, and /tf for a RobotModel display.
+  Fixed frame: map. Description topic: /robot_description.
+-->
+<autolink>
+    <module>
+        <name>mobile_manipulator</name>
+        <type>binary</type>
+        <process_name>mobile_manipulator_demo</process_name>
+        <exception_handler>respawn</exception_handler>
+        <respawn_limit>3</respawn_limit>
+    </module>
+</autolink>

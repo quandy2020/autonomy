@@ -181,6 +181,7 @@ autonomy_add_domains()
 # Built after domains so they can link autonomy / autolink / automsgs.
 # Same idea as autodriver adding chassis/ from its root CMakeLists.
 add_subdirectory(autodriver)           # required sensor / chassis HAL
+add_subdirectory(automanip)            # manipulator HAL
 if(BUILD_AUTOVIZ)
   add_subdirectory(autoviz)            # optional visualization stack
 endif()

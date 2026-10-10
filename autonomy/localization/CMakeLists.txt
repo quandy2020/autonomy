@@ -32,14 +32,12 @@ autocmake_find(TBB REQUIRED PRIVATE)
 autocmake_find(OpenMP PRIVATE QUIET)
 autocmake_find(LuaGoogle REQUIRED PRIVATE)
 autocmake_find(FBow REQUIRED PRIVATE)
-autocmake_find(G2o REQUIRED PRIVATE)
-autocmake_find(SQLite3 REQUIRED PRIVATE)
 autocmake_find(ZLIB REQUIRED PRIVATE)
 autocmake_find(PkgConfig REQUIRED PRIVATE)
 pkg_check_modules(CAIRO REQUIRED IMPORTED_TARGET cairo)
 autocmake_find(opentelemetry-cpp PRIVATE QUIET CONFIG)
 
-foreach(_pkg IN ITEMS OpenCV PCL TBB LuaGoogle FBow G2o SQLite3 ZLIB PkgConfig)
+foreach(_pkg IN ITEMS OpenCV PCL TBB LuaGoogle FBow ZLIB PkgConfig)
   if(NOT ${_pkg}_FOUND)
     message(FATAL_ERROR "localization: ${_pkg} is required")
   endif()
@@ -95,14 +93,10 @@ target_include_directories(autonomy_localization PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lightning/core/miao>)
 target_include_directories(autonomy_localization SYSTEM PUBLIC
   ${PCL_INCLUDE_DIRS}
-  ${SQLite3_INCLUDE_DIRS}
   ${LUA_INCLUDE_DIR})
 target_link_libraries(autonomy_localization PUBLIC
   ${PCL_LIBRARIES}
-  ${SQLite3_LIBRARIES}
-  ${LUA_LIBRARIES}
-  g2o::core g2o::stuff
-  g2o::types_sba g2o::types_sim3 g2o::solver_dense g2o::solver_eigen)
+  ${LUA_LIBRARIES})
 target_compile_definitions(autonomy_localization PUBLIC
   PCL_NO_PRECOMPILE
   ${PCL_DEFINITIONS}
