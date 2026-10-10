@@ -1,0 +1,41 @@
+# Automanip process. backend osc2 runs the kinematic MPC on a simulated 6R arm.
+node_name: automanip
+
+arm:
+  enable: true
+  id: arm/manipulator
+  backend: osc2
+  initial_mode: hold
+  frame_id: arm_base
+  tool_frame_id: tool0
+  control_period_ms: 20
+  watchdog_ms: 500
+  pose_channel: /arm/target_pose
+  joint_command_channel: /arm/joint_command
+  mode_channel: /arm/mode
+  joint_state_channel: /arm/joint_states
+  ee_pose_channel: /arm/ee_pose
+  mode_state_channel: /arm/mode_state
+  capability_channel: /arm/capability
+  event_channel: /arm/event
+  tool_xyz: [0.08, 0.0, 0.0]
+  osc2:
+    horizon: 8
+    mpc_dt: 0.05
+    iterations: 2
+    position_weight: 40
+    orientation_weight: 5
+    input_weight: 0.02
+    joint_weight: 8
+    posture_weight: 0.2
+    terminal_scale: 4
+    limit_weight: 30
+    limit_margin: 0.02
+    damping: 0.001
+  joints:
+    - {name: joint1, axis: [0, 0, 1], origin: [0, 0, 0.15], lower: -2.8, upper: 2.8, velocity: 1.5, home: 0}
+    - {name: joint2, axis: [0, 1, 0], origin: [0, 0, 0.25], lower: -2.8, upper: 2.8, velocity: 1.5, home: 0}
+    - {name: joint3, axis: [0, 1, 0], origin: [0, 0, 0.25], lower: -2.8, upper: 2.8, velocity: 1.5, home: 0}
+    - {name: joint4, axis: [1, 0, 0], origin: [0.20, 0, 0], lower: -2.8, upper: 2.8, velocity: 1.5, home: 0}
+    - {name: joint5, axis: [0, 1, 0], origin: [0.15, 0, 0], lower: -2.8, upper: 2.8, velocity: 1.5, home: 0}
+    - {name: joint6, axis: [1, 0, 0], origin: [0.08, 0, 0], lower: -2.8, upper: 2.8, velocity: 1.5, home: 0}

@@ -1,0 +1,25 @@
+<!--
+  Automanip launch file.
+
+  The process binary loads config/automanip.yaml (backend osc2 by default).
+  Alternative: mainboard -d $AUTOLINK_DAG_PATH/arm_osc2.dag
+  Do not run both; they publish the same joint-state channel.
+
+  Prerequisites:
+    export AUTOMANIP_PATH=$PWD/src/autonomy/automanip
+    export AUTOLINK_LAUNCH_PATH=$AUTOMANIP_PATH/launch
+    export AUTOLINK_DAG_PATH=$AUTOMANIP_PATH/dag
+    export AUTOLINK_LIB_PATH=$PWD/build/autonomy/lib
+    export LD_LIBRARY_PATH=$PWD/build/autonomy/lib:$LD_LIBRARY_PATH
+    export PATH=$PWD/build/autonomy/bin:$PATH
+    autolink launch start automanip.launch
+-->
+<autolink>
+    <module>
+        <name>automanip</name>
+        <type>binary</type>
+        <process_name>automanip</process_name>
+        <exception_handler>respawn</exception_handler>
+        <respawn_limit>3</respawn_limit>
+    </module>
+</autolink>

@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>automanip</name>
+  <version>0.1.0</version>
+  <description>Manipulator HAL and OCS2 kinematic arm controller.</description>
+  <maintainer email="quandy2020@126.com">duyongquan</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>autocmake</buildtool_depend>
+  <build_depend>Eigen3</build_depend>
+  <build_depend>Threads</build_depend>
+
+  <export>
+    <build_type>autocmake</build_type>
+  </export>
+</package>

@@ -1,0 +1,15 @@
+# mainboard -d dag/arm_osc2.dag
+# libautomanip.so must be on AUTOLINK_LIB_PATH.
+# config_file_path is resolved under AUTOMANIP_PATH/config/.
+
+module_config {
+  module_library : "libautomanip.so"
+  timer_components {
+    class_name : "automanip::arm::ArmComponent"
+    config {
+      name : "osc2"
+      interval : 50
+      config_file_path : "arm/osc2.yaml"
+    }
+  }
+}

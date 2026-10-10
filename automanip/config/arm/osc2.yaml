@@ -1,0 +1,18 @@
+# Same controller as config/automanip.yaml, for mainboard / DAG.
+node_name: automanip
+
+arm:
+  enable: true
+  id: arm/manipulator
+  backend: osc2
+  initial_mode: hold
+  control_period_ms: 20
+  watchdog_ms: 500
+  pose_channel: /arm/target_pose
+  joint_command_channel: /arm/joint_command
+  mode_channel: /arm/mode
+  joint_state_channel: /arm/joint_states
+  ee_pose_channel: /arm/ee_pose
+  mode_state_channel: /arm/mode_state
+  capability_channel: /arm/capability
+  event_channel: /arm/event

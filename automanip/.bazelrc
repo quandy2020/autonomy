@@ -1,0 +1,11 @@
+# Standalone automanip workspace. The osc2 core tests do not need autolink.
+# The process binary is built by the parent CMake (same as the umbrella autodriver path).
+
+common --enable_bzlmod
+
+build --cxxopt=-std=c++20
+build --host_cxxopt=-std=c++20
+build --copt=-Wall
+build --copt=-Wno-unused-parameter
+
+try-import %workspace%/user.bazelrc

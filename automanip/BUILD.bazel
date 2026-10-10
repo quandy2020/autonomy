@@ -1,0 +1,29 @@
+"""Standalone Bazel build for the OCS2 kinematic core (no Autolink)."""
+
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "osc2",
+    srcs = [
+        "arm/chain.cpp",
+        "arm/osc2/controller.cpp",
+    ],
+    hdrs = [
+        "arm/chain.hpp",
+        "arm/osc2/controller.hpp",
+    ],
+    includes = ["."],
+    deps = ["@eigen//:eigen"],
+)
+
+cc_test(
+    name = "test_osc2",
+    size = "small",
+    srcs = ["test/test_osc2.cpp"],
+    deps = [
+        ":osc2",
+        "@googletest//:gtest_main",
+    ],
+)

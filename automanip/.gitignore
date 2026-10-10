@@ -1,0 +1,4 @@
+# Bazel local outputs (MODULE.bazel.lock is committed when generated)
+/bazel-*
+/user.bazelrc
+/install/
