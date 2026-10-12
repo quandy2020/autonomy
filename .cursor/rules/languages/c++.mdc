@@ -70,5 +70,6 @@ alwaysApply: false
 - 使用 Doxygen 生成 API 文档。
 - 记录代码的假设、约束和预期行为。
 - **`autodriver/` 包**：须遵循 `.cursor/rules/autodriver/doxygen.mdc`（`@file` / `@class` / `@brief` / `@param` / `@return`）。
+- **`automanip/bolza/bolza/`**：须遵循 `.cursor/rules/bolza/doxygen.mdc`（`@file` / `@brief` / `@param [in|out]`）。函数/方法命名与 `autodriver` 一致，使用 **PascalCase**（如 `Initialize`、`GetNode`）。**类型名（class/struct/enum）遵循 Google C++ 风格 PascalCase**，不用下划线（`MPCBase` 而非 `MPC_BASE`；`GaussNewtonDDPMPC` 而非 `GaussNewtonDDP_MPC`）。Eigen/STL/odeint 特性特化名保持原样；`scalar_t` 等别名除外。
 
 遵循官方 ISO C++ 标准和指南，获取现代 C++ 开发的最佳实践。

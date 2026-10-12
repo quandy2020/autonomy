@@ -34,13 +34,13 @@
 #include "autolink/transport/qos/qos_profile_conf.hpp"
 
 #include <automsgs/msgs/std_msgs/string.pb.h>
-#include "automanip/core/reference/target_trajectories.hpp"
-#include "automanip/core/thread_support/execute_and_sleep.hpp"
-#include "automanip/core/thread_support/set_thread_priority.hpp"
-#include "automanip/mpc/mpc_mrt_interface.hpp"
+#include "bolza/core/reference/target_trajectories.hpp"
+#include "bolza/core/thread_support/execute_and_sleep.hpp"
+#include "bolza/core/thread_support/set_thread_priority.hpp"
+#include "bolza/mpc/mpc_mrt_interface.hpp"
 #include "examples/runtime/markers.hpp"
 
-namespace automanip {
+namespace bolza {
 namespace examples {
 namespace {
 
@@ -93,42 +93,42 @@ void RecoverState(const std::string& name, vector_t* state) {
   }
   auto& value = *state;
   for (Eigen::Index i = 0; i < value.size(); ++i) {
-    if (!std::isfinite(value(i)) || std::abs(value(i)) > 1e3) {
-      value(i) = 0;
+    if (!std::isfinite(Value(i)) || std::abs(Value(i)) > 1e3) {
+      Value(i) = 0;
     }
   }
   if (name == "ballbot" && value.size() >= 5) {
-    value(2) = std::atan2(std::sin(value(2)), std::cos(value(2)));
-    value(3) = 0;
-    value(4) = 0;
+    Value(2) = std::atan2(std::sin(Value(2)), std::cos(Value(2)));
+    Value(3) = 0;
+    Value(4) = 0;
     if (value.size() > 5) {
       value.tail(value.size() - 5).setZero();
     }
   }
   if (name == "quadrotor" && value.size() >= 12) {
-    if (!std::isfinite(value(0)) || std::abs(value(0)) > 50.0) {
-      value(0) = 0;
+    if (!std::isfinite(Value(0)) || std::abs(Value(0)) > 50.0) {
+      Value(0) = 0;
     }
-    if (!std::isfinite(value(1)) || std::abs(value(1)) > 50.0) {
-      value(1) = 0;
+    if (!std::isfinite(Value(1)) || std::abs(Value(1)) > 50.0) {
+      Value(1) = 0;
     }
-    if (!std::isfinite(value(2)) || value(2) < 0.2 || value(2) > 20.0) {
-      value(2) = 1.0;
+    if (!std::isfinite(Value(2)) || Value(2) < 0.2 || Value(2) > 20.0) {
+      Value(2) = 1.0;
     }
-    value(3) = 0;
-    value(4) = 0;
-    value(5) = std::atan2(std::sin(value(5)), std::cos(value(5)));
+    Value(3) = 0;
+    Value(4) = 0;
+    Value(5) = std::atan2(std::sin(Value(5)), std::cos(Value(5)));
     value.tail(value.size() - 6).setZero();
   }
   // Centroidal state is [momentum, base pose, joints]. Zeroing the tail
   // drops the base onto the ground and straightens the legs.
   if (name == "legged_robot" && value.size() >= 12) {
     value.head(6).setZero();
-    if (!std::isfinite(value(8)) || value(8) < 0.3) {
-      value(8) = 0.575;
+    if (!std::isfinite(Value(8)) || Value(8) < 0.3) {
+      Value(8) = 0.575;
     }
-    value(10) = 0;
-    value(11) = 0;
+    Value(10) = 0;
+    Value(11) = 0;
   }
 }
 
@@ -182,10 +182,10 @@ int RunDemo(const DemoRequest& request) {
   publish_description();
 
   if (request.reference) {
-    request.mpc->getSolverPtr()->setReferenceManager(request.reference);
+    request.mpc->GetSolverPtr()->SetReferenceManager(request.reference);
   }
-  MPC_MRT_Interface mrt(*request.mpc);
-  mrt.initRollout(request.rollout);
+  MPCMRTInterface mrt(*request.mpc);
+  mrt.InitRollout(request.rollout);
 
   SystemObservation observation;
   observation.time = 0.0;
@@ -218,8 +218,8 @@ int RunDemo(const DemoRequest& request) {
       std::lock_guard<std::mutex> lock(target_mu);
       target_state = target.stateTrajectory.back();
     }
-    mrt.getReferenceManager().setTargetTrajectories(target);
-    AINFO << request.name << " target updated";
+    mrt.GetReferenceManager().SetTargetTrajectories(target);
+    AINFO << request.Name << " target updated";
   };
   std::shared_ptr<autolink::Writer<TwistStampedMsg>> twist_writer;
   if (request.velocity) {
@@ -231,26 +231,26 @@ int RunDemo(const DemoRequest& request) {
   (void)target_reader;
   (void)goal_reader;
 
-  mrt.setCurrentObservation(observation);
-  mrt.getReferenceManager().setTargetTrajectories(target);
-  AINFO << request.name << " waiting for the initial policy";
+  mrt.SetCurrentObservation(observation);
+  mrt.GetReferenceManager().SetTargetTrajectories(target);
+  AINFO << request.Name << " waiting for the initial policy";
   try {
-    for (int attempt = 0; g_running.load() && !mrt.initialPolicyReceived() && attempt < 20;
+    for (int attempt = 0; g_running.Load() && !mrt.InitialPolicyReceived() && attempt < 20;
          ++attempt) {
-      mrt.advanceMpc();
-      mrt.updatePolicy();
+      mrt.AdvanceMpc();
+      mrt.UpdatePolicy();
     }
   } catch (const std::exception& ex) {
-    AERROR << request.name << " initial solve failed: " << ex.what();
+    AERROR << request.Name << " initial solve failed: " << ex.what();
     autolink::Clear();
     return 1;
   }
-  if (!mrt.initialPolicyReceived()) {
-    AERROR << request.name << " initial policy was not received";
+  if (!mrt.InitialPolicyReceived()) {
+    AERROR << request.Name << " initial policy was not received";
     autolink::Clear();
     return 1;
   }
-  AINFO << request.name << " initial policy received";
+  AINFO << request.Name << " initial policy received";
 
   double mpc_hz = request.mpc_settings.mpcDesiredFrequency_;
   double mrt_hz = request.mpc_settings.mrtDesiredFrequency_;
@@ -280,7 +280,7 @@ int RunDemo(const DemoRequest& request) {
   };
   auto recover_mpc = [&]() {
     const int64_t now = now_ms();
-    if (now < recovery_not_before_ms.load()) {
+    if (now < recovery_not_before_ms.Load()) {
       return;
     }
     recovery_not_before_ms.store(now + 1000);
@@ -306,7 +306,7 @@ int RunDemo(const DemoRequest& request) {
     // base command so the next solve can still trot toward the goal.
     TargetTrajectories hold({recovered.time}, {recovered.state}, {input});
     if (request.name == "legged_robot") {
-      const TargetTrajectories commanded = mrt.getReferenceManager().getTargetTrajectories();
+      const TargetTrajectories commanded = mrt.GetReferenceManager().GetTargetTrajectories();
       if (commanded.timeTrajectory.size() >= 2 &&
           commanded.stateTrajectory.size() >= 2) {
         hold = commanded;
@@ -314,11 +314,11 @@ int RunDemo(const DemoRequest& request) {
     }
     try {
       // Stabilize in place first. The following warm start picks the goal back up.
-      mrt.resetMpcNode(hold);
-      mrt.getReferenceManager().setTargetTrajectories(hold);
-      mrt.setCurrentObservation(recovered);
-      mrt.advanceMpc();
-      mrt.updatePolicy();
+      mrt.ResetMpcNode(hold);
+      mrt.GetReferenceManager().SetTargetTrajectories(hold);
+      mrt.SetCurrentObservation(recovered);
+      mrt.AdvanceMpc();
+      mrt.UpdatePolicy();
       if (request.name == "quadrotor" && goal_state.size() == recovered.state.size()) {
         goal_state(3) = 0.0;
         goal_state(4) = 0.0;
@@ -329,46 +329,46 @@ int RunDemo(const DemoRequest& request) {
         const scalar_t arrival = recovered.time + std::max(0.5, distance / 2.0);
         const TargetTrajectories resumed({recovered.time, arrival}, {recovered.state, goal_state},
                                          {input, input});
-        mrt.getReferenceManager().setTargetTrajectories(resumed);
+        mrt.GetReferenceManager().SetTargetTrajectories(resumed);
         std::lock_guard<std::mutex> lock(target_mu);
         target_state = goal_state;
       } else {
         std::lock_guard<std::mutex> lock(target_mu);
         target_state = recovered.state;
       }
-      AINFO << request.name << " recovered an upright pose";
+      AINFO << request.Name << " recovered an upright pose";
       hold_rollout.store(false);
     } catch (const std::exception& ex) {
-      AERROR << request.name << " mpc reset failed: " << ex.what();
+      AERROR << request.Name << " mpc reset failed: " << ex.what();
     }
   };
 
   std::thread mpc_thread([&]() {
-    while (mpc_running.load() && g_running.load()) {
+    while (mpc_running.Load() && g_running.Load()) {
       const bool retry_hold =
-          hold_rollout.load() && now_ms() >= recovery_not_before_ms.load();
+          hold_rollout.Load() && now_ms() >= recovery_not_before_ms.Load();
       if (reset_requested.exchange(false) || retry_hold) {
-        if (now_ms() >= recovery_not_before_ms.load()) {
+        if (now_ms() >= recovery_not_before_ms.Load()) {
           recover_mpc();
         } else {
           std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
         continue;
       }
-      if (hold_rollout.load()) {
+      if (hold_rollout.Load()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
         continue;
       }
       try {
-        executeAndSleep([&]() { mrt.advanceMpc(); }, mpc_hz);
+        ExecuteAndSleep([&]() { mrt.AdvanceMpc(); }, mpc_hz);
       } catch (const std::exception& ex) {
-        AERROR << request.name << " mpc thread: " << ex.what();
+        AERROR << request.Name << " mpc thread: " << ex.what();
         hold_rollout.store(true);
         recover_mpc();
       }
     }
   });
-  setThreadPriority(request.thread_priority, mpc_thread);
+  SetThreadPriority(request.thread_priority, mpc_thread);
 
   const double dt = 1.0 / mrt_hz;
   // Joint, marker, and TF traffic at the 400 Hz rollout rate makes Autoviz
@@ -377,27 +377,27 @@ int RunDemo(const DemoRequest& request) {
   int steps = 0;
   bool logged_plan_hold = false;
   try {
-    while (g_running.load() && mpc_running.load() &&
+    while (g_running.Load() && mpc_running.Load() &&
            (request.max_steps <= 0 || steps < request.max_steps)) {
-      executeAndSleep(
+      ExecuteAndSleep(
           [&]() {
             SystemObservation current;
             {
               std::lock_guard<std::mutex> lock(target_mu);
               current = observation;
             }
-            if (now_ms() >= recovery_not_before_ms.load() &&
+            if (now_ms() >= recovery_not_before_ms.Load() &&
                 StateNeedsRecovery(request.name, current.state)) {
               hold_rollout.store(true);
               reset_requested.store(true);
             }
-            const bool holding = hold_rollout.load();
+            const bool holding = hold_rollout.Load();
             if (!holding) {
-              mrt.setCurrentObservation(current);
-              mrt.updatePolicy();
+              mrt.SetCurrentObservation(current);
+              mrt.UpdatePolicy();
             }
             SystemObservation next = current;
-            const auto& policy = mrt.getPolicy();
+            const auto& policy = mrt.GetPolicy();
             const bool plan_covers =
                 !holding && !policy.timeTrajectory_.empty() &&
                 current.time + dt <= policy.timeTrajectory_.back() + 1e-8;
@@ -408,25 +408,25 @@ int RunDemo(const DemoRequest& request) {
               logged_plan_hold = false;
               next.time = current.time + dt;
               try {
-                mrt.rolloutPolicy(current.time, current.state, dt, next.state, next.input,
+                mrt.RolloutPolicy(current.time, current.state, dt, next.state, next.input,
                                   next.mode);
               } catch (const std::exception& ex) {
-                AERROR << request.name << " rollout: " << ex.what();
+                AERROR << request.Name << " rollout: " << ex.what();
                 next = current;
                 hold_rollout.store(true);
                 reset_requested.store(true);
               }
             } else if (!logged_plan_hold && !holding) {
-              AINFO << request.name << " waiting for the next policy";
+              AINFO << request.Name << " waiting for the next policy";
               logged_plan_hold = true;
             }
-            if (now_ms() >= recovery_not_before_ms.load() &&
+            if (now_ms() >= recovery_not_before_ms.Load() &&
                 StateNeedsRecovery(request.name, next.state)) {
               next = current;
               hold_rollout.store(true);
               reset_requested.store(true);
             }
-            if (!hold_rollout.load()) {
+            if (!hold_rollout.Load()) {
               std::lock_guard<std::mutex> lock(target_mu);
               observation = next;
             }
@@ -437,7 +437,7 @@ int RunDemo(const DemoRequest& request) {
               PathMsg path;
               TfMsg tf;
               StampHeader(path.mutable_header(), "map");
-              request.publish(next, mrt.getPolicy(), mrt.getCommand(), &markers, &joints,
+              request.publish(next, mrt.GetPolicy(), mrt.GetCommand(), &markers, &joints,
                               &path, &tf);
               joint_states_writer->Write(std::make_shared<JointStateMsg>(joints));
               // An empty protobuf serializes to 0 bytes. RawMessage rejects that
@@ -461,7 +461,7 @@ int RunDemo(const DemoRequest& request) {
           mrt_hz);
     }
   } catch (const std::exception& ex) {
-    AERROR << request.name << " rollout: " << ex.what();
+    AERROR << request.Name << " rollout: " << ex.what();
   }
 
   mpc_running = false;
@@ -469,10 +469,10 @@ int RunDemo(const DemoRequest& request) {
   if (mpc_thread.joinable()) {
     mpc_thread.join();
   }
-  AINFO << request.name << " stopped after " << steps << " steps";
+  AINFO << request.Name << " stopped after " << steps << " steps";
   autolink::Clear();
   return 0;
 }
 
 }  // namespace examples
-}  // namespace automanip
+}  // namespace bolza

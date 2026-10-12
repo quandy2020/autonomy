@@ -1,35 +1,22 @@
-/******************************************************************************
-Copyright (c) 2021, Farbod Farshidian. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
- * Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
- * Neither the name of the copyright holder nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-******************************************************************************/
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "examples/legged_robot/gait/gait_schedule.hpp"
 
-namespace automanip {
+namespace bolza {
 namespace legged_robot {
 
 /******************************************************************************************************/
@@ -43,7 +30,7 @@ GaitSchedule::GaitSchedule(ModeSchedule initModeSchedule, ModeSequenceTemplate i
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-void GaitSchedule::insertModeSequenceTemplate(const ModeSequenceTemplate& modeSequenceTemplate, scalar_t startTime, scalar_t finalTime) {
+void GaitSchedule::InsertModeSequenceTemplate(const ModeSequenceTemplate& modeSequenceTemplate, scalar_t startTime, scalar_t finalTime) {
   modeSequenceTemplate_ = modeSequenceTemplate;
   auto& eventTimes = modeSchedule_.eventTimes;
   auto& modeSequence = modeSchedule_.modeSequence;
@@ -52,7 +39,7 @@ void GaitSchedule::insertModeSequenceTemplate(const ModeSequenceTemplate& modeSe
   const size_t index = std::lower_bound(eventTimes.begin(), eventTimes.end(), startTime) - eventTimes.begin();
 
   // delete the old logic from the index
-  if (index < eventTimes.size()) {
+  if (Index < eventTimes.size()) {
     eventTimes.erase(eventTimes.begin() + index, eventTimes.end());
     modeSequence.erase(modeSequence.begin() + index + 1, modeSequence.end());
   }
@@ -69,13 +56,13 @@ void GaitSchedule::insertModeSequenceTemplate(const ModeSequenceTemplate& modeSe
   }
 
   // tile the mode sequence template from startTime+phaseTransitionStanceTime to finalTime.
-  tileModeSequenceTemplate(startTime + phaseTransitionStanceTime, finalTime);
+  TileModeSequenceTemplate(startTime + phaseTransitionStanceTime, finalTime);
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-ModeSchedule GaitSchedule::getModeSchedule(scalar_t lowerBoundTime, scalar_t upperBoundTime) {
+ModeSchedule GaitSchedule::GetModeSchedule(scalar_t lowerBoundTime, scalar_t upperBoundTime) {
   auto& eventTimes = modeSchedule_.eventTimes;
   auto& modeSequence = modeSchedule_.modeSequence;
   const size_t index = std::lower_bound(eventTimes.begin(), eventTimes.end(), lowerBoundTime) - eventTimes.begin();
@@ -96,7 +83,7 @@ ModeSchedule GaitSchedule::getModeSchedule(scalar_t lowerBoundTime, scalar_t upp
   if (eventTimes.empty() || modeSequence.empty()) {
     eventTimes.clear();
     modeSequence.clear();
-    tileModeSequenceTemplate(lowerBoundTime, upperBoundTime);
+    TileModeSequenceTemplate(lowerBoundTime, upperBoundTime);
     return modeSchedule_;
   }
   const auto tilingStartTime = eventTimes.back();
@@ -106,14 +93,14 @@ ModeSchedule GaitSchedule::getModeSchedule(scalar_t lowerBoundTime, scalar_t upp
   modeSequence.erase(modeSequence.end() - 1, modeSequence.end());
 
   // tile the template logic
-  tileModeSequenceTemplate(tilingStartTime, upperBoundTime);
+  TileModeSequenceTemplate(tilingStartTime, upperBoundTime);
   return modeSchedule_;
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-void GaitSchedule::tileModeSequenceTemplate(scalar_t startTime, scalar_t finalTime) {
+void GaitSchedule::TileModeSequenceTemplate(scalar_t startTime, scalar_t finalTime) {
   auto& eventTimes = modeSchedule_.eventTimes;
   auto& modeSequence = modeSchedule_.modeSequence;
   const auto& templateTimes = modeSequenceTemplate_.switchingTimes;
@@ -159,4 +146,4 @@ void GaitSchedule::tileModeSequenceTemplate(scalar_t startTime, scalar_t finalTi
 }
 
 }  // namespace legged_robot
-}  // namespace automanip
+}  // namespace bolza

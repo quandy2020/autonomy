@@ -1,41 +1,28 @@
-/******************************************************************************
-Copyright (c) 2021, Farbod Farshidian. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
- * Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
- * Neither the name of the copyright holder nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-******************************************************************************/
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #pragma once
 
-#include <automanip/pinocchio/centroidal/centroidal_model_info.hpp>
-#include <automanip/core/constraint/state_input_constraint.hpp>
+#include <bolza/pinocchio/centroidal/centroidal_model_info.hpp>
+#include <bolza/core/constraint/state_input_constraint.hpp>
 
 #include "examples/legged_robot/common/types.hpp"
 #include "examples/legged_robot/reference_manager/switched_model_reference_manager.hpp"
 
-namespace automanip {
+namespace bolza {
 namespace legged_robot {
 
 /**
@@ -65,10 +52,10 @@ class FrictionConeConstraint final : public StateInputConstraint {
   struct Config {
     explicit Config(scalar_t frictionCoefficientParam = 0.7, scalar_t regularizationParam = 25.0, scalar_t gripperForceParam = 0.0,
                     scalar_t hessianDiagonalShiftParam = 1e-6)
-        : frictionCoefficient(frictionCoefficientParam),
-          regularization(regularizationParam),
-          gripperForce(gripperForceParam),
-          hessianDiagonalShift(hessianDiagonalShiftParam) {
+        : FrictionCoefficient(frictionCoefficientParam),
+          Regularization(regularizationParam),
+          GripperForce(gripperForceParam),
+          HessianDiagonalShift(hessianDiagonalShiftParam) {
       assert(frictionCoefficient > 0.0);
       assert(regularization > 0.0);
       assert(hessianDiagonalShift >= 0.0);
@@ -91,18 +78,18 @@ class FrictionConeConstraint final : public StateInputConstraint {
                          CentroidalModelInfo info);
 
   ~FrictionConeConstraint() override = default;
-  FrictionConeConstraint* clone() const override { return new FrictionConeConstraint(*this); }
+  FrictionConeConstraint* Clone() const override { return new FrictionConeConstraint(*this); }
 
-  bool isActive(scalar_t time) const override;
-  size_t getNumConstraints(scalar_t time) const override { return 1; };
-  vector_t getValue(scalar_t time, const vector_t& state, const vector_t& input, const PreComputation& preComp) const override;
-  VectorFunctionLinearApproximation getLinearApproximation(scalar_t time, const vector_t& state, const vector_t& input,
+  bool IsActive(scalar_t time) const override;
+  size_t GetNumConstraints(scalar_t time) const override { return 1; };
+  vector_t GetValue(scalar_t time, const vector_t& state, const vector_t& input, const PreComputation& preComp) const override;
+  VectorFunctionLinearApproximation GetLinearApproximation(scalar_t time, const vector_t& state, const vector_t& input,
                                                            const PreComputation& preComp) const override;
-  VectorFunctionQuadraticApproximation getQuadraticApproximation(scalar_t time, const vector_t& state, const vector_t& input,
+  VectorFunctionQuadraticApproximation GetQuadraticApproximation(scalar_t time, const vector_t& state, const vector_t& input,
                                                                  const PreComputation& preComp) const override;
 
   /** Sets the estimated terrain normal expressed in the world frame. */
-  void setSurfaceNormalInWorld(const vector3_t& surfaceNormalInWorld);
+  void SetSurfaceNormalInWorld(const vector3_t& surfaceNormalInWorld);
 
  private:
   struct LocalForceDerivatives {
@@ -123,15 +110,15 @@ class FrictionConeConstraint final : public StateInputConstraint {
   };
 
   FrictionConeConstraint(const FrictionConeConstraint& other) = default;
-  vector_t coneConstraint(const vector3_t& localForces) const;
-  LocalForceDerivatives computeLocalForceDerivatives(const vector3_t& forcesInBodyFrame) const;
-  ConeLocalDerivatives computeConeLocalDerivatives(const vector3_t& localForces) const;
-  ConeDerivatives computeConeConstraintDerivatives(const ConeLocalDerivatives& coneLocalDerivatives,
+  vector_t ConeConstraint(const vector3_t& localForces) const;
+  LocalForceDerivatives ComputeLocalForceDerivatives(const vector3_t& forcesInBodyFrame) const;
+  ConeLocalDerivatives ComputeConeLocalDerivatives(const vector3_t& localForces) const;
+  ConeDerivatives ComputeConeConstraintDerivatives(const ConeLocalDerivatives& coneLocalDerivatives,
                                                    const LocalForceDerivatives& localForceDerivatives) const;
 
-  matrix_t frictionConeInputDerivative(size_t inputDim, const ConeDerivatives& coneDerivatives) const;
-  matrix_t frictionConeSecondDerivativeInput(size_t inputDim, const ConeDerivatives& coneDerivatives) const;
-  matrix_t frictionConeSecondDerivativeState(size_t stateDim, const ConeDerivatives& coneDerivatives) const;
+  matrix_t FrictionConeInputDerivative(size_t inputDim, const ConeDerivatives& coneDerivatives) const;
+  matrix_t FrictionConeSecondDerivativeInput(size_t inputDim, const ConeDerivatives& coneDerivatives) const;
+  matrix_t FrictionConeSecondDerivativeState(size_t stateDim, const ConeDerivatives& coneDerivatives) const;
 
   const SwitchedModelReferenceManager* referenceManagerPtr_;
 
@@ -144,4 +131,4 @@ class FrictionConeConstraint final : public StateInputConstraint {
 };
 
 }  // namespace legged_robot
-}  // namespace automanip
+}  // namespace bolza

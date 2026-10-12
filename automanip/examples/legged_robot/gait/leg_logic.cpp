@@ -1,31 +1,18 @@
-/******************************************************************************
-Copyright (c) 2021, Farbod Farshidian. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
- * Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
- * Neither the name of the copyright holder nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-******************************************************************************/
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "examples/legged_robot/gait/leg_logic.hpp"
 
@@ -33,79 +20,79 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace {
 
-inline automanip::scalar_t timingNaN() {
-  return std::numeric_limits<automanip::scalar_t>::quiet_NaN();
+inline bolza::scalar_t TimingNaN() {
+  return std::numeric_limits<bolza::scalar_t>::quiet_NaN();
 }
 
-inline bool hasStartTime(const automanip::legged_robot::ContactTiming& timing) {
-  return !std::isnan(timing.start);
+inline bool HasStartTime(const bolza::legged_robot::ContactTiming& timing) {
+  return !std::Isnan(timing.start);
 }
-inline bool hasEndTime(const automanip::legged_robot::ContactTiming& timing) {
-  return !std::isnan(timing.end);
-}
-
-inline bool hasStartTime(const automanip::legged_robot::SwingTiming& timing) {
-  return !std::isnan(timing.start);
-}
-inline bool hasEndTime(const automanip::legged_robot::SwingTiming& timing) {
-  return !std::isnan(timing.end);
+inline bool HasEndTime(const bolza::legged_robot::ContactTiming& timing) {
+  return !std::Isnan(timing.end);
 }
 
-inline bool startsWithSwingPhase(const std::vector<automanip::legged_robot::ContactTiming>& timings) {
-  return timings.empty() || hasStartTime(timings.front());
+inline bool HasStartTime(const bolza::legged_robot::SwingTiming& timing) {
+  return !std::Isnan(timing.start);
 }
-inline bool startsWithContactPhase(const std::vector<automanip::legged_robot::ContactTiming>& timings) {
-  return !startsWithSwingPhase(timings);
-}
-inline bool endsWithSwingPhase(const std::vector<automanip::legged_robot::ContactTiming>& timings) {
-  return timings.empty() || hasEndTime(timings.back());
-}
-inline bool endsWithContactPhase(const std::vector<automanip::legged_robot::ContactTiming>& timings) {
-  return !endsWithSwingPhase(timings);
+inline bool HasEndTime(const bolza::legged_robot::SwingTiming& timing) {
+  return !std::Isnan(timing.end);
 }
 
-inline bool startsWithContactPhase(const std::vector<automanip::legged_robot::SwingTiming>& timings) {
-  return timings.empty() || hasStartTime(timings.front());
+inline bool StartsWithSwingPhase(const std::vector<bolza::legged_robot::ContactTiming>& timings) {
+  return timings.empty() || HasStartTime(timings.front());
 }
-inline bool startsWithSwingPhase(const std::vector<automanip::legged_robot::SwingTiming>& timings) {
+inline bool startsWithContactPhase(const std::vector<bolza::legged_robot::ContactTiming>& timings) {
+  return !StartsWithSwingPhase(timings);
+}
+inline bool EndsWithSwingPhase(const std::vector<bolza::legged_robot::ContactTiming>& timings) {
+  return timings.empty() || HasEndTime(timings.back());
+}
+inline bool endsWithContactPhase(const std::vector<bolza::legged_robot::ContactTiming>& timings) {
+  return !EndsWithSwingPhase(timings);
+}
+
+inline bool startsWithContactPhase(const std::vector<bolza::legged_robot::SwingTiming>& timings) {
+  return timings.empty() || HasStartTime(timings.front());
+}
+inline bool StartsWithSwingPhase(const std::vector<bolza::legged_robot::SwingTiming>& timings) {
   return !startsWithContactPhase(timings);
 }
-inline bool endsWithContactPhase(const std::vector<automanip::legged_robot::SwingTiming>& timings) {
-  return timings.empty() || hasEndTime(timings.back());
+inline bool endsWithContactPhase(const std::vector<bolza::legged_robot::SwingTiming>& timings) {
+  return timings.empty() || HasEndTime(timings.back());
 }
-inline bool endsWithSwingPhase(const std::vector<automanip::legged_robot::SwingTiming>& timings) {
+inline bool EndsWithSwingPhase(const std::vector<bolza::legged_robot::SwingTiming>& timings) {
   return !endsWithContactPhase(timings);
 }
 
-inline bool touchesDownAtLeastOnce(const std::vector<automanip::legged_robot::ContactTiming>& timings) {
-  return std::any_of(timings.begin(), timings.end(), [](const automanip::legged_robot::ContactTiming& timing) { return hasStartTime(timing); });
+inline bool TouchesDownAtLeastOnce(const std::vector<bolza::legged_robot::ContactTiming>& timings) {
+  return std::any_of(timings.begin(), timings.end(), [](const bolza::legged_robot::ContactTiming& timing) { return HasStartTime(timing); });
 }
 
-inline bool liftsOffAtLeastOnce(const std::vector<automanip::legged_robot::ContactTiming>& timings) {
-  return !timings.empty() && hasEndTime(timings.front());
+inline bool LiftsOffAtLeastOnce(const std::vector<bolza::legged_robot::ContactTiming>& timings) {
+  return !timings.empty() && HasEndTime(timings.front());
 }
 
-inline bool touchesDownAtLeastOnce(const std::vector<automanip::legged_robot::SwingTiming>& timings) {
-  return !timings.empty() && hasEndTime(timings.front());
+inline bool TouchesDownAtLeastOnce(const std::vector<bolza::legged_robot::SwingTiming>& timings) {
+  return !timings.empty() && HasEndTime(timings.front());
 }
 
-inline bool liftsOffAtLeastOnce(const std::vector<automanip::legged_robot::SwingTiming>& timings) {
-  return std::any_of(timings.begin(), timings.end(), [](const automanip::legged_robot::SwingTiming& timing) { return hasStartTime(timing); });
+inline bool LiftsOffAtLeastOnce(const std::vector<bolza::legged_robot::SwingTiming>& timings) {
+  return std::any_of(timings.begin(), timings.end(), [](const bolza::legged_robot::SwingTiming& timing) { return HasStartTime(timing); });
 }
 
 }  // anonymous namespace
 
-namespace automanip {
+namespace bolza {
 namespace legged_robot {
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-feet_array_t<LegPhase> getContactPhasePerLeg(scalar_t time, const automanip::ModeSchedule& modeSchedule) {
+feet_array_t<LegPhase> GetContactPhasePerLeg(scalar_t time, const bolza::ModeSchedule& modeSchedule) {
   feet_array_t<LegPhase> contactPhasePerLeg;
 
   // Convert mode sequence to a contact timing vector per leg
-  const auto contactTimingsPerLeg = extractContactTimingsPerLeg(modeSchedule);
+  const auto contactTimingsPerLeg = ExtractContactTimingsPerLeg(modeSchedule);
 
   // Extract contact phases per leg
   for (size_t leg = 0; leg < contactPhasePerLeg.size(); ++leg) {
@@ -113,7 +100,7 @@ feet_array_t<LegPhase> getContactPhasePerLeg(scalar_t time, const automanip::Mod
       // Leg is always in swing phase
       contactPhasePerLeg[leg].phase = -1.0;
       contactPhasePerLeg[leg].duration = std::numeric_limits<scalar_t>::quiet_NaN();
-    } else if (startsWithContactPhase(contactTimingsPerLeg[leg]) && (time <= contactTimingsPerLeg[leg].front().end)) {
+    } else if (startsWithContactPhase(contactTimingsPerLeg[leg]) && (Time <= contactTimingsPerLeg[leg].front().end)) {
       // It is assumed that contact phase started at minus infinity, so current time will be always close to ContactTiming.end
       contactPhasePerLeg[leg].phase = 1.0;
       contactPhasePerLeg[leg].duration = std::numeric_limits<scalar_t>::infinity();
@@ -124,7 +111,7 @@ feet_array_t<LegPhase> getContactPhasePerLeg(scalar_t time, const automanip::Mod
     } else {
       // Check if leg is in contact interval at current time
       auto it = std::find_if(contactTimingsPerLeg[leg].begin(), contactTimingsPerLeg[leg].end(),
-                             [time](ContactTiming timing) { return (timing.start <= time) && (time <= timing.end); });
+                             [time](ContactTiming timing) { return (timing.start <= time) && (Time <= timing.end); });
       if (it == contactTimingsPerLeg[leg].end()) {
         // Leg is not in contact for current time
         contactPhasePerLeg[leg].phase = -1.0;
@@ -144,11 +131,11 @@ feet_array_t<LegPhase> getContactPhasePerLeg(scalar_t time, const automanip::Mod
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-feet_array_t<LegPhase> getSwingPhasePerLeg(scalar_t time, const automanip::ModeSchedule& modeSchedule) {
+feet_array_t<LegPhase> GetSwingPhasePerLeg(scalar_t time, const bolza::ModeSchedule& modeSchedule) {
   feet_array_t<LegPhase> swingPhasePerLeg;
 
   // Convert mode sequence to a swing timing vector per leg
-  const auto swingTimingsPerLeg = extractSwingTimingsPerLeg(modeSchedule);
+  const auto swingTimingsPerLeg = ExtractSwingTimingsPerLeg(modeSchedule);
 
   // Extract swing phases per leg
   for (size_t leg = 0; leg < swingPhasePerLeg.size(); ++leg) {
@@ -156,18 +143,18 @@ feet_array_t<LegPhase> getSwingPhasePerLeg(scalar_t time, const automanip::ModeS
       // Leg is always in contact phase
       swingPhasePerLeg[leg].phase = -1.0;
       swingPhasePerLeg[leg].duration = std::numeric_limits<scalar_t>::quiet_NaN();
-    } else if (startsWithSwingPhase(swingTimingsPerLeg[leg]) && (time <= swingTimingsPerLeg[leg].front().end)) {
+    } else if (StartsWithSwingPhase(swingTimingsPerLeg[leg]) && (Time <= swingTimingsPerLeg[leg].front().end)) {
       // It is assumed that swing phase started at minus infinity, so current time will be always close to SwingTiming.end
       swingPhasePerLeg[leg].phase = 1.0;
       swingPhasePerLeg[leg].duration = std::numeric_limits<scalar_t>::infinity();
-    } else if (endsWithSwingPhase(swingTimingsPerLeg[leg]) && (time >= swingTimingsPerLeg[leg].back().start)) {
+    } else if (EndsWithSwingPhase(swingTimingsPerLeg[leg]) && (time >= swingTimingsPerLeg[leg].back().start)) {
       // It is assumed that swing phase ends at infinity, so current time will be always close to SwingTiming.start
       swingPhasePerLeg[leg].phase = 0.0;
       swingPhasePerLeg[leg].duration = std::numeric_limits<scalar_t>::infinity();
     } else {
       // Check if leg is in swing interval at current time
       auto it = std::find_if(swingTimingsPerLeg[leg].begin(), swingTimingsPerLeg[leg].end(),
-                             [time](SwingTiming timing) { return (timing.start <= time) && (time <= timing.end); });
+                             [time](SwingTiming timing) { return (timing.start <= time) && (Time <= timing.end); });
       if (it == swingTimingsPerLeg[leg].end()) {
         // Leg is not swinging for current time
         swingPhasePerLeg[leg].phase = scalar_t(-1.0);
@@ -187,15 +174,15 @@ feet_array_t<LegPhase> getSwingPhasePerLeg(scalar_t time, const automanip::ModeS
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-feet_array_t<std::vector<ContactTiming>> extractContactTimingsPerLeg(const automanip::ModeSchedule& modeSchedule) {
+feet_array_t<std::vector<ContactTiming>> ExtractContactTimingsPerLeg(const bolza::ModeSchedule& modeSchedule) {
   feet_array_t<std::vector<ContactTiming>> contactTimingsPerLeg;
 
   // Convert mode sequence to a contact flag vector per leg
-  const auto contactSequencePerLeg = extractContactFlags(modeSchedule.modeSequence);
+  const auto contactSequencePerLeg = ExtractContactFlags(modeSchedule.modeSequence);
 
   // Extract timings per leg
   for (size_t leg = 0; leg < contactTimingsPerLeg.size(); ++leg) {
-    contactTimingsPerLeg[leg] = extractContactTimings(modeSchedule.eventTimes, contactSequencePerLeg[leg]);
+    contactTimingsPerLeg[leg] = ExtractContactTimings(modeSchedule.eventTimes, contactSequencePerLeg[leg]);
   }
 
   return contactTimingsPerLeg;
@@ -204,15 +191,15 @@ feet_array_t<std::vector<ContactTiming>> extractContactTimingsPerLeg(const autom
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-feet_array_t<std::vector<SwingTiming>> extractSwingTimingsPerLeg(const automanip::ModeSchedule& modeSchedule) {
+feet_array_t<std::vector<SwingTiming>> ExtractSwingTimingsPerLeg(const bolza::ModeSchedule& modeSchedule) {
   feet_array_t<std::vector<SwingTiming>> swingTimingsPerLeg;
 
   // Convert mode sequence to a contact flag vector per leg
-  const auto contactSequencePerLeg = extractContactFlags(modeSchedule.modeSequence);
+  const auto contactSequencePerLeg = ExtractContactFlags(modeSchedule.modeSequence);
 
   // Extract timings per leg
   for (size_t leg = 0; leg < swingTimingsPerLeg.size(); ++leg) {
-    swingTimingsPerLeg[leg] = extractSwingTimings(modeSchedule.eventTimes, contactSequencePerLeg[leg]);
+    swingTimingsPerLeg[leg] = ExtractSwingTimings(modeSchedule.eventTimes, contactSequencePerLeg[leg]);
   }
 
   return swingTimingsPerLeg;
@@ -221,31 +208,31 @@ feet_array_t<std::vector<SwingTiming>> extractSwingTimingsPerLeg(const automanip
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-scalar_t getTimeOfNextLiftOff(scalar_t currentTime, const std::vector<ContactTiming>& contactTimings) {
+scalar_t GetTimeOfNextLiftOff(scalar_t currentTime, const std::vector<ContactTiming>& contactTimings) {
   for (const auto& contactPhase : contactTimings) {
-    if (hasEndTime(contactPhase) && contactPhase.end > currentTime) {
+    if (HasEndTime(contactPhase) && contactPhase.end > currentTime) {
       return contactPhase.end;
     }
   }
-  return timingNaN();
+  return TimingNaN();
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-scalar_t getTimeOfNextTouchDown(scalar_t currentTime, const std::vector<ContactTiming>& contactTimings) {
+scalar_t GetTimeOfNextTouchDown(scalar_t currentTime, const std::vector<ContactTiming>& contactTimings) {
   for (const auto& contactPhase : contactTimings) {
-    if (hasStartTime(contactPhase) && contactPhase.start > currentTime) {
+    if (HasStartTime(contactPhase) && contactPhase.start > currentTime) {
       return contactPhase.start;
     }
   }
-  return timingNaN();
+  return TimingNaN();
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-std::vector<ContactTiming> extractContactTimings(const std::vector<scalar_t>& eventTimes, const std::vector<bool>& contactFlags) {
+std::vector<ContactTiming> ExtractContactTimings(const std::vector<scalar_t>& eventTimes, const std::vector<bool>& contactFlags) {
   assert(eventTimes.size() + 1 == contactFlags.size());
   const int numPhases = contactFlags.size();
 
@@ -283,7 +270,7 @@ std::vector<ContactTiming> extractContactTimings(const std::vector<scalar_t>& ev
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-std::vector<SwingTiming> extractSwingTimings(const std::vector<scalar_t>& eventTimes, const std::vector<bool>& contactFlags) {
+std::vector<SwingTiming> ExtractSwingTimings(const std::vector<scalar_t>& eventTimes, const std::vector<bool>& contactFlags) {
   assert(eventTimes.size() + 1 == contactFlags.size());
   const int numPhases = contactFlags.size();
 
@@ -321,14 +308,14 @@ std::vector<SwingTiming> extractSwingTimings(const std::vector<scalar_t>& eventT
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-feet_array_t<std::vector<bool>> extractContactFlags(const std::vector<size_t>& modeSequence) {
+feet_array_t<std::vector<bool>> ExtractContactFlags(const std::vector<size_t>& modeSequence) {
   const size_t numPhases = modeSequence.size();
 
   feet_array_t<std::vector<bool>> contactFlagStock;
   std::fill(contactFlagStock.begin(), contactFlagStock.end(), std::vector<bool>(numPhases));
 
   for (size_t i = 0; i < numPhases; i++) {
-    const auto contactFlag = modeNumber2StanceLeg(modeSequence[i]);
+    const auto contactFlag = ModeNumber2StanceLeg(modeSequence[i]);
     for (size_t j = 0; j < contactFlagStock.size(); j++) {
       contactFlagStock[j][i] = contactFlag[j];
     }
@@ -337,4 +324,4 @@ feet_array_t<std::vector<bool>> extractContactFlags(const std::vector<size_t>& m
 }
 
 }  // namespace legged_robot
-}  // namespace automanip
+}  // namespace bolza

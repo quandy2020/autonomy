@@ -1,0 +1,71 @@
+# Copyright 2026 Bolza contributors duyongquan (quandy2020@126.com)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+#   find_package(bolza REQUIRED)
+#   target_link_libraries(MY_TARGET_NAME PUBLIC bolza)
+
+@PACKAGE_INIT@
+
+set_and_check(BOLZA_CMAKE_DIR "@PACKAGE_BOLZA_CMAKE_DIR@")
+set(BOLZA_HAS_COAL @BOLZA_HAS_COAL@)
+set(BOLZA_HAS_ONNX @BOLZA_HAS_ONNX@)
+
+if(bolza_FIND_QUIETLY)
+  set(QUIET_OR_REQUIRED_OPTION "QUIET")
+elseif(bolza_FIND_REQUIRED)
+  set(QUIET_OR_REQUIRED_OPTION "REQUIRED")
+else()
+  set(QUIET_OR_REQUIRED_OPTION "")
+endif()
+
+list(PREPEND CMAKE_MODULE_PATH "${BOLZA_CMAKE_DIR}/modules")
+
+find_package(Eigen3 ${QUIET_OR_REQUIRED_OPTION})
+find_package(Threads ${QUIET_OR_REQUIRED_OPTION})
+find_package(OpenMP ${QUIET_OR_REQUIRED_OPTION})
+find_package(CppAD ${QUIET_OR_REQUIRED_OPTION})
+find_package(Pinocchio ${QUIET_OR_REQUIRED_OPTION})
+find_package(GLPK ${QUIET_OR_REQUIRED_OPTION})
+if(BOLZA_HAS_COAL)
+  find_package(Coal ${QUIET_OR_REQUIRED_OPTION})
+endif()
+if(BOLZA_HAS_ONNX)
+  find_package(ONNXRuntime ${QUIET_OR_REQUIRED_OPTION})
+endif()
+
+if(NOT TARGET bolza)
+  add_library(bolza SHARED IMPORTED)
+  set_target_properties(bolza PROPERTIES
+    IMPORTED_LOCATION "${PACKAGE_PREFIX_DIR}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}bolza${CMAKE_SHARED_LIBRARY_SUFFIX}"
+    INTERFACE_INCLUDE_DIRECTORIES "${PACKAGE_PREFIX_DIR}/include")
+  foreach(_dep IN ITEMS
+      Eigen3::Eigen Threads::Threads OpenMP::OpenMP_CXX CppAD::CppAD
+      pinocchio::pinocchio GLPK::GLPK)
+    if(TARGET ${_dep})
+      target_link_libraries(bolza INTERFACE ${_dep})
+    endif()
+  endforeach()
+  if(BOLZA_HAS_COAL AND TARGET coal::coal)
+    target_link_libraries(bolza INTERFACE coal::coal)
+  endif()
+  if(BOLZA_HAS_ONNX AND TARGET onnxruntime::onnxruntime)
+    target_link_libraries(bolza INTERFACE onnxruntime::onnxruntime)
+  endif()
+endif()
+if(NOT TARGET bolza::bolza)
+  add_library(bolza::bolza ALIAS bolza)
+endif()
+
+unset(QUIET_OR_REQUIRED_OPTION)
+check_required_components(bolza)

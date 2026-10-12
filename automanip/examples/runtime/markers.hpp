@@ -33,7 +33,7 @@
 
 #include "autolink/time/time.hpp"
 
-namespace automanip {
+namespace bolza {
 namespace examples {
 
 inline void StampHeader(automsgs::msgs::std_msgs::Header* header,
@@ -136,6 +136,6 @@ inline void AddPathPose(automsgs::msgs::nav_msgs::Path* path, double x,
 }
 
 }  // namespace examples
-}  // namespace automanip
+}  // namespace bolza
 
 #endif  // AUTOMANIP_EXAMPLES_RUNTIME_MARKERS_HPP_

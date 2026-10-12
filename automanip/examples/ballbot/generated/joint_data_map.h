@@ -82,7 +82,7 @@ void JointDataMap<T>::assigndata(const T& value) {
 
 template<typename T> inline
 std::ostream& operator<<(std::ostream& out, const JointDataMap<T>& map) {
-    out
+    Out
     << "   jball_x = "
     << map[JBALL_X]
     << "   jball_y = "

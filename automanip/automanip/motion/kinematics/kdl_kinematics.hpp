@@ -1,0 +1,79 @@
+/*
+ * Copyright 2026 The Openbot Authors
+ *
+ * Orocos KDL FK / IK (MoveIt kdl_kinematics_plugin analogue).
+ */
+
+#pragma once
+
+#include <string>
+#include <vector>
+
+#include "automanip/model/urdf_kdl_chain.hpp"
+#include "automanip/common/kinematics_interface.hpp"
+
+namespace automanip {
+namespace kinematics {
+
+/**
+ * @brief Orocos KDL-based FK/IK for a URDF chain (requires AUTOMANIP_HAS_KDL).
+ */
+class KdlKinematics : public common::KinematicsInterface {
+ public:
+  /**
+   * @brief Store group / frame names; call LoadUrdf before solving.
+   * @param[in] group Planning group name.
+   * @param[in] base_frame Chain base link.
+   * @param[in] tip_frame Chain tip link.
+   * @return true on successful init.
+   */
+  bool Init(const std::string& group, const std::string& base_frame,
+            const std::string& tip_frame) override;
+
+  /**
+   * @brief Build the KDL chain from a URDF file using Init frames.
+   * @param[in] urdf_path Path to URDF.
+   * @return true if the chain was built.
+   */
+  bool LoadUrdf(const std::string& urdf_path);
+
+  /**
+   * @brief Forward kinematics via KDL.
+   * @param[in] joints Joint configuration (mapped by name).
+   * @param[out] tip_pose Computed tip pose.
+   * @return true on success.
+   */
+  bool GetPositionFK(const automsgs::msgs::sensor_msgs::JointState& joints,
+                     automsgs::msgs::geometry_msgs::Pose* tip_pose) const override;
+
+  /**
+   * @brief Inverse kinematics via KDL (with retries from @p options).
+   * @param[in] tip_pose Desired tip pose.
+   * @param[in] seed Seed joint state.
+   * @param[in] options Timeout / attempts / position-only.
+   * @param[out] solution Joint solution on success.
+   * @return ErrorCode::SUCCESS or ErrorCode::NO_INVERSE_KINEMATICS_SOLUTION / failure.
+   */
+  ErrorCode GetPositionIK(const automsgs::msgs::geometry_msgs::Pose& tip_pose, const automsgs::msgs::sensor_msgs::JointState& seed,
+                          const common::InverseKinematicsOptions& options,
+                          automsgs::msgs::sensor_msgs::JointState* solution) const override;
+
+  /** @brief Movable joint names of the loaded chain. */
+  const std::vector<std::string>& JointNames() const {
+    return model_.joint_names;
+  }
+
+ private:
+  bool MapJoints(const automsgs::msgs::sensor_msgs::JointState& joints, KDL::JntArray* q) const;
+  bool SolveOnce(const automsgs::msgs::geometry_msgs::Pose& tip_pose, const KDL::JntArray& q_seed,
+                 bool position_only, KDL::JntArray* q_out) const;
+
+  std::string group_;
+  std::string base_frame_;
+  std::string tip_frame_;
+  model::KdlChainDescription model_;
+  bool ready_ = false;
+};
+
+}  // namespace kinematics
+}  // namespace automanip

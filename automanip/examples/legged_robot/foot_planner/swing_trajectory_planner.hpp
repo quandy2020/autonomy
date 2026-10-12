@@ -1,40 +1,27 @@
-/******************************************************************************
-Copyright (c) 2021, Farbod Farshidian. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
- * Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
- * Neither the name of the copyright holder nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-******************************************************************************/
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #pragma once
 
-#include <automanip/core/reference/mode_schedule.hpp>
+#include <bolza/core/reference/mode_schedule.hpp>
 
 #include "examples/legged_robot/common/types.hpp"
 #include "examples/legged_robot/foot_planner/spline_cpg.hpp"
 
-namespace automanip {
+namespace bolza {
 namespace legged_robot {
 
 class SwingTrajectoryPlanner {
@@ -48,14 +35,14 @@ class SwingTrajectoryPlanner {
 
   SwingTrajectoryPlanner(Config config, size_t numFeet);
 
-  void update(const ModeSchedule& modeSchedule, scalar_t terrainHeight);
+  void Update(const ModeSchedule& modeSchedule, scalar_t terrainHeight);
 
-  void update(const ModeSchedule& modeSchedule, const feet_array_t<scalar_array_t>& liftOffHeightSequence,
+  void Update(const ModeSchedule& modeSchedule, const feet_array_t<scalar_array_t>& liftOffHeightSequence,
               const feet_array_t<scalar_array_t>& touchDownHeightSequence);
 
-  scalar_t getZvelocityConstraint(size_t leg, scalar_t time) const;
+  scalar_t GetZvelocityConstraint(size_t leg, scalar_t time) const;
 
-  scalar_t getZpositionConstraint(size_t leg, scalar_t time) const;
+  scalar_t GetZpositionConstraint(size_t leg, scalar_t time) const;
 
  private:
   /**
@@ -63,7 +50,7 @@ class SwingTrajectoryPlanner {
    * @param phaseIDsStock
    * @return contactFlagStock
    */
-  feet_array_t<std::vector<bool>> extractContactFlags(const std::vector<size_t>& phaseIDsStock) const;
+  feet_array_t<std::vector<bool>> ExtractContactFlags(const std::vector<size_t>& phaseIDsStock) const;
 
   /**
    * Finds the take-off and touch-down times indices for a specific leg.
@@ -72,7 +59,7 @@ class SwingTrajectoryPlanner {
    * @param contactFlagStock
    * @return {The take-off time index for swing legs, touch-down time index for swing legs}
    */
-  static std::pair<int, int> findIndex(size_t index, const std::vector<bool>& contactFlagStock);
+  static std::pair<int, int> FindIndex(size_t index, const std::vector<bool>& contactFlagStock);
 
   /**
    * based on the input phaseIDsStock finds the start subsystem and final subsystem of the swing
@@ -86,7 +73,7 @@ class SwingTrajectoryPlanner {
    * @param [in] contactFlagStock: The sequence of the contact status for the requested leg.
    * @return { startTimeIndexStock, finalTimeIndexStock}
    */
-  static std::pair<std::vector<int>, std::vector<int>> updateFootSchedule(const std::vector<bool>& contactFlagStock);
+  static std::pair<std::vector<int>, std::vector<int>> UpdateFootSchedule(const std::vector<bool>& contactFlagStock);
 
   /**
    * Check if event time indices are valid
@@ -96,9 +83,9 @@ class SwingTrajectoryPlanner {
    * @param finalIndex : touchdown event time index
    * @param phaseIDsStock : mode sequence
    */
-  static void checkThatIndicesAreValid(int leg, int index, int startIndex, int finalIndex, const std::vector<size_t>& phaseIDsStock);
+  static void CheckThatIndicesAreValid(int leg, int index, int startIndex, int finalIndex, const std::vector<size_t>& phaseIDsStock);
 
-  static scalar_t swingTrajectoryScaling(scalar_t startTime, scalar_t finalTime, scalar_t swingTimeScale);
+  static scalar_t SwingTrajectoryScaling(scalar_t startTime, scalar_t finalTime, scalar_t swingTimeScale);
 
   const Config config_;
   const size_t numFeet_;
@@ -107,8 +94,8 @@ class SwingTrajectoryPlanner {
   feet_array_t<std::vector<scalar_t>> feetHeightTrajectoriesEvents_;
 };
 
-SwingTrajectoryPlanner::Config loadSwingTrajectorySettings(const std::string& fileName,
+SwingTrajectoryPlanner::Config LoadSwingTrajectorySettings(const std::string& fileName,
                                                            const std::string& fieldName = "swing_trajectory_config", bool verbose = true);
 
 }  // namespace legged_robot
-}  // namespace automanip
+}  // namespace bolza

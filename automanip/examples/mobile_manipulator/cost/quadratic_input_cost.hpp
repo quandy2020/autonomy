@@ -1,37 +1,24 @@
-/******************************************************************************
-Copyright (c) 2020, Farbod Farshidian. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-* Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
-* Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
-* Neither the name of the copyright holder nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-******************************************************************************/
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #pragma once
 
-#include <automanip/core/cost/quadratic_state_input_cost.hpp>
+#include <bolza/core/cost/quadratic_state_input_cost.hpp>
 
-namespace automanip {
+namespace bolza {
 namespace mobile_manipulator {
 
 class QuadraticInputCost final : public QuadraticStateInputCost {
@@ -42,11 +29,11 @@ class QuadraticInputCost final : public QuadraticStateInputCost {
   ~QuadraticInputCost() override = default;
 
   QuadraticInputCost(const QuadraticInputCost& rhs) = default;
-  QuadraticInputCost* clone() const override { return new QuadraticInputCost(*this); }
+  QuadraticInputCost* Clone() const override { return new QuadraticInputCost(*this); }
 
-  std::pair<vector_t, vector_t> getStateInputDeviation(scalar_t time, const vector_t& state, const vector_t& input,
+  std::pair<vector_t, vector_t> GetStateInputDeviation(scalar_t time, const vector_t& state, const vector_t& input,
                                                        const TargetTrajectories& targetTrajectories) const override {
-    const vector_t inputDeviation = input - targetTrajectories.getDesiredInput(time);
+    const vector_t inputDeviation = input - targetTrajectories.GetDesiredInput(time);
     return {vector_t::Zero(stateDim_), inputDeviation};
   }
 
@@ -55,4 +42,4 @@ class QuadraticInputCost final : public QuadraticStateInputCost {
 };
 
 }  // namespace mobile_manipulator
-}  // namespace automanip
+}  // namespace bolza

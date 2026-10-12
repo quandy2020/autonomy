@@ -42,7 +42,7 @@ class JSIM : public iit::rbd::StateDependentMatrix<iit::Ballbot::tpl::JointState
         JSIM(IProperties&, FTransforms&);
         ~JSIM() {}
 
-        const JSIM& update(const JointState&);
+        const JSIM& Update(const JointState&);
 
 
         /**

@@ -12,10 +12,10 @@
 #include "examples/ballbot/generated/jsim.h"
 #include "examples/ballbot/generated/transforms.h"
 
-namespace automanip {
+namespace bolza {
 namespace ballbot {
 
-ad_vector_t BallbotSystemDynamics::systemFlowMap(ad_scalar_t time, const ad_vector_t& state, const ad_vector_t& input,
+ad_vector_t BallbotSystemDynamics::SystemFlowMap(ad_scalar_t time, const ad_vector_t& state, const ad_vector_t& input,
                                                  const ad_vector_t& parameters) const {
   // compute actuationMatrix S_transposed which appears in the equations: M(q)\dot v + h = S^(transpose)\tau
   Eigen::Matrix<ad_scalar_t, 5, 3> S_transposed = Eigen::Matrix<ad_scalar_t, 5, 3>::Zero();
@@ -75,10 +75,10 @@ ad_vector_t BallbotSystemDynamics::systemFlowMap(ad_scalar_t time, const ad_vect
   forward_dyn.fd(qdd, state.head<5>(), state.tail<5>(), new_input);
 
   // dxdt
-  ad_vector_t stateDerivative(10);
-  stateDerivative << state.tail<5>(), qdd;
+  ad_vector_t StateDerivative(10);
+  StateDerivative << state.tail<5>(), qdd;
   return stateDerivative;
 }
 
 }  // namespace ballbot
-}  // namespace automanip
+}  // namespace bolza

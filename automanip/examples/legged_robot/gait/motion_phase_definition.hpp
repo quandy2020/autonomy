@@ -1,31 +1,18 @@
-/******************************************************************************
-Copyright (c) 2021, Farbod Farshidian. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
- * Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
- * Neither the name of the copyright holder nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-******************************************************************************/
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #pragma once
 
@@ -34,14 +21,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <vector>
 
-#include <boost/property_tree/info_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
 
-#include <automanip/core/misc/load_data.hpp>
+#include <bolza/core/misc/load_data.hpp>
 
 #include "examples/legged_robot/common/types.hpp"
 
-namespace automanip {
+namespace bolza {
 namespace legged_robot {
 
 enum ModeNumber {  // {LF, RF, LH, RH}
@@ -66,7 +51,7 @@ enum ModeNumber {  // {LF, RF, LH, RH}
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-inline contact_flag_t modeNumber2StanceLeg(const size_t& modeNumber) {
+inline contact_flag_t ModeNumber2StanceLeg(const size_t& modeNumber) {
   contact_flag_t stanceLegs;  // {LF, RF, LH, RH}
 
   switch (modeNumber) {
@@ -126,7 +111,7 @@ inline contact_flag_t modeNumber2StanceLeg(const size_t& modeNumber) {
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-inline size_t stanceLeg2ModeNumber(const contact_flag_t& stanceLegs) {
+inline size_t StanceLeg2ModeNumber(const contact_flag_t& stanceLegs) {
   return static_cast<size_t>(stanceLegs[3]) + 2 * static_cast<size_t>(stanceLegs[2]) + 4 * static_cast<size_t>(stanceLegs[1]) +
          8 * static_cast<size_t>(stanceLegs[0]);
 }
@@ -134,7 +119,7 @@ inline size_t stanceLeg2ModeNumber(const contact_flag_t& stanceLegs) {
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-inline std::string modeNumber2String(const size_t& modeNumber) {
+inline std::string ModeNumber2String(const size_t& modeNumber) {
   // build the map from mode number to name
   std::map<size_t, std::string> modeToName;
   modeToName[FLY] = "FLY";
@@ -160,7 +145,7 @@ inline std::string modeNumber2String(const size_t& modeNumber) {
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-inline size_t string2ModeNumber(const std::string& modeString) {
+inline size_t String2ModeNumber(const std::string& modeString) {
   // build the map from name to mode number
   std::map<std::string, size_t> nameToMode;
   nameToMode["FLY"] = FLY;
@@ -184,4 +169,4 @@ inline size_t string2ModeNumber(const std::string& modeString) {
 }
 
 }  // namespace legged_robot
-}  // end of namespace automanip
+}  // end of namespace bolza

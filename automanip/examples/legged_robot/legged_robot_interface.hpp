@@ -1,46 +1,33 @@
-/******************************************************************************
-Copyright (c) 2021, Farbod Farshidian. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
- * Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
- * Neither the name of the copyright holder nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-******************************************************************************/
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #pragma once
 
 // ocs2
-#include <automanip/pinocchio/centroidal/factory_functions.hpp>
-#include <automanip/core/types.hpp>
-#include <automanip/core/penalties/penalties.hpp>
-#include <automanip/ddp/ddp_settings.hpp>
-#include <automanip/ipm/ipm_settings.hpp>
-#include <automanip/mpc/mpc_settings.hpp>
-#include <automanip/oc/rollout/time_triggered_rollout.hpp>
-#include <automanip/pinocchio/interface/pinocchio_interface.hpp>
-#include <automanip/tools/common/robot_interface.hpp>
-#include <automanip/tools/end_effector/end_effector_kinematics.hpp>
-#include <automanip/sqp/sqp_settings.hpp>
+#include <bolza/pinocchio/centroidal/factory_functions.hpp>
+#include <bolza/core/types.hpp>
+#include <bolza/core/penalties/penalties.hpp>
+#include <bolza/ddp/ddp_settings.hpp>
+#include <bolza/ipm/ipm_settings.hpp>
+#include <bolza/mpc/mpc_settings.hpp>
+#include <bolza/oc/rollout/time_triggered_rollout.hpp>
+#include <bolza/pinocchio/interface/pinocchio_interface.hpp>
+#include <bolza/tools/common/robot_interface.hpp>
+#include <bolza/tools/end_effector/end_effector_kinematics.hpp>
+#include <bolza/sqp/sqp_settings.hpp>
 
 #include "examples/legged_robot/common/model_settings.hpp"
 #include "examples/legged_robot/initialization/legged_robot_initializer.hpp"
@@ -50,7 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * LeggedRobotInterface class
  * General interface for mpc implementation on the legged robot model
  */
-namespace automanip {
+namespace bolza {
 namespace legged_robot {
 
 class LeggedRobotInterface final : public RobotInterface {
@@ -70,40 +57,40 @@ class LeggedRobotInterface final : public RobotInterface {
 
   ~LeggedRobotInterface() override = default;
 
-  const OptimalControlProblem& getOptimalControlProblem() const override { return *problemPtr_; }
+  const OptimalControlProblem& GetOptimalControlProblem() const override { return *problemPtr_; }
 
-  const ModelSettings& modelSettings() const { return modelSettings_; }
-  const ddp::Settings& ddpSettings() const { return ddpSettings_; }
-  const mpc::Settings& mpcSettings() const { return mpcSettings_; }
-  const rollout::Settings& rolloutSettings() const { return rolloutSettings_; }
-  const sqp::Settings& sqpSettings() { return sqpSettings_; }
-  const ipm::Settings& ipmSettings() { return ipmSettings_; }
+  const ModelSettings& ModelSettings() const { return modelSettings_; }
+  const ddp::Settings& DdpSettings() const { return ddpSettings_; }
+  const mpc::Settings& MpcSettings() const { return mpcSettings_; }
+  const rollout::Settings& RolloutSettings() const { return rolloutSettings_; }
+  const sqp::Settings& SqpSettings() { return sqpSettings_; }
+  const ipm::Settings& IpmSettings() { return ipmSettings_; }
 
-  const vector_t& getInitialState() const { return initialState_; }
-  const RolloutBase& getRollout() const { return *rolloutPtr_; }
-  PinocchioInterface& getPinocchioInterface() { return *pinocchioInterfacePtr_; }
-  const CentroidalModelInfo& getCentroidalModelInfo() const { return centroidalModelInfo_; }
-  std::shared_ptr<SwitchedModelReferenceManager> getSwitchedModelReferenceManagerPtr() const { return referenceManagerPtr_; }
+  const vector_t& GetInitialState() const { return initialState_; }
+  const RolloutBase& GetRollout() const { return *rolloutPtr_; }
+  PinocchioInterface& GetPinocchioInterface() { return *pinocchioInterfacePtr_; }
+  const CentroidalModelInfo& GetCentroidalModelInfo() const { return centroidalModelInfo_; }
+  std::shared_ptr<SwitchedModelReferenceManager> GetSwitchedModelReferenceManagerPtr() const { return referenceManagerPtr_; }
 
-  const LeggedRobotInitializer& getInitializer() const override { return *initializerPtr_; }
-  std::shared_ptr<ReferenceManagerInterface> getReferenceManagerPtr() const override { return referenceManagerPtr_; }
+  const LeggedRobotInitializer& GetInitializer() const override { return *initializerPtr_; }
+  std::shared_ptr<ReferenceManagerInterface> GetReferenceManagerPtr() const override { return referenceManagerPtr_; }
 
  private:
-  void setupOptimalConrolProblem(const std::string& taskFile, const std::string& urdfFile, const std::string& referenceFile, bool verbose);
+  void SetupOptimalConrolProblem(const std::string& taskFile, const std::string& urdfFile, const std::string& referenceFile, bool verbose);
 
-  std::shared_ptr<GaitSchedule> loadGaitSchedule(const std::string& file, bool verbose) const;
+  std::shared_ptr<GaitSchedule> LoadGaitSchedule(const std::string& file, bool verbose) const;
 
-  std::unique_ptr<StateInputCost> getBaseTrackingCost(const std::string& taskFile, const CentroidalModelInfo& info, bool verbose);
-  matrix_t initializeInputCostWeight(const std::string& taskFile, const CentroidalModelInfo& info);
+  std::unique_ptr<StateInputCost> GetBaseTrackingCost(const std::string& taskFile, const CentroidalModelInfo& info, bool verbose);
+  matrix_t InitializeInputCostWeight(const std::string& taskFile, const CentroidalModelInfo& info);
 
-  std::pair<scalar_t, RelaxedBarrierPenalty::Config> loadFrictionConeSettings(const std::string& taskFile, bool verbose) const;
-  std::unique_ptr<StateInputConstraint> getFrictionConeConstraint(size_t contactPointIndex, scalar_t frictionCoefficient);
-  std::unique_ptr<StateInputCost> getFrictionConeSoftConstraint(size_t contactPointIndex, scalar_t frictionCoefficient,
+  std::pair<scalar_t, RelaxedBarrierPenalty::Config> LoadFrictionConeSettings(const std::string& taskFile, bool verbose) const;
+  std::unique_ptr<StateInputConstraint> GetFrictionConeConstraint(size_t contactPointIndex, scalar_t frictionCoefficient);
+  std::unique_ptr<StateInputCost> GetFrictionConeSoftConstraint(size_t contactPointIndex, scalar_t frictionCoefficient,
                                                                 const RelaxedBarrierPenalty::Config& barrierPenaltyConfig);
-  std::unique_ptr<StateInputConstraint> getZeroForceConstraint(size_t contactPointIndex);
-  std::unique_ptr<StateInputConstraint> getZeroVelocityConstraint(const EndEffectorKinematics<scalar_t>& eeKinematics,
+  std::unique_ptr<StateInputConstraint> GetZeroForceConstraint(size_t contactPointIndex);
+  std::unique_ptr<StateInputConstraint> GetZeroVelocityConstraint(const EndEffectorKinematics<scalar_t>& eeKinematics,
                                                                   size_t contactPointIndex, bool useAnalyticalGradients);
-  std::unique_ptr<StateInputConstraint> getNormalVelocityConstraint(const EndEffectorKinematics<scalar_t>& eeKinematics,
+  std::unique_ptr<StateInputConstraint> GetNormalVelocityConstraint(const EndEffectorKinematics<scalar_t>& eeKinematics,
                                                                     size_t contactPointIndex, bool useAnalyticalGradients);
 
   ModelSettings modelSettings_;
@@ -127,4 +114,4 @@ class LeggedRobotInterface final : public RobotInterface {
 };
 
 }  // namespace legged_robot
-}  // namespace automanip
+}  // namespace bolza

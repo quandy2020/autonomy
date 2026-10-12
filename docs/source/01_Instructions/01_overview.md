@@ -32,7 +32,7 @@
 | SLAM / 定位 | `localization`（如 Atlas） |
 | 感知 / 预测 | `perception` · `prediction` |
 | 地图 / 导航 | `map` · `planning` · `control` |
-| 机械臂 / 操作 | `manipulation` |
+| 机械臂 / 操作 | `automanip`（规划 + `bolza/` OCP 子库） |
 | 语音等 | `audio` |
 | 任务编排 | `task`（BT：导航 / 跟踪 / 建图 / 遥操 / 回充…） |
 | 管理面 | `system`（monitor / 安全 / OTA / launch） |

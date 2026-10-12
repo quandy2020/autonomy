@@ -102,7 +102,7 @@ iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_world::Type
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_world& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_world::update(const JState& q) {
+const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_world& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_world::Update(const JState& q) {
     
     
     (*this)(3,1) =  q(JBALL_X);
@@ -148,7 +148,7 @@ iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_world_X_fr_dummy_ball1::Type
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_world_X_fr_dummy_ball1& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_world_X_fr_dummy_ball1::update(const JState& q) {
+const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_world_X_fr_dummy_ball1& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_world_X_fr_dummy_ball1::Update(const JState& q) {
     
     
     (*this)(4,0) =  q(JBALL_X);
@@ -194,7 +194,7 @@ iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_ball1::Type_
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_ball1& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_ball1::update(const JState& q) {
+const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_ball1& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_ball1::Update(const JState& q) {
     
     
     (*this)(3,0) =  q(JBALL_Y);
@@ -240,7 +240,7 @@ iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_ball::Type_
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_ball& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_ball::update(const JState& q) {
+const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_ball& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_ball::Update(const JState& q) {
     
     
     (*this)(3,0) =  q(JBALL_Y);
@@ -280,7 +280,7 @@ iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_ball::Type_
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_ball& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_ball::update(const JState& q) {
+const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_ball& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_ball::Update(const JState& q) {
     Scalar s_q_jbase_z_;
     Scalar c_q_jbase_z_;
     
@@ -330,7 +330,7 @@ iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_base1::Type_
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_base1& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_base1::update(const JState& q) {
+const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_base1& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_base1::Update(const JState& q) {
     Scalar s_q_jbase_z_;
     Scalar c_q_jbase_z_;
     
@@ -380,7 +380,7 @@ iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_dummy_base1
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_dummy_base1& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_dummy_base1::update(const JState& q) {
+const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_dummy_base1& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_dummy_base1::Update(const JState& q) {
     Scalar s_q_jbase_y_;
     Scalar c_q_jbase_y_;
     
@@ -430,7 +430,7 @@ iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_dummy_base2
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_dummy_base2& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_dummy_base2::update(const JState& q) {
+const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_dummy_base2& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_dummy_base2::Update(const JState& q) {
     Scalar s_q_jbase_y_;
     Scalar c_q_jbase_y_;
     
@@ -480,7 +480,7 @@ iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_base_X_fr_dummy_base2::Type_
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_base_X_fr_dummy_base2& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_base_X_fr_dummy_base2::update(const JState& q) {
+const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_base_X_fr_dummy_base2& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_base_X_fr_dummy_base2::Update(const JState& q) {
     Scalar s_q_jbase_x_;
     Scalar c_q_jbase_x_;
     
@@ -530,7 +530,7 @@ iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_base::Type_
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_base& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_base::update(const JState& q) {
+const typename iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_base& iit::Ballbot::tpl::MotionTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_base::Update(const JState& q) {
     Scalar s_q_jbase_x_;
     Scalar c_q_jbase_x_;
     
@@ -587,7 +587,7 @@ iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_world::Type_
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_world& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_world::update(const JState& q) {
+const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_world& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_world::Update(const JState& q) {
     
     
     (*this)(0,4) =  q(JBALL_X);
@@ -633,7 +633,7 @@ iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_world_X_fr_dummy_ball1::Type_
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_world_X_fr_dummy_ball1& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_world_X_fr_dummy_ball1::update(const JState& q) {
+const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_world_X_fr_dummy_ball1& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_world_X_fr_dummy_ball1::Update(const JState& q) {
     
     
     (*this)(1,3) =  q(JBALL_X);
@@ -679,7 +679,7 @@ iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_ball1::Type_f
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_ball1& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_ball1::update(const JState& q) {
+const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_ball1& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_ball1::Update(const JState& q) {
     
     
     (*this)(0,3) =  q(JBALL_Y);
@@ -725,7 +725,7 @@ iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_ball::Type_f
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_ball& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_ball::update(const JState& q) {
+const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_ball& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_ball::Update(const JState& q) {
     
     
     (*this)(0,3) =  q(JBALL_Y);
@@ -765,7 +765,7 @@ iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_ball::Type_f
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_ball& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_ball::update(const JState& q) {
+const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_ball& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_ball::Update(const JState& q) {
     Scalar s_q_jbase_z_;
     Scalar c_q_jbase_z_;
     
@@ -815,7 +815,7 @@ iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_base1::Type_f
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_base1& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_base1::update(const JState& q) {
+const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_base1& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_base1::Update(const JState& q) {
     Scalar s_q_jbase_z_;
     Scalar c_q_jbase_z_;
     
@@ -865,7 +865,7 @@ iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_dummy_base1:
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_dummy_base1& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_dummy_base1::update(const JState& q) {
+const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_dummy_base1& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_dummy_base1::Update(const JState& q) {
     Scalar s_q_jbase_y_;
     Scalar c_q_jbase_y_;
     
@@ -915,7 +915,7 @@ iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_dummy_base2:
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_dummy_base2& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_dummy_base2::update(const JState& q) {
+const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_dummy_base2& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_dummy_base2::Update(const JState& q) {
     Scalar s_q_jbase_y_;
     Scalar c_q_jbase_y_;
     
@@ -965,7 +965,7 @@ iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_base_X_fr_dummy_base2::Type_f
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_base_X_fr_dummy_base2& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_base_X_fr_dummy_base2::update(const JState& q) {
+const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_base_X_fr_dummy_base2& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_base_X_fr_dummy_base2::Update(const JState& q) {
     Scalar s_q_jbase_x_;
     Scalar c_q_jbase_x_;
     
@@ -1015,7 +1015,7 @@ iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_base::Type_f
     (*this)(5,5) = 0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_base& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_base::update(const JState& q) {
+const typename iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_base& iit::Ballbot::tpl::ForceTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_base::Update(const JState& q) {
     Scalar s_q_jbase_x_;
     Scalar c_q_jbase_x_;
     
@@ -1053,7 +1053,7 @@ iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_world:
     (*this)(3,3) = 1.0;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_world& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_world::update(const JState& q) {
+const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_world& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_world::Update(const JState& q) {
     
     
     (*this)(2,3) = - q(JBALL_X);
@@ -1079,7 +1079,7 @@ iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_world_X_fr_dummy_ball1:
     (*this)(3,3) = 1;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_world_X_fr_dummy_ball1& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_world_X_fr_dummy_ball1::update(const JState& q) {
+const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_world_X_fr_dummy_ball1& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_world_X_fr_dummy_ball1::Update(const JState& q) {
     
     
     (*this)(0,3) =  q(JBALL_X);
@@ -1105,7 +1105,7 @@ iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_ball1::
     (*this)(3,3) = 1;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_ball1& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_ball1::update(const JState& q) {
+const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_ball1& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_ball1::Update(const JState& q) {
     
     
     (*this)(2,3) = - q(JBALL_Y);
@@ -1131,7 +1131,7 @@ iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_ball::
     (*this)(3,3) = 1;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_ball& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_ball::update(const JState& q) {
+const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_ball& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_ball1_X_fr_ball::Update(const JState& q) {
     
     
     (*this)(1,3) =  q(JBALL_Y);
@@ -1154,7 +1154,7 @@ iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_ball::
     (*this)(3,3) = 1;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_ball& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_ball::update(const JState& q) {
+const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_ball& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_ball::Update(const JState& q) {
     Scalar s_q_jbase_z_;
     Scalar c_q_jbase_z_;
     
@@ -1184,7 +1184,7 @@ iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_base1::
     (*this)(3,3) = 1;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_base1& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_base1::update(const JState& q) {
+const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_base1& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_ball_X_fr_dummy_base1::Update(const JState& q) {
     Scalar s_q_jbase_z_;
     Scalar c_q_jbase_z_;
     
@@ -1214,7 +1214,7 @@ iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_dummy_
     (*this)(3,3) = 1;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_dummy_base1& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_dummy_base1::update(const JState& q) {
+const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_dummy_base1& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_dummy_base1::Update(const JState& q) {
     Scalar s_q_jbase_y_;
     Scalar c_q_jbase_y_;
     
@@ -1244,7 +1244,7 @@ iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_dummy_
     (*this)(3,3) = 1;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_dummy_base2& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_dummy_base2::update(const JState& q) {
+const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_dummy_base2& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base1_X_fr_dummy_base2::Update(const JState& q) {
     Scalar s_q_jbase_y_;
     Scalar c_q_jbase_y_;
     
@@ -1274,7 +1274,7 @@ iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_base_X_fr_dummy_base2::
     (*this)(3,3) = 1;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_base_X_fr_dummy_base2& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_base_X_fr_dummy_base2::update(const JState& q) {
+const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_base_X_fr_dummy_base2& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_base_X_fr_dummy_base2::Update(const JState& q) {
     Scalar s_q_jbase_x_;
     Scalar c_q_jbase_x_;
     
@@ -1304,7 +1304,7 @@ iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_base::
     (*this)(3,3) = 1;
 }
 template <typename TRAIT>
-const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_base& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_base::update(const JState& q) {
+const typename iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_base& iit::Ballbot::tpl::HomogeneousTransforms<TRAIT>::Type_fr_dummy_base2_X_fr_base::Update(const JState& q) {
     Scalar s_q_jbase_x_;
     Scalar c_q_jbase_x_;
     

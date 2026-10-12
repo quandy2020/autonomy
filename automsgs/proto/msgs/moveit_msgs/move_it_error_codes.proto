@@ -18,7 +18,7 @@ package automsgs.msgs.moveit_msgs;
 
 
 // MoveIt-compatible error codes on the automsgs wire (MotionPlanResponse).
-// Internal manipulation codes live in autonomy/manipulation/proto/error_codes.proto;
+// Internal manipulation codes live in automanip/automanip/proto/error_codes.proto;
 // map at the module boundary (motion_plan_message_conversion). Do not use as StatusCode.
 message MoveItErrorCodes {
   enum Code {

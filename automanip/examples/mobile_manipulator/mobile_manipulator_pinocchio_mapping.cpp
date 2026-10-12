@@ -1,35 +1,22 @@
-/******************************************************************************
-Copyright (c) 2020, Farbod Farshidian. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
- * Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
- * Neither the name of the copyright holder nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-******************************************************************************/
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "examples/mobile_manipulator/mobile_manipulator_pinocchio_mapping.hpp"
 
-namespace automanip {
+namespace bolza {
 namespace mobile_manipulator {
 
 /******************************************************************************************************/
@@ -43,7 +30,7 @@ MobileManipulatorPinocchioMappingTpl<SCALAR>::MobileManipulatorPinocchioMappingT
 /******************************************************************************************************/
 /******************************************************************************************************/
 template <typename SCALAR>
-MobileManipulatorPinocchioMappingTpl<SCALAR>* MobileManipulatorPinocchioMappingTpl<SCALAR>::clone() const {
+MobileManipulatorPinocchioMappingTpl<SCALAR>* MobileManipulatorPinocchioMappingTpl<SCALAR>::Clone() const {
   return new MobileManipulatorPinocchioMappingTpl<SCALAR>(*this);
 }
 
@@ -51,7 +38,7 @@ MobileManipulatorPinocchioMappingTpl<SCALAR>* MobileManipulatorPinocchioMappingT
 /******************************************************************************************************/
 /******************************************************************************************************/
 template <typename SCALAR>
-auto MobileManipulatorPinocchioMappingTpl<SCALAR>::getPinocchioJointPosition(const vector_t& state) const -> vector_t {
+auto MobileManipulatorPinocchioMappingTpl<SCALAR>::GetPinocchioJointPosition(const vector_t& state) const -> vector_t {
   return state;
 }
 
@@ -59,7 +46,7 @@ auto MobileManipulatorPinocchioMappingTpl<SCALAR>::getPinocchioJointPosition(con
 /******************************************************************************************************/
 /******************************************************************************************************/
 template <typename SCALAR>
-auto MobileManipulatorPinocchioMappingTpl<SCALAR>::getPinocchioJointVelocity(const vector_t& state, const vector_t& input) const
+auto MobileManipulatorPinocchioMappingTpl<SCALAR>::GetPinocchioJointVelocity(const vector_t& state, const vector_t& input) const
     -> vector_t {
   vector_t vPinocchio = vector_t::Zero(modelInfo_.stateDim);
   // set velocity model based on model type
@@ -78,8 +65,8 @@ auto MobileManipulatorPinocchioMappingTpl<SCALAR>::getPinocchioJointVelocity(con
     }
     case ManipulatorModelType::WheelBasedMobileManipulator: {
       const auto theta = state(2);
-      const auto v = input(0);  // forward velocity in base frame
-      vPinocchio << cos(theta) * v, sin(theta) * v, input(1), input.tail(modelInfo_.armDim);
+      const auto v = Input(0);  // forward velocity in base frame
+      vPinocchio << cos(theta) * v, sin(theta) * v, Input(1), input.tail(modelInfo_.armDim);
       break;
     }
     default: {
@@ -94,7 +81,7 @@ auto MobileManipulatorPinocchioMappingTpl<SCALAR>::getPinocchioJointVelocity(con
 /******************************************************************************************************/
 /******************************************************************************************************/
 template <typename SCALAR>
-auto MobileManipulatorPinocchioMappingTpl<SCALAR>::getOcs2Jacobian(const vector_t& state, const matrix_t& Jq, const matrix_t& Jv) const
+auto MobileManipulatorPinocchioMappingTpl<SCALAR>::GetOcs2Jacobian(const vector_t& state, const matrix_t& Jq, const matrix_t& Jv) const
     -> std::pair<matrix_t, matrix_t> {
   // set jacobian model based on model type
   switch (modelInfo_.manipulatorModelType) {
@@ -129,8 +116,8 @@ auto MobileManipulatorPinocchioMappingTpl<SCALAR>::getOcs2Jacobian(const vector_
 }
 
 // explicit template instantiation
-template class automanip::mobile_manipulator::MobileManipulatorPinocchioMappingTpl<automanip::scalar_t>;
-template class automanip::mobile_manipulator::MobileManipulatorPinocchioMappingTpl<automanip::ad_scalar_t>;
+template class bolza::mobile_manipulator::MobileManipulatorPinocchioMappingTpl<bolza::scalar_t>;
+template class bolza::mobile_manipulator::MobileManipulatorPinocchioMappingTpl<bolza::ad_scalar_t>;
 
 }  // namespace mobile_manipulator
-}  // namespace automanip
+}  // namespace bolza

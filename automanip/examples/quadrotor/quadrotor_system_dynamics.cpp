@@ -1,44 +1,31 @@
-/******************************************************************************
-Copyright (c) 2020, Farbod Farshidian. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
- * Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
- * Neither the name of the copyright holder nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- ******************************************************************************/
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <cmath>
 
-#include <automanip/tools/common/angular_velocity_mapping.hpp>
+#include <bolza/tools/common/angular_velocity_mapping.hpp>
 #include "examples/quadrotor/dynamics/quadrotor_system_dynamics.hpp"
 
-namespace automanip {
+namespace bolza {
 namespace quadrotor {
 
-vector_t QuadrotorSystemDynamics::computeFlowMap(scalar_t time, const vector_t& state, const vector_t& input, const PreComputation&) {
+vector_t QuadrotorSystemDynamics::ComputeFlowMap(scalar_t time, const vector_t& state, const vector_t& input, const PreComputation&) {
   // angular velocities to Euler angle Derivatives transformation
   Eigen::Matrix<scalar_t, 3, 1> eulerAngle = state.segment<3>(3);
-  Eigen::Matrix<scalar_t, 3, 3> T = getMappingFromLocalAngularVelocityToEulerAnglesXyzDerivative<scalar_t>(eulerAngle);
+  Eigen::Matrix<scalar_t, 3, 3> T = GetMappingFromLocalAngularVelocityToEulerAnglesXyzDerivative<scalar_t>(eulerAngle);
 
   // positions
   scalar_t qxQ = state(0);  // x
@@ -63,10 +50,10 @@ vector_t QuadrotorSystemDynamics::computeFlowMap(scalar_t time, const vector_t& 
   Eigen::Matrix<scalar_t, 3, 1> eulerAngleDerivatives = T * state.segment<3>(9);
 
   // Applied force and momentums
-  scalar_t Fz = input(0);
-  scalar_t Mx = input(1);
-  scalar_t My = input(2);
-  scalar_t Mz = input(3);
+  scalar_t Fz = Input(0);
+  scalar_t Mx = Input(1);
+  scalar_t My = Input(2);
+  scalar_t Mz = Input(3);
 
   scalar_t t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13;
 
@@ -83,23 +70,23 @@ vector_t QuadrotorSystemDynamics::computeFlowMap(scalar_t time, const vector_t& 
   t12 = param_.Thzz_ * param_.Thzz_;
   t13 = t3 * t3;
 
-  vector_t stateDerivative(STATE_DIM);
-  stateDerivative(0) = dqxQ;
-  stateDerivative(1) = dqyQ;
-  stateDerivative(2) = dqzQ;
-  stateDerivative(3) = eulerAngleDerivatives(0);
-  stateDerivative(4) = eulerAngleDerivatives(1);
-  stateDerivative(5) = eulerAngleDerivatives(2);
-  stateDerivative(6) = Fz * t2 * t4;
-  stateDerivative(7) = -Fz * t2 * t3 * sin(qph);
+  vector_t StateDerivative(STATE_DIM);
+  StateDerivative(0) = dqxQ;
+  StateDerivative(1) = dqyQ;
+  StateDerivative(2) = dqzQ;
+  StateDerivative(3) = eulerAngleDerivatives(0);
+  StateDerivative(4) = eulerAngleDerivatives(1);
+  StateDerivative(5) = eulerAngleDerivatives(2);
+  StateDerivative(6) = Fz * t2 * t4;
+  StateDerivative(7) = -Fz * t2 * t3 * sin(qph);
 
-  stateDerivative(8) = t2 * (param_.quadrotorMass_ * param_.gravity_ - Fz * t3 * cos(qph)) * (-1.0);
-  stateDerivative(9) =
+  StateDerivative(8) = t2 * (param_.quadrotorMass_ * param_.gravity_ - Fz * t3 * cos(qph)) * (-1.0);
+  StateDerivative(9) =
       -t5 * t11 *
       (-Mx * t6 + My * t7 + param_.Thzz_ * dqps * dqth - param_.Thxxyy_ * dqph * dqth * t4 * (2.0) + param_.Thzz_ * dqph * dqth * t4);
-  stateDerivative(10) = t5 * (Mx * t7 + My * t6 - param_.Thxxyy_ * t8 * t10 * (1.0 / 2.0) + param_.Thzz_ * t8 * t10 * (1.0 / 2.0) +
+  StateDerivative(10) = t5 * (Mx * t7 + My * t6 - param_.Thxxyy_ * t8 * t10 * (1.0 / 2.0) + param_.Thzz_ * t8 * t10 * (1.0 / 2.0) +
                               param_.Thzz_ * dqph * dqps * t3);
-  stateDerivative(11) = (t5 * t11 *
+  StateDerivative(11) = (t5 * t11 *
                          (Mz * param_.Thxxyy_ * t3 + dqph * dqth * t12 - dqph * dqth * t12 * t13 + dqps * dqth * t4 * t12 -
                           param_.Thxxyy_ * param_.Thzz_ * dqph * dqth * (2.0) - Mx * param_.Thzz_ * t4 * t6 + My * param_.Thzz_ * t4 * t7 +
                           param_.Thxxyy_ * param_.Thzz_ * dqph * dqth * t13)) /
@@ -107,10 +94,10 @@ vector_t QuadrotorSystemDynamics::computeFlowMap(scalar_t time, const vector_t& 
   return stateDerivative;
 }
 
-VectorFunctionLinearApproximation QuadrotorSystemDynamics::linearApproximation(scalar_t t, const vector_t& x, const vector_t& u,
+VectorFunctionLinearApproximation QuadrotorSystemDynamics::LinearApproximation(scalar_t t, const vector_t& x, const vector_t& u,
                                                                                const PreComputation& preComp) {
   VectorFunctionLinearApproximation dynamics;
-  dynamics.f = computeFlowMap(t, x, u, preComp);
+  dynamics.f = ComputeFlowMap(t, x, u, preComp);
 
   // Jacobian of angular velocity mapping
   Eigen::Matrix<scalar_t, 3, 1> eulerAngle = x.segment<3>(3);
@@ -231,4 +218,4 @@ VectorFunctionLinearApproximation QuadrotorSystemDynamics::linearApproximation(s
 }
 
 }  // namespace quadrotor
-}  // namespace automanip
+}  // namespace bolza

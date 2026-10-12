@@ -29,6 +29,7 @@ alwaysApply: false
 |---|---|
 | `.cursor/rules/other/document.mdc` | 书面语、宜/不宜、Markdown 通例 |
 | `.cursor/rules/autodriver/doxygen.mdc` | C++ 头文件 Doxygen（非 MkDocs 正文） |
+| `.cursor/rules/bolza/doxygen.mdc` | bolza 头文件 Doxygen（`@param [in]` 风格） |
 | `.cursor/rules/robotics-math-writing.mdc` | 规划/控制**算法**长文（非本包驱动文档） |
 
 ---

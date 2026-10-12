@@ -1,0 +1,21 @@
+# 12　术语表
+
+- **Bolza 问题** — 积分运行代价 + 终端代价
+- **OCP** — `OptimalControlProblem`
+- **Rollout** — 沿动力学前向积分
+- **Initializer** — 无策略时的输入初值
+- **DDP / SLQ / iLQR** — 微分动态规划及连续 / 离散变体
+- **多重射击** — 节点离散 + 缺陷约束（SQP/IPM/SLP）
+- **软约束** — 罚函数或增广拉格朗日进入目标
+- **MPC / MRT** — 滚动求解 / 策略评估运行时
+- **TargetTrajectories** — 参考状态与输入轨迹
+- **Mode schedule** — 模式或接触时间表
+- **ReferenceManager** — 迭代边界更新参考
+- **PreComputation** — 共享中间量缓存接口
+- **CppAD/Cg** — 自动微分与代码生成
+- **task.info** — `.info` 运行时配置
+- **HPIPM** — 高性能 IPM QP；SQP/IPM 通过 `HpipmInterface` 调用
+- **HpipmSettings** — `bolza::ipm::HpipmSettings`，转发至 HPIPM 的容差 / 迭代等
+- **Frank–Wolfe / bilevel** — 上层 NLP（GLPK）与 GDDP / `BilevelMpc`
+- **switched_model** — 足式切换系统模型接口（无 ROS）
+- **MPC-Net** — MPC 蒸馏为神经网络策略（C++ 数据生成 / ONNX 推理）

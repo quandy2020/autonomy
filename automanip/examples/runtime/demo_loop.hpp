@@ -37,16 +37,16 @@
 #include <automsgs/msgs/tf2_msgs/tf_message.pb.h>
 #include <automsgs/msgs/visualization_msgs/marker_array.pb.h>
 
-#include "automanip/core/reference/target_trajectories.hpp"
-#include "automanip/core/types.hpp"
-#include "automanip/mpc/command_data.hpp"
-#include "automanip/mpc/mpc_base.hpp"
-#include "automanip/mpc/system_observation.hpp"
-#include "automanip/oc/oc_data/primal_solution.hpp"
-#include "automanip/oc/rollout/rollout_base.hpp"
-#include "automanip/oc/synchronized_module/reference_manager_interface.hpp"
+#include "bolza/core/reference/target_trajectories.hpp"
+#include "bolza/core/types.hpp"
+#include "bolza/mpc/command_data.hpp"
+#include "bolza/mpc/mpc_base.hpp"
+#include "bolza/mpc/system_observation.hpp"
+#include "bolza/oc/oc_data/primal_solution.hpp"
+#include "bolza/oc/rollout/rollout_base.hpp"
+#include "bolza/oc/synchronized_module/reference_manager_interface.hpp"
 
-namespace automanip {
+namespace bolza {
 namespace examples {
 
 using PoseStamped = automsgs::msgs::geometry_msgs::PoseStamped;
@@ -58,7 +58,7 @@ using TfMsg = automsgs::msgs::tf2_msgs::TFMessage;
 
 /** Reads a URDF (or any text file). Empty when the path cannot be opened. */
 inline std::string ReadTextFile(const std::string& path) {
-  std::ifstream input(path);
+  std::ifstream Input(path);
   if (!input) {
     return {};
   }
@@ -84,7 +84,7 @@ inline std::string RobotDescriptionWithAbsoluteMeshes(const std::string& urdf_pa
 }
 
 /** Fills markers, joints, the predicted path, and the TF tree. */
-using ViewPublisher = std::function<void(const SystemObservation& observation,
+using ViewPublisher = std::Function<void(const SystemObservation& observation,
                                          const PrimalSolution& policy,
                                          const CommandData& command,
                                          MarkerArray* markers,
@@ -95,16 +95,16 @@ using ViewPublisher = std::function<void(const SystemObservation& observation,
  * Builds a new target from a PoseStamped on `/<name>/target_pose`.
  * The previous target state is passed so unused coordinates can stay put.
  */
-using TargetFromPose = std::function<TargetTrajectories(
+using TargetFromPose = std::Function<TargetTrajectories(
     const PoseStamped& pose, const vector_t& previous_target, scalar_t time)>;
 
 /** Fills `/cmd_vel` (`geometry_msgs/TwistStamped`) from the live state. */
 using VelocityPublisher =
-    std::function<void(const SystemObservation& observation, TwistStampedMsg* twist)>;
+    std::Function<void(const SystemObservation& observation, TwistStampedMsg* twist)>;
 
 struct DemoRequest {
   std::string name;
-  MPC_BASE* mpc = nullptr;
+  MPCBase* mpc = nullptr;
   const RolloutBase* rollout = nullptr;
   std::shared_ptr<ReferenceManagerInterface> reference;
   mpc::Settings mpc_settings;
@@ -147,6 +147,6 @@ struct DemoRequest {
 int RunDemo(const DemoRequest& request);
 
 }  // namespace examples
-}  // namespace automanip
+}  // namespace bolza
 
 #endif  // AUTOMANIP_EXAMPLES_RUNTIME_DEMO_LOOP_HPP_

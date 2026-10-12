@@ -1,13 +1,3 @@
-"""Standalone Bazel build for the serial-chain kinematics (no Autolink)."""
-
-load("@rules_cc//cc:defs.bzl", "cc_library")
+"""Automanip Bazel package (protos under automanip/automanip/)."""
 
 package(default_visibility = ["//visibility:public"])
-
-cc_library(
-    name = "chain",
-    srcs = ["automanip/arm/chain.cpp"],
-    hdrs = ["automanip/arm/chain.hpp"],
-    includes = ["."],
-    deps = ["@eigen//:eigen"],
-)

@@ -16,7 +16,7 @@
 
 /**
  * @file test_config_loader.cpp
- * @brief YAML arm block and the default chain.
+ * @brief YAML node_name loader.
  */
 
 #include "automanip/config_loader.hpp"
@@ -40,36 +40,16 @@ std::filesystem::path WriteTree(const std::string& yaml) {
 
 }  // namespace
 
-TEST(AutomanipConfig, ParsesArm) {
-  const auto root = WriteTree(R"(
-node_name: arm_test
-arm:
-  enable: true
-  id: arm/left
-  backend: vendor
-  initial_mode: home
-  watchdog_ms: 250
-  joints:
-    - {name: j1, axis: [0, 0, 1], origin: [0, 0, 0.1], lower: -1, upper: 1, velocity: 0.5, home: 0.2}
-)");
+TEST(AutomanipConfig, ParsesNodeName) {
+  const auto root = WriteTree("node_name: arm_test\n");
   const automanip::Config config =
       automanip::LoadConfig(root.string(), "automanip.yaml");
   EXPECT_EQ(config.node_name, "arm_test");
-  EXPECT_TRUE(config.arm.enable);
-  EXPECT_EQ(config.arm.id, "arm/left");
-  EXPECT_EQ(config.arm.backend, "vendor");
-  EXPECT_EQ(config.arm.initial_mode, "home");
-  EXPECT_EQ(config.arm.watchdog_ms, 250);
-  ASSERT_EQ(config.arm.plant.chain.dof(), 1);
-  EXPECT_EQ(config.arm.plant.chain.joints[0].name, "j1");
-  EXPECT_DOUBLE_EQ(config.arm.plant.chain.joints[0].home, 0.2);
-  EXPECT_DOUBLE_EQ(config.arm.plant.chain.joints[0].velocity_limit, 0.5);
 }
 
-TEST(AutomanipConfig, MissingJointsUseDefaultArm) {
-  const auto root = WriteTree("arm:\n  backend: stub\n");
+TEST(AutomanipConfig, DefaultsNodeName) {
+  const auto root = WriteTree("{}\n");
   const automanip::Config config =
       automanip::LoadConfig(root.string(), "automanip.yaml");
-  EXPECT_EQ(config.arm.backend, "stub");
-  EXPECT_EQ(config.arm.plant.chain.dof(), 6);
+  EXPECT_EQ(config.node_name, "automanip");
 }

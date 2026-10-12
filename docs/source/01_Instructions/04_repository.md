@@ -40,7 +40,6 @@ autonomy/                         # ← 源码根
 │   ├── localization/             # SLAM / 定位（如 Atlas）
 │   ├── perception/               # 感知（检测/跟踪等）
 │   ├── prediction/               # 预测
-│   ├── manipulation/             # 机械臂 / 操作
 │   ├── sensor/                   # 传感器同步
 │   ├── vehicle/                  # 车体模型
 │   ├── audio/                    # 语音等
@@ -49,10 +48,15 @@ autonomy/                         # ← 源码根
 │   ├── visualization/            # 可视化相关组件
 │   ├── orbisview/                # Web HMI（BUILD_ORBISVIEW）
 │   └── tools/                    # 域内工具
+│   # manipulation/ 已迁至 automanip/automanip/（保留 AUTOCMAKE_IGNORE 桩）
 │
 ├── autodriver/                   # 传感器与底盘 HAL（独立 CMake 子工程）
 │   ├── chassis/  config/  launch/  …
 │   └── main.cpp                  # 驱动主进程入口之一
+├── automanip/                    # 机械臂规划栈 + bolza OCP 子库
+│   ├── automanip/                # MoveIt 同构规划 / 执行
+│   ├── bolza/                    # libbolza（子库）
+│   └── examples/                 # OCP demos
 ├── autoviz/                      # 原生 3D 可视化（BUILD_AUTOVIZ）
 ├── autosim/                      # 仿真（BUILD_AUTOSIM）
 │

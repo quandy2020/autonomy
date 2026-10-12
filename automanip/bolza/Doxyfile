@@ -1,0 +1,58 @@
+# Doxyfile for libbolza (automanip/bolza)
+# Generate: doxygen Doxyfile  (from this directory)
+
+PROJECT_NAME           = "Bolza"
+PROJECT_BRIEF          = "Bolza-form optimal control library (libbolza)"
+PROJECT_NUMBER         = 0.1.0
+
+OUTPUT_DIRECTORY       = docs/api
+CREATE_SUBDIRS         = NO
+ALLOW_UNICODE_NAMES    = YES
+
+INPUT                  = bolza \
+                         README.md
+FILE_PATTERNS          = *.hpp *.h *.cpp *.md
+RECURSIVE              = YES
+EXCLUDE                = bolza/ddp/unsupported \
+                         thirdparty \
+                         test
+EXCLUDE_PATTERNS       = */unsupported/*
+
+EXTRACT_ALL            = NO
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = YES
+EXTRACT_LOCAL_CLASSES  = YES
+
+BRIEF_MEMBER_DESC      = YES
+REPEAT_BRIEF           = YES
+ALWAYS_DETAILED_SEC    = NO
+JAVADOC_AUTOBRIEF      = YES
+QT_AUTOBRIEF           = YES
+
+# Prefer @ commands (also accept \)
+ALIASES                =
+
+MARKDOWN_SUPPORT       = YES
+AUTOLINK_SUPPORT       = YES
+
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+GENERATE_LATEX         = NO
+GENERATE_XML           = NO
+
+HAVE_DOT               = NO
+CLASS_DIAGRAMS         = YES
+
+QUIET                  = YES
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = NO
+WARN_IF_DOC_ERROR      = YES
+WARN_NO_PARAMDOC       = NO
+
+# Match bolza style: @param [in] name: desc
+ENABLED_SECTIONS       =
+INLINE_SIMPLE_STRUCTS  = YES
+SORT_MEMBER_DOCS       = YES
+SORT_BRIEF_DOCS        = NO
+
+USE_MDFILE_AS_MAINPAGE = README.md

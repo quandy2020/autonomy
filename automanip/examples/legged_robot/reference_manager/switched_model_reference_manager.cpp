@@ -1,38 +1,25 @@
-/******************************************************************************
-Copyright (c) 2021, Farbod Farshidian. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
- * Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
- * Neither the name of the copyright holder nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-******************************************************************************/
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "examples/legged_robot/reference_manager/switched_model_reference_manager.hpp"
 
 #include <cmath>
 #include <iostream>
 
-namespace automanip {
+namespace bolza {
 namespace legged_robot {
 namespace {
 
@@ -59,27 +46,27 @@ SwitchedModelReferenceManager::SwitchedModelReferenceManager(std::shared_ptr<Gai
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-void SwitchedModelReferenceManager::setModeSchedule(const ModeSchedule& modeSchedule) {
-  ReferenceManager::setModeSchedule(modeSchedule);
-  gaitSchedulePtr_->setModeSchedule(modeSchedule);
+void SwitchedModelReferenceManager::SetModeSchedule(const ModeSchedule& modeSchedule) {
+  ReferenceManager::SetModeSchedule(modeSchedule);
+  gaitSchedulePtr_->SetModeSchedule(modeSchedule);
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-contact_flag_t SwitchedModelReferenceManager::getContactFlags(scalar_t time) const {
-  return modeNumber2StanceLeg(this->getModeSchedule().modeAtTime(time));
+contact_flag_t SwitchedModelReferenceManager::GetContactFlags(scalar_t time) const {
+  return ModeNumber2StanceLeg(this->GetModeSchedule().ModeAtTime(time));
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-void SwitchedModelReferenceManager::modifyReferences(scalar_t initTime, scalar_t finalTime, const vector_t& initState,
+void SwitchedModelReferenceManager::ModifyReferences(scalar_t initTime, scalar_t finalTime, const vector_t& initState,
                                                      TargetTrajectories& targetTrajectories, ModeSchedule& modeSchedule) {
   const auto timeHorizon = finalTime - initTime;
   bool switch_gait = false;
   if (initState.size() >= 12 && !targetTrajectories.empty()) {
-    const vector_t goal = targetTrajectories.getDesiredState(finalTime);
+    const vector_t goal = targetTrajectories.GetDesiredState(finalTime);
     if (goal.size() >= 12) {
       const double dx = goal(6) - initState(6);
       const double dy = goal(7) - initState(7);
@@ -94,7 +81,7 @@ void SwitchedModelReferenceManager::modifyReferences(scalar_t initTime, scalar_t
       }
     }
   }
-  modeSchedule = gaitSchedulePtr_->getModeSchedule(initTime - timeHorizon, finalTime + timeHorizon);
+  modeSchedule = gaitSchedulePtr_->GetModeSchedule(initTime - timeHorizon, finalTime + timeHorizon);
 
   const scalar_t terrainHeight = 0.0;
   swingTrajectoryPtr_->update(modeSchedule, terrainHeight);
@@ -108,4 +95,4 @@ void SwitchedModelReferenceManager::modifyReferences(scalar_t initTime, scalar_t
 }
 
 }  // namespace legged_robot
-}  // namespace automanip
+}  // namespace bolza

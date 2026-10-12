@@ -84,6 +84,11 @@ autocmake_library(autonomy_map
     autonomy_opencv)
 add_library(autonomy::map ALIAS autonomy_map)
 
+# OCS2 / ROS-style include shims: <grid_map_core/…>, <grid_map_filters_rsl/…>, …
+target_include_directories(autonomy_map PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/grid_map/compat>
+  $<INSTALL_INTERFACE:include/autonomy/map/grid_map/compat>)
+
 target_include_directories(autonomy_map SYSTEM PUBLIC ${PCL_INCLUDE_DIRS})
 target_link_libraries(autonomy_map PUBLIC
   ${PCL_LIBRARIES}

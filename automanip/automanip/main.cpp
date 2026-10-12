@@ -16,83 +16,72 @@
 
 /**
  * @file main.cpp
- * @brief Process entry: CLI → LoadConfig → ArmManager.
+ * @brief Process entry: CLI → ManipulationServer (MoveIt move_group analogue).
  *
- * Usage: automanip [options] [configuration_directory] [configuration_file]
+ * Usage: automanip [options]
+ * Planning conf: share/automanip/conf/manipulation.pb.txt (or --conf).
  */
 
-#include <atomic>
-#include <csignal>
-#include <string>
+#include <cstdlib>
 
+#include <CLI/CLI.hpp>
+#include <glog/logging.h>
+
+#include "autolink/autolink.hpp"
+#include "autonomy/common/cli_options.hpp"
+#include "autonomy/common/conf_loader.hpp"
+#include "autonomy/common/logging.hpp"
+#include "automanip/manipulation_options.hpp"
+#include "automanip/manipulation_server.hpp"
 #include "options.hpp"
 
-#include "automanip/arm/arm_manager.hpp"
-#include "autolink/autolink.hpp"
-#include "autolink/common/log.hpp"
-#include "autolink/init.hpp"
-#include "autolink/time/duration.hpp"
-#include "automanip/config_loader.hpp"
-
 namespace {
-std::atomic<bool> g_running{true};
 
-void HandleSignal(int) { g_running = false; }
-
-int Run(const automanip::Options& opts) {
-  automanip::Config config = automanip::LoadConfig(opts.config_directory,
-                                                   opts.config_file);
-  if (opts.dry_run) {
-    AINFO << "dry-run: node_name=" << config.node_name
-          << " arm.enable=" << config.arm.enable
-          << " backend=" << config.arm.backend
-          << " dof=" << config.arm.plant.chain.dof();
-    return 0;
-  }
-  auto node = autolink::CreateNode(config.node_name);
-  if (!node) {
-    AERROR << "autolink node failed";
-    return 1;
-  }
-  automanip::arm::ArmManager arm;
-  if (!arm.Start(node.get(), config)) {
-    AERROR << "ArmManager failed";
-    return 1;
-  }
-  AINFO << "automanip running (Ctrl+C to stop)";
-  while (g_running.load()) {
-    autolink::Duration(100'000'000).Sleep();
-  }
-  AINFO << "automanip shutting down";
-  arm.Stop();
-  return 0;
+bool LoadOptions(automanip::ManipulationOptions* options) {
+  using autonomy::common::FLAGS_conf;
+  const std::string conf =
+      FLAGS_conf.empty() ? "manipulation.pb.txt" : FLAGS_conf;
+  return autonomy::common::LoadModuleConf("automanip", conf, options);
 }
 
 }  // namespace
 
 int main(int argc, char** argv) {
-  automanip::Options opts;
-  const automanip::ParseStatus status =
-      automanip::ParseCommandLine(argc, argv, &opts);
-  if (status == automanip::ParseStatus::kExitOk) {
-    return 0;
-  }
-  if (status == automanip::ParseStatus::kExitError) {
-    return 1;
-  }
+  CLI::App app{"automanip"};
+  autonomy::common::BindCommonOptions(app);
+  bool dry_run = false;
+  app.add_flag("-n,--dry-run", dry_run, "Load conf and exit");
+  autonomy::common::ParseOrExit(app, argc, argv);
+  FLAGS_alsologtostderr = true;
 
   autolink::Init(argv[0]);
   AINFO << automanip::VersionString();
-  std::signal(SIGINT, HandleSignal);
-  std::signal(SIGTERM, HandleSignal);
 
-  int exit_code = 1;
-  try {
-    exit_code = Run(opts);
-  } catch (const std::exception& ex) {
-    AERROR << "automanip failed: " << ex.what();
-    exit_code = 1;
+  automanip::ManipulationOptions options;
+  if (!LoadOptions(&options)) {
+    AWARN << "automanip: conf load failed; using defaults";
   }
+  if (dry_run) {
+    AINFO << "dry-run: action=" << options.action_name()
+          << " group=" << options.planning_group()
+          << " planner=" << options.planner_id();
+    autolink::Clear();
+    return EXIT_SUCCESS;
+  }
+
+  automanip::ManipulationServer server;
+  if (!server.Init(options)) {
+    AERROR << "automanip: Init failed";
+    return EXIT_FAILURE;
+  }
+  if (!server.Start()) {
+    AERROR << "automanip: Start failed";
+    return EXIT_FAILURE;
+  }
+
+  AINFO << "automanip running";
+  autolink::WaitForShutdown();
+  server.Stop();
   autolink::Clear();
-  return exit_code;
+  return EXIT_SUCCESS;
 }

@@ -1,45 +1,32 @@
-/******************************************************************************
-Copyright (c) 2021, Farbod Farshidian. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
- * Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
- * Neither the name of the copyright holder nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-******************************************************************************/
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #pragma once
 
 #include <memory>
 
-#include <automanip/core/constraint/state_input_constraint.hpp>
+#include <bolza/core/constraint/state_input_constraint.hpp>
 
-#include <automanip/tools/end_effector/end_effector_kinematics.hpp>
+#include <bolza/tools/end_effector/end_effector_kinematics.hpp>
 
-namespace automanip {
+namespace bolza {
 namespace legged_robot {
 
 /**
- * Defines a linear constraint on an end-effector position (xee) and linear velocity (vee).
+ * Defines a linear constraint on an end-effector Position (xee) and linear Velocity (vee).
  * g(xee, vee) = Ax * xee + Av * vee + b
  * - For defining constraint of type g(xee), set Av to matrix_t(0, 0)
  * - For defining constraint of type g(vee), set Ax to matrix_t(0, 0)
@@ -66,19 +53,19 @@ class EndEffectorLinearConstraint final : public StateInputConstraint {
                               Config config = Config());
 
   ~EndEffectorLinearConstraint() override = default;
-  EndEffectorLinearConstraint* clone() const override { return new EndEffectorLinearConstraint(*this); }
+  EndEffectorLinearConstraint* Clone() const override { return new EndEffectorLinearConstraint(*this); }
 
   /** Sets a new constraint coefficients. */
-  void configure(Config&& config);
+  void Configure(Config&& config);
   /** Sets a new constraint coefficients. */
-  void configure(const Config& config) { this->configure(Config(config)); }
+  void Configure(const Config& config) { this->configure(Config(config)); }
 
   /** Gets the underlying end-effector kinematics interface. */
-  EndEffectorKinematics<scalar_t>& getEndEffectorKinematics() { return *endEffectorKinematicsPtr_; }
+  EndEffectorKinematics<scalar_t>& GetEndEffectorKinematics() { return *endEffectorKinematicsPtr_; }
 
-  size_t getNumConstraints(scalar_t time) const override { return numConstraints_; }
-  vector_t getValue(scalar_t time, const vector_t& state, const vector_t& input, const PreComputation& preComp) const override;
-  VectorFunctionLinearApproximation getLinearApproximation(scalar_t time, const vector_t& state, const vector_t& input,
+  size_t GetNumConstraints(scalar_t time) const override { return numConstraints_; }
+  vector_t GetValue(scalar_t time, const vector_t& state, const vector_t& input, const PreComputation& preComp) const override;
+  VectorFunctionLinearApproximation GetLinearApproximation(scalar_t time, const vector_t& state, const vector_t& input,
                                                            const PreComputation& preComp) const override;
 
  private:
@@ -90,4 +77,4 @@ class EndEffectorLinearConstraint final : public StateInputConstraint {
 };
 
 }  // namespace legged_robot
-}  // namespace automanip
+}  // namespace bolza

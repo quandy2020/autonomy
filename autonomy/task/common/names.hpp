@@ -58,7 +58,7 @@ constexpr char kExplorationGoal[] = "/autonomy/task/exploration/goal";
 constexpr char kExplorationFeedback[] =
     "/autonomy/task/exploration/feedback";
 
-constexpr char kManipulationMove[] = "/autonomy/manipulation/move";
+constexpr char kManipulationMove[] = "/automanip/move";
 constexpr char kManipulationTrajectory[] =
     "/arm_controller/joint_trajectory";
 

@@ -34,13 +34,13 @@
 #include <pinocchio/algorithm/frames.hpp>
 #include <pinocchio/algorithm/kinematics.hpp>
 
-#include "automanip/core/misc/linear_interpolation.hpp"
-#include "automanip/ddp/gauss_newton_ddp_mpc.hpp"
-#include "automanip/ipm/ipm_mpc.hpp"
-#include "automanip/pinocchio/centroidal/access_helper_functions.hpp"
-#include "automanip/pinocchio/centroidal/centroidal_model_pinocchio_mapping.hpp"
-#include "automanip/pinocchio/interface/pinocchio_end_effector_kinematics.hpp"
-#include "automanip/sqp/sqp_mpc.hpp"
+#include "bolza/core/misc/linear_interpolation.hpp"
+#include "bolza/ddp/gauss_newton_ddp_mpc.hpp"
+#include "bolza/ipm/ipm_mpc.hpp"
+#include "bolza/pinocchio/centroidal/access_helper_functions.hpp"
+#include "bolza/pinocchio/centroidal/centroidal_model_pinocchio_mapping.hpp"
+#include "bolza/pinocchio/interface/pinocchio_end_effector_kinematics.hpp"
+#include "bolza/sqp/sqp_mpc.hpp"
 #include "examples/legged_robot/gait/motion_phase_definition.hpp"
 #include "examples/legged_robot/legged_robot_interface.hpp"
 #include "examples/runtime/demo_loop.hpp"
@@ -65,7 +65,7 @@ void AddPoint(automsgs::msgs::visualization_msgs::Marker* marker, const Eigen::V
   corner->set_z(point.z());
 }
 
-double Yaw(const automanip::examples::PoseStamped& pose) {
+double Yaw(const bolza::examples::PoseStamped& pose) {
   const double w = pose.pose().orientation().w();
   const double x = pose.pose().orientation().x();
   const double y = pose.pose().orientation().y();
@@ -78,35 +78,35 @@ double Yaw(const automanip::examples::PoseStamped& pose) {
 int main(int argc, char** argv) {
   const int steps = argc > 1 ? std::atoi(argv[1]) : 0;
   const std::string solver = argc > 2 ? argv[2] : "ddp";
-  automanip::legged_robot::LeggedRobotInterface interface(
+  bolza::legged_robot::LeggedRobotInterface interface(
       AUTOMANIP_EXAMPLE_TASK, AUTOMANIP_EXAMPLE_URDF, AUTOMANIP_EXAMPLE_REFERENCE);
-  const auto& info = interface.getCentroidalModelInfo();
+  const auto& info = interface.GetCentroidalModelInfo();
 
-  std::unique_ptr<automanip::MPC_BASE> mpc;
-  int thread_priority = interface.ddpSettings().threadPriority_;
+  std::unique_ptr<bolza::MPCBase> mpc;
+  int thread_priority = interface.DdpSettings().threadPriority_;
   if (solver == "sqp") {
-    mpc = std::make_unique<automanip::SqpMpc>(interface.mpcSettings(), interface.sqpSettings(),
-                                              interface.getOptimalControlProblem(),
-                                              interface.getInitializer());
-    thread_priority = interface.sqpSettings().threadPriority;
+    mpc = std::make_unique<bolza::SqpMpc>(interface.MpcSettings(), interface.SqpSettings(),
+                                              interface.GetOptimalControlProblem(),
+                                              interface.GetInitializer());
+    thread_priority = interface.SqpSettings().threadPriority;
   } else if (solver == "ipm") {
-    mpc = std::make_unique<automanip::IpmMpc>(interface.mpcSettings(), interface.ipmSettings(),
-                                              interface.getOptimalControlProblem(),
-                                              interface.getInitializer());
-    thread_priority = interface.ipmSettings().threadPriority;
+    mpc = std::make_unique<bolza::IpmMpc>(interface.MpcSettings(), interface.IpmSettings(),
+                                              interface.GetOptimalControlProblem(),
+                                              interface.GetInitializer());
+    thread_priority = interface.IpmSettings().threadPriority;
   } else if (solver == "ddp") {
-    mpc = std::make_unique<automanip::GaussNewtonDDP_MPC>(
-        interface.mpcSettings(), interface.ddpSettings(), interface.getRollout(),
-        interface.getOptimalControlProblem(), interface.getInitializer());
+    mpc = std::make_unique<bolza::GaussNewtonDDPMPC>(
+        interface.MpcSettings(), interface.DdpSettings(), interface.GetRollout(),
+        interface.GetOptimalControlProblem(), interface.GetInitializer());
   } else {
     return 2;
   }
 
-  automanip::PinocchioInterface pinocchio_view(interface.getPinocchioInterface());
-  // modelSettings().jointNames is LF, RF, LH, RH. Pinocchio q, and therefore
+  bolza::PinocchioInterface pinocchio_view(interface.GetPinocchioInterface());
+  // ModelSettings().jointNames is LF, RF, LH, RH. Pinocchio q, and therefore
   // getJointAngles, is LF, LH, RF, RH. Publishing the settings list would put
   // the hind-left angles on the right-front leg.
-  const auto& pinocchio_model = pinocchio_view.getModel();
+  const auto& pinocchio_model = pinocchio_view.GetModel();
   std::vector<std::string> joint_names;
   joint_names.reserve(static_cast<std::size_t>(info.actuatedDofNum));
   for (pinocchio::JointIndex joint = 1; joint < pinocchio_model.njoints; ++joint) {
@@ -114,23 +114,23 @@ int main(int argc, char** argv) {
       joint_names.push_back(pinocchio_model.names[joint]);
     }
   }
-  automanip::CentroidalModelPinocchioMapping pinocchio_mapping(info);
-  automanip::PinocchioEndEffectorKinematics end_effector_kinematics(
-      pinocchio_view, pinocchio_mapping, interface.modelSettings().contactNames3DoF);
+  bolza::CentroidalModelPinocchioMapping pinocchio_mapping(info);
+  bolza::PinocchioEndEffectorKinematics end_effector_kinematics(
+      pinocchio_view, pinocchio_mapping, interface.ModelSettings().contactNames3DoF);
 
-  automanip::examples::DemoRequest request;
+  bolza::examples::DemoRequest request;
   request.name = "legged_robot";
   request.mpc = mpc.get();
-  request.rollout = &interface.getRollout();
-  request.reference = interface.getReferenceManagerPtr();
-  request.mpc_settings = interface.mpcSettings();
+  request.rollout = &interface.GetRollout();
+  request.reference = interface.GetReferenceManagerPtr();
+  request.mpc_settings = interface.MpcSettings();
   request.thread_priority = thread_priority;
-  request.initial_state = interface.getInitialState();
-  request.initial_target = interface.getInitialState();
-  request.initial_input = automanip::vector_t::Zero(info.inputDim);
-  request.initial_mode = automanip::legged_robot::ModeNumber::STANCE;
+  request.initial_state = interface.GetInitialState();
+  request.initial_target = interface.GetInitialState();
+  request.initial_input = bolza::vector_t::Zero(info.inputDim);
+  request.initial_mode = bolza::legged_robot::ModeNumber::STANCE;
   request.robot_description =
-      automanip::examples::RobotDescriptionWithAbsoluteMeshes(AUTOMANIP_EXAMPLE_URDF);
+      bolza::examples::RobotDescriptionWithAbsoluteMeshes(AUTOMANIP_EXAMPLE_URDF);
   request.max_steps = steps;
   // A Nav Goal is an absolute base xy/yaw. One sample at the current time
   // makes DDP demand the goal immediately and the rollout diverges. Yaw and
@@ -138,8 +138,8 @@ int main(int argc, char** argv) {
   // sideways. Turn in place onto the path heading, then walk with that yaw
   // held, at the speeds in reference.info (0.5 m/s, 0.3 rad/s).
   request.command_from_state = true;
-  request.on_target = [&](const automanip::examples::PoseStamped& pose,
-                          const automanip::vector_t& previous, automanip::scalar_t time) {
+  request.on_target = [&](const bolza::examples::PoseStamped& pose,
+                          const bolza::vector_t& previous, bolza::scalar_t time) {
     constexpr double kComHeight = 0.575;
     constexpr double kDisplacementVelocity = 0.5;
     constexpr double kRotationVelocity = 0.3;
@@ -150,8 +150,8 @@ int main(int argc, char** argv) {
     const auto wrap = [](double angle) {
       return std::atan2(std::sin(angle), std::cos(angle));
     };
-    const automanip::vector_t& stance = interface.getInitialState();
-    automanip::vector_t current_pose = stance.segment<6>(6);
+    const bolza::vector_t& stance = interface.GetInitialState();
+    bolza::vector_t current_pose = stance.segment<6>(6);
     if (previous.size() >= 12) {
       current_pose = previous.segment<6>(6);
     }
@@ -162,15 +162,15 @@ int main(int argc, char** argv) {
     const double distance = std::hypot(dx, dy);
     const double arrow_yaw = current_pose(3) + wrap(Yaw(pose) - current_pose(3));
 
-    automanip::scalar_array_t times;
-    automanip::vector_array_t states;
-    automanip::vector_array_t inputs;
-    const automanip::vector_t input = automanip::vector_t::Zero(info.inputDim);
-    automanip::vector_t sample = stance;
+    bolza::scalar_array_t times;
+    bolza::vector_array_t states;
+    bolza::vector_array_t inputs;
+    const bolza::vector_t input = bolza::vector_t::Zero(info.inputDim);
+    bolza::vector_t sample = stance;
     sample.head(6).setZero();
-    automanip::vector_t base = current_pose;
-    automanip::scalar_t stamp = time;
-    auto push = [&](const automanip::vector_t& base_pose) {
+    bolza::vector_t base = current_pose;
+    bolza::scalar_t stamp = time;
+    auto push = [&](const bolza::vector_t& base_pose) {
       if (!times.empty() && !(stamp > times.back())) {
         stamp = times.back() + 1e-3;
       }
@@ -188,14 +188,14 @@ int main(int argc, char** argv) {
       const double heading = current_pose(3) + wrap(std::atan2(dy, dx) - current_pose(3));
       const double turn = heading - base(3);
       if (std::abs(turn) >= kTurnInPlace) {
-        advance(turn, kRotationVelocity);
+        Advance(turn, kRotationVelocity);
         base(2) = kComHeight;
         base(3) = heading;
         base(4) = 0.0;
         base(5) = 0.0;
         push(base);
       }
-      advance(distance, kDisplacementVelocity);
+      Advance(distance, kDisplacementVelocity);
       base(0) = goal_x;
       base(1) = goal_y;
       base(2) = kComHeight;
@@ -205,14 +205,14 @@ int main(int argc, char** argv) {
       push(base);
       const double settle = wrap(arrow_yaw - heading);
       if (std::abs(settle) >= kFinalYaw) {
-        advance(settle, kRotationVelocity);
+        Advance(settle, kRotationVelocity);
         base(3) = heading + settle;
         push(base);
       }
     } else {
       const double turn = wrap(arrow_yaw - base(3));
       if (std::abs(turn) >= kTurnInPlace) {
-        advance(turn, kRotationVelocity);
+        Advance(turn, kRotationVelocity);
         base(2) = kComHeight;
         base(3) += turn;
         base(4) = 0.0;
@@ -220,7 +220,7 @@ int main(int argc, char** argv) {
         push(base);
       }
       if (distance >= kMinTravel) {
-        advance(distance, kDisplacementVelocity);
+        Advance(distance, kDisplacementVelocity);
         base(0) = goal_x;
         base(1) = goal_y;
         base(2) = kComHeight;
@@ -239,44 +239,44 @@ int main(int argc, char** argv) {
       base(5) = 0.0;
       push(base);
     }
-    return automanip::TargetTrajectories(std::move(times), std::move(states), std::move(inputs));
+    return bolza::TargetTrajectories(std::move(times), std::move(states), std::move(inputs));
   };
-  request.publish = [&](const automanip::SystemObservation& observation,
-                        const automanip::PrimalSolution& policy,
-                        const automanip::CommandData& command,
-                        automanip::examples::MarkerArray* markers,
-                        automanip::examples::JointStateMsg* joints,
-                        automanip::examples::PathMsg* path,
-                        automanip::examples::TfMsg* tf) {
-    automanip::vector_t state = observation.state;
-    const auto base = automanip::centroidal_model::getBasePose(state, info);
-    const auto angles = automanip::centroidal_model::getJointAngles(state, info);
+  request.publish = [&](const bolza::SystemObservation& observation,
+                        const bolza::PrimalSolution& policy,
+                        const bolza::CommandData& command,
+                        bolza::examples::MarkerArray* markers,
+                        bolza::examples::JointStateMsg* joints,
+                        bolza::examples::PathMsg* path,
+                        bolza::examples::TfMsg* tf) {
+    bolza::vector_t state = observation.state;
+    const auto base = bolza::centroidal_model::GetBasePose(state, info);
+    const auto angles = bolza::centroidal_model::getJointAngles(state, info);
     std::vector<double> positions(static_cast<std::size_t>(angles.size()));
     for (std::size_t i = 0; i < positions.size(); ++i) {
       positions[i] = angles(static_cast<Eigen::Index>(i));
     }
-    automanip::examples::FillJoints(joints, joint_names, positions);
+    bolza::examples::FillJoints(joints, joint_names, positions);
     const Eigen::Quaterniond rotation =
         Eigen::AngleAxisd(base(3), Eigen::Vector3d::UnitZ()) *
         Eigen::AngleAxisd(base(4), Eigen::Vector3d::UnitY()) *
         Eigen::AngleAxisd(base(5), Eigen::Vector3d::UnitX());
-    automanip::examples::AddTransform(tf, "map", "base", base(0), base(1), base(2), rotation.w(),
+    bolza::examples::AddTransform(tf, "map", "base", base(0), base(1), base(2), rotation.w(),
                                       rotation.x(), rotation.y(), rotation.z());
 
     const auto& trajectory = policy.stateTrajectory_;
     const std::size_t stride = trajectory.size() > 40 ? trajectory.size() / 40 : 1;
     using Marker = automsgs::msgs::visualization_msgs::Marker;
-    auto com = automanip::examples::MakeShape("CoM Trajectory", 0, Marker::LINE_STRIP, 0.0, 0.0, 0.0,
+    auto com = bolza::examples::MakeShape("CoM Trajectory", 0, Marker::LINE_STRIP, 0.0, 0.0, 0.0,
                                               0.01, 0.01, 0.01, kRed[0], kRed[1], kRed[2]);
     for (std::size_t i = 0; i < trajectory.size(); i += stride) {
-      automanip::examples::AddPathPose(path, trajectory[i](6), trajectory[i](7), trajectory[i](8));
+      bolza::examples::AddPathPose(path, trajectory[i](6), trajectory[i](7), trajectory[i](8));
       AddPoint(&com, Eigen::Vector3d(trajectory[i](6), trajectory[i](7), trajectory[i](8)));
     }
     if (com.points_size() >= 2) {
       *markers->add_markers() = std::move(com);
     }
     const auto& desired = command.mpcTargetTrajectories_.stateTrajectory;
-    auto desired_line = automanip::examples::MakeShape(
+    auto desired_line = bolza::examples::MakeShape(
         "Desired Trajectory", 0, Marker::LINE_STRIP, 0.0, 0.0, 0.0, 0.01, 0.01, 0.01, kGreen[0],
         kGreen[1], kGreen[2]);
     for (const auto& desired_state : desired) {
@@ -288,26 +288,26 @@ int main(int argc, char** argv) {
       *markers->add_markers() = std::move(desired_line);
     }
 
-    auto& model = pinocchio_view.getModel();
-    auto& data = pinocchio_view.getData();
-    end_effector_kinematics.setPinocchioInterface(pinocchio_view);
-    auto feetAt = [&](const automanip::vector_t& sample) {
+    auto& model = pinocchio_view.GetModel();
+    auto& data = pinocchio_view.GetData();
+    end_effector_kinematics.SetPinocchioInterface(pinocchio_view);
+    auto feetAt = [&](const bolza::vector_t& sample) {
       const auto sample_q =
-          automanip::centroidal_model::getGeneralizedCoordinates(sample, info);
+          bolza::centroidal_model::getGeneralizedCoordinates(sample, info);
       pinocchio::forwardKinematics(model, data, sample_q);
       pinocchio::updateFramePlacements(model, data);
-      return end_effector_kinematics.getPosition(sample);
+      return end_effector_kinematics.GetPosition(sample);
     };
     constexpr std::size_t kFootCount = 4;
     if (trajectory.size() >= 2) {
       std::array<Marker, kFootCount> foot_lines;
       for (std::size_t foot = 0; foot < kFootCount; ++foot) {
-        foot_lines[foot] = automanip::examples::MakeShape(
+        foot_lines[foot] = bolza::examples::MakeShape(
             "EE Trajectories", static_cast<int>(foot), Marker::LINE_STRIP, 0.0, 0.0, 0.0, 0.01,
             0.01, 0.01, kFootColor[foot][0], kFootColor[foot][1], kFootColor[foot][2]);
       }
       const std::size_t foot_stride = trajectory.size() > 60 ? trajectory.size() / 60 : 1;
-      auto append_feet = [&](const automanip::vector_t& sample) {
+      auto append_feet = [&](const bolza::vector_t& sample) {
         if (sample.size() < info.stateDim) {
           return;
         }
@@ -337,7 +337,7 @@ int main(int argc, char** argv) {
         event_modes.size() == event_times.size() + 1) {
       std::array<Marker, kFootCount> footholds;
       for (std::size_t foot = 0; foot < kFootCount; ++foot) {
-        footholds[foot] = automanip::examples::MakeShape(
+        footholds[foot] = bolza::examples::MakeShape(
             "Future footholds", static_cast<int>(foot), Marker::SPHERE_LIST, 0.0, 0.0, 0.0,
             0.03, 0.03, 0.03, kFootColor[foot][0], kFootColor[foot][1], kFootColor[foot][2]);
       }
@@ -347,9 +347,9 @@ int main(int argc, char** argv) {
         if (!(t_start < event_times[event] && event_times[event] < t_end)) {
           continue;
         }
-        const auto before = automanip::legged_robot::modeNumber2StanceLeg(event_modes[event]);
-        const auto after = automanip::legged_robot::modeNumber2StanceLeg(event_modes[event + 1]);
-        const auto landing = automanip::LinearInterpolation::interpolate(event_times[event],
+        const auto before = bolza::legged_robot::ModeNumber2StanceLeg(event_modes[event]);
+        const auto after = bolza::legged_robot::ModeNumber2StanceLeg(event_modes[event + 1]);
+        const auto landing = bolza::LinearInterpolation::Interpolate(event_times[event],
                                                                          plan_time, trajectory);
         if (landing.size() < info.stateDim) {
           continue;
@@ -370,7 +370,7 @@ int main(int argc, char** argv) {
     }
 
     const auto feet = feetAt(state);
-    const auto contact = automanip::legged_robot::modeNumber2StanceLeg(observation.mode);
+    const auto contact = bolza::legged_robot::ModeNumber2StanceLeg(observation.mode);
     const auto input = observation.input;
     const std::size_t contacts = std::min(feet.size(), contact.size());
 
@@ -379,7 +379,7 @@ int main(int argc, char** argv) {
     int stance_count = 0;
     for (std::size_t i = 0; i < contacts; ++i) {
       const Eigen::Vector3d foot = feet[i];
-      auto sphere = automanip::examples::MakeShape(
+      auto sphere = bolza::examples::MakeShape(
           "EE Positions", static_cast<int>(i), Marker::SPHERE, foot.x(), foot.y(), foot.z(), 0.03,
           0.03, 0.03, kFootColor[i][0], kFootColor[i][1], kFootColor[i][2]);
       if (!contact[i]) {
@@ -388,7 +388,7 @@ int main(int argc, char** argv) {
       *markers->add_markers() = std::move(sphere);
 
       const Eigen::Vector3d force =
-          automanip::centroidal_model::getContactForces(input, i, info);
+          bolza::centroidal_model::GetContactForces(input, i, info);
       if (contact[i]) {
         const Eigen::Vector3d arrow = force / 1000.0;
         const double length = arrow.norm();
@@ -396,7 +396,7 @@ int main(int argc, char** argv) {
           const Eigen::Quaterniond aim =
               Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d::UnitX(), arrow / length);
           const Eigen::Vector3d start = foot - arrow;
-          *markers->add_markers() = automanip::examples::MakeShape(
+          *markers->add_markers() = bolza::examples::MakeShape(
               "EE Forces", static_cast<int>(i), Marker::ARROW, start.x(), start.y(), start.z(),
               length, 0.01, 0.02, kGreen[0], kGreen[1], kGreen[2], aim.w(), aim.x(), aim.y(),
               aim.z());
@@ -408,11 +408,11 @@ int main(int argc, char** argv) {
     }
     if (force_z > 0.0 && stance_count > 0) {
       center /= force_z;
-      *markers->add_markers() = automanip::examples::MakeShape(
+      *markers->add_markers() = bolza::examples::MakeShape(
           "Center of Pressure", 0, Marker::SPHERE, center.x(), center.y(), center.z(), 0.03, 0.03,
           0.03, kGreen[0], kGreen[1], kGreen[2]);
     }
-    auto polygon = automanip::examples::MakeShape("Support Polygon", 0, Marker::LINE_LIST, 0.0, 0.0,
+    auto polygon = bolza::examples::MakeShape("Support Polygon", 0, Marker::LINE_LIST, 0.0, 0.0,
                                                   0.0, 0.005, 0.005, 0.005, kBlack[0], kBlack[1],
                                                   kBlack[2]);
     for (std::size_t i = 0; i < contacts; ++i) {
@@ -431,5 +431,5 @@ int main(int argc, char** argv) {
       *markers->add_markers() = std::move(polygon);
     }
   };
-  return automanip::examples::RunDemo(request);
+  return bolza::examples::RunDemo(request);
 }

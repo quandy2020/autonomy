@@ -50,7 +50,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_dummy_ball1_X_fr_world();
-        const Type_fr_dummy_ball1_X_fr_world& update(const JState&);
+        const Type_fr_dummy_ball1_X_fr_world& Update(const JState&);
     protected:
     };
     
@@ -59,7 +59,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_world_X_fr_dummy_ball1();
-        const Type_fr_world_X_fr_dummy_ball1& update(const JState&);
+        const Type_fr_world_X_fr_dummy_ball1& Update(const JState&);
     protected:
     };
     
@@ -68,7 +68,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_ball_X_fr_dummy_ball1();
-        const Type_fr_ball_X_fr_dummy_ball1& update(const JState&);
+        const Type_fr_ball_X_fr_dummy_ball1& Update(const JState&);
     protected:
     };
     
@@ -77,7 +77,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_dummy_ball1_X_fr_ball();
-        const Type_fr_dummy_ball1_X_fr_ball& update(const JState&);
+        const Type_fr_dummy_ball1_X_fr_ball& Update(const JState&);
     protected:
     };
     
@@ -86,7 +86,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_dummy_base1_X_fr_ball();
-        const Type_fr_dummy_base1_X_fr_ball& update(const JState&);
+        const Type_fr_dummy_base1_X_fr_ball& Update(const JState&);
     protected:
     };
     
@@ -95,7 +95,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_ball_X_fr_dummy_base1();
-        const Type_fr_ball_X_fr_dummy_base1& update(const JState&);
+        const Type_fr_ball_X_fr_dummy_base1& Update(const JState&);
     protected:
     };
     
@@ -104,7 +104,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_dummy_base2_X_fr_dummy_base1();
-        const Type_fr_dummy_base2_X_fr_dummy_base1& update(const JState&);
+        const Type_fr_dummy_base2_X_fr_dummy_base1& Update(const JState&);
     protected:
     };
     
@@ -113,7 +113,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_dummy_base1_X_fr_dummy_base2();
-        const Type_fr_dummy_base1_X_fr_dummy_base2& update(const JState&);
+        const Type_fr_dummy_base1_X_fr_dummy_base2& Update(const JState&);
     protected:
     };
     
@@ -122,7 +122,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_base_X_fr_dummy_base2();
-        const Type_fr_base_X_fr_dummy_base2& update(const JState&);
+        const Type_fr_base_X_fr_dummy_base2& Update(const JState&);
     protected:
     };
     
@@ -131,7 +131,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_dummy_base2_X_fr_base();
-        const Type_fr_dummy_base2_X_fr_base& update(const JState&);
+        const Type_fr_dummy_base2_X_fr_base& Update(const JState&);
     protected:
     };
     
@@ -172,7 +172,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_dummy_ball1_X_fr_world();
-        const Type_fr_dummy_ball1_X_fr_world& update(const JState&);
+        const Type_fr_dummy_ball1_X_fr_world& Update(const JState&);
     protected:
     };
     
@@ -181,7 +181,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_world_X_fr_dummy_ball1();
-        const Type_fr_world_X_fr_dummy_ball1& update(const JState&);
+        const Type_fr_world_X_fr_dummy_ball1& Update(const JState&);
     protected:
     };
     
@@ -190,7 +190,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_ball_X_fr_dummy_ball1();
-        const Type_fr_ball_X_fr_dummy_ball1& update(const JState&);
+        const Type_fr_ball_X_fr_dummy_ball1& Update(const JState&);
     protected:
     };
     
@@ -199,7 +199,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_dummy_ball1_X_fr_ball();
-        const Type_fr_dummy_ball1_X_fr_ball& update(const JState&);
+        const Type_fr_dummy_ball1_X_fr_ball& Update(const JState&);
     protected:
     };
     
@@ -208,7 +208,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_dummy_base1_X_fr_ball();
-        const Type_fr_dummy_base1_X_fr_ball& update(const JState&);
+        const Type_fr_dummy_base1_X_fr_ball& Update(const JState&);
     protected:
     };
     
@@ -217,7 +217,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_ball_X_fr_dummy_base1();
-        const Type_fr_ball_X_fr_dummy_base1& update(const JState&);
+        const Type_fr_ball_X_fr_dummy_base1& Update(const JState&);
     protected:
     };
     
@@ -226,7 +226,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_dummy_base2_X_fr_dummy_base1();
-        const Type_fr_dummy_base2_X_fr_dummy_base1& update(const JState&);
+        const Type_fr_dummy_base2_X_fr_dummy_base1& Update(const JState&);
     protected:
     };
     
@@ -235,7 +235,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_dummy_base1_X_fr_dummy_base2();
-        const Type_fr_dummy_base1_X_fr_dummy_base2& update(const JState&);
+        const Type_fr_dummy_base1_X_fr_dummy_base2& Update(const JState&);
     protected:
     };
     
@@ -244,7 +244,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_base_X_fr_dummy_base2();
-        const Type_fr_base_X_fr_dummy_base2& update(const JState&);
+        const Type_fr_base_X_fr_dummy_base2& Update(const JState&);
     protected:
     };
     
@@ -253,7 +253,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_dummy_base2_X_fr_base();
-        const Type_fr_dummy_base2_X_fr_base& update(const JState&);
+        const Type_fr_dummy_base2_X_fr_base& Update(const JState&);
     protected:
     };
     
@@ -294,7 +294,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_dummy_ball1_X_fr_world();
-        const Type_fr_dummy_ball1_X_fr_world& update(const JState&);
+        const Type_fr_dummy_ball1_X_fr_world& Update(const JState&);
     protected:
     };
     
@@ -303,7 +303,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_world_X_fr_dummy_ball1();
-        const Type_fr_world_X_fr_dummy_ball1& update(const JState&);
+        const Type_fr_world_X_fr_dummy_ball1& Update(const JState&);
     protected:
     };
     
@@ -312,7 +312,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_ball_X_fr_dummy_ball1();
-        const Type_fr_ball_X_fr_dummy_ball1& update(const JState&);
+        const Type_fr_ball_X_fr_dummy_ball1& Update(const JState&);
     protected:
     };
     
@@ -321,7 +321,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_dummy_ball1_X_fr_ball();
-        const Type_fr_dummy_ball1_X_fr_ball& update(const JState&);
+        const Type_fr_dummy_ball1_X_fr_ball& Update(const JState&);
     protected:
     };
     
@@ -330,7 +330,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_dummy_base1_X_fr_ball();
-        const Type_fr_dummy_base1_X_fr_ball& update(const JState&);
+        const Type_fr_dummy_base1_X_fr_ball& Update(const JState&);
     protected:
     };
     
@@ -339,7 +339,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_ball_X_fr_dummy_base1();
-        const Type_fr_ball_X_fr_dummy_base1& update(const JState&);
+        const Type_fr_ball_X_fr_dummy_base1& Update(const JState&);
     protected:
     };
     
@@ -348,7 +348,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_dummy_base2_X_fr_dummy_base1();
-        const Type_fr_dummy_base2_X_fr_dummy_base1& update(const JState&);
+        const Type_fr_dummy_base2_X_fr_dummy_base1& Update(const JState&);
     protected:
     };
     
@@ -357,7 +357,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_dummy_base1_X_fr_dummy_base2();
-        const Type_fr_dummy_base1_X_fr_dummy_base2& update(const JState&);
+        const Type_fr_dummy_base1_X_fr_dummy_base2& Update(const JState&);
     protected:
     };
     
@@ -366,7 +366,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_base_X_fr_dummy_base2();
-        const Type_fr_base_X_fr_dummy_base2& update(const JState&);
+        const Type_fr_base_X_fr_dummy_base2& Update(const JState&);
     protected:
     };
     
@@ -375,7 +375,7 @@ public:
     public:
         EIGEN_MAKE_ALIGNED_OPERATOR_NEW
         Type_fr_dummy_base2_X_fr_base();
-        const Type_fr_dummy_base2_X_fr_base& update(const JState&);
+        const Type_fr_dummy_base2_X_fr_base& Update(const JState&);
     protected:
     };
     

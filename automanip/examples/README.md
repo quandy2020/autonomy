@@ -2,11 +2,27 @@
 
 OCS2 模型各用一个进程跑 MPC 和 rollout，用 Autolink 把 URDF、关节、轨迹和目标发给 autoviz。小车倒立摆、双积分器、四旋翼、球上平衡不依赖 Pinocchio。四足和移动机械臂在找到 pinocchio 时编译，机械臂的自碰撞还需要 hpp-fcl。
 
+## OCP 用法（`bolza::Problem`）
+
+`double_integrator` / `cartpole` / `quadrotor` / `ballbot` 各用 `{name}.hpp` / `{name}.cpp`，经 [`bolza::Problem`](../bolza/bolza/problem.hpp) 装动力学与二次代价：
+
+```cpp
+problem.SetLinearDynamics(A, B);          // 或 SetDynamics(...)
+problem.AddQuadraticCost(Q, R);
+problem.AddQuadraticFinalCost(Qf);
+problem.SetInitialState(x0);
+problem.SetTarget(x_star);
+// Autolink demo：GaussNewtonDDPMPC(..., problem.GetOptimalControlProblem(), ...)
+// 无可视化：bolza::Solve(options, &problem, &summary)  →  tutorial/solve_double_integrator.cpp
+```
+
+纯库教程目标：`bolza_tutorial_di`。`legged_robot` / `mobile_manipulator` 仍用底层 `OptimalControlProblem`（切换参考 / 软约束较多）。
+
 默认求解器是 Gauss-Newton DDP。`ballbot_demo` 的第二个参数可以换成已移植的 SLP。
 
 ## 编译
 
-求解器源码在 CppAD、Boost.Log 和 OpenMP 都找得到时才会编进 `libautomanip`，示例也只在这时生成。`legged_robot_demo` 还要有 pinocchio，`mobile_manipulator_demo` 还要有 hpp-fcl。CppAD 默认用同级仓库的头文件：
+`libbolza` 在 CppAD、OpenMP、Pinocchio、GLPK 等依赖齐备时编入；示例依赖 `bolza` 目标。`legged_robot_demo` 还要有 pinocchio，`mobile_manipulator_demo` 还要有 hpp-fcl / coal。库本身**不依赖 Boost**（INFO / 日志 / 积分均为自研或 C++17）。
 
 `ocs2/ocs2_thirdparty/include/cppad/cg.hpp`
 

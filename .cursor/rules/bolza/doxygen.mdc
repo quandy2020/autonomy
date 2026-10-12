@@ -1,0 +1,92 @@
+---
+description: bolza 包内 C++ 注释统一为 OCS2 风格 Doxygen（@param [in]/@file/@brief）。
+globs: automanip/bolza/bolza/**/*.{hpp,h,cpp}
+alwaysApply: false
+---
+
+# bolza Doxygen 注释规范
+
+编写或修改 `automanip/bolza/bolza/` 下头文件与实现时，使用 **Doxygen**，并与既有 OCS2 移植风格一致。
+
+## 命令前缀
+
+- 只用 `@`（`@brief` / `@param` / `@return`），**不用** `\` 形式。
+- 多行块用 `/** … */`；枚举项 / 简单成员可用 `///<`。
+
+## 文件头
+
+版权声明（若有）与 `#pragma once` 之后：
+
+```cpp
+/**
+ * @file hpipm_interface.hpp
+ * @brief 一句话说明本文件职责。
+ */
+```
+
+- `@file` 写**文件名**（不含目录），与磁盘名一致。
+- `@brief` 直接说职责，不写「本节介绍…」。
+
+## 类 / 结构 / 枚举
+
+```cpp
+/**
+ * @brief 一句话职责。
+ *
+ * 可选：补充约束、线程模型、与求解器关系（2–4 行）。
+ */
+class HpipmInterface {
+```
+
+- 公开 API 类建议有块注释；模板类可加 `@tparam`。
+- 不必强制 `@class bolza::Foo`（OCS2 风格以 `@brief` 为主）；新增代码二选一保持文件内一致。
+
+## 函数 / 方法
+
+```cpp
+/**
+ * @brief 做什么。
+ * @param [in] currentTime: 当前时间。
+ * @param [in] currentState: 当前状态。
+ * @param [out] mpcInput: 优化后的控制输入。
+ * @return 成功为 true。
+ * @note 可选注意点。
+ */
+```
+
+方向标签（与现有库一致，**保留空格**）：
+
+| 标签 | 含义 |
+|:---|:---|
+| `@param [in]` | 只读输入 |
+| `@param [out]` | 输出 |
+| `@param [in,out]` | 输入输出 |
+
+- 参数名后用冒号 + 空格：`@param [in] name: 说明`。
+- 无方向时不要写 `@param name`（补成 `[in]`）。
+- 虚接口 / 纯虚：写清契约；失败约定写在 `@return` 或 `@note`。
+
+## 成员与 typedef
+
+```cpp
+/** Scalar type. */
+using scalar_t = double;
+
+scalar_t timeHorizon_;  ///< MPC time horizon.
+```
+
+同一类内不要混用 `/**<`、`///<`、单独 `//` 三种以上风格。
+
+## 不做
+
+- 不删已有正确 Doxygen；只补缺、统一格式。
+- 不把实现细节堆进 `@brief`。
+- `.cpp` 内局部辅助函数可不强制；对外符号与复杂逻辑应有 `@brief`。
+- `thirdparty/`、`test/` 不强制本规范（test 可从简）。
+
+## 改码检查
+
+- [ ] 头文件有 `@file` + `@brief`
+- [ ] 公开方法有 `@brief`；有参/返回则有 `@param [in|out]` / `@return`
+- [ ] 无 `\` 命令、无无方向 `@param name`
+- [ ] 参数格式：`@param [in] name: …`

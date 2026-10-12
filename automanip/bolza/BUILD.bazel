@@ -1,0 +1,13 @@
+"""Bolza OCP sources (CMake is the primary build)."""
+
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "headers",
+    srcs = glob(["bolza/**/*.hpp"]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob(["bolza/**/*.cpp"]),
+)

@@ -29,7 +29,7 @@ bool ManipulationTask::OnGoal(
   active_goal_ = goal;
   last_ok_ = true;
   last_error_.clear();
-  // Goals are executed by autonomy.manipulation Action server; this TaskApp
+  // Goals are executed by automanip.manipulation Action server; this TaskApp
   // records intent for scheduler / bridge visibility.
   AINFO << "ManipulationTask accepted id=" << goal.id()
         << " group=" << goal.group() << " planner=" << goal.planner()

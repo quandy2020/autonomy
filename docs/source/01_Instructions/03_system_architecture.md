@@ -95,7 +95,7 @@ Autonomy 是**多进程整机软件**：算法与任务在各自进程中运行�
       <div class="nav-body-block">
         <div class="nav-body-label">操作 / 其它</div>
         <div class="nav-chip-list">
-          <span class="nav-chip">manipulation</span>
+          <span class="nav-chip">automanip</span>
           <span class="nav-chip">audio</span>
           <span class="nav-chip">vehicle</span>
           <span class="nav-chip">sensor</span>
@@ -171,7 +171,7 @@ Autonomy 是**多进程整机软件**：算法与任务在各自进程中运行�
 | 地图 | `map` | Occupancy / Costmap2D（static·obstacle·inflation） | [07](../07_Map/00_guide.md) |
 | 全局规划 | `planning` | `ComputePath` → Path | [08](../08_Planning/00_guide.md) |
 | 局部控制 | `control` | `FollowPath` → 周期 `cmd_vel` | [09](../09_Control/00_guide.md) |
-| 操作 | `manipulation` | 机械臂运动与约束 | — |
+| 操作 | `automanip` | 规划栈 + bolza OCP 子库 | — |
 | 编排 | `task` | 多域 BT（文档章名 **Navigator**） | [16](../16_Navigator/00_guide.md) |
 | 管理 | `system` | monitor 健康快照、安全闩锁、OTA、默认 launch | [04 Running](../04_Running/00_guide.md) |
 | 对外 | `bridge` | gRPC：发令、查状态、运维类 RPC | [15](../15_Bridge/00_guide.md) |
@@ -229,7 +229,8 @@ Goal → task(BT) → planning(Path) → control(FollowPath → cmd_vel)
 | Map | `autonomy/map/` | costmap 相关库 / 服务 | [07 Map](../07_Map/index.rst) |
 | Planning | `autonomy/planning/` | `autonomy.planning` | [08 Planning](../08_Planning/index.rst) |
 | Control | `autonomy/control/` | `autonomy.control` | [09 Control](../09_Control/index.rst) |
-| Manipulation | `autonomy/manipulation/` | | — |
+| Manipulation | `automanip/automanip/` | `automanip` | — |
+| Bolza OCP | `automanip/bolza/` | `libbolza`、`*_demo` | — |
 | Task | `autonomy/task/` | `autonomy.task` | [16 Navigator](../16_Navigator/index.rst) |
 | System | `autonomy/system/` | `autonomy.monitor`、`autonomy.ota`、launch | [04 Running](../04_Running/00_guide.md) |
 | Bridge | `autonomy/bridge/` | `autonomy.bridge` | [15 Bridge](../15_Bridge/index.rst) |
@@ -263,7 +264,7 @@ flowchart TB
     MAP[map]
     PLN[planning]
     CTL[control]
-    ARM[manipulation]
+    ARM[automanip]
     SYS[system / monitor]
   end
 

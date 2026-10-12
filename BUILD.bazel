@@ -38,7 +38,6 @@ _AUTONOMY_PROTO_FILEGROUPS = [
     "//autonomy/bridge:protos",
     "//autonomy/control:protos",
     "//autonomy/localization:protos",
-    "//autonomy/manipulation:protos",
     "//autonomy/map:protos",
     "//autonomy/perception:protos",
     "//autonomy/planning:protos",

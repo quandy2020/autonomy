@@ -1,8 +1,8 @@
 <!--
   Automanip launch file.
 
-  The process binary loads config/automanip.yaml. Arm control starts when
-  arm.enable is true and arm.backend names a registered vendor driver.
+  Starts the planning/execution process (ManipulationServer). Conf:
+    share/automanip/conf/manipulation.pb.txt
 
   Prerequisites:
     export AUTOMANIP_PATH=$PWD/src/autonomy/automanip

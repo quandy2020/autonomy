@@ -14,7 +14,7 @@ iit::Ballbot::dyn::tpl::JSIM<TRAIT>::JSIM(IProperties& inertiaProperties, FTrans
 #define DATA tpl::JSIM<TRAIT>::operator()
 
 template <typename TRAIT>
-const typename iit::Ballbot::dyn::tpl::JSIM<TRAIT>& iit::Ballbot::dyn::tpl::JSIM<TRAIT>::update(const JointState& state) {
+const typename iit::Ballbot::dyn::tpl::JSIM<TRAIT>& iit::Ballbot::dyn::tpl::JSIM<TRAIT>::Update(const JointState& state) {
     ForceVector F;
 
     // Precomputes only once the coordinate transforms:

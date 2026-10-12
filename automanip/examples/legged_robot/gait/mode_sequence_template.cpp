@@ -1,58 +1,45 @@
-/******************************************************************************
-Copyright (c) 2021, Farbod Farshidian. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
- * Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
- * Neither the name of the copyright holder nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-******************************************************************************/
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "examples/legged_robot/gait/mode_sequence_template.hpp"
 
-#include <automanip/core/misc/display.hpp>
-#include <automanip/core/misc/load_data.hpp>
+#include <bolza/core/misc/display.hpp>
+#include <bolza/core/misc/load_data.hpp>
 
-namespace automanip {
+namespace bolza {
 namespace legged_robot {
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 std::ostream& operator<<(std::ostream& stream, const ModeSequenceTemplate& modeSequenceTemplate) {
-  stream << "Template switching times: {" << toDelimitedString(modeSequenceTemplate.switchingTimes) << "}\n";
-  stream << "Template mode sequence:   {" << toDelimitedString(modeSequenceTemplate.modeSequence) << "}\n";
+  stream << "Template switching times: {" << ToDelimitedString(modeSequenceTemplate.switchingTimes) << "}\n";
+  stream << "Template mode sequence:   {" << ToDelimitedString(modeSequenceTemplate.modeSequence) << "}\n";
   return stream;
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-ModeSequenceTemplate loadModeSequenceTemplate(const std::string& filename, const std::string& topicName, bool verbose) {
+ModeSequenceTemplate LoadModeSequenceTemplate(const std::string& filename, const std::string& topicName, bool verbose) {
   std::vector<scalar_t> switchingTimes;
-  loadData::loadStdVector(filename, topicName + ".switchingTimes", switchingTimes, verbose);
+  loadData::LoadStdVector(filename, topicName + ".switchingTimes", switchingTimes, verbose);
 
   std::vector<std::string> modeSequenceString;
-  loadData::loadStdVector(filename, topicName + ".modeSequence", modeSequenceString, verbose);
+  loadData::LoadStdVector(filename, topicName + ".modeSequence", modeSequenceString, verbose);
 
   if (switchingTimes.empty() || modeSequenceString.empty()) {
     throw std::runtime_error("[loadModeSequenceTemplate] failed to load : " + topicName + " from " + filename);
@@ -62,7 +49,7 @@ ModeSequenceTemplate loadModeSequenceTemplate(const std::string& filename, const
   std::vector<size_t> modeSequence;
   modeSequence.reserve(modeSequenceString.size());
   for (const auto& modeName : modeSequenceString) {
-    modeSequence.push_back(string2ModeNumber(modeName));
+    modeSequence.push_back(String2ModeNumber(modeName));
   }
 
   return {switchingTimes, modeSequence};
@@ -71,7 +58,7 @@ ModeSequenceTemplate loadModeSequenceTemplate(const std::string& filename, const
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-Gait toGait(const ModeSequenceTemplate& modeSequenceTemplate) {
+Gait ToGait(const ModeSequenceTemplate& modeSequenceTemplate) {
   const auto startTime = modeSequenceTemplate.switchingTimes.front();
   const auto endTime = modeSequenceTemplate.switchingTimes.back();
   Gait gait;
@@ -82,19 +69,19 @@ Gait toGait(const ModeSequenceTemplate& modeSequenceTemplate) {
                 [&](scalar_t eventTime) { gait.eventPhases.push_back((eventTime - startTime) / gait.duration); });
   // Modes:
   gait.modeSequence = modeSequenceTemplate.modeSequence;
-  assert(isValidGait(gait));
+  assert(IsValidGait(gait));
   return gait;
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-ModeSchedule loadModeSchedule(const std::string& filename, const std::string& topicName, bool verbose) {
+ModeSchedule LoadModeSchedule(const std::string& filename, const std::string& topicName, bool verbose) {
   std::vector<scalar_t> eventTimes;
-  loadData::loadStdVector(filename, topicName + ".eventTimes", eventTimes, verbose);
+  loadData::LoadStdVector(filename, topicName + ".eventTimes", eventTimes, verbose);
 
   std::vector<std::string> modeSequenceString;
-  loadData::loadStdVector(filename, topicName + ".modeSequence", modeSequenceString, verbose);
+  loadData::LoadStdVector(filename, topicName + ".modeSequence", modeSequenceString, verbose);
 
   if (modeSequenceString.empty()) {
     throw std::runtime_error("[loadModeSchedule] failed to load : " + topicName + " from " + filename);
@@ -104,11 +91,11 @@ ModeSchedule loadModeSchedule(const std::string& filename, const std::string& to
   std::vector<size_t> modeSequence;
   modeSequence.reserve(modeSequenceString.size());
   for (const auto& modeName : modeSequenceString) {
-    modeSequence.push_back(string2ModeNumber(modeName));
+    modeSequence.push_back(String2ModeNumber(modeName));
   }
 
   return {eventTimes, modeSequence};
 }
 
 }  // namespace legged_robot
-}  // namespace automanip
+}  // namespace bolza

@@ -1,47 +1,34 @@
-/******************************************************************************
-Copyright (c) 2021, Farbod Farshidian. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
- * Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
- * Neither the name of the copyright holder nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-******************************************************************************/
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "examples/legged_robot/gait/gait.hpp"
 
-#include <automanip/core/misc/display.hpp>
+#include <bolza/core/misc/display.hpp>
 
 #include <algorithm>
 #include <cassert>
 #include <cmath>
 
-namespace automanip {
+namespace bolza {
 namespace legged_robot {
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-bool isValidGait(const Gait& gait) {
+bool IsValidGait(const Gait& gait) {
   bool validGait = true;
   validGait &= gait.duration > 0.0;
   validGait &= std::all_of(gait.eventPhases.begin(), gait.eventPhases.end(), [](scalar_t phase) { return 0.0 < phase && phase < 1.0; });
@@ -53,14 +40,14 @@ bool isValidGait(const Gait& gait) {
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-bool isValidPhase(scalar_t phase) {
+bool IsValidPhase(scalar_t phase) {
   return phase >= 0.0 && phase < 1.0;
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-scalar_t wrapPhase(scalar_t phase) {
+scalar_t WrapPhase(scalar_t phase) {
   phase = std::fmod(phase, 1.0);
   if (phase < 0.0) {
     phase += 1.0;
@@ -71,9 +58,9 @@ scalar_t wrapPhase(scalar_t phase) {
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-int getModeIndexFromPhase(scalar_t phase, const Gait& gait) {
-  assert(isValidPhase(phase));
-  assert(isValidGait(gait));
+int GetModeIndexFromPhase(scalar_t phase, const Gait& gait) {
+  assert(IsValidPhase(phase));
+  assert(IsValidGait(gait));
   auto firstLargerValueIterator = std::upper_bound(gait.eventPhases.begin(), gait.eventPhases.end(), phase);
   return static_cast<int>(firstLargerValueIterator - gait.eventPhases.begin());
 }
@@ -81,32 +68,32 @@ int getModeIndexFromPhase(scalar_t phase, const Gait& gait) {
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-size_t getModeFromPhase(scalar_t phase, const Gait& gait) {
-  assert(isValidPhase(phase));
-  assert(isValidGait(gait));
-  return gait.modeSequence[getModeIndexFromPhase(phase, gait)];
+size_t GetModeFromPhase(scalar_t phase, const Gait& gait) {
+  assert(IsValidPhase(phase));
+  assert(IsValidGait(gait));
+  return gait.modeSequence[GetModeIndexFromPhase(phase, gait)];
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-scalar_t timeLeftInGait(scalar_t phase, const Gait& gait) {
-  assert(isValidPhase(phase));
-  assert(isValidGait(gait));
+scalar_t TimeLeftInGait(scalar_t phase, const Gait& gait) {
+  assert(IsValidPhase(phase));
+  assert(IsValidGait(gait));
   return (1.0 - phase) * gait.duration;
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-scalar_t timeLeftInMode(scalar_t phase, const Gait& gait) {
-  assert(isValidPhase(phase));
-  assert(isValidGait(gait));
-  int modeIndex = getModeIndexFromPhase(phase, gait);
+scalar_t TimeLeftInMode(scalar_t phase, const Gait& gait) {
+  assert(IsValidPhase(phase));
+  assert(IsValidGait(gait));
+  int modeIndex = GetModeIndexFromPhase(phase, gait);
   if (modeIndex < gait.eventPhases.size()) {
     return (gait.eventPhases[modeIndex] - phase) * gait.duration;
   } else {
-    return timeLeftInGait(phase, gait);
+    return TimeLeftInGait(phase, gait);
   }
 }
 
@@ -115,10 +102,10 @@ scalar_t timeLeftInMode(scalar_t phase, const Gait& gait) {
 /******************************************************************************************************/
 std::ostream& operator<<(std::ostream& stream, const Gait& gait) {
   stream << "Duration:       " << gait.duration << "\n";
-  stream << "Event phases:  {" << toDelimitedString(gait.eventPhases) << "}\n";
-  stream << "Mode sequence: {" << toDelimitedString(gait.modeSequence) << "}\n";
+  stream << "Event phases:  {" << ToDelimitedString(gait.eventPhases) << "}\n";
+  stream << "Mode sequence: {" << ToDelimitedString(gait.modeSequence) << "}\n";
   return stream;
 }
 
 }  // namespace legged_robot
-}  // namespace automanip
+}  // namespace bolza

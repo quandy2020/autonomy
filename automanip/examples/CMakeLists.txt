@@ -1,16 +1,25 @@
-# Example binaries. Built only when the solver (CppAD, Boost.Log, OpenMP) is linked
-# into libautomanip. Each process publishes MarkerArray, JointState, and Path
-# for autoviz and subscribes to a PoseStamped target.
+# Example binaries. Built when libbolza is available (CppAD, OpenMP, …).
+# Each process publishes MarkerArray, JointState, and Path for autoviz and
+# subscribes to a PoseStamped target.
 
 if(NOT AUTOMANIP_WITH_SOLVER)
   message(STATUS "automanip examples skipped (solver dependencies are missing)")
   return()
 endif()
 
+# Pure libbolza tutorial (no Autolink): docs/04_robotic_examples.md §4.1
+if(TARGET bolza)
+  add_executable(bolza_tutorial_di
+    "${CMAKE_CURRENT_SOURCE_DIR}/tutorial/solve_double_integrator.cpp")
+  target_link_libraries(bolza_tutorial_di PRIVATE bolza)
+  target_include_directories(bolza_tutorial_di PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../bolza")
+endif()
+
 set(_EXAMPLE_RUNTIME
   "${CMAKE_CURRENT_SOURCE_DIR}/runtime/demo_loop.cpp")
 
-function(automanip_example name)
+Function(automanip_example name)
   autocmake_binary(${name}_demo
     SOURCES ${ARGN} ${_EXAMPLE_RUNTIME}
     DEPENDENCIES automanip autolink automsgs)
@@ -23,23 +32,19 @@ function(automanip_example name)
 endfunction()
 
 automanip_example(cartpole
-  cartpole/cart_pole_interface.cpp
-  cartpole/demo.cpp)
+  cartpole/cartpole.cpp)
 
 automanip_example(double_integrator
-  double_integrator/double_integrator_interface.cpp
-  double_integrator/demo.cpp)
+  double_integrator/double_integrator.cpp)
 
 automanip_example(quadrotor
-  quadrotor/quadrotor_interface.cpp
-  quadrotor/quadrotor_system_dynamics.cpp
-  quadrotor/demo.cpp)
+  quadrotor/quadrotor.cpp
+  quadrotor/quadrotor_system_dynamics.cpp)
 
 automanip_example(ballbot
-  ballbot/ballbot_interface.cpp
+  ballbot/ballbot.cpp
   ballbot/dynamics/ballbot_system_dynamics.cpp
-  ballbot/generated/miscellaneous.cpp
-  ballbot/demo.cpp)
+  ballbot/generated/miscellaneous.cpp)
 
 if(AUTOMANIP_WITH_PINOCCHIO)
   file(GLOB_RECURSE _LEGGED_SOURCES CONFIGURE_DEPENDS

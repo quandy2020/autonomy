@@ -1,39 +1,26 @@
-/******************************************************************************
-Copyright (c) 2021, Farbod Farshidian. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
- * Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
- * Neither the name of the copyright holder nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-******************************************************************************/
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #pragma once
 
-#include <automanip/core/reference/mode_schedule.hpp>
+#include <bolza/core/reference/mode_schedule.hpp>
 
 #include "examples/legged_robot/common/types.hpp"
 
-namespace automanip {
+namespace bolza {
 namespace legged_robot {
 
 struct LegPhase {
@@ -61,7 +48,7 @@ struct SwingTiming {
  * @param [in] modeSchedule : Mode schedule.
  * @return Contact phases for all legs.
  */
-feet_array_t<LegPhase> getContactPhasePerLeg(scalar_t time, const automanip::ModeSchedule& modeSchedule);
+feet_array_t<LegPhase> GetContactPhasePerLeg(scalar_t time, const bolza::ModeSchedule& modeSchedule);
 
 /**
  * @brief Get the swing phase for all legs.
@@ -73,40 +60,40 @@ feet_array_t<LegPhase> getContactPhasePerLeg(scalar_t time, const automanip::Mod
  * @param [in] modeSchedule : Mode schedule.
  * @return Swing phases for all legs.
  */
-feet_array_t<LegPhase> getSwingPhasePerLeg(scalar_t time, const automanip::ModeSchedule& modeSchedule);
+feet_array_t<LegPhase> GetSwingPhasePerLeg(scalar_t time, const bolza::ModeSchedule& modeSchedule);
 
 /** Extracts the contact timings for all legs from a modeSchedule */
-feet_array_t<std::vector<ContactTiming>> extractContactTimingsPerLeg(const automanip::ModeSchedule& modeSchedule);
+feet_array_t<std::vector<ContactTiming>> ExtractContactTimingsPerLeg(const bolza::ModeSchedule& modeSchedule);
 
 /** Extracts the swing timings for all legs from a modeSchedule */
-feet_array_t<std::vector<SwingTiming>> extractSwingTimingsPerLeg(const automanip::ModeSchedule& modeSchedule);
+feet_array_t<std::vector<SwingTiming>> ExtractSwingTimingsPerLeg(const bolza::ModeSchedule& modeSchedule);
 
 /** Returns time of the next lift off. Returns nan if leg is not lifting off */
-scalar_t getTimeOfNextLiftOff(scalar_t currentTime, const std::vector<ContactTiming>& contactTimings);
+scalar_t GetTimeOfNextLiftOff(scalar_t currentTime, const std::vector<ContactTiming>& contactTimings);
 
 /** Returns time of the  touch down for all legs from a modeschedule. Returns nan if leg does not touch down */
-scalar_t getTimeOfNextTouchDown(scalar_t currentTime, const std::vector<ContactTiming>& contactTimings);
+scalar_t GetTimeOfNextTouchDown(scalar_t currentTime, const std::vector<ContactTiming>& contactTimings);
 
 /**
  * Get {startTime, endTime} for all contact phases. Swingphases are always implied in between: endTime[i] < startTime[i+1]
  * times are NaN if they cannot be identified at the boundaries
  * Vector is empty if there are no contact phases
  */
-std::vector<ContactTiming> extractContactTimings(const std::vector<scalar_t>& eventTimes, const std::vector<bool>& contactFlags);
+std::vector<ContactTiming> ExtractContactTimings(const std::vector<scalar_t>& eventTimes, const std::vector<bool>& contactFlags);
 
 /**
  * Get {startTime, endTime} for all swing phases. Contact phases are always implied in between: endTime[i] < startTime[i+1]
  * times are NaN if they cannot be identified at the boundaries
  * Vector is empty if there are no swing phases
  */
-std::vector<SwingTiming> extractSwingTimings(const std::vector<scalar_t>& eventTimes, const std::vector<bool>& contactFlags);
+std::vector<SwingTiming> ExtractSwingTimings(const std::vector<scalar_t>& eventTimes, const std::vector<bool>& contactFlags);
 
 /**
  * Extracts for each leg the contact sequence over the motion phase sequence.
  * @param modeSequence : Sequence of contact modes.
  * @return Sequence of contact flags per leg.
  */
-feet_array_t<std::vector<bool>> extractContactFlags(const std::vector<size_t>& modeSequence);
+feet_array_t<std::vector<bool>> ExtractContactFlags(const std::vector<size_t>& modeSequence);
 
 }  // namespace legged_robot
-}  // namespace automanip
+}  // namespace bolza

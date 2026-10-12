@@ -1,31 +1,18 @@
-/******************************************************************************
-Copyright (c) 2017, Farbod Farshidian. All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
- * Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
- * Redistributions in binary form must reproduce the above copyright notice,
-  this list of conditions and the following disclaimer in the documentation
-  and/or other materials provided with the distribution.
-
- * Neither the name of the copyright holder nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- ******************************************************************************/
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #pragma once
 
@@ -33,17 +20,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <vector>
 
-#include <automanip/core/types.hpp>
-#include <automanip/core/misc/load_data.hpp>
+#include <bolza/core/types.hpp>
+#include <bolza/core/misc/load_data.hpp>
 
-namespace automanip {
+namespace bolza {
 namespace cartpole {
 
 struct CartPoleParameters {
   /** Constructor */
-  CartPoleParameters() { computeInertiaTerms(); }
+  CartPoleParameters() { ComputeInertiaTerms(); }
 
-  void display() {
+  void Display() {
     std::cerr << "Cart-pole parameters: "
               << "\n";
     std::cerr << "cartMass:   " << cartMass_ << "\n";
@@ -55,19 +42,19 @@ struct CartPoleParameters {
   }
 
   /** Loads the Cart-Pole's parameters. */
-  void loadSettings(const std::string& filename, const std::string& fieldName, bool verbose = true) {
-    boost::property_tree::ptree pt;
-    boost::property_tree::read_info(filename, pt);
+  void LoadSettings(const std::string& filename, const std::string& fieldName, bool verbose = true) {
+    bolza::property_tree::ptree pt;
+    bolza::property_tree::read_info(filename, pt);
     if (verbose) {
       std::cerr << "\n #### Cart-pole Parameters:";
       std::cerr << "\n #### =============================================================================\n";
     }
-    loadData::loadPtreeValue(pt, cartMass_, fieldName + ".cartMass", verbose);
-    loadData::loadPtreeValue(pt, poleMass_, fieldName + ".poleMass", verbose);
-    loadData::loadPtreeValue(pt, poleLength_, fieldName + ".poleLength", verbose);
-    loadData::loadPtreeValue(pt, maxInput_, fieldName + ".maxInput", verbose);
-    loadData::loadPtreeValue(pt, gravity_, fieldName + ".gravity", verbose);
-    computeInertiaTerms();
+    loadData::LoadPtreeValue(pt, cartMass_, fieldName + ".cartMass", verbose);
+    loadData::LoadPtreeValue(pt, poleMass_, fieldName + ".poleMass", verbose);
+    loadData::LoadPtreeValue(pt, poleLength_, fieldName + ".poleLength", verbose);
+    loadData::LoadPtreeValue(pt, maxInput_, fieldName + ".maxInput", verbose);
+    loadData::LoadPtreeValue(pt, gravity_, fieldName + ".gravity", verbose);
+    ComputeInertiaTerms();
     if (verbose) {
       std::cerr << " #### =============================================================================\n" << std::endl;
     }
@@ -83,7 +70,7 @@ struct CartPoleParameters {
   scalar_t poleSteinerMoi_ = -1;  // [kg*m^2]
 
  private:
-  void computeInertiaTerms() {
+  void ComputeInertiaTerms() {
     poleHalfLength_ = poleLength_ / 2.0;
     poleMoi_ = 1.0 / 12.0 * poleMass_ * (poleLength_ * poleLength_);
     poleSteinerMoi_ = poleMoi_ + poleMass_ * (poleHalfLength_ * poleHalfLength_);
@@ -91,4 +78,4 @@ struct CartPoleParameters {
 };
 
 }  // namespace cartpole
-}  // namespace automanip
+}  // namespace bolza

@@ -1,0 +1,54 @@
+//
+// Created by rgrandia on 04.06.21.
+//
+
+#pragma once
+
+/**
+ * @file com_kino_dynamics_parameters.hpp
+ * @brief Parameters of the system dynamics (constant over the MPC horizon).
+ */
+
+
+#include "bolza/switched_model/core/switched_model.hpp"
+
+namespace switched_model {
+
+/**
+ * Parameters of the system dynamics (constant over the MPC horizon)
+ */
+template <typename SCALAR_T>
+struct ComKinoSystemDynamicsParameters {
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  //! External forces on the base, expressed in the origin frame
+  vector3_s_t<SCALAR_T> externalForceInOrigin = vector3_s_t<SCALAR_T>::Zero();
+  //! External torques on the base, expressed in the base frame
+  vector3_s_t<SCALAR_T> externalTorqueInBase = vector3_s_t<SCALAR_T>::Zero();
+
+  /**
+   * @brief Provides the number of parameters in this struct. Needs to be fixed before model generation and stay constant afterwards.
+   * @return Result value.
+   */
+  static size_t GetNumParameters() { return 6; };
+
+  /** Construct with default values */
+  ComKinoSystemDynamicsParameters() = default;
+
+  /**
+   * @brief Construct from vector.
+   * @param [in] parameterVector: Parameter Vector.
+   */
+  explicit ComKinoSystemDynamicsParameters(const Eigen::Matrix<SCALAR_T, Eigen::Dynamic, 1>& parameterVector);
+
+  /**
+   * @brief Flatten to a vector.
+   * @return Result value.
+   */
+  Eigen::Matrix<SCALAR_T, Eigen::Dynamic, 1> AsVector() const;
+};
+
+//! Explicit instantiations
+extern template class ComKinoSystemDynamicsParameters<scalar_t>;
+extern template class ComKinoSystemDynamicsParameters<ad_scalar_t>;
+
+}  // namespace switched_model

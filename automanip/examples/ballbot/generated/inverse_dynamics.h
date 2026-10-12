@@ -121,7 +121,7 @@ public:
      *
      * However, beware that certain routines might not use some of the
      * spatial quantities, which therefore would retain their last value
-     * without being updated nor reset (for example, the spatial velocity
+     * without being updated nor Reset (for example, the spatial velocity
      * of the links is unaffected by the computation of the gravity terms).
      */
     ///@{

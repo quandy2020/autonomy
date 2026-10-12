@@ -1,0 +1,10 @@
+# Bazel / local install
+/bazel-*
+/user.bazelrc
+/install/
+/build/
+/*.user
+.cache/
+
+# Doxygen output
+docs/api/
