@@ -36,6 +36,7 @@
 #include "autoviz/common/selection.hpp"
 #include "autoviz/common/selection_manager.hpp"
 
+class QKeyEvent;
 class QMouseEvent;
 class QWheelEvent;
 
@@ -209,6 +210,13 @@ class Tool {
    * @return @c true if consumed.
    */
   virtual bool wheelEvent(QWheelEvent* event);
+
+  /**
+   * @brief Handles a key press while this tool is active (e.g. Select + F).
+   * @param event Qt key event.
+   * @return @c true if consumed.
+   */
+  virtual bool keyPressEvent(QKeyEvent* event) { return false; }
 
   /**
    * @brief Optional per-frame overlay drawing into @p scene.

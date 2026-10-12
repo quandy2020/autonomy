@@ -226,6 +226,12 @@ void OgreRenderWindow::wheelEvent(QWheelEvent* event) {
 
 void OgreRenderWindow::keyPressEvent(QKeyEvent* event) {
   if (tool_manager_ != nullptr &&
+      tool_manager_->forwardActiveToolKeyPress(event)) {
+    emit toolShortcutTriggered();
+    event->accept();
+    return;
+  }
+  if (tool_manager_ != nullptr &&
       tool_manager_->handleShortcutKey(event->key())) {
     emit toolShortcutTriggered();
     event->accept();

@@ -14,8 +14,8 @@
 
 #include <glog/logging.h>
 
-#include "autoviz/display/obj_mesh.hpp"
-#include "autoviz/display/primitive_mesh.hpp"
+#include "autoviz/plugins/displays/common/obj_mesh.hpp"
+#include "autoviz/plugins/displays/common/primitive_mesh.hpp"
 #ifdef AUTOVIZ_USE_ASSIMP
 #include "autoviz/rendering/mesh_loader_helpers/assimp_loader.hpp"
 #endif

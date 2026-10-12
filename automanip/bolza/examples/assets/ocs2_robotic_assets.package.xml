@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>ocs2_robotic_assets</name>
+  <version>0.1.0</version>
+  <description>
+    URDF and mesh resources for bolza / automanip demos. Installed as
+    share/ocs2_robotic_assets/resources/… so RViz and Autoviz resolve
+    package://ocs2_robotic_assets/resources/… the same way.
+  </description>
+  <maintainer email="quandy2020@126.com">duyongquan</maintainer>
+  <license>Apache-2.0</license>
+  <export>
+    <build_type>cmake</build_type>
+  </export>
+</package>

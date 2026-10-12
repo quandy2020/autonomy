@@ -7,7 +7,7 @@
 #include <QOpenGLExtraFunctions>
 #include <QOpenGLFunctions>
 
-#include "autoviz/display/obj_mesh.hpp"
+#include "autoviz/plugins/displays/common/obj_mesh.hpp"
 
 #include "autoviz/common/pick_handle.hpp"
 #include "autoviz/common/pick_registry.hpp"

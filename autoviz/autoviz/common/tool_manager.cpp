@@ -4,6 +4,7 @@
 
 #include "autoviz/common/tool_manager.hpp"
 
+#include <QKeyEvent>
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <Qt>
@@ -419,6 +420,17 @@ char ToolManager::shortcutKeyForTool(const std::string& id) const {
     return tool->shortcutKey();
   }
   return '\0';
+}
+
+bool ToolManager::forwardActiveToolKeyPress(QKeyEvent* event) {
+  if (event == nullptr) {
+    return false;
+  }
+  if (Tool* tool = activeTool()) {
+    tool->updateContext(&context_);
+    return tool->keyPressEvent(event);
+  }
+  return false;
 }
 
 bool ToolManager::handleShortcutKey(int qt_key) {

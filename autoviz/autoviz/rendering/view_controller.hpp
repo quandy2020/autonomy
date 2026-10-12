@@ -10,10 +10,15 @@
  * for OpenGL and Ogre viewports, and handles mouse/keyboard interaction used by
  * the Move Camera tool and Views panel.
  *
+ * Type-specific RViz-shaped adapters live under
+ * @c display/view_controllers/ (Orbit, FPS, …) and configure this host via
+ * @ref common::ViewControllerRegistry.
+ *
  * @see ViewsPanel
  * @see ViewportMouseEvent
  * @see SceneOverlay
  * @see common::FrameManager
+ * @see display::view_controllers::OrbitViewController
  */
 
 #pragma once

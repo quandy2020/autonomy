@@ -6,7 +6,7 @@
 
 #include <Ogre.h>
 
-#include "autoviz/display/primitive_mesh.hpp"
+#include "autoviz/plugins/displays/common/primitive_mesh.hpp"
 
 namespace autoviz {
 namespace rendering {

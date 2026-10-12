@@ -76,6 +76,29 @@ class MeshResourceResolver {
                            const std::string& share_root);
 
   /**
+   * @brief Maps a package URI prefix onto a flat content root (source tree).
+   *
+   * Example: @c ocs2_robotic_assets + content_root=@c …/assets + strip
+   * @c "resources/" resolves
+   * @c package://ocs2_robotic_assets/resources/quadrotor/meshes/x.obj →
+   * @c …/assets/quadrotor/meshes/x.obj (RViz / OCS2 layout without install).
+   *
+   * @param package_name Package name as used in @c package:// URIs.
+   * @param content_root Absolute directory that contains robot folders.
+   * @param uri_prefix_to_strip Leading subpath stripped from the URI rest.
+   */
+  void addPackageContentRoot(const std::string& package_name,
+                             const std::string& content_root,
+                             const std::string& uri_prefix_to_strip);
+
+  /**
+   * @brief Registers default @c ocs2_robotic_assets roots from env / install.
+   *
+   * Idempotent. Called automatically from @ref resolvePath / @ref exists.
+   */
+  void ensureDefaultPackagesRegistered();
+
+  /**
    * @brief Clears all registered package share paths.
    */
   void clearPackagePaths();
@@ -120,8 +143,19 @@ class MeshResourceResolver {
    */
   std::shared_ptr<MeshResource> fetchHttp(const std::string& uri) const;
 
+  struct PackageContentRoot {
+    std::string content_root;
+    std::string uri_prefix_to_strip;
+  };
+
   /** @brief package name → share root. */
   std::map<std::string, std::string> package_share_paths_;
+
+  /** @brief package name → source-tree content mapping. */
+  std::map<std::string, PackageContentRoot> package_content_roots_;
+
+  /** @brief Whether @ref ensureDefaultPackagesRegistered ran. */
+  bool defaults_registered_ = false;
 };
 
 }  // namespace rendering

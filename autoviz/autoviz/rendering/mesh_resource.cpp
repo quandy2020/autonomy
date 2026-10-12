@@ -4,6 +4,8 @@
 
 #include "autoviz/rendering/mesh_resource.hpp"
 
+#include <QCoreApplication>
+#include <QDir>
 #include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
@@ -11,11 +13,76 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QObject>
+#include <QProcessEnvironment>
+#include <QRegularExpression>
 #include <QString>
 #include <QUrl>
 
+#include "autoviz/common/path_env_utils.hpp"
+
 namespace autoviz {
 namespace rendering {
+namespace {
+
+/**
+ * @brief Rewrites @c file://$(find pkg)/rel to @c package://pkg/rel (RViz / ROS).
+ */
+QString NormalizeFindUri(QString uri) {
+  // file://$(find ocs2_robotic_assets)/resources/foo.obj
+  static const QRegularExpression kFind(
+      QStringLiteral(R"(^file://\$\(find\s+([^)]+)\)/?(.*)$)"));
+  const QRegularExpressionMatch match = kFind.match(uri);
+  if (match.hasMatch()) {
+    const QString pkg = match.captured(1).trimmed();
+    const QString rest = match.captured(2);
+    return QStringLiteral("package://%1/%2").arg(pkg, rest);
+  }
+  return uri;
+}
+
+QStringList CandidateAssetRoots() {
+  QStringList roots;
+  const QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+  for (const char* key : {"BOLZA_ROBOTIC_ASSETS", "AUTOMANIP_ROBOTIC_ASSETS",
+                          "OCS2_ROBOTIC_ASSETS"}) {
+    const QString value = env.value(QString::fromLatin1(key));
+    if (!value.isEmpty() && QFileInfo(value).isDir()) {
+      roots.push_back(QFileInfo(value).absoluteFilePath());
+    }
+  }
+  for (const QString& part :
+       common::splitPathList(env.value(QStringLiteral("AUTOVIZ_RESOURCE_PATH")))) {
+    if (!part.isEmpty() && QFileInfo(part).isDir()) {
+      const QString abs = QFileInfo(part).absoluteFilePath();
+      if (!roots.contains(abs)) {
+        roots.push_back(abs);
+      }
+    }
+  }
+
+  const QString app = QCoreApplication::applicationDirPath();
+  const QStringList relative = {
+      app + QStringLiteral("/../share/ocs2_robotic_assets/resources"),
+      app + QStringLiteral("/../../share/ocs2_robotic_assets/resources"),
+      // Source-tree / docker bind-mount layouts.
+      app + QStringLiteral(
+                "/../../src/autonomy/automanip/bolza/examples/assets"),
+      app + QStringLiteral(
+                "/../../../src/autonomy/automanip/bolza/examples/assets"),
+  };
+  for (const QString& candidate : relative) {
+    const QFileInfo info(candidate);
+    if (info.isDir()) {
+      const QString abs = info.absoluteFilePath();
+      if (!roots.contains(abs)) {
+        roots.push_back(abs);
+      }
+    }
+  }
+  return roots;
+}
+
+}  // namespace
 
 MeshResourceResolver& MeshResourceResolver::instance() {
   static MeshResourceResolver resolver;
@@ -27,16 +94,76 @@ void MeshResourceResolver::addPackageSharePath(const std::string& package_name,
   package_share_paths_[package_name] = share_root;
 }
 
-void MeshResourceResolver::clearPackagePaths() { package_share_paths_.clear(); }
+void MeshResourceResolver::addPackageContentRoot(
+    const std::string& package_name, const std::string& content_root,
+    const std::string& uri_prefix_to_strip) {
+  PackageContentRoot entry;
+  entry.content_root = content_root;
+  entry.uri_prefix_to_strip = uri_prefix_to_strip;
+  package_content_roots_[package_name] = std::move(entry);
+}
+
+void MeshResourceResolver::clearPackagePaths() {
+  package_share_paths_.clear();
+  package_content_roots_.clear();
+  defaults_registered_ = false;
+}
+
+void MeshResourceResolver::ensureDefaultPackagesRegistered() {
+  if (defaults_registered_) {
+    return;
+  }
+  defaults_registered_ = true;
+
+  const QString app = QCoreApplication::applicationDirPath();
+  const QString installed_share =
+      QFileInfo(app + QStringLiteral("/../share/ocs2_robotic_assets"))
+          .absoluteFilePath();
+  if (QFileInfo(installed_share).isDir()) {
+    addPackageSharePath("ocs2_robotic_assets", installed_share.toStdString());
+  }
+
+  // Source / env assets live at …/assets/<robot>/… while URDF URIs use
+  // package://ocs2_robotic_assets/resources/<robot>/… (RViz / OCS2 layout).
+  for (const QString& root : CandidateAssetRoots()) {
+    if (QFileInfo(root + QStringLiteral("/quadrotor")).isDir() ||
+        QFileInfo(root + QStringLiteral("/anymal_c")).isDir() ||
+        QFileInfo(root + QStringLiteral("/mobile_manipulator")).isDir()) {
+      addPackageContentRoot("ocs2_robotic_assets", root.toStdString(),
+                            "resources/");
+      break;
+    }
+    // Already the ament share root that contains resources/.
+    if (QFileInfo(root + QStringLiteral("/resources")).isDir()) {
+      const QString share = QFileInfo(root).absoluteFilePath();
+      // root may be …/resources — use parent as share.
+      if (QFileInfo(root).fileName() == QLatin1String("resources")) {
+        addPackageSharePath(
+            "ocs2_robotic_assets",
+            QFileInfo(root + QStringLiteral("/..")).absoluteFilePath().toStdString());
+      } else {
+        addPackageSharePath("ocs2_robotic_assets", share.toStdString());
+      }
+      break;
+    }
+  }
+}
 
 std::optional<std::string> MeshResourceResolver::resolveToPath(
     const std::string& uri) const {
   if (uri.empty()) {
     return std::nullopt;
   }
-  QString quri = QString::fromStdString(uri);
+  // Const-cast for lazy default registration (singleton mutates once).
+  const_cast<MeshResourceResolver*>(this)->ensureDefaultPackagesRegistered();
+
+  QString quri = NormalizeFindUri(QString::fromStdString(uri));
   if (quri.startsWith(QLatin1String("file://"))) {
-    return quri.mid(7).toStdString();
+    const QString path = quri.mid(7);
+    if (QFileInfo(path).exists()) {
+      return path.toStdString();
+    }
+    return path.toStdString();
   }
   if (quri.startsWith(QLatin1String("package://"))) {
     const QString rest = quri.mid(10);
@@ -45,14 +172,52 @@ std::optional<std::string> MeshResourceResolver::resolveToPath(
       return std::nullopt;
     }
     const std::string package = rest.left(slash).toStdString();
-    const std::string subpath = rest.mid(slash + 1).toStdString();
-    const auto it = package_share_paths_.find(package);
-    if (it == package_share_paths_.end()) {
-      return std::nullopt;
+    QString subpath = rest.mid(slash + 1);
+
+    // 1) Explicit content-root mapping (source-tree assets).
+    const auto content_it = package_content_roots_.find(package);
+    if (content_it != package_content_roots_.end()) {
+      QString relative = subpath;
+      const QString prefix =
+          QString::fromStdString(content_it->second.uri_prefix_to_strip);
+      if (!prefix.isEmpty() && relative.startsWith(prefix)) {
+        relative = relative.mid(prefix.size());
+      }
+      const QString candidate =
+          QDir(QString::fromStdString(content_it->second.content_root))
+              .filePath(relative);
+      if (QFileInfo(candidate).exists()) {
+        return QFileInfo(candidate).absoluteFilePath().toStdString();
+      }
     }
-    return (QString::fromStdString(it->second) + QLatin1Char('/') +
-            QString::fromStdString(subpath))
-        .toStdString();
+
+    // 2) Registered ament-style share/<pkg>/<subpath>.
+    const auto share_it = package_share_paths_.find(package);
+    if (share_it != package_share_paths_.end()) {
+      const QString candidate =
+          QDir(QString::fromStdString(share_it->second)).filePath(subpath);
+      if (QFileInfo(candidate).exists()) {
+        return QFileInfo(candidate).absoluteFilePath().toStdString();
+      }
+    }
+
+    // 3) AUTOVIZ_RESOURCE_PATH / install prefixes (share/pkg/…).
+    for (const QString& prefix : common::resourceSearchPaths()) {
+      const QString candidate =
+          QDir(prefix).filePath(QStringLiteral("share/%1/%2")
+                                    .arg(QString::fromStdString(package),
+                                         subpath));
+      if (QFileInfo(candidate).exists()) {
+        return QFileInfo(candidate).absoluteFilePath().toStdString();
+      }
+      // Prefix may already be the package share directory.
+      const QString direct = QDir(prefix).filePath(subpath);
+      if (QFileInfo(direct).exists()) {
+        return QFileInfo(direct).absoluteFilePath().toStdString();
+      }
+    }
+
+    return std::nullopt;
   }
   if (QFileInfo(quri).isAbsolute()) {
     return uri;
@@ -89,7 +254,14 @@ bool MeshResourceResolver::exists(const std::string& uri) const {
 
 std::optional<std::string> MeshResourceResolver::resolvePath(
     const std::string& uri) const {
-  return resolveToPath(uri);
+  const auto path = resolveToPath(uri);
+  if (!path.has_value()) {
+    return std::nullopt;
+  }
+  if (!QFileInfo(QString::fromStdString(*path)).exists()) {
+    return std::nullopt;
+  }
+  return path;
 }
 
 std::shared_ptr<MeshResource> MeshResourceResolver::fetch(
@@ -99,7 +271,7 @@ std::shared_ptr<MeshResource> MeshResourceResolver::fetch(
       quri.startsWith(QLatin1String("https://"))) {
     return fetchHttp(uri);
   }
-  const auto path = resolveToPath(uri);
+  const auto path = resolvePath(uri);
   if (!path.has_value()) {
     throw MeshResourceError("Could not resolve resource URI: " + uri);
   }
@@ -110,10 +282,9 @@ std::shared_ptr<MeshResource> MeshResourceResolver::fetch(
   const QByteArray bytes = file.readAll();
   auto resource = std::make_shared<MeshResource>();
   resource->data.assign(bytes.begin(), bytes.end());
-  resource->resolved_uri = uri;
+  resource->resolved_uri = *path;
   return resource;
 }
 
 }  // namespace rendering
 }  // namespace autoviz
-

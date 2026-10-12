@@ -32,7 +32,7 @@
 
 #include "autoviz/commsgs/message_type_utils.hpp"
 #include "autoviz/common/visualization_manager.hpp"
-#include "autoviz/display/image_utils.hpp"
+#include "autoviz/plugins/displays/image/image_utils.hpp"
 #include "autoviz/integration/channel_reader_registry.hpp"
 #include "autoviz/integration/channel_stats_registry.hpp"
 #include "autoviz/ui/map/map_message_ingest.hpp"

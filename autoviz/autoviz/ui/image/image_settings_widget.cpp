@@ -28,7 +28,7 @@
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/commsgs/message_type_utils.hpp"
-#include "autoviz/display/image_utils.hpp"
+#include "autoviz/plugins/displays/image/image_utils.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 

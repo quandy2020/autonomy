@@ -19,6 +19,8 @@
 
 #include <string>
 
+#include <QIcon>
+
 namespace autoviz {
 namespace common {
 
@@ -26,8 +28,11 @@ namespace common {
  * @struct PluginInfo
  * @brief Human- and machine-readable identity for a plugin class.
  *
- * Used in Settings / About UIs and when persisting the active transformer id
- * into @ref SessionConfig.
+ * RViz @c rviz_common::PluginInfo analogue. Used by @ref factory::Factory,
+ * Settings / About UIs, and when persisting the active transformer id into
+ * @ref SessionConfig.
+ *
+ * @see factory::Factory
  */
 struct PluginInfo {
   /** Fully-qualified class id (e.g. @c "autoviz/AutolinkTf"). */
@@ -41,6 +46,17 @@ struct PluginInfo {
 
   /** Owning package or library name (informational). */
   std::string package;
+
+  /** Optional class icon (Displays tree / Add dialog). */
+  QIcon icon;
+
+  friend bool operator==(const PluginInfo& lhs, const PluginInfo& rhs) {
+    return lhs.class_id == rhs.class_id;
+  }
+
+  friend bool operator<(const PluginInfo& lhs, const PluginInfo& rhs) {
+    return lhs.class_id < rhs.class_id;
+  }
 };
 
 }  // namespace common

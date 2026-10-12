@@ -24,6 +24,7 @@ autoviz/
 | `DisplayContext` | 向插件暴露 frame、选择、Autolink 等 |
 | `FrameManager` | Fixed Frame 与 TF 查询 |
 | `DisplayRegistry` / `ToolRegistry` / `ViewControllerRegistry` | 类型注册与工厂 |
+| `factory/` | RViz 风格 `Factory` / `ClassIdRecordingFactory` / `PluginFactory` |
 | `SessionConfig` + YAML IO | `.autoviz` / `.rviz` |
 | `PluginLoader` | `AUTOVIZ_PLUGIN_PATH` 动态库 |
 
@@ -61,9 +62,9 @@ Channel 型 Display 多继承 `ChannelDisplay`：属性中的 Channel 名对应 
 | `views/` / `tools/` | 视图与工具栏 |
 | `theme/` / `app/` | 主题、图标、翻译、偏好 |
 
-## tools/ · transform/
+## plugins/tools/ · transform/
 
-- `tools/`：Interact、测距、Focus、NavGoal、初始位姿等
+- `plugins/tools/`（RViz 子目录布局）：`move/`、`select/`、`interaction/`、`pose/`、`goal_pose/`、`pose_estimate/`、`measure/`、`focus/`、`point/`、`common/`、`failed/`
 - `transform/`：`Buffer` + vendored tf2；订阅 TF 消息写入缓存
 
 ## 构建产物

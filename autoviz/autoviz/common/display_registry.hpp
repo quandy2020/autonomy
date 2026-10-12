@@ -23,7 +23,7 @@
 #include <vector>
 
 #include "autoviz/common/session_config.hpp"
-#include "autoviz/display/display.hpp"
+#include "autoviz/plugins/displays/display.hpp"
 
 namespace autoviz {
 namespace common {

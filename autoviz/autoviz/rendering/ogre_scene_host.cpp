@@ -12,8 +12,8 @@
 
 #include <Ogre.h>
 
-#include "autoviz/display/arrow_mesh_utils.hpp"
-#include "autoviz/display/obj_mesh.hpp"
+#include "autoviz/plugins/displays/common/arrow_mesh_utils.hpp"
+#include "autoviz/plugins/displays/common/obj_mesh.hpp"
 #include "autoviz/rendering/apply_visibility_bits.hpp"
 #include "autoviz/rendering/ogre_custom_parameter_indices.hpp"
 #include "autoviz/rendering/ogre_material_manager.hpp"

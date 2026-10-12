@@ -19,6 +19,7 @@
 
 #include <functional>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 #include "autoviz/common/plugin_info.hpp"
@@ -29,6 +30,18 @@ class Buffer;
 }
 
 namespace common {
+
+/**
+ * @class FrameTransformerException
+ * @brief Thrown by frame transformers when a lookup / transform fails.
+ *
+ * Mirrors @c rviz_common::transformation::FrameTransformerException.
+ */
+class FrameTransformerException : public std::runtime_error {
+ public:
+  explicit FrameTransformerException(const std::string& description)
+      : std::runtime_error(description) {}
+};
 
 /**
  * @class FrameTransformer
@@ -59,7 +72,10 @@ class FrameTransformer {
 
 /**
  * @class AutolinkTfFrameTransformer
- * @brief Default transformer wrapping Autoviz / Autolink @c transform::Buffer.
+ * @brief Legacy thin buffer wrapper.
+ *
+ * Prefer @c display::transformation::TFFrameTransformer (registered as
+ * @c "autoviz/AutolinkTf"). Kept for direct construction / tests.
  */
 class AutolinkTfFrameTransformer : public FrameTransformer {
  public:

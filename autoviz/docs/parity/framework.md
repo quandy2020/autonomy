@@ -4,7 +4,7 @@
 |-------------|---------|------|
 | VisualizationFrame | `ui/frame*` | ✅ |
 | VisualizationManager | `common/visualization_manager` | ✅ |
-| Display / DisplayGroup | `display/` + Group | ✅ |
+| Display / DisplayGroup | `plugins/displays/` + Group | ✅ |
 | DisplayContext | `common/display_context` | ✅ |
 | FrameManager | `common/frame_manager` | ✅ |
 | ViewManager | `common/view_manager` | ✅ |
@@ -13,8 +13,9 @@
 | ToolManager | ToolManager + ToolRegistry | ✅ |
 | ViewControllerRegistry | `view_controller_registry` | ✅ |
 | Config + YAML | SessionConfig + YAML IO | ✅ |
-| DisplayFactory | DisplayRegistry | ✅ |
-| pluginlib | Registries + `AUTOVIZ_PLUGIN_PATH` | ✅ |
+| DisplayFactory | DisplayRegistry + `common/display_factory` facade | ✅ |
+| `factory/` (Factory / ClassIdRecording / PluginlibFactory) | `common/factory/`（`PluginFactory`，无 pluginlib） | ✅ |
+| pluginlib | Registries + `AUTOVIZ_PLUGIN_PATH` + `PluginFactory` | ✅ |
 | GPU Pick | PickRegistry + FBO / Ogre pick | ✅ |
 
 ## 生命周期（Display）

@@ -25,6 +25,7 @@
 #include "autoviz/common/session_config.hpp"
 #include "autoviz/common/tool.hpp"
 
+class QKeyEvent;
 class QMouseEvent;
 class QWheelEvent;
 
@@ -278,6 +279,13 @@ class ToolManager {
    * @return @c true if a tool handled the shortcut.
    */
   bool handleShortcutKey(int qt_key);
+
+  /**
+   * @brief Forwards a key press to the active tool (@ref Tool::keyPressEvent).
+   * @param event Qt key event.
+   * @return @c true if the active tool consumed the event.
+   */
+  bool forwardActiveToolKeyPress(QKeyEvent* event);
 
   /**
    * @brief Default tool id restored after one-shot tools finish.

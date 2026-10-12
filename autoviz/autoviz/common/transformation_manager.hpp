@@ -159,11 +159,25 @@ class TransformationManager {
    */
   void setConfigChangedCallback(std::function<void()> callback);
 
+  /**
+   * @brief Non-owning pointer to the active transformer (may be @c nullptr).
+   */
+  FrameTransformer* currentTransformer() const { return current_.get(); }
+
+  /**
+   * @brief Subscribes to transformer switches (RViz @c transformerChanged).
+   * @return Unsubscribe functor; call to remove the callback.
+   */
+  std::function<void()> addTransformerChangedCallback(
+      std::function<void(FrameTransformer*)> callback);
+
  private:
   /**
    * @brief Instantiates @c current_ from @c current_id_ and syncs FrameManager.
    */
   void applyCurrentTransformer();
+
+  void notifyTransformerChanged();
 
   transform::Buffer* buffer_ = nullptr;
   FrameManager* frame_manager_ = nullptr;
@@ -172,6 +186,8 @@ class TransformationManager {
   std::string current_id_;
   std::vector<void*> plugin_handles_;
   std::function<void()> config_changed_callback_;
+  std::vector<std::function<void(FrameTransformer*)>>
+      transformer_changed_callbacks_;
 };
 
 }  // namespace common

@@ -17,6 +17,14 @@ constexpr float kSelectionEpsilon = 1e-3f;
 
 bool SelectionManager::SameEntry(const SelectionEntry& a,
                                  const SelectionEntry& b) {
+  if (a.pick_handle != kInvalidPickHandle &&
+      b.pick_handle != kInvalidPickHandle) {
+    return a.pick_handle == b.pick_handle && a.point_index == b.point_index;
+  }
+  if (!a.display_name.empty() && a.display_name == b.display_name &&
+      a.point_index >= 0 && a.point_index == b.point_index) {
+    return true;
+  }
   return (a.position - b.position).lengthSquared() <=
          kSelectionEpsilon * kSelectionEpsilon;
 }

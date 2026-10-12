@@ -19,7 +19,7 @@
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 
 #include "autoviz/common/visualization_manager.hpp"
-#include "autoviz/display/display.hpp"
+#include "autoviz/plugins/displays/display.hpp"
 #include "autoviz/integration/channel_reader_registry.hpp"
 #include "autoviz/ui/theme/glass.hpp"
 

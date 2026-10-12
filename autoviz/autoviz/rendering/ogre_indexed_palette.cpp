@@ -4,7 +4,7 @@
 
 #include "autoviz/rendering/ogre_indexed_palette.hpp"
 
-#include "autoviz/display/point_cloud_utils.hpp"
+#include "autoviz/plugins/displays/pointcloud/point_cloud_utils.hpp"
 
 #include <Ogre.h>
 

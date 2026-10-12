@@ -36,7 +36,7 @@
 #include "autoviz/common/selection_handler.hpp"
 #include "autoviz/rendering/grid_renderer.hpp"
 
-#include "autoviz/display/obj_mesh.hpp"
+#include "autoviz/plugins/displays/common/obj_mesh.hpp"
 
 namespace autoviz {
 namespace common {

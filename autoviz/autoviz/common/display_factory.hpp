@@ -9,7 +9,12 @@
  * Keeps call sites free of the singleton while providing the same create /
  * default-config / supported-types API used by VisualizationManager.
  *
+ * For the RViz-style typed factory hierarchy (@c Factory /
+ * @c ClassIdRecordingFactory / @c PluginFactory), see
+ * @c autoviz/common/factory/.
+ *
  * @see DisplayRegistry
+ * @see factory::PluginFactory
  * @see DisplayConfig
  * @see display::Display
  */
@@ -21,7 +26,7 @@
 #include <vector>
 
 #include "autoviz/common/session_config.hpp"
-#include "autoviz/display/display.hpp"
+#include "autoviz/plugins/displays/display.hpp"
 
 namespace autoviz {
 namespace common {

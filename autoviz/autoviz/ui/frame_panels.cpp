@@ -7,7 +7,7 @@
 #include <QObject>
 #include "autoviz/ui/frame_detail.hpp"
 #include "autoviz/common/selection.hpp"
-#include "autoviz/display/display_group.hpp"
+#include "autoviz/plugins/displays/display_group.hpp"
 #include "autoviz/ui/displays/panel.hpp"
 #include <algorithm>
 #include <QApplication>

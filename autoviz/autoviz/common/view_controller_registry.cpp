@@ -11,6 +11,12 @@
 
 #include "autoviz/common/path_env_utils.hpp"
 #include "autoviz/common/plugin_loader.hpp"
+#include "autoviz/plugins/view_controllers/follower/third_person_follower_view_controller.hpp"
+#include "autoviz/plugins/view_controllers/fps/fps_view_controller.hpp"
+#include "autoviz/plugins/view_controllers/frame/frame_view_controller.hpp"
+#include "autoviz/plugins/view_controllers/orbit/orbit_view_controller.hpp"
+#include "autoviz/plugins/view_controllers/ortho/fixed_orientation_ortho_view_controller.hpp"
+#include "autoviz/plugins/view_controllers/xy_orbit/xy_orbit_view_controller.hpp"
 #include "autoviz/rendering/view_controller.hpp"
 
 namespace autoviz {
@@ -23,13 +29,6 @@ std::string RvizClassShortName(const std::string& rviz_class) {
     return rviz_class;
   }
   return rviz_class.substr(slash + 1);
-}
-
-void ApplyBuiltinType(rendering::ViewControllerType type,
-                      rendering::ViewController* controller) {
-  if (controller != nullptr) {
-    controller->setType(type);
-  }
 }
 
 }  // namespace
@@ -48,29 +47,29 @@ ViewControllerRegistry& ViewControllerRegistry::instance() {
 ViewControllerRegistry::ViewControllerRegistry() = default;
 
 void ViewControllerRegistry::registerBuiltinTypes() {
-  // RViz2 default_plugins view controllers only.
-  registerBuiltin("Orbit", [](rendering::ViewController* vc) {
-    ApplyBuiltinType(rendering::ViewControllerType::kOrbit, vc);
-  });
-  registerBuiltin("XYOrbit", [](rendering::ViewController* vc) {
-    ApplyBuiltinType(rendering::ViewControllerType::kXyOrbit, vc);
-  });
-  registerBuiltin("TopDownOrtho", [](rendering::ViewController* vc) {
-    ApplyBuiltinType(rendering::ViewControllerType::kTopDownOrtho, vc);
-  });
-  registerBuiltin("FPS", [](rendering::ViewController* vc) {
-    ApplyBuiltinType(rendering::ViewControllerType::kFps, vc);
-  });
-  registerBuiltin("ThirdPersonFollow", [](rendering::ViewController* vc) {
-    ApplyBuiltinType(rendering::ViewControllerType::kThirdPersonFollow, vc);
-  });
+  using display::view_controllers::FixedOrientationOrthoViewController;
+  using display::view_controllers::FPSViewController;
+  using display::view_controllers::FrameViewController;
+  using display::view_controllers::OrbitViewController;
+  using display::view_controllers::ThirdPersonFollowerViewController;
+  using display::view_controllers::XYOrbitViewController;
+
+  // RViz2 default_plugins view controllers (display/view_controllers/*).
+  registerBuiltin(OrbitViewController::kTypeName, &OrbitViewController::apply);
+  registerBuiltin(XYOrbitViewController::kTypeName,
+                  &XYOrbitViewController::apply);
+  registerBuiltin(FixedOrientationOrthoViewController::kTypeName,
+                  &FixedOrientationOrthoViewController::apply);
+  registerBuiltin(FPSViewController::kTypeName, &FPSViewController::apply);
+  registerBuiltin(ThirdPersonFollowerViewController::kTypeName,
+                  &ThirdPersonFollowerViewController::apply);
+
+  // RViz FrameViewController → FPS backend (not listed separately in Views).
+  appliers_[FrameViewController::kTypeName] = &FrameViewController::apply;
+
   // Legacy aliases (not shown in Views Type selector).
-  appliers_["TopDown"] = [](rendering::ViewController* vc) {
-    ApplyBuiltinType(rendering::ViewControllerType::kTopDownOrtho, vc);
-  };
-  appliers_["FPSMotion"] = [](rendering::ViewController* vc) {
-    ApplyBuiltinType(rendering::ViewControllerType::kFps, vc);
-  };
+  appliers_["TopDown"] = &FixedOrientationOrthoViewController::apply;
+  appliers_["FPSMotion"] = &FPSViewController::apply;
 }
 
 void ViewControllerRegistry::registerBuiltin(
@@ -116,9 +115,12 @@ std::string ViewControllerRegistry::mapRvizClass(
       short_name.find("TopDown") != std::string::npos) {
     return "TopDownOrtho";
   }
-  if (short_name.find("FPSMotion") != std::string::npos ||
-      short_name.find("FPS") != std::string::npos ||
+  if (short_name.find("FrameViewController") != std::string::npos ||
       short_name.find("FrameAligned") != std::string::npos) {
+    return "FPS";
+  }
+  if (short_name.find("FPSMotion") != std::string::npos ||
+      short_name.find("FPS") != std::string::npos) {
     return "FPS";
   }
   if (short_name.find("Orbit") != std::string::npos) {

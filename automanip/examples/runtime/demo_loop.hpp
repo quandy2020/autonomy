@@ -77,17 +77,17 @@ inline void ReplaceAll(std::string* text, const std::string& from, const std::st
 }
 
 /**
- * Rewrites package and relative mesh URIs to absolute paths under the
- * robotic-assets tree. Robot descriptions arrive on a topic, so autoviz has
- * no URDF directory and cannot resolve `package://`.
+ * Loads a URDF for `/robot_description`, keeping RViz-compatible mesh URIs
+ * (`package://ocs2_robotic_assets/resources/…` and `file://$(find …)`).
+ * Autoviz resolves those via MeshResourceResolver (same role as ROS
+ * resource_retriever). Relative `../meshes/` paths are still rewritten to
+ * absolute paths because they are not package URIs.
  */
 inline std::string RobotDescriptionWithAbsoluteMeshes(const std::string& urdf_path) {
   std::string xml = ReadTextFile(urdf_path);
-#ifdef AUTOMANIP_ROBOTIC_ASSETS
-  const std::string root = std::string(AUTOMANIP_ROBOTIC_ASSETS) + "/";
-  ReplaceAll(&xml, "package://ocs2_robotic_assets/resources/", root);
-  ReplaceAll(&xml, "file://$(find ocs2_robotic_assets)/resources/", root);
-#endif
+  // Normalize file://$(find pkg)/… → package://pkg/… (RViz / rosrun style).
+  ReplaceAll(&xml, "file://$(find ocs2_robotic_assets)/",
+             "package://ocs2_robotic_assets/");
   const std::filesystem::path mesh_dir =
       std::filesystem::path(urdf_path).parent_path() / ".." / "meshes";
   if (std::filesystem::exists(mesh_dir)) {

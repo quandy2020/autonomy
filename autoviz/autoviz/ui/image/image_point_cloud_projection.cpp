@@ -10,7 +10,7 @@
 #include <QQuaternion>
 
 #include "autoviz/commsgs/time_utils.hpp"
-#include "autoviz/display/point_cloud_utils.hpp"
+#include "autoviz/plugins/displays/pointcloud/point_cloud_utils.hpp"
 
 namespace autoviz {
 namespace image {

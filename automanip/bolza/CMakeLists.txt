@@ -155,6 +155,17 @@ if(BOLZA_BUILD_TESTS)
 endif()
 
 # --- install -----------------------------------------------------------------
+# RViz / Autoviz resolve package://ocs2_robotic_assets/resources/<robot>/…
+# against share/ocs2_robotic_assets/resources/<robot>/… (ament layout).
+install(DIRECTORY examples/assets/
+  DESTINATION share/ocs2_robotic_assets/resources
+  PATTERN "package_path.hpp" EXCLUDE
+  PATTERN "ocs2_robotic_assets.package.xml" EXCLUDE
+  PATTERN ".git" EXCLUDE)
+install(FILES examples/assets/ocs2_robotic_assets.package.xml
+  DESTINATION share/ocs2_robotic_assets
+  RENAME package.xml)
+
 install(FILES package.xml solver_license.txt version.json DESTINATION share/bolza)
 install(DIRECTORY cmake DESTINATION share/bolza/)
 install(DIRECTORY bolza/

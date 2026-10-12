@@ -43,6 +43,7 @@ class HandlerManager;
 class PickRegistry;
 class SelectionManager;
 class ToolManager;
+class TransformationManager;
 class ViewManager;
 
 /**
@@ -64,6 +65,9 @@ class DisplayContext {
 
   /** Fixed-frame / TF lookup facade. */
   FrameManager* frame_manager = nullptr;
+
+  /** Active FrameTransformer selection (RViz TransformationManager). */
+  TransformationManager* transformation_manager = nullptr;
 
   /** Per-frame pick metadata. */
   PickRegistry* pick_registry = nullptr;

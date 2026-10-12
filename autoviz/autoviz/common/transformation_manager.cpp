@@ -12,6 +12,7 @@
 #include "autoviz/common/path_env_utils.hpp"
 #include "autoviz/common/plugin_loader.hpp"
 #include "autoviz/common/session_config.hpp"
+#include "autoviz/plugins/transformation/tf_frame_transformer.hpp"
 
 namespace autoviz {
 namespace common {
@@ -50,7 +51,8 @@ void TransformationManager::registerBuiltinTransformers() {
   registerTransformer(
       "autoviz/AutolinkTf",
       [](transform::Buffer* buffer) {
-        return std::make_unique<AutolinkTfFrameTransformer>(buffer);
+        return std::make_unique<display::transformation::TFFrameTransformer>(
+            buffer);
       });
   registerTransformer(
       "autoviz/Identity",
@@ -95,6 +97,7 @@ void TransformationManager::setTransformer(const std::string& class_id) {
   current_ = it->second(buffer_);
   current_id_ = class_id;
   applyCurrentTransformer();
+  notifyTransformerChanged();
   if (config_changed_callback_) {
     config_changed_callback_();
   }
@@ -142,6 +145,7 @@ std::string TransformationManager::mapRvizTransformerClass(
   if (rviz_class.find("Identity") != std::string::npos) {
     return "autoviz/Identity";
   }
+  // RViz default_plugins TFFrameTransformer and any other TF backend.
   return "autoviz/AutolinkTf";
 }
 
@@ -184,6 +188,25 @@ void TransformationManager::loadPluginsFromPath(const std::string& path) {
 void TransformationManager::setConfigChangedCallback(
     std::function<void()> callback) {
   config_changed_callback_ = std::move(callback);
+}
+
+std::function<void()> TransformationManager::addTransformerChangedCallback(
+    std::function<void(FrameTransformer*)> callback) {
+  transformer_changed_callbacks_.push_back(std::move(callback));
+  const std::size_t index = transformer_changed_callbacks_.size() - 1;
+  return [this, index]() {
+    if (index < transformer_changed_callbacks_.size()) {
+      transformer_changed_callbacks_[index] = {};
+    }
+  };
+}
+
+void TransformationManager::notifyTransformerChanged() {
+  for (const auto& callback : transformer_changed_callbacks_) {
+    if (callback) {
+      callback(current_.get());
+    }
+  }
 }
 
 }  // namespace common

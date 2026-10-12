@@ -133,8 +133,8 @@ function(autoviz_collect_sources)
     ${AUTOVIZ_SRC_ROOT}/rendering/ogre_mesh_loader.cpp
     ${AUTOVIZ_SRC_ROOT}/rendering/mesh_resource.cpp
     ${AUTOVIZ_SRC_ROOT}/rendering/ogre_indexed_palette.cpp
-    ${AUTOVIZ_SRC_ROOT}/display/ogre_pbr_mesh_draw.cpp
-    ${AUTOVIZ_SRC_ROOT}/display/ogre_entity_draw.cpp
+    ${AUTOVIZ_SRC_ROOT}/plugins/displays/common/ogre_pbr_mesh_draw.cpp
+    ${AUTOVIZ_SRC_ROOT}/plugins/displays/common/ogre_entity_draw.cpp
   )
 
   file(GLOB_RECURSE _sources CONFIGURE_DEPENDS "${AUTOVIZ_SRC_ROOT}/*.cpp")

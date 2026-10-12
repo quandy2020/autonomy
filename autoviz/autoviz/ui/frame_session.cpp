@@ -230,6 +230,10 @@ void FrameSession::keyPressEvent(QKeyEvent* event) {
     event->accept();
     return;
   }
+  if (frame_->manager_->tools().forwardActiveToolKeyPress(event)) {
+    event->accept();
+    return;
+  }
   if (!event->modifiers()) {
     if (frame_->manager_->tools().handleShortcutKey(event->key())) {
       frame_->chrome_->syncActiveToolUi();

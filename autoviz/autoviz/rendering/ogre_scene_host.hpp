@@ -34,7 +34,7 @@
 #include <QVector3D>
 
 #include "autoviz/common/pick_handle.hpp"
-#include "autoviz/display/obj_mesh.hpp"
+#include "autoviz/plugins/displays/common/obj_mesh.hpp"
 #include "autoviz/rendering/render_settings.hpp"
 
 namespace Ogre {

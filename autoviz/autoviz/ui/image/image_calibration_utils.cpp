@@ -9,7 +9,7 @@
 
 #include <QRgb>
 
-#include "autoviz/display/camera_utils.hpp"
+#include "autoviz/plugins/displays/camera/camera_utils.hpp"
 
 namespace autoviz {
 namespace image {

@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include "autoviz/display/obj_mesh.hpp"
+#include "autoviz/plugins/displays/common/obj_mesh.hpp"
 
 namespace autoviz {
 namespace rendering {

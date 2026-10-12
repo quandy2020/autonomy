@@ -108,7 +108,7 @@ autolink launch start src/autonomy/automanip/examples/launch/mobile_manipulator.
 | `/goal_pose` | `geometry_msgs/PoseStamped` | 订阅。autoviz 工具栏 Nav Goal 的默认话题，和上面同一套目标 |
 | `/cmd_vel` | `geometry_msgs/TwistStamped` | Ballbot 发布。航向坐标系 `dummy_base1` 下的平面速度和偏航角速度，autoviz 用 TwistStamped 画箭头 |
 
-URDF 和网格在 `bolza/examples/assets`（cartpole、double_integrator、quadrotor、ballbot、`anymal_c`、`mobile_manipulator/franka`）。示例进程把 `package://ocs2_robotic_assets/resources/` 换成这份目录的绝对路径后再发 `/robot_description`。模型和关节只发全局话题 `/robot_description`、`/joint_states`。一次只跑一个示例，因为这两个话题和 `/tf` 是全局的。
+URDF 和网格在 `bolza/examples/assets`（cartpole、double_integrator、quadrotor、ballbot、`anymal_c`、`mobile_manipulator/franka`）。示例进程在 `/robot_description` 里保留与 RViz 相同的 `package://ocs2_robotic_assets/resources/…`（并把 `file://$(find …)` 规范成 `package://`）。Autoviz 用 `MeshResourceResolver` 解析（环境变量 `BOLZA_ROBOTIC_ASSETS` / `AUTOMANIP_ROBOTIC_ASSETS` / `AUTOVIZ_RESOURCE_PATH`，或安装前缀下的 `share/ocs2_robotic_assets`）。模型和关节只发全局话题 `/robot_description`、`/joint_states`。一次只跑一个示例，因为这两个话题和 `/tf` 是全局的。
 
 ## 没有放进来的模型
 

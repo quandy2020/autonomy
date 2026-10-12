@@ -10,41 +10,41 @@
 #include "autoviz/common/path_env_utils.hpp"
 #include "autoviz/common/plugin_loader.hpp"
 
-#include <automsgs/msgs/sensor_msgs/fluid_pressure.pb.h>
 #include <automsgs/msgs/sensor_msgs/illuminance.pb.h>
-#include <automsgs/msgs/sensor_msgs/relative_humidity.pb.h>
-#include <automsgs/msgs/sensor_msgs/temperature.pb.h>
-#include "autoviz/display/accel_stamped_display.hpp"
-#include "autoviz/display/display_group.hpp"
-#include "autoviz/display/imu_display.hpp"
-#include "autoviz/display/scalar_sensor_display.hpp"
-#include "autoviz/display/axes_display.hpp"
-#include "autoviz/display/camera_display.hpp"
-#include "autoviz/display/camera_info_display.hpp"
-#include "autoviz/display/depth_cloud_display.hpp"
-#include "autoviz/display/grid_display.hpp"
-#include "autoviz/display/image_display.hpp"
-#include "autoviz/display/interactive_marker_display.hpp"
-#include "autoviz/display/laser_scan_display.hpp"
-#include "autoviz/display/map_display.hpp"
-#include "autoviz/display/marker_array_display.hpp"
-#include "autoviz/display/marker_display.hpp"
-#include "autoviz/display/odometry_display.hpp"
-#include "autoviz/display/path_display.hpp"
-#include "autoviz/display/point_cloud2_display.hpp"
-#include "autoviz/display/pose_array_display.hpp"
-#include "autoviz/display/pose_display.hpp"
-#include "autoviz/display/robot_model_display.hpp"
-#include "autoviz/display/effort_display.hpp"
-#include "autoviz/display/grid_cells_display.hpp"
-#include "autoviz/display/grid_map_display.hpp"
-#include "autoviz/display/point_stamped_display.hpp"
-#include "autoviz/display/polygon_display.hpp"
-#include "autoviz/display/pose_with_covariance_display.hpp"
-#include "autoviz/display/range_display.hpp"
-#include "autoviz/display/tf_display.hpp"
-#include "autoviz/display/twist_stamped_display.hpp"
-#include "autoviz/display/wrench_display.hpp"
+#include "autoviz/plugins/displays/accel/accel_stamped_display.hpp"
+#include "autoviz/plugins/displays/display_group.hpp"
+#include "autoviz/plugins/displays/fluid_pressure/fluid_pressure_display.hpp"
+#include "autoviz/plugins/displays/imu/imu_display.hpp"
+#include "autoviz/plugins/displays/relative_humidity/relative_humidity_display.hpp"
+#include "autoviz/plugins/displays/scalar_sensor/scalar_sensor_display.hpp"
+#include "autoviz/plugins/displays/temperature/temperature_display.hpp"
+#include "autoviz/plugins/displays/axes/axes_display.hpp"
+#include "autoviz/plugins/displays/camera/camera_display.hpp"
+#include "autoviz/plugins/displays/camera_info/camera_info_display.hpp"
+#include "autoviz/plugins/displays/depth_cloud/depth_cloud_display.hpp"
+#include "autoviz/plugins/displays/grid/grid_display.hpp"
+#include "autoviz/plugins/displays/image/image_display.hpp"
+#include "autoviz/plugins/displays/interactive_markers/interactive_marker_display.hpp"
+#include "autoviz/plugins/displays/laser_scan/laser_scan_display.hpp"
+#include "autoviz/plugins/displays/map/map_display.hpp"
+#include "autoviz/plugins/displays/marker_array/marker_array_display.hpp"
+#include "autoviz/plugins/displays/marker/marker_display.hpp"
+#include "autoviz/plugins/displays/odometry/odometry_display.hpp"
+#include "autoviz/plugins/displays/path/path_display.hpp"
+#include "autoviz/plugins/displays/pointcloud/point_cloud2_display.hpp"
+#include "autoviz/plugins/displays/pose_array/pose_array_display.hpp"
+#include "autoviz/plugins/displays/pose/pose_display.hpp"
+#include "autoviz/plugins/displays/robot_model/robot_model_display.hpp"
+#include "autoviz/plugins/displays/effort/effort_display.hpp"
+#include "autoviz/plugins/displays/grid_cells/grid_cells_display.hpp"
+#include "autoviz/plugins/displays/grid_map/grid_map_display.hpp"
+#include "autoviz/plugins/displays/point/point_stamped_display.hpp"
+#include "autoviz/plugins/displays/polygon/polygon_display.hpp"
+#include "autoviz/plugins/displays/pose_covariance/pose_with_covariance_display.hpp"
+#include "autoviz/plugins/displays/range/range_display.hpp"
+#include "autoviz/plugins/displays/tf/tf_display.hpp"
+#include "autoviz/plugins/displays/twist/twist_stamped_display.hpp"
+#include "autoviz/plugins/displays/wrench/wrench_display.hpp"
 
 namespace autoviz {
 namespace common {
@@ -389,14 +389,7 @@ void DisplayRegistry::registerBuiltinTypes() {
       "Temperature",
       [](const DisplayConfig& config) {
         return FinalizeDisplay(
-            std::make_unique<display::ScalarSensorDisplay<
-                automsgs::msgs::sensor_msgs::Temperature>>(
-                "Temperature", config.channel,
-                "automsgs.msgs.sensor_msgs.Temperature",
-                [](const automsgs::msgs::sensor_msgs::Temperature& msg) {
-                  return msg.temperature();
-                },
-                "min_value", 0.0, "max_value", 100.0),
+            std::make_unique<display::TemperatureDisplay>(config.channel),
             config);
       },
       [] { return MakeDefault("Temperature", "Temperature", ""); });
@@ -421,37 +414,20 @@ void DisplayRegistry::registerBuiltinTypes() {
       "FluidPressure",
       [](const DisplayConfig& config) {
         return FinalizeDisplay(
-            std::make_unique<display::ScalarSensorDisplay<
-                automsgs::msgs::sensor_msgs::FluidPressure>>(
-                "FluidPressure", config.channel,
-                "automsgs.msgs.sensor_msgs.FluidPressure",
-                [](const automsgs::msgs::sensor_msgs::FluidPressure& msg) {
-                  return msg.fluid_pressure();
-                },
-                "min_value", 90000.0, "max_value", 110000.0),
+            std::make_unique<display::FluidPressureDisplay>(config.channel),
             config);
       },
-      [] {
-        return MakeDefault("FluidPressure", "FluidPressure", "");
-      });
+      [] { return MakeDefault("FluidPressure", "FluidPressure", ""); });
 
   registerType(
       "RelativeHumidity",
       [](const DisplayConfig& config) {
         return FinalizeDisplay(
-            std::make_unique<display::ScalarSensorDisplay<
-                automsgs::msgs::sensor_msgs::RelativeHumidity>>(
-                "RelativeHumidity", config.channel,
-                "automsgs.msgs.sensor_msgs.RelativeHumidity",
-                [](const automsgs::msgs::sensor_msgs::RelativeHumidity& msg) {
-                  return msg.relative_humidity();
-                },
-                "min_value", 0.0, "max_value", 1.0),
+            std::make_unique<display::RelativeHumidityDisplay>(config.channel),
             config);
       },
       [] {
-        return MakeDefault("RelativeHumidity", "RelativeHumidity",
-                           "");
+        return MakeDefault("RelativeHumidity", "RelativeHumidity", "");
       });
 }
 

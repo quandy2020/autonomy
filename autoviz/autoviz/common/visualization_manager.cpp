@@ -16,10 +16,11 @@
 #include "autoviz/integration/service_client_registry.hpp"
 #include "autoviz/integration/channel_writer_registry.hpp"
 #include "autoviz/integration/message_queue.hpp"
-#include "autoviz/display/display.hpp"
-#include "autoviz/display/display_group.hpp"
-#include "autoviz/display/interactive_marker_display.hpp"
-#include "autoviz/display/interactive_marker_registry.hpp"
+#include "autoviz/plugins/displays/display.hpp"
+#include "autoviz/plugins/displays/display_group.hpp"
+#include "autoviz/plugins/displays/interactive_markers/interactive_marker_display.hpp"
+#include "autoviz/plugins/displays/interactive_markers/interactive_marker_registry.hpp"
+#include "autoviz/rendering/mesh_resource.hpp"
 
 #include <algorithm>
 #include <functional>
@@ -50,6 +51,7 @@ bool VisualizationManager::initialize(const char* binary_name) {
   display_context_.tf_buffer = tf_buffer_;
   tf_listener_.start(tf_buffer_);
   display_context_.frame_manager = &frame_manager_;
+  display_context_.transformation_manager = &transformation_manager_;
   display_context_.pick_registry = &pick_registry_;
   display_context_.handler_manager = &handler_manager_;
   display_context_.selection_manager = &selection_manager_;
@@ -78,6 +80,8 @@ bool VisualizationManager::initialize(const char* binary_name) {
   disable_channel_displays(startup_config.displays);
   applySession(startup_config);
   refreshChannelList();
+  // RViz-style package:// for bolza/ocs2_robotic_assets (env / install / source).
+  rendering::MeshResourceResolver::instance().ensureDefaultPackagesRegistered();
   wall_start_ = std::chrono::steady_clock::now();
   sim_origin_sec_ = simTimeSec();
   initialized_ = true;

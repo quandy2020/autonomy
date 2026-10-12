@@ -17,7 +17,7 @@
 #include <QToolTip>
 
 #include "autoviz/common/visualization_manager.hpp"
-#include "autoviz/display/display_group.hpp"
+#include "autoviz/plugins/displays/display_group.hpp"
 #include "autoviz/ui/displays/tree_delegate.hpp"
 
 namespace autoviz {

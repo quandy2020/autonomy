@@ -10,14 +10,14 @@
 #include "autoviz/common/path_env_utils.hpp"
 #include "autoviz/common/plugin_loader.hpp"
 
-#include "autoviz/tools/focus_camera_tool.hpp"
-#include "autoviz/tools/interact_tool.hpp"
-#include "autoviz/tools/measure_tool.hpp"
-#include "autoviz/tools/move_camera_tool.hpp"
-#include "autoviz/tools/nav_goal_tool.hpp"
-#include "autoviz/tools/pose_estimate_tool.hpp"
-#include "autoviz/tools/publish_point_tool.hpp"
-#include "autoviz/tools/select_tool.hpp"
+#include "autoviz/plugins/tools/focus/focus_camera_tool.hpp"
+#include "autoviz/plugins/tools/interaction/interact_tool.hpp"
+#include "autoviz/plugins/tools/measure/measure_tool.hpp"
+#include "autoviz/plugins/tools/move/move_camera_tool.hpp"
+#include "autoviz/plugins/tools/goal_pose/nav_goal_tool.hpp"
+#include "autoviz/plugins/tools/pose_estimate/pose_estimate_tool.hpp"
+#include "autoviz/plugins/tools/point/publish_point_tool.hpp"
+#include "autoviz/plugins/tools/select/select_tool.hpp"
 
 namespace autoviz {
 namespace common {

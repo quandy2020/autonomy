@@ -10,7 +10,7 @@ Autoviz 借鉴 RViz2 的分层与插件模型，以 Autolink 替代 `ros_integra
 | `rviz_common` | `common/` + `ui/` |
 | `rviz_rendering` | `rendering/`（**Ogre 1.x** 视口） |
 | `ros_integration` | `integration/` |
-| `rviz_default_plugins` | `display/` + `tools/`（内建注册） |
+| `rviz_default_plugins` | `plugins/displays/` + `plugins/tools/`（内建注册） |
 | pluginlib | `DisplayRegistry` / `ToolRegistry` + `AUTOVIZ_PLUGIN_PATH` |
 
 ## 逻辑分层
@@ -20,7 +20,7 @@ flowchart TB
   Apps[Autolink 应用 Writer] --> AL[Autolink Transport]
   AL --> INT[integration]
   INT --> VM[VisualizationManager]
-  VM --> DISP[display]
+  VM --> DISP[plugins]
   VM --> UI[ui]
   DISP --> REND[rendering]
   UI --> REND
@@ -30,10 +30,10 @@ flowchart TB
 |----|------|
 | `ui/` | 主窗口、Dock、属性面板、主题与 i18n |
 | `common/` | VisualizationManager、DisplayContext、会话、插件注册 |
-| `display/` | Display 实现与消息绘制 |
+| `plugins/displays/` | Display 实现与消息绘制 |
 | `integration/` | Autolink Node、Channel、回放 |
 | `rendering/` | 视口、后端、几何与拾取 |
-| `tools/` | 交互工具 |
+| `plugins/tools/` | 交互工具（`move/`、`select/`、`interaction/` 等 RViz 子目录） |
 | `transform/` | TF Buffer（vendored tf2） |
 
 ## 数据流
