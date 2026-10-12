@@ -32,8 +32,22 @@ if(orocos_kdl_FOUND)
   set(OrocosKDL_FOUND TRUE)
   set(OrocosKDL_INCLUDE_DIRS ${orocos_kdl_INCLUDE_DIRS})
   set(OrocosKDL_LIBRARIES ${orocos_kdl_LIBRARIES})
-  if(TARGET orocos-kdl AND NOT TARGET OrocosKDL::orocos-kdl)
-    add_library(OrocosKDL::orocos-kdl ALIAS orocos-kdl)
+  # Debian's orocos_kdl-config.cmake exports variables only. The library
+  # name is "orocos-kdl"; there is no imported target of that name.
+  if(NOT TARGET OrocosKDL::orocos-kdl)
+    if(TARGET orocos-kdl)
+      add_library(OrocosKDL::orocos-kdl ALIAS orocos-kdl)
+    else()
+      add_library(OrocosKDL::orocos-kdl INTERFACE IMPORTED)
+      if(orocos_kdl_LIBRARIES)
+        target_link_libraries(OrocosKDL::orocos-kdl
+          INTERFACE ${orocos_kdl_LIBRARIES})
+      endif()
+      if(orocos_kdl_INCLUDE_DIRS)
+        target_include_directories(OrocosKDL::orocos-kdl
+          INTERFACE ${orocos_kdl_INCLUDE_DIRS})
+      endif()
+    endif()
   endif()
 else()
   find_path(OrocosKDL_INCLUDE_DIR

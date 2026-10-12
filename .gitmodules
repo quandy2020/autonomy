@@ -2,10 +2,3 @@
 	path = autolink
 	url = https://github.com/quandy2020/autolink.git
 	branch = feature/library
-[submodule "bolza-hpipm"]
-	path = automanip/bolza/thirdparty/hpipm
-	url = https://github.com/giaf/hpipm.git
-[submodule "bolza-coal"]
-	path = automanip/bolza/thirdparty/coal
-	url = https://github.com/coal-library/coal.git
-	branch = devel

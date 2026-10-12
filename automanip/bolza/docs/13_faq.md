@@ -14,7 +14,7 @@ cmake -S automanip/bolza -B build/bolza
 
 - 机械臂自碰撞未编入 → coal（`find_package(Coal)`）
 - **不依赖** autonomy / autocmake / autolink 即可编 `libbolza`；demo 见 `automanip/examples`（独立工程）
-- HPIPM 失败 → 先 `git submodule update --init automanip/bolza/thirdparty`；无 submodule 时配置期需网络 `FetchContent`；确认 `BOLZA_WITH_HPIPM=ON`
+- HPIPM 失败 → 在 bolza 仓库根执行 `git submodule update --init --recursive`；无 submodule 时配置期需网络 `FetchContent`；确认 `BOLZA_WITH_HPIPM=ON`
 - SQP/IPM QP 失败 → 开 `printSolverStatus` 看 HPIPM 返回码
 - 不引入 ROS / autolink：`libbolza` 无中间件依赖；自碰撞距离段见 `GeometryInterfaceVisualization::ComputeDistances`
 - 单测：`-DBOLZA_BUILD_TESTS=ON`（需 GTest）；不含 RaiSim / ROS

@@ -110,7 +110,7 @@ bool LoadChompParamsFromShare(ChompParams* params, std::string* error) {
     return false;
   }
   std::string path;
-  if (!common::ResolveModuleConfPath("manipulation", "chomp_planning.conf",
+  if (!::autonomy::common::ResolveModuleConfPath("manipulation", "chomp_planning.conf",
                                      &path)) {
     if (error) {
       *error = "chomp_planning.conf not found in share";

@@ -11,19 +11,13 @@
 
 ## 初始化
 
-在含 `.gitmodules` 的仓库根执行：
-
-```bash
-git submodule update --init --recursive \
-  automanip/bolza/thirdparty/hpipm \
-  automanip/bolza/thirdparty/coal
-```
-
-或一次性：
+在 **bolza 仓库根**（本目录的上一级，含 `.gitmodules`）执行：
 
 ```bash
 git submodule update --init --recursive
 ```
+
+`hpipm` 与 `coal` 只登记在 bolza 自己的 `.gitmodules` 里，不写进上层 autonomy 仓库。
 
 ## CMake
 
@@ -33,10 +27,10 @@ git submodule update --init --recursive
 ## 更新钉扎
 
 ```bash
-cd automanip/bolza/thirdparty/<name>
+cd thirdparty/<name>
 git fetch
 git checkout <new-commit>
 cd "$(git rev-parse --show-toplevel)"
-git add automanip/bolza/thirdparty/<name>
-# 再按需提交
+git add thirdparty/<name>
+# 再在 bolza 仓库里按需提交
 ```

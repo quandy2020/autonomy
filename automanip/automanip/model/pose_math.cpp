@@ -84,7 +84,7 @@ automsgs::msgs::geometry_msgs::Pose ComposePoses(
   const double w[4] = {child.orientation().w(), child.orientation().x(),
                        child.orientation().y(), child.orientation().z()};
   double zw[4];
-  common::QuaternionProduct(z, w, zw);
+  ::autonomy::common::QuaternionProduct(z, w, zw);
 
   automsgs::msgs::geometry_msgs::Pose out;
   out.mutable_orientation()->set_w(zw[0]);

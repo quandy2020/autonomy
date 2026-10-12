@@ -1,0 +1,7 @@
+[submodule "thirdparty/hpipm"]
+	path = thirdparty/hpipm
+	url = https://github.com/giaf/hpipm.git
+[submodule "thirdparty/coal"]
+	path = thirdparty/coal
+	url = https://github.com/coal-library/coal.git
+	branch = devel

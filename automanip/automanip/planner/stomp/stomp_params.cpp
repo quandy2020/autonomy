@@ -90,7 +90,7 @@ bool LoadStompParamsFromShare(StompParams* params, std::string* error) {
     return false;
   }
   std::string path;
-  if (!common::ResolveModuleConfPath("manipulation", "stomp_planning.conf",
+  if (!::autonomy::common::ResolveModuleConfPath("manipulation", "stomp_planning.conf",
                                      &path)) {
     if (error) {
       *error = "stomp_planning.conf not found in share";

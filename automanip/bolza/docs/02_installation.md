@@ -25,10 +25,8 @@
 CppAD：`find_package(CppAD)`（`cmake/modules/FindCppAD.cmake`，查找 `cppad/cg.hpp`）。缺依赖时日志：`bolza: skipped`。
 
 ```bash
-# 拉取 bolza 第三方（hpipm / coal；BLASFEO 由 CMake FetchContent）
-git submodule update --init --recursive \
-  automanip/bolza/thirdparty/hpipm \
-  automanip/bolza/thirdparty/coal
+# 在 bolza 仓库根拉取第三方（hpipm / coal；BLASFEO 由 CMake FetchContent）
+git submodule update --init --recursive
 ```
 
 说明见 [`thirdparty/README.md`](../thirdparty/README.md)。

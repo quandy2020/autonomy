@@ -219,7 +219,7 @@ endif()
 if(AUTOMANIP_WITH_PLANNING)
   # Primary process: ManipulationServer (former arm HAL entry removed).
   autocmake_binary(automanip_main
-    SOURCES automanip/main.cpp options.cpp
+    SOURCES automanip/main.cpp automanip/options.cpp
     DEPENDENCIES automanip glog::glog)
   set_target_properties(automanip_main PROPERTIES OUTPUT_NAME automanip)
   target_include_directories(automanip_main PRIVATE
