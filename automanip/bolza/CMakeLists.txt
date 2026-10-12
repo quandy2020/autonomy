@@ -23,6 +23,7 @@ endif()
 
 option(BOLZA_WITH_ONNX "mpcnet ONNX when SDK found" ON)
 option(BOLZA_BUILD_TESTS "GTest unit tests" OFF)
+option(BOLZA_BUILD_EXAMPLES "Build examples" OFF)
 
 include(cmake/functions.cmake)
 include(cmake/bolza_version.cmake)
@@ -120,7 +121,9 @@ endif()
 
 message(STATUS "bolza: ON (coal=${BOLZA_HAS_COAL} onnx=${BOLZA_HAS_ONNX})")
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/examples/CMakelists.txt)
+if(BOLZA_BUILD_EXAMPLES)
+  add_subdirectory(examples)
+endif()
 
 # --- tests -------------------------------------------------------------------
 if(BOLZA_BUILD_TESTS)

@@ -39,7 +39,7 @@ struct ModeSequenceTemplate {
    * @param [in] modeSequenceInput : mode sequence of size N
    */
   ModeSequenceTemplate(std::vector<scalar_t> switchingTimesInput, std::vector<size_t> modeSequenceInput)
-      : SwitchingTimes(std::move(switchingTimesInput)), modeSequence(std::move(modeSequenceInput)) {
+      : switchingTimes(std::move(switchingTimesInput)), modeSequence(std::move(modeSequenceInput)) {
     assert(!modeSequence.empty());
     assert(switchingTimes.size() == modeSequence.size() + 1);
   }

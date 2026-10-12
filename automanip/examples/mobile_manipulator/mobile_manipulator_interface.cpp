@@ -95,7 +95,7 @@ MobileManipulatorInterface::MobileManipulatorInterface(const std::string& taskFi
   std::cerr << "\n #### model_information.manipulatorModelType: " << static_cast<int>(modelType);
   std::cerr << "\n #### model_information.removeJoints: ";
   for (const auto& name : removeJointNames) {
-    std::cerr << "\"" << Name << "\" ";
+    std::cerr << "\"" << name << "\" ";
   }
   std::cerr << "\n #### model_information.baseFrame: \"" << baseFrame << "\"";
   std::cerr << "\n #### model_information.eeFrame: \"" << eeFrame << "\"" << std::endl;

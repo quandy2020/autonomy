@@ -223,7 +223,8 @@ int main(int argc, char** argv) {
   request.initial_input = vector_t::Zero(INPUT_DIM);
   request.publish = Publish;
   request.on_target = TargetFromPose;
-  request.robot_description = bolza::examples::ReadTextFile(AUTOMANIP_EXAMPLE_URDF);
+  request.robot_description =
+      bolza::examples::RobotDescriptionWithAbsoluteMeshes(AUTOMANIP_EXAMPLE_URDF);
   request.max_steps = steps;
   return bolza::examples::RunDemo(request);
 }

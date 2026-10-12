@@ -50,10 +50,10 @@ vector_t QuadrotorSystemDynamics::ComputeFlowMap(scalar_t time, const vector_t& 
   Eigen::Matrix<scalar_t, 3, 1> eulerAngleDerivatives = T * state.segment<3>(9);
 
   // Applied force and momentums
-  scalar_t Fz = Input(0);
-  scalar_t Mx = Input(1);
-  scalar_t My = Input(2);
-  scalar_t Mz = Input(3);
+  scalar_t Fz = input(0);
+  scalar_t Mx = input(1);
+  scalar_t My = input(2);
+  scalar_t Mz = input(3);
 
   scalar_t t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13;
 
@@ -70,23 +70,23 @@ vector_t QuadrotorSystemDynamics::ComputeFlowMap(scalar_t time, const vector_t& 
   t12 = param_.Thzz_ * param_.Thzz_;
   t13 = t3 * t3;
 
-  vector_t StateDerivative(STATE_DIM);
-  StateDerivative(0) = dqxQ;
-  StateDerivative(1) = dqyQ;
-  StateDerivative(2) = dqzQ;
-  StateDerivative(3) = eulerAngleDerivatives(0);
-  StateDerivative(4) = eulerAngleDerivatives(1);
-  StateDerivative(5) = eulerAngleDerivatives(2);
-  StateDerivative(6) = Fz * t2 * t4;
-  StateDerivative(7) = -Fz * t2 * t3 * sin(qph);
+  vector_t stateDerivative(STATE_DIM);
+  stateDerivative(0) = dqxQ;
+  stateDerivative(1) = dqyQ;
+  stateDerivative(2) = dqzQ;
+  stateDerivative(3) = eulerAngleDerivatives(0);
+  stateDerivative(4) = eulerAngleDerivatives(1);
+  stateDerivative(5) = eulerAngleDerivatives(2);
+  stateDerivative(6) = Fz * t2 * t4;
+  stateDerivative(7) = -Fz * t2 * t3 * sin(qph);
 
-  StateDerivative(8) = t2 * (param_.quadrotorMass_ * param_.gravity_ - Fz * t3 * cos(qph)) * (-1.0);
-  StateDerivative(9) =
+  stateDerivative(8) = t2 * (param_.quadrotorMass_ * param_.gravity_ - Fz * t3 * cos(qph)) * (-1.0);
+  stateDerivative(9) =
       -t5 * t11 *
       (-Mx * t6 + My * t7 + param_.Thzz_ * dqps * dqth - param_.Thxxyy_ * dqph * dqth * t4 * (2.0) + param_.Thzz_ * dqph * dqth * t4);
-  StateDerivative(10) = t5 * (Mx * t7 + My * t6 - param_.Thxxyy_ * t8 * t10 * (1.0 / 2.0) + param_.Thzz_ * t8 * t10 * (1.0 / 2.0) +
+  stateDerivative(10) = t5 * (Mx * t7 + My * t6 - param_.Thxxyy_ * t8 * t10 * (1.0 / 2.0) + param_.Thzz_ * t8 * t10 * (1.0 / 2.0) +
                               param_.Thzz_ * dqph * dqps * t3);
-  StateDerivative(11) = (t5 * t11 *
+  stateDerivative(11) = (t5 * t11 *
                          (Mz * param_.Thxxyy_ * t3 + dqph * dqth * t12 - dqph * dqth * t12 * t13 + dqps * dqth * t4 * t12 -
                           param_.Thxxyy_ * param_.Thzz_ * dqph * dqth * (2.0) - Mx * param_.Thzz_ * t4 * t6 + My * param_.Thzz_ * t4 * t7 +
                           param_.Thxxyy_ * param_.Thzz_ * dqph * dqth * t13)) /

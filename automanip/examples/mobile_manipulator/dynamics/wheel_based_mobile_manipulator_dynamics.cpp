@@ -34,10 +34,10 @@ WheelBasedMobileManipulatorDynamics::WheelBasedMobileManipulatorDynamics(Manipul
 /******************************************************************************************************/
 ad_vector_t WheelBasedMobileManipulatorDynamics::SystemFlowMap(ad_scalar_t time, const ad_vector_t& state, const ad_vector_t& input,
                                                                const ad_vector_t&) const {
-  ad_vector_t Dxdt(info_.stateDim);
+  ad_vector_t dxdt(info_.stateDim);
   const auto theta = state(2);
-  const auto v = Input(0);  // forward velocity in base frame
-  Dxdt << cos(theta) * v, sin(theta) * v, Input(1), input.tail(info_.armDim);
+  const auto v = input(0);  // forward velocity in base frame
+  dxdt << cos(theta) * v, sin(theta) * v, input(1), input.tail(info_.armDim);
   return dxdt;
 }
 

@@ -59,7 +59,7 @@ class LeggedRobotInterface final : public RobotInterface {
 
   const OptimalControlProblem& GetOptimalControlProblem() const override { return *problemPtr_; }
 
-  const ModelSettings& ModelSettings() const { return modelSettings_; }
+  const ModelSettings& GetModelSettings() const { return modelSettings_; }
   const ddp::Settings& DdpSettings() const { return ddpSettings_; }
   const mpc::Settings& MpcSettings() const { return mpcSettings_; }
   const rollout::Settings& RolloutSettings() const { return rolloutSettings_; }

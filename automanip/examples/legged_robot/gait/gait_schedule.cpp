@@ -39,7 +39,7 @@ void GaitSchedule::InsertModeSequenceTemplate(const ModeSequenceTemplate& modeSe
   const size_t index = std::lower_bound(eventTimes.begin(), eventTimes.end(), startTime) - eventTimes.begin();
 
   // delete the old logic from the index
-  if (Index < eventTimes.size()) {
+  if (index < eventTimes.size()) {
     eventTimes.erase(eventTimes.begin() + index, eventTimes.end());
     modeSequence.erase(modeSequence.begin() + index + 1, modeSequence.end());
   }

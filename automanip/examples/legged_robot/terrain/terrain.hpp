@@ -22,7 +22,7 @@
 
 #include "examples/legged_robot/common/types.hpp"
 
-namespace automanip {
+namespace bolza {
 namespace legged_robot {
 
 /**
@@ -75,6 +75,6 @@ class Terrain {
 };
 
 }  // namespace legged_robot
-}  // namespace automanip
+}  // namespace bolza
 
 #endif  // AUTOMANIP_EXAMPLES_LEGGED_ROBOT_TERRAIN_TERRAIN_HPP_

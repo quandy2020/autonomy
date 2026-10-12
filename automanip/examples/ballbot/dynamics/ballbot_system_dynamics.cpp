@@ -77,7 +77,7 @@ ad_vector_t BallbotSystemDynamics::SystemFlowMap(ad_scalar_t time, const ad_vect
   // dxdt
   ad_vector_t StateDerivative(10);
   StateDerivative << state.tail<5>(), qdd;
-  return stateDerivative;
+  return StateDerivative;
 }
 
 }  // namespace ballbot

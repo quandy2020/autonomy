@@ -61,7 +61,7 @@ void ExecuteAndSleep(Functor f, double frequency) {
    * @param [in] frequency: Frequency.
    * @return Result value.
    */
-  const std::chrono::duration<double> DesiredDuration(1.0 / frequency);
+  const std::chrono::duration<double> desiredDuration(1.0 / frequency);
   const auto dt = std::chrono::duration_cast<clock::duration>(desiredDuration);
 
   // Sleep
@@ -99,7 +99,7 @@ void ExecuteAtRate(Functor1 f, Functor2 condition, double frequency) {
    * @param [in] frequency: Frequency.
    * @return Result value.
    */
-  const std::chrono::duration<double> DesiredDuration(1.0 / frequency);
+  const std::chrono::duration<double> desiredDuration(1.0 / frequency);
   const auto dt = std::chrono::duration_cast<clock::duration>(desiredDuration);
 
   // Initialize timing

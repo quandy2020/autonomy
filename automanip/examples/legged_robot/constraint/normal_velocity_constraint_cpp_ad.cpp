@@ -53,7 +53,7 @@ bool NormalVelocityConstraintCppAd::IsActive(scalar_t time) const {
 vector_t NormalVelocityConstraintCppAd::GetValue(scalar_t time, const vector_t& state, const vector_t& input,
                                                  const PreComputation& preComp) const {
   const auto& preCompLegged = cast<LeggedRobotPreComputation>(preComp);
-  eeLinearConstraintPtr_->configure(preCompLegged.getEeNormalVelocityConstraintConfigs()[contactPointIndex_]);
+  eeLinearConstraintPtr_->Configure(preCompLegged.GetEeNormalVelocityConstraintConfigs()[contactPointIndex_]);
 
   return eeLinearConstraintPtr_->GetValue(time, state, input, preComp);
 }
@@ -65,7 +65,7 @@ VectorFunctionLinearApproximation NormalVelocityConstraintCppAd::GetLinearApprox
                                                                                         const vector_t& input,
                                                                                         const PreComputation& preComp) const {
   const auto& preCompLegged = cast<LeggedRobotPreComputation>(preComp);
-  eeLinearConstraintPtr_->configure(preCompLegged.getEeNormalVelocityConstraintConfigs()[contactPointIndex_]);
+  eeLinearConstraintPtr_->Configure(preCompLegged.GetEeNormalVelocityConstraintConfigs()[contactPointIndex_]);
 
   return eeLinearConstraintPtr_->GetLinearApproximation(time, state, input, preComp);
 }

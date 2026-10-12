@@ -42,6 +42,8 @@ std::string stripCommentOutsideQuotes(const std::string& line) {
     const char c = line[i];
     if (c == '"') {
       inQuotes = !inQuotes;
+    } else if (!inQuotes && c == '/' && i + 1 < line.size() && line[i + 1] == '/') {
+      return line.substr(0, i);
     } else if (c == ';' && !inQuotes) {
       return line.substr(0, i);
     }

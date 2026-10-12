@@ -55,7 +55,7 @@ vector_t EndEffectorConstraint::GetValue(scalar_t time, const vector_t& state, c
 
   const auto desiredPositionOrientation = InterpolateEndEffectorPose(time);
 
-  vector_t Constraint(6);
+  vector_t constraint(6);
   constraint.head<3>() = endEffectorKinematicsPtr_->GetPosition(state).front() - desiredPositionOrientation.first;
   constraint.tail<3>() = endEffectorKinematicsPtr_->GetOrientationError(state, {desiredPositionOrientation.second}).front();
   return constraint;

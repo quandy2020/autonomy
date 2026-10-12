@@ -40,7 +40,7 @@ LeggedRobotInitializer* LeggedRobotInitializer::Clone() const {
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-void LeggedRobotInitializer::Compute(scalar_t time, const vector_t& state, scalar_t nextTime, vector_t& input, vector_t& nextState) {
+void LeggedRobotInitializer::compute(scalar_t time, const vector_t& state, scalar_t nextTime, vector_t& input, vector_t& nextState) {
   const auto contactFlags = referenceManagerPtr_->GetContactFlags(time);
   input = WeightCompensatingInput(info_, contactFlags);
   nextState = state;

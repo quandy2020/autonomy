@@ -34,7 +34,7 @@ SwingTrajectoryPlanner::SwingTrajectoryPlanner(Config config, size_t numFeet) : 
 /******************************************************************************************************/
 scalar_t SwingTrajectoryPlanner::GetZvelocityConstraint(size_t leg, scalar_t time) const {
   const auto index = lookup::FindIndexInTimeArray(feetHeightTrajectoriesEvents_[leg], time);
-  return feetHeightTrajectories_[leg][index].velocity(time);
+  return feetHeightTrajectories_[leg][index].Velocity(time);
 }
 
 /******************************************************************************************************/
@@ -42,7 +42,7 @@ scalar_t SwingTrajectoryPlanner::GetZvelocityConstraint(size_t leg, scalar_t tim
 /******************************************************************************************************/
 scalar_t SwingTrajectoryPlanner::GetZpositionConstraint(size_t leg, scalar_t time) const {
   const auto index = lookup::FindIndexInTimeArray(feetHeightTrajectoriesEvents_[leg], time);
-  return feetHeightTrajectories_[leg][index].position(time);
+  return feetHeightTrajectories_[leg][index].Position(time);
 }
 
 /******************************************************************************************************/
@@ -180,7 +180,7 @@ void SwingTrajectoryPlanner::CheckThatIndicesAreValid(int leg, int index, int st
                                                       const std::vector<size_t>& phaseIDsStock) {
   const size_t numSubsystems = phaseIDsStock.size();
   if (startIndex < 0) {
-    std::cerr << "Subsystem: " << Index << " out of " << numSubsystems - 1 << std::endl;
+    std::cerr << "Subsystem: " << startIndex << " out of " << numSubsystems - 1 << std::endl;
     for (size_t i = 0; i < numSubsystems; i++) {
       std::cerr << "[" << i << "]: " << phaseIDsStock[i] << ",  ";
     }
@@ -189,7 +189,7 @@ void SwingTrajectoryPlanner::CheckThatIndicesAreValid(int leg, int index, int st
     throw std::runtime_error("The time of take-off for the first swing of the EE with ID " + std::to_string(leg) + " is not defined.");
   }
   if (finalIndex >= numSubsystems - 1) {
-    std::cerr << "Subsystem: " << Index << " out of " << numSubsystems - 1 << std::endl;
+    std::cerr << "Subsystem: " << finalIndex << " out of " << numSubsystems - 1 << std::endl;
     for (size_t i = 0; i < numSubsystems; i++) {
       std::cerr << "[" << i << "]: " << phaseIDsStock[i] << ",  ";
     }

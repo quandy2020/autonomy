@@ -58,7 +58,7 @@ using TfMsg = automsgs::msgs::tf2_msgs::TFMessage;
 
 /** Reads a URDF (or any text file). Empty when the path cannot be opened. */
 inline std::string ReadTextFile(const std::string& path) {
-  std::ifstream Input(path);
+  std::ifstream input(path);
   if (!input) {
     return {};
   }
@@ -66,25 +66,40 @@ inline std::string ReadTextFile(const std::string& path) {
                      std::istreambuf_iterator<char>());
 }
 
+inline void ReplaceAll(std::string* text, const std::string& from, const std::string& to) {
+  if (text == nullptr || from.empty()) {
+    return;
+  }
+  for (std::string::size_type pos = 0; (pos = text->find(from, pos)) != std::string::npos;) {
+    text->replace(pos, from.size(), to);
+    pos += to.size();
+  }
+}
+
 /**
- * Rewrites `../meshes/` in a URDF to an absolute directory beside the file.
- * Robot descriptions arrive on a topic, so autoviz has no URDF directory.
+ * Rewrites package and relative mesh URIs to absolute paths under the
+ * robotic-assets tree. Robot descriptions arrive on a topic, so autoviz has
+ * no URDF directory and cannot resolve `package://`.
  */
 inline std::string RobotDescriptionWithAbsoluteMeshes(const std::string& urdf_path) {
   std::string xml = ReadTextFile(urdf_path);
-  const std::filesystem::path mesh_dir = std::filesystem::weakly_canonical(
-      std::filesystem::path(urdf_path).parent_path() / ".." / "meshes");
-  const std::string absolute = mesh_dir.string() + "/";
-  const std::string token = "../meshes/";
-  for (std::string::size_type pos = 0; (pos = xml.find(token, pos)) != std::string::npos;) {
-    xml.replace(pos, token.size(), absolute);
-    pos += absolute.size();
+#ifdef AUTOMANIP_ROBOTIC_ASSETS
+  const std::string root = std::string(AUTOMANIP_ROBOTIC_ASSETS) + "/";
+  ReplaceAll(&xml, "package://ocs2_robotic_assets/resources/", root);
+  ReplaceAll(&xml, "file://$(find ocs2_robotic_assets)/resources/", root);
+#endif
+  const std::filesystem::path mesh_dir =
+      std::filesystem::path(urdf_path).parent_path() / ".." / "meshes";
+  if (std::filesystem::exists(mesh_dir)) {
+    const std::string absolute =
+        std::filesystem::weakly_canonical(mesh_dir).string() + "/";
+    ReplaceAll(&xml, "../meshes/", absolute);
   }
   return xml;
 }
 
 /** Fills markers, joints, the predicted path, and the TF tree. */
-using ViewPublisher = std::Function<void(const SystemObservation& observation,
+using ViewPublisher = std::function<void(const SystemObservation& observation,
                                          const PrimalSolution& policy,
                                          const CommandData& command,
                                          MarkerArray* markers,
@@ -95,12 +110,12 @@ using ViewPublisher = std::Function<void(const SystemObservation& observation,
  * Builds a new target from a PoseStamped on `/<name>/target_pose`.
  * The previous target state is passed so unused coordinates can stay put.
  */
-using TargetFromPose = std::Function<TargetTrajectories(
+using TargetFromPose = std::function<TargetTrajectories(
     const PoseStamped& pose, const vector_t& previous_target, scalar_t time)>;
 
 /** Fills `/cmd_vel` (`geometry_msgs/TwistStamped`) from the live state. */
 using VelocityPublisher =
-    std::Function<void(const SystemObservation& observation, TwistStampedMsg* twist)>;
+    std::function<void(const SystemObservation& observation, TwistStampedMsg* twist)>;
 
 struct DemoRequest {
   std::string name;

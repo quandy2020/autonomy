@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
   const int steps = argc > 1 ? std::atoi(argv[1]) : 0;
   bolza::mobile_manipulator::MobileManipulatorInterface interface(
       AUTOMANIP_EXAMPLE_TASK, "/tmp/automanip/mobile_manipulator", AUTOMANIP_EXAMPLE_URDF);
-  const auto& model = interface.getManipulatorModelInfo();
+  const auto& model = interface.GetManipulatorModelInfo();
 
   bolza::GaussNewtonDDPMPC mpc(interface.MpcSettings(), interface.DdpSettings(),
                                     interface.GetRollout(), interface.GetOptimalControlProblem(),
@@ -74,8 +74,9 @@ int main(int argc, char** argv) {
   request.max_steps = steps;
   request.on_target = [&](const bolza::examples::PoseStamped& pose,
                           const bolza::vector_t&, bolza::scalar_t time) {
-    return bolza::TargetTrajectories({time}, {EndEffectorTarget(pose)},
-                                         {bolza::vector_t::Zero(model.inputDim)});
+    const bolza::vector_t goal = EndEffectorTarget(pose);
+    const bolza::vector_t input = bolza::vector_t::Zero(model.inputDim);
+    return bolza::TargetTrajectories({time}, {goal}, {input});
   };
   request.publish = [&](const bolza::SystemObservation& observation,
                         const bolza::PrimalSolution&,
@@ -84,7 +85,7 @@ int main(int argc, char** argv) {
                         bolza::examples::JointStateMsg* joints,
                         bolza::examples::PathMsg*,
                         bolza::examples::TfMsg* tf) {
-    bolza::vector_t state = observation.state;
+    const bolza::vector_t& state = observation.state;
     const auto arm = bolza::mobile_manipulator::getArmJointAngles(state, model);
     std::vector<std::string> names = model.dofNames;
     std::vector<double> positions(static_cast<std::size_t>(arm.size()));

@@ -25,17 +25,17 @@ inline bolza::scalar_t TimingNaN() {
 }
 
 inline bool HasStartTime(const bolza::legged_robot::ContactTiming& timing) {
-  return !std::Isnan(timing.start);
+  return !std::isnan(timing.start);
 }
 inline bool HasEndTime(const bolza::legged_robot::ContactTiming& timing) {
-  return !std::Isnan(timing.end);
+  return !std::isnan(timing.end);
 }
 
 inline bool HasStartTime(const bolza::legged_robot::SwingTiming& timing) {
-  return !std::Isnan(timing.start);
+  return !std::isnan(timing.start);
 }
 inline bool HasEndTime(const bolza::legged_robot::SwingTiming& timing) {
-  return !std::Isnan(timing.end);
+  return !std::isnan(timing.end);
 }
 
 inline bool StartsWithSwingPhase(const std::vector<bolza::legged_robot::ContactTiming>& timings) {
@@ -100,7 +100,7 @@ feet_array_t<LegPhase> GetContactPhasePerLeg(scalar_t time, const bolza::ModeSch
       // Leg is always in swing phase
       contactPhasePerLeg[leg].phase = -1.0;
       contactPhasePerLeg[leg].duration = std::numeric_limits<scalar_t>::quiet_NaN();
-    } else if (startsWithContactPhase(contactTimingsPerLeg[leg]) && (Time <= contactTimingsPerLeg[leg].front().end)) {
+    } else if (startsWithContactPhase(contactTimingsPerLeg[leg]) && (time <= contactTimingsPerLeg[leg].front().end)) {
       // It is assumed that contact phase started at minus infinity, so current time will be always close to ContactTiming.end
       contactPhasePerLeg[leg].phase = 1.0;
       contactPhasePerLeg[leg].duration = std::numeric_limits<scalar_t>::infinity();
@@ -111,7 +111,7 @@ feet_array_t<LegPhase> GetContactPhasePerLeg(scalar_t time, const bolza::ModeSch
     } else {
       // Check if leg is in contact interval at current time
       auto it = std::find_if(contactTimingsPerLeg[leg].begin(), contactTimingsPerLeg[leg].end(),
-                             [time](ContactTiming timing) { return (timing.start <= time) && (Time <= timing.end); });
+                             [time](ContactTiming timing) { return (timing.start <= time) && (time <= timing.end); });
       if (it == contactTimingsPerLeg[leg].end()) {
         // Leg is not in contact for current time
         contactPhasePerLeg[leg].phase = -1.0;
@@ -143,7 +143,7 @@ feet_array_t<LegPhase> GetSwingPhasePerLeg(scalar_t time, const bolza::ModeSched
       // Leg is always in contact phase
       swingPhasePerLeg[leg].phase = -1.0;
       swingPhasePerLeg[leg].duration = std::numeric_limits<scalar_t>::quiet_NaN();
-    } else if (StartsWithSwingPhase(swingTimingsPerLeg[leg]) && (Time <= swingTimingsPerLeg[leg].front().end)) {
+    } else if (StartsWithSwingPhase(swingTimingsPerLeg[leg]) && (time <= swingTimingsPerLeg[leg].front().end)) {
       // It is assumed that swing phase started at minus infinity, so current time will be always close to SwingTiming.end
       swingPhasePerLeg[leg].phase = 1.0;
       swingPhasePerLeg[leg].duration = std::numeric_limits<scalar_t>::infinity();
@@ -154,7 +154,7 @@ feet_array_t<LegPhase> GetSwingPhasePerLeg(scalar_t time, const bolza::ModeSched
     } else {
       // Check if leg is in swing interval at current time
       auto it = std::find_if(swingTimingsPerLeg[leg].begin(), swingTimingsPerLeg[leg].end(),
-                             [time](SwingTiming timing) { return (timing.start <= time) && (Time <= timing.end); });
+                             [time](SwingTiming timing) { return (timing.start <= time) && (time <= timing.end); });
       if (it == swingTimingsPerLeg[leg].end()) {
         // Leg is not swinging for current time
         swingPhasePerLeg[leg].phase = scalar_t(-1.0);

@@ -38,7 +38,7 @@ class LeggedRobotInitializer final : public Initializer {
   ~LeggedRobotInitializer() override = default;
   LeggedRobotInitializer* Clone() const override;
 
-  void Compute(scalar_t time, const vector_t& state, scalar_t nextTime, vector_t& input, vector_t& nextState) override;
+  void compute(scalar_t time, const vector_t& state, scalar_t nextTime, vector_t& input, vector_t& nextState) override;
 
  private:
   LeggedRobotInitializer(const LeggedRobotInitializer& other) = default;

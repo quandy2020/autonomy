@@ -31,31 +31,31 @@ SplineCpg::SplineCpg(CubicSpline::Node liftOff, scalar_t midHeight, CubicSpline:
 /******************************************************************************************************/
 /******************************************************************************************************/
 scalar_t SplineCpg::Position(scalar_t time) const {
-  return (Time < midTime_) ? leftSpline_.position(time) : rightSpline_.position(time);
+  return (time < midTime_) ? leftSpline_.Position(time) : rightSpline_.Position(time);
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 scalar_t SplineCpg::Velocity(scalar_t time) const {
-  return (Time < midTime_) ? leftSpline_.velocity(time) : rightSpline_.velocity(time);
+  return (time < midTime_) ? leftSpline_.Velocity(time) : rightSpline_.Velocity(time);
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 scalar_t SplineCpg::Acceleration(scalar_t time) const {
-  return (Time < midTime_) ? leftSpline_.acceleration(time) : rightSpline_.acceleration(time);
+  return (time < midTime_) ? leftSpline_.Acceleration(time) : rightSpline_.Acceleration(time);
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 scalar_t SplineCpg::StartTimeDerivative(scalar_t time) const {
-  if (Time <= midTime_) {
-    return leftSpline_.startTimeDerivative(time) + 0.5 * leftSpline_.startTimeDerivative(time);
+  if (time <= midTime_) {
+    return leftSpline_.StartTimeDerivative(time) + 0.5 * leftSpline_.StartTimeDerivative(time);
   } else {
-    return 0.5 * rightSpline_.startTimeDerivative(time);
+    return 0.5 * rightSpline_.StartTimeDerivative(time);
   }
 }
 
@@ -63,10 +63,10 @@ scalar_t SplineCpg::StartTimeDerivative(scalar_t time) const {
 /******************************************************************************************************/
 /******************************************************************************************************/
 scalar_t SplineCpg::FinalTimeDerivative(scalar_t time) const {
-  if (Time <= midTime_) {
-    return 0.5 * leftSpline_.finalTimeDerivative(time);
+  if (time <= midTime_) {
+    return 0.5 * leftSpline_.FinalTimeDerivative(time);
   } else {
-    return rightSpline_.finalTimeDerivative(time) + 0.5 * rightSpline_.finalTimeDerivative(time);
+    return rightSpline_.FinalTimeDerivative(time) + 0.5 * rightSpline_.FinalTimeDerivative(time);
   }
 }
 

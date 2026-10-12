@@ -35,7 +35,7 @@ MobileManipulatorPreComputation::MobileManipulatorPreComputation(PinocchioInterf
 /******************************************************************************************************/
 /******************************************************************************************************/
 MobileManipulatorPreComputation* MobileManipulatorPreComputation::Clone() const {
-  return new MobileManipulatorPreComputation(pinocchioInterface_, pinocchioMapping_.getManipulatorModelInfo());
+  return new MobileManipulatorPreComputation(pinocchioInterface_, pinocchioMapping_.GetManipulatorModelInfo());
 }
 
 /******************************************************************************************************/

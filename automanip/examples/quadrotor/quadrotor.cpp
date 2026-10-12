@@ -66,7 +66,7 @@ class HoverInitializer final : public Initializer {
 
   HoverInitializer* Clone() const override { return new HoverInitializer(hover_input_); }
 
-  void Compute(scalar_t, const vector_t& state, scalar_t, vector_t& input,
+  void compute(scalar_t, const vector_t& state, scalar_t, vector_t& input,
                vector_t& next_state) override {
     input = hover_input_;
     next_state = state;
@@ -148,33 +148,11 @@ using bolza::examples::TfMsg;
 using bolza::quadrotor::INPUT_DIM;
 
 /**
- * @brief Resolve the absolute path to the quadrotor mesh.
- * @return Filesystem path to @c meshes/quadrotor.obj.
+ * @brief Absolute path of the quadrotor mesh in the robotic-assets tree.
+ * @return Filesystem path to @c quadrotor/meshes/quadrotor.obj.
  */
 std::string MeshPath() {
-  const std::string urdf_path = AUTOMANIP_EXAMPLE_URDF;
-  const auto slash = urdf_path.find_last_of('/');
-  const std::string urdf_dir =
-      slash == std::string::npos ? std::string(".") : urdf_path.substr(0, slash);
-  const auto parent = urdf_dir.find_last_of('/');
-  const std::string example_dir =
-      parent == std::string::npos ? std::string(".") : urdf_dir.substr(0, parent);
-  return example_dir + "/meshes/quadrotor.obj";
-}
-
-/**
- * @brief Load URDF and rewrite the package mesh URI to a local path.
- * @return Robot description XML for Autolink.
- */
-std::string RobotDescription() {
-  std::string xml = bolza::examples::ReadTextFile(AUTOMANIP_EXAMPLE_URDF);
-  const std::string package_uri =
-      "package://ocs2_robotic_assets/resources/quadrotor/meshes/quadrotor.obj";
-  const auto pos = xml.find(package_uri);
-  if (pos != std::string::npos) {
-    xml.replace(pos, package_uri.size(), MeshPath());
-  }
-  return xml;
+  return std::string(AUTOMANIP_ROBOTIC_ASSETS) + "/quadrotor/meshes/quadrotor.obj";
 }
 
 /**
@@ -327,7 +305,8 @@ int main(int argc, char** argv) {
   request.initial_input = quadrotor.GetInitialInput();
   request.publish = Publish;
   request.on_target = TargetFromPose;
-  request.robot_description = RobotDescription();
+  request.robot_description =
+      bolza::examples::RobotDescriptionWithAbsoluteMeshes(AUTOMANIP_EXAMPLE_URDF);
   request.max_steps = steps;
   return bolza::examples::RunDemo(request);
 }

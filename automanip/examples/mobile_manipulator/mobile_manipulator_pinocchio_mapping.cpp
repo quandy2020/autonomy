@@ -65,8 +65,8 @@ auto MobileManipulatorPinocchioMappingTpl<SCALAR>::GetPinocchioJointVelocity(con
     }
     case ManipulatorModelType::WheelBasedMobileManipulator: {
       const auto theta = state(2);
-      const auto v = Input(0);  // forward velocity in base frame
-      vPinocchio << cos(theta) * v, sin(theta) * v, Input(1), input.tail(modelInfo_.armDim);
+      const auto v = input(0);  // forward velocity in base frame
+      vPinocchio << cos(theta) * v, sin(theta) * v, input(1), input.tail(modelInfo_.armDim);
       break;
     }
     default: {

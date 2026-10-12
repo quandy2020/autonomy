@@ -147,7 +147,7 @@ int main(int argc, char** argv) {
   }
   bolza::CentroidalModelPinocchioMapping pinocchio_mapping(info);
   bolza::PinocchioEndEffectorKinematics end_effector_kinematics(
-      pinocchio_view, pinocchio_mapping, interface.ModelSettings().contactNames3DoF);
+      pinocchio_view, pinocchio_mapping, interface.GetModelSettings().contactNames3DoF);
 
   bolza::examples::DemoRequest request;
   request.name = "legged_robot";
@@ -222,14 +222,14 @@ int main(int argc, char** argv) {
       const double heading = current_pose(3) + wrap(std::atan2(dy, dx) - current_pose(3));
       const double turn = heading - base(3);
       if (std::abs(turn) >= kTurnInPlace) {
-        Advance(turn, kRotationVelocity);
+        advance(turn, kRotationVelocity);
         base(2) = kComHeight;
         base(3) = heading;
         base(4) = 0.0;
         base(5) = 0.0;
         push(base);
       }
-      Advance(distance, kDisplacementVelocity);
+      advance(distance, kDisplacementVelocity);
       base(0) = goal_x;
       base(1) = goal_y;
       base(2) = kComHeight;
@@ -239,14 +239,14 @@ int main(int argc, char** argv) {
       push(base);
       const double settle = wrap(arrow_yaw - heading);
       if (std::abs(settle) >= kFinalYaw) {
-        Advance(settle, kRotationVelocity);
+        advance(settle, kRotationVelocity);
         base(3) = heading + settle;
         push(base);
       }
     } else {
       const double turn = wrap(arrow_yaw - base(3));
       if (std::abs(turn) >= kTurnInPlace) {
-        Advance(turn, kRotationVelocity);
+        advance(turn, kRotationVelocity);
         base(2) = kComHeight;
         base(3) += turn;
         base(4) = 0.0;
@@ -254,7 +254,7 @@ int main(int argc, char** argv) {
         push(base);
       }
       if (distance >= kMinTravel) {
-        Advance(distance, kDisplacementVelocity);
+        advance(distance, kDisplacementVelocity);
         base(0) = goal_x;
         base(1) = goal_y;
         base(2) = kComHeight;

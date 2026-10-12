@@ -58,7 +58,7 @@ class EndEffectorLinearConstraint final : public StateInputConstraint {
   /** Sets a new constraint coefficients. */
   void Configure(Config&& config);
   /** Sets a new constraint coefficients. */
-  void Configure(const Config& config) { this->configure(Config(config)); }
+  void Configure(const Config& config) { this->Configure(Config(config)); }
 
   /** Gets the underlying end-effector kinematics interface. */
   EndEffectorKinematics<scalar_t>& GetEndEffectorKinematics() { return *endEffectorKinematicsPtr_; }

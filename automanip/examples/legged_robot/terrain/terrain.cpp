@@ -26,7 +26,7 @@
 #include <boost/property_tree/info_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
-namespace automanip {
+namespace bolza {
 namespace legged_robot {
 
 Terrain Terrain::flat() {
@@ -293,4 +293,4 @@ Terrain Terrain::load(const std::string& info_file) {
 }
 
 }  // namespace legged_robot
-}  // namespace automanip
+}  // namespace bolza
