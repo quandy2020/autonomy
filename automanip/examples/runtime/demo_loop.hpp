@@ -133,6 +133,10 @@ struct DemoRequest {
    * Ballbot reports planar speed and yaw rate so autoviz can draw it.
    */
   VelocityPublisher velocity;
+  /** String on `/<name>/gait`. Legged robots select a gait from gait.info. */
+  std::function<void(const std::string&)> on_gait;
+  /** String on `/<name>/terrain`: `flat`, `stairs`, or a height-file path. */
+  std::function<void(const std::string&)> on_terrain;
   /** 0 runs until Ctrl+C. */
   int max_steps = 0;
 };

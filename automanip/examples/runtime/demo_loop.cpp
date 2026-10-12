@@ -228,8 +228,27 @@ int RunDemo(const DemoRequest& request) {
   auto target_reader = node->CreateReader<PoseStamped>(prefix + "/target_pose", apply_pose);
   // autoviz Nav Goal publishes geometry_msgs/PoseStamped on /goal_pose.
   auto goal_reader = node->CreateReader<PoseStamped>("/goal_pose", apply_pose);
+  std::shared_ptr<autolink::Reader<DescriptionMsg>> gait_reader;
+  std::shared_ptr<autolink::Reader<DescriptionMsg>> terrain_reader;
+  if (request.on_gait) {
+    gait_reader = node->CreateReader<DescriptionMsg>(prefix + "/gait", [&](const std::shared_ptr<DescriptionMsg>& message) {
+      if (message && request.on_gait) {
+        request.on_gait(message->data());
+      }
+    });
+  }
+  if (request.on_terrain) {
+    terrain_reader = node->CreateReader<DescriptionMsg>(
+        prefix + "/terrain", [&](const std::shared_ptr<DescriptionMsg>& message) {
+          if (message && request.on_terrain) {
+            request.on_terrain(message->data());
+          }
+        });
+  }
   (void)target_reader;
   (void)goal_reader;
+  (void)gait_reader;
+  (void)terrain_reader;
 
   mrt.SetCurrentObservation(observation);
   mrt.GetReferenceManager().SetTargetTrajectories(target);

@@ -43,6 +43,7 @@
 #include "bolza/sqp/sqp_mpc.hpp"
 #include "examples/legged_robot/gait/motion_phase_definition.hpp"
 #include "examples/legged_robot/legged_robot_interface.hpp"
+#include "examples/legged_robot/terrain/terrain.hpp"
 #include "examples/runtime/demo_loop.hpp"
 #include "examples/runtime/markers.hpp"
 
@@ -63,6 +64,36 @@ void AddPoint(automsgs::msgs::visualization_msgs::Marker* marker, const Eigen::V
   corner->set_x(point.x());
   corner->set_y(point.y());
   corner->set_z(point.z());
+}
+
+void AppendTerrain(bolza::examples::MarkerArray* markers, const bolza::legged_robot::Terrain& terrain) {
+  if (markers == nullptr || !terrain.hasRelief() || !(terrain.resolution() > 0.0)) {
+    return;
+  }
+  const double resolution = terrain.resolution();
+  const int stride = std::max(1, static_cast<int>(std::lround(0.1 / resolution)));
+  using Marker = automsgs::msgs::visualization_msgs::Marker;
+  auto mesh = bolza::examples::MakeShape("Terrain", 0, Marker::TRIANGLE_LIST, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.45f,
+                                        0.42f, 0.36f);
+  mesh.set_mesh_resource(terrain.description());
+  auto add = [&](double x, double y) { AddPoint(&mesh, Eigen::Vector3d(x, y, terrain.height(x, y))); };
+  for (int iy = 0; iy + stride < terrain.rows(); iy += stride) {
+    for (int ix = 0; ix + stride < terrain.columns(); ix += stride) {
+      const double x0 = terrain.originX() + static_cast<double>(ix) * resolution;
+      const double y0 = terrain.originY() + static_cast<double>(iy) * resolution;
+      const double x1 = terrain.originX() + static_cast<double>(ix + stride) * resolution;
+      const double y1 = terrain.originY() + static_cast<double>(iy + stride) * resolution;
+      add(x0, y0);
+      add(x0, y1);
+      add(x1, y0);
+      add(x1, y0);
+      add(x0, y1);
+      add(x1, y1);
+    }
+  }
+  if (mesh.points_size() >= 3) {
+    *markers->add_markers() = std::move(mesh);
+  }
 }
 
 double Yaw(const bolza::examples::PoseStamped& pose) {
@@ -137,6 +168,9 @@ int main(int argc, char** argv) {
   // xy in the same segment make the base translate while it is still facing
   // sideways. Turn in place onto the path heading, then walk with that yaw
   // held, at the speeds in reference.info (0.5 m/s, 0.3 rad/s).
+  auto switched = interface.GetSwitchedModelReferenceManagerPtr();
+  request.on_gait = [switched](const std::string& name) { switched->SetGait(name); };
+  request.on_terrain = [switched](const std::string& command) { switched->SetTerrainCommand(command); };
   request.command_from_state = true;
   request.on_target = [&](const bolza::examples::PoseStamped& pose,
                           const bolza::vector_t& previous, bolza::scalar_t time) {
@@ -248,6 +282,10 @@ int main(int argc, char** argv) {
                         bolza::examples::JointStateMsg* joints,
                         bolza::examples::PathMsg* path,
                         bolza::examples::TfMsg* tf) {
+    static int terrain_tick = 0;
+    if (terrain_tick++ % 60 == 0) {
+      AppendTerrain(markers, interface.GetSwitchedModelReferenceManagerPtr()->TerrainCopy());
+    }
     bolza::vector_t state = observation.state;
     const auto base = bolza::centroidal_model::GetBasePose(state, info);
     const auto angles = bolza::centroidal_model::getJointAngles(state, info);

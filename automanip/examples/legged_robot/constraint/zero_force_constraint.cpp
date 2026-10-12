@@ -35,7 +35,7 @@ ZeroForceConstraint::ZeroForceConstraint(const SwitchedModelReferenceManager& re
 /******************************************************************************************************/
 /******************************************************************************************************/
 bool ZeroForceConstraint::IsActive(scalar_t time) const {
-  return !referenceManagerPtr_->getContactFlags(time)[contactPointIndex_];
+  return !referenceManagerPtr_->GetContactFlags(time)[contactPointIndex_];
 }
 
 /******************************************************************************************************/

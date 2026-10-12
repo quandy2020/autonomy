@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <cmath>
 #include <iostream>
 #include <filesystem>
 #include <string>
@@ -92,6 +93,37 @@ LeggedRobotInterface::LeggedRobotInterface(const std::string& taskFile, const st
   // initial state
   initialState_.setZero(centroidalModelInfo_.stateDim);
   loadData::LoadEigenMatrix(taskFile, "initialState", initialState_);
+
+  const std::filesystem::path command_dir = referenceFilePath.parent_path();
+  referenceManagerPtr_->LoadGaits((command_dir / "gait.info").string());
+  referenceManagerPtr_->LoadTerrain((command_dir.parent_path() / "terrain" / "terrain.info").string());
+
+  auto& model = pinocchioInterfacePtr_->GetModel();
+  auto& data = pinocchioInterfacePtr_->GetData();
+  const auto q = centroidal_model::getGeneralizedCoordinates(initialState_, centroidalModelInfo_);
+  pinocchio::forwardKinematics(model, data, q);
+  pinocchio::updateFramePlacements(model, data);
+  const double yaw = initialState_.size() > 9 ? initialState_(9) : 0.0;
+  const double c = std::cos(yaw);
+  const double s = std::sin(yaw);
+  feet_array_t<vector3_t> offsets;
+  offsets[0] = vector3_t(0.30, 0.20, 0.0);
+  offsets[1] = vector3_t(0.30, -0.20, 0.0);
+  offsets[2] = vector3_t(-0.30, 0.20, 0.0);
+  offsets[3] = vector3_t(-0.30, -0.20, 0.0);
+  for (std::size_t i = 0; i < offsets.size() && i < modelSettings_.contactNames3DoF.size(); ++i) {
+    if (!model.existFrame(modelSettings_.contactNames3DoF[i])) {
+      continue;
+    }
+    const auto frame = model.getFrameId(modelSettings_.contactNames3DoF[i]);
+    const auto position = data.oMf[frame].translation();
+    const double dx = position.x() - initialState_(6);
+    const double dy = position.y() - initialState_(7);
+    offsets[i].x() = c * dx + s * dy;
+    offsets[i].y() = -s * dx + c * dy;
+    offsets[i].z() = 0.0;
+  }
+  referenceManagerPtr_->SetFootOffsets(offsets);
 }
 
 /******************************************************************************************************/

@@ -43,7 +43,7 @@ class LeggedRobotStateInputQuadraticCost final : public QuadraticStateInputCost 
 
   std::pair<vector_t, vector_t> GetStateInputDeviation(scalar_t time, const vector_t& state, const vector_t& input,
                                                        const TargetTrajectories& targetTrajectories) const override {
-    const auto contactFlags = referenceManagerPtr_->getContactFlags(time);
+    const auto contactFlags = referenceManagerPtr_->GetContactFlags(time);
     const vector_t xNominal = targetTrajectories.GetDesiredState(time);
     const vector_t uNominal = WeightCompensatingInput(info_, contactFlags);
     return {state - xNominal, input - uNominal};
@@ -68,7 +68,7 @@ class LeggedRobotStateQuadraticCost final : public QuadraticStateCost {
   LeggedRobotStateQuadraticCost(const LeggedRobotStateQuadraticCost& rhs) = default;
 
   vector_t GetStateDeviation(scalar_t time, const vector_t& state, const TargetTrajectories& targetTrajectories) const override {
-    const auto contactFlags = referenceManagerPtr_->getContactFlags(time);
+    const auto contactFlags = referenceManagerPtr_->GetContactFlags(time);
     const vector_t xNominal = targetTrajectories.GetDesiredState(time);
     return state - xNominal;
   }

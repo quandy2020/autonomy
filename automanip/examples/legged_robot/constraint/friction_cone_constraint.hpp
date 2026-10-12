@@ -52,10 +52,10 @@ class FrictionConeConstraint final : public StateInputConstraint {
   struct Config {
     explicit Config(scalar_t frictionCoefficientParam = 0.7, scalar_t regularizationParam = 25.0, scalar_t gripperForceParam = 0.0,
                     scalar_t hessianDiagonalShiftParam = 1e-6)
-        : FrictionCoefficient(frictionCoefficientParam),
-          Regularization(regularizationParam),
-          GripperForce(gripperForceParam),
-          HessianDiagonalShift(hessianDiagonalShiftParam) {
+        : frictionCoefficient(frictionCoefficientParam),
+          regularization(regularizationParam),
+          gripperForce(gripperForceParam),
+          hessianDiagonalShift(hessianDiagonalShiftParam) {
       assert(frictionCoefficient > 0.0);
       assert(regularization > 0.0);
       assert(hessianDiagonalShift >= 0.0);
@@ -126,8 +126,11 @@ class FrictionConeConstraint final : public StateInputConstraint {
   const size_t contactPointIndex_;
   const CentroidalModelInfo info_;
 
-  // rotation world to terrain
+  matrix3_t worldToTerrain() const;
+
+  // rotation world to terrain, used when setSurfaceNormalInWorld() is called
   matrix3_t t_R_w = matrix3_t::Identity();
+  bool override_normal_ = false;
 };
 
 }  // namespace legged_robot
