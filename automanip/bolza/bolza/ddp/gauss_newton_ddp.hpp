@@ -211,10 +211,7 @@ class GaussNewtonDDP : public SolverBase {
      * @param [in] N: N.
      * @return Result value.
      */
-    threadPool_.runParallel([&](int) { /**
-  * @brief Task Function.
-  */
- TaskFunction(); }, N);
+    threadPool_.RunParallel([&](int) { taskFunction(); }, N);
   }
 
   /**
@@ -355,7 +352,7 @@ class GaussNewtonDDP : public SolverBase {
   bool ExtractInitialTrajectories(PrimalSolution& inputPrimalSolution, PrimalSolution& outputPrimalSolution);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * It will check the content of the primalSolution, and if its final time is smaller than the current solver finalTime_,
    *
@@ -428,7 +425,7 @@ class GaussNewtonDDP : public SolverBase {
   void InitializeDualSolutionAndMetrics();
 
     /**
-   * @brief /** Based on the current LQ solution updates the optimized primal and dual solutions. */.
+   * @brief Based on the current LQ solution updates the optimized primal and dual solutions. 
    * @param [in] lqModelExpectedCost: Lq Model Expected Cost.
    */
   void TakePrimalDualStep(scalar_t lqModelExpectedCost);

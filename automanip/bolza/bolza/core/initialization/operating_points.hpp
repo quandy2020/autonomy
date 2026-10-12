@@ -103,7 +103,7 @@ class OperatingPoints final : public Initializer {
 
  private:
     /**
-   * @brief /** Copy constructor */.
+   * @brief Copy constructor 
    * @param [in] other: Other.
    */
   OperatingPoints(const OperatingPoints& other) = default;

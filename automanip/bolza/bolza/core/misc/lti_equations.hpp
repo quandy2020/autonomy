@@ -89,7 +89,7 @@ class LTIEquations : public OdeBase<DIM1 * DIM2> {
   }
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Set the LTI system coefficients, \f$ dx/dt = G_m*x(t) + G_v \f$.
    *

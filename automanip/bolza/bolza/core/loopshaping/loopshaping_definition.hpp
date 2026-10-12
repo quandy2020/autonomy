@@ -68,7 +68,7 @@ class LoopshapingDefinition {
   const Filter& GetInputFilter() const { return filter_; }
 
     /**
-   * @brief /** Compute the cost on the filtered inputs */.
+   * @brief Compute the cost on the filtered inputs 
    * @param [in] filteredInput: Filtered Input.
    * @return Result value.
    */
@@ -97,7 +97,7 @@ class LoopshapingDefinition {
   * @brief Head.
   * @return Result value.
   */
- return state.head(state.rows() - filter_.getNumStates()); }
+ return state.head(state.rows() - filter_.GetNumStates()); }
   /**
    * @brief Get System State.
    * @param [in] state: State.
@@ -108,7 +108,7 @@ class LoopshapingDefinition {
      * @brief Head.
      * @return Result value.
      */
-    systemState = state.head(state.rows() - filter_.getNumStates());
+    systemState = state.head(state.rows() - filter_.GetNumStates());
   }
 
   /**
@@ -135,7 +135,7 @@ class LoopshapingDefinition {
   * @brief Tail.
   * @return Result value.
   */
- return state.tail(filter_.getNumStates()); }
+ return state.tail(filter_.GetNumStates()); }
   /**
    * @brief Get Filter State.
    * @param [in] state: State.
@@ -145,7 +145,7 @@ class LoopshapingDefinition {
   * @brief Tail.
   * @return Result value.
   */
- filterState = state.tail(filter_.getNumStates()); }
+ filterState = state.tail(filter_.GetNumStates()); }
 
   /**
    * @brief Get Filtered Input.

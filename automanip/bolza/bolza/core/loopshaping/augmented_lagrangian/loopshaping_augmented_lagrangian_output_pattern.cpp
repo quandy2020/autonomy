@@ -26,12 +26,12 @@ ScalarFunctionQuadraticApproximation LoopshapingAugmentedLagrangianOutputPattern
   }
 
   const bool isDiagonal = loopshapingDefinition_->isDiagonal();
-  const auto& r_filter = loopshapingDefinition_->getInputFilter();
+  const auto& r_filter = loopshapingDefinition_->GetInputFilter();
   const auto& preCompLS = cast<LoopshapingPreComputation>(preComp);
-  const auto& x_system = preCompLS.getSystemState();
-  const auto& u_system = preCompLS.getSystemInput();
-  const auto& x_filter = preCompLS.getFilterState();
-  const auto& preComp_system = preCompLS.getSystemPreComputation();
+  const auto& x_system = preCompLS.GetSystemState();
+  const auto& u_system = preCompLS.GetSystemInput();
+  const auto& x_filter = preCompLS.GetFilterState();
+  const auto& preComp_system = preCompLS.GetSystemPreComputation();
   const auto stateDim = x.rows();
   const auto inputDim = u.rows();
   const auto sysStateDim = x_system.rows();

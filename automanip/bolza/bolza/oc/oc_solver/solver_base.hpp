@@ -201,7 +201,7 @@ class SolverBase {
    * @param [in] finalTime: The final time.
    * @return The primal problem's solution.
    */
-  PrimalSolution PrimalSolution(scalar_t finalTime) const;
+  PrimalSolution GetPrimalSolution(scalar_t finalTime) const;
 
   /**
    * @brief Returns the optimized dual solution.

@@ -77,7 +77,7 @@ class IpmMpc final : public MPCBase {
        * @brief Reset.
        * @return Result value.
        */
-      solverPtr_->reset();
+      solverPtr_->Reset();
     }
     /**
      * @brief Run.
@@ -86,7 +86,7 @@ class IpmMpc final : public MPCBase {
      * @param [in] finalTime: Final Time.
      * @return Result value.
      */
-    solverPtr_->run(initTime, initState, finalTime);
+    solverPtr_->Run(initTime, initState, finalTime);
   }
 
  private:

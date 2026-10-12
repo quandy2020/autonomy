@@ -63,11 +63,11 @@ class ReferenceManager : public ReferenceManagerInterface {
    * @brief Set Mode Schedule.
    * @param [in] modeSchedule: Mode Schedule.
    */
-  void SetModeSchedule(const ModeSchedule& modeSchedule) override { modeSchedule_.setBuffer(modeSchedule); }
+  void SetModeSchedule(const ModeSchedule& modeSchedule) override { modeSchedule_.SetBuffer(modeSchedule); }
   /**
    * @brief Set Mode Schedule.
    */
-  void SetModeSchedule(ModeSchedule&& modeSchedule) override { modeSchedule_.setBuffer(std::move(modeSchedule)); }
+  void SetModeSchedule(ModeSchedule&& modeSchedule) override { modeSchedule_.SetBuffer(std::move(modeSchedule)); }
 
   /**
    * @brief Get Target Trajectories.
@@ -84,7 +84,7 @@ class ReferenceManager : public ReferenceManagerInterface {
      * @param [in] targetTrajectories: Target Trajectories.
      * @return Result value.
      */
-    return targetTrajectories_.setBuffer(targetTrajectories);
+    return targetTrajectories_.SetBuffer(targetTrajectories);
   }
   /**
    * @brief Set Target Trajectories.
@@ -95,7 +95,7 @@ class ReferenceManager : public ReferenceManagerInterface {
      * @brief Set Buffer.
      * @return Result value.
      */
-    return targetTrajectories_.setBuffer(std::move(targetTrajectories));
+    return targetTrajectories_.SetBuffer(std::move(targetTrajectories));
   }
 
  protected:

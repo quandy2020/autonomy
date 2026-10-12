@@ -16,7 +16,7 @@
 
 #include "bolza/ipm/hpipm_interface.hpp"
 
-#include <ocs2_core/misc/LinearAlgebra.h>
+#include "bolza/core/misc/linear_algebra.hpp"
 
 extern "C" {
 #include <hpipm_d_ocp_qp.h>
@@ -325,7 +325,7 @@ class HpipmInterface::Impl {
 
     matrix_t Lr(ocpSize_.numInputs[0], ocpSize_.numInputs[0]);
     d_ocp_qp_ipm_get_ric_Lr(&qp_, &arg_, &workspace_, 0, Lr.data());  // Lr matrix is lower triangular
-    LinearAlgebra::setTriangularMinimumEigenvalues(Lr);
+    LinearAlgebra::SetTriangularMinimumEigenvalues(Lr);
 
     // RiccatiFeedback[0] = - (inv(Lr)^T * inv(Lr)) * (S0 + B0^T * P1 * A0)
     RiccatiFeedback[0] = -cost0.dfdux;
@@ -342,7 +342,7 @@ class HpipmInterface::Impl {
         // RiccatiFeedback[k] = -(Ls * Lr.inverse()).transpose();
         Lr.resize(numInput, numInput);
         d_ocp_qp_ipm_get_ric_Lr(&qp_, &arg_, &workspace_, k, Lr.data());  // Lr matrix is lower triangular
-        LinearAlgebra::setTriangularMinimumEigenvalues(Lr);
+        LinearAlgebra::SetTriangularMinimumEigenvalues(Lr);
 
         Ls.resize(ocpSize_.numStates[k], numInput);
         d_ocp_qp_ipm_get_ric_Ls(&qp_, &arg_, &workspace_, k, Ls.data());
@@ -364,7 +364,7 @@ class HpipmInterface::Impl {
 
     matrix_t Lr(ocpSize_.numInputs[0], ocpSize_.numInputs[0]);
     d_ocp_qp_ipm_get_ric_Lr(&qp_, &arg_, &workspace_, 0, Lr.data());
-    LinearAlgebra::setTriangularMinimumEigenvalues(Lr);
+    LinearAlgebra::SetTriangularMinimumEigenvalues(Lr);
 
     vector_t p1(ocpSize_.numStates[1]);
     d_ocp_qp_ipm_get_ric_p(&qp_, &arg_, &workspace_, 1, p1.data());
@@ -404,7 +404,7 @@ class HpipmInterface::Impl {
     // k = 0
     matrix_t Lr0(ocpSize_.numInputs[0], ocpSize_.numInputs[0]);
     d_ocp_qp_ipm_get_ric_Lr(&qp_, &arg_, &workspace_, 0, Lr0.data());
-    LinearAlgebra::setTriangularMinimumEigenvalues(Lr0);
+    LinearAlgebra::SetTriangularMinimumEigenvalues(Lr0);
 
     // Shorthand notation
     const matrix_t& A0 = dynamics0.dfdx;
@@ -523,7 +523,7 @@ hpipm_status HpipmInterface::Solve(const vector_t& x0, std::vector<VectorFunctio
                                    std::vector<ScalarFunctionQuadraticApproximation>& cost,
                                    std::vector<VectorFunctionLinearApproximation>* constraints, vector_array_t& stateTrajectory,
                                    vector_array_t& inputTrajectory, bool verbose) {
-  return pImpl_->solve(x0, dynamics, cost, constraints, stateTrajectory, inputTrajectory, verbose);
+  return pImpl_->Solve(x0, dynamics, cost, constraints, stateTrajectory, inputTrajectory, verbose);
 }
 
 std::vector<ScalarFunctionQuadraticApproximation> HpipmInterface::GetRiccatiCostToGo(const VectorFunctionLinearApproximation& dynamics0,

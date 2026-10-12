@@ -37,20 +37,8 @@ namespace bolza {
  * Nearest-point pair and signed distance for one collision pair (ROS-free).
  */
 struct GeometryDistanceSegment {
-  Eigen::Matrix<scalar_t, 3, 1> pointA = /
- 
- /**
-  * @brief Zero.
-  * @return Result value.
-  */
- Eigen::Matrix<scalar_t, 3, 1>::Zero();
-  Eigen::Matrix<scalar_t, 3, 1> pointB = /
- 
- /**
-  * @brief Zero.
-  * @return Result value.
-  */
- Eigen::Matrix<scalar_t, 3, 1>::Zero();
+  Eigen::Matrix<scalar_t, 3, 1> pointA = Eigen::Matrix<scalar_t, 3, 1>::Zero();
+  Eigen::Matrix<scalar_t, 3, 1> pointB = Eigen::Matrix<scalar_t, 3, 1>::Zero();
   scalar_t distance = 0.0;
   std::pair<size_t, size_t> collisionPair{0, 0};
 };
@@ -73,16 +61,14 @@ class GeometryInterfaceVisualization {
                                  std::string pinocchioWorldFrame = "world");
 
   /**
- * @brief /** World frame name used by consumers when drawing.
- */.
+ * @brief World frame name used by consumers when drawing.
  * @return Result value.
  */
 
   const std::string& WorldFrame() const { return pinocchioWorldFrame_; }
 
   /**
- * @brief /** Update FK and return distance segments for configuration q.
- */.
+ * @brief Update FK and return distance segments for configuration q.
  * @param [in] q: Q.
  * @return Result value.
  */

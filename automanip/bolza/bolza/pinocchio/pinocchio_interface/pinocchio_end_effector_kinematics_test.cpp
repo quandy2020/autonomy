@@ -60,9 +60,9 @@ class TestEndEffectorKinematics : public ::testing::Test {
   TestEndEffectorKinematics() {
     auto pinocchioInterface = bolza::GetPinocchioInterfaceFromUrdfString(manipulatorArmUrdf);
 
-    pinocchioInterfacePtr.Reset(new bolza::PinocchioInterface(pinocchioInterface));
-    eeKinematicsPtr.Reset(new bolza::PinocchioEndEffectorKinematics(pinocchioInterface, pinocchioMapping, {"WRIST_2"}));
-    eeKinematicsCppAdPtr.Reset(new bolza::PinocchioEndEffectorKinematicsCppAd(
+    pinocchioInterfacePtr.reset(new bolza::PinocchioInterface(pinocchioInterface));
+    eeKinematicsPtr.reset(new bolza::PinocchioEndEffectorKinematics(pinocchioInterface, pinocchioMapping, {"WRIST_2"}));
+    eeKinematicsCppAdPtr.reset(new bolza::PinocchioEndEffectorKinematicsCppAd(
         pinocchioInterface, pinocchioMappingCppAd, {"WRIST_2"}, 6, 6, "pinocchio_end_effector_kinematics", "/tmp/bolza", true, false));
 
     x.resize(6);

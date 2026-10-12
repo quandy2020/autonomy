@@ -28,8 +28,8 @@ ReferenceManager::ReferenceManager(TargetTrajectories initialTargetTrajectories,
 /******************************************************************************************************/
 /******************************************************************************************************/
 void ReferenceManager::PreSolverRun(scalar_t initTime, scalar_t finalTime, const vector_t& initState) {
-  targetTrajectories_.updateFromBuffer();
-  modeSchedule_.updateFromBuffer();
+  targetTrajectories_.UpdateFromBuffer();
+  modeSchedule_.UpdateFromBuffer();
   ModifyReferences(initTime, finalTime, initState, targetTrajectories_.get(), modeSchedule_.get());
 }
 

@@ -39,7 +39,7 @@ class DiscreteTranscriptionTest : public testing::Test {
     system = bolza::GetOcs2Dynamics(bolza::GetRandomDynamics(STATE_DIM, INPUT_DIM));
 
     bolza::OptimalControlProblem problem;
-    problem.dynamicsPtr.Reset(system->Clone());
+    problem.dynamicsPtr.reset(system->Clone());
 
     problem.costPtr->Add("IntermediateCost", bolza::GetOcs2Cost(bolza::GetRandomCost(STATE_DIM, INPUT_DIM)));
     problem.finalCostPtr->Add("FinalCost", bolza::GetOcs2StateCost(bolza::GetRandomCost(STATE_DIM, 0)));

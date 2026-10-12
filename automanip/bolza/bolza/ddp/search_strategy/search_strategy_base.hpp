@@ -73,7 +73,7 @@ class SearchStrategyBase {
   virtual void Reset() = 0;
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Finds the optimal trajectories, controller, and performance index based on the given controller and its increment.
    *
@@ -155,11 +155,11 @@ struct SolutionRef {
        * @param [in] performanceIndex: Performance Index.
        * @return Result value.
        */
-      : AvgTimeStep(s.avgTimeStep),
-        DualSolution(s.dualSolution),
-        PrimalSolution(s.primalSolution),
-        ProblemMetrics(s.problemMetrics),
-        PerformanceIndex(s.performanceIndex) {}
+      : avgTimeStep(s.avgTimeStep),
+        dualSolution(s.dualSolution),
+        primalSolution(s.primalSolution),
+        problemMetrics(s.problemMetrics),
+        performanceIndex(s.performanceIndex) {}
 
   /**
    * @brief Constructs a SolutionRef.
@@ -176,11 +176,11 @@ struct SolutionRef {
        * @param [in] performanceIndexArg: Performance Index Arg.
        * @return Result value.
        */
-      : AvgTimeStep(avgTimeStepArg),
-        DualSolution(dualSolutionArg),
-        PrimalSolution(primalSolutionArg),
-        ProblemMetrics(problemMetricsArg),
-        PerformanceIndex(performanceIndexArg) {}
+      : avgTimeStep(avgTimeStepArg),
+        dualSolution(dualSolutionArg),
+        primalSolution(primalSolutionArg),
+        problemMetrics(problemMetricsArg),
+        performanceIndex(performanceIndexArg) {}
 
   scalar_t& avgTimeStep;
   DualSolution& dualSolution;

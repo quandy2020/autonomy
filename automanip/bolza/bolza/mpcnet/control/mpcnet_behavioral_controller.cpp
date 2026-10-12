@@ -27,11 +27,11 @@ namespace mpcnet {
 vector_t MPCNetBehavioralController::ComputeInput(scalar_t t, const vector_t& x) {
   if (optimalControllerPtr_ != nullptr && learnedControllerPtr_ != nullptr) {
     if (numerics::almost_eq(alpha_, 0.0)) {
-      return learnedControllerPtr_->computeInput(t, x);
+      return learnedControllerPtr_->ComputeInput(t, x);
     } else if (numerics::almost_eq(alpha_, 1.0)) {
-      return optimalControllerPtr_->computeInput(t, x);
+      return optimalControllerPtr_->ComputeInput(t, x);
     } else {
-      return alpha_ * optimalControllerPtr_->computeInput(t, x) + (1 - alpha_) * learnedControllerPtr_->computeInput(t, x);
+      return alpha_ * optimalControllerPtr_->ComputeInput(t, x) + (1 - alpha_) * learnedControllerPtr_->ComputeInput(t, x);
     }
   } else {
     throw std::runtime_error(
@@ -86,10 +86,10 @@ bool MPCNetBehavioralController::empty() const {
 /******************************************************************************************************/
 void MPCNetBehavioralController::Concatenate(const ControllerBase* otherController, int index, int length) {
   if (optimalControllerPtr_ != nullptr) {
-    optimalControllerPtr_->concatenate(otherController, index, length);
+    optimalControllerPtr_->Concatenate(otherController, index, length);
   }
   if (learnedControllerPtr_ != nullptr) {
-    learnedControllerPtr_->concatenate(otherController, index, length);
+    learnedControllerPtr_->Concatenate(otherController, index, length);
   }
 }
 

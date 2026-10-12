@@ -44,7 +44,7 @@ solution solve(OptimalControlProblem& problem, scalar_t time, const vector_t& st
   if (settings.checkNumericalCharacteristics) {
     const std::string err = CheckDynamicsProperties(modelData) + CheckCostProperties(modelData) + CheckConstraintProperties(modelData);
     if (!err.empty()) {
-      throw std::runtime_error("[continuous_time_lqr::solve] Ill-posed problem at intermediate time: " + std::to_string(time) + "\n" + err);
+      throw std::runtime_error("[continuous_time_lqr::Solve] Ill-posed problem at intermediate time: " + std::to_string(time) + "\n" + err);
     }
   }
 

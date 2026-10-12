@@ -19,6 +19,7 @@
 #include "bolza/pinocchio/self_collision/pinocchio_geometry_interface.hpp"
 
 #include <pinocchio/algorithm/geometry.hpp>
+#include <pinocchio/collision/distance.hpp>
 #include <pinocchio/multibody/data.hpp>
 #include <pinocchio/multibody/fcl.hpp>
 #include <pinocchio/multibody/geometry.hpp>
@@ -53,11 +54,11 @@ PinocchioGeometryInterface::PinocchioGeometryInterface(const PinocchioInterface&
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-std::vector<hpp::fcl::DistanceResult> PinocchioGeometryInterface::ComputeDistances(const PinocchioInterface& pinocchioInterface) const {
+std::vector<coal::DistanceResult> PinocchioGeometryInterface::ComputeDistances(const PinocchioInterface& pinocchioInterface) const {
   pinocchio::GeometryData geometryData(*geometryModelPtr_);
 
-  pinocchio::updateGeometryPlacements(pinocchioInterface.getModel(), pinocchioInterface.getData(), *geometryModelPtr_, geometryData);
-  pinocchio::ComputeDistances(*geometryModelPtr_, geometryData);
+  pinocchio::updateGeometryPlacements(pinocchioInterface.GetModel(), pinocchioInterface.GetData(), *geometryModelPtr_, geometryData);
+  pinocchio::computeDistances(*geometryModelPtr_, geometryData);
 
   return std::move(geometryData.distanceResults);
 }
@@ -75,18 +76,18 @@ size_t PinocchioGeometryInterface::GetNumCollisionPairs() const {
 
 void PinocchioGeometryInterface::BuildGeomFromPinocchioInterface(const PinocchioInterface& pinocchioInterface,
                                                                  pinocchio::GeometryModel& geomModel) {
-  if (!pinocchioInterface.getUrdfModelPtr()) {
+  if (!pinocchioInterface.GetUrdfModelPtr()) {
     throw std::runtime_error("The PinocchioInterface passed to PinocchioGeometryInterface(...) does not contain a urdf model!");
   }
 
   // TODO: Replace with pinocchio function that uses the ModelInterface directly
   // As of 19-04-21 there is no buildGeom that takes a ModelInterface, so we deconstruct the modelInterface into a std::stringstream first
-  const std::unique_ptr<const TiXmlDocument> urdfAsXml(urdf::exportURDF(*pinocchioInterface.getUrdfModelPtr()));
+  const std::unique_ptr<const TiXmlDocument> urdfAsXml(urdf::exportURDF(*pinocchioInterface.GetUrdfModelPtr()));
   TiXmlPrinter printer;
   urdfAsXml->Accept(&printer);
   const std::stringstream urdfAsStringStream(printer.Str());
 
-  pinocchio::urdf::buildGeom(pinocchioInterface.getModel(), urdfAsStringStream, pinocchio::COLLISION, geomModel);
+  pinocchio::urdf::buildGeom(pinocchioInterface.GetModel(), urdfAsStringStream, pinocchio::COLLISION, geomModel);
 }
 /******************************************************************************************************/
 /******************************************************************************************************/
@@ -107,11 +108,11 @@ void PinocchioGeometryInterface::AddCollisionLinkPairs(const PinocchioInterface&
     bool addedPair = false;
     for (size_t i = 0; i < geometryModelPtr_->geometryObjects.size(); ++i) {
       const pinocchio::GeometryObject& object1 = geometryModelPtr_->geometryObjects[i];
-      const std::string parentFrameName1 = pinocchioInterface.getModel().frames[object1.parentFrame].name;
+      const std::string parentFrameName1 = pinocchioInterface.GetModel().frames[object1.parentFrame].name;
       if (parentFrameName1 == linkPair.first) {
         for (size_t j = 0; j < geometryModelPtr_->geometryObjects.size(); ++j) {
           const pinocchio::GeometryObject& object2 = geometryModelPtr_->geometryObjects[j];
-          const std::string parentFrameName2 = pinocchioInterface.getModel().frames[object2.parentFrame].name;
+          const std::string parentFrameName2 = pinocchioInterface.GetModel().frames[object2.parentFrame].name;
           if (parentFrameName2 == linkPair.second) {
             geometryModelPtr_->addCollisionPair(pinocchio::CollisionPair{i, j});
             addedPair = true;

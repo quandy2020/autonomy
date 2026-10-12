@@ -46,7 +46,7 @@ struct Data {
 };
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Displays all variables
  *

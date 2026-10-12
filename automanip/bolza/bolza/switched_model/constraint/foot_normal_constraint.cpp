@@ -54,12 +54,12 @@ FootNormalConstraint* FootNormalConstraint::Clone() const {
 vector_t FootNormalConstraint::GetValue(scalar_t time, const vector_t& state, const vector_t& input,
                                         const bolza::PreComputation& preComp) const {
   const auto& switchedModelPreComp = bolza::cast<SwitchedModelPreComputation>(preComp);
-  const auto& motionReference = switchedModelPreComp.getMotionReference();
+  const auto& motionReference = switchedModelPreComp.GetMotionReference();
   const auto& normalConstraint =
-      computeFootNormalConstraint(switchedModelPreComp.getSurfaceNormalInOriginFrame(legNumber_), motionReference.footVelocity[legNumber_],
+      computeFootNormalConstraint(switchedModelPreComp.GetSurfaceNormalInOriginFrame(legNumber_), motionReference.footVelocity[legNumber_],
                                   motionReference.footPosition[legNumber_], positionGain_);
-  const auto& o_footPosition = switchedModelPreComp.footPositionInOriginFrame(legNumber_);
-  const auto& o_footVelocity = switchedModelPreComp.footVelocityInOriginFrame(legNumber_);
+  const auto& o_footPosition = switchedModelPreComp.FootPositionInOriginFrame(legNumber_);
+  const auto& o_footVelocity = switchedModelPreComp.FootVelocityInOriginFrame(legNumber_);
 
   vector_t h(1);
   h[0] =
@@ -70,14 +70,14 @@ vector_t FootNormalConstraint::GetValue(scalar_t time, const vector_t& state, co
 VectorFunctionLinearApproximation FootNormalConstraint::GetLinearApproximation(scalar_t time, const vector_t& state, const vector_t& input,
                                                                                const bolza::PreComputation& preComp) const {
   const auto& switchedModelPreComp = bolza::cast<SwitchedModelPreComputation>(preComp);
-  const auto& motionReference = switchedModelPreComp.getMotionReference();
+  const auto& motionReference = switchedModelPreComp.GetMotionReference();
   const auto& normalConstraint =
-      computeFootNormalConstraint(switchedModelPreComp.getSurfaceNormalInOriginFrame(legNumber_), motionReference.footVelocity[legNumber_],
+      computeFootNormalConstraint(switchedModelPreComp.GetSurfaceNormalInOriginFrame(legNumber_), motionReference.footVelocity[legNumber_],
                                   motionReference.footPosition[legNumber_], positionGain_);
-  const auto& o_footPosition = switchedModelPreComp.footPositionInOriginFrame(legNumber_);
-  const auto& o_footPositionDerivative = switchedModelPreComp.footPositionInOriginFrameStateDerivative(legNumber_);
-  const auto& o_footVelocity = switchedModelPreComp.footVelocityInOriginFrame(legNumber_);
-  const auto& o_footVelocityDerivative = switchedModelPreComp.footVelocityInOriginFrameDerivative(legNumber_);
+  const auto& o_footPosition = switchedModelPreComp.FootPositionInOriginFrame(legNumber_);
+  const auto& o_footPositionDerivative = switchedModelPreComp.FootPositionInOriginFrameStateDerivative(legNumber_);
+  const auto& o_footVelocity = switchedModelPreComp.FootVelocityInOriginFrame(legNumber_);
+  const auto& o_footVelocityDerivative = switchedModelPreComp.FootVelocityInOriginFrameDerivative(legNumber_);
 
   VectorFunctionLinearApproximation constraint;
   // Constant

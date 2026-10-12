@@ -114,13 +114,13 @@ void GaitSchedule::RolloutGaitScheduleTillTime(scalar_t time) {
 }
 
 bool IsStandingDuringTimeHorizon(scalar_t timeHorizon, const GaitSchedule& gaitSchedule) {
-  const auto modeSchedule = gaitSchedule.getModeSchedule(timeHorizon);
+  const auto modeSchedule = gaitSchedule.GetModeSchedule(timeHorizon);
   return std::all_of(modeSchedule.modeSequence.begin(), modeSchedule.modeSequence.end(),
                      [](size_t mode) { return mode == ModeNumber::STANCE; });
 }
 
 bool IsStanding(const GaitSchedule& gaitSchedule) {
-  const auto& modeSequence = gaitSchedule.getCurrentGait().modeSequence;
+  const auto& modeSequence = gaitSchedule.GetCurrentGait().modeSequence;
   return std::all_of(modeSequence.begin(), modeSequence.end(), [](size_t mode) { return mode == ModeNumber::STANCE; });
 }
 

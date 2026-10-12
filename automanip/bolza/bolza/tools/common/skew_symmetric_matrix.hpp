@@ -49,7 +49,7 @@ Eigen::Matrix<SCALAR, 3, 3> SkewSymmetricMatrix(Eigen::Matrix<SCALAR, 3, 1> v) {
    * @brief SCALAR.
    * @return Result value.
    */
-  SkewSymmetricMatrix << SCALAR(0.0),       -v(2),        v(1),
+  skewSymmetricMatrix << SCALAR(0.0),       -v(2),        v(1),
                                 v(2), SCALAR(0.0),       -v(0),
                                -v(1),        v(0), SCALAR(0.0);
   // clan-format on

@@ -22,9 +22,9 @@ namespace bolza {
 /******************************************************************************************************/
 /******************************************************************************************************/
 TimeTriggeredRollout::TimeTriggeredRollout(const ControlledSystemBase& systemDynamics, rollout::Settings rolloutSettings)
-    : RolloutBase(std::move(rolloutSettings)), systemDynamicsPtr_(systemDynamics.clone()), systemEventHandlersPtr_(new SystemEventHandler) {
+    : RolloutBase(std::move(rolloutSettings)), systemDynamicsPtr_(systemDynamics.Clone()), systemEventHandlersPtr_(new SystemEventHandler) {
   // construct dynamicsIntegratorsPtr
-  dynamicsIntegratorPtr_ = std::move(NewIntegrator(this->settings().integratorType, systemEventHandlersPtr_));
+  dynamicsIntegratorPtr_ = std::move(NewIntegrator(this->Settings().integratorType, systemEventHandlersPtr_));
 }
 
 /******************************************************************************************************/
@@ -46,7 +46,7 @@ vector_t TimeTriggeredRollout::Run(scalar_t initTime, const vector_t& initState,
   const int numEvents = numSubsystems - 1;
 
   // max number of steps for integration
-  const auto maxNumSteps = static_cast<size_t>(this->settings().maxNumStepsPerSecond * std::max(1.0, finalTime - initTime));
+  const auto maxNumSteps = static_cast<size_t>(this->Settings().maxNumStepsPerSecond * std::max(1.0, finalTime - initTime));
 
   // clearing the output trajectories
   timeTrajectory.clear();
@@ -59,32 +59,32 @@ vector_t TimeTriggeredRollout::Run(scalar_t initTime, const vector_t& initState,
   postEventIndices.reserve(numEvents);
 
   // set controller
-  systemDynamicsPtr_->setController(controller);
+  systemDynamicsPtr_->SetController(controller);
 
   // reset function calls counter
-  systemDynamicsPtr_->resetNumFunctionCalls();
+  systemDynamicsPtr_->ResetNumFunctionCalls();
 
   // reset the event class
-  systemEventHandlersPtr_->reset();
+  systemEventHandlersPtr_->Reset();
 
   vector_t beginState = initState;
   int k_u = 0;  // control input iterator
   for (int i = 0; i < numSubsystems; i++) {
     if (timeIntervalArray[i].first < timeIntervalArray[i].second) {
-      Observer Observer(&stateTrajectory, &timeTrajectory);  // concatenate trajectory
+      Observer observer(&stateTrajectory, &timeTrajectory);  // concatenate trajectory
       // integrate controlled system
-      dynamicsIntegratorPtr_->integrateAdaptive(*systemDynamicsPtr_, observer, beginState, timeIntervalArray[i].first,
-                                                timeIntervalArray[i].second, this->settings().timeStep, this->settings().absTolODE,
-                                                this->settings().relTolODE, maxNumSteps);
+      dynamicsIntegratorPtr_->IntegrateAdaptive(*systemDynamicsPtr_, observer, beginState, timeIntervalArray[i].first,
+                                                timeIntervalArray[i].second, this->Settings().timeStep, this->Settings().absTolODE,
+                                                this->Settings().relTolODE, maxNumSteps);
     } else {
       timeTrajectory.push_back(timeIntervalArray[i].second);
       stateTrajectory.push_back(beginState);
     }
 
     // compute control input trajectory and concatenate to inputTrajectory
-    if (this->settings().reconstructInputTrajectory) {
+    if (this->Settings().reconstructInputTrajectory) {
       for (; k_u < timeTrajectory.size(); k_u++) {
-        inputTrajectory.emplace_back(systemDynamicsPtr_->controllerPtr()->computeInput(timeTrajectory[k_u], stateTrajectory[k_u]));
+        inputTrajectory.emplace_back(systemDynamicsPtr_->ControllerPtr()->ComputeInput(timeTrajectory[k_u], stateTrajectory[k_u]));
       }  // end of k_u loop
     }
 
@@ -92,12 +92,12 @@ vector_t TimeTriggeredRollout::Run(scalar_t initTime, const vector_t& initState,
     if (i < numEvents) {
       postEventIndices.push_back(stateTrajectory.size());
       // jump map
-      beginState = systemDynamicsPtr_->computeJumpMap(timeTrajectory.back(), stateTrajectory.back());
+      beginState = systemDynamicsPtr_->ComputeJumpMap(timeTrajectory.back(), stateTrajectory.back());
     }
   }  // end of i loop
 
   // check for the numerical stability
-  this->checkNumericalStability(*controller, timeTrajectory, postEventIndices, stateTrajectory, inputTrajectory);
+  this->CheckNumericalStability(*controller, timeTrajectory, postEventIndices, stateTrajectory, inputTrajectory);
 
   return stateTrajectory.back();
 }

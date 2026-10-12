@@ -236,12 +236,12 @@ void RungeKuttaDormandPrince5::RunIntegrateConst(system_func_t system, observer_
   system(x, dxdt, t);
   size_t step = 0;
   while (lessWithSign(t + dt, finalTime, dt)) {
-    Observer(x, t);
+    observer(x, t);
     stepper.doStep(system, x, dxdt, t, dt, x, dxdt);
     step++;
     t = startTime + step * dt;
   }
-  Observer(x, t);
+  observer(x, t);
 }
 
 /******************************************************************************************************/
@@ -258,7 +258,7 @@ void RungeKuttaDormandPrince5::RunIntegrateAdaptive(system_func_t system, observ
   system(x, dxdt, t);
 
   while (lessWithSign(t, finalTime, dt)) {
-    Observer(x, t);
+    observer(x, t);
 
     if (lessWithSign(finalTime, t + dt, dt)) {
       dt = finalTime - t;
@@ -272,7 +272,7 @@ void RungeKuttaDormandPrince5::RunIntegrateAdaptive(system_func_t system, observ
       }
     }  // end of while loop
   }    // end of while loop
-  Observer(x, t);
+  observer(x, t);
 }
 
 /******************************************************************************************************/
@@ -290,7 +290,7 @@ void RungeKuttaDormandPrince5::RunIntegrateTimes(system_func_t system, observer_
 
   while (true) {
     scalar_t t = *beginTimeItr++;
-    Observer(x, t);
+    observer(x, t);
 
     if (beginTimeItr == endTimeItr) {
       break;

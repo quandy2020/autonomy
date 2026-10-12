@@ -100,25 +100,25 @@ Filter ReadMIMOFilter(const bolza::property_tree::ptree& pt, std::string filterN
       sisoFilters.emplace_back(ReadSISOFilter(pt, sisoFilterName, invert));
 
       // Track sizes
-      numStates += sisoFilters.back().getNumStates();
-      numInputs += sisoFilters.back().getNumInputs();
-      numOutputs += sisoFilters.back().getNumOutputs();
+      NumStates += sisoFilters.back().GetNumStates();
+      NumInputs += sisoFilters.back().GetNumInputs();
+      numOutputs += sisoFilters.back().GetNumOutputs();
     }
 
     // Concatenate siso matrices into one MIMO filter
-    matrix_t A = matrix_t::Zero(numStates, numStates);
-    matrix_t B = matrix_t::Zero(numStates, numInputs);
-    matrix_t C = matrix_t::Zero(numOutputs, numStates);
-    matrix_t D = matrix_t::Zero(numOutputs, numInputs);
+    matrix_t A = matrix_t::Zero(NumStates, NumStates);
+    matrix_t B = matrix_t::Zero(NumStates, NumInputs);
+    matrix_t C = matrix_t::Zero(numOutputs, NumStates);
+    matrix_t D = matrix_t::Zero(numOutputs, NumInputs);
     size_t statecount(0), inputcount(0), outputcount(0);
     for (const auto& filt : sisoFilters) {
-      A.block(statecount, statecount, filt.getNumStates(), filt.getNumStates()) = filt.getA();
-      B.block(statecount, inputcount, filt.getNumStates(), filt.getNumInputs()) = filt.getB();
-      C.block(outputcount, statecount, filt.getNumOutputs(), filt.getNumStates()) = filt.getC();
-      D.block(outputcount, inputcount, filt.getNumOutputs(), filt.getNumInputs()) = filt.getD();
-      statecount += filt.getNumStates();
-      inputcount += filt.getNumInputs();
-      outputcount += filt.getNumOutputs();
+      A.block(statecount, statecount, filt.GetNumStates(), filt.GetNumStates()) = filt.GetA();
+      B.block(statecount, inputcount, filt.GetNumStates(), filt.GetNumInputs()) = filt.GetB();
+      C.block(outputcount, statecount, filt.GetNumOutputs(), filt.GetNumStates()) = filt.GetC();
+      D.block(outputcount, inputcount, filt.GetNumOutputs(), filt.GetNumInputs()) = filt.GetD();
+      statecount += filt.GetNumStates();
+      inputcount += filt.GetNumInputs();
+      outputcount += filt.GetNumOutputs();
     }
     return Filter(A, B, C, D);
   } else {
@@ -133,14 +133,14 @@ std::shared_ptr<LoopshapingDefinition> Load(const std::string& settingsFile) {
   Filter r_filter = loopshaping_property_tree::ReadMIMOFilter(pt, "r_filter");
   Filter s_filter = loopshaping_property_tree::ReadMIMOFilter(pt, "s_inv_filter", /*invert=*/true);
 
-  if (r_filter.getNumOutputs() > 0 && s_filter.getNumOutputs() > 0) {
+  if (r_filter.GetNumOutputs() > 0 && s_filter.GetNumOutputs() > 0) {
     throw std::runtime_error("[LoopshapingDefinition] using both r and s filter not implemented");
   }
 
-  if (r_filter.getNumOutputs() > 0) {
+  if (r_filter.GetNumOutputs() > 0) {
     return std::make_shared<LoopshapingDefinition>(LoopshapingType::outputpattern, r_filter);
   }
-  if (s_filter.getNumOutputs() > 0) {
+  if (s_filter.GetNumOutputs() > 0) {
     return std::make_shared<LoopshapingDefinition>(LoopshapingType::eliminatepattern, s_filter);
   }
 

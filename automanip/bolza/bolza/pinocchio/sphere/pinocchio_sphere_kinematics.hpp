@@ -41,10 +41,10 @@ namespace bolza {
  * Example:
  * \code{.cpp}
  *   PinocchioSphereKinematics kinematics(pinocchioSphereInterface, mapping);
- *   pinocchio::forwardKinematics(pinocchioInterface.getModel(), pinocchioInterface.getData(), q);
- *   pinocchio::updateFramePlacements(pinocchioInterface.getModel(), pinocchioInterface.getData());
- *   kinematics.setPinocchioInterface(pinocchioInterface);
- *   const auto pos = kinematics.getPosition(x);
+ *   pinocchio::forwardKinematics(pinocchioInterface.GetModel(), pinocchioInterface.GetData(), q);
+ *   pinocchio::updateFramePlacements(pinocchioInterface.GetModel(), pinocchioInterface.GetData());
+ *   kinematics.SetPinocchioInterface(pinocchioInterface);
+ *   const auto pos = kinematics.GetPosition(x);
  * \endcode
  */
 class PinocchioSphereKinematics final : public EndEffectorKinematics<scalar_t> {
@@ -81,7 +81,7 @@ class PinocchioSphereKinematics final : public EndEffectorKinematics<scalar_t> {
      * @param [in] pinocchioInterface: Pinocchio Interface.
      * @return Result value.
      */
-    mappingPtr_->setPinocchioInterface(pinocchioInterface);
+    mappingPtr_->SetPinocchioInterface(pinocchioInterface);
   }
 
   /**

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <ocs2_ddp/DDPDataCollector.h>
+#include "bolza/ddp/ddp_data_collector.hpp"
 
 namespace bolza {
 
@@ -45,7 +45,7 @@ void DDPDataCollector::Collect(const GaussNewtonDDP* constDdpPtr) {
 
   rewindCounter_ = ddpPtr->rewindCounter_;
 
-  modeSchedule_ = ddpPtr->getReferenceManager().getModeSchedule();
+  modeSchedule_ = ddpPtr->GetReferenceManager().GetModeSchedule();
 
   // optimized controller
   optimizedControllersStock_ = ddpPtr->nominalControllersStock_;

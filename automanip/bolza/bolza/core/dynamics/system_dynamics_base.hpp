@@ -77,7 +77,7 @@ class SystemDynamicsBase : public ControlledSystemBase {
   virtual VectorFunctionLinearApproximation JumpMapLinearApproximation(scalar_t t, const vector_t& x, const PreComputation& preComp);
 
     /**
-   * @brief /** Computes the guard surfaces linear approximation */.
+   * @brief Computes the guard surfaces linear approximation 
    * @param [in] t: T.
    * @param [in] x: X.
    * @param [in] u: U.
@@ -86,7 +86,7 @@ class SystemDynamicsBase : public ControlledSystemBase {
   virtual VectorFunctionLinearApproximation GuardSurfacesLinearApproximation(scalar_t t, const vector_t& x, const vector_t& u);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Get partial time derivative of the system flow map.
    *
@@ -101,7 +101,7 @@ class SystemDynamicsBase : public ControlledSystemBase {
   virtual vector_t FlowMapDerivativeTime(scalar_t t, const vector_t& x, const vector_t& u);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Get partial time derivative of the system jump map.
    *
@@ -116,7 +116,7 @@ class SystemDynamicsBase : public ControlledSystemBase {
   virtual vector_t JumpMapDerivativeTime(scalar_t t, const vector_t& x, const vector_t& u);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Get at a given operating point the derivative of the guard surfaces w.r.t. input vector.
    *
@@ -129,7 +129,7 @@ class SystemDynamicsBase : public ControlledSystemBase {
   virtual vector_t GuardSurfacesDerivativeTime(scalar_t t, const vector_t& x, const vector_t& u);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Get at a given operating point the covariance of the dynamics.
    *
@@ -142,7 +142,7 @@ class SystemDynamicsBase : public ControlledSystemBase {
   virtual matrix_t DynamicsCovariance(scalar_t t, const vector_t& x, const vector_t& u);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Computes the flow map linear approximation.
    *
@@ -160,7 +160,7 @@ class SystemDynamicsBase : public ControlledSystemBase {
   VectorFunctionLinearApproximation LinearApproximation(scalar_t t, const vector_t& x, const vector_t& u);
 
     /**
-   * @brief /** Computes the jump map linear approximation.
+   * @brief Computes the jump map linear approximation.
    *
    * passes it to the virtual JumpMapLinearApproximation() with the preComputation parameter.
    *
@@ -174,7 +174,7 @@ class SystemDynamicsBase : public ControlledSystemBase {
 
  protected:
     /**
-   * @brief /** Copy constructor */.
+   * @brief Copy constructor 
    * @param [in] other: Other.
    */
   SystemDynamicsBase(const SystemDynamicsBase& other);

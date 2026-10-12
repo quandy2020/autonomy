@@ -29,8 +29,8 @@ LoopshapingReferenceManager::LoopshapingReferenceManager(std::shared_ptr<Referen
 /******************************************************************************************************/
 /******************************************************************************************************/
 void LoopshapingReferenceManager::PreSolverRun(scalar_t initTime, scalar_t finalTime, const vector_t& initState) {
-  const vector_t systemState = loopshapingDefinitionPtr_->getSystemState(initState);
-  referenceManagerPtr_->preSolverRun(initTime, finalTime, systemState);
+  const vector_t systemState = loopshapingDefinitionPtr_->GetSystemState(initState);
+  referenceManagerPtr_->PreSolverRun(initTime, finalTime, systemState);
 };
 
 }  // namespace bolza

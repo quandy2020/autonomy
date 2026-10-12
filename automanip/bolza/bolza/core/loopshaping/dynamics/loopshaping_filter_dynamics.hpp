@@ -44,7 +44,7 @@ class LoopshapingFilterDynamics {
      * @brief Set Zero.
      * @return Result value.
      */
-    filterState_.setZero(loopshapingDefinition_->getInputFilter().getNumStates());
+    filterState_.setZero(loopshapingDefinition_->GetInputFilter().GetNumStates());
   }
 
   /**

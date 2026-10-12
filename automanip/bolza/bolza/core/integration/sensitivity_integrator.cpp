@@ -28,11 +28,11 @@ namespace bolza {
 DynamicsDiscretizer SelectDynamicsDiscretization(SensitivityIntegratorType integratorType) {
   switch (integratorType) {
     case SensitivityIntegratorType::EULER:
-      return eulerDiscretization;
+      return EulerDiscretization;
     case SensitivityIntegratorType::RK2:
-      return rk2Discretization;
+      return Rk2Discretization;
     case SensitivityIntegratorType::RK4:
-      return rk4Discretization;
+      return Rk4Discretization;
     default:
       throw std::runtime_error("Integrator of type " + sensitivity_integrator::ToString(integratorType) + " not supported.");
   }
@@ -44,11 +44,11 @@ DynamicsDiscretizer SelectDynamicsDiscretization(SensitivityIntegratorType integ
 DynamicsSensitivityDiscretizer SelectDynamicsSensitivityDiscretization(SensitivityIntegratorType integratorType) {
   switch (integratorType) {
     case SensitivityIntegratorType::EULER:
-      return eulerSensitivityDiscretization;
+      return EulerSensitivityDiscretization;
     case SensitivityIntegratorType::RK2:
-      return rk2SensitivityDiscretization;
+      return Rk2SensitivityDiscretization;
     case SensitivityIntegratorType::RK4:
-      return rk4SensitivityDiscretization;
+      return Rk4SensitivityDiscretization;
     default:
       throw std::runtime_error("Integrator of type " + sensitivity_integrator::ToString(integratorType) + " not supported.");
   }

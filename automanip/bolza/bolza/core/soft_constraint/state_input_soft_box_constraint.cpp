@@ -22,7 +22,7 @@ namespace bolza {
 /******************************************************************************************************/
 /******************************************************************************************************/
 StateInputSoftBoxConstraint::BoxConstraint::BoxConstraint(const BoxConstraint& other)
-    : index(other.index), lowerBound(other.lowerBound), upperBound(other.upperBound), penaltyPtr(other.penaltyPtr->clone()) {}
+    : index(other.index), lowerBound(other.lowerBound), upperBound(other.upperBound), penaltyPtr(other.penaltyPtr->Clone()) {}
 
 /******************************************************************************************************/
 /******************************************************************************************************/
@@ -31,7 +31,7 @@ StateInputSoftBoxConstraint::BoxConstraint& StateInputSoftBoxConstraint::BoxCons
   this->index = other.index;
   this->lowerBound = other.lowerBound;
   this->upperBound = other.upperBound;
-  this->penaltyPtr.reset(other.penaltyPtr->clone());
+  this->penaltyPtr.reset(other.penaltyPtr->Clone());
   return *this;
 }
 
@@ -107,7 +107,7 @@ scalar_t StateInputSoftBoxConstraint::GetValue(scalar_t t, const vector_t& h, co
     const scalar_t upperBoundDistance = boxConstraint.upperBound - h(i);
     const scalar_t lowerBoundDistance = h(i) - boxConstraint.lowerBound;
 
-    f += p.getValue(t, lowerBoundDistance) + p.getValue(t, upperBoundDistance);
+    f += p.GetValue(t, lowerBoundDistance) + p.GetValue(t, upperBoundDistance);
   }
   return f;
 }
@@ -124,9 +124,9 @@ void StateInputSoftBoxConstraint::FillQuadraticApproximation(scalar_t t, const v
     const scalar_t upperBoundDistance = boxConstraint.upperBound - h(i);
     const scalar_t lowerBoundDistance = h(i) - boxConstraint.lowerBound;
 
-    value += p.getValue(t, lowerBoundDistance) + p.getValue(t, upperBoundDistance);
-    firstDerivative(i) += p.getDerivative(t, lowerBoundDistance) - p.getDerivative(t, upperBoundDistance);
-    secondDerivative(i, i) += p.getSecondDerivative(t, lowerBoundDistance) + p.getSecondDerivative(t, upperBoundDistance);
+    value += p.GetValue(t, lowerBoundDistance) + p.GetValue(t, upperBoundDistance);
+    firstDerivative(i) += p.GetDerivative(t, lowerBoundDistance) - p.GetDerivative(t, upperBoundDistance);
+    secondDerivative(i, i) += p.GetSecondDerivative(t, lowerBoundDistance) + p.GetSecondDerivative(t, upperBoundDistance);
   }
 }
 

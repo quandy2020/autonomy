@@ -56,15 +56,15 @@ struct OcpSize {
        * @brief Num Stages.
        * @return Result value.
        */
-      : NumStages(N),
-        NumStates(N + 1, nx),
-        NumInputs(N + 1, nu),
-        NumInputBoxConstraints(N + 1, 0),
-        NumStateBoxConstraints(N + 1, 0),
-        NumIneqConstraints(N + 1, 0),
-        NumInputBoxSlack(N + 1, 0),
-        NumStateBoxSlack(N + 1, 0),
-        NumIneqSlack(N + 1, 0) {
+      : numStages(N),
+        numStates(N + 1, nx),
+        numInputs(N + 1, nu),
+        numInputBoxConstraints(N + 1, 0),
+        numStateBoxConstraints(N + 1, 0),
+        numIneqConstraints(N + 1, 0),
+        numInputBoxSlack(N + 1, 0),
+        numStateBoxSlack(N + 1, 0),
+        numIneqSlack(N + 1, 0) {
     /**
      * @brief Back.
      * @return Result value.

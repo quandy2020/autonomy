@@ -50,9 +50,9 @@ template <class T1, class T2, class T3>
  * @return True on success.
  */
 bool almost_eq(T1&& x, T2&& y, T3&& prec) {
-  static_assert(std::is_floating_point<typename std::remove_reference<T1>::type>::Value, "First argument is not floating point!");
-  static_assert(std::is_floating_point<typename std::remove_reference<T2>::type>::Value, "Second argument is not floating point!");
-  static_assert(std::is_floating_point<typename std::remove_reference<T3>::type>::Value, "prec is not floating point!");
+  static_assert(std::is_floating_point<typename std::remove_reference<T1>::type>::value, "First argument is not floating point!");
+  static_assert(std::is_floating_point<typename std::remove_reference<T2>::type>::value, "Second argument is not floating point!");
+  static_assert(std::is_floating_point<typename std::remove_reference<T3>::type>::value, "prec is not floating point!");
   // the machine epsilon has to be scaled to the magnitude of the values used
   // and multiplied by the desired precision unless the result is subnormal
   using Type = const std::remove_reference_t<T1>;

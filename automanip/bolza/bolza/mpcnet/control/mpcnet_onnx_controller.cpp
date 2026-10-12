@@ -54,7 +54,7 @@ vector_t MPCNetOnnxController::ComputeInput(const scalar_t t, const vector_t& x)
   }
   // create input tensor object
   Eigen::Matrix<tensor_element_t, Eigen::Dynamic, 1> observation =
-      mpcnetDefinitionPtr_->getObservation(t, x, referenceManagerPtr_->getModeSchedule(), referenceManagerPtr_->getTargetTrajectories())
+      mpcnetDefinitionPtr_->GetObservation(t, x, referenceManagerPtr_->GetModeSchedule(), referenceManagerPtr_->GetTargetTrajectories())
           .cast<tensor_element_t>();
   Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
   std::vector<Ort::Value> inputValues;
@@ -66,8 +66,8 @@ vector_t MPCNetOnnxController::ComputeInput(const scalar_t t, const vector_t& x)
   // evaluate output tensor object
   Eigen::Map<Eigen::Matrix<tensor_element_t, Eigen::Dynamic, 1>> action(outputValues[0].GetTensorMutableData<tensor_element_t>(),
                                                                         outputShapes_[0][1], outputShapes_[0][0]);
-  std::pair<matrix_t, vector_t> actionTransformation = mpcnetDefinitionPtr_->getActionTransformation(
-      t, x, referenceManagerPtr_->getModeSchedule(), referenceManagerPtr_->getTargetTrajectories());
+  std::pair<matrix_t, vector_t> actionTransformation = mpcnetDefinitionPtr_->GetActionTransformation(
+      t, x, referenceManagerPtr_->GetModeSchedule(), referenceManagerPtr_->GetTargetTrajectories());
   // transform action
   return actionTransformation.first * action.cast<scalar_t>() + actionTransformation.second;
 }

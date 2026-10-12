@@ -140,7 +140,7 @@ TEST(Exp0Test, Constrained) {
   solver.SetReferenceManager(referenceManagerPtr);
   solver.Run(startTime, initState, finalTime);
 
-  const auto primalSolution = solver.PrimalSolution(finalTime);
+  const auto primalSolution = solver.GetPrimalSolution(finalTime);
 
   // check constraint satisfaction
   for (const auto& x : primalSolution.stateTrajectory_) {

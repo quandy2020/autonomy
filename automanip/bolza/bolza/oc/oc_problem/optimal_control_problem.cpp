@@ -60,39 +60,39 @@ OptimalControlProblem::OptimalControlProblem()
 /******************************************************************************************************/
 OptimalControlProblem::OptimalControlProblem(const OptimalControlProblem& other)
     : /* Cost */
-      costPtr(other.costPtr->clone()),
-      stateCostPtr(other.stateCostPtr->clone()),
-      preJumpCostPtr(other.preJumpCostPtr->clone()),
-      finalCostPtr(other.finalCostPtr->clone()),
+      costPtr(other.costPtr->Clone()),
+      stateCostPtr(other.stateCostPtr->Clone()),
+      preJumpCostPtr(other.preJumpCostPtr->Clone()),
+      finalCostPtr(other.finalCostPtr->Clone()),
       /* Soft constraints */
-      softConstraintPtr(other.softConstraintPtr->clone()),
-      stateSoftConstraintPtr(other.stateSoftConstraintPtr->clone()),
-      preJumpSoftConstraintPtr(other.preJumpSoftConstraintPtr->clone()),
-      finalSoftConstraintPtr(other.finalSoftConstraintPtr->clone()),
+      softConstraintPtr(other.softConstraintPtr->Clone()),
+      stateSoftConstraintPtr(other.stateSoftConstraintPtr->Clone()),
+      preJumpSoftConstraintPtr(other.preJumpSoftConstraintPtr->Clone()),
+      finalSoftConstraintPtr(other.finalSoftConstraintPtr->Clone()),
       /* Equality constraints */
-      equalityConstraintPtr(other.equalityConstraintPtr->clone()),
-      stateEqualityConstraintPtr(other.stateEqualityConstraintPtr->clone()),
-      preJumpEqualityConstraintPtr(other.preJumpEqualityConstraintPtr->clone()),
-      finalEqualityConstraintPtr(other.finalEqualityConstraintPtr->clone()),
+      equalityConstraintPtr(other.equalityConstraintPtr->Clone()),
+      stateEqualityConstraintPtr(other.stateEqualityConstraintPtr->Clone()),
+      preJumpEqualityConstraintPtr(other.preJumpEqualityConstraintPtr->Clone()),
+      finalEqualityConstraintPtr(other.finalEqualityConstraintPtr->Clone()),
       /* Inequality constraints */
-      inequalityConstraintPtr(other.inequalityConstraintPtr->clone()),
-      stateInequalityConstraintPtr(other.stateInequalityConstraintPtr->clone()),
-      preJumpInequalityConstraintPtr(other.preJumpInequalityConstraintPtr->clone()),
-      finalInequalityConstraintPtr(other.finalInequalityConstraintPtr->clone()),
+      inequalityConstraintPtr(other.inequalityConstraintPtr->Clone()),
+      stateInequalityConstraintPtr(other.stateInequalityConstraintPtr->Clone()),
+      preJumpInequalityConstraintPtr(other.preJumpInequalityConstraintPtr->Clone()),
+      finalInequalityConstraintPtr(other.finalInequalityConstraintPtr->Clone()),
       /* Lagrangians */
-      equalityLagrangianPtr(other.equalityLagrangianPtr->clone()),
-      stateEqualityLagrangianPtr(other.stateEqualityLagrangianPtr->clone()),
-      inequalityLagrangianPtr(other.inequalityLagrangianPtr->clone()),
-      stateInequalityLagrangianPtr(other.stateInequalityLagrangianPtr->clone()),
-      preJumpEqualityLagrangianPtr(other.preJumpEqualityLagrangianPtr->clone()),
-      preJumpInequalityLagrangianPtr(other.preJumpInequalityLagrangianPtr->clone()),
-      finalEqualityLagrangianPtr(other.finalEqualityLagrangianPtr->clone()),
-      finalInequalityLagrangianPtr(other.finalInequalityLagrangianPtr->clone()),
+      equalityLagrangianPtr(other.equalityLagrangianPtr->Clone()),
+      stateEqualityLagrangianPtr(other.stateEqualityLagrangianPtr->Clone()),
+      inequalityLagrangianPtr(other.inequalityLagrangianPtr->Clone()),
+      stateInequalityLagrangianPtr(other.stateInequalityLagrangianPtr->Clone()),
+      preJumpEqualityLagrangianPtr(other.preJumpEqualityLagrangianPtr->Clone()),
+      preJumpInequalityLagrangianPtr(other.preJumpInequalityLagrangianPtr->Clone()),
+      finalEqualityLagrangianPtr(other.finalEqualityLagrangianPtr->Clone()),
+      finalInequalityLagrangianPtr(other.finalInequalityLagrangianPtr->Clone()),
       /* Misc. */
-      preComputationPtr(other.preComputationPtr->clone()),
+      preComputationPtr(other.preComputationPtr->Clone()),
       targetTrajectoriesPtr(other.targetTrajectoriesPtr) {
   if (other.dynamicsPtr != nullptr) {
-    dynamicsPtr.reset(other.dynamicsPtr->clone());
+    dynamicsPtr.reset(other.dynamicsPtr->Clone());
   }
 }
 

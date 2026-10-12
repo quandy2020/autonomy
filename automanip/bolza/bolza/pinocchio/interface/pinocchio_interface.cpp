@@ -45,7 +45,7 @@ template class PinocchioInterfaceTpl<scalar_t>;
 /******************************************************************************************************/
 /******************************************************************************************************/
 std::ostream& operator<<(std::ostream& os, const PinocchioInterface& p) {
-  const auto& model = p.getModel();
+  const auto& model = p.GetModel();
   os << "model.nv = " << model.nv << '\n';
   os << "model.nq = " << model.nq << '\n';
   os << "model.njoints = " << model.njoints << '\n';

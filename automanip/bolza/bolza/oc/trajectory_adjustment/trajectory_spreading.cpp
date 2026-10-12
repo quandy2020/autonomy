@@ -36,7 +36,7 @@ std::ostream& operator<<(std::ostream& os, const std::pair<int, int>& ind) {
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-auto TrajectorySpreading::set(const ModeSchedule& oldModeSchedule, const ModeSchedule& newModeSchedule,
+auto TrajectorySpreading::Set(const ModeSchedule& oldModeSchedule, const ModeSchedule& newModeSchedule,
                               const scalar_array_t& oldTimeTrajectory) -> Status {
   // step 1: What modes do the original primal solution contain?
   const scalar_t oldInitTime = oldTimeTrajectory.front();
@@ -66,7 +66,7 @@ auto TrajectorySpreading::set(const ModeSchedule& oldModeSchedule, const ModeSch
                                                newModeSchedule.modeSequence.cbegin() + newStartIndexOfMatchedSequence,
                                                newModeSchedule.modeSequence.cbegin() + newLastActiveModeIndex + 1);
 
-    w = std::Distance(oldModeSchedule.modeSequence.begin() + oldStartIndexOfMatchedSequence, mismatchedIndex.first);
+    w = std::distance(oldModeSchedule.modeSequence.begin() + oldStartIndexOfMatchedSequence, mismatchedIndex.first);
 
     if (w > 0) {
       break;

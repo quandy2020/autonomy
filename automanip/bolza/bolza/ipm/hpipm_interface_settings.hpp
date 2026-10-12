@@ -50,7 +50,7 @@ struct HpipmSettings {
   int ric_alg = 0;  // square root ricatti recursion
 };
 
-std::ostream& operator<<(std::ostream& stream, const Settings& settings);
+std::ostream& operator<<(std::ostream& stream, const HpipmSettings& settings);
 
 }  // namespace ipm
 }  // namespace bolza

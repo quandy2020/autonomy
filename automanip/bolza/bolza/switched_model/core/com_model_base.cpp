@@ -13,7 +13,7 @@ namespace switched_model {
 
 comkino_input_t WeightCompensatingInputs(const ComModelBase<scalar_t>& comModel, const contact_flag_t& contactFlags,
                                          const vector3_t& baseOrientation) {
-  return WeightCompensatingInputs(comModel.totalMass(), contactFlags, baseOrientation);
+  return WeightCompensatingInputs(comModel.TotalMass(), contactFlags, baseOrientation);
 }
 
 comkino_input_t WeightCompensatingInputs(scalar_t mass, const contact_flag_t& contactFlags, const vector3_t& baseOrientation) {

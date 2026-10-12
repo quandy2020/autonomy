@@ -58,7 +58,7 @@ ScalarFunctionQuadraticApproximation QuadraticStateCost::GetQuadraticApproximati
 /******************************************************************************************************/
 /******************************************************************************************************/
 vector_t QuadraticStateCost::GetStateDeviation(scalar_t time, const vector_t& state, const TargetTrajectories& targetTrajectories) const {
-  return state - targetTrajectories.getDesiredState(time);
+  return state - targetTrajectories.GetDesiredState(time);
 }
 
 }  // namespace bolza

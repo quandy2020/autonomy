@@ -34,8 +34,8 @@ LoopshapingTestConfiguration::LoopshapingTestConfiguration(const std::string& co
   GetRandomStateInput(systemStateDim_, filterStateDim_, inputDim_, x_sys_disturbance_, u_sys_disturbance_, x_filter_disturbance_,
                       u_filter_disturbance_, x_disturbance_, u_disturbance_, eps);
 
-  preComp_sys_.Reset(new PreComputation);
-  preComp_.Reset(new LoopshapingPreComputation(*preComp_sys_, loopshapingDefinition_));
+  preComp_sys_.reset(new PreComputation);
+  preComp_.reset(new LoopshapingPreComputation(*preComp_sys_, loopshapingDefinition_));
 };
 
 void LoopshapingTestConfiguration::GetRandomStateInput(size_t systemStateDim, size_t filterStateDim, size_t inputDim, vector_t& x_sys,

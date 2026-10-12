@@ -28,7 +28,7 @@
 namespace bolza {
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Computes the discretized dynamics. Uses an Forward euler discretization.
  *
@@ -45,7 +45,7 @@ namespace bolza {
 vector_t EulerDiscretization(SystemDynamicsBase& system, scalar_t t, const vector_t& x, const vector_t& u, scalar_t dt);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Creates a linear approximation of the discretized dynamics. Uses an Forward euler discretization.
  *
@@ -65,7 +65,7 @@ VectorFunctionLinearApproximation EulerSensitivityDiscretization(SystemDynamicsB
                                                                  const vector_t& u, scalar_t dt);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Computes the discretized dynamics. Uses an Runge-Kutta 2nd order discretization.
  *
@@ -82,7 +82,7 @@ VectorFunctionLinearApproximation EulerSensitivityDiscretization(SystemDynamicsB
 vector_t Rk2Discretization(SystemDynamicsBase& system, scalar_t t, const vector_t& x, const vector_t& u, scalar_t dt);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Creates a linear approximation of the discretized dynamics. Uses an Runge-Kutta 2nd order discretization.
  *
@@ -102,7 +102,7 @@ VectorFunctionLinearApproximation Rk2SensitivityDiscretization(SystemDynamicsBas
                                                                scalar_t dt);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Computes the discretized dynamics. Uses an Runge-Kutta 4th order discretization.
  *
@@ -119,7 +119,7 @@ VectorFunctionLinearApproximation Rk2SensitivityDiscretization(SystemDynamicsBas
 vector_t Rk4Discretization(SystemDynamicsBase& system, scalar_t t, const vector_t& x, const vector_t& u, scalar_t dt);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Creates a linear approximation of the discretized dynamics. Uses an Runge-Kutta 4th order discretization.
  *

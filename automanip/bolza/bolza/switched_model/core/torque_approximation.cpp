@@ -13,7 +13,7 @@ joint_coordinate_s_t<SCALAR_T> TorqueApproximation(const joint_coordinate_s_t<SC
   joint_coordinate_s_t<SCALAR_T> torques;
   for (int leg = 0; leg < NUM_CONTACT_POINTS; ++leg) {
     // Part of the foot Jacobian that corresponds to the joints in this leg.
-    const auto b_baseToFootJacobianBlock = kinematics.baseToFootJacobianBlockInBaseFrame(leg, jointPositions);
+    const auto b_baseToFootJacobianBlock = kinematics.BaseToFootJacobianBlockInBaseFrame(leg, jointPositions);
 
     // tau = -J^T * F, (bottom 3 rows = translational part)
     torques.template segment<3>(3 * leg) = -b_baseToFootJacobianBlock.bottomRows(3).transpose() * contactForcesInBase[leg];

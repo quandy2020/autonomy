@@ -36,8 +36,8 @@ LineSearchStrategy::LineSearchStrategy(search_strategy::Settings baseSettings, l
     : SearchStrategyBase(std::move(baseSettings)),
       settings_(std::move(settings)),
       threadPoolRef_(threadPoolRef),
-      tempDualSolutions_(threadPoolRef.numThreads() + 1),
-      workersSolution_(threadPoolRef.numThreads() + 1),
+      tempDualSolutions_(threadPoolRef.NumThreads() + 1),
+      workersSolution_(threadPoolRef.NumThreads() + 1),
       rolloutRefStock_(std::move(rolloutRefStock)),
       optimalControlProblemRefStock_(std::move(optimalControlProblemRefStock)),
       meritFunc_(std::move(meritFunc)) {
@@ -87,8 +87,8 @@ void LineSearchStrategy::ComputeSolution(size_t taskId, scalar_t stepLength, sea
   if (!lineSearchInputRef_.dualSolutionPtr->timeTrajectory.empty()) {
     // trajectory spreading
     constexpr bool debugPrint = false;
-    TrajectorySpreading TrajectorySpreading(debugPrint);
-    const auto status = trajectorySpreading.set(*lineSearchInputRef_.modeSchedulePtr, solution.primalSolution.modeSchedule_,
+    TrajectorySpreading trajectorySpreading(debugPrint);
+    const auto status = trajectorySpreading.Set(*lineSearchInputRef_.modeSchedulePtr, solution.primalSolution.modeSchedule_,
                                                 lineSearchInputRef_.dualSolutionPtr->timeTrajectory);
     if (status.willTruncate || status.willPerformTrajectorySpreading) {
       TrajectorySpread(trajectorySpreading, *lineSearchInputRef_.dualSolutionPtr, tempDualSolutions_[taskId]);
@@ -154,11 +154,11 @@ bool LineSearchStrategy::Run(const std::pair<scalar_t, scalar_t>& timePeriod, co
   alphaExpNext_ = 0;
   alphaProcessed_ = std::vector<bool>(MaxNumOfSearches(), false);
   auto task = [&](int) { LineSearchTask(nextTaskId_++); };
-  threadPoolRef_.runParallel(task, threadPoolRef_.numThreads());
+  threadPoolRef_.RunParallel(task, threadPoolRef_.NumThreads());
 
   // revitalize all integrators
   for (RolloutBase& rollout : rolloutRefStock_) {
-    rollout.reactivateRollout();
+    rollout.ReactivateRollout();
   }
 
   // display
@@ -233,7 +233,7 @@ void LineSearchStrategy::LineSearchTask(const size_t taskId) {
     // kill other ongoing line search tasks
     if (terminateLinesearchTasks) {
       for (RolloutBase& rollout : rolloutRefStock_) {
-        rollout.abortRollout();
+        rollout.AbortRollout();
       }
       if (baseSettings_.displayInfo) {
         PrintString("    LS: interrupt other rollout's integrations.\n");

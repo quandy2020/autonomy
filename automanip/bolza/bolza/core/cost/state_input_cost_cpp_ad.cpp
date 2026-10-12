@@ -29,14 +29,14 @@ void StateInputCostCppAd::Initialize(size_t stateDim, size_t inputDim, size_t pa
     const ad_vector_t state = x.segment(1, stateDim);
     const ad_vector_t input = x.tail(inputDim);
     y = ad_vector_t(1);
-    y(0) = this->costFunction(time, state, input, p);
+    y(0) = this->CostFunction(time, state, input, p);
   };
   adInterfacePtr_.reset(new bolza::CppAdInterface(costAd, 1 + stateDim + inputDim, parameterDim, modelName, modelFolder));
 
   if (recompileLibraries) {
-    adInterfacePtr_->createModels(bolza::CppAdInterface::ApproximationOrder::Second, verbose);
+    adInterfacePtr_->CreateModels(bolza::CppAdInterface::ApproximationOrder::Second, verbose);
   } else {
-    adInterfacePtr_->loadModelsIfAvailable(bolza::CppAdInterface::ApproximationOrder::Second, verbose);
+    adInterfacePtr_->LoadModelsIfAvailable(bolza::CppAdInterface::ApproximationOrder::Second, verbose);
   }
 }
 
@@ -53,7 +53,7 @@ scalar_t StateInputCostCppAd::GetValue(scalar_t time, const vector_t& state, con
                                        const TargetTrajectories& targetTrajectories, const PreComputation& preComputation) const {
   vector_t tapedTimeStateInput(1 + state.rows() + input.rows());
   tapedTimeStateInput << time, state, input;
-  return adInterfacePtr_->getFunctionValue(tapedTimeStateInput, GetParameters(time, targetTrajectories, preComputation))(0);
+  return adInterfacePtr_->GetFunctionValue(tapedTimeStateInput, GetParameters(time, targetTrajectories, preComputation))(0);
 }
 
 /******************************************************************************************************/
@@ -71,13 +71,13 @@ ScalarFunctionQuadraticApproximation StateInputCostCppAd::GetQuadraticApproximat
   vector_t tapedTimeStateInput(1 + stateDim + inputDim);
   tapedTimeStateInput << time, state, input;
 
-  cost.f = adInterfacePtr_->getFunctionValue(tapedTimeStateInput, params)(0);
+  cost.f = adInterfacePtr_->GetFunctionValue(tapedTimeStateInput, params)(0);
 
-  const matrix_t J = adInterfacePtr_->getJacobian(tapedTimeStateInput, params);
+  const matrix_t J = adInterfacePtr_->GetJacobian(tapedTimeStateInput, params);
   cost.dfdx = J.middleCols(1, stateDim).transpose();
   cost.dfdu = J.rightCols(inputDim).transpose();
 
-  const matrix_t H = adInterfacePtr_->getHessian(0, tapedTimeStateInput, params);
+  const matrix_t H = adInterfacePtr_->GetHessian(0, tapedTimeStateInput, params);
   cost.dfdxx = H.block(1, 1, stateDim, stateDim);
   cost.dfdux = H.block(1 + stateDim, 1, inputDim, stateDim);
   cost.dfduu = H.bottomRightCorner(inputDim, inputDim);

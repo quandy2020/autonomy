@@ -21,8 +21,8 @@ namespace bolza {
 SystemObservation LoopshapingToSystemObservation(const SystemObservation& observation, const LoopshapingDefinition& loopshapingDefinition) {
   SystemObservation systemObservation;
   systemObservation.time = observation.time;
-  systemObservation.state = loopshapingDefinition.getSystemState(observation.state);
-  systemObservation.input = loopshapingDefinition.getSystemInput(observation.state, observation.input);
+  systemObservation.state = loopshapingDefinition.GetSystemState(observation.state);
+  systemObservation.input = loopshapingDefinition.GetSystemInput(observation.state, observation.input);
   systemObservation.mode = observation.mode;
   return systemObservation;
 }

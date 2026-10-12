@@ -27,20 +27,20 @@ struct TerrainPlane {
   /**
    * @brief Constructs a TerrainPlane.
    */
-  TerrainPlane() : PositionInWorld(vector3_t::Zero()), orientationWorldToTerrain(matrix3_t::Identity()) {}
+  TerrainPlane() : positionInWorld(vector3_t::Zero()), orientationWorldToTerrain(matrix3_t::Identity()) {}
   TerrainPlane(vector3_t positionInWorld_, matrix3_t orientationWorldToTerrain_)
       /**
        * @brief Position In World.
        * @return Result value.
        */
-      : PositionInWorld(std::move(positionInWorld_)), orientationWorldToTerrain(std::move(orientationWorldToTerrain_)) {}
+      : positionInWorld(std::move(positionInWorld_)), orientationWorldToTerrain(std::move(orientationWorldToTerrain_)) {}
 
   explicit TerrainPlane(const Eigen::Isometry3d& transform)
       /**
        * @brief Position In World.
        * @return Result value.
        */
-      : PositionInWorld(transform.translation()), orientationWorldToTerrain(transform.linear().transpose()) {}
+      : positionInWorld(transform.translation()), orientationWorldToTerrain(transform.linear().transpose()) {}
 };
 
 struct NormalAndPosition {

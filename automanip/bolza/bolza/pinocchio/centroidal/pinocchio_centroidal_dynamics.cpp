@@ -33,18 +33,18 @@ PinocchioCentroidalDynamics::PinocchioCentroidalDynamics(CentroidalModelInfo inf
 /******************************************************************************************************/
 /******************************************************************************************************/
 PinocchioCentroidalDynamics::PinocchioCentroidalDynamics(const PinocchioCentroidalDynamics& rhs)
-    : pinocchioInterfacePtr_(nullptr), mapping_(rhs.mapping_.getCentroidalModelInfo()) {}
+    : pinocchioInterfacePtr_(nullptr), mapping_(rhs.mapping_.GetCentroidalModelInfo()) {}
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 vector_t PinocchioCentroidalDynamics::GetValue(scalar_t time, const vector_t& state, const vector_t& input) {
   const auto& interface = *pinocchioInterfacePtr_;
-  const auto& info = mapping_.getCentroidalModelInfo();
+  const auto& info = mapping_.GetCentroidalModelInfo();
   assert(info.stateDim == state.rows());
 
   vector_t f(info.stateDim);
-  f << GetNormalizedCentroidalMomentumRate(interface, info, input), mapping_.getPinocchioJointVelocity(state, input);
+  f << GetNormalizedCentroidalMomentumRate(interface, info, input), mapping_.GetPinocchioJointVelocity(state, input);
 
   return f;
 }
@@ -54,7 +54,7 @@ vector_t PinocchioCentroidalDynamics::GetValue(scalar_t time, const vector_t& st
 /******************************************************************************************************/
 VectorFunctionLinearApproximation PinocchioCentroidalDynamics::GetLinearApproximation(scalar_t time, const vector_t& state,
                                                                                       const vector_t& input) {
-  const auto& info = mapping_.getCentroidalModelInfo();
+  const auto& info = mapping_.GetCentroidalModelInfo();
   assert(info.stateDim == state.rows());
   assert(info.inputDim == input.rows());
 
@@ -69,7 +69,7 @@ VectorFunctionLinearApproximation PinocchioCentroidalDynamics::GetLinearApproxim
   dfdq.topRows<6>() << normalizedLinearMomentumRateDerivativeQ_, normalizedAngularMomentumRateDerivativeQ_;
   dfdv.bottomRows(info.generalizedCoordinatesNum).setIdentity();
 
-  std::tie(dynamics.dfdx, dynamics.dfdu) = mapping_.getOcs2Jacobian(state, dfdq, dfdv);
+  std::tie(dynamics.dfdx, dynamics.dfdu) = mapping_.GetOcs2Jacobian(state, dfdq, dfdv);
 
   // Add partial derivative of f with respect to u since part of f depends explicitly on the inputs (contact forces + torques)
   dynamics.dfdu.topRows<3>() += normalizedLinearMomentumRateDerivativeInput_;
@@ -83,7 +83,7 @@ VectorFunctionLinearApproximation PinocchioCentroidalDynamics::GetLinearApproxim
 /******************************************************************************************************/
 void PinocchioCentroidalDynamics::ComputeNormalizedCentroidalMomentumRateGradients(const vector_t& state, const vector_t& input) {
   const auto& interface = *pinocchioInterfacePtr_;
-  const auto& info = mapping_.getCentroidalModelInfo();
+  const auto& info = mapping_.GetCentroidalModelInfo();
   assert(info.stateDim == state.rows());
   assert(info.inputDim == input.rows());
 

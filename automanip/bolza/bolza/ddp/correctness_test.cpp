@@ -62,7 +62,7 @@ class DDPCorrectness : public testing::TestWithParam<std::tuple<bolza::search_st
     bolza::vector_array_t inputTrajectoryTemp(N);
     std::copy(nominalTrajectory.inputTrajectory.begin(), nominalTrajectory.inputTrajectory.end(), inputTrajectoryTemp.begin());
     inputTrajectoryTemp.push_back(inputTrajectoryTemp.back());
-    operatingPointsPtr.Reset(
+    operatingPointsPtr.reset(
         new bolza::OperatingPoints(nominalTrajectory.timeTrajectory, nominalTrajectory.stateTrajectory, inputTrajectoryTemp));
 
     // rollout settings
@@ -76,7 +76,7 @@ class DDPCorrectness : public testing::TestWithParam<std::tuple<bolza::search_st
     }();
 
     // rollout
-    rolloutPtr.Reset(new bolza::TimeTriggeredRollout(*systemPtr, rolloutSettings));
+    rolloutPtr.reset(new bolza::TimeTriggeredRollout(*systemPtr, rolloutSettings));
 
     startTime = nominalTrajectory.timeTrajectory.front();
     finalTime = nominalTrajectory.timeTrajectory.back();
@@ -85,8 +85,8 @@ class DDPCorrectness : public testing::TestWithParam<std::tuple<bolza::search_st
   bool createFeasibleRandomProblem() {
     // dynamics
     systemPtr = bolza::GetOcs2Dynamics(bolza::GetRandomDynamics(STATE_DIM, INPUT_DIM));
-    problemPtr.Reset(new bolza::OptimalControlProblem);
-    problemPtr->dynamicsPtr.Reset(systemPtr->Clone());
+    problemPtr.reset(new bolza::OptimalControlProblem);
+    problemPtr->dynamicsPtr.reset(systemPtr->Clone());
 
     // cost
     problemPtr->costPtr->Add("cost", bolza::GetOcs2Cost(bolza::GetRandomCost(STATE_DIM, INPUT_DIM)));
@@ -246,7 +246,7 @@ TEST_P(DDPCorrectness, TestSLQ) {
   ddp.GetReferenceManager().SetTargetTrajectories(targetTrajectories);
   ddp.Run(startTime, initState, finalTime);
   const auto performanceIndex = ddp.GetPerformanceIndeces();
-  const auto solution = ddp.PrimalSolution(finalTime);
+  const auto solution = ddp.GetPrimalSolution(finalTime);
 
   correctnessTest(ddpSettings, performanceIndex, solution);
 }
@@ -264,7 +264,7 @@ TEST_P(DDPCorrectness, TestILQR) {
   ddp.GetReferenceManager().SetTargetTrajectories(targetTrajectories);
   ddp.Run(startTime, initState, finalTime);
   const auto performanceIndex = ddp.GetPerformanceIndeces();
-  const auto solution = ddp.PrimalSolution(finalTime);
+  const auto solution = ddp.GetPrimalSolution(finalTime);
 
   correctnessTest(ddpSettings, performanceIndex, solution);
 }

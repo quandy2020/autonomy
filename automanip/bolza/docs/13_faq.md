@@ -18,7 +18,7 @@ cmake -S automanip/bolza -B build/bolza
 - SQP/IPM QP 失败 → 开 `printSolverStatus` 看 HPIPM 返回码
 - 不引入 ROS / autolink：`libbolza` 无中间件依赖；自碰撞距离段见 `GeometryInterfaceVisualization::ComputeDistances`
 - 单测：`-DBOLZA_BUILD_TESTS=ON`（需 GTest）；不含 RaiSim / ROS
-- pinocchio URDF 测：默认用树内 `bolza/robotic_assets`；可覆盖 `-DBOLZA_ROBOTIC_ASSETS_ROOT` / `BOLZA_ROBOTIC_ASSETS`
+- pinocchio URDF 测：默认用树内 `examples/assets`（如 `anymal_c/urdf/anymal.urdf`）；可覆盖 `-DBOLZA_ROBOTIC_ASSETS_ROOT` / `BOLZA_ROBOTIC_ASSETS`
 - CppAD 缓存目录默认 `/tmp/bolza`（对齐命名，非 `/tmp/ocs2`）
 
 ## 13.2　运行

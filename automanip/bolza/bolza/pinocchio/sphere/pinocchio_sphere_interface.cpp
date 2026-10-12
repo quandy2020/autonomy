@@ -38,7 +38,7 @@ PinocchioSphereInterface::PinocchioSphereInterface(const PinocchioInterface& pin
     const auto& link = collisionLinks_[i];
     for (size_t j = 0; j < geometryModelPtr_->geometryObjects.size(); ++j) {
       const pinocchio::GeometryObject& object = geometryModelPtr_->geometryObjects[j];
-      const std::string parentFrameName = pinocchioInterface.getModel().frames[object.parentFrame].name;
+      const std::string parentFrameName = pinocchioInterface.GetModel().frames[object.parentFrame].name;
       if (parentFrameName == link) {
         sphereApproximations_.emplace_back(*object.geometry, j, maxExcesses[i], shrinkRatio);
         collisionLinkOfEachPrimitiveShape_.emplace_back(link);
@@ -50,13 +50,13 @@ PinocchioSphereInterface::PinocchioSphereInterface(const PinocchioInterface& pin
   numSpheres_.reserve(numPrimitiveShapes_);
   geomObjIds_.reserve(numPrimitiveShapes_);
   for (const auto& sphereApprox : sphereApproximations_) {
-    const size_t numSpheres = sphereApprox.getNumSpheres();
+    const size_t numSpheres = sphereApprox.GetNumSpheres();
     numSpheresInTotal_ += numSpheres;
     numSpheres_.emplace_back(numSpheres);
-    geomObjIds_.emplace_back(sphereApprox.getGeomObjId());
+    geomObjIds_.emplace_back(sphereApprox.GetGeomObjId());
 
     for (size_t j = 0; j < numSpheres; j++) {
-      sphereRadii_.push_back(sphereApprox.getSphereRadius());
+      sphereRadii_.push_back(sphereApprox.GetSphereRadius());
     }
   }
 }
@@ -90,7 +90,7 @@ PinocchioSphereInterface::PinocchioSphereInterface(PinocchioSphereInterface&& rh
 /******************************************************************************************************/
 void PinocchioSphereInterface::BuildGeomFromPinocchioInterface(const PinocchioInterface& pinocchioInterface,
                                                                pinocchio::GeometryModel& geomModel) {
-  if (!pinocchioInterface.getUrdfModelPtr()) {
+  if (!pinocchioInterface.GetUrdfModelPtr()) {
     throw std::runtime_error(
         "[PinocchioSphereInterface::BuildGeomFromPinocchioInterface]: The PinocchioInterface passed to PinocchioGeometryInterface(...) "
         "does not contain a urdf model!");
@@ -98,12 +98,12 @@ void PinocchioSphereInterface::BuildGeomFromPinocchioInterface(const PinocchioIn
 
   // TODO: Replace with pinocchio function that uses the ModelInterface directly
   // As of 19-04-21 there is no buildGeom that takes a ModelInterface, so we deconstruct the modelInterface into a std::stringstream first
-  const std::unique_ptr<const TiXmlDocument> urdfAsXml(urdf::exportURDF(*pinocchioInterface.getUrdfModelPtr()));
+  const std::unique_ptr<const TiXmlDocument> urdfAsXml(urdf::exportURDF(*pinocchioInterface.GetUrdfModelPtr()));
   TiXmlPrinter printer;
   urdfAsXml->Accept(&printer);
   const std::stringstream urdfAsStringStream(printer.Str());
 
-  pinocchio::urdf::buildGeom(pinocchioInterface.getModel(), urdfAsStringStream, pinocchio::COLLISION, geomModel);
+  pinocchio::urdf::buildGeom(pinocchioInterface.GetModel(), urdfAsStringStream, pinocchio::COLLISION, geomModel);
 }
 
 /******************************************************************************************************/
@@ -113,14 +113,14 @@ auto PinocchioSphereInterface::ComputeSphereCentersInWorldFrame(const PinocchioI
     -> std::vector<vector3_t> {
   pinocchio::GeometryData geometryData(*geometryModelPtr_);
 
-  pinocchio::updateGeometryPlacements(pinocchioInterface.getModel(), pinocchioInterface.getData(), *geometryModelPtr_, geometryData);
+  pinocchio::updateGeometryPlacements(pinocchioInterface.GetModel(), pinocchioInterface.GetData(), *geometryModelPtr_, geometryData);
 
   std::vector<vector3_t> sphereCentersInWorldFrame(numSpheresInTotal_);
 
   size_t count = 0;
   for (size_t i = 0; i < numPrimitiveShapes_; i++) {
     const auto& objTransform = geometryData.oMg[geomObjIds_[i]];
-    const auto& sphereCentersToObjectCenter = sphereApproximations_[i].getSphereCentersToObjectCenter();
+    const auto& sphereCentersToObjectCenter = sphereApproximations_[i].GetSphereCentersToObjectCenter();
     for (size_t j = 0; j < numSpheres_[i]; j++) {
       sphereCentersInWorldFrame[count] = objTransform.translation();
       sphereCentersInWorldFrame[count].noalias() += objTransform.rotation() * sphereCentersToObjectCenter[j];

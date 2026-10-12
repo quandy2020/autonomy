@@ -33,7 +33,7 @@ PipgSolver::PipgSolver(pipg::Settings settings) : settings_(std::move(settings))
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-pipg::SolverStatus PipgSolver::solve(ThreadPool& threadPool, const vector_t& x0, std::vector<VectorFunctionLinearApproximation>& dynamics,
+pipg::SolverStatus PipgSolver::Solve(ThreadPool& threadPool, const vector_t& x0, std::vector<VectorFunctionLinearApproximation>& dynamics,
                                      const std::vector<ScalarFunctionQuadraticApproximation>& cost,
                                      const std::vector<VectorFunctionLinearApproximation>* constraints,
                                      const vector_array_t& scalingVectors, const vector_array_t* EInv, const pipg::PipgBounds& pipgBounds,
@@ -41,10 +41,10 @@ pipg::SolverStatus PipgSolver::solve(ThreadPool& threadPool, const vector_t& x0,
   VerifySizes(dynamics, cost, constraints);
   const int N = ocpSize_.numStages;
   if (N < 1) {
-    throw std::runtime_error("[PipgSolver::solve] The number of stages cannot be less than 1.");
+    throw std::runtime_error("[PipgSolver::Solve] The number of stages cannot be less than 1.");
   }
   if (scalingVectors.size() != N) {
-    throw std::runtime_error("[PipgSolver::solve] The size of scalingVectors doesn't match the number of stage.");
+    throw std::runtime_error("[PipgSolver::Solve] The size of scalingVectors doesn't match the number of stage.");
   }
 
   // Disable Eigen's internal multithreading
@@ -70,8 +70,8 @@ pipg::SolverStatus PipgSolver::solve(ThreadPool& threadPool, const vector_t& x0,
     WNew_[t].setZero(dynamics[t].dfdx.rows());
   }
 
-  scalar_t alpha = pipgBounds.primalStepSize(0);
-  scalar_t beta = pipgBounds.primalStepSize(0);
+  scalar_t alpha = pipgBounds.PrimalStepSize(0);
+  scalar_t beta = pipgBounds.PrimalStepSize(0);
   scalar_t betaLast = 0;
 
   size_t k = 0;
@@ -81,7 +81,7 @@ pipg::SolverStatus PipgSolver::solve(ThreadPool& threadPool, const vector_t& x0,
 
   std::mutex mux;
   std::condition_variable iterationFinished;
-  std::vector<int> threadsWorkloadCounter(threadPool.numThreads() + 1U, 0);
+  std::vector<int> threadsWorkloadCounter(threadPool.NumThreads() + 1U, 0);
 
   auto updateVariablesTask = [&](int workerId) {
     int t;
@@ -183,8 +183,8 @@ pipg::SolverStatus PipgSolver::solve(ThreadPool& threadPool, const vector_t& x0,
       } else {
         betaLast = beta;
         // Adaptive step size
-        beta = pipgBounds.dualStepSize(k);
-        alpha = pipgBounds.primalStepSize(k);
+        beta = pipgBounds.DualStepSize(k);
+        alpha = pipgBounds.PrimalStepSize(k);
 
         if (k != 0 && k % Settings().checkTerminationInterval == 0) {
           constraintsViolationInfNorm =
@@ -215,7 +215,7 @@ pipg::SolverStatus PipgSolver::solve(ThreadPool& threadPool, const vector_t& x0,
       }
     }
   };
-  threadPool.runParallel(std::move(updateVariablesTask), threadPool.numThreads() + 1U);
+  threadPool.RunParallel(std::move(updateVariablesTask), threadPool.NumThreads() + 1U);
 
   xTrajectory = X_;
   uTrajectory = U_;

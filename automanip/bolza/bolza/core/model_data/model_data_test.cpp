@@ -51,7 +51,7 @@ TEST(testModelData, testModelDataLinearInterpolation) {
 }
 
 TEST(testModelData, testMovableCopyable) {
-  ASSERT_TRUE(std::is_copy_constructible<ModelData>::Value);
-  ASSERT_TRUE(std::is_move_constructible<ModelData>::Value);
-  ASSERT_TRUE(std::is_nothrow_move_constructible<ModelData>::Value);
+  ASSERT_TRUE(std::is_copy_constructible<ModelData>::value);
+  ASSERT_TRUE(std::is_move_constructible<ModelData>::value);
+  ASSERT_TRUE(std::is_nothrow_move_constructible<ModelData>::value);
 }

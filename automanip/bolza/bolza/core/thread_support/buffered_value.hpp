@@ -39,7 +39,7 @@ template <typename T>
 class BufferedValue {
  public:
     /**
-   * @brief /**.
+   * @brief.
    *
    * Constructor initializes with a given value and an empty buffer.
    *
@@ -61,24 +61,24 @@ class BufferedValue {
   T& get() { return activeValue_; }
 
     /**
-   * @brief /** Copy a new value into the buffer. */.
+   * @brief Copy a new value into the buffer. 
    * @param [in] value: Value.
    */
   void SetBuffer(const T& value) { /**
   * @brief Reset.
   * @return Result value.
   */
- buffer_.reset(std::make_unique<T>(value)); }
+ buffer_.Reset(std::make_unique<T>(value)); }
 
     /**
-   * @brief /** Move a new value into the buffer. */.
+   * @brief Move a new value into the buffer. 
    * @param [in,out] value: Value.
    */
   void SetBuffer(T&& value) { /**
   * @brief Reset.
   * @return Result value.
   */
- buffer_.reset(std::make_unique<T>(std::move(value))); }
+ buffer_.Reset(std::make_unique<T>(std::move(value))); }
 
   /**
    * Replaces the active value with the value in the buffer.
@@ -93,7 +93,7 @@ class BufferedValue {
      * @param [in] nullptr: Nullptr.
      * @return Owning pointer.
      */
-    std::unique_ptr<T> UpdatedValuePtr(nullptr);
+    std::unique_ptr<T> updatedValuePtr(nullptr);
     /**
      * @brief Swap.
      * @param [in] updatedValuePtr: Updated Value Ptr.

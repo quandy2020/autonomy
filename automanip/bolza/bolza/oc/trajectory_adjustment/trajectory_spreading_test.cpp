@@ -42,7 +42,7 @@ struct Result {
 std::size_t ModeAtTime(const bolza::ModeSchedule& modeSchedule, bolza::scalar_t time, bool isFinalTime) {
   if (isFinalTime) {
     auto timeItr = std::upper_bound(modeSchedule.eventTimes.begin(), modeSchedule.eventTimes.end(), time);
-    int modeIndex = std::Distance(modeSchedule.eventTimes.begin(), timeItr);
+    int modeIndex = std::distance(modeSchedule.eventTimes.begin(), timeItr);
     return modeSchedule.modeSequence[modeIndex];
   } else {
     return modeSchedule.ModeAtTime(time);
@@ -70,17 +70,17 @@ class TrajectorySpreadingTest : public testing::Test {
     const bolza::matrix_t A = (bolza::matrix_t(STATE_DIM, STATE_DIM) << -2.0, -1.0, 1.0, 0.0).finished();
     const bolza::matrix_t B = (bolza::matrix_t(STATE_DIM, INPUT_DIM) << 1.0, 0.0).finished();
     const bolza::matrix_t G = (bolza::matrix_t(STATE_DIM, STATE_DIM) << 1.0, 0.0, 0.0, 0.9).finished();
-    systemPtr.Reset(new bolza::LinearSystemDynamics(A, B, G));
-    rolloutPtr.Reset(new bolza::TimeTriggeredRollout(*systemPtr, rolloutSettings));
+    systemPtr.reset(new bolza::LinearSystemDynamics(A, B, G));
+    rolloutPtr.reset(new bolza::TimeTriggeredRollout(*systemPtr, rolloutSettings));
 
     // controller
     const bolza::scalar_array_t cntTimeStamp{timeInterval.first, timeInterval.second};
     const bolza::vector_array_t uff(2, bolza::vector_t::Ones(INPUT_DIM));
     const bolza::matrix_array_t k(2, bolza::matrix_t::Zero(INPUT_DIM, STATE_DIM));
-    controllerPtr.Reset(new bolza::LinearController(cntTimeStamp, uff, k));
+    controllerPtr.reset(new bolza::LinearController(cntTimeStamp, uff, k));
 
     // trajectory spreading
-    trajectorySpreadingPtr.Reset(new bolza::TrajectorySpreading(true));
+    trajectorySpreadingPtr.reset(new bolza::TrajectorySpreading(true));
   }
 
   /******************************************************************************************************/
@@ -197,12 +197,12 @@ class TrajectorySpreadingTest : public testing::Test {
 
       bolza::size_array_t PostEventIndices(endEventItr - startEventItr);
       for (auto itr = startEventItr; itr != endEventItr; itr++) {
-        int index = std::Distance(startEventItr, itr);
+        int index = std::distance(startEventItr, itr);
         if (itr == endEventItr - 1 && *itr == spreadResult.timeTrajectory.back()) {
           postEventIndices[index] = spreadResult.timeTrajectory.size() - 1;
         } else {
           auto timeItr = std::upper_bound(spreadResult.timeTrajectory.begin(), spreadResult.timeTrajectory.end(), *itr);
-          postEventIndices[index] = std::Distance(spreadResult.timeTrajectory.begin(), timeItr);
+          postEventIndices[index] = std::distance(spreadResult.timeTrajectory.begin(), timeItr);
         }
       }
 

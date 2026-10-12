@@ -32,7 +32,7 @@ enum class SensitivityIntegratorType { EULER, RK2, RK4 };
 namespace sensitivity_integrator {
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Get string name of integrator type
  *
@@ -43,7 +43,7 @@ namespace sensitivity_integrator {
 std::string ToString(SensitivityIntegratorType integratorType);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Get integrator type from string name, useful for reading config file
  *
@@ -67,7 +67,7 @@ SensitivityIntegratorType FromString(const std::string& name);
 using DynamicsDiscretizer = std::function<vector_t(SystemDynamicsBase&, scalar_t, const vector_t&, const vector_t&, scalar_t)>;
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Select available integrator based on enum
  *
@@ -92,7 +92,7 @@ using DynamicsSensitivityDiscretizer =
     std::function<VectorFunctionLinearApproximation(SystemDynamicsBase&, scalar_t, const vector_t&, const vector_t&, scalar_t)>;
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Select available integrator based on enum
  *

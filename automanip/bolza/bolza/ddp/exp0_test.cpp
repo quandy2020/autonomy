@@ -45,7 +45,7 @@ class Exp0 : public testing::Test {
     problem = bolza::CreateExp0Problem(referenceManagerPtr);
 
     // operatingTrajectories
-    initializerPtr.Reset(new bolza::DefaultInitializer(INPUT_DIM));
+    initializerPtr.reset(new bolza::DefaultInitializer(INPUT_DIM));
   }
 
   // rollout settings
@@ -132,7 +132,7 @@ TEST_F(Exp0, ddp_feedback_policy) {
   // run ddp
   ddp.Run(startTime, initState, finalTime);
   // get solution
-  const auto solution = ddp.PrimalSolution(finalTime);
+  const auto solution = ddp.GetPrimalSolution(finalTime);
   const auto* ctrlPtr = dynamic_cast<bolza::LinearController*>(solution.controllerPtr_.get());
 
   EXPECT_TRUE(ctrlPtr != nullptr) << "MESSAGE: SLQ solution does not contain a linear feedback policy!";
@@ -159,7 +159,7 @@ TEST_F(Exp0, ddp_feedforward_policy) {
   // run ddp
   ddp.Run(startTime, initState, finalTime);
   // get solution
-  const auto solution = ddp.PrimalSolution(finalTime);
+  const auto solution = ddp.GetPrimalSolution(finalTime);
   const auto* ctrlPtr = dynamic_cast<bolza::FeedforwardController*>(solution.controllerPtr_.get());
 
   EXPECT_TRUE(ctrlPtr != nullptr) << "MESSAGE: SLQ solution does not contain a feedforward policy!";
@@ -231,7 +231,7 @@ TEST_F(Exp0, ddp_hamiltonian) {
   // run ddp
   ddp.Run(startTime, initState, finalTime);
   // get solution
-  const auto solution = ddp.PrimalSolution(finalTime);
+  const auto solution = ddp.GetPrimalSolution(finalTime);
 
   // define precision for tests
   constexpr bolza::scalar_t precision = 1e-3;

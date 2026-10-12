@@ -52,7 +52,7 @@ struct PrimalSolution {
         inputTrajectory_(other.inputTrajectory_),
         postEventIndices_(other.postEventIndices_),
         modeSchedule_(other.modeSchedule_),
-        controllerPtr_(other.controllerPtr_ ? other.controllerPtr_->clone() : nullptr) {}
+        controllerPtr_(other.controllerPtr_ ? other.controllerPtr_->Clone() : nullptr) {}
 
   /** Copy Assignment */
   PrimalSolution& operator=(const PrimalSolution& other) {
@@ -66,7 +66,7 @@ struct PrimalSolution {
        * @brief Reset.
        * @return Result value.
        */
-      controllerPtr_.reset(other.controllerPtr_->clone());
+      controllerPtr_.reset(other.controllerPtr_->Clone());
     } else {
       /**
        * @brief Reset.

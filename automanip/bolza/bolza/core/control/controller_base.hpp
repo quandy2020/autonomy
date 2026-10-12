@@ -133,7 +133,7 @@ class ControllerBase {
 
  protected:
     /**
-   * @brief /** Copy constructor */.
+   * @brief Copy constructor 
    * @param [in] rhs: Rhs.
    */
   ControllerBase(const ControllerBase& rhs) = default;

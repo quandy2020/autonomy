@@ -56,7 +56,7 @@ void FrankWolfeGDDP<STATE_DIM, INPUT_DIM>::Run(const slq_data_collector_t* dcPtr
    * @param [in] dcPtr: Dc Ptr.
    * @return Result value.
    */
-  this->run(dcPtr);
+  this->Run(dcPtr);
 
   // no need for using Frank-Wolfe if there is no constraint
   if (!eventTimeConstraintPtr) {
@@ -79,7 +79,7 @@ void FrankWolfeGDDP<STATE_DIM, INPUT_DIM>::Run(const slq_data_collector_t* dcPtr
    * @param [in] fwDescentDirection: Fw Descent Direction.
    * @return Result value.
    */
-  frankWolfeDescentDirectionPtr_->run(this->eventTimes_, this->nominalCostFuntionDerivative_, maxGradientInverse, eventTimeConstraintPtr,
+  frankWolfeDescentDirectionPtr_->Run(this->eventTimes_, this->nominalCostFuntionDerivative_, maxGradientInverse, eventTimeConstraintPtr,
                                       fwDescentDirection);
   // since it is gradient not the descent direction
   this->nominalCostFuntionDerivative_ = -fwDescentDirection;

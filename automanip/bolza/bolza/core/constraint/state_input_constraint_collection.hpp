@@ -53,21 +53,21 @@ class StateInputConstraintCollection : public Collection<StateInputConstraint> {
   StateInputConstraintCollection* Clone() const override;
 
     /**
-   * @brief /** Returns the number of active constraints at a given time. */.
+   * @brief Returns the number of active constraints at a given time. 
    * @param [in] time: Time.
    * @return Result value.
    */
   size_t GetNumConstraints(scalar_t time) const;
 
     /**
-   * @brief /** Returns the number of active constraints at a given time for each term. If a term is inactive, its size is zero. */.
+   * @brief Returns the number of active constraints at a given time for each term. If a term is inactive, its size is zero. 
    * @param [in] time: Time.
    * @return Result value.
    */
   size_array_t GetTermsSize(scalar_t time) const;
 
     /**
-   * @brief /** Get an array of all constraints. If a term is inactive, the corresponding element is a vector of size zero. */.
+   * @brief Get an array of all constraints. If a term is inactive, the corresponding element is a vector of size zero. 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] input: Input.
@@ -77,7 +77,7 @@ class StateInputConstraintCollection : public Collection<StateInputConstraint> {
   virtual vector_array_t GetValue(scalar_t time, const vector_t& state, const vector_t& input, const PreComputation& preComp) const;
 
     /**
-   * @brief /** Get the constraint linear approximation */.
+   * @brief Get the constraint linear approximation 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] input: Input.
@@ -88,7 +88,7 @@ class StateInputConstraintCollection : public Collection<StateInputConstraint> {
                                                                    const PreComputation& preComp) const;
 
     /**
-   * @brief /** Get the constraint quadratic approximation */.
+   * @brief Get the constraint quadratic approximation 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] input: Input.
@@ -100,7 +100,7 @@ class StateInputConstraintCollection : public Collection<StateInputConstraint> {
 
  protected:
     /**
-   * @brief /** Copy constructor */.
+   * @brief Copy constructor 
    * @param [in] other: Other.
    */
   StateInputConstraintCollection(const StateInputConstraintCollection& other);

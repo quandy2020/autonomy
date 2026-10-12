@@ -17,7 +17,7 @@ ZeroForceConstraint* ZeroForceConstraint::Clone() const {
 }
 
 bool ZeroForceConstraint::IsActive(scalar_t time) const {
-  return !modeScheduleManager_->getContactFlags(time)[legNumber_];
+  return !modeScheduleManager_->GetContactFlags(time)[legNumber_];
 }
 
 size_t ZeroForceConstraint::GetNumConstraints(scalar_t time) const {

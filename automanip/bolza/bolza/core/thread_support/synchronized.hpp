@@ -218,14 +218,14 @@ class Synchronized {
      * @param [in] defer_lock: Defer lock.
      * @return Result value.
      */
-    std::unique_lock<std::mutex> LkThis(m_, std::defer_lock);
+    std::unique_lock<std::mutex> lkThis(m_, std::defer_lock);
     /**
      * @brief Lk Other.
      * @param [in] m_: M.
      * @param [in] defer_lock: Defer lock.
      * @return Result value.
      */
-    std::unique_lock<std::mutex> LkOther(other.m_, std::defer_lock);
+    std::unique_lock<std::mutex> lkOther(other.m_, std::defer_lock);
     /**
      * @brief Lock.
      * @param [in] lkOther: Lk Other.

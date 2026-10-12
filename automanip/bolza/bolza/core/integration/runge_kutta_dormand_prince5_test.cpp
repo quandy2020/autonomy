@@ -47,7 +47,7 @@ TEST(RungeKuttaDormandPrince5Test, integrateLinearSystem) {
   const bolza::scalar_t t1 = 10.0;
   const bolza::scalar_t dt = 0.01;
   bolza::vector_t x0 = bolza::vector_t::Zero(2);
-  bolza::Observer Observer(&stateTrajectory, &timeTrajectory);
+  bolza::Observer observer(&stateTrajectory, &timeTrajectory);
   integrator->IntegrateAdaptive(sys, observer, x0, t0, t1, dt);
 
   EXPECT_NEAR(timeTrajectory.front(), t0, 1e-6);
@@ -67,7 +67,7 @@ TEST(RungeKuttaDormandPrince5Test, IntegrateAdaptiveCompareWithODE45) {
 
   bolza::scalar_array_t tTraj;
   bolza::vector_array_t xTraj;
-  bolza::Observer Observer(&xTraj, &tTraj);
+  bolza::Observer observer(&xTraj, &tTraj);
   auto integrator = bolza::NewIntegrator(bolza::IntegratorType::ODE45_DP5);
   integrator->IntegrateAdaptive(sys, observer, x0, t0, t1, dt);
 
@@ -94,7 +94,7 @@ TEST(RungeKuttaDormandPrince5Test, IntegrateTimesCompareWithODE45) {
   bolza::scalar_array_t times = {0.0, 2.0, 4.0, 6.0, 8.0, 10.0};
 
   bolza::vector_array_t xTraj;
-  bolza::Observer Observer(&xTraj);
+  bolza::Observer observer(&xTraj);
   auto integrator = bolza::NewIntegrator(bolza::IntegratorType::ODE45_DP5);
   integrator->IntegrateTimes(sys, observer, x0, times.begin(), times.end(), dt);
 

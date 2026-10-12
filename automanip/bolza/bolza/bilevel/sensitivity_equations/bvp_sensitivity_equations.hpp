@@ -88,7 +88,7 @@ class BvpSensitivityEquations final : public OdeBase<STATE_DIM> {
   BvpSensitivityEquations<STATE_DIM, INPUT_DIM>* Clone() const { return new BvpSensitivityEquations<STATE_DIM, INPUT_DIM>(*this); }
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Sets Data
    *
@@ -125,7 +125,7 @@ class BvpSensitivityEquations final : public OdeBase<STATE_DIM> {
   void SetMultiplier(const scalar_t& multiplier) { multiplier_ = multiplier; }
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Computes Derivative
    *

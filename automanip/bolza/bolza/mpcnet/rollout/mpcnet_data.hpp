@@ -61,17 +61,17 @@ using data_array_t = std::vector<data_point_t>;
  */
 inline data_point_t GetDataPoint(MPCBase& mpc, MPCNetDefinitionBase& mpcnetDefinition, const vector_t& deviation) {
   data_point_t dataPoint;
-  const auto& referenceManager = mpc.getSolverPtr()->getReferenceManager();
-  const auto primalSolution = mpc.getSolverPtr()->primalSolution(mpc.getSolverPtr()->getFinalTime());
+  const auto& referenceManager = mpc.GetSolverPtr()->GetReferenceManager();
+  const auto primalSolution = mpc.GetSolverPtr()->GetPrimalSolution(mpc.GetSolverPtr()->GetFinalTime());
   dataPoint.t = primalSolution.timeTrajectory_.front();
   dataPoint.x = primalSolution.stateTrajectory_.front() + deviation;
-  dataPoint.u = primalSolution.controllerPtr_->computeInput(dataPoint.t, dataPoint.x);
-  dataPoint.mode = primalSolution.modeSchedule_.modeAtTime(dataPoint.t);
-  dataPoint.observation = mpcnetDefinition.getObservation(dataPoint.t, dataPoint.x, referenceManager.getModeSchedule(),
-                                                          referenceManager.getTargetTrajectories());
-  dataPoint.actionTransformation = mpcnetDefinition.getActionTransformation(dataPoint.t, dataPoint.x, referenceManager.getModeSchedule(),
-                                                                            referenceManager.getTargetTrajectories());
-  dataPoint.hamiltonian = mpc.getSolverPtr()->getHamiltonian(dataPoint.t, dataPoint.x, dataPoint.u);
+  dataPoint.u = primalSolution.controllerPtr_->ComputeInput(dataPoint.t, dataPoint.x);
+  dataPoint.mode = primalSolution.modeSchedule_.ModeAtTime(dataPoint.t);
+  dataPoint.observation = mpcnetDefinition.GetObservation(dataPoint.t, dataPoint.x, referenceManager.GetModeSchedule(),
+                                                          referenceManager.GetTargetTrajectories());
+  dataPoint.actionTransformation = mpcnetDefinition.GetActionTransformation(dataPoint.t, dataPoint.x, referenceManager.GetModeSchedule(),
+                                                                            referenceManager.GetTargetTrajectories());
+  dataPoint.hamiltonian = mpc.GetSolverPtr()->GetHamiltonian(dataPoint.t, dataPoint.x, dataPoint.u);
   return dataPoint;
 }
 

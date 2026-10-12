@@ -120,7 +120,7 @@ Eigen::Matrix<scalar_t, 6, 1> Reference::Create5thOrdPol(scalar_t t0, scalar_t t
   Eigen::Matrix<scalar_t, 6, 1> b;
   b << p0, p1;
 
-  return A.colPivHouseholderQr().Solve(b);
+  return A.colPivHouseholderQr().solve(b);
 }
 
 void Reference::interpolate_ext(scalar_t time, vector_t& x) const {

@@ -72,8 +72,8 @@ bool LevenbergMarquardtStrategy::Run(const std::pair<scalar_t, scalar_t>& timePe
     if (!dualSolution.timeTrajectory.empty()) {
       // trajectory spreading
       constexpr bool debugPrint = false;
-      TrajectorySpreading TrajectorySpreading(debugPrint);
-      const auto status = trajectorySpreading.set(modeSchedule, solution.primalSolution.modeSchedule_, dualSolution.timeTrajectory);
+      TrajectorySpreading trajectorySpreading(debugPrint);
+      const auto status = trajectorySpreading.Set(modeSchedule, solution.primalSolution.modeSchedule_, dualSolution.timeTrajectory);
       if (status.willTruncate || status.willPerformTrajectorySpreading) {
         TrajectorySpread(trajectorySpreading, dualSolution, tempDualSolution_);
         adjustedDualSolutionPtr = &tempDualSolution_;

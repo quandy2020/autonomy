@@ -30,11 +30,11 @@ class PenaltyBaseWrapper final : public augmented::AugmentedPenaltyBase {
 
   ~PenaltyBaseWrapper() override = default;
   PenaltyBaseWrapper* Clone() const override { return new PenaltyBaseWrapper(*this); }
-  std::string Name() const override { return penaltyPtr_->name(); }
+  std::string Name() const override { return penaltyPtr_->Name(); }
 
-  scalar_t GetValue(scalar_t t, scalar_t l, scalar_t h) const override { return penaltyPtr_->getValue(t, h); }
-  scalar_t GetDerivative(scalar_t t, scalar_t l, scalar_t h) const override { return penaltyPtr_->getDerivative(t, h); }
-  scalar_t GetSecondDerivative(scalar_t t, scalar_t l, scalar_t h) const override { return penaltyPtr_->getSecondDerivative(t, h); }
+  scalar_t GetValue(scalar_t t, scalar_t l, scalar_t h) const override { return penaltyPtr_->GetValue(t, h); }
+  scalar_t GetDerivative(scalar_t t, scalar_t l, scalar_t h) const override { return penaltyPtr_->GetDerivative(t, h); }
+  scalar_t GetSecondDerivative(scalar_t t, scalar_t l, scalar_t h) const override { return penaltyPtr_->GetSecondDerivative(t, h); }
 
   scalar_t UpdateMultiplier(scalar_t t, scalar_t l, scalar_t h) const override {
     throw std::runtime_error("[" + Name() + "] This penalty is only applicable to soft constraints!");
@@ -44,7 +44,7 @@ class PenaltyBaseWrapper final : public augmented::AugmentedPenaltyBase {
   }
 
  private:
-  PenaltyBaseWrapper(const PenaltyBaseWrapper& other) : penaltyPtr_(other.penaltyPtr_->clone()) {}
+  PenaltyBaseWrapper(const PenaltyBaseWrapper& other) : penaltyPtr_(other.penaltyPtr_->Clone()) {}
 
   std::unique_ptr<PenaltyBase> penaltyPtr_;
 };
@@ -101,7 +101,7 @@ MultidimensionalPenalty::MultidimensionalPenalty<PenaltyBase>(std::unique_ptr<Pe
 /******************************************************************************************************/
 MultidimensionalPenalty::MultidimensionalPenalty(const MultidimensionalPenalty& other) {
   for (const auto& penalty : other.penaltyPtrArray_) {
-    penaltyPtrArray_.emplace_back(penalty->clone());
+    penaltyPtrArray_.emplace_back(penalty->Clone());
   }
 }
 
@@ -115,7 +115,7 @@ scalar_t MultidimensionalPenalty::GetValue(scalar_t t, const vector_t& h, const 
   scalar_t penalty = 0;
   for (size_t i = 0; i < numConstraints; i++) {
     const auto& penaltyTerm = (penaltyPtrArray_.size() == 1) ? penaltyPtrArray_[0] : penaltyPtrArray_[i];
-    penalty += penaltyTerm->getValue(t, getMultiplier(l, i), h(i));
+    penalty += penaltyTerm->GetValue(t, getMultiplier(l, i), h(i));
   }
 
   return penalty;
@@ -201,9 +201,9 @@ std::tuple<scalar_t, vector_t, vector_t> MultidimensionalPenalty::GetPenaltyValu
   vector_t penaltySecondDerivative(numConstraints);
   for (size_t i = 0; i < numConstraints; i++) {
     const auto& penaltyTerm = (penaltyPtrArray_.size() == 1) ? penaltyPtrArray_[0] : penaltyPtrArray_[i];
-    penaltyValue += penaltyTerm->getValue(t, getMultiplier(l, i), h(i));
-    penaltyDerivative(i) = penaltyTerm->getDerivative(t, getMultiplier(l, i), h(i));
-    penaltySecondDerivative(i) = penaltyTerm->getSecondDerivative(t, getMultiplier(l, i), h(i));
+    penaltyValue += penaltyTerm->GetValue(t, getMultiplier(l, i), h(i));
+    penaltyDerivative(i) = penaltyTerm->GetDerivative(t, getMultiplier(l, i), h(i));
+    penaltySecondDerivative(i) = penaltyTerm->GetSecondDerivative(t, getMultiplier(l, i), h(i));
   }  // end of i loop
 
   return {penaltyValue, penaltyDerivative, penaltySecondDerivative};
@@ -220,7 +220,7 @@ vector_t MultidimensionalPenalty::UpdateMultipliers(scalar_t t, const vector_t& 
   vector_t updted_l(numConstraints);
   for (size_t i = 0; i < numConstraints; i++) {
     const auto& penaltyTerm = (penaltyPtrArray_.size() == 1) ? penaltyPtrArray_[0] : penaltyPtrArray_[i];
-    updted_l(i) = penaltyTerm->updateMultiplier(t, l(i), h(i));
+    updted_l(i) = penaltyTerm->UpdateMultiplier(t, l(i), h(i));
   }
 
   return updted_l;
@@ -235,7 +235,7 @@ vector_t MultidimensionalPenalty::InitializeMultipliers(size_t numConstraints) c
   vector_t l(numConstraints);
   for (size_t i = 0; i < numConstraints; i++) {
     const auto& penaltyTerm = (penaltyPtrArray_.size() == 1) ? penaltyPtrArray_[0] : penaltyPtrArray_[i];
-    l(i) = penaltyTerm->initializeMultiplier();
+    l(i) = penaltyTerm->InitializeMultiplier();
   }
 
   return l;

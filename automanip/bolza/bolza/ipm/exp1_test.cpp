@@ -169,7 +169,7 @@ TEST(Exp1Test, Constrained) {
   solver.SetReferenceManager(referenceManagerPtr);
   solver.Run(startTime, initState, finalTime);
 
-  const auto primalSolution = solver.PrimalSolution(finalTime);
+  const auto primalSolution = solver.GetPrimalSolution(finalTime);
 
   // check constraint satisfaction
   for (const auto& x : primalSolution.stateTrajectory_) {
@@ -239,7 +239,7 @@ TEST(Exp1Test, MixedConstrained) {
   solver.SetReferenceManager(referenceManagerPtr);
   solver.Run(startTime, initState, finalTime);
 
-  const auto primalSolution = solver.PrimalSolution(finalTime);
+  const auto primalSolution = solver.GetPrimalSolution(finalTime);
 
   // check constraint satisfaction
   const size_t N = primalSolution.inputTrajectory_.size();

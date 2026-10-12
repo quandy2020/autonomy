@@ -160,7 +160,7 @@ void MakeEulerAnglesUnique(Eigen::Matrix<SCALAR_T, 3, 1>& eulerAngles) {
    * @brief Tol.
    * @return Result value.
    */
-  SCALAR_T Tol(1e-9);  // FIXME(jcarius) magic number
+  SCALAR_T tol(1e-9);  // FIXME(jcarius) magic number
   /**
    * @brief Pi.
    * @param [in] M_PI: M PI.
@@ -186,7 +186,7 @@ void MakeEulerAnglesUnique(Eigen::Matrix<SCALAR_T, 3, 1>& eulerAngles) {
     } else {
       eulerAngles.z() = eulerAngles.z() - pi;
     }
-  } else if (-pi / 2 - Tol <= eulerAngles.y() && eulerAngles.y() <= -pi / 2 + tol) {
+  } else if (-pi / 2 - tol <= eulerAngles.y() && eulerAngles.y() <= -pi / 2 + tol) {
     /**
      * @brief X.
      * @return Result value.
@@ -197,9 +197,9 @@ void MakeEulerAnglesUnique(Eigen::Matrix<SCALAR_T, 3, 1>& eulerAngles) {
      * @return Result value.
      */
     eulerAngles.z() = 0;
-  } else if (-pi / 2 + Tol < eulerAngles.y() && eulerAngles.y() < pi / 2 - tol) {
+  } else if (-pi / 2 + tol < eulerAngles.y() && eulerAngles.y() < pi / 2 - tol) {
     // ok
-  } else if (pi / 2 - Tol <= eulerAngles.y() && eulerAngles.y() <= pi / 2 + tol) {
+  } else if (pi / 2 - tol <= eulerAngles.y() && eulerAngles.y() <= pi / 2 + tol) {
     // todo: pi/2 should not be in range, other formula?
     /**
      * @brief X.
@@ -292,14 +292,14 @@ Eigen::Matrix<SCALAR_T, 3, 1> RotationMatrixToRotationVector(const Eigen::Matrix
    * @brief Skew Vector.
    * @return Result value.
    */
-  const Eigen::Matrix<SCALAR_T, 3, 1> SkewVector(R(2, 1) - R(1, 2), R(0, 2) - R(2, 0), R(1, 0) - R(0, 1));
+  const Eigen::Matrix<SCALAR_T, 3, 1> skewVector(R(2, 1) - R(1, 2), R(0, 2) - R(2, 0), R(1, 0) - R(0, 1));
 
   // Tolerance to select alternative solution near singularity
   /**
    * @brief Eps.
    * @return Result value.
    */
-  const SCALAR_T Eps(1e-8);
+  const SCALAR_T eps(1e-8);
   const SCALAR_T smallAngleThreshold = SCALAR_T(3.0) - eps;   // select taylorExpansionSol if trace > 3 - eps
   const SCALAR_T largeAngleThreshold = -SCALAR_T(1.0) + eps;  // select quaternionSol if trace < -1.0 + eps
 
@@ -333,7 +333,7 @@ Eigen::Matrix<SCALAR_T, 3, 1> RotationMatrixToRotationVector(const Eigen::Matrix
    * @brief Vec.
    * @return Result value.
    */
-  q.vec() = SelectSolutionGt(q.w(), SCALAR_T(0.0), q.vec(), -q.vec());
+  q.vec() = selectSolutionGt(q.w(), SCALAR_T(0.0), q.vec(), -q.vec());
   /**
    * @brief W.
    * @return Result value.
@@ -353,7 +353,7 @@ Eigen::Matrix<SCALAR_T, 3, 1> RotationMatrixToRotationVector(const Eigen::Matrix
    * @param [in] quaternionSol: Quaternion Sol.
    * @return Result value.
    */
-  return SelectSolutionGt(trace, largeAngleThreshold, SelectSolutionGt(trace, smallAngleThreshold, taylorExpansionSol, normalSol),
+  return selectSolutionGt(trace, largeAngleThreshold, selectSolutionGt(trace, smallAngleThreshold, taylorExpansionSol, normalSol),
                           quaternionSol);
 }
 

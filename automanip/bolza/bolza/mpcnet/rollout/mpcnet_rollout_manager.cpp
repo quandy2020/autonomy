@@ -71,9 +71,9 @@ void MPCNetRolloutManager::StartDataGeneration(scalar_t alpha, const std::string
 
   // push tasks into pool
   for (int i = 0; i < initialObservations.size(); i++) {
-    dataGenerationFtrs_.push_back(dataGenerationThreadPoolPtr_->run([=](int threadNumber) {
+    dataGenerationFtrs_.push_back(dataGenerationThreadPoolPtr_->Run([=](int threadNumber) {
       const auto* result =
-          dataGenerationPtrs_[threadNumber]->run(alpha, policyFilePath, timeStep, dataDecimation, nSamples, samplingCovariance,
+          dataGenerationPtrs_[threadNumber]->Run(alpha, policyFilePath, timeStep, dataDecimation, nSamples, samplingCovariance,
                                                  initialObservations.at(i), modeSchedules.at(i), targetTrajectories.at(i));
       nDataGenerationTasksDone_++;
       // print thread and task number
@@ -165,8 +165,8 @@ void MPCNetRolloutManager::StartPolicyEvaluation(scalar_t alpha, const std::stri
 
   // push tasks into pool
   for (int i = 0; i < initialObservations.size(); i++) {
-    policyEvaluationFtrs_.push_back(policyEvaluationThreadPoolPtr_->run([=](int threadNumber) {
-      const auto result = policyEvaluationPtrs_[threadNumber]->run(alpha, policyFilePath, timeStep, initialObservations.at(i),
+    policyEvaluationFtrs_.push_back(policyEvaluationThreadPoolPtr_->Run([=](int threadNumber) {
+      const auto result = policyEvaluationPtrs_[threadNumber]->Run(alpha, policyFilePath, timeStep, initialObservations.at(i),
                                                                    modeSchedules.at(i), targetTrajectories.at(i));
       nPolicyEvaluationTasksDone_++;
       // print thread and task number

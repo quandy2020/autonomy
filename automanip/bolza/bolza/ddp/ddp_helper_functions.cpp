@@ -63,14 +63,14 @@ void ComputeRolloutMetrics(OptimalControlProblem& problem, const PrimalSolution&
   constexpr auto request = Request::Cost + Request::Constraint + Request::SoftConstraint;
   for (size_t k = 0; k < tTrajectory.size(); k++) {
     // intermediate time cost and constraints
-    problem.preComputationPtr->request(request, tTrajectory[k], xTrajectory[k], uTrajectory[k]);
+    problem.preComputationPtr->Request(request, tTrajectory[k], xTrajectory[k], uTrajectory[k]);
     problemMetrics.intermediates.push_back(
         ComputeIntermediateMetrics(problem, tTrajectory[k], xTrajectory[k], uTrajectory[k], dualSolution.intermediates[k]));
 
     // event time cost and constraints
     if (nextPostEventIndexItr != postEventIndices.end() && k + 1 == *nextPostEventIndexItr) {
-      const auto m = dualSolution.preJumps[std::Distance(postEventIndices.begin(), nextPostEventIndexItr)];
-      problem.preComputationPtr->requestPreJump(request, tTrajectory[k], xTrajectory[k]);
+      const auto m = dualSolution.preJumps[std::distance(postEventIndices.begin(), nextPostEventIndexItr)];
+      problem.preComputationPtr->RequestPreJump(request, tTrajectory[k], xTrajectory[k]);
       problemMetrics.preJumps.push_back(ComputePreJumpMetrics(problem, tTrajectory[k], xTrajectory[k], m));
       nextPostEventIndexItr++;
     }
@@ -78,7 +78,7 @@ void ComputeRolloutMetrics(OptimalControlProblem& problem, const PrimalSolution&
 
   // final time cost and constraints
   if (!tTrajectory.empty()) {
-    problem.preComputationPtr->requestFinal(request, tTrajectory.back(), xTrajectory.back());
+    problem.preComputationPtr->RequestFinal(request, tTrajectory.back(), xTrajectory.back());
     problemMetrics.final = ComputeFinalMetrics(problem, tTrajectory.back(), xTrajectory.back(), dualSolution.final);
   }
 }
@@ -112,7 +112,7 @@ PerformanceIndex ComputeRolloutPerformanceIndex(const scalar_array_t& timeTrajec
 scalar_t RolloutTrajectory(RolloutBase& rollout, scalar_t initTime, const vector_t& initState, scalar_t finalTime,
                            PrimalSolution& primalSolution) {
   // rollout with controller
-  const auto xCurrent = rollout.run(initTime, initState, finalTime, primalSolution.controllerPtr_.get(), primalSolution.modeSchedule_,
+  const auto xCurrent = rollout.Run(initTime, initState, finalTime, primalSolution.controllerPtr_.get(), primalSolution.modeSchedule_,
                                     primalSolution.timeTrajectory_, primalSolution.postEventIndices_, primalSolution.stateTrajectory_,
                                     primalSolution.inputTrajectory_);
 
@@ -307,7 +307,7 @@ void RetrieveActiveNormalizedTime(const std::pair<int, int>& partitionInterval, 
 
   auto firstEventItr = std::upper_bound(postEventIndices.begin(), postEventIndices.end(), partitionInterval.first);
   auto lastEventItr = std::upper_bound(postEventIndices.begin(), postEventIndices.end(), partitionInterval.second);
-  const int NE = std::Distance(firstEventItr, lastEventItr);
+  const int NE = std::distance(firstEventItr, lastEventItr);
   // normalized event past the index
   normalizedPostEventIndices.resize(NE);
   std::transform(firstEventItr, lastEventItr, normalizedPostEventIndices.rbegin(),
@@ -333,7 +333,7 @@ std::vector<std::pair<int, int>> ComputePartitionIntervals(const scalar_array_t&
   int endPos, startPos = 0;
   for (size_t i = 1u; i < desiredPartitionPoints.size(); i++) {
     const auto itr = std::upper_bound(timeTrajectory.begin(), timeTrajectory.end(), desiredPartitionPoints[i]);
-    endPos = (itr != timeTrajectory.end()) ? std::Distance(timeTrajectory.begin(), itr) : (timeTrajectory.size() - 1);
+    endPos = (itr != timeTrajectory.end()) ? std::distance(timeTrajectory.begin(), itr) : (timeTrajectory.size() - 1);
     if (endPos != startPos) {
       partitionIntervals.emplace_back(startPos, endPos);
       startPos = endPos;

@@ -36,7 +36,7 @@ std::unique_ptr<StateCostCollection> Create(const StateCostCollection& systemCos
 /******************************************************************************************************/
 std::unique_ptr<StateInputCostCollection> Create(const StateInputCostCollection& systemCost,
                                                  std::shared_ptr<LoopshapingDefinition> loopshapingDefinition) {
-  switch (loopshapingDefinition->getType()) {
+  switch (loopshapingDefinition->GetType()) {
     case LoopshapingType::outputpattern:
       return std::make_unique<LoopshapingCostOutputPattern>(systemCost, std::move(loopshapingDefinition));
     case LoopshapingType::eliminatepattern:

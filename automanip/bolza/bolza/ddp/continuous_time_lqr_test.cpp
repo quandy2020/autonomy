@@ -42,7 +42,7 @@ TEST(testContinousTimeLqr, compareWithMatlab) {
   const TargetTrajectories TargetTrajectories({time}, {state}, {input});
 
   bolza::OptimalControlProblem problem;
-  problem.dynamicsPtr.Reset(dynamics.Clone());
+  problem.dynamicsPtr.reset(dynamics.Clone());
   problem.costPtr->Add("cost", std::move(cost));
   problem.targetTrajectoriesPtr = &targetTrajectories;
 
@@ -78,7 +78,7 @@ TEST(testContinousTimeLqr, evaluateCAREresidual) {
     const TargetTrajectories TargetTrajectories({time}, {state}, {input});
 
     bolza::OptimalControlProblem problem;
-    problem.dynamicsPtr.Reset(dynamics->Clone());
+    problem.dynamicsPtr.reset(dynamics->Clone());
     problem.costPtr->Add("cost", std::move(cost));
     problem.targetTrajectoriesPtr = &targetTrajectories;
 
@@ -95,7 +95,7 @@ TEST(testContinousTimeLqr, evaluateCAREresidual) {
     const auto& R = costMatrices.dfduu;
     const auto& P = costMatrices.dfdux;
     const auto& S = lqrSolution.valueFunction;
-    const matrix_t careResidual = A.transpose() * S + S * A - (S * B + P.transpose()) * R.lu().Solve(B.transpose() * S + P) + Q;
+    const matrix_t careResidual = A.transpose() * S + S * A - (S * B + P.transpose()) * R.lu().solve(B.transpose() * S + P) + Q;
     ASSERT_LT(careResidual.norm(), careResidualNormTolerance);
   }
 }

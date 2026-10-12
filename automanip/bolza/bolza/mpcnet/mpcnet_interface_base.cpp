@@ -27,7 +27,7 @@ void MPCNetInterfaceBase::StartDataGeneration(scalar_t alpha, const std::string&
                                               const std::vector<SystemObservation>& initialObservations,
                                               const std::vector<ModeSchedule>& modeSchedules,
                                               const std::vector<TargetTrajectories>& targetTrajectories) {
-  mpcnetRolloutManagerPtr_->startDataGeneration(alpha, policyFilePath, timeStep, dataDecimation, nSamples, samplingCovariance,
+  mpcnetRolloutManagerPtr_->StartDataGeneration(alpha, policyFilePath, timeStep, dataDecimation, nSamples, samplingCovariance,
                                                 initialObservations, modeSchedules, targetTrajectories);
 }
 
@@ -35,14 +35,14 @@ void MPCNetInterfaceBase::StartDataGeneration(scalar_t alpha, const std::string&
 /******************************************************************************************************/
 /******************************************************************************************************/
 bool MPCNetInterfaceBase::IsDataGenerationDone() {
-  return mpcnetRolloutManagerPtr_->isDataGenerationDone();
+  return mpcnetRolloutManagerPtr_->IsDataGenerationDone();
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 data_array_t MPCNetInterfaceBase::GetGeneratedData() {
-  return mpcnetRolloutManagerPtr_->getGeneratedData();
+  return mpcnetRolloutManagerPtr_->GetGeneratedData();
 }
 
 /******************************************************************************************************/
@@ -52,21 +52,21 @@ void MPCNetInterfaceBase::StartPolicyEvaluation(scalar_t alpha, const std::strin
                                                 const std::vector<SystemObservation>& initialObservations,
                                                 const std::vector<ModeSchedule>& modeSchedules,
                                                 const std::vector<TargetTrajectories>& targetTrajectories) {
-  mpcnetRolloutManagerPtr_->startPolicyEvaluation(alpha, policyFilePath, timeStep, initialObservations, modeSchedules, targetTrajectories);
+  mpcnetRolloutManagerPtr_->StartPolicyEvaluation(alpha, policyFilePath, timeStep, initialObservations, modeSchedules, targetTrajectories);
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 bool MPCNetInterfaceBase::IsPolicyEvaluationDone() {
-  return mpcnetRolloutManagerPtr_->isPolicyEvaluationDone();
+  return mpcnetRolloutManagerPtr_->IsPolicyEvaluationDone();
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 metrics_array_t MPCNetInterfaceBase::GetComputedMetrics() {
-  return mpcnetRolloutManagerPtr_->getComputedMetrics();
+  return mpcnetRolloutManagerPtr_->GetComputedMetrics();
 }
 
 }  // namespace mpcnet

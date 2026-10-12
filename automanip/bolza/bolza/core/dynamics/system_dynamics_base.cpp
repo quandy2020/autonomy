@@ -33,7 +33,7 @@ SystemDynamicsBase::SystemDynamicsBase(const SystemDynamicsBase& other) : Contro
 /******************************************************************************************************/
 VectorFunctionLinearApproximation SystemDynamicsBase::LinearApproximation(scalar_t t, const vector_t& x, const vector_t& u) {
   assert(preCompPtr_ != nullptr);
-  preCompPtr_->request(Request::Dynamics + Request::Approximation, t, x, u);
+  preCompPtr_->Request(Request::Dynamics + Request::Approximation, t, x, u);
   return LinearApproximation(t, x, u, *preCompPtr_);
 }
 
@@ -42,7 +42,7 @@ VectorFunctionLinearApproximation SystemDynamicsBase::LinearApproximation(scalar
 /******************************************************************************************************/
 VectorFunctionLinearApproximation SystemDynamicsBase::JumpMapLinearApproximation(scalar_t t, const vector_t& x) {
   assert(preCompPtr_ != nullptr);
-  preCompPtr_->requestPreJump(Request::Dynamics + Request::Approximation, t, x);
+  preCompPtr_->RequestPreJump(Request::Dynamics + Request::Approximation, t, x);
   return JumpMapLinearApproximation(t, x, *preCompPtr_);
 }
 
@@ -66,7 +66,7 @@ VectorFunctionLinearApproximation SystemDynamicsBase::GuardSurfacesLinearApproxi
   VectorFunctionLinearApproximation approximation;
   approximation.dfdx.setZero(1, x.rows());
   approximation.dfdu.setZero(1, u.rows());
-  approximation.f = this->computeGuardSurfaces(t, x);
+  approximation.f = this->ComputeGuardSurfaces(t, x);
   return approximation;
 }
 

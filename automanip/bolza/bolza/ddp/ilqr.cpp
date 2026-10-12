@@ -54,7 +54,7 @@ ILQR::ILQR(ddp::Settings ddpSettings, const RolloutBase& rollout, const OptimalC
     const bool isRiskSensitive = !numerics::almost_eq(Settings().riskSensitiveCoeff_, 0.0);
     const bool preComputeRiccatiTerms = Settings().preComputeRiccatiTerms_ && (Settings().strategy_ == search_strategy::Type::LINE_SEARCH);
     riccatiEquationsPtrStock_.emplace_back(new DiscreteTimeRiccatiEquations(preComputeRiccatiTerms, isRiskSensitive));
-    riccatiEquationsPtrStock_.back()->setRiskSensitiveCoefficient(Settings().riskSensitiveCoeff_);
+    riccatiEquationsPtrStock_.back()->SetRiskSensitiveCoefficient(Settings().riskSensitiveCoeff_);
   }  // end of i loop
 
   Eigen::initParallel();
@@ -205,7 +205,7 @@ matrix_t ILQR::ComputeHamiltonianHessian(const ModelData& modelData, const matri
   const matrix_t BmTransSm = modelData.dynamics.dfdu.transpose() * Sm;
   matrix_t Hm = modelData.cost.dfduu;
   Hm.noalias() += BmTransSm * modelData.dynamics.dfdu;
-  return searchStrategyPtr_->augmentHamiltonianHessian(modelData, Hm);
+  return searchStrategyPtr_->AugmentHamiltonianHessian(modelData, Hm);
 }
 
 /******************************************************************************************************/
@@ -242,16 +242,16 @@ void ILQR::RiccatiEquationsWorker(size_t workerIndex, const std::pair<int, int>&
 
     ComputeProjectionAndRiccatiModification(curModelData, valueFunctionNext->dfdxx, curProjectedModelData, curRiccatiModification);
 
-    riccatiEquationsPtrStock_[workerIndex]->computeMap(curProjectedModelData, curRiccatiModification, valueFunctionNext->dfdxx,
+    riccatiEquationsPtrStock_[workerIndex]->ComputeMap(curProjectedModelData, curRiccatiModification, valueFunctionNext->dfdxx,
                                                        valueFunctionNext->dfdx, valueFunctionNext->f, curProjectedKm, curProjectedLv, curSm,
                                                        curSv, curs);
     valueFunctionNext = &(nominalDualData_.valueFunctionTrajectory[curIndex]);
 
-    if (std::Distance(firstEventItr, nextEventItr) >= 0 && curIndex == *nextEventItr) {
+    if (std::distance(firstEventItr, nextEventItr) >= 0 && curIndex == *nextEventItr) {
       // move to pre-event index
       --curIndex;
 
-      const int index = std::Distance(postEventIndices.begin(), nextEventItr);
+      const int index = std::distance(postEventIndices.begin(), nextEventItr);
       std::tie(finalValueTemp.dfdxx, finalValueTemp.dfdx, finalValueTemp.f) =
           RiccatiTransversalityConditions(nominalPrimalData_.modelDataEventTimes[index], curSm, curSv, curs);
 

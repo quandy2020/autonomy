@@ -115,7 +115,7 @@ scalar_t MaxControllerUpdateNorm(const LinearController& controller);
 scalar_t ComputeControllerUpdateIS(const LinearController& controller);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Outputs a controller with the same time stamp and gains as unoptimizedController. However, bias is incremented based on:
  *
@@ -176,7 +176,7 @@ void RetrieveActiveNormalizedTime(const std::pair<int, int>& partitionInterval, 
 std::vector<std::pair<int, int>> ComputePartitionIntervals(const scalar_array_t& timeTrajectory, int numWorkers);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Gets a reference to the linear controller from the given primal solution.
  *
@@ -193,7 +193,7 @@ inline LinearController& GetLinearController(PrimalSolution& primalSolution) {
 }
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Gets a const reference to the linear controller from the given primal solution.
  *

@@ -58,7 +58,7 @@ GDDPSettings& OCS2<STATE_DIM, INPUT_DIM>::GddpSettings() {
    * @brief Get GDDP.
    * @return Result value.
    */
-  return ulCostPtr_->getGDDP().settings();
+  return ulCostPtr_->getGDDP().Settings();
 }
 
 /******************************************************************************************************/
@@ -74,7 +74,7 @@ ddp::Settings& OCS2<STATE_DIM, INPUT_DIM>::SlqSettings() {
    * @brief Get SLQ.
    * @return Result value.
    */
-  return ulCostPtr_->getSLQ().settings();
+  return ulCostPtr_->getSLQ().Settings();
 }
 
 /******************************************************************************************************/
@@ -144,7 +144,7 @@ void OCS2<STATE_DIM, INPUT_DIM>::GetCost(scalar_t& cost) const {
    * @param [in] cost: Cost.
    * @return Result value.
    */
-  frankWolfeGradientDescentSolver_.getCost(cost);
+  frankWolfeGradientDescentSolver_.GetCost(cost);
 }
 
 /******************************************************************************************************/
@@ -204,7 +204,7 @@ void OCS2<STATE_DIM, INPUT_DIM>::Run(const scalar_t& initTime, const state_vecto
    * @param [in] maxGradientInverse: Max Gradient Inverse.
    * @return Result value.
    */
-  frankWolfeGradientDescentSolver_.run(initParameters, maxGradientInverse, ulCostPtr_.get(), ulConstraintsPtr_.get());
+  frankWolfeGradientDescentSolver_.Run(initParameters, maxGradientInverse, ulCostPtr_.get(), ulConstraintsPtr_.get());
 }
 
 }  // namespace bolza

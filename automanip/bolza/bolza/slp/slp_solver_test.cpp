@@ -86,7 +86,7 @@ std::pair<PrimalSolution, std::vector<PerformanceIndex>> Solve(const VectorFunct
 
   // Solve
   solver.Run(startTime, initState, finalTime);
-  return {solver.PrimalSolution(finalTime), solver.GetIterationsLog()};
+  return {solver.GetPrimalSolution(finalTime), solver.GetIterationsLog()};
 }
 
 }  // namespace

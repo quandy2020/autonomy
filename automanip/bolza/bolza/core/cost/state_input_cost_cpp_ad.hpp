@@ -56,7 +56,7 @@ class StateInputCostCppAd : public StateInputCost {
                   const std::string& modelFolder = "/tmp/ocs2", bool recompileLibraries = true, bool verbose = true);
 
     /**
-   * @brief /** Get the parameter vector */.
+   * @brief Get the parameter vector 
    * @param [in] time: Time.
    * @param [in] targetTrajectories: Target Trajectories.
    * @return Result value.
@@ -71,7 +71,7 @@ class StateInputCostCppAd : public StateInputCost {
   };
 
     /**
-   * @brief /** Cost evaluation */.
+   * @brief Cost evaluation 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] input: Input.
@@ -102,7 +102,7 @@ class StateInputCostCppAd : public StateInputCost {
   StateInputCostCppAd(const StateInputCostCppAd& rhs);
 
     /**
-   * @brief /** The CppAD cost function */.
+   * @brief The CppAD cost function 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] input: Input.

@@ -42,7 +42,7 @@ namespace search_strategy {
 enum class Type { LINE_SEARCH, LEVENBERG_MARQUARDT };
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Get string name of DDP_Strategy type
  *
@@ -53,7 +53,7 @@ enum class Type { LINE_SEARCH, LEVENBERG_MARQUARDT };
 std::string ToString(Type strategy);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Get DDP_Strategy type from string name, useful for reading config file
  *
@@ -103,7 +103,7 @@ struct Settings {
 };  // end of Settings
 
 /**
- * @brief /**.
+ * @brief.
  *
  * This function loads the "Line_Search" variables from a config file.
  *
@@ -141,7 +141,7 @@ struct Settings {
 };  // end of Settings
 
 /**
- * @brief /**.
+ * @brief.
  *
  * This function loads the "Levenberg_Marquardt" variables from a config file.
  *

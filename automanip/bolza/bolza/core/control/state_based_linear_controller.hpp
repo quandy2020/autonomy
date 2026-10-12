@@ -44,7 +44,7 @@ class StateBasedLinearController final : public ControllerBase {
   void SetController(ControllerBase* ctrlPtr);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Computes the control input based on the trajectory spreading scheme.
    *

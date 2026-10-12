@@ -113,7 +113,7 @@ void SwingPhase::SetFullSwing(const SwingProfile& swingProfile, const TerrainMod
     // Terrain adaptation if information is available
     scalar_t maxObstacleHeight = 0.0;
     if (terrainModel != nullptr) {
-      const auto heightProfile = terrainModel->getHeightProfileAlongLine(liftOffPositionInWorld, touchDownPositionInWorld);
+      const auto heightProfile = terrainModel->GetHeightProfileAlongLine(liftOffPositionInWorld, touchDownPositionInWorld);
 
       // Find the maximum obstacle. An obstacle is a height point sticking out above the line between liftoff and touchdown.
       for (const auto& point : heightProfile) {
@@ -157,10 +157,10 @@ void SwingPhase::SetFullSwing(const SwingProfile& swingProfile, const TerrainMod
   motion_.reset(new SwingSpline3d(swingPoints));
 
   // Terrain clearance
-  if (terrainModel != nullptr && terrainModel->getSignedDistanceField() != nullptr) {
-    const auto& sdf = *terrainModel->getSignedDistanceField();
-    const scalar_t sdfStartClearance = std::min(sdf.value(liftOffPositionInWorld), 0.0) + sdfStartEndMargin;
-    const scalar_t sdfEndClearance = std::min(sdf.value(touchDownPositionInWorld), 0.0) + sdfStartEndMargin;
+  if (terrainModel != nullptr && terrainModel->GetSignedDistanceField() != nullptr) {
+    const auto& sdf = *terrainModel->GetSignedDistanceField();
+    const scalar_t sdfStartClearance = std::min(sdf.Value(liftOffPositionInWorld), 0.0) + sdfStartEndMargin;
+    const scalar_t sdfEndClearance = std::min(sdf.Value(touchDownPositionInWorld), 0.0) + sdfStartEndMargin;
     const scalar_t midSwingTime = 0.5 * (liftOff_.time + touchDown_.time);
     SwingNode startNode{liftOff_.time, sdfStartClearance, liftOff_.velocity};
     SwingNode apexNode{midSwingTime, sdfMidswingMargin, 0.0};
@@ -203,9 +203,9 @@ void SwingPhase::SetHalveSwing(const SwingProfile& swingProfile, const TerrainMo
   motion_.reset(new SwingSpline3d(swingPoints));
 
   {  // Terrain clearance
-    if (terrainModel != nullptr && terrainModel->getSignedDistanceField() != nullptr) {
-      const auto& sdf = *terrainModel->getSignedDistanceField();
-      const scalar_t sdfStartClearance = std::min(sdf.value(liftOffPositionInWorld), 0.0) + sdfStartEndMargin;
+    if (terrainModel != nullptr && terrainModel->GetSignedDistanceField() != nullptr) {
+      const auto& sdf = *terrainModel->GetSignedDistanceField();
+      const scalar_t sdfStartClearance = std::min(sdf.Value(liftOffPositionInWorld), 0.0) + sdfStartEndMargin;
       SwingNode startNode{liftOff_.time, sdfStartClearance, liftOff_.velocity};
       SwingNode endNode{touchDown_.time, sdfMidswingMargin, 0.0};
       terrainClearanceMotion_.reset(new QuinticSwing(startNode, sdfMidswingMargin, endNode));
@@ -227,20 +227,20 @@ vector3_t SwingPhase::NominalFootholdLocation() const {
 }
 
 vector3_t SwingPhase::GetPositionInWorld(scalar_t time) const {
-  return motion_->position(time);
+  return motion_->Position(time);
 }
 
 vector3_t SwingPhase::GetVelocityInWorld(scalar_t time) const {
-  return motion_->velocity(time);
+  return motion_->Velocity(time);
 }
 
 vector3_t SwingPhase::GetAccelerationInWorld(scalar_t time) const {
-  return motion_->acceleration(time);
+  return motion_->Acceleration(time);
 }
 
 scalar_t SwingPhase::GetMinimumFootClearance(scalar_t time) const {
   if (terrainClearanceMotion_ != nullptr) {
-    return terrainClearanceMotion_->position(time);
+    return terrainClearanceMotion_->Position(time);
   } else {
     return 0.0;
   }
@@ -253,10 +253,10 @@ scalar_t SwingPhase::GetScaling(scalar_t time) const {
   static const CubicSpline scalingSpline({startInterpolation, 0.0, 0.0}, {endInterpolation, 1.0, 0.0});
 
   const scalar_t normalizedTime = (time - liftOff_.time) / (touchDown_.time - liftOff_.time);
-  if (NormalizedTime < startInterpolation) {
+  if (normalizedTime < startInterpolation) {
     return 0.0;
-  } else if (NormalizedTime < endInterpolation) {
-    return scalingSpline.position(normalizedTime);
+  } else if (normalizedTime < endInterpolation) {
+    return scalingSpline.Position(normalizedTime);
   } else {
     return 1.0;
   }

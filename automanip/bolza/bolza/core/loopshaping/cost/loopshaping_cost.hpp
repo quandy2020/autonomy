@@ -32,7 +32,7 @@ namespace bolza {
 namespace LoopshapingCost {
 
 /**
- * @brief /** Factory for Loopshaping state-only cost wrapper */.
+ * @brief Factory for Loopshaping state-only cost wrapper 
  * @param [in] systemCost: System Cost.
  * @param [in] loopshapingDefinition: Loopshaping Definition.
  * @return Owning pointer.
@@ -41,7 +41,7 @@ std::unique_ptr<StateCostCollection> Create(const StateCostCollection& systemCos
                                             std::shared_ptr<LoopshapingDefinition> loopshapingDefinition);
 
 /**
- * @brief /** Factory for Loopshaping state-input cost wrapper */.
+ * @brief Factory for Loopshaping state-input cost wrapper 
  * @param [in] systemCost: System Cost.
  * @param [in] loopshapingDefinition: Loopshaping Definition.
  * @return Owning pointer.

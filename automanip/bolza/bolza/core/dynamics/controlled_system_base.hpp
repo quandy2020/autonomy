@@ -58,7 +58,7 @@ class ControlledSystemBase : public OdeBase {
   virtual void Reset() { controllerPtr_ = nullptr; }
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Sets the control policy using the controller class.
    *
@@ -106,7 +106,7 @@ class ControlledSystemBase : public OdeBase {
   virtual vector_t ComputeJumpMap(scalar_t time, const vector_t& state, const PreComputation& preComp);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Computes the flow map of a system with exogenous input.
    *
@@ -124,7 +124,7 @@ class ControlledSystemBase : public OdeBase {
   vector_t ComputeFlowMap(scalar_t t, const vector_t& x, const vector_t& u);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * State map at the transition time
    *
@@ -148,7 +148,7 @@ class ControlledSystemBase : public OdeBase {
 
  protected:
     /**
-   * @brief /**.
+   * @brief.
    *
    * Copy constructor
    *

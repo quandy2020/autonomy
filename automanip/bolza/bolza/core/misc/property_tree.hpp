@@ -22,6 +22,7 @@
  */
 
 #include <cstddef>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -80,11 +81,6 @@ struct Translator<long> {
 };
 
 template <>
-struct Translator<unsigned long> {
-  static unsigned long get(const std::string& s) { return std::stoul(s); }
-};
-
-template <>
 struct Translator<float> {
   static float get(const std::string& s) { return std::stof(s); }
 };
@@ -125,7 +121,7 @@ class ptree {
   struct Node {
     std::string data;
     bool has_data = false;
-    std::unordered_map<std::string, Node> children;
+    std::unordered_map<std::string, std::unique_ptr<Node>> children;
   };
 
   Node root_;

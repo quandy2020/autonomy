@@ -90,7 +90,7 @@ class SwitchedModelPreComputation : public bolza::PreComputation {
    * @brief Get Signed Distance Field.
    * @return Pointer; may be null.
    */
-  const SignedDistanceField* GetSignedDistanceField() const { return swingTrajectoryPlannerPtr_->getSignedDistanceField(); }
+  const SignedDistanceField* GetSignedDistanceField() const { return swingTrajectoryPlannerPtr_->GetSignedDistanceField(); }
   /**
    * @brief Get Contact Flags.
    * @return Result value.

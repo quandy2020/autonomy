@@ -42,7 +42,7 @@ template <typename T>
  * @param [in] rhs: Rhs.
  * @return Result value.
  */
-constexpr typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::Value, bool>::type AreSameSize(const T& lhs, const T& rhs) {
+constexpr typename std::enable_if<!std::is_base_of<Eigen::EigenBase<T>, T>::value, bool>::type AreSameSize(const T& lhs, const T& rhs) {
   return true;
 }
 
@@ -81,7 +81,7 @@ const Data& StdAccessFun(const std::vector<Data, Alloc>& vec, size_t ind) {
 /******************************************************************************************************/
 /******************************************************************************************************/
 /**
- * @brief /******************************************************************************************************/.
+ * @brief***************************************************************************************************
  * @param [in] enquiryTime: Enquiry Time.
  * @param [in] timeArray: Time Array.
  * @return Result value.
@@ -203,13 +203,13 @@ auto Interpolate(index_alpha_t indexAlpha, const std::vector<Data, Alloc>& dataA
      * @param [in] index: Index.
      * @return Result value.
      */
-    auto& lhs = AccessFun(dataArray, index);
+    auto& lhs = accessFun(dataArray, index);
     /**
      * @brief Access Fun.
      * @param [in] dataArray: Data Array.
      * @return Result value.
      */
-    auto& rhs = AccessFun(dataArray, index + 1);
+    auto& rhs = accessFun(dataArray, index + 1);
     if (AreSameSize(rhs, lhs)) {
       return alpha * lhs + (scalar_t(1.0) - alpha) * rhs;
     } else {
@@ -222,7 +222,7 @@ auto Interpolate(index_alpha_t indexAlpha, const std::vector<Data, Alloc>& dataA
      * @param [in] dataArray: Data Array.
      * @return Result value.
      */
-    return AccessFun(dataArray, 0);
+    return accessFun(dataArray, 0);
   }
 }
 

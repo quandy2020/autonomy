@@ -32,19 +32,19 @@ void swap(SystemObservation& a, SystemObservation& b) noexcept {
 /******************************************************************************************************/
 /******************************************************************************************************/
 std::ostream& operator<<(std::ostream& out, const SystemObservation& observation) {
-  Out << "Observation: \n";
-  Out << "\t time:      " << observation.time << '\n';
-  Out << "\t mode:      " << observation.mode << '\n';
-  Out << "\t state:    [";
+  out << "Observation: \n";
+  out << "\t time:      " << observation.time << '\n';
+  out << "\t mode:      " << observation.mode << '\n';
+  out << "\t state:    [";
   for (int i = 0; i < observation.state.size() - 1; i++) {
-    Out << observation.state(i) << ", ";
+    out << observation.state(i) << ", ";
   }
-  Out << observation.state(observation.state.size() - 1) << "]\n";
-  Out << "\t input:    [";
+  out << observation.state(observation.state.size() - 1) << "]\n";
+  out << "\t input:    [";
   for (int i = 0; i < observation.input.size() - 1; i++) {
-    Out << observation.input(i) << ", ";
+    out << observation.input(i) << ", ";
   }
-  Out << observation.input(observation.input.size() - 1) << "]";
+  out << observation.input(observation.input.size() - 1) << "]";
 
   return out;
 }

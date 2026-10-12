@@ -27,8 +27,8 @@ std::vector<LagrangianMetrics> LoopshapingStateAugmentedLagrangian::GetValue(sca
   }
 
   const LoopshapingPreComputation& preCompLS = cast<LoopshapingPreComputation>(preComp);
-  const auto& x_system = preCompLS.getSystemState();
-  const auto& preComp_system = preCompLS.getSystemPreComputation();
+  const auto& x_system = preCompLS.GetSystemState();
+  const auto& preComp_system = preCompLS.GetSystemPreComputation();
 
   return StateAugmentedLagrangianCollection::GetValue(t, x_system, termsMultiplier, preComp_system);
 }
@@ -40,8 +40,8 @@ ScalarFunctionQuadraticApproximation LoopshapingStateAugmentedLagrangian::GetQua
   }
 
   const LoopshapingPreComputation& preCompLS = cast<LoopshapingPreComputation>(preComp);
-  const auto& x_system = preCompLS.getSystemState();
-  const auto& preComp_system = preCompLS.getSystemPreComputation();
+  const auto& x_system = preCompLS.GetSystemState();
+  const auto& preComp_system = preCompLS.GetSystemPreComputation();
   const auto stateDim = x.rows();
   const auto sysStateDim = x_system.rows();
   const auto filtStateDim = x.rows() - sysStateDim;
@@ -63,7 +63,7 @@ void LoopshapingStateAugmentedLagrangian::UpdateLagrangian(scalar_t t, const vec
     termsMultiplier.clear();
   }
 
-  const auto x_system = loopshapingDefinition_->getSystemState(x);
+  const auto x_system = loopshapingDefinition_->GetSystemState(x);
   StateAugmentedLagrangianCollection::UpdateLagrangian(t, x_system, termsMetrics, termsMultiplier);
 }
 

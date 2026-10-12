@@ -63,7 +63,7 @@ class BVPEquations : public OdeBase<STATE_DIM * STATE_DIM + STATE_DIM> {
   using state_input_matrix_array_t = std::vector<state_input_matrix_t, Eigen::aligned_allocator<state_input_matrix_t> >;
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Default constructor.
    *
@@ -213,7 +213,7 @@ class BVPEquations : public OdeBase<STATE_DIM * STATE_DIM + STATE_DIM> {
        * @param [in] AmPtr: Am Ptr.
        * @return Result value.
        */
-      AmFunc_.setData(AmPtr);
+      AmFunc_.SetData(AmPtr);
     else
       /**
        * @brief Runtime error.
@@ -226,7 +226,7 @@ class BVPEquations : public OdeBase<STATE_DIM * STATE_DIM + STATE_DIM> {
        * @param [in] OmPtr: Om Ptr.
        * @return Result value.
        */
-      OmFunc_.setData(OmPtr);
+      OmFunc_.SetData(OmPtr);
     else
       /**
        * @brief Set Zero.
@@ -239,7 +239,7 @@ class BVPEquations : public OdeBase<STATE_DIM * STATE_DIM + STATE_DIM> {
        * @param [in] BmPtr: Bm Ptr.
        * @return Result value.
        */
-      BmFunc_.setData(BmPtr);
+      BmFunc_.SetData(BmPtr);
     else
       /**
        * @brief Runtime error.
@@ -252,7 +252,7 @@ class BVPEquations : public OdeBase<STATE_DIM * STATE_DIM + STATE_DIM> {
        * @param [in] GvPtr: Gv Ptr.
        * @return Result value.
        */
-      GvFunc_.setData(GvPtr);
+      GvFunc_.SetData(GvPtr);
     else
       /**
        * @brief Set Zero.
@@ -266,7 +266,7 @@ class BVPEquations : public OdeBase<STATE_DIM * STATE_DIM + STATE_DIM> {
        * @param [in] QvPtr: Qv Ptr.
        * @return Result value.
        */
-      QvFunc_.setData(QvPtr);
+      QvFunc_.SetData(QvPtr);
     else
       /**
        * @brief Set Zero.
@@ -279,7 +279,7 @@ class BVPEquations : public OdeBase<STATE_DIM * STATE_DIM + STATE_DIM> {
        * @param [in] QmPtr: Qm Ptr.
        * @return Result value.
        */
-      QmFunc_.setData(QmPtr);
+      QmFunc_.SetData(QmPtr);
     else
       /**
        * @brief Set Zero.
@@ -292,7 +292,7 @@ class BVPEquations : public OdeBase<STATE_DIM * STATE_DIM + STATE_DIM> {
        * @param [in] PmPtr: Pm Ptr.
        * @return Result value.
        */
-      PmFunc_.setData(PmPtr);
+      PmFunc_.SetData(PmPtr);
     else
       /**
        * @brief Set Zero.
@@ -306,7 +306,7 @@ class BVPEquations : public OdeBase<STATE_DIM * STATE_DIM + STATE_DIM> {
        * @param [in] RvPtr: Rv Ptr.
        * @return Result value.
        */
-      RvFunc_.setData(RvPtr);
+      RvFunc_.SetData(RvPtr);
     else
       /**
        * @brief Set Zero.
@@ -319,7 +319,7 @@ class BVPEquations : public OdeBase<STATE_DIM * STATE_DIM + STATE_DIM> {
        * @param [in] RmPtr: Rm Ptr.
        * @return Result value.
        */
-      RmFunc_.setData(RmPtr);
+      RmFunc_.SetData(RmPtr);
     else
       /**
        * @brief Runtime error.
@@ -332,7 +332,7 @@ class BVPEquations : public OdeBase<STATE_DIM * STATE_DIM + STATE_DIM> {
        * @param [in] RmInversePtr: Rm Inverse Ptr.
        * @return Result value.
        */
-      RmInverseFunc_.setData(RmInversePtr);
+      RmInverseFunc_.SetData(RmInversePtr);
     else
       /**
        * @brief Runtime error.

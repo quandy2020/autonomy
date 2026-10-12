@@ -32,7 +32,7 @@ namespace bolza {
 namespace LoopshapingSoftConstraint {
 
 /**
- * @brief /** Factory for Loopshaping state-only soft constraint wrapper */.
+ * @brief Factory for Loopshaping state-only soft constraint wrapper 
  * @param [in] systemSoftConstraint: System Soft Constraint.
  * @param [in] loopshapingDefinition: Loopshaping Definition.
  * @return Owning pointer.
@@ -41,7 +41,7 @@ std::unique_ptr<StateCostCollection> Create(const StateCostCollection& systemSof
                                             std::shared_ptr<LoopshapingDefinition> loopshapingDefinition);
 
 /**
- * @brief /** Factory for Loopshaping state-input soft constraint wrapper */.
+ * @brief Factory for Loopshaping state-input soft constraint wrapper 
  * @param [in] systemSoftConstraint: System Soft Constraint.
  * @param [in] loopshapingDefinition: Loopshaping Definition.
  * @return Owning pointer.

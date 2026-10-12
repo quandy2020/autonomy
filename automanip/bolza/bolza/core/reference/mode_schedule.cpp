@@ -26,7 +26,7 @@ namespace bolza {
 /******************************************************************************************************/
 /******************************************************************************************************/
 ModeSchedule::ModeSchedule(std::vector<scalar_t> eventTimesInput, std::vector<size_t> modeSequenceInput)
-    : EventTimes(std::move(eventTimesInput)), modeSequence(std::move(modeSequenceInput)) {
+    : eventTimes(std::move(eventTimesInput)), modeSequence(std::move(modeSequenceInput)) {
   assert(!modeSequence.empty());
   assert(eventTimes.size() + 1 == modeSequence.size());
 }
@@ -75,7 +75,7 @@ size_t GetNumberOfPrecedingEvents(const scalar_array_t& timeTrajectory, const si
         "[getNumberOfPrecedingEvents] The requested time is within the time trajectory but it is not marked as an event!");
   }
 
-  return std::Distance(postEventIndices.cbegin(), eventIndexItr);
+  return std::distance(postEventIndices.cbegin(), eventIndexItr);
 }
 
 /******************************************************************************************************/

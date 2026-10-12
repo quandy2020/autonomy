@@ -175,7 +175,7 @@ class GDDP {
   const scalar_array_t& EventTimes() const;
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Runs the GSLQ to compute the gradient of the cost function w.r.t. the event times.
    *
@@ -306,7 +306,7 @@ class GDDP {
                                         state_vector_array2_t& nablaSvTrajectoriesStock, state_matrix_array2_t& nablaSmTrajectoriesStock);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Solves a boundary value problem using a Riccati approach which later be used to
    *
@@ -435,4 +435,4 @@ class GDDP {
 
 }  // namespace bolza
 
-#include "implementation/GDDP.h"
+#include "implementation/gddp.hpp"

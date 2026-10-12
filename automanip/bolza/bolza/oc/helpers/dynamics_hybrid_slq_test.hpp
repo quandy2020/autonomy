@@ -79,8 +79,8 @@ class HybridSysDynamics2 final : public LinearSystemDynamics {
 class HybridSysDynamics final : public SystemDynamicsBase {
  public:
   HybridSysDynamics() {
-    subsystemDynamicsPtr_[0].Reset(new HybridSysDynamics1);
-    subsystemDynamicsPtr_[1].Reset(new HybridSysDynamics2);
+    subsystemDynamicsPtr_[0].reset(new HybridSysDynamics1);
+    subsystemDynamicsPtr_[1].reset(new HybridSysDynamics2);
   }
 
   ~HybridSysDynamics() override = default;
@@ -88,8 +88,8 @@ class HybridSysDynamics final : public SystemDynamicsBase {
   HybridSysDynamics* Clone() const override { return new HybridSysDynamics(*this); }
 
   HybridSysDynamics(const HybridSysDynamics& other) : subsystemDynamicsPtr_(2) {
-    subsystemDynamicsPtr_[0].Reset(other.subsystemDynamicsPtr_[0]->Clone());
-    subsystemDynamicsPtr_[1].Reset(other.subsystemDynamicsPtr_[1]->Clone());
+    subsystemDynamicsPtr_[0].reset(other.subsystemDynamicsPtr_[0]->Clone());
+    subsystemDynamicsPtr_[1].reset(other.subsystemDynamicsPtr_[1]->Clone());
   }
 
   vector_t ComputeFlowMap(scalar_t t, const vector_t& x, const vector_t& u, const PreComputation& preComp) override {

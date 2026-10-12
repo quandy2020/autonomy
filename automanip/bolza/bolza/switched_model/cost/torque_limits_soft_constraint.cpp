@@ -17,28 +17,28 @@ TorqueLimitsSoftConstraint::TorqueLimitsSoftConstraint(const joint_coordinate_t&
 }
 
 TorqueLimitsSoftConstraint::TorqueLimitsSoftConstraint(const TorqueLimitsSoftConstraint& rhs)
-    : jointTorquePenalty_(rhs.jointTorquePenalty_->clone()), torqueLimits_(rhs.torqueLimits_), offset_(rhs.offset_) {}
+    : jointTorquePenalty_(rhs.jointTorquePenalty_->Clone()), torqueLimits_(rhs.torqueLimits_), offset_(rhs.offset_) {}
 
 scalar_t TorqueLimitsSoftConstraint::GetValue(scalar_t time, const vector_t& state, const vector_t& input,
                                               const bolza::TargetTrajectories& targetTrajectories,
                                               const bolza::PreComputation& preComp) const {
   const auto& switchedModelPreComp = bolza::cast<SwitchedModelPreComputation>(preComp);
-  return GetValue(switchedModelPreComp.jointTorques());
+  return GetValue(switchedModelPreComp.JointTorques());
 }
 
 ScalarFunctionQuadraticApproximation TorqueLimitsSoftConstraint::GetQuadraticApproximation(
     scalar_t time, const vector_t& state, const vector_t& input, const bolza::TargetTrajectories& targetTrajectories,
     const bolza::PreComputation& preComp) const {
   const auto& switchedModelPreComp = bolza::cast<SwitchedModelPreComputation>(preComp);
-  return GetQuadraticApproximation(switchedModelPreComp.jointTorquesDerivative());
+  return GetQuadraticApproximation(switchedModelPreComp.JointTorquesDerivative());
 }
 
 scalar_t TorqueLimitsSoftConstraint::GetValue(const joint_coordinate_t& jointTorques) const {
   const joint_coordinate_t upperBoundTorqueOffset = torqueLimits_ - jointTorques;
   const joint_coordinate_t lowerBoundTorqueOffset = torqueLimits_ + jointTorques;  // = qd - (-qd_limit)
 
-  return upperBoundTorqueOffset.unaryExpr([&](scalar_t hi) { return jointTorquePenalty_->getValue(0.0, hi); }).sum() +
-         lowerBoundTorqueOffset.unaryExpr([&](scalar_t hi) { return jointTorquePenalty_->getValue(0.0, hi); }).sum() + offset_;
+  return upperBoundTorqueOffset.unaryExpr([&](scalar_t hi) { return jointTorquePenalty_->GetValue(0.0, hi); }).sum() +
+         lowerBoundTorqueOffset.unaryExpr([&](scalar_t hi) { return jointTorquePenalty_->GetValue(0.0, hi); }).sum() + offset_;
 }
 
 ScalarFunctionQuadraticApproximation TorqueLimitsSoftConstraint::GetQuadraticApproximation(
@@ -47,16 +47,16 @@ ScalarFunctionQuadraticApproximation TorqueLimitsSoftConstraint::GetQuadraticApp
   const joint_coordinate_t lowerBoundTorqueOffset = torqueLimits_ + jointTorquesDerivative.f;  // = qd - (-qd_limit)
 
   ScalarFunctionQuadraticApproximation cost;
-  cost.f = upperBoundTorqueOffset.unaryExpr([&](scalar_t hi) { return jointTorquePenalty_->getValue(0.0, hi); }).sum() +
-           lowerBoundTorqueOffset.unaryExpr([&](scalar_t hi) { return jointTorquePenalty_->getValue(0.0, hi); }).sum() + offset_;
+  cost.f = upperBoundTorqueOffset.unaryExpr([&](scalar_t hi) { return jointTorquePenalty_->GetValue(0.0, hi); }).sum() +
+           lowerBoundTorqueOffset.unaryExpr([&](scalar_t hi) { return jointTorquePenalty_->GetValue(0.0, hi); }).sum() + offset_;
 
   // Penalty derivatives w.r.t. the constraint
   const joint_coordinate_t penaltyDerivatives = lowerBoundTorqueOffset.unaryExpr([&](scalar_t hi) {
-    return jointTorquePenalty_->getDerivative(0.0, hi);
-  }) - upperBoundTorqueOffset.unaryExpr([&](scalar_t hi) { return jointTorquePenalty_->getDerivative(0.0, hi); });
+    return jointTorquePenalty_->GetDerivative(0.0, hi);
+  }) - upperBoundTorqueOffset.unaryExpr([&](scalar_t hi) { return jointTorquePenalty_->GetDerivative(0.0, hi); });
   const joint_coordinate_t penaltySecondDerivatives = lowerBoundTorqueOffset.unaryExpr([&](scalar_t hi) {
-    return jointTorquePenalty_->getSecondDerivative(0.0, hi);
-  }) + upperBoundTorqueOffset.unaryExpr([&](scalar_t hi) { return jointTorquePenalty_->getSecondDerivative(0.0, hi); });
+    return jointTorquePenalty_->GetSecondDerivative(0.0, hi);
+  }) + upperBoundTorqueOffset.unaryExpr([&](scalar_t hi) { return jointTorquePenalty_->GetSecondDerivative(0.0, hi); });
 
   cost.dfdx = vector_t::Zero(STATE_DIM);
   cost.dfdu = vector_t::Zero(INPUT_DIM);

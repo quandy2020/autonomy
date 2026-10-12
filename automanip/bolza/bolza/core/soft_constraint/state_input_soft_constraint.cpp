@@ -36,7 +36,7 @@ StateInputSoftConstraint::StateInputSoftConstraint(std::unique_ptr<StateInputCon
 /******************************************************************************************************/
 /******************************************************************************************************/
 StateInputSoftConstraint::StateInputSoftConstraint(const StateInputSoftConstraint& other)
-    : StateInputCost(other), constraintPtr_(other.constraintPtr_->clone()), penalty_(other.penalty_) {}
+    : StateInputCost(other), constraintPtr_(other.constraintPtr_->Clone()), penalty_(other.penalty_) {}
 
 /******************************************************************************************************/
 /******************************************************************************************************/
@@ -49,7 +49,7 @@ StateInputSoftConstraint* StateInputSoftConstraint::Clone() const {
 /******************************************************************************************************/
 /******************************************************************************************************/
 bool StateInputSoftConstraint::IsActive(scalar_t time) const {
-  return constraintPtr_->isActive(time);
+  return constraintPtr_->IsActive(time);
 }
 
 /******************************************************************************************************/
@@ -57,7 +57,7 @@ bool StateInputSoftConstraint::IsActive(scalar_t time) const {
 /******************************************************************************************************/
 scalar_t StateInputSoftConstraint::GetValue(scalar_t time, const vector_t& state, const vector_t& input, const TargetTrajectories&,
                                             const PreComputation& preComp) const {
-  return penalty_.getValue(time, constraintPtr_->getValue(time, state, input, preComp));
+  return penalty_.GetValue(time, constraintPtr_->GetValue(time, state, input, preComp));
 }
 
 /******************************************************************************************************/
@@ -66,11 +66,11 @@ scalar_t StateInputSoftConstraint::GetValue(scalar_t time, const vector_t& state
 ScalarFunctionQuadraticApproximation StateInputSoftConstraint::GetQuadraticApproximation(scalar_t time, const vector_t& state,
                                                                                          const vector_t& input, const TargetTrajectories&,
                                                                                          const PreComputation& preComp) const {
-  switch (constraintPtr_->getOrder()) {
+  switch (constraintPtr_->GetOrder()) {
     case ConstraintOrder::Linear:
-      return penalty_.getQuadraticApproximation(time, constraintPtr_->getLinearApproximation(time, state, input, preComp));
+      return penalty_.GetQuadraticApproximation(time, constraintPtr_->GetLinearApproximation(time, state, input, preComp));
     case ConstraintOrder::Quadratic:
-      return penalty_.getQuadraticApproximation(time, constraintPtr_->getQuadraticApproximation(time, state, input, preComp));
+      return penalty_.GetQuadraticApproximation(time, constraintPtr_->GetQuadraticApproximation(time, state, input, preComp));
     default:
       throw std::runtime_error("[StateInputSoftConstraint] Unknown constraint Order");
   }

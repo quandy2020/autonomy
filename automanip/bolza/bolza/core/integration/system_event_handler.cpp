@@ -38,7 +38,7 @@ void SystemEventHandler::HandleEvent(OdeBase& system, scalar_t time, const vecto
   // derived class events
   size_t eventID;
   bool event;
-  std::tie(event, eventID) = this->checkEvent(system, time, state);
+  std::tie(event, eventID) = this->CheckEvent(system, time, state);
   if (event) {
     throw eventID;
   }

@@ -50,7 +50,7 @@ TEST(test_circular_kinematics, solve_projected_EqConstraints) {
   solver.Run(startTime, initState, finalTime);
 
   // Inspect solution
-  const auto primalSolution = solver.PrimalSolution(finalTime);
+  const auto primalSolution = solver.GetPrimalSolution(finalTime);
   for (int i = 0; i < primalSolution.timeTrajectory_.size(); i++) {
     std::cout << "time: " << primalSolution.timeTrajectory_[i] << "\t state: " << primalSolution.stateTrajectory_[i].transpose()
               << "\t input: " << primalSolution.inputTrajectory_[i].transpose() << std::endl;
@@ -103,7 +103,7 @@ TEST(test_circular_kinematics, solve_EqConstraints_inQPSubproblem) {
   solver.Run(startTime, initState, finalTime);
 
   // Inspect solution
-  const auto primalSolution = solver.PrimalSolution(finalTime);
+  const auto primalSolution = solver.GetPrimalSolution(finalTime);
   for (int i = 0; i < primalSolution.timeTrajectory_.size(); i++) {
     std::cout << "time: " << primalSolution.timeTrajectory_[i] << "\t state: " << primalSolution.stateTrajectory_[i].transpose()
               << "\t input: " << primalSolution.inputTrajectory_[i].transpose() << std::endl;

@@ -93,7 +93,7 @@ TEST(test_circular_kinematics, solve_projected_EqConstraints) {
   IpmSolver solver(settings, problem, zeroInitializer);
   solver.Run(startTime, initState, finalTime);
 
-  const auto primalSolution = solver.PrimalSolution(finalTime);
+  const auto primalSolution = solver.GetPrimalSolution(finalTime);
 
   // Check initial condition
   ASSERT_TRUE(primalSolution.stateTrajectory_.front().isApprox(initState));
@@ -183,7 +183,7 @@ TEST(test_circular_kinematics, solve_projected_EqConstraints_IneqConstraints) {
   IpmSolver solver(settings, problem, zeroInitializer);
   solver.Run(startTime, initState, finalTime);
 
-  const auto primalSolution = solver.PrimalSolution(finalTime);
+  const auto primalSolution = solver.GetPrimalSolution(finalTime);
 
   // check constraint satisfaction
   for (int i = 0; i < primalSolution.timeTrajectory_.size() - 1; i++) {
@@ -278,7 +278,7 @@ TEST(test_circular_kinematics, solve_projected_EqConstraints_MixedIneqConstraint
   IpmSolver solver(settings, problem, zeroInitializer);
   solver.Run(startTime, initState, finalTime);
 
-  const auto primalSolution = solver.PrimalSolution(finalTime);
+  const auto primalSolution = solver.GetPrimalSolution(finalTime);
 
   // check constraint satisfaction
   for (int i = 0; i < primalSolution.timeTrajectory_.size() - 1; i++) {

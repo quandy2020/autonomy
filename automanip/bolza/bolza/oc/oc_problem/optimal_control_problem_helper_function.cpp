@@ -77,26 +77,26 @@ void InitializeDualSolution(const OptimalControlProblem& ocp, const PrimalSoluti
 /******************************************************************************************************/
 /******************************************************************************************************/
 void InitializeFinalMultiplierCollection(const OptimalControlProblem& ocp, scalar_t time, MultiplierCollection& multipliers) {
-  ocp.finalEqualityLagrangianPtr->initializeLagrangian(time, multipliers.stateEq);
-  ocp.finalInequalityLagrangianPtr->initializeLagrangian(time, multipliers.stateIneq);
+  ocp.finalEqualityLagrangianPtr->InitializeLagrangian(time, multipliers.stateEq);
+  ocp.finalInequalityLagrangianPtr->InitializeLagrangian(time, multipliers.stateIneq);
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 void InitializePreJumpMultiplierCollection(const OptimalControlProblem& ocp, scalar_t time, MultiplierCollection& multipliers) {
-  ocp.preJumpEqualityLagrangianPtr->initializeLagrangian(time, multipliers.stateEq);
-  ocp.preJumpInequalityLagrangianPtr->initializeLagrangian(time, multipliers.stateIneq);
+  ocp.preJumpEqualityLagrangianPtr->InitializeLagrangian(time, multipliers.stateEq);
+  ocp.preJumpInequalityLagrangianPtr->InitializeLagrangian(time, multipliers.stateIneq);
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 void InitializeIntermediateMultiplierCollection(const OptimalControlProblem& ocp, scalar_t time, MultiplierCollection& multipliers) {
-  ocp.stateEqualityLagrangianPtr->initializeLagrangian(time, multipliers.stateEq);
-  ocp.stateInequalityLagrangianPtr->initializeLagrangian(time, multipliers.stateIneq);
-  ocp.equalityLagrangianPtr->initializeLagrangian(time, multipliers.stateInputEq);
-  ocp.inequalityLagrangianPtr->initializeLagrangian(time, multipliers.stateInputIneq);
+  ocp.stateEqualityLagrangianPtr->InitializeLagrangian(time, multipliers.stateEq);
+  ocp.stateInequalityLagrangianPtr->InitializeLagrangian(time, multipliers.stateIneq);
+  ocp.equalityLagrangianPtr->InitializeLagrangian(time, multipliers.stateInputEq);
+  ocp.inequalityLagrangianPtr->InitializeLagrangian(time, multipliers.stateInputIneq);
 }
 
 /******************************************************************************************************/
@@ -143,8 +143,8 @@ void UpdateDualSolution(const OptimalControlProblem& ocp, const PrimalSolution& 
 /******************************************************************************************************/
 void UpdateFinalMultiplierCollection(const OptimalControlProblem& ocp, scalar_t time, const vector_t& state, Metrics& metrics,
                                      MultiplierCollection& multipliers) {
-  ocp.finalEqualityLagrangianPtr->updateLagrangian(time, state, metrics.stateEqLagrangian, multipliers.stateEq);
-  ocp.finalInequalityLagrangianPtr->updateLagrangian(time, state, metrics.stateIneqLagrangian, multipliers.stateIneq);
+  ocp.finalEqualityLagrangianPtr->UpdateLagrangian(time, state, metrics.stateEqLagrangian, multipliers.stateEq);
+  ocp.finalInequalityLagrangianPtr->UpdateLagrangian(time, state, metrics.stateIneqLagrangian, multipliers.stateIneq);
 }
 
 /******************************************************************************************************/
@@ -152,8 +152,8 @@ void UpdateFinalMultiplierCollection(const OptimalControlProblem& ocp, scalar_t 
 /******************************************************************************************************/
 void UpdatePreJumpMultiplierCollection(const OptimalControlProblem& ocp, scalar_t time, const vector_t& state, Metrics& metrics,
                                        MultiplierCollection& multipliers) {
-  ocp.preJumpEqualityLagrangianPtr->updateLagrangian(time, state, metrics.stateEqLagrangian, multipliers.stateEq);
-  ocp.preJumpInequalityLagrangianPtr->updateLagrangian(time, state, metrics.stateIneqLagrangian, multipliers.stateIneq);
+  ocp.preJumpEqualityLagrangianPtr->UpdateLagrangian(time, state, metrics.stateEqLagrangian, multipliers.stateEq);
+  ocp.preJumpInequalityLagrangianPtr->UpdateLagrangian(time, state, metrics.stateIneqLagrangian, multipliers.stateIneq);
 }
 
 /******************************************************************************************************/
@@ -161,10 +161,10 @@ void UpdatePreJumpMultiplierCollection(const OptimalControlProblem& ocp, scalar_
 /******************************************************************************************************/
 void UpdateIntermediateMultiplierCollection(const OptimalControlProblem& ocp, scalar_t time, const vector_t& state, const vector_t& input,
                                             Metrics& metrics, MultiplierCollection& multipliers) {
-  ocp.stateEqualityLagrangianPtr->updateLagrangian(time, state, metrics.stateEqLagrangian, multipliers.stateEq);
-  ocp.stateInequalityLagrangianPtr->updateLagrangian(time, state, metrics.stateIneqLagrangian, multipliers.stateIneq);
-  ocp.equalityLagrangianPtr->updateLagrangian(time, state, input, metrics.stateInputEqLagrangian, multipliers.stateInputEq);
-  ocp.inequalityLagrangianPtr->updateLagrangian(time, state, input, metrics.stateInputIneqLagrangian, multipliers.stateInputIneq);
+  ocp.stateEqualityLagrangianPtr->UpdateLagrangian(time, state, metrics.stateEqLagrangian, multipliers.stateEq);
+  ocp.stateInequalityLagrangianPtr->UpdateLagrangian(time, state, metrics.stateIneqLagrangian, multipliers.stateIneq);
+  ocp.equalityLagrangianPtr->UpdateLagrangian(time, state, input, metrics.stateInputEqLagrangian, multipliers.stateInputEq);
+  ocp.inequalityLagrangianPtr->UpdateLagrangian(time, state, input, metrics.stateInputIneqLagrangian, multipliers.stateInputIneq);
 }
 
 /******************************************************************************************************/
@@ -172,10 +172,10 @@ void UpdateIntermediateMultiplierCollection(const OptimalControlProblem& ocp, sc
 /******************************************************************************************************/
 const vector_t* ExtractFinalTermConstraint(const OptimalControlProblem& ocp, const std::string& name, const Metrics& metrics) {
   size_t index;
-  if (ocp.finalEqualityConstraintPtr->getTermIndex(name, index)) {
+  if (ocp.finalEqualityConstraintPtr->GetTermIndex(name, index)) {
     return &metrics.stateEqConstraint[index];
 
-  } else if (ocp.finalInequalityConstraintPtr->getTermIndex(name, index)) {
+  } else if (ocp.finalInequalityConstraintPtr->GetTermIndex(name, index)) {
     return &metrics.stateIneqConstraint[index];
 
   } else {
@@ -189,10 +189,10 @@ const vector_t* ExtractFinalTermConstraint(const OptimalControlProblem& ocp, con
 const LagrangianMetrics* ExtractFinalTermLagrangianMetrics(const OptimalControlProblem& ocp, const std::string& name,
                                                            const Metrics& metrics) {
   size_t index;
-  if (ocp.finalEqualityLagrangianPtr->getTermIndex(name, index)) {
+  if (ocp.finalEqualityLagrangianPtr->GetTermIndex(name, index)) {
     return &metrics.stateEqLagrangian[index];
 
-  } else if (ocp.finalInequalityLagrangianPtr->getTermIndex(name, index)) {
+  } else if (ocp.finalInequalityLagrangianPtr->GetTermIndex(name, index)) {
     return &metrics.stateIneqLagrangian[index];
 
   } else {
@@ -208,14 +208,14 @@ bool ExtractPreJumpTermConstraint(const OptimalControlProblem& ocp, const std::s
   constraintArray.clear();
 
   size_t index;
-  if (ocp.preJumpEqualityConstraintPtr->getTermIndex(name, index)) {
+  if (ocp.preJumpEqualityConstraintPtr->GetTermIndex(name, index)) {
     constraintArray.reserve(metricsArray.size());
     for (const auto& m : metricsArray) {
       constraintArray.emplace_back(m.stateEqConstraint[index]);
     }
     return true;
 
-  } else if (ocp.preJumpInequalityConstraintPtr->getTermIndex(name, index)) {
+  } else if (ocp.preJumpInequalityConstraintPtr->GetTermIndex(name, index)) {
     constraintArray.reserve(metricsArray.size());
     for (const auto& m : metricsArray) {
       constraintArray.emplace_back(m.stateIneqConstraint[index]);
@@ -236,14 +236,14 @@ bool ExtractPreJumpTermLagrangianMetrics(const OptimalControlProblem& ocp, const
   lagrangianMetricsArray.clear();
 
   size_t index;
-  if (ocp.preJumpEqualityLagrangianPtr->getTermIndex(name, index)) {
+  if (ocp.preJumpEqualityLagrangianPtr->GetTermIndex(name, index)) {
     lagrangianMetricsArray.reserve(metricsArray.size());
     for (const auto& m : metricsArray) {
       lagrangianMetricsArray.push_back(m.stateEqLagrangian[index]);
     }
     return true;
 
-  } else if (ocp.preJumpInequalityLagrangianPtr->getTermIndex(name, index)) {
+  } else if (ocp.preJumpInequalityLagrangianPtr->GetTermIndex(name, index)) {
     lagrangianMetricsArray.reserve(metricsArray.size());
     for (const auto& m : metricsArray) {
       lagrangianMetricsArray.push_back(m.stateIneqLagrangian[index]);
@@ -263,28 +263,28 @@ bool ExtractIntermediateTermConstraint(const OptimalControlProblem& ocp, const s
   constraintTraj.clear();
 
   size_t index;
-  if (ocp.equalityConstraintPtr->getTermIndex(name, index)) {
+  if (ocp.equalityConstraintPtr->GetTermIndex(name, index)) {
     constraintTraj.reserve(metricsTraj.size());
     for (const auto& m : metricsTraj) {
       constraintTraj.emplace_back(m.stateInputEqConstraint[index]);
     }
     return true;
 
-  } else if (ocp.stateEqualityConstraintPtr->getTermIndex(name, index)) {
+  } else if (ocp.stateEqualityConstraintPtr->GetTermIndex(name, index)) {
     constraintTraj.reserve(metricsTraj.size());
     for (const auto& m : metricsTraj) {
       constraintTraj.emplace_back(m.stateEqConstraint[index]);
     }
     return true;
 
-  } else if (ocp.inequalityConstraintPtr->getTermIndex(name, index)) {
+  } else if (ocp.inequalityConstraintPtr->GetTermIndex(name, index)) {
     constraintTraj.reserve(metricsTraj.size());
     for (const auto& m : metricsTraj) {
       constraintTraj.emplace_back(m.stateInputIneqConstraint[index]);
     }
     return true;
 
-  } else if (ocp.stateInequalityConstraintPtr->getTermIndex(name, index)) {
+  } else if (ocp.stateInequalityConstraintPtr->GetTermIndex(name, index)) {
     constraintTraj.reserve(metricsTraj.size());
     for (const auto& m : metricsTraj) {
       constraintTraj.emplace_back(m.stateIneqConstraint[index]);
@@ -305,28 +305,28 @@ bool ExtractIntermediateTermLagrangianMetrics(const OptimalControlProblem& ocp, 
   lagrangianMetricsTraj.clear();
 
   size_t index;
-  if (ocp.equalityLagrangianPtr->getTermIndex(name, index)) {
+  if (ocp.equalityLagrangianPtr->GetTermIndex(name, index)) {
     lagrangianMetricsTraj.reserve(metricsTraj.size());
     for (const auto& m : metricsTraj) {
       lagrangianMetricsTraj.push_back(m.stateInputEqLagrangian[index]);
     }
     return true;
 
-  } else if (ocp.stateEqualityLagrangianPtr->getTermIndex(name, index)) {
+  } else if (ocp.stateEqualityLagrangianPtr->GetTermIndex(name, index)) {
     lagrangianMetricsTraj.reserve(metricsTraj.size());
     for (const auto& m : metricsTraj) {
       lagrangianMetricsTraj.push_back(m.stateEqLagrangian[index]);
     }
     return true;
 
-  } else if (ocp.inequalityLagrangianPtr->getTermIndex(name, index)) {
+  } else if (ocp.inequalityLagrangianPtr->GetTermIndex(name, index)) {
     lagrangianMetricsTraj.reserve(metricsTraj.size());
     for (const auto& m : metricsTraj) {
       lagrangianMetricsTraj.push_back(m.stateInputIneqLagrangian[index]);
     }
     return true;
 
-  } else if (ocp.stateInequalityLagrangianPtr->getTermIndex(name, index)) {
+  } else if (ocp.stateInequalityLagrangianPtr->GetTermIndex(name, index)) {
     lagrangianMetricsTraj.reserve(metricsTraj.size());
     for (const auto& m : metricsTraj) {
       lagrangianMetricsTraj.push_back(m.stateIneqLagrangian[index]);
@@ -344,10 +344,10 @@ bool ExtractIntermediateTermLagrangianMetrics(const OptimalControlProblem& ocp, 
 const Multiplier* ExtractFinalTermMultiplier(const OptimalControlProblem& ocp, const std::string& name,
                                              const MultiplierCollection& multiplierColl) {
   size_t index;
-  if (ocp.finalEqualityLagrangianPtr->getTermIndex(name, index)) {
+  if (ocp.finalEqualityLagrangianPtr->GetTermIndex(name, index)) {
     return &multiplierColl.stateEq[index];
 
-  } else if (ocp.finalInequalityLagrangianPtr->getTermIndex(name, index)) {
+  } else if (ocp.finalInequalityLagrangianPtr->GetTermIndex(name, index)) {
     return &multiplierColl.stateIneq[index];
 
   } else {
@@ -364,14 +364,14 @@ bool ExtractPreJumpTermMultiplier(const OptimalControlProblem& ocp, const std::s
   multiplierArray.clear();
 
   size_t index;
-  if (ocp.preJumpEqualityLagrangianPtr->getTermIndex(name, index)) {
+  if (ocp.preJumpEqualityLagrangianPtr->GetTermIndex(name, index)) {
     multiplierArray.reserve(multiplierCollArray.size());
     for (const auto& multiplierColl : multiplierCollArray) {
       multiplierArray.push_back(multiplierColl.stateEq[index]);
     }
     return true;
 
-  } else if (ocp.preJumpInequalityLagrangianPtr->getTermIndex(name, index)) {
+  } else if (ocp.preJumpInequalityLagrangianPtr->GetTermIndex(name, index)) {
     multiplierArray.reserve(multiplierCollArray.size());
     for (const auto& multiplierColl : multiplierCollArray) {
       multiplierArray.push_back(multiplierColl.stateIneq[index]);
@@ -392,28 +392,28 @@ bool ExtractIntermediateTermMultiplier(const OptimalControlProblem& ocp, const s
   multiplierTrajectory.clear();
 
   size_t index;
-  if (ocp.equalityLagrangianPtr->getTermIndex(name, index)) {
+  if (ocp.equalityLagrangianPtr->GetTermIndex(name, index)) {
     multiplierTrajectory.reserve(multiplierCollTraj.size());
     for (const auto& multiplierColl : multiplierCollTraj) {
       multiplierTrajectory.push_back(multiplierColl.stateInputEq[index]);
     }
     return true;
 
-  } else if (ocp.stateEqualityLagrangianPtr->getTermIndex(name, index)) {
+  } else if (ocp.stateEqualityLagrangianPtr->GetTermIndex(name, index)) {
     multiplierTrajectory.reserve(multiplierCollTraj.size());
     for (const auto& multiplierColl : multiplierCollTraj) {
       multiplierTrajectory.push_back(multiplierColl.stateEq[index]);
     }
     return true;
 
-  } else if (ocp.inequalityLagrangianPtr->getTermIndex(name, index)) {
+  } else if (ocp.inequalityLagrangianPtr->GetTermIndex(name, index)) {
     multiplierTrajectory.reserve(multiplierCollTraj.size());
     for (const auto& multiplierColl : multiplierCollTraj) {
       multiplierTrajectory.push_back(multiplierColl.stateInputIneq[index]);
     }
     return true;
 
-  } else if (ocp.stateInequalityLagrangianPtr->getTermIndex(name, index)) {
+  } else if (ocp.stateInequalityLagrangianPtr->GetTermIndex(name, index)) {
     multiplierTrajectory.reserve(multiplierCollTraj.size());
     for (const auto& multiplierColl : multiplierCollTraj) {
       multiplierTrajectory.push_back(multiplierColl.stateIneq[index]);

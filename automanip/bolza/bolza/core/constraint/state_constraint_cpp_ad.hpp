@@ -56,7 +56,7 @@ class StateConstraintCppAd : public StateConstraint {
                   bool recompileLibraries = true, bool verbose = true);
 
     /**
-   * @brief /** Get the parameter vector */.
+   * @brief Get the parameter vector 
    * @param [in] time: Time.
    * @return Result value.
    */
@@ -67,7 +67,7 @@ class StateConstraintCppAd : public StateConstraint {
  return vector_t(0); };
 
     /**
-   * @brief /** Constraint evaluation */.
+   * @brief Constraint evaluation 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] preComputation: Pre Computation.
@@ -101,7 +101,7 @@ class StateConstraintCppAd : public StateConstraint {
   StateConstraintCppAd(const StateConstraintCppAd& rhs);
 
     /**
-   * @brief /** The CppAD constraint function */.
+   * @brief The CppAD constraint function 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] parameters: Parameters.

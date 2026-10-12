@@ -118,7 +118,7 @@ class Collection {
 
  protected:
     /**
-   * @brief /** Copy constructor */.
+   * @brief Copy constructor 
    * @param [in] other: Other.
    */
   Collection(const Collection& other);
@@ -260,7 +260,7 @@ template <typename Derived>
  * @return Result value.
  */
 Derived& Collection<T>::get(const std::string& name) {
-  static_assert(std::is_base_of<T, Derived>::Value, "Template argument must derive from the base type of this collection");
+  static_assert(std::is_base_of<T, Derived>::value, "Template argument must derive from the base type of this collection");
   // if the key does not exist throws an exception
   /**
    * @brief At.
@@ -292,7 +292,7 @@ Collection<T>::Collection(const Collection& other) : termNameMap_(other.termName
      * @brief Emplace back.
      * @return Result value.
      */
-    terms_.emplace_back(term->clone());
+    terms_.emplace_back(term->Clone());
   }
 }
 

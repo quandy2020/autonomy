@@ -75,7 +75,7 @@ class ComKinoSystemDynamicsAd : public bolza::SystemDynamicsBaseAD {
      * @brief Get Active Dynamics Parameters.
      * @return Result value.
      */
-    return dynamicsParametersModulePtr_->getActiveDynamicsParameters().asVector();
+    return dynamicsParametersModulePtr_->GetActiveDynamicsParameters().AsVector();
   }
 
   /**

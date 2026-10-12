@@ -47,7 +47,7 @@ class LoopshapingStateInputAugmentedLagrangian : public StateInputAugmentedLagra
 
  protected:
     /**
-   * @brief /** Constructor */.
+   * @brief Constructor 
    * @param [in] lagrangianCollection: Lagrangian Collection.
    */
   LoopshapingStateInputAugmentedLagrangian(const StateInputAugmentedLagrangianCollection& lagrangianCollection,
@@ -59,7 +59,7 @@ class LoopshapingStateInputAugmentedLagrangian : public StateInputAugmentedLagra
       : StateInputAugmentedLagrangianCollection(lagrangianCollection), loopshapingDefinition_(std::move(loopshapingDefinition)) {}
 
     /**
-   * @brief /** Copy constructor */.
+   * @brief Copy constructor 
    * @param [in] other: Other.
    */
   LoopshapingStateInputAugmentedLagrangian(const LoopshapingStateInputAugmentedLagrangian& other) = default;

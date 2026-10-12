@@ -37,7 +37,7 @@ namespace hessian_correction {
 enum class Strategy { DIAGONAL_SHIFT, CHOLESKY_MODIFICATION, EIGENVALUE_MODIFICATION, GERSHGORIN_MODIFICATION };
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Get string name of Hessian_Correction type
  *
@@ -48,7 +48,7 @@ enum class Strategy { DIAGONAL_SHIFT, CHOLESKY_MODIFICATION, EIGENVALUE_MODIFICA
 std::string ToString(Strategy strategy);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Get Hessian_Correction type from string name, useful for reading config file
  *

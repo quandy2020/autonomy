@@ -113,7 +113,7 @@ void LqSolver::VerifySizes(const vector_t& x0, const std::vector<VectorFunctionL
   }
 }
 
-LqStatus LqSolver::solve(const vector_t& x0, std::vector<VectorFunctionLinearApproximation>& dynamics,
+LqStatus LqSolver::Solve(const vector_t& x0, std::vector<VectorFunctionLinearApproximation>& dynamics,
                          std::vector<ScalarFunctionQuadraticApproximation>& cost,
                          std::vector<VectorFunctionLinearApproximation>* constraints, vector_array_t& stateTrajectory,
                          vector_array_t& inputTrajectory, bool verbose) {
@@ -236,7 +236,7 @@ LqStatus LqSolver::solve(const vector_t& x0, std::vector<VectorFunctionLinearApp
 
   solved_ = true;
   if (verbose) {
-    std::cerr << "[LqSolver] Riccati recursion solved " << NumStages << " stages." << std::endl;
+    std::cerr << "[LqSolver] Riccati recursion solved " << numStages << " stages." << std::endl;
   }
   return LqStatus::SUCCESS;
 }

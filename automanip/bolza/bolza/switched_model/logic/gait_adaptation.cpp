@@ -20,7 +20,7 @@ GaitAdaptation::GaitAdaptation(const GaitAdaptationSettings& settings, const con
       settings_(settings) {}
 
 void GaitAdaptation::Advance(GaitSchedule& gaitSchedule, const contact_flag_t& measuredContactFlags, scalar_t dt) {
-  const auto desiredContactFlags = ModeNumber2StanceLeg(gaitSchedule.getCurrentMode());
+  const auto desiredContactFlags = ModeNumber2StanceLeg(gaitSchedule.GetCurrentMode());
 
   // Update tracking if lift off happened
   AdvanceLiftoffTracking(desiredContactFlags, measuredContactFlags);
@@ -52,9 +52,9 @@ void GaitAdaptation::AdvanceSwingEvents(const GaitSchedule& gaitSchedule) {
   const auto checkHorizon = settings_.earlyTouchDownTimeWindow;
 
   // Extract contact timings from the gait schedule
-  const auto modeSchedule = gaitSchedule.getModeSchedule(checkHorizon);
+  const auto modeSchedule = gaitSchedule.GetModeSchedule(checkHorizon);
   const auto contactTimingsPerLeg = switched_model::ExtractContactTimingsPerLeg(modeSchedule);
-  const auto currentTime = gaitSchedule.getCurrentTime();
+  const auto currentTime = gaitSchedule.GetCurrentTime();
 
   for (size_t leg = 0; leg < switched_model::NUM_CONTACT_POINTS; ++leg) {
     timeUntilNextTouchDownPerLeg_[leg] = GetTimeOfNextTouchDown(currentTime, contactTimingsPerLeg[leg]) - currentTime;
@@ -116,9 +116,9 @@ auto GaitAdaptation::DesiredMotionMeasuredMotion(size_t leg) -> ScheduledAdaptat
 
 void GaitAdaptation::ApplyAdaptation(GaitSchedule& gaitSchedule, const feet_array_t<ScheduledAdaptation>& scheduledAdaptations) {
   // Early contact
-  if (std::any_of(scheduledAdaptations.begin(), scheduledAdaptations.end(), isEarlyContact)) {
-    const auto earlyTouchDownPerLeg = ApplyPerLeg(isEarlyContact, scheduledAdaptations);
-    gaitSchedule.adaptCurrentGait(EarlyTouchDownAdaptation(earlyTouchDownPerLeg));
+  if (std::any_of(scheduledAdaptations.begin(), scheduledAdaptations.end(), IsEarlyContact)) {
+    const auto earlyTouchDownPerLeg = ApplyPerLeg(IsEarlyContact, scheduledAdaptations);
+    gaitSchedule.AdaptCurrentGait(EarlyTouchDownAdaptation(earlyTouchDownPerLeg));
   }
 }
 

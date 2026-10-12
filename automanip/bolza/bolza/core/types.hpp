@@ -80,7 +80,7 @@ struct ScalarFunctionLinearApproximation {
   ScalarFunctionLinearApproximation() = default;
 
     /**
-   * @brief /** Construct and resize the members to given size. (Pass nu = -1 for no inputs) */.
+   * @brief Construct and resize the members to given size. (Pass nu = -1 for no inputs) 
    * @param [in] nx: Nx.
    * @param [in] nu: Nu.
    */
@@ -93,7 +93,7 @@ struct ScalarFunctionLinearApproximation {
   ScalarFunctionLinearApproximation& operator*=(scalar_t scalar);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Resize the members to the given size
    *
@@ -105,7 +105,7 @@ struct ScalarFunctionLinearApproximation {
   ScalarFunctionLinearApproximation& resize(int nx, int nu = -1);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Resizes the members to the given size, and sets all coefficients to zero.
    *
@@ -167,7 +167,7 @@ struct ScalarFunctionQuadraticApproximation {
   ScalarFunctionQuadraticApproximation() = default;
 
     /**
-   * @brief /** Construct and resize the members to given size. Pass nu = -1 for no inputs */.
+   * @brief Construct and resize the members to given size. Pass nu = -1 for no inputs 
    * @param [in] nx: Nx.
    * @param [in] nu: Nu.
    */
@@ -180,7 +180,7 @@ struct ScalarFunctionQuadraticApproximation {
   ScalarFunctionQuadraticApproximation& operator*=(scalar_t scalar);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Resize the members to the given size
    *
@@ -192,7 +192,7 @@ struct ScalarFunctionQuadraticApproximation {
   ScalarFunctionQuadraticApproximation& resize(int nx, int nu = -1);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Resizes the members to the given size, and sets all coefficients to zero.
    *
@@ -264,7 +264,7 @@ struct VectorFunctionLinearApproximation {
   VectorFunctionLinearApproximation() = default;
 
   /**
-   * @brief /** Construct and resize the members to given size. (Pass nu = -1 for no inputs) 
+   * @brief Construct and resize the members to given size. (Pass nu = -1 for no inputs) 
    * @param [in] nv: Nv.
    * @param [in] nx: Nx.
    * @param [in] nu: Nu.
@@ -272,7 +272,7 @@ struct VectorFunctionLinearApproximation {
   explicit VectorFunctionLinearApproximation(int nv, int nx, int nu = -1);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Resize the members to the given size
    *
@@ -285,7 +285,7 @@ struct VectorFunctionLinearApproximation {
   VectorFunctionLinearApproximation& resize(int nv, int nx, int nu = -1);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Resizes the members to the given size, and sets all coefficients to zero.
    *
@@ -344,7 +344,7 @@ struct VectorFunctionQuadraticApproximation {
   VectorFunctionQuadraticApproximation() = default;
 
     /**
-   * @brief /** Construct and resize the members to given size.
+   * @brief Construct and resize the members to given size.
    * @param [in] nv: Nv.
    * @param [in] nx: Nx.
    * @param [in] nu: Nu.
@@ -352,7 +352,7 @@ struct VectorFunctionQuadraticApproximation {
   explicit VectorFunctionQuadraticApproximation(int nv, int nx, int nu = -1);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Resize the members to the given size
    *
@@ -365,7 +365,7 @@ struct VectorFunctionQuadraticApproximation {
   VectorFunctionQuadraticApproximation& resize(int nv, int nx, int nu = -1);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Resizes the members to the given size, and sets all coefficients to zero.
    *

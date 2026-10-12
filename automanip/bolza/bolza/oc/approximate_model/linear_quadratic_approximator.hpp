@@ -211,7 +211,7 @@ ScalarFunctionQuadraticApproximation ApproximateFinalCost(const OptimalControlPr
  * Compute the intermediate-time Metrics (i.e. cost, softConstraints, and constraints).
  *
  * @note It is assumed that the precomputation request is already made.
- * problem.preComputationPtr->request(Request::Cost + Request::Constraint + Request::SoftConstraint, t, x, u)
+ * problem.preComputationPtr->Request(Request::Cost + Request::Constraint + Request::SoftConstraint, t, x, u)
  *
  * @param [in] problem: The optimal control probelm
  * @param [in] time: The current time.
@@ -227,7 +227,7 @@ Metrics ComputeIntermediateMetrics(OptimalControlProblem& problem, const scalar_
  * Compute the intermediate-time Metrics (i.e. cost, softConstraints, and constraints).
  *
  * @note It is assumed that the precomputation request is already made.
- * problem.preComputationPtr->request(Request::Cost + Request::Constraint + Request::SoftConstraint, t, x, u)
+ * problem.preComputationPtr->Request(Request::Cost + Request::Constraint + Request::SoftConstraint, t, x, u)
  *
  * @param [in] problem: The optimal control probelm
  * @param [in] time: The current time.
@@ -244,7 +244,7 @@ Metrics ComputeIntermediateMetrics(OptimalControlProblem& problem, const scalar_
  * Compute the event-time Metrics based on pre-jump state Value (i.e. cost, softConstraints, and constraints).
  *
  * @note It is assumed that the precomputation request is already made.
- * problem.preComputationPtr->requestPreJump(Request::Cost + Request::Constraint + Request::SoftConstraint, t, x)
+ * problem.preComputationPtr->RequestPreJump(Request::Cost + Request::Constraint + Request::SoftConstraint, t, x)
  *
  * @param [in] problem: The optimal control probelm
  * @param [in] time: The current time.
@@ -259,7 +259,7 @@ Metrics ComputePreJumpMetrics(OptimalControlProblem& problem, const scalar_t tim
  * Compute the event-time Metrics based on pre-jump state Value (i.e. cost, softConstraints, and constraints).
  *
  * @note It is assumed that the precomputation request is already made.
- * problem.preComputationPtr->requestPreJump(Request::Cost + Request::Constraint + Request::SoftConstraint, t, x)
+ * problem.preComputationPtr->RequestPreJump(Request::Cost + Request::Constraint + Request::SoftConstraint, t, x)
  *
  * @param [in] problem: The optimal control probelm
  * @param [in] time: The current time.
@@ -275,7 +275,7 @@ Metrics ComputePreJumpMetrics(OptimalControlProblem& problem, const scalar_t tim
  * Compute the final-time Metrics (i.e. cost, softConstraints, and constraints).
  *
  * @note It is assumed that the precomputation request is already made.
- * problem.preComputationPtr->requestFinal(Request::Cost + Request::Constraint + Request::SoftConstraint, t, x)
+ * problem.preComputationPtr->RequestFinal(Request::Cost + Request::Constraint + Request::SoftConstraint, t, x)
  *
  * @param [in] problem: The optimal control probelm
  * @param [in] time: The current time.
@@ -288,7 +288,7 @@ Metrics ComputeFinalMetrics(OptimalControlProblem& problem, const scalar_t time,
  * Compute the final-time Metrics (i.e. cost, softConstraints, and constraints).
  *
  * @note It is assumed that the precomputation request is already made.
- * problem.preComputationPtr->requestFinal(Request::Cost + Request::Constraint + Request::SoftConstraint, t, x)
+ * problem.preComputationPtr->RequestFinal(Request::Cost + Request::Constraint + Request::SoftConstraint, t, x)
  *
  * @param [in] problem: The optimal control probelm
  * @param [in] time: The current time.

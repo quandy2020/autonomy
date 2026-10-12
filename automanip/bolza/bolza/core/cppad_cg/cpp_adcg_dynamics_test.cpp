@@ -38,11 +38,11 @@ class testCppADCG_dynamicsFixture : public ::testing::Test {
     matrix_t B = matrix_t::Random(stateDim_, inputDim_);
     matrix_t G = matrix_t::Random(stateDim_, stateDim_);
 
-    linearSystem_.Reset(new LinearSystemDynamics(A, B, G));
+    linearSystem_.reset(new LinearSystemDynamics(A, B, G));
 
     std::filesystem::path filePath(__FILE__);
     std::string libraryFolder = filePath.parent_path().generic_string() + "/testCppADCG_generated";
-    adLinearSystem_.Reset(new LinearSystemDynamicsAD(A, B, G));
+    adLinearSystem_.reset(new LinearSystemDynamicsAD(A, B, G));
 
     adLinearSystem_->Initialize(stateDim_, inputDim_, "testCppADCG_dynamics", libraryFolder, true, true);
   }

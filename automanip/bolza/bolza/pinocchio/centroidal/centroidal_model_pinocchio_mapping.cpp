@@ -69,8 +69,8 @@ auto CentroidalModelPinocchioMappingTpl<SCALAR>::GetPinocchioJointPosition(const
 /******************************************************************************************************/
 template <typename SCALAR>
 auto CentroidalModelPinocchioMappingTpl<SCALAR>::GetPinocchioJointVelocity(const vector_t& state, const vector_t& input) const -> vector_t {
-  const auto& model = pinocchioInterfacePtr_->getModel();
-  const auto& data = pinocchioInterfacePtr_->getData();
+  const auto& model = pinocchioInterfacePtr_->GetModel();
+  const auto& data = pinocchioInterfacePtr_->GetData();
   const auto& info = centroidalModelInfo_;
   assert(info.stateDim == state.rows());
   assert(info.inputDim == input.rows());
@@ -99,8 +99,8 @@ auto CentroidalModelPinocchioMappingTpl<SCALAR>::GetPinocchioJointVelocity(const
 template <typename SCALAR>
 auto CentroidalModelPinocchioMappingTpl<SCALAR>::GetOcs2Jacobian(const vector_t& state, const matrix_t& Jq, const matrix_t& Jv) const
     -> std::pair<matrix_t, matrix_t> {
-  const auto& model = pinocchioInterfacePtr_->getModel();
-  const auto& data = pinocchioInterfacePtr_->getData();
+  const auto& model = pinocchioInterfacePtr_->GetModel();
+  const auto& data = pinocchioInterfacePtr_->GetData();
   const auto& info = centroidalModelInfo_;
   assert(info.stateDim == state.rows());
 

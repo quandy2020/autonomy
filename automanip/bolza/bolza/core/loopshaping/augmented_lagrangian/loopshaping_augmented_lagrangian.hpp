@@ -32,7 +32,7 @@ namespace bolza {
 namespace LoopshapingAugmentedLagrangian {
 
 /**
- * @brief /** Factory for Loopshaping state-only augmented Lagrangian wrapper */.
+ * @brief Factory for Loopshaping state-only augmented Lagrangian wrapper 
  * @param [in] systemAugmentedLagrangian: System Augmented Lagrangian.
  * @param [in] loopshapingDefinition: Loopshaping Definition.
  * @return Owning pointer.
@@ -41,7 +41,7 @@ std::unique_ptr<StateAugmentedLagrangianCollection> Create(const StateAugmentedL
                                                            std::shared_ptr<LoopshapingDefinition> loopshapingDefinition);
 
 /**
- * @brief /** Factory for Loopshaping state-input augmented Lagrangian wrapper */.
+ * @brief Factory for Loopshaping state-input augmented Lagrangian wrapper 
  * @param [in] systemAugmentedLagrangian: System Augmented Lagrangian.
  * @param [in] loopshapingDefinition: Loopshaping Definition.
  * @return Owning pointer.

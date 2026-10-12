@@ -142,16 +142,12 @@ struct ThreadPool::Task final : public ThreadPool::TaskBase {
   /**
    * @brief Constructs a Task.
    */
-  explicit Task(Functor taskFunction) : PackagedTask(std::move(taskFunction)) {}
+  explicit Task(Functor taskFunction) : packagedTask(std::move(taskFunction)) {}
   /**
    * @brief Destructor.
    */
   ~Task() override = default;
-  void operator()(int workerIndex) override { /**
-  * @brief Packaged Task.
-  * @param [in] workerIndex: Worker Index.
-  */
- PackagedTask(workerIndex); }
+  void operator()(int workerIndex) override { packagedTask(workerIndex); }
 
   using ReturnType = typename std::result_of<Functor(int)>::type;
   std::packaged_task<ReturnType(int)> packagedTask;

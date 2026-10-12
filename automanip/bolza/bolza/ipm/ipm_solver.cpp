@@ -67,7 +67,7 @@ IpmSolver::IpmSolver(ipm::Settings settings, const OptimalControlProblem& optima
   }
 
   // Operating points
-  initializerPtr_.reset(initializer.clone());
+  initializerPtr_.reset(initializer.Clone());
 
   // Linesearch
   filterLinesearch_.g_max = settings_.g_max;
@@ -94,19 +94,19 @@ void IpmSolver::Reset() {
 
   // reset timers
   totalNumIterations_ = 0;
-  initializationTimer_.reset();
-  linearQuadraticApproximationTimer_.reset();
-  solveQpTimer_.reset();
-  linesearchTimer_.reset();
-  computeControllerTimer_.reset();
+  initializationTimer_.Reset();
+  linearQuadraticApproximationTimer_.Reset();
+  solveQpTimer_.Reset();
+  linesearchTimer_.Reset();
+  computeControllerTimer_.Reset();
 }
 
 std::string IpmSolver::GetBenchmarkingInformation() const {
-  const auto initializationTotal = initializationTimer_.getTotalInMilliseconds();
-  const auto linearQuadraticApproximationTotal = linearQuadraticApproximationTimer_.getTotalInMilliseconds();
-  const auto solveQpTotal = solveQpTimer_.getTotalInMilliseconds();
-  const auto linesearchTotal = linesearchTimer_.getTotalInMilliseconds();
-  const auto computeControllerTotal = computeControllerTimer_.getTotalInMilliseconds();
+  const auto initializationTotal = initializationTimer_.GetTotalInMilliseconds();
+  const auto linearQuadraticApproximationTotal = linearQuadraticApproximationTimer_.GetTotalInMilliseconds();
+  const auto solveQpTotal = solveQpTimer_.GetTotalInMilliseconds();
+  const auto linesearchTotal = linesearchTimer_.GetTotalInMilliseconds();
+  const auto computeControllerTotal = computeControllerTimer_.GetTotalInMilliseconds();
 
   const auto benchmarkTotal =
       initializationTotal + linearQuadraticApproximationTotal + solveQpTotal + linesearchTotal + computeControllerTotal;
@@ -117,15 +117,15 @@ std::string IpmSolver::GetBenchmarkingInformation() const {
     infoStream << "\n########################################################################\n";
     infoStream << "The benchmarking is computed over " << totalNumIterations_ << " iterations. \n";
     infoStream << "IPM Benchmarking\t   :\tAverage time [ms]   (% of total runtime)\n";
-    infoStream << "\tInitialization     :\t" << initializationTimer_.getAverageInMilliseconds() << " [ms] \t\t("
+    infoStream << "\tInitialization     :\t" << initializationTimer_.GetAverageInMilliseconds() << " [ms] \t\t("
                << initializationTotal / benchmarkTotal * inPercent << "%)\n";
-    infoStream << "\tLQ Approximation   :\t" << linearQuadraticApproximationTimer_.getAverageInMilliseconds() << " [ms] \t\t("
+    infoStream << "\tLQ Approximation   :\t" << linearQuadraticApproximationTimer_.GetAverageInMilliseconds() << " [ms] \t\t("
                << linearQuadraticApproximationTotal / benchmarkTotal * inPercent << "%)\n";
-    infoStream << "\tSolve QP           :\t" << solveQpTimer_.getAverageInMilliseconds() << " [ms] \t\t("
+    infoStream << "\tSolve QP           :\t" << solveQpTimer_.GetAverageInMilliseconds() << " [ms] \t\t("
                << solveQpTotal / benchmarkTotal * inPercent << "%)\n";
-    infoStream << "\tLinesearch         :\t" << linesearchTimer_.getAverageInMilliseconds() << " [ms] \t\t("
+    infoStream << "\tLinesearch         :\t" << linesearchTimer_.GetAverageInMilliseconds() << " [ms] \t\t("
                << linesearchTotal / benchmarkTotal * inPercent << "%)\n";
-    infoStream << "\tCompute Controller :\t" << computeControllerTimer_.getAverageInMilliseconds() << " [ms] \t\t("
+    infoStream << "\tCompute Controller :\t" << computeControllerTimer_.GetAverageInMilliseconds() << " [ms] \t\t("
                << computeControllerTotal / benchmarkTotal * inPercent << "%)\n";
   }
   return infoStream.str();
@@ -195,20 +195,20 @@ void IpmSolver::RunImpl(scalar_t initTime, const vector_t& initState, scalar_t f
   }
 
   // Determine time discretization, taking into account event times.
-  const auto& eventTimes = this->getReferenceManager().getModeSchedule().eventTimes;
+  const auto& eventTimes = this->GetReferenceManager().GetModeSchedule().eventTimes;
   const auto timeDiscretization = TimeDiscretizationWithEvents(initTime, finalTime, settings_.dt, eventTimes);
 
   // Initialize references
   for (auto& ocpDefinition : ocpDefinitions_) {
-    const auto& targetTrajectories = this->getReferenceManager().getTargetTrajectories();
+    const auto& targetTrajectories = this->GetReferenceManager().GetTargetTrajectories();
     ocpDefinition.targetTrajectoriesPtr = &targetTrajectories;
   }
 
   // old and new mode schedules for the trajectory spreading
   const auto oldModeSchedule = primalSolution_.modeSchedule_;
-  const auto& newModeSchedule = this->getReferenceManager().getModeSchedule();
+  const auto& newModeSchedule = this->GetReferenceManager().GetModeSchedule();
 
-  initializationTimer_.startTimer();
+  initializationTimer_.StartTimer();
   // Initialize the state and input
   if (!primalSolution_.timeTrajectory_.empty()) {
     std::ignore = TrajectorySpread(oldModeSchedule, newModeSchedule, primalSolution_);
@@ -232,7 +232,7 @@ void IpmSolver::RunImpl(scalar_t initTime, const vector_t& initState, scalar_t f
     InitializeCostateTrajectory(timeDiscretization, x, lmd);
     InitializeProjectionMultiplierTrajectory(timeDiscretization, nu);
   }
-  initializationTimer_.endTimer();
+  initializationTimer_.EndTimer();
 
   // Bookkeeping
   performanceIndeces_.clear();
@@ -246,21 +246,21 @@ void IpmSolver::RunImpl(scalar_t initTime, const vector_t& initState, scalar_t f
     }
 
     // Make QP approximation
-    linearQuadraticApproximationTimer_.startTimer();
+    linearQuadraticApproximationTimer_.StartTimer();
     const auto baselinePerformance = SetupQuadraticSubproblem(timeDiscretization, initState, x, u, lmd, nu, barrierParam, slackStateIneq,
                                                               slackStateInputIneq, dualStateIneq, dualStateInputIneq, metrics);
-    linearQuadraticApproximationTimer_.endTimer();
+    linearQuadraticApproximationTimer_.EndTimer();
 
     // Solve QP
-    solveQpTimer_.startTimer();
+    solveQpTimer_.StartTimer();
     const vector_t delta_x0 = initState - x[0];
     const auto deltaSolution =
         GetOCPSolution(delta_x0, barrierParam, slackStateIneq, dualStateIneq, slackStateInputIneq, dualStateInputIneq);
     ExtractValueFunction(timeDiscretization, x, lmd, deltaSolution.deltaXSol);
-    solveQpTimer_.endTimer();
+    solveQpTimer_.EndTimer();
 
     // Apply step
-    linesearchTimer_.startTimer();
+    linesearchTimer_.StartTimer();
     const scalar_t maxPrimalStepSize = settings_.usePrimalStepSizeForDual
                                            ? std::min(deltaSolution.maxDualStepSize, deltaSolution.maxPrimalStepSize)
                                            : deltaSolution.maxPrimalStepSize;
@@ -268,7 +268,7 @@ void IpmSolver::RunImpl(scalar_t initTime, const vector_t& initState, scalar_t f
                                          slackStateIneq, slackStateInputIneq, metrics);
     TakeDualStep(deltaSolution, stepInfo, lmd, nu, dualStateIneq, dualStateInputIneq);
     performanceIndeces_.push_back(stepInfo.performanceAfterStep);
-    linesearchTimer_.endTimer();
+    linesearchTimer_.EndTimer();
 
     // Check convergence
     convergence = CheckConvergence(iter, barrierParam, baselinePerformance, stepInfo);
@@ -281,14 +281,14 @@ void IpmSolver::RunImpl(scalar_t initTime, const vector_t& initState, scalar_t f
     ++totalNumIterations_;
   }
 
-  computeControllerTimer_.startTimer();
+  computeControllerTimer_.StartTimer();
   primalSolution_ = ToPrimalSolution(timeDiscretization, std::move(x), std::move(u));
   costateTrajectory_ = std::move(lmd);
   projectionMultiplierTrajectory_ = std::move(nu);
   slackIneqTrajectory_ = ipm::ToDualSolution(timeDiscretization, constraintsSize_, slackStateIneq, slackStateInputIneq);
   dualIneqTrajectory_ = ipm::ToDualSolution(timeDiscretization, constraintsSize_, dualStateIneq, dualStateInputIneq);
   problemMetrics_ = multiple_shooting::ToProblemMetrics(timeDiscretization, std::move(metrics));
-  computeControllerTimer_.endTimer();
+  computeControllerTimer_.EndTimer();
 
   if (settings_.printSolverStatus || settings_.printLinesearch) {
     std::cerr << "\nConvergence : " << ToString(convergence) << "\n";
@@ -299,7 +299,7 @@ void IpmSolver::RunImpl(scalar_t initTime, const vector_t& initState, scalar_t f
 }
 
 void IpmSolver::RunParallel(std::function<void(int)> taskFunction) {
-  threadPool_.runParallel(std::move(taskFunction), settings_.nThreads);
+  threadPool_.RunParallel(std::move(taskFunction), settings_.nThreads);
 }
 
 void IpmSolver::InitializeCostateTrajectory(const std::vector<AnnotatedTime>& timeDiscretization, const vector_array_t& stateTrajectory,
@@ -341,7 +341,7 @@ void IpmSolver::InitializeProjectionMultiplierTrajectory(const std::vector<Annot
 
   // @todo Fix this using trajectory spreading
   auto interpolateProjectionMultiplierTrajectory = [&](scalar_t time) -> vector_t {
-    const size_t numConstraints = ocpDefinition.equalityConstraintPtr->getNumConstraints(time);
+    const size_t numConstraints = ocpDefinition.equalityConstraintPtr->GetNumConstraints(time);
     const size_t index = LinearInterpolation::TimeSegment(time, primalSolution_.timeTrajectory_).first;
     if (projectionMultiplierTrajectory_.size() > index + 1) {
       if (projectionMultiplierTrajectory_[index].size() == numConstraints &&
@@ -364,7 +364,7 @@ void IpmSolver::InitializeProjectionMultiplierTrajectory(const std::vector<Annot
     } else {
       // Intermediate node
       const scalar_t time = GetIntervalStart(timeDiscretization[i]);
-      const size_t numConstraints = ocpDefinition.equalityConstraintPtr->getNumConstraints(time);
+      const size_t numConstraints = ocpDefinition.equalityConstraintPtr->GetNumConstraints(time);
       if (time < interpolateTill) {  // interpolate previous solution
         projectionMultiplierTrajectory.push_back(interpolateProjectionMultiplierTrajectory(time));
       } else {  // Initialize with zero
@@ -386,7 +386,7 @@ void IpmSolver::InitializeSlackDualTrajectory(const std::vector<AnnotatedTime>& 
   // find the time period that we can interpolate the cached solution
   const auto timePeriod = std::make_pair(newTimeTrajectory.front(), newTimeTrajectory.back());
   const auto interpolatableTimePeriod =
-      FindIntersectionToExtendableInterval(oldTimeTrajectory, this->getReferenceManager().getModeSchedule().eventTimes, timePeriod);
+      FindIntersectionToExtendableInterval(oldTimeTrajectory, this->GetReferenceManager().GetModeSchedule().eventTimes, timePeriod);
   const bool interpolateTillFinalTime = numerics::almost_eq(interpolatableTimePeriod.second, timePeriod.second);
   const auto cacheEventIndexBias = [&]() -> size_t {
     if (!newPostEventIndices.empty()) {
@@ -464,7 +464,7 @@ IpmSolver::OcpSubproblemSolution IpmSolver::GetOCPSolution(const vector_t& delta
   auto& deltaUSol = solution.deltaUSol;
   LqStatus status;
   lqSolver_.resize(ExtractSizesFromProblem(dynamics_, lagrangian_, nullptr));
-  status = lqSolver_.solve(delta_x0, dynamics_, lagrangian_, nullptr, deltaXSol, deltaUSol, settings_.printSolverStatus);
+  status = lqSolver_.Solve(delta_x0, dynamics_, lagrangian_, nullptr, deltaXSol, deltaUSol, settings_.printSolverStatus);
 
   if (status != LqStatus::SUCCESS) {
     throw std::runtime_error("[IpmSolver] Failed to solve QP");
@@ -475,7 +475,7 @@ IpmSolver::OcpSubproblemSolution IpmSolver::GetOCPSolution(const vector_t& delta
 
   // Extract value function
   if (settings_.createValueFunction) {
-    valueFunction_ = lqSolver_.getRiccatiCostToGo(dynamics_[0], lagrangian_[0]);
+    valueFunction_ = lqSolver_.GetRiccatiCostToGo(dynamics_[0], lagrangian_[0]);
   }
 
   // Problem horizon
@@ -579,13 +579,13 @@ void IpmSolver::ExtractValueFunction(const std::vector<AnnotatedTime>& time, con
 
 PrimalSolution IpmSolver::ToPrimalSolution(const std::vector<AnnotatedTime>& time, vector_array_t&& x, vector_array_t&& u) {
   if (settings_.useFeedbackPolicy) {
-    ModeSchedule modeSchedule = this->getReferenceManager().getModeSchedule();
-    matrix_array_t KMatrices = lqSolver_.getRiccatiFeedback(dynamics_[0], lagrangian_[0]);
+    ModeSchedule modeSchedule = this->GetReferenceManager().GetModeSchedule();
+    matrix_array_t KMatrices = lqSolver_.GetRiccatiFeedback(dynamics_[0], lagrangian_[0]);
     multiple_shooting::RemapProjectedGain(constraintsProjection_, KMatrices);
     return multiple_shooting::ToPrimalSolution(time, std::move(modeSchedule), std::move(x), std::move(u), std::move(KMatrices));
 
   } else {
-    ModeSchedule modeSchedule = this->getReferenceManager().getModeSchedule();
+    ModeSchedule modeSchedule = this->GetReferenceManager().GetModeSchedule();
     return multiple_shooting::ToPrimalSolution(time, std::move(modeSchedule), std::move(x), std::move(u));
   }
 }
@@ -813,7 +813,7 @@ ipm::StepInfo IpmSolver::TakePrimalStep(const PerformanceIndex& baseline, const 
     bool stepAccepted;
     StepType stepType;
     std::tie(stepAccepted, stepType) =
-        filterLinesearch_.acceptStep(baseline, performanceNew, alpha * subproblemSolution.armijoDescentMetric);
+        filterLinesearch_.AcceptStep(baseline, performanceNew, alpha * subproblemSolution.armijoDescentMetric);
 
     if (settings_.printLinesearch) {
       std::cerr << "Step size: " << alpha << ", Step Type: " << ToString(stepType)

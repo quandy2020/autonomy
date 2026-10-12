@@ -39,8 +39,8 @@ scalar_t StateCostCollection::GetValue(scalar_t time, const vector_t& state, con
 
   // accumulate cost terms
   for (const auto& costTerm : this->terms_) {
-    if (costTerm->isActive(time)) {
-      cost += costTerm->getValue(time, state, targetTrajectories, preComp);
+    if (costTerm->IsActive(time)) {
+      cost += costTerm->GetValue(time, state, targetTrajectories, preComp);
     }
   }
 
@@ -54,7 +54,7 @@ ScalarFunctionQuadraticApproximation StateCostCollection::GetQuadraticApproximat
                                                                                     const TargetTrajectories& targetTrajectories,
                                                                                     const PreComputation& preComp) const {
   const auto firstActive =
-      std::find_if(terms_.begin(), terms_.end(), [time](const std::unique_ptr<StateCost>& costTerm) { return costTerm->isActive(time); });
+      std::find_if(terms_.begin(), terms_.end(), [time](const std::unique_ptr<StateCost>& costTerm) { return costTerm->IsActive(time); });
 
   // No active terms (or terms is empty).
   if (firstActive == terms_.end()) {
@@ -62,10 +62,10 @@ ScalarFunctionQuadraticApproximation StateCostCollection::GetQuadraticApproximat
   }
 
   // Initialize with first active term, accumulate potentially other active terms.
-  auto cost = (*firstActive)->getQuadraticApproximation(time, state, targetTrajectories, preComp);
+  auto cost = (*firstActive)->GetQuadraticApproximation(time, state, targetTrajectories, preComp);
   std::for_each(std::next(firstActive), terms_.end(), [&](const std::unique_ptr<StateCost>& costTerm) {
-    if (costTerm->isActive(time)) {
-      const auto costTermApproximation = costTerm->getQuadraticApproximation(time, state, targetTrajectories, preComp);
+    if (costTerm->IsActive(time)) {
+      const auto costTermApproximation = costTerm->GetQuadraticApproximation(time, state, targetTrajectories, preComp);
       cost.f += costTermApproximation.f;
       cost.dfdx += costTermApproximation.dfdx;
       cost.dfdxx += costTermApproximation.dfdxx;

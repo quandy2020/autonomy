@@ -24,7 +24,7 @@ namespace bolza {
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-SphereApproximation::SphereApproximation(const hpp::fcl::CollisionGeometry& geometry, size_t geomObjId, scalar_t maxExcess,
+SphereApproximation::SphereApproximation(const coal::CollisionGeometry& geometry, size_t geomObjId, scalar_t maxExcess,
                                          scalar_t shrinkRatio)
     : geomObjId_(geomObjId), maxExcess_(maxExcess), shrinkRatio_(shrinkRatio) {
   if (shrinkRatio <= 0.0 || shrinkRatio >= 1.0) {
@@ -32,18 +32,18 @@ SphereApproximation::SphereApproximation(const hpp::fcl::CollisionGeometry& geom
   }
   const auto& nodeType = geometry.getNodeType();
   switch (nodeType) {
-    case hpp::fcl::NODE_TYPE::GEOM_BOX: {
-      const auto* boxPtr = dynamic_cast<const hpp::fcl::Box*>(&geometry);
+    case coal::NODE_TYPE::GEOM_BOX: {
+      const auto* boxPtr = dynamic_cast<const coal::Box*>(&geometry);
       ApproximateBox(boxPtr->halfSide * 2);
       break;
     }
-    case hpp::fcl::NODE_TYPE::GEOM_CYLINDER: {
-      const auto* cylinderPtr = dynamic_cast<const hpp::fcl::Cylinder*>(&geometry);
+    case coal::NODE_TYPE::GEOM_CYLINDER: {
+      const auto* cylinderPtr = dynamic_cast<const coal::Cylinder*>(&geometry);
       ApproximateCylinder(cylinderPtr->radius, cylinderPtr->halfLength * 2);
       break;
     }
-    case hpp::fcl::NODE_TYPE::GEOM_SPHERE: {
-      const auto* spherePtr = dynamic_cast<const hpp::fcl::Sphere*>(&geometry);
+    case coal::NODE_TYPE::GEOM_SPHERE: {
+      const auto* spherePtr = dynamic_cast<const coal::Sphere*>(&geometry);
       numSpheres_ = 1;
       sphereRadius_ = spherePtr->radius;
       sphereCentersToObjectCenter_.resize(1);

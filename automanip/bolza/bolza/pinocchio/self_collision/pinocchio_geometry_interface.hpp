@@ -26,7 +26,7 @@
 
 #include "bolza/pinocchio/interface/pinocchio_interface.hpp"
 
-#include <hpp/fcl/collision_data.h>
+#include <coal/collision_data.h>
 
 #include <urdf_model/model.h>
 
@@ -68,7 +68,7 @@ class PinocchioGeometryInterface final {
    * @param [in] pinocchioInterface: pinocchio interface of the robot model
    * @return An array of distances between pairs of collision bodies defined in the constructor.
    */
-  std::vector<hpp::fcl::DistanceResult> ComputeDistances(const PinocchioInterface& pinocchioInterface) const;
+  std::vector<coal::DistanceResult> ComputeDistances(const PinocchioInterface& pinocchioInterface) const;
 
   /**
    * @brief Get the number of collision pairs.

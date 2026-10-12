@@ -626,14 +626,14 @@ void GDDP<STATE_DIM, INPUT_DIM>::PropagateRolloutSensitivity(size_t workerIndex,
      * @brief Reset Num Function Calls.
      * @return Result value.
      */
-    rolloutSensitivityEquationsPtrStock_[workerIndex]->resetNumFunctionCalls();
+    rolloutSensitivityEquationsPtrStock_[workerIndex]->ResetNumFunctionCalls();
     /**
      * @brief Set Data.
      * @param [in,out] timeStamp_: Time Stamp.
      * @param [in,out] gainArray_: Gain Array.
      * @return Result value.
      */
-    rolloutSensitivityEquationsPtrStock_[workerIndex]->setData(
+    rolloutSensitivityEquationsPtrStock_[workerIndex]->SetData(
         &dataCollectorPtr_->nominalTimeTrajectoriesStock_[i], &dataCollectorPtr_->modelDataTrajectoriesStock_[i],
         &controllersStock[i].timeStamp_, &LvTrajectoriesStock[i], &controllersStock[i].gainArray_);
 
@@ -738,7 +738,7 @@ void GDDP<STATE_DIM, INPUT_DIM>::PropagateRolloutSensitivity(size_t workerIndex,
            * @return Result value.
            */
           sensitivityInputTrajectoriesStock[i].emplace_back(
-              rolloutSensitivityEquationsPtrStock_[workerIndex]->controllerPtr()->computeInput(sensitivityTimeTrajectoriesStock[i][k_u],
+              rolloutSensitivityEquationsPtrStock_[workerIndex]->ControllerPtr()->ComputeInput(sensitivityTimeTrajectoriesStock[i][k_u],
                                                                                                sensitivityStateTrajectoriesStock[i][k_u]));
         }  // end of k loop
       }
@@ -1060,13 +1060,13 @@ void GDDP<STATE_DIM, INPUT_DIM>::SolveSensitivityRiccatiEquations(
      * @brief Reset Num Function Calls.
      * @return Result value.
      */
-    riccatiSensitivityEquationsPtrStock_[workerIndex]->resetNumFunctionCalls();
+    riccatiSensitivityEquationsPtrStock_[workerIndex]->ResetNumFunctionCalls();
     /**
      * @brief Set Data.
      * @param [in] learningRate: Learning Rate.
      * @return Result value.
      */
-    riccatiSensitivityEquationsPtrStock_[workerIndex]->setData(
+    riccatiSensitivityEquationsPtrStock_[workerIndex]->SetData(
         learningRate, &dataCollectorPtr_->SsTimeTrajectoriesStock_[i], &dataCollectorPtr_->SmTrajectoriesStock_[i],
         &dataCollectorPtr_->SvTrajectoriesStock_[i], &dataCollectorPtr_->nominalTimeTrajectoriesStock_[i],
         &dataCollectorPtr_->modelDataTrajectoriesStock_[i], &dataCollectorPtr_->RmInverseTrajectoriesStock_[i],
@@ -1318,14 +1318,14 @@ void GDDP<STATE_DIM, INPUT_DIM>::SolveSensitivityBVP(size_t workerIndex, const s
      * @brief Reset Num Function Calls.
      * @return Result value.
      */
-    bvpSensitivityEquationsPtrStock_[workerIndex]->resetNumFunctionCalls();
+    bvpSensitivityEquationsPtrStock_[workerIndex]->ResetNumFunctionCalls();
     /**
      * @brief Set Data.
      * @param [in,out] timeStamp_: Time Stamp.
      * @param [in,out] gainArray_: Gain Array.
      * @return Result value.
      */
-    bvpSensitivityEquationsPtrStock_[workerIndex]->setData(
+    bvpSensitivityEquationsPtrStock_[workerIndex]->SetData(
         &dataCollectorPtr_->nominalTimeTrajectoriesStock_[i], &dataCollectorPtr_->modelDataTrajectoriesStock_[i],
         &dataCollectorPtr_->projectedModelDataTrajectoriesStock_[i], &nominalCostateTrajectoriesStock_[i],
         &nominalLagrangianTrajectoriesStock_[i], &dataCollectorPtr_->optimizedControllersStock_[i].timeStamp_,
@@ -1336,12 +1336,12 @@ void GDDP<STATE_DIM, INPUT_DIM>::SolveSensitivityBVP(size_t workerIndex, const s
      * @brief Reset Num Function Calls.
      * @return Result value.
      */
-    bvpSensitivityErrorEquationsPtrStock_[workerIndex]->resetNumFunctionCalls();
+    bvpSensitivityErrorEquationsPtrStock_[workerIndex]->ResetNumFunctionCalls();
     /**
      * @brief Set Data.
      * @return Result value.
      */
-    bvpSensitivityErrorEquationsPtrStock_[workerIndex]->setData(
+    bvpSensitivityErrorEquationsPtrStock_[workerIndex]->SetData(
         &dataCollectorPtr_->nominalTimeTrajectoriesStock_[i], &dataCollectorPtr_->modelDataTrajectoriesStock_[i],
         &dataCollectorPtr_->projectedModelDataTrajectoriesStock_[i], &dataCollectorPtr_->RmInverseTrajectoriesStock_[i],
         &dataCollectorPtr_->RmInvConstrainedCholTrajectoryStock_[i],

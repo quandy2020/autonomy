@@ -49,7 +49,7 @@ class MPCNetBehavioralController final : public ControllerBase {
        * @brief Alpha.
        * @return Result value.
        */
-      : alpha_(alpha), optimalControllerPtr_(optimalController.clone()), learnedControllerPtr_(learnedController.clone()) {}
+      : alpha_(alpha), optimalControllerPtr_(optimalController.Clone()), learnedControllerPtr_(learnedController.Clone()) {}
 
   /**
    * @brief Constructs a MPCNetBehavioralController.
@@ -76,13 +76,13 @@ class MPCNetBehavioralController final : public ControllerBase {
    * Set the optimal controller.
    * @param [in] optimalController: The optimal Controller (this class takes ownership of a clone).
    */
-  void SetOptimalController(const ControllerBase& optimalController) { optimalControllerPtr_.reset(optimalController.clone()); }
+  void SetOptimalController(const ControllerBase& optimalController) { optimalControllerPtr_.reset(optimalController.Clone()); }
 
   /**
    * Set the learned controller.
    * @param [in] learnedController: The learned Controller (this class takes ownership of a clone).
    */
-  void SetLearnedController(const MPCNetControllerBase& learnedController) { learnedControllerPtr_.reset(learnedController.clone()); }
+  void SetLearnedController(const MPCNetControllerBase& learnedController) { learnedControllerPtr_.reset(learnedController.Clone()); }
 
   /**
    * @brief Compute Input.

@@ -83,7 +83,7 @@ static constexpr int s_vector_dim(int state_dim) {
 }
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Helper function to define the Riccati matrix dimension, also supports dynamic size -1.
  *
@@ -116,7 +116,7 @@ class ContinuousTimeRiccatiEquations final : public OdeBase {
   ~ContinuousTimeRiccatiEquations() override = default;
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Sets risk-sensitive coefficient.
    *

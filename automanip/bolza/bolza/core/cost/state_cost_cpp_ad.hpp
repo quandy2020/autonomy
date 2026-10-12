@@ -43,46 +43,19 @@ class StateCostCppAd : public StateCost {
    */
   ~StateCostCppAd() override = default;
 
-    /**
-   * @brief /** Initialize the CppAd interface.
-   *
-   * /
-   *
-   * void Initialize(size_t stateDim, size_t parameterDim, const std::string& modelName, const std::string& modelFolder = "/tmp/ocs2",
-   *
-   * bool recompileLibraries = true, bool verbose = true);
-   *
-   * /* Get the parameter vector */
-   *
-   * virtual vector_t GetParameters(scalar_t time, const TargetTrajectories& targetTrajectories,
-   *
-   * const PreComputation& /* preComputation */) const {
-   *
-   * return vector_t(0);
-   *
-   * };
-   *
-   * /* Cost evaluation */
-   * @param [in] time: Time.
-   * @param [in] state: State.
-   * @param [in] targetTrajectories: Target Trajectories.
-   * @param [in] preComp: Pre Comp.
-   * @return Result value.
-   */
-.
-   * @param [in] state: State.
-   * @param [in] targetTrajectories: Target Trajectories.
-   * @param [in] preComp: Pre Comp.
-   * @return Result value.
-   */
-  /**
-   * @brief Get Quadratic Approximation.
-   * @param [in] time: Time.
-   * @param [in] state: State.
-   * @param [in] targetTrajectories: Target Trajectories.
-   * @param [in] preComp: Pre Comp.
-   * @return Result value.
-   */
+  /** Initialize the CppAd interface. */
+  void Initialize(size_t stateDim, size_t parameterDim, const std::string& modelName,
+                  const std::string& modelFolder = "/tmp/ocs2", bool recompileLibraries = true, bool verbose = true);
+
+  /** Get the parameter vector. */
+  virtual vector_t GetParameters(scalar_t time, const TargetTrajectories& targetTrajectories,
+                                 const PreComputation& /* preComputation */) const {
+    return vector_t(0);
+  }
+
+  scalar_t GetValue(scalar_t time, const vector_t& state, const TargetTrajectories& targetTrajectories,
+                    const PreComputation& preComp) const override;
+
   ScalarFunctionQuadraticApproximation GetQuadraticApproximation(scalar_t time, const vector_t& state,
                                                                  const TargetTrajectories& targetTrajectories,
                                                                  const PreComputation& preComp) const override;
@@ -95,7 +68,7 @@ class StateCostCppAd : public StateCost {
   StateCostCppAd(const StateCostCppAd& rhs);
 
     /**
-   * @brief /** The CppAD cost function */.
+   * @brief The CppAD cost function 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] parameters: Parameters.

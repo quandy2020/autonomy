@@ -104,7 +104,7 @@ void TransferFunctionBase::GetStateSpace(matrix_t& A, matrix_t& B, matrix_t& C, 
 
   // Absorb delay and normalize
   if (!delayAbsorbed_) {  // Default approximation of time delay
-    this->absorbDelay(1, 1);
+    this->AbsorbDelay(1, 1);
   }
   this->normalize();
 

@@ -74,7 +74,7 @@ std::pair<PrimalSolution, std::vector<PerformanceIndex>> solveWithFeedbackSettin
 
   // Solve
   solver.Run(startTime, initState, finalTime);
-  return {solver.PrimalSolution(finalTime), solver.GetIterationsLog()};
+  return {solver.GetPrimalSolution(finalTime), solver.GetIterationsLog()};
 }
 
 }  // namespace

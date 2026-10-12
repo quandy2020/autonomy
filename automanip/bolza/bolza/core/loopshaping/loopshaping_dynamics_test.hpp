@@ -31,7 +31,7 @@ class TestFixtureLoopShapingDynamics : LoopshapingTestConfiguration {
     A.setRandom(systemStateDim_, systemStateDim_);
     B.setRandom(systemStateDim_, inputDim_);
     G.setRandom(systemStateDim_, systemStateDim_);
-    testSystem.Reset(new LinearSystemDynamics(A, B, G));
+    testSystem.reset(new LinearSystemDynamics(A, B, G));
 
     // Create Loopshaping Dynamics
     testLoopshapingDynamics = LoopshapingDynamics::Create(*testSystem, loopshapingDefinition_);

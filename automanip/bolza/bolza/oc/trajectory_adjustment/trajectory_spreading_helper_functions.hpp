@@ -49,8 +49,8 @@ inline TrajectorySpreading::Status TrajectorySpread(const ModeSchedule& oldModeS
    * @param [in] debugPrint: Debug Print.
    * @return Result value.
    */
-  TrajectorySpreading TrajectorySpreading(debugPrint);
-  const auto status = trajectorySpreading.set(oldModeSchedule, newModeSchedule, controller.timeStamp_);
+  TrajectorySpreading trajectorySpreading(debugPrint);
+  const auto status = trajectorySpreading.Set(oldModeSchedule, newModeSchedule, controller.timeStamp_);
 
   // adjust bias, gain, and time
   /**
@@ -58,19 +58,19 @@ inline TrajectorySpreading::Status TrajectorySpread(const ModeSchedule& oldModeS
    * @param [in] biasArray_: Bias Array.
    * @return Result value.
    */
-  trajectorySpreading.adjustTrajectory(controller.biasArray_);
+  trajectorySpreading.AdjustTrajectory(controller.biasArray_);
   /**
    * @brief Adjust Trajectory.
    * @param [in] gainArray_: Gain Array.
    * @return Result value.
    */
-  trajectorySpreading.adjustTrajectory(controller.gainArray_);
+  trajectorySpreading.AdjustTrajectory(controller.gainArray_);
   /**
    * @brief Adjust Time Trajectory.
    * @param [in] timeStamp_: Time Stamp.
    * @return Result value.
    */
-  trajectorySpreading.adjustTimeTrajectory(controller.timeStamp_);
+  trajectorySpreading.AdjustTimeTrajectory(controller.timeStamp_);
 
   return status;
 }
@@ -92,8 +92,8 @@ inline TrajectorySpreading::Status TrajectorySpread(const ModeSchedule& oldModeS
    * @param [in] debugPrint: Debug Print.
    * @return Result value.
    */
-  TrajectorySpreading TrajectorySpreading(debugPrint);
-  const auto status = trajectorySpreading.set(oldModeSchedule, newModeSchedule, dualSolution.timeTrajectory);
+  TrajectorySpreading trajectorySpreading(debugPrint);
+  const auto status = trajectorySpreading.Set(oldModeSchedule, newModeSchedule, dualSolution.timeTrajectory);
 
   // adjust final, pre-jump, intermediate, time, postEventIndices
   if (status.willTruncate) {
@@ -103,20 +103,20 @@ inline TrajectorySpreading::Status TrajectorySpread(const ModeSchedule& oldModeS
      */
     dualSolution.final.clear();
   }
-  dualSolution.preJumps = trajectorySpreading.extractEventsArray(dualSolution.preJumps);
+  dualSolution.preJumps = trajectorySpreading.ExtractEventsArray(dualSolution.preJumps);
   /**
    * @brief Adjust Trajectory.
    * @param [in] intermediates: Intermediates.
    * @return Result value.
    */
-  trajectorySpreading.adjustTrajectory(dualSolution.intermediates);
+  trajectorySpreading.AdjustTrajectory(dualSolution.intermediates);
   /**
    * @brief Adjust Time Trajectory.
    * @param [in] timeTrajectory: Time Trajectory.
    * @return Result value.
    */
-  trajectorySpreading.adjustTimeTrajectory(dualSolution.timeTrajectory);
-  dualSolution.postEventIndices = trajectorySpreading.getPostEventIndices();
+  trajectorySpreading.AdjustTimeTrajectory(dualSolution.timeTrajectory);
+  dualSolution.postEventIndices = trajectorySpreading.GetPostEventIndices();
 
   return status;
 }
@@ -144,21 +144,21 @@ inline void TrajectorySpread(const TrajectorySpreading& trajectorySpreading, con
    * @param [in] timeTrajectory: Time Trajectory.
    * @return Result value.
    */
-  trajectorySpreading.adjustTimeTrajectory(newDualSolution.timeTrajectory);
-  newDualSolution.postEventIndices = trajectorySpreading.getPostEventIndices();
+  trajectorySpreading.AdjustTimeTrajectory(newDualSolution.timeTrajectory);
+  newDualSolution.postEventIndices = trajectorySpreading.GetPostEventIndices();
 
   // adjust final, pre-jump and intermediate
-  if (!trajectorySpreading.getStatus().willTruncate) {
+  if (!trajectorySpreading.GetStatus().willTruncate) {
     newDualSolution.final = oldDualSolution.final;
   }
-  newDualSolution.preJumps = trajectorySpreading.extractEventsArray(oldDualSolution.preJumps);
+  newDualSolution.preJumps = trajectorySpreading.ExtractEventsArray(oldDualSolution.preJumps);
   newDualSolution.intermediates = oldDualSolution.intermediates;
   /**
    * @brief Adjust Trajectory.
    * @param [in] intermediates: Intermediates.
    * @return Result value.
    */
-  trajectorySpreading.adjustTrajectory(newDualSolution.intermediates);
+  trajectorySpreading.AdjustTrajectory(newDualSolution.intermediates);
 }
 
 /**
@@ -179,8 +179,8 @@ inline TrajectorySpreading::Status TrajectorySpread(const ModeSchedule& oldModeS
    * @param [in] debugPrint: Debug Print.
    * @return Result value.
    */
-  TrajectorySpreading TrajectorySpreading(debugPrint);
-  const auto status = trajectorySpreading.set(oldModeSchedule, newModeSchedule, primalSolution.timeTrajectory_);
+  TrajectorySpreading trajectorySpreading(debugPrint);
+  const auto status = trajectorySpreading.Set(oldModeSchedule, newModeSchedule, primalSolution.timeTrajectory_);
 
   // adjust modeSchedule, state, input, time, postEventIndices
   primalSolution.modeSchedule_ = newModeSchedule;
@@ -189,20 +189,20 @@ inline TrajectorySpreading::Status TrajectorySpread(const ModeSchedule& oldModeS
    * @param [in] stateTrajectory_: State Trajectory.
    * @return Result value.
    */
-  trajectorySpreading.adjustTrajectory(primalSolution.stateTrajectory_);
+  trajectorySpreading.AdjustTrajectory(primalSolution.stateTrajectory_);
   /**
    * @brief Adjust Trajectory.
    * @param [in] inputTrajectory_: Input Trajectory.
    * @return Result value.
    */
-  trajectorySpreading.adjustTrajectory(primalSolution.inputTrajectory_);
+  trajectorySpreading.AdjustTrajectory(primalSolution.inputTrajectory_);
   /**
    * @brief Adjust Time Trajectory.
    * @param [in] timeTrajectory_: Time Trajectory.
    * @return Result value.
    */
-  trajectorySpreading.adjustTimeTrajectory(primalSolution.timeTrajectory_);
-  primalSolution.postEventIndices_ = trajectorySpreading.getPostEventIndices();
+  trajectorySpreading.AdjustTimeTrajectory(primalSolution.timeTrajectory_);
+  primalSolution.postEventIndices_ = trajectorySpreading.GetPostEventIndices();
 
   return status;
 }

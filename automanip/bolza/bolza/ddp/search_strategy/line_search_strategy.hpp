@@ -132,7 +132,7 @@ class LineSearchStrategy final : public SearchStrategyBase {
   size_t MaxNumOfSearches() const;
 
     /**
-   * @brief /** Computes the solution on a thread and a given stepLength  */.
+   * @brief Computes the solution on a thread and a given stepLength  
    * @param [in] taskId: Task Id.
    * @param [in] stepLength: Step Length.
    * @param [in,out] solution: Solution.
@@ -140,7 +140,7 @@ class LineSearchStrategy final : public SearchStrategyBase {
   void ComputeSolution(size_t taskId, scalar_t stepLength, search_strategy::Solution& solution);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Defines line search task on a thread with various learning rates and choose the largest acceptable step-size.
    *
@@ -152,7 +152,7 @@ class LineSearchStrategy final : public SearchStrategyBase {
   void LineSearchTask(const size_t taskId);
 
     /**
-   * @brief /** Prints to output. */.
+   * @brief Prints to output. 
    * @param [in] text: Text.
    */
   void PrintString(const std::string& text) const;

@@ -55,7 +55,7 @@ class UpperLevelCost final : public NLPCost {
   using rollout_base_t = typename slq_t::rollout_base_t;
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Constructor
    *
@@ -132,12 +132,12 @@ class UpperLevelCost final : public NLPCost {
      * @return Result value.
      */
     const scalar_array_t EventTimes(x.data(), x.data() + x.size());
-    const auto modeSequence = modeScheduleManagerPtr_->getModeSchedule().modeSequence;
+    const auto modeSequence = modeScheduleManagerPtr_->GetModeSchedule().modeSequence;
     /**
      * @brief Set Mode Schedule.
      * @return Result value.
      */
-    modeScheduleManagerPtr_->setModeSchedule({eventTimes, modeSequence});
+    modeScheduleManagerPtr_->SetModeSchedule({eventTimes, modeSequence});
 
     // run SLQ
     try {
@@ -145,7 +145,7 @@ class UpperLevelCost final : public NLPCost {
        * @brief Reset.
        * @return Result value.
        */
-      slqPtr_->reset();
+      slqPtr_->Reset();
       /**
        * @brief Run.
        * @param [in] initTime_: Init Time.
@@ -154,7 +154,7 @@ class UpperLevelCost final : public NLPCost {
        * @param [in] partitioningTimes_: Partitioning Times.
        * @return Result value.
        */
-      slqPtr_->run(initTime_, initState_, finalTime_, partitioningTimes_);
+      slqPtr_->Run(initTime_, initState_, finalTime_, partitioningTimes_);
     } catch (const std::exception& e) {
       /**
        * @brief What.
@@ -169,7 +169,7 @@ class UpperLevelCost final : public NLPCost {
      * @brief Get Performance Indeces.
      * @return Result value.
      */
-    performanceIndex_ = slqPtr_->getPerformanceIndeces();
+    performanceIndex_ = slqPtr_->GetPerformanceIndeces();
 
     // display
     if (display_) {
@@ -214,7 +214,7 @@ class UpperLevelCost final : public NLPCost {
      * @brief Run.
      * @return Result value.
      */
-    gddpPtr_->run(slqDataCollectorPtr_.get());
+    gddpPtr_->Run(slqDataCollectorPtr_.get());
     /**
      * @brief Get Cost Funtion Derivative.
      * @param [in] g: G.

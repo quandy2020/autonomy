@@ -52,9 +52,9 @@ SelfCollisionConstraintCppAd::SelfCollisionConstraintCppAd(PinocchioInterface pi
       pinocchioInterface_(std::move(pinocchioInterface)),
       selfCollision_(pinocchioInterface_, std::move(pinocchioGeometryInterface), minimumDistance, modelName, modelFolder,
                      recompileLibraries, verbose),
-      mappingPtr_(mapping.clone()),
+      mappingPtr_(mapping.Clone()),
       updateCallback_(std::move(updateCallback)) {
-  mappingPtr_->setPinocchioInterface(pinocchioInterface_);
+  mappingPtr_->SetPinocchioInterface(pinocchioInterface_);
 }
 
 /******************************************************************************************************/
@@ -64,28 +64,28 @@ SelfCollisionConstraintCppAd::SelfCollisionConstraintCppAd(const SelfCollisionCo
     : StateConstraint(rhs),
       pinocchioInterface_(rhs.pinocchioInterface_),
       selfCollision_(rhs.selfCollision_),
-      mappingPtr_(rhs.mappingPtr_->clone()),
+      mappingPtr_(rhs.mappingPtr_->Clone()),
       updateCallback_(rhs.updateCallback_) {
-  mappingPtr_->setPinocchioInterface(pinocchioInterface_);
+  mappingPtr_->SetPinocchioInterface(pinocchioInterface_);
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 size_t SelfCollisionConstraintCppAd::GetNumConstraints(scalar_t time) const {
-  return selfCollision_.getNumCollisionPairs();
+  return selfCollision_.GetNumCollisionPairs();
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 vector_t SelfCollisionConstraintCppAd::GetValue(scalar_t time, const vector_t& state, const PreComputation&) const {
-  const auto q = mappingPtr_->getPinocchioJointPosition(state);
-  const auto& model = pinocchioInterface_.getModel();
-  auto& data = pinocchioInterface_.getData();
+  const auto q = mappingPtr_->GetPinocchioJointPosition(state);
+  const auto& model = pinocchioInterface_.GetModel();
+  auto& data = pinocchioInterface_.GetData();
   pinocchio::forwardKinematics(model, data, q);
 
-  return selfCollision_.getValue(pinocchioInterface_);
+  return selfCollision_.GetValue(pinocchioInterface_);
 }
 
 /******************************************************************************************************/
@@ -93,17 +93,17 @@ vector_t SelfCollisionConstraintCppAd::GetValue(scalar_t time, const vector_t& s
 /******************************************************************************************************/
 VectorFunctionLinearApproximation SelfCollisionConstraintCppAd::GetLinearApproximation(scalar_t time, const vector_t& state,
                                                                                        const PreComputation&) const {
-  const auto q = mappingPtr_->getPinocchioJointPosition(state);
-  const auto& model = pinocchioInterface_.getModel();
-  auto& data = pinocchioInterface_.getData();
+  const auto q = mappingPtr_->GetPinocchioJointPosition(state);
+  const auto& model = pinocchioInterface_.GetModel();
+  auto& data = pinocchioInterface_.GetData();
   pinocchio::forwardKinematics(model, data, q);
   updateCallback_(state, pinocchioInterface_);
 
   VectorFunctionLinearApproximation constraint;
   matrix_t dfdq, dfdv;
-  std::tie(constraint.f, dfdq) = selfCollision_.getLinearApproximation(pinocchioInterface_, q);
+  std::tie(constraint.f, dfdq) = selfCollision_.GetLinearApproximation(pinocchioInterface_, q);
   dfdv.setZero(dfdq.rows(), dfdq.cols());
-  std::tie(constraint.dfdx, std::ignore) = mappingPtr_->getOcs2Jacobian(state, dfdq, dfdv);
+  std::tie(constraint.dfdx, std::ignore) = mappingPtr_->GetOcs2Jacobian(state, dfdq, dfdv);
   return constraint;
 }
 

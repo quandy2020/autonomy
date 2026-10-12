@@ -36,7 +36,7 @@ SelfCollision::SelfCollision(PinocchioGeometryInterface pinocchioGeometryInterfa
 /******************************************************************************************************/
 /******************************************************************************************************/
 vector_t SelfCollision::GetValue(const PinocchioInterface& pinocchioInterface) const {
-  const std::vector<hpp::fcl::DistanceResult> distanceArray = pinocchioGeometryInterface_.computeDistances(pinocchioInterface);
+  const std::vector<coal::DistanceResult> distanceArray = pinocchioGeometryInterface_.ComputeDistances(pinocchioInterface);
 
   vector_t violations = vector_t::Zero(distanceArray.size());
   for (size_t i = 0; i < distanceArray.size(); ++i) {
@@ -50,12 +50,12 @@ vector_t SelfCollision::GetValue(const PinocchioInterface& pinocchioInterface) c
 /******************************************************************************************************/
 /******************************************************************************************************/
 std::pair<vector_t, matrix_t> SelfCollision::GetLinearApproximation(const PinocchioInterface& pinocchioInterface) const {
-  const std::vector<hpp::fcl::DistanceResult> distanceArray = pinocchioGeometryInterface_.computeDistances(pinocchioInterface);
+  const std::vector<coal::DistanceResult> distanceArray = pinocchioGeometryInterface_.ComputeDistances(pinocchioInterface);
 
-  const auto& model = pinocchioInterface.getModel();
-  const auto& data = pinocchioInterface.getData();
+  const auto& model = pinocchioInterface.GetModel();
+  const auto& data = pinocchioInterface.GetData();
 
-  const auto& geometryModel = pinocchioGeometryInterface_.getGeometryModel();
+  const auto& geometryModel = pinocchioGeometryInterface_.GetGeometryModel();
 
   vector_t f(distanceArray.size());
   matrix_t dfdq(distanceArray.size(), model.nq);

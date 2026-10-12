@@ -88,12 +88,12 @@ class EndEffectorDistanceConstraint final : public bolza::StateConstraint {
    * @brief Get Num Constraints.
    * @return Result value.
    */
-  size_t GetNumConstraints(scalar_t time) const override { return kinematicsPtr_->getIds().size(); }
+  size_t GetNumConstraints(scalar_t time) const override { return kinematicsPtr_->GetIds().size(); }
   /**
    * @brief Get IDs.
    * @return Result value.
    */
-  const std::vector<std::string>& GetIDs() const { return kinematicsPtr_->getIds(); }
+  const std::vector<std::string>& GetIDs() const { return kinematicsPtr_->GetIds(); }
 
   /**
    * @brief Get Value.

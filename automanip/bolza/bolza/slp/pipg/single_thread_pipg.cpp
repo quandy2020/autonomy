@@ -38,8 +38,8 @@ SolverStatus SingleThreadPipg(const pipg::Settings& settings, const Eigen::Spars
   bool isConverged = false;
   scalar_t constraintsViolationInfNorm;
   while (k < settings.maxNumIterations && !isConverged) {
-    const auto beta = pipgBounds.dualStepSize(k);
-    const auto alpha = pipgBounds.primalStepSize(k);
+    const auto beta = pipgBounds.DualStepSize(k);
+    const auto alpha = pipgBounds.PrimalStepSize(k);
 
     z_old.swap(z);
 

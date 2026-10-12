@@ -54,7 +54,7 @@ class LoopshapingStateInputCost : public StateInputCostCollection {
 
  protected:
     /**
-   * @brief /** Constructor */.
+   * @brief Constructor 
    * @param [in] systemCost: System Cost.
    */
   LoopshapingStateInputCost(const StateInputCostCollection& systemCost, std::shared_ptr<LoopshapingDefinition> loopshapingDefinition)
@@ -65,7 +65,7 @@ class LoopshapingStateInputCost : public StateInputCostCollection {
       : StateInputCostCollection(systemCost), loopshapingDefinition_(std::move(loopshapingDefinition)) {}
 
     /**
-   * @brief /** Copy constructor */.
+   * @brief Copy constructor 
    * @param [in] other: Other.
    */
   LoopshapingStateInputCost(const LoopshapingStateInputCost& other) = default;

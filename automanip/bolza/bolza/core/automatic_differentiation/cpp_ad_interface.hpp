@@ -81,7 +81,7 @@ class CppAdInterface {
   ~CppAdInterface() = default;
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Copy constructor. Models are reloaded if available.
    *
@@ -100,7 +100,7 @@ class CppAdInterface {
   CppAdInterface& operator=(CppAdInterface&& rhs) = delete;
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Loads earlier created model from disk
    *
@@ -206,7 +206,7 @@ class CppAdInterface {
   void SetCompilerOptions(CppAD::cg::GccCompiler<scalar_t>& compiler) const;
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Configure the approximation order for the source generator
    *

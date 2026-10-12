@@ -58,7 +58,7 @@ class PinocchioInterfaceTpl final {
 
   // Template for conditional compilation using SFINAE
   template <typename T>
-  using EnableIfScalar_t = typename std::enable_if<std::is_same<T, scalar_t>::Value, bool>::type;
+  using EnableIfScalar_t = typename std::enable_if<std::is_same<T, scalar_t>::value, bool>::type;
 
   /**
    * @brief Construct from given pinocchio model.

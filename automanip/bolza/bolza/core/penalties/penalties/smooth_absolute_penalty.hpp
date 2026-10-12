@@ -54,7 +54,7 @@ class SmoothAbsolutePenalty final : public PenaltyBase {
      * @param [in] relaxationParam: Relaxation Param.
      * @param [in] relaxationParam: Relaxation Param.
      */
-    Config(scalar_t scaleParam = 100.0, scalar_t relaxationParam = 1e-2) : Scale(scaleParam), relaxation(relaxationParam) {}
+    Config(scalar_t scaleParam = 100.0, scalar_t relaxationParam = 1e-2) : scale(scaleParam), relaxation(relaxationParam) {}
     scalar_t scale;
     scalar_t relaxation;
   };

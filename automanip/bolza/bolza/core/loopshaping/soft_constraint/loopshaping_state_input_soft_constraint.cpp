@@ -26,10 +26,10 @@ scalar_t LoopshapingStateInputSoftConstraint::GetValue(scalar_t t, const vector_
   }
 
   const LoopshapingPreComputation& preCompLS = cast<LoopshapingPreComputation>(preComp);
-  const auto& x_system = preCompLS.getSystemState();
-  const auto& u_system = preCompLS.getSystemInput();
+  const auto& x_system = preCompLS.GetSystemState();
+  const auto& u_system = preCompLS.GetSystemInput();
 
-  return StateInputCostCollection::GetValue(t, x_system, u_system, targetTrajectories, preCompLS.getSystemPreComputation());
+  return StateInputCostCollection::GetValue(t, x_system, u_system, targetTrajectories, preCompLS.GetSystemPreComputation());
 }
 
 }  // namespace bolza

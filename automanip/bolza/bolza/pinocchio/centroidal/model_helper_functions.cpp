@@ -36,8 +36,8 @@ void UpdateCentroidalDynamics(PinocchioInterfaceTpl<SCALAR_T>& interface, const 
   using matrix3_t = Eigen::Matrix<SCALAR_T, 3, 3>;
   using matrix6_t = Eigen::Matrix<SCALAR_T, 6, 6>;
 
-  const auto& model = interface.getModel();
-  auto& data = interface.getData();
+  const auto& model = interface.GetModel();
+  auto& data = interface.GetData();
 
   switch (info.centroidalModelType) {
     case CentroidalModelType::FullCentroidalDynamics: {
@@ -80,8 +80,8 @@ void UpdateCentroidalDynamicsDerivatives(PinocchioInterfaceTpl<SCALAR_T>& interf
                                          const Eigen::Matrix<SCALAR_T, Eigen::Dynamic, 1>& v) {
   using matrix6x_t = Eigen::Matrix<SCALAR_T, 6, Eigen::Dynamic>;
   using vector_t = Eigen::Matrix<SCALAR_T, Eigen::Dynamic, 1>;
-  const auto& model = interface.getModel();
-  auto& data = interface.getData();
+  const auto& model = interface.GetModel();
+  auto& data = interface.GetData();
 
   vector_t a = vector_t::Zero(info.generalizedCoordinatesNum);
   matrix6x_t dhdq(6, info.generalizedCoordinatesNum);
@@ -118,7 +118,7 @@ void UpdateCentroidalDynamicsDerivatives(PinocchioInterfaceTpl<SCALAR_T>& interf
 /******************************************************************************************************/
 template <typename SCALAR_T>
 const Eigen::Matrix<SCALAR_T, 6, Eigen::Dynamic>& GetCentroidalMomentumMatrix(const PinocchioInterfaceTpl<SCALAR_T>& interface) {
-  return interface.getData().Ag;
+  return interface.GetData().Ag;
 }
 
 /******************************************************************************************************/
@@ -127,7 +127,7 @@ const Eigen::Matrix<SCALAR_T, 6, Eigen::Dynamic>& GetCentroidalMomentumMatrix(co
 template <typename SCALAR_T>
 Eigen::Matrix<SCALAR_T, 3, 1> GetPositionComToContactPointInWorldFrame(const PinocchioInterfaceTpl<SCALAR_T>& interface,
                                                                        const CentroidalModelInfoTpl<SCALAR_T>& info, size_t contactIndex) {
-  const auto& data = interface.getData();
+  const auto& data = interface.GetData();
   return (data.oMf[info.endEffectorFrameIndices[contactIndex]].translation() - data.com[0]);
 }
 
@@ -137,8 +137,8 @@ Eigen::Matrix<SCALAR_T, 3, 1> GetPositionComToContactPointInWorldFrame(const Pin
 template <typename SCALAR_T>
 Eigen::Matrix<SCALAR_T, 3, Eigen::Dynamic> GetTranslationalJacobianComToContactPointInWorldFrame(
     const PinocchioInterfaceTpl<SCALAR_T>& interface, const CentroidalModelInfoTpl<SCALAR_T>& info, size_t contactIndex) {
-  const auto& model = interface.getModel();
-  auto data = interface.getData();
+  const auto& model = interface.GetModel();
+  auto data = interface.GetData();
   Eigen::Matrix<SCALAR_T, 6, Eigen::Dynamic> jacobianWorldToContactPointInWorldFrame;
   jacobianWorldToContactPointInWorldFrame.setZero(6, info.generalizedCoordinatesNum);
   pinocchio::getFrameJacobian(model, data, info.endEffectorFrameIndices[contactIndex], pinocchio::LOCAL_WORLD_ALIGNED,

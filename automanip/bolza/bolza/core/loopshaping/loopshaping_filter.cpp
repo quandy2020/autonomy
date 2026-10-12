@@ -66,9 +66,9 @@ void Filter::Print() const {
   std::cerr << "numOutputs: " << numOutputs_ << std::endl;
   auto printMatrix = [](const std::string& name, const matrix_t& m) {
     if (m.isDiagonal()) {
-      std::cerr << Name << ": (diagonal) \n" << m.diagonal().transpose() << "\n";
+      std::cerr << name << ": (diagonal) \n" << m.diagonal().transpose() << "\n";
     } else {
-      std::cerr << Name << ": \n" << m << "\n";
+      std::cerr << name << ": \n" << m << "\n";
     }
   };
   printMatrix("A", A_);

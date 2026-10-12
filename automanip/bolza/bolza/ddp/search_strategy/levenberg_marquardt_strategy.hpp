@@ -46,7 +46,7 @@ namespace bolza {
 class LevenbergMarquardtStrategy final : public SearchStrategyBase {
  public:
     /**
-   * @brief /**.
+   * @brief.
    *
    * Constructor.
    *
@@ -120,7 +120,7 @@ class LevenbergMarquardtStrategy final : public SearchStrategyBase {
 
  private:
     /**
-   * @brief /** computes the ratio between actual reduction and predicted reduction */.
+   * @brief computes the ratio between actual reduction and predicted reduction 
    * @param [in] actualReduction: Actual Reduction.
    * @param [in] expectedReduction: Expected Reduction.
    * @return Result value.

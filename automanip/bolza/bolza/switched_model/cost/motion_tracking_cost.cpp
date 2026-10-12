@@ -32,19 +32,19 @@ Eigen::Matrix<SCALAR_T, -1, 1> computeMotionTargets(const comkino_state_s_t<SCAL
   motionTarget.comLinearVelocity = RotateVectorBaseToOrigin(GetLinearVelocity(base_baseTwist), eulerAngles);
   for (size_t leg = 0; leg < NUM_CONTACT_POINTS; ++leg) {
     motionTarget.jointPosition[leg] = qJoints.template segment<3>(3 * leg);
-    motionTarget.footPosition[leg] = kinematics.footPositionInOriginFrame(leg, basePose, qJoints);
+    motionTarget.footPosition[leg] = kinematics.FootPositionInOriginFrame(leg, basePose, qJoints);
     motionTarget.jointVelocity[leg] = dqJoints.template segment<3>(3 * leg);
-    motionTarget.footVelocity[leg] = kinematics.footVelocityInOriginFrame(leg, basePose, base_baseTwist, qJoints, dqJoints);
+    motionTarget.footVelocity[leg] = kinematics.FootVelocityInOriginFrame(leg, basePose, base_baseTwist, qJoints, dqJoints);
     motionTarget.contactForce[leg] = u.template segment<3>(3 * leg);
   }
-  return motionTarget.asVector();
+  return motionTarget.AsVector();
 }
 
 }  // namespace
 
 MotionTrackingCost::MotionTrackingCost(const Weights& settings, const ad_kinematic_model_t& adKinematicModel,
                                        const ModelSettings& modelSettings)
-    : adKinematicModelPtr_(adKinematicModel.clone()), modelSettings_(modelSettings) {
+    : adKinematicModelPtr_(adKinematicModel.Clone()), modelSettings_(modelSettings) {
   // Weights are sqrt of settings
   CostElements<bolza::scalar_t> weightStruct;
   weightStruct.eulerXYZ = settings.eulerXYZ.cwiseSqrt();
@@ -58,7 +58,7 @@ MotionTrackingCost::MotionTrackingCost(const Weights& settings, const ad_kinemat
     weightStruct.footVelocity[leg] = settings.footVelocity[leg].cwiseSqrt();
     weightStruct.contactForce[leg] = settings.contactForce[leg].cwiseSqrt();
   }
-  sqrtWeights_ = weightStruct.asVector();
+  sqrtWeights_ = weightStruct.AsVector();
 
   Initialize(STATE_DIM, INPUT_DIM, CostElements<bolza::scalar_t>::Size() + sqrtWeights_.size(),
              modelSettings_.robotName_ + "_MotionTrackingCost", modelSettings_.autodiffLibraryFolder_, modelSettings_.recompileLibraries_);
@@ -69,13 +69,13 @@ bolza::vector_t MotionTrackingCost::GetParameters(bolza::scalar_t time, const bo
   const auto& switchedModelPreComp = bolza::cast<SwitchedModelPreComputation>(preComputation);
 
   bolza::vector_t parameters(CostElements<bolza::scalar_t>::Size() + sqrtWeights_.size());
-  parameters << switchedModelPreComp.getMotionReference().asVector(), sqrtWeights_;
+  parameters << switchedModelPreComp.GetMotionReference().AsVector(), sqrtWeights_;
   return parameters;
 }
 
 MotionTrackingCost::MotionTrackingCost(const MotionTrackingCost& other)
     : bolza::StateInputCostGaussNewtonAd(other),
-      adKinematicModelPtr_(other.adKinematicModelPtr_->clone()),
+      adKinematicModelPtr_(other.adKinematicModelPtr_->Clone()),
       sqrtWeights_(other.sqrtWeights_),
       modelSettings_(other.modelSettings_) {}
 

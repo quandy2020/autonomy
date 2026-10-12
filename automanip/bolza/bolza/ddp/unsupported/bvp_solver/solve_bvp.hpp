@@ -105,7 +105,7 @@ class SolveBVP {
      * @param [in] RmInversePtr: Rm Inverse Ptr.
      * @return Result value.
      */
-    bvpEquationsPtr_->setData(timeStampPtr, AmPtr, OmPtr, BmPtr, GvPtr, QvPtr, QmPtr, PmPtr, RvPtr, RmPtr, RmInversePtr);
+    bvpEquationsPtr_->SetData(timeStampPtr, AmPtr, OmPtr, BmPtr, GvPtr, QvPtr, QmPtr, PmPtr, RvPtr, RmPtr, RmInversePtr);
 
     /**
      * @brief Front.
@@ -217,7 +217,7 @@ class SolveBVP {
   }
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Solve the BVP problem defined in BVPEquations over the given time trajectory.
    *

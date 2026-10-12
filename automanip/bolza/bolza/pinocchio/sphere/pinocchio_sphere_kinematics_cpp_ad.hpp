@@ -51,9 +51,9 @@ class PinocchioSphereKinematicsCppAd final : public EndEffectorKinematics<scalar
          * @brief Placement Translation.
          * @return Result value.
          */
-        : PlacementTranslation(std::move(placementTranslation)),
-          PlacementOrientation(std::move(placementOrientation)),
-          SphereCentersToObjectCenter(std::move(sphereCentersToObjectCenter)) {}
+        : placementTranslation(std::move(placementTranslation)),
+          placementOrientation(std::move(placementOrientation)),
+          sphereCentersToObjectCenter(std::move(sphereCentersToObjectCenter)) {}
     vector3_t placementTranslation;
     quaternion_t placementOrientation;
     std::vector<vector3_t> sphereCentersToObjectCenter;

@@ -61,7 +61,7 @@ TEST(test_transcription_metrics, event) {
   // dynamics
   const auto dynamics = GetRandomDynamics(nx, 0);
   const auto jumpMap = matrix_t::Random(nx, nx);
-  problem.dynamicsPtr.Reset(new LinearSystemDynamics(dynamics.dfdx, dynamics.dfdu, jumpMap));
+  problem.dynamicsPtr.reset(new LinearSystemDynamics(dynamics.dfdx, dynamics.dfdu, jumpMap));
 
   // cost
   problem.preJumpCostPtr->Add("eventCost", GetOcs2StateCost(GetRandomCost(nx, 0)));

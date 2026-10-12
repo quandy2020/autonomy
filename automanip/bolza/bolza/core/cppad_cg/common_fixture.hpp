@@ -94,7 +94,7 @@ class CommonCppAdParameterizedFixture : public ::testing::Test {
     FunImpl(x, p, y);
 
     // create f: x -> y and stop tape recording
-    fun_.Reset(new ad_fun_t(xp, y));
+    fun_.reset(new ad_fun_t(xp, y));
     fun_->optimize();
 
     jacobianSparsity_.resize(rangeDim_);

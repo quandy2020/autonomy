@@ -113,7 +113,7 @@ class SystemDynamicsBaseAD : public SystemDynamicsBase {
   VectorFunctionLinearApproximation GuardSurfacesLinearApproximation(scalar_t t, const vector_t& x, const vector_t& u) final;
 
     /**
-   * @brief /** @note: Requires linear approximation to be called before */.
+   * @brief @note: Requires linear approximation to be called before 
    * @param [in] t: T.
    * @param [in] x: X.
    * @param [in] u: U.
@@ -122,7 +122,7 @@ class SystemDynamicsBaseAD : public SystemDynamicsBase {
   vector_t FlowMapDerivativeTime(scalar_t t, const vector_t& x, const vector_t& u) final;
 
     /**
-   * @brief /** @note: Requires jump map linear approximation to be called before */.
+   * @brief @note: Requires jump map linear approximation to be called before 
    * @param [in] t: T.
    * @param [in] x: X.
    * @param [in] u: U.
@@ -131,7 +131,7 @@ class SystemDynamicsBaseAD : public SystemDynamicsBase {
   vector_t JumpMapDerivativeTime(scalar_t t, const vector_t& x, const vector_t& u) final;
 
     /**
-   * @brief /** @note: Requires guard surfaces linear approximation to be called before */.
+   * @brief @note: Requires guard surfaces linear approximation to be called before 
    * @param [in] t: T.
    * @param [in] x: X.
    * @param [in] u: U.
@@ -141,7 +141,7 @@ class SystemDynamicsBaseAD : public SystemDynamicsBase {
 
  protected:
     /**
-   * @brief /** Copy constructor */.
+   * @brief Copy constructor 
    * @param [in] rhs: Rhs.
    */
   SystemDynamicsBaseAD(const SystemDynamicsBaseAD& rhs);

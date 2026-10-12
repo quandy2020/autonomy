@@ -45,7 +45,7 @@ class ControllerAdjustmentBase {
   virtual ~ControllerAdjustmentBase() = default;
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Adjust the controller based on the last changes in the logic rules.
    *

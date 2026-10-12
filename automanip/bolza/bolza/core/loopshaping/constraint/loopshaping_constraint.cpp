@@ -36,7 +36,7 @@ std::unique_ptr<StateConstraintCollection> Create(const StateConstraintCollectio
 /******************************************************************************************************/
 std::unique_ptr<StateInputConstraintCollection> Create(const StateInputConstraintCollection& systemConstraint,
                                                        std::shared_ptr<LoopshapingDefinition> loopshapingDefinition) {
-  switch (loopshapingDefinition->getType()) {
+  switch (loopshapingDefinition->GetType()) {
     case LoopshapingType::outputpattern:
       return std::make_unique<LoopshapingConstraintOutputPattern>(systemConstraint, std::move(loopshapingDefinition));
     case LoopshapingType::eliminatepattern:

@@ -88,8 +88,8 @@ ScalarFunctionQuadraticApproximation QuadraticStateInputCost::GetQuadraticApprox
 /******************************************************************************************************/
 std::pair<vector_t, vector_t> QuadraticStateInputCost::GetStateInputDeviation(scalar_t time, const vector_t& state, const vector_t& input,
                                                                               const TargetTrajectories& targetTrajectories) const {
-  const vector_t stateDeviation = state - targetTrajectories.getDesiredState(time);
-  const vector_t inputDeviation = input - targetTrajectories.getDesiredInput(time);
+  const vector_t stateDeviation = state - targetTrajectories.GetDesiredState(time);
+  const vector_t inputDeviation = input - targetTrajectories.GetDesiredInput(time);
   return {stateDeviation, inputDeviation};
 }
 

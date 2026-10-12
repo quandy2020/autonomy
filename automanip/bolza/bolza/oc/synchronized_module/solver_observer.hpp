@@ -30,6 +30,7 @@
 #include <bolza/core/model_data/metrics.hpp>
 
 #include "bolza/oc/oc_data/dual_solution.hpp"
+#include "bolza/oc/oc_data/primal_solution.hpp"
 #include "bolza/oc/oc_data/problem_metrics.hpp"
 #include "bolza/oc/oc_problem/optimal_control_problem.hpp"
 

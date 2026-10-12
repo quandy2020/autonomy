@@ -60,7 +60,7 @@ void SolverBase::Run(scalar_t initTime, const vector_t& initState, scalar_t fina
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-PrimalSolution SolverBase::PrimalSolution(scalar_t finalTime) const {
+PrimalSolution SolverBase::GetPrimalSolution(scalar_t finalTime) const {
   PrimalSolution primalSolution;
   GetPrimalSolution(finalTime, &primalSolution);
   return primalSolution;
@@ -78,10 +78,10 @@ void SolverBase::PrintString(const std::string& text) const {
 /******************************************************************************************************/
 /******************************************************************************************************/
 void SolverBase::PreRun(scalar_t initTime, const vector_t& initState, scalar_t finalTime) {
-  referenceManagerPtr_->preSolverRun(initTime, finalTime, initState);
+  referenceManagerPtr_->PreSolverRun(initTime, finalTime, initState);
 
   for (auto& module : synchronizedModules_) {
-    module->preSolverRun(initTime, finalTime, initState, *referenceManagerPtr_);
+    module->PreSolverRun(initTime, finalTime, initState, *referenceManagerPtr_);
   }
 }
 
@@ -90,15 +90,15 @@ void SolverBase::PreRun(scalar_t initTime, const vector_t& initState, scalar_t f
 /******************************************************************************************************/
 void SolverBase::PostRun() {
   if (!synchronizedModules_.empty() || !solverObservers_.empty()) {
-    const auto solution = PrimalSolution(GetFinalTime());
+    const auto solution = GetPrimalSolution(GetFinalTime());
     for (auto& module : synchronizedModules_) {
-      module->postSolverRun(solution);
+      module->PostSolverRun(solution);
     }
     for (auto& observer : solverObservers_) {
-      observer->extractTermConstraint(GetOptimalControlProblem(), solution, GetSolutionMetrics());
-      observer->extractTermLagrangianMetrics(GetOptimalControlProblem(), solution, GetSolutionMetrics());
+      observer->ExtractTermConstraint(GetOptimalControlProblem(), solution, GetSolutionMetrics());
+      observer->ExtractTermLagrangianMetrics(GetOptimalControlProblem(), solution, GetSolutionMetrics());
       if (GetDualSolution() != nullptr) {
-        observer->extractTermMultipliers(GetOptimalControlProblem(), *GetDualSolution());
+        observer->ExtractTermMultipliers(GetOptimalControlProblem(), *GetDualSolution());
       }
     }
   }

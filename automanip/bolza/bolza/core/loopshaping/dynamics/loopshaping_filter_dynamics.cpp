@@ -24,14 +24,14 @@ void LoopshapingFilterDynamics::Integrate(scalar_t dt, const vector_t& input) {
   OdeFunc ode_fun(std::bind(&LoopshapingFilterDynamics::ComputeFlowMap, this, std::placeholders::_1, std::placeholders::_2, input));
 
   vector_array_t stateTrajectory;
-  Observer Observer(&stateTrajectory);
-  integrator_->integrateAdaptive(ode_fun, observer, filterState_, 0.0, dt, dt);
+  Observer observer(&stateTrajectory);
+  integrator_->IntegrateAdaptive(ode_fun, observer, filterState_, 0.0, dt, dt);
 
   filterState_ = stateTrajectory.back();
 }
 
 vector_t LoopshapingFilterDynamics::ComputeFlowMap(scalar_t time, const vector_t& filterState, const vector_t& input) const {
-  return loopshapingDefinition_->filterFlowMap(filterState, input);
+  return loopshapingDefinition_->FilterFlowMap(filterState, input);
 }
 
 }  // namespace bolza

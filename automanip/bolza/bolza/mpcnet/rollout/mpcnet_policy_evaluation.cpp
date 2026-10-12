@@ -40,8 +40,8 @@ metrics_t MPCNetPolicyEvaluation::Run(scalar_t alpha, const std::string& policyF
       // incurred quantities
       const scalar_t time = primalSolution_.timeTrajectory_.front();
       const vector_t state = primalSolution_.stateTrajectory_.front();
-      const vector_t input = behavioralControllerPtr_->computeInput(time, state);
-      metrics.incurredHamiltonian += mpcPtr_->getSolverPtr()->getHamiltonian(time, state, input).f * timeStep;
+      const vector_t input = behavioralControllerPtr_->ComputeInput(time, state);
+      metrics.incurredHamiltonian += mpcPtr_->GetSolverPtr()->GetHamiltonian(time, state, input).f * timeStep;
     }
   } catch (const std::exception& e) {
     // print error for exceptions

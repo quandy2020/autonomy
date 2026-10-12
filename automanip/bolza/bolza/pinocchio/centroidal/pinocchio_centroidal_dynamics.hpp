@@ -72,7 +72,7 @@ class PinocchioCentroidalDynamics final {
      * @param [in] pinocchioInterface: Pinocchio Interface.
      * @return Result value.
      */
-    mapping_.setPinocchioInterface(pinocchioInterface);
+    mapping_.SetPinocchioInterface(pinocchioInterface);
   }
 
   /**

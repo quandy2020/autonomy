@@ -90,7 +90,7 @@ class BvpSensitivityErrorEquations final : public OdeBase<STATE_DIM> {
   }
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Sets Data
    *
@@ -118,7 +118,7 @@ class BvpSensitivityErrorEquations final : public OdeBase<STATE_DIM> {
   }
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Computes Derivative
    *

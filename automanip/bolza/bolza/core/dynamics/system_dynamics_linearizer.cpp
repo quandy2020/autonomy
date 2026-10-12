@@ -24,7 +24,7 @@ namespace bolza {
 SystemDynamicsLinearizer::SystemDynamicsLinearizer(std::unique_ptr<ControlledSystemBase> nonlinearSystemPtr,
                                                    bool doubleSidedDerivative /*= true*/, bool isSecondOrderSystem /*= false*/,
                                                    scalar_t eps /*= Eigen::NumTraits<scalar_t>::epsilon()*/)
-    : SystemDynamicsBase(nonlinearSystemPtr->getPreComputation()),
+    : SystemDynamicsBase(nonlinearSystemPtr->GetPreComputation()),
       controlledSystemPtr_(std::move(nonlinearSystemPtr)),
       doubleSidedDerivative_(doubleSidedDerivative),
       isSecondOrderSystem_(isSecondOrderSystem),
@@ -35,7 +35,7 @@ SystemDynamicsLinearizer::SystemDynamicsLinearizer(std::unique_ptr<ControlledSys
 /******************************************************************************************************/
 SystemDynamicsLinearizer::SystemDynamicsLinearizer(const SystemDynamicsLinearizer& other)
     : SystemDynamicsBase(other),
-      controlledSystemPtr_(other.controlledSystemPtr_->clone()),
+      controlledSystemPtr_(other.controlledSystemPtr_->Clone()),
       doubleSidedDerivative_(other.doubleSidedDerivative_),
       isSecondOrderSystem_(other.isSecondOrderSystem_),
       eps_(other.eps_) {}
@@ -52,7 +52,7 @@ SystemDynamicsLinearizer* SystemDynamicsLinearizer::Clone() const {
 /******************************************************************************************************/
 vector_t SystemDynamicsLinearizer::ComputeFlowMap(scalar_t time, const vector_t& state, const vector_t& input,
                                                   const PreComputation& preComp) {
-  return controlledSystemPtr_->computeFlowMap(time, state, input, preComp);
+  return controlledSystemPtr_->ComputeFlowMap(time, state, input, preComp);
 }
 
 /******************************************************************************************************/
@@ -61,7 +61,7 @@ vector_t SystemDynamicsLinearizer::ComputeFlowMap(scalar_t time, const vector_t&
 VectorFunctionLinearApproximation SystemDynamicsLinearizer::LinearApproximation(scalar_t t, const vector_t& x, const vector_t& u,
                                                                                 const PreComputation& preComp) {
   VectorFunctionLinearApproximation linearDynamics;
-  linearDynamics.f = controlledSystemPtr_->computeFlowMap(t, x, u, preComp);
+  linearDynamics.f = controlledSystemPtr_->ComputeFlowMap(t, x, u, preComp);
   linearDynamics.dfdx = FiniteDifferenceDerivativeState(*controlledSystemPtr_, t, x, u, eps_, doubleSidedDerivative_, isSecondOrderSystem_);
   linearDynamics.dfdu = FiniteDifferenceDerivativeInput(*controlledSystemPtr_, t, x, u, eps_, doubleSidedDerivative_, isSecondOrderSystem_);
   return linearDynamics;

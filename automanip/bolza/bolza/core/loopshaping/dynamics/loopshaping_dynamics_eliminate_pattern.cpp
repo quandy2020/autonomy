@@ -19,12 +19,12 @@
 namespace bolza {
 
 vector_t LoopshapingDynamicsEliminatePattern::FilterFlowmap(const vector_t& x_filter, const vector_t& u_filter, const vector_t& u_system) {
-  const auto& s_filter = loopshapingDefinition_->getInputFilter();
+  const auto& s_filter = loopshapingDefinition_->GetInputFilter();
   if (loopshapingDefinition_->isDiagonal()) {
-    return s_filter.getAdiag().diagonal().cwiseProduct(x_filter) + s_filter.getBdiag().diagonal().cwiseProduct(u_filter);
+    return s_filter.GetAdiag().diagonal().cwiseProduct(x_filter) + s_filter.GetBdiag().diagonal().cwiseProduct(u_filter);
   } else {
-    vector_t dynamics_filter = s_filter.getA() * x_filter;
-    dynamics_filter.noalias() += s_filter.getB() * u_filter;
+    vector_t dynamics_filter = s_filter.GetA() * x_filter;
+    dynamics_filter.noalias() += s_filter.GetB() * u_filter;
     return dynamics_filter;
   }
 }
@@ -32,13 +32,13 @@ vector_t LoopshapingDynamicsEliminatePattern::FilterFlowmap(const vector_t& x_fi
 VectorFunctionLinearApproximation LoopshapingDynamicsEliminatePattern::LinearApproximation(scalar_t t, const vector_t& x, const vector_t& u,
                                                                                            const PreComputation& preComp) {
   const bool isDiagonal = loopshapingDefinition_->isDiagonal();
-  const auto& s_filter = loopshapingDefinition_->getInputFilter();
+  const auto& s_filter = loopshapingDefinition_->GetInputFilter();
   const auto& preCompLS = cast<LoopshapingPreComputation>(preComp);
-  const auto& x_system = preCompLS.getSystemState();
-  const auto& u_system = preCompLS.getSystemInput();
-  const auto& x_filter = preCompLS.getFilterState();
-  const auto& u_filter = preCompLS.getFilteredInput();
-  const auto dynamics_system = systemDynamics_->linearApproximation(t, x_system, u_system, preCompLS.getSystemPreComputation());
+  const auto& x_system = preCompLS.GetSystemState();
+  const auto& u_system = preCompLS.GetSystemInput();
+  const auto& x_filter = preCompLS.GetFilterState();
+  const auto& u_filter = preCompLS.GetFilteredInput();
+  const auto dynamics_system = systemDynamics_->LinearApproximation(t, x_system, u_system, preCompLS.GetSystemPreComputation());
 
   const auto stateDim = x.rows();
   const auto inputDim = u.rows();
@@ -46,25 +46,25 @@ VectorFunctionLinearApproximation LoopshapingDynamicsEliminatePattern::LinearApp
   const auto filtStateDim = x_filter.rows();
 
   VectorFunctionLinearApproximation dynamics;
-  dynamics.f = loopshapingDefinition_->concatenateSystemAndFilterState(dynamics_system.f, FilterFlowmap(x_filter, u_filter, u_system));
+  dynamics.f = loopshapingDefinition_->ConcatenateSystemAndFilterState(dynamics_system.f, FilterFlowmap(x_filter, u_filter, u_system));
 
   dynamics.dfdx.resize(stateDim, stateDim);
   dynamics.dfdx.topLeftCorner(sysStateDim, sysStateDim) = dynamics_system.dfdx;
   dynamics.dfdx.bottomLeftCorner(filtStateDim, sysStateDim).setZero();
   if (isDiagonal) {
-    dynamics.dfdx.topRightCorner(sysStateDim, filtStateDim).noalias() = dynamics_system.dfdu * s_filter.getCdiag();
+    dynamics.dfdx.topRightCorner(sysStateDim, filtStateDim).noalias() = dynamics_system.dfdu * s_filter.GetCdiag();
   } else {
-    dynamics.dfdx.topRightCorner(sysStateDim, filtStateDim).noalias() = dynamics_system.dfdu * s_filter.getC();
+    dynamics.dfdx.topRightCorner(sysStateDim, filtStateDim).noalias() = dynamics_system.dfdu * s_filter.GetC();
   }
-  dynamics.dfdx.bottomRightCorner(filtStateDim, filtStateDim) = s_filter.getA();
+  dynamics.dfdx.bottomRightCorner(filtStateDim, filtStateDim) = s_filter.GetA();
 
   dynamics.dfdu.resize(stateDim, inputDim);
   if (isDiagonal) {
-    dynamics.dfdu.topRows(sysStateDim).noalias() = dynamics_system.dfdu * s_filter.getDdiag();
+    dynamics.dfdu.topRows(sysStateDim).noalias() = dynamics_system.dfdu * s_filter.GetDdiag();
   } else {
-    dynamics.dfdu.topRows(sysStateDim).noalias() = dynamics_system.dfdu * s_filter.getD();
+    dynamics.dfdu.topRows(sysStateDim).noalias() = dynamics_system.dfdu * s_filter.GetD();
   }
-  dynamics.dfdu.bottomRows(filtStateDim) = s_filter.getB();
+  dynamics.dfdu.bottomRows(filtStateDim) = s_filter.GetB();
 
   return dynamics;
 }

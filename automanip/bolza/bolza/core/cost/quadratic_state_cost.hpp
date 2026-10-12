@@ -46,7 +46,7 @@ class QuadraticStateCost : public StateCost {
   QuadraticStateCost* Clone() const override;
 
     /**
-   * @brief /** Get cost term value */.
+   * @brief Get cost term value 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] targetTrajectories: Target Trajectories.
@@ -55,7 +55,7 @@ class QuadraticStateCost : public StateCost {
   scalar_t GetValue(scalar_t time, const vector_t& state, const TargetTrajectories& targetTrajectories, const PreComputation&) const final;
 
     /**
-   * @brief /** Get cost term quadratic approximation */.
+   * @brief Get cost term quadratic approximation 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] targetTrajectories: Target Trajectories.
@@ -73,9 +73,9 @@ class QuadraticStateCost : public StateCost {
   QuadraticStateCost(const QuadraticStateCost& rhs) = default;
 
     /**
-   * @brief /** Computes the state deviation for the nominal state.
+   * @brief Computes the state deviation for the nominal state.
    *
-   * This method can be overwritten if desiredTrajectory has a different dimensions. */
+   * This method can be overwritten if desiredTrajectory has a different dimensions. 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] targetTrajectories: Target Trajectories.

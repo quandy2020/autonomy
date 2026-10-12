@@ -202,22 +202,22 @@ QuinticSwing::QuinticSwing(const std::vector<SwingNode>& nodes) {
 
 scalar_t QuinticSwing::Position(scalar_t time) const {
   const auto index = bolza::lookup::FindIndexInTimeArray(nodeTimes, time);
-  return splines[index].position(time);
+  return splines[index].Position(time);
 }
 
 scalar_t QuinticSwing::Velocity(scalar_t time) const {
   const auto index = bolza::lookup::FindIndexInTimeArray(nodeTimes, time);
-  return splines[index].velocity(time);
+  return splines[index].Velocity(time);
 }
 
 scalar_t QuinticSwing::Acceleration(scalar_t time) const {
   const auto index = bolza::lookup::FindIndexInTimeArray(nodeTimes, time);
-  return splines[index].acceleration(time);
+  return splines[index].Acceleration(time);
 }
 
 scalar_t QuinticSwing::Jerk(scalar_t time) const {
   const auto index = bolza::lookup::FindIndexInTimeArray(nodeTimes, time);
-  return splines[index].jerk(time);
+  return splines[index].Jerk(time);
 }
 
 }  // namespace switched_model

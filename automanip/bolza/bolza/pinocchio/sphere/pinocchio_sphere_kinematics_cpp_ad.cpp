@@ -37,17 +37,17 @@ PinocchioSphereKinematicsCppAd::PinocchioSphereKinematicsCppAd(const PinocchioIn
     : pinocchioSphereInterface_(std::move(pinocchioSphereInterface)) {
   const std::vector<SphereApproxParam> sphereApproxParams = CreateSphereApproxParams();
 
-  linkIds_.resize(pinocchioSphereInterface_.getNumSpheresInTotal());
-  const std::vector<std::string>& collisionLinkOfEachPrimitiveShape = pinocchioSphereInterface_.getCollisionLinkOfEachPrimitveShape();
-  const auto numSpheres = pinocchioSphereInterface_.getNumSpheres();
+  linkIds_.resize(pinocchioSphereInterface_.GetNumSpheresInTotal());
+  const std::vector<std::string>& collisionLinkOfEachPrimitiveShape = pinocchioSphereInterface_.GetCollisionLinkOfEachPrimitveShape();
+  const auto numSpheres = pinocchioSphereInterface_.GetNumSpheres();
   size_t count = 0;
-  for (size_t i = 0; i < pinocchioSphereInterface.getNumPrimitiveShapes(); i++) {
+  for (size_t i = 0; i < pinocchioSphereInterface.GetNumPrimitiveShapes(); i++) {
     std::fill(linkIds_.begin() + count, linkIds_.begin() + count + numSpheres[i], collisionLinkOfEachPrimitiveShape[i]);
     count += numSpheres[i];
   }
 
   // initialize CppAD interface
-  auto pinocchioInterfaceCppAd = pinocchioInterface.toCppAd();
+  auto pinocchioInterfaceCppAd = pinocchioInterface.ToCppAd();
 
   // position function
   auto positionFunc = [&, this](const ad_vector_t& x, ad_vector_t& y) {
@@ -56,9 +56,9 @@ PinocchioSphereKinematicsCppAd::PinocchioSphereKinematicsCppAd(const PinocchioIn
   positionCppAdInterfacePtr_.reset(new CppAdInterface(positionFunc, stateDim, modelName + "_position", modelFolder));
 
   if (recompileLibraries) {
-    positionCppAdInterfacePtr_->createModels(CppAdInterface::ApproximationOrder::First, verbose);
+    positionCppAdInterfacePtr_->CreateModels(CppAdInterface::ApproximationOrder::First, verbose);
   } else {
-    positionCppAdInterfacePtr_->loadModelsIfAvailable(CppAdInterface::ApproximationOrder::First, verbose);
+    positionCppAdInterfacePtr_->LoadModelsIfAvailable(CppAdInterface::ApproximationOrder::First, verbose);
   }
 }
 
@@ -85,18 +85,18 @@ ad_vector_t PinocchioSphereKinematicsCppAd::GetPositionCppAd(PinocchioInterfaceC
                                                              const PinocchioStateInputMapping<ad_scalar_t>& mapping,
                                                              const std::vector<SphereApproxParam>& sphereApproxParams,
                                                              const ad_vector_t& state) {
-  const PinocchioInterfaceCppAd::Model& model = pinocchioInterfaceCppAd.getModel();
-  PinocchioInterfaceCppAd::Data& data = pinocchioInterfaceCppAd.getData();
-  const ad_vector_t q = mapping.getPinocchioJointPosition(state);
+  const PinocchioInterfaceCppAd::Model& model = pinocchioInterfaceCppAd.GetModel();
+  PinocchioInterfaceCppAd::Data& data = pinocchioInterfaceCppAd.GetData();
+  const ad_vector_t q = mapping.GetPinocchioJointPosition(state);
 
   pinocchio::forwardKinematics(model, data, q);
   pinocchio::updateGlobalPlacements(model, data);
 
-  const pinocchio::GeometryModel& geometryModel = pinocchioSphereInterface_.getGeometryModel();
-  const size_t numPrimitiveShapes = pinocchioSphereInterface_.getNumPrimitiveShapes();
-  const size_array_t geomObjIds = pinocchioSphereInterface_.getGeomObjIds();
-  const size_array_t numSpheres = pinocchioSphereInterface_.getNumSpheres();
-  ad_vector_t sphereCentersInWorldFrame(3 * pinocchioSphereInterface_.getNumSpheresInTotal());
+  const pinocchio::GeometryModel& geometryModel = pinocchioSphereInterface_.GetGeometryModel();
+  const size_t numPrimitiveShapes = pinocchioSphereInterface_.GetNumPrimitiveShapes();
+  const size_array_t geomObjIds = pinocchioSphereInterface_.GetGeomObjIds();
+  const size_array_t numSpheres = pinocchioSphereInterface_.GetNumSpheres();
+  ad_vector_t sphereCentersInWorldFrame(3 * pinocchioSphereInterface_.GetNumSpheresInTotal());
 
   size_t count = 0;
   for (size_t i = 0; i < numPrimitiveShapes; i++) {
@@ -122,7 +122,7 @@ ad_vector_t PinocchioSphereKinematicsCppAd::GetPositionCppAd(PinocchioInterfaceC
 /******************************************************************************************************/
 /******************************************************************************************************/
 auto PinocchioSphereKinematicsCppAd::GetPosition(const vector_t& state) const -> std::vector<vector3_t> {
-  const vector_t positionValues = positionCppAdInterfacePtr_->getFunctionValue(state);
+  const vector_t positionValues = positionCppAdInterfacePtr_->GetFunctionValue(state);
 
   std::vector<vector3_t> positions;
   positions.reserve(linkIds_.size());
@@ -136,8 +136,8 @@ auto PinocchioSphereKinematicsCppAd::GetPosition(const vector_t& state) const ->
 /******************************************************************************************************/
 /******************************************************************************************************/
 std::vector<VectorFunctionLinearApproximation> PinocchioSphereKinematicsCppAd::GetPositionLinearApproximation(const vector_t& state) const {
-  const vector_t positionValues = positionCppAdInterfacePtr_->getFunctionValue(state);
-  const matrix_t positionJacobian = positionCppAdInterfacePtr_->getJacobian(state);
+  const vector_t positionValues = positionCppAdInterfacePtr_->GetFunctionValue(state);
+  const matrix_t positionJacobian = positionCppAdInterfacePtr_->GetJacobian(state);
 
   std::vector<VectorFunctionLinearApproximation> positions;
   positions.reserve(linkIds_.size());
@@ -154,16 +154,16 @@ std::vector<VectorFunctionLinearApproximation> PinocchioSphereKinematicsCppAd::G
 /******************************************************************************************************/
 /******************************************************************************************************/
 auto PinocchioSphereKinematicsCppAd::CreateSphereApproxParams() const -> std::vector<SphereApproxParam> {
-  const pinocchio::GeometryModel& geometryModel = pinocchioSphereInterface_.getGeometryModel();
-  const size_t numPrimitiveShapes = pinocchioSphereInterface_.getNumPrimitiveShapes();
-  const size_array_t geomObjIds = pinocchioSphereInterface_.getGeomObjIds();
+  const pinocchio::GeometryModel& geometryModel = pinocchioSphereInterface_.GetGeometryModel();
+  const size_t numPrimitiveShapes = pinocchioSphereInterface_.GetNumPrimitiveShapes();
+  const size_array_t geomObjIds = pinocchioSphereInterface_.GetGeomObjIds();
   std::vector<SphereApproxParam> sphereApproxParams;
 
   sphereApproxParams.reserve(numPrimitiveShapes);
   for (size_t i = 0; i < numPrimitiveShapes; ++i) {
     const auto& placement = geometryModel.geometryObjects[geomObjIds[i]].placement;
     sphereApproxParams.emplace_back(placement.translation(), MatrixToQuaternion(placement.rotation()),
-                                    pinocchioSphereInterface_.getSphereCentersToObjectCenter(i));
+                                    pinocchioSphereInterface_.GetSphereCentersToObjectCenter(i));
   }
 
   return sphereApproxParams;

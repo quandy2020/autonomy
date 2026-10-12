@@ -335,7 +335,7 @@ Eigen::Matrix<SCALAR_T, 3, 3> CrossProductMatrix(const Eigen::DenseBase<Derived>
    * @brief SCALAR T.
    * @return Result value.
    */
-  Out << SCALAR_T(0.0), -in(2), +in(1), +in(2), SCALAR_T(0.0), -in(0), -in(1), +in(0), SCALAR_T(0.0);
+  out << SCALAR_T(0.0), -in(2), +in(1), +in(2), SCALAR_T(0.0), -in(0), -in(1), +in(0), SCALAR_T(0.0);
   return out;
 }
 
@@ -410,34 +410,34 @@ Eigen::Matrix<SCALAR_T, 3, 3> RotationBaseToOriginJacobian(const Eigen::Matrix<S
   /**
    * @brief Constructs a Jac.
    */
-  Jac(0) = SCALAR_T(0.0);
+  jac(0) = SCALAR_T(0.0);
   v[0] = -sin(eulerAnglesXYZ[1]);
   v[1] = cos(eulerAnglesXYZ[2]);
   v[2] = sin(eulerAnglesXYZ[2]);
   v[3] = v[1] * vectorInBase[0] - v[2] * vectorInBase[1];
   v[4] = cos(eulerAnglesXYZ[1]);
-  Jac(3) = v[0] * v[3] + v[4] * vectorInBase[2];
+  jac(3) = v[0] * v[3] + v[4] * vectorInBase[2];
   v[5] = v[4];
   v[6] = -v[2];
   v[7] = v[1];
   v[8] = v[6] * vectorInBase[0] - v[7] * vectorInBase[1];
-  Jac(6) = v[5] * v[8];
+  jac(6) = v[5] * v[8];
   v[9] = -sin(eulerAnglesXYZ[0]);
   v[2] = v[2] * vectorInBase[0] + v[1] * vectorInBase[1];
   v[1] = cos(eulerAnglesXYZ[0]);
   v[10] = v[0];
   v[5] = v[10] * v[3] + v[5] * vectorInBase[2];
-  Jac(1) = v[9] * v[2] - v[1] * v[5];
+  jac(1) = v[9] * v[2] - v[1] * v[5];
   v[11] = -v[9];
   v[4] = (-v[4]) * v[3] + v[0] * vectorInBase[2];
-  Jac(4) = -v[11] * v[4];
+  jac(4) = -v[11] * v[4];
   v[3] = v[1];
   v[7] = v[7] * vectorInBase[0] + v[6] * vectorInBase[1];
   v[10] = v[10] * v[8];
-  Jac(7) = v[3] * v[7] - v[11] * v[10];
-  Jac(2) = v[1] * v[2] + v[9] * v[5];
-  Jac(5) = v[3] * v[4];
-  Jac(8) = v[11] * v[7] + v[3] * v[10];
+  jac(7) = v[3] * v[7] - v[11] * v[10];
+  jac(2) = v[1] * v[2] + v[9] * v[5];
+  jac(5) = v[3] * v[4];
+  jac(8) = v[11] * v[7] + v[3] * v[10];
   return jac;
 }
 

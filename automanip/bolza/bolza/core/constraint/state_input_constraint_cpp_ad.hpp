@@ -57,7 +57,7 @@ class StateInputConstraintCppAd : public StateInputConstraint {
                   const std::string& modelFolder = "/tmp/ocs2", bool recompileLibraries = true, bool verbose = true);
 
     /**
-   * @brief /** Get the parameter vector */.
+   * @brief Get the parameter vector 
    * @param [in] time: Time.
    * @return Result value.
    */
@@ -68,7 +68,7 @@ class StateInputConstraintCppAd : public StateInputConstraint {
  return vector_t(0); };
 
     /**
-   * @brief /** Constraint evaluation */.
+   * @brief Constraint evaluation 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] input: Input.
@@ -102,7 +102,7 @@ class StateInputConstraintCppAd : public StateInputConstraint {
   StateInputConstraintCppAd(const StateInputConstraintCppAd& rhs);
 
     /**
-   * @brief /** The CppAD constraint function */.
+   * @brief The CppAD constraint function 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] input: Input.

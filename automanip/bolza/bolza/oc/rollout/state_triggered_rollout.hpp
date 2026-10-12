@@ -59,7 +59,7 @@ class StateTriggeredRollout : public RolloutBase {
    * @brief Clone.
    * @return Pointer; may be null.
    */
-  StateTriggeredRollout* Clone() const override { return new StateTriggeredRollout(*systemDynamicsPtr_, this->settings()); }
+  StateTriggeredRollout* Clone() const override { return new StateTriggeredRollout(*systemDynamicsPtr_, this->Settings()); }
 
   /**
    * @brief Returns the underlying dynamics.

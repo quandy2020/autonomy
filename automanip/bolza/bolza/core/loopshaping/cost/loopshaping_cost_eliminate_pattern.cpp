@@ -26,22 +26,22 @@ ScalarFunctionQuadraticApproximation LoopshapingCostEliminatePattern::GetQuadrat
   }
 
   const bool isDiagonal = loopshapingDefinition_->isDiagonal();
-  const auto& s_filter = loopshapingDefinition_->getInputFilter();
+  const auto& s_filter = loopshapingDefinition_->GetInputFilter();
   const auto& preCompLS = cast<LoopshapingPreComputation>(preComp);
-  const auto& x_system = preCompLS.getSystemState();
-  const auto& u_system = preCompLS.getSystemInput();
-  const auto& x_filter = preCompLS.getFilterState();
-  const auto& u_filter = preCompLS.getFilteredInput();
+  const auto& x_system = preCompLS.GetSystemState();
+  const auto& u_system = preCompLS.GetSystemInput();
+  const auto& x_filter = preCompLS.GetFilterState();
+  const auto& u_filter = preCompLS.GetFilteredInput();
   const auto stateDim = x.rows();
   const auto inputDim = u.rows();
   const auto sysStateDim = x_system.rows();
   const auto filtStateDim = x_filter.rows();
 
-  const auto& Rfilter = loopshapingDefinition_->costMatrix();
+  const auto& Rfilter = loopshapingDefinition_->CostMatrix();
   vector_t Ru_filter = Rfilter * u_filter;
 
   const auto L_system =
-      StateInputCostCollection::GetQuadraticApproximation(t, x_system, u_system, targetTrajectories, preCompLS.getSystemPreComputation());
+      StateInputCostCollection::GetQuadraticApproximation(t, x_system, u_system, targetTrajectories, preCompLS.GetSystemPreComputation());
 
   ScalarFunctionQuadraticApproximation L;
 
@@ -52,49 +52,49 @@ ScalarFunctionQuadraticApproximation LoopshapingCostEliminatePattern::GetQuadrat
     // dfdx
     L.dfdx.resize(stateDim);
     L.dfdx.head(sysStateDim) = L_system.dfdx;
-    L.dfdx.tail(filtStateDim) = s_filter.getCdiag().diagonal().cwiseProduct(L_system.dfdu);
+    L.dfdx.tail(filtStateDim) = s_filter.GetCdiag().diagonal().cwiseProduct(L_system.dfdu);
 
     // dfdxx
     L.dfdxx.resize(stateDim, stateDim);
     L.dfdxx.topLeftCorner(sysStateDim, sysStateDim) = L_system.dfdxx;
-    L.dfdxx.bottomLeftCorner(filtStateDim, sysStateDim).noalias() = s_filter.getCdiag() * L_system.dfdux;
+    L.dfdxx.bottomLeftCorner(filtStateDim, sysStateDim).noalias() = s_filter.GetCdiag() * L_system.dfdux;
     L.dfdxx.topRightCorner(sysStateDim, filtStateDim) = L.dfdxx.bottomLeftCorner(filtStateDim, sysStateDim).transpose();
-    L.dfdxx.bottomRightCorner(filtStateDim, filtStateDim) = s_filter.getScalingCdiagCdiag().cwiseProduct(L_system.dfduu);
+    L.dfdxx.bottomRightCorner(filtStateDim, filtStateDim) = s_filter.GetScalingCdiagCdiag().cwiseProduct(L_system.dfduu);
 
     // dfdu & dfduu
-    L.dfdu = Ru_filter + s_filter.getDdiag().diagonal().cwiseProduct(L_system.dfdu);
-    L.dfduu = Rfilter + s_filter.getScalingDdiagDdiag().cwiseProduct(L_system.dfduu);
+    L.dfdu = Ru_filter + s_filter.GetDdiag().diagonal().cwiseProduct(L_system.dfdu);
+    L.dfduu = Rfilter + s_filter.GetScalingDdiagDdiag().cwiseProduct(L_system.dfduu);
 
     // dfdux
     L.dfdux.resize(inputDim, stateDim);
-    L.dfdux.leftCols(sysStateDim).noalias() = s_filter.getDdiag() * L_system.dfdux;
-    L.dfdux.rightCols(filtStateDim) = s_filter.getScalingDdiagCdiag().cwiseProduct(L_system.dfduu);
+    L.dfdux.leftCols(sysStateDim).noalias() = s_filter.GetDdiag() * L_system.dfdux;
+    L.dfdux.rightCols(filtStateDim) = s_filter.GetScalingDdiagCdiag().cwiseProduct(L_system.dfduu);
 
     return L;
   } else {
     // dfdx
     L.dfdx.resize(stateDim);
     L.dfdx.head(sysStateDim) = L_system.dfdx;
-    L.dfdx.tail(filtStateDim).noalias() = s_filter.getC().transpose() * L_system.dfdu;
+    L.dfdx.tail(filtStateDim).noalias() = s_filter.GetC().transpose() * L_system.dfdu;
 
     // dfdxx
     L.dfdxx.resize(stateDim, stateDim);
     L.dfdxx.topLeftCorner(sysStateDim, sysStateDim) = L_system.dfdxx;
-    L.dfdxx.bottomLeftCorner(filtStateDim, sysStateDim) = s_filter.getC().transpose() * L_system.dfdux;
+    L.dfdxx.bottomLeftCorner(filtStateDim, sysStateDim) = s_filter.GetC().transpose() * L_system.dfdux;
     L.dfdxx.topRightCorner(sysStateDim, filtStateDim).noalias() = L.dfdxx.bottomLeftCorner(filtStateDim, sysStateDim).transpose();
-    const matrix_t dfduu_C = L_system.dfduu * s_filter.getC();
-    L.dfdxx.bottomRightCorner(filtStateDim, filtStateDim).noalias() = s_filter.getC().transpose() * dfduu_C;
+    const matrix_t dfduu_C = L_system.dfduu * s_filter.GetC();
+    L.dfdxx.bottomRightCorner(filtStateDim, filtStateDim).noalias() = s_filter.GetC().transpose() * dfduu_C;
 
     // dfdu & dfduu
     L.dfdu = std::move(Ru_filter);
-    L.dfdu.noalias() += s_filter.getD().transpose() * L_system.dfdu;
+    L.dfdu.noalias() += s_filter.GetD().transpose() * L_system.dfdu;
     L.dfduu = Rfilter;
-    L.dfduu.noalias() += s_filter.getD().transpose() * L_system.dfduu * s_filter.getD();
+    L.dfduu.noalias() += s_filter.GetD().transpose() * L_system.dfduu * s_filter.GetD();
 
     // dfdux
     L.dfdux.resize(inputDim, stateDim);
-    L.dfdux.leftCols(sysStateDim).noalias() = s_filter.getD().transpose() * L_system.dfdux;
-    L.dfdux.rightCols(filtStateDim).noalias() = s_filter.getD().transpose() * dfduu_C;
+    L.dfdux.leftCols(sysStateDim).noalias() = s_filter.GetD().transpose() * L_system.dfdux;
+    L.dfdux.rightCols(filtStateDim).noalias() = s_filter.GetD().transpose() * dfduu_C;
 
     return L;
   }

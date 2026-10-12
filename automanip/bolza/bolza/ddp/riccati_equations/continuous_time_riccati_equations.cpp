@@ -287,7 +287,7 @@ void ContinuousTimeRiccatiEquations::ComputeFlowMapILEG(std::pair<int, scalar_t>
   ComputeFlowMapSLQ(indexAlpha, Sm, Sv, s, creCache, dSm, dSv, ds);
 
   // Sigma
-  creCache.dynamicsCovariance_ = LinearInterpolation::Interpolate(indexAlpha, *projectedModelDataPtr_, model_data::DynamicsCovariance);
+  creCache.dynamicsCovariance_ = LinearInterpolation::Interpolate(indexAlpha, *projectedModelDataPtr_, model_data::dynamicsCovariance);
 
   creCache.Sigma_Sv_.noalias() = creCache.dynamicsCovariance_ * Sv;
   creCache.Sigma_Sm_.noalias() = creCache.dynamicsCovariance_ * Sm;

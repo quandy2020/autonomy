@@ -54,7 +54,7 @@ class StateInputCostCollection : public Collection<StateInputCost> {
   StateInputCostCollection* Clone() const override;
 
     /**
-   * @brief /** Get state-input cost value */.
+   * @brief Get state-input cost value 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] input: Input.
@@ -66,7 +66,7 @@ class StateInputCostCollection : public Collection<StateInputCost> {
                             const PreComputation& preComp) const;
 
     /**
-   * @brief /** Get state-input cost quadratic approximation */.
+   * @brief Get state-input cost quadratic approximation 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] input: Input.
@@ -80,7 +80,7 @@ class StateInputCostCollection : public Collection<StateInputCost> {
 
  protected:
     /**
-   * @brief /** Copy constructor */.
+   * @brief Copy constructor 
    * @param [in] other: Other.
    */
   StateInputCostCollection(const StateInputCostCollection& other);

@@ -34,12 +34,12 @@ namespace bolza {
 /******************************************************************************************************/
 PinocchioSphereKinematics::PinocchioSphereKinematics(PinocchioSphereInterface pinocchioSphereInterface,
                                                      const PinocchioStateInputMapping<scalar_t>& mapping)
-    : pinocchioInterfacePtr_(nullptr), pinocchioSphereInterface_(std::move(pinocchioSphereInterface)), mappingPtr_(mapping.clone()) {
-  linkIds_.resize(pinocchioSphereInterface_.getNumSpheresInTotal());
-  const std::vector<std::string>& collisionLinkOfEachPrimitiveShape = pinocchioSphereInterface_.getCollisionLinkOfEachPrimitveShape();
-  const auto numSpheres = pinocchioSphereInterface_.getNumSpheres();
+    : pinocchioInterfacePtr_(nullptr), pinocchioSphereInterface_(std::move(pinocchioSphereInterface)), mappingPtr_(mapping.Clone()) {
+  linkIds_.resize(pinocchioSphereInterface_.GetNumSpheresInTotal());
+  const std::vector<std::string>& collisionLinkOfEachPrimitiveShape = pinocchioSphereInterface_.GetCollisionLinkOfEachPrimitveShape();
+  const auto numSpheres = pinocchioSphereInterface_.GetNumSpheres();
   size_t count = 0;
-  for (size_t i = 0; i < pinocchioSphereInterface.getNumPrimitiveShapes(); i++) {
+  for (size_t i = 0; i < pinocchioSphereInterface.GetNumPrimitiveShapes(); i++) {
     std::fill(linkIds_.begin() + count, linkIds_.begin() + count + numSpheres[i], collisionLinkOfEachPrimitiveShape[i]);
     count += numSpheres[i];
   }
@@ -51,7 +51,7 @@ PinocchioSphereKinematics::PinocchioSphereKinematics(PinocchioSphereInterface pi
 PinocchioSphereKinematics::PinocchioSphereKinematics(const PinocchioSphereKinematics& rhs)
     : EndEffectorKinematics<scalar_t>(rhs),
       pinocchioInterfacePtr_(nullptr),
-      mappingPtr_(rhs.mappingPtr_->clone()),
+      mappingPtr_(rhs.mappingPtr_->Clone()),
       pinocchioSphereInterface_(rhs.pinocchioSphereInterface_),
       linkIds_(rhs.linkIds_) {}
 
@@ -70,7 +70,7 @@ auto PinocchioSphereKinematics::GetPosition(const vector_t& state) const -> std:
     throw std::runtime_error("[PinocchioSphereKinematics] pinocchioInterfacePtr_ is not set. Use SetPinocchioInterface()");
   }
 
-  return pinocchioSphereInterface_.computeSphereCentersInWorldFrame(*pinocchioInterfacePtr_);
+  return pinocchioSphereInterface_.ComputeSphereCentersInWorldFrame(*pinocchioInterfacePtr_);
 }
 
 /******************************************************************************************************/
@@ -81,20 +81,20 @@ std::vector<VectorFunctionLinearApproximation> PinocchioSphereKinematics::GetPos
     throw std::runtime_error("[PinocchioSphereKinematics] pinocchioInterfacePtr_ is not set. Use SetPinocchioInterface()");
   }
 
-  std::vector<vector3_t> sphereCentersInWorldFrame = pinocchioSphereInterface_.computeSphereCentersInWorldFrame(*pinocchioInterfacePtr_);
+  std::vector<vector3_t> sphereCentersInWorldFrame = pinocchioSphereInterface_.ComputeSphereCentersInWorldFrame(*pinocchioInterfacePtr_);
 
   const pinocchio::ReferenceFrame rf = pinocchio::ReferenceFrame::LOCAL_WORLD_ALIGNED;
-  const pinocchio::Model& model = pinocchioInterfacePtr_->getModel();
-  // const pinocchio::Data& data = pinocchioInterfacePtr_->getData();
+  const pinocchio::Model& model = pinocchioInterfacePtr_->GetModel();
+  // const pinocchio::Data& data = pinocchioInterfacePtr_->GetData();
   // TODO(mspieler): Need to copy here because getFrameJacobian() modifies data. Will be fixed in pinocchio version 3.
-  pinocchio::Data data = pinocchio::Data(pinocchioInterfacePtr_->getData());
+  pinocchio::Data data = pinocchio::Data(pinocchioInterfacePtr_->GetData());
 
   std::vector<VectorFunctionLinearApproximation> positions;
 
-  const auto& geometryModel = pinocchioSphereInterface_.getGeometryModel();
-  const size_t numPrimitiveShapes = pinocchioSphereInterface_.getNumPrimitiveShapes();
-  const auto geomObjIds = pinocchioSphereInterface_.getGeomObjIds();
-  const auto numSpheres = pinocchioSphereInterface_.getNumSpheres();
+  const auto& geometryModel = pinocchioSphereInterface_.GetGeometryModel();
+  const size_t numPrimitiveShapes = pinocchioSphereInterface_.GetNumPrimitiveShapes();
+  const auto geomObjIds = pinocchioSphereInterface_.GetGeomObjIds();
+  const auto numSpheres = pinocchioSphereInterface_.GetNumSpheres();
 
   size_t count = 0;
   for (size_t i = 0; i < numPrimitiveShapes; i++) {
@@ -109,7 +109,7 @@ std::vector<VectorFunctionLinearApproximation> PinocchioSphereKinematics::GetPos
       const vector3_t sphereCenterOffset = sphereCentersInWorldFrame[count + j] - jointPosition;
       const matrix_t sphereCenterJacobian =
           jointJacobian.topRows<3>() - SkewSymmetricMatrix(sphereCenterOffset) * jointJacobian.bottomRows<3>();
-      std::tie(pos.dfdx, std::ignore) = mappingPtr_->getOcs2Jacobian(state, sphereCenterJacobian.topRows<3>(), matrix_t::Zero(0, model.nq));
+      std::tie(pos.dfdx, std::ignore) = mappingPtr_->GetOcs2Jacobian(state, sphereCenterJacobian.topRows<3>(), matrix_t::Zero(0, model.nq));
       positions.emplace_back(std::move(pos));
     }
     count += numSpheres[i];

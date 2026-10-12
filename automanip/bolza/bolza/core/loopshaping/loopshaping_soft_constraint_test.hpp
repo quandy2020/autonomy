@@ -39,8 +39,8 @@ class TestFixtureLoopShapingSoftConstraint : LoopshapingTestConfiguration {
     Q_final = (0.5 * Q_final.transpose() + 0.5 * Q_final).eval();
     Q = (0.5 * Q.transpose() + 0.5 * Q).eval();
     R = (0.5 * R.transpose() + 0.5 * R).eval();
-    systemCost.Reset(new QuadraticStateInputCost(Q, R, P));
-    systemStateCost.Reset(new QuadraticStateCost(Q_final));
+    systemCost.reset(new QuadraticStateInputCost(Q, R, P));
+    systemStateCost.reset(new QuadraticStateCost(Q_final));
 
     targetTrajectories_ = TargetTrajectories({0.0}, {x_sys_}, {u_sys_});
 

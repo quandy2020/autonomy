@@ -93,11 +93,11 @@ void GradientDescent::LineSearch(const vector_t& parameters, const vector_t& gra
     vector_t lsParameters = parameters - learningRate * gradient;
 
     // set the parameter
-    size_t lsID = costPtr->setCurrentParameter(lsParameters);
+    size_t lsID = costPtr->SetCurrentParameter(lsParameters);
 
     // calculate cost function
     scalar_t lsCost;
-    bool status = costPtr->getCost(lsID, lsCost);
+    bool status = costPtr->GetCost(lsID, lsCost);
 
     // increment the number of function calls
     numFuntionCall_++;
@@ -118,10 +118,10 @@ void GradientDescent::LineSearch(const vector_t& parameters, const vector_t& gra
       scalar_t equalitySE(0.0), inequalitySE(0.0);
       if (constraintsPtr) {
         vector_t g, h;
-        constraintsPtr->setCurrentParameter(lsParameters);
-        constraintsPtr->getLinearEqualityConstraint(g);
+        constraintsPtr->SetCurrentParameter(lsParameters);
+        constraintsPtr->GetLinearEqualityConstraint(g);
         equalitySE = (g.size() > 0) ? g.squaredNorm() : 0.0;
-        constraintsPtr->getLinearInequalityConstraint(h);
+        constraintsPtr->GetLinearInequalityConstraint(h);
         inequalitySE = (h.size() > 0) ? h.dot(h.cwiseMin(0.0)) : 0.0;
         std::cerr << "\t h: " << h.transpose().format(CleanFmtDisplay_) << std::endl;
       }
@@ -185,8 +185,8 @@ void GradientDescent::Run(const vector_t& initParameters, const vector_t& maxGra
   }
 
   // initial cost
-  optimizedID_ = costPtr->setCurrentParameter(optimizedParameters_);
-  bool status = costPtr->getCost(optimizedID_, optimizedCost_);
+  optimizedID_ = costPtr->SetCurrentParameter(optimizedParameters_);
+  bool status = costPtr->GetCost(optimizedID_, optimizedCost_);
   iterationCost_.push_back(optimizedCost_);
   numFuntionCall_++;
 
@@ -208,7 +208,7 @@ void GradientDescent::Run(const vector_t& initParameters, const vector_t& maxGra
 
     // compute the gradient
     scalar_t cachedCost = optimizedCost_;
-    costPtr->getCostDerivative(optimizedID_, optimizedGradient_);
+    costPtr->GetCostDerivative(optimizedID_, optimizedGradient_);
     if (nlpSettings_.displayInfo_) {
       std::cerr << "Gradient:             " << optimizedGradient_.transpose().format(CleanFmtDisplay_) << '\n';
     }
@@ -216,7 +216,7 @@ void GradientDescent::Run(const vector_t& initParameters, const vector_t& maxGra
     // compute the projected gradient
     if (constraintsPtr) {
       vector_t fwDescentDirection;
-      frankWolfeDescentDirectionPtr_->run(optimizedParameters_, optimizedGradient_, maxGradientInverse, constraintsPtr, fwDescentDirection);
+      frankWolfeDescentDirectionPtr_->Run(optimizedParameters_, optimizedGradient_, maxGradientInverse, constraintsPtr, fwDescentDirection);
       optimizedGradient_ = -fwDescentDirection;
       // display
       if (nlpSettings_.displayInfo_) {

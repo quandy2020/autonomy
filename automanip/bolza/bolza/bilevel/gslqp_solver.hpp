@@ -65,7 +65,7 @@ class GSLQSolver {
   typedef Eigen::Matrix<double, NUM_Subsystems - 1, 1> parameters_t;
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Constructor
    *
@@ -120,7 +120,7 @@ class GSLQSolver {
   parameters_t CostDerivative() { return costDerivative_; }
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Returns controllerstock
    *
@@ -158,7 +158,7 @@ class GSLQSolver {
   MP_Options_t& mp_options() { return mp_options_; }
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Run function
    *

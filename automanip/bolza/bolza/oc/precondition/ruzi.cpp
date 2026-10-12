@@ -111,7 +111,7 @@ void invSqrtInfNormInParallel(ThreadPool& threadPool, const std::vector<VectorFu
       E[k] = invSqrt(matrixInfNormRows(dynamics[k].dfdx, dynamics[k].dfdu, scalingVectors[k]));
     }
   };
-  threadPool.runParallel(std::move(task), threadPool.numThreads() + 1U);
+  threadPool.RunParallel(std::move(task), threadPool.NumThreads() + 1U);
 
   D[2 * N - 1] = invSqrt(matrixInfNormCols(cost[N].dfdxx, scalingVectors[N - 1].transpose().eval()));
 }
@@ -155,7 +155,7 @@ void scaleDataOneStepInPlaceInParallel(ThreadPool& threadPool, const vector_arra
       }
     }
   };
-  threadPool.runParallel(std::move(scaleCostConstraints), threadPool.numThreads() + 1U);
+  threadPool.RunParallel(std::move(scaleCostConstraints), threadPool.NumThreads() + 1U);
 }
 
 vector_t matrixInfNormRows(const Eigen::SparseMatrix<scalar_t>& mat) {
@@ -220,7 +220,7 @@ void OcpDataInPlaceInParallel(ThreadPool& threadPool, const vector_t& x0, const 
 
   vector_array_t D(2 * N), E(N);
   std::atomic_int timeIndex{0};
-  const size_t numWorkers = threadPool.numThreads() + 1U;
+  const size_t numWorkers = threadPool.NumThreads() + 1U;
   for (int i = 0; i < iteration; i++) {
     invSqrtInfNormInParallel(threadPool, dynamics, cost, scalingVectors, D, E);
     scaleDataOneStepInPlaceInParallel(threadPool, D, E, dynamics, cost, scalingVectors);
@@ -250,7 +250,7 @@ void OcpDataInPlaceInParallel(ThreadPool& threadPool, const vector_t& x0, const 
       infNormOfhArray[workerId] = std::max(infNormOfhArray[workerId], workerInfNormOfh);
       sumOfInfNormOfHArray[workerId] += workerSumOfInfNormOfH;
     };
-    threadPool.runParallel(std::move(infNormOfh_sumOfInfNormOfH), numWorkers);
+    threadPool.RunParallel(std::move(infNormOfh_sumOfInfNormOfH), numWorkers);
 
     const auto infNormOfh = *std::max_element(infNormOfhArray.cbegin(), infNormOfhArray.cend());
     const auto sumOfInfNormOfH = std::accumulate(sumOfInfNormOfHArray.cbegin(), sumOfInfNormOfHArray.cend(), 0.0);
@@ -282,7 +282,7 @@ void OcpDataInPlaceInParallel(ThreadPool& threadPool, const vector_t& x0, const 
         cost[N].dfdu *= gamma;
       }
     };
-    threadPool.runParallel(std::move(computeDOutEOutScaleCost), numWorkers);
+    threadPool.RunParallel(std::move(computeDOutEOutScaleCost), numWorkers);
 
     // compute cOut
     cOut *= gamma;

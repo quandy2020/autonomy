@@ -168,10 +168,10 @@ const std::string* ptree::ResolveData(const std::string& path) const {
   const Node* node = &root_;
   for (const auto& part : SplitPath(path)) {
     const auto it = node->children.find(part);
-    if (it == node->children.end()) {
+    if (it == node->children.end() || it->second == nullptr) {
       return nullptr;
     }
-    node = &it->second;
+    node = it->second.get();
   }
   if (!node->has_data) {
     return nullptr;
@@ -200,7 +200,11 @@ void read_info(const std::string& filename, ptree& pt) {
       if (pendingBlockKey.empty()) {
         throw std::runtime_error("bolza::property_tree: unexpected '{' in INFO file: \"" + filename + "\"");
       }
-      scopeStack.push(&scopeStack.top()->children[pendingBlockKey]);
+      auto& block = scopeStack.top()->children[pendingBlockKey];
+      if (block == nullptr) {
+        block = std::make_unique<ptree::Node>();
+      }
+      scopeStack.push(block.get());
       pendingBlockKey.clear();
       continue;
     }
@@ -221,7 +225,11 @@ void read_info(const std::string& filename, ptree& pt) {
     }
 
     pendingBlockKey.clear();
-    ptree::Node& child = scopeStack.top()->children[key];
+    auto& slot = scopeStack.top()->children[key];
+    if (slot == nullptr) {
+      slot = std::make_unique<ptree::Node>();
+    }
+    ptree::Node& child = *slot;
     if (opensBlock) {
       scopeStack.push(&child);
     } else if (value.empty()) {

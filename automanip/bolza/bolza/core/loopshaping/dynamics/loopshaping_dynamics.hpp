@@ -124,7 +124,7 @@ class LoopshapingDynamics : public SystemDynamicsBase {
        * @param [in] loopshapingDefinition_: Loopshaping Definition.
        * @return Result value.
        */
-      : SystemDynamicsBase(other), systemDynamics_(other.systemDynamics_->clone()), loopshapingDefinition_(other.loopshapingDefinition_) {}
+      : SystemDynamicsBase(other), systemDynamics_(other.systemDynamics_->Clone()), loopshapingDefinition_(other.loopshapingDefinition_) {}
 
   /**
    * @brief Constructs a LoopshapingDynamics.
@@ -138,7 +138,7 @@ class LoopshapingDynamics : public SystemDynamicsBase {
        * @return Result value.
        */
       : SystemDynamicsBase(preComputation),
-        systemDynamics_(systemDynamics.clone()),
+        systemDynamics_(systemDynamics.Clone()),
         loopshapingDefinition_(std::move(loopshapingDefinition)) {}
 
   std::unique_ptr<SystemDynamicsBase> systemDynamics_;

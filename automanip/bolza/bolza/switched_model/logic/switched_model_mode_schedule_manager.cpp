@@ -14,7 +14,7 @@ SwitchedModelModeScheduleManager::SwitchedModelModeScheduleManager(std::unique_p
     : gaitSchedule_(std::move(gaitSchedule)), swingTrajectoryPtr_(std::move(swingTrajectory)), terrainModel_(std::move(terrainModel)) {}
 
 contact_flag_t SwitchedModelModeScheduleManager::GetContactFlags(scalar_t time) const {
-  return ModeNumber2StanceLeg(this->getModeSchedule().modeAtTime(time));
+  return ModeNumber2StanceLeg(this->GetModeSchedule().ModeAtTime(time));
 }
 
 void SwitchedModelModeScheduleManager::ModifyReferences(scalar_t initTime, scalar_t finalTime, const vector_t& initState,
@@ -22,19 +22,19 @@ void SwitchedModelModeScheduleManager::ModifyReferences(scalar_t initTime, scala
   const auto timeHorizon = finalTime - initTime;
   {
     auto lockedGaitSchedulePtr = gaitSchedule_.lock();
-    lockedGaitSchedulePtr->advanceToTime(initTime);
-    modeSchedule = lockedGaitSchedulePtr->getModeSchedule(timeHorizon + swingTrajectoryPtr_->settings().referenceExtensionAfterHorizon);
+    lockedGaitSchedulePtr->AdvanceToTime(initTime);
+    modeSchedule = lockedGaitSchedulePtr->GetModeSchedule(timeHorizon + swingTrajectoryPtr_->Settings().referenceExtensionAfterHorizon);
   }
 
   // Transfer terrain ownership if a new terrain is available
   std::unique_ptr<TerrainModel> newTerrain;
   terrainModel_.swap(newTerrain);  // Thread-safe swap with lockable Terrain
   if (newTerrain) {
-    swingTrajectoryPtr_->updateTerrain(std::move(newTerrain));
+    swingTrajectoryPtr_->UpdateTerrain(std::move(newTerrain));
   }
 
   // Prepare swing motions
-  swingTrajectoryPtr_->updateSwingMotions(initTime, finalTime, initState, targetTrajectories, modeSchedule);
+  swingTrajectoryPtr_->UpdateSwingMotions(initTime, finalTime, initState, targetTrajectories, modeSchedule);
 }
 
 }  // namespace switched_model

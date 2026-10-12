@@ -48,7 +48,7 @@ class TrajectorySpreading final {
    * @param [in] oldTimeTrajectory: The old time trajectories that is associated with the old mode schedule.
    * @returns the status of the devised trajectory spreading strategy.
    */
-  Status set(const ModeSchedule& oldModeSchedule, const ModeSchedule& newModeSchedule, const scalar_array_t& oldTimeTrajectory);
+  Status Set(const ModeSchedule& oldModeSchedule, const ModeSchedule& newModeSchedule, const scalar_array_t& oldTimeTrajectory);
 
   /**
    * @brief Gets the trajectory-spreading strategy report.
@@ -121,7 +121,7 @@ class TrajectorySpreading final {
      * @brief Distance.
      * @return Result value.
      */
-    return std::Distance(timeTrajectory.begin(), std::upper_bound(timeTrajectory.begin(), timeTrajectory.end(), queryTime));
+    return std::distance(timeTrajectory.begin(), std::upper_bound(timeTrajectory.begin(), timeTrajectory.end(), queryTime));
   }
 
   // helper function: get index of the iterator returned by lower_bound function
@@ -136,7 +136,7 @@ class TrajectorySpreading final {
      * @brief Distance.
      * @return Result value.
      */
-    return std::Distance(timeTrajectory.begin(), std::lower_bound(timeTrajectory.begin(), timeTrajectory.end(), queryTime));
+    return std::distance(timeTrajectory.begin(), std::lower_bound(timeTrajectory.begin(), timeTrajectory.end(), queryTime));
   }
 
   /**
@@ -151,7 +151,7 @@ class TrajectorySpreading final {
      * @brief Post Event Indices.
      * @return Result value.
      */
-    size_array_t PostEventIndices(eventTimes.size());
+    size_array_t postEventIndices(eventTimes.size());
     for (std::size_t i = 0; i < eventTimes.size(); i++) {
       if (i == eventTimes.size() - 1 && eventTimes[i] == timeTrajectory.back()) {
         postEventIndices[i] = timeTrajectory.size() - 1;
@@ -197,7 +197,7 @@ std::vector<T> TrajectorySpreading::ExtractEventsArray(const std::vector<T>& arr
    * @param [in] lastItr: Last Itr.
    * @return Result value.
    */
-  std::vector<T> Out(firstItr, lastItr);
+  std::vector<T> out(firstItr, lastItr);
   return out;
 }
 
@@ -224,7 +224,7 @@ void TrajectorySpreading::AdjustTrajectory(std::vector<T>& trajectory) const {
    * @brief Spreading Values.
    * @return Result value.
    */
-  std::vector<T> SpreadingValues(spreadingValueIndices_.size());
+  std::vector<T> spreadingValues(spreadingValueIndices_.size());
   /**
    * @brief Transform.
    * @return Result value.

@@ -44,7 +44,7 @@ class Exp1 : public testing::TestWithParam<std::tuple<bolza::search_strategy::Ty
     problem = bolza::CreateExp1Problem(referenceManagerPtr);
 
     // operatingTrajectories
-    initializerPtr.Reset(new bolza::DefaultInitializer(INPUT_DIM));
+    initializerPtr.reset(new bolza::DefaultInitializer(INPUT_DIM));
   }
 
   bolza::search_strategy::Type getSearchStrategy() { return std::get<0>(GetParam()); }
@@ -137,7 +137,7 @@ TEST_F(Exp1, ddp_hamiltonian) {
   // run ddp
   ddp.Run(startTime, initState, finalTime);
   // get solution
-  const auto solution = ddp.PrimalSolution(finalTime);
+  const auto solution = ddp.GetPrimalSolution(finalTime);
 
   // define precision for tests
   constexpr bolza::scalar_t precision = 1e-3;

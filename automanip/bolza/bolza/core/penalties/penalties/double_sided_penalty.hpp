@@ -83,7 +83,7 @@ class DoubleSidedPenalty final : public PenaltyBase {
      * @param [in] h: H.
      * @return Result value.
      */
-    return penaltyPtr_->getValue(t, h - lowerBound_) + penaltyPtr_->getValue(t, upperBound_ - h);
+    return penaltyPtr_->GetValue(t, h - lowerBound_) + penaltyPtr_->GetValue(t, upperBound_ - h);
   }
   /**
    * @brief Get Derivative.
@@ -98,7 +98,7 @@ class DoubleSidedPenalty final : public PenaltyBase {
      * @param [in] h: H.
      * @return Result value.
      */
-    return penaltyPtr_->getDerivative(t, h - lowerBound_) - penaltyPtr_->getDerivative(t, upperBound_ - h);
+    return penaltyPtr_->GetDerivative(t, h - lowerBound_) - penaltyPtr_->GetDerivative(t, upperBound_ - h);
   }
   /**
    * @brief Get Second Derivative.
@@ -113,7 +113,7 @@ class DoubleSidedPenalty final : public PenaltyBase {
      * @param [in] h: H.
      * @return Result value.
      */
-    return penaltyPtr_->getSecondDerivative(t, h - lowerBound_) + penaltyPtr_->getSecondDerivative(t, upperBound_ - h);
+    return penaltyPtr_->GetSecondDerivative(t, h - lowerBound_) + penaltyPtr_->GetSecondDerivative(t, upperBound_ - h);
   }
 
  private:
@@ -125,7 +125,7 @@ class DoubleSidedPenalty final : public PenaltyBase {
        * @brief Lower Bound.
        * @return Result value.
        */
-      : lowerBound_(other.lowerBound_), upperBound_(other.upperBound_), penaltyPtr_(other.penaltyPtr_->clone()) {}
+      : lowerBound_(other.lowerBound_), upperBound_(other.upperBound_), penaltyPtr_(other.penaltyPtr_->Clone()) {}
 
   const scalar_t lowerBound_;
   const scalar_t upperBound_;

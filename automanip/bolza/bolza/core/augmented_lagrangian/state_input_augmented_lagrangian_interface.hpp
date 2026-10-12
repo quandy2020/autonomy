@@ -48,21 +48,21 @@ class StateInputAugmentedLagrangianInterface {
   virtual StateInputAugmentedLagrangianInterface* Clone() const = 0;
 
     /**
-   * @brief /** Check penalty's activity */.
+   * @brief Check penalty's activity 
    * @param [in] time: Time.
    * @return True on success.
    */
   virtual bool IsActive(scalar_t time) const = 0;
 
     /**
-   * @brief /** Get the size of the constraint vector at given time */.
+   * @brief Get the size of the constraint vector at given time 
    * @param [in] time: Time.
    * @return Result value.
    */
   virtual size_t GetNumConstraints(scalar_t time) const = 0;
 
     /**
-   * @brief /** Get the constraint and its penalty value */.
+   * @brief Get the constraint and its penalty value 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] input: Input.
@@ -74,7 +74,7 @@ class StateInputAugmentedLagrangianInterface {
                                      const PreComputation& preComp) const = 0;
 
     /**
-   * @brief /** Get the constraint's penalty quadratic approximation */.
+   * @brief Get the constraint's penalty quadratic approximation 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] input: Input.
@@ -87,7 +87,7 @@ class StateInputAugmentedLagrangianInterface {
                                                                          const PreComputation& preComp) const = 0;
 
     /**
-   * @brief /** Update Lagrange/penalty multipliers and the penalty function value. */.
+   * @brief Update Lagrange/penalty multipliers and the penalty function value. 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] input: Input.
@@ -99,7 +99,7 @@ class StateInputAugmentedLagrangianInterface {
                                                            const vector_t& constraint, const Multiplier& lagrangian) const = 0;
 
     /**
-   * @brief /** Initialize Lagrange/penalty multipliers. */.
+   * @brief Initialize Lagrange/penalty multipliers. 
    * @param [in] time: Time.
    * @return Result value.
    */

@@ -33,7 +33,7 @@
 namespace bolza {
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Factory function for state augmented Lagrangian.
  *
@@ -46,7 +46,7 @@ std::unique_ptr<StateAugmentedLagrangian> Create(std::unique_ptr<StateConstraint
                                                  std::vector<std::unique_ptr<augmented::AugmentedPenaltyBase>> penaltyPtrArray);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Factory function for state augmented Lagrangian.
  *
@@ -59,7 +59,7 @@ std::unique_ptr<StateAugmentedLagrangian> Create(std::unique_ptr<StateConstraint
                                                  std::unique_ptr<augmented::AugmentedPenaltyBase> penaltyPtr);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Factory function for state-input augmented Lagrangian.
  *
@@ -72,7 +72,7 @@ std::unique_ptr<StateInputAugmentedLagrangian> Create(std::unique_ptr<StateInput
                                                       std::vector<std::unique_ptr<augmented::AugmentedPenaltyBase>> penaltyPtrArray);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Factory function for state-input augmented Lagrangian.
  *

@@ -127,7 +127,7 @@ void RolloutBase::CheckNumericalStability(const ControllerBase& controller, cons
       const vector_array_t* const inputTrajectoryTempPtr = rolloutSettings_.reconstructInputTrajectory ? &inputTrajectoryTemp : nullptr;
       Display(timeTrajectoryTemp, postEventIndices, stateTrajectoryTemp, inputTrajectoryTempPtr);
 
-      controller.display();
+      controller.Display();
 
       throw;
     }

@@ -69,7 +69,7 @@ MatrixType GenerateSPDmatrix(int size) {
 }
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Compute random full row rank matrix
  *

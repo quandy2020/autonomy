@@ -78,7 +78,7 @@ class LqSolver {
    * @param [in] verbose: Verbose.
    * @return Result value.
    */
-  LqStatus solve(const vector_t& x0, std::vector<VectorFunctionLinearApproximation>& dynamics,
+  LqStatus Solve(const vector_t& x0, std::vector<VectorFunctionLinearApproximation>& dynamics,
                  std::vector<ScalarFunctionQuadraticApproximation>& cost, std::vector<VectorFunctionLinearApproximation>* constraints,
                  vector_array_t& stateTrajectory, vector_array_t& inputTrajectory, bool verbose = false);
 

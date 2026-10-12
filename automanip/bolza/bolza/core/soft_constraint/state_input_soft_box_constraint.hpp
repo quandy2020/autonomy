@@ -97,7 +97,7 @@ class StateInputSoftBoxConstraint final : public StateInputCost {
   bool IsActive(scalar_t time) const override;
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Takes the cost value at the given time, state, input and adds it as constant offset to further evaluations.
    *

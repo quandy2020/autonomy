@@ -48,14 +48,14 @@ class StateCost {
   virtual StateCost* Clone() const = 0;
 
     /**
-   * @brief /** Check if cost term is active */.
+   * @brief Check if cost term is active 
    * @param [in] time: Time.
    * @return True on success.
    */
   virtual bool IsActive(scalar_t time) const { return true; }
 
     /**
-   * @brief /** Get cost term value */.
+   * @brief Get cost term value 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] targetTrajectories: Target Trajectories.
@@ -66,7 +66,7 @@ class StateCost {
                             const PreComputation& preComp) const = 0;
 
     /**
-   * @brief /** Get cost term quadratic approximation */.
+   * @brief Get cost term quadratic approximation 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] targetTrajectories: Target Trajectories.
@@ -87,6 +87,6 @@ class StateCost {
 
 // Template for conditional compilation using SFINAE
 template <typename T>
-using EnableIfStateCost_t = typename std::enable_if<std::is_same<T, StateCost>::Value, bool>::type;
+using EnableIfStateCost_t = typename std::enable_if<std::is_same<T, StateCost>::value, bool>::type;
 
 }  // namespace bolza

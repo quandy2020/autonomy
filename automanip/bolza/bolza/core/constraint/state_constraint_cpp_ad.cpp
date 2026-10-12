@@ -27,7 +27,7 @@ void StateConstraintCppAd::Initialize(size_t stateDim, size_t parameterDim, cons
     assert(x.rows() == 1 + stateDim);
     const ad_scalar_t time = x(0);
     const ad_vector_t state = x.tail(stateDim);
-    y = this->constraintFunction(time, state, p);
+    y = this->ConstraintFunction(time, state, p);
   };
   adInterfacePtr_.reset(new bolza::CppAdInterface(constraintAd, 1 + stateDim, parameterDim, modelName, modelFolder));
 
@@ -39,9 +39,9 @@ void StateConstraintCppAd::Initialize(size_t stateDim, size_t parameterDim, cons
   }
 
   if (recompileLibraries) {
-    adInterfacePtr_->createModels(orderCppAd, verbose);
+    adInterfacePtr_->CreateModels(orderCppAd, verbose);
   } else {
-    adInterfacePtr_->loadModelsIfAvailable(orderCppAd, verbose);
+    adInterfacePtr_->LoadModelsIfAvailable(orderCppAd, verbose);
   }
 }
 
@@ -57,7 +57,7 @@ StateConstraintCppAd::StateConstraintCppAd(const StateConstraintCppAd& rhs)
 vector_t StateConstraintCppAd::GetValue(scalar_t time, const vector_t& state, const PreComputation& preComputation) const {
   vector_t tapedTimeState(1 + state.rows());
   tapedTimeState << time, state;
-  return adInterfacePtr_->getFunctionValue(tapedTimeState, GetParameters(time, preComputation));
+  return adInterfacePtr_->GetFunctionValue(tapedTimeState, GetParameters(time, preComputation));
 }
 
 /******************************************************************************************************/
@@ -72,8 +72,8 @@ VectorFunctionLinearApproximation StateConstraintCppAd::GetLinearApproximation(s
   vector_t tapedTimeState(1 + stateDim);
   tapedTimeState << time, state;
 
-  constraint.f = adInterfacePtr_->getFunctionValue(tapedTimeState, params);
-  const matrix_t J = adInterfacePtr_->getJacobian(tapedTimeState, params);
+  constraint.f = adInterfacePtr_->GetFunctionValue(tapedTimeState, params);
+  const matrix_t J = adInterfacePtr_->GetJacobian(tapedTimeState, params);
   constraint.dfdx = J.rightCols(stateDim);
 
   return constraint;
@@ -95,8 +95,8 @@ VectorFunctionQuadraticApproximation StateConstraintCppAd::GetQuadraticApproxima
   vector_t tapedTimeState(1 + stateDim);
   tapedTimeState << time, state;
 
-  constraint.f = adInterfacePtr_->getFunctionValue(tapedTimeState, params);
-  const matrix_t J = adInterfacePtr_->getJacobian(tapedTimeState, params);
+  constraint.f = adInterfacePtr_->GetFunctionValue(tapedTimeState, params);
+  const matrix_t J = adInterfacePtr_->GetJacobian(tapedTimeState, params);
   constraint.dfdx = J.rightCols(stateDim);
 
   const size_t numConstraints = constraint.f.rows();
@@ -104,7 +104,7 @@ VectorFunctionQuadraticApproximation StateConstraintCppAd::GetQuadraticApproxima
   constraint.dfdux.resize(numConstraints);
   constraint.dfduu.resize(numConstraints);
   for (int i = 0; i < numConstraints; i++) {
-    const matrix_t H = adInterfacePtr_->getHessian(i, tapedTimeState, params);
+    const matrix_t H = adInterfacePtr_->GetHessian(i, tapedTimeState, params);
     constraint.dfdxx[i] = H.bottomRightCorner(stateDim, stateDim);
   }
 

@@ -52,13 +52,13 @@ class LinearController final : public ControllerBase {
       : timeStamp_(std::move(controllerTime)), biasArray_(std::move(controllerBias)), gainArray_(std::move(controllerGain)) {}
 
     /**
-   * @brief /** Copy constructor */.
+   * @brief Copy constructor 
    * @param [in] other: Other.
    */
   LinearController(const LinearController& other);
 
     /**
-   * @brief /** Move constructor */.
+   * @brief Move constructor 
    * @param [in,out] other: Other.
    */
   LinearController(LinearController&& other);

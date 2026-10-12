@@ -55,21 +55,21 @@ class StateConstraint {
   constexpr ConstraintOrder GetOrder() const { return order_; };
 
     /**
-   * @brief /** Check constraint activity */.
+   * @brief Check constraint activity 
    * @param [in] time: Time.
    * @return True on success.
    */
   virtual bool IsActive(scalar_t time) const { return true; }
 
     /**
-   * @brief /** Get the size of the constraint vector at given time */.
+   * @brief Get the size of the constraint vector at given time 
    * @param [in] time: Time.
    * @return Result value.
    */
   virtual size_t GetNumConstraints(scalar_t time) const = 0;
 
     /**
-   * @brief /** Get the constraint vector value */.
+   * @brief Get the constraint vector value 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] preComp: Pre Comp.
@@ -78,7 +78,7 @@ class StateConstraint {
   virtual vector_t GetValue(scalar_t time, const vector_t& state, const PreComputation& preComp) const = 0;
 
     /**
-   * @brief /** Get the constraint linear approximation */.
+   * @brief Get the constraint linear approximation 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] preComp: Pre Comp.
@@ -102,7 +102,7 @@ class StateConstraint {
   }
 
     /**
-   * @brief /** Get the constraint quadratic approximation */.
+   * @brief Get the constraint quadratic approximation 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] preComp: Pre Comp.
@@ -138,6 +138,6 @@ class StateConstraint {
 
 // Template for conditional compilation using SFINAE
 template <typename T>
-using EnableIfStateConstraint_t = typename std::enable_if<std::is_same<T, StateConstraint>::Value, bool>::type;
+using EnableIfStateConstraint_t = typename std::enable_if<std::is_same<T, StateConstraint>::value, bool>::type;
 
 }  // namespace bolza

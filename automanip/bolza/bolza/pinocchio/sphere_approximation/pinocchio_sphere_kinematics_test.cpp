@@ -24,7 +24,7 @@
 #include <bolza/pinocchio/sphere/pinocchio_sphere_kinematics.hpp>
 #include <bolza/pinocchio/sphere/pinocchio_sphere_kinematics_cpp_ad.hpp>
 
-#include <robotic_assets/package_path.hpp>
+#include <assets/package_path.hpp>
 #include <bolza/tools/common/skew_symmetric_matrix.hpp>
 
 #include <bolza/pinocchio/interface/urdf.hpp>
@@ -58,12 +58,12 @@ class TestSphereKinematics : public ::testing::Test {
   using quaternion_t = Eigen::Quaternion<bolza::scalar_t>;
 
   TestSphereKinematics() {
-    const std::string urdfFile = bolza::robotic_assets::GetPath() + "/resources/mobile_manipulator/mabi_mobile/urdf/mabi_mobile.urdf";
-    pinocchioInterfacePtr.Reset(new bolza::PinocchioInterface(bolza::GetPinocchioInterfaceFromUrdfFile(urdfFile)));
-    pinocchioSphereInterfacePtr.Reset(new bolza::PinocchioSphereInterface(*pinocchioInterfacePtr, {"ARM", "SHOULDER", "FOREARM", "WRIST_1"},
+    const std::string urdfFile = bolza::robotic_assets::GetPath() + "/mobile_manipulator/mabi_mobile/urdf/mabi_mobile.urdf";
+    pinocchioInterfacePtr.reset(new bolza::PinocchioInterface(bolza::GetPinocchioInterfaceFromUrdfFile(urdfFile)));
+    pinocchioSphereInterfacePtr.reset(new bolza::PinocchioSphereInterface(*pinocchioInterfacePtr, {"ARM", "SHOULDER", "FOREARM", "WRIST_1"},
                                                                          {0.20, 0.10, 0.05, 0.05}, 0.7));
-    sphereKinematicsPtr.Reset(new bolza::PinocchioSphereKinematics(*pinocchioSphereInterfacePtr, pinocchioMapping));
-    sphereKinematicsCppAdPtr.Reset(new bolza::PinocchioSphereKinematicsCppAd(
+    sphereKinematicsPtr.reset(new bolza::PinocchioSphereKinematics(*pinocchioSphereInterfacePtr, pinocchioMapping));
+    sphereKinematicsCppAdPtr.reset(new bolza::PinocchioSphereKinematicsCppAd(
         *pinocchioInterfacePtr, *pinocchioSphereInterfacePtr, pinocchioMappingCppAd, pinocchioInterfacePtr->GetModel().njoints, 0,
         "pinocchio_sphere_kinematics", "/tmp/bolza", true, true));
 

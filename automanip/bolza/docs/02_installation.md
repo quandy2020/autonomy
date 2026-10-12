@@ -46,7 +46,7 @@ git submodule update --init --recursive
 |:---|:---|:---|
 | `BOLZA_WITH_ONNX` | ON | 找到 SDK 则编入 ONNX |
 | `BOLZA_BUILD_TESTS` | OFF | 注册 `bolza/**/*_test.cpp` GTest 目标 |
-| `BOLZA_ROBOTIC_ASSETS_ROOT` | `bolza/robotic_assets` | 单测 URDF 根（含 `resources/`） |
+| `BOLZA_ROBOTIC_ASSETS_ROOT` | `examples/assets` | 单测与 demo 的 URDF 根 |
 
 - 可选宏：`BOLZA_HAS_COAL` · `BOLZA_HAS_ONNX`
 

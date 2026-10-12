@@ -77,13 +77,13 @@ void FrankWolfeDescentDirection::SetupLP(const vector_t& parameter, const vector
   }  // end of i loop
 
   // set the current parameter vector.
-  nlpConstraintsPtr->setCurrentParameter(parameter);
+  nlpConstraintsPtr->SetCurrentParameter(parameter);
 
   // get domain equality constraints
   vector_t g;
-  nlpConstraintsPtr->getLinearEqualityConstraint(g);
+  nlpConstraintsPtr->GetLinearEqualityConstraint(g);
   matrix_t dgdx;
-  nlpConstraintsPtr->getLinearEqualityConstraintDerivative(dgdx);
+  nlpConstraintsPtr->GetLinearEqualityConstraintDerivative(dgdx);
   if (g.size() > 0 && dgdx.cols() != parameterDim)
     throw std::runtime_error(
         "calculateLinearEqualityConstraint: The number of columns of Jacobian matrix "
@@ -95,9 +95,9 @@ void FrankWolfeDescentDirection::SetupLP(const vector_t& parameter, const vector
 
   // get domain inequality constraints
   vector_t h;
-  nlpConstraintsPtr->getLinearInequalityConstraint(h);
+  nlpConstraintsPtr->GetLinearInequalityConstraint(h);
   matrix_t dhdx;
-  nlpConstraintsPtr->getLinearInequalityConstraintDerivative(dhdx);
+  nlpConstraintsPtr->GetLinearInequalityConstraintDerivative(dhdx);
   if (h.size() > 0 && dhdx.cols() != parameterDim)
     throw std::runtime_error(
         "calculateLinearInequalityConstraint: The number of columns of Jacobian matrix "

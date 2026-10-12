@@ -44,7 +44,7 @@ class CircularKinematicsTest : public testing::TestWithParam<std::tuple<bolza::s
     problem = bolza::CreateCircularKinematicsProblem("/tmp/bolza/ddp_test_generated");
 
     // initializer
-    initializerPtr.Reset(new bolza::DefaultInitializer(INPUT_DIM));
+    initializerPtr.reset(new bolza::DefaultInitializer(INPUT_DIM));
   }
 
   bolza::search_strategy::Type getSearchStrategy() { return std::get<0>(GetParam()); }

@@ -86,7 +86,7 @@ class RolloutSensitivityEquations final : public ControlledSystemBase<STATE_DIM,
   }
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Sets Data
    *
@@ -109,13 +109,13 @@ class RolloutSensitivityEquations final : public ControlledSystemBase<STATE_DIM,
      * @param [in,out] sensitivityControllerFeedbackPtr: Sensitivity Controller Feedback Ptr.
      * @return Result value.
      */
-    linearController_.setController(*sensitivityControllerTimePtr, *sensitivityControllerFeedforwardPtr, *sensitivityControllerFeedbackPtr);
+    linearController_.SetController(*sensitivityControllerTimePtr, *sensitivityControllerFeedforwardPtr, *sensitivityControllerFeedbackPtr);
     /**
      * @brief Set Controller.
      * @param [in,out] linearController_: Linear Controller.
      * @return Result value.
      */
-    this->setController(&linearController_);
+    this->SetController(&linearController_);
   }
 
   /**
@@ -127,7 +127,7 @@ class RolloutSensitivityEquations final : public ControlledSystemBase<STATE_DIM,
   void SetMultiplier(const scalar_t& multiplier) { multiplier_ = multiplier; }
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Computes Derivative
    *

@@ -116,7 +116,7 @@ class StateInputAugmentedLagrangian final : public StateInputAugmentedLagrangian
    * @return Result value.
    */
   Derived& get() {
-    static_assert(std::is_base_of<StateInputConstraint, Derived>::Value, "Template argument must derive from StateInputConstraint!");
+    static_assert(std::is_base_of<StateInputConstraint, Derived>::value, "Template argument must derive from StateInputConstraint!");
     return dynamic_cast<Derived&>(*constraintPtr_);
   }
 

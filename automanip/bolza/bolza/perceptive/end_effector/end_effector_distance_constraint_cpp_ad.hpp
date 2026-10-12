@@ -47,7 +47,7 @@ class EndEffectorDistanceConstraintCppAd final : public bolza::StateInputConstra
          * @param [in] verboseParam: Verbose Param.
          * @return Result value.
          */
-        : Weight(weightParam), generateModel(generateModelParam), verbose(verboseParam) {}
+        : weight(weightParam), generateModel(generateModelParam), verbose(verboseParam) {}
     scalar_t weight;
     bool generateModel;
     bool verbose;
@@ -89,12 +89,12 @@ class EndEffectorDistanceConstraintCppAd final : public bolza::StateInputConstra
    * @brief Get Num Constraints.
    * @return Result value.
    */
-  size_t GetNumConstraints(scalar_t time) const override { return adKinematicsPtr_->getIds().size(); }
+  size_t GetNumConstraints(scalar_t time) const override { return adKinematicsPtr_->GetIds().size(); }
   /**
    * @brief Get IDs.
    * @return Result value.
    */
-  const std::vector<std::string>& GetIDs() const { return adKinematicsPtr_->getIds(); }
+  const std::vector<std::string>& GetIDs() const { return adKinematicsPtr_->GetIds(); }
 
   /**
    * @brief Get Value.

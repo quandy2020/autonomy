@@ -22,7 +22,7 @@ base_coordinate_s_t<SCALAR_T> computeExternalForcesInBaseFrame(const KinematicsM
   // contact JacobianTransposeLambda
   base_coordinate_s_t<SCALAR_T> JcTransposeLambda = base_coordinate_s_t<SCALAR_T>::Zero();
   for (size_t i = 0; i < NUM_CONTACT_POINTS; i++) {
-    const vector3_s_t<SCALAR_T> baseToFootInBase = kinematicsModel.positionBaseToFootInBaseFrame(i, qJoints);
+    const vector3_s_t<SCALAR_T> baseToFootInBase = kinematicsModel.PositionBaseToFootInBaseFrame(i, qJoints);
     const vector3_s_t<SCALAR_T> contactForce = comKinoInput.template segment<3>(3 * i);
     JcTransposeLambda.head(3) += baseToFootInBase.cross(contactForce);
     JcTransposeLambda.tail(3) += contactForce;
@@ -40,18 +40,18 @@ base_coordinate_s_t<SCALAR_T> computeExternalForcesInBaseFrame(const KinematicsM
 ComKinoSystemDynamicsAd::ComKinoSystemDynamicsAd(const ad_kinematic_model_t& adKinematicModel, const ad_com_model_t& adComModel,
                                                  const DynamicsParametersSynchronizedModule& dynamicsParametersModule,
                                                  ModelSettings settings)
-    : adKinematicModelPtr_(adKinematicModel.clone()),
-      adComModelPtr_(adComModel.clone()),
+    : adKinematicModelPtr_(adKinematicModel.Clone()),
+      adComModelPtr_(adComModel.Clone()),
       dynamicsParametersModulePtr_(&dynamicsParametersModule),
       settings_(settings) {
   const std::string libName = settings_.robotName_ + "_dynamics";
-  this->initialize(STATE_DIM, INPUT_DIM, libName, settings_.autodiffLibraryFolder_, settings_.recompileLibraries_);
+  this->Initialize(STATE_DIM, INPUT_DIM, libName, settings_.autodiffLibraryFolder_, settings_.recompileLibraries_);
 }
 
 ComKinoSystemDynamicsAd::ComKinoSystemDynamicsAd(const ComKinoSystemDynamicsAd& rhs)
     : Base(rhs),
-      adKinematicModelPtr_(rhs.adKinematicModelPtr_->clone()),
-      adComModelPtr_(rhs.adComModelPtr_->clone()),
+      adKinematicModelPtr_(rhs.adKinematicModelPtr_->Clone()),
+      adComModelPtr_(rhs.adComModelPtr_->Clone()),
       dynamicsParametersModulePtr_(rhs.dynamicsParametersModulePtr_),
       settings_(rhs.settings_) {}
 
@@ -101,7 +101,7 @@ com_state_s_t<SCALAR_T> ComKinoSystemDynamicsAd::ComputeComStateDerivative(const
    * Base dynamics with the following assumptions:
    *  - Zero joint acceleration
    */
-  stateDerivativeCoM.segment(6, 6) = comModel.calculateBaseLocalAccelerations(basePose, baseLocalVelocities, qJoints, qdJoints,
+  stateDerivativeCoM.segment(6, 6) = comModel.CalculateBaseLocalAccelerations(basePose, baseLocalVelocities, qJoints, qdJoints,
                                                                               joint_coordinate_s_t<SCALAR_T>::Zero(), extForce);
   return stateDerivativeCoM;
 }

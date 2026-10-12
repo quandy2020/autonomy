@@ -21,7 +21,7 @@
 #include <vector>
 
 #include <bolza/core/types.hpp>
-#include <robotic_assets/package_path.hpp>
+#include <assets/package_path.hpp>
 
 namespace bolza {
 namespace centroidal_model {
@@ -33,7 +33,7 @@ enum anymal : size_t {
 
 static const std::vector<std::string> anymal3DofContactNames = {"LF_FOOT", "RF_FOOT", "LH_FOOT", "RH_FOOT"};
 static const std::vector<std::string> anymal6DofContactNames = {};
-static const std::string anymalUrdfFile = bolza::robotic_assets::GetPath() + "/resources/anymal_c/urdf/anymal.urdf";
+static const std::string anymalUrdfFile = bolza::robotic_assets::GetPath() + "/anymal_c/urdf/anymal.urdf";
 
 inline bolza::vector_t GetInitialState() {
   bolza::vector_t x0 = bolza::vector_t::Zero(anymal::STATE_DIM);

@@ -35,7 +35,7 @@ class TestAnymalCentroidalModel : public ::testing::TestWithParam<CentroidalMode
   using Matrix6x = Eigen::Matrix<scalar_t, 6, Eigen::Dynamic>;
   TestAnymalCentroidalModel() {
     srand(0);
-    pinocchioInterfacePtr.Reset(new PinocchioInterface(CreatePinocchioInterface(anymalUrdfFile)));
+    pinocchioInterfacePtr.reset(new PinocchioInterface(CreatePinocchioInterface(anymalUrdfFile)));
   }
 
   CentroidalModelInfo createInfo(CentroidalModelType type) const {

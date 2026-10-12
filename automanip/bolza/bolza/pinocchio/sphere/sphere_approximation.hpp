@@ -26,7 +26,7 @@
 
 #include "bolza/pinocchio/interface/pinocchio_interface.hpp"
 
-#include <hpp/fcl/shape/geometric_shapes.h>
+#include <coal/shape/geometric_shapes.h>
 
 namespace bolza {
 
@@ -52,7 +52,7 @@ class SphereApproximation {
    * @param [in] maxExcess: maximum allowed excess from the object surface to the sphere surface
    * @param [in] shrinkRatio: ratio of shrinking maxExcess when recursive approximation of the cylinder base is necessary
    */
-  SphereApproximation(const hpp::fcl::CollisionGeometry& geometry, size_t geomObjectId, scalar_t maxExcess, scalar_t shrinkRatio);
+  SphereApproximation(const coal::CollisionGeometry& geometry, size_t geomObjectId, scalar_t maxExcess, scalar_t shrinkRatio);
 
   /**
    * @brief Get the index of the geometry object stored in GeometryModel.

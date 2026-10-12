@@ -46,7 +46,7 @@ class LinearFunction {
   LinearFunction() : time_(0), uff_(0), deltaUff_(0), k_(0) {}
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Updates the internal variables with the given input
    *

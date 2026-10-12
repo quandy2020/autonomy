@@ -46,7 +46,7 @@ struct ModeSchedule {
   ModeSchedule(std::vector<scalar_t> eventTimesInput, std::vector<size_t> modeSequenceInput);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Returns the mode based on the query time.
    *
@@ -89,7 +89,7 @@ struct ModeSchedule {
 };
 
 /**
- * @brief /** Exchanges the given values. */.
+ * @brief Exchanges the given values. 
  * @param [in,out] lh: Lh.
  * @param [in,out] rh: Rh.
  */

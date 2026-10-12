@@ -5,10 +5,10 @@
 namespace switched_model {
 
 ComKinoInitializer::ComKinoInitializer(const com_model_t& comModel, const SwitchedModelModeScheduleManager& modeScheduleManager)
-    : comModelPtr_(comModel.clone()), modeScheduleManagerPtr_(&modeScheduleManager) {}
+    : comModelPtr_(comModel.Clone()), modeScheduleManagerPtr_(&modeScheduleManager) {}
 
 ComKinoInitializer::ComKinoInitializer(const ComKinoInitializer& rhs)
-    : bolza::Initializer(rhs), comModelPtr_(rhs.comModelPtr_->clone()), modeScheduleManagerPtr_(rhs.modeScheduleManagerPtr_) {}
+    : bolza::Initializer(rhs), comModelPtr_(rhs.comModelPtr_->Clone()), modeScheduleManagerPtr_(rhs.modeScheduleManagerPtr_) {}
 
 ComKinoInitializer* ComKinoInitializer::Clone() const {
   return new ComKinoInitializer(*this);
@@ -17,7 +17,7 @@ ComKinoInitializer* ComKinoInitializer::Clone() const {
 void ComKinoInitializer::compute(scalar_t time, const vector_t& state, scalar_t nextTime, vector_t& input, vector_t& nextState) {
   const comkino_state_t comkinoState = state;
   const auto basePose = GetBasePose(comkinoState);
-  const auto contactFlags = modeScheduleManagerPtr_->getContactFlags(time);
+  const auto contactFlags = modeScheduleManagerPtr_->GetContactFlags(time);
 
   // Initial guess
   input = WeightCompensatingInputs(*comModelPtr_, contactFlags, GetOrientation(basePose));

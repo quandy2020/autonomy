@@ -54,7 +54,7 @@ class LoopshapingStateInputSoftConstraint : public StateInputCostCollection {
 
  protected:
     /**
-   * @brief /** Constructor */.
+   * @brief Constructor 
    * @param [in] systemCost: System Cost.
    */
   LoopshapingStateInputSoftConstraint(const StateInputCostCollection& systemCost,
@@ -66,7 +66,7 @@ class LoopshapingStateInputSoftConstraint : public StateInputCostCollection {
       : StateInputCostCollection(systemCost), loopshapingDefinition_(std::move(loopshapingDefinition)) {}
 
     /**
-   * @brief /** Copy constructor */.
+   * @brief Copy constructor 
    * @param [in] other: Other.
    */
   LoopshapingStateInputSoftConstraint(const LoopshapingStateInputSoftConstraint& other) = default;

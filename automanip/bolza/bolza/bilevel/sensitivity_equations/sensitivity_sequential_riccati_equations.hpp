@@ -121,7 +121,7 @@ class SensitivitySequentialRiccatiEquations final : public OdeBase<STATE_DIM*(ST
  *
  * }
  *
- * /* add data from nabla_Sv on top*/
+ * /* add data from nabla_Sv on top
  * @param [in] STATE_DIM: STATE DIM.
  * @param [in] nRows: N Rows.
  * @return Result value.
@@ -169,7 +169,7 @@ igen::Map<const dynamic_vector_t>(nabla_Sm.data() + nCols * STATE_DIM, nRows);
        *
        * }
        *
-       * /* extract the vector Sv*/
+       * /* extract the vector Sv
        * @param [in] rows: Rows.
        * @return Result value.
        */
@@ -185,7 +185,7 @@ igen::Map<const dynamic_vector_t>(nabla_Sm.data() + nCols * STATE_DIM, nRows);
   }
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Sets data
    *
@@ -228,7 +228,7 @@ igen::Map<const dynamic_vector_t>(nabla_Sm.data() + nCols * STATE_DIM, nRows);
   void SetMultiplier(const scalar_t& multiplier) { multiplier_ = multiplier; }
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Computes derivative
    *

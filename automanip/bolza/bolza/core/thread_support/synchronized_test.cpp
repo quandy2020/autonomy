@@ -49,7 +49,7 @@ TEST(testLockable, polymorphic) {
 
   // Reset
   std::unique_ptr<A> objA(new A());
-  synchronized.Reset(std::move(objA));
+  synchronized.reset(std::move(objA));
 
   // Direct access
   ASSERT_EQ(synchronized->getId(), ClassId::A);
@@ -121,7 +121,7 @@ TEST(testLockable, resetWhileScopedLocking) {
 
     // Reset
     std::unique_ptr<A> objA(new A());
-    lockedPtr.Reset(std::move(objA));
+    lockedPtr.reset(std::move(objA));
 
     ASSERT_TRUE(lockedPtr);
     ASSERT_FALSE(synchronized.GetMutex().try_lock());

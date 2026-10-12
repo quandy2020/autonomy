@@ -29,8 +29,8 @@ EndEffectorDistanceConstraintCppAd::EndEffectorDistanceConstraintCppAd(size_t st
       config_(std::move(config)),
       adKinematicsPtr_(std::move(adKinematicsPtr)) {
   auto surrogateKinematicsAD = [this](const ad_vector_t& x, ad_vector_t& y) {
-    const size_t numEEs = adKinematicsPtr_->getIds().size();
-    const auto eePositions = adKinematicsPtr_->getPosition(x);
+    const size_t numEEs = adKinematicsPtr_->GetIds().size();
+    const auto eePositions = adKinematicsPtr_->GetPosition(x);
     y.resize(3 * numEEs);
     for (size_t i = 0; i < numEEs; i++) {
       y.segment<3>(3 * i) = eePositions[i];
@@ -38,15 +38,15 @@ EndEffectorDistanceConstraintCppAd::EndEffectorDistanceConstraintCppAd(size_t st
   };
 
   std::string libName = "ee_kinemtaics";
-  for (const auto& id : adKinematicsPtr_->getIds()) {
+  for (const auto& id : adKinematicsPtr_->GetIds()) {
     libName += "_" + id;
   }
   kinematicsModelPtr_.reset(new CppAdInterface(surrogateKinematicsAD, stateDim_, libName));
   constexpr auto order = CppAdInterface::ApproximationOrder::First;
   if (config_.generateModel) {
-    kinematicsModelPtr_->createModels(order, config_.verbose);
+    kinematicsModelPtr_->CreateModels(order, config_.verbose);
   } else {
-    kinematicsModelPtr_->loadModelsIfAvailable(order, config_.verbose);
+    kinematicsModelPtr_->LoadModelsIfAvailable(order, config_.verbose);
   }
 }
 
@@ -58,14 +58,14 @@ EndEffectorDistanceConstraintCppAd::EndEffectorDistanceConstraintCppAd(const End
       stateDim_(other.stateDim_),
       inputDim_(other.inputDim_),
       config_(other.config_),
-      adKinematicsPtr_(other.adKinematicsPtr_->clone()),
+      adKinematicsPtr_(other.adKinematicsPtr_->Clone()),
       kinematicsModelPtr_(new CppAdInterface(*other.kinematicsModelPtr_)) {}
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 void EndEffectorDistanceConstraintCppAd::set(scalar_t clearance, const DistanceTransformInterface& distanceTransform) {
-  const auto numEEs = adKinematicsPtr_->getIds().size();
+  const auto numEEs = adKinematicsPtr_->GetIds().size();
   clearances_ = vector_t::Ones(numEEs) * clearance;
   distanceTransformPtr_ = &distanceTransform;
 }
@@ -74,7 +74,7 @@ void EndEffectorDistanceConstraintCppAd::set(scalar_t clearance, const DistanceT
 /******************************************************************************************************/
 /******************************************************************************************************/
 void EndEffectorDistanceConstraintCppAd::set(vector_t clearances, const DistanceTransformInterface& distanceTransform) {
-  const auto numEEs = adKinematicsPtr_->getIds().size();
+  const auto numEEs = adKinematicsPtr_->GetIds().size();
   if (clearances.size() != numEEs) {
     throw std::runtime_error(
         "[EndEffectorDistanceConstraint] The size of the input clearance vector doesn't match the number of end-effectors!");
@@ -89,13 +89,13 @@ void EndEffectorDistanceConstraintCppAd::set(vector_t clearances, const Distance
 /******************************************************************************************************/
 vector_t EndEffectorDistanceConstraintCppAd::GetValue(scalar_t time, const vector_t& state, const vector_t& input,
                                                       const PreComputation& preComp) const {
-  const auto numEEs = adKinematicsPtr_->getIds().size();
-  const auto eePositions = kinematicsModelPtr_->getFunctionValue(state);
+  const auto numEEs = adKinematicsPtr_->GetIds().size();
+  const auto eePositions = kinematicsModelPtr_->GetFunctionValue(state);
   assert(eePositions.size() == 3 * numEEs);
 
   vector_t g(numEEs);
   for (size_t i = 0; i < numEEs; i++) {
-    g(i) = config_.weight * (distanceTransformPtr_->getValue(eePositions.segment<3>(3 * i)) - clearances_[i]);
+    g(i) = config_.weight * (distanceTransformPtr_->GetValue(eePositions.segment<3>(3 * i)) - clearances_[i]);
   }  // end of i loop
 
   return g;
@@ -107,16 +107,16 @@ vector_t EndEffectorDistanceConstraintCppAd::GetValue(scalar_t time, const vecto
 VectorFunctionLinearApproximation EndEffectorDistanceConstraintCppAd::GetLinearApproximation(scalar_t time, const vector_t& state,
                                                                                              const vector_t& input,
                                                                                              const PreComputation& preComp) const {
-  const auto numEEs = adKinematicsPtr_->getIds().size();
-  const auto eePositions = kinematicsModelPtr_->getFunctionValue(state);
-  const auto eeJacobians = kinematicsModelPtr_->getJacobian(state);
+  const auto numEEs = adKinematicsPtr_->GetIds().size();
+  const auto eePositions = kinematicsModelPtr_->GetFunctionValue(state);
+  const auto eeJacobians = kinematicsModelPtr_->GetJacobian(state);
   assert(eePositions.size() == 3 * numEEs);
   assert(eeJacobians.rows() == 3 * numEEs);
   assert(eeJacobians.cols() == stateDim_);
 
   VectorFunctionLinearApproximation approx = VectorFunctionLinearApproximation::Zero(numEEs, stateDim_, inputDim_);
   for (size_t i = 0; i < numEEs; i++) {
-    const auto distanceValueGradient = distanceTransformPtr_->getLinearApproximation(eePositions.segment<3>(3 * i));
+    const auto distanceValueGradient = distanceTransformPtr_->GetLinearApproximation(eePositions.segment<3>(3 * i));
     approx.f(i) = config_.weight * (distanceValueGradient.first - clearances_[i]);
     approx.dfdx.row(i).noalias() = config_.weight * (distanceValueGradient.second.transpose() * eeJacobians.middleRows<3>(3 * i));
   }  // end of i loop
@@ -130,7 +130,7 @@ VectorFunctionLinearApproximation EndEffectorDistanceConstraintCppAd::GetLinearA
 VectorFunctionQuadraticApproximation EndEffectorDistanceConstraintCppAd::GetQuadraticApproximation(scalar_t time, const vector_t& state,
                                                                                                    const vector_t& input,
                                                                                                    const PreComputation& preComp) const {
-  const auto numEEs = adKinematicsPtr_->getIds().size();
+  const auto numEEs = adKinematicsPtr_->GetIds().size();
   auto linearApprox = GetLinearApproximation(time, state, input, preComp);
 
   VectorFunctionQuadraticApproximation quadraticApproximation;

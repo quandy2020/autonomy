@@ -95,9 +95,9 @@ void swap(TargetTrajectories& lh, TargetTrajectories& rh) {
 /***************************************************************************************************** */
 std::ostream& operator<<(std::ostream& out, const TargetTrajectories& targetTrajectories) {
   for (size_t i = 0; i < targetTrajectories.size(); i++) {
-    Out << "time: " << targetTrajectories.timeTrajectory[i] << "\n";
-    Out << "state: [" << ToDelimitedString(targetTrajectories.stateTrajectory[i]) << "]\n";
-    Out << "input: [" << ToDelimitedString(targetTrajectories.inputTrajectory[i]) << "]\n";
+    out << "time: " << targetTrajectories.timeTrajectory[i] << "\n";
+    out << "state: [" << ToDelimitedString(targetTrajectories.stateTrajectory[i]) << "]\n";
+    out << "input: [" << ToDelimitedString(targetTrajectories.inputTrajectory[i]) << "]\n";
   }  // end of i loop
 
   return out;

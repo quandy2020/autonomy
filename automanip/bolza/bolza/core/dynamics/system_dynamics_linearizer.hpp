@@ -39,7 +39,7 @@ namespace bolza {
 class SystemDynamicsLinearizer final : public SystemDynamicsBase {
  public:
     /**
-   * @brief /** Constructor */.
+   * @brief Constructor 
    * @param [in] nonlinearSystemPtr: Nonlinear System Ptr.
    * @param [in] doubleSidedDerivative: Double Sided Derivative.
    * @param [in] isSecondOrderSystem: Is Second Order System.
@@ -80,7 +80,7 @@ class SystemDynamicsLinearizer final : public SystemDynamicsBase {
 
  private:
     /**
-   * @brief /** Copy constructor with pre-computation */.
+   * @brief Copy constructor with pre-computation 
    * @param [in] other: Other.
    */
   SystemDynamicsLinearizer(const SystemDynamicsLinearizer& other);

@@ -39,7 +39,7 @@ TEST(test_valuefunction, linear_quadratic_problem) {
   // System
   const auto dynamics = bolza::GetRandomDynamics(n, m);
   const auto jumpMap = bolza::matrix_t::Random(n, n);
-  problem.dynamicsPtr.Reset(new bolza::LinearSystemDynamics(dynamics.dfdx, dynamics.dfdu, jumpMap));
+  problem.dynamicsPtr.reset(new bolza::LinearSystemDynamics(dynamics.dfdx, dynamics.dfdu, jumpMap));
 
   // Cost
   problem.costPtr->Add("intermediateCost", bolza::GetOcs2Cost(bolza::GetRandomCost(n, m)));

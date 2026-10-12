@@ -14,14 +14,14 @@ FrictionConeCost::FrictionConeCost(friction_cone::Config config, const SwitchedM
     : config_(config), modeScheduleManager_(&modeScheduleManager), penalty_(std::move(penaltyFunction)) {}
 
 FrictionConeCost::FrictionConeCost(const FrictionConeCost& rhs)
-    : config_(rhs.config_), modeScheduleManager_(rhs.modeScheduleManager_), penalty_(rhs.penalty_->clone()) {}
+    : config_(rhs.config_), modeScheduleManager_(rhs.modeScheduleManager_), penalty_(rhs.penalty_->Clone()) {}
 
 FrictionConeCost* FrictionConeCost::Clone() const {
   return new FrictionConeCost(*this);
 }
 
 bool FrictionConeCost::IsActive(scalar_t time) const {
-  return NumberOfClosedContacts(modeScheduleManager_->getContactFlags(time)) > 0;
+  return NumberOfClosedContacts(modeScheduleManager_->GetContactFlags(time)) > 0;
 }
 
 scalar_t FrictionConeCost::GetValue(scalar_t time, const vector_t& state, const vector_t& input,
@@ -31,18 +31,18 @@ scalar_t FrictionConeCost::GetValue(scalar_t time, const vector_t& state, const 
   const vector3_t eulerXYZ = GetOrientation(GetBasePose(state));
   const matrix3_t w_R_b = RotationMatrixBaseToOrigin(eulerXYZ);
 
-  const auto& contactFlags = switchedModelPreComp.getContactFlags();
+  const auto& contactFlags = switchedModelPreComp.GetContactFlags();
 
   scalar_t cost = 0.0;
   for (int leg = 0; leg < NUM_CONTACT_POINTS; ++leg) {
     if (contactFlags[leg]) {
       const int legIdx = 3 * leg;
 
-      const matrix3_t t_R_w = OrientationWorldToTerrainFromSurfaceNormalInWorld(switchedModelPreComp.getSurfaceNormalInOriginFrame(leg));
+      const matrix3_t t_R_w = OrientationWorldToTerrainFromSurfaceNormalInWorld(switchedModelPreComp.GetSurfaceNormalInOriginFrame(leg));
       const vector3_t forcesInWorld = w_R_b * input.segment(legIdx, 3);
       const vector3_t forcesInTerrain = t_R_w * forcesInWorld;
       const scalar_t h = FrictionConeConstraint(config_, forcesInTerrain);
-      cost += penalty_->getValue(time, h);
+      cost += penalty_->GetValue(time, h);
     }
   }
 
@@ -58,22 +58,22 @@ ScalarFunctionQuadraticApproximation FrictionConeCost::GetQuadraticApproximation
   const vector3_t eulerXYZ = GetOrientation(GetBasePose(state));
   const matrix3_t w_R_b = RotationMatrixBaseToOrigin(eulerXYZ);
 
-  const auto& contactFlags = switchedModelPreComp.getContactFlags();
+  const auto& contactFlags = switchedModelPreComp.GetContactFlags();
 
   ScalarFunctionQuadraticApproximation penaltyApproximation = ScalarFunctionQuadraticApproximation::Zero(STATE_DIM, INPUT_DIM);
   for (int leg = 0; leg < NUM_CONTACT_POINTS; ++leg) {
     if (contactFlags[leg]) {
       const int legIdx = 3 * leg;
 
-      const matrix3_t t_R_w = OrientationWorldToTerrainFromSurfaceNormalInWorld(switchedModelPreComp.getSurfaceNormalInOriginFrame(leg));
+      const matrix3_t t_R_w = OrientationWorldToTerrainFromSurfaceNormalInWorld(switchedModelPreComp.GetSurfaceNormalInOriginFrame(leg));
       const vector3_t forcesInBodyFrame = input.segment(legIdx, 3);
       const vector3_t forcesInWorld = w_R_b * forcesInBodyFrame;
       const vector3_t forcesInTerrain = t_R_w * forcesInWorld;
       const auto coneDerivatives = FrictionConeDerivatives(config_, forcesInTerrain, t_R_w, w_R_b, eulerXYZ, forcesInBodyFrame);
 
-      const scalar_t penaltyValue = penalty_->getValue(time, coneDerivatives.coneConstraint);
-      const scalar_t penaltyDerivative = penalty_->getDerivative(time, coneDerivatives.coneConstraint);
-      const scalar_t penaltySecondDerivative = penalty_->getSecondDerivative(time, coneDerivatives.coneConstraint);
+      const scalar_t penaltyValue = penalty_->GetValue(time, coneDerivatives.coneConstraint);
+      const scalar_t penaltyDerivative = penalty_->GetDerivative(time, coneDerivatives.coneConstraint);
+      const scalar_t penaltySecondDerivative = penalty_->GetSecondDerivative(time, coneDerivatives.coneConstraint);
 
       const vector3_t penaltySecondDev_dhdx = penaltySecondDerivative * coneDerivatives.dCone_deuler;
 

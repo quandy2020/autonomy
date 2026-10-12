@@ -90,7 +90,7 @@ std::pair<PrimalSolution, std::vector<PerformanceIndex>> solveWithEventTime(scal
   // System
   const auto dynamics = bolza::GetRandomDynamics(n, m);
   const auto jumpMap = matrix_t::Random(n, n);
-  problem.dynamicsPtr.Reset(new bolza::LinearSystemDynamics(dynamics.dfdx, dynamics.dfdu, jumpMap));
+  problem.dynamicsPtr.reset(new bolza::LinearSystemDynamics(dynamics.dfdx, dynamics.dfdu, jumpMap));
 
   // Cost
   problem.costPtr->Add("intermediateCost", bolza::GetOcs2Cost(bolza::GetRandomCost(n, m)));
@@ -132,7 +132,7 @@ std::pair<PrimalSolution, std::vector<PerformanceIndex>> solveWithEventTime(scal
 
   // Solve
   solver.Run(startTime, initState, finalTime);
-  return {solver.PrimalSolution(finalTime), solver.GetIterationsLog()};
+  return {solver.GetPrimalSolution(finalTime), solver.GetIterationsLog()};
 }
 
 }  // namespace

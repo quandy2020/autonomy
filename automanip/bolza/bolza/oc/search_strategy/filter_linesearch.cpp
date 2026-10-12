@@ -30,7 +30,7 @@ std::pair<bool, FilterLinesearch::StepType> FilterLinesearch::AcceptStep(const P
     const bool accepted = stepConstraintViolation < ((1.0 - gamma_c) * baselineConstraintViolation);
     return std::make_pair(accepted, StepType::CONSTRAINT);
 
-  } else if (stepConstraintViolation < g_min && baselineConstraintViolation < g_min && ArmijoDescentMetric < 0.0) {
+  } else if (stepConstraintViolation < g_min && baselineConstraintViolation < g_min && armijoDescentMetric < 0.0) {
     // With low violation and having a descent direction, require the armijo condition.
     const bool accepted = stepPerformance.merit < (baselinePerformance.merit + armijoFactor * armijoDescentMetric);
     return std::make_pair(accepted, StepType::COST);

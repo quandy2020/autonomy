@@ -40,7 +40,7 @@ class BilevelMpc : public GaussNewtonDDPMPC {
  * @param [in] systemDynamicsPtr: The system dynamics derivatives for subsystems of the system.
  * @param [in] systemConstraintsPtr: The system constraint function and its derivatives for subsystems.
  * @param [in]  /**
-  * @brief /**.
+  * @brief.
   *
   * /
   * @param [in,out] defined: Defined.

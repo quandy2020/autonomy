@@ -66,7 +66,7 @@ size_t FindFirstIndexWithinTol(const std::vector<SCALAR>& dataArray, SCALAR valu
   for (const auto d : dataArray) {
     msg << d << ", ";
   }
-  msg << "\n\t value: " << Value << "\n\t epsilon: " << Eps << std::endl;
+  msg << "\n\t value: " << value << "\n\t epsilon: " << eps << std::endl;
   /**
    * @brief Runtime error.
    * @return Result value.

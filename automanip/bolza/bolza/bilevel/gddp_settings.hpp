@@ -164,7 +164,7 @@ inline void GDDPSettings::LoadSettings(const std::string& filename, const std::s
    * @param [in] verbose: Verbose.
    * @return Result value.
    */
-  loadData::LoadPtreeValue(pt, checkNumericalStability_, fieldName + ".checkNumericalStability", verbose);
+  loadData::LoadPtreeValue(pt, checkNumericalStability_, fieldName + ".CheckNumericalStability", verbose);
   /**
    * @brief Load Ptree Value.
    * @param [in] pt: Pt.

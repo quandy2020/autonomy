@@ -31,7 +31,7 @@ StateTriggeredEventHandler::StateTriggeredEventHandler(scalar_t minEventTimeDiff
 /******************************************************************************************************/
 std::pair<bool, size_t> StateTriggeredEventHandler::CheckEvent(OdeBase& system, scalar_t time, const vector_t& state) {
   // state-triggered event
-  guardSurfacesValuesCurrent_ = system.computeGuardSurfaces(time, state);
+  guardSurfacesValuesCurrent_ = system.ComputeGuardSurfaces(time, state);
 
   size_t eventID = 0;
   bool eventTriggered = false;

@@ -56,7 +56,7 @@ class Ocs2QpSolverTest : public testing::Test {
 
     // create unconstrained problem
     unconstrainedProblem = bolza::OptimalControlProblem();  // reset
-    unconstrainedProblem.dynamicsPtr.Reset(system->Clone());
+    unconstrainedProblem.dynamicsPtr.reset(system->Clone());
 
     unconstrainedProblem.costPtr->Add("IntermediateCost", bolza::GetOcs2Cost(bolza::GetRandomCost(STATE_DIM, INPUT_DIM)));
     unconstrainedProblem.finalCostPtr->Add("FinalCost", bolza::GetOcs2StateCost(bolza::GetRandomCost(STATE_DIM, 0)));

@@ -78,13 +78,13 @@ inline std::pair<scalar_t, vector2_t> ProjectToConvex2dPolygonBoundary(const std
        * @brief Constructs a SaveIfCloser.
        * @param [in] p2: P2.
        */
-      SaveIfCloser(p2);
+      saveIfCloser(p2);
     } else if (r < 0.0) {
       /**
        * @brief Constructs a SaveIfCloser.
        * @param [in] p1: P1.
        */
-      SaveIfCloser(p1);
+      saveIfCloser(p1);
       isInside = false;  // the point is outside since the angle is obtuse
     } else {
       const vector2_t q = p1 + r * p12;
@@ -92,7 +92,7 @@ inline std::pair<scalar_t, vector2_t> ProjectToConvex2dPolygonBoundary(const std
        * @brief Constructs a SaveIfCloser.
        * @param [in] q: Q.
        */
-      SaveIfCloser(q);
+      saveIfCloser(q);
     }
   }  // end of i loop
 

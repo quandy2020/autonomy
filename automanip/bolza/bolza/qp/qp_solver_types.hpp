@@ -45,7 +45,7 @@ struct LinearQuadraticStage {
        * @brief Cost.
        * @return Result value.
        */
-      : Cost(std::move(c)), dynamics(std::move(d)), constraints(std::move(g)) {}
+      : cost(std::move(c)), dynamics(std::move(d)), constraints(std::move(g)) {}
 };
 
 }  // namespace qp_solver

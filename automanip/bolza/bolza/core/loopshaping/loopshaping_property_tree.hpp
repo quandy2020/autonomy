@@ -22,6 +22,8 @@
  */
 
 
+#include <memory>
+
 #include <bolza/core/misc/property_tree.hpp>
 #include <bolza/core/types.hpp>
 

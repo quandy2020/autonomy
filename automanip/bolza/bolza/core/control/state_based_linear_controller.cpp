@@ -26,7 +26,7 @@ void StateBasedLinearController::SetController(ControllerBase* ctrlPtr) {
     throw std::runtime_error("The controller pointer is null!");
   }
   ctrlPtr_ = ctrlPtr;
-  ctrlEventTimes_ = ctrlPtr->controllerEventTimes();
+  ctrlEventTimes_ = ctrlPtr->ControllerEventTimes();
 }
 
 /******************************************************************************************************/
@@ -39,7 +39,7 @@ vector_t StateBasedLinearController::ComputeTrajectorySpreadingInput(scalar_t t,
 
   if (numEvents == 0)  // Simple case in which the controller does not contain any events
   {
-    return ctrlPtr->computeInput(t, x);
+    return ctrlPtr->ComputeInput(t, x);
   }
 
   scalar_t tauMinus = (numEvents > currentMode) ? ctrlEventTimes[currentMode] : ctrlEventTimes.back();
@@ -50,19 +50,19 @@ vector_t StateBasedLinearController::ComputeTrajectorySpreadingInput(scalar_t t,
   const scalar_t eps = numeric_traits::WeakEpsilon<scalar_t>();
 
   if (pastAllEvents) {
-    return ctrlPtr->computeInput(t, x);
+    return ctrlPtr->ComputeInput(t, x);
     // return normal input signal
   } else if (t < tauMinus) {
     // if event happened before the event time for which the controller was designed
-    return ctrlPtr->computeInput(tauMinus + 2.0 * eps, x);
+    return ctrlPtr->ComputeInput(tauMinus + 2.0 * eps, x);
     // request input 1 epsilon after the designed event time
   } else if (t > tau) {
     // if event has not happened yet at the event time for which the controller was designed
-    return ctrlPtr->computeInput(tau - eps, x);
+    return ctrlPtr->ComputeInput(tau - eps, x);
     // request input 1 epsilon before the designed event time
   }
   // normal case: t > tauMinus && t < tau
-  return ctrlPtr->computeInput(t, x);
+  return ctrlPtr->ComputeInput(t, x);
 }
 
 /******************************************************************************************************/
@@ -76,7 +76,7 @@ vector_t StateBasedLinearController::ComputeInput(scalar_t t, const vector_t& x)
 /******************************************************************************************************/
 /******************************************************************************************************/
 void StateBasedLinearController::Concatenate(const ControllerBase* nextController, int index, int length) {
-  ctrlPtr_->concatenate(nextController, index, length);
+  ctrlPtr_->Concatenate(nextController, index, length);
 }
 
 /******************************************************************************************************/
@@ -90,7 +90,7 @@ int StateBasedLinearController::size() const {
 /******************************************************************************************************/
 /******************************************************************************************************/
 ControllerType StateBasedLinearController::GetType() const {
-  return ctrlPtr_->getType();
+  return ctrlPtr_->GetType();
 }
 
 /******************************************************************************************************/
@@ -111,7 +111,7 @@ bool StateBasedLinearController::empty() const {
 /******************************************************************************************************/
 /******************************************************************************************************/
 void StateBasedLinearController::Display() const {
-  ctrlPtr_->display();
+  ctrlPtr_->Display();
 }
 
 /******************************************************************************************************/

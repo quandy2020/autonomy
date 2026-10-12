@@ -27,19 +27,19 @@ SwingSpline3d::SwingSpline3d(const std::vector<SwingNode3d>& nodes) {
 }
 
 vector3_t SwingSpline3d::Position(scalar_t time) const {
-  return {x_.position(time), y_.position(time), z_.position(time)};
+  return {x_.Position(time), y_.Position(time), z_.Position(time)};
 }
 
 vector3_t SwingSpline3d::Velocity(scalar_t time) const {
-  return {x_.velocity(time), y_.velocity(time), z_.velocity(time)};
+  return {x_.Velocity(time), y_.Velocity(time), z_.Velocity(time)};
 }
 
 vector3_t SwingSpline3d::Acceleration(scalar_t time) const {
-  return {x_.acceleration(time), y_.acceleration(time), z_.acceleration(time)};
+  return {x_.Acceleration(time), y_.Acceleration(time), z_.Acceleration(time)};
 }
 
 vector3_t SwingSpline3d::Jerk(scalar_t time) const {
-  return {x_.jerk(time), y_.jerk(time), z_.jerk(time)};
+  return {x_.Jerk(time), y_.Jerk(time), z_.Jerk(time)};
 }
 
 }  // namespace switched_model

@@ -94,7 +94,7 @@ class SLQ final : public GaussNewtonDDP {
                               const ScalarFunctionQuadraticApproximation& finalValueFunction) override;
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Integrates the riccati equation and generates the value function at the times set in nominal Time Trajectory.
    *

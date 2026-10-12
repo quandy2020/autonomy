@@ -62,7 +62,7 @@ class LoopshapingRobotInterface : public RobotInterface {
    * @return Result value.
    */
   const Derived& get() const {
-    static_assert(std::is_base_of<RobotInterface, Derived>::Value, "Template argument must derive from RobotInterface");
+    static_assert(std::is_base_of<RobotInterface, Derived>::value, "Template argument must derive from RobotInterface");
     const auto* p = dynamic_cast<Derived*>(robotInterfacePtr_.get());
     if (p == nullptr) {
       /**

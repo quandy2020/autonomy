@@ -23,7 +23,6 @@ if(NOT TARGET blasfeo)
     blasfeo
     GIT_REPOSITORY https://github.com/giaf/blasfeo.git
     GIT_TAG ae6e2d1dea015862a09990b95905038a756ffc7d
-    GIT_SHALLOW TRUE
   )
   FetchContent_MakeAvailable(blasfeo)
 endif()
@@ -50,7 +49,6 @@ else()
     hpipm
     GIT_REPOSITORY https://github.com/giaf/hpipm.git
     GIT_TAG 255ffdf38d3a5e2c3285b29568ce65ae286e5faf
-    GIT_SHALLOW TRUE
   )
   FetchContent_MakeAvailable(hpipm)
 endif()

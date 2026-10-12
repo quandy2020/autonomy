@@ -54,7 +54,7 @@ class StateCostCollection : public Collection<StateCost> {
   virtual StateCostCollection* Clone() const;
 
     /**
-   * @brief /** Get state-only cost value */.
+   * @brief Get state-only cost value 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] targetTrajectories: Target Trajectories.
@@ -65,7 +65,7 @@ class StateCostCollection : public Collection<StateCost> {
                             const PreComputation& preComp) const;
 
     /**
-   * @brief /** Get state-only cost quadratic approximation */.
+   * @brief Get state-only cost quadratic approximation 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] targetTrajectories: Target Trajectories.
@@ -78,7 +78,7 @@ class StateCostCollection : public Collection<StateCost> {
 
  protected:
     /**
-   * @brief /** Copy constructor */.
+   * @brief Copy constructor 
    * @param [in] other: Other.
    */
   StateCostCollection(const StateCostCollection& other);

@@ -12,7 +12,7 @@ namespace switched_model {
 FootPlacementCost::FootPlacementCost(bolza::RelaxedBarrierPenalty::Config settings)
     : polygonPenalty_(new bolza::RelaxedBarrierPenalty(settings)) {}
 
-FootPlacementCost::FootPlacementCost(const FootPlacementCost& rhs) : polygonPenalty_(rhs.polygonPenalty_->clone()) {}
+FootPlacementCost::FootPlacementCost(const FootPlacementCost& rhs) : polygonPenalty_(rhs.polygonPenalty_->Clone()) {}
 
 FootPlacementCost* FootPlacementCost::Clone() const {
   return new FootPlacementCost(*this);
@@ -22,12 +22,12 @@ scalar_t FootPlacementCost::GetValue(scalar_t time, const vector_t& state, const
                                      const bolza::PreComputation& preComp) const {
   const auto& switchedModelPreComp = bolza::cast<SwitchedModelPreComputation>(preComp);
 
-  scalar_t Cost(0.0);
+  scalar_t cost(0.0);
   for (int leg = 0; leg < NUM_CONTACT_POINTS; ++leg) {
-    const auto* constraintMatrixPtr = switchedModelPreComp.getFootTangentialConstraintInWorldFrame(leg);
+    const auto* constraintMatrixPtr = switchedModelPreComp.GetFootTangentialConstraintInWorldFrame(leg);
 
     if (constraintMatrixPtr != nullptr) {
-      const auto& footPosition = switchedModelPreComp.footPositionInOriginFrame(leg);
+      const auto& footPosition = switchedModelPreComp.FootPositionInOriginFrame(leg);
 
       LinearStateInequalitySoftConstraint linearStateInequalitySoftConstraint;
       linearStateInequalitySoftConstraint.penalty = polygonPenalty_.get();
@@ -52,11 +52,11 @@ ScalarFunctionQuadraticApproximation FootPlacementCost::GetQuadraticApproximatio
   cost.dfdx = vector_t::Zero(STATE_DIM);
   cost.dfdxx = matrix_t::Zero(STATE_DIM, STATE_DIM);
   for (int leg = 0; leg < NUM_CONTACT_POINTS; ++leg) {
-    const auto* constraintMatrixPtr = switchedModelPreComp.getFootTangentialConstraintInWorldFrame(leg);
+    const auto* constraintMatrixPtr = switchedModelPreComp.GetFootTangentialConstraintInWorldFrame(leg);
 
     if (constraintMatrixPtr != nullptr) {
-      const auto& footPosition = switchedModelPreComp.footPositionInOriginFrame(leg);
-      const auto& footJacobian = switchedModelPreComp.footPositionInOriginFrameStateDerivative(leg);
+      const auto& footPosition = switchedModelPreComp.FootPositionInOriginFrame(leg);
+      const auto& footJacobian = switchedModelPreComp.FootPositionInOriginFrameStateDerivative(leg);
 
       LinearStateInequalitySoftConstraint linearStateInequalitySoftConstraint;
       linearStateInequalitySoftConstraint.penalty = polygonPenalty_.get();

@@ -27,9 +27,9 @@ std::vector<LagrangianMetrics> LoopshapingStateInputAugmentedLagrangian::GetValu
   }
 
   const LoopshapingPreComputation& preCompLS = cast<LoopshapingPreComputation>(preComp);
-  const auto& x_system = preCompLS.getSystemState();
-  const auto& u_system = preCompLS.getSystemInput();
-  const auto& preComp_system = preCompLS.getSystemPreComputation();
+  const auto& x_system = preCompLS.GetSystemState();
+  const auto& u_system = preCompLS.GetSystemInput();
+  const auto& preComp_system = preCompLS.GetSystemPreComputation();
 
   return StateInputAugmentedLagrangianCollection::GetValue(t, x_system, u_system, termsMultiplier, preComp_system);
 }
@@ -41,8 +41,8 @@ void LoopshapingStateInputAugmentedLagrangian::UpdateLagrangian(scalar_t t, cons
     termsMultiplier.clear();
   }
 
-  const auto x_system = loopshapingDefinition_->getSystemState(x);
-  const auto u_system = loopshapingDefinition_->getSystemInput(x, u);
+  const auto x_system = loopshapingDefinition_->GetSystemState(x);
+  const auto u_system = loopshapingDefinition_->GetSystemInput(x, u);
 
   StateInputAugmentedLagrangianCollection::UpdateLagrangian(t, x_system, u_system, termsMetrics, termsMultiplier);
 }

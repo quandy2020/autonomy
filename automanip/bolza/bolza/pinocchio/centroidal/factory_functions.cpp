@@ -72,8 +72,8 @@ PinocchioInterface CreatePinocchioInterface(const std::string& urdfFilePath, con
 CentroidalModelInfo CreateCentroidalModelInfo(const PinocchioInterface& interface, const CentroidalModelType& type,
                                               const vector_t& nominalJointAngles, const std::vector<std::string>& threeDofContactNames,
                                               const std::vector<std::string>& sixDofContactNames) {
-  const auto& model = interface.getModel();
-  auto data = interface.getData();
+  const auto& model = interface.GetModel();
+  auto data = interface.GetData();
 
   if (model.nq != nominalJointAngles.size() + 6) {
     const int expaectedNumJoints = model.nq - 6;

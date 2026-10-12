@@ -62,13 +62,13 @@ class FeedforwardController final : public ControllerBase {
   FeedforwardController(const scalar_array_t& controllerTime, const vector_array_t& stateTrajectory, ControllerBase* controller);
 
     /**
-   * @brief /** Copy constructor */.
+   * @brief Copy constructor 
    * @param [in] other: Other.
    */
   FeedforwardController(const FeedforwardController& other);
 
     /**
-   * @brief /** Move constructor */.
+   * @brief Move constructor 
    * @param [in,out] other: Other.
    */
   FeedforwardController(FeedforwardController&& other);

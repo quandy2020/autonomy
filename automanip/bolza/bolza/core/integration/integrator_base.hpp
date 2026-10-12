@@ -42,7 +42,7 @@ class IntegratorBase {
   using observer_func_t = std::function<void(const vector_t& x, scalar_t t)>;
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Default constructor
    *
@@ -57,7 +57,7 @@ class IntegratorBase {
   virtual ~IntegratorBase() = default;
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Equidistant integration based on initial and final time as well as step length.
    *
@@ -74,7 +74,7 @@ class IntegratorBase {
                       scalar_t dt, int maxNumSteps = std::numeric_limits<int>::max());
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Adaptive time integration based on start time and final time.
    *
@@ -94,7 +94,7 @@ class IntegratorBase {
                          int maxNumSteps = std::numeric_limits<int>::max());
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Output integration based on a given time trajectory.
    *
@@ -116,7 +116,7 @@ class IntegratorBase {
 
  protected:
     /**
-   * @brief /** Copy constructor */.
+   * @brief Copy constructor 
    * @param [in] rhs: Rhs.
    */
   IntegratorBase(const IntegratorBase& rhs) = default;

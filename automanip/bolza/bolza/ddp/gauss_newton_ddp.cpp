@@ -62,14 +62,14 @@ GaussNewtonDDP::GaussNewtonDDP(ddp::Settings ddpSettings, const RolloutBase& rol
   }
 
   // initializer Rollout
-  initializerRolloutPtr_.reset(new InitializerRollout(initializer, rollout.settings()));
+  initializerRolloutPtr_.reset(new InitializerRollout(initializer, rollout.Settings()));
 
   // initialize rollout and OCP instances for multi-thread compuation
   optimalControlProblemStock_.reserve(ddpSettings_.nThreads_);
   dynamicsForwardRolloutPtrStock_.reserve(ddpSettings_.nThreads_);
   for (size_t i = 0; i < ddpSettings_.nThreads_; i++) {
     optimalControlProblemStock_.push_back(optimalControlProblem);
-    dynamicsForwardRolloutPtrStock_.emplace_back(rollout.clone());
+    dynamicsForwardRolloutPtrStock_.emplace_back(rollout.Clone());
   }  // end of i loop
 
   // search strategy method
@@ -122,12 +122,12 @@ GaussNewtonDDP::~GaussNewtonDDP() {
 /******************************************************************************************************/
 /******************************************************************************************************/
 std::string GaussNewtonDDP::GetBenchmarkingInfo() const {
-  const auto initializationTotal = initializationTimer_.getTotalInMilliseconds();
-  const auto linearQuadraticApproximationTotal = linearQuadraticApproximationTimer_.getTotalInMilliseconds();
-  const auto backwardPassTotal = backwardPassTimer_.getTotalInMilliseconds();
-  const auto computeControllerTotal = computeControllerTimer_.getTotalInMilliseconds();
-  const auto searchStrategyTotal = searchStrategyTimer_.getTotalInMilliseconds();
-  const auto dualSolutionTotal = totalDualSolutionTimer_.getTotalInMilliseconds();
+  const auto initializationTotal = initializationTimer_.GetTotalInMilliseconds();
+  const auto linearQuadraticApproximationTotal = linearQuadraticApproximationTimer_.GetTotalInMilliseconds();
+  const auto backwardPassTotal = backwardPassTimer_.GetTotalInMilliseconds();
+  const auto computeControllerTotal = computeControllerTimer_.GetTotalInMilliseconds();
+  const auto searchStrategyTotal = searchStrategyTimer_.GetTotalInMilliseconds();
+  const auto dualSolutionTotal = totalDualSolutionTimer_.GetTotalInMilliseconds();
 
   const auto benchmarkTotal = initializationTotal + linearQuadraticApproximationTotal + backwardPassTotal + computeControllerTotal +
                               searchStrategyTotal + dualSolutionTotal;
@@ -137,17 +137,17 @@ std::string GaussNewtonDDP::GetBenchmarkingInfo() const {
     infoStream << "\n########################################################################\n";
     infoStream << "The benchmarking is computed over " << totalNumIterations_ << " iterations. \n";
     infoStream << "DDP Benchmarking\t   :\tAverage time [ms]   (% of total runtime)\n";
-    infoStream << "\tInitialization     :\t" << initializationTimer_.getAverageInMilliseconds() << " [ms] \t\t("
+    infoStream << "\tInitialization     :\t" << initializationTimer_.GetAverageInMilliseconds() << " [ms] \t\t("
                << initializationTotal / benchmarkTotal * 100 << "%)\n";
-    infoStream << "\tLQ Approximation   :\t" << linearQuadraticApproximationTimer_.getAverageInMilliseconds() << " [ms] \t\t("
+    infoStream << "\tLQ Approximation   :\t" << linearQuadraticApproximationTimer_.GetAverageInMilliseconds() << " [ms] \t\t("
                << linearQuadraticApproximationTotal / benchmarkTotal * 100 << "%)\n";
-    infoStream << "\tBackward Pass      :\t" << backwardPassTimer_.getAverageInMilliseconds() << " [ms] \t\t("
+    infoStream << "\tBackward Pass      :\t" << backwardPassTimer_.GetAverageInMilliseconds() << " [ms] \t\t("
                << backwardPassTotal / benchmarkTotal * 100 << "%)\n";
-    infoStream << "\tCompute Controller :\t" << computeControllerTimer_.getAverageInMilliseconds() << " [ms] \t\t("
+    infoStream << "\tCompute Controller :\t" << computeControllerTimer_.GetAverageInMilliseconds() << " [ms] \t\t("
                << computeControllerTotal / benchmarkTotal * 100 << "%)\n";
-    infoStream << "\tSearch Strategy    :\t" << searchStrategyTimer_.getAverageInMilliseconds() << " [ms] \t\t("
+    infoStream << "\tSearch Strategy    :\t" << searchStrategyTimer_.GetAverageInMilliseconds() << " [ms] \t\t("
                << searchStrategyTotal / benchmarkTotal * 100 << "%)\n";
-    infoStream << "\tDual Solution      :\t" << totalDualSolutionTimer_.getAverageInMilliseconds() << " [ms] \t\t("
+    infoStream << "\tDual Solution      :\t" << totalDualSolutionTimer_.GetAverageInMilliseconds() << " [ms] \t\t("
                << dualSolutionTotal / benchmarkTotal * 100 << "%)\n\n";
   }
   return infoStream.str();
@@ -158,7 +158,7 @@ std::string GaussNewtonDDP::GetBenchmarkingInfo() const {
 /******************************************************************************************************/
 void GaussNewtonDDP::Reset() {
   // search strategy
-  searchStrategyPtr_->reset();
+  searchStrategyPtr_->Reset();
 
   // very important, these are variables that are carried in between iterations
   nominalDualData_.clear();
@@ -178,12 +178,12 @@ void GaussNewtonDDP::Reset() {
   performanceIndexHistory_.clear();
 
   // benchmarking timers
-  initializationTimer_.reset();
-  linearQuadraticApproximationTimer_.reset();
-  backwardPassTimer_.reset();
-  computeControllerTimer_.reset();
-  searchStrategyTimer_.reset();
-  totalDualSolutionTimer_.reset();
+  initializationTimer_.Reset();
+  linearQuadraticApproximationTimer_.Reset();
+  backwardPassTimer_.Reset();
+  computeControllerTimer_.Reset();
+  searchStrategyTimer_.Reset();
+  totalDualSolutionTimer_.Reset();
 }
 
 /******************************************************************************************************/
@@ -194,14 +194,14 @@ void GaussNewtonDDP::GetPrimalSolution(scalar_t finalTime, PrimalSolution* prima
   const int N = optimizedPrimalSolution_.timeTrajectory_.size();
 
   auto getRequestedDataLength = [](const scalar_array_t& timeTrajectory, scalar_t time) {
-    int index = std::Distance(timeTrajectory.cbegin(), std::upper_bound(timeTrajectory.cbegin(), timeTrajectory.cend(), time));
+    int index = std::distance(timeTrajectory.cbegin(), std::upper_bound(timeTrajectory.cbegin(), timeTrajectory.cend(), time));
     // fix solution time window to include 1 point beyond requested time
     index += (index != timeTrajectory.size()) ? 1 : 0;
     return index;
   };
 
   auto getRequestedEventDataLength = [](const size_array_t& postEventIndices, int finalIndex) {
-    return std::Distance(postEventIndices.cbegin(), std::upper_bound(postEventIndices.cbegin(), postEventIndices.cend(), finalIndex));
+    return std::distance(postEventIndices.cbegin(), std::upper_bound(postEventIndices.cbegin(), postEventIndices.cend(), finalIndex));
   };
 
   // length of trajectories
@@ -233,7 +233,7 @@ void GaussNewtonDDP::GetPrimalSolution(scalar_t finalTime, PrimalSolution* prima
     primalSolutionPtr->controllerPtr_.reset(new LinearController);
     // length of the copy
     const int length = getRequestedDataLength(GetLinearController(optimizedPrimalSolution_).timeStamp_, finalTime);
-    primalSolutionPtr->controllerPtr_->concatenate(optimizedPrimalSolution_.controllerPtr_.get(), 0, length);
+    primalSolutionPtr->controllerPtr_->Concatenate(optimizedPrimalSolution_.controllerPtr_.get(), 0, length);
 
   } else {
     primalSolutionPtr->controllerPtr_.reset(
@@ -370,7 +370,7 @@ bool GaussNewtonDDP::RolloutInitialController(PrimalSolution& inputPrimalSolutio
   auto& inputLinearController = GetLinearController(inputPrimalSolution);
 
   // adjust in-place the controller
-  std::ignore = TrajectorySpread(inputPrimalSolution.modeSchedule_, GetReferenceManager().getModeSchedule(), inputLinearController);
+  std::ignore = TrajectorySpread(inputPrimalSolution.modeSchedule_, GetReferenceManager().GetModeSchedule(), inputLinearController);
   // after adjustment it might become empty
   if (inputLinearController.empty()) {
     return false;
@@ -401,7 +401,7 @@ bool GaussNewtonDDP::ExtractInitialTrajectories(PrimalSolution& inputPrimalSolut
   }
 
   // adjust in-place the primalSolution
-  std::ignore = TrajectorySpread(inputPrimalSolution.modeSchedule_, GetReferenceManager().getModeSchedule(), inputPrimalSolution);
+  std::ignore = TrajectorySpread(inputPrimalSolution.modeSchedule_, GetReferenceManager().GetModeSchedule(), inputPrimalSolution);
   // after adjustment it might become empty
   if (inputPrimalSolution.timeTrajectory_.empty()) {
     return false;
@@ -456,7 +456,7 @@ void GaussNewtonDDP::RolloutInitializer(PrimalSolution& primalSolution) {
     size_array_t postEventIndicesTail;
     vector_array_t stateTrajectoryTail;
     vector_array_t inputTrajectoryTail;
-    std::ignore = initializerRolloutPtr_->run(initTime, initState, finalTime_, nullptr, modeSchedule, timeTrajectoryTail,
+    std::ignore = initializerRolloutPtr_->Run(initTime, initState, finalTime_, nullptr, modeSchedule, timeTrajectoryTail,
                                               postEventIndicesTail, stateTrajectoryTail, inputTrajectoryTail);
 
     // Add controller rollout length to event past the indeces
@@ -732,7 +732,7 @@ void GaussNewtonDDP::ComputeProjectionAndRiccatiModification(const ModelData& mo
   ProjectLQ(modelData, riccatiModification.constraintRangeProjector_, riccatiModification.constraintNullProjector_, projectedModelData);
 
   // compute deltaQm, deltaGv, deltaGm
-  searchStrategyPtr_->computeRiccatiModification(projectedModelData, riccatiModification.deltaQm_, riccatiModification.deltaGv_,
+  searchStrategyPtr_->ComputeRiccatiModification(projectedModelData, riccatiModification.deltaQm_, riccatiModification.deltaGv_,
                                                  riccatiModification.deltaGm_);
 }
 
@@ -784,7 +784,7 @@ void GaussNewtonDDP::InitializeConstraintPenalties() {
     displayText += "    Penalty Tolerance: " + std::to_string(constraintPenaltyCoefficients_.penaltyTol);
     displayText += "    Penalty Coefficient: " + std::to_string(constraintPenaltyCoefficients_.penaltyCoeff) + ".\n";
 
-    this->printString(displayText);
+    this->PrintString(displayText);
   }
 }
 
@@ -809,7 +809,7 @@ void GaussNewtonDDP::UpdateConstraintPenalties(scalar_t equalityConstraintsSSE) 
     displayText += "    Penalty Tolerance: " + std::to_string(constraintPenaltyCoefficients_.penaltyTol);
     displayText += "    Penalty Coefficient: " + std::to_string(constraintPenaltyCoefficients_.penaltyCoeff) + ".\n";
 
-    this->printString(displayText);
+    this->PrintString(displayText);
   }
 }
 
@@ -822,7 +822,7 @@ bool GaussNewtonDDP::InitializePrimalSolution() {
     nominalPrimalData_.clear();
 
     // for non-StateTriggeredRollout case, set modeSchedule
-    nominalPrimalData_.primalSolution.modeSchedule_ = GetReferenceManager().getModeSchedule();
+    nominalPrimalData_.primalSolution.modeSchedule_ = GetReferenceManager().GetModeSchedule();
 
     // try to initialize with controller
     bool initialSolutionExists = RolloutInitialController(optimizedPrimalSolution_, nominalPrimalData_.primalSolution);
@@ -859,7 +859,7 @@ bool GaussNewtonDDP::InitializePrimalSolution() {
 /******************************************************************************************************/
 void GaussNewtonDDP::InitializeDualSolutionAndMetrics() {
   // adjust dual solution
-  totalDualSolutionTimer_.startTimer();
+  totalDualSolutionTimer_.StartTimer();
   if (!optimizedDualSolution_.timeTrajectory.empty()) {
     const auto status =
         TrajectorySpread(optimizedPrimalSolution_.modeSchedule_, nominalPrimalData_.primalSolution.modeSchedule_, optimizedDualSolution_);
@@ -868,16 +868,16 @@ void GaussNewtonDDP::InitializeDualSolutionAndMetrics() {
   // initialize dual solution
   bolza::InitializeDualSolution(optimalControlProblemStock_[0], nominalPrimalData_.primalSolution, optimizedDualSolution_,
                                nominalDualData_.dualSolution);
-  totalDualSolutionTimer_.endTimer();
+  totalDualSolutionTimer_.EndTimer();
 
   ComputeRolloutMetrics(optimalControlProblemStock_[0], nominalPrimalData_.primalSolution, nominalDualData_.dualSolution,
                         nominalPrimalData_.problemMetrics);
 
   // update dual
-  //  totalDualSolutionTimer_.startTimer();
+  //  totalDualSolutionTimer_.StartTimer();
   //  bolza::UpdateDualSolution(optimalControlProblemStock_[0], nominalPrimalData_.primalSolution, nominalPrimalData_.problemMetrics,
   //  nominalDualData_.dualSolution);
-  //  totalDualSolutionTimer_.endTimer();
+  //  totalDualSolutionTimer_.EndTimer();
 
   // calculates rollout merit
   performanceIndex_ = ComputeRolloutPerformanceIndex(nominalPrimalData_.primalSolution.timeTrajectory_, nominalPrimalData_.problemMetrics);
@@ -889,27 +889,27 @@ void GaussNewtonDDP::InitializeDualSolutionAndMetrics() {
 /******************************************************************************************************/
 void GaussNewtonDDP::TakePrimalDualStep(scalar_t lqModelExpectedCost) {
   // update primal: run search strategy and find the optimal stepLength
-  searchStrategyTimer_.startTimer();
+  searchStrategyTimer_.StartTimer();
   scalar_t avgTimeStep;
-  const auto& modeSchedule = this->getReferenceManager().getModeSchedule();
+  const auto& modeSchedule = this->GetReferenceManager().GetModeSchedule();
   search_strategy::SolutionRef solution(avgTimeStep, optimizedDualSolution_, optimizedPrimalSolution_, optimizedProblemMetrics_,
                                         performanceIndex_);
-  const bool success = searchStrategyPtr_->run({initTime_, finalTime_}, initState_, lqModelExpectedCost, unoptimizedController_,
+  const bool success = searchStrategyPtr_->Run({initTime_, finalTime_}, initState_, lqModelExpectedCost, unoptimizedController_,
                                                nominalDualData_.dualSolution, modeSchedule, solution);
 
   if (success) {
     avgTimeStepFP_ = 0.9 * avgTimeStepFP_ + 0.1 * avgTimeStep;
   }
-  searchStrategyTimer_.endTimer();
+  searchStrategyTimer_.EndTimer();
 
   // update dual
-  totalDualSolutionTimer_.startTimer();
+  totalDualSolutionTimer_.StartTimer();
   if (success) {
     bolza::UpdateDualSolution(optimalControlProblemStock_[0], optimizedPrimalSolution_, optimizedProblemMetrics_, optimizedDualSolution_);
     performanceIndex_ = ComputeRolloutPerformanceIndex(optimizedPrimalSolution_.timeTrajectory_, optimizedProblemMetrics_);
     performanceIndex_.merit = CalculateRolloutMerit(performanceIndex_);
   }
-  totalDualSolutionTimer_.endTimer();
+  totalDualSolutionTimer_.EndTimer();
 
   // if failed, use nominal and to keep the consistency of cached data, all cache should be left untouched
   if (!success) {
@@ -934,7 +934,7 @@ void GaussNewtonDDP::RunImpl(scalar_t initTime, const vector_t& initState, scala
     if (linearControllerPtr == nullptr) {
       throw std::runtime_error("[GaussNewtonDDP::Run] controller must be a LinearController type!");
     }
-    optimizedPrimalSolution_.controllerPtr_.reset(linearControllerPtr->clone());
+    optimizedPrimalSolution_.controllerPtr_.reset(linearControllerPtr->Clone());
   }
 
   RunImpl(initTime, initState, finalTime);
@@ -970,12 +970,12 @@ void GaussNewtonDDP::RunImpl(scalar_t initTime, const vector_t& initState, scala
     std::cerr << "\n+++++++++++++ " + ddp::ToAlgorithmName(ddpSettings_.algorithm_) + " solver is initialized ++++++++++++++";
     std::cerr << "\n++++++++++++++++++++++++++++++++++++++++++++++++++++++\n";
     std::cerr << "\nSolver starts from initial time " << initTime << " to final time " << finalTime << ".\n";
-    std::cerr << GetReferenceManager().getModeSchedule();
+    std::cerr << GetReferenceManager().GetModeSchedule();
   }
 
   // set cost desired trajectories
   for (auto& ocp : optimalControlProblemStock_) {
-    ocp.targetTrajectoriesPtr = &this->getReferenceManager().getTargetTrajectories();
+    ocp.targetTrajectoriesPtr = &this->GetReferenceManager().GetTargetTrajectories();
   }
 
   // initialize parameters
@@ -998,11 +998,11 @@ void GaussNewtonDDP::RunImpl(scalar_t initTime, const vector_t& initState, scala
   nominalPrimalData_.swap(cachedPrimalData_);
 
   // optimized --> nominal: initializes the nominal primal and dual solutions based on the optimized ones
-  initializationTimer_.startTimer();
+  initializationTimer_.StartTimer();
   bool initialSolutionExists = InitializePrimalSolution();  // true if the rollout is not purely from the Initializer
   InitializeDualSolutionAndMetrics();
   performanceIndexHistory_.push_back(performanceIndex_);
-  initializationTimer_.endTimer();
+  initializationTimer_.EndTimer();
 
   // display
   if (ddpSettings_.displayInfo_) {
@@ -1022,19 +1022,19 @@ void GaussNewtonDDP::RunImpl(scalar_t initTime, const vector_t& initState, scala
     }
 
     // nominal --> nominal: constructs the LQ problem around the nominal trajectories
-    linearQuadraticApproximationTimer_.startTimer();
+    linearQuadraticApproximationTimer_.StartTimer();
     ApproximateOptimalControlProblem();
-    linearQuadraticApproximationTimer_.endTimer();
+    linearQuadraticApproximationTimer_.EndTimer();
 
     // nominal --> nominal: solves the LQ problem
-    backwardPassTimer_.startTimer();
+    backwardPassTimer_.StartTimer();
     avgTimeStepBP_ = SolveSequentialRiccatiEquations(nominalPrimalData_.modelDataFinalTime.cost);
-    backwardPassTimer_.endTimer();
+    backwardPassTimer_.EndTimer();
 
     // calculate controller and store the result in unoptimizedController_
-    computeControllerTimer_.startTimer();
+    computeControllerTimer_.StartTimer();
     CalculateController();
-    computeControllerTimer_.endTimer();
+    computeControllerTimer_.EndTimer();
 
     // the expected cost/merit calculated by the Riccati solution is not reliable
     const auto lqModelExpectedCost = initialSolutionExists ? nominalDualData_.valueFunctionTrajectory.front().f : performanceIndex_.merit;
@@ -1052,7 +1052,7 @@ void GaussNewtonDDP::RunImpl(scalar_t initTime, const vector_t& initState, scala
     }
 
     // check convergence
-    std::tie(isConverged, convergenceInfo) = searchStrategyPtr_->checkConvergence(
+    std::tie(isConverged, convergenceInfo) = searchStrategyPtr_->CheckConvergence(
         !initialSolutionExists, *std::prev(performanceIndexHistory_.end(), 2), performanceIndexHistory_.back());
     initialSolutionExists = true;
 

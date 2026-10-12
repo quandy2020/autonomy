@@ -37,7 +37,7 @@ struct LagrangianMetrics {
    * @brief Constructs a LagrangianMetrics.
    * @param [in] penaltyArg: Penalty Arg.
    */
-  LagrangianMetrics(scalar_t penaltyArg, vector_t constraintArg) : penalty(penaltyArg), Constraint(std::move(constraintArg)) {}
+  LagrangianMetrics(scalar_t penaltyArg, vector_t constraintArg) : penalty(penaltyArg), constraint(std::move(constraintArg)) {}
 
   scalar_t penalty;
   vector_t constraint;
@@ -49,7 +49,7 @@ struct LagrangianMetricsConstRef {
    * @brief Constructs a LagrangianMetricsConstRef.
    * @param [in] constraint: Constraint.
    */
-  LagrangianMetricsConstRef(const LagrangianMetrics& metricsArg) : penalty(metricsArg.penalty), Constraint(metricsArg.constraint) {}
+  LagrangianMetricsConstRef(const LagrangianMetrics& metricsArg) : penalty(metricsArg.penalty), constraint(metricsArg.constraint) {}
   operator LagrangianMetrics() const { return {penalty, constraint}; }
 
   const scalar_t& penalty;
@@ -92,7 +92,7 @@ struct Metrics {
   std::vector<LagrangianMetrics> stateInputIneqLagrangian;
 
     /**
-   * @brief /** Exchanges the values of Metrics */.
+   * @brief Exchanges the values of Metrics 
    * @param [in,out] other: Other.
    */
   void swap(Metrics& other);
@@ -101,7 +101,7 @@ struct Metrics {
   void clear();
 
     /**
-   * @brief /** Returns true if *this is approximately equal to other, within the precision determined by prec. */.
+   * @brief Returns true if *this is approximately equal to other, within the precision determined by prec. 
    * @param [in] other: Other.
    * @param [in] prec: Prec.
    * @return True on success.
@@ -110,7 +110,7 @@ struct Metrics {
 };
 
 /**
- * @brief /** Sums penalties of an array of LagrangianMetrics. */.
+ * @brief Sums penalties of an array of LagrangianMetrics. 
  * @param [in] metricsArray: Metrics Array.
  * @return Result value.
  */
@@ -126,7 +126,7 @@ inline scalar_t SumPenalties(const std::vector<LagrangianMetrics>& metricsArray)
 }
 
 /**
- * @brief /** Computes the sum of squared norm of constraints of an array of LagrangianMetrics. */.
+ * @brief Computes the sum of squared norm of constraints of an array of LagrangianMetrics. 
  * @param [in] metricsArray: Metrics Array.
  * @return Result value.
  */
@@ -146,7 +146,7 @@ inline scalar_t ConstraintsSquaredNorm(const std::vector<LagrangianMetrics>& met
 }
 
 /**
- * @brief /** Computes the sum of squared norm of a vector of equality constraints violation. */.
+ * @brief Computes the sum of squared norm of a vector of equality constraints violation. 
  * @param [in] eqConstraint: Eq Constraint.
  * @return Result value.
  */
@@ -163,7 +163,7 @@ inline scalar_t GetEqConstraintsSSE(const vector_t& eqConstraint) {
 }
 
 /**
- * @brief /** Computes the sum of squared norm of a vector of inequality constraints violation. */.
+ * @brief Computes the sum of squared norm of a vector of inequality constraints violation. 
  * @param [in] ineqConstraint: Ineq Constraint.
  * @return Result value.
  */
@@ -180,7 +180,7 @@ inline scalar_t GetIneqConstraintsSSE(const vector_t& ineqConstraint) {
 }
 
 /**
- * @brief /** Computes the sum of squared norm of an array of equality constraints violation. */.
+ * @brief Computes the sum of squared norm of an array of equality constraints violation. 
  * @param [in] eqConstraint: Eq Constraint.
  * @return Result value.
  */
@@ -201,7 +201,7 @@ inline scalar_t GetEqConstraintsSSE(const vector_array_t& eqConstraint) {
 }
 
 /**
- * @brief /** Computes the sum of squared norm of an array of inequality constraints violation. */.
+ * @brief Computes the sum of squared norm of an array of inequality constraints violation. 
  * @param [in] ineqConstraint: Ineq Constraint.
  * @return Result value.
  */
@@ -222,7 +222,7 @@ inline scalar_t GetIneqConstraintsSSE(const vector_array_t& ineqConstraint) {
 }
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Serializes an array of LagrangianMetrics structures associated to an array of constraint terms.
  *
@@ -233,7 +233,7 @@ inline scalar_t GetIneqConstraintsSSE(const vector_array_t& ineqConstraint) {
 vector_t ToVector(const std::vector<LagrangianMetrics>& termsLagrangianMetrics);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Serializes an array of constraint terms.
  *
@@ -244,7 +244,7 @@ vector_t ToVector(const std::vector<LagrangianMetrics>& termsLagrangianMetrics);
 vector_t ToVector(const vector_array_t& constraintArray);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Gets the size of constraint terms.
  *
@@ -255,7 +255,7 @@ vector_t ToVector(const vector_array_t& constraintArray);
 size_array_t GetSizes(const vector_array_t& constraintArray);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Gets the size of constraint Lagrangian terms.
  *

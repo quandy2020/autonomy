@@ -29,9 +29,9 @@ LoopshapingSynchronizedModule::LoopshapingSynchronizedModule(
 void LoopshapingSynchronizedModule::PreSolverRun(scalar_t initTime, scalar_t finalTime, const vector_t& initState,
                                                  const ReferenceManagerInterface& referenceManager) {
   if (!synchronizedModulesPtrArray_.empty()) {
-    const auto systemState = loopshapingDefinitionPtr_->getSystemState(initState);
+    const auto systemState = loopshapingDefinitionPtr_->GetSystemState(initState);
     for (auto& module : synchronizedModulesPtrArray_) {
-      module->preSolverRun(initTime, finalTime, systemState, referenceManager);
+      module->PreSolverRun(initTime, finalTime, systemState, referenceManager);
     }
   }
 }
@@ -41,7 +41,7 @@ void LoopshapingSynchronizedModule::PostSolverRun(const PrimalSolution& primalSo
     const auto systemPrimalSolution = LoopshapingToSystemPrimalSolution(primalSolution, *loopshapingDefinitionPtr_);
 
     for (auto& module : synchronizedModulesPtrArray_) {
-      module->postSolverRun(systemPrimalSolution);
+      module->PostSolverRun(systemPrimalSolution);
     }
   }
 }

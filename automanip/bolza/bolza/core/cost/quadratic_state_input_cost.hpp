@@ -50,7 +50,7 @@ class QuadraticStateInputCost : public StateInputCost {
   QuadraticStateInputCost* Clone() const override;
 
     /**
-   * @brief /** Get cost term value */.
+   * @brief Get cost term value 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] input: Input.
@@ -61,7 +61,7 @@ class QuadraticStateInputCost : public StateInputCost {
                     const PreComputation&) const final;
 
     /**
-   * @brief /** Get cost term quadratic approximation */.
+   * @brief Get cost term quadratic approximation 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] input: Input.
@@ -80,9 +80,9 @@ class QuadraticStateInputCost : public StateInputCost {
   QuadraticStateInputCost(const QuadraticStateInputCost& rhs) = default;
 
     /**
-   * @brief /** Computes the state-input deviation pair around the nominal state and input.
+   * @brief Computes the state-input deviation pair around the nominal state and input.
    *
-   * This method can be overwritten if desiredTrajectory has a different dimensions. */
+   * This method can be overwritten if desiredTrajectory has a different dimensions. 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] input: Input.

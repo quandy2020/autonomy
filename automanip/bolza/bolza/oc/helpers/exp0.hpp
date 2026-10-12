@@ -68,8 +68,8 @@ class EXP0_System : public SystemDynamicsBase {
  public:
   explicit EXP0_System(std::shared_ptr<ReferenceManager> referenceManagerPtr)
       : referenceManagerPtr_(std::move(referenceManagerPtr)), subsystemDynamicsPtr_(2) {
-    subsystemDynamicsPtr_[0].Reset(new EXP0_Sys1);
-    subsystemDynamicsPtr_[1].Reset(new EXP0_Sys2);
+    subsystemDynamicsPtr_[0].reset(new EXP0_Sys1);
+    subsystemDynamicsPtr_[1].reset(new EXP0_Sys2);
   }
 
   ~EXP0_System() override = default;
@@ -149,7 +149,7 @@ inline std::shared_ptr<ReferenceManager> GetExp0ReferenceManager(const scalar_ar
 inline OptimalControlProblem CreateExp0Problem(const std::shared_ptr<bolza::ReferenceManager>& referenceManagerPtr) {
   // optimal control problem
   OptimalControlProblem problem;
-  problem.dynamicsPtr.Reset(new EXP0_System(referenceManagerPtr));
+  problem.dynamicsPtr.reset(new EXP0_System(referenceManagerPtr));
 
   // cost function
   problem.costPtr->Add("cost", std::make_unique<bolza::EXP0_Cost>());

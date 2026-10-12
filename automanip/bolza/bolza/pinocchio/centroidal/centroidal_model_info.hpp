@@ -57,7 +57,7 @@ struct CentroidalModelInfoTpl {
   using matrix3_t = Eigen::Matrix<SCALAR, 3, 3>;
 
   template <typename T>  // Template for conditional compilation using SFINAE
-  using EnableIfScalar_t = typename std::enable_if<std::is_same<T, scalar_t>::Value, bool>::type;
+  using EnableIfScalar_t = typename std::enable_if<std::is_same<T, scalar_t>::value, bool>::type;
 
   CentroidalModelType centroidalModelType;      // full centroidal dynamics OR single rigid body dynamics (SRBD)
   size_t numThreeDofContacts;                   // 3DOF contacts, force only

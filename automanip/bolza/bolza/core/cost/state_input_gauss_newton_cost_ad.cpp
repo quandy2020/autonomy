@@ -28,14 +28,14 @@ void StateInputCostGaussNewtonAd::Initialize(size_t stateDim, size_t inputDim, s
     const ad_scalar_t time = x(0);
     const ad_vector_t state = x.segment(1, stateDim);
     const ad_vector_t input = x.tail(inputDim);
-    y = this->costVectorFunction(time, state, input, p);
+    y = this->CostVectorFunction(time, state, input, p);
   };
   adInterfacePtr_.reset(new bolza::CppAdInterface(costVectorAd, 1 + stateDim + inputDim, parameterDim, modelName, modelFolder));
 
   if (recompileLibraries) {
-    adInterfacePtr_->createModels(bolza::CppAdInterface::ApproximationOrder::First, verbose);
+    adInterfacePtr_->CreateModels(bolza::CppAdInterface::ApproximationOrder::First, verbose);
   } else {
-    adInterfacePtr_->loadModelsIfAvailable(bolza::CppAdInterface::ApproximationOrder::First, verbose);
+    adInterfacePtr_->LoadModelsIfAvailable(bolza::CppAdInterface::ApproximationOrder::First, verbose);
   }
 }
 
@@ -53,7 +53,7 @@ scalar_t StateInputCostGaussNewtonAd::GetValue(scalar_t time, const vector_t& st
   vector_t timeStateInput(1 + state.rows() + input.rows());
   timeStateInput << time, state, input;
   const auto parameters = GetParameters(time, targetTrajectories, preComputation);
-  const auto costVector = adInterfacePtr_->getFunctionValue(timeStateInput, parameters);
+  const auto costVector = adInterfacePtr_->GetFunctionValue(timeStateInput, parameters);
   return 0.5 * costVector.squaredNorm();
 }
 
@@ -69,7 +69,7 @@ ScalarFunctionQuadraticApproximation StateInputCostGaussNewtonAd::GetQuadraticAp
   vector_t timeStateInput(1 + stateDim + inputDim);
   timeStateInput << time, state, input;
   const auto parameters = GetParameters(time, targetTrajectories, preComputation);
-  const auto gnApproximation = adInterfacePtr_->getGaussNewtonApproximation(timeStateInput, parameters);
+  const auto gnApproximation = adInterfacePtr_->GetGaussNewtonApproximation(timeStateInput, parameters);
 
   ScalarFunctionQuadraticApproximation L;
   L.f = gnApproximation.f;

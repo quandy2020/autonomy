@@ -71,13 +71,13 @@ class MultidimensionalPenalty final {
   ~MultidimensionalPenalty() = default;
 
     /**
-   * @brief /** Copy constructor */.
+   * @brief Copy constructor 
    * @param [in] other: Other.
    */
   MultidimensionalPenalty(const MultidimensionalPenalty& other);
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Get the penalty cost.
    *
@@ -90,7 +90,7 @@ class MultidimensionalPenalty final {
   scalar_t GetValue(scalar_t t, const vector_t& h, const vector_t* l = nullptr) const;
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Get the derivative of the penalty cost.
    *
@@ -106,7 +106,7 @@ class MultidimensionalPenalty final {
                                                                  const vector_t* l = nullptr) const;
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Get the derivative of the penalty cost.
    *

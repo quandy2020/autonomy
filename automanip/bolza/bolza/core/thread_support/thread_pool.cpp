@@ -101,7 +101,7 @@ void ThreadPool::RunParallel(std::function<void(int)> taskFunction, int N) {
 
   // Execute one instance in this thread.
   const auto workerId = static_cast<int>(NumThreads());  // threadpool workers use ID 0 -> nThreads - 1
-  TaskFunction(workerId);
+  taskFunction(workerId);
 
   // Wait for helpers to finish.
   for (auto&& fut : futures) {

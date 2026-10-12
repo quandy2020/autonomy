@@ -97,7 +97,7 @@ inline void Tf2ss(vector_t numCoefficients, vector_t denCoefficients, matrix_t& 
    * @param [in] D: D.
    * @return Result value.
    */
-  tf.getStateSpace(A, B, C, D);
+  tf.GetStateSpace(A, B, C, D);
 }
 
 };  // namespace bolza

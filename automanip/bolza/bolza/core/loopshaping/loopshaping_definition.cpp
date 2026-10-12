@@ -22,23 +22,23 @@ namespace bolza {
 
 LoopshapingDefinition::LoopshapingDefinition(LoopshapingType loopshapingType, Filter filter, matrix_t costMatrix)
     : loopshapingType_(loopshapingType), filter_(std::move(filter)), R_(std::move(costMatrix)) {
-  if (filter_.getNumStates() == 0) {
+  if (filter_.GetNumStates() == 0) {
     throw std::runtime_error(
         "[LoopshapingDefinition] The definition has zero extra states. This would be equivalent to a constant scaling. Using loopshaping "
         "does not make sense");
   }
 
   // Detect diagonal formulation if all involved matrices are diagonal
-  diagonal_ = filter_.getA().isDiagonal() && filter_.getB().isDiagonal() && filter_.getC().isDiagonal() && filter_.getD().isDiagonal();
+  diagonal_ = filter_.GetA().isDiagonal() && filter_.GetB().isDiagonal() && filter_.GetC().isDiagonal() && filter_.GetD().isDiagonal();
 
   if (R_.size() == 0) {  // No cost provided
-    R_.setIdentity(filter_.getNumInputs(), filter_.getNumInputs());
+    R_.setIdentity(filter_.GetNumInputs(), filter_.GetNumInputs());
   }
 }
 
 void LoopshapingDefinition::Print() const {
   std::cerr << "[LoopshapingDefinition] \n";
-  filter_.print();
+  filter_.Print();
   std::cerr << "R on filtered inputs: \n" << R_ << std::endl;
 }
 
@@ -56,12 +56,12 @@ void LoopshapingDefinition::GetSystemInput(const vector_t& state, const vector_t
     }
     case LoopshapingType::eliminatepattern: {
       if (diagonal_) {
-        systemInput = filter_.getCdiag().diagonal().cwiseProduct(state.tail(filter_.getNumStates())) +
-                      filter_.getDdiag().diagonal().cwiseProduct(input);
+        systemInput = filter_.GetCdiag().diagonal().cwiseProduct(state.tail(filter_.GetNumStates())) +
+                      filter_.GetDdiag().diagonal().cwiseProduct(input);
       } else {
         // u = C*x + D*v. Use noalias to prevent temporaries.
-        systemInput.noalias() = filter_.getC() * state.tail(filter_.getNumStates());
-        systemInput.noalias() += filter_.getD() * input;
+        systemInput.noalias() = filter_.GetC() * state.tail(filter_.GetNumStates());
+        systemInput.noalias() += filter_.GetD() * input;
       }
       break;
     }
@@ -80,11 +80,11 @@ void LoopshapingDefinition::GetFilteredInput(const vector_t& state, const vector
   switch (loopshapingType_) {
     case LoopshapingType::outputpattern: {
       if (diagonal_) {
-        filteredInput = filter_.getCdiag().diagonal().cwiseProduct(state.tail(filter_.getNumStates())) +
-                        filter_.getDdiag().diagonal().cwiseProduct(input);
+        filteredInput = filter_.GetCdiag().diagonal().cwiseProduct(state.tail(filter_.GetNumStates())) +
+                        filter_.GetDdiag().diagonal().cwiseProduct(input);
       } else {
-        filteredInput.noalias() = filter_.getC() * state.tail(filter_.getNumStates());
-        filteredInput.noalias() += filter_.getD() * input;
+        filteredInput.noalias() = filter_.GetC() * state.tail(filter_.GetNumStates());
+        filteredInput.noalias() += filter_.GetD() * input;
       }
       break;
     }
@@ -100,16 +100,16 @@ void LoopshapingDefinition::GetFilteredInput(const vector_t& state, const vector
 vector_t LoopshapingDefinition::FilterFlowMap(const vector_t& filterState, const vector_t& input) const {
   // Same equation for both loopshaping types
   if (diagonal_) {
-    return filter_.getAdiag().diagonal().cwiseProduct(filterState) + filter_.getBdiag().diagonal().cwiseProduct(input);
+    return filter_.GetAdiag().diagonal().cwiseProduct(filterState) + filter_.GetBdiag().diagonal().cwiseProduct(input);
   } else {
-    vector_t filterStateDerivative = filter_.getA() * filterState;
-    filterStateDerivative.noalias() += filter_.getB() * input;
+    vector_t filterStateDerivative = filter_.GetA() * filterState;
+    filterStateDerivative.noalias() += filter_.GetB() * input;
     return filterStateDerivative;
   }
 }
 
 vector_t LoopshapingDefinition::ConcatenateSystemAndFilterState(const vector_t& systemState, const vector_t& filterState) const {
-  vector_t state(systemState.rows() + filter_.getNumStates());
+  vector_t state(systemState.rows() + filter_.GetNumStates());
   state << systemState, filterState;
   return state;
 }
@@ -128,10 +128,10 @@ vector_t LoopshapingDefinition::AugmentedSystemInput(const vector_t& systemInput
 void LoopshapingDefinition::GetFilterEquilibrium(const vector_t& systemInput, vector_t& filterState, vector_t& filterInput) const {
   switch (loopshapingType_) {
     case LoopshapingType::outputpattern:
-      filter_.findEquilibriumForInput(systemInput, filterState, filterInput);
+      filter_.FindEquilibriumForInput(systemInput, filterState, filterInput);
       break;
     case LoopshapingType::eliminatepattern:
-      filter_.findEquilibriumForOutput(systemInput, filterState, filterInput);
+      filter_.FindEquilibriumForOutput(systemInput, filterState, filterInput);
       break;
     default:
       throw std::runtime_error("[LoopshapingDefinition::GetFilterEquilibrium] invalid loopshaping type");
@@ -145,7 +145,7 @@ void LoopshapingDefinition::GetFilterEquilibriumGivenState(const vector_t& syste
       filterInput = GetFilteredInput(systemInput, filterState);
       break;
     case LoopshapingType::eliminatepattern:
-      filter_.findEquilibriumForOutputGivenState(systemInput, filterState, filterInput);
+      filter_.FindEquilibriumForOutputGivenState(systemInput, filterState, filterInput);
       break;
     default:
       throw std::runtime_error("[LoopshapingDefinition::GetFilterEquilibriumGivenState] invalid loopshaping type");

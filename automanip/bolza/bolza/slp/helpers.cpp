@@ -132,7 +132,7 @@ vector_t GGTAbsRowSumInParallel(ThreadPool& threadPool, const OcpSize& ocpSize,
       }
     }
   };
-  threadPool.runParallel(std::move(task), threadPool.numThreads() + 1U);
+  threadPool.RunParallel(std::move(task), threadPool.NumThreads() + 1U);
 
   vector_t res = vector_t::Zero(GetNumDynamicsConstraints(ocpSize));
   int curRow = 0;

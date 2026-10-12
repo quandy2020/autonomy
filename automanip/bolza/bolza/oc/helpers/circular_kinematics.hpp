@@ -110,7 +110,7 @@ class CircularKinematicsConstraints final : public StateInputConstraint {
 inline OptimalControlProblem CreateCircularKinematicsProblem(const std::string& libraryFolder) {
   // optimal control problem
   OptimalControlProblem problem;
-  problem.dynamicsPtr.Reset(new CircularKinematicsSystem());
+  problem.dynamicsPtr.reset(new CircularKinematicsSystem());
 
   // cost function
   problem.costPtr->Add("cost", std::make_unique<CircularKinematicsCost>(libraryFolder));

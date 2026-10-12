@@ -101,9 +101,9 @@ std::string CheckSize(int stateDim, int inputDim, const ScalarFunctionLinearAppr
 /******************************************************************************************************/
 /******************************************************************************************************/
 std::ostream& operator<<(std::ostream& out, const ScalarFunctionLinearApproximation& f) {
-  Out << "f: " << f.f << '\n';
-  Out << "dfdx: " << f.dfdx.transpose() << '\n';
-  Out << "dfdu: " << f.dfdu.transpose() << '\n';
+  out << "f: " << f.f << '\n';
+  out << "dfdx: " << f.dfdx.transpose() << '\n';
+  out << "dfdu: " << f.dfdu.transpose() << '\n';
   return out;
 }
 
@@ -287,12 +287,12 @@ std::string CheckSize(int stateDim, int inputDim, const ScalarFunctionQuadraticA
 /******************************************************************************************************/
 /******************************************************************************************************/
 std::ostream& operator<<(std::ostream& out, const ScalarFunctionQuadraticApproximation& f) {
-  Out << "f: " << f.f << '\n';
-  Out << "dfdx: " << f.dfdx.transpose() << '\n';
-  Out << "dfdu: " << f.dfdu.transpose() << '\n';
-  Out << "dfdxx:\n" << f.dfdxx << '\n';
-  Out << "dfdux:\n" << f.dfdux << '\n';
-  Out << "dfduu:\n" << f.dfduu << '\n';
+  out << "f: " << f.f << '\n';
+  out << "dfdx: " << f.dfdx.transpose() << '\n';
+  out << "dfdu: " << f.dfdu.transpose() << '\n';
+  out << "dfdxx:\n" << f.dfdxx << '\n';
+  out << "dfdux:\n" << f.dfdux << '\n';
+  out << "dfduu:\n" << f.dfduu << '\n';
   return out;
 }
 
@@ -344,9 +344,9 @@ VectorFunctionLinearApproximation VectorFunctionLinearApproximation::Zero(int nv
 /******************************************************************************************************/
 /******************************************************************************************************/
 std::ostream& operator<<(std::ostream& out, const VectorFunctionLinearApproximation& f) {
-  Out << "f: " << f.f.transpose() << '\n';
-  Out << "dfdx:\n" << f.dfdx << '\n';
-  Out << "dfdu:\n" << f.dfdu << '\n';
+  out << "f: " << f.f.transpose() << '\n';
+  out << "dfdx:\n" << f.dfdx << '\n';
+  out << "dfdu:\n" << f.dfdu << '\n';
   return out;
 }
 
@@ -456,17 +456,17 @@ VectorFunctionQuadraticApproximation VectorFunctionQuadraticApproximation::Zero(
 /******************************************************************************************************/
 /******************************************************************************************************/
 std::ostream& operator<<(std::ostream& out, const VectorFunctionQuadraticApproximation& f) {
-  Out << "f: " << f.f.transpose() << '\n';
-  Out << "dfdx:\n" << f.dfdx << '\n';
-  Out << "dfdu:\n" << f.dfdu << '\n';
+  out << "f: " << f.f.transpose() << '\n';
+  out << "dfdx:\n" << f.dfdx << '\n';
+  out << "dfdu:\n" << f.dfdu << '\n';
   for (size_t i = 0; i < f.f.rows(); i++) {
-    Out << "dfdxx[" << i << "]:\n" << f.dfdxx[i] << '\n';
+    out << "dfdxx[" << i << "]:\n" << f.dfdxx[i] << '\n';
   }
   for (size_t i = 0; i < f.f.rows(); i++) {
-    Out << "dfdux[" << i << "]:\n" << f.dfdux[i] << '\n';
+    out << "dfdux[" << i << "]:\n" << f.dfdux[i] << '\n';
   }
   for (size_t i = 0; i < f.f.rows(); i++) {
-    Out << "dfduu[" << i << "]:\n" << f.dfduu[i] << '\n';
+    out << "dfduu[" << i << "]:\n" << f.dfduu[i] << '\n';
   }
   return out;
 }

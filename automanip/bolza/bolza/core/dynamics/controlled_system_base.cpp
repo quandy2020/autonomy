@@ -21,15 +21,15 @@ namespace bolza {
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-ControlledSystemBase::ControlledSystemBase(const PreComputation& preComputation) : preCompPtr_(preComputation.clone()) {}
+ControlledSystemBase::ControlledSystemBase(const PreComputation& preComputation) : preCompPtr_(preComputation.Clone()) {}
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 ControlledSystemBase::ControlledSystemBase(const ControlledSystemBase& other) : OdeBase(other) {
   assert(other.preCompPtr_ != nullptr);
-  preCompPtr_.reset(other.preCompPtr_->clone());
-  SetController(other.controllerPtr());
+  preCompPtr_.reset(other.preCompPtr_->Clone());
+  SetController(other.ControllerPtr());
 }
 
 /******************************************************************************************************/
@@ -37,7 +37,7 @@ ControlledSystemBase::ControlledSystemBase(const ControlledSystemBase& other) : 
 /******************************************************************************************************/
 vector_t ControlledSystemBase::ComputeFlowMap(scalar_t t, const vector_t& x) {
   assert(controllerPtr_ != nullptr);
-  const vector_t u = controllerPtr_->computeInput(t, x);
+  const vector_t u = controllerPtr_->ComputeInput(t, x);
   return ComputeFlowMap(t, x, u);
 }
 
@@ -46,7 +46,7 @@ vector_t ControlledSystemBase::ComputeFlowMap(scalar_t t, const vector_t& x) {
 /******************************************************************************************************/
 vector_t ControlledSystemBase::ComputeFlowMap(scalar_t t, const vector_t& x, const vector_t& u) {
   assert(preCompPtr_ != nullptr);
-  preCompPtr_->request(Request::Dynamics, t, x, u);
+  preCompPtr_->Request(Request::Dynamics, t, x, u);
   return ComputeFlowMap(t, x, u, *preCompPtr_);
 }
 
@@ -55,7 +55,7 @@ vector_t ControlledSystemBase::ComputeFlowMap(scalar_t t, const vector_t& x, con
 /******************************************************************************************************/
 vector_t ControlledSystemBase::ComputeJumpMap(scalar_t t, const vector_t& x) {
   assert(preCompPtr_ != nullptr);
-  preCompPtr_->requestPreJump(Request::Dynamics, t, x);
+  preCompPtr_->RequestPreJump(Request::Dynamics, t, x);
   return ComputeJumpMap(t, x, *preCompPtr_);
 }
 

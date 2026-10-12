@@ -26,11 +26,11 @@ ScalarFunctionQuadraticApproximation LoopshapingSoftConstraintOutputPattern::Get
   }
 
   const bool isDiagonal = loopshapingDefinition_->isDiagonal();
-  const auto& r_filter = loopshapingDefinition_->getInputFilter();
+  const auto& r_filter = loopshapingDefinition_->GetInputFilter();
   const auto& preCompLS = cast<LoopshapingPreComputation>(preComp);
-  const auto& x_system = preCompLS.getSystemState();
-  const auto& x_filter = preCompLS.getFilterState();
-  const auto& u_system = preCompLS.getSystemInput();
+  const auto& x_system = preCompLS.GetSystemState();
+  const auto& x_filter = preCompLS.GetFilterState();
+  const auto& u_system = preCompLS.GetSystemInput();
   const auto stateDim = x.rows();
   const auto inputDim = u.rows();
   const auto sysStateDim = x_system.rows();
@@ -38,7 +38,7 @@ ScalarFunctionQuadraticApproximation LoopshapingSoftConstraintOutputPattern::Get
 
   // Not const, so we can move
   auto L_system =
-      StateInputCostCollection::GetQuadraticApproximation(t, x_system, u_system, targetTrajectories, preCompLS.getSystemPreComputation());
+      StateInputCostCollection::GetQuadraticApproximation(t, x_system, u_system, targetTrajectories, preCompLS.GetSystemPreComputation());
 
   ScalarFunctionQuadraticApproximation L;
   L.f = L_system.f;

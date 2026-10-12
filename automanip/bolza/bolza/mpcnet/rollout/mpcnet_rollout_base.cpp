@@ -30,21 +30,21 @@ void MPCNetRolloutBase::set(scalar_t alpha, const std::string& policyFilePath, c
   systemObservation_ = initialObservation;
 
   // reset mpc
-  mpcPtr_->reset();
+  mpcPtr_->Reset();
 
   // prepare learned controller
-  mpcnetPtr_->loadPolicyModel(policyFilePath);
+  mpcnetPtr_->LoadPolicyModel(policyFilePath);
 
   // reset rollout, i.e. reset the internal simulator state (e.g. relevant for RaiSim)
-  rolloutPtr_->resetRollout();
+  rolloutPtr_->ResetRollout();
 
   // update the reference manager
-  referenceManagerPtr_->setModeSchedule(modeSchedule);
-  referenceManagerPtr_->setTargetTrajectories(targetTrajectories);
+  referenceManagerPtr_->SetModeSchedule(modeSchedule);
+  referenceManagerPtr_->SetTargetTrajectories(targetTrajectories);
 
   // set up behavioral controller with mixture parameter alpha and learned controller
-  behavioralControllerPtr_->setAlpha(alpha);
-  behavioralControllerPtr_->setLearnedController(*mpcnetPtr_);
+  behavioralControllerPtr_->SetAlpha(alpha);
+  behavioralControllerPtr_->SetLearnedController(*mpcnetPtr_);
 }
 
 /******************************************************************************************************/
@@ -52,22 +52,22 @@ void MPCNetRolloutBase::set(scalar_t alpha, const std::string& policyFilePath, c
 /******************************************************************************************************/
 void MPCNetRolloutBase::Step(scalar_t timeStep) {
   // run mpc
-  if (!mpcPtr_->run(systemObservation_.time, systemObservation_.state)) {
+  if (!mpcPtr_->Run(systemObservation_.time, systemObservation_.state)) {
     throw std::runtime_error("[MPCNetRolloutBase::Step] main routine of MPC returned false.");
   }
 
   // update primal solution
-  primalSolution_ = mpcPtr_->getSolverPtr()->primalSolution(mpcPtr_->getSolverPtr()->getFinalTime());
+  primalSolution_ = mpcPtr_->GetSolverPtr()->GetPrimalSolution(mpcPtr_->GetSolverPtr()->GetFinalTime());
 
   // update behavioral controller with MPC controller
-  behavioralControllerPtr_->setOptimalController(*primalSolution_.controllerPtr_);
+  behavioralControllerPtr_->SetOptimalController(*primalSolution_.controllerPtr_);
 
   // forward simulate system with behavioral controller
   scalar_array_t timeTrajectory;
   size_array_t postEventIndicesStock;
   vector_array_t stateTrajectory;
   vector_array_t inputTrajectory;
-  rolloutPtr_->run(primalSolution_.timeTrajectory_.front(), primalSolution_.stateTrajectory_.front(),
+  rolloutPtr_->Run(primalSolution_.timeTrajectory_.front(), primalSolution_.stateTrajectory_.front(),
                    primalSolution_.timeTrajectory_.front() + timeStep, behavioralControllerPtr_.get(), primalSolution_.modeSchedule_,
                    timeTrajectory, postEventIndicesStock, stateTrajectory, inputTrajectory);
 
@@ -75,11 +75,11 @@ void MPCNetRolloutBase::Step(scalar_t timeStep) {
   systemObservation_.time = timeTrajectory.back();
   systemObservation_.state = stateTrajectory.back();
   systemObservation_.input = inputTrajectory.back();
-  systemObservation_.mode = primalSolution_.modeSchedule_.modeAtTime(systemObservation_.time);
+  systemObservation_.mode = primalSolution_.modeSchedule_.ModeAtTime(systemObservation_.time);
 
   // check forward simulated system
-  if (!mpcnetDefinitionPtr_->isValid(systemObservation_.time, systemObservation_.state, referenceManagerPtr_->getModeSchedule(),
-                                     referenceManagerPtr_->getTargetTrajectories())) {
+  if (!mpcnetDefinitionPtr_->IsValid(systemObservation_.time, systemObservation_.state, referenceManagerPtr_->GetModeSchedule(),
+                                     referenceManagerPtr_->GetTargetTrajectories())) {
     throw std::runtime_error("MPCNetDataGeneration::Run Tuple (time, state, modeSchedule, targetTrajectories) is not valid.");
   }
 }

@@ -48,7 +48,7 @@ enum class IntegratorType {
 namespace integrator_type {
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Get string name of integrator type
  *
@@ -59,7 +59,7 @@ namespace integrator_type {
 std::string ToString(IntegratorType integratorType);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Get integrator type from string name, useful for reading config file
  *
@@ -72,7 +72,7 @@ IntegratorType FromString(const std::string& name);
 }  // namespace integrator_type
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Create Integrator of given type.
  *

@@ -28,13 +28,13 @@ LoopshapingRobotInterface::LoopshapingRobotInterface(std::unique_ptr<RobotInterf
     : robotInterfacePtr_(std::move(robotInterfacePtr)), loopshapingDefinitionPtr_(std::move(loopshapingDefinitionPtr)) {
   // wrap with loopshaping
   optimalControlProblem_ =
-      LoopshapingOptimalControlProblem::Create(robotInterfacePtr_->getOptimalControlProblem(), loopshapingDefinitionPtr_);
+      LoopshapingOptimalControlProblem::Create(robotInterfacePtr_->GetOptimalControlProblem(), loopshapingDefinitionPtr_);
 
-  initializerPtr_.reset(new bolza::LoopshapingInitializer(robotInterfacePtr_->getInitializer(), loopshapingDefinitionPtr_));
+  initializerPtr_.reset(new bolza::LoopshapingInitializer(robotInterfacePtr_->GetInitializer(), loopshapingDefinitionPtr_));
 
-  if (robotInterfacePtr_->getReferenceManagerPtr() != nullptr) {
+  if (robotInterfacePtr_->GetReferenceManagerPtr() != nullptr) {
     loopshapingReferenceManager_ =
-        std::make_shared<LoopshapingReferenceManager>(robotInterfacePtr_->getReferenceManagerPtr(), loopshapingDefinitionPtr_);
+        std::make_shared<LoopshapingReferenceManager>(robotInterfacePtr_->GetReferenceManagerPtr(), loopshapingDefinitionPtr_);
   }
 }
 

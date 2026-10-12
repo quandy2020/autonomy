@@ -95,7 +95,7 @@ inline std::string GetCommandLineString(bool (*shouldTerminate)() = []() { retur
 }
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Transforms a line of words to a vector of words.
  *

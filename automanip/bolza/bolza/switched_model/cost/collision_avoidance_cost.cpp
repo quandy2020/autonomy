@@ -12,7 +12,7 @@ namespace switched_model {
 CollisionAvoidanceCost::CollisionAvoidanceCost(bolza::RelaxedBarrierPenalty::Config settings)
     : penalty_(new bolza::RelaxedBarrierPenalty(settings)) {}
 
-CollisionAvoidanceCost::CollisionAvoidanceCost(const CollisionAvoidanceCost& rhs) : penalty_(rhs.penalty_->clone()) {}
+CollisionAvoidanceCost::CollisionAvoidanceCost(const CollisionAvoidanceCost& rhs) : penalty_(rhs.penalty_->Clone()) {}
 
 CollisionAvoidanceCost* CollisionAvoidanceCost::Clone() const {
   return new CollisionAvoidanceCost(*this);
@@ -21,17 +21,17 @@ CollisionAvoidanceCost* CollisionAvoidanceCost::Clone() const {
 scalar_t CollisionAvoidanceCost::GetValue(scalar_t time, const vector_t& state, const bolza::TargetTrajectories& targetTrajectories,
                                           const bolza::PreComputation& preComp) const {
   const auto& switchedModelPreComp = bolza::cast<SwitchedModelPreComputation>(preComp);
-  const auto* sdfPtr = switchedModelPreComp.getSignedDistanceField();
+  const auto* sdfPtr = switchedModelPreComp.GetSignedDistanceField();
 
-  scalar_t Cost(0.0);
+  scalar_t cost(0.0);
   if (sdfPtr != nullptr) {
-    const auto& collisionSpheresActive = switchedModelPreComp.collisionSpheresActive();
-    const auto& collisionSpheres = switchedModelPreComp.collisionSpheresInOriginFrame();
+    const auto& collisionSpheresActive = switchedModelPreComp.CollisionSpheresActive();
+    const auto& collisionSpheres = switchedModelPreComp.CollisionSpheresInOriginFrame();
 
     for (size_t i = 0; i < collisionSpheres.size(); ++i) {
       if (collisionSpheresActive[i]) {
         const auto& collisionSphere = collisionSpheres[i];
-        const auto sdfDistance = sdfPtr->value(collisionSphere.position);
+        const auto sdfDistance = sdfPtr->Value(collisionSphere.position);
         const auto h_sdf = sdfDistance - collisionSphere.radius;
 
         SingleLinearStateInequalitySoftConstraint linearStateInequalitySoftConstraint;
@@ -57,17 +57,17 @@ ScalarFunctionQuadraticApproximation CollisionAvoidanceCost::GetQuadraticApproxi
   cost.dfdx = vector_t::Zero(STATE_DIM);
   cost.dfdxx = matrix_t::Zero(STATE_DIM, STATE_DIM);
 
-  const auto* sdfPtr = switchedModelPreComp.getSignedDistanceField();
+  const auto* sdfPtr = switchedModelPreComp.GetSignedDistanceField();
 
   if (sdfPtr != nullptr) {
-    const auto& collisionSpheresActive = switchedModelPreComp.collisionSpheresActive();
-    const auto& collisionSpheres = switchedModelPreComp.collisionSpheresInOriginFrame();
-    const auto& collisionSphereDerivatives = switchedModelPreComp.collisionSpheresInOriginFrameStateDerivative();
+    const auto& collisionSpheresActive = switchedModelPreComp.CollisionSpheresActive();
+    const auto& collisionSpheres = switchedModelPreComp.CollisionSpheresInOriginFrame();
+    const auto& collisionSphereDerivatives = switchedModelPreComp.CollisionSpheresInOriginFrameStateDerivative();
     for (size_t i = 0; i < collisionSpheres.size(); ++i) {
       if (collisionSpheresActive[i]) {
         const auto& collisionSphere = collisionSpheres[i];
         const auto& collisionSphereDerivative = collisionSphereDerivatives[i];
-        const auto sdfFirstOrder = sdfPtr->valueAndDerivative(collisionSphere.position);
+        const auto sdfFirstOrder = sdfPtr->ValueAndDerivative(collisionSphere.position);
         const auto h_sdf = sdfFirstOrder.first - collisionSphere.radius;
 
         SingleLinearStateInequalitySoftConstraint linearStateInequalitySoftConstraint;

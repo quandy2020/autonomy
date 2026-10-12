@@ -60,7 +60,7 @@ class Initializer {
 
  protected:
     /**
-   * @brief /** Copy constructor */.
+   * @brief Copy constructor 
    * @param [in] rhs: Rhs.
    */
   Initializer(const Initializer& rhs) = default;

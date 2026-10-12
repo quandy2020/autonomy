@@ -31,8 +31,8 @@ StateAugmentedLagrangianCollection* StateAugmentedLagrangianCollection::Clone() 
 size_t StateAugmentedLagrangianCollection::GetNumberOfActiveConstraints(scalar_t time) const {
   size_t numConstraints = 0;
   for (const auto& term : terms_) {
-    if (term->isActive(time)) {
-      numConstraints += term->getNumConstraints(time);
+    if (term->IsActive(time)) {
+      numConstraints += term->GetNumConstraints(time);
     }
   }
   return numConstraints;
@@ -47,8 +47,8 @@ std::vector<LagrangianMetrics> StateAugmentedLagrangianCollection::GetValue(scal
   std::vector<LagrangianMetrics> termsConstraintPenalty;
   termsConstraintPenalty.reserve(terms_.size());
   for (size_t i = 0; i < terms_.size(); i++) {
-    if (terms_[i]->isActive(time)) {
-      termsConstraintPenalty.emplace_back(terms_[i]->getValue(time, state, termsMultiplier[i], preComp));
+    if (terms_[i]->IsActive(time)) {
+      termsConstraintPenalty.emplace_back(terms_[i]->GetValue(time, state, termsMultiplier[i], preComp));
     } else {
       termsConstraintPenalty.emplace_back(0.0, vector_t());
     }
@@ -63,7 +63,7 @@ ScalarFunctionQuadraticApproximation StateAugmentedLagrangianCollection::GetQuad
     scalar_t time, const vector_t& state, const std::vector<Multiplier>& termsMultiplier, const PreComputation& preComp) const {
   const auto firstActiveItr =
       std::find_if(terms_.begin(), terms_.end(),
-                   [time](const std::unique_ptr<StateAugmentedLagrangianInterface>& costTerm) { return costTerm->isActive(time); });
+                   [time](const std::unique_ptr<StateAugmentedLagrangianInterface>& costTerm) { return costTerm->IsActive(time); });
 
   // no active terms (or terms is empty).
   if (firstActiveItr == terms_.end()) {
@@ -71,13 +71,13 @@ ScalarFunctionQuadraticApproximation StateAugmentedLagrangianCollection::GetQuad
   }
 
   // initialize with first active term
-  const size_t firstActiveInd = std::Distance(terms_.begin(), firstActiveItr);
-  auto penalty = (*firstActiveItr)->getQuadraticApproximation(time, state, termsMultiplier[firstActiveInd], preComp);
+  const size_t firstActiveInd = std::distance(terms_.begin(), firstActiveItr);
+  auto penalty = (*firstActiveItr)->GetQuadraticApproximation(time, state, termsMultiplier[firstActiveInd], preComp);
 
   // accumulate terms
   for (size_t i = firstActiveInd + 1; i < terms_.size(); i++) {
-    if (terms_[i]->isActive(time)) {
-      const auto termPenalty = terms_[i]->getQuadraticApproximation(time, state, termsMultiplier[i], preComp);
+    if (terms_[i]->IsActive(time)) {
+      const auto termPenalty = terms_[i]->GetQuadraticApproximation(time, state, termsMultiplier[i], preComp);
       penalty.f += termPenalty.f;
       penalty.dfdx += termPenalty.dfdx;
       penalty.dfdxx += termPenalty.dfdxx;
@@ -101,10 +101,10 @@ void StateAugmentedLagrangianCollection::UpdateLagrangian(scalar_t time, const v
   assert(termsMetrics.size() == termsMultiplier.size());
 
   for (size_t i = 0; i < terms_.size(); i++) {
-    if (terms_[i]->isActive(time)) {
+    if (terms_[i]->IsActive(time)) {
       Multiplier updatedLagrangian;
       std::tie(updatedLagrangian, termsMetrics[i].penalty) =
-          terms_[i]->updateLagrangian(time, state, termsMetrics[i].constraint, termsMultiplier[i]);
+          terms_[i]->UpdateLagrangian(time, state, termsMetrics[i].constraint, termsMultiplier[i]);
       termsMultiplier[i] = std::move(updatedLagrangian);
     }
   }
@@ -117,8 +117,8 @@ void StateAugmentedLagrangianCollection::InitializeLagrangian(scalar_t time, std
   termsMultiplier.clear();
   termsMultiplier.reserve(terms_.size());
   for (const auto& term : terms_) {
-    if (term->isActive(time)) {
-      termsMultiplier.emplace_back(term->initializeLagrangian(time));
+    if (term->IsActive(time)) {
+      termsMultiplier.emplace_back(term->InitializeLagrangian(time));
     } else {
       termsMultiplier.emplace_back(0.0, vector_t());
     }

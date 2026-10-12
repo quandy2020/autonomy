@@ -22,7 +22,7 @@ namespace bolza {
 /******************************************************************************************************/
 /******************************************************************************************************/
 vector_t EulerDiscretization(SystemDynamicsBase& system, scalar_t t, const vector_t& x, const vector_t& u, scalar_t dt) {
-  vector_t tmp = system.computeFlowMap(t, x, u);
+  vector_t tmp = system.ComputeFlowMap(t, x, u);
   tmp = x + dt * tmp;
   return tmp;
 }
@@ -36,7 +36,7 @@ VectorFunctionLinearApproximation EulerSensitivityDiscretization(SystemDynamicsB
   // A_{k} = Id + dt * dfdx
   // B_{k} = dt * dfdu
   // b_{k} = x_{n} + dt * f(x_{n},u_{n})
-  auto continuousApproximation = system.linearApproximation(t, x, u);
+  auto continuousApproximation = system.LinearApproximation(t, x, u);
   continuousApproximation.dfdx *= dt;
   continuousApproximation.dfdx.diagonal().array() += 1.0;  // plus Identity()
   continuousApproximation.dfdu *= dt;
@@ -51,10 +51,10 @@ vector_t Rk2Discretization(SystemDynamicsBase& system, scalar_t t, const vector_
   const scalar_t dt_halve = dt / 2.0;
 
   // System evaluations
-  const vector_t k1 = system.computeFlowMap(t, x, u);
+  const vector_t k1 = system.ComputeFlowMap(t, x, u);
 
   vector_t tmp = x + dt * k1;
-  const vector_t k2 = system.computeFlowMap(t + dt, tmp, u);
+  const vector_t k2 = system.ComputeFlowMap(t + dt, tmp, u);
 
   tmp = x + dt_halve * k1 + dt_halve * k2;
   return tmp;
@@ -68,8 +68,8 @@ VectorFunctionLinearApproximation Rk2SensitivityDiscretization(SystemDynamicsBas
   const scalar_t dt_halve = dt / 2.0;
 
   // System evaluations
-  VectorFunctionLinearApproximation k1 = system.linearApproximation(t, x, u);
-  VectorFunctionLinearApproximation k2 = system.linearApproximation(t + dt, x + dt * k1.f, u);
+  VectorFunctionLinearApproximation k1 = system.LinearApproximation(t, x, u);
+  VectorFunctionLinearApproximation k2 = system.LinearApproximation(t + dt, x + dt * k1.f, u);
 
   // Input sensitivity \dot{Su} = dfdx(t) Su + dfdu(t), with Su(0) = Zero()
   // Re-use memory from k.dfdu as dkduk
@@ -99,13 +99,13 @@ vector_t Rk4Discretization(SystemDynamicsBase& system, scalar_t t, const vector_
   const scalar_t dt_third = dt / 3.0;
 
   // System evaluations
-  const vector_t k1 = system.computeFlowMap(t, x, u);
+  const vector_t k1 = system.ComputeFlowMap(t, x, u);
   vector_t tmp = x + dt_halve * k1;
-  const vector_t k2 = system.computeFlowMap(t + dt_halve, tmp, u);
+  const vector_t k2 = system.ComputeFlowMap(t + dt_halve, tmp, u);
   tmp = x + dt_halve * k2;
-  const vector_t k3 = system.computeFlowMap(t + dt_halve, tmp, u);
+  const vector_t k3 = system.ComputeFlowMap(t + dt_halve, tmp, u);
   tmp = x + dt * k3;
-  const vector_t k4 = system.computeFlowMap(t + dt, tmp, u);
+  const vector_t k4 = system.ComputeFlowMap(t + dt, tmp, u);
 
   tmp = x + dt_sixth * k1 + dt_third * k2 + dt_third * k3 + dt_sixth * k4;
   return tmp;
@@ -121,13 +121,13 @@ VectorFunctionLinearApproximation Rk4SensitivityDiscretization(SystemDynamicsBas
   const scalar_t dt_third = dt / 3.0;
 
   // System evaluations
-  VectorFunctionLinearApproximation k1 = system.linearApproximation(t, x, u);
+  VectorFunctionLinearApproximation k1 = system.LinearApproximation(t, x, u);
   vector_t tmpV = x + dt_halve * k1.f;
-  VectorFunctionLinearApproximation k2 = system.linearApproximation(t + dt_halve, tmpV, u);
+  VectorFunctionLinearApproximation k2 = system.LinearApproximation(t + dt_halve, tmpV, u);
   tmpV = x + dt_halve * k2.f;
-  VectorFunctionLinearApproximation k3 = system.linearApproximation(t + dt_halve, tmpV, u);
+  VectorFunctionLinearApproximation k3 = system.LinearApproximation(t + dt_halve, tmpV, u);
   tmpV = x + dt * k3.f;
-  VectorFunctionLinearApproximation k4 = system.linearApproximation(t + dt, tmpV, u);
+  VectorFunctionLinearApproximation k4 = system.LinearApproximation(t + dt, tmpV, u);
 
   // Input sensitivity \dot{Su} = dfdx(t) Su + dfdu(t), with Su(0) = Zero()
   // Re-use memory from k.dfdu as dkduk

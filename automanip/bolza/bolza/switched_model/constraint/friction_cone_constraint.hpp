@@ -43,10 +43,10 @@ struct Config {
        * @param [in] hessianDiagonalShiftParam: Hessian Diagonal Shift Param.
        * @return Result value.
        */
-      : FrictionCoefficient(frictionCoefficientParam),
-        Regularization(regularizationParam),
-        GripperForce(gripperForceParam),
-        HessianDiagonalShift(hessianDiagonalShiftParam) {
+      : frictionCoefficient(frictionCoefficientParam),
+        regularization(regularizationParam),
+        gripperForce(gripperForceParam),
+        hessianDiagonalShift(hessianDiagonalShiftParam) {
     assert(frictionCoefficient > 0.0);
     assert(regularization > 0.0);
     assert(hessianDiagonalShift >= 0.0);

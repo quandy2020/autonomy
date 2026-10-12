@@ -80,7 +80,7 @@ struct MultiplierCollection {
   std::vector<Multiplier> stateInputIneq;
 
     /**
-   * @brief /** Exchanges the values of MultiplierCollection. */.
+   * @brief Exchanges the values of MultiplierCollection. 
    * @param [in,out] other: Other.
    */
   void swap(MultiplierCollection& other) {
@@ -146,7 +146,7 @@ struct MultiplierCollection {
 };
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Serializes an array of Multiplier structures associated to an array of constraint terms.
  *
@@ -157,7 +157,7 @@ struct MultiplierCollection {
 vector_t ToVector(const std::vector<Multiplier>& termsMultiplier);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Gets the size of constraint terms.
  *

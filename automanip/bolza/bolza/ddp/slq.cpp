@@ -52,7 +52,7 @@ SLQ::SLQ(ddp::Settings ddpSettings, const RolloutBase& rollout, const OptimalCon
     bool preComputeRiccatiTerms = Settings().preComputeRiccatiTerms_ && (Settings().strategy_ == search_strategy::Type::LINE_SEARCH);
     bool isRiskSensitive = !numerics::almost_eq(Settings().riskSensitiveCoeff_, 0.0);
     riccatiEquationsPtrStock_.emplace_back(new ContinuousTimeRiccatiEquations(preComputeRiccatiTerms, isRiskSensitive));
-    riccatiEquationsPtrStock_.back()->setRiskSensitiveCoefficient(Settings().riskSensitiveCoeff_);
+    riccatiEquationsPtrStock_.back()->SetRiskSensitiveCoefficient(Settings().riskSensitiveCoeff_);
     riccatiIntegratorPtrStock_.emplace_back(NewIntegrator(integratorType));
   }  // end of i loop
 
@@ -191,7 +191,7 @@ scalar_t SLQ::SolveSequentialRiccatiEquations(const ScalarFunctionQuadraticAppro
 /******************************************************************************************************/
 /******************************************************************************************************/
 matrix_t SLQ::ComputeHamiltonianHessian(const ModelData& modelData, const matrix_t& Sm) const {
-  return searchStrategyPtr_->augmentHamiltonianHessian(modelData, modelData.cost.dfduu);
+  return searchStrategyPtr_->AugmentHamiltonianHessian(modelData, modelData.cost.dfduu);
 }
 
 /******************************************************************************************************/
@@ -200,8 +200,8 @@ matrix_t SLQ::ComputeHamiltonianHessian(const ModelData& modelData, const matrix
 void SLQ::RiccatiEquationsWorker(size_t workerIndex, const std::pair<int, int>& partitionInterval,
                                  const ScalarFunctionQuadraticApproximation& finalValueFunction) {
   // set data for Riccati equations
-  riccatiEquationsPtrStock_[workerIndex]->resetNumFunctionCalls();
-  riccatiEquationsPtrStock_[workerIndex]->setData(
+  riccatiEquationsPtrStock_[workerIndex]->ResetNumFunctionCalls();
+  riccatiEquationsPtrStock_[workerIndex]->SetData(
       &(nominalPrimalData_.primalSolution.timeTrajectory_), &(nominalDualData_.projectedModelDataTrajectory),
       &(nominalPrimalData_.primalSolution.postEventIndices_), &(nominalPrimalData_.modelDataEventTimes),
       &(nominalDualData_.riccatiModificationTrajectory));
@@ -272,13 +272,13 @@ void SLQ::IntegrateRiccatiEquationNominalTime(IntegratorBase& riccatiIntegrator,
     iterator_t endTimeItr = SsNormalizedSwitchingTimesIndices[i].second;
 
     // solve Riccati equations
-    Observer Observer(&allSsTrajectory);
+    Observer observer(&allSsTrajectory);
     const auto maxNumTimeSteps = static_cast<size_t>(Settings().maxNumStepsPerSecond_ * std::max(1.0, partitionDuration));
-    riccatiIntegrator.integrateTimes(riccatiEquation, observer, allSsFinal, beginTimeItr, endTimeItr, Settings().timeStep_,
+    riccatiIntegrator.IntegrateTimes(riccatiEquation, observer, allSsFinal, beginTimeItr, endTimeItr, Settings().timeStep_,
                                      Settings().absTolODE_, Settings().relTolODE_, maxNumTimeSteps);
 
     if (i < numEvents) {
-      allSsFinal = riccatiEquation.computeJumpMap(*endTimeItr, allSsTrajectory.back());
+      allSsFinal = riccatiEquation.ComputeJumpMap(*endTimeItr, allSsTrajectory.back());
     }
   }  // end of i loop
 

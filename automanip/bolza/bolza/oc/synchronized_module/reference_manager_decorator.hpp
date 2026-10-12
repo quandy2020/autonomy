@@ -66,29 +66,29 @@ class ReferenceManagerDecorator : public ReferenceManagerInterface {
      * @param [in] initState: Init State.
      * @return Result value.
      */
-    referenceManagerPtr_->preSolverRun(initTime, finalTime, initState);
+    referenceManagerPtr_->PreSolverRun(initTime, finalTime, initState);
   }
 
   /**
    * @brief Get Mode Schedule.
    * @return Result value.
    */
-  const ModeSchedule& GetModeSchedule() const override { return referenceManagerPtr_->getModeSchedule(); }
+  const ModeSchedule& GetModeSchedule() const override { return referenceManagerPtr_->GetModeSchedule(); }
   /**
    * @brief Set Mode Schedule.
    * @param [in] modeSchedule: Mode Schedule.
    */
-  void SetModeSchedule(const ModeSchedule& modeSchedule) override { referenceManagerPtr_->setModeSchedule(modeSchedule); }
+  void SetModeSchedule(const ModeSchedule& modeSchedule) override { referenceManagerPtr_->SetModeSchedule(modeSchedule); }
   /**
    * @brief Set Mode Schedule.
    */
-  void SetModeSchedule(ModeSchedule&& modeSchedule) override { referenceManagerPtr_->setModeSchedule(std::move(modeSchedule)); }
+  void SetModeSchedule(ModeSchedule&& modeSchedule) override { referenceManagerPtr_->SetModeSchedule(std::move(modeSchedule)); }
 
   /**
    * @brief Get Target Trajectories.
    * @return Result value.
    */
-  const TargetTrajectories& GetTargetTrajectories() const override { return referenceManagerPtr_->getTargetTrajectories(); }
+  const TargetTrajectories& GetTargetTrajectories() const override { return referenceManagerPtr_->GetTargetTrajectories(); }
   /**
    * @brief Set Target Trajectories.
    * @param [in] targetTrajectories: Target Trajectories.
@@ -99,7 +99,7 @@ class ReferenceManagerDecorator : public ReferenceManagerInterface {
      * @param [in] targetTrajectories: Target Trajectories.
      * @return Result value.
      */
-    referenceManagerPtr_->setTargetTrajectories(targetTrajectories);
+    referenceManagerPtr_->SetTargetTrajectories(targetTrajectories);
   }
   /**
    * @brief Set Target Trajectories.
@@ -110,7 +110,7 @@ class ReferenceManagerDecorator : public ReferenceManagerInterface {
      * @brief Set Target Trajectories.
      * @return Result value.
      */
-    referenceManagerPtr_->setTargetTrajectories(std::move(targetTrajectories));
+    referenceManagerPtr_->SetTargetTrajectories(std::move(targetTrajectories));
   }
 
  protected:

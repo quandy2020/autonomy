@@ -64,7 +64,7 @@ class QuadraticPenalty final : public AugmentedPenaltyBase {
      * @param [in] scaleParam: Scale Param.
      * @param [in] stepSizeParam: Step Size Param.
      */
-    Config(scalar_t scaleParam, scalar_t stepSizeParam) : Scale(scaleParam), stepSize(stepSizeParam) {}
+    Config(scalar_t scaleParam, scalar_t stepSizeParam) : scale(scaleParam), stepSize(stepSizeParam) {}
     scalar_t scale;
     scalar_t stepSize;
   };
@@ -73,7 +73,7 @@ class QuadraticPenalty final : public AugmentedPenaltyBase {
   explicit QuadraticPenalty(Config config) : config_(std::move(config)) {}
 
     /**
-   * @brief /** Factory function */.
+   * @brief Factory function 
    * @param [in] config: Config.
    * @return Owning pointer.
    */

@@ -17,11 +17,11 @@ SwingTrajectoryPlanner::SwingTrajectoryPlanner(SwingTrajectoryPlannerSettings se
                                                const KinematicsModelBase<scalar_t>& kinematicsModel,
                                                const InverseKinematicsModelBase* inverseKinematicsModelPtr)
     : settings_(std::move(settings)),
-      kinematicsModel_(kinematicsModel.clone()),
+      kinematicsModel_(kinematicsModel.Clone()),
       inverseKinematicsModelPtr_(nullptr),
       terrainModel_(nullptr) {
   if (inverseKinematicsModelPtr != nullptr) {
-    inverseKinematicsModelPtr_.reset(inverseKinematicsModelPtr->clone());
+    inverseKinematicsModelPtr_.reset(inverseKinematicsModelPtr->Clone());
   }
 }
 
@@ -31,7 +31,7 @@ void SwingTrajectoryPlanner::UpdateTerrain(std::unique_ptr<TerrainModel> terrain
 
 const SignedDistanceField* SwingTrajectoryPlanner::GetSignedDistanceField() const {
   if (terrainModel_) {
-    return terrainModel_->getSignedDistanceField();
+    return terrainModel_->GetSignedDistanceField();
   } else {
     return nullptr;
   }
@@ -53,7 +53,7 @@ void SwingTrajectoryPlanner::UpdateSwingMotions(scalar_t initTime, scalar_t fina
   const feet_array_t<std::vector<ContactTiming>> contactTimingsPerLeg = ExtractContactTimingsPerLeg(modeSchedule);
 
   const auto basePose = GetBasePose(currentState);
-  const auto feetPositions = kinematicsModel_->feetPositionsInOriginFrame(basePose, GetJointPositions(currentState));
+  const auto feetPositions = kinematicsModel_->FeetPositionsInOriginFrame(basePose, GetJointPositions(currentState));
 
   for (int leg = 0; leg < NUM_CONTACT_POINTS; leg++) {
     const auto& contactTimings = contactTimingsPerLeg[leg];
@@ -260,8 +260,8 @@ std::unique_ptr<ExternalSwingPhase> SwingTrajectoryPlanner::ExtractExternalSwing
     const vector_t state = bolza::LinearInterpolation::Interpolate(liftoffIndex, targetTrajectories_.stateTrajectory);
     const vector_t input = bolza::LinearInterpolation::Interpolate(liftoffIndex, targetTrajectories_.inputTrajectory);
     time.push_back(liftOffTime);
-    positions.push_back(kinematicsModel_->footPositionInOriginFrame(leg, GetBasePose(state), GetJointPositions(state)));
-    velocities.push_back(kinematicsModel_->footVelocityInOriginFrame(leg, GetBasePose(state), GetBaseLocalVelocities(state),
+    positions.push_back(kinematicsModel_->FootPositionInOriginFrame(leg, GetBasePose(state), GetJointPositions(state)));
+    velocities.push_back(kinematicsModel_->FootVelocityInOriginFrame(leg, GetBasePose(state), GetBaseLocalVelocities(state),
                                                                      GetJointPositions(state), GetJointVelocities(input)));
   }
 
@@ -269,8 +269,8 @@ std::unique_ptr<ExternalSwingPhase> SwingTrajectoryPlanner::ExtractExternalSwing
   for (int k = liftoffIndex.first + 1; k < touchdownIndex.first; ++k) {
     const auto& state = targetTrajectories_.stateTrajectory[k];
     time.push_back(targetTrajectories_.timeTrajectory[k]);
-    positions.push_back(kinematicsModel_->footPositionInOriginFrame(leg, GetBasePose(state), GetJointPositions(state)));
-    velocities.push_back(kinematicsModel_->footVelocityInOriginFrame(leg, GetBasePose(state), GetBaseLocalVelocities(state),
+    positions.push_back(kinematicsModel_->FootPositionInOriginFrame(leg, GetBasePose(state), GetJointPositions(state)));
+    velocities.push_back(kinematicsModel_->FootVelocityInOriginFrame(leg, GetBasePose(state), GetBaseLocalVelocities(state),
                                                                      GetJointPositions(state),
                                                                      GetJointVelocities(targetTrajectories_.inputTrajectory[k])));
   }
@@ -280,8 +280,8 @@ std::unique_ptr<ExternalSwingPhase> SwingTrajectoryPlanner::ExtractExternalSwing
     const vector_t state = bolza::LinearInterpolation::Interpolate(touchdownIndex, targetTrajectories_.stateTrajectory);
     const vector_t input = bolza::LinearInterpolation::Interpolate(touchdownIndex, targetTrajectories_.inputTrajectory);
     time.push_back(touchDownTime);
-    positions.push_back(kinematicsModel_->footPositionInOriginFrame(leg, GetBasePose(state), GetJointPositions(state)));
-    velocities.push_back(kinematicsModel_->footVelocityInOriginFrame(leg, GetBasePose(state), GetBaseLocalVelocities(state),
+    positions.push_back(kinematicsModel_->FootPositionInOriginFrame(leg, GetBasePose(state), GetJointPositions(state)));
+    velocities.push_back(kinematicsModel_->FootVelocityInOriginFrame(leg, GetBasePose(state), GetBaseLocalVelocities(state),
                                                                      GetJointPositions(state), GetJointVelocities(input)));
   }
 
@@ -299,7 +299,7 @@ std::vector<vector3_t> SwingTrajectoryPlanner::SelectHeuristicFootholds(int leg,
   const auto initBaseLinearVelocityInWorld = RotateVectorBaseToOrigin(GetLinearVelocity(initBaseTwistInBase), initBaseOrientation);
 
   // Zmp preparation : desired state
-  const vector_t initDesiredState = targetTrajectories.getDesiredState(initTime);
+  const vector_t initDesiredState = targetTrajectories.GetDesiredState(initTime);
   const base_coordinate_t initDesiredBasePose = initDesiredState.head<BASE_COORDINATE_SIZE>();
   const auto initDesiredOrientation = GetOrientation(initDesiredBasePose);
   const base_coordinate_t initDesiredBaseTwistInBase = initDesiredState.segment<BASE_COORDINATE_SIZE>(BASE_COORDINATE_SIZE);
@@ -328,10 +328,10 @@ std::vector<vector3_t> SwingTrajectoryPlanner::SelectHeuristicFootholds(int leg,
       const scalar_t middleContactTime = 0.5 * (contactEndTime + contactPhase.start);
 
       // Compute foot position from cost desired trajectory
-      const vector_t state = targetTrajectories.getDesiredState(middleContactTime);
+      const vector_t state = targetTrajectories.GetDesiredState(middleContactTime);
       const auto desiredBasePose = GetBasePose(state);
       const auto desiredJointPositions = GetJointPositions(state);
-      vector3_t referenceFootholdPositionInWorld = kinematicsModel_->footPositionInOriginFrame(leg, desiredBasePose, desiredJointPositions);
+      vector3_t referenceFootholdPositionInWorld = kinematicsModel_->FootPositionInOriginFrame(leg, desiredBasePose, desiredJointPositions);
 
       // Add ZMP offset to the first upcoming foothold.
       if (contactCount == 0) {
@@ -382,7 +382,7 @@ std::vector<ConvexTerrain> SwingTrajectoryPlanner::SelectNominalFootholdTerrain(
 
       if (timeTillContact < settings_.previousFootholdTimeDeadzone && previousIterationContact != nullptr) {
         // Simply copy the information out of the previous iteration
-        nominalFootholdTerrain.push_back(*previousIterationContact->nominalFootholdConstraint());
+        nominalFootholdTerrain.push_back(*previousIterationContact->NominalFootholdConstraint());
         ++heuristicFootholdIt;  // Skip this heuristic. Using the previous terrain instead
       } else {
         // Select the terrain base on the heuristic
@@ -391,16 +391,16 @@ std::vector<ConvexTerrain> SwingTrajectoryPlanner::SelectNominalFootholdTerrain(
         // Filter w.r.t. previous foothold
         if (previousIterationContact != nullptr) {
           referenceFootholdPositionInWorld =
-              FilterFoothold(referenceFootholdPositionInWorld, previousIterationContact->nominalFootholdLocation());
+              FilterFoothold(referenceFootholdPositionInWorld, previousIterationContact->NominalFootholdLocation());
         }
 
         // Kinematic penalty
-        const base_coordinate_t basePoseAtTouchdown = GetBasePose(targetTrajectories.getDesiredState(contactPhase.start));
-        const auto hipPositionInWorldTouchdown = kinematicsModel_->legRootInOriginFrame(leg, basePoseAtTouchdown);
-        const auto hipOrientationInWorldTouchdown = kinematicsModel_->orientationLegRootToOriginFrame(leg, basePoseAtTouchdown);
-        const base_coordinate_t basePoseAtLiftoff = GetBasePose(targetTrajectories.getDesiredState(contactEndTime));
-        const auto hipPositionInWorldLiftoff = kinematicsModel_->legRootInOriginFrame(leg, basePoseAtLiftoff);
-        const auto hipOrientationInWorldLiftoff = kinematicsModel_->orientationLegRootToOriginFrame(leg, basePoseAtLiftoff);
+        const base_coordinate_t basePoseAtTouchdown = GetBasePose(targetTrajectories.GetDesiredState(contactPhase.start));
+        const auto hipPositionInWorldTouchdown = kinematicsModel_->LegRootInOriginFrame(leg, basePoseAtTouchdown);
+        const auto hipOrientationInWorldTouchdown = kinematicsModel_->OrientationLegRootToOriginFrame(leg, basePoseAtTouchdown);
+        const base_coordinate_t basePoseAtLiftoff = GetBasePose(targetTrajectories.GetDesiredState(contactEndTime));
+        const auto hipPositionInWorldLiftoff = kinematicsModel_->LegRootInOriginFrame(leg, basePoseAtLiftoff);
+        const auto hipOrientationInWorldLiftoff = kinematicsModel_->OrientationLegRootToOriginFrame(leg, basePoseAtLiftoff);
         ApproximateKinematicsConfig config;
         config.kinematicPenaltyWeight = settings_.legOverExtensionPenalty;
         config.maxLegExtension = settings_.nominalLegExtension;
@@ -410,13 +410,13 @@ std::vector<ConvexTerrain> SwingTrajectoryPlanner::SelectNominalFootholdTerrain(
         };
 
         if (contactPhase.start < finalTime) {
-          ConvexTerrain convexTerrain = terrainModel.getConvexTerrainAtPositionInWorld(referenceFootholdPositionInWorld, scoringFunction);
+          ConvexTerrain convexTerrain = terrainModel.GetConvexTerrainAtPositionInWorld(referenceFootholdPositionInWorld, scoringFunction);
           nominalFootholdTerrain.push_back(convexTerrain);
           ++heuristicFootholdIt;
         } else {  // After the horizon -> we are only interested in the position and orientation
           ConvexTerrain convexTerrain;
           convexTerrain.plane =
-              terrainModel.getLocalTerrainAtPositionInWorldAlongGravity(referenceFootholdPositionInWorld, scoringFunction);
+              terrainModel.GetLocalTerrainAtPositionInWorldAlongGravity(referenceFootholdPositionInWorld, scoringFunction);
           nominalFootholdTerrain.push_back(convexTerrain);
           ++heuristicFootholdIt;
         }
@@ -493,29 +493,29 @@ void SwingTrajectoryPlanner::AdaptJointReferencesWithInverseKinematics(scalar_t 
     const vector3_t eulerXYZ = GetOrientation(basePose);
 
     for (int leg = 0; leg < NUM_CONTACT_POINTS; ++leg) {
-      const auto& footPhase = this->getFootPhase(leg, t);
+      const auto& footPhase = this->GetFootPhase(leg, t);
 
       // Joint positions
-      const vector3_t positionBaseToFootInWorldFrame = footPhase.getPositionInWorld(t) - basePositionInWorld;
+      const vector3_t positionBaseToFootInWorldFrame = footPhase.GetPositionInWorld(t) - basePositionInWorld;
       const vector3_t positionBaseToFootInBaseFrame = RotateVectorOriginToBase(positionBaseToFootInWorldFrame, eulerXYZ);
 
       const size_t stateOffset = 2 * BASE_COORDINATE_SIZE + 3 * leg;
       targetTrajectories_.stateTrajectory[k].segment(stateOffset, 3) =
-          inverseKinematicsModelPtr_->getLimbJointPositionsFromPositionBaseToFootInBaseFrame(leg, positionBaseToFootInBaseFrame);
+          inverseKinematicsModelPtr_->GetLimbJointPositionsFromPositionBaseToFootInBaseFrame(leg, positionBaseToFootInBaseFrame);
 
       // Joint velocities
       auto jointPositions = GetJointPositions(targetTrajectories_.stateTrajectory[k]);
       auto baseTwistInBaseFrame = GetBaseLocalVelocities(targetTrajectories_.stateTrajectory[k]);
 
-      const vector3_t b_baseToFoot = kinematicsModel_->positionBaseToFootInBaseFrame(leg, jointPositions);
-      const vector3_t footVelocityInBaseFrame = RotateVectorOriginToBase(footPhase.getVelocityInWorld(t), eulerXYZ);
+      const vector3_t b_baseToFoot = kinematicsModel_->PositionBaseToFootInBaseFrame(leg, jointPositions);
+      const vector3_t footVelocityInBaseFrame = RotateVectorOriginToBase(footPhase.GetVelocityInWorld(t), eulerXYZ);
       const vector3_t footRelativeVelocityInBaseFrame =
           footVelocityInBaseFrame - GetLinearVelocity(baseTwistInBaseFrame) - GetAngularVelocity(baseTwistInBaseFrame).cross(b_baseToFoot);
 
       const size_t inputOffset = 3 * NUM_CONTACT_POINTS + 3 * leg;
       targetTrajectories_.inputTrajectory[k].segment(inputOffset, 3) =
-          inverseKinematicsModelPtr_->getLimbVelocitiesFromFootVelocityRelativeToBaseInBaseFrame(
-              leg, footRelativeVelocityInBaseFrame, kinematicsModel_->baseToFootJacobianBlockInBaseFrame(leg, jointPositions), damping);
+          inverseKinematicsModelPtr_->GetLimbVelocitiesFromFootVelocityRelativeToBaseInBaseFrame(
+              leg, footRelativeVelocityInBaseFrame, kinematicsModel_->BaseToFootJacobianBlockInBaseFrame(leg, jointPositions), damping);
     }
 
     // Can stop adaptation as soon as we have processed a point beyond the horizon.
@@ -528,7 +528,7 @@ void SwingTrajectoryPlanner::AdaptJointReferencesWithInverseKinematics(scalar_t 
 void SwingTrajectoryPlanner::UpdateLastContact(int leg, scalar_t expectedLiftOff, const vector3_t& currentFootPosition,
                                                const TerrainModel& terrainModel) {
   // Get orientation from terrain model, position from the kinematics
-  auto lastContactTerrain = terrainModel.getLocalTerrainAtPositionInWorldAlongGravity(currentFootPosition);
+  auto lastContactTerrain = terrainModel.GetLocalTerrainAtPositionInWorldAlongGravity(currentFootPosition);
   lastContactTerrain.positionInWorld = currentFootPosition;
   lastContacts_[leg] = {expectedLiftOff, lastContactTerrain};
 }
@@ -556,7 +556,7 @@ const FootPhase* SwingTrajectoryPlanner::GetFootPhaseIfInContact(size_t leg, sca
   const FootPhase* previousIterationContact = nullptr;
   if (!feetNormalTrajectories_[leg].empty()) {
     const auto& footPhase = GetFootPhase(leg, time);
-    if (footPhase.contactFlag()) {
+    if (footPhase.ContactFlag()) {
       previousIterationContact = &footPhase;
     }
   }

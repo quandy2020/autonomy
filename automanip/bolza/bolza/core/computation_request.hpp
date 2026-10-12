@@ -36,27 +36,27 @@ enum class Request { Dynamics = 1, Cost = 2, Constraint = 4, SoftConstraint = 8,
 class RequestSet {
  public:
     /**
-   * @brief /** Constructor, implicit conversion allowed */.
+   * @brief Constructor, implicit conversion allowed 
    * @param [in] computationFlag: Computation Flag.
    */
   constexpr RequestSet(Request computationFlag) : flags_(computationFlag) {}  // NOLINT(google-explicit-constructor)
 
     /**
-   * @brief /** Check if this Request set contains item */.
+   * @brief Check if this Request set contains item 
    * @param [in] item: Item.
    * @return True on success.
    */
   constexpr bool Contains(Request item) const;
 
     /**
-   * @brief /** Check if this Request set contains any Computation of other (non-empty intersection) */.
+   * @brief Check if this Request set contains any Computation of other (non-empty intersection) 
    * @param [in] other: Other.
    * @return True on success.
    */
   constexpr bool ContainsAny(RequestSet other) const;
 
     /**
-   * @brief /** Check if this Request set contains all Computations of other (subset) */.
+   * @brief Check if this Request set contains all Computations of other (subset) 
    * @param [in] other: Other.
    * @return True on success.
    */
@@ -83,7 +83,7 @@ constexpr Request operator&(Request lhs, Request rhs) {
 }
 
 /**
- * @brief /** Check if the Bitwise representation of two Request has empty union */.
+ * @brief Check if the Bitwise representation of two Request has empty union 
  * @param [in] lhs: Lhs.
  * @param [in] rhs: Rhs.
  * @return True on success.

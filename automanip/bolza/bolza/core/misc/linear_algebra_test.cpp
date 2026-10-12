@@ -137,7 +137,7 @@ TEST(constraintProjection, checkAgainstFullComputations) {
 
   // Alternative computation following Farshidian - An Efficient Optimal Planning and Control Framework For Quadrupedal Locomotion
   // Check Ddagger
-  bolza::matrix_t RmProjected = (D * Rinv * D.transpose()).ldlt().Solve(bolza::matrix_t::Identity(m, m));
+  bolza::matrix_t RmProjected = (D * Rinv * D.transpose()).ldlt().solve(bolza::matrix_t::Identity(m, m));
   bolza::matrix_t Ddagger_check = Rinv * D.transpose() * RmProjected;
   ASSERT_LT((Ddagger - Ddagger_check).array().abs().maxCoeff(), tol);
 

@@ -156,7 +156,7 @@ Eigen::Matrix<SCALAR_T, 6, 3> GetCentroidalMomentumZyxGradient(const PinocchioIn
   using vector3_t = Eigen::Matrix<SCALAR_T, 3, 1>;
   using matrix3_t = Eigen::Matrix<SCALAR_T, 3, 3>;
 
-  const auto& data = interface.getData();
+  const auto& data = interface.GetData();
   const auto m = info.robotMass;
   const vector3_t eulerAngles = q.template segment<3>(3);
   const vector3_t eulerAnglesDerivatives = v.template segment<3>(3);

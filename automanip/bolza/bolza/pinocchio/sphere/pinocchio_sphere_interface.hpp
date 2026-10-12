@@ -30,7 +30,7 @@
 
 #include "bolza/pinocchio/sphere/sphere_approximation.hpp"
 
-#include <hpp/fcl/collision_data.h>
+#include <coal/collision_data.h>
 
 namespace bolza {
 
@@ -148,7 +148,7 @@ class PinocchioSphereInterface final {
      * @brief Get Sphere Centers To Object Center.
      * @return Result value.
      */
-    return sphereApproximations_[approxId].getSphereCentersToObjectCenter();
+    return sphereApproximations_[approxId].GetSphereCentersToObjectCenter();
   };
 
   /**

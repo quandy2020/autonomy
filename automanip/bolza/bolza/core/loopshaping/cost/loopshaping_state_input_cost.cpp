@@ -26,14 +26,14 @@ scalar_t LoopshapingStateInputCost::GetValue(scalar_t t, const vector_t& x, cons
   }
 
   const LoopshapingPreComputation& preCompLS = cast<LoopshapingPreComputation>(preComp);
-  const auto& x_system = preCompLS.getSystemState();
-  const auto& u_system = preCompLS.getSystemInput();
-  const auto& u_filter = preCompLS.getFilteredInput();
+  const auto& x_system = preCompLS.GetSystemState();
+  const auto& u_system = preCompLS.GetSystemInput();
+  const auto& u_filter = preCompLS.GetFilteredInput();
 
   const scalar_t L_system =
-      StateInputCostCollection::GetValue(t, x_system, u_system, targetTrajectories, preCompLS.getSystemPreComputation());
+      StateInputCostCollection::GetValue(t, x_system, u_system, targetTrajectories, preCompLS.GetSystemPreComputation());
 
-  return L_system + loopshapingDefinition_->loopshapingCost(u_filter);
+  return L_system + loopshapingDefinition_->LoopshapingCost(u_filter);
 }
 
 }  // namespace bolza

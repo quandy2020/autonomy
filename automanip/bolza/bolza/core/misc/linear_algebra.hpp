@@ -32,7 +32,7 @@ namespace bolza {
 namespace LinearAlgebra {
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Set the eigenvalues of a triangular matrix to a minimum magnitude (maintaining the sign).
  *

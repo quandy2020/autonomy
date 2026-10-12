@@ -78,7 +78,7 @@ class DiscreteTimeRiccatiEquations {
   ~DiscreteTimeRiccatiEquations() = default;
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Sets risk-sensitive coefficient.
    *

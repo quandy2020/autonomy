@@ -59,7 +59,7 @@ class TimeTriggeredRollout : public RolloutBase {
    * @brief Clone.
    * @return Pointer; may be null.
    */
-  TimeTriggeredRollout* Clone() const override { return new TimeTriggeredRollout(*systemDynamicsPtr_, this->settings()); }
+  TimeTriggeredRollout* Clone() const override { return new TimeTriggeredRollout(*systemDynamicsPtr_, this->Settings()); }
 
   /**
    * @brief Returns the underlying dynamics.

@@ -32,9 +32,9 @@ vector_array_t LoopshapingStateInputConstraint::GetValue(scalar_t t, const vecto
   }
 
   const LoopshapingPreComputation& preCompLS = cast<LoopshapingPreComputation>(preComp);
-  const auto& x_system = preCompLS.getSystemState();
-  const auto& u_system = preCompLS.getSystemInput();
-  const auto& preComp_system = preCompLS.getSystemPreComputation();
+  const auto& x_system = preCompLS.GetSystemState();
+  const auto& u_system = preCompLS.GetSystemInput();
+  const auto& preComp_system = preCompLS.GetSystemPreComputation();
 
   return StateInputConstraintCollection::GetValue(t, x_system, u_system, preComp_system);
 }

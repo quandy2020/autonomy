@@ -24,13 +24,13 @@ namespace bolza {
 /******************************************************************************************************/
 /******************************************************************************************************/
 InitializerRollout::InitializerRollout(const Initializer& initializer, rollout::Settings rolloutSettings /* = rollout::Settings() */)
-    : RolloutBase(std::move(rolloutSettings)), initializerPtr_(initializer.clone()) {}
+    : RolloutBase(std::move(rolloutSettings)), initializerPtr_(initializer.Clone()) {}
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 InitializerRollout* InitializerRollout::Clone() const {
-  return new InitializerRollout(*initializerPtr_, this->settings());
+  return new InitializerRollout(*initializerPtr_, this->Settings());
 }
 
 /******************************************************************************************************/

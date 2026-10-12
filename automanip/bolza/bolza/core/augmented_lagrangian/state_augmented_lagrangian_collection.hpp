@@ -54,14 +54,14 @@ class StateAugmentedLagrangianCollection : public Collection<StateAugmentedLagra
   StateAugmentedLagrangianCollection* Clone() const override;
 
     /**
-   * @brief /** Get total number of active constraints. */.
+   * @brief Get total number of active constraints. 
    * @param [in] time: Time.
    * @return Result value.
    */
   size_t GetNumberOfActiveConstraints(scalar_t time) const;
 
     /**
-   * @brief /** Get state constraints and their penalties for each active term */.
+   * @brief Get state constraints and their penalties for each active term 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] termsMultiplier: Terms Multiplier.
@@ -72,7 +72,7 @@ class StateAugmentedLagrangianCollection : public Collection<StateAugmentedLagra
                                                   const PreComputation& preComp) const;
 
     /**
-   * @brief /** Get the sum of state Lagrangian penalties quadratic approximation */.
+   * @brief Get the sum of state Lagrangian penalties quadratic approximation 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in] termsMultiplier: Terms Multiplier.
@@ -84,7 +84,7 @@ class StateAugmentedLagrangianCollection : public Collection<StateAugmentedLagra
                                                                          const PreComputation& preComp) const;
 
     /**
-   * @brief /** Update Lagrange/penalty multipliers, and the penalty value for each active term. */.
+   * @brief Update Lagrange/penalty multipliers, and the penalty value for each active term. 
    * @param [in] time: Time.
    * @param [in] state: State.
    * @param [in,out] termsMetrics: Terms Metrics.
@@ -94,7 +94,7 @@ class StateAugmentedLagrangianCollection : public Collection<StateAugmentedLagra
                                 std::vector<Multiplier>& termsMultiplier) const;
 
     /**
-   * @brief /** Initialize Lagrange/penalty multipliers for each active term. */.
+   * @brief Initialize Lagrange/penalty multipliers for each active term. 
    * @param [in] time: Time.
    * @param [in,out] termsMultiplier: Terms Multiplier.
    */

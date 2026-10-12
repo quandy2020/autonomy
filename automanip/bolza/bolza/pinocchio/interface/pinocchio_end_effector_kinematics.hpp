@@ -39,10 +39,10 @@ namespace bolza {
  *
  * Example:
  *   PinocchioEndEffectorKinematics kinematics(pinocchioInterface, mapping, {"END_EFFECTOR_NAME"});
- *   pinocchio::forwardKinematics(pinocchioInterface.getModel(), pinocchioInterface.getData(), q);
- *   pinocchio::updateFramePlacements(pinocchioInterface.getModel(), pinocchioInterface.getData());
- *   kinematics.setPinocchioInterface(pinocchioInterface);
- *   const auto pos = kinematics.getPosition(x);
+ *   pinocchio::forwardKinematics(pinocchioInterface.GetModel(), pinocchioInterface.GetData(), q);
+ *   pinocchio::updateFramePlacements(pinocchioInterface.GetModel(), pinocchioInterface.GetData());
+ *   kinematics.SetPinocchioInterface(pinocchioInterface);
+ *   const auto pos = kinematics.GetPosition(x);
  */
 class PinocchioEndEffectorKinematics final : public EndEffectorKinematics<scalar_t> {
  public:
@@ -80,7 +80,7 @@ class PinocchioEndEffectorKinematics final : public EndEffectorKinematics<scalar
      * @param [in] pinocchioInterface: Pinocchio Interface.
      * @return Result value.
      */
-    mappingPtr_->setPinocchioInterface(pinocchioInterface);
+    mappingPtr_->SetPinocchioInterface(pinocchioInterface);
   }
 
   /**

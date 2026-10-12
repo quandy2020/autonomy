@@ -282,10 +282,10 @@ void swap(LinearController& a, LinearController& b) noexcept {
 /******************************************************************************************************/
 std::ostream& operator<<(std::ostream& out, const LinearController& controller) {
   for (size_t k = 0; k < controller.timeStamp_.size(); k++) {
-    Out << "k: " << k << '\n';
-    Out << "time: " << controller.timeStamp_[k] << '\n';
-    Out << "bias: " << controller.biasArray_[k].transpose() << '\n';
-    Out << "gain: " << controller.gainArray_[k] << '\n';
+    out << "k: " << k << '\n';
+    out << "time: " << controller.timeStamp_[k] << '\n';
+    out << "bias: " << controller.biasArray_[k].transpose() << '\n';
+    out << "gain: " << controller.gainArray_[k] << '\n';
   }
   return out;
 }

@@ -104,7 +104,7 @@ TEST(HybridSlqTest, state_rollout_slq) {
   auto boundsConstraints = std::make_unique<HybridSysBounds>();
 
   OptimalControlProblem problem;
-  problem.dynamicsPtr.Reset(systemDynamics.Clone());
+  problem.dynamicsPtr.reset(systemDynamics.Clone());
   problem.costPtr->Add("cost", std::make_unique<QuadraticStateInputCost>(Q, R));
   problem.preJumpCostPtr->Add("preJumpCost", std::make_unique<QuadraticStateCost>(Q));
   problem.finalCostPtr->Add("finalCost", std::make_unique<QuadraticStateCost>(Q));
@@ -142,7 +142,7 @@ TEST(HybridSlqTest, state_rollout_slq) {
 
   // run SLQ
   slq.Run(startTime, initState, finalTime);
-  const auto solution = slq.PrimalSolution(finalTime);
+  const auto solution = slq.GetPrimalSolution(finalTime);
 
   // Test 2: No penetration of guard surfaces
   for (int i = 0; i < solution.timeTrajectory_.size(); i++) {

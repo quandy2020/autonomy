@@ -31,8 +31,8 @@ vector_array_t LoopshapingStateConstraint::GetValue(scalar_t t, const vector_t& 
   }
 
   const LoopshapingPreComputation& preCompLS = cast<LoopshapingPreComputation>(preComp);
-  const auto& x_system = preCompLS.getSystemState();
-  const auto& preComp_system = preCompLS.getSystemPreComputation();
+  const auto& x_system = preCompLS.GetSystemState();
+  const auto& preComp_system = preCompLS.GetSystemPreComputation();
 
   return StateConstraintCollection::GetValue(t, x_system, preComp_system);
 }
@@ -47,8 +47,8 @@ VectorFunctionLinearApproximation LoopshapingStateConstraint::GetLinearApproxima
   }
 
   const LoopshapingPreComputation& preCompLS = cast<LoopshapingPreComputation>(preComp);
-  const auto& x_system = preCompLS.getSystemState();
-  const auto& preComp_system = preCompLS.getSystemPreComputation();
+  const auto& x_system = preCompLS.GetSystemState();
+  const auto& preComp_system = preCompLS.GetSystemPreComputation();
   const auto stateDim = x.rows();
   const auto sysStateDim = x_system.rows();
   const auto filtStateDim = x.rows() - sysStateDim;
@@ -78,8 +78,8 @@ VectorFunctionQuadraticApproximation LoopshapingStateConstraint::GetQuadraticApp
   }
 
   const LoopshapingPreComputation& preCompLS = cast<LoopshapingPreComputation>(preComp);
-  const auto& x_system = preCompLS.getSystemState();
-  const auto& preComp_system = preCompLS.getSystemPreComputation();
+  const auto& x_system = preCompLS.GetSystemState();
+  const auto& preComp_system = preCompLS.GetSystemPreComputation();
   const auto stateDim = x.rows();
   const auto sysStateDim = x_system.rows();
   const auto filtStateDim = x.rows() - sysStateDim;

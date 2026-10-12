@@ -66,7 +66,7 @@ class PipgSolver {
    * @param [out] uTrajectory: The optimized input trajectory.
    * @return The solver status.
    */
-  pipg::SolverStatus solve(ThreadPool& threadPool, const vector_t& x0, std::vector<VectorFunctionLinearApproximation>& dynamics,
+  pipg::SolverStatus Solve(ThreadPool& threadPool, const vector_t& x0, std::vector<VectorFunctionLinearApproximation>& dynamics,
                            const std::vector<ScalarFunctionQuadraticApproximation>& cost,
                            const std::vector<VectorFunctionLinearApproximation>* constraints, const vector_array_t& scalingVectors,
                            const vector_array_t* EInv, const pipg::PipgBounds& pipgBounds, vector_array_t& xTrajectory,

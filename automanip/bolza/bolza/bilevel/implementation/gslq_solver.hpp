@@ -62,7 +62,7 @@ size_t GSLQSolver<STATE_DIM, INPUT_DIM, OUTPUT_DIM, NUM_Subsystems>::FindNearest
    * @param [in] it: It.
    * @return Result value.
    */
-  size_t index = std::Distance(distance.begin(), it);
+  size_t index = std::distance(distance.begin(), it);
 
   return index;
 }
@@ -113,7 +113,7 @@ void GSLQSolver<STATE_DIM, INPUT_DIM, OUTPUT_DIM, NUM_Subsystems>::Run(const dou
      * @param [in] switchingTimes: Switching Times.
      * @return Result value.
      */
-    glqp.run(switchingTimes);
+    glqp.Run(switchingTimes);
 
     // GLQP controller
     /**
@@ -157,7 +157,7 @@ void GSLQSolver<STATE_DIM, INPUT_DIM, OUTPUT_DIM, NUM_Subsystems>::Run(const dou
    * @param [in] switchingTimes: Switching Times.
    * @return Result value.
    */
-  gslq.run(initTime, initState, switchingTimes);
+  gslq.Run(initTime, initState, switchingTimes);
 
   // cost funtion
   /**

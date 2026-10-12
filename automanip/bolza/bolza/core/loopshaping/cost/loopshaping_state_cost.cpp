@@ -26,9 +26,9 @@ scalar_t LoopshapingStateCost::GetValue(scalar_t t, const vector_t& x, const Tar
   }
 
   const LoopshapingPreComputation& preCompLS = cast<LoopshapingPreComputation>(preComp);
-  const auto& x_system = preCompLS.getSystemState();
+  const auto& x_system = preCompLS.GetSystemState();
 
-  return StateCostCollection::GetValue(t, x_system, targetTrajectories, preCompLS.getSystemPreComputation());
+  return StateCostCollection::GetValue(t, x_system, targetTrajectories, preCompLS.GetSystemPreComputation());
 }
 
 ScalarFunctionQuadraticApproximation LoopshapingStateCost::GetQuadraticApproximation(scalar_t t, const vector_t& x,
@@ -39,13 +39,13 @@ ScalarFunctionQuadraticApproximation LoopshapingStateCost::GetQuadraticApproxima
   }
 
   const LoopshapingPreComputation& preCompLS = cast<LoopshapingPreComputation>(preComp);
-  const auto& x_system = preCompLS.getSystemState();
+  const auto& x_system = preCompLS.GetSystemState();
   const auto stateDim = x.rows();
   const auto sysStateDim = x_system.rows();
   const auto filtStateDim = x.rows() - sysStateDim;
 
   const auto Phi_system =
-      StateCostCollection::GetQuadraticApproximation(t, x_system, targetTrajectories, preCompLS.getSystemPreComputation());
+      StateCostCollection::GetQuadraticApproximation(t, x_system, targetTrajectories, preCompLS.GetSystemPreComputation());
 
   ScalarFunctionQuadraticApproximation Phi;
   Phi.f = Phi_system.f;

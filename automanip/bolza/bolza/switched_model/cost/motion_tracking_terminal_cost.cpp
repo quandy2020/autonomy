@@ -36,7 +36,7 @@ ScalarFunctionQuadraticApproximation MotionTrackingTerminalCost::GetQuadraticApp
 
 vector_t MotionTrackingTerminalCost::GetStateDeviation(const vector_t& state, const bolza::PreComputation& preComputation) const {
   const auto& switchedModelPreComp = bolza::cast<SwitchedModelPreComputation>(preComputation);
-  return state - switchedModelPreComp.getStateReference();
+  return state - switchedModelPreComp.GetStateReference();
 }
 
 }  // namespace switched_model

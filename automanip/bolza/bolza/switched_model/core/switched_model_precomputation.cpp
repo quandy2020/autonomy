@@ -13,7 +13,7 @@ SwitchedModelPreComputation::SwitchedModelPreComputation(const SwingTrajectoryPl
                                                          const kinematic_model_t& kinematicModel,
                                                          const ad_kinematic_model_t& adKinematicModel, const com_model_t& comModel,
                                                          const ad_com_model_t& adComModel, ModelSettings settings)
-    : swingTrajectoryPlannerPtr_(&swingTrajectoryPlanner), robotMass_(comModel.totalMass()) {
+    : swingTrajectoryPlannerPtr_(&swingTrajectoryPlanner), robotMass_(comModel.TotalMass()) {
   // intermediate linear outputs
   std::string intermediateLibName = settings.robotName_ + "_Precomputation_intermediateLinearOutputs";
   auto intermediateDiffFunc = [&](const ad_vector_t& x, ad_vector_t& y) {
@@ -26,7 +26,7 @@ SwitchedModelPreComputation::SwitchedModelPreComputation(const SwingTrajectoryPl
       new bolza::CppAdInterface(intermediateDiffFunc, STATE_DIM + INPUT_DIM, intermediateLibName, settings.autodiffLibraryFolder_));
   tapedStateInput_.resize(STATE_DIM + INPUT_DIM);
 
-  const auto initCollisions = kinematicModel.collisionSpheresInBaseFrame(joint_coordinate_t::Zero());
+  const auto initCollisions = kinematicModel.CollisionSpheresInBaseFrame(joint_coordinate_t::Zero());
   for (const auto& collision : initCollisions) {
     collisionRadii_.push_back(collision.radius);
   }
@@ -47,11 +47,11 @@ SwitchedModelPreComputation::SwitchedModelPreComputation(const SwingTrajectoryPl
   const bool verbose = true;
   const auto order = bolza::CppAdInterface::ApproximationOrder::First;
   if (settings.recompileLibraries_) {
-    intermediateLinearOutputAdInterface_->createModels(order, verbose);
-    prejumpLinearOutputAdInterface_->createModels(order, verbose);
+    intermediateLinearOutputAdInterface_->CreateModels(order, verbose);
+    prejumpLinearOutputAdInterface_->CreateModels(order, verbose);
   } else {
-    intermediateLinearOutputAdInterface_->loadModelsIfAvailable(order, verbose);
-    prejumpLinearOutputAdInterface_->loadModelsIfAvailable(order, verbose);
+    intermediateLinearOutputAdInterface_->LoadModelsIfAvailable(order, verbose);
+    prejumpLinearOutputAdInterface_->LoadModelsIfAvailable(order, verbose);
   }
 }
 
@@ -70,13 +70,13 @@ SwitchedModelPreComputation::SwitchedModelPreComputation(const SwitchedModelPreC
 void SwitchedModelPreComputation::Request(bolza::RequestSet request, scalar_t t, const vector_t& x, const vector_t& u) {
   UpdateFeetPhases(t);
 
-  if (request.containsAny(bolza::Request::Cost + bolza::Request::Constraint + bolza::Request::SoftConstraint)) {
+  if (request.ContainsAny(bolza::Request::Cost + bolza::Request::Constraint + bolza::Request::SoftConstraint)) {
     UpdateMotionReference(t);
 
     tapedStateInput_ << x, u;
 
     UpdateIntermediateLinearOutputs(t, tapedStateInput_);
-    if (request.contains(bolza::Request::Approximation)) {
+    if (request.Contains(bolza::Request::Approximation)) {
       UpdateIntermediateLinearOutputDerivatives(t, tapedStateInput_);
     }
   }
@@ -85,11 +85,11 @@ void SwitchedModelPreComputation::Request(bolza::RequestSet request, scalar_t t,
 void SwitchedModelPreComputation::RequestPreJump(bolza::RequestSet request, scalar_t t, const vector_t& x) {
   UpdateFeetPhases(t);
 
-  if (request.containsAny(bolza::Request::Cost + bolza::Request::Constraint + bolza::Request::SoftConstraint)) {
+  if (request.ContainsAny(bolza::Request::Cost + bolza::Request::Constraint + bolza::Request::SoftConstraint)) {
     UpdateMotionReference(t);
 
     UpdatePrejumpLinearOutputs(t, x);
-    if (request.contains(bolza::Request::Approximation)) {
+    if (request.Contains(bolza::Request::Approximation)) {
       UpdatePrejumpLinearOutputDerivatives(t, x);
     }
   }
@@ -98,25 +98,25 @@ void SwitchedModelPreComputation::RequestPreJump(bolza::RequestSet request, scal
 void SwitchedModelPreComputation::RequestFinal(bolza::RequestSet request, scalar_t t, const vector_t& x) {
   UpdateFeetPhases(t);
 
-  if (request.containsAny(bolza::Request::Cost + bolza::Request::Constraint + bolza::Request::SoftConstraint)) {
+  if (request.ContainsAny(bolza::Request::Cost + bolza::Request::Constraint + bolza::Request::SoftConstraint)) {
     UpdateMotionReference(t);
   }
 }
 
 void SwitchedModelPreComputation::UpdateFeetPhases(scalar_t t) {
   for (int leg = 0; leg < NUM_CONTACT_POINTS; ++leg) {
-    feetPhases_[leg] = &swingTrajectoryPlannerPtr_->getFootPhase(leg, t);
+    feetPhases_[leg] = &swingTrajectoryPlannerPtr_->GetFootPhase(leg, t);
     const auto& footPhase = *feetPhases_[leg];
-    contactFlags_[leg] = footPhase.contactFlag();
-    surfaceNormalsInOriginFrame_[leg] = footPhase.normalDirectionInWorldFrame(t);
-    footTangentialConstraintInWorldFrame_[leg] = footPhase.getFootTangentialConstraintInWorldFrame();
+    contactFlags_[leg] = footPhase.ContactFlag();
+    surfaceNormalsInOriginFrame_[leg] = footPhase.NormalDirectionInWorldFrame(t);
+    footTangentialConstraintInWorldFrame_[leg] = footPhase.GetFootTangentialConstraintInWorldFrame();
   }
 }
 
 void SwitchedModelPreComputation::UpdateMotionReference(scalar_t t) {
   // Interpolate reference
-  stateReference_ = swingTrajectoryPlannerPtr_->getTargetTrajectories().getDesiredState(t);
-  vector_t uRef = swingTrajectoryPlannerPtr_->getTargetTrajectories().getDesiredInput(t);
+  stateReference_ = swingTrajectoryPlannerPtr_->GetTargetTrajectories().GetDesiredState(t);
+  vector_t uRef = swingTrajectoryPlannerPtr_->GetTargetTrajectories().GetDesiredInput(t);
 
   // Extract elements from reference
   const auto basePose = GetBasePose(stateReference_);
@@ -137,9 +137,9 @@ void SwitchedModelPreComputation::UpdateMotionReference(scalar_t t) {
   for (size_t leg = 0; leg < NUM_CONTACT_POINTS; ++leg) {
     const auto& footPhase = GetFootPhase(leg);  // already updated in updateFeetPhases
     motionReference_.jointPosition[leg] = qJoints.template segment<3>(3 * leg);
-    motionReference_.footPosition[leg] = footPhase.getPositionInWorld(t);
+    motionReference_.footPosition[leg] = footPhase.GetPositionInWorld(t);
     motionReference_.jointVelocity[leg] = dqJoints.template segment<3>(3 * leg);
-    motionReference_.footVelocity[leg] = footPhase.getVelocityInWorld(t);
+    motionReference_.footVelocity[leg] = footPhase.GetVelocityInWorld(t);
     motionReference_.contactForce[leg] = uRef.template segment<3>(3 * leg);
   }
 }
@@ -157,10 +157,10 @@ void SwitchedModelPreComputation::IntermediateLinearOutputs(const ad_com_model_t
   const joint_coordinate_ad_t dqJoints = GetJointVelocities(u);
   const feet_array_t<vector3_ad_t> contactForcesInBase = ToArray<ad_scalar_t>(u.head<3 * NUM_CONTACT_POINTS>());
 
-  const auto o_feetPositionsAsArray = adKinematicsModel.feetPositionsInOriginFrame(basePose, qJoints);
-  const auto o_footVelocitiesAsArray = adKinematicsModel.feetVelocitiesInOriginFrame(basePose, baseTwist, qJoints, dqJoints);
+  const auto o_feetPositionsAsArray = adKinematicsModel.FeetPositionsInOriginFrame(basePose, qJoints);
+  const auto o_footVelocitiesAsArray = adKinematicsModel.FeetVelocitiesInOriginFrame(basePose, baseTwist, qJoints, dqJoints);
   const auto jointTorques = TorqueApproximation(qJoints, contactForcesInBase, adKinematicsModel);
-  const auto o_collisions = adKinematicsModel.collisionSpheresInOriginFrame(basePose, qJoints);
+  const auto o_collisions = adKinematicsModel.CollisionSpheresInOriginFrame(basePose, qJoints);
 
   const int numberOfOutputs = 3 * NUM_CONTACT_POINTS + 3 * NUM_CONTACT_POINTS + JOINT_COORDINATE_SIZE + 3 * o_collisions.size();
   outputs.resize(numberOfOutputs);
@@ -178,17 +178,17 @@ void SwitchedModelPreComputation::IntermediateLinearOutputs(const ad_com_model_t
 
 void SwitchedModelPreComputation::UpdateIntermediateLinearOutputs(scalar_t t, const vector_t& tapedStateInput) {
   // Evaluate autodiff
-  const auto intermediateLinearOutputs = intermediateLinearOutputAdInterface_->getFunctionValue(tapedStateInput);
+  const auto intermediateLinearOutputs = intermediateLinearOutputAdInterface_->GetFunctionValue(tapedStateInput);
 
   // Read feet positions, add swing feet as collision bodies
   for (int leg = 0; leg < NUM_CONTACT_POINTS; ++leg) {
     const int indexInOutputs = 3 * leg;
     feetPositionInOriginFrame_[leg] = intermediateLinearOutputs.segment<3>(indexInOutputs);
     const auto& footPhase = GetFootPhase(leg);
-    collisionSpheresActive_[leg] = !footPhase.contactFlag();
+    collisionSpheresActive_[leg] = !footPhase.ContactFlag();
     if (collisionSpheresActive_[leg]) {
       collisionSpheresInOriginFrame_[leg].position = feetPositionInOriginFrame_[leg];
-      collisionSpheresInOriginFrame_[leg].radius = footPhase.getMinimumFootClearance(t);
+      collisionSpheresInOriginFrame_[leg].radius = footPhase.GetMinimumFootClearance(t);
     }
   }
 
@@ -213,13 +213,13 @@ void SwitchedModelPreComputation::UpdateIntermediateLinearOutputs(scalar_t t, co
 
 void SwitchedModelPreComputation::UpdateIntermediateLinearOutputDerivatives(scalar_t t, const vector_t& tapedStateInput) {
   // Evaluate autodiff
-  const auto intermediateLinearOutputDerivatives = intermediateLinearOutputAdInterface_->getJacobian(tapedStateInput);
+  const auto intermediateLinearOutputDerivatives = intermediateLinearOutputAdInterface_->GetJacobian(tapedStateInput);
 
   for (int leg = 0; leg < NUM_CONTACT_POINTS; ++leg) {
     const int indexInOutputs = 3 * leg;
     feetPositionInOriginFrameStateDerivative_[leg] = intermediateLinearOutputDerivatives.block<3, STATE_DIM>(indexInOutputs, 0);
     const auto& footPhase = GetFootPhase(leg);
-    collisionSpheresActive_[leg] = !footPhase.contactFlag();
+    collisionSpheresActive_[leg] = !footPhase.ContactFlag();
     if (collisionSpheresActive_[leg]) {
       collisionSpheresDerivative_[leg] = feetPositionInOriginFrameStateDerivative_[leg];
     }
@@ -258,7 +258,7 @@ void SwitchedModelPreComputation::PrejumpLinearOutputs(const ad_com_model_t& adC
   const base_coordinate_ad_t basePose = GetBasePose(x);
   const joint_coordinate_ad_t qJoints = GetJointPositions(x);
 
-  const auto o_feetPositionsAsArray = adKinematicsModel.feetPositionsInOriginFrame(basePose, qJoints);
+  const auto o_feetPositionsAsArray = adKinematicsModel.FeetPositionsInOriginFrame(basePose, qJoints);
 
   const int numberOfOutputs = 3 * NUM_CONTACT_POINTS;
   outputs.resize(numberOfOutputs);
@@ -268,7 +268,7 @@ void SwitchedModelPreComputation::PrejumpLinearOutputs(const ad_com_model_t& adC
 
 void SwitchedModelPreComputation::UpdatePrejumpLinearOutputs(scalar_t t, const vector_t& state) {
   // Evaluate autodiff
-  const auto prejumpLinearOutputs = prejumpLinearOutputAdInterface_->getFunctionValue(state);
+  const auto prejumpLinearOutputs = prejumpLinearOutputAdInterface_->GetFunctionValue(state);
 
   // Read feet positions, add swing feet as collision bodies
   for (int leg = 0; leg < NUM_CONTACT_POINTS; ++leg) {
@@ -279,7 +279,7 @@ void SwitchedModelPreComputation::UpdatePrejumpLinearOutputs(scalar_t t, const v
 
 void SwitchedModelPreComputation::UpdatePrejumpLinearOutputDerivatives(scalar_t t, const vector_t& state) {
   // Evaluate autodiff
-  const auto prejumpLinearOutputDerivatives = prejumpLinearOutputAdInterface_->getJacobian(state);
+  const auto prejumpLinearOutputDerivatives = prejumpLinearOutputAdInterface_->GetJacobian(state);
 
   for (int leg = 0; leg < NUM_CONTACT_POINTS; ++leg) {
     const int indexInOutputs = 3 * leg;

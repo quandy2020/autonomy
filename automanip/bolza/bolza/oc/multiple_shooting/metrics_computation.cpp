@@ -88,7 +88,7 @@ Metrics ComputeIntermediateMetrics(OptimalControlProblem& optimalControlProblem,
 
   // Precomputation
   constexpr auto request = Request::Cost + Request::SoftConstraint + Request::Constraint;
-  optimalControlProblem.preComputationPtr->request(request, t, x, u);
+  optimalControlProblem.preComputationPtr->Request(request, t, x, u);
 
   // Compute metrics
   auto metrics = ComputeIntermediateMetrics(optimalControlProblem, t, x, u, std::move(dynamicsViolation));
@@ -100,7 +100,7 @@ Metrics ComputeIntermediateMetrics(OptimalControlProblem& optimalControlProblem,
 Metrics ComputeTerminalMetrics(OptimalControlProblem& optimalControlProblem, scalar_t t, const vector_t& x) {
   // Precomputation
   constexpr auto request = Request::Cost + Request::SoftConstraint + Request::Constraint;
-  optimalControlProblem.preComputationPtr->requestFinal(request, t, x);
+  optimalControlProblem.preComputationPtr->RequestFinal(request, t, x);
 
   return ComputeFinalMetrics(optimalControlProblem, t, x);
 }
@@ -108,10 +108,10 @@ Metrics ComputeTerminalMetrics(OptimalControlProblem& optimalControlProblem, sca
 Metrics ComputeEventMetrics(OptimalControlProblem& optimalControlProblem, scalar_t t, const vector_t& x, const vector_t& x_next) {
   // Precomputation
   constexpr auto request = Request::Cost + Request::SoftConstraint + Request::Constraint + Request::Dynamics;
-  optimalControlProblem.preComputationPtr->requestPreJump(request, t, x);
+  optimalControlProblem.preComputationPtr->RequestPreJump(request, t, x);
 
   // Dynamics
-  auto dynamicsViolation = optimalControlProblem.dynamicsPtr->computeJumpMap(t, x);
+  auto dynamicsViolation = optimalControlProblem.dynamicsPtr->ComputeJumpMap(t, x);
   dynamicsViolation -= x_next;
 
   return ComputePreJumpMetrics(optimalControlProblem, t, x, std::move(dynamicsViolation));

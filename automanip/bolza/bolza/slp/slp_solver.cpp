@@ -49,7 +49,7 @@ SlpSolver::SlpSolver(slp::Settings settings, const OptimalControlProblem& optima
   }
 
   // Operating points
-  initializerPtr_.reset(initializer.clone());
+  initializerPtr_.reset(initializer.Clone());
 
   // Linesearch
   filterLinesearch_.g_max = settings_.g_max;
@@ -72,22 +72,22 @@ void SlpSolver::Reset() {
   // reset timers
   numProblems_ = 0;
   totalNumIterations_ = 0;
-  initializationTimer_.reset();
-  linearQuadraticApproximationTimer_.reset();
-  solveQpTimer_.reset();
-  linesearchTimer_.reset();
-  computeControllerTimer_.reset();
-  lambdaEstimation_.reset();
-  sigmaEstimation_.reset();
-  preConditioning_.reset();
-  pipgSolverTimer_.reset();
+  initializationTimer_.Reset();
+  linearQuadraticApproximationTimer_.Reset();
+  solveQpTimer_.Reset();
+  linesearchTimer_.Reset();
+  computeControllerTimer_.Reset();
+  lambdaEstimation_.Reset();
+  sigmaEstimation_.Reset();
+  preConditioning_.Reset();
+  pipgSolverTimer_.Reset();
 }
 
 std::string SlpSolver::GetBenchmarkingInformationPIPG() const {
-  const auto lambdaEstimation = lambdaEstimation_.getTotalInMilliseconds();
-  const auto sigmaEstimation = sigmaEstimation_.getTotalInMilliseconds();
-  const auto preConditioning = preConditioning_.getTotalInMilliseconds();
-  const auto pipgRuntime = pipgSolverTimer_.getTotalInMilliseconds();
+  const auto lambdaEstimation = lambdaEstimation_.GetTotalInMilliseconds();
+  const auto sigmaEstimation = sigmaEstimation_.GetTotalInMilliseconds();
+  const auto preConditioning = preConditioning_.GetTotalInMilliseconds();
+  const auto pipgRuntime = pipgSolverTimer_.GetTotalInMilliseconds();
 
   const auto benchmarkTotal = preConditioning + lambdaEstimation + sigmaEstimation + pipgRuntime;
 
@@ -95,25 +95,25 @@ std::string SlpSolver::GetBenchmarkingInformationPIPG() const {
   if (benchmarkTotal > 0.0) {
     const scalar_t inPercent = 100.0;
     infoStream << "\n########################################################################\n";
-    infoStream << "The benchmarking is computed over " << preConditioning_.getNumTimedIntervals() << " iterations. \n";
+    infoStream << "The benchmarking is computed over " << preConditioning_.GetNumTimedIntervals() << " iterations. \n";
     infoStream << "PIPG Benchmarking\t       :\tAverage time [ms]   (% of total runtime)\n";
-    infoStream << "\tpreConditioning        :\t" << std::setw(10) << preConditioning_.getAverageInMilliseconds() << " [ms] \t("
+    infoStream << "\tpreConditioning        :\t" << std::setw(10) << preConditioning_.GetAverageInMilliseconds() << " [ms] \t("
                << preConditioning / benchmarkTotal * inPercent << "%)\n";
-    infoStream << "\tlambdaEstimation       :\t" << std::setw(10) << lambdaEstimation_.getAverageInMilliseconds() << " [ms] \t("
+    infoStream << "\tlambdaEstimation       :\t" << std::setw(10) << lambdaEstimation_.GetAverageInMilliseconds() << " [ms] \t("
                << lambdaEstimation / benchmarkTotal * inPercent << "%)\n";
-    infoStream << "\tsigmaEstimation        :\t" << std::setw(10) << sigmaEstimation_.getAverageInMilliseconds() << " [ms] \t("
+    infoStream << "\tsigmaEstimation        :\t" << std::setw(10) << sigmaEstimation_.GetAverageInMilliseconds() << " [ms] \t("
                << sigmaEstimation / benchmarkTotal * inPercent << "%)\n";
-    infoStream << "\tPIPG runTime           :\t" << std::setw(10) << pipgSolverTimer_.getAverageInMilliseconds() << " [ms] \t("
+    infoStream << "\tPIPG runTime           :\t" << std::setw(10) << pipgSolverTimer_.GetAverageInMilliseconds() << " [ms] \t("
                << pipgRuntime / benchmarkTotal * inPercent << "%)\n";
   }
   return infoStream.str();
 }
 
 std::string SlpSolver::GetBenchmarkingInformation() const {
-  const auto linearQuadraticApproximationTotal = linearQuadraticApproximationTimer_.getTotalInMilliseconds();
-  const auto solveQpTotal = solveQpTimer_.getTotalInMilliseconds();
-  const auto linesearchTotal = linesearchTimer_.getTotalInMilliseconds();
-  const auto computeControllerTotal = computeControllerTimer_.getTotalInMilliseconds();
+  const auto linearQuadraticApproximationTotal = linearQuadraticApproximationTimer_.GetTotalInMilliseconds();
+  const auto solveQpTotal = solveQpTimer_.GetTotalInMilliseconds();
+  const auto linesearchTotal = linesearchTimer_.GetTotalInMilliseconds();
+  const auto computeControllerTotal = computeControllerTimer_.GetTotalInMilliseconds();
 
   const auto benchmarkTotal = linearQuadraticApproximationTotal + solveQpTotal + linesearchTotal + computeControllerTotal;
 
@@ -123,13 +123,13 @@ std::string SlpSolver::GetBenchmarkingInformation() const {
     infoStream << "\n########################################################################\n";
     infoStream << "The benchmarking is computed over " << totalNumIterations_ << " iterations. \n";
     infoStream << "SLP Benchmarking\t   :\tAverage time [ms]   (% of total runtime)\n";
-    infoStream << "\tLQ Approximation   :\t" << std::setw(10) << linearQuadraticApproximationTimer_.getAverageInMilliseconds()
+    infoStream << "\tLQ Approximation   :\t" << std::setw(10) << linearQuadraticApproximationTimer_.GetAverageInMilliseconds()
                << " [ms] \t(" << linearQuadraticApproximationTotal / benchmarkTotal * inPercent << "%)\n";
-    infoStream << "\tSolve LP           :\t" << std::setw(10) << solveQpTimer_.getAverageInMilliseconds() << " [ms] \t("
+    infoStream << "\tSolve LP           :\t" << std::setw(10) << solveQpTimer_.GetAverageInMilliseconds() << " [ms] \t("
                << solveQpTotal / benchmarkTotal * inPercent << "%)\n";
-    infoStream << "\tLinesearch         :\t" << std::setw(10) << linesearchTimer_.getAverageInMilliseconds() << " [ms] \t("
+    infoStream << "\tLinesearch         :\t" << std::setw(10) << linesearchTimer_.GetAverageInMilliseconds() << " [ms] \t("
                << linesearchTotal / benchmarkTotal * inPercent << "%)\n";
-    infoStream << "\tCompute Controller :\t" << std::setw(10) << computeControllerTimer_.getAverageInMilliseconds() << " [ms] \t("
+    infoStream << "\tCompute Controller :\t" << std::setw(10) << computeControllerTimer_.GetAverageInMilliseconds() << " [ms] \t("
                << computeControllerTotal / benchmarkTotal * inPercent << "%)\n";
   }
   return infoStream.str();
@@ -151,18 +151,18 @@ void SlpSolver::RunImpl(scalar_t initTime, const vector_t& initState, scalar_t f
   }
 
   // Determine time discretization, taking into account event times.
-  const auto& eventTimes = this->getReferenceManager().getModeSchedule().eventTimes;
+  const auto& eventTimes = this->GetReferenceManager().GetModeSchedule().eventTimes;
   const auto timeDiscretization = TimeDiscretizationWithEvents(initTime, finalTime, settings_.dt, eventTimes);
 
   // Initialize references
   for (auto& ocpDefinition : ocpDefinitions_) {
-    const auto& targetTrajectories = this->getReferenceManager().getTargetTrajectories();
+    const auto& targetTrajectories = this->GetReferenceManager().GetTargetTrajectories();
     ocpDefinition.targetTrajectoriesPtr = &targetTrajectories;
   }
 
   // Trajectory spread of primalSolution_
   if (!primalSolution_.timeTrajectory_.empty()) {
-    std::ignore = TrajectorySpread(primalSolution_.modeSchedule_, this->getReferenceManager().getModeSchedule(), primalSolution_);
+    std::ignore = TrajectorySpread(primalSolution_.modeSchedule_, this->GetReferenceManager().GetModeSchedule(), primalSolution_);
   }
 
   // Initialize the state and input
@@ -180,21 +180,21 @@ void SlpSolver::RunImpl(scalar_t initTime, const vector_t& initState, scalar_t f
       std::cerr << "\nPIPG iteration: " << iter << "\n";
     }
     // Make QP approximation
-    linearQuadraticApproximationTimer_.startTimer();
+    linearQuadraticApproximationTimer_.StartTimer();
     const auto baselinePerformance = SetupQuadraticSubproblem(timeDiscretization, initState, x, u, metrics);
-    linearQuadraticApproximationTimer_.endTimer();
+    linearQuadraticApproximationTimer_.EndTimer();
 
     // Solve LP
-    solveQpTimer_.startTimer();
+    solveQpTimer_.StartTimer();
     const vector_t delta_x0 = initState - x[0];
     const auto deltaSolution = GetOCPSolution(delta_x0);
-    solveQpTimer_.endTimer();
+    solveQpTimer_.EndTimer();
 
     // Apply step
-    linesearchTimer_.startTimer();
+    linesearchTimer_.StartTimer();
     const auto stepInfo = TakeStep(baselinePerformance, timeDiscretization, initState, deltaSolution, x, u, metrics);
     performanceIndeces_.push_back(stepInfo.performanceAfterStep);
-    linesearchTimer_.endTimer();
+    linesearchTimer_.EndTimer();
 
     // Check convergence
     convergence = CheckConvergence(iter, baselinePerformance, stepInfo);
@@ -204,10 +204,10 @@ void SlpSolver::RunImpl(scalar_t initTime, const vector_t& initState, scalar_t f
     ++totalNumIterations_;
   }
 
-  computeControllerTimer_.startTimer();
+  computeControllerTimer_.StartTimer();
   primalSolution_ = ToPrimalSolution(timeDiscretization, std::move(x), std::move(u));
   problemMetrics_ = multiple_shooting::ToProblemMetrics(timeDiscretization, std::move(metrics));
-  computeControllerTimer_.endTimer();
+  computeControllerTimer_.EndTimer();
 
   ++numProblems_;
 
@@ -220,7 +220,7 @@ void SlpSolver::RunImpl(scalar_t initTime, const vector_t& initState, scalar_t f
 }
 
 void SlpSolver::RunParallel(std::function<void(int)> taskFunction) {
-  threadPool_.runParallel(std::move(taskFunction), settings_.nThreads);
+  threadPool_.RunParallel(std::move(taskFunction), settings_.nThreads);
 }
 
 SlpSolver::OcpSubproblemSolution SlpSolver::GetOCPSolution(const vector_t& delta_x0) {
@@ -233,13 +233,13 @@ SlpSolver::OcpSubproblemSolution SlpSolver::GetOCPSolution(const vector_t& delta
   pipgSolver_.resize(ExtractSizesFromProblem(dynamics_, cost_, nullptr));
 
   // pre-condition the OCP
-  preConditioning_.startTimer();
+  preConditioning_.StartTimer();
   scalar_t c;
   vector_array_t D, E;
   vector_array_t scalingVectors;
   precondition::OcpDataInPlaceInParallel(threadPool_, delta_x0, pipgSolver_.size(), settings_.scalingIteration, dynamics_, cost_, D, E,
                                          scalingVectors, c);
-  preConditioning_.endTimer();
+  preConditioning_.EndTimer();
 
   // estimate mu and lambda: mu I < H < lambda I
   const auto muEstimated = [&]() {
@@ -249,25 +249,25 @@ SlpSolver::OcpSubproblemSolution SlpSolver::GetOCPSolution(const vector_t& delta
         maxScalingFactor = std::max(maxScalingFactor, v.maxCoeff());
       }
     }
-    return c * pipgSolver_.settings().lowerBoundH * maxScalingFactor * maxScalingFactor;
+    return c * pipgSolver_.Settings().lowerBoundH * maxScalingFactor * maxScalingFactor;
   }();
-  lambdaEstimation_.startTimer();
+  lambdaEstimation_.StartTimer();
   const auto lambdaScaled = slp::HessianEigenvaluesUpperBound(pipgSolver_.size(), cost_);
-  lambdaEstimation_.endTimer();
+  lambdaEstimation_.EndTimer();
 
   // estimate sigma: G' G < sigma I
   // However, since the G'G and GG' have exactly the same set of eigenvalues value: G G' < sigma I
-  sigmaEstimation_.startTimer();
+  sigmaEstimation_.StartTimer();
   const auto sigmaScaled = slp::GGTEigenvaluesUpperBound(threadPool_, pipgSolver_.size(), dynamics_, nullptr, &scalingVectors);
-  sigmaEstimation_.endTimer();
+  sigmaEstimation_.EndTimer();
 
-  pipgSolverTimer_.startTimer();
+  pipgSolverTimer_.StartTimer();
   vector_array_t EInv(E.size());
   std::transform(E.begin(), E.end(), EInv.begin(), [](const vector_t& v) { return v.cwiseInverse(); });
   const pipg::PipgBounds pipgBounds{muEstimated, lambdaScaled, sigmaScaled};
   const auto pipgStatus =
-      pipgSolver_.solve(threadPool_, delta_x0, dynamics_, cost_, nullptr, scalingVectors, &EInv, pipgBounds, deltaXSol, deltaUSol);
-  pipgSolverTimer_.endTimer();
+      pipgSolver_.Solve(threadPool_, delta_x0, dynamics_, cost_, nullptr, scalingVectors, &EInv, pipgBounds, deltaXSol, deltaUSol);
+  pipgSolverTimer_.EndTimer();
 
   // to determine if the solution is a descent direction for the cost: compute gradient(cost)' * [dx; du]
   solution.armijoDescentMetric = ArmijoDescentMetric(cost_, deltaXSol, deltaUSol);
@@ -281,7 +281,7 @@ SlpSolver::OcpSubproblemSolution SlpSolver::GetOCPSolution(const vector_t& delta
 }
 
 PrimalSolution SlpSolver::ToPrimalSolution(const std::vector<AnnotatedTime>& time, vector_array_t&& x, vector_array_t&& u) {
-  ModeSchedule modeSchedule = this->getReferenceManager().getModeSchedule();
+  ModeSchedule modeSchedule = this->GetReferenceManager().GetModeSchedule();
   return multiple_shooting::ToPrimalSolution(time, std::move(modeSchedule), std::move(x), std::move(u));
 }
 
@@ -453,7 +453,7 @@ slp::StepInfo SlpSolver::TakeStep(const PerformanceIndex& baseline, const std::v
     bool stepAccepted;
     StepType stepType;
     std::tie(stepAccepted, stepType) =
-        filterLinesearch_.acceptStep(baseline, performanceNew, alpha * subproblemSolution.armijoDescentMetric);
+        filterLinesearch_.AcceptStep(baseline, performanceNew, alpha * subproblemSolution.armijoDescentMetric);
 
     if (settings_.printLinesearch) {
       std::cerr << "Step size: " << alpha << ", Step Type: " << ToString(stepType)

@@ -36,7 +36,7 @@ std::unique_ptr<StateAugmentedLagrangianCollection> Create(const StateAugmentedL
 /******************************************************************************************************/
 std::unique_ptr<StateInputAugmentedLagrangianCollection> Create(const StateInputAugmentedLagrangianCollection& systemAugmentedLagrangian,
                                                                 std::shared_ptr<LoopshapingDefinition> loopshapingDefinition) {
-  switch (loopshapingDefinition->getType()) {
+  switch (loopshapingDefinition->GetType()) {
     case LoopshapingType::outputpattern:
       return std::make_unique<LoopshapingAugmentedLagrangianOutputPattern>(systemAugmentedLagrangian, std::move(loopshapingDefinition));
     case LoopshapingType::eliminatepattern:

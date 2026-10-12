@@ -37,7 +37,7 @@ FeedforwardController::FeedforwardController(const scalar_array_t& controllerTim
   auto iState = stateTrajectory.cbegin();
 
   for (; iTime != controllerTime.end() and iState != stateTrajectory.end(); ++iTime, ++iState) {
-    uffArray_.emplace_back(controller->computeInput(*iTime, *iState));
+    uffArray_.emplace_back(controller->ComputeInput(*iTime, *iState));
   }
 }
 
@@ -197,7 +197,7 @@ void swap(FeedforwardController& a, FeedforwardController& b) noexcept {
 /******************************************************************************************************/
 std::ostream& operator<<(std::ostream& out, const FeedforwardController& controller) {
   for (int i = 0; i < controller.timeStamp_.size(); i++) {
-    Out << "t\t" << controller.timeStamp_[i] << "\tu\t" << controller.uffArray_[i].transpose() << '\n';
+    out << "t\t" << controller.timeStamp_[i] << "\tu\t" << controller.uffArray_[i].transpose() << '\n';
   }
   return out;
 }

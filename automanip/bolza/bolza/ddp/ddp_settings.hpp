@@ -39,7 +39,7 @@ namespace ddp {
 enum class Algorithm { SLQ, ILQR };
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Get string name of DDP algorithm type
  *
@@ -50,7 +50,7 @@ enum class Algorithm { SLQ, ILQR };
 std::string ToAlgorithmName(Algorithm type);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Get DDP algorithm type from string name, useful for reading config file
  *

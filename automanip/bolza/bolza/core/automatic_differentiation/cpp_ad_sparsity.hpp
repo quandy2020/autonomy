@@ -94,7 +94,7 @@ SparsityPattern GetJacobianVariableSparsity(int rangeDim, int variableDim);
 SparsityPattern GetHessianVariableSparsity(int variableDim, int parameterDim);
 
 /**
- * @brief /**.
+ * @brief.
  *
  * Get number of nonzeros in sparsity pattern
  *

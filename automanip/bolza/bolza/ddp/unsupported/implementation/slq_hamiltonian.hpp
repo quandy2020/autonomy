@@ -638,47 +638,47 @@ void SLQHamiltonian<STATE_DIM, INPUT_DIM, LogicRulesT>::CalculateController() {
        * @brief Set Data.
        * @return Result value.
        */
-      BASE::nominalStateFunc_[j].setData(&(BASE::nominalTimeTrajectoriesStock_[i]), &(BASE::nominalStateTrajectoriesStock_[i]));
+      BASE::nominalStateFunc_[j].SetData(&(BASE::nominalTimeTrajectoriesStock_[i]), &(BASE::nominalStateTrajectoriesStock_[i]));
       /**
        * @brief Set Data.
        * @return Result value.
        */
-      BASE::nominalInputFunc_[j].setData(&(BASE::nominalTimeTrajectoriesStock_[i]), &(BASE::nominalInputTrajectoriesStock_[i]));
+      BASE::nominalInputFunc_[j].SetData(&(BASE::nominalTimeTrajectoriesStock_[i]), &(BASE::nominalInputTrajectoriesStock_[i]));
       /**
        * @brief Set Data.
        * @return Result value.
        */
-      BmFunc_[j].setData(&(BASE::nominalTimeTrajectoriesStock_[i]), &(BASE::BmTrajectoryStock_[i]));
+      BmFunc_[j].SetData(&(BASE::nominalTimeTrajectoriesStock_[i]), &(BASE::BmTrajectoryStock_[i]));
       /**
        * @brief Set Data.
        * @return Result value.
        */
-      PmFunc_[j].setData(&(BASE::nominalTimeTrajectoriesStock_[i]), &(BASE::PmTrajectoryStock_[i]));
+      PmFunc_[j].SetData(&(BASE::nominalTimeTrajectoriesStock_[i]), &(BASE::PmTrajectoryStock_[i]));
       /**
        * @brief Set Data.
        * @return Result value.
        */
-      RmInverseFunc_[j].setData(&(BASE::nominalTimeTrajectoriesStock_[i]), &(RmInverseTrajectoryStock_[i]));
+      RmInverseFunc_[j].SetData(&(BASE::nominalTimeTrajectoriesStock_[i]), &(RmInverseTrajectoryStock_[i]));
       /**
        * @brief Set Data.
        * @return Result value.
        */
-      RvFunc_[j].setData(&(BASE::nominalTimeTrajectoriesStock_[i]), &(BASE::RvTrajectoryStock_[i]));
+      RvFunc_[j].SetData(&(BASE::nominalTimeTrajectoriesStock_[i]), &(BASE::RvTrajectoryStock_[i]));
       /**
        * @brief Set Data.
        * @return Result value.
        */
-      EvProjectedFunc_[j].setData(&(BASE::nominalTimeTrajectoriesStock_[i]), &(EvProjectedTrajectoryStock_[i]));
+      EvProjectedFunc_[j].SetData(&(BASE::nominalTimeTrajectoriesStock_[i]), &(EvProjectedTrajectoryStock_[i]));
       /**
        * @brief Set Data.
        * @return Result value.
        */
-      CmProjectedFunc_[j].setData(&(BASE::nominalTimeTrajectoriesStock_[i]), &(CmProjectedTrajectoryStock_[i]));
+      CmProjectedFunc_[j].SetData(&(BASE::nominalTimeTrajectoriesStock_[i]), &(CmProjectedTrajectoryStock_[i]));
       /**
        * @brief Set Data.
        * @return Result value.
        */
-      DmProjectedFunc_[j].setData(&(BASE::nominalTimeTrajectoriesStock_[i]), &(DmProjectedTrajectoryStock_[i]));
+      DmProjectedFunc_[j].SetData(&(BASE::nominalTimeTrajectoriesStock_[i]), &(DmProjectedTrajectoryStock_[i]));
     }  // end of j loop
 
     // current partition update
@@ -839,12 +839,12 @@ void SLQHamiltonian<STATE_DIM, INPUT_DIM, LogicRulesT>::SolveRiccatiEquationsWor
    * @brief Reset Num Function Calls.
    * @return Result value.
    */
-  riccatiEquationsPtrStock_[workerIndex]->resetNumFunctionCalls();
+  riccatiEquationsPtrStock_[workerIndex]->ResetNumFunctionCalls();
   /**
    * @brief Set Data.
    * @return Result value.
    */
-  riccatiEquationsPtrStock_[workerIndex]->setData(
+  riccatiEquationsPtrStock_[workerIndex]->SetData(
       BASE::partitioningTimes_[partitionIndex], BASE::partitioningTimes_[partitionIndex + 1],
       &BASE::nominalTimeTrajectoriesStock_[partitionIndex], &AmConstrainedTrajectoryStock_[partitionIndex],
       &BASE::BmTrajectoryStock_[partitionIndex], &BASE::qTrajectoryStock_[partitionIndex], &QvConstrainedTrajectoryStock_[partitionIndex],
@@ -1002,7 +1002,7 @@ void SLQHamiltonian<STATE_DIM, INPUT_DIM, LogicRulesT>::SolveRiccatiEquationsWor
        * @param [in] allSsFinal: All Ss Final.
        * @return Result value.
        */
-      riccatiEquationsPtrStock_[workerIndex]->computeJumpMap(endTime, allSsTrajectory.back(), allSsFinal);
+      riccatiEquationsPtrStock_[workerIndex]->ComputeJumpMap(endTime, allSsTrajectory.back(), allSsFinal);
     }
 
   }  // end of i loop
@@ -1118,12 +1118,12 @@ void SLQHamiltonian<STATE_DIM, INPUT_DIM, LogicRulesT>::SolveRiccatiEquationsFor
    * @brief Reset Num Function Calls.
    * @return Result value.
    */
-  riccatiEquationsPtrStock_[workerIndex]->resetNumFunctionCalls();
+  riccatiEquationsPtrStock_[workerIndex]->ResetNumFunctionCalls();
   /**
    * @brief Set Data.
    * @return Result value.
    */
-  riccatiEquationsPtrStock_[workerIndex]->setData(
+  riccatiEquationsPtrStock_[workerIndex]->SetData(
       BASE::partitioningTimes_[partitionIndex], BASE::partitioningTimes_[partitionIndex + 1],
       &BASE::nominalTimeTrajectoriesStock_[partitionIndex], &AmConstrainedTrajectoryStock_[partitionIndex],
       &BASE::BmTrajectoryStock_[partitionIndex], &BASE::qTrajectoryStock_[partitionIndex], &QvConstrainedTrajectoryStock_[partitionIndex],
@@ -1265,7 +1265,7 @@ void SLQHamiltonian<STATE_DIM, INPUT_DIM, LogicRulesT>::SolveRiccatiEquationsFor
        * @param [in] allSsFinal: All Ss Final.
        * @return Result value.
        */
-      riccatiEquationsPtrStock_[workerIndex]->computeJumpMap(*endTimeItr, allSsTrajectory.back(), allSsFinal);
+      riccatiEquationsPtrStock_[workerIndex]->ComputeJumpMap(*endTimeItr, allSsTrajectory.back(), allSsFinal);
     }
 
   }  // end of i loop
@@ -1412,7 +1412,7 @@ void SLQHamiltonian<STATE_DIM, INPUT_DIM, LogicRulesT>::SolveErrorRiccatiEquatio
    * @brief Set Data.
    * @return Result value.
    */
-  SmFuncs_[workerIndex].setData(&(BASE::SsTimeTrajectoryStock_[partitionIndex]), &(BASE::SmTrajectoryStock_[partitionIndex]));
+  SmFuncs_[workerIndex].SetData(&(BASE::SsTimeTrajectoryStock_[partitionIndex]), &(BASE::SmTrajectoryStock_[partitionIndex]));
   /**
    * @brief Gv Trajectory.
    * @param [in] N: N.
@@ -1463,14 +1463,14 @@ void SLQHamiltonian<STATE_DIM, INPUT_DIM, LogicRulesT>::SolveErrorRiccatiEquatio
    * @brief Reset Num Function Calls.
    * @return Result value.
    */
-  errorEquationPtrStock_[workerIndex]->resetNumFunctionCalls();
+  errorEquationPtrStock_[workerIndex]->ResetNumFunctionCalls();
   /**
    * @brief Set Data.
    * @param [in,out] GvTrajectory: Gv Trajectory.
    * @param [in,out] GmTrajectory: Gm Trajectory.
    * @return Result value.
    */
-  errorEquationPtrStock_[workerIndex]->setData(BASE::partitioningTimes_[partitionIndex], BASE::partitioningTimes_[partitionIndex + 1],
+  errorEquationPtrStock_[workerIndex]->SetData(BASE::partitioningTimes_[partitionIndex], BASE::partitioningTimes_[partitionIndex + 1],
                                                &BASE::nominalTimeTrajectoriesStock_[partitionIndex], &GvTrajectory, &GmTrajectory);
 
   // max number of steps of integration
@@ -1566,7 +1566,7 @@ void SLQHamiltonian<STATE_DIM, INPUT_DIM, LogicRulesT>::SolveErrorRiccatiEquatio
        * @param [in] SveFinalInternal: Sve Final Internal.
        * @return Result value.
        */
-      errorEquationPtrStock_[workerIndex]->computeJumpMap(*endTimeItr, SveTrajectory.back(), SveFinalInternal);
+      errorEquationPtrStock_[workerIndex]->ComputeJumpMap(*endTimeItr, SveTrajectory.back(), SveFinalInternal);
     }
 
   }  // end of i loop
@@ -1799,7 +1799,7 @@ SLQHamiltonian<STATE_DIM, INPUT_DIM, LogicRulesT>::IntegrateHamiltonian(size_t w
      * @param [in,out] GvZero: Gv Zero.
      * @return Result value.
      */
-    hamiltonianEquationPtrStock_[workerIndex]->setData(&Hm, &GvZero);
+    hamiltonianEquationPtrStock_[workerIndex]->SetData(&Hm, &GvZero);
 
     return SolveLTI<2 * STATE_DIM, STATE_DIM>(hamiltonianIntegratorPtrStock_[workerIndex], x0, deltaTime);
   }
@@ -1831,7 +1831,7 @@ SLQHamiltonian<STATE_DIM, INPUT_DIM, LogicRulesT>::IntegrateIncrement(size_t wor
    * @param [in,out] Gv: Gv.
    * @return Result value.
    */
-  hamiltonianIncrementEquationPtrStock_[workerIndex]->setData(&Gm, &Gv);
+  hamiltonianIncrementEquationPtrStock_[workerIndex]->SetData(&Gm, &Gv);
 
   return SolveLTI<STATE_DIM, 1>(hamiltonianIncrementIntegratorPtrStock_[workerIndex], x0, deltaTime);
 }

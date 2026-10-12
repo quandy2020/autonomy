@@ -43,7 +43,13 @@ find_package(Pinocchio QUIET)
 find_package(GLPK QUIET)
 if(NOT (OpenMP_FOUND AND Eigen3_FOUND AND Threads_FOUND AND CppAD_FOUND
         AND Pinocchio_FOUND AND GLPK_FOUND))
-  message(STATUS "bolza: skipped (need Eigen, Threads, OpenMP, CppAD, Pinocchio, GLPK)")
+  set(_bolza_missing "")
+  foreach(_dep IN ITEMS OpenMP Eigen3 Threads CppAD Pinocchio GLPK)
+    if(NOT ${_dep}_FOUND)
+      list(APPEND _bolza_missing ${_dep})
+    endif()
+  endforeach()
+  message(STATUS "bolza: skipped (missing ${_bolza_missing})")
   return()
 endif()
 include(cmake/bolza_hpipm.cmake)
@@ -60,7 +66,7 @@ file(GLOB_RECURSE ALL_LIBRARY_SRCS CONFIGURE_DEPENDS "bolza/*.cpp")
 file(GLOB_RECURSE ALL_TESTS CONFIGURE_DEPENDS "bolza/*_test.cpp")
 file(GLOB_RECURSE TEST_LIBRARY_SRCS CONFIGURE_DEPENDS "bolza/ddp/bouncingmass/*.cpp")
 
-list(FILTER ALL_LIBRARY_SRCS EXCLUDE REGEX "_test\\.cpp$|/ddp/bouncingmass/")
+list(FILTER ALL_LIBRARY_SRCS EXCLUDE REGEX "_test\\.cpp$|/ddp/bouncingmass/|/ddp/unsupported/|/ddp/ddp_data_collector\\.cpp$|/ros_msg_conversions/|/qp/constrained_lqp_solver\\.cpp$")
 list(FILTER TEST_LIBRARY_SRCS EXCLUDE REGEX "_test\\.cpp$")
 list(FILTER ALL_TESTS EXCLUDE REGEX "/constraints_demo_test\\.cpp$")
 if(NOT BOLZA_HAS_ONNX)
@@ -114,10 +120,12 @@ endif()
 
 message(STATUS "bolza: ON (coal=${BOLZA_HAS_COAL} onnx=${BOLZA_HAS_ONNX})")
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/examples/CMakelists.txt)
+
 # --- tests -------------------------------------------------------------------
 if(BOLZA_BUILD_TESTS)
   bolza_enable_testing()
-  set(BOLZA_ROBOTIC_ASSETS_ROOT "${BOLZA_ROOT_DIR}/bolza/robotic_assets" CACHE PATH
+  set(BOLZA_ROBOTIC_ASSETS_ROOT "${BOLZA_ROOT_DIR}/examples/assets" CACHE PATH
     "URDF / mesh resources root")
 
   add_library(bolza_test_library ${TEST_LIBRARY_SRCS})
@@ -128,7 +136,8 @@ if(BOLZA_BUILD_TESTS)
     "${BOLZA_ROOT_DIR}/bolza/oc"
     "${BOLZA_ROOT_DIR}/bolza/ddp"
     "${BOLZA_ROOT_DIR}/bolza/qp"
-    "${BOLZA_ROOT_DIR}/bolza/pinocchio/centroidal_model")
+    "${BOLZA_ROOT_DIR}/bolza/pinocchio/centroidal_model"
+    "${BOLZA_ROOT_DIR}/examples")
 
   foreach(ABS_FIL ${ALL_TESTS})
     file(RELATIVE_PATH REL_FIL ${BOLZA_ROOT_DIR} ${ABS_FIL})
@@ -152,7 +161,6 @@ install(DIRECTORY bolza/
     PATTERN "*.h"
     PATTERN "*_test.*" EXCLUDE
     PATTERN "helpers" EXCLUDE
-    PATTERN "robotic_assets" EXCLUDE
     PATTERN "bouncingmass" EXCLUDE
     PATTERN "CMakeLists.txt" EXCLUDE)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/bolza/conf/conf.hpp

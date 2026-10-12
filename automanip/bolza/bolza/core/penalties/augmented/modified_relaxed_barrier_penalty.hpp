@@ -72,20 +72,20 @@ class ModifiedRelaxedBarrierPenalty final : public AugmentedPenaltyBase {
          * @param [in] stepSizeParam: Step Size Param.
          * @return Result value.
          */
-        : Scale(scaleParam), relaxation(relaxationParam), stepSize(stepSizeParam) {}
+        : scale(scaleParam), relaxation(relaxationParam), stepSize(stepSizeParam) {}
     scalar_t scale;
     scalar_t relaxation;
     scalar_t stepSize;
   };
 
     /**
-   * @brief /** Constructor */.
+   * @brief Constructor 
    * @param [in] config_: Config.
    */
   ModifiedRelaxedBarrierPenalty(Config config) : config_(std::move(config)), quadCoeff_(config_) {}
 
     /**
-   * @brief /** Factory function */.
+   * @brief Factory function 
    * @param [in] config: Config.
    * @return Owning pointer.
    */

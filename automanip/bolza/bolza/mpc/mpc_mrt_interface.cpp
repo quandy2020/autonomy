@@ -25,16 +25,16 @@ namespace bolza {
 /******************************************************************************************************/
 /******************************************************************************************************/
 MPCMRTInterface::MPCMRTInterface(MPCBase& mpc) : mpc_(mpc) {
-  mpcTimer_.reset();
+  mpcTimer_.Reset();
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 void MPCMRTInterface::ResetMpcNode(const TargetTrajectories& initTargetTrajectories) {
-  mpc_.reset();
-  mpc_.getSolverPtr()->getReferenceManager().setTargetTrajectories(initTargetTrajectories);
-  mpcTimer_.reset();
+  mpc_.Reset();
+  mpc_.GetSolverPtr()->GetReferenceManager().SetTargetTrajectories(initTargetTrajectories);
+  mpcTimer_.Reset();
 }
 
 /******************************************************************************************************/
@@ -49,14 +49,14 @@ void MPCMRTInterface::SetCurrentObservation(const SystemObservation& currentObse
 /******************************************************************************************************/
 /******************************************************************************************************/
 ReferenceManagerInterface& MPCMRTInterface::GetReferenceManager() {
-  return mpc_.getSolverPtr()->getReferenceManager();
+  return mpc_.GetSolverPtr()->GetReferenceManager();
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 const ReferenceManagerInterface& MPCMRTInterface::GetReferenceManager() const {
-  return mpc_.getSolverPtr()->getReferenceManager();
+  return mpc_.GetSolverPtr()->GetReferenceManager();
 }
 
 /******************************************************************************************************/
@@ -64,7 +64,7 @@ const ReferenceManagerInterface& MPCMRTInterface::GetReferenceManager() const {
 /******************************************************************************************************/
 void MPCMRTInterface::AdvanceMpc() {
   // measure the delay in running MPC
-  mpcTimer_.startTimer();
+  mpcTimer_.StartTimer();
 
   SystemObservation currentObservation;
   {
@@ -72,30 +72,30 @@ void MPCMRTInterface::AdvanceMpc() {
     currentObservation = currentObservation_;
   }
 
-  bool controllerIsUpdated = mpc_.run(currentObservation.time, currentObservation.state);
+  bool controllerIsUpdated = mpc_.Run(currentObservation.time, currentObservation.state);
   if (!controllerIsUpdated) {
     return;
   }
   CopyToBuffer(currentObservation);
 
   // measure the delay for sending ROS messages
-  mpcTimer_.endTimer();
+  mpcTimer_.EndTimer();
 
   // check MPC delay and solution window compatibility
-  scalar_t timeWindow = mpc_.settings().solutionTimeWindow_;
-  if (mpc_.settings().solutionTimeWindow_ < 0) {
-    timeWindow = mpc_.getSolverPtr()->getFinalTime() - currentObservation.time;
+  scalar_t timeWindow = mpc_.Settings().solutionTimeWindow_;
+  if (mpc_.Settings().solutionTimeWindow_ < 0) {
+    timeWindow = mpc_.GetSolverPtr()->GetFinalTime() - currentObservation.time;
   }
-  if (timeWindow < 2.0 * mpcTimer_.getAverageInMilliseconds() * 1e-3) {
+  if (timeWindow < 2.0 * mpcTimer_.GetAverageInMilliseconds() * 1e-3) {
     std::cerr << "[MPCMRTInterface::AdvanceMpc] WARNING: The solution time window might be shorter than the MPC delay!\n";
   }
 
   // measure the delay
-  if (mpc_.settings().debugPrint_) {
+  if (mpc_.Settings().debugPrint_) {
     std::cerr << "\n### MPC_MRT Benchmarking";
-    std::cerr << "\n###   Maximum : " << mpcTimer_.getMaxIntervalInMilliseconds() << "[ms].";
-    std::cerr << "\n###   Average : " << mpcTimer_.getAverageInMilliseconds() << "[ms].";
-    std::cerr << "\n###   Latest  : " << mpcTimer_.getLastIntervalInMilliseconds() << "[ms]." << std::endl;
+    std::cerr << "\n###   Maximum : " << mpcTimer_.GetMaxIntervalInMilliseconds() << "[ms].";
+    std::cerr << "\n###   Average : " << mpcTimer_.GetAverageInMilliseconds() << "[ms].";
+    std::cerr << "\n###   Latest  : " << mpcTimer_.GetLastIntervalInMilliseconds() << "[ms]." << std::endl;
   }
 }
 
@@ -107,31 +107,31 @@ void MPCMRTInterface::CopyToBuffer(const SystemObservation& mpcInitObservation) 
   auto primalSolutionPtr = std::make_unique<PrimalSolution>();
   const scalar_t startTime = mpcInitObservation.time;
   const scalar_t finalTime =
-      (mpc_.settings().solutionTimeWindow_ < 0) ? mpc_.getSolverPtr()->getFinalTime() : startTime + mpc_.settings().solutionTimeWindow_;
-  mpc_.getSolverPtr()->getPrimalSolution(finalTime, primalSolutionPtr.get());
+      (mpc_.Settings().solutionTimeWindow_ < 0) ? mpc_.GetSolverPtr()->GetFinalTime() : startTime + mpc_.Settings().solutionTimeWindow_;
+  mpc_.GetSolverPtr()->GetPrimalSolution(finalTime, primalSolutionPtr.get());
 
   // command
   auto commandPtr = std::make_unique<CommandData>();
   commandPtr->mpcInitObservation_ = mpcInitObservation;
-  commandPtr->mpcTargetTrajectories_ = mpc_.getSolverPtr()->getReferenceManager().getTargetTrajectories();
+  commandPtr->mpcTargetTrajectories_ = mpc_.GetSolverPtr()->GetReferenceManager().GetTargetTrajectories();
 
   // performance indices
   auto performanceIndicesPtr = std::make_unique<PerformanceIndex>();
-  *performanceIndicesPtr = mpc_.getSolverPtr()->getPerformanceIndeces();
+  *performanceIndicesPtr = mpc_.GetSolverPtr()->GetPerformanceIndeces();
 
-  this->moveToBuffer(std::move(commandPtr), std::move(primalSolutionPtr), std::move(performanceIndicesPtr));
+  this->MoveToBuffer(std::move(commandPtr), std::move(primalSolutionPtr), std::move(performanceIndicesPtr));
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 matrix_t MPCMRTInterface::GetLinearFeedbackGain(scalar_t time) {
-  auto controller = dynamic_cast<LinearController*>(this->getPolicy().controllerPtr_.get());
+  auto controller = dynamic_cast<LinearController*>(this->GetPolicy().controllerPtr_.get());
   if (controller == nullptr) {
     throw std::runtime_error("[MPCMRTInterface::GetLinearFeedbackGain] Feedback gains only available with linear controller!");
   }
   matrix_t K;
-  controller->getFeedbackGain(time, K);
+  controller->GetFeedbackGain(time, K);
   return K;
 }
 
@@ -139,21 +139,21 @@ matrix_t MPCMRTInterface::GetLinearFeedbackGain(scalar_t time) {
 /******************************************************************************************************/
 /******************************************************************************************************/
 ScalarFunctionQuadraticApproximation MPCMRTInterface::GetValueFunction(scalar_t time, const vector_t& state) const {
-  return mpc_.getSolverPtr()->getValueFunction(time, state);
+  return mpc_.GetSolverPtr()->GetValueFunction(time, state);
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 vector_t MPCMRTInterface::GetStateInputEqualityConstraintLagrangian(scalar_t time, const vector_t& state) const {
-  return mpc_.getSolverPtr()->getStateInputEqualityConstraintLagrangian(time, state);
+  return mpc_.GetSolverPtr()->GetStateInputEqualityConstraintLagrangian(time, state);
 }
 
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
 MultiplierCollection MPCMRTInterface::GetIntermediateDualSolution(scalar_t time) const {
-  return mpc_.getSolverPtr()->getIntermediateDualSolution(time);
+  return mpc_.GetSolverPtr()->GetIntermediateDualSolution(time);
 }
 
 }  // namespace bolza

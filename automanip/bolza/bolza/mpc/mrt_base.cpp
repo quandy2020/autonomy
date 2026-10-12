@@ -82,7 +82,7 @@ const PerformanceIndex& MRTBase::GetPerformanceIndices() const {
 /******************************************************************************************************/
 /******************************************************************************************************/
 void MRTBase::InitRollout(const RolloutBase* rolloutPtr) {
-  rolloutPtr_.reset(rolloutPtr->clone());
+  rolloutPtr_.reset(rolloutPtr->Clone());
 }
 
 /******************************************************************************************************/
@@ -98,11 +98,11 @@ void MRTBase::EvaluatePolicy(scalar_t currentTime, const vector_t& currentState,
               << std::to_string(activePrimalSolutionPtr_->timeTrajectory_.back()) << "\n";
   }
 
-  mpcInput = activePrimalSolutionPtr_->controllerPtr_->computeInput(currentTime, currentState);
+  mpcInput = activePrimalSolutionPtr_->controllerPtr_->ComputeInput(currentTime, currentState);
   mpcState =
       LinearInterpolation::Interpolate(currentTime, activePrimalSolutionPtr_->timeTrajectory_, activePrimalSolutionPtr_->stateTrajectory_);
 
-  mode = activePrimalSolutionPtr_->modeSchedule_.modeAtTime(currentTime);
+  mode = activePrimalSolutionPtr_->modeSchedule_.ModeAtTime(currentTime);
 }
 
 /******************************************************************************************************/
@@ -128,13 +128,13 @@ void MRTBase::RolloutPolicy(scalar_t currentTime, const vector_t& currentState, 
   size_array_t postEventIndicesStock;
   vector_array_t stateTrajectory, inputTrajectory;
   const scalar_t finalTime = currentTime + timeStep;
-  rolloutPtr_->run(currentTime, currentState, finalTime, activePrimalSolutionPtr_->controllerPtr_.get(),
+  rolloutPtr_->Run(currentTime, currentState, finalTime, activePrimalSolutionPtr_->controllerPtr_.get(),
                    activePrimalSolutionPtr_->modeSchedule_, timeTrajectory, postEventIndicesStock, stateTrajectory, inputTrajectory);
 
   mpcState = stateTrajectory.back();
   mpcInput = inputTrajectory.back();
 
-  mode = activePrimalSolutionPtr_->modeSchedule_.modeAtTime(finalTime);
+  mode = activePrimalSolutionPtr_->modeSchedule_.ModeAtTime(finalTime);
 }
 
 /******************************************************************************************************/
@@ -202,7 +202,7 @@ void MRTBase::MoveToBuffer(std::unique_ptr<CommandData> commandDataPtr, std::uni
 void MRTBase::ModifyActiveSolution(const CommandData& command, PrimalSolution& primalSolution) {
   for (auto& mrtObserver : observerPtrArray_) {
     if (mrtObserver != nullptr) {
-      mrtObserver->modifyActiveSolution(command, primalSolution);
+      mrtObserver->ModifyActiveSolution(command, primalSolution);
     }
   }
 }
@@ -213,7 +213,7 @@ void MRTBase::ModifyActiveSolution(const CommandData& command, PrimalSolution& p
 void MRTBase::ModifyBufferedSolution(const CommandData& commandBuffer, PrimalSolution& primalSolutionBuffer) {
   for (auto& mrtObserver : observerPtrArray_) {
     if (mrtObserver != nullptr) {
-      mrtObserver->modifyBufferedSolution(commandBuffer, primalSolutionBuffer);
+      mrtObserver->ModifyBufferedSolution(commandBuffer, primalSolutionBuffer);
     }
   }
 }

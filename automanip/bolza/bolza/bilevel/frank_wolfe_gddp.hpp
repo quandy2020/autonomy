@@ -53,7 +53,7 @@ class FrankWolfeGDDP : public GDDP<STATE_DIM, INPUT_DIM> {
   FrankWolfeGDDP() : FrankWolfeGDDP(GDDPSettings()) {}
 
     /**
-   * @brief /**.
+   * @brief.
    *
    * Constructor.
    *
@@ -87,4 +87,4 @@ class FrankWolfeGDDP : public GDDP<STATE_DIM, INPUT_DIM> {
 
 }  // namespace bolza
 
-#include "implementation/FrankWolfeGDDP.h"
+#include "implementation/frank_wolfe_gddp.hpp"

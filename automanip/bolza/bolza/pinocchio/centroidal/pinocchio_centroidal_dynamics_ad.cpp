@@ -29,11 +29,11 @@ PinocchioCentroidalDynamicsAD::PinocchioCentroidalDynamicsAD(const PinocchioInte
                                                              bool recompileLibraries, bool verbose) {
   auto systemFlowMapFunc = [&](const ad_vector_t& x, ad_vector_t& y) {
     // initialize CppAD interface
-    auto pinocchioInterfaceCppAd = pinocchioInterface.toCppAd();
+    auto pinocchioInterfaceCppAd = pinocchioInterface.ToCppAd();
 
     // mapping
-    CentroidalModelPinocchioMappingCppAd mappingCppAd(info.toCppAd());
-    mappingCppAd.setPinocchioInterface(pinocchioInterfaceCppAd);
+    CentroidalModelPinocchioMappingCppAd mappingCppAd(info.ToCppAd());
+    mappingCppAd.SetPinocchioInterface(pinocchioInterfaceCppAd);
 
     ad_vector_t state = x.head(info.stateDim);
     ad_vector_t input = x.tail(info.inputDim);
@@ -44,9 +44,9 @@ PinocchioCentroidalDynamicsAD::PinocchioCentroidalDynamicsAD(const PinocchioInte
       new CppAdInterface(systemFlowMapFunc, info.stateDim + info.inputDim, modelName + "_systemFlowMap", modelFolder));
 
   if (recompileLibraries) {
-    systemFlowMapCppAdInterfacePtr_->createModels(CppAdInterface::ApproximationOrder::First, verbose);
+    systemFlowMapCppAdInterfacePtr_->CreateModels(CppAdInterface::ApproximationOrder::First, verbose);
   } else {
-    systemFlowMapCppAdInterfacePtr_->loadModelsIfAvailable(CppAdInterface::ApproximationOrder::First, verbose);
+    systemFlowMapCppAdInterfacePtr_->LoadModelsIfAvailable(CppAdInterface::ApproximationOrder::First, verbose);
   }
 }
 
@@ -62,10 +62,10 @@ PinocchioCentroidalDynamicsAD::PinocchioCentroidalDynamicsAD(const PinocchioCent
 ad_vector_t PinocchioCentroidalDynamicsAD::GetValueCppAd(PinocchioInterfaceCppAd& pinocchioInterfaceCppAd,
                                                          const CentroidalModelPinocchioMappingCppAd& mappingCppAd, const ad_vector_t& state,
                                                          const ad_vector_t& input) {
-  const auto& info = mappingCppAd.getCentroidalModelInfo();
+  const auto& info = mappingCppAd.GetCentroidalModelInfo();
   assert(info.stateDim == state.rows());
 
-  const ad_vector_t qPinocchio = mappingCppAd.getPinocchioJointPosition(state);
+  const ad_vector_t qPinocchio = mappingCppAd.GetPinocchioJointPosition(state);
   UpdateCentroidalDynamics(pinocchioInterfaceCppAd, info, qPinocchio);
 
   ad_vector_t stateDerivative(info.stateDim);
@@ -75,7 +75,7 @@ ad_vector_t PinocchioCentroidalDynamicsAD::GetValueCppAd(PinocchioInterfaceCppAd
       GetNormalizedCentroidalMomentumRate(pinocchioInterfaceCppAd, info, input);
 
   // derivatives of the floating base variables + joint velocities
-  centroidal_model::getGeneralizedCoordinates(stateDerivative, info) = mappingCppAd.getPinocchioJointVelocity(state, input);
+  centroidal_model::getGeneralizedCoordinates(stateDerivative, info) = mappingCppAd.GetPinocchioJointVelocity(state, input);
 
   return stateDerivative;
 }
@@ -85,7 +85,7 @@ ad_vector_t PinocchioCentroidalDynamicsAD::GetValueCppAd(PinocchioInterfaceCppAd
 /******************************************************************************************************/
 vector_t PinocchioCentroidalDynamicsAD::GetValue(scalar_t time, const vector_t& state, const vector_t& input) const {
   const vector_t stateInput = (vector_t(state.rows() + input.rows()) << state, input).finished();
-  return systemFlowMapCppAdInterfacePtr_->getFunctionValue(stateInput);
+  return systemFlowMapCppAdInterfacePtr_->GetFunctionValue(stateInput);
 }
 
 /******************************************************************************************************/
@@ -95,8 +95,8 @@ VectorFunctionLinearApproximation PinocchioCentroidalDynamicsAD::GetLinearApprox
                                                                                         const vector_t& input) const {
   const vector_t stateInput = (vector_t(state.rows() + input.rows()) << state, input).finished();
   VectorFunctionLinearApproximation approx;
-  approx.f = systemFlowMapCppAdInterfacePtr_->getFunctionValue(stateInput);
-  const matrix_t dynamicsJacobian = systemFlowMapCppAdInterfacePtr_->getJacobian(stateInput);
+  approx.f = systemFlowMapCppAdInterfacePtr_->GetFunctionValue(stateInput);
+  const matrix_t dynamicsJacobian = systemFlowMapCppAdInterfacePtr_->GetJacobian(stateInput);
   approx.dfdx = dynamicsJacobian.leftCols(state.rows());
   approx.dfdu = dynamicsJacobian.rightCols(input.rows());
   return approx;

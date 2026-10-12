@@ -30,8 +30,8 @@ MPCBase::MPCBase(mpc::Settings mpcSettings) : mpcSettings_(std::move(mpcSettings
 /******************************************************************************************************/
 void MPCBase::Reset() {
   initRun_ = true;
-  mpcTimer_.reset();
-  GetSolverPtr()->reset();
+  mpcTimer_.Reset();
+  GetSolverPtr()->Reset();
 }
 
 /******************************************************************************************************/
@@ -39,9 +39,9 @@ void MPCBase::Reset() {
 /******************************************************************************************************/
 bool MPCBase::Run(scalar_t currentTime, const vector_t& currentState) {
   // check if the current time exceeds the solver final limit
-  if (!initRun_ && currentTime >= GetSolverPtr()->getFinalTime()) {
+  if (!initRun_ && currentTime >= GetSolverPtr()->GetFinalTime()) {
     std::cerr << "WARNING: The MPC time-horizon is smaller than the MPC starting time.\n";
-    std::cerr << "currentTime: " << currentTime << "\t Controller finalTime: " << GetSolverPtr()->getFinalTime() << '\n';
+    std::cerr << "currentTime: " << currentTime << "\t Controller finalTime: " << GetSolverPtr()->GetFinalTime() << '\n';
     return false;
   }
 
@@ -55,7 +55,7 @@ bool MPCBase::Run(scalar_t currentTime, const vector_t& currentState) {
     std::cerr << "\n### MPC is called at time:  " << currentTime << " [s].";
     std::cerr << "\n### MPC final Time:         " << finalTime << " [s].";
     std::cerr << "\n### MPC time horizon:       " << mpcSettings_.timeHorizon_ << " [s].\n";
-    mpcTimer_.startTimer();
+    mpcTimer_.StartTimer();
   }
 
   // calculate the MPC policy
@@ -66,11 +66,11 @@ bool MPCBase::Run(scalar_t currentTime, const vector_t& currentState) {
 
   // display
   if (mpcSettings_.debugPrint_) {
-    mpcTimer_.endTimer();
+    mpcTimer_.EndTimer();
     std::cerr << "\n### MPC Benchmarking";
-    std::cerr << "\n###   Maximum : " << mpcTimer_.getMaxIntervalInMilliseconds() << "[ms].";
-    std::cerr << "\n###   Average : " << mpcTimer_.getAverageInMilliseconds() << "[ms].";
-    std::cerr << "\n###   Latest  : " << mpcTimer_.getLastIntervalInMilliseconds() << "[ms]." << std::endl;
+    std::cerr << "\n###   Maximum : " << mpcTimer_.GetMaxIntervalInMilliseconds() << "[ms].";
+    std::cerr << "\n###   Average : " << mpcTimer_.GetAverageInMilliseconds() << "[ms].";
+    std::cerr << "\n###   Latest  : " << mpcTimer_.GetLastIntervalInMilliseconds() << "[ms]." << std::endl;
   }
 
   return true;

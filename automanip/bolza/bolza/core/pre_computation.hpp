@@ -58,7 +58,7 @@ class PreComputation {
  return new PreComputation(*this); }
 
     /**
-   * @brief /** Request callback */.
+   * @brief Request callback 
    * @param [in] request: Request.
    * @param [in] t: T.
    * @param [in] x: X.
@@ -67,7 +67,7 @@ class PreComputation {
   virtual void Request(RequestSet request, scalar_t t, const vector_t& x, const vector_t& u) {}
 
     /**
-   * @brief /** Request callback at jump event time */.
+   * @brief Request callback at jump event time 
    * @param [in] request: Request.
    * @param [in] t: T.
    * @param [in] x: X.
@@ -75,7 +75,7 @@ class PreComputation {
   virtual void RequestPreJump(RequestSet request, scalar_t t, const vector_t& x) {}
 
     /**
-   * @brief /** Request callback at final time */.
+   * @brief Request callback at final time 
    * @param [in] request: Request.
    * @param [in] t: T.
    * @param [in] x: X.
@@ -84,7 +84,7 @@ class PreComputation {
 
  protected:
     /**
-   * @brief /** Copy constructor */.
+   * @brief Copy constructor 
    * @param [in] other: Other.
    */
   PreComputation(const PreComputation& other) = default;
@@ -98,7 +98,7 @@ template <typename Derived>
  * @return Result value.
  */
 const Derived& cast(const PreComputation& preComputation) {
-  static_assert(std::is_base_of<PreComputation, Derived>::Value, "Template argument must derive from PreComputation");
+  static_assert(std::is_base_of<PreComputation, Derived>::value, "Template argument must derive from PreComputation");
   /**
    * @brief Assert.
    */
@@ -114,7 +114,7 @@ template <typename Derived>
  * @return Result value.
  */
 Derived& cast(PreComputation& preComputation) {
-  static_assert(std::is_base_of<PreComputation, Derived>::Value, "Template argument must derive from PreComputation");
+  static_assert(std::is_base_of<PreComputation, Derived>::value, "Template argument must derive from PreComputation");
   /**
    * @brief Assert.
    */

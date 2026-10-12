@@ -105,7 +105,7 @@ TEST(BouncingMassTest, state_triggered_hybrid_slq) {
 
   // Dynamics, Constraints and derivative classes
   BouncingMassDynamics systemDynamics;
-  problem.dynamicsPtr.Reset(systemDynamics.Clone());
+  problem.dynamicsPtr.reset(systemDynamics.Clone());
 
   // Cost Function
   const bolza::matrix_t Q = (bolza::matrix_t(STATE_DIM, STATE_DIM) << 50.0, 0.0, 0.0, 0.0, 50.0, 0.0, 0.0, 0.0, 0.0).finished();
@@ -159,7 +159,7 @@ TEST(BouncingMassTest, state_triggered_hybrid_slq) {
   // SLQ
   bolza::SLQ slq(ddpSettings, stateTriggeredRollout, problem, operatingTrajectories);
   slq.Run(startTime, x0, finalTime, &initController);
-  const auto solutionST = slq.PrimalSolution(finalTime);
+  const auto solutionST = slq.GetPrimalSolution(finalTime);
 
   // Test 1: No penetration of Guard Surfaces
   for (int i = 0; i < solutionST.stateTrajectory_.size(); i++) {

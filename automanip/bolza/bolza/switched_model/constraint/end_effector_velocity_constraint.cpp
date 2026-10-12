@@ -16,7 +16,7 @@ EndEffectorVelocityConstraint* EndEffectorVelocityConstraint::Clone() const {
 };
 
 bool EndEffectorVelocityConstraint::IsActive(scalar_t time) const {
-  return modeScheduleManager_->getContactFlags(time)[legNumber_];
+  return modeScheduleManager_->GetContactFlags(time)[legNumber_];
 }
 
 size_t EndEffectorVelocityConstraint::GetNumConstraints(scalar_t time) const {
@@ -26,9 +26,9 @@ size_t EndEffectorVelocityConstraint::GetNumConstraints(scalar_t time) const {
 vector_t EndEffectorVelocityConstraint::GetValue(scalar_t time, const vector_t& state, const vector_t& input,
                                                  const bolza::PreComputation& preComp) const {
   const auto& switchedModelPreComp = bolza::cast<SwitchedModelPreComputation>(preComp);
-  const auto tangentBasis = TangentialBasisFromSurfaceNormal(switchedModelPreComp.getSurfaceNormalInOriginFrame(legNumber_));
+  const auto tangentBasis = TangentialBasisFromSurfaceNormal(switchedModelPreComp.GetSurfaceNormalInOriginFrame(legNumber_));
 
-  const auto& o_footVelocity = switchedModelPreComp.footVelocityInOriginFrame(legNumber_);
+  const auto& o_footVelocity = switchedModelPreComp.FootVelocityInOriginFrame(legNumber_);
   return tangentBasis * o_footVelocity;
 }
 
@@ -36,10 +36,10 @@ VectorFunctionLinearApproximation EndEffectorVelocityConstraint::GetLinearApprox
                                                                                         const vector_t& input,
                                                                                         const bolza::PreComputation& preComp) const {
   const auto& switchedModelPreComp = bolza::cast<SwitchedModelPreComputation>(preComp);
-  const auto tangentBasis = TangentialBasisFromSurfaceNormal(switchedModelPreComp.getSurfaceNormalInOriginFrame(legNumber_));
+  const auto tangentBasis = TangentialBasisFromSurfaceNormal(switchedModelPreComp.GetSurfaceNormalInOriginFrame(legNumber_));
 
-  const auto& o_footVelocity = switchedModelPreComp.footVelocityInOriginFrame(legNumber_);
-  const auto& o_footVelocityDerivative = switchedModelPreComp.footVelocityInOriginFrameDerivative(legNumber_);
+  const auto& o_footVelocity = switchedModelPreComp.FootVelocityInOriginFrame(legNumber_);
+  const auto& o_footVelocityDerivative = switchedModelPreComp.FootVelocityInOriginFrameDerivative(legNumber_);
 
   VectorFunctionLinearApproximation constraint;
   constraint.f.noalias() = tangentBasis * o_footVelocity;
