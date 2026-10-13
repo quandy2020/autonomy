@@ -1,7 +1,0 @@
-syntax = "proto3";
-
-package autolink.proto;
-
-message Clock {
-  uint64 clock = 1;
-}

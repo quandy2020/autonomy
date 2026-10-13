@@ -1,4 +1,0 @@
-prepend-non-duplicate;PATH;bin
-prepend-non-duplicate;LD_LIBRARY_PATH;lib
-prepend-non-duplicate;DYLD_LIBRARY_PATH;lib
-prepend-non-duplicate;PYTHONPATH;lib/python
