@@ -2,6 +2,16 @@
 
 OCS2 模型各用一个进程跑 MPC 和 rollout，用 Autolink 把 URDF、关节、轨迹和目标发给 autoviz。小车倒立摆、双积分器、四旋翼、球上平衡不依赖 Pinocchio。四足和移动机械臂在找到 pinocchio 时编译，机械臂的自碰撞还需要 hpp-fcl。
 
+动图见 [`images/`](images/)；包级说明见 [../README.md](../README.md)。
+
+| Cartpole | Ballbot | Quadrotor |
+|:---:|:---:|:---:|
+| ![cartpole](images/cartpole.gif) | ![ballbot](images/ballbot.gif) | ![quadrotor](images/quadrotor.gif) |
+
+| Legged robot | Mobile manipulator |
+|:---:|:---:|
+| ![quadruped](images/quadruped.gif) | ![manipulator](images/manipulator.gif) |
+
 ## OCP 用法（`bolza::Problem`）
 
 `double_integrator` / `cartpole` / `quadrotor` / `ballbot` 各用 `{name}.hpp` / `{name}.cpp`，经 [`bolza::Problem`](../bolza/bolza/problem.hpp) 装动力学与二次代价：
